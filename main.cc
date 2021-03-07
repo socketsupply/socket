@@ -78,8 +78,8 @@ void Process::spawn (const char* file, const char* arg) {
 
   options.file = file;
   options.args = args;
- 	options.stdio_count = 3;
-	options.stdio = stdio;
+   options.stdio_count = 3;
+  options.stdio = stdio;
 
   int status = uv_spawn(loop, this->parent, &options);
 
@@ -114,38 +114,38 @@ uv_stream_t* Process::getStderr() {
 }
 
 void Process::resumeStdout () {
-	uv_read_start(
+  uv_read_start(
     getStdout(),
     [] (uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf) {
       *buf = uv_buf_init((char*) malloc(suggested_size), suggested_size);        
     },
-		[](uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf) {
-			reinterpret_cast<Process*>(stream->data)->receiveData(stream, nread, buf);
-		}
-	);
+    [](uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf) {
+      reinterpret_cast<Process*>(stream->data)->receiveData(stream, nread, buf);
+    }
+  );
 }
 
 void Process::resumeStderr () {
-	uv_read_start(
+  uv_read_start(
     getStderr(),
     [] (uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf) {
       *buf = uv_buf_init((char*) malloc(suggested_size), suggested_size);        
     },
-		[](uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf) {
-		  reinterpret_cast<Process*>(stream->data)->receiveError(stream, nread, buf);
-	  }
-	);
+    [](uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf) {
+      reinterpret_cast<Process*>(stream->data)->receiveError(stream, nread, buf);
+    }
+  );
 }
 
 void Process::write (const std::string str) {
   auto buf = uv_buf_init((char*) str.c_str(), str.size());
 
-	uv_write_t* req = new uv_write_t {};
-	req->data = &buf;
+  uv_write_t* req = new uv_write_t {};
+  req->data = &buf;
 
-	uv_write(req, getStdin(), &buf, 1, [](uv_write_t* req, int status) {
-		delete req;
-	});
+  uv_write(req, getStdin(), &buf, 1, [](uv_write_t* req, int status) {
+    delete req;
+  });
 }
 
 #ifdef _WIN32
