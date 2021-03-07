@@ -180,7 +180,7 @@ int main()
   });
 
   process->onData = [] (const std::string str) {
-    std::cout << str << std::endl;
+    // std::cout << str << std::endl;
     win->emit("data", str);
   };
 

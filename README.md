@@ -6,8 +6,8 @@ to spawn an arbitrary instance (ie, nodejs) as a "main" process.
 # BUILD
 
 ```bash
-npm run build # build assets and compile binary
-npm run start # build and start
+npm run build  # build assets and compile binary
+npm start      # build and start
 ```
 
 # PROS
@@ -29,8 +29,10 @@ npm run start # build and start
 
 # NOTES
 
+[Official WebKit WebView docs][3].
 [Improve scrolling on gtk][2].
 
 [0]:https://github.com/webview/webview/blob/master/webview.h
 [1]:https://github.com/javalikescript/webview-c/blob/master/webview-cocoa.c#L508
 [2]:https://github.com/PerBothner/DomTerm/blob/1a8eadb111b5c4eab8dce00f5f672801af52d8f5/native/webview.cc#L33
+[3]:https://developer.apple.com/documentation/webkit/wkwebview

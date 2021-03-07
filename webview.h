@@ -704,6 +704,7 @@ public:
     ((void (*)(id, SEL, id))objc_msgSend)(m_window, "makeKeyAndOrderFront:"_sel,
                                           nullptr);
   }
+
   ~cocoa_wkwebview_engine() { close(); }
   void *window() { return (void *)m_window; }
   void terminate() {
@@ -711,6 +712,7 @@ public:
     ((void (*)(id, SEL, id))objc_msgSend)("NSApp"_cls, "terminate:"_sel,
                                           nullptr);
   }
+
   void run() {
     id app = ((id(*)(id, SEL))objc_msgSend)("NSApplication"_cls,
                                             "sharedApplication"_sel);
@@ -817,7 +819,7 @@ using browser_engine = cocoa_wkwebview_engine;
 #define WIN32_LEAN_AND_MEAN
 #include <Shlwapi.h>
 #include <codecvt>
-// #include <stdlib.h>
+#include <stdlib.h>
 #include <windows.h>
 
 #pragma comment(lib, "user32.lib")
