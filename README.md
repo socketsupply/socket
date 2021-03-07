@@ -6,7 +6,8 @@ to spawn an arbitrary instance (ie, nodejs) as a "main" process.
 # BUILD
 
 ```bash
-%npm run build && (cd build && ./operator)
+npm run build # build assets and compile binary
+npm run start # build and start
 ```
 
 # PROS

@@ -4,7 +4,8 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "build": "./bin/build.js"
+    "build": "./bin/build.js",
+    "start": "npm run build && cd build && ./operator"
   },
   "repository": {
     "type": "git",
