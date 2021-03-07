@@ -1,0 +1,18 @@
+@require '../node_modules/@optoolco/_styles/src/index.styl'
+
+@require './styles/index.styl'
+@require './views/**/*.styl'
+
+body[os="linux"]
+  ::-webkit-scrollbar
+   width 12px
+
+  ::-webkit-scrollbar-track
+    background-color rgba(0, 0, 0, 0)
+
+  ::-webkit-scrollbar-thumb
+    background-color var(--tonic-border)
+
+.relative
+  position: relative
+

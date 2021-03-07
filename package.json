@@ -1,0 +1,29 @@
+{
+  "name": "webview",
+  "version": "1.0.0",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "build": "./bin/build.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/webview/webview.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/webview/webview/issues"
+  },
+  "homepage": "https://github.com/webview/webview#readme",
+  "devDependencies": {
+    "clean-css": "^5.1.1",
+    "esbuild": "^0.8.56",
+    "stylus": "^0.54.8"
+  },
+  "dependencies": {
+    "@optoolco/_styles": "github:optoolco/_styles#v2.1.13",
+    "@optoolco/components": "^12.3.2",
+    "@optoolco/tonic": "^13.3.2"
+  }
+}

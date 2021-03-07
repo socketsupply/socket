@@ -1,0 +1,39 @@
+name: CI Pipeline
+on: [push, pull_request]
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install libwebkit2gtk-4.0-dev xvfb -y
+      - name: Build and run tests
+        run: xvfb-run ./script/build.sh
+
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v1
+      - name: Build and run tests
+        run: ./script/build.sh
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v1
+      - name: Build and run tests
+        run: ./script/build.bat
+
+  clang-format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+      - name: Run clang-format
+        uses: DoozyX/clang-format-lint-action@v0.6
+        with:
+          source: '.'
+          exclude: './script'
+          extensions: 'h,cc'
+          clangFormatVersion: 9
+          style: file
