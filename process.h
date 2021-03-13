@@ -1,0 +1,173 @@
+/*
+ * MIT License
+ *
+ * Copyright (c) 2021 Paolo Fragomeni <paolo@optool.co>
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+#include <uv.h>
+#include <sstream>
+#include <iostream>
+#include "webview.h"
+
+static uv_loop_t *loop = uv_default_loop();
+static uv_process_options_t options;
+
+using msg_cb_t = std::function<void(const std::string)>;
+
+class Process {
+  void receiveData(const std::string);
+  void receiveError(const std::string);
+  void resumeStdout();
+  void resumeStdin();
+  void resumeStderr();
+  uv_stream_t* getStdin();
+  uv_stream_t* getStdout();
+  uv_stream_t* getStderr();
+  uv_pipe_t* stdin;
+  uv_pipe_t* stdout;
+  uv_pipe_t* stderr;
+  uv_process_t* parent;
+  std::thread run;
+
+  public:
+    void spawn(const char* file, const char* arg, const char* cwd);
+    void write(const std::string str);
+    msg_cb_t onData;
+    msg_cb_t onError;
+
+    Process () noexcept :
+      parent { nullptr },
+      stdin { nullptr },
+      stdout { nullptr },
+      stderr { nullptr },
+      onData { nullptr },
+      onError { nullptr } {
+    }
+};
+
+void Process::spawn (const char* file, const char* arg, const char* cwd) {
+  parent = new uv_process_t {};
+
+  stdin = new uv_pipe_t {};
+  stdin->data = this;
+  uv_pipe_init(loop, stdin, 0);
+
+  stdout = new uv_pipe_t {};
+  stdout->data = this;
+  uv_pipe_init(loop, stdout, 0);
+
+  stderr = new uv_pipe_t {};
+  stderr->data = this;
+  uv_pipe_init(loop, stderr, 0);
+
+  uv_stdio_container_t stdio[3];
+  auto flags = uv_stdio_flags(UV_CREATE_PIPE | UV_READABLE_PIPE | UV_WRITABLE_PIPE);
+
+  stdio[0].data.stream = getStdin();
+  stdio[0].flags = flags;
+  stdio[1].data.stream = getStdout();
+  stdio[1].flags = flags;
+  stdio[2].data.stream = getStderr();
+  stdio[2].flags = flags;
+
+  char* args[3];
+  args[0] = (char*) file;
+  args[1] = (char*) arg;
+  args[2] = NULL;
+
+  options.file = file;
+  options.args = args;
+  options.cwd = cwd;
+  options.stdio_count = 3;
+  options.stdio = stdio;
+
+  int status = uv_spawn(loop, this->parent, &options);
+
+  // if (status < 0) {
+  //  std::cout << "WTF
+  //  // TODO cleanup
+  //  return;
+  // }
+
+  this->resumeStdout();
+  this->resumeStderr();
+  
+  uv_run(loop, UV_RUN_DEFAULT);
+}
+
+void Process::receiveData (const std::string s) {
+  if (this->onData != nullptr) this->onData(s);
+}
+
+void Process::receiveError (const std::string s) {
+  if (this->onError != nullptr) this->onError(s);
+}
+
+uv_stream_t* Process::getStdin() {
+  return reinterpret_cast<uv_stream_t*>(stdin);
+}
+
+uv_stream_t* Process::getStdout() {
+  return reinterpret_cast<uv_stream_t*>(stdout);
+}
+
+uv_stream_t* Process::getStderr() {
+  return reinterpret_cast<uv_stream_t*>(stderr);
+}
+
+void Process::resumeStdout () {
+  uv_read_start(
+    getStdout(),
+    [] (uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf) {
+      *buf = uv_buf_init((char*) malloc(suggested_size), suggested_size);        
+    },
+    [](uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf) {
+      std::string s(buf->base);
+      reinterpret_cast<Process*>(stream->data)->receiveData(s);
+      delete[] buf->base;
+    }
+  );
+}
+
+void Process::resumeStderr () {
+  uv_read_start(
+    getStderr(),
+    [] (uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf) {
+      *buf = uv_buf_init((char*) malloc(suggested_size), suggested_size);        
+    },
+    [](uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf) {
+      const std::string s(buf->base);
+      reinterpret_cast<Process*>(stream->data)->receiveError(s);
+      delete[] buf->base;
+    }
+  );
+}
+
+void Process::write (const std::string str) {
+  uv_write_t* req = new uv_write_t {};
+
+  auto buf = uv_buf_init((char*) str.c_str(), str.size());
+  req->data = &buf;
+
+  uv_write(req, getStdin(), &buf, 1, [](uv_write_t* req, int status) {
+    // auto& data = reinterpret_cast<char*>(req->data);
+    delete req;
+  });
+}

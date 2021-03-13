@@ -2,6 +2,7 @@
  * MIT License
  *
  * Copyright (c) 2017 Serge Zaitsev
+ * Copyright (c) 2021 Paolo Fragomeni <paolo@optool.co>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -24,9 +25,30 @@
 #ifndef WEBVIEW_H
 #define WEBVIEW_H
 
+#include "platform.h"
+#include <regex>
+
 #ifndef WEBVIEW_API
 #define WEBVIEW_API extern
 #endif
+
+const std::vector<std::string> split(const std::string& s, const char& c) {
+  std::string buff {""};
+  std::vector<std::string> vec;
+	
+	for (auto n:s) {
+		if(n != c) {
+      buff += n;
+    } else if (n == c && buff != "") {
+      vec.push_back(buff);
+      buff = "";
+    }
+	}
+
+	if (buff != "") vec.push_back(buff);
+
+	return vec;
+}
 
 #ifdef __cplusplus
 extern "C" {
@@ -36,6 +58,7 @@ extern "C" {
 // https://github.com/WebView/webview
 //
 typedef void *webview_t;
+
 
 // Creates a new webview instance. If debug is non-zero - developer tools will
 // be enabled (if the platform supports them). Window parameter can be a
@@ -98,7 +121,7 @@ WEBVIEW_API void webview_eval(webview_t w, const char *js);
 // receives a request string and a user-provided argument pointer. Request
 // string is a JSON array of all the arguments passed to the JavaScript
 // function.
-WEBVIEW_API void webview_bind(
+WEBVIEW_API void webview_ipc(
     webview_t w,
     const char *name,
     void (*fn)(const char *seq, const char *req, void *arg),
@@ -182,231 +205,6 @@ inline std::string url_decode(const std::string s) {
 inline std::string html_from_uri(const std::string s) {
   if (s.substr(0, 15) == "data:text/html,") {
     return url_decode(s.substr(15));
-  }
-  return "";
-}
-
-inline int json_parse_c(const char *s, size_t sz, const char *key, size_t keysz,
-                        const char **value, size_t *valuesz) {
-  enum {
-    JSON_STATE_VALUE,
-    JSON_STATE_LITERAL,
-    JSON_STATE_STRING,
-    JSON_STATE_ESCAPE,
-    JSON_STATE_UTF8
-  } state = JSON_STATE_VALUE;
-  const char *k = NULL;
-  int index = 1;
-  int depth = 0;
-  int utf8_bytes = 0;
-
-  if (key == NULL) {
-    index = keysz;
-    keysz = 0;
-  }
-
-  *value = NULL;
-  *valuesz = 0;
-
-  for (; sz > 0; s++, sz--) {
-    enum {
-      JSON_ACTION_NONE,
-      JSON_ACTION_START,
-      JSON_ACTION_END,
-      JSON_ACTION_START_STRUCT,
-      JSON_ACTION_END_STRUCT
-    } action = JSON_ACTION_NONE;
-    unsigned char c = *s;
-    switch (state) {
-    case JSON_STATE_VALUE:
-      if (c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == ',' ||
-          c == ':') {
-        continue;
-      } else if (c == '"') {
-        action = JSON_ACTION_START;
-        state = JSON_STATE_STRING;
-      } else if (c == '{' || c == '[') {
-        action = JSON_ACTION_START_STRUCT;
-      } else if (c == '}' || c == ']') {
-        action = JSON_ACTION_END_STRUCT;
-      } else if (c == 't' || c == 'f' || c == 'n' || c == '-' ||
-                 (c >= '0' && c <= '9')) {
-        action = JSON_ACTION_START;
-        state = JSON_STATE_LITERAL;
-      } else {
-        return -1;
-      }
-      break;
-    case JSON_STATE_LITERAL:
-      if (c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == ',' ||
-          c == ']' || c == '}' || c == ':') {
-        state = JSON_STATE_VALUE;
-        s--;
-        sz++;
-        action = JSON_ACTION_END;
-      } else if (c < 32 || c > 126) {
-        return -1;
-      } // fallthrough
-    case JSON_STATE_STRING:
-      if (c < 32 || (c > 126 && c < 192)) {
-        return -1;
-      } else if (c == '"') {
-        action = JSON_ACTION_END;
-        state = JSON_STATE_VALUE;
-      } else if (c == '\\') {
-        state = JSON_STATE_ESCAPE;
-      } else if (c >= 192 && c < 224) {
-        utf8_bytes = 1;
-        state = JSON_STATE_UTF8;
-      } else if (c >= 224 && c < 240) {
-        utf8_bytes = 2;
-        state = JSON_STATE_UTF8;
-      } else if (c >= 240 && c < 247) {
-        utf8_bytes = 3;
-        state = JSON_STATE_UTF8;
-      } else if (c >= 128 && c < 192) {
-        return -1;
-      }
-      break;
-    case JSON_STATE_ESCAPE:
-      if (c == '"' || c == '\\' || c == '/' || c == 'b' || c == 'f' ||
-          c == 'n' || c == 'r' || c == 't' || c == 'u') {
-        state = JSON_STATE_STRING;
-      } else {
-        return -1;
-      }
-      break;
-    case JSON_STATE_UTF8:
-      if (c < 128 || c > 191) {
-        return -1;
-      }
-      utf8_bytes--;
-      if (utf8_bytes == 0) {
-        state = JSON_STATE_STRING;
-      }
-      break;
-    default:
-      return -1;
-    }
-
-    if (action == JSON_ACTION_END_STRUCT) {
-      depth--;
-    }
-
-    if (depth == 1) {
-      if (action == JSON_ACTION_START || action == JSON_ACTION_START_STRUCT) {
-        if (index == 0) {
-          *value = s;
-        } else if (keysz > 0 && index == 1) {
-          k = s;
-        } else {
-          index--;
-        }
-      } else if (action == JSON_ACTION_END ||
-                 action == JSON_ACTION_END_STRUCT) {
-        if (*value != NULL && index == 0) {
-          *valuesz = (size_t)(s + 1 - *value);
-          return 0;
-        } else if (keysz > 0 && k != NULL) {
-          if (keysz == (size_t)(s - k - 1) && memcmp(key, k + 1, keysz) == 0) {
-            index = 0;
-          } else {
-            index = 2;
-          }
-          k = NULL;
-        }
-      }
-    }
-
-    if (action == JSON_ACTION_START_STRUCT) {
-      depth++;
-    }
-  }
-  return -1;
-}
-
-inline std::string json_escape(std::string s) {
-  // TODO: implement
-  return '"' + s + '"';
-}
-
-inline int json_unescape(const char *s, size_t n, char *out) {
-  int r = 0;
-  if (*s++ != '"') {
-    return -1;
-  }
-  while (n > 2) {
-    char c = *s;
-    if (c == '\\') {
-      s++;
-      n--;
-      switch (*s) {
-      case 'b':
-        c = '\b';
-        break;
-      case 'f':
-        c = '\f';
-        break;
-      case 'n':
-        c = '\n';
-        break;
-      case 'r':
-        c = '\r';
-        break;
-      case 't':
-        c = '\t';
-        break;
-      case '\\':
-        c = '\\';
-        break;
-      case '/':
-        c = '/';
-        break;
-      case '\"':
-        c = '\"';
-        break;
-      default: // TODO: support unicode decoding
-        return -1;
-      }
-    }
-    if (out != NULL) {
-      *out++ = c;
-    }
-    s++;
-    n--;
-    r++;
-  }
-  if (*s != '"') {
-    return -1;
-  }
-  if (out != NULL) {
-    *out = '\0';
-  }
-  return r;
-}
-
-inline std::string json_parse(const std::string s, const std::string key,
-                              const int index) {
-  const char *value;
-  size_t value_sz;
-  if (key == "") {
-    json_parse_c(s.c_str(), s.length(), nullptr, index, &value, &value_sz);
-  } else {
-    json_parse_c(s.c_str(), s.length(), key.c_str(), key.length(), &value,
-                 &value_sz);
-  }
-  if (value != nullptr) {
-    if (value[0] != '"') {
-      return std::string(value, value_sz);
-    }
-    int n = json_unescape(value, value_sz, nullptr);
-    if (n > 0) {
-      char *decoded = new char[n + 1];
-      json_unescape(value, value_sz, decoded);
-      std::string result(decoded, n);
-      delete[] decoded;
-      return result;
-    }
   }
   return "";
 }
@@ -567,10 +365,12 @@ using browser_engine = gtk_webkit_engine;
 
 #define NSBackingStoreBuffered 2
 
-#define NSWindowStyleMaskHUDWindow 1 << 13
+#define NSWindowStyl0MaskHUDWindow 1 << 13
 #define NSWindowStyleMaskResizable 8
 #define NSWindowStyleMaskMiniaturizable 4
 #define NSWindowStyleMaskTitled 1
+#define NSWindowTitleHidden 1
+#define NSFullSizeContentViewWindowMask 32768
 #define NSWindowStyleMaskClosable 2
 
 #define NSApplicationActivationPolicyRegular 0
@@ -588,109 +388,213 @@ id operator"" _str(const char *s, std::size_t) {
 }
 
 class cocoa_wkwebview_engine {
-public:
+  public:
+
   cocoa_wkwebview_engine(bool debug, void *window) {
     // Application
-    id app = ((id(*)(id, SEL))objc_msgSend)("NSApplication"_cls,
-                                            "sharedApplication"_sel);
+    id app = ((id(*)(id, SEL))objc_msgSend)(
+      "NSApplication"_cls,
+      "sharedApplication"_sel
+    );
+
     ((void (*)(id, SEL, long))objc_msgSend)(
-        app, "setActivationPolicy:"_sel, NSApplicationActivationPolicyRegular);
+      app,
+      "setActivationPolicy:"_sel,
+      NSApplicationActivationPolicyRegular
+    );
 
     // Delegate
-    auto cls =
-        objc_allocateClassPair((Class) "NSResponder"_cls, "AppDelegate", 0);
+    auto cls = objc_allocateClassPair((Class) "NSResponder"_cls, "AppDelegate", 0);
+
     class_addProtocol(cls, objc_getProtocol("NSTouchBarProvider"));
-    class_addMethod(cls, "applicationShouldTerminateAfterLastWindowClosed:"_sel,
-                    (IMP)(+[](id, SEL, id) -> BOOL { return 1; }), "c@:@");
-    class_addMethod(cls, "userContentController:didReceiveScriptMessage:"_sel,
-                    (IMP)(+[](id self, SEL, id, id msg) {
-                      auto w =
-                          (cocoa_wkwebview_engine *)objc_getAssociatedObject(
-                              self, "webview");
-                      assert(w);
-                      w->on_message(((const char *(*)(id, SEL))objc_msgSend)(
-                          ((id(*)(id, SEL))objc_msgSend)(msg, "body"_sel),
-                          "UTF8String"_sel));
-                    }),
-                    "v@:@@");
+
+    class_addMethod(
+      cls,
+      "applicationShouldTerminateAfterLastWindowClosed:"_sel,
+      (IMP)(+[](id, SEL, id) -> BOOL { return 1; }),
+      "c@:@"
+    );
+
+    class_addMethod(
+      cls,
+      "userContentController:didReceiveScriptMessage:"_sel,
+      (IMP)(+[](id self, SEL, id, id msg) {
+        auto w = (cocoa_wkwebview_engine *)objc_getAssociatedObject(self, "webview");
+        assert(w);
+
+        w->on_message(((const char *(*)(id, SEL))objc_msgSend)(
+          ((id(*)(id, SEL))objc_msgSend)(
+            msg,
+            "body"_sel
+          ),
+          "UTF8String"_sel
+        ));
+      }),
+      "v@:@@"
+    );
+
     objc_registerClassPair(cls);
 
-    auto delegate = ((id(*)(id, SEL))objc_msgSend)((id)cls, "new"_sel);
-    objc_setAssociatedObject(delegate, "webview", (id)this,
-                             OBJC_ASSOCIATION_ASSIGN);
-    ((void (*)(id, SEL, id))objc_msgSend)(app, sel_registerName("setDelegate:"),
-                                          delegate);
+    auto delegate = ((id(*)(id, SEL))objc_msgSend)(
+      (id)cls,
+      "new"_sel
+    );
+
+    objc_setAssociatedObject(
+      delegate,
+      "webview",
+      (id)this,
+      OBJC_ASSOCIATION_ASSIGN
+    );
+
+    ((void (*)(id, SEL, id))objc_msgSend)(
+      app,
+      sel_registerName("setDelegate:"),
+      delegate
+    );
 
     // Main window
     if (window == nullptr) {
-      m_window = ((id(*)(id, SEL))objc_msgSend)("NSWindow"_cls, "alloc"_sel);
-      m_window =
-          ((id(*)(id, SEL, CGRect, int, unsigned long, int))objc_msgSend)(
-              m_window, "initWithContentRect:styleMask:backing:defer:"_sel,
-              CGRectMake(0, 0, 0, 0), 0, NSBackingStoreBuffered, 0);
+      m_window = ((id(*)(id, SEL))objc_msgSend)(
+        "NSWindow"_cls,
+        "alloc"_sel
+      );
+
+      m_window = ((id(*)(id, SEL, CGRect, int, unsigned long, int))objc_msgSend)(
+        m_window,
+        "initWithContentRect:styleMask:backing:defer:"_sel,
+        CGRectMake(0, 0, 0, 0),
+        0,
+        NSBackingStoreBuffered,
+        0
+      );
     } else {
       m_window = (id)window;
     }
 
     // Webview
-    auto config =
-        ((id(*)(id, SEL))objc_msgSend)("WKWebViewConfiguration"_cls, "new"_sel);
-    m_manager =
-        ((id(*)(id, SEL))objc_msgSend)(config, "userContentController"_sel);
+    auto config = ((id(*)(id, SEL))objc_msgSend)("WKWebViewConfiguration"_cls, "new"_sel);
+
+    m_manager = ((id(*)(id, SEL))objc_msgSend)(config, "userContentController"_sel);
+
     m_webview = ((id(*)(id, SEL))objc_msgSend)("WKWebView"_cls, "alloc"_sel);
 
     if (debug) {
-      // Equivalent Obj-C:
+      //
       // [[config preferences] setValue:@YES forKey:@"developerExtrasEnabled"];
+      // 
       ((id(*)(id, SEL, id, id))objc_msgSend)(
-          ((id(*)(id, SEL))objc_msgSend)(config, "preferences"_sel),
-          "setValue:forKey:"_sel,
-          ((id(*)(id, SEL, BOOL))objc_msgSend)("NSNumber"_cls,
-                                               "numberWithBool:"_sel, 1),
-          "developerExtrasEnabled"_str);
+        ((id(*)(id, SEL))objc_msgSend)(
+          config,
+          "preferences"_sel
+        ),
+        "setValue:forKey:"_sel,
+        ((id(*)(id, SEL, BOOL))objc_msgSend)(
+          "NSNumber"_cls,
+          "numberWithBool:"_sel,
+          1),
+        "developerExtrasEnabled"_str
+      );
     }
 
-    // Equivalent Obj-C:
+    //
     // [[config preferences] setValue:@YES forKey:@"fullScreenEnabled"];
+    //
     ((id(*)(id, SEL, id, id))objc_msgSend)(
-        ((id(*)(id, SEL))objc_msgSend)(config, "preferences"_sel),
-        "setValue:forKey:"_sel,
-        ((id(*)(id, SEL, BOOL))objc_msgSend)("NSNumber"_cls,
-                                             "numberWithBool:"_sel, 1),
-        "fullScreenEnabled"_str);
+      ((id(*)(id, SEL))objc_msgSend)(
+        config,
+        "preferences"_sel
+      ),
+      "setValue:forKey:"_sel,
+      ((id(*)(id, SEL, BOOL))objc_msgSend)(
+        "NSNumber"_cls,
+        "numberWithBool:"_sel,
+        1
+      ),
+      "fullScreenEnabled"_str
+    );
 
+    //
+    // [[config preferences] setValue:@YES forKey:@"allowFileAccessFromFileURLs"];
+    //
     ((id(*)(id, SEL, id, id))objc_msgSend)(
-        ((id(*)(id, SEL))objc_msgSend)(config, "preferences"_sel),
-        "setValue:forKey:"_sel,
-        ((id(*)(id, SEL, BOOL))objc_msgSend)("NSNumber"_cls,
-                                             "numberWithBool:"_sel, 1),
-        "developerExtrasEnabled"_str);
-    
+      ((id(*)(id, SEL))objc_msgSend)(
+        config,
+        "preferences"_sel
+      ),
+      "setValue:forKey:"_sel,
+      ((id(*)(id, SEL, BOOL))objc_msgSend)(
+        "NSNumber"_cls,
+        "numberWithBool:"_sel,
+        1
+      ),
+      "allowFileAccessFromFileURLs"_str
+    );
 
-    // Equivalent Obj-C:
+    //
+    // [[config preferences] setValue:@YES forKey:@"developerExtrasEnabled"];
+    //
+    ((id(*)(id, SEL, id, id))objc_msgSend)(
+      ((id(*)(id, SEL))objc_msgSend)(
+        config,
+        "preferences"_sel
+      ),
+      "setValue:forKey:"_sel,
+      ((id(*)(id, SEL, BOOL))objc_msgSend)(
+        "NSNumber"_cls,
+        "numberWithBool:"_sel,
+        1
+      ),
+      "developerExtrasEnabled"_str
+    );
+
+    //
     // [[config preferences] setValue:@YES forKey:@"javaScriptCanAccessClipboard"];
+    //
     ((id(*)(id, SEL, id, id))objc_msgSend)(
-        ((id(*)(id, SEL))objc_msgSend)(config, "preferences"_sel),
-        "setValue:forKey:"_sel,
-        ((id(*)(id, SEL, BOOL))objc_msgSend)("NSNumber"_cls,
-                                             "numberWithBool:"_sel, 1),
-        "javaScriptCanAccessClipboard"_str);
+      ((id(*)(id, SEL))objc_msgSend)(
+        config,
+        "preferences"_sel
+      ),
+      "setValue:forKey:"_sel,
+      ((id(*)(id, SEL, BOOL))objc_msgSend)(
+        "NSNumber"_cls,
+        "numberWithBool:"_sel,
+        1
+      ),
+      "javaScriptCanAccessClipboard"_str
+    );
 
-    // Equivalent Obj-C:
+    //
     // [[config preferences] setValue:@YES forKey:@"DOMPasteAllowed"];
+    //
     ((id(*)(id, SEL, id, id))objc_msgSend)(
-        ((id(*)(id, SEL))objc_msgSend)(config, "preferences"_sel),
-        "setValue:forKey:"_sel,
-        ((id(*)(id, SEL, BOOL))objc_msgSend)("NSNumber"_cls,
-                                             "numberWithBool:"_sel, 1),
-        "DOMPasteAllowed"_str);
+      ((id(*)(id, SEL))objc_msgSend)(
+        config,
+        "preferences"_sel
+      ),
+      "setValue:forKey:"_sel,
+      ((id(*)(id, SEL, BOOL))objc_msgSend)(
+        "NSNumber"_cls,
+        "numberWithBool:"_sel,
+        1
+      ),
+      "DOMPasteAllowed"_str
+    );
 
     ((void (*)(id, SEL, CGRect, id))objc_msgSend)(
-        m_webview, "initWithFrame:configuration:"_sel, CGRectMake(0, 0, 0, 0),
-        config);
+      m_webview,
+      "initWithFrame:configuration:"_sel,
+      CGRectMake(0, 0, 0, 0),
+      config
+    );
+
     ((void (*)(id, SEL, id, id))objc_msgSend)(
-        m_manager, "addScriptMessageHandler:name:"_sel, delegate,
-        "external"_str);
+      m_manager,
+      "addScriptMessageHandler:name:"_sel,
+      delegate,
+      "external"_str
+    );
 
     init(R"script(
       window.external = {
@@ -699,98 +603,192 @@ public:
         }
       }
      )script");
-    ((void (*)(id, SEL, id))objc_msgSend)(m_window, "setContentView:"_sel,
-                                          m_webview);
-    ((void (*)(id, SEL, id))objc_msgSend)(m_window, "makeKeyAndOrderFront:"_sel,
-                                          nullptr);
+
+    ((void (*)(id, SEL, id))objc_msgSend)(
+      m_window,
+      "setContentView:"_sel,
+      m_webview
+    );
+
+    ((void (*)(id, SEL, id))objc_msgSend)(
+      m_window,
+      "makeKeyAndOrderFront:"_sel,
+      nullptr
+    );
   }
 
   ~cocoa_wkwebview_engine() { close(); }
   void *window() { return (void *)m_window; }
+
   void terminate() {
     close();
-    ((void (*)(id, SEL, id))objc_msgSend)("NSApp"_cls, "terminate:"_sel,
-                                          nullptr);
+
+    ((void (*)(id, SEL, id))objc_msgSend)(
+      "NSApp"_cls,
+      "terminate:"_sel,
+      nullptr
+    );
   }
 
   void run() {
-    id app = ((id(*)(id, SEL))objc_msgSend)("NSApplication"_cls,
-                                            "sharedApplication"_sel);
+    id app = ((id(*)(id, SEL))objc_msgSend)(
+      "NSApplication"_cls,
+      "sharedApplication"_sel
+    );
+
     dispatch([&]() {
       ((void (*)(id, SEL, BOOL))objc_msgSend)(
-          app, "activateIgnoringOtherApps:"_sel, 1);
+        app,
+        "activateIgnoringOtherApps:"_sel,
+        1
+      );
     });
+
     ((void (*)(id, SEL))objc_msgSend)(app, "run"_sel);
   }
+
   void dispatch(std::function<void()> f) {
     dispatch_async_f(dispatch_get_main_queue(), new dispatch_fn_t(f),
-                     (dispatch_function_t)([](void *arg) {
-                       auto f = static_cast<dispatch_fn_t *>(arg);
-                       (*f)();
-                       delete f;
-                     }));
+     (dispatch_function_t)([](void *arg) {
+       auto f = static_cast<dispatch_fn_t *>(arg);
+       (*f)();
+       delete f;
+     })
+    );
   }
+
   void set_title(const std::string title) {
     ((void (*)(id, SEL, id))objc_msgSend)(
-        m_window, "setTitle:"_sel,
-        ((id(*)(id, SEL, const char *))objc_msgSend)(
-            "NSString"_cls, "stringWithUTF8String:"_sel, title.c_str()));
+      m_window,
+      "setTitle:"_sel,
+      ((id(*)(id, SEL, const char *))objc_msgSend)(
+        "NSString"_cls,
+        "stringWithUTF8String:"_sel,
+        title.c_str()
+      )
+    );
   }
 
   void set_size(int width, int height, int hints) {
     auto style = 
-      NSWindowStyleMaskTitled |
       NSWindowStyleMaskClosable |
+      NSWindowStyleMaskTitled |
       NSWindowStyleMaskMiniaturizable;
+      // NSWindowTitleHidden | 
+      // NSFullSizeContentViewWindowMask |
     if (hints != WEBVIEW_HINT_FIXED) {
       style = style | NSWindowStyleMaskResizable;
     }
-    ((void (*)(id, SEL, unsigned long))objc_msgSend)(
-        m_window, "setStyleMask:"_sel, style);
+
+    ((void (*)(id, SEL, unsigned long)) objc_msgSend)(
+      m_window,
+      "setStyleMask:"_sel,
+      style
+    );
 
     if (hints == WEBVIEW_HINT_MIN) {
-      ((void (*)(id, SEL, CGSize))objc_msgSend)(
-          m_window, "setContentMinSize:"_sel, CGSizeMake(width, height));
+      ((void (*)(id, SEL, CGSize)) objc_msgSend)(
+        m_window,
+        "setContentMinSize:"_sel,
+        CGSizeMake(width, height)
+      );
     } else if (hints == WEBVIEW_HINT_MAX) {
-      ((void (*)(id, SEL, CGSize))objc_msgSend)(
-          m_window, "setContentMaxSize:"_sel, CGSizeMake(width, height));
+      ((void (*)(id, SEL, CGSize)) objc_msgSend)(
+        m_window,
+        "setContentMaxSize:"_sel,
+        CGSizeMake(width, height)
+      );
     } else {
-      ((void (*)(id, SEL, CGRect, BOOL, BOOL))objc_msgSend)(
-          m_window, "setFrame:display:animate:"_sel,
-          CGRectMake(0, 0, width, height), 1, 0);
+      ((void (*)(id, SEL, CGRect, BOOL, BOOL)) objc_msgSend)(
+        m_window,
+        "setFrame:display:animate:"_sel,
+        CGRectMake(0, 0, width, height),
+        1,
+        0
+      );
     }
+
     ((void (*)(id, SEL))objc_msgSend)(m_window, "center"_sel);
     ((void (*)(id, SEL))objc_msgSend)(m_window, "setHasShadow:"_sel);
+    ((void (*)(id, SEL, BOOL))objc_msgSend)(m_window, "setTitlebarAppearsTransparent:"_sel, 1);
+    // ((void (*)(id, SEL, BOOL))objc_msgSend)(m_window, "setTitleVisibility:"_sel, 1);
+    // ((void (*)(id, SEL, BOOL))objc_msgSend)(m_window, "setMovableByWindowBackground:"_sel, 1);
+    // ((void (*)(id, SEL, BOOL))objc_msgSend)(m_window, "setOpaque:"_sel, 1);
+    // setWindowButtonsOffset:NSMakePoint(12, 10)
+    // setTitleVisibility:NSWindowTitleHidden
   }
+
   void navigate(const std::string url) {
     auto nsurl = ((id(*)(id, SEL, id))objc_msgSend)(
-        "NSURL"_cls, "URLWithString:"_sel,
-        ((id(*)(id, SEL, const char *))objc_msgSend)(
-            "NSString"_cls, "stringWithUTF8String:"_sel, url.c_str()));
+      "NSURL"_cls,
+      "URLWithString:"_sel,
+      ((id(*)(id, SEL, const char *))objc_msgSend)(
+        "NSString"_cls,
+        "stringWithUTF8String:"_sel,
+        url.c_str()
+      )
+    );
 
     ((void (*)(id, SEL, id))objc_msgSend)(
-        m_webview, "loadRequest:"_sel,
-        ((id(*)(id, SEL, id))objc_msgSend)("NSURLRequest"_cls,
-                                           "requestWithURL:"_sel, nsurl));
+      m_webview,
+      "loadRequest:"_sel,
+      ((id(*)(id, SEL, id))objc_msgSend)(
+        "NSURLRequest"_cls,
+        "requestWithURL:"_sel,
+        nsurl
+      )
+    );
   }
+
   void init(const std::string js) {
     // Equivalent Obj-C:
     // [m_manager addUserScript:[[WKUserScript alloc] initWithSource:[NSString stringWithUTF8String:js.c_str()] injectionTime:WKUserScriptInjectionTimeAtDocumentStart forMainFrameOnly:YES]]
-    ((void (*)(id, SEL, id))objc_msgSend)(
-        m_manager, "addUserScript:"_sel,
-        ((id(*)(id, SEL, id, long, BOOL))objc_msgSend)(
-            ((id(*)(id, SEL))objc_msgSend)("WKUserScript"_cls, "alloc"_sel),
-            "initWithSource:injectionTime:forMainFrameOnly:"_sel,
-            ((id(*)(id, SEL, const char *))objc_msgSend)(
-                "NSString"_cls, "stringWithUTF8String:"_sel, js.c_str()),
-            WKUserScriptInjectionTimeAtDocumentStart, 1));
+    ((void (*)(id, SEL, id)) objc_msgSend)(
+      m_manager,
+      "addUserScript:"_sel,
+      ((id (*)(id, SEL, id, long, BOOL)) objc_msgSend)(
+        ((id (*)(id, SEL)) objc_msgSend)(
+          "WKUserScript"_cls,
+          "alloc"_sel
+        ),
+        "initWithSource:injectionTime:forMainFrameOnly:"_sel,
+        ((id (*)(id, SEL, const char *)) objc_msgSend)(
+          "NSString"_cls,
+          "stringWithUTF8String:"_sel,
+          js.c_str()
+        ),
+        WKUserScriptInjectionTimeAtDocumentStart,
+        1
+      )
+    );
   }
+
+  void dialog(std::string seq) {
+    dispatch([=]() {
+      auto result = dialog_open(
+        NOC_FILE_DIALOG_OPEN | NOC_FILE_DIALOG_DIR,
+        NULL,
+        NULL,
+        NULL);
+
+      eval("(() => {"
+           "  window._ipc[" + seq + "].resolve(`" + result + "`);" +
+           "  delete window._ipc[" + seq + "];" +
+           "})();");
+    });
+  }
+
   void eval(const std::string js) {
-    ((void (*)(id, SEL, id, id))objc_msgSend)(
-        m_webview, "evaluateJavaScript:completionHandler:"_sel,
-        ((id(*)(id, SEL, const char *))objc_msgSend)(
-            "NSString"_cls, "stringWithUTF8String:"_sel, js.c_str()),
-        nullptr);
+    ((void (*)(id, SEL, id, id)) objc_msgSend)(
+      m_webview,
+      "evaluateJavaScript:completionHandler:"_sel,
+      ((id(*)(id, SEL, const char *)) objc_msgSend)(
+        "NSString"_cls,
+        "stringWithUTF8String:"_sel,
+        js.c_str()
+      ),
+      nullptr
+    );
   }
 
 private:
@@ -1241,39 +1239,42 @@ public:
   using binding_t = std::function<void(std::string, std::string, void *)>;
   using binding_ctx_t = std::pair<binding_t *, void *>;
 
-  using sync_binding_t = std::function<std::string(std::string)>;
+  using sync_binding_t = std::function<void(std::string, std::string)>;
   using sync_binding_ctx_t = std::pair<webview *, sync_binding_t>;
 
-  void bind(const std::string name, sync_binding_t fn) {
-    bind(
+  void ipc(const std::string name, sync_binding_t fn) {
+    ipc(
       name,
       [](std::string seq, std::string req, void *arg) {
         auto pair = static_cast<sync_binding_ctx_t *>(arg);
-        pair->first->resolve(seq, 0, pair->second(req));
+        pair->second(seq, req);
       },
       new sync_binding_ctx_t(this, fn)
     );
   }
 
-  void bind(const std::string name, binding_t f, void *arg) {
+  void ipc(const std::string name, binding_t f, void *arg) {
     auto js = "(function() { const name = '" + name + "';" + R"(
-      const RPC = window._rpc = (window._rpc || { nextSeq: 1 });
+      const IPC = window._ipc = (window._ipc || { nextSeq: 1 });
 
-      window[name] = function () {
-        const seq = RPC.nextSeq++
+      window[name] = (value) => {
+        const seq = IPC.nextSeq++
         const promise = new Promise((resolve, reject) => {
-          RPC[seq] = {
+          IPC[seq] = {
             resolve: resolve,
             reject: reject,
           }
         })
 
-        window.external.invoke(JSON.stringify({
-          id: seq,
-          method: name,
-          params: Array.prototype.slice.call(arguments)
-        }))
+        let encoded
 
+        try {
+          encoded = btoa(JSON.stringify(value))
+        } catch (err) {
+          return Promise.reject(err.message)
+        }
+
+        window.external.invoke(`ipc;${seq};${name};${encoded}`)
         return promise
       }
     })())";
@@ -1282,24 +1283,30 @@ public:
     bindings[name] = new binding_ctx_t(new binding_t(f), arg);
   }
 
-  void resolve(const std::string seq, int status, const std::string result) {
+  void resolve(const std::string msg) {
     dispatch([=]() {
-      if (status == 0) {
-        eval("window._rpc[" + seq + "].resolve(" + result + ");" +
-             "window._rpc[" + seq + "] = undefined");
-      } else {
-        eval("window._rpc[" + seq + "].reject(" + result + ");" +
-             "window._rpc[" + seq + "] = undefined");
-      }
+      eval("(() => {"
+           "  const data = `" + msg + "`.trim().split(';');"
+           "  const status = Number(data[1]);"
+           "  const seq = Number(data[2]);"
+           "  const method = status === 0 ? 'resolve' : 'reject';"
+           "  const value = JSON.parse(atob(data[3]));"
+           "  window._ipc[seq][method](value);"
+           "  window._ipc[seq] = undefined;"
+           "})()");
     });
   }
 
   void emit(const std::string event, const std::string data) {
     dispatch([=]() {
-      auto detail = "{ detail: '" + url_encode(data) + "' }";
-
       eval("(() => {"
-          "  const event = new window.CustomEvent('" + event + "', " + detail + ");"
+          "  let detail;"
+          "  try {"
+          "    detail = JSON.parse(atob(`" + data + "`));"
+          "  } catch (err) {"
+          "    console.error(`Unable to parse (${detail})`);"
+          "  }"
+          "  const event = new window.CustomEvent('" + event + "', { detail });"
           "  window.dispatchEvent(event);"
           "})()");
     });
@@ -1307,12 +1314,16 @@ public:
 
 private:
   void on_message(const std::string msg) {
-    auto seq = json_parse(msg, "id", 0);
-    auto name = json_parse(msg, "method", 0);
-    auto args = json_parse(msg, "params", 0);
+    auto parts = split(msg, ';');
+
+    auto seq = parts[1];
+    auto name = parts[2];
+    auto args = parts[3];
+
     if (bindings.find(name) == bindings.end()) {
       return;
     }
+
     auto fn = bindings[name];
     (*fn->first)(seq, args, fn->second);
   }
@@ -1366,12 +1377,12 @@ WEBVIEW_API void webview_eval(webview_t w, const char *js) {
   static_cast<webview::webview *>(w)->eval(js);
 }
 
-WEBVIEW_API void webview_bind(
+WEBVIEW_API void webview_ipc(
   webview_t w,
   const char *name,
   void (*fn)(const char *seq, const char *req, void *arg),
   void *arg) {
-  static_cast<webview::webview *>(w)->bind(
+  static_cast<webview::webview *>(w)->ipc(
     name,
     [=](std::string seq, std::string req, void *arg) {
       fn(seq.c_str(), req.c_str(), arg);
@@ -1386,7 +1397,7 @@ WEBVIEW_API void webview_return(
   int status,
   const char *result
   ) {
-  static_cast<webview::webview *>(w)->resolve(seq, status, result);
+  static_cast<webview::webview *>(w)->resolve(result);
 }
 
 #endif /* WEBVIEW_HEADER */

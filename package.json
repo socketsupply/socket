@@ -1,11 +1,11 @@
 {
-  "name": "webview",
+  "name": "opkit",
   "version": "1.0.0",
   "main": "index.js",
   "type": "module",
   "scripts": {
     "build": "./bin/build.js",
-    "start": "npm run build && cd build && ./operator"
+    "start": "npm run build"
   },
   "repository": {
     "type": "git",
@@ -13,6 +13,16 @@
   },
   "author": "",
   "license": "ISC",
+  "flags": {
+    "darwin": "-luv -lpthread -std=c++2a -framework WebKit -framework AppKit",
+    "linux": "`pkg-config --cflags --libs gtk+-3.0 webkit2gtk-4.0'`",
+    "win32": "-mwindows -L./dll/x64 -lwebview -lWebView2Loader"
+  },
+  "files": {
+    "darwin": "main.cc darwin.mm",
+    "linux": "main.cc linux.cc",
+    "win32": "main.cc win32.cc"
+  },
   "bugs": {
     "url": "https://github.com/webview/webview/issues"
   },

@@ -1,0 +1,9 @@
+- [x] Support proper window shadows on macOS
+- [x] Support file and directory picker with options
+- [x] Spawn any process as a "backend"
+- [x] async/await IPC to and from backend process (stdio)
+- [x] Single x-platform build command, under 5s
+- [x] Zero C/C++ knowledge required
+- [ ] Drag and drop multiple files in and out
+- [ ] Brew/Apt/Choc install (No dependency scavenger hunts)
+- [ ] Native Menus

@@ -1,88 +1,75 @@
 #!/usr/bin/env node
 import fs from 'node:fs/promises'
-import cp from 'node:child_process'
+import path from 'node:path'
 import esbuild from 'esbuild'
-import CleanCSS from 'clean-css'
-import stylus from 'stylus'
+import { css, exec, mkdir } from './util.js'
 
-const exec = s => new Promise(resolve => {
-  const params = {
-    stdio: 'pipe',
-    cwd: process.cwd(),
-    env: process.env,
-    windowsHide: true,
-    timeout: 6e4,
-    encoding: 'utf-8',
-  }
-
-  cp.exec(s, params, (err, stdout, stderr) => {
-    resolve({
-      err,
-      stderr: String(stderr),
-      data: String(stdout)
-    })
-  })
-})
-
-const cleanCSS = new CleanCSS({ advanced: true })
-
-const css = async (src, dest) => {
-  const s = await fs.readFile(src, 'utf8')
-
-  const css = await new Promise((resolve, reject) => {
-    return stylus.render(s, { filename: src }, (err, css) => {
-      if (err) return reject(err)
-      return resolve(css)
-    })
-  })
-
-  const minified = cleanCSS.minify(css)
-  return fs.writeFile(dest, minified.styles)
-}
-
-const getLibraries = async (os) => {
-  switch (os) {
-    case 'darwin': return '-luv -lpthread -std=c++2a -framework WebKit'
-    case 'linux': return exec('pkg-config --cflags --libs gtk+-3.0 webkit2gtk-4.0')
-    case 'win32': return '-mwindows -L./dll/x64 -lwebview -lWebView2Loader'
-  }
-}
+const pkg = async f => JSON.parse(await fs.readFile(f, 'utf8'))
+const PLATFORM = process.platform
 
 async function main () {
-  console.time('build')
+  const config = await pkg('package.json')
+
+  console.time('• Build complete')
+
+  console.log('• Cleaning up')
   await fs.rmdir('build', { recursive: true })
-  await fs.mkdir('build')
+
+  const pathToBuild = await mkdir('build')
+  const pathToApp = await mkdir(pathToBuild, 'Operator.app')
+  const pathToPackage = await mkdir(pathToApp, 'Contents')
+  const pathToBinary = await mkdir(pathToPackage, 'MacOS')
+  const pathToResources = await mkdir(pathToPackage, 'Resources')
+
+  console.log('• Creating directories')
+
+  console.log('• Compiling js')
 
   await esbuild.build({
-    entryPoints: ['src/index.js'],
+    entryPoints: ['src/render.js'],
     bundle: true,
     keepNames: true,
     minify: true,
-    outfile: 'build/bundle.js',
+    outfile: `${pathToResources}/bundle.js`,
     platform: 'browser'
   })
 
-  await css('src/index.styl', 'build/bundle.css')
+  console.log('• Building css')
 
-  await exec(`cp src/render.html build`)
-  await exec(`cp src/main.js build`)
+  await css('src/index.styl', `${pathToResources}/bundle.css`)
 
-  const config = {
+  console.log('• Copying files')
+
+  await exec(`cp src/render.html ${pathToResources}`)
+  await exec(`cp src/main.js ${pathToResources}`)
+  await exec(`cp src/ipc.js ${pathToResources}`)
+  await exec(`cp src/package.json ${pathToResources}`)
+  await exec(`cp src/icons/icon.icns ${pathToResources}`)
+  await exec(`cp settings/${PLATFORM}/* ${pathToResources}`)
+  await exec(`cp settings/${PLATFORM}/Info.plist ${pathToResources}`)
+
+  const binaryName = 'Operator'
+  const targetBinary = path.join(pathToBinary, binaryName)
+
+  const compile = {
     compiler: 'g++',
-    src: 'main.cc',
-    libs: await getLibraries(process.platform),
-    dest: '-o build/operator',
-    flags: '-O3'
+    src: config.files[PLATFORM],
+    flags: config.flags[PLATFORM],
+    target: `-o ${targetBinary}`,
+    optimizations: '-O3'
   }
 
-  const res = await exec(Object.values(config).join(' '))
+  console.log('• Compiling native binary')
+
+  const res = await exec(Object.values(compile).join(' '))
 
   if (res.stderr) {
     console.log(res.stderr)
-    process.exit(1)
   }
   
-  console.timeEnd('build')
+  console.timeEnd('• Build complete')
+
+  await exec('open Operator.app', { cwd: pathToBuild })
 }
 
 main()

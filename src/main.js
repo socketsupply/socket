@@ -1,9 +1,38 @@
-process.stdin.setEncoding('utf8')
+//
+// Server side program entry point (requires a loop)
+//
+import ipc from './ipc.js'
 
-process.stdin.on('data', d => {
-  process.stdout.write(JSON.stringify({input: JSON.parse(d) }))
+let counter = 0
+
+ipc.receive(async data => {
+  return {
+    received: data,
+    counter: counter++
+  }
 })
 
+let isBreakTime = false
+let breakCounter = 0
+
 setInterval(() => {
-  process.stdout.write(JSON.stringify({ output: String(Math.random()) }))
-}, 16)
+  counter++
+
+  if (isBreakTime) {
+    if (breakCounter++ === 10000) {
+      isBreakTime = false
+      breakCounter = 0
+    }
+    return
+  }
+
+  if (breakCounter++ === 10000) {
+    isBreakTime = true
+    breakCounter = 0
+    return
+  }
+
+  const x = Date.now()
+
+  ipc.send({ sending: x, counter })
+}, 512)
