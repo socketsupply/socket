@@ -437,10 +437,17 @@ class cocoa_wkwebview_engine {
         auto w = (cocoa_wkwebview_engine*) objc_getAssociatedObject(self, "webview");
         assert(w);
 
-        std::vector<std::string> vec = getMenuItemDetails(item);
+        auto vec = getMenuItemDetails(item);
+        auto id = vec[0];
+        auto title = vec[1];
+        auto selected = vec[2];
 
         w->eval("(() => {"
-          "  const detail = { title: '" + vec[0] + "', selected: '" + vec[1] + "' };"
+          "  const detail = {"
+          "    id: '" + id + "',"
+          "    title: '" + title + "',"
+          "    selected: '" + selected + "'"
+          "  };"
           "  const event = new window.CustomEvent('menuItemSelected', { detail });"
           "  window.dispatchEvent(event);"
           "})()"
@@ -806,8 +813,8 @@ class cocoa_wkwebview_engine {
         NULL);
 
       eval("(() => {"
-           "  window._ipc[" + seq + "].resolve(`" + result + "`);" +
-           "  delete window._ipc[" + seq + "];" +
+           "  window._ipc[" + seq + "].resolve(`" + result + "`);"
+           "  delete window._ipc[" + seq + "];"
            "})();");
     });
   }

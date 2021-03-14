@@ -9,6 +9,7 @@ Components(Tonic)
 
 window.addEventListener('menuItemSelected', event => {
   // can then await invokeIPC if so desired
+  document.querySelector('#menu-selection').value = event.detail.title
   console.log('MENU ITEM', event.detail)
 })
 
@@ -43,9 +44,7 @@ class AppContainer extends Tonic {
     if (!el) return   
 
     const response = await dialog(e.target.value)
-    const len = response.split(',').length
-
-    AppContainer.setHeader(`${len} items selected`)
+    this.querySelector('#opened').value = response.replace(',', '\n')
   }
 
   async input (e) {
@@ -80,6 +79,12 @@ class AppContainer extends Tonic {
       </tonic-input>
 
       <tonic-button id="butt">Open</tonic-button>
+
+      <tonic-textarea id="opened" label="opened files/dirs">
+      </tonic-textarea>
+
+      <tonic-input id="menu-selection" label="menu selection">
+      </tonic-input>
 
       <a href="file:///Users/paolofragomeni/projects/optoolco/opkit/src/render.html" download>Foo</a>
     `

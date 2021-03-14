@@ -19,9 +19,10 @@ std::string getCwd () {
 
 std::vector<std::string> getMenuItemDetails (void* item) {
   id menuItem = (id) item;
+  std::string id = std::to_string([menuItem tag]);
   std::string title = [[menuItem title] UTF8String];
   std::string state = [menuItem state] == NSControlStateValueOn ? "true" : "false";
-  std::vector<std::string> vec = { title, state };
+  std::vector<std::string> vec = { id, title, state };
   return vec;
 }
 
