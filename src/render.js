@@ -7,6 +7,11 @@ const Components = require('@optoolco/components')
 
 Components(Tonic)
 
+window.addEventListener('menuItemSelected', event => {
+  // can then await invokeIPC if so desired
+  console.log('MENU ITEM', event.detail)
+})
+
 window.addEventListener('data', event => {
   //
   // Receive arbitrary/non-request-response data.

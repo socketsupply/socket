@@ -4,6 +4,8 @@
 - [x] async/await IPC to and from backend process (stdio)
 - [x] Single x-platform build command, under 5s
 - [x] Zero C/C++ knowledge required
-- [ ] Drag and drop multiple files in and out
+- [x] Drag and drop multiple files in and out
+- [x] Native Menus IPC
+- [ ] Native Menu api
+- [ ] Native Context Menus
 - [ ] Brew/Apt/Choc install (No dependency scavenger hunts)
-- [ ] Native Menus

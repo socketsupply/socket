@@ -384,7 +384,22 @@ id operator"" _cls(const char *s, std::size_t) { return (id)objc_getClass(s); }
 SEL operator"" _sel(const char *s, std::size_t) { return sel_registerName(s); }
 id operator"" _str(const char *s, std::size_t) {
   return ((id(*)(id, SEL, const char *))objc_msgSend)(
-      "NSString"_cls, "stringWithUTF8String:"_sel, s);
+    "NSString"_cls,
+    "stringWithUTF8String:"_sel,
+    s
+  );
+}
+
+
+SEL _sel(const char *s) { return sel_registerName(s); }
+id _cls(const char *s) { return (id) objc_getClass(s); }
+
+id _id (const char *s) {
+  return ((id(*) (id, SEL, const char *)) objc_msgSend)(
+    _cls("NSString"),
+    _sel("stringWithUTF8String:"),
+    s
+  );
 }
 
 class cocoa_wkwebview_engine {
@@ -393,37 +408,56 @@ class cocoa_wkwebview_engine {
   cocoa_wkwebview_engine(bool debug, void *window) {
     // Application
     id app = ((id(*)(id, SEL))objc_msgSend)(
-      "NSApplication"_cls,
-      "sharedApplication"_sel
+      _cls("NSApplication"),
+      _sel("sharedApplication")
     );
 
-    ((void (*)(id, SEL, long))objc_msgSend)(
+    ((void (*)(id, SEL, long)) objc_msgSend)(
       app,
-      "setActivationPolicy:"_sel,
+      _sel("setActivationPolicy:"),
       NSApplicationActivationPolicyRegular
     );
 
     // Delegate
-    auto cls = objc_allocateClassPair((Class) "NSResponder"_cls, "AppDelegate", 0);
+    auto cls = objc_allocateClassPair((Class) _cls("NSResponder"), "AppDelegate", 0);
 
     class_addProtocol(cls, objc_getProtocol("NSTouchBarProvider"));
 
     class_addMethod(
       cls,
-      "applicationShouldTerminateAfterLastWindowClosed:"_sel,
+      _sel("applicationShouldTerminateAfterLastWindowClosed:"),
       (IMP)(+[](id, SEL, id) -> BOOL { return 1; }),
       "c@:@"
     );
 
     class_addMethod(
       cls,
-      "userContentController:didReceiveScriptMessage:"_sel,
-      (IMP)(+[](id self, SEL, id, id msg) {
-        auto w = (cocoa_wkwebview_engine *)objc_getAssociatedObject(self, "webview");
+      _sel("menuItemSelected:"),
+      (IMP)(+[](id self, SEL _cmd, id item) {
+        auto w = (cocoa_wkwebview_engine*) objc_getAssociatedObject(self, "webview");
         assert(w);
 
-        w->on_message(((const char *(*)(id, SEL))objc_msgSend)(
-          ((id(*)(id, SEL))objc_msgSend)(
+        std::vector<std::string> vec = getMenuItemDetails(item);
+
+        w->eval("(() => {"
+          "  const detail = { title: '" + vec[0] + "', selected: '" + vec[1] + "' };"
+          "  const event = new window.CustomEvent('menuItemSelected', { detail });"
+          "  window.dispatchEvent(event);"
+          "})()"
+        );
+      }),
+      "v@:@:@:"
+    );
+
+    class_addMethod(
+      cls,
+      "userContentController:didReceiveScriptMessage:"_sel,
+      (IMP)(+[](id self, SEL, id, id msg) {
+        auto w = (cocoa_wkwebview_engine*) objc_getAssociatedObject(self, "webview");
+        assert(w);
+
+        w->on_message(((const char* (*)(id, SEL))objc_msgSend)(
+          ((id (*)(id, SEL)) objc_msgSend)(
             msg,
             "body"_sel
           ),

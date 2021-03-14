@@ -11,67 +11,18 @@
 
 // #define SharedContextMenuTarget  [ContextMenuTarget sharedInstance]
 
-class Action {
-  public:
-    void init();
-    void trigger();
-    bool isEnabled();
-};
-
-void Action::init () {
-}
-
-void Action::trigger () {
-}
-
-bool Action::isEnabled () {
-  return true;
-}
-
-void doThing () {
-  printf("X");
-}
-
-/* @interface Target : NSObject {
-  Action* action_;
-}
-- (id) initWithAction: (Action*) action;
-- (void) clicked;
-@end
-
-@implementation Target
-- (id) init {
-  return [super init];
-}
-
-- (id) initWithAction: (Action*)action {
-  action_ = action;
-  return self;
-}
-
-- (BOOL) validateMenuItem: (NSMenuItem*) menuItem {
-  // This is called when the menu is shown.
-  return action_->isEnabled();
-}
-
-- (void) clicked {
-  action_->trigger();
-}
-
-@end */
-
-/* @interface Target : NSObject {
-@end
-
-@implementation Target
-- (void)play {
-}
-@end */
-
 std::string getCwd () {
   NSString *bundlePath = [[NSBundle mainBundle] resourcePath];
   auto str = std::string([bundlePath UTF8String]);
   return str;
+}
+
+std::vector<std::string> getMenuItemDetails (void* item) {
+  id menuItem = (id) item;
+  std::string title = [[menuItem title] UTF8String];
+  std::string state = [menuItem state] == NSControlStateValueOn ? "true" : "false";
+  std::vector<std::string> vec = { title, state };
+  return vec;
 }
 
 void createMenu () {
@@ -84,23 +35,23 @@ void createMenu () {
   NSMenu *mainMenu;
 
   if (NSApp == nil) {
-      return;
+    return;
   }
 
   mainMenu = [[NSMenu alloc] init];
 
-  /* Create the main menu bar */
+  // Create the main menu bar
   [NSApp setMainMenu:mainMenu];
 
-  [mainMenu release];  /* we're done with it, let NSApp own it. */
+  [mainMenu release];  // we're done with it, let NSApp own it.
   mainMenu = nil;
 
-  /* Create the application menu */
+  // Create the application menu
 
   id appName = [[NSProcessInfo processInfo] processName];
   appleMenu = [[NSMenu alloc] initWithTitle:@""];
 
-  /* Add menu items */
+  // Add menu items
   title = [@"About " stringByAppendingString:appName];
   [appleMenu addItemWithTitle:title action:@selector(orderFrontStandardAboutPanel:) keyEquivalent:@""];
 
@@ -127,62 +78,70 @@ void createMenu () {
 
   [appleMenu addItemWithTitle:@"Show All" action:@selector(unhideAllApplications:) keyEquivalent:@""];
 
-  [appleMenu
+  menuItem = [appleMenu
     addItemWithTitle:@"Test"
-    action:@selector(doThing)
+    action:@selector(menuItemSelected:)
     keyEquivalent:@""
   ];
+
+  [menuItem setTag:1000];
 
   [appleMenu addItem:[NSMenuItem separatorItem]];
 
   title = [@"Quit " stringByAppendingString:appName];
   [appleMenu addItemWithTitle:title action:@selector(terminate:) keyEquivalent:@"q"];
 
-  /* Put menu into the menubar */
+  // Put menu into the menubar
   menuItem = [[NSMenuItem alloc] initWithTitle:@"" action:nil keyEquivalent:@""];
   [menuItem setSubmenu:appleMenu];
   [[NSApp mainMenu] addItem:menuItem];
   [menuItem release];
 
-  /* Tell the application object that this is now the application menu */
+  // Tell the application object that this is now the application menu
   // [NSApp setAppleMenu:appleMenu];
   [appleMenu release];
 
-  /* Create the window menu */
+  // Create the window menu
   editMenu = [[NSMenu alloc] initWithTitle:@"Edit"];
 
-  /* Add menu items */
+  //Add menu items
   [editMenu addItemWithTitle: @"Cut" action: @selector(cut:) keyEquivalent: @"x"];
   [editMenu addItemWithTitle: @"Copy" action: @selector(copy:) keyEquivalent: @"c"];
   [editMenu addItemWithTitle: @"Paste" action: @selector(paste:) keyEquivalent: @"v"];
   [editMenu addItemWithTitle: @"Delete" action: @selector(delete:) keyEquivalent: @""];
   [editMenu addItemWithTitle: @"Select All" action: @selector(selectAll:) keyEquivalent: @"a"];
 
-  /* Put menu into the menubar */
+  // Put menu into the menubar
   menuItem = [[NSMenuItem alloc] initWithTitle:@"Edit" action:nil keyEquivalent:@""];
-  [menuItem setSubmenu:editMenu];
   [[NSApp mainMenu] addItem:menuItem];
-  [menuItem release];
 
   [menuItem setSubmenu:editMenu];
+  [menuItem release];
   [editMenu release];
 
-  /* Create the window menu */
+  // TODO accept arg of std::map<std::string, std::vector<std::pair>>> to build menu.
+  // {
+  //   { "foo", { { "bar", 100 }, { "bazz": 120 } } }
+  // }
+
+  // Create the window menu
   windowMenu = [[NSMenu alloc] initWithTitle:@"Window"];
 
-  /* Add menu items */
-  [windowMenu addItemWithTitle:@"Minimize" action:@selector(performMiniaturize:) keyEquivalent:@"m"];
-  [windowMenu addItemWithTitle:@"Zoom" action:@selector(performZoom:) keyEquivalent:@""];
+  // Add menu items
+  // [windowMenu addItemWithTitle:@"Minimize" action:@selector(performMiniaturize:) keyEquivalent:@"m"];
+  // [windowMenu addItemWithTitle:@"Zoom" action:@selector(performZoom:) keyEquivalent:@""];
 
-  /* Put menu into the menubar */
+  // Put menu into the menubar
   menuItem = [[NSMenuItem alloc] initWithTitle:@"Window" action:nil keyEquivalent:@""];
-  [menuItem setSubmenu:windowMenu];
-  [[NSApp mainMenu] addItem:menuItem];
+
+  // [menuItem setSubmenu:windowMenu];
+  // [[NSApp mainMenu] addItem:menuItem];
   [menuItem release];
 
-  /* Tell the application object that this is now the window menu */
+  // Tell the application object that this is now the window menu
   [NSApp setWindowsMenu:windowMenu];
   [windowMenu release];
+
 }
 
 std::string dialog_open(

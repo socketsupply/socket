@@ -16,6 +16,14 @@ const exceedsMaxSize = s => {
   }
 }
 
+console.log = (...args) => {
+  process.stdout.write('stdout;' + args.join(' '))
+}
+
+console.error = (...args) => {
+  process.stderr.write(args.join(' '))
+}
+
 api.receive = fn => {
   process.stdin.on('data', async data => {
     const msg = data.split(';')

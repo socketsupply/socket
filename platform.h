@@ -77,5 +77,6 @@ std::string dialog_open(int flags,
 
 std::string getCwd ();
 void createMenu ();
+std::vector<std::string> getMenuItemDetails (void* item);
 
 #endif /* PLATFORM_H */

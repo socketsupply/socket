@@ -18,20 +18,15 @@ int CALLBACK WinMain(
 #include <unistd.h>
 
 static auto process = std::make_unique<Process>();
+static auto win = std::make_unique<webview::webview>(true, nullptr);
 
 int main(int argc, char *argv[])
 #endif
 {
-  static auto win = std::make_unique<webview::webview>(true, nullptr);
   win->set_title("Operator");
   win->set_size(750, 520, WEBVIEW_HINT_NONE);
 
   createMenu();
-
-  win->ipc("log", [](auto seq, auto s) {
-    std::cout << s << std::endl;
-    win->resolve("ipc;0;" + seq + ";");
-  });
 
   win->ipc("dialog", [&](auto seq, auto value) {
     win->dialog(seq);
@@ -46,7 +41,9 @@ int main(int argc, char *argv[])
   };
 
   process->onData = [&] (const std::string msg) {
-    if (msg.find("ipc;") != std::string::npos) {
+    if (msg.find("stdout;") != std::string::npos) {
+      std::cout << msg.substr(7) << std::endl;
+    } else if (msg.find("ipc;") != std::string::npos) {
       win->resolve(msg);
     } else {
       win->emit("data", msg);

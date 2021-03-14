@@ -1,9 +1,8 @@
-//
-// Server side program entry point (requires a loop)
-//
 import ipc from './ipc.js'
 
 let counter = 0
+
+console.log('started')
 
 ipc.receive(async data => {
   return {
@@ -18,21 +17,9 @@ let breakCounter = 0
 setInterval(() => {
   counter++
 
-  if (isBreakTime) {
-    if (breakCounter++ === 10000) {
-      isBreakTime = false
-      breakCounter = 0
-    }
-    return
-  }
-
-  if (breakCounter++ === 10000) {
-    isBreakTime = true
-    breakCounter = 0
-    return
-  }
-
-  const x = Date.now()
-
-  ipc.send({ sending: x, counter })
+  ipc.send({ sending: Date.now(), counter })
 }, 512)
+
+process.on('beforeExit', () => {
+  console.log('exiting')
+})
