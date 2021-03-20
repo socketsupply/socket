@@ -1,0 +1,16 @@
+{
+  "name": "opkit-example",
+  "version": "1.0.0",
+  "main": "main.js",
+  "type": "module",
+  "devDependencies": {
+    "clean-css": "^5.1.1",
+    "esbuild": "^0.8.56",
+    "stylus": "^0.54.8"
+  },
+  "dependencies": {
+    "@optoolco/_styles": "github:optoolco/_styles#v2.1.13",
+    "@optoolco/components": "^12.3.2",
+    "@optoolco/tonic": "^13.3.2"
+  }
+}
