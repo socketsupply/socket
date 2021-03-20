@@ -5,11 +5,11 @@ import cp from 'node:child_process'
 import CleanCSS from 'clean-css'
 import stylus from 'stylus'
 
-const exec = (s, opts = {}) => new Promise(resolve => {
+const exec = (s, opts = {}, env = {}) => new Promise(resolve => {
   const params = {
     stdio: 'pipe',
     cwd: process.cwd(),
-    env: process.env,
+    env: { ...process.env, ...env },
     windowsHide: true,
     timeout: 6e4,
     encoding: 'utf-8',

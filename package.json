@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "./bin/build.js",
-    "start": "npm run build"
+    "start": "./bin/build.js run"
   },
   "repository": {
     "type": "git",
@@ -13,16 +13,6 @@
   },
   "author": "",
   "license": "ISC",
-  "flags": {
-    "darwin": "-luv -lpthread -std=c++2a -framework WebKit -framework AppKit",
-    "linux": "`pkg-config --cflags --libs gtk+-3.0 webkit2gtk-4.0'`",
-    "win32": "-mwindows -L./dll/x64 -lwebview -lWebView2Loader"
-  },
-  "files": {
-    "darwin": "main.cc darwin.mm",
-    "linux": "main.cc linux.cc",
-    "win32": "main.cc win32.cc"
-  },
   "bugs": {
     "url": "https://github.com/webview/webview/issues"
   },

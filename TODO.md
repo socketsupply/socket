@@ -6,6 +6,8 @@
 - [x] Zero C/C++ knowledge required
 - [x] Drag and drop multiple files in and out
 - [x] Native Menus IPC
-- [ ] Native Menu api
+- [x] Native Menu api
+- [x] Turn POC into tool
+- [ ] Allow hiding menu bar
 - [ ] Native Context Menus
 - [ ] Brew/Apt/Choc install (No dependency scavenger hunts)

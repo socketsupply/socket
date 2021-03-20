@@ -1,13 +1,18 @@
 #include "webview.h"
 #include "process.h"
+#include "platform.h"
 
 #include <iostream>
-#include <sstream>
-#include <filesystem>
+
+#define WIN_TITLE TO_STR(O_WIN_TITLE)
+#define WIN_WIDTH TO_STR(O_WIN_WIDTH)
+#define WIN_HEIGHT TO_STR(O_WIN_HEIGHT)
+#define CMD TO_STR(O_CMD)
+#define ARG TO_STR(O_ARG)
+#define MENU TO_STR(O_MENU)
 
 #ifdef _WIN32
 #include <direct.h>
-#define getcwd _getcwd
 
 int CALLBACK WinMain(
   HINSTANCE hInstance,
@@ -17,16 +22,21 @@ int CALLBACK WinMain(
 #else
 #include <unistd.h>
 
-static auto process = std::make_unique<Process>();
-static auto win = std::make_unique<webview::webview>(true, nullptr);
-
 int main(int argc, char *argv[])
 #endif
 {
-  win->set_title("Operator");
-  win->set_size(750, 520, WEBVIEW_HINT_NONE);
+  static auto process = std::make_unique<Process>();
+  static auto win = std::make_unique<webview::webview>(true, nullptr);
 
-  createMenu();
+  win->set_title(WIN_TITLE);
+
+  win->set_size(
+    std::stoi(WIN_WIDTH),
+    std::stoi(WIN_HEIGHT),
+    WEBVIEW_HINT_NONE
+  );
+
+  createMenu(MENU);
 
   win->ipc("dialog", [&](auto seq, auto value) {
     win->dialog(seq);
@@ -52,15 +62,10 @@ int main(int argc, char *argv[])
  
   std::string cwd = getCwd();
 
-  std::stringstream ss;
-  ss << "file://";
-  ss << cwd;
-  ss << "/render.html";
-
-  win->navigate(ss.str());
+  win->navigate("file://" + cwd + "/render.html");
 
   std::thread main([&]() {
-    process->spawn("node", "main.js", cwd.c_str());
+    process->spawn(CMD, ARG, cwd.c_str());
   });
 
   win->run();

@@ -11,25 +11,22 @@ to spawn an arbitrary instance (ie, nodejs) as a "main" process.
 # BUILD
 
 ```bash
-npm run build  # build assets and compile binary
-npm start      # build and start
+./bin/build <target-directory>
 ```
 
 # PROS
 
-- Very fast startup times
+- Very fast startup and build times
 - < 0.1% memory baseline
 - < 0% cpu baseline
 - About 150Kb baseline binary
-- macOS, linux, windows
-- Loads existing front end (ie, tonic, etc)
+- Works the same on macOS, linux, windows
+- Basically it's Webkit
 - Less dependencies and build requirements
-- Use the regular web inspector tool
+- Use the regular web developer tools
 
 # CONS
 
-- [Native menus are hard][4].
-- Draggable regions are hard to implement
 - Less full featured than electron
 
 # NOTES

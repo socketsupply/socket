@@ -2,12 +2,10 @@
 #import "platform.h"
 
 #include <AppKit/AppKit.h>
-#include <sstream>
+#include <iostream>
 #include <string>
 #include <vector>
-#include <map>
 #include <functional>
-#include <ostream>
 
 // #define SharedContextMenuTarget  [ContextMenuTarget sharedInstance]
 
@@ -26,12 +24,13 @@ std::vector<std::string> getMenuItemDetails (void* item) {
   return vec;
 }
 
-void createMenu () {
+void createMenu (std::string menu) {
   NSString *title;
   NSMenu *appleMenu;
   NSMenu *serviceMenu;
   NSMenu *windowMenu;
   NSMenu *editMenu;
+  NSMenu *dynamicMenu;
   NSMenuItem *menuItem;
   NSMenu *mainMenu;
 
@@ -79,14 +78,6 @@ void createMenu () {
 
   [appleMenu addItemWithTitle:@"Show All" action:@selector(unhideAllApplications:) keyEquivalent:@""];
 
-  menuItem = [appleMenu
-    addItemWithTitle:@"Test"
-    action:@selector(menuItemSelected:)
-    keyEquivalent:@""
-  ];
-
-  [menuItem setTag:1000];
-
   [appleMenu addItem:[NSMenuItem separatorItem]];
 
   title = [@"Quit " stringByAppendingString:appName];
@@ -120,10 +111,44 @@ void createMenu () {
   [menuItem release];
   [editMenu release];
 
-  // TODO accept arg of std::map<std::string, std::vector<std::pair>>> to build menu.
-  // {
-  //   { "foo", { { "bar", 100 }, { "bazz": 120 } } }
-  // }
+  // deserialize the menu
+  std::replace(menu.begin(), menu.end(), '_', '\n');
+
+  // split on ;
+  auto menus = split(menu, ';');
+
+  for (auto m : menus) {
+    auto menu = split(m, '\n');
+    auto title = split(trim(menu[0]), ':')[0];
+    NSString* nssTitle = [NSString stringWithUTF8String:title.c_str()];
+    dynamicMenu = [[NSMenu alloc] initWithTitle:nssTitle];
+
+    for (int i = 1; i < menu.size(); i++) {
+      auto parts = split(trim(menu[i]), ':');
+      auto title = parts[0];
+      auto pair = split(trim(parts[1]), ' ');
+      auto id = std::stoi(pair[0]);
+      auto key = pair.size() == 2 ? pair[1] : "";
+
+      NSString* nssTitle = [NSString stringWithUTF8String:title.c_str()];
+      NSString* nssKey = [NSString stringWithUTF8String:key.c_str()];
+
+      menuItem = [dynamicMenu
+        addItemWithTitle:nssTitle
+        action:@selector(menuItemSelected:)
+        keyEquivalent:nssKey
+      ];
+
+      [menuItem setTag:id];
+    }
+
+    menuItem = [[NSMenuItem alloc] initWithTitle:nssTitle action:nil keyEquivalent:@""];
+
+    [[NSApp mainMenu] addItem:menuItem];
+    [menuItem setSubmenu:dynamicMenu];
+    [menuItem release];
+    [dynamicMenu release];
+  }
 
   // Create the window menu
   windowMenu = [[NSMenu alloc] initWithTitle:@"Window"];

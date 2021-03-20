@@ -1,27 +1,72 @@
+#ifndef PLATFORM_H
+#define PLATFORM_H
 
-/* noc_file_dialog library
- *
- * Copyright (c) 2015 Guillaume Chereau <guillaume@noctua-software.com>
- * Copyright (c) 2021 Paolo Fragomeni <paolo@optool.co>
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to
- * deal in the Software without restriction, including without limitation the
- * rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
- * sell copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
- * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
- * IN THE SOFTWARE.
- */
+#define TO_STR(arg) #arg
+#define STR_VALUE(arg) TO_STR(arg)
+
+#if defined(_WIN32) || defined(WIN32) || defined(__CYGWIN__) || defined(__MINGW32__) || defined(__BORLANDC__)
+#define OS_WIN32
+#endif
+
+#ifdef __APPLE__
+#define OS_DARWIN
+#endif
+
+#ifdef __LINUX__
+#define OS_LINUX
+#endif
+
+#include <stdlib.h>
+#include <string>
+#include <locale>
+#include <vector>
+
+typedef struct {
+#ifdef OS_DARWIN
+  bool darwin = true;
+  bool win32 = false;
+  bool linux = false;
+  std::string os = "darwin";
+#endif
+
+#ifdef OS_WIN32
+  bool darwin = false;
+  bool win32 = true;
+  bool linux = false;
+  std::string os = "win32";
+#endif
+
+#ifdef OS_LINUX
+  bool darwin = false;
+  bool win32 = false;
+  bool linux = true;
+  std::string os = "linux";
+#endif
+} Platform;
+
+inline const std::vector<std::string> split(const std::string& s, const char& c) {
+  std::string buff {""};
+  std::vector<std::string> vec;
+	
+	for (auto n:s) {
+		if(n != c) {
+      buff += n;
+    } else if (n == c && buff != "") {
+      vec.push_back(buff);
+      buff = "";
+    }
+	}
+
+	if (buff != "") vec.push_back(buff);
+
+	return vec;
+}
+
+inline std::string& trim(std::string& str) {
+  str.erase(0, str.find_first_not_of(" \r\n\t"));
+  str.erase(str.find_last_not_of(" \r\n\t") + 1);
+  return str;
+}
 
 /* A portable library to create open and save dialogs on linux, osx and
  * windows.
@@ -38,11 +83,6 @@
  *  NOC_FILE_DIALOG_WIN32
  *  NOC_FILE_DIALOG_OSX
  */
-#ifndef PLATFORM_H
-#define PLATFORM_H
-
-#include <stdlib.h>
-#include <string>
 
 enum {
   NOC_FILE_DIALOG_OPEN    = 1 << 0,   // Create an open file dialog.
@@ -74,9 +114,8 @@ std::string dialog_open(int flags,
   const char *default_path,
   const char *default_name);
 
-
 std::string getCwd ();
-void createMenu ();
+void createMenu (std::string);
 std::vector<std::string> getMenuItemDetails (void* item);
 
 #endif /* PLATFORM_H */

@@ -69,7 +69,9 @@ async function main () {
   
   console.timeEnd('• Build complete')
 
-  await exec('open Operator.app', { cwd: pathToBuild })
+  if (process.argv[1] === 'run') {
+    await exec('open Operator.app', { cwd: pathToBuild })
+  }
 }
 
 main()

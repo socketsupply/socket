@@ -1,27 +1,3 @@
-/*
- * MIT License
- *
- * Copyright (c) 2017 Serge Zaitsev
- * Copyright (c) 2021 Paolo Fragomeni <paolo@optool.co>
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
- */
 #ifndef WEBVIEW_H
 #define WEBVIEW_H
 
@@ -31,24 +7,6 @@
 #ifndef WEBVIEW_API
 #define WEBVIEW_API extern
 #endif
-
-const std::vector<std::string> split(const std::string& s, const char& c) {
-  std::string buff {""};
-  std::vector<std::string> vec;
-	
-	for (auto n:s) {
-		if(n != c) {
-      buff += n;
-    } else if (n == c && buff != "") {
-      vec.push_back(buff);
-      buff = "";
-    }
-	}
-
-	if (buff != "") vec.push_back(buff);
-
-	return vec;
-}
 
 #ifdef __cplusplus
 extern "C" {
@@ -752,9 +710,14 @@ class cocoa_wkwebview_engine {
     ((void (*)(id, SEL))objc_msgSend)(m_window, "center"_sel);
     ((void (*)(id, SEL))objc_msgSend)(m_window, "setHasShadow:"_sel);
     ((void (*)(id, SEL, BOOL))objc_msgSend)(m_window, "setTitlebarAppearsTransparent:"_sel, 1);
+    /* ((id (*)(id, SEL, id))objc_msgSend)(
+      m_window,
+      "setBackgroundColor:"_sel, 
+      "white"_cls
+    );*/
     // ((void (*)(id, SEL, BOOL))objc_msgSend)(m_window, "setTitleVisibility:"_sel, 1);
     // ((void (*)(id, SEL, BOOL))objc_msgSend)(m_window, "setMovableByWindowBackground:"_sel, 1);
-    // ((void (*)(id, SEL, BOOL))objc_msgSend)(m_window, "setOpaque:"_sel, 1);
+    // ((void (*)(id, SEL, BOOL))objc_msgSend)(m_window, "setOpaque:"_sel, 0);
     // setWindowButtonsOffset:NSMakePoint(12, 10)
     // setTitleVisibility:NSWindowTitleHidden
   }
