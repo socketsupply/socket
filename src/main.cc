@@ -62,7 +62,7 @@ int main(int argc, char *argv[])
  
   std::string cwd = getCwd();
 
-  win->navigate("file://" + cwd + "/render.html");
+  win->navigate("file://" + cwd + "/index.html");
 
   std::thread main([&]() {
     process->spawn(CMD, ARG, cwd.c_str());

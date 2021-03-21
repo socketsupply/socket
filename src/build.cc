@@ -1,8 +1,10 @@
 #include "platform.h"
+#include "build.h"
 #include <iostream>
 #include <chrono>
 #include <thread>
 #include <map>
+#include <regex>
 #include <vector>
 #include <fstream>
 #include <sstream>
@@ -17,7 +19,14 @@ std::string readFile (fs::path path) {
   auto buffer = std::istreambuf_iterator<char>(stream);
   auto end = std::istreambuf_iterator<char>();
   content.assign(buffer, end);
+  stream.close();
   return content;
+}
+
+void writeFile (fs::path path, std::string s) {
+  std::ofstream stream(path.u8string());
+  stream << s;
+  stream.close();
 }
 
 std::map<std::string, std::string> readConfig(const fs::path p) {
@@ -39,6 +48,18 @@ std::map<std::string, std::string> readConfig(const fs::path p) {
   }
 
   return settings;
+}
+
+std::string replace (const std::string s, std::map<std::string, std::string> pairs) {
+  std::string output = s;
+
+  for (auto item : pairs) {
+    auto key = "[{]+(" + item.first + ")[}]+";
+    auto value = item.second;
+    output = std::regex_replace(output, std::regex(key), value);
+  }
+
+  return output;
 }
 
 void log (const std::string s) {
@@ -72,32 +93,58 @@ int main (const int argc, const char* argv[]) {
   log("cleaned: " + pathOutput.u8string());
 
   auto title = settings["title"];
+  std::string flags;
+  std::string files;
 
   fs::path pathBin;
   fs::path pathResources;
+  fs::path pathResourcesRelativeToUserBuild;
   fs::path pathPackage;
 
   if (platform.darwin) {
+    flags = "-luv -std=c++2a -framework WebKit -framework AppKit";
+    files = "src/main.cc src/darwin.mm";
+
     fs::path pathBase = "Contents";
     fs::path packageName = fs::path(std::string(title + ".app"));
 
     pathPackage = { pathOutput / packageName };
     pathBin = { pathPackage / pathBase / fs::path { "MacOS" } };
     pathResources = { pathPackage / pathBase / fs::path { "Resources" } };
+    
+    pathResourcesRelativeToUserBuild = {
+      fs::path(settings["output"]) /
+      packageName /
+      pathBase /
+      fs::path { "Resources" }
+    };
 
     fs::create_directories(pathBin);
     fs::create_directories(pathResources);
+
+    auto plistInfo = replace(gPListInfo, settings);
+    writeFile(fs::path { pathResources / fs::path("Info.plist") }, plistInfo);
+    // Replace and write list files
   }
 
   if (platform.linux) {
-    // TODO build step
+    flags = "`pkg-config --cflags --libs gtk+-3.0 webkit2gtk-4.0'`";
+    files = "src/main.cc src/linux.cc";
+
+    // TODO build specifics
   }
 
   if (platform.win32) {
-    // TODO build step
+    flags = "-mwindows -L./dll/x64 -lwebview -lWebView2Loader";
+    files = "src/main.cc src/win32.cc";
+
+    // TODO build specifics
   }
 
-  // copy the ipc stuff over
+  //
+  // TODO copy the ipc module into the bundle
+  // and maybe some other things too...
+  //
   // fs::copy(
 
   log("created app structure");
@@ -115,33 +162,35 @@ int main (const int argc, const char* argv[]) {
     << " && "
     << settings["build"]
     << " "
-    << pathResources;
+    << pathResourcesRelativeToUserBuild;
 
   std::system(buildCommand.str().c_str());
   log("ran user build command");
 
   std::stringstream compileCommand;
-  std::string flagPrefix = platform.win32 ? "/" : "-";
   fs::path binaryPath = { pathBin / fs::path(title) };
 
-  auto def = [&](const std::string label, const std::string s) -> std::string {
+  // Create flags for compile-time definitions.
+  std::string flagPrefix = platform.win32 ? "/" : "-";
+  auto define = [&](const std::string label, const std::string s) -> std::string {
     return std::string(flagPrefix + "D" + label + "=\"" + s + "\"");
   };
 
+  // Serialize the menu to pass it to the compiler.
   std::replace(menu.begin(), menu.end(), '\n', '_');
 
   compileCommand
     << settings["compiler"] << " "
-    << settings["files_" + platform.os] << " "
-    << settings["flags_" + platform.os] << " "
-    << settings["optimizations"] << " "
+    << files << " "
+    << flags << " "
+    << settings["flags"] << " "
     << "-o " << binaryPath.u8string() << " "
-    << def("O_WIN_TITLE", settings["title"]) << " "
-    << def("O_WIN_WIDTH", settings["width"]) << " "
-    << def("O_WIN_HEIGHT", settings["height"]) << " "
-    << def("O_CMD", settings["cmd"]) << " "
-    << def("O_MENU", menu) << " "
-    << def("O_ARG", settings["arg"]);
+    << define("O_WIN_TITLE", settings["title"]) << " "
+    << define("O_WIN_WIDTH", settings["width"]) << " "
+    << define("O_WIN_HEIGHT", settings["height"]) << " "
+    << define("O_CMD", settings["cmd"]) << " "
+    << define("O_MENU", menu) << " "
+    << define("O_ARG", settings["arg"]);
 
   // log(compileCommand.str());
   std::system(compileCommand.str().c_str());

@@ -1,9 +1,16 @@
 import path from 'node:path'
+import fs from 'node:fs/promises'
+import { execSync as exec } from 'child_process'
+
 import CleanCSS from 'clean-css'
 import stylus from 'stylus'
 import esbuild from 'esbuild'
 
-const target = process.argv.slice(2)[0];
+//
+// The output target is passed by the build tool,
+// it's where we want to write all of our files.
+//
+const target = process.argv[2];
 
 const css = async (src, dest) => {
   const cleanCSS = new CleanCSS({ advanced: true })
@@ -22,18 +29,32 @@ const css = async (src, dest) => {
 
 async function main () {
   await esbuild.build({
-    entryPoints: ['src/render.js'],
+    entryPoints: ['src/render/index.js'],
     bundle: true,
     keepNames: true,
     minify: true,
-    outfile: path.join(target, 'bundle.js'),
+    outfile: path.join(target, 'render.js'),
     platform: 'browser'
   })
 
+  await esbuild.build({
+    entryPoints: ['src/main/index.js'],
+    bundle: true,
+    keepNames: true,
+    minify: true,
+    outfile: path.join(target, 'main.js'),
+    platform: 'node'
+  })
+
   await css(
-    path.join('src', 'index.styl'),
+    path.join('src', 'render/index.styl'),
     path.join(target, 'bundle.css')
   )
+
+  // TODO Since we don't have ASAR, why not GZip?
+
+  exec(`cp src/render/index.html ${target}`)
+  exec(`cp src/icons/icon.icns ${target}`)
 }
 
 main()

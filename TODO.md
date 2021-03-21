@@ -8,6 +8,6 @@
 - [x] Native Menus IPC
 - [x] Native Menu api
 - [x] Turn POC into tool
-- [ ] Allow hiding menu bar
+- [ ] Allow hiding title bar
 - [ ] Native Context Menus
 - [ ] Brew/Apt/Choc install (No dependency scavenger hunts)
