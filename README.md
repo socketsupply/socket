@@ -1,17 +1,23 @@
 # SYNOPSIS
 
+Build fast, light-weight 2D UIs with any backend.
+
+
+# DESCRIPTION
+
 A fork of [webview][00] with two-way ipc and rpc that uses libuv
-to spawn an arbitrary instance (ie, nodejs) as a "main" process.
+to spawn an arbitrary instance (ie, node or rust) as a "main" process.
 
-```
-✓ Fast, light-weight 2D UIs with an IPC to any backend.
-✕ Not intended for games (use a proper framework).
-```
 
-# BUILD
+# GET STARTED
+
+TODO
 
 ```bash
-./bin/build <target-directory>
+git clone https://github.com/optoolco/opkit
+cd opkit
+g++ src/build.cc -o bin/build -std=c++2a
+./bin/build test/example
 ```
 
 # PROS
@@ -22,8 +28,8 @@ to spawn an arbitrary instance (ie, nodejs) as a "main" process.
 - About 150Kb baseline binary
 - Works the same on macOS, linux, windows
 - Basically it's Webkit
-- Less dependencies and build requirements
 - Use the regular web developer tools
+- The only build requiremnt a modern C++ compiler
 
 # CONS
 

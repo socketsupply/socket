@@ -4,12 +4,12 @@
 
 #include <iostream>
 
-#define WIN_TITLE TO_STR(O_WIN_TITLE)
-#define WIN_WIDTH TO_STR(O_WIN_WIDTH)
-#define WIN_HEIGHT TO_STR(O_WIN_HEIGHT)
-#define CMD TO_STR(O_CMD)
-#define ARG TO_STR(O_ARG)
-#define MENU TO_STR(O_MENU)
+constexpr auto title = WIN_TITLE;
+constexpr auto width = WIN_WIDTH;
+constexpr auto height = WIN_HEIGHT;
+constexpr auto menu = MENU;
+constexpr auto cmd = CMD;
+constexpr auto arg = ARG;
 
 #ifdef _WIN32
 #include <direct.h>
@@ -28,18 +28,23 @@ int main(int argc, char *argv[])
   static auto process = std::make_unique<Process>();
   static auto win = std::make_unique<webview::webview>(true, nullptr);
 
-  win->set_title(WIN_TITLE);
+  win->set_title(title);
 
   win->set_size(
-    std::stoi(WIN_WIDTH),
-    std::stoi(WIN_HEIGHT),
+    std::stoi(width),
+    std::stoi(height),
     WEBVIEW_HINT_NONE
   );
 
-  createMenu(MENU);
+  createMenu(menu);
 
   win->ipc("dialog", [&](auto seq, auto value) {
     win->dialog(seq);
+  });
+
+  win->ipc("contextMenu", [&](std::string seq, std::string value) {
+    auto wasSelected = createContextMenu(seq, value) ? "1" : "0";
+    win->resolve("ipc;0;" + seq + ";" + wasSelected);
   });
 
   win->ipc("invokeIPC", [&](std::string seq, std::string value) {
@@ -65,7 +70,7 @@ int main(int argc, char *argv[])
   win->navigate("file://" + cwd + "/index.html");
 
   std::thread main([&]() {
-    process->spawn(CMD, ARG, cwd.c_str());
+    process->spawn(cmd, arg, cwd.c_str());
   });
 
   win->run();

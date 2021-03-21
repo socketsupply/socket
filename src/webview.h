@@ -2,7 +2,6 @@
 #define WEBVIEW_H
 
 #include "platform.h"
-#include <regex>
 
 #ifndef WEBVIEW_API
 #define WEBVIEW_API extern
@@ -385,6 +384,17 @@ class cocoa_wkwebview_engine {
       cls,
       _sel("applicationShouldTerminateAfterLastWindowClosed:"),
       (IMP)(+[](id, SEL, id) -> BOOL { return 1; }),
+      "c@:@"
+    );
+
+    class_addMethod(
+      cls,
+      _sel("willOpenMenu"),
+      (IMP)(+[](id self, SEL _cmd, id item) -> BOOL {
+        auto vec = getMenuItemDetails(item);
+        printf("-> %s", vec[0].c_str());
+        return 1;
+      }),
       "c@:@"
     );
 

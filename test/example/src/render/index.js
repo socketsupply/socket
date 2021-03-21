@@ -67,24 +67,41 @@ class AppContainer extends Tonic {
       response.received.input
   }
 
+  async contextmenu (e) {
+    const el = Tonic.match(e.target, '.context-menu')
+    if (!el) return
+    
+    const x = await contextMenu('xxx')
+
+    console.log(x)
+  }
+
   render () {
     return this.html`
       <app-header>
       </app-header>
 
-      <tonic-input id="send" label="send">
-      </tonic-input>
+      <div class="grid">
+        <tonic-input id="send" label="send">
+        </tonic-input>
 
-      <tonic-input id="response" label="recieve">
-      </tonic-input>
+        <tonic-input id="response" label="recieve">
+        </tonic-input>
+      </div>
 
       <tonic-button id="butt">Open</tonic-button>
 
-      <tonic-textarea id="opened" label="opened files/dirs">
-      </tonic-textarea>
+      <tonic-textarea id="opened" label="opened files/dirs"></tonic-textarea>
 
-      <tonic-input id="menu-selection" label="menu selection">
-      </tonic-input>
+
+      <div class="grid">
+        <tonic-input id="menu-selection" readonly="true" label="menu selection">
+        </tonic-input>
+
+        <div class="context-menu">
+          Context Menu Enabled Area
+        </div>
+      </div>
 
       <a href="file:///Users/paolofragomeni/projects/optoolco/opkit/src/render.html" download>Foo</a>
     `

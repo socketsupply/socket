@@ -116,6 +116,7 @@ std::string dialog_open(int flags,
 
 std::string getCwd ();
 void createMenu (std::string);
+bool createContextMenu (std::string, std::string);
 std::vector<std::string> getMenuItemDetails (void* item);
 
 #endif /* PLATFORM_H */

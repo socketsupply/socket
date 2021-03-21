@@ -7,8 +7,6 @@
 #include <vector>
 #include <functional>
 
-// #define SharedContextMenuTarget  [ContextMenuTarget sharedInstance]
-
 std::string getCwd () {
   NSString *bundlePath = [[NSBundle mainBundle] resourcePath];
   auto str = std::string([bundlePath UTF8String]);
@@ -22,6 +20,17 @@ std::vector<std::string> getMenuItemDetails (void* item) {
   std::string state = [menuItem state] == NSControlStateValueOn ? "true" : "false";
   std::vector<std::string> vec = { id, title, state };
   return vec;
+}
+
+bool createContextMenu (std::string seq, std::string value) {
+  auto opts = split(value, ';');
+
+  NSPoint mouseLocation = [NSEvent mouseLocation];
+  NSMenu *pMenu = [[NSMenu alloc] initWithTitle:@"Context Menu"];
+  [pMenu insertItemWithTitle:@"Beep" action:@selector(menuItemSelected:) keyEquivalent:@"" atIndex:0];
+  [pMenu insertItemWithTitle:@"Honk" action:@selector(menuItemSelected:) keyEquivalent:@"" atIndex:1];
+  [pMenu popUpMenuPositioningItem:pMenu.itemArray[0] atLocation:NSPointFromCGPoint(CGPointMake(mouseLocation.x, mouseLocation.y)) inView:nil];
+  return true;
 }
 
 void createMenu (std::string menu) {
@@ -93,24 +102,6 @@ void createMenu (std::string menu) {
   // [NSApp setAppleMenu:appleMenu];
   [appleMenu release];
 
-  // Create the window menu
-  editMenu = [[NSMenu alloc] initWithTitle:@"Edit"];
-
-  //Add menu items
-  [editMenu addItemWithTitle: @"Cut" action: @selector(cut:) keyEquivalent: @"x"];
-  [editMenu addItemWithTitle: @"Copy" action: @selector(copy:) keyEquivalent: @"c"];
-  [editMenu addItemWithTitle: @"Paste" action: @selector(paste:) keyEquivalent: @"v"];
-  [editMenu addItemWithTitle: @"Delete" action: @selector(delete:) keyEquivalent: @""];
-  [editMenu addItemWithTitle: @"Select All" action: @selector(selectAll:) keyEquivalent: @"a"];
-
-  // Put menu into the menubar
-  menuItem = [[NSMenuItem alloc] initWithTitle:@"Edit" action:nil keyEquivalent:@""];
-  [[NSApp mainMenu] addItem:menuItem];
-
-  [menuItem setSubmenu:editMenu];
-  [menuItem release];
-  [editMenu release];
-
   // deserialize the menu
   std::replace(menu.begin(), menu.end(), '_', '\n');
 
@@ -119,8 +110,8 @@ void createMenu (std::string menu) {
 
   for (auto m : menus) {
     auto menu = split(m, '\n');
-    auto title = split(trim(menu[0]), ':')[0];
-    NSString* nssTitle = [NSString stringWithUTF8String:title.c_str()];
+    auto menuTitle = split(trim(menu[0]), ':')[0];
+    NSString* nssTitle = [NSString stringWithUTF8String:menuTitle.c_str()];
     dynamicMenu = [[NSMenu alloc] initWithTitle:nssTitle];
 
     for (int i = 1; i < menu.size(); i++) {
@@ -132,10 +123,22 @@ void createMenu (std::string menu) {
 
       NSString* nssTitle = [NSString stringWithUTF8String:title.c_str()];
       NSString* nssKey = [NSString stringWithUTF8String:key.c_str()];
+      NSString* nssSelector = [NSString stringWithUTF8String:"menuItemSelected:"];
 
+      if (menuTitle.compare("Edit") == 0) {
+        if (title.compare("Cut") == 0) nssSelector = [NSString stringWithUTF8String:"cut:"];
+        if (title.compare("Copy") == 0) nssSelector = [NSString stringWithUTF8String:"copy:"];
+        if (title.compare("Paste") == 0) nssSelector = [NSString stringWithUTF8String:"paste:"];
+        if (title.compare("Delete") == 0) nssSelector = [NSString stringWithUTF8String:"delete:"];
+        if (title.compare("Select All") == 0) nssSelector = [NSString stringWithUTF8String:"selectAll:"];
+      }
+
+      if (title.compare("Minimize") == 0) nssSelector = [NSString stringWithUTF8String:"performMiniaturize:"];
+      if (title.compare("Zoom") == 0) nssSelector = [NSString stringWithUTF8String:"performZoom:"];
+      
       menuItem = [dynamicMenu
         addItemWithTitle:nssTitle
-        action:@selector(menuItemSelected:)
+        action:NSSelectorFromString(nssSelector)
         keyEquivalent:nssKey
       ];
 
@@ -149,25 +152,6 @@ void createMenu (std::string menu) {
     [menuItem release];
     [dynamicMenu release];
   }
-
-  // Create the window menu
-  windowMenu = [[NSMenu alloc] initWithTitle:@"Window"];
-
-  // Add menu items
-  // [windowMenu addItemWithTitle:@"Minimize" action:@selector(performMiniaturize:) keyEquivalent:@"m"];
-  // [windowMenu addItemWithTitle:@"Zoom" action:@selector(performZoom:) keyEquivalent:@""];
-
-  // Put menu into the menubar
-  menuItem = [[NSMenuItem alloc] initWithTitle:@"Window" action:nil keyEquivalent:@""];
-
-  // [menuItem setSubmenu:windowMenu];
-  // [[NSApp mainMenu] addItem:menuItem];
-  [menuItem release];
-
-  // Tell the application object that this is now the window menu
-  [NSApp setWindowsMenu:windowMenu];
-  [windowMenu release];
-
 }
 
 std::string dialog_open(

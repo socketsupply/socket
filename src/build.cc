@@ -173,7 +173,7 @@ int main (const int argc, const char* argv[]) {
   // Create flags for compile-time definitions.
   std::string flagPrefix = platform.win32 ? "/" : "-";
   auto define = [&](const std::string label, const std::string s) -> std::string {
-    return std::string(flagPrefix + "D" + label + "=\"" + s + "\"");
+    return std::string(flagPrefix + "D" + label + "=\"\\\"" + s + "\\\"\"");
   };
 
   // Serialize the menu to pass it to the compiler.
@@ -185,12 +185,12 @@ int main (const int argc, const char* argv[]) {
     << flags << " "
     << settings["flags"] << " "
     << "-o " << binaryPath.u8string() << " "
-    << define("O_WIN_TITLE", settings["title"]) << " "
-    << define("O_WIN_WIDTH", settings["width"]) << " "
-    << define("O_WIN_HEIGHT", settings["height"]) << " "
-    << define("O_CMD", settings["cmd"]) << " "
-    << define("O_MENU", menu) << " "
-    << define("O_ARG", settings["arg"]);
+    << define("WIN_TITLE", settings["title"]) << " "
+    << define("WIN_WIDTH", settings["width"]) << " "
+    << define("WIN_HEIGHT", settings["height"]) << " "
+    << define("CMD", settings["cmd"]) << " "
+    << define("MENU", menu) << " "
+    << define("ARG", settings["arg"]);
 
   // log(compileCommand.str());
   std::system(compileCommand.str().c_str());
