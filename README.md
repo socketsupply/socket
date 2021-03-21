@@ -74,9 +74,8 @@ browser. It will contain the same info as the result from the context menu.
 #### From the browser
 
 ```js
-const result = await invokeIPC({
-  beep: 'honk'
-})
+const result = await invokeIPC('honk')
+assert(result === 'goose')
 ```
 
 #### In the backend process (node.js example)
@@ -85,7 +84,7 @@ const result = await invokeIPC({
 import ipc from './ipc.js'
 
 ipc.receive(async data => {
-  assert(data === { beep: 'honk' })
+  if (data === 'honk') ipc.send('goose')
 })
 ```
 
