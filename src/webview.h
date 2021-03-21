@@ -389,33 +389,30 @@ class cocoa_wkwebview_engine {
 
     class_addMethod(
       cls,
-      _sel("willOpenMenu"),
-      (IMP)(+[](id self, SEL _cmd, id item) -> BOOL {
-        auto vec = getMenuItemDetails(item);
-        printf("-> %s", vec[0].c_str());
-        return 1;
-      }),
-      "c@:@"
-    );
-
-    class_addMethod(
-      cls,
       _sel("menuItemSelected:"),
       (IMP)(+[](id self, SEL _cmd, id item) {
         auto w = (cocoa_wkwebview_engine*) objc_getAssociatedObject(self, "webview");
         assert(w);
 
         auto vec = getMenuItemDetails(item);
-        auto id = vec[0];
-        auto title = vec[1];
-        auto selected = vec[2];
+        auto title = vec[0];
+        auto state = vec[1];
+        auto parent = vec[2];
+        auto seq = vec[3];
 
         w->eval("(() => {"
           "  const detail = {"
-          "    id: '" + id + "',"
           "    title: '" + title + "',"
-          "    selected: '" + selected + "'"
+          "    parent: '" + parent + "',"
+          "    state: '" + state + "'"
           "  };"
+
+          "  if (" + seq + " > 0) {"
+          "    window._ipc[" + seq + "].resolve(detail);"
+          "    delete window._ipc[" + seq + "];"
+          "    return;"
+          "  }"
+
           "  const event = new window.CustomEvent('menuItemSelected', { detail });"
           "  window.dispatchEvent(event);"
           "})()"
@@ -1282,10 +1279,17 @@ public:
 
         let encoded
 
-        try {
-          encoded = btoa(JSON.stringify(value))
-        } catch (err) {
-          return Promise.reject(err.message)
+        if (name === 'contextMenu') {
+          encoded = Object
+            .entries(value)
+            .flatMap(o => o.join(':'))
+            .join('_')
+        } else {
+          try {
+            encoded = btoa(JSON.stringify(value))
+          } catch (err) {
+            return Promise.reject(err.message)
+          }
         }
 
         window.external.invoke(`ipc;${seq};${name};${encoded}`)
@@ -1301,10 +1305,11 @@ public:
     dispatch([=]() {
       eval("(() => {"
            "  const data = `" + msg + "`.trim().split(';');"
+           "  const internal = data[0] === 'internal';"
            "  const status = Number(data[1]);"
            "  const seq = Number(data[2]);"
            "  const method = status === 0 ? 'resolve' : 'reject';"
-           "  const value = JSON.parse(atob(data[3]));"
+           "  const value = internal ? data[3] : JSON.parse(atob(data[3]));"
            "  window._ipc[seq][method](value);"
            "  window._ipc[seq] = undefined;"
            "})()");

@@ -15,20 +15,41 @@ std::string getCwd () {
 
 std::vector<std::string> getMenuItemDetails (void* item) {
   id menuItem = (id) item;
-  std::string id = std::to_string([menuItem tag]);
   std::string title = [[menuItem title] UTF8String];
   std::string state = [menuItem state] == NSControlStateValueOn ? "true" : "false";
-  std::vector<std::string> vec = { id, title, state };
+  std::string parent = [[[menuItem menu] title] UTF8String];
+  std::string seq = std::to_string([menuItem tag]);
+  std::vector<std::string> vec = { title, state, parent, seq };
   return vec;
 }
 
 bool createContextMenu (std::string seq, std::string value) {
-  auto opts = split(value, ';');
+  auto menuItems = split(value, '_');
+  auto id = std::stoi(seq);
 
   NSPoint mouseLocation = [NSEvent mouseLocation];
-  NSMenu *pMenu = [[NSMenu alloc] initWithTitle:@"Context Menu"];
-  [pMenu insertItemWithTitle:@"Beep" action:@selector(menuItemSelected:) keyEquivalent:@"" atIndex:0];
-  [pMenu insertItemWithTitle:@"Honk" action:@selector(menuItemSelected:) keyEquivalent:@"" atIndex:1];
+  NSMenu *pMenu = [[NSMenu alloc] initWithTitle:@"contextMenu"];
+  NSMenuItem *menuItem;
+  int index = 0;
+
+  for (auto item : menuItems) {
+    auto pair = split(item, ':');
+
+    NSString* nssTitle = [NSString stringWithUTF8String:pair[0].c_str()];
+    NSString* nssKey = [NSString stringWithUTF8String:pair[1].c_str()];
+
+    menuItem = [pMenu
+      insertItemWithTitle:nssTitle 
+      action:@selector(menuItemSelected:)
+      keyEquivalent:nssKey
+      atIndex:index
+    ];
+
+    [menuItem setTag:id];
+  
+    index++;
+  }
+
   [pMenu popUpMenuPositioningItem:pMenu.itemArray[0] atLocation:NSPointFromCGPoint(CGPointMake(mouseLocation.x, mouseLocation.y)) inView:nil];
   return true;
 }
@@ -97,9 +118,6 @@ void createMenu (std::string menu) {
   [menuItem setSubmenu:appleMenu];
   [[NSApp mainMenu] addItem:menuItem];
   [menuItem release];
-
-  // Tell the application object that this is now the application menu
-  // [NSApp setAppleMenu:appleMenu];
   [appleMenu release];
 
   // deserialize the menu
@@ -117,9 +135,11 @@ void createMenu (std::string menu) {
     for (int i = 1; i < menu.size(); i++) {
       auto parts = split(trim(menu[i]), ':');
       auto title = parts[0];
-      auto pair = split(trim(parts[1]), ' ');
-      auto id = std::stoi(pair[0]);
-      auto key = pair.size() == 2 ? pair[1] : "";
+      std::string key = "";
+
+      if (parts.size() > 1) {
+        key = parts[1] == "_" ? "" : trim(parts[1]);
+      }
 
       NSString* nssTitle = [NSString stringWithUTF8String:title.c_str()];
       NSString* nssKey = [NSString stringWithUTF8String:key.c_str()];
@@ -135,14 +155,14 @@ void createMenu (std::string menu) {
 
       if (title.compare("Minimize") == 0) nssSelector = [NSString stringWithUTF8String:"performMiniaturize:"];
       if (title.compare("Zoom") == 0) nssSelector = [NSString stringWithUTF8String:"performZoom:"];
-      
+
       menuItem = [dynamicMenu
         addItemWithTitle:nssTitle
         action:NSSelectorFromString(nssSelector)
         keyEquivalent:nssKey
       ];
 
-      [menuItem setTag:id];
+      [menuItem setTag:0]; // only contextMenu uses the tag
     }
 
     menuItem = [[NSMenuItem alloc] initWithTitle:nssTitle action:nil keyEquivalent:@""];

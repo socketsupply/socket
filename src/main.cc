@@ -43,8 +43,7 @@ int main(int argc, char *argv[])
   });
 
   win->ipc("contextMenu", [&](std::string seq, std::string value) {
-    auto wasSelected = createContextMenu(seq, value) ? "1" : "0";
-    win->resolve("ipc;0;" + seq + ";" + wasSelected);
+    createContextMenu(seq, value);
   });
 
   win->ipc("invokeIPC", [&](std::string seq, std::string value) {
