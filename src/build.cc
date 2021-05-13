@@ -76,8 +76,8 @@ int exec (std::string cmd, std::string s) {
 }
 
 int main (const int argc, const char* argv[]) {
-  if (argc < 1) {
-    std::cout << "Config file not specified" << std::endl;
+  if (argc != 1) {
+    std::cout << "usage: opkit <project-dir>" << std::endl;
   }
 
   Platform platform;

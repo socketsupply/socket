@@ -115,6 +115,9 @@ std::string dialog_open(int flags,
   const char *default_name);
 
 std::string getCwd ();
+void addListenerThemeChange(void*);
+void setWindowColor (void*);
+void setTitle(void*);
 void createMenu (std::string);
 bool createContextMenu (std::string, std::string);
 std::vector<std::string> getMenuItemDetails (void* item);

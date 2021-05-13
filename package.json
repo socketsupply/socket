@@ -4,19 +4,19 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "build": "./bin/build.js",
-    "start": "./bin/build.js run"
+    "build": "g++ src/build.cc -o bin/build -std=c++2a",
+    "start": "bin/build test/example && open test/example/dist/Operator.app"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/webview/webview.git"
+    "url": "git+https://github.com/optoolco/opkit.git"
   },
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/webview/webview/issues"
+    "url": "https://github.com/optoolco/opkit/issues"
   },
-  "homepage": "https://github.com/webview/webview#readme",
+  "homepage": "https://github.com/optoolco/opkit#readme",
   "devDependencies": {
     "clean-css": "^5.1.1",
     "esbuild": "^0.8.56",

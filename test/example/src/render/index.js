@@ -13,6 +13,11 @@ window.addEventListener('menuItemSelected', event => {
   console.log('MENU ITEM', event.detail)
 })
 
+window.addEventListener('themeChanged', _ => {
+  const theme = document.body.getAttribute('theme')
+  document.body.setAttribute('theme', theme === 'dark' ? 'light' : 'dark')
+})
+
 window.addEventListener('data', event => {
   //
   // Receive arbitrary/non-request-response data.
@@ -89,7 +94,7 @@ class AppContainer extends Tonic {
         <tonic-input id="send" label="send">
         </tonic-input>
 
-        <tonic-input id="response" label="recieve">
+        <tonic-input id="response" label="recieve" readonly="true">
         </tonic-input>
       </div>
 
@@ -102,12 +107,13 @@ class AppContainer extends Tonic {
         <tonic-input id="menu-selection" readonly="true" label="menu selection">
         </tonic-input>
 
-        <div class="context-menu">
+        <div class="context-menu" draggable="true">
           Context Menu Enabled Area
         </div>
       </div>
 
-      <a href="file:///Users/paolofragomeni/projects/optoolco/opkit/src/render.html" download>Foo</a>
+      <a id="dd" draggable="true" href="file:///Users/paolofragomeni/projects/optoolco/opkit/TODO.md" download>Draggable</a>
+      <a id="dl" href="file:///Users/paolofragomeni/projects/optoolco/opkit/src/render.html" download>Download</a>
     `
   }
 }
@@ -115,7 +121,28 @@ class AppContainer extends Tonic {
 window.onload = async () => {
   Tonic.add(AppContainer)
 
-  document.body.addEventListener('drag', (e) => {
+  // https://developer.apple.com/library/archive/documentation/AppleApplications/Conceptual/SafariJSProgTopics/DragAndDrop.html
+
+  dd.addEventListener('dragover', (e) => {
+    console.log(e)
+    e.preventDefault()
+    return true
+  })
+
+  dd.addEventListener('dragstart', (e) => {
+    console.log(e)
+
+    return true
+  })
+
+  dd.addEventListener('dragend', (e) => {
+    const data = event.dataTransfer.items
+    console.log('DRAG END DATA', data)
+
+    return true
+  })
+
+  /* document.body.addEventListener('drag', (e) => {
     console.log(e)
   })
 
@@ -143,7 +170,7 @@ window.onload = async () => {
 
   document.body.addEventListener('dragend', (e) => {
     console.log(e)
-  })
+  }) */
 
   // await invokeIPC('onload')
 }

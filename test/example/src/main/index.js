@@ -18,7 +18,7 @@ setInterval(() => {
   counter++
 
   ipc.send({ sending: Date.now(), counter })
-}, 512)
+}, 2048)
 
 process.on('beforeExit', () => {
   console.log('exiting')

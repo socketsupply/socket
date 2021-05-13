@@ -1,4 +1,3 @@
-- [x] Support proper window shadows on macOS
 - [x] Support file and directory picker with options
 - [x] Spawn any process as a "backend"
 - [x] async/await IPC to and from backend process (stdio)
@@ -7,7 +6,10 @@
 - [x] Drag and drop multiple files in and out
 - [x] Native Menus IPC
 - [x] Native Menu api
-- [x] Turn POC into tool
-- [ ] Allow hiding title bar
-- [ ] Native Context Menus
+- [x] Native Context Menus
+- [x] Support proper window shadows on macOS
+- [x] theme change event (macOS)
+- [ ] theme change event (linux/windows) ?
+- [-] Allow hiding title bar
+- [ ] Squirrel updates for mac
 - [ ] Brew/Apt/Choc install (No dependency scavenger hunts)

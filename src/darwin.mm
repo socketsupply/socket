@@ -23,6 +23,26 @@ std::vector<std::string> getMenuItemDetails (void* item) {
   return vec;
 }
 
+std::string getTheme () {
+  NSString *interfaceStyle = [NSUserDefaults.standardUserDefaults valueForKey:@"AppleInterfaceStyle"];
+  bool isDark = [interfaceStyle isEqualToString:@"Dark"];
+  std::string mode = "light";
+
+  if (isDark) {
+    mode = "dark";
+  }
+
+  return mode;
+}
+
+void addListenerThemeChange (void* delegate) {
+  NSResponder* r = (id) delegate;
+  [NSDistributedNotificationCenter.defaultCenter addObserver:r selector:@selector(themeChangedOnMainThread) name:@"AppleInterfaceThemeChangedNotification" object: nil];
+}
+
+void setTitle(void* w) {
+}
+
 bool createContextMenu (std::string seq, std::string value) {
   auto menuItems = split(value, '_');
   auto id = std::stoi(seq);
@@ -52,6 +72,11 @@ bool createContextMenu (std::string seq, std::string value) {
 
   [pMenu popUpMenuPositioningItem:pMenu.itemArray[0] atLocation:NSPointFromCGPoint(CGPointMake(mouseLocation.x, mouseLocation.y)) inView:nil];
   return true;
+}
+
+void setWindowColor (void* w) {
+  NSWindow* win = (id) w;
+  [win setBackgroundColor: NSColor.whiteColor];
 }
 
 void createMenu (std::string menu) {

@@ -2,6 +2,7 @@
 #define WEBVIEW_H
 
 #include "platform.h"
+#include <iostream>
 
 #ifndef WEBVIEW_API
 #define WEBVIEW_API extern
@@ -227,7 +228,7 @@ public:
                      this);
     webkit_user_content_manager_register_script_message_handler(manager,
                                                                 "external");
-    init("window.external={invoke:function(s){window.webkit.messageHandlers."
+    init("window.external={invoke:s => {window.webkit.messageHandlers."
          "external.postMessage(s);}}");
 
     gtk_container_add(GTK_CONTAINER(m_window), GTK_WIDGET(m_webview));
@@ -326,6 +327,8 @@ using browser_engine = gtk_webkit_engine;
 #define NSWindowStyleMaskResizable 8
 #define NSWindowStyleMaskMiniaturizable 4
 #define NSWindowStyleMaskTitled 1
+#define NSWindowStyleMaskTexturedBackground 1 << 8
+#define NSWindowStyleMaskUnifiedTitleAndToolbar 1 << 12
 #define NSWindowTitleHidden 1
 #define NSFullSizeContentViewWindowMask 32768
 #define NSWindowStyleMaskClosable 2
@@ -423,6 +426,44 @@ class cocoa_wkwebview_engine {
 
     class_addMethod(
       cls,
+      _sel("performDragOperation:"),
+      (IMP)(+[](id self) {
+        auto w = (cocoa_wkwebview_engine*) objc_getAssociatedObject(self, "webview");
+        assert(w);
+
+        std::cout << "HELLO" << std::endl;
+        std::cout << "HELLO" << std::endl;
+      }),
+      "v"
+    );
+
+    class_addMethod(
+      cls,
+      _sel("themeChangedOnMainThread"),
+      (IMP)(+[](id self) {
+        auto w = (cocoa_wkwebview_engine*) objc_getAssociatedObject(self, "webview");
+        assert(w);
+
+        w->eval("(() => {"
+          "  const event = new window.CustomEvent('themeChanged');"
+          "  window.dispatchEvent(event);"
+          "})()"
+        );
+      }),
+      "v"
+    );
+
+    class_addMethod(
+      cls,
+      _sel("mouseDragged:"),
+      (IMP)(+[](id event) {
+        std::cout << "HELLO" << std::endl;
+      }),
+      "v"
+    );
+
+    class_addMethod(
+      cls,
       "userContentController:didReceiveScriptMessage:"_sel,
       (IMP)(+[](id self, SEL, id, id msg) {
         auto w = (cocoa_wkwebview_engine*) objc_getAssociatedObject(self, "webview");
@@ -458,6 +499,8 @@ class cocoa_wkwebview_engine {
       sel_registerName("setDelegate:"),
       delegate
     );
+
+    addListenerThemeChange(delegate);
 
     // Main window
     if (window == nullptr) {
@@ -595,6 +638,8 @@ class cocoa_wkwebview_engine {
       config
     );
 
+    // initTitleBar();
+
     ((void (*)(id, SEL, id, id))objc_msgSend)(
       m_manager,
       "addScriptMessageHandler:name:"_sel,
@@ -604,7 +649,7 @@ class cocoa_wkwebview_engine {
 
     init(R"script(
       window.external = {
-        invoke: function (s) {
+        invoke: s => {
           window.webkit.messageHandlers.external.postMessage(s)
         }
       }
@@ -673,15 +718,19 @@ class cocoa_wkwebview_engine {
         title.c_str()
       )
     );
+
+    setTitle(m_window);
   }
 
   void set_size(int width, int height, int hints) {
     auto style = 
       NSWindowStyleMaskClosable |
       NSWindowStyleMaskTitled |
-      NSWindowStyleMaskMiniaturizable;
-      // NSWindowTitleHidden | 
       // NSFullSizeContentViewWindowMask |
+      // NSWindowStyleMaskTexturedBackground |
+      // NSWindowTitleHidden |
+      NSWindowStyleMaskMiniaturizable;
+
     if (hints != WEBVIEW_HINT_FIXED) {
       style = style | NSWindowStyleMaskResizable;
     }
@@ -716,15 +765,14 @@ class cocoa_wkwebview_engine {
 
     ((void (*)(id, SEL))objc_msgSend)(m_window, "center"_sel);
     ((void (*)(id, SEL))objc_msgSend)(m_window, "setHasShadow:"_sel);
+
+    setWindowColor(m_window);
+
     ((void (*)(id, SEL, BOOL))objc_msgSend)(m_window, "setTitlebarAppearsTransparent:"_sel, 1);
-    /* ((id (*)(id, SEL, id))objc_msgSend)(
-      m_window,
-      "setBackgroundColor:"_sel, 
-      "white"_cls
-    );*/
+
     // ((void (*)(id, SEL, BOOL))objc_msgSend)(m_window, "setTitleVisibility:"_sel, 1);
-    // ((void (*)(id, SEL, BOOL))objc_msgSend)(m_window, "setMovableByWindowBackground:"_sel, 1);
-    // ((void (*)(id, SEL, BOOL))objc_msgSend)(m_window, "setOpaque:"_sel, 0);
+    ((void (*)(id, SEL, BOOL))objc_msgSend)(m_window, "setMovableByWindowBackground:"_sel, 1);
+    ((void (*)(id, SEL, BOOL))objc_msgSend)(m_window, "setOpaque:"_sel, 0);
     // setWindowButtonsOffset:NSMakePoint(12, 10)
     // setTitleVisibility:NSWindowTitleHidden
   }
@@ -971,7 +1019,7 @@ public:
       TranslateMessage(&msg);
       DispatchMessage(&msg);
     }
-    init("window.external={invoke:s=>window.chrome.webview.postMessage(s)}");
+    init("window.external = { invoke: s => window.chrome.webview.postMessage(s) }");
     return true;
   }
 
@@ -1324,6 +1372,7 @@ public:
           "    detail = JSON.parse(atob(`" + data + "`));"
           "  } catch (err) {"
           "    console.error(`Unable to parse (${detail})`);"
+          "    return;"
           "  }"
           "  const event = new window.CustomEvent('" + event + "', { detail });"
           "  window.dispatchEvent(event);"
