@@ -127,46 +127,6 @@ WEBVIEW_API void webview_return(
 
 namespace webview {
 using dispatch_fn_t = std::function<void()>;
-
-inline std::string url_encode(const std::string s) {
-  std::string encoded;
-  for (unsigned int i = 0; i < s.length(); i++) {
-    auto c = s[i];
-    if (isalnum(c) || c == '-' || c == '_' || c == '.' || c == '~') {
-      encoded = encoded + c;
-    } else {
-      char hex[4];
-      snprintf(hex, sizeof(hex), "%%%02x", c);
-      encoded = encoded + hex;
-    }
-  }
-  return encoded;
-}
-
-inline std::string url_decode(const std::string s) {
-  std::string decoded;
-  for (unsigned int i = 0; i < s.length(); i++) {
-    if (s[i] == '%') {
-      int n;
-      n = std::stoul(s.substr(i + 1, 2), nullptr, 16);
-      decoded = decoded + static_cast<char>(n);
-      i = i + 2;
-    } else if (s[i] == '+') {
-      decoded = decoded + ' ';
-    } else {
-      decoded = decoded + s[i];
-    }
-  }
-  return decoded;
-}
-
-inline std::string html_from_uri(const std::string s) {
-  if (s.substr(0, 15) == "data:text/html,") {
-    return url_decode(s.substr(15));
-  }
-  return "";
-}
-
 } // namespace webview
 
 #if defined(WEBVIEW_GTK)
@@ -949,13 +909,8 @@ public:
   }
 
   void navigate(const std::string url) override {
-    std::string html = html_from_uri(url);
-    if (html != "") {
-      m_webview.NavigateToString(winrt::to_hstring(html));
-    } else {
-      Uri uri(winrt::to_hstring(url));
-      m_webview.Navigate(uri);
-    }
+    Uri uri(winrt::to_hstring(url));
+    m_webview.Navigate(uri);
   }
 
   void init(const std::string js) override {
@@ -1282,17 +1237,7 @@ public:
       : browser_engine(debug, wnd) {}
 
   void navigate(const std::string url) {
-    if (url == "") {
-      browser_engine::navigate("data:text/html," +
-        url_encode("<html><body></body></html>"));
-      return;
-    }
-    std::string html = html_from_uri(url);
-    if (html != "") {
-      browser_engine::navigate("data:text/html," + url_encode(html));
-    } else {
-      browser_engine::navigate(url);
-    }
+    browser_engine::navigate(url);
   }
 
   using binding_t = std::function<void(std::string, std::string, void *)>;

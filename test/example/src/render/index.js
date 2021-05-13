@@ -123,19 +123,19 @@ window.onload = async () => {
 
   // https://developer.apple.com/library/archive/documentation/AppleApplications/Conceptual/SafariJSProgTopics/DragAndDrop.html
 
-  dd.addEventListener('dragover', (e) => {
+  dd.addEventListener('dragover', e => {
     console.log(e)
     e.preventDefault()
     return true
   })
 
-  dd.addEventListener('dragstart', (e) => {
+  dd.addEventListener('dragstart', e => {
     console.log(e)
 
     return true
   })
 
-  dd.addEventListener('dragend', (e) => {
+  dd.addEventListener('dragend', _ => {
     const data = event.dataTransfer.items
     console.log('DRAG END DATA', data)
 
