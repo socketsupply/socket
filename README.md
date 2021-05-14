@@ -23,6 +23,9 @@ any arbitrary child process (ie, node, rust, etc).
 
 # GET STARTED
 
+"Modern Compiler" means whatever ships with latest MacOS or, on linux
+it means something like `build-essential clang-12 libc++1-12-dev libc++abi-12-dev`.
+
 #### INSTALL
 
 ```bash
