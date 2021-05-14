@@ -12,6 +12,11 @@ import esbuild from 'esbuild'
 //
 const target = process.argv[2];
 
+if (!target) {
+  console.log('  - Did not receive the build target path as an argument')
+  process.exit(1)
+}
+
 const css = async (src, dest) => {
   const cleanCSS = new CleanCSS({ advanced: true })
   const s = await fs.readFile(src, 'utf8')

@@ -12,7 +12,7 @@
 #define OS_DARWIN
 #endif
 
-#ifdef __LINUX__
+#ifdef __linux__
 #define OS_LINUX
 #endif
 
@@ -21,7 +21,7 @@
 #include <locale>
 #include <vector>
 
-typedef struct {
+struct Platform {
 #ifdef OS_DARWIN
   bool darwin = true;
   bool win32 = false;
@@ -42,7 +42,7 @@ typedef struct {
   bool linux = true;
   std::string os = "linux";
 #endif
-} Platform;
+};
 
 inline const std::vector<std::string> split(const std::string& s, const char& c) {
   std::string buff {""};

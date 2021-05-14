@@ -13,6 +13,11 @@
 namespace fs = std::filesystem;
 auto start = std::chrono::system_clock::now();
 
+std::string pathToString(const fs::path &path) {
+  auto s = path.u8string();
+  return std::string(s.begin(), s.end());
+}
+
 std::string readFile (fs::path path) {
   std::ifstream stream(path.u8string());
   std::string content;
@@ -24,7 +29,7 @@ std::string readFile (fs::path path) {
 }
 
 void writeFile (fs::path path, std::string s) {
-  std::ofstream stream(path.u8string());
+  std::ofstream stream(pathToString(path));
   stream << s;
   stream.close();
 }
@@ -90,7 +95,7 @@ int main (const int argc, const char* argv[]) {
   auto pathOutput = fs::path { target / fs::path(settings["output"]) };
 
   fs::remove_all(pathOutput);
-  log("cleaned: " + pathOutput.u8string());
+  log("cleaned: " + pathToString(pathOutput));
 
   auto title = settings["title"];
   std::string flags;
@@ -131,7 +136,17 @@ int main (const int argc, const char* argv[]) {
     flags = "`pkg-config --cflags --libs gtk+-3.0 webkit2gtk-4.0'`";
     files = "src/main.cc src/linux.cc";
 
-    // TODO build specifics
+    pathResourcesRelativeToUserBuild = {
+      fs::path(settings["output"])
+      //
+      //
+      //
+      // TODO where is this going?
+      //
+      //
+      //
+      //
+    };
   }
 
   if (platform.win32) {
@@ -158,11 +173,13 @@ int main (const int argc, const char* argv[]) {
 
   buildCommand
     << "cd "
-    << target.u8string()
+    << pathToString(target)
     << " && "
     << settings["build"]
     << " "
-    << pathResourcesRelativeToUserBuild;
+    << pathToString(pathResourcesRelativeToUserBuild);
+
+  std::cout << buildCommand.str() << std::endl;
 
   std::system(buildCommand.str().c_str());
   log("ran user build command");
@@ -184,7 +201,7 @@ int main (const int argc, const char* argv[]) {
     << files << " "
     << flags << " "
     << settings["flags"] << " "
-    << "-o " << binaryPath.u8string() << " "
+    << "-o " << pathToString(binaryPath) << " "
     << define("WIN_TITLE", settings["title"]) << " "
     << define("WIN_WIDTH", settings["width"]) << " "
     << define("WIN_HEIGHT", settings["height"]) << " "

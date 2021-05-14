@@ -1,7 +1,6 @@
 #include "platform.h"
 #include <string>
 
-#ifdef OS_DARWIN
 //
 // Darwin bundle settings
 //
@@ -117,9 +116,6 @@ constexpr auto gPListEntitlements = R"XML(
 </plist>
 )XML";
 
-#endif
-
-#ifdef OS_LINUX
 constexpr auto gDestkopManifest = R"INI(
 [Desktop Entry]
 Encoding=UTF-8
@@ -134,8 +130,5 @@ Type=Application
 Comment={{description}}
 Categories={{categories}};
 )INI";
-#endif
 
-#ifdef OS_WIN32
 // TODO what files does a windows build need?
-#endif
