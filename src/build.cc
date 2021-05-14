@@ -86,6 +86,11 @@ int main (const int argc, const char* argv[]) {
     exit(0);
   }
 
+  if (std::getenv("CXX") == nullptr) {
+    std::cout << "The $CXX environment variable needs to be set." << std::endl;
+    exit(0);
+  }
+
   Platform platform;
   auto target = fs::path(argv[1]);
 
@@ -200,7 +205,7 @@ int main (const int argc, const char* argv[]) {
   std::replace(menu.begin(), menu.end(), '\n', '_');
 
   compileCommand
-    << settings["compiler"] << " "
+    << std::getenv("CXX") << " "
     << files << " "
     << flags << " "
     << settings["flags"] << " "
