@@ -12,85 +12,118 @@
 extern "C" {
 #endif
 
-//
-// https://github.com/WebView/webview
-//
 typedef void *webview_t;
 
-
+//
 // Creates a new webview instance. If debug is non-zero - developer tools will
 // be enabled (if the platform supports them). Window parameter can be a
 // pointer to the native window handle. If it's non-null - then child WebView
 // is embedded into the given parent window. Otherwise a new window is created.
 // Depending on the platform, a GtkWindow, NSWindow or HWND pointer can be
 // passed here.
-WEBVIEW_API webview_t webview_create(int debug, void *window);
+//
+WEBVIEW_API
+  webview_t webview_create(int debug, void *window);
 
+//
 // Destroys a webview and closes the native window.
-WEBVIEW_API void webview_destroy(webview_t w);
+//
+WEBVIEW_API
+  void webview_destroy(webview_t w);
 
+//
 // Runs the main loop until it's terminated. After this function exits - you
 // must destroy the webview.
-WEBVIEW_API void webview_run(webview_t w);
+//
+WEBVIEW_API
+  void webview_run(webview_t w);
 
+//
 // Stops the main loop. It is safe to call this function from another other
 // background thread.
-WEBVIEW_API void webview_terminate(webview_t w);
+//
+WEBVIEW_API
+  void webview_terminate(webview_t w);
 
+//
 // Posts a function to be executed on the main thread. You normally do not need
 // to call this function, unless you want to tweak the native window.
-WEBVIEW_API void
-webview_dispatch(webview_t w, void (*fn)(webview_t w, void *arg), void *arg);
+//
+WEBVIEW_API
+  void webview_dispatch(webview_t w, void (*fn)(webview_t w, void *arg), void *arg);
 
+//
 // Returns a native window handle pointer. When using GTK backend the pointer
 // is GtkWindow pointer, when using Cocoa backend the pointer is NSWindow
 // pointer, when using Win32 backend the pointer is HWND pointer.
-WEBVIEW_API void *webview_get_window(webview_t w);
+//
+WEBVIEW_API
+  void *webview_get_window(webview_t w);
 
+//
 // Updates the title of the native window. Must be called from the UI thread.
-WEBVIEW_API void webview_set_title(webview_t w, const char *title);
+//
+WEBVIEW_API
+  void webview_set_title(webview_t w, const char *title);
 
-// Window size hints
 #define WEBVIEW_HINT_NONE 0  // Width and height are default size
 #define WEBVIEW_HINT_MIN 1   // Width and height are minimum bounds
 #define WEBVIEW_HINT_MAX 2   // Width and height are maximum bounds
 #define WEBVIEW_HINT_FIXED 3 // Window size can not be changed by a user
-// Updates native window size. See WEBVIEW_HINT constants.
-WEBVIEW_API void webview_set_size(webview_t w, int width, int height,
-                                  int hints);
 
+//
+// Updates native window size. See WEBVIEW_HINT constants.
+//
+WEBVIEW_API
+  void webview_set_size(webview_t w, int width, int height,
+                                  int hints);
+//
 // Navigates webview to the given URL. URL may be a data URI, i.e.
 // "data:text/text,<html>...</html>". It is often ok not to url-encode it
 // properly, webview will re-encode it for you.
-WEBVIEW_API void webview_navigate(webview_t w, const char *url);
+//
+WEBVIEW_API
+  void webview_navigate(webview_t w, const char *url);
 
+//
 // Injects JavaScript code at the initialization of the new page. Every time
 // the webview will open a the new page - this initialization code will be
 // executed. It is guaranteed that code is executed before window.onload.
-WEBVIEW_API void webview_init(webview_t w, const char *js);
+//
+WEBVIEW_API
+  void webview_init(webview_t w, const char *js);
 
+//
 // Evaluates arbitrary JavaScript code. Evaluation happens asynchronously, also
 // the result of the expression is ignored. Use RPC bindings if you want to
 // receive notifications about the results of the evaluation.
-WEBVIEW_API void webview_eval(webview_t w, const char *js);
+//
+WEBVIEW_API
+  void webview_eval(webview_t w, const char *js);
 
+//
 // Binds a native C callback so that it will appear under the given name as a
 // global JavaScript function. Internally it uses webview_init(). Callback
 // receives a request string and a user-provided argument pointer. Request
 // string is a JSON array of all the arguments passed to the JavaScript
 // function.
-WEBVIEW_API void webview_ipc(
+//
+WEBVIEW_API
+  void webview_ipc(
     webview_t w,
     const char *name,
     void (*fn)(const char *seq, const char *req, void *arg),
     void *arg
   );
 
+//
 // Allows to return a value from the native binding. Original request pointer
 // must be provided to help internal RPC engine match requests with responses.
 // If status is zero - result is expected to be a valid JSON result value.
 // If status is not zero - result is an error JSON object.
-WEBVIEW_API void webview_return(
+//
+WEBVIEW_API
+  void webview_return(
     webview_t w,
     const char *seq,
     int status,
@@ -299,25 +332,18 @@ using browser_engine = gtk_webkit_engine;
 
 namespace webview {
 
-// Helpers to avoid too much typing
-id operator"" _cls(const char *s, std::size_t) { return (id)objc_getClass(s); }
-SEL operator"" _sel(const char *s, std::size_t) { return sel_registerName(s); }
-id operator"" _str(const char *s, std::size_t) {
-  return ((id(*)(id, SEL, const char *))objc_msgSend)(
-    "NSString"_cls,
-    "stringWithUTF8String:"_sel,
-    s
-  );
+SEL NSSelector(const char *s) {
+  return sel_registerName(s);
 }
 
+id NSClass(const char *s) {
+  return (id) objc_getClass(s);
+}
 
-SEL _sel(const char *s) { return sel_registerName(s); }
-id _cls(const char *s) { return (id) objc_getClass(s); }
-
-id _id (const char *s) {
+id NSString (const char *s) {
   return ((id(*) (id, SEL, const char *)) objc_msgSend)(
-    _cls("NSString"),
-    _sel("stringWithUTF8String:"),
+    NSClass("NSString"),
+    NSSelector("stringWithUTF8String:"),
     s
   );
 }
@@ -328,31 +354,31 @@ class cocoa_wkwebview_engine {
   cocoa_wkwebview_engine(bool debug, void *window) {
     // Application
     id app = ((id(*)(id, SEL))objc_msgSend)(
-      _cls("NSApplication"),
-      _sel("sharedApplication")
+      NSClass("NSApplication"),
+      NSSelector("sharedApplication")
     );
 
     ((void (*)(id, SEL, long)) objc_msgSend)(
       app,
-      _sel("setActivationPolicy:"),
+      NSSelector("setActivationPolicy:"),
       NSApplicationActivationPolicyRegular
     );
 
     // Delegate
-    auto cls = objc_allocateClassPair((Class) _cls("NSResponder"), "AppDelegate", 0);
+    auto cls = objc_allocateClassPair((Class) NSClass("NSResponder"), "AppDelegate", 0);
 
     class_addProtocol(cls, objc_getProtocol("NSTouchBarProvider"));
 
     class_addMethod(
       cls,
-      _sel("applicationShouldTerminateAfterLastWindowClosed:"),
+      NSSelector("applicationShouldTerminateAfterLastWindowClosed:"),
       (IMP)(+[](id, SEL, id) -> BOOL { return 1; }),
       "c@:@"
     );
 
     class_addMethod(
       cls,
-      _sel("menuItemSelected:"),
+      NSSelector("menuItemSelected:"),
       (IMP)(+[](id self, SEL _cmd, id item) {
         auto w = (cocoa_wkwebview_engine*) objc_getAssociatedObject(self, "webview");
         assert(w);
@@ -386,7 +412,7 @@ class cocoa_wkwebview_engine {
 
     class_addMethod(
       cls,
-      _sel("themeChangedOnMainThread"),
+      NSSelector("themeChangedOnMainThread"),
       (IMP)(+[](id self) {
         auto w = (cocoa_wkwebview_engine*) objc_getAssociatedObject(self, "webview");
         assert(w);
@@ -402,7 +428,7 @@ class cocoa_wkwebview_engine {
 
     class_addMethod(
       cls,
-      "userContentController:didReceiveScriptMessage:"_sel,
+      NSSelector("userContentController:didReceiveScriptMessage:"),
       (IMP)(+[](id self, SEL, id, id msg) {
         auto w = (cocoa_wkwebview_engine*) objc_getAssociatedObject(self, "webview");
         assert(w);
@@ -410,9 +436,9 @@ class cocoa_wkwebview_engine {
         w->on_message(((const char* (*)(id, SEL))objc_msgSend)(
           ((id (*)(id, SEL)) objc_msgSend)(
             msg,
-            "body"_sel
+            NSSelector("body")
           ),
-          "UTF8String"_sel
+          NSSelector("UTF8String")
         ));
       }),
       "v@:@@"
@@ -422,7 +448,7 @@ class cocoa_wkwebview_engine {
 
     auto delegate = ((id(*)(id, SEL))objc_msgSend)(
       (id)cls,
-      "new"_sel
+      NSSelector("new")
     );
 
     objc_setAssociatedObject(
@@ -443,13 +469,13 @@ class cocoa_wkwebview_engine {
     // Main window
     if (window == nullptr) {
       m_window = ((id(*)(id, SEL))objc_msgSend)(
-        "NSWindow"_cls,
-        "alloc"_sel
+        NSClass("NSWindow"),
+        NSSelector("alloc")
       );
       
       m_window = ((id(*)(id, SEL, CGRect, int, unsigned long, int))objc_msgSend)(
         m_window,
-        "initWithContentRect:styleMask:backing:defer:"_sel,
+        NSSelector("initWithContentRect:styleMask:backing:defer:"),
         CGRectMake(0, 0, 0, 0),
         0,
         NSBackingStoreBuffered,
@@ -460,11 +486,20 @@ class cocoa_wkwebview_engine {
     }
 
     // Webview
-    auto config = ((id(*)(id, SEL))objc_msgSend)("WKWebViewConfiguration"_cls, "new"_sel);
+    auto config = ((id (*)(id, SEL)) objc_msgSend)(
+      NSClass("WKWebViewConfiguration"),
+      NSSelector("new")
+    );
 
-    m_manager = ((id(*)(id, SEL))objc_msgSend)(config, "userContentController"_sel);
+    m_manager = ((id (*)(id, SEL)) objc_msgSend)(
+      config,
+      NSSelector("userContentController")
+    );
 
-    m_webview = ((id(*)(id, SEL))objc_msgSend)("WKWebView"_cls, "alloc"_sel);
+    m_webview = ((id (*)(id, SEL)) objc_msgSend)(
+      NSClass("WKWebView"),
+      NSSelector("alloc")
+    );
 
     if (debug) {
       //
@@ -473,14 +508,14 @@ class cocoa_wkwebview_engine {
       ((id(*)(id, SEL, id, id))objc_msgSend)(
         ((id(*)(id, SEL))objc_msgSend)(
           config,
-          "preferences"_sel
+          NSSelector("preferences")
         ),
-        "setValue:forKey:"_sel,
+        NSSelector("setValue:forKey:"),
         ((id(*)(id, SEL, BOOL))objc_msgSend)(
-          "NSNumber"_cls,
-          "numberWithBool:"_sel,
+          NSClass("NSNumber"),
+          NSSelector("numberWithBool:"),
           1),
-        "developerExtrasEnabled"_str
+        NSString("developerExtrasEnabled")
       );
     }
 
@@ -490,15 +525,15 @@ class cocoa_wkwebview_engine {
     ((id(*)(id, SEL, id, id))objc_msgSend)(
       ((id(*)(id, SEL))objc_msgSend)(
         config,
-        "preferences"_sel
+        NSSelector("preferences")
       ),
-      "setValue:forKey:"_sel,
+      NSSelector("setValue:forKey:"),
       ((id(*)(id, SEL, BOOL))objc_msgSend)(
-        "NSNumber"_cls,
-        "numberWithBool:"_sel,
+        NSClass("NSNumber"),
+        NSSelector("numberWithBool:"),
         1
       ),
-      "fullScreenEnabled"_str
+      NSString("fullScreenEnabled")
     );
 
     //
@@ -507,15 +542,15 @@ class cocoa_wkwebview_engine {
     ((id(*)(id, SEL, id, id))objc_msgSend)(
       ((id(*)(id, SEL))objc_msgSend)(
         config,
-        "preferences"_sel
+        NSSelector("preferences")
       ),
-      "setValue:forKey:"_sel,
+      NSSelector("setValue:forKey:"),
       ((id(*)(id, SEL, BOOL))objc_msgSend)(
-        "NSNumber"_cls,
-        "numberWithBool:"_sel,
+        NSClass("NSNumber"),
+        NSSelector("numberWithBool:"),
         1
       ),
-      "allowFileAccessFromFileURLs"_str
+      NSString("allowFileAccessFromFileURLs")
     );
 
     //
@@ -524,15 +559,15 @@ class cocoa_wkwebview_engine {
     ((id(*)(id, SEL, id, id))objc_msgSend)(
       ((id(*)(id, SEL))objc_msgSend)(
         config,
-        "preferences"_sel
+        NSSelector("preferences")
       ),
-      "setValue:forKey:"_sel,
+      NSSelector("setValue:forKey:"),
       ((id(*)(id, SEL, BOOL))objc_msgSend)(
-        "NSNumber"_cls,
-        "numberWithBool:"_sel,
+        NSClass("NSNumber"),
+        NSSelector("numberWithBool:"),
         1
       ),
-      "developerExtrasEnabled"_str
+      NSString("developerExtrasEnabled")
     );
 
     //
@@ -541,15 +576,15 @@ class cocoa_wkwebview_engine {
     ((id(*)(id, SEL, id, id))objc_msgSend)(
       ((id(*)(id, SEL))objc_msgSend)(
         config,
-        "preferences"_sel
+        NSSelector("preferences")
       ),
-      "setValue:forKey:"_sel,
+      NSSelector("setValue:forKey:"),
       ((id(*)(id, SEL, BOOL))objc_msgSend)(
-        "NSNumber"_cls,
-        "numberWithBool:"_sel,
+        NSClass("NSNumber"),
+        NSSelector("numberWithBool:"),
         1
       ),
-      "javaScriptCanAccessClipboard"_str
+      NSString("javaScriptCanAccessClipboard")
     );
 
     //
@@ -558,20 +593,20 @@ class cocoa_wkwebview_engine {
     ((id(*)(id, SEL, id, id))objc_msgSend)(
       ((id(*)(id, SEL))objc_msgSend)(
         config,
-        "preferences"_sel
+        NSSelector("preferences")
       ),
-      "setValue:forKey:"_sel,
+      NSSelector("setValue:forKey:"),
       ((id(*)(id, SEL, BOOL))objc_msgSend)(
-        "NSNumber"_cls,
-        "numberWithBool:"_sel,
+        NSClass("NSNumber"),
+        NSSelector("numberWithBool:"),
         1
       ),
-      "DOMPasteAllowed"_str
+      NSString("DOMPasteAllowed")
     );
 
     ((void (*)(id, SEL, CGRect, id))objc_msgSend)(
       m_webview,
-      "initWithFrame:configuration:"_sel,
+      NSSelector("initWithFrame:configuration:"),
       CGRectMake(0, 0, 0, 0),
       config
     );
@@ -580,9 +615,9 @@ class cocoa_wkwebview_engine {
 
     ((void (*)(id, SEL, id, id))objc_msgSend)(
       m_manager,
-      "addScriptMessageHandler:name:"_sel,
+      NSSelector("addScriptMessageHandler:name:"),
       delegate,
-      "external"_str
+      NSString("external")
     );
 
     init(R"script(
@@ -595,13 +630,13 @@ class cocoa_wkwebview_engine {
 
     ((void (*)(id, SEL, id))objc_msgSend)(
       m_window,
-      "setContentView:"_sel,
+      NSSelector("setContentView:"),
       m_webview
     );
 
     ((void (*)(id, SEL, id))objc_msgSend)(
       m_window,
-      "makeKeyAndOrderFront:"_sel,
+      NSSelector("makeKeyAndOrderFront:"),
       nullptr
     );
   }
@@ -613,27 +648,27 @@ class cocoa_wkwebview_engine {
     close();
 
     ((void (*)(id, SEL, id))objc_msgSend)(
-      "NSApp"_cls,
-      "terminate:"_sel,
+      NSClass("NSApp"),
+      NSSelector("terminate:"),
       nullptr
     );
   }
 
   void run() {
     id app = ((id(*)(id, SEL))objc_msgSend)(
-      "NSApplication"_cls,
-      "sharedApplication"_sel
+      NSClass("NSApplication"),
+      NSSelector("sharedApplication")
     );
 
     dispatch([&]() {
       ((void (*)(id, SEL, BOOL))objc_msgSend)(
         app,
-        "activateIgnoringOtherApps:"_sel,
+        NSSelector("activateIgnoringOtherApps:"),
         1
       );
     });
 
-    ((void (*)(id, SEL))objc_msgSend)(app, "run"_sel);
+    ((void (*)(id, SEL))objc_msgSend)(app, NSSelector("run"));
   }
 
   void dispatch(std::function<void()> f) {
@@ -649,10 +684,10 @@ class cocoa_wkwebview_engine {
   void set_title(const std::string title) {
     ((void (*)(id, SEL, id))objc_msgSend)(
       m_window,
-      "setTitle:"_sel,
+      NSSelector("setTitle:"),
       ((id(*)(id, SEL, const char *))objc_msgSend)(
-        "NSString"_cls,
-        "stringWithUTF8String:"_sel,
+        NSClass("NSString"),
+        NSSelector("stringWithUTF8String:"),
         title.c_str()
       )
     );
@@ -676,34 +711,34 @@ class cocoa_wkwebview_engine {
 
     ((void (*)(id, SEL, unsigned long)) objc_msgSend)(
       m_window,
-      "setStyleMask:"_sel,
+      NSSelector("setStyleMask:"),
       style
     );
 
     if (hints == WEBVIEW_HINT_MIN) {
       ((void (*)(id, SEL, CGSize)) objc_msgSend)(
         m_window,
-        "setContentMinSize:"_sel,
+        NSSelector("setContentMinSize:"),
         CGSizeMake(width, height)
       );
     } else if (hints == WEBVIEW_HINT_MAX) {
       ((void (*)(id, SEL, CGSize)) objc_msgSend)(
         m_window,
-        "setContentMaxSize:"_sel,
+        NSSelector("setContentMaxSize:"),
         CGSizeMake(width, height)
       );
     } else {
       ((void (*)(id, SEL, CGRect, BOOL, BOOL)) objc_msgSend)(
         m_window,
-        "setFrame:display:animate:"_sel,
+        NSSelector("setFrame:display:animate:"),
         CGRectMake(0, 0, width, height),
         1,
         0
       );
     }
 
-    ((void (*)(id, SEL))objc_msgSend)(m_window, "center"_sel);
-    ((void (*)(id, SEL))objc_msgSend)(m_window, "setHasShadow:"_sel);
+    ((void (*)(id, SEL))objc_msgSend)(m_window, NSSelector("center"));
+    ((void (*)(id, SEL))objc_msgSend)(m_window, NSSelector("setHasShadow:"));
 
     // setWindowColor(m_window, 0.1, 0.1, 0.1, 0.0);
 
@@ -717,21 +752,21 @@ class cocoa_wkwebview_engine {
 
   void navigate(const std::string url) {
     auto nsurl = ((id(*)(id, SEL, id))objc_msgSend)(
-      "NSURL"_cls,
-      "URLWithString:"_sel,
+      NSClass("NSURL"),
+      NSSelector("URLWithString:"),
       ((id(*)(id, SEL, const char *))objc_msgSend)(
-        "NSString"_cls,
-        "stringWithUTF8String:"_sel,
+        NSClass("NSString"),
+        NSSelector("stringWithUTF8String:"),
         url.c_str()
       )
     );
 
     ((void (*)(id, SEL, id))objc_msgSend)(
       m_webview,
-      "loadRequest:"_sel,
+      NSSelector("loadRequest:"),
       ((id(*)(id, SEL, id))objc_msgSend)(
-        "NSURLRequest"_cls,
-        "requestWithURL:"_sel,
+        NSClass("NSURLRequest"),
+        NSSelector("requestWithURL:"),
         nsurl
       )
     );
@@ -742,16 +777,16 @@ class cocoa_wkwebview_engine {
     // [m_manager addUserScript:[[WKUserScript alloc] initWithSource:[NSString stringWithUTF8String:js.c_str()] injectionTime:WKUserScriptInjectionTimeAtDocumentStart forMainFrameOnly:YES]]
     ((void (*)(id, SEL, id)) objc_msgSend)(
       m_manager,
-      "addUserScript:"_sel,
+      NSSelector("addUserScript:"),
       ((id (*)(id, SEL, id, long, BOOL)) objc_msgSend)(
         ((id (*)(id, SEL)) objc_msgSend)(
-          "WKUserScript"_cls,
-          "alloc"_sel
+          NSClass("WKUserScript"),
+          NSSelector("alloc")
         ),
-        "initWithSource:injectionTime:forMainFrameOnly:"_sel,
+        NSSelector("initWithSource:injectionTime:forMainFrameOnly:"),
         ((id (*)(id, SEL, const char *)) objc_msgSend)(
-          "NSString"_cls,
-          "stringWithUTF8String:"_sel,
+          NSClass("NSString"),
+          NSSelector("stringWithUTF8String:"),
           js.c_str()
         ),
         WKUserScriptInjectionTimeAtDocumentStart,
@@ -778,10 +813,10 @@ class cocoa_wkwebview_engine {
   void eval(const std::string js) {
     ((void (*)(id, SEL, id, id)) objc_msgSend)(
       m_webview,
-      "evaluateJavaScript:completionHandler:"_sel,
+      NSSelector("evaluateJavaScript:completionHandler:"),
       ((id(*)(id, SEL, const char *)) objc_msgSend)(
-        "NSString"_cls,
-        "stringWithUTF8String:"_sel,
+        NSClass("NSString"),
+        NSSelector("stringWithUTF8String:"),
         js.c_str()
       ),
       nullptr
@@ -790,7 +825,7 @@ class cocoa_wkwebview_engine {
 
 private:
   virtual void on_message(const std::string msg) = 0;
-  void close() { ((void (*)(id, SEL))objc_msgSend)(m_window, "close"_sel); }
+  void close() { ((void (*)(id, SEL))objc_msgSend)(m_window, NSSelector("close")); }
   id m_window;
   id m_webview;
   id m_manager;
