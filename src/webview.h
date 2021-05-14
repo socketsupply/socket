@@ -554,23 +554,6 @@ class cocoa_wkwebview_engine {
     );
 
     //
-    // [[config preferences] setValue:@YES forKey:@"developerExtrasEnabled"];
-    //
-    ((id(*)(id, SEL, id, id))objc_msgSend)(
-      ((id(*)(id, SEL))objc_msgSend)(
-        config,
-        NSSelector("preferences")
-      ),
-      NSSelector("setValue:forKey:"),
-      ((id(*)(id, SEL, BOOL))objc_msgSend)(
-        NSClass("NSNumber"),
-        NSSelector("numberWithBool:"),
-        1
-      ),
-      NSString("developerExtrasEnabled")
-    );
-
-    //
     // [[config preferences] setValue:@YES forKey:@"javaScriptCanAccessClipboard"];
     //
     ((id(*)(id, SEL, id, id))objc_msgSend)(
@@ -742,10 +725,11 @@ class cocoa_wkwebview_engine {
 
     // setWindowColor(m_window, 0.1, 0.1, 0.1, 0.0);
 
-    // ((void (*)(id, SEL, BOOL))objc_msgSend)(m_window, "setTitlebarAppearsTransparent:"_sel, 1);
+    ((void (*)(id, SEL, BOOL))objc_msgSend)(m_window, NSSelector("setTitlebarAppearsTransparent:"), 1);
+    ((void (*)(id, SEL, BOOL))objc_msgSend)(m_window, NSSelector("setOpaque:"), 1);
+
     // ((void (*)(id, SEL, BOOL))objc_msgSend)(m_window, "setTitleVisibility:"_sel, 1);
     // ((void (*)(id, SEL, BOOL))objc_msgSend)(m_window, "setMovableByWindowBackground:"_sel, 1);
-    // ((void (*)(id, SEL, BOOL))objc_msgSend)(m_window, "setOpaque:"_sel, 0);
     // setWindowButtonsOffset:NSMakePoint(12, 10)
     // setTitleVisibility:NSWindowTitleHidden
   }

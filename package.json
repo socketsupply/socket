@@ -23,8 +23,8 @@
     "stylus": "^0.54.8"
   },
   "dependencies": {
-    "@optoolco/_styles": "github:optoolco/_styles#v2.1.13",
-    "@optoolco/components": "^12.3.2",
-    "@optoolco/tonic": "^13.3.2"
+    "@optoolco/_styles": "github:optoolco/_styles#v2.1.21",
+    "@optoolco/components": "^12.3.8",
+    "@optoolco/tonic": "^13.3.5"
   }
 }

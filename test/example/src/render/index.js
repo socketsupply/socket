@@ -10,7 +10,6 @@ Components(Tonic)
 window.addEventListener('menuItemSelected', event => {
   // can then await invokeIPC if so desired
   document.querySelector('#menu-selection').value = event.detail.title
-  console.log('MENU ITEM', event.detail)
 })
 
 window.addEventListener('themeChanged', _ => {
@@ -83,7 +82,6 @@ class AppContainer extends Tonic {
     })
 
     document.querySelector('#menu-selection').value = choice.title
-    console.log(choice)
   }
 
   render () {
@@ -125,21 +123,16 @@ window.onload = async () => {
   // https://developer.apple.com/library/archive/documentation/AppleApplications/Conceptual/SafariJSProgTopics/DragAndDrop.html
 
   dd.addEventListener('dragover', e => {
-    console.log(e)
     e.preventDefault()
     return true
   })
 
   dd.addEventListener('dragstart', e => {
-    console.log(e)
-
     return true
   })
 
   dd.addEventListener('dragend', _ => {
     const data = event.dataTransfer.items
-    console.log('DRAG END DATA', data)
-
     return true
   })
 

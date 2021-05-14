@@ -123,7 +123,7 @@ int main (const int argc, const char* argv[]) {
     fs::create_directories(pathResources);
 
     auto plistInfo = replace(gPListInfo, settings);
-    writeFile(fs::path { pathResources / fs::path("Info.plist") }, plistInfo);
+    writeFile(fs::path { pathPackage / pathBase / fs::path("Info.plist") }, plistInfo);
     // Replace and write list files
   }
 

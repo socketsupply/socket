@@ -10,11 +10,11 @@
   <key>DTXcode</key>
   <string>0941</string>
   <key>NSHumanReadableCopyright</key>
-  <string>{{copyRight}}</string>
+  <string>Operator Tools, Inc. © 2021</string>
   <key>DTSDKBuild</key>
   <string>10.13</string>
   <key>CFBundleVersion</key>
-  <string>0.0.1</string>
+  <string>v0.0.1</string>
   <key>BuildMachineOSBuild</key>
   <string>17D102</string>
   <key>NSCameraUsageDescription</key>
@@ -28,7 +28,7 @@
   <key>AsarIntegrity</key>
   <string>{&quot;checksums&quot;:{&quot;app.asar&quot;:&quot;f71UWAVrCD/wR89v6PE+L1k1x4EuaoNT4NdjgDLFKQFcABDjF8lB5d969JGCU8m0Mf/XVhR+F3RIyJAqQ8/KbA==&quot;}}</string>
   <key>CFBundleShortVersionString</key>
-  <string>{{versionShort}</string>
+  <string>0.0.1</string>
   <key>NSHighResolutionCapable</key>
   <true/>
   <key>NSMicrophoneUsageDescription</key>
@@ -72,7 +72,7 @@
   <key>CFBundleInfoDictionaryVersion</key>
   <string>6.0</string>
   <key>CFBundleExecutable</key>
-  <string>{{executable}}</string>
+  <string>operator</string>
   <key>DTCompiler</key>
   <string>com.apple.compilers.llvm.clang.1_0</string>
   <key>NSPrincipalClass</key>
