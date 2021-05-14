@@ -1,11 +1,27 @@
 #include "platform.h"
 #include <gtk/gtk.h>
+#include <filesystem>
+
+namespace fs = std::filesystem;
 
 std::string get_cwd () {
-  std::string _path = std::filesystem::current_path();
-  std::string cwd = std::filesystem::absolute(_path);
+  std::string _path = fs::current_path();
+  std::string cwd = fs::absolute(_path);
 
   return cwd;
+}
+
+void createMenu(std::string str) {
+  // TODO
+}
+
+bool createContextMenu(std::string a, std::string b) {
+  // TODO
+}
+
+std::string getCwd() {
+  // TODO
+  return "";
 }
 
 const char *noc_file_dialog_open(int flags,
@@ -64,14 +80,14 @@ const char *noc_file_dialog_open(int flags,
 
   res = gtk_dialog_run(GTK_DIALOG(dialog));
 
-  free(g_noc_file_dialog_ret);
-  g_noc_file_dialog_ret = NULL;
+  // free(res);
+  // res = NULL;
 
-  if (res == GTK_RESPONSE_ACCEPT)
-      g_noc_file_dialog_ret = gtk_file_chooser_get_filename(chooser);
+  // if (res == GTK_RESPONSE_ACCEPT)
+  //    g_noc_file_dialog_ret = gtk_file_chooser_get_filename(chooser);
   gtk_widget_destroy(dialog);
   while (gtk_events_pending()) gtk_main_iteration();
-  return g_noc_file_dialog_ret;
+  return ""; // res; // g_noc_file_dialog_ret;
 }
 
 

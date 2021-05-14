@@ -108,6 +108,7 @@ int main (const int argc, const char* argv[]) {
   fs::path pathPackage;
 
   if (platform.darwin) {
+    log("preparing build for darwin");
     flags = "-luv -std=c++2a -framework WebKit -framework AppKit";
     files = "src/main.cc src/darwin.mm";
 
@@ -134,7 +135,8 @@ int main (const int argc, const char* argv[]) {
   }
 
   if (platform.linux) {
-    flags = "`pkg-config --cflags --libs gtk+-3.0 webkit2gtk-4.0'`";
+    log("preparing build for linux");
+    flags = "-luv -std=c++2a `pkg-config --cflags --libs gtk+-3.0 webkit2gtk-4.0`";
     files = "src/main.cc src/linux.cc";
 
     pathResourcesRelativeToUserBuild = {
@@ -210,7 +212,7 @@ int main (const int argc, const char* argv[]) {
     << define("MENU", menu) << " "
     << define("ARG", settings["arg"]);
 
-  // log(compileCommand.str());
+  log(compileCommand.str());
   std::system(compileCommand.str().c_str());
   log("compiled native binary");
   return 0;

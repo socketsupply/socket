@@ -26,21 +26,21 @@ struct Platform {
   bool darwin = true;
   bool win32 = false;
   bool linux = false;
-  std::string os = "darwin";
+  const std::string os = "darwin";
 #endif
 
 #ifdef OS_WIN32
   bool darwin = false;
   bool win32 = true;
   bool linux = false;
-  std::string os = "win32";
+  const std::string os = "win32";
 #endif
 
 #ifdef OS_LINUX
   bool darwin = false;
   bool win32 = false;
   bool linux = true;
-  std::string os = "linux";
+  const std::string os = "linux";
 #endif
 };
 

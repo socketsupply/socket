@@ -249,6 +249,10 @@ public:
                     [](void *f) { delete static_cast<dispatch_fn_t *>(f); });
   }
 
+  void dialog(std::string seq) {
+    // TODO
+  }
+
   void set_title(const std::string title) {
     gtk_window_set_title(GTK_WINDOW(m_window), title.c_str());
   }
