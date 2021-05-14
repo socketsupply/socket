@@ -122,7 +122,6 @@ WEBVIEW_API void webview_return(
 #include <string>
 #include <utility>
 #include <vector>
-
 #include <cstring>
 
 namespace webview {
@@ -287,10 +286,11 @@ using browser_engine = gtk_webkit_engine;
 #define NSWindowStyleMaskResizable 8
 #define NSWindowStyleMaskMiniaturizable 4
 #define NSWindowStyleMaskTitled 1
+#define NSTexturedBackgroundWindowMask 1 << 8
 #define NSWindowStyleMaskTexturedBackground 1 << 8
 #define NSWindowStyleMaskUnifiedTitleAndToolbar 1 << 12
 #define NSWindowTitleHidden 1
-#define NSFullSizeContentViewWindowMask 32768
+#define NSFullSizeContentViewWindowMask 1 << 15
 #define NSWindowStyleMaskClosable 2
 
 #define NSApplicationActivationPolicyRegular 0
@@ -386,19 +386,6 @@ class cocoa_wkwebview_engine {
 
     class_addMethod(
       cls,
-      _sel("performDragOperation:"),
-      (IMP)(+[](id self) {
-        auto w = (cocoa_wkwebview_engine*) objc_getAssociatedObject(self, "webview");
-        assert(w);
-
-        std::cout << "HELLO" << std::endl;
-        std::cout << "HELLO" << std::endl;
-      }),
-      "v"
-    );
-
-    class_addMethod(
-      cls,
       _sel("themeChangedOnMainThread"),
       (IMP)(+[](id self) {
         auto w = (cocoa_wkwebview_engine*) objc_getAssociatedObject(self, "webview");
@@ -409,15 +396,6 @@ class cocoa_wkwebview_engine {
           "  window.dispatchEvent(event);"
           "})()"
         );
-      }),
-      "v"
-    );
-
-    class_addMethod(
-      cls,
-      _sel("mouseDragged:"),
-      (IMP)(+[](id event) {
-        std::cout << "HELLO" << std::endl;
       }),
       "v"
     );
@@ -468,7 +446,7 @@ class cocoa_wkwebview_engine {
         "NSWindow"_cls,
         "alloc"_sel
       );
-
+      
       m_window = ((id(*)(id, SEL, CGRect, int, unsigned long, int))objc_msgSend)(
         m_window,
         "initWithContentRect:styleMask:backing:defer:"_sel,
@@ -687,6 +665,7 @@ class cocoa_wkwebview_engine {
       NSWindowStyleMaskClosable |
       NSWindowStyleMaskTitled |
       // NSFullSizeContentViewWindowMask |
+      // NSTexturedBackgroundWindowMask |
       // NSWindowStyleMaskTexturedBackground |
       // NSWindowTitleHidden |
       NSWindowStyleMaskMiniaturizable;
@@ -726,13 +705,12 @@ class cocoa_wkwebview_engine {
     ((void (*)(id, SEL))objc_msgSend)(m_window, "center"_sel);
     ((void (*)(id, SEL))objc_msgSend)(m_window, "setHasShadow:"_sel);
 
-    setWindowColor(m_window);
+    // setWindowColor(m_window, 0.1, 0.1, 0.1, 0.0);
 
-    ((void (*)(id, SEL, BOOL))objc_msgSend)(m_window, "setTitlebarAppearsTransparent:"_sel, 1);
-
+    // ((void (*)(id, SEL, BOOL))objc_msgSend)(m_window, "setTitlebarAppearsTransparent:"_sel, 1);
     // ((void (*)(id, SEL, BOOL))objc_msgSend)(m_window, "setTitleVisibility:"_sel, 1);
-    ((void (*)(id, SEL, BOOL))objc_msgSend)(m_window, "setMovableByWindowBackground:"_sel, 1);
-    ((void (*)(id, SEL, BOOL))objc_msgSend)(m_window, "setOpaque:"_sel, 0);
+    // ((void (*)(id, SEL, BOOL))objc_msgSend)(m_window, "setMovableByWindowBackground:"_sel, 1);
+    // ((void (*)(id, SEL, BOOL))objc_msgSend)(m_window, "setOpaque:"_sel, 0);
     // setWindowButtonsOffset:NSMakePoint(12, 10)
     // setTitleVisibility:NSWindowTitleHidden
   }

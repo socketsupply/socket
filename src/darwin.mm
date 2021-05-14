@@ -40,7 +40,7 @@ void addListenerThemeChange (void* delegate) {
   [NSDistributedNotificationCenter.defaultCenter addObserver:r selector:@selector(themeChangedOnMainThread) name:@"AppleInterfaceThemeChangedNotification" object: nil];
 }
 
-void setTitle(void* w) {
+void setTitle(void* win) {
 }
 
 bool createContextMenu (std::string seq, std::string value) {
@@ -74,9 +74,18 @@ bool createContextMenu (std::string seq, std::string value) {
   return true;
 }
 
-void setWindowColor (void* w) {
+void setWindowColor (void* w, float r, float g, float b, float a) {
   NSWindow* win = (id) w;
-  [win setBackgroundColor: NSColor.whiteColor];
+
+  [win
+    setBackgroundColor: [
+      NSColor
+        colorWithDeviceRed: (CGFloat) r
+        green: (CGFloat) g
+        blue: (CGFloat) b
+        alpha: (CGFloat) 1.0
+    ]
+  ];
 }
 
 void createMenu (std::string menu) {

@@ -82,6 +82,7 @@ class AppContainer extends Tonic {
       'Share': 's'
     })
 
+    document.querySelector('#menu-selection').value = choice.title
     console.log(choice)
   }
 

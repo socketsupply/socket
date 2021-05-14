@@ -116,7 +116,7 @@ std::string dialog_open(int flags,
 
 std::string getCwd ();
 void addListenerThemeChange(void*);
-void setWindowColor (void*);
+void setWindowColor (void*, float r, float g, float b, float a);
 void setTitle(void*);
 void createMenu (std::string);
 bool createContextMenu (std::string, std::string);
