@@ -103,7 +103,10 @@ int main (const int argc, const char* argv[]) {
   fs::remove_all(pathOutput);
   log("cleaned: " + pathToString(pathOutput));
 
-  auto title = settings["title"];
+  auto executable = fs::path(platform.darwin
+    ? settings["title"]
+    : settings["executable"]);
+
   std::string flags;
   std::string files;
 
@@ -111,6 +114,7 @@ int main (const int argc, const char* argv[]) {
   fs::path pathResources;
   fs::path pathResourcesRelativeToUserBuild;
   fs::path pathPackage;
+  fs::path packageName;
 
   if (platform.darwin) {
     log("preparing build for darwin");
@@ -118,7 +122,7 @@ int main (const int argc, const char* argv[]) {
     files = "src/main.cc src/darwin.mm";
 
     fs::path pathBase = "Contents";
-    fs::path packageName = fs::path(std::string(title + ".app"));
+    fs::path packageName = fs::path(std::string(settings["title"] + ".app"));
 
     pathPackage = { pathOutput / packageName };
     pathBin = { pathPackage / pathBase / fs::path { "MacOS" } };
@@ -144,20 +148,59 @@ int main (const int argc, const char* argv[]) {
     flags = "-luv -std=c++2a `pkg-config --cflags --libs gtk+-3.0 webkit2gtk-4.0`";
     files = "src/main.cc src/linux.cc";
 
-    pathResourcesRelativeToUserBuild = {
-      fs::path(settings["output"])
-      //
-      //
-      //
-      // TODO where is this going?
-      //
-      //
-      //
-      //
+    // this follows the .deb file naming convention
+    packageName = fs::path(std::string(
+      settings["executable"] + "_" +
+      settings["version"] + "-" +
+      settings["revision"] + "_" +
+      settings["arch"]
+    ));
+
+    pathPackage = { pathOutput / packageName };
+
+    fs::path pathBase = {
+      pathPackage /
+      fs::path { "opt" } /
+      fs::path { settings["name"] }
     };
+
+    pathBin = pathBase;
+
+    pathResources = fs::path {
+      pathBase /
+      fs::path { "resources" }
+    };
+
+    pathResourcesRelativeToUserBuild = pathResources;
+
+    fs::path pathControlFile = {
+      pathPackage /
+      fs::path { "DEBIAN" }
+    };
+
+    fs::path pathManifestFile = {
+      pathPackage /
+      fs::path { "share" } /
+      fs::path { "applications" }
+    };
+
+    fs::create_directories(pathResources);
+    fs::create_directories(pathManifestFile);
+    fs::create_directories(pathControlFile);
+
+    writeFile(fs::path {
+      pathManifestFile /
+        fs::path(std::string(settings["name"] + ".desktop"))
+    }, replace(gDestkopManifest, settings));
+
+    writeFile(fs::path {
+      pathControlFile /
+      fs::path { "control" }
+    }, replace(gDebianManifest, settings));
   }
 
   if (platform.win32) {
+    log("preparing build for win32");
     flags = "-mwindows -L./dll/x64 -lwebview -lWebView2Loader";
     files = "src/main.cc src/win32.cc";
 
@@ -193,7 +236,22 @@ int main (const int argc, const char* argv[]) {
   log("ran user build command");
 
   std::stringstream compileCommand;
-  fs::path binaryPath = { pathBin / fs::path(title) };
+  fs::path binaryPath = { pathBin / executable };
+
+  //
+  // Archive step
+  //
+  if (platform.linux) {
+    std::stringstream archiveCommand;
+
+    archiveCommand
+      << "dpkg-deb --build --root-owner-group "
+      << pathToString(pathPackage)
+      << " "
+      << pathToString(pathOutput);
+
+    std::system(archiveCommand.str().c_str());
+  }
 
   // Create flags for compile-time definitions.
   std::string flagPrefix = platform.win32 ? "/" : "-";

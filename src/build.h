@@ -88,7 +88,7 @@ constexpr auto gPListInfo = R"XML(
   <key>CFBundleIdentifier</key>
   <string>{{identifier}}</string>
   <key>LSApplicationCategoryType</key>
-  <string>{{category}}</string>
+  <string>{{mac_category}}</string>
   <key>DTXcodeBuild</key>
   <string>9F2000</string>
   <key>LSMinimumSystemVersion</key>
@@ -126,9 +126,17 @@ Terminal=false
 Type=Application
 # Icon must be generated & appended by `toolbox`.
 # Maybe set StartupWMClass ??
-# StartupWMClass=Buckets
+# StartupWMClass={{name}}
 Comment={{description}}
-Categories={{categories}};
+Categories={{linux_categories}};
 )INI";
+
+constexpr auto gDebianManifest = R"DEB(Package: {{name}}
+Version: {{versionShort}}
+Architecture: {{arch}}
+Maintainer: {{maintainer}}
+Description: {{title}}
+ {{description}}
+)DEB";
 
 // TODO what files does a windows build need?

@@ -208,7 +208,7 @@ void createMenu (std::string menu) {
   }
 }
 
-std::string dialog_open(
+std::string createDialog(
   int flags,
   const char *filters,
   const char *default_path,

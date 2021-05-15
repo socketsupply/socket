@@ -785,7 +785,7 @@ class cocoa_wkwebview_engine {
 
   void dialog(std::string seq) {
     dispatch([=]() {
-      auto result = dialog_open(
+      auto result = createDialog(
         NOC_FILE_DIALOG_OPEN | NOC_FILE_DIALOG_DIR,
         NULL,
         NULL,

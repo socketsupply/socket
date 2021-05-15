@@ -17,6 +17,7 @@ void createMenu(std::string str) {
 
 bool createContextMenu(std::string a, std::string b) {
   // TODO
+  return true;
 }
 
 std::string getCwd() {
