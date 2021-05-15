@@ -14,7 +14,7 @@ fi
 cd $DEST
 
 echo '• Building'
-g++ src/build.cc -o bin/opkit -std=c++2a
+`echo $CXX` src/build.cc -o bin/build -std=c++2a -stdlib=libc++"
 
 if [ ! $? = 0 ]; then
   echo "• Unable to build"
@@ -29,4 +29,4 @@ if [ ! $? = 0 ]; then
   exit 1
 fi
 
-echo '• Finished. Type "opkit" for help.'
+echo '• Finished. Type "build" for help.'

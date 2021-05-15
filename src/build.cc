@@ -245,8 +245,7 @@ int main (const int argc, const char* argv[]) {
     << " "
     << pathToString(pathResourcesRelativeToUserBuild);
 
-  std::cout << buildCommand.str() << std::endl;
-
+  // log(buildCommand.str());
   std::system(buildCommand.str().c_str());
   log("ran user build command");
 
@@ -275,7 +274,7 @@ int main (const int argc, const char* argv[]) {
     << define("MENU", menu) << " "
     << define("ARG", settings["arg"]);
 
-  log(compileCommand.str());
+  // log(compileCommand.str());
   std::system(compileCommand.str().c_str());
   log("compiled native binary");
 

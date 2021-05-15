@@ -20,7 +20,7 @@ bool createContextMenu(std::string a, std::string b) {
 
 std::string createDialog(
   int flags,
-  const char *filters,
+  const char *_,
   const char *default_path,
   const char *default_name)
   {
@@ -63,41 +63,15 @@ std::string createDialog(
     gtk_file_chooser_set_do_overwrite_confirmation(chooser, TRUE);
   }
 
-  if (default_path) {
+  if (default_path != nullptr) {
     gtk_file_chooser_set_filename(chooser, default_path);
   }
 
-  if (default_name) {
+  if (default_name != nullptr) {
     gtk_file_chooser_set_current_name(chooser, default_name);
   }
 
-  while (filters && *filters) {
-    filter = gtk_file_filter_new();
-    gtk_file_filter_set_name(filter, filters);
-    filters += strlen(filters) + 1;
-
-    // Split the filter pattern with ';'.
-    strcpy(buf, filters);
-    buf[strlen(buf)] = '\0';
-
-    for (patterns = buf; *patterns; patterns++) {
-      if (*patterns == ';') *patterns = '\0';
-    }
-
-    patterns = buf;
-
-    while (*patterns) {
-      gtk_file_filter_add_pattern(filter, patterns);
-      patterns += strlen(patterns) + 1;
-    }
-
-    gtk_file_chooser_add_filter(chooser, filter);
-    filters += strlen(filters) + 1;
-  }
-
-  res = gtk_dialog_run(GTK_DIALOG(dialog));
-
-  if (res != GTK_RESPONSE_ACCEPT) {
+  if (gtk_dialog_run(GTK_DIALOG(dialog)) != GTK_RESPONSE_ACCEPT) {
     return std::string("");
   }
 

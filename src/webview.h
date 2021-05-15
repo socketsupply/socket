@@ -184,42 +184,54 @@ public:
       : m_window(static_cast<GtkWidget *>(window)) {
     gtk_init_check(0, NULL);
     m_window = static_cast<GtkWidget *>(window);
+
     if (m_window == nullptr) {
       m_window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
     }
+
     g_signal_connect(G_OBJECT(m_window), "destroy",
-                     G_CALLBACK(+[](GtkWidget *, gpointer arg) {
-                       static_cast<gtk_webkit_engine *>(arg)->terminate();
-                     }),
-                     this);
+      G_CALLBACK(+[](GtkWidget *, gpointer arg) {
+        static_cast<gtk_webkit_engine *>(arg)->terminate();
+      }),
+      this
+    );
+
     // Initialize webview widget
     m_webview = webkit_web_view_new();
     WebKitUserContentManager *manager =
-        webkit_web_view_get_user_content_manager(WEBKIT_WEB_VIEW(m_webview));
-    g_signal_connect(manager, "script-message-received::external",
-                     G_CALLBACK(+[](WebKitUserContentManager *,
-                                    WebKitJavascriptResult *r, gpointer arg) {
-                       auto *w = static_cast<gtk_webkit_engine *>(arg);
+      webkit_web_view_get_user_content_manager(WEBKIT_WEB_VIEW(m_webview));
+
+    g_signal_connect(
+      manager,
+      "script-message-received::external",
+      G_CALLBACK(+[](WebKitUserContentManager *,
+      WebKitJavascriptResult *r, gpointer arg) {
+        auto *w = static_cast<gtk_webkit_engine *>(arg);
 #if WEBKIT_MAJOR_VERSION >= 2 && WEBKIT_MINOR_VERSION >= 22
-                       JSCValue *value =
-                           webkit_javascript_result_get_js_value(r);
-                       char *s = jsc_value_to_string(value);
+        JSCValue *value =
+          webkit_javascript_result_get_js_value(r);
+        char *s = jsc_value_to_string(value);
 #else
-                       JSGlobalContextRef ctx =
-                           webkit_javascript_result_get_global_context(r);
-                       JSValueRef value = webkit_javascript_result_get_value(r);
-                       JSStringRef js = JSValueToStringCopy(ctx, value, NULL);
-                       size_t n = JSStringGetMaximumUTF8CStringSize(js);
-                       char *s = g_new(char, n);
-                       JSStringGetUTF8CString(js, s, n);
-                       JSStringRelease(js);
+        JSGlobalContextRef ctx =
+          webkit_javascript_result_get_global_context(r);
+        JSValueRef value = webkit_javascript_result_get_value(r);
+        JSStringRef js = JSValueToStringCopy(ctx, value, NULL);
+        size_t n = JSStringGetMaximumUTF8CStringSize(js);
+        char *s = g_new(char, n);
+        JSStringGetUTF8CString(js, s, n);
+        JSStringRelease(js);
 #endif
-                       w->on_message(s);
-                       g_free(s);
-                     }),
-                     this);
-    webkit_user_content_manager_register_script_message_handler(manager,
-                                                                "external");
+        w->on_message(s);
+        g_free(s);
+      }),
+      this
+    );
+
+    webkit_user_content_manager_register_script_message_handler(
+      manager,
+      "external"
+    );
+
     init("window.external={invoke:s => {window.webkit.messageHandlers."
          "external.postMessage(s);}}");
 
@@ -229,14 +241,15 @@ public:
     WebKitSettings *settings =
         webkit_web_view_get_settings(WEBKIT_WEB_VIEW(m_webview));
     webkit_settings_set_javascript_can_access_clipboard(settings, true);
+
     if (debug) {
-      webkit_settings_set_enable_write_console_messages_to_stdout(settings,
-                                                                  true);
+      webkit_settings_set_enable_write_console_messages_to_stdout(settings, true);
       webkit_settings_set_enable_developer_extras(settings, true);
     }
 
     gtk_widget_show_all(m_window);
   }
+
   void *window() { return (void *)m_window; }
   void run() { gtk_main(); }
   void terminate() { gtk_main_quit(); }
@@ -247,21 +260,6 @@ public:
                     }),
                     new std::function<void()>(f),
                     [](void *f) { delete static_cast<dispatch_fn_t *>(f); });
-  }
-
-  void dialog(std::string seq) {
-    dispatch([=]() {
-      auto result = createDialog(
-        NOC_FILE_DIALOG_OPEN | NOC_FILE_DIALOG_DIR,
-        NULL,
-        NULL,
-        NULL);
-
-      eval("(() => {"
-           "  window._ipc[" + seq + "].resolve(`" + result + "`);"
-           "  delete window._ipc[" + seq + "];"
-           "})();");
-    });
   }
 
   void set_title(const std::string title) {
@@ -794,21 +792,6 @@ class cocoa_wkwebview_engine {
     );
   }
 
-  void dialog(std::string seq) {
-    dispatch([=]() {
-      auto result = createDialog(
-        NOC_FILE_DIALOG_OPEN | NOC_FILE_DIALOG_DIR,
-        NULL,
-        NULL,
-        NULL);
-
-      eval("(() => {"
-           "  window._ipc[" + seq + "].resolve(`" + result + "`);"
-           "  delete window._ipc[" + seq + "];"
-           "})();");
-    });
-  }
-
   void eval(const std::string js) {
     ((void (*)(id, SEL, id, id)) objc_msgSend)(
       m_webview,
@@ -1304,6 +1287,21 @@ public:
 
     init(js);
     bindings[name] = new binding_ctx_t(new binding_t(f), arg);
+  }
+
+  void dialog(std::string seq) {
+    dispatch([=]() {
+      auto result = createDialog(
+        NOC_FILE_DIALOG_OPEN | NOC_FILE_DIALOG_DIR,
+        NULL,
+        NULL,
+        NULL);
+
+      eval("(() => {"
+           "  window._ipc[" + seq + "].resolve(`" + result + "`);"
+           "  delete window._ipc[" + seq + "];"
+           "})();");
+    });
   }
 
   void resolve(const std::string msg) {
