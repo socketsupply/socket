@@ -250,7 +250,18 @@ public:
   }
 
   void dialog(std::string seq) {
-    // TODO
+    dispatch([=]() {
+      auto result = createDialog(
+        NOC_FILE_DIALOG_OPEN | NOC_FILE_DIALOG_DIR,
+        NULL,
+        NULL,
+        NULL);
+
+      eval("(() => {"
+           "  window._ipc[" + seq + "].resolve(`" + result + "`);"
+           "  delete window._ipc[" + seq + "];"
+           "})();");
+    });
   }
 
   void set_title(const std::string title) {

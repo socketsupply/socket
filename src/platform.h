@@ -109,7 +109,8 @@ enum {
  * managed by the library.  The string is valid until the next call to
  * no_dialog_open.  If the user canceled, the return value is NULL.
  */
-std::string dialog_open(int flags,
+std::string createDialog(
+  int flags,
   const char *filters,
   const char *default_path,
   const char *default_name);

@@ -18,11 +18,13 @@ bool createContextMenu(std::string a, std::string b) {
   return true;
 }
 
-const char *noc_file_dialog_open(int flags,
+std::string createDialog(
+  int flags,
   const char *filters,
   const char *default_path,
   const char *default_name)
-{
+  {
+
   GtkWidget *dialog;
   GtkFileFilter *filter;
   GtkFileChooser *chooser;
@@ -81,7 +83,5 @@ const char *noc_file_dialog_open(int flags,
   //    g_noc_file_dialog_ret = gtk_file_chooser_get_filename(chooser);
   gtk_widget_destroy(dialog);
   while (gtk_events_pending()) gtk_main_iteration();
-  return ""; // res; // g_noc_file_dialog_ret;
+  return std::string(""); // res; // g_noc_file_dialog_ret;
 }
-
-
