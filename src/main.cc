@@ -46,7 +46,7 @@ int main(int argc, char *argv[])
     createContextMenu(seq, value);
   });
 
-  win->ipc("invokeIPC", [&](std::string seq, std::string value) {
+  win->ipc("send", [&](std::string seq, std::string value) {
     process->write("ipc;0;" + seq + ";" + value);
   });
 

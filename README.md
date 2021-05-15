@@ -1,6 +1,6 @@
 # SYNOPSIS
 
-Build fast, light-weight 2D UIs with any backend.
+Build fast, light-weight UIs with any backend.
 
 
 # DESCRIPTION
@@ -12,12 +12,10 @@ any arbitrary child process (ie, node, rust, etc).
 # HIGHLIGHTS
 
 - Very fast startup and build times
-- < 0.1% memory baseline
-- < 0% cpu baseline
-- About 150Kb baseline binary
-- Works the same on macOS, linux, windows
+- Tiny memory, cpu and binary
+- Runs on macOS, linux, windows
 - System Menus, Context Menus, File Dialogs
-- Use the regular web development tools
+- Webkit web inspector
 - The only build requiremnt a modern C++ compiler
 
 
@@ -77,17 +75,17 @@ browser. It will contain the same info as the result from the context menu.
 #### From the browser
 
 ```js
-const result = await invokeIPC('honk')
+const result = await send('honk')
 assert(result === 'goose')
 ```
 
 #### In the backend process (node.js example)
 
 ```js
-import ipc from './ipc.js'
+import { send, receive } from './ipc.js'
 
-ipc.receive(async data => {
-  if (data === 'honk') ipc.send('goose')
+receive(async data => {
+  if (data === 'honk') send('goose')
 })
 ```
 

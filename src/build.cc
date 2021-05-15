@@ -168,9 +168,10 @@ int main (const int argc, const char* argv[]) {
     pathResources = pathBase;
 
     pathResourcesRelativeToUserBuild = {
-      target /
       pathOutput /
-      packageName
+      packageName /
+      fs::path { "opt" } /
+      fs::path { settings["name"] }
     };
 
     fs::path pathControlFile = {

@@ -62,7 +62,7 @@ class AppContainer extends Tonic {
       // request-response (can send any arbitrary parameters)
       //
       const value = { input: e.target.value }
-      response = await invokeIPC(value)
+      response = await window.send(value)
     } catch (err) {
       console.log(err.message)
     }
