@@ -7,7 +7,7 @@
 #include <vector>
 #include <functional>
 
-std::string getCwd () {
+std::string getCwd (std::string _) {
   NSString *bundlePath = [[NSBundle mainBundle] resourcePath];
   auto str = std::string([bundlePath UTF8String]);
   return str;

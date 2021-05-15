@@ -10,7 +10,7 @@ import esbuild from 'esbuild'
 // The output target is passed by the build tool,
 // it's where we want to write all of our files.
 //
-const target = process.argv[2];
+const target = path.resolve(process.argv[2]);
 
 if (!target) {
   console.log('  - Did not receive the build target path as an argument')

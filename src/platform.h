@@ -114,7 +114,7 @@ std::string dialog_open(int flags,
   const char *default_path,
   const char *default_name);
 
-std::string getCwd ();
+std::string getCwd (std::string);
 void addListenerThemeChange(void*);
 void setWindowColor (void*, float r, float g, float b, float a);
 void setTitle(void*);

@@ -97,8 +97,8 @@ int main (const int argc, const char* argv[]) {
   auto settings = readConfig(fs::path { target / "settings.config" });
   auto menu = readFile(fs::path { target / "menu.config" });
 
-  // TODO split path on os sep to make output path cross-platform.
-  auto pathOutput = fs::path { target / fs::path(settings["output"]) };
+  // TODO split output path variable on os sep to make output path cross-platform.
+  auto pathOutput = fs::path { fs::path(settings["output"]) };
 
   fs::remove_all(pathOutput);
   log("cleaned: " + pathToString(pathOutput));
@@ -122,9 +122,9 @@ int main (const int argc, const char* argv[]) {
     files = "src/main.cc src/darwin.mm";
 
     fs::path pathBase = "Contents";
-    fs::path packageName = fs::path(std::string(settings["title"] + ".app"));
+    packageName = fs::path(std::string(settings["title"] + ".app"));
 
-    pathPackage = { pathOutput / packageName };
+    pathPackage = { target / pathOutput / packageName };
     pathBin = { pathPackage / pathBase / fs::path { "MacOS" } };
     pathResources = { pathPackage / pathBase / fs::path { "Resources" } };
     
@@ -156,7 +156,7 @@ int main (const int argc, const char* argv[]) {
       settings["arch"]
     ));
 
-    pathPackage = { pathOutput / packageName };
+    pathPackage = { target / pathOutput / packageName };
 
     fs::path pathBase = {
       pathPackage /
@@ -165,13 +165,13 @@ int main (const int argc, const char* argv[]) {
     };
 
     pathBin = pathBase;
+    pathResources = pathBase;
 
-    pathResources = fs::path {
-      pathBase /
-      fs::path { "resources" }
+    pathResourcesRelativeToUserBuild = {
+      target /
+      pathOutput /
+      packageName
     };
-
-    pathResourcesRelativeToUserBuild = pathResources;
 
     fs::path pathControlFile = {
       pathPackage /
@@ -180,23 +180,37 @@ int main (const int argc, const char* argv[]) {
 
     fs::path pathManifestFile = {
       pathPackage /
+      fs::path { "usr" } /
       fs::path { "share" } /
       fs::path { "applications" }
     };
 
+    fs::path pathIcons = {
+      pathPackage /
+      fs::path { "usr" } /
+      fs::path { "share" } /
+      fs::path { "icons" } /
+      fs::path { "hicolor" } /
+      fs::path { "256x256" } /
+      fs::path { "apps" }
+    };
+
+    fs::create_directories(pathIcons);
     fs::create_directories(pathResources);
     fs::create_directories(pathManifestFile);
     fs::create_directories(pathControlFile);
 
     writeFile(fs::path {
       pathManifestFile /
-        fs::path(std::string(settings["name"] + ".desktop"))
+      fs::path(std::string(settings["name"] + ".desktop"))
     }, replace(gDestkopManifest, settings));
 
     writeFile(fs::path {
       pathControlFile /
       fs::path { "control" }
     }, replace(gDebianManifest, settings));
+
+    // fs::copy("", ""); // icon to `pathIcons/<executable>.png`
   }
 
   if (platform.win32) {
@@ -204,7 +218,7 @@ int main (const int argc, const char* argv[]) {
     flags = "-mwindows -L./dll/x64 -lwebview -lWebView2Loader";
     files = "src/main.cc src/win32.cc";
 
-    // TODO build specifics
+    // TODO create paths, copy files, archive, etc.
   }
 
   //
@@ -238,21 +252,6 @@ int main (const int argc, const char* argv[]) {
   std::stringstream compileCommand;
   fs::path binaryPath = { pathBin / executable };
 
-  //
-  // Archive step
-  //
-  if (platform.linux) {
-    std::stringstream archiveCommand;
-
-    archiveCommand
-      << "dpkg-deb --build --root-owner-group "
-      << pathToString(pathPackage)
-      << " "
-      << pathToString(pathOutput);
-
-    std::system(archiveCommand.str().c_str());
-  }
-
   // Create flags for compile-time definitions.
   std::string flagPrefix = platform.win32 ? "/" : "-";
   auto define = [&](const std::string label, const std::string s) -> std::string {
@@ -278,5 +277,21 @@ int main (const int argc, const char* argv[]) {
   log(compileCommand.str());
   std::system(compileCommand.str().c_str());
   log("compiled native binary");
+
+  //
+  // Archive step
+  //
+  if (platform.linux) {
+    std::stringstream archiveCommand;
+
+    archiveCommand
+      << "dpkg-deb --build --root-owner-group "
+      << pathToString(pathPackage)
+      << " "
+      << pathToString(fs::path { target / pathOutput });
+
+    std::system(archiveCommand.str().c_str());
+  }
+
   return 0;
 }

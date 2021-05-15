@@ -64,7 +64,7 @@ int main(int argc, char *argv[])
     }
   };
  
-  std::string cwd = getCwd();
+  std::string cwd = getCwd(argv[0]);
 
   win->navigate("file://" + cwd + "/index.html");
 

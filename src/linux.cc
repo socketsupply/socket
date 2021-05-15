@@ -4,11 +4,9 @@
 
 namespace fs = std::filesystem;
 
-std::string get_cwd () {
-  std::string _path = fs::current_path();
-  std::string cwd = fs::absolute(_path);
-
-  return cwd;
+std::string getCwd (std::string argvp) {
+  auto canonical = fs::canonical("/proc/self/exe");
+  return std::string(fs::path(canonical).parent_path());
 }
 
 void createMenu(std::string str) {
@@ -18,11 +16,6 @@ void createMenu(std::string str) {
 bool createContextMenu(std::string a, std::string b) {
   // TODO
   return true;
-}
-
-std::string getCwd() {
-  // TODO
-  return "";
 }
 
 const char *noc_file_dialog_open(int flags,
