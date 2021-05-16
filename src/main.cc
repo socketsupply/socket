@@ -36,7 +36,7 @@ int main(int argc, char *argv[])
     WEBVIEW_HINT_NONE
   );
 
-  createMenu(menu);
+  win->menu(menu);
 
   win->ipc("dialog", [&](auto seq, auto value) {
     win->dialog(seq);
