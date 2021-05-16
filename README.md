@@ -89,6 +89,31 @@ receive(async data => {
 })
 ```
 
+# DEVELOPMENT
+
+Compile the build program...
+
+```sh
+`echo $CXX` src/build.cc -o bin/build -std=c++2a -stdlib=libc++"
+```
+
+Build the example...
+
+```sh
+./bin/build test/example
+```
+
+Then open the binary...
+
+```sh
+open test/example/dist/Operator.app # macOS
+```
+
+```sh
+./test/example/dist/operator_v0.0.1-1_x64/opt/Operator/operator # linux
+```
+
+Then run the build
 
 [01]:https://developer.apple.com/documentation/webkit/wkwebview
 [00]:https://developer.apple.com/videos/play/wwdc2020/10188/
