@@ -4,8 +4,7 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "build": "`echo $CXX` src/build.cc -o bin/build -std=c++2a -stdlib=libc++",
-    "start": "bin/build test/example && open test/example/dist/Operator.app"
+    "build": "`echo $CXX` src/build.cc -o bin/build -std=c++2a -stdlib=libc++"
   },
   "repository": {
     "type": "git",
