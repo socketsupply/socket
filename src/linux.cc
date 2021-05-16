@@ -9,10 +9,6 @@ std::string getCwd (std::string argvp) {
   return std::string(fs::path(canonical).parent_path());
 }
 
-void createMenu(std::string str, void* e) {
-
-}
-
 bool createContextMenu(std::string a, std::string b) {
   return true;
 }

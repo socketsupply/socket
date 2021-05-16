@@ -119,7 +119,6 @@ std::string getCwd (std::string);
 void addListenerThemeChange(void*);
 void setWindowColor (void*, float r, float g, float b, float a);
 void setTitle(void*);
-void createMenu (std::string, void* window);
 bool createContextMenu (std::string, std::string);
 std::vector<std::string> getMenuItemDetails (void* item);
 
