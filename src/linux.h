@@ -97,40 +97,78 @@ class gtk_webkit_engine {
     gtk_widget_show_all(m_window);
   }
 
-  void menu(const std::string menu) {
+  void menu(std::string menu) {
     if (menu.empty()) return void(0);
 
-    GtkWidget *menubar;
-    GtkWidget *fileMenu;
-    GtkWidget *fileMi;
-    GtkWidget *quitMi;
-
-    menubar = gtk_menu_bar_new();
-    fileMenu = gtk_menu_new();
+    GtkWidget *menubar = gtk_menu_bar_new();
 
     //
-    // TODO do a similar loop to the macOS implementation,
+    // TODO(@heapwolf): do a similar loop to the macOS implementation,
     // ---
     //
-    fileMi = gtk_menu_item_new_with_label("File");
-    quitMi = gtk_menu_item_new_with_label("Quit");
 
-    gtk_menu_item_set_submenu(GTK_MENU_ITEM(fileMi), fileMenu);
-    gtk_menu_shell_append(GTK_MENU_SHELL(fileMenu), quitMi);
-    gtk_menu_shell_append(GTK_MENU_SHELL(menubar), fileMi);
+    // deserialize the menu
+    std::replace(menu.begin(), menu.end(), '_', '\n');
+
+    // split on ;
+    auto menus = split(menu, ';');
+
+    for (auto m : menus) {
+      auto menu = split(m, '\n');
+      auto menuTitle = split(trim(menu[0]), ':')[0];
+      GtkWidget *subMenu = gtk_menu_new();
+      GtkWidget *menuItem = gtk_menu_item_new_with_label(menuTitle.c_str());
+      gtk_menu_item_set_submenu(GTK_MENU_ITEM(menuItem), subMenu);
+
+      for (int i = 1; i < menu.size(); i++) {
+        auto parts = split(trim(menu[i]), ':');
+        auto title = parts[0];
+        std::string key = "";
+
+        if (parts.size() > 1) {
+          key = parts[1] == "_" ? "" : trim(parts[1]);
+        }
+
+        GtkWidget *item = gtk_menu_item_new_with_label(title.c_str());
+        gtk_menu_shell_append(GTK_MENU_SHELL(subMenu), item);
+        // TODO(@heapwolf): set accellerator
+        // gtk_accel_group_connect(
+
+        g_signal_connect(
+          G_OBJECT(item),
+          "activate",
+          G_CALLBACK(+[](GtkWidget *t, gpointer arg) {
+            auto w = static_cast<webview::gtk_webkit_engine*>(arg);
+
+            auto title = gtk_menu_item_get_label(
+              GTK_MENU_ITEM(t)
+            );
+
+            // auto parent = GTK_MENU(gtk_widget_get_parent(t));
+            // std::cout << parent << std::endl;
+
+            w->eval(
+              "(() => {"
+              "  const detail = {"
+              "    title: '" + std::string(title) + "',"
+              "    parent: '" + std::string("<PARENT>") + "',"
+              "    state: '<STATE>'"
+              "  };"
+
+              "  const event = new window.CustomEvent('menuItemSelected', { detail });"
+              "  window.dispatchEvent(event);"
+              "})()"
+            );
+          }),
+          this
+        );
+      }
+
+      gtk_menu_shell_append(GTK_MENU_SHELL(menubar), menuItem);
+    }
 
     gtk_box_pack_start(GTK_BOX(m_vbox), menubar, FALSE, FALSE, 0);
-
-    g_signal_connect(G_OBJECT(quitMi), "activate",
-      G_CALLBACK(+[](GtkWidget *, gpointer arg) {
-        static_cast<webview::gtk_webkit_engine*>(arg)->terminate();
-        exit(0);
-      }),
-      this
-    );
-    // ---
-
-    gtk_widget_show_all(this->m_window);
+    gtk_widget_show_all(m_window);
   }
 
   void *window() { return (void *)m_window; }
@@ -201,6 +239,7 @@ class gtk_webkit_engine {
 
   GtkWidget *m_vbox;
   GtkWidget *m_window;
+  std::string lastMenuSelection;
 private:
   virtual void on_message(const std::string msg) = 0;
   GtkWidget *m_webview;
