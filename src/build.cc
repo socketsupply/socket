@@ -118,7 +118,7 @@ int main (const int argc, const char* argv[]) {
 
   if (platform.darwin) {
     log("preparing build for darwin");
-    flags = "-luv -std=c++2a -framework WebKit -framework AppKit";
+    flags = "-DWEBVIEW_COCOA -luv -std=c++2a -framework WebKit -framework AppKit";
     files = "src/main.cc src/darwin.mm";
 
     fs::path pathBase = "Contents";
@@ -145,7 +145,7 @@ int main (const int argc, const char* argv[]) {
 
   if (platform.linux) {
     log("preparing build for linux");
-    flags = "-luv -std=c++2a `pkg-config --cflags --libs gtk+-3.0 webkit2gtk-4.0`";
+    flags = "-DWEBVIEW_GTK -luv -std=c++2a `pkg-config --cflags --libs gtk+-3.0 webkit2gtk-4.0`";
     files = "src/main.cc src/linux.cc";
 
     // this follows the .deb file naming convention
