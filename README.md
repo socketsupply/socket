@@ -1,12 +1,6 @@
 # SYNOPSIS
 
-Build fast, light-weight UIs with any backend.
-
-
-# DESCRIPTION
-
-A webview that uses libuv to spawn and communicate with
-any arbitrary child process (ie, node, rust, etc).
+Build and package fast, light-weight web-based UIs with any backend.
 
 
 # HIGHLIGHTS
@@ -17,6 +11,8 @@ any arbitrary child process (ie, node, rust, etc).
 - System Menus, Context Menus, File Dialogs
 - Webkit web inspector
 - The only build requiremnt a modern C++ compiler
+- Smaller than and with fewer dependencies than tauri or electron
+- Runs any arbitrary backend process
 
 
 # GET STARTED

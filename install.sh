@@ -22,7 +22,7 @@ if [ ! $? = 0 ]; then
 fi
 
 echo '• Attempting to create a symlink in /usr/loca/bin'
-ln -s bin/opkit /usr/local/bin/opkit
+ln -s bin/build /usr/local/bin/opkit
 
 if [ ! $? = 0 ]; then
   echo "• Unable to create symlink"
