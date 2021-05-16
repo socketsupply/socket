@@ -98,6 +98,8 @@ class gtk_webkit_engine {
   }
 
   void menu(const std::string menu) {
+    if (menu.empty()) return void(0);
+
     GtkWidget *menubar;
     GtkWidget *fileMenu;
     GtkWidget *fileMi;
@@ -106,6 +108,10 @@ class gtk_webkit_engine {
     menubar = gtk_menu_bar_new();
     fileMenu = gtk_menu_new();
 
+    //
+    // TODO do a similar loop to the macOS implementation,
+    // ---
+    //
     fileMi = gtk_menu_item_new_with_label("File");
     quitMi = gtk_menu_item_new_with_label("Quit");
 
@@ -122,7 +128,8 @@ class gtk_webkit_engine {
       }),
       this
     );
-    
+    // ---
+
     gtk_widget_show_all(this->m_window);
   }
 
