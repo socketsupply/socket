@@ -106,12 +106,18 @@ browser. It will contain the same info as the result from the context menu.
 
 #### From the browser
 
+The browser has a gloabl function named `send` that creates a promise
+which can await a response from the child process.
+
 ```js
 const result = await send('honk')
 assert(result === 'goose')
 ```
 
 #### In the backend process (node.js example)
+
+The spawned process should send a receive json using a simple
+incrementing counter. Here is an example [implementation][0].
 
 ```js
 import { send, receive } from './ipc.js'
@@ -121,4 +127,4 @@ receive(async data => {
 })
 ```
 
-
+[0]:https://github.com/optoolco/opkit/blob/master/test/example/src/main/ipc.js
