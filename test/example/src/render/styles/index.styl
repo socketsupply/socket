@@ -1,16 +1,39 @@
+@require 'fonts.styl'
+@require 'overrides.styl'
+
+*
+  box-sizing border-box
+  -webkit-font-smoothing antialiased
+
+::selection
+  color white
+  background-color var(--tonic-accent)
+
 body
-  border none
+  margin 0
   padding 50px
-  background var(--tonic-window)
+  overflow hidden
+  color var(--tonic-primary)
+  font 16px var(--tonic-body)
+  background-color var(--tonic-window)
 
-  .context-menu
-    height 50px
-    width 100px
-    margin 10px
-    border 1px solid var(--tonic-border)
+h1, h2, h3, h4
+  font-family var(--tonic-subheader)
+  letter-spacing 1px
+  text-transform uppercase
+  color var(--tonic-info)
 
-  .grid
-    display grid
-    gap 20px
-    grid-template-columns 1fr 1fr
-    margin-bottom 20px
+h1
+  font-family var(--tonic-header)
+
+.context-menu
+  height 50px
+  width 100px
+  margin 10px
+  border 1px solid var(--tonic-border)
+
+.grid
+  display grid
+  gap 20px
+  grid-template-columns 1fr 1fr
+  margin-bottom 20px
