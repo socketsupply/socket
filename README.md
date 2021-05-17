@@ -33,7 +33,7 @@ curl -o- https://raw.githubusercontent.com/optoolco/opkit/master/bootstrap.sh in
 Compile the build program...
 
 ```sh
-`echo $CXX` src/build.cc -o bin/build -std=c++2a -stdlib=libc++"
+./bootstrap.sh
 ```
 
 Build the example...
