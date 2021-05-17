@@ -106,7 +106,7 @@ browser. It will contain the same info as the result from the context menu.
 
 #### From the browser
 
-The browser has a gloabl function named `send` that creates a promise
+The browser has a global function named `send` that creates a promise
 which can await a response from the child process.
 
 ```js
@@ -116,7 +116,7 @@ assert(result === 'goose')
 
 #### In the backend process (node.js example)
 
-The spawned process should send a receive json using a simple
+The spawned process should send and receive json using a simple
 incrementing counter. Here is an example [implementation][0].
 
 ```js
