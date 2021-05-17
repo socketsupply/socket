@@ -10,7 +10,7 @@ Build and package fast, light-weight web-based UIs with any backend.
 - Runs on macOS, linux, windows
 - System Menus, Context Menus, File Dialogs
 - Webkit web inspector
-- The only build requiremnt a modern C++ compiler
+- The only build requiremnt a modern C++ compiler toolchain
 - Smaller than and with fewer dependencies than tauri or electron
 - Runs any arbitrary backend process
 
@@ -24,7 +24,7 @@ it means something like `clang-12 libc++1-12-dev libc++abi-12-dev libwebkit2gtk-
 #### INSTALL
 
 ```bash
-curl -o- https://raw.githubusercontent.com/optoolco/opkit/master/install.sh | bash
+curl -o- https://raw.githubusercontent.com/optoolco/opkit/master/bootstrap.sh install | bash
 ```
 
 
@@ -40,6 +40,8 @@ Build the example...
 
 ```sh
 ./bin/build test/example
+cd text/example
+npm install
 ```
 
 Then open the binary...
