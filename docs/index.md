@@ -7,7 +7,7 @@ target directory, `settings.config` and `menu.config`.
 
 ### Settings
 
-```config
+```syntax
 #
 # Build Settings
 #
