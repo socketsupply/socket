@@ -5,7 +5,7 @@
 The build tool expects to find two config files in the
 target directory, `settings.config` and `menu.config`.
 
-### Settings
+### Settings Configuration
 
 ```syntax
 #
@@ -49,7 +49,7 @@ flags: -O3
 arch: x64
 ```
 
-### Menus
+### Menu Configuration Syntax
 
 End menus with `;`. Split menus and menu items with `:`. See the
 docs for an example of a menu.
@@ -84,7 +84,8 @@ assert(value === { title: 'Wizard', parent: 'contextMenu', state: 0 })
 #### System Menus
 
 System menus are created at build time. Your project needs a `menu.config`
-in the root folder. The semi colon is significant indicates the end of the menu.
+in the root folder. The semi colon is significant indicates the end of the
+menu.
 
 ```js
 Edit:
@@ -99,8 +100,18 @@ Other:
   Another Test: t
 ```
 
-When a selection is made the `menuItemSelected` event will be fired in the
-browser. It will contain the same info as the result from the context menu.
+When a menu item is activated, it raises the `menuItemSelected` event in
+the front end code, you can then communicate with your backend code if you
+want from there.
+
+For example, if the `Apple` item is selected from the `Other` menu...
+
+```js
+window.addEventListener('menuItemSelected', event => {
+  assert(event.detail.parent === 'Other')
+  assert(event.detail.title === 'Apple')
+})
+```
 
 ## IPC
 
