@@ -10,6 +10,7 @@ Components(Tonic)
 window.addEventListener('menuItemSelected', event => {
   // can then await invokeIPC if so desired
   document.querySelector('#menu-selection').value = event.detail.title
+  console.log(event.detail)
 })
 
 window.addEventListener('themeChanged', _ => {

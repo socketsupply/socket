@@ -118,7 +118,6 @@ class gtk_webkit_engine {
       auto menuTitle = split(trim(menu[0]), ':')[0];
       GtkWidget *subMenu = gtk_menu_new();
       GtkWidget *menuItem = gtk_menu_item_new_with_label(menuTitle.c_str());
-      gtk_menu_item_set_submenu(GTK_MENU_ITEM(menuItem), subMenu);
 
       for (int i = 1; i < menu.size(); i++) {
         auto parts = split(trim(menu[i]), ':');
@@ -130,8 +129,9 @@ class gtk_webkit_engine {
         }
 
         GtkWidget *item = gtk_menu_item_new_with_label(title.c_str());
+        gtk_widget_set_name(item, menuTitle.c_str());
         gtk_menu_shell_append(GTK_MENU_SHELL(subMenu), item);
-        // TODO(@heapwolf): set accellerator
+        // TODO(@heapwolf): how can we set the accellerator?
         // gtk_accel_group_connect(
 
         g_signal_connect(
@@ -139,20 +139,16 @@ class gtk_webkit_engine {
           "activate",
           G_CALLBACK(+[](GtkWidget *t, gpointer arg) {
             auto w = static_cast<webview::gtk_webkit_engine*>(arg);
+            auto title = gtk_menu_item_get_label(GTK_MENU_ITEM(t));
+            auto parent = gtk_widget_get_name(t);
 
-            auto title = gtk_menu_item_get_label(
-              GTK_MENU_ITEM(t)
-            );
-
-            // auto parent = GTK_MENU(gtk_widget_get_parent(t));
-            // std::cout << parent << std::endl;
-
+            // TODO(@heapwolf) can we get the state?
             w->eval(
               "(() => {"
               "  const detail = {"
               "    title: '" + std::string(title) + "',"
-              "    parent: '" + std::string("<PARENT>") + "',"
-              "    state: '<STATE>'"
+              "    parent: '" + std::string(parent) + "',"
+              "    state: 0"
               "  };"
 
               "  const event = new window.CustomEvent('menuItemSelected', { detail });"
@@ -164,6 +160,7 @@ class gtk_webkit_engine {
         );
       }
 
+      gtk_menu_item_set_submenu(GTK_MENU_ITEM(menuItem), subMenu);
       gtk_menu_shell_append(GTK_MENU_SHELL(menubar), menuItem);
     }
 
