@@ -87,7 +87,7 @@ System menus are created at build time. Your project needs a `menu.config`
 in the root folder. The semi colon is significant indicates the end of the
 menu.
 
-```js
+```syntax
 Edit:
   Cut: x
   Copy: c
