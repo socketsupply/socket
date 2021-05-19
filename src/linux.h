@@ -104,9 +104,11 @@ class gtk_webkit_engine {
 
   void createContextMenu(std::string seq, std::string menuData) {
     /*
-      // TODO: looks like there is a built-in utility for this, but
-      // im not sure i understand the types or how the apis work together.
-      // but this solution seems better than using gtk.
+      // TODO: looks like there is a built-in utility for this,
+      // https://webkitgtk.org/reference/webkit2gtk/stable/WebKitContextMenu.html#webkit-context-menu-new
+      //
+      // im not sure i understand the types or how the apis work
+      // together, but this solution seems better than using gtk.
       //
       WebKitContextMenu *menu = webkit_context_menu_new();
 
