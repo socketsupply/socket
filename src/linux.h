@@ -90,7 +90,7 @@ class gtk_webkit_engine {
     gtk_widget_grab_focus(GTK_WIDGET(m_webview));
 
     WebKitSettings *settings =
-        webkit_web_view_get_settings(WEBKIT_WEB_VIEW(m_webview));
+      webkit_web_view_get_settings(WEBKIT_WEB_VIEW(m_webview));
     webkit_settings_set_javascript_can_access_clipboard(settings, true);
 
     if (debug) {
@@ -103,6 +103,25 @@ class gtk_webkit_engine {
   }
 
   void createContextMenu(std::string seq, std::string menuData) {
+    /*
+      // TODO: looks like there is a built-in utility for this, but
+      // im not sure i understand the types or how the apis work together.
+      // but this solution seems better than using gtk.
+      //
+      WebKitContextMenu *menu = webkit_context_menu_new();
+
+      GtkAction *action = gtk_action_new("WebKitGTK+CustomAction", "Custom _Action", 0, 0);
+
+      WebKitContextMenuItem *item =
+        webkit_context_menu_item_new_from_gaction(
+          G_ACTION(action),
+          "Settings",
+          NULL
+        );
+
+      webkit_context_menu_append(menu, item);
+    */
+
     m_popup = gtk_menu_new();
 
     auto menuItems = split(menuData, '_');
@@ -166,7 +185,23 @@ class gtk_webkit_engine {
     // gtk_menu_popup_at_pointer(GTK_MENU(m_popup), event);
 
     // // METHOD 3
-    gtk_menu_popup(GTK_MENU(m_popup), NULL, NULL, NULL, NULL, 0, GDK_CURRENT_TIME);
+    // https://developer.gnome.org/gtk3/stable/GtkMenu.html#gtk-menu-popup
+    gtk_menu_popup(
+      GTK_MENU(m_popup),
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      0,
+      GDK_CURRENT_TIME
+    );
+
+    // TODO(@heapwolf):
+    //
+    // This is currently the shitty solution, it kinda works.
+    // But for some reason after being displayed, you need to
+    // click it/give it focus before you can activate an option.
+    // i tried gtk_widget_grab_focus(GTK_WIDGET(m_popup));
   }
 
   void menu(std::string menu) {
