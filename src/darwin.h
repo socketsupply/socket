@@ -433,6 +433,10 @@ namespace webview {
       createMenu(menu);
     }
 
+    void createContextMenu(std::string seq, std::string menu) {
+      createContextMenu(seq, menu);
+    }
+
     void navigate(const std::string url) {
       auto nsurl = ((id(*)(id, SEL, id))objc_msgSend)(
         NSClass("NSURL"),

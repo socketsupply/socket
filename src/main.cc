@@ -43,7 +43,7 @@ int main(int argc, char *argv[])
   });
 
   win->ipc("contextMenu", [&](std::string seq, std::string value) {
-    createContextMenu(seq, value);
+    win->createContextMenu(seq, value);
   });
 
   win->ipc("send", [&](std::string seq, std::string value) {

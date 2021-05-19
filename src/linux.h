@@ -16,8 +16,9 @@ namespace webview {
 
 class gtk_webkit_engine {
   public:
+
   gtk_webkit_engine(bool debug, void *window)
-      : m_window(static_cast<GtkWidget *>(window)) {
+    : m_window(static_cast<GtkWidget *>(window)) {
 
     gtk_init_check(0, NULL);
     m_window = static_cast<GtkWidget *>(window);
@@ -26,7 +27,9 @@ class gtk_webkit_engine {
       m_window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
     }
 
-    g_signal_connect(G_OBJECT(m_window), "destroy",
+    g_signal_connect(
+      G_OBJECT(m_window),
+      "destroy",
       G_CALLBACK(+[](GtkWidget *, gpointer arg) {
         static_cast<gtk_webkit_engine *>(arg)->terminate();
         exit(0);
@@ -43,8 +46,10 @@ class gtk_webkit_engine {
     g_signal_connect(
       manager,
       "script-message-received::external",
-      G_CALLBACK(+[](WebKitUserContentManager *,
-      WebKitJavascriptResult *r, gpointer arg) {
+      G_CALLBACK(+[](
+        WebKitUserContentManager*,
+        WebKitJavascriptResult *r,
+        gpointer arg) {
         auto *w = static_cast<gtk_webkit_engine *>(arg);
 #if WEBKIT_MAJOR_VERSION >= 2 && WEBKIT_MINOR_VERSION >= 22
         JSCValue *value =
@@ -93,14 +98,82 @@ class gtk_webkit_engine {
       webkit_settings_set_enable_developer_extras(settings, true);
     }
 
-    gtk_box_pack_end(GTK_BOX (m_vbox), m_webview, TRUE, TRUE, 0);
+    gtk_box_pack_end(GTK_BOX(m_vbox), m_webview, TRUE, TRUE, 0);
     gtk_widget_show_all(m_window);
+  }
+
+  void createContextMenu(std::string seq, std::string menuData) {
+    m_popup = gtk_menu_new();
+
+    auto menuItems = split(menuData, '_');
+    auto id = std::stoi(seq);
+
+    for (auto itemData : menuItems) {
+      auto pair = split(itemData, ':');
+
+      GtkWidget *item = gtk_menu_item_new_with_label(pair[0].c_str());
+      gtk_widget_set_name(item, pair[1].c_str());
+
+      g_signal_connect(
+        G_OBJECT(item),
+        "activate",
+        G_CALLBACK(+[](GtkWidget *t, gpointer arg) {
+          auto w = static_cast<webview::gtk_webkit_engine*>(arg);
+          auto title = gtk_menu_item_get_label(GTK_MENU_ITEM(t));
+          auto parent = gtk_widget_get_name(t);
+
+          // TODO(@heapwolf) can we get the state?
+          w->eval(
+            "(() => {"
+            "  const detail = {"
+            "    title: '" + std::string(title) + "',"
+            "    parent: '" + std::string(parent) + "',"
+            "    state: 0"
+            "  };"
+
+            "  const event = new window.CustomEvent('menuItemSelected', { detail });"
+            "  window.dispatchEvent(event);"
+            "})()"
+          );
+        }),
+        this
+      );
+
+      gtk_widget_show(item);
+      gtk_menu_shell_append(GTK_MENU_SHELL(m_popup), item);
+    }
+
+    // The gtk_menu_popup method is actually deprecated, but i
+    // tried both of these methods but they complain that the
+    // window is not valid...
+    //
+    // "(operator:56364): Gtk-CRITICAL **: 11:51:04.275: gtk_m
+    // enu_popup_at_rect: assertion 'GDK_IS_WINDOW (rect_wind
+    // ow)' failed"
+
+    // // METHOD 1
+    // (GdkRectangle) { 0, 0, 1, 1 };
+    // gtk_menu_popup_at_rect(
+    //  GTK_MENU(popupMenu),
+    //  GDK_WINDOW(m_window),
+    //  &rect,
+    //  GDK_GRAVITY_SOUTH_WEST,
+    //  GDK_GRAVITY_NORTH_WEST,
+    //  nullptr);
+
+    // // METHOD 2
+    // GdkEvent* event = gtk_get_current_event();
+    // gtk_menu_popup_at_pointer(GTK_MENU(m_popup), event);
+
+    // // METHOD 3
+    gtk_menu_popup(GTK_MENU(m_popup), NULL, NULL, NULL, NULL, 0, GDK_CURRENT_TIME);
   }
 
   void menu(std::string menu) {
     if (menu.empty()) return void(0);
 
     GtkWidget *menubar = gtk_menu_bar_new();
+    GtkAccelGroup *aclrs = gtk_accel_group_new();
 
     //
     // TODO(@heapwolf): do a similar loop to the macOS implementation,
@@ -133,6 +206,18 @@ class gtk_webkit_engine {
         gtk_menu_shell_append(GTK_MENU_SHELL(subMenu), item);
         // TODO(@heapwolf): how can we set the accellerator?
         // gtk_accel_group_connect(
+
+        /* GClosure cb = G_CALLBACK(+[](GtkWidget* w, gpointer arg) {
+
+        });
+
+        gtk_accel_group_connect(
+          aclrs,
+          GDK_KEY_A,
+          GDK_CONTROL_MASK,
+          GTK_ACCEL_MASK,
+          &cb
+        ); */
 
         g_signal_connect(
           G_OBJECT(item),
@@ -236,7 +321,7 @@ class gtk_webkit_engine {
 
   GtkWidget *m_vbox;
   GtkWidget *m_window;
-  std::string lastMenuSelection;
+  GtkWidget *m_popup;
 private:
   virtual void on_message(const std::string msg) = 0;
   GtkWidget *m_webview;

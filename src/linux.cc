@@ -13,6 +13,11 @@ bool createContextMenu(std::string a, std::string b) {
   return true;
 }
 
+std::string getTheme () {
+  // https://github.com/electron/electron/blob/d518b6abc887787ac169270cbcf71c4626e2caaf/shell/browser/native_window_views.cc
+  return std::string("light");
+}
+
 std::string createDialog(
   int flags,
   const char *_,
