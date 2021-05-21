@@ -83,7 +83,7 @@ class gtk_webkit_engine {
     );
 
     m_vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
-    gtk_container_add(GTK_CONTAINER (m_window), m_vbox);
+    gtk_container_add(GTK_CONTAINER(m_window), m_vbox);
 
     // add the webview to the vertical box
     // gtk_container_add(GTK_CONTAINER(m_window), GTK_WIDGET(m_webview));
@@ -103,27 +103,8 @@ class gtk_webkit_engine {
   }
 
   void createContextMenu(std::string seq, std::string menuData) {
-    /*
-      // TODO: looks like there is a built-in utility for this,
-      // https://webkitgtk.org/reference/webkit2gtk/stable/WebKitContextMenu.html#webkit-context-menu-new
-      //
-      // im not sure i understand the types or how the apis work
-      // together, but this solution seems better than using gtk.
-      //
-      WebKitContextMenu *menu = webkit_context_menu_new();
-
-      GtkAction *action = gtk_action_new("WebKitGTK+CustomAction", "Custom _Action", 0, 0);
-
-      WebKitContextMenuItem *item =
-        webkit_context_menu_item_new_from_gaction(
-          G_ACTION(action),
-          "Settings",
-          NULL
-        );
-
-      webkit_context_menu_append(menu, item);
-    */
-
+    GtkWidget *m_popup;
+    GtkWidget *item;
     m_popup = gtk_menu_new();
 
     auto menuItems = split(menuData, '_');
@@ -132,7 +113,7 @@ class gtk_webkit_engine {
     for (auto itemData : menuItems) {
       auto pair = split(itemData, ':');
 
-      GtkWidget *item = gtk_menu_item_new_with_label(pair[0].c_str());
+      item = gtk_menu_item_new_with_label(pair[0].c_str());
       gtk_widget_set_name(item, pair[1].c_str());
 
       g_signal_connect(
@@ -164,46 +145,22 @@ class gtk_webkit_engine {
       gtk_menu_shell_append(GTK_MENU_SHELL(m_popup), item);
     }
 
-    // The gtk_menu_popup method is actually deprecated, but i
-    // tried both of these methods but they complain that the
-    // window is not valid...
-    //
-    // "(operator:56364): Gtk-CRITICAL **: 11:51:04.275: gtk_m
-    // enu_popup_at_rect: assertion 'GDK_IS_WINDOW (rect_wind
-    // ow)' failed"
+    auto win = GDK_WINDOW(gtk_widget_get_window(m_window));
 
-    // // METHOD 1
-    // (GdkRectangle) { 0, 0, 1, 1 };
-    // gtk_menu_popup_at_rect(
-    //  GTK_MENU(popupMenu),
-    //  GDK_WINDOW(m_window),
-    //  &rect,
-    //  GDK_GRAVITY_SOUTH_WEST,
-    //  GDK_GRAVITY_NORTH_WEST,
-    //  nullptr);
+    GdkRectangle rect;
+    rect.x = 350;
+    rect.y = 350;
+    rect.width = 0;
+    rect.height = 0;
 
-    // // METHOD 2
-    // GdkEvent* event = gtk_get_current_event();
-    // gtk_menu_popup_at_pointer(GTK_MENU(m_popup), event);
-
-    // // METHOD 3
-    // https://developer.gnome.org/gtk3/stable/GtkMenu.html#gtk-menu-popup
-    gtk_menu_popup(
+    gtk_menu_popup_at_rect(
       GTK_MENU(m_popup),
-      NULL,
-      NULL,
-      NULL,
-      NULL,
-      0,
-      GDK_CURRENT_TIME
+      win,
+      &rect,
+      GDK_GRAVITY_SOUTH_WEST,
+      GDK_GRAVITY_NORTH_WEST,
+      gtk_get_current_event()
     );
-
-    // TODO(@heapwolf):
-    //
-    // This is currently the shitty solution, it kinda works.
-    // But for some reason after being displayed, you need to
-    // click it/give it focus before you can activate an option.
-    // i tried gtk_widget_grab_focus(GTK_WIDGET(m_popup));
   }
 
   void menu(std::string menu) {
@@ -358,7 +315,6 @@ class gtk_webkit_engine {
 
   GtkWidget *m_vbox;
   GtkWidget *m_window;
-  GtkWidget *m_popup;
 private:
   virtual void on_message(const std::string msg) = 0;
   GtkWidget *m_webview;

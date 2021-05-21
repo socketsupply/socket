@@ -4,6 +4,7 @@
 #include <chrono>
 #include <thread>
 #include <map>
+#include <span>
 #include <regex>
 #include <vector>
 #include <fstream>
@@ -82,13 +83,25 @@ int exec (std::string cmd, std::string s) {
 
 int main (const int argc, const char* argv[]) {
   if (argc < 2) {
-    std::cout << "usage: opkit <project-dir>" << std::endl;
+    std::cout
+      << "usage: opkit <project-dir> [-partial]"
+      << std::endl;
     exit(0);
   }
 
   if (std::getenv("CXX") == nullptr) {
-    std::cout << "The $CXX environment variable needs to be set." << std::endl;
+    std::cout
+      << "The $CXX environment variable needs to be set."
+      << std::endl;
     exit(0);
+  }
+
+  bool partial = false;
+
+  for (auto const arg : std::span(argv, argc)) {
+    if (std::string(arg).find("-partial") != std::string::npos) {
+      partial = true;
+    }
   }
 
   Platform platform;
@@ -100,8 +113,10 @@ int main (const int argc, const char* argv[]) {
   // TODO split output path variable on os sep to make output path cross-platform.
   auto pathOutput = fs::path { fs::path(settings["output"]) };
 
-  fs::remove_all(pathOutput);
-  log("cleaned: " + pathToString(pathOutput));
+  if (partial == false) {
+    fs::remove_all(pathOutput);
+    log("cleaned: " + pathToString(pathOutput));
+  }
 
   auto executable = fs::path(platform.darwin
     ? settings["title"]
@@ -275,8 +290,10 @@ int main (const int argc, const char* argv[]) {
     << define("ARG", settings["arg"]);
 
   // log(compileCommand.str());
-  std::system(compileCommand.str().c_str());
-  log("compiled native binary");
+  if (partial == false) {
+    std::system(compileCommand.str().c_str());
+    log("compiled native binary");
+  }
 
   //
   // Archive step
