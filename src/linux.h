@@ -147,9 +147,16 @@ class gtk_webkit_engine {
 
     auto win = GDK_WINDOW(gtk_widget_get_window(m_window));
 
+    GdkSeat *seat = gdk_display_get_default_seat (gdk_display_get_default ());
+    GdkDevice *mouse_device = gdk_seat_get_pointer (seat);
+
+    gint x, y;
     GdkRectangle rect;
-    rect.x = 350;
-    rect.y = 350;
+
+    gdk_window_get_device_position(win, mouse_device, &x, &y, NULL);
+
+    rect.x = x;
+    rect.y = y;
     rect.width = 0;
     rect.height = 0;
 
