@@ -359,7 +359,7 @@ namespace webview {
       );
     }
 
-    void set_title(const std::string title) {
+    void setTitle(const std::string title) {
       ((void (*)(id, SEL, id))objc_msgSend)(
         m_window,
         NSSelector("setTitle:"),
@@ -373,7 +373,7 @@ namespace webview {
       setTitle(m_window);
     }
 
-    void set_size(int width, int height, int hints) {
+    void setSize(int width, int height, int hints) {
       auto style = 
         NSWindowStyleMaskClosable |
         NSWindowStyleMaskTitled |

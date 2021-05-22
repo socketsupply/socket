@@ -353,11 +353,11 @@ public:
     PostThreadMessage(m_main_thread, WM_APP, 0, (LPARAM) new dispatch_fn_t(f));
   }
 
-  void set_title(const std::string title) {
+  void setTitle(const std::string title) {
     SetWindowText(m_window, title.c_str());
   }
 
-  void set_size(int width, int height, int hints) {
+  void setSize(int width, int height, int hints) {
     auto style = GetWindowLong(m_window, GWL_STYLE);
     if (hints == WEBVIEW_HINT_FIXED) {
       style &= ~(WS_THICKFRAME | WS_MAXIMIZEBOX);

@@ -28,9 +28,9 @@ int main(int argc, char *argv[])
   static auto process = std::make_unique<Process>();
   static auto win = std::make_unique<webview::webview>(true, nullptr);
 
-  win->set_title(title);
+  win->setTitle(title);
 
-  win->set_size(
+  win->setSize(
     std::stoi(width),
     std::stoi(height),
     WEBVIEW_HINT_NONE

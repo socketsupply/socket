@@ -73,9 +73,10 @@ class AppContainer extends Tonic {
   }
 
   async contextmenu (e) {
-    e.preventDefault()
     const el = Tonic.match(e.target, '.context-menu')
     if (!el) return
+
+    e.preventDefault()
 
     const choice = await contextMenu({
       'Download': 'd',

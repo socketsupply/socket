@@ -103,9 +103,8 @@ class gtk_webkit_engine {
   }
 
   void createContextMenu(std::string seq, std::string menuData) {
-    GtkWidget *m_popup;
+    GtkWidget *m_popup = gtk_menu_new();
     GtkWidget *item;
-    m_popup = gtk_menu_new();
 
     auto menuItems = split(menuData, '_');
     auto id = std::stoi(seq);
@@ -114,27 +113,30 @@ class gtk_webkit_engine {
       auto pair = split(itemData, ':');
 
       item = gtk_menu_item_new_with_label(pair[0].c_str());
-      gtk_widget_set_name(item, pair[1].c_str());
+      auto meta = std::string(seq + ";" + pair[0].c_str());
+      gtk_widget_set_name(item, meta.c_str());
 
       g_signal_connect(
         G_OBJECT(item),
         "activate",
         G_CALLBACK(+[](GtkWidget *t, gpointer arg) {
           auto w = static_cast<webview::gtk_webkit_engine*>(arg);
-          auto title = gtk_menu_item_get_label(GTK_MENU_ITEM(t));
-          auto parent = gtk_widget_get_name(t);
+          auto label = gtk_menu_item_get_label(GTK_MENU_ITEM(t));
+          auto title = std::string(label);
+          auto meta = gtk_widget_get_name(t);
+          auto pair = split(meta, ';');
+          auto seq = pair[0];
 
-          // TODO(@heapwolf) can we get the state?
           w->eval(
             "(() => {"
             "  const detail = {"
-            "    title: '" + std::string(title) + "',"
-            "    parent: '" + std::string(parent) + "',"
+            "    title: '" + title + "',"
+            "    parent: 'contextMenu',"
             "    state: 0"
             "  };"
 
-            "  const event = new window.CustomEvent('menuItemSelected', { detail });"
-            "  window.dispatchEvent(event);"
+            "  window._ipc[" + seq + "].resolve(detail);"
+            "  delete window._ipc[" + seq + "];"
             "})()"
           );
         }),
@@ -146,12 +148,11 @@ class gtk_webkit_engine {
     }
 
     auto win = GDK_WINDOW(gtk_widget_get_window(m_window));
+    auto seat = gdk_display_get_default_seat(gdk_display_get_default());
+    auto mouse_device = gdk_seat_get_pointer(seat);
 
-    GdkSeat *seat = gdk_display_get_default_seat (gdk_display_get_default ());
-    GdkDevice *mouse_device = gdk_seat_get_pointer (seat);
-
-    gint x, y;
     GdkRectangle rect;
+    gint x, y;
 
     gdk_window_get_device_position(win, mouse_device, &x, &y, NULL);
 
@@ -272,11 +273,11 @@ class gtk_webkit_engine {
     );
   }
 
-  void set_title(const std::string title) {
+  void setTitle(const std::string title) {
     gtk_window_set_title(GTK_WINDOW(m_window), title.c_str());
   }
 
-  void set_size(int width, int height, int hints) {
+  void setSize(int width, int height, int hints) {
     gtk_window_set_resizable(
       GTK_WINDOW(m_window),
       hints != WEBVIEW_HINT_FIXED
@@ -303,11 +304,18 @@ class gtk_webkit_engine {
 
   void init(const std::string js) {
     WebKitUserContentManager *manager =
-        webkit_web_view_get_user_content_manager(WEBKIT_WEB_VIEW(m_webview));
+      webkit_web_view_get_user_content_manager(WEBKIT_WEB_VIEW(m_webview));
+
     webkit_user_content_manager_add_script(
-        manager, webkit_user_script_new(
-                     js.c_str(), WEBKIT_USER_CONTENT_INJECT_TOP_FRAME,
-                     WEBKIT_USER_SCRIPT_INJECT_AT_DOCUMENT_START, NULL, NULL));
+      manager,
+      webkit_user_script_new(
+        js.c_str(),
+        WEBKIT_USER_CONTENT_INJECT_TOP_FRAME,
+        WEBKIT_USER_SCRIPT_INJECT_AT_DOCUMENT_START,
+        NULL,
+        NULL
+      )
+    );
   }
 
   void eval(const std::string js) {

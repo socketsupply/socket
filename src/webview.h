@@ -75,8 +75,7 @@ WEBVIEW_API
 // Updates native window size. See WEBVIEW_HINT constants.
 //
 WEBVIEW_API
-  void webview_set_size(webview_t w, int width, int height,
-                                  int hints);
+  void webview_set_size(webview_t w, int width, int height, int hints);
 //
 // Navigates webview to the given URL. URL may be a data URI, i.e.
 // "data:text/text,<html>...</html>". It is often ok not to url-encode it
@@ -333,7 +332,7 @@ WEBVIEW_API void *webview_get_window(webview_t w) {
 }
 
 WEBVIEW_API void webview_set_title(webview_t w, const char *title) {
-  static_cast<webview::webview *>(w)->set_title(title);
+  static_cast<webview::webview *>(w)->setTitle(title);
 }
 
 WEBVIEW_API void webview_set_size(
@@ -341,7 +340,7 @@ WEBVIEW_API void webview_set_size(
   int width,
   int height,
   int hints) {
-    static_cast<webview::webview *>(w)->set_size(width, height, hints);
+    static_cast<webview::webview *>(w)->setSize(width, height, hints);
 }
 
 WEBVIEW_API void webview_navigate(webview_t w, const char *url) {
