@@ -73,6 +73,7 @@ int main(int argc, char *argv[])
   });
 
   win->run();
+  process->kill();
   main.join();
 
   return 0;

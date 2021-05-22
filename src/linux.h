@@ -32,7 +32,7 @@ class gtk_webkit_engine {
       "destroy",
       G_CALLBACK(+[](GtkWidget *, gpointer arg) {
         static_cast<gtk_webkit_engine *>(arg)->terminate();
-        exit(0);
+        // exit(0);
       }),
       this
     );

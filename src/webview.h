@@ -179,7 +179,7 @@ namespace webview {
 class webview : public browser_engine {
 public:
   webview(bool debug = false, void *wnd = nullptr)
-      : browser_engine(debug, wnd) {}
+    : browser_engine(debug, wnd) {}
 
   void navigate(const std::string url) {
     browser_engine::navigate(url);
@@ -245,43 +245,50 @@ public:
         NOC_FILE_DIALOG_OPEN | NOC_FILE_DIALOG_DIR,
         NULL,
         NULL,
-        NULL);
+        NULL
+      );
 
-      eval("(() => {"
-           "  window._ipc[" + seq + "].resolve(`" + result + "`);"
-           "  delete window._ipc[" + seq + "];"
-           "})();");
+      eval(
+        "(() => {"
+        "  window._ipc[" + seq + "].resolve(`" + result + "`);"
+        "  delete window._ipc[" + seq + "];"
+        "})();"
+      );
     });
   }
 
   void resolve(const std::string msg) {
     dispatch([=]() {
-      eval("(() => {"
-           "  const data = `" + msg + "`.trim().split(';');"
-           "  const internal = data[0] === 'internal';"
-           "  const status = Number(data[1]);"
-           "  const seq = Number(data[2]);"
-           "  const method = status === 0 ? 'resolve' : 'reject';"
-           "  const value = internal ? data[3] : JSON.parse(atob(data[3]));"
-           "  window._ipc[seq][method](value);"
-           "  window._ipc[seq] = undefined;"
-           "})()");
+      eval(
+        "(() => {"
+        "  const data = `" + msg + "`.trim().split(';');"
+        "  const internal = data[0] === 'internal';"
+        "  const status = Number(data[1]);"
+        "  const seq = Number(data[2]);"
+        "  const method = status === 0 ? 'resolve' : 'reject';"
+        "  const value = internal ? data[3] : JSON.parse(atob(data[3]));"
+        "  window._ipc[seq][method](value);"
+        "  window._ipc[seq] = undefined;"
+        "})()"
+      );
     });
   }
 
   void emit(const std::string event, const std::string data) {
     dispatch([=]() {
-      eval("(() => {"
-          "  let detail;"
-          "  try {"
-          "    detail = JSON.parse(atob(`" + data + "`));"
-          "  } catch (err) {"
-          "    console.error(`Unable to parse (${detail})`);"
-          "    return;"
-          "  }"
-          "  const event = new window.CustomEvent('" + event + "', { detail });"
-          "  window.dispatchEvent(event);"
-          "})()");
+      eval(
+        "(() => {"
+        "  let detail;"
+        "  try {"
+        "    detail = JSON.parse(atob(`" + data + "`));"
+        "  } catch (err) {"
+        "    console.error(`Unable to parse (${detail})`);"
+        "    return;"
+        "  }"
+        "  const event = new window.CustomEvent('" + event + "', { detail });"
+        "  window.dispatchEvent(event);"
+        "})()"
+      );
     });
   }
 

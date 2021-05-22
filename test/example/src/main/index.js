@@ -16,9 +16,13 @@ let breakCounter = 0
 
 setInterval(() => {
   counter++
+ 
+  // send an odd sized message
+  const size = Math.floor(Math.random() * 1e3)
+  const data = new Array(size).fill(0)
 
-  ipc.send({ sending: Date.now(), counter })
-}, 2048)
+  ipc.send({ sending: data.join(''), counter })
+}, 5090) // send at some interval
 
 process.on('beforeExit', () => {
   console.log('exiting')

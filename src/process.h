@@ -24,6 +24,7 @@ class Process {
   std::thread run;
 
   public:
+    void kill();
     void spawn(const char* file, const char* arg, const char* cwd);
     void write(const std::string str);
     msg_cb_t onData;
@@ -38,6 +39,14 @@ class Process {
       onError { nullptr } {
     }
 };
+
+void Process::kill () {
+  delete stdin;
+  delete stdout;
+  delete stderr;
+  delete parent;
+  uv_stop(loop);
+}
 
 void Process::spawn (const char* file, const char* arg, const char* cwd) {
   parent = new uv_process_t {};
@@ -77,11 +86,9 @@ void Process::spawn (const char* file, const char* arg, const char* cwd) {
 
   int status = uv_spawn(loop, this->parent, &options);
 
-  // if (status < 0) {
-  //  std::cout << "WTF
-  //  // TODO cleanup
-  //  return;
-  // }
+  if (status < 0) {
+    return;
+  }
 
   this->resumeStdout();
   this->resumeStderr();
@@ -119,6 +126,7 @@ void Process::resumeStdout () {
       std::string s(buf->base);
       reinterpret_cast<Process*>(stream->data)->receiveData(s);
       delete[] buf->base;
+
     }
   );
 }
@@ -127,15 +135,26 @@ void Process::resumeStderr () {
   uv_read_start(
     getStderr(),
     [] (uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf) {
-      *buf = uv_buf_init((char*) malloc(suggested_size), suggested_size);        
+      *buf = uv_buf_init((char*) malloc(suggested_size), suggested_size);
     },
     [](uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf) {
       const std::string s(buf->base);
       reinterpret_cast<Process*>(stream->data)->receiveError(s);
+
       delete[] buf->base;
     }
   );
 }
+
+//
+// On linux, this seems to cause an error, but only *sometimes*...
+// operator: src/unix/stream.c:743: uv__write_req_update: Assertion `n <= stream->write_queue_size' failed.
+//
+// running gdb, i see a stack trace where just before the assert.c happens,
+// there is a call to uv_write2, however, after throttling the calls to write,
+// i stop seeing the error. Does write_queue_size have some kind of
+// back pressure?
+//
 
 void Process::write (const std::string str) {
   uv_write_t* req = new uv_write_t {};
@@ -143,8 +162,16 @@ void Process::write (const std::string str) {
   auto buf = uv_buf_init((char*) str.c_str(), str.size());
   req->data = &buf;
 
-  uv_write(req, getStdin(), &buf, 1, [](uv_write_t* req, int status) {
+  uv_write(req, getStdin(), &buf, 1, +[](uv_write_t* req, int status) {
     // auto& data = reinterpret_cast<char*>(req->data);
     delete req;
+
+    if (status != 0) {
+      // TODO better write error handling
+      std::cout
+        << "uv_write error: "
+        << uv_err_name(status)
+        << std::endl;
+    }
   });
 }

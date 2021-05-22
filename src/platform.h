@@ -16,12 +16,17 @@
 #define OS_LINUX
 #endif
 
-#include <stdlib.h>
 #include <string>
-#include <locale>
 #include <vector>
 
 struct Platform {
+#ifdef OS_LINUX
+  bool darwin = false;
+  bool win32 = false;
+  bool linux = true;
+  const std::string os = "linux";
+#endif
+
 #ifdef OS_DARWIN
   bool darwin = true;
   bool win32 = false;
@@ -35,20 +40,13 @@ struct Platform {
   bool linux = false;
   const std::string os = "win32";
 #endif
-
-#ifdef OS_LINUX
-  bool darwin = false;
-  bool win32 = false;
-  bool linux = true;
-  const std::string os = "linux";
-#endif
 };
 
 inline const std::vector<std::string> split(const std::string& s, const char& c) {
-  std::string buff {""};
+  std::string buff;
   std::vector<std::string> vec;
 	
-	for (auto n:s) {
+	for (auto n : s) {
 		if(n != c) {
       buff += n;
     } else if (n == c && buff != "") {
@@ -57,7 +55,7 @@ inline const std::vector<std::string> split(const std::string& s, const char& c)
     }
 	}
 
-	if (buff != "") vec.push_back(buff);
+	if (!buff.empty()) vec.push_back(buff);
 
 	return vec;
 }
