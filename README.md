@@ -5,15 +5,16 @@ Build and package fast, light-weight web-based UIs with any backend.
 
 # HIGHLIGHTS
 
-- Very fast startup and build times
-- Tiny memory, cpu and binary
+- Instant startup, first UI paint in <0.3s
+- <1s build time baseline
+- Tiny memory, cpu and binary baselines
 - Runs on macOS, linux, windows
 - System Menus, Context Menus, File Dialogs
 - Webkit web inspector
 - The only build requiremnt a modern C++ compiler toolchain
+- Zero dependencies (except platform frameworks, gtk, cocoa, etc)
 - Smaller than and with fewer dependencies than tauri or electron
 - Runs any arbitrary backend process
-
 
 # GET STARTED
 
@@ -22,7 +23,7 @@ it means something like `clang-12 libc++1-12-dev libc++abi-12-dev libwebkit2gtk-
 
 See more docs [here](https://github.com/optoolco/opkit/blob/master/docs/index.md).
 
-#### INSTALL
+#### INSTALL (TODO)
 
 ```bash
 curl -o- https://raw.githubusercontent.com/optoolco/opkit/master/bootstrap.sh install | bash
@@ -56,15 +57,26 @@ open test/example/dist/Operator.app # macOS
 ```
 
 # FAQ
+
 #### Why the F is it in C++ instead of Rust?
+
 Rust is incredible. Write your backend in Rust. Even write your front end in Rust
 and load it as WASM! This project is in C++ because webkit is, Cocoa is, GTK is,
-and Windows is. Writing this in C++ means less context switching, fewer intermediate.
+and Windows is. Writing this in C++ means less context switching, fewer intermediate
+steps.
 
 #### What about keyboard accelerators?
+
 All menues raise events in the front-end. So should keyboard accelerators.
 Your accelerators, and menu items can all use `addEventListener` and then
 send a message to the backend if needed.
+
+#### I need feature-X, but Opkit doesn't support that, can you make it?
+
+You can make a PR. But the goal is not to solve the all problems for all
+use cases. The goal is to be minimal. Just the essentials. Stay fast and
+stay simple. Electron or Tauri might have what you are looking for.
+
 
 [01]:https://developer.apple.com/documentation/webkit/wkwebview
 [00]:https://developer.apple.com/videos/play/wwdc2020/10188/
