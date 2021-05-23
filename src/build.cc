@@ -232,7 +232,7 @@ int main (const int argc, const char* argv[]) {
   if (platform.win32) {
     log("preparing build for win32");
     flags = "-mwindows -L./dll/x64 -lwebview -lWebView2Loader";
-    files = "src/main.cc src/win32.cc";
+    files = "src/main.cc process_win32.cc src/win32.cc";
 
     // TODO create paths, copy files, archive, etc.
   }
