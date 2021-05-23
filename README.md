@@ -57,7 +57,7 @@ open ./dist/Operator.app # macOS
 ```
 
 ```sh
-C:\Program Files\Operator\operator.exe # win32
+dist\operator.exe # win32
 ```
 
 # FAQ
