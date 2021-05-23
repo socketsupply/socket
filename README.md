@@ -67,7 +67,7 @@ steps.
 
 #### What about keyboard accelerators?
 
-All menues raise events in the front-end. So should keyboard accelerators.
+All menus raise events in the front-end. So should keyboard accelerators.
 Your accelerators, and menu items can all use `addEventListener` and then
 send a message to the backend if needed.
 

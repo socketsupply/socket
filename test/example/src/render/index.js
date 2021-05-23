@@ -18,9 +18,22 @@ window.addEventListener('themeChanged', _ => {
   document.body.setAttribute('theme', theme === 'dark' ? 'light' : 'dark')
 })
 
+//
+// if a keyup + the control key was pressed, send it
+// to the server and put the response in the input.
+//
+window.addEventListener('keyup', async event => {
+  if (event.ctrlKey) {
+    try {
+      const value = { input: 'CTRL+' + event.key }
+      response = await window.send(value)
+    } catch (err) {
+      console.log(err.message)
+    }
 
-window.addEventListener('keyup', event => {
-  console.log(event.key)
+    document.querySelector('#response').value =
+      response.received.input
+  }
 })
 
 window.addEventListener('data', event => {
