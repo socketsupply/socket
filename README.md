@@ -38,7 +38,7 @@ Compile the build program...
 ./bootstrap.sh
 ```
 
-Build the example...
+There is an example app written in Node.js, to run it...
 
 ```sh
 ./bin/build test/example
@@ -46,7 +46,7 @@ cd text/example
 npm install
 ```
 
-Then open the binary...
+Then open the binary that was created by the build program...
 
 ```sh
 open test/example/dist/Operator.app # macOS
