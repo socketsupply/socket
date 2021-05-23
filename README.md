@@ -55,6 +55,17 @@ open test/example/dist/Operator.app # macOS
 ./test/example/dist/operator_v0.0.1-1_x64/opt/Operator/operator # linux
 ```
 
+# FAQ
+#### Why the F is it in C++ instead of Rust?
+Rust is incredible. Write your backend in Rust. Even write your front end in Rust
+and load it as WASM! This project is in C++ because webkit is, Cocoa is, GTK is,
+and Windows is. Writing this in C++ means less context switching, fewer intermediate.
+
+#### What about keyboard accelerators?
+All menues raise events in the front-end. So should keyboard accelerators.
+Your accelerators, and menu items can all use `addEventListener` and then
+send a message to the backend if needed.
+
 [01]:https://developer.apple.com/documentation/webkit/wkwebview
 [00]:https://developer.apple.com/videos/play/wwdc2020/10188/
 [0]:https://github.com/webview/webview/blob/master/webview.h

@@ -18,6 +18,11 @@ window.addEventListener('themeChanged', _ => {
   document.body.setAttribute('theme', theme === 'dark' ? 'light' : 'dark')
 })
 
+
+window.addEventListener('keyup', event => {
+  console.log(event.key)
+})
+
 window.addEventListener('data', event => {
   //
   // Receive arbitrary/non-request-response data.
