@@ -18,9 +18,6 @@ Build and package fast, light-weight web-based UIs with any backend.
 
 # GET STARTED
 
-"Modern Compiler" means whatever ships with latest MacOS or, on linux
-it means something like `clang-12 libc++1-12-dev libc++abi-12-dev libwebkit2gtk-4.0-dev`.
-
 See more docs [here](https://github.com/optoolco/opkit/blob/master/docs/index.md).
 
 #### INSTALL (TODO)
