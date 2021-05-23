@@ -16,9 +16,11 @@ Build and package fast, light-weight web-based UIs with any backend.
 - Smaller than and with fewer dependencies than tauri or electron
 - Runs any arbitrary backend process
 
+
 # GET STARTED
 
-See more docs [here](https://github.com/optoolco/opkit/blob/master/docs/index.md).
+See more docs [here](https://github.com/optoolco/opkit/blob/master/docs).
+
 
 #### INSTALL (TODO)
 
@@ -56,37 +58,6 @@ open ./dist/Operator.app # macOS
 ```sh
 dist\operator.exe # win32
 ```
-
-# FAQ
-
-#### Why the F is it in C++ instead of Rust?
-
-Rust is incredible. Write your backend in Rust. Even write your front end in Rust
-and load it as WASM! This project is in C++ because webkit is, Cocoa is, GTK is,
-and Windows is. Writing this in C++ means less context switching, fewer intermediate
-steps.
-
-#### What about keyboard accelerators?
-
-All menus raise events in the front-end. So should keyboard accelerators.
-Your accelerators, and menu items can all use `addEventListener` and then
-send a message to the backend if needed.
-
-#### I need feature-X, but Opkit doesn't support that, can you make it?
-
-You can make a PR. But the goal is not to solve the all problems for all
-use cases. The goal is to be minimal. Just the essentials. Stay fast and
-stay simple. Electron or Tauri might have what you are looking for.
-
-#### Why not electron?
-
-Electron proved that desktop apps can be built with the web-stack. There is
-also a demand for UIs that can fully integrate with the host environment.
-VSCode is an explar for this.
-
-But electron made some assumptions early on that are not aging well. Also,
-build artifacts and memory footprint are much larger than they need to be,
-especially for embedded systems where we need our apps to run.
 
 [01]:https://developer.apple.com/documentation/webkit/wkwebview
 [00]:https://developer.apple.com/videos/play/wwdc2020/10188/
