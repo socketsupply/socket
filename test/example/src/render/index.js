@@ -13,26 +13,18 @@ window.addEventListener('menuItemSelected', event => {
   console.log(event.detail)
 })
 
+// not needed on linux, webkit just knows what to do
 window.addEventListener('themeChanged', _ => {
   const theme = document.body.getAttribute('theme')
   document.body.setAttribute('theme', theme === 'dark' ? 'light' : 'dark')
 })
 
 //
-// if a keyup + the control key was pressed, send it
-// to the server and put the response in the input.
+// if keyup is ctrl+q, quit the app
 //
 window.addEventListener('keyup', async event => {
-  if (event.ctrlKey) {
-    try {
-      const value = { input: 'CTRL+' + event.key }
-      response = await window.send(value)
-    } catch (err) {
-      console.log(err.message)
-    }
-
-    document.querySelector('#response').value =
-      response.received.input
+  if (event.ctrlKey && event.key === 'q') {
+    window.quit({})
   }
 })
 
@@ -71,8 +63,6 @@ class AppContainer extends Tonic {
   }
 
   async input (e) {
-    // clearTimeout(this.bounceInput)
-    // this.bounceInput = setTimeout(async () => {
     const el = Tonic.match(e.target, 'tonic-input')
     if (!el) return
 
@@ -90,7 +80,8 @@ class AppContainer extends Tonic {
 
     this.querySelector('#response').value =
       response.received.input
-    // }, 128)
+
+    return window.setTitle(e.target.value)
   }
 
   async contextmenu (e) {
@@ -124,7 +115,6 @@ class AppContainer extends Tonic {
       <tonic-button id="butt">Open</tonic-button>
 
       <tonic-textarea id="opened" label="opened files/dirs"></tonic-textarea>
-
 
       <div class="grid">
         <tonic-input id="menu-selection" readonly="true" label="menu selection">

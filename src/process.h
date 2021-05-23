@@ -101,7 +101,7 @@ public:
   };
 
   /// Get the process id of the started process.
-  id_type get_id() const noexcept {
+  id_type getPID() const noexcept {
     return data.id;
   }
 

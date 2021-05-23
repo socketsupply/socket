@@ -77,6 +77,15 @@ You can make a PR. But the goal is not to solve the all problems for all
 use cases. The goal is to be minimal. Just the essentials. Stay fast and
 stay simple. Electron or Tauri might have what you are looking for.
 
+#### Why not electron?
+
+Electron proved that desktop apps can be built with the web-stack. There is
+also a demand for UIs that can fully integrate with the host environment.
+VSCode is an explar for this.
+
+But electron made some assumptions early on that are not aging well. Also,
+build artifacts and memory footprint are much larger than they need to be,
+especially for embedded systems where we need our apps to run.
 
 [01]:https://developer.apple.com/documentation/webkit/wkwebview
 [00]:https://developer.apple.com/videos/play/wwdc2020/10188/

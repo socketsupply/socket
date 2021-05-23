@@ -60,6 +60,11 @@ int main(int argc, char *argv[])
     win->dialog(seq);
   });
 
+  win->ipc("setTitle", [&](auto seq, auto value) {
+    win->setTitle(value);
+    win->resolve("ipc;0;" + seq + ";" + value);
+  });
+
   win->ipc("contextMenu", [&](std::string seq, std::string value) {
     win->createContextMenu(seq, value);
   });
@@ -67,11 +72,15 @@ int main(int argc, char *argv[])
   win->ipc("send", [&](std::string seq, std::string value) {
     process.write("ipc;0;" + seq + ";" + value);
   });
+
+  win->ipc("quit", [&](auto seq, auto value) {
+    Opkit::Process::kill(process.getPID());
+    win->resolve("ipc;0;" + seq + ";" + value);
+    win->terminate();
+  });
  
   win->navigate("file://" + cwd + "/index.html");
-
   win->run();
-  // process.kill(process.get_id());
 
   return 0;
 }
