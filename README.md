@@ -49,11 +49,11 @@ npm install
 Then open the binary that was created by the build program...
 
 ```sh
-open test/example/dist/Operator.app # macOS
+open ./dist/Operator.app # macOS
 ```
 
 ```sh
-./test/example/dist/operator_v0.0.1-1_x64/opt/Operator/operator # linux
+./dist/operator_v0.0.1-1_x64/opt/Operator/operator # linux
 ```
 
 ```sh
