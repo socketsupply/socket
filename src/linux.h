@@ -20,6 +20,8 @@ class gtk_webkit_engine {
   gtk_webkit_engine(bool debug, void *window)
     : m_window(static_cast<GtkWidget *>(window)) {
 
+    setenv("GTK_OVERLAY_SCROLLING", "1", 1);
+
     gtk_init_check(0, NULL);
     m_window = static_cast<GtkWidget *>(window);
 
