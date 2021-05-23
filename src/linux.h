@@ -255,7 +255,7 @@ class gtk_webkit_engine {
     gtk_widget_show_all(m_window);
   }
 
-  void *window() { return (void *)m_window; }
+  void *window() { return (void*) m_window; }
 
   void run() { gtk_main(); }
 
@@ -264,12 +264,12 @@ class gtk_webkit_engine {
   void dispatch(std::function<void()> f) {
     g_idle_add_full(
       G_PRIORITY_HIGH_IDLE,
-      (GSourceFunc)([](void *f) -> int {
-        (*static_cast<dispatch_fn_t *>(f))();
+      (GSourceFunc)([](void* f) -> int {
+        (*static_cast<dispatch_fn_t*>(f))();
         return G_SOURCE_REMOVE;
       }),
     new std::function<void()>(f),
-    [](void *f) { delete static_cast<dispatch_fn_t *>(f); }
+    [](void* f) { delete static_cast<dispatch_fn_t *>(f); }
     );
   }
 

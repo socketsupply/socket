@@ -133,8 +133,8 @@ int main (const int argc, const char* argv[]) {
 
   if (platform.darwin) {
     log("preparing build for darwin");
-    flags = "-DWEBVIEW_COCOA -luv -std=c++2a -framework WebKit -framework AppKit";
-    files = "src/main.cc src/darwin.mm";
+    flags = "-DWEBVIEW_COCOA -std=c++2a -framework WebKit -framework AppKit";
+    files = "src/main.cc src/process_unix.cc src/darwin.mm";
 
     fs::path pathBase = "Contents";
     packageName = fs::path(std::string(settings["title"] + ".app"));
@@ -160,8 +160,8 @@ int main (const int argc, const char* argv[]) {
 
   if (platform.linux) {
     log("preparing build for linux");
-    flags = "-DWEBVIEW_GTK -luv -std=c++2a `pkg-config --cflags --libs gtk+-3.0 webkit2gtk-4.0`";
-    files = "src/main.cc src/linux.cc";
+    flags = "-DWEBVIEW_GTK -std=c++2a `pkg-config --cflags --libs gtk+-3.0 webkit2gtk-4.0`";
+    files = "src/main.cc src/process_unix.cc src/linux.cc";
 
     // this follows the .deb file naming convention
     packageName = fs::path(std::string(

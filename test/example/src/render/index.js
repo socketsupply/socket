@@ -52,27 +52,27 @@ class AppContainer extends Tonic {
     this.querySelector('#opened').value = response.replace(',', '\n')
   }
 
-  input (e) {
-    clearTimeout(this.bounceInput)
-    this.bounceInput = setTimeout(async () => {
-      const el = Tonic.match(e.target, 'tonic-input')
-      if (!el) return
+  async input (e) {
+    // clearTimeout(this.bounceInput)
+    // this.bounceInput = setTimeout(async () => {
+    const el = Tonic.match(e.target, 'tonic-input')
+    if (!el) return
 
-      let response
+    let response
 
-      try {
-        //
-        // request-response (can send any arbitrary parameters)
-        //
-        const value = { input: e.target.value }
-        response = await window.send(value)
-      } catch (err) {
-        console.log(err.message)
-      }
+    try {
+      //
+      // request-response (can send any arbitrary parameters)
+      //
+      const value = { input: e.target.value }
+      response = await window.send(value)
+    } catch (err) {
+      console.log(err.message)
+    }
 
-      this.querySelector('#response').value =
-        response.received.input
-    }, 128)
+    this.querySelector('#response').value =
+      response.received.input
+    // }, 128)
   }
 
   async contextmenu (e) {

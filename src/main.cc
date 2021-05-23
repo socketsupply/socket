@@ -25,8 +25,26 @@ int CALLBACK WinMain(
 int main(int argc, char *argv[])
 #endif
 {
-  static auto process = std::make_unique<Process>();
   static auto win = std::make_unique<webview::webview>(true, nullptr);
+
+  std::string cwd = getCwd(argv[0]);
+
+  Opkit::Process process(
+    cmd,
+    cwd,
+    [](Opkit::Process::string_type stdout) {
+      if (stdout.find("stdout;") != std::string::npos) {
+        std::cout << stdout.substr(7) << std::endl;
+      } else if (stdout.find("ipc;") != std::string::npos) {
+        win->resolve(stdout);
+      } else {
+        win->emit("data", stdout);
+      }
+    },
+    [](Opkit::Process::string_type stderr) {
+      std::cerr << stderr << std::endl;
+    }
+  );
 
   win->setTitle(title);
 
@@ -47,34 +65,13 @@ int main(int argc, char *argv[])
   });
 
   win->ipc("send", [&](std::string seq, std::string value) {
-    process->write("ipc;0;" + seq + ";" + value);
+    process.write("ipc;0;" + seq + ";" + value);
   });
-
-  process->onError = [] (const std::string msg) {
-    std::cerr << msg << std::endl;
-  };
-
-  process->onData = [&] (const std::string msg) {
-    if (msg.find("stdout;") != std::string::npos) {
-      std::cout << msg.substr(7) << std::endl;
-    } else if (msg.find("ipc;") != std::string::npos) {
-      win->resolve(msg);
-    } else {
-      win->emit("data", msg);
-    }
-  };
  
-  std::string cwd = getCwd(argv[0]);
-
   win->navigate("file://" + cwd + "/index.html");
 
-  std::thread main([&]() {
-    process->spawn(cmd, arg, cwd.c_str());
-  });
-
   win->run();
-  process->kill();
-  main.join();
+  // process.kill(process.get_id());
 
   return 0;
 }
