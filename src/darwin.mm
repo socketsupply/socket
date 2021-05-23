@@ -2,10 +2,8 @@
 #import "platform.h"
 
 #include <AppKit/AppKit.h>
-#include <iostream>
 #include <string>
 #include <vector>
-#include <functional>
 
 std::string getCwd (std::string _) {
   NSString *bundlePath = [[NSBundle mainBundle] resourcePath];
@@ -23,7 +21,7 @@ std::vector<std::string> getMenuItemDetails (void* item) {
   return vec;
 }
 
-std::string getTheme () {
+std::string getNativeTheme () {
   NSString *interfaceStyle = [NSUserDefaults.standardUserDefaults valueForKey:@"AppleInterfaceStyle"];
   bool isDark = [interfaceStyle isEqualToString:@"Dark"];
   std::string mode = "light";
@@ -40,10 +38,7 @@ void addListenerThemeChange (void* delegate) {
   [NSDistributedNotificationCenter.defaultCenter addObserver:r selector:@selector(themeChangedOnMainThread) name:@"AppleInterfaceThemeChangedNotification" object: nil];
 }
 
-void setTitle(void* win) {
-}
-
-bool createContextMenu (std::string seq, std::string value) {
+bool createNativeContextMenu (std::string seq, std::string value) {
   auto menuItems = split(value, '_');
   auto id = std::stoi(seq);
 
@@ -88,7 +83,7 @@ void setWindowColor (void* w, float r, float g, float b, float a) {
   ];
 }
 
-void createMenu (std::string menu) {
+void createNativeMenu (std::string menu) {
   NSString *title;
   NSMenu *appleMenu;
   NSMenu *serviceMenu;
@@ -208,7 +203,7 @@ void createMenu (std::string menu) {
   }
 }
 
-std::string createDialog(
+std::string createNativeDialog(
   int flags,
   const char *filters,
   const char *default_path,

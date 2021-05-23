@@ -241,7 +241,7 @@ public:
 
   void dialog(std::string seq) {
     dispatch([=]() {
-      auto result = createDialog(
+      auto result = createNativeDialog(
         NOC_FILE_DIALOG_OPEN | NOC_FILE_DIALOG_DIR,
         NULL,
         NULL,

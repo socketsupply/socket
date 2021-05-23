@@ -24,7 +24,7 @@
 #define NSApplicationActivationPolicyRegular 0
 #define WKUserScriptInjectionTimeAtDocumentStart 0
 
-void createMenu (std::string);
+void createNativeMenu (std::string);
 
 namespace webview {
   SEL NSSelector(const char *s) {
@@ -360,17 +360,15 @@ namespace webview {
     }
 
     void setTitle(const std::string title) {
-      ((void (*)(id, SEL, id))objc_msgSend)(
+      ((void (*)(id, SEL, id)) objc_msgSend)(
         m_window,
         NSSelector("setTitle:"),
-        ((id(*)(id, SEL, const char *))objc_msgSend)(
+        ((id (*)(id, SEL, const char *)) objc_msgSend)(
           NSClass("NSString"),
           NSSelector("stringWithUTF8String:"),
           title.c_str()
         )
       );
-
-      setTitle(m_window);
     }
 
     void setSize(int width, int height, int hints) {
@@ -430,11 +428,11 @@ namespace webview {
     }
 
     void menu(const std::string menu) {
-      createMenu(menu);
+      createNativeMenu(menu);
     }
 
     void createContextMenu(std::string seq, std::string menu) {
-      createContextMenu(seq, menu);
+      createNativeContextMenu(seq, menu);
     }
 
     void navigate(const std::string url) {

@@ -9,12 +9,12 @@ std::string getCwd (std::string argvp) {
   return std::string(fs::path(canonical).parent_path());
 }
 
-std::string getTheme () {
+std::string getNativeTheme () {
   // https://github.com/electron/electron/blob/d518b6abc887787ac169270cbcf71c4626e2caaf/shell/browser/native_window_views.cc
   return std::string("light");
 }
 
-std::string createDialog(
+std::string createNativeDialog(
   int flags,
   const char *_,
   const char *default_path,

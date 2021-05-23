@@ -107,7 +107,7 @@ enum {
  * managed by the library.  The string is valid until the next call to
  * no_dialog_open.  If the user canceled, the return value is NULL.
  */
-std::string createDialog(
+std::string createNativeDialog(
   int flags,
   const char *filters,
   const char *default_path,
@@ -117,7 +117,8 @@ std::string getCwd (std::string);
 void addListenerThemeChange(void*);
 void setWindowColor (void*, float r, float g, float b, float a);
 void setTitle(void*);
-bool createContextMenu (std::string, std::string);
+std::string getNativeTheme();
+bool createNativeContextMenu (std::string, std::string);
 std::vector<std::string> getMenuItemDetails (void* item);
 
 #endif /* PLATFORM_H */

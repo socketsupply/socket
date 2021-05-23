@@ -8,6 +8,7 @@
 #include <stdexcept>
 #include <unistd.h>
 #include <iostream>
+#include <signal.h>
 
 namespace Opkit {
 

@@ -102,7 +102,7 @@ class gtk_webkit_engine {
     gtk_widget_show_all(m_window);
   }
 
-  void createContextMenu(std::string seq, std::string menuData) {
+  void createNativeContextMenu(std::string seq, std::string menuData) {
     GtkWidget *m_popup = gtk_menu_new();
     GtkWidget *item;
 
