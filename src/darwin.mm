@@ -4,6 +4,7 @@
 #include <AppKit/AppKit.h>
 #include <string>
 #include <vector>
+#include <iostream>
 
 std::string getCwd (std::string _) {
   NSString *bundlePath = [[NSBundle mainBundle] resourcePath];
@@ -164,10 +165,18 @@ void createNativeMenu (std::string menu) {
     for (int i = 1; i < menu.size(); i++) {
       auto parts = split(trim(menu[i]), ':');
       auto title = parts[0];
+      NSUInteger mask = 0;
       std::string key = "";
 
       if (parts.size() > 1) {
-        key = parts[1] == "_" ? "" : trim(parts[1]);
+        auto accellerator = split(parts[1], '+');
+        key = parts[1] == "_" ? "" : trim(accellerator[0]);
+
+        if (accellerator.size() > 1) {
+          if (accellerator[1].find("Control") != -1) mask |= NSEventModifierFlagControl;
+          if (accellerator[1].find("Option") != -1) mask |= NSEventModifierFlagOption;
+          if (accellerator[1].find("Command") != -1) mask |= NSEventModifierFlagCommand;
+        }
       }
 
       NSString* nssTitle = [NSString stringWithUTF8String:title.c_str()];
@@ -190,6 +199,10 @@ void createNativeMenu (std::string menu) {
         action:NSSelectorFromString(nssSelector)
         keyEquivalent:nssKey
       ];
+
+      if (mask != 0) {
+        [menuItem setKeyEquivalentModifierMask: mask];
+      }
 
       [menuItem setTag:0]; // only contextMenu uses the tag
     }
