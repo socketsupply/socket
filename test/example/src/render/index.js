@@ -93,6 +93,7 @@ class AppContainer extends Tonic {
     const choice = await contextMenu({
       'Download': 'd',
       'Wizard': 'w',
+      '---': '',
       'Share': 's'
     })
 

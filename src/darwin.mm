@@ -54,12 +54,17 @@ bool createNativeContextMenu (std::string seq, std::string value) {
     NSString* nssTitle = [NSString stringWithUTF8String:pair[0].c_str()];
     NSString* nssKey = [NSString stringWithUTF8String:pair[1].c_str()];
 
-    menuItem = [pMenu
-      insertItemWithTitle:nssTitle 
-      action:@selector(menuItemSelected:)
-      keyEquivalent:nssKey
-      atIndex:index
-    ];
+    if (pair[0].find("---") != -1) {
+      NSMenuItem *sep = [NSMenuItem separatorItem];
+      [pMenu addItem:sep];
+    } else {
+      menuItem = [pMenu
+        insertItemWithTitle:nssTitle 
+        action:@selector(menuItemSelected:)
+        keyEquivalent:nssKey
+        atIndex:index
+      ];
+    }
 
     [menuItem setTag:id];
   
@@ -194,11 +199,16 @@ void createNativeMenu (std::string menu) {
       if (title.compare("Minimize") == 0) nssSelector = [NSString stringWithUTF8String:"performMiniaturize:"];
       if (title.compare("Zoom") == 0) nssSelector = [NSString stringWithUTF8String:"performZoom:"];
 
-      menuItem = [dynamicMenu
-        addItemWithTitle:nssTitle
-        action:NSSelectorFromString(nssSelector)
-        keyEquivalent:nssKey
-      ];
+      if (title.find("---") != -1) {
+        NSMenuItem *sep = [NSMenuItem separatorItem];
+        [dynamicMenu addItem:sep];
+      } else {
+        menuItem = [dynamicMenu
+          addItemWithTitle:nssTitle
+          action:NSSelectorFromString(nssSelector)
+          keyEquivalent:nssKey
+        ];
+      }
 
       if (mask != 0) {
         [menuItem setKeyEquivalentModifierMask: mask];
