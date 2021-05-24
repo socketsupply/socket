@@ -81,26 +81,49 @@ int exec (std::string cmd, std::string s) {
   return system(c.c_str());
 }
 
+void help () {
+  std::cout
+    << "Opkit v0.0.1"
+    << std::endl
+    << "usage: opkit <project-dir> [-hpbc]"
+    << std::endl
+    << std::endl
+    << "command summary:" << std::endl
+    << "  -h    help" << std::endl
+    << "  -p    partial build (don't compile binary)" << std::endl
+    << "  -b    bundle for app store" << std::endl
+    << "  -c    code sign" << std::endl
+  ;
+
+  exit(0);
+}
+
 int main (const int argc, const char* argv[]) {
   if (argc < 2) {
-    std::cout
-      << "usage: opkit <project-dir> [-partial]"
-      << std::endl;
-    exit(0);
+    help();
   }
 
   if (std::getenv("CXX") == nullptr) {
     std::cout
-      << "The $CXX environment variable needs to be set."
+      << "error: the $CXX environment variable needs to be set to the location of your c++ compiler binary."
       << std::endl;
     exit(0);
   }
 
   bool partial = false;
+  bool appStore = false;
 
   for (auto const arg : std::span(argv, argc)) {
-    if (std::string(arg).find("-partial") != std::string::npos) {
+    if (std::string(arg).find("-h") != std::string::npos) {
+      help();
+    }
+
+    if (std::string(arg).find("-p") != std::string::npos) {
       partial = true;
+    }
+
+    if (std::string(arg).find("-s") != std::string::npos) {
+      appStore = true;
     }
   }
 
@@ -308,6 +331,30 @@ int main (const int argc, const char* argv[]) {
       << pathToString(fs::path { target / pathOutput });
 
     std::system(archiveCommand.str().c_str());
+  }
+
+  if (platform.darwin) {
+    // create DMG package if MAS is desired
+  }
+
+  //
+  // Code signing step
+  //
+  if (platform.darwin) {
+    //
+    // References
+    // ---
+    // https://www.digicert.com/kb/code-signing/mac-os-codesign-tool.htm
+    // https://developer.apple.com/forums/thread/128166
+    //
+  }
+
+  if (platform.win32) {
+    //
+    // References
+    // ---
+    // https://www.digicert.com/kb/code-signing/signcode-signtool-command-line.htm
+    //
   }
 
   return 0;
