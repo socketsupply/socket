@@ -5,6 +5,8 @@ The IPC protocol is based on a simple incrementing counter. When the
 counter. When a response is received from the main process, the promse
 can be resolved or rejected.
 
+#### What data can be sent and received?
+
 Any stringify-able JSON value can be sent or received.
 
 ## Render Process
@@ -24,6 +26,68 @@ import { send, receive } from './ipc.js'
 
 receive(async data => {
   if (data === 'honk') send('goose')
+})
+```
+
+## Implementing the main process IPC in language X
+
+If you want to implement the main process IPC for your language, this provides
+defails that you'll want to understand.
+
+### Render Process
+
+When an ipc method is registered, a function is created that increments a global
+counter, creates and return a promise. Webkit exposes `external.invoke` which
+can send unicode strings. ipc messages should start with `ipc` and be separated
+by semi-colons.
+
+```js
+const IPC = window._ipc = (window._ipc || { nextSeq: 1 });
+
+window[name] = (value) => {
+  const seq = IPC.nextSeq++
+  const promise = new Promise((resolve, reject) => {
+    IPC[seq] = {
+      resolve: resolve,
+      reject: reject,
+    }
+  })
+
+  let encoded
+
+  try {
+    encoded = encodeURIComponent(JSON.stringify(value))
+  } catch (err) {
+    return Promise.reject(err.message)
+  }
+
+  window.external.invoke(`ipc;${seq};${name};${encoded}`)
+  return promise
+}
+```
+
+### Main Process
+
+In the main process we want to listen for stdin, here is a minimal
+example of an echo server.
+
+```js
+process.stdin.resume()
+process.stdin.setEncoding('utf8')
+
+process.stdin.on('data', async data => {
+  const msg = data.split(';')
+
+  // throw away messages that don't conform to our protocol
+  if (msg[0] !== 'ipc') return
+
+  let status = msg[1]
+  const seq = msg[2]
+  const value = msg[3]
+
+  // don't forget to end the write with a null byte!
+  const f = `ipc;${status};${seq};${value}\0`
+  process.stdout.write(f)
 })
 ```
 

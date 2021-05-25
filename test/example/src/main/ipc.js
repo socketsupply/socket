@@ -34,19 +34,20 @@ api.receive = fn => {
     const value = msg[3]
 
     let result = ''
-
     try {
-      const buffer = Buffer.from(value, 'base64')
-      const json = JSON.parse(buffer.toString())
+      // const buffer = Buffer.from(value, 'base64')
+      //const json = JSON.parse(buffer.toString())\
+      const json = JSON.parse(decodeURIComponent(value))
       result = await fn(json);
     } catch (err) {
+      console.error('NOPE')
       result = err.message
       status = 1
     }
 
     if (typeof result === 'object') result = JSON.stringify(result)
 
-    result = Buffer.from(result).toString('base64')
+    result = encodeURIComponent(result) // Buffer.from(result).toString('base64')
 
     const err = exceedsMaxSize(result)
     if (err) {
@@ -54,7 +55,7 @@ api.receive = fn => {
       result = err
     }
 
-    const f = `ipc;${status};${seq};${String(result)}\0`
+    const f = `ipc;${status};${seq};${result}\0`
     process.stdout.write(f)
   })
 }
@@ -62,7 +63,7 @@ api.receive = fn => {
 api.send = result => {
   if (typeof result === 'object') result = JSON.stringify(result)
 
-  result = Buffer.from(result).toString('base64')
+  result = encodeURIComponent(result) // Buffer.from(result).toString('base64')
 
   const err = exceedsMaxSize(result)
   if (err) {

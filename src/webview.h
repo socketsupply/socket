@@ -206,7 +206,7 @@ public:
     auto js = "(function() { const name = '" + name + "';" + R"(
       const IPC = window._ipc = (window._ipc || { nextSeq: 1 });
 
-      window[name] = (value) => {
+      window[name] = value => {
         const seq = IPC.nextSeq++
         const promise = new Promise((resolve, reject) => {
           IPC[seq] = {
@@ -217,14 +217,16 @@ public:
 
         let encoded
 
-        if (name === 'contextMenu') {
+        if (name === 'setTitle') {
+          encoded = value || ' '
+        } else if (name === 'contextMenu') {
           encoded = Object
             .entries(value)
             .flatMap(o => o.join(':'))
             .join('_')
         } else {
           try {
-            encoded = btoa(JSON.stringify(value))
+            encoded = encodeURIComponent(JSON.stringify(value))
           } catch (err) {
             return Promise.reject(err.message)
           }
@@ -266,7 +268,7 @@ public:
         "  const status = Number(data[1]);"
         "  const seq = Number(data[2]);"
         "  const method = status === 0 ? 'resolve' : 'reject';"
-        "  const value = internal ? data[3] : JSON.parse(atob(data[3]));"
+        "  const value = internal ? data[3] : JSON.parse(decodeURIComponent(data[3]));"
         "  window._ipc[seq][method](value);"
         "  window._ipc[seq] = undefined;"
         "})()"
@@ -280,7 +282,7 @@ public:
         "(() => {"
         "  let detail;"
         "  try {"
-        "    detail = JSON.parse(atob(`" + data + "`));"
+        "    detail = JSON.parse(decodeURIComponent(`" + data + "`));"
         "  } catch (err) {"
         "    console.error(`Unable to parse (${detail})`);"
         "    return;"
