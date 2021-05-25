@@ -1,51 +1,17 @@
 # DOCS
 
+## Getting Started
 
-## Menus
+TODO
 
-#### Context Menus
+## Reference
 
-Dynamically build a context menu and await the user's selection.
+- [Build](/build.md) How to use the build tool
+- [IPC](/ipc.md) How the IPC protocol works
+- [Menus](/menus.md) How to create menus
+- [Updater](/updater.md) How to implement an updater
+- [Window](/window.md) All global methods
 
-```js
-const value = await contextMenu({
-  'Download': 'd',
-  'Wizard': 'w',
-  'Share': 's'
-})
+## Other
 
-assert(value === { title: 'Wizard', parent: 'contextMenu', state: 0 })
-```
-
-#### System Menus
-
-System menus are created at build time. Your project needs a `menu.config`
-in the root folder. The semi colon is significant indicates the end of the
-menu.
-
-```syntax
-Edit:
-  Cut: x
-  Copy: c
-  Paste: v
-  Delete: _
-  Select All: a;
-
-Other:
-  Apple: _
-  Another Test: t
-```
-
-When a menu item is activated, it raises the `menuItemSelected` event in
-the front end code, you can then communicate with your backend code if you
-want from there.
-
-For example, if the `Apple` item is selected from the `Other` menu...
-
-```js
-window.addEventListener('menuItemSelected', event => {
-  assert(event.detail.parent === 'Other')
-  assert(event.detail.title === 'Apple')
-})
-```
-
+- [FAQ](/faq.md) Frequently asked questions
