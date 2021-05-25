@@ -36,10 +36,10 @@ defails that you'll want to understand.
 
 ### Render Process
 
-When an ipc method is registered, a function is created that increments a global
-counter, creates and return a promise. Webkit exposes `external.invoke` which
-can send unicode strings. ipc messages should start with `ipc` and be separated
-by semi-colons.
+When an `main.cc` create an IPC method, a global function is created that when
+called, increments a global counter, creates and return a promise. Webkit exposes
+`external.invoke` which can send unicode strings. ipc messages should start with
+`ipc` and be separated by semi-colons.
 
 ```js
 const IPC = window._ipc = (window._ipc || { nextSeq: 1 });
