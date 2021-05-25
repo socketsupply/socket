@@ -22,7 +22,7 @@ std::vector<std::string> getMenuItemDetails (void* item) {
   return vec;
 }
 
-std::string getNativeTheme () {
+/* std::string getNativeTheme () {
   NSString *interfaceStyle = [NSUserDefaults.standardUserDefaults valueForKey:@"AppleInterfaceStyle"];
   bool isDark = [interfaceStyle isEqualToString:@"Dark"];
   std::string mode = "light";
@@ -32,7 +32,7 @@ std::string getNativeTheme () {
   }
 
   return mode;
-}
+}*/
 
 bool createNativeContextMenu (std::string seq, std::string value) {
   auto menuItems = split(value, '_');

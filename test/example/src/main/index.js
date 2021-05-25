@@ -11,9 +11,6 @@ ipc.receive(async data => {
   }
 })
 
-let isBreakTime = false
-let breakCounter = 0
-
 setInterval(() => {
   counter++
  

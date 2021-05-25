@@ -14,7 +14,7 @@ window.addEventListener('menuItemSelected', event => {
 //
 window.addEventListener('keyup', async event => {
   if (event.ctrlKey && event.key === 'q') {
-    window.quit({})
+    window.main.quit({})
   }
 })
 
@@ -48,7 +48,7 @@ class AppContainer extends Tonic {
     const el = Tonic.match(e.target, 'tonic-button')
     if (!el) return   
 
-    const response = await dialog(e.target.value)
+    const response = await window.main.dialog(e.target.value)
     this.querySelector('#opened').value = response.replace(',', '\n')
   }
 
@@ -63,7 +63,7 @@ class AppContainer extends Tonic {
       // request-response (can send any arbitrary parameters)
       //
       const value = { input: e.target.value }
-      response = await window.send(value)
+      response = await window.main.send(value)
     } catch (err) {
       console.log(err.message)
     }
@@ -71,7 +71,7 @@ class AppContainer extends Tonic {
     this.querySelector('#response').value =
       response.received.input
 
-    return window.setTitle(e.target.value)
+    return window.main.setTitle(e.target.value)
   }
 
   async contextmenu (e) {
@@ -80,7 +80,7 @@ class AppContainer extends Tonic {
 
     e.preventDefault()
 
-    const choice = await contextMenu({
+    const choice = await main.contextMenu({
       'Download': 'd',
       'Wizard': 'w',
       '---': '',

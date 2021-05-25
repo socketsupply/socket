@@ -114,10 +114,5 @@ std::string createNativeDialog(
   const char *default_name);
 
 std::string getCwd (std::string);
-void setWindowColor (void*, float r, float g, float b, float a);
-void setTitle(void*);
-std::string getNativeTheme();
-bool createNativeContextMenu (std::string, std::string);
-std::vector<std::string> getMenuItemDetails (void* item);
 
 #endif /* PLATFORM_H */

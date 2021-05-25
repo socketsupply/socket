@@ -25,6 +25,11 @@
 #define WKUserScriptInjectionTimeAtDocumentStart 0
 
 void createNativeMenu (std::string);
+bool createNativeContextMenu (std::string, std::string);
+std::vector<std::string> getMenuItemDetails (void* item);
+void setWindowColor (void*, float r, float g, float b, float a);
+// std::string getNativeTheme();
+void setTitle(void*);
 
 namespace Opkit {
   SEL NSSelector(const char *s) {
@@ -413,9 +418,6 @@ namespace Opkit {
 
       ((void (*)(id, SEL))objc_msgSend)(m_window, NSSelector("center"));
       ((void (*)(id, SEL))objc_msgSend)(m_window, NSSelector("setHasShadow:"));
-
-      // setWindowColor(m_window, 0.1, 0.1, 0.1, 0.0);
-
       ((void (*)(id, SEL, BOOL))objc_msgSend)(m_window, NSSelector("setTitlebarAppearsTransparent:"), 1);
       ((void (*)(id, SEL, BOOL))objc_msgSend)(m_window, NSSelector("setOpaque:"), 1);
 

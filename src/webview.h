@@ -2,6 +2,7 @@
 #define WEBVIEW_H
 
 #include "platform.h"
+#include <iostream>
 
 #ifndef WEBVIEW_API
 #define WEBVIEW_API extern
@@ -204,36 +205,51 @@ public:
   void ipc(const std::string name, binding_t f, void *arg) {
     auto js = "(function() { const name = '" + name + "';" + R"(
       const IPC = window._ipc = (window._ipc || { nextSeq: 1 });
+      
+      window.main = (window.main || {
+        __resolve__: msg => {
+          const data = msg.trim().split(';');
+          const internal = data[0] === 'internal';
+          const status = Number(data[1]);
+          const seq = Number(data[2]);
+          const method = status === 0 ? 'resolve' : 'reject';
+          const value = internal ? data[3] : JSON.parse(decodeURIComponent(data[3]));
+          window._ipc[seq][method](value);
+          window._ipc[seq] = undefined;
+        },
 
-      window[name] = value => {
-        const seq = IPC.nextSeq++
-        const promise = new Promise((resolve, reject) => {
-          IPC[seq] = {
-            resolve: resolve,
-            reject: reject,
+        __send__: (name, value) => {
+          const seq = IPC.nextSeq++
+          const promise = new Promise((resolve, reject) => {
+            IPC[seq] = {
+              resolve: resolve,
+              reject: reject,
+            }
+          })
+
+          let encoded
+
+          if (name === 'setTitle') {
+            encoded = value || ' '
+          } else if (name === 'contextMenu') {
+            encoded = Object
+              .entries(value)
+              .flatMap(o => o.join(':'))
+              .join('_')
+          } else {
+            try {
+              encoded = encodeURIComponent(JSON.stringify(value))
+            } catch (err) {
+              return Promise.reject(err.message)
+            }
           }
-        })
 
-        let encoded
-
-        if (name === 'setTitle') {
-          encoded = value || ' '
-        } else if (name === 'contextMenu') {
-          encoded = Object
-            .entries(value)
-            .flatMap(o => o.join(':'))
-            .join('_')
-        } else {
-          try {
-            encoded = encodeURIComponent(JSON.stringify(value))
-          } catch (err) {
-            return Promise.reject(err.message)
-          }
+          window.external.invoke(`ipc;${seq};${name};${encoded}`)
+          return promise
         }
+      });
 
-        window.external.invoke(`ipc;${seq};${name};${encoded}`)
-        return promise
-      }
+      window.main[name] = value => window.main.__send__(name, value);
     })())";
 
     init(js);
@@ -260,18 +276,7 @@ public:
 
   void resolve(const std::string msg) {
     dispatch([=]() {
-      eval(
-        "(() => {"
-        "  const data = `" + msg + "`.trim().split(';');"
-        "  const internal = data[0] === 'internal';"
-        "  const status = Number(data[1]);"
-        "  const seq = Number(data[2]);"
-        "  const method = status === 0 ? 'resolve' : 'reject';"
-        "  const value = internal ? data[3] : JSON.parse(decodeURIComponent(data[3]));"
-        "  window._ipc[seq][method](value);"
-        "  window._ipc[seq] = undefined;"
-        "})()"
-      );
+      eval("(() => { window.main.__resolve__(`" + msg + "`); })()");
     });
   }
 
