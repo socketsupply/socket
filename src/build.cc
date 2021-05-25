@@ -73,7 +73,8 @@ void log (const std::string s) {
 
   auto now = system_clock::now();
   auto delta = duration_cast<milliseconds>(now - start).count();
-  std::cout << "• " << s << " " << delta << "ms" << std::endl;
+  std::cout << "• " << s << " \033[0;32m+" << delta << "ms\033[0m" << std::endl;
+  start = std::chrono::system_clock::now();
 }
 
 int exec (std::string cmd, std::string s) {
@@ -85,14 +86,17 @@ void help () {
   std::cout
     << "Opkit v0.0.1"
     << std::endl
-    << "usage: opkit <project-dir> [-hpbc]"
+    << std::endl
+    << "usage:" << std::endl
+    << "  opkit <project-dir> [-hpbc]"
     << std::endl
     << std::endl
-    << "command summary:" << std::endl
-    << "  -h    help" << std::endl
+    << "flags:" << std::endl
+    << "  -h    this help message" << std::endl
     << "  -o    only run user defined build step" << std::endl
+    << "  -r    run the binary after building it" << std::endl
     << "  -b    bundle for app store" << std::endl
-    << "  -c    code sign" << std::endl
+    << "  -c    code sign the bundle" << std::endl
   ;
 
   exit(0);
@@ -346,13 +350,24 @@ int main (const int argc, const char* argv[]) {
   //
   // Code signing step
   //
-  if (platform.darwin) {
+  if (codeSign && platform.darwin) {
+    log("attempting code signing");
     //
     // References
     // ---
     // https://www.digicert.com/kb/code-signing/mac-os-codesign-tool.htm
     // https://developer.apple.com/forums/thread/128166
+    // https://wiki.lazarus.freepascal.org/Code_Signing_for_macOS
     //
+    std::stringstream signCommand;
+
+    signCommand
+      << "codesign -f -o runtime --timestamp --verbose=4 "
+      << "-s 'Developer ID Application: " + settings["mac_sign"] + "' "
+      << pathToString(pathPackage);
+
+    std::cout << signCommand.str() << std::endl;
+    std::system(signCommand.str().c_str());
   }
 
   if (platform.win32) {

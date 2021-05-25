@@ -12,7 +12,7 @@ function build {
     echo '• Unable to build. See trouble shooting guide in the README.md file'
     exit 1
   fi
-  echo '• OK'
+  echo '• Success'
 }
 
 #
@@ -38,7 +38,7 @@ if [ "$1" ]; then
   build
 
   # create a symlink to the binary so it can be run anywhere
-  echo '• Attempting to move built binary to /usr/local/bin'
+  echo '• Moving binary to /usr/local/bin'
   mv `pwd`/bin/build /usr/local/bin/opkit
 
   if [ ! $? = 0 ]; then
@@ -46,7 +46,7 @@ if [ "$1" ]; then
     exit 1
   fi
 
-  echo -e '• Finished. Type "opkit" for help'
+  echo -e '• Finished. Type "opkit -h" for help'
   exit 0
 fi
 
