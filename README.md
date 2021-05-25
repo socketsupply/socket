@@ -19,12 +19,12 @@ Build and package fast, light-weight web-based UIs with any backend.
 
 # DOCS
 
-- [Build](/build.md) How to use the build tool
-- [IPC](/ipc.md) How the IPC protocol works
-- [Menus](/menus.md) How to create menus
-- [Updater](/updater.md) How to implement an updater
-- [Window](/window.md) All global methods
-- [FAQ](/faq.md) Frequently asked questions
+- [Build](/docs/build.md) How to use the build tool
+- [IPC](/docs/ipc.md) How the IPC protocol works
+- [Menus](/docs/menus.md) How to create menus
+- [Updater](/docs/updater.md) How to implement an updater
+- [Window](/docs/window.md) All global methods
+- [FAQ](/docs/faq.md) Frequently asked questions
 
 
 #### INSTALL
