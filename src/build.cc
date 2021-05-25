@@ -25,7 +25,7 @@ std::string pathToString(const fs::path &path) {
 }
 
 std::string readFile (fs::path path) {
-  std::ifstream stream(path.u8string());
+  std::ifstream stream(path.c_str());
   std::string content;
   auto buffer = std::istreambuf_iterator<char>(stream);
   auto end = std::istreambuf_iterator<char>();
@@ -198,7 +198,7 @@ int main (const int argc, const char* argv[]) {
     pathPackage = { target / pathOutput / packageName };
     pathBin = { pathPackage / pathBase / fs::path { "MacOS" } };
     pathResources = { pathPackage / pathBase / fs::path { "Resources" } };
-    
+
     pathResourcesRelativeToUserBuild = {
       fs::path(settings["output"]) /
       packageName /
