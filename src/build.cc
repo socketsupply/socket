@@ -105,8 +105,9 @@ int main (const int argc, const char* argv[]) {
 
   if (std::getenv("CXX") == nullptr) {
     std::cout
-      << "error: the $CXX environment variable needs to be set to the location of your c++ compiler binary."
+      << "warning: $CXX environment variable not set, assuming '/usr/bin/g++'."
       << std::endl;
+    setenv("CXX", "/usr/bin/g++", 0);
     exit(0);
   }
 

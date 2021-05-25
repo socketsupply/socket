@@ -1,10 +1,15 @@
 #!/usr/bin/env bash
 set -e;
 
+if [ ! $CXX ]; then
+  echo '• Warning: $CXX environment variable not set, assuming "/usr/bin/g++"'
+  CXX=/usr/bin/g++
+fi
+
 function build {
   `echo $CXX` src/build.cc -o bin/build -std=c++2a -stdlib=libc++
   if [ ! $? = 0 ]; then
-    echo '• Unable to build'
+    echo '• Unable to build. See trouble shooting guide in the README.md file'
     exit 1
   fi
   echo '• OK'
