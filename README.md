@@ -17,9 +17,14 @@ Build and package fast, light-weight web-based UIs with any backend.
 - Runs any arbitrary backend process
 
 
-# GET STARTED
+# DOCS
 
-See more docs [here](https://github.com/optoolco/opkit/blob/master/docs).
+- [Build](/build.md) How to use the build tool
+- [IPC](/ipc.md) How the IPC protocol works
+- [Menus](/menus.md) How to create menus
+- [Updater](/updater.md) How to implement an updater
+- [Window](/window.md) All global methods
+- [FAQ](/faq.md) Frequently asked questions
 
 
 #### INSTALL
