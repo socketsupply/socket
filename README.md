@@ -22,10 +22,10 @@ Build and package fast, light-weight web-based UIs with any backend.
 See more docs [here](https://github.com/optoolco/opkit/blob/master/docs).
 
 
-#### INSTALL (TODO)
+#### INSTALL
 
 ```bash
-curl -o- https://raw.githubusercontent.com/optoolco/opkit/master/bin/bootstrap.sh install | bash
+curl -o- https://raw.githubusercontent.com/optoolco/opkit/master/bin/bootstrap.sh | bash -s install
 ```
 
 
