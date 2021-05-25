@@ -7,7 +7,11 @@ if [ ! CXX ]; then
 fi
 
 function build {
-  `echo $CXX` src/build.cc -o bin/build -std=c++2a -stdlib=libc++
+  `echo $CXX` src/build.cc \
+    -o bin/build \
+    -std=c++2a -stdlib=libc++\
+    -DVERSION=`git rev-parse --short HEAD`
+
   if [ ! $? = 0 ]; then
     echo '• Unable to build. See trouble shooting guide in the README.md file'
     exit 1
@@ -30,14 +34,16 @@ if [ "$1" ]; then
       exit 1
     fi
 
-    # enter the temp dir and run the build of the build tool
     cd $TMPD
   fi
 
   echo '• Building'
   build
 
-  # create a symlink to the binary so it can be run anywhere
+  echo '• Copying sources to /usr/local/lib/opkit'
+  sudo mkdir -p /usr/local/lib/opkit
+  sudo cp -r `pwd`/src/ /usr/local/lib/opkit/src
+
   echo '• Moving binary to /usr/local/bin'
   sudo mv `pwd`/bin/build /usr/local/bin/opkit
 

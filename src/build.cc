@@ -11,8 +11,13 @@
 #include <sstream>
 #include <filesystem>
 
+#define TO_STR(arg) #arg
+#define STR_VALUE(arg) TO_STR(arg)
+
+constexpr auto version = STR_VALUE(VERSION);
 namespace fs = std::filesystem;
 auto start = std::chrono::system_clock::now();
+Platform platform;
 
 std::string pathToString(const fs::path &path) {
   auto s = path.u8string();
@@ -33,6 +38,14 @@ void writeFile (fs::path path, std::string s) {
   std::ofstream stream(pathToString(path));
   stream << s;
   stream.close();
+}
+
+std::string prefixFile (std::string s) {
+  if (platform.darwin || platform.linux) {
+    return std::string("/usr/local/lib/opkit/" + s + " ");
+  }
+
+  return std::string("C:\\Program Files\\operator\\build\\" + s + " ");
 }
 
 std::map<std::string, std::string> readConfig(const fs::path p) {
@@ -84,7 +97,7 @@ int exec (std::string cmd, std::string s) {
 
 void help () {
   std::cout
-    << "Opkit v0.0.1"
+    << "Opkit " << version
     << std::endl
     << std::endl
     << "usage:" << std::endl
@@ -97,6 +110,7 @@ void help () {
     << "  -r  run the binary after building it" << std::endl
     << "  -b  bundle for app store" << std::endl
     << "  -c  code sign the bundle" << std::endl
+    << "  -ce code sign the bundle with entitlements" << std::endl
   ;
 
   exit(0);
@@ -115,9 +129,10 @@ int main (const int argc, const char* argv[]) {
     exit(0);
   }
 
-  bool partial = false;
+  bool flagRunUserBuild = false;
   bool appStore = false;
   bool codeSign = false;
+  bool shouldRun = false;
   bool withEntitlements = false;
 
   for (auto const arg : std::span(argv, argc)) {
@@ -126,7 +141,7 @@ int main (const int argc, const char* argv[]) {
     }
 
     if (std::string(arg).find("-o") != -1) {
-      partial = true;
+      flagRunUserBuild = true;
     }
 
     if (std::string(arg).find("-s") != -1) {
@@ -143,7 +158,6 @@ int main (const int argc, const char* argv[]) {
     }
   }
 
-  Platform platform;
   auto target = fs::path(argv[1]);
 
   auto settings = readConfig(fs::path { target / "settings.config" });
@@ -152,7 +166,7 @@ int main (const int argc, const char* argv[]) {
   // TODO split output path variable on os sep to make output path cross-platform.
   auto pathOutput = fs::path { fs::path(settings["output"]) };
 
-  if (partial == false) {
+  if (flagRunUserBuild == false) {
     fs::remove_all(pathOutput);
     log("cleaned: " + pathToString(pathOutput));
   }
@@ -173,7 +187,10 @@ int main (const int argc, const char* argv[]) {
   if (platform.darwin) {
     log("preparing build for darwin");
     flags = "-DWEBVIEW_COCOA -std=c++2a -framework WebKit -framework AppKit";
-    files = "src/main.cc src/process_unix.cc src/darwin.mm";
+
+    files += prefixFile("src/main.cc");
+    files += prefixFile("src/process_unix.cc");
+    files += prefixFile("src/darwin.mm");
 
     fs::path pathBase = "Contents";
     packageName = fs::path(std::string(settings["title"] + ".app"));
@@ -204,7 +221,9 @@ int main (const int argc, const char* argv[]) {
   if (platform.linux) {
     log("preparing build for linux");
     flags = "-DWEBVIEW_GTK -std=c++2a `pkg-config --cflags --libs gtk+-3.0 webkit2gtk-4.0`";
-    files = "src/main.cc src/process_unix.cc src/linux.cc";
+    files += prefixFile("src/main.cc");
+    files += prefixFile("src/process_unix.cc");
+    files += prefixFile("src/linux.cc");
 
     // this follows the .deb file naming convention
     packageName = fs::path(std::string(
@@ -275,7 +294,9 @@ int main (const int argc, const char* argv[]) {
   if (platform.win32) {
     log("preparing build for win32");
     flags = "-mwindows -L./dll/x64 -lwebview -lWebView2Loader";
-    files = "src/main.cc process_win32.cc src/win32.cc";
+    files += prefixFile("src/main.cc");
+    files += prefixFile("process_win32.cc");
+    files += prefixFile("src/win32.cc");
 
     // TODO create paths, copy files, archive, etc.
   }
@@ -333,7 +354,7 @@ int main (const int argc, const char* argv[]) {
     << define("ARG", settings["arg"]);
 
   // log(compileCommand.str());
-  if (partial == false) {
+  if (flagRunUserBuild == false) {
     std::system(compileCommand.str().c_str());
     log("compiled native binary");
   }
