@@ -17,7 +17,7 @@ if [ "$1" ]; then
   TMPD=$(mktemp -d)
 
   echo '• Cloning from Github'
-  git clone https://github.com/optoolco/opkit $TMPD > /dev/null 2>&1
+  git clone --depth=1 git@github.com:optoolco/opkit.git $TMPD > /dev/null 2>&1
 
   if [ ! $? = 0 ]; then
     echo "• Unable to clone"
@@ -30,15 +30,15 @@ if [ "$1" ]; then
   build
 
   # create a symlink to the binary so it can be run anywhere
-  echo '• Attempting to create a symlink in /usr/local/bin'
-  ln -s `pwd`/bin/build /usr/local/bin/opkit
+  echo '• Attempting to move built binary to /usr/local/bin'
+  mv `pwd`/bin/build /usr/local/bin/opkit
 
   if [ ! $? = 0 ]; then
-    echo '• Unable to create symlink'
+    echo '• Unable to move file into place'
     exit 1
   fi
 
-  echo '• Finished. Type \'opkit' for help'
+  echo -e '• Finished. Type "opkit" for help'
   exit 0
 fi
 

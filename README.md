@@ -25,7 +25,7 @@ See more docs [here](https://github.com/optoolco/opkit/blob/master/docs).
 #### INSTALL (TODO)
 
 ```bash
-curl -o- https://raw.githubusercontent.com/optoolco/opkit/master/bootstrap.sh install | bash
+curl -o- https://raw.githubusercontent.com/optoolco/opkit/master/bin/bootstrap.sh install | bash
 ```
 
 
@@ -34,7 +34,7 @@ curl -o- https://raw.githubusercontent.com/optoolco/opkit/master/bootstrap.sh in
 Compile the build program...
 
 ```sh
-./bootstrap.sh
+./bin/bootstrap.sh
 ```
 
 There is an example app written in Node.js, to run it...
