@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -e;
 
-if [ ! CXX ]; then
+if [ ! "$CXX" ]; then
   echo '• Warning: $CXX environment variable not set, assuming "/usr/bin/g++"'
   CXX=/usr/bin/g++
 fi
