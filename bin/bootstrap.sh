@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -e;
 
-if [ ! $CXX ]; then
+if [ ! CXX ]; then
   echo '• Warning: $CXX environment variable not set, assuming "/usr/bin/g++"'
   CXX=/usr/bin/g++
 fi
@@ -39,7 +39,7 @@ if [ "$1" ]; then
 
   # create a symlink to the binary so it can be run anywhere
   echo '• Moving binary to /usr/local/bin'
-  mv `pwd`/bin/build /usr/local/bin/opkit
+  sudo mv `pwd`/bin/build /usr/local/bin/opkit
 
   if [ ! $? = 0 ]; then
     echo '• Unable to move file into place'
