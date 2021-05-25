@@ -39,7 +39,7 @@ curl -o- https://raw.githubusercontent.com/optoolco/opkit/master/bin/bootstrap.s
 Compile the build program...
 
 ```sh
-./bin/bootstrap.sh
+./bin/bootstrap.sh install
 ```
 
 There is an example app written in Node.js, to run it...
@@ -48,6 +48,7 @@ There is an example app written in Node.js, to run it...
 ./bin/build test/example
 cd text/example
 npm install
+opkit . # run the cli tool to build and package the app
 ```
 
 Then open the binary that was created by the build program...
