@@ -90,7 +90,7 @@ void help () {
     << std::endl
     << "command summary:" << std::endl
     << "  -h    help" << std::endl
-    << "  -p    partial build (don't compile binary)" << std::endl
+    << "  -o    only run user defined build step" << std::endl
     << "  -b    bundle for app store" << std::endl
     << "  -c    code sign" << std::endl
   ;
@@ -113,18 +113,23 @@ int main (const int argc, const char* argv[]) {
 
   bool partial = false;
   bool appStore = false;
+  bool codeSign = false;
 
   for (auto const arg : std::span(argv, argc)) {
     if (std::string(arg).find("-h") != std::string::npos) {
       help();
     }
 
-    if (std::string(arg).find("-p") != std::string::npos) {
+    if (std::string(arg).find("-o") != std::string::npos) {
       partial = true;
     }
 
     if (std::string(arg).find("-s") != std::string::npos) {
       appStore = true;
+    }
+
+    if (std::string(arg).find("-c") != std::string::npos) {
+      codeSign = true;
     }
   }
 
