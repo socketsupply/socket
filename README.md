@@ -37,10 +37,12 @@ curl -o- https://raw.githubusercontent.com/optoolco/opkit/master/bin/bootstrap.s
 
 # DEVELOPMENT
 
-Install the CLI tool (unless you already did this with curl)...
+Clone this repo and install the CLI tool (unless you already did this with curl).
 
 ```sh
-./bin/bootstrap.sh install
+git clone git@github.com:optoolco/opkit.git
+cd opkit
+./bin/bootstrap.sh install local
 ```
 
 There is an example app written in Node.js, to build and run it...

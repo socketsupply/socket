@@ -19,18 +19,21 @@ function build {
 # Install - when this script is called with a parameter
 #
 if [ "$1" ]; then
-  TMPD=$(mktemp -d)
+  if [ -z "$2" ]; then
+    TMPD=$(mktemp -d)
 
-  echo '• Cloning from Github'
-  git clone --depth=1 git@github.com:optoolco/opkit.git $TMPD > /dev/null 2>&1
+    echo '• Cloning from Github'
+    git clone --depth=1 git@github.com:optoolco/opkit.git $TMPD > /dev/null 2>&1
 
-  if [ ! $? = 0 ]; then
-    echo "• Unable to clone"
-    exit 1
+    if [ ! $? = 0 ]; then
+      echo "• Unable to clone"
+      exit 1
+    fi
+
+    # enter the temp dir and run the build of the build tool
+    cd $TMPD
   fi
 
-  # enter the temp dir and run the build of the build tool
-  cd $TMPD
   echo '• Building'
   build
 
