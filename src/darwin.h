@@ -159,8 +159,6 @@ namespace Opkit {
         delegate
       );
 
-      addListenerThemeChange(delegate);
-
       // Main window
       if (window == nullptr) {
         m_window = ((id(*)(id, SEL))objc_msgSend)(

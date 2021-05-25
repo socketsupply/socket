@@ -114,7 +114,6 @@ std::string createNativeDialog(
   const char *default_name);
 
 std::string getCwd (std::string);
-void addListenerThemeChange(void*);
 void setWindowColor (void*, float r, float g, float b, float a);
 void setTitle(void*);
 std::string getNativeTheme();

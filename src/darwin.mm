@@ -34,11 +34,6 @@ std::string getNativeTheme () {
   return mode;
 }
 
-void addListenerThemeChange (void* delegate) {
-  NSResponder* r = (id) delegate;
-  [NSDistributedNotificationCenter.defaultCenter addObserver:r selector:@selector(themeChangedOnMainThread) name:@"AppleInterfaceThemeChangedNotification" object: nil];
-}
-
 bool createNativeContextMenu (std::string seq, std::string value) {
   auto menuItems = split(value, '_');
   auto id = std::stoi(seq);

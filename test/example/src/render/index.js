@@ -1,7 +1,3 @@
-//
-// Client side program entry point
-//
-
 const Tonic = require('@optoolco/tonic')
 const Components = require('@optoolco/components')
 
@@ -11,12 +7,6 @@ window.addEventListener('menuItemSelected', event => {
   // can then await invokeIPC if so desired
   document.querySelector('#menu-selection').value = event.detail.title
   console.log(event.detail)
-})
-
-// not needed on linux, webkit just knows what to do
-window.addEventListener('themeChanged', _ => {
-  const theme = document.body.getAttribute('theme')
-  document.body.setAttribute('theme', theme === 'dark' ? 'light' : 'dark')
 })
 
 //
