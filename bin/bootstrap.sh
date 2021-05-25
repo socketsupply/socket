@@ -9,7 +9,7 @@ fi
 function build {
   `echo $CXX` src/build.cc \
     -o bin/build \
-    -std=c++2a -stdlib=libc++\
+    -std=c++2a\
     -DVERSION=`git rev-parse --short HEAD`
 
   if [ ! $? = 0 ]; then
