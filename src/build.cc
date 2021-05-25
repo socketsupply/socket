@@ -92,11 +92,11 @@ void help () {
     << std::endl
     << std::endl
     << "flags:" << std::endl
-    << "  -h    this help message" << std::endl
-    << "  -o    only run user defined build step" << std::endl
-    << "  -r    run the binary after building it" << std::endl
-    << "  -b    bundle for app store" << std::endl
-    << "  -c    code sign the bundle" << std::endl
+    << "  -h  this help message" << std::endl
+    << "  -o  only run user defined build step" << std::endl
+    << "  -r  run the binary after building it" << std::endl
+    << "  -b  bundle for app store" << std::endl
+    << "  -c  code sign the bundle" << std::endl
   ;
 
   exit(0);
@@ -118,22 +118,28 @@ int main (const int argc, const char* argv[]) {
   bool partial = false;
   bool appStore = false;
   bool codeSign = false;
+  bool withEntitlements = false;
 
   for (auto const arg : std::span(argv, argc)) {
-    if (std::string(arg).find("-h") != std::string::npos) {
+    if (std::string(arg).find("-h") != -1) {
       help();
     }
 
-    if (std::string(arg).find("-o") != std::string::npos) {
+    if (std::string(arg).find("-o") != -1) {
       partial = true;
     }
 
-    if (std::string(arg).find("-s") != std::string::npos) {
+    if (std::string(arg).find("-s") != -1) {
       appStore = true;
     }
 
-    if (std::string(arg).find("-c") != std::string::npos) {
+    if (std::string(arg).find("-c") != -1) {
       codeSign = true;
+    }
+
+    if (std::string(arg).find("-ce") != -1) {
+      codeSign = true;
+      withEntitlements = true;
     }
   }
 
@@ -187,8 +193,12 @@ int main (const int argc, const char* argv[]) {
     fs::create_directories(pathResources);
 
     auto plistInfo = replace(gPListInfo, settings);
-    writeFile(fs::path { pathPackage / pathBase / fs::path("Info.plist") }, plistInfo);
-    // Replace and write list files
+
+    writeFile(fs::path {
+      pathPackage /
+      pathBase /
+      fs::path("Info.plist")
+    }, plistInfo);
   }
 
   if (platform.linux) {
@@ -351,7 +361,6 @@ int main (const int argc, const char* argv[]) {
   // Code signing step
   //
   if (codeSign && platform.darwin) {
-    log("attempting code signing");
     //
     // References
     // ---
@@ -361,13 +370,29 @@ int main (const int argc, const char* argv[]) {
     //
     std::stringstream signCommand;
 
+    std::string entitlements = "";
+
+    if (withEntitlements) {
+      entitlements = std::string(
+        " --entitlements " + pathToString(fs::path {
+        pathResourcesRelativeToUserBuild /
+        fs::path(std::string(settings["title"] + ".entitlements"))
+      }));
+    }
+
     signCommand
-      << "codesign -f -o runtime --timestamp --verbose=4 "
-      << "-s 'Developer ID Application: " + settings["mac_sign"] + "' "
+      << "codesign"
+      << " --deep"
+      << " --force"
+      << " --options runtime"
+      << " --timestamp"
+      << entitlements
+      << " --sign 'Developer ID Application: " + settings["mac_sign"] + "'"
+      << " "
       << pathToString(pathPackage);
 
-    std::cout << signCommand.str() << std::endl;
     std::system(signCommand.str().c_str());
+    log("finished code signing");
   }
 
   if (platform.win32) {

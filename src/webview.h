@@ -2,7 +2,6 @@
 #define WEBVIEW_H
 
 #include "platform.h"
-#include <iostream>
 
 #ifndef WEBVIEW_API
 #define WEBVIEW_API extern
