@@ -25,3 +25,49 @@ sudo apt install \
 
 [0]:https://linuxize.com/post/how-to-add-apt-repository-in-ubuntu/
 [1]:https://apt.llvm.org/
+
+## Running multiple versions of g++
+
+If you've tried running the above `apt install` and you get an error
+related `Unable to locate package` then you can also install multiple
+versions of G++ on your system.
+
+```sh
+sudo apt install software-properties-common
+sudo add-apt-repository ppa:ubuntu-toolchain-r/test
+sudo apt install gcc-7 g++-7 gcc-8 g++-8 gcc-9 g++-9 gcc-10 g++-10
+```
+
+Then you can set your C++ compiler as `g++-10`
+
+```sh
+# Add this to bashrc
+export CXX=g++-10
+```
+
+## Cannot find webkit on linux
+
+If you run into an error about not finding webkit & gtk like this:
+
+```
+Package webkit2gtk-4.0 was not found in the pkg-config search path.
+Perhaps you should add the directory containing `webkit2gtk-4.0.pc'
+to the PKG_CONFIG_PATH environment variable
+No package 'webkit2gtk-4.0' found
+In file included from /usr/local/lib/opkit/src/webview.h:164,
+                 from /usr/local/lib/opkit/src/main.cc:1:
+/usr/local/lib/opkit/src/linux.h:11:10: fatal error: JavaScriptCore/JavaScript.h: No such file or directory
+   11 | #include <JavaScriptCore/JavaScript.h>
+      |          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+compilation terminated.
+/usr/local/lib/opkit/src/linux.cc:2:10: fatal error: gtk/gtk.h: No such file or directory
+    2 | #include <gtk/gtk.h>
+      |          ^~~~~~~~~~~
+compilation terminated.
+```
+
+Then you will want to install those dependencies
+
+```sh
+sudo apt-get install libwebkit2gtk-4.0-dev
+```

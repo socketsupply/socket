@@ -48,8 +48,7 @@ cd opkit
 There is an example app written in Node.js, to build and run it...
 
 ```sh
-./bin/build test/example
-cd text/example
+cd test/example
 npm install
 opkit . # run the cli tool to build and package the app
 ```
