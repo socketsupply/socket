@@ -27,7 +27,7 @@
 #pragma comment(lib, "ole32.lib")
 #pragma comment(lib, "oleaut32.lib")
 
-namespace webview {
+namespace Opkit {
 
 using msg_cb_t = std::function<void(const std::string)>;
 
@@ -319,7 +319,7 @@ public:
         std::bind(&win32_edge_engine::on_message, this, std::placeholders::_1);
 
     if (!m_browser->embed(m_window, debug, cb)) {
-      m_browser = std::make_unique<webview::edge_html>();
+      m_browser = std::make_unique<Opkit::edge_html>();
       m_browser->embed(m_window, debug, cb);
     }
 
@@ -396,9 +396,9 @@ private:
   POINT m_minsz = POINT{0, 0};
   POINT m_maxsz = POINT{0, 0};
   DWORD m_main_thread = GetCurrentThreadId();
-  std::unique_ptr<webview::browser> m_browser =
-      std::make_unique<webview::edge_chromium>();
+  std::unique_ptr<Opkit::browser> m_browser =
+      std::make_unique<Opkit::edge_chromium>();
 };
 
 using browser_engine = win32_edge_engine;
-} // namespace webview
+} // namespace Opkit

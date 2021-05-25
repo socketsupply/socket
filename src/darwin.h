@@ -26,7 +26,7 @@
 
 void createNativeMenu (std::string);
 
-namespace webview {
+namespace Opkit {
   SEL NSSelector(const char *s) {
     return sel_registerName(s);
   }
@@ -502,4 +502,4 @@ namespace webview {
   };
 
   using browser_engine = cocoa_wkwebview_engine;
-} // namespace webview
+} // namespace Opkit

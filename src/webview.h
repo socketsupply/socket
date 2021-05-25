@@ -156,9 +156,9 @@ WEBVIEW_API
 #include <vector>
 #include <cstring>
 
-namespace webview {
+namespace Opkit {
 using dispatch_fn_t = std::function<void()>;
-} // namespace webview
+} // namespace Opkit
 
 #if defined(WEBVIEW_GTK)
 
@@ -174,7 +174,7 @@ using dispatch_fn_t = std::function<void()>;
 
 #endif /* WEBVIEW_GTK, WEBVIEW_COCOA, WEBVIEW_EDGE */
 
-namespace webview {
+namespace Opkit {
 
 class webview : public browser_engine {
 public:
@@ -311,37 +311,37 @@ private:
   }
   std::map<std::string, binding_ctx_t *> bindings;
 };
-} // namespace webview
+} // namespace Opkit
 
 WEBVIEW_API webview_t webview_create(int debug, void *wnd) {
-  return new webview::webview(debug, wnd);
+  return new Opkit::webview(debug, wnd);
 }
 
 WEBVIEW_API void webview_destroy(webview_t w) {
-  delete static_cast<webview::webview *>(w);
+  delete static_cast<Opkit::webview *>(w);
 }
 
 WEBVIEW_API void webview_run(webview_t w) {
-  static_cast<webview::webview *>(w)->run();
+  static_cast<Opkit::webview *>(w)->run();
 }
 
 WEBVIEW_API void webview_terminate(webview_t w) {
-  static_cast<webview::webview *>(w)->terminate();
+  static_cast<Opkit::webview *>(w)->terminate();
 }
 
 WEBVIEW_API void webview_dispatch(
   webview_t w,
   void (*fn)(webview_t, void *),
   void *arg) {
-    static_cast<webview::webview *>(w)->dispatch([=]() { fn(w, arg); });
+    static_cast<Opkit::webview *>(w)->dispatch([=]() { fn(w, arg); });
 }
 
 WEBVIEW_API void *webview_get_window(webview_t w) {
-  return static_cast<webview::webview *>(w)->window();
+  return static_cast<Opkit::webview *>(w)->window();
 }
 
 WEBVIEW_API void webview_set_title(webview_t w, const char *title) {
-  static_cast<webview::webview *>(w)->setTitle(title);
+  static_cast<Opkit::webview *>(w)->setTitle(title);
 }
 
 WEBVIEW_API void webview_set_size(
@@ -349,19 +349,19 @@ WEBVIEW_API void webview_set_size(
   int width,
   int height,
   int hints) {
-    static_cast<webview::webview *>(w)->setSize(width, height, hints);
+    static_cast<Opkit::webview *>(w)->setSize(width, height, hints);
 }
 
 WEBVIEW_API void webview_navigate(webview_t w, const char *url) {
-  static_cast<webview::webview *>(w)->navigate(url);
+  static_cast<Opkit::webview *>(w)->navigate(url);
 }
 
 WEBVIEW_API void webview_init(webview_t w, const char *js) {
-  static_cast<webview::webview *>(w)->init(js);
+  static_cast<Opkit::webview *>(w)->init(js);
 }
 
 WEBVIEW_API void webview_eval(webview_t w, const char *js) {
-  static_cast<webview::webview *>(w)->eval(js);
+  static_cast<Opkit::webview *>(w)->eval(js);
 }
 
 WEBVIEW_API void webview_ipc(
@@ -369,7 +369,7 @@ WEBVIEW_API void webview_ipc(
   const char *name,
   void (*fn)(const char *seq, const char *req, void *arg),
   void *arg) {
-  static_cast<webview::webview *>(w)->ipc(
+  static_cast<Opkit::webview *>(w)->ipc(
     name,
     [=](std::string seq, std::string req, void *arg) {
       fn(seq.c_str(), req.c_str(), arg);
@@ -383,7 +383,7 @@ WEBVIEW_API void webview_return(
   const char *seq,
   int status,
   const char *result) {
-    static_cast<webview::webview *>(w)->resolve(result);
+    static_cast<Opkit::webview *>(w)->resolve(result);
 }
 
 #endif /* WEBVIEW_HEADER */

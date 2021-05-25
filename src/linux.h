@@ -12,7 +12,7 @@
 #include <gtk/gtk.h>
 #include <webkit2/webkit2.h>
 
-namespace webview {
+namespace Opkit {
 
 class gtk_webkit_engine {
   public:
@@ -121,7 +121,7 @@ class gtk_webkit_engine {
         G_OBJECT(item),
         "activate",
         G_CALLBACK(+[](GtkWidget *t, gpointer arg) {
-          auto w = static_cast<webview::gtk_webkit_engine*>(arg);
+          auto w = static_cast<Opkit::gtk_webkit_engine*>(arg);
           auto label = gtk_menu_item_get_label(GTK_MENU_ITEM(t));
           auto title = std::string(label);
           auto meta = gtk_widget_get_name(t);
@@ -226,7 +226,7 @@ class gtk_webkit_engine {
           G_OBJECT(item),
           "activate",
           G_CALLBACK(+[](GtkWidget *t, gpointer arg) {
-            auto w = static_cast<webview::gtk_webkit_engine*>(arg);
+            auto w = static_cast<Opkit::gtk_webkit_engine*>(arg);
             auto title = gtk_menu_item_get_label(GTK_MENU_ITEM(t));
             auto parent = gtk_widget_get_name(t);
 
@@ -337,4 +337,4 @@ private:
 };
 
 using browser_engine = gtk_webkit_engine;
-} // namespace webview
+} // namespace Opkit

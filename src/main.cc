@@ -25,7 +25,7 @@ int CALLBACK WinMain(
 int main(int argc, char *argv[])
 #endif
 {
-  static auto win = std::make_unique<webview::webview>(true, nullptr);
+  static auto win = std::make_unique<Opkit::webview>(true, nullptr);
 
   std::string cwd = getCwd(argv[0]);
 

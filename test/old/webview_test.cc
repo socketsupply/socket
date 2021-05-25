@@ -13,7 +13,7 @@
 // TEST: start app loop and terminate it.
 // =================================================================
 static void test_terminate() {
-  webview::webview w(false, nullptr);
+  Opkit::webview w(false, nullptr);
   w.dispatch([&]() { w.terminate(); });
   w.run();
 }
@@ -44,9 +44,9 @@ static void test_c_api() {
 // =================================================================
 // TEST: ensure that JS code can call native code and vice versa.
 // =================================================================
-struct test_webview : webview::browser_engine {
+struct test_webview : Opkit::browser_engine {
   using cb_t = std::function<void(test_webview *, int, const std::string)>;
-  test_webview(cb_t cb) : webview::browser_engine(true, nullptr), m_cb(cb) {}
+  test_webview(cb_t cb) : Opkit::browser_engine(true, nullptr), m_cb(cb) {}
   void on_message(const std::string msg) override { m_cb(this, i++, msg); }
   int i = 0;
   cb_t m_cb;
@@ -78,18 +78,6 @@ static void test_bidir_comms() {
   browser.run();
 }
 
-// =================================================================
-// TEST: ensure that JSON parsing works.
-// =================================================================
-static void test_json() {
-  auto J = webview::json_parse;
-  assert(J(R"({"foo":"bar"})", "foo", -1) == "bar");
-  assert(J(R"({"foo":""})", "foo", -1) == "");
-  assert(J(R"({"foo": {"bar": 1}})", "foo", -1) == R"({"bar": 1})");
-  assert(J(R"(["foo", "bar", "baz"])", "", 0) == "foo");
-  assert(J(R"(["foo", "bar", "baz"])", "", 2) == "baz");
-}
-
 static void run_with_timeout(std::function<void()> fn, int timeout_ms) {
   std::atomic_flag flag_running = ATOMIC_FLAG_INIT;
   flag_running.test_and_set();
@@ -113,7 +101,6 @@ int main(int argc, char *argv[]) {
       {"terminate", test_terminate},
       {"c_api", test_c_api},
       {"bidir_comms", test_bidir_comms},
-      {"json", test_json},
   };
   // Without arguments run all tests, one-by-one by forking itself.
   // With a single argument - run the requested test
