@@ -217,6 +217,7 @@ int main (const int argc, const char* argv[]) {
   fs::path pathResources;
   fs::path pathResourcesRelativeToUserBuild;
   fs::path pathPackage;
+  fs::path pathToArchive;
   fs::path packageName;
 
   if (platform.darwin) {
@@ -458,11 +459,11 @@ int main (const int argc, const char* argv[]) {
   if (platform.darwin) {
     std::stringstream zipCommand;
 
-    auto destination = pathToString(fs::path {
+    pathToArchive = fs::path {
       target /
       pathOutput /
       fs::path(std::string(settings["executable"] + ".zip"))
-    });
+    };
 
     zipCommand
       << "ditto"
@@ -473,7 +474,7 @@ int main (const int argc, const char* argv[]) {
       << " "
       << pathToString(pathPackage)
       << " "
-      << destination;
+      << pathToString(pathToArchive);
 
     auto r = std::system(zipCommand.str().c_str());
 
@@ -493,33 +494,76 @@ int main (const int argc, const char* argv[]) {
     std::stringstream notarizeCommand;
 
     notarizeCommand
-      << "xcrun altool"
+      << "xcrun"
+      << " altool"
       << " --notarize-app"
       << " -f"
-      << " XXX" // zip path
+      << pathToString(pathToArchive)
       << " --primary-bundle-id"
-      << " XXX"; // identifier
+      << " "
+      << settings["mac_bundle_identifier"];
 
-    exec(notarizeCommand.str().c_str());
+    auto stdout = exec(notarizeCommand.str().c_str());
 
-    while (true) {
+    std::regex re(R"(\nRequestUUID = (.+?)\n)");
+    std::smatch match;
+    std::string uuid;
+
+    if (std::regex_search(stdout, match, re)) {
+      uuid = match.str(1);
+    }
+
+    int requests = 0;
+
+    while (uuid) {
+      if (++requests > 1024) {
+        log("apple did not respond to the request for notarization");
+        exit(1);
+      }
+
       log("polling for notarization");
-      // std::thread::sleep(std::time::Duration::from_secs(10));
-      // altool", "--notarization-info", &uuid
+      std::this_thread::sleep_for(std::chrono::milliseconds(1024 * 8));
+      std::stringstream notarizeStatusCommand;
+
+      notarizeStatusCommand
+        << "xcrun"
+        << " altool"
+        << " --notarization-info"
+        << " " << uuid;
+
+      auto stdout = exec(notarizeStatusCommand.str().c_str());
+
+      std::regex re(R"(\n *Status: (.+?)\n)");
+      std::smatch match;
+      std::string status;
+
+      if (std::regex_search(stdout, match, re)) {
+        status = match.str(1);
+      }
+
+      if (status.find("invalid") != -1) {
+        log("apple rejected the request for notarization");
+        exit(1);
+      }
+
+      if (status.find("success") {
+        log("successfully notarized");
+      }
     }
 
     log("finished notarization");
   }
 
+  //
+  // Win32 Packaging
+  // ---------------
+  //
   if (platform.win32) {
     //
-    // References
-    // ---
     // https://www.digicert.com/kb/code-signing/signcode-signtool-command-line.htm
+    // https://github.com/wixtoolset/
     //
   }
-
-  auto stdout = exec("echo 'cool'");
 
   return 0;
 }
