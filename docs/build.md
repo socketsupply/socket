@@ -45,9 +45,16 @@ revision: 1
 name: Operator
 description: A demo appliation
 copyRight: Operator Tool Co. © 2021-2022
+maintainer: Operator Contributors <dev@optool.co>
 mac_category: Developer Tools
 linux_categories: Developer
-maintainer: Operator Contributors <dev@optool.co>
+mac_bundle_identifier: co.optool.demo
+
+#
+# Code Signing
+#
+mac_sign: Voltra Co. BV (DYE7429KTV)
+win32_sign: DigiCert: Operator Tool Co.
 
 #
 # window
@@ -76,7 +83,7 @@ docs for an example of a menu.
 
 ```syntax
 Menu A:
-  Item 1: Accellerator
+  Item 1: Accellerator + ModifierA, ModifierB
   Item 2: Accellerator
   Item 2: Accellerator;
 Menu B:

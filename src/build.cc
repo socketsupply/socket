@@ -1,4 +1,5 @@
 #include "platform.h"
+#include "process.h"
 #include "build.h"
 #include <iostream>
 #include <chrono>
@@ -90,9 +91,38 @@ void log (const std::string s) {
   start = std::chrono::system_clock::now();
 }
 
-int exec (std::string cmd, std::string s) {
-  std::string c = std::string(cmd + " " + s);
-  return system(c.c_str());
+std::string exec (std::string command) {
+  FILE *pipe;
+  char buf[128];
+
+#ifdef _WIN32
+  //
+  // https://docs.microsoft.com/en-us/cpp/c-runtime-library/reference/popen-wpopen?view=msvc-160
+  // _popen works fine in a console application... ok fine that's all we need it for... thanks.
+  //
+  pipe = _popen((const char*) command.c_str(), "rt");
+#else
+  pipe = popen((const char*) command.c_str(), "r");
+#endif
+
+  if (pipe == NULL) {
+    std::cout << "error: unable to opent he command" << std::endl;
+    exit(1);
+  }
+
+  std::stringstream ss;
+
+  while (fgets(buf, 128, pipe)) {
+    ss << buf;
+  }
+
+#ifdef _WIN32
+  _pclose(pipe);
+#else
+  pclose(pipe);
+#endif
+
+  return ss.str();
 }
 
 void help () {
@@ -105,12 +135,13 @@ void help () {
     << std::endl
     << std::endl
     << "flags:" << std::endl
-    << "  -h  this help message" << std::endl
-    << "  -o  only run user defined build step" << std::endl
-    << "  -r  run the binary after building it" << std::endl
+    << "  -h  help" << std::endl
+    << "  -o  only run user build step" << std::endl
+    << "  -r  run after building" << std::endl
     << "  -b  bundle for app store" << std::endl
     << "  -c  code sign the bundle" << std::endl
-    << "  -ce code sign the bundle with entitlements" << std::endl
+    << "  -me (macOS) use entitlements" << std::endl
+    << "  -mn (macOS) notarize the bundle" << std::endl
   ;
 
   exit(0);
@@ -130,10 +161,11 @@ int main (const int argc, const char* argv[]) {
   }
 
   bool flagRunUserBuild = false;
-  bool appStore = false;
-  bool codeSign = false;
-  bool shouldRun = false;
-  bool withEntitlements = false;
+  bool flagAppStore = false;
+  bool flagCodeSign = false;
+  bool flagShouldRun = false;
+  bool flagEntitlements = false;
+  bool flagNotarization = false;
 
   for (auto const arg : std::span(argv, argc)) {
     if (std::string(arg).find("-h") != -1) {
@@ -145,16 +177,19 @@ int main (const int argc, const char* argv[]) {
     }
 
     if (std::string(arg).find("-s") != -1) {
-      appStore = true;
+      flagAppStore = true;
     }
 
     if (std::string(arg).find("-c") != -1) {
-      codeSign = true;
+      flagCodeSign = true;
     }
 
-    if (std::string(arg).find("-ce") != -1) {
-      codeSign = true;
-      withEntitlements = true;
+    if (std::string(arg).find("-me") != -1) {
+      flagEntitlements = true;
+    }
+
+    if (std::string(arg).find("-mn") != -1) {
+      flagNotarization = true;
     }
   }
 
@@ -317,7 +352,7 @@ int main (const int argc, const char* argv[]) {
   std::stringstream buildCommand;
 
   buildCommand
-    << "cd "
+    << " cd "
     << pathToString(target)
     << " && "
     << settings["build"]
@@ -355,12 +390,13 @@ int main (const int argc, const char* argv[]) {
 
   // log(compileCommand.str());
   if (flagRunUserBuild == false) {
-    std::system(compileCommand.str().c_str());
+    exec(compileCommand.str());
     log("compiled native binary");
   }
 
   //
-  // Archive step
+  // Linux Packaging
+  // ---------------
   //
   if (platform.linux) {
     std::stringstream archiveCommand;
@@ -371,29 +407,28 @@ int main (const int argc, const char* argv[]) {
       << " "
       << pathToString(fs::path { target / pathOutput });
 
-    std::system(archiveCommand.str().c_str());
-  }
+    auto r = std::system(archiveCommand.str().c_str());
 
-  if (platform.darwin) {
-    // create DMG package if MAS is desired
+    if (r != 0) {
+      log("error: failed to create deb package");
+      exit(1);
+    }
   }
 
   //
-  // Code signing step
+  // MacOS Code Signing
+  // ------------------
   //
-  if (codeSign && platform.darwin) {
+  if (flagCodeSign && platform.darwin) {
     //
-    // References
-    // ---
     // https://www.digicert.com/kb/code-signing/mac-os-codesign-tool.htm
     // https://developer.apple.com/forums/thread/128166
     // https://wiki.lazarus.freepascal.org/Code_Signing_for_macOS
     //
     std::stringstream signCommand;
-
     std::string entitlements = "";
 
-    if (withEntitlements) {
+    if (flagEntitlements) {
       entitlements = std::string(
         " --entitlements " + pathToString(fs::path {
         pathResourcesRelativeToUserBuild /
@@ -412,8 +447,68 @@ int main (const int argc, const char* argv[]) {
       << " "
       << pathToString(pathPackage);
 
-    std::system(signCommand.str().c_str());
+    exec(signCommand.str());
     log("finished code signing");
+  }
+
+  //
+  // MacOS Packaging
+  // ---------------
+  //
+  if (platform.darwin) {
+    std::stringstream zipCommand;
+
+    auto destination = pathToString(fs::path {
+      target /
+      pathOutput /
+      fs::path(std::string(settings["executable"] + ".zip"))
+    });
+
+    zipCommand
+      << "ditto"
+      << " -c"
+      << " -k"
+      << " --keepParent"
+      << " --sequesterRsrc"
+      << " "
+      << pathToString(pathPackage)
+      << " "
+      << destination;
+
+    auto r = std::system(zipCommand.str().c_str());
+
+    if (r != 0) {
+      log("error: failed to create zip for notarization");
+      exit(1);
+    }
+
+    log("craeted zip artifact");
+  }
+
+  //
+  // MacOS Notorization
+  // ------------------
+  //
+  if (flagNotarization && platform.darwin) {
+    std::stringstream notarizeCommand;
+
+    notarizeCommand
+      << "xcrun altool"
+      << " --notarize-app"
+      << " -f"
+      << " XXX" // zip path
+      << " --primary-bundle-id"
+      << " XXX"; // identifier
+
+    exec(notarizeCommand.str().c_str());
+
+    while (true) {
+      log("polling for notarization");
+      // std::thread::sleep(std::time::Duration::from_secs(10));
+      // altool", "--notarization-info", &uuid
+    }
+
+    log("finished notarization");
   }
 
   if (platform.win32) {
@@ -423,6 +518,8 @@ int main (const int argc, const char* argv[]) {
     // https://www.digicert.com/kb/code-signing/signcode-signtool-command-line.htm
     //
   }
+
+  auto stdout = exec("echo 'cool'");
 
   return 0;
 }
