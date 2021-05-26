@@ -515,13 +515,14 @@ int main (const int argc, const char* argv[]) {
 
     int requests = 0;
 
+    std::cout << "polling for notarization";
+
     while (uuid) {
       if (++requests > 1024) {
         log("apple did not respond to the request for notarization");
         exit(1);
       }
 
-      log("polling for notarization");
       std::this_thread::sleep_for(std::chrono::milliseconds(1024 * 8));
       std::stringstream notarizeStatusCommand;
 
@@ -541,13 +542,22 @@ int main (const int argc, const char* argv[]) {
         status = match.str(1);
       }
 
+      if (status.find("in progress") != -1) {
+        std::cout << ".";
+        continue;
+      }
+
       if (status.find("invalid") != -1) {
         log("apple rejected the request for notarization");
         exit(1);
       }
 
-      if (status.find("success") {
+      if (status.find("success") != -1) {
         log("successfully notarized");
+      }
+
+      if (status.find("success") == -1) {
+        log("apple was unable to notarize");
       }
     }
 
