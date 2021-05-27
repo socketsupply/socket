@@ -7,8 +7,8 @@ if [ ! "$CXX" ]; then
 fi
 
 function build {
-  `echo $CXX` src/build.cc \
-    -o bin/build \
+  `echo $CXX` src/cli.cc \
+    -o bin/cli \
     -std=c++2a\
     -DVERSION=`git rev-parse --short HEAD`
 
@@ -40,12 +40,14 @@ if [ "$1" ]; then
   echo '• Building'
   build
 
+  sudo rm -rf /usr/local/lib/opkit
+
   echo '• Copying sources to /usr/local/lib/opkit'
   sudo mkdir -p /usr/local/lib/opkit
   sudo cp -r `pwd`/src/ /usr/local/lib/opkit/src
 
   echo '• Moving binary to /usr/local/bin'
-  sudo mv `pwd`/bin/build /usr/local/bin/opkit
+  sudo mv `pwd`/bin/cli /usr/local/bin/opkit
 
   if [ ! $? = 0 ]; then
     echo '• Unable to move file into place'

@@ -9,6 +9,7 @@
 //
 #include <CoreGraphics/CoreGraphics.h>
 #include <objc/objc-runtime.h>
+#include "util.h"
 
 #define NSBackingStoreBuffered 2
 #define NSWindowStyl0MaskHUDWindow 1 << 13
@@ -24,11 +25,11 @@
 #define NSApplicationActivationPolicyRegular 0
 #define WKUserScriptInjectionTimeAtDocumentStart 0
 
+std::string getCwd (std::string);
 void createNativeMenu (std::string);
 bool createNativeContextMenu (std::string, std::string);
 std::vector<std::string> getMenuItemDetails (void* item);
 void setWindowColor (void*, float r, float g, float b, float a);
-// std::string getNativeTheme();
 void setTitle(void*);
 
 namespace Opkit {

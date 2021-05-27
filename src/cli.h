@@ -1,6 +1,3 @@
-#include "platform.h"
-#include <string>
-
 //
 // Darwin bundle settings
 //

@@ -1,133 +1,12 @@
-#include "platform.h"
 #include "process.h"
-#include "build.h"
-#include <iostream>
-#include <chrono>
-#include <thread>
-#include <map>
-#include <span>
-#include <regex>
-#include <vector>
-#include <fstream>
-#include <sstream>
-#include <filesystem>
-
-#define TO_STR(arg) #arg
-#define STR_VALUE(arg) TO_STR(arg)
+#include "util.h"
+#include "cli.h"
 
 constexpr auto version = STR_VALUE(VERSION);
-namespace fs = std::filesystem;
-auto start = std::chrono::system_clock::now();
-Platform platform;
-
-std::string pathToString(const fs::path &path) {
-  auto s = path.u8string();
-  return std::string(s.begin(), s.end());
-}
-
-std::string readFile (fs::path path) {
-  std::ifstream stream(path.c_str());
-  std::string content;
-  auto buffer = std::istreambuf_iterator<char>(stream);
-  auto end = std::istreambuf_iterator<char>();
-  content.assign(buffer, end);
-  stream.close();
-  return content;
-}
-
-void writeFile (fs::path path, std::string s) {
-  std::ofstream stream(pathToString(path));
-  stream << s;
-  stream.close();
-}
-
-std::string prefixFile (std::string s) {
-  if (platform.darwin || platform.linux) {
-    return std::string("/usr/local/lib/opkit/" + s + " ");
-  }
-
-  return std::string("C:\\Program Files\\operator\\build\\" + s + " ");
-}
-
-std::map<std::string, std::string> readConfig(const fs::path p) {
-  if (!fs::exists(p)) {
-    std::cout << p << " does not exist" << std::endl;
-    exit(1);
-  }
-
-  auto source = readFile(p);
-  auto entries = split(source, '\n');
-  std::map<std::string, std::string> settings;
-
-  for (auto entry : entries) {
-    auto pair = split(entry, ':');
-
-    if (pair.size() == 2) {
-      settings[trim(pair[0])] = trim(pair[1]);
-    }
-  }
-
-  return settings;
-}
-
-std::string replace (const std::string s, std::map<std::string, std::string> pairs) {
-  std::string output = s;
-
-  for (auto item : pairs) {
-    auto key = "[{]+(" + item.first + ")[}]+";
-    auto value = item.second;
-    output = std::regex_replace(output, std::regex(key), value);
-  }
-
-  return output;
-}
-
-void log (const std::string s) {
-  using namespace std::chrono;
-
-  auto now = system_clock::now();
-  auto delta = duration_cast<milliseconds>(now - start).count();
-  std::cout << "• " << s << " \033[0;32m+" << delta << "ms\033[0m" << std::endl;
-  start = std::chrono::system_clock::now();
-}
-
-std::string exec (std::string command) {
-  FILE *pipe;
-  char buf[128];
-
-#ifdef _WIN32
-  //
-  // https://docs.microsoft.com/en-us/cpp/c-runtime-library/reference/popen-wpopen?view=msvc-160
-  // _popen works fine in a console application... ok fine that's all we need it for... thanks.
-  //
-  pipe = _popen((const char*) command.c_str(), "rt");
-#else
-  pipe = popen((const char*) command.c_str(), "r");
-#endif
-
-  if (pipe == NULL) {
-    std::cout << "error: unable to opent he command" << std::endl;
-    exit(1);
-  }
-
-  std::stringstream ss;
-
-  while (fgets(buf, 128, pipe)) {
-    ss << buf;
-  }
-
-#ifdef _WIN32
-  _pclose(pipe);
-#else
-  pclose(pipe);
-#endif
-
-  return ss.str();
-}
 
 void help () {
   std::cout
-    << "Opkit " << version
+    << "opkit " << version
     << std::endl
     << std::endl
     << "usage:" << std::endl
@@ -145,6 +24,17 @@ void help () {
   ;
 
   exit(0);
+}
+
+auto start = std::chrono::system_clock::now();
+
+void log (const std::string s) {
+  using namespace std::chrono;
+
+  auto now = system_clock::now();
+  auto delta = duration_cast<milliseconds>(now - start).count();
+  std::cout << "• " << s << " \033[0;32m+" << delta << "ms\033[0m" << std::endl;
+  start = std::chrono::system_clock::now();
 }
 
 int main (const int argc, const char* argv[]) {
@@ -193,12 +83,17 @@ int main (const int argc, const char* argv[]) {
     }
   }
 
-  auto target = fs::path(argv[1]);
+  //
+  // TODO(@heapwolf) split path values from the settings file
+  // on the os separator to make them work cross-platform.
+  //
 
-  auto settings = readConfig(fs::path { target / "settings.config" });
+  auto target = fs::path(argv[1]);
   auto menu = readFile(fs::path { target / "menu.config" });
 
-  // TODO split output path variable on os sep to make output path cross-platform.
+  auto _settings = readFile(fs::path { target / "settings.config" });
+  auto settings = parseConfig(_settings);
+
   auto pathOutput = fs::path { fs::path(settings["output"]) };
 
   if (flagRunUserBuild == false) {
@@ -220,6 +115,10 @@ int main (const int argc, const char* argv[]) {
   fs::path pathToArchive;
   fs::path packageName;
 
+  //
+  // Darwin Package Prep
+  // -------------------
+  //
   if (platform.darwin) {
     log("preparing build for darwin");
     flags = "-DWEBVIEW_COCOA -std=c++2a -framework WebKit -framework AppKit";
@@ -254,6 +153,10 @@ int main (const int argc, const char* argv[]) {
     }, plistInfo);
   }
 
+  //
+  // Linux Package Prep
+  // ------------------
+  //
   if (platform.linux) {
     log("preparing build for linux");
     flags = "-DWEBVIEW_GTK -std=c++2a `pkg-config --cflags --libs gtk+-3.0 webkit2gtk-4.0`";
@@ -327,6 +230,10 @@ int main (const int argc, const char* argv[]) {
     // fs::copy("", ""); // icon to `pathIcons/<executable>.png`
   }
 
+  //
+  // Win32 Package Prep
+  // ------------------
+  //
   if (platform.win32) {
     log("preparing build for win32");
     flags = "-mwindows -L./dll/x64 -lwebview -lWebView2Loader";
@@ -337,13 +244,7 @@ int main (const int argc, const char* argv[]) {
     // TODO create paths, copy files, archive, etc.
   }
 
-  //
-  // TODO copy the ipc module into the bundle
-  // and maybe some other things too...
-  //
-  // fs::copy(
-
-  log("created app structure");
+  log("the package has been prepared");
 
   //
   // cd into the target and run the user's build command,
@@ -373,12 +274,10 @@ int main (const int argc, const char* argv[]) {
     return std::string(flagPrefix + "D" + label + "=\"\\\"" + s + "\\\"\"");
   };
 
-  // Serialize the menu to pass it to the compiler.
-  std::replace(menu.begin(), menu.end(), '\n', '\xff');
-
-  // Serialize settings too.
-  std::string rawSettings = readFile(fs::path { target / "settings.config" });
-  std::replace(rawSettings.begin(), rawSettings.end(), '\n', '\xff');
+  // Serialize the menu to pass it to the compiler
+  // by replacing new lines with a high bit.
+  menu = std::regex_replace(menu, std::regex("\n"), "%%");
+  _settings = std::regex_replace(_settings, std::regex("\n"), "%%");
 
   compileCommand
     << " " << std::getenv("CXX")
@@ -387,7 +286,7 @@ int main (const int argc, const char* argv[]) {
     << " " << settings["flags"]
     << " -o " << pathToString(binaryPath)
     << " " << define("MENU", menu)
-    << " " << define("SETTINGS", rawSettings);
+    << " " << define("SETTINGS", _settings);
 
   // log(compileCommand.str());
   if (flagRunUserBuild == false) {
@@ -517,7 +416,7 @@ int main (const int argc, const char* argv[]) {
 
     std::cout << "polling for notarization";
 
-    while (uuid) {
+    while (!uuid.empty()) {
       if (++requests > 1024) {
         log("apple did not respond to the request for notarization");
         exit(1);

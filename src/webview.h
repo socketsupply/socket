@@ -1,9 +1,6 @@
 #ifndef WEBVIEW_H
 #define WEBVIEW_H
 
-#include "platform.h"
-#include <iostream>
-
 #ifndef WEBVIEW_API
 #define WEBVIEW_API extern
 #endif
@@ -157,7 +154,8 @@ WEBVIEW_API
 #include <cstring>
 
 namespace Opkit {
-using dispatch_fn_t = std::function<void()>;
+  using dispatch_fn_t = std::function<void()>;
+  std::map<std::string, std::string> appData;
 } // namespace Opkit
 
 #if defined(WEBVIEW_GTK)

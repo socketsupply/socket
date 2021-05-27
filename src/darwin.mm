@@ -151,7 +151,7 @@ void createNativeMenu (std::string menu) {
   [appleMenu release];
 
   // deserialize the menu
-  std::replace(menu.begin(), menu.end(), '_', '\n');
+  menu = std::regex_replace(menu, std::regex("%%"), "\n");
 
   // split on ;
   auto menus = split(menu, ';');

@@ -11,6 +11,9 @@
 #include <JavaScriptCore/JavaScript.h>
 #include <gtk/gtk.h>
 #include <webkit2/webkit2.h>
+#include "util.h"
+
+std::string getCwd (std::string);
 
 namespace Opkit {
 
@@ -107,7 +110,9 @@ class gtk_webkit_engine {
     GtkWidget *m_popup = gtk_menu_new();
     GtkWidget *item;
 
-    auto menuItems = split(menuData, '\xff');
+    menuData = std::regex_replace(menuData, std::regex("%%"), "\n");
+
+    auto menuItems = split(menuData, '\n');
     auto id = std::stoi(seq);
 
     for (auto itemData : menuItems) {
@@ -173,12 +178,20 @@ class gtk_webkit_engine {
   }
 
   void about () {
-    GtkWidget *about=gtk_about_dialog_new();
-    g_signal_connect(about,"response",G_CALLBACK(gtk_widget_destroy),NULL);
+    GtkWidget *about = gtk_about_dialog_new();
 
+    g_signal_connect(
+      about,
+      "response",
+      G_CALLBACK(gtk_widget_destroy),
+      NULL
+    );
 
+    gtk_about_dialog_set_program_name(
+      GTK_ABOUT_DIALOG(about),
+      (char*) appData["title"].c_str()
+    );
 
-    gtk_about_dialog_set_program_name(GTK_ABOUT_DIALOG(about),"COOL");
     gtk_dialog_run(GTK_DIALOG(about));
   }
 
@@ -189,7 +202,7 @@ class gtk_webkit_engine {
     GtkAccelGroup *aclrs = gtk_accel_group_new();
 
     // deserialize the menu
-    std::replace(menu.begin(), menu.end(), '\xff', '\n');
+    menu = std::regex_replace(menu, std::regex("%%"), "\n");
 
     // split on ;
     auto menus = split(menu, ';');

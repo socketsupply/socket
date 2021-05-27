@@ -1,16 +1,9 @@
 #include "webview.h"
 #include "process.h"
-#include "platform.h"
+#include "util.h"
 
-#include <iostream>
-
-constexpr auto settings = SETTINGS;
-constexpr auto menu = MENU;
-// constexpr auto title = WIN_TITLE;
-// constexpr auto width = WIN_WIDTH;
-// constexpr auto height = WIN_HEIGHT;
-// constexpr auto cmd = CMD;
-// constexpr auto arg = ARG;
+constexpr auto _settings = SETTINGS;
+constexpr auto _menu = MENU;
 
 #ifdef _WIN32
 #include <direct.h>
@@ -28,15 +21,16 @@ int main(int argc, char *argv[])
 {
   static auto win = std::make_unique<Opkit::webview>(true, nullptr);
 
-  std::string cwd = getCwd(argv[0]);
+  auto cwd = getCwd(argv[0]);
+  auto settings = parseConfig(std::regex_replace(_settings, std::regex("%%"), "\n"));
 
   Opkit::Process process(
-    cmd,
+    settings["cmd"],
     cwd,
     [](Opkit::Process::string_type stdout) {
-      if (stdout.find("stdout;") != std::string::npos) {
+      if (stdout.find("stdout;") != -1) {
         std::cout << stdout.substr(7) << std::endl;
-      } else if (stdout.find("ipc;") != std::string::npos) {
+      } else if (stdout.find("ipc;") != -1) {
         win->resolve(stdout);
       } else {
         win->emit("data", stdout);
@@ -47,15 +41,19 @@ int main(int argc, char *argv[])
     }
   );
 
-  win->setTitle(title);
+  Opkit::appData = settings;
+
+  win->setTitle(settings["title"]);
+
+  std::cout << settings["width"] << std::endl;
 
   win->setSize(
-    std::stoi(width),
-    std::stoi(height),
+    std::stoi(settings["width"].c_str()),
+    std::stoi(settings["height"].c_str()),
     WEBVIEW_HINT_NONE
   );
 
-  win->menu(menu);
+  win->menu(_menu);
 
   win->ipc("dialog", [&](auto seq, auto value) {
     win->dialog(seq);
