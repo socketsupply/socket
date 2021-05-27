@@ -4,12 +4,13 @@
 
 #include <iostream>
 
-constexpr auto title = WIN_TITLE;
-constexpr auto width = WIN_WIDTH;
-constexpr auto height = WIN_HEIGHT;
+constexpr auto settings = SETTINGS;
 constexpr auto menu = MENU;
-constexpr auto cmd = CMD;
-constexpr auto arg = ARG;
+// constexpr auto title = WIN_TITLE;
+// constexpr auto width = WIN_WIDTH;
+// constexpr auto height = WIN_HEIGHT;
+// constexpr auto cmd = CMD;
+// constexpr auto arg = ARG;
 
 #ifdef _WIN32
 #include <direct.h>

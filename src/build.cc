@@ -374,20 +374,20 @@ int main (const int argc, const char* argv[]) {
   };
 
   // Serialize the menu to pass it to the compiler.
-  std::replace(menu.begin(), menu.end(), '\n', '_');
+  std::replace(menu.begin(), menu.end(), '\n', '\xff');
+
+  // Serialize settings too.
+  std::string rawSettings = readFile(fs::path { target / "settings.config" });
+  std::replace(rawSettings.begin(), rawSettings.end(), '\n', '\xff');
 
   compileCommand
-    << std::getenv("CXX") << " "
-    << files << " "
-    << flags << " "
-    << settings["flags"] << " "
-    << "-o " << pathToString(binaryPath) << " "
-    << define("WIN_TITLE", settings["title"]) << " "
-    << define("WIN_WIDTH", settings["width"]) << " "
-    << define("WIN_HEIGHT", settings["height"]) << " "
-    << define("CMD", settings["cmd"]) << " "
-    << define("MENU", menu) << " "
-    << define("ARG", settings["arg"]);
+    << " " << std::getenv("CXX")
+    << " " << files
+    << " " << flags
+    << " " << settings["flags"]
+    << " -o " << pathToString(binaryPath)
+    << " " << define("MENU", menu)
+    << " " << define("SETTINGS", rawSettings);
 
   // log(compileCommand.str());
   if (flagRunUserBuild == false) {

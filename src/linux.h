@@ -107,7 +107,7 @@ class gtk_webkit_engine {
     GtkWidget *m_popup = gtk_menu_new();
     GtkWidget *item;
 
-    auto menuItems = split(menuData, '_');
+    auto menuItems = split(menuData, '\xff');
     auto id = std::stoi(seq);
 
     for (auto itemData : menuItems) {
@@ -172,19 +172,24 @@ class gtk_webkit_engine {
     );
   }
 
+  void about () {
+    GtkWidget *about=gtk_about_dialog_new();
+    g_signal_connect(about,"response",G_CALLBACK(gtk_widget_destroy),NULL);
+
+
+
+    gtk_about_dialog_set_program_name(GTK_ABOUT_DIALOG(about),"COOL");
+    gtk_dialog_run(GTK_DIALOG(about));
+  }
+
   void menu(std::string menu) {
     if (menu.empty()) return void(0);
 
     GtkWidget *menubar = gtk_menu_bar_new();
     GtkAccelGroup *aclrs = gtk_accel_group_new();
 
-    //
-    // TODO(@heapwolf): do a similar loop to the macOS implementation,
-    // ---
-    //
-
     // deserialize the menu
-    std::replace(menu.begin(), menu.end(), '_', '\n');
+    std::replace(menu.begin(), menu.end(), '\xff', '\n');
 
     // split on ;
     auto menus = split(menu, ';');
@@ -229,6 +234,10 @@ class gtk_webkit_engine {
             auto w = static_cast<Opkit::gtk_webkit_engine*>(arg);
             auto title = gtk_menu_item_get_label(GTK_MENU_ITEM(t));
             auto parent = gtk_widget_get_name(t);
+
+            if (std::string(title).compare("About") == 0) {
+              return w->about();
+            }
 
             // TODO(@heapwolf) can we get the state?
             w->eval(
