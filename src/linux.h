@@ -178,21 +178,48 @@ class gtk_webkit_engine {
   }
 
   void about () {
-    GtkWidget *about = gtk_about_dialog_new();
+    GtkWidget *dialog = gtk_dialog_new();
+    gtk_window_set_default_size(GTK_WINDOW(dialog), 300, 200);
+
+    GtkWidget *body = gtk_dialog_get_content_area(GTK_DIALOG(GTK_WINDOW(dialog)));
+    GtkContainer *content = GTK_CONTAINER(body);
+
+    GdkPixbuf *pixbuf = gdk_pixbuf_new_from_file_at_scale(
+      "/usr/share/icons/hicolor/256x256/apps/operator.png",
+      60,
+      60,
+      TRUE,
+      NULL
+    );
+
+    GtkWidget *img = gtk_image_new_from_pixbuf(pixbuf);
+    gtk_widget_set_margin_top(img, 20);
+    gtk_widget_set_margin_bottom(img, 20);
+
+    gtk_box_pack_start(GTK_BOX(content), img, FALSE, FALSE, 0);
+
+    std::string title_value(appData["title"] + " " + appData["version"]);
+
+    GtkWidget *label_title = gtk_label_new("");
+    gtk_label_set_markup(GTK_LABEL(label_title), title_value.c_str());
+    gtk_container_add(content, label_title);
+
+    GtkWidget *label_copyRight = gtk_label_new("");
+    gtk_label_set_markup(GTK_LABEL(label_copyRight), appData["copyRight"].c_str());
+    gtk_container_add(content, label_copyRight);
 
     g_signal_connect(
-      about,
+      dialog,
       "response",
       G_CALLBACK(gtk_widget_destroy),
       NULL
     );
 
-    gtk_about_dialog_set_program_name(
-      GTK_ABOUT_DIALOG(about),
-      (char*) appData["title"].c_str()
-    );
+    gtk_widget_show_all(body);
+    gtk_widget_show_all(dialog);
+    gtk_window_set_title(GTK_WINDOW(dialog), "About");
 
-    gtk_dialog_run(GTK_DIALOG(about));
+    gtk_dialog_run(GTK_DIALOG(dialog));
   }
 
   void menu(std::string menu) {

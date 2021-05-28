@@ -94,7 +94,7 @@ int main (const int argc, const char* argv[]) {
   auto _settings = readFile(fs::path { target / "settings.config" });
   auto settings = parseConfig(_settings);
 
-  auto pathOutput = fs::path { fs::path(settings["output"]) };
+  auto pathOutput = fs::path { settings["output"] };
 
   if (flagRunUserBuild == false) {
     fs::remove_all(pathOutput);
@@ -131,14 +131,14 @@ int main (const int argc, const char* argv[]) {
     packageName = fs::path(std::string(settings["title"] + ".app"));
 
     pathPackage = { target / pathOutput / packageName };
-    pathBin = { pathPackage / pathBase / fs::path { "MacOS" } };
-    pathResources = { pathPackage / pathBase / fs::path { "Resources" } };
+    pathBin = { pathPackage / pathBase / "MacOS" };
+    pathResources = { pathPackage / pathBase / "Resources" };
 
     pathResourcesRelativeToUserBuild = {
-      fs::path(settings["output"]) /
+      settings["output"] /
       packageName /
       pathBase /
-      fs::path { "Resources" }
+      "Resources"
     };
 
     fs::create_directories(pathBin);
@@ -149,7 +149,7 @@ int main (const int argc, const char* argv[]) {
     writeFile(fs::path {
       pathPackage /
       pathBase /
-      fs::path("Info.plist")
+      "Info.plist"
     }, plistInfo);
   }
 
@@ -165,7 +165,7 @@ int main (const int argc, const char* argv[]) {
     files += prefixFile("src/linux.cc");
 
     // this follows the .deb file naming convention
-    packageName = fs::path(std::string(
+    packageName = fs::path((
       settings["executable"] + "_" +
       settings["version"] + "-" +
       settings["revision"] + "_" +
@@ -176,8 +176,8 @@ int main (const int argc, const char* argv[]) {
 
     fs::path pathBase = {
       pathPackage /
-      fs::path { "opt" } /
-      fs::path { settings["name"] }
+      "opt" /
+      settings["name"]
     };
 
     pathBin = pathBase;
@@ -186,30 +186,30 @@ int main (const int argc, const char* argv[]) {
     pathResourcesRelativeToUserBuild = {
       pathOutput /
       packageName /
-      fs::path { "opt" } /
-      fs::path { settings["name"] }
+      "opt" /
+      settings["name"]
     };
 
     fs::path pathControlFile = {
       pathPackage /
-      fs::path { "DEBIAN" }
+      "DEBIAN"
     };
 
     fs::path pathManifestFile = {
       pathPackage /
-      fs::path { "usr" } /
-      fs::path { "share" } /
-      fs::path { "applications" }
+      "usr" /
+      "share" /
+      "applications"
     };
 
     fs::path pathIcons = {
       pathPackage /
-      fs::path { "usr" } /
-      fs::path { "share" } /
-      fs::path { "icons" } /
-      fs::path { "hicolor" } /
-      fs::path { "256x256" } /
-      fs::path { "apps" }
+      "usr" /
+      "share" /
+      "icons" /
+      "hicolor" /
+      "256x256" /
+      "apps"
     };
 
     fs::create_directories(pathIcons);
@@ -219,15 +219,27 @@ int main (const int argc, const char* argv[]) {
 
     writeFile(fs::path {
       pathManifestFile /
-      fs::path(std::string(settings["name"] + ".desktop"))
+      (settings["name"] + ".desktop")
     }, replace(gDestkopManifest, settings));
 
     writeFile(fs::path {
       pathControlFile /
-      fs::path { "control" }
+      "control"
     }, replace(gDebianManifest, settings));
 
-    // fs::copy("", ""); // icon to `pathIcons/<executable>.png`
+    auto pathToIconSrc = pathToString(fs::path {
+      target /
+      settings["linux_icon"]
+    });
+
+    auto pathToIconDest = pathToString(fs::path {
+      pathIcons /
+      (settings["executable"] + ".png")
+    });
+
+    if (!fs::exists(pathToIconDest)) {
+      fs::copy(pathToIconSrc, pathToIconDest);
+    }
   }
 
   //
@@ -332,7 +344,7 @@ int main (const int argc, const char* argv[]) {
       entitlements = std::string(
         " --entitlements " + pathToString(fs::path {
         pathResourcesRelativeToUserBuild /
-        fs::path(std::string(settings["title"] + ".entitlements"))
+        (settings["title"] + ".entitlements")
       }));
     }
 
@@ -361,7 +373,7 @@ int main (const int argc, const char* argv[]) {
     pathToArchive = fs::path {
       target /
       pathOutput /
-      fs::path(std::string(settings["executable"] + ".zip"))
+      (settings["executable"] + ".zip")
     };
 
     zipCommand
