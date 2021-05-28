@@ -46,8 +46,6 @@ int main(int argc, char *argv[])
     }
   );
 
-  win.setTitle(settings["title"]);
-
   win.setSize(
     std::stoi(settings["width"].c_str()),
     std::stoi(settings["height"].c_str()),
