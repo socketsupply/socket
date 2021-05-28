@@ -4,6 +4,10 @@ let counter = 0
 
 console.log('started')
 
+setTimeout(() => {
+  process.stdout.write('window;open')
+}, 1024)
+
 ipc.receive(async data => {
   return {
     received: data,

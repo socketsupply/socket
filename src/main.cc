@@ -19,7 +19,8 @@ int CALLBACK WinMain(
 int main(int argc, char *argv[])
 #endif
 {
-  static auto win = std::make_unique<Opkit::webview>(true, nullptr);
+  Opkit::webview win(true, nullptr);
+  Opkit::appData = settings;
 
   auto cwd = getCwd(argv[0]);
   auto settings = parseConfig(std::regex_replace(_settings, std::regex("%%"), "\n"));
@@ -27,13 +28,16 @@ int main(int argc, char *argv[])
   Opkit::Process process(
     settings["cmd"],
     cwd,
-    [](Opkit::Process::string_type stdout) {
-      if (stdout.find("stdout;") != -1) {
+    [&](Opkit::Process::string_type stdout) {
+      if (stdout.find("window;") != -1) {
+        // TODO enable backend to call some methods
+        win.setTitle(stdout);
+      } else if (stdout.find("stdout;") != -1) {
         std::cout << stdout.substr(7) << std::endl;
       } else if (stdout.find("ipc;") != -1) {
-        win->resolve(stdout);
+        win.resolve(stdout);
       } else {
-        win->emit("data", stdout);
+        win.emit("data", stdout);
       }
     },
     [](Opkit::Process::string_type stderr) {
@@ -41,45 +45,47 @@ int main(int argc, char *argv[])
     }
   );
 
-  Opkit::appData = settings;
-
-  win->setTitle(settings["title"]);
-
-  std::cout << settings["width"] << std::endl;
-
-  win->setSize(
+  win.setSize(
     std::stoi(settings["width"].c_str()),
     std::stoi(settings["height"].c_str()),
     WEBVIEW_HINT_NONE
   );
 
-  win->menu(_menu);
+  win.menu(_menu);
 
-  win->ipc("dialog", [&](auto seq, auto value) {
-    win->dialog(seq);
+  // win.onQuit([process]() {
+  //  Opkit::Process::kill(process.getPID());
+  // });
+
+  win.ipc("quit", [&](auto seq, auto value) {
+    Opkit::Process::kill(process.getPID());
+    // win.quit();
   });
 
-  win->ipc("setTitle", [&](auto seq, auto value) {
-    win->setTitle(value);
-    win->resolve("ipc;0;" + seq + ";" + value);
+  win.ipc("dialog", [&](auto seq, auto value) {
+    win.dialog(seq);
   });
 
-  win->ipc("contextMenu", [&](std::string seq, std::string value) {
-    win->createContextMenu(seq, value);
+  win.ipc("menu", [&](auto seq, auto value) {
+    win.menu(value);
+    win.resolve("ipc;0;" + seq + ";null");
   });
 
-  win->ipc("send", [&](std::string seq, std::string value) {
+  win.ipc("setTitle", [&](auto seq, auto value) {
+    win.setTitle(value);
+    win.resolve("ipc;0;" + seq + ";" + value);
+  });
+
+  win.ipc("contextMenu", [&](std::string seq, std::string value) {
+    win.createContextMenu(seq, value);
+  });
+
+  win.ipc("send", [&](std::string seq, std::string value) {
     process.write("ipc;0;" + seq + ";" + value);
   });
 
-  win->ipc("quit", [&](auto seq, auto value) {
-    Opkit::Process::kill(process.getPID());
-    win->resolve("ipc;0;" + seq + ";" + value);
-    win->terminate();
-  });
- 
-  win->navigate("file://" + cwd + "/index.html");
-  win->run();
+  win.navigate("file://" + cwd + "/index.html"); 
+  win.run();
 
   return 0;
 }
