@@ -20,10 +20,11 @@ int main(int argc, char *argv[])
 #endif
 {
   Opkit::webview win(true, nullptr);
-  Opkit::appData = settings;
 
   auto cwd = getCwd(argv[0]);
+
   auto settings = parseConfig(std::regex_replace(_settings, std::regex("%%"), "\n"));
+  Opkit::appData = settings;
 
   Opkit::Process process(
     settings["cmd"],
@@ -44,6 +45,8 @@ int main(int argc, char *argv[])
       std::cerr << stderr << std::endl;
     }
   );
+
+  win.setTitle(settings["title"]);
 
   win.setSize(
     std::stoi(settings["width"].c_str()),

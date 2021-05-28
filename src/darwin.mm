@@ -1,10 +1,9 @@
 #ifdef __APPLE__
-#import "platform.h"
-
 #include <AppKit/AppKit.h>
 #include <string>
 #include <vector>
 #include <iostream>
+#include "util.h"
 
 std::string getCwd (std::string _) {
   NSString *bundlePath = [[NSBundle mainBundle] resourcePath];
@@ -170,12 +169,17 @@ void createNativeMenu (std::string menu) {
 
       if (parts.size() > 1) {
         auto accellerator = split(parts[1], '+');
-        key = parts[1] == "_" ? "" : trim(accellerator[0]);
+        key = trim(parts[1]) == "_" ? "" : trim(accellerator[0]);
 
         if (accellerator.size() > 1) {
-          if (accellerator[1].find("Control") != -1) mask |= NSEventModifierFlagControl;
+          if (accellerator[1].find("ControlOrCommand") != -1) {
+            mask |= NSEventModifierFlagCommand;
+          } else {
+            if (accellerator[1].find("Control") != -1) mask |= NSEventModifierFlagControl;
+            if (accellerator[1].find("Command") != -1) mask |= NSEventModifierFlagCommand;
+          }
+
           if (accellerator[1].find("Option") != -1) mask |= NSEventModifierFlagOption;
-          if (accellerator[1].find("Command") != -1) mask |= NSEventModifierFlagCommand;
         }
       }
 
