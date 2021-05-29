@@ -1,6 +1,5 @@
-# Window
-Opkit exposes a global named `main`, which is where all the
-ipc methods are located.
+# API
+All methods work from either the Render or Main process.
 
 #### await main.setTitle(title: string)
 Set the native title of the window.
@@ -26,5 +25,5 @@ Quits the backend process and then quits the render process.
 #### await main.dialog(value: object)
 Opens a native file open/save dialog.
 
-#### await main.contextMenu(value: object)
+#### await main.contextMenu(value: object) `Render Process Only`
 Opens a native context menu.
