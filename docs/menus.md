@@ -8,8 +8,8 @@ underscore when there is no accelerator key. Modifiers are optional.
 For the edit menu, Opkit will figure out which accelerators to use
 for you.
 
-```syntax
-import window from '@opterator/window'
+```js
+import window from '@optoolco/window'
 
 window.setMenu(`
   App:
