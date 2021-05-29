@@ -9,7 +9,9 @@ For the edit menu, Opkit will figure out which accelerators to use
 for you.
 
 ```syntax
-main.setMenu(`
+import window from '@opterator/window'
+
+window.setMenu(`
   App:
     Foo: f;
 
@@ -70,7 +72,7 @@ window.addEventListener('menuItemSelected', event => {
 Dynamically build a context menu and await the user's selection.
 
 ```js
-const value = await contextMenu({
+const value = await window.contextMenu({
   Download: 'D',
   Wizard: 'W',
   Share: 'S'
