@@ -46,7 +46,6 @@ int main(int argc, char *argv[])
     settings["cmd"],
     cwd,
     [&](Opkit::Process::string_type stdout) {
-      std::cout << "[" << stdout << "]";
       while (!isDocumentReady) {
         std::this_thread::sleep_for(std::chrono::milliseconds(16));
       }
