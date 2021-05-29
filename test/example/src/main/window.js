@@ -1,10 +1,23 @@
 //
 // TODO(@heapwolf) publish to npm/github
 //
+import fs from 'fs'
 process.stdin.resume()
 process.stdin.setEncoding('utf8')
 
-const log = console.log
+const log = s => process.stdout.write(s + '\0')
+
+const write = s => {
+  return new Promise((resolve, reject) => {
+    setTimeout(() => {
+      process.stdout.write(s + '\0', 'utf8', (err) => {
+        if (err) return reject(err)
+        resolve()
+      });
+    }, 512) // give the OS time to finalize
+  })
+}
+
 const api = {}
 
 const exceedsMaxSize = s => {
@@ -19,16 +32,15 @@ const exceedsMaxSize = s => {
 console.log = (...args) => log('stdout;', args.join(' '))
 
 api.setTitle = s => {
-  log(`binding;setTitle;${s}\0`)
+  return write(`binding;setTitle;${s}`)
 }
 
 api.setSize = o => {
-  log(`binding;setSize;${o.width};${o.height}\0`)
+  return write(`binding;setSize;${o.width};${o.height}`)
 }
 
 api.setMenu = s => {
-  const serialized = s.replace(/\n/g ,'%%')
-  log(`binding;setMenu;${serialized}\0`)
+  return write(`binding;setMenu;${s.replace(/\n/g ,'%%')}`)
 }
 
 api.receive = fn => {
@@ -59,7 +71,7 @@ api.receive = fn => {
       result = err
     }
 
-    process.stdout.write(`ipc;${status};${seq};${result}\0`)
+    log(`ipc;${status};${seq};${result}`)
   })
 }
 
@@ -73,7 +85,7 @@ api.send = result => {
     result = err
   }
 
-  process.stdout.write(Buffer.from(result) + '\0')
+  log(Buffer.from(result))
 }
 
 export default api

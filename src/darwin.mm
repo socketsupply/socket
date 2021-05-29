@@ -104,8 +104,8 @@ void createNativeMenu (std::string menu) {
 
   // Create the application menu
 
-  id appName = [[NSProcessInfo processInfo] processName];
-  title = [@"About " stringByAppendingString:appName];
+  // id appName = [[NSProcessInfo processInfo] processName];
+  // title = [@"About " stringByAppendingString:appName];
 
   // deserialize the menu
   menu = replace(menu, "%%", "\n");

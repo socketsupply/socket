@@ -47,6 +47,7 @@ async function main () {
     bundle: true,
     keepNames: true,
     minify: true,
+    format: 'esm',
     outfile: path.join(target, 'main.js'),
     platform: 'node'
   })

@@ -298,17 +298,18 @@ public:
   }
 
   void binding(const std::string msg) {
+    auto parts = split(msg, ';');
+
+    auto name = parts[0];
+    auto args = replace(msg, "^\\w+;", "");
+
+    if (bindings.find(name) == bindings.end()) {
+      return;
+    }
+
+    auto fn = bindings[name];
+
     dispatch([=]() {
-      auto parts = split(msg, ';');
-
-      auto name = parts[0];
-      auto args = replace(msg, "^\\w+;", "");
-
-      if (bindings.find(name) == bindings.end()) {
-        return;
-      }
-
-      auto fn = bindings[name];
       (*fn->first)("0", args, fn->second);
     });
   }
