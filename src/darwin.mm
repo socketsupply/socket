@@ -31,15 +31,19 @@ bool createNativeContextMenu (std::string seq, std::string value) {
   auto id = std::stoi(seq);
 
   NSPoint mouseLocation = [NSEvent mouseLocation];
-  NSMenu *pMenu = [[NSMenu alloc] initWithTitle:@"contextMenu"];
+  NSMenu *pMenu = [[[NSMenu alloc] initWithTitle:@"contextMenu"] autorelease];
   NSMenuItem *menuItem;
   int index = 0;
 
   for (auto item : menuItems) {
-    auto pair = split(item, ':');
+    auto pair = split(trim(item), ':');
 
     NSString* nssTitle = [NSString stringWithUTF8String:pair[0].c_str()];
-    NSString* nssKey = [NSString stringWithUTF8String:pair[1].c_str()];
+    NSString* nssKey = @"";
+
+    if (pair.size() > 1) {
+      nssKey = [NSString stringWithUTF8String:pair[1].c_str()];
+    }
 
     if (pair[0].find("---") != -1) {
       NSMenuItem *sep = [NSMenuItem separatorItem];

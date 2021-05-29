@@ -1,5 +1,5 @@
 //
-// TODO(@heapwolf) publish to npm/github
+// TODO(@heapwolf) publish to npm/github as @optoolco/window
 //
 import fs from 'fs'
 process.stdin.resume()
