@@ -21,6 +21,7 @@ int main(int argc, char *argv[])
   static auto win = std::make_unique<Opkit::webview>(true, nullptr);
 
   auto cwd = getCwd(argv[0]);
+  bool isDocumentReady = false;
 
   win->setSize(
     0,
@@ -30,6 +31,14 @@ int main(int argc, char *argv[])
 
   win->navigate("file://" + cwd + "/index.html"); 
 
+  win->init(
+    "(() => {"
+    "  document.addEventListener('DOMContentLoaded', () => {"
+    "    window.external.invoke('ipc;0;ready;true')"
+    "  });"
+    "})()"
+  );
+
   auto settings = parseConfig(replace(_settings, "%%", "\n"));
   Opkit::appData = settings;
 
@@ -37,11 +46,16 @@ int main(int argc, char *argv[])
     settings["cmd"],
     cwd,
     [&](Opkit::Process::string_type stdout) {
-      if (stdout.find("binding;") != -1) {
+      std::cout << "[" << stdout << "]";
+      while (!isDocumentReady) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(16));
+      }
+
+      if (stdout.find("binding;") == 0) {
         win->binding(replace(stdout, "binding;", ""));
-      } else if (stdout.find("stdout;") != -1) {
+      } else if (stdout.find("stdout;") == 0) {
         std::cout << stdout.substr(7) << std::endl;
-      } else if (stdout.find("ipc;") != -1) {
+      } else if (stdout.find("ipc;") == 0) {
         win->resolve(stdout);
       } else {
         win->emit("data", stdout);
@@ -56,18 +70,28 @@ int main(int argc, char *argv[])
     Opkit::Process::kill(process.getPID());
   });
 
+  win->ipc("ready", [&](auto seq, auto value) {
+    isDocumentReady = true;
+  });
+
   win->ipc("dialog", [&](auto seq, auto value) {
     win->dialog(seq);
   });
 
   win->ipc("setMenu", [&](auto seq, auto value) {
     win->menu(value);
-    win->resolve("ipc;0;" + seq + ";" + value);
+
+    if (std::stoi(seq) > 0) {
+      win->resolve("ipc;0;" + seq + ";" + value);
+    }
   });
 
   win->ipc("setTitle", [&](auto seq, auto value) {
     win->setTitle(value);
-    win->resolve("ipc;0;" + seq + ";" + value);
+
+    if (std::stoi(seq) > 0) {
+      win->resolve("ipc;0;" + seq + ";" + trim(value));
+    }
   });
 
   win->ipc("setSize", [&](auto seq, auto value) {
@@ -79,7 +103,9 @@ int main(int argc, char *argv[])
       WEBVIEW_HINT_NONE
     );
 
-    win->resolve("ipc;0;" + seq + ";" + value);
+    if (std::stoi(seq) > 0) {
+      win->resolve("ipc;0;" + seq + ";" + value);
+    }
   });
 
   win->ipc("contextMenu", [&](std::string seq, std::string value) {

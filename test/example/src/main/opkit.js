@@ -4,6 +4,7 @@
 process.stdin.resume()
 process.stdin.setEncoding('utf8')
 
+const log = console.log
 const api = {}
 
 const exceedsMaxSize = s => {
@@ -15,31 +16,19 @@ const exceedsMaxSize = s => {
   }
 }
 
-console.log = (...args) => {
-  process.stdout.write('stdout;' + args.join(' '))
-}
-
-console.error = (...args) => {
-  process.stderr.write(args.join(' '))
-}
+console.log = (...args) => log('stdout;', args.join(' '))
 
 api.setTitle = s => {
-  process.nextTick(() => {
-    process.stdout.write(`binding;setTitle;${s.replace('\0', '')}\0`)
-  })
+  log(`binding;setTitle;${s}\0`)
 }
 
 api.setSize = o => {
-  process.nextTick(() => {
-    process.stdout.write(`binding;setSize;${o.width};${o.height}\0`)
-  })
+  log(`binding;setSize;${o.width};${o.height}\0`)
 }
 
 api.setMenu = s => {
-  process.nextTick(() => {
-    const serialized = s.replace(/\n/g ,'%%').replace('\0', '');
-    process.stdout.write(`binding;setMenu;${serialized}\0`)
-  })
+  const serialized = s.replace(/\n/g ,'%%')
+  log(`binding;setMenu;${serialized}\0`)
 }
 
 api.receive = fn => {
@@ -56,7 +45,6 @@ api.receive = fn => {
       const json = JSON.parse(decodeURIComponent(value))
       result = await fn(json);
     } catch (err) {
-      console.error('NOPE')
       result = err.message
       status = 1
     }

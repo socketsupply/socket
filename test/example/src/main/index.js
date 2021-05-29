@@ -1,13 +1,11 @@
 import main from './opkit.js'
 
-setTimeout(() => {
-
 let counter = 0
 
+setTimeout(() => {
 console.log('started')
 
 main.setSize({ height: 500, width: 750 })
-main.setTitle('Hello Operator')
 
 main.setMenu(`
   App:
@@ -37,6 +35,7 @@ main.setMenu(`
     Beep: T + Command
 `)
 
+main.setTitle('Hello Operator')
 
 main.receive(async data => {
   return {
@@ -48,15 +47,16 @@ main.receive(async data => {
 setInterval(() => {
   counter++
  
-  // send an odd sized message
+  // send an odd sized message that can be validated
+  // on the front end.
   const size = Math.floor(Math.random() * 1e3)
   const data = new Array(size).fill(0)
 
-  main.send({ sending: data.join(''), counter })
-}, 5090) // send at some interval
+  main.send({ sending: data.join(''), counter, size })
+}, 512) // send at some interval
 
 process.on('beforeExit', () => {
   console.log('exiting')
 })
 
-}, 128)
+}, 2000)

@@ -22,7 +22,12 @@ window.addEventListener('data', event => {
   //
   // Receive arbitrary/non-request-response data.
   //
-  console.log('ARBITRARY DATA', event.detail)
+  if (event.detail.size !== event.detail.sending.length) {
+    throw new Error('Not aligned: detail size not accurate')
+  } else {
+    console.log(`received ${event.detail.size} characters`)
+  }
+
   AppContainer.setHeader(`${event.detail.counter} messages received`)
 })
 
