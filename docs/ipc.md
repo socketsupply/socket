@@ -18,14 +18,14 @@ assert(result === 'goose')
 
 ## Main process (node.js example)
 
-The main process should send and receive json using a simple
-incrementing counter. Here is an example [implementation][0].
+There is a Node.js example [implementation][0] published to github
+that can be used as reference for how to implement the ipc protocol.
 
 ```js
 import window from '@optoolco/window'
 
 window.receive(async data => {
-  if (data === 'honk') send('goose')
+  if (data === 'honk') window.send('goose')
 })
 ```
 
