@@ -24,20 +24,21 @@ console.error = (...args) => {
 }
 
 api.setTitle = s => {
-  setImmediate(() => {
-    process.stdout.write(`binding;setTitle;${s}\0`)
+  process.nextTick(() => {
+    process.stdout.write(`binding;setTitle;${s.replace('\0', '')}\0`)
   })
 }
 
 api.setSize = o => {
-  setImmediate(() => {
+  process.nextTick(() => {
     process.stdout.write(`binding;setSize;${o.width};${o.height}\0`)
   })
 }
 
 api.setMenu = s => {
-  setImmediate(() => {
-    process.stdout.write(`binding;setMenu;${s.replace(/\n/g ,'%%')}\0`)
+  process.nextTick(() => {
+    const serialized = s.replace(/\n/g ,'%%').replace('\0', '');
+    process.stdout.write(`binding;setMenu;${serialized}\0`)
   })
 }
 

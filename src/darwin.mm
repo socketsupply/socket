@@ -80,9 +80,9 @@ void setWindowColor (void* w, float r, float g, float b, float a) {
   ];
 }
 
-NSMenu *mainMenu;
 
 void createNativeMenu (std::string menu) {
+  NSMenu *mainMenu;
   NSString *title;
   NSMenu *appleMenu;
   NSMenu *serviceMenu;
@@ -106,47 +106,6 @@ void createNativeMenu (std::string menu) {
 
   id appName = [[NSProcessInfo processInfo] processName];
   title = [@"About " stringByAppendingString:appName];
-  // appleMenu = [[NSMenu alloc] initWithTitle:@""];
-
-  // Add menu items
-  /* 
-  [appleMenu addItemWithTitle:title action:@selector(orderFrontStandardAboutPanel:) keyEquivalent:@""];
-
-  [appleMenu addItem:[NSMenuItem separatorItem]];
-
-  [appleMenu addItemWithTitle:@"Preferences…" action:nil keyEquivalent:@","];
-
-  [appleMenu addItem:[NSMenuItem separatorItem]];
-
-  serviceMenu = [[NSMenu alloc] initWithTitle:@""];
-  menuItem = (NSMenuItem *)[appleMenu addItemWithTitle:@"Services" action:nil keyEquivalent:@""];
-  [menuItem setSubmenu:serviceMenu];
-
-  [NSApp setServicesMenu:serviceMenu];
-  [serviceMenu release];
-
-  [appleMenu addItem:[NSMenuItem separatorItem]];
-
-  title = [@"Hide " stringByAppendingString:appName];
-  [appleMenu addItemWithTitle:title action:@selector(hide:) keyEquivalent:@"h"];
-
-  menuItem = (NSMenuItem *)[appleMenu addItemWithTitle:@"Hide Others" action:@selector(hideOtherApplications:) keyEquivalent:@"h"];
-  [menuItem setKeyEquivalentModifierMask:(NSEventModifierFlagOption|NSEventModifierFlagCommand)];
-
-  [appleMenu addItemWithTitle:@"Show All" action:@selector(unhideAllApplications:) keyEquivalent:@""];
-
-  [appleMenu addItem:[NSMenuItem separatorItem]];
-
-  title = [@"Quit " stringByAppendingString:appName];
-  [appleMenu addItemWithTitle:title action:@selector(terminate:) keyEquivalent:@"q"];
-
-  // Put menu into the menubar
-  menuItem = [[NSMenuItem alloc] initWithTitle:@"" action:nil keyEquivalent:@""];
-
-  [menuItem setSubmenu:appleMenu];
-  [[NSApp mainMenu] addItem:menuItem];
-  // [menuItem release];
-  [appleMenu release]; */
 
   // deserialize the menu
   menu = replace(menu, "%%", "\n");

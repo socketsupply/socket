@@ -1,11 +1,13 @@
 import main from './opkit.js'
 
+setTimeout(() => {
+
 let counter = 0
 
 console.log('started')
 
-main.setTitle('Hello Operator')
 main.setSize({ height: 500, width: 750 })
+main.setTitle('Hello Operator')
 
 main.setMenu(`
   App:
@@ -35,6 +37,7 @@ main.setMenu(`
     Beep: T + Command
 `)
 
+
 main.receive(async data => {
   return {
     received: data,
@@ -55,3 +58,5 @@ setInterval(() => {
 process.on('beforeExit', () => {
   console.log('exiting')
 })
+
+}, 128)

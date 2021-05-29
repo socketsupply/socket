@@ -89,7 +89,6 @@ int main (const int argc, const char* argv[]) {
   //
 
   auto target = fs::path(argv[1]);
-  auto menu = readFile(fs::path { target / "menu.config" });
 
   auto _settings = readFile(fs::path { target / "settings.config" });
   auto settings = parseConfig(_settings);
@@ -256,7 +255,7 @@ int main (const int argc, const char* argv[]) {
     // TODO create paths, copy files, archive, etc.
   }
 
-  log("the package has been prepared");
+  log("package prepared");
 
   //
   // cd into the target and run the user's build command,
@@ -286,9 +285,8 @@ int main (const int argc, const char* argv[]) {
     return std::string(flagPrefix + "D" + label + "=\"\\\"" + s + "\\\"\"");
   };
 
-  // Serialize the menu to pass it to the compiler
+  // Serialize the settings to pass them to the compiler
   // by replacing new lines with a high bit.
-  menu = replace(menu, "\n", "%%");
   _settings = replace(_settings, "\n", "%%");
 
   compileCommand
@@ -297,7 +295,6 @@ int main (const int argc, const char* argv[]) {
     << " " << flags
     << " " << settings["flags"]
     << " -o " << pathToString(binaryPath)
-    << " " << define("MENU", menu)
     << " " << define("SETTINGS", _settings);
 
   // log(compileCommand.str());

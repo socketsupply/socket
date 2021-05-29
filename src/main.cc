@@ -3,7 +3,6 @@
 #include "util.h"
 
 constexpr auto _settings = SETTINGS;
-constexpr auto _menu = MENU;
 
 #ifdef _WIN32
 #include <direct.h>
@@ -22,6 +21,14 @@ int main(int argc, char *argv[])
   static auto win = std::make_unique<Opkit::webview>(true, nullptr);
 
   auto cwd = getCwd(argv[0]);
+
+  win->setSize(
+    0,
+    0,
+    WEBVIEW_HINT_NONE
+  );
+
+  win->navigate("file://" + cwd + "/index.html"); 
 
   auto settings = parseConfig(replace(_settings, "%%", "\n"));
   Opkit::appData = settings;
@@ -43,12 +50,6 @@ int main(int argc, char *argv[])
     [](Opkit::Process::string_type stderr) {
       std::cerr << stderr << std::endl;
     }
-  );
-
-  win->setSize(
-    0,
-    0,
-    WEBVIEW_HINT_NONE
   );
 
   win->ipc("quit", [&](auto seq, auto value) {
@@ -99,7 +100,6 @@ int main(int argc, char *argv[])
     win->resolve("ipc;0;" + seq + ";" + value);
   });
 
-  win->navigate("file://" + cwd + "/index.html"); 
   win->run();
 
   return 0;

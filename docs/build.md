@@ -18,8 +18,8 @@ If the CLI tool is failing, see the [trouble shooting guide][0].
 
 ## Configuration Files
 
-The build tool expects to find two config files in the
-target directory, `settings.config` and `menu.config`.
+The build tool expects to find a config file in the
+target directory, `settings.config`.
 
 ### Settings Configuration
 
@@ -74,22 +74,6 @@ arg: main.js
 #
 flags: -O3
 arch: x64
-```
-
-### Menu Configuration Syntax
-
-End menus with `;`. Split menus and menu items with `:`. See the
-docs for an example of a menu.
-
-```syntax
-Menu A:
-  Item 1: Accellerator + ModifierA, ModifierB
-  Item 2: Accellerator
-  Item 2: Accellerator;
-Menu B:
-  Item: Accellerator;
-Menu C:
-  Menu Item: Accellerator
 ```
 
 [0]:/docs/troubleshooting.md

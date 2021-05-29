@@ -1,27 +1,33 @@
 # Menus
+Menus are created at run time from either the main or render process.
 
 ## System Menus
 
-System menus are created at build time. Your project needs a `menu.config`
-in the root folder. The semi colon is significant indicates the end of the
-menu. Use an underscore when there is no accelerator key. Modifiers are
-optional. For the edit menu, Opkit will figure out which accelerators to
-use for you.
+The semi colon is significant indicates the end of the menu. Use an
+underscore when there is no accelerator key. Modifiers are optional.
+For the edit menu, Opkit will figure out which accelerators to use
+for you.
 
 ```syntax
-Edit:
-  Cut: x
-  Copy: c
-  Paste: v
-  Delete: _
-  Select All: a
+main.setMenu(`
+  App:
+    Foo: f;
 
-Other:
-  Apple: _
-  Another Test: T
-  Some Thing: S + Command
-  ---: _
-  Bazz: s + Command, Control, Option
+  Edit:
+    Cut: x
+    Copy: c
+    Paste: v
+    Delete: _
+    Select All: a
+
+  Other:
+    Apple: _
+    Another Test: T
+    Some Thing: S + Command
+    ---: _
+    Bazz: s + Command, Control, Option
+`)
+
 ```
 
 #### Submenus

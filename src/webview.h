@@ -234,7 +234,7 @@ public:
             encoded = Object
               .entries(value)
               .flatMap(o => o.join(':'))
-              .join('\xff')
+              .join('_')
           } else {
             try {
               encoded = encodeURIComponent(JSON.stringify(value))
