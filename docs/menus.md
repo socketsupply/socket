@@ -20,14 +20,14 @@ window.setMenu(`
     Copy: c
     Paste: v
     Delete: _
-    Select All: a
+    Select All: a;
 
   Other:
     Apple: _
     Another Test: T
     Some Thing: S + Command
     ---: _
-    Bazz: s + Command, Control, Option
+    Bazz: s + Command, Control, Option;
 `)
 
 ```
