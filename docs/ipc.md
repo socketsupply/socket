@@ -12,19 +12,19 @@ Any stringify-able JSON value can be sent or received.
 ## Render Process
 
 ```js
-const result = await window.send('honk')
+const result = await window.main.send('honk')
 assert(result === 'goose')
 ```
 
 ## Main process (node.js example)
 
-The spawned process should send and receive json using a simple
+The main process should send and receive json using a simple
 incrementing counter. Here is an example [implementation][0].
 
 ```js
-import { send, receive } from './ipc.js'
+import window from '@optoolco/window'
 
-receive(async data => {
+window.receive(async data => {
   if (data === 'honk') send('goose')
 })
 ```
@@ -36,15 +36,14 @@ defails that you'll want to understand.
 
 ### Render Process
 
-When an `main.cc` create an IPC method, a global function is created that when
-called, increments a global counter, creates and return a promise. Webkit exposes
-`external.invoke` which can send unicode strings. ipc messages should start with
-`ipc` and be separated by semi-colons.
+`main.cc` has an IPC method that increments a global counter, creates and returns
+a promise. Webkit exposes `external.invoke` which can send unicode strings. ipc
+messages should start with `ipc` and be separated by semi-colons.
 
 ```js
 const IPC = window._ipc = (window._ipc || { nextSeq: 1 });
 
-window[name] = (value) => {
+window.main[name] = (value) => {
   const seq = IPC.nextSeq++
   const promise = new Promise((resolve, reject) => {
     IPC[seq] = {
