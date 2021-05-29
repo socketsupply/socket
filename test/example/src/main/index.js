@@ -9,7 +9,7 @@ async function main () {
 
   await window.setMenu(`
     Operator:
-      About: _
+      About Operator: _
       ---: _
       Preferences...: , + Command
       ---: _
