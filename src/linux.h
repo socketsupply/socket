@@ -111,7 +111,7 @@ class gtk_webkit_engine {
     GtkWidget *m_popup = gtk_menu_new();
     GtkWidget *item;
 
-    menuData = std::regex_replace(menuData, std::regex("%%"), "\n");
+    menuData = replace(menuData, "%%", "\n");
 
     auto menuItems = split(menuData, '\n');
     auto id = std::stoi(seq);
@@ -230,7 +230,7 @@ class gtk_webkit_engine {
     GtkAccelGroup *aclrs = gtk_accel_group_new();
 
     // deserialize the menu
-    menu = std::regex_replace(menu, std::regex("%%"), "\n");
+    menu = replace(menu, "%%", "\n");
 
     // split on ;
     auto menus = split(menu, ';');

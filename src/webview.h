@@ -150,7 +150,6 @@ WEBVIEW_API
 #include <map>
 #include <string>
 #include <utility>
-#include <vector>
 #include <cstring>
 
 namespace Opkit {
@@ -212,6 +211,8 @@ public:
           const seq = Number(data[2]);
           const method = status === 0 ? 'resolve' : 'reject';
           const value = internal ? data[3] : JSON.parse(decodeURIComponent(data[3]));
+
+          if (!window._ipc[seq] || !window._ipc[seq][method]) return
           window._ipc[seq][method](value);
           window._ipc[seq] = undefined;
         },
@@ -293,6 +294,22 @@ public:
         "  window.dispatchEvent(event);"
         "})()"
       );
+    });
+  }
+
+  void binding(const std::string msg) {
+    dispatch([=]() {
+      auto parts = split(msg, ';');
+
+      auto name = parts[0];
+      auto args = parts[1];
+
+      if (bindings.find(name) == bindings.end()) {
+        return;
+      }
+
+      auto fn = bindings[name];
+      (*fn->first)("0", args, fn->second);
     });
   }
 

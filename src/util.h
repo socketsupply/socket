@@ -97,7 +97,7 @@ inline std::string& trim(std::string& str) {
   return str;
 }
 
-inline std::string replace(const std::string s, std::map<std::string, std::string> pairs) {
+inline std::string tmpl(const std::string s, std::map<std::string, std::string> pairs) {
   std::string output = s;
 
   for (auto item : pairs) {
@@ -107,6 +107,10 @@ inline std::string replace(const std::string s, std::map<std::string, std::strin
   }
 
   return output;
+}
+
+inline std::string replace(std::string src, std::string re, std::string val) {
+  return std::regex_replace(src, std::regex(re), val);
 }
 
 inline std::string exec(std::string command) {

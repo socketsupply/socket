@@ -21,17 +21,14 @@ std::vector<std::string> getMenuItemDetails (void* item) {
   return vec;
 }
 
-/* std::string getNativeTheme () {
-  NSString *interfaceStyle = [NSUserDefaults.standardUserDefaults valueForKey:@"AppleInterfaceStyle"];
-  bool isDark = [interfaceStyle isEqualToString:@"Dark"];
-  std::string mode = "light";
+void showWindow () {
+  [NSApp.windows[0] makeKeyAndOrderFront:nil];
+  [NSApp activateIgnoringOtherApps:YES];
+}
 
-  if (isDark) {
-    mode = "dark";
-  }
-
-  return mode;
-}*/
+void hideWindow () {
+  [[NSApplication sharedApplication] hide:nil];
+}
 
 bool createNativeContextMenu (std::string seq, std::string value) {
   auto menuItems = split(value, '_');
@@ -150,7 +147,7 @@ void createNativeMenu (std::string menu) {
   [appleMenu release];
 
   // deserialize the menu
-  menu = std::regex_replace(menu, std::regex("%%"), "\n");
+  menu = replace(menu, "%%", "\n");
 
   // split on ;
   auto menus = split(menu, ';');

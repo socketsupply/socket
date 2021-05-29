@@ -31,6 +31,8 @@ bool createNativeContextMenu (std::string, std::string);
 std::vector<std::string> getMenuItemDetails (void* item);
 void setWindowColor (void*, float r, float g, float b, float a);
 void setTitle(void*);
+void hideWindow();
+void showWindow();
 
 namespace Opkit {
   SEL NSSelector(const char *s) {
@@ -335,6 +337,54 @@ namespace Opkit {
         nullptr
       );
     }
+
+    void hide () {
+      dispatch([&]() {
+        hideWindow();
+      });
+    }
+
+    void show () {
+      dispatch([&]() {
+        showWindow();
+      });
+    }
+
+    /* void hide () {
+      id app = ((id(*)(id, SEL))objc_msgSend)(
+        NSClass("NSApplication"),
+        NSSelector("sharedApplication")
+      );
+
+      dispatch([&]() {
+        ((void (*)(id, SEL, id))objc_msgSend)(
+          app,
+          NSSelector("hide:"),
+          nullptr
+        );
+      });
+    }
+
+    void show () {
+      id app = ((id(*)(id, SEL))objc_msgSend)(
+        NSClass("NSApplication"),
+        NSSelector("sharedApplication")
+      );
+
+      dispatch([&]() {
+        ((void (*)(id, SEL, id))objc_msgSend)(
+          m_window,
+          NSSelector("makeKeyAndOrderFront:"),
+          nullptr
+        );
+
+        ((void (*)(id, SEL, BOOL))objc_msgSend)(
+          app,
+          NSSelector("activateIgnoringOtherApps:"),
+          1
+        );
+      });
+    } */
 
     void run() {
       id app = ((id(*)(id, SEL))objc_msgSend)(

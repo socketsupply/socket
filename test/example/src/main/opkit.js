@@ -1,6 +1,5 @@
 //
-// ipc is sequence-based, requests and responses need to know
-// the sequence of the request in order to resolve in the client.
+// TODO(@heapwolf) publish to npm/github
 //
 process.stdin.resume()
 process.stdin.setEncoding('utf8')
@@ -24,6 +23,14 @@ console.error = (...args) => {
   process.stderr.write(args.join(' '))
 }
 
+api.setTitle = s => {
+  process.stdout.write(`binding;setTitle;${s}\0`)
+}
+
+api.setSize = o => {
+  process.stdout.write(`binding;setSize;${o.width}x${o.height}\0`)
+}
+
 api.receive = fn => {
   process.stdin.on('data', async data => {
     const msg = data.split(';')
@@ -35,8 +42,6 @@ api.receive = fn => {
 
     let result = ''
     try {
-      // const buffer = Buffer.from(value, 'base64')
-      //const json = JSON.parse(buffer.toString())\
       const json = JSON.parse(decodeURIComponent(value))
       result = await fn(json);
     } catch (err) {
@@ -47,7 +52,7 @@ api.receive = fn => {
 
     if (typeof result === 'object') result = JSON.stringify(result)
 
-    result = encodeURIComponent(result) // Buffer.from(result).toString('base64')
+    result = encodeURIComponent(result)
 
     const err = exceedsMaxSize(result)
     if (err) {
@@ -55,15 +60,14 @@ api.receive = fn => {
       result = err
     }
 
-    const f = `ipc;${status};${seq};${result}\0`
-    process.stdout.write(f)
+    process.stdout.write(`ipc;${status};${seq};${result}\0`)
   })
 }
 
 api.send = result => {
   if (typeof result === 'object') result = JSON.stringify(result)
 
-  result = encodeURIComponent(result) // Buffer.from(result).toString('base64')
+  result = encodeURIComponent(result)
 
   const err = exceedsMaxSize(result)
   if (err) {

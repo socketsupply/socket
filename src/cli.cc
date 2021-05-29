@@ -144,7 +144,7 @@ int main (const int argc, const char* argv[]) {
     fs::create_directories(pathBin);
     fs::create_directories(pathResources);
 
-    auto plistInfo = replace(gPListInfo, settings);
+    auto plistInfo = tmpl(gPListInfo, settings);
 
     writeFile(fs::path {
       pathPackage /
@@ -220,12 +220,12 @@ int main (const int argc, const char* argv[]) {
     writeFile(fs::path {
       pathManifestFile /
       (settings["name"] + ".desktop")
-    }, replace(gDestkopManifest, settings));
+    }, tmpl(gDestkopManifest, settings));
 
     writeFile(fs::path {
       pathControlFile /
       "control"
-    }, replace(gDebianManifest, settings));
+    }, tmpl(gDebianManifest, settings));
 
     auto pathToIconSrc = pathToString(fs::path {
       target /
@@ -288,8 +288,8 @@ int main (const int argc, const char* argv[]) {
 
   // Serialize the menu to pass it to the compiler
   // by replacing new lines with a high bit.
-  menu = std::regex_replace(menu, std::regex("\n"), "%%");
-  _settings = std::regex_replace(_settings, std::regex("\n"), "%%");
+  menu = replace(menu, "\n", "%%");
+  _settings = replace(_settings, "\n", "%%");
 
   compileCommand
     << " " << std::getenv("CXX")
