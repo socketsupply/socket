@@ -1,12 +1,9 @@
 #ifndef OPKIT_HPP_
 #define OPKIT_HPP_
+#include "util.h"
+
 #include <functional>
-#include <memory>
-#include <mutex>
-#include <string>
-#include <thread>
-#include <unordered_map>
-#include <vector>
+
 #ifndef _WIN32
 #include <sys/wait.h>
 #endif

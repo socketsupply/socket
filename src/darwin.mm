@@ -1,8 +1,4 @@
-#ifdef __APPLE__
 #include <AppKit/AppKit.h>
-#include <string>
-#include <vector>
-#include <iostream>
 #include "util.h"
 
 std::string getCwd (std::string _) {
@@ -261,5 +257,3 @@ std::string createNativeDialog(
 
   return result;
 }
-
-#endif

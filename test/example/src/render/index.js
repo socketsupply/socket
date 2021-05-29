@@ -3,14 +3,19 @@ const Components = require('@optoolco/components')
 
 Components(Tonic)
 
+//
+// Menu item selection example... do whatever, await an ipc call, etc.
+//
 window.addEventListener('menuItemSelected', event => {
-  // can then await invokeIPC if so desired
   document.querySelector('#menu-selection').value = event.detail.title
-  console.log(event.detail)
+
+  if (event.detail.title.toLowerCase() === 'quit') {
+    window.main.quit({})
+  }
 })
 
 //
-// if keyup is ctrl+q, quit the app
+// A keybinding example... if keyup is ctrl+q, quit the app
 //
 window.addEventListener('keyup', async event => {
   if (event.ctrlKey && event.key === 'q') {
@@ -18,10 +23,10 @@ window.addEventListener('keyup', async event => {
   }
 })
 
+//
+// Receive arbitrary/non-request-response data from the main process.
+//
 window.addEventListener('data', event => {
-  //
-  // Receive arbitrary/non-request-response data.
-  //
   if (event.detail.size !== event.detail.sending.length) {
     throw new Error('Not aligned: detail size not accurate')
   } else {
@@ -31,6 +36,9 @@ window.addEventListener('data', event => {
   AppContainer.setHeader(`${event.detail.counter} messages received`)
 })
 
+//
+// Create some arbitrary components with our nifty component framework.
+//
 class AppHeader extends Tonic {
   render () {
     return this.html`
@@ -127,6 +135,9 @@ class AppContainer extends Tonic {
   }
 }
 
+//
+// Hook up a drag and drop example
+//
 window.onload = async () => {
   Tonic.add(AppContainer)
 

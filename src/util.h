@@ -2,18 +2,20 @@
 #define OPKIT_UTIL_HPP_
 
 #include <map>
+#include <unordered_map>
+#include <vector>
 #include <string>
-#include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <sstream>
 #include <regex>
-
 #include <chrono>
 #include <thread>
 #include <span>
-#include <vector>
-#include <sstream>
 #include <filesystem>
+
+#include <memory>
+#include <mutex>
 
 #define TO_STR(arg) #arg
 #define STR_VALUE(arg) TO_STR(arg)

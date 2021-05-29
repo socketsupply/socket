@@ -1,6 +1,5 @@
 #include "webview.h"
 #include "process.h"
-#include "util.h"
 
 constexpr auto _settings = SETTINGS;
 
@@ -69,6 +68,7 @@ int main(int argc, char *argv[])
 
   win->ipc("quit", [&](auto seq, auto value) {
     Opkit::Process::kill(process.getPID());
+    win->terminate();
   });
 
   win->ipc("ready", [&](auto seq, auto value) {
