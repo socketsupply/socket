@@ -23,11 +23,13 @@ int main(int argc, char *argv[])
   auto cwd = getCwd(argv[0]);
   bool isDocumentReady = false;
 
-  win->setSize(
-    0,
-    0,
-    WEBVIEW_HINT_NONE
-  );
+  if (platform.darwin) {
+    win->setSize(
+      0,
+      0,
+      WEBVIEW_HINT_NONE
+    );
+  }
 
   win->navigate("file://" + cwd + "/index.html"); 
 

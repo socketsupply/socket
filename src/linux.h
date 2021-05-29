@@ -104,14 +104,13 @@ class gtk_webkit_engine {
     }
 
     gtk_box_pack_end(GTK_BOX(m_vbox), m_webview, TRUE, TRUE, 0);
-    gtk_widget_show_all(m_window);
   }
 
   void createContextMenu(std::string seq, std::string menuData) {
     GtkWidget *m_popup = gtk_menu_new();
     GtkWidget *item;
 
-    menuData = replace(menuData, "@", "\n");
+    menuData = replace(menuData, "%%", "\n");
 
     auto menuItems = split(menuData, '\n');
     auto id = std::stoi(seq);
@@ -223,6 +222,14 @@ class gtk_webkit_engine {
     gtk_dialog_run(GTK_DIALOG(dialog));
   }
 
+  void show () {
+    gtk_widget_show_all(m_window);
+  }
+
+  void hide () {
+    gtk_widget_hide(m_window);
+  }
+
   void menu(std::string menu) {
     if (menu.empty()) return void(0);
 
@@ -230,7 +237,7 @@ class gtk_webkit_engine {
     GtkAccelGroup *aclrs = gtk_accel_group_new();
 
     // deserialize the menu
-    menu = replace(menu, "@", "\n");
+    menu = replace(menu, "%%", "\n");
 
     // split on ;
     auto menus = split(menu, ';');
@@ -312,7 +319,9 @@ class gtk_webkit_engine {
 
   void *window() { return (void*) m_window; }
 
-  void run() { gtk_main(); }
+  void run() {
+    gtk_main();
+  }
 
   void terminate() { gtk_main_quit(); }
 
@@ -333,6 +342,8 @@ class gtk_webkit_engine {
   }
 
   void setSize(int width, int height, int hints) {
+    show();
+
     gtk_window_set_resizable(
       GTK_WINDOW(m_window),
       hints != WEBVIEW_HINT_FIXED

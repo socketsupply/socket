@@ -8,15 +8,15 @@ async function main () {
   await window.setSize({ height: 500, width: 750 })
 
   await window.setMenu(`
-    App:
-      About Operator: _
+    Operator:
+      About: _
       ---: _
       Preferences...: , + Command
       ---: _
       Hide: h
       Hide Others: h + Control, Command
       ---: _
-      Quit Operator: q + Command;
+      Quit: q + Command;
 
     Edit:
       Cut: x
