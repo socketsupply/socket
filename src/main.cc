@@ -23,6 +23,8 @@ int main(int argc, char *argv[])
   bool isDocumentReady = false;
 
   if (platform.darwin) {
+    // On MacOS, this will hide the window initially
+    // but also allow us to load the url, like a preload.
     win->setSize(
       0,
       0,
@@ -32,10 +34,21 @@ int main(int argc, char *argv[])
 
   win->navigate("file://" + cwd + "/index.html"); 
 
+  std::stringstream ss;
+  int c = 0;
+
+  for (auto const arg : std::span(argv, argc)) {
+    ss
+      << "'"
+      << replace(std::string(arg), "'", "\'")
+      << (c++ < argc ? "', " : "'");
+  }
+
   win->init(
     "(() => {"
+    "  window.argv = [" + ss.str() + "];"
     "  document.addEventListener('DOMContentLoaded', () => {"
-    "    window.external.invoke('ipc;0;ready;true')"
+    "    window.external.invoke('ipc;0;ready;true');"
     "  });"
     "})()"
   );

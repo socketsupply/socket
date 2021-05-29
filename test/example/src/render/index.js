@@ -27,6 +27,11 @@ window.addEventListener('keyup', async event => {
 // Receive arbitrary/non-request-response data from the main process.
 //
 window.addEventListener('data', event => {
+  if (event.detail.env) {
+    console.log(event)
+    return
+  }
+
   if (event.detail.size !== event.detail.sending.length) {
     throw new Error('Not aligned: detail size not accurate')
   } else {
