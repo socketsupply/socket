@@ -45,8 +45,6 @@ int main(int argc, char *argv[])
     }
   );
 
-  win->menu(_menu);
-
   win->setSize(
     0,
     0,
@@ -61,9 +59,9 @@ int main(int argc, char *argv[])
     win->dialog(seq);
   });
 
-  win->ipc("menu", [&](auto seq, auto value) {
+  win->ipc("setMenu", [&](auto seq, auto value) {
     win->menu(value);
-    win->resolve("ipc;0;" + seq + ";null");
+    win->resolve("ipc;0;" + seq + ";" + value);
   });
 
   win->ipc("setTitle", [&](auto seq, auto value) {
@@ -72,7 +70,7 @@ int main(int argc, char *argv[])
   });
 
   win->ipc("setSize", [&](auto seq, auto value) {
-    auto parts = split(value, 'x');
+    auto parts = split(value, ';');
 
     win->setSize(
       std::stoi(parts[0].c_str()),

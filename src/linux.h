@@ -237,12 +237,16 @@ class gtk_webkit_engine {
 
     for (auto m : menus) {
       auto menu = split(m, '\n');
-      auto menuTitle = split(trim(menu[0]), ':')[0];
+      auto line = trim(menu[0]);
+      if (line.empty()) continue;
+      auto menuTitle = split(line, ':')[0];
       GtkWidget *subMenu = gtk_menu_new();
       GtkWidget *menuItem = gtk_menu_item_new_with_label(menuTitle.c_str());
 
       for (int i = 1; i < menu.size(); i++) {
-        auto parts = split(trim(menu[i]), ':');
+        auto line = trim(menu[i]);
+        if (line.empty()) continue;
+        auto parts = split(line, ':');
         auto title = parts[0];
         std::string key = "";
 

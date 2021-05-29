@@ -80,6 +80,8 @@ void setWindowColor (void* w, float r, float g, float b, float a) {
   ];
 }
 
+NSMenu *mainMenu;
+
 void createNativeMenu (std::string menu) {
   NSString *title;
   NSMenu *appleMenu;
@@ -88,7 +90,6 @@ void createNativeMenu (std::string menu) {
   NSMenu *editMenu;
   NSMenu *dynamicMenu;
   NSMenuItem *menuItem;
-  NSMenu *mainMenu;
 
   if (NSApp == nil) {
     return;
@@ -98,17 +99,17 @@ void createNativeMenu (std::string menu) {
 
   // Create the main menu bar
   [NSApp setMainMenu:mainMenu];
-
-  [mainMenu release];  // we're done with it, let NSApp own it.
+  [mainMenu release];
   mainMenu = nil;
 
   // Create the application menu
 
   id appName = [[NSProcessInfo processInfo] processName];
-  appleMenu = [[NSMenu alloc] initWithTitle:@""];
+  title = [@"About " stringByAppendingString:appName];
+  // appleMenu = [[NSMenu alloc] initWithTitle:@""];
 
   // Add menu items
-  title = [@"About " stringByAppendingString:appName];
+  /* 
   [appleMenu addItemWithTitle:title action:@selector(orderFrontStandardAboutPanel:) keyEquivalent:@""];
 
   [appleMenu addItem:[NSMenuItem separatorItem]];
@@ -141,10 +142,11 @@ void createNativeMenu (std::string menu) {
 
   // Put menu into the menubar
   menuItem = [[NSMenuItem alloc] initWithTitle:@"" action:nil keyEquivalent:@""];
+
   [menuItem setSubmenu:appleMenu];
   [[NSApp mainMenu] addItem:menuItem];
-  [menuItem release];
-  [appleMenu release];
+  // [menuItem release];
+  [appleMenu release]; */
 
   // deserialize the menu
   menu = replace(menu, "%%", "\n");
@@ -154,12 +156,16 @@ void createNativeMenu (std::string menu) {
 
   for (auto m : menus) {
     auto menu = split(m, '\n');
-    auto menuTitle = split(trim(menu[0]), ':')[0];
+    auto line = trim(menu[0]);
+    if (line.empty()) continue;
+    auto menuTitle = split(line, ':')[0];
     NSString* nssTitle = [NSString stringWithUTF8String:menuTitle.c_str()];
     dynamicMenu = [[NSMenu alloc] initWithTitle:nssTitle];
 
     for (int i = 1; i < menu.size(); i++) {
-      auto parts = split(trim(menu[i]), ':');
+      auto line = trim(menu[i]);
+      if (line.empty()) continue;
+      auto parts = split(line, ':');
       auto title = parts[0];
       NSUInteger mask = 0;
       std::string key = "";
@@ -190,6 +196,26 @@ void createNativeMenu (std::string menu) {
         if (title.compare("Paste") == 0) nssSelector = [NSString stringWithUTF8String:"paste:"];
         if (title.compare("Delete") == 0) nssSelector = [NSString stringWithUTF8String:"delete:"];
         if (title.compare("Select All") == 0) nssSelector = [NSString stringWithUTF8String:"selectAll:"];
+      }
+
+      if (title.find("About") == 0) {
+        nssSelector = [NSString stringWithUTF8String:"orderFrontStandardAboutPanel:"];
+      }
+
+      if (title.find("Hide") == 0) {
+        nssSelector = [NSString stringWithUTF8String:"hide:"];
+      }
+
+      if (title.find("Hide Others") == 0) {
+        nssSelector = [NSString stringWithUTF8String:"hideOtherApplications:"];
+      }
+
+      if (title.find("Show All") == 0) {
+        nssSelector = [NSString stringWithUTF8String:"unhideAllApplications:"];
+      }
+
+      if (title.find("Quit") == 0) {
+        nssSelector = [NSString stringWithUTF8String:"terminate:"];
       }
 
       if (title.compare("Minimize") == 0) nssSelector = [NSString stringWithUTF8String:"performMiniaturize:"];

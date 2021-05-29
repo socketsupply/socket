@@ -24,11 +24,21 @@ console.error = (...args) => {
 }
 
 api.setTitle = s => {
-  process.stdout.write(`binding;setTitle;${s}\0`)
+  setImmediate(() => {
+    process.stdout.write(`binding;setTitle;${s}\0`)
+  })
 }
 
 api.setSize = o => {
-  process.stdout.write(`binding;setSize;${o.width}x${o.height}\0`)
+  setImmediate(() => {
+    process.stdout.write(`binding;setSize;${o.width};${o.height}\0`)
+  })
+}
+
+api.setMenu = s => {
+  setImmediate(() => {
+    process.stdout.write(`binding;setMenu;${s.replace(/\n/g ,'%%')}\0`)
+  })
 }
 
 api.receive = fn => {

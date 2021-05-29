@@ -4,10 +4,36 @@ let counter = 0
 
 console.log('started')
 
-setTimeout(() => {
-  main.setTitle('Hello, World!')
-  main.setSize({ height: 500, width: 750 })
-}, 2048)
+main.setTitle('Hello Operator')
+main.setSize({ height: 500, width: 750 })
+
+main.setMenu(`
+  App:
+    About Operator: _
+    ---: _
+    Preferences...: , + Command
+    ---: _
+    Hide: h
+    Hide Others: h + Control, Command
+    ---: _
+    Quit Operator: q + Command;
+
+  Edit:
+    Cut: x
+    Copy: c
+    Paste: v
+    Delete: _
+    Select All: a;
+
+  Foo:
+    Bazz: z + Command
+    ---: _
+    Quxx: e + ControlOrCommand, Option;
+
+  Other:
+    Another Test: t
+    Beep: T + Command
+`)
 
 main.receive(async data => {
   return {

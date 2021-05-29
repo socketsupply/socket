@@ -302,7 +302,7 @@ public:
       auto parts = split(msg, ';');
 
       auto name = parts[0];
-      auto args = parts[1];
+      auto args = replace(msg, "^\\w+;", "");
 
       if (bindings.find(name) == bindings.end()) {
         return;
