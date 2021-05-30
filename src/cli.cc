@@ -158,7 +158,7 @@ int main (const int argc, const char* argv[]) {
   //
   if (platform.linux) {
     log("preparing build for linux");
-    flags = "-DWEBVIEW_GTK -std=c++2a `pkg-config --cflags --libs gtk+-3.0 webkit2gtk-4.0`";
+    flags = "-DWEBVIEW_GTK -std=c++2a -stdlib=libc++ `pkg-config --cflags --libs gtk+-3.0 webkit2gtk-4.0`";
     files += prefixFile("src/main.cc");
     files += prefixFile("src/process_unix.cc");
     files += prefixFile("src/linux.cc");
