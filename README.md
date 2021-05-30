@@ -1,6 +1,7 @@
 # SYNOPSIS
 
-Build and package fast, light-weight web-based UIs with any backend.
+A minimalist framework for building and packaging light and fast,
+UIs that can run any arbitrary backend process.
 
 
 # HIGHLIGHTS
