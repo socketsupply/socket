@@ -26,9 +26,9 @@ void hideWindow () {
   [[NSApplication sharedApplication] hide:nil];
 }
 
-void openExternalURL (std::string url) {
+int openExternalURL (std::string url) {
   NSString* nsu = [NSString stringWithUTF8String:url.c_str()];
-  [[NSWorkspace sharedWorkspace] openURL:[NSURL URLWithString: nsu]];
+  return [[NSWorkspace sharedWorkspace] openURL:[NSURL URLWithString: nsu]];
 }
 
 //

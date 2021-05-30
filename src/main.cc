@@ -127,8 +127,8 @@ int main(int argc, char *argv[])
   });
 
   win->ipc("openExternal", [&](std::string seq, std::string value) {
-    win->openExternal(value);
-    win->resolve("ipc;0;" + seq + ";" + value);
+    auto r = std::to_string(win->openExternal(value));
+    win->resolve("ipc;" + r + ";" + seq + ";" + value);
   });
 
   win->ipc("send", [&](std::string seq, std::string value) {

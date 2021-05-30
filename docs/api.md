@@ -28,5 +28,13 @@ Opens a native file open/save dialog.
 ### await main.openExternal(url: String)
 Opens a link in the user's default browser.
 
+```js
+try {
+  await main.openExternal('https://google.com')
+} catch (err) {
+  ...
+}
+```
+
 ### await main.contextMenu(value: Object) `Render Process Only`
 Opens a native context menu.

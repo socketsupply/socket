@@ -33,7 +33,7 @@ void setWindowColor(void*, float r, float g, float b, float a);
 void setTitle(void*);
 void hideWindow();
 void showWindow();
-void openExternalURL(std::string url);
+int openExternalURL(std::string url);
 
 namespace Opkit {
   SEL NSSelector(const char *s) {
@@ -417,8 +417,8 @@ namespace Opkit {
     void inspect() {
     }
 
-    void openExternal(std::string url) {
-      openExternalURL(url);
+    int openExternal(std::string url) {
+      return openExternalURL(url);
     }
 
     void setTitle(const std::string title) {
