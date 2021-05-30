@@ -29,7 +29,7 @@ UIs that can run any arbitrary backend process.
 - [FAQ](/docs/faq.md) Frequently asked questions
 
 
-#### INSTALL
+# INSTALL
 
 ```bash
 curl -o- https://raw.githubusercontent.com/optoolco/opkit/master/bin/bootstrap.sh | bash -s install
