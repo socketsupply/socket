@@ -458,6 +458,10 @@ class gtk_webkit_engine {
     }
   }
 
+  int openExternal(std::string url) {
+    return gtk_show_uri_on_window(GTK_WINDOW(m_window), url.c_str(), GDK_CURRENT_TIME, NULL);
+  }
+
   void navigate(const std::string url) {
     webkit_web_view_load_uri(WEBKIT_WEB_VIEW(m_webview), url.c_str());
   }
