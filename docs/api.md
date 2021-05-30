@@ -25,5 +25,8 @@ Quits the backend process and then quits the render process.
 ### await main.dialog(options: Object)
 Opens a native file open/save dialog.
 
+### await main.openExternal(url: String)
+Opens a link in the user's default browser.
+
 ### await main.contextMenu(value: Object) `Render Process Only`
 Opens a native context menu.

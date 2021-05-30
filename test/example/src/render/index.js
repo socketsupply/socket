@@ -3,6 +3,10 @@ const Components = require('@optoolco/components')
 
 Components(Tonic)
 
+window.addEventListener('contextmenu', e => {
+  e.preventDefault()
+})
+
 //
 // Menu item selection example... do whatever, await an ipc call, etc.
 //
@@ -21,6 +25,18 @@ window.addEventListener('keyup', async event => {
   if (event.ctrlKey && event.key === 'q') {
     window.main.quit({})
   }
+})
+
+//
+// A keybinding example... if keyup is ctrl+q, quit the app
+//
+window.addEventListener('click', async event => {
+  const el = Tonic.match(event.target, '#externalLink')
+  if (!el) return
+
+  event.preventDefault()
+
+  await window.main.openExternal(el.props.url)
 })
 
 //
@@ -63,8 +79,8 @@ class AppContainer extends Tonic {
   }
 
   async click (e) {
-    const el = Tonic.match(e.target, 'tonic-button')
-    if (!el) return   
+    const el = Tonic.match(e.target, '#butt')
+    if (!el) return
 
     const response = await window.main.dialog(e.target.value)
     this.querySelector('#opened').value = response.replace(',', '\n')
@@ -133,6 +149,8 @@ class AppContainer extends Tonic {
           Context Menu Enabled Area
         </div>
       </div>
+
+      <tonic-button id="externalLink" url="https://example.com">External</tonic-button>
 
       <a id="dd" draggable="true" href="file:///Users/paolofragomeni/projects/optoolco/opkit/TODO.md" download>Draggable</a>
       <a id="dl" href="file:///Users/paolofragomeni/projects/optoolco/opkit/src/render.html" download>Download</a>

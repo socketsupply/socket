@@ -25,14 +25,15 @@
 #define NSApplicationActivationPolicyRegular 0
 #define WKUserScriptInjectionTimeAtDocumentStart 0
 
-std::string getCwd (std::string);
-void createNativeMenu (std::string);
+std::string getCwd(std::string);
+void createNativeMenu(std::string);
 bool createNativeContextMenu (std::string, std::string);
-std::vector<std::string> getMenuItemDetails (void* item);
-void setWindowColor (void*, float r, float g, float b, float a);
+std::vector<std::string> getMenuItemDetails(void* item);
+void setWindowColor(void*, float r, float g, float b, float a);
 void setTitle(void*);
 void hideWindow();
 void showWindow();
+void openExternalURL(std::string url);
 
 namespace Opkit {
   SEL NSSelector(const char *s) {
@@ -202,7 +203,7 @@ namespace Opkit {
         NSSelector("alloc")
       );
 
-      if (debug) {
+#if DEBUG == 1
         //
         // [[config preferences] setValue:@YES forKey:@"developerExtrasEnabled"];
         // 
@@ -218,7 +219,7 @@ namespace Opkit {
             1),
           NSString("developerExtrasEnabled")
         );
-      }
+#endif
 
       //
       // [[config preferences] setValue:@YES forKey:@"fullScreenEnabled"];
@@ -413,6 +414,13 @@ namespace Opkit {
       );
     }
 
+    void inspect() {
+    }
+
+    void openExternal(std::string url) {
+      openExternalURL(url);
+    }
+
     void setTitle(const std::string title) {
       ((void (*)(id, SEL, id)) objc_msgSend)(
         m_window,
@@ -469,6 +477,8 @@ namespace Opkit {
 
       ((void (*)(id, SEL))objc_msgSend)(m_window, NSSelector("center"));
       ((void (*)(id, SEL))objc_msgSend)(m_window, NSSelector("setHasShadow:"));
+      ((void (*)(id, SEL, BOOL))objc_msgSend)(m_webview, NSSelector("canGoBack"), 0);
+      ((void (*)(id, SEL, BOOL))objc_msgSend)(m_webview, NSSelector("allowsBackForwardNavigationGestures"), 0);
       ((void (*)(id, SEL, BOOL))objc_msgSend)(m_window, NSSelector("setTitlebarAppearsTransparent:"), 1);
       ((void (*)(id, SEL, BOOL))objc_msgSend)(m_window, NSSelector("setOpaque:"), 1);
 

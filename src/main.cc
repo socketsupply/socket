@@ -34,11 +34,11 @@ int main(int argc, char *argv[])
 
   win->navigate("file://" + cwd + "/index.html"); 
 
-  std::stringstream ss;
+  std::stringstream argvs;
   int c = 0;
 
   for (auto const arg : std::span(argv, argc)) {
-    ss
+    argvs
       << "'"
       << replace(std::string(arg), "'", "\'")
       << (c++ < argc ? "', " : "'");
@@ -46,7 +46,7 @@ int main(int argc, char *argv[])
 
   win->init(
     "(() => {"
-    "  window.argv = [" + ss.str() + "];"
+    "  window.argv = [" + argvs.str() + "];"
     "  document.addEventListener('DOMContentLoaded', () => {"
     "    window.external.invoke('ipc;0;ready;true');"
     "  });"
@@ -57,7 +57,7 @@ int main(int argc, char *argv[])
   Opkit::appData = settings;
 
   Opkit::Process process(
-    settings["cmd"],
+    settings["cmd"] + " " + argvs.str(),
     cwd,
     [&](Opkit::Process::string_type stdout) {
       while (!isDocumentReady) {
@@ -124,6 +124,11 @@ int main(int argc, char *argv[])
 
   win->ipc("contextMenu", [&](std::string seq, std::string value) {
     win->createContextMenu(seq, value);
+  });
+
+  win->ipc("openExternal", [&](std::string seq, std::string value) {
+    win->openExternal(value);
+    win->resolve("ipc;0;" + seq + ";" + value);
   });
 
   win->ipc("send", [&](std::string seq, std::string value) {

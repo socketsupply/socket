@@ -102,7 +102,7 @@ class webview : public browser_engine {
 
             let encoded
 
-            if (name === 'setTitle') {
+            if (['setTitle', 'openExternal'].includes(name)) {
               encoded = value || ' '
             } else if (name === 'contextMenu') {
               encoded = Object

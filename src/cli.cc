@@ -16,6 +16,7 @@ void help () {
     << "flags:" << std::endl
     << "  -h  help" << std::endl
     << "  -o  only run user build step" << std::endl
+    << "  -xd turn off debug mode" << std::endl
     << "  -r  run after building" << std::endl
     << "  -b  bundle for app store" << std::endl
     << "  -c  code sign the bundle" << std::endl
@@ -56,6 +57,7 @@ int main (const int argc, const char* argv[]) {
   bool flagShouldRun = false;
   bool flagEntitlements = false;
   bool flagNotarization = false;
+  bool flagDebugMode = true;
 
   for (auto const arg : std::span(argv, argc)) {
     if (std::string(arg).find("-h") != -1) {
@@ -80,6 +82,10 @@ int main (const int argc, const char* argv[]) {
 
     if (std::string(arg).find("-mn") != -1) {
       flagNotarization = true;
+    }
+
+    if (std::string(arg).find("-xd") != -1) {
+      flagDebugMode = false;
     }
   }
 
@@ -295,6 +301,7 @@ int main (const int argc, const char* argv[]) {
     << " " << flags
     << " " << settings["flags"]
     << " -o " << pathToString(binaryPath)
+    << " -DDEBUG=" << (flagDebugMode ? 1 : 0)
     << " " << define("SETTINGS", _settings);
 
   // log(compileCommand.str());

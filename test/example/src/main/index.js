@@ -44,7 +44,10 @@ async function main () {
     }
   })
 
-  window.send({ env: process.env })
+  window.send({
+    env: process.env,
+    argv: process.argv
+  })
 
   setInterval(() => {
     counter++

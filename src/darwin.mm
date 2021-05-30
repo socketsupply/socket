@@ -26,6 +26,27 @@ void hideWindow () {
   [[NSApplication sharedApplication] hide:nil];
 }
 
+void openExternalURL (std::string url) {
+  NSString* nsu = [NSString stringWithUTF8String:url.c_str()];
+  [[NSWorkspace sharedWorkspace] openURL:[NSURL URLWithString: nsu]];
+}
+
+//
+// WTF how do you open the web inspector from code
+//
+void showInspector (void* m_webview) {
+  // WKWebView* webView = (WKWebView*) m_webview;
+
+  //id m_inspector = [[WebInspector alloc] initWithWebView: webView];
+  //[m_inspector detach:webView];
+
+  // if(console){
+  //  [m_inspector showConsole:webView];
+  // }
+  // else {
+  //  [m_inspector show:m_webView];
+}
+
 bool createNativeContextMenu (std::string seq, std::string value) {
   auto menuItems = split(value, '_');
   auto id = std::stoi(seq);
