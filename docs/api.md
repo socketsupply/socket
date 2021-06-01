@@ -4,6 +4,8 @@ When the main process is started, it is forwarded the arguments
 passed to the built binary. The location from which the main
 process is run will reveal its location on the file system.
 
+All methods, unless indicated, can also be run in the main process.
+
 # Render Process
 
 ## Methods
