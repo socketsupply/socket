@@ -20,12 +20,12 @@ UIs that can run any arbitrary backend process.
 
 # DOCS
 
+- [API](/docs/api.md) All methods
 - [Build](/docs/build.md) How to use the build tool
 - [IPC](/docs/ipc.md) How the IPC protocol works
 - [Menus](/docs/menus.md) How to create menus
 - [Trouble Shooting Guide](/docs/troubleshooting.md) Help with compiling
 - [Updater](/docs/updater.md) How to implement an updater
-- [Window](/docs/window.md) All global methods
 - [FAQ](/docs/faq.md) Frequently asked questions
 
 
