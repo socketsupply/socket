@@ -1,10 +1,34 @@
 #include <AppKit/AppKit.h>
+#include <WebKit/WebKit.h>
+#include <WebKit/WebView.h>
+#include <WebKit/WKWebView.h>
 #include "util.h"
+
+typedef const struct OpaqueWKPage* WKPageRef;
+typedef const struct OpaqueWKPageGroup* WKPageGroupRef;
+typedef const struct OpaqueWKInspector* WKInspectorRef;
+typedef const struct OpaqueWKPreferences* WKPreferencesRef;
+
+// https://github.com/WebKit/WebKit/blob/main/Source/WebKit/UIProcess/API/C/WKInspector.h
+WKInspectorRef WKPageGetInspector(WKPageRef pageRef);
+void WKInspectorShow(WKInspectorRef inspector);
+// void WKInspectorShowConsole(WKInspectorRef inspector);
+
+void showInspector(void* m_webview) {
+  WKWebView* webView = (WKWebView*) m_webview;
+
+  // WKInspectorShow(WKPageGetInspector(webView.get()));
+  
+  // auto inspector = [WKInspector alloc];
+  // [inspector initWithInspectedWebView:webView];
+
+  // [inspector detach:webView];
+  // [inspector show:webView];
+}
 
 std::string getCwd (std::string _) {
   NSString *bundlePath = [[NSBundle mainBundle] resourcePath];
-  auto str = std::string([bundlePath UTF8String]);
-  return str;
+  return std::string([bundlePath UTF8String]);
 }
 
 std::vector<std::string> getMenuItemDetails (void* item) {
@@ -31,11 +55,33 @@ int openExternalURL (std::string url) {
   return [[NSWorkspace sharedWorkspace] openURL:[NSURL URLWithString: nsu]];
 }
 
+std::string getPath(std::string name) {
+  const char* dir;
+  NSArray *dirs;
+
+  if (name.compare("bundle") == 0) {
+    dir = [[[NSBundle mainBundle] resourcePath] UTF8String];
+  } else if (name.compare("home") == 0) {
+    dir = [NSHomeDirectory() UTF8String];
+  } else if (name.compare("config") == 0) {
+    dirs = NSSearchPathForDirectoriesInDomains(NSLibraryDirectory, NSUserDomainMask, YES);
+    dir = [[dirs objectAtIndex:0] UTF8String];
+  } else if (name.compare("temp") == 0) {
+    dir = [NSTemporaryDirectory() UTF8String];
+  }
+
+  return std::string(dir);
+}
+
 //
 // WTF how do you open the web inspector from code
 //
-void showInspector (void* m_webview) {
+//void showInspector (void* m_webview) {
+  //WebInspector *inspector = [WebInspector alloc];
+
   // WKWebView* webView = (WKWebView*) m_webview;
+
+  // WKInspectorShow(WKPageGetInspector((WKPageRef) webView.subviews.firstObject));
 
   //id m_inspector = [[WebInspector alloc] initWithWebView: webView];
   //[m_inspector detach:webView];
@@ -44,8 +90,8 @@ void showInspector (void* m_webview) {
   //  [m_inspector showConsole:webView];
   // }
   // else {
-  //  [m_inspector show:m_webView];
-}
+  //  [m_inspector show:m_webView]; */
+//}
 
 bool createNativeContextMenu (std::string seq, std::string value) {
   auto menuItems = split(value, '_');

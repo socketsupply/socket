@@ -2,6 +2,7 @@
 #include "process.h"
 
 constexpr auto _settings = SETTINGS;
+constexpr auto _debug = DEBUG;
 
 #ifdef _WIN32
 #include <direct.h>
@@ -21,6 +22,8 @@ int main(int argc, char *argv[])
 
   auto cwd = getCwd(argv[0]);
   bool isDocumentReady = false;
+  auto settings = parseConfig(replace(_settings, "%%", "\n"));
+  Opkit::appData = settings;
 
   if (platform.darwin) {
     // On MacOS, this will hide the window initially
@@ -46,15 +49,16 @@ int main(int argc, char *argv[])
 
   win->init(
     "(() => {"
+    "  window.main = window.main || {};"
+    "  window.main.name = '" + settings["name"] + "';"
+    "  window.main.version = '" + settings["version"] + "';"
+    "  window.main.debug = " + std::to_string(_debug) + ";"
     "  window.argv = [" + argvs.str() + "];"
     "  document.addEventListener('DOMContentLoaded', () => {"
     "    window.external.invoke('ipc;0;ready;true');"
     "  });"
     "})()"
   );
-
-  auto settings = parseConfig(replace(_settings, "%%", "\n"));
-  Opkit::appData = settings;
 
   Opkit::Process process(
     settings["cmd"] + " " + argvs.str(),
@@ -133,6 +137,11 @@ int main(int argc, char *argv[])
 
   win->ipc("send", [&](std::string seq, std::string value) {
     process.write("ipc;0;" + seq + ";" + value);
+  });
+
+  win->ipc("inspect", [&](std::string seq, std::string value) {
+    win->inspect();
+    win->resolve("ipc;0;" + seq + ";" + value);
   });
 
   win->ipc("hide", [&](std::string seq, std::string value) {

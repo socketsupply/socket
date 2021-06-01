@@ -4,7 +4,9 @@ const Components = require('@optoolco/components')
 Components(Tonic)
 
 window.addEventListener('contextmenu', e => {
-  e.preventDefault()
+  if (!window.main.debug) {
+    e.preventDefault()
+  }
 })
 
 //
@@ -114,17 +116,26 @@ class AppContainer extends Tonic {
 
     e.preventDefault()
 
+    console.log('ehllo')
+
     const choice = await main.contextMenu({
       'Download': 'd',
       'Wizard': 'w',
       '---': '',
-      'Share': 's'
+      'Inspect': 'i'
     })
+
+    if (choice.title === 'Inspect') {
+      window.main.inspect()
+    }
 
     document.querySelector('#menu-selection').value = choice.title
   }
 
-  render () {
+  async render () {
+    // const settings = await window.main.getSettings()
+    // console.log(settings)
+
     return this.html`
       <app-header>
       </app-header>
@@ -166,7 +177,7 @@ window.onload = async () => {
 
   // https://developer.apple.com/library/archive/documentation/AppleApplications/Conceptual/SafariJSProgTopics/DragAndDrop.html
 
-  dd.addEventListener('dragover', e => {
+  /* dd.addEventListener('dragover', e => {
     e.preventDefault()
     return true
   })
@@ -180,7 +191,7 @@ window.onload = async () => {
     return true
   })
 
-  /* document.body.addEventListener('drag', (e) => {
+  document.body.addEventListener('drag', (e) => {
     console.log(e)
   })
 

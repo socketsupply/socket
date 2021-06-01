@@ -26,16 +26,29 @@
 #define WKUserScriptInjectionTimeAtDocumentStart 0
 
 std::string getCwd(std::string);
+std::string getPath(std::string);
 void createNativeMenu(std::string);
 bool createNativeContextMenu (std::string, std::string);
-std::vector<std::string> getMenuItemDetails(void* item);
-void setWindowColor(void*, float r, float g, float b, float a);
+std::vector<std::string> getMenuItemDetails(void*);
+void setWindowColor(void*, float, float, float, float);
 void setTitle(void*);
 void hideWindow();
 void showWindow();
-int openExternalURL(std::string url);
+int openExternalURL(std::string);
+void showInspector(void*);
 
 namespace Opkit {
+  // https://github.com/WebKit/webkit/blob/master/Source/WebKit2/Shared/API/c/WKBase.h
+  typedef const struct OpaqueWKPage* WKPageRef;
+  typedef const struct OpaqueWKPageGroup* WKPageGroupRef;
+  typedef const struct OpaqueWKInspector* WKInspectorRef;
+  typedef const struct OpaqueWKPreferences* WKPreferencesRef;
+
+  // https://github.com/WebKit/webkit/blob/master/Source/WebKit2/UIProcess/API/C/WKInspector.h
+  WKInspectorRef WKPageGetInspector(WKPageRef pageRef);
+  void WKInspectorShow(WKInspectorRef inspector);
+  void WKInspectorShowConsole(WKInspectorRef inspector);
+
   SEL NSSelector(const char *s) {
     return sel_registerName(s);
   }
@@ -204,21 +217,21 @@ namespace Opkit {
       );
 
 #if DEBUG == 1
-        //
-        // [[config preferences] setValue:@YES forKey:@"developerExtrasEnabled"];
-        // 
-        ((id(*)(id, SEL, id, id))objc_msgSend)(
-          ((id(*)(id, SEL))objc_msgSend)(
-            config,
-            NSSelector("preferences")
-          ),
-          NSSelector("setValue:forKey:"),
-          ((id(*)(id, SEL, BOOL))objc_msgSend)(
-            NSClass("NSNumber"),
-            NSSelector("numberWithBool:"),
-            1),
-          NSString("developerExtrasEnabled")
-        );
+      //
+      // [[config preferences] setValue:@YES forKey:@"developerExtrasEnabled"];
+      // 
+      ((id(*)(id, SEL, id, id))objc_msgSend)(
+        ((id(*)(id, SEL))objc_msgSend)(
+          config,
+          NSSelector("preferences")
+        ),
+        NSSelector("setValue:forKey:"),
+        ((id(*)(id, SEL, BOOL))objc_msgSend)(
+          NSClass("NSNumber"),
+          NSSelector("numberWithBool:"),
+          1),
+        NSString("developerExtrasEnabled")
+      );
 #endif
 
       //
@@ -351,42 +364,6 @@ namespace Opkit {
       });
     }
 
-    /* void hide () {
-      id app = ((id(*)(id, SEL))objc_msgSend)(
-        NSClass("NSApplication"),
-        NSSelector("sharedApplication")
-      );
-
-      dispatch([&]() {
-        ((void (*)(id, SEL, id))objc_msgSend)(
-          app,
-          NSSelector("hide:"),
-          nullptr
-        );
-      });
-    }
-
-    void show () {
-      id app = ((id(*)(id, SEL))objc_msgSend)(
-        NSClass("NSApplication"),
-        NSSelector("sharedApplication")
-      );
-
-      dispatch([&]() {
-        ((void (*)(id, SEL, id))objc_msgSend)(
-          m_window,
-          NSSelector("makeKeyAndOrderFront:"),
-          nullptr
-        );
-
-        ((void (*)(id, SEL, BOOL))objc_msgSend)(
-          app,
-          NSSelector("activateIgnoringOtherApps:"),
-          1
-        );
-      });
-    } */
-
     void run() {
       id app = ((id(*)(id, SEL))objc_msgSend)(
         NSClass("NSApplication"),
@@ -415,6 +392,7 @@ namespace Opkit {
     }
 
     void inspect() {
+      showInspector(m_webview);
     }
 
     int openExternal(std::string url) {

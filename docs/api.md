@@ -1,6 +1,8 @@
 # API
 All methods work from either the Render or Main process.
 
+## Methods
+
 ### await main.setTitle(title: String)
 Set the native title of the window.
 
@@ -38,3 +40,14 @@ try {
 
 ### await main.contextMenu(value: Object) `Render Process Only`
 Opens a native context menu.
+
+## Properties
+
+### window.main.name: String
+The name as defined in the `settings.congig` file.
+
+### window.main.verison: String
+The version as defined in the `settings.config` file.
+
+### window.main.debug: Number
+Value is `1` unless `-xd` is passed to the CLI tool at build time.
