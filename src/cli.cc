@@ -73,6 +73,10 @@ int main (const int argc, const char* argv[]) {
       flagRunUserBuild = true;
     }
 
+    if (std::string(arg).find("-r") != -1) {
+      flagShouldRun = true;
+    }
+
     if (std::string(arg).find("-s") != -1) {
       flagAppStore = true;
     }
@@ -496,6 +500,15 @@ int main (const int argc, const char* argv[]) {
     // https://www.digicert.com/kb/code-signing/signcode-signtool-command-line.htm
     // https://github.com/wixtoolset/
     //
+  }
+
+  if (flagShouldRun) {
+    auto cmd = std::string(fs::path {
+      pathBin /
+      settings["executable"]
+    });
+
+    std::system(cmd.c_str());
   }
 
   return 0;
