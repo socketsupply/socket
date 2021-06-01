@@ -60,14 +60,5 @@ Value is `1` unless `-xd` is passed to the CLI tool at build time.
 ### process.bundle: String
 A value returned by the OS that represents the path to the running app.
 
-### process.config: String
-A value returned by the OS that represents the path to the user's config directory.
-
-### process.home: String
-A value returned by the OS that represents the path to the user's home directory.
-
-### process.temp: String
-A value returned by the OS that represents the path to the user's temp directory.
-
 ### process.verison: String
 The executable name as defined in the `settings.config` file.
