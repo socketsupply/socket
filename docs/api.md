@@ -29,7 +29,7 @@ Hide the entire app.
 ### await system.show()
 Show the entire app.
 
-### await system.quit(options: Object)
+### await system.exit(code: Number)
 Quits the backend process and then quits the render process.
 
 ### await system.dialog(options: Object)

@@ -16,7 +16,7 @@ window.addEventListener('menuItemSelected', event => {
   document.querySelector('#menu-selection').value = event.detail.title
 
   if (event.detail.title.toLowerCase() === 'quit') {
-    system.quit({})
+    system.exit(0)
   }
 })
 
@@ -25,7 +25,7 @@ window.addEventListener('menuItemSelected', event => {
 //
 window.addEventListener('keyup', async event => {
   if (event.ctrlKey && event.key === 'q') {
-    system.quit({})
+    system.exit(0)
   }
 })
 

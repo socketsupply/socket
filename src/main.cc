@@ -98,9 +98,10 @@ int main(int argc, char *argv[])
     }
   );
 
-  win->ipc("quit", [&](auto seq, auto value) {
+  win->ipc("exit", [&](auto seq, auto value) {
     Opkit::Process::kill(process.getPID());
     win->terminate();
+    exit(std::stoi(value));
   });
 
   win->ipc("ready", [&](auto seq, auto value) {
