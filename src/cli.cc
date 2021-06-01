@@ -38,6 +38,11 @@ void log (const std::string s) {
   start = std::chrono::system_clock::now();
 }
 
+static std::string getCxxFlags() {
+  const char* flags = std::getenv("CXX_FLAGS");
+  return flags ? " " + std::string(flags) : "";
+}
+
 int main (const int argc, const char* argv[]) {
   if (argc < 2) {
     help();
@@ -127,6 +132,7 @@ int main (const int argc, const char* argv[]) {
   if (platform.darwin) {
     log("preparing build for darwin");
     flags = "-DWEBVIEW_COCOA -std=c++2a -framework WebKit -framework AppKit";
+    flags += getCxxFlags();
 
     files += prefixFile("src/main.cc");
     files += prefixFile("src/process_unix.cc");
@@ -165,6 +171,8 @@ int main (const int argc, const char* argv[]) {
   if (platform.linux) {
     log("preparing build for linux");
     flags = "-DWEBVIEW_GTK -std=c++2a `pkg-config --cflags --libs gtk+-3.0 webkit2gtk-4.0`";
+    flags += getCxxFlags();
+
     files += prefixFile("src/main.cc");
     files += prefixFile("src/process_unix.cc");
     files += prefixFile("src/linux.cc");
