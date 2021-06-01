@@ -1,7 +1,7 @@
 constexpr auto gPreload = R"JS(
 
 document.addEventListener('DOMContentLoaded', () => {
-  window.external.invoke('ipc;0;ready;true');
+  window.external.invoke('ipc;0;ready;0');
 });
 
 const IPC = window._ipc = { nextSeq: 1 };

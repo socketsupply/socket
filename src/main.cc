@@ -32,22 +32,29 @@ int main(int argc, char *argv[])
     // On MacOS, this will hide the window initially
     // but also allow us to load the url, like a preload.
     win->setSize(
-      300,
-      300,
+      0,
+      0,
       WEBVIEW_HINT_NONE
     );
   }
 
   win->navigate("file://" + cwd + "/index.html"); 
 
-  std::stringstream argvs;
+  std::stringstream argvArray;
+  std::stringstream argvForward;
+
+  argvForward << " --version=" << settings["version"];
+  argvForward << " --debug=" << std::to_string(_debug);
+
   int c = 0;
 
   for (auto const arg : std::span(argv, argc)) {
-    argvs
+    argvArray
       << "'"
       << replace(std::string(arg), "'", "\'")
       << (c++ < argc ? "', " : "'");
+
+    if (c > 1) argvForward << " " << std::string(arg);
   }
 
   win->init(
@@ -58,18 +65,16 @@ int main(int argc, char *argv[])
     "  window.process.executable = '" + settings["executable"] + "';\n"
     "  window.process.version = '" + settings["version"] + "';\n"
     "  window.process.debug = " + std::to_string(_debug) + ";\n"
-    "  window.process.home = '" + getPath("home") + "';\n"
-    "  window.process.temp = '" + getPath("temp") + "';\n"
     "  window.process.bundle = '" + getPath("bundle") + "';\n"
     "  window.process.config = '" + getPath("config") + "';\n"
-    "  window.process.argv = [" + argvs.str() + "];\n"
+    "  window.process.argv = [" + argvArray.str() + "];\n"
     "  " + gPreload + "\n"
     "})()"
     "//# sourceURL=preload.js"
   );
 
   Opkit::Process process(
-    settings["cmd"] + " " + argvs.str(),
+    settings["cmd"] + argvForward.str(),
     cwd,
     [&](auto stdout) {
       while (!isDocumentReady) {
@@ -98,6 +103,7 @@ int main(int argc, char *argv[])
 
   win->ipc("ready", [&](auto seq, auto value) {
     isDocumentReady = true;
+    process.write("ipc;0;0;" + value);
   });
 
   win->ipc("dialog", [&](auto seq, auto value) {

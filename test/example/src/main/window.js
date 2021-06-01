@@ -2,6 +2,8 @@
 // TODO(@heapwolf) publish to npm/github as @optoolco/window
 //
 import fs from 'fs'
+import util from 'util'
+
 process.stdin.resume()
 process.stdin.setEncoding('utf8')
 
@@ -29,7 +31,7 @@ const exceedsMaxSize = s => {
   }
 }
 
-console.log = (...args) => log('stdout;', args.join(' '))
+console.log = (...args) => log('stdout;' + args.map(v => util.format(v)).join(' '))
 
 api.setTitle = s => {
   return write(`binding;setTitle;${s}`)

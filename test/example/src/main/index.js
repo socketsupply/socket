@@ -3,7 +3,7 @@ import window from './window.js'
 let counter = 0
 
 async function main () {
-  console.log('started')
+  console.log('started', process.argv)
 
   await window.setSize({ height: 500, width: 750 })
 

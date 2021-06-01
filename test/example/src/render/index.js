@@ -4,7 +4,7 @@ const Components = require('@optoolco/components')
 Components(Tonic)
 
 window.addEventListener('contextmenu', e => {
-  if (!system.process.debug) {
+  if (!process.debug) {
     e.preventDefault()
   }
 })
