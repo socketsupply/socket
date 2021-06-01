@@ -16,9 +16,9 @@
 
 namespace fs = std::filesystem;
 
-std::string getCwd (std::string);
+std::string getCwd (const std::string);
 
-inline std::string getCwd (std::string argvp) {
+inline std::string getCwd (const std::string argvp) {
   auto canonical = fs::canonical("/proc/self/exe");
   return std::string(fs::path(canonical).parent_path());
 }
@@ -308,6 +308,9 @@ class gtk_webkit_engine {
 
   void hide () {
     gtk_widget_hide(m_window);
+  }
+
+  void inspect () {
   }
 
   void menu(std::string menu) {

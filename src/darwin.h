@@ -26,7 +26,7 @@
 #define WKUserScriptInjectionTimeAtDocumentStart 0
 
 std::string getCwd(std::string);
-std::string getPath(const std::string);
+// std::string getPath(const std::string);
 void createNativeMenu(std::string);
 bool createNativeContextMenu (std::string, std::string);
 std::vector<std::string> getMenuItemDetails(void*);

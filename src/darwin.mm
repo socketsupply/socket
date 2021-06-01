@@ -55,24 +55,6 @@ int openExternalURL (std::string url) {
   return [[NSWorkspace sharedWorkspace] openURL:[NSURL URLWithString: nsu]];
 }
 
-std::string getPath(const std::string name) {
-  const char* dir;
-  NSArray *dirs;
-
-  if (name.compare("bundle") == 0) {
-    dir = [[[NSBundle mainBundle] resourcePath] UTF8String];
-  } else if (name.compare("home") == 0) {
-    dir = [NSHomeDirectory() UTF8String];
-  } else if (name.compare("config") == 0) {
-    dirs = NSSearchPathForDirectoriesInDomains(NSLibraryDirectory, NSUserDomainMask, YES);
-    dir = [[dirs objectAtIndex:0] UTF8String];
-  } else if (name.compare("temp") == 0) {
-    dir = [NSTemporaryDirectory() UTF8String];
-  }
-
-  return std::string(dir);
-}
-
 //
 // WTF how do you open the web inspector from code
 //
