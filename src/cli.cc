@@ -10,7 +10,7 @@ void help () {
     << std::endl
     << std::endl
     << "usage:" << std::endl
-    << "  opkit <project-dir> [-hpbc]"
+    << "  opkit <project-dir> [-h, ...]"
     << std::endl
     << std::endl
     << "flags:" << std::endl
