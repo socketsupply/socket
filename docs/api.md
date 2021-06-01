@@ -1,7 +1,13 @@
-# System API
-All methods work from either the Render or Main process.
+
+# Main Process
+When the main process is started, it is forwarded the arguments
+passed to the built binary. The location from which the main
+process is run will reveal its location on the file system.
+
+# Render Process
 
 ## Methods
+The `system` object is a global (ie, `window.system`).
 
 ### await system.setTitle(title: String)
 Set the native title of the window.
@@ -12,7 +18,7 @@ Set the size of the window (will show the window).
 ### await system.setMenu(value: String)
 Set the native menu for the app.
 
-### await system.send(value: Any)
+### await system.send(value: Any) `Render Process Only`
 Send an object to the backend process and await a promise.
 
 ### await system.hide()
@@ -41,9 +47,8 @@ try {
 ### await system.contextMenu(value: Object) `Render Process Only`
 Opens a native context menu.
 
-# Process API
-
 ## Properties
+The `process` object is a global (ie, `window.process`).
 
 ### process.argv: Array<String>
 Provides the arguments that the program was called with.
