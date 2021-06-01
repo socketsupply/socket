@@ -44,7 +44,10 @@ int main(int argc, char *argv[])
   std::stringstream argvForward;
 
   argvForward << " --version=" << settings["version"];
-  argvForward << " --debug=" << std::to_string(_debug);
+
+#if DEBUG == 1
+  argvForward << " --debug=1";
+#endif
 
   int c = 0;
 
