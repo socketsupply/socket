@@ -1,56 +1,73 @@
-# API
+# System API
 All methods work from either the Render or Main process.
 
 ## Methods
 
-### await main.setTitle(title: String)
+### await system.setTitle(title: String)
 Set the native title of the window.
 
-### await main.setSize({ width: Number, height: Number })
+### await system.setSize({ width: Number, height: Number })
 Set the size of the window (will show the window).
 
-### await main.setMenu(value: String)
+### await system.setMenu(value: String)
 Set the native menu for the app.
 
-### await main.send(value: Any)
+### await system.send(value: Any)
 Send an object to the backend process and await a promise.
 
-### await main.hide()
+### await system.hide()
 Hide the entire app.
 
-### await main.show()
+### await system.show()
 Show the entire app.
 
-### await main.quit(options: Object)
+### await system.quit(options: Object)
 Quits the backend process and then quits the render process.
 
-### await main.dialog(options: Object)
+### await system.dialog(options: Object)
 Opens a native file open/save dialog.
 
-### await main.openExternal(url: String)
+### await system.openExternal(url: String)
 Opens a link in the user's default browser.
 
 ```js
 try {
-  await main.openExternal('https://google.com')
+  await system.openExternal('https://google.com')
 } catch (err) {
   ...
 }
 ```
 
-### await main.contextMenu(value: Object) `Render Process Only`
+### await system.contextMenu(value: Object) `Render Process Only`
 Opens a native context menu.
+
+# Process API
 
 ## Properties
 
-### window.main.argv: Array<String>
+### process.argv: Array<String>
 Provides the arguments that the program was called with.
 
-### window.main.name: String
-The name as defined in the `settings.congig` file.
+### process.title: String
+The title as defined in the `settings.congig` file.
 
-### window.main.verison: String
+### process.verison: String
 The version as defined in the `settings.config` file.
 
-### window.main.debug: Number
+### process.debug: Number
 Value is `1` unless `-xd` is passed to the CLI tool at build time.
+
+### process.bundle: String
+A value returned by the OS that represents the path to the running app.
+
+### process.config: String
+A value returned by the OS that represents the path to the user's config directory.
+
+### process.home: String
+A value returned by the OS that represents the path to the user's home directory.
+
+### process.temp: String
+A value returned by the OS that represents the path to the user's temp directory.
+
+### process.verison: String
+The executable name as defined in the `settings.config` file.

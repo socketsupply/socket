@@ -4,7 +4,7 @@ const Components = require('@optoolco/components')
 Components(Tonic)
 
 window.addEventListener('contextmenu', e => {
-  if (!window.main.debug) {
+  if (!system.process.debug) {
     e.preventDefault()
   }
 })
@@ -16,7 +16,7 @@ window.addEventListener('menuItemSelected', event => {
   document.querySelector('#menu-selection').value = event.detail.title
 
   if (event.detail.title.toLowerCase() === 'quit') {
-    window.main.quit({})
+    system.quit({})
   }
 })
 
@@ -25,7 +25,7 @@ window.addEventListener('menuItemSelected', event => {
 //
 window.addEventListener('keyup', async event => {
   if (event.ctrlKey && event.key === 'q') {
-    window.main.quit({})
+    system.quit({})
   }
 })
 
@@ -38,7 +38,7 @@ window.addEventListener('click', async event => {
 
   event.preventDefault()
 
-  await window.main.openExternal(el.props.url)
+  await system.openExternal(el.props.url)
 })
 
 //
@@ -84,7 +84,7 @@ class AppContainer extends Tonic {
     const el = Tonic.match(e.target, '#butt')
     if (!el) return
 
-    const response = await window.main.dialog(e.target.value)
+    const response = await system.dialog(e.target.value)
     this.querySelector('#opened').value = response.replace(',', '\n')
   }
 
@@ -99,7 +99,7 @@ class AppContainer extends Tonic {
       // request-response (can send any arbitrary parameters)
       //
       const value = { input: e.target.value }
-      response = await window.main.send(value)
+      response = await system.send(value)
     } catch (err) {
       console.log(err.message)
     }
@@ -107,7 +107,7 @@ class AppContainer extends Tonic {
     this.querySelector('#response').value =
       response.received.input
 
-    return window.main.setTitle(e.target.value)
+    return system.setTitle(e.target.value)
   }
 
   async contextmenu (e) {
@@ -118,7 +118,7 @@ class AppContainer extends Tonic {
 
     console.log('ehllo')
 
-    const choice = await main.contextMenu({
+    const choice = await system.contextMenu({
       'Download': 'd',
       'Wizard': 'w',
       '---': '',
@@ -126,14 +126,14 @@ class AppContainer extends Tonic {
     })
 
     if (choice.title === 'Inspect') {
-      window.main.inspect()
+      system.inspect()
     }
 
     document.querySelector('#menu-selection').value = choice.title
   }
 
   async render () {
-    // const settings = await window.main.getSettings()
+    // const settings = await system.getSettings()
     // console.log(settings)
 
     return this.html`

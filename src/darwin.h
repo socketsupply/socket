@@ -26,7 +26,7 @@
 #define WKUserScriptInjectionTimeAtDocumentStart 0
 
 std::string getCwd(std::string);
-std::string getPath(std::string);
+std::string getPath(const std::string);
 void createNativeMenu(std::string);
 bool createNativeContextMenu (std::string, std::string);
 std::vector<std::string> getMenuItemDetails(void*);
@@ -39,15 +39,7 @@ void showInspector(void*);
 
 namespace Opkit {
   // https://github.com/WebKit/webkit/blob/master/Source/WebKit2/Shared/API/c/WKBase.h
-  typedef const struct OpaqueWKPage* WKPageRef;
-  typedef const struct OpaqueWKPageGroup* WKPageGroupRef;
-  typedef const struct OpaqueWKInspector* WKInspectorRef;
-  typedef const struct OpaqueWKPreferences* WKPreferencesRef;
 
-  // https://github.com/WebKit/webkit/blob/master/Source/WebKit2/UIProcess/API/C/WKInspector.h
-  WKInspectorRef WKPageGetInspector(WKPageRef pageRef);
-  void WKInspectorShow(WKInspectorRef inspector);
-  void WKInspectorShowConsole(WKInspectorRef inspector);
 
   SEL NSSelector(const char *s) {
     return sel_registerName(s);

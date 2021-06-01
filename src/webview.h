@@ -74,12 +74,13 @@ class webview : public browser_engine {
     }
 
     void ipc(const std::string name, binding_t f, void *arg) {
-      auto js = "(() => { const name = '" + name + "';" + R"(
-        window.main[name] = value => window._ipc.send(name, value);
-      })()
-      )";
+      init(
+        "(() => {"
+        "  const name = '" + name + "';"
+        "  window.system[name] = value => window._ipc.send(name, value);"
+        "})()"
+      );
 
-      init(js);
       bindings[name] = new binding_ctx_t(new binding_t(f), arg);
     }
 

@@ -32,8 +32,8 @@ int main(int argc, char *argv[])
     // On MacOS, this will hide the window initially
     // but also allow us to load the url, like a preload.
     win->setSize(
-      0,
-      0,
+      300,
+      300,
       WEBVIEW_HINT_NONE
     );
   }
@@ -52,11 +52,17 @@ int main(int argc, char *argv[])
 
   win->init(
     "(() => {"
-    "  window.main = window.main || {};\n"
-    "  window.main.name = '" + settings["name"] + "';\n"
-    "  window.main.version = '" + settings["version"] + "';\n"
-    "  window.main.debug = " + std::to_string(_debug) + ";\n"
-    "  window.main.argv = [" + argvs.str() + "];\n"
+    "  window.system = {};\n"
+    "  window.process = {};\n"
+    "  window.process.title = '" + settings["title"] + "';\n"
+    "  window.process.executable = '" + settings["executable"] + "';\n"
+    "  window.process.version = '" + settings["version"] + "';\n"
+    "  window.process.debug = " + std::to_string(_debug) + ";\n"
+    "  window.process.home = '" + getPath("home") + "';\n"
+    "  window.process.temp = '" + getPath("temp") + "';\n"
+    "  window.process.bundle = '" + getPath("bundle") + "';\n"
+    "  window.process.config = '" + getPath("config") + "';\n"
+    "  window.process.argv = [" + argvs.str() + "];\n"
     "  " + gPreload + "\n"
     "})()"
     "//# sourceURL=preload.js"
@@ -65,7 +71,7 @@ int main(int argc, char *argv[])
   Opkit::Process process(
     settings["cmd"] + " " + argvs.str(),
     cwd,
-    [&](Opkit::Process::string_type stdout) {
+    [&](auto stdout) {
       while (!isDocumentReady) {
         std::this_thread::sleep_for(std::chrono::milliseconds(16));
       }
@@ -80,7 +86,7 @@ int main(int argc, char *argv[])
         win->emit("data", stdout);
       }
     },
-    [](Opkit::Process::string_type stderr) {
+    [](auto stderr) {
       std::cerr << stderr << std::endl;
     }
   );
@@ -128,30 +134,33 @@ int main(int argc, char *argv[])
     }
   });
 
-  win->ipc("contextMenu", [&](std::string seq, std::string value) {
+  win->ipc("contextMenu", [&](auto seq, auto value) {
     win->createContextMenu(seq, value);
   });
 
-  win->ipc("openExternal", [&](std::string seq, std::string value) {
+  win->ipc("openExternal", [&](auto seq, auto value) {
     auto r = std::to_string(win->openExternal(value));
-    win->resolve("ipc;" + r + ";" + seq + ";" + value);
+
+    if (std::stoi(seq) > 0) {
+      win->resolve("ipc;" + r + ";" + seq + ";" + value);
+    }
   });
 
-  win->ipc("send", [&](std::string seq, std::string value) {
+  win->ipc("send", [&](auto seq, auto value) {
     process.write("ipc;0;" + seq + ";" + value);
   });
 
-  win->ipc("inspect", [&](std::string seq, std::string value) {
+  win->ipc("inspect", [&](auto seq, auto value) {
     win->inspect();
     win->resolve("ipc;0;" + seq + ";" + value);
   });
 
-  win->ipc("hide", [&](std::string seq, std::string value) {
+  win->ipc("hide", [&](auto seq, auto value) {
     win->hide();
     win->resolve("ipc;0;" + seq + ";" + value);
   });
 
-  win->ipc("show", [&](std::string seq, std::string value) {
+  win->ipc("show", [&](auto seq, auto value) {
     win->show();
     win->resolve("ipc;0;" + seq + ";" + value);
   });

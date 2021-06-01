@@ -75,8 +75,10 @@ api.receive = fn => {
   })
 }
 
-api.send = result => {
-  if (typeof result === 'object') result = JSON.stringify(result)
+api.send = o => {
+  let result = ''
+
+  if (typeof o === 'object') result = JSON.stringify(o)
 
   result = encodeURIComponent(result)
 
@@ -85,7 +87,7 @@ api.send = result => {
     result = err
   }
 
-  log(Buffer.from(result))
+  log(result)
 }
 
 export default api

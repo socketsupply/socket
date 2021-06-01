@@ -11,7 +11,7 @@ for you.
 ```js
 import window from '@optoolco/window'
 
-window.setMenu(`
+system.setMenu(`
   App:
     Foo: f;
 

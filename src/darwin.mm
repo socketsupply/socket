@@ -55,7 +55,7 @@ int openExternalURL (std::string url) {
   return [[NSWorkspace sharedWorkspace] openURL:[NSURL URLWithString: nsu]];
 }
 
-std::string getPath(std::string name) {
+std::string getPath(const std::string name) {
   const char* dir;
   NSArray *dirs;
 
