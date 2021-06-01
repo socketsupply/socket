@@ -20,7 +20,7 @@ Set the size of the window (will show the window).
 ### await system.setMenu(value: String)
 Set the native menu for the app.
 
-### await system.send(value: Any) `Render Process Only`
+### await system.send(value: Any)
 Send an object to the backend process and await a promise.
 
 ### await system.hide()

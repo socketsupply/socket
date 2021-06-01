@@ -1,13 +1,13 @@
-import window from './window.js'
+import system from './system.js'
 
 let counter = 0
 
 async function main () {
   console.log('started', process.argv)
 
-  await window.setSize({ height: 500, width: 750 })
+  await system.setSize({ height: 500, width: 750 })
 
-  await window.setMenu(`
+  await system.setMenu(`
     Operator:
       About Operator: _
       ---: _
@@ -35,16 +35,16 @@ async function main () {
       Beep: T + Command
   `)
 
-  await window.setTitle('Hello Operator')
+  await system.setTitle('Hello Operator')
 
-  window.receive(async data => {
+  system.receive(async data => {
     return {
       received: data,
       counter: counter++
     }
   })
 
-  window.send({
+  system.send({
     env: process.env,
     argv: process.argv
   })
@@ -57,7 +57,7 @@ async function main () {
     const size = Math.floor(Math.random() * 1e3)
     const data = new Array(size).fill(0)
 
-    window.send({ sending: data.join(''), counter, size })
+    system.send({ sending: data.join(''), counter, size })
   }, 512) // send at some interval
 
   process.on('beforeExit', () => {

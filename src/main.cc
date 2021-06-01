@@ -116,7 +116,7 @@ int main(int argc, char *argv[])
     win->menu(value);
 
     if (std::stoi(seq) > 0) {
-      win->resolve("ipc;0;" + seq + ";" + value);
+      win->resolve("ipc;0;" + seq + ";null");
     }
   });
 
@@ -124,7 +124,7 @@ int main(int argc, char *argv[])
     win->setTitle(value);
 
     if (std::stoi(seq) > 0) {
-      win->resolve("ipc;0;" + seq + ";" + trim(value));
+      win->resolve("ipc;0;" + seq + ";null");
     }
   });
 
@@ -138,7 +138,7 @@ int main(int argc, char *argv[])
     );
 
     if (std::stoi(seq) > 0) {
-      win->resolve("ipc;0;" + seq + ";" + value);
+      win->resolve("ipc;0;" + seq + ";null");
     }
   });
 
