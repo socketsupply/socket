@@ -30,7 +30,8 @@ Hide the entire app.
 Show the entire app.
 
 ### await system.exit(code: Number)
-Quits the backend process and then quits the render process.
+Quits the backend process and then quits the render process,
+the exit code used is the final exit code to the OS.
 
 ### await system.dialog(options: Object)
 Opens a native file open/save dialog.
