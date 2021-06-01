@@ -50,8 +50,6 @@ int main(int argc, char *argv[])
       << (c++ < argc ? "', " : "'");
   }
 
-  std::cout << readFile("preload.js") << std::endl;
-
   win->init(
     "(() => {"
     "  window.main = window.main || {};\n"

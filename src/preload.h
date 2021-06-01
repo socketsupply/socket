@@ -8,11 +8,16 @@ const IPC = window._ipc = { nextSeq: 1 };
 
 window._ipc.resolve = msg => {
   const data = msg.trim().split(';');
-  const internal = data[0] === 'internal';
   const status = Number(data[1]);
   const seq = Number(data[2]);
   const method = status === 0 ? 'resolve' : 'reject';
-  const value = internal ? data[3] : JSON.parse(decodeURIComponent(data[3]));
+  let value = data[3]
+
+  try {
+    value = JSON.parse(decodeURIComponent(value));
+  } catch (err) {
+    console.warn(err.message)
+  }
 
   if (!window._ipc[seq] || !window._ipc[seq][method]) return
   window._ipc[seq][method](value);
@@ -29,16 +34,14 @@ window._ipc.send = (name, value) => {
     }
   })
 
-  let encoded
+  let encoded = value || ' '
 
-  if (['setTitle', 'openExternal'].includes(name)) {
-    encoded = value || ' '
-  } else if (name === 'contextMenu') {
+  if (name === 'contextMenu') {
     encoded = Object
       .entries(value)
       .flatMap(o => o.join(':'))
       .join('_')
-  } else {
+  } else if (typeof value === 'object') {
     try {
       encoded = encodeURIComponent(JSON.stringify(value))
     } catch (err) {
