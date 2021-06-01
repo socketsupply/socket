@@ -43,6 +43,9 @@ Opens a native context menu.
 
 ## Properties
 
+### window.main.argv: Array<String>
+Provides the arguments that the program was called with.
+
 ### window.main.name: String
 The name as defined in the `settings.congig` file.
 

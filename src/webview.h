@@ -75,54 +75,8 @@ class webview : public browser_engine {
 
     void ipc(const std::string name, binding_t f, void *arg) {
       auto js = "(() => { const name = '" + name + "';" + R"(
-        const IPC = window._ipc = (window._ipc || { nextSeq: 1 });
-
-        window._ipc.resolve = msg => {
-          const data = msg.trim().split(';');
-          const internal = data[0] === 'internal';
-          const status = Number(data[1]);
-          const seq = Number(data[2]);
-          const method = status === 0 ? 'resolve' : 'reject';
-          const value = internal ? data[3] : JSON.parse(decodeURIComponent(data[3]));
-
-          if (!window._ipc[seq] || !window._ipc[seq][method]) return
-          window._ipc[seq][method](value);
-          window._ipc[seq] = undefined;
-        }
-
-        window._ipc.send = (name, value) => {
-          const seq = IPC.nextSeq++
-          const promise = new Promise((resolve, reject) => {
-            IPC[seq] = {
-              resolve: resolve,
-              reject: reject,
-            }
-          })
-
-          let encoded
-
-          if (['setTitle', 'openExternal'].includes(name)) {
-            encoded = value || ' '
-          } else if (name === 'contextMenu') {
-            encoded = Object
-              .entries(value)
-              .flatMap(o => o.join(':'))
-              .join('_')
-          } else {
-            try {
-              encoded = encodeURIComponent(JSON.stringify(value))
-            } catch (err) {
-              return Promise.reject(err.message)
-            }
-          }
-
-          window.external.invoke(`ipc;${seq};${name};${encoded}`)
-          return promise
-        }
-
         window.main[name] = value => window._ipc.send(name, value);
       })()
-      //# sourceURL=opkit.js
       )";
 
       init(js);
@@ -143,7 +97,6 @@ class webview : public browser_engine {
           "  window._ipc[" + seq + "].resolve(`" + result + "`);"
           "  delete window._ipc[" + seq + "];"
           "})();"
-          "//# sourceURL=opkit.js"
         );
       });
     }
@@ -168,7 +121,6 @@ class webview : public browser_engine {
           "  const event = new window.CustomEvent('" + event + "', { detail });"
           "  window.dispatchEvent(event);"
           "})()"
-          "//# sourceURL=opkit.js"
         );
       });
     }

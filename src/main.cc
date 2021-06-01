@@ -1,8 +1,11 @@
 #include "webview.h"
 #include "process.h"
+#include "preload.h"
 
 constexpr auto _settings = SETTINGS;
 constexpr auto _debug = DEBUG;
+
+#define STR(x) #x
 
 #ifdef _WIN32
 #include <direct.h>
@@ -47,17 +50,18 @@ int main(int argc, char *argv[])
       << (c++ < argc ? "', " : "'");
   }
 
+  std::cout << readFile("preload.js") << std::endl;
+
   win->init(
     "(() => {"
-    "  window.main = window.main || {};"
-    "  window.main.name = '" + settings["name"] + "';"
-    "  window.main.version = '" + settings["version"] + "';"
-    "  window.main.debug = " + std::to_string(_debug) + ";"
-    "  window.argv = [" + argvs.str() + "];"
-    "  document.addEventListener('DOMContentLoaded', () => {"
-    "    window.external.invoke('ipc;0;ready;true');"
-    "  });"
+    "  window.main = window.main || {};\n"
+    "  window.main.name = '" + settings["name"] + "';\n"
+    "  window.main.version = '" + settings["version"] + "';\n"
+    "  window.main.debug = " + std::to_string(_debug) + ";\n"
+    "  window.main.argv = [" + argvs.str() + "];\n"
+    "  " + gPreload + "\n"
     "})()"
+    "//# sourceURL=preload.js"
   );
 
   Opkit::Process process(
