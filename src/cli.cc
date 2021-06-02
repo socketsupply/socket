@@ -52,7 +52,7 @@ int main (const int argc, const char* argv[]) {
     std::cout
       << "warning: $CXX environment variable not set, assuming '/usr/bin/g++'."
       << std::endl;
-    setenv("CXX", "/usr/bin/g++", 0);
+    putenv("CXX=/usr/bin/g++");
   }
 
   bool flagRunUserBuild = false;
@@ -264,7 +264,13 @@ int main (const int argc, const char* argv[]) {
   //
   if (platform.win32) {
     log("preparing build for win32");
-    flags = "-mwindows -L./dll/x64 -lwebview -lWebView2Loader";
+    flags =
+      " -mwindows -L./dll/x64 -lwebview -lWebView2Loader"
+      " /I %SOURCE%\script\microsoft.web.webview2.1.0.664.37\build\native\include"
+      " %SOURCE%\script\microsoft.web.webview2.1.0.664.37\build\native\x64\WebView2Loader.dll.lib"
+      " /std:c++17 /EHsc /Fo%DEST%"
+      " %SOURCE%\main.cc /link /OUT:%DEST%\webview.exe";
+
     files += prefixFile("src/main.cc");
     files += prefixFile("process_win32.cc");
     files += prefixFile("src/win32.cc");
