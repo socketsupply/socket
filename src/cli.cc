@@ -266,10 +266,10 @@ int main (const int argc, const char* argv[]) {
     log("preparing build for win32");
     flags =
       " -mwindows -L./dll/x64 -lwebview -lWebView2Loader"
-      " /I %SOURCE%\script\microsoft.web.webview2.1.0.664.37\build\native\include"
-      " %SOURCE%\script\microsoft.web.webview2.1.0.664.37\build\native\x64\WebView2Loader.dll.lib"
+      " /I %SOURCE%\\script\\microsoft.web.webview2.1.0.664.37\\build\\native\\include"
+      " %SOURCE%\\script\\microsoft.web.webview2.1.0.664.37\\build\\native\\x64\\WebView2Loader.dll.lib"
       " /std:c++17 /EHsc /Fo%DEST%"
-      " %SOURCE%\main.cc /link /OUT:%DEST%\webview.exe";
+      " %SOURCE%\\main.cc /link /OUT:%DEST%\\webview.exe";
 
     files += prefixFile("src/main.cc");
     files += prefixFile("process_win32.cc");
@@ -435,13 +435,13 @@ int main (const int argc, const char* argv[]) {
       << " "
       << settings["mac_bundle_identifier"];
 
-    auto stdout = exec(notarizeCommand.str().c_str());
+    auto _stdout = exec(notarizeCommand.str().c_str());
 
     std::regex re(R"(\nRequestUUID = (.+?)\n)");
     std::smatch match;
     std::string uuid;
 
-    if (std::regex_search(stdout, match, re)) {
+    if (std::regex_search(_stdout, match, re)) {
       uuid = match.str(1);
     }
 
@@ -464,13 +464,13 @@ int main (const int argc, const char* argv[]) {
         << " --notarization-info"
         << " " << uuid;
 
-      auto stdout = exec(notarizeStatusCommand.str().c_str());
+      auto _stdout = exec(notarizeStatusCommand.str().c_str());
 
       std::regex re(R"(\n *Status: (.+?)\n)");
       std::smatch match;
       std::string status;
 
-      if (std::regex_search(stdout, match, re)) {
+      if (std::regex_search(_stdout, match, re)) {
         status = match.str(1);
       }
 
@@ -508,9 +508,9 @@ int main (const int argc, const char* argv[]) {
   }
 
   if (flagShouldRun) {
-    auto cmd = std::string(fs::path {
+    auto cmd = pathToString(fs::path {
       pathBin /
-      settings["executable"]
+      (settings["executable"] + ".exe")
     });
 
     std::system(cmd.c_str());
