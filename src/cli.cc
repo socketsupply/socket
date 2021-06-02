@@ -53,7 +53,6 @@ int main (const int argc, const char* argv[]) {
       << "warning: $CXX environment variable not set, assuming '/usr/bin/g++'."
       << std::endl;
     setenv("CXX", "/usr/bin/g++", 0);
-    exit(0);
   }
 
   bool flagRunUserBuild = false;
