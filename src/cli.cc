@@ -508,9 +508,16 @@ int main (const int argc, const char* argv[]) {
   }
 
   if (flagShouldRun) {
+    std::string execName = "";
+    if (platform.linux) {
+      execName = (settings["executable"]);
+    } else {
+      execName = (settings["executable"] + ".exe");
+    }
+
     auto cmd = pathToString(fs::path {
       pathBin /
-      (settings["executable"] + ".exe")
+      execName
     });
 
     std::system(cmd.c_str());
