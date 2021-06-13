@@ -191,4 +191,29 @@ inline std::string prefixFile(std::string s) {
   return std::string("C:\\Program Files\\operator\\build\\" + s + " ");
 }
 
+inline auto getEnv(std::string s) {
+#if _WIN32
+  char *pValue;
+  size_t len;
+  errno_t err = _dupenv_s(&pValue, &len, s.c_str());
+  if (err) return std::string("");
+  return std::string(pValue);
+#else
+  const char* var = getenv(s.c_str());
+  if (var != nullptr) {
+    return std::string(var);
+  }
+
+  return std::string("");
+#endif
+}
+
+inline auto setEnv(std::string s) {
+#if _WIN32
+  return _putenv(s.c_str());
+#else
+  return putenv(s.c_str());
+#endif
+}
+
 #endif // OPKIT_UTIL_HPP_

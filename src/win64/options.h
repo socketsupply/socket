@@ -8,12 +8,14 @@
 #include <objbase.h>
 #include <wrl/implements.h>
 
-#include "webview2.h"
-#define CORE_WEBVIEW_TARGET_PRODUCT_VERSION L"84.0.488.0"
+#include "WebView2.h"
+#define CORE_WEBVIEW_TARGET_PRODUCT_VERSION L"90.0.818.41"
 
 #define COREWEBVIEW2ENVIRONMENTOPTIONS_STRING_PROPERTY(p)     \
  public:                                                      \
   HRESULT STDMETHODCALLTYPE get_##p(LPWSTR* value) override { \
+    if (!value)                                               \
+      return E_POINTER;                                       \
     *value = m_##p.Copy();                                    \
     if ((*value == nullptr) && (m_##p.Get() != nullptr))      \
       return HRESULT_FROM_WIN32(GetLastError());              \
@@ -29,13 +31,29 @@
  protected:                                                   \
   AutoCoMemString m_##p;
 
-// This is a COM class that implements ICoreWebView2EnvironmentOptions.
+#define COREWEBVIEW2ENVIRONMENTOPTIONS_BOOL_PROPERTY(p)     \
+ public:                                                    \
+  HRESULT STDMETHODCALLTYPE get_##p(BOOL* value) override { \
+    if (!value)                                             \
+      return E_POINTER;                                     \
+    *value = m_##p;                                         \
+    return S_OK;                                            \
+  }                                                         \
+  HRESULT STDMETHODCALLTYPE put_##p(BOOL value) override {  \
+    m_##p = value;                                          \
+    return S_OK;                                            \
+  }                                                         \
+                                                            \
+ protected:                                                 \
+  BOOL m_##p = FALSE;
+
+// This is a base COM class that implements ICoreWebView2EnvironmentOptions.
 template <typename allocate_fn_t,
           allocate_fn_t allocate_fn,
           typename deallocate_fn_t,
           deallocate_fn_t deallocate_fn>
 class CoreWebView2EnvironmentOptionsBase
-    : public Microsoft::WRL::RuntimeClass<
+    : public Microsoft::WRL::Implements<
           Microsoft::WRL::RuntimeClassFlags<Microsoft::WRL::ClassicCom>,
           ICoreWebView2EnvironmentOptions> {
  public:
@@ -46,7 +64,7 @@ class CoreWebView2EnvironmentOptionsBase
   }
 
  protected:
-  ~CoreWebView2EnvironmentOptionsBase() override{};
+  ~CoreWebView2EnvironmentOptionsBase(){};
 
   class AutoCoMemString {
    public:
@@ -95,12 +113,32 @@ class CoreWebView2EnvironmentOptionsBase
   COREWEBVIEW2ENVIRONMENTOPTIONS_STRING_PROPERTY(AdditionalBrowserArguments)
   COREWEBVIEW2ENVIRONMENTOPTIONS_STRING_PROPERTY(Language)
   COREWEBVIEW2ENVIRONMENTOPTIONS_STRING_PROPERTY(TargetCompatibleBrowserVersion)
+  COREWEBVIEW2ENVIRONMENTOPTIONS_BOOL_PROPERTY(
+      AllowSingleSignOnUsingOSPrimaryAccount)
 };
 
-typedef CoreWebView2EnvironmentOptionsBase<decltype(&::CoTaskMemAlloc),
-                                           ::CoTaskMemAlloc,
-                                           decltype(&::CoTaskMemFree),
-                                           ::CoTaskMemFree>
+template <typename allocate_fn_t,
+          allocate_fn_t allocate_fn,
+          typename deallocate_fn_t,
+          deallocate_fn_t deallocate_fn>
+class CoreWebView2EnvironmentOptionsBaseClass
+    : public Microsoft::WRL::RuntimeClass<
+          Microsoft::WRL::RuntimeClassFlags<Microsoft::WRL::ClassicCom>,
+          CoreWebView2EnvironmentOptionsBase<allocate_fn_t,
+                                             allocate_fn,
+                                             deallocate_fn_t,
+                                             deallocate_fn>> {
+ public:
+  CoreWebView2EnvironmentOptionsBaseClass() {}
+
+ protected:
+  ~CoreWebView2EnvironmentOptionsBaseClass() override{};
+};
+
+typedef CoreWebView2EnvironmentOptionsBaseClass<decltype(&::CoTaskMemAlloc),
+                                                ::CoTaskMemAlloc,
+                                                decltype(&::CoTaskMemFree),
+                                                ::CoTaskMemFree>
     CoreWebView2EnvironmentOptions;
 
 #endif  // __core_webview2_environment_options_h__

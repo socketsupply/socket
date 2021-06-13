@@ -3,3 +3,5 @@
 /test/example/node_modules
 /build
 /bin/build
+/bin/cli.exe
+/bin/cli

@@ -39,8 +39,8 @@ void log (const std::string s) {
 }
 
 static std::string getCxxFlags() {
-  const char* flags = std::getenv("CXX_FLAGS");
-  return flags ? " " + std::string(flags) : "";
+  auto flags = getEnv("CXX_FLAGS");
+  return flags.size() > 0 ? " " + flags : "";
 }
 
 int main (const int argc, const char* argv[]) {
@@ -48,11 +48,11 @@ int main (const int argc, const char* argv[]) {
     help();
   }
 
-  if (std::getenv("CXX") == nullptr) {
+  if (getEnv("CXX").size() > 0) {
     std::cout
       << "warning: $CXX environment variable not set, assuming '/usr/bin/g++'."
       << std::endl;
-    putenv("CXX=/usr/bin/g++");
+    setEnv("CXX=/usr/bin/g++");
   }
 
   bool flagRunUserBuild = false;
@@ -116,7 +116,7 @@ int main (const int argc, const char* argv[]) {
 
   auto executable = fs::path(platform.darwin
     ? settings["title"]
-    : settings["executable"]);
+    : settings["executable"] + (platform.win32 ? ".exe" : ""));
 
   std::string flags;
   std::string files;
@@ -264,16 +264,13 @@ int main (const int argc, const char* argv[]) {
   //
   if (platform.win32) {
     log("preparing build for win32");
-    flags =
-      " -mwindows -L./dll/x64 -lwebview -lWebView2Loader"
-      " /I %SOURCE%\\script\\microsoft.web.webview2.1.0.664.37\\build\\native\\include"
-      " %SOURCE%\\script\\microsoft.web.webview2.1.0.664.37\\build\\native\\x64\\WebView2Loader.dll.lib"
-      " /std:c++17 /EHsc /Fo%DEST%"
-      " %SOURCE%\\main.cc /link /OUT:%DEST%\\webview.exe";
+    auto prefix = prefixFile("");
 
-    files += prefixFile("src/main.cc");
-    files += prefixFile("process_win32.cc");
-    files += prefixFile("src/win32.cc");
+    flags = " -std=c++20 -I" + prefix + "/win64 -I" + prefix + "/win64";
+
+    files += prefixFile("src\\main.cc");
+    files += prefixFile("src\\process_win32.cc");
+    files += prefixFile("src\\win.cc");
 
     // TODO create paths, copy files, archive, etc.
   }
@@ -313,7 +310,7 @@ int main (const int argc, const char* argv[]) {
   _settings = replace(_settings, "\n", "%%");
 
   compileCommand
-    << " " << std::getenv("CXX")
+    << " " << getEnv("CXX")
     << " " << files
     << " " << flags
     << " " << settings["flags"]
@@ -321,11 +318,11 @@ int main (const int argc, const char* argv[]) {
     << " -DDEBUG=" << (flagDebugMode ? 1 : 0)
     << " " << define("SETTINGS", _settings);
 
-  // log(compileCommand.str());
+  log(compileCommand.str());
   if (flagRunUserBuild == false) {
-    exec(compileCommand.str());
+    // exec(compileCommand.str());
     log("compiled native binary");
-  }
+  } 
 
   //
   // Linux Packaging
