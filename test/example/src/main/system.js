@@ -4,6 +4,16 @@
 import fs from 'fs'
 import util from 'util'
 
+function installWebView () {
+  //
+  // this will go away in the near future. WebView2 is a new feature
+  // and we want to be sure the user has it, if they don't, download
+  // and install it for them.
+  //`
+
+  // fetch('https://go.microsoft.com/fwlink/p/?LinkId=2124703')
+}
+
 process.stdin.resume()
 process.stdin.setEncoding('utf8')
 
@@ -53,6 +63,12 @@ api.receive = fn => {
     let status = msg[1]
     const seq = msg[2]
     const value = msg[3]
+
+    if (process.platform === 'win32') {
+      if (value === '0xDEADBEEF') {
+        return installWebView()
+      }
+    }
 
     let result = ''
     try {
