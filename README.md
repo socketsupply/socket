@@ -32,13 +32,13 @@ UIs that can run any arbitrary backend process.
 # INSTALL
 Transparent install scripts. Please inspect before running.
 
-## Linux or MacOS
+## Linux or MacOS Bash/Zsh
 ```bash
 curl -o- https://raw.githubusercontent.com/optoolco/opkit/master/bin/bootstrap.sh | bash -s install
 ```
 
-## Windows
-```ps
+## Windows Powershell
+```ps1
 & $([scriptblock]::Create((New-Object Net.WebClient).DownloadString("https://raw.githubusercontent.com/optoolco/opkit/master/bin/bootstrap.ps1"))) -Install
 ```
 
