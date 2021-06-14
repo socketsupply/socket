@@ -2,6 +2,10 @@
 #include "util.h"
 #include "cli.h"
 
+#ifdef _WIN32
+#include <Windows.h> // for unicode console support
+#endif
+
 constexpr auto version = STR_VALUE(VERSION);
 
 void help () {
@@ -30,6 +34,10 @@ void help () {
 auto start = std::chrono::system_clock::now();
 
 void log (const std::string s) {
+#ifdef _WIN32 // unicode console support
+    SetConsoleOutputCP(CP_UTF8);
+    setvbuf(stdout, nullptr, _IOFBF, 1000);
+#endif
   using namespace std::chrono;
 
   auto now = system_clock::now();
@@ -44,15 +52,20 @@ static std::string getCxxFlags() {
 }
 
 int main (const int argc, const char* argv[]) {
+
   if (argc < 2) {
     help();
   }
 
-  if (getEnv("CXX").size() > 0) {
+  if (getEnv("CXX").size() == 0) {
     std::cout
       << "warning: $CXX environment variable not set, assuming '/usr/bin/g++'."
       << std::endl;
-    setEnv("CXX=/usr/bin/g++");
+    if (platform.win32) {
+      setEnv("CXX=C:\\Program Files\\LLVM\\bin\\clang++.exe");
+    } else {
+      setEnv("CXX=/usr/bin/g++");
+    }
   }
 
   bool flagRunUserBuild = false;

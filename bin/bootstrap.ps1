@@ -6,6 +6,10 @@ $TEMP_PATH = Join-Path $Env:Temp $(New-Guid)
 $INSTALL_PATH = "$env:LOCALAPPDATA\Programs\optoolco"
 $WORKING_PATH = $OLD_CWD
 
+Write-Output ""
+Write-Output "Consider adding '%LOCALAPPDATA%\Programs\optoolco' to your path."
+Write-Output ""
+
 if (Test-Path -Path $INSTALL_PATH) {
     Remove-Item -Recurse -Force $INSTALL_PATH
     Write-Output "$([char]0x2666) Cleaned $INSTALL_PATH"
