@@ -136,5 +136,47 @@ Description: {{title}}
  {{description}}
 )DEB";
 
+constexpr auto gWindowsAppManifest = R"XML(
+<?xml version="1.0" encoding="utf-8"?>
+<Package
+	xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+  xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+  xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities">
+  <Identity
+    Name="{{title}}"
+    Version="{{versionShort}}"
+    Publisher="{{maintainer}}"
+    ProcessorArchitecture="{{arch}}" />
+    <Properties>
+       <DisplayName>{{title}}</DisplayName>
+       <PublisherDisplayName>{{maintainer}}</PublisherDisplayName>
+			 <Description>{{description}}</Description>
+      <Logo>icon.png</Logo>
+    </Properties>
+    <Resources>
+      <Resource Language="{{lang}}" />
+    </Resources>
+	  <Dependencies>
+	    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="" MaxVersionTested="" />
+	  </Dependencies>
+	  <Capabilities>
+	    <rescap:Capability Name="runFullTrust"/>
+	  </Capabilities>
+    <Applications>
+      <Application
+        Id="{{title}}"
+        Executable="{{executable}}"
+        EntryPoint="Windows.FullTrustApplication">
+          <uap:VisualElements
+            DisplayName="{{title}}"
+            Description="{{description}}"
+            Square150x150Logo="{{icon.png}}"
+				    Square44x44Logo=""
+            BackgroundColor="" />
+      </Application>
+     </Applications>
+  </Package>
+)XML";
+
 // TODO what files does a windows build need?
 

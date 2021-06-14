@@ -289,12 +289,20 @@ int main (const int argc, const char* argv[]) {
       settings["version"]
     ));
 
-    pathResourcesRelativeToUserBuild = {
-      settings["output"] /
-      packageName
+    pathPackage = { fs::current_path() / target / pathOutput / packageName };
+
+    pathResourcesRelativeToUserBuild = pathPackage;
+
+    fs::create_directories(pathPackage);
+
+    auto p = fs::path {
+      pathResourcesRelativeToUserBuild /
+      "AppxManifest.xml"
     };
 
-    // TODO create paths, copy files, archive, etc.
+    writeFile(p, tmpl(gWindowsAppManifest, settings));
+
+    // TODO Copy the files into place
   }
 
   log("package prepared");
@@ -522,8 +530,8 @@ int main (const int argc, const char* argv[]) {
   //
   if (platform.win32) {
     //
+    // https://docs.microsoft.com/en-us/windows/win32/appxpkg/how-to-create-a-package
     // https://www.digicert.com/kb/code-signing/signcode-signtool-command-line.htm
-    // https://github.com/wixtoolset/
     //
   }
 
