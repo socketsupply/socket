@@ -45,28 +45,9 @@ Function Install-Files {
     Copy-Item -Path "$WORKING_PATH\src\*" -Destination $INSTALL_PATH\src -Recurse
 }
 
-#
-# Set up the path for the user, cool Windows feature actually.
-#
-Function Install-Path {
-    $IN_PATH=$env:Path -split ';' -contains $INSTALL_PATH
-
-    if ($IN_PATH -ne 1) {
-        If (-NOT ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) {    
-            Write-Output "$([char]0x2666) You are not admin, so the path can not be modified. It's safe to run this script again as admin."
-            break
-        }
-
-        Write-Output "$([char]0x2666) Installing Path."
-        $OLD_PATH = (Get-ItemProperty -Path 'Registry::HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Session Manager\Environment' -Name PATH).path
-        Set-ItemProperty -Path 'Registry::HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Session Manager\Environment' -Name PATH -Value $INSTALL_PATH
-    }
-}
-
 if ($args.Count -eq 0) {
     Build
     Install-Files
-    Install-Path
     Exit 0
 } else {
     WORKING_PATH = $TMPD
@@ -99,7 +80,6 @@ Write-Output "$([char]0x2666) Fetching files..."
 cd $WORKING_PATH
 
 Build
-Install-Path
 Install-Files
 
 cd $OLD_CWD
