@@ -1,6 +1,6 @@
-import path from 'node:path'
-import fs from 'node:fs/promises'
-import { execSync as exec } from 'node:child_process'
+import path from 'path'
+import fs from 'fs/promises'
+import { execSync as exec } from 'child_process'
 
 import CleanCSS from 'clean-css'
 import stylus from 'stylus'

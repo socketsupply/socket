@@ -3,7 +3,7 @@
 #include "cli.h"
 
 #ifdef _WIN32
-#include <Windows.h> // for unicode console support
+#include "win.h"
 #endif
 
 constexpr auto version = STR_VALUE(VERSION);
@@ -58,9 +58,8 @@ int main (const int argc, const char* argv[]) {
   }
 
   if (getEnv("CXX").size() == 0) {
-    std::cout
-      << "warning: $CXX environment variable not set, assuming '/usr/bin/g++'."
-      << std::endl;
+    log("warning! $CXX env var not set, assuming defaults");
+
     if (platform.win32) {
       setEnv("CXX=C:\\Program Files\\LLVM\\bin\\clang++.exe");
     } else {
@@ -285,6 +284,16 @@ int main (const int argc, const char* argv[]) {
     files += prefixFile("src\\process_win32.cc");
     files += prefixFile("src\\win.cc");
 
+    packageName = fs::path((
+      settings["executable"] + "-" +
+      settings["version"]
+    ));
+
+    pathResourcesRelativeToUserBuild = {
+      settings["output"] /
+      packageName
+    };
+
     // TODO create paths, copy files, archive, etc.
   }
 
@@ -296,18 +305,19 @@ int main (const int argc, const char* argv[]) {
   // should send their build artifacts.
   //
   std::stringstream buildCommand;
-
+  auto oldCwd = std::filesystem::current_path();
+  std::filesystem::current_path(fs::path { oldCwd / target });
+  
   buildCommand
-    << " cd "
-    << pathToString(target)
-    << " && "
     << settings["build"]
     << " "
     << pathToString(pathResourcesRelativeToUserBuild);
 
-  // log(buildCommand.str());
+  log(buildCommand.str());
   std::system(buildCommand.str().c_str());
   log("ran user build command");
+
+  std::filesystem::current_path(oldCwd);
 
   std::stringstream compileCommand;
   fs::path binaryPath = { pathBin / executable };

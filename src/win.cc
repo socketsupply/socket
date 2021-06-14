@@ -4,25 +4,16 @@
 #pragma comment(lib,"version.lib")
 #pragma comment(lib,"user32.lib")
 #pragma comment(lib,"WebView2LoaderStatic.lib")
+#include "win.h"
 #include "win64/WebView2.h"
 #include <tchar.h>
 #include <wrl.h>
-#include <windows.h>
 #include <stdlib.h>
 #include <string>
 #include <iostream>
 #include <sstream>
 #include <cstring>
 #include <algorithm>
-
-std::wstring ExePath() {
-  TCHAR buffer[MAX_PATH] = { 0 };
-  DWORD len = GetModuleFileName(NULL, buffer, MAX_PATH);
-  std::wstring ws;
-  ws.assign(&buffer[0], &buffer[len]);
-  std::wstring::size_type pos = ws.find_last_of(L"\\/");
-  return ws.substr(0, pos);
-}
  
 static ICoreWebView2Controller *m_webviewController;
 static ICoreWebView2 *m_webview;
@@ -147,7 +138,7 @@ int CALLBACK WinMain(
             );
 
             std::wstringstream url;
-            url << "file://" << ExePath() << "/index.html";
+            url << "file://" << getExec() << "/index.html";
             m_webview->Navigate(url.str().c_str());
 
             return S_OK;
