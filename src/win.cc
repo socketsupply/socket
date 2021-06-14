@@ -7,9 +7,6 @@
 #include "win64/WebView2.h"
 #include <tchar.h>
 #include <wrl.h>
-
-// https://go.microsoft.com/fwlink/p/?LinkId=2124703
-
 #include <windows.h>
 #include <stdlib.h>
 #include <string>
@@ -78,6 +75,11 @@ int CALLBACK WinMain(
 
   ShowWindow(hWnd, nCmdShow);
   UpdateWindow(hWnd);
+
+  HMENU hMenuPopup,hMenuPopup2;
+
+  hMenu = CreateMenu();
+  hMenuPopup = CreateMenu();
 
   auto hr = CreateCoreWebView2EnvironmentWithOptions(
     nullptr,
