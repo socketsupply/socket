@@ -237,7 +237,7 @@ inline std::string prefixFile() {
 
 #ifdef _WIN32
 inline std::wstring Str(const std::string& s) {
-  std::wstring temp(s.length(),L' ');
+  std::wstring temp(s.length(), L' ');
   std::copy(s.begin(), s.end(), temp.begin());
   return temp; 
 }
@@ -247,6 +247,7 @@ inline std::string Str(const std::wstring& s) {
   std::copy(s.begin(), s.end(), temp.begin());
   return temp;
 }
+
 #else
 #define Str
 #endif

@@ -5,11 +5,11 @@
   "type": "module",
   "devDependencies": {
     "clean-css": "^5.1.1",
-    "esbuild": "^0.8.56",
     "stylus": "^0.54.8"
   },
   "dependencies": {
     "@optoolco/components": "^12.3.8",
-    "@optoolco/tonic": "^13.3.5"
+    "@optoolco/tonic": "^13.3.5",
+    "esbuild": "^0.12.8"
   }
 }

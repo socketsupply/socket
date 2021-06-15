@@ -59,8 +59,8 @@ async function main () {
 
   // TODO Since we don't have ASAR, why not GZip?
 
-  exec(`cp src/render/index.html ${target}`)
-  exec(`cp src/icons/icon.icns ${target}`)
+  await fs.copyFile('src/render/index.html', path.join(target, 'index.html'))
+  await fs.copyFile('src/icons/icon.icns', path.join(target, 'index.icns'))
 }
 
 main()
