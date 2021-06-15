@@ -54,6 +54,8 @@ namespace Opkit {
 
     edge_engine(bool debug, void *hInstance)
       : hInstance((_In_ HINSTANCE) hInstance) {
+        
+      ::SetProcessDPIAware();
       createWindow();
     }
 
