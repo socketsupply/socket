@@ -1,20 +1,30 @@
-#define UNICODE
-#pragma comment(lib,"advapi32.lib")
-#pragma comment(lib,"shell32.lib")
-#pragma comment(lib,"version.lib")
-#pragma comment(lib,"user32.lib")
-#pragma comment(lib,"WebView2LoaderStatic.lib")
+#include "util.h"
 #include "win.h"
-#include "win64/WebView2.h"
-#include <tchar.h>
-#include <wrl.h>
-#include <stdlib.h>
-#include <string>
-#include <iostream>
-#include <sstream>
-#include <cstring>
-#include <algorithm>
- 
+
+std::string getCwd(const std::string) {
+  return pathToString(fs::current_path());
+}
+
+std::string createNativeDialog(
+  int flags,
+  const char *_,
+  const char *default_path,
+  const char *default_name)
+  {
+  return std::string("");
+}
+
+/*
+
+inline std::wstring getExec() {
+  TCHAR buffer[MAX_PATH] = { 0 };
+  DWORD len = GetModuleFileName(NULL, buffer, MAX_PATH);
+  std::wstring ws;
+  ws.assign(&buffer[0], &buffer[len]);
+  std::wstring::size_type pos = ws.find_last_of(L"\\/");
+  return ws.substr(0, pos);
+}
+
 static ICoreWebView2Controller *m_webviewController;
 static ICoreWebView2 *m_webview;
 
@@ -239,4 +249,4 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
   }
 
   return 0;
-}
+} */

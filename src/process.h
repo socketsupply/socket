@@ -50,17 +50,11 @@ public:
 #ifdef _WIN32
   typedef unsigned long id_type; // Process id type
   typedef void *fd_type;         // File descriptor type
-#ifdef UNICODE
-  typedef std::wstring string_type;
-#else
-  typedef std::string string_type;
-#endif
 #else
   typedef pid_t id_type;
   typedef int fd_type;
   typedef std::string string_type;
 #endif
-  typedef std::unordered_map<string_type, string_type> environment_type;
 
 private:
   class Data {
@@ -75,8 +69,8 @@ private:
 
 public:
   Process(
-    const string_type &command,
-    const string_type &path = string_type(),
+    const std::string &command,
+    const std::string &path = std::string(""),
     cb read_stdout = nullptr,
     cb read_stderr = nullptr,
     bool open_stdin = true,
@@ -130,7 +124,7 @@ private:
 
   std::unique_ptr<fd_type> stdout_fd, stderr_fd, stdin_fd;
 
-  id_type open(const string_type &command, const string_type &path) noexcept;
+  id_type open(const std::string &command, const std::string &path) noexcept;
 #ifndef _WIN32
   id_type open(const std::function<void()> &function) noexcept;
 #endif
@@ -143,8 +137,8 @@ inline bool Process::write(const std::string &str) {
 };
 
 inline Process::Process(
-  const string_type &command,
-  const string_type &path,
+  const std::string &command,
+  const std::string &path,
   cb read_stdout,
   cb read_stderr,
   bool open_stdin,

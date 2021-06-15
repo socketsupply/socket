@@ -15,13 +15,7 @@ if (Test-Path -Path $INSTALL_PATH) {
     Write-Output "$([char]0x2666) Cleaned $INSTALL_PATH"
 }
 
-try {
-    (New-Item -ItemType Directory -Force -Path $INSTALL_PATH) > $null
-} catch {
-    Write-Error "Unable to create directory '$INSTALL_PATH'"
-    Exit 1
-}
-
+(New-Item -ItemType Directory -Force -Path $INSTALL_PATH) > $null
 Write-Output "$([char]0x2666) Created $INSTALL_PATH"
 
 #
@@ -46,7 +40,8 @@ Function Install-Files {
     Write-Output "$([char]0x2666) Installing Files."
 
     Copy-Item $WORKING_PATH\bin\cli.exe -Destination $INSTALL_PATH\opkit.exe
-    Copy-Item -Path "$WORKING_PATH\src\*" -Destination $INSTALL_PATH\src -Recurse
+    Copy-Item -Path $WORKING_PATH\src\* -Destination $INSTALL_PATH\src -Recurse
+    Copy-Item -Path $WORKING_PATH\src\* -Destination $INSTALL_PATH\src -Recurse -Container
 }
 
 if ($args.Count -eq 0) {

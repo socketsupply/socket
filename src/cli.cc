@@ -2,10 +2,6 @@
 #include "util.h"
 #include "cli.h"
 
-#ifdef _WIN32
-#include "win.h"
-#endif
-
 constexpr auto version = STR_VALUE(VERSION);
 
 void help () {
@@ -61,7 +57,7 @@ int main (const int argc, const char* argv[]) {
     log("warning! $CXX env var not set, assuming defaults");
 
     if (platform.win32) {
-      setEnv("CXX=C:\\Program Files\\LLVM\\bin\\clang++.exe");
+      setEnv("CXX=clang++");
     } else {
       setEnv("CXX=/usr/bin/g++");
     }
@@ -276,9 +272,9 @@ int main (const int argc, const char* argv[]) {
   //
   if (platform.win32) {
     log("preparing build for win32");
-    auto prefix = prefixFile("");
+    auto prefix = prefixFile();
 
-    flags = " -std=c++20 -I" + prefix + "/win64 -I" + prefix + "/win64";
+    flags = " -std=c++20 -I" + prefix + " -I" + prefix + "\\src\\win64" + " -L" + prefix + "\\src\\win64";
 
     files += prefixFile("src\\main.cc");
     files += prefixFile("src\\process_win32.cc");
@@ -290,6 +286,7 @@ int main (const int argc, const char* argv[]) {
     ));
 
     pathPackage = { fs::current_path() / target / pathOutput / packageName };
+    pathBin = pathPackage;
 
     pathResourcesRelativeToUserBuild = pathPackage;
 
@@ -330,14 +327,9 @@ int main (const int argc, const char* argv[]) {
   std::stringstream compileCommand;
   fs::path binaryPath = { pathBin / executable };
 
-  // Create flags for compile-time definitions.
-  std::string flagPrefix = platform.win32 ? "/" : "-";
-  auto define = [&](const std::string label, const std::string s) -> std::string {
-    return std::string(flagPrefix + "D" + label + "=\"\\\"" + s + "\\\"\"");
-  };
-
-  // Serialize the settings to pass them to the compiler
-  // by replacing new lines with a high bit.
+  // Serialize the settings and strip the comments so that we can pass
+  // them to the compiler by replacing new lines with a high bit.
+  _settings = replace(_settings, "#(.*?)\n", "");
   _settings = replace(_settings, "\n", "%%");
 
   compileCommand
@@ -347,11 +339,12 @@ int main (const int argc, const char* argv[]) {
     << " " << settings["flags"]
     << " -o " << pathToString(binaryPath)
     << " -DDEBUG=" << (flagDebugMode ? 1 : 0)
-    << " " << define("SETTINGS", _settings);
+    << " -DSETTINGS=\"" << _settings << "\""
+  ;
 
   log(compileCommand.str());
   if (flagRunUserBuild == false) {
-    // exec(compileCommand.str());
+    auto r = exec(compileCommand.str());
     log("compiled native binary");
   } 
 

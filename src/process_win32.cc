@@ -36,19 +36,8 @@ private:
 //Based on the discussion thread: https://www.reddit.com/r/cpp/comments/3vpjqg/a_new_platform_independent_process_library_for_c11/cxq1wsj
 std::mutex create_process_mutex;
 
-Process::id_type Process::open(const std::vector<string_type> &arguments, const string_type &path) noexcept {
-  string_type command;
-  for(auto &argument : arguments)
-#ifdef UNICODE
-    command += (command.empty() ? L"" : L" ") + argument;
-#else
-    command += (command.empty() ? "" : " ") + argument;
-#endif
-  return open(command, path);
-}
-
 //Based on the example at https://msdn.microsoft.com/en-us/library/windows/desktop/ms682499(v=vs.85).aspx.
-Process::id_type Process::open(const string_type &command, const string_type &path) noexcept {
+Process::id_type Process::open(const std::string &command, const std::string &path) noexcept {
   if(open_stdin)
     stdin_fd = std::unique_ptr<fd_type>(new fd_type(nullptr));
   if(read_stdout)
@@ -98,6 +87,7 @@ Process::id_type Process::open(const string_type &command, const string_type &pa
   startup_info.hStdInput = stdin_rd_p;
   startup_info.hStdOutput = stdout_wr_p;
   startup_info.hStdError = stderr_wr_p;
+  
   if(stdin_fd || stdout_fd || stderr_fd)
     startup_info.dwFlags |= STARTF_USESTDHANDLES;
 
@@ -165,7 +155,7 @@ void Process::read() noexcept {
         BOOL bSuccess = ReadFile(*stdout_fd, static_cast<CHAR *>(buffer.get()), static_cast<DWORD>(config.buffer_size), &n, nullptr);
         if(!bSuccess || n == 0)
           break;
-        read_stdout(string_type(buffer.get()));
+        read_stdout(std::string(buffer.get()));
       }
     });
   }
@@ -178,7 +168,7 @@ void Process::read() noexcept {
         BOOL bSuccess = ReadFile(*stderr_fd, static_cast<CHAR *>(buffer.get()), static_cast<DWORD>(config.buffer_size), &n, nullptr);
         if(!bSuccess || n == 0)
           break;
-        read_stderr(buffer.get(), static_cast<size_t>(n));
+        read_stderr(std::string(buffer.get()));
       }
     });
   }

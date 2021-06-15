@@ -2,26 +2,27 @@
 #include "process.h"
 #include "preload.h"
 
-constexpr auto _settings = SETTINGS;
+constexpr auto _settings = STR_VALUE(SETTINGS);
 constexpr auto _debug = DEBUG;
 
-#define STR(x) #x
-
 #ifdef _WIN32
-#include <direct.h>
-
 int CALLBACK WinMain(
-  HINSTANCE hInstance,
-  HINSTANCE hPrevInstance,
-  LPSTR lpCmdLine,
-  int nCmdShow)
-#else
-#include <unistd.h>
+  _In_ HINSTANCE hInstance,
+  _In_ HINSTANCE hPrevInstance,
+  _In_ LPSTR lpCmdLine,
+  _In_ int nCmdShow) {
 
-int main(int argc, char *argv[])
-#endif
-{
+  static auto win = std::make_unique<Opkit::webview>(true, hInstance);
+
+  int argc = __argc;
+  char** argv = __argv;
+
+#else
+int main(int argc, char *argv[]) {
+
   static auto win = std::make_unique<Opkit::webview>(true, nullptr);
+
+#endif
 
   auto cwd = getCwd(argv[0]);
   bool isDocumentReady = false;
@@ -78,23 +79,23 @@ int main(int argc, char *argv[])
   Opkit::Process process(
     settings["cmd"] + argvForward.str(),
     cwd,
-    [&](auto stdout) {
+    [&](auto out) {
       while (!isDocumentReady) {
         std::this_thread::sleep_for(std::chrono::milliseconds(16));
       }
 
-      if (stdout.find("binding;") == 0) {
-        win->binding(replace(stdout, "binding;", ""));
-      } else if (stdout.find("stdout;") == 0) {
-        std::cout << stdout.substr(7) << std::endl;
-      } else if (stdout.find("ipc;") == 0) {
-        win->resolve(stdout);
+      if (out.find("binding;") == 0) {
+        win->binding(replace(out, "binding;", ""));
+      } else if (out.find("out;") == 0) {
+        std::cout << out.substr(7) << std::endl;
+      } else if (out.find("ipc;") == 0) {
+        win->resolve(out);
       } else {
-        win->emit("data", stdout);
+        win->emit("data", out);
       }
     },
-    [](auto stderr) {
-      std::cerr << stderr << std::endl;
+    [](auto err) {
+      std::cerr << err << std::endl;
     }
   );
 

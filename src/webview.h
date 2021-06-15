@@ -10,18 +10,6 @@ typedef void *webview_t;
 
 #ifndef WEBVIEW_HEADER
 
-#if !defined(WEBVIEW_GTK) && !defined(WEBVIEW_COCOA) && !defined(WEBVIEW_EDGE)
-#if defined(__linux__)
-#define WEBVIEW_GTK
-#elif defined(__APPLE__)
-#define WEBVIEW_COCOA
-#elif defined(_WIN32)
-#define WEBVIEW_EDGE
-#else
-#error "please, specify webview backend"
-#endif
-#endif
-
 #include <functional>
 #include <map>
 #include <string>
@@ -31,19 +19,13 @@ namespace Opkit {
   std::map<std::string, std::string> appData;
 } // namespace Opkit
 
-#if defined(WEBVIEW_GTK)
-
+#ifdef __linux__
 #include "linux.h"
-
-#elif defined(WEBVIEW_COCOA)
-
+#elif __APPLE__
 #include "darwin.h"
-
-#elif defined(WEBVIEW_EDGE)
-
-#include "win32.h"
-
-#endif /* WEBVIEW_GTK, WEBVIEW_COCOA, WEBVIEW_EDGE */
+#elif _WIN32
+#include "win.h"
+#endif
 
 namespace Opkit {
 

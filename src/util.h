@@ -13,41 +13,43 @@
 #include <thread>
 #include <span>
 #include <filesystem>
-
 #include <memory>
 #include <mutex>
 
-#define TO_STR(arg) #arg
+#ifdef _WIN32
+#include <Windows.h>
+
+#ifdef _WIN32
+#ifdef UNICODE
+  typedef std::wstring string_type;
+#else
+  typedef std::string string_type;
+#endif
+#endif
+
+#else
+#include <unistd.h>
+#endif
+
+#define TO_STR(arg) "#arg"
 #define STR_VALUE(arg) TO_STR(arg)
 
-#if defined(_WIN32) || defined(WIN32) || defined(__CYGWIN__) || defined(__MINGW32__) || defined(__BORLANDC__)
-#define OS_WIN32
-#endif
-
-#ifdef __APPLE__
-#define OS_DARWIN
-#endif
-
-#ifdef __linux__
-#define OS_LINUX
-#endif
-
 struct {
-#ifdef OS_LINUX
+#ifdef __linux__
   bool darwin = false;
   bool win32 = false;
   bool linux = true;
   const std::string os = "linux";
 #endif
 
-#ifdef OS_DARWIN
+#ifdef __APPLE__
   bool darwin = true;
   bool win32 = false;
   bool linux = false;
   const std::string os = "darwin";
 #endif
 
-#ifdef OS_WIN32
+#ifdef _WIN32
   bool darwin = false;
   bool win32 = true;
   bool linux = false;
@@ -223,5 +225,30 @@ inline std::string prefixFile(std::string s) {
   std::string local = getEnv("LOCALAPPDATA");
   return std::string(local + "\\Programs\\optoolco\\" + s + " ");
 }
+
+inline std::string prefixFile() {
+  if (platform.darwin || platform.linux) {
+    return std::string("/usr/local/lib/opkit");
+  }
+
+  std::string local = getEnv("LOCALAPPDATA");
+  return std::string(local + "\\Programs\\optoolco");
+}
+
+#ifdef _WIN32
+inline std::wstring Str(const std::string& s) {
+  std::wstring temp(s.length(),L' ');
+  std::copy(s.begin(), s.end(), temp.begin());
+  return temp; 
+}
+
+inline std::string Str(const std::wstring& s) {
+  std::string temp(s.length(), ' ');
+  std::copy(s.begin(), s.end(), temp.begin());
+  return temp;
+}
+#else
+#define Str
+#endif
 
 #endif // OPKIT_UTIL_HPP_
