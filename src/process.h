@@ -38,7 +38,7 @@ struct Config {
     force_minimize = 11
   };
   /// On Windows only: controls how the window is shown.
-  ShowWindow show_window{ShowWindow::show_default};
+  ShowWindow show_window { ShowWindow::show_default };
 };
 
 /// Platform independent class for creating processes.

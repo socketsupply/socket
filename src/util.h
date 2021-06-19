@@ -31,7 +31,7 @@
 #include <unistd.h>
 #endif
 
-#define TO_STR(arg) "#arg"
+#define TO_STR(arg) #arg
 #define STR_VALUE(arg) TO_STR(arg)
 
 struct {
@@ -163,6 +163,12 @@ inline std::string readFile(fs::path path) {
 
 inline void writeFile (fs::path path, std::string s) {
   std::ofstream stream(pathToString(path));
+  stream << s;
+  stream.close();
+}
+
+inline void writeLog (std::string s) {
+  std::ofstream stream("log.txt");
   stream << s;
   stream.close();
 }

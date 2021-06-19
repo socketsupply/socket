@@ -17,6 +17,8 @@ int CALLBACK WinMain(
   int argc = __argc;
   char** argv = __argv;
 
+  win->createWindow();
+
 #else
 int main(int argc, char *argv[]) {
 
@@ -24,7 +26,7 @@ int main(int argc, char *argv[]) {
 
 #endif
 
-  auto cwd = getCwd(argv[0]);
+  auto cwd = Str(getCwd(argv[0]));
   bool isDocumentReady = false;
   auto settings = parseConfig(replace(_settings, "%%", "\n"));
   Opkit::appData = settings;
@@ -80,6 +82,7 @@ int main(int argc, char *argv[]) {
     settings["cmd"] + argvForward.str(),
     cwd,
     [&](auto out) {
+      writeLog(out);
       while (!isDocumentReady) {
         std::this_thread::sleep_for(std::chrono::milliseconds(16));
       }
@@ -95,6 +98,7 @@ int main(int argc, char *argv[]) {
       }
     },
     [](auto err) {
+      writeLog(err);
       std::cerr << err << std::endl;
     }
   );

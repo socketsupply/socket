@@ -1,4 +1,5 @@
-const Tonic = require('@optoolco/tonic')
+console.log('render script loaded')
+/* const Tonic = require('@optoolco/tonic')
 const Components = require('@optoolco/components')
 
 Components(Tonic)
@@ -177,49 +178,5 @@ window.onload = async () => {
 
   // https://developer.apple.com/library/archive/documentation/AppleApplications/Conceptual/SafariJSProgTopics/DragAndDrop.html
 
-  /* dd.addEventListener('dragover', e => {
-    e.preventDefault()
-    return true
-  })
-
-  dd.addEventListener('dragstart', e => {
-    return true
-  })
-
-  dd.addEventListener('dragend', _ => {
-    const data = event.dataTransfer.items
-    return true
-  })
-
-  document.body.addEventListener('drag', (e) => {
-    console.log(e)
-  })
-
-  document.body.addEventListener('dragover', (e) => {
-    console.log(e)
-    e.preventDefault()
-    return true
-  })
-
-  document.body.addEventListener('drop', (e) => {
-    console.log(e)
-    e.preventDefault()
-  })
-
-  document.body.addEventListener('dragenter', (e) => {
-    console.log(e)
-    e.preventDefault()
-    return true
-  })
-
-  document.body.addEventListener('dragstart', (e) => {
-    console.log(e)
-    return true
-  })
-
-  document.body.addEventListener('dragend', (e) => {
-    console.log(e)
-  }) */
-
   // await invokeIPC('onload')
-}
+} */

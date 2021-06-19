@@ -1,9 +1,9 @@
 #include "util.h"
 #include "win.h"
 
-std::string getCwd(const std::string) {
-  return pathToString(fs::current_path());
-}
+// std::string getCwd(const std::string) {
+//  return pathToString(fs::current_path());
+// }
 
 std::string createNativeDialog(
   int flags,

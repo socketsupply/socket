@@ -15,18 +15,20 @@
 #include <cstring>
 #include <algorithm>
 #include <stdio.h>
+#include <future>
 
 #include "util.h"
 #include "win64/WebView2.h"
 
 namespace fs = std::filesystem;
 
-std::string getCwd (const std::string);
+// std::string getCwd (const std::string);
 
-inline std::wstring getExec() {
+inline std::wstring getCwd(const std::string) {
   wchar_t filename[MAX_PATH];
   GetModuleFileNameW(NULL, filename, MAX_PATH);
-  return filename;
+  auto path = fs::path { Str(filename) }.remove_filename();
+  return Str(pathToString(path));
 }
 
 inline void alert (const std::wstring &ws) {
@@ -35,6 +37,10 @@ inline void alert (const std::wstring &ws) {
 
 inline void alert (const std::string &s) {
   MessageBoxA(nullptr, s.c_str(), _TEXT("Alert"), MB_OK | MB_ICONSTOP);
+}
+
+inline void alert (const char* s) {
+  MessageBoxA(nullptr, s, _TEXT("Alert"), MB_OK | MB_ICONSTOP);
 }
 
 std::string createNativeDialog(
@@ -54,12 +60,11 @@ namespace Opkit {
 
     edge_engine(bool debug, void *hInstance)
       : hInstance((_In_ HINSTANCE) hInstance) {
-        
       ::SetProcessDPIAware();
-      createWindow();
     }
 
     void createWindow () {
+      std::promise<bool> ready;
       auto *szWindowClass = L"DesktopApp";
       auto *szTitle = L"Opkit";
       WNDCLASSEX wcex;
@@ -82,7 +87,7 @@ namespace Opkit {
         return;
       }
 
-      m_window = CreateWindow(
+      window_primary = CreateWindow(
         TEXT("DesktopApp"),
         TEXT("Opkit"),
         WS_OVERLAPPEDWINDOW,
@@ -94,15 +99,35 @@ namespace Opkit {
         NULL
       );
 
-      if (!m_window) {
+      if (!window_primary) {
         MessageBox(nullptr, nullptr, TEXT("Unable to create window!"), MB_OK | MB_ICONSTOP);
         return;
       }
 
-      ShowWindow(m_window, SW_SHOW);
-      UpdateWindow(m_window);
+      ShowWindow(window_primary, SW_SHOW);
+      UpdateWindow(window_primary);
 
-      createWebview();
+      window_secondary = CreateWindow(
+        TEXT("DesktopApp"),
+        TEXT("Opkit"),
+        WS_OVERLAPPEDWINDOW,
+        CW_USEDEFAULT, CW_USEDEFAULT,
+        240, 400,
+        NULL,
+        NULL,
+        hInstance,
+        NULL
+      );
+
+      if (!window_secondary) {
+        MessageBox(nullptr, nullptr, TEXT("Unable to create window!"), MB_OK | MB_ICONSTOP);
+        return;
+      }
+
+      ShowWindow(window_secondary, SW_SHOW);
+      UpdateWindow(window_secondary);
+
+      // createWebview();
     }
 
     void createWebview () {
@@ -112,70 +137,70 @@ namespace Opkit {
         nullptr,
         Microsoft::WRL::Callback<ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler>(
           [=](HRESULT result, ICoreWebView2Environment* env) -> HRESULT {
+            environment = env;
 
             env->CreateCoreWebView2Controller(
-              m_window,
+              window_primary,
               Microsoft::WRL::Callback<ICoreWebView2CreateCoreWebView2ControllerCompletedHandler>(
-              [=](HRESULT result, ICoreWebView2Controller* controller) -> HRESULT {
-                if (controller != nullptr) {
-                  m_webviewController = controller;
-                  m_webviewController->get_CoreWebView2(&m_webview);
+                [=](HRESULT result, ICoreWebView2Controller* controller) -> HRESULT {
+                  if (controller != nullptr) {
+                    m_webviewController = controller;
+                    m_webviewController->get_CoreWebView2(&m_webview);
+                  }
+
+                  m_webviewController->AddRef();
+
+                  ICoreWebView2Settings* Settings;
+                  m_webview->get_Settings(&Settings);
+                  Settings->put_IsScriptEnabled(TRUE);
+                  Settings->put_AreDefaultScriptDialogsEnabled(TRUE);
+                  Settings->put_IsWebMessageEnabled(TRUE);
+                  Settings->put_AreDevToolsEnabled(TRUE);
+                  Settings->put_IsZoomControlEnabled(FALSE);
+        
+                  // Settings->put_IsBuiltInErrorPageEnabled(FALSE);
+
+                  RECT bounds;
+                  GetClientRect(window_primary, &bounds);
+                  m_webviewController->put_Bounds(bounds);
+
+                  EventRegistrationToken token;
+                  m_webview->add_WebMessageReceived(
+                    Microsoft::WRL::Callback<ICoreWebView2WebMessageReceivedEventHandler>(
+                      [=](ICoreWebView2* webview, ICoreWebView2WebMessageReceivedEventArgs * args) -> HRESULT {
+                        PWSTR bytes;
+                        args->TryGetWebMessageAsString(&bytes);
+
+                        // HANDLE event_log = RegisterEventSource(NULL, L"OPKIT");
+                        // ReportEvent(event_log, EVENTLOG_SUCCESS, 0, 0, NULL, 1, 0, (LPCWSTR* const) x.c_str(), NULL);
+
+                        // Frameless loading mode.
+                        // SetWindowLongPtr(window_primary, GWL_STYLE, WS_CAPTION);
+                        // ShowWindow(window_primary, SW_SHOW);
+
+                        // webview->PostWebMessageAsString(bytes);
+                        CoTaskMemFree(bytes);
+                        return S_OK;
+                      }
+                    ).Get(),
+                    &token
+                  );
+
+                  // fs::path cwd { Str(getCwd("")) / "index.html" };
+
+                  // std::wstringstream url;
+                  // url << "file://" << Str(pathToString(cwd));
+
+                  // alert(url.str());
+                  // m_webview->Navigate(url.str().c_str());
+
+                  if (m_webview == nullptr) {
+                    alert("YESSSSSSSSSSSSS");
+                  }
+
+                  return S_OK;
                 }
-
-                m_webviewController->AddRef();
-
-                ICoreWebView2Settings* Settings;
-                m_webview->get_Settings(&Settings);
-                Settings->put_IsScriptEnabled(TRUE);
-                Settings->put_AreDefaultScriptDialogsEnabled(TRUE);
-                Settings->put_IsWebMessageEnabled(TRUE);
-                Settings->put_AreDevToolsEnabled(TRUE);
-                Settings->put_IsZoomControlEnabled(FALSE);
-      
-                // Settings->put_IsBuiltInErrorPageEnabled(FALSE);
-
-                RECT bounds;
-                GetClientRect(m_window, &bounds);
-                m_webviewController->put_Bounds(bounds);
-
-                EventRegistrationToken token;
-
-                m_webview->add_WebMessageReceived(
-                  Microsoft::WRL::Callback<ICoreWebView2WebMessageReceivedEventHandler>(
-                    [=](ICoreWebView2* webview, ICoreWebView2WebMessageReceivedEventArgs * args) -> HRESULT {
-                      PWSTR bytes;
-                      args->TryGetWebMessageAsString(&bytes);
-
-                      // HANDLE event_log = RegisterEventSource(NULL, L"OPKIT");
-                      // ReportEvent(event_log, EVENTLOG_SUCCESS, 0, 0, NULL, 1, 0, (LPCWSTR* const) x.c_str(), NULL);
-
-                      // Frameless loading mode.
-                      SetWindowLongPtr(m_window, GWL_STYLE, WS_CAPTION);
-                      ShowWindow(m_window, SW_SHOW);
-
-                      // webview->PostWebMessageAsString(bytes);
-                      CoTaskMemFree(bytes);
-                      return S_OK;
-                    }
-                  ).Get(),
-                  &token
-                );
-
-                fs::path wd = getExec();
-
-                fs::path cwd {
-                  fs::path { getExec() }.remove_filename() /
-                  "index.html"
-                };
-
-                std::wstringstream url;
-                url << "file://" << Str(pathToString(cwd));
-
-                alert(url.str());
-                m_webview->Navigate(url.str().c_str());
-
-                return S_OK;
-              }).Get()
+              ).Get()
             );
 
             return S_OK;
@@ -187,7 +212,7 @@ namespace Opkit {
         switch (hr) {
           case HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND): {
             MessageBox(
-              m_window,
+              window_primary,
               TEXT(
                 "Couldn't find Edge installation. "
                 "Do you have a version installed that's compatible with this "
@@ -201,7 +226,7 @@ namespace Opkit {
 
           case HRESULT_FROM_WIN32(ERROR_FILE_EXISTS): {
             MessageBox(
-              m_window,
+              window_primary,
               TEXT("User data folder cannot be created because a file with the same name already exists."),
               nullptr,
               MB_OK
@@ -211,7 +236,7 @@ namespace Opkit {
 
           case E_ACCESSDENIED: {
             MessageBox(
-              m_window,
+              window_primary,
               TEXT("Unable to create user data folder, Access Denied."),
               nullptr,
               MB_OK
@@ -221,7 +246,7 @@ namespace Opkit {
 
           case E_FAIL: {
             MessageBox(
-              m_window,
+              window_primary,
               TEXT("Edge runtime unable to start"),
               nullptr,
               MB_OK
@@ -231,14 +256,15 @@ namespace Opkit {
 
           default: {
             MessageBox(
-              m_window,
+              window_primary,
               TEXT("Failed to create WebView2 environment"),
               nullptr,
               MB_OK
             );
+            break;
           }
         }
-      }      
+      }
     }
 
     void createContextMenu(std::string seq, std::string menuData) {}
@@ -246,18 +272,18 @@ namespace Opkit {
     void about () {}
 
     void show () {
-      ShowWindow(m_window, SW_SHOW);
-      UpdateWindow(m_window);
+      ShowWindow(window_primary, SW_SHOW);
+      UpdateWindow(window_primary);
     }
 
     void hide () {
-      ShowWindow(m_window, SW_HIDE);
-      UpdateWindow(m_window);
+      ShowWindow(window_primary, SW_HIDE);
+      UpdateWindow(window_primary);
     }
 
     void menu(std::string menu) {}
 
-    void *window() { return (void*) m_window; }
+    void *window() { return (void*) window_primary; }
 
     void run() {
       while (GetMessage(&msg, NULL, 0, 0)) {
@@ -279,14 +305,36 @@ namespace Opkit {
     int openExternal(std::string url) {
       return 0;
     }
+
     void navigate(const std::string url) {}
 
-    void init(const std::string js) {}
+    void init(const std::string js) {
+      if (m_webview == nullptr) {
+        return;
+      }
 
-    void eval(const std::string js) {}
+      m_webview->AddScriptToExecuteOnDocumentCreated(
+        Str(js).c_str(),
+        nullptr
+      );
+    }
+
+    void eval(const std::string js) {
+      if (m_webview == nullptr) {
+        return;
+      }
+
+      m_webview->ExecuteScript(
+        Str(js).c_str(),
+        nullptr
+      );
+    }
 
     _In_ HINSTANCE hInstance;
-    HWND m_window;
+    HWND window_primary;
+    HWND window_secondary;
+    ICoreWebView2Environment* environment;
+    bool isDocumentReady = false;
 
     private:
       MSG msg;

@@ -59,6 +59,7 @@ Process::id_type Process::open(const std::string &command, const std::string &pa
   security_attributes.lpSecurityDescriptor = nullptr;
 
   std::lock_guard<std::mutex> lock(create_process_mutex);
+
   if(stdin_fd) {
     if(!CreatePipe(&stdin_rd_p, &stdin_wr_p, &security_attributes, 0) ||
        !SetHandleInformation(stdin_wr_p, HANDLE_FLAG_INHERIT, 0))
@@ -125,27 +126,36 @@ Process::id_type Process::open(const std::string &command, const std::string &pa
     &process_info
   );
 
-  if(!bSuccess)
+  if (!bSuccess) {
+    writeLog(path);
     return 0;
-  else
+  } else {
     CloseHandle(process_info.hThread);
+  }
 
-  if(stdin_fd)
+  if (stdin_fd) {
     *stdin_fd = stdin_wr_p.detach();
-  if(stdout_fd)
+  }
+
+  if (stdout_fd) {
     *stdout_fd = stdout_rd_p.detach();
-  if(stderr_fd)
+  }
+
+  if (stderr_fd) {
     *stderr_fd = stderr_rd_p.detach();
+  }
 
   closed = false;
   data.id = process_info.dwProcessId;
   data.handle = process_info.hProcess;
+  
   return process_info.dwProcessId;
 }
 
 void Process::read() noexcept {
-  if(data.id == 0)
+  if(data.id == 0) {
     return;
+  }
 
   if(stdout_fd) {
     stdout_thread = std::thread([this]() {
