@@ -202,7 +202,7 @@ inline auto getEnv(std::string variableName) {
 
     return result;
 #else
-  auto v = getenv(s.c_str());
+  auto v = getenv(variableName.c_str());
 
   if (v != nullptr) {
     return std::string(v);
@@ -216,7 +216,7 @@ inline auto setEnv(std::string s) {
 #if _WIN32
   return _putenv(s.c_str());
 #else
-  return putenv(s.c_str());
+  return putenv((char*) s.c_str());
 #endif
 }
 

@@ -1,11 +1,20 @@
 import system from './system.js'
+import path from 'path'
 
 let counter = 0
 
 async function main () {
   console.log('started', process.argv)
 
-  await system.setSize({ height: 500, width: 750 })
+  const base = path.dirname(process.argv[1])
+
+  await system.navigate({
+    index: 0,
+    url: `file://${path.join(base, '..', 'render', 'index.html')}`
+  })
+
+  await system.show({ index: 0 })
+  /* await system.setSize({ height: 500, width: 750 })
 
   await system.setMenu(`
     Operator:
@@ -35,7 +44,7 @@ async function main () {
       Beep: T + Command
   `)
 
-  await system.setTitle('Hello Operator')
+  await system.setTitle('Hello Operator') */
 
   system.receive(async data => {
     return {

@@ -142,7 +142,7 @@ int main (const int argc, const char* argv[]) {
   //
   if (platform.darwin) {
     log("preparing build for darwin");
-    flags = "-DWEBVIEW_COCOA -std=c++2a -framework WebKit -framework AppKit";
+    flags = "-DWEBVIEW_COCOA -std=c++2a -framework WebKit -framework Cocoa -ObjC++";
     flags += getCxxFlags();
 
     files += prefixFile("src/main.cc");

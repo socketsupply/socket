@@ -1,7 +1,5 @@
 #include "process.h"
-// clang-format off
 #include <windows.h>
-// clang-format on
 #include <tlhelp32.h>
 #include <cstring>
 #include <stdexcept>

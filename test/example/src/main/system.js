@@ -43,16 +43,28 @@ const exceedsMaxSize = s => {
 
 console.log = (...args) => log('stdout;' + args.map(v => util.format(v)).join(' '))
 
-api.setTitle = s => {
-  return write(`binding;setTitle;${s}`)
+api.show = o => {
+  const s = new URLSearchParams(o).toString();
+  return write(`ipc://show?${s}`)
+}
+
+api.navigate = o => {
+  const s = new URLSearchParams(o).toString();
+  return write(`ipc://navigate?${s}`)
+}
+
+api.setTitle = o => {
+  const s = new URLSearchParams(o).toString();
+  return write(`ipc://title?${s}`)
 }
 
 api.setSize = o => {
-  return write(`binding;setSize;${o.width};${o.height}`)
+  const s = new URLSearchParams(o).toString();
+  return write(`ipc://size?${s}`)
 }
 
 api.setMenu = s => {
-  return write(`binding;setMenu;${s.replace(/\n/g ,'%%')}`)
+  return write(`ipc://setMenu?value=${s.replace(/\n/g ,'%%')}`)
 }
 
 api.receive = fn => {
@@ -84,12 +96,19 @@ api.receive = fn => {
     result = encodeURIComponent(result)
 
     const err = exceedsMaxSize(result)
+
     if (err) {
       status = 1
       result = err
     }
 
-    log(`ipc;${status};${seq};${result}`)
+    const s = new URLSearchParams({
+      seq,
+      status,
+      result
+    }).toString();
+
+    log(`ipc://respond?${s}`)
   })
 }
 
