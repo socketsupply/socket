@@ -5,6 +5,14 @@
 #include <vector>
 #include <map>
 #include <iostream>
+#include <sstream>
+#include <regex>
+#include <fstream>
+#include <span>
+#include <thread>
+#include <filesystem>
+
+#include "preload.hh"
 
 #define TO_STR(arg) #arg
 #define STR_VALUE(arg) TO_STR(arg)
@@ -28,17 +36,28 @@
 #define MAIN int main (int argc, char** argv)
 #endif
 
+namespace fs = std::filesystem;
+
+enum {
+  NOC_FILE_DIALOG_OPEN    = 1 << 0,   // Create an open file dialog.
+  NOC_FILE_DIALOG_SAVE    = 1 << 1,   // Create a save file dialog.
+  NOC_FILE_DIALOG_DIR     = 1 << 2,   // Open a directory.
+  NOC_FILE_DIALOG_OVERWRITE_CONFIRMATION = 1 << 3,
+};
+
 namespace Opkit {
   //
   // Cross platform support for strings
   //
   #if defined(_WIN32)
     using String = std::wstring;
+    using Stringstream = std::wstringstream;
     using namespace Microsoft::WRL;
     #define Str(s) L##s
 
   #else
     using String = std::string;
+    using Stringstream = std::stringstream;
     #define Str(s) s
 
   #endif
@@ -49,19 +68,19 @@ namespace Opkit {
   struct {
     #if defined(_WIN32)
       bool darwin = false;
-      bool win32 = true;
+      bool win = true;
       bool linux = false;
-      const String os = "win32";
+      const String os = "win";
 
     #elif defined(__APPLE__)
       bool darwin = true;
-      bool win32 = false;
+      bool win = false;
       bool linux = false;
       const String os = "darwin";
 
     #elif defined(__linux__)
       bool darwin = false;
-      bool win32 = false;
+      bool win = false;
       bool linux = true;
       const String os = "linux";
 
@@ -69,7 +88,12 @@ namespace Opkit {
   } platform;
 
   //
-  // Window
+  // Application data
+  //
+  std::map<std::string, std::string> appData;
+
+  //
+  // Window data
   //
   struct WindowOptions {
     bool resizable = true;
@@ -126,9 +150,124 @@ namespace Opkit {
     return std::regex_replace(src, std::regex(re), val);
   }
 
+  inline auto getEnv(String variableName) {
+    #if _WIN32
+      char* variableValue = nullptr;
+      std::size_t valueSize = 0;
+      auto query = _dupenv_s(&variableValue, &valueSize, variableName.c_str());
+
+      String result;
+      if(query == 0 && variableValue != nullptr && valueSize > 0) {
+        result.assign(variableValue, valueSize - 1);
+        free(variableValue);
+      }
+
+      return result;
+    #else
+      auto v = getenv(variableName.c_str());
+
+      if (v != nullptr) {
+        return String(v);
+      }
+
+      return String("");
+    #endif
+  }
+
+  inline auto setEnv(String s) {
+    #if _WIN32
+      return _putenv(s.c_str());
+    #else
+      return putenv((char*) s.c_str());
+    #endif
+  }
+
+  inline String exec(String command) {
+    FILE *pipe;
+    char buf[128];
+
+    #ifdef _WIN32
+      //
+      // https://docs.microsoft.com/en-us/cpp/c-runtime-library/reference/popen-wpopen?view=msvc-160
+      // _popen works fine in a console application... ok fine that's all we need it for... thanks.
+      //
+      pipe = _popen((const char*) command.c_str(), "rt");
+    #else
+      pipe = popen((const char*) command.c_str(), "r");
+    #endif
+
+    if (pipe == NULL) {
+      std::cout << "error: unable to open the command" << std::endl;
+      exit(1);
+    }
+
+    Stringstream ss;
+
+    while (fgets(buf, 128, pipe)) {
+      ss << buf;
+    }
+
+    #ifdef _WIN32
+      _pclose(pipe);
+    #else
+      pclose(pipe);
+    #endif
+
+    return ss.str();
+  }
+
   inline String pathToString(const fs::path &path) {
     auto s = path.u8string();
-    return std::string(s.begin(), s.end());
+    return String(s.begin(), s.end());
+  }
+
+  inline String readFile(fs::path path) {
+    std::ifstream stream(path.c_str());
+    String content;
+    auto buffer = std::istreambuf_iterator<char>(stream);
+    auto end = std::istreambuf_iterator<char>();
+    content.assign(buffer, end);
+    stream.close();
+    return content;
+  }
+
+  inline void writeFile (fs::path path, String s) {
+    std::ofstream stream(pathToString(path));
+    stream << s;
+    stream.close();
+  }
+
+  inline String prefixFile(String s) {
+    if (platform.darwin || platform.linux) {
+      return Str("/usr/local/lib/opkit/" + s + " ");
+    }
+
+    String local = getEnv("LOCALAPPDATA");
+    return Str(local + "\\Programs\\optoolco\\" + s + " ");
+  }
+
+  inline String prefixFile() {
+    if (platform.darwin || platform.linux) {
+      return Str("/usr/local/lib/opkit");
+    }
+
+    String local = getEnv("LOCALAPPDATA");
+    return Str(local + "\\Programs\\optoolco");
+  }
+
+  inline std::map<String, String> parseConfig(String source) {
+    auto entries = split(source, '\n');
+    std::map<String, String> settings;
+
+    for (auto entry : entries) {
+      auto pair = split(entry, ':');
+
+      if (pair.size() == 2) {
+        settings[trim(pair[0])] = trim(pair[1]);
+      }
+    }
+
+    return settings;
   }
 
   //
@@ -202,8 +341,9 @@ namespace Opkit {
     // Note from RFC1630:  "Sequences which start with a percent sign
     // but are not followed by two hexadecimal characters (0-9, A-F) are reserved
     // for future extension"
-    
-    const unsigned char * pSrc = (const unsigned char *)sSrc.c_str();
+
+    auto s = replace(String(sSrc), "\\+", " ");
+    const unsigned char * pSrc = (const unsigned char *) s.c_str();
     const int SRC_LEN = sSrc.length();
     const unsigned char * const SRC_END = pSrc + SRC_LEN;
     const unsigned char * const SRC_LAST_DEC = SRC_END - 2;   // last decodable '%' 
@@ -233,6 +373,66 @@ namespace Opkit {
     String sResult(pStart, pEnd);
     delete [] pStart;
     return sResult;
+  }
+
+  //
+  // Interfaces make sure all operating systems implement the same stuff
+  //
+  class IApp {
+    public:
+      bool shouldExit = false;
+
+      virtual int run() = 0;
+      virtual void exit() = 0;
+      virtual void dispatch(std::function<void()> work) = 0;
+      virtual String getCwd(String) = 0;
+  };
+
+  class IWindow {
+    public:
+      String resolve(String, String, String);
+      String emit(String, String);
+
+      String url;
+      String title;
+      bool initDone = false;
+      std::function<void(String)> _onMessage = nullptr;
+
+      virtual void onMessage(std::function<void(String)>) = 0;
+      virtual void eval(const String&) = 0;
+      virtual void show() = 0;
+      virtual void hide() = 0 ;
+      virtual void navigate(const String&) = 0;
+      virtual void setTitle(const String&) = 0;
+      virtual void setContextMenu(String, String) = 0;
+      virtual String openDialog(bool, bool, bool, String, String) = 0;
+      virtual void setSystemMenu(String menu) = 0;
+      virtual int openExternal(String s) = 0;
+  };
+
+  String IWindow::resolve(String seq, String status, String value) {
+    String response = Str(
+      "(() => {"
+      "  const seq = Number(" + seq + ");"
+      "  const status = Number(" + status + ");"
+      "  const value = '" + value + "';"
+      "  window._ipc.resolve(seq, status, value);"
+      "})()"
+    );
+
+    return response;
+  }
+
+  String IWindow::emit(String event, String value) {
+    String response = Str(
+      "(() => {"
+      "  const name = '" + event + "';"
+      "  const value = '" + value + "';"
+      "  window._ipc.emit(name, value);"
+      "})()"
+    );
+
+    return response;
   }
 }
 

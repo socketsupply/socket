@@ -1,4 +1,4 @@
-#include "process.h"
+#include "process.hh"
 #include <algorithm>
 #include <bitset>
 #include <cstdlib>
@@ -178,6 +178,7 @@ Process::id_type Process::open(const std::string &command, const std::string &pa
 
 void Process::read() noexcept {
   if(data.id <= 0 || (!stdout_fd && !stderr_fd)) {
+    std::cout << "NOT READY" << std::endl;
     return;
   }
 

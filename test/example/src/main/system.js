@@ -17,18 +17,7 @@ function installWebView () {
 process.stdin.resume()
 process.stdin.setEncoding('utf8')
 
-const log = s => process.stdout.write(s + '\0')
-
-const write = s => {
-  return new Promise((resolve, reject) => {
-    setTimeout(() => {
-      process.stdout.write(s + '\0', 'utf8', (err) => {
-        if (err) return reject(err)
-        resolve()
-      });
-    }, 512) // give the OS time to finalize
-  })
-}
+const write = s => process.stdout.write(s + '\0')
 
 const api = {}
 
@@ -36,45 +25,57 @@ const exceedsMaxSize = s => {
   if (s.length > 8000) {
     return [
       'Unable to accept payload. Max ipc payload size reached (Exceeds',
-      'JSStringGetMaximumUTF8CStringSize), consider writing and reading a file.'
+      'JSStringGetMaximumUTF8CStringSize), consider streaming.'
     ].join(' ')
   }
 }
 
-console.log = (...args) => log('stdout;' + args.map(v => util.format(v)).join(' '))
+console.log = (...args) => {
+  const s = args.map(v => util.format(v)).join(' ')
+  write(`ipc://stdout?value=${encodeURIComponent(s)}`)
+}
 
 api.show = o => {
-  const s = new URLSearchParams(o).toString();
+  const s = new URLSearchParams(o)
   return write(`ipc://show?${s}`)
 }
 
 api.navigate = o => {
-  const s = new URLSearchParams(o).toString();
+  const s = new URLSearchParams(o)
   return write(`ipc://navigate?${s}`)
 }
 
 api.setTitle = o => {
-  const s = new URLSearchParams(o).toString();
+  const s = new URLSearchParams(o)
   return write(`ipc://title?${s}`)
 }
 
 api.setSize = o => {
-  const s = new URLSearchParams(o).toString();
+  const s = new URLSearchParams(o)
   return write(`ipc://size?${s}`)
 }
 
 api.setMenu = s => {
-  return write(`ipc://setMenu?value=${s.replace(/\n/g ,'%%')}`)
+  s = encodeURIComponent(s)
+  return write(`ipc://menu?value=${s}`)
 }
 
 api.receive = fn => {
   process.stdin.on('data', async data => {
-    const msg = data.split(';')
-    if (msg[0] !== 'ipc') return
+    let msg
 
-    let status = msg[1]
-    const seq = msg[2]
-    const value = msg[3]
+    try {
+      msg = Object.fromEntries(new URL(data).searchParams)
+    } catch (err) {
+      console.log(`Unable to parse message (${data})`)
+      return
+    }
+
+    let {
+      status = 0,
+      seq,
+      value
+    } = msg
 
     if (process.platform === 'win32') {
       if (value === '0xDEADBEEF') {
@@ -91,12 +92,9 @@ api.receive = fn => {
       status = 1
     }
 
-    if (typeof result === 'object') result = JSON.stringify(result)
+    value = JSON.stringify(result)
 
-    result = encodeURIComponent(result)
-
-    const err = exceedsMaxSize(result)
-
+    const err = exceedsMaxSize(value)
     if (err) {
       status = 1
       result = err
@@ -105,26 +103,38 @@ api.receive = fn => {
     const s = new URLSearchParams({
       seq,
       status,
-      result
+      value
     }).toString();
 
-    log(`ipc://respond?${s}`)
+    write(`ipc://respond?${s}`)
   })
 }
 
 api.send = o => {
-  let result = ''
 
-  if (typeof o === 'object') result = JSON.stringify(o)
+  let value = ''
 
-  result = encodeURIComponent(result)
+  try {
+    value = JSON.stringify(o.value)
+  } catch (err) {
+    throw new Error(err.message)
+  }
 
-  const err = exceedsMaxSize(result)
+  if (!value || !value.trim()) return
+
+  const s = new URLSearchParams({
+    event: o.event,
+    index: o.index,
+    value
+  }).toString()
+
+  const err = exceedsMaxSize(s)
+
   if (err) {
     result = err
   }
 
-  log(result)
+  write(`ipc://send?${s}`)
 }
 
 export default api

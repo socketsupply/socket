@@ -1,8 +1,10 @@
-#include "process.h"
-#include "util.h"
-#include "cli.h"
+#include "cli.hh"
+#include "process.hh"
+#include "common.hh"
 
 constexpr auto version = STR_VALUE(VERSION);
+
+using namespace Opkit;
 
 void help () {
   std::cout
@@ -56,7 +58,7 @@ int main (const int argc, const char* argv[]) {
   if (getEnv("CXX").size() == 0) {
     log("warning! $CXX env var not set, assuming defaults");
 
-    if (platform.win32) {
+    if (platform.win) {
       setEnv("CXX=clang++");
     } else {
       setEnv("CXX=/usr/bin/g++");
@@ -124,7 +126,7 @@ int main (const int argc, const char* argv[]) {
 
   auto executable = fs::path(platform.darwin
     ? settings["title"]
-    : settings["executable"] + (platform.win32 ? ".exe" : ""));
+    : settings["executable"] + (platform.win ? ".exe" : ""));
 
   std::string flags;
   std::string files;
@@ -142,12 +144,11 @@ int main (const int argc, const char* argv[]) {
   //
   if (platform.darwin) {
     log("preparing build for darwin");
-    flags = "-DWEBVIEW_COCOA -std=c++2a -framework WebKit -framework Cocoa -ObjC++";
+    flags = "-std=c++2a -framework WebKit -framework Cocoa -ObjC++";
     flags += getCxxFlags();
 
     files += prefixFile("src/main.cc");
     files += prefixFile("src/process_unix.cc");
-    files += prefixFile("src/darwin.mm");
 
     fs::path pathBase = "Contents";
     packageName = fs::path(std::string(settings["title"] + ".app"));
@@ -181,7 +182,7 @@ int main (const int argc, const char* argv[]) {
   //
   if (platform.linux) {
     log("preparing build for linux");
-    flags = "-DWEBVIEW_GTK -std=c++2a `pkg-config --cflags --libs gtk+-3.0 webkit2gtk-4.0`";
+    flags = "-std=c++2a `pkg-config --cflags --libs gtk+-3.0 webkit2gtk-4.0`";
     flags += getCxxFlags();
 
     files += prefixFile("src/main.cc");
@@ -270,14 +271,14 @@ int main (const int argc, const char* argv[]) {
   // Win32 Package Prep
   // ------------------
   //
-  if (platform.win32) {
-    log("preparing build for win32");
+  if (platform.win) {
+    log("preparing build for win");
     auto prefix = prefixFile();
 
     flags = " -std=c++20 -I" + prefix + " -I" + prefix + "\\src\\win64" + " -L" + prefix + "\\src\\win64";
 
     files += prefixFile("src\\main.cc");
-    files += prefixFile("src\\process_win32.cc");
+    files += prefixFile("src\\process_win.cc");
     files += prefixFile("src\\win.cc");
 
     packageName = fs::path((
@@ -342,7 +343,7 @@ int main (const int argc, const char* argv[]) {
     << " -DSETTINGS=\"" << _settings << "\""
   ;
 
-  log(compileCommand.str());
+  // log(compileCommand.str());
   if (flagRunUserBuild == false) {
     auto r = exec(compileCommand.str());
     log("compiled native binary");
@@ -521,7 +522,7 @@ int main (const int argc, const char* argv[]) {
   // Win32 Packaging
   // ---------------
   //
-  if (platform.win32) {
+  if (platform.win) {
     //
     // https://docs.microsoft.com/en-us/windows/win32/appxpkg/how-to-create-a-package
     // https://www.digicert.com/kb/code-signing/signcode-signtool-command-line.htm
@@ -530,10 +531,10 @@ int main (const int argc, const char* argv[]) {
 
   if (flagShouldRun) {
     std::string execName = "";
-    if (platform.linux) {
-      execName = (settings["executable"]);
-    } else {
+    if (platform.win) {
       execName = (settings["executable"] + ".exe");
+    } else {
+      execName = (settings["executable"]);
     }
 
     auto cmd = pathToString(fs::path {

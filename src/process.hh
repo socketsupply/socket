@@ -1,8 +1,10 @@
 #ifndef OPKIT_HPP_
 #define OPKIT_HPP_
-#include "util.h"
 
 #include <functional>
+#include <mutex>
+#include <thread>
+#include <vector>
 
 #ifndef _WIN32
 #include <sys/wait.h>

@@ -1,5 +1,4 @@
-console.log('render script loaded')
-/* const Tonic = require('@optoolco/tonic')
+const Tonic = require('@optoolco/tonic')
 const Components = require('@optoolco/components')
 
 Components(Tonic)
@@ -85,7 +84,7 @@ class AppContainer extends Tonic {
     const el = Tonic.match(e.target, '#butt')
     if (!el) return
 
-    const response = await system.dialog(e.target.value)
+    const response = await system.dialog({ type: 'open' })
     this.querySelector('#opened').value = response.replace(',', '\n')
   }
 
@@ -108,7 +107,7 @@ class AppContainer extends Tonic {
     this.querySelector('#response').value =
       response.received.input
 
-    return system.setTitle(e.target.value)
+    return // system.setTitle({ e.target.value)
   }
 
   async contextmenu (e) {
@@ -117,9 +116,7 @@ class AppContainer extends Tonic {
 
     e.preventDefault()
 
-    console.log('ehllo')
-
-    const choice = await system.contextMenu({
+    const choice = await system.setContextMenu({
       'Download': 'd',
       'Wizard': 'w',
       '---': '',
@@ -179,4 +176,4 @@ window.onload = async () => {
   // https://developer.apple.com/library/archive/documentation/AppleApplications/Conceptual/SafariJSProgTopics/DragAndDrop.html
 
   // await invokeIPC('onload')
-} */
+}

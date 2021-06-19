@@ -1,5 +1,8 @@
+#include <mutex>
+#include <thread>
+
 //
-// Darwin bundle settings
+// Darwin config
 //
 constexpr auto gPListInfo = R"XML(
 <?xml version="1.0" encoding="UTF-8"?>
@@ -113,6 +116,9 @@ constexpr auto gPListEntitlements = R"XML(
 </plist>
 )XML";
 
+//
+// Linux config
+//
 constexpr auto gDestkopManifest = R"INI(
 [Desktop Entry]
 Encoding=UTF-8
@@ -136,6 +142,9 @@ Description: {{title}}
  {{description}}
 )DEB";
 
+//
+// Windows config
+//
 constexpr auto gWindowsAppManifest = R"XML(
 <?xml version="1.0" encoding="utf-8"?>
 <Package
@@ -177,6 +186,3 @@ constexpr auto gWindowsAppManifest = R"XML(
      </Applications>
   </Package>
 )XML";
-
-// TODO what files does a windows build need?
-

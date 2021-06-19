@@ -1,185 +1,233 @@
-#include "webview.h"
-#include "process.h"
-#include "preload.h"
+#include "common.hh"
+#include "process.hh"
 
-constexpr auto _settings = STR_VALUE(SETTINGS);
-constexpr auto _debug = DEBUG;
-
-#ifdef _WIN32
-int CALLBACK WinMain(
-  _In_ HINSTANCE hInstance,
-  _In_ HINSTANCE hPrevInstance,
-  _In_ LPSTR lpCmdLine,
-  _In_ int nCmdShow) {
-
-  static auto win = std::make_unique<Opkit::webview>(true, hInstance);
-
-  int argc = __argc;
-  char** argv = __argv;
-
-  win->createWindow();
-
-#else
-int main(int argc, char *argv[]) {
-
-  static auto win = std::make_unique<Opkit::webview>(true, nullptr);
-
+#if defined(_WIN32)
+  #include "win.hh"
+#elif defined(__APPLE__)
+  #include "mac.hh"
+#elif defined(__linux__)
+  #include "linux.hh"
 #endif
 
-  auto cwd = Str(getCwd(argv[0]));
-  bool isDocumentReady = false;
-  auto settings = parseConfig(replace(_settings, "%%", "\n"));
-  Opkit::appData = settings;
+using namespace Opkit;
 
-  if (platform.darwin) {
-    // On MacOS, this will hide the window initially
-    // but also allow us to load the url, like a preload.
-    win->setSize(
-      0,
-      0,
-      WEBVIEW_HINT_NONE
-    );
-  }
+MAIN /* argv, argc[, hInstance] */ {
 
-  win->navigate("file://" + cwd + "/index.html"); 
+  #ifdef _WIN32
+    App app(hInstance);
+  #else
+    App app;
+  #endif
 
-  std::stringstream argvArray;
-  std::stringstream argvForward;
+  constexpr auto _settings = STR_VALUE(SETTINGS);
+  constexpr auto _debug = DEBUG;
 
-  argvForward << " --version=" << settings["version"];
+  auto cwd = Str(app.getCwd(argv[0]));
+  appData = parseConfig(replace(_settings, "%%", "\n"));
 
-#if DEBUG == 1
-  argvForward << " --debug=1";
-#endif
+  Stringstream argvArray;
+  Stringstream argvForward;
+
+  argvForward << " --version=" << appData["version"];
+
+  #if DEBUG == 1
+    argvForward << " --debug=1";
+  #endif
 
   int c = 0;
 
   for (auto const arg : std::span(argv, argc)) {
     argvArray
       << "'"
-      << replace(std::string(arg), "'", "\'")
+      << replace(String(arg), "'", "\'")
       << (c++ < argc ? "', " : "'");
 
-    if (c > 1) argvForward << " " << std::string(arg);
+    if (c > 1) argvForward << " " << String(arg);
   }
 
-  win->init(
-    "(() => {"
-    "  window.system = {};\n"
-    "  window.process = {};\n"
-    "  window.process.title = '" + settings["title"] + "';\n"
-    "  window.process.executable = '" + settings["executable"] + "';\n"
-    "  window.process.version = '" + settings["version"] + "';\n"
-    "  window.process.debug = " + std::to_string(_debug) + ";\n"
-    "  window.process.bundle = '" + cwd + "';\n"
-    "  window.process.argv = [" + argvArray.str() + "];\n"
-    "  " + gPreload + "\n"
-    "})()"
-    "//# sourceURL=preload.js"
-  );
+  auto makePreload = [&](int index) {
+    String preload = Str(
+      "(() => {"
+      "  window.system = {};\n"
+      "  window.process = {};\n"
+      "  window.process.index = " + std::to_string(index) + ";\n"
+      "  window.process.title = '" + appData["title"] + "';\n"
+      "  window.process.executable = '" + appData["executable"] + "';\n"
+      "  window.process.version = '" + appData["version"] + "';\n"
+      "  window.process.debug = " + std::to_string(_debug) + ";\n"
+      "  window.process.bundle = '" + cwd + "';\n"
+      "  window.process.argv = [" + argvArray.str() + "];\n"
+      "  " + gPreload + "\n"
+      "})()\n"
+      "//# sourceURL=preload.js"
+    );
 
-  Opkit::Process process(
-    settings["cmd"] + argvForward.str(),
+    return preload;
+  };
+
+  Window w0(app, WindowOptions {
+    .resizable = true,
+    .height = std::stoi(appData["height"]),
+    .width = std::stoi(appData["width"]),
+    .title = appData["title"],
+    .frameless = false,
+    .preload = makePreload(0)
+  });
+
+  Window w1(app, WindowOptions {
+    .resizable = false,
+    .frameless = true,
+    .height = 120,
+    .width = 350,
+    .preload = makePreload(1)
+  });
+
+  Process process(
+    appData["cmd"] + argvForward.str(),
     cwd,
     [&](auto out) {
-      writeLog(out);
-      while (!isDocumentReady) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(16));
-      }
+      //
+      // Send messages from the main process to the render process.
+      // If they are "commands" try to do something with them, otherwise
+      // they are just stdout and we can write the data to the pipe.
+      // Also capture 'out' by value since it's lifetime will expire before
+      // it can be dispatched.
+      //
+      app.dispatch([&, out] {
+        Parse cmd(out);
+        auto w = cmd.index == 0 ? w0 : w1;
 
-      if (out.find("binding;") == 0) {
-        win->binding(replace(out, "binding;", ""));
-      } else if (out.find("out;") == 0) {
-        std::cout << out.substr(7) << std::endl;
-      } else if (out.find("ipc;") == 0) {
-        win->resolve(out);
-      } else {
-        win->emit("data", out);
-      }
+        if (cmd.name == "show") {
+          w.show();
+          return;
+        }
+
+        if (cmd.name == "hide") {
+          w.hide();
+          return;
+        }
+
+        if (cmd.name == "navigate") {
+          auto s = decodeURIComponent(cmd.args["url"]);
+          w.navigate(s);
+          return;
+        }
+
+        if (cmd.name == "title") {
+          auto s = decodeURIComponent(cmd.args["value"]);
+          w.setTitle(s);
+          return;
+        }
+
+        if (cmd.name == "menu") {
+          auto s = decodeURIComponent(cmd.args["value"]);
+          w.setSystemMenu(s);
+          return;
+        }
+
+        if (cmd.name == "respond") {
+          auto seq = cmd.args["seq"];
+          auto status = cmd.args["status"];
+          auto value = cmd.args["value"];
+
+          w.eval(w.resolve(seq, status, value));
+          return;
+        }
+
+        if (cmd.name == "send") {
+          auto event = decodeURIComponent(cmd.args["event"]);
+          auto value = cmd.args["value"];
+
+          w.eval(w.emit(event, value));
+          return;
+        }
+
+        if (cmd.name == "stdout") {
+          String value = decodeURIComponent(cmd.args["value"]);
+          std::cout << value << std::endl;
+        }
+      });
     },
-    [](auto err) {
-      writeLog(err);
+    [&](auto err) {
       std::cerr << err << std::endl;
     }
   );
 
-  win->ipc("exit", [&](auto seq, auto value) {
-    Opkit::Process::kill(process.getPID());
-    win->terminate();
-    exit(std::stoi(value));
-  });
+  //
+  // Send messages from the render processes to the main process.
+  // These may be similar to how we route the messages from the
+  // main process but different enough that duplication is ok.
+  //
+  auto router = [&](auto out) {
 
-  win->ipc("ready", [&](auto seq, auto value) {
-    isDocumentReady = true;
-    process.write("ipc;0;0;" + value);
-  });
+    Parse cmd(out);
+    auto w = cmd.index == 0 ? w0 : w1;
 
-  win->ipc("dialog", [&](auto seq, auto value) {
-    win->dialog(seq);
-  });
-
-  win->ipc("setMenu", [&](auto seq, auto value) {
-    win->menu(value);
-
-    if (std::stoi(seq) > 0) {
-      win->resolve("ipc;0;" + seq + ";null");
+    if (cmd.name == "title") {
+      auto s = decodeURIComponent(cmd.args["value"]);
+      w.setTitle(s);
+      return;
     }
-  });
 
-  win->ipc("setTitle", [&](auto seq, auto value) {
-    win->setTitle(value);
-
-    if (std::stoi(seq) > 0) {
-      win->resolve("ipc;0;" + seq + ";null");
+    if (cmd.name == "external") {
+      w.openExternal(decodeURIComponent(cmd.args["value"]));
+      return;
     }
-  });
 
-  win->ipc("setSize", [&](auto seq, auto value) {
-    auto parts = split(value, ';');
+    if (cmd.name == "dialog") {
+      bool isSave = false;
+      bool allowDirs = false;
+      bool allowFiles = false;
+      String defaultPath = "";
+      String title = "";
 
-    win->setSize(
-      std::stoi(parts[0].c_str()),
-      std::stoi(parts[1].c_str()),
-      WEBVIEW_HINT_NONE
-    );
+      if (cmd.args.count("type")) {
+        isSave = cmd.args["type"].compare("save") == 1;
+      }
 
-    if (std::stoi(seq) > 0) {
-      win->resolve("ipc;0;" + seq + ";null");
+      if (cmd.args.count("allowDirectories")) {
+        allowDirs = cmd.args["allowDirectories"].compare("true") == 1;
+      }
+
+      if (cmd.args.count("allowFiles")) {
+        allowDirs = cmd.args["allowFiles"].compare("true") == 1;
+      }
+
+      if (cmd.args.count("defaultPath")) {
+        defaultPath = cmd.args["defaultPath"];
+      }
+
+      if (cmd.args.count("title")) {
+        title = cmd.args["title"];
+      }
+
+      auto result = w.openDialog(
+        isSave,
+        allowDirs,
+        allowFiles,
+        defaultPath,
+        title
+      );
+
+      w.eval(w.resolve(cmd.args["seq"], Str("0"), result));
+      return;
     }
-  });
 
-  win->ipc("contextMenu", [&](auto seq, auto value) {
-    win->createContextMenu(seq, value);
-  });
+    if (cmd.name == "context") {
+      auto seq = cmd.args["seq"];
+      auto value = decodeURIComponent(cmd.args["value"]);
 
-  win->ipc("openExternal", [&](auto seq, auto value) {
-    auto r = std::to_string(win->openExternal(value));
+      // send the seq, use it to resolve the promise
+      w.setContextMenu(seq, value);
 
-    if (std::stoi(seq) > 0) {
-      win->resolve("ipc;" + r + ";" + seq + ";" + value);
+      return;
     }
-  });
 
-  win->ipc("send", [&](auto seq, auto value) {
-    process.write("ipc;0;" + seq + ";" + value);
-  });
+    process.write(out);
+  };
 
-  win->ipc("inspect", [&](auto seq, auto value) {
-    win->inspect();
-    win->resolve("ipc;0;" + seq + ";" + value);
-  });
+  w0.onMessage(router);
+  w1.onMessage(router);
 
-  win->ipc("hide", [&](auto seq, auto value) {
-    win->hide();
-    win->resolve("ipc;0;" + seq + ";" + value);
-  });
-
-  win->ipc("show", [&](auto seq, auto value) {
-    win->show();
-    win->resolve("ipc;0;" + seq + ";" + value);
-  });
-
-  win->run();
-
-  return 0;
+  while(app.run() == 0);
 }

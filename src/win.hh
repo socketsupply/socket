@@ -1,4 +1,4 @@
-#define UNICODE
+#include "common.hh"
 #pragma comment(lib,"advapi32.lib")
 #pragma comment(lib,"shell32.lib")
 #pragma comment(lib,"version.lib")
@@ -8,23 +8,15 @@
 #include <tchar.h>
 #include <wrl.h>
 #include <stdlib.h>
-#include <string>
-#include <iostream>
 #include <functional>
 #include <sstream>
 #include <cstring>
 #include <algorithm>
 #include <stdio.h>
-#include <future>
 
-#include "util.h"
 #include "win64/WebView2.h"
 
-namespace fs = std::filesystem;
-
-// std::string getCwd (const std::string);
-
-inline std::wstring getCwd(const std::string) {
+inline String getCwd(const std::string) {
   wchar_t filename[MAX_PATH];
   GetModuleFileNameW(NULL, filename, MAX_PATH);
   auto path = fs::path { Str(filename) }.remove_filename();
@@ -55,6 +47,92 @@ static ICoreWebView2 *m_webview;
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 
 namespace Opkit {
+
+  class App {
+    MSG msg;
+    bool shouldExit = false;
+
+    public:
+      _In_ HINSTANCE hInstance;
+      App(void* h);
+
+      int run();
+      void exit();
+      void dispatch(std::function<void()> work);
+      String getCwd(String);
+  };
+
+  class Window {
+    NSWindow* window;
+    WKWebView* webview;
+    bool initDone = false;
+    App app;
+    std::function<void(String)> _onMessage = nullptr;
+
+    public:
+      Window(App&, WindowOptions);
+      void onMessage(std::function<void(String)>);
+      void eval(const String&);
+      void show();
+      void hide();
+      String url;
+      String title;
+      void navigate(const String&);
+      void setTitle(const String&);
+      void openDialog();
+      void createContextMenu();
+      void createSystemMenu();
+      int openExternalURL(String s);
+      std::vector<String> getMenuItemDetails(void*);
+  };
+
+  App::App(void* h): hInstance((_In_ HINSTANCE) h) {
+    // this fixes bad default quality DPI.
+    ::SetProcessDPIAware();
+
+    auto *szWindowClass = L"DesktopApp";
+    auto *szTitle = L"Opkit";
+    WNDCLASSEX wcex;
+
+    wcex.cbSize = sizeof(WNDCLASSEX);
+    wcex.style = CS_HREDRAW | CS_VREDRAW;
+    wcex.lpfnWndProc = WndProc;
+    wcex.cbClsExtra = 0;
+    wcex.cbWndExtra = 0;
+    wcex.hInstance = hInstance;
+    wcex.hIcon = LoadIcon(hInstance, IDI_APPLICATION);
+    wcex.hCursor = LoadCursor(NULL, IDC_ARROW);
+    wcex.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
+    wcex.lpszMenuName = NULL;
+    wcex.lpszClassName = TEXT("DesktopApp");
+    wcex.hIconSm = LoadIcon(wcex.hInstance, IDI_APPLICATION);
+
+    if (!RegisterClassEx(&wcex)) {
+      MessageBox(nullptr, nullptr, TEXT("Unable to register window"), MB_OK | MB_ICONSTOP);
+      return;
+    }
+  };
+
+  int App::run () {
+    bool loop = GetMessage(&msg, nullptr, 0, 0) > 0;
+
+    if (loop) {
+      TranslateMessage(&msg);
+      DispatchMessage(&msg);
+    }
+
+    return !loop;
+  }
+
+  void exit() {
+    PostQuitMessage(WM_QUIT);
+  }
+
+
+
+  /* 
+
+
   class edge_engine {
     public:
 
@@ -366,5 +444,5 @@ namespace Opkit {
       }
   };
 
-  using browser_engine = edge_engine;
+  using browser_engine = edge_engine; */
 } // namespace Opkit

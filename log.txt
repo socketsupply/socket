@@ -1,6 +1,0 @@
-stdout;started [
-  'C:\\Program Files\\nodejs\\node.exe',
-  'C:\\Users\\paolo\\projects\\opkit\\test\\example\\dist\\operator-v0.0.1\\main.js',
-  '--version=v0.0.1',
-  '--debug=1'
-]
