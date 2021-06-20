@@ -41,7 +41,7 @@ Function Install-Files {
 
     Copy-Item $WORKING_PATH\bin\cli.exe -Destination $INSTALL_PATH\opkit.exe
     Copy-Item -Path $WORKING_PATH\src\* -Destination $INSTALL_PATH\src -Recurse
-    Copy-Item -Path $WORKING_PATH\src\* -Destination $INSTALL_PATH\src -Recurse -Container
+    Copy-Item -Path "$WORKING_PATH\src\*" -Destination $INSTALL_PATH\src -Recurse -Container
 }
 
 if ($args.Count -eq 0) {

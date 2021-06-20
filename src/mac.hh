@@ -22,7 +22,7 @@ namespace Opkit {
       int run();
       void exit();
       void dispatch(std::function<void()> work);
-      String getCwd(String);
+      std::string getCwd(std::string);
   };
 
   class Window : public IWindow {
@@ -33,17 +33,16 @@ namespace Opkit {
       App app;
       Window(App&, WindowOptions);
 
-      void onMessage(std::function<void(String)>);
-      void eval(const String&);
+      void eval(const std::string&);
       void show();
       void hide();
-      void navigate(const String&);
-      void setTitle(const String&);
-      void setContextMenu(String, String);
-      String openDialog(bool, bool, bool, String, String);
+      void navigate(const std::string&);
+      void setTitle(const std::string&);
+      void setContextMenu(std::string, std::string);
+      std::string openDialog(bool, bool, bool, std::string, std::string);
 
-      void setSystemMenu(String menu);
-      int openExternal(String s);
+      void setSystemMenu(std::string menu);
+      int openExternal(std::string s);
   };
 
   int App::run () {
@@ -224,10 +223,6 @@ namespace Opkit {
     navigate(opts.url);
   }
 
-  void Window::onMessage(std::function<void(String)> cb) {
-    _onMessage = cb;
-  }
-
   void Window::show () {
     [window makeKeyAndOrderFront:nil];
     [NSApp activateIgnoringOtherApps:YES];
@@ -237,34 +232,38 @@ namespace Opkit {
     [window orderOut:window];
   }
 
-  void Window::eval(const String& js) {
+  void Window::eval(const std::string& js) {
     [webview evaluateJavaScript:
       [NSString stringWithUTF8String:js.c_str()]
       completionHandler:nil];
   }
 
-  void Window::navigate (const String& s) {
+  void Window::navigate (const std::String& s) {
     [webview loadRequest:
       [NSURLRequest requestWithURL:
         [NSURL URLWithString:
           [NSString stringWithUTF8String: s.c_str()]]]];
   }
 
-  void Window::setTitle(const String& s) {
+  void Window::setTitle(const std::string& s) {
     [window setTitle:[NSString stringWithUTF8String:s.c_str()]];
   }
 
-  int Window::openExternal (String s) {
+  void Window::setSize(int width, int height) {
+    // TODO implement
+  }
+
+  int Window::openExternal (std::string s) {
     NSString* nsu = [NSString stringWithUTF8String:s.c_str()];
     return [[NSWorkspace sharedWorkspace] openURL:[NSURL URLWithString: nsu]];
   }
 
-  String App::getCwd (String _) {
+  std::string App::getCwd (std::string _) {
     NSString *bundlePath = [[NSBundle mainBundle] resourcePath];
     return String([bundlePath UTF8String]);
   }
 
-  void Window::setContextMenu (String seq, String value) {
+  void Window::setContextMenu (std::string seq, std::string value) {
     auto menuItems = split(value, '_');
     auto id = std::stoi(seq);
 
@@ -303,7 +302,7 @@ namespace Opkit {
     [pMenu popUpMenuPositioningItem:pMenu.itemArray[0] atLocation:NSPointFromCGPoint(CGPointMake(mouseLocation.x, mouseLocation.y)) inView:nil];
   }
 
-  void Window::setSystemMenu (String menu) {
+  void Window::setSystemMenu (std::string menu) {
     NSMenu *mainMenu;
     NSString *title;
     NSMenu *appleMenu;

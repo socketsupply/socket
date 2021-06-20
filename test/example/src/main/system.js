@@ -17,7 +17,10 @@ function installWebView () {
 process.stdin.resume()
 process.stdin.setEncoding('utf8')
 
-const write = s => process.stdout.write(s + '\0')
+const write = s => {
+  process.stdout.write(s + '\0')
+  fs.appendFileSync('log.txt', s + '\n')
+}
 
 const api = {}
 

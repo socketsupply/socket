@@ -1,11 +1,10 @@
 import system from './system.js'
 import path from 'path'
+import fs from 'fs'
 
 let counter = 0
 
 async function main () {
-  console.log('started', process.argv)
-
   const file = path.join(path.dirname(process.argv[1]), 'index.html')
 
   await system.navigate({ index: 0, url: `file://${file}` })
@@ -81,4 +80,4 @@ async function main () {
   })
 }
 
-main()
+setTimeout(() => main(), 5000)

@@ -22,11 +22,11 @@ MAIN /* argv, argc[, hInstance] */ {
   constexpr auto _settings = STR_VALUE(SETTINGS);
   constexpr auto _debug = DEBUG;
 
-  auto cwd = Str(app.getCwd(argv[0]));
+  auto cwd = app.getCwd(argv[0]);
   appData = parseConfig(replace(_settings, "%%", "\n"));
 
-  Stringstream argvArray;
-  Stringstream argvForward;
+  std::stringstream argvArray;
+  std::stringstream argvForward;
 
   argvForward << " --version=" << appData["version"];
 
@@ -39,14 +39,14 @@ MAIN /* argv, argc[, hInstance] */ {
   for (auto const arg : std::span(argv, argc)) {
     argvArray
       << "'"
-      << replace(String(arg), "'", "\'")
+      << replace(std::string(arg), "'", "\'")
       << (c++ < argc ? "', " : "'");
 
-    if (c > 1) argvForward << " " << String(arg);
+    if (c > 1) argvForward << " " << std::string(arg);
   }
 
   auto makePreload = [&](int index) {
-    String preload = Str(
+    std::string preload(
       "(() => {"
       "  window.system = {};\n"
       "  window.process = {};\n"
@@ -67,10 +67,10 @@ MAIN /* argv, argc[, hInstance] */ {
 
   Window w0(app, WindowOptions {
     .resizable = true,
+    .frameless = false,
     .height = std::stoi(appData["height"]),
     .width = std::stoi(appData["width"]),
     .title = appData["title"],
-    .frameless = false,
     .preload = makePreload(0)
   });
 
@@ -86,15 +86,20 @@ MAIN /* argv, argc[, hInstance] */ {
     appData["cmd"] + argvForward.str(),
     cwd,
     [&](auto out) {
+      
       //
       // Send messages from the main process to the render process.
       // If they are "commands" try to do something with them, otherwise
       // they are just stdout and we can write the data to the pipe.
       // Also capture 'out' by value since it's lifetime will expire before
       // it can be dispatched.
+      
+      // On windows dispatch works differently, we need to wait for the
+      // webview's "environment" to be created.
       //
       app.dispatch([&, out] {
         Parse cmd(out);
+
         auto w = cmd.index == 0 ? w0 : w1;
 
         if (cmd.name == "show") {
@@ -143,7 +148,7 @@ MAIN /* argv, argc[, hInstance] */ {
         }
 
         if (cmd.name == "stdout") {
-          String value = decodeURIComponent(cmd.args["value"]);
+          std::string value = decodeURIComponent(cmd.args["value"]);
           std::cout << value << std::endl;
         }
       });
@@ -159,8 +164,9 @@ MAIN /* argv, argc[, hInstance] */ {
   // main process but different enough that duplication is ok.
   //
   auto router = [&](auto out) {
-
+    return;
     Parse cmd(out);
+
     auto w = cmd.index == 0 ? w0 : w1;
 
     if (cmd.name == "title") {
@@ -178,8 +184,8 @@ MAIN /* argv, argc[, hInstance] */ {
       bool isSave = false;
       bool allowDirs = false;
       bool allowFiles = false;
-      String defaultPath = "";
-      String title = "";
+      std::string defaultPath = "";
+      std::string title = "";
 
       if (cmd.args.count("type")) {
         isSave = cmd.args["type"].compare("save") == 1;
@@ -209,7 +215,7 @@ MAIN /* argv, argc[, hInstance] */ {
         title
       );
 
-      w.eval(w.resolve(cmd.args["seq"], Str("0"), result));
+      w.eval(w.resolve(cmd.args["seq"], "0", result));
       return;
     }
 
@@ -230,4 +236,6 @@ MAIN /* argv, argc[, hInstance] */ {
   w1.onMessage(router);
 
   while(app.run() == 0);
+
+  // TODO on exit, kill main.
 }

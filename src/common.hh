@@ -1,6 +1,8 @@
 #ifndef OPKIT_H
 #define OPKIT_H
 
+#include "preload.hh"
+
 #include <string>
 #include <vector>
 #include <map>
@@ -12,16 +14,22 @@
 #include <thread>
 #include <filesystem>
 
-#include "preload.hh"
-
-#define TO_STR(arg) #arg
-#define STR_VALUE(arg) TO_STR(arg)
+#if defined(_WIN32)
+#include <Windows.h>
+#include <tchar.h>
+#include <wrl.h>
+#include <stdlib.h>
+#include <functional>
+#include <sstream>
+#include <cstring>
+#include <algorithm>
+#include <stdio.h>
 
 //
 // A cross platform MAIN macro that
 // magically gives us argc and argv.
 //
-#if defined(_WIN32)
+
 #define MAIN \
   int argc = __argc; \
   char** argv = __argv; \
@@ -35,6 +43,9 @@
 #else
 #define MAIN int main (int argc, char** argv)
 #endif
+
+#define TO_STR(arg) #arg
+#define STR_VALUE(arg) TO_STR(arg)
 
 namespace fs = std::filesystem;
 
@@ -54,11 +65,27 @@ namespace Opkit {
     using Stringstream = std::wstringstream;
     using namespace Microsoft::WRL;
     #define Str(s) L##s
+    #define RegExp std::wregex
+
+    inline std::wstring StringToWString(const std::string& s) {
+      std::wstring temp(s.length(), L' ');
+      std::copy(s.begin(), s.end(), temp.begin());
+      return temp; 
+    }
+
+    inline std::string WStringToString(const std::wstring& s) {
+      std::string temp(s.length(), ' ');
+      std::copy(s.begin(), s.end(), temp.begin());
+      return temp;
+    }
 
   #else
     using String = std::string;
     using Stringstream = std::stringstream;
+    #define RegExp std::regex
     #define Str(s) s
+    #define StringToWString(s) s
+    #define WStringToString(s) s
 
   #endif
 
@@ -70,19 +97,19 @@ namespace Opkit {
       bool darwin = false;
       bool win = true;
       bool linux = false;
-      const String os = "win";
+      const String os = Str("win");
 
     #elif defined(__APPLE__)
       bool darwin = true;
       bool win = false;
       bool linux = false;
-      const String os = "darwin";
+      const String os = Str("darwin");
 
     #elif defined(__linux__)
       bool darwin = false;
       bool win = false;
       bool linux = true;
-      const String os = "linux";
+      const String os = Str("linux");
 
     #endif
   } platform;
@@ -100,18 +127,18 @@ namespace Opkit {
     bool frameless = false;
     int height;
     int width;
-    String title = Str("");
-    String url = Str("data:text/html,<html>");
-    String preload = Str("");
+    std::string title = "";
+    std::string url = "data:text/html,<html>";
+    std::string preload = "";
   };
 
   //
   // Helper functions...
   //
-  inline const std::vector<String>
-  split(const String& s, const char& c) {
-    String buff;
-    std::vector<String> vec;
+  inline const std::vector<std::string>
+  split(const std::string& s, const char& c) {
+    std::string buff;
+    std::vector<std::string> vec;
     
     for (auto n : s) {
       if(n != c) {
@@ -127,18 +154,18 @@ namespace Opkit {
     return vec;
   }
 
-  inline String&
-  trim(String& str) {
+  inline std::string
+  trim(std::string str) {
     str.erase(0, str.find_first_not_of(" \r\n\t"));
     str.erase(str.find_last_not_of(" \r\n\t") + 1);
     return str;
   }
 
-  inline String tmpl(const String s, std::map<String, String> pairs) {
-    String output = s;
+  inline std::string tmpl(const std::string s, std::map<std::string, std::string> pairs) {
+    std::string output = s;
 
     for (auto item : pairs) {
-      auto key = "[{]+(" + item.first + ")[}]+";
+      auto key = std::string("[{]+(" + item.first + ")[}]+");
       auto value = item.second;
       output = std::regex_replace(output, std::regex(key), value);
     }
@@ -146,17 +173,17 @@ namespace Opkit {
     return output;
   }
 
-  inline String replace(String src, String re, String val) {
+  inline std::string replace(std::string src, std::string re, std::string val) {
     return std::regex_replace(src, std::regex(re), val);
   }
 
-  inline auto getEnv(String variableName) {
+  inline std::string getEnv(const char* variableName) {
     #if _WIN32
       char* variableValue = nullptr;
       std::size_t valueSize = 0;
-      auto query = _dupenv_s(&variableValue, &valueSize, variableName.c_str());
+      auto query = _dupenv_s(&variableValue, &valueSize, variableName);
 
-      String result;
+      std::string result;
       if(query == 0 && variableValue != nullptr && valueSize > 0) {
         result.assign(variableValue, valueSize - 1);
         free(variableValue);
@@ -164,25 +191,25 @@ namespace Opkit {
 
       return result;
     #else
-      auto v = getenv(variableName.c_str());
+      auto v = getenv(variableName);
 
       if (v != nullptr) {
-        return String(v);
+        return std::string(v);
       }
 
-      return String("");
+      return std::string("");
     #endif
   }
 
-  inline auto setEnv(String s) {
+  inline auto setEnv(const char* s) {
     #if _WIN32
-      return _putenv(s.c_str());
+      return _putenv(s);
     #else
-      return putenv((char*) s.c_str());
+      return putenv(s);
     #endif
   }
 
-  inline String exec(String command) {
+  inline std::string exec(std::string command) {
     FILE *pipe;
     char buf[128];
 
@@ -201,7 +228,7 @@ namespace Opkit {
       exit(1);
     }
 
-    Stringstream ss;
+    std::stringstream ss;
 
     while (fgets(buf, 128, pipe)) {
       ss << buf;
@@ -216,9 +243,9 @@ namespace Opkit {
     return ss.str();
   }
 
-  inline String pathToString(const fs::path &path) {
+  inline std::string pathToString(const fs::path &path) {
     auto s = path.u8string();
-    return String(s.begin(), s.end());
+    return std::string(s.begin(), s.end());
   }
 
   inline String readFile(fs::path path) {
@@ -231,33 +258,33 @@ namespace Opkit {
     return content;
   }
 
-  inline void writeFile (fs::path path, String s) {
+  inline void writeFile (fs::path path, std::string s) {
     std::ofstream stream(pathToString(path));
     stream << s;
     stream.close();
   }
 
-  inline String prefixFile(String s) {
+  inline std::string prefixFile(std::string s) {
     if (platform.darwin || platform.linux) {
-      return Str("/usr/local/lib/opkit/" + s + " ");
+      return std::string("/usr/local/lib/opkit/" + s + " ");
     }
 
-    String local = getEnv("LOCALAPPDATA");
-    return Str(local + "\\Programs\\optoolco\\" + s + " ");
+    std::string local = getEnv("LOCALAPPDATA");
+    return std::string(local + "\\Programs\\optoolco\\" + s + " ");
   }
 
-  inline String prefixFile() {
+  inline std::string prefixFile() {
     if (platform.darwin || platform.linux) {
-      return Str("/usr/local/lib/opkit");
+      return "/usr/local/lib/opkit";
     }
 
-    String local = getEnv("LOCALAPPDATA");
-    return Str(local + "\\Programs\\optoolco");
+    std::string local = getEnv("LOCALAPPDATA");
+    return std::string(local + "\\Programs\\optoolco");
   }
 
-  inline std::map<String, String> parseConfig(String source) {
+  inline std::map<std::string, std::string> parseConfig(std::string source) {
     auto entries = split(source, '\n');
-    std::map<String, String> settings;
+    std::map<std::string, std::string> settings;
 
     for (auto entry : entries) {
       auto pair = split(entry, ':');
@@ -275,21 +302,21 @@ namespace Opkit {
   // TODO possibly harden data validation.
   //
   struct Parse {
-    Parse(String);
+    Parse(std::string);
     int index = 0;
-    String value = Str("");
-    String name = Str("");
-    std::map<String, String> args;
+    std::string value = "";
+    std::string name = "";
+    std::map<std::string, std::string> args;
   };
 
   //
   // cmd: `ipc://id?p1=v1&p2=v2&...\0`
   //
-  inline Parse::Parse(String str) {    
+  inline Parse::Parse(std::string str) {    
     if (str.find("ipc://") == -1) return;
 
-    String query;
-    String path;
+    std::string query;
+    std::string path;
 
     auto raw = split(str, '?');
     path = raw[0];
@@ -336,13 +363,13 @@ namespace Opkit {
     /* F */ -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1
   };
 
-  inline String decodeURIComponent(const String& sSrc) {
+  inline std::string decodeURIComponent(const std::string& sSrc) {
 
     // Note from RFC1630:  "Sequences which start with a percent sign
     // but are not followed by two hexadecimal characters (0-9, A-F) are reserved
     // for future extension"
 
-    auto s = replace(String(sSrc), "\\+", " ");
+    auto s = replace(sSrc, "\\+", " ");
     const unsigned char * pSrc = (const unsigned char *) s.c_str();
     const int SRC_LEN = sSrc.length();
     const unsigned char * const SRC_END = pSrc + SRC_LEN;
@@ -370,7 +397,7 @@ namespace Opkit {
       *pEnd++ = *pSrc++;
     }
 
-    String sResult(pStart, pEnd);
+    std::string sResult(pStart, pEnd);
     delete [] pStart;
     return sResult;
   }
@@ -385,33 +412,38 @@ namespace Opkit {
       virtual int run() = 0;
       virtual void exit() = 0;
       virtual void dispatch(std::function<void()> work) = 0;
-      virtual String getCwd(String) = 0;
+      virtual std::string getCwd(const std::string&) = 0;
   };
 
   class IWindow {
     public:
-      String resolve(String, String, String);
-      String emit(String, String);
+      std::string resolve(std::string, std::string, std::string);
+      std::string emit(std::string, std::string);
 
-      String url;
-      String title;
+      std::string url;
+      std::string title;
       bool initDone = false;
-      std::function<void(String)> _onMessage = nullptr;
+      std::function<void(std::string)> _onMessage = nullptr;
 
-      virtual void onMessage(std::function<void(String)>) = 0;
-      virtual void eval(const String&) = 0;
+      virtual void onMessage(std::function<void(std::string)>);
+      virtual void eval(const std::string&) = 0;
       virtual void show() = 0;
       virtual void hide() = 0 ;
-      virtual void navigate(const String&) = 0;
-      virtual void setTitle(const String&) = 0;
-      virtual void setContextMenu(String, String) = 0;
-      virtual String openDialog(bool, bool, bool, String, String) = 0;
-      virtual void setSystemMenu(String menu) = 0;
-      virtual int openExternal(String s) = 0;
+      virtual void navigate(const std::string&) = 0;
+      virtual void setTitle(const std::string&) = 0;
+      virtual void setSize(int, int) = 0;
+      virtual void setContextMenu(std::string, std::string) = 0;
+      virtual std::string openDialog(bool, bool, bool, std::string, std::string) = 0;
+      virtual void setSystemMenu(std::string menu) = 0;
+      virtual int openExternal(std::string s) = 0;
   };
 
-  String IWindow::resolve(String seq, String status, String value) {
-    String response = Str(
+  void IWindow::onMessage(std::function<void(std::string)> cb) {
+    _onMessage = cb;
+  }
+
+  std::string IWindow::resolve(std::string seq, std::string status, std::string value) {
+    std::string response(
       "(() => {"
       "  const seq = Number(" + seq + ");"
       "  const status = Number(" + status + ");"
@@ -423,8 +455,8 @@ namespace Opkit {
     return response;
   }
 
-  String IWindow::emit(String event, String value) {
-    String response = Str(
+  std::string IWindow::emit(std::string event, std::string value) {
+    std::string response(
       "(() => {"
       "  const name = '" + event + "';"
       "  const value = '" + value + "';"

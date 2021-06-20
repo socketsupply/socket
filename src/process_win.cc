@@ -125,7 +125,6 @@ Process::id_type Process::open(const std::string &command, const std::string &pa
   );
 
   if (!bSuccess) {
-    writeLog(path);
     return 0;
   } else {
     CloseHandle(process_info.hThread);

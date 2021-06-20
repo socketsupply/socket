@@ -114,14 +114,14 @@ int main (const int argc, const char* argv[]) {
 
   auto target = fs::path(argv[1]);
 
-  auto _settings = readFile(fs::path { target / "settings.config" });
+  auto _settings = WStringToString(readFile(fs::path { target / "settings.config" }));
   auto settings = parseConfig(_settings);
 
   auto pathOutput = fs::path { settings["output"] };
 
   if (flagRunUserBuild == false) {
     fs::remove_all(pathOutput);
-    log("cleaned: " + pathToString(pathOutput));
+    log(std::string("cleaned: " + pathToString(pathOutput)));
   }
 
   auto executable = fs::path(platform.darwin
@@ -279,7 +279,6 @@ int main (const int argc, const char* argv[]) {
 
     files += prefixFile("src\\main.cc");
     files += prefixFile("src\\process_win.cc");
-    files += prefixFile("src\\win.cc");
 
     packageName = fs::path((
       settings["executable"] + "-" +
@@ -334,7 +333,7 @@ int main (const int argc, const char* argv[]) {
   _settings = replace(_settings, "\n", "%%");
 
   compileCommand
-    << " " << getEnv("CXX")
+    << getEnv("CXX")
     << " " << files
     << " " << flags
     << " " << settings["flags"]
@@ -343,7 +342,7 @@ int main (const int argc, const char* argv[]) {
     << " -DSETTINGS=\"" << _settings << "\""
   ;
 
-  // log(compileCommand.str());
+  log(compileCommand.str());
   if (flagRunUserBuild == false) {
     auto r = exec(compileCommand.str());
     log("compiled native binary");
