@@ -249,7 +249,7 @@ namespace Opkit {
     [window setTitle:[NSString stringWithUTF8String:s.c_str()]];
   }
 
-  void Window::setSize(int width, int height) {
+  void Window::setSize(int width, int height, int hints) {
     // TODO implement
   }
 

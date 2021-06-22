@@ -1,10 +1,21 @@
 #include "common.hh"
 #include "win64/WebView2.h"
+#include "win64/options.h"
+#include <shlwapi.h>
+#include <windows.h>
+#include <comdef.h>
+#include <wrl.h>
+#include <winerror.h>
+
+#include <future>
 
 #pragma comment(lib,"advapi32.lib")
+#pragma comment(lib,"Shlwapi.lib")
 #pragma comment(lib,"shell32.lib")
 #pragma comment(lib,"version.lib")
 #pragma comment(lib,"user32.lib")
+#pragma comment(lib,"ole32.lib")
+#pragma comment(lib,"oleaut32.lib")
 #pragma comment(lib,"WebView2LoaderStatic.lib")
 
 inline void alert (const std::wstring &ws) {
@@ -19,60 +30,66 @@ inline void alert (const char* s) {
   MessageBoxA(nullptr, s, _TEXT("Alert"), MB_OK | MB_ICONSTOP);
 }
 
-using HEnv = ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler;
-using HCon = ICoreWebView2CreateCoreWebView2ControllerCompletedHandler;
-using HRec = ICoreWebView2WebMessageReceivedEventHandler;
-using IArgs = ICoreWebView2WebMessageReceivedEventArgs;
-using CoreEnv = ICoreWebView2Environment;
-using CoreCon = ICoreWebView2Controller;
-
-static ICoreWebView2Controller *webviewController = nullptr;
-static ICoreWebView2 *webview = nullptr;
-
 namespace Opkit {
   class App: public IApp {
     public:
+      MSG msg;
       _In_ HINSTANCE hInstance;
-      HANDLE mainThread = GetCurrentThread();
-      static std::atomic<bool> isReady;
+      DWORD mainThread = GetCurrentThreadId();
 
       App(void* h);
-      MSG msg;
       int run();
       void exit();
-      void dispatch(std::function<void()> work);
+      void dispatch(std::function<void()>);
       std::string getCwd(const std::string&);
   };
 
-  std::atomic<bool> App::isReady {false};
-
   class Window : public IWindow {
-    public:
-      HWND window = nullptr;
-      POINT p;
-      App app;
-      Window(App&, WindowOptions);
+    HWND window;
+    DWORD mainThread = GetCurrentThreadId();
 
+    public:
+      Window(App&, WindowOptions);
       static LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
+      ICoreWebView2 *webview = nullptr;
+      ICoreWebView2Controller *controller = nullptr;
+
+      App app;
+
+      void resize (HWND window);
+      POINT m_minsz = POINT{0, 0};
+      POINT m_maxsz = POINT{0, 0};
+      bool initDone = false;
 
       void eval(const std::string&);
       void show();
+      void exit();
       void hide();
-      void resize();
+      void exec(const std::string&);
       void navigate(const std::string&);
-      void setSize(int, int);
+      void setSize(int, int, int);
       void setTitle(const std::string&);
       void setContextMenu(std::string, std::string);
       void setSystemMenu(std::string);
       std::string openDialog(bool, bool, bool, std::string, std::string);
-      int openExternal(std::string s);
-
-      void createWebview();
+      int openExternal(std::string);
   };
 
   App::App(void* h): hInstance((_In_ HINSTANCE) h) {
     // this fixes bad default quality DPI.
-    ::SetProcessDPIAware();
+    SetProcessDPIAware();
+
+    std::string s("current thread id: " + std::to_string(mainThread));
+    // alert(s);
+
+    /* HICON icon = (HICON) LoadImage(
+      hInstance,
+      IDI_APPLICATION,
+      IMAGE_ICON,
+      GetSystemMetrics(SM_CXSMICON),
+      GetSystemMetrics(SM_CYSMICON),
+      LR_DEFAULTCOLOR
+    ); */
 
     auto *szWindowClass = L"DesktopApp";
     auto *szTitle = L"Opkit";
@@ -80,7 +97,6 @@ namespace Opkit {
 
     wcex.cbSize = sizeof(WNDCLASSEX);
     wcex.style = CS_HREDRAW | CS_VREDRAW;
-    wcex.lpfnWndProc = Window::WndProc;
     wcex.cbClsExtra = 0;
     wcex.cbWndExtra = 0;
     wcex.hInstance = hInstance;
@@ -90,13 +106,12 @@ namespace Opkit {
     wcex.lpszMenuName = NULL;
     wcex.lpszClassName = TEXT("DesktopApp");
     wcex.hIconSm = LoadIcon(wcex.hInstance, IDI_APPLICATION);
+    wcex.lpfnWndProc = Window::WndProc;
 
     if (!RegisterClassEx(&wcex)) {
-      MessageBox(nullptr, nullptr, TEXT("Failed to start"), MB_OK | MB_ICONSTOP);
+      alert("App failed to register");
     }
   };
-
-  void Window::createWebview () {}
 
   Window::Window (App& app, WindowOptions opts) : app(app) {
     window = CreateWindow(
@@ -109,29 +124,30 @@ namespace Opkit {
       app.hInstance, NULL
     );
 
-    SetWindowPos(window, nullptr, 90000, 90000, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
     ShowWindow(window, SW_SHOW);
     UpdateWindow(window);
-    SetWindowLongPtr(window, GWLP_USERDATA, (LONG_PTR) &webview);
+    SetWindowLongPtr(window, GWLP_USERDATA, (LONG_PTR) this);
 
-    auto hr = CreateCoreWebView2EnvironmentWithOptions(
+    auto res = CreateCoreWebView2EnvironmentWithOptions(
       nullptr,
       nullptr,
       nullptr,
-      Microsoft::WRL::Callback<HEnv>(
-        [=](HRESULT result, CoreEnv* env) -> HRESULT {
-
+      Microsoft::WRL::Callback<ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler>(
+        [&](HRESULT result, ICoreWebView2Environment* env) -> HRESULT {
           env->CreateCoreWebView2Controller(
             window,
-            Microsoft::WRL::Callback<HCon>(
-              [=](HRESULT result, CoreCon* controller) -> HRESULT {
-                hide();
-                if (controller != nullptr) {
-                  webviewController = controller;
-                  webviewController->get_CoreWebView2(&webview);
-                }
+            Microsoft::WRL::Callback<ICoreWebView2CreateCoreWebView2ControllerCompletedHandler>(
+              [&](HRESULT result, ICoreWebView2Controller* c) -> HRESULT {
+                
+                if (c != nullptr) {
+                  controller = c;
+                  controller->get_CoreWebView2(&webview);
 
-                webviewController->AddRef();
+                  RECT bounds;
+                  GetClientRect(window, &bounds);
+                  controller->put_Bounds(bounds);
+                  controller->AddRef();
+                }
 
                 ICoreWebView2Settings* Settings;
                 webview->get_Settings(&Settings);
@@ -140,36 +156,6 @@ namespace Opkit {
                 Settings->put_IsWebMessageEnabled(TRUE);
                 Settings->put_AreDevToolsEnabled(TRUE);
                 Settings->put_IsZoomControlEnabled(FALSE);
-      
-                // Settings->put_IsBuiltInErrorPageEnabled(FALSE);
-
-                RECT bounds;
-                GetClientRect(window, &bounds);
-                webviewController->put_Bounds(bounds);
-
-                this->app.isReady = true;
-
-                EventRegistrationToken token;
-                webview->add_WebMessageReceived(
-                  Microsoft::WRL::Callback<HRec>(
-                    [=](ICoreWebView2* webview, IArgs * args) -> HRESULT {
-                      PWSTR bytes;
-                      args->TryGetWebMessageAsString(&bytes);
-
-                      // HANDLE event_log = RegisterEventSource(NULL, L"OPKIT");
-                      // ReportEvent(event_log, EVENTLOG_SUCCESS, 0, 0, NULL, 1, 0, (LPCWSTR* const) x.c_str(), NULL);
-
-                      // Frameless loading mode.
-                      // SetWindowLongPtr(window_primary, GWL_STYLE, WS_CAPTION);
-                      // ShowWindow(window_primary, SW_SHOW);
-
-                      // webview->PostWebMessageAsString(bytes);
-                      CoTaskMemFree(bytes);
-                      return S_OK;
-                    }
-                  ).Get(),
-                  &token
-                );
 
                 return S_OK;
               }
@@ -181,103 +167,63 @@ namespace Opkit {
       ).Get()
     );
 
-    if (!SUCCEEDED(hr)) {
-      switch (hr) {
-        case HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND): {
-          MessageBox(
-            window,
-            TEXT(
-              "Couldn't find Edge installation. "
-              "Do you have a version installed that's compatible with this "
-              "WebView2 SDK version?"
-            ),
-            nullptr,
-            MB_OK
-          );
-          break;
-        }
-
-        case HRESULT_FROM_WIN32(ERROR_FILE_EXISTS): {
-          MessageBox(
-            window,
-            TEXT("User data folder cannot be created because a file with the same name already exists."),
-            nullptr,
-            MB_OK
-          );
-          break;
-        }
-
-        case E_ACCESSDENIED: {
-          MessageBox(
-            window,
-            TEXT("Unable to create user data folder, Access Denied."),
-            nullptr,
-            MB_OK
-          );
-          break;
-        }
-
-        case E_FAIL: {
-          MessageBox(
-            window,
-            TEXT("Edge runtime unable to start"),
-            nullptr,
-            MB_OK
-          );
-          break;
-        }
-
-        default: {
-          MessageBox(
-            window,
-            TEXT("Failed to create WebView2 environment"),
-            nullptr,
-            MB_OK
-          );
-          break;
-        }
-      }
+    if (!SUCCEEDED(res)) {
+      alert("Unable to create webview");
     }
   }
 
   int App::run () {
-    bool loop = GetMessage(&msg, nullptr, 0, 0) > 0;
+    MSG msg;
+    BOOL res = GetMessage(&msg, nullptr, 0, 0);
 
-    if (loop) {
+    if (msg.hwnd) {
       TranslateMessage(&msg);
       DispatchMessage(&msg);
     }
 
-    return !loop;
+    if (msg.message == WM_APP) {
+      auto f = (std::function<void()> *)(msg.lParam);
+      (*f)();
+      delete f;
+    }
+
+    if (msg.message == WM_QUIT) {
+      if (shouldExit) return 1;
+    }
+
+    return 0;
   }
 
-  void App::exit() {
-    PostQuitMessage(WM_QUIT);
+  void App::exit () {
+    shouldExit = true;
+    PostQuitMessage(0);
   }
 
-  void App::dispatch(std::function<void()> cb) {
-    auto r = std::async (std::launch::async, [&] {
-      // wait for the webview to be ready before
-      // responding to requests from the main process.
-      while (!this->isReady) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(16));
-      }
-      cb();
-    });
+  void App::dispatch (std::function<void()> cb) {
+    PostThreadMessage(
+      mainThread,
+      WM_APP,
+      0,
+      (LPARAM) new std::function<void()>(cb)
+    );
   }
 
-  std::string App::getCwd(const std::string& _) {
+  std::string App::getCwd (const std::string& _) {
     wchar_t filename[MAX_PATH];
     GetModuleFileNameW(NULL, filename, MAX_PATH);
     auto path = fs::path { filename }.remove_filename();
     return pathToString(path);
   }
 
+  void Window::exit () {
+    PostQuitMessage(0);
+  }
+
   void Window::show () {
     ShowWindow(window, SW_SHOW);
     UpdateWindow(window);
 
-    RECT r,r1;
+    RECT r, r1;
     GetWindowRect(window, &r);
     GetWindowRect(GetDesktopWindow(), &r1);
 
@@ -295,77 +241,119 @@ namespace Opkit {
     UpdateWindow(window);
   }
 
-  void Window::eval(const std::string& js) {
+  void Window::resize (HWND window) {
+    if (controller == nullptr) {
+      return;
+    }
+
+    RECT bounds;
+    GetClientRect(window, &bounds);
+    controller->put_Bounds(bounds);
+  }
+
+  void Window::eval (const std::string& s) {
     if (webview == nullptr) {
       return;
     }
 
     webview->ExecuteScript(
-      StringToWString(js).c_str(),
+      StringToWString(s).c_str(),
+      nullptr
+    );
+  }
+
+  void Window::exec (const std::string& s) {
+    webview->AddScriptToExecuteOnDocumentCreated(
+      StringToWString(s).c_str(),
       nullptr
     );
   }
 
   void Window::navigate (const std::string& s) {
-    show();
     webview->Navigate(StringToWString(s).c_str());
   }
 
-  void Window::setTitle(const std::string& title) {}
+  void Window::setTitle (const std::string& title) {
+    SetWindowText(window, title.c_str());
+  }
 
-  void Window::setSize(int width, int height) {}
+  void Window::setSize (int width, int height, int hints) {
+    auto style = GetWindowLong(window, GWL_STYLE);
 
-  void Window::setSystemMenu(std::string) {
+    if (hints == WINDOW_HINT_FIXED) {
+      style &= ~(WS_THICKFRAME | WS_MAXIMIZEBOX);
+    } else {
+      style |= (WS_THICKFRAME | WS_MAXIMIZEBOX);
+    }
+
+    SetWindowLong(window, GWL_STYLE, style);
+
+    if (hints == WINDOW_HINT_MAX) {
+      m_maxsz.x = width;
+      m_maxsz.y = height;
+    } else if (hints == WINDOW_HINT_MIN) {
+      m_minsz.x = width;
+      m_minsz.y = height;
+    } else {
+      RECT r;
+      r.left = r.top = 0;
+      r.right = width;
+      r.bottom = height;
+
+      AdjustWindowRect(&r, WS_OVERLAPPEDWINDOW, 0);
+
+      SetWindowPos(
+        window,
+        NULL,
+        r.left, r.top, r.right - r.left, r.bottom - r.top,
+        SWP_NOZORDER | SWP_NOACTIVATE | SWP_NOMOVE | SWP_FRAMECHANGED
+      );
+
+      resize(window);
+    }
+  }
+
+  void Window::setSystemMenu (std::string) {
     // TODO implement
   }
 
-  void Window::setContextMenu(std::string seq, std::string value) {
+  void Window::setContextMenu (std::string seq, std::string value) {
     // TODO implement
   }
 
-  int Window::openExternal(std::string url) {
+  int Window::openExternal (std::string url) {
     return 0;
   }
 
-  std::string Window::openDialog(bool isSave, bool allowDirs, bool allowFiles, std::string, std::string) {
+  std::string Window::openDialog (bool isSave, bool allowDirs, bool allowFiles, std::string, std::string) {
     return std::string("");
   }
 
-  void Window::resize() {
-    RECT rc;
-    GetClientRect(window, &rc);
-    webviewController->put_Bounds(rc);
-  }
-
   LRESULT CALLBACK Window::WndProc(
-    HWND hwnd,
-    UINT msg,
-    WPARAM wparam,
-    LPARAM lparam) {
+    HWND hWnd,
+    UINT message,
+    WPARAM wParam,
+    LPARAM lParam) {
     
-    Window* w = reinterpret_cast<Window*>(GetWindowLongPtr(hwnd, GWLP_USERDATA));
+    Window* w = reinterpret_cast<Window*>(GetWindowLongPtr(hWnd, GWLP_USERDATA));
 
-    switch (msg) {
+    switch (message) {
       case WM_SIZE:
-        // WM_SIZE will first fire before the webview finishes loading
-        // init() calls resize(), so this call is only for size changes
-        // after fully loading.
-        if (w != nullptr && w->initDone) {
-            w->resize();
+        if (w != nullptr && w->webview != nullptr) {
+          RECT bounds;
+          GetClientRect(hWnd, &bounds);
+          w->controller->put_Bounds(bounds);
         }
-        return DefWindowProc(hwnd, msg, wparam, lparam);
-      case WM_CLOSE:
-          DestroyWindow(hwnd);
-          break;
-      case 666:
-        alert("666");
         break;
       case WM_DESTROY:
-          w->app.exit();
-          break;
+        PostQuitMessage(0);
+        break;
       default:
-          return DefWindowProc(hwnd, msg, wparam, lparam);
+        return DefWindowProc(hWnd, message, wParam, lParam);
+        break;
     }
+
     return 0;
   }
+
 } // namespace Opkit

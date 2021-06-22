@@ -5,51 +5,54 @@ import fs from 'fs'
 let counter = 0
 
 async function main () {
-  const file = path.join(path.dirname(process.argv[1]), 'index.html')
 
-  await system.navigate({ index: 0, url: `file://${file}` })
-  await system.show({ index: 0 })
-  await system.setTitle({ index: 0, value: 'Hello Operator' })
+  system.show({ index: 0 })
 
-  await system.setMenu(`
-    Operator:
-      About Operator: _
-      ---: _
-      Preferences...: , + Command
-      ---: _
-      Hide: h
-      Hide Others: h + Control, Command
-      ---: _
-      Quit: q + Command;
+  setTimeout(() => {
+    const file = path.join(path.dirname(process.argv[1]), 'index.html')
+    system.navigate({ index: 0, url: `file://${file}` })
+    system.setTitle({ index: 0, value: 'Hello' })
 
-    Edit:
-      Cut: x
-      Copy: c
-      Paste: v
-      Delete: _
-      Select All: a;
+    system.setMenu(`
+      Operator:
+        About Operator: _
+        ---: _
+        Preferences...: , + Command
+        ---: _
+        Hide: h
+        Hide Others: h + Control, Command
+        ---: _
+        Quit: q + Command;
 
-    Foo:
-      Bazz: z + Command
-      ---: _
-      Quxx: e + ControlOrCommand, Option;
+      Edit:
+        Cut: x
+        Copy: c
+        Paste: v
+        Delete: _
+        Select All: a;
 
-    Other:
-      Another Test: t
-      Beep: T + Command
-  `)
+      Foo:
+        Bazz: z + Command
+        ---: _
+        Quxx: e + ControlOrCommand, Option;
 
-  system.receive(async data => {
-    return {
-      received: data,
-      counter: counter++
-    }
-  })
+      Other:
+        Another Test: t
+        Beep: T + Command
+    `)
 
-  system.send({
-    env: process.env,
-    argv: process.argv
-  })
+    system.receive(async data => {
+      return {
+        received: data,
+        counter: counter++
+      }
+    })
+
+    system.send({
+      env: process.env,
+      argv: process.argv
+    })
+  }, 2048)
 
   setInterval(() => {
     counter++
@@ -80,4 +83,4 @@ async function main () {
   })
 }
 
-setTimeout(() => main(), 5000)
+main()

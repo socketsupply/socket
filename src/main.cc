@@ -11,7 +11,7 @@
 
 using namespace Opkit;
 
-MAIN /* argv, argc[, hInstance] */ {
+MAIN /* argv, argc, hInstance */ {
 
   #ifdef _WIN32
     App app(hInstance);
@@ -86,21 +86,29 @@ MAIN /* argv, argc[, hInstance] */ {
     appData["cmd"] + argvForward.str(),
     cwd,
     [&](auto out) {
-      
       //
-      // Send messages from the main process to the render process.
-      // If they are "commands" try to do something with them, otherwise
-      // they are just stdout and we can write the data to the pipe.
-      // Also capture 'out' by value since it's lifetime will expire before
-      // it can be dispatched.
-      
-      // On windows dispatch works differently, we need to wait for the
-      // webview's "environment" to be created.
+      // Sends messages from the main process to the render process. If they
+      // are "commands" try to do something with them, otherwise they are just
+      // stdout and we can write the data to the pipe.
+      //
+      // - The dispatch function on mac sends the function to the main
+      // event queue.
+      //
+      // - On Windows(TM), dispatch listens from the thread on which the
+      // WebView was created (WebView2 is STA).
+      //
+      // - On linux dispatch is to the main thread.
       //
       app.dispatch([&, out] {
         Parse cmd(out);
 
-        auto w = cmd.index == 0 ? w0 : w1;
+        auto &w = cmd.index == 0 ? w0 : w1;
+
+        if (cmd.name == "title") {
+          auto s = decodeURIComponent(cmd.args["value"]);
+          w.setTitle(s);
+          return;
+        }
 
         if (cmd.name == "show") {
           w.show();
@@ -115,12 +123,6 @@ MAIN /* argv, argc[, hInstance] */ {
         if (cmd.name == "navigate") {
           auto s = decodeURIComponent(cmd.args["url"]);
           w.navigate(s);
-          return;
-        }
-
-        if (cmd.name == "title") {
-          auto s = decodeURIComponent(cmd.args["value"]);
-          w.setTitle(s);
           return;
         }
 
@@ -167,7 +169,7 @@ MAIN /* argv, argc[, hInstance] */ {
     return;
     Parse cmd(out);
 
-    auto w = cmd.index == 0 ? w0 : w1;
+    auto &w = cmd.index == 0 ? w0 : w1;
 
     if (cmd.name == "title") {
       auto s = decodeURIComponent(cmd.args["value"]);

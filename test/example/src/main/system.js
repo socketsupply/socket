@@ -35,7 +35,7 @@ const exceedsMaxSize = s => {
 
 console.log = (...args) => {
   const s = args.map(v => util.format(v)).join(' ')
-  write(`ipc://stdout?value=${encodeURIComponent(s)}`)
+  return write(`ipc://stdout?value=${encodeURIComponent(s)}`)
 }
 
 api.show = o => {

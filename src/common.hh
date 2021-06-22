@@ -50,10 +50,17 @@
 namespace fs = std::filesystem;
 
 enum {
-  NOC_FILE_DIALOG_OPEN    = 1 << 0,   // Create an open file dialog.
-  NOC_FILE_DIALOG_SAVE    = 1 << 1,   // Create a save file dialog.
-  NOC_FILE_DIALOG_DIR     = 1 << 2,   // Open a directory.
-  NOC_FILE_DIALOG_OVERWRITE_CONFIRMATION = 1 << 3,
+  FILE_DIALOG_OPEN    = 1 << 0,   // Create an open file dialog.
+  FILE_DIALOG_SAVE    = 1 << 1,   // Create a save file dialog.
+  FILE_DIALOG_DIR     = 1 << 2,   // Open a directory.
+  FILE_DIALOG_OVERWRITE_CONFIRMATION = 1 << 3,
+};
+
+enum {
+  WINDOW_HINT_NONE = 0,  // Width and height are default size
+  WINDOW_HINT_MIN = 1,   // Width and height are minimum bounds
+  WINDOW_HINT_MAX = 2,   // Width and height are maximum bounds
+  WINDOW_HINT_FIXED = 3  // Window size can not be changed by a user
 };
 
 namespace Opkit {
@@ -402,6 +409,8 @@ namespace Opkit {
     return sResult;
   }
 
+  using SCallback = std::function<void(const std::string)>;
+
   //
   // Interfaces make sure all operating systems implement the same stuff
   //
@@ -423,23 +432,32 @@ namespace Opkit {
       std::string url;
       std::string title;
       bool initDone = false;
-      std::function<void(std::string)> _onMessage = nullptr;
 
-      virtual void onMessage(std::function<void(std::string)>);
+      SCallback onMessageCallback = nullptr;
+
+      void onMessage(std::function<void(std::string)>);
+      void onMessageExec(const std::string);
+
       virtual void eval(const std::string&) = 0;
       virtual void show() = 0;
-      virtual void hide() = 0 ;
+      virtual void hide() = 0;
+      virtual void exit() = 0;
+      virtual void exec(const std::string& s) = 0;
       virtual void navigate(const std::string&) = 0;
       virtual void setTitle(const std::string&) = 0;
-      virtual void setSize(int, int) = 0;
+      virtual void setSize(int, int, int) = 0;
       virtual void setContextMenu(std::string, std::string) = 0;
       virtual std::string openDialog(bool, bool, bool, std::string, std::string) = 0;
       virtual void setSystemMenu(std::string menu) = 0;
       virtual int openExternal(std::string s) = 0;
   };
 
+  void IWindow::onMessageExec(const std::string s) {
+    if (onMessageCallback != nullptr) onMessageCallback(s);
+  }
+
   void IWindow::onMessage(std::function<void(std::string)> cb) {
-    _onMessage = cb;
+    onMessageCallback = cb;
   }
 
   std::string IWindow::resolve(std::string seq, std::string status, std::string value) {
