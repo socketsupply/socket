@@ -46,6 +46,7 @@ MAIN /* argv, argc, hInstance */ {
   }
 
   auto makePreload = [&](int index) {
+
     std::string preload(
       "(() => {"
       "  window.system = {};\n"
@@ -55,7 +56,6 @@ MAIN /* argv, argc, hInstance */ {
       "  window.process.executable = '" + appData["executable"] + "';\n"
       "  window.process.version = '" + appData["version"] + "';\n"
       "  window.process.debug = " + std::to_string(_debug) + ";\n"
-      "  window.process.bundle = '" + replace(cwd, "\\", "\\\\") + "';\n"
       "  window.process.argv = [" + argvArray.str() + "];\n"
       "  " + gPreload + "\n"
       "})()\n"

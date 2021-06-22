@@ -72,9 +72,6 @@ namespace Opkit {
     // this fixes bad default quality DPI.
     SetProcessDPIAware();
 
-    std::string s("current thread id: " + std::to_string(mainThread));
-    // alert(s);
-
     /* HICON icon = (HICON) LoadImage(
       hInstance,
       IDI_APPLICATION,
