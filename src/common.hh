@@ -442,7 +442,6 @@ namespace Opkit {
       virtual void show() = 0;
       virtual void hide() = 0;
       virtual void exit() = 0;
-      virtual void exec(const std::string& s) = 0;
       virtual void navigate(const std::string&) = 0;
       virtual void setTitle(const std::string&) = 0;
       virtual void setSize(int, int, int) = 0;

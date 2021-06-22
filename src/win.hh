@@ -19,8 +19,12 @@ inline void alert (const std::string &s) {
 inline void alert (const char* s) {
   MessageBoxA(nullptr, s, _TEXT("Alert"), MB_OK | MB_ICONSTOP);
 }
-
+ 
 namespace Opkit {
+  using IEnvHandler = ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler;
+  using IConHandler = ICoreWebView2CreateCoreWebView2ControllerCompletedHandler;
+  using INavHandler = ICoreWebView2NavigationCompletedEventHandler;
+
   class App: public IApp {
     public:
       MSG msg;
@@ -55,7 +59,6 @@ namespace Opkit {
       void show();
       void exit();
       void hide();
-      void exec(const std::string&);
       void navigate(const std::string&);
       void setSize(int, int, int);
       void setTitle(const std::string&);
@@ -118,17 +121,24 @@ namespace Opkit {
     UpdateWindow(window);
     SetWindowLongPtr(window, GWLP_USERDATA, (LONG_PTR) this);
 
+    std::string preload(
+      "window.external = {\n"
+      "  invoke: arg => window.chrome.webview.postMessage(arg)\n"
+      "};\n"
+      "" + opts.preload + "\n"
+    );
+
     auto res = CreateCoreWebView2EnvironmentWithOptions(
       nullptr,
       nullptr,
       nullptr,
-      Microsoft::WRL::Callback<ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler>(
-        [&](HRESULT result, ICoreWebView2Environment* env) -> HRESULT {
+      Microsoft::WRL::Callback<IEnvHandler>(
+        [&, preload](HRESULT result, ICoreWebView2Environment* env) -> HRESULT {
           env->CreateCoreWebView2Controller(
             window,
-            Microsoft::WRL::Callback<ICoreWebView2CreateCoreWebView2ControllerCompletedHandler>(
-              [&](HRESULT result, ICoreWebView2Controller* c) -> HRESULT {
-                
+            Microsoft::WRL::Callback<IConHandler>(
+              [&, preload](HRESULT result, ICoreWebView2Controller* c) -> HRESULT {
+
                 if (c != nullptr) {
                   controller = c;
                   controller->get_CoreWebView2(&webview);
@@ -146,6 +156,15 @@ namespace Opkit {
                 Settings->put_IsWebMessageEnabled(TRUE);
                 Settings->put_AreDevToolsEnabled(TRUE);
                 Settings->put_IsZoomControlEnabled(FALSE);
+
+                webview->AddScriptToExecuteOnDocumentCreated(
+                  StringToWString(preload).c_str(),
+                  Callback<ICoreWebView2AddScriptToExecuteOnDocumentCreatedCompletedHandler>(
+                    [&](HRESULT error, PCWSTR id) -> HRESULT {
+                      return S_OK;
+                    }
+                  ).Get()
+                );
 
                 return S_OK;
               }
@@ -247,13 +266,6 @@ namespace Opkit {
     }
 
     webview->ExecuteScript(
-      StringToWString(s).c_str(),
-      nullptr
-    );
-  }
-
-  void Window::exec (const std::string& s) {
-    webview->AddScriptToExecuteOnDocumentCreated(
       StringToWString(s).c_str(),
       nullptr
     );
