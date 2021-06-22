@@ -1,21 +1,11 @@
 #include "common.hh"
 #include "win64/WebView2.h"
 #include "win64/options.h"
-#include <shlwapi.h>
-#include <windows.h>
-#include <comdef.h>
-#include <wrl.h>
-#include <winerror.h>
-
-#include <future>
 
 #pragma comment(lib,"advapi32.lib")
-#pragma comment(lib,"Shlwapi.lib")
 #pragma comment(lib,"shell32.lib")
 #pragma comment(lib,"version.lib")
 #pragma comment(lib,"user32.lib")
-#pragma comment(lib,"ole32.lib")
-#pragma comment(lib,"oleaut32.lib")
 #pragma comment(lib,"WebView2LoaderStatic.lib")
 
 inline void alert (const std::wstring &ws) {
