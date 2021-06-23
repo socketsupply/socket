@@ -102,7 +102,7 @@ struct PreloadOptions {
   std::string toString();
 };
 
-std::string PreloadOptions::toString () { 
+std::string PreloadOptions::toString () {
   return std::string(
     "(() => {"
     "  window.system = {};\n"

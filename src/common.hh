@@ -35,13 +35,15 @@
   char** argv = __argv; \
   \
   int CALLBACK WinMain(\
-    _In_ HINSTANCE hInstance,\
+    _In_ HINSTANCE instanceId,\
     _In_ HINSTANCE hPrevInstance,\
     _In_ LPSTR lpCmdLine,\
     _In_ int nCmdShow)
 
 #else
-#define MAIN int main (int argc, char** argv)
+#define MAIN \
+  int instanceId = 0; \
+  int main (int argc, char** argv)
 #endif
 
 #define TO_STR(arg) #arg

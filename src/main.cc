@@ -11,17 +11,24 @@
 
 using namespace Opkit;
 
-MAIN /* argv, argc, hInstance */ {
+//
+// the MAIN macro provides a cross-platform program entry point.
+// it makes argc and argv uniformly available. It provides "instanceId"
+// which on windows is hInstance, on mac and linux this is just an int.
+//
+MAIN {
 
-  #ifdef _WIN32
-    App app(hInstance);
-  #else
-    App app;
-  #endif
+  App app(instanceId);
 
+  //
+  // SETTINGS and DEBUG are compile time variables provided by the compiler.
+  //
   constexpr auto _settings = STR_VALUE(SETTINGS);
   constexpr auto _debug = DEBUG;
 
+  //
+  // Prepare to forward commandline arguments to the main and render processes.
+  //
   auto cwd = app.getCwd(argv[0]);
   appData = parseConfig(replace(_settings, "%%", "\n"));
 
@@ -45,6 +52,10 @@ MAIN /* argv, argc, hInstance */ {
     if (c > 1) argvForward << " " << std::string(arg);
   }
 
+  //
+  // The Window constructor takes the app instance as well as some static
+  // variables used during setup, these options can all be overridden later.
+  //
   Window w0(app, WindowOptions {
     .resizable = true,
     .frameless = false,
@@ -61,6 +72,11 @@ MAIN /* argv, argc, hInstance */ {
     }.toString()
   });
 
+  //
+  // The second window is used for showing previews or progress, so it can
+  // be frameless and prevent resizing, etc. it gets the same preload so
+  // that we can communicate with it from the main process.
+  //
   Window w1(app, WindowOptions {
     .resizable = false,
     .frameless = true,
@@ -76,22 +92,17 @@ MAIN /* argv, argc, hInstance */ {
     }.toString()
   });
 
+  //
+  // Launch the main process and connect callbacks to the stdio and stderr pipes.
+  //
   Process process(
     appData["cmd"] + argvForward.str(),
     cwd,
     [&](auto out) {
       //
-      // Sends messages from the main process to the render process. If they
-      // are "commands" try to do something with them, otherwise they are just
-      // stdout and we can write the data to the pipe.
-      //
-      // - The dispatch function on mac sends the function to the main
-      // event queue.
-      //
-      // - On Windows(TM), dispatch listens from the thread on which the
-      // WebView was created (WebView2 is STA).
-      //
-      // - On linux dispatch is to the main thread.
+      // Messages from the main process may be sent to the render process. If they
+      // are parsable commands, try to do something with them, otherwise they are
+      // just stdout and we can write the data to the pipe.
       //
       app.dispatch([&, out] {
         Parse cmd(out);
@@ -230,8 +241,11 @@ MAIN /* argv, argc, hInstance */ {
   w0.onMessage = onMessage;
   w1.onMessage = onMessage;
 
+  //
+  // When a window or the app wants to exit,
+  // we clean up the windows and the main process.
   // TODO pass a real exit code?
-
+  //
   auto onExit = [&] {
     w0.kill();
     w1.kill();

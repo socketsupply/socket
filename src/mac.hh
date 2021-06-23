@@ -19,6 +19,7 @@ namespace Opkit {
     NSAutoreleasePool* pool = [NSAutoreleasePool new];
 
     public:
+      App(int);
       int run();
       void exit();
       void dispatch(std::function<void()> work);
