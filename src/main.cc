@@ -43,6 +43,9 @@ MAIN {
 
   int c = 0;
 
+  // TODO right now we forward a json parsable string as the args but this
+  // isn't the most robust way of doing this. possible a URI-encoded query
+  // string would be more in-line with how everything else works.
   for (auto const arg : std::span(argv, argc)) {
     argvArray
       << "'"
@@ -177,7 +180,9 @@ MAIN {
   // # Render -> Main
   // Send messages from the render processes to the main process.
   // These may be similar to how we route the messages from the
-  // main process but different enough that duplication is ok.
+  // main process but different enough that duplication is ok. This
+  // callback doesnt need to dispatch because it's already in the
+  // main thread.
   //
   auto onMessage = [&](auto out) {
     Parse cmd(out);
@@ -196,6 +201,7 @@ MAIN {
     }
 
     if (cmd.name == "dialog") {
+      alert(out);
       bool isSave = false;
       bool allowDirs = false;
       bool allowFiles = false;
@@ -267,5 +273,10 @@ MAIN {
   w0.onExit = onExit;
   w1.onExit = onExit;
 
+  //
+  // # Event Loop
+  // start the platform specific event loop for the main
+  // thread and run it until it returns a non-zero int.
+  //
   while(app.run() == 0);
 }

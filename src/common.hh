@@ -329,17 +329,17 @@ namespace Opkit {
 
     auto raw = split(str, '?');
     path = raw[0];
-    query = raw[1];
+    if (raw.size() > 1) query = raw[1];
 
     auto parts = split(path, '/');
-    name = parts[1];
+    if (parts.size() >= 1) name = parts[1];
 
     if (raw.size() != 2) return;
     auto pairs = split(raw[1], '&');
 
     for (auto& rawPair : pairs) {
       auto pair = split(rawPair, '=');
-      if (pair.size() != 2) continue;
+      if (pair.size() <= 1) continue;
       args[pair[0]] = pair[1];
     }
   }

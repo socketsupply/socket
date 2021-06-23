@@ -1,11 +1,13 @@
 #include "common.hh"
 #include "win64/WebView2.h"
 #include "win64/options.h"
+#include "commdlg.h"
 
 #pragma comment(lib,"advapi32.lib")
 #pragma comment(lib,"shell32.lib")
 #pragma comment(lib,"version.lib")
 #pragma comment(lib,"user32.lib")
+#pragma comment(lib,"Comdlg32.lib")
 #pragma comment(lib,"WebView2LoaderStatic.lib")
 
 inline void alert (const std::wstring &ws) {
@@ -24,6 +26,8 @@ namespace Opkit {
   using IEnvHandler = ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler;
   using IConHandler = ICoreWebView2CreateCoreWebView2ControllerCompletedHandler;
   using INavHandler = ICoreWebView2NavigationCompletedEventHandler;
+  using IRecHandler = ICoreWebView2WebMessageReceivedEventHandler;
+  using IArgs = ICoreWebView2WebMessageReceivedEventArgs;
 
   class App: public IApp {
     public:
@@ -169,6 +173,24 @@ namespace Opkit {
                       return S_OK;
                     }
                   ).Get()
+                );
+
+                EventRegistrationToken token;
+
+                webview->add_WebMessageReceived(
+                  Callback<IRecHandler>([&](ICoreWebView2* webview, IArgs* args) -> HRESULT {
+                    LPWSTR messageRaw;
+                    args->TryGetWebMessageAsString(&messageRaw);
+
+                    if (onMessage != nullptr) {
+                      std::wstring message(messageRaw);
+                      onMessage(WStringToString(message));
+                    }
+
+                    CoTaskMemFree(messageRaw);
+                    return S_OK;
+                  }).Get(),
+                  &token
                 );
 
                 return S_OK;
@@ -346,8 +368,37 @@ namespace Opkit {
     return 0;
   }
 
-  std::string Window::openDialog (bool isSave, bool allowDirs, bool allowFiles, std::string, std::string) {
-    return std::string("");
+  std::string Window::openDialog (
+      bool isSave,
+      bool allowDirs,
+      bool allowFiles,
+      std::string defaultPath,
+      std::string title
+    ) {
+    OPENFILENAME ofn;       // common dialog box structure
+    char szFile[260];       // buffer for file name
+    int ret;
+
+    ZeroMemory(&ofn, sizeof(ofn));
+    ofn.lStructSize = sizeof(ofn);
+    ofn.lpstrFile = szFile;
+    ofn.nMaxFile = sizeof(szFile);
+    ofn.lpstrFilter = nullptr;
+    ofn.nFilterIndex = 1;
+    ofn.lpstrFileTitle = nullptr;
+    ofn.nMaxFileTitle = 0;
+    ofn.lpstrInitialDir = (LPSTR) defaultPath.c_str();
+    ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST | OFN_NOCHANGEDIR;
+
+    if (isSave) {
+      ret = GetSaveFileNameA(&ofn);
+    } else {
+      ret = GetOpenFileNameA(&ofn);
+    }
+
+    if (!ret) return std::string("");
+
+    return std::string(szFile);
   }
 
   LRESULT CALLBACK Window::WndProc(

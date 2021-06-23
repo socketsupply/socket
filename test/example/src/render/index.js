@@ -84,7 +84,7 @@ class AppContainer extends Tonic {
     const el = Tonic.match(e.target, '#butt')
     if (!el) return
 
-    const response = await system.dialog({ type: 'open' })
+    const response = await system.dialog('open')
     this.querySelector('#opened').value = response.replace(',', '\n')
   }
 
