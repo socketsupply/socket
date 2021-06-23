@@ -36,6 +36,7 @@ namespace Opkit {
       void eval(const std::string&);
       void show();
       void hide();
+      void close();
       void navigate(const std::string&);
       void setTitle(const std::string&);
       void setContextMenu(std::string, std::string);
@@ -226,6 +227,10 @@ namespace Opkit {
   void Window::show () {
     [window makeKeyAndOrderFront:nil];
     [NSApp activateIgnoringOtherApps:YES];
+  }
+
+  void Window::close () {
+    [window close:nil];
   }
 
   void Window::hide () {

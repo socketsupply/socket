@@ -34,6 +34,7 @@ namespace Opkit {
       App(void* h);
       int run();
       void exit();
+      void kill();
       void dispatch(std::function<void()>);
       std::string getCwd(const std::string&);
   };
@@ -58,6 +59,7 @@ namespace Opkit {
       void eval(const std::string&);
       void show();
       void exit();
+      void kill();
       void hide();
       void navigate(const std::string&);
       void setSize(int, int, int);
@@ -201,8 +203,12 @@ namespace Opkit {
   }
 
   void App::exit () {
+    if (onExit != nullptr) onExit();
+  }
+
+  void App::kill () {
     shouldExit = true;
-    PostQuitMessage(0);
+    PostQuitMessage(WM_QUIT);
   }
 
   void App::dispatch (std::function<void()> cb) {
@@ -221,8 +227,18 @@ namespace Opkit {
     return pathToString(path);
   }
 
+  void Window::kill () {
+    if (controller != nullptr) controller->Close();
+    DestroyWindow(window);
+  }
+
   void Window::exit () {
-    PostQuitMessage(0);
+    if (onExit == nullptr) {
+      PostQuitMessage(WM_QUIT);
+      return;
+    }
+
+    onExit();
   }
 
   void Window::show () {
@@ -337,16 +353,27 @@ namespace Opkit {
     Window* w = reinterpret_cast<Window*>(GetWindowLongPtr(hWnd, GWLP_USERDATA));
 
     switch (message) {
-      case WM_SIZE:
-        if (w != nullptr && w->webview != nullptr) {
-          RECT bounds;
-          GetClientRect(hWnd, &bounds);
-          w->controller->put_Bounds(bounds);
+      case WM_SIZE: {
+        if (w == nullptr || w->webview == nullptr) {
+          break;
         }
+
+        RECT bounds;
+        GetClientRect(hWnd, &bounds);
+        w->controller->put_Bounds(bounds);
         break;
-      case WM_DESTROY:
-        PostQuitMessage(0);
+      }
+
+      case WM_DESTROY: {
+        if (w == nullptr) {
+          PostQuitMessage(WM_QUIT);
+          break;
+        }
+
+        w->exit();
         break;
+      }
+
       default:
         return DefWindowProc(hWnd, message, wParam, lParam);
         break;

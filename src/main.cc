@@ -45,33 +45,20 @@ MAIN /* argv, argc, hInstance */ {
     if (c > 1) argvForward << " " << std::string(arg);
   }
 
-  auto makePreload = [&](int index) {
-
-    std::string preload(
-      "(() => {"
-      "  window.system = {};\n"
-      "  window.process = {};\n"
-      "  window.process.index = Number('" + std::to_string(index) + "');\n"
-      "  window.process.title = '" + appData["title"] + "';\n"
-      "  window.process.executable = '" + appData["executable"] + "';\n"
-      "  window.process.version = '" + appData["version"] + "';\n"
-      "  window.process.debug = " + std::to_string(_debug) + ";\n"
-      "  window.process.argv = [" + argvArray.str() + "];\n"
-      "  " + gPreload + "\n"
-      "})()\n"
-      "//# sourceURL=preload.js"
-    );
-
-    return preload;
-  };
-
   Window w0(app, WindowOptions {
     .resizable = true,
     .frameless = false,
     .height = std::stoi(appData["height"]),
     .width = std::stoi(appData["width"]),
     .title = appData["title"],
-    .preload = makePreload(0)
+    .preload = PreloadOptions {
+      .index = 0,
+      .debug = _debug,
+      .title = appData["title"],
+      .executable = appData["executable"],
+      .version = appData["version"],
+      .argv = argvArray.str()
+    }.toString()
   });
 
   Window w1(app, WindowOptions {
@@ -79,7 +66,14 @@ MAIN /* argv, argc, hInstance */ {
     .frameless = true,
     .height = 120,
     .width = 350,
-    .preload = makePreload(1)
+    .preload = PreloadOptions {
+      .index = 1,
+      .debug = _debug,
+      .title = appData["title"],
+      .executable = appData["executable"],
+      .version = appData["version"],
+      .argv = argvArray.str()
+    }.toString()
   });
 
   Process process(
@@ -165,8 +159,7 @@ MAIN /* argv, argc, hInstance */ {
   // These may be similar to how we route the messages from the
   // main process but different enough that duplication is ok.
   //
-  auto router = [&](auto out) {
-    return;
+  auto onMessage = [&](auto out) {
     Parse cmd(out);
 
     auto &w = cmd.index == 0 ? w0 : w1;
@@ -234,10 +227,21 @@ MAIN /* argv, argc, hInstance */ {
     process.write(out);
   };
 
-  w0.onMessage(router);
-  w1.onMessage(router);
+  w0.onMessage = onMessage;
+  w1.onMessage = onMessage;
+
+  // TODO pass a real exit code?
+
+  auto onExit = [&] {
+    w0.kill();
+    w1.kill();
+    process.kill(process.getPID());
+    app.kill();
+  };
+
+  app.onExit = onExit;
+  w0.onExit = onExit;
+  w1.onExit = onExit;
 
   while(app.run() == 0);
-
-  // TODO on exit, kill main.
 }

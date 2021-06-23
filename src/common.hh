@@ -410,6 +410,7 @@ namespace Opkit {
   }
 
   using SCallback = std::function<void(const std::string)>;
+  using VCallback = std::function<void()>;
 
   //
   // Interfaces make sure all operating systems implement the same stuff
@@ -417,9 +418,11 @@ namespace Opkit {
   class IApp {
     public:
       bool shouldExit = false;
+      VCallback onExit = nullptr;
 
       virtual int run() = 0;
       virtual void exit() = 0;
+      virtual void kill() = 0;
       virtual void dispatch(std::function<void()> work) = 0;
       virtual std::string getCwd(const std::string&) = 0;
   };
@@ -433,14 +436,15 @@ namespace Opkit {
       std::string title;
       bool initDone = false;
 
-      SCallback onMessageCallback = nullptr;
+      SCallback onMessage = nullptr;
+      VCallback onExit = nullptr;
 
-      void onMessage(std::function<void(std::string)>);
       void onMessageExec(const std::string);
 
       virtual void eval(const std::string&) = 0;
       virtual void show() = 0;
       virtual void hide() = 0;
+      virtual void kill() = 0;
       virtual void exit() = 0;
       virtual void navigate(const std::string&) = 0;
       virtual void setTitle(const std::string&) = 0;
@@ -452,11 +456,7 @@ namespace Opkit {
   };
 
   void IWindow::onMessageExec(const std::string s) {
-    if (onMessageCallback != nullptr) onMessageCallback(s);
-  }
-
-  void IWindow::onMessage(std::function<void(std::string)> cb) {
-    onMessageCallback = cb;
+    if (onMessage != nullptr) onMessage(s);
   }
 
   std::string IWindow::resolve(std::string seq, std::string status, std::string value) {
