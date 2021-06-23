@@ -127,9 +127,15 @@ namespace Opkit {
       "" + opts.preload + "\n"
     );
 
+    wchar_t modulefile[MAX_PATH];
+    GetModuleFileNameW(NULL, modulefile, MAX_PATH);
+    auto file = (fs::path { modulefile }).filename();
+    auto filename = StringToWString(pathToString(file));
+    auto path = StringToWString(getEnv("APPDATA"));
+
     auto res = CreateCoreWebView2EnvironmentWithOptions(
       nullptr,
-      nullptr,
+      (path + L"/" + filename).c_str(),
       nullptr,
       Microsoft::WRL::Callback<IEnvHandler>(
         [&, preload](HRESULT result, ICoreWebView2Environment* env) -> HRESULT {
