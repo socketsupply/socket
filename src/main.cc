@@ -53,6 +53,8 @@ MAIN {
   }
 
   //
+  // # Windows
+  //
   // The Window constructor takes the app instance as well as some static
   // variables used during setup, these options can all be overridden later.
   //
@@ -93,79 +95,86 @@ MAIN {
   });
 
   //
+  // # Main -> Render
   // Launch the main process and connect callbacks to the stdio and stderr pipes.
   //
+  auto onStdOut = [&](auto out) {
+    //
+    // ## Dispatch
+    // Messages from the main process may be sent to the render process. If they
+    // are parsable commands, try to do something with them, otherwise they are
+    // just stdout and we can write the data to the pipe.
+    //
+    app.dispatch([&, out] {
+      Parse cmd(out);
+
+      auto &w = cmd.index == 0 ? w0 : w1;
+
+      if (cmd.name == "title") {
+        auto s = decodeURIComponent(cmd.args["value"]);
+        w.setTitle(s);
+        return;
+      }
+
+      if (cmd.name == "show") {
+        w.show();
+        return;
+      }
+
+      if (cmd.name == "hide") {
+        w.hide();
+        return;
+      }
+
+      if (cmd.name == "navigate") {
+        auto s = decodeURIComponent(cmd.args["url"]);
+        w.navigate(s);
+        return;
+      }
+
+      if (cmd.name == "menu") {
+        auto s = decodeURIComponent(cmd.args["value"]);
+        w.setSystemMenu(s);
+        return;
+      }
+
+      if (cmd.name == "respond") {
+        auto seq = cmd.args["seq"];
+        auto status = cmd.args["status"];
+        auto value = cmd.args["value"];
+
+        w.eval(w.resolve(seq, status, value));
+        return;
+      }
+
+      if (cmd.name == "send") {
+        auto event = decodeURIComponent(cmd.args["event"]);
+        auto value = cmd.args["value"];
+
+        w.eval(w.emit(event, value));
+        return;
+      }
+
+      if (cmd.name == "stdout") {
+        std::string value = decodeURIComponent(cmd.args["value"]);
+        std::cout << value << std::endl;
+      }
+    });
+  };
+
+  auto onStdErr = [&](auto err) {
+    std::cerr << err << std::endl;
+  };
+
   Process process(
     appData["cmd"] + argvForward.str(),
     cwd,
-    [&](auto out) {
-      //
-      // Messages from the main process may be sent to the render process. If they
-      // are parsable commands, try to do something with them, otherwise they are
-      // just stdout and we can write the data to the pipe.
-      //
-      app.dispatch([&, out] {
-        Parse cmd(out);
-
-        auto &w = cmd.index == 0 ? w0 : w1;
-
-        if (cmd.name == "title") {
-          auto s = decodeURIComponent(cmd.args["value"]);
-          w.setTitle(s);
-          return;
-        }
-
-        if (cmd.name == "show") {
-          w.show();
-          return;
-        }
-
-        if (cmd.name == "hide") {
-          w.hide();
-          return;
-        }
-
-        if (cmd.name == "navigate") {
-          auto s = decodeURIComponent(cmd.args["url"]);
-          w.navigate(s);
-          return;
-        }
-
-        if (cmd.name == "menu") {
-          auto s = decodeURIComponent(cmd.args["value"]);
-          w.setSystemMenu(s);
-          return;
-        }
-
-        if (cmd.name == "respond") {
-          auto seq = cmd.args["seq"];
-          auto status = cmd.args["status"];
-          auto value = cmd.args["value"];
-
-          w.eval(w.resolve(seq, status, value));
-          return;
-        }
-
-        if (cmd.name == "send") {
-          auto event = decodeURIComponent(cmd.args["event"]);
-          auto value = cmd.args["value"];
-
-          w.eval(w.emit(event, value));
-          return;
-        }
-
-        if (cmd.name == "stdout") {
-          std::string value = decodeURIComponent(cmd.args["value"]);
-          std::cout << value << std::endl;
-        }
-      });
-    },
-    [&](auto err) {
-      std::cerr << err << std::endl;
-    }
+    onStdOut,
+    onStdErr
   );
 
   //
+  // # Render -> Main
   // Send messages from the render processes to the main process.
   // These may be similar to how we route the messages from the
   // main process but different enough that duplication is ok.
@@ -242,6 +251,7 @@ MAIN {
   w1.onMessage = onMessage;
 
   //
+  // # Exinting
   // When a window or the app wants to exit,
   // we clean up the windows and the main process.
   // TODO pass a real exit code?
