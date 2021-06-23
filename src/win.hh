@@ -65,6 +65,7 @@ namespace Opkit {
       void resize (HWND window);
       POINT m_minsz = POINT{0, 0};
       POINT m_maxsz = POINT{0, 0};
+      HMENU systemMenu;
       bool initDone = false;
 
       void eval(const std::string&);
@@ -374,7 +375,12 @@ namespace Opkit {
   }
 
   void Window::setSystemMenu (std::string) {
-    // TODO implement
+    systemMenu = CreateMenu();
+
+    // HMENU hMenubar = CreateMenu();
+
+    // HMENU sub = CreateMenu();
+    // AppendMenu(hMenubar, MF_POPUP, (UINT_PTR)sub, "File");
   }
 
   void Window::setContextMenu (std::string seq, std::string value) {
@@ -417,6 +423,7 @@ namespace Opkit {
   }
 
   int Window::openExternal (std::string url) {
+    ShellExecute(nullptr, "Open", url.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
     return 0;
   }
 
