@@ -3,6 +3,9 @@
 #include "win64/options.h"
 #include "commdlg.h"
 
+#include <future>
+#include <chrono>
+
 #pragma comment(lib,"advapi32.lib")
 #pragma comment(lib,"shell32.lib")
 #pragma comment(lib,"version.lib")
@@ -35,6 +38,8 @@ namespace Opkit {
       _In_ HINSTANCE hInstance;
       DWORD mainThread = GetCurrentThreadId();
 
+      static std::atomic<bool> isReady;
+
       App(void* h);
       int run();
       void exit();
@@ -42,6 +47,8 @@ namespace Opkit {
       void dispatch(std::function<void()>);
       std::string getCwd(const std::string&);
   };
+
+  std::atomic<bool> App::isReady {false};
 
   class Window : public IWindow {
     HWND window;
@@ -166,6 +173,8 @@ namespace Opkit {
                 Settings->put_AreDevToolsEnabled(TRUE);
                 Settings->put_IsZoomControlEnabled(FALSE);
 
+                app.isReady = true;
+
                 webview->AddScriptToExecuteOnDocumentCreated(
                   StringToWString(preload).c_str(),
                   Callback<ICoreWebView2AddScriptToExecuteOnDocumentCreatedCompletedHandler>(
@@ -240,12 +249,20 @@ namespace Opkit {
   }
 
   void App::dispatch (std::function<void()> cb) {
-    PostThreadMessage(
-      mainThread,
-      WM_APP,
-      0,
-      (LPARAM) new std::function<void()>(cb)
-    );
+    auto future = std::async(std::launch::async, [&] {
+      while (!this->isReady) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(16));
+      }
+
+      PostThreadMessage(
+        mainThread,
+        WM_APP,
+        0,
+        (LPARAM) new std::function<void()>(cb)
+      );
+    });
+
+    future.get();
   }
 
   std::string App::getCwd (const std::string& _) {
@@ -361,7 +378,42 @@ namespace Opkit {
   }
 
   void Window::setContextMenu (std::string seq, std::string value) {
-    // TODO implement
+    HMENU hPopupMenu = CreatePopupMenu();
+
+    auto menuItems = split(value, '_');
+    auto id = std::stoi(seq);
+
+    for (auto item : menuItems) {
+      auto pair = split(trim(item), ':');
+      auto key = std::string("");
+
+      if (pair.size() > 1) {
+        key = pair[1];
+      }
+
+      if (pair[0].find("---") != -1) {
+        // how to create a sep item??
+      } else {
+        InsertMenu(hPopupMenu, 0, MF_BYPOSITION | MF_STRING, 0, pair[0].c_str());
+      }
+    }
+
+    SetForegroundWindow(window);
+
+    POINT p;
+    GetCursorPos(&p);
+
+    TrackPopupMenu(
+      hPopupMenu,
+      0,
+      p.x,
+      p.y,
+      0,
+      window,
+      nullptr
+    );
+
+    DestroyMenu(hPopupMenu);
   }
 
   int Window::openExternal (std::string url) {

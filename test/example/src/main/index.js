@@ -8,51 +8,51 @@ async function main () {
 
   system.show({ index: 0 })
 
-  setTimeout(() => {
-    const file = path.join(path.dirname(process.argv[1]), 'index.html')
-    system.navigate({ index: 0, url: `file://${file}` })
-    system.setTitle({ index: 0, value: 'Hello' })
+  const file = path.join(path.dirname(process.argv[1]), 'index.html')
+  system.navigate({ index: 0, url: `file://${file}` })
+  system.setTitle({ index: 0, value: 'Hello' })
 
-    system.setMenu(`
-      Operator:
-        About Operator: _
-        ---: _
-        Preferences...: , + Command
-        ---: _
-        Hide: h
-        Hide Others: h + Control, Command
-        ---: _
-        Quit: q + Command;
+  system.setMenu(`
+    Operator:
+      About Operator: _
+      ---: _
+      Preferences...: , + Command
+      ---: _
+      Hide: h
+      Hide Others: h + Control, Command
+      ---: _
+      Quit: q + Command;
 
-      Edit:
-        Cut: x
-        Copy: c
-        Paste: v
-        Delete: _
-        Select All: a;
+    Edit:
+      Cut: x
+      Copy: c
+      Paste: v
+      Delete: _
+      Select All: a;
 
-      Foo:
-        Bazz: z + Command
-        ---: _
-        Quxx: e + ControlOrCommand, Option;
+    Foo:
+      Bazz: z + Command
+      ---: _
+      Quxx: e + ControlOrCommand, Option;
 
-      Other:
-        Another Test: t
-        Beep: T + Command
-    `)
+    Other:
+      Another Test: t
+      Beep: T + Command
+  `)
 
-    system.receive(async data => {
-      return {
-        received: data,
-        counter: counter++
-      }
-    })
+  system.send({
+    env: process.env,
+    argv: process.argv
+  })
 
-    system.send({
-      env: process.env,
-      argv: process.argv
-    })
-  }, 2048)
+  system.receive(async data => {
+    let x = data
+
+    return {
+      received: data,
+      counter: counter++
+    }
+  })
 
   setInterval(() => {
     counter++
@@ -76,7 +76,7 @@ async function main () {
         size
       }
     })
-  }, 512) // send at some interval
+  }, 1024) // send at some interval
 
   process.on('beforeExit', () => {
     console.log('exiting')

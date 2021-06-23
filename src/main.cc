@@ -201,7 +201,6 @@ MAIN {
     }
 
     if (cmd.name == "dialog") {
-      alert(out);
       bool isSave = false;
       bool allowDirs = false;
       bool allowFiles = false;
