@@ -78,6 +78,7 @@ namespace Opkit {
       void setTitle(const std::string&);
       void setContextMenu(std::string, std::string);
       void setSystemMenu(std::string);
+      void _setSystemMenu(std::string);
       std::string openDialog(bool, bool, bool, std::string, std::string);
       int openExternal(std::string);
   };
@@ -155,6 +156,7 @@ namespace Opkit {
             window,
             Microsoft::WRL::Callback<IConHandler>(
               [&, preload](HRESULT result, ICoreWebView2Controller* c) -> HRESULT {
+                hide();
 
                 if (c != nullptr) {
                   controller = c;
@@ -374,13 +376,25 @@ namespace Opkit {
     }
   }
 
-  void Window::setSystemMenu (std::string) {
-    systemMenu = CreateMenu();
+  void Window::_setSystemMenu (std::string) {
+  }
 
-    // HMENU hMenubar = CreateMenu();
+  void Window::setSystemMenu (std::string s) {
+    alert("set menu");
+    // HMENU hMenubar;
+    // HMENU hMenu;
 
-    // HMENU sub = CreateMenu();
-    // AppendMenu(hMenubar, MF_POPUP, (UINT_PTR)sub, "File");
+    // hMenubar = CreateMenu();
+    HMENU hMenubar = GetSystemMenu(window, TRUE);
+    HMENU hMenu = CreateMenu();
+
+    AppendMenuW(hMenu, MF_STRING, 1, L"&New");
+    AppendMenuW(hMenu, MF_STRING, 2, L"&Open");
+    AppendMenuW(hMenu, MF_SEPARATOR, 0, NULL);
+    AppendMenuW(hMenu, MF_STRING, 3, L"&Quit");
+
+    AppendMenuW(hMenubar, MF_POPUP, (UINT_PTR) hMenu, L"&File");
+    SetMenu(window, hMenubar);
   }
 
   void Window::setContextMenu (std::string seq, std::string value) {
@@ -423,7 +437,8 @@ namespace Opkit {
   }
 
   int Window::openExternal (std::string url) {
-    ShellExecute(nullptr, "Open", url.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+    ShellExecute(nullptr, "Open", url .c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+    // TODO how to detect success here. do we care?
     return 0;
   }
 
@@ -477,6 +492,17 @@ namespace Opkit {
         RECT bounds;
         GetClientRect(hWnd, &bounds);
         w->controller->put_Bounds(bounds);
+        break;
+      }
+
+      case WM_CREATE: {
+        HMENU hMenubar = CreateMenu();
+        SetMenu(hWnd, hMenubar);
+
+        if (w != nullptr) {
+          w->setSystemMenu("");
+        }
+
         break;
       }
 
