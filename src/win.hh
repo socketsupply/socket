@@ -1,6 +1,5 @@
 #include "common.hh"
 #include "win64/WebView2.h"
-#include "win64/options.h"
 #include "commdlg.h"
 
 #include <future>
