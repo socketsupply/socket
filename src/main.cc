@@ -153,7 +153,7 @@ MAIN {
       if (cmd.name == "send") {
         auto event = decodeURIComponent(cmd.get("event"));
 
-        w.resolveToRenderProcess(event, "", value);
+        w.emitToRenderProcess(event, value);
         return;
       }
 

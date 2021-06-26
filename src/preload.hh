@@ -8,7 +8,6 @@ constexpr auto gPreload = R"JS(
 const IPC = window._ipc = { nextSeq: 1 };
 
 window._ipc.resolve = async (seq, status, value) => {
-  console.log('RESOLVING ->', `${seq} / ${status} / ${value}`)
   value = decodeURIComponent(value)
   const method = status === 0 ? 'resolve' : 'reject';
 

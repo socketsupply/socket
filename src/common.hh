@@ -447,7 +447,7 @@ namespace Opkit {
       int index = 0;
       void resolveToMainProcess(const std::string&, const std::string&, const std::string&);
       void resolveToRenderProcess(const std::string&, const std::string&, const std::string&);
-      void emit(const std::string&, const std::string&);
+      void emitToRenderProcess(const std::string&, const std::string&);
 
       SCallback onMessage = nullptr;
       VCallback onExit = nullptr;
@@ -468,8 +468,8 @@ namespace Opkit {
   void IWindow::resolveToRenderProcess(const std::string& seq, const std::string& state, const std::string& value) {
     this->eval(std::string(
       "(() => {"
-      "  const seq = Number(" + seq + ");"
-      "  const state = Number(" + state + ");"
+      "  const seq = Number('" + seq + "');"
+      "  const state = Number('" + state + "');"
       "  const value = '" + value + "';"
       "  window._ipc.resolve(seq, state, value);"
       "})()"
@@ -482,7 +482,7 @@ namespace Opkit {
     }
   }
 
-  void IWindow::emit(const std::string& event, const std::string& value) {
+  void IWindow::emitToRenderProcess(const std::string& event, const std::string& value) {
     this->eval(std::string(
       "(() => {"
       "  const name = '" + event + "';"
