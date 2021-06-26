@@ -23,8 +23,6 @@ console.log = (...args) => {
 
 //
 // Internal IPC API
-// ---
-// Mirrors the api that is provided in the front-end.
 //
 const ipc = { nextSeq: 0 }
 
@@ -110,7 +108,6 @@ process.stdin.resume()
 process.stdin.setEncoding('utf8')
 
 process.stdin.on('data', async data => {
-  fs.appendFileSync('log.txt', 'DATA ->' + data)
   let cmd = ''
   let index = 0
   let seq = 0
@@ -134,7 +131,7 @@ process.stdin.on('data', async data => {
   }
 
   if (cmd === 'resolve') {
-    return ipc.resolve(seq, state, value)
+    return ipc.resolve(seq, state, value) // being asked to resolve a promise
   }
 
   let result = ''
@@ -159,7 +156,7 @@ process.stdin.on('data', async data => {
     value: result
   }).toString();
 
-  write(`ipc://resolve?${s}`)
+  write(`ipc://resolve?${s}`) // asking to resolve a promise
 })
 
 //
