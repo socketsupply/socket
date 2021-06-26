@@ -31,8 +31,8 @@ namespace Opkit {
     WKWebView* webview;
 
     public:
-      App* app;
-      WindowOptions* opts;
+      App app;
+      WindowOptions opts;
       Window(App&, WindowOptions);
 
       void eval(const std::string&);
@@ -86,7 +86,7 @@ namespace Opkit {
     [NSApp terminate:nil];
   }
 
-  Window::Window (App& app, WindowOptions opts) {
+  Window::Window (App& app, WindowOptions opts) : app(app), opts(opts) {
     // Window style: titled, closable, minimizable
     uint style = NSWindowStyleMaskTitled;
 
@@ -234,7 +234,7 @@ namespace Opkit {
     [NSApp activateIgnoringOtherApps:YES];
 
     if (seq.size() > 0) {
-      auto index = std::to_string(this->opts->preload.index);
+      auto index = std::to_string(this->opts.preload.index);
       resolveToMainProcess(seq, "0", index);
     }
   }
@@ -251,7 +251,7 @@ namespace Opkit {
     [window orderOut:window];
 
     if (seq.size() > 0) {
-      auto index = std::to_string(this->opts->preload.index);
+      auto index = std::to_string(this->opts.preload.index);
       resolveToMainProcess(seq, "0", index);
     }
   }
@@ -269,7 +269,7 @@ namespace Opkit {
           [NSString stringWithUTF8String: value.c_str()]]]];
 
     if (seq.size() > 0) {
-      auto index = std::to_string(this->opts->preload.index);
+      auto index = std::to_string(this->opts.preload.index);
       resolveToMainProcess(seq, "0", index);
     }
   }
@@ -278,7 +278,7 @@ namespace Opkit {
     [window setTitle:[NSString stringWithUTF8String:value.c_str()]];
 
     if (seq.size() > 0) {
-      auto index = std::to_string(this->opts->preload.index);
+      auto index = std::to_string(this->opts.preload.index);
       resolveToMainProcess(seq, "0", index);
     }
   }
