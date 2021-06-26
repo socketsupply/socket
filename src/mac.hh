@@ -156,7 +156,7 @@ namespace Opkit {
       [WindowDelegate class], @selector(windowWillClose:),
       imp_implementationWithBlock(
         [&](id self, SEL cmd, id notification) {
-          app.exit();
+          this->exit();
         }),
       "v@:@"
     );
@@ -244,7 +244,7 @@ namespace Opkit {
   }
 
   void Window::kill () {
-    [window performClose:nil];
+    // [window performClose:nil];
   }
 
   void Window::hide (const std::string& seq) {
