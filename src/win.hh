@@ -4,6 +4,7 @@
 
 #include <future>
 #include <chrono>
+#include <shobjidl.h>
 
 #pragma comment(lib,"advapi32.lib")
 #pragma comment(lib,"shell32.lib")
@@ -77,7 +78,14 @@ namespace Opkit {
       void setTitle(const std::string&, const std::string&);
       void setContextMenu(const std::string&, const std::string&);
       void setSystemMenu(const std::string&, const std::string&);
-      std::string openDialog(bool, bool, bool, const std::string&, const std::string&);
+      void openDialog(
+        const std::string&,
+        bool,
+        bool,
+        bool,
+        const std::string&,
+        const std::string&
+      );
       int openExternal(const std::string&);
   };
 
@@ -411,22 +419,48 @@ namespace Opkit {
     }
   }
 
-  void Window::setSystemMenu (const std::string& seq, const std::string& menu) {
-    alert("set menu");
-    // HMENU hMenubar;
-    // HMENU hMenu;
+  void Window::setSystemMenu (const std::string& seq, const std::string& value) {
+    std::string menu = value;
 
-    // hMenubar = CreateMenu();
-    HMENU hMenubar = GetSystemMenu(window, TRUE);
-    HMENU hMenu = CreateMenu();
+    HMENU hMenubar = GetMenu(window);
+    // deserialize the menu
+    menu = replace(menu, "%%", "\n");
 
-    AppendMenuW(hMenu, MF_STRING, 1, L"&New");
-    AppendMenuW(hMenu, MF_STRING, 2, L"&Open");
-    AppendMenuW(hMenu, MF_SEPARATOR, 0, NULL);
-    AppendMenuW(hMenu, MF_STRING, 3, L"&Quit");
+    // split on ;
+    auto menus = split(menu, ';');
 
-    AppendMenuW(hMenubar, MF_POPUP, (UINT_PTR) hMenu, L"&File");
+    for (auto m : menus) {
+      auto menu = split(m, '\n');
+      auto line = trim(menu[0]);
+      if (line.empty()) continue;
+      auto menuTitle = split(line, ':')[0];
+
+      HMENU hMenu = CreateMenu();
+
+      for (int i = 1; i < menu.size(); i++) {
+        auto line = trim(menu[i]);
+        if (line.empty()) continue;
+        auto parts = split(line, ':');
+        auto title = parts[0];
+        int mask = 0;
+        std::string key = "";
+
+        if (title.find("---") != -1) {
+          AppendMenuW(hMenu, MF_SEPARATOR, 0, NULL);
+        } else {
+          AppendMenuA(hMenu, MF_STRING, 1, title.c_str());
+        }
+      }
+
+      AppendMenuA(hMenubar, MF_POPUP, (UINT_PTR) hMenu, menuTitle.c_str());
+    }
+
     SetMenu(window, hMenubar);
+
+    if (seq.size() > 0) {
+      auto index = std::to_string(this->opts.preload.index);
+      resolveToMainProcess(seq, "0", index);
+    }
   }
 
   void Window::setContextMenu (const std::string& seq, const std::string& value) {
@@ -444,6 +478,7 @@ namespace Opkit {
       }
 
       if (pair[0].find("---") != -1) {
+        InsertMenu(hPopupMenu, 0, MF_SEPARATOR, 0, NULL);
         // how to create a sep item??
       } else {
         InsertMenu(hPopupMenu, 0, MF_BYPOSITION | MF_STRING, 0, pair[0].c_str());
@@ -474,37 +509,90 @@ namespace Opkit {
     return 0;
   }
 
-  std::string Window::openDialog (
+  void Window::openDialog (
+      const std::string& seq,
       bool isSave,
       bool allowDirs,
       bool allowFiles,
       const std::string& defaultPath,
       const std::string& title
     ) {
-    OPENFILENAME ofn;       // common dialog box structure
-    char szFile[260];       // buffer for file name
-    int ret;
 
-    ZeroMemory(&ofn, sizeof(ofn));
-    ofn.lStructSize = sizeof(ofn);
-    ofn.lpstrFile = szFile;
-    ofn.nMaxFile = sizeof(szFile);
-    ofn.lpstrFilter = nullptr;
-    ofn.nFilterIndex = 1;
-    ofn.lpstrFileTitle = nullptr;
-    ofn.nMaxFileTitle = 0;
-    ofn.lpstrInitialDir = (LPSTR) defaultPath.c_str();
-    ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST | OFN_NOCHANGEDIR;
+    IFileOpenDialog * pfd;
+
+    HRESULT hr = CoInitializeEx(
+      NULL,
+      COINIT_APARTMENTTHREADED |
+      COINIT_DISABLE_OLE1DDE
+    );
+
+    if (FAILED(hr)) return;
 
     if (isSave) {
-      ret = GetSaveFileNameA(&ofn);
+      hr = CoCreateInstance(
+        CLSID_FileSaveDialog,
+        NULL,
+        CLSCTX_INPROC_SERVER,
+        IID_PPV_ARGS(&pfd)
+      );
+
+      hr = pfd->Show(NULL);
+
     } else {
-      ret = GetOpenFileNameA(&ofn);
+      hr = CoCreateInstance(
+        CLSID_FileOpenDialog, 
+        NULL, 
+        CLSCTX_INPROC_SERVER, 
+        IID_PPV_ARGS(&pfd)
+      );
+
+      DWORD dwOptions;
+      hr = pfd->GetOptions(&dwOptions);
+      if (FAILED(hr)) return;
+
+      hr = pfd->SetOptions(dwOptions | FOS_ALLOWMULTISELECT);
+      if (FAILED(hr)) return;
+
+      hr = pfd->Show(NULL);
+      if (FAILED(hr)) return;
+
+      IShellItemArray *results;
+      hr = pfd->GetResults(&results);
+      if (FAILED(hr)) return;
+
+      DWORD count;
+			results->GetCount(&count);
+
+      std::vector<std::string> paths;
+
+			for (DWORD i = 0; i < count; i++) {
+				IShellItem *path;
+				LPWSTR buf;
+				results->GetItemAt(i, &path);
+				path->GetDisplayName(SIGDN_DESKTOPABSOLUTEPARSING, &buf);
+				paths.push_back(WStringToString(std::wstring(buf)));
+				path->Release();
+				CoTaskMemFree(buf);
+			}
+
+      std::string result = "";
+
+      for (size_t i = 0, i_end = paths.size(); i < i_end; ++i) {
+        result += (i ? "," : "");
+        std::replace(paths[i].begin(), paths[i].end(), '\\', '/');
+        result += paths[i];
+      }
+
+      auto wrapped =  std::string("\"" + result + "\"");
+      resolveToRenderProcess(seq, "0", wrapped);
+
+      results->Release();
     }
 
-    if (!ret) return std::string("");
+    if (FAILED(hr)) return;
 
-    return std::string(szFile);
+    pfd->Release();
+    CoUninitialize();
   }
 
   LRESULT CALLBACK Window::WndProc(

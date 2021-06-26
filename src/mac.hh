@@ -44,7 +44,7 @@ namespace Opkit {
       void setTitle(const std::string&, const std::string&);
       void setSize(int, int, int);
       void setContextMenu(const std::string&, const std::string&);
-      std::string openDialog(bool, bool, bool, const std::string&, const std::string&);
+      void openDialog(const std::string&, bool, bool, bool, const std::string&, const std::string&);
 
       void setSystemMenu(const std::string& seq, const std::string& menu);
       int openExternal(const std::string& s);
@@ -469,7 +469,8 @@ namespace Opkit {
     }
   }
 
-  String Window::openDialog(
+  void Window::openDialog(
+    const std::string& seq,
     bool isSave,
     bool allowDirectories,
     bool allowFiles,
@@ -538,6 +539,6 @@ namespace Opkit {
       result += paths[i]; 
     }
 
-    return String("\"" + result + "\"");
+    resolveToRenderProcess(seq, "0", std::string("\"" + result + "\""));
   }
 }

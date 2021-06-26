@@ -462,7 +462,7 @@ namespace Opkit {
       virtual void setTitle(const std::string&, const std::string&) = 0;
       virtual void setContextMenu(const std::string&, const std::string&) = 0;
       virtual void setSystemMenu(const std::string&, const std::string&) = 0;
-      virtual std::string openDialog(bool, bool, bool, const std::string&, const std::string&) = 0;
+      virtual void openDialog(const std::string&, bool, bool, bool, const std::string&, const std::string&) = 0;
   };
 
   void IWindow::resolveToRenderProcess(const std::string& seq, const std::string& state, const std::string& value) {

@@ -205,7 +205,8 @@ MAIN {
       std::string defaultPath = cmd.get("defaultPath");
       std::string title = cmd.get("title");
 
-      auto result = w.openDialog(
+      w.openDialog(
+        cmd.get("seq"),
         isSave,
         allowDirs,
         allowFiles,
@@ -213,7 +214,7 @@ MAIN {
         title
       );
 
-      w.resolveToRenderProcess(cmd.get("seq"), "0", result);
+      // w.resolveToRenderProcess(cmd.get("seq"), "0", result);
       return;
     }
 
