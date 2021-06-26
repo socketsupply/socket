@@ -31,7 +31,7 @@ async function main () {
   // ## Example
   // A template to set the window's menu
   //
-  /* const menu = `
+  const menu = `
     Operator:
       About Operator: _
       ---: _
@@ -59,7 +59,7 @@ async function main () {
       Beep: T + Command
   `
   
-  await system.setMenu({ window: 0, value: menu }) */
+  await system.setMenu({ window: 0, value: menu })
 
   //
   // ## Example

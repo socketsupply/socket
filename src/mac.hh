@@ -462,6 +462,11 @@ namespace Opkit {
       [menuItem release];
       [dynamicMenu release];
     }
+
+    if (seq.size() > 0) {
+      auto index = std::to_string(this->opts.preload.index);
+      resolveToMainProcess(seq, "0", index);
+    }
   }
 
   String Window::openDialog(
