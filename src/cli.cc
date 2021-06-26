@@ -2,6 +2,8 @@
 #include "process.hh"
 #include "common.hh"
 
+#include <iostream>
+
 constexpr auto version = STR_VALUE(VERSION);
 
 using namespace Opkit;

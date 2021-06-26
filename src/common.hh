@@ -18,12 +18,7 @@
 #include <Windows.h>
 #include <tchar.h>
 #include <wrl.h>
-#include <stdlib.h>
 #include <functional>
-#include <sstream>
-#include <cstring>
-#include <algorithm>
-#include <stdio.h>
 
 //
 // A cross platform MAIN macro that
@@ -134,11 +129,15 @@ namespace Opkit {
   struct WindowOptions {
     bool resizable = true;
     bool frameless = false;
-    int height;
-    int width;
+    int height = 0;
+    int width = 0;
+    int index = 0;
+    int debug = 0;
+    std::string executable = "";
     std::string title = "";
     std::string url = "data:text/html,<html>";
-    PreloadOptions preload;
+    std::string version = "";
+    std::string argv = "";
   };
 
   //
@@ -448,7 +447,9 @@ namespace Opkit {
       void resolveToMainProcess(const std::string&, const std::string&, const std::string&);
       void resolveToRenderProcess(const std::string&, const std::string&, const std::string&);
       void emitToRenderProcess(const std::string&, const std::string&);
+      std::string createPreload();
 
+      WindowOptions opts;
       SCallback onMessage = nullptr;
       VCallback onExit = nullptr;
 
@@ -464,6 +465,25 @@ namespace Opkit {
       virtual void setSystemMenu(const std::string&, const std::string&) = 0;
       virtual void openDialog(const std::string&, bool, bool, bool, const std::string&, const std::string&) = 0;
   };
+
+  std::string IWindow::createPreload() {
+    auto opts = this->opts;
+
+    return std::string(
+      "(() => {"
+      "  window.system = {};\n"
+      "  window.process = {};\n"
+      "  window.process.index = Number('" + std::to_string(opts.index) + "');\n"
+      "  window.process.title = '" + opts.title + "';\n"
+      "  window.process.executable = '" + opts.executable + "';\n"
+      "  window.process.version = '" + opts.version + "';\n"
+      "  window.process.debug = " + std::to_string(opts.debug) + ";\n"
+      "  window.process.argv = [" + opts.argv + "];\n"
+      "  " + gPreload + "\n"
+      "})()\n"
+      "//# sourceURL=preload.js"
+    );
+  }
 
   void IWindow::resolveToRenderProcess(const std::string& seq, const std::string& state, const std::string& value) {
     this->eval(std::string(

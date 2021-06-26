@@ -1,6 +1,5 @@
 #include "common.hh"
 #include "win64/WebView2.h"
-#include "commdlg.h"
 
 #include <future>
 #include <chrono>
@@ -10,7 +9,6 @@
 #pragma comment(lib,"shell32.lib")
 #pragma comment(lib,"version.lib")
 #pragma comment(lib,"user32.lib")
-#pragma comment(lib,"Comdlg32.lib")
 #pragma comment(lib,"WebView2LoaderStatic.lib")
 
 inline void alert (const std::wstring &ws) {
@@ -24,7 +22,7 @@ inline void alert (const std::string &s) {
 inline void alert (const char* s) {
   MessageBoxA(nullptr, s, _TEXT("Alert"), MB_OK | MB_ICONSTOP);
 }
- 
+
 namespace Opkit {
   using IEnvHandler = ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler;
   using IConHandler = ICoreWebView2CreateCoreWebView2ControllerCompletedHandler;
@@ -143,7 +141,7 @@ namespace Opkit {
       "window.external = {\n"
       "  invoke: arg => window.chrome.webview.postMessage(arg)\n"
       "};\n"
-      "" + opts.preload.toString() + "\n"
+      "" + createPreload() + "\n"
     );
 
     wchar_t modulefile[MAX_PATH];
@@ -308,7 +306,7 @@ namespace Opkit {
     );
 
     if (seq.size() > 0) {
-      auto index = std::to_string(this->opts.preload.index);
+      auto index = std::to_string(this->opts.index);
       resolveToMainProcess(seq, "0", index);
     }
   }
@@ -318,7 +316,7 @@ namespace Opkit {
     UpdateWindow(window);
 
     if (seq.size() > 0) {
-      auto index = std::to_string(this->opts.preload.index);
+      auto index = std::to_string(this->opts.index);
       resolveToMainProcess(seq, "0", index);
     }
   }
@@ -346,7 +344,7 @@ namespace Opkit {
 
   void Window::navigate (const std::string& seq, const std::string& value) {
     EventRegistrationToken token;
-    auto index = std::to_string(this->opts.preload.index);
+    auto index = std::to_string(this->opts.index);
 
     webview->add_NavigationCompleted(
       Callback<ICoreWebView2NavigationCompletedEventHandler>(
@@ -377,7 +375,7 @@ namespace Opkit {
 
     if (onMessage != nullptr) {
       std::string state = "0"; // can this call actually fail?
-      auto index = std::to_string(this->opts.preload.index);
+      auto index = std::to_string(this->opts.index);
 
       resolveToMainProcess(seq, state, index);
     }
@@ -458,7 +456,7 @@ namespace Opkit {
     SetMenu(window, hMenubar);
 
     if (seq.size() > 0) {
-      auto index = std::to_string(this->opts.preload.index);
+      auto index = std::to_string(this->opts.index);
       resolveToMainProcess(seq, "0", index);
     }
   }
@@ -537,6 +535,7 @@ namespace Opkit {
       );
 
       hr = pfd->Show(NULL);
+      if (FAILED(hr)) return;
 
     } else {
       hr = CoCreateInstance(

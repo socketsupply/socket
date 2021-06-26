@@ -135,7 +135,7 @@ namespace Opkit {
       "window.external = {\n"
       "  invoke: arg => window.webkit.messageHandlers.webview.postMessage(arg)\n"
       "};\n"
-      "" + opts.preload.toString() + "\n"
+      "" + createPreload() + "\n"
     );
 
     WKUserScript* userScript = [WKUserScript alloc];
@@ -234,7 +234,7 @@ namespace Opkit {
     [NSApp activateIgnoringOtherApps:YES];
 
     if (seq.size() > 0) {
-      auto index = std::to_string(this->opts.preload.index);
+      auto index = std::to_string(this->opts.index);
       resolveToMainProcess(seq, "0", index);
     }
   }
@@ -251,7 +251,7 @@ namespace Opkit {
     [window orderOut:window];
 
     if (seq.size() > 0) {
-      auto index = std::to_string(this->opts.preload.index);
+      auto index = std::to_string(this->opts.index);
       resolveToMainProcess(seq, "0", index);
     }
   }
@@ -269,7 +269,7 @@ namespace Opkit {
           [NSString stringWithUTF8String: value.c_str()]]]];
 
     if (seq.size() > 0) {
-      auto index = std::to_string(this->opts.preload.index);
+      auto index = std::to_string(this->opts.index);
       resolveToMainProcess(seq, "0", index);
     }
   }
@@ -278,7 +278,7 @@ namespace Opkit {
     [window setTitle:[NSString stringWithUTF8String:value.c_str()]];
 
     if (seq.size() > 0) {
-      auto index = std::to_string(this->opts.preload.index);
+      auto index = std::to_string(this->opts.index);
       resolveToMainProcess(seq, "0", index);
     }
   }
@@ -464,7 +464,7 @@ namespace Opkit {
     }
 
     if (seq.size() > 0) {
-      auto index = std::to_string(this->opts.preload.index);
+      auto index = std::to_string(this->opts.index);
       resolveToMainProcess(seq, "0", index);
     }
   }

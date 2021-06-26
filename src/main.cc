@@ -67,15 +67,12 @@ MAIN {
     .frameless = false,
     .height = std::stoi(appData["height"]),
     .width = std::stoi(appData["width"]),
+    .index = 0,
+    .debug = _debug,
+    .executable = appData["executable"],
     .title = appData["title"],
-    .preload = PreloadOptions {
-      .index = 0,
-      .debug = _debug,
-      .title = appData["title"],
-      .executable = appData["executable"],
-      .version = appData["version"],
-      .argv = argvArray.str()
-    }
+    .version = appData["version"],
+    .argv = argvArray.str()
   });
 
   //
@@ -88,14 +85,9 @@ MAIN {
     .frameless = true,
     .height = 120,
     .width = 350,
-    .preload = PreloadOptions {
-      .index = 1,
-      .debug = _debug,
-      .title = appData["title"],
-      .executable = appData["executable"],
-      .version = appData["version"],
-      .argv = argvArray.str()
-    }
+    .index = 1,
+    .debug = _debug,
+    .argv = argvArray.str()
   });
 
   //
@@ -214,7 +206,6 @@ MAIN {
         title
       );
 
-      // w.resolveToRenderProcess(cmd.get("seq"), "0", result);
       return;
     }
 
