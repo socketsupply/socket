@@ -28,6 +28,7 @@ MAIN {
 
   //
   // Prepare to forward commandline arguments to the main and render processes.
+  // TODO (@heapwolf): make this url encoded, this way is a little weird.
   //
   auto cwd = app.getCwd(argv[0]);
   appData = parseConfig(replace(_settings, "%%", "\n"));
@@ -74,7 +75,7 @@ MAIN {
       .executable = appData["executable"],
       .version = appData["version"],
       .argv = argvArray.str()
-    }.toString()
+    }
   });
 
   //
@@ -94,7 +95,7 @@ MAIN {
       .executable = appData["executable"],
       .version = appData["version"],
       .argv = argvArray.str()
-    }.toString()
+    }
   });
 
   //
@@ -112,55 +113,52 @@ MAIN {
       Parse cmd(out);
 
       auto &w = cmd.index == 0 ? w0 : w1;
+      auto seq = cmd.get("seq");
+      auto value = cmd.get("value");
 
       if (cmd.name == "title") {
-        auto s = decodeURIComponent(cmd.args["value"]);
-        w.setTitle(s);
+        auto s = decodeURIComponent(value);
+        w.setTitle(seq, s);
         return;
       }
 
       if (cmd.name == "show") {
-        w.show();
+        w.show(seq);
         return;
       }
 
       if (cmd.name == "hide") {
-        w.hide();
+        w.hide(seq);
         return;
       }
 
       if (cmd.name == "navigate") {
-        auto s = decodeURIComponent(cmd.args["url"]);
-        w.navigate(s);
+        w.navigate(seq, decodeURIComponent(value));
         return;
       }
 
       if (cmd.name == "menu") {
-        auto s = decodeURIComponent(cmd.args["value"]);
-        w.setSystemMenu(s);
+        auto s = decodeURIComponent(value);
+        w.setSystemMenu(seq, s);
         return;
       }
 
-      if (cmd.name == "respond") {
-        auto seq = cmd.args["seq"];
-        auto status = cmd.args["status"];
-        auto value = cmd.args["value"];
+      if (cmd.name == "resolve") {
+        auto state = cmd.get("state");
 
-        w.eval(w.resolve(seq, status, value));
+        w.resolveToRenderProcess(seq, state, value);
         return;
       }
 
       if (cmd.name == "send") {
-        auto event = decodeURIComponent(cmd.args["event"]);
-        auto value = cmd.args["value"];
+        auto event = decodeURIComponent(cmd.get("event"));
 
-        w.eval(w.emit(event, value));
+        w.resolveToRenderProcess(event, "", value);
         return;
       }
 
       if (cmd.name == "stdout") {
-        std::string value = decodeURIComponent(cmd.args["value"]);
-        std::cout << value << std::endl;
+        std::cout << decodeURIComponent(value) << std::endl;
       }
     });
   };
@@ -190,42 +188,22 @@ MAIN {
     auto &w = cmd.index == 0 ? w0 : w1;
 
     if (cmd.name == "title") {
-      auto s = decodeURIComponent(cmd.args["value"]);
-      w.setTitle(s);
+      auto s = decodeURIComponent(cmd.get("value"));
+      w.setTitle(cmd.get("seq"), s);
       return;
     }
 
     if (cmd.name == "external") {
-      w.openExternal(decodeURIComponent(cmd.args["value"]));
+      w.openExternal(decodeURIComponent(cmd.get("value"))); 
       return;
     }
 
     if (cmd.name == "dialog") {
-      bool isSave = false;
-      bool allowDirs = false;
-      bool allowFiles = false;
-      std::string defaultPath = "";
-      std::string title = "";
-
-      if (cmd.args.count("type")) {
-        isSave = cmd.args["type"].compare("save") == 1;
-      }
-
-      if (cmd.args.count("allowDirectories")) {
-        allowDirs = cmd.args["allowDirectories"].compare("true") == 1;
-      }
-
-      if (cmd.args.count("allowFiles")) {
-        allowDirs = cmd.args["allowFiles"].compare("true") == 1;
-      }
-
-      if (cmd.args.count("defaultPath")) {
-        defaultPath = cmd.args["defaultPath"];
-      }
-
-      if (cmd.args.count("title")) {
-        title = cmd.args["title"];
-      }
+      bool isSave = cmd.get("type").compare("save") == 1;
+      bool allowDirs = cmd.get("allowDirs").compare("true") == 1;
+      bool allowFiles = cmd.get("allowFiles").compare("true") == 1;
+      std::string defaultPath = cmd.get("defaultPath");
+      std::string title = cmd.get("title");
 
       auto result = w.openDialog(
         isSave,
@@ -235,13 +213,13 @@ MAIN {
         title
       );
 
-      w.eval(w.resolve(cmd.args["seq"], "0", result));
+      w.resolveToRenderProcess(cmd.get("seq"), "0", result);
       return;
     }
 
     if (cmd.name == "context") {
-      auto seq = cmd.args["seq"];
-      auto value = decodeURIComponent(cmd.args["value"]);
+      auto seq = cmd.get("seq");
+      auto value = decodeURIComponent(cmd.get("value"));
 
       // send the seq, use it to resolve the promise
       w.setContextMenu(seq, value);
@@ -249,6 +227,10 @@ MAIN {
       return;
     }
 
+    //
+    // Everything else can be forwarded to the main process.
+    //
+    alert(out);
     process.write(out);
   };
 

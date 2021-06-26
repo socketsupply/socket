@@ -6,13 +6,26 @@ let counter = 0
 
 async function main () {
 
-  system.show({ index: 0 })
+  //
+  // Show one of the windows
+  //
+  await system.show({ window: 0 })
 
+  //
+  // Navigate from the current location
+  //
   const file = path.join(path.dirname(process.argv[1]), 'index.html')
-  system.navigate({ index: 0, url: `file://${file}` })
-  system.setTitle({ index: 0, value: 'Hello' })
+  await system.navigate({ window: 0, value: `file://${file}` })
 
-  system.setMenu(`
+  //
+  // Set the title of a window
+  //
+  // await system.setTitle({ window: 0, value: 'Hello' })
+
+  //
+  // A template to set the window's menu
+  //
+  /* const menu = `
     Operator:
       About Operator: _
       ---: _
@@ -38,22 +51,24 @@ async function main () {
     Other:
       Another Test: t
       Beep: T + Command
-  `)
+  `
+  
+  await system.setMenu({ window: 0, value: menu }) */
 
-  system.send({
-    env: process.env,
-    argv: process.argv
-  })
-
-  system.receive(async data => {
-    let x = data
-
+  //
+  // Handling inbound messages and returning responses
+  //
+  system.receive = async data => {
+    fs.appendFileSync('>>>>>>>>', data)
     return {
       received: data,
       counter: counter++
     }
-  })
+  }
 
+  //
+  // Handling arbitrary fire-and-forget messages
+  //
   setInterval(() => {
     counter++
 

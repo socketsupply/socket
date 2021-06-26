@@ -128,7 +128,7 @@ namespace Opkit {
       "window.external = {\n"
       "  invoke: arg => window.webkit.messageHandlers.webview.postMessage(arg)\n"
       "};\n"
-      "" + opts.preload + "\n"
+      "" + opts.preload.toString() + "\n"
     );
 
     WKUserScript* userScript = [WKUserScript alloc];

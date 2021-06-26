@@ -134,8 +134,8 @@ namespace Opkit {
     void close_fds() noexcept;
   };
 
-  inline bool Process::write(const std::string &str) {
-    return Process::write(str.c_str(), str.size());
+  inline bool Process::write(const std::string &s) {
+    return Process::write(s.c_str(), s.size());
   };
 
   inline Process::Process(

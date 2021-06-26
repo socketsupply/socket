@@ -1,8 +1,5 @@
-//
-// TODO(@heapwolf) publish to npm/github as @optoolco/window
-//
-import fs from 'fs'
 import util from 'util'
+import fs from 'fs'
 
 function installWebView () {
   //
@@ -14,106 +11,67 @@ function installWebView () {
   // fetch('https://go.microsoft.com/fwlink/p/?LinkId=2124703')
 }
 
-process.stdin.resume()
-process.stdin.setEncoding('utf8')
-
 const write = s => {
   process.stdout.write(s + '\0')
-}
-
-const api = {}
-
-const exceedsMaxSize = s => {
-  if (s.length > 8000) {
-    return [
-      'Unable to accept payload. Max ipc payload size reached (Exceeds',
-      'JSStringGetMaximumUTF8CStringSize), consider streaming.'
-    ].join(' ')
-  }
+  fs.appendFileSync('log.txt', s + '\r\n')
 }
 
 console.log = (...args) => {
   const s = args.map(v => util.format(v)).join(' ')
-  return write(`ipc://stdout?value=${encodeURIComponent(s)}`)
+  write(`ipc://stdout?value=${encodeURIComponent(s)}`)
 }
 
-api.show = o => {
-  const s = new URLSearchParams(o)
-  return write(`ipc://show?${s}`)
+//
+// Internal IPC API
+// ---
+// Mirrors the api that is provided in the front-end.
+//
+const ipc = { nextSeq: 0 }
+
+ipc.resolve = async (seq, state, value) => {
+  const method = !Number(state) ? 'resolve' : 'reject'
+  if (!ipc[seq] || !ipc[seq][method]) return
+
+  try {
+    await ipc[seq][method](value)
+  } catch (err) {
+    return Promise.reject(err.message)
+  }
+
+  delete ipc[seq];
 }
 
-api.navigate = o => {
-  const s = new URLSearchParams(o)
-  return write(`ipc://navigate?${s}`)
-}
+ipc.request = (cmd, opts) => {
+  const seq = ipc.nextSeq++
+  let value = '0'
 
-api.setTitle = o => {
-  const s = new URLSearchParams(o)
-  return write(`ipc://title?${s}`)
-}
-
-api.setSize = o => {
-  const s = new URLSearchParams(o)
-  return write(`ipc://size?${s}`)
-}
-
-api.setMenu = s => {
-  s = encodeURIComponent(s)
-  return write(`ipc://menu?value=${s}`)
-}
-
-api.receive = fn => {
-  process.stdin.on('data', async data => {
-    let msg
-
-    try {
-      msg = Object.fromEntries(new URL(data).searchParams)
-    } catch (err) {
-      console.log(`Unable to parse message (${data})`)
-      return
+  const promise = new Promise((resolve, reject) => {
+    ipc[seq] = {
+      resolve: resolve,
+      reject: reject,
     }
-
-    let {
-      status = 0,
-      seq,
-      value
-    } = msg
-
-    if (process.platform === 'win32') {
-      if (value === '0xDEADBEEF') {
-        return installWebView()
-      }
-    }
-
-    let result = ''
-    try {
-      const json = JSON.parse(decodeURIComponent(value))
-      result = await fn(json);
-    } catch (err) {
-      result = err.message
-      status = 1
-    }
-
-    value = JSON.stringify(result)
-
-    const err = exceedsMaxSize(value)
-    if (err) {
-      status = 1
-      result = err
-    }
-
-    const s = new URLSearchParams({
-      seq,
-      status,
-      value
-    }).toString();
-
-    write(`ipc://respond?${s}`)
   })
+
+  try {
+    if (typeof opts.value === 'object') {
+      opts.value = JSON.stringify(opts.value)
+    }
+
+    value = new URLSearchParams({
+      index: opts.window,
+      seq,
+      value: opts.value || '0'
+    }).toString()
+  } catch (err) {
+    console.error(`${err.message} (${value})`)
+    return Promise.reject(err.message)
+  }
+
+  write(`ipc://${cmd}?${value}`)
+  return promise
 }
 
-api.send = o => {
-
+ipc.send = o => {
   let value = ''
 
   try {
@@ -136,7 +94,94 @@ api.send = o => {
     result = err
   }
 
-  write(`ipc://send?${s}`)
+  return write(`ipc://send?${s}`)
 }
+
+const exceedsMaxSize = s => {
+  if (s.length > 8000) {
+    return [
+      'Unable to accept payload. Max ipc payload size reached (Exceeds',
+      'JSStringGetMaximumUTF8CStringSize), consider streaming.'
+    ].join(' ')
+  }
+}
+
+process.stdin.resume()
+process.stdin.setEncoding('utf8')
+
+process.stdin.on('data', async data => {
+  fs.appendFileSync('log.txt', 'DATA ->' + data)
+  let cmd = ''
+  let index = 0
+  let seq = 0
+  let state = 0
+  let value = ''
+
+  try {
+    const u = new URL(data)
+    const o = Object.fromEntries(u.searchParams)
+    cmd = u.host
+    seq = o.seq
+    index = o.index
+    state = o.state || 0
+
+    if (o.value) {
+      value = JSON.parse(decodeURIComponent(o.value))
+    }
+  } catch (err) {
+    fs.appendFileSync('log.txt', 'ERR ->' + err.message)
+    console.log(`Unable to parse message (${data})`)
+    return
+  }
+
+  if (cmd === 'resolve') {
+    fs.appendFileSync('log.txt', 'RESOLVE' + data)
+    return ipc.resolve(seq, state, value)
+  }
+
+  let result = ''
+
+  try {
+    result = JSON.stringify(await api.receive(cmd, value));
+  } catch (err) {
+    result = err.message
+    state = 1
+  }
+
+  const err = exceedsMaxSize(result)
+  if (err) {
+    state = 1
+    result = err
+  }
+
+  const s = new URLSearchParams({
+    seq,
+    state,
+    index,
+    value: result
+  }).toString();
+
+  write(`ipc://resolve?${s}`)
+})
+
+//
+// Exported API
+// ---
+//
+const api = {}
+
+api.show = o => ipc.request('show', o)
+
+api.navigate = o => ipc.request('navigate', o)
+
+api.setTitle = o => ipc.request('title', o)
+
+api.setSize = o => ipc.request('sizse', o)
+
+api.setMenu = o => ipc.request('menu', o)
+
+api.send = ipc.send
+
+api.receive = () => {};
 
 export default api

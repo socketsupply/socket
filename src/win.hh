@@ -61,26 +61,25 @@ namespace Opkit {
       ICoreWebView2Controller *controller = nullptr;
 
       App app;
+      WindowOptions opts;
 
       void resize (HWND window);
-      POINT m_minsz = POINT{0, 0};
-      POINT m_maxsz = POINT{0, 0};
+      POINT m_minsz = POINT {0, 0};
+      POINT m_maxsz = POINT {0, 0};
       HMENU systemMenu;
-      bool initDone = false;
 
       void eval(const std::string&);
-      void show();
+      void show(const std::string&);
+      void hide(const std::string&);
       void exit();
       void kill();
-      void hide();
-      void navigate(const std::string&);
+      void navigate(const std::string&, const std::string&);
       void setSize(int, int, int);
-      void setTitle(const std::string&);
-      void setContextMenu(std::string, std::string);
-      void setSystemMenu(std::string);
-      void _setSystemMenu(std::string);
-      std::string openDialog(bool, bool, bool, std::string, std::string);
-      int openExternal(std::string);
+      void setTitle(const std::string&, const std::string&);
+      void setContextMenu(const std::string&, const std::string&);
+      void setSystemMenu(const std::string&, const std::string&);
+      std::string openDialog(bool, bool, bool, const std::string&, const std::string&);
+      int openExternal(const std::string&);
   };
 
   App::App(void* h): hInstance((_In_ HINSTANCE) h) {
@@ -118,7 +117,7 @@ namespace Opkit {
     }
   };
 
-  Window::Window (App& app, WindowOptions opts) : app(app) {
+  Window::Window (App& app, WindowOptions opts) : app(app), opts(opts) {
     window = CreateWindow(
       TEXT("DesktopApp"), TEXT("Opkit"),
       WS_OVERLAPPEDWINDOW,
@@ -137,7 +136,7 @@ namespace Opkit {
       "window.external = {\n"
       "  invoke: arg => window.chrome.webview.postMessage(arg)\n"
       "};\n"
-      "" + opts.preload + "\n"
+      "" + opts.preload.toString() + "\n"
     );
 
     wchar_t modulefile[MAX_PATH];
@@ -156,7 +155,7 @@ namespace Opkit {
             window,
             Microsoft::WRL::Callback<IConHandler>(
               [&, preload](HRESULT result, ICoreWebView2Controller* c) -> HRESULT {
-                hide();
+                hide("");
 
                 if (c != nullptr) {
                   controller = c;
@@ -289,7 +288,7 @@ namespace Opkit {
     onExit();
   }
 
-  void Window::show () {
+  void Window::show (const std::string& seq) {
     ShowWindow(window, SW_SHOW);
     UpdateWindow(window);
 
@@ -304,11 +303,21 @@ namespace Opkit {
       (r.bottom-r.top),
       0
     );
+
+    if (seq.size() > 0) {
+      auto index = std::to_string(this->opts.preload.index);
+      resolveToMainProcess(seq, "0", index);
+    }
   }
 
-  void Window::hide () {
+  void Window::hide (const std::string& seq) {
     ShowWindow(window, SW_HIDE);
     UpdateWindow(window);
+
+    if (seq.size() > 0) {
+      auto index = std::to_string(this->opts.preload.index);
+      resolveToMainProcess(seq, "0", index);
+    }
   }
 
   void Window::resize (HWND window) {
@@ -332,12 +341,43 @@ namespace Opkit {
     );
   }
 
-  void Window::navigate (const std::string& s) {
-    webview->Navigate(StringToWString(s).c_str());
+  void Window::navigate (const std::string& seq, const std::string& value) {
+    EventRegistrationToken token;
+    auto index = std::to_string(this->opts.preload.index);
+
+    webview->add_NavigationCompleted(
+      Callback<ICoreWebView2NavigationCompletedEventHandler>(
+        [&, seq, index](ICoreWebView2* sender, ICoreWebView2NavigationCompletedEventArgs* args) -> HRESULT {
+          std::string state = "1";
+
+          BOOL success;
+          args->get_IsSuccess(&success);
+
+          if (success) {
+            state = "0";
+          }
+
+          resolveToMainProcess(seq, state, index);
+          webview->remove_NavigationCompleted(token);
+
+          return S_OK;
+        })
+      .Get(),
+      &token
+    );
+
+    webview->Navigate(StringToWString(value).c_str());
   }
 
-  void Window::setTitle (const std::string& title) {
+  void Window::setTitle (const std::string& seq, const std::string& title) {
     SetWindowText(window, title.c_str());
+
+    if (onMessage != nullptr) {
+      std::string state = "1"; // can this call actually fail?
+      auto index = std::to_string(this->opts.preload.index);
+
+      resolveToMainProcess(seq, state, index);
+    }
   }
 
   void Window::setSize (int width, int height, int hints) {
@@ -376,10 +416,7 @@ namespace Opkit {
     }
   }
 
-  void Window::_setSystemMenu (std::string) {
-  }
-
-  void Window::setSystemMenu (std::string s) {
+  void Window::setSystemMenu (const std::string& seq, const std::string& menu) {
     alert("set menu");
     // HMENU hMenubar;
     // HMENU hMenu;
@@ -397,7 +434,7 @@ namespace Opkit {
     SetMenu(window, hMenubar);
   }
 
-  void Window::setContextMenu (std::string seq, std::string value) {
+  void Window::setContextMenu (const std::string& seq, const std::string& value) {
     HMENU hPopupMenu = CreatePopupMenu();
 
     auto menuItems = split(value, '_');
@@ -436,7 +473,7 @@ namespace Opkit {
     DestroyMenu(hPopupMenu);
   }
 
-  int Window::openExternal (std::string url) {
+  int Window::openExternal (const std::string& url) {
     ShellExecute(nullptr, "Open", url .c_str(), nullptr, nullptr, SW_SHOWNORMAL);
     // TODO how to detect success here. do we care?
     return 0;
@@ -446,8 +483,8 @@ namespace Opkit {
       bool isSave,
       bool allowDirs,
       bool allowFiles,
-      std::string defaultPath,
-      std::string title
+      const std::string& defaultPath,
+      const std::string& title
     ) {
     OPENFILENAME ofn;       // common dialog box structure
     char szFile[260];       // buffer for file name
@@ -500,7 +537,7 @@ namespace Opkit {
         SetMenu(hWnd, hMenubar);
 
         if (w != nullptr) {
-          w->setSystemMenu("");
+          // w->setSystemMenu("");
         }
 
         break;

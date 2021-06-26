@@ -138,7 +138,7 @@ namespace Opkit {
     int width;
     std::string title = "";
     std::string url = "data:text/html,<html>";
-    std::string preload = "";
+    PreloadOptions preload;
   };
 
   //
@@ -310,18 +310,22 @@ namespace Opkit {
   // IPC Message parser for the middle end
   // TODO possibly harden data validation.
   //
-  struct Parse {
-    Parse(std::string);
-    int index = 0;
-    std::string value = "";
-    std::string name = "";
+  class Parse {
     std::map<std::string, std::string> args;
+    public:
+      Parse(const std::string&);
+      int index = 0;
+      std::string value = "";
+      std::string name = "";
+      std::string get(const std::string&);
   };
 
   //
   // cmd: `ipc://id?p1=v1&p2=v2&...\0`
   //
-  inline Parse::Parse(std::string str) {    
+  inline Parse::Parse(const std::string& s) {    
+    std::string str = s;
+
     if (str.find("ipc://") == -1) return;
 
     std::string query;
@@ -342,6 +346,10 @@ namespace Opkit {
       if (pair.size() <= 1) continue;
       args[pair[0]] = pair[1];
     }
+  }
+
+  std::string Parse::get(const std::string& s) {
+    return args.count(s) ? args[s] : "";
   }
 
   //
@@ -379,13 +387,13 @@ namespace Opkit {
     // for future extension"
 
     auto s = replace(sSrc, "\\+", " ");
-    const unsigned char * pSrc = (const unsigned char *) s.c_str();
+    const unsigned char* pSrc = (const unsigned char *) s.c_str();
     const int SRC_LEN = sSrc.length();
-    const unsigned char * const SRC_END = pSrc + SRC_LEN;
-    const unsigned char * const SRC_LAST_DEC = SRC_END - 2;   // last decodable '%' 
+    const unsigned char* const SRC_END = pSrc + SRC_LEN;
+    const unsigned char* const SRC_LAST_DEC = SRC_END - 2;
 
-    char * const pStart = new char[SRC_LEN];
-    char * pEnd = pStart;
+    char* const pStart = new char[SRC_LEN];
+    char* pEnd = pStart;
 
     while (pSrc < SRC_LAST_DEC) {
       if (*pSrc == '%') {
@@ -431,59 +439,52 @@ namespace Opkit {
 
   class IWindow {
     public:
-      std::string resolve(std::string, std::string, std::string);
-      std::string emit(std::string, std::string);
-
-      std::string url;
-      std::string title;
-      bool initDone = false;
+      int index = 0;
+      void resolveToMainProcess(const std::string&, const std::string&, const std::string&);
+      void resolveToRenderProcess(const std::string&, const std::string&, const std::string&);
+      void emit(const std::string&, const std::string&);
 
       SCallback onMessage = nullptr;
       VCallback onExit = nullptr;
 
-      void onMessageExec(const std::string);
-
       virtual void eval(const std::string&) = 0;
-      virtual void show() = 0;
-      virtual void hide() = 0;
-      virtual void kill() = 0;
+      virtual void show(const std::string&) = 0;
+      virtual void hide(const std::string&) = 0;
       virtual void exit() = 0;
-      virtual void navigate(const std::string&) = 0;
-      virtual void setTitle(const std::string&) = 0;
+      virtual void kill() = 0;
+      virtual void navigate(const std::string&, const std::string&) = 0;
       virtual void setSize(int, int, int) = 0;
-      virtual void setContextMenu(std::string, std::string) = 0;
-      virtual std::string openDialog(bool, bool, bool, std::string, std::string) = 0;
-      virtual void setSystemMenu(std::string menu) = 0;
-      virtual int openExternal(std::string s) = 0;
+      virtual void setTitle(const std::string&, const std::string&) = 0;
+      virtual void setContextMenu(const std::string&, const std::string&) = 0;
+      virtual void setSystemMenu(const std::string&, const std::string&) = 0;
+      virtual std::string openDialog(bool, bool, bool, const std::string&, const std::string&) = 0;
   };
 
-  void IWindow::onMessageExec(const std::string s) {
-    if (onMessage != nullptr) onMessage(s);
-  }
-
-  std::string IWindow::resolve(std::string seq, std::string status, std::string value) {
-    std::string response(
+  void IWindow::resolveToRenderProcess(const std::string& seq, const std::string& state, const std::string& value) {
+    this->eval(std::string(
       "(() => {"
       "  const seq = Number(" + seq + ");"
-      "  const status = Number(" + status + ");"
+      "  const state = Number(" + state + ");"
       "  const value = '" + value + "';"
-      "  window._ipc.resolve(seq, status, value);"
+      "  window._ipc.resolve(seq, state, value);"
       "})()"
-    );
-
-    return response;
+    ));
   }
 
-  std::string IWindow::emit(std::string event, std::string value) {
-    std::string response(
+  void IWindow::resolveToMainProcess(const std::string& seq, const std::string& state, const std::string& value) {
+    if (this->onMessage != nullptr) {
+      this->onMessage(std::string("ipc://resolve?seq=" + seq + "&state=" + state + "&value=" + value));
+    }
+  }
+
+  void IWindow::emit(const std::string& event, const std::string& value) {
+    this->eval(std::string(
       "(() => {"
       "  const name = '" + event + "';"
       "  const value = '" + value + "';"
       "  window._ipc.emit(name, value);"
       "})()"
-    );
-
-    return response;
+    ));
   }
 }
 
