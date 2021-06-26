@@ -1,28 +1,34 @@
 import system from './system.js'
 import path from 'path'
-import fs from 'fs'
 
 let counter = 0
 
 async function main () {
+  //
+  // TODO (@heapwolf): need to test rejected promises / failure modes.
+  // 
 
   //
+  // ## Example
   // Show one of the windows
   //
   await system.show({ window: 0 })
 
   //
+  // ## Example
   // Navigate from the current location
   //
   const file = path.join(path.dirname(process.argv[1]), 'index.html')
   await system.navigate({ window: 0, value: `file://${file}` })
 
   //
+  // ## Example
   // Set the title of a window
   //
-  // await system.setTitle({ window: 0, value: 'Hello' })
+  await system.setTitle({ window: 0, value: 'Hello' })
 
   //
+  // ## Example
   // A template to set the window's menu
   //
   /* const menu = `
@@ -56,18 +62,21 @@ async function main () {
   await system.setMenu({ window: 0, value: menu }) */
 
   //
-  // Handling inbound messages and returning responses
+  // ## Example
+  // Handling inbound messages and returning responses.
+  // This example is basically an "echo" server...
   //
-  system.receive = async data => {
-    fs.appendFileSync('>>>>>>>>', data)
+  system.receive = async (command, value) => {
     return {
-      received: data,
+      received: value,
+      command,
       counter: counter++
     }
   }
 
   //
-  // Handling arbitrary fire-and-forget messages
+  // ## Example
+  // Sending arbitrary fire-and-forget messages to the render process.
   //
   setInterval(() => {
     counter++

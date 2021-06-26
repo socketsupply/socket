@@ -230,7 +230,6 @@ MAIN {
     //
     // Everything else can be forwarded to the main process.
     //
-    alert(out);
     process.write(out);
   };
 

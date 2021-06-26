@@ -373,7 +373,7 @@ namespace Opkit {
     SetWindowText(window, title.c_str());
 
     if (onMessage != nullptr) {
-      std::string state = "1"; // can this call actually fail?
+      std::string state = "0"; // can this call actually fail?
       auto index = std::to_string(this->opts.preload.index);
 
       resolveToMainProcess(seq, state, index);

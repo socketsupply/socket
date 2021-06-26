@@ -8,6 +8,7 @@ constexpr auto gPreload = R"JS(
 const IPC = window._ipc = { nextSeq: 1 };
 
 window._ipc.resolve = async (seq, status, value) => {
+  console.log('RESOLVING ->', `${seq} / ${status} / ${value}`)
   value = decodeURIComponent(value)
   const method = status === 0 ? 'resolve' : 'reject';
 
@@ -48,7 +49,6 @@ window._ipc.send = (name, value) => {
     return Promise.reject(err.message)
   }
 
-  console.log('SENDING ->', `ipc://${name}?${value}`)
   window.external.invoke(`ipc://${name}?${value}`)
   return promise
 }

@@ -129,13 +129,11 @@ process.stdin.on('data', async data => {
       value = JSON.parse(decodeURIComponent(o.value))
     }
   } catch (err) {
-    fs.appendFileSync('log.txt', 'ERR ->' + err.message)
     console.log(`Unable to parse message (${data})`)
     return
   }
 
   if (cmd === 'resolve') {
-    fs.appendFileSync('log.txt', 'RESOLVE' + data)
     return ipc.resolve(seq, state, value)
   }
 
