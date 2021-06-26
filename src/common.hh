@@ -214,7 +214,8 @@ namespace Opkit {
     #if _WIN32
       return _putenv(s);
     #else
-      return putenv(s);
+
+      return putenv((char*) &s[0]);
     #endif
   }
 
@@ -429,13 +430,17 @@ namespace Opkit {
     public:
       bool shouldExit = false;
       VCallback onExit = nullptr;
+      void exit();
 
       virtual int run() = 0;
-      virtual void exit() = 0;
       virtual void kill() = 0;
       virtual void dispatch(std::function<void()> work) = 0;
       virtual std::string getCwd(const std::string&) = 0;
   };
+
+  void IApp::exit () {
+    if (onExit != nullptr) onExit();
+  }
 
   class IWindow {
     public:

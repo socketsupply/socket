@@ -237,7 +237,7 @@ MAIN {
   w1.onMessage = onMessage;
 
   //
-  // # Exinting
+  // # Exiting
   // When a window or the app wants to exit,
   // we clean up the windows and the main process.
   // TODO pass a real exit code?

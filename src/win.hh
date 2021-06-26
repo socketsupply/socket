@@ -240,10 +240,6 @@ namespace Opkit {
     return 0;
   }
 
-  void App::exit () {
-    if (onExit != nullptr) onExit();
-  }
-
   void App::kill () {
     shouldExit = true;
     PostQuitMessage(WM_QUIT);

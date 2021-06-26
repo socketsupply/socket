@@ -15,15 +15,15 @@
 
 namespace Opkit { 
 
-  class App: public IApp {
+  class App : public IApp {
     NSAutoreleasePool* pool = [NSAutoreleasePool new];
 
     public:
       App(int);
       int run();
-      void exit();
+      void kill();
       void dispatch(std::function<void()> work);
-      std::string getCwd(std::string);
+      std::string getCwd(const std::string&);
   };
 
   class Window : public IWindow {
@@ -31,21 +31,28 @@ namespace Opkit {
     WKWebView* webview;
 
     public:
-      App app;
+      App* app;
+      WindowOptions* opts;
       Window(App&, WindowOptions);
 
       void eval(const std::string&);
-      void show();
-      void hide();
-      void close();
-      void navigate(const std::string&);
-      void setTitle(const std::string&);
-      void setContextMenu(std::string, std::string);
-      std::string openDialog(bool, bool, bool, std::string, std::string);
+      void show(const std::string&);
+      void hide(const std::string&);
+      void kill();
+      void exit();
+      void navigate(const std::string&, const std::string&);
+      void setTitle(const std::string&, const std::string&);
+      void setSize(int, int, int);
+      void setContextMenu(const std::string&, const std::string&);
+      std::string openDialog(bool, bool, bool, const std::string&, const std::string&);
 
-      void setSystemMenu(std::string menu);
-      int openExternal(std::string s);
+      void setSystemMenu(const std::string& seq, const std::string& menu);
+      int openExternal(const std::string& s);
   };
+
+  App::App (int instanceId) {
+    // TODO enforce single instance is set
+  }
 
   int App::run () {
     /* NSEvent* event = [NSApp nextEventMatchingMask:NSEventMaskAny
@@ -73,7 +80,7 @@ namespace Opkit {
     });
   }
 
-  void App::exit () {
+  void App::kill () {
     // Distinguish window closing with app exiting
     shouldExit = true;
     [NSApp terminate:nil];
@@ -159,7 +166,7 @@ namespace Opkit {
       @selector(userContentController:didReceiveScriptMessage:),
       imp_implementationWithBlock(
         [=](id self, SEL cmd, WKScriptMessage* scriptMessage) {
-          if (this->_onMessage == nullptr) return;
+          if (this->onMessage == nullptr) return;
 
           id body = [scriptMessage body];
           if (![body isKindOfClass:[NSString class]]) {
@@ -167,7 +174,7 @@ namespace Opkit {
           }
 
           String msg = [body UTF8String];
-          this->_onMessage(msg);
+          this->onMessage(msg);
         }),
       "v@:@"
     );
@@ -219,23 +226,34 @@ namespace Opkit {
     // Add webview to window
     [window setContentView:webview];
 
-    // Done initialization, set properties
-    initDone = true;
-
-    navigate(opts.url);
+    navigate("0", opts.url);
   }
 
-  void Window::show () {
+  void Window::show (const std::string& seq) {
     [window makeKeyAndOrderFront:nil];
     [NSApp activateIgnoringOtherApps:YES];
+
+    if (seq.size() > 0) {
+      auto index = std::to_string(this->opts->preload.index);
+      resolveToMainProcess(seq, "0", index);
+    }
   }
 
-  void Window::close () {
-    [window close:nil];
+  void Window::exit () {
+    if (onExit != nullptr) onExit();
   }
 
-  void Window::hide () {
+  void Window::kill () {
+    [window performClose:nil];
+  }
+
+  void Window::hide (const std::string& seq) {
     [window orderOut:window];
+
+    if (seq.size() > 0) {
+      auto index = std::to_string(this->opts->preload.index);
+      resolveToMainProcess(seq, "0", index);
+    }
   }
 
   void Window::eval(const std::string& js) {
@@ -244,32 +262,42 @@ namespace Opkit {
       completionHandler:nil];
   }
 
-  void Window::navigate (const std::String& s) {
+  void Window::navigate (const std::string& seq, const std::string& value) {
     [webview loadRequest:
       [NSURLRequest requestWithURL:
         [NSURL URLWithString:
-          [NSString stringWithUTF8String: s.c_str()]]]];
+          [NSString stringWithUTF8String: value.c_str()]]]];
+
+    if (seq.size() > 0) {
+      auto index = std::to_string(this->opts->preload.index);
+      resolveToMainProcess(seq, "0", index);
+    }
   }
 
-  void Window::setTitle(const std::string& s) {
-    [window setTitle:[NSString stringWithUTF8String:s.c_str()]];
+  void Window::setTitle(const std::string& seq, const std::string& value) {
+    [window setTitle:[NSString stringWithUTF8String:value.c_str()]];
+
+    if (seq.size() > 0) {
+      auto index = std::to_string(this->opts->preload.index);
+      resolveToMainProcess(seq, "0", index);
+    }
   }
 
   void Window::setSize(int width, int height, int hints) {
     // TODO implement
   }
 
-  int Window::openExternal (std::string s) {
+  int Window::openExternal (const std::string& s) {
     NSString* nsu = [NSString stringWithUTF8String:s.c_str()];
     return [[NSWorkspace sharedWorkspace] openURL:[NSURL URLWithString: nsu]];
   }
 
-  std::string App::getCwd (std::string _) {
+  std::string App::getCwd (const std::string& s) {
     NSString *bundlePath = [[NSBundle mainBundle] resourcePath];
     return String([bundlePath UTF8String]);
   }
 
-  void Window::setContextMenu (std::string seq, std::string value) {
+  void Window::setContextMenu (const std::string& seq, const std::string& value) {
     auto menuItems = split(value, '_');
     auto id = std::stoi(seq);
 
@@ -308,7 +336,9 @@ namespace Opkit {
     [pMenu popUpMenuPositioningItem:pMenu.itemArray[0] atLocation:NSPointFromCGPoint(CGPointMake(mouseLocation.x, mouseLocation.y)) inView:nil];
   }
 
-  void Window::setSystemMenu (std::string menu) {
+  void Window::setSystemMenu (const std::string& seq, const std::string& value) {
+    std::string menu = std::string(value);
+
     NSMenu *mainMenu;
     NSString *title;
     NSMenu *appleMenu;
@@ -438,8 +468,8 @@ namespace Opkit {
     bool isSave,
     bool allowDirectories,
     bool allowFiles,
-    String defaultPath = "",
-    String title = "")
+    const std::string& defaultPath = "",
+    const std::string& title = "")
   {
     NSURL *url;
     const char *utf8_path;
