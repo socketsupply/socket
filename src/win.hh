@@ -283,18 +283,22 @@ namespace Opkit {
   }
 
   void Window::about () {
+    auto text = std::string(
+      appData["title"] + " " +
+      appData["version"] + "\n" +
+      appData["copyRight"]
+    );
+
     MSGBOXPARAMS mbp;
     mbp.cbSize = sizeof(MSGBOXPARAMS);
     mbp.hwndOwner = window;
     mbp.hInstance = app.hInstance;
-    mbp.lpszText = std::string("Hi cool ok great").c_str();
-    mbp.lpszCaption = std::string("About").c_str();
+    mbp.lpszText = text.c_str();
+    mbp.lpszCaption = appData["title"].c_str();
     mbp.dwStyle = MB_USERICON;
     mbp.dwLanguageId = MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT);
     mbp.lpfnMsgBoxCallback = NULL;
     mbp.dwContextHelpId = 0;
-    // mbp.hIcon = icon;
-    // mbp.hIconSm = icon;
 
     MessageBoxIndirect(&mbp);
   }
