@@ -130,14 +130,6 @@ struct Options {
 }
 ```
 
-```js
-try {
-  await system.openExternal('https://google.com')
-} catch (err) {
-  ...
-}
-```
-
 ### system.contextMenu(Options: Object) `Render Process Only`
 Opens a native context menu.
 
