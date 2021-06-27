@@ -11,52 +11,105 @@ All methods, unless indicated, can also be run in the main process.
 ## Methods
 The `system` object is a global (ie, `window.system`).
 
-### await system.setTitle(Options)
+### system.setTitle(Options: Object)
+Set the native title of the window.
+
 ```ts
-Options = {
+@param {Object} Options
+@returns Promise<void>
+
+struct Options {
   window: Number,
   value: String
 }
 ```
-Set the native title of the window.
 
-### await system.setSize(Options)
+### system.setSize(Options: Object)
+Set the size of the window (will show the window).
+
 ```ts
-Options = {
+@param {Object} Options
+@returns Promise<void>
+
+struct Options {
   window: Number,
   width: Number,
   height: Number
 }
 ```
-Set the size of the window (will show the window).
 
-### await system.setMenu({ window: Number, value: String })
+### system.setMenu(Options: Object)
 Set the native menu for the app.
 
-### await system.send({ window: Number, value: Object })
+```ts
+@param {Object} Options
+@returns Promise<void>
+
+struct Options {
+  window: Number,
+  value: String
+}
+```
+
+### system.send(Options: Object)
 Send an object to the backend process and await a promise.
 
-### await system.hide({ window: Number })
+```ts
+@param {Object} Options
+@returns Promise<void>
+
+struct Options {
+  window: Number,
+  value: Object
+}
+```
+
+### system.hide(Options: Object)
 Hide the entire app.
 
-### await system.show({ window: Number })
+```ts
+@param {Object} Options
+@returns Promise<void>
+
+struct Options {
+  window: Number
+}
+```
+
+### system.show(Options: Object)
 Show the entire app.
 
-### await system.exit(Options)
 ```ts
-Options = {
+@param {Object} Options
+@returns Promise<void>
+
+struct Options {
+  window: Number
+}
+```
+
+### system.exit(Options: Object)
+Quits the backend process and then quits the render process,
+the exit code used is the final exit code to the OS.
+
+```ts
+@param {Object} Options
+@returns Promise<void>
+
+struct Options {
   window: Number,
   code: Number
 }
 ```
 
-Quits the backend process and then quits the render process,
-the exit code used is the final exit code to the OS.
-
-### await system.dialog(Options)
+### system.dialog(Options: Object)
+Opens a native file open/save dialog.
 
 ```ts
-Options = {
+@param {Object} Options
+@returns Promise<void>
+
+struct Options {
   window: Number,
   isSave: Bool,
   allowFiles: Bool,
@@ -64,10 +117,18 @@ Options = {
 }
 ```
 
-Opens a native file open/save dialog.
-
-### await system.openExternal(url: String)
+### system.openExternal(Options: Object)
 Opens a link in the user's default browser.
+
+```ts
+@param {Object} Options
+@returns Promise<void>
+
+struct Options {
+  window: Number,
+  value: String
+}
+```
 
 ```js
 try {
@@ -77,8 +138,18 @@ try {
 }
 ```
 
-### await system.contextMenu(value: Object) `Render Process Only`
+### system.contextMenu(Options: Object) `Render Process Only`
 Opens a native context menu.
+
+```ts
+@param {Object} Options
+@returns Promise<void>
+
+struct Options {
+  window: Number,
+  value: Object
+}
+```
 
 ## Properties
 The `process` object is a global (ie, `window.process`).
