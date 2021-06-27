@@ -522,6 +522,9 @@ namespace Opkit {
       gtk_file_chooser_set_do_overwrite_confirmation(chooser, TRUE);
     // }
 
+    // TODO (@heapwolf): make optional
+    gtk_file_chooser_set_select_multiple(chooser, TRUE);
+
     if (defaultPath.size() > 0) {
       gtk_file_chooser_set_filename(chooser, defaultPath.c_str());
     }
@@ -535,15 +538,26 @@ namespace Opkit {
     }
 
     // TODO (@heapwolf): validate multi-select
-    auto result = gtk_file_chooser_get_filename(chooser);
-
-    gtk_widget_destroy(dialog);
 
     while (gtk_events_pending()) {
       gtk_main_iteration();
     }
 
+    std::string result("");
+    GSList* filenames = gtk_file_chooser_get_filenames(chooser);
+    int i = 0;
+
+    while (filenames != NULL) {
+			gchar* file = (gchar*) filenames->data;
+      result += (i++ ? "," : "");
+      result += std::string(file);
+			filenames = filenames->next;
+		}
+
+    g_slist_free(filenames);
+
     auto wrapped =  std::string("\"" + std::string(result) + "\"");
     resolveToRenderProcess(seq, "0", wrapped);
+    gtk_widget_destroy(dialog);
   }
 }

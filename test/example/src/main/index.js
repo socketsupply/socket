@@ -6,7 +6,7 @@ let counter = 0
 async function main () {
   //
   // TODO (@heapwolf): need to test rejected promises / failure modes.
-  // 
+  //
 
   //
   // ## Example
@@ -58,7 +58,7 @@ async function main () {
       Another Test: t
       Beep: T + Command
   `
-  
+
   await system.setMenu({ window: 0, value: menu })
 
   //
