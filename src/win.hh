@@ -66,6 +66,7 @@ namespace Opkit {
       POINT m_maxsz = POINT {0, 0};
       HMENU systemMenu;
 
+      void about();
       void eval(const std::string&);
       void show(const std::string&);
       void hide(const std::string&);
@@ -91,14 +92,16 @@ namespace Opkit {
     // this fixes bad default quality DPI.
     SetProcessDPIAware();
 
-    /* HICON icon = (HICON) LoadImage(
-      hInstance,
-      IDI_APPLICATION,
+    auto iconPath = fs::path { getCwd("") / fs::path { "index.ico" } };
+
+    HICON icon = (HICON) LoadImageA(
+      NULL,
+      pathToString(iconPath).c_str(),
       IMAGE_ICON,
       GetSystemMetrics(SM_CXSMICON),
-      GetSystemMetrics(SM_CYSMICON),
-      LR_DEFAULTCOLOR
-    ); */
+      GetSystemMetrics(SM_CXSMICON),
+      LR_LOADFROMFILE
+    );
 
     auto *szWindowClass = L"DesktopApp";
     auto *szTitle = L"Opkit";
@@ -114,11 +117,12 @@ namespace Opkit {
     wcex.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
     wcex.lpszMenuName = NULL;
     wcex.lpszClassName = TEXT("DesktopApp");
-    wcex.hIconSm = LoadIcon(wcex.hInstance, IDI_APPLICATION);
+    wcex.hIconSm = icon; // ico doesn't auto scale, needs 16x16 icon lol fuck you bill
+    wcex.hIcon = icon;
     wcex.lpfnWndProc = Window::WndProc;
 
     if (!RegisterClassEx(&wcex)) {
-      alert("App failed to register");
+      alert("Application could not launch, possible missing resources.");
     }
   };
 
@@ -178,6 +182,9 @@ namespace Opkit {
                 Settings->put_AreDefaultScriptDialogsEnabled(TRUE);
                 Settings->put_IsWebMessageEnabled(TRUE);
                 Settings->put_AreDevToolsEnabled(TRUE);
+                // Settings->put_AreBrowserAcceleratorKeysEnabled(FALSE);
+                Settings->put_AreDefaultContextMenusEnabled(FALSE);
+                Settings->put_IsBuiltInErrorPageEnabled(FALSE);
                 Settings->put_IsZoomControlEnabled(FALSE);
 
                 app.isReady = true;
@@ -191,7 +198,7 @@ namespace Opkit {
                   ).Get()
                 );
 
-                EventRegistrationToken token;
+                EventRegistrationToken tokenMessage;
 
                 webview->add_WebMessageReceived(
                   Callback<IRecHandler>([&](ICoreWebView2* webview, IArgs* args) -> HRESULT {
@@ -206,7 +213,7 @@ namespace Opkit {
                     CoTaskMemFree(messageRaw);
                     return S_OK;
                   }).Get(),
-                  &token
+                  &tokenMessage
                 );
 
                 return S_OK;
@@ -273,6 +280,23 @@ namespace Opkit {
     GetModuleFileNameW(NULL, filename, MAX_PATH);
     auto path = fs::path { filename }.remove_filename();
     return pathToString(path);
+  }
+
+  void Window::about () {
+    MSGBOXPARAMS mbp;
+    mbp.cbSize = sizeof(MSGBOXPARAMS);
+    mbp.hwndOwner = window;
+    mbp.hInstance = app.hInstance;
+    mbp.lpszText = std::string("Hi cool ok great").c_str();
+    mbp.lpszCaption = std::string("About").c_str();
+    mbp.dwStyle = MB_USERICON;
+    mbp.dwLanguageId = MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT);
+    mbp.lpfnMsgBoxCallback = NULL;
+    mbp.dwContextHelpId = 0;
+    // mbp.hIcon = icon;
+    // mbp.hIconSm = icon;
+
+    MessageBoxIndirect(&mbp);
   }
 
   void Window::kill () {
@@ -446,7 +470,26 @@ namespace Opkit {
         if (title.find("---") != -1) {
           AppendMenuW(hMenu, MF_SEPARATOR, 0, NULL);
         } else {
-          AppendMenuA(hMenu, MF_STRING, 1, title.c_str());
+          auto accelerators = split(parts[1], '+');
+          auto accl = std::string("");
+
+          key = trim(parts[1]) == "_" ? "" : trim(accelerators[0]);
+          bool isShift = std::string("ABCDEFGHIJKLMNOPQRSTUVWXYZ").find(key) != -1;
+
+          if (key.size() > 0) {
+            accl = key;
+
+            if (accelerators.size() > 1) {
+              accl = std::string(trim(accelerators[1]) + "+" + key);
+            }
+
+            if (isShift) {  
+              accl = std::string("Shift+" + accl);
+            }
+          }
+
+          auto display = std::string(title + "\t" + accl);
+          AppendMenuA(hMenu, MF_STRING, 1, display.c_str());
         }
       }
 

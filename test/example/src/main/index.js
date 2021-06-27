@@ -37,8 +37,8 @@ async function main () {
       ---: _
       Preferences...: , + Meta
       ---: _
-      Hide: h
-      Hide Others: h + Control, Meta
+      Hide: h + Meta
+      Hide Others: h + Control + Meta
       ---: _
       Quit: q + Meta;
 
@@ -52,10 +52,10 @@ async function main () {
     Foo:
       Bazz: z + Meta
       ---: _
-      Quxx: e + Meta, Alt;
+      Quxx: e + Meta + Alt;
 
     Other:
-      Another Test: t
+      Another Test: t + Alt
       Beep: T + Meta
   `
 

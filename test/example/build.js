@@ -60,7 +60,21 @@ async function main () {
   // TODO Since we don't have ASAR, why not GZip?
 
   await fs.copyFile('src/render/index.html', path.join(target, 'index.html'))
-  await fs.copyFile('src/icons/icon.icns', path.join(target, 'index.icns'))
+
+  let ext = ''
+  
+  switch (process.platform) {
+    case 'win32':
+      ext = 'ico'
+      break;
+    case 'linux':
+      ext = 'png'
+      break
+    case 'darwin':
+      ext = 'icns'
+  }
+
+  await fs.copyFile(`src/icons/icon.${ext}`, path.join(target, `index.${ext}`))
 }
 
 main()
