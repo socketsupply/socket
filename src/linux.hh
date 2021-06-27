@@ -47,7 +47,9 @@ namespace Opkit {
   }
 
   int App::run () {
-    gtk_main();
+    // gtk_main();
+    gtk_main_iteration_do(true);
+    return shouldExit;
   }
 
   void App::kill () {
@@ -82,16 +84,18 @@ namespace Opkit {
     gtk_window_set_resizable(GTK_WINDOW(window), opts.resizable);
     gtk_window_set_position(GTK_WINDOW(window), GTK_WIN_POS_CENTER);
 
-    GtkWidget* container = gtk_scrolled_window_new(nullptr, nullptr);
-    gtk_container_add(GTK_CONTAINER(window), container);
-
     WebKitUserContentManager* cm = webkit_user_content_manager_new();
     webkit_user_content_manager_register_script_message_handler(cm, "external");
 
     g_signal_connect(
       cm,
       "script-message-received::external",
-      G_CALLBACK(external_message_received_cb),
+      G_CALLBACK(+[](WebKitUserContentManager*, WebKitJavascriptResult* r, gpointer arg) {
+        auto *w = static_cast<Window*>(arg);
+        JSCValue* value = webkit_javascript_result_get_js_value(r);
+        std::string str = std::string(jsc_value_to_string(value));
+        if (w->onMessage != nullptr) w->onMessage(str);
+      }),
       this
     );
 
@@ -104,9 +108,16 @@ namespace Opkit {
       this
     );
 
-    gtk_container_add(GTK_CONTAINER(container), webview);
+    gtk_container_add(GTK_CONTAINER(window), GTK_WIDGET(webview));
 
-    g_signal_connect(window, "destroy", G_CALLBACK(destroyWindowCb), this);
+    g_signal_connect(
+      G_OBJECT(window),
+      "destroy",
+      G_CALLBACK(+[](GtkWidget*, gpointer arg) {
+        static_cast<Window*>(arg)->exit();
+      }),
+      this
+    );
 
     std::string preload = Str(
       "window.external = {\n"
@@ -122,9 +133,59 @@ namespace Opkit {
       NULL,
       NULL
     );
+
+    WebKitSettings *settings = webkit_web_view_get_settings(WEBKIT_WEB_VIEW(webview));
+    webkit_settings_set_javascript_can_access_clipboard(settings, true);
+
+    if (this->opts.debug) {
+      webkit_settings_set_enable_write_console_messages_to_stdout(settings, true);
+      webkit_settings_set_enable_developer_extras(settings, true);
+    }
+
+    gtk_widget_grab_focus(GTK_WIDGET(webview));
+    gtk_widget_show_all(window);
+  }
+
+  void Window::eval(const std::string& s) {
+    webkit_web_view_run_javascript(
+      WEBKIT_WEB_VIEW(webview),
+      s.c_str(),
+      NULL,
+      NULL,
+      NULL
+    );
+  }
+
+  void Window::navigate(const std::string &seq, const std::string &s) {
+    webkit_web_view_load_uri(WEBKIT_WEB_VIEW(webview), s.c_str());
+  }
+
+  void Window::setTitle(const std::string &seq, const std::string &s) {
+    gtk_window_set_title(GTK_WINDOW(window), s.c_str());
   }
 
   int Window::openExternal(const std::string& url) {
     return gtk_show_uri_on_window(GTK_WINDOW(m_window), url.c_str(), GDK_CURRENT_TIME, NULL);
+  }
+
+  void Window::setSize(int width, int height, int hints) {
+    gtk_window_set_resizable(GTK_WINDOW(window), hints != WEBVIEW_HINT_FIXED);
+
+    if (hints == WEBVIEW_HINT_NONE) {
+      gtk_window_resize(GTK_WINDOW(window), width, height);
+    } else if (hints == WEBVIEW_HINT_FIXED) {
+      gtk_widget_set_size_request(window, width, height);
+    } else {
+      GdkGeometry g;
+      g.min_width = g.max_width = width;
+      g.min_height = g.max_height = height;
+
+      GdkWindowHints h = (hints == WEBVIEW_HINT_MIN
+        ? GDK_HINT_MIN_SIZE
+        : GDK_HINT_MAX_SIZE
+      );
+
+      gtk_window_set_geometry_hints(GTK_WINDOW(window), nullptr, &g, h);
+    }
   }
 }
