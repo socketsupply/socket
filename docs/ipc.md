@@ -1,93 +1,13 @@
 # IPC
 
-The IPC protocol is based on a simple incrementing counter. When the
-`send` function is called, a promise is created whos id is the current
-counter. When a response is received from the main process, the promse
-can be resolved or rejected.
+The IPC protocol is based on a simple URI-like scheme.
 
-#### What data can be sent and received?
-
-Any stringify-able JSON value can be sent or received.
-
-## Render Process
-
-```js
-const result = await window.main.send('honk')
-assert(result === 'goose')
+```uri
+ipc://command?key1=value1&key2=value2...
 ```
 
-## Main process (node.js example)
+Values are encoded using `encodeURIComponent`.
 
-There is a Node.js example [implementation][0] published to github
-that can be used as reference for how to implement the ipc protocol.
-
-```js
-import window from '@optoolco/window'
-
-window.receive(async data => {
-  if (data === 'honk') window.send('goose')
-})
-```
-
-## Implementing the main process IPC in language X
-
-If you want to implement the main process IPC for your language, this provides
-defails that you'll want to understand.
-
-### Render Process
-
-`main.cc` has an IPC method that increments a global counter, creates and returns
-a promise. Webkit exposes `external.invoke` which can send unicode strings. ipc
-messages should start with `ipc` and be separated by semi-colons.
-
-```js
-const IPC = window._ipc = (window._ipc || { nextSeq: 1 });
-
-window.main[name] = (value) => {
-  const seq = IPC.nextSeq++
-  const promise = new Promise((resolve, reject) => {
-    IPC[seq] = {
-      resolve: resolve,
-      reject: reject,
-    }
-  })
-
-  let encoded
-
-  try {
-    encoded = encodeURIComponent(JSON.stringify(value))
-  } catch (err) {
-    return Promise.reject(err.message)
-  }
-
-  window.external.invoke(`ipc;${seq};${name};${encoded}`)
-  return promise
-}
-```
-
-### Main Process
-
-In the main process we want to listen for stdin, here is a minimal
-example of an echo server.
-
-```js
-process.stdin.resume()
-process.stdin.setEncoding('utf8')
-
-process.stdin.on('data', async data => {
-  const msg = data.split(';')
-
-  // throw away messages that don't conform to our protocol
-  if (msg[0] !== 'ipc') return
-
-  let status = msg[1]
-  const seq = msg[2]
-  const value = msg[3]
-
-  // don't forget to end the write with a null byte!
-  const f = `ipc;${status};${seq};${value}\0`
-  process.stdout.write(f)
-})
-```
+Here is an [implementation reference][0].
 
 [0]:https://github.com/optoolco/opkit/blob/master/test/example/src/main/ipc.js

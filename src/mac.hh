@@ -397,7 +397,7 @@ namespace Opkit {
               mask |= NSEventModifierFlagControl;
             }
 
-            if (accelerator[1].find("Option") != -1) {
+            if (accelerator[1].find("Alt") != -1) {
               mask |= NSEventModifierFlagOption;
             }
           }

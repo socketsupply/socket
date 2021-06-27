@@ -52,7 +52,7 @@ async function main () {
     Foo:
       Bazz: z + Meta
       ---: _
-      Quxx: e + Meta, Option;
+      Quxx: e + Meta, Alt;
 
     Other:
       Another Test: t

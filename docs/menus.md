@@ -25,9 +25,9 @@ system.setMenu(`
   Other:
     Apple: _
     Another Test: T
-    Some Thing: S + Command
+    Some Thing: S + Meta
     ---: _
-    Bazz: s + Command, Control, Option;
+    Bazz: s + Meta, Control, Alt;
 `)
 
 ```
@@ -49,8 +49,10 @@ material impact as the actual key binding is done in the event listener.
 
 A capital letter implies that the accelerator is modified by the `Shift` key.
 
-Additional accelerators are `Command`, `Control`, `Option`, each separated
+Additional accelerators are `Meta`, `Control`, `Option`, each separated
 by commas. If one is not applicable for a platform, it will just be ignored.
+
+On MacOS `Meta` is the same as `Command`.
 
 #### Menu Events
 
