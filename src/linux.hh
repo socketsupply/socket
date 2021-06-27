@@ -339,20 +339,20 @@ namespace Opkit {
             key = value == "_" ? "" : value;
 
             if (key.size() > 0) {
-              auto accellerator = split(parts[1], '+');
-              key = trim(parts[1]) == "_" ? "" : trim(accellerator[0]);
+              auto accelerator = split(parts[1], '+');
+              key = trim(parts[1]) == "_" ? "" : trim(accelerator[0]);
 
               GdkModifierType mask = (GdkModifierType)(0);
               bool isShift = std::string("ABCDEFGHIJKLMNOPQRSTUVWXYZ").find(key) != -1;
 
-              if (accellerator.size() > 1) {
-                if (accellerator[1].find("Meta") != -1) {
+              if (accelerator.size() > 1) {
+                if (accelerator[1].find("Meta") != -1) {
                   mask = (GdkModifierType)(mask | GDK_META_MASK);
-                } else if (accellerator[1].find("Control") != -1) {
+                } else if (accelerator[1].find("Control") != -1) {
                   mask = (GdkModifierType)(mask | GDK_CONTROL_MASK);
                 }
 
-                if (accellerator[1].find("Alt") != -1) {
+                if (accelerator[1].find("Alt") != -1) {
                   mask = (GdkModifierType)(mask | GDK_MOD1_MASK);
                 }
               }
