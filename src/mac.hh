@@ -387,18 +387,19 @@ namespace Opkit {
         String key = "";
 
         if (parts.size() > 1) {
-          auto accellerator = split(parts[1], '+');
-          key = trim(parts[1]) == "_" ? "" : trim(accellerator[0]);
+          auto accelerator = split(parts[1], '+');
+          key = trim(parts[1]) == "_" ? "" : trim(accelerator[0]);
 
-          if (accellerator.size() > 1) {
-            if (accellerator[1].find("ControlOrCommand") != -1) {
+          if (accelerator.size() > 1) {
+            if (accelerator[1].find("Meta") != -1) {
               mask |= NSEventModifierFlagCommand;
-            } else {
-              if (accellerator[1].find("Control") != -1) mask |= NSEventModifierFlagControl;
-              if (accellerator[1].find("Command") != -1) mask |= NSEventModifierFlagCommand;
+            } else if (accelerator[1].find("Control") != -1) {
+              mask |= NSEventModifierFlagControl;
             }
 
-            if (accellerator[1].find("Option") != -1) mask |= NSEventModifierFlagOption;
+            if (accelerator[1].find("Option") != -1) {
+              mask |= NSEventModifierFlagOption;
+            }
           }
         }
 

@@ -35,28 +35,28 @@ async function main () {
     Operator:
       About Operator: _
       ---: _
-      Preferences...: , + Command
+      Preferences...: , + Meta
       ---: _
       Hide: h
-      Hide Others: h + Control, Command
+      Hide Others: h + Control, Meta
       ---: _
-      Quit: q + Command;
+      Quit: q + Meta;
 
     Edit:
-      Cut: x
-      Copy: c
-      Paste: v
+      Cut: x + Control
+      Copy: c + Control
+      Paste: v + Control
       Delete: _
-      Select All: a;
+      Select All: a + Control;
 
     Foo:
-      Bazz: z + Command
+      Bazz: z + Meta
       ---: _
-      Quxx: e + ControlOrCommand, Option;
+      Quxx: e + Meta, Option;
 
     Other:
       Another Test: t
-      Beep: T + Command
+      Beep: T + Meta
   `
 
   await system.setMenu({ window: 0, value: menu })

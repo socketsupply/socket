@@ -302,7 +302,7 @@ namespace Opkit {
     auto menu = std::string(value);
 
     GtkWidget *menubar = gtk_menu_bar_new();
-    GtkAccelGroup *aclrs = gtk_accel_group_new();
+    GtkAccelGroup *acclg = gtk_accel_group_new();
 
     // deserialize the menu
     menu = replace(menu, "%%", "\n");
@@ -326,28 +326,55 @@ namespace Opkit {
         std::string key = "";
 
         GtkWidget *item;
+        GtkWidget *accel;
+        GdkModifierType mods;
 
         if (parts[0].find("---") != -1) {
           item = gtk_separator_menu_item_new();
         } else {
-          if (parts.size() > 1) {
-            key = parts[1] == "_" ? "" : trim(parts[1]);
-          }
           item = gtk_menu_item_new_with_label(title.c_str());
 
-          // TODO(@heapwolf): how can we set the accellerator?
-          // gtk_accel_group_connect(
+          if (parts.size() > 1) {
+            auto value = trim(parts[1]);
+            key = value == "_" ? "" : value;
 
-          // GClosure cb = G_CALLBACK(+[](GtkWidget* w, gpointer arg) {
-          // });
+            if (key.size() > 0) {
+              auto accellerator = split(parts[1], '+');
+              key = trim(parts[1]) == "_" ? "" : trim(accellerator[0]);
 
-          // gtk_accel_group_connect(
-          //  aclrs,
-          //  GDK_KEY_A,
-          // GDK_CONTROL_MASK,
-          //  GTK_ACCEL_MASK,
-          //  &cb
-          // );
+              GdkModifierType mask = (GdkModifierType)(0);
+              bool isShift = std::string("ABCDEFGHIJKLMNOPQRSTUVWXYZ").find(key) != -1;
+
+              if (accellerator.size() > 1) {
+                if (accellerator[1].find("Meta") != -1) {
+                  mask = (GdkModifierType)(mask | GDK_META_MASK);
+                } else if (accellerator[1].find("Control") != -1) {
+                  mask = (GdkModifierType)(mask | GDK_CONTROL_MASK);
+                }
+
+                if (accellerator[1].find("Alt") != -1) {
+                  mask = (GdkModifierType)(mask | GDK_MOD1_MASK);
+                }
+              }
+
+              if (isShift) {
+                mask = (GdkModifierType)(mask | GDK_SHIFT_MASK);
+              }
+
+              auto ag = gtk_accel_group_new();
+
+              gtk_widget_add_accelerator(
+                item,
+                "activate",
+                ag,
+                (char) key[0],
+                mask,
+                GTK_ACCEL_VISIBLE
+              );
+
+              gtk_widget_show(item);
+            }
+          }
 
           g_signal_connect(
             G_OBJECT(item),
