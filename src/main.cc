@@ -109,8 +109,7 @@ MAIN {
       auto value = cmd.get("value");
 
       if (cmd.name == "title") {
-        auto s = decodeURIComponent(value);
-        w.setTitle(seq, s);
+        w.setTitle(seq, decodeURIComponent(value));
         return;
       }
 
@@ -130,22 +129,20 @@ MAIN {
       }
 
       if (cmd.name == "menu") {
-        auto s = decodeURIComponent(value);
-        w.setSystemMenu(seq, s);
+        w.setSystemMenu(seq, decodeURIComponent(value));
         return;
       }
 
       if (cmd.name == "resolve") {
-        auto state = cmd.get("state");
-
-        w.resolveToRenderProcess(seq, state, value);
+        w.resolveToRenderProcess(seq, cmd.get("state"), value);
         return;
       }
 
       if (cmd.name == "send") {
-        auto event = decodeURIComponent(cmd.get("event"));
-
-        w.emitToRenderProcess(event, value);
+        w.emitToRenderProcess(
+          decodeURIComponent(cmd.get("event")),
+          value
+        );
         return;
       }
 
@@ -180,8 +177,10 @@ MAIN {
     auto &w = cmd.index == 0 ? w0 : w1;
 
     if (cmd.name == "title") {
-      auto s = decodeURIComponent(cmd.get("value"));
-      w.setTitle(cmd.get("seq"), s);
+      w.setTitle(
+        cmd.get("seq"),
+        decodeURIComponent(cmd.get("value"))
+      );
       return;
     }
 
@@ -210,11 +209,10 @@ MAIN {
     }
 
     if (cmd.name == "context") {
-      auto seq = cmd.get("seq");
-      auto value = decodeURIComponent(cmd.get("value"));
-
-      // send the seq, use it to resolve the promise
-      w.setContextMenu(seq, value);
+      w.setContextMenu(
+        cmd.get("seq"),
+        decodeURIComponent(cmd.get("value"))
+      );
 
       return;
     }
