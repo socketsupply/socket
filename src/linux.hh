@@ -8,14 +8,18 @@ namespace Opkit {
 
   class App : public IApp {
     
-
     public:
       App(int);
+      
+      static std::atomic<bool> isReady;
+
       int run();
       void kill();
       void dispatch(std::function<void()> work);
       std::string getCwd(const std::string&);
   };
+
+  std::atomic<bool> App::isReady {false};
 
   class Window : public IWindow {
     GtkWidget* window;
@@ -60,12 +64,12 @@ namespace Opkit {
     g_idle_add_full(
       G_PRIORITY_HIGH_IDLE,
       (GSourceFunc)([](void* f) -> int {
-        (*static_cast<dispatch_fn_t*>(f))();
+        (*static_cast<std::function<void()>*>(f))();
         return G_SOURCE_REMOVE;
       }),
       new std::function<void()>(f),
       [](void* f) {
-        delete static_cast<dispatch_fn_t *>(f);
+        delete static_cast<std::function<void()>*>(f);
       }
     );
   }
@@ -76,9 +80,9 @@ namespace Opkit {
     window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
 
     if (opts.resizable) {
-      gtk_window_set_default_size(GTK_WINDOW(window), width, height);
+      gtk_window_set_default_size(GTK_WINDOW(window), opts.width, opts.height);
     } else {
-      gtk_widget_set_size_request(window, width, height);
+      gtk_widget_set_size_request(window, opts.width, opts.height);
     }
 
     gtk_window_set_resizable(GTK_WINDOW(window), opts.resizable);
@@ -104,7 +108,13 @@ namespace Opkit {
     g_signal_connect(
       G_OBJECT(webview),
       "load-changed",
-      G_CALLBACK(webview_load_changed_cb),
+      G_CALLBACK(+[](WebKitWebView*, WebKitLoadEvent event, gpointer arg) {
+        auto *w = static_cast<Window*>(arg);
+
+        if (event == WEBKIT_LOAD_FINISHED) {
+          w->app.isReady = true;
+        }
+      }),
       this
     );
 
@@ -158,34 +168,114 @@ namespace Opkit {
 
   void Window::navigate(const std::string &seq, const std::string &s) {
     webkit_web_view_load_uri(WEBKIT_WEB_VIEW(webview), s.c_str());
+  
+    if (seq.size() > 0) {
+      auto index = std::to_string(this->opts.index);
+      resolveToMainProcess(seq, "0", index);
+    }
   }
 
   void Window::setTitle(const std::string &seq, const std::string &s) {
     gtk_window_set_title(GTK_WINDOW(window), s.c_str());
+
+    if (seq.size() > 0) {
+      auto index = std::to_string(this->opts.index);
+      resolveToMainProcess(seq, "0", index);
+    }
   }
 
   int Window::openExternal(const std::string& url) {
-    return gtk_show_uri_on_window(GTK_WINDOW(m_window), url.c_str(), GDK_CURRENT_TIME, NULL);
+    return gtk_show_uri_on_window(GTK_WINDOW(window), url.c_str(), GDK_CURRENT_TIME, NULL);
   }
 
   void Window::setSize(int width, int height, int hints) {
-    gtk_window_set_resizable(GTK_WINDOW(window), hints != WEBVIEW_HINT_FIXED);
+    gtk_window_set_resizable(GTK_WINDOW(window), hints != WINDOW_HINT_FIXED);
 
-    if (hints == WEBVIEW_HINT_NONE) {
+    if (hints == WINDOW_HINT_NONE) {
       gtk_window_resize(GTK_WINDOW(window), width, height);
-    } else if (hints == WEBVIEW_HINT_FIXED) {
+    } else if (hints == WINDOW_HINT_FIXED) {
       gtk_widget_set_size_request(window, width, height);
     } else {
       GdkGeometry g;
       g.min_width = g.max_width = width;
       g.min_height = g.max_height = height;
 
-      GdkWindowHints h = (hints == WEBVIEW_HINT_MIN
+      GdkWindowHints h = (hints == WINDOW_HINT_MIN
         ? GDK_HINT_MIN_SIZE
         : GDK_HINT_MAX_SIZE
       );
 
       gtk_window_set_geometry_hints(GTK_WINDOW(window), nullptr, &g, h);
     }
+  }
+
+  void Window::openDialog (
+      const std::string& seq,
+      bool isSave,
+      bool allowDirs,
+      bool allowFiles,
+      const std::string& defaultPath,
+      const std::string& title
+    ) {
+
+    GtkWidget *dialog;
+    GtkFileFilter *filter;
+    GtkFileChooser *chooser;
+    GtkFileChooserAction action;
+    gint res;
+    char buf[128], *patterns;
+
+    if (isSave) {
+      action = GTK_FILE_CHOOSER_ACTION_SAVE;
+    } else {
+      action = GTK_FILE_CHOOSER_ACTION_OPEN;
+    }
+
+    if (allowDirs) {
+      // action += GTK_FILE_CHOOSER_ACTION_SELECT_FOLDER;
+    }
+
+    gtk_init_check(NULL, NULL);
+
+    dialog = gtk_file_chooser_dialog_new(
+      isSave ? "Save File" : "Open File",
+      NULL,
+      action,
+      "_Cancel",
+      GTK_RESPONSE_CANCEL,
+      isSave ? "_Save" : "_Open",
+      GTK_RESPONSE_ACCEPT,
+      NULL
+    );
+
+    chooser = GTK_FILE_CHOOSER(dialog);
+
+    // if (FILE_DIALOG_OVERWRITE_CONFIRMATION) {
+      gtk_file_chooser_set_do_overwrite_confirmation(chooser, TRUE);
+    // }
+
+    if (defaultPath.size() > 0) {
+      gtk_file_chooser_set_filename(chooser, defaultPath.c_str());
+    }
+
+    if (title.size() > 0) {
+      gtk_file_chooser_set_current_name(chooser, title.c_str());
+    }
+
+    if (gtk_dialog_run(GTK_DIALOG(dialog)) != GTK_RESPONSE_ACCEPT) {
+      return;
+    }
+
+    // TODO (@heapwolf): validate multi-select
+    auto result = gtk_file_chooser_get_filename(chooser);
+
+    gtk_widget_destroy(dialog);
+
+    while (gtk_events_pending()) {
+      gtk_main_iteration();
+    }
+
+    auto wrapped =  std::string("\"" + std::string(result) + "\"");
+    resolveToRenderProcess(seq, "0", wrapped);
   }
 }

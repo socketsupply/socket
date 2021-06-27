@@ -189,7 +189,6 @@ int main (const int argc, const char* argv[]) {
 
     files += prefixFile("src/main.cc");
     files += prefixFile("src/process_unix.cc");
-    files += prefixFile("src/linux.cc");
 
     // this follows the .deb file naming convention
     packageName = fs::path((
