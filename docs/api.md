@@ -11,29 +11,59 @@ All methods, unless indicated, can also be run in the main process.
 ## Methods
 The `system` object is a global (ie, `window.system`).
 
-### await system.setTitle(title: String)
+### await system.setTitle(Options)
+```ts
+Options = {
+  window: Number,
+  value: String
+}
+```
 Set the native title of the window.
 
-### await system.setSize({ width: Number, height: Number })
+### await system.setSize(Options)
+```ts
+Options = {
+  window: Number,
+  width: Number,
+  height: Number
+}
+```
 Set the size of the window (will show the window).
 
-### await system.setMenu(value: String)
+### await system.setMenu({ window: Number, value: String })
 Set the native menu for the app.
 
-### await system.send(value: Any)
+### await system.send({ window: Number, value: Object })
 Send an object to the backend process and await a promise.
 
-### await system.hide()
+### await system.hide({ window: Number })
 Hide the entire app.
 
-### await system.show()
+### await system.show({ window: Number })
 Show the entire app.
 
-### await system.exit(code: Number)
+### await system.exit(Options)
+```ts
+Options = {
+  window: Number,
+  code: Number
+}
+```
+
 Quits the backend process and then quits the render process,
 the exit code used is the final exit code to the OS.
 
-### await system.dialog(options: Object)
+### await system.dialog(Options)
+
+```ts
+Options = {
+  window: Number,
+  isSave: Bool,
+  allowFiles: Bool,
+  allowMultiple: Bool
+}
+```
+
 Opens a native file open/save dialog.
 
 ### await system.openExternal(url: String)

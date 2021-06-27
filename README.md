@@ -30,7 +30,8 @@ UIs that can run any arbitrary backend process.
 
 
 # INSTALL
-Transparent install scripts. Please inspect before running.
+If you want to use Opkit to build apps, you can use this install script.
+It's a plain text script, please inspect it before running it.
 
 ## Linux or MacOS Bash/Zsh
 ```bash
@@ -43,9 +44,10 @@ curl -o- https://raw.githubusercontent.com/optoolco/opkit/master/bin/bootstrap.s
 ```
 
 
-# DEVELOPMENT
+# DEVELOPMENT ON OPKIT
 
-Clone this repo and install the CLI tool (unless you already did this with curl).
+If you want to hack on the Opkit project itself, clone this repo and install
+the CLI tool (unless you already did this with curl).
 
 ```sh
 git clone git@github.com:optoolco/opkit.git
