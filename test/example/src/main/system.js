@@ -95,7 +95,7 @@ ipc.send = o => {
   return write(`ipc://send?${s}`)
 }
 
-const exceedsMaxSize = s => {
+const exceedsMaxSize = (s = "") => {
   if (s.length > 8000) {
     return [
       'Unable to accept payload. Max ipc payload size reached (Exceeds',
@@ -177,6 +177,6 @@ api.setMenu = o => ipc.request('menu', o)
 
 api.send = ipc.send
 
-api.receive = () => {};
+api.receive = () => "Not Implemented!";
 
 export default api

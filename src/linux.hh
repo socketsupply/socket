@@ -23,13 +23,15 @@ namespace Opkit {
 
   class Window : public IWindow {
     GtkWidget* window;
-    GtkWidget *webview;
+    GtkWidget* webview;
+    GtkWidget* vbox;
 
     public:
       App app;
       WindowOptions opts;
       Window(App&, WindowOptions);
 
+      void about(); 
       void eval(const std::string&);
       void show(const std::string&);
       void hide(const std::string&);
@@ -51,13 +53,18 @@ namespace Opkit {
   }
 
   int App::run () {
-    // gtk_main();
-    gtk_main_iteration_do(true);
-    return shouldExit;
+    gtk_main();
+    return shouldExit ? 1 : 0;
   }
 
   void App::kill () {
+    shouldExit = true;
     gtk_main_quit();
+  }
+
+  std::string App::getCwd(const std::string &s) {
+    auto canonical = fs::canonical("/proc/self/exe");
+    return std::string(fs::path(canonical).parent_path());
   }
 
   void App::dispatch(std::function<void()> f) {
@@ -118,8 +125,6 @@ namespace Opkit {
       this
     );
 
-    gtk_container_add(GTK_CONTAINER(window), GTK_WIDGET(webview));
-
     g_signal_connect(
       G_OBJECT(window),
       "destroy",
@@ -136,12 +141,19 @@ namespace Opkit {
       "" + createPreload() + "\n"
     );
 
-    webkit_web_view_run_javascript(
-      WEBKIT_WEB_VIEW(webview),
-      preload.c_str(),
-      NULL,
-      NULL,
-      NULL
+
+    WebKitUserContentManager *manager =
+      webkit_web_view_get_user_content_manager(WEBKIT_WEB_VIEW(webview));
+    
+    webkit_user_content_manager_add_script(
+      manager,
+      webkit_user_script_new(
+        preload.c_str(),
+        WEBKIT_USER_CONTENT_INJECT_TOP_FRAME,
+        WEBKIT_USER_SCRIPT_INJECT_AT_DOCUMENT_START,
+        NULL,
+        NULL
+      )
     );
 
     WebKitSettings *settings = webkit_web_view_get_settings(WEBKIT_WEB_VIEW(webview));
@@ -152,8 +164,11 @@ namespace Opkit {
       webkit_settings_set_enable_developer_extras(settings, true);
     }
 
+    vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+    gtk_container_add(GTK_CONTAINER(window), vbox);
+    gtk_box_pack_end(GTK_BOX(vbox), webview, TRUE, TRUE, 0);
+
     gtk_widget_grab_focus(GTK_WIDGET(webview));
-    gtk_widget_show_all(window);
   }
 
   void Window::eval(const std::string& s) {
@@ -164,6 +179,32 @@ namespace Opkit {
       NULL,
       NULL
     );
+  }
+
+  void Window::show(const std::string &seq) {
+    gtk_widget_show_all(window);
+
+    if (seq.size() > 0) {
+      auto index = std::to_string(this->opts.index);
+      resolveToMainProcess(seq, "0", index);
+    }
+  }
+
+  void Window::hide(const std::string &seq) {
+    gtk_widget_hide(window);
+
+    if (seq.size() > 0) {
+      auto index = std::to_string(this->opts.index);
+      resolveToMainProcess(seq, "0", index);
+    }
+  }
+
+  void Window::exit() {
+    if (onExit != nullptr) onExit();
+  }
+
+  void Window::kill() {
+    // gtk releases objects automatically.
   }
 
   void Window::navigate(const std::string &seq, const std::string &s) {
@@ -188,6 +229,52 @@ namespace Opkit {
     return gtk_show_uri_on_window(GTK_WINDOW(window), url.c_str(), GDK_CURRENT_TIME, NULL);
   }
 
+
+  void Window::about () {
+    GtkWidget *dialog = gtk_dialog_new();
+    gtk_window_set_default_size(GTK_WINDOW(dialog), 300, 200);
+
+    GtkWidget *body = gtk_dialog_get_content_area(GTK_DIALOG(GTK_WINDOW(dialog)));
+    GtkContainer *content = GTK_CONTAINER(body);
+
+    GdkPixbuf *pixbuf = gdk_pixbuf_new_from_file_at_scale(
+      "/usr/share/icons/hicolor/256x256/apps/operator.png",
+      60,
+      60,
+      TRUE,
+      NULL
+    );
+
+    GtkWidget *img = gtk_image_new_from_pixbuf(pixbuf);
+    gtk_widget_set_margin_top(img, 20);
+    gtk_widget_set_margin_bottom(img, 20);
+
+    gtk_box_pack_start(GTK_BOX(content), img, FALSE, FALSE, 0);
+
+    std::string title_value(appData["title"] + " " + appData["version"]);
+
+    GtkWidget *label_title = gtk_label_new("");
+    gtk_label_set_markup(GTK_LABEL(label_title), title_value.c_str());
+    gtk_container_add(content, label_title);
+
+    GtkWidget *label_copyRight = gtk_label_new("");
+    gtk_label_set_markup(GTK_LABEL(label_copyRight), appData["copyRight"].c_str());
+    gtk_container_add(content, label_copyRight);
+
+    g_signal_connect(
+      dialog,
+      "response",
+      G_CALLBACK(gtk_widget_destroy),
+      NULL
+    );
+
+    gtk_widget_show_all(body);
+    gtk_widget_show_all(dialog);
+    gtk_window_set_title(GTK_WINDOW(dialog), "About");
+
+    gtk_dialog_run(GTK_DIALOG(dialog));
+  }
+
   void Window::setSize(int width, int height, int hints) {
     gtk_window_set_resizable(GTK_WINDOW(window), hints != WINDOW_HINT_FIXED);
 
@@ -207,6 +294,187 @@ namespace Opkit {
 
       gtk_window_set_geometry_hints(GTK_WINDOW(window), nullptr, &g, h);
     }
+  }
+
+  void Window::setSystemMenu(const std::string &seq, const std::string &value) {
+    if (value.empty()) return void(0);
+
+    auto menu = std::string(value);
+
+    GtkWidget *menubar = gtk_menu_bar_new();
+    GtkAccelGroup *aclrs = gtk_accel_group_new();
+
+    // deserialize the menu
+    menu = replace(menu, "%%", "\n");
+
+    // split on ;
+    auto menus = split(menu, ';');
+
+    for (auto m : menus) {
+      auto menu = split(m, '\n');
+      auto line = trim(menu[0]);
+      if (line.empty()) continue;
+      auto menuTitle = split(line, ':')[0];
+      GtkWidget *subMenu = gtk_menu_new();
+      GtkWidget *menuItem = gtk_menu_item_new_with_label(menuTitle.c_str());
+
+      for (int i = 1; i < menu.size(); i++) {
+        auto line = trim(menu[i]);
+        if (line.empty()) continue;
+        auto parts = split(line, ':');
+        auto title = parts[0];
+        std::string key = "";
+
+        GtkWidget *item;
+
+        if (parts[0].find("---") != -1) {
+          item = gtk_separator_menu_item_new();
+        } else {
+          if (parts.size() > 1) {
+            key = parts[1] == "_" ? "" : trim(parts[1]);
+          }
+          item = gtk_menu_item_new_with_label(title.c_str());
+
+          // TODO(@heapwolf): how can we set the accellerator?
+          // gtk_accel_group_connect(
+
+          // GClosure cb = G_CALLBACK(+[](GtkWidget* w, gpointer arg) {
+          // });
+
+          // gtk_accel_group_connect(
+          //  aclrs,
+          //  GDK_KEY_A,
+          // GDK_CONTROL_MASK,
+          //  GTK_ACCEL_MASK,
+          //  &cb
+          // );
+
+          g_signal_connect(
+            G_OBJECT(item),
+            "activate",
+            G_CALLBACK(+[](GtkWidget *t, gpointer arg) {
+              auto w = static_cast<Window*>(arg);
+              auto title = gtk_menu_item_get_label(GTK_MENU_ITEM(t));
+              auto parent = gtk_widget_get_name(t);
+
+              if (std::string(title).find("About") == 0) {
+                return w->about();
+              }
+
+              if (std::string(title).find("Quit") == 0) {
+                return w->exit();
+              }
+
+              // TODO(@heapwolf) can we get the state?
+              w->eval(
+                "(() => {"
+                "  const detail = {"
+                "    title: '" + std::string(title) + "',"
+                "    parent: '" + std::string(parent) + "',"
+                "    state: 0"
+                "  };"
+
+                "  const event = new window.CustomEvent('menuItemSelected', { detail });"
+                "  window.dispatchEvent(event);"
+                "})()"
+              );
+
+            }),
+            this
+          );
+
+        }
+
+        gtk_widget_set_name(item, menuTitle.c_str());
+        gtk_menu_shell_append(GTK_MENU_SHELL(subMenu), item);
+      }
+
+      gtk_menu_item_set_submenu(GTK_MENU_ITEM(menuItem), subMenu);
+      gtk_menu_shell_append(GTK_MENU_SHELL(menubar), menuItem);
+    }
+
+    gtk_box_pack_start(GTK_BOX(vbox), menubar, FALSE, FALSE, 0);
+    gtk_widget_show_all(window);
+
+    if (seq.size() > 0) {
+      auto index = std::to_string(this->opts.index);
+      resolveToMainProcess(seq, "0", index);
+    }
+  }
+
+  void Window::setContextMenu(const std::string &seq, const std::string &value) {
+    GtkWidget *popup = gtk_menu_new();
+    GtkWidget *item;
+
+    auto menuData = replace(value, "_", "\n");
+
+    auto menuItems = split(menuData, '\n');
+    auto id = std::stoi(seq);
+
+    for (auto itemData : menuItems) {
+      auto pair = split(itemData, ':');
+
+      if (pair[0].find("---") != -1) {
+        item = gtk_separator_menu_item_new();
+      } else {
+        item = gtk_menu_item_new_with_label(pair[0].c_str());
+        auto meta = std::string(seq + ";" + pair[0].c_str());
+        gtk_widget_set_name(item, meta.c_str());
+
+        g_signal_connect(
+          G_OBJECT(item),
+          "activate",
+          G_CALLBACK(+[](GtkWidget *t, gpointer arg) {
+            auto w = static_cast<Window*>(arg);
+            auto label = gtk_menu_item_get_label(GTK_MENU_ITEM(t));
+            auto title = std::string(label);
+            auto meta = gtk_widget_get_name(t);
+            auto pair = split(meta, ';');
+            auto seq = pair[0];
+
+            w->eval(
+              "(() => {"
+              "  const detail = {"
+              "    title: '" + title + "',"
+              "    parent: 'contextMenu',"
+              "    state: 0"
+              "  };"
+
+              "  window._ipc[" + seq + "].resolve(detail);"
+              "  delete window._ipc[" + seq + "];"
+              "})()"
+            );
+          }),
+          this
+        );
+      }
+
+      gtk_widget_show(item);
+      gtk_menu_shell_append(GTK_MENU_SHELL(popup), item);
+    }
+
+    auto win = GDK_WINDOW(gtk_widget_get_window(window));
+    auto seat = gdk_display_get_default_seat(gdk_display_get_default());
+    auto mouse_device = gdk_seat_get_pointer(seat);
+
+    GdkRectangle rect;
+    gint x, y;
+
+    gdk_window_get_device_position(win, mouse_device, &x, &y, NULL);
+
+    rect.x = x;
+    rect.y = y;
+    rect.width = 0;
+    rect.height = 0;
+
+    gtk_menu_popup_at_rect(
+      GTK_MENU(popup),
+      win,
+      &rect,
+      GDK_GRAVITY_SOUTH_WEST,
+      GDK_GRAVITY_NORTH_WEST,
+      gtk_get_current_event()
+    );    
   }
 
   void Window::openDialog (
