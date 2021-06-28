@@ -124,7 +124,7 @@ class AppContainer extends Tonic {
     })
 
     if (choice.title === 'Inspect') {
-      system.inspect()
+      // system.inspect()
     }
 
     document.querySelector('#menu-selection').value = choice.title

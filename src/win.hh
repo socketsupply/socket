@@ -60,6 +60,7 @@ namespace Opkit {
 
       App app;
       WindowOptions opts;
+      std::map<int, std::string> menuMap;
 
       void resize (HWND window);
       POINT m_minsz = POINT {0, 0};
@@ -145,7 +146,7 @@ namespace Opkit {
       "window.external = {\n"
       "  invoke: arg => window.chrome.webview.postMessage(arg)\n"
       "};\n"
-      "" + createPreload() + "\n"
+      "" + createPreload(opts) + "\n"
     );
 
     wchar_t modulefile[MAX_PATH];
@@ -181,9 +182,9 @@ namespace Opkit {
                 Settings->put_IsScriptEnabled(TRUE);
                 Settings->put_AreDefaultScriptDialogsEnabled(TRUE);
                 Settings->put_IsWebMessageEnabled(TRUE);
-                Settings->put_AreDevToolsEnabled(TRUE);
+                Settings->put_AreDevToolsEnabled(opts.debug == 1);
                 // Settings->put_AreBrowserAcceleratorKeysEnabled(FALSE);
-                Settings->put_AreDefaultContextMenusEnabled(FALSE);
+                Settings->put_AreDefaultContextMenusEnabled(opts.debug == 1);
                 Settings->put_IsBuiltInErrorPageEnabled(FALSE);
                 Settings->put_IsZoomControlEnabled(FALSE);
 
@@ -454,6 +455,7 @@ namespace Opkit {
 
     // split on ;
     auto menus = split(menu, ';');
+    int itemId = 0;
 
     for (auto m : menus) {
       auto menu = split(m, '\n');
@@ -493,7 +495,9 @@ namespace Opkit {
           }
 
           auto display = std::string(title + "\t" + accl);
-          AppendMenuA(hMenu, MF_STRING, 1, display.c_str());
+          AppendMenuA(hMenu, MF_STRING, itemId, display.c_str());
+          menuMap[itemId] = std::string(title + "\t" + menuTitle);
+          itemId++;
         }
       }
 
@@ -512,7 +516,8 @@ namespace Opkit {
     HMENU hPopupMenu = CreatePopupMenu();
 
     auto menuItems = split(value, '_');
-    auto id = std::stoi(seq);
+    int index = 0;
+    std::vector<std::string> lookup;
 
     for (auto item : menuItems) {
       auto pair = split(trim(item), ':');
@@ -524,9 +529,9 @@ namespace Opkit {
 
       if (pair[0].find("---") != -1) {
         InsertMenu(hPopupMenu, 0, MF_SEPARATOR, 0, NULL);
-        // how to create a sep item??
       } else {
-        InsertMenu(hPopupMenu, 0, MF_BYPOSITION | MF_STRING, 0, pair[0].c_str());
+        lookup.push_back(pair[0]);
+        InsertMenu(hPopupMenu, 0, MF_BYPOSITION | MF_STRING, index++, pair[0].c_str());
       }
     }
 
@@ -535,9 +540,9 @@ namespace Opkit {
     POINT p;
     GetCursorPos(&p);
 
-    TrackPopupMenu(
+    auto selection = TrackPopupMenu(
       hPopupMenu,
-      0,
+      TPM_RETURNCMD | TPM_NONOTIFY,
       p.x,
       p.y,
       0,
@@ -546,6 +551,7 @@ namespace Opkit {
     );
 
     DestroyMenu(hPopupMenu);
+    resolveMenuSelection(seq, lookup[selection], "contextMenu");
   }
 
   int Window::openExternal (const std::string& url) {
@@ -646,7 +652,7 @@ namespace Opkit {
     UINT message,
     WPARAM wParam,
     LPARAM lParam) {
-    
+
     Window* w = reinterpret_cast<Window*>(GetWindowLongPtr(hWnd, GWLP_USERDATA));
 
     switch (message) {
@@ -658,6 +664,21 @@ namespace Opkit {
         RECT bounds;
         GetClientRect(hWnd, &bounds);
         w->controller->put_Bounds(bounds);
+        break;
+      }
+
+      case WM_COMMAND: {
+        if (w == nullptr) break;
+
+        std::string meta(w->menuMap[wParam]);
+        auto parts = split(meta, '\t');
+
+        if (parts.size() > 1) {
+          auto title = parts[0];
+          auto parent = parts[1];
+          w->resolveMenuSelection("0", title, parent);
+        }
+
         break;
       }
 

@@ -138,7 +138,7 @@ namespace Opkit {
       "window.external = {\n"
       "  invoke: arg => window.webkit.messageHandlers.external.postMessage(arg)\n"
       "};\n"
-      "" + createPreload() + "\n"
+      "" + createPreload(opts) + "\n"
     );
 
 

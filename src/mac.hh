@@ -135,7 +135,7 @@ namespace Opkit {
       "window.external = {\n"
       "  invoke: arg => window.webkit.messageHandlers.webview.postMessage(arg)\n"
       "};\n"
-      "" + createPreload() + "\n"
+      "" + createPreload(opts) + "\n"
     );
 
     WKUserScript* userScript = [WKUserScript alloc];
@@ -189,6 +189,8 @@ namespace Opkit {
           String state = [menuItem state] == NSControlStateValueOn ? "true" : "false";
           String parent = [[[menuItem menu] title] UTF8String];
           String seq = std::to_string([menuItem tag]);
+
+          // resolveMenuSelection(seq, title, parent);
 
           eval("(() => {"
             "  const detail = {"

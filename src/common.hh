@@ -446,8 +446,9 @@ namespace Opkit {
       int index = 0;
       void resolveToMainProcess(const std::string&, const std::string&, const std::string&);
       void resolveToRenderProcess(const std::string&, const std::string&, const std::string&);
+      void resolveMenuSelection(const std::string&, const std::string&, const std::string&);
       void emitToRenderProcess(const std::string&, const std::string&);
-      std::string createPreload();
+      std::string createPreload(WindowOptions);
 
       WindowOptions opts;
       SCallback onMessage = nullptr;
@@ -466,9 +467,7 @@ namespace Opkit {
       virtual void openDialog(const std::string&, bool, bool, bool, const std::string&, const std::string&) = 0;
   };
 
-  std::string IWindow::createPreload() {
-    auto opts = this->opts;
-
+  std::string IWindow::createPreload(WindowOptions opts) {
     return std::string(
       "(() => {"
       "  window.system = {};\n"
@@ -494,6 +493,26 @@ namespace Opkit {
       "  window._ipc.resolve(seq, state, value);"
       "})()"
     ));
+  }
+
+  void IWindow::resolveMenuSelection(const std::string& seq, const std::string& title, const std::string& parent) {
+    this->eval("(() => {"
+      "  const detail = {"
+      "    title: '" + title + "',"
+      "    parent: '" + parent + "',"
+      "    state: '0'"
+      "  };"
+
+      "  if (" + seq + " > 0) {"
+      "    window._ipc[" + seq + "].resolve(detail);"
+      "    delete window._ipc[" + seq + "];"
+      "    return;"
+      "  }"
+
+      "  const event = new window.CustomEvent('menuItemSelected', { detail });"
+      "  window.dispatchEvent(event);"
+      "})()"
+    );
   }
 
   void IWindow::resolveToMainProcess(const std::string& seq, const std::string& state, const std::string& value) {
