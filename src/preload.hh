@@ -1,5 +1,3 @@
-#include <string>
-
 constexpr auto gPreload = R"JS(
 ;document.addEventListener('DOMContentLoaded', () => {
   // window.external.invoke('ipc://ready');
@@ -90,30 +88,3 @@ window.system.setContextMenu = value => {
   return window._ipc.send('context', value)
 };
 )JS";
-
-struct PreloadOptions {
-  int index;
-  int debug;
-  std::string title;
-  std::string executable;
-  std::string version;
-  std::string argv;
-  std::string toString();
-};
-
-std::string PreloadOptions::toString () {
-  return std::string(
-    "(() => {"
-    "  window.system = {};\n"
-    "  window.process = {};\n"
-    "  window.process.index = Number('" + std::to_string(this->index) + "');\n"
-    "  window.process.title = '" + this->title + "';\n"
-    "  window.process.executable = '" + this->executable + "';\n"
-    "  window.process.version = '" + this->version + "';\n"
-    "  window.process.debug = " + std::to_string(this->debug) + ";\n"
-    "  window.process.argv = [" + this->argv + "];\n"
-    "  " + gPreload + "\n"
-    "})()\n"
-    "//# sourceURL=preload.js"
-  );
-}
