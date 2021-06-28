@@ -392,20 +392,7 @@ namespace Opkit {
                 return w->exit();
               }
 
-              // TODO(@heapwolf) can we get the state?
-              w->eval(
-                "(() => {"
-                "  const detail = {"
-                "    title: '" + std::string(title) + "',"
-                "    parent: '" + std::string(parent) + "',"
-                "    state: 0"
-                "  };"
-
-                "  const event = new window.CustomEvent('menuItemSelected', { detail });"
-                "  window.dispatchEvent(event);"
-                "})()"
-              );
-
+              w->resolveMenuSelection("0", title, parent);
             }),
             this
           );
@@ -459,18 +446,7 @@ namespace Opkit {
             auto pair = split(meta, ';');
             auto seq = pair[0];
 
-            w->eval(
-              "(() => {"
-              "  const detail = {"
-              "    title: '" + title + "',"
-              "    parent: 'contextMenu',"
-              "    state: 0"
-              "  };"
-
-              "  window._ipc[" + seq + "].resolve(detail);"
-              "  delete window._ipc[" + seq + "];"
-              "})()"
-            );
+            w->resolveMenuSelection("0", title, "contextMenu");
           }),
           this
         );
