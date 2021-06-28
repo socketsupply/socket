@@ -1,16 +1,16 @@
 constexpr auto gPreload = R"JS(
 ;document.addEventListener('DOMContentLoaded', () => {
   // window.external.invoke('ipc://ready');
-});
+})
 
-const IPC = window._ipc = { nextSeq: 1 };
+const IPC = window._ipc = { nextSeq: 1 }
 
 window._ipc.resolve = async (seq, status, value) => {
   value = decodeURIComponent(value)
-  const method = status === 0 ? 'resolve' : 'reject';
+  const method = status === 0 ? 'resolve' : 'reject'
 
   try {
-    value = JSON.parse(value);
+    value = JSON.parse(value)
   } catch (err) {
     console.error(`${err.message} (${value})`)
     return
@@ -27,7 +27,7 @@ window._ipc.send = (name, value) => {
   const promise = new Promise((resolve, reject) => {
     window._ipc[seq] = {
       resolve: resolve,
-      reject: reject,
+      reject: reject
     }
   })
 
