@@ -2,7 +2,10 @@
 #include "process.hh"
 #include "common.hh"
 
-#include <iostream>
+#ifdef _WIN32
+#include <shlwapi.h>
+#include <AppxPackaging.h>
+#endif
 
 constexpr auto version = STR_VALUE(VERSION);
 
@@ -142,7 +145,7 @@ int main (const int argc, const char* argv[]) {
 
   //
   // Darwin Package Prep
-  // -------------------
+  // ---
   //
   if (platform.darwin) {
     log("preparing build for darwin");
@@ -180,7 +183,7 @@ int main (const int argc, const char* argv[]) {
 
   //
   // Linux Package Prep
-  // ------------------
+  // ---
   //
   if (platform.linux) {
     log("preparing build for linux");
@@ -270,13 +273,17 @@ int main (const int argc, const char* argv[]) {
 
   //
   // Win32 Package Prep
-  // ------------------
+  // ---
   //
   if (platform.win) {
     log("preparing build for win");
     auto prefix = prefixFile();
 
-    flags = " -std=c++20 -I" + prefix + " -I" + prefix + "\\src\\win64" + " -L" + prefix + "\\src\\win64";
+    flags = " -std=c++20" +
+      " -I" + prefix +
+      " -I" + prefix + "\\src\\win64" +
+      " -L" + prefix + "\\src\\win64"
+    ;
 
     files += prefixFile("src\\main.cc");
     files += prefixFile("src\\process_win.cc");
@@ -351,7 +358,7 @@ int main (const int argc, const char* argv[]) {
 
   //
   // Linux Packaging
-  // ---------------
+  // ---
   //
   if (platform.linux) {
     std::stringstream archiveCommand;
@@ -372,7 +379,7 @@ int main (const int argc, const char* argv[]) {
 
   //
   // MacOS Code Signing
-  // ------------------
+  // ---
   //
   if (flagCodeSign && platform.darwin) {
     //
@@ -408,7 +415,7 @@ int main (const int argc, const char* argv[]) {
 
   //
   // MacOS Packaging
-  // ---------------
+  // ---
   //
   if (platform.darwin) {
     std::stringstream zipCommand;
@@ -442,7 +449,7 @@ int main (const int argc, const char* argv[]) {
 
   //
   // MacOS Notorization
-  // ------------------
+  // ---
   //
   if (flagNotarization && platform.darwin) {
     std::stringstream notarizeCommand;
@@ -520,11 +527,100 @@ int main (const int argc, const char* argv[]) {
 
   //
   // Win32 Packaging
-  // ---------------
+  // ---
   //
   if (platform.win) {
+    #ifdef _WIN32
+    HRESULT GetPackageWriter(_In_ LPCWSTR outputFileName, _Outptr_ IAppxPackageWriter** writer) {
+      const LPCWSTR Sha256AlgorithmUri = L"https://www.w3.org/2001/04/xmlenc#sha256"; 
+      HRESULT hr = S_OK;
+      IStream* outputStream = NULL;
+      IUri* hashMethod = NULL;
+      APPX_PACKAGE_SETTINGS packageSettings = {0};
+      IAppxFactory* appxFactory = NULL;
+
+      // Create a stream over the output file for the package 
+      hr = SHCreateStreamOnFileEx(
+        outputFileName,
+        STGM_CREATE | STGM_WRITE | STGM_SHARE_EXCLUSIVE,
+        0,     // default file attributes
+        TRUE,  // create file if it does not exist
+        NULL,  // no template
+        &outputStream
+      );
+
+      // Create default package writer settings, including hash algorithm URI
+      // and Zip format.
+      if (SUCCEEDED(hr)) {
+        hr = CreateUri(
+          Sha256AlgorithmUri,
+          Uri_CREATE_CANONICALIZE,
+          0, // reserved parameter
+          &hashMethod
+        );
+      }
+
+      if (SUCCEEDED(hr)) {
+        packageSettings.forceZip32 = TRUE;
+        packageSettings.hashMethod = hashMethod;
+      }
+
+      // Create a new Appx factory
+      if (SUCCEEDED(hr)) {
+        hr = CoCreateInstance(
+          __uuidof(AppxFactory),
+          NULL,
+          CLSCTX_INPROC_SERVER,
+          __uuidof(IAppxFactory),
+          (LPVOID*)(&appxFactory)
+        );
+      }
+
+      // Create a new package writer using the factory
+      if (SUCCEEDED(hr)) {
+        hr = appxFactory->CreatePackageWriter(
+          outputStream,
+          &packageSettings,
+          writer
+        );
+      }
+
+      // Clean up allocated resources
+      if (appxFactory != NULL) {
+        appxFactory->Release();
+        appxFactory = NULL;
+      }
+
+      if (hashMethod != NULL) {
+        hashMethod->Release();
+        hashMethod = NULL;
+      }
+
+      if (outputStream != NULL) {
+        outputStream->Release();
+        outputStream = NULL;
+      }
+
+      return hr;
+    }
+
+    HRESULT hr = S_OK;
+    hr = CoInitializeEx(NULL, COINIT_MULTITHREADED);
+
+    if (SUCCEEDED(hr)) {
+      IAppxPackageWriter* packageWriter = NULL;
+      auto filePath = StringToWString(pathToString(pathOutput));
+      hr = GetPackageWriter(filePath, &packageWriter);
+    }
+
+    #endif
+  }
+
+  //
+  // Win32 Code Signing
+  //
+  if (flagCodeSign && platform.win) {
     //
-    // https://docs.microsoft.com/en-us/windows/win32/appxpkg/how-to-create-a-package
     // https://www.digicert.com/kb/code-signing/signcode-signtool-command-line.htm
     //
   }
