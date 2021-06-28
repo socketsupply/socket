@@ -668,7 +668,9 @@ namespace Opkit {
       }
 
       case WM_COMMAND: {
-        if (w == nullptr) break;
+        if (w == nullptr) {
+          break;
+        }
 
         std::string meta(w->menuMap[wParam]);
         auto parts = split(meta, '\t');
@@ -685,11 +687,6 @@ namespace Opkit {
       case WM_CREATE: {
         HMENU hMenubar = CreateMenu();
         SetMenu(hWnd, hMenubar);
-
-        if (w != nullptr) {
-          // w->setSystemMenu("");
-        }
-
         break;
       }
 
