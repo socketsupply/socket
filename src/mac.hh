@@ -190,25 +190,7 @@ namespace Opkit {
           String parent = [[[menuItem menu] title] UTF8String];
           String seq = std::to_string([menuItem tag]);
 
-          // resolveMenuSelection(seq, title, parent);
-
-          eval("(() => {"
-            "  const detail = {"
-            "    title: '" + title + "',"
-            "    parent: '" + parent + "',"
-            "    state: '" + state + "'"
-            "  };"
-
-            "  if (" + seq + " > 0) {"
-            "    window._ipc[" + seq + "].resolve(detail);"
-            "    delete window._ipc[" + seq + "];"
-            "    return;"
-            "  }"
-
-            "  const event = new window.CustomEvent('menuItemSelected', { detail });"
-            "  window.dispatchEvent(event);"
-            "})()"
-          );
+          resolveMenuSelection(seq, title, parent);
         }),
       "v@:@:@:"
     );
