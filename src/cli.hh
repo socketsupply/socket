@@ -160,7 +160,7 @@ constexpr auto gWindowsAppManifest = R"XML(
        <DisplayName>{{title}}</DisplayName>
        <PublisherDisplayName>{{maintainer}}</PublisherDisplayName>
 			 <Description>{{description}}</Description>
-      <Logo>icon.png</Logo>
+      <Logo>{{win32_icon}}</Logo>
     </Properties>
     <Resources>
       <Resource Language="{{lang}}" />
@@ -179,7 +179,7 @@ constexpr auto gWindowsAppManifest = R"XML(
           <uap:VisualElements
             DisplayName="{{title}}"
             Description="{{description}}"
-            Square150x150Logo="{{icon.png}}"
+            Square150x150Logo="{{win32_icon}}"
 				    Square44x44Logo=""
             BackgroundColor="" />
       </Application>

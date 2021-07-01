@@ -4,7 +4,10 @@
 
 #ifdef _WIN32
 #include <shlwapi.h>
+#include <strsafe.h>
 #include <AppxPackaging.h>
+#pragma comment(lib,"Shlwapi.lib")
+#pragma comment(lib,"Urlmon.lib")
 #endif
 
 constexpr auto version = STR_VALUE(VERSION);
@@ -73,6 +76,7 @@ int main (const int argc, const char* argv[]) {
   bool flagRunUserBuild = false;
   bool flagAppStore = false;
   bool flagCodeSign = false;
+  bool flagShouldPackage = false;
   bool flagShouldRun = false;
   bool flagEntitlements = false;
   bool flagNotarization = false;
@@ -89,6 +93,11 @@ int main (const int argc, const char* argv[]) {
 
     if (std::string(arg).find("-r") != -1) {
       flagShouldRun = true;
+    }
+
+    // TODO (@heapwolf): Make packaging opt-in
+    if (std::string(arg).find("-p") != -1) {
+      flagShouldPackage = true;
     }
 
     if (std::string(arg).find("-s") != -1) {
@@ -279,9 +288,9 @@ int main (const int argc, const char* argv[]) {
     log("preparing build for win");
     auto prefix = prefixFile();
 
-    flags = " -std=c++20" +
+    flags = " -std=c++20"
       " -I" + prefix +
-      " -I" + prefix + "\\src\\win64" +
+      " -I" + prefix + "\\src\\win64"
       " -L" + prefix + "\\src\\win64"
     ;
 
@@ -531,7 +540,7 @@ int main (const int argc, const char* argv[]) {
   //
   if (platform.win) {
     #ifdef _WIN32
-    HRESULT GetPackageWriter(_In_ LPCWSTR outputFileName, _Outptr_ IAppxPackageWriter** writer) {
+    auto getPackageWriter = [&](_In_ LPCWSTR outputFileName, _Outptr_ IAppxPackageWriter** writer) {
       const LPCWSTR Sha256AlgorithmUri = L"https://www.w3.org/2001/04/xmlenc#sha256"; 
       HRESULT hr = S_OK;
       IStream* outputStream = NULL;
@@ -602,15 +611,76 @@ int main (const int argc, const char* argv[]) {
       }
 
       return hr;
-    }
+    };
 
     HRESULT hr = S_OK;
     hr = CoInitializeEx(NULL, COINIT_MULTITHREADED);
 
     if (SUCCEEDED(hr)) {
+      // Create a package writer instance
       IAppxPackageWriter* packageWriter = NULL;
-      auto filePath = StringToWString(pathToString(pathOutput));
-      hr = GetPackageWriter(filePath, &packageWriter);
+
+      auto basePath = fs::path {
+        fs::current_path() /
+        target /
+        pathOutput /
+        pathToString(packageName)
+      };
+
+      auto packageTarget = StringToWString(pathToString(basePath) + ".appx");
+      hr = getPackageWriter(packageTarget.c_str(), &packageWriter);
+
+      // Write the package manaifest
+      IStream* manifestStream = NULL;
+
+      auto manifestPath = fs::path {
+        pathResourcesRelativeToUserBuild / "AppxManigest.xml" 
+      };
+
+      for (const auto & entry : fs::directory_iterator(basePath)) {
+        IStream* inputStream = NULL;
+        auto file = StringToWString(pathToString(entry.path()));
+        auto path = StringToWString(pathToString(basePath));
+
+        hr = SHCreateStreamOnFileEx(
+          file.c_str(),
+          STGM_READ | STGM_SHARE_EXCLUSIVE,
+          0,      // default file attributes
+          FALSE,  // don't create new file
+          NULL,   // no template
+          &inputStream
+        );
+
+        if (SUCCEEDED(hr)) {
+          LPWSTR ext = 0;
+
+          hr = FindMimeFromData(NULL, file.c_str(), NULL, 0, NULL, 0, &ext, 0);
+
+          if (SUCCEEDED(hr)) {
+            log(std::string("packing file: " + pathToString(entry.path()) + " (" + WStringToString(ext) + ")"));
+
+            hr = packageWriter->AddPayloadFile(
+              file.c_str(),
+              ext,
+              APPX_COMPRESSION_OPTION_NORMAL,
+              inputStream
+            );
+
+            if (SUCCEEDED(hr)) {
+              log(std::string("packed file: " + pathToString(entry.path()) + " (" + WStringToString(ext) + ")"));
+            } else {
+              log(std::string("failed: " + pathToString(entry.path()) + " (" + WStringToString(ext) + ")"));
+            }
+          }
+        }
+      }
+
+      if (packageWriter != NULL) {
+        packageWriter->Release();
+        packageWriter = NULL;
+      }
+
+      CoUninitialize();
     }
 
     #endif
