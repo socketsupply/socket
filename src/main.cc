@@ -31,7 +31,7 @@ MAIN {
   // TODO (@heapwolf): make this url encoded, this way is a little weird.
   //
   auto cwd = app.getCwd(argv[0]);
-  appData = parseConfig(replace(_settings, "%%", "\n"));
+  appData = parseConfig(decodeURIComponent(_settings));
 
   std::stringstream argvArray;
   std::stringstream argvForward;

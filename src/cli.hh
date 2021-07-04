@@ -86,7 +86,7 @@ constexpr auto gPListInfo = R"XML(
   <key>NSRequiresAquaSystemAppearance</key>
   <false/>
   <key>CFBundleIdentifier</key>
-  <string>{{identifier}}</string>
+  <string>{{bundle_identifier}}</string>
   <key>LSApplicationCategoryType</key>
   <string>{{mac_category}}</string>
   <key>DTXcodeBuild</key>
@@ -147,42 +147,45 @@ Description: {{title}}
 //
 constexpr auto gWindowsAppManifest = R"XML(
 <?xml version="1.0" encoding="utf-8"?>
-<Package
-	xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
-  xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
-  xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities">
-  <Identity
-    Name="{{title}}"
-    Version="{{versionShort}}"
-    Publisher="{{maintainer}}"
-    ProcessorArchitecture="{{arch}}" />
-    <Properties>
-       <DisplayName>{{title}}</DisplayName>
-       <PublisherDisplayName>{{maintainer}}</PublisherDisplayName>
-			 <Description>{{description}}</Description>
-      <Logo>{{win32_icon}}</Logo>
-    </Properties>
-    <Resources>
-      <Resource Language="{{lang}}" />
-    </Resources>
-	  <Dependencies>
-	    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="" MaxVersionTested="" />
-	  </Dependencies>
-	  <Capabilities>
-	    <rescap:Capability Name="runFullTrust"/>
-	  </Capabilities>
-    <Applications>
-      <Application
-        Id="{{title}}"
-        Executable="{{executable}}"
-        EntryPoint="Windows.FullTrustApplication">
-          <uap:VisualElements
-            DisplayName="{{title}}"
-            Description="{{description}}"
-            Square150x150Logo="{{win32_icon}}"
-				    Square44x44Logo=""
-            BackgroundColor="" />
-      </Application>
-     </Applications>
-  </Package>
+
+<Package xmlns="http://schemas.microsoft.com/appx/2010/manifest">
+  <Identity Name="{bundle_identifier}"
+            ProcessorArchitecture="neutral"
+            Publisher="{{win_publisher}}"
+            Version="{{version}}"
+            ResourceId="{{executable}}"
+  />
+
+  <Properties>
+    <DisplayName>{{title}}</DisplayName>
+    <Description>{{description}}</Description>
+    <Logo>{{win_logo}}</Logo>
+    <PublisherDisplayName>{{maintainer}}</PublisherDisplayName>
+  </Properties>
+
+  <Resources>
+    <Resource Language="{{lang}}"/>
+  </Resources>
+
+  <Applications>
+    <Application Id="HelloWorld" StartPage="index.html">
+      <VisualElements DisplayName="{{title}}"
+                      Logo="{{win_logo}}"
+                      SmallLogo="{{win_logo}}"
+                      Description="{{description}}"
+                      BackgroundColor="#AA00AA"
+                      ForegroundText="light"
+      >
+        <DefaultTile WideLogo="{{win_logo}}" />
+        <SplashScreen Image="{{win_logo}}" />
+      </VisualElements>
+    </Application>
+
+  </Applications>
+
+  <Prerequisites>
+    <OSMinVersion>10.0.0</OSMinVersion>
+    <OSMaxVersionTested>10.0.19041</OSMaxVersionTested>
+  </Prerequisites>
+</Package>
 )XML";

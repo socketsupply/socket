@@ -66,6 +66,7 @@ async function main () {
   switch (process.platform) {
     case 'win32':
       ext = 'ico'
+      await fs.copyFile(`src/icons/icon.png`, path.join(target, `index.png`))
       break;
     case 'linux':
       ext = 'png'

@@ -6,8 +6,8 @@
 #include <shlwapi.h>
 #include <strsafe.h>
 #include <AppxPackaging.h>
-#pragma comment(lib,"Shlwapi.lib")
-#pragma comment(lib,"Urlmon.lib")
+#pragma comment(lib, "Shlwapi.lib")
+#pragma comment(lib, "Urlmon.lib")
 #endif
 
 constexpr auto version = STR_VALUE(VERSION);
@@ -58,7 +58,6 @@ static std::string getCxxFlags() {
 }
 
 int main (const int argc, const char* argv[]) {
-
   if (argc < 2) {
     help();
   }
@@ -346,8 +345,7 @@ int main (const int argc, const char* argv[]) {
 
   // Serialize the settings and strip the comments so that we can pass
   // them to the compiler by replacing new lines with a high bit.
-  _settings = replace(_settings, "#(.*?)\n", "");
-  _settings = replace(_settings, "\n", "%%");
+  _settings = encodeURIComponent(_settings);
 
   compileCommand
     << getEnv("CXX")
@@ -471,7 +469,7 @@ int main (const int argc, const char* argv[]) {
       << pathToString(pathToArchive)
       << " --primary-bundle-id"
       << " "
-      << settings["mac_bundle_identifier"];
+      << settings["bundle_identifier"];
 
     auto _stdout = exec(notarizeCommand.str().c_str());
 
@@ -540,29 +538,26 @@ int main (const int argc, const char* argv[]) {
   //
   if (platform.win) {
     #ifdef _WIN32
-    auto getPackageWriter = [&](_In_ LPCWSTR outputFileName, _Outptr_ IAppxPackageWriter** writer) {
-      const LPCWSTR Sha256AlgorithmUri = L"https://www.w3.org/2001/04/xmlenc#sha256"; 
+
+    auto GetPackageWriter = [&](_In_ LPCWSTR outputFileName, _Outptr_ IAppxPackageWriter** writer) {
       HRESULT hr = S_OK;
       IStream* outputStream = NULL;
       IUri* hashMethod = NULL;
       APPX_PACKAGE_SETTINGS packageSettings = {0};
       IAppxFactory* appxFactory = NULL;
 
-      // Create a stream over the output file for the package 
       hr = SHCreateStreamOnFileEx(
         outputFileName,
         STGM_CREATE | STGM_WRITE | STGM_SHARE_EXCLUSIVE,
-        0,     // default file attributes
-        TRUE,  // create file if it does not exist
-        NULL,  // no template
+        0, // default file attributes
+        TRUE, // create file if it does not exist
+        NULL, // no template
         &outputStream
       );
 
-      // Create default package writer settings, including hash algorithm URI
-      // and Zip format.
       if (SUCCEEDED(hr)) {
         hr = CreateUri(
-          Sha256AlgorithmUri,
+          L"http://www.w3.org/2001/04/xmlenc#sha256",
           Uri_CREATE_CANONICALIZE,
           0, // reserved parameter
           &hashMethod
@@ -570,8 +565,8 @@ int main (const int argc, const char* argv[]) {
       }
 
       if (SUCCEEDED(hr)) {
-        packageSettings.forceZip32 = TRUE;
-        packageSettings.hashMethod = hashMethod;
+          packageSettings.forceZip32 = TRUE;
+          packageSettings.hashMethod = hashMethod;
       }
 
       // Create a new Appx factory
@@ -613,74 +608,103 @@ int main (const int argc, const char* argv[]) {
       return hr;
     };
 
-    HRESULT hr = S_OK;
-    hr = CoInitializeEx(NULL, COINIT_MULTITHREADED);
+    auto basePath = fs::path {
+      fs::current_path() /
+      target /
+      pathOutput
+    };
+
+    const LPCWSTR DataPath = L"test\\example\\src\\";
+    std::string packageFile = (packageName.string() + ".appx");
+    std::wstring appx = fs::path { basePath / packageFile }.c_str();
+
+    HRESULT hr = CoInitializeEx(NULL, COINIT_MULTITHREADED);
 
     if (SUCCEEDED(hr)) {
-      // Create a package writer instance
       IAppxPackageWriter* packageWriter = NULL;
-
-      auto basePath = fs::path {
-        fs::current_path() /
-        target /
-        pathOutput /
-        pathToString(packageName)
-      };
-
-      auto packageTarget = StringToWString(pathToString(basePath) + ".appx");
-      hr = getPackageWriter(packageTarget.c_str(), &packageWriter);
-
-      // Write the package manaifest
       IStream* manifestStream = NULL;
 
-      auto manifestPath = fs::path {
-        pathResourcesRelativeToUserBuild / "AppxManigest.xml" 
-      };
+      hr = GetPackageWriter(appx.c_str(), &packageWriter);
 
-      for (const auto & entry : fs::directory_iterator(basePath)) {
-        IStream* inputStream = NULL;
-        auto file = StringToWString(pathToString(entry.path()));
-        auto path = StringToWString(pathToString(basePath));
+      std::function<void(LPCWSTR, fs::path)> addFiles = [&](auto basePath, auto last) {
+        for (const auto & entry : fs::directory_iterator(basePath)) {
+          auto p = entry.path().filename().string();
 
-        hr = SHCreateStreamOnFileEx(
-          file.c_str(),
-          STGM_READ | STGM_SHARE_EXCLUSIVE,
-          0,      // default file attributes
-          FALSE,  // don't create new file
-          NULL,   // no template
-          &inputStream
-        );
+          LPWSTR mime = 0;
+          FindMimeFromData(NULL, entry.path().c_str(), NULL, 0, NULL, 0, &mime, 0);
 
-        if (SUCCEEDED(hr)) {
-          LPWSTR ext = 0;
+          if (p.find("AppxManifest.xml") == 0) {
+            continue;
+          }
 
-          hr = FindMimeFromData(NULL, file.c_str(), NULL, 0, NULL, 0, &ext, 0);
+          if (fs::is_directory(entry.path())) {
+            addFiles(entry.path().c_str(), fs::path { last / entry.path().filename() });
+            continue;
+          }
+
+          auto composite = (fs::path { last / entry.path().filename() });
+
+          IStream* fileStream = NULL;
+          hr = SHCreateStreamOnFileEx(
+            entry.path().c_str(),
+            STGM_READ | STGM_SHARE_EXCLUSIVE,
+            0,
+            FALSE,
+            NULL,
+            &fileStream
+          );
 
           if (SUCCEEDED(hr)) {
-            log(std::string("packing file: " + pathToString(entry.path()) + " (" + WStringToString(ext) + ")"));
-
-            hr = packageWriter->AddPayloadFile(
-              file.c_str(),
-              ext,
-              APPX_COMPRESSION_OPTION_NORMAL,
-              inputStream
+            packageWriter->AddPayloadFile(
+              composite.c_str(),
+              mime,
+              APPX_COMPRESSION_OPTION_NONE,
+              fileStream
             );
+          }
 
-            if (SUCCEEDED(hr)) {
-              log(std::string("packed file: " + pathToString(entry.path()) + " (" + WStringToString(ext) + ")"));
-            } else {
-              log(std::string("failed: " + pathToString(entry.path()) + " (" + WStringToString(ext) + ")"));
-            }
+          if (fileStream != NULL) {
+            fileStream->Release();
+            fileStream = NULL;
           }
         }
+      };
+
+      addFiles(DataPath, fs::path {});
+
+      if (SUCCEEDED(hr)) {
+        /* hr = SHCreateStreamOnFileEx(
+          (fs::path { DataPath / "AppxManifest.xml" }).c_str(),
+          TGM_READ | STGM_SHARE_EXCLUSIVE,
+          0,
+          FALSE,
+          NULL,
+          &manifestStream
+        ); */
       }
 
+      if (SUCCEEDED(hr)) {
+        // hr = packageWriter->Close(manifestStream);
+      }
+
+      // Clean up allocated resources
+      if (manifestStream != NULL) {
+        manifestStream->Release();
+        manifestStream = NULL;
+      }
       if (packageWriter != NULL) {
         packageWriter->Release();
         packageWriter = NULL;
       }
 
       CoUninitialize();
+    }
+
+    if (SUCCEEDED(hr)) {
+      log("Package saved");
+    }
+    else {
+      log("Unable to save package");
     }
 
     #endif
