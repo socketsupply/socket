@@ -611,18 +611,16 @@ int main (const int argc, const char* argv[]) {
     auto basePath = fs::path {
       fs::current_path() /
       target /
-      pathOutput
+      pathOutput /
+      packageName
     };
 
-    const LPCWSTR DataPath = L"test\\example\\src\\";
-    std::string packageFile = (packageName.string() + ".appx");
-    std::wstring appx = fs::path { basePath / packageFile }.c_str();
+    std::wstring appx(StringToWString(basePath.string()) + L".appx");
 
     HRESULT hr = CoInitializeEx(NULL, COINIT_MULTITHREADED);
 
     if (SUCCEEDED(hr)) {
       IAppxPackageWriter* packageWriter = NULL;
-      IStream* manifestStream = NULL;
 
       hr = GetPackageWriter(appx.c_str(), &packageWriter);
 
@@ -670,24 +668,27 @@ int main (const int argc, const char* argv[]) {
         }
       };
 
-      addFiles(DataPath, fs::path {});
+      addFiles(basePath.c_str(), fs::path {});
+
+      IStream* manifestStream = NULL;
 
       if (SUCCEEDED(hr)) {
-        /* hr = SHCreateStreamOnFileEx(
-          (fs::path { DataPath / "AppxManifest.xml" }).c_str(),
-          TGM_READ | STGM_SHARE_EXCLUSIVE,
+        auto p = (fs::path { basePath / "AppxManifest.xml" });
+
+        hr = SHCreateStreamOnFileEx(
+          p.c_str(),
+          STGM_READ | STGM_SHARE_EXCLUSIVE,
           0,
           FALSE,
           NULL,
           &manifestStream
-        ); */
+        );
       }
 
       if (SUCCEEDED(hr)) {
-        // hr = packageWriter->Close(manifestStream);
+        hr = packageWriter->Close(manifestStream);
       }
 
-      // Clean up allocated resources
       if (manifestStream != NULL) {
         manifestStream->Release();
         manifestStream = NULL;

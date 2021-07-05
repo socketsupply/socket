@@ -145,15 +145,13 @@ Description: {{title}}
 //
 // Windows config
 //
-constexpr auto gWindowsAppManifest = R"XML(
-<?xml version="1.0" encoding="utf-8"?>
-
+constexpr auto gWindowsAppManifest = R"XML(<?xml version="1.0" encoding="utf-8"?>
 <Package xmlns="http://schemas.microsoft.com/appx/2010/manifest">
   <Identity Name="{bundle_identifier}"
-            ProcessorArchitecture="neutral"
-            Publisher="{{win_publisher}}"
-            Version="{{version}}"
-            ResourceId="{{executable}}"
+    ProcessorArchitecture="neutral"
+    Publisher="{{win_publisher}}"
+    Version="{{versionShort}}.{{revision}}"
+    ResourceId="{{executable}}"
   />
 
   <Properties>
@@ -170,11 +168,11 @@ constexpr auto gWindowsAppManifest = R"XML(
   <Applications>
     <Application Id="HelloWorld" StartPage="index.html">
       <VisualElements DisplayName="{{title}}"
-                      Logo="{{win_logo}}"
-                      SmallLogo="{{win_logo}}"
-                      Description="{{description}}"
-                      BackgroundColor="#AA00AA"
-                      ForegroundText="light"
+        Logo="{{win_logo}}"
+        SmallLogo="{{win_logo}}"
+        Description="{{description}}"
+        BackgroundColor="#AA00AA"
+        ForegroundText="light"
       >
         <DefaultTile WideLogo="{{win_logo}}" />
         <SplashScreen Image="{{win_logo}}" />
