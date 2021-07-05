@@ -280,7 +280,7 @@ int main (const int argc, const char* argv[]) {
   }
 
   //
-  // Win32 Package Prep
+  // Windows Package Prep
   // ---
   //
   if (platform.win) {
@@ -533,7 +533,7 @@ int main (const int argc, const char* argv[]) {
   }
 
   //
-  // Win32 Packaging
+  // Windows Packaging
   // ---
   //
   if (platform.win) {
@@ -608,14 +608,8 @@ int main (const int argc, const char* argv[]) {
       return hr;
     };
 
-    auto basePath = fs::path {
-      fs::current_path() /
-      target /
-      pathOutput /
-      packageName
-    };
 
-    std::wstring appx(StringToWString(basePath.string()) + L".appx");
+    std::wstring appx(StringToWString(pathPackage.string()) + L".appx");
 
     HRESULT hr = CoInitializeEx(NULL, COINIT_MULTITHREADED);
 
@@ -668,12 +662,12 @@ int main (const int argc, const char* argv[]) {
         }
       };
 
-      addFiles(basePath.c_str(), fs::path {});
+      addFiles(pathPackage.c_str(), fs::path {});
 
       IStream* manifestStream = NULL;
 
       if (SUCCEEDED(hr)) {
-        auto p = (fs::path { basePath / "AppxManifest.xml" });
+        auto p = (fs::path { pathPackage / "AppxManifest.xml" });
 
         hr = SHCreateStreamOnFileEx(
           p.c_str(),
@@ -712,12 +706,32 @@ int main (const int argc, const char* argv[]) {
   }
 
   //
-  // Win32 Code Signing
+  // Windows Code Signing
   //
   if (flagCodeSign && platform.win) {
     //
     // https://www.digicert.com/kb/code-signing/signcode-signtool-command-line.htm
     //
+    auto pathToSignTool = getEnv("SIGNTOOL");
+
+    if (pathToSignTool.size() == 0) {
+      log("missing env var SIGNTOOL, should be the path to the Windows SDK signtool.exe binary.");
+      exit(1);
+    }
+
+    std::stringstream signCommand;
+
+    signCommand
+      << pathToSignTool
+      << " sign"
+      << " /tr http://timestamp.digicert.com"
+      << " /td sha256"
+      << " /fd sha256"
+      << " /a"
+      << " "
+      << pathToString(pathPackage);
+
+      auto _stdout = exec(signCommand.str().c_str());
   }
 
   if (flagShouldRun) {
