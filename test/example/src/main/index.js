@@ -78,6 +78,7 @@ async function main () {
   // ## Example
   // Sending arbitrary fire-and-forget messages to the render process.
   //
+  let i = 4000
   setInterval(() => {
     counter++
 
@@ -91,6 +92,8 @@ async function main () {
     // that will be listening for this data, and the value
     // which can be plain old json data.
     //
+    if (i-- <= 0) return
+
     system.send({
       index: 0,
       event: 'data',
@@ -100,7 +103,7 @@ async function main () {
         size
       }
     })
-  }, 1024) // send at some interval
+  }, 16) // send at some interval
 
   process.on('beforeExit', () => {
     console.log('exiting')
