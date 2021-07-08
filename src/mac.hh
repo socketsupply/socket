@@ -172,8 +172,8 @@ namespace Opkit {
           if (![body isKindOfClass:[NSString class]]) {
             return;
           }
-
           String msg = [body UTF8String];
+
           this->onMessage(msg);
         }),
       "v@:@"

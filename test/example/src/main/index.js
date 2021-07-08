@@ -1,5 +1,5 @@
-import system from './system.js'
-import path from 'path'
+const path = require('path')
+const system = require('@optoolco/opkit-node')
 
 let counter = 0
 
@@ -18,7 +18,8 @@ async function main () {
   // ## Example
   // Navigate from the current location
   //
-  const file = path.join(path.dirname(process.argv[1]), 'index.html')
+  const resourcesDirectory = path.dirname(process.argv[1])
+  const file = path.join(resourcesDirectory, 'index.html')
   await system.navigate({ window: 0, value: `file://${file}` })
 
   //
@@ -78,13 +79,14 @@ async function main () {
   // ## Example
   // Sending arbitrary fire-and-forget messages to the render process.
   //
-  let i = 4000
+  let i = 100
   setInterval(() => {
     counter++
 
     // send an odd sized message that can be validated
     // on the front end.
-    const size = Math.floor(Math.random() * 1e3)
+    // const size = Math.floor(Math.random() * 14e5)
+    const size = 1400000
     const data = new Array(size).fill(0)
 
     //

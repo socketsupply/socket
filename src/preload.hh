@@ -6,7 +6,13 @@ constexpr auto gPreload = R"JS(
   const IPC = window._ipc = { nextSeq: 1 }
 
   window._ipc.resolve = async (seq, status, value) => {
-    value = decodeURIComponent(value)
+    try {
+      value = decodeURIComponent(value)
+    } catch (err) {
+      console.error(`${err.message} (${value})`)
+      return
+    }
+
     const method = status === 0 ? 'resolve' : 'reject'
 
     try {
@@ -56,7 +62,7 @@ constexpr auto gPreload = R"JS(
     try {
       detail = JSON.parse(decodeURIComponent(value))
     } catch (err) {
-      console.error(`Unable to parse (${detail})`)
+      console.error(`${err.message} (${value})`)
       return
     }
 

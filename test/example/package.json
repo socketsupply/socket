@@ -2,7 +2,6 @@
   "name": "opkit-example",
   "version": "1.0.0",
   "main": "main.js",
-  "type": "module",
   "devDependencies": {
     "clean-css": "^5.1.1",
     "stylus": "^0.54.8"

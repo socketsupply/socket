@@ -8,9 +8,12 @@
 #include <stdexcept>
 #include <unistd.h>
 #include <iostream>
+#include <sstream>
 #include <signal.h>
 
 namespace Opkit {
+
+const static std::stringstream initial;
 
 Process::Data::Data() noexcept : id(-1) {}
 
@@ -185,14 +188,14 @@ void Process::read() noexcept {
     std::vector<pollfd> pollfds;
     std::bitset<2> fd_is_stdout;
 
-    if(stdout_fd) {
+    if (stdout_fd) {
       fd_is_stdout.set(pollfds.size());
       pollfds.emplace_back();
       pollfds.back().fd = fcntl(*stdout_fd, F_SETFL, fcntl(*stdout_fd, F_GETFL) | O_NONBLOCK) == 0 ? *stdout_fd : -1;
       pollfds.back().events = POLLIN;
     }
 
-    if(stderr_fd) {
+    if (stderr_fd) {
       pollfds.emplace_back();
       pollfds.back().fd = fcntl(*stderr_fd, F_SETFL, fcntl(*stderr_fd, F_GETFL) | O_NONBLOCK) == 0 ? *stderr_fd : -1;
       pollfds.back().events = POLLIN;
@@ -200,8 +203,9 @@ void Process::read() noexcept {
 
     auto buffer = std::unique_ptr<char[]>(new char[config.buffer_size]);
     bool any_open = !pollfds.empty();
+    std::stringstream ss;
 
-    while(any_open && (poll(pollfds.data(), static_cast<nfds_t>(pollfds.size()), -1) > 0 || errno == EINTR)) {
+    while (any_open && (poll(pollfds.data(), static_cast<nfds_t>(pollfds.size()), -1) > 0 || errno == EINTR)) {
       any_open = false;
 
       for (size_t i = 0; i < pollfds.size(); ++i) {
@@ -212,9 +216,22 @@ void Process::read() noexcept {
 
           if (n > 0) {
             if (fd_is_stdout[i]) {
-              read_stdout(string_type(buffer.get()));
+              auto b = std::string(buffer.get());
+              auto pos = b.find("\n");
+
+              if ((pos >= 0) && (pos < b.size())) {
+                ss << b.substr(0, pos);
+                std::string s(ss.str());
+                read_stdout(s);
+                ss.str(std::string());
+                ss.clear();
+                ss.copyfmt(initial);
+                ss << b.substr(pos);
+              } else {
+                ss << b;
+              }
             } else {
-              read_stderr(string_type(buffer.get()));
+              read_stderr(std::string(buffer.get()));
             }
           } else if(n < 0 && errno != EINTR && errno != EAGAIN && errno != EWOULDBLOCK) {
             pollfds[i].fd = -1;

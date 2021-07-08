@@ -1,10 +1,10 @@
-import path from 'path'
-import fs from 'fs/promises'
-import { execSync as exec } from 'child_process'
+const path = require('path')
+const fs = require('fs/promises')
+const { execSync: exec } = require('child_process')
 
-import CleanCSS from 'clean-css'
-import stylus from 'stylus'
-import esbuild from 'esbuild'
+const CleanCSS = require('clean-css')
+const stylus = require('stylus')
+const esbuild = require('esbuild')
 
 //
 // The output target is passed by the build tool,
@@ -47,7 +47,7 @@ async function main () {
     bundle: true,
     keepNames: true,
     minify: true,
-    format: 'esm',
+    format: 'cjs',
     outfile: path.join(target, 'main.js'),
     platform: 'node'
   })

@@ -6,6 +6,8 @@
 
 namespace Opkit {
 
+const static std::stringstream initial;
+
 Process::Data::Data() noexcept : id(0) {}
 
 // Simple HANDLE wrapper to close it automatically from the destructor.
@@ -158,10 +160,30 @@ void Process::read() noexcept {
     stdout_thread = std::thread([this]() {
       DWORD n;
       std::unique_ptr<char[]> buffer(new char[config.buffer_size]);
-      for(;;) {
+      std::stringstream ss;
+
+      for (;;) {
         BOOL bSuccess = ReadFile(*stdout_fd, static_cast<CHAR *>(buffer.get()), static_cast<DWORD>(config.buffer_size), &n, nullptr);
-        if(!bSuccess || n == 0)
+
+        if (!bSuccess || n == 0) {
           break;
+        }
+
+        auto b = std::string(buffer.get());
+        auto pos = b.find("\n");
+
+        if ((pos >= 0) && (pos < b.size())) {
+          ss << b.substr(0, pos);
+          std::string s(ss.str());
+          read_stdout(s);
+          ss.str(std::string());
+          ss.clear();
+          ss.copyfmt(initial);
+          ss << b.substr(pos);
+        } else {
+          ss << b;
+        }
+
         read_stdout(std::string(buffer.get()));
       }
     });
@@ -171,10 +193,14 @@ void Process::read() noexcept {
     stderr_thread = std::thread([this]() {
       DWORD n;
       std::unique_ptr<char[]> buffer(new char[config.buffer_size]);
-      for(;;) {
+
+      for (;;) {
         BOOL bSuccess = ReadFile(*stderr_fd, static_cast<CHAR *>(buffer.get()), static_cast<DWORD>(config.buffer_size), &n, nullptr);
-        if(!bSuccess || n == 0)
+
+        if (!bSuccess || n == 0) {
           break;
+        }
+
         read_stderr(std::string(buffer.get()));
       }
     });
