@@ -332,7 +332,8 @@ int main (const int argc, const char* argv[]) {
   buildCommand
     << settings["build"]
     << " "
-    << pathToString(pathResourcesRelativeToUserBuild);
+    << pathToString(pathResourcesRelativeToUserBuild)
+    << " --debug=" << flagDebugMode;
 
   log(buildCommand.str());
   std::system(buildCommand.str().c_str());
