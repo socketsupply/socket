@@ -12,25 +12,30 @@ Process::Data::Data() noexcept : id(0) {}
 
 // Simple HANDLE wrapper to close it automatically from the destructor.
 class Handle {
-public:
-  Handle() noexcept : handle(INVALID_HANDLE_VALUE) {}
-  ~Handle() noexcept {
-    close();
-  }
-  void close() noexcept {
-    if(handle != INVALID_HANDLE_VALUE)
-      CloseHandle(handle);
-  }
-  HANDLE detach() noexcept {
-    HANDLE old_handle = handle;
-    handle = INVALID_HANDLE_VALUE;
-    return old_handle;
-  }
-  operator HANDLE() const noexcept { return handle; }
-  HANDLE *operator&() noexcept { return &handle; }
+  public:
+    Handle() noexcept : handle(INVALID_HANDLE_VALUE) {}
 
-private:
-  HANDLE handle;
+    ~Handle() noexcept {
+      close();
+    }
+
+    void close() noexcept {
+      if (handle != INVALID_HANDLE_VALUE) {
+        CloseHandle(handle);
+      }
+    }
+
+    HANDLE detach() noexcept {
+      HANDLE old_handle = handle;
+      handle = INVALID_HANDLE_VALUE;
+      return old_handle;
+    }
+
+    operator HANDLE() const noexcept { return handle; }
+    HANDLE *operator&() noexcept { return &handle; }
+
+  private:
+    HANDLE handle;
 };
 
 //Based on the discussion thread: https://www.reddit.com/r/cpp/comments/3vpjqg/a_new_platform_independent_process_library_for_c11/cxq1wsj
@@ -38,12 +43,17 @@ std::mutex create_process_mutex;
 
 //Based on the example at https://msdn.microsoft.com/en-us/library/windows/desktop/ms682499(v=vs.85).aspx.
 Process::id_type Process::open(const std::string &command, const std::string &path) noexcept {
-  if(open_stdin)
+  if (open_stdin) {
     stdin_fd = std::unique_ptr<fd_type>(new fd_type(nullptr));
-  if(read_stdout)
+  }
+
+  if (read_stdout) {
     stdout_fd = std::unique_ptr<fd_type>(new fd_type(nullptr));
-  if(read_stderr)
+  }
+
+  if (read_stderr) {
     stderr_fd = std::unique_ptr<fd_type>(new fd_type(nullptr));
+  }
 
   Handle stdin_rd_p;
   Handle stdin_wr_p;
@@ -60,19 +70,21 @@ Process::id_type Process::open(const std::string &command, const std::string &pa
 
   std::lock_guard<std::mutex> lock(create_process_mutex);
 
-  if(stdin_fd) {
-    if(!CreatePipe(&stdin_rd_p, &stdin_wr_p, &security_attributes, 0) ||
+  if (stdin_fd) {
+    if (!CreatePipe(&stdin_rd_p, &stdin_wr_p, &security_attributes, 0) ||
        !SetHandleInformation(stdin_wr_p, HANDLE_FLAG_INHERIT, 0))
       return 0;
   }
-  if(stdout_fd) {
-    if(!CreatePipe(&stdout_rd_p, &stdout_wr_p, &security_attributes, 0) ||
+
+  if (stdout_fd) {
+    if (!CreatePipe(&stdout_rd_p, &stdout_wr_p, &security_attributes, 0) ||
        !SetHandleInformation(stdout_rd_p, HANDLE_FLAG_INHERIT, 0)) {
       return 0;
     }
   }
-  if(stderr_fd) {
-    if(!CreatePipe(&stderr_rd_p, &stderr_wr_p, &security_attributes, 0) ||
+
+  if (stderr_fd) {
+    if (!CreatePipe(&stderr_rd_p, &stderr_wr_p, &security_attributes, 0) ||
        !SetHandleInformation(stderr_rd_p, HANDLE_FLAG_INHERIT, 0)) {
       return 0;
     }
@@ -89,10 +101,10 @@ Process::id_type Process::open(const std::string &command, const std::string &pa
   startup_info.hStdOutput = stdout_wr_p;
   startup_info.hStdError = stderr_wr_p;
   
-  if(stdin_fd || stdout_fd || stderr_fd)
+  if (stdin_fd || stdout_fd || stderr_fd)
     startup_info.dwFlags |= STARTF_USESTDHANDLES;
 
-  if(config.show_window != Config::ShowWindow::show_default) {
+  if (config.show_window != Config::ShowWindow::show_default) {
     startup_info.dwFlags |= STARTF_USESHOWWINDOW;
     startup_info.wShowWindow = static_cast<WORD>(config.show_window);
   }
@@ -152,11 +164,11 @@ Process::id_type Process::open(const std::string &command, const std::string &pa
 }
 
 void Process::read() noexcept {
-  if(data.id == 0) {
+  if (data.id == 0) {
     return;
   }
 
-  if(stdout_fd) {
+  if (stdout_fd) {
     stdout_thread = std::thread([this]() {
       DWORD n;
       std::unique_ptr<char[]> buffer(new char[config.buffer_size]);
@@ -189,7 +201,7 @@ void Process::read() noexcept {
     });
   }
 
-  if(stderr_fd) {
+  if (stderr_fd) {
     stderr_thread = std::thread([this]() {
       DWORD n;
       std::unique_ptr<char[]> buffer(new char[config.buffer_size]);
@@ -208,56 +220,72 @@ void Process::read() noexcept {
 }
 
 void Process::close_fds() noexcept {
-  if(stdout_thread.joinable())
+  if (stdout_thread.joinable()) {
     stdout_thread.join();
-  if(stderr_thread.joinable())
-    stderr_thread.join();
+  }
 
-  if(stdin_fd)
+  if (stderr_thread.joinable()) {
+    stderr_thread.join();
+  }
+
+  if (stdin_fd) {
     close_stdin();
-  if(stdout_fd) {
-    if(*stdout_fd != nullptr)
+  }
+
+  if (stdout_fd) {
+    if (*stdout_fd != nullptr) {
       CloseHandle(*stdout_fd);
+    }
+
     stdout_fd.reset();
   }
-  if(stderr_fd) {
-    if(*stderr_fd != nullptr)
+
+  if (stderr_fd) {
+    if (*stderr_fd != nullptr) {
       CloseHandle(*stderr_fd);
+    }
+
     stderr_fd.reset();
   }
 }
 
 bool Process::write(const char *bytes, size_t n) {
-  if(!open_stdin)
+  if (!open_stdin) {
     throw std::invalid_argument("Can't write to an unopened stdin pipe. Please set open_stdin=true when constructing the process.");
+  }
 
   std::lock_guard<std::mutex> lock(stdin_mutex);
-  if(stdin_fd) {
+  if (stdin_fd) {
     DWORD written;
     BOOL bSuccess = WriteFile(*stdin_fd, bytes, static_cast<DWORD>(n), &written, nullptr);
-    if(!bSuccess || written == 0) {
+
+    if (!bSuccess || written == 0) {
       return false;
-    }
-    else {
+    } else {
       return true;
     }
   }
+
   return false;
 }
 
 void Process::close_stdin() noexcept {
   std::lock_guard<std::mutex> lock(stdin_mutex);
-  if(stdin_fd) {
-    if(*stdin_fd != nullptr)
+
+  if (stdin_fd) {
+    if (*stdin_fd != nullptr) {
       CloseHandle(*stdin_fd);
+    }
+
     stdin_fd.reset();
   }
 }
 
 //Based on http://stackoverflow.com/a/1173396
 void Process::kill(id_type id) noexcept {
-  if(id == 0)
+  if (id == 0) {
     return;
+  }
 
   HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
 
@@ -266,16 +294,17 @@ void Process::kill(id_type id) noexcept {
     ZeroMemory(&process, sizeof(process));
     process.dwSize = sizeof(process);
 
-    if(Process32First(snapshot, &process)) {
+    if (Process32First(snapshot, &process)) {
       do {
-        if(process.th32ParentProcessID == id) {
+        if (process.th32ParentProcessID == id) {
           HANDLE process_handle = OpenProcess(PROCESS_TERMINATE, FALSE, process.th32ProcessID);
-          if(process_handle) {
+
+          if (process_handle) {
             TerminateProcess(process_handle, 2);
             CloseHandle(process_handle);
           }
         }
-      } while(Process32Next(snapshot, &process));
+      } while (Process32Next(snapshot, &process));
     }
 
     CloseHandle(snapshot);
