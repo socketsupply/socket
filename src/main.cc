@@ -128,6 +128,13 @@ MAIN {
         return;
       }
 
+      if (cmd.name == "size") {
+        int width = std::stoi(cmd.get("width"));
+        int height = std::stoi(cmd.get("height"));
+        w.setSize(seq, width, height, 0);
+        return;
+      }
+
       if (cmd.name == "menu") {
         w.setSystemMenu(seq, decodeURIComponent(value));
         return;

@@ -74,7 +74,7 @@ namespace Opkit {
       void exit();
       void kill();
       void navigate(const std::string&, const std::string&);
-      void setSize(int, int, int);
+      void setSize(const std::string&, int, int, int);
       void setTitle(const std::string&, const std::string&);
       void setContextMenu(const std::string&, const std::string&);
       void setSystemMenu(const std::string&, const std::string&);
@@ -410,7 +410,7 @@ namespace Opkit {
     }
   }
 
-  void Window::setSize (int width, int height, int hints) {
+  void Window::setSize (const std::string& seq, int width, int height, int hints) {
     auto style = GetWindowLong(window, GWL_STYLE);
 
     if (hints == WINDOW_HINT_FIXED) {
@@ -443,6 +443,11 @@ namespace Opkit {
       );
 
       resize(window);
+    }
+
+    if (seq.size() > 0) {
+      auto index = std::to_string(this->opts.index);
+      resolveToMainProcess(seq, "0", index);
     }
   }
 

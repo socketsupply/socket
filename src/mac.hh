@@ -42,7 +42,7 @@ namespace Opkit {
       void exit();
       void navigate(const std::string&, const std::string&);
       void setTitle(const std::string&, const std::string&);
-      void setSize(int, int, int);
+      void setSize(const std::string&, int, int, int);
       void setContextMenu(const std::string&, const std::string&);
       void openDialog(const std::string&, bool, bool, bool, const std::string&, const std::string&);
 
@@ -267,8 +267,14 @@ namespace Opkit {
     }
   }
 
-  void Window::setSize(int width, int height, int hints) {
-    // TODO implement
+  void Window::setSize(const std::string& seq, int width, int height, int hints) {
+    [window setFrame:NSMakeRect(0.f, 0.f, (float) width, (float) height) display:YES animate:YES];
+    [window center];
+
+    if (seq.size() > 0) {
+      auto index = std::to_string(this->opts.index);
+      resolveToMainProcess(seq, "0", index);
+    }
   }
 
   int Window::openExternal (const std::string& s) {

@@ -507,7 +507,7 @@ namespace Opkit {
       virtual void exit() = 0;
       virtual void kill() = 0;
       virtual void navigate(const std::string&, const std::string&) = 0;
-      virtual void setSize(int, int, int) = 0;
+      virtual void setSize(const std::string&, int, int, int) = 0;
       virtual void setTitle(const std::string&, const std::string&) = 0;
       virtual void setContextMenu(const std::string&, const std::string&) = 0;
       virtual void setSystemMenu(const std::string&, const std::string&) = 0;

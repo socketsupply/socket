@@ -39,7 +39,7 @@ namespace Opkit {
       void exit();
       void navigate(const std::string&, const std::string&);
       void setTitle(const std::string&, const std::string&);
-      void setSize(int, int, int);
+      void setSize(const std::string&, int, int, int);
       void setContextMenu(const std::string&, const std::string&);
       void openDialog(const std::string&, bool, bool, bool, const std::string&, const std::string&);
 
@@ -275,7 +275,7 @@ namespace Opkit {
     gtk_dialog_run(GTK_DIALOG(dialog));
   }
 
-  void Window::setSize(int width, int height, int hints) {
+  void Window::setSize(const std::string& seq, int width, int height, int hints) {
     gtk_window_set_resizable(GTK_WINDOW(window), hints != WINDOW_HINT_FIXED);
 
     if (hints == WINDOW_HINT_NONE) {
@@ -293,6 +293,11 @@ namespace Opkit {
       );
 
       gtk_window_set_geometry_hints(GTK_WINDOW(window), nullptr, &g, h);
+    }
+
+    if (seq.size() > 0) {
+      auto index = std::to_string(this->opts.index);
+      resolveToMainProcess(seq, "0", index);
     }
   }
 

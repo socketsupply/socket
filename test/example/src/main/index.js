@@ -62,6 +62,8 @@ async function main () {
 
   await system.setMenu({ window: 0, value: menu })
 
+  await system.setSize({ window: 0, width: 200, height: 200 })
+
   //
   // ## Example
   // Handling inbound messages and returning responses.
