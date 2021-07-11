@@ -739,8 +739,10 @@ int main (const int argc, const char* argv[]) {
     std::string execName = "";
     if (platform.win) {
       execName = (settings["executable"] + ".exe");
-    } else {
+    } else if (platform.linux) {
       execName = (settings["executable"]);
+    } else if (platform.darwin) {
+      execName = (settings["title"]);
     }
 
     auto cmd = pathToString(fs::path {
