@@ -485,12 +485,13 @@ namespace Opkit {
           auto accl = std::string("");
 
           key = trim(parts[1]) == "_" ? "" : trim(accelerators[0]);
-          bool isShift = std::string("ABCDEFGHIJKLMNOPQRSTUVWXYZ").find(key) != -1;
 
           if (key.size() > 0) {
+            bool isShift = std::string("ABCDEFGHIJKLMNOPQRSTUVWXYZ").find(key) != -1;
             accl = key;
 
             if (accelerators.size() > 1) {
+              key = replace(key, "Command", "Ctrl");
               accl = std::string(trim(accelerators[1]) + "+" + key);
             }
 

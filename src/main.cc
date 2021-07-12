@@ -37,6 +37,7 @@ MAIN {
   std::stringstream argvForward;
 
   argvForward << " --version=" << appData["version"];
+  argvForward << " --name=" << appData["name"];
 
   #if DEBUG == 1
     argvForward << " --debug=1";
