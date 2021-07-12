@@ -62,7 +62,7 @@ async function main () {
 
   await system.setMenu({ window: 0, value: menu })
 
-  await system.setSize({ window: 0, width: 200, height: 200 })
+  // await system.setSize({ window: 0, width: 200, height: 200 })
 
   //
   // ## Example
@@ -88,7 +88,7 @@ async function main () {
     // send an odd sized message that can be validated
     // on the front end.
     // const size = Math.floor(Math.random() * 14e5)
-    const size = 1400000
+    const size = 14
     const data = new Array(size).fill(0)
 
     //
@@ -107,7 +107,7 @@ async function main () {
         size
       }
     })
-  }, 16) // send at some interval
+  }, 16 * 100) // send at some interval
 
   process.on('beforeExit', () => {
     console.log('exiting')

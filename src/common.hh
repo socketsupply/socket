@@ -74,7 +74,7 @@ namespace Opkit {
     inline std::wstring StringToWString(const std::string& s) {
       std::wstring temp(s.length(), L' ');
       std::copy(s.begin(), s.end(), temp.begin());
-      return temp; 
+      return temp;
     }
 
     inline std::string WStringToString(const std::wstring& s) {
@@ -138,6 +138,7 @@ namespace Opkit {
     std::string url = "data:text/html,<html>";
     std::string version = "";
     std::string argv = "";
+    std::string env;
   };
 
   //
@@ -147,7 +148,7 @@ namespace Opkit {
   split(const std::string& s, const char& c) {
     std::string buff;
     std::vector<std::string> vec;
-    
+
     for (auto n : s) {
       if(n != c) {
         buff += n;
@@ -333,7 +334,7 @@ namespace Opkit {
   //
   // cmd: `ipc://id?p1=v1&p2=v2&...\0`
   //
-  inline Parse::Parse(const std::string& s) {    
+  inline Parse::Parse(const std::string& s) {
     std::string str = s;
 
     if (str.find("ipc://") == -1) return;
@@ -373,17 +374,17 @@ namespace Opkit {
     /* 1 */ -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1,
     /* 2 */ -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1,
     /* 3 */  0, 1, 2, 3,  4, 5, 6, 7,  8, 9,-1,-1, -1,-1,-1,-1,
-    
+
     /* 4 */ -1,10,11,12, 13,14,15,-1, -1,-1,-1,-1, -1,-1,-1,-1,
     /* 5 */ -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1,
     /* 6 */ -1,10,11,12, 13,14,15,-1, -1,-1,-1,-1, -1,-1,-1,-1,
     /* 7 */ -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1,
-    
+
     /* 8 */ -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1,
     /* 9 */ -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1,
     /* A */ -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1,
     /* B */ -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1,
-    
+
     /* C */ -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1,
     /* D */ -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1,
     /* E */ -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1,
@@ -534,6 +535,7 @@ namespace Opkit {
       "  window.process.executable = '" + opts.executable + "';\n"
       "  window.process.version = '" + opts.version + "';\n"
       "  window.process.debug = " + std::to_string(opts.debug) + ";\n"
+      "  window.process.env = Object.fromEntries(new URLSearchParams('" +  opts.env + "'));\n"
       "  window.process.argv = [" + opts.argv + "];\n"
       "  " + gPreload + "\n"
       "})()\n"

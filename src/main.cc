@@ -57,6 +57,16 @@ MAIN {
     if (c > 1) argvForward << " " << std::string(arg);
   }
 
+  std::stringstream env;
+  for (auto const &envKey : split(appData["env"], ',')) {
+    auto cleanKey = trim(envKey);
+    auto envValue = getEnv(cleanKey.c_str());
+
+    env << std::string(
+      cleanKey + "=" + encodeURIComponent(envValue) + "&"
+    );
+  }
+
   //
   // # Windows
   //
@@ -73,7 +83,8 @@ MAIN {
     .executable = appData["executable"],
     .title = appData["title"],
     .version = appData["version"],
-    .argv = argvArray.str()
+    .argv = argvArray.str(),
+    .env = env.str()
   });
 
   //
@@ -193,7 +204,7 @@ MAIN {
     }
 
     if (cmd.name == "external") {
-      w.openExternal(decodeURIComponent(cmd.get("value"))); 
+      w.openExternal(decodeURIComponent(cmd.get("value")));
       return;
     }
 
