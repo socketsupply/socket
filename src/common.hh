@@ -181,7 +181,7 @@ namespace Opkit {
     return output;
   }
 
-  inline std::string replace(std::string src, std::string re, std::string val) {
+  inline std::string replace(const std::string& src, const std::string& re, const std::string& val) {
     return std::regex_replace(src, std::regex(re), val);
   }
 
@@ -218,7 +218,12 @@ namespace Opkit {
     #endif
   }
 
-  inline std::string exec(std::string command) {
+  struct ExecOutput {
+    std::string output;
+    int exitCode = 0;
+  };
+
+  inline ExecOutput exec(std::string command) {
     FILE *pipe;
     char buf[128];
 
@@ -244,12 +249,17 @@ namespace Opkit {
     }
 
     #ifdef _WIN32
-      _pclose(pipe);
+      int exitCode = _pclose(pipe);
     #else
-      pclose(pipe);
+      int exitCode = pclose(pipe);
     #endif
 
-    return ss.str();
+    ExecOutput output {
+      .output = ss.str(),
+      .exitCode = exitCode
+    };
+
+    return output;
   }
 
   inline std::string pathToString(const fs::path &path) {

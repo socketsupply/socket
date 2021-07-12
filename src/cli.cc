@@ -336,7 +336,13 @@ int main (const int argc, const char* argv[]) {
     << " --debug=" << flagDebugMode;
 
   log(buildCommand.str());
-  std::system(buildCommand.str().c_str());
+  auto r = exec(buildCommand.str().c_str());
+
+  if (r.exitCode != 0) {
+    log("Unable to run user build command");
+    process.exit(r.exitCode);
+  }
+
   log("ran user build command");
 
   std::filesystem::current_path(oldCwd);
@@ -358,9 +364,16 @@ int main (const int argc, const char* argv[]) {
     << " -DSETTINGS=\"" << _settings << "\""
   ;
 
-  log(compileCommand.str());
+  // log(compileCommand.str());
+
   if (flagRunUserBuild == false) {
     auto r = exec(compileCommand.str());
+
+    if (r.exitCode != 0) {
+      log("Unable to build");
+      process.exit(r.exitCode);
+    }
+
     log("compiled native binary");
   } 
 
@@ -417,7 +430,13 @@ int main (const int argc, const char* argv[]) {
       << " "
       << pathToString(pathPackage);
 
-    exec(signCommand.str());
+    auto r = exec(signCommand.str());
+
+    if (r.exitCode != 0) {
+      log("Unable to sign");
+      process.exit(r.exitCode);
+    }
+
     log("finished code signing");
   }
 
@@ -472,13 +491,18 @@ int main (const int argc, const char* argv[]) {
       << " "
       << settings["bundle_identifier"];
 
-    auto _stdout = exec(notarizeCommand.str().c_str());
+    auto r = exec(notarizeCommand.str().c_str());
+
+    if (r.exitCode != 0) {
+      log("Unable to notarize");
+      process.exit(r.exitCode);
+    }
 
     std::regex re(R"(\nRequestUUID = (.+?)\n)");
     std::smatch match;
     std::string uuid;
 
-    if (std::regex_search(_stdout, match, re)) {
+    if (std::regex_search(r.output, match, re)) {
       uuid = match.str(1);
     }
 
@@ -501,13 +525,13 @@ int main (const int argc, const char* argv[]) {
         << " --notarization-info"
         << " " << uuid;
 
-      auto _stdout = exec(notarizeStatusCommand.str().c_str());
+      auto r = exec(notarizeStatusCommand.str().c_str());
 
       std::regex re(R"(\n *Status: (.+?)\n)");
       std::smatch match;
       std::string status;
 
-      if (std::regex_search(_stdout, match, re)) {
+      if (std::regex_search(r.output, match, re)) {
         status = match.str(1);
       }
 
@@ -732,7 +756,12 @@ int main (const int argc, const char* argv[]) {
       << " "
       << pathToString(pathPackage);
 
-      auto _stdout = exec(signCommand.str().c_str());
+      auto r = exec(signCommand.str().c_str());
+
+      if (r.exitCode != 0) {
+        log("Unable to sign");
+        process.exit(r.exitCode);
+      }
   }
 
   if (flagShouldRun) {
