@@ -4,13 +4,13 @@
 #include <gtk/gtk.h>
 #include <webkit2/webkit2.h>
 
-namespace Opkit { 
+namespace Opkit {
 
   class App : public IApp {
-    
+
     public:
       App(int);
-      
+
       static std::atomic<bool> isReady;
 
       int run();
@@ -31,7 +31,7 @@ namespace Opkit {
       WindowOptions opts;
       Window(App&, WindowOptions);
 
-      void about(); 
+      void about();
       void eval(const std::string&);
       void show(const std::string&);
       void hide(const std::string&);
@@ -144,7 +144,7 @@ namespace Opkit {
 
     WebKitUserContentManager *manager =
       webkit_web_view_get_user_content_manager(WEBKIT_WEB_VIEW(webview));
-    
+
     webkit_user_content_manager_add_script(
       manager,
       webkit_user_script_new(
@@ -212,7 +212,7 @@ namespace Opkit {
 
   void Window::navigate(const std::string &seq, const std::string &s) {
     webkit_web_view_load_uri(WEBKIT_WEB_VIEW(webview), s.c_str());
-  
+
     if (seq.size() > 0) {
       auto index = std::to_string(this->opts.index);
       resolveToMainProcess(seq, "0", index);
@@ -485,7 +485,7 @@ namespace Opkit {
       GDK_GRAVITY_SOUTH_WEST,
       GDK_GRAVITY_NORTH_WEST,
       gtk_get_current_event()
-    );    
+    );
   }
 
   void Window::openDialog (
