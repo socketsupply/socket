@@ -133,6 +133,7 @@ namespace Opkit {
     int width = 0;
     int index = 0;
     int debug = 0;
+    bool forwardConsole = 0;
     std::string executable = "";
     std::string title = "";
     std::string url = "data:text/html,<html>";

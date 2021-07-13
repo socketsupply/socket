@@ -80,6 +80,7 @@ MAIN {
     .width = std::stoi(appData["width"]),
     .index = 0,
     .debug = _debug,
+    .forwardConsole = appData["forwardConsole"] == "true",
     .executable = appData["executable"],
     .title = appData["title"],
     .version = appData["version"],

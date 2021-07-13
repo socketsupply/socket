@@ -159,8 +159,11 @@ namespace Opkit {
     WebKitSettings *settings = webkit_web_view_get_settings(WEBKIT_WEB_VIEW(webview));
     webkit_settings_set_javascript_can_access_clipboard(settings, true);
 
-    if (this->opts.debug) {
+    if (this->opts.forwardConsole) {
       webkit_settings_set_enable_write_console_messages_to_stdout(settings, true);
+    }
+
+    if (this->opts.debug) {
       webkit_settings_set_enable_developer_extras(settings, true);
     }
 
