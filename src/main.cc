@@ -155,6 +155,9 @@ MAIN {
 
       if (cmd.name == "external") {
         w.openExternal(decodeURIComponent(value));
+        if (seq.size() > 0) {
+          w.resolveToMainProcess(seq, "0", "null");
+        }
         return;
       }
 
