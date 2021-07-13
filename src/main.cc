@@ -152,6 +152,11 @@ MAIN {
         return;
       }
 
+      if (cmd.name == "external") {
+        w.openExternal(decodeURIComponent(value));
+        return;
+      }
+
       if (cmd.name == "resolve") {
         w.resolveToRenderProcess(seq, cmd.get("state"), value);
         return;
