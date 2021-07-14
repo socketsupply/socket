@@ -282,7 +282,7 @@ bool Process::write(const char *bytes, size_t n) {
   if (stdin_fd) {
     std::string b(bytes);
 
-    while (true && b.size()) {
+    while (true && (b.size() > 0)) {
       int bytesWritten = ::write(*stdin_fd, b.c_str(), b.size());
 
       if (bytesWritten >= b.size()) {
