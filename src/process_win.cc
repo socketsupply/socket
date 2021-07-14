@@ -182,16 +182,18 @@ void Process::read() noexcept {
         }
 
         auto b = std::string(buffer.get());
-        auto pos = b.find("\n");
+        auto parts = splitc(b, '\n');
 
-        if ((pos >= 0) && (pos < b.size())) {
-          ss << b.substr(0, pos);
-          std::string s(ss.str());
-          read_stdout(s);
-          ss.str(std::string());
-          ss.clear();
-          ss.copyfmt(initial);
-          ss << b.substr(pos);
+        if (parts.size() > 1) {
+          for (int i = 0; i < parts.size(); i++) {
+            ss << parts[i];
+            std::string s(ss.str());
+            read_stdout(s);
+            ss.str(std::string());
+            ss.clear();
+            ss.copyfmt(initial);
+          }
+          ss << parts[parts.size() - 1];
         } else {
           ss << b;
         }

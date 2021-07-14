@@ -10,6 +10,25 @@
 #include <sys/wait.h>
 #endif
 
+inline const std::vector<std::string>
+splitc(const std::string& s, const char& c) {
+  std::string buff;
+  std::vector<std::string> vec;
+
+  for (auto n : s) {
+    if (n != c) {
+      buff += n;
+    } else if (n == c) {
+      vec.push_back(buff);
+      buff = "";
+    }
+  }
+
+  vec.push_back(buff);
+
+  return vec;
+}
+
 namespace Opkit {
   using cb = std::function<void(std::string)>;
 
