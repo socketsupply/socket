@@ -292,7 +292,7 @@ bool Process::write(const char *bytes, size_t n) {
       b = b.substr(bytesWritten, b.size());
     }
 
-    ::write(*stdin_fd, std::string("\n").c_str(), 1);
+    ::write(*stdin_fd, "\n", 1);
   }
 
   return false;
