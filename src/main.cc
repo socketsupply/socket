@@ -161,6 +161,14 @@ MAIN {
         return;
       }
 
+      if (cmd.name == "exit") {
+        w.exit();
+        if (seq.size() > 0) {
+          w.resolveToMainProcess(seq, "0", "null");
+        }
+        return;
+      }
+
       if (cmd.name == "resolve") {
         w.resolveToRenderProcess(seq, cmd.get("state"), value);
         return;
