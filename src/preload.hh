@@ -13,7 +13,6 @@ constexpr auto gPreload = R"JS(
       return
     }
 
-    const method = status === 0 ? 'resolve' : 'reject'
 
     try {
       value = JSON.parse(value)
@@ -22,8 +21,17 @@ constexpr auto gPreload = R"JS(
       return
     }
 
-    if (!window._ipc[seq] || !window._ipc[seq][method]) return
-    await window._ipc[seq][method](value);
+    if (!window._ipc[seq]) {
+      console.error('inbound IPC message with unknown sequence:', seq)
+      return
+    }
+
+    if (status === 0) {
+      await window._ipc[seq].resolve(value)
+    } else {
+      const err = new Error(JSON.stringify(value))
+      await window._ipc[seq].reject(err);
+    }
     delete window._ipc[seq];
   }
 
