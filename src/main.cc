@@ -247,6 +247,7 @@ MAIN {
 
     //
     // Everything else can be forwarded to the main process.
+    // The protocol requires messages must be terminated by a newline.
     //
     process.write(out);
   };

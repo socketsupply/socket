@@ -280,7 +280,19 @@ bool Process::write(const char *bytes, size_t n) {
   std::lock_guard<std::mutex> lock(stdin_mutex);
 
   if (stdin_fd) {
-    return ::write(*stdin_fd, bytes, n) >= 0;
+    std::string b(bytes);
+
+    while (true && b.size()) {
+      int bytesWritten = ::write(*stdin_fd, b.c_str(), b.size());
+
+      if (bytesWritten >= b.size()) {
+        break;
+      }
+        
+      b = b.substr(bytesWritten, b.size());
+    }
+
+    ::write(*stdin_fd, std::string("\n").c_str(), 1);
   }
 
   return false;
