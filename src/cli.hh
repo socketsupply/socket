@@ -30,7 +30,7 @@ constexpr auto gPListInfo = R"XML(
   <key>CFBundlePackageType</key>
   <string>APPL</string>
   <key>CFBundleIconFile</key>
-  <string>icon.icns</string>
+  <string>index.icns</string>
   <key>AsarIntegrity</key>
   <string>{&quot;checksums&quot;:{&quot;app.asar&quot;:&quot;f71UWAVrCD/wR89v6PE+L1k1x4EuaoNT4NdjgDLFKQFcABDjF8lB5d969JGCU8m0Mf/XVhR+F3RIyJAqQ8/KbA==&quot;}}</string>
   <key>CFBundleShortVersionString</key>
