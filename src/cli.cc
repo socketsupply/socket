@@ -159,7 +159,7 @@ int main (const int argc, const char* argv[]) {
     files += prefixFile("src/process_unix.cc");
 
     fs::path pathBase = "Contents";
-    packageName = fs::path(std::string(settings["title"] + ".app"));
+    packageName = fs::path(std::string(settings["name"] + ".app"));
 
     pathPackage = { target / pathOutput / packageName };
     pathBin = { pathPackage / pathBase / "MacOS" };
@@ -410,7 +410,7 @@ int main (const int argc, const char* argv[]) {
       entitlements = std::string(
         " --entitlements " + pathToString(fs::path {
         pathResourcesRelativeToUserBuild /
-        (settings["title"] + ".entitlements")
+        (settings["name"] + ".entitlements")
       }));
     }
 
@@ -766,7 +766,7 @@ int main (const int argc, const char* argv[]) {
     } else if (platform.linux) {
       execName = (settings["executable"]);
     } else if (platform.darwin) {
-      execName = (settings["title"]);
+      execName = (settings["name"]);
     }
 
     auto cmd = pathToString(fs::path {
