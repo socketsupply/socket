@@ -126,7 +126,10 @@ namespace Opkit {
     WKWebViewConfiguration* config = [WKWebViewConfiguration new];
     WKPreferences* prefs = [config preferences];
     [prefs setJavaScriptCanOpenWindowsAutomatically:NO];
-    [prefs setValue:@YES forKey:@"developerExtrasEnabled"];
+
+    #if DEBUG == 1
+      [prefs setValue:@YES forKey:@"developerExtrasEnabled"];
+    #endif
 
     WKUserContentController* controller = [config userContentController];
 
