@@ -24,14 +24,15 @@ void help () {
     << std::endl
     << std::endl
     << "flags:" << std::endl
-    << "  -h  help" << std::endl
-    << "  -o  only run user build step" << std::endl
-    << "  -xd turn off debug mode" << std::endl
-    << "  -r  run after building" << std::endl
     << "  -b  bundle for app store" << std::endl
     << "  -c  code sign the bundle" << std::endl
+    << "  -h  help" << std::endl
     << "  -me (macOS) use entitlements" << std::endl
     << "  -mn (macOS) notarize the bundle" << std::endl
+    << "  -o  only run user build step" << std::endl
+    << "  -p  package the app" << std::endl
+    << "  -r  run after building" << std::endl
+    << "  -xd turn off debug mode" << std::endl
   ;
 
   exit(0);
@@ -75,15 +76,26 @@ int main (const int argc, const char* argv[]) {
   bool flagRunUserBuild = false;
   bool flagAppStore = false;
   bool flagCodeSign = false;
-  bool flagShouldPackage = false;
   bool flagShouldRun = false;
   bool flagEntitlements = false;
-  bool flagNotarization = false;
+  bool flagShouldNotarize = false;
   bool flagDebugMode = true;
 
   for (auto const arg : std::span(argv, argc)) {
+    if (std::string(arg).find("-c") != -1) {
+      flagCodeSign = true;
+    }
+
     if (std::string(arg).find("-h") != -1) {
       help();
+    }
+
+    if (std::string(arg).find("-me") != -1) {
+      flagEntitlements = true;
+    }
+
+    if (std::string(arg).find("-mn") != -1) {
+      flagShouldNotarize = true;
     }
 
     if (std::string(arg).find("-o") != -1) {
@@ -94,25 +106,8 @@ int main (const int argc, const char* argv[]) {
       flagShouldRun = true;
     }
 
-    // TODO (@heapwolf): Make packaging opt-in
-    if (std::string(arg).find("-p") != -1) {
-      flagShouldPackage = true;
-    }
-
     if (std::string(arg).find("-s") != -1) {
       flagAppStore = true;
-    }
-
-    if (std::string(arg).find("-c") != -1) {
-      flagCodeSign = true;
-    }
-
-    if (std::string(arg).find("-me") != -1) {
-      flagEntitlements = true;
-    }
-
-    if (std::string(arg).find("-mn") != -1) {
-      flagNotarization = true;
     }
 
     if (std::string(arg).find("-xd") != -1) {
@@ -444,7 +439,7 @@ int main (const int argc, const char* argv[]) {
   // MacOS Packaging
   // ---
   //
-  if (platform.darwin) {
+  if (flagRunUserBuild == false && platform.darwin) {
     std::stringstream zipCommand;
 
     pathToArchive = fs::path {
@@ -478,7 +473,7 @@ int main (const int argc, const char* argv[]) {
   // MacOS Notorization
   // ---
   //
-  if (flagNotarization && platform.darwin) {
+  if (flagShouldNotarize && platform.darwin) {
     std::stringstream notarizeCommand;
 
     notarizeCommand
