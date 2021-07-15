@@ -328,7 +328,7 @@ int main (const int argc, const char* argv[]) {
   std::stringstream buildCommand;
   auto oldCwd = std::filesystem::current_path();
   std::filesystem::current_path(fs::path { oldCwd / target });
-  
+
   buildCommand
     << settings["build"]
     << " "
@@ -375,13 +375,13 @@ int main (const int argc, const char* argv[]) {
     }
 
     log("compiled native binary");
-  } 
+  }
 
   //
   // Linux Packaging
   // ---
   //
-  if (platform.linux) {
+  if (flagRunUserBuild == false && platform.linux) {
     std::stringstream archiveCommand;
 
     archiveCommand
