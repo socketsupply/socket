@@ -133,7 +133,7 @@ int main (const int argc, const char* argv[]) {
   }
 
   auto executable = fs::path(platform.darwin
-    ? settings["title"]
+    ? settings["name"]
     : settings["executable"] + (platform.win ? ".exe" : ""));
 
   std::string flags;
