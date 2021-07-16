@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <bitset>
 #include <cstdlib>
+#include <cstring>
 #include <fcntl.h>
 #include <poll.h>
 #include <set>

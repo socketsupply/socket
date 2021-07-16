@@ -226,9 +226,9 @@ MAIN {
     }
 
     if (cmd.name == "dialog") {
-      bool isSave = cmd.get("type").compare("save") == 1;
-      bool allowDirs = cmd.get("allowDirs").compare("true") == 1;
-      bool allowFiles = cmd.get("allowFiles").compare("true") == 1;
+      bool isSave = cmd.get("type").compare("save") == 0;
+      bool allowDirs = cmd.get("allowDirs").compare("true") == 0;
+      bool allowFiles = cmd.get("allowFiles").compare("true") == 0;
       std::string defaultPath = cmd.get("defaultPath");
       std::string title = cmd.get("title");
 

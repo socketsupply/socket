@@ -46,11 +46,13 @@ constexpr auto gPreload = R"JS(
     })
 
     try {
+      let rawValue = value
       if (typeof value === 'object') {
         value = JSON.stringify(value)
       }
 
       value = new URLSearchParams({
+        ...rawValue,
         index: window.process.index,
         seq,
         value
@@ -87,7 +89,7 @@ constexpr auto gPreload = R"JS(
   }
 
   window.system.setTitle = value => {
-    return window._ipc.send('title', { value })
+    return window._ipc.send('title', value)
   }
 
   window.system.dialog = value => {

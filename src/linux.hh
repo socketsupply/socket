@@ -510,8 +510,8 @@ namespace Opkit {
       action = GTK_FILE_CHOOSER_ACTION_OPEN;
     }
 
-    if (allowDirs) {
-      // action += GTK_FILE_CHOOSER_ACTION_SELECT_FOLDER;
+    if (isSave || allowDirs) {
+      action = (GtkFileChooserAction) (action | GTK_FILE_CHOOSER_ACTION_SELECT_FOLDER);
     }
 
     gtk_init_check(NULL, NULL);
