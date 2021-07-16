@@ -93,7 +93,7 @@ namespace Opkit {
     }
 
     gtk_window_set_resizable(GTK_WINDOW(window), opts.resizable);
-    gtk_window_set_position(GTK_WINDOW(window), GTK_WIN_POS_CENTER);
+    gtk_window_set_position(GTK_WINDOW(window), GTK_WIN_POS_CENTER_ALWAYS);
 
     WebKitUserContentManager* cm = webkit_user_content_manager_new();
     webkit_user_content_manager_register_script_message_handler(cm, "external");
@@ -298,6 +298,8 @@ namespace Opkit {
       gtk_window_set_geometry_hints(GTK_WINDOW(window), nullptr, &g, h);
     }
 
+    gtk_window_set_position(GTK_WINDOW(window), GTK_WIN_POS_CENTER_ALWAYS);
+
     if (seq.size() > 0) {
       auto index = std::to_string(this->opts.index);
       resolveToMainProcess(seq, "0", index);
@@ -454,7 +456,7 @@ namespace Opkit {
             auto pair = split(meta, ';');
             auto seq = pair[0];
 
-            w->resolveMenuSelection("0", title, "contextMenu");
+            w->resolveMenuSelection(seq, title, "contextMenu");
           }),
           this
         );
