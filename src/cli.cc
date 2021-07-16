@@ -366,7 +366,8 @@ int main (const int argc, const char* argv[]) {
 
   // log(compileCommand.str());
 
-  if (flagRunUserBuild == false) {
+  auto binExists = fs::exists(binaryPath);
+  if (flagRunUserBuild == false || !binExists) {
     auto r = exec(compileCommand.str());
 
     if (r.exitCode != 0) {
