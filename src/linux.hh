@@ -480,13 +480,18 @@ namespace Opkit {
     rect.width = 0;
     rect.height = 0;
 
+    auto event = gdk_event_new(GDK_BUTTON_PRESS);
+    event->button.time = GDK_CURRENT_TIME;
+    event->button.window = win;
+    gdk_event_set_device(event, mouse_device);
+
     gtk_menu_popup_at_rect(
       GTK_MENU(popup),
       win,
       &rect,
       GDK_GRAVITY_SOUTH_WEST,
       GDK_GRAVITY_NORTH_WEST,
-      gtk_get_current_event()
+      event
     );
   }
 
