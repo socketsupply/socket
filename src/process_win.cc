@@ -171,10 +171,12 @@ void Process::read() noexcept {
   if (stdout_fd) {
     stdout_thread = std::thread([this]() {
       DWORD n;
+
       std::unique_ptr<char[]> buffer(new char[config.buffer_size]);
       std::stringstream ss;
 
       for (;;) {
+        memset(buffer.get(), 0, config.buffer_size);
         BOOL bSuccess = ReadFile(*stdout_fd, static_cast<CHAR *>(buffer.get()), static_cast<DWORD>(config.buffer_size), &n, nullptr);
 
         if (!bSuccess || n == 0) {

@@ -212,6 +212,7 @@ void Process::read() noexcept {
         if (!(pollfds[i].fd >= 0)) continue;
 
         if (pollfds[i].revents & POLLIN) {
+          memset(buffer.get(), 0, config.buffer_size);
           const ssize_t n = ::read(pollfds[i].fd, buffer.get(), config.buffer_size);
 
           if (n > 0) {
@@ -222,8 +223,10 @@ void Process::read() noexcept {
               if (parts.size() > 1) {
                 for (int i = 0; i < parts.size(); i++) {
                   ss << parts[i];
+                  
                   std::string s(ss.str());
                   read_stdout(s);
+
                   ss.str(std::string());
                   ss.clear();
                   ss.copyfmt(initial);
