@@ -80,6 +80,7 @@ int main (const int argc, const char* argv[]) {
   bool flagEntitlements = false;
   bool flagShouldNotarize = false;
   bool flagDebugMode = true;
+  bool flagShouldPackage = false;
 
   for (auto const arg : std::span(argv, argc)) {
     if (std::string(arg).find("-c") != -1) {
@@ -100,6 +101,10 @@ int main (const int argc, const char* argv[]) {
 
     if (std::string(arg).find("-o") != -1) {
       flagRunUserBuild = true;
+    }
+
+    if (std::string(arg).find("-p") != -1) {
+      flagShouldPackage = true;
     }
 
     if (std::string(arg).find("-r") != -1) {
@@ -376,7 +381,7 @@ int main (const int argc, const char* argv[]) {
   // Linux Packaging
   // ---
   //
-  if (flagRunUserBuild == false && platform.linux) {
+  if (flagShouldPackage && platform.linux) {
     std::stringstream archiveCommand;
 
     archiveCommand
@@ -439,7 +444,7 @@ int main (const int argc, const char* argv[]) {
   // MacOS Packaging
   // ---
   //
-  if (flagRunUserBuild == false && platform.darwin) {
+  if (flagShouldPackage && platform.darwin) {
     std::stringstream zipCommand;
 
     pathToArchive = fs::path {
@@ -556,7 +561,7 @@ int main (const int argc, const char* argv[]) {
   // Windows Packaging
   // ---
   //
-  if (platform.win) {
+  if (flagShouldPackage && platform.win) {
     #ifdef _WIN32
 
     auto GetPackageWriter = [&](_In_ LPCWSTR outputFileName, _Outptr_ IAppxPackageWriter** writer) {

@@ -22,7 +22,7 @@ constexpr auto gPreload = R"JS(
     }
 
     if (!window._ipc[seq]) {
-      console.error('inbound IPC message with unknown sequence:', seq)
+      console.error('inbound IPC message with unknown sequence:', seq, value)
       return
     }
 
