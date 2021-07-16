@@ -153,6 +153,9 @@ namespace Opkit {
     [webview.configuration.preferences
       setValue:@YES
         forKey:@"allowFileAccessFromFileURLs"];
+  
+    [window registerForDraggedTypes:
+      [NSArray arrayWithObject:NSPasteboardTypeFileURL]];
 
     // Add delegate methods manually in order to capture "this"
     class_replaceMethod(

@@ -168,10 +168,44 @@ class AppContainer extends Tonic {
 }
 
 //
+// An array of *full* paths can be collected by intercepting the drag event
+// onto any input control. Split the value by new line to create an array.
+//
+function setupDrop () {
+  const textarea = document.createElement('textarea')
+  document.body.appendChild(textarea)
+  textarea.style.opacity = '0'
+  textarea.style.position = 'fixed'
+  textarea.style.top = '0px'
+  textarea.style.left = '0px'
+  textarea.style.right = '0px'
+  textarea.style.bottom = '0px'
+
+  document.body.addEventListener('dragover', () => {
+    textarea.style.zIndex = '10000'
+  })
+
+  document.body.addEventListener('dragend', () => {
+    textarea.style.zIndex = '-1'
+  })
+
+  document.body.addEventListener('dragleave', () => {
+    textarea.style.zIndex = '-1'
+  })
+
+  textarea.addEventListener('input', e => {
+    console.log(textarea.value.split('\n'))
+    textarea.style.zIndex = '-1'
+  })
+}
+
+//
 // Hook up a drag and drop example
 //
 window.onload = async () => {
   Tonic.add(AppContainer)
+
+  setupDrop()
 
   // https://developer.apple.com/library/archive/documentation/AppleApplications/Conceptual/SafariJSProgTopics/DragAndDrop.html
 
