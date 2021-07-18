@@ -4,7 +4,7 @@
 <plist version="1.0">
 <dict>
   <key>CFBundleName</key>
-  <string>{{name}}</string>
+  <string></string>
   <key>DTSDKName</key>
   <string>macosx10.13</string>
   <key>DTXcode</key>
@@ -24,9 +24,7 @@
   <key>CFBundlePackageType</key>
   <string>APPL</string>
   <key>CFBundleIconFile</key>
-  <string>icon.icns</string>
-  <key>AsarIntegrity</key>
-  <string>{&quot;checksums&quot;:{&quot;app.asar&quot;:&quot;f71UWAVrCD/wR89v6PE+L1k1x4EuaoNT4NdjgDLFKQFcABDjF8lB5d969JGCU8m0Mf/XVhR+F3RIyJAqQ8/KbA==&quot;}}</string>
+  <string>index.icns</string>
   <key>CFBundleShortVersionString</key>
   <string>{{versionShort}</string>
   <key>NSHighResolutionCapable</key>
@@ -88,7 +86,7 @@
   <key>LSMinimumSystemVersion</key>
   <string>10.10.0</string>
   <key>CFBundleDisplayName</key>
-  <string>{{name}}</string>
+  <string></string>
   <key>NSSupportsAutomaticGraphicsSwitching</key>
   <true/>
 </dict>

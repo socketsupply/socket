@@ -171,31 +171,41 @@ class AppContainer extends Tonic {
 // An array of *full* paths can be collected by intercepting the drag event
 // onto any input control. Split the value by new line to create an array.
 //
-function setupDrop () {
-  const textarea = document.createElement('textarea')
-  document.body.appendChild(textarea)
-  textarea.style.opacity = '0'
-  textarea.style.position = 'fixed'
-  textarea.style.top = '0px'
-  textarea.style.left = '0px'
-  textarea.style.right = '0px'
-  textarea.style.bottom = '0px'
+function setupDrop (fn) {
+  let textarea
+  let timeout
 
   document.body.addEventListener('dragover', () => {
-    textarea.style.zIndex = '10000'
-  })
+    clearTimeout(timeout)
+    if (textarea) {
+      textarea.style.zIndex = 10000
+      document.body.appendChild(textarea)
+      return
+    }
 
-  document.body.addEventListener('dragend', () => {
-    textarea.style.zIndex = '-1'
+    textarea = document.createElement('textarea')
+    document.body.appendChild(textarea)
+    textarea.style.opacity = 0
+    textarea.style.position = 'fixed'
+    textarea.style.top = '0px'
+    textarea.style.left = '0px'
+    textarea.style.right = '0px'
+    textarea.style.bottom = '0px'
+    textarea.style.zIndex = 10000
+
+    textarea.addEventListener('input', () => {
+      textarea.style.zIndex = -1
+      fn && fn(textarea.value.split('\n'))
+      textarea.value = ''
+      document.body.removeChild(textarea)
+    })
   })
 
   document.body.addEventListener('dragleave', () => {
-    textarea.style.zIndex = '-1'
-  })
-
-  textarea.addEventListener('input', e => {
-    console.log(textarea.value.split('\n'))
-    textarea.style.zIndex = '-1'
+    timeout = setTimeout(() => {
+      textarea.style.zIndex = -1
+      document.body.removeChild(textarea)
+    }, 128)
   })
 }
 
@@ -205,7 +215,9 @@ function setupDrop () {
 window.onload = async () => {
   Tonic.add(AppContainer)
 
-  setupDrop()
+  setupDrop(paths => {
+    console.log(paths)
+  })
 
   // https://developer.apple.com/library/archive/documentation/AppleApplications/Conceptual/SafariJSProgTopics/DragAndDrop.html
 
