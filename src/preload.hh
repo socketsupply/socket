@@ -92,8 +92,9 @@ constexpr auto gPreload = R"JS(
     return window._ipc.send('title', value)
   }
 
-  window.system.dialog = value => {
-    return window._ipc.send('dialog', value)
+  window.system.dialog = async (value) => {
+    const files = await window._ipc.send('dialog', value);
+    return files.split('\n');
   }
 
   window.system.setContextMenu = value => {

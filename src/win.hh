@@ -83,6 +83,7 @@ namespace Opkit {
         bool,
         bool,
         bool,
+        bool,
         const std::string&,
         const std::string&
       );
@@ -495,7 +496,7 @@ namespace Opkit {
               accl = std::string(trim(accelerators[1]) + "+" + key);
             }
 
-            if (isShift) {  
+            if (isShift) {
               accl = std::string("Shift+" + accl);
             }
           }
@@ -571,6 +572,7 @@ namespace Opkit {
       bool isSave,
       bool allowDirs,
       bool allowFiles,
+      bool allowMultiple,
       const std::string& defaultPath,
       const std::string& title
     ) {
@@ -598,9 +600,9 @@ namespace Opkit {
 
     } else {
       hr = CoCreateInstance(
-        CLSID_FileOpenDialog, 
-        NULL, 
-        CLSCTX_INPROC_SERVER, 
+        CLSID_FileOpenDialog,
+        NULL,
+        CLSCTX_INPROC_SERVER,
         IID_PPV_ARGS(&pfd)
       );
 
@@ -608,8 +610,10 @@ namespace Opkit {
       hr = pfd->GetOptions(&dwOptions);
       if (FAILED(hr)) return;
 
-      hr = pfd->SetOptions(dwOptions | FOS_ALLOWMULTISELECT);
-      if (FAILED(hr)) return;
+      if ((!isSave || allowDirs) && allowMultiple) {
+        hr = pfd->SetOptions(dwOptions | FOS_ALLOWMULTISELECT);
+        if (FAILED(hr)) return;
+      }
 
       hr = pfd->Show(NULL);
       if (FAILED(hr)) return;
@@ -636,13 +640,13 @@ namespace Opkit {
       std::string result = "";
 
       for (size_t i = 0, i_end = paths.size(); i < i_end; ++i) {
-        result += (i ? "," : "");
+        result += (i ? "\\n" : "");
         std::replace(paths[i].begin(), paths[i].end(), '\\', '/');
         result += paths[i];
       }
 
       auto wrapped =  std::string("\"" + result + "\"");
-      resolveToRenderProcess(seq, "0", wrapped);
+      resolveToRenderProcess(seq, "0", encodeURIComponent(wrapped));
 
       results->Release();
     }

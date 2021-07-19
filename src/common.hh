@@ -523,7 +523,7 @@ namespace Opkit {
       virtual void setTitle(const std::string&, const std::string&) = 0;
       virtual void setContextMenu(const std::string&, const std::string&) = 0;
       virtual void setSystemMenu(const std::string&, const std::string&) = 0;
-      virtual void openDialog(const std::string&, bool, bool, bool, const std::string&, const std::string&) = 0;
+      virtual void openDialog(const std::string&, bool, bool, bool, bool, const std::string&, const std::string&) = 0;
   };
 
   std::string IWindow::createPreload(WindowOptions opts) {

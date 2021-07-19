@@ -41,7 +41,7 @@ namespace Opkit {
       void setTitle(const std::string&, const std::string&);
       void setSize(const std::string&, int, int, int);
       void setContextMenu(const std::string&, const std::string&);
-      void openDialog(const std::string&, bool, bool, bool, const std::string&, const std::string&);
+      void openDialog(const std::string&, bool, bool, bool, bool, const std::string&, const std::string&);
 
       void setSystemMenu(const std::string& seq, const std::string& menu);
       int openExternal(const std::string& s);
@@ -500,6 +500,7 @@ namespace Opkit {
       bool isSave,
       bool allowDirs,
       bool allowFiles,
+      bool allowMultiple,
       const std::string& defaultPath,
       const std::string& title
     ) {
@@ -541,7 +542,9 @@ namespace Opkit {
     // }
 
     // TODO (@heapwolf): make optional
-    gtk_file_chooser_set_select_multiple(chooser, TRUE);
+    if ((!isSave || allowDirs) && allowMultiple) {
+      gtk_file_chooser_set_select_multiple(chooser, TRUE);
+    }
 
     if (defaultPath.size() > 0) {
       gtk_file_chooser_set_filename(chooser, defaultPath.c_str());
@@ -567,7 +570,7 @@ namespace Opkit {
 
     while (filenames != NULL) {
 			gchar* file = (gchar*) filenames->data;
-      result += (i++ ? "," : "");
+      result += (i++ ? "\\n" : "");
       result += std::string(file);
 			filenames = filenames->next;
 		}
@@ -575,7 +578,7 @@ namespace Opkit {
     g_slist_free(filenames);
 
     auto wrapped =  std::string("\"" + std::string(result) + "\"");
-    resolveToRenderProcess(seq, "0", wrapped);
+    resolveToRenderProcess(seq, "0", encodeURIComponent(wrapped));
     gtk_widget_destroy(dialog);
   }
 }

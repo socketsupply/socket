@@ -13,7 +13,7 @@
 }
 @end
 
-namespace Opkit { 
+namespace Opkit {
 
   class App : public IApp {
     NSAutoreleasePool* pool = [NSAutoreleasePool new];
@@ -44,7 +44,7 @@ namespace Opkit {
       void setTitle(const std::string&, const std::string&);
       void setSize(const std::string&, int, int, int);
       void setContextMenu(const std::string&, const std::string&);
-      void openDialog(const std::string&, bool, bool, bool, const std::string&, const std::string&);
+      void openDialog(const std::string&, bool, bool, bool, bool, const std::string&, const std::string&);
 
       void setSystemMenu(const std::string& seq, const std::string& menu);
       int openExternal(const std::string& s);
@@ -153,7 +153,7 @@ namespace Opkit {
     [webview.configuration.preferences
       setValue:@YES
         forKey:@"allowFileAccessFromFileURLs"];
-  
+
     [window registerForDraggedTypes:
       [NSArray arrayWithObject:NSPasteboardTypeFileURL]];
 
@@ -317,7 +317,7 @@ namespace Opkit {
         [pMenu addItem:sep];
       } else {
         menuItem = [pMenu
-          insertItemWithTitle:nssTitle 
+          insertItemWithTitle:nssTitle
           action:@selector(menuItemSelected:)
           keyEquivalent:nssKey
           atIndex:index
@@ -325,7 +325,7 @@ namespace Opkit {
       }
 
       [menuItem setTag:id];
-    
+
       index++;
     }
 
@@ -471,6 +471,7 @@ namespace Opkit {
     bool isSave,
     bool allowDirectories,
     bool allowFiles,
+    bool allowMultiple,
     const std::string& defaultPath = "",
     const std::string& title = "")
   {
@@ -491,6 +492,9 @@ namespace Opkit {
       [dialog_open setCanChooseDirectories:YES];
       [dialog_open setCanCreateDirectories:YES];
       [dialog_open setCanChooseFiles:YES];
+    }
+
+    if ((!isSave || allowDirs) && allowMultiple) {
       [dialog_open setAllowsMultipleSelection:YES];
     }
 
@@ -532,10 +536,11 @@ namespace Opkit {
     [pool release];
 
     for (size_t i = 0, i_end = paths.size(); i < i_end; ++i) {
-      result += (i ? "," : "");
-      result += paths[i]; 
+      result += (i ? "\\n" : "");
+      result += paths[i];
     }
 
-    resolveToRenderProcess(seq, "0", std::string("\"" + result + "\""));
+    auto wrapped = std::string("\"" + result + "\"");
+    resolveToRenderProcess(seq, "0", encodeURIComponent(wrapped));
   }
 }
