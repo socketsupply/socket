@@ -44,6 +44,7 @@ namespace Opkit {
       void kill();
       void dispatch(std::function<void()>);
       std::string getCwd(const std::string&);
+      ScreenSize getScreenSize();
   };
 
   std::atomic<bool> App::isReady {false};
@@ -282,6 +283,13 @@ namespace Opkit {
     GetModuleFileNameW(NULL, filename, MAX_PATH);
     auto path = fs::path { filename }.remove_filename();
     return pathToString(path);
+  }
+
+  ScreenSize App::getScreenSize () {
+    return ScreenSize {
+      .height = GetSystemMetrics(SM_CYFULLSCREEN),
+      .width = GetSystemMetrics(SM_CXFULLSCREEN)
+    };
   }
 
   void Window::about () {

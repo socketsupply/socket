@@ -1,4 +1,5 @@
 const path = require('path')
+const assert = require('assert')
 const system = require('@optoolco/opkit-node')
 
 let counter = 0
@@ -21,6 +22,10 @@ async function main () {
   const resourcesDirectory = path.dirname(process.argv[1])
   const file = path.join(resourcesDirectory, 'index.html')
   await system.navigate({ window: 0, value: `file://${file}` })
+
+  const size = await system.getScreenSize()
+  assert(size.width, 'screen has width')
+  assert(size.height, 'screen has width')
 
   //
   // ## Example

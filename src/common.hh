@@ -332,6 +332,11 @@ namespace Opkit {
       std::string get(const std::string&);
   };
 
+  struct ScreenSize {
+    int height = 0;
+    int width = 0;
+  };
+
   //
   // cmd: `ipc://id?p1=v1&p2=v2&...\0`
   //
@@ -494,6 +499,7 @@ namespace Opkit {
       virtual void kill() = 0;
       virtual void dispatch(std::function<void()> work) = 0;
       virtual std::string getCwd(const std::string&) = 0;
+      virtual ScreenSize getScreenSize() = 0;
   };
 
   void IApp::exit () {

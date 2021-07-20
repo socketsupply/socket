@@ -24,6 +24,7 @@ namespace Opkit {
       void kill();
       void dispatch(std::function<void()> work);
       std::string getCwd(const std::string&);
+      ScreenSize getScreenSize();
   };
 
   class Window : public IWindow {
@@ -84,6 +85,15 @@ namespace Opkit {
     // Distinguish window closing with app exiting
     shouldExit = true;
     [NSApp terminate:nil];
+  }
+
+  ScreenSize App::getScreenSize () {
+    NSRect e = [[NSScreen mainScreen] frame];
+
+    return ScreenSize {
+      .height = (int) e.size.height,
+      .width = (int) e.size.width
+    };
   }
 
   Window::Window (App& app, WindowOptions opts) : app(app), opts(opts) {

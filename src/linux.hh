@@ -17,6 +17,7 @@ namespace Opkit {
       void kill();
       void dispatch(std::function<void()> work);
       std::string getCwd(const std::string&);
+      ScreenSize getScreenSize();
   };
 
   std::atomic<bool> App::isReady {false};
@@ -79,6 +80,21 @@ namespace Opkit {
         delete static_cast<std::function<void()>*>(f);
       }
     );
+  }
+
+
+  ScreenSize App::getScreenSize () {
+    GdkRectangle workarea = {0};
+
+    gdk_monitor_get_workarea(
+      gdk_display_get_primary_monitor(gdk_display_get_default()),
+      &workarea
+    );
+
+    return ScreenSize {
+      .height = (int) workarea.height,
+      .width = (int) workarea.width
+    };
   }
 
   Window::Window (App& app, WindowOptions opts) : app(app), opts(opts) {

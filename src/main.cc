@@ -153,6 +153,20 @@ MAIN {
         return;
       }
 
+      if (cmd.name == "getScreenSize") {
+        auto size = app.getScreenSize();
+
+        std::string value(
+          "{"
+            "\"width\":" + std::to_string(size.width) + ","
+            "\"height\":" + std::to_string(size.height) + ""
+          "}"
+        );
+
+        w.resolveToMainProcess(seq, "0", encodeURIComponent(value));
+        return;
+      }
+
       if (cmd.name == "menu") {
         w.setSystemMenu(seq, decodeURIComponent(value));
         return;
