@@ -295,7 +295,7 @@ MAIN {
   // we clean up the windows and the main process.
   // TODO pass a real exit code?
   //
-  auto onExit = [&] {
+  static auto onExit = [&] {
     w0.kill();
     w1.kill();
     process.kill(process.getPID());
@@ -305,6 +305,11 @@ MAIN {
   app.onExit = onExit;
   w0.onExit = onExit;
   w1.onExit = onExit;
+
+  signal(SIGINT, +[](int signum) {
+    onExit();
+    exit(signum);
+  });
 
   //
   // # Event Loop

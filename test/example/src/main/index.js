@@ -113,10 +113,6 @@ async function main () {
       }
     })
   }, 16 * 100) // send at some interval
-
-  process.on('beforeExit', () => {
-    console.log('exiting')
-  })
 }
 
 main()
