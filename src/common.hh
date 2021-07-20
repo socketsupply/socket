@@ -536,6 +536,7 @@ namespace Opkit {
       "  window.process.executable = '" + opts.executable + "';\n"
       "  window.process.version = '" + opts.version + "';\n"
       "  window.process.debug = " + std::to_string(opts.debug) + ";\n"
+      "  window.process.os = '" + platform.os + "';\n"
       "  window.process.env = Object.fromEntries(new URLSearchParams('" +  opts.env + "'));\n"
       "  window.process.argv = [" + opts.argv + "];\n"
       "  " + gPreload + "\n"
