@@ -413,11 +413,18 @@ int main (const int argc, const char* argv[]) {
     std::string entitlements = "";
 
     if (flagEntitlements) {
-      entitlements = std::string(
-        " --entitlements " + pathToString(fs::path {
+      auto entitlementsPath = fs::path {
         pathResourcesRelativeToUserBuild /
         (settings["name"] + ".entitlements.plist")
-      }));
+      };
+      fs::copy(
+        fs::path { target / settings["mac_entitlements"] },
+        entitlementsPath
+      );
+
+      entitlements = std::string(
+        " --entitlements " + pathToString(entitlementsPath)
+      );
     }
 
     signCommand
