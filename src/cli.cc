@@ -416,7 +416,7 @@ int main (const int argc, const char* argv[]) {
       entitlements = std::string(
         " --entitlements " + pathToString(fs::path {
         pathResourcesRelativeToUserBuild /
-        (settings["name"] + ".entitlements")
+        (settings["name"] + ".entitlements.plist")
       }));
     }
 
