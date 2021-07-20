@@ -471,7 +471,7 @@ namespace Opkit {
   void Window::openDialog(
     const std::string& seq,
     bool isSave,
-    bool allowDirectories,
+    bool allowDirs,
     bool allowFiles,
     bool allowMultiple,
     const std::string& defaultPath = "",
