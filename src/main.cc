@@ -33,6 +33,11 @@ MAIN {
   auto cwd = app.getCwd(argv[0]);
   appData = parseConfig(decodeURIComponent(_settings));
 
+  #if DEBUG == 1
+    appData["name"] += "-dev";
+    appData["title"] += "-dev";
+  #endif
+
   std::stringstream argvArray;
   std::stringstream argvForward;
 
@@ -217,6 +222,11 @@ MAIN {
         cmd.get("seq"),
         decodeURIComponent(cmd.get("value"))
       );
+      return;
+    }
+
+    if (cmd.name == "exit") {
+      w.exit();
       return;
     }
 

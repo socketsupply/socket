@@ -130,6 +130,11 @@ int main (const int argc, const char* argv[]) {
   auto _settings = WStringToString(readFile(fs::path { target / "settings.config" }));
   auto settings = parseConfig(_settings);
 
+  if (flagDebugMode) {
+    settings["name"] += "-dev";
+    settings["title"] += "-dev";
+  }
+
   auto pathOutput = fs::path { settings["output"] };
 
   if (flagRunUserBuild == false) {

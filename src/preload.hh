@@ -84,6 +84,10 @@ constexpr auto gPreload = R"JS(
     return window._ipc.send('send', value)
   }
 
+  window.system.exit = () => {
+    return window._ipc.send('exit', {})
+  }
+
   window.system.openExternal = value => {
     return window._ipc.send('external', value)
   }
