@@ -161,7 +161,7 @@ class AppContainer extends Tonic {
 
       <tonic-button id="externalLink" url="https://example.com">External</tonic-button>
 
-      <a id="dd" draggable="true" href="file:///Users/paolofragomeni/projects/optoolco/opkit/TODO.md" download>Draggable</a>
+      <a id="dd" draggable="true" href="file:///Users/paolofragomeni/projects/optoolco/opkit/test/example/dist/Operator.app/Contents/Resources/log.txt">Draggable</a>
       <a id="dl" href="file:///Users/paolofragomeni/projects/optoolco/opkit/src/render.html" download>Download</a>
     `
   }
@@ -177,6 +177,7 @@ function setupDrop (fn) {
 
   document.body.addEventListener('dragover', () => {
     clearTimeout(timeout)
+
     if (textarea) {
       textarea.style.zIndex = 10000
       document.body.appendChild(textarea)
@@ -219,7 +220,8 @@ window.onload = async () => {
     console.log(paths)
   })
 
-  // https://developer.apple.com/library/archive/documentation/AppleApplications/Conceptual/SafariJSProgTopics/DragAndDrop.html
-
-  // await invokeIPC('onload')
+  document.body.addEventListener('dragstart', (e) => {
+    const name = `OPKIT_${Date.now()}`
+    e.dataTransfer.setData('text/plain', name);
+  });
 }

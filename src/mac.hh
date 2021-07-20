@@ -154,8 +154,10 @@ namespace Opkit {
       setValue:@YES
         forKey:@"allowFileAccessFromFileURLs"];
 
-    [window registerForDraggedTypes:
-      [NSArray arrayWithObject:NSPasteboardTypeFileURL]];
+    window.titlebarAppearsTransparent = true;
+  
+    // [webview registerForDraggedTypes:
+    //  [NSArray arrayWithObject:NSPasteboardTypeFileURL]];
 
     // Add delegate methods manually in order to capture "this"
     class_replaceMethod(
@@ -215,7 +217,7 @@ namespace Opkit {
 
     // Add webview to window
     [window setContentView:webview];
-
+   
     navigate("0", opts.url);
   }
 
