@@ -46,14 +46,14 @@ async function main () {
       Hide: h + Meta
       Hide Others: h + Control + Meta
       ---: _
-      Quit: q + Meta;
+      Quit: q + CommandOrControl;
 
     Edit:
-      Cut: x + Control
-      Copy: c + Control
-      Paste: v + Control
+      Cut: x + CommandOrControl
+      Copy: c + CommandOrControl
+      Paste: v + CommandOrControl
       Delete: _
-      Select All: a + Control;
+      Select All: a + CommandOrControl;
 
     Foo:
       Bazz: z + Meta

@@ -501,6 +501,7 @@ namespace Opkit {
 
             if (accelerators.size() > 1) {
               key = replace(key, "Command", "Ctrl");
+              key = replace(key, "CommandOrControl", "Ctrl");
               accl = std::string(trim(accelerators[1]) + "+" + key);
             }
 

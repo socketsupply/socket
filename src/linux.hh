@@ -374,6 +374,8 @@ namespace Opkit {
               if (accelerator.size() > 1) {
                 if (accelerator[1].find("Meta") != -1) {
                   mask = (GdkModifierType)(mask | GDK_META_MASK);
+                } else if (accelerator[1].find("CommandOrControl") != -1) {
+                  mask = (GdkModifierType)(mask | GDK_CONTROL_MASK);
                 } else if (accelerator[1].find("Control") != -1) {
                   mask = (GdkModifierType)(mask | GDK_CONTROL_MASK);
                 }

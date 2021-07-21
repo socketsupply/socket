@@ -133,6 +133,7 @@ int main (const int argc, const char* argv[]) {
   if (flagDebugMode) {
     settings["name"] += "-dev";
     settings["title"] += "-dev";
+    settings["executable"] += "-dev";
   }
 
   auto pathOutput = fs::path { settings["output"] };

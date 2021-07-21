@@ -399,7 +399,9 @@ namespace Opkit {
           key = trim(parts[1]) == "_" ? "" : trim(accelerator[0]);
 
           if (accelerator.size() > 1) {
-            if (accelerator[1].find("Meta") != -1) {
+            if (accelerator[1].find("CommandOrControl") != -1) {
+              mask |= NSEventModifierFlagCommand;
+            } else if (accelerator[1].find("Meta") != -1) {
               mask |= NSEventModifierFlagCommand;
             } else if (accelerator[1].find("Control") != -1) {
               mask |= NSEventModifierFlagControl;
