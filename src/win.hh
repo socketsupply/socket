@@ -1,6 +1,7 @@
 #include "common.hh"
 #include "win64/WebView2.h"
 
+#include <signal.h>
 #include <future>
 #include <chrono>
 #include <shobjidl.h>

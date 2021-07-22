@@ -3,7 +3,6 @@
 
 #if defined(_WIN32)
   #include "win.hh"
-  #include <signal.h>
 #elif defined(__APPLE__)
   #include "mac.hh"
 #elif defined(__linux__)
@@ -136,6 +135,11 @@ MAIN {
         return;
       }
 
+      if (cmd.name == "restart") {
+        app.restart();
+        return;
+      }
+
       if (cmd.name == "show") {
         w.show(seq);
         return;
@@ -246,11 +250,6 @@ MAIN {
 
     if (cmd.name == "exit") {
       w.exit();
-      return;
-    }
-
-    if (cmd.name == "restart") {
-      app.restart();
       return;
     }
 

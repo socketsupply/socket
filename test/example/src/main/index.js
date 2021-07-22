@@ -75,9 +75,7 @@ async function main () {
   // This example is basically an "echo" server...
   //
   system.receive = async (command, value) => {
-    console.log('inbound', value)
     if (value.restart) {
-      console.log('receive incoming', command)
       await system.restart()
     }
 
