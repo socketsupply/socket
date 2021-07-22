@@ -494,16 +494,17 @@ int main (const int argc, const char* argv[]) {
   //
   if (flagShouldNotarize && platform.darwin) {
     std::stringstream notarizeCommand;
+    std::string username = getEnv("APPLE_ID");
+    std::string password = getEnv("APPLE_ID_PASSWORD");
 
     notarizeCommand
       << "xcrun"
       << " altool"
       << " --notarize-app"
-      << " -f"
-      << pathToString(pathToArchive)
-      << " --primary-bundle-id"
-      << " "
-      << settings["bundle_identifier"];
+      << " -u " << username,
+      << " -p " << password,
+      << " -f " << pathToString(pathToArchive)
+      << " --primary-bundle-id " << settings["bundle_identifier"];
 
     auto r = exec(notarizeCommand.str().c_str());
 
