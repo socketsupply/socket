@@ -60,7 +60,7 @@ For windows you can run
 ```sh
 git clone git@github.com:optoolco/opkit.git
 cd opkit
-powershell ./bin/bootstrap.ps1 install local
+powershell ./bin/bootstrap.ps1
 ```
 
 There is an example app written in Node.js, to build and run it...

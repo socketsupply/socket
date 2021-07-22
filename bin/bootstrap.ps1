@@ -49,7 +49,7 @@ if ($args.Count -eq 0) {
     Install-Files
     Exit 0
 } else {
-    WORKING_PATH = $TMPD
+    $WORKING_PATH = $TMPD
 }
 
 Write-Output "$([char]0x2666) Checking for compiler."

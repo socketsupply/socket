@@ -100,7 +100,7 @@ Process::id_type Process::open(const std::string &command, const std::string &pa
   startup_info.hStdInput = stdin_rd_p;
   startup_info.hStdOutput = stdout_wr_p;
   startup_info.hStdError = stderr_wr_p;
-  
+
   if (stdin_fd || stdout_fd || stderr_fd)
     startup_info.dwFlags |= STARTF_USESTDHANDLES;
 
@@ -159,7 +159,7 @@ Process::id_type Process::open(const std::string &command, const std::string &pa
   closed = false;
   data.id = process_info.dwProcessId;
   data.handle = process_info.hProcess;
-  
+
   return process_info.dwProcessId;
 }
 
@@ -199,8 +199,6 @@ void Process::read() noexcept {
         } else {
           ss << b;
         }
-
-        read_stdout(std::string(buffer.get()));
       }
     });
   }
@@ -260,10 +258,24 @@ bool Process::write(const char *bytes, size_t n) {
 
   std::lock_guard<std::mutex> lock(stdin_mutex);
   if (stdin_fd) {
-    DWORD written;
-    BOOL bSuccess = WriteFile(*stdin_fd, bytes, static_cast<DWORD>(n), &written, nullptr);
+    std::string b(bytes);
 
-    if (!bSuccess || written == 0) {
+    while (true && (b.size() > 0)) {
+      DWORD bytesWritten;
+      DWORD size = static_cast<DWORD>(b.size());
+      BOOL bSuccess = WriteFile(*stdin_fd, b.c_str(), size, &bytesWritten, nullptr);
+
+      if (bytesWritten >= size || bSuccess) {
+        break;
+      }
+
+      b = b.substr(bytesWritten / 2, b.size());
+    }
+
+    DWORD bytesWritten;
+    BOOL bSuccess = WriteFile(*stdin_fd, L"\n", static_cast<DWORD>(2), &bytesWritten, nullptr);
+
+    if (!bSuccess || bytesWritten == 0) {
       return false;
     } else {
       return true;

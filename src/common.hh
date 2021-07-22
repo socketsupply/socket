@@ -101,19 +101,19 @@ namespace Opkit {
       bool darwin = false;
       bool win = true;
       bool linux = false;
-      const String os = Str("win");
+      const std::string os = "win";
 
     #elif defined(__APPLE__)
       bool darwin = true;
       bool win = false;
       bool linux = false;
-      const String os = Str("darwin");
+      const std::string os = "darwin";
 
     #elif defined(__linux__)
       bool darwin = false;
       bool win = false;
       bool linux = true;
-      const String os = Str("linux");
+      const std::string os = "linux";
 
     #endif
   } platform;

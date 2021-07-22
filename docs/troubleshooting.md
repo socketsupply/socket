@@ -6,11 +6,14 @@
 
 [`clang++`][0] [version 12][1] required for building.
 
+You will need [build tools][3]
+
 The `WebView2LoaderStatic.lib` file was sourced from [this][2] package.
 
 [0]:https://github.com/llvm/llvm-project/releases/tag/llvmorg-12.0.0
 [1]:https://github.com/llvm/llvm-project/releases/download/llvmorg-12.0.0/LLVM-12.0.0-win64.exe
 [2]:https://www.nuget.org/api/v2/package/Microsoft.Web.WebView2/1.0.864.35
+[3]: https://visualstudio.microsoft.com/downloads/#build-tools-for-visual-studio-2019
 
 ### cannot be loaded because running scripts is disabled on this system.
 
