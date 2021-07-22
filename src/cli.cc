@@ -360,11 +360,13 @@ int main (const int argc, const char* argv[]) {
   // them to the compiler by replacing new lines with a high bit.
   _settings = encodeURIComponent(_settings);
 
+  auto extraFlags = flagDebugMode ? settings["debug_flags"] : settings["flags"];
+
   compileCommand
     << getEnv("CXX")
     << " " << files
     << " " << flags
-    << " " << settings["flags"]
+    << " " << extraFlags
     << " -o " << pathToString(binaryPath)
     << " -DDEBUG=" << (flagDebugMode ? 1 : 0)
     << " -DSETTINGS=\"" << _settings << "\""
