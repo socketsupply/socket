@@ -721,6 +721,17 @@ namespace Opkit {
         if (parts.size() > 1) {
           auto title = parts[0];
           auto parent = parts[1];
+
+          if (std::string(title).find("About") == 0) {
+            w->about();
+            break;
+          }
+
+          if (std::string(title).find("Quit") == 0) {
+            w->exit();
+            break;
+          }
+
           w->resolveMenuSelection("0", title, parent);
         }
 
