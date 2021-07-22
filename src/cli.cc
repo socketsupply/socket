@@ -537,8 +537,9 @@ int main (const int argc, const char* argv[]) {
       notarizeStatusCommand
         << "xcrun"
         << " altool"
-        << " --notarization-info"
-        << " " << uuid;
+        << " --notarization-info " << uuid
+        << " -u " << username,
+        << " -p " << password;
 
       auto r = exec(notarizeStatusCommand.str().c_str());
 
@@ -562,10 +563,12 @@ int main (const int argc, const char* argv[]) {
 
       if (status.find("success") != -1) {
         log("successfully notarized");
+        break;
       }
 
       if (status.find("success") == -1) {
         log("apple was unable to notarize");
+        break;
       }
     }
 
