@@ -501,8 +501,8 @@ int main (const int argc, const char* argv[]) {
       << "xcrun"
       << " altool"
       << " --notarize-app"
-      << " -u " << username,
-      << " -p " << password,
+      << " -u " << username
+      << " -p " << password
       << " -f " << pathToString(pathToArchive)
       << " --primary-bundle-id " << settings["bundle_identifier"];
 
