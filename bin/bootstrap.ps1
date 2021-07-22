@@ -25,7 +25,11 @@ Function Build {
     $VERSION = cmd /c 'git rev-parse --short HEAD' 2>&1 | % ToString
 
     Write-Output "$([char]0x2666) Compiling the build tool"
-    clang++ src\cli.cc -o bin\cli.exe -std=c++20 -DVERSION="$($VERSION)" -I 'C:\Program Files (x86)\Windows Kits\10\Include\10.0.19041.0'
+    clang++ src\cli.cc -o bin\cli.exe -std=c++20 -DVERSION="$($VERSION)" `
+        -I 'C:\Program Files (x86)\Windows Kits\10\Include\10.0.19041.0\shared' `
+        -I 'C:\Program Files (x86)\Windows Kits\10\Include\10.0.19041.0\um' `
+        -I 'C:\Program Files (x86)\Windows Kits\10\Include\10.0.19041.0\winrt' `
+        -I 'C:\Program Files (x86)\Windows Kits\10\Include\10.0.19041.0\cppwinrt'
 
     if ($? -ne 1) {
         Write-Output "$([char]0x2666) The build tool failed to compile. Here's what you can do..."
