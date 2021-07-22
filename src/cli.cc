@@ -538,7 +538,7 @@ int main (const int argc, const char* argv[]) {
         << "xcrun"
         << " altool"
         << " --notarization-info " << uuid
-        << " -u " << username,
+        << " -u " << username
         << " -p " << password;
 
       auto r = exec(notarizeStatusCommand.str().c_str());
