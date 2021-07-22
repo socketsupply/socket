@@ -199,8 +199,6 @@ void Process::read() noexcept {
         } else {
           ss << b;
         }
-
-        read_stdout(std::string(buffer.get()));
       }
     });
   }
@@ -270,10 +268,6 @@ bool Process::write(const char *bytes, size_t n) {
       if (bytesWritten >= size || bSuccess) {
         break;
       }
-
-      // if (!bSuccess) {
-      //   return false;
-      // }
 
       b = b.substr(bytesWritten / 2, b.size());
     }
