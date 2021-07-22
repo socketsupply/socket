@@ -42,6 +42,7 @@ namespace Opkit {
       int run();
       void exit();
       void kill();
+      void restart();
       void dispatch(std::function<void()>);
       std::string getCwd(const std::string&);
       ScreenSize getScreenSize();
@@ -58,6 +59,7 @@ namespace Opkit {
       static LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
       ICoreWebView2 *webview = nullptr;
       ICoreWebView2Controller *controller = nullptr;
+      bool webviewFailed = false;
 
       App app;
       WindowOptions opts;
@@ -230,7 +232,8 @@ namespace Opkit {
     );
 
     if (!SUCCEEDED(res)) {
-      alert("Unable to create webview");
+      webviewFailed = true;
+      // alert("Unable to create webview");
     }
   }
 
@@ -259,6 +262,26 @@ namespace Opkit {
   void App::kill () {
     shouldExit = true;
     PostQuitMessage(WM_QUIT);
+  }
+
+  void App::restart () {
+
+	  char szFileName[MAX_PATH] = "";
+  	GetModuleFileName(NULL, szFileName, MAX_PATH);
+
+    STARTUPINFO si = { sizeof(si) };
+    PROCESS_INFORMATION pi;
+    CreateProcess(NULL, szFileName, NULL, NULL, NULL, NULL, NULL, NULL, &si, &pi);
+
+    std::exit(0);
+
+    // WCHAR wsCommandLine[RESTART_MAX_CMD_LINE];
+    // HRESULT hr = S_OK;             // not if registering for recovery and restart fails.
+
+    // hr = RegisterApplicationRestart(wsCommandLine, RESTART_NO_PATCH | RESTART_NO_REBOOT);
+    // if (FAILED(hr)) {
+    //   alert("Failed to restart app");
+    // }
   }
 
   void App::dispatch (std::function<void()> cb) {

@@ -81,11 +81,18 @@ class AppContainer extends Tonic {
   }
 
   async click (e) {
-    const el = Tonic.match(e.target, '#butt')
+    const el = Tonic.match(e.target, '[data-event]')
     if (!el) return
 
-    const response = await system.dialog('open')
-    this.querySelector('#opened').value = response.replace(',', '\n')
+    if (el.dataset.event === 'open') {
+      const response = await system.dialog('open')
+      this.querySelector('#opened').value = response.replace(',', '\n')
+    }
+    if (el.dataset.event === 'restart') {
+      system.send({
+        restart: true
+      })
+    }
   }
 
   async input (e) {
@@ -146,7 +153,8 @@ class AppContainer extends Tonic {
         </tonic-input>
       </div>
 
-      <tonic-button id="butt">Open</tonic-button>
+      <tonic-button data-event="open" id="butt">Open</tonic-button>
+      <tonic-button data-event="restart" id="restart">Restart</tonic-button>
 
       <tonic-textarea id="opened" label="opened files/dirs"></tonic-textarea>
 

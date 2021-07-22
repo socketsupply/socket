@@ -3,6 +3,7 @@
 
 #if defined(_WIN32)
   #include "win.hh"
+  #include <signal.h>
 #elif defined(__APPLE__)
   #include "mac.hh"
 #elif defined(__linux__)
@@ -92,6 +93,10 @@ MAIN {
     .argv = argvArray.str(),
     .env = env.str()
   });
+
+  if (w0.webviewFailed) {
+    argvForward << " --webviewFailed";
+  }
 
   //
   // The second window is used for showing previews or progress, so it can
@@ -241,6 +246,11 @@ MAIN {
 
     if (cmd.name == "exit") {
       w.exit();
+      return;
+    }
+
+    if (cmd.name == "restart") {
+      app.restart();
       return;
     }
 
