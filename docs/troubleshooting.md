@@ -12,6 +12,21 @@ The `WebView2LoaderStatic.lib` file was sourced from [this][2] package.
 [1]:https://github.com/llvm/llvm-project/releases/download/llvmorg-12.0.0/LLVM-12.0.0-win64.exe
 [2]:https://www.nuget.org/api/v2/package/Microsoft.Web.WebView2/1.0.864.35
 
+### cannot be loaded because running scripts is disabled on this system.
+
+If you get the following error message
+
+```
+./bin/bootstrap.ps1 : File C:\Users\rayno\Github\opkit\bin\bootstrap.ps1 cannot be loaded because running scripts is
+disabled on this system. For more information, see about_Execution_Policies at
+https:/go.microsoft.com/fwlink/?LinkID=135170.
+```
+
+Then you can follow https://superuser.com/a/106363
+
+1. Start Windows PowerShell with the "Run as Administrator" option.
+2. `set-executionpolicy remotesigned`
+
 
 ## Linux
 ### Build failures
