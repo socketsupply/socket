@@ -511,7 +511,7 @@ int main (const int argc, const char* argv[]) {
       << " --file \"" << pathToString(pathToArchive) << "\""
     ;
 
-    log(notarizeCommand.str());
+    // log(notarizeCommand.str());
     auto r = exec(notarizeCommand.str().c_str());
 
     if (r.exitCode != 0) {
@@ -537,7 +537,7 @@ int main (const int argc, const char* argv[]) {
         exit(1);
       }
 
-      std::this_thread::sleep_for(std::chrono::milliseconds(1024 * 10));
+      std::this_thread::sleep_for(std::chrono::milliseconds(1024 * 6));
       std::stringstream notarizeStatusCommand;
 
       notarizeStatusCommand
@@ -562,8 +562,34 @@ int main (const int argc, const char* argv[]) {
         continue;
       }
 
+      auto lastStatus = r.output;
+
       if (status.find("invalid") != -1) {
         log("apple rejected the request for notarization");
+        log("---");
+        log(lastStatus);
+        log("---");
+
+        std::stringstream notarizeHistoryCommand;
+
+        notarizeHistoryCommand
+          << "xcrun"
+          << " altool"
+          << " --notarization-history 0"
+          << " -u " << username
+          << " -p " << password;
+
+        auto r = exec(notarizeHistoryCommand.str().c_str());
+
+        if (r.exitCode != 0) {
+          log("Unable to get notarization history");
+          exit(r.exitCode);
+        }
+
+        log("---");
+        log(r.output);
+        log("---");
+
         exit(1);
       }
 
