@@ -444,6 +444,15 @@ int main (const int argc, const char* argv[]) {
       << entitlements
       << " --sign 'Developer ID Application: " + settings["mac_sign"] + "'"
       << " "
+      << pathToString(fs::path { pathResources / "node_modules" / "leveldown" / "prebuilds" / "darwin-x64" / "node.napi.node" })
+
+      << "; codesign"
+      << " --force"
+      << " --options runtime"
+      << " --timestamp"
+      << entitlements
+      << " --sign 'Developer ID Application: " + settings["mac_sign"] + "'"
+      << " "
       << pathToString(fs::path { pathBin / executable })
 
       << "; codesign"
@@ -455,7 +464,7 @@ int main (const int argc, const char* argv[]) {
       << " "
       << pathToString(pathPackage);
 
-    log(signCommand.str());
+    // log(signCommand.str());
     auto r = exec(signCommand.str());
 
     if (r.exitCode != 0) {
@@ -483,8 +492,8 @@ int main (const int argc, const char* argv[]) {
       << "ditto"
       << " -c"
       << " -k"
-      << " --keepParent"
       << " --sequesterRsrc"
+      << " --keepParent"
       << " "
       << pathToString(pathPackage)
       << " "
@@ -537,7 +546,7 @@ int main (const int argc, const char* argv[]) {
 
     int requests = 0;
 
-    std::cout << "polling for notarization" << std::endl;
+    log("polling for notarization");
 
     while (!uuid.empty()) {
       if (++requests > 1024) {
@@ -566,7 +575,7 @@ int main (const int argc, const char* argv[]) {
       }
 
       if (status.find("in progress") != -1) {
-        std::cout << "Checking for updates" << std::endl;
+        log("Checking for updates from apple");
         continue;
       }
 
@@ -574,9 +583,8 @@ int main (const int argc, const char* argv[]) {
 
       if (status.find("invalid") != -1) {
         log("apple rejected the request for notarization");
-        log("---");
+
         log(lastStatus);
-        log("---");
 
         std::stringstream notarizeHistoryCommand;
 
@@ -594,9 +602,7 @@ int main (const int argc, const char* argv[]) {
           exit(r.exitCode);
         }
 
-        log("---");
         log(r.output);
-        log("---");
 
         exit(1);
       }
