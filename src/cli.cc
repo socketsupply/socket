@@ -529,7 +529,7 @@ int main (const int argc, const char* argv[]) {
 
     int requests = 0;
 
-    std::cout << "polling for notarization";
+    std::cout << "polling for notarization" << std::endl;
 
     while (!uuid.empty()) {
       if (++requests > 1024) {
@@ -558,7 +558,7 @@ int main (const int argc, const char* argv[]) {
       }
 
       if (status.find("in progress") != -1) {
-        std::cout << ".";
+        std::cout << "Checking for updates" << std::endl;
         continue;
       }
 
