@@ -425,6 +425,7 @@ int main (const int argc, const char* argv[]) {
         pathResourcesRelativeToUserBuild /
         "entitlements.plist"
       };
+
       fs::copy(
         fs::path { target / settings["mac_entitlements"] },
         entitlementsPath

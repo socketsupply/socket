@@ -76,4 +76,10 @@ flags: -O3
 arch: x64
 ```
 
+# PLATFORM SPECIFICS
+
+## MAC
+You need to copy a entitlements.plist file to the build target directory if you
+specify the `-me` flag.
+
 [0]:/docs/troubleshooting.md
