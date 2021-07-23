@@ -849,12 +849,16 @@ int main (const int argc, const char* argv[]) {
       << " /f cert.pfx"
       << " /p " + password
       << " "
-      << pathToString(pathPackage) << " 2>&1";
+      << pathToString(pathPackage) << " 2>&1 | tee sign.log";
 
       auto r = exec(signCommand.str().c_str());
 
       if (r.exitCode != 0) {
         log("Unable to sign");
+
+        log("---");
+        log(pathPackage.string());
+        log("---");
 
         log("---");
         log(r.output);
