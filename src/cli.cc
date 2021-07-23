@@ -423,7 +423,7 @@ int main (const int argc, const char* argv[]) {
     if (flagEntitlements) {
       auto entitlementsPath = fs::path {
         pathResourcesRelativeToUserBuild /
-        (settings["name"] + ".entitlements.plist")
+        "entitlements.plist"
       };
       fs::copy(
         fs::path { target / settings["mac_entitlements"] },
