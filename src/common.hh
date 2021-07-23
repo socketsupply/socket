@@ -497,6 +497,7 @@ namespace Opkit {
 
       virtual int run() = 0;
       virtual void kill() = 0;
+      virtual void restart() = 0;
       virtual void dispatch(std::function<void()> work) = 0;
       virtual std::string getCwd(const std::string&) = 0;
       virtual ScreenSize getScreenSize() = 0;

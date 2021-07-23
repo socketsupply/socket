@@ -22,6 +22,7 @@ namespace Opkit {
       App(int);
       int run();
       void kill();
+      void restart();
       void dispatch(std::function<void()> work);
       std::string getCwd(const std::string&);
       ScreenSize getScreenSize();
@@ -86,6 +87,9 @@ namespace Opkit {
     // Distinguish window closing with app exiting
     shouldExit = true;
     [NSApp terminate:nil];
+  }
+
+  void App::restart () {
   }
 
   ScreenSize App::getScreenSize () {
