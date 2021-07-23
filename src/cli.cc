@@ -441,16 +441,19 @@ int main (const int argc, const char* argv[]) {
     if (settings["mac_sign_paths"].size() > 0) {
       auto paths = split(settings["mac_sign_paths"], ';');
 
-      for (auto& path : paths) {
+      for (int i = 0; i < paths.size(); i++) {
+        std::string prefix = (i > 0) ? ";" : "";
+
         signCommand
-          << "; codesign"
+          << prefix
+          << " codesign"
           << " --force"
           << " --options runtime"
           << " --timestamp"
           << entitlements
           << " --sign 'Developer ID Application: " + settings["mac_sign"] + "'"
           << " "
-          << pathToString(fs::path { pathResources / path })
+          << pathToString(fs::path { pathResources / paths[i] })
         ;
       }
     }
