@@ -437,8 +437,16 @@ int main (const int argc, const char* argv[]) {
     }
 
     signCommand
-      << "codesign"
-      << " --deep"
+      << " codesign"
+      << " --force"
+      << " --options runtime"
+      << " --timestamp"
+      << entitlements
+      << " --sign 'Developer ID Application: " + settings["mac_sign"] + "'"
+      << " "
+      << pathToString(fs::path { pathBin / executable })
+
+      << "; codesign"
       << " --force"
       << " --options runtime"
       << " --timestamp"
