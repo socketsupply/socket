@@ -822,14 +822,16 @@ int main (const int argc, const char* argv[]) {
     }
 
     std::stringstream signCommand;
+    std::string password = getEnv("CSC_KEY_PASSWORD");
 
     signCommand
-      << pathToSignTool
+      << "\"" + pathToSignTool + "\""
       << " sign"
       << " /tr http://timestamp.digicert.com"
       << " /td sha256"
       << " /fd sha256"
-      << " /a"
+      << " /f cert.pfx"
+      << " /p " + password
       << " "
       << pathToString(pathPackage);
 

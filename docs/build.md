@@ -83,6 +83,15 @@ arch: x64
 
 ## WINDOWS
 
+For signing on windows set the `SIGNTOOL` environment variable, for example
+
+```
+$env:SIGNTOOL = "C:\Program Files (x86)\Windows Kits\10\bin\10.0.19041.0\x64\signtool"
+``
+
+To sign, there must be a `cert.pfx` file on disk. and `CSC_KEY_PASSWORD` env
+variable must be set.
+
 ## LINUX
 
 [0]:/docs/troubleshooting.md
