@@ -822,6 +822,8 @@ int main (const int argc, const char* argv[]) {
     #endif
   }
 
+  log("try sign something " + pathPackage.string());
+
   //
   // Windows Code Signing
   //
@@ -840,16 +842,17 @@ int main (const int argc, const char* argv[]) {
     std::string password = getEnv("CSC_KEY_PASSWORD");
 
     signCommand
-      << "\"" + pathToSignTool + "\""
+      << "\"" << pathToSignTool << "\""
       << " sign"
       << " /debug"
       << " /tr http://timestamp.digicert.com"
       << " /td sha256"
       << " /fd sha256"
       << " /f cert.pfx"
-      << " /p " + password
+      << " /p " << password
       << " "
-      << pathToString(pathPackage) << " 2>&1 | tee sign.log";
+      << pathToString(pathPackage) << ".appx"
+      << " 2>&1 | tee sign.log";
 
       auto r = exec(signCommand.str().c_str());
 
