@@ -505,10 +505,11 @@ int main (const int argc, const char* argv[]) {
       << "xcrun"
       << " altool"
       << " --notarize-app"
-      << " -u " << username
-      << " -p " << password
-      << " -f " << pathToString(pathToArchive)
-      << " --primary-bundle-id " << settings["bundle_identifier"];
+      << " --username \"" << username << "\""
+      << " --password \"" << password << "\""
+      << " --primary-bundle-id \"" << settings["bundle_identifier"] << "\""
+      << " --file \"" << pathToString(pathToArchive) << "\""
+    ;
 
     auto r = exec(notarizeCommand.str().c_str());
 
@@ -535,7 +536,7 @@ int main (const int argc, const char* argv[]) {
         exit(1);
       }
 
-      std::this_thread::sleep_for(std::chrono::milliseconds(1024 * 8));
+      std::this_thread::sleep_for(std::chrono::milliseconds(1024 * 10));
       std::stringstream notarizeStatusCommand;
 
       notarizeStatusCommand
