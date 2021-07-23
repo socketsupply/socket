@@ -459,40 +459,6 @@ int main (const int argc, const char* argv[]) {
   }
 
   //
-  // MacOS Packaging
-  // ---
-  //
-  if (flagShouldPackage && platform.darwin) {
-    std::stringstream zipCommand;
-
-    pathToArchive = fs::path {
-      target /
-      pathOutput /
-      (settings["executable"] + ".zip")
-    };
-
-    zipCommand
-      << "ditto"
-      << " -c"
-      << " -k"
-      << " --keepParent"
-      << " --sequesterRsrc"
-      << " "
-      << pathToString(pathPackage)
-      << " "
-      << pathToString(pathToArchive);
-
-    auto r = std::system(zipCommand.str().c_str());
-
-    if (r != 0) {
-      log("error: failed to create zip for notarization");
-      exit(1);
-    }
-
-    log("craeted zip artifact");
-  }
-
-  //
   // MacOS Notorization
   // ---
   //
@@ -508,9 +474,10 @@ int main (const int argc, const char* argv[]) {
       << " --username \"" << username << "\""
       << " --password \"" << password << "\""
       << " --primary-bundle-id \"" << settings["bundle_identifier"] << "\""
-      << " --file \"" << pathToString(pathToArchive) << "\""
+      << " --file \"" << pathToString(pathPackage) << "\""
     ;
 
+    log(notarizeCommand.str());
     auto r = exec(notarizeCommand.str().c_str());
 
     if (r.exitCode != 0) {
@@ -578,6 +545,40 @@ int main (const int argc, const char* argv[]) {
     }
 
     log("finished notarization");
+  }
+
+  //
+  // MacOS Packaging
+  // ---
+  //
+  if (flagShouldPackage && platform.darwin) {
+    std::stringstream zipCommand;
+
+    pathToArchive = fs::path {
+      target /
+      pathOutput /
+      (settings["executable"] + ".zip")
+    };
+
+    zipCommand
+      << "ditto"
+      << " -c"
+      << " -k"
+      << " --keepParent"
+      << " --sequesterRsrc"
+      << " "
+      << pathToString(pathPackage)
+      << " "
+      << pathToString(pathToArchive);
+
+    auto r = std::system(zipCommand.str().c_str());
+
+    if (r != 0) {
+      log("error: failed to create zip for notarization");
+      exit(1);
+    }
+
+    log("craeted zip artifact");
   }
 
   //
