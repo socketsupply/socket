@@ -143,9 +143,8 @@ int main (const int argc, const char* argv[]) {
     log(std::string("cleaned: " + pathToString(pathOutput)));
   }
 
-  auto executable = fs::path(platform.darwin
-    ? settings["name"]
-    : settings["executable"] + (platform.win ? ".exe" : ""));
+  auto executable = fs::path(
+    settings["executable"] + (platform.win ? ".exe" : ""));
 
   std::string flags;
   std::string files;
@@ -832,10 +831,8 @@ int main (const int argc, const char* argv[]) {
     std::string execName = "";
     if (platform.win) {
       execName = (settings["executable"] + ".exe");
-    } else if (platform.linux) {
+    } else {
       execName = (settings["executable"]);
-    } else if (platform.darwin) {
-      execName = (settings["name"]);
     }
 
     auto cmd = pathToString(fs::path {
