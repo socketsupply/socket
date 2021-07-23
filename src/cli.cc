@@ -5,6 +5,7 @@
 #ifdef _WIN32
 #include <shlwapi.h>
 #include <strsafe.h>
+#include <comdef.h>
 #include <AppxPackaging.h>
 #pragma comment(lib, "Shlwapi.lib")
 #pragma comment(lib, "Urlmon.lib")
@@ -317,6 +318,10 @@ int main (const int argc, const char* argv[]) {
       pathResourcesRelativeToUserBuild /
       "AppxManifest.xml"
     };
+
+    if (settings["revision"].size() == 0) {
+      settings["revision"] = "1";
+    }
 
     writeFile(p, tmpl(gWindowsAppManifest, settings));
 
@@ -809,7 +814,9 @@ int main (const int argc, const char* argv[]) {
       log("Package saved");
     }
     else {
-      log("Unable to save package; " + std::to_string(hr));
+      _com_error err(hr);
+      std::string msg = std::string( err.ErrorMessage() );
+      log("Unable to save package; " + msg);
     }
 
     #endif
