@@ -85,6 +85,7 @@ open ./dist/Operator.app # macOS
 dist\operator.exe # win32
 ```
 
+[02]:https://developer.apple.com/forums/thread/128166
 [01]:https://developer.apple.com/documentation/webkit/wkwebview
 [00]:https://developer.apple.com/videos/play/wwdc2020/10188/
 [0]:https://github.com/webview/webview/blob/master/webview.h

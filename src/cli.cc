@@ -435,6 +435,9 @@ int main (const int argc, const char* argv[]) {
       );
     }
 
+    //
+    // TODO @heapwolf: DRY this up.
+    //
     if (settings["mac_sign_paths"].size() > 0) {
       auto paths = split(settings["mac_sign_paths"], ';');
 
