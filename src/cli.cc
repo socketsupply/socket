@@ -755,6 +755,8 @@ int main (const int argc, const char* argv[]) {
               APPX_COMPRESSION_OPTION_NONE,
               fileStream
             );
+          } else {
+            log("Could not add file: " + entry.path().string());
           }
 
           if (fileStream != NULL) {
@@ -779,10 +781,14 @@ int main (const int argc, const char* argv[]) {
           NULL,
           &manifestStream
         );
+      } else {
+        log("Could not get package writer or add files");
       }
 
       if (SUCCEEDED(hr)) {
         hr = packageWriter->Close(manifestStream);
+      } else {
+        log("Could not generate AppxManifest.xml");
       }
 
       if (manifestStream != NULL) {
@@ -795,13 +801,15 @@ int main (const int argc, const char* argv[]) {
       }
 
       CoUninitialize();
+    } else {
+      log("Unable to initialize package writer");
     }
 
     if (SUCCEEDED(hr)) {
       log("Package saved");
     }
     else {
-      log("Unable to save package");
+      log("Unable to save package; " + std::to_string(hr));
     }
 
     #endif
@@ -839,6 +847,11 @@ int main (const int argc, const char* argv[]) {
 
       if (r.exitCode != 0) {
         log("Unable to sign");
+
+        log("---");
+        log(r.output);
+        log("---");
+
         exit(r.exitCode);
       }
   }
