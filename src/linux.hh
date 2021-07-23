@@ -31,6 +31,7 @@ namespace Opkit {
       App app;
       WindowOptions opts;
       Window(App&, WindowOptions);
+      bool webviewFailed = false;
 
       void about();
       void eval(const std::string&);

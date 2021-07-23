@@ -447,6 +447,7 @@ int main (const int argc, const char* argv[]) {
       << " "
       << pathToString(pathPackage);
 
+    log(signCommand.str());
     auto r = exec(signCommand.str());
 
     if (r.exitCode != 0) {
