@@ -46,14 +46,14 @@ name: Operator
 description: A demo appliation
 copyRight: Operator Tool Co. © 2021-2022
 maintainer: Operator Contributors <dev@optool.co>
-mac_category: Developer Tools
-linux_categories: Developer
-mac_bundle_identifier: co.optool.demo
 
-#
-# Code Signing
-#
+linux_categories: Developer
+
+mac_category: Developer Tools
+mac_bundle_identifier: co.optool.demo
+mac_entitlements: path/to/entitlements.plist
 mac_sign: Voltra Co. BV (DYE7429KTV)
+
 win32_sign: DigiCert: Operator Tool Co.
 
 #
@@ -70,16 +70,19 @@ cmd: node
 arg: main.js
 
 #
-# Advanced Compiler Settings
+# Advanced Settings
 #
 flags: -O3
+debug_flags: -g
 arch: x64
 ```
 
 # PLATFORM SPECIFICS
 
 ## MAC
-You need to copy a entitlements.plist file to the build target directory if you
-specify the `-me` flag.
+
+## WINDOWS
+
+## LINUX
 
 [0]:/docs/troubleshooting.md
