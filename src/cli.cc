@@ -435,16 +435,24 @@ int main (const int argc, const char* argv[]) {
       );
     }
 
-    signCommand
-      << " codesign"
-      << " --force"
-      << " --options runtime"
-      << " --timestamp"
-      << entitlements
-      << " --sign 'Developer ID Application: " + settings["mac_sign"] + "'"
-      << " "
-      << pathToString(fs::path { pathResources / "node_modules" / "leveldown" / "prebuilds" / "darwin-x64" / "node.napi.node" })
+    if (settings["mac_sign_paths"].size() > 0) {
+      auto paths = split(settings["mac_sign_paths"], ';');
 
+      for (auto& path : paths) {
+        signCommand
+          << "; codesign"
+          << " --force"
+          << " --options runtime"
+          << " --timestamp"
+          << entitlements
+          << " --sign 'Developer ID Application: " + settings["mac_sign"] + "'"
+          << " "
+          << pathToString(fs::path { pathResources / path })
+        ;
+      }
+    }
+
+    signCommand
       << "; codesign"
       << " --force"
       << " --options runtime"
