@@ -848,7 +848,7 @@ int main (const int argc, const char* argv[]) {
       << " /f cert.pfx"
       << " /p " + password
       << " "
-      << pathToString(pathPackage);
+      << pathToString(pathPackage) << " 2>&1";
 
       auto r = exec(signCommand.str().c_str());
 
