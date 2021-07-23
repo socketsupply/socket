@@ -842,6 +842,7 @@ int main (const int argc, const char* argv[]) {
     signCommand
       << "\"" + pathToSignTool + "\""
       << " sign"
+      << " /debug"
       << " /tr http://timestamp.digicert.com"
       << " /td sha256"
       << " /fd sha256"
