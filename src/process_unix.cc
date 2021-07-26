@@ -224,7 +224,7 @@ void Process::read() noexcept {
               if (parts.size() > 1) {
                 for (int i = 0; i < parts.size(); i++) {
                   ss << parts[i];
-                  
+
                   std::string s(ss.str());
                   read_stdout(s);
 
@@ -294,11 +294,11 @@ bool Process::write(const char *bytes, size_t n) {
       if (bytesWritten >= b.size()) {
         break;
       }
-        
+
       b = b.substr(bytesWritten, b.size());
     }
 
-    ::write(*stdin_fd, "\n", 1);
+    int bytesWritten = ::write(*stdin_fd, "\n", 1);
   }
 
   return false;
