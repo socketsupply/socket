@@ -353,6 +353,7 @@ int main (const int argc, const char* argv[]) {
     exit(r.exitCode);
   }
 
+  log(r.output);
   log("ran user build command");
 
   std::filesystem::current_path(oldCwd);
