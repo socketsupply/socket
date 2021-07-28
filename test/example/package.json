@@ -8,7 +8,7 @@
   },
   "dependencies": {
     "@optoolco/components": "^12.3.8",
-    "@optoolco/opkit-node": "github:optoolco/opkit-node#v1.1.14",
+    "@optoolco/opkit-node": "github:optoolco/opkit-node#v1.1.17",
     "@optoolco/tonic": "^13.3.5",
     "esbuild": "^0.12.8"
   }

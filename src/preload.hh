@@ -57,6 +57,9 @@ constexpr auto gPreload = R"JS(
         seq,
         value
       }).toString()
+
+      value = value.replace(/\+/g, '%20')
+
     } catch (err) {
       console.error(`${err.message} (${value})`)
       return Promise.reject(err.message)
