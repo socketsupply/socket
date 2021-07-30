@@ -107,9 +107,10 @@ constexpr auto gDestkopManifest = R"INI(
 Encoding=UTF-8
 Version={{version}}
 Name={{name}}
-# Exec must be generated & appended by `toolbox`
 Terminal=false
 Type=Application
+Exec={{linux_executable_path}}
+Icon={{linux_icon_path}}
 # Icon must be generated & appended by `toolbox`.
 # Maybe set StartupWMClass ??
 # StartupWMClass={{name}}

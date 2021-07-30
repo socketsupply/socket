@@ -255,10 +255,40 @@ int main (const int argc, const char* argv[]) {
       "apps"
     };
 
+    fs::path pathSymLinks = {
+      pathPackage /
+      "usr" /
+      "local" /
+      "bin"
+    };
+
     fs::create_directories(pathIcons);
     fs::create_directories(pathResources);
     fs::create_directories(pathManifestFile);
     fs::create_directories(pathControlFile);
+    fs::create_directories(pathSymLinks);
+
+    auto linuxExecPath = fs::path {
+      fs::path("/opt") /
+      settings["name"] /
+      settings["executable"]
+    };
+
+    settings["linux_executable_path"] = pathToString(linuxExecPath);
+    settings["linux_icon_path"] = pathToString(fs::path {
+      fs::path("/usr") /
+      "share" /
+      "icons" /
+      "hicolor" /
+      "256x256" /
+      "apps" /
+      (settings["executable"] + ".png")
+    });
+
+    fs::create_symlink(
+      linuxExecPath,
+      fs::path { pathSymLinks / settings["executable"] }
+    );
 
     writeFile(fs::path {
       pathManifestFile /
