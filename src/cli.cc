@@ -823,7 +823,6 @@ int main (const int argc, const char* argv[]) {
     #endif
   }
 
-  log("try sign something " + pathPackage.string());
 
   //
   // Windows Code Signing
