@@ -255,18 +255,10 @@ int main (const int argc, const char* argv[]) {
       "apps"
     };
 
-    fs::path pathSymLinks = {
-      pathPackage /
-      "usr" /
-      "local" /
-      "bin"
-    };
-
     fs::create_directories(pathIcons);
     fs::create_directories(pathResources);
     fs::create_directories(pathManifestFile);
     fs::create_directories(pathControlFile);
-    fs::create_directories(pathSymLinks);
 
     auto linuxExecPath = fs::path {
       fs::path("/opt") /
@@ -284,11 +276,6 @@ int main (const int argc, const char* argv[]) {
       "apps" /
       (settings["executable"] + ".png")
     });
-
-    fs::create_symlink(
-      linuxExecPath,
-      fs::path { pathSymLinks / settings["executable"] }
-    );
 
     writeFile(fs::path {
       pathManifestFile /
@@ -426,6 +413,25 @@ int main (const int argc, const char* argv[]) {
   // ---
   //
   if (flagShouldPackage && platform.linux) {
+    fs::path pathSymLinks = {
+      pathPackage /
+      "usr" /
+      "local" /
+      "bin"
+    };
+
+    auto linuxExecPath = fs::path {
+      fs::path("/opt") /
+      settings["name"] /
+      settings["executable"]
+    };
+
+    fs::create_directories(pathSymLinks);
+    fs::create_symlink(
+      linuxExecPath,
+      fs::path { pathSymLinks / settings["executable"] }
+    );
+
     std::stringstream archiveCommand;
 
     archiveCommand
