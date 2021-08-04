@@ -161,8 +161,8 @@ int main (const int argc, const char* argv[]) {
   // Darwin Package Prep
   // ---
   //
-  if (platform.darwin) {
-    log("preparing build for darwin");
+  if (platform.mac) {
+    log("preparing build for mac");
     flags = "-std=c++2a -framework WebKit -framework Cocoa -ObjC++";
     flags += getCxxFlags();
 
@@ -452,7 +452,7 @@ int main (const int argc, const char* argv[]) {
   // MacOS Code Signing
   // ---
   //
-  if (flagCodeSign && platform.darwin) {
+  if (flagCodeSign && platform.mac) {
     //
     // https://www.digicert.com/kb/code-signing/mac-os-codesign-tool.htm
     // https://developer.apple.com/forums/thread/128166
@@ -534,7 +534,7 @@ int main (const int argc, const char* argv[]) {
   // MacOS Packaging
   // ---
   //
-  if (flagShouldPackage && platform.darwin) {
+  if (flagShouldPackage && platform.mac) {
     std::stringstream zipCommand;
 
     pathToArchive = fs::path {
@@ -568,7 +568,7 @@ int main (const int argc, const char* argv[]) {
   // MacOS Notorization
   // ---
   //
-  if (flagShouldNotarize && platform.darwin) {
+  if (flagShouldNotarize && platform.mac) {
     std::stringstream notarizeCommand;
     std::string username = getEnv("APPLE_ID");
     std::string password = getEnv("APPLE_ID_PASSWORD");

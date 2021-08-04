@@ -98,19 +98,19 @@ namespace Opkit {
   //
   struct {
     #if defined(_WIN32)
-      bool darwin = false;
+      bool mac = false;
       bool win = true;
       bool linux = false;
       const std::string os = "win";
 
     #elif defined(__APPLE__)
-      bool darwin = true;
+      bool mac = true;
       bool win = false;
       bool linux = false;
-      const std::string os = "darwin";
+      const std::string os = "mac";
 
     #elif defined(__linux__)
-      bool darwin = false;
+      bool mac = false;
       bool win = false;
       bool linux = true;
       const std::string os = "linux";
@@ -286,7 +286,7 @@ namespace Opkit {
   }
 
   inline std::string prefixFile(std::string s) {
-    if (platform.darwin || platform.linux) {
+    if (platform.mac || platform.linux) {
       return std::string("/usr/local/lib/opkit/" + s + " ");
     }
 
@@ -295,7 +295,7 @@ namespace Opkit {
   }
 
   inline std::string prefixFile() {
-    if (platform.darwin || platform.linux) {
+    if (platform.mac || platform.linux) {
       return "/usr/local/lib/opkit";
     }
 

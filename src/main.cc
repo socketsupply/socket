@@ -221,7 +221,7 @@ MAIN {
   };
 
   Process process(
-    appData["cmd"] + argvForward.str(),
+    appData[platform.os + "_cmd"] + argvForward.str(),
     cwd,
     onStdOut,
     onStdErr
