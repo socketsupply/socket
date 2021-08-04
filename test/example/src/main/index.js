@@ -108,7 +108,7 @@ async function main () {
     if (i-- <= 0) return
 
     system.send({
-      index: 0,
+      window: 0,
       event: 'data',
       value: {
         sending: data.join(''),
