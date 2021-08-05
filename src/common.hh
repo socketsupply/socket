@@ -273,7 +273,7 @@ namespace Opkit {
 
       WriteConsoleA(GetStdHandle(STD_OUTPUT_HANDLE), lineStr.c_str(), lineStr.size(), NULL, NULL);
     #else
-      std::cout << s << std::endl;
+      std::cout << str << std::endl;
     #endif
   }
 
