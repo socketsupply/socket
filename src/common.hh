@@ -264,6 +264,19 @@ namespace Opkit {
     return output;
   }
 
+
+  inline void writeToStdout(const std::string &str) {
+    #ifdef _WIN32
+      std::stringstream ss;
+      ss << str << std::endl;
+      auto lineStr = ss.str();
+
+      WriteConsoleA(GetStdHandle(STD_OUTPUT_HANDLE), lineStr.c_str(), lineStr.size(), NULL, NULL);
+    #else
+      std::cout << s << std::endl;
+    #endif
+  }
+
   inline std::string pathToString(const fs::path &path) {
     auto s = path.u8string();
     return std::string(s.begin(), s.end());

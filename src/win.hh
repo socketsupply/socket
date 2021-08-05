@@ -95,6 +95,10 @@ namespace Opkit {
   };
 
   App::App(void* h): hInstance((_In_ HINSTANCE) h) {
+    #if DEBUG == 1
+    AllocConsole();
+    #endif
+
     // this fixes bad default quality DPI.
     SetProcessDPIAware();
 

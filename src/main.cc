@@ -211,7 +211,7 @@ MAIN {
       }
 
       if (cmd.name == "stdout") {
-        std::cout << decodeURIComponent(value) << std::endl;
+        writeToStdout(decodeURIComponent(value));
       }
     });
   };
