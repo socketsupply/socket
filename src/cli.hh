@@ -166,7 +166,7 @@ constexpr auto gWindowsAppManifest = R"XML(<?xml version="1.0" encoding="utf-8"?
   </Applications>
 
   <Prerequisites>
-    <OSMinVersion>10.0.0</OSMinVersion>
+    <OSMinVersion>6.3</OSMinVersion>
     <OSMaxVersionTested>10.0.19041</OSMaxVersionTested>
   </Prerequisites>
 </Package>
