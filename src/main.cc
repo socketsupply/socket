@@ -220,8 +220,18 @@ MAIN {
     std::cerr << err << std::endl;
   };
 
+  auto cmd = appData[platform.os + "_cmd"];
+  if (cmd[0] == '.') {
+    auto index = cmd.find_first_of(' ');
+    auto executable = cmd.substr(0, index);
+
+    auto absPath = fs::path(cwd) / fs::path(executable);
+
+    cmd = pathToString(absPath) + cmd.substr(index);
+  }
+
   Process process(
-    appData[platform.os + "_cmd"] + argvForward.str(),
+    cmd + argvForward.str(),
     cwd,
     onStdOut,
     onStdErr

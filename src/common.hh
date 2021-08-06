@@ -321,10 +321,13 @@ namespace Opkit {
     std::map<std::string, std::string> settings;
 
     for (auto entry : entries) {
-      auto pair = split(entry, ':');
+      auto index = entry.find_first_of(':');
 
-      if (pair.size() == 2) {
-        settings[trim(pair[0])] = trim(pair[1]);
+      if (index >= 0 && index <= entry.size()) {
+        auto key = entry.substr(0, index);
+        auto value = entry.substr(index + 1);
+
+        settings[trim(key)] = trim(value);
       }
     }
 
