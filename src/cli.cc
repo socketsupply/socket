@@ -131,6 +131,27 @@ int main (const int argc, const char* argv[]) {
   auto _settings = WStringToString(readFile(fs::path { target / "settings.config" }));
   auto settings = parseConfig(_settings);
 
+  if (settings.count("_cmd") == 0) {
+    log("at least one of 'win_cmd', 'mac_cmd', 'linux_cmd' key/value is required");
+    exit(1);
+  }
+
+  std::vector<std::string> required = {
+    "name",
+    "title",
+    "executable",
+    "output",
+    "version",
+    "arch"
+  };
+
+  for (const auto &str : required) {
+    if (settings.count(str) == 0) {
+      log("'" + str + "' key/value is required");
+      exit(1);
+    }
+  }
+
   if (flagDebugMode) {
     settings["name"] += "-dev";
     settings["title"] += "-dev";
