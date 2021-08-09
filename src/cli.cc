@@ -403,7 +403,9 @@ int main (const int argc, const char* argv[]) {
   // them to the compiler by replacing new lines with a high bit.
   _settings = encodeURIComponent(_settings);
 
-  auto extraFlags = flagDebugMode ? settings["debug_flags"] : settings["flags"];
+  auto extraFlags = flagDebugMode
+    ? settings.count("debug_flags") ? settings["debug_flags"] : ""
+    : settings.count("flags") ? settings["flags"] : "";
 
   compileCommand
     << getEnv("CXX")
@@ -488,6 +490,11 @@ int main (const int argc, const char* argv[]) {
         "entitlements.plist"
       };
 
+      if (settings.count("mac_entitlements") == 0) {
+        log("'mac_entitlements' key/value is required");
+        exit(1);
+      }
+
       fs::copy(
         fs::path { target / settings["mac_entitlements"] },
         entitlementsPath
@@ -498,9 +505,22 @@ int main (const int argc, const char* argv[]) {
       );
     }
 
-    //
-    // TODO @heapwolf: DRY this up.
-    //
+    if (settings.count("mac_sign") == 0) {
+      log("'mac_sign' key/value is required");
+      exit(1);
+    }
+
+    std::stringstream commonFlags;
+
+    commonFlags
+      << " --force"
+      << " --options runtime"
+      << " --timestamp"
+      << entitlements
+      << " --sign 'Developer ID Application: " + settings["mac_sign"] + "'"
+      << " "
+    ;
+
     if (settings["mac_sign_paths"].size() > 0) {
       auto paths = split(settings["mac_sign_paths"], ';');
 
@@ -509,13 +529,7 @@ int main (const int argc, const char* argv[]) {
 
         signCommand
           << prefix
-          << " codesign"
-          << " --force"
-          << " --options runtime"
-          << " --timestamp"
-          << entitlements
-          << " --sign 'Developer ID Application: " + settings["mac_sign"] + "'"
-          << " "
+          << commonFlags.str()
           << pathToString(fs::path { pathResources / paths[i] })
         ;
       }
@@ -523,21 +537,11 @@ int main (const int argc, const char* argv[]) {
 
     signCommand
       << "; codesign"
-      << " --force"
-      << " --options runtime"
-      << " --timestamp"
-      << entitlements
-      << " --sign 'Developer ID Application: " + settings["mac_sign"] + "'"
-      << " "
+      << commonFlags.str()
       << pathToString(fs::path { pathBin / executable })
 
       << "; codesign"
-      << " --force"
-      << " --options runtime"
-      << " --timestamp"
-      << entitlements
-      << " --sign 'Developer ID Application: " + settings["mac_sign"] + "'"
-      << " "
+      << commonFlags.str()
       << pathToString(pathPackage);
 
     // log(signCommand.str());
