@@ -131,7 +131,11 @@ int main (const int argc, const char* argv[]) {
   auto _settings = WStringToString(readFile(fs::path { target / "settings.config" }));
   auto settings = parseConfig(_settings);
 
-  if (settings.count("_cmd") == 0) {
+  if (
+    settings.count("win_cmd") == 0 &&
+    settings.count("mac_cmd") == 0 &&
+    settings.count("linux_cmd") == 0
+  ) {
     log("at least one of 'win_cmd', 'mac_cmd', 'linux_cmd' key/value is required");
     exit(1);
   }
