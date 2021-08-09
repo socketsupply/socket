@@ -509,40 +509,45 @@ namespace Opkit {
 
       for (int i = 1; i < menu.size(); i++) {
         auto line = trim(menu[i]);
-        if (line.empty()) continue;
+
+        if (line.empty()) {
+          continue;
+        }
+
+        if (line.find("---") != -1) {
+          AppendMenuW(hMenu, MF_SEPARATOR, 0, NULL);
+          continue;
+        }
+
         auto parts = split(line, ':');
         auto title = parts[0];
         int mask = 0;
         std::string key = "";
 
-        if (title.find("---") != -1) {
-          AppendMenuW(hMenu, MF_SEPARATOR, 0, NULL);
-        } else {
-          auto accelerators = split(parts[1], '+');
-          auto accl = std::string("");
+        auto accelerators = split(parts[1], '+');
+        auto accl = std::string("");
 
-          key = trim(parts[1]) == "_" ? "" : trim(accelerators[0]);
+        key = trim(parts[1]) == "_" ? "" : trim(accelerators[0]);
 
-          if (key.size() > 0) {
-            bool isShift = std::string("ABCDEFGHIJKLMNOPQRSTUVWXYZ").find(key) != -1;
-            accl = key;
+        if (key.size() > 0) {
+          bool isShift = std::string("ABCDEFGHIJKLMNOPQRSTUVWXYZ").find(key) != -1;
+          accl = key;
 
-            if (accelerators.size() > 1) {
-              key = replace(key, "Command", "Ctrl");
-              key = replace(key, "CommandOrControl", "Ctrl");
-              accl = std::string(trim(accelerators[1]) + "+" + key);
-            }
-
-            if (isShift) {
-              accl = std::string("Shift+" + accl);
-            }
+          if (accelerators.size() > 1) {
+            key = replace(key, "Command", "Ctrl");
+            key = replace(key, "CommandOrControl", "Ctrl");
+            accl = std::string(trim(accelerators[1]) + "+" + key);
           }
 
-          auto display = std::string(title + "\t" + accl);
-          AppendMenuA(hMenu, MF_STRING, itemId, display.c_str());
-          menuMap[itemId] = std::string(title + "\t" + menuTitle);
-          itemId++;
+          if (isShift) {
+            accl = std::string("Shift+" + accl);
+          }
         }
+
+        auto display = std::string(title + "\t" + accl);
+        AppendMenuA(hMenu, MF_STRING, itemId, display.c_str());
+        menuMap[itemId] = std::string(title + "\t" + menuTitle);
+        itemId++;
       }
 
       AppendMenuA(hMenubar, MF_POPUP, (UINT_PTR) hMenu, menuTitle.c_str());

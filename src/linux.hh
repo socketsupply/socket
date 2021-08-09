@@ -459,31 +459,31 @@ namespace Opkit {
     auto id = std::stoi(seq);
 
     for (auto itemData : menuItems) {
-      auto pair = split(itemData, ':');
-
-      if (pair[0].find("---") != -1) {
+      if (itemData.find("---") != -1) {
         item = gtk_separator_menu_item_new();
-      } else {
-        item = gtk_menu_item_new_with_label(pair[0].c_str());
-        auto meta = std::string(seq + ";" + pair[0].c_str());
-        gtk_widget_set_name(item, meta.c_str());
-
-        g_signal_connect(
-          G_OBJECT(item),
-          "activate",
-          G_CALLBACK(+[](GtkWidget *t, gpointer arg) {
-            auto w = static_cast<Window*>(arg);
-            auto label = gtk_menu_item_get_label(GTK_MENU_ITEM(t));
-            auto title = std::string(label);
-            auto meta = gtk_widget_get_name(t);
-            auto pair = split(meta, ';');
-            auto seq = pair[0];
-
-            w->resolveMenuSelection(seq, title, "contextMenu");
-          }),
-          this
-        );
+        continue;
       }
+
+      auto pair = split(itemData, ':');
+      item = gtk_menu_item_new_with_label(pair[0].c_str());
+      auto meta = std::string(seq + ";" + pair[0].c_str());
+      gtk_widget_set_name(item, meta.c_str());
+
+      g_signal_connect(
+        G_OBJECT(item),
+        "activate",
+        G_CALLBACK(+[](GtkWidget *t, gpointer arg) {
+          auto w = static_cast<Window*>(arg);
+          auto label = gtk_menu_item_get_label(GTK_MENU_ITEM(t));
+          auto title = std::string(label);
+          auto meta = gtk_widget_get_name(t);
+          auto pair = split(meta, ';');
+          auto seq = pair[0];
+
+          w->resolveMenuSelection(seq, title, "contextMenu");
+        }),
+        this
+      );
 
       gtk_widget_show(item);
       gtk_menu_shell_append(GTK_MENU_SHELL(popup), item);

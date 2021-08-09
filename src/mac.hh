@@ -320,6 +320,13 @@ namespace Opkit {
     int index = 0;
 
     for (auto item : menuItems) {
+      if (item.find("---") != -1) {
+        NSMenuItem *sep = [NSMenuItem separatorItem];
+        [pMenu addItem:sep];
+        index++;
+        continue;
+      }
+
       auto pair = split(trim(item), ':');
 
       NSString* nssTitle = [NSString stringWithUTF8String:pair[0].c_str()];
@@ -329,17 +336,12 @@ namespace Opkit {
         nssKey = [NSString stringWithUTF8String:pair[1].c_str()];
       }
 
-      if (pair[0].find("---") != -1) {
-        NSMenuItem *sep = [NSMenuItem separatorItem];
-        [pMenu addItem:sep];
-      } else {
-        menuItem = [pMenu
-          insertItemWithTitle:nssTitle
-          action:@selector(menuItemSelected:)
-          keyEquivalent:nssKey
-          atIndex:index
-        ];
-      }
+      menuItem = [pMenu
+        insertItemWithTitle:nssTitle
+        action:@selector(menuItemSelected:)
+        keyEquivalent:nssKey
+        atIndex:index
+      ];
 
       [menuItem setTag:id];
 

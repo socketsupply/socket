@@ -40,12 +40,12 @@ async function main () {
   const menu = `
     Operator:
       About Operator: _
-      ---: _
+      ---
       Preferences...: , + Meta
-      ---: _
+      ---
       Hide: h + Meta
       Hide Others: h + Control + Meta
-      ---: _
+      ---
       Quit: q + CommandOrControl;
 
     Edit:
@@ -57,7 +57,7 @@ async function main () {
 
     Foo:
       Bazz: z + Meta
-      ---: _
+      ---
       Quxx: e + Meta + Alt;
 
     Other:
