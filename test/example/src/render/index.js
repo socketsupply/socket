@@ -86,7 +86,7 @@ class AppContainer extends Tonic {
 
     if (el.dataset.event === 'open') {
       const response = await system.dialog('open')
-      this.querySelector('#opened').value = response.replace(',', '\n')
+      this.querySelector('#opened').value = response
     }
     if (el.dataset.event === 'restart') {
       system.send({

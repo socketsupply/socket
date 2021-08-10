@@ -65,6 +65,7 @@ constexpr auto gPreload = R"JS(
       return Promise.reject(err.message)
     }
 
+    console.log('SEND', `ipc://${name}?${value}`)
     window.external.invoke(`ipc://${name}?${value}`)
     return promise
   }
