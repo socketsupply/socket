@@ -26,10 +26,12 @@ async function main () {
   // await system.setSize({ window: 0, width: 200, height: 200 })
 
   const size = await system.getScreenSize()
-  // this fails on linux wayland
-  // console.log(size)
-  // assert(size.width, 'screen has width')
-  // assert(size.height, 'screen has width')
+
+  // this fails on linux wayland for some reason
+  if (process.env.XDG_SESSION_TYPE !== 'wayland') {
+    assert(size.width, 'screen has width')
+    assert(size.height, 'screen has width')
+  }
 
   //
   // ## Example
