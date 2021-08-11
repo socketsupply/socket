@@ -46,7 +46,6 @@ namespace Opkit {
       void restart();
       void dispatch(std::function<void()>);
       std::string getCwd(const std::string&);
-      ScreenSize getScreenSize();
   };
 
   std::atomic<bool> App::isReady {false};
@@ -92,6 +91,7 @@ namespace Opkit {
         const std::string&
       );
       int openExternal(const std::string&);
+      ScreenSize getScreenSize();
   };
 
   App::App(void* h): hInstance((_In_ HINSTANCE) h) {
@@ -313,7 +313,7 @@ namespace Opkit {
     return pathToString(path);
   }
 
-  ScreenSize App::getScreenSize () {
+  ScreenSize Window::getScreenSize () {
     return ScreenSize {
       .height = GetSystemMetrics(SM_CYFULLSCREEN),
       .width = GetSystemMetrics(SM_CXFULLSCREEN)

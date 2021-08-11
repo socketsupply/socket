@@ -25,7 +25,6 @@ namespace Opkit {
       void restart();
       void dispatch(std::function<void()> work);
       std::string getCwd(const std::string&);
-      ScreenSize getScreenSize();
   };
 
   class Window : public IWindow {
@@ -51,6 +50,7 @@ namespace Opkit {
 
       void setSystemMenu(const std::string& seq, const std::string& menu);
       int openExternal(const std::string& s);
+      ScreenSize getScreenSize();
   };
 
   App::App (int instanceId) {
@@ -90,15 +90,6 @@ namespace Opkit {
   }
 
   void App::restart () {
-  }
-
-  ScreenSize App::getScreenSize () {
-    NSRect e = [[NSScreen mainScreen] frame];
-
-    return ScreenSize {
-      .height = (int) e.size.height,
-      .width = (int) e.size.width
-    };
   }
 
   Window::Window (App& app, WindowOptions opts) : app(app), opts(opts) {
@@ -234,6 +225,15 @@ namespace Opkit {
     [window setContentView:webview];
    
     navigate("0", opts.url);
+  }
+
+  ScreenSize Window::getScreenSize () {
+    NSRect e = [[NSScreen mainScreen] frame];
+
+    return ScreenSize {
+      .height = (int) e.size.height,
+      .width = (int) e.size.width
+    };
   }
 
   void Window::show (const std::string& seq) {

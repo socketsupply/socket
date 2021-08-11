@@ -163,7 +163,7 @@ MAIN {
       }
 
       if (cmd.name == "getScreenSize") {
-        auto size = app.getScreenSize();
+        auto size = w.getScreenSize();
 
         std::string value(
           "{"

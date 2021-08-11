@@ -18,8 +18,6 @@ namespace Opkit {
       void restart();
       void dispatch(std::function<void()> work);
       std::string getCwd(const std::string&);
-      ScreenSize getScreenSize();
-      ScreenSize getScreenSize (GtkWidget* widget);
   };
 
   std::atomic<bool> App::isReady {false};
@@ -46,6 +44,7 @@ namespace Opkit {
       void setSize(const std::string&, int, int, int);
       void setContextMenu(const std::string&, const std::string&);
       void openDialog(const std::string&, bool, bool, bool, bool, const std::string&, const std::string&);
+      ScreenSize getScreenSize();
 
       void setSystemMenu(const std::string& seq, const std::string& menu);
       int openExternal(const std::string& s);
@@ -86,36 +85,6 @@ namespace Opkit {
         delete static_cast<std::function<void()>*>(f);
       }
     );
-  }
-
-  ScreenSize App::getScreenSize () {
-  }
-
-  ScreenSize App::getScreenSize (GtkWidget* widget) {
-    auto display = gdk_display_get_default();
-
-    if (getEnv("XDG_SESSION_TYPE").compare("x11") == 0) {
-      GdkRectangle workarea = {0};
-
-      gdk_monitor_get_workarea(
-        gdk_display_get_primary_monitor(display),
-        &workarea
-      );
-
-      return ScreenSize {
-        .height = (int) workarea.height,
-        .width = (int) workarea.width
-      };
-    }
-
-    GdkRectangle workarea;
-    auto monitor = gdk_display_get_primary_monitor(display);
-    gdk_monitor_get_geometry(monitor, &workarea);
-
-    return ScreenSize {
-      .height = (int) workarea.height,
-      .width = (int) workarea.width
-    };
   }
 
   Window::Window (App& app, WindowOptions opts) : app(app), opts(opts) {
@@ -209,6 +178,52 @@ namespace Opkit {
     gtk_box_pack_end(GTK_BOX(vbox), webview, TRUE, TRUE, 0);
 
     gtk_widget_grab_focus(GTK_WIDGET(webview));
+  }
+
+  ScreenSize Window::getScreenSize () {
+    auto* display = gdk_display_get_default();
+    /* auto* surface = gtk_native_get_surface(
+      gtk_widget_get_native(window)
+    );
+
+    auto* mon = gdk_display_get_monitor_at_surface(display, surface);
+    */
+
+    auto* win = gtk_widget_get_window(window);
+    auto* mon = gdk_display_get_monitor_at_window(display, win);
+
+    GdkRectangle workarea = {0};
+    gdk_monitor_get_geometry(mon, &workarea);
+
+    /* auto display = gdk_display_get_default();
+
+    if (getEnv("XDG_SESSION_TYPE").compare("x11") == 0) {
+      GdkRectangle workarea = {0};
+
+      gdk_monitor_get_workarea(
+        gdk_display_get_primary_monitor(display),
+        &workarea
+      );
+
+      return ScreenSize {
+        .height = (int) workarea.height,
+        .width = (int) workarea.width
+      };
+    }
+
+    GdkRectangle workarea;
+    auto monitor = gdk_display_get_primary_monitor(display);
+
+    if (monitor == nullptr) {
+    }
+
+    gdk_monitor_get_geometry(GDK_MONITOR(monitor), &workarea);
+    */
+
+    return ScreenSize {
+      .height = (int) workarea.height,
+      .width = (int) workarea.width
+    };
   }
 
   void Window::eval(const std::string& s) {

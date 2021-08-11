@@ -516,7 +516,6 @@ namespace Opkit {
       virtual void restart() = 0;
       virtual void dispatch(std::function<void()> work) = 0;
       virtual std::string getCwd(const std::string&) = 0;
-      virtual ScreenSize getScreenSize() = 0;
   };
 
   void IApp::exit () {
@@ -547,6 +546,7 @@ namespace Opkit {
       virtual void setContextMenu(const std::string&, const std::string&) = 0;
       virtual void setSystemMenu(const std::string&, const std::string&) = 0;
       virtual void openDialog(const std::string&, bool, bool, bool, bool, const std::string&, const std::string&) = 0;
+      virtual ScreenSize getScreenSize() = 0;
   };
 
   std::string IWindow::createPreload(WindowOptions opts) {
