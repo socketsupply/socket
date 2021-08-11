@@ -64,25 +64,12 @@ powershell ./bin/bootstrap.ps1
 ```
 
 There is an example app written in Node.js, to build and run it...
+Using the `-r` flag will find the built artifact and run it.
 
 ```sh
 cd test/example
 npm install
-opkit . # run the cli tool to build and package the app
-```
-
-Then open the binary that was created by the build program...
-
-```sh
-open ./dist/Operator.app # macOS
-```
-
-```sh
-./dist/operator_v0.0.1-1_x64/opt/Operator/operator # linux
-```
-
-```sh
-dist\operator.exe # win32
+opkit . -r
 ```
 
 [02]:https://developer.apple.com/forums/thread/128166
