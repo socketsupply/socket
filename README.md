@@ -46,20 +46,23 @@ curl -o- https://raw.githubusercontent.com/optoolco/opkit/master/bin/bootstrap.s
 
 # DEVELOPMENT ON OPKIT
 
+```sh
+git clone git@github.com:optoolco/opkit.git
+cd opkit
+```
+
 If you want to hack on the Opkit project itself, clone this repo and install
 the CLI tool (unless you already did this with curl).
 
+On MacOS or Linux...
+
 ```sh
-git clone git@github.com:optoolco/opkit.git
-cd opkit
 ./bin/bootstrap.sh install local
 ```
 
-For windows you can run
+On Windows...
 
 ```sh
-git clone git@github.com:optoolco/opkit.git
-cd opkit
 powershell ./bin/bootstrap.ps1
 ```
 
