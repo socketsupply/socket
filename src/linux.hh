@@ -490,6 +490,8 @@ namespace Opkit {
     auto id = std::stoi(seq);
 
     for (auto itemData : menuItems) {
+      if (trim(item).size() == 0) continue;
+
       if (itemData.find("---") != -1) {
         item = gtk_separator_menu_item_new();
         continue;

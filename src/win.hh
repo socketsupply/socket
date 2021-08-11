@@ -508,6 +508,8 @@ namespace Opkit {
       HMENU hMenu = CreateMenu();
 
       for (int i = 1; i < menu.size(); i++) {
+        if (trim(item).size() == 0) continue;
+
         auto line = trim(menu[i]);
 
         if (line.empty()) {

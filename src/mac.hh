@@ -320,6 +320,8 @@ namespace Opkit {
     int index = 0;
 
     for (auto item : menuItems) {
+      if (trim(item).size() == 0) continue;
+
       if (item.find("---") != -1) {
         NSMenuItem *sep = [NSMenuItem separatorItem];
         [pMenu addItem:sep];

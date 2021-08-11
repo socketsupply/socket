@@ -49,7 +49,8 @@ async function main () {
       Hide: h + Meta
       Hide Others: h + Control + Meta
       ---
-      Quit: q + CommandOrControl;
+      Quit: q + CommandOrControl
+    ;
 
     Edit:
       Cut: x + CommandOrControl
@@ -61,11 +62,13 @@ async function main () {
     Foo:
       Bazz: z + Meta
       ---
-      Quxx: e + Meta + Alt;
+      Quxx: e + Meta + Alt
+    ;
 
     Other:
       Another Test: t + Alt
       Beep: T + Meta
+    ;
   `
 
   await system.setMenu({ window: 0, value: menu })
