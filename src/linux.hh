@@ -178,47 +178,25 @@ namespace Opkit {
     gtk_box_pack_end(GTK_BOX(vbox), webview, TRUE, TRUE, 0);
 
     gtk_widget_grab_focus(GTK_WIDGET(webview));
+
+    /* g_signal_connect(
+      G_OBJECT(webview),
+      "button-press-event",
+      G_CALLBACK(+[](GtkWidget*, gpointer) {
+        std::cout << "HELLO" << std::endl;
+        return false;
+      }),
+      webview
+    ); */
   }
 
   ScreenSize Window::getScreenSize () {
     auto* display = gdk_display_get_default();
-    /* auto* surface = gtk_native_get_surface(
-      gtk_widget_get_native(window)
-    );
-
-    auto* mon = gdk_display_get_monitor_at_surface(display, surface);
-    */
-
     auto* win = gtk_widget_get_window(window);
     auto* mon = gdk_display_get_monitor_at_window(display, win);
 
     GdkRectangle workarea = {0};
     gdk_monitor_get_geometry(mon, &workarea);
-
-    /* auto display = gdk_display_get_default();
-
-    if (getEnv("XDG_SESSION_TYPE").compare("x11") == 0) {
-      GdkRectangle workarea = {0};
-
-      gdk_monitor_get_workarea(
-        gdk_display_get_primary_monitor(display),
-        &workarea
-      );
-
-      return ScreenSize {
-        .height = (int) workarea.height,
-        .width = (int) workarea.width
-      };
-    }
-
-    GdkRectangle workarea;
-    auto monitor = gdk_display_get_primary_monitor(display);
-
-    if (monitor == nullptr) {
-    }
-
-    gdk_monitor_get_geometry(GDK_MONITOR(monitor), &workarea);
-    */
 
     return ScreenSize {
       .height = (int) workarea.height,
@@ -490,7 +468,7 @@ namespace Opkit {
     auto id = std::stoi(seq);
 
     for (auto itemData : menuItems) {
-      if (trim(item).size() == 0) continue;
+      if (trim(itemData).size() == 0) continue;
 
       if (itemData.find("---") != -1) {
         item = gtk_separator_menu_item_new();
@@ -522,33 +500,24 @@ namespace Opkit {
       gtk_menu_shell_append(GTK_MENU_SHELL(popup), item);
     }
 
-    auto win = GDK_WINDOW(gtk_widget_get_window(window));
-    auto seat = gdk_display_get_default_seat(gdk_display_get_default());
-    auto mouse_device = gdk_seat_get_pointer(seat);
+    // auto win = GDK_WINDOW(gtk_widget_get_window(window));
+    // auto seat = gdk_display_get_default_seat(gdk_display_get_default());
+    // auto mouse_device = gdk_seat_get_pointer(seat);
 
-    GdkRectangle rect;
-    gint x, y;
+    // auto event = gdk_event_new(GDK_BUTTON_PRESS);
+    // event->button.time = GDK_CURRENT_TIME;
+    // event->button.window = win;
+    // gdk_event_set_device(event, mouse_device);
 
-    gdk_window_get_device_position(win, mouse_device, &x, &y, NULL);
-
-    rect.x = x;
-    rect.y = y;
-    rect.width = 0;
-    rect.height = 0;
-
-    auto event = gdk_event_new(GDK_BUTTON_PRESS);
-    event->button.time = GDK_CURRENT_TIME;
-    event->button.window = win;
-    gdk_event_set_device(event, mouse_device);
-
-    gtk_menu_popup_at_rect(
+    gtk_menu_popup_at_pointer(
       GTK_MENU(popup),
-      win,
-      &rect,
-      GDK_GRAVITY_SOUTH_WEST,
-      GDK_GRAVITY_NORTH_WEST,
-      event
+      nullptr
     );
+
+    // gtk_widget_show_all(popup);
+    // gtk_widget_add_events(window, GDK_BUTTON_PRESS_MASK);
+    // gtk_widget_add_events(popup, GDK_FOCUS_CHANGE_MASK);
+    // gtk_widget_grab_focus(popup);
   }
 
   void Window::openDialog (
