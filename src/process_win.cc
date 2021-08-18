@@ -187,7 +187,7 @@ void Process::read() noexcept {
         auto parts = splitc(b, '\n');
 
         if (parts.size() > 1) {
-          for (int i = 0; i < parts.size(); i++) {
+          for (int i = 0; i < parts.size() - 1; i++) {
             ss << parts[i];
             std::string s(ss.str());
             read_stdout(s);
