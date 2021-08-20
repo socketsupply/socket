@@ -46,6 +46,8 @@ For debian/ubuntu, before you install the packages, you may want
 to [add][0] these software update repos [here][1] to the software
 updater.
 
+#### ubuntu
+
 ```sh
 sudo apt install \
   build-essential \
@@ -57,6 +59,14 @@ sudo apt install \
 
 [0]:https://linuxize.com/post/how-to-add-apt-repository-in-ubuntu/
 [1]:https://apt.llvm.org/
+
+#### arch/manjaro
+
+arch uses the latest versions, so just install `base-devel`
+
+``` sh
+sudo pacman -S base-devel
+```
 
 ### Running multiple versions of g++
 
