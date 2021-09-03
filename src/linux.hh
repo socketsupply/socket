@@ -500,24 +500,24 @@ namespace Opkit {
       gtk_menu_shell_append(GTK_MENU_SHELL(popup), item);
     }
 
-    // auto win = GDK_WINDOW(gtk_widget_get_window(window));
-    // auto seat = gdk_display_get_default_seat(gdk_display_get_default());
-    // auto mouse_device = gdk_seat_get_pointer(seat);
+    auto win = GDK_WINDOW(gtk_widget_get_window(window));
+    auto seat = gdk_display_get_default_seat(gdk_display_get_default());
+    auto mouse_device = gdk_seat_get_pointer(seat);
 
-    // auto event = gdk_event_new(GDK_BUTTON_PRESS);
-    // event->button.time = GDK_CURRENT_TIME;
-    // event->button.window = win;
-    // gdk_event_set_device(event, mouse_device);
+    auto event = gdk_event_new(GDK_BUTTON_PRESS);
+    event->button.time = GDK_CURRENT_TIME;
+    event->button.window = win;
+    gdk_event_set_device(event, mouse_device);
 
     gtk_menu_popup_at_pointer(
       GTK_MENU(popup),
-      nullptr
+      event
     );
 
-    // gtk_widget_show_all(popup);
-    // gtk_widget_add_events(window, GDK_BUTTON_PRESS_MASK);
-    // gtk_widget_add_events(popup, GDK_FOCUS_CHANGE_MASK);
-    // gtk_widget_grab_focus(popup);
+    gtk_widget_show_all(popup);
+    gtk_widget_add_events(window, GDK_BUTTON_PRESS_MASK);
+    gtk_widget_add_events(popup, GDK_FOCUS_CHANGE_MASK);
+    gtk_widget_grab_focus(popup);
   }
 
   void Window::openDialog (
