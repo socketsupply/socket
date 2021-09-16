@@ -129,6 +129,8 @@ namespace Opkit {
   struct WindowOptions {
     bool resizable = true;
     bool frameless = false;
+    bool utility = false;
+    bool canExit = true;
     int height = 0;
     int width = 0;
     int index = 0;
@@ -377,6 +379,11 @@ namespace Opkit {
     for (auto& rawPair : pairs) {
       auto pair = split(rawPair, '=');
       if (pair.size() <= 1) continue;
+
+      if (pair[0].compare("index") == 0) {
+        index = std::stoi(pair[1]);
+      }
+
       args[pair[0]] = pair[1];
     }
   }
@@ -540,6 +547,7 @@ namespace Opkit {
       virtual void hide(const std::string&) = 0;
       virtual void exit() = 0;
       virtual void kill() = 0;
+      virtual void close() = 0;
       virtual void navigate(const std::string&, const std::string&) = 0;
       virtual void setSize(const std::string&, int, int, int) = 0;
       virtual void setTitle(const std::string&, const std::string&) = 0;

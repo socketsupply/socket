@@ -15,6 +15,7 @@ namespace Opkit {
 
       int run();
       void kill();
+      void close();
       void restart();
       void dispatch(std::function<void()> work);
       std::string getCwd(const std::string&);
@@ -135,7 +136,7 @@ namespace Opkit {
       G_OBJECT(window),
       "destroy",
       G_CALLBACK(+[](GtkWidget*, gpointer arg) {
-        static_cast<Window*>(arg)->exit();
+        static_cast<Window*>(arg)->close();
       }),
       this
     );
@@ -238,6 +239,12 @@ namespace Opkit {
 
   void Window::kill() {
     // gtk releases objects automatically.
+  }
+
+  void Window::close () {
+    if (opts.canExit) {
+      this->exit();
+    }
   }
 
   void Window::navigate(const std::string &seq, const std::string &s) {

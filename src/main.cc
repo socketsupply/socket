@@ -103,9 +103,9 @@ MAIN {
   // that we can communicate with it from the main process.
   //
   Window w1(app, WindowOptions {
-    .resizable = false,
-    .frameless = true,
+    .resizable = true,
     .height = 120,
+    .canExit = false,
     .width = 350,
     .index = 1,
     .debug = _debug,
@@ -260,6 +260,11 @@ MAIN {
 
     if (cmd.name == "exit") {
       w.exit();
+      return;
+    }
+
+    if (cmd.name == "hide") {
+      w.hide("");
       return;
     }
 

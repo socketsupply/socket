@@ -27,6 +27,8 @@ constexpr auto gPListInfo = R"XML(
   <string>This app needs access to the camera</string>
   <key>NSMainNibFile</key>
   <string>MainMenu</string>
+  <key>LSMultipleInstancesProhibited</key>
+  <true/>
   <key>CFBundlePackageType</key>
   <string>APPL</string>
   <key>CFBundleIconFile</key>

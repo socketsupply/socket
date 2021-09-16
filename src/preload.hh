@@ -99,6 +99,10 @@ constexpr auto gPreload = R"JS(
     return window._ipc.send('title', value)
   }
 
+  window.system.hide = value => {
+    return window._ipc.send('hide', value)
+  }
+
   window.system.dialog = async (value) => {
     const files = await window._ipc.send('dialog', value);
     return files.split('\n');

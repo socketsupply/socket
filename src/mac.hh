@@ -42,6 +42,7 @@ namespace Opkit {
       void hide(const std::string&);
       void kill();
       void exit();
+      void close();
       void navigate(const std::string&, const std::string&);
       void setTitle(const std::string&, const std::string&);
       void setSize(const std::string&, int, int, int);
@@ -104,6 +105,8 @@ namespace Opkit {
     if (opts.frameless) {
       style |= NSWindowStyleMaskFullSizeContentView;
       style |= NSWindowStyleMaskBorderless;
+    } else if (opts.utility) {
+      style |= NSWindowStyleMaskUtilityWindow;
     } else {
       style |= NSWindowStyleMaskClosable;
       style |= NSWindowStyleMaskMiniaturizable;
@@ -161,16 +164,23 @@ namespace Opkit {
         forKey:@"allowFileAccessFromFileURLs"];
 
     window.titlebarAppearsTransparent = true;
-  
+
     // [webview registerForDraggedTypes:
     //  [NSArray arrayWithObject:NSPasteboardTypeFileURL]];
 
     // Add delegate methods manually in order to capture "this"
     class_replaceMethod(
-      [WindowDelegate class], @selector(windowWillClose:),
+      [WindowDelegate class],
+      @selector(windowShouldClose:),
       imp_implementationWithBlock(
         [&](id self, SEL cmd, id notification) {
-          this->exit();
+          if (this->opts.canExit) {
+            this->close();
+            return true;
+          }
+
+          this->hide("");
+          return false;
         }),
       "v@:@"
     );
@@ -223,7 +233,7 @@ namespace Opkit {
 
     // Add webview to window
     [window setContentView:webview];
-   
+
     navigate("0", opts.url);
   }
 
@@ -251,7 +261,14 @@ namespace Opkit {
   }
 
   void Window::kill () {
+  }
+
+  void Window::close () {
     // [window performClose:nil];
+
+    if (opts.canExit) {
+      this->exit();
+    }
   }
 
   void Window::hide (const std::string& seq) {

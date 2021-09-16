@@ -76,6 +76,7 @@ namespace Opkit {
       void hide(const std::string&);
       void exit();
       void kill();
+      void close();
       void navigate(const std::string&, const std::string&);
       void setSize(const std::string&, int, int, int);
       void setTitle(const std::string&, const std::string&);
@@ -353,6 +354,17 @@ namespace Opkit {
     }
 
     onExit();
+  }
+
+  void Window::close () {
+    if (opts.canExit) {
+      if (w == nullptr) {
+        PostQuitMessage(WM_QUIT);
+        break;
+      }
+
+      this->exit();
+    }
   }
 
   void Window::show (const std::string& seq) {
@@ -756,12 +768,7 @@ namespace Opkit {
       }
 
       case WM_DESTROY: {
-        if (w == nullptr) {
-          PostQuitMessage(WM_QUIT);
-          break;
-        }
-
-        w->exit();
+        w->close();
         break;
       }
 
