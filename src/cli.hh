@@ -34,7 +34,7 @@ constexpr auto gPListInfo = R"XML(
   <key>CFBundleIconFile</key>
   <string>index.icns</string>
   <key>CFBundleShortVersionString</key>
-  <string>{{versionShort}</string>
+  <string>{{versionShort} Build {{revision}}</string>
   <key>NSHighResolutionCapable</key>
   <true/>
   <key>NSMicrophoneUsageDescription</key>

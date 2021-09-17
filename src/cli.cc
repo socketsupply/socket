@@ -140,6 +140,10 @@ int main (const int argc, const char* argv[]) {
     exit(1);
   }
 
+  if (settings.count("revision") == 0) {
+    settings["revision"] = version;
+  }
+
   std::vector<std::string> required = {
     "name",
     "title",
