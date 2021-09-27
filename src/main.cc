@@ -262,7 +262,7 @@ MAIN {
     }
 
     if (cmd.name == "exit") {
-      exitCode = std::stoi(cmd.get("value"));
+      exitCode = std::stoi(decodeURIComponent(cmd.get("value")));
       w.exit();
       return;
     }
