@@ -376,6 +376,20 @@ int main (const int argc, const char* argv[]) {
 
   log("package prepared");
 
+  std::stringstream argvForward;
+
+  int c = 0;
+  for (auto const arg : std::span(argv, argc)) {
+    c++;
+    auto argStr = std::string(arg);
+
+    if (c > 2) {
+      if ("-r" == argStr || "-o" == argStr) continue;
+      if (argStr.find("-") != 0) continue;
+      argvForward << " " << argStr;
+    }
+  }
+
   //
   // cd into the target and run the user's build command,
   // pass it the platform specific directory where they
@@ -389,7 +403,8 @@ int main (const int argc, const char* argv[]) {
     << settings["build"]
     << " "
     << pathToString(pathResourcesRelativeToUserBuild)
-    << " --debug=" << flagDebugMode;
+    << " --debug=" << flagDebugMode
+    << argvForward.str();
 
   log(buildCommand.str());
   auto r = exec(buildCommand.str().c_str());
@@ -953,7 +968,7 @@ int main (const int argc, const char* argv[]) {
       execName
     });
 
-    std::system(cmd.c_str());
+    std::system((cmd + argvForward.str()).c_str());
   }
 
   return 0;
