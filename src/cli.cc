@@ -84,39 +84,39 @@ int main (const int argc, const char* argv[]) {
   bool flagShouldPackage = false;
 
   for (auto const arg : std::span(argv, argc)) {
-    if (std::string(arg).find("-c") != -1) {
+    if (std::string(arg).find("-c") == 0) {
       flagCodeSign = true;
     }
 
-    if (std::string(arg).find("-h") != -1) {
+    if (std::string(arg).find("-h") == 0) {
       help();
     }
 
-    if (std::string(arg).find("-me") != -1) {
+    if (std::string(arg).find("-me") == 0) {
       flagEntitlements = true;
     }
 
-    if (std::string(arg).find("-mn") != -1) {
+    if (std::string(arg).find("-mn") == 0) {
       flagShouldNotarize = true;
     }
 
-    if (std::string(arg).find("-o") != -1) {
+    if (std::string(arg).find("-o") == 0) {
       flagRunUserBuild = true;
     }
 
-    if (std::string(arg).find("-p") != -1) {
+    if (std::string(arg).find("-p") == 0) {
       flagShouldPackage = true;
     }
 
-    if (std::string(arg).find("-r") != -1) {
+    if (std::string(arg).find("-r") == 0) {
       flagShouldRun = true;
     }
 
-    if (std::string(arg).find("-s") != -1) {
+    if (std::string(arg).find("-s") == 0) {
       flagAppStore = true;
     }
 
-    if (std::string(arg).find("-xd") != -1) {
+    if (std::string(arg).find("-xd") == 0) {
       flagDebugMode = false;
     }
   }
