@@ -104,8 +104,8 @@ MAIN {
   //
   Window w1(app, WindowOptions {
     .resizable = true,
-    .height = 120,
     .canExit = false,
+    .height = 120,
     .width = 350,
     .index = 1,
     .debug = _debug,

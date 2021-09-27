@@ -15,7 +15,6 @@ namespace Opkit {
 
       int run();
       void kill();
-      void close();
       void restart();
       void dispatch(std::function<void()> work);
       std::string getCwd(const std::string&);
@@ -39,6 +38,7 @@ namespace Opkit {
       void show(const std::string&);
       void hide(const std::string&);
       void kill();
+      void close();
       void exit();
       void navigate(const std::string&, const std::string&);
       void setTitle(const std::string&, const std::string&);
