@@ -112,6 +112,8 @@ MAIN {
     .argv = argvArray.str()
   });
 
+  int exitCode = 0;
+
   //
   // # Main -> Render
   // Launch the main process and connect callbacks to the stdio and stderr pipes.
@@ -190,6 +192,7 @@ MAIN {
       }
 
       if (cmd.name == "exit") {
+        exitCode = std::stoi(value);
         w.exit();
         if (seq.size() > 0) {
           w.resolveToMainProcess(seq, "0", "null");
@@ -259,6 +262,7 @@ MAIN {
     }
 
     if (cmd.name == "exit") {
+      exitCode = std::stoi(cmd.get("value"));
       w.exit();
       return;
     }
@@ -341,4 +345,6 @@ MAIN {
   // thread and run it until it returns a non-zero int.
   //
   while(app.run() == 0);
+
+  exit(exitCode);
 }

@@ -955,6 +955,7 @@ int main (const int argc, const char* argv[]) {
       }
   }
 
+  int exitCode = 0;
   if (flagShouldRun) {
     std::string execName = "";
     if (platform.win) {
@@ -968,8 +969,11 @@ int main (const int argc, const char* argv[]) {
       execName
     });
 
-    std::system((cmd + argvForward.str()).c_str());
+    auto code = std::system((cmd + argvForward.str()).c_str());
+
+    // TODO: What kind of exit code does std::system give on windows
+    exitCode = code > 0 ? WEXITSTATUS(code) : code;
   }
 
-  return 0;
+  return exitCode;
 }
