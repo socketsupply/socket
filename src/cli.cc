@@ -411,7 +411,7 @@ int main (const int argc, const char* argv[]) {
 
   if (r.exitCode != 0) {
     log("Unable to run user build command");
-    exit(r.exitCode);
+    exit(WEXITSTATUS(r.exitCode));
   }
 
   log(r.output);
@@ -448,7 +448,7 @@ int main (const int argc, const char* argv[]) {
 
     if (r.exitCode != 0) {
       log("Unable to build");
-      exit(r.exitCode);
+      exit(WEXITSTATUS(r.exitCode));
     }
 
     log("compiled native binary");
@@ -572,7 +572,7 @@ int main (const int argc, const char* argv[]) {
 
     if (r.exitCode != 0) {
       log("Unable to sign");
-      exit(r.exitCode);
+      exit(WEXITSTATUS(r.exitCode));
     }
 
     log("finished code signing");
@@ -636,7 +636,7 @@ int main (const int argc, const char* argv[]) {
 
     if (r.exitCode != 0) {
       log("Unable to notarize");
-      exit(r.exitCode);
+      exit(WEXITSTATUS(r.exitCode));
     }
 
     std::regex re(R"(\nRequestUUID = (.+?)\n)");
@@ -702,7 +702,7 @@ int main (const int argc, const char* argv[]) {
 
         if (r.exitCode != 0) {
           log("Unable to get notarization history");
-          exit(r.exitCode);
+          exit(WEXITSTATUS(r.exitCode));
         }
 
         log(r.output);
@@ -951,7 +951,7 @@ int main (const int argc, const char* argv[]) {
         log(r.output);
         log("---");
 
-        exit(r.exitCode);
+        exit(WEXITSTATUS(r.exitCode));
       }
   }
 
