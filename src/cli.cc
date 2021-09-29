@@ -33,7 +33,8 @@ void help () {
     << "  -o  only run user build step" << std::endl
     << "  -p  package the app" << std::endl
     << "  -r  run after building" << std::endl
-    << "  -xd turn off debug mode" << std::endl
+    << "  -xd turn off debug mode" << std::endl << std::endl
+    << "  --test=1 indicate test mode" << std::endl;
   ;
 
   exit(0);
@@ -81,6 +82,7 @@ int main (const int argc, const char* argv[]) {
   bool flagEntitlements = false;
   bool flagShouldNotarize = false;
   bool flagDebugMode = true;
+  bool flagTestMode = false;
   bool flagShouldPackage = false;
 
   for (auto const arg : std::span(argv, argc)) {
@@ -118,6 +120,10 @@ int main (const int argc, const char* argv[]) {
 
     if (std::string(arg).find("-xd") == 0) {
       flagDebugMode = false;
+    }
+
+    if (std::string(arg).find("--test") == 0) {
+      flagTestMode = true;
     }
   }
 
@@ -160,11 +166,19 @@ int main (const int argc, const char* argv[]) {
     }
   }
 
+  std::string suffix = "";
+
   if (flagDebugMode) {
-    settings["name"] += "-dev";
-    settings["title"] += "-dev";
-    settings["executable"] += "-dev";
+    suffix += "-dev";
   }
+
+  if (flagTestMode) {
+    suffix += "-test";
+  }
+
+  settings["name"] += suffix;
+  settings["title"] += suffix;
+  settings["executable"] += suffix;
 
   auto pathOutput = fs::path { settings["output"] };
 

@@ -33,20 +33,10 @@ MAIN {
   auto cwd = app.getCwd(argv[0]);
   appData = parseConfig(decodeURIComponent(_settings));
 
-  #if DEBUG == 1
-    appData["name"] += "-dev";
-    appData["title"] += "-dev";
-  #endif
+  std::string suffix = "";
 
   std::stringstream argvArray;
   std::stringstream argvForward;
-
-  argvForward << " --version=" << appData["version"];
-  argvForward << " --name=" << appData["name"];
-
-  #if DEBUG == 1
-    argvForward << " --debug=1";
-  #endif
 
   int c = 0;
 
@@ -59,8 +49,27 @@ MAIN {
       << replace(std::string(arg), "'", "\'")
       << (c++ < argc ? "', " : "'");
 
+    if (std::string(arg).find("--test") == 0) {
+      suffix = "-test";
+    }
+
     if (c > 1) argvForward << " " << std::string(arg);
   }
+
+  #if DEBUG == 1
+    appData["name"] += "-dev";
+    appData["title"] += "-dev";
+  #endif
+
+  appData["name"] += suffix;
+  appData["title"] += suffix;
+
+  argvForward << " --version=" << appData["version"];
+  argvForward << " --name=" << appData["name"];
+
+  #if DEBUG == 1
+    argvForward << " --debug=1";
+  #endif
 
   std::stringstream env;
   for (auto const &envKey : split(appData["env"], ',')) {
