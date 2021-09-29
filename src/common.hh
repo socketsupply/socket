@@ -381,7 +381,11 @@ namespace Opkit {
       if (pair.size() <= 1) continue;
 
       if (pair[0].compare("index") == 0) {
-        index = std::stoi(pair[1]);
+        try {
+          index = std::stoi(pair[1].size() > 0 ? pair[1] : "0");
+        } catch (...) {
+          std::cout << "Warning: received non-integer index" << std::endl;
+        }
       }
 
       args[pair[0]] = pair[1];
