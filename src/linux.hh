@@ -174,6 +174,11 @@ namespace Opkit {
       webkit_settings_set_enable_developer_extras(settings, true);
     }
 
+    if (this->opts.isTest) {
+      webkit_settings_set_allow_universal_access_from_file_urls(settings, true);
+      webkit_settings_set_allow_file_access_from_file_urls(settings, true);
+    }
+
     vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
     gtk_container_add(GTK_CONTAINER(window), vbox);
     gtk_box_pack_end(GTK_BOX(vbox), webview, TRUE, TRUE, 0);
