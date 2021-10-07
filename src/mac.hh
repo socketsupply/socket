@@ -140,6 +140,12 @@ namespace Opkit {
       [prefs setValue:@YES forKey:@"developerExtrasEnabled"];
     #endif
 
+    if (this->opts.isTest) {
+      [webview.configuration.preferences
+        setValue:@YES
+          forKey:@"allowUniversalAccessFromFileURLs"];
+    }
+
     WKUserContentController* controller = [config userContentController];
 
     // Add preload script, normalizing the interface to be cross-platform.
@@ -157,7 +163,6 @@ namespace Opkit {
     [controller addUserScript:userScript];
 
     webview = [[WKWebView alloc] initWithFrame:NSZeroRect configuration:config];
-
 
     [webview.configuration.preferences
       setValue:@YES
