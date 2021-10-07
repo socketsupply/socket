@@ -38,6 +38,7 @@ MAIN {
   std::stringstream argvArray;
   std::stringstream argvForward;
 
+  auto isTest = false;
   int c = 0;
 
   // TODO right now we forward a json parsable string as the args but this
@@ -51,6 +52,7 @@ MAIN {
 
     if (std::string(arg).find("--test") == 0) {
       suffix = "-test";
+      isTest = true;
     }
 
     if (c > 1) argvForward << " " << std::string(arg);
@@ -94,6 +96,7 @@ MAIN {
     .width = std::stoi(appData["width"]),
     .index = 0,
     .debug = _debug,
+    .isTest = isTest,
     .forwardConsole = appData["forwardConsole"] == "true",
     .executable = appData["executable"],
     .title = appData["title"],
@@ -118,6 +121,7 @@ MAIN {
     .width = 350,
     .index = 1,
     .debug = _debug,
+    .isTest = isTest,
     .argv = argvArray.str()
   });
 
