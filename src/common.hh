@@ -600,7 +600,7 @@ namespace Opkit {
       "    state: '0'"
       "  };"
 
-      "  if (" + seq + " > 0) {"
+      "  if (" + seq + " > 0 && window._ipc[" + seq + "]) {"
       "    window._ipc[" + seq + "].resolve(detail);"
       "    delete window._ipc[" + seq + "];"
       "    return;"
