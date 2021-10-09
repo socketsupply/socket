@@ -12,6 +12,10 @@
 #define WEXITSTATUS(w) ((int) ((w) & 0x40000000))
 #endif
 
+#ifndef CMD_RUNNER
+#define CMD_RUNNER
+#endif
+
 constexpr auto version = STR_VALUE(VERSION);
 
 using namespace Opkit;
@@ -984,7 +988,11 @@ int main (const int argc, const char* argv[]) {
       execName
     });
 
-    auto code = std::system((cmd + argvForward.str()).c_str());
+    auto runner = trim(std::string(STR_VALUE(CMD_RUNNER)));
+    printf("runner=%s (%ld)\n", runner.c_str(), runner.size());
+    auto prefix = runner.size() > 0 ? runner + std::string(" ") : runner;
+    printf("run: %s\n", (prefix + cmd + argvForward.str()).c_str());
+    auto code = std::system((prefix + cmd + argvForward.str()).c_str());
 
     // TODO: What kind of exit code does std::system give on windows
     exitCode = code > 0 ? WEXITSTATUS(code) : code;
