@@ -312,12 +312,14 @@ MAIN {
     }
 
     if (cmd.name == "context") {
-      w.setContextMenu(
-        cmd.get("seq"),
-        decodeURIComponent(cmd.get("value"))
-      );
-
+      auto seq = cmd.get("seq");
+      auto value = decodeURIComponent(cmd.get("value"));
+      w.setContextMenu(seq, value);
       return;
+    }
+
+    if (cmd.name == "close-context") {
+      w.closeContextMenu();
     }
 
     //
