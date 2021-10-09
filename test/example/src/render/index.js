@@ -13,10 +13,14 @@ window.addEventListener('contextmenu', e => {
 // Menu item selection example... do whatever, await an ipc call, etc.
 //
 window.addEventListener('menuItemSelected', event => {
-  document.querySelector('#menu-selection').value = event.detail.title
+  const { title } = event.detail
 
-  if (event.detail.title.toLowerCase() === 'quit') {
-    system.exit(0)
+  if (title) {
+    document.querySelector('#menu-selection').value = event.detail.title
+
+    if (title.toLowerCase() === 'quit') {
+      system.exit(0)
+    }
   }
 })
 
@@ -134,7 +138,9 @@ class AppContainer extends Tonic {
       // system.inspect()
     }
 
-    document.querySelector('#menu-selection').value = choice.title
+    if (choice.title) {
+      document.querySelector('#menu-selection').value = choice.title
+    }
   }
 
   async render () {

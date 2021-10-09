@@ -80,7 +80,7 @@ async function main () {
   //
   system.receive = async (command, value) => {
     console.log('xxx ->', command, value)
-    if (value.restart) {
+    if (value && value.restart) {
       await system.restart()
     }
 
