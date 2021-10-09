@@ -46,6 +46,7 @@ namespace Opkit {
       void setTitle(const std::string&, const std::string&);
       void setSize(const std::string&, int, int, int);
       void setContextMenu(const std::string&, const std::string&);
+      void closeContextMenu(GtkWidget *, const std::string&);
       void closeContextMenu(const std::string&);
       void closeContextMenu();
       void openDialog(const std::string&, bool, bool, bool, bool, const std::string&, const std::string&);
@@ -471,17 +472,24 @@ namespace Opkit {
 
   void Window::closeContextMenu() {
     if (popupId > 0) {
-      closeContextMenu(std::to_string(popupId));
+      popupId = 0;
+      auto seq = std::to_string(popupId);
+      closeContextMenu(seq);
     }
   }
 
   void Window::closeContextMenu(const std::string &seq) {
-    auto ptr = popup;
-    if (ptr != nullptr) {
-      popupId = 0;
+    if (popup != nullptr) {
+      auto ptr = popup;
       popup = nullptr;
-      gtk_menu_popdown((GtkMenu *) ptr);
-      gtk_widget_destroy(ptr);
+      closeContextMenu(ptr, seq);
+    }
+  }
+
+  void Window::closeContextMenu(GtkWidget *popupMenu, const std::string &seq) {
+    if (popupMenu != nullptr) {
+      gtk_menu_popdown((GtkMenu *) popupMenu);
+      gtk_widget_destroy(popupMenu);
       resolveMenuSelection(seq, "", "contextMenu");
     }
   }
