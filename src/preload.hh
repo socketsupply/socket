@@ -13,7 +13,6 @@ constexpr auto gPreload = R"JS(
       return
     }
 
-
     try {
       value = JSON.parse(value)
     } catch (err) {
@@ -114,5 +113,9 @@ constexpr auto gPreload = R"JS(
       .flatMap(o => o.join(':'))
       .join('_')
     return window._ipc.send('context', value)
+  };
+
+  window.system.closeContextMenu = () => {
+    return window._ipc.send('close-context', null)
   };
 )JS";
