@@ -7,7 +7,7 @@ if [ ! "$CXX" ]; then
 fi
 
 function build {
-  `echo $CXX` src/cli.cc \
+  `echo $CXX` src/cli.cc ${CXX_FLAGS} ${CXXFLAGS} \
     -o bin/cli \
     -std=c++2a\
     -DVERSION=`git rev-parse --short HEAD`
