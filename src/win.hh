@@ -81,6 +81,8 @@ namespace Opkit {
       void setSize(const std::string&, int, int, int);
       void setTitle(const std::string&, const std::string&);
       void setContextMenu(const std::string&, const std::string&);
+      void closeContextMenu(const std::string&);
+      void closeContextMenu();
       void setSystemMenu(const std::string&, const std::string&);
       void openDialog(
         const std::string&,
@@ -572,6 +574,14 @@ namespace Opkit {
       auto index = std::to_string(this->opts.index);
       resolveToMainProcess(seq, "0", index);
     }
+  }
+
+  void Window::closeContextMenu() {
+    // @TODO(jwerle)
+  }
+
+  void Window::closeContextMenu(const std::string &seq) {
+    // @TODO(jwerle)
   }
 
   void Window::setContextMenu (const std::string& seq, const std::string& value) {

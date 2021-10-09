@@ -47,6 +47,8 @@ namespace Opkit {
       void setTitle(const std::string&, const std::string&);
       void setSize(const std::string&, int, int, int);
       void setContextMenu(const std::string&, const std::string&);
+      void closeContextMenu(const std::string&);
+      void closeContextMenu();
       void openDialog(const std::string&, bool, bool, bool, bool, const std::string&, const std::string&);
 
       void setSystemMenu(const std::string& seq, const std::string& menu);
@@ -330,6 +332,14 @@ namespace Opkit {
   std::string App::getCwd (const std::string& s) {
     NSString *bundlePath = [[NSBundle mainBundle] resourcePath];
     return String([bundlePath UTF8String]);
+  }
+
+  void Window::closeContextMenu() {
+    // @TODO(jwerle)
+  }
+
+  void Window::closeContextMenu(const std::string &seq) {
+    // @TODO(jwerle)
   }
 
   void Window::setContextMenu (const std::string& seq, const std::string& value) {
