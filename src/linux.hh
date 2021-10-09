@@ -26,6 +26,8 @@ namespace Opkit {
     GtkWidget* window;
     GtkWidget* webview;
     GtkWidget* vbox;
+    GtkWidget* popup;
+    int popupId;
 
     public:
       App app;
@@ -44,6 +46,8 @@ namespace Opkit {
       void setTitle(const std::string&, const std::string&);
       void setSize(const std::string&, int, int, int);
       void setContextMenu(const std::string&, const std::string&);
+      void closeContextMenu(const std::string&);
+      void closeContextMenu();
       void openDialog(const std::string&, bool, bool, bool, bool, const std::string&, const std::string&);
       ScreenSize getScreenSize();
 
@@ -52,7 +56,7 @@ namespace Opkit {
   };
 
   App::App (int instanceId) {
-    gtk_init_check(0, NULL);
+    gtk_init_check(0, nullptr);
     // TODO enforce single instance is set
   }
 
@@ -91,7 +95,9 @@ namespace Opkit {
   Window::Window (App& app, WindowOptions opts) : app(app), opts(opts) {
     setenv("GTK_OVERLAY_SCROLLING", "1", 1);
 
+    popupId = 0;
     window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+    popup = nullptr;
 
     if (opts.resizable) {
       gtk_window_set_default_size(GTK_WINDOW(window), opts.width, opts.height);
@@ -158,8 +164,8 @@ namespace Opkit {
         preload.c_str(),
         WEBKIT_USER_CONTENT_INJECT_TOP_FRAME,
         WEBKIT_USER_SCRIPT_INJECT_AT_DOCUMENT_START,
-        NULL,
-        NULL
+        nullptr,
+        nullptr
       )
     );
 
@@ -180,20 +186,13 @@ namespace Opkit {
     }
 
     vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
-    gtk_container_add(GTK_CONTAINER(window), vbox);
+
     gtk_box_pack_end(GTK_BOX(vbox), webview, TRUE, TRUE, 0);
 
-    gtk_widget_grab_focus(GTK_WIDGET(webview));
+    gtk_container_add(GTK_CONTAINER(window), vbox);
+    gtk_widget_add_events(window, GDK_ALL_EVENTS_MASK);
 
-    /* g_signal_connect(
-      G_OBJECT(webview),
-      "button-press-event",
-      G_CALLBACK(+[](GtkWidget*, gpointer) {
-        std::cout << "HELLO" << std::endl;
-        return false;
-      }),
-      webview
-    ); */
+    gtk_widget_grab_focus(GTK_WIDGET(webview));
   }
 
   ScreenSize Window::getScreenSize () {
@@ -214,9 +213,9 @@ namespace Opkit {
     webkit_web_view_run_javascript(
       WEBKIT_WEB_VIEW(webview),
       s.c_str(),
-      NULL,
-      NULL,
-      NULL
+      nullptr,
+      nullptr,
+      nullptr
     );
   }
 
@@ -271,7 +270,7 @@ namespace Opkit {
   }
 
   int Window::openExternal(const std::string& url) {
-    return gtk_show_uri_on_window(GTK_WINDOW(window), url.c_str(), GDK_CURRENT_TIME, NULL);
+    return gtk_show_uri_on_window(GTK_WINDOW(window), url.c_str(), GDK_CURRENT_TIME, nullptr);
   }
 
 
@@ -287,7 +286,7 @@ namespace Opkit {
       60,
       60,
       TRUE,
-      NULL
+      nullptr
     );
 
     GtkWidget *img = gtk_image_new_from_pixbuf(pixbuf);
@@ -310,7 +309,7 @@ namespace Opkit {
       dialog,
       "response",
       G_CALLBACK(gtk_widget_destroy),
-      NULL
+      nullptr
     );
 
     gtk_widget_show_all(body);
@@ -470,77 +469,116 @@ namespace Opkit {
     }
   }
 
+  void Window::closeContextMenu() {
+    if (popupId > 0) {
+      closeContextMenu(std::to_string(popupId));
+    }
+  }
+
+  void Window::closeContextMenu(const std::string &seq) {
+    auto ptr = popup;
+    if (ptr != nullptr) {
+      popupId = 0;
+      popup = nullptr;
+      gtk_menu_popdown((GtkMenu *) ptr);
+      gtk_widget_destroy(ptr);
+      resolveMenuSelection(seq, "", "contextMenu");
+    }
+  }
+
   void Window::setContextMenu(const std::string &seq, const std::string &value) {
-    GtkWidget *popup = gtk_menu_new();
-    GtkWidget *item;
+    closeContextMenu();
+
+    // members
+    popup = gtk_menu_new();
+    popupId = std::stoi(seq);
 
     auto menuData = replace(value, "_", "\n");
-
     auto menuItems = split(menuData, '\n');
-    auto id = std::stoi(seq);
+    GtkWidget *item;
 
     for (auto itemData : menuItems) {
-      if (trim(itemData).size() == 0) continue;
+      if (trim(itemData).size() == 0) {
+        continue;
+      }
 
       if (itemData.find("---") != -1) {
-        item = gtk_separator_menu_item_new();
+        auto *item = gtk_separator_menu_item_new();
+        gtk_widget_show(item);
+        gtk_menu_shell_append(GTK_MENU_SHELL(popup), item);
         continue;
       }
 
       auto pair = split(itemData, ':');
-      item = gtk_menu_item_new_with_label(pair[0].c_str());
       auto meta = std::string(seq + ";" + pair[0].c_str());
-      gtk_widget_set_name(item, meta.c_str());
+      auto *item = gtk_menu_item_new_with_label(pair[0].c_str());
 
       g_signal_connect(
         G_OBJECT(item),
         "activate",
         G_CALLBACK(+[](GtkWidget *t, gpointer arg) {
-          auto w = static_cast<Window*>(arg);
+          auto window = static_cast<Window*>(arg);
           auto label = gtk_menu_item_get_label(GTK_MENU_ITEM(t));
           auto title = std::string(label);
           auto meta = gtk_widget_get_name(t);
           auto pair = split(meta, ';');
           auto seq = pair[0];
 
-          w->resolveMenuSelection(seq, title, "contextMenu");
+          window->resolveMenuSelection(seq, title, "contextMenu");
         }),
         this
       );
 
+      gtk_widget_set_name(item, meta.c_str());
       gtk_widget_show(item);
       gtk_menu_shell_append(GTK_MENU_SHELL(popup), item);
     }
 
+    GdkRectangle rect;
+    gint x, y;
+
     auto win = GDK_WINDOW(gtk_widget_get_window(window));
     auto seat = gdk_display_get_default_seat(gdk_display_get_default());
+    auto event = gdk_event_new(GDK_BUTTON_PRESS);
     auto mouse_device = gdk_seat_get_pointer(seat);
 
-    auto event = gdk_event_new(GDK_BUTTON_PRESS);
-    event->button.time = GDK_CURRENT_TIME;
-    event->button.window = win;
+    gdk_window_get_device_position(win, mouse_device, &x, &y, nullptr);
     gdk_event_set_device(event, mouse_device);
 
-    gtk_menu_popup_at_pointer(
+    event->button.send_event = 1;
+    event->button.button = GDK_BUTTON_SECONDARY;
+    event->button.window = g_object_ref(win);
+    event->button.time = GDK_CURRENT_TIME - 100;
+
+    rect.height = 0;
+    rect.width = 0;
+    rect.x = x - 1;
+    rect.y = y - 1;
+
+    gtk_widget_add_events(popup, GDK_ALL_EVENTS_MASK);
+    gtk_widget_set_can_focus(popup, true);
+    gtk_widget_show_all(popup);
+    gtk_widget_grab_focus(popup);
+
+    gtk_menu_popup_at_rect(
       GTK_MENU(popup),
+      win,
+      &rect,
+      GDK_GRAVITY_SOUTH_WEST,
+      GDK_GRAVITY_NORTH_WEST,
       event
     );
-
-    gtk_widget_show_all(popup);
-    gtk_widget_add_events(window, GDK_BUTTON_PRESS_MASK);
-    gtk_widget_add_events(popup, GDK_FOCUS_CHANGE_MASK);
-    gtk_widget_grab_focus(popup);
   }
 
   void Window::openDialog (
-      const std::string& seq,
-      bool isSave,
-      bool allowDirs,
-      bool allowFiles,
-      bool allowMultiple,
-      const std::string& defaultPath,
-      const std::string& title
-    ) {
+    const std::string& seq,
+    bool isSave,
+    bool allowDirs,
+    bool allowFiles,
+    bool allowMultiple,
+    const std::string& defaultPath,
+    const std::string& title
+  ) {
 
     GtkWidget *dialog;
     GtkFileFilter *filter;
@@ -559,23 +597,23 @@ namespace Opkit {
       action = (GtkFileChooserAction) (action | GTK_FILE_CHOOSER_ACTION_SELECT_FOLDER);
     }
 
-    gtk_init_check(NULL, NULL);
+    gtk_init_check(nullptr, nullptr);
 
     dialog = gtk_file_chooser_dialog_new(
       isSave ? "Save File" : "Open File",
-      NULL,
+      nullptr,
       action,
       "_Cancel",
       GTK_RESPONSE_CANCEL,
       isSave ? "_Save" : "_Open",
       GTK_RESPONSE_ACCEPT,
-      NULL
+      nullptr
     );
 
     chooser = GTK_FILE_CHOOSER(dialog);
 
     // if (FILE_DIALOG_OVERWRITE_CONFIRMATION) {
-      gtk_file_chooser_set_do_overwrite_confirmation(chooser, TRUE);
+    gtk_file_chooser_set_do_overwrite_confirmation(chooser, TRUE);
     // }
 
     // TODO (@heapwolf): make optional
@@ -592,6 +630,7 @@ namespace Opkit {
     }
 
     if (gtk_dialog_run(GTK_DIALOG(dialog)) != GTK_RESPONSE_ACCEPT) {
+      gtk_widget_destroy(dialog);
       return;
     }
 
@@ -605,12 +644,12 @@ namespace Opkit {
     GSList* filenames = gtk_file_chooser_get_filenames(chooser);
     int i = 0;
 
-    while (filenames != NULL) {
-			gchar* file = (gchar*) filenames->data;
+    while (filenames != nullptr) {
+      gchar* file = (gchar*) filenames->data;
       result += (i++ ? "\\n" : "");
       result += std::string(file);
-			filenames = filenames->next;
-		}
+      filenames = filenames->next;
+    }
 
     g_slist_free(filenames);
 
