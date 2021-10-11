@@ -318,10 +318,6 @@ MAIN {
       return;
     }
 
-    if (cmd.name == "close-context") {
-      w.closeContextMenu();
-    }
-
     //
     // Everything else can be forwarded to the main process.
     // The protocol requires messages must be terminated by a newline.

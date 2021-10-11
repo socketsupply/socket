@@ -114,8 +114,4 @@ constexpr auto gPreload = R"JS(
       .join('_')
     return window._ipc.send('context', value)
   };
-
-  window.system.closeContextMenu = () => {
-    return window._ipc.send('close-context', null)
-  };
 )JS";
