@@ -556,7 +556,7 @@ namespace Opkit {
     event->button.send_event = 1;
     event->button.button = GDK_BUTTON_SECONDARY;
     event->button.window = GDK_WINDOW(g_object_ref(win));
-    event->button.time = GDK_CURRENT_TIME - 100;
+    event->button.time = GDK_CURRENT_TIME;
 
     rect.height = 0;
     rect.width = 0;
