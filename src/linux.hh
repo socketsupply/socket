@@ -503,7 +503,6 @@ namespace Opkit {
 
     auto menuData = replace(value, "_", "\n");
     auto menuItems = split(menuData, '\n');
-    GtkWidget *item;
 
     for (auto itemData : menuItems) {
       if (trim(itemData).size() == 0) {
