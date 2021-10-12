@@ -7,7 +7,7 @@ $INSTALL_PATH = "$env:LOCALAPPDATA\Programs\optoolco"
 $WORKING_PATH = $OLD_CWD
 
 Write-Output ""
-Write-Output "Consider adding '%LOCALAPPDATA%\Programs\optoolco' to your path."
+Write-Output "Consider adding '$env:APPDATA\Programs\optoolco' to your path."
 Write-Output ""
 
 if (Test-Path -Path $INSTALL_PATH) {
@@ -41,7 +41,7 @@ Function Build {
 # Install the files we will want to use for builds
 #
 Function Install-Files {
-    Write-Output "$([char]0x2666) Installing Files."
+    Write-Output "$([char]0x2666) Installing Files to '$INSTALL_PATH'."
 
     Copy-Item $WORKING_PATH\bin\cli.exe -Destination $INSTALL_PATH\opkit.exe
     Copy-Item -Path $WORKING_PATH\src\* -Destination $INSTALL_PATH\src -Recurse
