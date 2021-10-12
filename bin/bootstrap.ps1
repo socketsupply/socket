@@ -53,7 +53,8 @@ if ($args.Count -eq 0) {
     Install-Files
     Exit 0
 } else {
-    $WORKING_PATH = $TMPD
+    $WORKING_PATH = $TEMP_PATH
+    Write-Output "$([char]0x2666) Working path set to $WORKING_PATH."
 }
 
 Write-Output "$([char]0x2666) Checking for compiler."
@@ -61,7 +62,7 @@ Write-Output "$([char]0x2666) Checking for compiler."
 
 if ($? -ne 1) {
     Write-Output "$([char]0x2666) Installing compiler..."
-    Invoke-WebRequest https://github.com/llvm/llvm-project/releases/download/llvmorg-12.0.0/LLVM-12.0.0-win64.exe -O llvm.exe
+    Invoke-WebRequest https://github.com/llvm/llvm-project/releases/download/llvmorg-12.0.0/LLVM-13.0.0-win64.exe -O llvm.exe
     llvm.exe
 }
 
@@ -76,7 +77,7 @@ if ($? -ne 1) {
 #
 # Get clone to a temp dir and navigate into it
 #
-Write-Output "$([char]0x2666) Fetching files..."
+Write-Output "$([char]0x2666) Fetching files to '$WORKING_PATH'..."
 
 (git clone --depth=1 git@github.com:optoolco/opkit.git "$($WORKING_PATH)") > $null
 
