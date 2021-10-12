@@ -41,7 +41,7 @@ Function Build {
 # Install the files we will want to use for builds
 #
 Function Install-Files {
-    Write-Output "$([char]0x2666) Installing Files to '$INSTALL_PATH'."
+    Write-Output "$([char]0x2666) Installing Files."
 
     Copy-Item $WORKING_PATH\bin\cli.exe -Destination $INSTALL_PATH\opkit.exe
     Copy-Item -Path $WORKING_PATH\src\* -Destination $INSTALL_PATH\src -Recurse
