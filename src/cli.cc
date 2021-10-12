@@ -9,6 +9,7 @@
 #include <AppxPackaging.h>
 #pragma comment(lib, "Shlwapi.lib")
 #pragma comment(lib, "Urlmon.lib")
+#define WEXITSTATUS(w) ((int) ((w) & 0x40000000))
 #endif
 
 constexpr auto version = STR_VALUE(VERSION);
