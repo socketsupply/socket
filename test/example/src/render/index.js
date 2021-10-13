@@ -13,13 +13,53 @@ window.addEventListener('contextmenu', e => {
 // Menu item selection example... do whatever, await an ipc call, etc.
 //
 window.addEventListener('menuItemSelected', event => {
-  const { title } = event.detail
+  const { title, parent } = event.detail
 
   if (title) {
     document.querySelector('#menu-selection').value = event.detail.title
 
     if (title.toLowerCase() === 'quit') {
       system.exit(0)
+    }
+
+    switch (parent.toLowerCase()) {
+      case 'edit': {
+        switch (title.toLowerCase()) {
+          case 'cut': {
+            document.execCommand('cut')
+            break
+          }
+
+          case 'copy': {
+            document.execCommand('copy')
+            break
+          }
+
+          case 'paste': {
+            document.execCommand('paste')
+            break
+          }
+
+          case 'select all': {
+            if (document.activeElement && document.activeElement.select) {
+              document.activeElement.select()
+            } else {
+              document.getSelection().extend(document.activeElement)
+            }
+            break
+          }
+
+          case 'delete': {
+            if (document.activeElement && document.activeElement.value) {
+              if ('selectionStart' in document.activeElement && 'selectionEnd' in document.activeElement) {
+                const { selectionStart, selectionEnd, value } = document.activeElement
+                document.activeElement.value = value.slice(0, selectionStart).concat(value.slice(selectionEnd))
+              }
+            }
+            break
+          }
+        }
+      }
     }
   }
 })

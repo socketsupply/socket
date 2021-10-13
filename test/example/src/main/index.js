@@ -57,7 +57,8 @@ async function main () {
       Copy: c + CommandOrControl
       Paste: v + CommandOrControl
       Delete: _
-      Select All: a + CommandOrControl;
+      Select All: a + CommandOrControl
+    ;
 
     Foo:
       Bazz: z + Meta
