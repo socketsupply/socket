@@ -23,6 +23,7 @@ namespace Opkit {
   std::atomic<bool> App::isReady {false};
 
   class Window : public IWindow {
+    GtkAccelGroup *accel_group;
     GtkWidget* window;
     GtkWidget* webview;
     GtkWidget* vbox;
@@ -96,6 +97,7 @@ namespace Opkit {
   Window::Window (App& app, WindowOptions opts) : app(app), opts(opts) {
     setenv("GTK_OVERLAY_SCROLLING", "1", 1);
 
+    accel_group = gtk_accel_group_new();
     popupId = 0;
     window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
     popup = nullptr;
@@ -188,7 +190,7 @@ namespace Opkit {
 
     vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
 
-    gtk_box_pack_end(GTK_BOX(vbox), webview, TRUE, TRUE, 0);
+    gtk_box_pack_end(GTK_BOX(vbox), webview, true, true, 0);
 
     gtk_container_add(GTK_CONTAINER(window), vbox);
     gtk_widget_add_events(window, GDK_ALL_EVENTS_MASK);
@@ -286,7 +288,7 @@ namespace Opkit {
       "/usr/share/icons/hicolor/256x256/apps/operator.png",
       60,
       60,
-      TRUE,
+      true,
       nullptr
     );
 
@@ -294,7 +296,7 @@ namespace Opkit {
     gtk_widget_set_margin_top(img, 20);
     gtk_widget_set_margin_bottom(img, 20);
 
-    gtk_box_pack_start(GTK_BOX(content), img, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(content), img, false, false, 0);
 
     std::string title_value(appData["title"] + " " + appData["version"]);
 
@@ -354,7 +356,6 @@ namespace Opkit {
     auto menu = std::string(value);
 
     GtkWidget *menubar = gtk_menu_bar_new();
-    GtkAccelGroup *acclg = gtk_accel_group_new();
 
     // deserialize the menu
     menu = replace(menu, "%%", "\n");
@@ -378,8 +379,6 @@ namespace Opkit {
         std::string key = "";
 
         GtkWidget *item;
-        GtkWidget *accel;
-        GdkModifierType mods;
 
         if (parts[0].find("---") != -1) {
           item = gtk_separator_menu_item_new();
@@ -400,7 +399,9 @@ namespace Opkit {
               if (accelerator.size() > 1) {
                 if (accelerator[1].find("Meta") != -1) {
                   mask = (GdkModifierType)(mask | GDK_META_MASK);
-                } else if (accelerator[1].find("CommandOrControl") != -1) {
+                }
+
+                if (accelerator[1].find("CommandOrControl") != -1) {
                   mask = (GdkModifierType)(mask | GDK_CONTROL_MASK);
                 } else if (accelerator[1].find("Control") != -1) {
                   mask = (GdkModifierType)(mask | GDK_CONTROL_MASK);
@@ -415,13 +416,11 @@ namespace Opkit {
                 mask = (GdkModifierType)(mask | GDK_SHIFT_MASK);
               }
 
-              auto ag = gtk_accel_group_new();
-
               gtk_widget_add_accelerator(
                 item,
                 "activate",
-                ag,
-                (char) key[0],
+                accel_group,
+                (guint) key[0],
                 mask,
                 GTK_ACCEL_VISIBLE
               );
@@ -461,7 +460,7 @@ namespace Opkit {
       gtk_menu_shell_append(GTK_MENU_SHELL(menubar), menuItem);
     }
 
-    gtk_box_pack_start(GTK_BOX(vbox), menubar, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(vbox), menubar, false, false, 0);
     gtk_widget_show_all(window);
 
     if (seq.size() > 0) {
@@ -586,13 +585,10 @@ namespace Opkit {
     const std::string& defaultPath,
     const std::string& title
   ) {
-
-    GtkWidget *dialog;
-    GtkFileFilter *filter;
-    GtkFileChooser *chooser;
     GtkFileChooserAction action;
-    gint res;
-    char buf[128], *patterns;
+    GtkFileChooser *chooser;
+    GtkFileFilter *filter;
+    GtkWidget *dialog;
 
     if (isSave) {
       action = GTK_FILE_CHOOSER_ACTION_SAVE;
@@ -620,12 +616,12 @@ namespace Opkit {
     chooser = GTK_FILE_CHOOSER(dialog);
 
     // if (FILE_DIALOG_OVERWRITE_CONFIRMATION) {
-    gtk_file_chooser_set_do_overwrite_confirmation(chooser, TRUE);
+    gtk_file_chooser_set_do_overwrite_confirmation(chooser, true);
     // }
 
     // TODO (@heapwolf): make optional
     if ((!isSave || allowDirs) && allowMultiple) {
-      gtk_file_chooser_set_select_multiple(chooser, TRUE);
+      gtk_file_chooser_set_select_multiple(chooser, true);
     }
 
     if (defaultPath.size() > 0) {
@@ -651,16 +647,16 @@ namespace Opkit {
     GSList* filenames = gtk_file_chooser_get_filenames(chooser);
     int i = 0;
 
-    while (filenames != nullptr) {
+    for (int i = 0; filenames != nullptr; ++i) {
       gchar* file = (gchar*) filenames->data;
-      result += (i++ ? "\\n" : "");
+      result += (i ? "\\n" : "");
       result += std::string(file);
       filenames = filenames->next;
     }
 
     g_slist_free(filenames);
 
-    auto wrapped =  std::string("\"" + std::string(result) + "\"");
+    auto wrapped = std::string("\"" + std::string(result) + "\"");
     resolveToRenderProcess(seq, "0", encodeURIComponent(wrapped));
     gtk_widget_destroy(dialog);
   }
