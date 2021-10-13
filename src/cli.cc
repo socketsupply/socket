@@ -989,9 +989,7 @@ int main (const int argc, const char* argv[]) {
     });
 
     auto runner = trim(std::string(STR_VALUE(CMD_RUNNER)));
-    printf("runner=%s (%ld)\n", runner.c_str(), runner.size());
     auto prefix = runner.size() > 0 ? runner + std::string(" ") : runner;
-    printf("run: %s\n", (prefix + cmd + argvForward.str()).c_str());
     auto code = std::system((prefix + cmd + argvForward.str()).c_str());
 
     // TODO: What kind of exit code does std::system give on windows
