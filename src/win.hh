@@ -358,9 +358,8 @@ namespace Opkit {
 
   void Window::close () {
     if (opts.canExit) {
-      if (w == nullptr) {
+      if (this->window == nullptr) {
         PostQuitMessage(WM_QUIT);
-        break;
       }
 
       this->exit();
@@ -520,9 +519,8 @@ namespace Opkit {
       HMENU hMenu = CreateMenu();
 
       for (int i = 1; i < menu.size(); i++) {
-        if (trim(item).size() == 0) continue;
-
         auto line = trim(menu[i]);
+	if (line.size() == 0) continue;
 
         if (line.empty()) {
           continue;
@@ -548,9 +546,10 @@ namespace Opkit {
           accl = key;
 
           if (accelerators.size() > 1) {
-            key = replace(key, "Command", "Ctrl");
-            key = replace(key, "CommandOrControl", "Ctrl");
             accl = std::string(trim(accelerators[1]) + "+" + key);
+            accl = replace(accl, "CommandOrControl", "Ctrl");
+            accl = replace(accl, "Command", "Ctrl");
+            accl = replace(accl, "Control", "Ctrl");
           }
 
           if (isShift) {
