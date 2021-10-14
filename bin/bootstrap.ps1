@@ -41,20 +41,33 @@ Function Build {
 # Install the files we will want to use for builds
 #
 Function Install-Files {
-    Write-Output "$([char]0x2666) Installing Files."
+  Write-Output "$([char]0x2666) Installing Files to '$INSTALL_PATH'."
 
-    Copy-Item $WORKING_PATH\bin\cli.exe -Destination $INSTALL_PATH\opkit.exe
-    Copy-Item -Path $WORKING_PATH\src\* -Destination $INSTALL_PATH\src -Recurse
-    Copy-Item -Path "$WORKING_PATH\src\*" -Destination $INSTALL_PATH\src -Recurse -Container
+  Copy-Item $WORKING_PATH\bin\cli.exe -Destination $INSTALL_PATH\opkit.exe
+  Copy-Item -Path $WORKING_PATH\src\* -Destination $INSTALL_PATH\src -Recurse
+  Copy-Item -Path "$WORKING_PATH\src\*" -Destination $INSTALL_PATH\src -Recurse -Container
+}
+
+Write-Output "$([char]0x2666) Working path set to $WORKING_PATH."
+
+if ($args[0] -eq "update") {
+    Write-Output "$([char]0x2666) Updating WebView2 header files..."
+    #PACKAGE_VERSION='1.0.992.28'
+    $PACKAGE_VERSION='1.0.1018-prerelease'
+    Invoke-WebRequest https://www.nuget.org/api/v2/package/Microsoft.Web.WebView2/$PACKAGE_VERSION -O $TEMP_PATH\webview2.zip
+    Expand-Archive -Path $TEMP_PATH\WebView2.zip -DestinationPath $TEMP_PATH\WebView2
+    Copy-Item -Path $TEMP_PATH\WebView2\build\native\include\WebView2.h $WORKING_PATH\src\win64
+    Exit 0
+}
+
+if ($args.Count -eq 1) {
+  $WORKING_PATH = $TEMP_PATH
 }
 
 if ($args.Count -eq 0) {
-    Build
-    Install-Files
-    Exit 0
-} else {
-    $WORKING_PATH = $TEMP_PATH
-    Write-Output "$([char]0x2666) Working path set to $WORKING_PATH."
+  Build
+  Install-Files
+  Exit 0
 }
 
 Write-Output "$([char]0x2666) Checking for compiler."

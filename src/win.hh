@@ -194,11 +194,15 @@ namespace Opkit {
                 Settings->put_IsScriptEnabled(TRUE);
                 Settings->put_AreDefaultScriptDialogsEnabled(TRUE);
                 Settings->put_IsWebMessageEnabled(TRUE);
+		Settings->put_IsStatusBarEnabled(FALSE);
                 Settings->put_AreDevToolsEnabled(opts.debug == 1);
-                // Settings->put_AreBrowserAcceleratorKeysEnabled(FALSE);
                 Settings->put_AreDefaultContextMenusEnabled(opts.debug == 1);
                 Settings->put_IsBuiltInErrorPageEnabled(FALSE);
                 Settings->put_IsZoomControlEnabled(FALSE);
+
+                auto settings = (ICoreWebView2Settings6*) Settings;
+		settings->put_IsPinchZoomEnabled(FALSE);
+		settings->put_IsSwipeNavigationEnabled(FALSE);
 
                 app.isReady = true;
 
