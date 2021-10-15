@@ -934,15 +934,36 @@ int main (const int argc, const char* argv[]) {
     //
     // https://www.digicert.com/kb/code-signing/signcode-signtool-command-line.htm
     //
+    auto sdkRoot = fs::path("C:\\Program Files (x86)\\Windows Kits\\10\\bin");
     auto pathToSignTool = getEnv("SIGNTOOL");
 
     if (pathToSignTool.size() == 0) {
-      log("missing env var SIGNTOOL, should be the path to the Windows SDK signtool.exe binary.");
-      exit(1);
+      // TODO assumes last dir that contains dot. posix doesnt guarantee
+      // order, maybe windows does, but this should probably be smarter.
+      for (const auto& entry : fs::directory_iterator(sdkRoot)) {
+        auto p = entry.path().string();
+        if (p.find(".") != -1) pathToSignTool = p;
+      }
+
+      pathToSignTool = fs::path {
+        fs::path(pathToSignTool) /
+        "x64" /
+        "signtool.exe"
+      }.string();
+    }
+
+    if (pathToSignTool.size() == 0) {
+      log("WARNING! Can't find windows 10 SDK, assuming signtool.exe is in the path.");
+      pathToSignTool = "signtool.exe";
     }
 
     std::stringstream signCommand;
     std::string password = getEnv("CSC_KEY_PASSWORD");
+
+    if (password.size() == 0) {
+      log("ERROR! Environment variable 'CSC_KEY_PASSWORD' is empty!");
+      exit(1);
+    }
 
     signCommand
       << "\"" << pathToSignTool << "\""
@@ -953,10 +974,9 @@ int main (const int argc, const char* argv[]) {
       << " /fd sha256"
       << " /f cert.pfx"
       << " /p " << password
-      << " "
-      << pathToString(pathPackage) << ".appx"
-      << " 2>&1 | tee sign.log";
+      << " " << pathPackage.string() << ".appx";
 
+      log(signCommand.str());
       auto r = exec(signCommand.str().c_str());
 
       if (r.exitCode != 0) {

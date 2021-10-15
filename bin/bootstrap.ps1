@@ -1,3 +1,8 @@
+if ($args[0] -eq "locate-signtool") {
+  Write-Output (Resolve-Path  "C:\Program Files*\Windows Kits\10\bin\*\x86\signtool.exe").Path
+  Exit 0
+}
+
 $OLD_CWD = (Get-Location).Path
 
 $TEMP_PATH = Join-Path $Env:Temp $(New-Guid)
