@@ -968,12 +968,13 @@ int main (const int argc, const char* argv[]) {
     signCommand
       << "\"" << pathToSignTool << "\""
       << " sign"
+      << " /p " << password
       << " /debug"
+      << " /v"
       << " /tr http://timestamp.digicert.com"
       << " /td sha256"
       << " /fd sha256"
       << " /f cert.pfx"
-      << " /p " << password
       << " " << pathPackage.string() << ".appx";
 
       log(signCommand.str());
