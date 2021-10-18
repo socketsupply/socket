@@ -12,6 +12,15 @@
 #pragma comment(lib,"user32.lib")
 #pragma comment(lib,"WebView2LoaderStatic.lib")
 
+// for dark mode...
+#include <uxtheme.h>
+#include <dwmapi.h>
+#include <wingdi.h>
+
+#pragma comment(lib,"UxTheme.lib")
+#pragma comment(lib,"Dwmapi.lib")
+#pragma comment(lib,"Gdi32.lib")
+
 inline void alert (const std::wstring &ws) {
   MessageBoxA(nullptr, Opkit::WStringToString(ws).c_str(), _TEXT("Alert"), MB_OK | MB_ICONSTOP);
 }
@@ -49,6 +58,59 @@ namespace Opkit {
   };
 
   std::atomic<bool> App::isReady {false};
+
+	// constexpr COLORREF darkBkColor = 0x383838;
+	// constexpr COLORREF darkTextColor = 0xFFFFFF;
+	// static HBRUSH hbrBkgnd = nullptr;
+
+  enum WINDOWCOMPOSITIONATTRIB {
+    WCA_UNDEFINED = 0,
+    WCA_NCRENDERING_ENABLED = 1,
+    WCA_NCRENDERING_POLICY = 2,
+    WCA_TRANSITIONS_FORCEDISABLED = 3,
+    WCA_ALLOW_NCPAINT = 4,
+    WCA_CAPTION_BUTTON_BOUNDS = 5,
+    WCA_NONCLIENT_RTL_LAYOUT = 6,
+    WCA_FORCE_ICONIC_REPRESENTATION = 7,
+    WCA_EXTENDED_FRAME_BOUNDS = 8,
+    WCA_HAS_ICONIC_BITMAP = 9,
+    WCA_THEME_ATTRIBUTES = 10,
+    WCA_NCRENDERING_EXILED = 11,
+    WCA_NCADORNMENTINFO = 12,
+    WCA_EXCLUDED_FROM_LIVEPREVIEW = 13,
+    WCA_VIDEO_OVERLAY_ACTIVE = 14,
+    WCA_FORCE_ACTIVEWINDOW_APPEARANCE = 15,
+    WCA_DISALLOW_PEEK = 16,
+    WCA_CLOAK = 17,
+    WCA_CLOAKED = 18,
+    WCA_ACCENT_POLICY = 19,
+    WCA_FREEZE_REPRESENTATION = 20,
+    WCA_EVER_UNCLOAKED = 21,
+    WCA_VISUAL_OWNER = 22,
+    WCA_HOLOGRAPHIC = 23,
+    WCA_EXCLUDED_FROM_DDA = 24,
+    WCA_PASSIVEUPDATEMODE = 25,
+    WCA_USEDARKMODECOLORS = 26,
+    WCA_LAST = 27
+  };
+
+  struct WINDOWCOMPOSITIONATTRIBDATA {
+    WINDOWCOMPOSITIONATTRIB Attrib;
+    PVOID pvData;
+    SIZE_T cbData;
+  };
+
+  using RefreshImmersiveColorPolicyState = VOID(WINAPI*)();
+  using ShouldSystemUseDarkMode = BOOL(WINAPI*)();
+  using AllowDarkModeForApp = BOOL(WINAPI*)(BOOL allow);
+  using SetWindowCompositionAttribute = BOOL(WINAPI *)(HWND hWnd, WINDOWCOMPOSITIONATTRIBDATA*);
+
+  static RefreshImmersiveColorPolicyState refreshImmersiveColorPolicyState = nullptr;
+  static ShouldSystemUseDarkMode shouldSystemUseDarkMode = nullptr;
+  static AllowDarkModeForApp allowDarkModeForApp = nullptr;
+  static SetWindowCompositionAttribute setWindowCompositionAttribute = nullptr;
+
+  static auto bgBrush = CreateSolidBrush(RGB(0, 0, 0));
 
   class Window : public IWindow {
     HWND window;
@@ -102,6 +164,27 @@ namespace Opkit {
     AllocConsole();
     #endif
 
+    HMODULE hUxtheme = LoadLibraryExW(L"uxtheme.dll", nullptr, LOAD_LIBRARY_SEARCH_SYSTEM32);
+
+    setWindowCompositionAttribute = reinterpret_cast<SetWindowCompositionAttribute>(GetProcAddress(
+      GetModuleHandleW(L"user32.dll"),
+      "SetWindowCompositionAttribute")
+    );
+
+    if (hUxtheme) {
+      refreshImmersiveColorPolicyState =
+        (RefreshImmersiveColorPolicyState) GetProcAddress(hUxtheme, MAKEINTRESOURCEA(104));
+
+      shouldSystemUseDarkMode =
+        (ShouldSystemUseDarkMode) GetProcAddress(hUxtheme, MAKEINTRESOURCEA(138));
+
+      allowDarkModeForApp =
+        (AllowDarkModeForApp) GetProcAddress(hUxtheme, MAKEINTRESOURCEA(135));
+    }
+
+    allowDarkModeForApp(shouldSystemUseDarkMode());
+    refreshImmersiveColorPolicyState();
+
     // this fixes bad default quality DPI.
     SetProcessDPIAware();
 
@@ -127,7 +210,7 @@ namespace Opkit {
     wcex.hInstance = hInstance;
     wcex.hIcon = LoadIcon(hInstance, IDI_APPLICATION);
     wcex.hCursor = LoadCursor(NULL, IDC_ARROW);
-    wcex.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
+    wcex.hbrBackground = bgBrush;
     wcex.lpszMenuName = NULL;
     wcex.lpszClassName = TEXT("DesktopApp");
     wcex.hIconSm = icon; // ico doesn't auto scale, needs 16x16 icon lol fuck you bill
@@ -150,8 +233,30 @@ namespace Opkit {
       app.hInstance, NULL
     );
 
-    ShowWindow(window, SW_SHOW);
+    /* BOOL mode = FALSE;
+
+    if (shouldSystemUseDarkMode()) {
+      allowDarkModeForApp(true);
+      refreshImmersiveColorPolicyState();
+      mode = TRUE;
+      // SetWindowTheme(window, L"DarkMode_Explorer", NULL);
+    }
+
+		WINDOWCOMPOSITIONATTRIBDATA data = {
+      WCA_USEDARKMODECOLORS,
+      &mode,
+      sizeof(mode)
+    };
+
+		setWindowCompositionAttribute(window, &data);
+    SetPropW(window, L"UseImmersiveDarkModeColors", (HANDLE)(LONG_PTR) mode);
+    // SetPropW(window, L"UseImmersiveDarkModeColors", reinterpret_cast<HANDLE>(static_cast<INT_PTR>(mode)));
+
+    // SetWindowTheme(window, L"Explorer", nullptr);
+    // DwmSetWindowAttribute(window, 19, &mode, sizeof(long));
+    /*/
     UpdateWindow(window);
+    ShowWindow(window, SW_SHOW);
     SetWindowLongPtr(window, GWLP_USERDATA, (LONG_PTR) this);
 
     std::string preload(
@@ -194,15 +299,15 @@ namespace Opkit {
                 Settings->put_IsScriptEnabled(TRUE);
                 Settings->put_AreDefaultScriptDialogsEnabled(TRUE);
                 Settings->put_IsWebMessageEnabled(TRUE);
-		Settings->put_IsStatusBarEnabled(FALSE);
+                Settings->put_IsStatusBarEnabled(FALSE);
                 Settings->put_AreDevToolsEnabled(opts.debug == 1);
                 Settings->put_AreDefaultContextMenusEnabled(opts.debug == 1);
                 Settings->put_IsBuiltInErrorPageEnabled(FALSE);
                 Settings->put_IsZoomControlEnabled(FALSE);
 
                 auto settings = (ICoreWebView2Settings6*) Settings;
-		settings->put_IsPinchZoomEnabled(FALSE);
-		settings->put_IsSwipeNavigationEnabled(FALSE);
+                settings->put_IsPinchZoomEnabled(FALSE);
+                settings->put_IsSwipeNavigationEnabled(FALSE);
 
                 app.isReady = true;
 
@@ -277,9 +382,8 @@ namespace Opkit {
   }
 
   void App::restart () {
-
-	  char szFileName[MAX_PATH] = "";
-  	GetModuleFileName(NULL, szFileName, MAX_PATH);
+    char szFileName[MAX_PATH] = "";
+    GetModuleFileName(NULL, szFileName, MAX_PATH);
 
     STARTUPINFO si = { sizeof(si) };
     PROCESS_INFORMATION pi;
@@ -528,6 +632,7 @@ namespace Opkit {
     std::string menu = value;
 
     HMENU hMenubar = GetMenu(window);
+
     // deserialize the menu
     menu = replace(menu, "%%", "\n");
 
@@ -545,7 +650,7 @@ namespace Opkit {
 
       for (int i = 1; i < menu.size(); i++) {
         auto line = trim(menu[i]);
-	if (line.size() == 0) continue;
+        if (line.size() == 0) continue;
 
         if (line.empty()) {
           continue;
@@ -591,7 +696,11 @@ namespace Opkit {
       AppendMenuA(hMenubar, MF_POPUP, (UINT_PTR) hMenu, menuTitle.c_str());
     }
 
-    SetMenu(window, hMenubar);
+    MENUINFO Info;
+    Info.cbSize = sizeof(Info);
+    Info.fMask = MIM_BACKGROUND; // | MFT_OWNERDRAW;
+    Info.hbrBack = bgBrush;
+    SetMenuInfo(hMenubar, &Info);
 
     if (seq.size() > 0) {
       auto index = std::to_string(this->opts.index);
@@ -711,19 +820,19 @@ namespace Opkit {
       if (FAILED(hr)) return;
 
       DWORD count;
-			results->GetCount(&count);
+      results->GetCount(&count);
 
       std::vector<std::string> paths;
 
-			for (DWORD i = 0; i < count; i++) {
-				IShellItem *path;
-				LPWSTR buf;
-				results->GetItemAt(i, &path);
-				path->GetDisplayName(SIGDN_DESKTOPABSOLUTEPARSING, &buf);
-				paths.push_back(WStringToString(std::wstring(buf)));
-				path->Release();
-				CoTaskMemFree(buf);
-			}
+      for (DWORD i = 0; i < count; i++) {
+        IShellItem *path;
+        LPWSTR buf;
+        results->GetItemAt(i, &path);
+        path->GetDisplayName(SIGDN_DESKTOPABSOLUTEPARSING, &buf);
+        paths.push_back(WStringToString(std::wstring(buf)));
+        path->Release();
+        CoTaskMemFree(buf);
+      }
 
       std::string result = "";
 
@@ -793,14 +902,152 @@ namespace Opkit {
         break;
       }
 
+      /* case WM_THEMECHANGED: {
+        // alert("theme changed");
+        if (::IsThemeActive())
+          SetWindowLong(hWnd, GWL_EXSTYLE, GetWindowLong(hWnd, GWL_EXSTYLE) & ~WS_EX_CLIENTEDGE);
+        else
+          SetWindowLong(hWnd, GWL_EXSTYLE, GetWindowLong(hWnd, GWL_EXSTYLE) | WS_EX_CLIENTEDGE);
+        return 0;
+      } */
+
+      /* case WM_CTLCOLORDLG:
+      case WM_CTLCOLORSTATIC: {
+        if (shouldSystemUseDarkMode()) {
+          // HDC hdc = reinterpret_cast<HDC>(wParam);
+          // SetTextColor(hdc, darkTextColor);
+          // static auto testBrush = CreateSolidBrush(RGB(0, 0, 0));
+          // SetBkColor(hdc, RGB(0, 0, 0));
+
+          // if (!hbrBkgnd) {
+          // hbrBkgnd = CreateSolidBrush(RGB(0, 0, 0));
+          // }
+
+          // return reinterpret_cast<INT_PTR>(bgBrush);
+        }
+
+        // static auto testBrush = CreateSolidBrush(RGB(0, 0, 0));
+        // return (INT_PTR)(testBrush);
+        break;
+      } */
+
+      // case WM_ERASEBKGND: {
+      //  return 1;
+      // }
+
+      case WM_SETTINGCHANGE: {
+        char* s = (char *) lParam;
+        std::string name(s);
+
+        if (name.find("ImmersiveColorSet") != -1) {
+          BOOL darkMode = shouldSystemUseDarkMode();
+
+          allowDarkModeForApp(darkMode);
+
+          if (darkMode) {
+            SetWindowTheme(hWnd, L"DarkMode_Explorer", NULL);
+
+            int aElements[4] = { COLOR_WINDOW, COLOR_ACTIVECAPTION, COLOR_MENUBAR, COLOR_MENU };
+            DWORD aNewColors[4] = { RGB(32, 32, 32), RGB(32, 32, 32), RGB(32, 32, 32), RGB(32, 32, 32) };
+            SetSysColors(4, aElements, aNewColors);
+          } else {
+            SetWindowTheme(hWnd, L"Explorer", nullptr);
+            int aElements[4] = { COLOR_WINDOW, COLOR_ACTIVECAPTION, COLOR_MENUBAR, COLOR_MENU };
+            DWORD aNewColors[4] = { RGB(255, 255, 255), RGB(255, 255, 255), RGB(255, 255, 255), RGB(255, 255, 255) };
+            SetSysColors(4, aElements, aNewColors);
+          }
+          
+          refreshImmersiveColorPolicyState();
+
+          //SetPropW(hWnd, L"UseImmersiveDarkModeColors", reinterpret_cast<HANDLE>(static_cast<INT_PTR>(mode)));
+          /* SetPropW(hWnd, L"UseImmersiveDarkModeColors", (HANDLE)(LONG_PTR)mode);
+
+          WINDOWCOMPOSITIONATTRIBDATA data = {
+            WCA_USEDARKMODECOLORS,
+            &mode,
+            sizeof(mode)
+          };
+
+          setWindowCompositionAttribute(hWnd, &data);
+
+          // DwmSetWindowAttribute(hWnd, 19, &mode, sizeof(long));
+          // UpdateWindow(hWnd);
+
+          BOOL mode = FALSE;
+
+          if (shouldSystemUseDarkMode && shouldSystemUseDarkMode()) {
+            // if (allowDarkModeForApp) allowDarkModeForApp(true);
+            //if (refreshImmersiveColorPolicyState) refreshImmersiveColorPolicyState();
+            // SetWindowTheme(hWnd, L"DarkMode_Explorer", NULL);
+            mode = TRUE;
+
+            // int aElements[4] = { COLOR_WINDOW, COLOR_ACTIVECAPTION, COLOR_MENUBAR, COLOR_MENU };
+            // DWORD aNewColors[4] = { RGB(32, 32, 32), RGB(255, 255, 255), RGB(32, 32, 32), RGB(32, 32, 32) };
+            // SetSysColors(4, aElements, aNewColors);
+          } else {
+            // int aElements[4] = { COLOR_WINDOW, COLOR_ACTIVECAPTION, COLOR_MENUBAR, COLOR_MENU };
+            // DWORD aNewColors[4] = { RGB(255, 255, 255), RGB(0, 0, 0), RGB(255, 255, 255), RGB(255, 255, 255) };
+            // SetSysColors(4, aElements, aNewColors);
+          }
+
+          // SetWindowTheme(hWnd, L"Explorer", NULL);
+
+          // SetPropW(hWnd, L"UseImmersiveDarkModeColors", reinterpret_cast<HANDLE>(static_cast<INT_PTR>(mode)));
+          // DwmSetWindowAttribute(hWnd, 20, &mode, sizeof(long));
+          // WINDOWCOMPOSITIONATTRIBDATA data = { WCA_USEDARKMODECOLORS, &mode, sizeof(mode) };
+          // setWindowCompositionAttribute(hWnd, &data);
+          // UpdateWindow(hWnd);
+
+          // DrawMenuBar(hWnd);
+          //
+          // HMENU hMenubar = GetMenu(hWnd);
+          // SetMenu(hWnd, hMenubar);
+          */
+        }
+        break;
+      }
+
       case WM_CREATE: {
+        if (shouldSystemUseDarkMode()) {
+          SetWindowTheme(hWnd, L"DarkMode_Explorer", NULL);
+        } else {
+          SetWindowTheme(hWnd, L"Explorer", NULL);
+          // int aElements[4] = { COLOR_WINDOW, COLOR_ACTIVECAPTION, COLOR_MENUBAR, COLOR_MENU };
+          // DWORD aNewColors[4] = { RGB(32, 32, 32), RGB(255, 255, 255), RGB(32, 32, 32), RGB(32, 32, 32) };
+          // SetSysColors(4, aElements, aNewColors);
+          // allowDarkModeForApp(true);
+          // refreshImmersiveColorPolicyState();
+          // mode = TRUE;
+          // SetWindowTheme(window, L"DarkMode_Explorer", NULL);
+        }
+
         HMENU hMenubar = CreateMenu();
+        // MENUINFO Info;
+        // Info.cbSize = sizeof(Info);
+        // Info.fMask = MIM_BACKGROUND; // | MFT_OWNERDRAW;
+        // Info.hbrBack = bgBrush; // (HBRUSH) bgBrush;
+        // SetMenuInfo(hMenubar, &Info);
+
+        /* auto brush = (HBRUSH) CreateSolidBrush(RGB(0, 0, 0));
+
+        MENUINFO MenuInfo = {0};
+        MenuInfo.cbSize = sizeof(MenuInfo);
+        MenuInfo.hbrBack = brush; // Brush you want to draw
+        MenuInfo.fMask = MIM_BACKGROUND;
+        MenuInfo.dwStyle = MNS_AUTODISMISS; */
+
         SetMenu(hWnd, hMenubar);
         break;
       }
 
       case WM_DESTROY: {
         w->close();
+
+        // if (hbrBkgnd) {
+        //  DeleteObject(hbrBkgnd);
+        //  hbrBkgnd = nullptr;
+        // }
+
         break;
       }
 
