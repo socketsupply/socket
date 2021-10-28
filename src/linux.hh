@@ -109,7 +109,7 @@ namespace Opkit {
     }
 
     gtk_window_set_resizable(GTK_WINDOW(window), opts.resizable);
-    gtk_window_set_position(GTK_WINDOW(window), GTK_WIN_POS_CENTER_ALWAYS);
+    gtk_window_set_position(GTK_WINDOW(window), GTK_WIN_POS_CENTER);
 
     WebKitUserContentManager* cm = webkit_user_content_manager_new();
     webkit_user_content_manager_register_script_message_handler(cm, "external");
@@ -342,7 +342,7 @@ namespace Opkit {
       gtk_window_set_geometry_hints(GTK_WINDOW(window), nullptr, &g, h);
     }
 
-    gtk_window_set_position(GTK_WINDOW(window), GTK_WIN_POS_CENTER_ALWAYS);
+    gtk_window_set_position(GTK_WINDOW(window), GTK_WIN_POS_CENTER);
 
     if (seq.size() > 0) {
       auto index = std::to_string(this->opts.index);
