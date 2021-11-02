@@ -47,7 +47,7 @@ async function main () {
       Preferences...: , + Meta
       ---
       Hide: h + Meta
-      Hide Others: h + Control + Meta
+      Hide Others: h + CommandOrControl + Meta
       ---
       Quit: q + CommandOrControl
     ;
