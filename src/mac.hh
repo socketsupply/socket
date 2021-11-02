@@ -15,6 +15,8 @@
 
 namespace Opkit {
 
+  static bool isDelegateSet = false;
+
   class App : public IApp {
     NSAutoreleasePool* pool = [NSAutoreleasePool new];
 
@@ -174,62 +176,82 @@ namespace Opkit {
 
     // [webview registerForDraggedTypes:
     //  [NSArray arrayWithObject:NSPasteboardTypeFileURL]];
-
-    // Add delegate methods manually in order to capture "this"
-    class_replaceMethod(
-      [WindowDelegate class],
-      @selector(windowShouldClose:),
-      imp_implementationWithBlock(
-        [&](id self, SEL cmd, id notification) {
-          if (this->opts.canExit) {
-            this->close();
-            return true;
-          }
-
-          this->hide("");
-          return false;
-        }),
-      "v@:@"
-    );
-
-    class_replaceMethod(
-      [WindowDelegate class],
-      @selector(userContentController:didReceiveScriptMessage:),
-      imp_implementationWithBlock(
-        [=](id self, SEL cmd, WKScriptMessage* scriptMessage) {
-          if (this->onMessage == nullptr) return;
-
-          id body = [scriptMessage body];
-          if (![body isKindOfClass:[NSString class]]) {
-            return;
-          }
-          String msg = [body UTF8String];
-
-          this->onMessage(msg);
-        }),
-      "v@:@"
-    );
-
-    class_addMethod(
-      [WindowDelegate class],
-      @selector(menuItemSelected:),
-      imp_implementationWithBlock(
-        [=](id self, SEL _cmd, id item) {
-          id menuItem = (id) item;
-          String title = [[menuItem title] UTF8String];
-          String state = [menuItem state] == NSControlStateValueOn ? "true" : "false";
-          String parent = [[[menuItem menu] title] UTF8String];
-          String seq = std::to_string([menuItem tag]);
-
-          resolveMenuSelection(seq, title, parent);
-        }),
-      "v@:@:@:"
-    );
+    //
+    bool exiting = false;
 
     WindowDelegate* delegate = [WindowDelegate alloc];
     [controller addScriptMessageHandler:delegate name:@"webview"];
+
     // Set delegate to window
     [window setDelegate:delegate];
+
+    if (!isDelegateSet) {
+      isDelegateSet = true;
+
+      // Add delegate methods manually in order to capture "this"
+      class_replaceMethod(
+        [WindowDelegate class],
+        @selector(windowShouldClose:),
+        imp_implementationWithBlock(
+          [&](id self, SEL cmd, id notification) {
+            if (exiting) return true;
+
+            auto* w = (Window*) objc_getAssociatedObject(self, "webview");
+
+            if (w->opts.index == 0) {
+              exiting = true;
+              w->close();
+              return true;
+            }
+
+            w->hide("");
+            return false;
+          }),
+        "v@:@"
+      );
+
+      class_replaceMethod(
+        [WindowDelegate class],
+        @selector(userContentController:didReceiveScriptMessage:),
+        imp_implementationWithBlock(
+          [=](id self, SEL cmd, WKScriptMessage* scriptMessage) {
+            auto* w = (Window*) objc_getAssociatedObject(self, "webview");
+            if (w->onMessage == nullptr) return;
+
+            id body = [scriptMessage body];
+            if (![body isKindOfClass:[NSString class]]) {
+              return;
+            }
+            String msg = [body UTF8String];
+
+            w->onMessage(msg);
+          }),
+        "v@:@"
+      );
+
+      class_addMethod(
+        [WindowDelegate class],
+        @selector(menuItemSelected:),
+        imp_implementationWithBlock(
+          [=](id self, SEL _cmd, id item) {
+            id menuItem = (id) item;
+            String title = [[menuItem title] UTF8String];
+            String state = [menuItem state] == NSControlStateValueOn ? "true" : "false";
+            String parent = [[[menuItem menu] title] UTF8String];
+            String seq = std::to_string([menuItem tag]);
+
+            resolveMenuSelection(seq, title, parent);
+          }),
+        "v@:@:@:"
+      );
+
+      objc_setAssociatedObject(
+        delegate,
+        "webview",
+        (id) this,
+        OBJC_ASSOCIATION_ASSIGN
+      );
+    }
 
     // Initialize application
     [NSApplication sharedApplication];
@@ -271,7 +293,7 @@ namespace Opkit {
   }
 
   void Window::close () {
-    // [window performClose:nil];
+    [window performClose:nil];
 
     if (opts.canExit) {
       this->exit();

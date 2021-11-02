@@ -92,6 +92,7 @@ MAIN {
   Window w0(app, WindowOptions {
     .resizable = true,
     .frameless = false,
+    .canExit = true,
     .height = std::stoi(appData["height"]),
     .width = std::stoi(appData["width"]),
     .index = 0,
