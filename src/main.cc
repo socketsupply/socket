@@ -206,8 +206,13 @@ MAIN {
       }
 
       if (cmd.name == "exit") {
-        exitCode = std::stoi(value);
+        try {
+          exitCode = std::stoi(value);
+        } catch (...) {
+        }
+
         w.exit();
+
         if (seq.size() > 0) {
           w.resolveToMainProcess(seq, "0", "null");
         }
@@ -276,7 +281,11 @@ MAIN {
     }
 
     if (cmd.name == "exit") {
-      exitCode = std::stoi(decodeURIComponent(cmd.get("value")));
+      try {
+        exitCode = std::stoi(decodeURIComponent(cmd.get("value")));
+      } catch (...) {
+      }
+
       w.exit();
       return;
     }
