@@ -299,6 +299,24 @@ MAIN {
         return;
       }
 
+      if (cmd.name == "menuItemEnabled") {
+        const auto enabled = cmd.get("enabled").find("true") != -1;
+        int indexMain = 0;
+        int indexSub = 0;
+
+        try {
+          indexMain = std::stoi(cmd.get("indexMain"));
+          indexSub = std::stoi(cmd.get("indexSub"));
+        } catch (...) {
+          w.resolveToMainProcess(seq, "0", "");
+          return;
+        }
+
+        w.setSystemMenuItemEnabled(enabled, indexMain, indexSub);
+        w.resolveToMainProcess(seq, "0", "");
+        return;
+      }
+
       if (cmd.name == "external") {
         w.openExternal(decodeURIComponent(value));
         if (seq.size() > 0) {
@@ -426,6 +444,25 @@ MAIN {
 
     if (cmd.name == "external") {
       w.openExternal(decodeURIComponent(cmd.get("value")));
+      return;
+    }
+
+    if (cmd.name == "menuItemEnabled") {
+      const auto seq = cmd.get("seq");
+      const auto enabled = cmd.get("enabled").find("true") != -1;
+      int indexMain = 0;
+      int indexSub = 0;
+
+      try {
+        indexMain = std::stoi(cmd.get("indexMain"));
+        indexSub = std::stoi(cmd.get("indexSub"));
+      } catch (...) {
+        w.resolveToRenderProcess(seq, "0", "");
+        return;
+      }
+
+      w.setSystemMenuItemEnabled(enabled, indexMain, indexSub);
+      w.resolveToRenderProcess(seq, "0", "");
       return;
     }
 
