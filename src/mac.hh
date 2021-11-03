@@ -452,6 +452,7 @@ namespace Operator {
       void showInspector();
 
       void setSystemMenu(const std::string& seq, const std::string& menu);
+      void setSystemMenuItemEnabled(bool enabled, int barPos, int menuPos);
       int openExternal(const std::string& s);
       ScreenSize getScreenSize();
   };
@@ -750,6 +751,23 @@ namespace Operator {
     [webview evaluateJavaScript:
       [NSString stringWithUTF8String:js.c_str()]
       completionHandler:nil];
+  }
+
+  void Window::setSystemMenuItemEnabled (bool enabled, int barPos, int menuPos) {
+    if (seq.size() == 0) return;
+
+    NSMenu* menuBar = [NSApp mainMenu];
+    NSArray* menuBarItems = [menuBar itemArray];
+
+    NSMenu* menu = menuBarItems[barPos]
+    if (!menu) return;
+
+    NSArray* menuItems = [menu itemArray];
+    NSMenu* menuItem = menuItems[menuPos]
+
+    if (!menuItem) return;
+
+    [menuItem setEnabled:enabled];
   }
 
   void Window::navigate (const std::string& seq, const std::string& value) {
