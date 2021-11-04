@@ -1,5 +1,5 @@
-const Tonic = require('@optoolco/tonic')
-const Components = require('@optoolco/components')
+const Tonic = require('@operatortc/tonic')
+const Components = require('@operatortc/components')
 
 Components(Tonic)
 

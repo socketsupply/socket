@@ -2,7 +2,7 @@ if ($args[0] -eq "test-sign") {
   MakeCert.exe -sv cert.pvk -n "CN=Operator Tool Co, O=Operator, L=New York, S=New York, C=US" cert.cer -r -a sha256
   pvk2pfx.exe -pvk cert.pvk -pi test -spc cert.cer -pfx cert.pfx
   $env:CSC_KEY_PASSWORD = 'test'
-  .\bin\cli.exe .\test\example -p -c 
+  .\bin\cli.exe .\test\example -p -c
   Remove-Item cert.cer
   Remove-Item cert.pfx
   Remove-Item cert.pvk
@@ -14,11 +14,11 @@ $OLD_CWD = (Get-Location).Path
 $TEMP_PATH = Join-Path $Env:Temp $(New-Guid)
 (New-Item -Type Directory -Path $TEMP_PATH) > $null
 
-$INSTALL_PATH = "$env:LOCALAPPDATA\Programs\optoolco"
+$INSTALL_PATH = "$env:LOCALAPPDATA\Programs\operatortc"
 $WORKING_PATH = $OLD_CWD
 
 Write-Output ""
-Write-Output "Consider adding '$env:APPDATA\Programs\optoolco' to your path."
+Write-Output "Consider adding '$env:APPDATA\Programs\operatortc' to your path."
 Write-Output ""
 
 if (Test-Path -Path $INSTALL_PATH) {
@@ -103,7 +103,7 @@ if ($? -ne 1) {
 #
 Write-Output "$([char]0x2666) Fetching files to '$WORKING_PATH'..."
 
-(git clone --depth=1 git@github.com:optoolco/opkit.git "$($WORKING_PATH)") > $null
+(git clone --depth=1 git@github.com:operatortc/opkit.git "$($WORKING_PATH)") > $null
 
 cd $WORKING_PATH
 

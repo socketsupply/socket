@@ -1,6 +1,6 @@
 const path = require('path')
 const assert = require('assert')
-const system = require('@optoolco/opkit-node')
+const system = require('@operatortc/opkit-node')
 
 let counter = 0
 

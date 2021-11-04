@@ -307,7 +307,7 @@ namespace Opkit {
     }
 
     std::string local = getEnv("LOCALAPPDATA");
-    return std::string(local + "\\Programs\\optoolco\\" + s + " ");
+    return std::string(local + "\\Programs\\operatortc\\" + s + " ");
   }
 
   inline std::string prefixFile() {
@@ -316,7 +316,7 @@ namespace Opkit {
     }
 
     std::string local = getEnv("LOCALAPPDATA");
-    return std::string(local + "\\Programs\\optoolco");
+    return std::string(local + "\\Programs\\operatortc");
   }
 
   inline std::map<std::string, std::string> parseConfig(std::string source) {

@@ -35,19 +35,19 @@ It's a plain text script, please inspect it before running it.
 
 ## Linux or MacOS Bash/Zsh
 ```bash
-curl -o- https://raw.githubusercontent.com/optoolco/opkit/master/bin/bootstrap.sh | bash -s install
+curl -o- https://raw.githubusercontent.com/operatortc/opkit/master/bin/bootstrap.sh | bash -s install
 ```
 
 ## Windows Powershell
 ```ps1
-& $([scriptblock]::Create((New-Object Net.WebClient).DownloadString("https://raw.githubusercontent.com/optoolco/opkit/master/bin/bootstrap.ps1"))) -Install
+& $([scriptblock]::Create((New-Object Net.WebClient).DownloadString("https://raw.githubusercontent.com/operatortc/opkit/master/bin/bootstrap.ps1"))) -Install
 ```
 
 
 # DEVELOPMENT ON OPKIT
 
 ```sh
-git clone git@github.com:optoolco/opkit.git
+git clone git@github.com:operatortc/opkit.git
 cd opkit
 ```
 
