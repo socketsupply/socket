@@ -754,16 +754,14 @@ namespace Operator {
   }
 
   void Window::setSystemMenuItemEnabled (bool enabled, int barPos, int menuPos) {
-    if (seq.size() == 0) return;
-
     NSMenu* menuBar = [NSApp mainMenu];
     NSArray* menuBarItems = [menuBar itemArray];
 
-    NSMenu* menu = menuBarItems[barPos]
+    NSMenu* menu = menuBarItems[barPos];
     if (!menu) return;
 
     NSArray* menuItems = [menu itemArray];
-    NSMenu* menuItem = menuItems[menuPos]
+    NSMenu* menuItem = menuItems[menuPos];
 
     if (!menuItem) return;
 

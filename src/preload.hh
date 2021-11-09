@@ -141,6 +141,10 @@ constexpr auto gPreloadDesktop = R"JS(
     window.external.invoke(`ipc://background?${o}`)
   }
 
+  window.parent.setSystemMenuItemEnabled = value => {
+    return window._ipc.send('systemMenuItemEnabled', value)
+  }
+
   Object.defineProperty(window.document, 'title', {
     get () { return window.process.title },
     set (value) {
