@@ -150,6 +150,17 @@ namespace Opkit {
       this
     );
 
+    if (opts.canExit == false) {
+      g_signal_connect(
+        G_OBJECT(window),
+        "delete-event",
+        G_CALLBACK(+[](GtkWidget* widget, gpointer arg) {
+          gtk_widget_hide(widget);
+        }),
+        this
+      );
+    }
+
     std::string preload = Str(
       "window.external = {\n"
       "  invoke: arg => window.webkit.messageHandlers.external.postMessage(arg)\n"
