@@ -123,7 +123,12 @@ MAIN {
     .index = 1,
     .debug = _debug,
     .isTest = isTest,
-    .argv = argvArray.str()
+    .forwardConsole = appData["forwardConsole"] == "true",
+    .executable = appData["executable"],
+    .title = appData["title"],
+    .version = appData["version"],
+    .argv = argvArray.str(),
+    .env = env.str()
   });
 
   int exitCode = 0;
