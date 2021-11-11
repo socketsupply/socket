@@ -121,6 +121,7 @@ MAIN {
           std::cout << decodeURIComponent(cmd.get("value"));
         } else if (cmd.name == "exit") {
           exitCode = stoi(cmd.get("value"));
+          exit(exitCode);
         }
       },
       [](std::string const &out) {
