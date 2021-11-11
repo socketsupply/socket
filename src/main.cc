@@ -9,6 +9,16 @@
   #include "linux.hh"
 #endif
 
+#if defined(_WIN32)
+  #include <io.h>
+  #define ISATTY _isatty
+  #define FILENO _fileno
+#else
+  #include <unistd.h>
+  #define ISATTY isatty
+  #define FILENO fileno
+#endif
+
 using namespace Opkit;
 
 //
@@ -39,6 +49,7 @@ MAIN {
   std::stringstream argvForward;
 
   auto isTest = false;
+  auto isCommandMode = false;
   int c = 0;
 
   // TODO right now we forward a json parsable string as the args but this
@@ -49,6 +60,10 @@ MAIN {
       << "'"
       << replace(std::string(arg), "'", "\'")
       << (c++ < argc ? "', " : "'");
+
+    if (c == 2 && std::string(arg).find("-") == -1) {
+      isCommandMode = true;
+    }
 
     if (std::string(arg).find("--test") == 0) {
       suffix = "-test";
@@ -81,6 +96,32 @@ MAIN {
     env << std::string(
       cleanKey + "=" + encodeURIComponent(envValue) + "&"
     );
+  }
+
+  auto cmd = appData[platform.os + "_cmd"];
+  if (cmd[0] == '.') {
+    auto index = cmd.find_first_of(' ');
+    auto executable = cmd.substr(0, index);
+
+    auto absPath = fs::path(cwd) / fs::path(executable);
+
+    cmd = pathToString(absPath) + cmd.substr(index);
+  }
+
+  if (isCommandMode) {
+    Process process(
+      cmd + argvForward.str(),
+      cwd,
+      [](std::string const &out) {
+        Parse cmd(out);
+        std::cout << decodeURIComponent(cmd.get("value"));
+      },
+      [](std::string const &out) {
+        std::cerr << out;
+      }
+    );
+
+    return 0;
   }
 
   //
@@ -241,16 +282,6 @@ MAIN {
   auto onStdErr = [&](auto err) {
     std::cerr << err << std::endl;
   };
-
-  auto cmd = appData[platform.os + "_cmd"];
-  if (cmd[0] == '.') {
-    auto index = cmd.find_first_of(' ');
-    auto executable = cmd.substr(0, index);
-
-    auto absPath = fs::path(cwd) / fs::path(executable);
-
-    cmd = pathToString(absPath) + cmd.substr(index);
-  }
 
   Process process(
     cmd + argvForward.str(),
