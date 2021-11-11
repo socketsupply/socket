@@ -33,6 +33,7 @@ void help () {
     << "  -b  bundle for app store" << std::endl
     << "  -c  code sign the bundle" << std::endl
     << "  -h  help" << std::endl
+    << "  -v  version" << std::endl
     << "  -me (macOS) use entitlements" << std::endl
     << "  -mn (macOS) notarize the bundle" << std::endl
     << "  -o  only run user build step" << std::endl
@@ -70,16 +71,6 @@ int main (const int argc, const char* argv[]) {
     help();
   }
 
-  if (getEnv("CXX").size() == 0) {
-    log("warning! $CXX env var not set, assuming defaults");
-
-    if (platform.win) {
-      setEnv("CXX=clang++");
-    } else {
-      setEnv("CXX=/usr/bin/g++");
-    }
-  }
-
   bool flagRunUserBuild = false;
   bool flagAppStore = false;
   bool flagCodeSign = false;
@@ -97,6 +88,11 @@ int main (const int argc, const char* argv[]) {
 
     if (std::string(arg).find("-h") == 0) {
       help();
+    }
+
+    if (std::string(arg).find("-v") == 0) {
+      std::cout << version << std::endl;
+      exit(0);
     }
 
     if (std::string(arg).find("-me") == 0) {
@@ -131,6 +127,18 @@ int main (const int argc, const char* argv[]) {
       flagTestMode = true;
     }
   }
+
+  if (getEnv("CXX").size() == 0) {
+    log("warning! $CXX env var not set, assuming defaults");
+
+    if (platform.win) {
+      setEnv("CXX=clang++");
+    } else {
+      setEnv("CXX=/usr/bin/g++");
+    }
+  }
+
+
 
   //
   // TODO(@heapwolf) split path values from the settings file
