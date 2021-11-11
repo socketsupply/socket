@@ -1,5 +1,6 @@
 #include "common.hh"
 #include "process.hh"
+#include <sys/wait.h>
 
 #if defined(_WIN32)
   #include "win.hh"
@@ -48,6 +49,7 @@ MAIN {
   std::stringstream argvArray;
   std::stringstream argvForward;
 
+  int exitCode = 0;
   auto isTest = false;
   auto isCommandMode = false;
   int c = 0;
@@ -112,16 +114,21 @@ MAIN {
     Process process(
       cmd + argvForward.str(),
       cwd,
-      [](std::string const &out) {
+      [&](std::string const &out) {
         Parse cmd(out);
-        std::cout << decodeURIComponent(cmd.get("value"));
+
+        if (cmd.name != "exit") {
+          std::cout << decodeURIComponent(cmd.get("value"));
+        } else if (cmd.name == "exit") {
+          exitCode = stoi(cmd.get("value"));
+        }
       },
       [](std::string const &out) {
         std::cerr << out;
       }
     );
 
-    return 0;
+    return exitCode;
   }
 
   //
@@ -171,8 +178,6 @@ MAIN {
     .argv = argvArray.str(),
     .env = env.str()
   });
-
-  int exitCode = 0;
 
   //
   // # Main -> Render
