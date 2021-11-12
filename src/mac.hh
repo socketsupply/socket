@@ -244,14 +244,14 @@ namespace Opkit {
           }),
         "v@:@:@:"
       );
-
-      objc_setAssociatedObject(
-        delegate,
-        "webview",
-        (id) this,
-        OBJC_ASSOCIATION_ASSIGN
-      );
     }
+
+    objc_setAssociatedObject(
+      delegate,
+      "webview",
+      (id) this,
+      OBJC_ASSOCIATION_ASSIGN
+    );
 
     // Initialize application
     [NSApplication sharedApplication];

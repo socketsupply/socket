@@ -80,7 +80,6 @@ async function main () {
   // This example is basically an "echo" server...
   //
   system.receive = async (command, value) => {
-    console.log('xxx ->', command, value)
     if (value && value.restart) {
       await system.restart()
     }
