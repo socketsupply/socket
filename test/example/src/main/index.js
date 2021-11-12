@@ -14,6 +14,7 @@ async function main () {
   // Show one of the windows
   //
   await system.show({ window: 0 })
+  await system.show({ window: 1 })
 
   //
   // ## Example
@@ -22,6 +23,7 @@ async function main () {
   const resourcesDirectory = path.dirname(process.argv[1])
   const file = path.join(resourcesDirectory, 'index.html')
   await system.navigate({ window: 0, value: `file://${file}` })
+  await system.navigate({ window: 1, value: `file://${file}` })
 
   // await system.setSize({ window: 0, width: 200, height: 200 })
 
