@@ -128,11 +128,20 @@ class AppContainer extends Tonic {
     const el = Tonic.match(e.target, '[data-event]')
     if (!el) return
 
-    if (el.dataset.event === 'open') {
-      const response = await system.dialog('open')
-      this.querySelector('#opened').value = response
+    const { event } = el.dataset
+
+    if (event === 'open') {
+      this.querySelector('#opened').value = await system.dialog({})
     }
-    if (el.dataset.event === 'restart') {
+
+    if (event === 'save') {
+      this.querySelector('#opened').value = await system.dialog({
+        type: 'save',
+        defaultPath: 'test.txt'
+      })
+    }
+
+    if (event === 'restart') {
       system.send({
         restart: true
       })
@@ -199,7 +208,8 @@ class AppContainer extends Tonic {
         </tonic-input>
       </div>
 
-      <tonic-button data-event="open" id="butt">Open</tonic-button>
+      <tonic-button data-event="open" id="open">Open</tonic-button>
+      <tonic-button data-event="save" id="save">Save</tonic-button>
       <tonic-button data-event="restart" id="restart">Restart</tonic-button>
 
       <tonic-textarea id="opened" label="opened files/dirs"></tonic-textarea>

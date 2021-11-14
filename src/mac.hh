@@ -597,11 +597,21 @@ namespace Opkit {
       }
     }
 
+    if (isSave) {
+      if ([dialog_save runModal] == NSModalResponseOK) {
+        String url = (char*) [[[dialog_save URL] path] UTF8String];
+        auto wrapped = std::string("\"" + url + "\"");
+        resolveToRenderProcess(seq, "0", encodeURIComponent(wrapped));
+      }
+      return;
+    }
+
     String result = "";
     std::vector<String> paths;
+    NSArray* urls;
 
-    if (!isSave && [dialog_open runModal] == NSModalResponseOK) {
-      NSArray* urls = [dialog_open URLs];
+    if ([dialog_open runModal] == NSModalResponseOK) {
+      urls = [dialog_open URLs];
 
       for (NSURL* url in urls) {
         if ([url isFileURL]) {
