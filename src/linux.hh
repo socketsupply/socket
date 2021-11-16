@@ -244,6 +244,7 @@ namespace Opkit {
 
   void Window::hide(const std::string &seq) {
     gtk_widget_hide(window);
+    emitToRenderProcess("windowHide", "");
 
     if (seq.size() > 0) {
       auto index = std::to_string(this->opts.index);
