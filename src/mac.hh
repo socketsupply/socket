@@ -204,6 +204,7 @@ namespace Opkit {
               return true;
             }
 
+            w->emitToRenderProcess("windowHide", "{}");
             w->hide("");
             return false;
           }),
@@ -302,6 +303,7 @@ namespace Opkit {
 
   void Window::hide (const std::string& seq) {
     [window orderOut:window];
+    emitToRenderProcess("windowHide", "{}");
 
     if (seq.size() > 0) {
       auto index = std::to_string(this->opts.index);
