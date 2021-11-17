@@ -204,7 +204,7 @@ namespace Opkit {
               return true;
             }
 
-            w->emitToRenderProcess("windowHide"), "{}");
+            w->emitToRenderProcess("windowHide", "{}");
             w->hide("");
             return false;
           }),
