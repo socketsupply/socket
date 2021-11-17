@@ -397,7 +397,7 @@ namespace Opkit {
   void Window::hide (const std::string& seq) {
     ShowWindow(window, SW_HIDE);
     UpdateWindow(window);
-    emitToRenderProcess("windowHide", "");
+    emitToRenderProcess("windowHide", "{}");
 
     if (seq.size() > 0) {
       auto index = std::to_string(this->opts.index);
