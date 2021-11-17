@@ -154,12 +154,9 @@ namespace Opkit {
       g_signal_connect(
         G_OBJECT(window),
         "delete-event",
-        G_CALLBACK(+[](GtkWidget* widget, gpointer arg) {
-          static_cast<Window*>(arg)->emitToRenderProcess(
-            std::string("windowHide"),
-            std::string("")
-          );
-          gtk_widget_hide(widget);
+        G_CALLBACK(+[](GtkWidget* widget, GdkEvent*, gpointer arg) {
+          static_cast<Window*>(arg)->emitToRenderProcess("windowHide", "");
+          return gtk_widget_hide_on_delete(widget);
         }),
         this
       );

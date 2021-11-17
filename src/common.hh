@@ -621,6 +621,7 @@ namespace Opkit {
   void IWindow::emitToRenderProcess(const std::string& event, const std::string& value) {
     this->eval(std::string(
       "(() => {"
+      "  console.log('emitToRenderProcess', '" + event + "');"
       "  const name = '" + event + "';"
       "  const value = '" + value + "';"
       "  window._ipc.emit(name, value);"
