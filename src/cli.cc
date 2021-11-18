@@ -583,10 +583,11 @@ int main (const int argc, const char* argv[]) {
           << pathToString(fs::path { pathResources / paths[i] })
         ;
       }
+      signCommand << ";";
     }
 
     signCommand
-      << "; codesign"
+      << "codesign"
       << commonFlags.str()
       << pathToString(fs::path { pathBin / executable })
 
