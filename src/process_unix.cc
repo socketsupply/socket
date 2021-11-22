@@ -56,7 +56,7 @@ Process::id_type Process::open(const std::function<void()> &function) noexcept {
   }
 
   if (stdout_fd && pipe(stdout_p) != 0) {
-    if(stdin_fd) {
+    if (stdin_fd) {
       close(stdin_p[0]);
       close(stdin_p[1]);
     }
@@ -64,11 +64,11 @@ Process::id_type Process::open(const std::function<void()> &function) noexcept {
   }
 
   if (stderr_fd && pipe(stderr_p) != 0) {
-    if(stdin_fd) {
+    if (stdin_fd) {
       close(stdin_p[0]);
       close(stdin_p[1]);
     }
-    if(stdout_fd) {
+    if (stdout_fd) {
       close(stdout_p[0]);
       close(stdout_p[1]);
     }
@@ -78,15 +78,15 @@ Process::id_type Process::open(const std::function<void()> &function) noexcept {
   id_type pid = fork();
 
   if (pid < 0) {
-    if(stdin_fd) {
+    if (stdin_fd) {
       close(stdin_p[0]);
       close(stdin_p[1]);
     }
-    if(stdout_fd) {
+    if (stdout_fd) {
       close(stdout_p[0]);
       close(stdout_p[1]);
     }
-    if(stderr_fd) {
+    if (stderr_fd) {
       close(stderr_p[0]);
       close(stderr_p[1]);
     }
@@ -148,7 +148,7 @@ Process::id_type Process::open(const std::function<void()> &function) noexcept {
     *stdout_fd = stdout_p[0];
   }
 
-  if(stderr_fd) {
+  if (stderr_fd) {
     *stderr_fd = stderr_p[0];
   }
 
@@ -162,7 +162,7 @@ Process::id_type Process::open(const std::string &command, const std::string &pa
     auto command_c_str = command.c_str();
     std::string cd_path_and_command;
 
-    if(!path.empty()) {
+    if (!path.empty()) {
       auto path_escaped = path;
       size_t pos = 0;
 
@@ -181,7 +181,7 @@ Process::id_type Process::open(const std::string &command, const std::string &pa
 }
 
 void Process::read() noexcept {
-  if(data.id <= 0 || (!stdout_fd && !stderr_fd)) {
+  if (data.id <= 0 || (!stdout_fd && !stderr_fd)) {
     return;
   }
 
@@ -239,7 +239,7 @@ void Process::read() noexcept {
             } else {
               read_stderr(std::string(buffer.get()));
             }
-          } else if(n < 0 && errno != EINTR && errno != EAGAIN && errno != EWOULDBLOCK) {
+          } else if (n < 0 && errno != EINTR && errno != EAGAIN && errno != EWOULDBLOCK) {
             pollfds[i].fd = -1;
             continue;
           }
@@ -273,8 +273,8 @@ void Process::close_fds() noexcept {
     stdout_fd.reset();
   }
 
-  if(stderr_fd) {
-    if(data.id > 0) {
+  if (stderr_fd) {
+    if (data.id > 0) {
       close(*stderr_fd);
     }
 
@@ -307,8 +307,8 @@ bool Process::write(const char *bytes, size_t n) {
 void Process::close_stdin() noexcept {
   std::lock_guard<std::mutex> lock(stdin_mutex);
 
-  if(stdin_fd) {
-    if(data.id > 0) {
+  if (stdin_fd) {
+    if (data.id > 0) {
       close(*stdin_fd);
     }
 
@@ -321,7 +321,15 @@ void Process::kill(id_type id) noexcept {
     return;
   }
 
-  ::kill(-id, SIGINT);
+  auto r = ::kill(-id, SIGINT);
+
+  if (r != 0) {
+    r = ::kill(-id, SIGTERM);
+
+    if (r != 0) {
+      r = ::kill(-id, SIGKILL);
+    }
+  }
 }
 
 } // namespace Opkit

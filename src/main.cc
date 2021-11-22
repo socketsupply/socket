@@ -387,9 +387,10 @@ MAIN {
   // TODO pass a real exit code?
   //
   static auto onExit = [&] {
+    auto pid = process.getPID();
+    process.kill(pid);
     w0.kill();
     w1.kill();
-    process.kill(process.getPID());
     app.kill();
   };
 
