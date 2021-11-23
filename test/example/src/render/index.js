@@ -199,6 +199,8 @@ class AppContainer extends Tonic {
     return this.html`
       <app-header>
       </app-header>
+      <a href="bad-text">BAD ANCHOR</a>
+      <a href="https://facebook.com">FACEBOOK</a>
 
       <div class="grid">
         <tonic-input id="send" label="send">
