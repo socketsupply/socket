@@ -1,6 +1,5 @@
 #include "common.hh"
 #include "process.hh"
-#include <sys/wait.h>
 
 #if defined(_WIN32)
   #include "win.hh"
@@ -16,6 +15,7 @@
   #define FILENO _fileno
 #else
   #include <unistd.h>
+  #include <sys/wait.h>
   #define ISATTY isatty
   #define FILENO fileno
 #endif
