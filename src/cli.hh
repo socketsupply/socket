@@ -71,7 +71,7 @@ constexpr auto gPListInfo = R"XML(
       </dict>
     </dict>
     <key>NSAllowsArbitraryLoads</key>
-    <true/>
+    <false/>
     <key>NSAllowsLocalNetworking</key>
     <true/>
   </dict>
@@ -97,7 +97,11 @@ constexpr auto gPListInfo = R"XML(
   <string>{{name}}</string>
   <key>NSSupportsAutomaticGraphicsSwitching</key>
   <true/>
-</dict>
+  <key>WKAppBoundDomains</key>
+  <array>
+      <string>localhost</string>
+  </array>
+  </dict>
 </plist>
 )XML";
 
