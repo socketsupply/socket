@@ -138,7 +138,7 @@ namespace Opkit {
         gpointer arg) {
         auto url = webkit_uri_request_get_uri(req);
 
-        if (url.find("file://") != 0) {
+        if (std::string(url).find("file://") != 0) {
           return false;
         }
       }),
