@@ -130,17 +130,28 @@ namespace Opkit {
 
     g_signal_connect(
       G_OBJECT(webview),
-      "send-request",
+      "decide-policy",
       G_CALLBACK(+[](
-        WebKitWebPage* page,
-        WebKitURIRequest *req,
-        WebKitURIResponse *res,
-        gpointer arg) {
-        auto url = webkit_uri_request_get_uri(req);
+        WebKitWebView           *web_view,
+        WebKitPolicyDecision    *decision,
+        WebKitPolicyDecisionType decision_type,
+        gpointer                 user_data
+      ) {
+        if (decision_type != WEBKIT_POLICY_DECISION_TYPE_NAVIGATION_ACTION) {
+          return true;
+        }
 
-        if (std::string(url).find("file://") != 0) {
+        auto nav = WEBKIT_NAVIGATION_POLICY_DECISION (decision);
+        auto action = webkit_navigation_policy_decision_get_navigation_action(nav);
+        auto req = webkit_navigation_action_get_request(action);
+        auto uri = webkit_uri_request_get_uri(req);
+
+        if (std::string(uri).find("file://") != 0) {
+          webkit_policy_decision_ignore(decision);
           return false;
         }
+
+        return true;
       }),
       this
     );
