@@ -13,12 +13,11 @@
 @end
 
 @interface NavigationDelegate : NSObject<WKNavigationDelegate>
-// - (void) webView:(WKWebView*)webView didStartProvisionalNavigation: (WKNavigation*) navigation;
 @end
 
 @implementation NavigationDelegate
 - (void) webView: (WKWebView*) webView
-    decidePolicyForNavigationAction: (WKNavigationAction *) navigationAction
+    decidePolicyForNavigationAction: (WKNavigationAction*) navigationAction
     decisionHandler: (void (^)(WKNavigationActionPolicy)) decisionHandler {
 
   // std::string base = webView.URL.absoluteString.UTF8String;
