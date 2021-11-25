@@ -130,9 +130,30 @@ namespace Opkit {
 
     g_signal_connect(
       G_OBJECT(webview),
+      "send-request",
+      G_CALLBACK(+[](
+        WebKitWebPage* page,
+        WebKitURIRequest *req,
+        WebKitURIResponse *res,
+        gpointer arg) {
+        auto url = webkit_uri_request_get_uri(req);
+
+        if (url.find("file://") != 0) {
+          return false;
+        }
+      }),
+      this
+    );
+
+    g_signal_connect(
+      G_OBJECT(webview),
       "load-changed",
-      G_CALLBACK(+[](WebKitWebView*, WebKitLoadEvent event, gpointer arg) {
+      G_CALLBACK(+[](WebKitWebView* wv, WebKitLoadEvent event, gpointer arg) {
         auto *w = static_cast<Window*>(arg);
+
+        if (event == WEBKIT_LOAD_STARTED) {
+          auto uri = webkit_web_view_get_uri(wv);
+        }
 
         if (event == WEBKIT_LOAD_FINISHED) {
           w->app.isReady = true;
@@ -199,6 +220,8 @@ namespace Opkit {
       webkit_settings_set_allow_universal_access_from_file_urls(settings, true);
       webkit_settings_set_allow_file_access_from_file_urls(settings, true);
     }
+
+    // webkit_settings_set_allow_top_navigation_to_data_urls(settings, true);
 
     vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
 
