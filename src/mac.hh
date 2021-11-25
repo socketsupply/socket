@@ -3,13 +3,37 @@
 #import <Webkit/Webkit.h>
 #include <objc/objc-runtime.h>
 
-// ObjC declarations may only appear in global scope
 @interface WindowDelegate : NSObject <NSWindowDelegate, WKScriptMessageHandler>
 @end
 
 @implementation WindowDelegate
-- (void)userContentController:(WKUserContentController*)userContentController
-      didReceiveScriptMessage:(WKScriptMessage*)scriptMessage {
+- (void)userContentController: (WKUserContentController*) userContentController
+      didReceiveScriptMessage: (WKScriptMessage*) scriptMessage {
+}
+@end
+
+@interface NavigationDelegate : NSObject<WKNavigationDelegate>
+// - (void) webView:(WKWebView*)webView didStartProvisionalNavigation: (WKNavigation*) navigation;
+@end
+
+@implementation NavigationDelegate
+- (void) webView:(WKWebView*)webView
+  didStartProvisionalNavigation: (WKNavigation*) navigation {
+    // NSLog(@"decideNavigation %s", navigation.URL);
+}
+
+- (void) webView: (WKWebView*) webView
+    decidePolicyForNavigationAction: (WKNavigationAction *) navigationAction
+    decisionHandler: (void (^)(WKNavigationActionPolicy)) decisionHandler {
+
+  // std::string base = webView.URL.absoluteString.UTF8String;
+  std::string request = navigationAction.request.URL.absoluteString.UTF8String;
+
+  if (request.find("file://") == 0) {
+    decisionHandler(WKNavigationActionPolicyAllow);
+  } else {
+    decisionHandler(WKNavigationActionPolicyCancel);
+  }
 }
 @end
 
@@ -189,8 +213,32 @@ namespace Opkit {
     // Set delegate to window
     [window setDelegate:delegate];
 
+    NavigationDelegate *navDelegate = [[NavigationDelegate alloc] init];
+    [webview setNavigationDelegate:navDelegate];
+
+    /* class_replaceMethod(
+      [navDelegate class],
+      @selector(webView:decidePolicyForNavigationAction:),
+      imp_implementationWithBlock(^(id _self, WKWebView *webView, WKNavigationAction *navigationAction) {
+          std::cout << "decidePolicyForNavigationAction" << std::endl;
+          return true;
+        }),
+      "V@:"
+    ); */
+
     if (!isDelegateSet) {
       isDelegateSet = true;
+
+      /* class_addMethod(
+        [webview class],
+        @selector(webView:decidePolicyForNavigationAction:decisionHandler:),
+        imp_implementationWithBlock(
+          [=](id self, SEL _cmd, id item) {
+            std::cout << "decidePolicyForNavigationAction" << std::endl;
+            return false;
+          }),
+        "v@:@:@:"
+      ); */
 
       // Add delegate methods manually in order to capture "this"
       class_replaceMethod(
