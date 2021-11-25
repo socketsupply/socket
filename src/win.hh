@@ -430,6 +430,24 @@ namespace Opkit {
     EventRegistrationToken token;
     auto index = std::to_string(this->opts.index);
 
+    webview->add_NavigationStarting(
+      Callback<IWebViewNavigationStartingEventHandler>(
+        [&](IWebView *, IWebViewNavigationStartingEventArgs *e) {
+          PWSTR uri;
+          e->get_Uri(&uri);
+          std::string url(uri);
+
+          if (url.find("file://") != 0) {
+            e->put_Cancel(true);
+          }
+
+          CoTaskMemFree(uri);
+          return S_OK;
+        }
+      ).Get(),
+      &token
+    );
+
     webview->add_NavigationCompleted(
       Callback<ICoreWebView2NavigationCompletedEventHandler>(
         [&, seq, index](ICoreWebView2* sender, ICoreWebView2NavigationCompletedEventArgs* args) -> HRESULT {
