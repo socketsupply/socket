@@ -17,11 +17,6 @@
 @end
 
 @implementation NavigationDelegate
-- (void) webView:(WKWebView*)webView
-  didStartProvisionalNavigation: (WKNavigation*) navigation {
-    // NSLog(@"decideNavigation %s", navigation.URL);
-}
-
 - (void) webView: (WKWebView*) webView
     decidePolicyForNavigationAction: (WKNavigationAction *) navigationAction
     decisionHandler: (void (^)(WKNavigationActionPolicy)) decisionHandler {
@@ -216,29 +211,8 @@ namespace Opkit {
     NavigationDelegate *navDelegate = [[NavigationDelegate alloc] init];
     [webview setNavigationDelegate:navDelegate];
 
-    /* class_replaceMethod(
-      [navDelegate class],
-      @selector(webView:decidePolicyForNavigationAction:),
-      imp_implementationWithBlock(^(id _self, WKWebView *webView, WKNavigationAction *navigationAction) {
-          std::cout << "decidePolicyForNavigationAction" << std::endl;
-          return true;
-        }),
-      "V@:"
-    ); */
-
     if (!isDelegateSet) {
       isDelegateSet = true;
-
-      /* class_addMethod(
-        [webview class],
-        @selector(webView:decidePolicyForNavigationAction:decisionHandler:),
-        imp_implementationWithBlock(
-          [=](id self, SEL _cmd, id item) {
-            std::cout << "decidePolicyForNavigationAction" << std::endl;
-            return false;
-          }),
-        "v@:@:@:"
-      ); */
 
       // Add delegate methods manually in order to capture "this"
       class_replaceMethod(
