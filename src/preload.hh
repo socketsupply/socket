@@ -65,6 +65,7 @@ constexpr auto gPreload = R"JS(
     }
 
     window.external.invoke(`ipc://${name}?${value}`)
+    console.log(`ipc://${name}?${value}`)
     return promise
   }
 
@@ -105,6 +106,10 @@ constexpr auto gPreload = R"JS(
   window.system.dialog = async (value) => {
     const files = await window._ipc.send('dialog', value);
     return files.split('\n');
+  }
+
+  window.system.showInspector = (value = {}) => {
+    return window._ipc.send('showInspector', value)
   }
 
   window.system.setContextMenu = value => {

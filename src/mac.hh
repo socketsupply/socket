@@ -31,6 +31,29 @@
 }
 @end
 
+/* @interface WebInspector : NSObject {
+  WKWebView *webView;
+}
+
+- (id) initWithWebView: (WKWebView*) webView;
+- (void) detach: (id) sender;
+- (void) show: (id) sender;
+@end
+
+typedef const struct OpaqueWKPage* WKPageRef;
+typedef const struct OpaqueWKInspector* WKInspectorRef;
+
+WKInspectorRef WKPageGetInspector(WKPageRef pageRef);
+void WKInspectorShow(WKInspectorRef inspector);
+
+@interface WKWebView (Extras)
+@property(readonly, nonatomic) WKPageRef _pageRefForTransitionToWKWebView;
+@end
+
+void WKInspectorShow(WKInspectorRef inspectorRef) {
+  inspectorRef->show();
+} */
+
 namespace Opkit {
 
   static bool isDelegateSet = false;
@@ -50,6 +73,7 @@ namespace Opkit {
   class Window : public IWindow {
     NSWindow* window;
     WKWebView* webview;
+    // WebInspector* inspector;
 
     public:
       App app;
@@ -70,6 +94,7 @@ namespace Opkit {
       void closeContextMenu(const std::string&);
       void closeContextMenu();
       void openDialog(const std::string&, bool, bool, bool, bool, const std::string&, const std::string&);
+      // void showInspector();
 
       void setSystemMenu(const std::string& seq, const std::string& menu);
       int openExternal(const std::string& s);
@@ -145,6 +170,11 @@ namespace Opkit {
 
     // Minimum window size
     [window setContentMinSize:NSMakeSize(opts.width, opts.height)];
+
+    // [window setAppearance:[NSAppearance appearanceNamed:NSAppearanceNameVibrantDark]];
+
+    // [window setOpaque:NO];
+    [window setBackgroundColor:[NSColor textBackgroundColor]];
 
     if (opts.frameless) {
       [window setTitlebarAppearsTransparent:true];
@@ -390,6 +420,18 @@ namespace Opkit {
   void Window::closeContextMenu(const std::string &seq) {
     // @TODO(jwerle)
   }
+
+  /* void Window::showInspector () {
+    // WKInspectorRef ref = WKPageGetInspector(webview._pageRefForTransitionToWKWebView);
+    // WKInspectorShow(ref);
+
+    if(!inspector) {
+      inspector = [[WebInspector alloc] initWithWebView: webview];
+      [inspector detach:webview];
+    }
+
+    [inspector show:webview];
+  } */
 
   void Window::setContextMenu (const std::string& seq, const std::string& value) {
     auto menuItems = split(value, '_');
