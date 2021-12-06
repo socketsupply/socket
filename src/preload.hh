@@ -65,7 +65,6 @@ constexpr auto gPreload = R"JS(
     }
 
     window.external.invoke(`ipc://${name}?${value}`)
-    console.log(`ipc://${name}?${value}`)
     return promise
   }
 
