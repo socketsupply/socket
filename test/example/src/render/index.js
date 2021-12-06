@@ -146,6 +146,10 @@ class AppContainer extends Tonic {
         restart: true
       })
     }
+
+    if (event === 'showInspector') {
+      system.showInspector()
+    }
   }
 
   async input (e) {
@@ -199,6 +203,8 @@ class AppContainer extends Tonic {
     return this.html`
       <app-header>
       </app-header>
+      <a href="bad-text">BAD ANCHOR</a>
+      <a href="https://example.com">FACEBOOK</a>
 
       <div class="grid">
         <tonic-input id="send" label="send">
@@ -224,6 +230,7 @@ class AppContainer extends Tonic {
       </div>
 
       <tonic-button id="externalLink" url="https://example.com">External</tonic-button>
+      <!-- tonic-button data-event="showInspector">Inspect</tonic-button -->
 
       <a id="dd" draggable="true" href="file:///Users/paolofragomeni/projects/optoolco/opkit/test/example/dist/Operator.app/Contents/Resources/log.txt">Draggable</a>
       <a id="dl" href="file:///Users/paolofragomeni/projects/optoolco/opkit/src/render.html" download>Download</a>

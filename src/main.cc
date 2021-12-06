@@ -337,6 +337,11 @@ MAIN {
       return;
     }
 
+    if (cmd.name == "showInspector") {
+      // w.showInspector();
+      return;
+    }
+
     if (cmd.name == "external") {
       w.openExternal(decodeURIComponent(cmd.get("value")));
       return;

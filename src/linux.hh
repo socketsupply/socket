@@ -130,9 +130,41 @@ namespace Opkit {
 
     g_signal_connect(
       G_OBJECT(webview),
+      "decide-policy",
+      G_CALLBACK(+[](
+        WebKitWebView           *web_view,
+        WebKitPolicyDecision    *decision,
+        WebKitPolicyDecisionType decision_type,
+        gpointer                 user_data
+      ) {
+        if (decision_type != WEBKIT_POLICY_DECISION_TYPE_NAVIGATION_ACTION) {
+          return true;
+        }
+
+        auto nav = WEBKIT_NAVIGATION_POLICY_DECISION (decision);
+        auto action = webkit_navigation_policy_decision_get_navigation_action(nav);
+        auto req = webkit_navigation_action_get_request(action);
+        auto uri = webkit_uri_request_get_uri(req);
+
+        if (std::string(uri).find("file://") != 0) {
+          webkit_policy_decision_ignore(decision);
+          return false;
+        }
+
+        return true;
+      }),
+      this
+    );
+
+    g_signal_connect(
+      G_OBJECT(webview),
       "load-changed",
-      G_CALLBACK(+[](WebKitWebView*, WebKitLoadEvent event, gpointer arg) {
+      G_CALLBACK(+[](WebKitWebView* wv, WebKitLoadEvent event, gpointer arg) {
         auto *w = static_cast<Window*>(arg);
+
+        if (event == WEBKIT_LOAD_STARTED) {
+          auto uri = webkit_web_view_get_uri(wv);
+        }
 
         if (event == WEBKIT_LOAD_FINISHED) {
           w->app.isReady = true;
@@ -200,6 +232,8 @@ namespace Opkit {
       webkit_settings_set_allow_universal_access_from_file_urls(settings, true);
       webkit_settings_set_allow_file_access_from_file_urls(settings, true);
     }
+
+    // webkit_settings_set_allow_top_navigation_to_data_urls(settings, true);
 
     vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
 

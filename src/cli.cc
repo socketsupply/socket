@@ -40,6 +40,8 @@ void help () {
     << "  -p  package the app" << std::endl
     << "  -r  run after building" << std::endl
     << "  -xd turn off debug mode" << std::endl << std::endl
+    << "  -ios (iOS) build for iOS" << std::endl
+    << "  -android (Android) build for Android" << std::endl
     << "  --test=1 indicate test mode" << std::endl;
   ;
 
@@ -80,6 +82,8 @@ int main (const int argc, const char* argv[]) {
   bool flagDebugMode = true;
   bool flagTestMode = false;
   bool flagShouldPackage = false;
+  bool flagBuildForIOS = false;
+  bool flagBuildForAndroid = false;
 
   for (auto const arg : std::span(argv, argc)) {
     if (std::string(arg).find("-c") == 0) {
@@ -121,6 +125,14 @@ int main (const int argc, const char* argv[]) {
 
     if (std::string(arg).find("-xd") == 0) {
       flagDebugMode = false;
+    }
+
+    if (std::string(arg).find("-ios") == 0) {
+      flagBuildForIOS = true;
+    }
+
+    if (std::string(arg).find("-android") == 0) {
+      flagBuildForAndroid = true;
     }
 
     if (std::string(arg).find("--test") == 0) {
@@ -218,6 +230,27 @@ int main (const int argc, const char* argv[]) {
   // ---
   //
   if (platform.mac) {
+    if (flagBuildForIOS) {
+      log("building for iOS");
+
+      auto r = exec("xcrun --sdk iphoneos15.0 --show-sdk-path");
+
+      if (r.exitCode != 0) {
+        log("error: 'xcrun --sdk iphoneos15.0 --show-sdk-path' failed");
+        exit(1);
+      }
+
+      flags = " -std=c++2a";
+      flags += " -isysroot " + r.output;
+      flags += " -framework WebKit -framework Cocoa -framework UIKit";
+      flags += " -ObjC++";
+      flags += getCxxFlags();
+
+      files += prefixFile("src/ios.mm");
+
+      return 0;
+    }
+
     log("preparing build for mac");
     flags = "-std=c++2a -framework WebKit -framework Cocoa -ObjC++";
     flags += getCxxFlags();

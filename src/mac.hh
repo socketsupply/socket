@@ -3,15 +3,56 @@
 #import <Webkit/Webkit.h>
 #include <objc/objc-runtime.h>
 
-// ObjC declarations may only appear in global scope
 @interface WindowDelegate : NSObject <NSWindowDelegate, WKScriptMessageHandler>
 @end
 
 @implementation WindowDelegate
-- (void)userContentController:(WKUserContentController*)userContentController
-      didReceiveScriptMessage:(WKScriptMessage*)scriptMessage {
+- (void)userContentController: (WKUserContentController*) userContentController
+      didReceiveScriptMessage: (WKScriptMessage*) scriptMessage {
 }
 @end
+
+@interface NavigationDelegate : NSObject<WKNavigationDelegate>
+@end
+
+@implementation NavigationDelegate
+- (void) webView: (WKWebView*) webView
+    decidePolicyForNavigationAction: (WKNavigationAction*) navigationAction
+    decisionHandler: (void (^)(WKNavigationActionPolicy)) decisionHandler {
+
+  // std::string base = webView.URL.absoluteString.UTF8String;
+  std::string request = navigationAction.request.URL.absoluteString.UTF8String;
+
+  if (request.find("file://") == 0) {
+    decisionHandler(WKNavigationActionPolicyAllow);
+  } else {
+    decisionHandler(WKNavigationActionPolicyCancel);
+  }
+}
+@end
+
+/* @interface WebInspector : NSObject {
+  WKWebView *webView;
+}
+
+- (id) initWithWebView: (WKWebView*) webView;
+- (void) detach: (id) sender;
+- (void) show: (id) sender;
+@end
+
+typedef const struct OpaqueWKPage* WKPageRef;
+typedef const struct OpaqueWKInspector* WKInspectorRef;
+
+WKInspectorRef WKPageGetInspector(WKPageRef pageRef);
+void WKInspectorShow(WKInspectorRef inspector);
+
+@interface WKWebView (Extras)
+@property(readonly, nonatomic) WKPageRef _pageRefForTransitionToWKWebView;
+@end
+
+void WKInspectorShow(WKInspectorRef inspectorRef) {
+  inspectorRef->show();
+} */
 
 namespace Opkit {
 
@@ -32,6 +73,7 @@ namespace Opkit {
   class Window : public IWindow {
     NSWindow* window;
     WKWebView* webview;
+    // WebInspector* inspector;
 
     public:
       App app;
@@ -52,6 +94,7 @@ namespace Opkit {
       void closeContextMenu(const std::string&);
       void closeContextMenu();
       void openDialog(const std::string&, bool, bool, bool, bool, const std::string&, const std::string&);
+      // void showInspector();
 
       void setSystemMenu(const std::string& seq, const std::string& menu);
       int openExternal(const std::string& s);
@@ -128,6 +171,11 @@ namespace Opkit {
     // Minimum window size
     [window setContentMinSize:NSMakeSize(opts.width, opts.height)];
 
+    // [window setAppearance:[NSAppearance appearanceNamed:NSAppearanceNameVibrantDark]];
+
+    // [window setOpaque:NO];
+    [window setBackgroundColor:[NSColor textBackgroundColor]];
+
     if (opts.frameless) {
       [window setTitlebarAppearsTransparent:true];
     }
@@ -137,6 +185,10 @@ namespace Opkit {
 
     // Initialize WKWebView
     WKWebViewConfiguration* config = [WKWebViewConfiguration new];
+    // https://webkit.org/blog/10882/app-bound-domains/
+    // https://developer.apple.com/documentation/webkit/wkwebviewconfiguration/3585117-limitsnavigationstoappbounddomai
+    config.limitsNavigationsToAppBoundDomains = YES;
+
     WKPreferences* prefs = [config preferences];
     [prefs setJavaScriptCanOpenWindowsAutomatically:NO];
 
@@ -184,6 +236,9 @@ namespace Opkit {
 
     // Set delegate to window
     [window setDelegate:delegate];
+
+    NavigationDelegate *navDelegate = [[NavigationDelegate alloc] init];
+    [webview setNavigationDelegate:navDelegate];
 
     if (!isDelegateSet) {
       isDelegateSet = true;
@@ -365,6 +420,18 @@ namespace Opkit {
   void Window::closeContextMenu(const std::string &seq) {
     // @TODO(jwerle)
   }
+
+  /* void Window::showInspector () {
+    // WKInspectorRef ref = WKPageGetInspector(webview._pageRefForTransitionToWKWebView);
+    // WKInspectorShow(ref);
+
+    if(!inspector) {
+      inspector = [[WebInspector alloc] initWithWebView: webview];
+      [inspector detach:webview];
+    }
+
+    [inspector show:webview];
+  } */
 
   void Window::setContextMenu (const std::string& seq, const std::string& value) {
     auto menuItems = split(value, '_');

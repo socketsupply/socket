@@ -107,6 +107,10 @@ constexpr auto gPreload = R"JS(
     return files.split('\n');
   }
 
+  // window.system.showInspector = (value = {}) => {
+  //  return window._ipc.send('showInspector', value)
+  // }
+
   window.system.setContextMenu = value => {
     value = Object
       .entries(value)
