@@ -543,7 +543,7 @@ int main (const int argc, const char* argv[]) {
     << " -DSETTINGS=\"" << _settings << "\""
   ;
 
-  log(compileCommand.str());
+  // log(compileCommand.str());
 
   auto binExists = fs::exists(binaryPath);
   if (flagRunUserBuild == false || !binExists) {
