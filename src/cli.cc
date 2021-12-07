@@ -230,13 +230,16 @@ int main (const int argc, const char* argv[]) {
   // ---
   //
   if (platform.mac) {
+    packageName = fs::path(std::string(settings["name"] + ".app"));
+    pathPackage = { target / pathOutput / packageName };
+
     if (flagBuildForIOS) {
       log("building for iOS");
 
       auto r = exec("xcrun --sdk iphoneos15.0 --show-sdk-path");
 
       if (r.exitCode != 0) {
-        log("error: 'xcrun --sdk iphoneos15.0 --show-sdk-path' failed");
+        log("error: 'xcrun --sdk iphoneos15.0 --show-sdk-path' failed to find sdk.");
         exit(1);
       }
 
@@ -248,40 +251,54 @@ int main (const int argc, const char* argv[]) {
 
       files += prefixFile("src/ios.mm");
 
-      return 0;
+      pathResources = pathPackage;
+      pathBin = pathPackage;
+
+      pathResourcesRelativeToUserBuild = {
+        settings["output"] /
+        pathResources
+      };
+
+      fs::create_directories(pathResources);
+
+      auto plistInfo = tmpl(gPListInfoIOS, settings);
+
+      writeFile(fs::path {
+        pathPackage /
+        "Info.plist"
+      }, plistInfo);
+    } else {
+      log("preparing build for mac");
+
+      flags = "-std=c++2a -framework WebKit -framework Cocoa -ObjC++";
+      flags += getCxxFlags();
+
+      files += prefixFile("src/main.cc");
+      files += prefixFile("src/process_unix.cc");
+
+      fs::path pathBase = "Contents";
+
+      pathBin = { pathPackage / pathBase / "MacOS" };
+      pathResources = { pathPackage / pathBase / "Resources" };
+
+      pathResourcesRelativeToUserBuild = {
+        settings["output"] /
+        packageName /
+        pathBase /
+        "Resources"
+      };
+
+      fs::create_directories(pathBin);
+      fs::create_directories(pathResources);
+
+      auto plistInfo = tmpl(gPListInfo, settings);
+
+      writeFile(fs::path {
+        pathPackage /
+        pathBase /
+        "Info.plist"
+      }, plistInfo);
     }
-
-    log("preparing build for mac");
-    flags = "-std=c++2a -framework WebKit -framework Cocoa -ObjC++";
-    flags += getCxxFlags();
-
-    files += prefixFile("src/main.cc");
-    files += prefixFile("src/process_unix.cc");
-
-    fs::path pathBase = "Contents";
-    packageName = fs::path(std::string(settings["name"] + ".app"));
-
-    pathPackage = { target / pathOutput / packageName };
-    pathBin = { pathPackage / pathBase / "MacOS" };
-    pathResources = { pathPackage / pathBase / "Resources" };
-
-    pathResourcesRelativeToUserBuild = {
-      settings["output"] /
-      packageName /
-      pathBase /
-      "Resources"
-    };
-
-    fs::create_directories(pathBin);
-    fs::create_directories(pathResources);
-
-    auto plistInfo = tmpl(gPListInfo, settings);
-
-    writeFile(fs::path {
-      pathPackage /
-      pathBase /
-      "Info.plist"
-    }, plistInfo);
   }
 
   //
