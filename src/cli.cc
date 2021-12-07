@@ -1,6 +1,7 @@
 #include "cli.hh"
 #include "process.hh"
 #include "common.hh"
+#include <filesystem>
 
 #ifdef _WIN32
 #include <shlwapi.h>
@@ -236,6 +237,8 @@ int main (const int argc, const char* argv[]) {
     if (flagBuildForIOS) {
       log("building for iOS");
 
+      executable = settings["name"];
+
       auto r = exec("xcrun -sdk iphonesimulator --show-sdk-version");
 
       if (r.exitCode != 0) {
@@ -260,7 +263,7 @@ int main (const int argc, const char* argv[]) {
       flags += " -framework WebKit -framework Foundation -framework UIKit";
       flags += " -mios-simulator-version-min=10.0";
       flags += " -isysroot " + pathToSysRoot;
-      flags += " -arch i386";
+      flags += " -arch arm64";
       flags += " -fobjc-abi-version=2";
       flags += " -std=c++2a";
       flags += " -ObjC++";
@@ -276,7 +279,10 @@ int main (const int argc, const char* argv[]) {
       //
       pathResources = pathPackage;
       pathBin = pathPackage;
-      pathResourcesRelativeToUserBuild = pathPackage;
+      pathResourcesRelativeToUserBuild = {
+        settings["output"] /
+        packageName
+      };
 
       fs::create_directories(pathResources);
 

@@ -145,6 +145,25 @@ namespace Opkit {
     std::string env;
   };
 
+  std::string createPreload(WindowOptions opts) {
+    return std::string(
+      "(() => {"
+      "  window.system = {};\n"
+      "  window.process = {};\n"
+      "  window.process.index = Number('" + std::to_string(opts.index) + "');\n"
+      "  window.process.title = '" + opts.title + "';\n"
+      "  window.process.executable = '" + opts.executable + "';\n"
+      "  window.process.version = '" + opts.version + "';\n"
+      "  window.process.debug = " + std::to_string(opts.debug) + ";\n"
+      "  window.process.os = '" + platform.os + "';\n"
+      "  window.process.env = Object.fromEntries(new URLSearchParams('" +  opts.env + "'));\n"
+      "  window.process.argv = [" + opts.argv + "];\n"
+      "  " + gPreload + "\n"
+      "})()\n"
+      "//# sourceURL=preload.js"
+    );
+  }
+
   //
   // Helper functions...
   //
@@ -279,7 +298,7 @@ namespace Opkit {
     #endif
   }
 
-  #ifndef _IOS
+  #if _IOS == 0
     inline std::string pathToString(const fs::path &path) {
       auto s = path.u8string();
       return std::string(s.begin(), s.end());
@@ -542,7 +561,6 @@ namespace Opkit {
       void resolveToRenderProcess(const std::string&, const std::string&, const std::string&);
       void resolveMenuSelection(const std::string&, const std::string&, const std::string&);
       void emitToRenderProcess(const std::string&, const std::string&);
-      std::string createPreload(WindowOptions);
 
       WindowOptions opts;
       SCallback onMessage = nullptr;
@@ -563,25 +581,6 @@ namespace Opkit {
       // virtual void showInspector() = 0;
       virtual ScreenSize getScreenSize() = 0;
   };
-
-  std::string IWindow::createPreload(WindowOptions opts) {
-    return std::string(
-      "(() => {"
-      "  window.system = {};\n"
-      "  window.process = {};\n"
-      "  window.process.index = Number('" + std::to_string(opts.index) + "');\n"
-      "  window.process.title = '" + opts.title + "';\n"
-      "  window.process.executable = '" + opts.executable + "';\n"
-      "  window.process.version = '" + opts.version + "';\n"
-      "  window.process.debug = " + std::to_string(opts.debug) + ";\n"
-      "  window.process.os = '" + platform.os + "';\n"
-      "  window.process.env = Object.fromEntries(new URLSearchParams('" +  opts.env + "'));\n"
-      "  window.process.argv = [" + opts.argv + "];\n"
-      "  " + gPreload + "\n"
-      "})()\n"
-      "//# sourceURL=preload.js"
-    );
-  }
 
   void IWindow::resolveToRenderProcess(const std::string& seq, const std::string& state, const std::string& value) {
     this->eval(std::string(

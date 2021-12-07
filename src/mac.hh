@@ -199,7 +199,7 @@ namespace Opkit {
     WKUserContentController* controller = [config userContentController];
 
     // Add preload script, normalizing the interface to be cross-platform.
-    String preload = Str(
+    std::string preload = Str(
       "window.external = {\n"
       "  invoke: arg => window.webkit.messageHandlers.webview.postMessage(arg)\n"
       "};\n"
@@ -584,7 +584,7 @@ namespace Opkit {
         }
 
         if (title.compare("Minimize") == 0) nssSelector = [NSString stringWithUTF8String:"performMiniaturize:"];
-        if (title.compare("Zoom") == 0) nssSelector = [NSString stringWithUTF8String:"performZoom:"];
+        // if (title.compare("Zoom") == 0) nssSelector = [NSString stringWithUTF8String:"performZoom:"];
 
         if (title.find("---") != -1) {
           NSMenuItem *sep = [NSMenuItem separatorItem];

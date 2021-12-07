@@ -54,13 +54,13 @@ cd opkit
 If you want to hack on the Opkit project itself, clone this repo and install
 the CLI tool (unless you already did this with curl).
 
-On MacOS or Linux...
+### MacOS, iOS, Android, and Linux
 
 ```sh
 ./bin/bootstrap.sh install local
 ```
 
-On Windows...
+### Windows
 
 ```sh
 powershell ./bin/bootstrap.ps1
