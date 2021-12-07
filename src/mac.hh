@@ -196,12 +196,6 @@ namespace Opkit {
       [prefs setValue:@YES forKey:@"developerExtrasEnabled"];
     #endif
 
-    if (this->opts.isTest) {
-      [webview.configuration.preferences
-        setValue:@YES
-          forKey:@"allowUniversalAccessFromFileURLs"];
-    }
-
     WKUserContentController* controller = [config userContentController];
 
     // Add preload script, normalizing the interface to be cross-platform.
@@ -213,16 +207,28 @@ namespace Opkit {
     );
 
     WKUserScript* userScript = [WKUserScript alloc];
-    [userScript initWithSource:[NSString stringWithUTF8String:preload.c_str()]
-                 injectionTime:WKUserScriptInjectionTimeAtDocumentStart
-              forMainFrameOnly:NO];
-    [controller addUserScript:userScript];
 
-    webview = [[WKWebView alloc] initWithFrame:NSZeroRect configuration:config];
+    [userScript
+      initWithSource:[NSString stringWithUTF8String:preload.c_str()]
+      injectionTime:WKUserScriptInjectionTimeAtDocumentStart
+      forMainFrameOnly:NO];
+
+    [controller
+      addUserScript: userScript];
+
+    webview = [[WKWebView alloc]
+      initWithFrame: NSZeroRect
+      configuration: config];
+
+    if (this->opts.isTest) {
+      [webview.configuration.preferences
+        setValue:@YES
+          forKey:@"allowUniversalAccessFromFileURLs"];
+    }
 
     [webview.configuration.preferences
       setValue:@YES
-        forKey:@"allowFileAccessFromFileURLs"];
+      forKey:@"allowFileAccessFromFileURLs"];
 
     window.titlebarAppearsTransparent = true;
 

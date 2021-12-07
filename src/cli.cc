@@ -249,8 +249,17 @@ int main (const int argc, const char* argv[]) {
       flags += " -ObjC++";
       flags += getCxxFlags();
 
+      //
+      // iOS only gets one file, which loads the page and exposes a the network.
+      //
       files += prefixFile("src/ios.mm");
 
+      //
+      // Implementing an iOS bundle is simpler than the MacOS bundle, it's
+      // a flat directory structure. Only the binary and the plist are required.
+      //
+      // https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/UserDefaults/Preferences/Preferences.html
+      //
       pathResources = pathPackage;
       pathBin = pathPackage;
 
