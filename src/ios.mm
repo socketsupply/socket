@@ -1,5 +1,7 @@
 #import <Webkit/Webkit.h>
 #import <UIKit/UIKit.h>
+#import <Foundation/Foundation.h>
+#import "common.hh"
 
 @interface AppDelegate : UIResponder <UIApplicationDelegate>
 @property (strong, nonatomic) UIWindow *window;
@@ -26,11 +28,11 @@
     //
     WKWebViewConfiguration *config = [[WKWebViewConfiguration alloc] init];
 
-    WKWebview* webview = [[WKWebView alloc]
+    WKWebView* webview = [[WKWebView alloc]
       initWithFrame: self.window.frame
       configuration: config];
 
-    webview.navigationDelegate = self;
+    /* webview.navigationDelegate = self;
 
     [webview.configuration.preferences
       setValue:@YES
@@ -41,12 +43,12 @@
     //
     WKUserContentController* controller = [config userContentController];
 
-    String preload = Str(
-      "window.external = {\n"
-      "  invoke: arg => window.webkit.messageHandlers.webview.postMessage(arg)\n"
-      "};\n"
-      "" + createPreload(opts) + "\n"
-    );
+    NSString *preload = @"
+      window.external = {\n
+        invoke: arg => window.webkit.messageHandlers.webview.postMessage(arg)\n
+      };\n
+    "];
+    // " + createPreload(opts) + "\n"
 
     WKUserScript* userScript = [WKUserScript alloc];
 
@@ -86,7 +88,7 @@
       ofType: @"html"];
 
     NSURL *url = [NSURL fileURLWithPath:path];
-    [webview loadFileURL:url allowingReadAccessToURL:url];
+    [webview loadFileURL:url allowingReadAccessToURL:url]; */
 
     [self.window makeKeyAndVisible];
     return YES;
@@ -96,7 +98,6 @@
 
 int main (int argc, char *argv[]) {
   @autoreleasepool {
-    auto name = NSStringFromClass([AppDelegate class]);
-    return UIApplicationMain(argc, argv, nil, name);
+    return UIApplicationMain(argc, argv, nil, NSStringFromClass([AppDelegate class]));
   }
 }

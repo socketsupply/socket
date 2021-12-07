@@ -267,7 +267,6 @@ namespace Opkit {
     return output;
   }
 
-
   inline void writeToStdout(const std::string &str) {
     #ifdef _WIN32
       std::stringstream ss;
@@ -280,26 +279,28 @@ namespace Opkit {
     #endif
   }
 
-  inline std::string pathToString(const fs::path &path) {
-    auto s = path.u8string();
-    return std::string(s.begin(), s.end());
-  }
+  #ifndef _IOS
+    inline std::string pathToString(const fs::path &path) {
+      auto s = path.u8string();
+      return std::string(s.begin(), s.end());
+    }
 
-  inline String readFile(fs::path path) {
-    std::ifstream stream(path.c_str());
-    String content;
-    auto buffer = std::istreambuf_iterator<char>(stream);
-    auto end = std::istreambuf_iterator<char>();
-    content.assign(buffer, end);
-    stream.close();
-    return content;
-  }
+    inline String readFile(fs::path path) {
+      std::ifstream stream(path.c_str());
+      String content;
+      auto buffer = std::istreambuf_iterator<char>(stream);
+      auto end = std::istreambuf_iterator<char>();
+      content.assign(buffer, end);
+      stream.close();
+      return content;
+    }
 
-  inline void writeFile (fs::path path, std::string s) {
-    std::ofstream stream(pathToString(path));
-    stream << s;
-    stream.close();
-  }
+    inline void writeFile (fs::path path, std::string s) {
+      std::ofstream stream(pathToString(path));
+      stream << s;
+      stream.close();
+    }
+  #endif
 
   inline std::string prefixFile(std::string s) {
     if (platform.mac || platform.linux) {

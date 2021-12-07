@@ -236,22 +236,36 @@ int main (const int argc, const char* argv[]) {
     if (flagBuildForIOS) {
       log("building for iOS");
 
-      auto r = exec("xcrun --sdk iphoneos15.0 --show-sdk-path");
+      auto r = exec("xcrun -sdk iphonesimulator --show-sdk-version");
 
       if (r.exitCode != 0) {
-        log("error: 'xcrun --sdk iphoneos15.0 --show-sdk-path' failed to find sdk.");
+        log("error: 'xcrun -sdk iphonesimulator --show-sdk-version' failed.");
         exit(1);
       }
 
-      flags = " -std=c++2a";
-      flags += " -isysroot " + r.output;
-      flags += " -framework WebKit -framework Cocoa -framework UIKit";
+      std::string pathToXCode = "/Applications/Xcode.app/Contents";
+
+      std::string pathToSimulator = (
+        pathToXCode +
+        "/Developer/Platforms/iPhoneSimulator.platform"
+      );
+
+      std::string pathToSysRoot = (
+        pathToSimulator +
+        "/Developer/SDKs/iPhoneSimulator" +
+        trim(r.output) +
+        ".sdk"
+      );
+
+      flags += " -framework WebKit -framework Foundation -framework UIKit";
+      flags += " -mios-simulator-version-min=10.0";
+      flags += " -isysroot " + pathToSysRoot;
+      flags += " -arch i386";
+      flags += " -fobjc-abi-version=2";
+      flags += " -std=c++2a";
       flags += " -ObjC++";
       flags += getCxxFlags();
 
-      //
-      // iOS only gets one file, which loads the page and exposes a the network.
-      //
       files += prefixFile("src/ios.mm");
 
       //
@@ -262,11 +276,7 @@ int main (const int argc, const char* argv[]) {
       //
       pathResources = pathPackage;
       pathBin = pathPackage;
-
-      pathResourcesRelativeToUserBuild = {
-        settings["output"] /
-        pathResources
-      };
+      pathResourcesRelativeToUserBuild = pathPackage;
 
       fs::create_directories(pathResources);
 
@@ -522,11 +532,12 @@ int main (const int argc, const char* argv[]) {
     << " " << flags
     << " " << extraFlags
     << " -o " << pathToString(binaryPath)
+    << " -D_IOS=" << (flagBuildForIOS ? 1 : 0)
     << " -DDEBUG=" << (flagDebugMode ? 1 : 0)
     << " -DSETTINGS=\"" << _settings << "\""
   ;
 
-  // log(compileCommand.str());
+  log(compileCommand.str());
 
   auto binExists = fs::exists(binaryPath);
   if (flagRunUserBuild == false || !binExists) {
