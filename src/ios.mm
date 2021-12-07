@@ -6,6 +6,25 @@
 constexpr auto _settings = STR_VALUE(SETTINGS);
 constexpr auto _debug = DEBUG;
 
+@interface NavigationDelegate : NSObject<WKNavigationDelegate>
+@end
+
+@implementation NavigationDelegate
+- (void) webView: (WKWebView*) webView
+    decidePolicyForNavigationAction: (WKNavigationAction*) navigationAction
+    decisionHandler: (void (^)(WKNavigationActionPolicy)) decisionHandler {
+
+  // std::string base = webView.URL.absoluteString.UTF8String;
+  std::string request = navigationAction.request.URL.absoluteString.UTF8String;
+
+  if (request.find("file://") == 0) {
+    decisionHandler(WKNavigationActionPolicyAllow);
+  } else {
+    decisionHandler(WKNavigationActionPolicyCancel);
+  }
+}
+@end
+
 @interface AppDelegate : UIResponder <UIApplicationDelegate, WKScriptMessageHandler>
 @property (strong, nonatomic) UIWindow *window;
 @end
@@ -33,14 +52,16 @@ constexpr auto _debug = DEBUG;
     self.window = [[UIWindow alloc]
       initWithFrame: appFrame];
 
-    // auto width = [[UIScreen mainScreen] bounds].size.width;
-    // auto height = [[UIScreen mainScreen] bounds].size.height * 1.5;
+    auto width = [[UIScreen mainScreen] bounds].size.width;
+    auto height = [[UIScreen mainScreen] bounds].size.height;
     // auto frame = CGRectMake(0, 0, width, height);
 
     UIViewController *viewController = [[UIViewController alloc] init];
     // viewController.view.frame = CGRectMake(0, 0, width, height);
 
     // viewController.view.backgroundColor = [UIColor whiteColor];
+    // viewController.view.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+    // viewController.view.autoresizesSubviews = YES;
     // viewController.view.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
     // viewController.modalPresentationStyle = UIModalPresentationFullScreen;
     // [viewController setModalPresentationStyle: UIModalPresentationFullScreen];
@@ -63,6 +84,9 @@ constexpr auto _debug = DEBUG;
         cleanKey + "=" + encodeURIComponent(envValue) + "&"
       );
     }
+
+    env << std::string("width=" + std::to_string(width) + "&");
+    env << std::string("height=" + std::to_string(height) + "&");
 
     WindowOptions opts {
       .debug = _debug,
@@ -108,6 +132,9 @@ constexpr auto _debug = DEBUG;
       forKey: @"allowFileAccessFromFileURLs"];
 
     [viewController.view addSubview: webview];
+
+    NavigationDelegate *navDelegate = [[NavigationDelegate alloc] init];
+    [webview setNavigationDelegate:navDelegate];
 
     //
     // Get the path and load the file.

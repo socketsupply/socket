@@ -132,6 +132,14 @@ constexpr auto gPListInfoIOS = R"XML(
 	<string>{{version}}</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+  <key>UILaunchStoryboardName</key>
+  <string>LaunchScreen</string>
+  <key>CFBundleIconName</key>
+  <string>AppIcon</string>
+  <key>CFBundleIconFile</key>
+  <string>index.png</string>
+  <key>UIPrerenderedIcon</key>
+  <true/>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>

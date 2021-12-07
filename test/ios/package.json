@@ -1,0 +1,15 @@
+{
+  "name": "opkit-example",
+  "version": "1.0.0",
+  "main": "main.js",
+  "devDependencies": {
+    "clean-css": "^5.1.1",
+    "stylus": "^0.54.8"
+  },
+  "dependencies": {
+    "@operatortc/components": "^13.0.0",
+    "@operatortc/opkit-node": "1.3.1",
+    "@operatortc/tonic": "^14.0.0",
+    "esbuild": "^0.13.12"
+  }
+}

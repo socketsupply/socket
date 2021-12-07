@@ -1,4 +1,4 @@
-/node_modules
+node_modules/
 /test/example/dist
 /test/example/node_modules
 /build

@@ -203,6 +203,7 @@ class AppContainer extends Tonic {
     return this.html`
       <app-header>
       </app-header>
+      <code>${JSON.stringify(window.process)}</code>
       <a href="bad-text">BAD ANCHOR</a>
       <a href="https://example.com">FACEBOOK</a>
 
