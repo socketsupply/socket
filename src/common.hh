@@ -145,6 +145,8 @@ namespace Opkit {
     std::string env;
   };
 
+  std::string gMobilePreload = "";
+
   std::string createPreload(WindowOptions opts) {
     return std::string(
       "(() => {"

@@ -1,11 +1,3 @@
-window.addEventListener('unhandledrejection', event => {
-  document.body.innerHTML = `<code>${event.reason}</code>`
-})
-
-window.addEventListener('error', event => {
-  document.body.innerHTML = `<code>${event.reason}</code>`
-})
-
 const Tonic = require('@operatortc/tonic')
 const Components = require('@operatortc/components')
 
@@ -21,6 +13,11 @@ window.addEventListener('click', async event => {
   event.preventDefault()
 
   // await system.openExternal(el.props.url)
+})
+
+window.addEventListener('touchstart', event => {
+  const el = Tonic.match(event.target, 'data-event')
+  if (!el) return event.preventDefault()
 })
 
 //
@@ -110,9 +107,13 @@ class AppContainer extends Tonic {
     const el = Tonic.match(e.target, 'tonic-input')
     if (!el) return
 
-    let response
 
-    try {
+    const elResponse = document.querySelector('#response')
+    elResponse.value = el.value
+
+    console.log(el.value)
+
+    /* try {
       //
       // request-response (can send any arbitrary parameters)
       //
@@ -125,7 +126,7 @@ class AppContainer extends Tonic {
     this.querySelector('#response').value =
       response.received.input
 
-    return // system.setTitle({ e.target.value)
+    return // system.setTitle({ e.target.value) */
   }
 
   async render () {
@@ -157,5 +158,6 @@ class AppContainer extends Tonic {
 }
 
 window.onload = async () => {
+  console.log('started', window.process)
   Tonic.add(AppContainer)
 }

@@ -1,5 +1,25 @@
 @require './styles/index.styl'
 @require './views/**/*.styl'
 
-input, select:focus, textarea
-  font-size 16px !important
+* {
+  -webkit-user-select: none;
+  -webkit-user-drag: none;
+  -webkit-touch-callout: none;
+}
+
+input, select:focus, textarea {
+  font-size: 16px !important;
+  -webkit-user-select: initial;
+  -webkit-user-drag: initial;
+}
+
+@media (orientation: landscape) {
+  app-container {
+    /* border: 1px solid red; */
+  }
+}
+@media (orientation: portrait) {
+  app-container {
+    /* border: 1px solid blue; */
+  }
+}

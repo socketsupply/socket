@@ -53,16 +53,6 @@ async function main () {
     platform: 'browser'
   })
 
-  await esbuild.build({
-    entryPoints: ['src/main/index.js'],
-    bundle: true,
-    keepNames: true,
-    minify: true,
-    format: 'cjs',
-    outfile: path.join(target, 'main.js'),
-    platform: 'node'
-  })
-
   await css(
     path.join('src', 'render/index.styl'),
     path.join(target, 'bundle.css')

@@ -36,17 +36,33 @@ constexpr auto _debug = DEBUG;
 //
 @implementation AppDelegate
 - (void) userContentController: (WKUserContentController *) userContentController
-  didReceiveScriptMessage: (WKScriptMessage *) message {
-  // TODO match the same api as the mac version
-    NSLog(@"handleMessage: %@", message);
-}
+  didReceiveScriptMessage: (WKScriptMessage *) scriptMessage {
+    using namespace Opkit;
 
-- (void) viewWillLayoutSubviews {
-  self.window.frame = [UIScreen mainScreen].bounds;
+    id body = [scriptMessage body];
+    if (![body isKindOfClass:[NSString class]]) {
+      return;
+    }
+
+    std::string msg = [body UTF8String];
+
+    if (msg.find("ipc://") == 0) {
+      Parse cmd(msg);
+
+      if (cmd.name == "open") {
+        // NSString *url = [NSString stringWithUTF8String:cmd.value.c_str()];
+        // [[UIApplication sharedApplication] openURL:[NSURL URLWithString:url]];
+        return;
+      }
+    }
+
+    NSLog(@"OPKIT: console '%s'", msg.c_str());
 }
 
 - (BOOL) application: (UIApplication *) application
   didFinishLaunchingWithOptions: (NSDictionary *) launchOptions {
+    using namespace Opkit;
+
     auto appFrame = [[UIScreen mainScreen] bounds];
 
     self.window = [[UIWindow alloc]
@@ -71,7 +87,6 @@ constexpr auto _debug = DEBUG;
 
     self.window.rootViewController = viewController;
 
-    using namespace Opkit;
     auto appData = parseConfig(decodeURIComponent(_settings));
 
     std::stringstream env;
@@ -111,6 +126,13 @@ constexpr auto _debug = DEBUG;
       "window.external = {\n"
       "  invoke: arg => window.webkit.messageHandlers.webview.postMessage(arg)\n"
       "};\n"
+      "console.log = (...args) => {\n"
+      "  window.external.invoke(JSON.stringify(args));\n"
+      "};\n"
+
+      "console.error = console.warn = console.log;\n"
+      "window.addEventListener('unhandledrejection', e => console.log(e.message));\n"
+      "window.addEventListener('error', e => console.log(e.reason));\n"
       "" + createPreload(opts) + "\n"
     );
 
@@ -126,6 +148,8 @@ constexpr auto _debug = DEBUG;
     WKWebView* webview = [[WKWebView alloc]
       initWithFrame: appFrame
       configuration: config];
+
+    webview.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
 
     [webview.configuration.preferences
       setValue: @YES
@@ -146,6 +170,7 @@ constexpr auto _debug = DEBUG;
     NSURL *url = [NSURL fileURLWithPath:path];
     [webview loadFileURL:url allowingReadAccessToURL:url];
 
+    NSLog(@"OPKIT: fs '%@'", url);
     [self.window makeKeyAndVisible];
     return YES;
 }
