@@ -53,11 +53,14 @@ process attach --name TestExample-dev
 ```
 
 ### Logging
+
 To see logs, open `Console.app` (installed on MacOS by default) and in the right
 side panel pick <YourSimulatorDeviceName>. You can filter by `OPKIT` to see the
 logs that your app outputs.
 
-Loading your app onto a real phone.
+###  Loading your app onto a real phone.
+
+Just drag the built `.ipa` file onto your phone in the `Apple Configurator 2`.
 
 [0]:https://stackoverflow.com/questions/21668497/uiscreen-mainscreen-bounds-returning-wrong-size
 [1]:https://developer.apple.com/library/archive/documentation/IDEs/Conceptual/gdb_to_lldb_transition_guide/document/lldb-terminal-workflow-tutorial.html
