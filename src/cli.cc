@@ -683,16 +683,50 @@ int main (const int argc, const char* argv[]) {
   }
 
   //
-  // MacOS Packaging
+  // MacOS & iOS Packaging
   // ---
   //
   if (flagShouldPackage && platform.mac) {
     std::stringstream zipCommand;
+    auto ext = ".zip";
+
+    if (flagBuildForIOS) {
+      ext = ".ipa";
+
+      auto pathToBuild = fs::path { target / pathOutput / "build" };
+      fs::remove_all(pathToBuild);
+
+      auto pathToPayload = fs::path { pathToBuild / "Payload" };
+      fs::create_directories(pathToPayload);
+
+      auto pathToIconSrc = fs::path { target / settings["mas_icon"] };
+
+      if (fs::exists(pathToIconSrc)) {
+        fs::copy(pathToIconSrc, pathToBuild);
+
+        fs::rename(
+          fs::path(pathToBuild / fs::path(settings["mas_icon"]).filename()),
+          pathToBuild / "iTunesArtwork"
+        );
+      }
+
+      // fs::copy(pathToPackage, target, fs::copy_options::overwrite_existing | fs::copy_options::recursive);
+      fs::rename(pathPackage, fs::path { pathToPayload / packageName });
+
+      auto plistInfo = tmpl(gPListInfoMAS, settings);
+
+      writeFile(fs::path {
+        pathToBuild /
+        "iTunesMetadata.plist"
+      }, plistInfo);
+
+      pathPackage = pathToBuild;
+    }
 
     pathToArchive = fs::path {
       target /
       pathOutput /
-      (settings["executable"] + ".zip")
+      (settings["executable"] + ext)
     };
 
     zipCommand
@@ -700,7 +734,7 @@ int main (const int argc, const char* argv[]) {
       << " -c"
       << " -k"
       << " --sequesterRsrc"
-      << " --keepParent"
+      << (flagBuildForIOS ? "" : " --keepParent")
       << " "
       << pathToString(pathPackage)
       << " "
@@ -713,7 +747,7 @@ int main (const int argc, const char* argv[]) {
       exit(1);
     }
 
-    log("craeted zip artifact");
+    log("craeted package artifact");
   }
 
   //
