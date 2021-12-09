@@ -311,6 +311,26 @@ namespace Opkit {
 
                 app.isReady = true;
 
+                EventRegistrationToken tokenNavigation;
+
+                webview->add_NavigationStarting(
+                  Callback<ICoreWebView2NavigationStartingEventHandler>(
+                    [&](ICoreWebView2 *, ICoreWebView2NavigationStartingEventArgs *e) {
+                      PWSTR uri;
+                      e->get_Uri(&uri);
+                      std::string url(WStringToString(uri));
+
+                      if (url.find("file://") != 0) {
+                        e->put_Cancel(true);
+                      }
+
+                      CoTaskMemFree(uri);
+                      return S_OK;
+                    }
+                  ).Get(),
+                  &tokenNavigation
+                );
+
                 webview->AddScriptToExecuteOnDocumentCreated(
                   StringToWString(preload).c_str(),
                   Callback<ICoreWebView2AddScriptToExecuteOnDocumentCreatedCompletedHandler>(
@@ -533,24 +553,6 @@ namespace Opkit {
   void Window::navigate (const std::string& seq, const std::string& value) {
     EventRegistrationToken token;
     auto index = std::to_string(this->opts.index);
-
-    webview->add_NavigationStarting(
-      Callback<IWebViewNavigationStartingEventHandler>(
-        [&](IWebView *, IWebViewNavigationStartingEventArgs *e) {
-          PWSTR uri;
-          e->get_Uri(&uri);
-          std::string url(uri);
-
-          if (url.find("file://") != 0) {
-            e->put_Cancel(true);
-          }
-
-          CoTaskMemFree(uri);
-          return S_OK;
-        }
-      ).Get(),
-      &token
-    );
 
     webview->add_NavigationCompleted(
       Callback<ICoreWebView2NavigationCompletedEventHandler>(
