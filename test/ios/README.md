@@ -60,6 +60,20 @@ logs that your app outputs.
 
 ###  Loading your app onto a real phone.
 
+Unlike Android, you can’t install any app on an iOS device. It has to be signed
+by Apple first. Provisioning profiles act as a link between the device and the
+developer account so that you can test your apps before submitting them to the
+App Store.
+
+```
+security cms -D -i <name>.mobileprovision
+plutil -convert xml1
+
+Find out what entitlements are requied
+```
+codesign -d --requirements - --entitlements - ./path/to/foo.app
+```
+
 Just drag the built `.ipa` file onto your phone in the `Apple Configurator 2`.
 
 [0]:https://stackoverflow.com/questions/21668497/uiscreen-mainscreen-bounds-returning-wrong-size

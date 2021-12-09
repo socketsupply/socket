@@ -610,25 +610,8 @@ int main (const int argc, const char* argv[]) {
     std::stringstream signCommand;
     std::string entitlements = "";
 
-    if (flagEntitlements) {
-      auto entitlementsPath = fs::path {
-        pathResourcesRelativeToUserBuild /
-        "entitlements.plist"
-      };
-
-      if (settings.count("mac_entitlements") == 0) {
-        log("'mac_entitlements' key/value is required");
-        exit(1);
-      }
-
-      fs::copy(
-        fs::path { target / settings["mac_entitlements"] },
-        entitlementsPath
-      );
-
-      entitlements = std::string(
-        " --entitlements " + pathToString(entitlementsPath)
-      );
+    if (settings.count("entitlements") == 1) {
+      entitlements = " --entitlements " + (target / settings["entitlements"]).string();
     }
 
     if (settings.count("mac_sign") == 0) {
@@ -671,7 +654,7 @@ int main (const int argc, const char* argv[]) {
       << commonFlags.str()
       << pathToString(pathPackage);
 
-    // log(signCommand.str());
+    log(signCommand.str());
     auto r = exec(signCommand.str());
 
     if (r.exitCode != 0) {
@@ -689,45 +672,45 @@ int main (const int argc, const char* argv[]) {
   if (flagShouldPackage && platform.mac) {
     std::stringstream zipCommand;
     auto ext = ".zip";
+    auto pathToBuild = fs::path { target / pathOutput / "build" };
 
     if (flagBuildForIOS) {
       ext = ".ipa";
 
-      auto pathToBuild = fs::path { target / pathOutput / "build" };
       fs::remove_all(pathToBuild);
 
-      auto pathToPayload = fs::path { pathToBuild / "Payload" };
+      auto pathToPayload = pathToBuild / "Payload";
+      auto pathToProject = pathToBuild / std::string(settings["executable"] + ".xcodeproj");
       fs::create_directories(pathToPayload);
+      fs::create_directories(pathToProject);
 
-      auto pathToIconSrc = fs::path { target / settings["mas_icon"] };
+      auto pathToIconSrc = target / settings["mas_icon"];
 
       if (fs::exists(pathToIconSrc)) {
         fs::copy(pathToIconSrc, pathToBuild);
 
         fs::rename(
-          fs::path(pathToBuild / fs::path(settings["mas_icon"]).filename()),
+          (pathToBuild / fs::path(settings["mas_icon"]).filename()),
           pathToBuild / "iTunesArtwork"
         );
       }
 
-      // fs::copy(pathToPackage, target, fs::copy_options::overwrite_existing | fs::copy_options::recursive);
-      fs::rename(pathPackage, fs::path { pathToPayload / packageName });
+      fs::rename(pathPackage, pathToPayload / packageName);
+
+      auto pathToScheme = pathToProject / "xcshareddata" / "xcschemes";
+      fs::create_directories(pathToScheme);
+
+      std::ofstream ofs(pathToScheme / std::string(settings["executable"] + ".xcscheme"));
+      ofs << gBuildSchemaIOS;
+      ofs.close();
 
       auto plistInfo = tmpl(gPListInfoMAS, settings);
-
-      writeFile(fs::path {
-        pathToBuild /
-        "iTunesMetadata.plist"
-      }, plistInfo);
+      writeFile(pathToBuild / "iTunesMetadata.plist", plistInfo);
 
       pathPackage = pathToBuild;
     }
 
-    pathToArchive = fs::path {
-      target /
-      pathOutput /
-      (settings["executable"] + ext)
-    };
+    pathToArchive = target / pathOutput / (settings["executable"] + ext);
 
     zipCommand
       << "ditto"
@@ -745,6 +728,10 @@ int main (const int argc, const char* argv[]) {
     if (r != 0) {
       log("error: failed to create zip for notarization");
       exit(1);
+    }
+
+    if (flagBuildForIOS) {
+      // fs::remove_all(pathToBuild);
     }
 
     log("craeted package artifact");

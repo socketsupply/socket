@@ -113,7 +113,7 @@ constexpr auto gPListInfoMAS = R"XML(
 	<key>apple-id</key>
 	<string>admin@operator.tc</string>
 	<key>artistName</key>
-	<string>Operator Tools Inc.</string>
+	<string>opkit</string>
 	<key>bundleShortVersionString</key>
 	<string>{{versionShort}</string>
 	<key>bundleVersion</key>
@@ -137,9 +137,9 @@ constexpr auto gPListInfoMAS = R"XML(
   <key>kind</key>
   <string>software</string>
   <key>playlistArtistName</key>
-  <string>Company, Inc.</string>
+  <string>Operator Tools Inc.</string>
   <key>playlistName</key>
-  <string>App Name</string>
+  <string>opkit</string>
   <key>releaseDate</key>
   <string>2015-11-18T03:23:10Z</string>
   <key>s</key>
@@ -151,22 +151,7 @@ constexpr auto gPListInfoMAS = R"XML(
     <integer>9</integer>
   </array>
   <key>softwareVersionBundleId</key>
-  <string>com.company.appid</string>
-  <key>subgenres</key>
-  <array>
-    <dict>
-      <key>gene</key>
-      <string>Puzzle</string>
-      <key>genreId</key>
-      <integer>7012</integer>
-    </dict>
-    <dict>
-      <key>genre</key>
-      <string>Word</string>
-      <key>genreId</key>
-      <integer>7019</integer>
-    </dict>
-  </array>
+  <string>{{bundle_identifier_short}}</string>
   <key>versionRestrictions</key>
   <integer>16843008</integer>
   </dict>
@@ -190,8 +175,6 @@ constexpr auto gPListInfoIOS = R"XML(
 	<string>6.0</string>
 	<key>CFBundleName</key>
 	<string>{{name}}</string>
-	<key>CFBundlePackageType</key>
-	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
 	<string>{{versionShort}}</string>
 	<key>CFBundleSignature</key>
@@ -200,6 +183,34 @@ constexpr auto gPListInfoIOS = R"XML(
 	<string>{{version}}</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleSupportedPlatforms</key>
+	<array>
+		<string>iPhoneOS</string>
+	</array>
+	<key>DTCompiler</key>
+	<string>com.apple.compilers.llvm.clang.1_0</string>
+	<key>DTPlatformBuild</key>
+	<string>19A339</string>
+	<key>DTPlatformName</key>
+	<string>iphoneos</string>
+	<key>DTPlatformVersion</key>
+	<string>15.0</string>
+  <key>UIDeviceFamily</key>
+  <array>
+    <integer>1</integer>
+  </array>
+	<key>DTSDKBuild</key>
+	<string>19A339</string>
+	<key>DTSDKName</key>
+	<string>iphoneos15.0</string>
+	<key>DTXcode</key>
+	<string>1310</string>
+	<key>DTXcodeBuild</key>
+	<string>13A1030d</string>
+  <key>MinimumOSVersion</key>
+	<string>15.0</string>
   <key>UILaunchStoryboardName</key>
   <string>LaunchScreen</string>
   <key>CFBundleIconName</key>
@@ -217,6 +228,79 @@ constexpr auto gPListInfoIOS = R"XML(
 	</array>
 </dict>
 </plist>
+)XML";
+
+constexpr auto gBuildSchemaIOS = R"XML(
+<?xml version="1.0" encoding="UTF-8"?>
+<Scheme
+   LastUpgradeVersion = "1310"
+   version = "1.3">
+   <BuildAction
+      parallelizeBuildables = "YES"
+      buildImplicitDependencies = "YES">
+      <BuildActionEntries>
+         <BuildActionEntry
+            buildForTesting = "YES"
+            buildForRunning = "YES"
+            buildForProfiling = "YES"
+            buildForArchiving = "YES"
+            buildForAnalyzing = "YES">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "29124C4927613369001832A0"
+               BuildableName = "opkit.app"
+               BlueprintName = "opkit"
+               ReferencedContainer = "container:opkit.xcodeproj">
+            </BuildableReference>
+         </BuildActionEntry>
+      </BuildActionEntries>
+   </BuildAction>
+   <LaunchAction
+      buildConfiguration = "Debug"
+      selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
+      selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
+      launchStyle = "0"
+      useCustomWorkingDirectory = "NO"
+      ignoresPersistentStateOnLaunch = "NO"
+      debugDocumentVersioning = "YES"
+      debugServiceExtension = "internal"
+      allowLocationSimulation = "YES">
+      <BuildableProductRunnable
+         runnableDebuggingMode = "0">
+         <BuildableReference
+            BuildableIdentifier = "primary"
+            BlueprintIdentifier = "29124C4927613369001832A0"
+            BuildableName = "opkit.app"
+            BlueprintName = "opkit"
+            ReferencedContainer = "container:opkit.xcodeproj">
+         </BuildableReference>
+      </BuildableProductRunnable>
+   </LaunchAction>
+   <ProfileAction
+      buildConfiguration = "Release"
+      shouldUseLaunchSchemeArgsEnv = "YES"
+      savedToolIdentifier = ""
+      useCustomWorkingDirectory = "NO"
+      debugDocumentVersioning = "YES">
+      <BuildableProductRunnable
+         runnableDebuggingMode = "0">
+         <BuildableReference
+            BuildableIdentifier = "primary"
+            BlueprintIdentifier = "29124C4927613369001832A0"
+            BuildableName = "opkit.app"
+            BlueprintName = "opkit"
+            ReferencedContainer = "container:opkit.xcodeproj">
+         </BuildableReference>
+      </BuildableProductRunnable>
+   </ProfileAction>
+   <AnalyzeAction
+      buildConfiguration = "Debug">
+   </AnalyzeAction>
+   <ArchiveAction
+      buildConfiguration = "Release"
+      revealArchiveInOrganizer = "YES">
+   </ArchiveAction>
+</Scheme>
 )XML";
 
 //

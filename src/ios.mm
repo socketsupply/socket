@@ -177,8 +177,11 @@ constexpr auto _debug = DEBUG;
 
 @end
 
-int main (int argc, char *argv[]) {
+int main(int argc, char * argv[]) {
+  NSString * appDelegateClassName;
   @autoreleasepool {
-    return UIApplicationMain(argc, argv, nil, NSStringFromClass([AppDelegate class]));
+    // Setup code that might create autoreleased objects goes here.
+    appDelegateClassName = NSStringFromClass([AppDelegate class]);
   }
+  return UIApplicationMain(argc, argv, nil, appDelegateClassName);
 }
