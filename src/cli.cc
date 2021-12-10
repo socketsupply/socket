@@ -242,36 +242,52 @@ int main (const int argc, const char* argv[]) {
     fs::create_directories(pathToProject);
     fs::create_directories(pathToScheme);
 
+    writeFile(pathToBuild / "exportOptions.plist", tmpl(gXCodeExportOptions, settings));
     writeFile(pathToBuild / "project.pbxproj", tmpl(gXCodeProject, settings));
     writeFile(pathToScheme / "opkit.xcscheme", tmpl(gXCodeScheme, settings));
 
-    std::string pathToXCode = "/Applications/Xcode.app/Contents";
+    fs::path pathToXCode = { fs::path("Applications") / "Xcode.app" / "Contents" };
+    fs::path pathToSimulator = { pathToXCode / "Developer" / "Applications" / "Simulator.app" };
 
-    std::string pathToSimulator = (
-      pathToXCode +
-      "/Developer/Platforms/iPhoneSimulator.platform"
-    );
+    std::stringstream archiveCommand;
 
-    std::string pathToSysRoot = (
-      pathToSimulator +
-      "/Developer/SDKs/iPhoneSimulator" +
-      trim(r.output) +
-      ".sdk"
-    );
+    archiveCommand
+      << "xcodebuild"
+      << " -scheme " << settings["name"]
+      << " clean archive "
+      << " -archivePath build/" << settings["name"]
+      << " -destination 'generic/platform=iOS'";
 
-    //
-    // https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/UserDefaults/Preferences/Preferences.html
-    //
-    pathResources = pathPackage;
-    pathBin = pathPackage;
-    pathResourcesRelativeToUserBuild = {
-      settings["output"] /
-      packageName
-    };
+    auto rArchive = exec(archiveCommand.str().c_str());
 
-    fs::create_directories(pathResources);
+    if (rArchive.exitCode != 0) {
+      log("error: failed to archive project");
+      exit(1);
+    }
 
-    pathPackage = pathToBuild;
+    std::stringstream exportCommand;
+
+    exportCommand
+      << "xcodebuild"
+      << " -exportArchive "
+      << " -archivePath build/" << settings["name"] << ".xcarchive"
+      << " -exportPath build/" << settings["name"] << ".ipa"
+      << " -exportOptionsPlist " << (pathToBuild / "exportOptions.plist").string();
+
+    auto rExport = exec(exportCommand.str().c_str());
+
+    if (rExport.exitCode != 0) {
+      log("error: failed to export project");
+      exit(1);
+    }
+
+    if (flagShouldRun) {
+      std::stringstream simulatorCommand;
+      simulatorCommand << "open " << pathToString(pathToSimulator);
+      auto r = exec(simulatorCommand.str().c_str());
+      return r.exitCode;
+    }
+
     return 0;
   }
 
