@@ -468,8 +468,8 @@ int main (const int argc, const char* argv[]) {
     writeFile(pathToBuild / "project.pbxproj", tmpl(gXCodeProject, settings));
     writeFile(pathToScheme / "opkit.xcscheme", tmpl(gXCodeScheme, settings));
 
-    fs::path pathToXCode = { fs::path("Applications") / "Xcode.app" / "Contents" };
-    auto pathToSimulator = { pathToXCode / "Developer" / "Applications" / "Simulator.app" };
+    auto pathToXCode = fs::path("Applications") / "Xcode.app" / "Contents";
+    auto pathToSimulator = pathToXCode / "Developer" / "Applications" / "Simulator.app";
 
     fs::copy(
       pathResourcesRelativeToUserBuild,
