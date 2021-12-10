@@ -211,7 +211,7 @@ int main (const int argc, const char* argv[]) {
 
   if (flagRunUserBuild == false) {
     fs::remove_all(pathOutput);
-    log(std::string("cleaned: " + pathToString(pathOutput)));
+    log(std::string("cleaned: " + pathOutput.string()));
   }
 
   auto executable = fs::path(
@@ -227,75 +227,11 @@ int main (const int argc, const char* argv[]) {
   fs::path pathToArchive;
   fs::path packageName;
 
-  if (flagBuildForIOS) {
-    log("building for iOS");
-
-    //
-    // For iOS we're going to bail early and let XCode infrastructure handle
-    // building, signing, bundling, archiving, noterizing, and uploading.
-    //
-    auto pathToBuild = fs::path { target / pathOutput / "build" };
-    auto pathToProject = pathToBuild / std::string(settings["executable"] + ".xcodeproj");
-    auto pathToScheme = pathToProject / "xcshareddata" / "xcschemes";
-
-    fs::remove_all(pathToBuild);
-    fs::create_directories(pathToProject);
-    fs::create_directories(pathToScheme);
-
-    writeFile(pathToBuild / "exportOptions.plist", tmpl(gXCodeExportOptions, settings));
-    writeFile(pathToBuild / "project.pbxproj", tmpl(gXCodeProject, settings));
-    writeFile(pathToScheme / "opkit.xcscheme", tmpl(gXCodeScheme, settings));
-
-    fs::path pathToXCode = { fs::path("Applications") / "Xcode.app" / "Contents" };
-    fs::path pathToSimulator = { pathToXCode / "Developer" / "Applications" / "Simulator.app" };
-
-    std::stringstream archiveCommand;
-
-    archiveCommand
-      << "xcodebuild"
-      << " -scheme " << settings["name"]
-      << " clean archive "
-      << " -archivePath build/" << settings["name"]
-      << " -destination 'generic/platform=iOS'";
-
-    auto rArchive = exec(archiveCommand.str().c_str());
-
-    if (rArchive.exitCode != 0) {
-      log("error: failed to archive project");
-      exit(1);
-    }
-
-    std::stringstream exportCommand;
-
-    exportCommand
-      << "xcodebuild"
-      << " -exportArchive "
-      << " -archivePath build/" << settings["name"] << ".xcarchive"
-      << " -exportPath build/" << settings["name"] << ".ipa"
-      << " -exportOptionsPlist " << (pathToBuild / "exportOptions.plist").string();
-
-    auto rExport = exec(exportCommand.str().c_str());
-
-    if (rExport.exitCode != 0) {
-      log("error: failed to export project");
-      exit(1);
-    }
-
-    if (flagShouldRun) {
-      std::stringstream simulatorCommand;
-      simulatorCommand << "open " << pathToString(pathToSimulator);
-      auto r = exec(simulatorCommand.str().c_str());
-      return r.exitCode;
-    }
-
-    return 0;
-  }
-
   //
   // Darwin Package Prep
   // ---
   //
-  if (platform.mac) {
+  if (platform.mac && !flagBuildForIOS) {
     packageName = fs::path(std::string(settings["name"] + ".app"));
     pathPackage = { target / pathOutput / packageName };
 
@@ -396,14 +332,13 @@ int main (const int argc, const char* argv[]) {
     fs::create_directories(pathManifestFile);
     fs::create_directories(pathControlFile);
 
-    auto linuxExecPath = fs::path {
+    auto linuxExecPath =
       fs::path("/opt") /
       settings["name"] /
-      settings["executable"]
-    };
+      settings["executable"];
 
-    settings["linux_executable_path"] = pathToString(linuxExecPath);
-    settings["linux_icon_path"] = pathToString(fs::path {
+    settings["linux_executable_path"] = linuxExecPath.string();
+    settings["linux_icon_path"] = (
       fs::path("/usr") /
       "share" /
       "icons" /
@@ -411,27 +346,13 @@ int main (const int argc, const char* argv[]) {
       "256x256" /
       "apps" /
       (settings["executable"] + ".png")
-    });
+    ).string();
 
-    writeFile(fs::path {
-      pathManifestFile /
-      (settings["name"] + ".desktop")
-    }, tmpl(gDestkopManifest, settings));
+    writeFile(pathManifestFile / (settings["name"] + ".desktop"), tmpl(gDestkopManifest, settings));
+    writeFile(pathControlFile / "control", tmpl(gDebianManifest, settings));
 
-    writeFile(fs::path {
-      pathControlFile /
-      "control"
-    }, tmpl(gDebianManifest, settings));
-
-    auto pathToIconSrc = pathToString(fs::path {
-      target /
-      settings["linux_icon"]
-    });
-
-    auto pathToIconDest = pathToString(fs::path {
-      pathIcons /
-      (settings["executable"] + ".png")
-    });
+    auto pathToIconSrc = (target / settings["linux_icon"]).string();
+    auto pathToIconDest = (pathIcons / (settings["executable"] + ".png")).string();
 
     if (!fs::exists(pathToIconDest)) {
       fs::copy(pathToIconSrc, pathToIconDest);
@@ -503,13 +424,13 @@ int main (const int argc, const char* argv[]) {
   // should send their build artifacts.
   //
   std::stringstream buildCommand;
-  auto oldCwd = std::filesystem::current_path();
-  std::filesystem::current_path(fs::path { oldCwd / target });
+  auto oldCwd = fs::current_path();
+  fs::current_path(oldCwd / target);
 
   buildCommand
     << settings["build"]
     << " "
-    << pathToString(pathResourcesRelativeToUserBuild)
+    << pathResourcesRelativeToUserBuild.string()
     << " --debug=" << flagDebugMode
     << argvForward.str();
 
@@ -524,7 +445,83 @@ int main (const int argc, const char* argv[]) {
   log(r.output);
   log("ran user build command");
 
-  std::filesystem::current_path(oldCwd);
+  fs::current_path(oldCwd);
+
+  if (flagBuildForIOS) {
+    log("building for iOS");
+
+    //
+    // For iOS we're going to bail early and let XCode infrastructure handle
+    // building, signing, bundling, archiving, noterizing, and uploading.
+    //
+    auto pathToBuild = fs::path { target / pathOutput / "build" };
+    auto pathToUI = fs::path { target / pathOutput / "build" / "ui" };
+    auto pathToProject = pathToBuild / std::string(settings["executable"] + ".xcodeproj");
+    auto pathToScheme = pathToProject / "xcshareddata" / "xcschemes";
+
+    fs::remove_all(pathToBuild);
+    fs::create_directories(pathToUI);
+    fs::create_directories(pathToProject);
+    fs::create_directories(pathToScheme);
+
+    writeFile(pathToBuild / "exportOptions.plist", tmpl(gXCodeExportOptions, settings));
+    writeFile(pathToBuild / "project.pbxproj", tmpl(gXCodeProject, settings));
+    writeFile(pathToScheme / "opkit.xcscheme", tmpl(gXCodeScheme, settings));
+
+    fs::path pathToXCode = { fs::path("Applications") / "Xcode.app" / "Contents" };
+    auto pathToSimulator = { pathToXCode / "Developer" / "Applications" / "Simulator.app" };
+
+    fs::copy(
+      pathResourcesRelativeToUserBuild,
+      pathToUI,
+      fs::copy_options::overwrite_existing | fs::copy_options::recursive
+    );
+
+    std::stringstream archiveCommand;
+
+    archiveCommand
+      << "xcodebuild"
+      << " -scheme " << settings["name"]
+      << " clean archive "
+      << " -archivePath build/" << settings["name"]
+      << " -destination 'generic/platform=iOS'";
+
+    auto rArchive = exec(archiveCommand.str().c_str());
+
+    if (rArchive.exitCode != 0) {
+      log("error: failed to archive project");
+      exit(1);
+    }
+
+    log("created archive");
+    std::stringstream exportCommand;
+
+    exportCommand
+      << "xcodebuild"
+      << " -exportArchive "
+      << " -archivePath build/" << settings["name"] << ".xcarchive"
+      << " -exportPath build/" << settings["name"] << ".ipa"
+      << " -exportOptionsPlist " << (pathToBuild / "exportOptions.plist").string();
+
+    auto rExport = exec(exportCommand.str().c_str());
+
+    if (rExport.exitCode != 0) {
+      log("error: failed to export project");
+      exit(1);
+    }
+
+    log("exported archive");
+
+    if (flagShouldRun) {
+      std::stringstream simulatorCommand;
+      simulatorCommand << "open " << pathToSimulator.string();
+      auto r = exec(simulatorCommand.str().c_str());
+      return r.exitCode;
+    }
+
+    log("completed");
+    return 0;
+  }
 
   std::stringstream compileCommand;
   fs::path binaryPath = { pathBin / executable };
@@ -542,7 +539,7 @@ int main (const int argc, const char* argv[]) {
     << " " << files
     << " " << flags
     << " " << extraFlags
-    << " -o " << pathToString(binaryPath)
+    << " -o " << binaryPath.string()
     << " -D_IOS=" << (flagBuildForIOS ? 1 : 0)
     << " -DDEBUG=" << (flagDebugMode ? 1 : 0)
     << " -DSETTINGS=\"" << _settings << "\""
@@ -590,9 +587,9 @@ int main (const int argc, const char* argv[]) {
 
     archiveCommand
       << "dpkg-deb --build --root-owner-group "
-      << pathToString(pathPackage)
+      << pathPackage.string()
       << " "
-      << pathToString(fs::path { target / pathOutput });
+      << (target / pathOutput).string();
 
     auto r = std::system(archiveCommand.str().c_str());
 
@@ -644,7 +641,7 @@ int main (const int argc, const char* argv[]) {
         signCommand
           << prefix
           << commonFlags.str()
-          << pathToString(fs::path { pathResources / paths[i] })
+          << (pathResources / paths[i]).string()
         ;
       }
       signCommand << ";";
@@ -653,11 +650,11 @@ int main (const int argc, const char* argv[]) {
     signCommand
       << "codesign"
       << commonFlags.str()
-      << pathToString(fs::path { pathBin / executable })
+      << (pathBin / executable).string()
 
       << "; codesign"
       << commonFlags.str()
-      << pathToString(pathPackage);
+      << pathPackage.string();
 
     log(signCommand.str());
     auto r = exec(signCommand.str());
@@ -688,9 +685,9 @@ int main (const int argc, const char* argv[]) {
       << " --sequesterRsrc"
       << (flagBuildForIOS ? "" : " --keepParent")
       << " "
-      << pathToString(pathPackage)
+      << pathPackage.string()
       << " "
-      << pathToString(pathToArchive);
+      << pathToArchive.string();
 
     auto r = std::system(zipCommand.str().c_str());
 
@@ -722,7 +719,7 @@ int main (const int argc, const char* argv[]) {
       << " --username \"" << username << "\""
       << " --password \"" << password << "\""
       << " --primary-bundle-id \"" << settings["bundle_identifier"] << "\""
-      << " --file \"" << pathToString(pathToArchive) << "\""
+      << " --file \"" << pathToArchive.string() << "\""
     ;
 
     // log(notarizeCommand.str());
@@ -1079,10 +1076,7 @@ int main (const int argc, const char* argv[]) {
       execName = (settings["executable"]);
     }
 
-    auto cmd = pathToString(fs::path {
-      pathBin /
-      execName
-    });
+    auto cmd = (pathBin / execName).string();
 
     auto runner = trim(std::string(STR_VALUE(CMD_RUNNER)));
     auto prefix = runner.size() > 0 ? runner + std::string(" ") : runner;
