@@ -1,4 +1,5 @@
 #include "cli.hh"
+#include "ios.hh"
 #include "process.hh"
 #include "common.hh"
 #include <filesystem>
@@ -227,28 +228,22 @@ int main (const int argc, const char* argv[]) {
   fs::path packageName;
 
   if (flagBuildForIOS) {
-    pathBin = pathOutput / "bin" / "ios";
-
     log("building for iOS");
-
-    executable = settings["name"];
 
     //
     // For iOS we're going to bail early and let XCode infrastructure handle
     // building, signing, bundling, archiving, noterizing, and uploading.
     //
-    // - Create xcode project strcture
-    // - Write pbxproj template file
-    // - Write the schema file
-    // - Write the extraction plist file
-    //
+    auto pathToBuild = fs::path { target / pathOutput / "build" };
+    auto pathToProject = pathToBuild / std::string(settings["executable"] + ".xcodeproj");
+    auto pathToScheme = pathToProject / "xcshareddata" / "xcschemes";
 
-    auto r = exec("xcrun -sdk iphonesimulator --show-sdk-version");
+    fs::remove_all(pathToBuild);
+    fs::create_directories(pathToProject);
+    fs::create_directories(pathToScheme);
 
-    if (r.exitCode != 0) {
-      log("error: 'xcrun -sdk iphonesimulator --show-sdk-version' failed.");
-      exit(1);
-    }
+    writeFile(pathToBuild / "project.pbxproj", tmpl(gXCodeProject, settings));
+    writeFile(pathToScheme / "opkit.xcscheme", tmpl(gXCodeScheme, settings));
 
     std::string pathToXCode = "/Applications/Xcode.app/Contents";
 
@@ -264,20 +259,6 @@ int main (const int argc, const char* argv[]) {
       ".sdk"
     );
 
-    flags += " -framework WebKit -framework Foundation -framework UIKit";
-    flags += " -mios-simulator-version-min=10.0";
-    flags += " -isysroot " + pathToSysRoot;
-    flags += " -arch arm64";
-    flags += " -fobjc-abi-version=2";
-    flags += " -std=c++2a";
-    flags += " -ObjC++";
-    flags += getCxxFlags();
-
-    files += prefixFile("src/ios.mm");
-
-    //
-    // Implementing an iOS bundle is simpler than the MacOS bundle, it's
-    // a flat directory structure. Only the binary and the plist are required.
     //
     // https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/UserDefaults/Preferences/Preferences.html
     //
@@ -290,46 +271,8 @@ int main (const int argc, const char* argv[]) {
 
     fs::create_directories(pathResources);
 
-    auto plistInfo = tmpl(gPListInfoIOS, settings);
-
-    writeFile(fs::path {
-      pathPackage /
-      "Info.plist"
-    }, plistInfo);
-
-    ext = ".ipa";
-
-    fs::remove_all(pathToBuild);
-
-    auto pathToPayload = pathToBuild / "Payload";
-    auto pathToProject = pathToBuild / std::string(settings["executable"] + ".xcodeproj");
-    fs::create_directories(pathToPayload);
-    fs::create_directories(pathToProject);
-
-    auto pathToIconSrc = target / settings["mas_icon"];
-
-    if (fs::exists(pathToIconSrc)) {
-      fs::copy(pathToIconSrc, pathToBuild);
-
-      fs::rename(
-        (pathToBuild / fs::path(settings["mas_icon"]).filename()),
-        pathToBuild / "iTunesArtwork"
-      );
-    }
-
-    fs::rename(pathPackage, pathToPayload / packageName);
-
-    auto pathToScheme = pathToProject / "xcshareddata" / "xcschemes";
-    fs::create_directories(pathToScheme);
-
-    std::ofstream ofs(pathToScheme / std::string(settings["executable"] + ".xcscheme"));
-    ofs << gBuildSchemaIOS;
-    ofs.close();
-
-    auto plistInfo = tmpl(gPListInfoMAS, settings);
-    writeFile(pathToBuild / "iTunesMetadata.plist", plistInfo);
-
     pathPackage = pathToBuild;
+    return 0;
   }
 
   //
