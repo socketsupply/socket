@@ -52,7 +52,7 @@ async function main () {
     path.join(target, 'bundle.css')
   )
 
-  // await cp('src/embedded.mobileprovision', target)
+  await cp('src/embedded.mobileprovision', target)
   // await cp('src/PkgInfo', target)
   await cp('src/render/index.html', target)
   await cp('src/Default-568h@2x.png', target)

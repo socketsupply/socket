@@ -1,9 +1,9 @@
 #import <Webkit/Webkit.h>
 #import <UIKit/UIKit.h>
 #import <Foundation/Foundation.h>
-#import "common.hh"
+// #import "common.hh"
 
-constexpr auto _settings = STR_VALUE(SETTINGS);
+/* constexpr auto _settings = STR_VALUE(SETTINGS);
 constexpr auto _debug = DEBUG;
 
 @interface NavigationDelegate : NSObject<WKNavigationDelegate>
@@ -67,6 +67,9 @@ constexpr auto _debug = DEBUG;
 
     self.window = [[UIWindow alloc]
       initWithFrame: appFrame];
+
+    UIViewController *viewController = [[UIViewController alloc] init];
+    self.window.rootViewController = viewController;
 
     auto width = [[UIScreen mainScreen] bounds].size.width;
     auto height = [[UIScreen mainScreen] bounds].size.height;
@@ -175,13 +178,32 @@ constexpr auto _debug = DEBUG;
     return YES;
 }
 
+@end */
+
+@interface AppDelegate : UIResponder <UIApplicationDelegate>
+@property (strong, nonatomic) UIWindow *window;
 @end
 
-int main(int argc, char * argv[]) {
-  NSString * appDelegateClassName;
+@implementation AppDelegate
+- (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(id)options {
+  CGRect mainScreenBounds = [[UIScreen mainScreen] bounds];
+  self.window = [[UIWindow alloc] initWithFrame:mainScreenBounds];
+
+  UIViewController *viewController = [[UIViewController alloc] init];
+  viewController.view.backgroundColor = [UIColor whiteColor];
+  viewController.view.frame = mainScreenBounds;
+  UILabel *label = [[UILabel alloc] initWithFrame:mainScreenBounds];
+  [label setText:@"Wow! I was built with clang and make!"];
+  [viewController.view addSubview: label];
+  self.window.rootViewController = viewController;
+  [self.window makeKeyAndVisible];
+
+  return YES;
+}
+@end
+
+int main (int argc, char *argv[]) {
   @autoreleasepool {
-    // Setup code that might create autoreleased objects goes here.
-    appDelegateClassName = NSStringFromClass([AppDelegate class]);
+    return UIApplicationMain(argc, argv, nil, NSStringFromClass([AppDelegate class]));
   }
-  return UIApplicationMain(argc, argv, nil, appDelegateClassName);
 }
