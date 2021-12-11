@@ -152,8 +152,6 @@ int main (const int argc, const char* argv[]) {
     }
   }
 
-
-
   //
   // TODO(@heapwolf) split path values from the settings file
   // on the os separator to make them work cross-platform.
@@ -249,7 +247,7 @@ int main (const int argc, const char* argv[]) {
     pathResources = { pathPackage / pathBase / "Resources" };
 
     pathResourcesRelativeToUserBuild = {
-      settings["output"] /
+      pathOutput /
       packageName /
       pathBase /
       "Resources"
@@ -260,11 +258,52 @@ int main (const int argc, const char* argv[]) {
 
     auto plistInfo = tmpl(gPListInfo, settings);
 
-    writeFile(fs::path {
-      pathPackage /
-      pathBase /
-      "Info.plist"
-    }, plistInfo);
+    writeFile(pathPackage / pathBase / "Info.plist", plistInfo);
+  }
+
+  if (platform.mac && flagBuildForIOS) {
+    auto projectName = (settings["name"] + ".xcodeproj");
+    auto schemeName = (settings["name"] + ".xcscheme");
+    auto pathToProject = target / pathOutput / projectName;
+    auto pathToScheme = pathToProject / "xcshareddata" / "xcschemes";
+    auto pathToProfile = target / settings["apple_provisioning_profile"];
+
+    fs::create_directories(pathToProject);
+    fs::create_directories(pathToScheme);
+
+    auto r = exec("security cms -D -i " + pathToProfile.string());
+    std::regex re(R"(<key>UUID<\/key>\n\s*<string>(.*)<\/string>)");
+    std::smatch match;
+    std::string uuid;
+
+    if (!std::regex_search(r.output, match, re)) {
+      log("failed to extract uuid from provisioning profile");
+      exit(1);
+    }
+
+    uuid = match.str(1);
+
+    auto pathToInstalledProfile = fs::path(getEnv("HOME")) /
+      "Library" /
+      "MobileDevice" /
+      "Provisioning Profiles" /
+      (uuid + ".mobileprovision");
+
+    if (!fs::exists(pathToInstalledProfile)) {
+      fs::copy(pathToProfile, pathToInstalledProfile);
+    }
+
+    settings["apple_provisioning_profile"] = uuid;
+
+    writeFile(target / pathOutput / "exportOptions.plist", tmpl(gXCodeExportOptions, settings));
+    writeFile(target / pathOutput / "Info.plist", tmpl(gXCodePlist, settings));
+    writeFile(pathToProject / "project.pbxproj", tmpl(gXCodeProject, settings));
+    writeFile(pathToScheme / schemeName, tmpl(gXCodeScheme, settings));
+
+    pathResources = fs::path { target / pathOutput / "ui" };
+    fs::create_directories(pathResources);
+
+    pathResourcesRelativeToUserBuild = pathOutput / "ui";
   }
 
   //
@@ -450,39 +489,36 @@ int main (const int argc, const char* argv[]) {
   if (flagBuildForIOS) {
     log("building for iOS");
 
+    auto oldCwd = fs::current_path();
+    auto pathToDist = oldCwd / target / "dist";
+
+    fs::create_directories(pathToDist);
+    fs::current_path(pathToDist);
+
+    //
+    // Copy and or create the source files we need for the build.
+    //
+    fs::copy(trim(prefixFile("src/ios.mm")), pathToDist);
+    fs::copy(trim(prefixFile("src/ios.hh")), pathToDist);
+    fs::copy(trim(prefixFile("src/common.hh")), pathToDist);
+    fs::copy(trim(prefixFile("src/preload.hh")), pathToDist);
+
+    auto pathBase = pathToDist / "Base.lproj";
+    fs::create_directories(pathBase);
+
+    writeFile(pathBase / "LaunchScreen.storyboard", gStoryboardMain);
+    writeFile(pathBase / "Main.storyboard", gStoryboardViewController);
+
     //
     // For iOS we're going to bail early and let XCode infrastructure handle
     // building, signing, bundling, archiving, noterizing, and uploading.
     //
-    auto pathToBuild = fs::path { target / pathOutput / "build" };
-    auto pathToUI = fs::path { target / pathOutput / "build" / "ui" };
-    auto pathToProject = pathToBuild / std::string(settings["executable"] + ".xcodeproj");
-    auto pathToScheme = pathToProject / "xcshareddata" / "xcschemes";
-
-    fs::remove_all(pathToBuild);
-    fs::create_directories(pathToUI);
-    fs::create_directories(pathToProject);
-    fs::create_directories(pathToScheme);
-
-    writeFile(pathToBuild / "exportOptions.plist", tmpl(gXCodeExportOptions, settings));
-    writeFile(pathToBuild / "project.pbxproj", tmpl(gXCodeProject, settings));
-    writeFile(pathToScheme / "opkit.xcscheme", tmpl(gXCodeScheme, settings));
-
-    auto pathToXCode = fs::path("Applications") / "Xcode.app" / "Contents";
-    auto pathToSimulator = pathToXCode / "Developer" / "Applications" / "Simulator.app";
-
-    fs::copy(
-      pathResourcesRelativeToUserBuild,
-      pathToUI,
-      fs::copy_options::overwrite_existing | fs::copy_options::recursive
-    );
-
     std::stringstream archiveCommand;
 
     archiveCommand
       << "xcodebuild"
       << " -scheme " << settings["name"]
-      << " clean archive "
+      << " clean build archive "
       << " -archivePath build/" << settings["name"]
       << " -destination 'generic/platform=iOS'";
 
@@ -490,6 +526,7 @@ int main (const int argc, const char* argv[]) {
 
     if (rArchive.exitCode != 0) {
       log("error: failed to archive project");
+      fs::current_path(oldCwd);
       exit(1);
     }
 
@@ -501,34 +538,35 @@ int main (const int argc, const char* argv[]) {
       << " -exportArchive "
       << " -archivePath build/" << settings["name"] << ".xcarchive"
       << " -exportPath build/" << settings["name"] << ".ipa"
-      << " -exportOptionsPlist " << (pathToBuild / "exportOptions.plist").string();
+      << " -exportOptionsPlist " << (pathToDist / "exportOptions.plist").string();
 
+    log(exportCommand.str());
     auto rExport = exec(exportCommand.str().c_str());
 
     if (rExport.exitCode != 0) {
       log("error: failed to export project");
+      fs::current_path(oldCwd);
       exit(1);
     }
 
     log("exported archive");
 
     if (flagShouldRun) {
+      auto pathToXCode = fs::path("/Applications") / "Xcode.app" / "Contents";
+      auto pathToSimulator = pathToXCode / "Developer" / "Applications" / "Simulator.app";
+
       std::stringstream simulatorCommand;
       simulatorCommand << "open " << pathToSimulator.string();
-      auto r = exec(simulatorCommand.str().c_str());
-      return r.exitCode;
+      exec(simulatorCommand.str().c_str());
     }
 
     log("completed");
+    fs::current_path(oldCwd);
     return 0;
   }
 
   std::stringstream compileCommand;
-  fs::path binaryPath = { pathBin / executable };
-
-  // Serialize the settings and strip the comments so that we can pass
-  // them to the compiler by replacing new lines with a high bit.
-  _settings = encodeURIComponent(_settings);
+  auto binaryPath = pathBin / executable;
 
   auto extraFlags = flagDebugMode
     ? settings.count("debug_flags") ? settings["debug_flags"] : ""
@@ -542,7 +580,7 @@ int main (const int argc, const char* argv[]) {
     << " -o " << binaryPath.string()
     << " -D_IOS=" << (flagBuildForIOS ? 1 : 0)
     << " -DDEBUG=" << (flagDebugMode ? 1 : 0)
-    << " -DSETTINGS=\"" << _settings << "\""
+    << " -DSETTINGS=\"" << encodeURIComponent(_settings) << "\""
   ;
 
   // log(compileCommand.str());
@@ -580,7 +618,7 @@ int main (const int argc, const char* argv[]) {
     fs::create_directories(pathSymLinks);
     fs::create_symlink(
       linuxExecPath,
-      fs::path { pathSymLinks / settings["executable"] }
+      pathSymLinks / settings["executable"]
     );
 
     std::stringstream archiveCommand;
@@ -683,7 +721,7 @@ int main (const int argc, const char* argv[]) {
       << " -c"
       << " -k"
       << " --sequesterRsrc"
-      << (flagBuildForIOS ? "" : " --keepParent")
+      << " --keepParent"
       << " "
       << pathPackage.string()
       << " "
@@ -694,10 +732,6 @@ int main (const int argc, const char* argv[]) {
     if (r != 0) {
       log("error: failed to create zip for notarization");
       exit(1);
-    }
-
-    if (flagBuildForIOS) {
-      // fs::remove_all(pathToBuild);
     }
 
     log("craeted package artifact");

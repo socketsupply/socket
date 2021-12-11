@@ -5,7 +5,7 @@
 #import "common.hh"
 
 constexpr auto _settings = STR_VALUE(SETTINGS);
-constexpr auto _debug = DEBUG;
+constexpr auto _debug = false;
 
 @interface NavigationDelegate : NSObject<WKNavigationDelegate>
 @end
@@ -68,9 +68,6 @@ constexpr auto _debug = DEBUG;
 
     self.window = [[UIWindow alloc]
       initWithFrame: appFrame];
-
-    UIViewController *viewController = [[UIViewController alloc] init];
-    self.window.rootViewController = viewController;
 
     auto width = [[UIScreen mainScreen] bounds].size.width;
     auto height = [[UIScreen mainScreen] bounds].size.height;
@@ -156,7 +153,7 @@ constexpr auto _debug = DEBUG;
     // Get the path and load the file.
     //
     NSString *path = [[NSBundle mainBundle]
-      pathForResource: @"index"
+      pathForResource: @"ui/index"
       ofType: @"html"];
 
     NSURL *url = [NSURL fileURLWithPath:path];

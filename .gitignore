@@ -1,8 +1,4 @@
 node_modules/
-/test/desktop/dist
-/test/desktop/build
-/test/ios/node_modules
-/test/ios/build
 /bin/build
 /bin/cli.exe
 /bin/cli

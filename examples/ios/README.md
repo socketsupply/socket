@@ -25,9 +25,10 @@ Download the certificate and double click it to install it to the Apple
 to your project.
 
 ```settings
-ios_teamid: Z3M838H537
-signing_certificate: iOS Distribution (App Store and Ad Hoc)
-provisioning_profile: src/foobar.mobileprovision
+apple_teamId: Z3M838H537
+apple_distribution_method: ad-hoc
+apple_signing_certificate: iOS Distribution (App Store and Ad Hoc)
+apple_provisioning_profile: src/foobar.mobileprovision
 ```
 
 ```bash

@@ -16,6 +16,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 		294A3C7A2763E9C6007B5B9A /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 294A3C792763E9C6007B5B9A /* UIKit.framework */; };
 		294A3C7C2763EA7F007B5B9A /* WebKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 294A3C7B2763EA7F007B5B9A /* WebKit.framework */; };
 		294A3C7E2763EA99007B5B9A /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 294A3C7D2763EA99007B5B9A /* Foundation.framework */; };
+		294A3C852764EAB7007B5B9A /* ui in Resources */ = {isa = PBXBuildFile; fileRef = 294A3C842764EAB7007B5B9A /* ui */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -40,14 +41,14 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 		29124C5727613369001832A0 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
 		29124C5C2761336B001832A0 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		29124C5E2761336B001832A0 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		294A3C4D2763B949007B5B9A /* ui */ = {isa = PBXFileReference; lastKnownFileType = folder; path = ui; sourceTree = "<group>"; };
 		294A3C4E2763E5EB007B5B9A /* ios.mm */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.objcpp; path = ios.mm; sourceTree = "<group>"; };
 		294A3C762763E930007B5B9A /* ios.hh */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = ios.hh; sourceTree = "<group>"; };
-		294A3C762763E930007B5B9A /* common.hh */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = common.hh; sourceTree = "<group>"; };
-		294A3C762763E930007B5B9A /* preload.hh */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = preload.hh; sourceTree = "<group>"; };
 		294A3C792763E9C6007B5B9A /* UIKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UIKit.framework; path = System/Library/Frameworks/UIKit.framework; sourceTree = SDKROOT; };
 		294A3C7B2763EA7F007B5B9A /* WebKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WebKit.framework; path = System/Library/Frameworks/WebKit.framework; sourceTree = SDKROOT; };
 		294A3C7D2763EA99007B5B9A /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
+		294A3C7F27649D27007B5B9A /* preload.hh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = preload.hh; sourceTree = "<group>"; };
+		294A3C8027649DD9007B5B9A /* common.hh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = common.hh; sourceTree = "<group>"; };
+		294A3C842764EAB7007B5B9A /* ui */ = {isa = PBXFileReference; lastKnownFileType = folder; path = ui; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -81,10 +82,10 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 		29124C4127613369001832A0 = {
 			isa = PBXGroup;
 			children = (
+				294A3C842764EAB7007B5B9A /* ui */,
+				294A3C8027649DD9007B5B9A /* common.hh */,
+				294A3C7F27649D27007B5B9A /* preload.hh */,
 				294A3C762763E930007B5B9A /* ios.hh */,
-				294A3C762763E930007B5B9A /* common.hh */,
-				294A3C762763E930007B5B9A /* preload.hh */,
-				294A3C4D2763B949007B5B9A /* ui */,
 				29124C5627613369001832A0 /* Main.storyboard */,
 				29124C5B2761336B001832A0 /* LaunchScreen.storyboard */,
 				29124C5E2761336B001832A0 /* Info.plist */,
@@ -178,6 +179,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 			buildActionMask = 2147483647;
 			files = (
 				29124C5D2761336B001832A0 /* LaunchScreen.storyboard in Resources */,
+				294A3C852764EAB7007B5B9A /* ui in Resources */,
 				29124C5827613369001832A0 /* Main.storyboard in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -508,9 +510,9 @@ constexpr auto gXCodeExportOptions = R"XML(<?xml version="1.0" encoding="UTF-8"?
 <plist version="1.0">
 <dict>
 	<key>method</key>
-	<string>{{apple_build_method}}</string>
+	<string>{{apple_distribution_method}}</string>
 	<key>teamID</key>
-	<string>{{apple_id}}</string>
+	<string>{{apple_team_id}}</string>
 	<key>uploadBitcode</key>
 	<true/>
 	<key>compileBitcode</key>
@@ -524,9 +526,15 @@ constexpr auto gXCodeExportOptions = R"XML(<?xml version="1.0" encoding="UTF-8"?
 	<key>provisioningProfiles</key>
 	<dict>
 		<key>{{bundle_identifier}}</key>
-		<string>{{provisioning_profile}}</string>
+		<string>{{apple_provisioning_profile}}</string>
 	</dict>
 </dict>
+</plist>)XML";
+
+constexpr auto gXCodePlist = R"XML(<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict/>
 </plist>)XML";
 
 //
@@ -610,3 +618,55 @@ constexpr auto gXCodeScheme = R"XML(<?xml version="1.0" encoding="UTF-8"?>
       revealArchiveInOrganizer = "YES">
    </ArchiveAction>
 </Scheme>)XML";
+
+constexpr auto gStoryboardMain = R"XML(<?xml version="1.0" encoding="UTF-8"?>
+<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="13122.16" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES" initialViewController="BYZ-38-t0r">
+  <dependencies>
+    <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="13104.12"/>
+    <capability name="Safe area layout guides" minToolsVersion="9.0"/>
+    <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
+  </dependencies>
+  <scenes>
+    <!--View Controller-->
+    <scene sceneID="tne-QT-ifu">
+      <objects>
+        <viewController id="BYZ-38-t0r" customClass="ViewController" customModuleProvider="" sceneMemberID="viewController">
+          <view key="view" contentMode="scaleToFill" id="8bC-Xf-vdC">
+            <rect key="frame" x="0.0" y="0.0" width="375" height="667"/>
+            <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+            <color key="backgroundColor" xcode11CocoaTouchSystemColor="systemBackgroundColor" cocoaTouchSystemColor="whiteColor"/>
+            <viewLayoutGuide key="safeArea" id="6Tk-OE-BBY"/>
+          </view>
+        </viewController>
+        <placeholder placeholderIdentifier="IBFirstResponder" id="dkx-z0-nzr" sceneMemberID="firstResponder"/>
+      </objects>
+    </scene>
+  </scenes>
+</document>)XML";
+
+constexpr auto gStoryboardViewController = R"XML(<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="13122.16" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" launchScreen="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES" initialViewController="01J-lp-oVM">
+  <dependencies>
+    <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="13104.12"/>
+    <capability name="Safe area layout guides" minToolsVersion="9.0"/>
+    <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
+  </dependencies>
+  <scenes>
+    <!--View Controller-->
+    <scene sceneID="EHf-IW-A2E">
+      <objects>
+        <viewController id="01J-lp-oVM" sceneMemberID="viewController">
+          <view key="view" contentMode="scaleToFill" id="Ze5-6b-2t3">
+            <rect key="frame" x="0.0" y="0.0" width="375" height="667"/>
+            <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+            <color key="backgroundColor" xcode11CocoaTouchSystemColor="systemBackgroundColor" cocoaTouchSystemColor="whiteColor"/>
+            <viewLayoutGuide key="safeArea" id="6Tk-OE-BBY"/>
+          </view>
+        </viewController>
+        <placeholder placeholderIdentifier="IBFirstResponder" id="iYj-Kq-Ea1" userLabel="First Responder" sceneMemberID="firstResponder"/>
+      </objects>
+      <point key="canvasLocation" x="53" y="375"/>
+    </scene>
+  </scenes>
+</document>
+)XML";

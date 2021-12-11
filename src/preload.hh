@@ -1,3 +1,6 @@
+#ifndef PRELOAD_HH
+#define PRELOAD_HH
+
 constexpr auto gPreload = R"JS(
   ;document.addEventListener('DOMContentLoaded', () => {
     // window.external.invoke('ipc://ready');
@@ -119,3 +122,5 @@ constexpr auto gPreload = R"JS(
     return window._ipc.send('context', value)
   };
 )JS";
+
+#endif
