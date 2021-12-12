@@ -1,12 +1,14 @@
 #import <Webkit/Webkit.h>
 #import <UIKit/UIKit.h>
 #import <Foundation/Foundation.h>
+#import "ios.hh"
 #import "common.hh"
 
 constexpr auto _settings = STR_VALUE(SETTINGS);
-constexpr auto _debug = DEBUG;
+constexpr auto _debug = false;
 
 @interface NavigationDelegate : NSObject<WKNavigationDelegate>
+- (void) webView: (WKWebView*) webView decidePolicyForNavigationAction: (WKNavigationAction*) navigationAction decisionHandler: (void (^)(WKNavigationActionPolicy)) decisionHandler;
 @end
 
 @implementation NavigationDelegate
@@ -14,8 +16,10 @@ constexpr auto _debug = DEBUG;
     decidePolicyForNavigationAction: (WKNavigationAction*) navigationAction
     decisionHandler: (void (^)(WKNavigationActionPolicy)) decisionHandler {
 
-  // std::string base = webView.URL.absoluteString.UTF8String;
+  std::string base = webView.URL.absoluteString.UTF8String;
   std::string request = navigationAction.request.URL.absoluteString.UTF8String;
+
+  NSLog(@"OPKIT navigation %s", request.c_str());
 
   if (request.find("file://") == 0) {
     decisionHandler(WKNavigationActionPolicyAllow);
@@ -26,7 +30,10 @@ constexpr auto _debug = DEBUG;
 @end
 
 @interface AppDelegate : UIResponder <UIApplicationDelegate, WKScriptMessageHandler>
-@property (strong, nonatomic) UIWindow *window;
+@property (strong, nonatomic) UIWindow* window;
+@property (strong, nonatomic) WKWebView* webview;
+@property (strong, nonatomic) WKUserContentController* content;
+@property (strong, nonatomic) NavigationDelegate* navDelegate;
 @end
 
 //
@@ -63,28 +70,14 @@ constexpr auto _debug = DEBUG;
   didFinishLaunchingWithOptions: (NSDictionary *) launchOptions {
     using namespace Opkit;
 
+    NSLog(@"OPKIT: finished loading");
+
     auto appFrame = [[UIScreen mainScreen] bounds];
 
-    self.window = [[UIWindow alloc]
-      initWithFrame: appFrame];
-
-    auto width = [[UIScreen mainScreen] bounds].size.width;
-    auto height = [[UIScreen mainScreen] bounds].size.height;
-    // auto frame = CGRectMake(0, 0, width, height);
+    self.window = [[UIWindow alloc] initWithFrame: appFrame];
 
     UIViewController *viewController = [[UIViewController alloc] init];
-    // viewController.view.frame = CGRectMake(0, 0, width, height);
-
-    // viewController.view.backgroundColor = [UIColor whiteColor];
-    // viewController.view.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-    // viewController.view.autoresizesSubviews = YES;
-    // viewController.view.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-    // viewController.modalPresentationStyle = UIModalPresentationFullScreen;
-    // [viewController setModalPresentationStyle: UIModalPresentationFullScreen];
-
-    // self.window.layer.borderColor = [UIColor redColor];
-    // self.window.layer.borderWidth = 2;
-
+    viewController.view.frame = appFrame;
     self.window.rootViewController = viewController;
 
     auto appData = parseConfig(decodeURIComponent(_settings));
@@ -100,8 +93,8 @@ constexpr auto _debug = DEBUG;
       );
     }
 
-    env << std::string("width=" + std::to_string(width) + "&");
-    env << std::string("height=" + std::to_string(height) + "&");
+    env << std::string("width=" + std::to_string(appFrame.size.width) + "&");
+    env << std::string("height=" + std::to_string(appFrame.size.height) + "&");
 
     WindowOptions opts {
       .debug = _debug,
@@ -110,17 +103,6 @@ constexpr auto _debug = DEBUG;
       .version = appData["version"],
       .env = env.str()
     };
-
-    //
-    // Configure the webview.
-    //
-    WKWebViewConfiguration *config = [[WKWebViewConfiguration alloc] init];
-
-    //
-    // Add the controller and set up a script message listener.
-    //
-    WKUserContentController* controller = [config userContentController];
-    [controller addScriptMessageHandler:self name: @"webview"];
 
     std::string preload = Str(
       "window.external = {\n"
@@ -136,45 +118,41 @@ constexpr auto _debug = DEBUG;
       "" + createPreload(opts) + "\n"
     );
 
-    WKUserScript* userScript = [WKUserScript alloc];
-
-    [userScript
+    WKUserScript* initScript = [[WKUserScript alloc]
       initWithSource: [NSString stringWithUTF8String: preload.c_str()]
       injectionTime: WKUserScriptInjectionTimeAtDocumentStart
       forMainFrameOnly: NO];
 
-    [controller addUserScript: userScript];
+    WKWebViewConfiguration *webviewConfig = [[WKWebViewConfiguration alloc] init];
+    self.content = [webviewConfig userContentController];
 
-    WKWebView* webview = [[WKWebView alloc]
-      initWithFrame: appFrame
-      configuration: config];
+    [self.content addScriptMessageHandler:self name: @"webview"];
+    [self.content addUserScript: initScript];
 
-    webview.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+    self.webview = [[WKWebView alloc] initWithFrame: appFrame configuration: webviewConfig];
+    self.webview.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
 
-    [webview.configuration.preferences
-      setValue: @YES
-      forKey: @"allowFileAccessFromFileURLs"];
+    [self.webview.configuration.preferences setValue: @YES forKey: @"allowFileAccessFromFileURLs"];
+    [self.webview.configuration.preferences setValue: @YES forKey: @"javaScriptEnabled"];
 
-    [viewController.view addSubview: webview];
+    self.navDelegate = [[NavigationDelegate alloc] init];
+    [self.webview setNavigationDelegate: self.navDelegate];
 
-    NavigationDelegate *navDelegate = [[NavigationDelegate alloc] init];
-    [webview setNavigationDelegate:navDelegate];
+    [viewController.view addSubview: self.webview];
 
-    //
-    // Get the path and load the file.
-    //
-    NSString *path = [[NSBundle mainBundle]
-      pathForResource: @"index"
-      ofType: @"html"];
+    NSString* url = [[[NSBundle mainBundle] resourcePath]
+      stringByAppendingPathComponent:@"ui/index.html"];
 
-    NSURL *url = [NSURL fileURLWithPath:path];
-    [webview loadFileURL:url allowingReadAccessToURL:url];
+    NSString* allowed = [[NSBundle mainBundle] resourcePath];
 
-    NSLog(@"OPKIT: fs '%@'", url);
+    [self.webview
+        loadFileURL: [NSURL fileURLWithPath:url]
+        allowingReadAccessToURL: [NSURL fileURLWithPath:allowed]
+    ];
+
     [self.window makeKeyAndVisible];
     return YES;
 }
-
 @end
 
 int main (int argc, char *argv[]) {

@@ -32,6 +32,12 @@ const css = async (src, dest) => {
   return fs.writeFile(dest, minified.styles)
 }
 
+const cp = async (a, b) => fs.cp(
+  path.resolve(a),
+  path.join(b, path.basename(a)),
+  { recursive: true, force: true }
+)
+
 async function main () {
   await esbuild.build({
     entryPoints: ['src/render/index.js'],
@@ -59,14 +65,14 @@ async function main () {
 
   // TODO Since we don't have ASAR, why not GZip?
 
-  await fs.copyFile('src/render/index.html', path.join(target, 'index.html'))
+  await cp('src/render/index.html', target)
 
   let ext = ''
-  
+
   switch (process.platform) {
     case 'win32':
       ext = 'ico'
-      await fs.copyFile(`src/icons/icon.png`, path.join(target, `index.png`))
+      await cp(`src/icons/icon.png`, target)
       break;
     case 'linux':
       ext = 'png'
@@ -75,7 +81,7 @@ async function main () {
       ext = 'icns'
   }
 
-  await fs.copyFile(`src/icons/icon.${ext}`, path.join(target, `index.${ext}`))
+  await cp(`src/icons/icon.${ext}`, target)
 }
 
 main()

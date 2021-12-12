@@ -4,8 +4,7 @@
 //
 // Darwin config
 //
-constexpr auto gPListInfo = R"XML(
-<?xml version="1.0" encoding="UTF-8"?>
+constexpr auto gPListInfo = R"XML(<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
@@ -102,120 +101,6 @@ constexpr auto gPListInfo = R"XML(
       <string>localhost</string>
   </array>
   </dict>
-</plist>
-)XML";
-
-constexpr auto gPListInfoMAS = R"XML(
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-	<key>apple-id</key>
-	<string>admin@operator.tc</string>
-	<key>artistName</key>
-	<string>Operator Tools Inc.</string>
-	<key>bundleShortVersionString</key>
-	<string>{{versionShort}</string>
-	<key>bundleVersion</key>
-	<string>{{version}}</string>
-  <key>copyright</key>
-  <string>{{copyright}}</string>
-  <key>drmVersionNumber</key>
-  <integer>0</integer>
-  <key>fileExtension</key>
-  <string>.app</string>
-  <key>gameCenterEnabled</key>
-  <false/>
-  <key>gameCenterEverEnabled</key>
-  <false/>
-  <key>genre</key>
-  <string>Games</string>
-  <key>genreId</key>
-  <integer>6014</integer>
-  <key>itemName</key>
-  <string>App Name</string>
-  <key>kind</key>
-  <string>software</string>
-  <key>playlistArtistName</key>
-  <string>Company, Inc.</string>
-  <key>playlistName</key>
-  <string>App Name</string>
-  <key>releaseDate</key>
-  <string>2015-11-18T03:23:10Z</string>
-  <key>s</key>
-  <integer>143441</integer>
-  <key>softwareIconNeedsShine</key>
-  <false/>
-  <key>softwareSupportedDeviceIds</key>
-  <array>
-    <integer>9</integer>
-  </array>
-  <key>softwareVersionBundleId</key>
-  <string>com.company.appid</string>
-  <key>subgenres</key>
-  <array>
-    <dict>
-      <key>gene</key>
-      <string>Puzzle</string>
-      <key>genreId</key>
-      <integer>7012</integer>
-    </dict>
-    <dict>
-      <key>genre</key>
-      <string>Word</string>
-      <key>genreId</key>
-      <integer>7019</integer>
-    </dict>
-  </array>
-  <key>versionRestrictions</key>
-  <integer>16843008</integer>
-  </dict>
-</plist>
-)XML";
-
-constexpr auto gPListInfoIOS = R"XML(
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-	<key>CFBundleDevelopmentRegion</key>
-	<string>en</string>
-	<key>CFBundleDisplayName</key>
-	<string>{{name}}</string>
-	<key>CFBundleExecutable</key>
-	<string>{{name}}</string>
-	<key>CFBundleIdentifier</key>
-	<string>{{bundle_identifier}}</string>
-	<key>CFBundleInfoDictionaryVersion</key>
-	<string>6.0</string>
-	<key>CFBundleName</key>
-	<string>{{name}}</string>
-	<key>CFBundlePackageType</key>
-	<string>APPL</string>
-	<key>CFBundleShortVersionString</key>
-	<string>{{versionShort}}</string>
-	<key>CFBundleSignature</key>
-	<string>OPERATOR</string>
-	<key>CFBundleVersion</key>
-	<string>{{version}}</string>
-	<key>LSRequiresIPhoneOS</key>
-	<true/>
-  <key>UILaunchStoryboardName</key>
-  <string>LaunchScreen</string>
-  <key>CFBundleIconName</key>
-  <string>AppIcon</string>
-  <key>CFBundleIconFile</key>
-  <string>index.png</string>
-  <key>UIPrerenderedIcon</key>
-  <true/>
-	<key>UISupportedInterfaceOrientations</key>
-	<array>
-		<string>UIInterfaceOrientationPortrait</string>
-		<string>UIInterfaceOrientationPortraitUpsideDown</string>
-		<string>UIInterfaceOrientationLandscapeLeft</string>
-		<string>UIInterfaceOrientationLandscapeRight</string>
-	</array>
-</dict>
 </plist>
 )XML";
 

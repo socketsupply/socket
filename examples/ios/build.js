@@ -31,17 +31,11 @@ const css = async (src, dest) => {
   return fs.writeFile(dest, minified.styles)
 }
 
-async function cp (src, dest) {
-  const entries = await fs.readdir(src, { withFileTypes: true })
-  await fs.mkdir(dest, { recursive: true })
-
-  for (const entry of entries) {
-    await (entry.isDirectory() ? cp : fs.copyFile)(
-      path.join(src, entry.name),
-      path.join(dest, entry.name)
-    )
-  }
-}
+const cp = async (a, b) => fs.cp(
+  path.resolve(a),
+  path.join(b, path.basename(a)),
+  { recursive: true, force: true }
+)
 
 async function main () {
   await esbuild.build({
@@ -58,9 +52,9 @@ async function main () {
     path.join(target, 'bundle.css')
   )
 
-  await fs.copyFile('src/render/index.html', path.join(target, 'index.html'))
-  await fs.copyFile(`src/icons/index.png`, path.join(target, `index.png`))
-  await cp('src/images', path.join(target, 'images'))
+  await cp('src/render/index.html', target)
+  await cp(`src/icons/index.png`, target)
+  await cp('src/images', target)
 }
 
 main()

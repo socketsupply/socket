@@ -1,4 +1,5 @@
 #include "cli.hh"
+#include "ios.hh"
 #include "process.hh"
 #include "common.hh"
 #include <filesystem>
@@ -151,8 +152,6 @@ int main (const int argc, const char* argv[]) {
     }
   }
 
-
-
   //
   // TODO(@heapwolf) split path values from the settings file
   // on the os separator to make them work cross-platform.
@@ -210,7 +209,7 @@ int main (const int argc, const char* argv[]) {
 
   if (flagRunUserBuild == false) {
     fs::remove_all(pathOutput);
-    log(std::string("cleaned: " + pathToString(pathOutput)));
+    log(std::string("cleaned: " + pathOutput.string()));
   }
 
   auto executable = fs::path(
@@ -230,100 +229,83 @@ int main (const int argc, const char* argv[]) {
   // Darwin Package Prep
   // ---
   //
-  if (platform.mac) {
+  if (platform.mac && !flagBuildForIOS) {
     packageName = fs::path(std::string(settings["name"] + ".app"));
     pathPackage = { target / pathOutput / packageName };
 
-    if (flagBuildForIOS) {
-      log("building for iOS");
+    log("preparing build for mac");
 
-      executable = settings["name"];
+    flags = "-std=c++2a -framework WebKit -framework Cocoa -ObjC++";
+    flags += getCxxFlags();
 
-      auto r = exec("xcrun -sdk iphonesimulator --show-sdk-version");
+    files += prefixFile("src/main.cc");
+    files += prefixFile("src/process_unix.cc");
 
-      if (r.exitCode != 0) {
-        log("error: 'xcrun -sdk iphonesimulator --show-sdk-version' failed.");
-        exit(1);
-      }
+    fs::path pathBase = "Contents";
 
-      std::string pathToXCode = "/Applications/Xcode.app/Contents";
+    pathBin = { pathPackage / pathBase / "MacOS" };
+    pathResources = { pathPackage / pathBase / "Resources" };
 
-      std::string pathToSimulator = (
-        pathToXCode +
-        "/Developer/Platforms/iPhoneSimulator.platform"
-      );
+    pathResourcesRelativeToUserBuild = {
+      pathOutput /
+      packageName /
+      pathBase /
+      "Resources"
+    };
 
-      std::string pathToSysRoot = (
-        pathToSimulator +
-        "/Developer/SDKs/iPhoneSimulator" +
-        trim(r.output) +
-        ".sdk"
-      );
+    fs::create_directories(pathBin);
+    fs::create_directories(pathResources);
 
-      flags += " -framework WebKit -framework Foundation -framework UIKit";
-      flags += " -mios-simulator-version-min=10.0";
-      flags += " -isysroot " + pathToSysRoot;
-      flags += " -arch arm64";
-      flags += " -fobjc-abi-version=2";
-      flags += " -std=c++2a";
-      flags += " -ObjC++";
-      flags += getCxxFlags();
+    auto plistInfo = tmpl(gPListInfo, settings);
 
-      files += prefixFile("src/ios.mm");
+    writeFile(pathPackage / pathBase / "Info.plist", plistInfo);
+  }
 
-      //
-      // Implementing an iOS bundle is simpler than the MacOS bundle, it's
-      // a flat directory structure. Only the binary and the plist are required.
-      //
-      // https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/UserDefaults/Preferences/Preferences.html
-      //
-      pathResources = pathPackage;
-      pathBin = pathPackage;
-      pathResourcesRelativeToUserBuild = {
-        settings["output"] /
-        packageName
-      };
+  if (platform.mac && flagBuildForIOS) {
+    fs::remove_all(target / "dist");
 
-      fs::create_directories(pathResources);
+    auto projectName = (settings["name"] + ".xcodeproj");
+    auto schemeName = (settings["name"] + ".xcscheme");
+    auto pathToProject = target / pathOutput / projectName;
+    auto pathToScheme = pathToProject / "xcshareddata" / "xcschemes";
+    auto pathToProfile = target / settings["apple_provisioning_profile"];
 
-      auto plistInfo = tmpl(gPListInfoIOS, settings);
+    fs::create_directories(pathToProject);
+    fs::create_directories(pathToScheme);
 
-      writeFile(fs::path {
-        pathPackage /
-        "Info.plist"
-      }, plistInfo);
-    } else {
-      log("preparing build for mac");
+    auto r = exec("security cms -D -i " + pathToProfile.string());
+    std::regex re(R"(<key>UUID<\/key>\n\s*<string>(.*)<\/string>)");
+    std::smatch match;
+    std::string uuid;
 
-      flags = "-std=c++2a -framework WebKit -framework Cocoa -ObjC++";
-      flags += getCxxFlags();
-
-      files += prefixFile("src/main.cc");
-      files += prefixFile("src/process_unix.cc");
-
-      fs::path pathBase = "Contents";
-
-      pathBin = { pathPackage / pathBase / "MacOS" };
-      pathResources = { pathPackage / pathBase / "Resources" };
-
-      pathResourcesRelativeToUserBuild = {
-        settings["output"] /
-        packageName /
-        pathBase /
-        "Resources"
-      };
-
-      fs::create_directories(pathBin);
-      fs::create_directories(pathResources);
-
-      auto plistInfo = tmpl(gPListInfo, settings);
-
-      writeFile(fs::path {
-        pathPackage /
-        pathBase /
-        "Info.plist"
-      }, plistInfo);
+    if (!std::regex_search(r.output, match, re)) {
+      log("failed to extract uuid from provisioning profile");
+      exit(1);
     }
+
+    uuid = match.str(1);
+
+    auto pathToInstalledProfile = fs::path(getEnv("HOME")) /
+      "Library" /
+      "MobileDevice" /
+      "Provisioning Profiles" /
+      (uuid + ".mobileprovision");
+
+    if (!fs::exists(pathToInstalledProfile)) {
+      fs::copy(pathToProfile, pathToInstalledProfile);
+    }
+
+    settings["apple_provisioning_profile"] = uuid;
+
+    writeFile(target / pathOutput / "exportOptions.plist", tmpl(gXCodeExportOptions, settings));
+    writeFile(target / pathOutput / "Info.plist", tmpl(gXCodePlist, settings));
+    writeFile(pathToProject / "project.pbxproj", tmpl(gXCodeProject, settings));
+    writeFile(pathToScheme / schemeName, tmpl(gXCodeScheme, settings));
+
+    pathResources = fs::path { target / pathOutput / "ui" };
+    fs::create_directories(pathResources);
+
+    pathResourcesRelativeToUserBuild = pathOutput / "ui";
   }
 
   //
@@ -391,14 +373,13 @@ int main (const int argc, const char* argv[]) {
     fs::create_directories(pathManifestFile);
     fs::create_directories(pathControlFile);
 
-    auto linuxExecPath = fs::path {
+    auto linuxExecPath =
       fs::path("/opt") /
       settings["name"] /
-      settings["executable"]
-    };
+      settings["executable"];
 
-    settings["linux_executable_path"] = pathToString(linuxExecPath);
-    settings["linux_icon_path"] = pathToString(fs::path {
+    settings["linux_executable_path"] = linuxExecPath.string();
+    settings["linux_icon_path"] = (
       fs::path("/usr") /
       "share" /
       "icons" /
@@ -406,27 +387,13 @@ int main (const int argc, const char* argv[]) {
       "256x256" /
       "apps" /
       (settings["executable"] + ".png")
-    });
+    ).string();
 
-    writeFile(fs::path {
-      pathManifestFile /
-      (settings["name"] + ".desktop")
-    }, tmpl(gDestkopManifest, settings));
+    writeFile(pathManifestFile / (settings["name"] + ".desktop"), tmpl(gDestkopManifest, settings));
+    writeFile(pathControlFile / "control", tmpl(gDebianManifest, settings));
 
-    writeFile(fs::path {
-      pathControlFile /
-      "control"
-    }, tmpl(gDebianManifest, settings));
-
-    auto pathToIconSrc = pathToString(fs::path {
-      target /
-      settings["linux_icon"]
-    });
-
-    auto pathToIconDest = pathToString(fs::path {
-      pathIcons /
-      (settings["executable"] + ".png")
-    });
+    auto pathToIconSrc = (target / settings["linux_icon"]).string();
+    auto pathToIconDest = (pathIcons / (settings["executable"] + ".png")).string();
 
     if (!fs::exists(pathToIconDest)) {
       fs::copy(pathToIconSrc, pathToIconDest);
@@ -498,13 +465,13 @@ int main (const int argc, const char* argv[]) {
   // should send their build artifacts.
   //
   std::stringstream buildCommand;
-  auto oldCwd = std::filesystem::current_path();
-  std::filesystem::current_path(fs::path { oldCwd / target });
+  auto oldCwd = fs::current_path();
+  fs::current_path(oldCwd / target);
 
   buildCommand
     << settings["build"]
     << " "
-    << pathToString(pathResourcesRelativeToUserBuild)
+    << pathResourcesRelativeToUserBuild.string()
     << " --debug=" << flagDebugMode
     << argvForward.str();
 
@@ -519,14 +486,88 @@ int main (const int argc, const char* argv[]) {
   log(r.output);
   log("ran user build command");
 
-  std::filesystem::current_path(oldCwd);
+  fs::current_path(oldCwd);
+
+  if (flagBuildForIOS) {
+    log("building for iOS");
+
+    auto oldCwd = fs::current_path();
+    auto pathToDist = oldCwd / target / "dist";
+
+    fs::create_directories(pathToDist);
+    fs::current_path(pathToDist);
+
+    //
+    // Copy and or create the source files we need for the build.
+    //
+    fs::copy(trim(prefixFile("src/ios.mm")), pathToDist);
+    fs::copy(trim(prefixFile("src/ios.hh")), pathToDist);
+    fs::copy(trim(prefixFile("src/common.hh")), pathToDist);
+    fs::copy(trim(prefixFile("src/preload.hh")), pathToDist);
+
+    auto pathBase = pathToDist / "Base.lproj";
+    fs::create_directories(pathBase);
+
+    writeFile(pathBase / "LaunchScreen.storyboard", gStoryboardLaunchScreen);
+
+    //
+    // For iOS we're going to bail early and let XCode infrastructure handle
+    // building, signing, bundling, archiving, noterizing, and uploading.
+    //
+    std::stringstream archiveCommand;
+
+    archiveCommand
+      << "xcodebuild"
+      << " -scheme " << settings["name"]
+      << " clean build archive "
+      << " -archivePath build/" << settings["name"]
+      << " -destination 'generic/platform=iOS'";
+
+    auto rArchive = exec(archiveCommand.str().c_str());
+
+    if (rArchive.exitCode != 0) {
+      log("error: failed to archive project");
+      fs::current_path(oldCwd);
+      exit(1);
+    }
+
+    log("created archive");
+    std::stringstream exportCommand;
+
+    exportCommand
+      << "xcodebuild"
+      << " -exportArchive "
+      << " -archivePath build/" << settings["name"] << ".xcarchive"
+      << " -exportPath build/" << settings["name"] << ".ipa"
+      << " -exportOptionsPlist " << (pathToDist / "exportOptions.plist").string();
+
+    log(exportCommand.str());
+    auto rExport = exec(exportCommand.str().c_str());
+
+    if (rExport.exitCode != 0) {
+      log("error: failed to export project");
+      fs::current_path(oldCwd);
+      exit(1);
+    }
+
+    log("exported archive");
+
+    if (flagShouldRun) {
+      auto pathToXCode = fs::path("/Applications") / "Xcode.app" / "Contents";
+      auto pathToSimulator = pathToXCode / "Developer" / "Applications" / "Simulator.app";
+
+      std::stringstream simulatorCommand;
+      simulatorCommand << "open " << pathToSimulator.string();
+      exec(simulatorCommand.str().c_str());
+    }
+
+    log("completed");
+    fs::current_path(oldCwd);
+    return 0;
+  }
 
   std::stringstream compileCommand;
-  fs::path binaryPath = { pathBin / executable };
-
-  // Serialize the settings and strip the comments so that we can pass
-  // them to the compiler by replacing new lines with a high bit.
-  _settings = encodeURIComponent(_settings);
+  auto binaryPath = pathBin / executable;
 
   auto extraFlags = flagDebugMode
     ? settings.count("debug_flags") ? settings["debug_flags"] : ""
@@ -537,10 +578,10 @@ int main (const int argc, const char* argv[]) {
     << " " << files
     << " " << flags
     << " " << extraFlags
-    << " -o " << pathToString(binaryPath)
+    << " -o " << binaryPath.string()
     << " -D_IOS=" << (flagBuildForIOS ? 1 : 0)
     << " -DDEBUG=" << (flagDebugMode ? 1 : 0)
-    << " -DSETTINGS=\"" << _settings << "\""
+    << " -DSETTINGS=\"" << encodeURIComponent(_settings) << "\""
   ;
 
   // log(compileCommand.str());
@@ -578,16 +619,16 @@ int main (const int argc, const char* argv[]) {
     fs::create_directories(pathSymLinks);
     fs::create_symlink(
       linuxExecPath,
-      fs::path { pathSymLinks / settings["executable"] }
+      pathSymLinks / settings["executable"]
     );
 
     std::stringstream archiveCommand;
 
     archiveCommand
       << "dpkg-deb --build --root-owner-group "
-      << pathToString(pathPackage)
+      << pathPackage.string()
       << " "
-      << pathToString(fs::path { target / pathOutput });
+      << (target / pathOutput).string();
 
     auto r = std::system(archiveCommand.str().c_str());
 
@@ -610,25 +651,8 @@ int main (const int argc, const char* argv[]) {
     std::stringstream signCommand;
     std::string entitlements = "";
 
-    if (flagEntitlements) {
-      auto entitlementsPath = fs::path {
-        pathResourcesRelativeToUserBuild /
-        "entitlements.plist"
-      };
-
-      if (settings.count("mac_entitlements") == 0) {
-        log("'mac_entitlements' key/value is required");
-        exit(1);
-      }
-
-      fs::copy(
-        fs::path { target / settings["mac_entitlements"] },
-        entitlementsPath
-      );
-
-      entitlements = std::string(
-        " --entitlements " + pathToString(entitlementsPath)
-      );
+    if (settings.count("entitlements") == 1) {
+      // entitlements = " --entitlements " + (target / settings["entitlements"]).string();
     }
 
     if (settings.count("mac_sign") == 0) {
@@ -643,7 +667,7 @@ int main (const int argc, const char* argv[]) {
       << " --options runtime"
       << " --timestamp"
       << entitlements
-      << " --sign 'Developer ID Application: " + settings["mac_sign"] + "'"
+      << " --sign '" + settings["mac_sign"] + "'"
       << " "
     ;
 
@@ -656,7 +680,7 @@ int main (const int argc, const char* argv[]) {
         signCommand
           << prefix
           << commonFlags.str()
-          << pathToString(fs::path { pathResources / paths[i] })
+          << (pathResources / paths[i]).string()
         ;
       }
       signCommand << ";";
@@ -665,13 +689,13 @@ int main (const int argc, const char* argv[]) {
     signCommand
       << "codesign"
       << commonFlags.str()
-      << pathToString(fs::path { pathBin / executable })
+      << (pathBin / executable).string()
 
       << "; codesign"
       << commonFlags.str()
-      << pathToString(pathPackage);
+      << pathPackage.string();
 
-    // log(signCommand.str());
+    log(signCommand.str());
     auto r = exec(signCommand.str());
 
     if (r.exitCode != 0) {
@@ -683,62 +707,26 @@ int main (const int argc, const char* argv[]) {
   }
 
   //
-  // MacOS & iOS Packaging
+  // MacOS Packaging
   // ---
   //
   if (flagShouldPackage && platform.mac) {
     std::stringstream zipCommand;
     auto ext = ".zip";
+    auto pathToBuild = fs::path { target / pathOutput / "build" };
 
-    if (flagBuildForIOS) {
-      ext = ".ipa";
-
-      auto pathToBuild = fs::path { target / pathOutput / "build" };
-      fs::remove_all(pathToBuild);
-
-      auto pathToPayload = fs::path { pathToBuild / "Payload" };
-      fs::create_directories(pathToPayload);
-
-      auto pathToIconSrc = fs::path { target / settings["mas_icon"] };
-
-      if (fs::exists(pathToIconSrc)) {
-        fs::copy(pathToIconSrc, pathToBuild);
-
-        fs::rename(
-          fs::path(pathToBuild / fs::path(settings["mas_icon"]).filename()),
-          pathToBuild / "iTunesArtwork"
-        );
-      }
-
-      // fs::copy(pathToPackage, target, fs::copy_options::overwrite_existing | fs::copy_options::recursive);
-      fs::rename(pathPackage, fs::path { pathToPayload / packageName });
-
-      auto plistInfo = tmpl(gPListInfoMAS, settings);
-
-      writeFile(fs::path {
-        pathToBuild /
-        "iTunesMetadata.plist"
-      }, plistInfo);
-
-      pathPackage = pathToBuild;
-    }
-
-    pathToArchive = fs::path {
-      target /
-      pathOutput /
-      (settings["executable"] + ext)
-    };
+    pathToArchive = target / pathOutput / (settings["executable"] + ext);
 
     zipCommand
       << "ditto"
       << " -c"
       << " -k"
       << " --sequesterRsrc"
-      << (flagBuildForIOS ? "" : " --keepParent")
+      << " --keepParent"
       << " "
-      << pathToString(pathPackage)
+      << pathPackage.string()
       << " "
-      << pathToString(pathToArchive);
+      << pathToArchive.string();
 
     auto r = std::system(zipCommand.str().c_str());
 
@@ -766,7 +754,7 @@ int main (const int argc, const char* argv[]) {
       << " --username \"" << username << "\""
       << " --password \"" << password << "\""
       << " --primary-bundle-id \"" << settings["bundle_identifier"] << "\""
-      << " --file \"" << pathToString(pathToArchive) << "\""
+      << " --file \"" << pathToArchive.string() << "\""
     ;
 
     // log(notarizeCommand.str());
@@ -1123,10 +1111,7 @@ int main (const int argc, const char* argv[]) {
       execName = (settings["executable"]);
     }
 
-    auto cmd = pathToString(fs::path {
-      pathBin /
-      execName
-    });
+    auto cmd = (pathBin / execName).string();
 
     auto runner = trim(std::string(STR_VALUE(CMD_RUNNER)));
     auto prefix = runner.size() > 0 ? runner + std::string(" ") : runner;
