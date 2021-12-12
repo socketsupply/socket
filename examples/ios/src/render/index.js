@@ -107,7 +107,6 @@ class AppContainer extends Tonic {
     const el = Tonic.match(e.target, 'tonic-input')
     if (!el) return
 
-
     const elResponse = document.querySelector('#response')
     elResponse.value = el.value
 
@@ -134,7 +133,6 @@ class AppContainer extends Tonic {
     // console.log(settings)
 
     return this.html`
-      <img src="./images/monogram-large.png" />
       <app-header>
       </app-header>
 

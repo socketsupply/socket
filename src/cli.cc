@@ -262,6 +262,8 @@ int main (const int argc, const char* argv[]) {
   }
 
   if (platform.mac && flagBuildForIOS) {
+    fs::remove_all(target / "dist");
+
     auto projectName = (settings["name"] + ".xcodeproj");
     auto schemeName = (settings["name"] + ".xcscheme");
     auto pathToProject = target / pathOutput / projectName;
@@ -506,8 +508,7 @@ int main (const int argc, const char* argv[]) {
     auto pathBase = pathToDist / "Base.lproj";
     fs::create_directories(pathBase);
 
-    writeFile(pathBase / "LaunchScreen.storyboard", gStoryboardMain);
-    writeFile(pathBase / "Main.storyboard", gStoryboardViewController);
+    writeFile(pathBase / "LaunchScreen.storyboard", gStoryboardLaunchScreen);
 
     //
     // For iOS we're going to bail early and let XCode infrastructure handle
