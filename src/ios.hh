@@ -16,6 +16,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 		294A3C7C2763EA7F007B5B9A /* WebKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 294A3C7B2763EA7F007B5B9A /* WebKit.framework */; };
 		294A3C7E2763EA99007B5B9A /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 294A3C7D2763EA99007B5B9A /* Foundation.framework */; };
 		294A3C852764EAB7007B5B9A /* ui in Resources */ = {isa = PBXBuildFile; fileRef = 294A3C842764EAB7007B5B9A /* ui */; };
+		294A3C8A276635E0007B5B9A /* Network.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 294A3C89276635E0007B5B9A /* Network.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -47,6 +48,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 		294A3C7F27649D27007B5B9A /* preload.hh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = preload.hh; sourceTree = "<group>"; };
 		294A3C8027649DD9007B5B9A /* common.hh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = common.hh; sourceTree = "<group>"; };
 		294A3C842764EAB7007B5B9A /* ui */ = {isa = PBXFileReference; lastKnownFileType = folder; path = ui; sourceTree = "<group>"; };
+		294A3C89276635E0007B5B9A /* Network.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Network.framework; path = System/Library/Frameworks/Network.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -54,6 +56,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				294A3C8A276635E0007B5B9A /* Network.framework in Frameworks */,
 				294A3C7E2763EA99007B5B9A /* Foundation.framework in Frameworks */,
 				294A3C7C2763EA7F007B5B9A /* WebKit.framework in Frameworks */,
 				294A3C7A2763E9C6007B5B9A /* UIKit.framework in Frameworks */,
@@ -103,6 +106,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 		294A3C782763E9C6007B5B9A /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				294A3C89276635E0007B5B9A /* Network.framework */,
 				294A3C7D2763EA99007B5B9A /* Foundation.framework */,
 				294A3C7B2763EA7F007B5B9A /* WebKit.framework */,
 				294A3C792763E9C6007B5B9A /* UIKit.framework */,
