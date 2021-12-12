@@ -53,7 +53,7 @@ async function main () {
   )
 
   await cp('src/render/index.html', target)
-  await cp(`src/icons/index.png`, target)
+  await cp(`src/icons/icon.png`, target)
   await cp('src/images', target)
 }
 

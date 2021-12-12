@@ -41,9 +41,10 @@ void help () {
     << "  -o  only run user build step" << std::endl
     << "  -p  package the app" << std::endl
     << "  -r  run after building" << std::endl
-    << "  -xd turn off debug mode" << std::endl << std::endl
+    << "  -xd turn off debug mode (production build)" << std::endl << std::endl
     << "  -ios (iOS) build for iOS" << std::endl
     << "  -android (Android) build for Android" << std::endl
+    << "  -simulator build for simulator" << std::endl
     << "  --test=1 indicate test mode" << std::endl;
   ;
 
@@ -86,6 +87,7 @@ int main (const int argc, const char* argv[]) {
   bool flagShouldPackage = false;
   bool flagBuildForIOS = false;
   bool flagBuildForAndroid = false;
+  bool flagBuildForSimulator = false;
 
   for (auto const arg : std::span(argv, argc)) {
     if (std::string(arg).find("-c") == 0) {
@@ -135,6 +137,10 @@ int main (const int argc, const char* argv[]) {
 
     if (std::string(arg).find("-android") == 0) {
       flagBuildForAndroid = true;
+    }
+
+    if (std::string(arg).find("-simulator") == 0) {
+      flagBuildForSimulator = true;
     }
 
     if (std::string(arg).find("--test") == 0) {
@@ -515,14 +521,29 @@ int main (const int argc, const char* argv[]) {
     // building, signing, bundling, archiving, noterizing, and uploading.
     //
     std::stringstream archiveCommand;
+    std::string destination = "generic/platform=iOS";
+
+    if (flagBuildForSimulator) {
+      destination = settings["apple_device_simulator"];
+    }
+
+    auto sup = std::string(" archive");
+
+    if (!flagShouldPackage) {
+      sup = " CONFIGURATION_BUILD_DIR=" + pathToDist.string();
+    }
 
     archiveCommand
       << "xcodebuild"
+      << " clean build" << sup
       << " -scheme " << settings["name"]
-      << " clean build archive "
-      << " -archivePath build/" << settings["name"]
-      << " -destination 'generic/platform=iOS'";
+      << " -destination '" << destination << "'";
 
+    if (flagShouldPackage) {
+      archiveCommand << " -archivePath build/" << settings["name"];
+    }
+
+    log(archiveCommand.str().c_str());
     auto rArchive = exec(archiveCommand.str().c_str());
 
     if (rArchive.exitCode != 0) {
@@ -532,25 +553,28 @@ int main (const int argc, const char* argv[]) {
     }
 
     log("created archive");
-    std::stringstream exportCommand;
 
-    exportCommand
-      << "xcodebuild"
-      << " -exportArchive "
-      << " -archivePath build/" << settings["name"] << ".xcarchive"
-      << " -exportPath build/" << settings["name"] << ".ipa"
-      << " -exportOptionsPlist " << (pathToDist / "exportOptions.plist").string();
+    if (flagShouldPackage) {
+      std::stringstream exportCommand;
 
-    log(exportCommand.str());
-    auto rExport = exec(exportCommand.str().c_str());
+      exportCommand
+        << "xcodebuild"
+        << " -exportArchive "
+        << " -archivePath build/" << settings["name"] << ".xcarchive"
+        << " -exportPath build/" << settings["name"] << ".ipa"
+        << " -exportOptionsPlist " << (pathToDist / "exportOptions.plist").string();
 
-    if (rExport.exitCode != 0) {
-      log("error: failed to export project");
-      fs::current_path(oldCwd);
-      exit(1);
+      log(exportCommand.str());
+      auto rExport = exec(exportCommand.str().c_str());
+
+      if (rExport.exitCode != 0) {
+        log("error: failed to export project");
+        fs::current_path(oldCwd);
+        exit(1);
+      }
+
+      log("exported archive");
     }
-
-    log("exported archive");
 
     if (flagShouldRun) {
       auto pathToXCode = fs::path("/Applications") / "Xcode.app" / "Contents";

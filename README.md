@@ -9,8 +9,9 @@ UIs that can run any arbitrary backend process.
 - Instant startup, first UI paint in <0.3s
 - <1s build time baseline
 - Tiny memory, cpu and binary baselines
-- Runs on macOS, linux, windows
+- Runs on MacOS, Linux, Windows, iOS, and (almost Android)
 - System Menus, Context Menus, File Dialogs
+- Proper sandboxing features
 - Webkit web inspector
 - The only build requiremnt a modern C++ compiler toolchain
 - Zero dependencies (except platform frameworks, gtk, cocoa, etc)

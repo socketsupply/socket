@@ -520,7 +520,10 @@ constexpr auto gXCodeExportOptions = R"XML(<?xml version="1.0" encoding="UTF-8"?
 constexpr auto gXCodePlist = R"XML(<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
-<dict/>
+<dict>
+	<key>CFBundleIconFile</key>
+	<string>ui/icon.png</string>
+</dict>
 </plist>)XML";
 
 //
