@@ -6,19 +6,19 @@ Components(Tonic)
 //
 // A keybinding example... if keyup is ctrl+q, quit the app
 //
-window.addEventListener('click', async event => {
+/* window.addEventListener('click', async event => {
   const el = Tonic.match(event.target, '#externalLink')
   if (!el) return
 
   event.preventDefault()
 
   // await system.openExternal(el.props.url)
-})
+})*/
 
-window.addEventListener('touchstart', event => {
-  const el = Tonic.match(event.target, 'data-event')
-  if (!el) return event.preventDefault()
-})
+// window.addEventListener('touchstart', event => {
+  // const el = Tonic.match(event.target, 'data-event')
+  // if (!el) return event.preventDefault()
+//})
 
 //
 // Receive arbitrary/non-request-response data from the main process.
@@ -52,6 +52,15 @@ class AppHeader extends Tonic {
 Tonic.add(AppHeader)
 
 class AppContainer extends Tonic {
+  constructor () {
+    super()
+
+    this.state = {
+      count: 0,
+      serverStatus: null
+    }
+  }
+
   static stylesheet () {
     return `
       app-container {
@@ -85,21 +94,18 @@ class AppContainer extends Tonic {
     })
   }
 
-  async click (e) {
+  async touchend (e) {
     const el = Tonic.match(e.target, '[data-event]')
     if (!el) return
 
     const { event } = el.dataset
 
-    if (event === 'open') {
-      this.querySelector('#opened').value = await system.dialog({})
+    if (event === 'inc') {
+      this.querySelector('#result').value = ++this.count
     }
 
-    if (event === 'save') {
-      this.querySelector('#opened').value = await system.dialog({
-        type: 'save',
-        defaultPath: 'test.txt'
-      })
+    if (event === 'dec') {
+      this.querySelector('#result').value = --this.count
     }
   }
 
@@ -128,9 +134,17 @@ class AppContainer extends Tonic {
     return // system.setTitle({ e.target.value) */
   }
 
+  async connected () {
+    const { err, data } = await window.system.netBind({
+      port: 8001
+    })
+
+    this.state.serverStatus = err || data
+    this.reRender()
+  }
+
   async render () {
-    // const settings = await system.getSettings()
-    // console.log(settings)
+    const serverStatus = this.state.serverStatus
 
     return this.html`
       <app-header>
@@ -147,10 +161,17 @@ class AppContainer extends Tonic {
         </tonic-input>
       </div>
 
-      <tonic-button data-event="open" id="open">Open</tonic-button>
-      <tonic-button data-event="save" id="save">Save</tonic-button>
+      <tonic-button data-event="inc" id="inc">Increment</tonic-button>
+      <tonic-button data-event="dec" id="dec">Decrement</tonic-button>
 
       <tonic-button id="externalLink" url="https://example.com">External</tonic-button>
+
+      <tonic-toaster-inline
+        type="${serverStatus === 'READY' ? 'success' : 'warning'}"
+        title="Server Status"
+        id="status">
+        The server is ${serverStatus}.
+      </tonic-toaster-inline>
     `
   }
 }

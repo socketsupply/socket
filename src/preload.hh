@@ -2,10 +2,6 @@
 #define PRELOAD_HH
 
 constexpr auto gPreload = R"JS(
-  ;document.addEventListener('DOMContentLoaded', () => {
-    // window.external.invoke('ipc://ready');
-  })
-
   const IPC = window._ipc = { nextSeq: 1 }
 
   window._ipc.resolve = async (seq, status, value) => {
@@ -84,43 +80,40 @@ constexpr auto gPreload = R"JS(
     const event = new window.CustomEvent(name, { detail })
     window.dispatchEvent(event)
   }
+)JS";
 
-  window.system.send = value => {
-    return window._ipc.send('send', value)
-  }
+constexpr auto gPreloadDesktop = R"JS(
+  window.system.send = o => window._ipc.send('send', o)
+  window.system.exit = o => window._ipc.send('exit', o)
+  window.system.openExternal = o => window._ipc.send('external', o)
+  window.system.setTitle = o => window._ipc.send('title', o)
+  window.system.hide = o => window._ipc.send('hide', o)
 
-  window.system.exit = (value) => {
-    return window._ipc.send('exit', value)
-  }
-
-  window.system.openExternal = value => {
-    return window._ipc.send('external', value)
-  }
-
-  window.system.setTitle = value => {
-    return window._ipc.send('title', value)
-  }
-
-  window.system.hide = value => {
-    return window._ipc.send('hide', value)
-  }
-
-  window.system.dialog = async (value) => {
-    const files = await window._ipc.send('dialog', value);
+  window.system.dialog = async o => {
+    const files = await window._ipc.send('dialog', o);
     return files.split('\n');
   }
 
-  // window.system.showInspector = (value = {}) => {
-  //  return window._ipc.send('showInspector', value)
-  // }
-
-  window.system.setContextMenu = value => {
-    value = Object
-      .entries(value)
-      .flatMap(o => o.join(':'))
+  window.system.setContextMenu = o => {
+    o = Object
+      .entries(o)
+      .flatMap(a => a.join(':'))
       .join('_')
-    return window._ipc.send('context', value)
+    return window._ipc.send('context', o)
   };
+)JS";
+
+constexpr auto gPreloadMobile = R"JS(
+  window.system.netBind = o => window._ipc.send('netBind', o)
+  window.system.onConnection = o => window._ipc.send('onConnection', o)
+  window.system.netConnect = o => window._ipc.send('netConnect', o)
+  window.system.sendData = o => window._ipc.send('sendData', o)
+  window.system.sendEnd = o => window._ipc.send('sendEnd', o)
+  window.system.sendClose = o => window._ipc.send('sendClose', o)
+  window.system.receiveData = o => window._ipc.send('receiveData', o)
+  window.system.receiveEnd = o => window._ipc.send('receiveEnd', o)
+  window.system.receiveClose = o => window._ipc.send('receiveClose', o)
+  window.system.openExternal = o => window._ipc.send('external', o)
 )JS";
 
 #endif

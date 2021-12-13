@@ -152,6 +152,7 @@ MAIN {
     .title = appData["title"],
     .version = appData["version"],
     .argv = argvArray.str(),
+    .preload = gPreloadDesktop,
     .env = env.str()
   });
 
@@ -177,6 +178,7 @@ MAIN {
     .title = appData["title"],
     .version = appData["version"],
     .argv = argvArray.str(),
+    .preload = gPreloadDesktop,
     .env = env.str()
   });
 
@@ -240,7 +242,7 @@ MAIN {
           "}"
         );
 
-        w.resolveToMainProcess(seq, "0", encodeURIComponent(value));
+        w.onMessage(resolveToMainProcess(seq, "0", encodeURIComponent(value)));
         return;
       }
 
@@ -252,7 +254,7 @@ MAIN {
       if (cmd.name == "external") {
         w.openExternal(decodeURIComponent(value));
         if (seq.size() > 0) {
-          w.resolveToMainProcess(seq, "0", "null");
+          w.onMessage(resolveToMainProcess(seq, "0", "null"));
         }
         return;
       }
@@ -266,21 +268,21 @@ MAIN {
         w.exit();
 
         if (seq.size() > 0) {
-          w.resolveToMainProcess(seq, "0", "null");
+          w.onMessage(resolveToMainProcess(seq, "0", "null"));
         }
         return;
       }
 
       if (cmd.name == "resolve") {
-        w.resolveToRenderProcess(seq, cmd.get("state"), value);
+        w.eval(resolveToRenderProcess(seq, cmd.get("state"), value));
         return;
       }
 
       if (cmd.name == "send") {
-        w.emitToRenderProcess(
+        w.eval(emitToRenderProcess(
           decodeURIComponent(cmd.get("event")),
           value
-        );
+        ));
         return;
       }
 

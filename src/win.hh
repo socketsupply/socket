@@ -514,18 +514,18 @@ namespace Opkit {
 
     if (seq.size() > 0) {
       auto index = std::to_string(this->opts.index);
-      resolveToMainProcess(seq, "0", index);
+      this->onMessage(resolveToMainProcess(seq, "0", index));
     }
   }
 
   void Window::hide (const std::string& seq) {
     ShowWindow(window, SW_HIDE);
     UpdateWindow(window);
-    emitToRenderProcess("windowHide", "{}");
+    this->eval(emitToRenderProcess("windowHide", "{}"));
 
     if (seq.size() > 0) {
       auto index = std::to_string(this->opts.index);
-      resolveToMainProcess(seq, "0", index);
+      this->onMessage(resolveToMainProcess(seq, "0", index));
     }
   }
 
@@ -566,7 +566,7 @@ namespace Opkit {
             state = "0";
           }
 
-          resolveToMainProcess(seq, state, index);
+          this->onMessage(resolveToMainProcess(seq, state, index));
           webview->remove_NavigationCompleted(token);
 
           return S_OK;
@@ -585,7 +585,7 @@ namespace Opkit {
       std::string state = "0"; // can this call actually fail?
       auto index = std::to_string(this->opts.index);
 
-      resolveToMainProcess(seq, state, index);
+      this->onMessage(resolveToMainProcess(seq, state, index));
     }
   }
 
@@ -626,7 +626,7 @@ namespace Opkit {
 
     if (seq.size() > 0) {
       auto index = std::to_string(this->opts.index);
-      resolveToMainProcess(seq, "0", index);
+      this->onMessage(resolveToMainProcess(seq, "0", index));
     }
   }
 
@@ -706,7 +706,7 @@ namespace Opkit {
 
     if (seq.size() > 0) {
       auto index = std::to_string(this->opts.index);
-      resolveToMainProcess(seq, "0", index);
+      this->onMessage(resolveToMainProcess(seq, "0", index));
     }
   }
 
@@ -757,7 +757,7 @@ namespace Opkit {
     );
 
     DestroyMenu(hPopupMenu);
-    resolveMenuSelection(seq, lookup[selection], "contextMenu");
+    this->eval(resolveMenuSelection(seq, lookup[selection], "contextMenu"));
   }
 
   int Window::openExternal (const std::string& url) {
@@ -845,7 +845,7 @@ namespace Opkit {
       }
 
       auto wrapped =  std::string("\"" + result + "\"");
-      resolveToRenderProcess(seq, "0", encodeURIComponent(wrapped));
+      this->eval(resolveToRenderProcess(seq, "0", encodeURIComponent(wrapped)));
 
       results->Release();
     }
@@ -898,7 +898,7 @@ namespace Opkit {
             break;
           }
 
-          w->resolveMenuSelection("0", title, parent);
+          w->eval(resolveMenuSelection("0", title, parent));
         }
 
         break;
@@ -958,7 +958,7 @@ namespace Opkit {
             DWORD aNewColors[4] = { RGB(255, 255, 255), RGB(255, 255, 255), RGB(255, 255, 255), RGB(255, 255, 255) };
             SetSysColors(4, aElements, aNewColors);
           }
-          
+
           refreshImmersiveColorPolicyState();
 
           //SetPropW(hWnd, L"UseImmersiveDarkModeColors", reinterpret_cast<HANDLE>(static_cast<INT_PTR>(mode)));

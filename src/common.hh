@@ -142,6 +142,7 @@ namespace Opkit {
     std::string url = "data:text/html,<html>";
     std::string version = "";
     std::string argv = "";
+    std::string preload = "";
     std::string env;
   };
 
@@ -161,9 +162,66 @@ namespace Opkit {
       "  window.process.env = Object.fromEntries(new URLSearchParams('" +  opts.env + "'));\n"
       "  window.process.argv = [" + opts.argv + "];\n"
       "  " + gPreload + "\n"
+      "  " + opts.preload + "\n"
       "})()\n"
       "//# sourceURL=preload.js"
     );
+  }
+
+  std::string resolveToRenderProcess(const std::string& seq, const std::string& state, const std::string& value) {
+    return std::string(
+      "(() => {"
+      "  const seq = Number('" + seq + "');"
+      "  const state = Number('" + state + "');"
+      "  const value = '" + value + "';"
+      "  window._ipc.resolve(seq, state, value);"
+      "})()"
+    );
+  }
+
+  std::string emitToRenderProcess(const std::string& event, const std::string& value) {
+    return std::string(
+      "(() => {"
+      "  const name = '" + event + "';"
+      "  const value = '" + value + "';"
+      "  window._ipc.emit(name, value);"
+      "})()"
+    );
+  }
+
+  std::string streamToRenderProcess(const std::string& id, const std::string& value) {
+    return std::string(
+      "(() => {"
+      "  const id = '" + id + "';"
+      "  const value = '" + value + "';"
+      "  window._ipc.stream(id, value);"
+      "})()"
+    );
+  }
+
+  std::string resolveMenuSelection(const std::string& seq, const std::string& title, const std::string& parent) {
+    return std::string(
+      "(() => {"
+      "  const detail = {"
+      "    title: '" + title + "',"
+      "    parent: '" + parent + "',"
+      "    state: '0'"
+      "  };"
+
+      "  if (" + seq + " > 0 && window._ipc[" + seq + "]) {"
+      "    window._ipc[" + seq + "].resolve(detail);"
+      "    delete window._ipc[" + seq + "];"
+      "    return;"
+      "  }"
+
+      "  const event = new window.CustomEvent('menuItemSelected', { detail });"
+      "  window.dispatchEvent(event);"
+      "})()"
+    );
+  }
+
+  std::string resolveToMainProcess(const std::string& seq, const std::string& state, const std::string& value) {
+    return std::string("ipc://resolve?seq=" + seq + "&state=" + state + "&value=" + value);
   }
 
   //
@@ -559,13 +617,8 @@ namespace Opkit {
   class IWindow {
     public:
       int index = 0;
-      void resolveToMainProcess(const std::string&, const std::string&, const std::string&);
-      void resolveToRenderProcess(const std::string&, const std::string&, const std::string&);
-      void resolveMenuSelection(const std::string&, const std::string&, const std::string&);
-      void emitToRenderProcess(const std::string&, const std::string&);
-
       WindowOptions opts;
-      SCallback onMessage = nullptr;
+      SCallback onMessage = [](const std::string) {};
       VCallback onExit = nullptr;
 
       virtual void eval(const std::string&) = 0;
@@ -583,53 +636,6 @@ namespace Opkit {
       // virtual void showInspector() = 0;
       virtual ScreenSize getScreenSize() = 0;
   };
-
-  void IWindow::resolveToRenderProcess(const std::string& seq, const std::string& state, const std::string& value) {
-    this->eval(std::string(
-      "(() => {"
-      "  const seq = Number('" + seq + "');"
-      "  const state = Number('" + state + "');"
-      "  const value = '" + value + "';"
-      "  window._ipc.resolve(seq, state, value);"
-      "})()"
-    ));
-  }
-
-  void IWindow::resolveMenuSelection(const std::string& seq, const std::string& title, const std::string& parent) {
-    this->eval("(() => {"
-      "  const detail = {"
-      "    title: '" + title + "',"
-      "    parent: '" + parent + "',"
-      "    state: '0'"
-      "  };"
-
-      "  if (" + seq + " > 0 && window._ipc[" + seq + "]) {"
-      "    window._ipc[" + seq + "].resolve(detail);"
-      "    delete window._ipc[" + seq + "];"
-      "    return;"
-      "  }"
-
-      "  const event = new window.CustomEvent('menuItemSelected', { detail });"
-      "  window.dispatchEvent(event);"
-      "})()"
-    );
-  }
-
-  void IWindow::resolveToMainProcess(const std::string& seq, const std::string& state, const std::string& value) {
-    if (this->onMessage != nullptr) {
-      this->onMessage(std::string("ipc://resolve?seq=" + seq + "&state=" + state + "&value=" + value));
-    }
-  }
-
-  void IWindow::emitToRenderProcess(const std::string& event, const std::string& value) {
-    this->eval(std::string(
-      "(() => {"
-      "  const name = '" + event + "';"
-      "  const value = '" + value + "';"
-      "  window._ipc.emit(name, value);"
-      "})()"
-    ));
-  }
 }
 
 #endif // OPKIT_H

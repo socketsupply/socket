@@ -1,7 +1,7 @@
+#include "common.hh"
 #include "cli.hh"
 #include "ios.hh"
 #include "process.hh"
-#include "common.hh"
 #include <filesystem>
 
 #ifdef _WIN32
@@ -515,6 +515,7 @@ int main (const int argc, const char* argv[]) {
     fs::create_directories(pathBase);
 
     writeFile(pathBase / "LaunchScreen.storyboard", gStoryboardLaunchScreen);
+    writeFile(pathToDist / (settings["name"] + ".entitlements"), gXcodeEntitlements);
 
     //
     // For iOS we're going to bail early and let XCode infrastructure handle

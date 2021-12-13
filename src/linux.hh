@@ -187,7 +187,7 @@ namespace Opkit {
         G_OBJECT(window),
         "delete-event",
         G_CALLBACK(+[](GtkWidget* widget, GdkEvent*, gpointer arg) {
-          static_cast<Window*>(arg)->emitToRenderProcess("windowHide", "{}");
+          static_cast<Window*>(arg)->eval(emitToRenderProcess("windowHide", "{}"));
           return gtk_widget_hide_on_delete(widget);
         }),
         this
@@ -274,17 +274,17 @@ namespace Opkit {
 
     if (seq.size() > 0) {
       auto index = std::to_string(this->opts.index);
-      resolveToMainProcess(seq, "0", index);
+      this->onMessage(resolveToMainProcess(seq, "0", index);
     }
   }
 
   void Window::hide(const std::string &seq) {
     gtk_widget_hide(window);
-    emitToRenderProcess("windowHide", "{}");
+    this->eval(emitToRenderProcess("windowHide", "{}"));
 
     if (seq.size() > 0) {
       auto index = std::to_string(this->opts.index);
-      resolveToMainProcess(seq, "0", index);
+      this->onMessage(resolveToMainProcess(seq, "0", index));
     }
   }
 
@@ -307,7 +307,7 @@ namespace Opkit {
 
     if (seq.size() > 0) {
       auto index = std::to_string(this->opts.index);
-      resolveToMainProcess(seq, "0", index);
+      this->onMessage(resolveToMainProcess(seq, "0", index));
     }
   }
 
@@ -316,7 +316,7 @@ namespace Opkit {
 
     if (seq.size() > 0) {
       auto index = std::to_string(this->opts.index);
-      resolveToMainProcess(seq, "0", index);
+      this->onMessage(resolveToMainProcess(seq, "0", index));
     }
   }
 
@@ -394,7 +394,7 @@ namespace Opkit {
 
     if (seq.size() > 0) {
       auto index = std::to_string(this->opts.index);
-      resolveToMainProcess(seq, "0", index);
+      this->onMessage(resolveToMainProcess(seq, "0", index));
     }
   }
 
@@ -493,7 +493,7 @@ namespace Opkit {
                 return w->exit();
               }
 
-              w->resolveMenuSelection("0", title, parent);
+              w->eval(resolveMenuSelection("0", title, parent));
             }),
             this
           );
@@ -513,7 +513,7 @@ namespace Opkit {
 
     if (seq.size() > 0) {
       auto index = std::to_string(this->opts.index);
-      resolveToMainProcess(seq, "0", index);
+      this->onMessage(resolveToMainProcess(seq, "0", index));
     }
   }
 
@@ -537,7 +537,7 @@ namespace Opkit {
     if (popupMenu != nullptr) {
       gtk_menu_popdown((GtkMenu *) popupMenu);
       gtk_widget_destroy(popupMenu);
-      resolveMenuSelection(seq, "", "contextMenu");
+      this->eval(resolveMenuSelection(seq, "", "contextMenu"));
     }
   }
 
@@ -578,7 +578,7 @@ namespace Opkit {
           auto pair = split(meta, ';');
           auto seq = pair[0];
 
-          window->resolveMenuSelection(seq, title, "contextMenu");
+          window->eval(resolveMenuSelection(seq, title, "contextMenu"));
         }),
         this
       );
@@ -705,7 +705,7 @@ namespace Opkit {
     g_slist_free(filenames);
 
     auto wrapped = std::string("\"" + std::string(result) + "\"");
-    resolveToRenderProcess(seq, "0", encodeURIComponent(wrapped));
+    this->eval(resolveToRenderProcess(seq, "0", encodeURIComponent(wrapped)));
     gtk_widget_destroy(dialog);
   }
 }
