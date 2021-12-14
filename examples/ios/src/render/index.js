@@ -55,9 +55,13 @@ class AppContainer extends Tonic {
   constructor () {
     super()
 
+
+    window.addEventListener('socket', async event => {
+      this.querySelector('#output').value += 'connect'
+    })
+
     this.state = {
-      count: 0,
-      serverStatus: null
+      serverStatus: 'NOT READY'
     }
   }
 
@@ -100,12 +104,25 @@ class AppContainer extends Tonic {
 
     const { event } = el.dataset
 
-    if (event === 'inc') {
-      this.querySelector('#result').value = ++this.count
-    }
+    if (event === 'start') {
+      const { err, data } = await window.system.netBind({
+        port: 8222
+      })
 
-    if (event === 'dec') {
-      this.querySelector('#result').value = --this.count
+      setTimeout(async () => {
+        const { err, data } = await window.system.getIP({})
+
+        if (err) {
+          this.state.ip = err || 'Unable to get ip'
+        } else {
+          this.state.host = data
+        }
+
+        this.Render()
+      }, 4096)
+
+      this.state.serverStatus = err || data
+      this.reRender()
     }
   }
 
@@ -115,32 +132,12 @@ class AppContainer extends Tonic {
 
     const elResponse = document.querySelector('#response')
     elResponse.value = el.value
-
-    console.log(el.value)
-
-    /* try {
-      //
-      // request-response (can send any arbitrary parameters)
-      //
-      const value = { input: e.target.value }
-      response = await system.send(value)
-    } catch (err) {
-      console.log(err.message)
-    }
-
-    this.querySelector('#response').value =
-      response.received.input
-
-    return // system.setTitle({ e.target.value) */
   }
 
   async connected () {
-    const { err, data } = await window.system.netBind({
-      port: 8001
+    window.system.receiveData({ id: 0 }, (err, data) => {
+      this.querySelector('#output').value += `\n${JSON.stringify(err || data)}`
     })
-
-    this.state.serverStatus = err || data
-    this.reRender()
   }
 
   async render () {
@@ -151,7 +148,7 @@ class AppContainer extends Tonic {
       </app-header>
 
       <a href="bad-text">BAD ANCHOR</a>
-      <a href="https://example.com">FACEBOOK</a>
+      <a href="https://example.com">DANGER</a>
 
       <div class="grid">
         <tonic-input id="send" label="send">
@@ -159,12 +156,9 @@ class AppContainer extends Tonic {
 
         <tonic-input id="response" label="recieve" readonly="true">
         </tonic-input>
+
+        <tonic-button data-event="start" id="start">Start</tonic-button>
       </div>
-
-      <tonic-button data-event="inc" id="inc">Increment</tonic-button>
-      <tonic-button data-event="dec" id="dec">Decrement</tonic-button>
-
-      <tonic-button id="externalLink" url="https://example.com">External</tonic-button>
 
       <tonic-toaster-inline
         type="${serverStatus === 'READY' ? 'success' : 'warning'}"
@@ -172,6 +166,13 @@ class AppContainer extends Tonic {
         id="status">
         The server is ${serverStatus}.
       </tonic-toaster-inline>
+
+      <tonic-textarea
+        id="output"
+        label="output"
+        rows="8"
+        resize="none"
+      >${JSON.stringify(this.state, null, 2)}</tonic-textarea>
     `
   }
 }

@@ -6,25 +6,14 @@
 #include <ifaddrs.h>
 #include <arpa/inet.h>
 
+#include <netinet/in.h>
+#include <sys/socket.h>
+#include <sys/un.h>
+
 constexpr auto _settings = STR_VALUE(SETTINGS);
 constexpr auto _debug = false;
 
-char *g_psk = nullptr;      // TLS PSK
-char *g_local_port = nullptr;  // Local port flag
-char *g_local_addr = nullptr;  // Source Address
-bool g_use_bonjour = false;  // Use Bonjour rather than hostnames
-bool g_detached = false;  // Ignore stdin
-bool g_listener = false;  // Create a listener
-bool g_use_tls = false;    // Use TLS or DTLS
-bool g_use_udp = false;    // Use UDP instead of TCP
-int g_family = AF_UNSPEC;   // Required address family
-std::vector<nw_connection_t> connections;
-
-// nw_connection_t g_inbound_connection = nullptr;
-
-#define NWCAT_BONJOUR_SERVICE_TCP_TYPE "_opkit._tcp"
-#define NWCAT_BONJOUR_SERVICE_UDP_TYPE "_opkit._udp"
-#define NWCAT_BONJOUR_SERVICE_DOMAIN "local"
+@class AppDelegate;
 
 @interface NavigationDelegate : NSObject<WKNavigationDelegate>
 - (void) webView: (WKWebView*) webView decidePolicyForNavigationAction: (WKNavigationAction*) navigationAction decisionHandler: (void (^)(WKNavigationActionPolicy)) decisionHandler;
@@ -47,33 +36,159 @@ std::vector<nw_connection_t> connections;
 }
 @end
 
-class NetworkConnect;
+@interface Server : NSObject
+@property CFSocketRef listener;
+@property NSMutableArray* connections;
+@property NSString* port;
+@property WKWebView* webview;
+- (Server*) listen: (WKWebView*) webview port: (NSNumber*) port hostname: (NSString*)hostname;
+- (void) emitToRenderProcess: (std::string)event message: (std::string)message;
+@end
+
+@interface Client : NSObject
+@property CFSocketRef socket;
+@property Server* server;
+@property NSMutableArray* connections;
+@property CFRunLoopSourceRef rls;
+@property NSData* _config;
++ (Client*) connect: (CFSocketNativeHandle)handle server: (Server*)server;
+- (Client*) init: (CFSocketNativeHandle)handle server: (Server*)server;
+- (void) receive:(CFDataRef)data;
+@end
+
+@implementation Client
++ (Client*) connect: (CFSocketNativeHandle)handle server: (Server*)server {
+  Client* client = [Client alloc];
+
+  if ([client init: handle server: server] != nil) {
+    return client;
+  }
+
+  return nil;
+}
+- (Client*) init: (CFSocketNativeHandle)handle server: (Server*)server {
+  self.server = server;
+  CFSocketContext info;
+  memset(&info, 0, sizeof(info));
+  info.info = (void*)CFBridgingRetain(self);
+
+  auto onConnect = +[](
+   CFSocketRef s,
+   CFSocketCallBackType callbackType,
+   CFDataRef address,
+   const void *data,
+   void *info) {
+    Client* client = (__bridge Client*)info;
+
+    switch (callbackType) {
+      case kCFSocketDataCallBack:
+        [client receive:(CFDataRef) data];
+        break;
+
+      default:
+        NSLog(@"unexpected socket event");
+        break;
+    }
+  };
+
+  self.socket = CFSocketCreateWithNative(nil, handle, kCFSocketDataCallBack, onConnect, &info);
+  self.rls = CFSocketCreateRunLoopSource(nil, self.socket, 0);
+  CFRunLoopAddSource(CFRunLoopGetMain(), self.rls, kCFRunLoopCommonModes);
+
+  return self;
+}
+- (void) receive:(CFDataRef)data {
+  if (CFDataGetLength(data) == 0) {
+    CFSocketInvalidate(self.socket);
+    self.socket = nil;
+
+    @synchronized(self.server) {
+      [self.server.connections removeObject:self];
+      NSLog(@"Client disconnected");
+    }
+  }
+
+  NSString* msg = [[NSString alloc] initWithData:(__bridge NSData*)data encoding:NSUTF8StringEncoding];
+  NSLog(@"message: %@", msg);
+}
+@end
+
+@implementation Server
+- (void) emitToRenderProcess: (std::string)event message: (std::string)message {
+  NSString* script = [NSString stringWithUTF8String: Opkit::emitToRenderProcess(event, Opkit::encodeURIComponent(message)).c_str()];
+  [self.webview evaluateJavaScript: script completionHandler:nil];
+}
+- (Server*) listen: (WKWebView*) webview port: (NSNumber*) port hostname: (NSString*)hostname {
+  self.connections = [NSMutableArray arrayWithCapacity:10];
+
+  CFSocketContext info;
+  memset(&info, 0, sizeof(info));
+  info.info = (void*)CFBridgingRetain(self);
+
+  auto onConnect = +[] (
+   CFSocketRef s,
+   CFSocketCallBackType callbackType,
+   CFDataRef address,
+   const void *data,
+   void *info
+   ) {
+     Server* server = (__bridge Server*)info;
+
+     switch (callbackType) {
+       case kCFSocketAcceptCallBack: {
+         CFSocketNativeHandle* handle = (CFSocketNativeHandle*) data;
+         Client* client = [Client connect:*handle server:server];
+
+         if (client != nil) {
+           @synchronized(server) {
+             [server.connections addObject:client];
+             [server emitToRenderProcess: "server" message: "{\"data\":\"connected\"}"];
+           }
+         }
+         break;
+       }
+       default:
+         NSLog(@"unexpected socket event");
+         break;
+     }
+   };
+
+  self.listener = CFSocketCreate(nil, PF_INET, SOCK_STREAM, IPPROTO_TCP, kCFSocketAcceptCallBack, onConnect, &info);
+
+  int t = 1;
+  setsockopt(CFSocketGetNative(self.listener), SOL_SOCKET, SO_REUSEADDR, &t, sizeof(t));
+
+  struct sockaddr_in addr;
+  addr.sin_addr.s_addr = INADDR_ANY;
+  addr.sin_family = AF_INET;
+  addr.sin_port = htons([self.port intValue]);
+
+  CFDataRef dataAddr = CFDataCreate(nil, (const uint8_t*)&addr, sizeof(addr));
+  CFSocketError e = CFSocketSetAddress(self.listener, dataAddr);
+  CFRelease(dataAddr);
+
+  if (e) {
+    NSLog(@"bind error %d", (int) e);
+  }
+
+  CFRunLoopSourceRef rls = CFSocketCreateRunLoopSource(nil, self.listener, 0);
+  CFRunLoopAddSource(CFRunLoopGetMain(), rls, kCFRunLoopCommonModes);
+  CFRelease(rls);
+
+  return self;
+}
+@end
 
 @interface AppDelegate : UIResponder <UIApplicationDelegate, WKScriptMessageHandler>
 @property (strong, nonatomic) UIWindow* window;
 @property (strong, nonatomic) WKWebView* webview;
 @property (strong, nonatomic) WKUserContentController* content;
-// @property (strong, nonatomic) nw_listener_t listener;
 @property (strong, nonatomic) NavigationDelegate* navDelegate;
-@property NetworkConnect* connector;
-
-// @property (nonatomic) bool connected;
-@property (nonatomic) nw_connection_t listener;
-// @property (nonatomic) const char* dns;
-// @property (nonatomic) uint16_t tls_encryption;
-// @property (nonatomic) const char* ip;
-// @property (nonatomic) const char* port;
+@property Server* server;
+@property Client* client;
+@property NSString* hostname;
+@property NSNumber* port;
 @end
-
-class NetworkConnect {
-  public:
-    AppDelegate* parent;
-    void receiveData(nw_connection_t connection, std::string streamId);
-    void sendData(nw_connection_t connection, std::string seq, std::string buffer);
-    void netBind(std::string seq, char* name, char* port);
-    std::string getLocalIP ();
-    NetworkConnect (AppDelegate* ad) : parent(ad) {}
-};
 
 //
 // iOS has no "window". There is no navigation, just a single webview. It also
@@ -81,44 +196,33 @@ class NetworkConnect {
 // JavaScript environment so it can be used by the web app and the wasm layer.
 //
 @implementation AppDelegate
-
-@synthesize listener;
-
 - (void) eval: (std::string)message {
   auto script = [NSString stringWithUTF8String:message.c_str()];
   [self.webview evaluateJavaScript: script completionHandler:nil];
 }
-
 - (NSString*) getIPAddress {
   NSString *address = @"error";
   struct ifaddrs *interfaces = NULL;
   struct ifaddrs *temp_addr = NULL;
-  int success = 0;
-  // retrieve the current interfaces - returns 0 on success
-  success = getifaddrs(&interfaces);
+  int success = getifaddrs(&interfaces);
 
   if (success == 0) {
-      // Loop through linked list of interfaces
-      temp_addr = interfaces;
-      while(temp_addr != NULL) {
-          if(temp_addr->ifa_addr->sa_family == AF_INET) {
-              // Check if interface is en0 which is the wifi connection on the iPhone
-              if([[NSString stringWithUTF8String:temp_addr->ifa_name] isEqualToString:@"en0"]) {
-                  // Get NSString from C String
-                  address = [NSString stringWithUTF8String:inet_ntoa(((struct sockaddr_in *)temp_addr->ifa_addr)->sin_addr)];
+    // Loop through linked list of interfaces
+    temp_addr = interfaces;
 
-              }
-
-          }
-
-          temp_addr = temp_addr->ifa_next;
+    while (temp_addr != NULL) {
+      if (temp_addr->ifa_addr->sa_family == AF_INET) {
+        // Check if interface is en0 which is the wifi connection on the iPhone
+        if ([[NSString stringWithUTF8String:temp_addr->ifa_name] isEqualToString:@"en0"]) {
+          address = [NSString stringWithUTF8String:inet_ntoa(((struct sockaddr_in *)temp_addr->ifa_addr)->sin_addr)];
+        }
       }
+      temp_addr = temp_addr->ifa_next;
+    }
   }
-  // Free memory
   freeifaddrs(interfaces);
   return address;
 }
-
 - (void) userContentController :(WKUserContentController *) userContentController
   didReceiveScriptMessage :(WKScriptMessage *) scriptMessage {
     using namespace Opkit;
@@ -139,31 +243,46 @@ class NetworkConnect {
         return;
       }
 
+      if (cmd.name == "getIP") {
+        auto hostname = std::string([self.hostname UTF8String]);
+        auto port = std::to_string([self.port intValue]);
+
+        [self eval: Opkit::resolveToRenderProcess(cmd.get("seq"), "0",
+          Opkit::encodeURIComponent(
+            "{\"data\":{\"ip\":\"" + hostname + "\",\"port\":\"" + port + "\"}}"
+          ))
+        ];
+        return;
+      }
+
       if (cmd.name == "netBind") {
-        if (self.connector) {
-          [self eval: resolveToRenderProcess(cmd.get("seq"), "0", "EXISTS")];
+        if (self.server) {
+          [self eval: resolveToRenderProcess(cmd.get("seq"), "0", Opkit::encodeURIComponent("{\"data\":\"EXISTS\"}"))];
           return;
         }
 
-        g_family = cmd.get("family").find("ipv6") == 0 ? AF_INET6 : AF_INET;
-        g_use_bonjour = cmd.get("bonjour").find("true") == 0 ? true : false;
-        g_use_tls = cmd.get("tls").find("true") == 0 ? true : false;
-        g_use_udp = cmd.get("udp").find("true") == 0 ? true : false;
-
-        self.connector = new NetworkConnect(self);
         auto hostname = cmd.get("hostname");
+        auto port = cmd.get("port");
 
         if (hostname.size() == 0) {
           hostname = std::string([[self getIPAddress] UTF8String]);
         }
 
-        NSLog(@"ip %s", hostname.c_str());
+        NSLog(@"ip -> %s", hostname.c_str());
 
-        self.connector->netBind(
-          cmd.get("seq"),
-          (char*) hostname.c_str(),
-          (char*) cmd.get("port").c_str()
-        );
+        if (port.size() == 0) {
+          [self eval: Opkit::resolveToRenderProcess(
+            cmd.get("seq"),
+            "0",
+            Opkit::encodeURIComponent("{\"err\":\"Port required\"}")
+          )];
+        }
+
+        self.server = [Server alloc];
+        self.port = [NSNumber numberWithInt:std::stoi(port)];
+        self.hostname = [NSString stringWithUTF8String: hostname.c_str()];
+
+        [self.server listen: self.webview port: self.port hostname: self.hostname];
 
         return;
       }
@@ -269,207 +388,5 @@ int main (int argc, char *argv[]) {
   @autoreleasepool {
     return UIApplicationMain(argc, argv, nil, NSStringFromClass([AppDelegate class]));
   }
-}
-
-//
-// receive_loop()
-// Perform a single read on the supplied connection, and write data to
-// stdout as it is received.
-// If no error is encountered, schedule another read on the same connection.
-//
-void NetworkConnect::receiveData (nw_connection_t connection, std::string streamId) {
-  nw_connection_receive(connection, 1, UINT32_MAX, ^(dispatch_data_t content, nw_content_context_t context, bool is_complete, nw_error_t receive_error) {
-
-    // nw_retain(context);
-    dispatch_block_t schedule_next_receive = ^{
-      // If the context is marked as complete, and is the final context,
-      // we're read-closed.
-      if (is_complete &&
-        (context == nullptr || nw_content_context_get_is_final(context))) {
-        [this->parent eval: Opkit::streamToRenderProcess(streamId, "\0")];
-      }
-
-      // If there was no error in receiving, request more data... possibly limit the number of times this can happen before failing.
-      if (receive_error == nullptr) {
-        this->receiveData(connection, streamId);
-      }
-      // nw_release(context);
-    };
-
-    if (content != nullptr) {
-      NSMutableString* str = [NSMutableString string];
-
-      dispatch_data_apply(content, ^bool(dispatch_data_t region, size_t offset, const void *buffer, size_t size) {
-        [str appendString: [[NSString alloc] initWithBytes:buffer length:size encoding: NSUTF8StringEncoding]];
-        return true;
-      });
-
-      [this->parent eval: Opkit::streamToRenderProcess(streamId, std::string([str UTF8String]))];
-    }
-
-    schedule_next_receive();
-  });
-}
-
-//
-// send_loop()
-// Start reading from stdin on a dispatch source, and send any bytes on the given connection.
-//
-void NetworkConnect::sendData (nw_connection_t connection, std::string seq, std::string buffer) {
-  if (!g_detached) {
-    dispatch_data_t read_data = dispatch_data_create(buffer.c_str(), (size_t) buffer.size(), dispatch_get_main_queue(), ^{});
-
-    if (read_data == nullptr) {
-      // NULL data represents EOF
-      // Send a "write close" on the connection, by sending NULL data with the final message context marked as complete.
-      // Note that it is valid to send with NULL data but a non-NULL context.
-      nw_connection_send(connection, NULL, NW_CONNECTION_FINAL_MESSAGE_CONTEXT, true, ^(nw_error_t  _Nullable error) {
-        if (error != nullptr) {
-          errno = nw_error_get_error_code(error);
-          [this->parent eval: Opkit::resolveToRenderProcess(seq, "1", "NOT OK")];
-        }
-      });
-    } else {
-      // Every send is marked as complete. This has no effect with the default message context for TCP,
-      // but is required for UDP to indicate the end of a packet.
-      nw_connection_send(connection, read_data, NW_CONNECTION_DEFAULT_MESSAGE_CONTEXT, true, ^(nw_error_t  _Nullable error) {
-        if (error != nullptr) {
-          errno = nw_error_get_error_code(error);
-          [this->parent eval: Opkit::resolveToRenderProcess(seq, "1", "NOT OK")];
-        } else {
-          [this->parent eval: Opkit::resolveToRenderProcess(seq, "0", "OK")];
-        }
-      });
-    }
-  }
-}
-
-void NetworkConnect::netBind (std::string seq, char* name, char* port) {
-  nw_parameters_t parameters = nullptr;
-
-  // nw_parameters_configure_protocol_block_t configure_tls = NW_PARAMETERS_DEFAULT_CONFIGURATION;
-  nw_parameters_configure_protocol_block_t configure_tls = NW_PARAMETERS_DISABLE_PROTOCOL;
-
-  if (g_use_udp) {
-    parameters = nw_parameters_create_secure_udp(configure_tls, NW_PARAMETERS_DEFAULT_CONFIGURATION);
-  } else {
-    parameters = nw_parameters_create_secure_tcp(configure_tls, NW_PARAMETERS_DEFAULT_CONFIGURATION);
-  }
-
-  nw_protocol_stack_t protocol_stack = nw_parameters_copy_default_protocol_stack(parameters);
-
-  if (g_family == AF_INET || g_family == AF_INET6) {
-    nw_protocol_options_t ip_options = nw_protocol_stack_copy_internet_protocol(protocol_stack);
-
-    if (g_family == AF_INET) {
-      nw_ip_options_set_version(ip_options, nw_ip_version_4);
-    } else if (g_family == AF_INET6) {
-      nw_ip_options_set_version(ip_options, nw_ip_version_6);
-    }
-  }
-
-  const char *address = g_use_bonjour ? nullptr : name;
-
-  if (address || port) {
-    nw_endpoint_t local_endpoint = nw_endpoint_create_host(address ? address : "::", port ? port : "0");
-    nw_parameters_set_fast_open_enabled(parameters, true);
-    nw_parameters_set_include_peer_to_peer(parameters, true);
-    nw_parameters_set_local_endpoint(parameters, local_endpoint);
-    NSLog(@"host and port - %@", local_endpoint);
-  }
-
-  nw_listener_t listener = nw_listener_create(parameters);
-
-  if (g_use_bonjour && name != nullptr) {
-    auto serviceType = (g_use_udp ? NWCAT_BONJOUR_SERVICE_UDP_TYPE : NWCAT_BONJOUR_SERVICE_TCP_TYPE);
-    nw_advertise_descriptor_t advertise = nw_advertise_descriptor_create_bonjour_service(
-      name,
-      serviceType,
-      NWCAT_BONJOUR_SERVICE_DOMAIN
-    );
-
-    nw_listener_set_advertise_descriptor(listener, advertise);
-
-    nw_listener_set_advertised_endpoint_changed_handler(listener, ^(nw_endpoint_t _Nonnull advertised_endpoint, bool added) {
-      NSLog(@"Listener %s on %s (%s.%s.%s)\n",
-        added ? "added" : "removed",
-        nw_endpoint_get_bonjour_service_name(advertised_endpoint),
-        nw_endpoint_get_bonjour_service_name(advertised_endpoint),
-        serviceType,
-        NWCAT_BONJOUR_SERVICE_DOMAIN);
-    });
-  }
-
-  nw_listener_set_queue(listener, dispatch_get_main_queue());
-
-  nw_listener_set_state_changed_handler(listener, ^(nw_listener_state_t state, nw_error_t error) {
-    errno = error ? nw_error_get_error_code(error) : 0;
-    if (state == nw_listener_state_waiting) {
-      NSLog(@"Listener on port %u (%s) waiting\n", nw_listener_get_port(listener), g_use_udp ? "udp" : "tcp");
-      [this->parent eval: Opkit::resolveToRenderProcess(seq, "0", Opkit::encodeURIComponent("{\"data\":\"WAITING\"}"))];
-    } else if (state == nw_listener_state_failed) {
-      NSLog(@"listener (%s) failed", g_use_udp ? "udp" : "tcp");
-      [this->parent eval: Opkit::resolveToRenderProcess(seq, "0", Opkit::encodeURIComponent("{\"err\":\"FAILED\"}"))];
-    } else if (state == nw_listener_state_ready) {
-      NSLog(@"Listener on port %u (%s) ready!\n", nw_listener_get_port(listener), g_use_udp ? "udp" : "tcp");
-      [this->parent eval: Opkit::resolveToRenderProcess(seq, "0", Opkit::encodeURIComponent("{\"data\":\"READY\"}"))];
-    } else if (state == nw_listener_state_cancelled) {
-      // Release the primary reference on the listener
-      // that was taken at creation time
-      // nw_release(listener);
-      [this->parent eval: Opkit::resolveToRenderProcess(seq, "0", Opkit::encodeURIComponent("{\"err\":\"CANCELLED\"}"))];
-    }
-  });
-
-  if (g_family == AF_INET) {
-    NSLog(@"xxx - ipv4");
-  }
-
-  NSLog(@"%@", listener);
-
-  nw_listener_set_new_connection_handler(listener, ^(nw_connection_t connection) {
-    NSLog(@"xxx - 2a");
-    nw_connection_set_queue(connection, dispatch_get_main_queue());
-
-    // rw_retain(connection); // Hold a reference until cancelled
-    nw_connection_set_state_changed_handler(connection, ^(nw_connection_state_t state, nw_error_t error) {
-      nw_endpoint_t remote = nw_connection_copy_endpoint(connection);
-      errno = error ? nw_error_get_error_code(error) : 0;
-
-      if (state == nw_connection_state_waiting) {
-        NSLog(@"connect to %s port %u (%s) failed, is waiting",
-         nw_endpoint_get_hostname(remote),
-         nw_endpoint_get_port(remote),
-         g_use_udp ? "udp" : "tcp");
-        [this->parent eval: Opkit::emitToRenderProcess("connection", Opkit::encodeURIComponent("{\"err\":\"WAITING\"}"))];
-      } else if (state == nw_connection_state_failed) {
-        NSLog(@"connect to %s port %u (%s) failed",
-         nw_endpoint_get_hostname(remote),
-         nw_endpoint_get_port(remote),
-         g_use_udp ? "udp" : "tcp");
-        [this->parent eval: Opkit::emitToRenderProcess("connection", Opkit::encodeURIComponent("{\"err\":\"FAILED\"}"))];
-      } else if (state == nw_connection_state_ready) {
-        NSLog(@"Connection to %s port %u (%s) succeeded!\n",
-          nw_endpoint_get_hostname(remote),
-          nw_endpoint_get_port(remote),
-          g_use_udp ? "udp" : "tcp");
-        [this->parent eval: Opkit::emitToRenderProcess("connection", Opkit::encodeURIComponent("{\"data\":\"OK\"}"))];
-      } else if (state == nw_connection_state_cancelled) {
-        [this->parent eval: Opkit::emitToRenderProcess("connection", Opkit::encodeURIComponent("{\"err\":\"CANCELLED\"}"))];
-        // nw_release(connection);
-      }
-      // nw_release(remote);
-    });
-
-    NSLog(@"xxx - 3");
-
-    nw_connection_start(connection);
-
-    this->sendData(connection, seq, "");
-    this->receiveData(connection, "");
-    NSLog(@"xxx - 4");
-  });
-
-  nw_listener_start(listener);
 }
 
