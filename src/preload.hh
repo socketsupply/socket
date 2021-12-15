@@ -67,20 +67,6 @@ constexpr auto gPreload = R"JS(
     return promise
   }
 
-  window._ipc.stream = (id, value) => {
-    let detail
-
-    try {
-      detail = JSON.parse(decodeURIComponent(value))
-    } catch (err) {
-      console.error(`${err.message} (${value})`)
-      return
-    }
-
-    const event = new window.CustomEvent(name, { detail })
-    window.dispatchEvent(event)
-  }
-
   window._ipc.emit = (name, value) => {
     let detail
 
@@ -118,18 +104,13 @@ constexpr auto gPreloadDesktop = R"JS(
 )JS";
 
 constexpr auto gPreloadMobile = R"JS(
-  window.system.netBind = o => window._ipc.send('netBind', o)
-  window.system.getIP = o => window._ipc.send('getIP', o)
+  window.system.listen = o => window._ipc.send('listen', o)
+  window.system.connect = o => window._ipc.send('connect', o)
+  window.system.send = o => window._ipc.send('send', o)
+  window.system.getAddress = o => window._ipc.send('getAddress', o)
   window.system.onConnection = o => window._ipc.send('onConnection', o)
-  window.system.netConnect = o => window._ipc.send('netConnect', o)
-  window.system.sendData = o => window._ipc.send('sendData', o)
   window.system.sendEnd = o => window._ipc.send('sendEnd', o)
   window.system.sendClose = o => window._ipc.send('sendClose', o)
-
-  window.system.receiveData = (o, callback) => {
-    window._ipc.callbacks[o.id] = callback
-  }
-
   window.system.receiveEnd = o => window._ipc.send('receiveEnd', o)
   window.system.receiveClose = o => window._ipc.send('receiveClose', o)
   window.system.openExternal = o => window._ipc.send('external', o)

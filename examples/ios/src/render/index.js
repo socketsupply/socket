@@ -3,26 +3,6 @@ const Components = require('@operatortc/components')
 
 Components(Tonic)
 
-//
-// A keybinding example... if keyup is ctrl+q, quit the app
-//
-/* window.addEventListener('click', async event => {
-  const el = Tonic.match(event.target, '#externalLink')
-  if (!el) return
-
-  event.preventDefault()
-
-  // await system.openExternal(el.props.url)
-})*/
-
-// window.addEventListener('touchstart', event => {
-  // const el = Tonic.match(event.target, 'data-event')
-  // if (!el) return event.preventDefault()
-//})
-
-//
-// Receive arbitrary/non-request-response data from the main process.
-//
 window.addEventListener('data', event => {
   if (event.detail.env) {
     console.log(event)
@@ -55,9 +35,12 @@ class AppContainer extends Tonic {
   constructor () {
     super()
 
+    window.addEventListener('server', event => {
+      this.log(event.detail)
+    })
 
-    window.addEventListener('socket', async event => {
-      this.querySelector('#output').value += 'connect'
+    window.addEventListener('socket', async (event) => {
+      this.log(event.detail)
     })
 
     this.state = {
@@ -98,31 +81,61 @@ class AppContainer extends Tonic {
     })
   }
 
+  log (...args) {
+    this.querySelector('#output').value +=
+      `\n${JSON.stringify(args, null, 2)}`
+  }
+
   async touchend (e) {
     const el = Tonic.match(e.target, '[data-event]')
     if (!el) return
 
     const { event } = el.dataset
 
-    if (event === 'start') {
-      const { err, data } = await window.system.netBind({
+    if (event === 'listen') {
+      this.log('try to listen')
+
+      const { err, data } = await window.system.listen({
         port: 8222
       })
 
-      setTimeout(async () => {
-        const { err, data } = await window.system.getIP({})
+      const { err: errIP, data: dataIP } = await window.system.getIP({})
 
-        if (err) {
-          this.state.ip = err || 'Unable to get ip'
-        } else {
-          this.state.host = data
-        }
-
-        this.Render()
-      }, 4096)
+      if (errIP) {
+        this.state.ip = errIP || 'Unable to get ip'
+      } else {
+        this.state.host = dataIP
+      }
 
       this.state.serverStatus = err || data
       this.reRender()
+      return
+    }
+
+    if (event === 'connect') {
+      const { err, data } = await window.system.connect({
+        port: 8222,
+        address: '192.168.13.235'
+      })
+
+      clearInterval(this.sendInterval)
+
+      this.sendInterval = setInterval(async () => {
+        const params = {
+          id: data.id,
+          message: `The time is ${Date.now()}.`
+        }
+
+        const {
+          err: errSend,
+          data: dataSend
+        } = await window.system.send(params)
+
+        this.log(errSend || dataSend)
+      }, 1024)
+
+      this.log(err)
+      this.log(data)
     }
   }
 
@@ -157,7 +170,8 @@ class AppContainer extends Tonic {
         <tonic-input id="response" label="recieve" readonly="true">
         </tonic-input>
 
-        <tonic-button data-event="start" id="start">Start</tonic-button>
+        <tonic-button data-event="listen" id="start">Listen</tonic-button>
+        <tonic-button data-event="connect" id="start">Connect</tonic-button>
       </div>
 
       <tonic-toaster-inline
@@ -181,3 +195,4 @@ window.onload = async () => {
   console.log('started', window.process)
   Tonic.add(AppContainer)
 }
+
