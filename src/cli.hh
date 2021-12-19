@@ -189,45 +189,29 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 	objects = {
 
 /* Begin PBXBuildFile section */
+		290F7EBF2768C49000486988 /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 294A3C792763E9C6007B5B9A /* UIKit.framework */; };
+		290F7F87276BC2B000486988 /* lib in Resources */ = {isa = PBXBuildFile; fileRef = 290F7F86276BC2B000486988 /* lib */; };
+		290F7F88276BC2EE00486988 /* libuv.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 290F7F82276BBE9C00486988 /* libuv.a */; };
 		29124C5D2761336B001832A0 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 29124C5B2761336B001832A0 /* LaunchScreen.storyboard */; };
 		294A3C502763E6BC007B5B9A /* ios.mm in Sources */ = {isa = PBXBuildFile; fileRef = 294A3C4E2763E5EB007B5B9A /* ios.mm */; };
-		294A3C7A2763E9C6007B5B9A /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 294A3C792763E9C6007B5B9A /* UIKit.framework */; };
-		294A3C7C2763EA7F007B5B9A /* WebKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 294A3C7B2763EA7F007B5B9A /* WebKit.framework */; };
-		294A3C7E2763EA99007B5B9A /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 294A3C7D2763EA99007B5B9A /* Foundation.framework */; };
 		294A3C852764EAB7007B5B9A /* ui in Resources */ = {isa = PBXBuildFile; fileRef = 294A3C842764EAB7007B5B9A /* ui */; };
-		294A3C8A276635E0007B5B9A /* Network.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 294A3C89276635E0007B5B9A /* Network.framework */; };
+		294A3CA02768C429007B5B9A /* WebKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 294A3C7B2763EA7F007B5B9A /* WebKit.framework */; };
 /* End PBXBuildFile section */
 
-/* Begin PBXContainerItemProxy section */
-		29124C662761336B001832A0 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 29124C4227613369001832A0 /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = 29124C4927613369001832A0;
-			remoteInfo = {{name}};
-		};
-		29124C702761336B001832A0 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 29124C4227613369001832A0 /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = 29124C4927613369001832A0;
-			remoteInfo = {{name}};
-		};
-/* End PBXContainerItemProxy section */
-
 /* Begin PBXFileReference section */
-		29124C4A27613369001832A0 /* {{name}}.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = {{name}}.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		290F7F82276BBE9C00486988 /* libuv.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libuv.a; path = lib/uv/libuv.a; sourceTree = "<group>"; };
+		290F7F86276BC2B000486988 /* lib */ = {isa = PBXFileReference; lastKnownFileType = folder; path = lib; sourceTree = "<group>"; };
+		29124C4A27613369001832A0 /* opkit.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = opkit.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		29124C5C2761336B001832A0 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		29124C5E2761336B001832A0 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		294A3C4E2763E5EB007B5B9A /* ios.mm */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.objcpp; path = ios.mm; sourceTree = "<group>"; };
+		294A3C4E2763E5EB007B5B9A /* ios.mm */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.objcpp; indentWidth = 2; path = ios.mm; sourceTree = "<group>"; tabWidth = 2; };
 		294A3C762763E930007B5B9A /* ios.hh */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = ios.hh; sourceTree = "<group>"; };
 		294A3C792763E9C6007B5B9A /* UIKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UIKit.framework; path = System/Library/Frameworks/UIKit.framework; sourceTree = SDKROOT; };
 		294A3C7B2763EA7F007B5B9A /* WebKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WebKit.framework; path = System/Library/Frameworks/WebKit.framework; sourceTree = SDKROOT; };
-		294A3C7D2763EA99007B5B9A /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
-		294A3C7F27649D27007B5B9A /* preload.hh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = preload.hh; sourceTree = "<group>"; };
-		294A3C8027649DD9007B5B9A /* common.hh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = common.hh; sourceTree = "<group>"; };
+		294A3C7F27649D27007B5B9A /* preload.hh */ = {isa = PBXFileReference; fileEncoding = 4; indentWidth = 2; lastKnownFileType = sourcecode.cpp.h; path = preload.hh; sourceTree = "<group>"; tabWidth = 2; };
+		294A3C8027649DD9007B5B9A /* common.hh */ = {isa = PBXFileReference; fileEncoding = 4; indentWidth = 2; lastKnownFileType = sourcecode.cpp.h; path = common.hh; sourceTree = "<group>"; tabWidth = 2; };
 		294A3C842764EAB7007B5B9A /* ui */ = {isa = PBXFileReference; lastKnownFileType = folder; path = ui; sourceTree = "<group>"; };
-		294A3C89276635E0007B5B9A /* Network.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Network.framework; path = System/Library/Frameworks/Network.framework; sourceTree = SDKROOT; };
+		294A3C9027677424007B5B9A /* opkit.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = opkit.entitlements; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -235,49 +219,45 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				294A3C8A276635E0007B5B9A /* Network.framework in Frameworks */,
-				294A3C7E2763EA99007B5B9A /* Foundation.framework in Frameworks */,
-				294A3C7C2763EA7F007B5B9A /* WebKit.framework in Frameworks */,
-				294A3C7A2763E9C6007B5B9A /* UIKit.framework in Frameworks */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		29124C622761336B001832A0 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		29124C6C2761336B001832A0 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
+				290F7F88276BC2EE00486988 /* libuv.a in Frameworks */,
+				294A3CA02768C429007B5B9A /* WebKit.framework in Frameworks */,
+				290F7EBF2768C49000486988 /* UIKit.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		290F7F89276CBF9900486988 /* Recovered References */ = {
+			isa = PBXGroup;
+			children = (
+				290F7F82276BBE9C00486988 /* libuv.a */,
+			);
+			name = "Recovered References";
+			sourceTree = "<group>";
+		};
 		29124C4127613369001832A0 = {
 			isa = PBXGroup;
 			children = (
+				290F7F86276BC2B000486988 /* lib */,
+				294A3C9027677424007B5B9A /* opkit.entitlements */,
 				294A3C842764EAB7007B5B9A /* ui */,
 				294A3C8027649DD9007B5B9A /* common.hh */,
 				294A3C7F27649D27007B5B9A /* preload.hh */,
-				294A3C762763E930007B5B9A /* ios.hh */,
 				29124C5B2761336B001832A0 /* LaunchScreen.storyboard */,
 				29124C5E2761336B001832A0 /* Info.plist */,
+				294A3C762763E930007B5B9A /* ios.hh */,
 				294A3C4E2763E5EB007B5B9A /* ios.mm */,
 				29124C4B27613369001832A0 /* Products */,
 				294A3C782763E9C6007B5B9A /* Frameworks */,
+				290F7F89276CBF9900486988 /* Recovered References */,
 			);
 			sourceTree = "<group>";
 		};
 		29124C4B27613369001832A0 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				29124C4A27613369001832A0 /* {{name}}.app */,
+				29124C4A27613369001832A0 /* opkit.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -285,8 +265,6 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 		294A3C782763E9C6007B5B9A /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
-				294A3C89276635E0007B5B9A /* Network.framework */,
-				294A3C7D2763EA99007B5B9A /* Foundation.framework */,
 				294A3C7B2763EA7F007B5B9A /* WebKit.framework */,
 				294A3C792763E9C6007B5B9A /* UIKit.framework */,
 			);
@@ -296,9 +274,9 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		29124C4927613369001832A0 /* {{name}} */ = {
+		29124C4927613369001832A0 /* opkit */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 29124C792761336B001832A0 /* Build configuration list for PBXNativeTarget "{{name}}" */;
+			buildConfigurationList = 29124C792761336B001832A0 /* Build configuration list for PBXNativeTarget "opkit" */;
 			buildPhases = (
 				29124C4627613369001832A0 /* Sources */,
 				29124C4727613369001832A0 /* Frameworks */,
@@ -308,9 +286,9 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 			);
 			dependencies = (
 			);
-			name = {{name}};
-			productName = {{name}};
-			productReference = 29124C4A27613369001832A0 /* {{name}}.app */;
+			name = opkit;
+			productName = opkit;
+			productReference = 29124C4A27613369001832A0 /* opkit.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -325,17 +303,9 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 					29124C4927613369001832A0 = {
 						CreatedOnToolsVersion = 13.1;
 					};
-					29124C642761336B001832A0 = {
-						CreatedOnToolsVersion = 13.1;
-						TestTargetID = 29124C4927613369001832A0;
-					};
-					29124C6E2761336B001832A0 = {
-						CreatedOnToolsVersion = 13.1;
-						TestTargetID = 29124C4927613369001832A0;
-					};
 				};
 			};
-			buildConfigurationList = 29124C4527613369001832A0 /* Build configuration list for PBXProject "{{name}}" */;
+			buildConfigurationList = 29124C4527613369001832A0 /* Build configuration list for PBXProject "opkit" */;
 			compatibilityVersion = "Xcode 13.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -348,7 +318,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				29124C4927613369001832A0 /* {{name}} */,
+				29124C4927613369001832A0 /* opkit */,
 			);
 		};
 /* End PBXProject section */
@@ -358,22 +328,9 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				290F7F87276BC2B000486988 /* lib in Resources */,
 				29124C5D2761336B001832A0 /* LaunchScreen.storyboard in Resources */,
 				294A3C852764EAB7007B5B9A /* ui in Resources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		29124C632761336B001832A0 /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		29124C6D2761336B001832A0 /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -388,34 +345,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		29124C612761336B001832A0 /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		29124C6B2761336B001832A0 /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 /* End PBXSourcesBuildPhase section */
-
-/* Begin PBXTargetDependency section */
-		29124C672761336B001832A0 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = 29124C4927613369001832A0 /* {{name}} */;
-			targetProxy = 29124C662761336B001832A0 /* PBXContainerItemProxy */;
-		};
-		29124C712761336B001832A0 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = 29124C4927613369001832A0 /* {{name}} */;
-			targetProxy = 29124C702761336B001832A0 /* PBXContainerItemProxy */;
-		};
-/* End PBXTargetDependency section */
 
 /* Begin PBXVariantGroup section */
 		29124C5B2761336B001832A0 /* LaunchScreen.storyboard */ = {
@@ -483,8 +413,8 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
-				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphonesimulator iphoneos";
 			};
 			name = Debug;
 		};
@@ -537,6 +467,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphonesimulator iphoneos";
 				VALIDATE_PRODUCT = YES;
 			};
 			name = Release;
@@ -544,14 +475,24 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 		29124C7A2761336B001832A0 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ARCHS = arm64;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_IDENTITY = "Apple Development";
-				CODE_SIGN_STYLE = Automatic;
+				CODE_SIGN_ENTITLEMENTS = opkit.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Distribution";
+				CODE_SIGN_STYLE = Manual;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = Z3M838H537;
+				ENABLE_BITCODE = YES;
+				"EXCLUDED_ARCHS[sdk=*]" = "armv7 armv7s i386 arm64";
 				GENERATE_INFOPLIST_FILE = YES;
+				HEADER_SEARCH_PATHS = "$(PROJECT_DIR)/lib/uv/include";
 				INFOPLIST_FILE = Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "{{name}}";
+				INFOPLIST_KEY_LSApplicationCategoryType = Developer;
+				INFOPLIST_KEY_NSCameraUsageDescription = "This app needs access to the camera";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "{{copyRight}}";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "This app needs access to the microphone";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UIRequiresFullScreen = YES;
@@ -561,27 +502,43 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
+					"@executable_path/../Frameworks",
+				);
+				LIBRARY_SEARCH_PATHS = (
+					"$(PROJECT_DIR)/lib",
+					"$(PROJECT_DIR)/lib/uv",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = tc.operator.{{name}};
+				PRODUCT_BUNDLE_IDENTIFIER = tc.operator.opkit;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				PROVISIONING_PROFILE_SPECIFIER = "";
+				PROVISIONING_PROFILE_SPECIFIER = "Opkit iOS AdHoc";
 				SWIFT_EMIT_LOC_STRINGS = YES;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Debug;
 		};
 		29124C7B2761336B001832A0 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ARCHS = arm64;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_IDENTITY = "Apple Development";
-				CODE_SIGN_STYLE = Automatic;
+				CODE_SIGN_ENTITLEMENTS = opkit.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Distribution";
+				CODE_SIGN_STYLE = Manual;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = Z3M838H537;
+				ENABLE_BITCODE = NO;
+				"EXCLUDED_ARCHS[sdk=*]" = "";
+				"EXCLUDED_ARCHS[sdk=iphonesimulator*]" = x86_64;
 				GENERATE_INFOPLIST_FILE = YES;
+				HEADER_SEARCH_PATHS = "$(PROJECT_DIR)/lib/uv/include";
 				INFOPLIST_FILE = Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "{{name}}";
+				INFOPLIST_KEY_LSApplicationCategoryType = Developer;
+				INFOPLIST_KEY_NSCameraUsageDescription = "This app needs access to the camera";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "{{copyRight}}";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "This app needs access to the microphone";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UIRequiresFullScreen = YES;
@@ -591,64 +548,26 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
+					"@executable_path/../Frameworks",
+				);
+				LIBRARY_SEARCH_PATHS = (
+					"$(PROJECT_DIR)/lib",
+					"$(PROJECT_DIR)/lib/uv",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = tc.operator.{{name}};
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = tc.operator.opkit;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				PROVISIONING_PROFILE_SPECIFIER = "";
+				PROVISIONING_PROFILE_SPECIFIER = "Opkit iOS AdHoc";
 				SWIFT_EMIT_LOC_STRINGS = YES;
-				TARGETED_DEVICE_FAMILY = "1,2";
-			};
-			name = Release;
-		};
-		29124C7D2761336B001832A0 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				BUNDLE_LOADER = "$(TEST_HOST)";
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-					"@loader_path/Frameworks",
-				);
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = test.{{name}}Tests;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_EMIT_LOC_STRINGS = NO;
-				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/{{name}}.app/{{name}}";
-			};
-			name = Debug;
-		};
-		29124C7E2761336B001832A0 /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				BUNDLE_LOADER = "$(TEST_HOST)";
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-					"@loader_path/Frameworks",
-				);
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = test.{{name}}Tests;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_EMIT_LOC_STRINGS = NO;
-				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/{{name}}.app/{{name}}";
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Release;
 		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		29124C4527613369001832A0 /* Build configuration list for PBXProject "{{name}}" */ = {
+		29124C4527613369001832A0 /* Build configuration list for PBXProject "opkit" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				29124C772761336B001832A0 /* Debug */,
@@ -657,7 +576,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		29124C792761336B001832A0 /* Build configuration list for PBXNativeTarget "{{name}}" */ = {
+		29124C792761336B001832A0 /* Build configuration list for PBXNativeTarget "opkit" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				29124C7A2761336B001832A0 /* Debug */,
@@ -715,8 +634,6 @@ constexpr auto gXcodeEntitlements = R"XML(<?xml version="1.0" encoding="UTF-8"?>
 <dict>
 	<key>com.apple.security.app-sandbox</key>
 	<true/>
-	<key>com.apple.developer.networking.multicast</key>
-	<true/>
 	<key>com.apple.security.network.server</key>
 	<true/>
 	<key>com.apple.security.network.client</key>
@@ -744,9 +661,9 @@ constexpr auto gXCodeScheme = R"XML(<?xml version="1.0" encoding="UTF-8"?>
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "29124C4927613369001832A0"
-               BuildableName = "{{name}}.app"
-               BlueprintName = "{{name}}"
-               ReferencedContainer = "container:{{name}}.xcodeproj">
+               BuildableName = "opkit.app"
+               BlueprintName = "opkit"
+               ReferencedContainer = "container:opkit.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -774,9 +691,9 @@ constexpr auto gXCodeScheme = R"XML(<?xml version="1.0" encoding="UTF-8"?>
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "29124C4927613369001832A0"
-            BuildableName = "{{name}}.app"
-            BlueprintName = "{{name}}"
-            ReferencedContainer = "container:{{name}}.xcodeproj">
+            BuildableName = "opkit.app"
+            BlueprintName = "opkit"
+            ReferencedContainer = "container:opkit.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </LaunchAction>
@@ -791,9 +708,9 @@ constexpr auto gXCodeScheme = R"XML(<?xml version="1.0" encoding="UTF-8"?>
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "29124C4927613369001832A0"
-            BuildableName = "{{name}}.app"
-            BlueprintName = "{{name}}"
-            ReferencedContainer = "container:{{name}}.xcodeproj">
+            BuildableName = "opkit.app"
+            BlueprintName = "opkit"
+            ReferencedContainer = "container:opkit.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>
@@ -802,6 +719,7 @@ constexpr auto gXCodeScheme = R"XML(<?xml version="1.0" encoding="UTF-8"?>
    </AnalyzeAction>
    <ArchiveAction
       buildConfiguration = "Release"
+      customArchiveName = "opkit"
       revealArchiveInOrganizer = "YES">
    </ArchiveAction>
 </Scheme>)XML";

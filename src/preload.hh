@@ -68,6 +68,7 @@ constexpr auto gPreload = R"JS(
   }
 
   window._ipc.emit = (name, value) => {
+    console.log(value);
     let detail
 
     try {
@@ -104,15 +105,17 @@ constexpr auto gPreloadDesktop = R"JS(
 )JS";
 
 constexpr auto gPreloadMobile = R"JS(
-  window.system.listen = o => window._ipc.send('listen', o)
-  window.system.connect = o => window._ipc.send('connect', o)
-  window.system.send = o => window._ipc.send('send', o)
+  window.system.tcp = {}
+  window.system.tcp.createServer = o => window._ipc.send('createServer', o)
+  window.system.tcp.connection = o => window._ipc.send('connection', o)
+  window.system.tcp.connect = o => window._ipc.send('connect', o)
+  window.system.tcp.send = o => window._ipc.send('send', o)
+  window.system.tcp.sendClose = o => window._ipc.send('sendClose', o)
+  window.system.tcp.receiveClose = o => window._ipc.send('receiveClose', o)
+  window.system.tcp.receiveEnd = o => window._ipc.send('receiveEnd', o)
+  window.system.utp = {}
+  window.system.dgram = {}
   window.system.getAddress = o => window._ipc.send('getAddress', o)
-  window.system.onConnection = o => window._ipc.send('onConnection', o)
-  window.system.sendEnd = o => window._ipc.send('sendEnd', o)
-  window.system.sendClose = o => window._ipc.send('sendClose', o)
-  window.system.receiveEnd = o => window._ipc.send('receiveEnd', o)
-  window.system.receiveClose = o => window._ipc.send('receiveClose', o)
   window.system.openExternal = o => window._ipc.send('external', o)
 )JS";
 

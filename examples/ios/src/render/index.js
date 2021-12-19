@@ -3,19 +3,9 @@ const Components = require('@operatortc/components')
 
 Components(Tonic)
 
+// data is a firehose of information.
 window.addEventListener('data', event => {
-  if (event.detail.env) {
-    console.log(event)
-    return
-  }
-
-  if (event.detail.size !== event.detail.sending.length) {
-    throw new Error('Not aligned: detail size not accurate')
-  } else {
-    console.log(`received ${event.detail.size} characters`)
-  }
-
-  AppContainer.setHeader(`${event.detail.counter} messages received`)
+  console.log('DATA ->', JSON.stringify(event.detail, null, 2))
 })
 
 //
@@ -34,14 +24,6 @@ Tonic.add(AppHeader)
 class AppContainer extends Tonic {
   constructor () {
     super()
-
-    window.addEventListener('server', event => {
-      this.log(event.detail)
-    })
-
-    window.addEventListener('socket', async (event) => {
-      this.log(event.detail)
-    })
 
     this.state = {
       serverStatus: 'NOT READY'
@@ -95,11 +77,11 @@ class AppContainer extends Tonic {
     if (event === 'listen') {
       this.log('try to listen')
 
-      const { err, data } = await window.system.listen({
+      const { err, data } = await window.system.tcp.createServer({
         port: 8222
       })
 
-      const { err: errIP, data: dataIP } = await window.system.getIP({})
+      const { err: errIP, data: dataIP } = await window.system.getAddress({})
 
       if (errIP) {
         this.state.ip = errIP || 'Unable to get ip'
@@ -113,10 +95,13 @@ class AppContainer extends Tonic {
     }
 
     if (event === 'connect') {
-      const { err, data } = await window.system.connect({
+      const { err, data } = await window.system.tcp.connect({
         port: 8222,
-        address: '192.168.13.235'
+        address: '192.168.1.22'
       })
+
+      console.log(err)
+      console.log(data)
 
       clearInterval(this.sendInterval)
 
@@ -129,13 +114,12 @@ class AppContainer extends Tonic {
         const {
           err: errSend,
           data: dataSend
-        } = await window.system.send(params)
+        } = await window.system.tcp.send(params)
 
         this.log(errSend || dataSend)
       }, 1024)
 
-      this.log(err)
-      this.log(data)
+      this.log(err || data)
     }
   }
 
@@ -192,7 +176,6 @@ class AppContainer extends Tonic {
 }
 
 window.onload = async () => {
-  console.log('started', window.process)
   Tonic.add(AppContainer)
 }
 

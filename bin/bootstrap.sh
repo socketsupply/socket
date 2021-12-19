@@ -45,6 +45,7 @@ if [ "$1" ]; then
   echo '• Copying sources to /usr/local/lib/opkit'
   sudo mkdir -p /usr/local/lib/opkit
   sudo cp -r `pwd`/src/ /usr/local/lib/opkit/src
+  sudo cp -r `pwd`/lib/ /usr/local/lib/opkit/lib
 
   echo '• Moving binary to /usr/local/bin'
   sudo mv `pwd`/bin/cli /usr/local/bin/opkit

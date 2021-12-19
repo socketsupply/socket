@@ -1,4 +1,6 @@
 node_modules/
+/lib/*
+!/lib/libuv.a
 /bin/build
 /bin/cli.exe
 /bin/cli

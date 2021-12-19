@@ -303,6 +303,12 @@ int main (const int argc, const char* argv[]) {
 
     settings["apple_provisioning_profile"] = uuid;
 
+    fs::copy(
+      fs::path(prefixFile()) / "lib",
+      target / pathOutput / "lib",
+      fs::copy_options::overwrite_existing | fs::copy_options::recursive
+    );
+
     writeFile(target / pathOutput / "exportOptions.plist", tmpl(gXCodeExportOptions, settings));
     writeFile(target / pathOutput / "Info.plist", tmpl(gXCodePlist, settings));
     writeFile(pathToProject / "project.pbxproj", tmpl(gXCodeProject, settings));
@@ -536,7 +542,7 @@ int main (const int argc, const char* argv[]) {
 
     archiveCommand
       << "xcodebuild"
-      << " clean build" << sup
+      << " build" << sup
       << " -scheme " << settings["name"]
       << " -destination '" << destination << "'";
 

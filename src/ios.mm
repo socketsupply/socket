@@ -5,13 +5,18 @@
 #include <ifaddrs.h>
 #include <arpa/inet.h>
 
+#include "lib/uv/include/uv.h"
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <map>
 
+#define DEFAULT_BACKLOG 128
+
 constexpr auto _settings = STR_VALUE(SETTINGS);
 constexpr auto _debug = false;
+
+static dispatch_queue_t queue = dispatch_queue_create("opkit.queue", DISPATCH_QUEUE_CONCURRENT);
 
 #define IMAX_BITS(m) ((m)/((m) % 255+1) / 255 % 255 * 8 + 7-86 / ((m) % 255+12))
 #define RAND_MAX_WIDTH IMAX_BITS(RAND_MAX)
@@ -27,36 +32,6 @@ uint64_t rand64(void) {
   return r;
 }
 
-@interface Bridge : NSObject
-@property WKWebView* webview;
-- (void) emit: (std::string)event message: (std::string)message;
-- (void) resolve: (std::string)seq message: (std::string)message;
-- (void) reject: (std::string)seq message: (std::string)message;
-@end
-
-@interface Server : NSObject
-@property CFSocketRef listener;
-@property Bridge* bridge;
-@property NSMutableArray* connections;
-@property NSString* port;
-- (Server*) listen: (WKWebView*) webview port: (NSNumber*) port hostname: (NSString*)hostname;
-@end
-
-@interface Client : NSObject
-@property CFSocketRef socket;
-@property Server* server;
-@property Bridge* bridge;
-@property CFRunLoopSourceRef rls;
-@property NSData* _config;
-@property CFDataRef dataAddr;
-@property uint64_t clientid;
-+ (Client*) adopt: (uint64_t) clientid handle: (CFSocketNativeHandle)handle server: (Server*)server;
-- (Client*) connect: (uint64_t) clientid port: (NSNumber*)port address: (NSString*)address;
-- (Client*) init: (uint64_t) clientid handle: (CFSocketNativeHandle)handle server: (Server*)server;
-- (void) receive:(CFDataRef)data;
-- (void) send:(NSString*)message;
-@end
-
 @interface NavigationDelegate : NSObject<WKNavigationDelegate>
 - (void) webView: (WKWebView*) webView decidePolicyForNavigationAction: (WKNavigationAction*) navigationAction decisionHandler: (void (^)(WKNavigationActionPolicy)) decisionHandler;
 @end
@@ -64,250 +39,40 @@ uint64_t rand64(void) {
 @interface AppDelegate : UIResponder <UIApplicationDelegate, WKScriptMessageHandler>
 @property (strong, nonatomic) UIWindow* window;
 @property (strong, nonatomic) WKWebView* webview;
+@property (strong, atomic) NSMutableDictionary* connections;
 @property (strong, nonatomic) WKUserContentController* content;
 @property (strong, nonatomic) NavigationDelegate* navDelegate;
-@property Server* server;
-@property Client* client;
-@property Bridge* bridge;
-@property NSMutableArray* connections;
-@property NSString* hostname;
-@property NSNumber* port;
+- (void) emit: (std::string)event message: (std::string)message;
+- (void) resolve: (std::string)seq message: (std::string)message;
+- (void) reject: (std::string)seq message: (std::string)message;
+- (void) createServer: (std::string)seq address: (std::string)address port: (int)port;
+- (void) connect: (std::string)seq port: (int)port address: (std::string)address;
+- (void) send: (uint64_t)clientId message: (std::string)message;
 @end
 
-@implementation Bridge
-- (void) emit: (std::string)event message: (std::string)message {
-  NSString* script = [NSString stringWithUTF8String: Opkit::emitToRenderProcess(event, Opkit::encodeURIComponent(message)).c_str()];
-  [self.webview evaluateJavaScript: script completionHandler:nil];
-}
-- (void) resolve: (std::string)seq message: (std::string)message {
-  NSString* script = [NSString stringWithUTF8String: Opkit::resolveToRenderProcess(seq, "0", Opkit::encodeURIComponent(message)).c_str()];
-  [self.webview evaluateJavaScript: script completionHandler:nil];
-}
-- (void) reject: (std::string)seq message: (std::string)message {
-  NSString* script = [NSString stringWithUTF8String: Opkit::resolveToRenderProcess(seq, "1", Opkit::encodeURIComponent(message)).c_str()];
-  [self.webview evaluateJavaScript: script completionHandler:nil];
-}
-@end
+struct Context {
+  uint64_t serverId;
+  AppDelegate* delegate;
+};
 
-@implementation Client
-- (Client*) connect: (uint64_t) clientid port: (NSNumber*)port address: (NSString*)address {
-  self.clientid = clientid;
+struct Client {
+  uint64_t clientId;
+  Context* ctx;
+  uv_tcp_t *connection;
+  std::string seq;
+};
 
-  CFSocketContext info;
-  memset(&info, 0, sizeof(info));
-  info.info = (void*)CFBridgingRetain(self);
+std::map<uint64_t, Client*> clients;
 
-  auto onConnect = +[] (
-   CFSocketRef s,
-   CFSocketCallBackType callbackType,
-   CFDataRef address,
-   const void *data,
-   void *info
-   ) {
-    Client* client = (__bridge Client*)info;
+struct sockaddr_in addr;
 
-    switch (callbackType) {
-      case kCFSocketDataCallBack:
-        NSLog(@"RECEIVED DATA %@", data);
-        [client receive:(CFDataRef) data];
-        break;
+typedef struct {
+    uv_write_t req;
+    uv_buf_t buf;
+} write_req_t;
 
-      default:
-        NSLog(@"unexpected socket event");
-        break;
-    }
-  };
-
-  self.socket = CFSocketCreate(nil, PF_INET, SOCK_STREAM, IPPROTO_TCP, kCFSocketReadCallBack | kCFSocketAcceptCallBack | kCFSocketDataCallBack, onConnect, &info);
-
-  int t = 1;
-  setsockopt(CFSocketGetNative(self.socket), SOL_SOCKET, SO_REUSEADDR, &t, sizeof(t));
-
-  struct sockaddr_in addr;
-  addr.sin_addr.s_addr = inet_addr([address cStringUsingEncoding:NSASCIIStringEncoding]);
-  addr.sin_family = AF_INET;
-  addr.sin_port = htons([port intValue]);
-
-  self.dataAddr = CFDataCreate(nil, (const uint8_t*)&addr, sizeof(addr));
-
-  CFSocketConnectToAddress(self.socket, self.dataAddr, 10);
-  self.rls = CFSocketCreateRunLoopSource(nil, self.socket, 0);
-  CFRunLoopAddSource(CFRunLoopGetMain(), self.rls, kCFRunLoopCommonModes);
-
-  return self;
-}
-+ (Client*) adopt: (uint64_t) clientid handle: (CFSocketNativeHandle)handle server: (Server*)server {
-  Client* client = [Client alloc];
-
-  if ([client init: clientid handle: handle server: server] != nil) {
-    return client;
-  }
-
-  return nil;
-}
-- (Client*) init: (uint64_t) clientid handle: (CFSocketNativeHandle)handle server: (Server*)server {
-  self.server = server;
-  self.clientid = clientid;
-  CFSocketContext info;
-  memset(&info, 0, sizeof(info));
-  info.info = (void*)CFBridgingRetain(self);
-
-  auto onConnect = +[](
-   CFSocketRef s,
-   CFSocketCallBackType callbackType,
-   CFDataRef address,
-   const void *data,
-   void *info) {
-    Client* client = (__bridge Client*)info;
-
-    switch (callbackType) {
-      case kCFSocketAcceptCallBack:
-        NSLog(@"ACCEPT");
-        break;
-      case kCFSocketDataCallBack:
-        NSLog(@"RECEIVE");
-        [client receive:(CFDataRef) data];
-        break;
-
-      default:
-        NSLog(@"unexpected socket event");
-        break;
-    }
-  };
-
-  self.socket = CFSocketCreateWithNative(nil, handle, kCFSocketDataCallBack, onConnect, &info);
-  self.rls = CFSocketCreateRunLoopSource(nil, self.socket, 0);
-
-  CFRunLoopAddSource(CFRunLoopGetMain(), self.rls, kCFRunLoopCommonModes);
-  return self;
-}
-
-- (void) receive:(CFDataRef)data {
-  if (CFDataGetLength(data) == 0) {
-    CFSocketInvalidate(self.socket);
-    self.socket = nil;
-
-    if (self.server) {
-      @synchronized(self.server) {
-        [self.server.connections removeObject:self];
-        // TODO add address info to JSON
-        [self.bridge emit: "socket" message: Opkit::format(R"({
-          "type": "disconnect",
-          "clientid": "$S",
-          "data": {}
-        })", (int) self.clientid)];
-      }
-    } else {
-      @synchronized(self) {
-        // [self.connections removeObject:self];
-        // TODO add address info to JSON
-      }
-    }
-
-    return;
-  }
-
-  NSString* str = [[NSString alloc] initWithData:(__bridge NSData*)data encoding:NSUTF8StringEncoding];
-  std::string message([str UTF8String]);
-  std::string clientid = std::to_string((int) self.clientid);
-
-  message.erase(std::remove(message.begin(), message.end(), '\n'), message.end());
-
-  [self.bridge emit: "socket" message: Opkit::format(R"({
-    "type": "receive",
-    "clientid": "$S",
-    "data": "$S"
-  })", clientid, message)];
-}
-
-- (void) send:(NSString*)message {
-  NSData *data = [message dataUsingEncoding:NSUTF8StringEncoding];
-  CFSocketError err = CFSocketSendData(self.socket, self.dataAddr, (CFDataRef) data, 128);
-
-  if (err < 0) {
-    NSLog(@"unable to write to socket");
-
-    [self.bridge emit: "socket" message: Opkit::format(R"({
-      "type": "error",
-      "clientid": "",
-      "data": "Unable to write to socket"
-    })")];
-  }
-}
-@end
-
-@implementation Server
-- (Server*) listen: (WKWebView*) webview port: (NSNumber*) port hostname: (NSString*)hostname {
-  self.connections = [NSMutableArray arrayWithCapacity:128];
-
-  CFSocketContext info;
-  memset(&info, 0, sizeof(info));
-  info.info = (void*)CFBridgingRetain(self);
-
-  auto onConnect = +[] (
-   CFSocketRef s,
-   CFSocketCallBackType callbackType,
-   CFDataRef address,
-   const void *data,
-   void *info
-   ) {
-     Server* server = (__bridge Server*)info;
-
-     switch (callbackType) {
-       case kCFSocketAcceptCallBack: {
-         CFSocketNativeHandle* handle = (CFSocketNativeHandle*) data;
-         uint64_t clientId = rand64();
-         Client* client = [Client adopt:clientId handle: *handle server:server];
-
-         if (client != nil) {
-           @synchronized(server) {
-             [server.connections addObject:client];
-             // TODO add connecton info
-             [server.bridge emit: "server" message: Opkit::format(R"({
-               "type": "connected",
-               "data": {}
-             })")];
-           }
-         }
-         break;
-       }
-       default:
-         [server.bridge emit: "server" message: Opkit::format(R"({
-           "type": "err",
-           "data": "Unable to connect"
-         })")];
-         break;
-     }
-   };
-
-  self.listener = CFSocketCreate(nil, PF_INET, SOCK_STREAM, IPPROTO_TCP, kCFSocketAcceptCallBack, onConnect, &info);
-
-  int t = 1;
-  setsockopt(CFSocketGetNative(self.listener), SOL_SOCKET, SO_REUSEADDR, &t, sizeof(t));
-
-  struct sockaddr_in addr;
-  addr.sin_addr.s_addr = INADDR_ANY;
-  addr.sin_family = AF_INET;
-  addr.sin_port = htons([self.port intValue]);
-
-  CFDataRef dataAddr = CFDataCreate(nil, (const uint8_t*)&addr, sizeof(addr));
-  CFSocketError err = CFSocketSetAddress(self.listener, dataAddr);
-  CFRelease(dataAddr);
-
-  if (err) {
-    [self.bridge emit: "server" message: Opkit::format(R"({
-      "type": "err",
-      "data": "Unable to set socket address for listening"
-    })")];
-  }
-
-  CFRunLoopSourceRef rls = CFSocketCreateRunLoopSource(nil, self.listener, 0);
-  CFRunLoopAddSource(CFRunLoopGetMain(), rls, kCFRunLoopCommonModes);
-  CFRelease(rls);
-
-  return self;
-}
-@end
+uv_loop_t *loop = uv_default_loop();
+bool isRunning = false;
 
 @implementation NavigationDelegate
 - (void) webView: (WKWebView*) webView
@@ -316,8 +81,6 @@ uint64_t rand64(void) {
 
   std::string base = webView.URL.absoluteString.UTF8String;
   std::string request = navigationAction.request.URL.absoluteString.UTF8String;
-
-  NSLog(@"naviate %s", request.c_str());
 
   if (request.find("file://") == 0) {
     decisionHandler(WKNavigationActionPolicyAllow);
@@ -357,6 +120,289 @@ uint64_t rand64(void) {
   return address;
 }
 
+- (void) emit: (std::string)event message: (std::string)message {
+  NSString* script = [NSString stringWithUTF8String: Opkit::emitToRenderProcess(event, Opkit::encodeURIComponent(message)).c_str()];
+  [self.webview evaluateJavaScript: script completionHandler:nil];
+}
+
+- (void) resolve: (std::string)seq message: (std::string)message {
+  NSString* script = [NSString stringWithUTF8String: Opkit::resolveToRenderProcess(seq, "0", Opkit::encodeURIComponent(message)).c_str()];
+  [self.webview evaluateJavaScript: script completionHandler:nil];
+}
+
+- (void) reject: (std::string)seq message: (std::string)message {
+  NSString* script = [NSString stringWithUTF8String: Opkit::resolveToRenderProcess(seq, "1", Opkit::encodeURIComponent(message)).c_str()];
+  [self.webview evaluateJavaScript: script completionHandler:nil];
+}
+
+- (void) send: (uint64_t)clientId message: (std::string)message {
+  Client* client = clients[clientId];
+
+  if (client == nullptr) {
+    return; // TODO tell the user
+  }
+
+  write_req_t *req = (write_req_t*) malloc(sizeof(write_req_t));
+  req->buf = uv_buf_init((char* const) message.c_str(), message.size());
+
+  auto onWrite = [](uv_write_t *req, int status) {
+    auto client = reinterpret_cast<Client*>(req->data);
+
+    if (status) {
+      dispatch_async(dispatch_get_main_queue(), ^{
+        [client->ctx->delegate emit: "data" message: Opkit::format(R"({
+          "err": {
+            "id": "$S",
+            "message": "Write error $S"
+          }
+        })", uv_strerror(status))];
+      });
+      return;
+    }
+
+    write_req_t *wr = (write_req_t*) req;
+    free(wr->buf.base);
+    free(wr);
+  };
+
+  uv_write((uv_write_t*) req, (uv_stream_t*) client->connection, &req->buf, 1, onWrite);
+}
+
+- (void) connect: (std::string)seq port: (int)port address: (std::string)address {
+  dispatch_async(queue, ^{
+    Context ctx;
+    ctx.delegate = self;
+
+    uv_tcp_t socket;
+    socket.data = &ctx;
+
+    uv_tcp_init(loop, &socket);
+    uv_tcp_keepalive(&socket, 1, 60);
+
+    auto clientId = rand64();
+    Client* client = clients[clientId] = new Client();
+    client->clientId = clientId;
+    client->ctx = &ctx;
+    client->seq = seq;
+    client->connection = &socket;
+
+    socket.data = &client;
+
+    struct sockaddr_in dest;
+    uv_ip4_addr(address.c_str(), port, &dest);
+
+    auto onConnect = [](uv_connect_t* req, int status) {
+      auto client = reinterpret_cast<Client*>(req->handle->data);
+
+      if (status < 0) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+          [client->ctx->delegate resolve: client->seq message: Opkit::format(R"({
+            "err": {
+              "clientId": "$S",
+              "message": "$S"
+            }
+          })", std::to_string(client->clientId), std::string(uv_strerror(status)))];
+        });
+        return;
+      }
+
+      dispatch_async(dispatch_get_main_queue(), ^{
+        [client->ctx->delegate resolve: client->seq message: Opkit::format(R"({
+          "data": {
+            "clientId": "$S"
+          }
+        })", std::to_string(client->clientId))];
+      });
+
+      auto onRead = [](uv_stream_t* handle, ssize_t nread, const uv_buf_t* buf) {
+        auto client = reinterpret_cast<Client*>(handle->data);
+
+        NSString* str = [NSString stringWithUTF8String: buf->base];
+        NSData *nsdata = [str dataUsingEncoding:NSUTF8StringEncoding];
+        NSString *base64Encoded = [nsdata base64EncodedStringWithOptions:0];
+
+        auto serverId = std::to_string(client->ctx->serverId);
+        auto clientId = std::to_string(client->clientId);
+        auto message = std::string([base64Encoded UTF8String]);
+
+        dispatch_async(dispatch_get_main_queue(), ^{
+          [client->ctx->delegate emit: "data" message: Opkit::format(R"({
+            "data": {
+              "serverId": "$S",
+              "clientId": "$S",
+              "message": "$S"
+            }
+          })", serverId, clientId, message)];
+        });
+      };
+
+      auto allocate = [](uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf) {
+        buf->base = (char*) malloc(suggested_size);
+        buf->len = suggested_size;
+      };
+
+      uv_read_start((uv_stream_t*) req->handle, allocate, onRead);
+    };
+
+    uv_connect_t connection;
+    auto r = uv_tcp_connect(&connection, &socket, (const struct sockaddr*) &dest, onConnect);
+
+    if (r) {
+      dispatch_async(dispatch_get_main_queue(), ^{
+        [self resolve: seq message: Opkit::format(R"({
+          "err": {
+            "clientId": "$S",
+            "message": "$S"
+          }
+        })", std::to_string(clientId), std::string(uv_strerror(r)))];
+      });
+
+      return;
+    }
+
+    if (isRunning == false) {
+      isRunning = true;
+      NSLog(@"running new loop from request");
+      uv_run(loop, UV_RUN_DEFAULT);
+    }
+  });
+}
+
+- (void) createServer: (std::string) seq address: (std::string)address port: (int)port {
+  dispatch_async(queue, ^{
+    Context ctx;
+    ctx.delegate = self;
+    ctx.serverId = rand64();
+
+    uv_tcp_t server;
+    server.data = &ctx;
+
+    uv_tcp_init(loop, &server);
+    uv_ip4_addr(address.c_str(), port, &addr);
+    uv_tcp_bind(&server, (const struct sockaddr*) &addr, 0);
+
+    int r = uv_listen((uv_stream_t*) &server, DEFAULT_BACKLOG, [](uv_stream_t *server, int status) {
+      auto ctx = reinterpret_cast<Context*>(server->data);
+
+      if (status < 0) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+          [ctx->delegate emit: "data" message: Opkit::format(R"({
+            "err": {
+              "id": "$S",
+              "message": "New connection error $S"
+            }
+          })", std::to_string(ctx->serverId), uv_strerror(status))];
+        });
+        return;
+      }
+
+      uv_tcp_t *connection = (uv_tcp_t*) malloc(sizeof(uv_tcp_t));
+
+      auto clientId = rand64();
+      Client* client = clients[clientId] = new Client();
+      client->clientId = clientId;
+      client->ctx = ctx;
+      client->connection = connection;
+
+      connection->data = client;
+
+      uv_tcp_init(loop, connection);
+
+      if (uv_accept(server, (uv_stream_t*) connection) == 0) {
+        auto onRead = [](uv_stream_t* handle, ssize_t nread, const uv_buf_t *buf) {
+          auto client = reinterpret_cast<Client*>(handle->data);
+
+          if (nread > 0) {
+            write_req_t *req = (write_req_t*) malloc(sizeof(write_req_t));
+            req->buf = uv_buf_init(buf->base, nread);
+
+            NSString* str = [NSString stringWithUTF8String: req->buf.base];
+            NSData *nsdata = [str dataUsingEncoding:NSUTF8StringEncoding];
+            NSString *base64Encoded = [nsdata base64EncodedStringWithOptions:0];
+
+            auto serverId = std::to_string(client->ctx->serverId);
+            auto clientId = std::to_string(client->clientId);
+            auto message = std::string([base64Encoded UTF8String]);
+
+            dispatch_async(dispatch_get_main_queue(), ^{
+              [client->ctx->delegate emit: "data" message: Opkit::format(R"({
+                "data": {
+                  "serverId": "$S",
+                  "clientId": "$S",
+                  "message": "$S"
+                }
+              })", serverId, clientId, message)];
+
+              // echo it
+              // [client->ctx->delegate send:client->clientId message:std::string(buf->base)];
+            });
+            return;
+          }
+
+          if (nread < 0) {
+            if (nread != UV_EOF) {
+              dispatch_async(dispatch_get_main_queue(), ^{
+                [client->ctx->delegate emit: "data" message: Opkit::format(R"({
+                  "err": {
+                    "serverId": "$S",
+                    "message": "$S"
+                  }
+                })", std::to_string(client->ctx->serverId), uv_err_name(nread))];
+              });
+            }
+
+            uv_close((uv_handle_t*) client->connection, [](uv_handle_t* handle) {
+              free(handle);
+            });
+          }
+
+          free(buf->base);
+        };
+
+        auto allocateBuffer = [](uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf) {
+          buf->base = (char*) malloc(suggested_size);
+          buf->len = suggested_size;
+        };
+
+        uv_read_start((uv_stream_t*) connection, allocateBuffer, onRead);
+      } else {
+        uv_close((uv_handle_t*) connection, [](uv_handle_t* handle) {
+          free(handle);
+        });
+      }
+    });
+
+    if (r) {
+      dispatch_async(dispatch_get_main_queue(), ^{
+        [self resolve: seq message: Opkit::format(R"({
+          "err": {
+            "serverId": "$S",
+            "message": "$S"
+          }
+        })", std::to_string(ctx.serverId), std::string(uv_strerror(r)))];
+      });
+
+      return;
+    }
+
+    if (isRunning == false) {
+      isRunning = true;
+      NSLog(@"running new loop from server");
+      uv_run(loop, UV_RUN_DEFAULT);
+    }
+
+    dispatch_async(dispatch_get_main_queue(), ^{
+      [self resolve: seq message: Opkit::format(R"({
+        "data": {
+          "serverId": "$S",
+          "port": "$S",
+          "address": "$S"
+        }
+      })", std::to_string(ctx.serverId), port, address)];
+    });
+  });
+}
+
 - (void) userContentController :(WKUserContentController *) userContentController
   didReceiveScriptMessage :(WKScriptMessage *) scriptMessage {
     using namespace Opkit;
@@ -371,6 +417,8 @@ uint64_t rand64(void) {
     if (msg.find("ipc://") == 0) {
       Parse cmd(msg);
 
+      NSLog(@"COMMAND %s", msg.c_str());
+
       if (cmd.name == "openExternal") {
         // NSString *url = [NSString stringWithUTF8String:cmd.value.c_str()];
         // [[UIApplication sharedApplication] openURL:[NSURL URLWithString:url]];
@@ -378,97 +426,55 @@ uint64_t rand64(void) {
       }
 
       if (cmd.name == "getAddress") {
-        auto hostname = std::string([self.hostname UTF8String]);
-        auto port = std::to_string([self.port intValue]);
+        auto hostname = std::string([[self getIPAddress] UTF8String]);
 
-        [self.bridge resolve: cmd.get("seq") message: Opkit::format(R"({
+        [self resolve: cmd.get("seq") message: Opkit::format(R"({
           "data": {
-            "ip": "$S",
-            "port": "$S"
+            "address": "$S"
           }
-        })", hostname, port)];
+        })", hostname)];
 
         return;
       }
 
       if (cmd.name == "send") {
-        for (Client *client in self.connections) {
-          uint64_t value;
-          std::istringstream iss(cmd.get("clientid"));
-          iss >> value;
-
-          if (client.clientid == value) {
-            [client send: [NSString stringWithUTF8String:cmd.get("message").c_str()]];
-
-            [self.bridge resolve: cmd.get("seq") message: Opkit::format(R"({
-              "data": "SENT"
-            })")];
-            return;
-          }
-        }
-
-        [self.bridge resolve: cmd.get("seq") message: Opkit::format(R"({
-          "err": "NOT SENT"
-        })")];
+        [self send: std::stoll(cmd.get("clientId")) message: cmd.get("message")];
         return;
       }
 
       if (cmd.name == "connect") {
-        NSNumber* port = [NSNumber numberWithInt:std::stoi(cmd.get("port"))];
-        NSString* address = [NSString stringWithUTF8String: cmd.get("address").c_str()];
-        NSString* id = [NSString stringWithUTF8String: cmd.get("clientid").c_str()];
+        auto address = cmd.get("address");
+        auto port = cmd.get("port");
+        auto seq = cmd.get("seq");
 
-        Client* client = [Client alloc];
-        client.bridge = self.bridge;
-
-        [self.connections addObject:client];
-
-        [client connect:strtoull([id UTF8String], NULL, 0) port:port address:address];
-
-        [self.bridge resolve: cmd.get("seq") message: Opkit::format(R"({
-          "data": {
-            "port": "$S",
-            "address": "$S"
-          }
-        })", cmd.get("port"), cmd.get("address"))];
+        [self connect: seq port:std::stoi(port) address:address];
         return;
       }
 
-      if (cmd.name == "listen") {
-        if (self.server) {
-          [self.bridge resolve: cmd.get("seq") message: Opkit::format(R"({
-            "data": "EXISTS"
-          })")];
-          return;
-        }
-
-        auto hostname = cmd.get("hostname");
+      if (cmd.name == "createServer") {
+        auto address = cmd.get("address");
         auto port = cmd.get("port");
+        auto seq = cmd.get("seq");
 
-        if (hostname.size() == 0) {
-          hostname = std::string([[self getIPAddress] UTF8String]);
+        if (address.size() == 0) {
+          address = std::string([[self getIPAddress] UTF8String]);
         }
 
-        if (hostname == "error") {
-          [self.bridge resolve: cmd.get("seq") message: Opkit::format(R"({
+        if (address == "error") {
+          [self resolve: cmd.get("seq") message: Opkit::format(R"({
             "err": { "message": "offline" }
           })")];
           return;
         }
 
         if (port.size() == 0) {
-          [self.bridge reject: cmd.get("seq") message: Opkit::format(R"({
+          [self reject: cmd.get("seq") message: Opkit::format(R"({
             "err": { "message": "port required" }
           })")];
           return;
         }
 
-        self.server = [Server alloc];
-        self.server.bridge = self.bridge;
-        self.port = [NSNumber numberWithInt:std::stoi(port)];
-        self.hostname = [NSString stringWithUTF8String: hostname.c_str()];
-
-        [self.server listen: self.webview port: self.port hostname: self.hostname];
+        [self createServer: seq address: address port: std::stoi(port)];
 
         return;
       }
@@ -484,8 +490,6 @@ uint64_t rand64(void) {
     auto appFrame = [[UIScreen mainScreen] bounds];
 
     self.window = [[UIWindow alloc] initWithFrame: appFrame];
-    self.bridge = [Bridge alloc];
-    self.connections = [NSMutableArray arrayWithCapacity:128];
 
     UIViewController *viewController = [[UIViewController alloc] init];
     viewController.view.frame = appFrame;
@@ -532,8 +536,6 @@ uint64_t rand64(void) {
       "" + createPreload(opts) + "\n"
     );
 
-    // NSLog(@"%s", preload.c_str());
-
     WKUserScript* initScript = [[WKUserScript alloc]
       initWithSource: [NSString stringWithUTF8String: preload.c_str()]
       injectionTime: WKUserScriptInjectionTimeAtDocumentStart
@@ -546,7 +548,6 @@ uint64_t rand64(void) {
     [self.content addUserScript: initScript];
 
     self.webview = [[WKWebView alloc] initWithFrame: appFrame configuration: webviewConfig];
-    self.bridge.webview = self.webview;
     self.webview.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
 
     [self.webview.configuration.preferences setValue: @YES forKey: @"allowFileAccessFromFileURLs"];
@@ -563,11 +564,12 @@ uint64_t rand64(void) {
     NSString* allowed = [[NSBundle mainBundle] resourcePath];
 
     [self.webview
-        loadFileURL: [NSURL fileURLWithPath:url]
-        allowingReadAccessToURL: [NSURL fileURLWithPath:allowed]
+      loadFileURL: [NSURL fileURLWithPath:url]
+      allowingReadAccessToURL: [NSURL fileURLWithPath:allowed]
     ];
 
     [self.window makeKeyAndVisible];
+
     return YES;
 }
 @end
