@@ -57,8 +57,9 @@ struct Context {
 
 struct Client {
   uint64_t clientId;
+  AppDelegate* delegate;
   Context* ctx;
-  uv_tcp_t *connection;
+  uv_tcp_t *socket;
   std::string seq;
 };
 
@@ -165,38 +166,36 @@ bool isRunning = false;
     free(wr);
   };
 
-  uv_write((uv_write_t*) req, (uv_stream_t*) client->connection, &req->buf, 1, onWrite);
+  uv_write((uv_write_t*) req, (uv_stream_t*) client->socket, &req->buf, 1, onWrite);
 }
 
 - (void) connect: (std::string)seq port: (int)port address: (std::string)address {
   dispatch_async(queue, ^{
-    Context ctx;
-    ctx.delegate = self;
-
     uv_tcp_t socket;
-    socket.data = &ctx;
+    uv_connect_t connection;
+
+    auto clientId = rand64();
+    Client* client = clients[clientId] = new Client();
+
+    client->delegate = self;
+    client->clientId = clientId;
+
+    uv_tcp_init(loop, &socket);
+
+    socket.data = client;
 
     uv_tcp_init(loop, &socket);
     uv_tcp_keepalive(&socket, 1, 60);
 
-    auto clientId = rand64();
-    Client* client = clients[clientId] = new Client();
-    client->clientId = clientId;
-    client->ctx = &ctx;
-    client->seq = seq;
-    client->connection = &socket;
-
-    socket.data = &client;
-
     struct sockaddr_in dest;
     uv_ip4_addr(address.c_str(), port, &dest);
 
-    auto onConnect = [](uv_connect_t* req, int status) {
-      auto client = reinterpret_cast<Client*>(req->handle->data);
+    auto onConnect = [](uv_connect_t* connection, int status) {
+      auto* client = reinterpret_cast<Client*>(connection->handle->data);
 
       if (status < 0) {
         dispatch_async(dispatch_get_main_queue(), ^{
-          [client->ctx->delegate resolve: client->seq message: Opkit::format(R"({
+          [client->delegate resolve: client->seq message: Opkit::format(R"({
             "err": {
               "clientId": "$S",
               "message": "$S"
@@ -207,7 +206,7 @@ bool isRunning = false;
       }
 
       dispatch_async(dispatch_get_main_queue(), ^{
-        [client->ctx->delegate resolve: client->seq message: Opkit::format(R"({
+        [client->delegate resolve: client->seq message: Opkit::format(R"({
           "data": {
             "clientId": "$S"
           }
@@ -221,18 +220,16 @@ bool isRunning = false;
         NSData *nsdata = [str dataUsingEncoding:NSUTF8StringEncoding];
         NSString *base64Encoded = [nsdata base64EncodedStringWithOptions:0];
 
-        auto serverId = std::to_string(client->ctx->serverId);
         auto clientId = std::to_string(client->clientId);
         auto message = std::string([base64Encoded UTF8String]);
 
         dispatch_async(dispatch_get_main_queue(), ^{
-          [client->ctx->delegate emit: "data" message: Opkit::format(R"({
+          [client->delegate emit: "data" message: Opkit::format(R"({
             "data": {
-              "serverId": "$S",
               "clientId": "$S",
               "message": "$S"
             }
-          })", serverId, clientId, message)];
+          })", clientId, message)];
         });
       };
 
@@ -241,10 +238,9 @@ bool isRunning = false;
         buf->len = suggested_size;
       };
 
-      uv_read_start((uv_stream_t*) req->handle, allocate, onRead);
+      uv_read_start((uv_stream_t*) connection->handle, allocate, onRead);
     };
 
-    uv_connect_t connection;
     auto r = uv_tcp_connect(&connection, &socket, (const struct sockaddr*) &dest, onConnect);
 
     if (r) {
@@ -296,19 +292,19 @@ bool isRunning = false;
         return;
       }
 
-      uv_tcp_t *connection = (uv_tcp_t*) malloc(sizeof(uv_tcp_t));
+      uv_tcp_t *socket = (uv_tcp_t*) malloc(sizeof(uv_tcp_t));
 
       auto clientId = rand64();
       Client* client = clients[clientId] = new Client();
       client->clientId = clientId;
       client->ctx = ctx;
-      client->connection = connection;
+      client->socket = socket;
 
-      connection->data = client;
+      socket->data = client;
 
-      uv_tcp_init(loop, connection);
+      uv_tcp_init(loop, socket);
 
-      if (uv_accept(server, (uv_stream_t*) connection) == 0) {
+      if (uv_accept(server, (uv_stream_t*) socket) == 0) {
         auto onRead = [](uv_stream_t* handle, ssize_t nread, const uv_buf_t *buf) {
           auto client = reinterpret_cast<Client*>(handle->data);
 
@@ -351,7 +347,7 @@ bool isRunning = false;
               });
             }
 
-            uv_close((uv_handle_t*) client->connection, [](uv_handle_t* handle) {
+            uv_close((uv_handle_t*) client->socket, [](uv_handle_t* handle) {
               free(handle);
             });
           }
@@ -364,9 +360,9 @@ bool isRunning = false;
           buf->len = suggested_size;
         };
 
-        uv_read_start((uv_stream_t*) connection, allocateBuffer, onRead);
+        uv_read_start((uv_stream_t*) socket, allocateBuffer, onRead);
       } else {
-        uv_close((uv_handle_t*) connection, [](uv_handle_t* handle) {
+        uv_close((uv_handle_t*) socket, [](uv_handle_t* handle) {
           free(handle);
         });
       }
