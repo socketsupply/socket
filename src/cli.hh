@@ -625,6 +625,24 @@ constexpr auto gXCodePlist = R"XML(<?xml version="1.0" encoding="UTF-8"?>
 <dict>
 	<key>CFBundleIconFile</key>
 	<string>ui/icon.png</string>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<true/>
+	</dict>
+	<key>NSHighResolutionCapable</key>
+	<true/>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>The app would like to connect to peers</string>
+	<key>NSRequiresAquaSystemAppearance</key>
+	<false/>
+	<key>NSSupportsAutomaticGraphicsSwitching</key>
+	<true/>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>fetch</string>
+		<string>processing</string>
+	</array>
 </dict>
 </plist>)XML";
 

@@ -3,10 +3,7 @@ const Components = require('@operatortc/components')
 
 Components(Tonic)
 
-// data is a firehose of information.
-window.addEventListener('data', event => {
-  console.log('DATA ->', JSON.stringify(event.detail, null, 2))
-})
+const { tcp } = window.system
 
 //
 // Create some arbitrary components with our nifty component framework.
@@ -24,6 +21,11 @@ Tonic.add(AppHeader)
 class AppContainer extends Tonic {
   constructor () {
     super()
+
+    // data is a firehose of information.
+    window.addEventListener('data', event => {
+      this.log(event.detail)
+    })
 
     this.state = {
       serverStatus: 'NOT READY'
@@ -64,8 +66,9 @@ class AppContainer extends Tonic {
   }
 
   log (...args) {
-    this.querySelector('#output').value +=
-      `\n${JSON.stringify(args, null, 2)}`
+    const textarea = this.querySelector('#output')
+    textarea.value += `\n${JSON.stringify(args, null, 2)}`
+    textarea.scrollTop = textarea.scrollHeight
   }
 
   async touchend (e) {
@@ -77,44 +80,48 @@ class AppContainer extends Tonic {
     if (event === 'listen') {
       this.log('try to listen')
 
-      const { err, data } = await window.system.tcp.createServer({
-        port: 8222
+      const addressData = await window.system.getAddress({})
+      this.log(addressData)
+
+      const { err, data } = await tcp.createServer({
+        port: 9200
       })
 
-      const { err: errIP, data: dataIP } = await window.system.getAddress({})
+      this.log(err || data)
 
-      if (errIP) {
-        this.state.ip = errIP || 'Unable to get ip'
-      } else {
-        this.state.host = dataIP
-      }
-
-      this.state.serverStatus = err || data
-      this.reRender()
       return
     }
 
     if (event === 'connect') {
-      const { err, data } = await window.system.tcp.connect({
-        port: 8222,
-        address: '192.168.1.22'
+      //
+      // Returns a uint64 id for calling `net.send(id, message)`
+      //
+      this.log('attempt to connect')
+
+      const { err, data } = await tcp.connect({
+        port: 9200,
+        address: '192.168.13.235'
       })
 
-      console.log(err)
-      console.log(data)
+      if (err) {
+        this.log(err)
+        return
+      }
 
       clearInterval(this.sendInterval)
 
       this.sendInterval = setInterval(async () => {
+        this.log('attempt to send')
+
         const params = {
-          id: data.id,
+          id: data.clientId,
           message: `The time is ${Date.now()}.`
         }
 
         const {
           err: errSend,
           data: dataSend
-        } = await window.system.tcp.send(params)
+        } = await tcp.send(params)
 
         this.log(errSend || dataSend)
       }, 1024)
