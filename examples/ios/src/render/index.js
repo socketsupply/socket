@@ -78,18 +78,16 @@ class AppContainer extends Tonic {
     const { event } = el.dataset
 
     if (event === 'listen') {
-      this.log('try to listen')
+      this.log('listener starting')
 
-      const addressData = await window.system.getAddress({})
-      this.log(addressData)
+      const server = tcp.createServer({ port: 9200 })
 
-      const { err, data } = await tcp.createServer({
-        port: 9200
+      server.on('listening', data => {
+        this.log('listening', data)
+        const toaster = document.querySelector('#status')
+        this.state.serverStatus = 'READY'
+        toaster.reRender()
       })
-
-      this.log(err || data)
-
-      return
     }
 
     if (event === 'connect') {

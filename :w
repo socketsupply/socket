@@ -116,7 +116,7 @@ constexpr auto gPreloadDesktop = R"JS(
 constexpr auto gPreloadMobile = R"JS(
   window.system.tcp = {}
 
-  window.system.tcp.createServer = () => {
+  window.system.tcp.createServer = o => {
     const server = new EventEmitter()
 
     server.close = async (cb) => {
@@ -141,12 +141,11 @@ constexpr auto gPreloadMobile = R"JS(
     return server
   }
 
-  window.system.tcp.createConnection = (port, host, cb) => {
+  window.system.tcp.createConnection = async (port, host, cb) => {
     const client = new EventEmitter()
 
     client.close = async (cb) => {
-      const params = { clientId: client.clientId }
-      const { err, data } = await window._ipc.send('tcpClose', params)
+      const { err, data } = await window._ipc.send('tcpClose', data)
       delete window._ipc.emitters[data.clientId]
 
       if (err && cb) return cb(err)
@@ -155,17 +154,9 @@ constexpr auto gPreloadMobile = R"JS(
       if (cb) return cb(null, data)
     })
 
-    client.send = async (message, offset, length, port, address, cb) => {
-      const params = {
-        clientId: client.clientId,
-        message,
-        offset,
-        length,
-        port,
-        address
-      }
-
-      const { err, data } = await window._ipc.send('tcpSend', params)
+    client.send = async (message, offset, length, port, address, callback) => {
+      const params = { message, offset, length, port, address }
+      const { err, data } = await window._ipc.send('tcpSend', data)
 
       if (err && cb) return cb(err)
       if (err) return client.emit('error', err)
@@ -174,29 +165,21 @@ constexpr auto gPreloadMobile = R"JS(
       return data
     }
 
-    client.address = async () => {
-      return {
-        port: client.port,
-        address: client.address
-      }
-    }
+    client.connect = async (port, address, cb) => {
+      const params = { port, address }
 
-    async function connect () {
-      const { err, data } = await window._ipc.send('tcpConnect', { port, address })
+      const { err, data } = await window._ipc.send('tcpConnect', params)
 
       if (err && cb) return cb(err)
       if (err) return client.emit('error', err)
 
-      client.address = data.address
-      client.port = data.port
-      client.clientId = data.clientId
-
       window._ipc.emitters[data.serverId] = client
 
-      if (cb) cb(null, data)
+      if (cb) return cb(null, data)
+      return data
     }
 
-    connect()
+    client.address = o => window._ipc.send('getAddress', data)
 
     return client
   }
@@ -209,7 +192,7 @@ constexpr auto gPreloadMobile = R"JS(
     const socket = new EventEmitter()
 
     socket.close = async cb => {
-      if (!data.socketId) Promise.reject('Socket is not bound')
+      if (!data.serverId) Promise.reject('Socket is not bound')
 
       const { err, data } = await window._ipc.send('udpClose', data)
       delete window._ipc.emitters[data.serverId]
@@ -222,7 +205,7 @@ constexpr auto gPreloadMobile = R"JS(
     }
 
     socket.send = async (msg, offset, length, port, address, callback) => {
-      if (!data.clientId) Promise.reject('Socket is not bound')
+      if (!data.serverId) Promise.reject('Socket is not bound')
 
       const { err, data } = await window._ipc.send('udpSend', data)
 
@@ -247,7 +230,7 @@ constexpr auto gPreloadMobile = R"JS(
     }
 
     socket.connect = async (port, address, cb) => {
-      if (data.clientId) Promise.reject('Socket is already bound')
+      if (data.serverId) Promise.reject('Socket is already bound')
 
       const { err, data: _data } = await window._ipc.send('udpConnect', data)
 
@@ -260,12 +243,7 @@ constexpr auto gPreloadMobile = R"JS(
       return data
     }
 
-    client.address = async () => {
-      return {
-        port: _data.port,
-        address: _data.address
-      }
-    }
+    client.address = o => window._ipc.send('getAddress', data)
 
     return socket
   }
