@@ -84,7 +84,7 @@ constexpr auto gPreload = R"JS(
         return
       }
       const value = detail.event === 'data' ? atob(detail.data) : detail.data
-      return ee.emit(detail.event, value)
+      ee.emit(detail.event, value)
     }
 
     const event = new window.CustomEvent(name, { detail })
@@ -155,14 +155,17 @@ constexpr auto gPreloadMobile = R"JS(
       if (cb) return cb(null, data)
     })
 
-    client.send = async (message, offset, length, port, address, cb) => {
+    client.write = async (data, encoding, cb) => {
       const params = {
         clientId: client.clientId,
-        message,
-        offset,
-        length,
-        port,
-        address
+        data: data
+      }
+
+      if (({}).toString.call(data).includes('Uint8Array')) {
+        data = btoa(String.fromCharCode.apply(null, data))
+        params.type = 'Uint8Array'
+      } else {
+        params.type = 'string'
       }
 
       const { err, data } = await window._ipc.send('tcpSend', params)

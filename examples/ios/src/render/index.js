@@ -84,9 +84,8 @@ class AppContainer extends Tonic {
 
       server.on('listening', data => {
         this.log('listening', data)
-        const toaster = document.querySelector('#status')
         this.state.serverStatus = 'READY'
-        toaster.reRender()
+        this.reRender()
       })
     }
 
@@ -96,7 +95,7 @@ class AppContainer extends Tonic {
       //
       this.log('attempt to connect')
 
-      const { err, data } = await tcp.connect({
+      const socket = await tcp.connect({
         port: 9200,
         address: '192.168.13.235'
       })
@@ -150,7 +149,7 @@ class AppContainer extends Tonic {
       </app-header>
 
       <a href="bad-text">BAD ANCHOR</a>
-      <a href="https://example.com">DANGER</a>
+      <a href="https://example.com">EXTERNAL LINK</a>
 
       <div class="grid">
         <tonic-input id="send" label="send">
@@ -159,8 +158,8 @@ class AppContainer extends Tonic {
         <tonic-input id="response" label="recieve" readonly="true">
         </tonic-input>
 
-        <tonic-button data-event="listen" id="start">Listen</tonic-button>
-        <tonic-button data-event="connect" id="start">Connect</tonic-button>
+        <tonic-button width="100%" data-event="listen" id="start">Listen</tonic-button>
+        <tonic-button width="100%" data-event="connect" id="start">Connect</tonic-button>
       </div>
 
       <tonic-toaster-inline
@@ -181,6 +180,7 @@ class AppContainer extends Tonic {
 }
 
 window.onload = async () => {
+  // init the main component
   Tonic.add(AppContainer)
 }
 
