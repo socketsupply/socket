@@ -226,7 +226,7 @@ window.addEventListener('network', e => {
 
 <br/>
 
-### Window &sdot; "data"
+### Window &sdot; `"data"`
 
 Emitted any time there is any data from the ipc channel, this
 is a kind of firehose of data that can be helpful for debugging.
