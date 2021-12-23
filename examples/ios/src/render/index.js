@@ -80,6 +80,15 @@ class AppContainer extends Tonic {
     if (event === 'listen') {
       this.log('listener starting')
 
+      const { err, data } = await system.getNetworkInterfaces({});
+
+      if (err) {
+        this.log('could not get network interfaces')
+        return
+      }
+
+      this.log('network interfaces', data)
+
       const server = tcp.createServer({ port: 9200 })
 
       server.on('listening', data => {

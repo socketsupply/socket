@@ -125,7 +125,7 @@ constexpr auto gPreloadMobile = R"JS(
 
       if (err && cb) return cb(err)
       if (err) server.emit('error', err)
-    })
+    }
 
     server.listen = async (port, cb) => {a
       const { err, data } = await window._ipc.send('tcpCreateServer', o)
@@ -153,16 +153,16 @@ constexpr auto gPreloadMobile = R"JS(
       if (err) client.emit('error', err)
       client.emit('closed', !!err)
       if (cb) return cb(null, data)
-    })
+    }
 
-    client.write = async (data, encoding, cb) => {
+    client.write = async (value, encoding, cb) => {
       const params = {
         clientId: client.clientId,
-        data: data
+        data: value
       }
 
       if (({}).toString.call(data).includes('Uint8Array')) {
-        data = btoa(String.fromCharCode.apply(null, data))
+        params.data = btoa(String.fromCharCode.apply(null, value))
         params.type = 'Uint8Array'
       } else {
         params.type = 'string'
@@ -274,12 +274,12 @@ constexpr auto gPreloadMobile = R"JS(
   }
 
   window.system.utp = {}
-  window.system.getAddress = o => window._ipc.send('getAddress', o)
+  window.system.getNetworkInterfaces = o => window._ipc.send('getNetworkInterfaces', o)
   window.system.openExternal = o => window._ipc.send('external', o)
 )JS";
 
 constexpr auto gEventEmitter = R"JS(
-(() => {
+;(() => {
   // Copyright Joyent, Inc. and other Node contributors.
   //
   // Permission is hereby granted, free of charge, to any person obtaining a
@@ -778,7 +778,8 @@ constexpr auto gEventEmitter = R"JS(
       throw new TypeError('The "emitter" argument must be of type EventEmitter. Received type ' + typeof emitter);
     }
   }
-})()
+})();
 )JS";
 
 #endif
+

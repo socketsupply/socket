@@ -63,6 +63,20 @@ struct Client {
   std::string seq;
 };
 
+std::string addrToIPv4 (struct sockaddr_in* addr) {
+  char buf[INET_ADDRSTRLEN];
+  struct sockaddr_in *sin = (struct sockaddr_in*) &addr;
+  inet_ntop(AF_INET, &sin->sin_addr, buf, sizeof(buf));
+  return std::string(buf);
+}
+
+std::string addrToIPv6 (struct sockaddr_in6* addr) {
+  char buf[INET6_ADDRSTRLEN];
+  struct sockaddr_in6 *sin = (struct sockaddr_in6*) &addr;
+  inet_ntop(AF_INET6, &sin->sin6_addr, buf, sizeof(buf));
+  return std::string(buf);
+}
+
 struct PeerInfo {
   std::string address = "";
   std::string family = "";
@@ -70,7 +84,6 @@ struct PeerInfo {
   int error = 0;
   void init(uv_tcp_t* connection);
   void init(uv_udp_t* socket);
-  void getProperties(sockaddr_storage addr);
 };
 
 void PeerInfo::init (uv_tcp_t* connection) {
@@ -84,7 +97,15 @@ void PeerInfo::init (uv_tcp_t* connection) {
     return;
   }
 
-  getProperties(addr);
+  if (addr.ss_family == AF_INET) {
+    family = "ipv4";
+    address = addrToIPv4((struct sockaddr_in*) &addr);
+    port = (int) htons(((struct sockaddr_in*) &addr)->sin_port);
+  } else {
+    family = "ipv6";
+    address = addrToIPv6((struct sockaddr_in6*) &addr);
+    port = (int) htons(((struct sockaddr_in6*) &addr)->sin6_port);
+  }
 }
 
 void PeerInfo::init (uv_udp_t* socket) {
@@ -98,26 +119,14 @@ void PeerInfo::init (uv_udp_t* socket) {
     return;
   }
 
-  getProperties(addr);
-}
-
-void PeerInfo::getProperties (sockaddr_storage addr) {
   if (addr.ss_family == AF_INET) {
     family = "ipv4";
-
-    char buf[46];
-    struct sockaddr_in *sin = (struct sockaddr_in *)&addr;
-    inet_ntop(AF_INET, &sin->sin_addr, buf, sizeof(buf));
-    address = std::string(buf);
-    port = (int) htons(sin->sin_port);
+    address = addrToIPv4((struct sockaddr_in*) &addr);
+    port = (int) htons(((struct sockaddr_in*) &addr)->sin_port);
   } else {
     family = "ipv6";
-
-    char buf[16];
-    struct sockaddr_in6 *sin = (struct sockaddr_in6 *)&addr;
-    inet_ntop(AF_INET6, &sin->sin6_addr, buf, sizeof(buf));
-    address = std::string(buf);
-    port = (int) htons(sin->sin6_port);
+    address = addrToIPv6((struct sockaddr_in6*) &addr);
+    port = (int) htons(((struct sockaddr_in6*) &addr)->sin6_port);
   }
 }
 
@@ -155,28 +164,50 @@ bool isRunning = false;
 // JavaScript environment so it can be used by the web app and the wasm layer.
 //
 @implementation AppDelegate
-- (NSString*) getIPAddress {
-  NSString *address = @"error";
-  struct ifaddrs *interfaces = NULL;
-  struct ifaddrs *temp_addr = NULL;
+- (std::string) getNetworkInterfaces {
+  struct ifaddrs *interfaces = nullptr;
+  struct ifaddrs *addr = nullptr;
   int success = getifaddrs(&interfaces);
+  std::stringstream data;
+  std::stringstream v4;
+  std::stringstream v6;
 
-  if (success == 0) {
-    // Loop through linked list of interfaces
-    temp_addr = interfaces;
+  if (success != 0) return "";
 
-    while (temp_addr != NULL) {
-      if (temp_addr->ifa_addr->sa_family == AF_INET) {
-        // Check if interface is en0 which is the wifi connection on the iPhone
-        if ([[NSString stringWithUTF8String:temp_addr->ifa_name] isEqualToString:@"en0"]) {
-          address = [NSString stringWithUTF8String:inet_ntoa(((struct sockaddr_in *)temp_addr->ifa_addr)->sin_addr)];
-        }
+  addr = interfaces;
+  v4 << "\"ipv4\":{";
+  v6 << "\"ipv6\":{";
+
+  while (addr != nullptr) {
+    std::string ip = "";
+
+    if (addr->ifa_addr->sa_family == AF_INET) {
+      ip = addrToIPv4((struct sockaddr_in*) &addr->ifa_addr);
+
+      if (ip.size() > 0) {
+        v4 << "\"" << addr->ifa_name << "\": \"" << ip << "\",";
       }
-      temp_addr = temp_addr->ifa_next;
     }
+
+    if (addr->ifa_addr->sa_family == AF_INET6) {
+      ip = addrToIPv6((struct sockaddr_in6*) &addr->ifa_addr);
+
+      if (ip.size() > 0) {
+        v6 << "\"" << addr->ifa_name << "\": \"" << ip << "\",";
+      }
+    }
+
+    addr = addr->ifa_next;
   }
+
+  v4 << "\"local\":\"0.0.0.0\"}";
+  v6 << "\"local\":\"::1\"}";
+
+  getifaddrs(&interfaces);
   freeifaddrs(interfaces);
-  return address;
+
+  data << "{" << v4.str() << "," << v6.str() << "}";
+  return data.str();
 }
 
 - (void) emit: (std::string)event message: (std::string)message {
@@ -198,12 +229,14 @@ bool isRunning = false;
   Client* client = clients[clientId];
 
   if (client == nullptr) {
-    [self emit: "error" message: Opkit::format(R"JSON({
-      "clientId": "$S",
-      "data": {
-        "message": "Not connected"
-      }
-    })JSON", std::to_string(clientId))];
+    dispatch_async(dispatch_get_main_queue(), ^{
+      [self emit: "error" message: Opkit::format(R"JSON({
+        "clientId": "$S",
+        "data": {
+          "message": "Not connected"
+        }
+      })JSON", std::to_string(clientId))];
+    });
     return;
   }
 
@@ -563,31 +596,39 @@ dispatch_queue_attr_t attrs = dispatch_queue_attr_make_with_qos_class(DISPATCH_Q
     // Determine the active interface, but how?
     switch (status) {
       case nw_path_status_invalid: {
-        [self emit: "network" message: Opkit::format(R"JSON({
-          "status": "offline",
-          "message": "Network path is invalid"
-        })JSON")];
+        dispatch_async(dispatch_get_main_queue(), ^{
+          [self emit: "network" message: Opkit::format(R"JSON({
+            "status": "offline",
+            "message": "Network path is invalid"
+          })JSON")];
+        });
         break;
       }
       case nw_path_status_satisfied: {
-        [self emit: "network" message: Opkit::format(R"JSON({
-          "status": "online",
-          "message": "Network is usable"
-        })JSON")];
+        dispatch_async(dispatch_get_main_queue(), ^{
+          [self emit: "network" message: Opkit::format(R"JSON({
+            "status": "online",
+            "message": "Network is usable"
+          })JSON")];
+        });
         break;
       }
       case nw_path_status_satisfiable: {
-        [self emit: "network" message: Opkit::format(R"JSON({
-          "status": "online",
-          "message": "Network may be usable"
-        })JSON")];
+        dispatch_async(dispatch_get_main_queue(), ^{
+          [self emit: "network" message: Opkit::format(R"JSON({
+            "status": "online",
+            "message": "Network may be usable"
+          })JSON")];
+        });
         break;
       }
       case nw_path_status_unsatisfied: {
-        [self emit: "network" message: Opkit::format(R"JSON({
-          "status": "offline",
-          "message": "Network is not usable"
-        })JSON")];
+        dispatch_async(dispatch_get_main_queue(), ^{
+          [self emit: "network" message: Opkit::format(R"JSON({
+            "status": "offline",
+            "message": "Network is not usable"
+          })JSON")];
+        });
         break;
       }
     }
@@ -618,43 +659,49 @@ dispatch_queue_attr_t attrs = dispatch_queue_attr_make_with_qos_class(DISPATCH_Q
         return;
       }
 
-      if (cmd.name == "getAddress") {
+      if (cmd.name == "address") {
         auto clientId = cmd.get("clientId");
         auto seq = cmd.get("seq");
 
-        if (clientId.size() > 0) {
-          Client* client = clients[std::stoll(clientId)];
-
-          if (client == nullptr) {
-            [self resolve: seq message: Opkit::format(R"JSON({
-              "err": {
-                "message": "not connected"
-              }
-            })JSON")];
-          }
-
-          PeerInfo info;
-          info.init(client->connection);
-
-          dispatch_async(dispatch_get_main_queue(), ^{
-            [self resolve: seq message: Opkit::format(R"JSON({
-              "data": {
-                "address": "$S",
-                "family": "$S",
-                "port": "$i"
-              }
-            })JSON", std::to_string(client->clientId), info.address, info.family, info.port)];
-          });
-          return;
+        if (clientId.size() == 0) {
+          [self reject: seq message: Opkit::format(R"JSON({
+            "err": {
+              "message": "no clientid"
+            }
+          })JSON")];
         }
 
-        auto hostname = std::string([[self getIPAddress] UTF8String]);
+        Client* client = clients[std::stoll(clientId)];
 
-        [self resolve: seq message: Opkit::format(R"({
+        if (client == nullptr) {
+          [self resolve: seq message: Opkit::format(R"JSON({
+            "err": {
+              "message": "not connected"
+            }
+          })JSON")];
+        }
+
+        PeerInfo info;
+        info.init(client->connection);
+
+        [self resolve: seq message: Opkit::format(R"JSON({
           "data": {
-            "address": "$S"
+            "address": "$S",
+            "family": "$S",
+            "port": "$i"
           }
-        })", hostname)];
+        })JSON", std::to_string(client->clientId), info.address, info.family, info.port)];
+
+        return;
+      }
+
+      if (cmd.name == "getNetworkInterfaces") {
+        auto seq = cmd.get("seq");
+        auto message = Opkit::format(R"({
+          "data": $S
+        })", [self getNetworkInterfaces]);
+
+        [self resolve: seq message: message];
 
         return;
       }
@@ -679,7 +726,7 @@ dispatch_queue_attr_t attrs = dispatch_queue_attr_make_with_qos_class(DISPATCH_Q
         auto seq = cmd.get("seq");
 
         if (address.size() == 0) {
-          address = std::string([[self getIPAddress] UTF8String]);
+          address = "0.0.0.0";
         }
 
         if (address == "error") {
@@ -752,9 +799,11 @@ dispatch_queue_attr_t attrs = dispatch_queue_attr_make_with_qos_class(DISPATCH_Q
       "};\n"
 
       "console.error = console.warn = console.log;\n"
+
       "window.addEventListener('unhandledrejection', e => console.log(e.message));\n"
       "window.addEventListener('error', e => console.log(e.reason));\n"
 
+      "" + std::string(gEventEmitter) + "\n"
       "" + createPreload(opts) + "\n"
     );
 

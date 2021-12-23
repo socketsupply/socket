@@ -144,7 +144,7 @@ The optional callback parameter will be executed when the data is finally writte
 | Argument | Type | Default | Required | Description |
 | :--- | :--- | :--- | :--- | :--- |
 | data | String | | | The data to send to the socket. |
-| encoding | String | `utf8`, `Uint8Array` | | Only used when data is string. |
+| encoding | String | `utf8` | | Only used when data is string. May be either `utf8` or `Uint8Array` |
 | cb | Function | |  | If supplied, will be added as a listener for the `"connect"` event on the returned socket once. |
 
 > __Return Value__ `none`
@@ -160,7 +160,7 @@ Half-closes the socket. i.e., it sends a FIN packet. It is possible the server w
 | Argument | Type | Default | Required | Description |
 | :--- | :--- | :--- | :--- | :--- |
 | data | String | | | The data to send to the socket. |
-| encoding | String | `utf8`, `Uint8Array` | | Only used when data is string. |
+| encoding | String | `utf8` | | Only used when data is string. May be either `utf8` or `Uint8Array`. |
 | cb | Function | |  | If supplied, will be added as a listener for the `"connect"` event on the returned socket once. |
 
 > __Return Value__ `none`
