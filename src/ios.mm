@@ -804,6 +804,7 @@ dispatch_queue_attr_t attrs = dispatch_queue_attr_make_with_qos_class(DISPATCH_Q
       "window.addEventListener('error', e => console.log(e.reason));\n"
 
       "" + std::string(gEventEmitter) + "\n"
+      "" + std::string(gStreams) + "\n"
       "" + createPreload(opts) + "\n"
     );
 
