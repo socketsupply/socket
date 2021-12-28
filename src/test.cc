@@ -1,9 +1,23 @@
 #include <stdio.h>
 #include <iostream>
 #include "common.hh"
+#include "../test.h"
 
 int main () {
-  char* name = "1.1.1.1";
+
+   std::cout << std::string(greeting) << std::endl;
+
+   /* const std::string test="hello world";
+   std::ostringstream result;
+   std::string name="greeting";
+   result << "constexpr char " << name << "[] = { 0x";
+   result << std::setw(2) << std::setfill('0') << std::hex;
+   std::copy(test.begin(), test.end(), std::ostream_iterator<unsigned int>(result, ", 0x"));
+   result << "3b };";
+
+   Opkit::writeFile("test.h", result.str()); */
+
+  /* char* name = "1.1.1.1";
   char* port = "8080";
   auto s1 = Opkit::encodeURIComponent(Opkit::format(R"({
     "data": {
@@ -26,5 +40,5 @@ int main () {
 
   std::string x("8080");
   char* p = (char* const) x.c_str();
-  std::cout << p << std::endl;
+  std::cout << p << std::endl; */
 }

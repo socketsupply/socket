@@ -1,11 +1,12 @@
-body
-  --tonic-body 'Inter', sans-serif // Body font
-  --tonic-header 'Inter Black', sans-serif // Header font
-  --tonic-subheader 'Inter Medium', sans-serif // Accent font
-  --tonic-monospace 'FiraMono', monospace // Monospace font
+body {
+  --tonic-body: 'Inter', sans-serif;
+  --tonic-header: 'Inter Black', sans-serif;
+  --tonic-subheader: 'Inter Medium', sans-serif;
+  --tonic-monospace: 'FiraMono', monospace;
+}
 
-@media (prefers-color-scheme: light)
-  body, *[theme="light"]
+@media (prefers-color-scheme: light) {
+  body, *[theme="light"] {
     --tonic-background: rgba(245, 245, 245, 1);
     --tonic-window: rgba(255, 255, 255, 1);
     --tonic-accent: rgba(56, 185, 255, 1);
@@ -36,9 +37,11 @@ body
     --tonic-warning: rgba(249, 169, 103, 1);
     --tonic-info: rgba(153, 157, 160, 1);
     --tonic-overlay: rgba(255, 255, 255, 0.75);
+  }
+}
 
-@media (prefers-color-scheme: dark)
-  body, *[theme="dark"]
+@media (prefers-color-scheme: dark) {
+  body, *[theme="dark"] {
     --tonic-background: rgba(40, 40, 40, 1);
     --tonic-window: rgba(49, 49, 49, 1);
     --tonic-accent: rgba(56, 185, 255, 1);
@@ -67,40 +70,5 @@ body
     --tonic-success: rgba(133, 178, 116, 1);
     --tonic-warn: rgba(249, 169, 103, 1);
     --tonic-overlay: rgba(0, 0, 0, 0.40);
-
-tonic-button.danger
-  --tonic-button-text: rgba(255, 255, 255, 1);
-  --tonic-button-background: rgba(240, 100, 83, 1);
-  --tonic-button-background-hover: rgba(255, 80, 55, 1);
-  --tonic-button-background-focus: rgba(220, 80, 60, 1);
-
-tonic-button.excited
-  --tonic-button-text: rgba(255, 255, 255, 1);
-  --tonic-button-background: rgba(133, 178, 116, 1);
-  --tonic-button-background-hover: rgba(157, 218, 133, 1);
-  --tonic-button-background-focus: rgba(113, 158, 93, 1);
-
-tonic-button.outline
-  --tonic-button-text rgba(255, 255, 255, 1)
-  --tonic-button-background 
-  --tonic-button-background-hover var(--tonic-primary)
-  --tonic-button-background-focus transparent
-
-  button
-    border-color var(--tonic-primary)
-    border-width 1px !important
-  
-  button:focus
-    border-width 2px !important
-
-  button:hover
-    --tonic-button-text rgba(255, 255, 255, 1)
-
-tonic-button button[disabled]
-    background-color transparent !important
-
-tonic-tabs
-  NoSelect()
-
-  .tonic--tab
-    NoDrag()
+  }
+}

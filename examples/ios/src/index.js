@@ -1,9 +1,8 @@
-const Tonic = require('@operatortc/tonic')
-const Components = require('@operatortc/components')
+import Tonic from '@operatortc/tonic'
+import Components from '@operatortc/components'
+import { net } from '@operatortc/mobile'
 
 Components(Tonic)
-
-const { tcp } = window.system
 
 //
 // Create some arbitrary components with our nifty component framework.
@@ -89,7 +88,14 @@ class AppContainer extends Tonic {
 
       this.log('network interfaces', data)
 
-      const server = tcp.createServer({ port: 9200 })
+      const server = net.createServer({ port: 9200 })
+
+      server.on('connection', socket => {
+        socket.on('data', data => {
+          this.log('got data', data)
+          socket.write(data)
+        })
+      })
 
       server.on('listening', data => {
         this.log('listening', data)
@@ -104,7 +110,7 @@ class AppContainer extends Tonic {
       //
       this.log('attempt to connect')
 
-      const socket = await tcp.connect({
+      const socket = await net.createConnection({
         port: 9200,
         address: '192.168.13.235'
       })
@@ -114,25 +120,22 @@ class AppContainer extends Tonic {
         return
       }
 
-      clearInterval(this.sendInterval)
+      socket.on('connect', () => {
+        clearInterval(this.sendInterval)
 
-      this.sendInterval = setInterval(async () => {
-        this.log('attempt to send')
+        this.sendInterval = setInterval(async () => {
+          this.log('attempt to send')
 
-        const params = {
-          id: data.clientId,
-          message: `The time is ${Date.now()}.`
-        }
+          const { err } = await socket.write(`The time is ${Date.now()}.`)
+          this.log('sent', err)
+        }, 1024)
 
-        const {
-          err: errSend,
-          data: dataSend
-        } = await tcp.send(params)
+        this.log(err || data)
+      })
 
-        this.log(errSend || dataSend)
-      }, 1024)
-
-      this.log(err || data)
+      socket.on('end', () => {
+        clearInterval(this.sendInterval)
+      })
     }
   }
 
