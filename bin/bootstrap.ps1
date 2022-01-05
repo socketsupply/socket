@@ -14,7 +14,7 @@ $OLD_CWD = (Get-Location).Path
 $TEMP_PATH = Join-Path $Env:Temp $(New-Guid)
 (New-Item -Type Directory -Path $TEMP_PATH) > $null
 
-$INSTALL_PATH = "$env:LOCALAPPDATA\Programs\operatortc"
+$INSTALL_PATH = "$env:LOCALAPPDATA\Programs\operatortc\src"
 $WORKING_PATH = $OLD_CWD
 
 Write-Output ""
@@ -36,7 +36,7 @@ Function Build {
     $VERSION = cmd /c 'git rev-parse --short HEAD' 2>&1 | % ToString
 
     Write-Output "$([char]0x2666) Compiling the build tool"
-    clang++ src\cli.cc -o bin\cli.exe -std=c++20 -DVERSION="$($VERSION)"
+    clang++ src\cli.cc -o $WORKING_PATH\bin\opkit.exe -std=c++20 -DVERSION="$($VERSION)"
     # -I 'C:\Program Files (x86)\Windows Kits\10\Include\10.0.19041.0\shared' `
     # -I 'C:\Program Files (x86)\Windows Kits\10\Include\10.0.19041.0\um' `
     # -I 'C:\Program Files (x86)\Windows Kits\10\Include\10.0.19041.0\winrt' `
@@ -54,9 +54,8 @@ Function Build {
 Function Install-Files {
   Write-Output "$([char]0x2666) Installing Files to '$INSTALL_PATH'."
 
-  Copy-Item $WORKING_PATH\bin\cli.exe -Destination $INSTALL_PATH\opkit.exe
-  Copy-Item -Path $WORKING_PATH\src\* -Destination $INSTALL_PATH\src -Recurse
-  Copy-Item -Path "$WORKING_PATH\src\*" -Destination $INSTALL_PATH\src -Recurse -Container
+  Copy-Item $WORKING_PATH\bin\opkit.exe -Destination $INSTALL_PATH
+  Copy-Item -Path "$WORKING_PATH\src\*" -Destination $INSTALL_PATH -Recurse -Container
 }
 
 Write-Output "$([char]0x2666) Working path set to $WORKING_PATH."
@@ -71,11 +70,11 @@ if ($args[0] -eq "update") {
     Exit 0
 }
 
-if ($args.Count -eq 1) {
+if ($args.Count -eq 0) {
   $WORKING_PATH = $TEMP_PATH
 }
 
-if ($args.Count -eq 0) {
+if ($args.Count -ne 0) {
   Build
   Install-Files
   Exit 0
@@ -102,7 +101,7 @@ if ($? -ne 1) {
 # Get clone to a temp dir and navigate into it
 #
 Write-Output "$([char]0x2666) Fetching files to '$WORKING_PATH'..."
-
+Remove-Item -Recurse -Force $WORKING_PATH
 (git clone --depth=1 git@github.com:operatortc/opkit.git "$($WORKING_PATH)") > $null
 
 cd $WORKING_PATH
