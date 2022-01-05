@@ -1,6 +1,8 @@
-import Tonic from '@operatortc/tonic'
-import Components from '@operatortc/components'
-import { net } from '@operatortc/mobile'
+const Tonic = require('@operatortc/tonic')
+const Components = require('@operatortc/components')
+
+const { createServer } = require('net')
+const { readFile } = require('fs')
 
 Components(Tonic)
 
@@ -88,7 +90,7 @@ class AppContainer extends Tonic {
 
       this.log('network interfaces', data)
 
-      const server = net.createServer({ port: 9200 })
+      const server = createServer({ port: 9200 })
 
       server.on('connection', socket => {
         socket.on('data', data => {

@@ -241,7 +241,7 @@ int main (const int argc, const char* argv[]) {
 
     log("preparing build for mac");
 
-    flags = "-std=c++2a -framework WebKit -framework Cocoa -ObjC++";
+    flags = "-std=c++20 -framework WebKit -framework Cocoa -ObjC++";
     flags += getCxxFlags();
 
     files += prefixFile("src/main.cc");

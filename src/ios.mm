@@ -305,12 +305,17 @@ bool isRunning = false;
 
       if (status < 0) {
         dispatch_async(dispatch_get_main_queue(), ^{
-          [client->delegate resolve: client->seq message: Opkit::format(R"({
+          auto clientId = std::to_string(client->clientId);
+          auto error = std::string(uv_strerror(status));
+
+          auto message = Opkit::format(R"({
             "err": {
               "clientId": "$S",
               "message": "$S"
             }
-          })", std::to_string(client->clientId), std::string(uv_strerror(status)))];
+          })", clientId, error);
+
+          [client->delegate resolve: client->seq message: message];
         });
         return;
       }
@@ -716,7 +721,7 @@ dispatch_queue_attr_t attrs = dispatch_queue_attr_make_with_qos_class(DISPATCH_Q
         auto port = cmd.get("port");
         auto seq = cmd.get("seq");
 
-        [self tcpConnect: seq port:std::stoi(port) address:address];
+        [self tcpConnect: seq port: std::stoi(port) address: address];
         return;
       }
 

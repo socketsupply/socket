@@ -51,7 +51,7 @@ async function main () {
     entryPoints: ['src/index.js'],
     bundle: true,
     keepNames: true,
-    format: 'esm',
+    format: 'cjs',
     minify: true,
     outfile: path.join(target, 'bundle.js'),
     platform: 'browser'
