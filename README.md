@@ -64,7 +64,7 @@ the CLI tool (unless you already did this with curl).
 ### Windows
 
 ```sh
-powershell ./bin/bootstrap.ps1
+powershell ./bin/bootstrap.ps1 install local
 ```
 
 There is an example app written in Node.js, to build and run it...
