@@ -131,7 +131,10 @@ class AppContainer extends Tonic {
     const { event } = el.dataset
 
     if (event === 'open') {
-      this.querySelector('#opened').value = await system.dialog({})
+      this.querySelector('#opened').value = await system.dialog({
+        allowDirs: true,
+        allowFiles: false
+      })
     }
 
     if (event === 'save') {

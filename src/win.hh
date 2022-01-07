@@ -809,6 +809,11 @@ namespace Opkit {
       hr = pfd->GetOptions(&dwOptions);
       if (FAILED(hr)) return;
 
+      if (allowDirs == true && allowFiles == false) {
+        hr = pfd->SetOptions(dwOptions | FOS_PICKFOLDERS);
+        if (FAILED(hr)) return;
+      }
+
       if ((!isSave || allowDirs) && allowMultiple) {
         hr = pfd->SetOptions(dwOptions | FOS_ALLOWMULTISELECT);
         if (FAILED(hr)) return;
