@@ -165,7 +165,7 @@ int main (const int argc, const char* argv[]) {
 
   auto target = fs::path(argv[1]);
 
-  auto _settings = WStringToString(readFile(fs::path { target / "settings.config" }));
+  auto _settings = WStringToString(readFile(target / "settings.config"));
   auto settings = parseConfig(_settings);
 
   if (
@@ -179,6 +179,10 @@ int main (const int argc, const char* argv[]) {
 
   if (settings.count("revision") == 0) {
     settings["revision"] = version;
+  }
+
+  if (settings.count("arch") == 0) {
+    settings["arch"] = platform.arch;
   }
 
   std::vector<std::string> required = {
@@ -211,11 +215,16 @@ int main (const int argc, const char* argv[]) {
   settings["title"] += suffix;
   settings["executable"] += suffix;
 
-  auto pathOutput = fs::path { settings["output"] };
+  auto pathOutput = fs::current_path() / settings["output"];
 
-  if (flagRunUserBuild == false) {
-    fs::remove_all(pathOutput);
-    log(std::string("cleaned: " + pathOutput.string()));
+  if (flagRunUserBuild == false && fs::exists(pathOutput)) {
+    try {
+      fs::remove_all(pathOutput);
+      log(std::string("cleaned: " + pathOutput.string()));
+    } catch (...) {
+      log("could not clean path (binary could be busy)");
+      exit(1);
+    }
   }
 
   auto executable = fs::path(

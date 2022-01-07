@@ -3,5 +3,5 @@ node_modules/
 *.tmp
 !/lib/libuv.a
 /bin/build
-/bin/cli.exe
+/bin/opkit.exe
 /bin/cli
