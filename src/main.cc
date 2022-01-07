@@ -396,6 +396,7 @@ MAIN {
   static auto onExit = [&] {
     auto pid = process.getPID();
     process.kill(pid);
+
     w0.kill();
     w1.kill();
     app.kill();

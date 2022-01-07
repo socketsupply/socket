@@ -249,6 +249,23 @@ namespace Opkit {
     if (!isDelegateSet) {
       isDelegateSet = true;
 
+      class_replaceMethod(
+        [WindowDelegate class],
+        @selector(terminate:),
+        imp_implementationWithBlock([&](id self, SEL cmd, id notification) {
+          auto* w = (Window*) objc_getAssociatedObject(self, "webview");
+
+          if (w->opts.index == 0) {
+            exiting = true;
+            w->close();
+            return true;
+          }
+
+          return true;
+        }),
+        "v@:@"
+      );
+
       // Add delegate methods manually in order to capture "this"
       class_replaceMethod(
         [WindowDelegate class],
