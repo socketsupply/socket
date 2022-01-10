@@ -58,6 +58,7 @@ namespace Opkit {
   };
 
   std::atomic<bool> App::isReady {false};
+  static bool exiting = false;
 
 	// constexpr COLORREF darkBkColor = 0x383838;
 	// constexpr COLORREF darkTextColor = 0xFFFFFF;
@@ -111,6 +112,7 @@ namespace Opkit {
   static SetWindowCompositionAttribute setWindowCompositionAttribute = nullptr;
 
   static auto bgBrush = CreateSolidBrush(RGB(0, 0, 0));
+  FILE* console;
 
   class Window : public IWindow {
     HWND window;
@@ -161,7 +163,8 @@ namespace Opkit {
 
   App::App(void* h): hInstance((_In_ HINSTANCE) h) {
     #if DEBUG == 1
-    AllocConsole();
+      AllocConsole();
+      freopen_s(&console, "CONOUT$", "w", stdout);
     #endif
 
     HMODULE hUxtheme = LoadLibraryExW(L"uxtheme.dll", nullptr, LOAD_LIBRARY_SEARCH_SYSTEM32);
@@ -390,15 +393,15 @@ namespace Opkit {
     }
 
     if (msg.message == WM_QUIT) {
-      if (shouldExit) return 1;
+      if (exiting) return 1;
     }
 
     return 0;
   }
 
   void App::kill () {
-    shouldExit = true;
-    PostQuitMessage(WM_QUIT);
+    exiting = true;
+    PostQuitMessage(0);
   }
 
   void App::restart () {
@@ -473,26 +476,19 @@ namespace Opkit {
   }
 
   void Window::kill () {
-    if (controller != nullptr) controller->Close();
-    DestroyWindow(window);
+    if (this->controller != nullptr) this->controller->Close();
+    if (this->window != nullptr) DestroyWindow(this->window);
   }
 
   void Window::exit () {
-    if (onExit == nullptr) {
-      PostQuitMessage(WM_QUIT);
-      return;
-    }
-
-    onExit();
+    if (this->onExit != nullptr) this->onExit();
   }
 
   void Window::close () {
     if (opts.canExit) {
-      if (this->window == nullptr) {
-        PostQuitMessage(WM_QUIT);
-      }
-
       this->exit();
+    } else {
+      DestroyWindow(window);
     }
   }
 
@@ -1047,15 +1043,20 @@ namespace Opkit {
         break;
       }
 
-      case WM_DESTROY: {
+      case WM_CLOSE: {
+        #if DEBUG == 1
+          fclose(console);
+          FreeConsole();
+        #endif
+
         w->close();
+
+        break;
 
         // if (hbrBkgnd) {
         //  DeleteObject(hbrBkgnd);
         //  hbrBkgnd = nullptr;
         // }
-
-        break;
       }
 
       default:

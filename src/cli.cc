@@ -443,7 +443,7 @@ int main (const int argc, const char* argv[]) {
       settings["version"]
     ));
 
-    pathPackage = { fs::current_path() / target / pathOutput / packageName };
+    pathPackage = { pathOutput / packageName };
     pathBin = pathPackage;
 
     pathResourcesRelativeToUserBuild = pathPackage;
