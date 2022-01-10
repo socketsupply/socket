@@ -58,7 +58,6 @@ namespace Opkit {
   };
 
   std::atomic<bool> App::isReady {false};
-  static bool exiting = false;
 
 	// constexpr COLORREF darkBkColor = 0x383838;
 	// constexpr COLORREF darkTextColor = 0xFFFFFF;
@@ -393,14 +392,14 @@ namespace Opkit {
     }
 
     if (msg.message == WM_QUIT) {
-      if (exiting) return 1;
+      if (shouldExit) return 1;
     }
 
     return 0;
   }
 
   void App::kill () {
-    exiting = true;
+    shouldExit = true;
     PostQuitMessage(0);
   }
 
