@@ -36,12 +36,12 @@ It's a plain text script, please inspect it before running it.
 
 ## Linux or MacOS Bash/Zsh
 ```bash
-curl -o- https://raw.githubusercontent.com/operatortc/opkit/master/bin/bootstrap.sh | bash -s install
+curl -o- https://raw.githubusercontent.com/operatortc/opkit/master/bin/bootstrap.sh | bash -s
 ```
 
 ## Windows Powershell
 ```ps1
-& $([scriptblock]::Create((New-Object Net.WebClient).DownloadString("https://raw.githubusercontent.com/operatortc/opkit/master/bin/bootstrap.ps1"))) -Install
+& $([scriptblock]::Create((New-Object Net.WebClient).DownloadString("https://raw.githubusercontent.com/operatortc/opkit/master/bin/bootstrap.ps1")))
 ```
 
 
