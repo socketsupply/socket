@@ -52,19 +52,18 @@ git clone git@github.com:operatortc/opkit.git
 cd opkit
 ```
 
-If you want to hack on the Opkit project itself, clone this repo and install
-the CLI tool (unless you already did this with curl).
+This command will skip cloning the repo and just build it.
 
 ### MacOS, iOS, Android, and Linux
 
 ```sh
-./bin/bootstrap.sh install local
+./bin/bootstrap.sh dev
 ```
 
 ### Windows
 
 ```sh
-powershell ./bin/bootstrap.ps1 install local
+powershell ./bin/bootstrap.ps1 dev
 ```
 
 There is an example app written in Node.js, to build and run it...
