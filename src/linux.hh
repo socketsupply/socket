@@ -96,7 +96,6 @@ namespace Opkit {
 
   Window::Window (App& app, WindowOptions opts) : app(app), opts(opts) {
     setenv("GTK_OVERLAY_SCROLLING", "1", 1);
-
     accel_group = gtk_accel_group_new();
     popupId = 0;
     window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
@@ -109,7 +108,7 @@ namespace Opkit {
     }
 
     gtk_window_set_resizable(GTK_WINDOW(window), opts.resizable);
-    gtk_window_set_position(GTK_WINDOW(window), GTK_WIN_POS_CENTER_ALWAYS);
+    gtk_window_set_position(GTK_WINDOW(window), GTK_WIN_POS_CENTER);
 
     WebKitUserContentManager* cm = webkit_user_content_manager_new();
     webkit_user_content_manager_register_script_message_handler(cm, "external");
@@ -274,7 +273,7 @@ namespace Opkit {
 
     if (seq.size() > 0) {
       auto index = std::to_string(this->opts.index);
-      this->onMessage(resolveToMainProcess(seq, "0", index);
+      this->onMessage(resolveToMainProcess(seq, "0", index));
     }
   }
 
@@ -644,7 +643,7 @@ namespace Opkit {
       action = GTK_FILE_CHOOSER_ACTION_OPEN;
     }
 
-    if (isSave || allowDirs) {
+    if (!allowFiles && allowDirs) {
       action = (GtkFileChooserAction) (action | GTK_FILE_CHOOSER_ACTION_SELECT_FOLDER);
     }
 

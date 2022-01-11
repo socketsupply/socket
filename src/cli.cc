@@ -215,12 +215,14 @@ int main (const int argc, const char* argv[]) {
   settings["title"] += suffix;
   settings["executable"] += suffix;
 
-  auto pathOutput = fs::current_path() / settings["output"];
+  auto pathOutput = settings["output"];
 
   if (flagRunUserBuild == false && fs::exists(pathOutput)) {
+    auto p = fs::current_path() / pathOutput;
+
     try {
-      fs::remove_all(pathOutput);
-      log(std::string("cleaned: " + pathOutput.string()));
+      fs::remove_all(p);
+      log(std::string("cleaned: " + p.string()));
     } catch (...) {
       log("could not clean path (binary could be busy)");
       exit(1);
@@ -326,7 +328,7 @@ int main (const int argc, const char* argv[]) {
     pathResources = fs::path { target / pathOutput / "ui" };
     fs::create_directories(pathResources);
 
-    pathResourcesRelativeToUserBuild = pathOutput / "ui";
+    pathResourcesRelativeToUserBuild = fs::path(pathOutput) / "ui";
   }
 
   //
@@ -443,7 +445,7 @@ int main (const int argc, const char* argv[]) {
       settings["version"]
     ));
 
-    pathPackage = { pathOutput / packageName };
+    pathPackage = { target / pathOutput / packageName };
     pathBin = pathPackage;
 
     pathResourcesRelativeToUserBuild = pathPackage;
@@ -753,7 +755,7 @@ int main (const int argc, const char* argv[]) {
   if (flagShouldPackage && platform.mac) {
     std::stringstream zipCommand;
     auto ext = ".zip";
-    auto pathToBuild = fs::path { target / pathOutput / "build" };
+    auto pathToBuild = target / pathOutput / "build";
 
     pathToArchive = target / pathOutput / (settings["executable"] + ext);
 
