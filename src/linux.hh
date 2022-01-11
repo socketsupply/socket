@@ -26,6 +26,7 @@ namespace Opkit {
     GtkAccelGroup *accel_group;
     GtkWidget* window;
     GtkWidget* webview;
+    GtkWidget* menubar = nullptr;
     GtkWidget* vbox;
     GtkWidget* popup;
     int popupId;
@@ -409,7 +410,17 @@ namespace Opkit {
 
     auto menu = std::string(value);
 
-    GtkWidget *menubar = gtk_menu_bar_new();
+    if (menubar == nullptr) {
+      menubar = gtk_menu_bar_new();
+    } else {
+      GList *iter;
+      GList *children = gtk_container_get_children(GTK_CONTAINER(menubar));
+
+      for (iter = children; iter != nullptr; iter = g_list_next(iter)) {
+        gtk_widget_destroy(GTK_WIDGET(iter->data));
+      }
+      g_list_free(children);
+    }
 
     // deserialize the menu
     menu = replace(menu, "%%", "\n");
