@@ -2,7 +2,7 @@ if ($args[0] -eq "test-sign") {
   MakeCert.exe -sv cert.pvk -n "CN=Operator Tool Co, O=Operator, L=New York, S=New York, C=US" cert.cer -r -a sha256
   pvk2pfx.exe -pvk cert.pvk -pi test -spc cert.cer -pfx cert.pfx
   $env:CSC_KEY_PASSWORD = 'test'
-  .\bin\cli.exe .\test\example -p -c
+  .\bin\opkit.exe .\example\desktop -p -c
   Remove-Item cert.cer
   Remove-Item cert.pfx
   Remove-Item cert.pvk
