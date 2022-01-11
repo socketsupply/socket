@@ -616,7 +616,7 @@ namespace Opkit {
     rect.y = y - 1;
 
     gtk_widget_add_events(popup, GDK_ALL_EVENTS_MASK);
-    gtk_widget_set_can_focus(popup, true);SIGHUP
+    gtk_widget_set_can_focus(popup, true);
     gtk_widget_show_all(popup);
     gtk_widget_grab_focus(popup);
 
