@@ -1,13 +1,9 @@
 #!/usr/bin/env bash
 set -e;
 
-if [ ! "$CXX" ]; then
-  echo '• Warning: $CXX environment variable not set, assuming "/usr/bin/g++"'
-  CXX=/usr/bin/g++
-fi
-
-function build {
-  `echo $CXX` src/cli.cc ${CXX_FLAGS} ${CXXFLAGS} \
+function _build {
+  echo '• Building opkit'
+  g++ src/cli.cc ${CXX_FLAGS} ${CXXFLAGS} \
     -o bin/cli \
     -std=c++2a\
     -DVERSION=`git rev-parse --short HEAD`
@@ -19,8 +15,34 @@ function build {
   echo '• Success'
 }
 
+function _install {
+  echo '• Installing opkit'
+  sudo rm -rf /usr/local/lib/opkit
+
+  echo '• Copying sources to /usr/local/lib/opkit/src'
+  sudo mkdir -p /usr/local/lib/opkit
+  sudo cp -r `pwd`/src/ /usr/local/lib/opkit
+
+  if [ -d `pwd`/lib ]; then
+    echo '• Copying libraries to /usr/local/lib/opkit/lib'
+    sudo mkdir -p /usr/local/lib/opkit/lib
+    sudo cp -r `pwd`/lib/ /usr/local/lib/opkit/lib
+  fi
+
+  echo '• Moving binary to /usr/local/bin'
+  sudo mv `pwd`/bin/cli /usr/local/bin/opkit
+
+  if [ ! $? = 0 ]; then
+    echo '• Unable to move binary into place'
+    exit 1
+  fi
+
+  echo -e '• Finished. Type "opkit -h" for help'
+  exit 0
+}
+
 #
-# Install - when this script is called with a parameter
+# Clone
 #
 if [ -z "$1" ]; then
   TMPD=$(mktemp -d)
@@ -34,35 +56,10 @@ if [ -z "$1" ]; then
   fi
 
   cd $TMPD
-
-  echo '• Building'
-  build
-
-  sudo rm -rf /usr/local/lib/opkit
-
-  echo '• Copying sources to /usr/local/lib/opkit'
-  sudo mkdir -p /usr/local/lib/opkit
-  sudo cp -r `pwd`/src/ /usr/local/lib/opkit
-
-  if [ -d `pwd`/lib ]; then
-    sudo mkdir -p /usr/local/lib/opkit/lib
-    sudo cp -r `pwd`/lib/ /usr/local/lib/opkit/lib
-  fi
-
-  echo '• Moving binary to /usr/local/bin'
-  sudo mv `pwd`/bin/cli /usr/local/bin/opkit
-
-  if [ ! $? = 0 ]; then
-    echo '• Unable to move file into place'
-    exit 1
-  fi
-
-  echo -e '• Finished. Type "opkit -h" for help'
-  exit 0
 fi
 
 #
-# Build - when being run from the source tree (developer mode)
+# Build and Install
 #
-echo '• Compiling build program'
-build
+_build
+_install

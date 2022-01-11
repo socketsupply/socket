@@ -406,6 +406,14 @@ MAIN {
   w0.onExit = onExit;
   w1.onExit = onExit;
 
+  //
+  // If this is being run in a terminal/multiplexer
+  //
+  signal(SIGHUP, +[](int signum) {
+    onExit();
+    exit(signum);
+  });
+
   signal(SIGINT, +[](int signum) {
     onExit();
     exit(signum);

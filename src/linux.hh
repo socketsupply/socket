@@ -176,22 +176,29 @@ namespace Opkit {
       G_OBJECT(window),
       "destroy",
       G_CALLBACK(+[](GtkWidget*, gpointer arg) {
-        static_cast<Window*>(arg)->close();
+        auto* w = static_cast<Window*>(arg);
+        w->close();
       }),
       this
     );
 
-    if (opts.canExit == false) {
-      g_signal_connect(
-        G_OBJECT(window),
-        "delete-event",
-        G_CALLBACK(+[](GtkWidget* widget, GdkEvent*, gpointer arg) {
-          static_cast<Window*>(arg)->eval(emitToRenderProcess("windowHide", "{}"));
-          return gtk_widget_hide_on_delete(widget);
-        }),
-        this
-      );
-    }
+    g_signal_connect(
+      G_OBJECT(window),
+      "delete-event",
+      G_CALLBACK(+[](GtkWidget* widget, GdkEvent*, gpointer arg) {
+        auto* w = static_cast<Window*>(arg);
+
+        if (w->opts.canExit == false) {
+          w->eval(emitToRenderProcess("windowHide", "{}"));
+          gtk_widget_hide_on_delete(widget);
+          return FALSE;
+        }
+
+        w->close();
+        return FALSE;
+      }),
+      this
+    );
 
     std::string preload = Str(
       "window.external = {\n"
@@ -609,7 +616,7 @@ namespace Opkit {
     rect.y = y - 1;
 
     gtk_widget_add_events(popup, GDK_ALL_EVENTS_MASK);
-    gtk_widget_set_can_focus(popup, true);
+    gtk_widget_set_can_focus(popup, true);SIGHUP
     gtk_widget_show_all(popup);
     gtk_widget_grab_focus(popup);
 
