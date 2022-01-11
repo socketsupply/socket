@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <any>
 #include <iostream>
 #include <sstream>
 #include <regex>
@@ -43,6 +44,9 @@
 
 #define TO_STR(arg) #arg
 #define STR_VALUE(arg) TO_STR(arg)
+
+#define IMAX_BITS(m) ((m)/((m) % 255+1) / 255 % 255 * 8 + 7-86 / ((m) % 255+12))
+#define RAND_MAX_WIDTH IMAX_BITS(RAND_MAX)
 
 namespace fs = std::filesystem;
 
@@ -97,6 +101,14 @@ namespace Opkit {
   // Reporting on the platform (for the cli).
   //
   struct {
+    #if defined(__x86_64__) || defined(_M_X64)
+      const std::string arch = "x86_64";
+    #elif defined(__aarch64__) || defined(_M_ARM64)
+      const std::string arch = "arm64";
+    #else
+      const std::string arch = "unknown";
+    #endif
+
     #if defined(_WIN32)
       bool mac = false;
       bool win = true;
@@ -142,8 +154,43 @@ namespace Opkit {
     std::string url = "data:text/html,<html>";
     std::string version = "";
     std::string argv = "";
+    std::string preload = "";
     std::string env;
   };
+
+  template <typename ...Args> std::string format (const std::string& s, Args ...args) {
+    auto copy = s;
+    std::stringstream res;
+    std::vector<std::any> vec;
+    using unpack = int[];
+
+    (void) unpack { 0, (vec.push_back(args), 0)... };
+
+    std::regex re("\\$[^$\\s]");
+    std::smatch match;
+    auto first = std::regex_constants::format_first_only;
+    int index = 0;
+
+    while (std::regex_search(copy, match, re) != 0) {
+      if (match.str() == "$S") {
+        auto value = std::any_cast<std::string>(vec[index++]);
+        copy = std::regex_replace(copy, re, value, first);
+      } else if (match.str() == "$i") {
+        auto value = std::any_cast<int>(vec[index++]);
+        copy = std::regex_replace(copy, re, std::to_string(value), first);
+      } else if (match.str() == "$C") {
+        auto value = std::any_cast<char*>(vec[index++]);
+        copy = std::regex_replace(copy, re, std::string(value), first);
+      } else if (match.str() == "$c") {
+        auto value = std::any_cast<char>(vec[index++]);
+        copy = std::regex_replace(copy, re, std::string(1, value), first);
+      } else {
+        copy = std::regex_replace(copy, re, match.str(), first);
+      }
+    }
+
+    return copy;
+  }
 
   std::string gMobilePreload = "";
 
@@ -161,9 +208,66 @@ namespace Opkit {
       "  window.process.env = Object.fromEntries(new URLSearchParams('" +  opts.env + "'));\n"
       "  window.process.argv = [" + opts.argv + "];\n"
       "  " + gPreload + "\n"
+      "  " + opts.preload + "\n"
       "})()\n"
       "//# sourceURL=preload.js"
     );
+  }
+
+  std::string resolveToRenderProcess(const std::string& seq, const std::string& state, const std::string& value) {
+    return std::string(
+      "(() => {"
+      "  const seq = Number('" + seq + "');"
+      "  const state = Number('" + state + "');"
+      "  const value = '" + value + "';"
+      "  window._ipc.resolve(seq, state, value);"
+      "})()"
+    );
+  }
+
+  std::string emitToRenderProcess(const std::string& event, const std::string& value) {
+    return std::string(
+      "(() => {"
+      "  const name = '" + event + "';"
+      "  const value = '" + value + "';"
+      "  window._ipc.emit(name, value);"
+      "})()"
+    );
+  }
+
+  std::string streamToRenderProcess(const std::string& id, const std::string& value) {
+    return std::string(
+      "(() => {"
+      "  const id = '" + id + "';"
+      "  const value = '" + value + "';"
+      "  window._ipc.callbacks[id] && window._ipc.callbacks[id](null, value);"
+      "})()"
+    );
+  }
+
+  std::string resolveMenuSelection(const std::string& seq, const std::string& title, const std::string& parent) {
+    return std::string(
+      "(() => {"
+      "  const detail = {"
+      "    title: '" + title + "',"
+      "    parent: '" + parent + "',"
+      "    state: '0'"
+      "  };"
+
+      "  if (" + seq + " > 0 && window._ipc[" + seq + "]) {"
+      "    window._ipc[" + seq + "].resolve(detail);"
+      "    delete window._ipc[" + seq + "];"
+      "    return;"
+      "  }"
+
+      "  const event = new window.CustomEvent('menuItemSelected', { detail });"
+      "  window.dispatchEvent(event);"
+      "})()"
+    );
+  }
+
+  std::string resolveToMainProcess(const std::string& seq, const std::string& state, const std::string& value) {
+    return std::string("ipc://resolve?seq=" + seq + "&state=" + state + "&value=" + value);
   }
 
   //
@@ -209,6 +313,15 @@ namespace Opkit {
 
   inline std::string replace(const std::string& src, const std::string& re, const std::string& val) {
     return std::regex_replace(src, std::regex(re), val);
+  }
+
+  uint64_t rand64(void) {
+    uint64_t r = 0;
+    for (int i = 0; i < 64; i += RAND_MAX_WIDTH) {
+      r <<= RAND_MAX_WIDTH;
+      r ^= (unsigned) rand();
+    }
+    return r;
   }
 
   inline std::string getEnv(const char* variableName) {
@@ -559,13 +672,8 @@ namespace Opkit {
   class IWindow {
     public:
       int index = 0;
-      void resolveToMainProcess(const std::string&, const std::string&, const std::string&);
-      void resolveToRenderProcess(const std::string&, const std::string&, const std::string&);
-      void resolveMenuSelection(const std::string&, const std::string&, const std::string&);
-      void emitToRenderProcess(const std::string&, const std::string&);
-
       WindowOptions opts;
-      SCallback onMessage = nullptr;
+      SCallback onMessage = [](const std::string) {};
       VCallback onExit = nullptr;
 
       virtual void eval(const std::string&) = 0;
@@ -583,53 +691,6 @@ namespace Opkit {
       // virtual void showInspector() = 0;
       virtual ScreenSize getScreenSize() = 0;
   };
-
-  void IWindow::resolveToRenderProcess(const std::string& seq, const std::string& state, const std::string& value) {
-    this->eval(std::string(
-      "(() => {"
-      "  const seq = Number('" + seq + "');"
-      "  const state = Number('" + state + "');"
-      "  const value = '" + value + "';"
-      "  window._ipc.resolve(seq, state, value);"
-      "})()"
-    ));
-  }
-
-  void IWindow::resolveMenuSelection(const std::string& seq, const std::string& title, const std::string& parent) {
-    this->eval("(() => {"
-      "  const detail = {"
-      "    title: '" + title + "',"
-      "    parent: '" + parent + "',"
-      "    state: '0'"
-      "  };"
-
-      "  if (" + seq + " > 0 && window._ipc[" + seq + "]) {"
-      "    window._ipc[" + seq + "].resolve(detail);"
-      "    delete window._ipc[" + seq + "];"
-      "    return;"
-      "  }"
-
-      "  const event = new window.CustomEvent('menuItemSelected', { detail });"
-      "  window.dispatchEvent(event);"
-      "})()"
-    );
-  }
-
-  void IWindow::resolveToMainProcess(const std::string& seq, const std::string& state, const std::string& value) {
-    if (this->onMessage != nullptr) {
-      this->onMessage(std::string("ipc://resolve?seq=" + seq + "&state=" + state + "&value=" + value));
-    }
-  }
-
-  void IWindow::emitToRenderProcess(const std::string& event, const std::string& value) {
-    this->eval(std::string(
-      "(() => {"
-      "  const name = '" + event + "';"
-      "  const value = '" + value + "';"
-      "  window._ipc.emit(name, value);"
-      "})()"
-    ));
-  }
 }
 
 #endif // OPKIT_H

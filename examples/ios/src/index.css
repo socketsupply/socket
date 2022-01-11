@@ -1,5 +1,7 @@
-@require './styles/index.styl'
-@require './views/**/*.styl'
+@import 'styles/overrides.css';
+@import 'styles/index.css';
+
+@import 'views/header/index.css';
 
 * {
   -webkit-user-select: none;
@@ -18,6 +20,7 @@ input, select:focus, textarea {
     /* border: 1px solid red; */
   }
 }
+
 @media (orientation: portrait) {
   app-container {
     /* border: 1px solid blue; */

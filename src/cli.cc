@@ -1,7 +1,7 @@
+#include "common.hh"
 #include "cli.hh"
 #include "ios.hh"
 #include "process.hh"
-#include "common.hh"
 #include <filesystem>
 
 #ifdef _WIN32
@@ -165,7 +165,7 @@ int main (const int argc, const char* argv[]) {
 
   auto target = fs::path(argv[1]);
 
-  auto _settings = WStringToString(readFile(fs::path { target / "settings.config" }));
+  auto _settings = WStringToString(readFile(target / "settings.config"));
   auto settings = parseConfig(_settings);
 
   if (
@@ -179,6 +179,10 @@ int main (const int argc, const char* argv[]) {
 
   if (settings.count("revision") == 0) {
     settings["revision"] = version;
+  }
+
+  if (settings.count("arch") == 0) {
+    settings["arch"] = platform.arch;
   }
 
   std::vector<std::string> required = {
@@ -211,11 +215,18 @@ int main (const int argc, const char* argv[]) {
   settings["title"] += suffix;
   settings["executable"] += suffix;
 
-  auto pathOutput = fs::path { settings["output"] };
+  auto pathOutput = settings["output"];
 
-  if (flagRunUserBuild == false) {
-    fs::remove_all(pathOutput);
-    log(std::string("cleaned: " + pathOutput.string()));
+  if (flagRunUserBuild == false && fs::exists(pathOutput)) {
+    auto p = fs::current_path() / pathOutput;
+
+    try {
+      fs::remove_all(p);
+      log(std::string("cleaned: " + p.string()));
+    } catch (...) {
+      log("could not clean path (binary could be busy)");
+      exit(1);
+    }
   }
 
   auto executable = fs::path(
@@ -241,7 +252,7 @@ int main (const int argc, const char* argv[]) {
 
     log("preparing build for mac");
 
-    flags = "-std=c++2a -framework WebKit -framework Cocoa -ObjC++";
+    flags = "-std=c++20 -framework WebKit -framework Cocoa -ObjC++";
     flags += getCxxFlags();
 
     files += prefixFile("src/main.cc");
@@ -303,6 +314,12 @@ int main (const int argc, const char* argv[]) {
 
     settings["apple_provisioning_profile"] = uuid;
 
+    fs::copy(
+      fs::path(prefixFile()) / "lib",
+      target / pathOutput / "lib",
+      fs::copy_options::overwrite_existing | fs::copy_options::recursive
+    );
+
     writeFile(target / pathOutput / "exportOptions.plist", tmpl(gXCodeExportOptions, settings));
     writeFile(target / pathOutput / "Info.plist", tmpl(gXCodePlist, settings));
     writeFile(pathToProject / "project.pbxproj", tmpl(gXCodeProject, settings));
@@ -311,7 +328,7 @@ int main (const int argc, const char* argv[]) {
     pathResources = fs::path { target / pathOutput / "ui" };
     fs::create_directories(pathResources);
 
-    pathResourcesRelativeToUserBuild = pathOutput / "ui";
+    pathResourcesRelativeToUserBuild = fs::path(pathOutput) / "ui";
   }
 
   //
@@ -428,7 +445,7 @@ int main (const int argc, const char* argv[]) {
       settings["version"]
     ));
 
-    pathPackage = { fs::current_path() / target / pathOutput / packageName };
+    pathPackage = { target / pathOutput / packageName };
     pathBin = pathPackage;
 
     pathResourcesRelativeToUserBuild = pathPackage;
@@ -515,6 +532,7 @@ int main (const int argc, const char* argv[]) {
     fs::create_directories(pathBase);
 
     writeFile(pathBase / "LaunchScreen.storyboard", gStoryboardLaunchScreen);
+    writeFile(pathToDist / (settings["name"] + ".entitlements"), gXcodeEntitlements);
 
     //
     // For iOS we're going to bail early and let XCode infrastructure handle
@@ -535,7 +553,7 @@ int main (const int argc, const char* argv[]) {
 
     archiveCommand
       << "xcodebuild"
-      << " clean build" << sup
+      << " build" << sup
       << " -scheme " << settings["name"]
       << " -destination '" << destination << "'";
 
@@ -737,7 +755,7 @@ int main (const int argc, const char* argv[]) {
   if (flagShouldPackage && platform.mac) {
     std::stringstream zipCommand;
     auto ext = ".zip";
-    auto pathToBuild = fs::path { target / pathOutput / "build" };
+    auto pathToBuild = target / pathOutput / "build";
 
     pathToArchive = target / pathOutput / (settings["executable"] + ext);
 

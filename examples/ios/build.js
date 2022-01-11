@@ -1,9 +1,8 @@
 const path = require('path')
 const fs = require('fs/promises')
 
-const CleanCSS = require('clean-css')
-const stylus = require('stylus')
-const esbuild = require('esbuild')
+const Minifier = require('clean-css')
+const { build: js } = require('esbuild')
 
 //
 // The output target is passed by the build tool,
@@ -12,23 +11,28 @@ const esbuild = require('esbuild')
 const target = path.resolve(process.argv[2]);
 
 if (!target) {
-  console.log('  - Did not receive the build target path as an argument')
+  console.log('Did not receive the build target path as an argument!')
   process.exit(1)
 }
 
-const css = async (src, dest) => {
-  const cleanCSS = new CleanCSS({ advanced: true })
-  const s = await fs.readFile(src, 'utf8')
+const minifier = new Minifier({ advanced: true })
 
-  const css = await new Promise((resolve, reject) => {
-    return stylus.render(s, { filename: src }, (err, css) => {
-      if (err) return reject(err)
-      return resolve(css)
-    })
+const css = async (src, dest) => {
+  let str = await fs.readFile(src, 'utf8')
+  let RE = /@import ['"]([^'" ]+)['"];/g
+  let reqs = []
+
+  str.replace(RE, (_, p) => {
+    reqs.push(css(path.resolve(path.dirname(src), p)))
   })
 
-  const minified = cleanCSS.minify(css)
-  return fs.writeFile(dest, minified.styles)
+  const data = await Promise.all(reqs)
+  str = str.replace(RE, () => data.shift())
+
+  const min = minifier.minify(str)
+
+  if (!dest) return min.styles
+  return fs.writeFile(dest, min.styles)
 }
 
 const cp = async (a, b) => fs.cp(
@@ -38,21 +42,34 @@ const cp = async (a, b) => fs.cp(
 )
 
 async function main () {
-  await esbuild.build({
-    entryPoints: ['src/render/index.js'],
+  //
+  // Neither wkwebview or webview2 support local import. NBD,
+  // esbuild is fast, keeps the product small and reduces io
+  // in production.
+  //
+  await js({
+    entryPoints: ['src/index.js'],
     bundle: true,
     keepNames: true,
+    format: 'cjs',
     minify: true,
-    outfile: path.join(target, 'render.js'),
+    outfile: path.join(target, 'bundle.js'),
     platform: 'browser'
   })
 
+  //
+  // We want compile time @import so we can organize and
+  // minify non-component styles.
+  //
   await css(
-    path.join('src', 'render/index.styl'),
+    path.join('src', 'index.css'),
     path.join(target, 'bundle.css')
   )
 
-  await cp('src/render/index.html', target)
+  //
+  // Copy the rest of the files that we care about.
+  //
+  await cp('src/index.html', target)
   await cp(`src/icons/icon.png`, target)
   await cp('src/images', target)
 }

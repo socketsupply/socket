@@ -111,6 +111,7 @@ namespace Opkit {
   static SetWindowCompositionAttribute setWindowCompositionAttribute = nullptr;
 
   static auto bgBrush = CreateSolidBrush(RGB(0, 0, 0));
+  FILE* console;
 
   class Window : public IWindow {
     HWND window;
@@ -161,7 +162,8 @@ namespace Opkit {
 
   App::App(void* h): hInstance((_In_ HINSTANCE) h) {
     #if DEBUG == 1
-    AllocConsole();
+      AllocConsole();
+      freopen_s(&console, "CONOUT$", "w", stdout);
     #endif
 
     HMODULE hUxtheme = LoadLibraryExW(L"uxtheme.dll", nullptr, LOAD_LIBRARY_SEARCH_SYSTEM32);
@@ -398,7 +400,7 @@ namespace Opkit {
 
   void App::kill () {
     shouldExit = true;
-    PostQuitMessage(WM_QUIT);
+    PostQuitMessage(0);
   }
 
   void App::restart () {
@@ -473,26 +475,19 @@ namespace Opkit {
   }
 
   void Window::kill () {
-    if (controller != nullptr) controller->Close();
-    DestroyWindow(window);
+    if (this->controller != nullptr) this->controller->Close();
+    if (this->window != nullptr) DestroyWindow(this->window);
   }
 
   void Window::exit () {
-    if (onExit == nullptr) {
-      PostQuitMessage(WM_QUIT);
-      return;
-    }
-
-    onExit();
+    if (this->onExit != nullptr) this->onExit();
   }
 
   void Window::close () {
     if (opts.canExit) {
-      if (this->window == nullptr) {
-        PostQuitMessage(WM_QUIT);
-      }
-
       this->exit();
+    } else {
+      DestroyWindow(window);
     }
   }
 
@@ -514,18 +509,18 @@ namespace Opkit {
 
     if (seq.size() > 0) {
       auto index = std::to_string(this->opts.index);
-      resolveToMainProcess(seq, "0", index);
+      this->onMessage(resolveToMainProcess(seq, "0", index));
     }
   }
 
   void Window::hide (const std::string& seq) {
     ShowWindow(window, SW_HIDE);
     UpdateWindow(window);
-    emitToRenderProcess("windowHide", "{}");
+    this->eval(emitToRenderProcess("windowHide", "{}"));
 
     if (seq.size() > 0) {
       auto index = std::to_string(this->opts.index);
-      resolveToMainProcess(seq, "0", index);
+      this->onMessage(resolveToMainProcess(seq, "0", index));
     }
   }
 
@@ -566,7 +561,7 @@ namespace Opkit {
             state = "0";
           }
 
-          resolveToMainProcess(seq, state, index);
+          this->onMessage(resolveToMainProcess(seq, state, index));
           webview->remove_NavigationCompleted(token);
 
           return S_OK;
@@ -585,7 +580,7 @@ namespace Opkit {
       std::string state = "0"; // can this call actually fail?
       auto index = std::to_string(this->opts.index);
 
-      resolveToMainProcess(seq, state, index);
+      this->onMessage(resolveToMainProcess(seq, state, index));
     }
   }
 
@@ -626,7 +621,7 @@ namespace Opkit {
 
     if (seq.size() > 0) {
       auto index = std::to_string(this->opts.index);
-      resolveToMainProcess(seq, "0", index);
+      this->onMessage(resolveToMainProcess(seq, "0", index));
     }
   }
 
@@ -706,7 +701,7 @@ namespace Opkit {
 
     if (seq.size() > 0) {
       auto index = std::to_string(this->opts.index);
-      resolveToMainProcess(seq, "0", index);
+      this->onMessage(resolveToMainProcess(seq, "0", index));
     }
   }
 
@@ -757,7 +752,7 @@ namespace Opkit {
     );
 
     DestroyMenu(hPopupMenu);
-    resolveMenuSelection(seq, lookup[selection], "contextMenu");
+    this->eval(resolveMenuSelection(seq, lookup[selection], "contextMenu"));
   }
 
   int Window::openExternal (const std::string& url) {
@@ -809,6 +804,11 @@ namespace Opkit {
       hr = pfd->GetOptions(&dwOptions);
       if (FAILED(hr)) return;
 
+      if (allowDirs == true && allowFiles == false) {
+        hr = pfd->SetOptions(dwOptions | FOS_PICKFOLDERS);
+        if (FAILED(hr)) return;
+      }
+
       if ((!isSave || allowDirs) && allowMultiple) {
         hr = pfd->SetOptions(dwOptions | FOS_ALLOWMULTISELECT);
         if (FAILED(hr)) return;
@@ -845,7 +845,7 @@ namespace Opkit {
       }
 
       auto wrapped =  std::string("\"" + result + "\"");
-      resolveToRenderProcess(seq, "0", encodeURIComponent(wrapped));
+      this->eval(resolveToRenderProcess(seq, "0", encodeURIComponent(wrapped)));
 
       results->Release();
     }
@@ -898,7 +898,7 @@ namespace Opkit {
             break;
           }
 
-          w->resolveMenuSelection("0", title, parent);
+          w->eval(resolveMenuSelection("0", title, parent));
         }
 
         break;
@@ -958,7 +958,7 @@ namespace Opkit {
             DWORD aNewColors[4] = { RGB(255, 255, 255), RGB(255, 255, 255), RGB(255, 255, 255), RGB(255, 255, 255) };
             SetSysColors(4, aElements, aNewColors);
           }
-          
+
           refreshImmersiveColorPolicyState();
 
           //SetPropW(hWnd, L"UseImmersiveDarkModeColors", reinterpret_cast<HANDLE>(static_cast<INT_PTR>(mode)));
@@ -1042,15 +1042,20 @@ namespace Opkit {
         break;
       }
 
-      case WM_DESTROY: {
+      case WM_CLOSE: {
+        #if DEBUG == 1
+          fclose(console);
+          FreeConsole();
+        #endif
+
         w->close();
+
+        break;
 
         // if (hbrBkgnd) {
         //  DeleteObject(hbrBkgnd);
         //  hbrBkgnd = nullptr;
         // }
-
-        break;
       }
 
       default:

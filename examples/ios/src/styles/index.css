@@ -1,0 +1,44 @@
+* {
+  box-sizing: border-box;
+}
+
+::selection {
+  color: white;
+  background-color: var(--tonic-accent);
+}
+
+body {
+  margin: 0;
+  overflow: hidden;
+  padding: 4%;
+  color: var(--tonic-primary);
+  font: 16px var(--tonic-body);
+  background-color: var(--tonic-window);
+  font-family: 'Inter';
+}
+
+.grid {
+  display: grid;
+  gap: 20px;
+}
+
+grid.c2 {
+  grid-template-columns: 1fr 1fr;
+}
+
+code {
+  max-width: 100%;
+  overflow: scroll;
+}
+
+h1, h2, h3, h4 {
+  font-family: 'Inter Black';
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--tonic-info);
+}
+
+h1 {
+  font-family: var(--tonic-header);
+}
+

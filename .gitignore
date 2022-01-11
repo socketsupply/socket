@@ -1,4 +1,7 @@
 node_modules/
+/lib/*
+*.tmp
+!/lib/libuv.a
 /bin/build
-/bin/cli.exe
+/bin/opkit.exe
 /bin/cli

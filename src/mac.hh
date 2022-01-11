@@ -249,6 +249,23 @@ namespace Opkit {
     if (!isDelegateSet) {
       isDelegateSet = true;
 
+      class_replaceMethod(
+        [WindowDelegate class],
+        @selector(terminate:),
+        imp_implementationWithBlock([&](id self, SEL cmd, id notification) {
+          auto* w = (Window*) objc_getAssociatedObject(self, "webview");
+
+          if (w->opts.index == 0) {
+            exiting = true;
+            w->close();
+            return true;
+          }
+
+          return true;
+        }),
+        "v@:@"
+      );
+
       // Add delegate methods manually in order to capture "this"
       class_replaceMethod(
         [WindowDelegate class],
@@ -265,7 +282,7 @@ namespace Opkit {
               return true;
             }
 
-            w->emitToRenderProcess("windowHide", "{}");
+            w->eval(emitToRenderProcess("windowHide", "{}"));
             w->hide("");
             return false;
           }),
@@ -302,7 +319,7 @@ namespace Opkit {
             String parent = [[[menuItem menu] title] UTF8String];
             String seq = std::to_string([menuItem tag]);
 
-            resolveMenuSelection(seq, title, parent);
+            this->eval(resolveMenuSelection(seq, title, parent));
           }),
         "v@:@:@:"
       );
@@ -343,7 +360,7 @@ namespace Opkit {
 
     if (seq.size() > 0) {
       auto index = std::to_string(this->opts.index);
-      resolveToMainProcess(seq, "0", index);
+      this->onMessage(resolveToMainProcess(seq, "0", index));
     }
   }
 
@@ -364,11 +381,11 @@ namespace Opkit {
 
   void Window::hide (const std::string& seq) {
     [window orderOut:window];
-    emitToRenderProcess("windowHide", "{}");
+    this->eval(emitToRenderProcess("windowHide", "{}"));
 
     if (seq.size() > 0) {
       auto index = std::to_string(this->opts.index);
-      resolveToMainProcess(seq, "0", index);
+      this->onMessage(resolveToMainProcess(seq, "0", index));
     }
   }
 
@@ -386,7 +403,7 @@ namespace Opkit {
 
     if (seq.size() > 0) {
       auto index = std::to_string(this->opts.index);
-      resolveToMainProcess(seq, "0", index);
+      this->onMessage(resolveToMainProcess(seq, "0", index));
     }
   }
 
@@ -395,7 +412,7 @@ namespace Opkit {
 
     if (seq.size() > 0) {
       auto index = std::to_string(this->opts.index);
-      resolveToMainProcess(seq, "0", index);
+      this->onMessage(resolveToMainProcess(seq, "0", index));
     }
   }
 
@@ -405,7 +422,7 @@ namespace Opkit {
 
     if (seq.size() > 0) {
       auto index = std::to_string(this->opts.index);
-      resolveToMainProcess(seq, "0", index);
+      this->onMessage(resolveToMainProcess(seq, "0", index));
     }
   }
 
@@ -614,7 +631,7 @@ namespace Opkit {
 
     if (seq.size() > 0) {
       auto index = std::to_string(this->opts.index);
-      resolveToMainProcess(seq, "0", index);
+      this->onMessage(resolveToMainProcess(seq, "0", index));
     }
   }
 
@@ -641,8 +658,14 @@ namespace Opkit {
     }
 
     if (!isSave) {
-      [dialog_open setCanChooseDirectories:YES];
       [dialog_open setCanCreateDirectories:YES];
+    }
+
+    if (allowDirs) {
+      [dialog_open setCanChooseDirectories:YES];
+    }
+
+    if (allowFiles == true) {
       [dialog_open setCanChooseFiles:YES];
     }
 
@@ -676,7 +699,7 @@ namespace Opkit {
       if ([dialog_save runModal] == NSModalResponseOK) {
         String url = (char*) [[[dialog_save URL] path] UTF8String];
         auto wrapped = std::string("\"" + url + "\"");
-        resolveToRenderProcess(seq, "0", encodeURIComponent(wrapped));
+        this->eval(resolveToRenderProcess(seq, "0", encodeURIComponent(wrapped)));
       }
       return;
     }
@@ -703,6 +726,6 @@ namespace Opkit {
     }
 
     auto wrapped = std::string("\"" + result + "\"");
-    resolveToRenderProcess(seq, "0", encodeURIComponent(wrapped));
+    this->eval(resolveToRenderProcess(seq, "0", encodeURIComponent(wrapped)));
   }
 }
