@@ -1,9 +1,16 @@
 #!/usr/bin/env bash
 set -e;
 
+if [ ! "$CXX" ]; then
+  echo '• Warning: $CXX environment variable not set, assuming "/usr/bi
+n/g++"'
+  CXX=/usr/bin/g++
+fi
+
+
 function _build {
   echo '• Building opkit'
-  g++ src/cli.cc ${CXX_FLAGS} ${CXXFLAGS} \
+  `echo $CXX` src/cli.cc ${CXX_FLAGS} ${CXXFLAGS} \
     -o bin/cli \
     -std=c++2a\
     -DVERSION=`git rev-parse --short HEAD`
