@@ -871,19 +871,12 @@ bool isRunning = false;
       return;
     }
 
-    // std::cout << "uvutp_send: " << ip << ":" << port << " = " << buf->base << std::endl;
-
     uv_buf_t bufs[1];
-    bufs[0] = uv_buf_init(buf->base + offset, len);
+    char* base = (char*) message.c_str();
+    bufs[0] = uv_buf_init(base + offset, len);
 
     err = uv_udp_send(req, client->udp, bufs, 1, (const struct sockaddr *) &addr, [] (uv_udp_send_t *req, int status) {
       auto client = reinterpret_cast<Client*>(req->data);
-
-      if (status != 0) {
-        std::cout << "uvutp_sent: " << uv_strerror(status) << std::endl;
-      }
-
-      free(req);
 
       dispatch_async(dispatch_get_main_queue(), ^{
         [client->server->delegate resolve:client->seq message: Opkit::format(R"JSON({
@@ -893,6 +886,9 @@ bool isRunning = false;
           }
         })JSON", std::to_string(client->clientId), status)];
       });
+
+      delete[] req->bufs;
+      free(req);
     });
 
     if (err) {
@@ -999,6 +995,7 @@ bool isRunning = false;
 
     if (msg.find("ipc://") == 0) {
       Parse cmd(msg);
+      auto seq = cmd.get("seq");
 
       NSLog(@"COMMAND %s", msg.c_str());
 
@@ -1031,31 +1028,55 @@ bool isRunning = false;
         }
 
         PeerInfo info;
-        info.init(client->connection);
+        info.init(client->tcp);
 
-        [self resolve: seq
-              message: Opkit::format(
-                R"JSON({
-                  "data": {
-                    "address": "$S",
-                    "family": "$S",
-                    "port": "$i"
-                  }
-                })JSON",
-                std::to_string(client->clientId),
-                info.address,
-                info.family,
-                info.port
-              )
-        ];
+        auto message = Opkit::format(
+          R"JSON({
+            "data": {
+              "address": "$S",
+              "family": "$S",
+              "port": "$i"
+            }
+          })JSON",
+          std::to_string(client->clientId),
+          info.address,
+          info.family,
+          info.port
+        );
 
+        [self resolve: seq message: message];
         return;
       }
 
       if (cmd.name == "getNetworkInterfaces") {
-        auto seq = cmd.get("seq");
-
         [self resolve: seq message: [self getNetworkInterfaces]];
+        return;
+      }
+
+      if (cmd.name == "readStop") {
+        [self readStop: seq clientId: std::stoll(cmd.get("clientId"))];
+        return;
+      }
+
+      if (cmd.name == "shutdown") {
+        [self shutdown: seq clientId: std::stoll(cmd.get("clientId"))];
+        return;
+      }
+
+      if (cmd.name == "closeConnection") {
+        [self closeConnection: seq clientId: std::stoll(cmd.get("clientId"))];
+        return;
+      }
+
+      if (cmd.name == "udpSend") {
+        [self udpSend: seq
+             clientId: std::stoll(cmd.get("clientId"))
+              message: cmd.get("data")
+               offset: std::stoi(cmd.get("offset"))
+                  len: std::stoi(cmd.get("len"))
+                 port: std::stoi(cmd.get("port"))
+                   ip: (const char*) cmd.get("ip").c_str()
+        ];
         return;
       }
 
@@ -1065,30 +1086,25 @@ bool isRunning = false;
       }
 
       if (cmd.name == "tpcConnect") {
-        auto address = cmd.get("address");
-        auto clientId = cmd.get("clientId");
-        auto port = cmd.get("port");
-        auto seq = cmd.get("seq");
-
-        [self tcpConnect: seq clientId:std::stoll(clientId) port:std::stoi(port) address:address];
+        [self tcpConnect: seq
+                clientId:std::stoll(cmd.get("clientId"))
+                    port:std::stoi(cmd.get("port"))
+                 address:cmd.get("address")
+        ];
         return;
       }
 
       if (cmd.name == "tpcSetKeepAlive") {
-        auto timeout = cmd.get("timeout");
-        auto clientId = cmd.get("clientId");
-        auto seq = cmd.get("seq");
-
-        [self tcpSetKeepAlive: seq clientId:std::stoll(clientId) timeout:std::stoi(timeout)];
+        [self tcpSetKeepAlive: seq
+                     clientId:std::stoll(cmd.get("clientId"))
+                      timeout:std::stoi(cmd.get("timeout"))];
         return;
       }
 
       if (cmd.name == "tpcSetTimeout") {
-        auto timeout = cmd.get("timeout");
-        auto clientId = cmd.get("clientId");
-        auto seq = cmd.get("seq");
-
-        [self tcpSetTimeout: seq clientId:std::stoll(clientId) timeout:std::stoi(timeout)];
+        [self tcpSetTimeout: seq
+                   clientId:std::stoll(cmd.get("clientId"))
+                    timeout:std::stoi(cmd.get("timeout"))];
         return;
       }
 
@@ -1183,12 +1199,8 @@ bool isRunning = false;
 
       "window.addEventListener('unhandledrejection', e => console.log(e.message));\n"
       "window.addEventListener('error', e => console.log(e.reason));\n"
-
+      "" + std::string(gEventEmitter) + "\n"
     );
-
-//  "" + std::string(gEventEmitter) + "\n"
-//  "" + std::string(gStreams) + "\n"
-//  "" + createPreload(opts) + "\n"
 
     WKUserScript* initScript = [[WKUserScript alloc]
       initWithSource: [NSString stringWithUTF8String: preload.c_str()]
@@ -1217,8 +1229,7 @@ bool isRunning = false;
 
     NSString* allowed = [[NSBundle mainBundle] resourcePath];
 
-    [self.webview
-      loadFileURL: [NSURL fileURLWithPath:url]
+    [self.webview loadFileURL: [NSURL fileURLWithPath:url]
       allowingReadAccessToURL: [NSURL fileURLWithPath:allowed]
     ];
 
@@ -1234,3 +1245,4 @@ int main (int argc, char *argv[]) {
     return UIApplicationMain(argc, argv, nil, NSStringFromClass([AppDelegate class]));
   }
 }
+
