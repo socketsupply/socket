@@ -58,7 +58,7 @@ static dispatch_queue_t queue = dispatch_queue_create("opkit.queue", qos);
 - (void) udpSend: (std::string)seq clientId: (uint64_t)clientId message: (std::string)message offset: (int)offset len: (int)len port: (int)port ip: (const char*)ip;
 
 // Shared
-- (void) closeConnection: (std::string)seq clientId: (uint64_t)clientId;
+- (void) close: (std::string)seq clientId: (uint64_t)clientId;
 - (void) shutdown: (std::string)seq clientId: (uint64_t)clientId;
 - (void) readStop: (std::string)seq clientId: (uint64_t)clientId;
 @end
@@ -262,6 +262,7 @@ bool isRunning = false;
 - (void) tcpSend: (uint64_t)clientId message: (std::string)message {
   dispatch_async(queue, ^{
     Client* client = clients[clientId];
+    client->delegate = self;
 
     if (client == nullptr) {
       dispatch_async(dispatch_get_main_queue(), ^{
@@ -283,7 +284,7 @@ bool isRunning = false;
 
       if (status) {
         dispatch_async(dispatch_get_main_queue(), ^{
-          [client->server->delegate emit: "error" message: Opkit::format(R"({
+          [client->delegate emit: "error" message: Opkit::format(R"({
             "clientId": "$S",
             "data": {
               "message": "Write error $S"
@@ -641,7 +642,7 @@ bool isRunning = false;
   });
 }
 
-- (void) closeConnection: (std::string)seq clientId:(uint64_t)clientId {
+- (void) close: (std::string)seq clientId:(uint64_t)clientId {
   dispatch_async(queue, ^{
     Client* client = clients[clientId];
     client->seq = seq;
@@ -839,6 +840,7 @@ bool isRunning = false;
               ip: (const char*)ip {
   dispatch_async(queue, ^{
     Client* client = clients[clientId];
+    client->delegate = self;
     client->seq = seq;
 
     if (client == nullptr) {
@@ -879,7 +881,7 @@ bool isRunning = false;
       auto client = reinterpret_cast<Client*>(req->data);
 
       dispatch_async(dispatch_get_main_queue(), ^{
-        [client->server->delegate resolve:client->seq message: Opkit::format(R"JSON({
+        [client->delegate resolve:client->seq message: Opkit::format(R"JSON({
           "data": {
             "clientId": "$S",
             "status": "$i"
@@ -893,7 +895,7 @@ bool isRunning = false;
 
     if (err) {
       dispatch_async(dispatch_get_main_queue(), ^{
-        [client->server->delegate emit: "error" message: Opkit::format(R"({
+        [client->delegate emit: "error" message: Opkit::format(R"({
           "clientId": "$S",
           "data": {
             "message": "Write error $S"
@@ -1049,22 +1051,30 @@ bool isRunning = false;
       }
 
       if (cmd.name == "getNetworkInterfaces") {
-        [self resolve: seq message: [self getNetworkInterfaces]];
+        [self resolve: seq
+              message: [self getNetworkInterfaces]
+        ];
         return;
       }
 
       if (cmd.name == "readStop") {
-        [self readStop: seq clientId: std::stoll(cmd.get("clientId"))];
+        [self readStop: seq
+              clientId: std::stoll(cmd.get("clientId"))
+        ];
         return;
       }
 
       if (cmd.name == "shutdown") {
-        [self shutdown: seq clientId: std::stoll(cmd.get("clientId"))];
+        [self shutdown: seq
+              clientId: std::stoll(cmd.get("clientId"))
+        ];
         return;
       }
 
-      if (cmd.name == "closeConnection") {
-        [self closeConnection: seq clientId: std::stoll(cmd.get("clientId"))];
+      if (cmd.name == "close") {
+        [self close: seq
+           clientId: std::stoll(cmd.get("clientId"))
+        ];
         return;
       }
 
@@ -1081,30 +1091,32 @@ bool isRunning = false;
       }
 
       if (cmd.name == "tpcSend") {
-        [self tcpSend: std::stoll(cmd.get("clientId")) message: cmd.get("message")];
+        [self tcpSend: std::stoll(cmd.get("clientId"))
+              message: cmd.get("message")
+        ];
         return;
       }
 
       if (cmd.name == "tpcConnect") {
         [self tcpConnect: seq
-                clientId:std::stoll(cmd.get("clientId"))
-                    port:std::stoi(cmd.get("port"))
-                 address:cmd.get("address")
+                clientId: std::stoll(cmd.get("clientId"))
+                    port: std::stoi(cmd.get("port"))
+                 address: cmd.get("address")
         ];
         return;
       }
 
       if (cmd.name == "tpcSetKeepAlive") {
         [self tcpSetKeepAlive: seq
-                     clientId:std::stoll(cmd.get("clientId"))
-                      timeout:std::stoi(cmd.get("timeout"))];
+                     clientId: std::stoll(cmd.get("clientId"))
+                      timeout: std::stoi(cmd.get("timeout"))];
         return;
       }
 
       if (cmd.name == "tpcSetTimeout") {
         [self tcpSetTimeout: seq
-                   clientId:std::stoll(cmd.get("clientId"))
-                    timeout:std::stoi(cmd.get("timeout"))];
+                   clientId: std::stoll(cmd.get("clientId"))
+                    timeout: std::stoi(cmd.get("timeout"))];
         return;
       }
 
