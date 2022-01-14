@@ -46,15 +46,14 @@ static dispatch_queue_t queue = dispatch_queue_create("opkit.queue", qos);
 - (void) reject: (std::string)seq message: (std::string)message;
 
 // TCP
-- (void) tcpBind: (std::string)seq serverId: (uint64_t)serverId address: (std::string)address port: (int)port;
-- (void) tcpConnect: (std::string)seq clientId: (uint64_t)clientId port: (int)port address: (std::string)address;
+- (void) tcpBind: (std::string)seq serverId: (uint64_t)serverId ip: (std::string)ip port: (int)port;
+- (void) tcpConnect: (std::string)seq clientId: (uint64_t)clientId port: (int)port ip: (std::string)ip;
 - (void) tcpSetTimeout: (std::string)seq clientId: (uint64_t)clientId timeout: (int)timeout;
 - (void) tcpSetKeepAlive: (std::string)seq clientId: (uint64_t)clientId timeout: (int)timeout;
 - (void) tcpSend: (uint64_t)clientId message: (std::string)message;
 
 // UDP
-- (void) udpBind: (std::string)seq serverId: (uint64_t)serverId address: (std::string)address port: (int)port;
-- (void) udpConnect: (std::string)seq clientId: (uint64_t)clientId port: (int)port address: (std::string)address;
+- (void) udpBind: (std::string)seq serverId: (uint64_t)serverId ip: (std::string)ip port: (int)port;
 - (void) udpSend: (std::string)seq clientId: (uint64_t)clientId message: (std::string)message offset: (int)offset len: (int)len port: (int)port ip: (const char*)ip;
 
 // Shared
@@ -103,7 +102,7 @@ std::string addrToIPv6 (struct sockaddr_in6* sin) {
 }
 
 struct PeerInfo {
-  std::string address = "";
+  std::string ip = "";
   std::string family = "";
   int port = 0;
   int error = 0;
@@ -124,11 +123,11 @@ void PeerInfo::init (uv_tcp_t* connection) {
 
   if (addr.ss_family == AF_INET) {
     family = "ipv4";
-    address = addrToIPv4((struct sockaddr_in*) &addr);
+    ip = addrToIPv4((struct sockaddr_in*) &addr);
     port = (int) htons(((struct sockaddr_in*) &addr)->sin_port);
   } else {
     family = "ipv6";
-    address = addrToIPv6((struct sockaddr_in6*) &addr);
+    ip = addrToIPv6((struct sockaddr_in6*) &addr);
     port = (int) htons(((struct sockaddr_in6*) &addr)->sin6_port);
   }
 }
@@ -146,11 +145,11 @@ void PeerInfo::init (uv_udp_t* socket) {
 
   if (addr.ss_family == AF_INET) {
     family = "ipv4";
-    address = addrToIPv4((struct sockaddr_in*) &addr);
+    ip = addrToIPv4((struct sockaddr_in*) &addr);
     port = (int) htons(((struct sockaddr_in*) &addr)->sin_port);
   } else {
     family = "ipv6";
-    address = addrToIPv6((struct sockaddr_in6*) &addr);
+    ip = addrToIPv6((struct sockaddr_in6*) &addr);
     port = (int) htons(((struct sockaddr_in6*) &addr)->sin6_port);
   }
 }
@@ -303,7 +302,7 @@ bool isRunning = false;
   });
 }
 
-- (void) tcpConnect: (std::string)seq clientId: (uint64_t)clientId port: (int)port address: (std::string)address {
+- (void) tcpConnect: (std::string)seq clientId: (uint64_t)clientId port: (int)port ip: (std::string)ip {
   dispatch_async(queue, ^{
     uv_connect_t connect;
 
@@ -324,15 +323,15 @@ bool isRunning = false;
     struct sockaddr_in dest4;
     struct sockaddr_in6 dest6;
 
-    if (address.find(":") != std::string::npos) {
-      uv_ip6_addr(address.c_str(), port, &dest6);
+    if (ip.find(":") != std::string::npos) {
+      uv_ip6_addr(ip.c_str(), port, &dest6);
     } else {
-      uv_ip4_addr(address.c_str(), port, &dest4);
+      uv_ip4_addr(ip.c_str(), port, &dest4);
     }
 
     // uv_ip4_addr("172.217.16.46", 80, &dest);
 
-    NSLog(@"connect? %s:%i", address.c_str(), port);
+    NSLog(@"connect? %s:%i", ip.c_str(), port);
 
     auto onConnect = [](uv_connect_t* connect, int status) {
       auto* client = reinterpret_cast<Client*>(connect->handle->data);
@@ -387,7 +386,7 @@ bool isRunning = false;
 
     int r = 0;
 
-    if (address.find(":") != std::string::npos) {
+    if (ip.find(":") != std::string::npos) {
       r = uv_tcp_connect(&connect, client->tcp, (const struct sockaddr*) &dest6, onConnect);
     } else {
       r = uv_tcp_connect(&connect, client->tcp, (const struct sockaddr*) &dest4, onConnect);
@@ -414,7 +413,7 @@ bool isRunning = false;
   });
 }
 
-- (void) tcpBind: (std::string) seq serverId: (uint64_t)serverId address: (std::string)address port: (int)port {
+- (void) tcpBind: (std::string) seq serverId: (uint64_t)serverId ip: (std::string)ip port: (int)port {
   dispatch_async(queue, ^{
     loop = uv_default_loop();
 
@@ -430,9 +429,9 @@ bool isRunning = false;
     // addr.sin_port = htons(port);
     // addr.sin_addr.s_addr = htonl(INADDR_ANY);
     // NSLog(@"LISTENING %i", addr.sin_addr.s_addr);
-    // NSLog(@"LISTENING %s:%i", address.c_str(), port);
+    // NSLog(@"LISTENING %s:%i", ip.c_str(), port);
 
-    uv_ip4_addr(address.c_str(), port, &addr);
+    uv_ip4_addr(ip.c_str(), port, &addr);
     uv_tcp_simultaneous_accepts(server->tcp, 0);
     uv_tcp_bind(server->tcp, (const struct sockaddr*) &addr, 0);
 
@@ -472,14 +471,14 @@ bool isRunning = false;
              "serverId": "$S",
              "clientId": "$S",
              "data": {
-               "address": "$S",
+               "ip": "$S",
                "family": "$S",
                "port": "$i"
              }
             })JSON",
             std::to_string(server->serverId),
             std::to_string(clientId),
-            info.address,
+            info.ip,
             info.family,
             info.port
           )];
@@ -563,9 +562,9 @@ bool isRunning = false;
         "data": {
           "serverId": "$S",
           "port": "$i",
-          "address": "$S"
+          "ip": "$S"
         }
-      })JSON", std::to_string(server->serverId), port, address)];
+      })JSON", std::to_string(server->serverId), port, ip)];
       NSLog(@"Listener started");
     });
 
@@ -732,7 +731,7 @@ bool isRunning = false;
   });
 }
 
-- (void) udpBind: (std::string)seq serverId: (uint64_t)serverId address: (std::string)address port: (int)port {
+- (void) udpBind: (std::string)seq serverId: (uint64_t)serverId ip: (std::string)ip port: (int)port {
   dispatch_async(queue, ^{
     loop = uv_default_loop();
     Server* server = servers[serverId] = new Server();
@@ -745,7 +744,7 @@ bool isRunning = false;
     int err;
     struct sockaddr_in addr;
 
-    err = uv_ip4_addr((char *) address.c_str(), port, &addr);
+    err = uv_ip4_addr((char *) ip.c_str(), port, &addr);
 
     if (err < 0) {
       dispatch_async(dispatch_get_main_queue(), ^{
@@ -822,13 +821,6 @@ bool isRunning = false;
       uv_run(loop, UV_RUN_DEFAULT);
     }
   });
-}
-
-- (void) udpConnect: (std::string)seq clientId: (uint64_t)clientId port: (int)port address: (std::string)address {
-
-}
-- (void) udpClose: (std::string)seq connectionId: (uint64_t)connectionId {
-
 }
 
 - (void) udpSend: (std::string)seq
@@ -998,6 +990,18 @@ bool isRunning = false;
     if (msg.find("ipc://") == 0) {
       Parse cmd(msg);
       auto seq = cmd.get("seq");
+      uint64_t clientId = 0;
+
+      if (cmd.get("clientId").size() != 0) {
+        try {
+          clientId = std::stoll(cmd.get("clientId"));
+        } catch (...) {
+          [self resolve: seq message: Opkit::format(R"JSON({
+            "err": { "message": "invalid clientid" }
+          })JSON")];
+          return;
+        }
+      }
 
       NSLog(@"COMMAND %s", msg.c_str());
 
@@ -1007,11 +1011,10 @@ bool isRunning = false;
         return;
       }
 
-      if (cmd.name == "address") {
-        auto clientId = cmd.get("clientId");
+      if (cmd.name == "ip") {
         auto seq = cmd.get("seq");
 
-        if (clientId.size() == 0) {
+        if (clientId == 0) {
           [self reject: seq message: Opkit::format(R"JSON({
             "err": {
               "message": "no clientid"
@@ -1019,7 +1022,7 @@ bool isRunning = false;
           })JSON")];
         }
 
-        Client* client = clients[std::stoll(clientId)];
+        Client* client = clients[clientId];
 
         if (client == nullptr) {
           [self resolve: seq message: Opkit::format(R"JSON({
@@ -1035,13 +1038,13 @@ bool isRunning = false;
         auto message = Opkit::format(
           R"JSON({
             "data": {
-              "address": "$S",
+              "ip": "$S",
               "family": "$S",
               "port": "$i"
             }
           })JSON",
-          std::to_string(client->clientId),
-          info.address,
+          clientId,
+          info.ip,
           info.family,
           info.port
         );
@@ -1058,79 +1061,113 @@ bool isRunning = false;
       }
 
       if (cmd.name == "readStop") {
-        [self readStop: seq
-              clientId: std::stoll(cmd.get("clientId"))
-        ];
+        [self readStop: seq clientId: clientId];
         return;
       }
 
       if (cmd.name == "shutdown") {
-        [self shutdown: seq
-              clientId: std::stoll(cmd.get("clientId"))
-        ];
+        [self shutdown: seq clientId: clientId];
         return;
       }
 
       if (cmd.name == "close") {
-        [self close: seq
-           clientId: std::stoll(cmd.get("clientId"))
-        ];
+        [self close: seq clientId: clientId];
         return;
       }
 
       if (cmd.name == "udpSend") {
+        int offset = 0;
+        int len = 0;
+        int port = 0;
+
+        try {
+          offset = std::stoi(cmd.get("offset"));
+        } catch (...) {
+          [self resolve: seq message: Opkit::format(R"JSON({
+            "err": { "message": "invalid offset" }
+          })JSON")];
+        }
+
+        try {
+          len = std::stoi(cmd.get("len"));
+        } catch (...) {
+          [self resolve: seq message: Opkit::format(R"JSON({
+            "err": { "message": "invalid length" }
+          })JSON")];
+        }
+
+        try {
+          port = std::stoi(cmd.get("port"));
+        } catch (...) {
+          [self resolve: seq message: Opkit::format(R"JSON({
+            "err": { "message": "invalid port" }
+          })JSON")];
+        }
+
         [self udpSend: seq
-             clientId: std::stoll(cmd.get("clientId"))
+             clientId: clientId
               message: cmd.get("data")
-               offset: std::stoi(cmd.get("offset"))
-                  len: std::stoi(cmd.get("len"))
-                 port: std::stoi(cmd.get("port"))
+               offset: offset
+                  len: len
+                 port: port
                    ip: (const char*) cmd.get("ip").c_str()
         ];
         return;
       }
 
       if (cmd.name == "tpcSend") {
-        [self tcpSend: std::stoll(cmd.get("clientId"))
+        [self tcpSend: clientId
               message: cmd.get("message")
         ];
         return;
       }
 
       if (cmd.name == "tpcConnect") {
+        int port = 0;
+
+        try {
+          port = std::stoi(cmd.get("port"));
+        } catch (...) {
+          [self resolve: seq message: Opkit::format(R"JSON({
+            "err": { "message": "invalid port" }
+          })JSON")];
+        }
+
         [self tcpConnect: seq
-                clientId: std::stoll(cmd.get("clientId"))
-                    port: std::stoi(cmd.get("port"))
-                 address: cmd.get("address")
+                clientId: clientId
+                    port: port
+                      ip: cmd.get("ip")
         ];
         return;
       }
 
       if (cmd.name == "tpcSetKeepAlive") {
         [self tcpSetKeepAlive: seq
-                     clientId: std::stoll(cmd.get("clientId"))
-                      timeout: std::stoi(cmd.get("timeout"))];
+                     clientId: clientId
+                      timeout: std::stoi(cmd.get("timeout"))
+        ];
         return;
       }
 
       if (cmd.name == "tpcSetTimeout") {
         [self tcpSetTimeout: seq
-                   clientId: std::stoll(cmd.get("clientId"))
-                    timeout: std::stoi(cmd.get("timeout"))];
+                   clientId: clientId
+                    timeout: std::stoi(cmd.get("timeout"))
+        ];
         return;
       }
 
       if (cmd.name == "tpcBind") {
         auto serverId = cmd.get("serverId");
-        auto address = cmd.get("address");
+        auto ip = cmd.get("ip");
         auto port = cmd.get("port");
         auto seq = cmd.get("seq");
 
-        if (address.size() == 0) {
-          address = "0.0.0.0";
+        if (ip.size() == 0) {
+          ip = "0.0.0.0";
         }
 
-        if (address == "error") {
+        if (ip == "error") {
           [self resolve: cmd.get("seq")
                 message: Opkit::format(R"({
                   "err": { "message": "offline" }
@@ -1150,7 +1187,7 @@ bool isRunning = false;
 
         [self tcpBind: seq
              serverId: std::stoll(serverId)
-              address: address
+                   ip: ip
                  port: std::stoi(port)
         ];
 
