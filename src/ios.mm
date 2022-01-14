@@ -57,6 +57,8 @@ static dispatch_queue_t queue = dispatch_queue_create("opkit.queue", qos);
 - (void) udpSend: (std::string)seq clientId: (uint64_t)clientId message: (std::string)message offset: (int)offset len: (int)len port: (int)port ip: (const char*)ip;
 
 // Shared
+- (void) sendBufferSize: (std::string)seq clientId: (uint64_t)clientId size: (int)size;
+- (void) recvBufferSize: (std::string)seq clientId: (uint64_t)clientId size: (int)size;
 - (void) close: (std::string)seq clientId: (uint64_t)clientId;
 - (void) shutdown: (std::string)seq clientId: (uint64_t)clientId;
 - (void) readStop: (std::string)seq clientId: (uint64_t)clientId;
@@ -256,6 +258,82 @@ bool isRunning = false;
 
   value << "{\"data\":{" << v4.str() << "," << v6.str() << "}}";
   return value.str();
+}
+
+- (void) sendBufferSize: (std::string)seq clientId: (uint64_t)clientId size: (int)size {
+  dispatch_async(queue, ^{
+    Client* client = clients[clientId];
+    client->delegate = self;
+
+    if (client == nullptr) {
+      dispatch_async(dispatch_get_main_queue(), ^{
+        [self resolve: seq message: Opkit::format(R"JSON({
+          "err": {
+            "message": "Not connected"
+          }
+        })JSON")];
+      });
+      return;
+    }
+
+    uv_handle_t* handle;
+
+    if (client->tcp != nullptr) {
+      handle = (uv_handle_t*) client->tcp;
+    } else {
+      handle = (uv_handle_t*) client->udp;
+    }
+
+    int sz = size;
+    int rSize = uv_send_buffer_size(handle, &sz);
+
+    dispatch_async(dispatch_get_main_queue(), ^{
+      [self resolve: seq message: Opkit::format(R"JSON({
+        "data": {
+          "size": $i
+        }
+      })JSON", rSize)];
+    });
+    return;
+  });
+}
+
+- (void) recvBufferSize: (std::string)seq clientId: (uint64_t)clientId size: (int)size {
+  dispatch_async(queue, ^{
+    Client* client = clients[clientId];
+    client->delegate = self;
+
+    if (client == nullptr) {
+      dispatch_async(dispatch_get_main_queue(), ^{
+        [self resolve: seq message: Opkit::format(R"JSON({
+          "err": {
+            "message": "Not connected"
+          }
+        })JSON")];
+      });
+      return;
+    }
+
+    uv_handle_t* handle;
+
+    if (client->tcp != nullptr) {
+      handle = (uv_handle_t*) client->tcp;
+    } else {
+      handle = (uv_handle_t*) client->udp;
+    }
+
+    int sz = size;
+    int rSize = uv_recv_buffer_size(handle, &sz);
+
+    dispatch_async(dispatch_get_main_queue(), ^{
+      [self resolve: seq message: Opkit::format(R"JSON({
+        "data": {
+          "size": $i
+        }
+      })JSON", rSize)];
+    });
+    return;
+  });
 }
 
 - (void) tcpSend: (uint64_t)clientId message: (std::string)message {
