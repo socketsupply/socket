@@ -28,7 +28,7 @@ function _install {
 
   echo '• Copying sources to /usr/local/lib/opkit/src'
   sudo mkdir -p /usr/local/lib/opkit
-  sudo cp -r `pwd`/src/ /usr/local/lib/opkit
+  sudo cp -r `pwd`/src /usr/local/lib/opkit
 
   if [ -d `pwd`/lib ]; then
     echo '• Copying libraries to /usr/local/lib/opkit/lib'
