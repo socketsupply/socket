@@ -5,6 +5,7 @@
 #include <ifaddrs.h>
 #include <arpa/inet.h>
 
+#include "lib/ucp/include/ucp.h"
 #include "lib/uv/include/uv.h"
 #include <netinet/in.h>
 #include <sys/socket.h>
@@ -56,6 +57,9 @@ static dispatch_queue_t queue = dispatch_queue_create("opkit.queue", qos);
 - (void) udpBind: (std::string)seq serverId: (uint64_t)serverId ip: (std::string)ip port: (int)port;
 - (void) udpSend: (std::string)seq clientId: (uint64_t)clientId message: (std::string)message offset: (int)offset len: (int)len port: (int)port ip: (const char*)ip;
 
+// UCP
+- (void) ucpBind: (std::string)seq clientId: (uint64_t)clientId port: (int)port ip: (const char*)ip;
+
 // Shared
 - (void) sendBufferSize: (std::string)seq clientId: (uint64_t)clientId size: (int)size;
 - (void) recvBufferSize: (std::string)seq clientId: (uint64_t)clientId size: (int)size;
@@ -64,31 +68,33 @@ static dispatch_queue_t queue = dispatch_queue_create("opkit.queue", qos);
 - (void) readStop: (std::string)seq clientId: (uint64_t)clientId;
 @end
 
-struct Server {
-  uint64_t serverId;
+struct Peer {
+  AppDelegate* delegate;
   uv_tcp_t* tcp;
   uv_udp_t* udp;
-  AppDelegate* delegate;
+  ucp_t* ucp;
+  ucp_stream_t* ucp_stream;
   std::string seq;
 
-  ~Server () {
+  size_t rcvd = 0;
+  size_t reads = 0;
+  size_t ticks = 0;
+
+  ~Peer () {
     delete this->tcp;
     delete this->udp;
+    delete this->ucp;
+    delete this->ucp_stream;
   };
 };
 
-struct Client {
-  uint64_t clientId;
-  AppDelegate* delegate;
-  Server* server;
-  uv_tcp_t *tcp;
-  uv_udp_t *udp;
-  std::string seq;
+struct Server : public Peer {
+  uint64_t serverId;
+};
 
-  ~Client () {
-    delete this->tcp;
-    delete this->udp;
-  };
+struct Client : public Peer {
+  Server* server;
+  uint64_t clientId;
 };
 
 std::string addrToIPv4 (struct sockaddr_in* sin) {
@@ -168,8 +174,8 @@ std::map<uint64_t, Server*> servers;
 struct sockaddr_in addr;
 
 typedef struct {
-    uv_write_t req;
-    uv_buf_t buf;
+  uv_write_t req;
+  uv_buf_t buf;
 } write_req_t;
 
 uv_loop_t *loop = uv_default_loop();
@@ -280,8 +286,10 @@ bool isRunning = false;
 
     if (client->tcp != nullptr) {
       handle = (uv_handle_t*) client->tcp;
-    } else {
+    } else if (client->udp != nullptr ){
       handle = (uv_handle_t*) client->udp;
+    } else {
+      handle = (uv_handle_t*) client->ucp;
     }
 
     int sz = size;
@@ -318,8 +326,10 @@ bool isRunning = false;
 
     if (client->tcp != nullptr) {
       handle = (uv_handle_t*) client->tcp;
-    } else {
+    } else if (client->udp != nullptr ){
       handle = (uv_handle_t*) client->udp;
+    } else {
+      handle = (uv_handle_t*) client->ucp;
     }
 
     int sz = size;
@@ -738,14 +748,17 @@ bool isRunning = false;
       return;
     }
 
-    uv_handle_t* handle = new uv_handle_t;
-    handle->data = client;
+    uv_handle_t* handle;
 
     if (client->tcp != nullptr) {
       handle = (uv_handle_t*) client->tcp;
-    } else {
+    } else if (client->udp != nullptr ){
       handle = (uv_handle_t*) client->udp;
+    } else {
+      handle = (uv_handle_t*) client->ucp;
     }
+
+    handle->data = client;
 
     uv_close(handle, [](uv_handle_t* handle) {
       auto client = reinterpret_cast<Client*>(handle->data);
@@ -780,14 +793,17 @@ bool isRunning = false;
       return;
     }
 
-    uv_handle_t* handle = new uv_handle_t;
-    handle->data = client;
+    uv_handle_t* handle;
 
     if (client->tcp != nullptr) {
       handle = (uv_handle_t*) client->tcp;
-    } else {
+    } else if (client->udp != nullptr ){
       handle = (uv_handle_t*) client->udp;
+    } else {
+      handle = (uv_handle_t*) client->ucp;
     }
+
+    handle->data = client;
 
     uv_shutdown_t *req = new uv_shutdown_t;
     req->data = handle;
@@ -977,6 +993,76 @@ bool isRunning = false;
   });
 }
 
+- (void) ucpBind: (std::string)seq clientId: (uint64_t)clientId port: (int)port ip: (const char*)ip {
+  dispatch_async(queue, ^{
+    Client* client = clients[clientId] = new Client();
+
+    client->delegate = self;
+    client->clientId = clientId;
+    client->ucp = new ucp_t;
+    client->ucp_stream = new ucp_stream_t;
+    client->ucp->userdata = client;
+
+    ucp_init(client->ucp, loop);
+
+    int b = 2 * 1024 * 1024;
+    ucp_send_buffer_size(client->ucp, &b);
+    ucp_recv_buffer_size(client->ucp, &b);
+
+    struct sockaddr_in addr;
+    uv_ip4_addr(ip, port, &addr);
+    ucp_bind(client->ucp, (const struct sockaddr *) &addr);
+
+    ucp_set_callback(client->ucp, UCP_ON_MESSAGE, (void*)([](ucp_t *self, char *buf, ssize_t nread, const struct sockaddr_in *from) {
+      auto client = reinterpret_cast<Client*>(self->userdata);
+
+      if (nread < 4) return; // is 4 protocol size?
+      uint32_t id = *((uint32_t *) buf);
+      if (id == 0) return;
+
+      ucp_set_callback(client->ucp, UCP_ON_MESSAGE, nullptr);
+
+      // NSLog(@"remote socket id: %u\n", id);
+
+      ucp_stream_connect(client->ucp_stream, id, (const struct sockaddr *) from);
+      uint32_t sbuf = client->ucp_stream->local_id;
+
+      ucp_send_t sreq;
+      uv_timer_t timer;
+      timer.data = self;
+
+      ucp_send(client->ucp, &sreq, (char *) &sbuf, 4, (const struct sockaddr *) from);
+      uv_timer_start(&timer, [](uv_timer_t* req) {
+        auto client = reinterpret_cast<Client*>(req->data);
+
+        if ((client->ticks++ & 63) == 0) {
+          NSLog(@"on read, total recv=%zu total reads=%zu ack=%u pkts_sent=%zu\n",
+                client->rcvd,
+                client->reads,
+                client->ucp_stream->ack,
+                client->ucp_stream->stats_pkts_sent);
+
+          ucp_stream_t *sock = client->ucp_stream;
+
+          int sacks = 0;
+          int max = 32;
+
+          for (uint32_t i = 0; i < max; i++) {
+            uint32_t seq = sock->ack + 1 + i;
+
+            if (ucp_cirbuf_get(&(sock->incoming), seq) != NULL) {
+              sacks++;
+              max += 32;
+            }
+          }
+
+          NSLog(@"sacks: %i\n", sacks);
+        }
+      }, 20, 20);
+    }));
+  });
+}
+
 //
 // --- End networ methods
 //
@@ -1132,8 +1218,7 @@ bool isRunning = false;
       }
 
       if (cmd.name == "getNetworkInterfaces") {
-        [self resolve: seq
-              message: [self getNetworkInterfaces]
+        [self resolve: seq message: [self getNetworkInterfaces]
         ];
         return;
       }
@@ -1145,6 +1230,35 @@ bool isRunning = false;
 
       if (cmd.name == "shutdown") {
         [self shutdown: seq clientId: clientId];
+        return;
+      }
+
+      if (cmd.name == "readStop") {
+        [self readStop: seq clientId: clientId];
+        return;
+      }
+
+      if (cmd.name == "sendBufferSize") {
+        int size;
+        try {
+          size = std::stoi(cmd.get("size"));
+        } catch (...) {
+          size = 0;
+        }
+
+        [self sendBufferSize: seq clientId: clientId size: size];
+        return;
+      }
+
+      if (cmd.name == "recvBufferSize") {
+        int size;
+        try {
+          size = std::stoi(cmd.get("size"));
+        } catch (...) {
+          size = 0;
+        }
+
+        [self recvBufferSize: seq clientId: clientId size: size];
         return;
       }
 
