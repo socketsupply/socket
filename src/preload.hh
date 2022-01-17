@@ -107,7 +107,7 @@ constexpr auto gPreloadDesktop = R"JS(
 
   window.system.dialog = async o => {
     const files = await window._ipc.send('dialog', o);
-    return files.split('\n');
+    return typeof files === 'string' ? files.split('\n') : [];
   }
 
   window.system.setContextMenu = o => {
