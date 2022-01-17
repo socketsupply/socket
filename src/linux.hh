@@ -650,6 +650,7 @@ namespace Opkit {
     const std::string& defaultPath,
     const std::string& title
   ) {
+    const guint SELECT_RESPONSE = 0;
     GtkFileChooserAction action;
     GtkFileChooser *chooser;
     GtkFileFilter *filter;
@@ -680,6 +681,10 @@ namespace Opkit {
 
     chooser = GTK_FILE_CHOOSER(dialog);
 
+    if (allowMultiple || allowDirs) {
+      gtk_dialog_add_button(GTK_DIALOG(dialog), "Select", SELECT_RESPONSE);
+    }
+
     // if (FILE_DIALOG_OVERWRITE_CONFIRMATION) {
     gtk_file_chooser_set_do_overwrite_confirmation(chooser, true);
     // }
@@ -697,7 +702,9 @@ namespace Opkit {
       gtk_file_chooser_set_current_name(chooser, title.c_str());
     }
 
-    if (gtk_dialog_run(GTK_DIALOG(dialog)) != GTK_RESPONSE_ACCEPT) {
+    guint response = gtk_dialog_run(GTK_DIALOG(dialog));
+    if (response != GTK_RESPONSE_ACCEPT && response != SELECT_RESPONSE) {
+      this->eval(resolveToRenderProcess(seq, "0", "null"));
       gtk_widget_destroy(dialog);
       return;
     }
