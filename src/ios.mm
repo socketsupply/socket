@@ -5,7 +5,6 @@
 #include <ifaddrs.h>
 #include <arpa/inet.h>
 
-#include "lib/ucp/include/ucp.h"
 #include "lib/uv/include/uv.h"
 #include <netinet/in.h>
 #include <sys/socket.h>
@@ -52,13 +51,12 @@ static dispatch_queue_t queue = dispatch_queue_create("opkit.queue", qos);
 - (void) tcpSetTimeout: (std::string)seq clientId: (uint64_t)clientId timeout: (int)timeout;
 - (void) tcpSetKeepAlive: (std::string)seq clientId: (uint64_t)clientId timeout: (int)timeout;
 - (void) tcpSend: (uint64_t)clientId message: (std::string)message;
+- (void) tcpReadStart: (std::string)seq clientId: (uint64_t)clientId;
 
 // UDP
 - (void) udpBind: (std::string)seq serverId: (uint64_t)serverId ip: (std::string)ip port: (int)port;
 - (void) udpSend: (std::string)seq clientId: (uint64_t)clientId message: (std::string)message offset: (int)offset len: (int)len port: (int)port ip: (const char*)ip;
-
-// UCP
-- (void) ucpBind: (std::string)seq clientId: (uint64_t)clientId port: (int)port ip: (const char*)ip;
+- (void) udpReadStart: (std::string)seq serverId: (uint64_t)serverId;
 
 // Shared
 - (void) sendBufferSize: (std::string)seq clientId: (uint64_t)clientId size: (int)size;
@@ -70,21 +68,15 @@ static dispatch_queue_t queue = dispatch_queue_create("opkit.queue", qos);
 
 struct Peer {
   AppDelegate* delegate;
-  uv_tcp_t* tcp;
-  uv_udp_t* udp;
-  ucp_t* ucp;
-  ucp_stream_t* ucp_stream;
   std::string seq;
 
-  size_t rcvd = 0;
-  size_t reads = 0;
-  size_t ticks = 0;
+  uv_tcp_t* tcp;
+  uv_udp_t* udp;
+  uv_stream_t* stream;
 
   ~Peer () {
     delete this->tcp;
     delete this->udp;
-    delete this->ucp;
-    delete this->ucp_stream;
   };
 };
 
@@ -286,10 +278,8 @@ bool isRunning = false;
 
     if (client->tcp != nullptr) {
       handle = (uv_handle_t*) client->tcp;
-    } else if (client->udp != nullptr ){
-      handle = (uv_handle_t*) client->udp;
     } else {
-      handle = (uv_handle_t*) client->ucp;
+      handle = (uv_handle_t*) client->udp;
     }
 
     int sz = size;
@@ -326,10 +316,8 @@ bool isRunning = false;
 
     if (client->tcp != nullptr) {
       handle = (uv_handle_t*) client->tcp;
-    } else if (client->udp != nullptr ){
-      handle = (uv_handle_t*) client->udp;
     } else {
-      handle = (uv_handle_t*) client->ucp;
+      handle = (uv_handle_t*) client->udp;
     }
 
     int sz = size;
@@ -523,7 +511,7 @@ bool isRunning = false;
     uv_tcp_simultaneous_accepts(server->tcp, 0);
     uv_tcp_bind(server->tcp, (const struct sockaddr*) &addr, 0);
 
-    int r = uv_listen((uv_stream_t*) &server, DEFAULT_BACKLOG, [](uv_stream_t *handle, int status) {
+    int r = uv_listen((uv_stream_t*) &server, DEFAULT_BACKLOG, [](uv_stream_t* handle, int status) {
       auto* server = reinterpret_cast<Server*>(handle->data);
 
       NSLog(@"connection?");
@@ -542,6 +530,7 @@ bool isRunning = false;
       Client* client = clients[clientId] = new Client();
       client->clientId = clientId;
       client->server = server;
+      client->stream = handle;
       client->tcp = new uv_tcp_t;
 
       client->tcp->data = client;
@@ -571,59 +560,6 @@ bool isRunning = false;
             info.port
           )];
         });
-
-        auto onRead = [](uv_stream_t* handle, ssize_t nread, const uv_buf_t *buf) {
-          auto client = reinterpret_cast<Client*>(handle->data);
-
-          if (nread > 0) {
-            write_req_t *req = (write_req_t*) malloc(sizeof(write_req_t));
-            req->buf = uv_buf_init(buf->base, (int) nread);
-
-            NSString* str = [NSString stringWithUTF8String: req->buf.base];
-            NSData *nsdata = [str dataUsingEncoding:NSUTF8StringEncoding];
-            NSString *base64Encoded = [nsdata base64EncodedStringWithOptions:0];
-
-            auto serverId = std::to_string(client->server->serverId);
-            auto clientId = std::to_string(client->clientId);
-            auto message = std::string([base64Encoded UTF8String]);
-
-            dispatch_async(dispatch_get_main_queue(), ^{
-              [client->server->delegate emit: "data" message: Opkit::format(R"JSON({
-                "serverId": "$S",
-                "clientId": "$S",
-                "data": "$S"
-              })JSON", serverId, clientId, message)];
-
-              // echo it
-              // [client->ctx->delegate send:client->clientId message:std::string(buf->base)];
-            });
-            return;
-          }
-
-          if (nread < 0) {
-            if (nread != UV_EOF) {
-              dispatch_async(dispatch_get_main_queue(), ^{
-                [client->server->delegate emit: "error" message: Opkit::format(R"JSON({
-                  "serverId": "$S",
-                  "data": "$S"
-                })JSON", std::to_string(client->server->serverId), uv_err_name((int) nread))];
-              });
-            }
-
-            uv_close((uv_handle_t*) client->tcp, [](uv_handle_t* handle) {
-              free(handle);
-            });
-          }
-
-          free(buf->base);
-        };
-
-        auto allocateBuffer = [](uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf) {
-          buf->base = (char*) malloc(suggested_size);
-          buf->len = suggested_size;
-        };
-
-        uv_read_start((uv_stream_t*) handle, allocateBuffer, onRead);
       } else {
         uv_close((uv_handle_t*) handle, [](uv_handle_t* handle) {
           free(handle);
@@ -697,6 +633,100 @@ bool isRunning = false;
   // TODO
 }
 
+- (void) tcpReadStart: (std::string)seq clientId: (uint64_t)clientId {
+  dispatch_async(queue, ^{
+    Client* client = clients[clientId];
+    client->seq = seq;
+    client->delegate = self;
+
+    if (client == nullptr) {
+      dispatch_async(dispatch_get_main_queue(), ^{
+        [self resolve:seq message: Opkit::format(R"JSON({
+          "err": {
+            "clientId": "$S",
+            "message": "No connection found with the specified id"
+          }
+        })JSON", std::to_string(clientId))];
+      });
+      return;
+    }
+
+    auto onRead = [](uv_stream_t* handle, ssize_t nread, const uv_buf_t *buf) {
+      auto client = reinterpret_cast<Client*>(handle->data);
+
+      if (nread > 0) {
+        write_req_t *req = (write_req_t*) malloc(sizeof(write_req_t));
+        req->buf = uv_buf_init(buf->base, (int) nread);
+
+        NSString* str = [NSString stringWithUTF8String: req->buf.base];
+        NSData *nsdata = [str dataUsingEncoding:NSUTF8StringEncoding];
+        NSString *base64Encoded = [nsdata base64EncodedStringWithOptions:0];
+
+        auto serverId = std::to_string(client->server->serverId);
+        auto clientId = std::to_string(client->clientId);
+        auto message = std::string([base64Encoded UTF8String]);
+
+        dispatch_async(dispatch_get_main_queue(), ^{
+          [client->server->delegate emit: "data" message: Opkit::format(R"JSON({
+            "serverId": "$S",
+            "clientId": "$S",
+            "data": "$S"
+          })JSON", serverId, clientId, message)];
+        });
+        return;
+      }
+
+      if (nread < 0) {
+        if (nread != UV_EOF) {
+          dispatch_async(dispatch_get_main_queue(), ^{
+            [client->server->delegate emit: "error" message: Opkit::format(R"JSON({
+              "serverId": "$S",
+              "data": "$S"
+            })JSON", std::to_string(client->server->serverId), uv_err_name((int) nread))];
+          });
+        }
+
+        uv_close((uv_handle_t*) client->tcp, [](uv_handle_t* handle) {
+          free(handle);
+        });
+      }
+
+      free(buf->base);
+    };
+
+    auto allocateBuffer = [](uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf) {
+      buf->base = (char*) malloc(suggested_size);
+      buf->len = suggested_size;
+    };
+
+    int err = uv_read_start((uv_stream_t*) client->stream, allocateBuffer, onRead);
+
+    if (err < 0) {
+      dispatch_async(dispatch_get_main_queue(), ^{
+        [self resolve:seq message: Opkit::format(R"JSON({
+          "err": {
+            "serverId": "$S",
+            "message": "$S"
+          }
+        })JSON", std::to_string(client->server->serverId), uv_strerror(err))];
+      });
+      return;
+    }
+
+    dispatch_async(dispatch_get_main_queue(), ^{
+      [self resolve:client->server->seq message: Opkit::format(R"JSON({
+        "data": {}
+      })JSON")];
+    });
+
+    if (isRunning == false) {
+      isRunning = true;
+      NSLog(@"Starting loop from server");
+      uv_run(loop, UV_RUN_DEFAULT);
+    }
+  });
+}
+
 - (void) readStop: (std::string)seq clientId:(uint64_t)clientId {
   dispatch_async(queue, ^{
     Client* client = clients[clientId];
@@ -752,10 +782,8 @@ bool isRunning = false;
 
     if (client->tcp != nullptr) {
       handle = (uv_handle_t*) client->tcp;
-    } else if (client->udp != nullptr ){
-      handle = (uv_handle_t*) client->udp;
     } else {
-      handle = (uv_handle_t*) client->ucp;
+      handle = (uv_handle_t*) client->udp;
     }
 
     handle->data = client;
@@ -797,10 +825,8 @@ bool isRunning = false;
 
     if (client->tcp != nullptr) {
       handle = (uv_handle_t*) client->tcp;
-    } else if (client->udp != nullptr ){
-      handle = (uv_handle_t*) client->udp;
     } else {
-      handle = (uv_handle_t*) client->ucp;
+      handle = (uv_handle_t*) client->udp;
     }
 
     handle->data = client;
@@ -860,45 +886,6 @@ bool isRunning = false;
           "serverId": "$S",
           "data": "$S"
         })JSON", std::to_string(server->serverId), uv_strerror(err))];
-      });
-      return;
-    }
-
-    auto allocate = [](uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf) {
-      buf->base = (char*) malloc(suggested_size);
-      buf->len = suggested_size;
-    };
-
-    err = uv_udp_recv_start(server->udp, allocate, [](uv_udp_t *handle, ssize_t nread, const uv_buf_t *buf, const struct sockaddr *addr, unsigned flags) {
-      Server *server = (Server*) handle->data;
-
-      if (nread > 0) {
-        int port;
-        char ipbuf[17];
-        std::string data(buf->base);
-        parse_address((struct sockaddr *) addr, &port, ipbuf);
-        std::string ip(ipbuf);
-
-        dispatch_async(dispatch_get_main_queue(), ^{
-          [server->delegate emit: "data" message: Opkit::format(R"JSON({
-            "serverId": "$S",
-            "port": "$i",
-            "ip": "$S",
-            "data": "$S"
-          })JSON", std::to_string(server->serverId), port, ip, data)];
-        });
-        return;
-      }
-    });
-
-    if (err < 0) {
-      dispatch_async(dispatch_get_main_queue(), ^{
-        [self resolve:seq message: Opkit::format(R"JSON({
-          "err": {
-            "serverId": "$S",
-            "message": "$S"
-          }
-        })JSON", std::to_string(serverId), uv_strerror(err))];
       });
       return;
     }
@@ -993,73 +980,68 @@ bool isRunning = false;
   });
 }
 
-- (void) ucpBind: (std::string)seq clientId: (uint64_t)clientId port: (int)port ip: (const char*)ip {
+- (void) udpReadStart: (std::string)seq serverId: (uint64_t)serverId {
   dispatch_async(queue, ^{
-    Client* client = clients[clientId] = new Client();
+    Server* server = servers[serverId];
+    server->delegate = self;
+    server->seq = seq;
 
-    client->delegate = self;
-    client->clientId = clientId;
-    client->ucp = new ucp_t;
-    client->ucp_stream = new ucp_stream_t;
-    client->ucp->userdata = client;
-
-    ucp_init(client->ucp, loop);
-
-    int b = 2 * 1024 * 1024;
-    ucp_send_buffer_size(client->ucp, &b);
-    ucp_recv_buffer_size(client->ucp, &b);
-
-    struct sockaddr_in addr;
-    uv_ip4_addr(ip, port, &addr);
-    ucp_bind(client->ucp, (const struct sockaddr *) &addr);
-
-    ucp_set_callback(client->ucp, UCP_ON_MESSAGE, (void*)([](ucp_t *self, char *buf, ssize_t nread, const struct sockaddr_in *from) {
-      auto client = reinterpret_cast<Client*>(self->userdata);
-
-      if (nread < 4) return; // is 4 protocol size?
-      uint32_t id = *((uint32_t *) buf);
-      if (id == 0) return;
-
-      ucp_set_callback(client->ucp, UCP_ON_MESSAGE, nullptr);
-
-      // NSLog(@"remote socket id: %u\n", id);
-
-      ucp_stream_connect(client->ucp_stream, id, (const struct sockaddr *) from);
-      uint32_t sbuf = client->ucp_stream->local_id;
-
-      ucp_send_t sreq;
-      uv_timer_t timer;
-      timer.data = self;
-
-      ucp_send(client->ucp, &sreq, (char *) &sbuf, 4, (const struct sockaddr *) from);
-      uv_timer_start(&timer, [](uv_timer_t* req) {
-        auto client = reinterpret_cast<Client*>(req->data);
-
-        if ((client->ticks++ & 63) == 0) {
-          NSLog(@"on read, total recv=%zu total reads=%zu ack=%u pkts_sent=%zu\n",
-                client->rcvd,
-                client->reads,
-                client->ucp_stream->ack,
-                client->ucp_stream->stats_pkts_sent);
-
-          ucp_stream_t *sock = client->ucp_stream;
-
-          int sacks = 0;
-          int max = 32;
-
-          for (uint32_t i = 0; i < max; i++) {
-            uint32_t seq = sock->ack + 1 + i;
-
-            if (ucp_cirbuf_get(&(sock->incoming), seq) != NULL) {
-              sacks++;
-              max += 32;
-            }
+    if (server == nullptr) {
+      dispatch_async(dispatch_get_main_queue(), ^{
+        [self resolve:seq message: Opkit::format(R"JSON({
+          "err": {
+            "serverId": "$S",
+            "message": "no such client"
           }
+        })JSON", std::to_string(serverId))];
+      });
+      return;
+    }
 
-          NSLog(@"sacks: %i\n", sacks);
-        }
-      }, 20, 20);
-    }));
+    auto allocate = [](uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf) {
+      buf->base = (char*) malloc(suggested_size);
+      buf->len = suggested_size;
+    };
+
+    int err = uv_udp_recv_start(server->udp, allocate, [](uv_udp_t *handle, ssize_t nread, const uv_buf_t *buf, const struct sockaddr *addr, unsigned flags) {
+      Server *server = (Server*) handle->data;
+
+      if (nread > 0) {
+        int port;
+        char ipbuf[17];
+        std::string data(buf->base);
+        parse_address((struct sockaddr *) addr, &port, ipbuf);
+        std::string ip(ipbuf);
+
+        dispatch_async(dispatch_get_main_queue(), ^{
+          [server->delegate emit: "data" message: Opkit::format(R"JSON({
+            "serverId": "$S",
+            "port": "$i",
+            "ip": "$S",
+            "data": "$S"
+          })JSON", std::to_string(server->serverId), port, ip, data)];
+        });
+        return;
+      }
+    });
+
+    if (err < 0) {
+      dispatch_async(dispatch_get_main_queue(), ^{
+        [self resolve:seq message: Opkit::format(R"JSON({
+          "err": {
+            "serverId": "$S",
+            "message": "$S"
+          }
+        })JSON", std::to_string(serverId), uv_strerror(err))];
+      });
+      return;
+    }
+
+    dispatch_async(dispatch_get_main_queue(), ^{
+      [server->delegate resolve:server->seq message: Opkit::format(R"JSON({
+        "data": {}
+      })JSON")];
+    });
   });
 }
 
