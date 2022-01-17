@@ -2,11 +2,9 @@
 set -e;
 
 if [ ! "$CXX" ]; then
-  echo '• Warning: $CXX environment variable not set, assuming "/usr/bi
-n/g++"'
+  echo '• Warning: $CXX environment variable not set, assuming "/usr/bin/g++"'
   CXX=/usr/bin/g++
 fi
-
 
 function _build {
   echo '• Building opkit'
