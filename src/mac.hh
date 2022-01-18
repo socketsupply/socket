@@ -187,7 +187,7 @@ namespace Opkit {
     WKWebViewConfiguration* config = [WKWebViewConfiguration new];
     // https://webkit.org/blog/10882/app-bound-domains/
     // https://developer.apple.com/documentation/webkit/wkwebviewconfiguration/3585117-limitsnavigationstoappbounddomai
-    config.limitsNavigationsToAppBoundDomains = YES;
+    // config.limitsNavigationsToAppBoundDomains = YES;
 
     WKPreferences* prefs = [config preferences];
     [prefs setJavaScriptCanOpenWindowsAutomatically:NO];
