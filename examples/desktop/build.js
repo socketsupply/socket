@@ -32,10 +32,9 @@ const css = async (src, dest) => {
   return fs.writeFile(dest, minified.styles)
 }
 
-const cp = async (a, b) => fs.cp(
+const cp = async (a, b) => fs.copyFile(
   path.resolve(a),
-  path.join(b, path.basename(a)),
-  { recursive: true, force: true }
+  path.join(b, path.basename(a))
 )
 
 async function main () {
