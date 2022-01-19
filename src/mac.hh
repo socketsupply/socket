@@ -525,13 +525,13 @@ namespace Opkit {
         auto parts = split(line, ':');
         auto title = parts[0];
         NSUInteger mask = 0;
-        String key = "";
+        std::string key = "";
 
-        if (parts.size() > 1) {
-          auto accelerator = split(parts[1], '+');
-          key = trim(parts[1]) == "_" ? "" : trim(accelerator[0]);
+        if (parts.size() == 2) {
+          if (parts[1].find("+") != -1) {
+            auto accelerator = split(parts[1], '+');
+            key = trim(accelerator[0]);
 
-          if (accelerator.size() > 1) {
             if (accelerator[1].find("CommandOrControl") != -1) {
               mask |= NSEventModifierFlagCommand;
             } else if (accelerator[1].find("Meta") != -1) {
@@ -543,6 +543,8 @@ namespace Opkit {
             if (accelerator[1].find("Alt") != -1) {
               mask |= NSEventModifierFlagOption;
             }
+          } else {
+            key = trim(parts[1]);
           }
         }
 
@@ -589,9 +591,9 @@ namespace Opkit {
           [dynamicMenu addItem:sep];
         } else {
           menuItem = [dynamicMenu
-            addItemWithTitle:nssTitle
-            action:NSSelectorFromString(nssSelector)
-            keyEquivalent:nssKey
+            addItemWithTitle: nssTitle
+            action: NSSelectorFromString(nssSelector)
+            keyEquivalent: nssKey
           ];
         }
 
