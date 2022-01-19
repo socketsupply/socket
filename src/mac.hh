@@ -251,24 +251,6 @@ namespace Opkit {
 
       class_replaceMethod(
         [WindowDelegate class],
-        @selector(terminate:),
-        imp_implementationWithBlock([&](id self, SEL cmd, id notification) {
-          auto* w = (Window*) objc_getAssociatedObject(self, "webview");
-
-          if (w->opts.index == 0) {
-            exiting = true;
-            w->close();
-            return true;
-          }
-
-          return true;
-        }),
-        "v@:@"
-      );
-
-      // Add delegate methods manually in order to capture "this"
-      class_replaceMethod(
-        [WindowDelegate class],
         @selector(windowShouldClose:),
         imp_implementationWithBlock(
           [&](id self, SEL cmd, id notification) {
@@ -276,9 +258,9 @@ namespace Opkit {
 
             auto* w = (Window*) objc_getAssociatedObject(self, "webview");
 
-            if (w->opts.index == 0) {
+            if (w->opts.canExit) {
               exiting = true;
-              w->close();
+              w->exit();
               return true;
             }
 
@@ -373,10 +355,6 @@ namespace Opkit {
 
   void Window::close () {
     [window performClose:nil];
-
-    if (opts.canExit) {
-      this->exit();
-    }
   }
 
   void Window::hide (const std::string& seq) {
@@ -597,10 +575,13 @@ namespace Opkit {
         }
 
         if (title.find("Quit") == 0) {
-          nssSelector = [NSString stringWithUTF8String:"terminate:"];
+          // nssSelector = [NSString stringWithUTF8String:"terminate:"];
         }
 
-        if (title.compare("Minimize") == 0) nssSelector = [NSString stringWithUTF8String:"performMiniaturize:"];
+        if (title.compare("Minimize") == 0) {
+          nssSelector = [NSString stringWithUTF8String:"performMiniaturize:"];
+        }
+
         // if (title.compare("Zoom") == 0) nssSelector = [NSString stringWithUTF8String:"performZoom:"];
 
         if (title.find("---") != -1) {
