@@ -191,8 +191,7 @@ namespace Opkit {
 
         if (w->opts.canExit == false) {
           w->eval(emitToRenderProcess("windowHide", "{}"));
-          gtk_widget_hide_on_delete(widget);
-          return FALSE;
+          return gtk_widget_hide_on_delete(widget);
         }
 
         w->close();
