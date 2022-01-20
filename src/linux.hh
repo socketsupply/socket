@@ -695,7 +695,15 @@ namespace Opkit {
     }
 
     if (defaultPath.size() > 0) {
-      gtk_file_chooser_set_filename(chooser, defaultPath.c_str());
+      auto status = fs::status(defaultPath);
+
+      if (fs::exists(status)) {
+        if (fs::is_directory(status)) {
+          gtk_file_chooser_set_current_folder(chooser, defaultPath.c_str());
+        } else {
+          gtk_file_chooser_set_filename(chooser, defaultPath.c_str());
+        }
+      }
     }
 
     if (title.size() > 0) {
