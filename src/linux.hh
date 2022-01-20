@@ -253,6 +253,8 @@ namespace Opkit {
   }
 
   ScreenSize Window::getScreenSize () {
+    gtk_widget_realize(window);
+
     auto* display = gdk_display_get_default();
     auto* win = gtk_widget_get_window(window);
     auto* mon = gdk_display_get_monitor_at_window(display, win);
