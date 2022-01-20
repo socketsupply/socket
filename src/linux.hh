@@ -279,6 +279,7 @@ namespace Opkit {
   }
 
   void Window::show(const std::string &seq) {
+    gtk_widget_realize(window);
     gtk_widget_show_all(window);
 
     if (seq.size() > 0) {
@@ -288,6 +289,7 @@ namespace Opkit {
   }
 
   void Window::hide(const std::string &seq) {
+    gtk_widget_realize(window);
     gtk_widget_hide(window);
     this->eval(emitToRenderProcess("windowHide", "{}"));
 
@@ -321,6 +323,7 @@ namespace Opkit {
   }
 
   void Window::setTitle(const std::string &seq, const std::string &s) {
+    gtk_widget_realize(window);
     gtk_window_set_title(GTK_WINDOW(window), s.c_str());
 
     if (seq.size() > 0) {
@@ -330,9 +333,9 @@ namespace Opkit {
   }
 
   int Window::openExternal(const std::string& url) {
+    gtk_widget_realize(window);
     return gtk_show_uri_on_window(GTK_WINDOW(window), url.c_str(), GDK_CURRENT_TIME, nullptr);
   }
-
 
   void Window::about () {
     GtkWidget *dialog = gtk_dialog_new();
@@ -380,6 +383,7 @@ namespace Opkit {
   }
 
   void Window::setSize(const std::string& seq, int width, int height, int hints) {
+    gtk_widget_realize(window);
     gtk_window_set_resizable(GTK_WINDOW(window), hints != WINDOW_HINT_FIXED);
 
     if (hints == WINDOW_HINT_NONE) {
