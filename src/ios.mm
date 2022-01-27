@@ -45,6 +45,19 @@ static dispatch_queue_t queue = dispatch_queue_create("opkit.queue", qos);
 - (void) resolve: (std::string)seq message: (std::string)message;
 - (void) reject: (std::string)seq message: (std::string)message;
 
+// FS
+- (void) fsOpen: (std::string)seq id: (uint64_t)id path: (std::string)path flags: (int)flags;
+- (void) fsClose: (std::string)seq id: (uint64_t)id;
+- (void) fsRead: (std::string)seq id: (uint64_t)id len: (int)len offset: (int)offset;
+- (void) fsWrite: (std::string)seq id: (uint64_t)id data: (std::string)data offset: (int64_t)offset;
+- (void) fsStat: (std::string)seq path: (std::string)path;
+- (void) fsUnlink: (std::string)seq path: (std::string)path;
+- (void) fsRename: (std::string)seq pathA: (std::string)pathA pathB: (std::string)pathB;
+- (void) fsCopy: (std::string)seq pathA: (std::string)pathA pathB: (std::string)pathB flags: (int)flags;
+- (void) fsRmDir: (std::string)seq path: (std::string)path;
+- (void) fsMkDir: (std::string)seq path: (std::string)path mode: (int)mode;
+- (void) fsReadDir: (std::string)seq path: (std::string)path;
+
 // TCP
 - (void) tcpBind: (std::string)seq serverId: (uint64_t)serverId ip: (std::string)ip port: (int)port;
 - (void) tcpConnect: (std::string)seq clientId: (uint64_t)clientId port: (int)port ip: (std::string)ip;
@@ -65,6 +78,22 @@ static dispatch_queue_t queue = dispatch_queue_create("opkit.queue", qos);
 - (void) shutdown: (std::string)seq clientId: (uint64_t)clientId;
 - (void) readStop: (std::string)seq clientId: (uint64_t)clientId;
 @end
+
+struct DescriptorContext {
+  uv_file fd;
+  std::string seq;
+  AppDelegate* delegate;
+  uint64_t id;
+};
+
+struct DirectoryReader {
+  uv_dirent_t dirents;
+  uv_dir_t* dir;
+  uv_fs_t reqOpendir;
+  uv_fs_t reqReaddir;
+  AppDelegate* delegate;
+  std::string seq;
+};
 
 struct Peer {
   AppDelegate* delegate;
@@ -162,6 +191,7 @@ void parse_address (struct sockaddr *name, int* port, char* ip) {
 
 std::map<uint64_t, Client*> clients;
 std::map<uint64_t, Server*> servers;
+std::map<uint64_t, DescriptorContext*> descriptors;
 
 struct sockaddr_in addr;
 
@@ -213,6 +243,498 @@ bool isRunning = false;
 }
 
 //
+// --- Start filesystem methods
+//
+- (void) fsOpen: (std::string)seq id: (uint64_t) id path: (std::string)path flags: (int) flags {
+  dispatch_async(queue, ^{
+    auto desc = descriptors[id] = new DescriptorContext;
+    desc->id = id;
+    desc->delegate = self;
+    desc->seq = seq;
+
+    uv_fs_t req;
+    req.data = desc;
+
+    int fd = uv_fs_open(loop, &req, (char*) path.c_str(), flags, 0, [](uv_fs_t* req) {
+      auto desc = static_cast<DescriptorContext*>(req->data);
+
+      dispatch_async(dispatch_get_main_queue(), ^{
+        [desc->delegate resolve: desc->seq message: Opkit::format(R"JSON({
+          "data": {
+            "fd": $S
+          }
+        })JSON", std::to_string(desc->id))];
+
+        uv_fs_req_cleanup(req);
+      });
+    });
+
+    if (fd < 0) {
+      dispatch_async(dispatch_get_main_queue(), ^{
+        [self resolve: seq message: Opkit::format(R"({
+          "err": {
+            "id": "$S",
+            "message": "$S"
+          }
+        })", std::to_string(id), std::string(uv_strerror(fd)))];
+      });
+      return;
+    }
+
+    desc->fd = fd;
+  });
+};
+
+- (void) fsClose: (std::string)seq id: (uint64_t)id {
+  dispatch_async(queue, ^{
+    auto desc = descriptors[id];
+    desc->seq = seq;
+
+    if (desc == nullptr) {
+      dispatch_async(dispatch_get_main_queue(), ^{
+        [self resolve: seq message: Opkit::format(R"JSON({
+          "err": {
+            "code": "ENOTOPEN",
+            "message": "No file descriptor found with that id"
+          }
+        })JSON")];
+      });
+      return;
+    }
+
+    uv_fs_t req;
+    req.data = desc;
+
+    int err = uv_fs_close(loop, &req, desc->fd, [](uv_fs_t* req) {
+      auto desc = static_cast<DescriptorContext*>(req->data);
+
+      dispatch_async(dispatch_get_main_queue(), ^{
+        [desc->delegate resolve: desc->seq message: Opkit::format(R"JSON({
+          "data": {
+            "fd": $S
+          }
+        })JSON", std::to_string(desc->id))];
+
+        uv_fs_req_cleanup(req);
+      });
+    });
+
+    if (err) {
+      dispatch_async(dispatch_get_main_queue(), ^{
+        [self resolve: seq message: Opkit::format(R"({
+          "err": {
+            "id": "$S",
+            "message": "$S"
+          }
+        })", std::to_string(id), std::string(uv_strerror(err)))];
+      });
+    }
+  });
+};
+
+- (void) fsRead: (std::string)seq id: (uint64_t)id len: (int)len offset: (int)offset {
+  dispatch_async(queue, ^{
+    auto desc = descriptors[id];
+
+    if (desc == nullptr) {
+      dispatch_async(dispatch_get_main_queue(), ^{
+        [self resolve: seq message: Opkit::format(R"JSON({
+          "err": {
+            "code": "ENOTOPEN",
+            "message": "No file descriptor found with that id"
+          }
+        })JSON")];
+      });
+      return;
+    }
+
+    desc->delegate = self;
+    desc->seq = seq;
+
+    uv_fs_t req;
+    req.data = desc;
+
+    auto buf = new char[len];
+    const uv_buf_t iov = uv_buf_init(buf, (int) len);
+
+    int err = uv_fs_read(loop, &req, desc->fd, &iov, 1, offset, [](uv_fs_t* req) {
+      auto desc = static_cast<DescriptorContext*>(req->data);
+
+      if (req->result < 0) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+          [desc->delegate resolve: desc->seq message: Opkit::format(R"JSON({
+            "err": {
+              "code": "ENOTOPEN",
+              "message": "No file descriptor found with that id"
+            }
+          })JSON")];
+        });
+        return;
+      }
+
+      char *data = req->bufs[0].base;
+
+      NSString* str = [NSString stringWithUTF8String: data];
+      NSData *nsdata = [str dataUsingEncoding:NSUTF8StringEncoding];
+      NSString *base64Encoded = [nsdata base64EncodedStringWithOptions:0];
+
+      auto message = std::string([base64Encoded UTF8String]);
+
+      dispatch_async(dispatch_get_main_queue(), ^{
+        [desc->delegate resolve: desc->seq message: Opkit::format(R"({
+          "id": "$S",
+          "result": "$i",
+          "data": "$S"
+        })", std::to_string(desc->id), (int)req->result, message)];
+
+        uv_fs_req_cleanup(req);
+      });
+    });
+
+    if (err) {
+      dispatch_async(dispatch_get_main_queue(), ^{
+        [self resolve: seq message: Opkit::format(R"({
+          "err": {
+            "id": "$S",
+            "message": "$S"
+          }
+        })", std::to_string(id), std::string(uv_strerror(err)))];
+      });
+    }
+  });
+};
+
+- (void) fsWrite: (std::string)seq id: (uint64_t)id data: (std::string)data offset: (int64_t)offset {
+  dispatch_async(queue, ^{
+    auto desc = descriptors[id];
+
+    if (desc == nullptr) {
+      dispatch_async(dispatch_get_main_queue(), ^{
+        [self resolve: seq message: Opkit::format(R"JSON({
+          "err": {
+            "code": "ENOTOPEN",
+            "message": "No file descriptor found with that id"
+          }
+        })JSON")];
+      });
+      return;
+    }
+
+    desc->delegate = self;
+    desc->seq = seq;
+
+    uv_fs_t req;
+    req.data = desc;
+
+    const uv_buf_t buf = uv_buf_init((char*) data.c_str(), (int) data.size());
+
+    int err = uv_fs_write(uv_default_loop(), &req, desc->fd, &buf, 1, offset, [](uv_fs_t* req) {
+      auto desc = static_cast<DescriptorContext*>(req->data);
+
+      dispatch_async(dispatch_get_main_queue(), ^{
+        [desc->delegate resolve: desc->seq message: Opkit::format(R"({
+          "id": "$S",
+          "result": "$i"
+        })", std::to_string(desc->id), (int)req->result)];
+
+        uv_fs_req_cleanup(req);
+      });
+    });
+
+    if (err) {
+      dispatch_async(dispatch_get_main_queue(), ^{
+        [self resolve: seq message: Opkit::format(R"({
+          "err": {
+            "id": "$S",
+            "message": "$S"
+          }
+        })", std::to_string(id), std::string(uv_strerror(err)))];
+      });
+    }
+  });
+};
+
+- (void) fsStat: (std::string)seq path: (std::string)path {
+  dispatch_async(queue, ^{
+    uv_fs_t req;
+    DescriptorContext* desc = new DescriptorContext;
+    desc->seq = seq;
+    desc->delegate = self;
+    req.data = desc;
+
+    int err = uv_fs_stat(loop, &req, (const char*) path.c_str(), [](uv_fs_t* req) {
+      auto desc = static_cast<DescriptorContext*>(req->data);
+
+      dispatch_async(dispatch_get_main_queue(), ^{
+        [desc->delegate resolve: desc->seq message: Opkit::format(R"({
+          "id": "$S",
+          "result": "$i"
+        })", std::to_string(desc->id), (int)req->result)];
+
+        delete desc;
+        uv_fs_req_cleanup(req);
+      });
+    });
+
+    if (err) {
+      dispatch_async(dispatch_get_main_queue(), ^{
+        [self resolve: seq message: Opkit::format(R"({
+          "err": {
+            "message": "$S"
+          }
+        })", std::string(uv_strerror(err)))];
+      });
+    }
+  });
+};
+
+- (void) fsUnlink: (std::string)seq path: (std::string)path {
+  dispatch_async(queue, ^{
+    uv_fs_t req;
+    DescriptorContext* desc = new DescriptorContext;
+    desc->seq = seq;
+    desc->delegate = self;
+    req.data = desc;
+
+    int err = uv_fs_unlink(loop, &req, (const char*) path.c_str(), [](uv_fs_t* req) {
+      auto desc = static_cast<DescriptorContext*>(req->data);
+
+      dispatch_async(dispatch_get_main_queue(), ^{
+        [desc->delegate resolve: desc->seq message: Opkit::format(R"({
+          "id": "$S",
+          "result": "$i"
+        })", std::to_string(desc->id), (int)req->result)];
+
+        delete desc;
+        uv_fs_req_cleanup(req);
+      });
+    });
+
+    if (err) {
+      dispatch_async(dispatch_get_main_queue(), ^{
+        [self resolve: seq message: Opkit::format(R"({
+          "err": {
+            "message": "$S"
+          }
+        })", std::string(uv_strerror(err)))];
+      });
+    }
+  });
+};
+
+- (void) fsRename: (std::string)seq pathA: (std::string)pathA pathB: (std::string)pathB {
+  dispatch_async(queue, ^{
+    uv_fs_t req;
+    DescriptorContext* desc = new DescriptorContext;
+    desc->seq = seq;
+    desc->delegate = self;
+    req.data = desc;
+
+    int err = uv_fs_rename(loop, &req, (const char*) pathA.c_str(), (const char*) pathB.c_str(), [](uv_fs_t* req) {
+      auto desc = static_cast<DescriptorContext*>(req->data);
+
+      dispatch_async(dispatch_get_main_queue(), ^{
+        [desc->delegate resolve: desc->seq message: Opkit::format(R"({
+          "id": "$S",
+          "result": "$i"
+        })", std::to_string(desc->id), (int)req->result)];
+
+        delete desc;
+        uv_fs_req_cleanup(req);
+      });
+    });
+
+    if (err) {
+      dispatch_async(dispatch_get_main_queue(), ^{
+        [self resolve: seq message: Opkit::format(R"({
+          "err": {
+            "message": "$S"
+          }
+        })", std::string(uv_strerror(err)))];
+      });
+    }
+  });
+};
+
+- (void) fsCopy: (std::string)seq pathA: (std::string)pathA pathB: (std::string)pathB flags: (int)flags {
+  dispatch_async(queue, ^{
+    uv_fs_t req;
+    DescriptorContext* desc = new DescriptorContext;
+    desc->seq = seq;
+    desc->delegate = self;
+    req.data = desc;
+
+    int err = uv_fs_copyfile(loop, &req, (const char*) pathA.c_str(), (const char*) pathB.c_str(), flags, [](uv_fs_t* req) {
+      auto desc = static_cast<DescriptorContext*>(req->data);
+
+      dispatch_async(dispatch_get_main_queue(), ^{
+        [desc->delegate resolve: desc->seq message: Opkit::format(R"({
+          "id": "$S",
+          "result": "$i"
+        })", std::to_string(desc->id), (int)req->result)];
+
+        delete desc;
+        uv_fs_req_cleanup(req);
+      });
+    });
+
+    if (err) {
+      dispatch_async(dispatch_get_main_queue(), ^{
+        [self resolve: seq message: Opkit::format(R"({
+          "err": {
+            "message": "$S"
+          }
+        })", std::string(uv_strerror(err)))];
+      });
+    }
+  });
+};
+
+- (void) fsRmDir: (std::string)seq path: (std::string)path {
+  dispatch_async(queue, ^{
+    uv_fs_t req;
+    DescriptorContext* desc = new DescriptorContext;
+    desc->seq = seq;
+    desc->delegate = self;
+    req.data = desc;
+
+    int err = uv_fs_rmdir(loop, &req, (const char*) path.c_str(), [](uv_fs_t* req) {
+      auto desc = static_cast<DescriptorContext*>(req->data);
+
+      dispatch_async(dispatch_get_main_queue(), ^{
+        [desc->delegate resolve: desc->seq message: Opkit::format(R"({
+          "id": "$S",
+          "result": "$i"
+        })", std::to_string(desc->id), (int)req->result)];
+
+        delete desc;
+        uv_fs_req_cleanup(req);
+      });
+    });
+
+    if (err) {
+      dispatch_async(dispatch_get_main_queue(), ^{
+        [self resolve: seq message: Opkit::format(R"({
+          "err": {
+            "message": "$S"
+          }
+        })", std::string(uv_strerror(err)))];
+      });
+    }
+  });
+};
+
+- (void) fsMkDir: (std::string)seq path: (std::string)path mode: (int)mode {
+  dispatch_async(queue, ^{
+    uv_fs_t req;
+    DescriptorContext* desc = new DescriptorContext;
+    desc->seq = seq;
+    desc->delegate = self;
+    req.data = desc;
+
+    int err = uv_fs_mkdir(loop, &req, (const char*) path.c_str(), mode, [](uv_fs_t* req) {
+      auto desc = static_cast<DescriptorContext*>(req->data);
+
+      dispatch_async(dispatch_get_main_queue(), ^{
+        [desc->delegate resolve: desc->seq message: Opkit::format(R"({
+          "id": "$S",
+          "result": "$i"
+        })", std::to_string(desc->id), (int)req->result)];
+
+        delete desc;
+        uv_fs_req_cleanup(req);
+      });
+    });
+
+    if (err) {
+      dispatch_async(dispatch_get_main_queue(), ^{
+        [self resolve: seq message: Opkit::format(R"({
+          "err": {
+            "message": "$S"
+          }
+        })", std::string(uv_strerror(err)))];
+      });
+    }
+  });
+};
+
+- (void) fsReadDir: (std::string)seq path: (std::string)path {
+  dispatch_async(queue, ^{
+    DirectoryReader* ctx = new DirectoryReader;
+    ctx->delegate = self;
+    ctx->seq = seq;
+
+    ctx->reqOpendir.data = ctx;
+    ctx->reqReaddir.data = ctx;
+
+    int err = uv_fs_opendir(loop, &ctx->reqOpendir, (const char*) path.c_str(), nullptr);
+
+    if (err) {
+      dispatch_async(dispatch_get_main_queue(), ^{
+        [self resolve: seq message: Opkit::format(R"({
+          "err": {
+            "message": "$S"
+          }
+        })", std::string(uv_strerror(err)))];
+      });
+      return;
+    }
+
+    err = uv_fs_readdir(loop, &ctx->reqReaddir, ctx->dir, [](uv_fs_t* req) {
+      auto ctx = static_cast<DirectoryReader*>(req->data);
+
+      if (req->result < 0) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+          [ctx->delegate resolve: ctx->seq message: Opkit::format(R"({
+            "err": {
+              "message": "$S"
+            }
+          })", std::string(uv_strerror((int)req->result)))];
+        });
+        return;
+      }
+
+      std::stringstream value;
+      auto len = ctx->dir->nentries;
+
+      for (int i = 0; i < len; i++) {
+        value << "\"" << ctx->dir->dirents[i].name << "\"";
+
+        if (i < len - 1) {
+          // Assumes the user does not use commas in their file names.
+          value << ",";
+        }
+      }
+
+      NSString* str = [NSString stringWithUTF8String: value.str().c_str()];
+      NSData *nsdata = [str dataUsingEncoding: NSUTF8StringEncoding];
+      NSString *base64Encoded = [nsdata base64EncodedStringWithOptions:0];
+
+      dispatch_async(dispatch_get_main_queue(), ^{
+        [ctx->delegate resolve: ctx->seq message: Opkit::format(R"({
+          "data": "$S"
+        })", std::string([base64Encoded UTF8String]))];
+      });
+
+      uv_fs_t reqClosedir;
+      uv_fs_closedir(loop, &reqClosedir, ctx->dir, [](uv_fs_t* req) {
+        uv_fs_req_cleanup(req);
+      });
+    });
+
+    if (err) {
+      dispatch_async(dispatch_get_main_queue(), ^{
+        [self resolve: seq message: Opkit::format(R"({
+          "err": {
+            "message": "$S"
+          }
+        })", std::string(uv_strerror(err)))];
+      });
+    }
+  });
+};
+
+//
 // --- Start network methods
 //
 - (std::string) getNetworkInterfaces {
@@ -261,7 +783,6 @@ bool isRunning = false;
 - (void) sendBufferSize: (std::string)seq clientId: (uint64_t)clientId size: (int)size {
   dispatch_async(queue, ^{
     Client* client = clients[clientId];
-    client->delegate = self;
 
     if (client == nullptr) {
       dispatch_async(dispatch_get_main_queue(), ^{
@@ -273,6 +794,8 @@ bool isRunning = false;
       });
       return;
     }
+
+    client->delegate = self;
 
     uv_handle_t* handle;
 
@@ -299,7 +822,6 @@ bool isRunning = false;
 - (void) recvBufferSize: (std::string)seq clientId: (uint64_t)clientId size: (int)size {
   dispatch_async(queue, ^{
     Client* client = clients[clientId];
-    client->delegate = self;
 
     if (client == nullptr) {
       dispatch_async(dispatch_get_main_queue(), ^{
@@ -311,6 +833,8 @@ bool isRunning = false;
       });
       return;
     }
+
+    client->delegate = self;
 
     uv_handle_t* handle;
 
@@ -337,7 +861,6 @@ bool isRunning = false;
 - (void) tcpSend: (uint64_t)clientId message: (std::string)message {
   dispatch_async(queue, ^{
     Client* client = clients[clientId];
-    client->delegate = self;
 
     if (client == nullptr) {
       dispatch_async(dispatch_get_main_queue(), ^{
@@ -350,6 +873,8 @@ bool isRunning = false;
       });
       return;
     }
+
+    client->delegate = self;
 
     write_req_t *req = (write_req_t*) malloc(sizeof(write_req_t));
     req->buf = uv_buf_init((char* const) message.c_str(), (int) message.size());
@@ -603,9 +1128,6 @@ bool isRunning = false;
 - (void) tcpSetKeepAlive: (std::string)seq clientId: (uint64_t)clientId timeout: (int)timeout {
   dispatch_async(queue, ^{
     Client* client = clients[clientId];
-    client->seq = seq;
-    client->delegate = self;
-    client->clientId = clientId;
 
     if (client == nullptr) {
       dispatch_async(dispatch_get_main_queue(), ^{
@@ -618,6 +1140,10 @@ bool isRunning = false;
       });
       return;
     }
+
+    client->seq = seq;
+    client->delegate = self;
+    client->clientId = clientId;
 
     uv_tcp_keepalive((uv_tcp_t*) client->tcp, 1, timeout);
 
@@ -636,8 +1162,6 @@ bool isRunning = false;
 - (void) tcpReadStart: (std::string)seq clientId: (uint64_t)clientId {
   dispatch_async(queue, ^{
     Client* client = clients[clientId];
-    client->seq = seq;
-    client->delegate = self;
 
     if (client == nullptr) {
       dispatch_async(dispatch_get_main_queue(), ^{
@@ -650,6 +1174,9 @@ bool isRunning = false;
       });
       return;
     }
+
+    client->seq = seq;
+    client->delegate = self;
 
     auto onRead = [](uv_stream_t* handle, ssize_t nread, const uv_buf_t *buf) {
       auto client = reinterpret_cast<Client*>(handle->data);
@@ -762,9 +1289,6 @@ bool isRunning = false;
 - (void) close: (std::string)seq clientId:(uint64_t)clientId {
   dispatch_async(queue, ^{
     Client* client = clients[clientId];
-    client->seq = seq;
-    client->delegate = self;
-    client->clientId = clientId;
 
     if (client == nullptr) {
       dispatch_async(dispatch_get_main_queue(), ^{
@@ -777,6 +1301,10 @@ bool isRunning = false;
       });
       return;
     }
+
+    client->seq = seq;
+    client->delegate = self;
+    client->clientId = clientId;
 
     uv_handle_t* handle;
 
@@ -805,9 +1333,6 @@ bool isRunning = false;
 - (void) shutdown: (std::string) seq clientId: (uint64_t)clientId {
   dispatch_async(queue, ^{
     Client* client = clients[clientId];
-    client->seq = seq;
-    client->delegate = self;
-    client->clientId = clientId;
 
     if (client == nullptr) {
       dispatch_async(dispatch_get_main_queue(), ^{
@@ -820,6 +1345,10 @@ bool isRunning = false;
       });
       return;
     }
+
+    client->seq = seq;
+    client->delegate = self;
+    client->clientId = clientId;
 
     uv_handle_t* handle;
 
@@ -913,8 +1442,6 @@ bool isRunning = false;
               ip: (const char*)ip {
   dispatch_async(queue, ^{
     Client* client = clients[clientId];
-    client->delegate = self;
-    client->seq = seq;
 
     if (client == nullptr) {
       dispatch_async(dispatch_get_main_queue(), ^{
@@ -927,6 +1454,9 @@ bool isRunning = false;
       });
       return;
     }
+
+    client->delegate = self;
+    client->seq = seq;
 
     int err;
     uv_udp_send_t* req = new uv_udp_send_t;
@@ -983,8 +1513,6 @@ bool isRunning = false;
 - (void) udpReadStart: (std::string)seq serverId: (uint64_t)serverId {
   dispatch_async(queue, ^{
     Server* server = servers[serverId];
-    server->delegate = self;
-    server->seq = seq;
 
     if (server == nullptr) {
       dispatch_async(dispatch_get_main_queue(), ^{
@@ -997,6 +1525,9 @@ bool isRunning = false;
       });
       return;
     }
+
+    server->delegate = self;
+    server->seq = seq;
 
     auto allocate = [](uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf) {
       buf->base = (char*) malloc(suggested_size);
@@ -1137,6 +1668,71 @@ bool isRunning = false;
       Parse cmd(msg);
       auto seq = cmd.get("seq");
       uint64_t clientId = 0;
+
+      if (cmd.get("fsOpen").size() != 0) {
+        [self fsOpen: seq
+                  id: std::stoll(cmd.get("id"))
+                path: cmd.get("path")
+               flags: std::stoi(cmd.get("path"))];
+      }
+
+      if (cmd.get("fsClose").size() != 0) {
+        [self fsClose: seq
+                   id: std::stoll(cmd.get("id"))];
+      }
+
+      if (cmd.get("fsRead").size() != 0) {
+        [self fsRead: seq
+                  id: std::stoll(cmd.get("id"))
+                 len: std::stoi(cmd.get("len"))
+              offset: std::stoi(cmd.get("offset"))];
+      }
+
+      if (cmd.get("fsWrite").size() != 0) {
+        [self fsWrite: seq
+                   id: std::stoll(cmd.get("id"))
+                 data: cmd.get("data")
+               offset: std::stoll(cmd.get("offset"))];
+      }
+
+      if (cmd.get("fsStat").size() != 0) {
+        [self fsStat: seq
+                path: cmd.get("path")];
+      }
+
+      if (cmd.get("fsUnlink").size() != 0) {
+        [self fsUnlink: seq
+                  path: cmd.get("path")];
+      }
+
+      if (cmd.get("fsRename").size() != 0) {
+        [self fsRename: seq
+                 pathA: cmd.get("pathA")
+                 pathB: cmd.get("pathB")];
+      }
+
+      if (cmd.get("fsCopy").size() != 0) {
+        [self fsCopy: seq
+               pathA: cmd.get("pathA")
+               pathB: cmd.get("pathB")
+               flags: std::stoi(cmd.get("flags"))];
+      }
+
+      if (cmd.get("fsRmDir").size() != 0) {
+        [self fsRmDir: seq
+                  path: cmd.get("path")];
+      }
+
+      if (cmd.get("fsMkDir").size() != 0) {
+        [self fsMkDir: seq
+                  path: cmd.get("path")
+                  mode: std::stoi(cmd.get("mode"))];
+      }
+
+      if (cmd.get("fsReadDir").size() != 0) {
+        [self fsReadDir: seq
+                  path: cmd.get("path")];
+      }
 
       if (cmd.get("clientId").size() != 0) {
         try {
