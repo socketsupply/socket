@@ -307,9 +307,12 @@ namespace Opkit {
                 Settings->put_IsBuiltInErrorPageEnabled(FALSE);
                 Settings->put_IsZoomControlEnabled(FALSE);
 
-                auto settings = (ICoreWebView2Settings6*) Settings;
-                settings->put_IsPinchZoomEnabled(FALSE);
-                settings->put_IsSwipeNavigationEnabled(FALSE);
+                auto settings3 = (ICoreWebView2Settings3*) Settings;
+                settings3->put_AreBrowserAcceleratorKeysEnabled(FALSE);
+
+                auto settings6 = (ICoreWebView2Settings6*) Settings;
+                settings6->put_IsPinchZoomEnabled(FALSE);
+                settings6->put_IsSwipeNavigationEnabled(FALSE);
 
                 app.isReady = true;
 
