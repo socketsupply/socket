@@ -809,7 +809,7 @@ namespace Opkit {
         if (FAILED(hr)) return;
       }
 
-      if ((!isSave || allowDirs) && allowMultiple) {
+      if ((!isSave || (!isSave && allowDirs)) && allowMultiple) {
         hr = pfd->SetOptions(dwOptions | FOS_ALLOWMULTISELECT);
         if (FAILED(hr)) return;
       }
