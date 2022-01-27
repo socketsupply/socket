@@ -644,7 +644,7 @@ namespace Opkit {
       [dialog_open setCanCreateDirectories:YES];
     }
 
-    if (allowDirs) {
+    if (allowDirs && !isSave) {
       [dialog_open setCanChooseDirectories:YES];
     }
 
