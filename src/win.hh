@@ -717,8 +717,9 @@ namespace Opkit {
     HMENU hPopupMenu = CreatePopupMenu();
 
     auto menuItems = split(value, '_');
-    int index = 0;
+    int index = 1;
     std::vector<std::string> lookup;
+    lookup.push_back("");
 
     for (auto item : menuItems) {
       auto pair = split(trim(item), ':');
@@ -752,7 +753,8 @@ namespace Opkit {
     );
 
     DestroyMenu(hPopupMenu);
-    this->eval(resolveMenuSelection(seq, lookup[selection], "contextMenu"));
+    if (selection == 0) return;
+    this->eval(resolveMenuSelection(seq, lookup.at(selection), "contextMenu"));
   }
 
   int Window::openExternal (const std::string& url) {
