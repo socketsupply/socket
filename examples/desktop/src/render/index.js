@@ -257,6 +257,7 @@ window.onload = async () => {
     //
     const el = document.elementFromPoint(x, y)
     if (!el) throw new Error('No element found at drop point')
+    console.log(el)
 
     document.querySelector('#output').value += path + '\n'
   });

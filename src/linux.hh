@@ -29,6 +29,7 @@ namespace Opkit {
     GtkWidget* menubar = nullptr;
     GtkWidget* vbox;
     GtkWidget* popup;
+    std::vector<std::string> dropSelection;
     int popupId;
 
     public:
@@ -179,6 +180,64 @@ namespace Opkit {
       G_CALLBACK(+[](GtkWidget*, gpointer arg) {
         auto* w = static_cast<Window*>(arg);
         w->close();
+      }),
+      this
+    );
+
+    g_signal_connect(
+      G_OBJECT(webview),
+      "drag-data-received",
+      G_CALLBACK(+[](
+        GtkWidget* widget,
+        GdkDragContext* context,
+        gint x,
+        gint y,
+        GtkSelectionData *data,
+        guint info,
+        guint time,
+        gpointer arg)
+      {
+        auto* w = static_cast<Window*>(arg);
+        gchar** uris = gtk_selection_data_get_uris(data);
+
+        if (uris) {
+          for(size_t n = 0; uris[n] != nullptr; n++) {
+            gchar* path = g_filename_from_uri(uris[n], nullptr, nullptr);
+            w->dropSelection.push_back(std::string(path));
+            g_free(path);
+          }
+        }
+
+        return TRUE;
+      }),
+      this
+    );
+
+    g_signal_connect(
+      G_OBJECT(webview),
+      "drag-drop",
+      G_CALLBACK(+[](
+        GtkWidget* widget,
+        GdkDragContext* context,
+        gint x,
+        gint y,
+        guint time,
+        gpointer arg)
+      {
+        auto* w = static_cast<Window*>(arg);
+
+        for (auto path : w->dropSelection) {
+          std::string json = (
+            "{\"path\":\"" + path + "\","
+            "\"x\":" + std::to_string(x) + ","
+            "\"y\":" + std::to_string(y) + "}"
+          );
+
+          w->eval(emitToRenderProcess("drop", json));
+        }
+
+        w->dropSelection.clear();
+        return TRUE;
       }),
       this
     );
