@@ -753,7 +753,6 @@ namespace Opkit {
     gtk_file_chooser_set_do_overwrite_confirmation(chooser, true);
     // }
 
-    // TODO (@heapwolf): make optional
     if ((!isSave || allowDirs) && allowMultiple) {
       gtk_file_chooser_set_select_multiple(chooser, true);
     }
