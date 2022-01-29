@@ -3,12 +3,58 @@
 #import <Webkit/Webkit.h>
 #include <objc/objc-runtime.h>
 
+@interface WV : WKWebView<NSDraggingDestination>
+- (bool) prepareForDragOperation: (id<NSDraggingInfo>)sender;
+- (bool) draggingEnded: (id<NSDraggingInfo>)info;
+@end
+
+@implementation WV
+- (bool) draggingEnded: (id<NSDraggingInfo>)info {
+  NSPasteboard *pboard = [info draggingPasteboard];
+
+  NSArray<Class> *classes = @[[NSURL class]];
+  NSDictionary *options = @{};
+  NSArray<NSURL*> *files = [pboard readObjectsForClasses:classes options:options];
+
+  NSPoint pos = [info draggingLocation];
+  // NSWindow is (0,0) at bottom left, browser is (0,0) at top left
+  // so we need to flip the y coordinate to convert to browser coordinates
+  int y = [self frame].size.height - pos.y;
+
+  for (NSURL *url in files) {
+    std::string path([[url path] UTF8String]);
+    path = Opkit::replace(path, "\"", "'");
+
+    std::string json = (
+      "{\"path\":\"" + path + "\","
+      "\"x\":" + std::to_string(pos.x) + ","
+      "\"y\":" + std::to_string(y) + "}"
+    );
+
+    auto payload = Opkit::emitToRenderProcess("drop", json);
+
+    [self evaluateJavaScript:
+      [NSString stringWithUTF8String: payload.c_str()]
+      completionHandler:nil];
+  }
+
+  return YES;
+}
+
+- (bool) prepareForDragOperation: (id<NSDraggingInfo>)info {
+  return NO; // don't accept any drops, they will reload the page
+}
+@end
+
 @interface WindowDelegate : NSObject <NSWindowDelegate, WKScriptMessageHandler>
+- (void)userContentController: (WKUserContentController*) userContentController
+      didReceiveScriptMessage: (WKScriptMessage*) scriptMessage;
 @end
 
 @implementation WindowDelegate
 - (void)userContentController: (WKUserContentController*) userContentController
       didReceiveScriptMessage: (WKScriptMessage*) scriptMessage {
+        // To be overridden
 }
 @end
 
@@ -16,7 +62,7 @@
 @end
 
 @implementation NavigationDelegate
-- (void) webView: (WKWebView*) webView
+- (void) webView: (WV*) webView
     decidePolicyForNavigationAction: (WKNavigationAction*) navigationAction
     decisionHandler: (void (^)(WKNavigationActionPolicy)) decisionHandler {
 
@@ -72,7 +118,7 @@ namespace Opkit {
 
   class Window : public IWindow {
     NSWindow* window;
-    WKWebView* webview;
+    WV* webview;
     // WebInspector* inspector;
 
     public:
@@ -168,6 +214,15 @@ namespace Opkit {
                     backing:NSBackingStoreBuffered
                       defer:NO];
 
+    NSArray* types = [NSArray arrayWithObjects:
+                      NSPasteboardTypeURL,
+                      NSPasteboardTypeFileURL,
+                      NSPasteboardTypeString,
+                      NSPasteboardTypeHTML,
+                      nil];
+
+    [window registerForDraggedTypes:types];
+
     // Minimum window size
     [window setContentMinSize:NSMakeSize(opts.width, opts.height)];
 
@@ -216,7 +271,7 @@ namespace Opkit {
     [controller
       addUserScript: userScript];
 
-    webview = [[WKWebView alloc]
+    webview = [[WV alloc]
       initWithFrame: NSZeroRect
       configuration: config];
 

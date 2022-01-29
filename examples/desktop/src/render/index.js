@@ -131,14 +131,14 @@ class AppContainer extends Tonic {
     const { event } = el.dataset
 
     if (event === 'open') {
-      this.querySelector('#opened').value = await system.dialog({
+      this.querySelector('#output').value = await system.dialog({
         allowDirs: true,
         allowFiles: false
       })
     }
 
     if (event === 'save') {
-      this.querySelector('#opened').value = await system.dialog({
+      this.querySelector('#output').value = await system.dialog({
         type: 'save',
         defaultPath: 'test.txt'
       })
@@ -222,7 +222,7 @@ class AppContainer extends Tonic {
       <tonic-button data-event="save" id="save">Save</tonic-button>
       <tonic-button data-event="restart" id="restart">Restart</tonic-button>
 
-      <tonic-textarea id="opened" label="opened files/dirs"></tonic-textarea>
+      <tonic-textarea id="output" label="output files/dirs"></tonic-textarea>
 
       <div class="grid">
         <tonic-input id="menu-selection" readonly="true" label="menu selection">
@@ -242,61 +242,22 @@ class AppContainer extends Tonic {
   }
 }
 
-//
-// An array of *full* paths can be collected by intercepting the drag event
-// onto any input control. Split the value by new line to create an array.
-//
-function setupDrop (fn) {
-  let textarea
-  let timeout
-
-  document.body.addEventListener('dragover', () => {
-    clearTimeout(timeout)
-
-    if (textarea) {
-      textarea.style.zIndex = 10000
-      document.body.appendChild(textarea)
-      return
-    }
-
-    textarea = document.createElement('textarea')
-    document.body.appendChild(textarea)
-    textarea.style.opacity = 0
-    textarea.style.position = 'fixed'
-    textarea.style.top = '0px'
-    textarea.style.left = '0px'
-    textarea.style.right = '0px'
-    textarea.style.bottom = '0px'
-    textarea.style.zIndex = 10000
-
-    textarea.addEventListener('input', () => {
-      textarea.style.zIndex = -1
-      fn && fn(textarea.value.split('\n'))
-      textarea.value = ''
-      document.body.removeChild(textarea)
-    })
-  })
-
-  document.body.addEventListener('dragleave', () => {
-    timeout = setTimeout(() => {
-      textarea.style.zIndex = -1
-      document.body.removeChild(textarea)
-    }, 128)
-  })
-}
-
-//
-// Hook up a drag and drop example
-//
 window.onload = async () => {
   Tonic.add(AppContainer)
 
-  setupDrop(paths => {
-    console.log(paths)
-  })
+  //
+  // If the user drops files, show them in the output area. It's the user's
+  // responsibility to decide what to do with the file paths, batching, etc.
+  //
+  window.addEventListener('drop', (e) => {
+    const { x, y, path } = e.detail
 
-  document.body.addEventListener('dragstart', (e) => {
-    const name = `OPKIT_${Date.now()}`
-    e.dataTransfer.setData('text/plain', name);
+    //
+    // We can get the element at the drop point from x and y.
+    //
+    const el = document.elementFromPoint(x, y)
+    if (!el) throw new Error('No element found at drop point')
+
+    document.querySelector('#output').value += path + '\n'
   });
 }
