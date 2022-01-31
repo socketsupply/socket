@@ -116,10 +116,10 @@ namespace Opkit {
   class DragDrop;
 
   class Window : public IWindow {
-    HWND window;
     DWORD mainThread = GetCurrentThreadId();
 
     public:
+      HWND window;
       Window(App&, WindowOptions);
       static LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
       ICoreWebView2 *webview = nullptr;
@@ -167,6 +167,7 @@ namespace Opkit {
     unsigned int refCount;
 
     public:
+    HWND childWindow;
     Window* window;
 
     DragDrop(Window* win) : window(win) {
@@ -212,10 +213,21 @@ namespace Opkit {
     };
 
     HRESULT STDMETHODCALLTYPE Drop(IDataObject *pDataObj, DWORD grfKeyState, POINTL pt, DWORD *pdwEffect) {
-      // on windows {x,y} are screen coordinates, so we need to calculate what they are based on
       //
-      // alert("DROP: x=" + std::to_string(pt.x) + "y=" + std::to_string(pt.y));
-  
+      // on windows pt.{x,y} are screen coordinates, to get the position of the mouse relative to the window
+      // we need to subtract window.{left,top}.
+      //
+       
+      RECT rect;
+      HWND hWndChild = this->childWindow;
+      HWND hWndParent = this->window->window;
+
+      GetClientRect(hWndChild, &rect);
+      POINT pos = { rect.left, rect.top };
+      MapWindowPoints(hWndParent, GetParent(hWndParent), (LPPOINT)&pos, 2);
+      int x = pt.x - pos.x;
+      int y = pt.y - pos.y;
+
       HRESULT hr;
 
       FORMATETC  formatetc;
@@ -245,10 +257,12 @@ namespace Opkit {
         TCHAR* buf = new TCHAR[size + 1];
         DragQueryFile(p, iFile, buf, size + 1);
 
+        auto lolWindowsPath = Opkit::replace(std::string(buf), "\\\\", "\\\\\\\\");
+
         std::string json = (
-          "{\"path\":\"" + std::string(buf) + "\","
-          "\"x\":" + std::to_string(pt.x) + ","
-          "\"y\":" + std::to_string(pt.y) + "}"
+          "{\"path\":\"" + lolWindowsPath + "\","
+          "\"x\":" + std::to_string(x) + ","
+          "\"y\":" + std::to_string(y) + "}"
         );
 
         this->window->eval(emitToRenderProcess("drop", json));
@@ -439,6 +453,7 @@ namespace Opkit {
                     if (WStringToString(buf).find("Chrome")) {
                       RevokeDragDrop(hWnd);
                       Window* w = reinterpret_cast<Window*>(GetWindowLongPtr((HWND)window, GWLP_USERDATA));
+                      w->drop->childWindow = hWnd;
                       RegisterDragDrop(hWnd, w->drop);
                     }
                   }

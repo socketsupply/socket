@@ -255,7 +255,11 @@ window.onload = async () => {
     //
     // We can get the element at the drop point from x and y.
     //
-    const el = document.elementFromPoint(x, y)
+    const el = document.elementFromPoint(
+      x / window.devicePixelRatio,
+      y / window.devicePixelRatio
+    )
+
     if (!el) throw new Error('No element found at drop point')
     console.log(el)
 
