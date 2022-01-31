@@ -409,10 +409,12 @@ MAIN {
   //
   // If this is being run in a terminal/multiplexer
   //
-  signal(SIGHUP, +[](int signum) {
-    onExit();
-    exit(signum);
-  });
+  #ifndef _WIN32
+    signal(SIGHUP, +[](int signum) {
+      onExit();
+      exit(signum);
+    });
+  #endif
 
   signal(SIGINT, +[](int signum) {
     onExit();

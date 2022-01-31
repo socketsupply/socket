@@ -113,6 +113,8 @@ namespace Opkit {
   static auto bgBrush = CreateSolidBrush(RGB(0, 0, 0));
   FILE* console;
 
+  class DragDrop;
+
   class Window : public IWindow {
     HWND window;
     DWORD mainThread = GetCurrentThreadId();
@@ -123,6 +125,7 @@ namespace Opkit {
       ICoreWebView2 *webview = nullptr;
       ICoreWebView2Controller *controller = nullptr;
       bool webviewFailed = false;
+      DragDrop* drop;
 
       App app;
       WindowOptions opts;
@@ -158,6 +161,106 @@ namespace Opkit {
       );
       int openExternal(const std::string&);
       ScreenSize getScreenSize();
+  };
+
+  class DragDrop : public IDropTarget {
+    unsigned int refCount;
+
+    public:
+    Window* window;
+
+    DragDrop(Window* win) : window(win) {
+      refCount = 0;
+    };
+
+    private:
+    STDMETHODIMP QueryInterface(REFIID riid, void **ppv) {
+      if (riid == IID_IUnknown || riid == IID_IDropTarget) {
+        *ppv = static_cast<IUnknown*>(this);
+        AddRef();
+        return S_OK;
+      }
+      *ppv = NULL;
+      return E_NOINTERFACE;
+    };
+
+    HRESULT DragEnter(IDataObject *pDataObj, DWORD grfKeyState, POINTL pt, DWORD *pdwEffect) {
+      *pdwEffect &= DROPEFFECT_COPY;
+      return S_OK;
+    };
+
+    ULONG AddRef (void) {
+      refCount++;
+      return refCount;
+    }
+
+    ULONG Release (void) {
+      refCount--;
+      if (refCount == 0) {
+        delete this;
+      }
+      return refCount;
+    }
+
+    HRESULT STDMETHODCALLTYPE DragOver(DWORD grfKeyState, POINTL pt, DWORD *pdwEffect) {
+      *pdwEffect &= DROPEFFECT_COPY;
+      return S_OK;
+    };
+
+    HRESULT STDMETHODCALLTYPE DragLeave(void) {
+      return S_OK;
+    };
+
+    HRESULT STDMETHODCALLTYPE Drop(IDataObject *pDataObj, DWORD grfKeyState, POINTL pt, DWORD *pdwEffect) {
+      // on windows {x,y} are screen coordinates, so we need to calculate what they are based on
+      //
+      // alert("DROP: x=" + std::to_string(pt.x) + "y=" + std::to_string(pt.y));
+  
+      HRESULT hr;
+
+      FORMATETC  formatetc;
+      formatetc.cfFormat = CF_HDROP;
+      formatetc.ptd      = NULL;
+      formatetc.dwAspect = DVASPECT_CONTENT;
+      formatetc.lindex   = -1;
+      formatetc.tymed    = TYMED_HGLOBAL;
+
+      hr = pDataObj->QueryGetData(&formatetc);
+      if (FAILED(hr)) {
+        return S_OK;
+      }
+
+      STGMEDIUM medium;
+      hr = pDataObj->GetData(&formatetc, &medium);
+      if (FAILED(hr)) {
+        return S_OK;
+      }
+
+      HDROP p = (HDROP)GlobalLock(medium.hGlobal);
+      int num = DragQueryFile(p, 0xFFFFFFFF, NULL, 0);
+
+      for (int iFile = 0; iFile < num; iFile++) {
+        int size = DragQueryFile(p, iFile, NULL, 0);
+
+        TCHAR* buf = new TCHAR[size + 1];
+        DragQueryFile(p, iFile, buf, size + 1);
+
+        std::string json = (
+          "{\"path\":\"" + std::string(buf) + "\","
+          "\"x\":" + std::to_string(pt.x) + ","
+          "\"y\":" + std::to_string(pt.y) + "}"
+        );
+
+        this->window->eval(emitToRenderProcess("drop", json));
+        delete[] buf;
+      }
+
+      GlobalUnlock(medium.hGlobal);
+      ReleaseStgMedium(&medium);
+
+      *pdwEffect &= DROPEFFECT_COPY;
+      return S_OK;
+    };
   };
 
   App::App(void* h): hInstance((_In_ HINSTANCE) h) {
@@ -256,8 +359,20 @@ namespace Opkit {
 
     // SetWindowTheme(window, L"Explorer", nullptr);
     // DwmSetWindowAttribute(window, 19, &mode, sizeof(long));
-    /*/
+    */
     UpdateWindow(window);
+
+    this->drop = new DragDrop(this);
+
+    HRESULT initResult = OleInitialize(NULL);
+
+    //
+    // In theory these allow you to do drop files in elevated mode
+    //
+    ChangeWindowMessageFilter (WM_DROPFILES, MSGFLT_ADD);
+    ChangeWindowMessageFilter (WM_COPYDATA, MSGFLT_ADD);
+    ChangeWindowMessageFilter (0x0049, MSGFLT_ADD);
+
     ShowWindow(window, SW_SHOW);
     SetWindowLongPtr(window, GWLP_USERDATA, (LONG_PTR) this);
 
@@ -314,6 +429,22 @@ namespace Opkit {
                 settings6->put_IsPinchZoomEnabled(FALSE);
                 settings6->put_IsSwipeNavigationEnabled(FALSE);
 
+                EnumChildWindows(window, [](HWND hWnd, LPARAM window) -> BOOL {
+                  int l = GetWindowTextLengthW(hWnd);
+
+                  if (l > 0) {
+                    wchar_t* buf = new wchar_t[l+1];
+                    GetWindowTextW(hWnd, buf, l+1);
+
+                    if (WStringToString(buf).find("Chrome")) {
+                      RevokeDragDrop(hWnd);
+                      Window* w = reinterpret_cast<Window*>(GetWindowLongPtr((HWND)window, GWLP_USERDATA));
+                      RegisterDragDrop(hWnd, w->drop);
+                    }
+                  }
+                  return TRUE;
+                }, (LPARAM)window);
+
                 app.isReady = true;
 
                 EventRegistrationToken tokenNavigation;
@@ -335,6 +466,21 @@ namespace Opkit {
                   ).Get(),
                   &tokenNavigation
                 );
+
+                /* EventRegistrationToken tokenNewWindow;
+
+                webview->add_NewWindowRequested(
+                  Callback<ICoreWebView2NewWindowRequestedEventHandler>(
+                    [&](ICoreWebView2* wv, ICoreWebView2NewWindowRequestedEventArgs* e) {
+                      // PWSTR uri;
+                      // e->get_Uri(&uri);
+                      // std::string url(WStringToString(uri));
+                      e->put_Handled(true);
+                      return S_OK;
+                    }
+                  ).Get(),
+                  &tokenNewWindow
+                ); */
 
                 webview->AddScriptToExecuteOnDocumentCreated(
                   StringToWString(preload).c_str(),

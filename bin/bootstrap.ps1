@@ -62,11 +62,14 @@ Write-Output "$([char]0x2666) Working path set to $WORKING_PATH."
 
 if ($args[0] -eq "update") {
     Write-Output "$([char]0x2666) Updating WebView2 header files..."
+    #https://docs.microsoft.com/en-us/microsoft-edge/webview2/concepts/versioning
     #PACKAGE_VERSION='1.0.992.28'
-    $PACKAGE_VERSION='1.0.1018-prerelease'
+    $PACKAGE_VERSION='1.0.1133-prerelease'
     Invoke-WebRequest https://www.nuget.org/api/v2/package/Microsoft.Web.WebView2/$PACKAGE_VERSION -O $TEMP_PATH\webview2.zip
     Expand-Archive -Path $TEMP_PATH\WebView2.zip -DestinationPath $TEMP_PATH\WebView2
     Copy-Item -Path $TEMP_PATH\WebView2\build\native\include\WebView2.h $WORKING_PATH\src\win64
+    Copy-Item -Path $TEMP_PATH\WebView2\build\native\include\WebView2Experimental.h $WORKING_PATH\src\win64
+    Copy-Item -Path $TEMP_PATH\WebView2\build\native\x64\WebView2LoaderStatic.lib $WORKING_PATH\src\win64
     Exit 0
 }
 
