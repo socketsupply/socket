@@ -217,7 +217,7 @@ namespace Opkit {
       // on windows pt.{x,y} are screen coordinates, to get the position of the mouse relative to the window
       // we need to subtract window.{left,top}.
       //
-       
+
       RECT rect;
       HWND hWndChild = this->childWindow;
       HWND hWndParent = this->window->window;
@@ -261,8 +261,8 @@ namespace Opkit {
 
         std::string json = (
           "{\"path\":\"" + lolWindowsPath + "\","
-          "\"x\":" + std::to_string(x) + ","
-          "\"y\":" + std::to_string(y) + "}"
+          "\"x\": " + std::to_string(x) + " / window.devicePixelRatio,"
+          "\"y\": " + std::to_string(y) + " / window.devicePixelRatio }"
         );
 
         this->window->eval(emitToRenderProcess("drop", json));
