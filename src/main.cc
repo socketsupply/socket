@@ -118,7 +118,7 @@ MAIN {
         Parse cmd(out);
 
         if (cmd.name != "exit") {
-          std::cout << decodeURIComponent(cmd.get("value"));
+          std::cout << decodeURIComponent(cmd.get("value")) << std::endl;
         } else if (cmd.name == "exit") {
           exitCode = stoi(cmd.get("value"));
           exit(exitCode);
