@@ -111,6 +111,8 @@ MAIN {
   }
 
   if (isCommandMode) {
+    argvForward << " --opkit-current-directory=" << fs::current_path();
+
     Process process(
       cmd + argvForward.str(),
       cwd,
