@@ -671,6 +671,15 @@ namespace Opkit {
       0
     );
 
+    RECT rc;
+    rc.top = 0;
+    rc.left = 0;
+    rc.bottom = 0;
+    rc.right = 0;
+    InvalidateRect(this->window, &rc, true);
+    DrawMenuBar(this->window);
+    RedrawWindow(this->window, NULL, NULL, RDW_INVALIDATE | RDW_ERASE);
+
     if (seq.size() > 0) {
       auto index = std::to_string(this->opts.index);
       this->onMessage(resolveToMainProcess(seq, "0", index));
@@ -859,7 +868,7 @@ namespace Opkit {
 
     MENUINFO Info;
     Info.cbSize = sizeof(Info);
-    Info.fMask = MIM_BACKGROUND; // | MFT_OWNERDRAW;
+    Info.fMask = MIM_BACKGROUND | MFT_OWNERDRAW;
     Info.hbrBack = bgBrush;
     SetMenuInfo(hMenubar, &Info);
 
