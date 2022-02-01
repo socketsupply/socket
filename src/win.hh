@@ -482,7 +482,7 @@ namespace Opkit {
                   &tokenNavigation
                 );
 
-                /* EventRegistrationToken tokenNewWindow;
+                EventRegistrationToken tokenNewWindow;
 
                 webview->add_NewWindowRequested(
                   Callback<ICoreWebView2NewWindowRequestedEventHandler>(
@@ -495,7 +495,7 @@ namespace Opkit {
                     }
                   ).Get(),
                   &tokenNewWindow
-                ); */
+                );
 
                 webview->AddScriptToExecuteOnDocumentCreated(
                   StringToWString(preload).c_str(),
