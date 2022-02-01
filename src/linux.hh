@@ -337,8 +337,9 @@ namespace Opkit {
   }
 
   void Window::show(const std::string &seq) {
-    gtk_widget_realize(window);
-    gtk_widget_show_all(window);
+    gtk_widget_realize(this->window);
+    gtk_widget_show_all(this->window);
+    gtk_window_present(GTK_WINDOW(this->window));
 
     if (seq.size() > 0) {
       auto index = std::to_string(this->opts.index);
@@ -347,8 +348,8 @@ namespace Opkit {
   }
 
   void Window::hide(const std::string &seq) {
-    gtk_widget_realize(window);
-    gtk_widget_hide(window);
+    gtk_widget_realize(this->window);
+    gtk_widget_hide(this->window);
     this->eval(emitToRenderProcess("windowHide", "{}"));
 
     if (seq.size() > 0) {
