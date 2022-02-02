@@ -650,8 +650,9 @@ namespace Opkit {
   void Window::close (int code) {
     if (opts.canExit) {
       this->exit(0);
-    } else {
       DestroyWindow(window);
+    } else {
+      this->hide("");
     }
   }
 
@@ -1219,8 +1220,10 @@ namespace Opkit {
 
       case WM_CLOSE: {
         #if DEBUG == 1
-          fclose(console);
-          FreeConsole();
+          if (w->opts.canExit) {
+            fclose(console);
+            FreeConsole();
+          }
         #endif
 
         w->close(0);
