@@ -720,6 +720,7 @@ int main (const int argc, const char* argv[]) {
         std::string prefix = (i > 0) ? ";" : "";
 
         signCommand
+          << "codesign "
           << prefix
           << commonFlags.str()
           << (pathResources / paths[i]).string()
