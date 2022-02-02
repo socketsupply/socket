@@ -1,7 +1,9 @@
 MIT License
 
-Copyright (c) 2021 Serge Zaitsev
-Copyright (c) 2021 Paolo Fragomeni <paolo@optool.co>
+Copyright (c) 2022 Paolo Fragomeni <paolo@operator.tc>
+Copyright (c) 2022 Jake Verbaten <jake@operator.tc>
+Copyright (c) 2022 Joseph Werle <joseph@operator.tc>
+Copyright (c) 2022 Serge Zaitsev
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
