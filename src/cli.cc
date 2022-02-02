@@ -778,7 +778,7 @@ int main (const int argc, const char* argv[]) {
       exit(1);
     }
 
-    log("craeted package artifact");
+    log("created package artifact");
   }
 
   //
