@@ -33,8 +33,9 @@ constexpr auto gPreload = R"JS(
     delete window._ipc[seq];
   }
 
-  window._ipc.send = (name, value) => {
+  window._ipc.send = (name, o) => {
     const seq = window._ipc.nextSeq++
+    let serialized = ''
 
     const promise = new Promise((resolve, reject) => {
       window._ipc[seq] = {
@@ -44,26 +45,27 @@ constexpr auto gPreload = R"JS(
     })
 
     try {
-      let rawValue = value
-      if (typeof value === 'object') {
-        value = JSON.stringify(value)
+      if (({}).toString.call(o) !== '[object Object]') {
+        o = { value: o }
       }
 
-      value = new URLSearchParams({
-        ...rawValue,
+      const params = {
+        ...o,
         index: window.process.index,
-        seq,
-        value
-      }).toString()
+        seq
+      }
 
-      value = value.replace(/\+/g, '%20')
+      console.log(params)
+      serialized = new URLSearchParams(params).toString()
+
+      serialized = serialized.replace(/\+/g, '%20')
 
     } catch (err) {
-      console.error(`${err.message} (${value})`)
+      console.error(`${err.message} (${serialized})`)
       return Promise.reject(err.message)
     }
 
-    window.external.invoke(`ipc://${name}?${value}`)
+    window.external.invoke(`ipc://${name}?${serialized}`)
     return promise
   }
 
@@ -99,7 +101,18 @@ constexpr auto gPreload = R"JS(
 )JS";
 
 constexpr auto gPreloadDesktop = R"JS(
-  window.system.send = o => window._ipc.send('send', o)
+  window.system.send = o => {
+    let value = ''
+
+    try {
+      value = JSON.stringify(o)
+    } catch (err) {
+      return Promise.reject(err.message)
+    }
+
+    return window._ipc.send('send', { value })
+  }
+
   window.system.exit = o => window._ipc.send('exit', o)
   window.system.openExternal = o => window._ipc.send('external', o)
   window.system.setTitle = o => window._ipc.send('title', o)
