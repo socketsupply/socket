@@ -50,7 +50,7 @@ namespace Opkit {
 
       App(void* h);
       int run();
-      void exit();
+      void exit(int code);
       void kill();
       void restart();
       void dispatch(std::function<void()>);
@@ -140,9 +140,9 @@ namespace Opkit {
       void eval(const std::string&);
       void show(const std::string&);
       void hide(const std::string&);
-      void exit();
+      void exit(int code);
       void kill();
-      void close();
+      void close(int code);
       void navigate(const std::string&, const std::string&);
       void setSize(const std::string&, int, int, int);
       void setTitle(const std::string&, const std::string&);
@@ -643,13 +643,13 @@ namespace Opkit {
     if (this->window != nullptr) DestroyWindow(this->window);
   }
 
-  void Window::exit () {
-    if (this->onExit != nullptr) this->onExit();
+  void Window::exit (int code) {
+    if (this->onExit != nullptr) this->onExit(code);
   }
 
-  void Window::close () {
+  void Window::close (int code) {
     if (opts.canExit) {
-      this->exit();
+      this->exit(0);
     } else {
       DestroyWindow(window);
     }
@@ -1069,7 +1069,7 @@ namespace Opkit {
           }
 
           if (std::string(title).find("Quit") == 0) {
-            w->exit();
+            w->exit(0);
             break;
           }
 
@@ -1223,7 +1223,7 @@ namespace Opkit {
           FreeConsole();
         #endif
 
-        w->close();
+        w->close(0);
 
         break;
 

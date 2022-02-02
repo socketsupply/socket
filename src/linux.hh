@@ -43,8 +43,8 @@ namespace Opkit {
       void show(const std::string&);
       void hide(const std::string&);
       void kill();
-      void close();
-      void exit();
+      void close(int code);
+      void exit(int code);
       void navigate(const std::string&, const std::string&);
       void setTitle(const std::string&, const std::string&);
       void setSize(const std::string&, int, int, int);
@@ -179,7 +179,7 @@ namespace Opkit {
       "destroy",
       G_CALLBACK(+[](GtkWidget*, gpointer arg) {
         auto* w = static_cast<Window*>(arg);
-        w->close();
+        w->close(0);
       }),
       this
     );
@@ -253,7 +253,7 @@ namespace Opkit {
           return gtk_widget_hide_on_delete(widget);
         }
 
-        w->close();
+        w->close(0);
         return FALSE;
       }),
       this
@@ -358,17 +358,17 @@ namespace Opkit {
     }
   }
 
-  void Window::exit() {
-    if (onExit != nullptr) onExit();
+  void Window::exit(int code) {
+    if (onExit != nullptr) onExit(code);
   }
 
   void Window::kill() {
     // gtk releases objects automatically.
   }
 
-  void Window::close () {
+  void Window::close (int code) {
     if (opts.canExit) {
-      this->exit();
+      this->exit(code);
     }
   }
 
@@ -572,7 +572,7 @@ namespace Opkit {
               }
 
               if (std::string(title).find("Quit") == 0) {
-                return w->exit();
+                return w->exit(0);
               }
 
               w->eval(resolveMenuSelection("0", title, parent));

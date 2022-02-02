@@ -647,7 +647,7 @@ namespace Opkit {
   }
 
   using SCallback = std::function<void(const std::string)>;
-  using VCallback = std::function<void()>;
+  using ExitCallback = std::function<void(int code)>;
 
   //
   // Interfaces make sure all operating systems implement the same stuff
@@ -655,8 +655,8 @@ namespace Opkit {
   class IApp {
     public:
       bool shouldExit = false;
-      VCallback onExit = nullptr;
-      void exit();
+      ExitCallback onExit = nullptr;
+      void exit(int code);
 
       virtual int run() = 0;
       virtual void kill() = 0;
@@ -665,8 +665,8 @@ namespace Opkit {
       virtual std::string getCwd(const std::string&) = 0;
   };
 
-  void IApp::exit () {
-    if (onExit != nullptr) onExit();
+  void IApp::exit (int code) {
+    if (onExit != nullptr) onExit(code);
   }
 
   class IWindow {
@@ -674,14 +674,14 @@ namespace Opkit {
       int index = 0;
       WindowOptions opts;
       SCallback onMessage = [](const std::string) {};
-      VCallback onExit = nullptr;
+      ExitCallback onExit = nullptr;
 
       virtual void eval(const std::string&) = 0;
       virtual void show(const std::string&) = 0;
       virtual void hide(const std::string&) = 0;
-      virtual void exit() = 0;
+      virtual void close(int code) = 0;
+      virtual void exit(int code) = 0;
       virtual void kill() = 0;
-      virtual void close() = 0;
       virtual void navigate(const std::string&, const std::string&) = 0;
       virtual void setSize(const std::string&, int, int, int) = 0;
       virtual void setTitle(const std::string&, const std::string&) = 0;

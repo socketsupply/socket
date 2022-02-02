@@ -22,6 +22,9 @@
 
 using namespace Opkit;
 
+std::function<void(int)> shutdownHandler;
+void signalHandler(int signal) { shutdownHandler(signal); }
+
 //
 // the MAIN macro provides a cross-platform program entry point.
 // it makes argc and argv uniformly available. It provides "instanceId"
@@ -130,6 +133,18 @@ MAIN {
         std::cerr << out;
       }
     );
+
+    shutdownHandler = [&](int signum) {
+      auto pid = process.getPID();
+      process.kill(pid);
+      exit(signum);
+    };
+
+    #ifndef _WIN32
+      signal(SIGHUP, signalHandler);
+    #endif
+
+    signal(SIGINT, signalHandler);
 
     return exitCode;
   }
@@ -267,7 +282,7 @@ MAIN {
         } catch (...) {
         }
 
-        w.exit();
+        w.exit(exitCode);
 
         if (seq.size() > 0) {
           w.onMessage(resolveToMainProcess(seq, "0", "null"));
@@ -332,7 +347,7 @@ MAIN {
       } catch (...) {
       }
 
-      w.exit();
+      w.exit(exitCode);
       return;
     }
 
@@ -391,37 +406,32 @@ MAIN {
 
   //
   // # Exiting
+  //
   // When a window or the app wants to exit,
   // we clean up the windows and the main process.
-  // TODO pass a real exit code?
   //
-  static auto onExit = [&] {
+  shutdownHandler = [&](int signal) {
     auto pid = process.getPID();
     process.kill(pid);
 
     w0.kill();
     w1.kill();
     app.kill();
+    exit(signal);
   };
 
-  app.onExit = onExit;
-  w0.onExit = onExit;
-  w1.onExit = onExit;
+  app.onExit = shutdownHandler;
+  w0.onExit = shutdownHandler;
+  w1.onExit = shutdownHandler;
 
   //
   // If this is being run in a terminal/multiplexer
   //
   #ifndef _WIN32
-    signal(SIGHUP, +[](int signum) {
-      onExit();
-      exit(signum);
-    });
+    signal(SIGHUP, signalHandler);
   #endif
 
-  signal(SIGINT, +[](int signum) {
-    onExit();
-    exit(signum);
-  });
+  signal(SIGINT, signalHandler);
 
   //
   // # Event Loop

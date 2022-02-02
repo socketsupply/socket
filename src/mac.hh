@@ -131,8 +131,8 @@ namespace Opkit {
       void show(const std::string&);
       void hide(const std::string&);
       void kill();
-      void exit();
-      void close();
+      void exit(int code);
+      void close(int code);
       void navigate(const std::string&, const std::string&);
       void setTitle(const std::string&, const std::string&);
       void setSize(const std::string&, int, int, int);
@@ -315,7 +315,7 @@ namespace Opkit {
 
             if (w->opts.canExit) {
               exiting = true;
-              w->exit();
+              w->exit(0);
               return true;
             }
 
@@ -401,14 +401,14 @@ namespace Opkit {
     }
   }
 
-  void Window::exit () {
-    if (onExit != nullptr) onExit();
+  void Window::exit (int code) {
+    if (onExit != nullptr) onExit(code);
   }
 
   void Window::kill () {
   }
 
-  void Window::close () {
+  void Window::close (int code) {
     [window performClose:nil];
   }
 
