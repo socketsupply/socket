@@ -410,14 +410,14 @@ MAIN {
   // When a window or the app wants to exit,
   // we clean up the windows and the main process.
   //
-  shutdownHandler = [&](int signal) {
+  shutdownHandler = [&](int code) {
     auto pid = process.getPID();
     process.kill(pid);
 
     w0.kill();
     w1.kill();
     app.kill();
-    exit(signal);
+    exit(code);
   };
 
   app.onExit = shutdownHandler;
