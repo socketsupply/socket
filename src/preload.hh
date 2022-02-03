@@ -55,7 +55,6 @@ constexpr auto gPreload = R"JS(
         seq
       }
 
-      console.log(params)
       serialized = new URLSearchParams(params).toString()
 
       serialized = serialized.replace(/\+/g, '%20')
