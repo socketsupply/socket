@@ -1,22 +1,28 @@
 #include "common.hh"
 #import <Cocoa/Cocoa.h>
 #import <Webkit/Webkit.h>
+#import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
 #include <objc/objc-runtime.h>
 
-@interface WV : WKWebView<WKUIDelegate, NSDraggingDestination, NSFilePromiseProviderDelegate, NSDraggingSource>
+@interface WV : WKWebView<
+  WKUIDelegate,
+  NSDraggingDestination,
+  NSFilePromiseProviderDelegate,
+  NSDraggingSource>
+@property (nonatomic, strong, readonly) dispatch_queue_t queue;
 
-- (NSDragOperation) draggingSession:(NSDraggingSession *)session
+- (NSDragOperation) draggingSession: (NSDraggingSession *)session
   sourceOperationMaskForDraggingContext:(NSDraggingContext)context;
-- (void) mouseDown:(NSEvent*)event;
+- (void) mouseDown: (NSEvent*)event;
 @end
 
 @implementation WV
-NSOperationQueue *queue;
+NSOperationQueue* aQueue = [[NSOperationQueue alloc] init];
+NSFilePromiseProvider *provider;
 
-- (void)awakeFromNib {
-  queue = [[NSOperationQueue alloc] init];
-  [queue setName:@"qa.operator.background queue"];
-  [queue setQualityOfService:NSQualityOfServiceDefault];
+- (void) allocateProvider {
+  provider = [[NSFilePromiseProvider alloc] initWithFileType:(NSString*)kUTTypeURL delegate:self];
+  [provider setDelegate:self];
 }
 
 - (void) draggingEnded: (id<NSDraggingInfo>)info {
@@ -91,6 +97,7 @@ NSOperationQueue *queue;
          completionHandler: ^(id result, NSError *error) {
         if (error) {
           NSLog(@"%@", error);
+          return;
         }
 
         std::cout << "result: " << [result UTF8String] << std::endl;
@@ -125,8 +132,16 @@ NSOperationQueue *queue;
             return @[comp];
           };
 
-          NSDraggingItem* dragItem = [[NSDraggingItem alloc] initWithPasteboardWriter: fileURL];
+          NSDraggingItem* dragItem;
 
+          if (file.find("http") == 0) {
+            [[NSFilePromiseProvider alloc]
+              initWithFileType: @"public.file-url"
+                      delegate: self];
+
+          } else {
+            dragItem = [[NSDraggingItem alloc] initWithPasteboardWriter: fileURL];
+          }
           // The x, y here determine from what point the images fly in at the beginning
           // of the drag. The size determines the space each DraggingImage has, so can
           // be used to create overlapping icons or spacing between them.
@@ -154,14 +169,23 @@ NSOperationQueue *queue;
   }];
 }
 
-//
-// Return the operation queue that the write request should be issued from. If
-// this method is not implemented, the mainOperationQueue is used. While
-// optional, it is strongly recommended that you provide an operation queue
-// other than the main operation queue to avoid blocking your main thread.
-//
-- (NSOperationQueue *)operationQueueForFilePromiseProvider:(NSFilePromiseProvider *)filePromiseProvider{
-  return [self queue];
+- (void) filePromiseProvider:(NSFilePromiseProvider*)filePromiseProvider writePromiseToURL:(NSURL *)url
+  completionHandler:(void (^)(NSError *errorOrNil))completionHandler {
+    std::cout << "writePromiseToURL: " << [url path] << std::endl;
+
+    NSData *data = [@"test file contents" dataUsingEncoding:NSUTF8StringEncoding];
+    [data writeToURL:url atomically:YES];
+    completionHandler(nil);
+}
+
+- (NSString*) filePromiseProvider: (NSFilePromiseProvider*)filePromiseProvider fileNameForType:(NSString *)fileType {
+  std::cout << "fileNameForType: " << std::endl;
+  return @"file.txt";
+}
+
+- (NSOperationQueue*)promiseOperationQueueForFilePromiseProvider:(NSFilePromiseProvider*)filePromiseProvider {
+  std::cout << "promiseOperationQueueForFilePromiseProvider" << std::endl;
+  return aQueue;
 }
 
 @end
@@ -259,7 +283,6 @@ namespace Opkit {
       Window(App&, WindowOptions);
       bool webviewFailed = false;
 
-      void addToDrag (std::string s);
       void eval(const std::string&);
       void show(const std::string&);
       void hide(const std::string&);
@@ -544,38 +567,6 @@ namespace Opkit {
 
   void Window::close (int code) {
     [window performClose:nil];
-  }
-
-  void Window::addToDrag (std::string s) {
-    std::cout << "ADD TO DRAG" << std::endl;
-    /* NSPoint pos = [[webview window] mouseLocationOutsideOfEventStream];
-    NSPasteboard *pasteBoard = [NSPasteboard generalPasteboard];
-    // NSPasteboard *pasteboard = [NSPasteboard pasteboardWithName:NSPasteboardNameDrag];
-
-    // [pasteboard clearContents];
-
-    NSURL* url = [NSURL fileURLWithPath: @"/Users/paolofragomeni/projects/optoolco/opkit/README.md"];
-
-    NSDraggingItem* file_item =
-      [[[NSDraggingItem alloc] initWithPasteboardWriter: url] autorelease];
-    // NSPasteboardItem *pasteboardItem = [[NSPasteboardItem alloc] init];
-
-    NSEvent* dragEvent =
-      [NSEvent
-        mouseEventWithType: NSEventTypeLeftMouseDragged
-                  location: pos
-             modifierFlags: NSEventMaskLeftMouseDragged
-                 timestamp: [[NSApp currentEvent] timestamp]
-              windowNumber: [this->window windowNumber]
-                   context: nil
-               eventNumber: 0
-                clickCount: 1
-                  pressure: 1.0];
-
-    [webview
-      beginDraggingSessionWithItems: @[ file_item ]
-                              event: dragEvent
-                             source: GetDraggingSource()]; */
   }
 
   void Window::hide (const std::string& seq) {
