@@ -177,6 +177,11 @@ class AppContainer extends Tonic {
     return // system.setTitle({ e.target.value)
   }
 
+  async dragstart (e) {
+    var dataList = e.dataTransfer.items
+    dataList.add('https://foo.com https://x.com', 'text/plain')
+  }
+
   async contextmenu (e) {
     const el = Tonic.match(e.target, '.context-menu')
     if (!el) return

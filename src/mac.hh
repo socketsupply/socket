@@ -1,49 +1,160 @@
 #include "common.hh"
 #import <Cocoa/Cocoa.h>
 #import <Webkit/Webkit.h>
+#import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
 #include <objc/objc-runtime.h>
 
-@interface WV : WKWebView<NSDraggingDestination>
-- (bool) prepareForDragOperation: (id<NSDraggingInfo>)sender;
-- (bool) draggingEnded: (id<NSDraggingInfo>)info;
+NS_ASSUME_NONNULL_BEGIN
+@interface WV : WKWebView<NSDraggingDestination, NSFilePromiseProviderDelegate, NSDraggingSource>
+
+- (NSDragOperation) draggingSession:(NSDraggingSession *)session
+  sourceOperationMaskForDraggingContext:(NSDraggingContext)context;
+- (void) mouseDown:(NSEvent*)event;
 @end
 
 @implementation WV
-- (bool) draggingEnded: (id<NSDraggingInfo>)info {
+NSOperationQueue *queue;
+std::vector<std::string> dragPayload;
+
+- (void)awakeFromNib {
+  //Create dragging serial queue
+  queue = [[NSOperationQueue alloc] init];
+  [queue setName:@"com.operator.background queue"];
+  [queue setQualityOfService:NSQualityOfServiceDefault];
+}
+
+- (void) draggingEnded: (id<NSDraggingInfo>)info {
   NSPasteboard *pboard = [info draggingPasteboard];
 
-  NSArray<Class> *classes = @[[NSURL class]];
-  NSDictionary *options = @{};
-  NSArray<NSURL*> *files = [pboard readObjectsForClasses:classes options:options];
+  if (NSPointInRect([info draggingLocation], self.frame)) {
+    NSArray<Class> *classes = @[[NSURL class]];
+    NSDictionary *options = @{};
+    NSArray<NSURL*> *files = [pboard readObjectsForClasses:classes options:options];
 
-  NSPoint pos = [info draggingLocation];
-  // NSWindow is (0,0) at bottom left, browser is (0,0) at top left
-  // so we need to flip the y coordinate to convert to browser coordinates
-  int y = [self frame].size.height - pos.y;
+    NSPoint pos = [info draggingLocation];
+    // NSWindow is (0,0) at bottom left, browser is (0,0) at top left
+    // so we need to flip the y coordinate to convert to browser coordinates
+    int y = [self frame].size.height - pos.y;
 
-  for (NSURL *url in files) {
-    std::string path([[url path] UTF8String]);
-    path = Opkit::replace(path, "\"", "'");
+    for (NSURL *url in files) {
+      std::string path([[url path] UTF8String]);
+      path = Opkit::replace(path, "\"", "'");
 
-    std::string json = (
-      "{\"path\":\"" + path + "\","
-      "\"x\":" + std::to_string(pos.x) + ","
-      "\"y\":" + std::to_string(y) + "}"
-    );
+      std::string json = (
+        "{\"path\":\"" + path + "\","
+        "\"x\":" + std::to_string(pos.x) + ","
+        "\"y\":" + std::to_string(y) + "}"
+      );
 
-    auto payload = Opkit::emitToRenderProcess("drop", json);
+      auto payload = Opkit::emitToRenderProcess("drop", json);
 
-    [self evaluateJavaScript:
-      [NSString stringWithUTF8String: payload.c_str()]
-      completionHandler:nil];
+      [self evaluateJavaScript:
+        [NSString stringWithUTF8String: payload.c_str()]
+        completionHandler:nil];
+    }
+    return;
   }
-
-  return YES;
 }
 
-- (bool) prepareForDragOperation: (id<NSDraggingInfo>)info {
-  return NO; // don't accept any drops, they will reload the page
+- (void) draggingEntered:(id <NSDraggingInfo>)info {
+  NSPasteboard *pboard = [info draggingPasteboard];
+
+  NSArray<Class> *classes = @[[NSString class]];
+  NSDictionary *options = @{};
+  NSArray<NSString*> *strings = [pboard readObjectsForClasses:classes options:options];
+
+  if (strings) {
+    auto files = Opkit::split(std::string([[strings objectAtIndex:0] UTF8String]), ' ');
+    for (auto file : files) {
+      std::cout << file << std::endl;
+    }
+  }
 }
+
+- (void) mouseDown: (NSEvent*)event {
+  NSPoint location = [self convertPoint:[event locationInWindow] fromView:nil];
+
+  CGFloat dragThreshold = 3.0;
+
+  [[self window] trackEventsMatchingMask: NSEventMaskLeftMouseUp | NSEventMaskLeftMouseDragged timeout:10 mode:NSEventTrackingRunLoopMode handler:^(NSEvent* _Nullable e, BOOL * _Nonnull stop) {
+    if (event == nil) {
+      [super mouseDown:event];
+      return;
+    }
+
+    if ([e type] == NSEventTypeLeftMouseUp){
+      [super mouseDown:event];
+      *stop = YES;
+    } else {
+      std::vector<std::string> files = { "/Users/paolofragomeni/projects/optoolco/opkit/README.md" };
+
+      NSMutableArray* dragItems = [[NSMutableArray alloc] init];
+      NSPoint dragPosition = [self convertPoint:[e locationInWindow]
+                            fromView:nil];
+      for (auto& file : files) {
+        NSString* nsFile = [[NSString alloc] initWithUTF8String:file.c_str()];
+        NSURL* fileURL = [NSURL fileURLWithPath: nsFile];
+
+        NSImage* icon = [[NSWorkspace sharedWorkspace] iconForFile:nsFile];
+        NSSize iconSize = NSMakeSize(32, 32); // according to documentation
+
+        NSArray* (^providerBlock)() = ^NSArray*() {
+          NSDraggingImageComponent* comp = [[[NSDraggingImageComponent alloc]
+            initWithKey: NSDraggingImageComponentIconKey] retain];
+
+          // The x, y here seem to control the offset from the mouse pointer
+          comp.frame = NSMakeRect(0, 0, iconSize.width, iconSize.height);
+          comp.contents = icon;
+          return @[comp];
+        };
+
+        NSDraggingItem* dragItem = [[NSDraggingItem alloc] initWithPasteboardWriter: fileURL];
+
+        // The x, y here determine from what point the images fly in at the beginning
+        // of the drag. The size determines the space each DraggingImage has, so can
+        // be used to create overlapping icons or spacing between them.
+        dragItem.draggingFrame = NSMakeRect(
+          dragPosition.x, dragPosition.y, iconSize.width, iconSize.height);
+        dragItem.imageComponentsProvider = providerBlock;
+        [dragItems addObject: dragItem];
+      }
+
+      NSPoint movedLocation = [self convertPoint:[e locationInWindow] fromView:nil];
+      if (fabs(movedLocation.x - location.x) > dragThreshold || fabs(movedLocation.y - location.y) > dragThreshold) {
+
+        NSPoint dragPosition;
+        NSRect imageLocation;
+
+        dragPosition = [self convertPoint:[e locationInWindow]
+                            fromView:nil];
+        dragPosition.x -= 16;
+        dragPosition.y -= 16;
+        imageLocation.origin = dragPosition;
+        imageLocation.size = NSMakeSize(32,32);
+
+        NSDraggingSession* session = [self
+            beginDraggingSessionWithItems: dragItems
+                                    event: e
+                                   source: self];
+
+        session.draggingFormation = NSDraggingFormationList;        //
+
+        *stop = YES;
+      }
+    }
+  }];
+}
+
+//
+// Return the operation queue that the write request should be issued from. If
+// this method is not implemented, the mainOperationQueue is used. While
+// optional, it is strongly recommended that you provide an operation queue
+// other than the main operation queue to avoid blocking your main thread.
+//
+- (NSOperationQueue *)operationQueueForFilePromiseProvider:(NSFilePromiseProvider *)filePromiseProvider{
+  return [self queue];
+}
+
 @end
 
 @interface WindowDelegate : NSObject <NSWindowDelegate, WKScriptMessageHandler>
@@ -76,6 +187,19 @@
   }
 }
 @end
+
+@interface DragDownloadItemSource : NSObject<NSDraggingSource>
+@end
+
+@implementation DragDownloadItemSource
+
+- (NSDragOperation)draggingSession:(NSDraggingSession*)session
+    sourceOperationMaskForDraggingContext:(NSDraggingContext)context {
+  return NSDragOperationEvery;
+}
+
+@end
+NS_ASSUME_NONNULL_END
 
 /* @interface WebInspector : NSObject {
   WKWebView *webView;
@@ -127,6 +251,7 @@ namespace Opkit {
       Window(App&, WindowOptions);
       bool webviewFailed = false;
 
+      void addToDrag (std::string s);
       void eval(const std::string&);
       void show(const std::string&);
       void hide(const std::string&);
@@ -217,6 +342,7 @@ namespace Opkit {
     NSArray* types = [NSArray arrayWithObjects:
                       NSPasteboardTypeURL,
                       NSPasteboardTypeFileURL,
+                      (NSString *)kPasteboardTypeFileURLPromise,
                       NSPasteboardTypeString,
                       NSPasteboardTypeHTML,
                       nil];
@@ -410,6 +536,38 @@ namespace Opkit {
 
   void Window::close (int code) {
     [window performClose:nil];
+  }
+
+  void Window::addToDrag (std::string s) {
+    std::cout << "ADD TO DRAG" << std::endl;
+    /* NSPoint pos = [[webview window] mouseLocationOutsideOfEventStream];
+    NSPasteboard *pasteBoard = [NSPasteboard generalPasteboard];
+    // NSPasteboard *pasteboard = [NSPasteboard pasteboardWithName:NSPasteboardNameDrag];
+
+    // [pasteboard clearContents];
+
+    NSURL* url = [NSURL fileURLWithPath: @"/Users/paolofragomeni/projects/optoolco/opkit/README.md"];
+
+    NSDraggingItem* file_item =
+      [[[NSDraggingItem alloc] initWithPasteboardWriter: url] autorelease];
+    // NSPasteboardItem *pasteboardItem = [[NSPasteboardItem alloc] init];
+
+    NSEvent* dragEvent =
+      [NSEvent
+        mouseEventWithType: NSEventTypeLeftMouseDragged
+                  location: pos
+             modifierFlags: NSEventMaskLeftMouseDragged
+                 timestamp: [[NSApp currentEvent] timestamp]
+              windowNumber: [this->window windowNumber]
+                   context: nil
+               eventNumber: 0
+                clickCount: 1
+                  pressure: 1.0];
+
+    [webview
+      beginDraggingSessionWithItems: @[ file_item ]
+                              event: dragEvent
+                             source: GetDraggingSource()]; */
   }
 
   void Window::hide (const std::string& seq) {

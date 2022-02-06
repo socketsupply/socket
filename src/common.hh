@@ -676,6 +676,7 @@ namespace Opkit {
       SCallback onMessage = [](const std::string) {};
       ExitCallback onExit = nullptr;
 
+      virtual void addToDrag (std::string s) = 0;
       virtual void eval(const std::string&) = 0;
       virtual void show(const std::string&) = 0;
       virtual void hide(const std::string&) = 0;

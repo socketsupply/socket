@@ -351,6 +351,11 @@ MAIN {
       return;
     }
 
+    if (cmd.name == "addToDrag") {
+      w.addToDrag(decodeURIComponent(cmd.get("value")));
+      return;
+    }
+
     if (cmd.name == "hide") {
       w.hide("");
       return;
