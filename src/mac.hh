@@ -3,7 +3,7 @@
 #import <Webkit/Webkit.h>
 #include <objc/objc-runtime.h>
 
-@interface WV : WKWebView<NSDraggingDestination, NSFilePromiseProviderDelegate, NSDraggingSource>
+@interface WV : WKWebView<WKUIDelegate, NSDraggingDestination, NSFilePromiseProviderDelegate, NSDraggingSource>
 
 - (NSDragOperation) draggingSession:(NSDraggingSession *)session
   sourceOperationMaskForDraggingContext:(NSDraggingContext)context;
@@ -71,6 +71,9 @@ NSOperationQueue *queue;
       return;
     }
 
+    //
+    // if the mouse has moved more than the drag threshold, start the drag
+    //
     NSPoint movedLocation = [self convertPoint:[e locationInWindow] fromView:nil];
     if (fabs(movedLocation.x - location.x) > dragThreshold || fabs(movedLocation.y - location.y) > dragThreshold) {
 
