@@ -177,11 +177,6 @@ class AppContainer extends Tonic {
     return // system.setTitle({ e.target.value)
   }
 
-  async dragstart (e) {
-    var dataList = e.dataTransfer.items
-    dataList.add('https://foo.com https://x.com', 'text/plain')
-  }
-
   async contextmenu (e) {
     const el = Tonic.match(e.target, '.context-menu')
     if (!el) return
@@ -204,6 +199,10 @@ class AppContainer extends Tonic {
     }
   }
 
+  connected () {
+    const draggable = document.querySelector('#draggable')
+  }
+
   async render () {
     // const settings = await system.getSettings()
     // console.log(settings)
@@ -214,6 +213,7 @@ class AppContainer extends Tonic {
       <!-- <code>{JSON.stringify(window.process)}</code> -->
       <a href="bad-text">BAD ANCHOR</a>
       <a href="https://example.com">FACEBOOK</a>
+      <a id="drag-demo" data-paths="" draggable>DRAGME</a>
 
       <div class="grid">
         <tonic-input id="send" label="send">

@@ -1,10 +1,8 @@
 #include "common.hh"
 #import <Cocoa/Cocoa.h>
 #import <Webkit/Webkit.h>
-#import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
 #include <objc/objc-runtime.h>
 
-NS_ASSUME_NONNULL_BEGIN
 @interface WV : WKWebView<NSDraggingDestination, NSFilePromiseProviderDelegate, NSDraggingSource>
 
 - (NSDragOperation) draggingSession:(NSDraggingSession *)session
@@ -14,7 +12,6 @@ NS_ASSUME_NONNULL_BEGIN
 
 @implementation WV
 NSOperationQueue *queue;
-std::vector<std::string> dragPayload;
 
 - (void)awakeFromNib {
   queue = [[NSOperationQueue alloc] init];
@@ -55,27 +52,14 @@ std::vector<std::string> dragPayload;
   }
 }
 
-- (void) draggingEntered:(id <NSDraggingInfo>)info {
-  NSPasteboard *pboard = [info draggingPasteboard];
-
-  NSArray<Class> *classes = @[[NSString class], [NSURL class], [NSPasteboardTypeFileURL class]];
-  NSDictionary *options = @{};
-  NSArray<NSString*> *strings = [pboard readObjectsForClasses:classes options:options];
-
-  if (strings) {
-    auto files = Opkit::split(std::string([[strings objectAtIndex:0] UTF8String]), ' ');
-    for (auto file : files) {
-      std::cout << file << std::endl;
-    }
-  }
-}
-
 - (void) mouseDown: (NSEvent*)event {
   NSPoint location = [self convertPoint:[event locationInWindow] fromView:nil];
-
   CGFloat dragThreshold = 3.0;
 
-  [[self window] trackEventsMatchingMask: NSEventMaskLeftMouseUp | NSEventMaskLeftMouseDragged timeout:10 mode:NSEventTrackingRunLoopMode handler:^(NSEvent* _Nullable e, BOOL * _Nonnull stop) {
+  //
+  // start tracking and filtering the mouse events
+  //
+  [[self window] trackEventsMatchingMask: NSEventMaskLeftMouseUp | NSEventMaskLeftMouseDragged timeout:10 mode:NSEventTrackingRunLoopMode handler:^(NSEvent* e, BOOL * stop) {
     if (event == nil) {
       [super mouseDown:event];
       return;
@@ -84,62 +68,85 @@ std::vector<std::string> dragPayload;
     if ([e type] == NSEventTypeLeftMouseUp){
       [super mouseDown:event];
       *stop = YES;
-    } else {
-      std::vector<std::string> files = { "/Users/paolofragomeni/projects/optoolco/opkit/README.md" };
+      return;
+    }
 
-      NSMutableArray* dragItems = [[NSMutableArray alloc] init];
-      NSPoint dragPosition = [self convertPoint:[e locationInWindow]
-                            fromVie, w:nil];
-      for (auto& file : files) {
-        NSString* nsFile = [[NSString alloc] initWithUTF8String:file.c_str()];
-        NSURL* fileURL = [NSURL fileURLWithPath: nsFile];
+    NSPoint movedLocation = [self convertPoint:[e locationInWindow] fromView:nil];
+    if (fabs(movedLocation.x - location.x) > dragThreshold || fabs(movedLocation.y - location.y) > dragThreshold) {
 
-        NSImage* icon = [[NSWorkspace sharedWorkspace] iconForFile:nsFile];
-        NSSize iconSize = NSMakeSize(32, 32); // according to documentation
+      auto x = std::to_string(location.x);
+      auto y = std::to_string(location.y);
 
-        NSArray* (^providerBlock)() = ^NSArray*() {
-          NSDraggingImageComponent* comp = [[[NSDraggingImageComponent alloc]
-            initWithKey: NSDraggingImageComponentIconKey] retain];
+      std::string js(
+        "(() => {"
+        "  const el = document.elementFromPoint(" + x + "," + y + ");"
+        "  return el && el.dataset.paths"
+        "})()");
 
-          // The x, y here seem to control the offset from the mouse pointer
-          comp.frame = NSMakeRect(0, 0, iconSize.width, iconSize.height);
-          comp.contents = icon;
-          return @[comp];
-        };
+      [self
+        evaluateJavaScript: [NSString stringWithUTF8String:js.c_str()]
+         completionHandler: ^(id result, NSError *error) {
+        if (error) {
+          NSLog(@"%@", error);
+        }
 
-        NSDraggingItem* dragItem = [[NSDraggingItem alloc] initWithPasteboardWriter: fileURL];
+        std::cout << "result: " << [result UTF8String] << std::endl;
 
-        // The x, y here determine from what point the images fly in at the beginning
-        // of the drag. The size determines the space each DraggingImage has, so can
-        // be used to create overlapping icons or spacing between them.
-        dragItem.draggingFrame = NSMakeRect(
-          dragPosition.x, dragPosition.y, iconSize.width, iconSize.height);
-        dragItem.imageComponentsProvider = providerBlock;
-        [dragItems addObject: dragItem];
-      }
+        std::vector<std::string> files = { "/Users/paolofragomeni/projects/optoolco/opkit/README.md" };
 
-      NSPoint movedLocation = [self convertPoint:[e locationInWindow] fromView:nil];
-      if (fabs(movedLocation.x - location.x) > dragThreshold || fabs(movedLocation.y - location.y) > dragThreshold) {
-
-        NSPoint dragPosition;
+        NSMutableArray* dragItems = [[NSMutableArray alloc] init];
         NSRect imageLocation;
+        NSPoint dragPosition = [self
+          convertPoint: [e locationInWindow]
+          fromView: nil];
 
-        dragPosition = [self convertPoint:[e locationInWindow]
-                            fromView:nil];
         dragPosition.x -= 16;
         dragPosition.y -= 16;
         imageLocation.origin = dragPosition;
         imageLocation.size = NSMakeSize(32,32);
+
+        for (auto& file : files) {
+          NSString* nsFile = [[NSString alloc] initWithUTF8String:file.c_str()];
+          NSURL* fileURL = [NSURL fileURLWithPath: nsFile];
+
+          NSImage* icon = [[NSWorkspace sharedWorkspace] iconForFile:nsFile];
+          NSSize iconSize = NSMakeSize(32, 32); // according to documentation
+
+          NSArray* (^providerBlock)() = ^NSArray*() {
+            NSDraggingImageComponent* comp = [[[NSDraggingImageComponent alloc]
+              initWithKey: NSDraggingImageComponentIconKey] retain];
+
+            // The x, y here seem to control the offset from the mouse pointer
+            comp.frame = NSMakeRect(0, 0, iconSize.width, iconSize.height);
+            comp.contents = icon;
+            return @[comp];
+          };
+
+          NSDraggingItem* dragItem = [[NSDraggingItem alloc] initWithPasteboardWriter: fileURL];
+
+          // The x, y here determine from what point the images fly in at the beginning
+          // of the drag. The size determines the space each DraggingImage has, so can
+          // be used to create overlapping icons or spacing between them.
+          dragItem.draggingFrame = NSMakeRect(
+            dragPosition.x,
+            dragPosition.y,
+            iconSize.width,
+            iconSize.height
+          );
+
+          dragItem.imageComponentsProvider = providerBlock;
+          [dragItems addObject: dragItem];
+        }
 
         NSDraggingSession* session = [self
             beginDraggingSessionWithItems: dragItems
                                     event: e
                                    source: self];
 
-        session.draggingFormation = NSDraggingFormationList;        //
+        session.draggingFormation = NSDraggingFormationList;
 
         *stop = YES;
-      }
+      }];
     }
   }];
 }
@@ -198,7 +205,6 @@ std::vector<std::string> dragPayload;
 }
 
 @end
-NS_ASSUME_NONNULL_END
 
 /* @interface WebInspector : NSObject {
   WKWebView *webView;
