@@ -17,9 +17,8 @@ NSOperationQueue *queue;
 std::vector<std::string> dragPayload;
 
 - (void)awakeFromNib {
-  //Create dragging serial queue
   queue = [[NSOperationQueue alloc] init];
-  [queue setName:@"com.operator.background queue"];
+  [queue setName:@"qa.operator.background queue"];
   [queue setQualityOfService:NSQualityOfServiceDefault];
 }
 
@@ -59,7 +58,7 @@ std::vector<std::string> dragPayload;
 - (void) draggingEntered:(id <NSDraggingInfo>)info {
   NSPasteboard *pboard = [info draggingPasteboard];
 
-  NSArray<Class> *classes = @[[NSString class]];
+  NSArray<Class> *classes = @[[NSString class], [NSURL class], [NSPasteboardTypeFileURL class]];
   NSDictionary *options = @{};
   NSArray<NSString*> *strings = [pboard readObjectsForClasses:classes options:options];
 
@@ -90,7 +89,7 @@ std::vector<std::string> dragPayload;
 
       NSMutableArray* dragItems = [[NSMutableArray alloc] init];
       NSPoint dragPosition = [self convertPoint:[e locationInWindow]
-                            fromView:nil];
+                            fromVie, w:nil];
       for (auto& file : files) {
         NSString* nsFile = [[NSString alloc] initWithUTF8String:file.c_str()];
         NSURL* fileURL = [NSURL fileURLWithPath: nsFile];
