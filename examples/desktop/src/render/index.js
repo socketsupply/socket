@@ -9,6 +9,10 @@ window.addEventListener('contextmenu', e => {
   }
 })
 
+window.addEventListener('draggedout', e => {
+  console.log('draggedout', e)
+})
+
 //
 // Menu item selection example... do whatever, await an ipc call, etc.
 //
@@ -213,7 +217,13 @@ class AppContainer extends Tonic {
       <!-- <code>{JSON.stringify(window.process)}</code> -->
       <a href="bad-text">BAD ANCHOR</a>
       <a href="https://example.com">FACEBOOK</a>
-      <a id="drag-demo" data-paths="" draggable>DRAGME</a>
+
+      <a
+        href="#"
+        id="drag-demo"
+        data-paths="/Users/paolofragomeni/projects/optoolco/opkit/README.md;https://optool.co/images/operator-horizontal.svg;/tmp/foobar"
+        draggable
+      >DRAGME</a>
 
       <div class="grid">
         <tonic-input id="send" label="send">

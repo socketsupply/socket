@@ -20,10 +20,16 @@
 NSOperationQueue* aQueue = [[NSOperationQueue alloc] init];
 NSFilePromiseProvider *provider;
 
-- (void) allocateProvider {
-  provider = [[NSFilePromiseProvider alloc] initWithFileType:(NSString*)kUTTypeURL delegate:self];
-  [provider setDelegate:self];
-}
+/* - (void) draggingEntered: (id<NSDraggingInfo>)info {
+  NSPasteboard *pboard = [info draggingPasteboard];
+
+  NSArray* draggableTypes = [NSArray
+    arrayWithObjects:
+      @"public.url",
+      (NSString*)kPasteboardTypeFileURLPromise, nil];
+
+  [pboard addTypes:draggableTypes owner:nil];
+} */
 
 - (void) draggingEnded: (id<NSDraggingInfo>)info {
   NSPasteboard *pboard = [info draggingPasteboard];
@@ -60,12 +66,21 @@ NSFilePromiseProvider *provider;
 
 - (void) mouseDown: (NSEvent*)event {
   NSPoint location = [self convertPoint:[event locationInWindow] fromView:nil];
+
+  NSPasteboard *pboard = [NSPasteboard pasteboardWithName: NSPasteboardNameDrag];
+  [pboard declareTypes: @[(NSString*)kPasteboardTypeFileURLPromise] owner:self];
   CGFloat dragThreshold = 3.0;
 
   //
   // start tracking and filtering the mouse events
   //
-  [[self window] trackEventsMatchingMask: NSEventMaskLeftMouseUp | NSEventMaskLeftMouseDragged timeout:10 mode:NSEventTrackingRunLoopMode handler:^(NSEvent* e, BOOL * stop) {
+  auto mask = NSEventMaskLeftMouseUp | NSEventMaskLeftMouseDragged;
+  auto mode = NSEventTrackingRunLoopMode;
+  [[self window]
+    trackEventsMatchingMask: mask
+      timeout: 10
+      mode: mode
+      handler: ^(NSEvent* e, BOOL * stop) {
     if (event == nil) {
       [super mouseDown:event];
       return;
@@ -83,13 +98,18 @@ NSFilePromiseProvider *provider;
     NSPoint movedLocation = [self convertPoint:[e locationInWindow] fromView:nil];
     if (fabs(movedLocation.x - location.x) > dragThreshold || fabs(movedLocation.y - location.y) > dragThreshold) {
 
+      *stop = YES;
       auto x = std::to_string(location.x);
       auto y = std::to_string(location.y);
 
+      //
+      // We need to ask the browser what files can be dragged based on the
+      // element that the user started dragging on.
+      //
       std::string js(
         "(() => {"
         "  const el = document.elementFromPoint(" + x + "," + y + ");"
-        "  return el && el.dataset.paths"
+        "  return el && el.hasAttribute('draggable') && el?.dataset.paths"
         "})()");
 
       [self
@@ -100,11 +120,23 @@ NSFilePromiseProvider *provider;
           return;
         }
 
-        std::cout << "result: " << [result UTF8String] << std::endl;
+        if (![result isKindOfClass:[NSString class]]) {
+          [super mouseDown:event];
+          return;
+        }
 
-        std::vector<std::string> files = { "/Users/paolofragomeni/projects/optoolco/opkit/README.md" };
+        std::vector<std::string> files =
+          Opkit::split(std::string([result UTF8String]), ';');
+
+        if (files.size() == 0) {
+          [super mouseDown:event];
+          return;
+        }
+
+        // TODO: files vector should be validated as all valid (file) urls.
 
         NSMutableArray* dragItems = [[NSMutableArray alloc] init];
+        NSSize iconSize = NSMakeSize(32, 32); // according to documentation
         NSRect imageLocation;
         NSPoint dragPosition = [self
           convertPoint: [e locationInWindow]
@@ -113,38 +145,28 @@ NSFilePromiseProvider *provider;
         dragPosition.x -= 16;
         dragPosition.y -= 16;
         imageLocation.origin = dragPosition;
-        imageLocation.size = NSMakeSize(32,32);
+        imageLocation.size = iconSize;
 
         for (auto& file : files) {
           NSString* nsFile = [[NSString alloc] initWithUTF8String:file.c_str()];
           NSURL* fileURL = [NSURL fileURLWithPath: nsFile];
 
-          NSImage* icon = [[NSWorkspace sharedWorkspace] iconForFile:nsFile];
-          NSSize iconSize = NSMakeSize(32, 32); // according to documentation
+          NSImage* icon = [[NSWorkspace sharedWorkspace] iconForContentType: UTTypeURL];
 
           NSArray* (^providerBlock)() = ^NSArray*() {
             NSDraggingImageComponent* comp = [[[NSDraggingImageComponent alloc]
               initWithKey: NSDraggingImageComponentIconKey] retain];
 
-            // The x, y here seem to control the offset from the mouse pointer
             comp.frame = NSMakeRect(0, 0, iconSize.width, iconSize.height);
             comp.contents = icon;
             return @[comp];
           };
 
           NSDraggingItem* dragItem;
+          auto provider = [[NSFilePromiseProvider alloc] initWithFileType:@"public.url" delegate: self];
+          [provider setUserInfo: [NSString stringWithUTF8String:file.c_str()]];
+          dragItem = [[NSDraggingItem alloc] initWithPasteboardWriter: provider];
 
-          if (file.find("http") == 0) {
-            [[NSFilePromiseProvider alloc]
-              initWithFileType: @"public.file-url"
-                      delegate: self];
-
-          } else {
-            dragItem = [[NSDraggingItem alloc] initWithPasteboardWriter: fileURL];
-          }
-          // The x, y here determine from what point the images fly in at the beginning
-          // of the drag. The size determines the space each DraggingImage has, so can
-          // be used to create overlapping icons or spacing between them.
           dragItem.draggingFrame = NSMakeRect(
             dragPosition.x,
             dragPosition.y,
@@ -161,26 +183,44 @@ NSFilePromiseProvider *provider;
                                     event: e
                                    source: self];
 
-        session.draggingFormation = NSDraggingFormationList;
-
-        *stop = YES;
+        session.draggingFormation = NSDraggingFormationPile;
       }];
     }
   }];
 }
 
-- (void) filePromiseProvider:(NSFilePromiseProvider*)filePromiseProvider writePromiseToURL:(NSURL *)url
-  completionHandler:(void (^)(NSError *errorOrNil))completionHandler {
-    std::cout << "writePromiseToURL: " << [url path] << std::endl;
+- (NSDragOperation)draggingSession:(NSDraggingSession*)session
+    sourceOperationMaskForDraggingContext:(NSDraggingContext)context {
+  return NSDragOperationCopy;
+}
 
-    NSData *data = [@"test file contents" dataUsingEncoding:NSUTF8StringEncoding];
-    [data writeToURL:url atomically:YES];
-    completionHandler(nil);
+- (void) filePromiseProvider:(NSFilePromiseProvider*)filePromiseProvider writePromiseToURL:(NSURL *)url
+  completionHandler:(void (^)(NSError *errorOrNil))completionHandler
+{
+  std::string dest = [[url path] UTF8String];
+  std::string src([[filePromiseProvider userInfo] UTF8String]);
+
+  NSData *data = [@"" dataUsingEncoding:NSUTF8StringEncoding];
+  [data writeToURL:url atomically:YES];
+
+  std::string json = (
+    "{\"src\":\"" + src + "\","
+    "\"dest\":\"" + dest + "\"}"
+  );
+
+  std::string js = Opkit::emitToRenderProcess("draggedout", json);
+
+  [self
+    evaluateJavaScript: [NSString stringWithUTF8String:js.c_str()]
+     completionHandler: nil
+  ];
+
+  completionHandler(nil);
 }
 
 - (NSString*) filePromiseProvider: (NSFilePromiseProvider*)filePromiseProvider fileNameForType:(NSString *)fileType {
-  std::cout << "fileNameForType: " << std::endl;
-  return @"file.txt";
+  std::string file(std::to_string(Opkit::rand64()) + ".download");
+  return [NSString stringWithUTF8String:file.c_str()];
 }
 
 - (NSOperationQueue*)promiseOperationQueueForFilePromiseProvider:(NSFilePromiseProvider*)filePromiseProvider {
@@ -221,7 +261,7 @@ NSFilePromiseProvider *provider;
 }
 @end
 
-@interface DragDownloadItemSource : NSObject<NSDraggingSource>
+/* @interface DragDownloadItemSource : NSObject<NSDraggingSource>
 @end
 
 @implementation DragDownloadItemSource
@@ -231,7 +271,7 @@ NSFilePromiseProvider *provider;
   return NSDragOperationEvery;
 }
 
-@end
+@end */
 
 /* @interface WebInspector : NSObject {
   WKWebView *webView;
@@ -370,15 +410,15 @@ namespace Opkit {
                     backing:NSBackingStoreBuffered
                       defer:NO];
 
-    NSArray* types = [NSArray arrayWithObjects:
-                      NSPasteboardTypeURL,
-                      NSPasteboardTypeFileURL,
-                      (NSString *)kPasteboardTypeFileURLPromise,
-                      NSPasteboardTypeString,
-                      NSPasteboardTypeHTML,
-                      nil];
+    NSArray* draggableTypes = [NSArray arrayWithObjects:
+                  NSPasteboardTypeURL,
+                  NSPasteboardTypeFileURL,
+                  (NSString *)kPasteboardTypeFileURLPromise,
+                  NSPasteboardTypeString,
+                  NSPasteboardTypeHTML,
+                  nil];
 
-    [window registerForDraggedTypes:types];
+    [window registerForDraggedTypes:draggableTypes];
 
     // Minimum window size
     [window setContentMinSize:NSMakeSize(opts.width, opts.height)];
