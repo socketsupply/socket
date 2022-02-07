@@ -30,6 +30,14 @@ body[dragging] .draggable {
   cursor: grab;
 }
 
+.droppable {
+  outline: none;
+  transform: scale(1);
+  transition: transform .2s ease;
+}
+
+body[dragging] .droppable:focus,
 body[dragging] .droppable:hover {
+  transform: scale(1.2);
   border: 1px dashed var(--tonic-accent);
 }

@@ -16,9 +16,36 @@
 @implementation WV
 std::vector<std::string> draggablePayload;
 
-/* - (NSDragOperation) draggingEntered: (id<NSDraggingInfo>)info {
-  return NSDragOperationEvery;
-} */
+- (BOOL) prepareForDragOperation: (id<NSDraggingInfo>)info {
+  [info setDraggingFormation: NSDraggingFormationNone];
+  return NO;
+}
+
+- (void) draggingExited: (id<NSDraggingInfo>)info {
+  auto payload = Opkit::emitToRenderProcess("dragended", "{}");
+
+  [self evaluateJavaScript:
+    [NSString stringWithUTF8String: payload.c_str()]
+    completionHandler:nil];
+}
+
+- (NSDragOperation) draggingUpdated:(id <NSDraggingInfo>)info {
+  NSPoint pos = [info draggingLocation];
+  auto x = std::to_string(pos.x);
+  int y = [self frame].size.height - pos.y;
+
+  std::string json = (
+    "{\"x\":" + x + ","
+    "\"y\":" + std::to_string(y) + "}"
+  );
+
+  auto payload = Opkit::emitToRenderProcess("dragging", json);
+
+  [self evaluateJavaScript:
+    [NSString stringWithUTF8String: payload.c_str()]
+    completionHandler:nil];
+  return NSDragOperationGeneric;
+}
 
 - (void) draggingEnded: (id<NSDraggingInfo>)info {
   NSPasteboard *pboard = [info draggingPasteboard];
@@ -49,8 +76,13 @@ std::vector<std::string> draggablePayload;
         [NSString stringWithUTF8String: payload.c_str()]
         completionHandler:nil];
     }
-    return;
   }
+
+  auto payload = Opkit::emitToRenderProcess("dragended", "{}");
+
+  [self evaluateJavaScript:
+    [NSString stringWithUTF8String: payload.c_str()]
+    completionHandler:nil];
 
   // [super draggingEnded:info];
 }
@@ -72,10 +104,10 @@ std::vector<std::string> draggablePayload;
     completionHandler:nil];
 }
 
-- (void) mouseMoved: (NSEvent*)event {
-  [self updateEvent: event];
-  [super mouseMoved: event];
-}
+// - (void) mouseMoved: (NSEvent*)event {
+  // [self updateEvent: event];
+  // [super mouseMoved: event];
+//}
 
 - (void) mouseUp: (NSEvent*)event {
   [super mouseUp:event];
@@ -127,11 +159,25 @@ std::vector<std::string> draggablePayload;
 }
 
 - (void) mouseDragged: (NSEvent*)event {
-  [super mouseDragged:event];
+  // [super mouseDragged:event];
+  NSPoint location = [self convertPoint:[event locationInWindow] fromView:nil];
 
   if (draggablePayload.size() == 0) return;
 
-  NSPoint location = [self convertPoint:[event locationInWindow] fromView:nil];
+  auto x = std::to_string(location.x);
+  auto y = std::to_string(location.y);
+
+  std::string json = (
+    "{\"x\":" + x + ","
+    "\"y\":" + y + "}"
+  );
+
+  auto payload = Opkit::emitToRenderProcess("dragging", json);
+
+  [self evaluateJavaScript:
+    [NSString stringWithUTF8String: payload.c_str()]
+    completionHandler:nil];
+
   if (NSPointInRect(location, self.frame)) return;
 
   NSPasteboard *pboard = [NSPasteboard pasteboardWithName: NSPasteboardNameDrag];

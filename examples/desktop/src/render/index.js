@@ -19,6 +19,11 @@ window.addEventListener('dragging', e => {
   indicator.style.left = `${x+8}px`
   indicator.style.top = `${y+8}px`
 
+  const target = document.elementFromPoint(x, y)
+  if (target) {
+    target.focus()
+  }
+
   document.body.setAttribute('dragging', 'true')
 })
 
@@ -243,6 +248,7 @@ class AppContainer extends Tonic {
 
         <div
           class="droppable"
+          tabindex="0"
         >DROPME</div>
       </div>
 
