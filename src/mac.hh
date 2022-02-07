@@ -9,16 +9,16 @@
   NSDraggingDestination,
   NSFilePromiseProviderDelegate,
   NSDraggingSource>
-@property (nonatomic, strong, readonly) dispatch_queue_t queue;
-
 - (NSDragOperation) draggingSession: (NSDraggingSession *)session
   sourceOperationMaskForDraggingContext:(NSDraggingContext)context;
-- (void) mouseDown: (NSEvent*)event;
 @end
 
 @implementation WV
-NSOperationQueue* aQueue = [[NSOperationQueue alloc] init];
-NSFilePromiseProvider *provider;
+std::vector<std::string> draggablePayload;
+
+/* - (NSDragOperation) draggingEntered: (id<NSDraggingInfo>)info {
+  return NSDragOperationEvery;
+} */
 
 - (void) draggingEnded: (id<NSDraggingInfo>)info {
   NSPasteboard *pboard = [info draggingPasteboard];
@@ -51,131 +51,142 @@ NSFilePromiseProvider *provider;
     }
     return;
   }
+
+  // [super draggingEnded:info];
+}
+
+- (void) updateEvent: (NSEvent*)event {
+  NSPoint location = [self convertPoint:[event locationInWindow] fromView:nil];
+  auto x = std::to_string(location.x);
+  auto y = std::to_string(location.y);
+
+  std::string json = (
+    "{\"x\":" + x + ","
+    "\"y\":" + y + "}"
+  );
+
+  auto payload = Opkit::emitToRenderProcess("dragging", json);
+
+  [self evaluateJavaScript:
+    [NSString stringWithUTF8String: payload.c_str()]
+    completionHandler:nil];
+}
+
+- (void) mouseMoved: (NSEvent*)event {
+  [self updateEvent: event];
+  [super mouseMoved: event];
+}
+
+- (void) mouseUp: (NSEvent*)event {
+  [super mouseUp:event];
+  auto payload = Opkit::emitToRenderProcess("dragended", "{}");
+
+  [self evaluateJavaScript:
+    [NSString stringWithUTF8String: payload.c_str()]
+    completionHandler:nil];
 }
 
 - (void) mouseDown: (NSEvent*)event {
+  draggablePayload.clear();
+
   NSPoint location = [self convertPoint:[event locationInWindow] fromView:nil];
+  auto x = std::to_string(location.x);
+  auto y = std::to_string(location.y);
+
+  std::string js(
+    "(() => {"
+    "  const el = document.elementFromPoint(" + x + "," + y + ");"
+    "  return el && el.dataset?.paths"
+    "})()");
+
+  [self
+    evaluateJavaScript: [NSString stringWithUTF8String:js.c_str()]
+     completionHandler: ^(id result, NSError *error) {
+    if (error) {
+      NSLog(@"%@", error);
+      [super mouseDown:event];
+      return;
+    }
+
+    if (![result isKindOfClass:[NSString class]]) {
+      [super mouseDown:event];
+      return;
+    }
+
+    std::vector<std::string> files =
+      Opkit::split(std::string([result UTF8String]), ';');
+
+    if (files.size() == 0) {
+      [super mouseDown:event];
+      return;
+    }
+
+    draggablePayload = files;
+    [self updateEvent: event];
+  }];
+}
+
+- (void) mouseDragged: (NSEvent*)event {
+  [super mouseDragged:event];
+
+  if (draggablePayload.size() == 0) return;
+
+  NSPoint location = [self convertPoint:[event locationInWindow] fromView:nil];
+  if (NSPointInRect(location, self.frame)) return;
 
   NSPasteboard *pboard = [NSPasteboard pasteboardWithName: NSPasteboardNameDrag];
   [pboard declareTypes: @[(NSString*)kPasteboardTypeFileURLPromise] owner:self];
-  CGFloat dragThreshold = 3.0;
 
-  //
-  // start tracking and filtering the mouse events
-  //
-  auto mask = NSEventMaskLeftMouseUp | NSEventMaskLeftMouseDragged;
-  auto mode = NSEventTrackingRunLoopMode;
-  [[self window]
-    trackEventsMatchingMask: mask
-      timeout: 10
-      mode: mode
-      handler: ^(NSEvent* e, BOOL * stop) {
-    if (event == nil) {
-      [super mouseDown:event];
-      return;
-    }
+  NSMutableArray* dragItems = [[NSMutableArray alloc] init];
+  NSSize iconSize = NSMakeSize(32, 32); // according to documentation
+  NSRect imageLocation;
+  NSPoint dragPosition = [self
+    convertPoint: [event locationInWindow]
+    fromView: nil];
 
-    if ([e type] == NSEventTypeLeftMouseUp){
-      [super mouseDown:event];
-      *stop = YES;
-      return;
-    }
+  dragPosition.x -= 16;
+  dragPosition.y -= 16;
+  imageLocation.origin = dragPosition;
+  imageLocation.size = iconSize;
 
-    //
-    // if the mouse has moved more than the drag threshold, start the drag
-    //
-    NSPoint movedLocation = [self convertPoint:[e locationInWindow] fromView:nil];
-    if (fabs(movedLocation.x - location.x) > dragThreshold || fabs(movedLocation.y - location.y) > dragThreshold) {
+  for (auto& file : draggablePayload) {
+    NSString* nsFile = [[NSString alloc] initWithUTF8String:file.c_str()];
+    NSURL* fileURL = [NSURL fileURLWithPath: nsFile];
 
-      *stop = YES;
-      auto x = std::to_string(location.x);
-      auto y = std::to_string(location.y);
+    NSImage* icon = [[NSWorkspace sharedWorkspace] iconForContentType: UTTypeURL];
 
-      //
-      // We need to ask the browser what files can be dragged based on the
-      // element that the user started dragging on.
-      //
-      std::string js(
-        "(() => {"
-        "  const el = document.elementFromPoint(" + x + "," + y + ");"
-        "  return el && el.hasAttribute('draggable') && el?.dataset.paths"
-        "})()");
+    NSArray* (^providerBlock)() = ^NSArray*() {
+      NSDraggingImageComponent* comp = [[[NSDraggingImageComponent alloc]
+        initWithKey: NSDraggingImageComponentIconKey] retain];
 
-      [self
-        evaluateJavaScript: [NSString stringWithUTF8String:js.c_str()]
-         completionHandler: ^(id result, NSError *error) {
-        if (error) {
-          NSLog(@"%@", error);
-          return;
-        }
+      comp.frame = NSMakeRect(0, 0, iconSize.width, iconSize.height);
+      comp.contents = icon;
+      return @[comp];
+    };
 
-        if (![result isKindOfClass:[NSString class]]) {
-          [super mouseDown:event];
-          return;
-        }
+    NSDraggingItem* dragItem;
+    auto provider = [[NSFilePromiseProvider alloc] initWithFileType:@"public.url" delegate: self];
+    [provider setUserInfo: [NSString stringWithUTF8String:file.c_str()]];
+    dragItem = [[NSDraggingItem alloc] initWithPasteboardWriter: provider];
 
-        std::vector<std::string> files =
-          Opkit::split(std::string([result UTF8String]), ';');
+    dragItem.draggingFrame = NSMakeRect(
+      dragPosition.x,
+      dragPosition.y,
+      iconSize.width,
+      iconSize.height
+    );
 
-        if (files.size() == 0) {
-          [super mouseDown:event];
-          return;
-        }
+    dragItem.imageComponentsProvider = providerBlock;
+    [dragItems addObject: dragItem];
+  }
 
-        // TODO: files vector should be validated as all valid (file) urls.
+  NSDraggingSession* session = [self
+      beginDraggingSessionWithItems: dragItems
+                              event: event
+                             source: self];
 
-        NSMutableArray* dragItems = [[NSMutableArray alloc] init];
-        NSSize iconSize = NSMakeSize(32, 32); // according to documentation
-        NSRect imageLocation;
-        NSPoint dragPosition = [self
-          convertPoint: [e locationInWindow]
-          fromView: nil];
-
-        dragPosition.x -= 16;
-        dragPosition.y -= 16;
-        imageLocation.origin = dragPosition;
-        imageLocation.size = iconSize;
-
-        for (auto& file : files) {
-          NSString* nsFile = [[NSString alloc] initWithUTF8String:file.c_str()];
-          NSURL* fileURL = [NSURL fileURLWithPath: nsFile];
-
-          NSImage* icon = [[NSWorkspace sharedWorkspace] iconForContentType: UTTypeURL];
-
-          NSArray* (^providerBlock)() = ^NSArray*() {
-            NSDraggingImageComponent* comp = [[[NSDraggingImageComponent alloc]
-              initWithKey: NSDraggingImageComponentIconKey] retain];
-
-            comp.frame = NSMakeRect(0, 0, iconSize.width, iconSize.height);
-            comp.contents = icon;
-            return @[comp];
-          };
-
-          NSDraggingItem* dragItem;
-          auto provider = [[NSFilePromiseProvider alloc] initWithFileType:@"public.url" delegate: self];
-          [provider setUserInfo: [NSString stringWithUTF8String:file.c_str()]];
-          dragItem = [[NSDraggingItem alloc] initWithPasteboardWriter: provider];
-
-          dragItem.draggingFrame = NSMakeRect(
-            dragPosition.x,
-            dragPosition.y,
-            iconSize.width,
-            iconSize.height
-          );
-
-          dragItem.imageComponentsProvider = providerBlock;
-          [dragItems addObject: dragItem];
-        }
-
-        NSDraggingSession* session = [self
-            beginDraggingSessionWithItems: dragItems
-                                    event: e
-                                   source: self];
-
-        session.draggingFormation = NSDraggingFormationPile;
-      }];
-    }
-  }];
+  session.draggingFormation = NSDraggingFormationPile;
+  draggablePayload.clear();
 }
 
 - (NSDragOperation)draggingSession:(NSDraggingSession*)session
@@ -197,7 +208,7 @@ NSFilePromiseProvider *provider;
     "\"dest\":\"" + dest + "\"}"
   );
 
-  std::string js = Opkit::emitToRenderProcess("draggedout", json);
+  std::string js = Opkit::emitToRenderProcess("dragout", json);
 
   [self
     evaluateJavaScript: [NSString stringWithUTF8String:js.c_str()]
@@ -210,11 +221,6 @@ NSFilePromiseProvider *provider;
 - (NSString*) filePromiseProvider: (NSFilePromiseProvider*)filePromiseProvider fileNameForType:(NSString *)fileType {
   std::string file(std::to_string(Opkit::rand64()) + ".download");
   return [NSString stringWithUTF8String:file.c_str()];
-}
-
-- (NSOperationQueue*)promiseOperationQueueForFilePromiseProvider:(NSFilePromiseProvider*)filePromiseProvider {
-  std::cout << "promiseOperationQueueForFilePromiseProvider" << std::endl;
-  return aQueue;
 }
 
 @end
@@ -856,6 +862,7 @@ namespace Opkit {
     const std::string& defaultPath = "",
     const std::string& title = "")
   {
+
     NSURL *url;
     const char *utf8_path;
     NSSavePanel *dialog_save;
@@ -877,7 +884,7 @@ namespace Opkit {
       [dialog_open setCanChooseDirectories:YES];
     }
 
-    if (allowFiles == true) {
+    if (!isSave && allowFiles == true) {
       [dialog_open setCanChooseFiles:YES];
     }
 

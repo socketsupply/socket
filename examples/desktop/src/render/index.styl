@@ -1,2 +1,35 @@
 @require './styles/index.styl'
 @require './views/**/*.styl'
+
+.dragdrop-demo {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+.draggable, .droppable {
+  -webkit-user-select: none;
+  -user-select: none;
+  display: inline-block;
+  width: 250px;
+  border: 1px dashed var(--tonic-border);
+}
+
+#drag-indicator {
+  position: absolute;
+  display: none;
+  height: 20px;
+  width: 20px;
+  background: red;
+}
+
+body[dragging] #drag-indicator {
+  display: block;
+}
+
+body[dragging] .draggable {
+  cursor: grab;
+}
+
+body[dragging] .droppable:hover {
+  border: 1px dashed var(--tonic-accent);
+}

@@ -9,8 +9,21 @@ window.addEventListener('contextmenu', e => {
   }
 })
 
-window.addEventListener('draggedout', e => {
-  console.log('draggedout', e)
+window.addEventListener('dragout', e => {
+  document.body.removeAttribute('dragging')
+})
+
+window.addEventListener('dragging', e => {
+  const { x, y } = e.detail
+  const indicator = document.querySelector('#drag-indicator')
+  indicator.style.left = `${x+8}px`
+  indicator.style.top = `${y+8}px`
+
+  document.body.setAttribute('dragging', 'true')
+})
+
+window.addEventListener('dragended', e => {
+  document.body.removeAttribute('dragging')
 })
 
 //
@@ -181,6 +194,10 @@ class AppContainer extends Tonic {
     return // system.setTitle({ e.target.value)
   }
 
+  async drop (e) {
+    console.log('drop', e)
+  }
+
   async contextmenu (e) {
     const el = Tonic.match(e.target, '.context-menu')
     if (!el) return
@@ -218,12 +235,16 @@ class AppContainer extends Tonic {
       <a href="bad-text">BAD ANCHOR</a>
       <a href="https://example.com">FACEBOOK</a>
 
-      <a
-        href="#"
-        id="drag-demo"
-        data-paths="/Users/paolofragomeni/projects/optoolco/opkit/README.md;https://optool.co/images/operator-horizontal.svg;/tmp/foobar"
-        draggable
-      >DRAGME</a>
+      <div class="dragdrop-demo">
+        <div
+          class="draggable"
+          data-paths="/Users/paolofragomeni/projects/optoolco/opkit/README.md;https://optool.co/images/operator-horizontal.svg;/tmp/foobar"
+        >DRAGME</div>
+
+        <div
+          class="droppable"
+        >DROPME</div>
+      </div>
 
       <div class="grid">
         <tonic-input id="send" label="send">
@@ -250,9 +271,7 @@ class AppContainer extends Tonic {
 
       <tonic-button id="externalLink" url="https://example.com">External</tonic-button>
       <!-- tonic-button data-event="showInspector">Inspect</tonic-button -->
-
-      <a id="dd" draggable="true" href="file:///Users/paolofragomeni/projects/optoolco/opkit/test/example/dist/Operator.app/Contents/Resources/log.txt">Draggable</a>
-      <a id="dl" href="file:///Users/paolofragomeni/projects/optoolco/opkit/src/render.html" download>Download</a>
+      <div id="drag-indicator"></div>
     `
   }
 }
