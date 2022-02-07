@@ -20,17 +20,6 @@
 NSOperationQueue* aQueue = [[NSOperationQueue alloc] init];
 NSFilePromiseProvider *provider;
 
-/* - (void) draggingEntered: (id<NSDraggingInfo>)info {
-  NSPasteboard *pboard = [info draggingPasteboard];
-
-  NSArray* draggableTypes = [NSArray
-    arrayWithObjects:
-      @"public.url",
-      (NSString*)kPasteboardTypeFileURLPromise, nil];
-
-  [pboard addTypes:draggableTypes owner:nil];
-} */
-
 - (void) draggingEnded: (id<NSDraggingInfo>)info {
   NSPasteboard *pboard = [info draggingPasteboard];
 
@@ -260,18 +249,6 @@ NSFilePromiseProvider *provider;
   }
 }
 @end
-
-/* @interface DragDownloadItemSource : NSObject<NSDraggingSource>
-@end
-
-@implementation DragDownloadItemSource
-
-- (NSDragOperation)draggingSession:(NSDraggingSession*)session
-    sourceOperationMaskForDraggingContext:(NSDraggingContext)context {
-  return NSDragOperationEvery;
-}
-
-@end */
 
 /* @interface WebInspector : NSObject {
   WKWebView *webView;
