@@ -356,8 +356,8 @@ MAIN {
       return;
     }
 
-    if (cmd.name == "showInspector") {
-      // w.showInspector();
+    if (cmd.name == "inspect") {
+      w.showInspector();
       return;
     }
 

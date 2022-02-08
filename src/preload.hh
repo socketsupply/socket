@@ -116,9 +116,7 @@ constexpr auto gPreloadDesktop = R"JS(
   window.system.openExternal = o => window._ipc.send('external', o)
   window.system.setTitle = o => window._ipc.send('title', o)
   window.system.hide = o => window._ipc.send('hide', o)
-  window.system.addToDrag = o => {
-    window.external.invoke(`ipc://addToDrag?${JSON.stringify(o)}`)
-  }
+  window.system.inspect = o => window.external.invoke(`ipc://inspect`)
 
   window.system.dialog = async o => {
     const files = await window._ipc.send('dialog', o);

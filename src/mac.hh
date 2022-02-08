@@ -371,7 +371,7 @@ namespace Opkit {
       void closeContextMenu(const std::string&);
       void closeContextMenu();
       void openDialog(const std::string&, bool, bool, bool, bool, const std::string&, const std::string&);
-      // void showInspector();
+      void showInspector();
 
       void setSystemMenu(const std::string& seq, const std::string& menu);
       int openExternal(const std::string& s);
@@ -709,17 +709,9 @@ namespace Opkit {
     // @TODO(jwerle)
   }
 
-  /* void Window::showInspector () {
-    // WKInspectorRef ref = WKPageGetInspector(webview._pageRefForTransitionToWKWebView);
-    // WKInspectorShow(ref);
-
-    if(!inspector) {
-      inspector = [[WebInspector alloc] initWithWebView: webview];
-      [inspector detach:webview];
-    }
-
-    [inspector show:webview];
-  } */
+  void Window::showInspector () {
+    [[this->webview _inspector] show];
+  }
 
   void Window::setContextMenu (const std::string& seq, const std::string& value) {
     auto menuItems = split(value, '_');

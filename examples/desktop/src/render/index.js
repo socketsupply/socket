@@ -3,41 +3,52 @@ const Components = require('@operatortc/components')
 
 Components(Tonic)
 
+let elementDraggingIndicator
+let elementUnderDrag
+
 window.addEventListener('contextmenu', e => {
   if (!process.debug) {
     e.preventDefault()
   }
 })
 
-let indicator
-let target
 window.addEventListener('dropout', e => {
   console.log(e.detail)
   document.body.removeAttribute('dragging')
 })
 
+window.addEventListener('dropin', (e) => {
+  const { x, y, src } = e.detail
+  const el = document.elementFromPoint(x, y)
+
+  if (!el) throw new Error('No element found at drop point')
+  console.log(el)
+
+  document.querySelector('#output').value += src + '\n'
+})
+
 window.addEventListener('drag', e => {
+  if (!elementDraggingIndicator) {
+    elementDraggingIndicator = document.querySelector('#drag-indicator')
+  }
+
   const { x, y } = e.detail
+  elementDraggingIndicator.style.left = `${x+8}px`
+  elementDraggingIndicator.style.top = `${y+8}px`
+  elementDraggingIndicator.innerText = e.detail.count
 
-  if (!indicator) indicator = document.querySelector('#drag-indicator')
-  indicator.style.left = `${x+8}px`
-  indicator.style.top = `${y+8}px`
-  indicator.innerText = e.detail.count
+  if (elementUnderDrag) elementUnderDrag.blur()
 
-  if (target) target.blur()
-  target = document.elementFromPoint(x, y)
-  if (target) target.focus()
+  elementUnderDrag = document.elementFromPoint(x, y)
+  if (elementUnderDrag) elementUnderDrag.focus()
 
   document.body.setAttribute('dragging', 'true')
 })
 
-window.addEventListener('dragend', e => {
+window.addEventListener('dragend', () => {
   document.body.removeAttribute('dragging')
 })
 
-//
-// Menu item selection example... do whatever, await an ipc call, etc.
-//
 window.addEventListener('menuItemSelected', event => {
   const { title, parent } = event.detail
 
@@ -90,18 +101,12 @@ window.addEventListener('menuItemSelected', event => {
   }
 })
 
-//
-// A keybinding example... if keyup is ctrl+q, quit the app
-//
 window.addEventListener('keyup', async event => {
   if (event.ctrlKey && event.key === 'q') {
     system.exit(0)
   }
 })
 
-//
-// A keybinding example... if keyup is ctrl+q, quit the app
-//
 window.addEventListener('click', async event => {
   const el = Tonic.match(event.target, '#externalLink')
   if (!el) return
@@ -224,7 +229,7 @@ class AppContainer extends Tonic {
     })
 
     if (choice.title === 'Inspect') {
-      // system.inspect()
+      system.inspect()
     }
 
     if (choice.title) {
@@ -232,14 +237,7 @@ class AppContainer extends Tonic {
     }
   }
 
-  connected () {
-    const draggable = document.querySelector('#draggable')
-  }
-
   async render () {
-    // const settings = await system.getSettings()
-    // console.log(settings)
-
     return this.html`
       <app-header>
       </app-header>
@@ -290,24 +288,4 @@ class AppContainer extends Tonic {
   }
 }
 
-window.onload = async () => {
-  Tonic.add(AppContainer)
-
-  //
-  // If the user drops files, show them in the output area. It's the user's
-  // responsibility to decide what to do with the file paths, batching, etc.
-  //
-  window.addEventListener('dropin', (e) => {
-    const { x, y, src } = e.detail
-
-    //
-    // We can get the element at the drop point from x and y.
-    //
-    const el = document.elementFromPoint(x, y)
-
-    if (!el) throw new Error('No element found at drop point')
-    console.log(el)
-
-    document.querySelector('#output').value += src + '\n'
-  });
-}
+window.onload = () => Tonic.add(AppContainer)
