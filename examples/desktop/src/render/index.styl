@@ -17,9 +17,12 @@
 #drag-indicator {
   position: absolute;
   display: none;
-  height: 20px;
-  width: 20px;
+  height: 22px;
+  width: 22px;
   background: red;
+  border-radius: 99em;
+  color: white;
+  text-align: center;
 }
 
 body[dragging] #drag-indicator {
@@ -27,6 +30,10 @@ body[dragging] #drag-indicator {
 }
 
 body[dragging] .draggable {
+  cursor: grabbing;
+}
+
+.draggable {
   cursor: grab;
 }
 

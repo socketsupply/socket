@@ -22,7 +22,7 @@ std::vector<std::string> draggablePayload;
 }
 
 - (void) draggingExited: (id<NSDraggingInfo>)info {
-  auto payload = Opkit::emitToRenderProcess("dragended", "{}");
+  auto payload = Opkit::emitToRenderProcess("dragend", "{}");
 
   [self evaluateJavaScript:
     [NSString stringWithUTF8String: payload.c_str()]
@@ -32,14 +32,16 @@ std::vector<std::string> draggablePayload;
 - (NSDragOperation) draggingUpdated:(id <NSDraggingInfo>)info {
   NSPoint pos = [info draggingLocation];
   auto x = std::to_string(pos.x);
-  int y = [self frame].size.height - pos.y;
+  auto y = std::to_string([self frame].size.height - pos.y);
+  auto count = std::to_string(draggablePayload.size());
 
   std::string json = (
-    "{\"x\":" + x + ","
-    "\"y\":" + std::to_string(y) + "}"
+    "{\"count\":" + count + ","
+    "\"x\":" + x + ","
+    "\"y\":" + y + "}"
   );
 
-  auto payload = Opkit::emitToRenderProcess("dragging", json);
+  auto payload = Opkit::emitToRenderProcess("drag", json);
 
   [self evaluateJavaScript:
     [NSString stringWithUTF8String: payload.c_str()]
@@ -78,7 +80,7 @@ std::vector<std::string> draggablePayload;
     }
   }
 
-  auto payload = Opkit::emitToRenderProcess("dragended", "{}");
+  auto payload = Opkit::emitToRenderProcess("dragend", "{}");
 
   [self evaluateJavaScript:
     [NSString stringWithUTF8String: payload.c_str()]
@@ -91,13 +93,15 @@ std::vector<std::string> draggablePayload;
   NSPoint location = [self convertPoint:[event locationInWindow] fromView:nil];
   auto x = std::to_string(location.x);
   auto y = std::to_string(location.y);
+  auto count = std::to_string(draggablePayload.size());
 
   std::string json = (
-    "{\"x\":" + x + ","
+    "{\"count\":" + count + ","
+    "\"x\":" + x + ","
     "\"y\":" + y + "}"
   );
 
-  auto payload = Opkit::emitToRenderProcess("dragging", json);
+  auto payload = Opkit::emitToRenderProcess("drag", json);
 
   [self evaluateJavaScript:
     [NSString stringWithUTF8String: payload.c_str()]
@@ -111,7 +115,7 @@ std::vector<std::string> draggablePayload;
 
 - (void) mouseUp: (NSEvent*)event {
   [super mouseUp:event];
-  auto payload = Opkit::emitToRenderProcess("dragended", "{}");
+  auto payload = Opkit::emitToRenderProcess("dragend", "{}");
 
   [self evaluateJavaScript:
     [NSString stringWithUTF8String: payload.c_str()]
@@ -128,7 +132,7 @@ std::vector<std::string> draggablePayload;
   std::string js(
     "(() => {"
     "  const el = document.elementFromPoint(" + x + "," + y + ");"
-    "  return el && el.dataset?.paths"
+    "  return el && el.dataset?.src"
     "})()");
 
   [self
@@ -159,20 +163,22 @@ std::vector<std::string> draggablePayload;
 }
 
 - (void) mouseDragged: (NSEvent*)event {
-  // [super mouseDragged:event];
+  [super mouseDragged:event];
   NSPoint location = [self convertPoint:[event locationInWindow] fromView:nil];
 
   if (draggablePayload.size() == 0) return;
 
   auto x = std::to_string(location.x);
   auto y = std::to_string(location.y);
+  auto count = std::to_string(draggablePayload.size());
 
   std::string json = (
-    "{\"x\":" + x + ","
+    "{\"count\":" + count + ","
+    "\"x\":" + x + ","
     "\"y\":" + y + "}"
   );
 
-  auto payload = Opkit::emitToRenderProcess("dragging", json);
+  auto payload = Opkit::emitToRenderProcess("drag", json);
 
   [self evaluateJavaScript:
     [NSString stringWithUTF8String: payload.c_str()]

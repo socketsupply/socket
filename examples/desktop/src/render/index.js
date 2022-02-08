@@ -9,25 +9,28 @@ window.addEventListener('contextmenu', e => {
   }
 })
 
-window.addEventListener('dragout', e => {
+let indicator
+let target
+window.addEventListener('dragout', () => {
   document.body.removeAttribute('dragging')
 })
 
-window.addEventListener('dragging', e => {
+window.addEventListener('drag', e => {
   const { x, y } = e.detail
-  const indicator = document.querySelector('#drag-indicator')
+
+  if (!indicator) indicator = document.querySelector('#drag-indicator')
   indicator.style.left = `${x+8}px`
   indicator.style.top = `${y+8}px`
+  indicator.innerText = e.detail.count
 
-  const target = document.elementFromPoint(x, y)
-  if (target) {
-    target.focus()
-  }
+  if (target) target.blur()
+  target = document.elementFromPoint(x, y)
+  if (target) target.focus()
 
   document.body.setAttribute('dragging', 'true')
 })
 
-window.addEventListener('dragended', e => {
+window.addEventListener('dragend', e => {
   document.body.removeAttribute('dragging')
 })
 
@@ -199,8 +202,11 @@ class AppContainer extends Tonic {
     return // system.setTitle({ e.target.value)
   }
 
-  async drop (e) {
-    console.log('drop', e)
+  async mouseup (e) {
+    // implement your own drag and drop logic
+    if (e.target.id === 'drop-demo') {
+      console.log('drop')
+    }
   }
 
   async contextmenu (e) {
@@ -243,11 +249,12 @@ class AppContainer extends Tonic {
       <div class="dragdrop-demo">
         <div
           class="draggable"
-          data-paths="/Users/paolofragomeni/projects/optoolco/opkit/README.md;https://optool.co/images/operator-horizontal.svg;/tmp/foobar"
+          data-src="/Users/paolofragomeni/projects/optoolco/opkit/README.md;https://optool.co/images/operator-horizontal.svg;/tmp/foobar"
         >DRAGME</div>
 
         <div
           class="droppable"
+          id="drop-demo"
           tabindex="0"
         >DROPME</div>
       </div>
