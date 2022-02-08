@@ -32,10 +32,12 @@ window.addEventListener('dragend', e => {
 
 ## `dropout`
 
-Fired when a drag event leaves the app. The drag must be started from an element
-that defines the `data-src` property. One `dropout` event will fire for each
-item in the `data-src` property. The `dest` value will be the path of the tmp
-file that should be written to.
+Fired when a drag event leaves the app and files are dropped. The drag must be
+started from an element that defines the `data-src` property. One `dropout`
+event will fire for each item in the `data-src` property. Note that only
+tempoarary placeholder files are dropped (each with a file name that has the
+format `{randomInt64}.download`). The `dest` value will be the path of the tmp
+file that should be written to and renamed.
 
 ```html
 <div data-src="https://foo.com/bar.png;/tmp/foo.txt">dragme</div>
