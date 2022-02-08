@@ -18,7 +18,7 @@ $INSTALL_PATH = "$env:LOCALAPPDATA\Programs\operatortc\src"
 $WORKING_PATH = $OLD_CWD
 
 Write-Output ""
-Write-Output "Consider adding '$env:APPDATA\Programs\operatortc' to your path."
+Write-Output "Consider adding '$env:LOCALAPPDATA\Programs\operatortc' to your path."
 Write-Output ""
 
 if (Test-Path -Path $INSTALL_PATH) {
