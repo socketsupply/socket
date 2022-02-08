@@ -23,6 +23,7 @@ std::vector<std::string> draggablePayload;
 
 - (void) draggingExited: (id<NSDraggingInfo>)info {
   auto payload = Opkit::emitToRenderProcess("dragend", "{}");
+  draggablePayload.clear();
 
   [self evaluateJavaScript:
     [NSString stringWithUTF8String: payload.c_str()]
@@ -33,10 +34,18 @@ std::vector<std::string> draggablePayload;
   NSPoint pos = [info draggingLocation];
   auto x = std::to_string(pos.x);
   auto y = std::to_string([self frame].size.height - pos.y);
-  auto count = std::to_string(draggablePayload.size());
+
+  int count = draggablePayload.size();
+  bool inbound = false;
+
+  if (count == 0) {
+    inbound = true;
+    count = [info numberOfValidItemsForDrop];
+  }
 
   std::string json = (
-    "{\"count\":" + count + ","
+    "{\"count\":" + std::to_string(count) + ","
+    "\"inbound\":" + (inbound ? "true" : "false") + ","
     "\"x\":" + x + ","
     "\"y\":" + y + "}"
   );
@@ -47,6 +56,11 @@ std::vector<std::string> draggablePayload;
     [NSString stringWithUTF8String: payload.c_str()]
     completionHandler:nil];
   return NSDragOperationGeneric;
+}
+
+- (void) draggingEntered: (id<NSDraggingInfo>)info {
+  [NSApp activateIgnoringOtherApps:YES];
+  [self draggingUpdated: info];
 }
 
 - (void) draggingEnded: (id<NSDraggingInfo>)info {
@@ -108,14 +122,10 @@ std::vector<std::string> draggablePayload;
     completionHandler:nil];
 }
 
-// - (void) mouseMoved: (NSEvent*)event {
-  // [self updateEvent: event];
-  // [super mouseMoved: event];
-//}
-
 - (void) mouseUp: (NSEvent*)event {
   [super mouseUp:event];
   auto payload = Opkit::emitToRenderProcess("dragend", "{}");
+  draggablePayload.clear();
 
   [self evaluateJavaScript:
     [NSString stringWithUTF8String: payload.c_str()]

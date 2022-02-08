@@ -5,6 +5,7 @@ Components(Tonic)
 
 let elementDraggingIndicator
 let elementUnderDrag
+let lastElementUnderDrag
 
 window.addEventListener('contextmenu', e => {
   if (!process.debug) {
@@ -14,6 +15,7 @@ window.addEventListener('contextmenu', e => {
 
 window.addEventListener('dropout', e => {
   console.log(e.detail)
+  elementDraggingIndicator.style.display = 'none'
   document.body.removeAttribute('dragging')
 })
 
@@ -32,21 +34,32 @@ window.addEventListener('drag', e => {
     elementDraggingIndicator = document.querySelector('#drag-indicator')
   }
 
-  const { x, y } = e.detail
+  const { x, y, inbound } = e.detail
+  elementDraggingIndicator.style.display = inbound ? 'none' : 'block'
+
   elementDraggingIndicator.style.left = `${x+8}px`
   elementDraggingIndicator.style.top = `${y+8}px`
   elementDraggingIndicator.innerText = e.detail.count
 
-  if (elementUnderDrag) elementUnderDrag.blur()
-
   elementUnderDrag = document.elementFromPoint(x, y)
-  if (elementUnderDrag) elementUnderDrag.focus()
 
-  document.body.setAttribute('dragging', 'true')
+  if (lastElementUnderDrag && lastElementUnderDrag !== elementUnderDrag) {
+    lastElementUnderDrag.blur()
+  }
+
+  if (elementUnderDrag) {
+    lastElementUnderDrag = elementUnderDrag
+    elementUnderDrag.focus()
+  }
+
+  if (!document.body.hasAttribute('dragging')) {
+    document.body.setAttribute('dragging', 'true')
+  }
 })
 
 window.addEventListener('dragend', () => {
   document.body.removeAttribute('dragging')
+  elementDraggingIndicator.style.display = 'none'
 })
 
 window.addEventListener('menuItemSelected', event => {
