@@ -52,6 +52,7 @@ namespace Opkit {
       void closeContextMenu(GtkWidget *, const std::string&);
       void closeContextMenu(const std::string&);
       void closeContextMenu();
+      void showInspector();
       void openDialog(const std::string&, bool, bool, bool, bool, const std::string&, const std::string&);
       ScreenSize getScreenSize();
 
@@ -356,6 +357,10 @@ namespace Opkit {
       auto index = std::to_string(this->opts.index);
       this->onMessage(resolveToMainProcess(seq, "0", index));
     }
+  }
+
+  void Window::showInspector () {
+    // this->webview->inspector.show();
   }
 
   void Window::exit(int code) {
