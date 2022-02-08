@@ -67,12 +67,12 @@ std::vector<std::string> draggablePayload;
       path = Opkit::replace(path, "\"", "'");
 
       std::string json = (
-        "{\"path\":\"" + path + "\","
+        "{\"src\":\"" + path + "\","
         "\"x\":" + std::to_string(pos.x) + ","
         "\"y\":" + std::to_string(y) + "}"
       );
 
-      auto payload = Opkit::emitToRenderProcess("drop", json);
+      auto payload = Opkit::emitToRenderProcess("dropin", json);
 
       [self evaluateJavaScript:
         [NSString stringWithUTF8String: payload.c_str()]
@@ -260,7 +260,7 @@ std::vector<std::string> draggablePayload;
     "\"dest\":\"" + dest + "\"}"
   );
 
-  std::string js = Opkit::emitToRenderProcess("dragout", json);
+  std::string js = Opkit::emitToRenderProcess("dropout", json);
 
   [self
     evaluateJavaScript: [NSString stringWithUTF8String:js.c_str()]

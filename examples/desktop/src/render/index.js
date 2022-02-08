@@ -11,7 +11,8 @@ window.addEventListener('contextmenu', e => {
 
 let indicator
 let target
-window.addEventListener('dragout', () => {
+window.addEventListener('dropout', e => {
+  console.log(e.detail)
   document.body.removeAttribute('dragging')
 })
 
@@ -296,8 +297,8 @@ window.onload = async () => {
   // If the user drops files, show them in the output area. It's the user's
   // responsibility to decide what to do with the file paths, batching, etc.
   //
-  window.addEventListener('drop', (e) => {
-    const { x, y, path } = e.detail
+  window.addEventListener('dropin', (e) => {
+    const { x, y, src } = e.detail
 
     //
     // We can get the element at the drop point from x and y.
@@ -307,6 +308,6 @@ window.onload = async () => {
     if (!el) throw new Error('No element found at drop point')
     console.log(el)
 
-    document.querySelector('#output').value += path + '\n'
+    document.querySelector('#output').value += src + '\n'
   });
 }
