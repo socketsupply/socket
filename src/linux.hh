@@ -4,6 +4,10 @@
 #include <gtk/gtk.h>
 #include <webkit2/webkit2.h>
 
+static GtkTargetEntry droppableTypes[] = {
+  { (char*) "text/uri-list", 0, 0 }
+};
+
 namespace Opkit {
 
   class App : public IApp {
@@ -171,6 +175,85 @@ namespace Opkit {
         if (event == WEBKIT_LOAD_FINISHED) {
           w->app.isReady = true;
         }
+      }),
+      this
+    );
+
+    gtk_drag_source_set(
+      webview,
+      (GdkModifierType)(GDK_BUTTON1_MASK | GDK_BUTTON2_MASK),
+      droppableTypes,
+      1,
+      GDK_ACTION_COPY
+    );
+
+    g_signal_connect(
+      G_OBJECT(webview),
+      "drag-begin",
+      G_CALLBACK(+[](GtkWidget *wv, GdkDragContext *context, gpointer arg) {
+        auto *w = static_cast<Window*>(arg);
+        std::cout << "drag begin" << std::endl;
+      }),
+      this
+    );
+
+    g_signal_connect(
+      G_OBJECT(webview),
+      "drag_data_get",
+      G_CALLBACK(+[](
+        GtkWidget *widget,
+        GdkDragContext *context,
+        GtkSelectionData *selection_data,
+        guint info,
+        guint time,
+        gpointer arg) {
+        auto *w = static_cast<Window*>(arg);
+        std::cout << "drag data get" << std::endl;
+      }),
+      this
+    );
+
+    g_signal_connect(
+      G_OBJECT(webview),
+      "drag_data_received",
+      G_CALLBACK(+[](
+        GtkWidget        *widget,
+        GdkDragContext   *context,
+        gint              x,
+        gint              y,
+        GtkSelectionData *selection_data,
+        guint             info,
+        guint32           time,
+        gpointer arg) {
+        auto *w = static_cast<Window*>(arg);
+        std::cout << "drag data received" << std::endl;
+      }),
+      this
+    );
+
+    g_signal_connect(
+      G_OBJECT(webview),
+      "drag_motion",
+      G_CALLBACK(+[](
+        GtkWidget        *widget,
+        GdkDragContext   *context,
+        gint              x,
+        gint              y,
+        guint32           time,
+        gpointer arg) {
+
+        auto *w = static_cast<Window*>(arg);
+        std::cout << "drag motion" << std::endl;
+      }),
+      this
+    );
+
+    g_signal_connect(
+      G_OBJECT(webview),
+      "drag-end",
+      G_CALLBACK(+[](GtkWidget *wv, GdkDragContext *context, gpointer arg) {
+        auto *w = static_cast<Window*>(arg);
+        std::cout << "drag end" << std::endl;
       }),
       this
     );
