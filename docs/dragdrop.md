@@ -9,11 +9,12 @@ both these problems.
 Fired while dragging. Provides the pointer's `{x,y}` coordinates so you can
 interact with elements as you're dragging. The event only fires if `mousedown`
 occurs on an element that defines the `data-src` property (a string of absolute
-local file paths or urls separated by `;`).
+local file paths or urls separated by `;`). Includes the `count` for how many
+files are being dragged.
 
 ```js
 window.addEventListener('drag', e => {
-  const { x, y } = e.details
+  const { x, y, count } = e.details
   const el = document.elementFromPoint(x, y)
 })
 ```
