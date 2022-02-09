@@ -52,10 +52,14 @@ MAIN {
   std::stringstream argvArray;
   std::stringstream argvForward;
 
+  bool isCommandMode = false;
+  bool isTest = false;
+
   int exitCode = 0;
-  auto isTest = false;
-  auto isCommandMode = false;
   int c = 0;
+
+  bool wantsVersion = false;
+  bool wantsHelp = false;
 
   // TODO right now we forward a json parsable string as the args but this
   // isn't the most robust way of doing this. possible a URI-encoded query
@@ -66,16 +70,43 @@ MAIN {
       << replace(std::string(arg), "'", "\'")
       << (c++ < argc ? "', " : "'");
 
-    if (c == 2 && std::string(arg).find("-") == -1) {
-      isCommandMode = true;
+    bool helpRequested =
+      (std::string(arg).find("--help") == 0) ||
+      (std::string(arg).find("-help") == 0) ||
+      (std::string(arg).find("-h") == 0);
+
+    bool versionRequested =
+      (std::string(arg).find("--version") == 0) ||
+      (std::string(arg).find("-version") == 0) ||
+      (std::string(arg).find("-v") == 0) ||
+      (std::string(arg).find("-V") == 0);
+
+    if (helpRequested) {
+      wantsHelp = true;
+    }
+
+    if (versionRequested) {
+      wantsVersion = true;
     }
 
     if (std::string(arg).find("--test") == 0) {
       suffix = "-test";
       isTest = true;
+    } else if (c >= 2 && std::string(arg).find("-") != 0) {
+      isCommandMode = true;
     }
 
-    if (c > 1) argvForward << " " << std::string(arg);
+    if (helpRequested || versionRequested) {
+      isCommandMode = true;
+    }
+
+    if (helpRequested) {
+      argvForward << " " << "help --warn-arg-usage=" << std::string(arg);
+    } else if (versionRequested) {
+      argvForward << " " << "version --warn-arg-usage=" << std::string(arg);
+    } else if (c > 1 || isCommandMode) {
+      argvForward << " " << std::string(arg);
+    }
   }
 
   #if DEBUG == 1
