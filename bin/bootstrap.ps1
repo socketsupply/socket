@@ -14,11 +14,11 @@ $OLD_CWD = (Get-Location).Path
 $TEMP_PATH = Join-Path $Env:Temp $(New-Guid)
 (New-Item -Type Directory -Path $TEMP_PATH) > $null
 
-$INSTALL_PATH = "$env:LOCALAPPDATA\Programs\operatortc\src"
+$INSTALL_PATH = "$env:LOCALAPPDATA\Programs\socketsupply\src"
 $WORKING_PATH = $OLD_CWD
 
 Write-Output ""
-Write-Output "Consider adding '$env:LOCALAPPDATA\Programs\operatortc' to your path."
+Write-Output "Consider adding '$env:LOCALAPPDATA\Programs\socketsupply' to your path."
 Write-Output ""
 
 if (Test-Path -Path $INSTALL_PATH) {
@@ -105,7 +105,7 @@ if ($? -ne 1) {
 #
 Write-Output "$([char]0x2666) Fetching files to '$WORKING_PATH'..."
 Remove-Item -Recurse -Force $WORKING_PATH
-(git clone --depth=1 git@github.com:operatortc/opkit.git "$($WORKING_PATH)") > $null
+(git clone --depth=1 git@github.com:socketsupply/opkit.git "$($WORKING_PATH)") > $null
 
 cd $WORKING_PATH
 

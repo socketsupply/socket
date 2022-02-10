@@ -36,19 +36,19 @@ It's a plain text script, please inspect it before running it.
 
 ## Linux or MacOS Bash/Zsh
 ```bash
-curl -o- https://raw.githubusercontent.com/operatortc/opkit/master/bin/bootstrap.sh | bash -s
+curl -o- https://raw.githubusercontent.com/socketsupply/opkit/master/bin/bootstrap.sh | bash -s
 ```
 
 ## Windows Powershell
 ```ps1
-& $([scriptblock]::Create((New-Object Net.WebClient).DownloadString("https://raw.githubusercontent.com/operatortc/opkit/master/bin/bootstrap.ps1")))
+& $([scriptblock]::Create((New-Object Net.WebClient).DownloadString("https://raw.githubusercontent.com/socketsupply/opkit/master/bin/bootstrap.ps1")))
 ```
 
 
 # DEVELOPMENT ON OPKIT
 
 ```sh
-git clone git@github.com:operatortc/opkit.git
+git clone git@github.com:socketsupply/opkit.git
 cd opkit
 ```
 

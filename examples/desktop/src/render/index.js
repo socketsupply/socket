@@ -1,5 +1,5 @@
-const Tonic = require('@operatortc/tonic')
-const Components = require('@operatortc/components')
+const Tonic = require('@socketsupply/tonic')
+const Components = require('@socketsupply/components')
 
 Components(Tonic)
 

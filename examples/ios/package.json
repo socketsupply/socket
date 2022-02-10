@@ -7,8 +7,8 @@
     "stylus": "^0.54.8"
   },
   "dependencies": {
-    "@operatortc/components": "^13.0.0",
-    "@operatortc/tonic": "^14.0.0",
+    "@socketsupply/components": "^13.0.0",
+    "@socketsupply/tonic": "^14.0.0",
     "esbuild": "^0.13.12"
   }
 }

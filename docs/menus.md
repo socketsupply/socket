@@ -9,8 +9,6 @@ For the edit menu, Opkit will figure out which accelerators to use
 for you.
 
 ```js
-import window from '@operatortc/window'
-
 system.setMenu(`
   App:
     Foo: f;

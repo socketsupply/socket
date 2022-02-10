@@ -15,7 +15,7 @@ rm -rf `pwd`/lib/ucp
 #
 # Shallow clone the main branch of libucp.
 #
-git clone --depth=1 git@github.com:operatortc/libucp.git lib/build
+git clone --depth=1 git@github.com:socketsupply/libucp.git lib/build
 cd $BUILD_DIR
 
 SetSDKVersion() {

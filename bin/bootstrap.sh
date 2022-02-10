@@ -53,7 +53,7 @@ if [ -z "$1" ]; then
   TMPD=$(mktemp -d)
 
   echo '• Cloning from Github'
-  git clone --depth=1 git@github.com:operatortc/opkit.git $TMPD > /dev/null 2>&1
+  git clone --depth=1 git@github.com:socketsupply/opkit.git $TMPD > /dev/null 2>&1
 
   if [ ! $? = 0 ]; then
     echo "• Unable to clone"

@@ -26,7 +26,7 @@ EOF
 
 function get_key {
   gpg get ${KEYNAME}.key
-  #gpg --output keys/operatortc.gpg --armor --export $KEYID
+  #gpg --output keys/socketsupply.gpg --armor --export $KEYID
   #apt-ftparchive --arch amd64 packages amd64 > Packages
   #gzip -k -f Packages
 }

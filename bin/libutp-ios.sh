@@ -14,7 +14,7 @@ rm -rf `pwd`/lib/utp
 #
 # Shallow clone the main branch of libutp.
 #
-git clone --depth=1 git@github.com:operatortc/libutp.git lib/build
+git clone --depth=1 git@github.com:socketsupply/libutp.git lib/build
 cd $BUILD_DIR
 mkdir $BUILD_DIR
 

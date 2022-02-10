@@ -10,4 +10,4 @@ Values are encoded using `encodeURIComponent`.
 
 Here is an [implementation reference][0].
 
-[0]: https://github.com/operatortc/opkit/blob/master/test/example/src/main/ipc.js
+[0]: https://github.com/socketsupply/opkit/blob/master/test/example/src/main/ipc.js
