@@ -25,6 +25,7 @@ namespace Opkit {
   };
 
   std::atomic<bool> App::isReady {false};
+  // std::atomic<bool> isPreparingToDrag {false};
 
   class Window : public IWindow {
     GtkAccelGroup *accel_group;
@@ -33,8 +34,12 @@ namespace Opkit {
     GtkWidget* menubar = nullptr;
     GtkWidget* vbox;
     GtkWidget* popup;
-    std::vector<std::string> dropSelection;
+    GtkSelectionData *selectionData;
+    std::vector<std::string> draggablePayload;
     int popupId;
+    double dragLastX = 0;
+    double dragLastY = 0;
+    bool isDragInvokedInsideWindow;
 
     public:
       App app;
@@ -187,63 +192,150 @@ namespace Opkit {
       GDK_ACTION_COPY
     );
 
+    /* gtk_drag_dest_set(
+      webview,
+      GTK_DEST_DEFAULT_ALL,
+      droppableTypes,
+      1,
+      GDK_ACTION_MOVE
+    ); */
+
+    g_signal_connect(
+      G_OBJECT(window),
+      "enter-notify-event",
+      G_CALLBACK(+[](GtkWidget* window, GdkEventButton* event, gpointer arg) {
+        auto *w = static_cast<Window*>(arg);
+        if (!w) return;
+
+        // detecting the button down doesnt seem to work for this event
+        // std::cout << event->type << std::endl;
+        // if (event->type == GDK_BUTTON_PRESS) {
+        //  std::cout << "enter" << std::endl;
+        // }
+      }),
+      this
+    );
+
     g_signal_connect(
       G_OBJECT(webview),
       "drag-begin",
       G_CALLBACK(+[](GtkWidget *wv, GdkDragContext *context, gpointer arg) {
         auto *w = static_cast<Window*>(arg);
-        std::cout << "drag begin" << std::endl;
+        w->isDragInvokedInsideWindow = true;
+
+        gint ix;
+        gint iy;
+        gdk_window_get_origin(GDK_WINDOW(gtk_widget_get_window(w->window)), &ix, &iy);
+
+        GdkDisplay* display = gdk_display_get_default();
+        GdkSeat* seat = gdk_display_get_default_seat(display);
+        GdkDevice* pointer = gdk_seat_get_pointer(seat);
+
+        gint ux;
+        gint uy;
+        gdk_device_get_position(pointer, NULL, &ux, &uy);
+
+        auto x = std::to_string(ux - ix - 10); // WTF
+        auto y = std::to_string(uy - iy - 28); // WTF
+
+        std::string js(
+          "(() => {"
+          "  const el = document.elementFromPoint(" + x + "," + y + ");"
+          "  return el && el.dataset.src"
+          "})()"
+        );
+
+        webkit_web_view_run_javascript(
+          WEBKIT_WEB_VIEW(wv),
+          js.c_str(),
+          nullptr,
+          [](GObject* src, GAsyncResult* result, gpointer arg) {
+            auto *w = static_cast<Window*>(arg);
+            if (!w) return;
+
+            GError* error = NULL;
+            WebKitJavascriptResult* wkr = webkit_web_view_run_javascript_finish(WEBKIT_WEB_VIEW(src), result, &error);
+            if (!wkr || error) return;
+
+            auto* value = webkit_javascript_result_get_js_value(wkr);
+            if (!jsc_value_is_string(value)) return;
+
+            JSCException *exception;
+            gchar *str_value;
+
+            w->draggablePayload = Opkit::split(jsc_value_to_string(value), ';');
+            exception = jsc_context_get_exception(jsc_value_get_context(value));
+          },
+          w
+        );
       }),
       this
     );
 
     g_signal_connect(
       G_OBJECT(webview),
-      "drag_data_get",
+      "drag-data-get",
       G_CALLBACK(+[](
-        GtkWidget *widget,
+        GtkWidget *wv,
         GdkDragContext *context,
-        GtkSelectionData *selection_data,
+        GtkSelectionData *data,
         guint info,
         guint time,
-        gpointer arg) {
+        gpointer arg)
+      {
         auto *w = static_cast<Window*>(arg);
-        std::cout << "drag data get" << std::endl;
+        if (!w) return;
+        if (w->draggablePayload.size() == 0) return;
+
+        gchar* uris[w->draggablePayload.size() + 1];
+        int i = 0;
+
+        for (auto& file : w->draggablePayload) {
+          if (file[0] == '/') {
+            // file system paths must be proper URIs
+            file = std::string("file://" + file);
+          }
+          uris[i++] = strdup(file.c_str());
+        }
+
+        uris[i] = NULL;
+
+        gtk_selection_data_set_uris(data, uris);
       }),
       this
     );
 
     g_signal_connect(
       G_OBJECT(webview),
-      "drag_data_received",
+      "drag-motion",
       G_CALLBACK(+[](
-        GtkWidget        *widget,
-        GdkDragContext   *context,
-        gint              x,
-        gint              y,
-        GtkSelectionData *selection_data,
-        guint             info,
-        guint32           time,
-        gpointer arg) {
+        GtkWidget *wv,
+        GdkDragContext *context,
+        gint x,
+        gint y,
+        guint32 time,
+        gpointer arg)
+      {
         auto *w = static_cast<Window*>(arg);
-        std::cout << "drag data received" << std::endl;
-      }),
-      this
-    );
+        if (!w) return;
 
-    g_signal_connect(
-      G_OBJECT(webview),
-      "drag_motion",
-      G_CALLBACK(+[](
-        GtkWidget        *widget,
-        GdkDragContext   *context,
-        gint              x,
-        gint              y,
-        guint32           time,
-        gpointer arg) {
+        w->dragLastX = x;
+        w->dragLastY = y;
 
-        auto *w = static_cast<Window*>(arg);
-        std::cout << "drag motion" << std::endl;
+        int count = w->draggablePayload.size();
+        bool inbound = !w->isDragInvokedInsideWindow;
+
+        // TODO wtf we get a toaster instead of actual focus
+        gtk_window_present(GTK_WINDOW(w->window));
+
+        std::string json = (
+          "{\"count\":" + std::to_string(count) + ","
+          "\"inbound\":" + (inbound ? "true" : "false") + ","
+          "\"x\":" + std::to_string(x) + ","
+          "\"y\":" + std::to_string(y) + "}"
+        );
+
+        w->eval(Opkit::emitToRenderProcess("drag", json));
       }),
       this
     );
@@ -253,6 +345,11 @@ namespace Opkit {
       "drag-end",
       G_CALLBACK(+[](GtkWidget *wv, GdkDragContext *context, gpointer arg) {
         auto *w = static_cast<Window*>(arg);
+        if (!w) return;
+
+        w->isDragInvokedInsideWindow = false;
+        w->draggablePayload.clear();
+        w->eval(Opkit::emitToRenderProcess("dragend", "{}"));
         std::cout << "drag end" << std::endl;
       }),
       this
@@ -260,10 +357,26 @@ namespace Opkit {
 
     g_signal_connect(
       G_OBJECT(window),
-      "destroy",
-      G_CALLBACK(+[](GtkWidget*, gpointer arg) {
-        auto* w = static_cast<Window*>(arg);
-        w->close(0);
+      "button-release-event",
+      G_CALLBACK(+[](GtkWidget* window, GdkEventButton event, gpointer arg) {
+        auto *w = static_cast<Window*>(arg);
+        if (!w) return;
+
+        w->isDragInvokedInsideWindow = false;
+        w->eval(Opkit::emitToRenderProcess("dragend", "{}"));
+      }),
+      this
+    );
+
+    g_signal_connect(
+      G_OBJECT(window),
+      "drag-leave",
+      G_CALLBACK(+[](GtkWidget* window, GdkEventButton event, gpointer arg) {
+        auto *w = static_cast<Window*>(arg);
+        if (!w) return;
+
+        w->isDragInvokedInsideWindow = false;
+        w->eval(Opkit::emitToRenderProcess("dragend", "{}"));
       }),
       this
     );
@@ -282,17 +395,22 @@ namespace Opkit {
         gpointer arg)
       {
         auto* w = static_cast<Window*>(arg);
-        gchar** uris = gtk_selection_data_get_uris(data);
+        if (!w) return;
+        if (w->isDragInvokedInsideWindow) return;
 
+        gchar** uris = gtk_selection_data_get_uris(data);
         if (uris) {
+          auto v = &w->draggablePayload;
+
           for(size_t n = 0; uris[n] != nullptr; n++) {
-            gchar* path = g_filename_from_uri(uris[n], nullptr, nullptr);
-            w->dropSelection.push_back(std::string(path));
-            g_free(path);
+            gchar* src = g_filename_from_uri(uris[n], nullptr, nullptr);
+            auto s = std::string(src);
+            if (std::find(v->begin(), v->end(), s) == v->end()) {
+              v->push_back(s);
+            }
+            g_free(src);
           }
         }
-
-        return TRUE;
       }),
       this
     );
@@ -310,18 +428,30 @@ namespace Opkit {
       {
         auto* w = static_cast<Window*>(arg);
 
-        for (auto path : w->dropSelection) {
+        for (auto src : w->draggablePayload) {
           std::string json = (
-            "{\"path\":\"" + path + "\","
+            "{\"src\":\"" + src + "\","
             "\"x\":" + std::to_string(x) + ","
             "\"y\":" + std::to_string(y) + "}"
           );
 
-          w->eval(emitToRenderProcess("drop", json));
+          w->eval(emitToRenderProcess("dropin", json));
         }
 
-        w->dropSelection.clear();
+        w->draggablePayload.clear();
+        w->eval(Opkit::emitToRenderProcess("dragend", "{}"));
+        gtk_drag_finish(context, TRUE, TRUE, time);
         return TRUE;
+      }),
+      this
+    );
+
+    g_signal_connect(
+      G_OBJECT(window),
+      "destroy",
+      G_CALLBACK(+[](GtkWidget*, gpointer arg) {
+        auto* w = static_cast<Window*>(arg);
+        w->close(0);
       }),
       this
     );
@@ -716,7 +846,12 @@ namespace Opkit {
 
     // members
     popup = gtk_menu_new();
-    popupId = std::stoi(seq);
+
+    try {
+      popupId = std::stoi(seq);
+    } catch (...) {
+      popupId = 0;
+    }
 
     auto menuData = replace(value, "_", "\n");
     auto menuItems = split(menuData, '\n');

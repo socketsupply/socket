@@ -97,7 +97,7 @@ async function main () {
   // ## Example
   // Sending arbitrary fire-and-forget messages to the render process.
   //
-  let i = 100
+  let i = 8
   setInterval(() => {
     counter++
 

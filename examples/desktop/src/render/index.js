@@ -15,7 +15,7 @@ window.addEventListener('contextmenu', e => {
 
 window.addEventListener('dropout', e => {
   console.log(e.detail)
-  elementDraggingIndicator.style.display = 'none'
+  // elementDraggingIndicator.style.display = 'none'
   document.body.removeAttribute('dragging')
 })
 
@@ -261,14 +261,15 @@ class AppContainer extends Tonic {
       <div class="dragdrop-demo">
         <div
           class="draggable"
-          data-src="/Users/paolofragomeni/projects/optoolco/opkit/README.md;https://optool.co/images/operator-horizontal.svg;/tmp/foobar"
-        >DRAGME</div>
+          data-macsrc="/Users/paolofragomeni/projects/optoolco/opkit/README.md;https://optool.co/images/operator-horizontal.svg;/tmp/test.txt"
+          data-src="/tmp/test.txt;/tmp/test2.txt"
+        >DRAG HERE</div>
 
         <div
           class="droppable"
           id="drop-demo"
           tabindex="0"
-        >DROPME</div>
+        >DROP HERE</div>
       </div>
 
       <div class="grid">
