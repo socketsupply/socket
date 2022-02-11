@@ -149,6 +149,7 @@ namespace Opkit {
       void setContextMenu(const std::string&, const std::string&);
       void closeContextMenu(const std::string&);
       void closeContextMenu();
+      void showInspector();
       void setSystemMenu(const std::string&, const std::string&);
       void openDialog(
         const std::string&,
@@ -641,6 +642,10 @@ namespace Opkit {
   void Window::kill () {
     if (this->controller != nullptr) this->controller->Close();
     if (this->window != nullptr) DestroyWindow(this->window);
+  }
+
+  void Window::showInspector () {
+    // TODO: show inspector.
   }
 
   void Window::exit (int code) {
