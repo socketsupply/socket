@@ -956,8 +956,13 @@ namespace Opkit {
 
     gtk_init_check(nullptr, nullptr);
 
+    std::string dialogTitle = isSave ? "Save File" : "Open File";
+    if (title.size() > 0) {
+      dialogTitle = title;
+    }
+
     dialog = gtk_file_chooser_dialog_new(
-      isSave ? "Save File" : "Open File",
+      dialogTitle.c_str(),
       nullptr,
       action,
       "_Cancel",
@@ -993,9 +998,9 @@ namespace Opkit {
       }
     }
 
-    if (title.size() > 0) {
-      gtk_file_chooser_set_current_name(chooser, title.c_str());
-    }
+    // if (title.size() > 0) {
+    //   gtk_file_chooser_set_current_name(chooser, title.c_str());
+    // }
 
     guint response = gtk_dialog_run(GTK_DIALOG(dialog));
     if (response != GTK_RESPONSE_ACCEPT && response != SELECT_RESPONSE) {
