@@ -9,7 +9,6 @@ static GtkTargetEntry droppableTypes[] = {
 };
 
 namespace Opkit {
-
   class App : public IApp {
 
     public:
@@ -25,7 +24,6 @@ namespace Opkit {
   };
 
   std::atomic<bool> App::isReady {false};
-  // std::atomic<bool> isPreparingToDrag {false};
 
   class Window : public IWindow {
     GtkAccelGroup *accel_group;
@@ -188,7 +186,7 @@ namespace Opkit {
       webview,
       (GdkModifierType)(GDK_BUTTON1_MASK | GDK_BUTTON2_MASK),
       droppableTypes,
-      1,
+      G_N_ELEMENTS(droppableTypes),
       GDK_ACTION_COPY
     );
 
@@ -201,27 +199,13 @@ namespace Opkit {
     ); */
 
     g_signal_connect(
-      G_OBJECT(window),
-      "enter-notify-event",
-      G_CALLBACK(+[](GtkWidget* window, GdkEventButton* event, gpointer arg) {
-        auto *w = static_cast<Window*>(arg);
-        if (!w) return;
-
-        // detecting the button down doesnt seem to work for this event
-        // std::cout << event->type << std::endl;
-        // if (event->type == GDK_BUTTON_PRESS) {
-        //  std::cout << "enter" << std::endl;
-        // }
-      }),
-      this
-    );
-
-    g_signal_connect(
       G_OBJECT(webview),
       "drag-begin",
       G_CALLBACK(+[](GtkWidget *wv, GdkDragContext *context, gpointer arg) {
         auto *w = static_cast<Window*>(arg);
         w->isDragInvokedInsideWindow = true;
+
+        std::string tmpFile(std::to_string(Opkit::rand64()) + ".download");
 
         gint ix;
         gint iy;
@@ -285,6 +269,14 @@ namespace Opkit {
       {
         auto *w = static_cast<Window*>(arg);
         if (!w) return;
+
+        if (w->isDragInvokedInsideWindow) {
+          // FIXME: Once, write a single tmp file `/tmp/{i64}.download` and
+          // add it to the draggablePayload, then start the fanotify watcher
+          // for that particular file.
+          return;
+        }
+
         if (w->draggablePayload.size() == 0) return;
 
         gchar* uris[w->draggablePayload.size() + 1];
@@ -322,11 +314,16 @@ namespace Opkit {
         w->dragLastX = x;
         w->dragLastY = y;
 
+        // char* target_uri = g_file_get_uri(drag_info->target_location);
+
         int count = w->draggablePayload.size();
         bool inbound = !w->isDragInvokedInsideWindow;
 
+        // w->eval(Opkit::emitToRenderProcess("dragend", "{}"));
+
         // TODO wtf we get a toaster instead of actual focus
         gtk_window_present(GTK_WINDOW(w->window));
+        // gdk_window_focus(GDK_WINDOW(w->window), nullptr);
 
         std::string json = (
           "{\"count\":" + std::to_string(count) + ","
@@ -340,6 +337,9 @@ namespace Opkit {
       this
     );
 
+    // https://wiki.gnome.org/Newcomers/XdsTutorial
+    // https://wiki.gnome.org/action/show/Newcomers/OldDragNDropTutorial?action=show&redirect=Newcomers%2FDragNDropTutorial
+
     g_signal_connect(
       G_OBJECT(webview),
       "drag-end",
@@ -350,7 +350,6 @@ namespace Opkit {
         w->isDragInvokedInsideWindow = false;
         w->draggablePayload.clear();
         w->eval(Opkit::emitToRenderProcess("dragend", "{}"));
-        std::cout << "drag end" << std::endl;
       }),
       this
     );
@@ -369,23 +368,10 @@ namespace Opkit {
     );
 
     g_signal_connect(
-      G_OBJECT(window),
-      "drag-leave",
-      G_CALLBACK(+[](GtkWidget* window, GdkEventButton event, gpointer arg) {
-        auto *w = static_cast<Window*>(arg);
-        if (!w) return;
-
-        w->isDragInvokedInsideWindow = false;
-        w->eval(Opkit::emitToRenderProcess("dragend", "{}"));
-      }),
-      this
-    );
-
-    g_signal_connect(
       G_OBJECT(webview),
       "drag-data-received",
       G_CALLBACK(+[](
-        GtkWidget* widget,
+        GtkWidget* wv,
         GdkDragContext* context,
         gint x,
         gint y,
@@ -396,20 +382,29 @@ namespace Opkit {
       {
         auto* w = static_cast<Window*>(arg);
         if (!w) return;
-        if (w->isDragInvokedInsideWindow) return;
 
+        gtk_drag_dest_add_uri_targets(wv);
         gchar** uris = gtk_selection_data_get_uris(data);
-        if (uris) {
-          auto v = &w->draggablePayload;
+        int len = gtk_selection_data_get_length(data) - 1;
+        if (!uris) return;
 
-          for(size_t n = 0; uris[n] != nullptr; n++) {
-            gchar* src = g_filename_from_uri(uris[n], nullptr, nullptr);
-            auto s = std::string(src);
-            if (std::find(v->begin(), v->end(), s) == v->end()) {
-              v->push_back(s);
-            }
-            g_free(src);
+        if (w->isDragInvokedInsideWindow) {
+          // // fucking useless, i already know about these
+          // for (size_t i = 0; uris[i] != nullptr; i++) {
+          //   std::cout << "+++ " << uris[i] << std::endl;
+          // }
+          return;
+        }
+
+        auto v = &w->draggablePayload;
+
+        for(size_t n = 0; uris[n] != nullptr; n++) {
+          gchar* src = g_filename_from_uri(uris[n], nullptr, nullptr);
+          auto s = std::string(src);
+          if (std::find(v->begin(), v->end(), s) == v->end()) {
+            v->push_back(s);
           }
+          g_free(src);
         }
       }),
       this

@@ -58,8 +58,10 @@ window.addEventListener('drag', e => {
 })
 
 window.addEventListener('dragend', () => {
-  document.body.removeAttribute('dragging')
-  elementDraggingIndicator.style.display = 'none'
+  setTimeout(() => { // be the last event
+    document.body.removeAttribute('dragging')
+    elementDraggingIndicator.style.display = 'none'
+  }, 512)
 })
 
 window.addEventListener('menuItemSelected', event => {
