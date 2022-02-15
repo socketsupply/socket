@@ -463,6 +463,15 @@ int main (const int argc, const char* argv[]) {
       settings["revision"] = "1";
     }
 
+    if (settings["versionShort"].size() > 0) {
+      auto versionShort = settings["versionShort"];
+      auto winversion = split(versionShort, '-')[0];
+
+      settings["win_version"] = winversion + ".0";
+    } else {
+      settings["win_version"] = "0.0.0.0";
+    }
+
     writeFile(p, tmpl(gWindowsAppManifest, settings));
 
     // TODO Copy the files into place
@@ -1050,6 +1059,7 @@ int main (const int argc, const char* argv[]) {
         hr = packageWriter->Close(manifestStream);
       } else {
         log("Could not generate AppxManifest.xml");
+        // log("Run MakeAppx.exe manually to see more errors");
       }
 
       if (manifestStream != NULL) {

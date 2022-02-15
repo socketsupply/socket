@@ -139,7 +139,7 @@ constexpr auto gWindowsAppManifest = R"XML(<?xml version="1.0" encoding="utf-8"?
   <Identity Name="{bundle_identifier}"
     ProcessorArchitecture="neutral"
     Publisher="{{win_publisher}}"
-    Version="{{versionShort}}.{{revision}}"
+    Version="{{win_version}}"
     ResourceId="{{executable}}"
   />
 
