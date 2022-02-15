@@ -18,7 +18,7 @@ $INSTALL_PATH = "$env:LOCALAPPDATA\Programs\socketsupply\src"
 $WORKING_PATH = $OLD_CWD
 
 Write-Output ""
-Write-Output "Consider adding '$env:LOCALAPPDATA\Programs\socketsupply' to your path."
+Write-Output "Consider adding '$env:LOCALAPPDATA\Programs\socketsupply\src' to your path."
 Write-Output ""
 
 if (Test-Path -Path $INSTALL_PATH) {
