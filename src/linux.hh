@@ -963,12 +963,18 @@ namespace Opkit {
       action,
       "_Cancel",
       GTK_RESPONSE_CANCEL,
-      isSave ? "_Save" : "_Open",
-      GTK_RESPONSE_ACCEPT,
       nullptr
     );
 
     chooser = GTK_FILE_CHOOSER(dialog);
+
+    if (!allowDirs) {
+      if (isSave) {
+        gtk_dialog_add_button(GTK_DIALOG(dialog), "_Save", GTK_RESPONSE_ACCEPT);
+      } else {
+        gtk_dialog_add_button(GTK_DIALOG(dialog), "_Open", GTK_RESPONSE_ACCEPT);
+      }
+    }
 
     if (allowMultiple || allowDirs) {
       gtk_dialog_add_button(GTK_DIALOG(dialog), "Select", SELECT_RESPONSE);
@@ -995,7 +1001,11 @@ namespace Opkit {
     }
 
     if (defaultName.size() > 0) {
-      gtk_file_chooser_set_current_name(chooser, defaultName.c_str());
+      if ((!allowFiles && allowDirs) || isSave) {
+        gtk_file_chooser_set_current_name(chooser, defaultName.c_str());
+      } else {
+        gtk_file_chooser_set_current_folder(chooser, defaultName.c_str());
+      }
     }
 
     guint response = gtk_dialog_run(GTK_DIALOG(dialog));
