@@ -380,7 +380,7 @@ namespace Opkit {
       void setContextMenu(const std::string&, const std::string&);
       void closeContextMenu(const std::string&);
       void closeContextMenu();
-      void openDialog(const std::string&, bool, bool, bool, bool, const std::string&, const std::string&);
+      void openDialog(const std::string&, bool, bool, bool, bool, const std::string&, const std::string&, const std::string&);
       void showInspector();
 
       void setSystemMenu(const std::string& seq, const std::string& menu);
@@ -914,14 +914,15 @@ namespace Opkit {
     bool allowFiles,
     bool allowMultiple,
     const std::string& defaultPath = "",
-    const std::string& title = "")
+    const std::string& title = "",
+    const std::string& defaultName = "")
   {
 
     NSURL *url;
     const char *utf8_path;
     NSSavePanel *dialog_save;
     NSOpenPanel *dialog_open;
-    NSURL *default_url;
+    NSURL *default_url = nil;
     NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
 
     if (isSave) {
@@ -946,10 +947,15 @@ namespace Opkit {
       [dialog_open setAllowsMultipleSelection:YES];
     }
 
-    if (defaultPath.size() > 0) {
+    if (defaultName.size() > 0) {
+      default_url = [NSURL fileURLWithPath:
+        [NSString stringWithUTF8String: defaultName.c_str()]];
+    } else if (defaultPath.size() > 0) {
       default_url = [NSURL fileURLWithPath:
         [NSString stringWithUTF8String: defaultPath.c_str()]];
+    }
 
+    if (default_url != nil) {
       if (isSave) {
         [dialog_save setDirectoryURL: default_url];
         [dialog_save setNameFieldStringValue: default_url.lastPathComponent];

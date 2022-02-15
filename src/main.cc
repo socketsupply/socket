@@ -402,6 +402,7 @@ MAIN {
       bool allowDirs = cmd.get("allowDirs").compare("true") == 0;
       bool allowFiles = cmd.get("allowFiles").compare("true") == 0;
       bool allowMultiple = cmd.get("allowMultiple").compare("true") == 0;
+      std::string defaultName = decodeURIComponent(cmd.get("defaultName"));
       std::string defaultPath = decodeURIComponent(cmd.get("defaultPath"));
       std::string title = decodeURIComponent(cmd.get("title"));
 
@@ -412,7 +413,8 @@ MAIN {
         allowFiles,
         allowMultiple,
         defaultPath,
-        title
+        title,
+        defaultName
       );
 
       return;

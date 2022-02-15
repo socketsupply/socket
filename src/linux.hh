@@ -60,7 +60,7 @@ namespace Opkit {
       void closeContextMenu(const std::string&);
       void closeContextMenu();
       void showInspector();
-      void openDialog(const std::string&, bool, bool, bool, bool, const std::string&, const std::string&);
+      void openDialog(const std::string&, bool, bool, bool, bool, const std::string&, const std::string&, const std::string&);
       ScreenSize getScreenSize();
 
       void setSystemMenu(const std::string& seq, const std::string& menu);
@@ -931,7 +931,8 @@ namespace Opkit {
     bool allowFiles,
     bool allowMultiple,
     const std::string& defaultPath,
-    const std::string& title
+    const std::string& title,
+    const std::string& defaultName
   ) {
     const guint SELECT_RESPONSE = 0;
     GtkFileChooserAction action;
@@ -993,9 +994,9 @@ namespace Opkit {
       }
     }
 
-    // if (title.size() > 0) {
-    //   gtk_file_chooser_set_current_name(chooser, title.c_str());
-    // }
+    if (defaultName.size() > 0) {
+      gtk_file_chooser_set_current_name(chooser, defaultName.c_str());
+    }
 
     guint response = gtk_dialog_run(GTK_DIALOG(dialog));
     if (response != GTK_RESPONSE_ACCEPT && response != SELECT_RESPONSE) {

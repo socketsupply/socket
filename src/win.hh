@@ -158,6 +158,7 @@ namespace Opkit {
         bool,
         bool,
         const std::string&,
+        const std::string&,
         const std::string&
       );
       int openExternal(const std::string&);
@@ -958,8 +959,9 @@ namespace Opkit {
       bool allowFiles,
       bool allowMultiple,
       const std::string& defaultPath,
-      const std::string& title
-    ) {
+      const std::string& title,
+      const std::string& defaultPath)
+  {
 
     IFileOpenDialog * pfd;
 
