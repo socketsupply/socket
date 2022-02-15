@@ -226,7 +226,7 @@ int main (const int argc, const char* argv[]) {
     } catch (std::filesystem::filesystem_error const& ex) {
       log("could not clean path (binary could be busy)");
       log(std::string("ex: ") + ex.what());
-      log("ex code: " + ex.code().value());
+      log(std::string("ex code: ") + std::to_string(ex.code().value()));
       exit(1);
     }
   }
