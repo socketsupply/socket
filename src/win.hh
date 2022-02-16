@@ -165,6 +165,61 @@ namespace Opkit {
       ScreenSize getScreenSize();
   };
 
+  class DropSource : public IDropSource {
+    public:
+      STDMETHODIMP QueryInterface(REFIID riid, void **ppv);
+      STDMETHODIMP_(ULONG) AddRef();
+      STDMETHODIMP_(ULONG) Release();
+
+      STDMETHODIMP QueryContinueDrag(BOOL fEscapePressed, DWORD grfKeyState);
+      STDMETHODIMP GiveFeedback(DWORD dwEffect);
+      DropSource() : m_cRef(1) { }
+    private:
+      ULONG m_cRef;
+  };
+
+  HRESULT DropSource::QueryInterface(REFIID riid, void **ppv) {
+    IUnknown *punk = NULL;
+    if (riid == IID_IUnknown) {
+      punk = static_cast<IUnknown*>(this);
+    } else if (riid == IID_IDropSource) {
+      punk = static_cast<IDropSource*>(this);
+    }
+
+    *ppv = punk;
+
+    if (punk) {
+      punk->AddRef();
+      return S_OK;
+    } else {
+      return E_NOINTERFACE;
+    }
+  }
+
+  ULONG DropSource::AddRef() {
+    return ++m_cRef;
+  }
+
+  ULONG DropSource::Release() {
+    ULONG cRef = -m_cRef;
+    if (cRef == 0) delete this;
+    return cRef;
+  }
+
+  HRESULT DropSource::QueryContinueDrag(BOOL fEscapePressed, DWORD grfKeyState) {
+    if (fEscapePressed) return DRAGDROP_S_CANCEL;
+
+    // [Update: missing paren repaired, 7 Dec]
+    if (!(grfKeyState & (MK_LBUTTON | MK_RBUTTON)))
+      return DRAGDROP_S_DROP;
+
+    return S_OK;
+  }
+
+  HRESULT DropSource::GiveFeedback(DWORD dwEffect) {
+    return DRAGDROP_S_USEDEFAULTCURSORS;
+  }
+
   class DragDrop : public IDropTarget {
     unsigned int refCount;
 
@@ -211,6 +266,7 @@ namespace Opkit {
     };
 
     HRESULT STDMETHODCALLTYPE DragLeave(void) {
+      std::cout << "DRAG LEAVE!" << std::endl;
       return S_OK;
     };
 
@@ -388,6 +444,21 @@ namespace Opkit {
     ChangeWindowMessageFilter (WM_DROPFILES, MSGFLT_ADD);
     ChangeWindowMessageFilter (WM_COPYDATA, MSGFLT_ADD);
     ChangeWindowMessageFilter (0x0049, MSGFLT_ADD);
+
+    HANDLE_MSG(window, WM_LBUTTONDOWN, [](HWND hwnd, BOOL fDoubleClick, int x, int y, UINT keyFlags) -> void {
+      IDataObject *pdto;
+
+      /* if (SUCCEEDED(GetUIObjectOfFile(hwnd, L"C:\\Users\\paolo\\projects\\net.js", IID_IDataObject, (void**)&pdto))) {
+        IDropSource *pds = new DropSource();
+
+        if (pds) {
+          DWORD dwEffect;
+          DoDragDrop(pdto, pds, DROPEFFECT_COPY, &dwEffect);
+          pds->Release();
+        }
+        pdto->Release();
+      } */
+    });
 
     ShowWindow(window, SW_SHOW);
     SetWindowLongPtr(window, GWLP_USERDATA, (LONG_PTR) this);
