@@ -182,13 +182,14 @@ namespace Opkit {
       this
     );
 
-    gtk_drag_source_set(
+    // Calling gtk_drag_source_set interferes with text selection
+    /* gtk_drag_source_set(
       webview,
       (GdkModifierType)(GDK_BUTTON1_MASK | GDK_BUTTON2_MASK),
       droppableTypes,
       G_N_ELEMENTS(droppableTypes),
       GDK_ACTION_COPY
-    );
+    ); */
 
     /* gtk_drag_dest_set(
       webview,
