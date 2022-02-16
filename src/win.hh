@@ -315,15 +315,21 @@ namespace Opkit {
         TCHAR* buf = new TCHAR[size + 1];
         DragQueryFile(p, iFile, buf, size + 1);
 
+        //
+        // windows requires a few special needs things. chromium webview doesn't
+        // handle calculating devicePixelRatio like wkwebview does, also paths.
+        //
         auto lolWindowsPath = Opkit::replace(std::string(buf), "\\\\", "\\\\\\\\");
 
-        std::string json = (
-          "{\"path\":\"" + lolWindowsPath + "\","
-          "\"x\": " + std::to_string(x) + " / window.devicePixelRatio,"
-          "\"y\": " + std::to_string(y) + " / window.devicePixelRatio }"
+        this->window->eval(
+          "(() => {"
+          "  const value = {\"src\":\"" + lolWindowsPath + "\","
+              "\"x\": " + std::to_string(x) + " / window.devicePixelRatio,"
+              "\"y\": " + std::to_string(y) + " / window.devicePixelRatio};"
+          "  window._ipc.emit('dropin', JSON.stringify(value));"
+          "})()"
         );
 
-        this->window->eval(emitToRenderProcess("drop", json));
         delete[] buf;
       }
 
@@ -445,10 +451,10 @@ namespace Opkit {
     ChangeWindowMessageFilter (WM_COPYDATA, MSGFLT_ADD);
     ChangeWindowMessageFilter (0x0049, MSGFLT_ADD);
 
-    HANDLE_MSG(window, WM_LBUTTONDOWN, [](HWND hwnd, BOOL fDoubleClick, int x, int y, UINT keyFlags) -> void {
+    /* HANDLE_MSG(window, WM_LBUTTONDOWN, [](HWND hwnd, BOOL fDoubleClick, int x, int y, UINT keyFlags) -> void {
       IDataObject *pdto;
 
-      /* if (SUCCEEDED(GetUIObjectOfFile(hwnd, L"C:\\Users\\paolo\\projects\\net.js", IID_IDataObject, (void**)&pdto))) {
+      if (SUCCEEDED(GetUIObjectOfFile(hwnd, L"C:\\Users\\paolo\\projects\\net.js", IID_IDataObject, (void**)&pdto))) {
         IDropSource *pds = new DropSource();
 
         if (pds) {
@@ -457,8 +463,8 @@ namespace Opkit {
           pds->Release();
         }
         pdto->Release();
-      } */
-    });
+      }
+    }); */
 
     ShowWindow(window, SW_SHOW);
     SetWindowLongPtr(window, GWLP_USERDATA, (LONG_PTR) this);
@@ -1031,7 +1037,7 @@ namespace Opkit {
       bool allowMultiple,
       const std::string& defaultPath,
       const std::string& title,
-      const std::string& defaultPath)
+      const std::string& defaultName)
   {
 
     IFileOpenDialog * pfd;
