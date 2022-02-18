@@ -5,6 +5,7 @@
 #include <future>
 #include <chrono>
 #include <shobjidl.h>
+#include <shlobj_core.h>
 
 #pragma comment(lib,"advapi32.lib")
 #pragma comment(lib,"shell32.lib")
@@ -165,59 +166,240 @@ namespace Opkit {
       ScreenSize getScreenSize();
   };
 
-  class DropSource : public IDropSource {
+  class CDataObject : public IDataObject {
     public:
-      STDMETHODIMP QueryInterface(REFIID riid, void **ppv);
-      STDMETHODIMP_(ULONG) AddRef();
-      STDMETHODIMP_(ULONG) Release();
+      HRESULT __stdcall QueryInterface (REFIID iid, void ** ppvObject);
+      ULONG   __stdcall AddRef (void);
+      ULONG   __stdcall Release (void);
 
-      STDMETHODIMP QueryContinueDrag(BOOL fEscapePressed, DWORD grfKeyState);
-      STDMETHODIMP GiveFeedback(DWORD dwEffect);
-      DropSource() : m_cRef(1) { }
+      HRESULT __stdcall GetData				(FORMATETC *pFormatEtc,  STGMEDIUM *pMedium);
+      HRESULT __stdcall GetDataHere			(FORMATETC *pFormatEtc,  STGMEDIUM *pMedium);
+      HRESULT __stdcall QueryGetData			(FORMATETC *pFormatEtc);
+      HRESULT __stdcall GetCanonicalFormatEtc (FORMATETC *pFormatEct,  FORMATETC *pFormatEtcOut);
+      HRESULT __stdcall SetData				(FORMATETC *pFormatEtc,  STGMEDIUM *pMedium,  BOOL fRelease);
+      HRESULT __stdcall EnumFormatEtc			(DWORD      dwDirection, IEnumFORMATETC **ppEnumFormatEtc);
+      HRESULT __stdcall DAdvise				(FORMATETC *pFormatEtc,  DWORD advf, IAdviseSink *pAdvSink, DWORD *pdwConnection);
+      HRESULT __stdcall DUnadvise				(DWORD      dwConnection);
+      HRESULT __stdcall EnumDAdvise			(IEnumSTATDATA **ppEnumAdvise);
+
+      CDataObject(FORMATETC *fmt, STGMEDIUM *stgmed, int count);
+      ~CDataObject();
+
     private:
-      ULONG m_cRef;
+      int LookupFormatEtc(FORMATETC *pFormatEtc);
+      LONG m_lRefCount;
+      FORMATETC *m_pFormatEtc;
+      STGMEDIUM *m_pStgMedium;
+      LONG m_nNumFormats;
   };
 
-  HRESULT DropSource::QueryInterface(REFIID riid, void **ppv) {
-    IUnknown *punk = NULL;
-    if (riid == IID_IUnknown) {
-      punk = static_cast<IUnknown*>(this);
-    } else if (riid == IID_IDropSource) {
-      punk = static_cast<IDropSource*>(this);
+  CDataObject::CDataObject(FORMATETC *fmtetc, STGMEDIUM *stgmed, int count) {
+    m_lRefCount  = 1;
+    m_nNumFormats = count;
+
+    m_pFormatEtc  = new FORMATETC[count];
+    m_pStgMedium  = new STGMEDIUM[count];
+
+    for(int i = 0; i < count; i++) {
+      m_pFormatEtc[i] = fmtetc[i];
+      m_pStgMedium[i] = stgmed[i];
     }
+  }
 
-    *ppv = punk;
+  CDataObject::~CDataObject() {
+    if(m_pFormatEtc) delete[] m_pFormatEtc;
+    if(m_pStgMedium) delete[] m_pStgMedium;
+    OutputDebugString("oof\n");
+  }
 
-    if (punk) {
-      punk->AddRef();
+  ULONG __stdcall CDataObject::AddRef(void) {
+    return InterlockedIncrement(&m_lRefCount);
+  }
+
+  ULONG __stdcall CDataObject::Release(void) {
+    LONG count = InterlockedDecrement(&m_lRefCount);
+
+    if (count == 0) {
+      delete this;
+      return 0;
+    } else {
+      return count;
+    }
+  }
+
+  HRESULT __stdcall CDataObject::QueryInterface(REFIID iid, void **ppvObject){
+    if (iid == IID_IDataObject || iid == IID_IUnknown) {
+      AddRef();
+      *ppvObject = this;
       return S_OK;
     } else {
+      *ppvObject = 0;
       return E_NOINTERFACE;
     }
   }
 
-  ULONG DropSource::AddRef() {
-    return ++m_cRef;
+  HGLOBAL DupMem(HGLOBAL hMem) {
+    DWORD len = GlobalSize(hMem);
+    PVOID source = GlobalLock(hMem);
+    PVOID dest = GlobalAlloc(GMEM_FIXED, len);
+
+    memcpy(dest, source, len);
+    GlobalUnlock(hMem);
+    return dest;
   }
 
-  ULONG DropSource::Release() {
-    ULONG cRef = -m_cRef;
-    if (cRef == 0) delete this;
-    return cRef;
+  int CDataObject::LookupFormatEtc(FORMATETC *pFormatEtc) {
+    for (int i = 0; i < m_nNumFormats; i++) {
+      if((pFormatEtc->tymed & m_pFormatEtc[i].tymed)   &&
+        pFormatEtc->cfFormat == m_pFormatEtc[i].cfFormat &&
+        pFormatEtc->dwAspect == m_pFormatEtc[i].dwAspect) {
+        return i;
+      }
+    }
+    return -1;
   }
 
-  HRESULT DropSource::QueryContinueDrag(BOOL fEscapePressed, DWORD grfKeyState) {
-    if (fEscapePressed) return DRAGDROP_S_CANCEL;
+  HRESULT __stdcall CDataObject::GetData (FORMATETC *pFormatEtc, STGMEDIUM *pMedium) {
+    int idx;
 
-    // [Update: missing paren repaired, 7 Dec]
-    if (!(grfKeyState & (MK_LBUTTON | MK_RBUTTON)))
-      return DRAGDROP_S_DROP;
+    if ((idx = LookupFormatEtc(pFormatEtc)) == -1) {
+      return DV_E_FORMATETC;
+    }
+
+    pMedium->tymed = m_pFormatEtc[idx].tymed;
+    pMedium->pUnkForRelease = 0;
+
+    switch(m_pFormatEtc[idx].tymed) {
+      case TYMED_HGLOBAL:
+        pMedium->hGlobal = DupMem(m_pStgMedium[idx].hGlobal);
+        break;
+
+      default:
+        return DV_E_FORMATETC;
+    }
 
     return S_OK;
   }
 
-  HRESULT DropSource::GiveFeedback(DWORD dwEffect) {
+  HRESULT __stdcall CDataObject::GetDataHere (FORMATETC *pFormatEtc, STGMEDIUM *pMedium) {
+    return DATA_E_FORMATETC;
+  }
+
+  HRESULT __stdcall CDataObject::QueryGetData (FORMATETC *pFormatEtc) {
+    return (LookupFormatEtc(pFormatEtc) == -1) ? DV_E_FORMATETC : S_OK;
+  }
+
+  HRESULT __stdcall CDataObject::GetCanonicalFormatEtc (FORMATETC *pFormatEct, FORMATETC *pFormatEtcOut) {
+    pFormatEtcOut->ptd = NULL;
+    return E_NOTIMPL;
+  }
+
+  HRESULT __stdcall CDataObject::SetData (FORMATETC *pFormatEtc, STGMEDIUM *pMedium,  BOOL fRelease) {
+    return E_NOTIMPL;
+  }
+
+  HRESULT __stdcall CDataObject::EnumFormatEtc (DWORD dwDirection, IEnumFORMATETC **ppEnumFormatEtc) {
+    if (dwDirection == DATADIR_GET) {
+      return SHCreateStdEnumFmtEtc(m_nNumFormats, m_pFormatEtc, ppEnumFormatEtc);
+    } else {
+      return E_NOTIMPL;
+    }
+  }
+
+  HRESULT __stdcall CDataObject::DAdvise (FORMATETC *pFormatEtc, DWORD advf, IAdviseSink *pAdvSink, DWORD *pdwConnection) {
+    return OLE_E_ADVISENOTSUPPORTED;
+  }
+
+  HRESULT __stdcall CDataObject::DUnadvise (DWORD dwConnection) {
+    return OLE_E_ADVISENOTSUPPORTED;
+  }
+
+  HRESULT __stdcall CDataObject::EnumDAdvise (IEnumSTATDATA **ppEnumAdvise) {
+    return OLE_E_ADVISENOTSUPPORTED;
+  }
+
+  HRESULT CreateDataObject (FORMATETC *fmtetc, STGMEDIUM *stgmeds, UINT count, IDataObject **ppDataObject) {
+    if(ppDataObject == 0) {
+      return E_INVALIDARG;
+    }
+
+    *ppDataObject = new CDataObject(fmtetc, stgmeds, count);
+
+    return (*ppDataObject) ? S_OK : E_OUTOFMEMORY;
+  }
+
+  class CDropSource : public IDropSource {
+    public:
+      HRESULT __stdcall QueryInterface(REFIID iid, void ** ppvObject);
+      ULONG __stdcall AddRef(void);
+      ULONG __stdcall Release(void);
+
+      HRESULT __stdcall QueryContinueDrag(BOOL fEscapePressed, DWORD grfKeyState);
+      HRESULT __stdcall GiveFeedback(DWORD dwEffect);
+
+      CDropSource();
+      ~CDropSource();
+
+    private:
+      LONG m_lRefCount;
+  };
+
+  CDropSource::CDropSource() {
+    m_lRefCount = 1;
+  }
+
+  CDropSource::~CDropSource() {}
+
+  ULONG __stdcall CDropSource::AddRef(void) {
+    return InterlockedIncrement(&m_lRefCount);
+  }
+
+  ULONG __stdcall CDropSource::Release(void) {
+    LONG count = InterlockedDecrement(&m_lRefCount);
+
+    if (count == 0) {
+      delete this;
+      return 0;
+    } else {
+      return count;
+    }
+  }
+
+  HRESULT __stdcall CDropSource::QueryInterface(REFIID iid, void **ppvObject) {
+    if (iid == IID_IDropSource || iid == IID_IUnknown) {
+      AddRef();
+      *ppvObject = this;
+      return S_OK;
+    } else {
+      *ppvObject = 0;
+      return E_NOINTERFACE;
+    }
+  }
+
+  HRESULT __stdcall CDropSource::QueryContinueDrag(BOOL fEscapePressed, DWORD grfKeyState) {
+    if (fEscapePressed == TRUE) {
+      return DRAGDROP_S_CANCEL;
+    }
+
+    if ((grfKeyState & MK_LBUTTON) == 0) {
+      return DRAGDROP_S_DROP;
+    }
+
+    return S_OK;
+  }
+
+  HRESULT __stdcall CDropSource::GiveFeedback(DWORD dwEffect) {
     return DRAGDROP_S_USEDEFAULTCURSORS;
+  }
+
+  HRESULT CreateDropSource(IDropSource **ppDropSource) {
+    if(ppDropSource == 0) {
+      return E_INVALIDARG;
+    }
+
+    *ppDropSource = new CDropSource();
+
+    return (*ppDropSource) ? S_OK : E_OUTOFMEMORY;
   }
 
   class DragDrop : public IDropTarget {
@@ -266,7 +448,70 @@ namespace Opkit {
     };
 
     HRESULT STDMETHODCALLTYPE DragLeave(void) {
-      std::cout << "DRAG LEAVE!" << std::endl;
+      /* IDropSource* pDropSource;
+      IDataObject* pDataObject;
+      DWORD dwEffect;
+      DWORD dwResult;
+
+      FORMATETC fmtetc = { CF_HDROP, 0, DVASPECT_CONTENT, -1, TYMED_ISTREAM };
+      STGMEDIUM stgmed = { TYMED_HGLOBAL, { 0 }, 0 };
+      UINT len = 0;
+
+      std::vector<std::string> files = {
+        "C:\\Users\\paolo\\projects\\optoolco\\opkit\\README.md"
+      };
+
+      for (auto& f : files) len += f.size();
+
+      HGLOBAL hMem = GlobalAlloc(GHND, sizeof(DROPFILES) + len + 1);
+      if (!hMem) return NULL;
+
+      DROPFILES *dfiles = (DROPFILES*) GlobalLock(hMem);
+      if (!dfiles) {
+        GlobalFree(hMem);
+        return NULL;
+      }
+
+      dfiles->pFiles = sizeof(DROPFILES);
+      GetCursorPos(&(dfiles->pt));
+      dfiles->fNC = TRUE;
+      dfiles->fWide = FALSE; // Should probably be true for unicode
+
+      char *pFile = (char*)&dfiles[1];
+      for (std::vector<std::string>::size_type i = 0; i < files.size(); ++i) {
+        std::string &fileDir = files[i];
+        len = (fileDir.length() + 1);
+
+        memcpy(pFile, fileDir.c_str(), len);
+        pFile += len;
+      }
+
+      GlobalUnlock(hMem);
+      stgmed.hGlobal = hMem;
+
+      if (!stgmed.hGlobal) {
+        return S_OK;
+      }
+
+      CreateDropSource(&pDropSource);
+      CreateDataObject(&fmtetc, &stgmed, 1, &pDataObject);
+
+      // ReleaseCapture();
+      dwResult = DoDragDrop(pDataObject, pDropSource, DROPEFFECT_COPY, &dwEffect);
+
+      if (dwResult == DRAGDROP_S_CANCEL) {
+        return S_OK;
+      }
+
+      if (dwResult == DRAGDROP_S_DROP) {
+          if (dwEffect == DROPEFFECT_MOVE) {
+              // remove the data we just dropped from active document
+          }
+      }
+
+      pDropSource->Release();
+      pDataObject->Release(); */
+
       return S_OK;
     };
 
@@ -438,34 +683,19 @@ namespace Opkit {
     // SetWindowTheme(window, L"Explorer", nullptr);
     // DwmSetWindowAttribute(window, 19, &mode, sizeof(long));
     */
-    UpdateWindow(window);
-
-    this->drop = new DragDrop(this);
 
     HRESULT initResult = OleInitialize(NULL);
+
+    this->drop = new DragDrop(this);
 
     //
     // In theory these allow you to do drop files in elevated mode
     //
-    ChangeWindowMessageFilter (WM_DROPFILES, MSGFLT_ADD);
-    ChangeWindowMessageFilter (WM_COPYDATA, MSGFLT_ADD);
-    ChangeWindowMessageFilter (0x0049, MSGFLT_ADD);
+    ChangeWindowMessageFilter(WM_DROPFILES, MSGFLT_ADD);
+    ChangeWindowMessageFilter(WM_COPYDATA, MSGFLT_ADD);
+    ChangeWindowMessageFilter(0x0049, MSGFLT_ADD);
 
-    /* HANDLE_MSG(window, WM_LBUTTONDOWN, [](HWND hwnd, BOOL fDoubleClick, int x, int y, UINT keyFlags) -> void {
-      IDataObject *pdto;
-
-      if (SUCCEEDED(GetUIObjectOfFile(hwnd, L"C:\\Users\\paolo\\projects\\net.js", IID_IDataObject, (void**)&pdto))) {
-        IDropSource *pds = new DropSource();
-
-        if (pds) {
-          DWORD dwEffect;
-          DoDragDrop(pdto, pds, DROPEFFECT_COPY, &dwEffect);
-          pds->Release();
-        }
-        pdto->Release();
-      }
-    }); */
-
+    UpdateWindow(window);
     ShowWindow(window, SW_SHOW);
     SetWindowLongPtr(window, GWLP_USERDATA, (LONG_PTR) this);
 
@@ -1132,7 +1362,6 @@ namespace Opkit {
     LPARAM lParam) {
 
     Window* w = reinterpret_cast<Window*>(GetWindowLongPtr(hWnd, GWLP_USERDATA));
-
     switch (message) {
       case WM_SIZE: {
         if (w == nullptr || w->webview == nullptr) {
