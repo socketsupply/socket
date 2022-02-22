@@ -935,15 +935,15 @@ namespace Opkit {
       [dialog_open setCanCreateDirectories:YES];
     }
 
-    if (allowDirs && !isSave) {
+    if (allowDirs == true && isSave == false) {
       [dialog_open setCanChooseDirectories:YES];
     }
 
-    if (!isSave && allowFiles == true) {
-      [dialog_open setCanChooseFiles:YES];
+    if (isSave == false) {
+      [dialog_open setCanChooseFiles: allowFiles ? YES : NO];
     }
 
-    if ((!isSave || allowDirs) && allowMultiple) {
+    if ((isSave == false || allowDirs == true) && allowMultiple == true) {
       [dialog_open setAllowsMultipleSelection:YES];
     }
 
