@@ -1,5 +1,6 @@
 #include "common.hh"
 #include "win64/WebView2.h"
+#include "win64/WebView2EnvironmentOptions.h"
 
 #include <signal.h>
 #include <future>
@@ -711,11 +712,13 @@ namespace Opkit {
     auto file = (fs::path { modulefile }).filename();
     auto filename = StringToWString(pathToString(file));
     auto path = StringToWString(getEnv("APPDATA"));
+    auto options = Microsoft::WRL::Make<CoreWebView2EnvironmentOptions>();
+    options->put_AdditionalBrowserArguments(L"--allow-file-access-from-files");
 
     auto res = CreateCoreWebView2EnvironmentWithOptions(
       nullptr,
       (path + L"/" + filename).c_str(),
-      nullptr,
+      options.Get(),
       Microsoft::WRL::Callback<IEnvHandler>(
         [&, preload](HRESULT result, ICoreWebView2Environment* env) -> HRESULT {
           env->CreateCoreWebView2Controller(

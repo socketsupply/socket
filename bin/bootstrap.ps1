@@ -69,6 +69,7 @@ if ($args[0] -eq "update") {
     Invoke-WebRequest https://www.nuget.org/api/v2/package/Microsoft.Web.WebView2/$PACKAGE_VERSION -O $TEMP_PATH\webview2.zip
     Expand-Archive -Path $TEMP_PATH\WebView2.zip -DestinationPath $TEMP_PATH\WebView2
     Copy-Item -Path $TEMP_PATH\WebView2\build\native\include\WebView2.h $WORKING_PATH\src\win64
+    Copy-Item -Path $TEMP_PATH\WebView2\build\native\include\WebView2EnvironmentOptions.h $WORKING_PATH\src\win64
     Copy-Item -Path $TEMP_PATH\WebView2\build\native\include\WebView2Experimental.h $WORKING_PATH\src\win64
     Copy-Item -Path $TEMP_PATH\WebView2\build\native\x64\WebView2LoaderStatic.lib $WORKING_PATH\src\win64
     Exit 0
