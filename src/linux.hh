@@ -503,8 +503,10 @@ namespace Opkit {
       webkit_settings_set_enable_developer_extras(settings, true);
     }
 
+    webkit_settings_set_allow_universal_access_from_file_urls(settings, true);
+
     if (this->opts.isTest) {
-      webkit_settings_set_allow_universal_access_from_file_urls(settings, true);
+      // webkit_settings_set_allow_universal_access_from_file_urls(settings, true);
       webkit_settings_set_allow_file_access_from_file_urls(settings, true);
     }
 
