@@ -592,13 +592,16 @@ namespace Opkit {
         @selector(menuItemSelected:),
         imp_implementationWithBlock(
           [=](id self, SEL _cmd, id item) {
+            auto* w = (Window*) objc_getAssociatedObject(self, "webview");
+            if (w->onMessage == nullptr) return;
+
             id menuItem = (id) item;
             String title = [[menuItem title] UTF8String];
             String state = [menuItem state] == NSControlStateValueOn ? "true" : "false";
             String parent = [[[menuItem menu] title] UTF8String];
             String seq = std::to_string([menuItem tag]);
 
-            this->eval(resolveMenuSelection(seq, title, parent));
+            w->eval(resolveMenuSelection(seq, title, parent));
           }),
         "v@:@:@:"
       );
@@ -763,7 +766,10 @@ namespace Opkit {
       index++;
     }
 
-    [pMenu popUpMenuPositioningItem:pMenu.itemArray[0] atLocation:NSPointFromCGPoint(CGPointMake(mouseLocation.x, mouseLocation.y)) inView:nil];
+    [pMenu
+      popUpMenuPositioningItem:pMenu.itemArray[0]
+        atLocation:NSPointFromCGPoint(CGPointMake(mouseLocation.x, mouseLocation.y))
+        inView:nil];
   }
 
   void Window::setSystemMenu (const std::string& seq, const std::string& value) {
