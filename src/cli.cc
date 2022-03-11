@@ -1136,7 +1136,7 @@ int main (const int argc, const char* argv[]) {
       << " /tr http://timestamp.digicert.com"
       << " /td sha256"
       << " /fd sha256"
-      << " /f cert.pfx"
+      << " /f \"" << settings["win_pfx"] << "\""
       << " " << pathPackage.string() << ".appx";
 
       log(signCommand.str());
