@@ -70,7 +70,7 @@ There is an example app written in Node.js, to build and run it...
 Using the `-r` flag will find the built artifact and run it.
 
 ```sh
-cd test/example
+cd examples/desktop
 npm install
 opkit . -r
 ```
