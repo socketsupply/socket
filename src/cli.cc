@@ -1131,13 +1131,13 @@ int main (const int argc, const char* argv[]) {
       << "\""
       << "\"" << pathToSignTool << "\""
       << " sign"
+      << " /f " << settings["win_pfx"]
       << " /p " << password
       << " /debug"
       << " /v"
       << " /tr http://timestamp.digicert.com"
       << " /td sha256"
       << " /fd sha256"
-      << " /f \"" << settings["win_pfx"] << "\""
       << " " << pathPackage.string() << ".appx"
       << "\"";
 
