@@ -1128,6 +1128,7 @@ int main (const int argc, const char* argv[]) {
     }
 
     signCommand
+      << "\""
       << "\"" << pathToSignTool << "\""
       << " sign"
       << " /p " << password
@@ -1137,7 +1138,8 @@ int main (const int argc, const char* argv[]) {
       << " /td sha256"
       << " /fd sha256"
       << " /f \"" << settings["win_pfx"] << "\""
-      << " " << pathPackage.string() << ".appx";
+      << " " << pathPackage.string() << ".appx"
+      << "\"";
 
       log(signCommand.str());
       auto r = exec(signCommand.str().c_str());
