@@ -1132,7 +1132,7 @@ int main (const int argc, const char* argv[]) {
       << "\"" << pathToSignTool << "\""
       << " sign"
       << " /f " << settings["win_pfx"]
-      << " /p " << password
+      << " /p \"" << password << "\""
       << " /debug"
       << " /v"
       << " /tr http://timestamp.digicert.com"
