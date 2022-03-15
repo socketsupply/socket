@@ -140,7 +140,8 @@ constexpr auto gWindowsAppManifest = R"XML(<?xml version="1.0" encoding="utf-8"?
   xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
   xmlns:uap3="http://schemas.microsoft.com/appx/manifest/uap/windows10/3"
   xmlns:desktop="http://schemas.microsoft.com/appx/manifest/desktop/windows10"
-  IgnorableNamespaces="uap3"
+  xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+  IgnorableNamespaces="uap3 rescap"
 >
   <Identity Name="{bundle_identifier}"
     ProcessorArchitecture="neutral"
@@ -168,6 +169,9 @@ constexpr auto gWindowsAppManifest = R"XML(<?xml version="1.0" encoding="utf-8"?
     />
   </Dependencies>
 
+  <Capabilities>
+    <rescap:Capability Name="runFullTrust" />
+  </Capabilities>
   <Applications>
     <Application
       Id="HelloWorld"
