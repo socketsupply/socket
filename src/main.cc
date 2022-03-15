@@ -190,6 +190,7 @@ MAIN {
     .resizable = true,
     .frameless = false,
     .canExit = true,
+    .cwd = cwd,
     .height = std::stoi(appData["height"]),
     .width = std::stoi(appData["width"]),
     .index = 0,
@@ -216,6 +217,7 @@ MAIN {
   Window w1(app, WindowOptions {
     .resizable = true,
     .canExit = false,
+    .cwd = cwd,
     .height = 120,
     .width = 350,
     .index = 1,

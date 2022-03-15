@@ -149,6 +149,7 @@ namespace Opkit {
     int debug = 0;
     bool isTest = false;
     bool forwardConsole = 0;
+    std::string cwd = "";
     std::string executable = "";
     std::string title = "";
     std::string url = "data:text/html,<html>";
@@ -200,6 +201,7 @@ namespace Opkit {
       "  window.system = {};\n"
       "  window.process = {};\n"
       "  window.process.index = Number('" + std::to_string(opts.index) + "');\n"
+      "  window.process.cwd = '" + opts.cwd + "';\n"
       "  window.process.title = '" + opts.title + "';\n"
       "  window.process.executable = '" + opts.executable + "';\n"
       "  window.process.version = '" + opts.version + "';\n"
