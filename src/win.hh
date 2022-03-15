@@ -588,10 +588,10 @@ namespace Opkit {
   };
 
   App::App(void* h): hInstance((_In_ HINSTANCE) h) {
-    #if DEBUG == 1
-      AllocConsole();
-      freopen_s(&console, "CONOUT$", "w", stdout);
-    #endif
+    // #if DEBUG == 1
+    AllocConsole();
+    freopen_s(&console, "CONOUT$", "w", stdout);
+    // #endif
 
     HMODULE hUxtheme = LoadLibraryExW(L"uxtheme.dll", nullptr, LOAD_LIBRARY_SEARCH_SYSTEM32);
 
@@ -1544,12 +1544,12 @@ namespace Opkit {
       }
 
       case WM_CLOSE: {
-        #if DEBUG == 1
-          if (w->opts.canExit) {
-            fclose(console);
-            FreeConsole();
-          }
-        #endif
+        // #if DEBUG == 1
+        if (w->opts.canExit) {
+          fclose(console);
+          FreeConsole();
+        }
+        // #endif
 
         w->close(0);
 
