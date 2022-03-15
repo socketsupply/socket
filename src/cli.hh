@@ -160,6 +160,14 @@ constexpr auto gWindowsAppManifest = R"XML(<?xml version="1.0" encoding="utf-8"?
     <Resource Language="{{lang}}"/>
   </Resources>
 
+  <Dependencies>
+    <TargetDeviceFamily
+      Name="Windows.Desktop"
+      MinVersion="6.3"
+      MaxVersionTested="10.0.19041.1"
+    />
+  </Dependencies>
+
   <Applications>
     <Application
       Id="HelloWorld"
@@ -188,11 +196,6 @@ constexpr auto gWindowsAppManifest = R"XML(<?xml version="1.0" encoding="utf-8"?
     </Application>
 
   </Applications>
-
-  <Prerequisites>
-    <OSMinVersion>6.3</OSMinVersion>
-    <OSMaxVersionTested>10.0.19041</OSMaxVersionTested>
-  </Prerequisites>
 </Package>
 )XML";
 
