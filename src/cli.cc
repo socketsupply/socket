@@ -1025,12 +1025,17 @@ int main (const int argc, const char* argv[]) {
           );
 
           if (SUCCEEDED(hr)) {
-            packageWriter->AddPayloadFile(
+            hr = packageWriter->AddPayloadFile(
               composite.c_str(),
               mime,
               APPX_COMPRESSION_OPTION_NONE,
               fileStream
             );
+
+            if (SUCCEEDED(hr)) {
+            } else {
+              log("Could not add payload file: " + entry.path().string());
+            }
           } else {
             log("Could not add file: " + entry.path().string());
           }
