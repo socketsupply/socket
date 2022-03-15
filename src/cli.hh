@@ -167,11 +167,10 @@ constexpr auto gWindowsAppManifest = R"XML(<?xml version="1.0" encoding="utf-8"?
       Executable="{{exe}}"
     >
       <uap:VisualElements DisplayName="{{title}}"
-        Logo="{{win_logo}}"
-        SmallLogo="{{win_logo}}"
+        Square150x150Logo="{{win_logo}}"
+        Square44x44Logo="{{win_logo}}"
         Description="{{description}}"
-        BackgroundColor="#AA00AA"
-        ForegroundText="light"
+        BackgroundColor="#20123A"
       >
         <DefaultTile WideLogo="{{win_logo}}" />
         <SplashScreen Image="{{win_logo}}" />
