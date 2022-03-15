@@ -2,6 +2,7 @@
 #include <windows.h>
 #include <tlhelp32.h>
 #include <cstring>
+#include <iostream>
 #include <stdexcept>
 
 namespace Opkit {
@@ -139,6 +140,8 @@ Process::id_type Process::open(const std::string &command, const std::string &pa
   );
 
   if (!bSuccess) {
+    auto msg = std::string("Unable to execute: " + process_command);
+    MessageBoxA(nullptr, &msg[0], "Alert", MB_OK | MB_ICONSTOP);
     return 0;
   } else {
     CloseHandle(process_info.hThread);
