@@ -165,6 +165,10 @@ int main (const int argc, const char* argv[]) {
 
   auto target = fs::path(argv[1]);
 
+  if (argv[1][0] == '.') {
+    target = fs::absolute(target);
+  }
+
   auto _settings = WStringToString(readFile(target / "settings.config"));
   auto settings = parseConfig(_settings);
 
