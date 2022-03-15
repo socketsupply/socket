@@ -163,7 +163,7 @@ constexpr auto gWindowsAppManifest = R"XML(<?xml version="1.0" encoding="utf-8"?
   <Dependencies>
     <TargetDeviceFamily
       Name="Windows.Desktop"
-      MinVersion="6.3"
+      MinVersion="10.0.17763.0"
       MaxVersionTested="10.0.19041.1"
     />
   </Dependencies>
