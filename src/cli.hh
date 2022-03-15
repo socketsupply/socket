@@ -138,6 +138,7 @@ constexpr auto gWindowsAppManifest = R"XML(<?xml version="1.0" encoding="utf-8"?
 <Package
   xmlns="http://schemas.microsoft.com/appx/2010/manifest"
   xmlns:uap3="http://schemas.microsoft.com/appx/manifest/uap/windows10/3"
+  xmlns:desktop="http://schemas.microsoft.com/appx/manifest/desktop/windows10"
   IgnorableNamespaces="uap3"
 >
   <Identity Name="{bundle_identifier}"
