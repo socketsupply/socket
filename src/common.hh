@@ -193,15 +193,22 @@ namespace Opkit {
     return copy;
   }
 
+  inline std::string replace(const std::string& src, const std::string& re, const std::string& val) {
+    return std::regex_replace(src, std::regex(re), val);
+  }
+
   std::string gMobilePreload = "";
 
   std::string createPreload(WindowOptions opts) {
+    std::string cleanCwd = std::string(opts.cwd);
+    std::replace(cleanCwd.begin(), cleanCwd.end(), '\\', '/');
+
     return std::string(
       "(() => {"
       "  window.system = {};\n"
       "  window.process = {};\n"
       "  window.process.index = Number('" + std::to_string(opts.index) + "');\n"
-      "  window.process.cwd = '" + opts.cwd + "';\n"
+      "  window.process.cwd = '" + cleanCwd + "';\n"
       "  window.process.title = '" + opts.title + "';\n"
       "  window.process.executable = '" + opts.executable + "';\n"
       "  window.process.version = '" + opts.version + "';\n"
@@ -311,10 +318,6 @@ namespace Opkit {
     }
 
     return output;
-  }
-
-  inline std::string replace(const std::string& src, const std::string& re, const std::string& val) {
-    return std::regex_replace(src, std::regex(re), val);
   }
 
   uint64_t rand64(void) {
