@@ -1034,6 +1034,7 @@ int main (const int argc, const char* argv[]) {
 
             if (SUCCEEDED(hr)) {
             } else {
+              log("mimetype?", mime)
               log("Could not add payload file: " + entry.path().string());
             }
           } else {
