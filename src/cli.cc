@@ -1085,6 +1085,8 @@ int main (const int argc, const char* argv[]) {
       _com_error err(hr);
       std::string msg = std::string( err.ErrorMessage() );
       log("Unable to save package; " + msg);
+
+      exit(1);
     }
 
     #endif
