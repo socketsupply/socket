@@ -137,6 +137,7 @@ Description: {{title}}
 constexpr auto gWindowsAppManifest = R"XML(<?xml version="1.0" encoding="utf-8"?>
 <Package
   xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+  xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
   xmlns:uap3="http://schemas.microsoft.com/appx/manifest/uap/windows10/3"
   xmlns:desktop="http://schemas.microsoft.com/appx/manifest/desktop/windows10"
   IgnorableNamespaces="uap3"
@@ -165,7 +166,7 @@ constexpr auto gWindowsAppManifest = R"XML(<?xml version="1.0" encoding="utf-8"?
       EntryPoint="Windows.FullTrustApplication"
       Executable="{{exe}}"
     >
-      <VisualElements DisplayName="{{title}}"
+      <uap:VisualElements DisplayName="{{title}}"
         Logo="{{win_logo}}"
         SmallLogo="{{win_logo}}"
         Description="{{description}}"
@@ -174,7 +175,7 @@ constexpr auto gWindowsAppManifest = R"XML(<?xml version="1.0" encoding="utf-8"?
       >
         <DefaultTile WideLogo="{{win_logo}}" />
         <SplashScreen Image="{{win_logo}}" />
-      </VisualElements>
+      </uap:VisualElements>
       <Extensions>
         <uap3:Extension
           Category="windows.appExecutionAlias"
