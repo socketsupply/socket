@@ -472,6 +472,8 @@ int main (const int argc, const char* argv[]) {
       settings["win_version"] = "0.0.0.0";
     }
 
+    settings["exe"] = settings["executable"] + ".exe";
+
     writeFile(p, tmpl(gWindowsAppManifest, settings));
 
     // TODO Copy the files into place

@@ -155,7 +155,11 @@ constexpr auto gWindowsAppManifest = R"XML(<?xml version="1.0" encoding="utf-8"?
   </Resources>
 
   <Applications>
-    <Application Id="HelloWorld" StartPage="index.html">
+    <Application
+      Id="HelloWorld"
+      EntryPoint="Windows.FullTrustApplication"
+      Executable="{{exe}}"
+    >
       <VisualElements DisplayName="{{title}}"
         Logo="{{win_logo}}"
         SmallLogo="{{win_logo}}"
@@ -166,6 +170,17 @@ constexpr auto gWindowsAppManifest = R"XML(<?xml version="1.0" encoding="utf-8"?
         <DefaultTile WideLogo="{{win_logo}}" />
         <SplashScreen Image="{{win_logo}}" />
       </VisualElements>
+      <Extensions>
+        <uap3:Extension
+          Category="windows.appExecutionAlias"
+          EntryPoint="Windows.FullTrustApplication"
+          Executable="{{exe}}"
+        >
+          <uap3:AppExecutionAlias>
+            <desktop:ExecutionAlias Alias="{{exe}}" />
+          </uap3:AppExecutionAlias>
+        </uap3:Extension>
+      </Extensions>
     </Application>
 
   </Applications>
