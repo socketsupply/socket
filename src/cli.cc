@@ -1014,6 +1014,10 @@ int main (const int argc, const char* argv[]) {
 
           auto composite = (fs::path { last / entry.path().filename() });
 
+          if (!mime) {
+            mime = (LPWSTR) L"application/octet-stream";
+          }
+
           IStream* fileStream = NULL;
           hr = SHCreateStreamOnFileEx(
             entry.path().c_str(),
@@ -1025,14 +1029,14 @@ int main (const int argc, const char* argv[]) {
           );
 
           if (SUCCEEDED(hr)) {
-            hr = packageWriter->AddPayloadFile(
+            auto hr2 = packageWriter->AddPayloadFile(
               composite.c_str(),
               mime,
               APPX_COMPRESSION_OPTION_NONE,
               fileStream
             );
 
-            if (SUCCEEDED(hr)) {
+            if (SUCCEEDED(hr2)) {
             } else {
               log("mimetype?: " + WStringToString(mime));
               log("Could not add payload file: " + entry.path().string());
