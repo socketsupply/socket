@@ -10,7 +10,7 @@ But electron made some assumptions early on that are not aging well. Also,
 build artifacts and memory footprint are much larger than they need to be,
 especially for embedded systems where we need our apps to run.
 
-### I need feature-X, but Opkit doesn't support that, can you make it?
+### I need feature-X, but `op` doesn't support that, can you make it?
 
 You can make a PR. But the goal is not to solve the all problems for all
 use cases. The goal is to be minimal. Just the essentials. Stay fast and

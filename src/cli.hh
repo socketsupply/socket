@@ -227,7 +227,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 /* Begin PBXFileReference section */
 		290F7F82276BBE9C00486988 /* libuv.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libuv.a; path = lib/uv/libuv.a; sourceTree = "<group>"; };
 		290F7F86276BC2B000486988 /* lib */ = {isa = PBXFileReference; lastKnownFileType = folder; path = lib; sourceTree = "<group>"; };
-		29124C4A27613369001832A0 /* opkit.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = opkit.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		29124C4A27613369001832A0 /* op.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = op.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		29124C5C2761336B001832A0 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		29124C5E2761336B001832A0 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		294A3C4E2763E5EB007B5B9A /* ios.mm */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.objcpp; indentWidth = 2; path = ios.mm; sourceTree = "<group>"; tabWidth = 2; };
@@ -237,7 +237,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 		294A3C7F27649D27007B5B9A /* preload.hh */ = {isa = PBXFileReference; fileEncoding = 4; indentWidth = 2; lastKnownFileType = sourcecode.cpp.h; path = preload.hh; sourceTree = "<group>"; tabWidth = 2; };
 		294A3C8027649DD9007B5B9A /* common.hh */ = {isa = PBXFileReference; fileEncoding = 4; indentWidth = 2; lastKnownFileType = sourcecode.cpp.h; path = common.hh; sourceTree = "<group>"; tabWidth = 2; };
 		294A3C842764EAB7007B5B9A /* ui */ = {isa = PBXFileReference; lastKnownFileType = folder; path = ui; sourceTree = "<group>"; };
-		294A3C9027677424007B5B9A /* opkit.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = opkit.entitlements; sourceTree = "<group>"; };
+		294A3C9027677424007B5B9A /* op.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = op.entitlements; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -266,7 +266,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 			isa = PBXGroup;
 			children = (
 				290F7F86276BC2B000486988 /* lib */,
-				294A3C9027677424007B5B9A /* opkit.entitlements */,
+				294A3C9027677424007B5B9A /* op.entitlements */,
 				294A3C842764EAB7007B5B9A /* ui */,
 				294A3C8027649DD9007B5B9A /* common.hh */,
 				294A3C7F27649D27007B5B9A /* preload.hh */,
@@ -283,7 +283,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 		29124C4B27613369001832A0 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				29124C4A27613369001832A0 /* opkit.app */,
+				29124C4A27613369001832A0 /* op.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -300,9 +300,9 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		29124C4927613369001832A0 /* opkit */ = {
+		29124C4927613369001832A0 /* op */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 29124C792761336B001832A0 /* Build configuration list for PBXNativeTarget "opkit" */;
+			buildConfigurationList = 29124C792761336B001832A0 /* Build configuration list for PBXNativeTarget "op" */;
 			buildPhases = (
 				29124C4627613369001832A0 /* Sources */,
 				29124C4727613369001832A0 /* Frameworks */,
@@ -312,9 +312,9 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 			);
 			dependencies = (
 			);
-			name = opkit;
-			productName = opkit;
-			productReference = 29124C4A27613369001832A0 /* opkit.app */;
+			name = op;
+			productName = op;
+			productReference = 29124C4A27613369001832A0 /* op.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -331,7 +331,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 					};
 				};
 			};
-			buildConfigurationList = 29124C4527613369001832A0 /* Build configuration list for PBXProject "opkit" */;
+			buildConfigurationList = 29124C4527613369001832A0 /* Build configuration list for PBXProject "op" */;
 			compatibilityVersion = "Xcode 13.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -344,7 +344,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				29124C4927613369001832A0 /* opkit */,
+				29124C4927613369001832A0 /* op */,
 			);
 		};
 /* End PBXProject section */
@@ -504,7 +504,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 				ARCHS = arm64;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = opkit.entitlements;
+				CODE_SIGN_ENTITLEMENTS = op.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
 				CURRENT_PROJECT_VERSION = 1;
@@ -535,9 +535,9 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 					"$(PROJECT_DIR)/lib/uv",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = tc.operator.opkit;
+				PRODUCT_BUNDLE_IDENTIFIER = tc.operator.op;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				PROVISIONING_PROFILE_SPECIFIER = "Opkit iOS AdHoc";
+				PROVISIONING_PROFILE_SPECIFIER = "op iOS AdHoc";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				TARGETED_DEVICE_FAMILY = 1;
 			};
@@ -549,7 +549,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 				ARCHS = arm64;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = opkit.entitlements;
+				CODE_SIGN_ENTITLEMENTS = op.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
 				CURRENT_PROJECT_VERSION = 1;
@@ -582,9 +582,9 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 				);
 				MARKETING_VERSION = 1.0;
 				ONLY_ACTIVE_ARCH = YES;
-				PRODUCT_BUNDLE_IDENTIFIER = tc.operator.opkit;
+				PRODUCT_BUNDLE_IDENTIFIER = tc.operator.op;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				PROVISIONING_PROFILE_SPECIFIER = "Opkit iOS AdHoc";
+				PROVISIONING_PROFILE_SPECIFIER = "op iOS AdHoc";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				TARGETED_DEVICE_FAMILY = 1;
 			};
@@ -593,7 +593,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		29124C4527613369001832A0 /* Build configuration list for PBXProject "opkit" */ = {
+		29124C4527613369001832A0 /* Build configuration list for PBXProject "op" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				29124C772761336B001832A0 /* Debug */,
@@ -602,7 +602,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		29124C792761336B001832A0 /* Build configuration list for PBXNativeTarget "opkit" */ = {
+		29124C792761336B001832A0 /* Build configuration list for PBXNativeTarget "op" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				29124C7A2761336B001832A0 /* Debug */,
@@ -705,9 +705,9 @@ constexpr auto gXCodeScheme = R"XML(<?xml version="1.0" encoding="UTF-8"?>
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "29124C4927613369001832A0"
-               BuildableName = "opkit.app"
-               BlueprintName = "opkit"
-               ReferencedContainer = "container:opkit.xcodeproj">
+               BuildableName = "op.app"
+               BlueprintName = "op"
+               ReferencedContainer = "container:op.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -735,9 +735,9 @@ constexpr auto gXCodeScheme = R"XML(<?xml version="1.0" encoding="UTF-8"?>
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "29124C4927613369001832A0"
-            BuildableName = "opkit.app"
-            BlueprintName = "opkit"
-            ReferencedContainer = "container:opkit.xcodeproj">
+            BuildableName = "op.app"
+            BlueprintName = "op"
+            ReferencedContainer = "container:op.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </LaunchAction>
@@ -752,9 +752,9 @@ constexpr auto gXCodeScheme = R"XML(<?xml version="1.0" encoding="UTF-8"?>
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "29124C4927613369001832A0"
-            BuildableName = "opkit.app"
-            BlueprintName = "opkit"
-            ReferencedContainer = "container:opkit.xcodeproj">
+            BuildableName = "op.app"
+            BlueprintName = "op"
+            ReferencedContainer = "container:op.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>
@@ -763,7 +763,7 @@ constexpr auto gXCodeScheme = R"XML(<?xml version="1.0" encoding="UTF-8"?>
    </AnalyzeAction>
    <ArchiveAction
       buildConfiguration = "Release"
-      customArchiveName = "opkit"
+      customArchiveName = "op"
       revealArchiveInOrganizer = "YES">
    </ArchiveAction>
 </Scheme>)XML";

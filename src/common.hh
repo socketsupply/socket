@@ -1,5 +1,5 @@
-#ifndef OPKIT_H
-#define OPKIT_H
+#ifndef OP_H
+#define OP_H
 
 #include "preload.hh"
 
@@ -64,7 +64,7 @@ enum {
   WINDOW_HINT_FIXED = 3  // Window size can not be changed by a user
 };
 
-namespace Opkit {
+namespace op {
   //
   // Cross platform support for strings
   //
@@ -443,7 +443,7 @@ namespace Opkit {
 
   inline std::string prefixFile(std::string s) {
     if (platform.mac || platform.linux) {
-      return std::string("/usr/local/lib/opkit/" + s + " ");
+      return std::string("/usr/local/lib/op/" + s + " ");
     }
 
     std::string local = getEnv("LOCALAPPDATA");
@@ -452,7 +452,7 @@ namespace Opkit {
 
   inline std::string prefixFile() {
     if (platform.mac || platform.linux) {
-      return "/usr/local/lib/opkit";
+      return "/usr/local/lib/op";
     }
 
     std::string local = getEnv("LOCALAPPDATA");
@@ -698,4 +698,4 @@ namespace Opkit {
   };
 }
 
-#endif // OPKIT_H
+#endif // OP_H

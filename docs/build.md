@@ -1,17 +1,17 @@
 # Building apps
 
-Opkit provides a cli that can build, package and code-sign for
+`op` provides a cli that can build, package and code-sign for
 `win32`, `macOS` and `linux`.
 
 ## Command
 
 The CLI can be installed globally with the `bootstrap.sh` script.
-The script should install a binary called `opkit` which is placed
+The script should install a binary called `op` which is placed
 in `/usr/local/bin` or `C:\Program Files`, so it should be in your
 path. Run the command with the `-h` flag to get help.
 
 ```sh
-opkit -h
+op -h
 ```
 
 If the CLI tool is failing, see the [trouble shooting guide][0].

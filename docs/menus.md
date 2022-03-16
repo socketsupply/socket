@@ -5,7 +5,7 @@ Menus are created at run time from either the main or render process.
 
 The semi colon is significant indicates the end of the menu. Use an
 underscore when there is no accelerator key. Modifiers are optional.
-For the edit menu, Opkit will figure out which accelerators to use
+For the edit menu, `op` will figure out which accelerators to use
 for you.
 
 ```js

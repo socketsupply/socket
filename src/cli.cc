@@ -20,15 +20,15 @@
 
 constexpr auto version = STR_VALUE(VERSION);
 
-using namespace Opkit;
+using namespace op;
 
 void help () {
   std::cout
-    << "opkit " << version
+    << "op " << version
     << std::endl
     << std::endl
     << "usage:" << std::endl
-    << "  opkit <project-dir> [-h, ...]"
+    << "  op <project-dir> [-h, ...]"
     << std::endl
     << std::endl
     << "flags:" << std::endl

@@ -31,25 +31,25 @@ UIs that can run any arbitrary backend process.
 
 
 # INSTALL
-If you want to use Opkit to build apps, you can use this install script.
+If you want to use `op` to build apps, you can use this install script.
 It's a plain text script, please inspect it before running it.
 
 ## Linux or MacOS Bash/Zsh
 ```bash
-curl -o- https://raw.githubusercontent.com/socketsupply/opkit/master/bin/bootstrap.sh | bash -s
+curl -o- https://raw.githubusercontent.com/socketsupply/operatorframework/master/bin/bootstrap.sh | bash -s
 ```
 
 ## Windows Powershell
 ```ps1
-& $([scriptblock]::Create((New-Object Net.WebClient).DownloadString("https://raw.githubusercontent.com/socketsupply/opkit/master/bin/bootstrap.ps1")))
+& $([scriptblock]::Create((New-Object Net.WebClient).DownloadString("https://raw.githubusercontent.com/socketsupply/operatorframework/master/bin/bootstrap.ps1")))
 ```
 
 
-# DEVELOPMENT ON OPKIT
+# DEVELOPMENT ON `op`
 
 ```sh
-git clone git@github.com:socketsupply/opkit.git
-cd opkit
+git clone git@github.com:socketsupply/operatorframework.git
+cd operatorframework
 ```
 
 This command will skip cloning the repo and just build it.
@@ -72,7 +72,7 @@ Using the `-r` flag will find the built artifact and run it.
 ```sh
 cd examples/desktop
 npm install
-opkit . -r
+op . -r
 ```
 
 [02]:https://developer.apple.com/forums/thread/128166

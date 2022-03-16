@@ -20,7 +20,7 @@
   #define FILENO fileno
 #endif
 
-using namespace Opkit;
+using namespace op;
 
 std::function<void(int)> shutdownHandler;
 void signalHandler(int signal) { shutdownHandler(signal); }
@@ -145,7 +145,7 @@ MAIN {
   }
 
   if (isCommandMode) {
-    argvForward << " --opkit-current-directory=" << fs::current_path();
+    argvForward << " --op-current-directory=" << fs::current_path();
 
     Process process(
       cmd + argvForward.str(),

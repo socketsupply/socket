@@ -20,7 +20,7 @@ The `WebView2LoaderStatic.lib` file was sourced from [this][2] package.
 If you get the following error message
 
 ```
-./bin/bootstrap.ps1 : File C:\Users\rayno\Github\opkit\bin\bootstrap.ps1 cannot be loaded because running scripts is
+./bin/bootstrap.ps1 : File C:\Users\rayno\Github\op\bin\bootstrap.ps1 cannot be loaded because running scripts is
 disabled on this system. For more information, see about_Execution_Policies at
 https:/go.microsoft.com/fwlink/?LinkID=135170.
 ```
@@ -108,13 +108,13 @@ Package webkit2gtk-4.0 was not found in the pkg-config search path.
 Perhaps you should add the directory containing `webkit2gtk-4.0.pc'
 to the PKG_CONFIG_PATH environment variable
 No package 'webkit2gtk-4.0' found
-In file included from /usr/local/lib/opkit/src/webview.h:164,
-                 from /usr/local/lib/opkit/src/main.cc:1:
-/usr/local/lib/opkit/src/linux.h:11:10: fatal error: JavaScriptCore/JavaScript.h: No such file or directory
+In file included from /usr/local/lib/op/src/webview.h:164,
+                 from /usr/local/lib/op/src/main.cc:1:
+/usr/local/lib/op/src/linux.h:11:10: fatal error: JavaScriptCore/JavaScript.h: No such file or directory
    11 | #include <JavaScriptCore/JavaScript.h>
       |          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 compilation terminated.
-/usr/local/lib/opkit/src/linux.cc:2:10: fatal error: gtk/gtk.h: No such file or directory
+/usr/local/lib/op/src/linux.cc:2:10: fatal error: gtk/gtk.h: No such file or directory
     2 | #include <gtk/gtk.h>
       |          ^~~~~~~~~~~
 compilation terminated.

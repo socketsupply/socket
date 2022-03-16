@@ -1,4 +1,4 @@
-# Opkit for iOS
+# op for iOS
 
 ## Prerequisites
 
@@ -44,7 +44,7 @@ certificate you created for `iOS Distribution`.
 
 3. Download the profiles and add them to your project. They are
 secret, don't commit them, add the appropriate file names to your `.gitignore`
-file. Opkit will pick the right one for you based on your build flags.
+file. op will pick the right one for you based on your build flags.
 
 ### Configuration
 

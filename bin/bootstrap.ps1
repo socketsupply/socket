@@ -1,8 +1,8 @@
 if ($args[0] -eq "test-sign") {
-  MakeCert.exe -sv cert.pvk -n "CN=Operator Tool Co, O=Operator, L=New York, S=New York, C=US" cert.cer -r -a sha256
+  MakeCert.exe -sv cert.pvk -n "CN=Socket Supply Co, O=Operator, L=New York, S=New York, C=US" cert.cer -r -a sha256
   pvk2pfx.exe -pvk cert.pvk -pi test -spc cert.cer -pfx cert.pfx
   $env:CSC_KEY_PASSWORD = 'test'
-  .\bin\opkit.exe .\example\desktop -p -c
+  .\bin\op.exe .\example\desktop -p -c
   Remove-Item cert.cer
   Remove-Item cert.pfx
   Remove-Item cert.pvk
@@ -37,7 +37,7 @@ Function Build {
     $VERSION = cmd /c 'git rev-parse --short HEAD' 2>&1 | % ToString
 
     Write-Output "$([char]0x2666) Compiling the build tool"
-    clang++ src\cli.cc -o $WORKING_PATH\bin\opkit.exe -std=c++20 -DVERSION="$($VERSION)"
+    clang++ src\cli.cc -o $WORKING_PATH\bin\op.exe -std=c++20 -DVERSION="$($VERSION)"
     # -I 'C:\Program Files (x86)\Windows Kits\10\Include\10.0.19041.0\shared' `
     # -I 'C:\Program Files (x86)\Windows Kits\10\Include\10.0.19041.0\um' `
     # -I 'C:\Program Files (x86)\Windows Kits\10\Include\10.0.19041.0\winrt' `
@@ -55,7 +55,7 @@ Function Build {
 Function Install-Files {
   Write-Output "$([char]0x2666) Installing Files to '$INSTALL_PATH'."
 
-  Copy-Item $WORKING_PATH\bin\opkit.exe -Destination $INSTALL_PATH
+  Copy-Item $WORKING_PATH\bin\op.exe -Destination $INSTALL_PATH
   Copy-Item -Path "$WORKING_PATH\src\*" -Destination $INSTALL_PATH -Recurse -Container
 }
 
@@ -107,7 +107,7 @@ if ($? -ne 1) {
 #
 Write-Output "$([char]0x2666) Fetching files to '$WORKING_PATH'..."
 Remove-Item -Recurse -Force $WORKING_PATH
-(git clone --depth=1 git@github.com:socketsupply/opkit.git "$($WORKING_PATH)") > $null
+(git clone --depth=1 git@github.com:socketsupply/operatorframework.git "$($WORKING_PATH)") > $null
 
 cd $WORKING_PATH
 

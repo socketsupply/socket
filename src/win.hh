@@ -24,7 +24,7 @@
 #pragma comment(lib,"Gdi32.lib")
 
 inline void alert (const std::wstring &ws) {
-  MessageBoxA(nullptr, Opkit::WStringToString(ws).c_str(), _TEXT("Alert"), MB_OK | MB_ICONSTOP);
+  MessageBoxA(nullptr, op::WStringToString(ws).c_str(), _TEXT("Alert"), MB_OK | MB_ICONSTOP);
 }
 
 inline void alert (const std::string &s) {
@@ -35,7 +35,7 @@ inline void alert (const char* s) {
   MessageBoxA(nullptr, s, _TEXT("Alert"), MB_OK | MB_ICONSTOP);
 }
 
-namespace Opkit {
+namespace op {
   using IEnvHandler = ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler;
   using IConHandler = ICoreWebView2CreateCoreWebView2ControllerCompletedHandler;
   using INavHandler = ICoreWebView2NavigationCompletedEventHandler;
@@ -459,7 +459,7 @@ namespace Opkit {
       UINT len = 0;
 
       std::vector<std::string> files = {
-        "C:\\Users\\paolo\\projects\\optoolco\\opkit\\README.md"
+        "C:\\Users\\paolo\\projects\\optoolco\\op\\README.md"
       };
 
       for (auto& f : files) len += f.size();
@@ -565,7 +565,7 @@ namespace Opkit {
         // windows requires a few special needs things. chromium webview doesn't
         // handle calculating devicePixelRatio like wkwebview does, also paths.
         //
-        auto lolWindowsPath = Opkit::replace(std::string(buf), "\\\\", "\\\\\\\\");
+        auto lolWindowsPath = op::replace(std::string(buf), "\\\\", "\\\\\\\\");
 
         this->window->eval(
           "(() => {"
@@ -629,7 +629,7 @@ namespace Opkit {
     );
 
     auto *szWindowClass = L"DesktopApp";
-    auto *szTitle = L"Opkit";
+    auto *szTitle = L"op";
     WNDCLASSEX wcex;
 
     wcex.cbSize = sizeof(WNDCLASSEX);
@@ -653,7 +653,7 @@ namespace Opkit {
 
   Window::Window (App& app, WindowOptions opts) : app(app), opts(opts) {
     window = CreateWindow(
-      TEXT("DesktopApp"), TEXT("Opkit"),
+      TEXT("DesktopApp"), TEXT("op"),
       WS_OVERLAPPEDWINDOW,
       100000,
       100000,
@@ -1569,4 +1569,4 @@ namespace Opkit {
     return 0;
   }
 
-} // namespace Opkit
+} // namespace op
