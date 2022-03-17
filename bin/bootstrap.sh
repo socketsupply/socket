@@ -1,14 +1,33 @@
 #!/usr/bin/env bash
 set -e;
 
+PREFIX=${PREFIX:-"/usr/local"}
+
 if [ ! "$CXX" ]; then
-  echo '• Warning: $CXX environment variable not set, assuming "/usr/bin/g++"'
-  CXX=/usr/bin/g++
+  if which g++ >/dev/null 2>&1; then
+    CXX="$(which g++)"
+  elif which clang++ >/dev/null 2>&1; then
+    CXX="$(which clang++)"
+  fi
+
+  if [ ! "$CXX" ]; then
+    echo "• error: Could not determine \$CXX environment variable"
+    exit 1
+  else
+    echo "• Warning: \$CXX environment variable not set, assuming '$CXX'"
+fi
+  fi
+
+if ! which sudo > /dev/null 2>&1; then
+  function sudo {
+    eval "$@"
+    return $?
+  }
 fi
 
 function _build {
   echo '• Building opkit'
-  `echo $CXX` src/cli.cc ${CXX_FLAGS} ${CXXFLAGS} \
+  "$CXX" src/cli.cc ${CXX_FLAGS} ${CXXFLAGS} \
     -o bin/cli \
     -std=c++2a\
     -DVERSION=`git rev-parse --short HEAD`
@@ -22,20 +41,20 @@ function _build {
 
 function _install {
   echo '• Installing opkit'
-  sudo rm -rf /usr/local/lib/opkit
+  sudo rm -rf "$PREFIX/lib/opkit"
 
-  echo '• Copying sources to /usr/local/lib/opkit/src'
-  sudo mkdir -p /usr/local/lib/opkit
-  sudo cp -r `pwd`/src /usr/local/lib/opkit
+  echo '• Copying sources to $PREFIX/lib/opkit/src'
+  sudo mkdir -p "$PREFIX/lib/opkit"
+  sudo cp -r `pwd`/src "$PREFIX/lib/opkit"
 
   if [ -d `pwd`/lib ]; then
-    echo '• Copying libraries to /usr/local/lib/opkit/lib'
-    sudo mkdir -p /usr/local/lib/opkit/lib
-    sudo cp -r `pwd`/lib/ /usr/local/lib/opkit/lib
+    echo '• Copying libraries to $PREFIX/lib/opkit/lib'
+    sudo mkdir -p "$PREFIX/lib/opkit/lib"
+    sudo cp -r `pwd`/lib/ "$PREFIX/lib/opkit/lib"
   fi
 
-  echo '• Moving binary to /usr/local/bin'
-  sudo mv `pwd`/bin/cli /usr/local/bin/opkit
+  echo '• Moving binary to $PREFIX/bin'
+  sudo mv `pwd`/bin/cli "$PREFIX/bin/opkit"
 
   if [ ! $? = 0 ]; then
     echo '• Unable to move binary into place'
