@@ -44,7 +44,6 @@ fi
 if [ ! -e "$VCVARSALL_BAT_SCRIPT" ]; then
   echo "error: Failed to locate vcvarsall.bat" >&2
 else
-
   MSENV_BATCH_NAME="__print_ms_env_$$.bat"
   MSENV_BATCH="/tmp/$MSENV_BATCH_NAME"
   MSENV="/tmp/__ms_env_$$"
@@ -58,10 +57,13 @@ else
   grep -E '^PATH=' "$MSENV.tmp" | sed -e 's/\(.*\)=\(.*\)/export \1="\2"/g;s/\([a-zA-Z]\):[\\\/]/\/\1\//g;s/\\/\//g;s/;\//:\//g' > "$MSENV"
   grep -E '^(INCLUDE|LIB|LIBPATH)=' "$MSENV.tmp" | sed -e 's/\(.*\)=\(.*\)/export \1="\2"/g' >> "$MSENV"
 
+  unset CXX
+  unset CC
+
   source "$MSENV"
 
-  CXX="$(which clang++)"
-  CC="$(which clang)"
+  CXX="$(which -a clang++ | grep Microsoft | head -n1)"
+  CC="$(which -a clang | grep Microsoft | head -n1)"
 
   echo "info: CXX=$CXX"
   echo "info: CC=$CC"
@@ -69,4 +71,7 @@ else
   rm -f "$MSENV_BATCH"
   rm -f "$MSENV.tmp"
   rm -f "$MSENV"
+
+  export CXX
+  export CC
 fi
