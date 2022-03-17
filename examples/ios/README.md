@@ -62,11 +62,11 @@ apple_release_provisioning_profile: src/distribution.mobileprovision
 ```
 
 ```bash
-opkit . -r # start the simulator
+op . -r # start the simulator
 ```
 
 ```bash
-opkit . -ios -c -p -xd # package for distribution
+op . -ios -c -p -xd # package for distribution
 ```
 
 ## Distribution
@@ -136,7 +136,7 @@ process attach --name TestExample-dev
 ### Logging
 
 To see logs, open `Console.app` (installed on MacOS by default) and in the
-right side panel pick <YourSimulatorDeviceName>. You can filter by `OPKIT`
+right side panel pick <YourSimulatorDeviceName>. You can filter by `op`
 to see the logs that your app outputs.
 
 ###  Loading your app onto a real phone.

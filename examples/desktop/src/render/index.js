@@ -263,7 +263,7 @@ class AppContainer extends Tonic {
       <div class="dragdrop-demo">
         <div
           class="draggable"
-          data-macsrc="/Users/paolofragomeni/projects/optoolco/opkit/README.md;https://optool.co/images/operator-horizontal.svg;/tmp/test.txt"
+          data-macsrc="/Users/paolofragomeni/projects/optoolco/op/README.md;https://optool.co/images/operator-horizontal.svg;/tmp/test.txt"
           data-src="/tmp/test.txt;/tmp/test2.txt"
         >DRAG HERE</div>
 

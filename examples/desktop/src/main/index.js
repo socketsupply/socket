@@ -1,6 +1,6 @@
 const path = require('path')
 const assert = require('assert')
-const system = require('@socketsupply/opkit-node')
+const system = require('@socketsupply/op-node')
 
 let counter = 0
 
