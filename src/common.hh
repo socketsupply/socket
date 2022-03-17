@@ -208,7 +208,7 @@ namespace Opkit {
       "  window.system = {};\n"
       "  window.process = {};\n"
       "  window.process.index = Number('" + std::to_string(opts.index) + "');\n"
-      "  window.process.cwd = '" + cleanCwd + "';\n"
+      "  window.process.cwd = () => '" + cleanCwd + "';\n"
       "  window.process.title = '" + opts.title + "';\n"
       "  window.process.executable = '" + opts.executable + "';\n"
       "  window.process.version = '" + opts.version + "';\n"
