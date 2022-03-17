@@ -43,26 +43,30 @@ fi
 
 if [ ! -e "$VCVARSALL_BAT_SCRIPT" ]; then
   echo "error: Failed to locate vcvarsall.bat" >&2
-  exit 1
+else
+
+  MSENV_BATCH_NAME="__print_ms_env_$$.bat"
+  MSENV_BATCH="/tmp/$MSENV_BATCH_NAME"
+  MSENV="/tmp/__ms_env_$$"
+
+  echo "@echo off" > "$MSENV_BATCH"
+  echo "call \"$(echo $VCVARSALL_BAT_SCRIPT | sed -e 's/^\/\([A-Za-z]\)\(.*\)/\1\:\2/;s/\//\\/g')\" $PLATFORM" >> "$MSENV_BATCH"
+  echo "set" >> "$MSENV_BATCH"
+
+  cmd "/C %TEMP%\\$MSENV_BATCH_NAME" > "$MSENV.tmp"
+
+  grep -E '^PATH=' "$MSENV.tmp" | sed -e 's/\(.*\)=\(.*\)/export \1="\2"/g;s/\([a-zA-Z]\):[\\\/]/\/\1\//g;s/\\/\//g;s/;\//:\//g' > "$MSENV"
+  grep -E '^(INCLUDE|LIB|LIBPATH)=' "$MSENV.tmp" | sed -e 's/\(.*\)=\(.*\)/export \1="\2"/g' >> "$MSENV"
+
+  source "$MSENV"
+
+  CXX="$(which clang++)"
+  CC="$(which clang)"
+
+  echo "info: CXX=$CXX"
+  echo "info: CC=$CC"
+
+  rm -f "$MSENV_BATCH"
+  rm -f "$MSENV.tmp"
+  rm -f "$MSENV"
 fi
-
-MSENV_BATCH_NAME="__print_ms_env_$$.bat"
-MSENV_BATCH="/tmp/$MSENV_BATCH_NAME"
-MSENV="/tmp/__ms_env_$$"
-
-echo "@echo off" > "$MSENV_BATCH"
-echo "call \"$(echo $VCVARSALL_BAT_SCRIPT | sed -e 's/^\/\([A-Za-z]\)\(.*\)/\1\:\2/;s/\//\\/g')\" $PLATFORM" >> "$MSENV_BATCH"
-echo "set" >> "$MSENV_BATCH"
-
-cmd "/C %TEMP%\\$MSENV_BATCH_NAME" > "$MSENV.tmp"
-
-grep -E '^PATH=' "$MSENV.tmp" | sed -e 's/\(.*\)=\(.*\)/export \1="\2"/g;s/\([a-zA-Z]\):[\\\/]/\/\1\//g;s/\\/\//g;s/;\//:\//g' > "$MSENV"
-grep -E '^(INCLUDE|LIB|LIBPATH)=' "$MSENV.tmp" | sed -e 's/\(.*\)=\(.*\)/export \1="\2"/g' >> "$MSENV"
-
-source "$MSENV" || exit $?
-
-rm -f "$MSENV_BATCH" || exit $?
-rm -f "$MSENV.tmp" || exit $?
-rm -f "$MSENV" || exit $?
-
-exit 0
