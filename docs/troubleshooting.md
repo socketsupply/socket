@@ -30,6 +30,18 @@ Then you can follow https://superuser.com/a/106363
 1. Start Windows PowerShell with the "Run as Administrator" option.
 2. `set-executionpolicy remotesigned`
 
+### MSVC build environment from Git Bash
+
+You can leverage the MSVC build tools (`clang++`) and environment headers directly in Git Bash by loading it into your shell environment directly.
+This is possible by running the following command:
+
+```sh
+source bin/mscv-bash-env.sh
+```
+
+The `bin/bootstrap.sh` shell script should work for compiling the `op` (fka `opkit`) tool.
+It is also recommneded to initialize this environment when building applications with `op` (`opkit`) from the CLI so
+the correct build tools can be used which ensures header and library paths for the compiler 
 
 ## Linux
 ### Build failures
