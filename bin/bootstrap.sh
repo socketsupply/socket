@@ -20,7 +20,7 @@ fi
 
 if ! which sudo > /dev/null 2>&1; then
   function sudo {
-    eval "$@"
+    $@
     return $?
   }
 fi
@@ -40,28 +40,37 @@ function _build {
 }
 
 function _install {
-  echo '• Installing opkit'
-  sudo rm -rf "$PREFIX/lib/opkit"
+  local libdir=""
 
-  echo '• Copying sources to $PREFIX/lib/opkit/src'
-  sudo mkdir -p "$PREFIX/lib/opkit"
-  sudo cp -r `pwd`/src "$PREFIX/lib/opkit"
-
-  if [ -d `pwd`/lib ]; then
-    echo '• Copying libraries to $PREFIX/lib/opkit/lib'
-    sudo mkdir -p "$PREFIX/lib/opkit/lib"
-    sudo cp -r `pwd`/lib/ "$PREFIX/lib/opkit/lib"
+  ## must be a windows environment
+  if [ ! -z "$LOCALAPPDATA" ]; then
+    libdir="$LOCALAPPDATA/Programs/socketsupply"
+  else
+    libdir="$PREFIX/lib/opkit"
   fi
 
-  echo '• Moving binary to $PREFIX/bin'
+  echo "• Installing opkit"
+  sudo rm -rf "$libdir"
+
+  sudo mkdir -p "$libdir"
+  sudo cp -r `pwd`/src "$libdir"
+
+  echo "• Copying sources to $libdir/src"
+  if [ -d `pwd`/lib ]; then
+    echo "• Copying libraries to $libdir/lib"
+    sudo mkdir -p "$libdir/lib"
+    sudo cp -r `pwd`/lib/ "$libdir/lib"
+  fi
+
+  echo "• Moving binary to $PREFIX/bin"
   sudo mv `pwd`/bin/cli "$PREFIX/bin/opkit"
 
   if [ ! $? = 0 ]; then
-    echo '• Unable to move binary into place'
+    echo "• Unable to move binary into place"
     exit 1
   fi
 
-  echo -e '• Finished. Type "opkit -h" for help'
+  echo -e "• Finished. Type 'opkit -h' for help"
   exit 0
 }
 
