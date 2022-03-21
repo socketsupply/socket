@@ -20,7 +20,7 @@
 
 constexpr auto version = STR_VALUE(VERSION);
 
-using namespace op;
+using namespace Operator;
 
 void help () {
   std::cout

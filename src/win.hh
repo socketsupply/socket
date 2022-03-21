@@ -24,7 +24,7 @@
 #pragma comment(lib,"Gdi32.lib")
 
 inline void alert (const std::wstring &ws) {
-  MessageBoxA(nullptr, op::WStringToString(ws).c_str(), _TEXT("Alert"), MB_OK | MB_ICONSTOP);
+  MessageBoxA(nullptr, Operator::WStringToString(ws).c_str(), _TEXT("Alert"), MB_OK | MB_ICONSTOP);
 }
 
 inline void alert (const std::string &s) {
@@ -35,7 +35,7 @@ inline void alert (const char* s) {
   MessageBoxA(nullptr, s, _TEXT("Alert"), MB_OK | MB_ICONSTOP);
 }
 
-namespace op {
+namespace Operator {
   using IEnvHandler = ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler;
   using IConHandler = ICoreWebView2CreateCoreWebView2ControllerCompletedHandler;
   using INavHandler = ICoreWebView2NavigationCompletedEventHandler;
@@ -565,7 +565,7 @@ namespace op {
         // windows requires a few special needs things. chromium webview doesn't
         // handle calculating devicePixelRatio like wkwebview does, also paths.
         //
-        auto lolWindowsPath = op::replace(std::string(buf), "\\\\", "\\\\\\\\");
+        auto lolWindowsPath = Operator::replace(std::string(buf), "\\\\", "\\\\\\\\");
 
         this->window->eval(
           "(() => {"
@@ -1569,4 +1569,4 @@ namespace op {
     return 0;
   }
 
-} // namespace op
+} // namespace Operator

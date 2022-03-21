@@ -29,7 +29,7 @@ splitc(const std::string& s, const char& c) {
   return vec;
 }
 
-namespace op {
+namespace Operator {
   using cb = std::function<void(std::string)>;
 
   // Additional parameters to Process constructors.
@@ -172,6 +172,6 @@ namespace op {
     read();
   }
 
-} // namespace op
+} // namespace Operator
 
 #endif // OP_HPP_

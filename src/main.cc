@@ -20,7 +20,7 @@
   #define FILENO fileno
 #endif
 
-using namespace op;
+using namespace Operator;
 
 std::function<void(int)> shutdownHandler;
 void signalHandler(int signal) { shutdownHandler(signal); }

@@ -12,7 +12,7 @@
 #include <sstream>
 #include <signal.h>
 
-namespace op {
+namespace Operator {
 
 const static std::stringstream initial;
 
@@ -332,4 +332,4 @@ void Process::kill(id_type id) noexcept {
   }
 }
 
-} // namespace op
+} // namespace Operator

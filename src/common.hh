@@ -64,7 +64,7 @@ enum {
   WINDOW_HINT_FIXED = 3  // Window size can not be changed by a user
 };
 
-namespace op {
+namespace Operator {
   //
   // Cross platform support for strings
   //

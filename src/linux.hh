@@ -8,7 +8,7 @@ static GtkTargetEntry droppableTypes[] = {
   { (char*) "text/uri-list", 0, 0 }
 };
 
-namespace op {
+namespace Operator {
   class App : public IApp {
 
     public:
@@ -206,7 +206,7 @@ namespace op {
         auto *w = static_cast<Window*>(arg);
         w->isDragInvokedInsideWindow = true;
 
-        std::string tmpFile(std::to_string(op::rand64()) + ".download");
+        std::string tmpFile(std::to_string(Operator::rand64()) + ".download");
 
         gint ix;
         gint iy;
@@ -248,7 +248,7 @@ namespace op {
             JSCException *exception;
             gchar *str_value;
 
-            w->draggablePayload = op::split(jsc_value_to_string(value), ';');
+            w->draggablePayload = Operator::split(jsc_value_to_string(value), ';');
             exception = jsc_context_get_exception(jsc_value_get_context(value));
           },
           w
@@ -320,7 +320,7 @@ namespace op {
         int count = w->draggablePayload.size();
         bool inbound = !w->isDragInvokedInsideWindow;
 
-        // w->eval(op::emitToRenderProcess("dragend", "{}"));
+        // w->eval(Operator::emitToRenderProcess("dragend", "{}"));
 
         // TODO wtf we get a toaster instead of actual focus
         gtk_window_present(GTK_WINDOW(w->window));
@@ -333,7 +333,7 @@ namespace op {
           "\"y\":" + std::to_string(y) + "}"
         );
 
-        w->eval(op::emitToRenderProcess("drag", json));
+        w->eval(Operator::emitToRenderProcess("drag", json));
       }),
       this
     );
@@ -350,7 +350,7 @@ namespace op {
 
         w->isDragInvokedInsideWindow = false;
         w->draggablePayload.clear();
-        w->eval(op::emitToRenderProcess("dragend", "{}"));
+        w->eval(Operator::emitToRenderProcess("dragend", "{}"));
       }),
       this
     );
@@ -363,7 +363,7 @@ namespace op {
         if (!w) return;
 
         w->isDragInvokedInsideWindow = false;
-        w->eval(op::emitToRenderProcess("dragend", "{}"));
+        w->eval(Operator::emitToRenderProcess("dragend", "{}"));
       }),
       this
     );
@@ -435,7 +435,7 @@ namespace op {
         }
 
         w->draggablePayload.clear();
-        w->eval(op::emitToRenderProcess("dragend", "{}"));
+        w->eval(Operator::emitToRenderProcess("dragend", "{}"));
         gtk_drag_finish(context, TRUE, TRUE, time);
         return TRUE;
       }),
