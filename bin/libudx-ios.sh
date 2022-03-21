@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# This will re-compile libucp for iOS (and the iOS simulator).
+# This will re-compile libudx for iOS (and the iOS simulator).
 #
 
 PLATFORMPATH="/Applications/Xcode.app/Contents/Developer/Platforms"
@@ -10,12 +10,12 @@ export IPHONEOS_DEPLOYMENT_TARGET="8.0"
 OLD_CWD=`pwd`
 BUILD_DIR=`pwd`/lib/build
 rm -rf $BUILD_DIR
-rm -rf `pwd`/lib/ucp
+rm -rf `pwd`/lib/udx
 
 #
-# Shallow clone the main branch of libucp.
+# Shallow clone the main branch of libudx.
 #
-git clone --depth=1 git@github.com:socketsupply/libucp.git lib/build
+git clone --depth=1 git@github.com:socketsupply/libudx.git lib/build
 cd $BUILD_DIR
 
 SetSDKVersion() {
@@ -61,14 +61,15 @@ Compile() {
   export LDFLAGS="-Wc,-fembed-bitcode -arch ${target} -isysroot $PLATFORMPATH/$platform.platform/Developer/SDKs/$platform$SDKVERSION.sdk"
   export OPTS="-I$PWD/../uv/include"
 
-  $CC $CLFAGS $CPPFLAGS -o utils.o -c ./src/utils.c $OPTS
   $CC $CFLAGS $CPPFLAGS -o cirbuf.o -c ./src/cirbuf.c $OPTS
   $CC $CFLAGS $CPPFLAGS -o fifo.o -c ./src/fifo.c $OPTS
-  $CC $CFLAGS $CPPFLAGS -o ucp.o -c ./src/ucp.c $OPTS
-  $AR rvs libucp.a utils.o cirbuf.o fifo.o ucp.o
+  $CC $CFLAGS $CPPFLAGS -o io.o -c ./src/cirbuf.c $OPTS
+  $CC $CFLAGS $CPPFLAGS -o io_posix.o -c ./src/fifo.c $OPTS
+  $CC $CFLAGS $CPPFLAGS -o udx.o -c ./src/udx.c $OPTS
+  $AR rvs libudx.a utils.o cirbuf.o fifo.o udx.o
 
   mkdir -p $BUILD_DIR/output/$target
-  mv libucp.a $BUILD_DIR/output/$target/libucp.a
+  mv libudx.a $BUILD_DIR/output/$target/libudx.a
 }
 
 SetSDKVersion iPhoneOS
@@ -89,22 +90,22 @@ Compile x86_64 iPhoneSimulator
 LIPO=$(xcrun -sdk iphoneos -find lipo)
 
 $LIPO -create \
-  $BUILD_DIR/output/armv7/libucp.a \
-  $BUILD_DIR/output/armv7s/libucp.a \
-  $BUILD_DIR/output/arm64/libucp.a \
-  $BUILD_DIR/output/x86_64/libucp.a \
-  $BUILD_DIR/output/i386/libucp.a \
-  -output libucp.a
+  $BUILD_DIR/output/armv7/libudx.a \
+  $BUILD_DIR/output/armv7s/libudx.a \
+  $BUILD_DIR/output/arm64/libudx.a \
+  $BUILD_DIR/output/x86_64/libudx.a \
+  $BUILD_DIR/output/i386/libudx.a \
+  -output libudx.a
 
-$LIPO -info libucp.a
+$LIPO -info libudx.a
 
 #
 # Copy the build into the project and delete leftover build artifacts.
 #
-DEST_DIR=$BUILD_DIR/../ucp
+DEST_DIR=$BUILD_DIR/../udx
 mkdir $DEST_DIR
 
-cp libucp.a $DEST_DIR
+cp libudx.a $DEST_DIR
 mkdir -p $DEST_DIR/include
 cp -r $BUILD_DIR/src/*.h $DEST_DIR/include
 
