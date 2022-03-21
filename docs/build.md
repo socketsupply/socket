@@ -19,7 +19,7 @@ If the CLI tool is failing, see the [trouble shooting guide][0].
 ## Configuration Files
 
 The build tool expects to find a config file in the
-target directory, `settings.config`.
+target directory, `operator.config`.
 
 ### Settings Configuration
 

@@ -153,7 +153,7 @@ Provides the arguments that the program was called with.
 The title as defined in the `settings.congig` file.
 
 ### process.verison: String
-The version as defined in the `settings.config` file.
+The version as defined in the `operator.config` file.
 
 ### process.debug: Number
 Value is `1` unless `-xd` is passed to the CLI tool at build time.
@@ -162,4 +162,4 @@ Value is `1` unless `-xd` is passed to the CLI tool at build time.
 A value returned by the OS that represents the path to the running app.
 
 ### process.verison: String
-The executable name as defined in the `settings.config` file.
+The executable name as defined in the `operator.config` file.
