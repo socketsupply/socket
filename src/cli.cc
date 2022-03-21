@@ -169,7 +169,7 @@ int main (const int argc, const char* argv[]) {
     target = fs::absolute(target);
   }
 
-  auto _settings = WStringToString(readFile(target / "settings.config"));
+  auto _settings = WStringToString(readFile(target / "operator.config"));
   auto settings = parseConfig(_settings);
 
   if (
