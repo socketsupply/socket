@@ -26,7 +26,7 @@ if ! which sudo > /dev/null 2>&1; then
 fi
 
 function _build {
-  echo '• Building opkit'
+  echo '• Building op'
   "$CXX" src/cli.cc ${CXX_FLAGS} ${CXXFLAGS} \
     -o bin/cli \
     -std=c++2a\
@@ -46,10 +46,10 @@ function _install {
   if [ ! -z "$LOCALAPPDATA" ]; then
     libdir="$LOCALAPPDATA/Programs/socketsupply"
   else
-    libdir="$PREFIX/lib/opkit"
+    libdir="$PREFIX/lib/op"
   fi
 
-  echo "• Installing opkit"
+  echo "• Installing op"
   sudo rm -rf "$libdir"
 
   sudo mkdir -p "$libdir"
@@ -63,14 +63,14 @@ function _install {
   fi
 
   echo "• Moving binary to $PREFIX/bin"
-  sudo mv `pwd`/bin/cli "$PREFIX/bin/opkit"
+  sudo mv `pwd`/bin/cli "$PREFIX/bin/op"
 
   if [ ! $? = 0 ]; then
     echo "• Unable to move binary into place"
     exit 1
   fi
 
-  echo -e "• Finished. Type 'opkit -h' for help"
+  echo -e '• Finished. Type "op -h" for help'
   exit 0
 }
 
@@ -81,7 +81,7 @@ if [ -z "$1" ]; then
   TMPD=$(mktemp -d)
 
   echo '• Cloning from Github'
-  git clone --depth=1 git@github.com:socketsupply/opkit.git $TMPD > /dev/null 2>&1
+  git clone --depth=1 git@github.com:socketsupply/operatorframework.git $TMPD > /dev/null 2>&1
 
   if [ ! $? = 0 ]; then
     echo "• Unable to clone"

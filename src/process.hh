@@ -1,5 +1,5 @@
-#ifndef OPKIT_HPP_
-#define OPKIT_HPP_
+#ifndef OP_HPP_
+#define OP_HPP_
 
 #include <functional>
 #include <mutex>
@@ -29,7 +29,7 @@ splitc(const std::string& s, const char& c) {
   return vec;
 }
 
-namespace Opkit {
+namespace Operator {
   using cb = std::function<void(std::string)>;
 
   // Additional parameters to Process constructors.
@@ -172,6 +172,6 @@ namespace Opkit {
     read();
   }
 
-} // namespace Opkit
+} // namespace Operator
 
-#endif // OPKIT_HPP_
+#endif // OP_HPP_

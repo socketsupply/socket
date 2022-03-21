@@ -5,7 +5,7 @@
 #include <iostream>
 #include <stdexcept>
 
-namespace Opkit {
+namespace Operator {
 
 const static std::stringstream initial;
 
@@ -336,4 +336,4 @@ void Process::kill(id_type id) noexcept {
   }
 }
 
-} // namespace Opkit
+} // namespace Operator

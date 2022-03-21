@@ -22,7 +22,7 @@ std::vector<std::string> draggablePayload;
 }
 
 - (void) draggingExited: (id<NSDraggingInfo>)info {
-  auto payload = Opkit::emitToRenderProcess("dragend", "{}");
+  auto payload = Operator::emitToRenderProcess("dragend", "{}");
   draggablePayload.clear();
 
   [self evaluateJavaScript:
@@ -50,7 +50,7 @@ std::vector<std::string> draggablePayload;
     "\"y\":" + y + "}"
   );
 
-  auto payload = Opkit::emitToRenderProcess("drag", json);
+  auto payload = Operator::emitToRenderProcess("drag", json);
 
   [self evaluateJavaScript:
     [NSString stringWithUTF8String: payload.c_str()]
@@ -78,7 +78,7 @@ std::vector<std::string> draggablePayload;
 
     for (NSURL *url in files) {
       std::string path([[url path] UTF8String]);
-      path = Opkit::replace(path, "\"", "'");
+      path = Operator::replace(path, "\"", "'");
 
       std::string json = (
         "{\"src\":\"" + path + "\","
@@ -86,7 +86,7 @@ std::vector<std::string> draggablePayload;
         "\"y\":" + std::to_string(y) + "}"
       );
 
-      auto payload = Opkit::emitToRenderProcess("dropin", json);
+      auto payload = Operator::emitToRenderProcess("dropin", json);
 
       [self evaluateJavaScript:
         [NSString stringWithUTF8String: payload.c_str()]
@@ -94,7 +94,7 @@ std::vector<std::string> draggablePayload;
     }
   }
 
-  auto payload = Opkit::emitToRenderProcess("dragend", "{}");
+  auto payload = Operator::emitToRenderProcess("dragend", "{}");
 
   [self evaluateJavaScript:
     [NSString stringWithUTF8String: payload.c_str()]
@@ -115,7 +115,7 @@ std::vector<std::string> draggablePayload;
     "\"y\":" + y + "}"
   );
 
-  auto payload = Opkit::emitToRenderProcess("drag", json);
+  auto payload = Operator::emitToRenderProcess("drag", json);
 
   [self evaluateJavaScript:
     [NSString stringWithUTF8String: payload.c_str()]
@@ -124,7 +124,7 @@ std::vector<std::string> draggablePayload;
 
 - (void) mouseUp: (NSEvent*)event {
   [super mouseUp:event];
-  auto payload = Opkit::emitToRenderProcess("dragend", "{}");
+  auto payload = Operator::emitToRenderProcess("dragend", "{}");
   draggablePayload.clear();
 
   [self evaluateJavaScript:
@@ -160,7 +160,7 @@ std::vector<std::string> draggablePayload;
     }
 
     std::vector<std::string> files =
-      Opkit::split(std::string([result UTF8String]), ';');
+      Operator::split(std::string([result UTF8String]), ';');
 
     if (files.size() == 0) {
       [super mouseDown:event];
@@ -188,7 +188,7 @@ std::vector<std::string> draggablePayload;
     "\"y\":" + y + "}"
   );
 
-  auto payload = Opkit::emitToRenderProcess("drag", json);
+  auto payload = Operator::emitToRenderProcess("drag", json);
 
   [self evaluateJavaScript:
     [NSString stringWithUTF8String: payload.c_str()]
@@ -270,7 +270,7 @@ std::vector<std::string> draggablePayload;
     "\"dest\":\"" + dest + "\"}"
   );
 
-  std::string js = Opkit::emitToRenderProcess("dropout", json);
+  std::string js = Operator::emitToRenderProcess("dropout", json);
 
   [self
     evaluateJavaScript: [NSString stringWithUTF8String:js.c_str()]
@@ -281,7 +281,7 @@ std::vector<std::string> draggablePayload;
 }
 
 - (NSString*) filePromiseProvider: (NSFilePromiseProvider*)filePromiseProvider fileNameForType:(NSString *)fileType {
-  std::string file(std::to_string(Opkit::rand64()) + ".download");
+  std::string file(std::to_string(Operator::rand64()) + ".download");
   return [NSString stringWithUTF8String:file.c_str()];
 }
 
@@ -341,7 +341,7 @@ void WKInspectorShow(WKInspectorRef inspectorRef) {
   inspectorRef->show();
 } */
 
-namespace Opkit {
+namespace Operator {
 
   static bool isDelegateSet = false;
 

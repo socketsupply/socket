@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-export KEYNAME=opkit2
-export EMAIL=devops@operator.tc
+export KEYNAME=op
+export EMAIL=devops@socketsupply.co
 export KEY_DIR=`pwd`/keys
 
 function create_key {
