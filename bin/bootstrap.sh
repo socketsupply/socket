@@ -4,10 +4,18 @@ set -e;
 PREFIX=${PREFIX:-"/usr/local"}
 
 if [ ! "$CXX" ]; then
-  if which g++ >/dev/null 2>&1; then
-    CXX="$(which g++)"
-  elif which clang++ >/dev/null 2>&1; then
-    CXX="$(which clang++)"
+  if [ ! -z "$LOCALAPPDATA" ]; then
+    if which clang++ >/dev/null 2>&1; then
+      CXX="$(which clang++)"
+    fi
+  fi
+
+  if [ ! "$CXX" ]; then
+    if which g++ >/dev/null 2>&1; then
+      CXX="$(which g++)"
+    elif which clang++ >/dev/null 2>&1; then
+      CXX="$(which clang++)"
+    fi
   fi
 
   if [ ! "$CXX" ]; then
