@@ -14,7 +14,8 @@
 | `flags` | No | None | Advanced Compiler Settings (ie C++ compiler -02, -03, etc). |
 | `forwardConsole` | | | |
 | `height` | | | The initial height of the first window |
-| `input` | | |  |
+| `input` | | | A directory is where your application's code
+is located |
 | `lang` | | | Localization |
 | `maintainer` | No | | |
 | `name` | Yes | None | The name of the program |
