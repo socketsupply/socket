@@ -23,6 +23,7 @@ UIs that can run any arbitrary backend process.
 
 - [API](/docs/api.md) All methods
 - [Build](/docs/build.md) How to use the build tool
+- [Configuration](/docs/config.md) How to configure the build
 - [IPC](/docs/ipc.md) How the IPC protocol works
 - [Menus](/docs/menus.md) How to create menus
 - [Trouble Shooting Guide](/docs/troubleshooting.md) Help with compiling
