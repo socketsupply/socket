@@ -150,9 +150,9 @@ The `process` object is a global (ie, `window.process`).
 Provides the arguments that the program was called with.
 
 ### process.title: String
-The title as defined in the `settings.congig` file.
+The title as defined in the `operator.config` file.
 
-### process.verison: String
+### process.version: String
 The version as defined in the `operator.config` file.
 
 ### process.debug: Number
@@ -161,5 +161,5 @@ Value is `1` unless `-xd` is passed to the CLI tool at build time.
 ### process.bundle: String
 A value returned by the OS that represents the path to the running app.
 
-### process.verison: String
+### process.executable: String
 The executable name as defined in the `operator.config` file.
