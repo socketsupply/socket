@@ -18,7 +18,7 @@
 | `lang` | | | Localization |
 | `maintainer` | No | | |
 | `name` | Yes | None | The name of the program |
-| `output` | | | The binary output path |
+| `output` | Yes | | The binary output path |
 | `title` | | | The initial title of the window (can have spaces and symbols etc). |
 | `version` | Yes | None | A string that indicates the version of the cli tool and resources. |
 | `versionShort` | No | None | A string that indicates the version for MacOS. |
@@ -51,29 +51,29 @@
 
 | Property | Required | Default | Description |
 | :--- | :--- | :--- | :--- |
-| `apple_distribution_method` | | | |
-| `apple_provisioning_profile` | | | |
-| `apple_signing_certificate` | | | |
-| `apple_team_id` | | | |
-| `entitlements` | No | None | plist file path |
 | `mac_appstore_icon` | | | Mac App Store icon |
 | `mac_category` | No | None | A category in the App Store |
 | `mac_cmd` | Yes | None | The command to execute to spawn the “back-end” process. |
+| `mac_distribution_method` | | | |
+| `mac_entitlements` | No | None | plist file path |
 | `mac_icon` | Yes | None | The icon to use for identifying your app on MacOS. |
+| `mac_provisioning_profile` | | | |
 | `mac_sign` | | | |
+| `mac_signing_certificate` | | | |
 | `mac_sign_paths` | | | |
+| `mac_team_id` | | | |
 
 
 # iOS
 
 | Property | Required | Default | Description |
 | :--- | :--- | :--- | :--- |
-| `apple_device_simulator` | No | None | which device to target when building for the simulator |
-| `apple_distribution_method` | | | |
-| `apple_provisioning_profile` | Yes | None | The provisioning profile that is used for signing (should be mac?) |
-| `apple_signing_certificate` | | | |
-| `apple_team_id` | | | |
-| `entitlements` | Yes | None | plist file path |
+| `ios_device_simulator` | No | None | which device to target when building for the simulator |
+| `ios_entitlements` | Yes | None | plist file path |
+| `ios_distribution_method` | Yes | | |
+| `ios_provisioning_profile` | Yes | None | The provisioning profile that is used for signing (should be mac?) |
+| `ios_signing_certificate` | Yes | | |
+| `ios_team_id` | Yes | | |
 
 
 # Android
