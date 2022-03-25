@@ -1,12 +1,10 @@
 
 # Main Process
-When the main process is started, it is forwarded the arguments
-passed to the built binary. The location from which the main
-process is run will reveal its location on the file system.
-
-All methods, unless indicated, can also be run in the main process.
+When your new program runs, it will forward its arguments to the
+"main"/"back-end" process.
 
 # Render Process
+
 
 ## Methods
 The `system` object is a global (ie, `window.system`).
