@@ -803,35 +803,37 @@ constexpr auto gDefaultConfig = R"CONFIG(
 # Default configuration file. Delete what you don't need.
 #
 
-# This is made available for cross-compiling. It specifies the target architecture, by default it detects the machine on which the cli is executing.
+# This is made available for cross-compiling. It specifies the target
+# architecture, by default it detects the machine on which the cli is
+# executing.
 # arch: x86_64
 
 # Shell command to build an application.
-# build: node scripts/build.js
+build: node scripts/build.js
 
 # A unique ID that identifies the bundle (used by all app stores).
-# bundle_identifier: com.beepboop
+bundle_identifier: com.beepboop
 
 # A unique ID that identifies the bundle (used by all app stores).
-# bundle_identifier_short: boop
+bundle_identifier_short: boop
 
 # A string that gets used in the about dialog and package meta info.
-# copyRight: (c) Beep Boop Corp. 1985
+copyRight: (c) Beep Boop Corp. 1985
 
 # Advanced Compiler Settings for debug purposes (ie C++ compiler -g, etc).
-# debug_flags: -g -O3
+debug_flags: -g -O3
 
 # A short description of the app
-# description: A UI for the beep boop network
+description: A UI for the beep boop network
 
 # An array of environment variables, separated by commas
 # env: USER, TMPDIR, PWD
 
-# The name of the file to be output.
-# executable: boop
+# The name of the product (ie Beep or Boop).
+executable: boop
 
 # Advanced Compiler Settings (ie C++ compiler -02, -03, etc).
-# flags: -O1
+flags: -O1
 
 # A boolean that determines if stdout and stderr should get forwarded
 # forwardConsole: true
@@ -849,24 +851,24 @@ constexpr auto gDefaultConfig = R"CONFIG(
 # maintainer: Beep Boop Corp.
 
 # The name of the program
-# name: beepboop
+name: beepboop
 
 # The binary output path
-# output: build
+output: build
 
 # The initial title of the window (can have spaces and symbols etc).
-# title: Beep Boop
+title: Beep Boop
 
 # A string that indicates the version of the cli tool and resources.
-# version v0.0.1
+version v0.0.1
 
 # A string that indicates the version for MacOS.
-# versionShort 0.0.1
+versionShort 0.0.1
 
 # The initial width of the first window.
 # width: 1024
 
-# TODO: maybe the user doesn‚Äôt need to know about this?
+# TODO: maybe the user doesn't need to know about this?
 # revision: 123
 
 #
