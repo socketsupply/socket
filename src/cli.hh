@@ -836,7 +836,7 @@ executable: boop
 flags: -O1
 
 # A boolean that determines if stdout and stderr should get forwarded
-# forwardConsole: true
+# forward_console: true
 
 # The initial height of the first window.
 # height: 750
