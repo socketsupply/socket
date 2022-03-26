@@ -35,6 +35,7 @@ void help () {
     << "  -b  bundle for app store" << std::endl
     << "  -c  code sign the bundle" << std::endl
     << "  -h  help" << std::endl
+    << "  -i  init" << std::endl
     << "  -v  version" << std::endl
     << "  -me (macOS) use entitlements" << std::endl
     << "  -mn (macOS) notarize the bundle" << std::endl
@@ -64,6 +65,13 @@ void log (const std::string s) {
   auto delta = duration_cast<milliseconds>(now - start).count();
   std::cout << "• " << s << " \033[0;32m+" << delta << "ms\033[0m" << std::endl;
   start = std::chrono::system_clock::now();
+}
+
+void init () {
+  auto cwd = fs::current_path();
+  fs::create_directories(cwd / "src");
+  Operator::writeFile(cwd / "src" / "index.html", "<html>Hello, World</html>");
+  Operator::writeFile(cwd / "operator.config", gDefaultConfig);
 }
 
 static std::string getCxxFlags() {
@@ -96,6 +104,11 @@ int main (const int argc, const char* argv[]) {
 
     if (std::string(arg).find("-h") == 0) {
       help();
+    }
+
+    if (std::string(arg).find("-i") == 0) {
+      init();
+      exit(0);
     }
 
     if (std::string(arg).find("-v") == 0) {

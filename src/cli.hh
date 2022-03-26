@@ -794,3 +794,169 @@ constexpr auto gStoryboardLaunchScreen = R"XML(<?xml version="1.0" encoding="UTF
   </scenes>
 </document>
 )XML";
+
+constexpr auto gDefaultConfig = R"CONFIG(
+#   ___  ___  ___ ___  ___ ____ ___  ___
+#  /  / /__/ /_  /__/ /__/  /  /  / /__/
+# /__/ /    /__ /  \ /  /  /  /__/ /  \
+#
+# Default configuration file. Delete what you don't need.
+#
+
+# This is made available for cross-compiling. It specifies the target architecture, by default it detects the machine on which the cli is executing.
+# arch: x86_64
+
+# Shell command to build an application.
+# build: node scripts/build.js
+
+# A unique ID that identifies the bundle (used by all app stores).
+# bundle_identifier: com.beepboop
+
+# A unique ID that identifies the bundle (used by all app stores).
+# bundle_identifier_short: boop
+
+# A string that gets used in the about dialog and package meta info.
+# copyRight: (c) Beep Boop Corp. 1985
+
+# Advanced Compiler Settings for debug purposes (ie C++ compiler -g, etc).
+# debug_flags: -g -O3
+
+# A short description of the app
+# description: A UI for the beep boop network
+
+# An array of environment variables, separated by commas
+# env: USER, TMPDIR, PWD
+
+# The name of the file to be output.
+# executable: boop
+
+# Advanced Compiler Settings (ie C++ compiler -02, -03, etc).
+# flags: -O1
+
+# A boolean that determines if stdout and stderr should get forwarded
+# forwardConsole: true
+
+# The initial height of the first window.
+# height: 750
+
+# A directory is where your application's code is located.
+# input: src
+
+# Localization
+# lang: en-us
+
+# A String used in the about dialog and meta info.
+# maintainer: Beep Boop Corp.
+
+# The name of the program
+# name: beepboop
+
+# The binary output path
+# output: build
+
+# The initial title of the window (can have spaces and symbols etc).
+# title: Beep Boop
+
+# A string that indicates the version of the cli tool and resources.
+# version v0.0.1
+
+# A string that indicates the version for MacOS.
+# versionShort 0.0.1
+
+# The initial width of the first window.
+# width: 1024
+
+# TODO: maybe the user doesn‚Äôt need to know about this?
+# revision: 123
+
+#
+# Windows
+#
+
+# The command to execute to spawn the “back-end” process.
+# win_cmd: beepboop.exe
+
+# The icon to use for identifying your app on Windows.
+# win_icon:
+
+# The icon to use for identifying your app on Windows.
+# win_logo: src/icons/icon.png
+
+# A relative path to the pfx file used for signing.
+# win_pfx: certs/cert.pfx
+
+# TODO description & value
+# win_publisher: CN=Beep Boop Corp., O=Beep Boop Corp., L=San Francisco, S=California, C=US
+
+#
+# Linux
+#
+
+# Helps to make your app searchable in Linux desktop environments.
+# linux_categories: Developer Tools
+
+# The command to execute to spawn the ‚Äúback-end‚Äù process.
+# linux_cmd: beepboop
+
+# The icon to use for identifying your app in Linux desktop environments.
+# linux_icon: src\icon.png
+
+#
+# MacOS
+#
+
+# Mac App Store icon
+# mac_appstore_icon: src/icons/icon.png
+
+# A category in the App Store
+# mac_category:
+
+# The command to execute to spawn the ‚Äúback-end‚Äù process.
+# mac_cmd:
+
+# TODO description & value
+# mac_distribution_method:
+
+# TODO description & value
+# mac_entitlements:
+
+# The icon to use for identifying your app on MacOS.
+# mac_icon:
+
+# TODO description & value
+# mac_provisioning_profile:
+
+# TODO description & value
+# mac_sign:
+
+# TODO description & value
+# mac_signing_certificate:
+
+# TODO description & value
+# mac_sign_paths:
+
+# TODO description & value
+# mac_team_id:
+
+#
+# iOS
+#
+
+# which device to target when building for the simulator
+# ios_device_simulator:
+
+# A relative path to the plist of application entitlements
+# ios_entitlements:
+
+# TODO description & value
+# ios_distribution_method:
+
+# The provisioning profile that is used for signing (should be mac?)
+# ios_provisioning_profile:
+
+# TODO description & value
+# ios_signing_certificate:
+
+# TODO description & value
+# ios_team_id:
+)CONFIG";
