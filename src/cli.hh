@@ -15,7 +15,7 @@ constexpr auto gPListInfo = R"XML(<?xml version="1.0" encoding="UTF-8"?>
   <key>DTXcode</key>
   <string>0941</string>
   <key>NSHumanReadableCopyright</key>
-  <string>{{copyRight}}</string>
+  <string>{{copyright}}</string>
   <key>DTSDKBuild</key>
   <string>10.13</string>
   <key>CFBundleVersion</key>
@@ -33,7 +33,7 @@ constexpr auto gPListInfo = R"XML(<?xml version="1.0" encoding="UTF-8"?>
   <key>CFBundleIconFile</key>
   <string>index.icns</string>
   <key>CFBundleShortVersionString</key>
-  <string>{{versionShort} Build {{revision}}</string>
+  <string>{{version_short} Build {{revision}}</string>
   <key>NSHighResolutionCapable</key>
   <true/>
   <key>NSMicrophoneUsageDescription</key>
@@ -124,7 +124,7 @@ Categories={{linux_categories}};
 )INI";
 
 constexpr auto gDebianManifest = R"DEB(Package: {{name}}
-Version: {{versionShort}}
+Version: {{version_short}}
 Architecture: {{arch}}
 Maintainer: {{maintainer}}
 Description: {{title}}
@@ -517,7 +517,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 				INFOPLIST_KEY_CFBundleDisplayName = "{{name}}";
 				INFOPLIST_KEY_LSApplicationCategoryType = Developer;
 				INFOPLIST_KEY_NSCameraUsageDescription = "This app needs access to the camera";
-				INFOPLIST_KEY_NSHumanReadableCopyright = "{{copyRight}}";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "{{copyright}}";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "This app needs access to the microphone";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
@@ -563,7 +563,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 				INFOPLIST_KEY_CFBundleDisplayName = "{{name}}";
 				INFOPLIST_KEY_LSApplicationCategoryType = Developer;
 				INFOPLIST_KEY_NSCameraUsageDescription = "This app needs access to the camera";
-				INFOPLIST_KEY_NSHumanReadableCopyright = "{{copyRight}}";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "{{copyright}}";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "This app needs access to the microphone";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
@@ -818,7 +818,7 @@ bundle_identifier: com.beepboop
 bundle_identifier_short: boop
 
 # A string that gets used in the about dialog and package meta info.
-copyRight: (c) Beep Boop Corp. 1985
+copyright: (c) Beep Boop Corp. 1985
 
 # Advanced Compiler Settings for debug purposes (ie C++ compiler -g, etc).
 debug_flags: -g -O3
@@ -863,7 +863,7 @@ title: Beep Boop
 version v0.0.1
 
 # A string that indicates the version for MacOS.
-versionShort 0.0.1
+version_short 0.0.1
 
 # The initial width of the first window.
 # width: 1024

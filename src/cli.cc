@@ -480,8 +480,8 @@ int main (const int argc, const char* argv[]) {
       settings["revision"] = "1";
     }
 
-    if (settings["versionShort"].size() > 0) {
-      auto versionShort = settings["versionShort"];
+    if (settings["version_short"].size() > 0) {
+      auto versionShort = settings["version_short"];
       auto winversion = split(versionShort, '-')[0];
 
       settings["win_version"] = winversion + ".0";

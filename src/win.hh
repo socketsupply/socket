@@ -933,7 +933,7 @@ namespace Operator {
     auto text = std::string(
       appData["title"] + " " +
       appData["version"] + "\n" +
-      appData["copyRight"]
+      appData["copyright"]
     );
 
     MSGBOXPARAMS mbp;
