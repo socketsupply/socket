@@ -517,12 +517,6 @@ namespace Operator {
       initWithFrame: NSZeroRect
       configuration: config];
 
-    if (this->opts.isTest) {
-      [webview.configuration.preferences
-        setValue:@YES
-          forKey:@"allowUniversalAccessFromFileURLs"];
-    }
-
     [webview.configuration.preferences
       setValue:@YES
       forKey:@"allowFileAccessFromFileURLs"];
