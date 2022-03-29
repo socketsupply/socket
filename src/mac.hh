@@ -63,18 +63,6 @@ std::vector<std::string> draggablePayload;
   [self draggingUpdated: info];
 }
 
-- (void) applicationDidEnterBackground {
-  [self evaluateJavaScript:
-    [NSString stringWithUTF8String: "window.onblur()"]
-    completionHandler:nil];
-}
-
-- (void) applicationWillEnterForeground {
-  [self evaluateJavaScript:
-    [NSString stringWithUTF8String: "window.onfocus()"]
-    completionHandler:nil];
-}
-
 - (void) draggingEnded: (id<NSDraggingInfo>)info {
   NSPasteboard *pboard = [info draggingPasteboard];
 
