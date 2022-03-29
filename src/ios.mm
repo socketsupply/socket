@@ -1581,15 +1581,11 @@ bool isRunning = false;
 //
 
 - (void) applicationDidEnterBackground {
-  [self emit: "application" message: Operator::format(R"JSON({
-    "status": "background"
-  })JSON")];
+  [self.webview evaluateJavaScript: "window.blur()" completionHandler:nil];
 }
 
 - (void) applicationWillEnterForeground {
-  [self emit: "application" message: Operator::format(R"JSON({
-    "status": "foreground"
-  })JSON")];
+  [self.webview evaluateJavaScript: "window.focus()" completionHandler:nil];
 }
 
 - (void) initNetworkStatusObserver {
