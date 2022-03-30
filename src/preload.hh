@@ -118,6 +118,21 @@ constexpr auto gPreloadDesktop = R"JS(
   window.system.hide = o => window._ipc.send('hide', o)
   window.system.inspect = o => window.external.invoke(`ipc://inspect`)
 
+  window.resizeTo = (width, height) => {
+    const index = window.process.index
+    const o = new URLSearchParams({ width, height, index }).toString()
+    window.external.invoke(`ipc://size?${o}`)
+  }
+
+  Object.defineProperty(window.document, 'title', {
+    get () { return window.process.title },
+    set (value) {
+      const index = window.process.index
+      const o = new URLSearchParams({ value, index }).toString()
+      window.external.invoke('ipc://title?${o}')
+    }
+  })
+
   window.system.dialog = async o => {
     const files = await window._ipc.send('dialog', o);
     return typeof files === 'string' ? files.split('\n') : [];

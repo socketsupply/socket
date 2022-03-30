@@ -393,6 +393,13 @@ MAIN {
       return;
     }
 
+    if (cmd.name == "size") {
+      int width = std::stoi(cmd.get("width"));
+      int height = std::stoi(cmd.get("height"));
+      w.setSize("", width, height, 0);
+      return;
+    }
+
     if (cmd.name == "external") {
       w.openExternal(decodeURIComponent(cmd.get("value")));
       return;
