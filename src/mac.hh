@@ -24,7 +24,16 @@ int lastY = 0;
 }
 
 - (void) draggingExited: (id<NSDraggingInfo>)info {
-  auto payload = Operator::emitToRenderProcess("dragend", "{}");
+  NSPoint pos = [info draggingLocation];
+  auto x = std::to_string(pos.x);
+  auto y = std::to_string([self frame].size.height - pos.y);
+
+  std::string json = (
+    "{\"x\":" + x + ","
+    "\"y\":" + y + "}"
+  );
+
+  auto payload = Operator::emitToRenderProcess("dragend", json);
   draggablePayload.clear();
 
   [self evaluateJavaScript:
@@ -206,8 +215,16 @@ int lastY = 0;
 }
 
 - (void) mouseDragged: (NSEvent*)event {
-  [super mouseDragged:event];
   NSPoint location = [self convertPoint:[event locationInWindow] fromView:nil];
+  [super mouseDragged:event];
+
+  if (!NSPointInRect(location, self.frame)) {
+    auto payload = Operator::emitToRenderProcess("dragexit", "{}");
+    [self evaluateJavaScript:
+      [NSString stringWithUTF8String: payload.c_str()]
+      completionHandler:nil];
+  }
+
 
   if (draggablePayload.size() == 0) return;
 
