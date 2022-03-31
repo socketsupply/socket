@@ -226,7 +226,9 @@ namespace Operator {
         std::string js(
           "(() => {"
           "  const el = document.elementFromPoint(" + x + "," + y + ");"
-          "  return el && el.dataset.src"
+          "  if (!el) return;"
+          "  const found = el.matches('[data-src]') ? el : el.closest('[data-src']);"
+          "  return found && found.dataset.src"
           "})()"
         );
 
@@ -256,6 +258,19 @@ namespace Operator {
       }),
       this
     );
+
+    g_signal_connect(
+      G_OBJECT(webview),
+      "focus",
+      G_CALLBACK(+[](
+        GtkWidget *wv,
+        GtkDirectionType direction,
+        gpointer arg)
+      {
+        auto *w = static_cast<Window*>(arg);
+        if (!w) return;
+      }
+    })
 
     g_signal_connect(
       G_OBJECT(webview),

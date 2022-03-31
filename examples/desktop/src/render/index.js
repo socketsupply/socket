@@ -60,6 +60,7 @@ window.addEventListener('drag', e => {
 window.addEventListener('dragend', () => {
   setTimeout(() => { // be the last event
     document.body.removeAttribute('dragging')
+    if (!elementDraggingIndicator) return
     elementDraggingIndicator.style.display = 'none'
   }, 512)
 })
@@ -264,7 +265,7 @@ class AppContainer extends Tonic {
         <div
           class="draggable"
           data-macsrc="/Users/paolofragomeni/projects/optoolco/op/README.md;https://optool.co/images/operator-horizontal.svg;/tmp/test.txt"
-          data-src="/tmp/test.txt;/tmp/test2.txt"
+          data-src="/tmp/test;/tmp/test2.txt"
         >DRAG HERE</div>
 
         <div

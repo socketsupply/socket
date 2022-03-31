@@ -42,7 +42,7 @@ async function main () {
     entryPoints: ['src/render/index.js'],
     bundle: true,
     keepNames: true,
-    minify: true,
+    // minify: true,
     outfile: path.join(target, 'render.js'),
     platform: 'browser'
   })
@@ -51,7 +51,7 @@ async function main () {
     entryPoints: ['src/main/index.js'],
     bundle: true,
     keepNames: true,
-    minify: true,
+    // minify: true,
     format: 'cjs',
     outfile: path.join(target, 'main.js'),
     platform: 'node'

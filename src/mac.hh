@@ -15,6 +15,8 @@
 
 @implementation WV
 std::vector<std::string> draggablePayload;
+int lastX = 0;
+int lastY = 0;
 
 - (BOOL) prepareForDragOperation: (id<NSDraggingInfo>)info {
   [info setDraggingFormation: NSDraggingFormationNone];
@@ -65,40 +67,34 @@ std::vector<std::string> draggablePayload;
 
 - (void) draggingEnded: (id<NSDraggingInfo>)info {
   NSPasteboard *pboard = [info draggingPasteboard];
+  NSPoint pos = [info draggingLocation];
+  int y = [self frame].size.height - pos.y;
 
-  if (NSPointInRect([info draggingLocation], self.frame)) {
-    NSArray<Class> *classes = @[[NSURL class]];
-    NSDictionary *options = @{};
-    NSArray<NSURL*> *files = [pboard readObjectsForClasses:classes options:options];
+  NSArray<Class> *classes = @[[NSURL class]];
+  NSDictionary *options = @{};
+  NSArray<NSURL*> *files = [pboard readObjectsForClasses:classes options:options];
 
-    NSPoint pos = [info draggingLocation];
+  // if (NSPointInRect([info draggingLocation], self.frame)) {
     // NSWindow is (0,0) at bottom left, browser is (0,0) at top left
     // so we need to flip the y coordinate to convert to browser coordinates
-    int y = [self frame].size.height - pos.y;
 
-    for (NSURL *url in files) {
-      std::string path([[url path] UTF8String]);
-      path = Operator::replace(path, "\"", "'");
+  for (NSURL *url in files) {
+    std::string path([[url path] UTF8String]);
+    path = Operator::replace(path, "\"", "'");
 
-      std::string json = (
-        "{\"src\":\"" + path + "\","
-        "\"x\":" + std::to_string(pos.x) + ","
-        "\"y\":" + std::to_string(y) + "}"
-      );
+    std::string json = (
+      "{\"src\":\"" + path + "\","
+      "\"x\":" + std::to_string(pos.x) + ","
+      "\"y\":" + std::to_string(y) + "}"
+    );
 
-      auto payload = Operator::emitToRenderProcess("dropin", json);
+    auto payload = Operator::emitToRenderProcess("dropin", json);
 
-      [self evaluateJavaScript:
-        [NSString stringWithUTF8String: payload.c_str()]
-        completionHandler:nil];
-    }
+    [self evaluateJavaScript:
+      [NSString stringWithUTF8String: payload.c_str()]
+      completionHandler:nil];
   }
-
-  auto payload = Operator::emitToRenderProcess("dragend", "{}");
-
-  [self evaluateJavaScript:
-    [NSString stringWithUTF8String: payload.c_str()]
-    completionHandler:nil];
+  // }
 
   // [super draggingEnded:info];
 }
@@ -108,6 +104,11 @@ std::vector<std::string> draggablePayload;
   auto x = std::to_string(location.x);
   auto y = std::to_string(location.y);
   auto count = std::to_string(draggablePayload.size());
+
+  if (((int) location.x) == lastX || ((int) location.y) == lastY) {
+    [super mouseDown:event];
+    return;
+  }
 
   std::string json = (
     "{\"count\":" + count + ","
@@ -124,12 +125,26 @@ std::vector<std::string> draggablePayload;
 
 - (void) mouseUp: (NSEvent*)event {
   [super mouseUp:event];
-  auto payload = Operator::emitToRenderProcess("dragend", "{}");
-  draggablePayload.clear();
 
-  [self evaluateJavaScript:
-    [NSString stringWithUTF8String: payload.c_str()]
-    completionHandler:nil];
+  NSPoint location = [self convertPoint:[event locationInWindow] fromView:nil];
+  auto x = std::to_string(location.x);
+  auto y = std::to_string(location.y);
+
+  for (auto path : draggablePayload) {
+    path = Operator::replace(path, "\"", "'");
+
+    std::string json = (
+      "{\"src\":\"" + path + "\","
+      "\"x\":" + x + ","
+      "\"y\":" + y + "}"
+    );
+
+    auto payload = Operator::emitToRenderProcess("dragend", json);
+
+    [self evaluateJavaScript:
+      [NSString stringWithUTF8String: payload.c_str()]
+      completionHandler:nil];
+  }
 }
 
 - (void) mouseDown: (NSEvent*)event {
@@ -139,10 +154,15 @@ std::vector<std::string> draggablePayload;
   auto x = std::to_string(location.x);
   auto y = std::to_string(location.y);
 
+  lastX = (int) location.x;
+  lastY = (int) location.y;
+
   std::string js(
     "(() => {"
     "  const el = document.elementFromPoint(" + x + "," + y + ");"
-    "  return el && el.dataset?.src"
+    "  if (!el) return;"
+    "  const found = el.matches('[data-src]') ? el : el.closest('[data-src]');"
+    "  return found && found.dataset.src"
     "})()");
 
   [self

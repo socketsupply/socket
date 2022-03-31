@@ -505,9 +505,9 @@ namespace Operator {
       }
 
       if (dwResult == DRAGDROP_S_DROP) {
-          if (dwEffect == DROPEFFECT_MOVE) {
-              // remove the data we just dropped from active document
-          }
+        if (dwEffect == DROPEFFECT_MOVE) {
+          // remove the data we just dropped from active document
+        }
       }
 
       pDropSource->Release();

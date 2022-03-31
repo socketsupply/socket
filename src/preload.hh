@@ -115,8 +115,15 @@ constexpr auto gPreloadDesktop = R"JS(
   window.system.exit = o => window._ipc.send('exit', o)
   window.system.openExternal = o => window._ipc.send('external', o)
   window.system.setTitle = o => window._ipc.send('title', o)
-  window.system.hide = o => window._ipc.send('hide', o)
   window.system.inspect = o => window.external.invoke(`ipc://inspect`)
+
+  window.system.show = (index = 0) => {
+    return window._ipc.send('show', { index })
+  }
+
+  window.system.hide = (index = 0) => {
+    return window._ipc.send('hide', { index })
+  }
 
   window.resizeTo = (width, height) => {
     const index = window.process.index
