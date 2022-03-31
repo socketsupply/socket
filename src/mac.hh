@@ -130,21 +130,34 @@ int lastY = 0;
   auto x = std::to_string(location.x);
   auto y = std::to_string(location.y);
 
-  for (auto path : draggablePayload) {
-    path = Operator::replace(path, "\"", "'");
+  if (((int) location.x) != lastX || ((int) location.y) != lastY) {
+    for (auto path : draggablePayload) {
+      path = Operator::replace(path, "\"", "'");
 
-    std::string json = (
-      "{\"src\":\"" + path + "\","
-      "\"x\":" + x + ","
-      "\"y\":" + y + "}"
-    );
+      std::string json = (
+        "{\"src\":\"" + path + "\","
+        "\"x\":" + x + ","
+        "\"y\":" + y + "}"
+      );
 
-    auto payload = Operator::emitToRenderProcess("dragend", json);
+      auto payload = Operator::emitToRenderProcess("drop", json);
 
-    [self evaluateJavaScript:
-      [NSString stringWithUTF8String: payload.c_str()]
-      completionHandler:nil];
+      [self evaluateJavaScript:
+        [NSString stringWithUTF8String: payload.c_str()]
+        completionHandler:nil];
+    }
   }
+
+  std::string json = (
+    "{\"x\":" + x + ","
+    "\"y\":" + y + "}"
+  );
+
+  auto payload = Operator::emitToRenderProcess("dragend", json);
+
+  [self evaluateJavaScript:
+    [NSString stringWithUTF8String: payload.c_str()]
+    completionHandler:nil];
 }
 
 - (void) mouseDown: (NSEvent*)event {
