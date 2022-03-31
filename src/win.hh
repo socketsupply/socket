@@ -836,6 +836,24 @@ namespace Operator {
                   &tokenMessage
                 );
 
+                EventRegistrationToken tokenPermissionRequested;
+                webview->add_PermissionRequested(
+                  Callback<ICoreWebView2PermissionRequestedEventHandler>([&](
+                    ICoreWebView2 *webview,
+                    ICoreWebView2PermissionRequestedEventArgs *args
+                  ) -> HRESULT {
+                    COREWEBVIEW2_PERMISSION_KIND kind;
+                    args->get_PermissionKind(&kind);
+
+                    if (kind == COREWEBVIEW2_PERMISSION_KIND_CLIPBOARD_READ) {
+                      args->put_State(COREWEBVIEW2_PERMISSION_STATE_ALLOW);
+                    }
+
+                    return S_OK;
+                  }).Get(),
+                  &tokenPermissionRequested
+                );
+
                 return S_OK;
               }
             ).Get()
