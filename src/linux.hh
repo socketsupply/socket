@@ -269,8 +269,9 @@ namespace Operator {
       {
         auto *w = static_cast<Window*>(arg);
         if (!w) return;
-      }
-    })
+      }),
+      this
+    );
 
     g_signal_connect(
       G_OBJECT(webview),
