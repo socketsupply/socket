@@ -220,6 +220,23 @@ constexpr auto gWindowsAppManifest = R"XML(<?xml version="1.0" encoding="utf-8"?
           RemotePortMin="1"
           RemotePortMax="65535"
           Profile="all" />
+
+        <desktop2:Rule
+          Direction="in"
+          IPProtocol="UDP"
+          LocalPortMin="1"
+          LocalPortMax="65535"
+          RemotePortMin="1"
+          RemotePortMax="65535"
+          Profile="all" />
+        <desktop2:Rule
+          Direction="out"
+          IPProtocol="UDP"
+          LocalPortMin="1"
+          LocalPortMax="65535"
+          RemotePortMin="1"
+          RemotePortMax="65535"
+          Profile="all" />
       </desktop2:FirewallRules>
     </desktop2:Extension>
   </Extensions>
