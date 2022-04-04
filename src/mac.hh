@@ -218,13 +218,28 @@ int lastY = 0;
   NSPoint location = [self convertPoint:[event locationInWindow] fromView:nil];
   [super mouseDragged:event];
 
+  /* NSPoint currentLocation;
+  NSPoint newOrigin;
+
+  NSRect  screenFrame = [[NSScreen mainScreen] frame];
+  NSRect  windowFrame = [self frame];
+
+  currentLocation = [NSEvent mouseLocation];
+  newOrigin.x = currentLocation.x - lastX;
+  newOrigin.y = currentLocation.y - lastY;
+
+  if ((newOrigin.y+windowFrame.size.height) > (screenFrame.origin.y+screenFrame.size.height)){
+    newOrigin.y=screenFrame.origin.y + (screenFrame.size.height-windowFrame.size.height);
+  }
+
+  [[self window] setFrameOrigin:newOrigin]; */
+
   if (!NSPointInRect(location, self.frame)) {
     auto payload = Operator::emitToRenderProcess("dragexit", "{}");
     [self evaluateJavaScript:
       [NSString stringWithUTF8String: payload.c_str()]
       completionHandler:nil];
   }
-
 
   if (draggablePayload.size() == 0) return;
 
@@ -519,9 +534,22 @@ namespace Operator {
     [window setContentMinSize:NSMakeSize(opts.width, opts.height)];
 
     // [window setAppearance:[NSAppearance appearanceNamed:NSAppearanceNameVibrantDark]];
+    auto bg = [NSColor controlBackgroundColor];
+    [window setBackgroundColor:bg];
 
-    // [window setOpaque:NO];
-    [window setBackgroundColor:[NSColor textBackgroundColor]];
+    [window setOpaque:YES];
+    /* [window setBackgroundColor:
+      [NSColor
+        colorWithCalibratedRed: 0.0f
+                         green: 0.0f
+                          blue: 0.0f
+                         alpha: 0.0]]; */
+    /* [window setBackgroundColor:
+      [NSColor
+        colorWithCalibratedRed: 0.09f
+                         green: 0.09f
+                          blue: 0.09f
+                         alpha: 1.0f]]; */
 
     if (opts.frameless) {
       [window setTitlebarAppearsTransparent:true];
@@ -529,6 +557,9 @@ namespace Operator {
 
     // Position window in center of screen
     [window center];
+
+    // window.movableByWindowBackground = true;
+    // window.titlebarAppearsTransparent = true;
 
     // Initialize WKWebView
     WKWebViewConfiguration* config = [WKWebViewConfiguration new];
@@ -571,7 +602,12 @@ namespace Operator {
       setValue:@YES
       forKey:@"allowFileAccessFromFileURLs"];
 
-    window.titlebarAppearsTransparent = true;
+    // window.titlebarAppearsTransparent = true;
+
+    [webview
+      setValue: [NSNumber numberWithBool: YES]
+        forKey: @"drawsTransparentBackground"
+    ];
 
     // [webview registerForDraggedTypes:
     //  [NSArray arrayWithObject:NSPasteboardTypeFileURL]];
@@ -769,6 +805,19 @@ namespace Operator {
   void Window::showInspector () {
     [[this->webview _inspector] show];
   }
+
+  /* void Window::getSystemColor () {
+    NSColor *sc = [bg colorUsingColorSpace:[NSColorSpace genericRGBColorSpace]];
+
+    NSString* hexString = [NSString
+      stringWithFormat:@"%02X%02X%02X",
+        (int) (sc.redComponent * 0xFF),
+        (int) (sc.greenComponent * 0xFF),
+        (int) (sc.blueComponent * 0xFF)];
+
+    auto index = std::to_string(this->opts.index);
+    this->onMessage(resolveToMainProcess(seq, "0", index));
+  } */
 
   void Window::setContextMenu (const std::string& seq, const std::string& value) {
     auto menuItems = split(value, '_');
