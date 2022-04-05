@@ -49,6 +49,7 @@ namespace Operator {
       void eval(const std::string&);
       void show(const std::string&);
       void hide(const std::string&);
+      void setBackgroundColor(int r, int g, int b, float a);
       void kill();
       void close(int code);
       void exit(int code);
@@ -589,14 +590,17 @@ namespace Operator {
     }
   }
 
-  void Window::setBackgroundColor(int r, int g, int b, int a) {
+  void Window::setBackgroundColor(int r, int g, int b, float a) {
+    GdkRGBA color;
+    color.red = r / 255.0;
+    color.green = g / 255.0;
+    color.blue = b / 255.0;
+    color.alpha = a;
+
     gtk_widget_realize(this->window);
-    gtk_widget_override_background_color(this->window, GTK_STATE_FLAG_NORMAL, &GdkRGBA {
-      .red = r / 255.0,
-      .green = g / 255.0,
-      .blue = b / 255.0,
-      .alpha = a / 255.0
-    });
+    gtk_widget_override_background_color(
+      this->window, GTK_STATE_FLAG_NORMAL, &color
+    );
   }
 
   void Window::showInspector () {
