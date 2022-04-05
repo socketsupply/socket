@@ -444,6 +444,7 @@ namespace Operator {
       void setSize(const std::string&, int, int, int);
       void setContextMenu(const std::string&, const std::string&);
       void closeContextMenu(const std::string&);
+      void setBackgroundColor(int r, int g, int b, float a);
       void closeContextMenu();
       void openDialog(const std::string&, bool, bool, bool, bool, const std::string&, const std::string&, const std::string&);
       void showInspector();
@@ -535,21 +536,9 @@ namespace Operator {
 
     // [window setAppearance:[NSAppearance appearanceNamed:NSAppearanceNameVibrantDark]];
     auto bg = [NSColor controlBackgroundColor];
-    [window setBackgroundColor:bg];
+    [window setBackgroundColor: bg];
 
     [window setOpaque:YES];
-    /* [window setBackgroundColor:
-      [NSColor
-        colorWithCalibratedRed: 0.0f
-                         green: 0.0f
-                          blue: 0.0f
-                         alpha: 0.0]]; */
-    /* [window setBackgroundColor:
-      [NSColor
-        colorWithCalibratedRed: 0.09f
-                         green: 0.09f
-                          blue: 0.09f
-                         alpha: 1.0f]]; */
 
     if (opts.frameless) {
       [window setTitlebarAppearsTransparent:true];
@@ -559,7 +548,7 @@ namespace Operator {
     [window center];
 
     // window.movableByWindowBackground = true;
-    // window.titlebarAppearsTransparent = true;
+    window.titlebarAppearsTransparent = true;
 
     // Initialize WKWebView
     WKWebViewConfiguration* config = [WKWebViewConfiguration new];
@@ -604,10 +593,18 @@ namespace Operator {
 
     // window.titlebarAppearsTransparent = true;
 
-    [webview
+    /* [webview
       setValue: [NSNumber numberWithBool: YES]
         forKey: @"drawsTransparentBackground"
-    ];
+    ]; */
+
+    /* [[NSNotificationCenter defaultCenter] addObserver: webview
+                                             selector: @selector(systemColorsDidChangeNotification:)
+                                                 name: NSSystemColorsDidChangeNotification
+                                               object: nil
+    ]; */
+
+
 
     // [webview registerForDraggedTypes:
     //  [NSArray arrayWithObject:NSPasteboardTypeFileURL]];
@@ -806,18 +803,16 @@ namespace Operator {
     [[this->webview _inspector] show];
   }
 
-  /* void Window::getSystemColor () {
-    NSColor *sc = [bg colorUsingColorSpace:[NSColorSpace genericRGBColorSpace]];
+  void Window::setBackgroundColor (int r, int g, int b, float a) {
+    CGFloat sRGBComponents[4] = { r / 255.0, g / 255.0, b / 255.0, a };
+    NSColorSpace *colorSpace = [NSColorSpace sRGBColorSpace];
 
-    NSString* hexString = [NSString
-      stringWithFormat:@"%02X%02X%02X",
-        (int) (sc.redComponent * 0xFF),
-        (int) (sc.greenComponent * 0xFF),
-        (int) (sc.blueComponent * 0xFF)];
-
-    auto index = std::to_string(this->opts.index);
-    this->onMessage(resolveToMainProcess(seq, "0", index));
-  } */
+    [window setBackgroundColor:
+      [NSColor colorWithColorSpace: colorSpace
+                        components: sRGBComponents
+                             count: 4]
+    ];
+  }
 
   void Window::setContextMenu (const std::string& seq, const std::string& value) {
     auto menuItems = split(value, '_');

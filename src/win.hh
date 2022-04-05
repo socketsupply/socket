@@ -1280,6 +1280,11 @@ namespace Operator {
     return 0;
   }
 
+  void Window::setBackgroundColor(int r, int g, int b, float a) {
+    this->window->SetBkColor(RGB(r, g, b));
+    // SetTextColor( RGB( 220,220,220 ));
+  }
+
   void Window::openDialog (
       const std::string& seq,
       bool isSave,

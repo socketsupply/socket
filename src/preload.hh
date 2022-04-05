@@ -117,11 +117,11 @@ constexpr auto gPreloadDesktop = R"JS(
   window.system.setTitle = o => window._ipc.send('title', o)
   window.system.inspect = o => window.external.invoke(`ipc://inspect`)
 
-  window.system.show = (index = 0) => {
+  window.parent.show = window.system.show = (index = 0) => {
     return window._ipc.send('show', { index })
   }
 
-  window.system.hide = (index = 0) => {
+  window.parent.hide = window.system.hide = (index = 0) => {
     return window._ipc.send('hide', { index })
   }
 
@@ -131,12 +131,18 @@ constexpr auto gPreloadDesktop = R"JS(
     window.external.invoke(`ipc://size?${o}`)
   }
 
+  window.parent.setBackgroundColor = opts => {
+    opts.index = window.process.index
+    const o = new URLSearchParams(opts).toString()
+    window.external.invoke(`ipc://background?${o}`)
+  }
+
   Object.defineProperty(window.document, 'title', {
     get () { return window.process.title },
     set (value) {
       const index = window.process.index
       const o = new URLSearchParams({ value, index }).toString()
-      window.external.invoke('ipc://title?${o}')
+      window.external.invoke(`ipc://title?${o}`)
     }
   })
 

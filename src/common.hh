@@ -693,6 +693,7 @@ namespace Operator {
       virtual void setContextMenu(const std::string&, const std::string&) = 0;
       virtual void setSystemMenu(const std::string&, const std::string&) = 0;
       virtual void openDialog(const std::string&, bool, bool, bool, bool, const std::string&, const std::string&, const std::string&) = 0;
+      virtual void setBackgroundColor(int r, int g, int b, float a) = 0;
       virtual void showInspector() = 0;
       virtual ScreenSize getScreenSize() = 0;
   };

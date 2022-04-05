@@ -510,6 +510,7 @@ namespace Operator {
     WebKitSettings *settings = webkit_web_view_get_settings(WEBKIT_WEB_VIEW(webview));
     webkit_settings_set_javascript_can_access_clipboard(settings, true);
     webkit_settings_set_zoom_text_only(settings, false);
+    webkit_web_view_set_transparent(webview, true);
 
     GdkRGBA rgba = {0};
     webkit_web_view_set_background_color(WEBKIT_WEB_VIEW(webview), &rgba);
@@ -587,6 +588,16 @@ namespace Operator {
       auto index = std::to_string(this->opts.index);
       this->onMessage(resolveToMainProcess(seq, "0", index));
     }
+  }
+
+  void Window::setBackgroundColor(int r, int g, int b, int a) {
+    gtk_widget_realize(this->window);
+    gtk_widget_override_background_color(this->window, GTK_STATE_FLAG_NORMAL, &GdkRGBA {
+      .red = r / 255.0,
+      .green = g / 255.0,
+      .blue = b / 255.0,
+      .alpha = a / 255.0
+    });
   }
 
   void Window::showInspector () {

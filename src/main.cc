@@ -393,6 +393,24 @@ MAIN {
       return;
     }
 
+    if (cmd.name == "background") {
+      int red = 0;
+      int green = 0;
+      int blue = 0;
+      float alpha = 1;
+
+      try {
+        red = std::stoi(cmd.get("red"));
+        green = std::stoi(cmd.get("green"));
+        blue = std::stoi(cmd.get("blue"));
+        alpha = std::stof(cmd.get("alpha"));
+      } catch (...) {
+      }
+
+      w.setBackgroundColor(red, green, blue, alpha);
+      return;
+    }
+
     if (cmd.name == "size") {
       int width = std::stoi(cmd.get("width"));
       int height = std::stoi(cmd.get("height"));

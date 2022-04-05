@@ -7,6 +7,17 @@ let elementDraggingIndicator
 let elementUnderDrag
 let lastElementUnderDrag
 
+function setBackgroundColor () {
+  const styles = getComputedStyle(document.body)
+  let hex = styles.getPropertyValue('--tonic-window').slice(1)
+  let [red, green = red, blue = green] = hex.match(/\w\w/g).map(s => parseInt(s, 16))
+
+  window.parent.setBackgroundColor({ red, green, blue, alpha: 1 })
+}
+
+window.matchMedia("(prefers-color-scheme: dark)")
+  .addListener(setBackgroundColor)
+
 window.addEventListener('contextmenu', e => {
   if (!process.debug) {
     e.preventDefault()
@@ -305,4 +316,7 @@ class AppContainer extends Tonic {
   }
 }
 
-window.onload = () => Tonic.add(AppContainer)
+window.onload = () => {
+  Tonic.add(AppContainer)
+  setBackgroundColor()
+}
