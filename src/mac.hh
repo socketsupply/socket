@@ -136,17 +136,23 @@ int lastY = 0;
   [super mouseUp:event];
 
   NSPoint location = [self convertPoint:[event locationInWindow] fromView:nil];
-  auto x = std::to_string(location.x);
-  auto y = std::to_string(location.y);
+  int x = location.x;
+  int y = location.y;
 
-  if (((int) location.x) != lastX || ((int) location.y) != lastY) {
+  auto sx = std::to_string(x);
+  auto sy = std::to_string(y);
+
+  auto significantMoveX = (lastX - x) > 6 || (x - lastX) > 6;
+  auto significantMoveY = (lastY - y) > 6 || (y - lastY) > 6;
+
+  if (significantMoveX || significantMoveY) {
     for (auto path : draggablePayload) {
       path = Operator::replace(path, "\"", "'");
 
       std::string json = (
         "{\"src\":\"" + path + "\","
-        "\"x\":" + x + ","
-        "\"y\":" + y + "}"
+        "\"x\":" + sx + ","
+        "\"y\":" + sy + "}"
       );
 
       auto payload = Operator::emitToRenderProcess("drop", json);
@@ -158,8 +164,8 @@ int lastY = 0;
   }
 
   std::string json = (
-    "{\"x\":" + x + ","
-    "\"y\":" + y + "}"
+    "{\"x\":" + sx + ","
+    "\"y\":" + sy + "}"
   );
 
   auto payload = Operator::emitToRenderProcess("dragend", json);
@@ -243,21 +249,29 @@ int lastY = 0;
 
   if (draggablePayload.size() == 0) return;
 
-  auto x = std::to_string(location.x);
-  auto y = std::to_string(location.y);
-  auto count = std::to_string(draggablePayload.size());
+  int x = location.x;
+  int y = location.y;
 
-  std::string json = (
-    "{\"count\":" + count + ","
-    "\"x\":" + x + ","
-    "\"y\":" + y + "}"
-  );
+  auto significantMoveX = (lastX - x) > 6 || (x - lastX) > 6;
+  auto significantMoveY = (lastY - y) > 6 || (y - lastY) > 6;
 
-  auto payload = Operator::emitToRenderProcess("drag", json);
+  if (significantMoveX || significantMoveY) {
+    auto sx = std::to_string(x);
+    auto sy = std::to_string(y);
+    auto count = std::to_string(draggablePayload.size());
 
-  [self evaluateJavaScript:
-    [NSString stringWithUTF8String: payload.c_str()]
-    completionHandler:nil];
+    std::string json = (
+      "{\"count\":" + count + ","
+      "\"x\":" + sx + ","
+      "\"y\":" + sy + "}"
+    );
+
+    auto payload = Operator::emitToRenderProcess("drag", json);
+
+    [self evaluateJavaScript:
+      [NSString stringWithUTF8String: payload.c_str()]
+      completionHandler:nil];
+  }
 
   if (NSPointInRect(location, self.frame)) return;
 
