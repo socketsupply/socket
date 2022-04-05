@@ -555,31 +555,36 @@ namespace Operator {
       }
 
       HDROP p = (HDROP)GlobalLock(medium.hGlobal);
-      int num = DragQueryFile(p, 0xFFFFFFFF, NULL, 0);
+      int len = DragQueryFile(p, 0xFFFFFFFF, NULL, 0);
 
-      for (int iFile = 0; iFile < num; iFile++) {
-        int size = DragQueryFile(p, iFile, NULL, 0);
+      std::stringstream ss;
+      ss << "[";
+
+      for (int i = 0; i < len; i++) {
+        int size = DragQueryFile(p, i, NULL, 0);
 
         TCHAR* buf = new TCHAR[size + 1];
-        DragQueryFile(p, iFile, buf, size + 1);
+        DragQueryFile(p, i, buf, size + 1);
 
-        //
-        // windows requires a few special needs things. chromium webview doesn't
-        // handle calculating devicePixelRatio like wkwebview does, also paths.
-        //
-        auto lolWindowsPath = Operator::replace(std::string(buf), "\\\\", "\\\\\\\\");
+        auto path = Operator::replace(std::string(buf), "\\\\", "\\\\\\\\");
+        ss << "\"" << path << "\"";
 
-        this->window->eval(
-          "(() => {"
-          "  const value = {\"src\":\"" + lolWindowsPath + "\","
-              "\"x\": " + std::to_string(x) + " / window.devicePixelRatio,"
-              "\"y\": " + std::to_string(y) + " / window.devicePixelRatio};"
-          "  window._ipc.emit('dropin', JSON.stringify(value));"
-          "})()"
-        );
-
+        if (i < len - 1) {
+          ss << ",";
+        }
         delete[] buf;
       }
+
+      ss << "]";
+
+      this->window->eval(
+        "(() => {"
+        "  const value = {\"src\": " + ss.str() + ","
+            "\"x\": " + std::to_string(x) + " / window.devicePixelRatio,"
+            "\"y\": " + std::to_string(y) + " / window.devicePixelRatio};"
+        "  window._ipc.emit('dropin', JSON.stringify(value));"
+        "})()"
+      );
 
       GlobalUnlock(medium.hGlobal);
       ReleaseStgMedium(&medium);

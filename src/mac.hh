@@ -70,6 +70,7 @@ int lastY = 0;
 }
 
 - (void) draggingEntered: (id<NSDraggingInfo>)info {
+  // TODO add a slight delay and abort
   [NSApp activateIgnoringOtherApps:YES];
   [self draggingUpdated: info];
 }
@@ -87,22 +88,35 @@ int lastY = 0;
     // NSWindow is (0,0) at bottom left, browser is (0,0) at top left
     // so we need to flip the y coordinate to convert to browser coordinates
 
-  for (NSURL *url in files) {
-    std::string path([[url path] UTF8String]);
-    path = Operator::replace(path, "\"", "'");
+  std::stringstream ss;
+  int len = [files count];
+  ss << "[";
 
-    std::string json = (
-      "{\"src\":\"" + path + "\","
-      "\"x\":" + std::to_string(pos.x) + ","
-      "\"y\":" + std::to_string(y) + "}"
-    );
+  for (int i = 0; i < len; i++) {
+    NSURL *url = files[i];
+    std::string path = [[url path] UTF8String];
+    // path = Operator::replace(path, "\"", "'");
+    // path = Operator::replace(path, "\\", "\\\\");
+    ss << "\"" << path << "\"";
 
-    auto payload = Operator::emitToRenderProcess("dropin", json);
-
-    [self evaluateJavaScript:
-      [NSString stringWithUTF8String: payload.c_str()]
-      completionHandler:nil];
+    if (i < len - 1) {
+      ss << ",";
+    }
   }
+
+  ss << "]";
+
+  std::string json = (
+    "{\"files\": " + ss.str() + ","
+    "\"x\":" + std::to_string(pos.x) + ","
+    "\"y\":" + std::to_string(y) + "}"
+  );
+
+  auto payload = Operator::emitToRenderProcess("dropin", json);
+
+  [self evaluateJavaScript:
+    [NSString stringWithUTF8String: payload.c_str()]
+    completionHandler:nil];
   // }
 
   // [super draggingEnded:info];
@@ -276,7 +290,7 @@ int lastY = 0;
   if (NSPointInRect(location, self.frame)) return;
 
   NSPasteboard *pboard = [NSPasteboard pasteboardWithName: NSPasteboardNameDrag];
-  [pboard declareTypes: @[(NSString*)kPasteboardTypeFileURLPromise] owner:self];
+  [pboard declareTypes: @[(NSString*)kPasteboardTypeFileURLPromise, (NSString*)kUTTypeDirectory] owner:self];
 
   NSMutableArray* dragItems = [[NSMutableArray alloc] init];
   NSSize iconSize = NSMakeSize(32, 32); // according to documentation
