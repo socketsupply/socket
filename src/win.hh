@@ -566,7 +566,7 @@ namespace Operator {
         TCHAR* buf = new TCHAR[size + 1];
         DragQueryFile(p, i, buf, size + 1);
 
-        auto path = Operator::replace(std::string(buf), "\\\\", "\\\\\\\\");
+        auto path = Operator::replace(std::string(buf), "\\\\", "\\\\\\");
         ss << "\"" << path << "\"";
 
         if (i < len - 1) {
@@ -579,7 +579,7 @@ namespace Operator {
 
       this->window->eval(
         "(() => {"
-        "  const value = {\"src\": " + ss.str() + ","
+        "  const value = {\"files\": " + ss.str() + ","
             "\"x\": " + std::to_string(x) + " / window.devicePixelRatio,"
             "\"y\": " + std::to_string(y) + " / window.devicePixelRatio};"
         "  window._ipc.emit('dropin', JSON.stringify(value));"
