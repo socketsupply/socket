@@ -45,6 +45,7 @@ namespace Operator {
   class App: public IApp {
     public:
       MSG msg;
+      WNDCLASSEX wcex;
       _In_ HINSTANCE hInstance;
       DWORD mainThread = GetCurrentThreadId();
 
@@ -165,6 +166,7 @@ namespace Operator {
       );
       int openExternal(const std::string&);
       ScreenSize getScreenSize();
+      void setBackgroundColor(int r, int g, int b, float a);
   };
 
   class CDataObject : public IDataObject {
@@ -630,7 +632,6 @@ namespace Operator {
 
     auto *szWindowClass = L"DesktopApp";
     auto *szTitle = L"op";
-    WNDCLASSEX wcex;
 
     wcex.cbSize = sizeof(WNDCLASSEX);
     wcex.style = CS_HREDRAW | CS_VREDRAW;
@@ -1281,7 +1282,10 @@ namespace Operator {
   }
 
   void Window::setBackgroundColor(int r, int g, int b, float a) {
-    this->window->SetBkColor(RGB(r, g, b));
+    SetBkColor(GetDC(window), RGB(r, g, b));
+    app.wcex.hbrBackground = CreateSolidBrush(RGB(r, g, b));
+
+    // this->window->SetBkColor(RGB(r, g, b));
     // SetTextColor( RGB( 220,220,220 ));
   }
 
