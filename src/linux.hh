@@ -510,7 +510,6 @@ namespace Operator {
     WebKitSettings *settings = webkit_web_view_get_settings(WEBKIT_WEB_VIEW(webview));
     webkit_settings_set_javascript_can_access_clipboard(settings, true);
     webkit_settings_set_zoom_text_only(settings, false);
-    webkit_web_view_set_transparent(webview, true);
 
     GdkRGBA rgba = {0};
     webkit_web_view_set_background_color(WEBKIT_WEB_VIEW(webview), &rgba);
