@@ -226,9 +226,11 @@ namespace Operator {
 
         std::string js(
           "(() => {"
-          "  const el = document.elementFromPoint(" + x + "," + y + ");"
+          "  let el = null;"
+          "  try { el = document.elementFromPoint(" + x + "," + y + "); }"
+          "  catch (err) { console.error(err.stack || err.message || err); }"
           "  if (!el) return;"
-          "  const found = el.matches('[data-src]') ? el : el.closest('[data-src']);"
+          "  const found = el.matches('[data-src]') ? el : el.closest('[data-src]');"
           "  return found && found.dataset.src"
           "})()"
         );
