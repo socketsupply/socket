@@ -209,25 +209,20 @@ namespace Operator {
 
         std::string tmpFile(std::to_string(Operator::rand64()) + ".download");
 
-        gint ix;
-        gint iy;
-        gdk_window_get_origin(GDK_WINDOW(gtk_widget_get_window(w->window)), &ix, &iy);
+        GdkDevice* device;
+        gint wx;
+        gint wy;
+        gint x;
+        gint y;
 
-        GdkDisplay* display = gdk_display_get_default();
-        GdkSeat* seat = gdk_display_get_default_seat(display);
-        GdkDevice* pointer = gdk_seat_get_pointer(seat);
-
-        gint ux;
-        gint uy;
-        gdk_device_get_position(pointer, NULL, &ux, &uy);
-
-        auto x = std::to_string(ux - ix - 10); // WTF
-        auto y = std::to_string(uy - iy - 28); // WTF
+        device = gdk_drag_context_get_device(context);
+        gdk_device_get_window_at_position(device, &x, &y);
+        gdk_device_get_position(device, 0, &wx, &wy);
 
         std::string js(
           "(() => {"
           "  let el = null;"
-          "  try { el = document.elementFromPoint(" + x + "," + y + "); }"
+          "  try { el = document.elementFromPoint(" + std::to_string(x) + "," + std::to_string(y) + "); }"
           "  catch (err) { console.error(err.stack || err.message || err); }"
           "  if (!el) return;"
           "  const found = el.matches('[data-src]') ? el : el.closest('[data-src]');"
@@ -251,9 +246,10 @@ namespace Operator {
             if (!jsc_value_is_string(value)) return;
 
             JSCException *exception;
-            gchar *str_value;
+            gchar *str_value = jsc_value_to_string(value);
 
-            w->draggablePayload = Operator::split(jsc_value_to_string(value), ';');
+
+            w->draggablePayload = Operator::split(str_value, ';');
             exception = jsc_context_get_exception(jsc_value_get_context(value));
           },
           w
@@ -450,7 +446,16 @@ namespace Operator {
             "\"y\":" + std::to_string(y) + "}"
           );
 
-          w->eval(emitToRenderProcess("dropin", json));
+          w->eval(std::string(
+            "(() => {"
+            "  try {"
+            "    const target = document.elementFromPoint(" + std::to_string(x) + "," + std::to_string(y) + ");"
+            "    window._ipc.emit('dropin', '" + json + "', target, { bubbles: true });"
+            "  } catch (err) { "
+            "    console.error(err.stack || err.message || err);"
+            "  }"
+            "})()"
+          ));
         }
 
         w->draggablePayload.clear();
@@ -563,7 +568,10 @@ namespace Operator {
   void Window::eval(const std::string& s) {
     webkit_web_view_run_javascript(
       WEBKIT_WEB_VIEW(webview),
-      s.c_str(),
+      std::string(
+        "try { " + s + "; } "
+        "catch (err) { console.error(err.stack || err.message || err); }"
+      ).c_str(),
       nullptr,
       nullptr,
       nullptr
