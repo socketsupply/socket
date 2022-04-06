@@ -68,7 +68,7 @@ constexpr auto gPreload = R"JS(
     return promise
   }
 
-  window._ipc.emit = (name, value) => {
+  window._ipc.emit = (name, value, target, options) => {
     let detail
 
     try {
@@ -94,8 +94,12 @@ constexpr auto gPreload = R"JS(
       }
     }
 
-    const event = new window.CustomEvent(name, { detail })
-    window.dispatchEvent(event)
+    const event = new window.CustomEvent(name, { detail, ...options })
+    if (target) {
+      target.dispatchEvent(event)
+    } else {
+      window.dispatchEvent(event)
+    }
   }
 )JS";
 
