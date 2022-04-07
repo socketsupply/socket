@@ -451,7 +451,9 @@ namespace Operator {
     };
 
     HRESULT STDMETHODCALLTYPE DragLeave(void) {
-      /* IDropSource* pDropSource;
+      std::cout << "DragLeave" << std::endl;
+      return S_OK;
+      IDropSource* pDropSource;
       IDataObject* pDataObject;
       DWORD dwEffect;
       DWORD dwResult;
@@ -513,7 +515,7 @@ namespace Operator {
       }
 
       pDropSource->Release();
-      pDataObject->Release(); */
+      pDataObject->Release();
 
       return S_OK;
     };
@@ -1304,89 +1306,153 @@ namespace Operator {
       const std::string& title,
       const std::string& defaultName)
   {
-
-    IFileOpenDialog * pfd;
-
-    HRESULT hr = CoInitializeEx(
+    HRESULT result = CoInitializeEx(
       NULL,
-      COINIT_APARTMENTTHREADED |
-      COINIT_DISABLE_OLE1DDE
+      COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE
     );
 
-    if (FAILED(hr)) return;
+    if (FAILED(result)) {
+      // @TODO(jwerle): log fatal error
+      return;
+    }
 
     if (isSave) {
-      hr = CoCreateInstance(
+      IFileSaveDialog *dialog;
+      result = CoCreateInstance(
         CLSID_FileSaveDialog,
         NULL,
-        CLSCTX_INPROC_SERVER,
-        IID_PPV_ARGS(&pfd)
+        CLSCTX_ALL,
+        //CLSCTX_INPROC_SERVER,
+        IID_PPV_ARGS(&dialog)
       );
 
-      hr = pfd->Show(NULL);
-      if (FAILED(hr)) return;
+      if (FAILED(result)) {
+        // @TODO(jwerle): log fatal error
+        CoUninitialize();
+        return;
+      }
 
+      if (!defaultPath.empty()) {
+        IShellItem *defaultFolder;
+        result = SHCreateItemFromParsingName(
+          std::wstring(defaultPath.begin(), defaultPath.end()).c_str(),
+          NULL,
+          IID_PPV_ARGS(&defaultFolder)
+        );
+
+        if (FAILED(result)) {
+          // @TODO(jwerle): log fatal error
+          CoUninitialize();
+          return;
+        }
+
+        result = dialog->SetDefaultFolder(defaultFolder);
+
+        if (FAILED(result)) {
+          // @TODO(jwerle): log fatal error
+          CoUninitialize();
+          return;
+        }
+      }
+
+      result = dialog->Show(NULL);
+
+      if (FAILED(result)) {
+        // @TODO(jwerle): log fatal error
+        CoUninitialize();
+        return;
+      }
     } else {
-      hr = CoCreateInstance(
+      std::vector<std::string> result_paths;
+      std::string result_string = "";
+      IShellItemArray *results;
+      IFileOpenDialog *dialog;
+      DWORD results_count;
+      DWORD dialog_options;
+
+      result = CoCreateInstance(
         CLSID_FileOpenDialog,
         NULL,
         CLSCTX_INPROC_SERVER,
-        IID_PPV_ARGS(&pfd)
+        IID_PPV_ARGS(&dialog)
       );
 
-      DWORD dwOptions;
-      hr = pfd->GetOptions(&dwOptions);
-      if (FAILED(hr)) return;
+      if (FAILED(result)) {
+        // @TODO(jwerle): log fatal error
+        CoUninitialize();
+        return;
+      }
+
+      result = dialog->GetOptions(&dialog_options);
+
+      if (FAILED(result)) {
+        // @TODO(jwerle): log fatal error
+        CoUninitialize();
+        return;
+      }
 
       if (allowDirs == true && allowFiles == false) {
-        hr = pfd->SetOptions(dwOptions | FOS_PICKFOLDERS);
-        if (FAILED(hr)) return;
+        result = dialog->SetOptions(dialog_options | FOS_PICKFOLDERS);
+
+        if (FAILED(result)) {
+          // @TODO(jwerle): log fatal error
+          CoUninitialize();
+          return;
+        }
       }
 
       if ((!isSave || (!isSave && allowDirs)) && allowMultiple) {
-        hr = pfd->SetOptions(dwOptions | FOS_ALLOWMULTISELECT);
-        if (FAILED(hr)) return;
+        result = dialog->SetOptions(dialog_options | FOS_ALLOWMULTISELECT);
+
+        if (FAILED(result)) {
+          // @TODO(jwerle): log fatal error
+          CoUninitialize();
+          return;
+        }
       }
 
-      hr = pfd->Show(NULL);
-      if (FAILED(hr)) return;
+      result = dialog->Show(NULL);
 
-      IShellItemArray *results;
-      hr = pfd->GetResults(&results);
-      if (FAILED(hr)) return;
+      if (FAILED(result)) {
+        // @TODO(jwerle): log fatal error
+        CoUninitialize();
+        return;
+      }
 
-      DWORD count;
-      results->GetCount(&count);
+      result = dialog->GetResults(&results);
 
-      std::vector<std::string> paths;
+      if (FAILED(result)) {
+        // @TODO(jwerle): log fatal error
+        CoUninitialize();
+        return;
+      }
 
-      for (DWORD i = 0; i < count; i++) {
+      results->GetCount(&results_count);
+
+      for (DWORD i = 0; i < results_count; i++) {
         IShellItem *path;
         LPWSTR buf;
+
         results->GetItemAt(i, &path);
         path->GetDisplayName(SIGDN_DESKTOPABSOLUTEPARSING, &buf);
-        paths.push_back(WStringToString(std::wstring(buf)));
+        result_paths.push_back(WStringToString(std::wstring(buf)));
         path->Release();
         CoTaskMemFree(buf);
       }
 
-      std::string result = "";
-
-      for (size_t i = 0, i_end = paths.size(); i < i_end; ++i) {
-        result += (i ? "\\n" : "");
-        std::replace(paths[i].begin(), paths[i].end(), '\\', '/');
-        result += paths[i];
+      for (size_t i = 0, i_end = result_paths.size(); i < i_end; ++i) {
+        result_string += (i ? "\\n" : "");
+        std::replace(result_paths[i].begin(), result_paths[i].end(), '\\', '/');
+        result_string += result_paths[i];
       }
 
-      auto wrapped =  std::string("\"" + result + "\"");
-      this->eval(resolveToRenderProcess(seq, "0", encodeURIComponent(wrapped)));
+      auto wrapped_result_string =  std::string("\"" + result_string + "\"");
+      this->eval(resolveToRenderProcess(seq, "0", encodeURIComponent(wrapped_result_string)));
 
       results->Release();
+      dialog->Release();
     }
 
-    if (FAILED(hr)) return;
-
-    pfd->Release();
     CoUninitialize();
   }
 
