@@ -1472,7 +1472,7 @@ namespace Operator {
       return;
     }
 
-    if (!isSave) {
+    if (isSave) {
       result = dialog.save->GetResult(&single_result);
 
       if (FAILED(result)) {
@@ -1490,12 +1490,6 @@ namespace Operator {
       }
     }
 
-    if (isSave) {
-      result = dialog.save->Show(NULL);
-    } else {
-      result = dialog.open->Show(NULL);
-    }
-
     if (FAILED(result)) {
       std::cerr << "ERR: IFileDialog::Show() failed in 'openDialog()'" << std::endl;
       CoUninitialize();
@@ -1504,12 +1498,6 @@ namespace Operator {
 
     if (isSave) {
       LPWSTR buf;
-
-      if (FAILED(result)) {
-        std::cerr << "ERR: IShellItemArray::GetItemAt() failed in 'openDialog()'" << std::endl;
-        CoUninitialize();
-        return;
-      }
 
       result = single_result->GetDisplayName(SIGDN_DESKTOPABSOLUTEPARSING, &buf);
 
@@ -1521,6 +1509,7 @@ namespace Operator {
 
       result_paths.push_back(WStringToString(std::wstring(buf)));
       single_result->Release();
+
       CoTaskMemFree(buf);
     } else {
       results->GetCount(&results_count);
@@ -1555,13 +1544,13 @@ namespace Operator {
         path->Release();
         CoTaskMemFree(buf);
       }
+    }
 
       for (size_t i = 0, i_end = result_paths.size(); i < i_end; ++i) {
         result_string += (i ? "\\n" : "");
         std::replace(result_paths[i].begin(), result_paths[i].end(), '\\', '/');
         result_string += result_paths[i];
       }
-    }
 
     auto wrapped_result_string =  std::string("\"" + result_string + "\"");
     this->eval(resolveToRenderProcess(seq, "0", encodeURIComponent(wrapped_result_string)));
@@ -1572,7 +1561,9 @@ namespace Operator {
       dialog.open->Release();
     }
 
-    results->Release();
+    if (!isSave) {
+      results->Release();
+    }
 
     CoUninitialize();
   }
