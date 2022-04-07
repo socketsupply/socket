@@ -207,8 +207,6 @@ namespace Operator {
         auto *w = static_cast<Window*>(arg);
         w->isDragInvokedInsideWindow = true;
 
-        std::string tmpFile(std::to_string(Operator::rand64()) + ".download");
-
         GdkDevice* device;
         gint wx;
         gint wy;
@@ -403,14 +401,6 @@ namespace Operator {
         gchar** uris = gtk_selection_data_get_uris(data);
         int len = gtk_selection_data_get_length(data) - 1;
         if (!uris) return;
-
-        if (w->isDragInvokedInsideWindow) {
-          // // fucking useless, i already know about these
-          // for (size_t i = 0; uris[i] != nullptr; i++) {
-          //   std::cout << "+++ " << uris[i] << std::endl;
-          // }
-          return;
-        }
 
         auto v = &w->draggablePayload;
 
