@@ -123,7 +123,7 @@ Comment={{description}}
 Categories={{linux_categories}};
 )INI";
 
-constexpr auto gDebianManifest = R"DEB(Package: {{name}}
+constexpr auto gDebianManifest = R"DEB(Package: {{deb_name}}
 Version: {{version_short}}
 Architecture: {{arch}}
 Maintainer: {{maintainer}}

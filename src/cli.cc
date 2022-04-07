@@ -432,6 +432,11 @@ int main (const int argc, const char* argv[]) {
     ).string();
 
     writeFile(pathManifestFile / (settings["name"] + ".desktop"), tmpl(gDestkopManifest, settings));
+
+    if (settings.count("deb_name") == 0) {
+      settings["deb_name"] = settings["name"];
+    }
+
     writeFile(pathControlFile / "control", tmpl(gDebianManifest, settings));
 
     auto pathToIconSrc = (target / settings["linux_icon"]).string();
