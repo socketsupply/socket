@@ -1355,6 +1355,30 @@ namespace Operator {
         }
       }
 
+      if (!title.empty()) {
+        result = dialog->SetTitle(
+          std::wstring(title.begin(), title.end()).c_str()
+        );
+
+        if (FAILED(result)) {
+          // @TODO(jwerle): log fatal error
+          CoUninitialize();
+          return;
+        }
+      }
+
+      if (!defaultName.empty()) {
+        result = dialog->SetFileName(
+          std::wstring(defaultName.begin(), defaultName.end()).c_str()
+        );
+
+        if (FAILED(result)) {
+          // @TODO(jwerle): log fatal error
+          CoUninitialize();
+          return;
+        }
+      }
+
       result = dialog->Show(NULL);
 
       if (FAILED(result)) {
@@ -1403,6 +1427,53 @@ namespace Operator {
 
       if ((!isSave || (!isSave && allowDirs)) && allowMultiple) {
         result = dialog->SetOptions(dialog_options | FOS_ALLOWMULTISELECT);
+
+        if (FAILED(result)) {
+          // @TODO(jwerle): log fatal error
+          CoUninitialize();
+          return;
+        }
+      }
+
+      if (!defaultPath.empty()) {
+        IShellItem *defaultFolder;
+        result = SHCreateItemFromParsingName(
+          std::wstring(defaultPath.begin(), defaultPath.end()).c_str(),
+          NULL,
+          IID_PPV_ARGS(&defaultFolder)
+        );
+
+        if (FAILED(result)) {
+          // @TODO(jwerle): log fatal error
+          CoUninitialize();
+          return;
+        }
+
+        result = dialog->SetDefaultFolder(defaultFolder);
+
+        if (FAILED(result)) {
+          // @TODO(jwerle): log fatal error
+          CoUninitialize();
+          return;
+        }
+      }
+
+      if (!title.empty()) {
+        result = dialog->SetTitle(
+          std::wstring(title.begin(), title.end()).c_str()
+        );
+
+        if (FAILED(result)) {
+          // @TODO(jwerle): log fatal error
+          CoUninitialize();
+          return;
+        }
+      }
+
+      if (!defaultName.empty()) {
+        result = dialog->SetFileName(
+          std::wstring(defaultName.begin(), defaultName.end()).c_str()
+        );
 
         if (FAILED(result)) {
           // @TODO(jwerle): log fatal error
