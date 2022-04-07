@@ -1306,206 +1306,251 @@ namespace Operator {
       const std::string& title,
       const std::string& defaultName)
   {
-    HRESULT result = CoInitializeEx(
+    std::vector<std::string> result_paths;
+    std::string result_string = "";
+    IShellItemArray *results;
+    IShellItem *single_result;
+    DWORD dialog_options;
+    DWORD results_count;
+    HRESULT result;
+
+    // the dialogs as a union, because there can only _one_.
+    union {
+      IFileSaveDialog *save;
+      IFileOpenDialog *open;
+    } dialog;
+
+    result = CoInitializeEx(
       NULL,
       COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE
     );
 
     if (FAILED(result)) {
-      // @TODO(jwerle): log fatal error
+      std::cerr << "ERR: CoInitializeEx() failed in 'openDialog()'" << std::endl;
       return;
     }
 
+    // create IFileDialog instance (IFileOpenDialog or IFileSaveDialog)
     if (isSave) {
-      IFileSaveDialog *dialog;
       result = CoCreateInstance(
         CLSID_FileSaveDialog,
         NULL,
         CLSCTX_ALL,
         //CLSCTX_INPROC_SERVER,
-        IID_PPV_ARGS(&dialog)
+        IID_PPV_ARGS(&dialog.save)
       );
 
       if (FAILED(result)) {
-        // @TODO(jwerle): log fatal error
-        CoUninitialize();
-        return;
-      }
-
-      if (!defaultPath.empty()) {
-        IShellItem *defaultFolder;
-        result = SHCreateItemFromParsingName(
-          std::wstring(defaultPath.begin(), defaultPath.end()).c_str(),
-          NULL,
-          IID_PPV_ARGS(&defaultFolder)
-        );
-
-        if (FAILED(result)) {
-          // @TODO(jwerle): log fatal error
-          CoUninitialize();
-          return;
-        }
-
-        result = dialog->SetDefaultFolder(defaultFolder);
-
-        if (FAILED(result)) {
-          // @TODO(jwerle): log fatal error
-          CoUninitialize();
-          return;
-        }
-      }
-
-      if (!title.empty()) {
-        result = dialog->SetTitle(
-          std::wstring(title.begin(), title.end()).c_str()
-        );
-
-        if (FAILED(result)) {
-          // @TODO(jwerle): log fatal error
-          CoUninitialize();
-          return;
-        }
-      }
-
-      if (!defaultName.empty()) {
-        result = dialog->SetFileName(
-          std::wstring(defaultName.begin(), defaultName.end()).c_str()
-        );
-
-        if (FAILED(result)) {
-          // @TODO(jwerle): log fatal error
-          CoUninitialize();
-          return;
-        }
-      }
-
-      result = dialog->Show(NULL);
-
-      if (FAILED(result)) {
-        // @TODO(jwerle): log fatal error
+        std::cerr << "ERR: CoCreateInstance() failed in 'openDialog()'" << std::endl;
         CoUninitialize();
         return;
       }
     } else {
-      std::vector<std::string> result_paths;
-      std::string result_string = "";
-      IShellItemArray *results;
-      IFileOpenDialog *dialog;
-      DWORD results_count;
-      DWORD dialog_options;
-
       result = CoCreateInstance(
         CLSID_FileOpenDialog,
         NULL,
         CLSCTX_INPROC_SERVER,
-        IID_PPV_ARGS(&dialog)
+        IID_PPV_ARGS(&dialog.open)
       );
 
       if (FAILED(result)) {
-        // @TODO(jwerle): log fatal error
+        std::cerr << "ERR: CoCreateInstance() failed in 'openDialog()'" << std::endl;
         CoUninitialize();
         return;
       }
+    }
 
-      result = dialog->GetOptions(&dialog_options);
+    if (isSave) {
+      result = dialog.save->GetOptions(&dialog_options);
+    } else {
+      result = dialog.open->GetOptions(&dialog_options);
+    }
+
+    if (FAILED(result)) {
+      std::cerr << "ERR: IFileDialog::GetOptions() failed in 'openDialog()'" << std::endl;
+      CoUninitialize();
+      return;
+    }
+
+    if (allowDirs == true && allowFiles == false) {
+      if (isSave) {
+        result = dialog.save->SetOptions(dialog_options | FOS_PICKFOLDERS);
+      } else {
+        result = dialog.open->SetOptions(dialog_options | FOS_PICKFOLDERS);
+      }
 
       if (FAILED(result)) {
-        // @TODO(jwerle): log fatal error
+        std::cerr << "ERR: IFileDialog::SetOptions(FOS_PICKFOLDERS) failed in 'openDialog()'" << std::endl;
+        CoUninitialize();
+        return;
+      }
+    }
+
+    if ((!isSave || (!isSave && allowDirs)) && allowMultiple) {
+      result = dialog.open->SetOptions(dialog_options | FOS_ALLOWMULTISELECT);
+
+      if (FAILED(result)) {
+        std::cerr << "ERR: IFileDialog::SetOptions(FOS_ALLOWMULTISELECT) failed in 'openDialog()'" << std::endl;
+        CoUninitialize();
+        return;
+      }
+    }
+
+    if (!defaultPath.empty()) {
+      IShellItem *defaultFolder;
+
+      result = SHCreateItemFromParsingName(
+        std::wstring(defaultPath.begin(), defaultPath.end()).c_str(),
+        NULL,
+        IID_PPV_ARGS(&defaultFolder)
+      );
+
+      if (FAILED(result)) {
+        std::cerr << "ERR: SHCreateItemFromParsingName() failed in 'openDialog()'" << std::endl;
         CoUninitialize();
         return;
       }
 
-      if (allowDirs == true && allowFiles == false) {
-        result = dialog->SetOptions(dialog_options | FOS_PICKFOLDERS);
-
-        if (FAILED(result)) {
-          // @TODO(jwerle): log fatal error
-          CoUninitialize();
-          return;
-        }
+      if (isSave) {
+        result = dialog.save->SetDefaultFolder(defaultFolder);
+      } else {
+        result = dialog.open->SetDefaultFolder(defaultFolder);
       }
 
-      if ((!isSave || (!isSave && allowDirs)) && allowMultiple) {
-        result = dialog->SetOptions(dialog_options | FOS_ALLOWMULTISELECT);
-
-        if (FAILED(result)) {
-          // @TODO(jwerle): log fatal error
-          CoUninitialize();
-          return;
-        }
+      if (FAILED(result)) {
+        std::cerr << "ERR: IFileDialog::SetDefaultFolder() failed in 'openDialog()'" << std::endl;
+        CoUninitialize();
+        return;
       }
+    }
 
-      if (!defaultPath.empty()) {
-        IShellItem *defaultFolder;
-        result = SHCreateItemFromParsingName(
-          std::wstring(defaultPath.begin(), defaultPath.end()).c_str(),
-          NULL,
-          IID_PPV_ARGS(&defaultFolder)
-        );
-
-        if (FAILED(result)) {
-          // @TODO(jwerle): log fatal error
-          CoUninitialize();
-          return;
-        }
-
-        result = dialog->SetDefaultFolder(defaultFolder);
-
-        if (FAILED(result)) {
-          // @TODO(jwerle): log fatal error
-          CoUninitialize();
-          return;
-        }
-      }
-
-      if (!title.empty()) {
-        result = dialog->SetTitle(
+    if (!title.empty()) {
+      if (isSave) {
+        result = dialog.save->SetTitle(
           std::wstring(title.begin(), title.end()).c_str()
         );
-
-        if (FAILED(result)) {
-          // @TODO(jwerle): log fatal error
-          CoUninitialize();
-          return;
-        }
+      } else {
+        result = dialog.open->SetTitle(
+          std::wstring(title.begin(), title.end()).c_str()
+        );
       }
 
-      if (!defaultName.empty()) {
-        result = dialog->SetFileName(
+      if (FAILED(result)) {
+        std::cerr << "ERR: IFileDialog::SetTitle() failed in 'openDialog()'" << std::endl;
+        CoUninitialize();
+        return;
+      }
+    }
+
+    if (!defaultName.empty()) {
+      if (isSave) {
+        result = dialog.save->SetFileName(
           std::wstring(defaultName.begin(), defaultName.end()).c_str()
         );
-
-        if (FAILED(result)) {
-          // @TODO(jwerle): log fatal error
-          CoUninitialize();
-          return;
-        }
+      } else {
+        result = dialog.open->SetFileName(
+          std::wstring(defaultName.begin(), defaultName.end()).c_str()
+        );
       }
 
-      result = dialog->Show(NULL);
+      if (FAILED(result)) {
+        std::cerr << "ERR: IFileDialog::SetFileName() failed in 'openDialog()'" << std::endl;
+        CoUninitialize();
+        return;
+      }
+    }
+
+    if (isSave) {
+      result = dialog.save->Show(NULL);
+    } else {
+      result = dialog.open->Show(NULL);
+    }
+
+    if (FAILED(result)) {
+      std::cerr << "ERR: IFileDialog::Show() failed in 'openDialog()'" << std::endl;
+      CoUninitialize();
+      return;
+    }
+
+    if (!isSave) {
+      result = dialog.save->GetResult(&single_result);
 
       if (FAILED(result)) {
-        // @TODO(jwerle): log fatal error
+        std::cerr << "ERR: IFileDialog::GetResult() failed in 'openDialog()'" << std::endl;
+        CoUninitialize();
+        return;
+      }
+    } else {
+      result = dialog.open->GetResults(&results);
+
+      if (FAILED(result)) {
+        std::cerr << "ERR: IFileDialog::GetResults() failed in 'openDialog()'" << std::endl;
+        CoUninitialize();
+        return;
+      }
+    }
+
+    if (isSave) {
+      result = dialog.save->Show(NULL);
+    } else {
+      result = dialog.open->Show(NULL);
+    }
+
+    if (FAILED(result)) {
+      std::cerr << "ERR: IFileDialog::Show() failed in 'openDialog()'" << std::endl;
+      CoUninitialize();
+      return;
+    }
+
+    if (isSave) {
+      LPWSTR buf;
+
+      if (FAILED(result)) {
+        std::cerr << "ERR: IShellItemArray::GetItemAt() failed in 'openDialog()'" << std::endl;
         CoUninitialize();
         return;
       }
 
-      result = dialog->GetResults(&results);
+      result = single_result->GetDisplayName(SIGDN_DESKTOPABSOLUTEPARSING, &buf);
 
       if (FAILED(result)) {
-        // @TODO(jwerle): log fatal error
+        std::cerr << "ERR: IShellItem::GetDisplayName() failed in 'openDialog()'" << std::endl;
         CoUninitialize();
         return;
       }
 
+      result_paths.push_back(WStringToString(std::wstring(buf)));
+      single_result->Release();
+      CoTaskMemFree(buf);
+    } else {
       results->GetCount(&results_count);
+
+      if (FAILED(result)) {
+        std::cerr << "ERR: IShellItemArray::GetCount() failed in 'openDialog()'" << std::endl;
+        CoUninitialize();
+        return;
+      }
 
       for (DWORD i = 0; i < results_count; i++) {
         IShellItem *path;
         LPWSTR buf;
 
-        results->GetItemAt(i, &path);
-        path->GetDisplayName(SIGDN_DESKTOPABSOLUTEPARSING, &buf);
+        result = results->GetItemAt(i, &path);
+
+        if (FAILED(result)) {
+          std::cerr << "ERR: IShellItemArray::GetItemAt() failed in 'openDialog()'" << std::endl;
+          CoUninitialize();
+          return;
+        }
+
+        result = path->GetDisplayName(SIGDN_DESKTOPABSOLUTEPARSING, &buf);
+
+        if (FAILED(result)) {
+          std::cerr << "ERR: IShellItem::GetDisplayName() failed in 'openDialog()'" << std::endl;
+          CoUninitialize();
+          return;
+        }
+
         result_paths.push_back(WStringToString(std::wstring(buf)));
         path->Release();
         CoTaskMemFree(buf);
@@ -1516,28 +1561,33 @@ namespace Operator {
         std::replace(result_paths[i].begin(), result_paths[i].end(), '\\', '/');
         result_string += result_paths[i];
       }
-
-      auto wrapped_result_string =  std::string("\"" + result_string + "\"");
-      this->eval(resolveToRenderProcess(seq, "0", encodeURIComponent(wrapped_result_string)));
-
-      results->Release();
-      dialog->Release();
     }
+
+    auto wrapped_result_string =  std::string("\"" + result_string + "\"");
+    this->eval(resolveToRenderProcess(seq, "0", encodeURIComponent(wrapped_result_string)));
+
+    if (isSave) {
+      dialog.save->Release();
+    } else {
+      dialog.open->Release();
+    }
+
+    results->Release();
 
     CoUninitialize();
   }
 
   LRESULT CALLBACK Window::WndProc(
-    HWND hWnd,
-    UINT message,
-    WPARAM wParam,
-    LPARAM lParam) {
+      HWND hWnd,
+      UINT message,
+      WPARAM wParam,
+      LPARAM lParam) {
 
     Window* w = reinterpret_cast<Window*>(GetWindowLongPtr(hWnd, GWLP_USERDATA));
     switch (message) {
       case WM_SIZE: {
-        if (w == nullptr || w->webview == nullptr) {
-          break;
+                      if (w == nullptr || w->webview == nullptr) {
+                        break;
         }
 
         RECT bounds;
