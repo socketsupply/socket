@@ -116,9 +116,7 @@ Terminal=false
 Type=Application
 Exec={{linux_executable_path}}
 Icon={{linux_icon_path}}
-# Icon must be generated & appended by `toolbox`.
-# Maybe set StartupWMClass ??
-# StartupWMClass={{name}}
+StartupWMClass={{executable}}
 Comment={{description}}
 Categories={{linux_categories}};
 )INI";
