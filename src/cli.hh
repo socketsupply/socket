@@ -2,6 +2,35 @@
 #include <thread>
 
 //
+// Cli Help
+//
+constexpr auto gHelpText = R"TEXT(
+op {{version}}
+
+usage:
+  op <project-dir> [-h, ...]
+
+flags:
+  -b  bundle for app store
+  -c  code sign the bundle
+  -h  help
+  -i  init
+  -v  version
+  -me (macOS) use entitlements
+  -mn (macOS) notarize the bundle
+  -o  only run user build step
+  -p  package the app
+  -r  run after building
+  -xd turn off debug mode (production build)
+
+  -ios (iOS) build for iOS
+  -android (Android) build for Android
+  -simulator build for simulator
+  --test=1 indicate test mode
+)TEXT";
+
+
+//
 // Darwin config
 //
 constexpr auto gPListInfo = R"XML(<?xml version="1.0" encoding="UTF-8"?>

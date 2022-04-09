@@ -18,48 +18,17 @@
 #define CMD_RUNNER
 #endif
 
-constexpr auto version = STR_VALUE(VERSION);
-
 using namespace Operator;
+using namespace std::chrono;
 
-void help () {
-  std::cout
-    << "op " << version
-    << std::endl
-    << std::endl
-    << "usage:" << std::endl
-    << "  op <project-dir> [-h, ...]"
-    << std::endl
-    << std::endl
-    << "flags:" << std::endl
-    << "  -b  bundle for app store" << std::endl
-    << "  -c  code sign the bundle" << std::endl
-    << "  -h  help" << std::endl
-    << "  -i  init" << std::endl
-    << "  -v  version" << std::endl
-    << "  -me (macOS) use entitlements" << std::endl
-    << "  -mn (macOS) notarize the bundle" << std::endl
-    << "  -o  only run user build step" << std::endl
-    << "  -p  package the app" << std::endl
-    << "  -r  run after building" << std::endl
-    << "  -xd turn off debug mode (production build)" << std::endl << std::endl
-    << "  -ios (iOS) build for iOS" << std::endl
-    << "  -android (Android) build for Android" << std::endl
-    << "  -simulator build for simulator" << std::endl
-    << "  --test=1 indicate test mode" << std::endl;
-  ;
-
-  exit(0);
-}
-
+constexpr auto version = STR_VALUE(VERSION);
 auto start = std::chrono::system_clock::now();
 
 void log (const std::string s) {
-#ifdef _WIN32 // unicode console support
+  #ifdef _WIN32 // unicode console support
     SetConsoleOutputCP(CP_UTF8);
     setvbuf(stdout, nullptr, _IOFBF, 1000);
-#endif
-  using namespace std::chrono;
+  #endif
 
   auto now = system_clock::now();
   auto delta = duration_cast<milliseconds>(now - start).count();
@@ -80,8 +49,12 @@ static std::string getCxxFlags() {
 }
 
 int main (const int argc, const char* argv[]) {
+  Map attrs;
+  attrs["version"] = version;
+
   if (argc < 2) {
-    help();
+    std::cout << tmpl(gHelpText, attrs) << std::endl;
+    exit(0);
   }
 
   bool flagRunUserBuild = false;
@@ -97,66 +70,71 @@ int main (const int argc, const char* argv[]) {
   bool flagBuildForAndroid = false;
   bool flagBuildForSimulator = false;
 
+  auto is = [](const std::string& s, const auto& p) -> bool {
+    return s.find(p) == 0;
+  };
+
   for (auto const arg : std::span(argv, argc)) {
-    if (std::string(arg).find("-c") == 0) {
+    if (is(arg, "-c")) {
       flagCodeSign = true;
     }
 
-    if (std::string(arg).find("-h") == 0) {
-      help();
+    if (is(arg, "-h")) {
+      std::cout << tmpl(gHelpText, attrs) << std::endl;
+      exit(0);
     }
 
-    if (std::string(arg).find("-i") == 0) {
+    if (is(arg, "-i")) {
       init();
       exit(0);
     }
 
-    if (std::string(arg).find("-v") == 0) {
+    if (is(arg, "-v")) {
       std::cout << version << std::endl;
       exit(0);
     }
 
-    if (std::string(arg).find("-me") == 0) {
+    if (is(arg, "-me")) {
       flagEntitlements = true;
     }
 
-    if (std::string(arg).find("-mn") == 0) {
+    if (is(arg, "-mn")) {
       flagShouldNotarize = true;
     }
 
-    if (std::string(arg).find("-o") == 0) {
+    if (is(arg, "-o")) {
       flagRunUserBuild = true;
     }
 
-    if (std::string(arg).find("-p") == 0) {
+    if (is(arg, "-p")) {
       flagShouldPackage = true;
     }
 
-    if (std::string(arg).find("-r") == 0) {
+    if (is(arg, "-r")) {
       flagShouldRun = true;
     }
 
-    if (std::string(arg).find("-s") == 0) {
+    if (is(arg, "-s")) {
       flagAppStore = true;
     }
 
-    if (std::string(arg).find("-xd") == 0) {
+    if (is(arg, "-xd")) {
       flagDebugMode = false;
     }
 
-    if (std::string(arg).find("-ios") == 0) {
+    if (is(arg, "-ios")) {
       flagBuildForIOS = true;
     }
 
-    if (std::string(arg).find("-android") == 0) {
+    if (is(arg, "-android")) {
       flagBuildForAndroid = true;
     }
 
-    if (std::string(arg).find("-simulator") == 0) {
+    if (is(arg, "-simulator")) {
       flagBuildForSimulator = true;
     }
 
-    if (std::string(arg).find("--test") == 0) {
+    if (is(arg, "--test")) {
       flagTestMode = true;
     }
   }
@@ -178,6 +156,11 @@ int main (const int argc, const char* argv[]) {
 
   auto target = fs::path(argv[1]);
 
+  if (argv[1][0] == '-') {
+    log("a directory was expected as the first argument");
+    exit(0);
+  }
+
   if (argv[1][0] == '.') {
     target = fs::absolute(target);
   }
@@ -190,7 +173,8 @@ int main (const int argc, const char* argv[]) {
     settings.count("mac_cmd") == 0 &&
     settings.count("linux_cmd") == 0
   ) {
-    log("at least one of 'win_cmd', 'mac_cmd', 'linux_cmd' key/value is required");
+    log("can't find operator.config file in specified directory.");
+    log("config must contain at least one of 'win_cmd', 'mac_cmd', or 'linux_cmd'");
     exit(1);
   }
 
@@ -835,7 +819,6 @@ int main (const int argc, const char* argv[]) {
       << " --file \"" << pathToArchive.string() << "\""
     ;
 
-    // log(notarizeCommand.str());
     auto r = exec(notarizeCommand.str().c_str());
 
     if (r.exitCode != 0) {
@@ -1182,15 +1165,8 @@ int main (const int argc, const char* argv[]) {
 
       if (r.exitCode != 0) {
         log("Unable to sign");
-
-        log("---");
         log(pathPackage.string());
-        log("---");
-
-        log("---");
         log(r.output);
-        log("---");
-
         exit(WEXITSTATUS(r.exitCode));
       }
   }

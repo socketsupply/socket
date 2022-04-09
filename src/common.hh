@@ -49,6 +49,7 @@
 #define RAND_MAX_WIDTH IMAX_BITS(RAND_MAX)
 
 namespace fs = std::filesystem;
+using Map = std::map<std::string, std::string>;
 
 enum {
   FILE_DIALOG_OPEN    = 1 << 0,   // Create an open file dialog.
@@ -133,7 +134,7 @@ namespace Operator {
   //
   // Application data
   //
-  std::map<std::string, std::string> appData;
+  Map appData;
 
   //
   // Window data
@@ -308,7 +309,7 @@ namespace Operator {
     return str;
   }
 
-  inline std::string tmpl(const std::string s, std::map<std::string, std::string> pairs) {
+  inline std::string tmpl(const std::string s, Map pairs) {
     std::string output = s;
 
     for (auto item : pairs) {
@@ -459,9 +460,9 @@ namespace Operator {
     return std::string(local + "\\Programs\\socketsupply");
   }
 
-  inline std::map<std::string, std::string> parseConfig(std::string source) {
+  inline Map parseConfig(std::string source) {
     auto entries = split(source, '\n');
-    std::map<std::string, std::string> settings;
+    Map settings;
 
     for (auto entry : entries) {
       auto index = entry.find_first_of(':');
@@ -482,7 +483,7 @@ namespace Operator {
   // TODO possibly harden data validation.
   //
   class Parse {
-    std::map<std::string, std::string> args;
+    Map args;
     public:
       Parse(const std::string&);
       int index = 0;
