@@ -64,8 +64,7 @@ int lastY = 0;
   auto payload = Operator::emitToRenderProcess("drag", json);
 
   [self evaluateJavaScript:
-    [NSString stringWithUTF8String: payload.c_str()]
-    completionHandler:nil];
+    [NSString stringWithUTF8String: payload.c_str()] completionHandler:nil];
   return NSDragOperationGeneric;
 }
 
@@ -73,6 +72,11 @@ int lastY = 0;
   // TODO add a slight delay and abort
   [NSApp activateIgnoringOtherApps:YES];
   [self draggingUpdated: info];
+
+  auto payload = Operator::emitToRenderProcess("dragenter", "{}");
+  [self evaluateJavaScript:
+    [NSString stringWithUTF8String: payload.c_str()]
+    completionHandler:nil];
 }
 
 - (void) draggingEnded: (id<NSDraggingInfo>)info {
@@ -115,8 +119,7 @@ int lastY = 0;
   auto payload = Operator::emitToRenderProcess("dropin", json);
 
   [self evaluateJavaScript:
-    [NSString stringWithUTF8String: payload.c_str()]
-    completionHandler:nil];
+    [NSString stringWithUTF8String: payload.c_str()] completionHandler:nil];
   // }
 
   // [super draggingEnded:info];
@@ -142,8 +145,7 @@ int lastY = 0;
   auto payload = Operator::emitToRenderProcess("drag", json);
 
   [self evaluateJavaScript:
-    [NSString stringWithUTF8String: payload.c_str()]
-    completionHandler:nil];
+    [NSString stringWithUTF8String: payload.c_str()] completionHandler:nil];
 }
 
 - (void) mouseUp: (NSEvent*)event {
@@ -185,8 +187,7 @@ int lastY = 0;
   auto payload = Operator::emitToRenderProcess("dragend", json);
 
   [self evaluateJavaScript:
-    [NSString stringWithUTF8String: payload.c_str()]
-    completionHandler:nil];
+    [NSString stringWithUTF8String: payload.c_str()] completionHandler:nil];
 }
 
 - (void) mouseDown: (NSEvent*)event {
@@ -257,8 +258,7 @@ int lastY = 0;
   if (!NSPointInRect(location, self.frame)) {
     auto payload = Operator::emitToRenderProcess("dragexit", "{}");
     [self evaluateJavaScript:
-      [NSString stringWithUTF8String: payload.c_str()]
-      completionHandler:nil];
+      [NSString stringWithUTF8String: payload.c_str()] completionHandler:nil];
   }
 
   if (draggablePayload.size() == 0) return;
@@ -283,14 +283,13 @@ int lastY = 0;
     auto payload = Operator::emitToRenderProcess("drag", json);
 
     [self evaluateJavaScript:
-      [NSString stringWithUTF8String: payload.c_str()]
-      completionHandler:nil];
+      [NSString stringWithUTF8String: payload.c_str()] completionHandler:nil];
   }
 
   if (NSPointInRect(location, self.frame)) return;
 
   NSPasteboard *pboard = [NSPasteboard pasteboardWithName: NSPasteboardNameDrag];
-  [pboard declareTypes: @[(NSString*)kPasteboardTypeFileURLPromise, (NSString*)kUTTypeDirectory] owner:self];
+  [pboard declareTypes: @[NSFilesPromisePboardType] owner:self];
 
   NSMutableArray* dragItems = [[NSMutableArray alloc] init];
   NSSize iconSize = NSMakeSize(32, 32); // according to documentation
@@ -411,29 +410,6 @@ int lastY = 0;
 }
 @end
 
-/* @interface WebInspector : NSObject {
-  WKWebView *webView;
-}
-
-- (id) initWithWebView: (WKWebView*) webView;
-- (void) detach: (id) sender;
-- (void) show: (id) sender;
-@end
-
-typedef const struct OpaqueWKPage* WKPageRef;
-typedef const struct OpaqueWKInspector* WKInspectorRef;
-
-WKInspectorRef WKPageGetInspector(WKPageRef pageRef);
-void WKInspectorShow(WKInspectorRef inspector);
-
-@interface WKWebView (Extras)
-@property(readonly, nonatomic) WKPageRef _pageRefForTransitionToWKWebView;
-@end
-
-void WKInspectorShow(WKInspectorRef inspectorRef) {
-  inspectorRef->show();
-} */
-
 namespace Operator {
 
   static bool isDelegateSet = false;
@@ -453,7 +429,6 @@ namespace Operator {
   class Window : public IWindow {
     NSWindow* window;
     WV* webview;
-    // WebInspector* inspector;
 
     public:
       App app;
@@ -552,7 +527,7 @@ namespace Operator {
     NSArray* draggableTypes = [NSArray arrayWithObjects:
                   NSPasteboardTypeURL,
                   NSPasteboardTypeFileURL,
-                  (NSString *)kPasteboardTypeFileURLPromise,
+                  NSFilesPromisePboardType,
                   NSPasteboardTypeString,
                   NSPasteboardTypeHTML,
                   nil];
@@ -900,9 +875,7 @@ namespace Operator {
     NSMenu *dynamicMenu;
     NSMenuItem *menuItem;
 
-    if (NSApp == nil) {
-      return;
-    }
+    if (NSApp == nil) return;
 
     mainMenu = [[NSMenu alloc] init];
 
