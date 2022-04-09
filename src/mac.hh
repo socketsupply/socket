@@ -68,7 +68,7 @@ int lastY = 0;
   return NSDragOperationGeneric;
 }
 
-- (void) draggingEntered: (id<NSDraggingInfo>)info {
+- (NSDragOperation) draggingEntered: (id<NSDraggingInfo>)info {
   // TODO add a slight delay and abort
   [NSApp activateIgnoringOtherApps:YES];
   [self draggingUpdated: info];
@@ -77,6 +77,7 @@ int lastY = 0;
   [self evaluateJavaScript:
     [NSString stringWithUTF8String: payload.c_str()]
     completionHandler:nil];
+  return NSDragOperationGeneric;
 }
 
 - (void) draggingEnded: (id<NSDraggingInfo>)info {
@@ -289,7 +290,7 @@ int lastY = 0;
   if (NSPointInRect(location, self.frame)) return;
 
   NSPasteboard *pboard = [NSPasteboard pasteboardWithName: NSPasteboardNameDrag];
-  [pboard declareTypes: @[NSFilesPromisePboardType] owner:self];
+  [pboard declareTypes: @[(NSString*) kPasteboardTypeFileURLPromise] owner:self];
 
   NSMutableArray* dragItems = [[NSMutableArray alloc] init];
   NSSize iconSize = NSMakeSize(32, 32); // according to documentation
@@ -527,7 +528,7 @@ namespace Operator {
     NSArray* draggableTypes = [NSArray arrayWithObjects:
                   NSPasteboardTypeURL,
                   NSPasteboardTypeFileURL,
-                  NSFilesPromisePboardType,
+                  (NSString*) kPasteboardTypeFileURLPromise,
                   NSPasteboardTypeString,
                   NSPasteboardTypeHTML,
                   nil];
@@ -803,6 +804,9 @@ namespace Operator {
   }
 
   void Window::showInspector () {
+    // This is a private method on the webview, so we need to use
+    // the pragma keyword to suppress the access warning.
+    #pragma clang diagnostic ignored "-Wobjc-method-access"
     [[this->webview _inspector] show];
   }
 
