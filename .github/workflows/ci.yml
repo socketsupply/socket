@@ -1,0 +1,52 @@
+name: Operator Framework CI
+
+on: [push]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: webfactory/ssh-agent
+      uses: webfactory/ssh-agent@v0.4.1
+      with:
+        ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+    - name: Use Node.js
+      uses: actions/setup-node@v2
+      with:
+        node-version: 16.x
+        registry-url: https://npm.pkg.github.com/
+        scope: '@socketsupply'
+
+    - name: Install op deps
+      run: |
+        sudo apt install software-properties-common
+        sudo add-apt-repository ppa:ubuntu-toolchain-r/test
+        sudo apt install gcc-11 g++-11 libwebkit2gtk-4.0-dev
+
+    - name: npm install
+      run: |
+        git config --global user.email "devops@optool.co"
+        git config --global user.name "Optool Github Actions"
+        cd examples/desktop/ && npm install
+      env:
+        CI: true
+        NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
+
+    - name: compile bootstrap
+      run: |
+        ./bin/bootstrap.sh local
+      env:
+        CXX: g++-11
+
+    - name: compile example desktop
+      run: |
+        op ./examples/desktop
+      env:
+        CI: true
+        CXX: g++-11
