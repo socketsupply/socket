@@ -337,7 +337,7 @@ namespace Operator {
       ULONG __stdcall AddRef(void);
       ULONG __stdcall Release(void);
 
-      HRESULT __stdcall QueryContinueDrag(BOOL fEscapePressed, DWORD grfKeyState);
+      HRESULT __stdcall QueryContinueDrag(BOOL fEscapePressed, DWORD keyState);
       HRESULT __stdcall GiveFeedback(DWORD dwEffect);
 
       CDropSource();
@@ -379,12 +379,12 @@ namespace Operator {
     }
   }
 
-  HRESULT __stdcall CDropSource::QueryContinueDrag(BOOL fEscapePressed, DWORD grfKeyState) {
+  HRESULT __stdcall CDropSource::QueryContinueDrag(BOOL fEscapePressed, DWORD keyState) {
     if (fEscapePressed == TRUE) {
       return DRAGDROP_S_CANCEL;
     }
 
-    if ((grfKeyState & MK_LBUTTON) == 0) {
+    if ((keyState & MK_LBUTTON) == 0) {
       return DRAGDROP_S_DROP;
     }
 
@@ -396,7 +396,7 @@ namespace Operator {
   }
 
   HRESULT CreateDropSource(IDropSource **ppDropSource) {
-    if(ppDropSource == 0) {
+    if (ppDropSource == 0) {
       return E_INVALIDARG;
     }
 
@@ -406,6 +406,7 @@ namespace Operator {
   }
 
   class DragDrop : public IDropTarget {
+    std::vector<std::string> draggablePayload;
     unsigned int refCount;
 
     public:
@@ -415,6 +416,10 @@ namespace Operator {
     DragDrop(Window* win) : window(win) {
       refCount = 0;
     };
+
+    ~DragDrop () {
+      draggablePayload.clear();
+    }
 
     private:
     STDMETHODIMP QueryInterface(REFIID riid, void **ppv) {
@@ -427,171 +432,320 @@ namespace Operator {
       return E_NOINTERFACE;
     };
 
-    HRESULT DragEnter(IDataObject *pDataObj, DWORD grfKeyState, POINTL pt, DWORD *pdwEffect) {
-      *pdwEffect &= DROPEFFECT_COPY;
+    HRESULT DragEnter (
+      IDataObject *dataObject,
+      DWORD keyState,
+      POINTL dragPoint,
+      DWORD *dragEffect
+    ) {
+      auto parent = this->window->window;
+      auto child = this->childWindow;
+
+      auto position = POINT {0};
+      auto point = POINT {0};
+      auto rect = RECT {0};
+
+      auto format = FORMATETC {0};
+      auto medium = STGMEDIUM {0};
+      auto result = (HRESULT) 0;
+
+      char *list = 0;
+
+      GetClientRect(child, &rect);
+      position = { rect.left, rect.top };
+
+      MapWindowPoints(parent, GetParent(parent), (LPPOINT) &position, 2);
+      point.x = dragPoint.x - position.x;
+      point.y = dragPoint.y - position.y;
+
+      *dragEffect = DROPEFFECT_MOVE;
+
+      format.cfFormat = CF_TEXT;
+      format.ptd      = NULL;
+      format.dwAspect = DVASPECT_CONTENT;
+      format.lindex   = -1;
+      format.tymed    = TYMED_HGLOBAL;
+
+      dataObject->QueryGetData(&format);
+      dataObject->GetData(&format, &medium);
+
+      list = (char *) GlobalLock(medium.hGlobal);
+
+      this->draggablePayload.clear();
+
+      if (list != 0) {
+        draggablePayload = Operator::split(std::string(list), ';');
+
+        GlobalUnlock(list);
+        ReleaseStgMedium(&medium);
+
+        std::string json = (
+          "{"
+          "  \"count\":" + std::to_string(this->draggablePayload.size()) + ","
+          "  \"inbound\": true,"
+          "  \"x\":" + std::to_string(point.x) + ","
+          "  \"y\":" + std::to_string(point.y) + ""
+          "}"
+        );
+
+        auto payload = Operator::emitToRenderProcess("drag", json);
+        this->window->eval(payload);
+      }
+
       return S_OK;
     };
 
     ULONG AddRef (void) {
       refCount++;
+
       return refCount;
     }
 
     ULONG Release (void) {
       refCount--;
+
       if (refCount == 0) {
         delete this;
       }
+
       return refCount;
     }
 
-    HRESULT STDMETHODCALLTYPE DragOver(DWORD grfKeyState, POINTL pt, DWORD *pdwEffect) {
-      *pdwEffect &= DROPEFFECT_COPY;
+    HRESULT STDMETHODCALLTYPE DragOver (
+      DWORD keyState,
+      POINTL dragPoint,
+      DWORD *dragEffect
+    ) {
+      auto position = POINT {0};
+      auto parent = this->window->window;
+      auto child = this->childWindow;
+      auto point = POINT {0};
+      auto rect = RECT {0};
+
+      *dragEffect = DROPEFFECT_COPY;
+
+      GetClientRect(child, &rect);
+      position = { rect.left, rect.top };
+
+      MapWindowPoints(parent, GetParent(parent), (LPPOINT) &position, 2);
+      point.x = dragPoint.x - position.x;
+      point.y = dragPoint.y - position.y;
+
+      std::string json = (
+        "{"
+        "  \"count\":" + std::to_string(this->draggablePayload.size()) + ","
+        "  \"inbound\": false,"
+        "  \"x\":" + std::to_string(point.x) + ","
+        "  \"y\":" + std::to_string(point.y) + ""
+        "}"
+      );
+
+      auto payload = Operator::emitToRenderProcess("drag", json);
+      this->window->eval(payload);
+
       return S_OK;
     };
 
     HRESULT STDMETHODCALLTYPE DragLeave(void) {
-      std::cout << "DragLeave" << std::endl;
-      return S_OK;
-      IDropSource* pDropSource;
-      IDataObject* pDataObject;
-      DWORD dwEffect;
-      DWORD dwResult;
+      // @TODO(jwerle)
+      IDropSource* dropSource;
+      IDataObject* dataObject;
 
-      FORMATETC fmtetc = { CF_HDROP, 0, DVASPECT_CONTENT, -1, TYMED_ISTREAM };
-      STGMEDIUM stgmed = { TYMED_HGLOBAL, { 0 }, 0 };
+      DWORD dragDropResult;
+      DWORD dropEffect;
+
+      DROPFILES *dropFiles = 0;
+      HGLOBAL globalMemory;
+
+      FORMATETC format = { CF_TEXT, 0, DVASPECT_CONTENT, -1, TYMED_ISTREAM };
+      STGMEDIUM medium = { TYMED_HGLOBAL, { 0 }, 0 };
       UINT len = 0;
 
-      std::vector<std::string> files = {
-        "C:\\Users\\paolo\\projects\\optoolco\\op\\README.md"
-      };
+      std::vector<std::string> files = this->draggablePayload;
 
-      for (auto& f : files) len += f.size();
+      for (auto &file : files) {
+        file = file.substr(12);
+        len += file.size();
+      }
 
-      HGLOBAL hMem = GlobalAlloc(GHND, sizeof(DROPFILES) + len + 1);
-      if (!hMem) return NULL;
+      globalMemory = GlobalAlloc(GHND, sizeof(DROPFILES) + len + 1);
 
-      DROPFILES *dfiles = (DROPFILES*) GlobalLock(hMem);
-      if (!dfiles) {
-        GlobalFree(hMem);
+      if (!globalMemory) {
         return NULL;
       }
 
-      dfiles->pFiles = sizeof(DROPFILES);
-      GetCursorPos(&(dfiles->pt));
-      dfiles->fNC = TRUE;
-      dfiles->fWide = FALSE; // Should probably be true for unicode
+      dropFiles = (DROPFILES*) GlobalLock(globalMemory);
 
-      char *pFile = (char*)&dfiles[1];
-      for (std::vector<std::string>::size_type i = 0; i < files.size(); ++i) {
-        std::string &fileDir = files[i];
-        len = (fileDir.length() + 1);
-
-        memcpy(pFile, fileDir.c_str(), len);
-        pFile += len;
+      if (!dropFiles) {
+        GlobalFree(globalMemory);
+        return NULL;
       }
 
-      GlobalUnlock(hMem);
-      stgmed.hGlobal = hMem;
+      dropFiles->fNC = TRUE;
+      dropFiles->fWide = FALSE; // Should probably be true for unicode
+      dropFiles->pFiles = sizeof(DROPFILES);
+      GetCursorPos(&(dropFiles->pt));
 
-      if (!stgmed.hGlobal) {
+      char *dropFilePtr = (char *) &dropFiles[1];
+      for (std::vector<std::string>::size_type i = 0; i < files.size(); ++i) {
+        std::string &file = files[i];
+
+        len = (file.length() + 1);
+
+        memcpy(dropFilePtr, file.c_str(), len);
+        dropFilePtr += len;
+      }
+
+      GlobalUnlock(globalMemory);
+      medium.hGlobal = globalMemory;
+
+      if (!medium.hGlobal) {
         return S_OK;
       }
 
-      CreateDropSource(&pDropSource);
-      CreateDataObject(&fmtetc, &stgmed, 1, &pDataObject);
+      CreateDropSource(&dropSource);
+      CreateDataObject(&format, &medium, 2, &dataObject);
 
       // ReleaseCapture();
-      dwResult = DoDragDrop(pDataObject, pDropSource, DROPEFFECT_COPY, &dwEffect);
+      dragDropResult = DoDragDrop(
+        dataObject,
+        dropSource,
+        DROPEFFECT_COPY,
+        &dropEffect
+      );
 
-      if (dwResult == DRAGDROP_S_CANCEL) {
+      if (dragDropResult == DRAGDROP_S_CANCEL) {
         return S_OK;
       }
 
-      if (dwResult == DRAGDROP_S_DROP) {
-        if (dwEffect == DROPEFFECT_MOVE) {
-          // remove the data we just dropped from active document
-        }
+      if ((dropEffect & DROPEFFECT_COPY) == DROPEFFECT_COPY) {
+        // @TODO(jwerle)
       }
 
-      pDropSource->Release();
-      pDataObject->Release();
+      if ((dropEffect & DROPEFFECT_MOVE) == DROPEFFECT_MOVE) {
+        // @TODO(jwerle)
+      }
+
+      this->draggablePayload.clear();
+      dropSource->Release();
+      dataObject->Release();
+      GlobalFree(globalMemory);
 
       return S_OK;
     };
 
-    HRESULT STDMETHODCALLTYPE Drop(IDataObject *pDataObj, DWORD grfKeyState, POINTL pt, DWORD *pdwEffect) {
+    HRESULT STDMETHODCALLTYPE Drop (
+      IDataObject *dataObject,
+      DWORD keyState,
+      POINTL dragPoint,
+      DWORD *dragEffect
+    ) {
       //
       // on windows pt.{x,y} are screen coordinates, to get the position of the mouse relative to the window
       // we need to subtract window.{left,top}.
       //
 
-      RECT rect;
-      HWND hWndChild = this->childWindow;
-      HWND hWndParent = this->window->window;
-
-      GetClientRect(hWndChild, &rect);
-      POINT pos = { rect.left, rect.top };
-      MapWindowPoints(hWndParent, GetParent(hWndParent), (LPPOINT)&pos, 2);
-      int x = pt.x - pos.x;
-      int y = pt.y - pos.y;
-
-      HRESULT hr;
-
-      FORMATETC  formatetc;
-      formatetc.cfFormat = CF_HDROP;
-      formatetc.ptd      = NULL;
-      formatetc.dwAspect = DVASPECT_CONTENT;
-      formatetc.lindex   = -1;
-      formatetc.tymed    = TYMED_HGLOBAL;
-
-      hr = pDataObj->QueryGetData(&formatetc);
-      if (FAILED(hr)) {
-        return S_OK;
-      }
+      auto position = POINT {0};
+      auto parent = this->window->window;
+      auto child = this->childWindow;
+      auto point = POINT {0};
+      auto rect = RECT {0};
 
       STGMEDIUM medium;
-      hr = pDataObj->GetData(&formatetc, &medium);
-      if (FAILED(hr)) {
-        return S_OK;
-      }
+      FORMATETC format;
+      HRESULT result;
+      HDROP drop;
+      int count;
 
-      HDROP p = (HDROP)GlobalLock(medium.hGlobal);
-      int len = DragQueryFile(p, 0xFFFFFFFF, NULL, 0);
+      std::stringstream filesStringArray;
 
-      std::stringstream ss;
-      ss << "[";
+      GetClientRect(child, &rect);
+      position = { rect.left, rect.top };
 
-      for (int i = 0; i < len; i++) {
-        int size = DragQueryFile(p, i, NULL, 0);
+      MapWindowPoints(parent, GetParent(parent), (LPPOINT) &position, 2);
+      point.x = dragPoint.x - position.x;
+      point.y = dragPoint.y - position.y;
 
-        TCHAR* buf = new TCHAR[size + 1];
-        DragQueryFile(p, i, buf, size + 1);
+      format.dwAspect = DVASPECT_CONTENT;
+      format.cfFormat = CF_HDROP;
+      format.lindex = -1;
+      format.tymed = TYMED_HGLOBAL;
+      format.ptd = NULL;
 
-        auto path = Operator::replace(std::string(buf), "\\\\", "\\\\\\");
-        ss << "\"" << path << "\"";
+      if (
+        SUCCEEDED(dataObject->QueryGetData(&format)) &&
+        SUCCEEDED(dataObject->GetData(&format, &medium))
+      ) {
+        *dragEffect = DROPEFFECT_COPY;
 
-        if (i < len - 1) {
-          ss << ",";
+        drop = (HDROP) GlobalLock(medium.hGlobal);
+        count = DragQueryFile(drop, 0xFFFFFFFF, NULL, 0);
+
+        for (int i = 0; i < count; i++) {
+          int size = DragQueryFile(drop, i, NULL, 0);
+
+          TCHAR* buf = new TCHAR[size + 1];
+          DragQueryFile(drop, i, buf, size + 1);
+
+          // append escaped file path with wrapped quotes ('"')
+          filesStringArray
+            << '"'
+            << Operator::replace(std::string(buf), "\\\\", "\\\\")
+            << '"';
+
+          if (i < count - 1) {
+            filesStringArray << ",";
+          }
+
+          delete[] buf;
         }
-        delete[] buf;
+
+        this->window->eval(
+          "(() => {"
+          "  const value = {"
+          "    \"files\": [" + filesStringArray.str() + "],"
+          "    \"x\": " + std::to_string(point.x) + " / window.devicePixelRatio,"
+          "    \"y\": " + std::to_string(point.y) + " / window.devicePixelRatio"
+          "  };"
+          "  window._ipc.emit('dropin', JSON.stringify(value));"
+          "})()"
+        );
+
+      } else {
+        format.cfFormat = CF_TEXT;
+        if (
+          SUCCEEDED(dataObject->QueryGetData(&format)) &&
+          SUCCEEDED(dataObject->GetData(&format, &medium))
+        ) {
+          *dragEffect = DROPEFFECT_MOVE;
+          for (auto &src : this->draggablePayload) {
+            std::string json = (
+              "{"
+              "  \"src\": \"" + src + "\","
+              "  \"x\":" + std::to_string(point.x) + ","
+              "  \"y\":" + std::to_string(point.y) + ""
+              "}"
+            );
+
+            this->window->eval(Operator::emitToRenderProcess("drop", json));
+          }
+
+          std::string json = (
+            "{"
+            "  \"x\":" + std::to_string(point.x) + ","
+            "  \"y\":" + std::to_string(point.y) + ""
+            "}"
+          );
+
+          this->window->eval(Operator::emitToRenderProcess("dragend", json));
+        }
       }
 
-      ss << "]";
-
-      this->window->eval(
-        "(() => {"
-        "  const value = {\"files\": " + ss.str() + ","
-            "\"x\": " + std::to_string(x) + " / window.devicePixelRatio,"
-            "\"y\": " + std::to_string(y) + " / window.devicePixelRatio};"
-        "  window._ipc.emit('dropin', JSON.stringify(value));"
-        "})()"
-      );
+      this->draggablePayload.clear();
 
       GlobalUnlock(medium.hGlobal);
       ReleaseStgMedium(&medium);
 
-      *pdwEffect &= DROPEFFECT_COPY;
       return S_OK;
     };
   };
@@ -770,7 +924,7 @@ namespace Operator {
                     wchar_t* buf = new wchar_t[l+1];
                     GetWindowTextW(hWnd, buf, l+1);
 
-                    if (WStringToString(buf).find("Chrome")) {
+                    if (WStringToString(buf).find("Chrome") != std::string::npos) {
                       RevokeDragDrop(hWnd);
                       Window* w = reinterpret_cast<Window*>(GetWindowLongPtr((HWND)window, GWLP_USERDATA));
                       w->drop->childWindow = hWnd;
