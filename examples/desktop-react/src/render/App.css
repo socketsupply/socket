@@ -1,0 +1,24 @@
+.button-increase {
+  background-color: #4CAF50;
+  border: none;
+  border-radius: 25px;
+  color: white;
+  padding: 10px 20px;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  font-size: 16px;
+  transition-duration: 0.4s;
+  border: 2px solid #4CAF50;
+}
+
+.button-increase:hover {
+  background-color: white;
+  color: black;
+}
+
+.button-increase:active {
+  background-color: #3e8e41;
+  transform: translateY(4px);
+  color: white;
+}

@@ -1,0 +1,18 @@
+html, 
+body,
+#root {
+    height: 100%;
+}
+
+body {
+  background-color: bisque;
+}
+
+#root {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  gap: 10px;
+  height: 100%;
+}

@@ -1,0 +1,18 @@
+{
+  "name": "desktop-react",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "op . -r",
+    "build": "op . -xd -p"
+  },
+  "dependencies": {
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0"
+  },
+  "devDependencies": {
+    "@socketsupply/op-node": "^1.4.1",
+    "esbuild": "^0.14.32"
+  }
+}
