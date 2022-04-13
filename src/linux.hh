@@ -652,8 +652,12 @@ namespace Operator {
     GtkWidget *body = gtk_dialog_get_content_area(GTK_DIALOG(GTK_WINDOW(dialog)));
     GtkContainer *content = GTK_CONTAINER(body);
 
+    std::string imgPath = "/usr/share/icons/hicolor/256x256/apps/" +
+      appData["executable"] +
+      ".png";
+
     GdkPixbuf *pixbuf = gdk_pixbuf_new_from_file_at_scale(
-      "/usr/share/icons/hicolor/256x256/apps/operator.png",
+      imgPath.c_str(),
       60,
       60,
       true,
