@@ -29,11 +29,12 @@ jobs:
         sudo add-apt-repository ppa:ubuntu-toolchain-r/test
         sudo apt install gcc-11 g++-11 libwebkit2gtk-4.0-dev
 
-    - name: npm install
+    - name: install an example app
       run: |
         git config --global user.email "devops@optool.co"
         git config --global user.name "Optool Github Actions"
-        cd examples/desktop/ && npm install
+        git clone git@github.com:socketsupply/op-examples.git
+        cd op-examples/tonic-desktop/ && npm install
       env:
         CI: true
         NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
@@ -46,7 +47,7 @@ jobs:
 
     - name: compile example desktop
       run: |
-        op ./examples/desktop
+        op ./op-examples/tonic-desktop/
       env:
         CI: true
         CXX: g++-11
