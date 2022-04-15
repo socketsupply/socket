@@ -920,6 +920,13 @@ namespace Operator {
       auto menuTitle = split(line, ':')[0];
       NSString* nssTitle = [NSString stringWithUTF8String:menuTitle.c_str()];
       dynamicMenu = [[NSMenu alloc] initWithTitle:nssTitle];
+      bool isDisabled = false;
+
+      if (title.size() > 0 && title.find("!") == 0) {
+        title = title.substr(1);
+        std::cout << "disabled: " << title << std::endl;
+        isDisabled = true;
+      }
 
       for (int i = 1; i < menu.size(); i++) {
         auto line = trim(menu[i]);
@@ -1001,6 +1008,11 @@ namespace Operator {
 
         if (mask != 0) {
           [menuItem setKeyEquivalentModifierMask: mask];
+        }
+
+        if (isDisabled) {
+          [menuItem setTarget:nil];
+          [menuItem setAction:NULL];
         }
 
         [menuItem setTag:0]; // only contextMenu uses the tag
