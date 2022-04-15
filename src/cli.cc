@@ -73,7 +73,7 @@ int main (const int argc, const char* argv[]) {
   bool flagBuildForSimulator = false;
 
   auto is = [](const std::string& s, const auto& p) -> bool {
-    return s.find(p) == 0;
+    return s.compare(p) == 0;
   };
 
   for (auto const arg : std::span(argv, argc)) {
