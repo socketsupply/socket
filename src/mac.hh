@@ -15,6 +15,7 @@
 
 @implementation WV
 std::vector<std::string> draggablePayload;
+NSTimer* mouseInteractionTimer;
 int lastX = 0;
 int lastY = 0;
 
