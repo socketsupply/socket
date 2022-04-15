@@ -308,6 +308,13 @@ MAIN {
         return;
       }
 
+      if (cmd.name == "heartbeat") {
+        if (seq.size() > 0) {
+          w.onMessage(resolveToMainProcess(seq, "0", "\"heartbeat\""));
+        }
+        return;
+      }
+
       if (cmd.name == "exit") {
         try {
           exitCode = std::stoi(value);
