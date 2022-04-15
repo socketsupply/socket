@@ -40,10 +40,6 @@ MAIN {
   constexpr auto _settings = STR_VALUE(SETTINGS);
   constexpr auto _debug = DEBUG;
 
-  //
-  // Prepare to forward commandline arguments to the main and render processes.
-  // TODO (@heapwolf): make this url encoded, this way is a little weird.
-  //
   auto cwd = app.getCwd(argv[0]);
   appData = parseConfig(decodeURIComponent(_settings));
 
@@ -179,6 +175,8 @@ MAIN {
     return exitCode;
   }
 
+  static std::vector<Window> windows;
+
   //
   // # Windows
   //
@@ -209,9 +207,10 @@ MAIN {
   }
 
   //
-  // The second window is used for showing previews or progress, so it can
-  // be frameless and prevent resizing, etc. it gets the same preload so
-  // that we can communicate with it from the main process.
+  // TODO this should be created by the user and added to the windows
+  // vector. Any decision to get the window via an index should refer
+  // to the windows vector. When calling show() if the window does't
+  // exist it should be created.
   //
   Window w1(app, WindowOptions {
     .resizable = true,

@@ -69,8 +69,6 @@ int lastY = 0;
 }
 
 - (NSDragOperation) draggingEntered: (id<NSDraggingInfo>)info {
-  // TODO add a slight delay and abort
-  [NSApp activateIgnoringOtherApps:YES];
   [self draggingUpdated: info];
 
   auto payload = Operator::emitToRenderProcess("dragenter", "{}");
@@ -1026,8 +1024,10 @@ namespace Operator {
 
     if (isSave) {
       dialog_save = [NSSavePanel savePanel];
+      [dialog_save setTitle: [NSString stringWithUTF8String:title.c_str()]];
     } else {
       dialog_open = [NSOpenPanel openPanel];
+      // open does not support title for some reason
     }
 
     if (!isSave) {
