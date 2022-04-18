@@ -927,10 +927,10 @@ output: build
 title: Beep Boop
 
 # A string that indicates the version of the cli tool and resources.
-version v0.0.1
+version: v0.0.1
 
 # A string that indicates the version for MacOS.
-version_short 0.0.1
+version_short: 0.0.1
 
 # The initial width of the first window.
 # width: 1024
