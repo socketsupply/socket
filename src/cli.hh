@@ -691,9 +691,9 @@ constexpr auto gXCodeExportOptions = R"XML(<?xml version="1.0" encoding="UTF-8"?
 <plist version="1.0">
 <dict>
 	<key>method</key>
-	<string>{{apple_distribution_method}}</string>
+	<string>{{ios_distribution_method}}</string>
 	<key>teamID</key>
-	<string>{{apple_team_id}}</string>
+	<string>{{ios_team_id}}</string>
 	<key>uploadBitcode</key>
 	<true/>
 	<key>compileBitcode</key>
@@ -703,11 +703,11 @@ constexpr auto gXCodeExportOptions = R"XML(<?xml version="1.0" encoding="UTF-8"?
 	<key>signingStyle</key>
 	<string>manual</string>
 	<key>signingCertificate</key>
-	<string>{{apple_signing_certificate}}</string>
+	<string>{{ios_signing_certificate}}</string>
 	<key>provisioningProfiles</key>
 	<dict>
 		<key>{{bundle_identifier}}</key>
-		<string>{{apple_provisioning_profile}}</string>
+		<string>{{ios_provisioning_profile}}</string>
 	</dict>
 </dict>
 </plist>)XML";
