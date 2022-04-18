@@ -114,7 +114,7 @@ namespace Operator {
       bool mac = false;
       bool win = true;
       bool linux = false;
-      const std::string os = "win";
+      const std::string os = "win32";
 
     #elif defined(__APPLE__)
       bool mac = true;
