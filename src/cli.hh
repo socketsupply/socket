@@ -964,7 +964,7 @@ version_short: 0.0.1
 # Helps to make your app searchable in Linux desktop environments.
 # linux_categories: Developer Tools
 
-# The command to execute to spawn the ‚Äúback-end‚Äù process.
+# The command to execute to spawn the "back-end" process.
 # linux_cmd: beepboop
 
 # The icon to use for identifying your app in Linux desktop environments.
@@ -980,7 +980,7 @@ version_short: 0.0.1
 # A category in the App Store
 # mac_category:
 
-# The command to execute to spawn the ‚Äúback-end‚Äù process.
+# The command to execute to spawn the "back-end" process.
 # mac_cmd:
 
 # TODO description & value
