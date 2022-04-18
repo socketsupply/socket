@@ -1,3 +1,6 @@
+#
+# TODO convert this to a brew package
+#
 #!/usr/bin/env bash
 set -e;
 

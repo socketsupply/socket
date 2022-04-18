@@ -104,6 +104,26 @@ int main (const int argc, const char* argv[]) {
       flagShouldNotarize = true;
     }
 
+    if (is(arg, "-mdid")) {
+      auto r = exec("system_profiler SPUSBDataType -json");
+
+      if (r.exitCode == 0) {
+        std::regex re(R"REGEX("(?:serial_num"\s*:\s*"([^"]*))")REGEX");
+        std::smatch match;
+        std::string uuid;
+
+        if (!std::regex_search(r.output, match, re)) {
+          log("failed to extract uuid from provisioning profile");
+          exit(1);
+        }
+        std::cout << match[1] << std::endl;
+        exit(0);
+      } else {
+        log("Could not get device id");
+        exit(1);
+      }
+    }
+
     if (is(arg, "-o")) {
       flagRunUserBuild = true;
     }

@@ -1,3 +1,7 @@
+#
+# TODO convert this to a apt-get package
+#
+
 #!/usr/bin/env bash
 export KEYNAME=op
 export EMAIL=devops@socketsupply.co

@@ -1,14 +1,6 @@
-if ($args[0] -eq "test-sign") {
-  MakeCert.exe -sv cert.pvk -n "CN=Operator Tool Co, O=Operator, L=New York, S=New York, C=US" cert.cer -r -a sha256
-  pvk2pfx.exe -pvk cert.pvk -pi test -spc cert.cer -pfx cert.pfx
-  $env:CSC_KEY_PASSWORD = 'test'
-  .\bin\op.exe .\example\desktop -p -c
-  Remove-Item cert.cer
-  Remove-Item cert.pfx
-  Remove-Item cert.pvk
-  Exit 0
-}
-
+#
+# TODO convert this to a nuget package
+#
 $OLD_CWD = (Get-Location).Path
 
 $TEMP_PATH = Join-Path $Env:Temp $(New-Guid)

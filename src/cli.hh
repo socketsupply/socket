@@ -29,7 +29,6 @@ flags:
   --test=1 indicate test mode
 )TEXT";
 
-
 //
 // Darwin config
 //
