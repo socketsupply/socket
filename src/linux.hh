@@ -114,6 +114,7 @@ namespace Operator {
 
     if (opts.resizable) {
       gtk_window_set_default_size(GTK_WINDOW(window), opts.width, opts.height);
+      gtk_window_set_position(GTK_WINDOW(window), GTK_WIN_POS_CENTER);
     } else {
       gtk_widget_set_size_request(window, opts.width, opts.height);
     }
@@ -714,8 +715,6 @@ namespace Operator {
 
       gtk_window_set_geometry_hints(GTK_WINDOW(window), nullptr, &g, h);
     }
-
-    gtk_window_set_position(GTK_WINDOW(window), GTK_WIN_POS_CENTER_ALWAYS);
 
     if (seq.size() > 0) {
       auto index = std::to_string(this->opts.index);
