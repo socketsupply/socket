@@ -18,6 +18,7 @@ flags:
   -v  version
   -me (macOS) use entitlements
   -mn (macOS) notarize the bundle
+  -mid (macOS) get current device id and exit
   -o  only run user build step
   -p  package the app
   -r  run after building

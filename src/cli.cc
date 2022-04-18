@@ -104,7 +104,7 @@ int main (const int argc, const char* argv[]) {
       flagShouldNotarize = true;
     }
 
-    if (is(arg, "-mdid")) {
+    if (is(arg, "-mid")) {
       auto r = exec("system_profiler SPUSBDataType -json");
 
       if (r.exitCode == 0) {
