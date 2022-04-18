@@ -116,11 +116,11 @@ int main (const int argc, const char* argv[]) {
           log("failed to extract uuid from provisioning profile");
           exit(1);
         }
-        auto udid = std::string(match[1]).insert(8, 1, '-');
-        std::cout << udid << std::endl;
+
+        std::cout << std::string(match[1]).insert(8, 1, '-') << std::endl;
         exit(0);
       } else {
-        log("Could not get device id");
+        log("Could not get device id. Is the device plugged in?");
         exit(1);
       }
     }
