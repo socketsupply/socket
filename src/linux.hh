@@ -843,7 +843,7 @@ namespace Operator {
     }
 
     gtk_box_pack_start(GTK_BOX(vbox), menubar, false, false, 0);
-    gtk_widget_show_all(window);
+    gtk_widget_show_all(menubar);
 
     if (seq.size() > 0) {
       auto index = std::to_string(this->opts.index);
