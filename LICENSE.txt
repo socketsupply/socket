@@ -4,7 +4,7 @@ Copyright (c) 2022 Paolo Fragomeni <paolo@socketsupply.co>
 Copyright (c) 2022 Jake Verbaten <jake@socketsupply.co>
 Copyright (c) 2022 Serge Zaitsev
 Copyright (c) 2022 Joseph Werle <joseph@socketsupply.co>
-Copyright (c) 2022 Sergy Rabonov <sergey@socketsupply.co>
+Copyright (c) 2022 Sergey Rubanov <sergey@socketsupply.co>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
