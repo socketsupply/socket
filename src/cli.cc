@@ -38,11 +38,11 @@ void log (const std::string s) {
   start = std::chrono::system_clock::now();
 }
 
-void init () {
+void init (Map attrs) {
   auto cwd = fs::current_path();
   fs::create_directories(cwd / "src");
   Operator::writeFile(cwd / "src" / "index.html", "<html>Hello, World</html>");
-  Operator::writeFile(cwd / "operator.config", gDefaultConfig);
+  Operator::writeFile(cwd / "operator.config", tmpl(gDefaultConfig, attrs));
 }
 
 static std::string getCxxFlags() {
@@ -87,7 +87,7 @@ int main (const int argc, const char* argv[]) {
     }
 
     if (is(arg, "-i")) {
-      init();
+      init(attrs);
       exit(0);
     }
 
@@ -116,7 +116,8 @@ int main (const int argc, const char* argv[]) {
           log("failed to extract uuid from provisioning profile");
           exit(1);
         }
-        std::cout << match[1] << std::endl;
+        auto udid = std::string(match[1]).insert(8, 1, '-');
+        std::cout << udid << std::endl;
         exit(0);
       } else {
         log("Could not get device id");

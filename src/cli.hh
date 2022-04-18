@@ -863,11 +863,11 @@ constexpr auto gStoryboardLaunchScreen = R"XML(<?xml version="1.0" encoding="UTF
 )XML";
 
 constexpr auto gDefaultConfig = R"CONFIG(
-#   ___  ___  ___ ___  ___ ____ ___  ___
-#  /  / /__/ /_  /__/ /__/  /  /  / /__/
-# /__/ /    /__ /  \ /  /  /  /__/ /  \
+#   ___  ___  ___ ___  ___ ____ ___  ___    ___  ___  ___        ___       ___  ___
+#  /  / /__/ /__ /__/ /__/  /  /  / /__/   /__  /__/ /__/ /\/\  /__ /   / /  / /__/ /_/
+# /__/ /    /__ /  \ /  /  /  /__/ /  \   /    /  \ /  / /   / /__  \/\/ /__/ /  \ / \
 #
-# Default configuration file. Delete what you don't need.
+# Default configuration file {{version}}. Delete what you don't need.
 #
 
 # This is made available for cross-compiling. It specifies the target
@@ -1004,7 +1004,7 @@ width: 1024
 # TODO description & value
 # mac_sign_paths:
 
-# TODO description & value
+# The team ID needed for MacOS distribution and development
 # mac_team_id:
 
 #
@@ -1026,6 +1026,6 @@ width: 1024
 # TODO description & value
 # ios_signing_certificate:
 
-# TODO description & value
+# The team ID needed for iOS distribution and development
 # ios_team_id:
 )CONFIG";
