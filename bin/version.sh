@@ -20,7 +20,7 @@ fi
 echo -e "Will set new version to be $INPUT_STRING"
 echo $INPUT_STRING > VERSION.txt
 jq ".version = \"$INPUT_STRING\"" clib.json > tmp.$$.json && mv tmp.$$.json clib.json
-git add VERSION.txt
+git add VERSION.txt clib.json
 git commit -m "Bump version to ${INPUT_STRING}."
 # git tag -a -m "Tag version ${INPUT_STRING}." "v$INPUT_STRING"
 # git push origin --tags
