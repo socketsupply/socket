@@ -23,7 +23,7 @@ using namespace std::chrono;
 
 constexpr auto version_hash = STR_VALUE(VERSION_HASH);
 constexpr auto version = STR_VALUE(VERSION);
-auto full_version = version + std::string(" (") + version_hash + std::string(")");
+constexpr auto full_version = STR_VALUE(VERSION) " (" STR_VALUE(VERSION_HASH) ")";
 auto start = std::chrono::system_clock::now();
 
 void log (const std::string s) {
