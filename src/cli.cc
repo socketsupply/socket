@@ -21,7 +21,9 @@
 using namespace Operator;
 using namespace std::chrono;
 
+constexpr auto version_hash = STR_VALUE(VERSION_HASH);
 constexpr auto version = STR_VALUE(VERSION);
+auto full_version = version + std::string(" (") + version_hash + std::string(")");
 auto start = std::chrono::system_clock::now();
 
 void log (const std::string s) {
@@ -90,7 +92,7 @@ int main (const int argc, const char* argv[]) {
     }
 
     if (is(arg, "-v")) {
-      std::cout << version << std::endl;
+      std::cout << full_version << std::endl;
       exit(0);
     }
 
@@ -179,7 +181,7 @@ int main (const int argc, const char* argv[]) {
   }
 
   if (settings.count("revision") == 0) {
-    settings["revision"] = version;
+    settings["revision"] = "1";
   }
 
   if (settings.count("arch") == 0) {
@@ -464,10 +466,6 @@ int main (const int argc, const char* argv[]) {
       pathResourcesRelativeToUserBuild /
       "AppxManifest.xml"
     };
-
-    if (settings["revision"].size() == 0) {
-      settings["revision"] = "1";
-    }
 
     if (settings["version_short"].size() > 0) {
       auto versionShort = settings["version_short"];

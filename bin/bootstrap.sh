@@ -37,8 +37,9 @@ function _build {
   echo '• Building op'
   "$CXX" src/cli.cc ${CXX_FLAGS} ${CXXFLAGS} \
     -o bin/cli \
-    -std=c++2a\
-    -DVERSION=`git rev-parse --short HEAD`
+    -std=c++2a \
+    -DVERSION_HASH=`git rev-parse --short HEAD` \
+    -DVERSION=`cat VERSION.txt` \
 
   if [ ! $? = 0 ]; then
     echo '• Unable to build. See trouble shooting guide in the README.md file'
