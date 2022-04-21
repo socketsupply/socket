@@ -154,6 +154,7 @@ namespace Operator {
       void closeContextMenu();
       void showInspector();
       void setSystemMenu(const std::string&, const std::string&);
+      void setSystemMenuItemEnabled(bool enabled, int barPos, int menuPos);
       void openDialog(
         const std::string&,
         bool,
@@ -1382,6 +1383,10 @@ namespace Operator {
       auto index = std::to_string(this->opts.index);
       this->onMessage(resolveToMainProcess(seq, "0", index));
     }
+  }
+
+  void Window::setSystemMenuItemEnabled (bool enabled, int barPos, int menuPos) {
+    // @TODO(): provide impl
   }
 
   void Window::closeContextMenu() {

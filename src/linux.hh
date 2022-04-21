@@ -65,6 +65,7 @@ namespace Operator {
       ScreenSize getScreenSize();
 
       void setSystemMenu(const std::string& seq, const std::string& menu);
+      void setSystemMenuItemEnabled(bool enabled, int barPos, int menuPos);
       int openExternal(const std::string& s);
   };
 
@@ -857,6 +858,10 @@ namespace Operator {
       auto index = std::to_string(this->opts.index);
       this->onMessage(resolveToMainProcess(seq, "0", index));
     }
+  }
+
+  void Window::setSystemMenuItemEnabled (bool enabled, int barPos, int menuPos) {
+    // @TODO(): provide impl
   }
 
   void Window::closeContextMenu() {
