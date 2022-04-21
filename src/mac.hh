@@ -922,11 +922,13 @@ namespace Operator {
       dynamicMenu = [[NSMenu alloc] initWithTitle:nssTitle];
       bool isDisabled = false;
 
-      if (title.size() > 0 && title.find("!") == 0) {
-        title = title.substr(1);
-        std::cout << "disabled: " << title << std::endl;
-        isDisabled = true;
-      }
+      // TODO: this statement throws an exception we need to figure out why
+      //
+      // if (title.size() > 0 && title.find("!") == 0) {
+      //   title = title.substr(1);
+      //   std::cout << "disabled: " << title << std::endl;
+      //   isDisabled = true;
+      // }
 
       for (int i = 1; i < menu.size(); i++) {
         auto line = trim(menu[i]);
