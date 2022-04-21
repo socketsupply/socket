@@ -646,8 +646,8 @@ int main (const int argc, const char* argv[]) {
   // log(compileCommand.str());
 
   auto binExists = fs::exists(binaryPath);
-  auto p = fs::current_path() / pathOutput;
-  auto oldHash = WStringToString(readFile(p / "built_with.txt"));
+  auto pathToBuiltWithFile = fs::current_path() / pathOutput / "built_with.txt";
+  auto oldHash = WStringToString(readFile(pathToBuiltWithFile));
 
   if (flagRunUserBuild == false || !binExists || oldHash != version_hash) {
     auto r = exec(compileCommand.str());
@@ -656,7 +656,7 @@ int main (const int argc, const char* argv[]) {
       log("Unable to build");
       exit(WEXITSTATUS(r.exitCode));
     }
-    writeFile(p / "built_with.txt", version_hash);
+    writeFile(pathToBuiltWithFile, version_hash);
 
     log("compiled native binary");
   }
