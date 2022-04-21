@@ -313,7 +313,7 @@ MAIN {
         }
 
         w.setSystemMenuItemEnabled(enabled, indexMain, indexSub);
-        w.resolveToMainProcess(seq, "0", "");
+        w.onMessage(resolveToMainProcess(seq, "0", ""));
         return;
       }
 
