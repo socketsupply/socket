@@ -308,7 +308,7 @@ MAIN {
           indexMain = std::stoi(cmd.get("indexMain"));
           indexSub = std::stoi(cmd.get("indexSub"));
         } catch (...) {
-          w.resolveToMainProcess(seq, "0", "");
+          w.onMessage(resolveToMainProcess(seq, "0", ""));
           return;
         }
 
