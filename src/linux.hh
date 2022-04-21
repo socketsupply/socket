@@ -429,25 +429,33 @@ namespace Operator {
         gpointer arg)
       {
         auto* w = static_cast<Window*>(arg);
+        auto count = w->draggablePayload.size();
+        std::stringstream files;
 
-        for (auto src : w->draggablePayload) {
-          std::string json = (
-            "{\"src\":\"" + src + "\","
-            "\"x\":" + std::to_string(x) + ","
-            "\"y\":" + std::to_string(y) + "}"
-          );
-
-          w->eval(std::string(
-            "(() => {"
-            "  try {"
-            "    const target = document.elementFromPoint(" + std::to_string(x) + "," + std::to_string(y) + ");"
-            "    window._ipc.emit('dropin', '" + json + "', target, { bubbles: true });"
-            "  } catch (err) { "
-            "    console.error(err.stack || err.message || err);"
-            "  }"
-            "})()"
-          ));
+        for (int i = 0 ; i < count; ++i) {
+          auto src = w->draggablePayload[i];
+          files << '"' << src << '"';
+          if (i < count - 1) {
+            files << ",";
+          }
         }
+
+        std::string json = ("{"
+          "\"files\": [" + files.str() + "],"
+          "\"x\":" + std::to_string(x) + ","
+          "\"y\":" + std::to_string(y) +
+        "}");
+
+        w->eval(std::string(
+          "(() => {"
+          "  try {"
+          "    const target = document.elementFromPoint(" + std::to_string(x) + "," + std::to_string(y) + ");"
+          "    window._ipc.emit('dropin', '" + json + "', target, { bubbles: true });"
+          "  } catch (err) { "
+          "    console.error(err.stack || err.message || err);"
+          "  }"
+          "})()"
+        ));
 
         w->draggablePayload.clear();
         w->eval(Operator::emitToRenderProcess("dragend", "{}"));
