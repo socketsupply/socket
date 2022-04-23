@@ -294,7 +294,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 /* Begin PBXFileReference section */
 		290F7F82276BBE9C00486988 /* libuv.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libuv.a; path = lib/uv/libuv.a; sourceTree = "<group>"; };
 		290F7F86276BC2B000486988 /* lib */ = {isa = PBXFileReference; lastKnownFileType = folder; path = lib; sourceTree = "<group>"; };
-		29124C4A27613369001832A0 /* op.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = op.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		29124C4A27613369001832A0 /* {{name}}.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = {{name}}.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		29124C5C2761336B001832A0 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		29124C5E2761336B001832A0 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		294A3C4E2763E5EB007B5B9A /* ios.mm */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.objcpp; indentWidth = 2; path = ios.mm; sourceTree = "<group>"; tabWidth = 2; };
@@ -350,7 +350,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 		29124C4B27613369001832A0 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				29124C4A27613369001832A0 /* op.app */,
+				29124C4A27613369001832A0 /* {{name}}.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -367,9 +367,9 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		29124C4927613369001832A0 /* op */ = {
+		29124C4927613369001832A0 /* {{name}} */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 29124C792761336B001832A0 /* Build configuration list for PBXNativeTarget "op" */;
+			buildConfigurationList = 29124C792761336B001832A0 /* Build configuration list for PBXNativeTarget "{{name}}" */;
 			buildPhases = (
 				29124C4627613369001832A0 /* Sources */,
 				29124C4727613369001832A0 /* Frameworks */,
@@ -379,9 +379,9 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 			);
 			dependencies = (
 			);
-			name = op;
-			productName = op;
-			productReference = 29124C4A27613369001832A0 /* op.app */;
+			name = {{name}};
+			productName = {{name}};
+			productReference = 29124C4A27613369001832A0 /* {{name}}.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -398,7 +398,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 					};
 				};
 			};
-			buildConfigurationList = 29124C4527613369001832A0 /* Build configuration list for PBXProject "op" */;
+			buildConfigurationList = 29124C4527613369001832A0 /* Build configuration list for PBXProject "{{name}}" */;
 			compatibilityVersion = "Xcode 13.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -411,7 +411,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				29124C4927613369001832A0 /* op */,
+				29124C4927613369001832A0 /* {{name}} */,
 			);
 		};
 /* End PBXProject section */
@@ -602,9 +602,9 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 					"$(PROJECT_DIR)/lib/uv",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = tc.operator.op;
+				PRODUCT_BUNDLE_IDENTIFIER = {{bundle_identifier}};
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				PROVISIONING_PROFILE_SPECIFIER = "op iOS AdHoc";
+				PROVISIONING_PROFILE_SPECIFIER = "{{ios_provisioning_specifier}}";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				TARGETED_DEVICE_FAMILY = 1;
 			};
@@ -649,9 +649,9 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 				);
 				MARKETING_VERSION = 1.0;
 				ONLY_ACTIVE_ARCH = YES;
-				PRODUCT_BUNDLE_IDENTIFIER = tc.operator.op;
+				PRODUCT_BUNDLE_IDENTIFIER = {{bundle_identifier}};
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				PROVISIONING_PROFILE_SPECIFIER = "op iOS AdHoc";
+				PROVISIONING_PROFILE_SPECIFIER = "{{ios_provisioning_specifier}}";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				TARGETED_DEVICE_FAMILY = 1;
 			};
@@ -804,7 +804,7 @@ constexpr auto gXCodeScheme = R"XML(<?xml version="1.0" encoding="UTF-8"?>
             BlueprintIdentifier = "29124C4927613369001832A0"
             BuildableName = "{{name}}.app"
             BlueprintName = "{{name}}"
-            ReferencedContainer = "container:op.xcodeproj">
+            ReferencedContainer = "container:{{name}}.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </LaunchAction>
@@ -1019,6 +1019,9 @@ width: 1024
 
 # TODO description & value
 # ios_distribution_method:
+
+# TODO description & value
+# ios_provisioning_profile_specifier:
 
 # The provisioning profile that is used for signing (should be mac?)
 # ios_provisioning_profile:
