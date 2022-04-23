@@ -772,9 +772,9 @@ constexpr auto gXCodeScheme = R"XML(<?xml version="1.0" encoding="UTF-8"?>
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "29124C4927613369001832A0"
-               BuildableName = "op.app"
-               BlueprintName = "op"
-               ReferencedContainer = "container:op.xcodeproj">
+               BuildableName = "{{name}}.app"
+               BlueprintName = "{{name}}"
+               ReferencedContainer = "container:{{name}}.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -802,8 +802,8 @@ constexpr auto gXCodeScheme = R"XML(<?xml version="1.0" encoding="UTF-8"?>
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "29124C4927613369001832A0"
-            BuildableName = "op.app"
-            BlueprintName = "op"
+            BuildableName = "{{name}}.app"
+            BlueprintName = "{{name}}"
             ReferencedContainer = "container:op.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
@@ -819,9 +819,9 @@ constexpr auto gXCodeScheme = R"XML(<?xml version="1.0" encoding="UTF-8"?>
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "29124C4927613369001832A0"
-            BuildableName = "op.app"
-            BlueprintName = "op"
-            ReferencedContainer = "container:op.xcodeproj">
+            BuildableName = "{{name}}.app"
+            BlueprintName = "{{name}}"
+            ReferencedContainer = "container:{{name}}.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>
@@ -830,7 +830,7 @@ constexpr auto gXCodeScheme = R"XML(<?xml version="1.0" encoding="UTF-8"?>
    </AnalyzeAction>
    <ArchiveAction
       buildConfiguration = "Release"
-      customArchiveName = "op"
+      customArchiveName = "{{name}}"
       revealArchiveInOrganizer = "YES">
    </ArchiveAction>
 </Scheme>)XML";

@@ -105,7 +105,8 @@ int main (const int argc, const char* argv[]) {
     }
 
     if (is(arg, "-mid")) {
-      auto r = exec("system_profiler SPUSBDataType -json");
+      std::string command = "system_profiler SPUSBDataType -json";
+      auto r = exec(command);
 
       if (r.exitCode == 0) {
         std::regex re(R"REGEX("(?:serial_num"\s*:\s*"([^"]*))")REGEX");
@@ -113,7 +114,7 @@ int main (const int argc, const char* argv[]) {
         std::string uuid;
 
         if (!std::regex_search(r.output, match, re)) {
-          log("failed to extract uuid from provisioning profile");
+          log("failed to extract device uuid using \"" + command + "\"");
           exit(1);
         }
 
@@ -311,18 +312,22 @@ int main (const int argc, const char* argv[]) {
     auto schemeName = (settings["name"] + ".xcscheme");
     auto pathToProject = target / pathOutput / projectName;
     auto pathToScheme = pathToProject / "xcshareddata" / "xcschemes";
-    auto pathToProfile = target / settings["apple_provisioning_profile"];
+    auto pathToProfile = target / settings["ios_provisioning_profile"];
 
     fs::create_directories(pathToProject);
     fs::create_directories(pathToScheme);
 
-    auto r = exec("security cms -D -i " + pathToProfile.string());
+    std::string command = (
+      "security cms -D -i " + pathToProfile.string()
+    );
+
+    auto r = exec(command);
     std::regex re(R"(<key>UUID<\/key>\n\s*<string>(.*)<\/string>)");
     std::smatch match;
     std::string uuid;
 
     if (!std::regex_search(r.output, match, re)) {
-      log("failed to extract uuid from provisioning profile");
+      log("failed to extract uuid from provisioning profile using \"" + command + "\"");
       exit(1);
     }
 
@@ -338,7 +343,7 @@ int main (const int argc, const char* argv[]) {
       fs::copy(pathToProfile, pathToInstalledProfile);
     }
 
-    settings["apple_provisioning_profile"] = uuid;
+    settings["ios_provisioning_profile"] = uuid;
 
     fs::copy(
       fs::path(prefixFile()) / "lib",
@@ -581,7 +586,8 @@ int main (const int argc, const char* argv[]) {
     fs::create_directories(pathBase);
 
     writeFile(pathBase / "LaunchScreen.storyboard", gStoryboardLaunchScreen);
-    writeFile(pathToDist / (settings["name"] + ".entitlements"), gXcodeEntitlements);
+    // TODO allow the user to copy their own if they have one
+    writeFile(pathToDist / "op.entitlements", gXcodeEntitlements);
 
     //
     // For iOS we're going to bail early and let XCode infrastructure handle
@@ -591,7 +597,7 @@ int main (const int argc, const char* argv[]) {
     std::string destination = "generic/platform=iOS";
 
     if (flagBuildForSimulator) {
-      destination = settings["apple_device_simulator"];
+      destination = settings["ios_device_simulator"];
     }
 
     auto sup = std::string(" archive");
