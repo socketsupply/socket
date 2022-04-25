@@ -508,6 +508,17 @@ int main (const int argc, const char* argv[]) {
   auto oldCwd = fs::current_path();
   fs::current_path(oldCwd / target);
 
+  {
+    char prefix[4096] = {0};
+    memcpy(
+      prefix,
+      pathResourcesRelativeToUserBuild.string().c_str(),
+      pathResourcesRelativeToUserBuild.string().size()
+    );
+    // @TODO(jwerle): use `setEnv()` if #148 is closed
+    setenv("PREFIX", prefix, 1);
+  }
+
   buildCommand
     << settings["build"]
     << " "
