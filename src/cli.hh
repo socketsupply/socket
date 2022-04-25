@@ -906,7 +906,7 @@ flags: -O1
 # forward_console: true
 
 # The initial height of the first window.
-# height: 750
+height: 750
 
 # A directory is where your application's code is located.
 # input: src
@@ -933,7 +933,7 @@ version: v0.0.1
 version_short: 0.0.1
 
 # The initial width of the first window.
-# width: 1024
+width: 1024
 
 # TODO: maybe the user doesn't need to know about this?
 # revision: 123
