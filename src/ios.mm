@@ -1577,7 +1577,7 @@ bool isRunning = false;
 }
 
 //
-// --- End networ methods
+// --- End network methods
 //
 
 - (void) applicationDidEnterBackground {
@@ -1606,8 +1606,7 @@ bool isRunning = false;
     switch (status) {
       case nw_path_status_invalid: {
         dispatch_async(dispatch_get_main_queue(), ^{
-          [self emit: "network" message: Operator::format(R"JSON({
-            "status": "offline",
+          [self emit: "offline" message: Operator::format(R"JSON({
             "message": "Network path is invalid"
           })JSON")];
         });
@@ -1615,8 +1614,7 @@ bool isRunning = false;
       }
       case nw_path_status_satisfied: {
         dispatch_async(dispatch_get_main_queue(), ^{
-          [self emit: "network" message: Operator::format(R"JSON({
-            "status": "online",
+          [self emit: "online" message: Operator::format(R"JSON({
             "message": "Network is usable"
           })JSON")];
         });
@@ -1624,8 +1622,7 @@ bool isRunning = false;
       }
       case nw_path_status_satisfiable: {
         dispatch_async(dispatch_get_main_queue(), ^{
-          [self emit: "network" message: Operator::format(R"JSON({
-            "status": "online",
+          [self emit: "online" message: Operator::format(R"JSON({
             "message": "Network may be usable"
           })JSON")];
         });
@@ -1633,8 +1630,7 @@ bool isRunning = false;
       }
       case nw_path_status_unsatisfied: {
         dispatch_async(dispatch_get_main_queue(), ^{
-          [self emit: "network" message: Operator::format(R"JSON({
-            "status": "offline",
+          [self emit: "offline" message: Operator::format(R"JSON({
             "message": "Network is not usable"
           })JSON")];
         });
