@@ -197,9 +197,7 @@ int main (const int argc, const char* argv[]) {
     settings.count("mac_cmd") == 0 &&
     settings.count("linux_cmd") == 0
   ) {
-    log("can't find operator.config file in specified directory.");
-    log("config must contain at least one of 'win_cmd', 'mac_cmd', or 'linux_cmd'");
-    exit(1);
+    log("warning: no key-value found in config file for 'win_cmd', 'mac_cmd', or 'linux_cmd'");
   }
 
   if (settings.count("revision") == 0) {
@@ -248,7 +246,7 @@ int main (const int argc, const char* argv[]) {
     try {
       fs::remove_all(p);
       log(std::string("cleaned: " + p.string()));
-    } catch (std::filesystem::filesystem_error const& ex) {
+    } catch (fs::filesystem_error const& ex) {
       log("could not clean path (binary could be busy)");
       log(std::string("ex: ") + ex.what());
       log(std::string("ex code: ") + std::to_string(ex.code().value()));

@@ -131,11 +131,11 @@ MAIN {
   }
 
   auto cmd = appData[platform.os + "_cmd"];
+
   if (cmd[0] == '.') {
     auto index = cmd.find_first_of('.');
     auto executable = cmd.substr(0, index);
     auto absPath = fs::path(cwd) / fs::path(executable);
-
     cmd = pathToString(absPath) + cmd.substr(index);
   }
 
@@ -143,7 +143,8 @@ MAIN {
     argvForward << " --op-current-directory=" << fs::current_path();
 
     Process process(
-      cmd + argvForward.str(),
+      cmd,
+      argvForward.str(),
       cwd,
       [&](std::string const &out) {
         Parse cmd(out);
@@ -177,6 +178,9 @@ MAIN {
 
   static std::vector<Window> windows;
 
+  int height = appData["height"].size() > 0 ? std::stoi(appData["height"]) : 0;
+  int width = appData["width"].size() > 0 ? std::stoi(appData["width"]) : 0;
+
   //
   // # Windows
   //
@@ -187,8 +191,8 @@ MAIN {
     .resizable = true,
     .frameless = false,
     .canExit = true,
-    .height = appData.contains("height") ? std::stoi(appData["height"]) : 0,
-    .width = appData.contains("width") ? std::stoi(appData["width"]) : 0,
+    .height = height,
+    .width = width,
     .index = 0,
     .debug = _debug,
     .isTest = isTest,
@@ -204,6 +208,13 @@ MAIN {
 
   if (w0.webviewFailed) {
     argvForward << " --webviewFailed";
+  }
+
+  if (cmd.size() == 0) {
+    w0.show("");
+    auto file = fs::path(cwd) / "index.html";
+    w0.navigate("", "file://" + file.string());
+    w0.setSize("", 1024, 720, 0);
   }
 
   //
@@ -370,7 +381,8 @@ MAIN {
   };
 
   Process process(
-    cmd + argvForward.str(),
+    cmd,
+    argvForward.str(),
     cwd,
     onStdOut,
     onStdErr

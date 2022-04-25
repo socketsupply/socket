@@ -1669,7 +1669,7 @@ bool isRunning = false;
         [self fsOpen: seq
                   id: std::stoll(cmd.get("id"))
                 path: cmd.get("path")
-               flags: std::stoi(cmd.get("path"))];
+               flags: std::stoi(cmd.get("flags"))];
       }
 
       if (cmd.get("fsClose").size() != 0) {

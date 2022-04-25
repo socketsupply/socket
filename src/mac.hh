@@ -762,11 +762,12 @@ namespace Operator {
     if (!menu) return;
 
     NSArray* menuItems = [menu itemArray];
-    NSMenu* menuItem = menuItems[menuPos];
+    NSMenuItem* menuItem = menuItems[menuPos];
 
     if (!menuItem) return;
 
-    [menuItem setEnabled:enabled];
+    [menuItem setTarget:nil];
+    [menuItem setAction:NULL];
   }
 
   void Window::navigate (const std::string& seq, const std::string& value) {

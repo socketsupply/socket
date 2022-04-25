@@ -91,6 +91,7 @@ namespace Operator {
   public:
     Process(
       const std::string &command,
+      const std::string &argv,
       const std::string &path = std::string(""),
       cb read_stdout = nullptr,
       cb read_stderr = nullptr,
@@ -159,6 +160,7 @@ namespace Operator {
 
   inline Process::Process(
     const std::string &command,
+    const std::string &argv,
     const std::string &path,
     cb read_stdout,
     cb read_stderr,
@@ -168,7 +170,8 @@ namespace Operator {
         open_stdin(true),
         read_stdout(std::move(read_stdout)),
         read_stderr(std::move(read_stderr)) {
-    open(command, path);
+    if (command.size() == 0) return;
+    open(command + argv, path);
     read();
   }
 
