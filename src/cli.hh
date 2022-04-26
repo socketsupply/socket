@@ -11,23 +11,24 @@ usage:
   op <project-dir> [-h, ...]
 
 flags:
-  -b  bundle for app store
-  -c  code sign the bundle
-  -h  help
-  -i  init
-  -v  version
-  -me (macOS) use entitlements
-  -mn (macOS) notarize the bundle
+  -b   bundle for app store
+  -c   code sign the bundle
+  -h   help
+  -i   init
+  -v   version
+  -me  (macOS) use entitlements
+  -mn  (macOS) notarize the bundle
   -mid (macOS) get current device id and exit
-  -o  only run user build step
-  -p  package the app
-  -r  run after building
-  -xd turn off debug mode (production build)
+  -o   only run user build step
+  -p   package the app
+  -r   run after building
+  -xd  turn off debug mode (production build)
 
-  -ios (iOS) build for iOS
-  -android (Android) build for Android
-  -simulator build for simulator
-  --test=1 indicate test mode
+  -ios        (iOS) build for iOS
+  -android    (Android) build for Android
+  -simulator  build for simulator
+  --test=1    indicate test mode
+  --port=n    load "http://localhost:n"
 )TEXT";
 
 //

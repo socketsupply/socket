@@ -72,6 +72,8 @@ int main (const int argc, const char* argv[]) {
   bool flagBuildForAndroid = false;
   bool flagBuildForSimulator = false;
 
+  std::string devPort("0");
+
   auto is = [](const std::string& s, const auto& p) -> bool {
     return s.compare(p) == 0;
   };
@@ -160,6 +162,10 @@ int main (const int argc, const char* argv[]) {
 
     if (is(arg, "--test")) {
       flagTestMode = true;
+    }
+
+    if (std::string(arg).find("--port=") == 0) {
+      devPort = std::string(arg).substr(7);
     }
   }
 
@@ -676,6 +682,7 @@ int main (const int argc, const char* argv[]) {
     << " -o " << binaryPath.string()
     << " -D_IOS=" << (flagBuildForIOS ? 1 : 0)
     << " -DDEBUG=" << (flagDebugMode ? 1 : 0)
+    << " -DPORT=" << devPort
     << " -DSETTINGS=\"" << encodeURIComponent(_settings) << "\""
   ;
 

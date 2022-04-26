@@ -946,7 +946,7 @@ namespace Operator {
                       e->get_Uri(&uri);
                       std::string url(WStringToString(uri));
 
-                      if (url.find("file://") != 0) {
+                      if (url.find("file://") != 0 || url.find("http://localhost") != 0) {
                         e->put_Cancel(true);
                       }
 

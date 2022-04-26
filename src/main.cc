@@ -39,6 +39,7 @@ MAIN {
   //
   constexpr auto _settings = STR_VALUE(SETTINGS);
   constexpr auto _debug = DEBUG;
+  constexpr auto _port = PORT;
 
   auto cwd = app.getCwd(argv[0]);
   appData = parseConfig(decodeURIComponent(_settings));
@@ -61,21 +62,25 @@ MAIN {
   // isn't the most robust way of doing this. possible a URI-encoded query
   // string would be more in-line with how everything else works.
   for (auto const arg : std::span(argv, argc)) {
+    auto s = std::string(arg);
+
     argvArray
       << "'"
-      << replace(std::string(arg), "'", "\'")
+      << replace(s, "'", "\'")
       << (c++ < argc ? "', " : "'");
 
-    bool helpRequested =
-      (std::string(arg).find("--help") == 0) ||
-      (std::string(arg).find("-help") == 0) ||
-      (std::string(arg).find("-h") == 0);
+    bool helpRequested = (
+      (s.find("--help") == 0) ||
+      (s.find("-help") == 0) ||
+      (s.find("-h") == 0)
+    );
 
-    bool versionRequested =
-      (std::string(arg).find("--version") == 0) ||
-      (std::string(arg).find("-version") == 0) ||
-      (std::string(arg).find("-v") == 0) ||
-      (std::string(arg).find("-V") == 0);
+    bool versionRequested = (
+      (s.find("--version") == 0) ||
+      (s.find("-version") == 0) ||
+      (s.find("-v") == 0) ||
+      (s.find("-V") == 0)
+    );
 
     if (helpRequested) {
       wantsHelp = true;
@@ -85,10 +90,10 @@ MAIN {
       wantsVersion = true;
     }
 
-    if (std::string(arg).find("--test") == 0) {
+    if (s.find("--test") == 0) {
       suffix = "-test";
       isTest = true;
-    } else if (c >= 2 && std::string(arg).find("-") != 0) {
+    } else if (c >= 2 && s.find("-") != 0) {
       isCommandMode = true;
     }
 
@@ -97,9 +102,9 @@ MAIN {
     }
 
     if (helpRequested) {
-      argvForward << " " << "help --warn-arg-usage=" << std::string(arg);
+      argvForward << " " << "help --warn-arg-usage=" << s;
     } else if (versionRequested) {
-      argvForward << " " << "version --warn-arg-usage=" << std::string(arg);
+      argvForward << " " << "version --warn-arg-usage=" << s;
     } else if (c > 1 || isCommandMode) {
       argvForward << " " << std::string(arg);
     }
@@ -212,9 +217,13 @@ MAIN {
 
   if (cmd.size() == 0) {
     w0.show("");
-    auto file = fs::path(cwd) / "index.html";
-    w0.navigate("", "file://" + file.string());
     w0.setSize("", 1024, 720, 0);
+
+    auto path = fs::path(cwd) / "index.html";
+    auto file = "file://" + path.string();
+    auto url = "http://localhost:" + std::to_string(_port);
+
+    w0.navigate("", _port > 0 ? url : file);
   }
 
   //

@@ -158,7 +158,9 @@ namespace Operator {
         auto req = webkit_navigation_action_get_request(action);
         auto uri = webkit_uri_request_get_uri(req);
 
-        if (std::string(uri).find("file://") != 0) {
+        std::string s(uri);
+
+        if (s.find("file://") != 0 || s.find("http://localhost") != 0) {
           webkit_policy_decision_ignore(decision);
           return false;
         }
