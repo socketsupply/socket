@@ -1699,14 +1699,14 @@ bool isRunning = false;
 
       if (cmd.get("fsRename").size() != 0) {
         [self fsRename: seq
-                 pathA: cmd.get("pathA")
-                 pathB: cmd.get("pathB")];
+                 pathA: cmd.get("oldPath")
+                 pathB: cmd.get("newPath")];
       }
 
       if (cmd.get("fsCopy").size() != 0) {
         [self fsCopy: seq
-               pathA: cmd.get("pathA")
-               pathB: cmd.get("pathB")
+               pathA: cmd.get("src")
+               pathB: cmd.get("dest")
                flags: std::stoi(cmd.get("flags"))];
       }
 
