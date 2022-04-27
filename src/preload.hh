@@ -171,7 +171,6 @@ constexpr auto gPreloadDesktop = R"JS(
 
   if (window?.process?.debug === 1) {
     window.addEventListener('menuItemSelected', e => {
-      console.log(e)
       window.location.reload()
     })
   }
