@@ -198,12 +198,19 @@ int main (const int argc, const char* argv[]) {
   auto _settings = WStringToString(readFile(target / "operator.config"));
   auto settings = parseConfig(_settings);
 
-  if (
+  bool noCommand = (
     settings.count("win_cmd") == 0 &&
     settings.count("mac_cmd") == 0 &&
     settings.count("linux_cmd") == 0
-  ) {
-    log("warning: no key-value found in config file for 'win_cmd', 'mac_cmd', or 'linux_cmd'");
+  );
+
+  if (noCommand) {
+    log("No entry in config file for 'win_cmd', 'mac_cmd', or 'linux_cmd'");
+  }
+
+  if (noCommand && devPort.size() == 0) {
+    log("Try specifying a port with '--port=8080'.");
+    exit(1);
   }
 
   if (settings.count("revision") == 0) {
