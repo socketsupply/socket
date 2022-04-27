@@ -148,6 +148,7 @@ namespace Operator {
     int width = 0;
     int index = 0;
     int debug = 0;
+    int port = 0;
     bool isTest = false;
     bool forwardConsole = 0;
     std::string cwd = "";
@@ -209,6 +210,7 @@ namespace Operator {
       "  window.system = {};\n"
       "  window.process = {};\n"
       "  window.process.index = Number('" + std::to_string(opts.index) + "');\n"
+      "  window.process.port = Number('" + std::to_string(opts.port) + "');\n"
       "  window.process.cwd = () => '" + cleanCwd + "';\n"
       "  window.process.title = '" + opts.title + "';\n"
       "  window.process.executable = '" + opts.executable + "';\n"

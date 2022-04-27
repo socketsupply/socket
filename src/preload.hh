@@ -169,7 +169,7 @@ constexpr auto gPreloadDesktop = R"JS(
 
   window.parent = window.system
 
-  if (window?.process?.debug === 1) {
+  if (window?.process?.port > 0) {
     window.addEventListener('menuItemSelected', e => {
       window.location.reload()
     })

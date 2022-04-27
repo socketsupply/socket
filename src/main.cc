@@ -201,6 +201,7 @@ MAIN {
     .index = 0,
     .debug = _debug,
     .isTest = isTest,
+    .port = _port,
     .forwardConsole = appData["forward_console"] == "true",
     .cwd = cwd,
     .executable = appData["executable"],
