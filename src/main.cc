@@ -236,18 +236,6 @@ MAIN {
     w0.navigate("", "file://" + (fs::path(cwd) / "index.html").string());
   }
 
-  if (_port > 0) {
-    w0.navigate("", "http://localhost:" + std::to_string(_port));
-  } else if (cmd.size() == 0) {
-    w0.navigate("", "file://" + (fs::path(cwd) / "index.html").string());
-  }
-
-  if (_port > 0) {
-    w0.navigate("", "http://localhost:" + std::to_string(_port));
-  } else if (cmd.size() == 0) {
-    w0.navigate("", "file://" + (fs::path(cwd) / "index.html").string());
-  }
-
   //
   // TODO this should be created by the user and added to the windows
   // vector. Any decision to get the window via an index should refer
