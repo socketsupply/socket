@@ -219,7 +219,7 @@ MAIN {
 
   if (_port > 0 || cmd.size() == 0) {
     w0.setSystemMenu("", std::string(
-      "Develop: \n"
+      "Developer Mode: \n"
       "  Reload: r + CommandOrControl\n"
       "  Quit: q + CommandOrControl\n"
       ";"

@@ -121,11 +121,11 @@ constexpr auto gPreloadDesktop = R"JS(
   window.system.setTitle = o => window._ipc.send('title', o)
   window.system.inspect = o => window.external.invoke(`ipc://inspect`)
 
-  window.parent.show = window.system.show = (index = 0) => {
+  window.system.show = (index = 0) => {
     return window._ipc.send('show', { index })
   }
 
-  window.parent.hide = window.system.hide = (index = 0) => {
+  window.system.hide = (index = 0) => {
     return window._ipc.send('hide', { index })
   }
 
@@ -135,13 +135,13 @@ constexpr auto gPreloadDesktop = R"JS(
     window.external.invoke(`ipc://size?${o}`)
   }
 
-  window.parent.setBackgroundColor = opts => {
+  window.system.setBackgroundColor = opts => {
     opts.index = window.process.index
     const o = new URLSearchParams(opts).toString()
     window.external.invoke(`ipc://background?${o}`)
   }
 
-  window.parent.setSystemMenuItemEnabled = value => {
+  window.system.setSystemMenuItemEnabled = value => {
     return window._ipc.send('systemMenuItemEnabled', value)
   }
 
@@ -166,6 +166,15 @@ constexpr auto gPreloadDesktop = R"JS(
       .join('_')
     return window._ipc.send('context', o)
   };
+
+  window.parent = window.system
+
+  if (window?.process?.debug === 1) {
+    window.addEventListener('menuItemSelected', e => {
+      console.log(e)
+      window.location.reload()
+    })
+  }
 )JS";
 
 constexpr auto gPreloadMobile = R"JS(
