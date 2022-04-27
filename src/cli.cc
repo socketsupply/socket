@@ -25,8 +25,11 @@ constexpr auto version_hash = STR_VALUE(VERSION_HASH);
 constexpr auto version = STR_VALUE(VERSION);
 constexpr auto full_version = STR_VALUE(VERSION) " (" STR_VALUE(VERSION_HASH) ")";
 auto start = std::chrono::system_clock::now();
+bool porcelain = false;
 
 void log (const std::string s) {
+  if (porcelain) return;
+
   #ifdef _WIN32 // unicode console support
     SetConsoleOutputCP(CP_UTF8);
     setvbuf(stdout, nullptr, _IOFBF, 1000);
@@ -71,6 +74,7 @@ int main (const int argc, const char* argv[]) {
   bool flagBuildForIOS = false;
   bool flagBuildForAndroid = false;
   bool flagBuildForSimulator = false;
+  bool flagPrintBuildPath = false;
 
   std::string devPort("0");
 
@@ -162,6 +166,11 @@ int main (const int argc, const char* argv[]) {
 
     if (is(arg, "--test")) {
       flagTestMode = true;
+    }
+
+    if (is(arg, "--target")) {
+      porcelain = true;
+      flagPrintBuildPath = true;
     }
 
     if (std::string(arg).find("--port=") == 0) {
@@ -518,6 +527,11 @@ int main (const int argc, const char* argv[]) {
     writeFile(p, tmpl(gWindowsAppManifest, settings));
 
     // TODO Copy the files into place
+  }
+
+  if (flagPrintBuildPath) {
+    std::cout << pathResourcesRelativeToUserBuild.string();
+    exit(0);
   }
 
   log("package prepared");
