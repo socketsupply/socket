@@ -228,12 +228,12 @@ MAIN {
 
     w0.show("");
     w0.setSize("", 1024, 720, 0);
+  }
 
-    auto path = fs::path(cwd) / "index.html";
-    auto file = "file://" + path.string();
-    auto url = "http://localhost:" + std::to_string(_port);
-
-    w0.navigate("", _port > 0 ? url : file);
+  if (_port > 0) {
+    w0.navigate("", "http://localhost:" + std::to_string(_port));
+  } else if (cmd.size() == 0) {
+    w0.navigate("", "file://" + (fs::path(cwd) / "index.html").string());
   }
 
   if (_port > 0) {
