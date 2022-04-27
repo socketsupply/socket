@@ -1,0 +1,18 @@
+  ___  ___  ___ ___  ___ ____ ___  ___
+ /  / /__/ /__ /__/ /__/  /  /  / /__/
+/__/ /    /__ /  \ /  /  /  /__/ /  \
+---------------------- Framework ----
+
+# SYNOPSIS
+
+A Distribued Application Frameowork
+
+# DESCRIPTION
+
+Build and package lean, fast, native desktop and mobile applications
+using web technologies.
+
+# LINKS
+
+Documentation: https://operatorframework.dev
+Examples: https://github.com/socketsupply/op-examples
