@@ -160,7 +160,7 @@ namespace Operator {
 
         std::string s(uri);
 
-        if (s.find("file://") != 0 || s.find("http://localhost") != 0) {
+        if (s.find("file://") != 0 && s.find("http://localhost") != 0) {
           webkit_policy_decision_ignore(decision);
           return false;
         }
