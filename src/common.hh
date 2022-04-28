@@ -670,6 +670,8 @@ namespace Operator {
     if (onExit != nullptr) onExit(code);
   }
 
+  class Window;
+
   class IWindow {
     public:
       int index = 0;

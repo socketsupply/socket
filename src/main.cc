@@ -1,6 +1,5 @@
 #include "common.hh"
 #include "process.hh"
-#include "bootstrap.hh"
 
 #if defined(_WIN32)
   #include "win.hh"
@@ -8,6 +7,10 @@
   #include "mac.hh"
 #elif defined(__linux__)
   #include "linux.hh"
+#endif
+
+#if _IOS == 0 && _ANDROID == 0
+  #include <curl/curl.h>
 #endif
 
 #if defined(_WIN32)
@@ -422,9 +425,7 @@ MAIN {
   // # Render -> Main
   // Send messages from the render processes to the main process.
   // These may be similar to how we route the messages from the
-  // main process but different enough that duplication is ok. This
-  // callback doesnt need to dispatch because it's already in the
-  // main thread.
+  // main process but different enough that duplication is ok.
   //
   auto onMessage = [&](auto out) {
     Parse cmd(out);
@@ -439,11 +440,78 @@ MAIN {
       return;
     }
 
+    #if _IOS == 0 && _ANDROID == 0
+      if (cmd.name == "bootstrap") {
+        std::thread thread([](Window w) {
+          auto src = (char*) appData["bootstrap_src"].c_str();
+          auto dest = (char*) appData["bootstrap_dest"].c_str();
+
+          #ifndef CURLPIPE_MULTIPLEX
+            #define CURLPIPE_MULTIPLEX 0
+          #endif
+
+          struct download {
+            CURL *easy;
+            unsigned int num;
+            FILE *out;
+          };
+
+          if (fs::exists(dest)) return;
+
+          struct download d;
+          CURLM *multi_handle;
+          int running = 0; /* keep number of running handles */
+          multi_handle = curl_multi_init();
+          CURL *hnd = d.easy = curl_easy_init();
+
+          d.out = fopen(dest, "wb");
+          if (!d.out) return;
+
+          curl_easy_setopt(hnd, CURLOPT_WRITEDATA, d.out);
+          curl_easy_setopt(hnd, CURLOPT_URL, src);
+          curl_easy_setopt(hnd, CURLOPT_NOPROGRESS, false);
+          curl_easy_setopt(hnd, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_2_0);
+          curl_easy_setopt(hnd, CURLOPT_PROGRESSDATA, &w);
+
+          curl_easy_setopt(hnd, CURLOPT_PROGRESSFUNCTION, +[](
+            void* ptr,
+            double totalToDownload,
+            double nowDownloaded,
+            double totalToUpload,
+            double nowUploaded) -> int {
+              auto w = (Window*) ptr;
+              auto p = nowDownloaded / totalToDownload;
+              auto progress = "\"" + std::to_string(p) + "\"";
+              w->eval(emitToRenderProcess("bootstrap", progress));
+            return 0;
+          });
+
+          #if (CURLPIPE_MULTIPLEX > 0)
+            curl_easy_setopt(hnd, CURLOPT_PIPEWAIT, 1L);
+          #endif
+
+          curl_multi_add_handle(multi_handle, d.easy);
+          curl_multi_setopt(multi_handle, CURLMOPT_PIPELINING, CURLPIPE_MULTIPLEX);
+
+          do {
+            CURLMcode mc = curl_multi_perform(multi_handle, &running);
+            if (running) mc = curl_multi_poll(multi_handle, NULL, 0, 1000, NULL);
+            if (mc) break;
+          } while (running);
+
+          curl_multi_remove_handle(multi_handle, d.easy);
+          curl_easy_cleanup(d.easy);
+          curl_multi_cleanup(multi_handle);
+        }, w);
+
+        thread.detach();
+      }
+    #endif
+
     if (cmd.name == "exit") {
       try {
         exitCode = std::stoi(decodeURIComponent(cmd.get("value")));
-      } catch (...) {
-      }
+      } catch (...) {}
 
       w.exit(exitCode);
       return;
