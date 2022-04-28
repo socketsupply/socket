@@ -428,8 +428,9 @@ int main (const int argc, const char* argv[]) {
   //
   if (platform.linux) {
     log("preparing build for linux");
-    flags = "-std=c++2a `pkg-config --cflags --libs curl gtk+-3.0 webkit2gtk-4.0`";
-    flags += getCxxFlags();
+    flags = " -std=c++2a `pkg-config --cflags --libs gtk+-3.0 webkit2gtk-4.0`";
+    flags += " `curl-config --cflags`";
+    flags += " " + getCxxFlags();
 
     files += prefixFile("src/main.cc");
     files += prefixFile("src/process_unix.cc");
