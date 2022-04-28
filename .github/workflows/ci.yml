@@ -26,7 +26,7 @@ jobs:
       run: |
         sudo apt install software-properties-common
         sudo add-apt-repository ppa:ubuntu-toolchain-r/test
-        sudo apt install gcc-11 g++-11 libwebkit2gtk-4.0-dev libcurl4-gnutls-dev
+        sudo apt install gcc-11 g++-11 libwebkit2gtk-4.0-dev libcurl4-openssl-dev
 
     - name: install an example app
       run: |
