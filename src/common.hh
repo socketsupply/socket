@@ -51,20 +51,6 @@
 namespace fs = std::filesystem;
 using Map = std::map<std::string, std::string>;
 
-enum {
-  FILE_DIALOG_OPEN    = 1 << 0,   // Create an open file dialog.
-  FILE_DIALOG_SAVE    = 1 << 1,   // Create a save file dialog.
-  FILE_DIALOG_DIR     = 1 << 2,   // Open a directory.
-  FILE_DIALOG_OVERWRITE_CONFIRMATION = 1 << 3,
-};
-
-enum {
-  WINDOW_HINT_NONE = 0,  // Width and height are default size
-  WINDOW_HINT_MIN = 1,   // Width and height are minimum bounds
-  WINDOW_HINT_MAX = 2,   // Width and height are maximum bounds
-  WINDOW_HINT_FIXED = 3  // Window size can not be changed by a user
-};
-
 namespace Operator {
   //
   // Cross platform support for strings

@@ -1,5 +1,6 @@
 #include "common.hh"
 #include "process.hh"
+#include "bootstrap.hh"
 
 #if defined(_WIN32)
   #include "win.hh"
