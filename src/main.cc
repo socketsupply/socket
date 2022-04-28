@@ -9,10 +9,6 @@
   #include "linux.hh"
 #endif
 
-#if _IOS == 0 && _ANDROID == 0
-  #include <curl/curl.h>
-#endif
-
 #if defined(_WIN32)
   #include <io.h>
   #define ISATTY _isatty

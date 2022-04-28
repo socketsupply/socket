@@ -756,6 +756,7 @@ int main (const int argc, const char* argv[]) {
     << " " << extraFlags
     << " -o " << binaryPath.string()
     << " -D_IOS=" << (flagBuildForIOS ? 1 : 0)
+    << " -D_ANDROID=" << (flagBuildForAndroid ? 1 : 0)
     << " -DDEBUG=" << (flagDebugMode ? 1 : 0)
     << " -DPORT=" << devPort
     << " -DSETTINGS=\"" << encodeURIComponent(_settings) << "\""
