@@ -26,11 +26,11 @@ Write-Output "$([char]0x2666) Created $INSTALL_PATH"
 # Compile with the current git revision of the repository
 #
 Function Build {
-    $VERSION_HASH = cmd /c 'git rev-parse --short HEAD' 2>&1 | % ToString
-    $VERSION = cmd /c 'cat VERSION.txt' 2>&1 | % ToString
+    $VERSION_HASH = $(git rev-parse --short HEAD) 2>&1 | % ToString
+    $VERSION = $(type VERSION.txt) 2>&1 | % ToString
 
     Write-Output "$([char]0x2666) Compiling the build tool"
-    clang++ src\cli.cc -o $WORKING_PATH\bin\op.exe -std=c++20 -DVERSION_HASH"$($VERSION_HASH)" -DVERSION"$($VERSION)"
+    clang++ src\cli.cc -o $WORKING_PATH\bin\op.exe -std=c++20 -DVERSION_HASH"$($VERSION_HASH)" -DVERSION" $($VERSION)"
     # -I 'C:\Program Files (x86)\Windows Kits\10\Include\10.0.19041.0\shared' `
     # -I 'C:\Program Files (x86)\Windows Kits\10\Include\10.0.19041.0\um' `
     # -I 'C:\Program Files (x86)\Windows Kits\10\Include\10.0.19041.0\winrt' `
