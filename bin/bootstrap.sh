@@ -1,7 +1,8 @@
+#!/usr/bin/env bash
+
 #
 # TODO convert this to a brew package
 #
-#!/usr/bin/env bash
 set -e;
 
 PREFIX=${PREFIX:-"/usr/local"}
@@ -30,7 +31,7 @@ fi
   fi
 
 if ! which sudo > /dev/null 2>&1; then
-  function sudo {
+  sudo () {
     $@
     return $?
   }
