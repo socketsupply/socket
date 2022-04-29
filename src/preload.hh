@@ -101,6 +101,35 @@ constexpr auto gPreload = R"JS(
       window.dispatchEvent(event)
     }
   }
+
+  window.system.getConfig = async o => {
+    const config = await window._ipc.send('getConfig', o)
+    if (!config || typeof config !== 'string') return null
+
+    return decodeURIComponent(config)
+      .split('\n')
+      .map(trim)
+      .filter(filterOutComments)
+      .filter(filterOutEmptyLine)
+      .map(splitTuple)
+      .reduce(reduceTuple, {})
+
+    function trim (line) { return line.trim() }
+    function filterOutComments (line) { return !/^\s*#/.test(line) }
+    function filterOutEmptyLine (line) { return line && line.length }
+
+    function splitTuple (line) {
+      return line.split(/:(.*)/).filter(filterOutEmptyLine).map(trim)
+    }
+
+    function reduceTuple (object, tuple) {
+      try {
+        return Object.assign(object, { [tuple[0]]: JSON.parse(tuple[1]) })
+      } catch {
+        return Object.assign(object, { [tuple[0]]: tuple[1] })
+      }
+    }
+  }
 )JS";
 
 constexpr auto gPreloadDesktop = R"JS(

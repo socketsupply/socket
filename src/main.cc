@@ -392,6 +392,11 @@ MAIN {
       if (cmd.name == "stdout") {
         writeToStdout(decodeURIComponent(value));
       }
+
+      if (cmd.name == "getConfig") {
+        w.onMessage(resolveToMainProcess(seq, "0", _settings));
+        return;
+      }
     });
   };
 
@@ -524,6 +529,13 @@ MAIN {
       auto seq = cmd.get("seq");
       auto value = decodeURIComponent(cmd.get("value"));
       w.setContextMenu(seq, value);
+      return;
+    }
+
+    if (cmd.name == "getConfig") {
+      const auto seq = cmd.get("seq");
+      auto wrapped = ("\"" + std::string(_settings) + "\"");
+      w.eval(resolveToRenderProcess(seq, "0", encodeURIComponent(wrapped)));
       return;
     }
 
