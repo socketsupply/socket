@@ -15,9 +15,9 @@
 #include <thread>
 #include <filesystem>
 
-#if _IOS == 0 && _ANDROID == 0
+// #if _IOS == 0) && _ANDROID == 0
 #include <curl/curl.h>
-#endif
+// #endif
 
 #if defined(_WIN32)
 #include <Windows.h>
