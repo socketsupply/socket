@@ -88,6 +88,10 @@ jobs:
 
     - name: install an example app
       run: |
+        git config --global core.sshCommand "'C:\Windows\System32\OpenSSH\ssh.exe'"
+        git config --global http.postBuffer 157286400
+        git config --global core.compression 0
+
         git config --global user.email "devops@optool.co"
         git config --global user.name "Optool Github Actions"
         git clone git@github.com:socketsupply/op-examples.git
