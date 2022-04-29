@@ -53,7 +53,7 @@ static dispatch_queue_t queue = dispatch_queue_create("op.queue", qos);
 - (void) fsStat: (std::string)seq path: (std::string)path;
 - (void) fsUnlink: (std::string)seq path: (std::string)path;
 - (void) fsRename: (std::string)seq pathA: (std::string)pathA pathB: (std::string)pathB;
-- (void) fsCopy: (std::string)seq pathA: (std::string)pathA pathB: (std::string)pathB flags: (int)flags;
+- (void) fsCopyFile: (std::string)seq pathA: (std::string)pathA pathB: (std::string)pathB flags: (int)flags;
 - (void) fsRmDir: (std::string)seq path: (std::string)path;
 - (void) fsMkDir: (std::string)seq path: (std::string)path mode: (int)mode;
 - (void) fsReadDir: (std::string)seq path: (std::string)path;
@@ -556,7 +556,7 @@ bool isRunning = false;
   });
 };
 
-- (void) fsCopy: (std::string)seq pathA: (std::string)pathA pathB: (std::string)pathB flags: (int)flags {
+- (void) fsCopyFile: (std::string)seq pathA: (std::string)pathA pathB: (std::string)pathB flags: (int)flags {
   dispatch_async(queue, ^{
     uv_fs_t req;
     DescriptorContext* desc = new DescriptorContext;
@@ -1703,8 +1703,8 @@ bool isRunning = false;
                  pathB: cmd.get("newPath")];
       }
 
-      if (cmd.get("fsCopy").size() != 0) {
-        [self fsCopy: seq
+      if (cmd.get("fsCopyFile").size() != 0) {
+        [self fsCopyFile: seq
                pathA: cmd.get("src")
                pathB: cmd.get("dest")
                flags: std::stoi(cmd.get("flags"))];
