@@ -106,6 +106,8 @@ jobs:
 
         echo "::add-path::$env:LOCALAPPDATA\Programs\socketsupply\src"
         echo "$env:LOCALAPPDATA\Programs\socketsupply\src" >> $env:GITHUB_PATH
+      env:
+        ACTIONS_ALLOW_UNSECURE_COMMANDS: true
 
     - name: compile example desktop
       run: |
