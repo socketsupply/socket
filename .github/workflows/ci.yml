@@ -127,7 +127,6 @@ jobs:
         op ./op-examples/tonic-desktop/ --test=1 -r
       env:
         CI: true
-        CXX: g++-11
 
   build_on_mac:
     runs-on: macOS-11
@@ -173,4 +172,3 @@ jobs:
         op ./op-examples/tonic-desktop/ --test=1 -r
       env:
         CI: true
-        CXX: g++-11
