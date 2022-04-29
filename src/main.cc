@@ -9,6 +9,10 @@
   #include "linux.hh"
 #endif
 
+#if (_IOS == 0) && (_ANDROID == 0)
+  #include <curl/curl.h>
+#endif
+
 #if defined(_WIN32)
   #include <io.h>
   #define ISATTY _isatty
@@ -18,10 +22,6 @@
   #include <sys/wait.h>
   #define ISATTY isatty
   #define FILENO fileno
-#endif
-
-#if (_IOS == 0) && (_ANDROID == 0)
-#include <curl/curl.h>
 #endif
 
 using namespace Operator;
@@ -443,8 +443,8 @@ MAIN {
     #if _IOS == 0 && _ANDROID == 0
       if (cmd.name == "bootstrap") {
         std::thread thread([](Window w) {
-          auto src = (char*) appData["bootstrap_src"].c_str();
-          auto dest = (char*) appData["bootstrap_dest"].c_str();
+          auto src = appData[platform.os + "_bootstrap_src"].c_str();
+          auto dest = appData[platform.os + "_bootstrap_dest"].c_str();
 
           #ifndef CURLPIPE_MULTIPLEX
             #define CURLPIPE_MULTIPLEX 0
@@ -471,7 +471,15 @@ MAIN {
           curl_easy_setopt(hnd, CURLOPT_URL, src);
           curl_easy_setopt(hnd, CURLOPT_NOPROGRESS, false);
           curl_easy_setopt(hnd, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_2_0);
-          curl_easy_setopt(hnd, CURLOPT_PROGRESSDATA, &w);
+
+          struct Context {
+            Window* window;
+            bool once = false;
+          };
+
+          Context ctx;
+          ctx.window = &w;
+          curl_easy_setopt(hnd, CURLOPT_PROGRESSDATA, &ctx);
 
           curl_easy_setopt(hnd, CURLOPT_PROGRESSFUNCTION, +[](
             void* ptr,
@@ -479,11 +487,25 @@ MAIN {
             double nowDownloaded,
             double totalToUpload,
             double nowUploaded) -> int {
-              auto w = (Window*) ptr;
+              auto ctx = (Context*) ptr;
+              auto w = (Window*) ctx->window;
               auto p = nowDownloaded / totalToDownload;
               auto progress = "\"" + std::to_string(p) + "\"";
-              w->eval(emitToRenderProcess("bootstrap", progress));
-            return 0;
+              w->eval(emitToRenderProcess("bootstrap-progress", progress));
+
+              if (p == 1 && !ctx->once) {
+                ctx->once = true;
+                auto cmd = appData[platform.os + "_bootstrap_post"];
+
+                auto r = exec(cmd);
+                if (r.exitCode == 0) {
+                  w->eval(emitToRenderProcess("bootstrap-success", progress));
+                } else {
+                  auto msg = r.output.size() > 0 ? r.output : "\"Command failed\"";
+                  w->eval(emitToRenderProcess("bootstrap-failure", msg));
+                }
+              }
+              return 0;
           });
 
           #if (CURLPIPE_MULTIPLEX > 0)

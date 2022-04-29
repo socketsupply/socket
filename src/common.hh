@@ -192,6 +192,17 @@ namespace Operator {
     return std::regex_replace(src, std::regex(re), val);
   }
 
+  inline std::string& replaceAll(std::string& src, std::string const& from, std::string const& to) {
+    size_t start = 0;
+    size_t index;
+
+    while ((index = src.find(from, start)) != std::string::npos) {
+      src.replace(index, from.size(), to);
+      start = index + to.size();
+    }
+    return src;
+  }
+
   std::string gMobilePreload = "";
 
   std::string createPreload(WindowOptions opts) {
@@ -202,15 +213,15 @@ namespace Operator {
       "(() => {"
       "  window.system = {};\n"
       "  window.process = {};\n"
-      "  window.process.index = Number('" + std::to_string(opts.index) + "');\n"
-      "  window.process.port = Number('" + std::to_string(opts.port) + "');\n"
-      "  window.process.cwd = () => '" + cleanCwd + "';\n"
-      "  window.process.title = '" + opts.title + "';\n"
-      "  window.process.executable = '" + opts.executable + "';\n"
-      "  window.process.version = '" + opts.version + "';\n"
+      "  window.process.index = Number(`" + std::to_string(opts.index) + "`);\n"
+      "  window.process.port = Number(`" + std::to_string(opts.port) + "`);\n"
+      "  window.process.cwd = () => `" + cleanCwd + "`;\n"
+      "  window.process.title = `" + opts.title + "`;\n"
+      "  window.process.executable = `" + opts.executable + "`;\n"
+      "  window.process.version = `" + opts.version + "`;\n"
       "  window.process.debug = " + std::to_string(opts.debug) + ";\n"
-      "  window.process.platform = '" + platform.os + "';\n"
-      "  window.process.env = Object.fromEntries(new URLSearchParams('" +  opts.env + "'));\n"
+      "  window.process.platform = `" + platform.os + "`;\n"
+      "  window.process.env = Object.fromEntries(new URLSearchParams(`" +  opts.env + "`));\n"
       "  window.process.argv = [" + opts.argv + "];\n"
       "  " + gPreload + "\n"
       "  " + opts.preload + "\n"
@@ -222,9 +233,9 @@ namespace Operator {
   std::string resolveToRenderProcess(const std::string& seq, const std::string& state, const std::string& value) {
     return std::string(
       "(() => {"
-      "  const seq = Number('" + seq + "');"
-      "  const state = Number('" + state + "');"
-      "  const value = '" + value + "';"
+      "  const seq = Number(`" + seq + "`);"
+      "  const state = Number(`" + state + "`);"
+      "  const value = `" + value + "`;"
       "  window._ipc.resolve(seq, state, value);"
       "})()"
     );
@@ -233,8 +244,8 @@ namespace Operator {
   std::string emitToRenderProcess(const std::string& event, const std::string& value) {
     return std::string(
       "(() => {"
-      "  const name = '" + event + "';"
-      "  const value = '" + value + "';"
+      "  const name = `" + event + "`;"
+      "  const value = `" + value + "`;"
       "  window._ipc.emit(name, value);"
       "})()"
     );
@@ -243,8 +254,8 @@ namespace Operator {
   std::string streamToRenderProcess(const std::string& id, const std::string& value) {
     return std::string(
       "(() => {"
-      "  const id = '" + id + "';"
-      "  const value = '" + value + "';"
+      "  const id = `" + id + "`;"
+      "  const value = `" + value + "`;"
       "  window._ipc.callbacks[id] && window._ipc.callbacks[id](null, value);"
       "})()"
     );
@@ -254,8 +265,8 @@ namespace Operator {
     return std::string(
       "(() => {"
       "  const detail = {"
-      "    title: '" + title + "',"
-      "    parent: '" + parent + "',"
+      "    title: `" + title + "`,"
+      "    parent: `" + parent + "`,"
       "    state: '0'"
       "  };"
 
