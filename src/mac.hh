@@ -434,7 +434,6 @@ namespace Operator {
       App app;
       WindowOptions opts;
       Window(App&, WindowOptions);
-      bool webviewFailed = false;
 
       void eval(const std::string&);
       void show(const std::string&);

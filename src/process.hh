@@ -98,6 +98,7 @@ namespace Operator {
       const std::string &path = std::string(""),
       cb read_stdout = nullptr,
       cb read_stderr = nullptr,
+      cb on_exit = nullptr,
       bool open_stdin = true,
       const Config &config = {}) noexcept;
 
@@ -105,9 +106,10 @@ namespace Operator {
     // Starts a process with the environment of the calling process.
     // Supported on Unix-like systems only.
     Process(
-      const std::function<void()> &function,
+      const std::function<int()> &function,
       cb read_stdout = nullptr,
       cb read_stderr = nullptr,
+      cb on_exit = nullptr,
       bool open_stdin = true,
       const Config &config = {}) noexcept;
 #endif
@@ -125,11 +127,13 @@ namespace Operator {
     bool write(const char *bytes, size_t n);
     // Write to stdin. Convenience function using write(const char *, size_t).
     bool write(const std::string &str);
-    // Close stdin. If the process takes parameters from stdin, use this to notify that all parameters have been sent.
+    // Close stdin. If the process takes parameters from stdin, use this to
+    // notify that all parameters have been sent.
     void close_stdin() noexcept;
     void reload() noexcept;
 
-    // Kill a given process id. Use kill(bool force) instead if possible. force=true is only supported on Unix-like systems.
+    // Kill a given process id. Use kill(bool force) instead if possible.
+    // force=true is only supported on Unix-like systems.
     static void kill(id_type id) noexcept;
 
   private:
@@ -138,6 +142,7 @@ namespace Operator {
     std::mutex close_mutex;
     cb read_stdout;
     cb read_stderr;
+    cb on_exit;
 #ifndef _WIN32
     std::thread stdout_stderr_thread;
 #else
@@ -152,7 +157,7 @@ namespace Operator {
 
     id_type open(const std::string &command, const std::string &path) noexcept;
 #ifndef _WIN32
-    id_type open(const std::function<void()> &function) noexcept;
+    id_type open(const std::function<int()> &function) noexcept;
 #endif
     void read() noexcept;
     void close_fds() noexcept;
@@ -175,12 +180,14 @@ namespace Operator {
     const std::string &path,
     cb read_stdout,
     cb read_stderr,
+    cb on_exit,
     bool open_stdin,
     const Config &config) noexcept
       : closed(true),
         open_stdin(true),
         read_stdout(std::move(read_stdout)),
-        read_stderr(std::move(read_stderr)) {
+        read_stderr(std::move(read_stderr)),
+        on_exit(std::move(on_exit)) {
     if (command.size() == 0) return;
     this->command = command;
     this->argv = argv;

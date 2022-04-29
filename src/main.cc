@@ -35,7 +35,6 @@ void signalHandler(int signal) { shutdownHandler(signal); }
 // which on windows is hInstance, on mac and linux this is just an int.
 //
 MAIN {
-
   App app(instanceId);
 
   //
@@ -170,9 +169,8 @@ MAIN {
           exit(exitCode);
         }
       },
-      [](std::string const &out) {
-        std::cerr << out;
-      }
+      [](std::string const &out) { std::cerr << out; },
+      [](std::string const &code){ exit(std::stoi(code)); }
     );
 
     shutdownHandler = [&](int signum) {
@@ -221,27 +219,20 @@ MAIN {
     .env = env.str()
   });
 
-  if (w0.webviewFailed) {
-    argvForward << " --webviewFailed";
-  }
-
-  std::string url;
-
-  if (_port > 0 || cmd.size() == 0) {
+  if (_port > 0) {
     w0.setSystemMenu("", std::string(
       "Developer Mode: \n"
       "  Reload: r + CommandOrControl\n"
       "  Quit: q + CommandOrControl\n"
       ";"
     ));
-
-    w0.show("");
-    w0.setSize("", 1024, 720, 0);
   }
+
+  w0.show("");
 
   if (_port > 0) {
     w0.navigate("", "http://localhost:" + std::to_string(_port));
-  } else if (cmd.size() == 0) {
+  } else {
     w0.navigate("", "file://" + (fs::path(cwd) / "index.html").string());
   }
 
@@ -410,7 +401,11 @@ MAIN {
   };
 
   auto onStdErr = [&](auto err) {
-    std::cerr << err << std::endl;
+    w0.eval(emitToRenderProcess("main-stderr", "\"" + err + "\""));
+  };
+
+  auto onExit = [&](std::string code) {
+    w0.eval(emitToRenderProcess("main-exit", code));
   };
 
   Process process(
@@ -418,7 +413,8 @@ MAIN {
     argvForward.str(),
     cwd,
     onStdOut,
-    onStdErr
+    onStdErr,
+    onExit
   );
 
   //
@@ -496,7 +492,7 @@ MAIN {
               auto w = (Window*) ctx->window;
               auto p = nowDownloaded / totalToDownload;
               auto progress = "\"" + std::to_string(p) + "\"";
-              w->eval(emitToRenderProcess("bootstrap-progress", progress));
+              w->eval(emitToRenderProcess("main-bootstrap-progress", progress));
 
               if (p == 1 && !ctx->once) {
                 ctx->once = true;
@@ -504,10 +500,10 @@ MAIN {
 
                 auto r = exec(cmd);
                 if (r.exitCode == 0) {
-                  w->eval(emitToRenderProcess("bootstrap-success", progress));
+                  w->eval(emitToRenderProcess("main-bootstrap-success", progress));
                 } else {
                   auto msg = r.output.size() > 0 ? r.output : "\"Command failed\"";
-                  w->eval(emitToRenderProcess("bootstrap-failure", msg));
+                  w->eval(emitToRenderProcess("main-bootstrap-failure", msg));
                 }
               }
               return 0;

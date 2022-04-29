@@ -19,22 +19,24 @@ const static std::stringstream initial;
 Process::Data::Data() noexcept : id(-1) {}
 
 Process::Process(
-  const std::function<void()> &function,
+  const std::function<int()> &function,
   cb read_stdout,
   cb read_stderr,
+  cb on_exit,
   bool open_stdin, const Config &config
 ) noexcept:
   closed(true),
   read_stdout(std::move(read_stdout)),
   read_stderr(std::move(read_stderr)),
+  on_exit(std::move(on_exit)),
   open_stdin(open_stdin),
   config(config) {
 
-  open(function);
+  on_exit(std::to_string(open(function)));
   read();
 }
 
-Process::id_type Process::open(const std::function<void()> &function) noexcept {
+Process::id_type Process::open(const std::function<int()> &function) noexcept {
   if (open_stdin) {
     stdin_fd = std::unique_ptr<fd_type>(new fd_type);
   }
@@ -125,6 +127,7 @@ Process::id_type Process::open(const std::function<void()> &function) noexcept {
       function();
     }
 
+    on_exit(std::to_string(EXIT_FAILURE));
     _exit(EXIT_FAILURE);
   }
 
@@ -176,7 +179,7 @@ Process::id_type Process::open(const std::string &command, const std::string &pa
       command_c_str = cd_path_and_command.c_str();
     }
 
-    execl("/bin/sh", "/bin/sh", "-c", command_c_str, nullptr);
+    return execl("/bin/sh", "/bin/sh", "-c", command_c_str, nullptr);
   });
 }
 

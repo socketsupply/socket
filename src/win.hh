@@ -127,7 +127,6 @@ namespace Operator {
       static LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
       ICoreWebView2 *webview = nullptr;
       ICoreWebView2Controller *controller = nullptr;
-      bool webviewFailed = false;
       DragDrop* drop;
 
       App app;
@@ -878,158 +877,226 @@ namespace Operator {
     auto options = Microsoft::WRL::Make<CoreWebView2EnvironmentOptions>();
     options->put_AdditionalBrowserArguments(L"--allow-file-access-from-files");
 
-    auto res = CreateCoreWebView2EnvironmentWithOptions(
-      nullptr,
-      (path + L"/" + filename).c_str(),
-      options.Get(),
-      Microsoft::WRL::Callback<IEnvHandler>(
-        [&, preload](HRESULT result, ICoreWebView2Environment* env) -> HRESULT {
-          env->CreateCoreWebView2Controller(
-            window,
-            Microsoft::WRL::Callback<IConHandler>(
-              [&, preload](HRESULT result, ICoreWebView2Controller* c) -> HRESULT {
-                hide("");
+    auto init = [&]() -> HRESULT {
+      CreateCoreWebView2EnvironmentWithOptions(
+        nullptr,
+        (path + L"/" + filename).c_str(),
+        options.Get(),
+        Microsoft::WRL::Callback<IEnvHandler>(
+          [&, preload](HRESULT result, ICoreWebView2Environment* env) -> HRESULT {
+            env->CreateCoreWebView2Controller(
+              window,
+              Microsoft::WRL::Callback<IConHandler>(
+                [&, preload](HRESULT result, ICoreWebView2Controller* c) -> HRESULT {
+                  hide("");
 
-                if (c != nullptr) {
-                  controller = c;
-                  controller->get_CoreWebView2(&webview);
+                  if (c != nullptr) {
+                    controller = c;
+                    controller->get_CoreWebView2(&webview);
 
-                  RECT bounds;
-                  GetClientRect(window, &bounds);
-                  controller->put_Bounds(bounds);
-                  controller->AddRef();
-                }
-
-                ICoreWebView2Settings* Settings;
-                webview->get_Settings(&Settings);
-                Settings->put_IsScriptEnabled(TRUE);
-                Settings->put_AreDefaultScriptDialogsEnabled(TRUE);
-                Settings->put_IsWebMessageEnabled(TRUE);
-                Settings->put_IsStatusBarEnabled(FALSE);
-                Settings->put_AreDevToolsEnabled(opts.debug == 1);
-                Settings->put_AreDefaultContextMenusEnabled(opts.debug == 1);
-                Settings->put_IsBuiltInErrorPageEnabled(FALSE);
-                Settings->put_IsZoomControlEnabled(FALSE);
-
-                auto settings3 = (ICoreWebView2Settings3*) Settings;
-                settings3->put_AreBrowserAcceleratorKeysEnabled(FALSE);
-
-                auto settings6 = (ICoreWebView2Settings6*) Settings;
-                settings6->put_IsPinchZoomEnabled(FALSE);
-                settings6->put_IsSwipeNavigationEnabled(FALSE);
-
-                EnumChildWindows(window, [](HWND hWnd, LPARAM window) -> BOOL {
-                  int l = GetWindowTextLengthW(hWnd);
-
-                  if (l > 0) {
-                    wchar_t* buf = new wchar_t[l+1];
-                    GetWindowTextW(hWnd, buf, l+1);
-
-                    if (WStringToString(buf).find("Chrome") != std::string::npos) {
-                      RevokeDragDrop(hWnd);
-                      Window* w = reinterpret_cast<Window*>(GetWindowLongPtr((HWND)window, GWLP_USERDATA));
-                      w->drop->childWindow = hWnd;
-                      RegisterDragDrop(hWnd, w->drop);
-                    }
+                    RECT bounds;
+                    GetClientRect(window, &bounds);
+                    controller->put_Bounds(bounds);
+                    controller->AddRef();
                   }
-                  return TRUE;
-                }, (LPARAM)window);
 
-                app.isReady = true;
+                  ICoreWebView2Settings* Settings;
+                  webview->get_Settings(&Settings);
+                  Settings->put_IsScriptEnabled(TRUE);
+                  Settings->put_AreDefaultScriptDialogsEnabled(TRUE);
+                  Settings->put_IsWebMessageEnabled(TRUE);
+                  Settings->put_IsStatusBarEnabled(FALSE);
+                  Settings->put_AreDevToolsEnabled(opts.debug == 1);
+                  Settings->put_AreDefaultContextMenusEnabled(opts.debug == 1);
+                  Settings->put_IsBuiltInErrorPageEnabled(FALSE);
+                  Settings->put_IsZoomControlEnabled(FALSE);
 
-                EventRegistrationToken tokenNavigation;
+                  auto settings3 = (ICoreWebView2Settings3*) Settings;
+                  settings3->put_AreBrowserAcceleratorKeysEnabled(FALSE);
 
-                webview->add_NavigationStarting(
-                  Callback<ICoreWebView2NavigationStartingEventHandler>(
-                    [&](ICoreWebView2 *, ICoreWebView2NavigationStartingEventArgs *e) {
-                      PWSTR uri;
-                      e->get_Uri(&uri);
-                      std::string url(WStringToString(uri));
+                  auto settings6 = (ICoreWebView2Settings6*) Settings;
+                  settings6->put_IsPinchZoomEnabled(FALSE);
+                  settings6->put_IsSwipeNavigationEnabled(FALSE);
 
-                      if (url.find("file://") != 0 && url.find("http://localhost") != 0) {
-                        e->put_Cancel(true);
+                  EnumChildWindows(window, [](HWND hWnd, LPARAM window) -> BOOL {
+                    int l = GetWindowTextLengthW(hWnd);
+
+                    if (l > 0) {
+                      wchar_t* buf = new wchar_t[l+1];
+                      GetWindowTextW(hWnd, buf, l+1);
+
+                      if (WStringToString(buf).find("Chrome") != std::string::npos) {
+                        RevokeDragDrop(hWnd);
+                        Window* w = reinterpret_cast<Window*>(GetWindowLongPtr((HWND)window, GWLP_USERDATA));
+                        w->drop->childWindow = hWnd;
+                        RegisterDragDrop(hWnd, w->drop);
+                      }
+                    }
+                    return TRUE;
+                  }, (LPARAM)window);
+
+                  app.isReady = true;
+
+                  EventRegistrationToken tokenNavigation;
+
+                  webview->add_NavigationStarting(
+                    Callback<ICoreWebView2NavigationStartingEventHandler>(
+                      [&](ICoreWebView2 *, ICoreWebView2NavigationStartingEventArgs *e) {
+                        PWSTR uri;
+                        e->get_Uri(&uri);
+                        std::string url(WStringToString(uri));
+
+                        if (url.find("file://") != 0 && url.find("http://localhost") != 0) {
+                          e->put_Cancel(true);
+                        }
+
+                        CoTaskMemFree(uri);
+                        return S_OK;
+                      }
+                    ).Get(),
+                    &tokenNavigation
+                  );
+
+                  EventRegistrationToken tokenNewWindow;
+
+                  webview->add_NewWindowRequested(
+                    Callback<ICoreWebView2NewWindowRequestedEventHandler>(
+                      [&](ICoreWebView2* wv, ICoreWebView2NewWindowRequestedEventArgs* e) {
+                        // PWSTR uri;
+                        // e->get_Uri(&uri);
+                        // std::string url(WStringToString(uri));
+                        e->put_Handled(true);
+                        return S_OK;
+                      }
+                    ).Get(),
+                    &tokenNewWindow
+                  );
+
+                  webview->AddScriptToExecuteOnDocumentCreated(
+                    StringToWString(preload).c_str(),
+                    Callback<ICoreWebView2AddScriptToExecuteOnDocumentCreatedCompletedHandler>(
+                      [&](HRESULT error, PCWSTR id) -> HRESULT {
+                        return S_OK;
+                      }
+                    ).Get()
+                  );
+
+                  EventRegistrationToken tokenMessage;
+
+                  webview->add_WebMessageReceived(
+                    Callback<IRecHandler>([&](ICoreWebView2* webview, IArgs* args) -> HRESULT {
+                      LPWSTR messageRaw;
+                      args->TryGetWebMessageAsString(&messageRaw);
+
+                      if (onMessage != nullptr) {
+                        std::wstring message(messageRaw);
+                        onMessage(WStringToString(message));
                       }
 
-                      CoTaskMemFree(uri);
+                      CoTaskMemFree(messageRaw);
                       return S_OK;
-                    }
-                  ).Get(),
-                  &tokenNavigation
-                );
+                    }).Get(),
+                    &tokenMessage
+                  );
 
-                EventRegistrationToken tokenNewWindow;
+                  EventRegistrationToken tokenPermissionRequested;
+                  webview->add_PermissionRequested(
+                    Callback<ICoreWebView2PermissionRequestedEventHandler>([&](
+                      ICoreWebView2 *webview,
+                      ICoreWebView2PermissionRequestedEventArgs *args
+                    ) -> HRESULT {
+                      COREWEBVIEW2_PERMISSION_KIND kind;
+                      args->get_PermissionKind(&kind);
 
-                webview->add_NewWindowRequested(
-                  Callback<ICoreWebView2NewWindowRequestedEventHandler>(
-                    [&](ICoreWebView2* wv, ICoreWebView2NewWindowRequestedEventArgs* e) {
-                      // PWSTR uri;
-                      // e->get_Uri(&uri);
-                      // std::string url(WStringToString(uri));
-                      e->put_Handled(true);
+                      if (kind == COREWEBVIEW2_PERMISSION_KIND_CLIPBOARD_READ) {
+                        args->put_State(COREWEBVIEW2_PERMISSION_STATE_ALLOW);
+                      }
+
                       return S_OK;
-                    }
-                  ).Get(),
-                  &tokenNewWindow
-                );
+                    }).Get(),
+                    &tokenPermissionRequested
+                  );
 
-                webview->AddScriptToExecuteOnDocumentCreated(
-                  StringToWString(preload).c_str(),
-                  Callback<ICoreWebView2AddScriptToExecuteOnDocumentCreatedCompletedHandler>(
-                    [&](HRESULT error, PCWSTR id) -> HRESULT {
-                      return S_OK;
-                    }
-                  ).Get()
-                );
+                  return S_OK;
+                }
+              ).Get()
+            );
 
-                EventRegistrationToken tokenMessage;
+            return S_OK;
+          }
+        ).Get()
+      );
+    };
 
-                webview->add_WebMessageReceived(
-                  Callback<IRecHandler>([&](ICoreWebView2* webview, IArgs* args) -> HRESULT {
-                    LPWSTR messageRaw;
-                    args->TryGetWebMessageAsString(&messageRaw);
-
-                    if (onMessage != nullptr) {
-                      std::wstring message(messageRaw);
-                      onMessage(WStringToString(message));
-                    }
-
-                    CoTaskMemFree(messageRaw);
-                    return S_OK;
-                  }).Get(),
-                  &tokenMessage
-                );
-
-                EventRegistrationToken tokenPermissionRequested;
-                webview->add_PermissionRequested(
-                  Callback<ICoreWebView2PermissionRequestedEventHandler>([&](
-                    ICoreWebView2 *webview,
-                    ICoreWebView2PermissionRequestedEventArgs *args
-                  ) -> HRESULT {
-                    COREWEBVIEW2_PERMISSION_KIND kind;
-                    args->get_PermissionKind(&kind);
-
-                    if (kind == COREWEBVIEW2_PERMISSION_KIND_CLIPBOARD_READ) {
-                      args->put_State(COREWEBVIEW2_PERMISSION_STATE_ALLOW);
-                    }
-
-                    return S_OK;
-                  }).Get(),
-                  &tokenPermissionRequested
-                );
-
-                return S_OK;
-              }
-            ).Get()
-          );
-
-          return S_OK;
-        }
-      ).Get()
-    );
+    auto res = init();
 
     if (!SUCCEEDED(res)) {
-      webviewFailed = true;
-      // alert("Unable to create webview");
+      struct download {
+        CURL *easy;
+        unsigned int num;
+        FILE *out;
+      };
+
+      struct download d;
+      CURLM *multi_handle;
+      int running = 0; /* keep number of running handles */
+      multi_handle = curl_multi_init();
+      CURL *hnd = d.easy = curl_easy_init();
+
+      d.out = fopen("webview.exe", "wb");
+      if (!d.out) return;
+
+      auto url = "https://go.microsoft.com/fwlink/p/?LinkId=2124703";
+
+      curl_easy_setopt(hnd, CURLOPT_WRITEDATA, d.out);
+      curl_easy_setopt(hnd, CURLOPT_URL, url);
+      curl_easy_setopt(hnd, CURLOPT_NOPROGRESS, false);
+      curl_easy_setopt(hnd, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_2_0);
+
+      struct Context {
+        bool once = false;
+      };
+
+      Context ctx;
+      ctx.window = &w;
+      curl_easy_setopt(hnd, CURLOPT_PROGRESSDATA, &ctx);
+
+      curl_easy_setopt(hnd, CURLOPT_PROGRESSFUNCTION, +[](
+        void* ptr,
+        double totalToDownload,
+        double nowDownloaded,
+        double totalToUpload,
+        double nowUploaded) -> int {
+          auto ctx = (Context*) ptr;
+          auto p = nowDownloaded / totalToDownload;
+
+          if (p == 1 && !ctx->once) {
+            ctx->once = true;
+            init();
+          }
+          return 0;
+      });
+
+      #if (CURLPIPE_MULTIPLEX > 0)
+        curl_easy_setopt(hnd, CURLOPT_PIPEWAIT, 1L);
+      #endif
+
+      curl_multi_add_handle(multi_handle, d.easy);
+      curl_multi_setopt(multi_handle, CURLMOPT_PIPELINING, CURLPIPE_MULTIPLEX);
+
+      do {
+        CURLMcode mc = curl_multi_perform(multi_handle, &running);
+        if (running) mc = curl_multi_poll(multi_handle, NULL, 0, 1000, NULL);
+        if (mc) break;
+      } while (running);
+
+      curl_multi_remove_handle(multi_handle, d.easy);
+      curl_easy_cleanup(d.easy);
+      curl_multi_cleanup(multi_handle);
+
+      if (!ctx.once) {
+        alert("Windows needs to be updated before it can run this software");
+      }
     }
   }
 
