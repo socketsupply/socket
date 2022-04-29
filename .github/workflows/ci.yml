@@ -51,6 +51,13 @@ jobs:
         CI: true
         CXX: g++-11
 
+    - name: Run example desktop tests
+      run: |
+        op ./op-examples/tonic-desktop/ --test=1 -r
+      env:
+        CI: true
+        CXX: g++-11
+
   build_on_win:
     runs-on: windows-2022
     timeout-minutes: 10
@@ -115,6 +122,13 @@ jobs:
       env:
         CI: true
 
+    - name: Run example desktop tests
+      run: |
+        op ./op-examples/tonic-desktop/ --test=1 -r
+      env:
+        CI: true
+        CXX: g++-11
+
   build_on_mac:
     runs-on: macOS-11
     timeout-minutes: 5
@@ -153,3 +167,10 @@ jobs:
         op ./op-examples/tonic-desktop/
       env:
         CI: true
+
+    - name: Run example desktop tests
+      run: |
+        op ./op-examples/tonic-desktop/ --test=1 -r
+      env:
+        CI: true
+        CXX: g++-11
