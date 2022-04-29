@@ -68,6 +68,9 @@ namespace Operator {
   // the stdout, stderr and stdin are sent to the parent process instead.
   class Process {
   public:
+    std::string command;
+    std::string argv;
+    std::string path;
 #ifdef _WIN32
     typedef unsigned long id_type; // Process id type
     typedef void *fd_type;         // File descriptor type
@@ -124,6 +127,7 @@ namespace Operator {
     bool write(const std::string &str);
     // Close stdin. If the process takes parameters from stdin, use this to notify that all parameters have been sent.
     void close_stdin() noexcept;
+    void reload() noexcept;
 
     // Kill a given process id. Use kill(bool force) instead if possible. force=true is only supported on Unix-like systems.
     static void kill(id_type id) noexcept;
@@ -158,6 +162,13 @@ namespace Operator {
     return Process::write(s.c_str(), s.size());
   };
 
+  inline void Process::reload () noexcept {
+    if (command.size() == 0) return;
+    close_stdin();
+    open(command + argv, path);
+    read();
+  }
+
   inline Process::Process(
     const std::string &command,
     const std::string &argv,
@@ -171,6 +182,9 @@ namespace Operator {
         read_stdout(std::move(read_stdout)),
         read_stderr(std::move(read_stderr)) {
     if (command.size() == 0) return;
+    this->command = command;
+    this->argv = argv;
+    this->path = path;
     open(command + argv, path);
     read();
   }

@@ -440,6 +440,11 @@ MAIN {
       return;
     }
 
+    if (cmd.name == "reload") {
+      process.reload();
+      return;
+    }
+
     #if _IOS == 0 && _ANDROID == 0
       if (cmd.name == "bootstrap") {
         std::thread thread([](Window w) {

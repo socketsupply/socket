@@ -1,6 +1,7 @@
 node_modules/
 /lib/*
 *.tmp
+.DS_Store
 !/lib/libuv.a
 /bin/build
 /bin/op.exe
