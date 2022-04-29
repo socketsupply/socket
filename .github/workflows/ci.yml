@@ -3,8 +3,7 @@ name: Operator Framework CI
 on: [push]
 
 jobs:
-  build:
-
+  build_on_linux:
     runs-on: ubuntu-latest
     timeout-minutes: 5
 
@@ -51,3 +50,61 @@ jobs:
       env:
         CI: true
         CXX: g++-11
+
+  build_on_win:
+    runs-on: windows-2022
+    timeout-minutes: 10
+
+    steps:
+    - uses: actions/checkout@v1
+      with:
+        ref: ${{ github.event.inputs.tag }}
+    # The webfactory/ssh-agent module does not work on Windows anymore
+    # I do not recommend touching this SSH stuff, i spend two days
+    # tweaking it just to get it to work on windows -.-
+
+    - name: Configure SSH
+      run: Set-Service ssh-agent -StartupType Manual
+
+    - name: Start SSH
+      run: Start-Service ssh-agent
+
+    - name: Add SSH key
+      run: echo $env:SSH_PRIVATE_KEY | ssh-add -
+      env:
+        SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+
+    - name: Add github.com to known_hosts
+      run: |
+        mkdir ~/.ssh
+        ssh-keyscan github.com >> ~/.ssh/known_hosts
+
+    - name: Download clang++
+      run: |
+        choco install -y llvm --no-progress
+
+        $bin_dir = Join-Path $env:ProgramFiles LLVM bin
+        echo $bin_dir >> $env:GITHUB_PATH
+
+    - name: install an example app
+      run: |
+        git config --global user.email "devops@optool.co"
+        git config --global user.name "Optool Github Actions"
+        git clone git@github.com:socketsupply/op-examples.git
+        cd op-examples/tonic-desktop/ && npm install
+      env:
+        CI: true
+        NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
+
+    - name: compile bootstrap
+      run: |
+        ./bin/bootstrap.sh local
+
+        echo "::add-path::$env:LOCALAPPDATA\Programs\socketsupply\src"
+        echo "$env:LOCALAPPDATA\Programs\socketsupply\src" >> $env:GITHUB_PATH
+
+    - name: compile example desktop
+      run: |
+        op ./op-examples/tonic-desktop/
+      env:
+        CI: true
