@@ -135,7 +135,12 @@ MAIN {
     );
   }
 
-  auto cmd = appData[platform.os + "_cmd"];
+  std::string cmd;
+  if (platform.os == "win32") {
+    cmd = appData["win_cmd"];
+  } else {
+    cmd = appData[platform.os + "_cmd"];
+  }
 
   if (cmd[0] == '.') {
     auto index = cmd.find_first_of('.');
