@@ -102,7 +102,7 @@ jobs:
 
     - name: compile bootstrap
       run: |
-        ./bin/bootstrap.sh local
+        ./bin/bootstrap.ps1 dev
 
         echo "::add-path::$env:LOCALAPPDATA\Programs\socketsupply\src"
         echo "$env:LOCALAPPDATA\Programs\socketsupply\src" >> $env:GITHUB_PATH
