@@ -20,6 +20,10 @@
   #define FILENO fileno
 #endif
 
+#if (_IOS == 0) && (_ANDROID == 0)
+#include <curl/curl.h>
+#endif
+
 using namespace Operator;
 
 std::function<void(int)> shutdownHandler;
