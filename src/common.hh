@@ -710,6 +710,23 @@ namespace Operator {
       virtual void showInspector() = 0;
       virtual ScreenSize getScreenSize() = 0;
   };
+
+
+  template <class IWindow> class IWindowFactory {
+    public:
+      struct Options {
+        public:
+          int defaultHeight = 0;
+          int defaultWidth = 0;
+          bool isTest;
+          std::string argv = "";
+          std::string cwd = "";
+      };
+
+      virtual IWindow * createWindow (WindowOptions) = 0;
+      virtual IWindow * createDefaultWindow (WindowOptions) = 0;
+      virtual void configure (Options) = 0;
+  };
 }
 
 #endif // OP_H

@@ -10,7 +10,6 @@ static GtkTargetEntry droppableTypes[] = {
 
 namespace Operator {
   class App : public IApp {
-
     public:
       App(int);
 
@@ -67,6 +66,85 @@ namespace Operator {
       void setSystemMenuItemEnabled(bool enabled, int barPos, int menuPos);
       int openExternal(const std::string& s);
   };
+
+  class WindowFactory : public IWindowFactory<Window> {
+    public:
+      App app;
+      WindowFactory::Options options;
+      std::vector<Window *> windows;
+
+      WindowFactory(App &app);
+      void configure (WindowFactory::Options configuration);
+      Window * createWindow(WindowOptions opts);
+      Window * createDefaultWindow(WindowOptions opts);
+  };
+
+  WindowFactory::WindowFactory (App &app) : app(app) {
+    // void
+  }
+
+  void WindowFactory::configure (WindowFactory::Options configuration) {
+    options.defaultHeight = configuration.defaultHeight;
+    options.defaultWidth = configuration.defaultWidth;
+    options.isTest = configuration.isTest;
+    options.argv = configuration.argv;
+    options.cwd = configuration.cwd;
+  }
+
+  Window * WindowFactory::createDefaultWindow (WindowOptions opts) {
+    return createWindow(WindowOptions {
+      .resizable = true,
+      .frameless = false,
+      .canExit = true,
+      .height = opts.height,
+      .width = opts.width,
+      .index = 0,
+      .port = PORT
+    });
+  }
+
+  Window * WindowFactory::createWindow (WindowOptions opts) {
+    if (windows[opts.index]) return windows[opts.index];
+
+    std::stringstream env;
+
+    for (auto const &envKey : split(appData["env"], ',')) {
+      auto cleanKey = trim(envKey);
+      auto envValue = getEnv(cleanKey.c_str());
+
+      env << std::string(
+        cleanKey + "=" + encodeURIComponent(envValue) + "&"
+      );
+    }
+
+    WindowOptions windowOptions = {
+      .resizable = opts.resizable == false ? false : true,
+      .frameless = opts.frameless,
+      .utility = opts.utility,
+      .canExit = opts.canExit,
+      .height = opts.height > 0 ? opts.height : options.defaultHeight,
+      .width = opts.width > 0 ? opts.width : options.defaultWidth,
+      .index = opts.index,
+      .debug = opts.debug || DEBUG,
+      .port = opts.port,
+      .isTest = options.isTest,
+      .forwardConsole = appData["forward_console"] == "true",
+
+      .cwd = options.cwd,
+      .executable = appData["executable"],
+      .title = appData["title"],
+      .url = opts.url.size() > 0 ? opts.url : "data:text/html,<html>",
+      .version = appData["version"],
+      .argv = options.argv,
+      .preload = opts.preload.size() > 0 ? opts.preload : gPreloadDesktop,
+      .env = env.str()
+    };
+
+    auto window = new Window(app, windowOptions);
+
+    windows[opts.index] = window;
+    return window;
+  }
 
   App::App (int instanceId) {
     gtk_init_check(0, nullptr);

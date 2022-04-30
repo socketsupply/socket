@@ -33,6 +33,7 @@ void signalHandler(int signal) { shutdownHandler(signal); }
 //
 MAIN {
   App app(instanceId);
+  WindowFactory windowFactory(app);
 
   //
   // SETTINGS and DEBUG are compile time variables provided by the compiler.
@@ -190,6 +191,13 @@ MAIN {
   int height = appData["height"].size() > 0 ? std::stoi(appData["height"]) : 0;
   int width = appData["width"].size() > 0 ? std::stoi(appData["width"]) : 0;
 
+  windowFactory.configure(WindowFactory::Options {
+    .defaultHeight = height,
+    .defaultWidth = width,
+    .isTest = isTest,
+    .argv = argvArray.str(),
+    .cwd = cwd
+  });
   //
   // # Windows
   //
