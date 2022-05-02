@@ -607,7 +607,7 @@ int main (const int argc, const char* argv[]) {
       pathResourcesRelativeToUserBuild.string().c_str(),
       pathResourcesRelativeToUserBuild.string().size()
     );
-    
+
     // @TODO(jwerle): use `setEnv()` if #148 is closed
     #if _WIN32
       setEnv("PREFIX=prefix");

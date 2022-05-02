@@ -12,6 +12,7 @@
 #pragma comment(lib,"shell32.lib")
 #pragma comment(lib,"version.lib")
 #pragma comment(lib,"user32.lib")
+#pragma comment(lib,"libcurld.lib")
 #pragma comment(lib,"WebView2LoaderStatic.lib")
 
 // for dark mode...
