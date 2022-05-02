@@ -12,8 +12,15 @@
 #pragma comment(lib,"shell32.lib")
 #pragma comment(lib,"version.lib")
 #pragma comment(lib,"user32.lib")
-#pragma comment(lib,"libcurld.lib")
 #pragma comment(lib,"WebView2LoaderStatic.lib")
+
+// curl
+#pragma comment(lib,"libcurl.lib")
+#pragma comment(lib,"ws2_32.lib")
+#pragma comment(lib,"winmm.lib")
+#pragma comment(lib,"wldap32.lib")
+
+#define CURL_STATICLIB
 
 // for dark mode...
 #include <uxtheme.h>
@@ -879,7 +886,7 @@ namespace Operator {
     options->put_AdditionalBrowserArguments(L"--allow-file-access-from-files");
 
     auto init = [&]() -> HRESULT {
-      CreateCoreWebView2EnvironmentWithOptions(
+      return CreateCoreWebView2EnvironmentWithOptions(
         nullptr,
         (path + L"/" + filename).c_str(),
         options.Get(),
