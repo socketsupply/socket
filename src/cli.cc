@@ -665,9 +665,92 @@ int main (const int argc, const char* argv[]) {
     auto rArchive = exec(archiveCommand.str().c_str());
 
     if (rArchive.exitCode != 0) {
-      log("error: failed to archive project");
-      fs::current_path(oldCwd);
-      exit(1);
+      if (flagBuildForSimulator) {
+        log("creating iOS simulator");
+
+        std::stringstream listDeviceTypesCommand;
+        std::stringstream listRuntimesCommand;
+        std::stringstream createSimulatorCommand;
+
+        listDeviceTypesCommand
+          << "xcrun"
+          << " simctl"
+          << " list devicetypes";
+        auto rListDeviceTypes = exec(listDeviceTypesCommand.str().c_str());
+        if (rListDeviceTypes.exitCode != 0) {
+          log("failed to list available devices using \"" + listDeviceTypesCommand.str() + "\"");
+          exit(1);
+        }
+        auto const devices = split(rListDeviceTypes.output, '\n');
+        std::string device;
+        // TODO: improve iPhone version detection
+        for (auto it = devices.rbegin(); it != devices.rend(); ++it) {
+          if (it->find("iPhone") != std::string::npos) {
+            device = trim(*it);
+            log("found device type: " + device);
+            break;
+          }
+        }
+
+        std::regex re(R"(com.apple.CoreSimulator.SimDeviceType.(?:.*)[^)])");
+        std::smatch match;
+        std::string deviceType;
+
+        if (std::regex_search(device, match, re)) {
+          deviceType = match.str(0);
+        }
+        log("Device type: " + deviceType);
+
+        listRuntimesCommand
+          << "xcrun"
+          << " simctl"
+          << " list runtimes available";
+        auto rListRuntimes = exec(listRuntimesCommand.str().c_str());
+        if (rListRuntimes.exitCode != 0) {
+          log("failed to list available runtimes using \"" + listRuntimesCommand.str() + "\"");
+          exit(1);
+        }
+        auto const runtimes = split(rListRuntimes.output, '\n');
+        std::string runtime;
+        // TODO: improve iOS version detection
+        for (auto it = runtimes.rbegin(); it != runtimes.rend(); ++it) {
+          if (it->find("iOS") != std::string::npos) {
+            runtime = trim(*it);
+            log("found runtime: " + runtime);
+            break;
+          }
+        }
+
+        std::regex reRuntime(R"(com.apple.CoreSimulator.SimRuntime.iOS(?:.*))");
+        std::smatch matchRuntime;
+        std::string runtimeId;
+
+        if (std::regex_search(runtime, matchRuntime, reRuntime)) {
+          runtimeId = matchRuntime.str(0);
+        }
+        log("Runtime: " + runtimeId);
+
+        createSimulatorCommand
+          << "xcrun simctl"
+          << " create OperatorFrameworkDefaultSimulator"
+          << " " << deviceType
+          << " " << runtimeId;
+
+
+        // TODO: this doesn't exec
+        auto rCreateSimulator = exec(createSimulatorCommand.str().c_str());
+        if (rCreateSimulator.exitCode != 0) {
+          log("unable to create simulator");
+          exit(WEXITSTATUS(rCreateSimulator.exitCode));
+        }
+        log(rCreateSimulator.output);
+
+        // TODO: patch config
+      } else {
+        log("error: failed to archive project");
+        fs::current_path(oldCwd);
+        exit(1);
+      }
     }
 
     log("created archive");
