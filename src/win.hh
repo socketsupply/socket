@@ -1811,8 +1811,8 @@ namespace Operator {
     Window* w = reinterpret_cast<Window*>(GetWindowLongPtr(hWnd, GWLP_USERDATA));
     switch (message) {
       case WM_SIZE: {
-                      if (w == nullptr || w->webview == nullptr) {
-                        break;
+        if (w == nullptr || w->webview == nullptr) {
+          break;
         }
 
         RECT bounds;
