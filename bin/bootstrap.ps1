@@ -54,7 +54,7 @@ Write-Output "- Working path set to $WORKING_PATH."
 
 if ($args[0] -eq "update") {
   $PACKAGE_VERSION='1.0.1133-prerelease'
-  $base = $TEMP_PATH\WebView2\build\native
+  $base = "$TEMP_PATH\WebView2\build\native"
 
   Write-Output "- Updating WebView2 header files..."
   #https://docs.microsoft.com/en-us/microsoft-edge/webview2/concepts/versioning
