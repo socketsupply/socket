@@ -686,6 +686,14 @@ int main (const int argc, const char* argv[]) {
       archiveCommand << " -archivePath build/" << settings["name"];
     }
 
+    if (!flagCodeSign) {
+      archiveCommand
+        << " CODE_SIGN_IDENTITY=\"\""
+        << " CODE_SIGNING_REQUIRED=\"NO\""
+        << " CODE_SIGN_ENTITLEMENTS=\"\""
+        << " CODE_SIGNING_ALLOWED=\"NO\"";
+    }
+
     log(archiveCommand.str().c_str());
     auto rArchive = exec(archiveCommand.str().c_str());
 
