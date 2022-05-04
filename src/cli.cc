@@ -54,45 +54,6 @@ static std::string getCxxFlags() {
   return flags.size() > 0 ? " " + flags : "";
 }
 
-inline ExecOutput execCommand(std::string command) {
-  command = command + " 2>&1";
-
-  ExecOutput eo;
-  FILE *pipe;
-  size_t count;
-  const int bufsize = 128;
-  std::array<char, 128> buffer;
-
-  #ifdef _WIN32
-    //
-    // https://docs.microsoft.com/en-us/cpp/c-runtime-library/reference/popen-wpopen?view=msvc-160
-    // _popen works fine in a console application... ok fine that's all we need it for... thanks.
-    //
-    pipe = _popen((const char*) command.c_str(), "rt");
-  #else
-    pipe = popen((const char*) command.c_str(), "r");
-  #endif
-
-  if (pipe == NULL) {
-    std::cout << "error: unable to open the command" << std::endl;
-    exit(1);
-  }
-
-  do {
-    if ((count = fread(buffer.data(), 1, bufsize, pipe)) > 0) {
-      eo.output.insert(eo.output.end(), std::begin(buffer), std::next(std::begin(buffer), count));
-    }
-  } while(count > 0);
-
-  #ifdef _WIN32
-    eo.exitCode = _pclose(pipe);
-  #else
-    eo.exitCode = pclose(pipe);
-  #endif
-
-  return eo;
-}
-
 int main (const int argc, const char* argv[]) {
   Map attrs;
   attrs["version"] = version;
@@ -152,7 +113,7 @@ int main (const int argc, const char* argv[]) {
 
     if (is(arg, "-mid")) {
       std::string command = "system_profiler SPUSBDataType -json";
-      auto r = execCommand(command);
+      auto r = exec(command);
 
       if (r.exitCode == 0) {
         std::regex re(R"REGEX("(?:iPhone(?:(?:.|\n)*?)"serial_num"\s*:\s*"([^"]*))")REGEX");
