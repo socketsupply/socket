@@ -290,6 +290,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 		294A3C502763E6BC007B5B9A /* ios.mm in Sources */ = {isa = PBXBuildFile; fileRef = 294A3C4E2763E5EB007B5B9A /* ios.mm */; };
 		294A3C852764EAB7007B5B9A /* ui in Resources */ = {isa = PBXBuildFile; fileRef = 294A3C842764EAB7007B5B9A /* ui */; };
 		294A3CA02768C429007B5B9A /* WebKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 294A3C7B2763EA7F007B5B9A /* WebKit.framework */; };
+		2996EDB22770BC1F00C672A2 /* Network.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2996EDB12770BC1F00C672A2 /* Network.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -306,6 +307,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 		294A3C8027649DD9007B5B9A /* common.hh */ = {isa = PBXFileReference; fileEncoding = 4; indentWidth = 2; lastKnownFileType = sourcecode.cpp.h; path = common.hh; sourceTree = "<group>"; tabWidth = 2; };
 		294A3C842764EAB7007B5B9A /* ui */ = {isa = PBXFileReference; lastKnownFileType = folder; path = ui; sourceTree = "<group>"; };
 		294A3C9027677424007B5B9A /* op.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = op.entitlements; sourceTree = "<group>"; };
+		2996EDB12770BC1F00C672A2 /* Network.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Network.framework; path = System/Library/Frameworks/Network.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -313,6 +315,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				2996EDB22770BC1F00C672A2 /* Network.framework in Frameworks */,
 				290F7F88276BC2EE00486988 /* libuv.a in Frameworks */,
 				294A3CA02768C429007B5B9A /* WebKit.framework in Frameworks */,
 				290F7EBF2768C49000486988 /* UIKit.framework in Frameworks */,
@@ -359,6 +362,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 		294A3C782763E9C6007B5B9A /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				2996EDB12770BC1F00C672A2 /* Network.framework */,
 				294A3C7B2763EA7F007B5B9A /* WebKit.framework */,
 				294A3C792763E9C6007B5B9A /* UIKit.framework */,
 			);
@@ -504,7 +508,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 14.1;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				SDKROOT = iphoneos;
@@ -557,7 +561,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 14.1;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SDKROOT = iphoneos;
@@ -569,7 +573,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 		29124C7A2761336B001832A0 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ARCHS = arm64;
+				ARCHS = "{{arch}}";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = op.entitlements;
@@ -614,7 +618,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 		29124C7B2761336B001832A0 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ARCHS = arm64;
+				ARCHS = "{{arch}}";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = op.entitlements;

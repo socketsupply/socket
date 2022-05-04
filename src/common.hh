@@ -375,8 +375,13 @@ namespace Operator {
   };
 
   inline ExecOutput exec(std::string command) {
+    command = command + " 2>&1";
+
+    ExecOutput eo;
     FILE *pipe;
-    char buf[128];
+    size_t count;
+    const int bufsize = 128;
+    std::array<char, 128> buffer;
 
     #ifdef _WIN32
       //
@@ -393,24 +398,19 @@ namespace Operator {
       exit(1);
     }
 
-    std::stringstream ss;
-
-    while (fgets(buf, 128, pipe)) {
-      ss << buf;
-    }
+    do {
+      if ((count = fread(buffer.data(), 1, bufsize, pipe)) > 0) {
+        eo.output.insert(eo.output.end(), std::begin(buffer), std::next(std::begin(buffer), count));
+      }
+    } while(count > 0);
 
     #ifdef _WIN32
-      int exitCode = _pclose(pipe);
+      eo.exitCode = _pclose(pipe);
     #else
-      int exitCode = pclose(pipe);
+      eo.exitCode = pclose(pipe);
     #endif
 
-    ExecOutput output {
-      .output = ss.str(),
-      .exitCode = exitCode
-    };
-
-    return output;
+    return eo;
   }
 
   inline void writeToStdout(const std::string &str) {

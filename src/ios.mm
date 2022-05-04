@@ -1581,11 +1581,11 @@ bool isRunning = false;
 //
 
 - (void) applicationDidEnterBackground {
-  [self.webview evaluateJavaScript: "window.blur()" completionHandler:nil];
+  [self.webview evaluateJavaScript: @"window.blur()" completionHandler:nil];
 }
 
 - (void) applicationWillEnterForeground {
-  [self.webview evaluateJavaScript: "window.focus()" completionHandler:nil];
+  [self.webview evaluateJavaScript: @"window.focus()" completionHandler:nil];
 }
 
 - (void) initNetworkStatusObserver {
@@ -2010,7 +2010,6 @@ bool isRunning = false;
 
       "window.addEventListener('unhandledrejection', e => console.log(e.message));\n"
       "window.addEventListener('error', e => console.log(e.reason));\n"
-      "" + std::string(gEventEmitter) + "\n"
     );
 
     WKUserScript* initScript = [[WKUserScript alloc]

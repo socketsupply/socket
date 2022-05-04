@@ -161,6 +161,7 @@ int main (const int argc, const char* argv[]) {
 
         if (!std::regex_search(r.output, match, re)) {
           log("failed to extract device uuid using \"" + command + "\"");
+          log("Is the device plugged in?");
           exit(1);
         }
 
