@@ -5,7 +5,6 @@
 #include <filesystem>
 
 #ifdef _WIN32
-#include <array>
 #include <shlwapi.h>
 #include <strsafe.h>
 #include <comdef.h>

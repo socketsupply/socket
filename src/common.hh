@@ -20,6 +20,7 @@
 #include <tchar.h>
 #include <wrl.h>
 #include <functional>
+#include <array>
 
 //
 // A cross platform MAIN macro that
