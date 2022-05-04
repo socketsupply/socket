@@ -648,6 +648,13 @@ int main (const int argc, const char* argv[]) {
       << " -configuration " << configuration
       << " -scheme " << settings["name"]
       << " -destination '" << destination << "'";
+    if (!flagCodeSign) {
+      archiveCommand
+        << " CODE_SIGN_IDENTITY=\"\""
+        << " CODE_SIGNING_REQUIRED=\"NO\""
+        << " CODE_SIGN_ENTITLEMENTS=\"\""
+        << " CODE_SIGNING_ALLOWED=\"NO\"";
+    }
 
     if (flagShouldPackage) {
       archiveCommand << " -archivePath build/" << settings["name"];
@@ -736,16 +743,31 @@ int main (const int argc, const char* argv[]) {
           << " " << deviceType
           << " " << runtimeId;
 
-
-        // TODO: this doesn't exec
         auto rCreateSimulator = exec(createSimulatorCommand.str().c_str());
         if (rCreateSimulator.exitCode != 0) {
           log("unable to create simulator");
           exit(WEXITSTATUS(rCreateSimulator.exitCode));
         }
-        log(rCreateSimulator.output);
+        auto pathToBuiltWithFile = target / "simulator_uuid.txt";
+        log("creating simulator_uuid.txt file at " + pathToBuiltWithFile.string());
+        writeFile(pathToBuiltWithFile, rCreateSimulator.output);
 
-        // TODO: patch config
+        // auto configOld = readFile(target / "operator.config");
+        // std::regex reConfig("ios_device_simulator:(?:.*)");
+        // std::smatch matchConfig;
+        // auto iosDeviceSimulator = "ios_device_simulator: platform=iOS Simulator,OS=" + osVersion + "," + "name=" + name;
+
+        // if (std::regex_search(configOld, matchConfig, reConfig)) {
+        //   log("Found existing " + matchConfig.str(0));
+        //   auto configNew = std::regex_replace(configOld, reConfig, iosDeviceSimulator));
+        //   writeFile(target / "operator.config", configNew);
+        // } else {
+        //   log("No existing ios_device_simulator found");
+        //   writeFile(target / "operator.config", configOld + "\n" + iosDeviceSimulator);
+        // }
+
+        // log(std::regex_replace(configOld, std::regex(R"([^ios_device_simulator: ](.+?))", "platform=iOS Simulator,"));
+        // log(std::regex_replace(configOld, reConfig, "platform=iOS Simulator,"));
       } else {
         log("error: failed to archive project");
         fs::current_path(oldCwd);
