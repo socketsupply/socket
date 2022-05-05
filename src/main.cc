@@ -467,17 +467,17 @@ MAIN {
         auto onProgress = [&](uint64_t current, uint64_t total) -> bool {
           auto p = current * 100 / total;
           auto progress = "\"" + std::to_string(p) + "\"";
-          w.eval(emitToRenderProcess("main-bootstrap-progress", progress));
+          window->eval(emitToRenderProcess("main-bootstrap-progress", progress));
 
           if (p != 1) return true;
 
           auto r = exec(appData[platform.os + "_bootstrap_post"]);
 
           if (r.exitCode == 0) {
-            w.eval(emitToRenderProcess("main-bootstrap-success", progress));
+            window->eval(emitToRenderProcess("main-bootstrap-success", progress));
           } else {
             auto msg = r.output.size() > 0 ? r.output : "\"Command failed\"";
-            w.eval(emitToRenderProcess("main-bootstrap-failure", msg));
+            window->eval(emitToRenderProcess("main-bootstrap-failure", msg));
           }
 
           return true;
@@ -489,7 +489,7 @@ MAIN {
 
         if (res->status != 200) {
           auto msg = "{\"status\":" + std::to_string(res->status) + "}";
-          w.eval(emitToRenderProcess("main-bootstrap-failure", msg));
+          window->eval(emitToRenderProcess("main-bootstrap-failure", msg));
           return;
         }
       }
