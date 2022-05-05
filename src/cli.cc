@@ -737,10 +737,16 @@ int main (const int argc, const char* argv[]) {
   if (flagRunUserBuild == false || !binExists || oldHash != version_hash) {
     auto r = exec(compileCommand.str());
 
+    log("Unable to build");
+
+    if (r.output.size() > 0) {
+      log(r.output);
+    }
+
     if (r.exitCode != 0) {
-      log("Unable to build: " + r.output);
       exit(WEXITSTATUS(r.exitCode));
     }
+
     writeFile(pathToBuiltWithFile, version_hash);
 
     log("compiled native binary");
@@ -847,9 +853,14 @@ int main (const int argc, const char* argv[]) {
     log(signCommand.str());
     auto r = exec(signCommand.str());
 
-    if (r.exitCode != 0) {
-      log("Unable to sign");
-      exit(WEXITSTATUS(r.exitCode));
+    if (r.output.size() > 0) {
+      if (r.exitCode != 0) {
+        log("Unable to sign");
+        std::cerr << r.output << std::endl;
+        exit(WEXITSTATUS(r.exitCode));
+      } else {
+        std::cout << r.output << std::endl;
+      }
     }
 
     log("finished code signing");

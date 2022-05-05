@@ -638,10 +638,6 @@ MAIN {
 
   Window *defaultWindow = windowFactory.createDefaultWindow(WindowOptions { });
 
-  if (defaultWindow->webviewFailed) {
-    argvForward << " --webviewFailed";
-  }
-
   if (_port > 0 || cmd.size() == 0) {
     defaultWindow->setSystemMenu(EMPTY_SEQ, std::string(
       "Developer Mode: \n"
@@ -653,8 +649,6 @@ MAIN {
     defaultWindow->show(EMPTY_SEQ);
     defaultWindow->setSize(EMPTY_SEQ, 1024, 720, 0);
   }
-
-  w0.show("");
 
   if (_port > 0) {
     defaultWindow->navigate(EMPTY_SEQ, "http://localhost:" + std::to_string(_port));
