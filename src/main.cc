@@ -33,7 +33,7 @@ void signalHandler(int signal) { shutdownHandler(signal); }
 //
 MAIN {
   App app(instanceId);
-  WindowFactory windowFactory(app);
+  WindowFactory<Window, App> windowFactory(app);
 
   //
   // SETTINGS and DEBUG are compile time variables provided by the compiler.
@@ -186,8 +186,6 @@ MAIN {
     return exitCode;
   }
 
-  static std::vector<Window> windows;
-
   int height = appData["height"].size() > 0 ? std::stoi(appData["height"]) : 0;
   int width = appData["width"].size() > 0 ? std::stoi(appData["width"]) : 0;
 
@@ -209,13 +207,12 @@ MAIN {
     app.dispatch([&, out] {
       Parse cmd(out);
 
-      //auto &w = cmd.index == 0 ? w0 : w1;
-      auto w = windowFactory.createWindow(WindowOptions { index: cmd.index });
-      auto seq = cmd.get("seq");
+      auto window = windowFactory.createWindow(WindowOptions { index: cmd.index });
       auto value = cmd.get("value");
+      auto seq = cmd.get("seq");
 
       if (cmd.name == "title") {
-        w->setTitle(seq, decodeURIComponent(value));
+        window->setTitle(seq, decodeURIComponent(value));
         return;
       }
 
@@ -225,29 +222,29 @@ MAIN {
       }
 
       if (cmd.name == "show") {
-        w->show(seq);
+        window->show(seq);
         return;
       }
 
       if (cmd.name == "hide") {
-        w->hide(seq);
+        window->hide(seq);
         return;
       }
 
       if (cmd.name == "navigate") {
-        w->navigate(seq, decodeURIComponent(value));
+        window->navigate(seq, decodeURIComponent(value));
         return;
       }
 
       if (cmd.name == "size") {
         int width = std::stoi(cmd.get("width"));
         int height = std::stoi(cmd.get("height"));
-        w->setSize(seq, width, height, 0);
+        window->setSize(seq, width, height, 0);
         return;
       }
 
       if (cmd.name == "getScreenSize") {
-        auto size = w->getScreenSize();
+        auto size = window->getScreenSize();
 
         std::string value(
           "{"
@@ -256,12 +253,12 @@ MAIN {
           "}"
         );
 
-        w->onMessage(resolveToMainProcess(seq, "0", encodeURIComponent(value)));
+        window->onMessage(resolveToMainProcess(seq, "0", encodeURIComponent(value)));
         return;
       }
 
       if (cmd.name == "menu") {
-        w->setSystemMenu(seq, decodeURIComponent(value));
+        window->setSystemMenu(seq, decodeURIComponent(value));
         return;
       }
 
@@ -274,26 +271,26 @@ MAIN {
           indexMain = std::stoi(cmd.get("indexMain"));
           indexSub = std::stoi(cmd.get("indexSub"));
         } catch (...) {
-          w->onMessage(resolveToMainProcess(seq, "0", ""));
+          window->onMessage(resolveToMainProcess(seq, "0", ""));
           return;
         }
 
-        w->setSystemMenuItemEnabled(enabled, indexMain, indexSub);
-        w->onMessage(resolveToMainProcess(seq, "0", ""));
+        window->setSystemMenuItemEnabled(enabled, indexMain, indexSub);
+        window->onMessage(resolveToMainProcess(seq, "0", ""));
         return;
       }
 
       if (cmd.name == "external") {
-        w->openExternal(decodeURIComponent(value));
+        window->openExternal(decodeURIComponent(value));
         if (seq.size() > 0) {
-          w->onMessage(resolveToMainProcess(seq, "0", "null"));
+          window->onMessage(resolveToMainProcess(seq, "0", "null"));
         }
         return;
       }
 
       if (cmd.name == "heartbeat") {
         if (seq.size() > 0) {
-          w->onMessage(resolveToMainProcess(seq, "0", "\"heartbeat\""));
+          window->onMessage(resolveToMainProcess(seq, "0", "\"heartbeat\""));
         }
         return;
       }
@@ -304,21 +301,21 @@ MAIN {
         } catch (...) {
         }
 
-        w->exit(exitCode);
+        window->exit(exitCode);
 
         if (seq.size() > 0) {
-          w->onMessage(resolveToMainProcess(seq, "0", "null"));
+          window->onMessage(resolveToMainProcess(seq, "0", "null"));
         }
         return;
       }
 
       if (cmd.name == "resolve") {
-        w->eval(resolveToRenderProcess(seq, cmd.get("state"), value));
+        window->eval(resolveToRenderProcess(seq, cmd.get("state"), value));
         return;
       }
 
       if (cmd.name == "send") {
-        w->eval(emitToRenderProcess(
+        window->eval(emitToRenderProcess(
           decodeURIComponent(cmd.get("event")),
           value
         ));
@@ -330,7 +327,7 @@ MAIN {
       }
 
       if (cmd.name == "getConfig") {
-        w->onMessage(resolveToMainProcess(seq, "0", _settings));
+        window->onMessage(resolveToMainProcess(seq, "0", _settings));
         return;
       }
     });
@@ -355,11 +352,10 @@ MAIN {
   auto onMessage = [&](auto out) {
     Parse cmd(out);
 
-    //auto &w = cmd.index == 0 ? *w0 : w1;
-    auto w = windowFactory.createWindow(WindowOptions { index: cmd.index });
+    auto window = windowFactory.createWindow(WindowOptions { index: cmd.index });
 
     if (cmd.name == "title") {
-      w->setTitle(
+      window->setTitle(
         cmd.get("seq"),
         decodeURIComponent(cmd.get("value"))
       );
@@ -429,17 +425,17 @@ MAIN {
       } catch (...) {
       }
 
-      w->exit(exitCode);
+      window->exit(exitCode);
       return;
     }
 
     if (cmd.name == "hide") {
-      w->hide("");
+      window->hide("");
       return;
     }
 
     if (cmd.name == "inspect") {
-      w->showInspector();
+      window->showInspector();
       return;
     }
 
@@ -457,19 +453,19 @@ MAIN {
       } catch (...) {
       }
 
-      w->setBackgroundColor(red, green, blue, alpha);
+      window->setBackgroundColor(red, green, blue, alpha);
       return;
     }
 
     if (cmd.name == "size") {
       int width = std::stoi(cmd.get("width"));
       int height = std::stoi(cmd.get("height"));
-      w->setSize("", width, height, 0);
+      window->setSize("", width, height, 0);
       return;
     }
 
     if (cmd.name == "external") {
-      w->openExternal(decodeURIComponent(cmd.get("value")));
+      window->openExternal(decodeURIComponent(cmd.get("value")));
       return;
     }
 
@@ -483,12 +479,12 @@ MAIN {
         indexMain = std::stoi(cmd.get("indexMain"));
         indexSub = std::stoi(cmd.get("indexSub"));
       } catch (...) {
-        w->onMessage(resolveToMainProcess(seq, "0", ""));
+        window->onMessage(resolveToMainProcess(seq, "0", ""));
         return;
       }
 
-      w->setSystemMenuItemEnabled(enabled, indexMain, indexSub);
-      w->onMessage(resolveToMainProcess(seq, "0", ""));
+      window->setSystemMenuItemEnabled(enabled, indexMain, indexSub);
+      window->onMessage(resolveToMainProcess(seq, "0", ""));
       return;
     }
 
@@ -501,7 +497,7 @@ MAIN {
       std::string defaultPath = decodeURIComponent(cmd.get("defaultPath"));
       std::string title = decodeURIComponent(cmd.get("title"));
 
-      w->openDialog(
+      window->openDialog(
         cmd.get("seq"),
         isSave,
         allowDirs,
@@ -518,14 +514,14 @@ MAIN {
     if (cmd.name == "context") {
       auto seq = cmd.get("seq");
       auto value = decodeURIComponent(cmd.get("value"));
-      w->setContextMenu(seq, value);
+      window->setContextMenu(seq, value);
       return;
     }
 
     if (cmd.name == "getConfig") {
       const auto seq = cmd.get("seq");
       auto wrapped = ("\"" + std::string(_settings) + "\"");
-      w->eval(resolveToRenderProcess(seq, "0", encodeURIComponent(wrapped)));
+      window->eval(resolveToRenderProcess(seq, "0", encodeURIComponent(wrapped)));
       return;
     }
 
@@ -536,9 +532,6 @@ MAIN {
     process.write(out);
   };
 
-  //w0.onMessage = onMessage;
-  //w1.onMessage = onMessage;
-
   //
   // # Exiting
   //
@@ -547,18 +540,17 @@ MAIN {
   //
   shutdownHandler = [&](int code) {
     auto pid = process.getPID();
+
     process.kill(pid);
-
-    for (auto window : windowFactory.windows) {
-      window->kill();
-      delete window;
-    }
-
+    windowFactory.destroy();
     app.kill();
+
     exit(code);
   };
 
-  windowFactory.configure(WindowFactory::Options {
+  app.onExit = shutdownHandler;
+
+  windowFactory.configure(WindowFactoryOptions {
     .defaultHeight = height,
     .defaultWidth = width,
     .isTest = isTest,
@@ -568,42 +560,11 @@ MAIN {
     .onExit = shutdownHandler,
   });
 
-  Window *w0 = windowFactory.createDefaultWindow(WindowOptions {
-  });
-
-  /*
-  //
-  // # Windows
-  //
-  // The Window constructor takes the app instance as well as some static
-  // variables used during setup, these options can all be overridden later.
-  //
-  Window w0(app, WindowOptions {
-    .resizable = true,
-    .frameless = false,
-    .canExit = true,
-    .height = height,
-    .width = width,
-    .index = 0,
-    .debug = _debug,
-    .port = _port,
-    .isTest = isTest,
-    .forwardConsole = appData["forward_console"] == "true",
-    .cwd = cwd,
-    .executable = appData["executable"],
-    .title = appData["title"],
-    .version = appData["version"],
-    .argv = argvArray.str(),
-    .preload = gPreloadDesktop,
-    .env = env.str()
-  });
-  */
+  Window *w0 = windowFactory.createDefaultWindow(WindowOptions { });
 
   if (w0->webviewFailed) {
     argvForward << " --webviewFailed";
   }
-
-  std::string url;
 
   if (_port > 0 || cmd.size() == 0) {
     w0->setSystemMenu("", std::string(
@@ -625,35 +586,6 @@ MAIN {
     w0->navigate("", "file://" + (fs::path(cwd) / "index.html").string());
   }
 
-  /*
-  //
-  // TODO this should be created by the user and added to the windows
-  // vector. Any decision to get the window via an index should refer
-  // to the windows vector. When calling show() if the window does't
-  // exist it should be created.
-  //
-  Window w1(app, WindowOptions {
-    .resizable = true,
-    .canExit = false,
-    .height = 120,
-    .width = 350,
-    .index = 1,
-    .debug = _debug,
-    .isTest = isTest,
-    .forwardConsole = appData["forward_console"] == "true",
-    .cwd = cwd,
-    .executable = appData["executable"],
-    .title = appData["title"],
-    .version = appData["version"],
-    .argv = argvArray.str(),
-    .preload = gPreloadDesktop,
-    .env = env.str()
-  });
-  */
-
-  app.onExit = shutdownHandler;
-  //w0.onExit = shutdownHandler;
-  //w1.onExit = shutdownHandler;
   //
   // If this is being run in a terminal/multiplexer
   //

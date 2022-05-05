@@ -4,10 +4,6 @@
 #include <gtk/gtk.h>
 #include <webkit2/webkit2.h>
 
-#ifndef OPERATOR_MAX_WINDOWS
-#define OPERATOR_MAX_WINDOWS 32
-#endif
-
 static GtkTargetEntry droppableTypes[] = {
   { (char*) "text/uri-list", 0, 0 }
 };
@@ -70,115 +66,6 @@ namespace Operator {
       void setSystemMenuItemEnabled(bool enabled, int barPos, int menuPos);
       int openExternal(const std::string& s);
   };
-
-  class WindowFactory : public IWindowFactory<Window> {
-    public:
-      App app;
-      WindowFactory::Options options;
-      std::vector<Window *> windows;
-      std::vector<bool> inits;
-
-      WindowFactory(App &app);
-      ~WindowFactory();
-
-      void configure (WindowFactory::Options configuration);
-      Window * getWindow (int index);
-      Window * createWindow(WindowOptions opts);
-      Window * createDefaultWindow(WindowOptions opts);
-  };
-
-  WindowFactory::WindowFactory (App &app)
-    : app(app), inits(OPERATOR_MAX_WINDOWS), windows(OPERATOR_MAX_WINDOWS)
-  {
-  }
-
-  WindowFactory::~WindowFactory () {
-    for (auto window : windows) {
-      window->kill();
-      delete window;
-    }
-
-    windows.clear();
-    inits.clear();
-  }
-
-  void WindowFactory::configure (WindowFactory::Options configuration) {
-    options.defaultHeight = configuration.defaultHeight;
-    options.defaultWidth = configuration.defaultWidth;
-    options.onMessage = configuration.onMessage;
-    options.onExit = configuration.onExit;
-    options.isTest = configuration.isTest;
-    options.argv = configuration.argv;
-    options.cwd = configuration.cwd;
-  }
-
-  Window * WindowFactory::getWindow (int index) {
-    return windows[index];
-  }
-
-  Window * WindowFactory::createDefaultWindow (WindowOptions opts) {
-    printf("createDefaultWindow()\n");
-    return createWindow(WindowOptions {
-      .resizable = true,
-      .frameless = false,
-      .canExit = true,
-      .height = opts.height,
-      .width = opts.width,
-      .index = 0,
-      .port = PORT
-    });
-  }
-
-  Window * WindowFactory::createWindow (WindowOptions opts) {
-    printf("createWindow(%d) = %d\n", opts.index, inits[opts.index] ? 1 : 0);
-    if (inits[opts.index]) {
-      return windows[opts.index];
-    }
-
-    std::stringstream env;
-
-    for (auto const &envKey : split(appData["env"], ',')) {
-      auto cleanKey = trim(envKey);
-      auto envValue = getEnv(cleanKey.c_str());
-
-      env << std::string(
-        cleanKey + "=" + encodeURIComponent(envValue) + "&"
-      );
-    }
-
-    WindowOptions windowOptions = {
-      .resizable = opts.resizable,
-      .frameless = opts.frameless,
-      .utility = opts.utility,
-      .canExit = opts.canExit,
-      .height = opts.height > 0 ? opts.height : options.defaultHeight,
-      .width = opts.width > 0 ? opts.width : options.defaultWidth,
-      .index = opts.index,
-      .debug = opts.debug || DEBUG,
-      .port = opts.port,
-      .isTest = options.isTest,
-      .forwardConsole = appData["forward_console"] == "true",
-
-      .cwd = options.cwd,
-      .executable = appData["executable"],
-      .title = appData["title"],
-      .url = opts.url.size() > 0 ? opts.url : "data:text/html,<html>",
-      .version = appData["version"],
-      .argv = options.argv,
-      .preload = opts.preload.size() > 0 ? opts.preload : gPreloadDesktop,
-      .env = env.str()
-    };
-
-    printf("new Window\n");
-    auto window = new Window(app, windowOptions);
-    window.onExit = configuration.onExit;
-    window.onMessage = configuration.onMessage;
-
-    windows[opts.index] = window;
-    inits[opts.index] = true;
-
-    return window;
-  }
 
   App::App (int instanceId) {
     gtk_init_check(0, nullptr);
@@ -740,6 +627,7 @@ namespace Operator {
 
   void Window::close (int code) {
     if (opts.canExit) {
+      printf("can exit for %d\n", index);
       this->exit(code);
     }
   }

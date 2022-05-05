@@ -45,6 +45,10 @@
   int main (int argc, char** argv)
 #endif
 
+#ifndef OPERATOR_MAX_WINDOWS
+#define OPERATOR_MAX_WINDOWS 32
+#endif
+
 #define TO_STR(arg) #arg
 #define STR_VALUE(arg) TO_STR(arg)
 
@@ -141,7 +145,7 @@ namespace Operator {
     bool resizable = true;
     bool frameless = false;
     bool utility = false;
-    bool canExit = true;
+    bool canExit = false;
     int height = 0;
     int width = 0;
     int index = 0;
@@ -713,24 +717,152 @@ namespace Operator {
   };
 
 
+  struct WindowFactoryOptions {
+    int defaultHeight = 0;
+    int defaultWidth = 0;
+    bool isTest;
+    std::string argv = "";
+    std::string cwd = "";
+    SCallback onMessage = [](const std::string) {};
+    ExitCallback onExit = nullptr;
+  };
+
   template <class Window> class IWindowFactory {
     public:
-      struct Options {
-        public:
-          int defaultHeight = 0;
-          int defaultWidth = 0;
-          bool isTest;
-          std::string argv = "";
-          std::string cwd = "";
-          SCallback onMessage = [](const std::string) {};
-          ExitCallback onExit = nullptr;
-      };
 
-      virtual void configure (Options) = 0;
-      virtual Window * getWindow (int index) = 0;
+      virtual void destroy () = 0;
+      virtual void configure (WindowFactoryOptions) = 0;
+      virtual Window * getWindow (int) = 0;
+      virtual void destroyWindow (int) = 0;
+      virtual void destroyWindow (Window *) = 0;
       virtual Window * createWindow (WindowOptions) = 0;
       virtual Window * createDefaultWindow (WindowOptions) = 0;
   };
+
+  template <class Window, class App> class WindowFactory : public IWindowFactory<Window> {
+    public:
+      App app;
+      WindowFactoryOptions options;
+      std::vector<Window *> windows;
+      std::vector<bool> inits;
+
+      WindowFactory (App &app) :
+        app(app),
+        inits(OPERATOR_MAX_WINDOWS),
+        windows(OPERATOR_MAX_WINDOWS)
+      {
+        // noop
+      }
+
+      ~WindowFactory () {
+        destroy();
+      }
+
+      void destroy () {
+        for (auto window : windows) {
+          destroyWindow(window);
+        }
+
+        windows.clear();
+        inits.clear();
+      }
+
+      void configure (WindowFactoryOptions configuration) {
+        options.defaultHeight = configuration.defaultHeight;
+        options.defaultWidth = configuration.defaultWidth;
+        options.onMessage = configuration.onMessage;
+        options.onExit = configuration.onExit;
+        options.isTest = configuration.isTest;
+        options.argv = configuration.argv;
+        options.cwd = configuration.cwd;
+      }
+
+      Window * getWindow (int index) {
+        return windows[index];
+      }
+
+      void destroyWindow (int index) {
+        return destroyWindow(windows[index]);
+      }
+
+      void destroyWindow (Window *window) {
+        if (window) {
+          inits[window->index] = false;
+          windows[window->index] = nullptr;
+          window->kill();
+          delete window;
+        }
+      }
+
+      Window * createWindow (WindowOptions opts) {
+        std::stringstream env;
+
+        if (inits[opts.index]) {
+          return windows[opts.index];
+        }
+
+        for (auto const &envKey : split(appData["env"], ',')) {
+          auto cleanKey = trim(envKey);
+          auto envValue = getEnv(cleanKey.c_str());
+
+          env << std::string(
+            cleanKey + "=" + encodeURIComponent(envValue) + "&"
+          );
+        }
+
+        WindowOptions windowOptions = {
+          .resizable = opts.resizable,
+          .frameless = opts.frameless,
+          .utility = opts.utility,
+          .canExit = opts.canExit,
+          .height = opts.height > 0 ? opts.height : options.defaultHeight,
+          .width = opts.width > 0 ? opts.width : options.defaultWidth,
+          .index = opts.index,
+#ifdef DEBUG
+          .debug = opts.debug || DEBUG,
+#else
+          .debug = opts.debug,
+#endif
+          .port = opts.port,
+          .isTest = options.isTest,
+          .forwardConsole = appData["forward_console"] == "true",
+
+          .cwd = options.cwd,
+          .executable = appData["executable"],
+          .title = appData["title"],
+          .url = opts.url.size() > 0 ? opts.url : "data:text/html,<html>",
+          .version = appData["version"],
+          .argv = options.argv,
+          .preload = opts.preload.size() > 0 ? opts.preload : gPreloadDesktop,
+          .env = env.str()
+        };
+
+        auto window = new Window(app, windowOptions);
+
+        window->onExit = options.onExit;
+        window->onMessage = options.onMessage;
+
+        windows[opts.index] = window;
+        inits[opts.index] = true;
+
+        return window;
+      }
+
+      Window * createDefaultWindow (WindowOptions opts) {
+        return createWindow(WindowOptions {
+          .resizable = true,
+          .frameless = false,
+          .canExit = true,
+          .height = opts.height,
+          .width = opts.width,
+          .index = 0,
+#ifdef PORT
+          .port = PORT
+#endif
+        });
+      }
+  };
+
 }
 
 #endif // OP_H
