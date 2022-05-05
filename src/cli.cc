@@ -227,7 +227,7 @@ int main (const int argc, const char* argv[]) {
     settings["revision"] = "1";
   }
 
-  if (settings.count("arch") == 0) {
+  if (settings.count("arch") == 0 || settings["arch"] == "auto") {
     settings["arch"] = platform.arch;
   }
 
