@@ -474,6 +474,8 @@ MAIN {
             auto msg = r.output.size() > 0 ? r.output : "\"Command failed\"";
             w.eval(emitToRenderProcess("main-bootstrap-failure", msg));
           }
+
+          return true;
         };
 
         const httplib::Headers h;
