@@ -627,7 +627,6 @@ namespace Operator {
 
   void Window::close (int code) {
     if (opts.canExit) {
-      printf("can exit for %d\n", index);
       this->exit(code);
     }
   }
