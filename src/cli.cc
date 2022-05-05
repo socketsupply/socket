@@ -5,6 +5,7 @@
 #include <filesystem>
 
 #ifdef _WIN32
+#include <Windows.h>
 #include <shlwapi.h>
 #include <strsafe.h>
 #include <comdef.h>
@@ -648,13 +649,6 @@ int main (const int argc, const char* argv[]) {
       << " -configuration " << configuration
       << " -scheme " << settings["name"]
       << " -destination '" << destination << "'";
-    if (!flagCodeSign) {
-      archiveCommand
-        << " CODE_SIGN_IDENTITY=\"\""
-        << " CODE_SIGNING_REQUIRED=\"NO\""
-        << " CODE_SIGN_ENTITLEMENTS=\"\""
-        << " CODE_SIGNING_ALLOWED=\"NO\"";
-    }
 
     if (flagShouldPackage) {
       archiveCommand << " -archivePath build/" << settings["name"];
@@ -672,20 +666,34 @@ int main (const int argc, const char* argv[]) {
     auto rArchive = exec(archiveCommand.str().c_str());
 
     if (rArchive.exitCode != 0) {
-      if (flagBuildForSimulator) {
-        log("creating iOS simulator");
+      log("error: failed to archive project");
+      fs::current_path(oldCwd);
+      exit(1);
+    }
+
+    log("created archive");
+
+    if (flagBuildForSimulator) {
+      auto uuidFileContent = readFile(target / "simulator_uuid.txt");
+
+      std::regex reUuid(R"(^[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{12})");
+      std::smatch match;
+      std::string uuid;
+
+      if (std::regex_search(uuidFileContent, match, reUuid)) {
+        uuid = match[0];
+        log("found simulator UUID" + uuid);
+      } else {
+        log("creating a new iOS simulator");
 
         std::stringstream listDeviceTypesCommand;
-        std::stringstream listRuntimesCommand;
-        std::stringstream createSimulatorCommand;
-
         listDeviceTypesCommand
           << "xcrun"
           << " simctl"
           << " list devicetypes";
         auto rListDeviceTypes = exec(listDeviceTypesCommand.str().c_str());
         if (rListDeviceTypes.exitCode != 0) {
-          log("failed to list available devices using \"" + listDeviceTypesCommand.str() + "\"");
+          log("failed to list device types using \"" + listDeviceTypesCommand.str() + "\"");
           exit(1);
         }
         auto const devices = split(rListDeviceTypes.output, '\n');
@@ -708,6 +716,7 @@ int main (const int argc, const char* argv[]) {
         }
         log("Device type: " + deviceType);
 
+        std::stringstream listRuntimesCommand;
         listRuntimesCommand
           << "xcrun"
           << " simctl"
@@ -737,6 +746,7 @@ int main (const int argc, const char* argv[]) {
         }
         log("Runtime: " + runtimeId);
 
+        std::stringstream createSimulatorCommand;
         createSimulatorCommand
           << "xcrun simctl"
           << " create OperatorFrameworkDefaultSimulator"
@@ -748,34 +758,50 @@ int main (const int argc, const char* argv[]) {
           log("unable to create simulator");
           exit(WEXITSTATUS(rCreateSimulator.exitCode));
         }
+        uuid = rCreateSimulator.output;
         auto pathToBuiltWithFile = target / "simulator_uuid.txt";
         log("creating simulator_uuid.txt file at " + pathToBuiltWithFile.string());
         writeFile(pathToBuiltWithFile, rCreateSimulator.output);
-
-        // auto configOld = readFile(target / "operator.config");
-        // std::regex reConfig("ios_device_simulator:(?:.*)");
-        // std::smatch matchConfig;
-        // auto iosDeviceSimulator = "ios_device_simulator: platform=iOS Simulator,OS=" + osVersion + "," + "name=" + name;
-
-        // if (std::regex_search(configOld, matchConfig, reConfig)) {
-        //   log("Found existing " + matchConfig.str(0));
-        //   auto configNew = std::regex_replace(configOld, reConfig, iosDeviceSimulator));
-        //   writeFile(target / "operator.config", configNew);
-        // } else {
-        //   log("No existing ios_device_simulator found");
-        //   writeFile(target / "operator.config", configOld + "\n" + iosDeviceSimulator);
-        // }
-
-        // log(std::regex_replace(configOld, std::regex(R"([^ios_device_simulator: ](.+?))", "platform=iOS Simulator,"));
-        // log(std::regex_replace(configOld, reConfig, "platform=iOS Simulator,"));
-      } else {
-        log("error: failed to archive project");
-        fs::current_path(oldCwd);
-        exit(1);
       }
-    }
 
-    log("created archive");
+      log("booting simulator " + uuid);
+      std::stringstream bootSimulatorCommand;
+      bootSimulatorCommand
+        << "xcrun"
+        << " simctl boot " << uuid;
+      auto rBootSimulator = exec(bootSimulatorCommand.str().c_str());
+      if (rBootSimulator.exitCode != 0) {
+        log("unable to boot simulator");
+        exit(WEXITSTATUS(rBootSimulator.exitCode));
+      }
+
+      log("run simulator");
+      auto rOpenSimulator = exec("open /Applications/Xcode.app/Contents/Developer/Applications/Simulator.app/");
+      if (rOpenSimulator.exitCode != 0) {
+        log("unable to run simulator");
+        exit(WEXITSTATUS(rOpenSimulator.exitCode));
+      }
+
+      log("Now you can install booted VM into simulator when it's done loading");
+      log("Run:\nxcrun simctl install booted " + pathOutput + "/" + settings["name"] + ".app");
+      
+      // auto configOld = readFile(target / "operator.config");
+      // std::regex reConfig("ios_device_simulator:(?:.*)");
+      // std::smatch matchConfig;
+      // auto iosDeviceSimulator = "ios_device_simulator: platform=iOS Simulator,OS=latest,name=" + name;
+
+      // if (std::regex_search(configOld, matchConfig, reConfig)) {
+      //   log("Found existing " + matchConfig.str(0));
+      //   auto configNew = std::regex_replace(configOld, reConfig, iosDeviceSimulator));
+      //   writeFile(target / "operator.config", configNew);
+      // } else {
+      //   log("No existing ios_device_simulator found");
+      //   writeFile(target / "operator.config", configOld + "\n" + iosDeviceSimulator);
+      // }
+
+      // log(std::regex_replace(configOld, std::regex(R"([^ios_device_simulator: ](.+?))", "platform=iOS Simulator,"));
+      // log(std::regex_replace(configOld, reConfig, "platform=iOS Simulator,"));
+    }
 
     if (flagShouldPackage) {
       std::stringstream exportCommand;
