@@ -632,15 +632,21 @@ int main (const int argc, const char* argv[]) {
       destination = settings["ios_device_simulator"];
     }
 
-    auto sup = std::string(" archive");
+    if (settings["ios_codesign_identity"].size() == 0) {
+      settings["ios_codesign_identity"] = "iPhone Distribution";
+    }
+
+    auto sup = std::string("archive");
+    auto configuration = std::string(flagDebugMode ? "Debug" : "Release");
 
     if (!flagShouldPackage) {
-      sup = " CONFIGURATION_BUILD_DIR=" + pathToDist.string();
+      sup = "CONFIGURATION_BUILD_DIR=" + pathToDist.string();
     }
 
     archiveCommand
       << "xcodebuild"
-      << " build" << sup
+      << " build " << sup
+      << " -configuration " << configuration
       << " -scheme " << settings["name"]
       << " -destination '" << destination << "'";
 
