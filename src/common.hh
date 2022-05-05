@@ -747,20 +747,20 @@ namespace Operator {
   template <class Window, class App> class WindowFactory : public IWindowFactory<Window> {
     public:
       enum WindowStatus {
-        ERROR = -1,
-        NONE = 0,
-        CREATING = 10,
-        CREATED,
-        HIDING = 20,
-        HIDDEN,
-        SHOWING = 30,
-        SHOWN,
-        CLOSING = 40,
-        CLOSED,
-        EXITING = 50,
-        EXITED,
-        KILLING = 60,
-        KILLED
+        WINDOW_ERROR = -1,
+        WINDOW_NONE = 0,
+        WINDOW_CREATING = 10,
+        WINDOW_CREATED,
+        WINDOW_HIDING = 20,
+        WINDOW_HIDDEN,
+        WINDOW_SHOWING = 30,
+        WINDOW_SHOWN,
+        WINDOW_CLOSING = 40,
+        WINDOW_CLOSED,
+        WINDOW_EXITING = 50,
+        WINDOW_EXITED,
+        WINDOW_KILLING = 60,
+        WINDOW_KILLED
       };
 
       class WindowWithMetadata : public Window {
@@ -781,49 +781,53 @@ namespace Operator {
           void show (const std::string &seq) {
             auto index = std::to_string(this->opts.index);
             factory.debug("Showing Window#" + index + " (seq=" + seq + ")");
-            status = WindowStatus::SHOWING;
+            status = WindowStatus::WINDOW_SHOWING;
             Window::show(seq);
-            status = WindowStatus::SHOWN;
+            status = WindowStatus::WINDOW_SHOWN;
           }
 
           void hide (const std::string &seq) {
-            if (status > WindowStatus::HIDDEN && status < WindowStatus::CLOSING) {
+            if (
+              status > WindowStatus::WINDOW_HIDDEN &&
+              status < WindowStatus::WINDOW_CLOSING
+            ) {
               auto index = std::to_string(this->opts.index);
               factory.debug("Hiding Window#" + index + " (seq=" + seq + ")");
-              status = WindowStatus::HIDING;
+              status = WindowStatus::WINDOW_HIDING;
               Window::hide(seq);
-              status = WindowStatus::HIDDEN;
+              status = WindowStatus::WINDOW_HIDDEN;
             }
           }
 
           void close (int code) {
-            if (status < WindowStatus::CLOSING) {
+            if (status < WindowStatus::WINDOW_CLOSING) {
               auto index = std::to_string(this->opts.index);
               factory.debug("Closing Window#" + index + " (code= " + std::to_string(code) + ")");
-              status = WindowStatus::CLOSING;
+              status = WindowStatus::WINDOW_CLOSING;
               Window::close(code);
-              status = WindowStatus::CLOSED;
+              status = WindowStatus::WINDOW_CLOSED;
               gc();
             }
           }
 
           void exit (int code) {
-            if (status < WindowStatus::EXITING) {
+            if (status < WindowStatus::WINDOW_EXITING) {
               auto index = std::to_string(this->opts.index);
               factory.debug("Exiting Window#" + index + " (code= " + std::to_string(code) + ")");
-              status = WindowStatus::EXITING;
+              status = WindowStatus::WINDOW_EXITING;
               Window::exit(code);
-              status = WindowStatus::EXITING;
+              status = WindowStatus::WINDOW_EXITING;
               gc();
             }
           }
 
           void kill () {
-            if (status < WindowStatus::KILLING) {
-              factory.debug("Killing Window#" + std::to_string(this->opts.index));
-              status = WindowStatus::KILLING;
+            if (status < WindowStatus::WINDOW_KILLING) {
+              auto index = std::to_string(this->opts.index);
+              factory.debug("Killing Window#" + index);
+              status = WindowStatus::WINDOW_KILLING;
               Window::kill();
-              status = WindowStatus::KILLED;
+              status = WindowStatus::WINDOW_KILLED;
               gc();
             }
           }
@@ -895,7 +899,10 @@ namespace Operator {
       }
 
       Window * getWindow (int index, WindowStatus status) {
-        if (getWindowStatus(index) > NONE && getWindowStatus(index) < status) {
+        if (
+          getWindowStatus(index) > WindowStatus::WINDOW_NONE &&
+          getWindowStatus(index) < status
+        ) {
           return reinterpret_cast<Window *>(windows[index]);
         }
 
@@ -903,7 +910,7 @@ namespace Operator {
       }
 
       Window * getWindow (int index) {
-        return getWindow(index, WindowStatus::EXITING);
+        return getWindow(index, WindowStatus::WINDOW_EXITING);
       }
 
       Window * getOrCreateWindow (int index) {
@@ -911,7 +918,7 @@ namespace Operator {
       }
 
       Window * getOrCreateWindow (int index, WindowOptions opts) {
-        if (getWindowStatus(index) == WindowStatus::NONE) {
+        if (getWindowStatus(index) == WindowStatus::WINDOW_NONE) {
           opts.index = index;
           return createWindow(opts);
         }
@@ -924,7 +931,7 @@ namespace Operator {
           return windows[index]->status;
         }
 
-        return WindowStatus::NONE;
+        return WindowStatus::WINDOW_NONE;
       }
 
       void destroyWindow (int index) {
@@ -946,11 +953,11 @@ namespace Operator {
           inits[window->index] = false;
           windows[window->index] = nullptr;
 
-          if (metadata->status < CLOSING) {
+          if (metadata->status < WINDOW_CLOSING) {
             window->close(0);
           }
 
-          if (metadata->status < KILLING) {
+          if (metadata->status < WINDOW_KILLING) {
             window->kill();
           }
 
@@ -1009,7 +1016,7 @@ namespace Operator {
 #endif
         auto window = new WindowWithMetadata(*this, app, windowOptions);
 
-        window->status = WindowStatus::CREATED;
+        window->status = WindowStatus::WINDOW_CREATED;
         window->onExit = this->options.onExit;
         window->onMessage = this->options.onMessage;
 

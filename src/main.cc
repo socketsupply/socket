@@ -239,7 +239,7 @@ MAIN {
           options.height = std::stoi(cmd.get("height"));
         }
 
-        if (!window || status == WindowFactory<Window, App>::WindowStatus::NONE) {
+        if (!window || status == WindowFactory<Window, App>::WindowStatus::WINDOW_NONE) {
           options.resizable = cmd.get("resizable") == "true" ? true : false;
           options.frameless = cmd.get("frameless") == "true" ? true : false;
           options.utility = cmd.get("utility") == "true" ? true : false;
@@ -248,7 +248,7 @@ MAIN {
 
           window = windowFactory.createWindow(options);
           window->show(seq);
-        } else if (status < WindowFactory<Window, App>::WindowStatus::CLOSING) {
+        } else if (status < WindowFactory<Window, App>::WindowStatus::WINDOW_CLOSING) {
           window->show(seq);
 
           if (options.width > 0 && options.height > 0) {
