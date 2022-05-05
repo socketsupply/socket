@@ -729,6 +729,7 @@ namespace Operator {
 
   template <class Window> class IWindowFactory {
     public:
+      WindowFactoryOptions options;
 
       virtual void destroy () = 0;
       virtual void configure (WindowFactoryOptions) = 0;
@@ -740,18 +741,84 @@ namespace Operator {
   };
 
   template <class Window, class App> class WindowFactory : public IWindowFactory<Window> {
+    enum WindowStatus {
+      NONE = 0,
+      SHOWING,
+      SHOWN,
+      HIDING,
+      HIDDEN,
+      CLOSING,
+      CLOSED,
+      EXITING,
+      EXITED,
+      KILLING,
+      KILLED
+    };
+
+    class WindowWithMetadata : public Window {
+      public:
+        WindowStatus status;
+        WindowFactory<Window, App> factory;
+
+        WindowWithMetadata (
+          WindowFactory &factory,
+          App &app,
+          WindowOptions opts
+        ) : Window(app, opts), factory(factory) {
+          // noop
+        }
+
+        ~WindowWithMetadata () {}
+
+        void show (const std::string &seq) {
+          factory.log("Showing Window#" + std::to_string(this->opts.index) + " (seq=" + seq + ")");
+          status = WindowStatus::SHOWING;
+          Window::show(seq);
+          status = WindowStatus::SHOWN;
+        }
+
+        void hide (const std::string &seq) {
+          factory.log("Hiding Window#" + std::to_string(this->opts.index) + " (seq=" + seq + ")");
+          status = WindowStatus::HIDING;
+          Window::hide(seq);
+          status = WindowStatus::HIDDEN;
+        }
+
+        void close (int code) {
+          factory.log("Closing Window#" + std::to_string(this->opts.index) + " with code "+ std::to_string(code));
+          status = WindowStatus::CLOSING;
+          Window::close(code);
+          status = WindowStatus::CLOSED;
+        }
+
+        void exit (int code) {
+          factory.log("Exiting Window#" + std::to_string(this->opts.index) + " with code "+ std::to_string(code));
+          status = WindowStatus::EXITING;
+          Window::exit(code);
+          status = WindowStatus::EXITING;
+        }
+
+        void kill () {
+          factory.log("Killing Window#" + std::to_string(this->opts.index));
+          status = WindowStatus::KILLING;
+          Window::kill();
+          status = WindowStatus::KILLED;
+        }
+    };
+
+    std::chrono::system_clock::time_point lastLogLine;
+
     public:
       App app;
-      WindowFactoryOptions options;
-      std::vector<Window *> windows;
       std::vector<bool> inits;
+      std::vector<WindowWithMetadata *> windows;
 
       WindowFactory (App &app) :
         app(app),
         inits(OPERATOR_MAX_WINDOWS),
         windows(OPERATOR_MAX_WINDOWS)
       {
-        // noop
+        lastLogLine = std::chrono::system_clock::now();
       }
 
       ~WindowFactory () {
@@ -768,21 +835,43 @@ namespace Operator {
       }
 
       void configure (WindowFactoryOptions configuration) {
-        options.defaultHeight = configuration.defaultHeight;
-        options.defaultWidth = configuration.defaultWidth;
-        options.onMessage = configuration.onMessage;
-        options.onExit = configuration.onExit;
-        options.isTest = configuration.isTest;
-        options.argv = configuration.argv;
-        options.cwd = configuration.cwd;
+        this->options.defaultHeight = configuration.defaultHeight;
+        this->options.defaultWidth = configuration.defaultWidth;
+        this->options.onMessage = configuration.onMessage;
+        this->options.onExit = configuration.onExit;
+        this->options.isTest = configuration.isTest;
+        this->options.argv = configuration.argv;
+        this->options.cwd = configuration.cwd;
+      }
+
+      void log (const std::string line) {
+        using namespace std::chrono;
+
+#ifdef _WIN32 // unicode console support
+        SetConsoleOutputCP(CP_UTF8);
+        setvbuf(stdout, nullptr, _IOFBF, 1000);
+#endif
+
+        auto now = system_clock::now();
+        auto delta = duration_cast<milliseconds>(now - lastLogLine).count();
+
+        std::cout << "• " << line;
+        std::cout << " \033[0;32m+" << delta << "ms\033[0m";
+        std::cout << std::endl;
+
+        lastLogLine = now;
       }
 
       Window * getWindow (int index) {
-        return windows[index];
+        return reinterpret_cast<Window *>(windows[index]);
       }
 
       void destroyWindow (int index) {
         return destroyWindow(windows[index]);
+      }
+
+      void destroyWindow (WindowWithMetadata *window) {
+        return destroyWindow(reinterpret_cast<Window *>(window));
       }
 
       void destroyWindow (Window *window) {
@@ -798,7 +887,7 @@ namespace Operator {
         std::stringstream env;
 
         if (inits[opts.index]) {
-          return windows[opts.index];
+          return reinterpret_cast<Window *>(windows[opts.index]);
         }
 
         for (auto const &envKey : split(appData["env"], ',')) {
@@ -810,13 +899,16 @@ namespace Operator {
           );
         }
 
+        auto height = opts.height > 0 ? opts.height : this->options.defaultHeight;
+        auto width = opts.width > 0 ? opts.width : this->options.defaultWidth;
+
         WindowOptions windowOptions = {
           .resizable = opts.resizable,
           .frameless = opts.frameless,
           .utility = opts.utility,
           .canExit = opts.canExit,
-          .height = opts.height > 0 ? opts.height : options.defaultHeight,
-          .width = opts.width > 0 ? opts.width : options.defaultWidth,
+          .height = height,
+          .width = width,
           .index = opts.index,
 #ifdef DEBUG
           .debug = opts.debug || DEBUG,
@@ -824,28 +916,30 @@ namespace Operator {
           .debug = opts.debug,
 #endif
           .port = opts.port,
-          .isTest = options.isTest,
+          .isTest = this->options.isTest,
           .forwardConsole = appData["forward_console"] == "true",
 
-          .cwd = options.cwd,
+          .cwd = this->options.cwd,
           .executable = appData["executable"],
           .title = appData["title"],
           .url = opts.url.size() > 0 ? opts.url : "data:text/html,<html>",
           .version = appData["version"],
-          .argv = options.argv,
+          .argv = this->options.argv,
           .preload = opts.preload.size() > 0 ? opts.preload : gPreloadDesktop,
           .env = env.str()
         };
 
-        auto window = new Window(app, windowOptions);
+        this->log("Creating Window#" + std::to_string(opts.index));
+        auto window = new WindowWithMetadata(*this, app, windowOptions);
 
-        window->onExit = options.onExit;
-        window->onMessage = options.onMessage;
+        window->status = WindowStatus::NONE;
+        window->onExit = this->options.onExit;
+        window->onMessage = this->options.onMessage;
 
         windows[opts.index] = window;
         inits[opts.index] = true;
 
-        return window;
+        return reinterpret_cast<Window *>(window);
       }
 
       Window * createDefaultWindow (WindowOptions opts) {
