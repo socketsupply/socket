@@ -866,6 +866,8 @@ namespace Operator {
           destroyWindow(window);
         }
 
+        this->destroyed = true;
+
         windows.clear();
         inits.clear();
       }
