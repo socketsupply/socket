@@ -72,7 +72,7 @@ function _install {
   if [ -d `pwd`/lib ]; then
     echo "• Copying libraries to $libdir/lib"
     sudo mkdir -p "$libdir/lib"
-    sudo cp -r `pwd`/lib/ "$libdir/lib"
+    sudo cp -r `pwd`/lib/* "$libdir/lib"
   fi
 
   echo "• Moving binary to $PREFIX/bin"
