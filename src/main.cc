@@ -636,7 +636,7 @@ MAIN {
     .onExit = shutdownHandler,
   });
 
-  Window *defaultWindow = windowFactory.createDefaultWindow(WindowOptions { });
+  Window* defaultWindow = windowFactory.createDefaultWindow(WindowOptions { });
 
   if (_port > 0 || cmd.size() == 0) {
     defaultWindow->setSystemMenu(EMPTY_SEQ, std::string(

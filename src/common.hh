@@ -393,7 +393,7 @@ namespace Operator {
     command = command + " 2>&1";
 
     ExecOutput eo;
-    FILE *pipe;
+    FILE* pipe;
     size_t count;
     const int bufsize = 128;
     std::array<char, 128> buffer;
@@ -737,11 +737,11 @@ namespace Operator {
 
       virtual void destroy () = 0;
       virtual void configure (WindowFactoryOptions) = 0;
-      virtual Window * getWindow (int) = 0;
+      virtual Window* getWindow (int) = 0;
       virtual void destroyWindow (int) = 0;
-      virtual void destroyWindow (Window *) = 0;
-      virtual Window * createWindow (WindowOptions) = 0;
-      virtual Window * createDefaultWindow (WindowOptions) = 0;
+      virtual void destroyWindow (Window*) = 0;
+      virtual Window* createWindow (WindowOptions) = 0;
+      virtual Window* createDefaultWindow (WindowOptions) = 0;
   };
 
   template <class Window, class App> class WindowFactory : public IWindowFactory<Window> {
@@ -833,7 +833,7 @@ namespace Operator {
           }
 
           void gc () {
-            factory.destroyWindow(reinterpret_cast<Window *>(this));
+            factory.destroyWindow(reinterpret_cast<Window*>(this));
           }
       };
 
@@ -844,7 +844,7 @@ namespace Operator {
       App app;
       bool destroyed = false;
       std::vector<bool> inits;
-      std::vector<WindowWithMetadata *> windows;
+      std::vector<WindowWithMetadata*> windows;
 
       WindowFactory (App &app) :
         app(app),
@@ -902,27 +902,27 @@ namespace Operator {
 #endif
       }
 
-      Window * getWindow (int index, WindowStatus status) {
+      Window* getWindow (int index, WindowStatus status) {
         if (this->destroyed) return nullptr;
         if (
           getWindowStatus(index) > WindowStatus::WINDOW_NONE &&
           getWindowStatus(index) < status
         ) {
-          return reinterpret_cast<Window *>(windows[index]);
+          return reinterpret_cast<Window*>(windows[index]);
         }
 
         return nullptr;
       }
 
-      Window * getWindow (int index) {
+      Window* getWindow (int index) {
         return getWindow(index, WindowStatus::WINDOW_EXITING);
       }
 
-      Window * getOrCreateWindow (int index) {
+      Window* getOrCreateWindow (int index) {
         return getOrCreateWindow(index, WindowOptions {});
       }
 
-      Window * getOrCreateWindow (int index, WindowOptions opts) {
+      Window* getOrCreateWindow (int index, WindowOptions opts) {
         if (this->destroyed) return nullptr;
         if (getWindowStatus(index) == WindowStatus::WINDOW_NONE) {
           opts.index = index;
@@ -948,17 +948,17 @@ namespace Operator {
         }
       }
 
-      void destroyWindow (WindowWithMetadata *window) {
+      void destroyWindow (WindowWithMetadata* window) {
         if (destroyed) return;
         if (window != nullptr) {
-          return destroyWindow(reinterpret_cast<Window *>(window));
+          return destroyWindow(reinterpret_cast<Window*>(window));
         }
       }
 
-      void destroyWindow (Window *window) {
+      void destroyWindow (Window* window) {
         if (destroyed) return;
         if (window != nullptr && windows[window->index] != nullptr) {
-          auto metadata = reinterpret_cast<WindowWithMetadata *>(window);
+          auto metadata = reinterpret_cast<WindowWithMetadata*>(window);
 
           inits[window->index] = false;
           windows[window->index] = nullptr;
@@ -975,12 +975,12 @@ namespace Operator {
         }
       }
 
-      Window * createWindow (WindowOptions opts) {
+      Window* createWindow (WindowOptions opts) {
         if (destroyed) return nullptr;
         std::stringstream env;
 
         if (inits[opts.index]) {
-          return reinterpret_cast<Window *>(windows[opts.index]);
+          return reinterpret_cast<Window*>(windows[opts.index]);
         }
 
         for (auto const &envKey : split(appData["env"], ',')) {
@@ -1034,10 +1034,10 @@ namespace Operator {
         windows[opts.index] = window;
         inits[opts.index] = true;
 
-        return reinterpret_cast<Window *>(window);
+        return reinterpret_cast<Window*>(window);
       }
 
-      Window * createDefaultWindow (WindowOptions opts) {
+      Window* createDefaultWindow (WindowOptions opts) {
         return createWindow(WindowOptions {
           .resizable = true,
           .frameless = false,
@@ -1051,7 +1051,6 @@ namespace Operator {
         });
       }
   };
-
 }
 
 #endif // OP_H
