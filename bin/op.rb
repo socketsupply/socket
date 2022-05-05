@@ -20,8 +20,6 @@ class Op < Formula
     sha256 cellar: :any_skip_relocation, x86_64_linux:   "4427aa47bd0a56a0e35e70943ba8bc160cb8a83cac9f59378574aa234584e8f7"
   end
 
-  uses_from_macos "curl"
-
   def install
     ENV["PREFIX"] = prefix
     system "bash", "cross-compile-deps.sh"

@@ -65,11 +65,6 @@ if ($args[0] -eq "update") {
   Copy-Item -Path $base\include\WebView2Experimental.h $WORKING_PATH\src\win64
   Copy-Item -Path $base\x64\WebView2LoaderStatic.lib $WORKING_PATH\src\win64
 
-  Write-Output "- Updating libcurl header files..."
-  Invoke-WebRequest https://github.com/curl/curl/archive/refs/heads/master.zip -O $TEMP_PATH\curl.zip
-  Expand-Archive -Path $TEMP_PATH\curl.zip -DestinationPath $TEMP_PATH\curl
-  Copy-Item -Path "$TEMP_PATH\curl\*" "$WORKING_PATH\src\win64\curl" -Recurse
-
   Exit 0
 }
 

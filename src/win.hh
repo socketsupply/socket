@@ -14,14 +14,6 @@
 #pragma comment(lib,"user32.lib")
 #pragma comment(lib,"WebView2LoaderStatic.lib")
 
-// curl
-#pragma comment(lib,"libcurl.lib")
-#pragma comment(lib,"ws2_32.lib")
-#pragma comment(lib,"winmm.lib")
-#pragma comment(lib,"wldap32.lib")
-
-#define CURL_STATICLIB
-
 // for dark mode...
 #include <uxtheme.h>
 #include <dwmapi.h>
