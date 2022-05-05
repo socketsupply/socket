@@ -207,9 +207,12 @@ MAIN {
     app.dispatch([&, out] {
       Parse cmd(out);
 
-      auto window = windowFactory.createWindow(WindowOptions { .index: cmd.index });
       auto value = cmd.get("value");
       auto seq = cmd.get("seq");
+
+      auto window = windowFactory.createWindow((WindowOptions) {
+        .index = cmd.index
+      });
 
       if (cmd.name == "title") {
         window->setTitle(seq, decodeURIComponent(value));
@@ -352,7 +355,9 @@ MAIN {
   auto onMessage = [&](auto out) {
     Parse cmd(out);
 
-    auto window = windowFactory.createWindow(WindowOptions { index: cmd.index });
+    auto window = windowFactory.createWindow((WindowOptions) {
+      .index = cmd.index
+    });
 
     if (cmd.name == "title") {
       window->setTitle(
