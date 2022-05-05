@@ -842,6 +842,7 @@ namespace Operator {
 #endif
 
       App app;
+      bool destroyed = false;
       std::vector<bool> inits;
       std::vector<WindowWithMetadata *> windows;
 
@@ -860,6 +861,7 @@ namespace Operator {
       }
 
       void destroy () {
+        if (this->destroyed) return;
         for (auto window : windows) {
           destroyWindow(window);
         }
@@ -869,6 +871,7 @@ namespace Operator {
       }
 
       void configure (WindowFactoryOptions configuration) {
+        if (destroyed) return;
         this->options.defaultHeight = configuration.defaultHeight;
         this->options.defaultWidth = configuration.defaultWidth;
         this->options.onMessage = configuration.onMessage;
@@ -879,6 +882,7 @@ namespace Operator {
       }
 
       void inline debug (const std::string line) {
+        if (destroyed) return;
 #if DEBUG
         using namespace std::chrono;
 
@@ -899,6 +903,7 @@ namespace Operator {
       }
 
       Window * getWindow (int index, WindowStatus status) {
+        if (this->destroyed) return nullptr;
         if (
           getWindowStatus(index) > WindowStatus::WINDOW_NONE &&
           getWindowStatus(index) < status
@@ -918,6 +923,7 @@ namespace Operator {
       }
 
       Window * getOrCreateWindow (int index, WindowOptions opts) {
+        if (this->destroyed) return nullptr;
         if (getWindowStatus(index) == WindowStatus::WINDOW_NONE) {
           opts.index = index;
           return createWindow(opts);
@@ -927,6 +933,7 @@ namespace Operator {
       }
 
       WindowStatus getWindowStatus (int index) {
+        if (this->destroyed) return WindowStatus::WINDOW_NONE;
         if (inits[index]) {
           return windows[index]->status;
         }
@@ -935,18 +942,21 @@ namespace Operator {
       }
 
       void destroyWindow (int index) {
+        if (destroyed) return;
         if (inits[index] && windows[index] != nullptr) {
           return destroyWindow(windows[index]);
         }
       }
 
       void destroyWindow (WindowWithMetadata *window) {
+        if (destroyed) return;
         if (window != nullptr) {
           return destroyWindow(reinterpret_cast<Window *>(window));
         }
       }
 
       void destroyWindow (Window *window) {
+        if (destroyed) return;
         if (window != nullptr && windows[window->index] != nullptr) {
           auto metadata = reinterpret_cast<WindowWithMetadata *>(window);
 
@@ -966,6 +976,7 @@ namespace Operator {
       }
 
       Window * createWindow (WindowOptions opts) {
+        if (destroyed) return nullptr;
         std::stringstream env;
 
         if (inits[opts.index]) {
