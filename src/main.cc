@@ -21,6 +21,9 @@
   #define FILENO fileno
 #endif
 
+#define InvalidWindowIndexError(index) \
+  std::string("Invalid index given for window: ") + std::to_string(index)
+
 using namespace Operator;
 
 std::function<void(int)> shutdownHandler;
@@ -41,6 +44,10 @@ MAIN {
   constexpr auto _settings = STR_VALUE(SETTINGS);
   constexpr auto _debug = DEBUG;
   constexpr auto _port = PORT;
+
+  const std::string OK_STATE = "0";
+  const std::string ERROR_STATE = "1";
+  const std::string EMPTY_SEQ = std::string("");
 
   auto cwd = app.getCwd(argv[0]);
   appData = parseConfig(decodeURIComponent(_settings));
@@ -210,9 +217,70 @@ MAIN {
       auto value = cmd.get("value");
       auto seq = cmd.get("seq");
 
-      auto window = windowFactory.createWindow((WindowOptions) {
-        .index = cmd.index
-      });
+      if (cmd.name == "stdout") {
+        writeToStdout(decodeURIComponent(value));
+        return;
+      }
+
+      if (cmd.name == "show") {
+        auto options = WindowOptions {};
+        auto status = windowFactory.getWindowStatus(cmd.index);
+        auto window = windowFactory.getWindow(cmd.index);
+
+        options.title = cmd.get("title");
+        options.url = cmd.get("url");
+
+        if (cmd.get("port").size() > 0) {
+          options.port = std::stoi(cmd.get("port"));
+        }
+
+        if (cmd.get("width").size() > 0 && cmd.get("height").size() > 0) {
+          options.width = std::stoi(cmd.get("width"));
+          options.height = std::stoi(cmd.get("height"));
+        }
+
+        if (!window || status == WindowFactory<Window, App>::WindowStatus::NONE) {
+          options.resizable = cmd.get("resizable") == "true" ? true : false;
+          options.frameless = cmd.get("frameless") == "true" ? true : false;
+          options.utility = cmd.get("utility") == "true" ? true : false;
+          options.index = cmd.index;
+          options.debug = cmd.get("debug") == "true" ? true : false;
+
+          window = windowFactory.createWindow(options);
+          window->show(seq);
+        } else if (status < WindowFactory<Window, App>::WindowStatus::CLOSING) {
+          window->show(seq);
+
+          if (options.width > 0 && options.height > 0) {
+            window->setSize(EMPTY_SEQ, options.width, options.height, 0);
+          }
+
+          if (options.title.size() > 0) {
+            window->setTitle(EMPTY_SEQ, options.title);
+          }
+
+          if (options.url.size() > 0) {
+            window->openExternal(options.url);
+          }
+        }
+
+        return;
+      }
+
+      auto window = windowFactory.getOrCreateWindow(cmd.index);
+
+      if (cmd.name == "heartbeat") {
+        if (seq.size() > 0) {
+          window->onMessage(resolveToMainProcess(seq, OK_STATE, "\"heartbeat\""));
+        }
+
+        return;
+      }
+
+      if (!window) {
+        // @TODO(jwerle): issue a warning or something
+        return;
+      }
 
       if (cmd.name == "title") {
         window->setTitle(seq, decodeURIComponent(value));
@@ -221,11 +289,6 @@ MAIN {
 
       if (cmd.name == "restart") {
         app.restart();
-        return;
-      }
-
-      if (cmd.name == "show") {
-        window->show(seq);
         return;
       }
 
@@ -256,7 +319,12 @@ MAIN {
           "}"
         );
 
-        window->onMessage(resolveToMainProcess(seq, "0", encodeURIComponent(value)));
+        window->onMessage(resolveToMainProcess(
+          seq,
+          OK_STATE,
+          encodeURIComponent(value)
+        ));
+
         return;
       }
 
@@ -274,26 +342,19 @@ MAIN {
           indexMain = std::stoi(cmd.get("indexMain"));
           indexSub = std::stoi(cmd.get("indexSub"));
         } catch (...) {
-          window->onMessage(resolveToMainProcess(seq, "0", ""));
+          window->onMessage(resolveToMainProcess(seq, OK_STATE, ""));
           return;
         }
 
         window->setSystemMenuItemEnabled(enabled, indexMain, indexSub);
-        window->onMessage(resolveToMainProcess(seq, "0", ""));
+        window->onMessage(resolveToMainProcess(seq, OK_STATE, ""));
         return;
       }
 
       if (cmd.name == "external") {
         window->openExternal(decodeURIComponent(value));
         if (seq.size() > 0) {
-          window->onMessage(resolveToMainProcess(seq, "0", "null"));
-        }
-        return;
-      }
-
-      if (cmd.name == "heartbeat") {
-        if (seq.size() > 0) {
-          window->onMessage(resolveToMainProcess(seq, "0", "\"heartbeat\""));
+          window->onMessage(resolveToMainProcess(seq, OK_STATE, "null"));
         }
         return;
       }
@@ -307,7 +368,7 @@ MAIN {
         window->exit(exitCode);
 
         if (seq.size() > 0) {
-          window->onMessage(resolveToMainProcess(seq, "0", "null"));
+          window->onMessage(resolveToMainProcess(seq, OK_STATE, "null"));
         }
         return;
       }
@@ -325,12 +386,8 @@ MAIN {
         return;
       }
 
-      if (cmd.name == "stdout") {
-        writeToStdout(decodeURIComponent(value));
-      }
-
       if (cmd.name == "getConfig") {
-        window->onMessage(resolveToMainProcess(seq, "0", _settings));
+        window->onMessage(resolveToMainProcess(seq, OK_STATE, _settings));
         return;
       }
     });
@@ -355,9 +412,23 @@ MAIN {
   auto onMessage = [&](auto out) {
     Parse cmd(out);
 
-    auto window = windowFactory.createWindow((WindowOptions) {
-      .index = cmd.index
-    });
+    auto window = windowFactory.getWindow(cmd.index);
+
+    // the window must exist
+    if (!window && cmd.index >= 0) {
+      const auto seq = cmd.get("seq");
+      auto defaultWindow = windowFactory.getWindow(0);
+
+      if (defaultWindow) {
+        defaultWindow->onMessage(resolveToRenderProcess(
+          seq,
+          ERROR_STATE, // error
+          InvalidWindowIndexError(cmd.index)
+        ));
+      }
+
+      return;
+    }
 
     if (cmd.name == "title") {
       window->setTitle(
@@ -435,7 +506,7 @@ MAIN {
     }
 
     if (cmd.name == "hide") {
-      window->hide("");
+      window->hide(EMPTY_SEQ);
       return;
     }
 
@@ -465,7 +536,7 @@ MAIN {
     if (cmd.name == "size") {
       int width = std::stoi(cmd.get("width"));
       int height = std::stoi(cmd.get("height"));
-      window->setSize("", width, height, 0);
+      window->setSize(EMPTY_SEQ, width, height, 0);
       return;
     }
 
@@ -484,12 +555,12 @@ MAIN {
         indexMain = std::stoi(cmd.get("indexMain"));
         indexSub = std::stoi(cmd.get("indexSub"));
       } catch (...) {
-        window->onMessage(resolveToMainProcess(seq, "0", ""));
+        window->onMessage(resolveToMainProcess(seq, OK_STATE, ""));
         return;
       }
 
       window->setSystemMenuItemEnabled(enabled, indexMain, indexSub);
-      window->onMessage(resolveToMainProcess(seq, "0", ""));
+      window->onMessage(resolveToMainProcess(seq, OK_STATE, ""));
       return;
     }
 
@@ -526,7 +597,7 @@ MAIN {
     if (cmd.name == "getConfig") {
       const auto seq = cmd.get("seq");
       auto wrapped = ("\"" + std::string(_settings) + "\"");
-      window->eval(resolveToRenderProcess(seq, "0", encodeURIComponent(wrapped)));
+      window->eval(resolveToRenderProcess(seq, OK_STATE, encodeURIComponent(wrapped)));
       return;
     }
 
@@ -572,23 +643,23 @@ MAIN {
   }
 
   if (_port > 0 || cmd.size() == 0) {
-    defaultWindow->setSystemMenu("", std::string(
+    defaultWindow->setSystemMenu(EMPTY_SEQ, std::string(
       "Developer Mode: \n"
       "  Reload: r + CommandOrControl\n"
       "  Quit: q + CommandOrControl\n"
       ";"
     ));
 
-    defaultWindow->show("");
-    defaultWindow->setSize("", 1024, 720, 0);
+    defaultWindow->show(EMPTY_SEQ);
+    defaultWindow->setSize(EMPTY_SEQ, 1024, 720, 0);
   }
 
   w0.show("");
 
   if (_port > 0) {
-    defaultWindow->navigate("", "http://localhost:" + std::to_string(_port));
+    defaultWindow->navigate(EMPTY_SEQ, "http://localhost:" + std::to_string(_port));
   } else if (cmd.size() == 0) {
-    defaultWindow->navigate("", "file://" + (fs::path(cwd) / "index.html").string());
+    defaultWindow->navigate(EMPTY_SEQ, "file://" + (fs::path(cwd) / "index.html").string());
   }
 
   //

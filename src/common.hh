@@ -507,7 +507,7 @@ namespace Operator {
     Map args;
     public:
       Parse(const std::string&);
-      int index = 0;
+      int index = -1;
       std::string value = "";
       std::string name = "";
       std::string get(const std::string&);
@@ -745,76 +745,98 @@ namespace Operator {
   };
 
   template <class Window, class App> class WindowFactory : public IWindowFactory<Window> {
-    enum WindowStatus {
-      NONE = 0,
-      SHOWING,
-      SHOWN,
-      HIDING,
-      HIDDEN,
-      CLOSING,
-      CLOSED,
-      EXITING,
-      EXITED,
-      KILLING,
-      KILLED
-    };
+    public:
+      enum WindowStatus {
+        ERROR = -1,
+        NONE = 0,
+        CREATING = 10,
+        CREATED,
+        HIDING = 20,
+        HIDDEN,
+        SHOWING = 30,
+        SHOWN,
+        CLOSING = 40,
+        CLOSED,
+        EXITING = 50,
+        EXITED,
+        KILLING = 60,
+        KILLED
+      };
 
-    class WindowWithMetadata : public Window {
-      public:
-        WindowStatus status;
-        WindowFactory<Window, App> factory;
+      class WindowWithMetadata : public Window {
+        public:
+          WindowStatus status;
+          WindowFactory<Window, App> factory;
 
-        WindowWithMetadata (
-          WindowFactory &factory,
-          App &app,
-          WindowOptions opts
-        ) : Window(app, opts), factory(factory) {
-          // noop
-        }
+          WindowWithMetadata (
+            WindowFactory &factory,
+            App &app,
+            WindowOptions opts)
+          : Window(app, opts), factory(factory) {
+            // noop
+          }
 
-        ~WindowWithMetadata () {}
+          ~WindowWithMetadata () {}
 
-        void show (const std::string &seq) {
-          factory.debug("Showing Window#" + std::to_string(this->opts.index) + " (seq=" + seq + ")");
-          status = WindowStatus::SHOWING;
-          Window::show(seq);
-          status = WindowStatus::SHOWN;
-        }
+          void show (const std::string &seq) {
+            auto index = std::to_string(this->opts.index);
+            factory.debug("Showing Window#" + index + " (seq=" + seq + ")");
+            status = WindowStatus::SHOWING;
+            Window::show(seq);
+            status = WindowStatus::SHOWN;
+          }
 
-        void hide (const std::string &seq) {
-          factory.debug("Hiding Window#" + std::to_string(this->opts.index) + " (seq=" + seq + ")");
-          status = WindowStatus::HIDING;
-          Window::hide(seq);
-          status = WindowStatus::HIDDEN;
-        }
+          void hide (const std::string &seq) {
+            if (status > WindowStatus::HIDDEN && status < WindowStatus::CLOSING) {
+              auto index = std::to_string(this->opts.index);
+              factory.debug("Hiding Window#" + index + " (seq=" + seq + ")");
+              status = WindowStatus::HIDING;
+              Window::hide(seq);
+              status = WindowStatus::HIDDEN;
+            }
+          }
 
-        void close (int code) {
-          factory.debug("Closing Window#" + std::to_string(this->opts.index) + " with code "+ std::to_string(code));
-          status = WindowStatus::CLOSING;
-          Window::close(code);
-          status = WindowStatus::CLOSED;
-        }
+          void close (int code) {
+            if (status < WindowStatus::CLOSING) {
+              auto index = std::to_string(this->opts.index);
+              factory.debug("Closing Window#" + index + " (code= " + std::to_string(code) + ")");
+              status = WindowStatus::CLOSING;
+              Window::close(code);
+              status = WindowStatus::CLOSED;
+              gc();
+            }
+          }
 
-        void exit (int code) {
-          factory.debug("Exiting Window#" + std::to_string(this->opts.index) + " with code "+ std::to_string(code));
-          status = WindowStatus::EXITING;
-          Window::exit(code);
-          status = WindowStatus::EXITING;
-        }
+          void exit (int code) {
+            if (status < WindowStatus::EXITING) {
+              auto index = std::to_string(this->opts.index);
+              factory.debug("Exiting Window#" + index + " (code= " + std::to_string(code) + ")");
+              status = WindowStatus::EXITING;
+              Window::exit(code);
+              status = WindowStatus::EXITING;
+              gc();
+            }
+          }
 
-        void kill () {
-          factory.debug("Killing Window#" + std::to_string(this->opts.index));
-          status = WindowStatus::KILLING;
-          Window::kill();
-          status = WindowStatus::KILLED;
-        }
-    };
+          void kill () {
+            if (status < WindowStatus::KILLING) {
+              factory.debug("Killing Window#" + std::to_string(this->opts.index));
+              status = WindowStatus::KILLING;
+              Window::kill();
+              status = WindowStatus::KILLED;
+              gc();
+            }
+          }
+
+          void gc () {
+            factory.destroyWindow(reinterpret_cast<Window *>(this));
+          }
+      };
 
 #if DEBUG
-    std::chrono::system_clock::time_point lastDebugLogLine;
+      std::chrono::system_clock::time_point lastDebugLogLine;
 #endif
 
-    public:
       App app;
       std::vector<bool> inits;
       std::vector<WindowWithMetadata *> windows;
@@ -823,7 +845,7 @@ namespace Operator {
         app(app),
         inits(OPERATOR_MAX_WINDOWS),
         windows(OPERATOR_MAX_WINDOWS)
-      {
+    {
 #if DEBUG
         lastDebugLogLine = std::chrono::system_clock::now();
 #endif
@@ -872,23 +894,66 @@ namespace Operator {
 #endif
       }
 
+      Window * getWindow (int index, WindowStatus status) {
+        if (getWindowStatus(index) > NONE && getWindowStatus(index) < status) {
+          return reinterpret_cast<Window *>(windows[index]);
+        }
+
+        return nullptr;
+      }
+
       Window * getWindow (int index) {
-        return reinterpret_cast<Window *>(windows[index]);
+        return getWindow(index, WindowStatus::EXITING);
+      }
+
+      Window * getOrCreateWindow (int index) {
+        return getOrCreateWindow(index, WindowOptions {});
+      }
+
+      Window * getOrCreateWindow (int index, WindowOptions opts) {
+        if (getWindowStatus(index) == WindowStatus::NONE) {
+          opts.index = index;
+          return createWindow(opts);
+        }
+
+        return getWindow(index);
+      }
+
+      WindowStatus getWindowStatus (int index) {
+        if (inits[index]) {
+          return windows[index]->status;
+        }
+
+        return WindowStatus::NONE;
       }
 
       void destroyWindow (int index) {
-        return destroyWindow(windows[index]);
+        if (inits[index] && windows[index] != nullptr) {
+          return destroyWindow(windows[index]);
+        }
       }
 
       void destroyWindow (WindowWithMetadata *window) {
-        return destroyWindow(reinterpret_cast<Window *>(window));
+        if (window != nullptr) {
+          return destroyWindow(reinterpret_cast<Window *>(window));
+        }
       }
 
       void destroyWindow (Window *window) {
-        if (window) {
+        if (window != nullptr && windows[window->index] != nullptr) {
+          auto metadata = reinterpret_cast<WindowWithMetadata *>(window);
+
           inits[window->index] = false;
           windows[window->index] = nullptr;
-          window->kill();
+
+          if (metadata->status < CLOSING) {
+            window->close(0);
+          }
+
+          if (metadata->status < KILLING) {
+            window->kill();
+          }
+
           delete window;
         }
       }
@@ -942,10 +1007,9 @@ namespace Operator {
 #if DEBUG
         this->debug("Creating Window#" + std::to_string(opts.index));
 #endif
-
         auto window = new WindowWithMetadata(*this, app, windowOptions);
 
-        window->status = WindowStatus::NONE;
+        window->status = WindowStatus::CREATED;
         window->onExit = this->options.onExit;
         window->onMessage = this->options.onMessage;
 
