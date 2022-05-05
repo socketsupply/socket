@@ -802,7 +802,7 @@ namespace Operator {
           void close (int code) {
             if (status < WindowStatus::WINDOW_CLOSING) {
               auto index = std::to_string(this->opts.index);
-              factory.debug("Closing Window#" + index + " (code= " + std::to_string(code) + ")");
+              factory.debug("Closing Window#" + index + " (code=" + std::to_string(code) + ")");
               status = WindowStatus::WINDOW_CLOSING;
               Window::close(code);
               status = WindowStatus::WINDOW_CLOSED;
@@ -813,7 +813,7 @@ namespace Operator {
           void exit (int code) {
             if (status < WindowStatus::WINDOW_EXITING) {
               auto index = std::to_string(this->opts.index);
-              factory.debug("Exiting Window#" + index + " (code= " + std::to_string(code) + ")");
+              factory.debug("Exiting Window#" + index + " (code=" + std::to_string(code) + ")");
               status = WindowStatus::WINDOW_EXITING;
               Window::exit(code);
               status = WindowStatus::WINDOW_EXITING;
