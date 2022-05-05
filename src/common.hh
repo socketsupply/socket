@@ -45,6 +45,10 @@
   int main (int argc, char** argv)
 #endif
 
+#ifndef DEBUG
+#define DEBUG 0
+#endif
+
 #ifndef OPERATOR_MAX_WINDOWS
 #define OPERATOR_MAX_WINDOWS 32
 #endif
@@ -771,42 +775,44 @@ namespace Operator {
         ~WindowWithMetadata () {}
 
         void show (const std::string &seq) {
-          factory.log("Showing Window#" + std::to_string(this->opts.index) + " (seq=" + seq + ")");
+          factory.debug("Showing Window#" + std::to_string(this->opts.index) + " (seq=" + seq + ")");
           status = WindowStatus::SHOWING;
           Window::show(seq);
           status = WindowStatus::SHOWN;
         }
 
         void hide (const std::string &seq) {
-          factory.log("Hiding Window#" + std::to_string(this->opts.index) + " (seq=" + seq + ")");
+          factory.debug("Hiding Window#" + std::to_string(this->opts.index) + " (seq=" + seq + ")");
           status = WindowStatus::HIDING;
           Window::hide(seq);
           status = WindowStatus::HIDDEN;
         }
 
         void close (int code) {
-          factory.log("Closing Window#" + std::to_string(this->opts.index) + " with code "+ std::to_string(code));
+          factory.debug("Closing Window#" + std::to_string(this->opts.index) + " with code "+ std::to_string(code));
           status = WindowStatus::CLOSING;
           Window::close(code);
           status = WindowStatus::CLOSED;
         }
 
         void exit (int code) {
-          factory.log("Exiting Window#" + std::to_string(this->opts.index) + " with code "+ std::to_string(code));
+          factory.debug("Exiting Window#" + std::to_string(this->opts.index) + " with code "+ std::to_string(code));
           status = WindowStatus::EXITING;
           Window::exit(code);
           status = WindowStatus::EXITING;
         }
 
         void kill () {
-          factory.log("Killing Window#" + std::to_string(this->opts.index));
+          factory.debug("Killing Window#" + std::to_string(this->opts.index));
           status = WindowStatus::KILLING;
           Window::kill();
           status = WindowStatus::KILLED;
         }
     };
 
-    std::chrono::system_clock::time_point lastLogLine;
+#if DEBUG
+    std::chrono::system_clock::time_point lastDebugLogLine;
+#endif
 
     public:
       App app;
@@ -818,7 +824,9 @@ namespace Operator {
         inits(OPERATOR_MAX_WINDOWS),
         windows(OPERATOR_MAX_WINDOWS)
       {
-        lastLogLine = std::chrono::system_clock::now();
+#if DEBUG
+        lastDebugLogLine = std::chrono::system_clock::now();
+#endif
       }
 
       ~WindowFactory () {
@@ -844,7 +852,8 @@ namespace Operator {
         this->options.cwd = configuration.cwd;
       }
 
-      void log (const std::string line) {
+      void inline debug (const std::string line) {
+#if DEBUG
         using namespace std::chrono;
 
 #ifdef _WIN32 // unicode console support
@@ -853,13 +862,14 @@ namespace Operator {
 #endif
 
         auto now = system_clock::now();
-        auto delta = duration_cast<milliseconds>(now - lastLogLine).count();
+        auto delta = duration_cast<milliseconds>(now - lastDebugLogLine).count();
 
         std::cout << "• " << line;
         std::cout << " \033[0;32m+" << delta << "ms\033[0m";
         std::cout << std::endl;
 
-        lastLogLine = now;
+        lastDebugLogLine = now;
+#endif
       }
 
       Window * getWindow (int index) {
@@ -910,8 +920,8 @@ namespace Operator {
           .height = height,
           .width = width,
           .index = opts.index,
-#ifdef DEBUG
-          .debug = opts.debug || DEBUG,
+#if DEBUG
+          .debug = DEBUG || opts.debug,
 #else
           .debug = opts.debug,
 #endif
@@ -921,7 +931,7 @@ namespace Operator {
 
           .cwd = this->options.cwd,
           .executable = appData["executable"],
-          .title = appData["title"],
+          .title = opts.title.size() > 0 ? opts.title : appData["title"],
           .url = opts.url.size() > 0 ? opts.url : "data:text/html,<html>",
           .version = appData["version"],
           .argv = this->options.argv,
@@ -929,7 +939,10 @@ namespace Operator {
           .env = env.str()
         };
 
-        this->log("Creating Window#" + std::to_string(opts.index));
+#if DEBUG
+        this->debug("Creating Window#" + std::to_string(opts.index));
+#endif
+
         auto window = new WindowWithMetadata(*this, app, windowOptions);
 
         window->status = WindowStatus::NONE;
