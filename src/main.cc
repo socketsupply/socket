@@ -1,7 +1,6 @@
+#include "../lib/http/index.hh"
 #include "common.hh"
 #include "process.hh"
-
-#include "lib/http/index.hh"
 
 #if defined(_WIN32)
   #include "win.hh"
@@ -453,34 +452,33 @@ MAIN {
           return;
         }
 
-        httplib::ContentReceiverWithProgress cb = [&](
+        httplib::ContentReceiver onContent = [&](
             const char *data,
-            size_t len,
-            uint64_t offset,
-            uint64_t total) -> bool {
-          auto p = len * 100 / total;
-          auto progress = "\"" + std::to_string(p) + "\"";
-          w.eval(emitToRenderProcess("main-bootstrap-progress", progress));
-
+            size_t len) -> bool {
           f.write(data, len);
-
-          if (p == 1) {
-            auto cmd = appData[platform.os + "_bootstrap_post"];
-
-            auto r = exec(cmd);
-            if (r.exitCode == 0) {
-              w.eval(emitToRenderProcess("main-bootstrap-success", progress));
-            } else {
-              auto msg = r.output.size() > 0 ? r.output : "\"Command failed\"";
-              w.eval(emitToRenderProcess("main-bootstrap-failure", msg));
-            }
-          }
-
           return true;
         };
 
+        auto onProgress = [&](uint64_t current, uint64_t total) -> bool {
+          auto p = current * 100 / total;
+          auto progress = "\"" + std::to_string(p) + "\"";
+          w.eval(emitToRenderProcess("main-bootstrap-progress", progress));
+
+          if (p != 1) return true;
+
+          auto r = exec(appData[platform.os + "_bootstrap_post"]);
+
+          if (r.exitCode == 0) {
+            w.eval(emitToRenderProcess("main-bootstrap-success", progress));
+          } else {
+            auto msg = r.output.size() > 0 ? r.output : "\"Command failed\"";
+            w.eval(emitToRenderProcess("main-bootstrap-failure", msg));
+          }
+        };
+
+        const httplib::Headers h;
         auto client = httplib::Client("https://go.microsoft.com");
-        auto res = client.Get("/fwlink/p/?LinkId=2124703", cb);
+        auto res = client.Get("/fwlink/p/?LinkId=2124703", onContent, onProgress);
 
         if (res->status != 200) {
           auto msg = "{\"status\":" + std::to_string(res->status) + "}";

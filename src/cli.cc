@@ -739,7 +739,7 @@ int main (const int argc, const char* argv[]) {
     auto r = exec(compileCommand.str());
 
     if (r.exitCode != 0) {
-      log("Unable to build");
+      log("Unable to build: " + r.output);
       exit(WEXITSTATUS(r.exitCode));
     }
     writeFile(pathToBuiltWithFile, version_hash);
