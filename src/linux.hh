@@ -4,6 +4,10 @@
 #include <gtk/gtk.h>
 #include <webkit2/webkit2.h>
 
+#ifndef OPERATOR_MAX_WINDOWS
+#define OPERATOR_MAX_WINDOWS 32
+#endif
+
 static GtkTargetEntry droppableTypes[] = {
   { (char*) "text/uri-list", 0, 0 }
 };
@@ -72,26 +76,48 @@ namespace Operator {
       App app;
       WindowFactory::Options options;
       std::vector<Window *> windows;
+      std::vector<bool> inits;
 
       WindowFactory(App &app);
+      ~WindowFactory();
+
       void configure (WindowFactory::Options configuration);
+      Window * getWindow (int index);
       Window * createWindow(WindowOptions opts);
       Window * createDefaultWindow(WindowOptions opts);
   };
 
-  WindowFactory::WindowFactory (App &app) : app(app) {
-    // void
+  WindowFactory::WindowFactory (App &app)
+    : app(app), inits(OPERATOR_MAX_WINDOWS), windows(OPERATOR_MAX_WINDOWS)
+  {
+  }
+
+  WindowFactory::~WindowFactory () {
+    for (auto window : windows) {
+      window->kill();
+      delete window;
+    }
+
+    windows.clear();
+    inits.clear();
   }
 
   void WindowFactory::configure (WindowFactory::Options configuration) {
     options.defaultHeight = configuration.defaultHeight;
     options.defaultWidth = configuration.defaultWidth;
+    options.onMessage = configuration.onMessage;
+    options.onExit = configuration.onExit;
     options.isTest = configuration.isTest;
     options.argv = configuration.argv;
     options.cwd = configuration.cwd;
   }
 
+  Window * WindowFactory::getWindow (int index) {
+    return windows[index];
+  }
+
   Window * WindowFactory::createDefaultWindow (WindowOptions opts) {
+    printf("createDefaultWindow()\n");
     return createWindow(WindowOptions {
       .resizable = true,
       .frameless = false,
@@ -104,7 +130,10 @@ namespace Operator {
   }
 
   Window * WindowFactory::createWindow (WindowOptions opts) {
-    if (windows[opts.index]) return windows[opts.index];
+    printf("createWindow(%d) = %d\n", opts.index, inits[opts.index] ? 1 : 0);
+    if (inits[opts.index]) {
+      return windows[opts.index];
+    }
 
     std::stringstream env;
 
@@ -118,7 +147,7 @@ namespace Operator {
     }
 
     WindowOptions windowOptions = {
-      .resizable = opts.resizable == false ? false : true,
+      .resizable = opts.resizable,
       .frameless = opts.frameless,
       .utility = opts.utility,
       .canExit = opts.canExit,
@@ -140,9 +169,14 @@ namespace Operator {
       .env = env.str()
     };
 
+    printf("new Window\n");
     auto window = new Window(app, windowOptions);
+    window.onExit = configuration.onExit;
+    window.onMessage = configuration.onMessage;
 
     windows[opts.index] = window;
+    inits[opts.index] = true;
+
     return window;
   }
 

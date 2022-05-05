@@ -53,6 +53,8 @@
 
 namespace fs = std::filesystem;
 using Map = std::map<std::string, std::string>;
+using SCallback = std::function<void(const std::string)>;
+using ExitCallback = std::function<void(int code)>;
 
 namespace Operator {
   enum {
@@ -155,6 +157,8 @@ namespace Operator {
     std::string argv = "";
     std::string preload = "";
     std::string env;
+    SCallback onMessage = [](const std::string) {};
+    ExitCallback onExit = nullptr;
   };
 
   template <typename ...Args> std::string format (const std::string& s, Args ...args) {
@@ -661,9 +665,6 @@ namespace Operator {
     return sResult;
   }
 
-  using SCallback = std::function<void(const std::string)>;
-  using ExitCallback = std::function<void(int code)>;
-
   //
   // Interfaces make sure all operating systems implement the same stuff
   //
@@ -712,7 +713,7 @@ namespace Operator {
   };
 
 
-  template <class IWindow> class IWindowFactory {
+  template <class Window> class IWindowFactory {
     public:
       struct Options {
         public:
@@ -721,11 +722,14 @@ namespace Operator {
           bool isTest;
           std::string argv = "";
           std::string cwd = "";
+          SCallback onMessage = [](const std::string) {};
+          ExitCallback onExit = nullptr;
       };
 
-      virtual IWindow * createWindow (WindowOptions) = 0;
-      virtual IWindow * createDefaultWindow (WindowOptions) = 0;
       virtual void configure (Options) = 0;
+      virtual Window * getWindow (int index) = 0;
+      virtual Window * createWindow (WindowOptions) = 0;
+      virtual Window * createDefaultWindow (WindowOptions) = 0;
   };
 }
 
