@@ -936,7 +936,7 @@ namespace Operator {
 
       WindowStatus getWindowStatus (int index) {
         if (this->destroyed) return WindowStatus::WINDOW_NONE;
-        if (inits[index]) {
+        if (index >= 0 && inits[index]) {
           return windows[index]->status;
         }
 
@@ -945,7 +945,7 @@ namespace Operator {
 
       void destroyWindow (int index) {
         if (destroyed) return;
-        if (inits[index] && windows[index] != nullptr) {
+        if (index >= 0 && inits[index] && windows[index] != nullptr) {
           return destroyWindow(windows[index]);
         }
       }
