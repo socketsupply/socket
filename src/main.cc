@@ -560,30 +560,30 @@ MAIN {
     .onExit = shutdownHandler,
   });
 
-  Window *w0 = windowFactory.createDefaultWindow(WindowOptions { });
+  Window *defaultWindow = windowFactory.createDefaultWindow(WindowOptions { });
 
-  if (w0->webviewFailed) {
+  if (defaultWindow->webviewFailed) {
     argvForward << " --webviewFailed";
   }
 
   if (_port > 0 || cmd.size() == 0) {
-    w0->setSystemMenu("", std::string(
+    defaultWindow->setSystemMenu("", std::string(
       "Developer Mode: \n"
       "  Reload: r + CommandOrControl\n"
       "  Quit: q + CommandOrControl\n"
       ";"
     ));
 
-    w0->show("");
-    w0->setSize("", 1024, 720, 0);
+    defaultWindow->show("");
+    defaultWindow->setSize("", 1024, 720, 0);
   }
 
   w0.show("");
 
   if (_port > 0) {
-    w0->navigate("", "http://localhost:" + std::to_string(_port));
+    defaultWindow->navigate("", "http://localhost:" + std::to_string(_port));
   } else if (cmd.size() == 0) {
-    w0->navigate("", "file://" + (fs::path(cwd) / "index.html").string());
+    defaultWindow->navigate("", "file://" + (fs::path(cwd) / "index.html").string());
   }
 
   //
