@@ -1,5 +1,5 @@
 node_modules/
-/lib/*
+/lib/uv
 *.tmp
 .DS_Store
 !/lib/libuv.a

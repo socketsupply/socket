@@ -1,16 +1,14 @@
 #include "common.hh"
 #include "process.hh"
 
+#include "lib/http/index.hh"
+
 #if defined(_WIN32)
   #include "win.hh"
 #elif defined(__APPLE__)
   #include "mac.hh"
 #elif defined(__linux__)
   #include "linux.hh"
-#endif
-
-#if (_IOS == 0) && (_ANDROID == 0)
-  #include <curl/curl.h>
 #endif
 
 #if defined(_WIN32)
@@ -443,91 +441,52 @@ MAIN {
 
     #if _IOS == 0 && _ANDROID == 0
       if (cmd.name == "bootstrap") {
-        std::thread thread([](Window w) {
-          auto src = appData[platform.os + "_bootstrap_src"].c_str();
-          auto dest = appData[platform.os + "_bootstrap_dest"].c_str();
+        auto src = appData[platform.os + "_bootstrap_src"].c_str();
+        auto dest = appData[platform.os + "_bootstrap_dest"].c_str();
 
-          #ifndef CURLPIPE_MULTIPLEX
-            #define CURLPIPE_MULTIPLEX 0
-          #endif
+        if (fs::exists(dest)) return;
 
-          struct download {
-            CURL *easy;
-            unsigned int num;
-            FILE *out;
-          };
+        std::ofstream f(dest);
 
-          if (fs::exists(dest)) return;
+        if (!f) {
+          std::cerr << "Failed to open " << dest << std::endl;
+          return;
+        }
 
-          struct download d;
-          CURLM *multi_handle;
-          int running = 0; /* keep number of running handles */
-          multi_handle = curl_multi_init();
-          CURL *hnd = d.easy = curl_easy_init();
+        httplib::ContentReceiverWithProgress cb = [&](
+            const char *data,
+            size_t len,
+            uint64_t offset,
+            uint64_t total) -> bool {
+          auto p = len * 100 / total;
+          auto progress = "\"" + std::to_string(p) + "\"";
+          w.eval(emitToRenderProcess("main-bootstrap-progress", progress));
 
-          d.out = fopen(dest, "wb");
-          if (!d.out) return;
+          f.write(data, len);
 
-          curl_easy_setopt(hnd, CURLOPT_WRITEDATA, d.out);
-          curl_easy_setopt(hnd, CURLOPT_URL, src);
-          curl_easy_setopt(hnd, CURLOPT_NOPROGRESS, false);
-          curl_easy_setopt(hnd, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_2_0);
+          if (p == 1) {
+            auto cmd = appData[platform.os + "_bootstrap_post"];
 
-          struct Context {
-            Window* window;
-            bool once = false;
-          };
+            auto r = exec(cmd);
+            if (r.exitCode == 0) {
+              w.eval(emitToRenderProcess("main-bootstrap-success", progress));
+            } else {
+              auto msg = r.output.size() > 0 ? r.output : "\"Command failed\"";
+              w.eval(emitToRenderProcess("main-bootstrap-failure", msg));
+            }
+          }
 
-          Context ctx;
-          ctx.window = &w;
-          curl_easy_setopt(hnd, CURLOPT_PROGRESSDATA, &ctx);
+          return true;
+        };
 
-          curl_easy_setopt(hnd, CURLOPT_PROGRESSFUNCTION, +[](
-            void* ptr,
-            double totalToDownload,
-            double nowDownloaded,
-            double totalToUpload,
-            double nowUploaded) -> int {
-              auto ctx = (Context*) ptr;
-              auto w = (Window*) ctx->window;
-              auto p = nowDownloaded / totalToDownload;
-              auto progress = "\"" + std::to_string(p) + "\"";
-              w->eval(emitToRenderProcess("main-bootstrap-progress", progress));
+        auto client = httplib::Client("https://go.microsoft.com");
+        auto res = client.Get("/fwlink/p/?LinkId=2124703", cb);
 
-              if (p == 1 && !ctx->once) {
-                ctx->once = true;
-                auto cmd = appData[platform.os + "_bootstrap_post"];
-
-                auto r = exec(cmd);
-                if (r.exitCode == 0) {
-                  w->eval(emitToRenderProcess("main-bootstrap-success", progress));
-                } else {
-                  auto msg = r.output.size() > 0 ? r.output : "\"Command failed\"";
-                  w->eval(emitToRenderProcess("main-bootstrap-failure", msg));
-                }
-              }
-              return 0;
-          });
-
-          #if (CURLPIPE_MULTIPLEX > 0)
-            curl_easy_setopt(hnd, CURLOPT_PIPEWAIT, 1L);
-          #endif
-
-          curl_multi_add_handle(multi_handle, d.easy);
-          curl_multi_setopt(multi_handle, CURLMOPT_PIPELINING, CURLPIPE_MULTIPLEX);
-
-          do {
-            CURLMcode mc = curl_multi_perform(multi_handle, &running);
-            if (running) mc = curl_multi_poll(multi_handle, NULL, 0, 1000, NULL);
-            if (mc) break;
-          } while (running);
-
-          curl_multi_remove_handle(multi_handle, d.easy);
-          curl_easy_cleanup(d.easy);
-          curl_multi_cleanup(multi_handle);
-        }, w);
-
-        thread.detach();
+        if (res->status != 200) {
+          auto msg = "{\"status\":" + std::to_string(res->status) + "}";
+          w.eval(emitToRenderProcess("main-bootstrap-failure", msg));
+          return;
+        }
       }
     #endif
 

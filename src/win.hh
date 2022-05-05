@@ -1039,72 +1039,15 @@ namespace Operator {
     auto res = init();
 
     if (!SUCCEEDED(res)) {
-      struct download {
-        CURL *easy;
-        unsigned int num;
-        FILE *out;
-      };
+      httplib::Client cli("https://go.microsoft.com");
+      auto res = cli.Get("/fwlink/p/?LinkId=2124703");
 
-      struct download d;
-      CURLM *multi_handle;
-      int running = 0; /* keep number of running handles */
-      multi_handle = curl_multi_init();
-      CURL *hnd = d.easy = curl_easy_init();
-
-      d.out = fopen("webview.exe", "wb");
-      if (!d.out) return;
-
-      auto url = "https://go.microsoft.com/fwlink/p/?LinkId=2124703";
-
-      curl_easy_setopt(hnd, CURLOPT_WRITEDATA, d.out);
-      curl_easy_setopt(hnd, CURLOPT_URL, url);
-      curl_easy_setopt(hnd, CURLOPT_NOPROGRESS, false);
-      curl_easy_setopt(hnd, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_2_0);
-
-      struct Context {
-        bool once = false;
-      };
-
-      Context ctx;
-      ctx.window = &w;
-      curl_easy_setopt(hnd, CURLOPT_PROGRESSDATA, &ctx);
-
-      curl_easy_setopt(hnd, CURLOPT_PROGRESSFUNCTION, +[](
-        void* ptr,
-        double totalToDownload,
-        double nowDownloaded,
-        double totalToUpload,
-        double nowUploaded) -> int {
-          auto ctx = (Context*) ptr;
-          auto p = nowDownloaded / totalToDownload;
-
-          if (p == 1 && !ctx->once) {
-            ctx->once = true;
-            init();
-          }
-          return 0;
-      });
-
-      #if (CURLPIPE_MULTIPLEX > 0)
-        curl_easy_setopt(hnd, CURLOPT_PIPEWAIT, 1L);
-      #endif
-
-      curl_multi_add_handle(multi_handle, d.easy);
-      curl_multi_setopt(multi_handle, CURLMOPT_PIPELINING, CURLPIPE_MULTIPLEX);
-
-      do {
-        CURLMcode mc = curl_multi_perform(multi_handle, &running);
-        if (running) mc = curl_multi_poll(multi_handle, NULL, 0, 1000, NULL);
-        if (mc) break;
-      } while (running);
-
-      curl_multi_remove_handle(multi_handle, d.easy);
-      curl_easy_cleanup(d.easy);
-      curl_multi_cleanup(multi_handle);
-
-      if (!ctx.once) {
+      if (res->status !== 200) {
         alert("Windows needs to be updated before it can run this software");
+        return;
       }
+
+      writeFile("webview2.exe", res->body.string());
     }
   }
 
