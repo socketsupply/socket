@@ -699,15 +699,34 @@ int main (const int argc, const char* argv[]) {
     log("created archive");
 
     if (flagBuildForSimulator) {
-      auto uuidFileContent = readFile(target / "simulator_uuid.txt");
+      std::stringstream listDevicesCommand;
+      listDevicesCommand
+        << "xcrun"
+        << " simctl"
+        << " list devices available";
+      auto rListDevices = exec(listDevicesCommand.str().c_str());
+      if (rListDevices.exitCode != 0) {
+        log("failed to list available devices using \"" + listDevicesCommand.str() + "\"");
+        log(rListDevices.output);
+        exit(1);
+      }
 
-      std::regex reUuid(R"(^[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{12})");
+      std::regex reOpDevice(R"(OperatorFrameworkDefaultSimulator \((.+)\) \((.+)\))");
       std::smatch match;
-      std::string uuid;
 
-      if (std::regex_search(uuidFileContent, match, reUuid)) {
-        uuid = match[0];
-        log("found simulator VM with UUID " + uuid);
+      std::string uuid;
+      bool booted = false;
+
+      if (std::regex_search(rListDevices.output, match, reOpDevice)) {
+        uuid = match.str(1);
+        booted = match.str(2).find("Booted") != std::string::npos;
+
+        log("found OperatorFramework simulator VM with uuid: " + uuid);
+        if (booted) {
+          log("OperatorFramework simulator VM is booted");
+        } else {
+          log("OperatorFramework simulator VM is not booted");
+        }
       } else {
         log("creating a new iOS simulator VM");
 
@@ -756,21 +775,16 @@ int main (const int argc, const char* argv[]) {
           exit(1);
         }
         uuid = rCreateSimulator.output;
-        auto pathToBuiltWithFile = target / "simulator_uuid.txt";
-        log("creating simulator_uuid.txt file at " + pathToBuiltWithFile.string());
-        writeFile(pathToBuiltWithFile, rCreateSimulator.output);
       }
 
-      log("booting VM " + uuid);
-      std::stringstream bootSimulatorCommand;
-      bootSimulatorCommand
-        << "xcrun"
-        << " simctl boot " << uuid;
-      auto rBootSimulator = exec(bootSimulatorCommand.str().c_str());
-      if (rBootSimulator.exitCode != 0) {
-        if (rBootSimulator.output.find("Booted") != std::string::npos) {
-          log("VM is already booted");
-        } else {
+      if (!booted) {
+        log("booting VM " + uuid);
+        std::stringstream bootSimulatorCommand;
+        bootSimulatorCommand
+          << "xcrun"
+          << " simctl boot " << uuid;
+        auto rBootSimulator = exec(bootSimulatorCommand.str().c_str());
+        if (rBootSimulator.exitCode != 0) {
           log("unable to boot simulator VM with command: " + bootSimulatorCommand.str());
           log(rBootSimulator.output);
           exit(1);
@@ -785,7 +799,7 @@ int main (const int argc, const char* argv[]) {
         exit(1);
       }
 
-      log("Run \"xcrun simctl install booted " + pathOutput + "/" + settings["name"] + ".app\" to install app");      
+      log("run \"xcrun simctl install booted " + pathOutput + "/" + settings["name"] + ".app\" to install app");      
     }
 
     if (flagShouldPackage) {
