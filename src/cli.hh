@@ -1052,7 +1052,7 @@ width: 1024
 #
 
 # which device to target when building for the simulator
-# ios__simulator_device:
+# ios_simulator_device:
 
 # A relative path to the plist of application entitlements
 # ios_entitlements:
