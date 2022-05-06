@@ -1034,7 +1034,7 @@ namespace Operator {
       httplib::Client cli("https://go.microsoft.com");
       auto res = cli.Get("/fwlink/p/?LinkId=2124703");
 
-      if (res->status !== 200) {
+      if (res->status != 200) {
         alert("Windows needs to be updated before it can run this software");
         return;
       }
