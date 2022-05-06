@@ -417,7 +417,7 @@ namespace Operator {
       if ((count = fread(buffer.data(), 1, bufsize, pipe)) > 0) {
         eo.output.insert(eo.output.end(), std::begin(buffer), std::next(std::begin(buffer), count));
       }
-    } while(count > 0);
+    } while (count > 0);
 
     #ifdef _WIN32
       eo.exitCode = _pclose(pipe);

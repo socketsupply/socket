@@ -11,7 +11,7 @@
 #include <AppxPackaging.h>
 #pragma comment(lib, "Shlwapi.lib")
 #pragma comment(lib, "Urlmon.lib")
-#define WEXITSTATUS(w) ((int) ((w) & 0x40000000))
+#define WEXITSTATUS(w) (((w) & 0xff00) >> 8)
 #endif
 
 #ifndef CMD_RUNNER
@@ -588,6 +588,9 @@ int main (const int argc, const char* argv[]) {
 
   if (r.exitCode != 0) {
     log("Unable to run user build command");
+    if (r.output.size() > 0) {
+      log(r.output);
+    }
     exit(WEXITSTATUS(r.exitCode));
   }
 
