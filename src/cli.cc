@@ -639,6 +639,7 @@ int main (const int argc, const char* argv[]) {
       auto rListDeviceTypes = exec(listDeviceTypesCommand.str().c_str());
       if (rListDeviceTypes.exitCode != 0) {
         log("failed to list device types using \"" + listDeviceTypesCommand.str() + "\"");
+        log(rListDeviceTypes.output);
         exit(1);
       }
 
@@ -651,6 +652,7 @@ int main (const int argc, const char* argv[]) {
       } else {
         auto rListDevices = exec("xcrun simctl list devicetypes | grep iPhone");
         log("failed to find device type: " + settings["ios_simulator_device"] + ". Please provide correct device name for the \"ios_simulator_device\". The list of available devices:\n" + rListDevices.output);
+        log(rListDevices.output);
         exit(1);
       }
     }
@@ -717,6 +719,7 @@ int main (const int argc, const char* argv[]) {
         auto rListRuntimes = exec(listRuntimesCommand.str().c_str());
         if (rListRuntimes.exitCode != 0) {
           log("failed to list available runtimes using \"" + listRuntimesCommand.str() + "\"");
+          log(rListRuntimes.output);
           exit(1);
         }
         auto const runtimes = split(rListRuntimes.output, '\n');
@@ -749,7 +752,8 @@ int main (const int argc, const char* argv[]) {
         auto rCreateSimulator = exec(createSimulatorCommand.str().c_str());
         if (rCreateSimulator.exitCode != 0) {
           log("unable to create simulator VM");
-          exit(WEXITSTATUS(rCreateSimulator.exitCode));
+          log(rCreateSimulator.output);
+          exit(1);
         }
         uuid = rCreateSimulator.output;
         auto pathToBuiltWithFile = target / "simulator_uuid.txt";
@@ -768,8 +772,8 @@ int main (const int argc, const char* argv[]) {
           log("VM is already booted");
         } else {
           log("unable to boot simulator VM with command: " + bootSimulatorCommand.str());
-          log("output:\n" + rBootSimulator.output);
-          exit(WEXITSTATUS(rBootSimulator.exitCode));
+          log(rBootSimulator.output);
+          exit(1);
         }
       }
 
@@ -777,7 +781,8 @@ int main (const int argc, const char* argv[]) {
       auto rOpenSimulator = exec("open /Applications/Xcode.app/Contents/Developer/Applications/Simulator.app/");
       if (rOpenSimulator.exitCode != 0) {
         log("unable to run simulator");
-        exit(WEXITSTATUS(rOpenSimulator.exitCode));
+        log(rOpenSimulator.output);
+        exit(1);
       }
 
       log("Run \"xcrun simctl install booted " + pathOutput + "/" + settings["name"] + ".app\" to install app");      
