@@ -27,7 +27,7 @@ auto start = std::chrono::system_clock::now();
 bool porcelain = false;
 
 void log (const std::string s) {
-  if (porcelain) return;
+  if (porcelain || s.size() == 0) return;
 
   #ifdef _WIN32 // unicode console support
     SetConsoleOutputCP(CP_UTF8);
@@ -587,11 +587,7 @@ int main (const int argc, const char* argv[]) {
 
   if (r.exitCode != 0) {
     log("Unable to run user build command");
-
-    if (r.output.size() > 0) {
-      log(r.output);
-    }
-
+    log(r.output);
     exit(r.exitCode);
   }
 
@@ -743,17 +739,11 @@ int main (const int argc, const char* argv[]) {
 
     if (r.exitCode != 0) {
       log("Unable to build");
-
-      if (r.output.size() > 0) {
-        log(r.output);
-      }
-
+      log(r.output);
       exit(r.exitCode);
     }
 
-    if (r.output.size() > 0) {
-      log(r.output);
-    }
+    log(r.output);
 
     writeFile(pathToBuiltWithFile, version_hash);
 
@@ -1290,11 +1280,12 @@ int main (const int argc, const char* argv[]) {
 
     auto runner = trim(std::string(STR_VALUE(CMD_RUNNER)));
     auto prefix = runner.size() > 0 ? runner + std::string(" ") : runner;
-    auto code = std::system((prefix + cmd + argvForward.str()).c_str());
+    auto r = exec((prefix + cmd + argvForward.str()));
 
-    // TODO: What kind of exit code does std::system give on windows
-    if (!WIFEXITED(code)) {
-      exitCode = WEXITSTATUS(code);
+    log(r.output);
+
+    if (r.exitCode != 0) {
+      exit(r.exitCode);
     }
   }
 
