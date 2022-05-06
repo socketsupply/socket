@@ -711,7 +711,9 @@ int main (const int argc, const char* argv[]) {
         exit(1);
       }
 
-      std::regex reOpDevice(R"(OperatorFrameworkDefaultSimulator \((.+)\) \((.+)\))");
+      auto iosSimulatorDeviceSuffix = settings["ios_simulator_device"];
+      std::replace(iosSimulatorDeviceSuffix.begin(), iosSimulatorDeviceSuffix.end(), ' ', '_');
+      std::regex reOpDevice("OperatorFrameworkSimulator_" + iosSimulatorDeviceSuffix + "\\s\\((.+)\\)\\s\\((.+)\\)");
       std::smatch match;
 
       std::string uuid;
@@ -721,14 +723,14 @@ int main (const int argc, const char* argv[]) {
         uuid = match.str(1);
         booted = match.str(2).find("Booted") != std::string::npos;
 
-        log("found OperatorFramework simulator VM with uuid: " + uuid);
+        log("found OperatorFramework simulator VM for " + settings["ios_simulator_device"] + " with uuid: " + uuid);
         if (booted) {
           log("OperatorFramework simulator VM is booted");
         } else {
           log("OperatorFramework simulator VM is not booted");
         }
       } else {
-        log("creating a new iOS simulator VM");
+        log("creating a new iOS simulator VM for " + settings["ios_simulator_device"]);
 
         std::stringstream listRuntimesCommand;
         listRuntimesCommand
@@ -763,7 +765,7 @@ int main (const int argc, const char* argv[]) {
         std::stringstream createSimulatorCommand;
         createSimulatorCommand
           << "xcrun simctl"
-          << " create OperatorFrameworkDefaultSimulator"
+          << " create OperatorFrameworkSimulator_" + iosSimulatorDeviceSuffix
           << " " << deviceType
           << " " << runtimeId;
 
