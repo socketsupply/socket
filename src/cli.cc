@@ -585,11 +585,14 @@ int main (const int argc, const char* argv[]) {
   log(buildCommand.str());
   auto r = exec(buildCommand.str().c_str());
 
+  printf("EXIT CODE=%d\n", r.exitCode);
   if (r.exitCode != 0) {
     log("Unable to run user build command");
+
     if (r.output.size() > 0) {
       log(r.output);
     }
+
     exit(r.exitCode);
   }
 
