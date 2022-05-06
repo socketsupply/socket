@@ -46,7 +46,7 @@
 #endif
 
 #ifndef WIFEXITED
-#define WIFEXITED((w) & 0x7f)
+#define WIFEXITED(w) ((w) & 0x7f)
 #endif
 
 #ifndef WEXITSTATUS
