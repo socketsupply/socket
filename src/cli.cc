@@ -759,7 +759,6 @@ int main (const int argc, const char* argv[]) {
         if (std::regex_search(runtime, matchRuntime, reRuntime)) {
           runtimeId = matchRuntime.str(0);
         }
-        log("runtime: " + runtimeId);
 
         std::stringstream createSimulatorCommand;
         createSimulatorCommand
