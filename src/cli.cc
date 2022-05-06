@@ -11,7 +11,6 @@
 #include <AppxPackaging.h>
 #pragma comment(lib, "Shlwapi.lib")
 #pragma comment(lib, "Urlmon.lib")
-#define WEXITSTATUS(w) (((w) & 0xff00) >> 8)
 #endif
 
 #ifndef CMD_RUNNER
@@ -591,7 +590,7 @@ int main (const int argc, const char* argv[]) {
     if (r.output.size() > 0) {
       log(r.output);
     }
-    exit(WEXITSTATUS(r.exitCode));
+    exit(r.exitCode);
   }
 
   log(r.output);
@@ -740,14 +739,18 @@ int main (const int argc, const char* argv[]) {
   if (flagRunUserBuild == false || !binExists || oldHash != version_hash) {
     auto r = exec(compileCommand.str());
 
-    log("Unable to build");
+    if (r.exitCode != 0) {
+      log("Unable to build");
+
+      if (r.output.size() > 0) {
+        log(r.output);
+      }
+
+      exit(r.exitCode);
+    }
 
     if (r.output.size() > 0) {
       log(r.output);
-    }
-
-    if (r.exitCode != 0) {
-      exit(WEXITSTATUS(r.exitCode));
     }
 
     writeFile(pathToBuiltWithFile, version_hash);
@@ -860,7 +863,7 @@ int main (const int argc, const char* argv[]) {
       if (r.exitCode != 0) {
         log("Unable to sign");
         std::cerr << r.output << std::endl;
-        exit(WEXITSTATUS(r.exitCode));
+        exit(r.exitCode);
       } else {
         std::cout << r.output << std::endl;
       }
@@ -924,7 +927,7 @@ int main (const int argc, const char* argv[]) {
 
     if (r.exitCode != 0) {
       log("Unable to notarize");
-      exit(WEXITSTATUS(r.exitCode));
+      exit(r.exitCode);
     }
 
     std::regex re(R"(\nRequestUUID = (.+?)\n)");
@@ -990,7 +993,7 @@ int main (const int argc, const char* argv[]) {
 
         if (r.exitCode != 0) {
           log("Unable to get notarization history");
-          exit(WEXITSTATUS(r.exitCode));
+          exit(r.exitCode);
         }
 
         log(r.output);
@@ -1268,7 +1271,7 @@ int main (const int argc, const char* argv[]) {
         log("Unable to sign");
         log(pathPackage.string());
         log(r.output);
-        exit(WEXITSTATUS(r.exitCode));
+        exit(r.exitCode);
       }
   }
 
@@ -1288,7 +1291,9 @@ int main (const int argc, const char* argv[]) {
     auto code = std::system((prefix + cmd + argvForward.str()).c_str());
 
     // TODO: What kind of exit code does std::system give on windows
-    exitCode = code > 0 ? WEXITSTATUS(code) : code;
+    if (!WIFEXITED(code)) {
+      exitCode = WEXITSTATUS(code);
+    }
   }
 
   return exitCode;

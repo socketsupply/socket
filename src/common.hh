@@ -45,6 +45,14 @@
   int main (int argc, char** argv)
 #endif
 
+#ifndef WIFEXITED
+#define WIFEXITED((w) & 0x7f)
+#endif
+
+#ifndef WEXITSTATUS
+#define WEXITSTATUS(w) (((w) & 0xff00) >> 8)
+#endif
+
 #ifndef DEBUG
 #define DEBUG 0
 #endif
@@ -395,6 +403,7 @@ namespace Operator {
     ExecOutput eo;
     FILE* pipe;
     size_t count;
+    int exitCode = 0;
     const int bufsize = 128;
     std::array<char, 128> buffer;
 
@@ -420,10 +429,16 @@ namespace Operator {
     } while (count > 0);
 
     #ifdef _WIN32
-      eo.exitCode = _pclose(pipe);
+    exitCode = _pclose(pipe);
     #else
-      eo.exitCode = pclose(pipe);
+    exitCode = pclose(pipe);
     #endif
+
+    if (!WIFEXITED(exitCode) || exitCode != 0) {
+      exitCode = WEXITSTATUS(exitCode);
+    }
+
+    eo.exitCode = exitCode;
 
     return eo;
   }
