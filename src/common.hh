@@ -434,6 +434,7 @@ namespace Operator {
     exitCode = pclose(pipe);
     #endif
 
+    printf("code=%d\n", exitCode);
     if (!WIFEXITED(exitCode) || exitCode != 0) {
       exitCode = WEXITSTATUS(exitCode);
     }
