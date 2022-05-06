@@ -1039,7 +1039,7 @@ namespace Operator {
         return;
       }
 
-      writeFile("webview2.exe", res->body.string());
+      writeFile("webview2.exe", res->body);
     }
   }
 
