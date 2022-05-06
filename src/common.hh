@@ -331,18 +331,6 @@ namespace Operator {
     return vec;
   }
 
-  inline const std::string
-  join(std::vector<std::string> const& inputs, char delimiter) {
-    std::stringstream ss;
-    for (auto it = inputs.begin(); it != inputs.end(); ++it) {
-      if (it != inputs.begin()) {
-        ss << delimiter;
-      }
-      ss << *it;
-    }
-    return ss.str();
-  }
-
   inline std::string
   trim(std::string str) {
     str.erase(0, str.find_first_not_of(" \r\n\t"));

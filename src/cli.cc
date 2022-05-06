@@ -626,9 +626,33 @@ int main (const int argc, const char* argv[]) {
     //
     std::stringstream archiveCommand;
     std::string destination = "generic/platform=iOS";
+    std::string deviceType;
 
     if (flagBuildForSimulator) {
-      destination = settings["ios_device_simulator"];
+      destination = "platform=iOS Simulator,OS=latest,name=" + settings["ios_simulator_device"];
+
+      std::stringstream listDeviceTypesCommand;
+      listDeviceTypesCommand
+        << "xcrun"
+        << " simctl"
+        << " list devicetypes";
+      auto rListDeviceTypes = exec(listDeviceTypesCommand.str().c_str());
+      if (rListDeviceTypes.exitCode != 0) {
+        log("failed to list device types using \"" + listDeviceTypesCommand.str() + "\"");
+        exit(1);
+      }
+
+      std::regex reDeviceType(settings["ios_simulator_device"] + "\\s\\((com.apple.CoreSimulator.SimDeviceType.(?:.+))\\)");
+      std::smatch match;
+
+      if (std::regex_search(rListDeviceTypes.output, match, reDeviceType)) {
+        deviceType = match.str(1);
+        log("simulator device type: " + deviceType);
+      } else {
+        auto rListDevices = exec("xcrun simctl list devicetypes | grep iPhone");
+        log("failed to find device type: " + settings["ios_simulator_device"] + ". Please provide correct device name for the \"ios_simulator_device\". The list of available devices:\n" + rListDevices.output);
+        exit(1);
+      }
     }
 
     if (settings["ios_codesign_identity"].size() == 0) {
@@ -681,39 +705,9 @@ int main (const int argc, const char* argv[]) {
 
       if (std::regex_search(uuidFileContent, match, reUuid)) {
         uuid = match[0];
-        log("found simulator UUID" + uuid);
+        log("found simulator VM with UUID " + uuid);
       } else {
-        log("creating a new iOS simulator");
-
-        std::stringstream listDeviceTypesCommand;
-        listDeviceTypesCommand
-          << "xcrun"
-          << " simctl"
-          << " list devicetypes";
-        auto rListDeviceTypes = exec(listDeviceTypesCommand.str().c_str());
-        if (rListDeviceTypes.exitCode != 0) {
-          log("failed to list device types using \"" + listDeviceTypesCommand.str() + "\"");
-          exit(1);
-        }
-        auto const devices = split(rListDeviceTypes.output, '\n');
-        std::string device;
-        // TODO: improve iPhone version detection
-        for (auto it = devices.rbegin(); it != devices.rend(); ++it) {
-          if (it->find("iPhone") != std::string::npos) {
-            device = trim(*it);
-            log("found device type: " + device);
-            break;
-          }
-        }
-
-        std::regex re(R"(com.apple.CoreSimulator.SimDeviceType.(?:.*)[^)])");
-        std::smatch match;
-        std::string deviceType;
-
-        if (std::regex_search(device, match, re)) {
-          deviceType = match.str(0);
-        }
-        log("Device type: " + deviceType);
+        log("creating a new iOS simulator VM");
 
         std::stringstream listRuntimesCommand;
         listRuntimesCommand
@@ -743,7 +737,7 @@ int main (const int argc, const char* argv[]) {
         if (std::regex_search(runtime, matchRuntime, reRuntime)) {
           runtimeId = matchRuntime.str(0);
         }
-        log("Runtime: " + runtimeId);
+        log("runtime: " + runtimeId);
 
         std::stringstream createSimulatorCommand;
         createSimulatorCommand
@@ -754,7 +748,7 @@ int main (const int argc, const char* argv[]) {
 
         auto rCreateSimulator = exec(createSimulatorCommand.str().c_str());
         if (rCreateSimulator.exitCode != 0) {
-          log("unable to create simulator");
+          log("unable to create simulator VM");
           exit(WEXITSTATUS(rCreateSimulator.exitCode));
         }
         uuid = rCreateSimulator.output;
@@ -763,15 +757,20 @@ int main (const int argc, const char* argv[]) {
         writeFile(pathToBuiltWithFile, rCreateSimulator.output);
       }
 
-      log("booting simulator " + uuid);
+      log("booting VM " + uuid);
       std::stringstream bootSimulatorCommand;
       bootSimulatorCommand
         << "xcrun"
         << " simctl boot " << uuid;
       auto rBootSimulator = exec(bootSimulatorCommand.str().c_str());
       if (rBootSimulator.exitCode != 0) {
-        log("unable to boot simulator");
-        exit(WEXITSTATUS(rBootSimulator.exitCode));
+        if (rBootSimulator.output.find("Booted") != std::string::npos) {
+          log("VM is already booted");
+        } else {
+          log("unable to boot simulator VM with command: " + bootSimulatorCommand.str());
+          log("output:\n" + rBootSimulator.output);
+          exit(WEXITSTATUS(rBootSimulator.exitCode));
+        }
       }
 
       log("run simulator");
@@ -781,25 +780,7 @@ int main (const int argc, const char* argv[]) {
         exit(WEXITSTATUS(rOpenSimulator.exitCode));
       }
 
-      log("Now you can install booted VM into simulator when it's done loading");
-      log("Run:\nxcrun simctl install booted " + pathOutput + "/" + settings["name"] + ".app");
-      
-      // auto configOld = readFile(target / "operator.config");
-      // std::regex reConfig("ios_device_simulator:(?:.*)");
-      // std::smatch matchConfig;
-      // auto iosDeviceSimulator = "ios_device_simulator: platform=iOS Simulator,OS=latest,name=" + name;
-
-      // if (std::regex_search(configOld, matchConfig, reConfig)) {
-      //   log("Found existing " + matchConfig.str(0));
-      //   auto configNew = std::regex_replace(configOld, reConfig, iosDeviceSimulator));
-      //   writeFile(target / "operator.config", configNew);
-      // } else {
-      //   log("No existing ios_device_simulator found");
-      //   writeFile(target / "operator.config", configOld + "\n" + iosDeviceSimulator);
-      // }
-
-      // log(std::regex_replace(configOld, std::regex(R"([^ios_device_simulator: ](.+?))", "platform=iOS Simulator,"));
-      // log(std::regex_replace(configOld, reConfig, "platform=iOS Simulator,"));
+      log("Run \"xcrun simctl install booted " + pathOutput + "/" + settings["name"] + ".app\" to install app");      
     }
 
     if (flagShouldPackage) {
