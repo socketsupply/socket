@@ -436,7 +436,10 @@ namespace Operator {
 
     printf("code=%d\n", exitCode);
     if (!WIFEXITED(exitCode) || exitCode != 0) {
-      exitCode = WEXITSTATUS(exitCode);
+      auto status = WEXITSTATUS(exitCode);
+      if (status && exitCode) {
+        exitCode = status;
+      }
     }
 
     eo.exitCode = exitCode;
