@@ -299,7 +299,7 @@ int main (const int argc, const char* argv[]) {
 
     log("preparing build for mac");
 
-    flags = "-std=c++2a -framework UniformTypeIdentifiers -framework WebKit -framework Cocoa -ObjC++";
+    flags = "-std=c++2a -framework UniformTypeIdentifiers -framework WebKit -framework Cocoa -ObjC++ -lcurl";
     flags += getCxxFlags();
 
     files += prefixFile("src/main.cc");
@@ -389,6 +389,7 @@ int main (const int argc, const char* argv[]) {
   if (platform.linux) {
     log("preparing build for linux");
     flags = " -std=c++2a `pkg-config --cflags --libs gtk+-3.0 webkit2gtk-4.0`";
+    flags += " `curl-config --libs --cflags`";
     flags += " " + getCxxFlags();
 
     files += prefixFile("src/main.cc");
@@ -639,8 +640,10 @@ int main (const int argc, const char* argv[]) {
       auto rListDeviceTypes = exec(listDeviceTypesCommand.str().c_str());
       if (rListDeviceTypes.exitCode != 0) {
         log("failed to list device types using \"" + listDeviceTypesCommand.str() + "\"");
-        log(rListDeviceTypes.output);
-        exit(1);
+        if (rListDeviceTypes.output.size() > 0) {
+          log(rListDeviceTypes.output);
+        }
+        exit(rListDeviceTypes.exitCode);
       }
 
       std::regex reDeviceType(settings["ios_simulator_device"] + "\\s\\((com.apple.CoreSimulator.SimDeviceType.(?:.+))\\)");
@@ -652,8 +655,10 @@ int main (const int argc, const char* argv[]) {
       } else {
         auto rListDevices = exec("xcrun simctl list devicetypes | grep iPhone");
         log("failed to find device type: " + settings["ios_simulator_device"] + ". Please provide correct device name for the \"ios_simulator_device\". The list of available devices:\n" + rListDevices.output);
-        log(rListDevices.output);
-        exit(1);
+        if (rListDevices.output.size() > 0) {
+          log(rListDevices.output);
+        }
+        exit(rListDevices.exitCode);
       }
     }
 
@@ -707,8 +712,10 @@ int main (const int argc, const char* argv[]) {
       auto rListDevices = exec(listDevicesCommand.str().c_str());
       if (rListDevices.exitCode != 0) {
         log("failed to list available devices using \"" + listDevicesCommand.str() + "\"");
-        log(rListDevices.output);
-        exit(1);
+        if (rListDevices.output.size() > 0) {
+          log(rListDevices.output);
+        }
+        exit(rListDevices.exitCode);
       }
 
       auto iosSimulatorDeviceSuffix = settings["ios_simulator_device"];
@@ -740,8 +747,10 @@ int main (const int argc, const char* argv[]) {
         auto rListRuntimes = exec(listRuntimesCommand.str().c_str());
         if (rListRuntimes.exitCode != 0) {
           log("failed to list available runtimes using \"" + listRuntimesCommand.str() + "\"");
-          log(rListRuntimes.output);
-          exit(1);
+          if (rListRuntimes.output.size() > 0) {
+            log(rListRuntimes.output);
+          }
+          exit(rListRuntimes.exitCode);
         }
         auto const runtimes = split(rListRuntimes.output, '\n');
         std::string runtime;
@@ -772,8 +781,10 @@ int main (const int argc, const char* argv[]) {
         auto rCreateSimulator = exec(createSimulatorCommand.str().c_str());
         if (rCreateSimulator.exitCode != 0) {
           log("unable to create simulator VM");
-          log(rCreateSimulator.output);
-          exit(1);
+          if (rCreateSimulator.output.size() > 0) {
+            log(rCreateSimulator.output);
+          }
+          exit(rCreateSimulator.exitCode);
         }
         uuid = rCreateSimulator.output;
       }
@@ -787,8 +798,10 @@ int main (const int argc, const char* argv[]) {
         auto rBootSimulator = exec(bootSimulatorCommand.str().c_str());
         if (rBootSimulator.exitCode != 0) {
           log("unable to boot simulator VM with command: " + bootSimulatorCommand.str());
-          log(rBootSimulator.output);
-          exit(1);
+          if (rBootSimulator.output.size() > 0) {
+            log(rBootSimulator.output);
+          }
+          exit(rBootSimulator.exitCode);
         }
       }
 
@@ -796,8 +809,10 @@ int main (const int argc, const char* argv[]) {
       auto rOpenSimulator = exec("open /Applications/Xcode.app/Contents/Developer/Applications/Simulator.app/");
       if (rOpenSimulator.exitCode != 0) {
         log("unable to run simulator");
-        log(rOpenSimulator.output);
-        exit(1);
+        if (rOpenSimulator.output.size() > 0) {
+          log(rOpenSimulator.output);
+        }
+        exit(rOpenSimulator.exitCode);
       }
 
       log("run \"xcrun simctl install booted " + pathOutput + "/" + settings["name"] + ".app\" to install app");      
