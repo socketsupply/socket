@@ -8,6 +8,7 @@ $TEMP_PATH = Join-Path $Env:Temp $(New-Guid)
 (New-Item -Type Directory -Path $TEMP_PATH) > $null
 
 $INSTALL_PATH = "$env:LOCALAPPDATA\Programs\socketsupply\src"
+$LIB_PATH = "$env:LOCALAPPDATA\Programs\socketsupply\lib"
 $WORKING_PATH = $OLD_CWD
 
 Write-Output ""
@@ -20,8 +21,16 @@ if (Test-Path -Path $INSTALL_PATH) {
   Write-Output "- Cleaned $INSTALL_PATH"
 }
 
+if (Test-Path -Path $LIB_PATH) {
+  Remove-Item -Recurse -Force $LIB_PATH
+  Write-Output "- Cleaned $LIB_PATH"
+}
+
 (New-Item -ItemType Directory -Force -Path $INSTALL_PATH) > $null
 Write-Output "- Created $INSTALL_PATH"
+
+(New-Item -ItemType Directory -Force -Path $LIB_PATH) > $null
+Write-Output "- Created $LIB_PATH"
 
 #
 # Compile with the current git revision of the repository
@@ -45,9 +54,11 @@ Function Build {
 #
 Function Install-Files {
   Write-Output "- Installing Files to '$INSTALL_PATH'."
-
   Copy-Item $WORKING_PATH\bin\op.exe -Destination $INSTALL_PATH
   Copy-Item -Path "$WORKING_PATH\src\*" -Destination $INSTALL_PATH -Recurse -Container
+
+  Write-Output "- Installing Files to '$LIB_PATH'."
+  Copy-Item -Path "$WORKING_PATH\lib\*" -Destination $LIB_PATH -Recurse -Container
 }
 
 Write-Output "- Working path set to $WORKING_PATH."
