@@ -2073,6 +2073,8 @@ bool isRunning = false;
             "Date: " + t + "\n"
             "Content-Type: text/html\n"
             "Content-Length: \n" + len
+            "Cross-Origin-Embedder-Policy: require-corp\n"
+            "Cross-Origin-Opener-Policy: same-origin\n"
             "\n"
             body
           );
