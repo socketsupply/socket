@@ -1,10 +1,10 @@
 #import <Webkit/Webkit.h>
+#include <_types/_uint64_t.h>
 #import <UIKit/UIKit.h>
 #import <Network/Network.h>
 #import "common.hh"
 #include <ifaddrs.h>
 #include <arpa/inet.h>
-#include <time.h>
 
 #include "lib/uv/include/uv.h"
 #include <netinet/in.h>
@@ -78,6 +78,25 @@ static dispatch_queue_t queue = dispatch_queue_create("op.queue", qos);
 - (void) close: (std::string)seq clientId: (uint64_t)clientId;
 - (void) shutdown: (std::string)seq clientId: (uint64_t)clientId;
 - (void) readStop: (std::string)seq clientId: (uint64_t)clientId;
+@end
+
+@interface IPCSchemeHandler : NSObject<WKURLSchemeHandler>
+- (void)webView: (AppDelegate*)webView startURLSchemeTask:(id <WKURLSchemeTask>)urlSchemeTask;
+- (void)webView: (AppDelegate*)webView stopURLSchemeTask:(id <WKURLSchemeTask>)urlSchemeTask;
+@end
+
+std::map<uint64_t, id<WKURLSchemeTask>*> tasks;
+
+@implementation IPCSchemeHandler
+- (void)webView: (AppDelegate*)webView stopURLSchemeTask:(id <WKURLSchemeTask>)urlSchemeTask {}
+- (void)webView: (AppDelegate*)webView startURLSchemeTask:(id <WKURLSchemeTask>)task {
+  auto url = std::string(task.request.URL.absoluteString.UTF8String);
+
+  Operator::Parse cmd(url);
+  tasks[cmd.get("seq")] = task;
+
+  [webView route: url];
+}
 @end
 
 struct DescriptorContext {
@@ -234,6 +253,26 @@ bool isRunning = false;
 }
 
 - (void) resolve: (std::string)seq message: (std::string)message {
+  if (tasks[seq]) {
+    auto task = tasks[seq];
+
+    NSHTTPURLResponse *httpResponse = [[NSHTTPURLResponse alloc]
+      initWithURL: task.request.URL
+       statusCode: 200
+      HTTPVersion: @"HTTP/1.1"
+     headerFields: nil
+    ];
+
+    [task didReceiveResponse: httpResponse];
+
+    NSString* str = [NSString stringWithUTF8String:message.c_str()];
+    NSData* data = [str dataUsingEncoding: NSUTF8StringEncoding];
+
+    [task didReceiveData: data];
+    [task didFinish];
+    return;
+  }
+
   NSString* script = [NSString stringWithUTF8String: Operator::resolveToRenderProcess(seq, "0", Operator::encodeURIComponent(message)).c_str()];
   [self.webview evaluateJavaScript: script completionHandler:nil];
 }
@@ -1643,322 +1682,323 @@ bool isRunning = false;
   nw_path_monitor_start(self.monitor);
 }
 
+- (void) route: (std::string)msg {
+  using namespace Operator;
+  if (msg.find("ipc://") != 0) return;
+
+  Parse cmd(msg);
+  auto seq = cmd.get("seq");
+  uint64_t clientId = 0;
+
+  if (cmd.get("fsOpen").size() != 0) {
+    [self fsOpen: seq
+              id: std::stoll(cmd.get("id"))
+            path: cmd.get("path")
+           flags: std::stoi(cmd.get("flags"))];
+  }
+
+  if (cmd.get("fsClose").size() != 0) {
+    [self fsClose: seq
+               id: std::stoll(cmd.get("id"))];
+  }
+
+  if (cmd.get("fsRead").size() != 0) {
+    [self fsRead: seq
+              id: std::stoll(cmd.get("id"))
+             len: std::stoi(cmd.get("len"))
+          offset: std::stoi(cmd.get("offset"))];
+  }
+
+  if (cmd.get("fsWrite").size() != 0) {
+    [self fsWrite: seq
+               id: std::stoll(cmd.get("id"))
+             data: cmd.get("data")
+           offset: std::stoll(cmd.get("offset"))];
+  }
+
+  if (cmd.get("fsStat").size() != 0) {
+    [self fsStat: seq
+            path: cmd.get("path")];
+  }
+
+  if (cmd.get("fsUnlink").size() != 0) {
+    [self fsUnlink: seq
+              path: cmd.get("path")];
+  }
+
+  if (cmd.get("fsRename").size() != 0) {
+    [self fsRename: seq
+             pathA: cmd.get("oldPath")
+             pathB: cmd.get("newPath")];
+  }
+
+  if (cmd.get("fsCopyFile").size() != 0) {
+    [self fsCopyFile: seq
+           pathA: cmd.get("src")
+           pathB: cmd.get("dest")
+           flags: std::stoi(cmd.get("flags"))];
+  }
+
+  if (cmd.get("fsRmDir").size() != 0) {
+    [self fsRmDir: seq
+              path: cmd.get("path")];
+  }
+
+  if (cmd.get("fsMkDir").size() != 0) {
+    [self fsMkDir: seq
+              path: cmd.get("path")
+              mode: std::stoi(cmd.get("mode"))];
+  }
+
+  if (cmd.get("fsReadDir").size() != 0) {
+    [self fsReadDir: seq
+              path: cmd.get("path")];
+  }
+
+  if (cmd.get("clientId").size() != 0) {
+    try {
+      clientId = std::stoll(cmd.get("clientId"));
+    } catch (...) {
+      [self resolve: seq message: Operator::format(R"JSON({
+        "err": { "message": "invalid clientid" }
+      })JSON")];
+      return;
+    }
+  }
+
+  NSLog(@"COMMAND %s", msg.c_str());
+
+  if (cmd.name == "openExternal") {
+    // NSString *url = [NSString stringWithUTF8String:cmd.value.c_str()];
+    // [[UIApplication sharedApplication] openURL:[NSURL URLWithString:url]];
+    return;
+  }
+
+  if (cmd.name == "ip") {
+    auto seq = cmd.get("seq");
+
+    if (clientId == 0) {
+      [self reject: seq message: Operator::format(R"JSON({
+        "err": {
+          "message": "no clientid"
+        }
+      })JSON")];
+    }
+
+    Client* client = clients[clientId];
+
+    if (client == nullptr) {
+      [self resolve: seq message: Operator::format(R"JSON({
+        "err": {
+          "message": "not connected"
+        }
+      })JSON")];
+    }
+
+    PeerInfo info;
+    info.init(client->tcp);
+
+    auto message = Operator::format(
+      R"JSON({
+        "data": {
+          "ip": "$S",
+          "family": "$S",
+          "port": "$i"
+        }
+      })JSON",
+      clientId,
+      info.ip,
+      info.family,
+      info.port
+    );
+
+    [self resolve: seq message: message];
+    return;
+  }
+
+  if (cmd.name == "getNetworkInterfaces") {
+    [self resolve: seq message: [self getNetworkInterfaces]
+    ];
+    return;
+  }
+
+  if (cmd.name == "readStop") {
+    [self readStop: seq clientId: clientId];
+    return;
+  }
+
+  if (cmd.name == "shutdown") {
+    [self shutdown: seq clientId: clientId];
+    return;
+  }
+
+  if (cmd.name == "readStop") {
+    [self readStop: seq clientId: clientId];
+    return;
+  }
+
+  if (cmd.name == "sendBufferSize") {
+    int size;
+    try {
+      size = std::stoi(cmd.get("size"));
+    } catch (...) {
+      size = 0;
+    }
+
+    [self sendBufferSize: seq clientId: clientId size: size];
+    return;
+  }
+
+  if (cmd.name == "recvBufferSize") {
+    int size;
+    try {
+      size = std::stoi(cmd.get("size"));
+    } catch (...) {
+      size = 0;
+    }
+
+    [self recvBufferSize: seq clientId: clientId size: size];
+    return;
+  }
+
+  if (cmd.name == "close") {
+    [self close: seq clientId: clientId];
+    return;
+  }
+
+  if (cmd.name == "udpSend") {
+    int offset = 0;
+    int len = 0;
+    int port = 0;
+
+    try {
+      offset = std::stoi(cmd.get("offset"));
+    } catch (...) {
+      [self resolve: seq message: Operator::format(R"JSON({
+        "err": { "message": "invalid offset" }
+      })JSON")];
+    }
+
+    try {
+      len = std::stoi(cmd.get("len"));
+    } catch (...) {
+      [self resolve: seq message: Operator::format(R"JSON({
+        "err": { "message": "invalid length" }
+      })JSON")];
+    }
+
+    try {
+      port = std::stoi(cmd.get("port"));
+    } catch (...) {
+      [self resolve: seq message: Operator::format(R"JSON({
+        "err": { "message": "invalid port" }
+      })JSON")];
+    }
+
+    [self udpSend: seq
+         clientId: clientId
+          message: cmd.get("data")
+           offset: offset
+              len: len
+             port: port
+               ip: (const char*) cmd.get("ip").c_str()
+    ];
+    return;
+  }
+
+  if (cmd.name == "tpcSend") {
+    [self tcpSend: clientId
+          message: cmd.get("message")
+    ];
+    return;
+  }
+
+  if (cmd.name == "tpcConnect") {
+    int port = 0;
+
+    try {
+      port = std::stoi(cmd.get("port"));
+    } catch (...) {
+      [self resolve: seq message: Operator::format(R"JSON({
+        "err": { "message": "invalid port" }
+      })JSON")];
+    }
+
+    [self tcpConnect: seq
+            clientId: clientId
+                port: port
+                  ip: cmd.get("ip")
+    ];
+    return;
+  }
+
+  if (cmd.name == "tpcSetKeepAlive") {
+    [self tcpSetKeepAlive: seq
+                 clientId: clientId
+                  timeout: std::stoi(cmd.get("timeout"))
+    ];
+    return;
+  }
+
+  if (cmd.name == "tpcSetTimeout") {
+    [self tcpSetTimeout: seq
+               clientId: clientId
+                timeout: std::stoi(cmd.get("timeout"))
+    ];
+    return;
+  }
+
+  if (cmd.name == "tpcBind") {
+    auto serverId = cmd.get("serverId");
+    auto ip = cmd.get("ip");
+    auto port = cmd.get("port");
+    auto seq = cmd.get("seq");
+
+    if (ip.size() == 0) {
+      ip = "0.0.0.0";
+    }
+
+    if (ip == "error") {
+      [self resolve: cmd.get("seq")
+            message: Operator::format(R"({
+              "err": { "message": "offline" }
+            })")
+      ];
+      return;
+    }
+
+    if (port.size() == 0) {
+      [self reject: cmd.get("seq")
+           message: Operator::format(R"({
+             "err": { "message": "port required" }
+           })")
+      ];
+      return;
+    }
+
+    [self tcpBind: seq
+         serverId: std::stoll(serverId)
+               ip: ip
+             port: std::stoi(port)
+    ];
+
+    return;
+  }
+
+  NSLog(@"%s", msg.c_str());
+}
+
 //
 // Next two methods handle creating the renderer and receiving/routing messages
 //
 - (void) userContentController :(WKUserContentController *) userContentController
   didReceiveScriptMessage :(WKScriptMessage *) scriptMessage {
-    using namespace Operator;
-
     id body = [scriptMessage body];
     if (![body isKindOfClass:[NSString class]]) {
       return;
     }
 
-    std::string msg = [body UTF8String];
-
-    if (msg.find("ipc://") == 0) {
-      Parse cmd(msg);
-      auto seq = cmd.get("seq");
-      uint64_t clientId = 0;
-
-      if (cmd.get("fsOpen").size() != 0) {
-        [self fsOpen: seq
-                  id: std::stoll(cmd.get("id"))
-                path: cmd.get("path")
-               flags: std::stoi(cmd.get("flags"))];
-      }
-
-      if (cmd.get("fsClose").size() != 0) {
-        [self fsClose: seq
-                   id: std::stoll(cmd.get("id"))];
-      }
-
-      if (cmd.get("fsRead").size() != 0) {
-        [self fsRead: seq
-                  id: std::stoll(cmd.get("id"))
-                 len: std::stoi(cmd.get("len"))
-              offset: std::stoi(cmd.get("offset"))];
-      }
-
-      if (cmd.get("fsWrite").size() != 0) {
-        [self fsWrite: seq
-                   id: std::stoll(cmd.get("id"))
-                 data: cmd.get("data")
-               offset: std::stoll(cmd.get("offset"))];
-      }
-
-      if (cmd.get("fsStat").size() != 0) {
-        [self fsStat: seq
-                path: cmd.get("path")];
-      }
-
-      if (cmd.get("fsUnlink").size() != 0) {
-        [self fsUnlink: seq
-                  path: cmd.get("path")];
-      }
-
-      if (cmd.get("fsRename").size() != 0) {
-        [self fsRename: seq
-                 pathA: cmd.get("oldPath")
-                 pathB: cmd.get("newPath")];
-      }
-
-      if (cmd.get("fsCopyFile").size() != 0) {
-        [self fsCopyFile: seq
-               pathA: cmd.get("src")
-               pathB: cmd.get("dest")
-               flags: std::stoi(cmd.get("flags"))];
-      }
-
-      if (cmd.get("fsRmDir").size() != 0) {
-        [self fsRmDir: seq
-                  path: cmd.get("path")];
-      }
-
-      if (cmd.get("fsMkDir").size() != 0) {
-        [self fsMkDir: seq
-                  path: cmd.get("path")
-                  mode: std::stoi(cmd.get("mode"))];
-      }
-
-      if (cmd.get("fsReadDir").size() != 0) {
-        [self fsReadDir: seq
-                  path: cmd.get("path")];
-      }
-
-      if (cmd.get("clientId").size() != 0) {
-        try {
-          clientId = std::stoll(cmd.get("clientId"));
-        } catch (...) {
-          [self resolve: seq message: Operator::format(R"JSON({
-            "err": { "message": "invalid clientid" }
-          })JSON")];
-          return;
-        }
-      }
-
-      NSLog(@"COMMAND %s", msg.c_str());
-
-      if (cmd.name == "openExternal") {
-        // NSString *url = [NSString stringWithUTF8String:cmd.value.c_str()];
-        // [[UIApplication sharedApplication] openURL:[NSURL URLWithString:url]];
-        return;
-      }
-
-      if (cmd.name == "ip") {
-        auto seq = cmd.get("seq");
-
-        if (clientId == 0) {
-          [self reject: seq message: Operator::format(R"JSON({
-            "err": {
-              "message": "no clientid"
-            }
-          })JSON")];
-        }
-
-        Client* client = clients[clientId];
-
-        if (client == nullptr) {
-          [self resolve: seq message: Operator::format(R"JSON({
-            "err": {
-              "message": "not connected"
-            }
-          })JSON")];
-        }
-
-        PeerInfo info;
-        info.init(client->tcp);
-
-        auto message = Operator::format(
-          R"JSON({
-            "data": {
-              "ip": "$S",
-              "family": "$S",
-              "port": "$i"
-            }
-          })JSON",
-          clientId,
-          info.ip,
-          info.family,
-          info.port
-        );
-
-        [self resolve: seq message: message];
-        return;
-      }
-
-      if (cmd.name == "getNetworkInterfaces") {
-        [self resolve: seq message: [self getNetworkInterfaces]
-        ];
-        return;
-      }
-
-      if (cmd.name == "readStop") {
-        [self readStop: seq clientId: clientId];
-        return;
-      }
-
-      if (cmd.name == "shutdown") {
-        [self shutdown: seq clientId: clientId];
-        return;
-      }
-
-      if (cmd.name == "readStop") {
-        [self readStop: seq clientId: clientId];
-        return;
-      }
-
-      if (cmd.name == "sendBufferSize") {
-        int size;
-        try {
-          size = std::stoi(cmd.get("size"));
-        } catch (...) {
-          size = 0;
-        }
-
-        [self sendBufferSize: seq clientId: clientId size: size];
-        return;
-      }
-
-      if (cmd.name == "recvBufferSize") {
-        int size;
-        try {
-          size = std::stoi(cmd.get("size"));
-        } catch (...) {
-          size = 0;
-        }
-
-        [self recvBufferSize: seq clientId: clientId size: size];
-        return;
-      }
-
-      if (cmd.name == "close") {
-        [self close: seq clientId: clientId];
-        return;
-      }
-
-      if (cmd.name == "udpSend") {
-        int offset = 0;
-        int len = 0;
-        int port = 0;
-
-        try {
-          offset = std::stoi(cmd.get("offset"));
-        } catch (...) {
-          [self resolve: seq message: Operator::format(R"JSON({
-            "err": { "message": "invalid offset" }
-          })JSON")];
-        }
-
-        try {
-          len = std::stoi(cmd.get("len"));
-        } catch (...) {
-          [self resolve: seq message: Operator::format(R"JSON({
-            "err": { "message": "invalid length" }
-          })JSON")];
-        }
-
-        try {
-          port = std::stoi(cmd.get("port"));
-        } catch (...) {
-          [self resolve: seq message: Operator::format(R"JSON({
-            "err": { "message": "invalid port" }
-          })JSON")];
-        }
-
-        [self udpSend: seq
-             clientId: clientId
-              message: cmd.get("data")
-               offset: offset
-                  len: len
-                 port: port
-                   ip: (const char*) cmd.get("ip").c_str()
-        ];
-        return;
-      }
-
-      if (cmd.name == "tpcSend") {
-        [self tcpSend: clientId
-              message: cmd.get("message")
-        ];
-        return;
-      }
-
-      if (cmd.name == "tpcConnect") {
-        int port = 0;
-
-        try {
-          port = std::stoi(cmd.get("port"));
-        } catch (...) {
-          [self resolve: seq message: Operator::format(R"JSON({
-            "err": { "message": "invalid port" }
-          })JSON")];
-        }
-
-        [self tcpConnect: seq
-                clientId: clientId
-                    port: port
-                      ip: cmd.get("ip")
-        ];
-        return;
-      }
-
-      if (cmd.name == "tpcSetKeepAlive") {
-        [self tcpSetKeepAlive: seq
-                     clientId: clientId
-                      timeout: std::stoi(cmd.get("timeout"))
-        ];
-        return;
-      }
-
-      if (cmd.name == "tpcSetTimeout") {
-        [self tcpSetTimeout: seq
-                   clientId: clientId
-                    timeout: std::stoi(cmd.get("timeout"))
-        ];
-        return;
-      }
-
-      if (cmd.name == "tpcBind") {
-        auto serverId = cmd.get("serverId");
-        auto ip = cmd.get("ip");
-        auto port = cmd.get("port");
-        auto seq = cmd.get("seq");
-
-        if (ip.size() == 0) {
-          ip = "0.0.0.0";
-        }
-
-        if (ip == "error") {
-          [self resolve: cmd.get("seq")
-                message: Operator::format(R"({
-                  "err": { "message": "offline" }
-                })")
-          ];
-          return;
-        }
-
-        if (port.size() == 0) {
-          [self reject: cmd.get("seq")
-               message: Operator::format(R"({
-                 "err": { "message": "port required" }
-               })")
-          ];
-          return;
-        }
-
-        [self tcpBind: seq
-             serverId: std::stoll(serverId)
-                   ip: ip
-                 port: std::stoi(port)
-        ];
-
-        return;
-      }
-    }
-
-    NSLog(@"%s", msg.c_str());
+    [self route: [body UTF8String]];
 }
 
 - (BOOL) application :(UIApplication *) application
@@ -2018,13 +2058,16 @@ bool isRunning = false;
       injectionTime: WKUserScriptInjectionTimeAtDocumentStart
       forMainFrameOnly: NO];
 
-    WKWebViewConfiguration *webviewConfig = [[WKWebViewConfiguration alloc] init];
-    self.content = [webviewConfig userContentController];
+    WKWebViewConfiguration *config = [[WKWebViewConfiguration alloc] init];
+
+    [config setURLSchemeHandler:[IPCSchemeHandler new] forURLScheme:@"ipc"];
+
+    self.content = [config userContentController];
 
     [self.content addScriptMessageHandler:self name: @"webview"];
     [self.content addUserScript: initScript];
 
-    self.webview = [[WKWebView alloc] initWithFrame: appFrame configuration: webviewConfig];
+    self.webview = [[WKWebView alloc] initWithFrame: appFrame configuration: config];
     self.webview.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
 
     [self.webview.configuration.preferences setValue: @YES forKey: @"allowFileAccessFromFileURLs"];
@@ -2039,71 +2082,6 @@ bool isRunning = false;
       stringByAppendingPathComponent:@"ui/index.html"];
 
     NSString* allowed = [[NSBundle mainBundle] resourcePath];
-
-    dispatch_async(queue, ^{
-      uv_tcp_t server;
-      uv_tcp_init(loop, &server);
-
-      struct sockaddr_in bind_addr = uv_ip4_addr("0.0.0.0", 8081);
-      uv_tcp_bind(&server, bind_addr);
-
-      int r = uv_listen((uv_stream_t*) &server, 128, [](uv_stream_t *server, int status) {
-        if (status == -1) return;
-
-        uv_tcp_t *client = (uv_tcp_t*)malloc(sizeof(uv_tcp_t));
-        uv_tcp_init(loop, client);
-
-        if (uv_accept(server, (uv_stream_t*) client) == 0) {
-          char t[1000];
-          time_t now = time(0);
-          struct tm tm = *gmtime(&now);
-          strftime(t, sizeof t, "%a, %d %b %Y %H:%M:%S %Z", &tm);
-
-          uv_write_t *write_req = (uv_write_t*)malloc(sizeof(uv_write_t));
-
-          NSString* workerURL = [[[NSBundle mainBundle] resourcePath]
-            stringByAppendingPathComponent:@"ui/worker.html"];
-          std::ifstream ifs(std::string([workerURL UTF8String]));
-
-          std::string body(
-            (std::istreambuf_iterator<char>(ifs)),
-            std::istreambuf_iterator<char>()
-          );
-
-          std::string res = (
-            "HTTP/1.0 200 OK\n"
-            "Date: " + t + "\n"
-            "Content-Type: text/html\n"
-            "Content-Length: \n" + len
-            "Cross-Origin-Embedder-Policy: require-corp\n"
-            "Cross-Origin-Opener-Policy: same-origin\n"
-            "\n"
-            body
-          );
-
-          write_req->data = (void*)res.c_str();
-          buf.len = res.size();
-
-          uv_write(write_req, client, &buf, 1, [](uv_write_t *req, int status) {
-            char *base = (char*) req->data;
-            free(base);
-            free(req);
-            uv_stop(loop);
-          });
-        }
-      });
-
-      if (r) {
-        NSLog(@"Listen error!");
-        return 1;
-      }
-
-      if (isRunning == false) {
-        isRunning = true;
-        NSLog(@"Starting loop from request");
-        uv_run(loop, UV_RUN_DEFAULT);
-      }
-    });
 
     [self.webview loadFileURL: [NSURL fileURLWithPath:url]
       allowingReadAccessToURL: [NSURL fileURLWithPath:allowed]

@@ -402,6 +402,8 @@ int lastY = 0;
   // std::string base = webView.URL.absoluteString.UTF8String;
   std::string request = navigationAction.request.URL.absoluteString.UTF8String;
 
+  std::cout << request << std::endl;
+
   if (request.find("file://") == 0 && request.find("http://localhost") == 0) {
     decisionHandler(WKNavigationActionPolicyCancel);
   } else {
