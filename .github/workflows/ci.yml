@@ -159,7 +159,7 @@ jobs:
 
     - name: compile bootstrap
       run: |
-        ./bin/bootstrap.sh install local
+        ./bin/bootstrap.sh dev
 
     - name: compile example desktop
       run: |
@@ -175,7 +175,7 @@ jobs:
 
   build_on_ios:
     runs-on: macOS-11
-    timeout-minutes: 5
+    timeout-minutes: 10
 
     steps:
     - uses: actions/checkout@v2
@@ -184,6 +184,9 @@ jobs:
       uses: webfactory/ssh-agent@v0.4.1
       with:
         ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+    - name: install automake
+      run: brew install automake
 
     - name: Use Node.js
       uses: actions/setup-node@v2
@@ -204,7 +207,7 @@ jobs:
 
     - name: compile bootstrap
       run: |
-        ./bin/bootstrap.sh install local
+        ./bin/bootstrap.sh dev ios
 
     - name: compile example ios
       run: |
