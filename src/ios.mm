@@ -253,7 +253,7 @@ bool isRunning = false;
 }
 
 - (void) resolve: (std::string)seq message: (std::string)message {
-  if (tasks[seq]) {
+  if (tasks.find(seq) != tasks.end()) {
     auto task = tasks[seq];
 
     NSHTTPURLResponse *httpResponse = [[NSHTTPURLResponse alloc]
