@@ -222,6 +222,16 @@ MAIN {
         return;
       }
 
+      if (cmd.index < 0 || cmd.name.size() == 0) {
+        // @TODO: print warning
+        return;
+      }
+
+      if (cmd.index > OPERATOR_MAX_WINDOWS) {
+        // @TODO: print warning
+        return;
+      }
+
       if (cmd.name == "show") {
         auto options = WindowOptions {};
         auto status = windowFactory.getWindowStatus(cmd.index);
@@ -269,16 +279,16 @@ MAIN {
 
       auto window = windowFactory.getOrCreateWindow(cmd.index);
 
+      if (!window) {
+        // @TODO: print warning
+        return;
+      }
+
       if (cmd.name == "heartbeat") {
         if (seq.size() > 0) {
           window->onMessage(resolveToMainProcess(seq, OK_STATE, "\"heartbeat\""));
         }
 
-        return;
-      }
-
-      if (!window) {
-        // @TODO(jwerle): issue a warning or something
         return;
       }
 

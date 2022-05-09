@@ -1442,7 +1442,7 @@ int main (const int argc, const char* argv[]) {
 
     auto runner = trim(std::string(STR_VALUE(CMD_RUNNER)));
     auto prefix = runner.size() > 0 ? runner + std::string(" ") : runner;
-    auto r = exec((prefix + cmd + argvForward.str()));
+    auto r = exec(prefix + cmd + argvForward.str());
 
     log(r.output);
 
