@@ -832,9 +832,6 @@ int main (const int argc, const char* argv[]) {
           exit(rInstallApp.exitCode);
         }
       }
-
-        // log("run \"xcrun simctl install booted " + pathOutput + "/" + settings["name"] + ".app\" to install app");  
-
     }
 
     if (flagShouldPackage) {
