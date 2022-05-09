@@ -2061,7 +2061,9 @@ bool isRunning = false;
 
           uv_write_t *write_req = (uv_write_t*)malloc(sizeof(uv_write_t));
 
-          std::ifstream ifs(std::string([url UTF8String]));
+          NSString* workerURL = [[[NSBundle mainBundle] resourcePath]
+            stringByAppendingPathComponent:@"ui/worker.html"];
+          std::ifstream ifs(std::string([workerURL UTF8String]));
 
           std::string body(
             (std::istreambuf_iterator<char>(ifs)),
