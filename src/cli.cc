@@ -698,6 +698,7 @@ int main (const int argc, const char* argv[]) {
 
     if (rArchive.exitCode != 0) {
       log("error: failed to archive project");
+      log(rArchive.output);
       fs::current_path(oldCwd);
       exit(1);
     }
