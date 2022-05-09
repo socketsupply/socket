@@ -72,10 +72,16 @@ constexpr auto gPreload = R"JS(
     let detail
 
     try {
-      detail = JSON.parse(decodeURIComponent(value))
+      detail = decodeURIComponent(value)
+      detail = JSON.parse(detail)
     } catch (err) {
-      console.error(`${err.message} (${value})`)
-      return
+      // consider okay here because if detail is defined then
+      // `decodeURIComponent(value)` was successful and `JSON.parse(value)`
+      // was not: there could be bad/unsupported unicode in `value`
+      if (!detail) {
+        console.error(`${err.message} (${value})`)
+        return
+      }
     }
 
     if (detail.event && detail.data && (detail.serverId || detail.clientId)) {
@@ -87,9 +93,9 @@ constexpr auto gPreload = R"JS(
 
       const value = detail.event === 'data' ? atob(detail.data) : detail.data
 
-      if (details.event === 'data') {
+      if (detail.event === 'data') {
         stream.__write(detail.event, value)
-      } else {
+      } else if (detail.event) {
         stream.emit(detail.event, value)
       }
     }
