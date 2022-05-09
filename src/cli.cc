@@ -337,33 +337,35 @@ int main (const int argc, const char* argv[]) {
     fs::create_directories(pathToProject);
     fs::create_directories(pathToScheme);
 
-    std::string command = (
-      "security cms -D -i " + pathToProfile.string()
-    );
+    if (!flagBuildForSimulator) {
+      std::string command = (
+        "security cms -D -i " + pathToProfile.string()
+      );
 
-    auto r = exec(command);
-    std::regex re(R"(<key>UUID<\/key>\n\s*<string>(.*)<\/string>)");
-    std::smatch match;
-    std::string uuid;
+      auto r = exec(command);
+      std::regex re(R"(<key>UUID<\/key>\n\s*<string>(.*)<\/string>)");
+      std::smatch match;
+      std::string uuid;
 
-    if (!std::regex_search(r.output, match, re)) {
-      log("failed to extract uuid from provisioning profile using \"" + command + "\"");
-      exit(1);
+      if (!std::regex_search(r.output, match, re)) {
+        log("failed to extract uuid from provisioning profile using \"" + command + "\"");
+        exit(1);
+      }
+
+      uuid = match.str(1);
+
+      auto pathToInstalledProfile = fs::path(getEnv("HOME")) /
+        "Library" /
+        "MobileDevice" /
+        "Provisioning Profiles" /
+        (uuid + ".mobileprovision");
+
+      if (!fs::exists(pathToInstalledProfile)) {
+        fs::copy(pathToProfile, pathToInstalledProfile);
+      }
+
+      settings["ios_provisioning_profile"] = uuid;
     }
-
-    uuid = match.str(1);
-
-    auto pathToInstalledProfile = fs::path(getEnv("HOME")) /
-      "Library" /
-      "MobileDevice" /
-      "Provisioning Profiles" /
-      (uuid + ".mobileprovision");
-
-    if (!fs::exists(pathToInstalledProfile)) {
-      fs::copy(pathToProfile, pathToInstalledProfile);
-    }
-
-    settings["ios_provisioning_profile"] = uuid;
 
     fs::copy(
       fs::path(prefixFile()) / "lib",
