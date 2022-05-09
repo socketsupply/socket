@@ -809,7 +809,7 @@ int main (const int argc, const char* argv[]) {
 
       if (flagShouldRun) {
         log("run simulator");
-        auto rOpenSimulator = exec("open /Applications/Xcode.app/Contents/Developer/Applications/Simulator.app/");
+        auto rOpenSimulator = exec("open /Applications/Xcode.app/Contents/Developer/Applications/Simulator.app/ --args -CurrentDeviceUDID " + uuid);
         if (rOpenSimulator.exitCode != 0) {
           log("unable to run simulator");
           if (rOpenSimulator.output.size() > 0) {
