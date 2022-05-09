@@ -807,17 +807,34 @@ int main (const int argc, const char* argv[]) {
         }
       }
 
-      log("run simulator");
-      auto rOpenSimulator = exec("open /Applications/Xcode.app/Contents/Developer/Applications/Simulator.app/");
-      if (rOpenSimulator.exitCode != 0) {
-        log("unable to run simulator");
-        if (rOpenSimulator.output.size() > 0) {
-          log(rOpenSimulator.output);
+      if (flagShouldRun) {
+        log("run simulator");
+        auto rOpenSimulator = exec("open /Applications/Xcode.app/Contents/Developer/Applications/Simulator.app/");
+        if (rOpenSimulator.exitCode != 0) {
+          log("unable to run simulator");
+          if (rOpenSimulator.output.size() > 0) {
+            log(rOpenSimulator.output);
+          }
+          exit(rOpenSimulator.exitCode);
         }
-        exit(rOpenSimulator.exitCode);
+
+        std::stringstream installAppCommand;
+        installAppCommand
+          << "xcrun"
+          << " simctl install booted"
+          << " " + settings["name"] + ".app";
+        auto rInstallApp = exec(installAppCommand.str().c_str());
+        if (rInstallApp.exitCode != 0) {
+          log("unable to install the app into simulator VM with command: " + installAppCommand.str());
+          if (rInstallApp.output.size() > 0) {
+            log(rInstallApp.output);
+          }
+          exit(rInstallApp.exitCode);
+        }
       }
 
-      log("run \"xcrun simctl install booted " + pathOutput + "/" + settings["name"] + ".app\" to install app");      
+        // log("run \"xcrun simctl install booted " + pathOutput + "/" + settings["name"] + ".app\" to install app");  
+
     }
 
     if (flagShouldPackage) {
