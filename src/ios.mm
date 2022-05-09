@@ -4,6 +4,7 @@
 #import "common.hh"
 #include <ifaddrs.h>
 #include <arpa/inet.h>
+#include <time.h>
 
 #include "lib/uv/include/uv.h"
 #include <netinet/in.h>
@@ -2038,6 +2039,67 @@ bool isRunning = false;
       stringByAppendingPathComponent:@"ui/index.html"];
 
     NSString* allowed = [[NSBundle mainBundle] resourcePath];
+
+    dispatch_async(queue, ^{
+      uv_tcp_t server;
+      uv_tcp_init(loop, &server);
+
+      struct sockaddr_in bind_addr = uv_ip4_addr("0.0.0.0", 8081);
+      uv_tcp_bind(&server, bind_addr);
+
+      int r = uv_listen((uv_stream_t*) &server, 128, [](uv_stream_t *server, int status) {
+        if (status == -1) return;
+
+        uv_tcp_t *client = (uv_tcp_t*)malloc(sizeof(uv_tcp_t));
+        uv_tcp_init(loop, client);
+
+        if (uv_accept(server, (uv_stream_t*) client) == 0) {
+          char t[1000];
+          time_t now = time(0);
+          struct tm tm = *gmtime(&now);
+          strftime(t, sizeof t, "%a, %d %b %Y %H:%M:%S %Z", &tm);
+
+          uv_write_t *write_req = (uv_write_t*)malloc(sizeof(uv_write_t));
+
+          std::ifstream ifs(std::string([url UTF8String]));
+
+          std::string body(
+            (std::istreambuf_iterator<char>(ifs)),
+            std::istreambuf_iterator<char>()
+          );
+
+          std::string res = (
+            "HTTP/1.0 200 OK\n"
+            "Date: " + t + "\n"
+            "Content-Type: text/html\n"
+            "Content-Length: \n" + len
+            "\n"
+            body
+          );
+
+          write_req->data = (void*)res.c_str();
+          buf.len = res.size();
+
+          uv_write(write_req, client, &buf, 1, [](uv_write_t *req, int status) {
+            char *base = (char*) req->data;
+            free(base);
+            free(req);
+            uv_stop(loop);
+          });
+        }
+      });
+
+      if (r) {
+        NSLog(@"Listen error!");
+        return 1;
+      }
+
+      if (isRunning == false) {
+        isRunning = true;
+        NSLog(@"Starting loop from request");
+        uv_run(loop, UV_RUN_DEFAULT);
+      }
+    });
 
     [self.webview loadFileURL: [NSURL fileURLWithPath:url]
       allowingReadAccessToURL: [NSURL fileURLWithPath:allowed]
