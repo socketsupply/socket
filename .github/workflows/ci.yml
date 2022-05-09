@@ -205,9 +205,13 @@ jobs:
         CI: true
         NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
 
-    - name: compile bootstrap
+    - name: cross-compile
       run: |
         ./bin/bootstrap.sh dev ios
+
+    - name: compile bootstrap
+      run: |
+        ./bin/bootstrap.sh dev
 
     - name: compile example ios
       run: |

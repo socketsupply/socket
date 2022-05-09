@@ -209,8 +209,9 @@ function _cross_compile {
 #
 # This will re-compile libuv for iOS (and the iOS simulator).
 #
-if [ "$2" == "ios" ]; then
+if [ "$1" == "ios" ]; then
   _cross_compile
+  exit 0
 fi
 
 #
