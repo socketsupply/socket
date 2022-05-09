@@ -211,6 +211,7 @@ function _cross_compile {
 #
 if [ "$2" == "ios" ]; then
   _cross_compile
+  exit 0
 fi
 
 #
