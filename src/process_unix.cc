@@ -331,6 +331,10 @@ void Process::kill(id_type id) noexcept {
 
     if (r != 0) {
       r = ::kill(-id, SIGKILL);
+
+      if (r != 0) {
+        // @TODO: print warning
+      }
     }
   }
 }

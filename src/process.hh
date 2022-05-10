@@ -134,7 +134,7 @@ namespace Operator {
 
     // Kill a given process id. Use kill(bool force) instead if possible.
     // force=true is only supported on Unix-like systems.
-    static void kill(id_type id) noexcept;
+    void kill(id_type id) noexcept;
 
   private:
     Data data;
