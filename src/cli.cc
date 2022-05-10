@@ -831,6 +831,20 @@ int main (const int argc, const char* argv[]) {
           }
           exit(rInstallApp.exitCode);
         }
+
+        std::stringstream launchAppCommand;
+        launchAppCommand
+          << "xcrun"
+          << " simctl launch booted"
+          << " " + settings["bundle_identifier"];
+        auto rlaunchApp = exec(launchAppCommand.str().c_str());
+        if (rlaunchApp.exitCode != 0) {
+          log("unable to install the app into simulator VM with command: " + launchAppCommand.str());
+          if (rlaunchApp.output.size() > 0) {
+            log(rlaunchApp.output);
+          }
+          exit(rlaunchApp.exitCode);
+        }
       }
     }
 
