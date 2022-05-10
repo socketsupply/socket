@@ -542,7 +542,12 @@ namespace Operator {
   inline Parse::Parse(const std::string& s) {
     std::string str = s;
 
+    // bail if missing protocol prefix
     if (str.find("ipc://") == -1) return;
+
+    // bail if malformed
+    if (str.compare("ipc://") == 0) return;
+    if (str.compare("ipc://?") == 0) return;
 
     std::string query;
     std::string path;
