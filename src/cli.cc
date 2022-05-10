@@ -818,6 +818,7 @@ int main (const int argc, const char* argv[]) {
           exit(rOpenSimulator.exitCode);
         }
 
+        log("install booted VM into simulator");
         std::stringstream installAppCommand;
         installAppCommand
           << "xcrun"
@@ -832,6 +833,7 @@ int main (const int argc, const char* argv[]) {
           exit(rInstallApp.exitCode);
         }
 
+        log("launch the app in simulator");
         std::stringstream launchAppCommand;
         launchAppCommand
           << "xcrun"
@@ -839,7 +841,7 @@ int main (const int argc, const char* argv[]) {
           << " " + settings["bundle_identifier"];
         auto rlaunchApp = exec(launchAppCommand.str().c_str());
         if (rlaunchApp.exitCode != 0) {
-          log("unable to install the app into simulator VM with command: " + launchAppCommand.str());
+          log("unable to launch the app: " + launchAppCommand.str());
           if (rlaunchApp.output.size() > 0) {
             log(rlaunchApp.output);
           }
