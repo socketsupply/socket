@@ -2006,12 +2006,12 @@ bool isRunning = false;
 }
 
 - (BOOL) application: (UIApplication *)app openURL: (NSURL*)url options: (NSDictionary<UIApplicationOpenURLOptionsKey, id> *)options {
-  auto url = std::string(url.absoluteString.UTF8String);
+  auto str = std::string(url.absoluteString.UTF8String);
 
   // TODO can this be escaped or is the url encoded property already?
   [self emit: "protocol" message: Operator::format(R"JSON({
     "url": "$S",
-  })JSON", url)];
+  })JSON", str)];
 
   return YES;
 }
