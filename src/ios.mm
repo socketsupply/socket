@@ -2005,6 +2005,19 @@ bool isRunning = false;
     [self route: [body UTF8String]];
 }
 
+- (BOOL) application: (UIApplication *)app openURL:(NSURL*)url options:(NSDictionary<UIApplicationOpenURLOptionsKey, id> *)options {
+  auto path  = [[url path] UTF8String];
+  auto query = [[url query] UTF8String];
+
+  [self emit: "protocol" message: Operator::format(R"JSON({
+    "path": "$S",
+    "query": "$S"
+  })JSON", path, query)];
+
+  // Here you should insert code to take some action based upon the path and query.
+  return YES;
+}
+
 - (BOOL) application :(UIApplication *) application
   didFinishLaunchingWithOptions :(NSDictionary *) launchOptions {
     using namespace Operator;

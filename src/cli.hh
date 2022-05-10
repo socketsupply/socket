@@ -736,6 +736,22 @@ constexpr auto gXCodePlist = R"XML(<?xml version="1.0" encoding="UTF-8"?>
 	<false/>
 	<key>NSSupportsAutomaticGraphicsSwitching</key>
 	<true/>
+
+  <key>CFBundleURLTypes</key>
+  <array>
+    <dict>
+      <key>CFBundleURLName</key>
+      <string>{{ios_protocol}}</string>
+      <key>CFBundleURLSchemes</key>
+      <array>
+        <string>{{ios_protocol}}</string>
+      </array>
+    </dict>
+  </array>
+  <key>LSApplicationQueriesSchemes</key>
+  <array>
+    <string>{{ios_protocol}}</string>
+  </array>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>fetch</string>
@@ -1053,6 +1069,9 @@ width: 1024
 
 # which device to target when building for the simulator
 # ios_simulator_device:
+
+# a protocol to register for addeventListener('protocol', e => {})
+# ios_protocol: hyper
 
 # A relative path to the plist of application entitlements
 # ios_entitlements:
