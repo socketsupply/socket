@@ -41,6 +41,8 @@ static dispatch_queue_t queue = dispatch_queue_create("op.queue", qos);
 @property nw_path_monitor_t monitor;
 @property (strong, nonatomic) NSObject<OS_dispatch_queue>* monitorQueue;
 
+- (void) route: (std::string)msg;
+
 // Bridge to JS
 - (void) emit: (std::string)event message: (std::string)message;
 - (void) resolve: (std::string)seq message: (std::string)message;
@@ -85,7 +87,7 @@ static dispatch_queue_t queue = dispatch_queue_create("op.queue", qos);
 - (void)webView: (AppDelegate*)webView stopURLSchemeTask:(id <WKURLSchemeTask>)urlSchemeTask;
 @end
 
-std::map<uint64_t, id<WKURLSchemeTask>*> tasks;
+std::map<std::string, id<WKURLSchemeTask>> tasks;
 
 @implementation IPCSchemeHandler
 - (void)webView: (AppDelegate*)webView stopURLSchemeTask:(id <WKURLSchemeTask>)urlSchemeTask {}
@@ -270,6 +272,8 @@ bool isRunning = false;
 
     [task didReceiveData: data];
     [task didFinish];
+
+    tasks.erase(seq);
     return;
   }
 
@@ -2078,14 +2082,15 @@ bool isRunning = false;
 
     [viewController.view addSubview: self.webview];
 
-    NSString* url = [[[NSBundle mainBundle] resourcePath]
-      stringByAppendingPathComponent:@"ui/index.html"];
-
     NSString* allowed = [[NSBundle mainBundle] resourcePath];
+    NSString* url = [allowed stringByAppendingPathComponent:@"ui/index.html"];
 
-    [self.webview loadFileURL: [NSURL fileURLWithPath:url]
-      allowingReadAccessToURL: [NSURL fileURLWithPath:allowed]
+    [self.webview loadFileURL: [NSURL fileURLWithPath: url]
+      allowingReadAccessToURL: [NSURL fileURLWithPath: allowed]
     ];
+
+    // NSString *protocol = @"operator-loader://";
+    // [self.webview loadRequest: [protocol stringByAppendingString: url]];
 
     [self.window makeKeyAndVisible];
     [self initNetworkStatusObserver];
