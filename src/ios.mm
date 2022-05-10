@@ -2005,16 +2005,14 @@ bool isRunning = false;
     [self route: [body UTF8String]];
 }
 
-- (BOOL) application: (UIApplication *)app openURL:(NSURL*)url options:(NSDictionary<UIApplicationOpenURLOptionsKey, id> *)options {
-  auto path  = [[url path] UTF8String];
-  auto query = [[url query] UTF8String];
+- (BOOL) application: (UIApplication *)app openURL: (NSURL*)url options: (NSDictionary<UIApplicationOpenURLOptionsKey, id> *)options {
+  auto url = std::string(url.absoluteString.UTF8String);
 
+  // TODO can this be escaped or is the url encoded property already?
   [self emit: "protocol" message: Operator::format(R"JSON({
-    "path": "$S",
-    "query": "$S"
-  })JSON", path, query)];
+    "url": "$S",
+  })JSON", url)];
 
-  // Here you should insert code to take some action based upon the path and query.
   return YES;
 }
 
