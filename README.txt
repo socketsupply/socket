@@ -16,3 +16,17 @@ using web technologies.
 
 Documentation: https://operatorframework.dev
 Examples: https://github.com/socketsupply/op-examples
+
+# Compile from source
+
+For mac
+
+```sh
+./bin/bootstrap.sh dev
+```
+
+For Windows
+
+```sh
+powershell ./bin/bootstrap.ps1 dev
+```
