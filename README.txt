@@ -19,7 +19,7 @@ Examples: https://github.com/socketsupply/op-examples
 
 # Compile from source
 
-For mac
+For mac / linux.
 
 ```sh
 ./bin/bootstrap.sh dev
