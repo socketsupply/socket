@@ -209,10 +209,6 @@ jobs:
       run: |
         ./bin/bootstrap.sh dev ios
 
-    - name: compile bootstrap
-      run: |
-        ./bin/bootstrap.sh dev
-
     - name: compile example ios
       run: |
         op ./op-examples/tonic-ios/ -ios -simulator

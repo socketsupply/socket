@@ -207,6 +207,18 @@ function _cross_compile {
 
   rm -rf $BUILD_DIR
   cd $OLD_CWD
+
+  unset PLATFORM
+  unset CC
+  unset STRIP
+  unset LD
+  unset CPP
+  unset CFLAGS
+  unset AR
+  unset RANLIB
+  unset CPPFLAGS
+  unset LDFLAGS
+  unset IPHONEOS_DEPLOYMENT_TARGET
 }
 
 #
