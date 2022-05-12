@@ -149,6 +149,8 @@ function _cross_compile {
   BUILD_DIR=`pwd`/lib/build
   rm -rf `pwd`/lib/uv
 
+  xcrun -sdk iphoneos -find texturetool
+
   #
   # Shallow clone the main branch of libuv
   #
