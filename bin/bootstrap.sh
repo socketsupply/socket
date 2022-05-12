@@ -152,6 +152,7 @@ function _cross_compile {
   #
   # Shallow clone the main branch of libuv
   #
+  rm -rf $BUILD_DIR
   git clone --depth=1 git@github.com:libuv/libuv.git lib/build
   cd $BUILD_DIR
   sh autogen.sh
