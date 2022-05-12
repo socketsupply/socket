@@ -269,11 +269,6 @@ function _cross_compile_libuv {
 #
 # This will re-compile libuv for iOS (and the iOS simulator).
 #
-if [ "$2" == "udx" ]; then
-  _cross_compile_libudx
-  exit 0
-fi
-
 if [ "$2" == "ios" ]; then
   _cross_compile_libuv
   _cross_compile_libudx
