@@ -3,10 +3,6 @@ set -e;
 
 PREFIX=${PREFIX:-"/usr/local"}
 
-if [ ! "$CC" ]; then
-  CC="$(which clang)"
-fi
-
 if [ ! "$CXX" ]; then
   if [ ! -z "$LOCALAPPDATA" ]; then
     if which clang++ >/dev/null 2>&1; then
@@ -23,12 +19,12 @@ if [ ! "$CXX" ]; then
   fi
 
   if [ ! "$CXX" ]; then
-    echo "• error: Could not determine \$CXX environment variable"
+    echo "• Error: Could not determine \$CXX environment variable"
     exit 1
   else
     echo "• Warning: \$CXX environment variable not set, assuming '$CXX'"
-fi
   fi
+fi
 
 if ! which sudo > /dev/null 2>&1; then
   sudo () {
@@ -145,6 +141,10 @@ function _compile_libuv {
 }
 
 function _cross_compile_libudx {
+  if [ ! "$CC" ]; then
+    CC="$(which clang)"
+  fi
+
   OLD_CWD=`pwd`
   BUILD_DIR=`pwd`/lib/build
   rm -rf $BUILD_DIR
