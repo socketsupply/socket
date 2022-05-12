@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-
-#
-# TODO convert this to a brew package
-#
 set -e;
 
 PREFIX=${PREFIX:-"/usr/local"}
+
+if [ ! "$CC" ]; then
+  CC="$(which clang)"
+fi
 
 if [ ! "$CXX" ]; then
   if [ ! -z "$LOCALAPPDATA" ]; then
@@ -39,6 +39,7 @@ fi
 
 function _build {
   echo '• Building ssc'
+
   "$CXX" src/cli.cc ${CXX_FLAGS} ${CXXFLAGS} \
     -o bin/cli \
     -std=c++2a \
@@ -46,10 +47,10 @@ function _build {
     -DVERSION=`cat VERSION.txt` \
 
   if [ ! $? = 0 ]; then
-    echo '• Unable to build. See trouble shooting guide in the README.md file'
+    echo "• Unable to build. See trouble shooting guide in the README.md file"
     exit 1
   fi
-  echo '• Success'
+  echo "• Success"
 }
 
 function _install {
@@ -63,20 +64,23 @@ function _install {
   fi
 
   echo "• Installing ssc"
-  sudo rm -rf "$libdir"
+  rm -rf "$libdir"
 
   sudo mkdir -p "$libdir"
-  sudo cp -r `pwd`/src "$libdir"
+  cp -r `pwd`/src "$libdir"
 
   echo "• Copying sources to $libdir/src"
+
   if [ -d `pwd`/lib ]; then
     echo "• Copying libraries to $libdir/lib"
-    sudo mkdir -p "$libdir/lib"
-    sudo cp -r `pwd`/lib/* "$libdir/lib"
+    mkdir -p "$libdir/lib"
+    cp -r `pwd`/lib/* "$libdir/lib"
   fi
 
   echo "• Moving binary to $PREFIX/bin"
-  sudo mv `pwd`/bin/cli "$PREFIX/bin/ssc"
+  sudo mv `pwd`/bin/cli "/usr/local/bin/ssc"
+
+  sudo mv `pwd`/bin/cli "$PREFIX/bin/op"
 
   if [ ! $? = 0 ]; then
     echo "• Unable to move binary into place"
@@ -110,7 +114,7 @@ function _setSDKVersion {
   fi
 }
 
-function _compile {
+function _compile_libuv {
   target=$1
   hosttarget=$1
   platform=$2
@@ -140,7 +144,48 @@ function _compile {
   install_name_tool -id libuv.1.dylib $BUILD_DIR/output/$target/lib/libuv.1.dylib
 }
 
-function _cross_compile {
+function _cross_compile_libudx {
+  OLD_CWD=`pwd`
+  BUILD_DIR=`pwd`/lib/build
+  rm -rf $BUILD_DIR
+  mkdir $BUILD_DIR
+  SRC_DIR=$BUILD_DIR/src
+  rm -rf `pwd`/lib/udx
+
+  git clone --depth=1 git@github.com:mafintosh/libudx.git $BUILD_DIR
+  cd $BUILD_DIR
+
+  for SRC in $(git ls-files -- 'src/*.c' ':!:*io_win.c')
+  do
+    echo $BUILD_DIR/$SRC
+    "$CC" -c $BUILD_DIR/$SRC \
+      ${CXX_FLAGS} ${CXXFLAGS} \
+      -I$BUILD_DIR/include \
+      -I$BUILD_DIR/../uv/include \
+      -std=c99
+  done
+
+  export AR=$(xcrun -sdk iphoneos -find ar)
+
+  for OBJ in $(ls $BUILD_DIR/*.o)
+  do
+    "$AR" rvs libudx.a $OBJ
+  done
+
+  #
+  # Copy the build into the project and delete leftover build artifacts.
+  #
+  DEST_DIR=$BUILD_DIR/../udx
+  mkdir $DEST_DIR
+
+  cp libudx.a $DEST_DIR
+  cp -r $BUILD_DIR/include $DEST_DIR
+
+  rm -rf $BUILD_DIR
+  cd $OLD_CWD
+}
+
+function _cross_compile_libuv {
   PLATFORMPATH="/Applications/Xcode.app/Contents/Developer/Platforms"
   TOOLSPATH="/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin"
 
@@ -165,11 +210,11 @@ function _cross_compile {
   #
   # Build artifacts for all platforms
   #
-  _compile armv7 iPhoneOS
-  _compile armv7s iPhoneOS
-  _compile arm64 iPhoneOS
-  _compile i386 iPhoneSimulator
-  _compile x86_64 iPhoneSimulator
+  _compile_libuv armv7 iPhoneOS
+  _compile_libuv armv7s iPhoneOS
+  _compile_libuv arm64 iPhoneOS
+  _compile_libuv i386 iPhoneSimulator
+  _compile_libuv x86_64 iPhoneSimulator
 
   #
   # Combine the build artifacts
@@ -224,8 +269,15 @@ function _cross_compile {
 #
 # This will re-compile libuv for iOS (and the iOS simulator).
 #
+if [ "$2" == "udx" ]; then
+  _cross_compile_libudx
+  exit 0
+fi
+
 if [ "$2" == "ios" ]; then
-  _cross_compile
+  _cross_compile_libuv
+  _cross_compile_libudx
+  exit 0
 fi
 
 #
