@@ -1772,9 +1772,9 @@ bool isRunning = false;
 
   NSLog(@"COMMAND %s", msg.c_str());
 
-  if (cmd.name == "openExternal") {
-    // NSString *url = [NSString stringWithUTF8String:cmd.value.c_str()];
-    // [[UIApplication sharedApplication] openURL:[NSURL URLWithString:url]];
+  if (cmd.name == "external") {
+    NSString *url = [NSString stringWithUTF8String:Operator::decodeURIComponent(cmd.get("href")).c_str()];
+    [[UIApplication sharedApplication] openURL:[NSURL URLWithString:url]];
     return;
   }
 
@@ -2053,6 +2053,8 @@ bool isRunning = false;
       .env = env.str()
     };
 
+    // Note: you won't see any logs in the preload script before the
+    // Web Inspector is opened
     std::string preload = Str(
       "window.external = {\n"
       "  invoke: arg => window.webkit.messageHandlers.webview.postMessage(arg)\n"
@@ -2070,7 +2072,7 @@ bool isRunning = false;
 
     WKUserScript* initScript = [[WKUserScript alloc]
       initWithSource: [NSString stringWithUTF8String: preload.c_str()]
-      injectionTime: WKUserScriptInjectionTimeAtDocumentStart
+      injectionTime: WKUserScriptInjectionTimeAtDocumentEnd
       forMainFrameOnly: NO];
 
     WKWebViewConfiguration *config = [[WKWebViewConfiguration alloc] init];
