@@ -214,10 +214,10 @@ constexpr auto gPreloadDesktop = R"JS(
 )JS";
 
 constexpr auto gPreloadMobile = R"JS(
-  () => {
-    window.system.getNetworkInterfaces = o => window._ipc.send('getNetworkInterfaces', o)
-    window.system.openExternal = o => window._ipc.send('external', o)
-  })();
+  window.system.getNetworkInterfaces = o => window._ipc.send('getNetworkInterfaces', o)
+  window.system.openExternal = o => {
+    window.external.invoke(`ipc://external?value=${encodeURIComponent(o)}`)
+  }
 )JS";
 
 #endif

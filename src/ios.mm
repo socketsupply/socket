@@ -1773,7 +1773,7 @@ bool isRunning = false;
   NSLog(@"COMMAND %s", msg.c_str());
 
   if (cmd.name == "external") {
-    NSString *url = [NSString stringWithUTF8String:Operator::decodeURIComponent(cmd.get("href")).c_str()];
+    NSString *url = [NSString stringWithUTF8String:Operator::decodeURIComponent(cmd.get("value")).c_str()];
     [[UIApplication sharedApplication] openURL:[NSURL URLWithString:url]];
     return;
   }
@@ -2056,6 +2056,8 @@ bool isRunning = false;
     // Note: you won't see any logs in the preload script before the
     // Web Inspector is opened
     std::string preload = Str(
+      "window.system = {};\n"
+
       "window.external = {\n"
       "  invoke: arg => window.webkit.messageHandlers.webview.postMessage(arg)\n"
       "};\n"
@@ -2068,6 +2070,9 @@ bool isRunning = false;
 
       "window.addEventListener('unhandledrejection', e => console.log(e.message));\n"
       "window.addEventListener('error', e => console.log(e.reason));\n"
+
+      "" + opts.preload + "\n"
+      "//# sourceURL=preload.js"
     );
 
     WKUserScript* initScript = [[WKUserScript alloc]
