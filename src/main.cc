@@ -222,7 +222,7 @@ MAIN {
         return;
       }
 
-      if (cmd.index < 0 || cmd.name.size() == 0) {
+      if (cmd.index > 0 && cmd.name.size() == 0) {
         // @TODO: print warning
         return;
       }
@@ -280,8 +280,13 @@ MAIN {
       auto window = windowFactory.getOrCreateWindow(cmd.index);
 
       if (!window) {
+        auto defaultWindow = windowFactory.getWindow(0);
+
+        if (defaultWindow) {
+          window = defaultWindow;
+        }
+
         // @TODO: print warning
-        return;
       }
 
       if (cmd.name == "heartbeat") {
@@ -430,13 +435,12 @@ MAIN {
       auto defaultWindow = windowFactory.getWindow(0);
 
       if (defaultWindow) {
-        defaultWindow->onMessage(resolveToRenderProcess(
-          seq,
-          ERROR_STATE, // error
-          InvalidWindowIndexError(cmd.index)
-        ));
+        window = defaultWindow;
       }
+    }
 
+    if (cmd.name == "reload") {
+      process.reload();
       return;
     }
 
@@ -445,11 +449,6 @@ MAIN {
         cmd.get("seq"),
         decodeURIComponent(cmd.get("value"))
       );
-      return;
-    }
-
-    if (cmd.name == "reload") {
-      process.reload();
       return;
     }
 
