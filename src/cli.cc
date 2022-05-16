@@ -91,7 +91,7 @@ int main (const int argc, const char* argv[]) {
       exit(0);
     }
 
-    if (is(arg, "-i") || is(arg(, "--init"))) {
+    if (is(arg, "-i") || is(arg, "--init")) {
       init(attrs);
       exit(0);
     }
