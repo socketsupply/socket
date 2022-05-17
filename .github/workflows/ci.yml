@@ -28,6 +28,16 @@ jobs:
         sudo add-apt-repository ppa:ubuntu-toolchain-r/test
         sudo apt install gcc-11 g++-11 libwebkit2gtk-4.0-dev libcurl4-openssl-dev
 
+    - name: compile bootstrap
+      run: |
+        ./bin/bootstrap.sh local
+      env:
+        CXX: g++-11
+
+    - name: Check if op has a correct version
+      run: |
+        ./bin/ci_version_check.sh
+
     - name: install an example app
       run: |
         git config --global user.email "devops@optool.co"
@@ -37,12 +47,6 @@ jobs:
       env:
         CI: true
         NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
-
-    - name: compile bootstrap
-      run: |
-        ./bin/bootstrap.sh local
-      env:
-        CXX: g++-11
 
     - name: compile example desktop
       run: |
@@ -57,10 +61,6 @@ jobs:
       env:
         CI: true
         CXX: g++-11
-
-    - name: Check the correctness of the version
-      run: |
-        ./bin/ci_version_check.sh
 
   build_on_win:
     runs-on: windows-2022
@@ -90,12 +90,18 @@ jobs:
         mkdir ~/.ssh
         ssh-keyscan github.com >> ~/.ssh/known_hosts
 
-    - name: Download clang++
+    - name: compile bootstrap
       run: |
-        choco install -y llvm --no-progress
+        ./bin/bootstrap.ps1 dev
 
-        $bin_dir = Join-Path $env:ProgramFiles LLVM bin
-        echo $bin_dir >> $env:GITHUB_PATH
+        echo "::add-path::$env:LOCALAPPDATA\Programs\socketsupply\src"
+        echo "$env:LOCALAPPDATA\Programs\socketsupply\src" >> $env:GITHUB_PATH
+      env:
+        ACTIONS_ALLOW_UNSECURE_COMMANDS: true
+
+    - name: Check if op has a correct version
+      run: |
+        ./bin/ci_version_check.ps1
 
     - name: install an example app
       run: |
@@ -111,15 +117,6 @@ jobs:
         CI: true
         NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
 
-    - name: compile bootstrap
-      run: |
-        ./bin/bootstrap.ps1 dev
-
-        echo "::add-path::$env:LOCALAPPDATA\Programs\socketsupply\src"
-        echo "$env:LOCALAPPDATA\Programs\socketsupply\src" >> $env:GITHUB_PATH
-      env:
-        ACTIONS_ALLOW_UNSECURE_COMMANDS: true
-
     - name: compile example desktop
       run: |
         op ./op-examples/tonic-desktop/
@@ -131,10 +128,6 @@ jobs:
         op ./op-examples/tonic-desktop/ --test=1 -r
       env:
         CI: true
-
-    - name: Check the correctness of the version
-      run: |
-        ./bin/ci_version_check.sh
 
   build_on_mac:
     runs-on: macOS-11
@@ -155,6 +148,14 @@ jobs:
         registry-url: https://npm.pkg.github.com/
         scope: '@socketsupply'
 
+    - name: compile bootstrap
+      run: |
+        ./bin/bootstrap.sh dev
+
+    - name: Check if op has a correct version
+      run: |
+        ./bin/ci_version_check.sh
+
     - name: install an example app
       run: |
         git config --global user.email "devops@optool.co"
@@ -164,10 +165,6 @@ jobs:
       env:
         CI: true
         NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
-
-    - name: compile bootstrap
-      run: |
-        ./bin/bootstrap.sh dev
 
     - name: compile example desktop
       run: |
@@ -180,10 +177,6 @@ jobs:
         op ./op-examples/tonic-desktop/ --test=1 -r
       env:
         CI: true
-
-    - name: Check the correctness of the version
-      run: |
-        ./bin/ci_version_check.sh
 
   build_on_ios:
     runs-on: macOS-11
@@ -207,6 +200,14 @@ jobs:
         registry-url: https://npm.pkg.github.com/
         scope: '@socketsupply'
 
+    - name: cross-compile
+      run: |
+        ./bin/bootstrap.sh dev ios
+
+    - name: Check if op has a correct version
+      run: |
+        ./bin/ci_version_check.sh
+
     - name: install an example app
       run: |
         git config --global user.email "devops@optool.co"
@@ -217,16 +218,8 @@ jobs:
         CI: true
         NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
 
-    - name: cross-compile
-      run: |
-        ./bin/bootstrap.sh dev ios
-
     - name: compile example ios
       run: |
         op ./op-examples/tonic-ios/ -ios -simulator
       env:
         CI: true
-
-    - name: Check the correctness of the version
-      run: |
-        ./bin/ci_version_check.sh
