@@ -166,11 +166,7 @@ function _cross_compile_libudx {
   done
 
   export AR=$(xcrun -sdk iphoneos -find ar)
-
-  for OBJ in $(ls $BUILD_DIR/*.o)
-  do
-    "$AR" rvs libudx.a $OBJ
-  done
+  "$AR" rvs libudx.a $(ls $BUILD_DIR/*.o)
 
   #
   # Copy the build into the project and delete leftover build artifacts.
