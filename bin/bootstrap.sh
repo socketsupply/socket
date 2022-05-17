@@ -268,7 +268,6 @@ function _cross_compile_libuv {
 if [ "$2" == "ios" ]; then
   _cross_compile_libuv
   _cross_compile_libudx
-  exit 0
 fi
 
 #
