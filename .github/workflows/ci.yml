@@ -58,6 +58,10 @@ jobs:
         CI: true
         CXX: g++-11
 
+    - name: Check the correctness of the version
+      run: |
+        ./bin/ci_version_check.sh
+
   build_on_win:
     runs-on: windows-2022
     timeout-minutes: 10
@@ -128,6 +132,10 @@ jobs:
       env:
         CI: true
 
+    - name: Check the correctness of the version
+      run: |
+        ./bin/ci_version_check.sh
+
   build_on_mac:
     runs-on: macOS-11
     timeout-minutes: 5
@@ -173,6 +181,10 @@ jobs:
       env:
         CI: true
 
+    - name: Check the correctness of the version
+      run: |
+        ./bin/ci_version_check.sh
+
   build_on_ios:
     runs-on: macOS-11
     timeout-minutes: 10
@@ -214,3 +226,7 @@ jobs:
         op ./op-examples/tonic-ios/ -ios -simulator
       env:
         CI: true
+
+    - name: Check the correctness of the version
+      run: |
+        ./bin/ci_version_check.sh

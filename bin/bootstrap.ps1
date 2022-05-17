@@ -40,7 +40,7 @@ Function Build {
   $VERSION = $(type VERSION.txt) 2>&1 | % ToString
 
   Write-Output "- Compiling the build tool"
-  clang++ src\cli.cc -o $WORKING_PATH\bin\op.exe -std=c++20 -DVERSION_HASH" $($VERSION_HASH)" -DVERSION" $($VERSION)"
+  clang++ src\cli.cc -o $WORKING_PATH\bin\op.exe -std=c++20 -DVERSION_HASH="$($VERSION_HASH)" -DVERSION="$($VERSION)"
   # -I 'C:\Program Files (x86)\Windows Kits\10\Include\10.0.19041.0\shared' `
 
   if ($? -ne 1) {
