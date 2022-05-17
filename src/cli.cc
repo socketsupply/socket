@@ -809,7 +809,17 @@ int main (const int argc, const char* argv[]) {
 
       if (flagShouldRun) {
         log("run simulator");
-        auto rOpenSimulator = exec("open /Applications/Xcode.app/Contents/Developer/Applications/Simulator.app/ --args -CurrentDeviceUDID " + uuid);
+
+        auto pathToXCode = fs::path("/Applications") / "Xcode.app" / "Contents";
+        auto pathToSimulator = pathToXCode / "Developer" / "Applications" / "Simulator.app";
+
+        std::stringstream simulatorCommand;
+        simulatorCommand
+          << "open "
+          << pathToSimulator.string()
+          << " --args -CurrentDeviceUDID " << uuid;
+
+        auto rOpenSimulator = exec(simulatorCommand.str().c_str());
         if (rOpenSimulator.exitCode != 0) {
           log("unable to run simulator");
           if (rOpenSimulator.output.size() > 0) {
@@ -872,14 +882,9 @@ int main (const int argc, const char* argv[]) {
       log("exported archive");
     }
 
-    if (flagShouldRun) {
-      auto pathToXCode = fs::path("/Applications") / "Xcode.app" / "Contents";
-      auto pathToSimulator = pathToXCode / "Developer" / "Applications" / "Simulator.app";
-
-      std::stringstream simulatorCommand;
-      simulatorCommand << "open " << pathToSimulator.string();
-      exec(simulatorCommand.str().c_str());
-    }
+    // TODO(@chicoxyzzy): run on iPhone
+    // if (flagShouldRun && !flagRunOnSimulator) {
+    // }
 
     log("completed");
     fs::current_path(oldCwd);
