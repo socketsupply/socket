@@ -1229,7 +1229,7 @@ namespace SSC {
         StringToWString(s).c_str(),
         nullptr
       );
-    })
+    });
   }
 
   void Window::navigate (const std::string& seq, const std::string& value) {
@@ -1259,7 +1259,7 @@ namespace SSC {
       );
 
       webview->Navigate(StringToWString(value).c_str());
-    })
+    });
   }
 
   void Window::setTitle (const std::string& seq, const std::string& title) {
