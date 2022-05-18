@@ -1,4 +1,4 @@
-name: Operator Framework CI
+name: Socket SDK CI
 
 on: [push]
 
@@ -22,7 +22,7 @@ jobs:
         registry-url: https://npm.pkg.github.com/
         scope: '@socketsupply'
 
-    - name: Install op deps
+    - name: Install Socket SDK deps
       run: |
         sudo apt install software-properties-common
         sudo add-apt-repository ppa:ubuntu-toolchain-r/test
@@ -34,7 +34,7 @@ jobs:
       env:
         CXX: g++-11
 
-    - name: Check if op has a correct version
+    - name: Check if Socket SDK has a correct version
       run: |
         ./bin/ci_version_check.sh
 
@@ -50,7 +50,7 @@ jobs:
 
     - name: compile example desktop
       run: |
-        op ./op-examples/tonic-desktop/
+        ssc ./op-examples/tonic-desktop/
       env:
         CI: true
         CXX: g++-11

@@ -8,7 +8,7 @@ static GtkTargetEntry droppableTypes[] = {
   { (char*) "text/uri-list", 0, 0 }
 };
 
-namespace Operator {
+namespace SSC {
   class App : public IApp {
     public:
       App(int);
@@ -249,7 +249,7 @@ namespace Operator {
             gchar *str_value = jsc_value_to_string(value);
 
 
-            w->draggablePayload = Operator::split(str_value, ';');
+            w->draggablePayload = SSC::split(str_value, ';');
             exception = jsc_context_get_exception(jsc_value_get_context(value));
           },
           w
@@ -335,7 +335,7 @@ namespace Operator {
         int count = w->draggablePayload.size();
         bool inbound = !w->isDragInvokedInsideWindow;
 
-        // w->eval(Operator::emitToRenderProcess("dragend", "{}"));
+        // w->eval(SSC::emitToRenderProcess("dragend", "{}"));
 
         // TODO wtf we get a toaster instead of actual focus
         gtk_window_present(GTK_WINDOW(w->window));
@@ -348,7 +348,7 @@ namespace Operator {
           "\"y\":" + std::to_string(y) + "}"
         );
 
-        w->eval(Operator::emitToRenderProcess("drag", json));
+        w->eval(SSC::emitToRenderProcess("drag", json));
       }),
       this
     );
@@ -365,7 +365,7 @@ namespace Operator {
 
         w->isDragInvokedInsideWindow = false;
         w->draggablePayload.clear();
-        w->eval(Operator::emitToRenderProcess("dragend", "{}"));
+        w->eval(SSC::emitToRenderProcess("dragend", "{}"));
       }),
       this
     );
@@ -378,7 +378,7 @@ namespace Operator {
         if (!w) return;
 
         w->isDragInvokedInsideWindow = false;
-        w->eval(Operator::emitToRenderProcess("dragend", "{}"));
+        w->eval(SSC::emitToRenderProcess("dragend", "{}"));
       }),
       this
     );
@@ -459,7 +459,7 @@ namespace Operator {
         ));
 
         w->draggablePayload.clear();
-        w->eval(Operator::emitToRenderProcess("dragend", "{}"));
+        w->eval(SSC::emitToRenderProcess("dragend", "{}"));
         gtk_drag_finish(context, TRUE, TRUE, time);
         return TRUE;
       }),

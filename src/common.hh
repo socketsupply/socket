@@ -1,5 +1,5 @@
-#ifndef OP_H
-#define OP_H
+#ifndef SSC_H
+#define SSC_H
 
 #include "preload.hh"
 
@@ -57,8 +57,8 @@
 #define DEBUG 0
 #endif
 
-#ifndef OPERATOR_MAX_WINDOWS
-#define OPERATOR_MAX_WINDOWS 32
+#ifndef SOCKET_MAX_WINDOWS
+#define SOCKET_MAX_WINDOWS 32
 #endif
 
 #define TO_STR(arg) #arg
@@ -72,7 +72,7 @@ using Map = std::map<std::string, std::string>;
 using SCallback = std::function<void(const std::string)>;
 using ExitCallback = std::function<void(int code)>;
 
-namespace Operator {
+namespace SSC {
   enum {
     WINDOW_HINT_NONE = 0,  // Width and height are default size
     WINDOW_HINT_MIN = 1,   // Width and height are minimum bounds
@@ -483,7 +483,7 @@ namespace Operator {
 
   inline std::string prefixFile(std::string s) {
     if (platform.mac || platform.linux) {
-      return std::string("/usr/local/lib/op/" + s + " ");
+      return std::string("/usr/local/lib/socket-sdk/" + s + " ");
     }
 
     std::string local = getEnv("LOCALAPPDATA");
@@ -492,7 +492,7 @@ namespace Operator {
 
   inline std::string prefixFile() {
     if (platform.mac || platform.linux) {
-      return "/usr/local/lib/op";
+      return "/usr/local/lib/socket-sdk/";
     }
 
     std::string local = getEnv("LOCALAPPDATA");
@@ -871,8 +871,8 @@ namespace Operator {
 
       WindowFactory (App &app) :
         app(app),
-        inits(OPERATOR_MAX_WINDOWS),
-        windows(OPERATOR_MAX_WINDOWS)
+        inits(SOCKET_MAX_WINDOWS),
+        windows(SOCKET_MAX_WINDOWS)
     {
 #if DEBUG
         lastDebugLogLine = std::chrono::system_clock::now();
@@ -1078,4 +1078,4 @@ namespace Operator {
   };
 }
 
-#endif // OP_H
+#endif // SSC_H

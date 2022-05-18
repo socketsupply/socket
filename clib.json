@@ -1,6 +1,6 @@
 {
-  "name": "operatorframework",
-  "repo": "socketsupply/operatorframework",
+  "name": "socket-sdk",
+  "repo": "socketsupply/socket-sdk",
   "version": "0.1.0",
   "description": "Build and package lean, fast, native desktop and mobile applications using the web technologies you already know.",
   "install": "./bin/bootstrap.sh install",

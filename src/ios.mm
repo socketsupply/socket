@@ -23,7 +23,7 @@ dispatch_queue_attr_t qos = dispatch_queue_attr_make_with_qos_class(
   -1
 );
 
-static dispatch_queue_t queue = dispatch_queue_create("op.queue", qos);
+static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
 @interface NavigationDelegate : NSObject<WKNavigationDelegate>
 - (void) webView: (WKWebView*)webView
@@ -94,7 +94,7 @@ std::map<std::string, id<WKURLSchemeTask>> tasks;
 - (void)webView: (AppDelegate*)webView startURLSchemeTask:(id <WKURLSchemeTask>)task {
   auto url = std::string(task.request.URL.absoluteString.UTF8String);
 
-  Operator::Parse cmd(url);
+  SSC::Parse cmd(url);
   tasks[cmd.get("seq")] = task;
 
   [webView route: url];
@@ -250,7 +250,7 @@ bool isRunning = false;
 //
 @implementation AppDelegate
 - (void) emit: (std::string)event message: (std::string)message {
-  NSString* script = [NSString stringWithUTF8String: Operator::emitToRenderProcess(event, Operator::encodeURIComponent(message)).c_str()];
+  NSString* script = [NSString stringWithUTF8String: SSC::emitToRenderProcess(event, SSC::encodeURIComponent(message)).c_str()];
   [self.webview evaluateJavaScript: script completionHandler:nil];
 }
 
@@ -277,12 +277,12 @@ bool isRunning = false;
     return;
   }
 
-  NSString* script = [NSString stringWithUTF8String: Operator::resolveToRenderProcess(seq, "0", Operator::encodeURIComponent(message)).c_str()];
+  NSString* script = [NSString stringWithUTF8String: SSC::resolveToRenderProcess(seq, "0", SSC::encodeURIComponent(message)).c_str()];
   [self.webview evaluateJavaScript: script completionHandler:nil];
 }
 
 - (void) reject: (std::string)seq message: (std::string)message {
-  NSString* script = [NSString stringWithUTF8String: Operator::resolveToRenderProcess(seq, "1", Operator::encodeURIComponent(message)).c_str()];
+  NSString* script = [NSString stringWithUTF8String: SSC::resolveToRenderProcess(seq, "1", SSC::encodeURIComponent(message)).c_str()];
   [self.webview evaluateJavaScript: script completionHandler:nil];
 }
 
@@ -303,7 +303,7 @@ bool isRunning = false;
       auto desc = static_cast<DescriptorContext*>(req->data);
 
       dispatch_async(dispatch_get_main_queue(), ^{
-        [desc->delegate resolve: desc->seq message: Operator::format(R"JSON({
+        [desc->delegate resolve: desc->seq message: SSC::format(R"JSON({
           "data": {
             "fd": $S
           }
@@ -315,7 +315,7 @@ bool isRunning = false;
 
     if (fd < 0) {
       dispatch_async(dispatch_get_main_queue(), ^{
-        [self resolve: seq message: Operator::format(R"({
+        [self resolve: seq message: SSC::format(R"({
           "err": {
             "id": "$S",
             "message": "$S"
@@ -336,7 +336,7 @@ bool isRunning = false;
 
     if (desc == nullptr) {
       dispatch_async(dispatch_get_main_queue(), ^{
-        [self resolve: seq message: Operator::format(R"JSON({
+        [self resolve: seq message: SSC::format(R"JSON({
           "err": {
             "code": "ENOTOPEN",
             "message": "No file descriptor found with that id"
@@ -353,7 +353,7 @@ bool isRunning = false;
       auto desc = static_cast<DescriptorContext*>(req->data);
 
       dispatch_async(dispatch_get_main_queue(), ^{
-        [desc->delegate resolve: desc->seq message: Operator::format(R"JSON({
+        [desc->delegate resolve: desc->seq message: SSC::format(R"JSON({
           "data": {
             "fd": $S
           }
@@ -365,7 +365,7 @@ bool isRunning = false;
 
     if (err) {
       dispatch_async(dispatch_get_main_queue(), ^{
-        [self resolve: seq message: Operator::format(R"({
+        [self resolve: seq message: SSC::format(R"({
           "err": {
             "id": "$S",
             "message": "$S"
@@ -382,7 +382,7 @@ bool isRunning = false;
 
     if (desc == nullptr) {
       dispatch_async(dispatch_get_main_queue(), ^{
-        [self resolve: seq message: Operator::format(R"JSON({
+        [self resolve: seq message: SSC::format(R"JSON({
           "err": {
             "code": "ENOTOPEN",
             "message": "No file descriptor found with that id"
@@ -406,7 +406,7 @@ bool isRunning = false;
 
       if (req->result < 0) {
         dispatch_async(dispatch_get_main_queue(), ^{
-          [desc->delegate resolve: desc->seq message: Operator::format(R"JSON({
+          [desc->delegate resolve: desc->seq message: SSC::format(R"JSON({
             "err": {
               "code": "ENOTOPEN",
               "message": "No file descriptor found with that id"
@@ -425,7 +425,7 @@ bool isRunning = false;
       auto message = std::string([base64Encoded UTF8String]);
 
       dispatch_async(dispatch_get_main_queue(), ^{
-        [desc->delegate resolve: desc->seq message: Operator::format(R"({
+        [desc->delegate resolve: desc->seq message: SSC::format(R"({
           "id": "$S",
           "result": "$i",
           "data": "$S"
@@ -437,7 +437,7 @@ bool isRunning = false;
 
     if (err) {
       dispatch_async(dispatch_get_main_queue(), ^{
-        [self resolve: seq message: Operator::format(R"({
+        [self resolve: seq message: SSC::format(R"({
           "err": {
             "id": "$S",
             "message": "$S"
@@ -454,7 +454,7 @@ bool isRunning = false;
 
     if (desc == nullptr) {
       dispatch_async(dispatch_get_main_queue(), ^{
-        [self resolve: seq message: Operator::format(R"JSON({
+        [self resolve: seq message: SSC::format(R"JSON({
           "err": {
             "code": "ENOTOPEN",
             "message": "No file descriptor found with that id"
@@ -476,7 +476,7 @@ bool isRunning = false;
       auto desc = static_cast<DescriptorContext*>(req->data);
 
       dispatch_async(dispatch_get_main_queue(), ^{
-        [desc->delegate resolve: desc->seq message: Operator::format(R"({
+        [desc->delegate resolve: desc->seq message: SSC::format(R"({
           "id": "$S",
           "result": "$i"
         })", std::to_string(desc->id), (int)req->result)];
@@ -487,7 +487,7 @@ bool isRunning = false;
 
     if (err) {
       dispatch_async(dispatch_get_main_queue(), ^{
-        [self resolve: seq message: Operator::format(R"({
+        [self resolve: seq message: SSC::format(R"({
           "err": {
             "id": "$S",
             "message": "$S"
@@ -510,7 +510,7 @@ bool isRunning = false;
       auto desc = static_cast<DescriptorContext*>(req->data);
 
       dispatch_async(dispatch_get_main_queue(), ^{
-        [desc->delegate resolve: desc->seq message: Operator::format(R"({
+        [desc->delegate resolve: desc->seq message: SSC::format(R"({
           "id": "$S",
           "result": "$i"
         })", std::to_string(desc->id), (int)req->result)];
@@ -522,7 +522,7 @@ bool isRunning = false;
 
     if (err) {
       dispatch_async(dispatch_get_main_queue(), ^{
-        [self resolve: seq message: Operator::format(R"({
+        [self resolve: seq message: SSC::format(R"({
           "err": {
             "message": "$S"
           }
@@ -544,7 +544,7 @@ bool isRunning = false;
       auto desc = static_cast<DescriptorContext*>(req->data);
 
       dispatch_async(dispatch_get_main_queue(), ^{
-        [desc->delegate resolve: desc->seq message: Operator::format(R"({
+        [desc->delegate resolve: desc->seq message: SSC::format(R"({
           "id": "$S",
           "result": "$i"
         })", std::to_string(desc->id), (int)req->result)];
@@ -556,7 +556,7 @@ bool isRunning = false;
 
     if (err) {
       dispatch_async(dispatch_get_main_queue(), ^{
-        [self resolve: seq message: Operator::format(R"({
+        [self resolve: seq message: SSC::format(R"({
           "err": {
             "message": "$S"
           }
@@ -578,7 +578,7 @@ bool isRunning = false;
       auto desc = static_cast<DescriptorContext*>(req->data);
 
       dispatch_async(dispatch_get_main_queue(), ^{
-        [desc->delegate resolve: desc->seq message: Operator::format(R"({
+        [desc->delegate resolve: desc->seq message: SSC::format(R"({
           "id": "$S",
           "result": "$i"
         })", std::to_string(desc->id), (int)req->result)];
@@ -590,7 +590,7 @@ bool isRunning = false;
 
     if (err) {
       dispatch_async(dispatch_get_main_queue(), ^{
-        [self resolve: seq message: Operator::format(R"({
+        [self resolve: seq message: SSC::format(R"({
           "err": {
             "message": "$S"
           }
@@ -612,7 +612,7 @@ bool isRunning = false;
       auto desc = static_cast<DescriptorContext*>(req->data);
 
       dispatch_async(dispatch_get_main_queue(), ^{
-        [desc->delegate resolve: desc->seq message: Operator::format(R"({
+        [desc->delegate resolve: desc->seq message: SSC::format(R"({
           "id": "$S",
           "result": "$i"
         })", std::to_string(desc->id), (int)req->result)];
@@ -624,7 +624,7 @@ bool isRunning = false;
 
     if (err) {
       dispatch_async(dispatch_get_main_queue(), ^{
-        [self resolve: seq message: Operator::format(R"({
+        [self resolve: seq message: SSC::format(R"({
           "err": {
             "message": "$S"
           }
@@ -646,7 +646,7 @@ bool isRunning = false;
       auto desc = static_cast<DescriptorContext*>(req->data);
 
       dispatch_async(dispatch_get_main_queue(), ^{
-        [desc->delegate resolve: desc->seq message: Operator::format(R"({
+        [desc->delegate resolve: desc->seq message: SSC::format(R"({
           "id": "$S",
           "result": "$i"
         })", std::to_string(desc->id), (int)req->result)];
@@ -658,7 +658,7 @@ bool isRunning = false;
 
     if (err) {
       dispatch_async(dispatch_get_main_queue(), ^{
-        [self resolve: seq message: Operator::format(R"({
+        [self resolve: seq message: SSC::format(R"({
           "err": {
             "message": "$S"
           }
@@ -680,7 +680,7 @@ bool isRunning = false;
       auto desc = static_cast<DescriptorContext*>(req->data);
 
       dispatch_async(dispatch_get_main_queue(), ^{
-        [desc->delegate resolve: desc->seq message: Operator::format(R"({
+        [desc->delegate resolve: desc->seq message: SSC::format(R"({
           "id": "$S",
           "result": "$i"
         })", std::to_string(desc->id), (int)req->result)];
@@ -692,7 +692,7 @@ bool isRunning = false;
 
     if (err) {
       dispatch_async(dispatch_get_main_queue(), ^{
-        [self resolve: seq message: Operator::format(R"({
+        [self resolve: seq message: SSC::format(R"({
           "err": {
             "message": "$S"
           }
@@ -715,7 +715,7 @@ bool isRunning = false;
 
     if (err) {
       dispatch_async(dispatch_get_main_queue(), ^{
-        [self resolve: seq message: Operator::format(R"({
+        [self resolve: seq message: SSC::format(R"({
           "err": {
             "message": "$S"
           }
@@ -729,7 +729,7 @@ bool isRunning = false;
 
       if (req->result < 0) {
         dispatch_async(dispatch_get_main_queue(), ^{
-          [ctx->delegate resolve: ctx->seq message: Operator::format(R"({
+          [ctx->delegate resolve: ctx->seq message: SSC::format(R"({
             "err": {
               "message": "$S"
             }
@@ -755,7 +755,7 @@ bool isRunning = false;
       NSString *base64Encoded = [nsdata base64EncodedStringWithOptions:0];
 
       dispatch_async(dispatch_get_main_queue(), ^{
-        [ctx->delegate resolve: ctx->seq message: Operator::format(R"({
+        [ctx->delegate resolve: ctx->seq message: SSC::format(R"({
           "data": "$S"
         })", std::string([base64Encoded UTF8String]))];
       });
@@ -768,7 +768,7 @@ bool isRunning = false;
 
     if (err) {
       dispatch_async(dispatch_get_main_queue(), ^{
-        [self resolve: seq message: Operator::format(R"({
+        [self resolve: seq message: SSC::format(R"({
           "err": {
             "message": "$S"
           }
@@ -830,7 +830,7 @@ bool isRunning = false;
 
     if (client == nullptr) {
       dispatch_async(dispatch_get_main_queue(), ^{
-        [self resolve: seq message: Operator::format(R"JSON({
+        [self resolve: seq message: SSC::format(R"JSON({
           "err": {
             "message": "Not connected"
           }
@@ -853,7 +853,7 @@ bool isRunning = false;
     int rSize = uv_send_buffer_size(handle, &sz);
 
     dispatch_async(dispatch_get_main_queue(), ^{
-      [self resolve: seq message: Operator::format(R"JSON({
+      [self resolve: seq message: SSC::format(R"JSON({
         "data": {
           "size": $i
         }
@@ -869,7 +869,7 @@ bool isRunning = false;
 
     if (client == nullptr) {
       dispatch_async(dispatch_get_main_queue(), ^{
-        [self resolve: seq message: Operator::format(R"JSON({
+        [self resolve: seq message: SSC::format(R"JSON({
           "err": {
             "message": "Not connected"
           }
@@ -892,7 +892,7 @@ bool isRunning = false;
     int rSize = uv_recv_buffer_size(handle, &sz);
 
     dispatch_async(dispatch_get_main_queue(), ^{
-      [self resolve: seq message: Operator::format(R"JSON({
+      [self resolve: seq message: SSC::format(R"JSON({
         "data": {
           "size": $i
         }
@@ -908,7 +908,7 @@ bool isRunning = false;
 
     if (client == nullptr) {
       dispatch_async(dispatch_get_main_queue(), ^{
-        [self emit: "error" message: Operator::format(R"JSON({
+        [self emit: "error" message: SSC::format(R"JSON({
           "clientId": "$S",
           "data": {
             "message": "Not connected"
@@ -928,7 +928,7 @@ bool isRunning = false;
 
       if (status) {
         dispatch_async(dispatch_get_main_queue(), ^{
-          [client->delegate emit: "error" message: Operator::format(R"({
+          [client->delegate emit: "error" message: SSC::format(R"({
             "clientId": "$S",
             "data": {
               "message": "Write error $S"
@@ -985,7 +985,7 @@ bool isRunning = false;
 
       if (status < 0) {
         dispatch_async(dispatch_get_main_queue(), ^{
-          [client->delegate resolve: client->seq message: Operator::format(R"({
+          [client->delegate resolve: client->seq message: SSC::format(R"({
             "err": {
               "clientId": "$S",
               "message": "$S"
@@ -996,7 +996,7 @@ bool isRunning = false;
       }
 
       dispatch_async(dispatch_get_main_queue(), ^{
-        [client->delegate resolve: client->seq message: Operator::format(R"({
+        [client->delegate resolve: client->seq message: SSC::format(R"({
           "data": {
             "clientId": "$S"
           }
@@ -1014,7 +1014,7 @@ bool isRunning = false;
         auto message = std::string([base64Encoded UTF8String]);
 
         dispatch_async(dispatch_get_main_queue(), ^{
-          [client->delegate emit: "data" message: Operator::format(R"({
+          [client->delegate emit: "data" message: SSC::format(R"({
             "clientId": "$S",
             "data": "$S"
           })", clientId, message)];
@@ -1039,7 +1039,7 @@ bool isRunning = false;
 
     if (r) {
       dispatch_async(dispatch_get_main_queue(), ^{
-        [self resolve: seq message: Operator::format(R"({
+        [self resolve: seq message: SSC::format(R"({
           "err": {
             "clientId": "$S",
             "message": "$S"
@@ -1087,7 +1087,7 @@ bool isRunning = false;
 
       if (status < 0) {
         dispatch_async(dispatch_get_main_queue(), ^{
-          [server->delegate emit: "connection" message: Operator::format(R"JSON({
+          [server->delegate emit: "connection" message: SSC::format(R"JSON({
             "serverId": "$S",
             "data": "New connection error $S"
           })JSON", std::to_string(server->serverId), uv_strerror(status))];
@@ -1095,7 +1095,7 @@ bool isRunning = false;
         return;
       }
 
-      auto clientId = Operator::rand64();
+      auto clientId = SSC::rand64();
       Client* client = clients[clientId] = new Client();
       client->clientId = clientId;
       client->server = server;
@@ -1113,7 +1113,7 @@ bool isRunning = false;
         dispatch_async(dispatch_get_main_queue(), ^{
           [server->delegate
            emit: "connection"
-           message: Operator::format(R"JSON({
+           message: SSC::format(R"JSON({
              "serverId": "$S",
              "clientId": "$S",
              "data": {
@@ -1138,7 +1138,7 @@ bool isRunning = false;
 
     if (r) {
       dispatch_async(dispatch_get_main_queue(), ^{
-        [self resolve: seq message: Operator::format(R"JSON({
+        [self resolve: seq message: SSC::format(R"JSON({
           "err": {
             "serverId": "$S",
             "message": "$S"
@@ -1151,7 +1151,7 @@ bool isRunning = false;
     }
 
     dispatch_async(dispatch_get_main_queue(), ^{
-      [self resolve: seq message: Operator::format(R"JSON({
+      [self resolve: seq message: SSC::format(R"JSON({
         "data": {
           "serverId": "$S",
           "port": "$i",
@@ -1175,7 +1175,7 @@ bool isRunning = false;
 
     if (client == nullptr) {
       dispatch_async(dispatch_get_main_queue(), ^{
-        [self resolve:seq message: Operator::format(R"JSON({
+        [self resolve:seq message: SSC::format(R"JSON({
           "err": {
             "clientId": "$S",
             "message": "No connection found with the specified id"
@@ -1192,7 +1192,7 @@ bool isRunning = false;
     uv_tcp_keepalive((uv_tcp_t*) client->tcp, 1, timeout);
 
     dispatch_async(dispatch_get_main_queue(), ^{
-      [client->delegate resolve:client->seq message: Operator::format(R"JSON({
+      [client->delegate resolve:client->seq message: SSC::format(R"JSON({
         "data": {}
       })JSON")];
     });
@@ -1209,7 +1209,7 @@ bool isRunning = false;
 
     if (client == nullptr) {
       dispatch_async(dispatch_get_main_queue(), ^{
-        [self resolve:seq message: Operator::format(R"JSON({
+        [self resolve:seq message: SSC::format(R"JSON({
           "err": {
             "clientId": "$S",
             "message": "No connection found with the specified id"
@@ -1238,7 +1238,7 @@ bool isRunning = false;
         auto message = std::string([base64Encoded UTF8String]);
 
         dispatch_async(dispatch_get_main_queue(), ^{
-          [client->server->delegate emit: "data" message: Operator::format(R"JSON({
+          [client->server->delegate emit: "data" message: SSC::format(R"JSON({
             "serverId": "$S",
             "clientId": "$S",
             "data": "$S"
@@ -1250,7 +1250,7 @@ bool isRunning = false;
       if (nread < 0) {
         if (nread != UV_EOF) {
           dispatch_async(dispatch_get_main_queue(), ^{
-            [client->server->delegate emit: "error" message: Operator::format(R"JSON({
+            [client->server->delegate emit: "error" message: SSC::format(R"JSON({
               "serverId": "$S",
               "data": "$S"
             })JSON", std::to_string(client->server->serverId), uv_err_name((int) nread))];
@@ -1274,7 +1274,7 @@ bool isRunning = false;
 
     if (err < 0) {
       dispatch_async(dispatch_get_main_queue(), ^{
-        [self resolve:seq message: Operator::format(R"JSON({
+        [self resolve:seq message: SSC::format(R"JSON({
           "err": {
             "serverId": "$S",
             "message": "$S"
@@ -1285,7 +1285,7 @@ bool isRunning = false;
     }
 
     dispatch_async(dispatch_get_main_queue(), ^{
-      [self resolve:client->server->seq message: Operator::format(R"JSON({
+      [self resolve:client->server->seq message: SSC::format(R"JSON({
         "data": {}
       })JSON")];
     });
@@ -1304,7 +1304,7 @@ bool isRunning = false;
 
     if (client == nullptr) {
       dispatch_async(dispatch_get_main_queue(), ^{
-        [self resolve:seq message: Operator::format(R"JSON({
+        [self resolve:seq message: SSC::format(R"JSON({
           "err": {
             "clientId": "$S",
             "message": "No connection with specified id"
@@ -1323,7 +1323,7 @@ bool isRunning = false;
     }
 
     dispatch_async(dispatch_get_main_queue(), ^{
-      [self resolve:client->seq message: Operator::format(R"JSON({
+      [self resolve:client->seq message: SSC::format(R"JSON({
         "data": $i
       })JSON", r)];
     });
@@ -1336,7 +1336,7 @@ bool isRunning = false;
 
     if (client == nullptr) {
       dispatch_async(dispatch_get_main_queue(), ^{
-        [self resolve:seq message: Operator::format(R"JSON({
+        [self resolve:seq message: SSC::format(R"JSON({
           "err": {
             "clientId": "$S",
             "message": "No connection with specified id"
@@ -1364,7 +1364,7 @@ bool isRunning = false;
       auto client = reinterpret_cast<Client*>(handle->data);
 
       dispatch_async(dispatch_get_main_queue(), ^{
-        [client->delegate resolve:client->seq message: Operator::format(R"JSON({
+        [client->delegate resolve:client->seq message: SSC::format(R"JSON({
           "data": {}
         })JSON")];
       });
@@ -1380,7 +1380,7 @@ bool isRunning = false;
 
     if (client == nullptr) {
       dispatch_async(dispatch_get_main_queue(), ^{
-        [self resolve:seq message: Operator::format(R"JSON({
+        [self resolve:seq message: SSC::format(R"JSON({
           "err": {
             "clientId": "$S",
             "message": "No connection with specified id"
@@ -1411,7 +1411,7 @@ bool isRunning = false;
       auto client = reinterpret_cast<Client*>(req->handle->data);
 
       dispatch_async(dispatch_get_main_queue(), ^{
-        [client->delegate resolve:client->seq message: Operator::format(R"JSON({
+        [client->delegate resolve:client->seq message: SSC::format(R"JSON({
           "data": {
             "status": "$i"
           }
@@ -1441,7 +1441,7 @@ bool isRunning = false;
 
     if (err < 0) {
       dispatch_async(dispatch_get_main_queue(), ^{
-        [self resolve:seq message: Operator::format(R"JSON({
+        [self resolve:seq message: SSC::format(R"JSON({
           "err": {
             "serverId": "$S",
             "message": "$S"
@@ -1455,7 +1455,7 @@ bool isRunning = false;
 
     if (err < 0) {
       dispatch_async(dispatch_get_main_queue(), ^{
-        [server->delegate emit: "error" message: Operator::format(R"JSON({
+        [server->delegate emit: "error" message: SSC::format(R"JSON({
           "serverId": "$S",
           "data": "$S"
         })JSON", std::to_string(server->serverId), uv_strerror(err))];
@@ -1464,7 +1464,7 @@ bool isRunning = false;
     }
 
     dispatch_async(dispatch_get_main_queue(), ^{
-      [server->delegate resolve:server->seq message: Operator::format(R"JSON({
+      [server->delegate resolve:server->seq message: SSC::format(R"JSON({
         "data": {}
       })JSON")];
     });
@@ -1489,7 +1489,7 @@ bool isRunning = false;
 
     if (client == nullptr) {
       dispatch_async(dispatch_get_main_queue(), ^{
-        [self resolve:seq message: Operator::format(R"JSON({
+        [self resolve:seq message: SSC::format(R"JSON({
           "err": {
             "clientId": "$S",
             "message": "no such client"
@@ -1510,7 +1510,7 @@ bool isRunning = false;
 
     if (err) {
       dispatch_async(dispatch_get_main_queue(), ^{
-        [self resolve:seq message: Operator::format(R"JSON({
+        [self resolve:seq message: SSC::format(R"JSON({
           "err": {
             "clientId": "$S",
             "message": "$S"
@@ -1528,7 +1528,7 @@ bool isRunning = false;
       auto client = reinterpret_cast<Client*>(req->data);
 
       dispatch_async(dispatch_get_main_queue(), ^{
-        [client->delegate resolve:client->seq message: Operator::format(R"JSON({
+        [client->delegate resolve:client->seq message: SSC::format(R"JSON({
           "data": {
             "clientId": "$S",
             "status": "$i"
@@ -1542,7 +1542,7 @@ bool isRunning = false;
 
     if (err) {
       dispatch_async(dispatch_get_main_queue(), ^{
-        [client->delegate emit: "error" message: Operator::format(R"({
+        [client->delegate emit: "error" message: SSC::format(R"({
           "clientId": "$S",
           "data": {
             "message": "Write error $S"
@@ -1560,7 +1560,7 @@ bool isRunning = false;
 
     if (server == nullptr) {
       dispatch_async(dispatch_get_main_queue(), ^{
-        [self resolve:seq message: Operator::format(R"JSON({
+        [self resolve:seq message: SSC::format(R"JSON({
           "err": {
             "serverId": "$S",
             "message": "no such client"
@@ -1589,7 +1589,7 @@ bool isRunning = false;
         std::string ip(ipbuf);
 
         dispatch_async(dispatch_get_main_queue(), ^{
-          [server->delegate emit: "data" message: Operator::format(R"JSON({
+          [server->delegate emit: "data" message: SSC::format(R"JSON({
             "serverId": "$S",
             "port": "$i",
             "ip": "$S",
@@ -1602,7 +1602,7 @@ bool isRunning = false;
 
     if (err < 0) {
       dispatch_async(dispatch_get_main_queue(), ^{
-        [self resolve:seq message: Operator::format(R"JSON({
+        [self resolve:seq message: SSC::format(R"JSON({
           "err": {
             "serverId": "$S",
             "message": "$S"
@@ -1613,7 +1613,7 @@ bool isRunning = false;
     }
 
     dispatch_async(dispatch_get_main_queue(), ^{
-      [server->delegate resolve:server->seq message: Operator::format(R"JSON({
+      [server->delegate resolve:server->seq message: SSC::format(R"JSON({
         "data": {}
       })JSON")];
     });
@@ -1650,7 +1650,7 @@ bool isRunning = false;
     switch (status) {
       case nw_path_status_invalid: {
         dispatch_async(dispatch_get_main_queue(), ^{
-          [self emit: "offline" message: Operator::format(R"JSON({
+          [self emit: "offline" message: SSC::format(R"JSON({
             "message": "Network path is invalid"
           })JSON")];
         });
@@ -1658,7 +1658,7 @@ bool isRunning = false;
       }
       case nw_path_status_satisfied: {
         dispatch_async(dispatch_get_main_queue(), ^{
-          [self emit: "online" message: Operator::format(R"JSON({
+          [self emit: "online" message: SSC::format(R"JSON({
             "message": "Network is usable"
           })JSON")];
         });
@@ -1666,7 +1666,7 @@ bool isRunning = false;
       }
       case nw_path_status_satisfiable: {
         dispatch_async(dispatch_get_main_queue(), ^{
-          [self emit: "online" message: Operator::format(R"JSON({
+          [self emit: "online" message: SSC::format(R"JSON({
             "message": "Network may be usable"
           })JSON")];
         });
@@ -1674,7 +1674,7 @@ bool isRunning = false;
       }
       case nw_path_status_unsatisfied: {
         dispatch_async(dispatch_get_main_queue(), ^{
-          [self emit: "offline" message: Operator::format(R"JSON({
+          [self emit: "offline" message: SSC::format(R"JSON({
             "message": "Network is not usable"
           })JSON")];
         });
@@ -1687,7 +1687,7 @@ bool isRunning = false;
 }
 
 - (void) route: (std::string)msg {
-  using namespace Operator;
+  using namespace SSC;
   if (msg.find("ipc://") != 0) return;
 
   Parse cmd(msg);
@@ -1763,7 +1763,7 @@ bool isRunning = false;
     try {
       clientId = std::stoll(cmd.get("clientId"));
     } catch (...) {
-      [self resolve: seq message: Operator::format(R"JSON({
+      [self resolve: seq message: SSC::format(R"JSON({
         "err": { "message": "invalid clientid" }
       })JSON")];
       return;
@@ -1773,7 +1773,7 @@ bool isRunning = false;
   NSLog(@"COMMAND %s", msg.c_str());
 
   if (cmd.name == "external") {
-    NSString *url = [NSString stringWithUTF8String:Operator::decodeURIComponent(cmd.get("value")).c_str()];
+    NSString *url = [NSString stringWithUTF8String:SSC::decodeURIComponent(cmd.get("value")).c_str()];
     [[UIApplication sharedApplication] openURL:[NSURL URLWithString:url]];
     return;
   }
@@ -1782,7 +1782,7 @@ bool isRunning = false;
     auto seq = cmd.get("seq");
 
     if (clientId == 0) {
-      [self reject: seq message: Operator::format(R"JSON({
+      [self reject: seq message: SSC::format(R"JSON({
         "err": {
           "message": "no clientid"
         }
@@ -1792,7 +1792,7 @@ bool isRunning = false;
     Client* client = clients[clientId];
 
     if (client == nullptr) {
-      [self resolve: seq message: Operator::format(R"JSON({
+      [self resolve: seq message: SSC::format(R"JSON({
         "err": {
           "message": "not connected"
         }
@@ -1802,7 +1802,7 @@ bool isRunning = false;
     PeerInfo info;
     info.init(client->tcp);
 
-    auto message = Operator::format(
+    auto message = SSC::format(
       R"JSON({
         "data": {
           "ip": "$S",
@@ -1878,7 +1878,7 @@ bool isRunning = false;
     try {
       offset = std::stoi(cmd.get("offset"));
     } catch (...) {
-      [self resolve: seq message: Operator::format(R"JSON({
+      [self resolve: seq message: SSC::format(R"JSON({
         "err": { "message": "invalid offset" }
       })JSON")];
     }
@@ -1886,7 +1886,7 @@ bool isRunning = false;
     try {
       len = std::stoi(cmd.get("len"));
     } catch (...) {
-      [self resolve: seq message: Operator::format(R"JSON({
+      [self resolve: seq message: SSC::format(R"JSON({
         "err": { "message": "invalid length" }
       })JSON")];
     }
@@ -1894,7 +1894,7 @@ bool isRunning = false;
     try {
       port = std::stoi(cmd.get("port"));
     } catch (...) {
-      [self resolve: seq message: Operator::format(R"JSON({
+      [self resolve: seq message: SSC::format(R"JSON({
         "err": { "message": "invalid port" }
       })JSON")];
     }
@@ -1923,7 +1923,7 @@ bool isRunning = false;
     try {
       port = std::stoi(cmd.get("port"));
     } catch (...) {
-      [self resolve: seq message: Operator::format(R"JSON({
+      [self resolve: seq message: SSC::format(R"JSON({
         "err": { "message": "invalid port" }
       })JSON")];
     }
@@ -1964,7 +1964,7 @@ bool isRunning = false;
 
     if (ip == "error") {
       [self resolve: cmd.get("seq")
-            message: Operator::format(R"({
+            message: SSC::format(R"({
               "err": { "message": "offline" }
             })")
       ];
@@ -1973,7 +1973,7 @@ bool isRunning = false;
 
     if (port.size() == 0) {
       [self reject: cmd.get("seq")
-           message: Operator::format(R"({
+           message: SSC::format(R"({
              "err": { "message": "port required" }
            })")
       ];
@@ -2009,7 +2009,7 @@ bool isRunning = false;
   auto str = std::string(url.absoluteString.UTF8String);
 
   // TODO can this be escaped or is the url encoded property already?
-  [self emit: "protocol" message: Operator::format(R"JSON({
+  [self emit: "protocol" message: SSC::format(R"JSON({
     "url": "$S",
   })JSON", str)];
 
@@ -2018,7 +2018,7 @@ bool isRunning = false;
 
 - (BOOL) application :(UIApplication *) application
   didFinishLaunchingWithOptions :(NSDictionary *) launchOptions {
-    using namespace Operator;
+    using namespace SSC;
 
     auto appFrame = [[UIScreen mainScreen] bounds];
 
@@ -2107,7 +2107,7 @@ bool isRunning = false;
       allowingReadAccessToURL: [NSURL fileURLWithPath: allowed]
     ];
 
-    // NSString *protocol = @"operator-loader://";
+    // NSString *protocol = @"socket-sdk-loader://";
     // [self.webview loadRequest: [protocol stringByAppendingString: url]];
 
     [self.window makeKeyAndVisible];

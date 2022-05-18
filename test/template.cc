@@ -15,11 +15,11 @@ int main () {
    std::copy(test.begin(), test.end(), std::ostream_iterator<unsigned int>(result, ", 0x"));
    result << "3b };";
 
-   Operator::writeFile("test.h", result.str()); */
+   SSC::writeFile("test.h", result.str()); */
 
   /* char* name = "1.1.1.1";
   char* port = "8080";
-  auto s1 = Operator::encodeURIComponent(Operator::format(R"({
+  auto s1 = SSC::encodeURIComponent(SSC::format(R"({
     "data": {
       "status": "READY",
       "ip": "$C",
@@ -30,7 +30,7 @@ int main () {
   std::string a = "Allice";
   std::string b = "Bob";
 
-  auto s2 = Operator::format(
+  auto s2 = SSC::format(
     "Hello, $S."
     "There are $i copies of $c for $S.",
     a, 100, 'x', b);

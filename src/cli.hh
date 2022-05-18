@@ -5,10 +5,10 @@
 // Cli Help
 //
 constexpr auto gHelpText = R"TEXT(
-op {{version}}
+ssc {{version}}
 
 usage:
-  op <project-dir> [-h, ...]
+  ssc <project-dir> [-h, ...]
 
 flags:
   -b   bundle for app store
@@ -306,7 +306,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 		294A3C7F27649D27007B5B9A /* preload.hh */ = {isa = PBXFileReference; fileEncoding = 4; indentWidth = 2; lastKnownFileType = sourcecode.cpp.h; path = preload.hh; sourceTree = "<group>"; tabWidth = 2; };
 		294A3C8027649DD9007B5B9A /* common.hh */ = {isa = PBXFileReference; fileEncoding = 4; indentWidth = 2; lastKnownFileType = sourcecode.cpp.h; path = common.hh; sourceTree = "<group>"; tabWidth = 2; };
 		294A3C842764EAB7007B5B9A /* ui */ = {isa = PBXFileReference; lastKnownFileType = folder; path = ui; sourceTree = "<group>"; };
-		294A3C9027677424007B5B9A /* op.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = op.entitlements; sourceTree = "<group>"; };
+		294A3C9027677424007B5B9A /* socket.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = socket.entitlements; sourceTree = "<group>"; };
 		2996EDB12770BC1F00C672A2 /* Network.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Network.framework; path = System/Library/Frameworks/Network.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
@@ -337,7 +337,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 			isa = PBXGroup;
 			children = (
 				290F7F86276BC2B000486988 /* lib */,
-				294A3C9027677424007B5B9A /* op.entitlements */,
+				294A3C9027677424007B5B9A /* socket.entitlements */,
 				294A3C842764EAB7007B5B9A /* ui */,
 				294A3C8027649DD9007B5B9A /* common.hh */,
 				294A3C7F27649D27007B5B9A /* preload.hh */,
@@ -576,7 +576,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 				ARCHS = "{{arch}}";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = op.entitlements;
+				CODE_SIGN_ENTITLEMENTS = socket.entitlements;
 				CODE_SIGN_IDENTITY = "{{ios_codesign_identity}}";
 				CODE_SIGN_STYLE = Manual;
 				CURRENT_PROJECT_VERSION = 1;
@@ -621,7 +621,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 				ARCHS = "{{arch}}";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = op.entitlements;
+				CODE_SIGN_ENTITLEMENTS = socket.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
 				CURRENT_PROJECT_VERSION = 1;
@@ -665,7 +665,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		29124C4527613369001832A0 /* Build configuration list for PBXProject "op" */ = {
+		29124C4527613369001832A0 /* Build configuration list for PBXProject "ssc" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				29124C772761336B001832A0 /* Debug */,
@@ -674,7 +674,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		29124C792761336B001832A0 /* Build configuration list for PBXNativeTarget "op" */ = {
+		29124C792761336B001832A0 /* Build configuration list for PBXNativeTarget "ssc" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				29124C7A2761336B001832A0 /* Debug */,
@@ -982,7 +982,7 @@ width: 1024
 # TODO description & value
 # win_publisher: CN=Beep Boop Corp., O=Beep Boop Corp., L=San Francisco, S=California, C=US
 
-# If the `_cmd` fails, op will "touch" the following file, if that fails it will
+# If the `_cmd` fails, ssc will "touch" the following file, if that fails it will
 # try to download whatever you specify for the `_bootstrap_src` value.
 # win_bootstrap_dest: ./node
 
@@ -1006,7 +1006,7 @@ width: 1024
 # The icon to use for identifying your app in Linux desktop environments.
 # linux_icon: src\icon.png
 
-# If the `_cmd` fails, op will "touch" the following file, if that fails it will
+# If the `_cmd` fails, ssc will "touch" the following file, if that fails it will
 # try to download whatever you specify for the `_bootstrap_src` value.
 # linux_bootstrap_dest: ./node
 
@@ -1030,7 +1030,7 @@ width: 1024
 # The command to execute to spawn the "back-end" process.
 # mac_cmd:
 
-# If the `_cmd` fails, op will "touch" the following file, if that fails it will
+# If the `_cmd` fails, ssc will "touch" the following file, if that fails it will
 # try to download whatever you specify for the `_bootstrap_src` value.
 # mac_bootstrap_dest: ./node
 

@@ -24,7 +24,7 @@
 #pragma comment(lib,"Gdi32.lib")
 
 inline void alert (const std::wstring &ws) {
-  MessageBoxA(nullptr, Operator::WStringToString(ws).c_str(), _TEXT("Alert"), MB_OK | MB_ICONSTOP);
+  MessageBoxA(nullptr, SSC::WStringToString(ws).c_str(), _TEXT("Alert"), MB_OK | MB_ICONSTOP);
 }
 
 inline void alert (const std::string &s) {
@@ -35,7 +35,7 @@ inline void alert (const char* s) {
   MessageBoxA(nullptr, s, _TEXT("Alert"), MB_OK | MB_ICONSTOP);
 }
 
-namespace Operator {
+namespace SSC {
   using IEnvHandler = ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler;
   using IConHandler = ICoreWebView2CreateCoreWebView2ControllerCompletedHandler;
   using INavHandler = ICoreWebView2NavigationCompletedEventHandler;
@@ -474,7 +474,7 @@ namespace Operator {
       this->draggablePayload.clear();
 
       if (list != 0) {
-        draggablePayload = Operator::split(std::string(list), ';');
+        draggablePayload = SSC::split(std::string(list), ';');
 
         GlobalUnlock(list);
         ReleaseStgMedium(&medium);
@@ -488,7 +488,7 @@ namespace Operator {
           "}"
         );
 
-        auto payload = Operator::emitToRenderProcess("drag", json);
+        auto payload = SSC::emitToRenderProcess("drag", json);
         this->window->eval(payload);
       }
 
@@ -540,7 +540,7 @@ namespace Operator {
         "}"
       );
 
-      auto payload = Operator::emitToRenderProcess("drag", json);
+      auto payload = SSC::emitToRenderProcess("drag", json);
       this->window->eval(payload);
 
       return S_OK;
@@ -690,7 +690,7 @@ namespace Operator {
           // append escaped file path with wrapped quotes ('"')
           filesStringArray
             << '"'
-            << Operator::replace(std::string(buf), "\\\\", "\\\\")
+            << SSC::replace(std::string(buf), "\\\\", "\\\\")
             << '"';
 
           if (i < count - 1) {
@@ -727,7 +727,7 @@ namespace Operator {
               "}"
             );
 
-            this->window->eval(Operator::emitToRenderProcess("drop", json));
+            this->window->eval(SSC::emitToRenderProcess("drop", json));
           }
 
           std::string json = (
@@ -737,7 +737,7 @@ namespace Operator {
             "}"
           );
 
-          this->window->eval(Operator::emitToRenderProcess("dragend", json));
+          this->window->eval(SSC::emitToRenderProcess("dragend", json));
         }
       }
 
@@ -792,7 +792,7 @@ namespace Operator {
     );
 
     auto *szWindowClass = L"DesktopApp";
-    auto *szTitle = L"op";
+    auto *szTitle = L"Socket SDK";
 
     wcex.cbSize = sizeof(WNDCLASSEX);
     wcex.style = CS_HREDRAW | CS_VREDRAW;
@@ -815,7 +815,7 @@ namespace Operator {
 
   Window::Window (App& app, WindowOptions opts) : app(app), opts(opts) {
     window = CreateWindow(
-      TEXT("DesktopApp"), TEXT("op"),
+      TEXT("DesktopApp"), TEXT("Socket SDK"),
       WS_OVERLAPPEDWINDOW,
       100000,
       100000,
@@ -1948,4 +1948,4 @@ namespace Operator {
     return 0;
   }
 
-} // namespace Operator
+} // namespace SSC

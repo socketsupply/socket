@@ -17,7 +17,7 @@
 #define CMD_RUNNER
 #endif
 
-using namespace Operator;
+using namespace SSC;
 using namespace std::chrono;
 
 constexpr auto version_hash = STR_VALUE(VERSION_HASH);
@@ -43,8 +43,8 @@ void log (const std::string s) {
 void init (Map attrs) {
   auto cwd = fs::current_path();
   fs::create_directories(cwd / "src");
-  Operator::writeFile(cwd / "src" / "index.html", "<html>Hello, World</html>");
-  Operator::writeFile(cwd / "operator.config", tmpl(gDefaultConfig, attrs));
+  SSC::writeFile(cwd / "src" / "index.html", "<html>Hello, World</html>");
+  SSC::writeFile(cwd / "socket.config", tmpl(gDefaultConfig, attrs));
 }
 
 static std::string getCxxFlags() {
@@ -204,7 +204,7 @@ int main (const int argc, const char* argv[]) {
     target = fs::absolute(target);
   }
 
-  auto _settings = WStringToString(readFile(target / "operator.config"));
+  auto _settings = WStringToString(readFile(target / "socket.config"));
   auto settings = parseConfig(_settings);
 
   bool noCommand = (
@@ -620,7 +620,7 @@ int main (const int argc, const char* argv[]) {
 
     writeFile(pathBase / "LaunchScreen.storyboard", gStoryboardLaunchScreen);
     // TODO allow the user to copy their own if they have one
-    writeFile(pathToDist / "op.entitlements", gXcodeEntitlements);
+    writeFile(pathToDist / "socket.entitlements", gXcodeEntitlements);
 
     //
     // For iOS we're going to bail early and let XCode infrastructure handle
@@ -722,21 +722,21 @@ int main (const int argc, const char* argv[]) {
 
       auto iosSimulatorDeviceSuffix = settings["ios_simulator_device"];
       std::replace(iosSimulatorDeviceSuffix.begin(), iosSimulatorDeviceSuffix.end(), ' ', '_');
-      std::regex reOpDevice("OperatorFrameworkSimulator_" + iosSimulatorDeviceSuffix + "\\s\\((.+)\\)\\s\\((.+)\\)");
+      std::regex reSocketSDKDevice("SocketSDKSimulator_" + iosSimulatorDeviceSuffix + "\\s\\((.+)\\)\\s\\((.+)\\)");
       std::smatch match;
 
       std::string uuid;
       bool booted = false;
 
-      if (std::regex_search(rListDevices.output, match, reOpDevice)) {
+      if (std::regex_search(rListDevices.output, match, reSocketSDKDevice)) {
         uuid = match.str(1);
         booted = match.str(2).find("Booted") != std::string::npos;
 
-        log("found OperatorFramework simulator VM for " + settings["ios_simulator_device"] + " with uuid: " + uuid);
+        log("found SocketSDK simulator VM for " + settings["ios_simulator_device"] + " with uuid: " + uuid);
         if (booted) {
-          log("OperatorFramework simulator VM is booted");
+          log("SocketSDK simulator VM is booted");
         } else {
-          log("OperatorFramework simulator VM is not booted");
+          log("SocketSDK simulator VM is not booted");
         }
       } else {
         log("creating a new iOS simulator VM for " + settings["ios_simulator_device"]);
@@ -776,7 +776,7 @@ int main (const int argc, const char* argv[]) {
         std::stringstream createSimulatorCommand;
         createSimulatorCommand
           << "xcrun simctl"
-          << " create OperatorFrameworkSimulator_" + iosSimulatorDeviceSuffix
+          << " create SocketSDKSimulator_" + iosSimulatorDeviceSuffix
           << " " << deviceType
           << " " << runtimeId;
 

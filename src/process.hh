@@ -1,5 +1,5 @@
-#ifndef OP_HPP_
-#define OP_HPP_
+#ifndef SSC_HPP_
+#define SSC_HPP_
 
 #include <functional>
 #include <mutex>
@@ -29,7 +29,7 @@ splitc(const std::string& s, const char& c) {
   return vec;
 }
 
-namespace Operator {
+namespace SSC {
   using cb = std::function<void(std::string)>;
 
   // Additional parameters to Process constructors.
@@ -196,6 +196,6 @@ namespace Operator {
     read();
   }
 
-} // namespace Operator
+} // namespace SSC
 
-#endif // OP_HPP_
+#endif // SSC_HPP_

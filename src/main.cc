@@ -24,7 +24,7 @@
 #define InvalidWindowIndexError(index) \
   std::string("Invalid index given for window: ") + std::to_string(index)
 
-using namespace Operator;
+using namespace SSC;
 
 std::function<void(int)> shutdownHandler;
 void signalHandler(int signal) { shutdownHandler(signal); }
@@ -158,7 +158,7 @@ MAIN {
   }
 
   if (isCommandMode) {
-    argvForward << " --op-current-directory=" << fs::current_path();
+    argvForward << " --ssc-current-directory=" << fs::current_path();
 
     Process process(
       cmd,
@@ -227,7 +227,7 @@ MAIN {
         return;
       }
 
-      if (cmd.index > OPERATOR_MAX_WINDOWS) {
+      if (cmd.index > SOCKET_MAX_WINDOWS) {
         // @TODO: print warning
         return;
       }

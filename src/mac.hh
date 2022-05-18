@@ -34,7 +34,7 @@ int lastY = 0;
     "\"y\":" + y + "}"
   );
 
-  auto payload = Operator::emitToRenderProcess("dragend", json);
+  auto payload = SSC::emitToRenderProcess("dragend", json);
   draggablePayload.clear();
 
   [self evaluateJavaScript:
@@ -62,7 +62,7 @@ int lastY = 0;
     "\"y\":" + y + "}"
   );
 
-  auto payload = Operator::emitToRenderProcess("drag", json);
+  auto payload = SSC::emitToRenderProcess("drag", json);
 
   [self evaluateJavaScript:
     [NSString stringWithUTF8String: payload.c_str()] completionHandler:nil];
@@ -72,7 +72,7 @@ int lastY = 0;
 - (NSDragOperation) draggingEntered: (id<NSDraggingInfo>)info {
   [self draggingUpdated: info];
 
-  auto payload = Operator::emitToRenderProcess("dragenter", "{}");
+  auto payload = SSC::emitToRenderProcess("dragenter", "{}");
   [self evaluateJavaScript:
     [NSString stringWithUTF8String: payload.c_str()]
     completionHandler:nil];
@@ -99,8 +99,8 @@ int lastY = 0;
   for (int i = 0; i < len; i++) {
     NSURL *url = files[i];
     std::string path = [[url path] UTF8String];
-    // path = Operator::replace(path, "\"", "'");
-    // path = Operator::replace(path, "\\", "\\\\");
+    // path = SSC::replace(path, "\"", "'");
+    // path = SSC::replace(path, "\\", "\\\\");
     ss << "\"" << path << "\"";
 
     if (i < len - 1) {
@@ -116,7 +116,7 @@ int lastY = 0;
     "\"y\":" + std::to_string(y) + "}"
   );
 
-  auto payload = Operator::emitToRenderProcess("dropin", json);
+  auto payload = SSC::emitToRenderProcess("dropin", json);
 
   [self evaluateJavaScript:
     [NSString stringWithUTF8String: payload.c_str()] completionHandler:nil];
@@ -142,7 +142,7 @@ int lastY = 0;
     "\"y\":" + y + "}"
   );
 
-  auto payload = Operator::emitToRenderProcess("drag", json);
+  auto payload = SSC::emitToRenderProcess("drag", json);
 
   [self evaluateJavaScript:
     [NSString stringWithUTF8String: payload.c_str()] completionHandler:nil];
@@ -163,7 +163,7 @@ int lastY = 0;
 
   if (significantMoveX || significantMoveY) {
     for (auto path : draggablePayload) {
-      path = Operator::replace(path, "\"", "'");
+      path = SSC::replace(path, "\"", "'");
 
       std::string json = (
         "{\"src\":\"" + path + "\","
@@ -171,7 +171,7 @@ int lastY = 0;
         "\"y\":" + sy + "}"
       );
 
-      auto payload = Operator::emitToRenderProcess("drop", json);
+      auto payload = SSC::emitToRenderProcess("drop", json);
 
       [self evaluateJavaScript:
         [NSString stringWithUTF8String: payload.c_str()]
@@ -184,7 +184,7 @@ int lastY = 0;
     "\"y\":" + sy + "}"
   );
 
-  auto payload = Operator::emitToRenderProcess("dragend", json);
+  auto payload = SSC::emitToRenderProcess("dragend", json);
 
   [self evaluateJavaScript:
     [NSString stringWithUTF8String: payload.c_str()] completionHandler:nil];
@@ -223,7 +223,7 @@ int lastY = 0;
     }
 
     std::vector<std::string> files =
-      Operator::split(std::string([result UTF8String]), ';');
+      SSC::split(std::string([result UTF8String]), ';');
 
     if (files.size() == 0) {
       [super mouseDown:event];
@@ -256,7 +256,7 @@ int lastY = 0;
   [[self window] setFrameOrigin:newOrigin]; */
 
   if (!NSPointInRect(location, self.frame)) {
-    auto payload = Operator::emitToRenderProcess("dragexit", "{}");
+    auto payload = SSC::emitToRenderProcess("dragexit", "{}");
     [self evaluateJavaScript:
       [NSString stringWithUTF8String: payload.c_str()] completionHandler:nil];
   }
@@ -280,7 +280,7 @@ int lastY = 0;
       "\"y\":" + sy + "}"
     );
 
-    auto payload = Operator::emitToRenderProcess("drag", json);
+    auto payload = SSC::emitToRenderProcess("drag", json);
 
     [self evaluateJavaScript:
       [NSString stringWithUTF8String: payload.c_str()] completionHandler:nil];
@@ -362,7 +362,7 @@ int lastY = 0;
     "\"dest\":\"" + dest + "\"}"
   );
 
-  std::string js = Operator::emitToRenderProcess("dropout", json);
+  std::string js = SSC::emitToRenderProcess("dropout", json);
 
   [self
     evaluateJavaScript: [NSString stringWithUTF8String:js.c_str()]
@@ -373,7 +373,7 @@ int lastY = 0;
 }
 
 - (NSString*) filePromiseProvider: (NSFilePromiseProvider*)filePromiseProvider fileNameForType:(NSString *)fileType {
-  std::string file(std::to_string(Operator::rand64()) + ".download");
+  std::string file(std::to_string(SSC::rand64()) + ".download");
   return [NSString stringWithUTF8String:file.c_str()];
 }
 
@@ -410,7 +410,7 @@ int lastY = 0;
 }
 @end
 
-namespace Operator {
+namespace SSC {
 
   static bool isDelegateSet = false;
 

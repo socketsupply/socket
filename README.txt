@@ -14,7 +14,7 @@ using web technologies.
 
 # LINKS
 
-Documentation: https://operatorframework.dev
+Documentation: https://socket.sdk
 Examples: https://github.com/socketsupply/op-examples
 
 # Compile from source

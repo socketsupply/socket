@@ -40,7 +40,7 @@ Function Build {
   $VERSION = $(type VERSION.txt) 2>&1 | % ToString
 
   Write-Output "- Compiling the build tool"
-  clang++ src\cli.cc -o $WORKING_PATH\bin\op.exe -std=c++20 -DVERSION_HASH="$($VERSION_HASH)" -DVERSION="$($VERSION)"
+  clang++ src\cli.cc -o $WORKING_PATH\bin\ssc.exe -std=c++20 -DVERSION_HASH="$($VERSION_HASH)" -DVERSION="$($VERSION)"
   # -I 'C:\Program Files (x86)\Windows Kits\10\Include\10.0.19041.0\shared' `
 
   if ($? -ne 1) {
@@ -54,7 +54,7 @@ Function Build {
 #
 Function Install-Files {
   Write-Output "- Installing Files to '$INSTALL_PATH'."
-  Copy-Item $WORKING_PATH\bin\op.exe -Destination $INSTALL_PATH
+  Copy-Item $WORKING_PATH\bin\ssc.exe -Destination $INSTALL_PATH
   Copy-Item -Path "$WORKING_PATH\src\*" -Destination $INSTALL_PATH -Recurse -Container
 
   Write-Output "- Installing Files to '$LIB_PATH'."
@@ -111,7 +111,7 @@ if ($? -ne 1) {
 #
 Write-Output "- Fetching files to '$WORKING_PATH'..."
 Remove-Item -Recurse -Force $WORKING_PATH
-(git clone --depth=1 git@github.com:socketsupply/operatorframework.git "$($WORKING_PATH)") > $null
+(git clone --depth=1 git@github.com:socketsupply/socket.git "$($WORKING_PATH)") > $null
 
 cd $WORKING_PATH
 
