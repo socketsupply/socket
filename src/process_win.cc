@@ -164,7 +164,7 @@ Process::id_type Process::open(const std::string &command, const std::string &pa
     DWORD exitCode;
     GetExitCodeProcess(process_info.hProcess, &exitCode);
     on_exit(std::to_string(exitCode));
-  })
+  });
 
   t.detach();
 
