@@ -14,7 +14,6 @@
 #include <regex>
 #include <fstream>
 #include <span>
-#include <thread>
 #include <filesystem>
 
 #if defined(_WIN32)

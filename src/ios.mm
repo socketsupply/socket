@@ -77,6 +77,77 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 // DNS
 - (void) dnsLookup: (std::string)seq hostname: (std::string)hostname;
 
+// UDX
+- (void) udxStreamDestroy: (std::string)seq streamId: (uint64_t)streamId;
+
+- (void) udxStreamWriteEnd: (std::string)seq streamId: (uint64_t)streamId requestId: (std::string)requestId;
+
+- (void) udxStreamWrite: (std::string)seq
+                      streamId: (uint64_t)streamId
+                     requestId: (uint64_t)requestId
+                           rId: (std::string)rId
+                           buf: (std::string)buf;
+
+- (void) udxStreamSend: (std::string)seq
+                      streamId: (uint64_t)streamId
+                     requestId: (uint64_t)requestId
+                           rId: (std::string)rId
+                           buf: (std::string)buf;
+
+- (void) udxStreamConnect: (std::string)seq
+                 streamId: (uint64_t)streamId
+                 socketId: (uint64_t)socketId
+                 remoteId: (uint32_t)remoteId
+               remotePort: (uint32_t)remotePort
+                 remoteIp: (std::string)remoteIp;
+
+- (void) udxStreamRecvStart: (std::string)seq
+                           streamId: (uint64_t)streamId;
+                           // no buf needed, emits data with streamId
+
+- (void) udxStreamSetMode: (std::string)seq
+                           streamId: (uint64_t)streamId
+                           mode: (uint32_t)mode;
+
+- (void) udxStreamInit: (std::string)seq
+                     streamId: (uint64_t)streamId;
+                     // all callbacks etc are emitted with streamId
+
+- (void) udxSocketClose: (std::string)seq
+                     socketId: (uint64_t)socketId;
+
+- (void) udxSocketSendTTL: (std::string)seq
+                     socketId: (uint64_t)socketId
+                     requestId: (uint64_t)requestId // udx_socket_send_t*
+                     rId: (uint32_t)rId
+                     buf: (std::string)buf
+                     port: (uint32_t)port
+                     ip: (std::string)ip
+                     ttl: (uint32_t)ttl;
+
+- (void) udxSocketSendBufferSize: (std::string)seq
+                     socketId: (uint64_t)socketId
+                     size: (uint32)size;
+
+- (void) udxSocketRecvBufferSize: (std::string)seq
+                     socketId: (uint64_t)socketId
+                     size: (uint32)size;
+
+- (void) udxSocketSetTTL: (std::string)seq
+                     socketId: (uint64_t)socketId
+                     size: (uint32)size;
+
+- (void) udxSocketBind: (std::string)seq
+              socketId: (uint64_t)socketId
+                  port: (uint32_t)port
+                    ip: (std::string)ip;
+
+- (void) udxSocketInit: (std::string)seq
+              socketId: (uint64_t)socketId;
+                     // all callbacks etc are emitted with streamId
+
+- (void) udxInit: (std::string)seq; //  just init event loop if not init'd yet
+
 // Shared
 - (void) sendBufferSize: (std::string)seq clientId: (uint64_t)clientId size: (int)size;
 - (void) recvBufferSize: (std::string)seq clientId: (uint64_t)clientId size: (int)size;
@@ -1688,6 +1759,105 @@ bool isRunning = false;
     }
   });
 }
+
+//
+// UDX
+//
+- (void) udxStreamDestroy: (std::string)seq
+                 streamId: (uint64_t)streamId {
+}
+
+- (void) udxStreamWriteEnd: (std::string)seq
+                  streamId: (uint64_t)streamId
+                 requestId: (std::string)requestId {
+}
+
+- (void) udxStreamWrite: (std::string)seq
+                      streamId: (uint64_t)streamId
+                     requestId: (uint64_t)requestId
+                           rId: (std::string)rId
+                           buf: (std::string)buf {
+}
+
+- (void) udxStreamSend: (std::string)seq
+                      streamId: (uint64_t)streamId
+                     requestId: (uint64_t)requestId
+                           rId: (std::string)rId
+                           buf: (std::string)buf {
+}
+
+- (void) udxStreamConnect: (std::string)seq
+                 streamId: (uint64_t)streamId
+                 socketId: (uint64_t)socketId
+                 remoteId: (uint32_t)remoteId
+               remotePort: (uint32_t)remotePort
+                 remoteIp: (std::string)remoteIp {
+}
+
+- (void) udxStreamRecvStart: (std::string)seq
+                           streamId: (uint64_t)streamId {
+}
+                           // no buf needed, emits data with streamId
+
+- (void) udxStreamSetMode: (std::string)seq
+                           streamId: (uint64_t)streamId
+                           mode: (uint32_t)mode {
+}
+
+- (void) udxStreamInit: (std::string)seq
+                     streamId: (uint64_t)streamId {
+                     // all callbacks etc are emitted with streamId
+}
+
+- (void) udxSocketClose: (std::string)seq
+                     socketId: (uint64_t)socketId {
+}
+
+- (void) udxSocketSendTTL: (std::string)seq
+                     socketId: (uint64_t)socketId
+                     requestId: (uint64_t)requestId // udx_socket_send_t*
+                     rId: (uint32_t)rId
+                     buf: (std::string)buf
+                     port: (uint32_t)port
+                     ip: (std::string)ip
+                     ttl: (uint32_t)ttl {
+}
+
+- (void) udxSocketSendBufferSize: (std::string)seq
+                     socketId: (uint64_t)socketId
+                     size: (uint32)size {
+}
+
+- (void) udxSocketRecvBufferSize: (std::string)seq
+                     socketId: (uint64_t)socketId
+                     size: (uint32)size {
+}
+
+- (void) udxSocketSetTTL: (std::string)seq
+                     socketId: (uint64_t)socketId
+                     size: (uint32)size {
+}
+
+- (void) udxSocketBind: (std::string)seq
+              socketId: (uint64_t)socketId
+                  port: (uint32_t)port
+                    ip: (std::string)ip {
+}
+
+- (void) udxSocketInit: (std::string)seq
+              socketId: (uint64_t)socketId {
+}
+
+- (void) udxInit: (std::string)seq {
+  dispatch_async(queue, ^{
+    if (isRunning == false) {
+      isRunning = true;
+      NSLog(@"Starting loop from udx init");
+      uv_run(loop, UV_RUN_DEFAULT);
+    }
+  });
+}
+
 
 //
 // --- End network methods
