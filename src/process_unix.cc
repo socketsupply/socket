@@ -32,7 +32,7 @@ Process::Process(
   open_stdin(open_stdin),
   config(config) {
 
-  on_exit(std::to_string(open(function)));
+  open(function);
   read();
 }
 
@@ -127,7 +127,6 @@ Process::id_type Process::open(const std::function<int()> &function) noexcept {
       function();
     }
 
-    on_exit(std::to_string(EXIT_FAILURE));
     _exit(EXIT_FAILURE);
   }
 

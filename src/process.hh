@@ -31,6 +31,7 @@ splitc(const std::string& s, const char& c) {
 
 namespace SSC {
   using cb = std::function<void(std::string)>;
+  static std::function<void(std::string)> exitCb;
 
   // Additional parameters to Process constructors.
   struct Config {
@@ -194,6 +195,12 @@ namespace SSC {
     this->path = path;
     open(command + argv, path);
     read();
+
+    exitCb = on_exit;
+
+    signal(SIGCHLD, [](int code) {
+      exitCb(std::to_string(code));
+    });
   }
 
 } // namespace SSC

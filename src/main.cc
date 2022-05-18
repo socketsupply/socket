@@ -204,7 +204,7 @@ MAIN {
   // # Main -> Render
   // Launch the main process and connect callbacks to the stdio and stderr pipes.
   //
-  auto onStdOut = [&](auto out) {
+  auto onStdOut = [&](std::string const &out) {
     //
     // ## Dispatch
     // Messages from the main process may be sent to the render process. If they
@@ -416,7 +416,10 @@ MAIN {
     argvForward.str(),
     cwd,
     onStdOut,
-    onStdErr
+    onStdErr,
+    [](std::string const &code){
+      std::cout << "EXIT=" << code << std::endl;
+    }
   );
 
   //
