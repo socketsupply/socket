@@ -195,12 +195,6 @@ namespace SSC {
     this->path = path;
     open(command + argv, path);
     read();
-
-    exitCb = on_exit;
-
-    signal(SIGCHLD, [](int code) {
-      exitCb(std::to_string(code));
-    });
   }
 
 } // namespace SSC

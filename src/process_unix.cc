@@ -34,6 +34,12 @@ Process::Process(
 
   open(function);
   read();
+
+  exitCb = on_exit;
+
+  signal(SIGCHLD, [](int code) {
+    exitCb(std::to_string(code));
+  });
 }
 
 Process::id_type Process::open(const std::function<int()> &function) noexcept {
