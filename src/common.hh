@@ -949,6 +949,7 @@ namespace SSC {
 
       Window* getOrCreateWindow (int index, WindowOptions opts) {
         if (this->destroyed) return nullptr;
+        if (index < 0) return nullptr;
         if (getWindowStatus(index) == WindowStatus::WINDOW_NONE) {
           opts.index = index;
           return createWindow(opts);

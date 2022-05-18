@@ -233,9 +233,10 @@ MAIN {
       }
 
       if (cmd.name == "show") {
+        auto index = cmd.index < 0 ? 0 : cmd.index;
         auto options = WindowOptions {};
-        auto status = windowFactory.getWindowStatus(cmd.index);
-        auto window = windowFactory.getWindow(cmd.index);
+        auto status = windowFactory.getWindowStatus(index);
+        auto window = windowFactory.getWindow(index);
 
         options.title = cmd.get("title");
         options.url = cmd.get("url");
@@ -253,8 +254,8 @@ MAIN {
           options.resizable = cmd.get("resizable") == "true" ? true : false;
           options.frameless = cmd.get("frameless") == "true" ? true : false;
           options.utility = cmd.get("utility") == "true" ? true : false;
-          options.index = cmd.index;
           options.debug = cmd.get("debug") == "true" ? true : false;
+          options.index = index;
 
           window = windowFactory.createWindow(options);
           window->show(seq);

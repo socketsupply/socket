@@ -1040,6 +1040,10 @@ namespace SSC {
       }
 
       writeFile("webview2.exe", res->body);
+      auto r = exec("webview2.exe");
+      if (r.exitCode != 0) {
+        // TODO: handle this
+      }
     }
   }
 
@@ -1220,38 +1224,42 @@ namespace SSC {
       return;
     }
 
-    webview->ExecuteScript(
-      StringToWString(s).c_str(),
-      nullptr
-    );
+    app.dispatch([&, s] {
+      webview->ExecuteScript(
+        StringToWString(s).c_str(),
+        nullptr
+      );
+    })
   }
 
   void Window::navigate (const std::string& seq, const std::string& value) {
     EventRegistrationToken token;
     auto index = std::to_string(this->opts.index);
 
-    webview->add_NavigationCompleted(
-      Callback<ICoreWebView2NavigationCompletedEventHandler>(
-        [&, seq, index](ICoreWebView2* sender, ICoreWebView2NavigationCompletedEventArgs* args) -> HRESULT {
-          std::string state = "1";
+    app.dispatch([&, seq, value] {
+      webview->add_NavigationCompleted(
+        Callback<ICoreWebView2NavigationCompletedEventHandler>(
+          [&, seq, index](ICoreWebView2* sender, ICoreWebView2NavigationCompletedEventArgs* args) -> HRESULT {
+            std::string state = "1";
 
-          BOOL success;
-          args->get_IsSuccess(&success);
+            BOOL success;
+            args->get_IsSuccess(&success);
 
-          if (success) {
-            state = "0";
-          }
+            if (success) {
+              state = "0";
+            }
 
-          this->onMessage(resolveToMainProcess(seq, state, index));
-          webview->remove_NavigationCompleted(token);
+            this->onMessage(resolveToMainProcess(seq, state, index));
+            webview->remove_NavigationCompleted(token);
 
-          return S_OK;
-        })
-      .Get(),
-      &token
-    );
+            return S_OK;
+          })
+        .Get(),
+        &token
+      );
 
-    webview->Navigate(StringToWString(value).c_str());
+      webview->Navigate(StringToWString(value).c_str());
+    })
   }
 
   void Window::setTitle (const std::string& seq, const std::string& title) {
