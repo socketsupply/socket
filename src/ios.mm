@@ -225,9 +225,17 @@ struct Client : public Peer {
   uint64_t clientId;
 };
 
-struct Stream : public Peer {
+struct UDX : public Peer {
   uint64_t socketId;
   uint64_t streamId;
+}
+
+struct Socket : public UDX {
+  udx_socket_t* socket;
+};
+
+struct Stream : public UDX {
+  udx_stream_t* stream;
 };
 
 std::string addrToIPv4 (struct sockaddr_in* sin) {
@@ -303,8 +311,12 @@ void parse_address (struct sockaddr *name, int* port, char* ip) {
 
 std::map<uint64_t, Client*> clients;
 std::map<uint64_t, Server*> servers;
-std::map<uint64_t, GenericContext*> contexts;
 std::map<uint64_t, Stream*> streams;
+std::map<uint64_t, GenericContext*> contexts;
+
+std::map<uint64_t, UDX*> udxs;
+std::map<uint64_t, UDXSocket*> udxSockets;
+std::map<uint64_t, UDXStream*> udxStreams;
 std::map<uint64_t, DescriptorContext*> descriptors;
 
 struct sockaddr_in addr;
@@ -1855,6 +1867,17 @@ bool isRunning = false;
 
 - (void) udxSocketInit: (std::string)seq
               socketId: (uint64_t)socketId {
+
+  UDX* u = udxs[udxId] = new UDX();
+  udx_socket_t *socket = (udx_socket_t *) self;
+
+  self->env = env;
+  napi_create_reference(env, argv[2], 1, &(self->ctx));
+  napi_create_reference(env, argv[3], 1, &(self->on_send));
+  napi_create_reference(env, argv[4], 1, &(self->on_message));
+  napi_create_reference(env, argv[5], 1, &(self->on_close));
+
+  int err = udx_socket_init(udx, socket);
 }
 
 - (void) udxInit: (std::string)seq
@@ -1864,9 +1887,9 @@ bool isRunning = false;
     // struct uv_loop_s *loop;
     // napi_get_uv_event_loop(env, &loop);
 
-    Stream* stream = streams[udxId] = new Stream();
+    UDX* u = udxs[udxId] = new UDX();
 
-    auto err = udx_init(loop, stream->udx);
+    auto err = udx_init(loop, u->udx);
 
     if (err != 0) {
       dispatch_async(dispatch_get_main_queue(), ^{
