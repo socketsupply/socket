@@ -222,11 +222,7 @@ void Process::read() noexcept {
 
       for (;;) {
         BOOL bSuccess = ReadFile(*stderr_fd, static_cast<CHAR *>(buffer.get()), static_cast<DWORD>(config.buffer_size), &n, nullptr);
-
-        if (!bSuccess || n == 0) {
-          break;
-        }
-
+        if (!bSuccess || n == 0) break;
         read_stderr(std::string(buffer.get()));
       }
     });

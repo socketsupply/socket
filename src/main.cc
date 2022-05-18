@@ -417,8 +417,10 @@ MAIN {
     cwd,
     onStdOut,
     onStdErr,
-    [](std::string const &code){
-      std::cout << "EXIT=" << code << std::endl;
+    [&](std::string const &code) {
+      for (auto& window : windowFactory.windows) {
+        window->eval(emitToRenderProcess("main-exit", code));
+      }
     }
   );
 
