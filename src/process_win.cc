@@ -159,7 +159,7 @@ Process::id_type Process::open(const std::string &command, const std::string &pa
     *stderr_fd = stderr_rd_p.detach();
   }
 
-  std::thread([this]() {
+  std::thread([this, &process_info]() {
     WaitForSingleObject(process_info.hProcess, INFINITE);
     DWORD exitCode;
     GetExitCodeProcess(process_info.hProcess, &exitCode);
