@@ -146,7 +146,8 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
               socketId: (uint64_t)socketId;
                      // all callbacks etc are emitted with streamId
 
-- (void) udxInit: (std::string)seq; //  just init event loop if not init'd yet
+- (void) udxInit: (std::string)seq
+           udxId: (uint64_t)udxId;
 
 // Shared
 - (void) sendBufferSize: (std::string)seq clientId: (uint64_t)clientId size: (int)size;
@@ -205,11 +206,13 @@ struct Peer {
 
   uv_tcp_t* tcp;
   uv_udp_t* udp;
+  udx_t* udx;
   uv_stream_t* stream;
 
   ~Peer () {
     delete this->tcp;
     delete this->udp;
+    delete this->udx;
   };
 };
 
@@ -220,6 +223,11 @@ struct Server : public Peer {
 struct Client : public Peer {
   Server* server;
   uint64_t clientId;
+};
+
+struct Stream : public Peer {
+  uint64_t socketId;
+  uint64_t streamId;
 };
 
 std::string addrToIPv4 (struct sockaddr_in* sin) {
@@ -296,6 +304,7 @@ void parse_address (struct sockaddr *name, int* port, char* ip) {
 std::map<uint64_t, Client*> clients;
 std::map<uint64_t, Server*> servers;
 std::map<uint64_t, GenericContext*> contexts;
+std::map<uint64_t, Stream*> streams;
 std::map<uint64_t, DescriptorContext*> descriptors;
 
 struct sockaddr_in addr;
@@ -1848,8 +1857,29 @@ bool isRunning = false;
               socketId: (uint64_t)socketId {
 }
 
-- (void) udxInit: (std::string)seq {
+- (void) udxInit: (std::string)seq
+           udxId: (uint64_t)udxId {
   dispatch_async(queue, ^{
+    loop = uv_default_loop();
+    // struct uv_loop_s *loop;
+    // napi_get_uv_event_loop(env, &loop);
+
+    Stream* stream = streams[udxId] = new Stream();
+
+    auto err = udx_init(loop, stream->udx);
+
+    if (err != 0) {
+      dispatch_async(dispatch_get_main_queue(), ^{
+        [self resolve:seq message: Operator::format(R"JSON({
+          "err": {
+            "id": "$S",
+            "message": "$S"
+          }
+        })JSON", std::to_string(udxId), uv_strerror(err))];
+      });
+      return;
+    }
+
     if (isRunning == false) {
       isRunning = true;
       NSLog(@"Starting loop from udx init");
