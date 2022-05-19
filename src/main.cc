@@ -158,7 +158,7 @@ MAIN {
   }
 
   if (isCommandMode) {
-    argvForward << " --ssc-current-directory=" << fs::current_path();
+    argvForward << " --op-current-directory=" << fs::current_path();
 
     Process process(
       cmd,
