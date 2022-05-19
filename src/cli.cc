@@ -256,6 +256,7 @@ int main (const int argc, const char* argv[]) {
     suffix += "-test";
   }
 
+  std::replace(settings["name"].begin(), settings["name"].end(), ' ', '_');
   settings["name"] += suffix;
   settings["title"] += suffix;
   settings["executable"] += suffix;
