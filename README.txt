@@ -14,8 +14,8 @@ using web technologies.
 
 # LINKS
 
-Documentation: https://socket.sdk
-Examples: https://github.com/socketsupply/op-examples
+Documentation: https://socket-sdk.dev
+Examples: https://github.com/socketsupply/socket-sdk-examples
 
 # Compile from source
 

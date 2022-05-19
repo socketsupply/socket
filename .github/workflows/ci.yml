@@ -42,22 +42,22 @@ jobs:
       run: |
         git config --global user.email "devops@optool.co"
         git config --global user.name "Optool Github Actions"
-        git clone --depth 1 -b rename_config git@github.com:socketsupply/op-examples.git
-        cd op-examples/tonic-desktop/ && npm install
+        git clone --depth 1 -b rename_config git@github.com:socketsupply/socket-sdk-examples.git
+        cd socket-sdk-examples/tonic-desktop/ && npm install
       env:
         CI: true
         NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
 
     - name: compile example desktop
       run: |
-        ssc ./op-examples/tonic-desktop/
+        ssc ./socket-sdk-examples/tonic-desktop/
       env:
         CI: true
         CXX: g++-11
 
     - name: Run example desktop tests
       run: |
-        xvfb-run --server-args="-screen 0 1920x1080x24" ssc ./op-examples/tonic-desktop/ --test=1 -r
+        xvfb-run --server-args="-screen 0 1920x1080x24" ssc ./socket-sdk-examples/tonic-desktop/ --test=1 -r
       env:
         CI: true
         CXX: g++-11
@@ -111,21 +111,21 @@ jobs:
 
         git config --global user.email "devops@optool.co"
         git config --global user.name "Optool Github Actions"
-        git clone --depth 1 -b rename_config git@github.com:socketsupply/op-examples.git
-        cd op-examples/tonic-desktop/ && npm install
+        git clone --depth 1 -b rename_config git@github.com:socketsupply/socket-sdk-examples.git
+        cd socket-sdk-examples/tonic-desktop/ && npm install
       env:
         CI: true
         NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
 
     - name: compile example desktop
       run: |
-        ssc ./op-examples/tonic-desktop/
+        ssc ./socket-sdk-examples/tonic-desktop/
       env:
         CI: true
 
     - name: Run example desktop tests
       run: |
-        ssc ./op-examples/tonic-desktop/ --test=1 -r
+        ssc ./socket-sdk-examples/tonic-desktop/ --test=1 -r
       env:
         CI: true
 
@@ -160,21 +160,21 @@ jobs:
       run: |
         git config --global user.email "devops@optool.co"
         git config --global user.name "Optool Github Actions"
-        git clone --depth 1 -b rename_config git@github.com:socketsupply/op-examples.git
-        cd op-examples/tonic-desktop/ && npm install
+        git clone --depth 1 -b rename_config git@github.com:socketsupply/socket-sdk-examples.git
+        cd socket-sdk-examples/tonic-desktop/ && npm install
       env:
         CI: true
         NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
 
     - name: compile example desktop
       run: |
-        ssc ./op-examples/tonic-desktop/
+        ssc ./socket-sdk-examples/tonic-desktop/
       env:
         CI: true
 
     - name: Run example desktop tests
       run: |
-        ssc ./op-examples/tonic-desktop/ --test=1 -r
+        ssc ./socket-sdk-examples/tonic-desktop/ --test=1 -r
       env:
         CI: true
 
@@ -212,14 +212,14 @@ jobs:
       run: |
         git config --global user.email "devops@optool.co"
         git config --global user.name "Optool Github Actions"
-        git clone --depth 1 -b rename_config git@github.com:socketsupply/op-examples.git
-        cd op-examples/tonic-ios/ && npm install
+        git clone --depth 1 -b rename_config git@github.com:socketsupply/socket-sdk-examples.git
+        cd socket-sdk-examples/tonic-ios/ && npm install
       env:
         CI: true
         NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
 
     - name: compile example ios
       run: |
-        ssc ./op-examples/tonic-ios/ -ios -simulator
+        ssc ./socket-sdk-examples/tonic-ios/ -ios -simulator
       env:
         CI: true
