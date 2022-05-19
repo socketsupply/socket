@@ -57,7 +57,7 @@ jobs:
 
     - name: Run example desktop tests
       run: |
-        xvfb-run --server-args="-screen 0 1920x1080x24" op ./op-examples/tonic-desktop/ --test=1 -r
+        xvfb-run --server-args="-screen 0 1920x1080x24" ssc ./op-examples/tonic-desktop/ --test=1 -r
       env:
         CI: true
         CXX: g++-11
@@ -99,7 +99,7 @@ jobs:
       env:
         ACTIONS_ALLOW_UNSECURE_COMMANDS: true
 
-    - name: Check if op has a correct version
+    - name: Check if ssc has a correct version
       run: |
         ./bin/ci_version_check.ps1
 
@@ -119,13 +119,13 @@ jobs:
 
     - name: compile example desktop
       run: |
-        op ./op-examples/tonic-desktop/
+        ssc ./op-examples/tonic-desktop/
       env:
         CI: true
 
     - name: Run example desktop tests
       run: |
-        op ./op-examples/tonic-desktop/ --test=1 -r
+        ssc ./op-examples/tonic-desktop/ --test=1 -r
       env:
         CI: true
 
@@ -152,7 +152,7 @@ jobs:
       run: |
         ./bin/bootstrap.sh dev
 
-    - name: Check if op has a correct version
+    - name: Check if ssc has a correct version
       run: |
         ./bin/ci_version_check.sh
 
@@ -168,13 +168,13 @@ jobs:
 
     - name: compile example desktop
       run: |
-        op ./op-examples/tonic-desktop/
+        ssc ./op-examples/tonic-desktop/
       env:
         CI: true
 
     - name: Run example desktop tests
       run: |
-        op ./op-examples/tonic-desktop/ --test=1 -r
+        ssc ./op-examples/tonic-desktop/ --test=1 -r
       env:
         CI: true
 
@@ -204,7 +204,7 @@ jobs:
       run: |
         ./bin/bootstrap.sh dev ios
 
-    - name: Check if op has a correct version
+    - name: Check if ssc has a correct version
       run: |
         ./bin/ci_version_check.sh
 
@@ -220,6 +220,6 @@ jobs:
 
     - name: compile example ios
       run: |
-        op ./op-examples/tonic-ios/ -ios -simulator
+        ssc ./op-examples/tonic-ios/ -ios -simulator
       env:
         CI: true
