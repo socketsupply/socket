@@ -204,7 +204,7 @@ int main (const int argc, const char* argv[]) {
     target = fs::absolute(target);
   }
 
-  auto _settings = WStringToString(readFile(target / "socket.config"));
+  auto _settings = WStringToString(readFile(target / "ssc.config"));
   auto settings = parseConfig(_settings);
 
   bool noCommand = (
