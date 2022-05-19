@@ -226,16 +226,24 @@ struct Client : public Peer {
 };
 
 struct UDX : public Peer {
-  uint64_t socketId;
-  uint64_t streamId;
+  udx_t* udx;
+  uint64_t id;
 }
 
-struct Socket : public UDX {
-  udx_socket_t* socket;
+struct Socket : public Peer {
+  udx_socket_t udx;
+  uint64_t socketId;
 };
 
-struct Stream : public UDX {
-  udx_stream_t* stream;
+struct Stream : public Peer {
+  udx_stream_t stream;
+  uint64_t streamId;
+
+  char *read_buf;
+  char *read_buf_head;
+  size_t read_buf_free;
+
+  int mode;
 };
 
 std::string addrToIPv4 (struct sockaddr_in* sin) {
@@ -1842,6 +1850,69 @@ bool isRunning = false;
                      port: (uint32_t)port
                      ip: (std::string)ip
                      ttl: (uint32_t)ttl {
+
+  // what is the lifetime of req? should we store in a container?
+  udx_socket_send_t* req = new udx_socket_send_t;
+  req->data = (void *)((uintptr_t) rid);
+
+  struct sockaddr_in addr;
+  int err = uv_ip4_addr((char *) &ip, port, &addr);
+
+  if (err < 0) {
+    dispatch_async(dispatch_get_main_queue(), ^{
+      [self
+        resolve: seq
+        message:
+        Operator::format(
+          R"JSON({
+            "err": {
+              "socketId": "$S",
+              "requestId": "$S",
+              "message": "$S"
+            }
+          })JSON",
+          std::to_string(socketId),
+          std::to_string(requestId),
+          uv_strerror(err)
+        )
+      ];
+    });
+    return;
+  }
+
+  uv_buf_t b = uv_buf_init(buf, buf_len);
+
+  auto on_udx_send = [](udx_socket_send_t *req, int status) {
+    Socket* socket = (Socket*)req->handle;
+
+    [self
+      emit: "callback"
+      message:
+        Operator::format(R"JSON({
+          "id": "$S",
+          "name": "onsend",
+          "arguments": [$i, $i]
+        })JSON",
+        std::to_string(socket->socketId),
+        (int) ((uintptr_t) req->data),
+        (int) ((uint32_t) status)
+      )
+    ];
+  };
+
+  udx_socket_send_ttl(
+    req,
+    self,
+    &b,
+    1,
+    (const struct sockaddr*) &addr,
+    ttl,
+    on_udx_send
+  );
+
+  if (err < 0) {
+    // emit err
+  }
 }
 
 - (void) udxSocketSendBufferSize: (std::string)seq
@@ -1867,17 +1938,6 @@ bool isRunning = false;
 
 - (void) udxSocketInit: (std::string)seq
               socketId: (uint64_t)socketId {
-
-  UDX* u = udxs[udxId] = new UDX();
-  udx_socket_t *socket = (udx_socket_t *) self;
-
-  self->env = env;
-  napi_create_reference(env, argv[2], 1, &(self->ctx));
-  napi_create_reference(env, argv[3], 1, &(self->on_send));
-  napi_create_reference(env, argv[4], 1, &(self->on_message));
-  napi_create_reference(env, argv[5], 1, &(self->on_close));
-
-  int err = udx_socket_init(udx, socket);
 }
 
 - (void) udxInit: (std::string)seq
@@ -1888,6 +1948,7 @@ bool isRunning = false;
     // napi_get_uv_event_loop(env, &loop);
 
     UDX* u = udxs[udxId] = new UDX();
+    u->id = udxId;
 
     auto err = udx_init(loop, u->udx);
 
