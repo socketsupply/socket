@@ -812,7 +812,7 @@ namespace SSC {
           void hide (const std::string &seq) {
             if (
               status > WindowStatus::WINDOW_HIDDEN &&
-              status < WindowStatus::WINDOW_CLOSING
+              status < WindowStatus::WINDOW_EXITING
             ) {
               auto index = std::to_string(this->opts.index);
               factory.debug("Hiding Window#" + index + " (seq=" + seq + ")");
@@ -829,7 +829,7 @@ namespace SSC {
               status = WindowStatus::WINDOW_CLOSING;
               Window::close(code);
               status = WindowStatus::WINDOW_CLOSED;
-              gc();
+              // gc();
             }
           }
 
@@ -839,7 +839,7 @@ namespace SSC {
               factory.debug("Exiting Window#" + index + " (code=" + std::to_string(code) + ")");
               status = WindowStatus::WINDOW_EXITING;
               Window::exit(code);
-              status = WindowStatus::WINDOW_EXITING;
+              status = WindowStatus::WINDOW_EXITED;
               gc();
             }
           }
@@ -912,8 +912,8 @@ namespace SSC {
         using namespace std::chrono;
 
 #ifdef _WIN32 // unicode console support
-        SetConsoleOutputCP(CP_UTF8);
-        setvbuf(stdout, nullptr, _IOFBF, 1000);
+        // SetConsoleOutputCP(CP_UTF8);
+        // setvbuf(stdout, nullptr, _IOFBF, 1000);
 #endif
 
         auto now = system_clock::now();

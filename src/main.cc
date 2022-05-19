@@ -259,9 +259,11 @@ MAIN {
 
           window = windowFactory.createWindow(options);
           window->show(seq);
-        } else if (status < WindowFactory<Window, App>::WindowStatus::WINDOW_CLOSING) {
+        } else {
           window->show(seq);
+        }
 
+        if (window) {
           if (options.width > 0 && options.height > 0) {
             window->setSize(EMPTY_SEQ, options.width, options.height, 0);
           }

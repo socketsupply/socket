@@ -814,6 +814,8 @@ namespace SSC {
   };
 
   Window::Window (App& app, WindowOptions opts) : app(app), opts(opts) {
+    app.isReady = false;
+
     window = CreateWindow(
       TEXT("DesktopApp"), TEXT("Socket SDK"),
       WS_OVERLAPPEDWINDOW,
@@ -1220,12 +1222,8 @@ namespace SSC {
   }
 
   void Window::eval (const std::string& s) {
-    if (webview == nullptr) {
-      return;
-    }
-
-    app.dispatch([&, s] {
-      webview->ExecuteScript(
+    app.dispatch([&, this, s] {
+      this->webview->ExecuteScript(
         StringToWString(s).c_str(),
         nullptr
       );
@@ -1233,13 +1231,13 @@ namespace SSC {
   }
 
   void Window::navigate (const std::string& seq, const std::string& value) {
-    EventRegistrationToken token;
     auto index = std::to_string(this->opts.index);
 
-    app.dispatch([&, seq, value] {
-      webview->add_NavigationCompleted(
+    app.dispatch([&, this, seq, value, index] {
+      EventRegistrationToken token;
+      this->webview->add_NavigationCompleted(
         Callback<ICoreWebView2NavigationCompletedEventHandler>(
-          [&, seq, index](ICoreWebView2* sender, ICoreWebView2NavigationCompletedEventArgs* args) -> HRESULT {
+          [&, this, seq, index, token](ICoreWebView2* sender, ICoreWebView2NavigationCompletedEventArgs* args) -> HRESULT {
             std::string state = "1";
 
             BOOL success;
