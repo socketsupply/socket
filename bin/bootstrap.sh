@@ -59,7 +59,7 @@ function _install {
   if [ ! -z "$LOCALAPPDATA" ]; then
     libdir="$LOCALAPPDATA/Programs/socketsupply"
   else
-    libdir="$PREFIX/lib/ssc"
+    libdir="$PREFIX/lib/socket-sdk"
   fi
 
   echo "• Installing ssc"
