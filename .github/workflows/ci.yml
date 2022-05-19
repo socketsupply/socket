@@ -42,7 +42,7 @@ jobs:
       run: |
         git config --global user.email "devops@optool.co"
         git config --global user.name "Optool Github Actions"
-        git clone --depth 1 -b rename_config git@github.com:socketsupply/socket-sdk-examples.git
+        git clone --depth 1 git@github.com:socketsupply/socket-sdk-examples.git
         cd socket-sdk-examples/tonic-desktop/ && npm install
       env:
         CI: true
@@ -111,7 +111,7 @@ jobs:
 
         git config --global user.email "devops@optool.co"
         git config --global user.name "Optool Github Actions"
-        git clone --depth 1 -b rename_config git@github.com:socketsupply/socket-sdk-examples.git
+        git clone --depth 1 git@github.com:socketsupply/socket-sdk-examples.git
         cd socket-sdk-examples/tonic-desktop/ && npm install
       env:
         CI: true
@@ -160,7 +160,7 @@ jobs:
       run: |
         git config --global user.email "devops@optool.co"
         git config --global user.name "Optool Github Actions"
-        git clone --depth 1 -b rename_config git@github.com:socketsupply/socket-sdk-examples.git
+        git clone --depth 1 git@github.com:socketsupply/socket-sdk-examples.git
         cd socket-sdk-examples/tonic-desktop/ && npm install
       env:
         CI: true
@@ -212,7 +212,7 @@ jobs:
       run: |
         git config --global user.email "devops@optool.co"
         git config --global user.name "Optool Github Actions"
-        git clone --depth 1 -b rename_config git@github.com:socketsupply/socket-sdk-examples.git
+        git clone --depth 1 git@github.com:socketsupply/socket-sdk-examples.git
         cd socket-sdk-examples/tonic-ios/ && npm install
       env:
         CI: true
