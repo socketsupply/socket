@@ -204,7 +204,13 @@ int main (const int argc, const char* argv[]) {
     target = fs::absolute(target);
   }
 
-  auto _settings = WStringToString(readFile(target / "ssc.config"));
+  auto configPath = target / "ssc.config";
+
+  if (!fs::exists(configPath)) {
+    log("ssc.config not found in " + target.string());
+    exit(1);
+  }
+  auto _settings = WStringToString(readFile(configPath));
   auto settings = parseConfig(_settings);
 
   bool noCommand = (
