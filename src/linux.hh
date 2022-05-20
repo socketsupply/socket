@@ -686,9 +686,9 @@ namespace SSC {
     gtk_label_set_markup(GTK_LABEL(label_title), title_value.c_str());
     gtk_container_add(content, label_title);
 
-    GtkWidget *label_copyRight = gtk_label_new("");
-    gtk_label_set_markup(GTK_LABEL(label_copyRight), appData["copyRight"].c_str());
-    gtk_container_add(content, label_copyRight);
+    GtkWidget *label_copyright = gtk_label_new("");
+    gtk_label_set_markup(GTK_LABEL(label_copyright), appData["copyright"].c_str());
+    gtk_container_add(content, label_copyright);
 
     g_signal_connect(
       dialog,
