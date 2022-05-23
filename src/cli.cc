@@ -327,6 +327,11 @@ int main (const int argc, const char* argv[]) {
     auto plistInfo = tmpl(gPListInfo, settings);
 
     writeFile(pathPackage / pathBase / "Info.plist", plistInfo);
+
+    Map options = {{ "full_version", std::string(SSC::full_version) }};
+    auto credits = tmpl(gCredits, options);
+
+    writeFile(pathResourcesRelativeToUserBuild / "Credits.html", credits);
   }
 
   if (platform.mac && flagBuildForIOS) {

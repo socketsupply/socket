@@ -133,6 +133,12 @@ constexpr auto gPListInfo = R"XML(<?xml version="1.0" encoding="UTF-8"?>
   </dict>
 </plist>
 )XML";
+// Credits
+constexpr auto gCredits = R"HTML(
+	<p style="font-family: -apple-system; font-size: small;">
+		Built with ssc v{{full_version}}
+	</p>
+)HTML";
 
 //
 // Linux config
