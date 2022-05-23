@@ -51,7 +51,7 @@ static std::string getCxxFlags() {
 
 int main (const int argc, const char* argv[]) {
   Map attrs;
-  attrs["version"] = version;
+  attrs["version"] = SSC::version;
 
   if (argc < 2) {
     std::cout << tmpl(gHelpText, attrs) << std::endl;
@@ -94,7 +94,7 @@ int main (const int argc, const char* argv[]) {
     }
 
     if (is(arg, "-v")) {
-      std::cout << full_version << std::endl;
+      std::cout << SSC::full_version << std::endl;
       exit(0);
     }
 
@@ -923,7 +923,7 @@ int main (const int argc, const char* argv[]) {
   auto pathToBuiltWithFile = fs::current_path() / pathOutput / "built_with.txt";
   auto oldHash = WStringToString(readFile(pathToBuiltWithFile));
 
-  if (flagRunUserBuild == false || !binExists || oldHash != version_hash) {
+  if (flagRunUserBuild == false || !binExists || oldHash != SSC::version_hash) {
     auto r = exec(compileCommand.str());
 
     if (r.exitCode != 0) {
@@ -934,7 +934,7 @@ int main (const int argc, const char* argv[]) {
 
     log(r.output);
 
-    writeFile(pathToBuiltWithFile, version_hash);
+    writeFile(pathToBuiltWithFile, SSC::version_hash);
 
     log("compiled native binary");
   }
