@@ -913,8 +913,8 @@ int main (const int argc, const char* argv[]) {
     << " -DDEBUG=" << (flagDebugMode ? 1 : 0)
     << " -DPORT=" << devPort
     << " -DSETTINGS=\"" << encodeURIComponent(_settings) << "\""
-    << " -DVERSION=" << version
-    << " -DVERSION_HASH=" << version_hash
+    << " -DVERSION=" << SSC::version
+    << " -DVERSION_HASH=" << SSC::version_hash
   ;
 
   // log(compileCommand.str());
