@@ -1575,8 +1575,10 @@ namespace SSC {
     if (!defaultPath.empty()) {
       IShellItem *defaultFolder;
 
+      auto normalizedDefaultPath = defaultPath;
+      std::replace(normalizedDefaultPath.begin(), normalizedDefaultPath.end(), '/', '\\');
       result = SHCreateItemFromParsingName(
-        std::wstring(defaultPath.begin(), defaultPath.end()).c_str(),
+        std::wstring(normalizedDefaultPath.begin(), normalizedDefaultPath.end()).c_str(),
         NULL,
         IID_PPV_ARGS(&defaultFolder)
       );
