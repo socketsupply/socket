@@ -72,11 +72,11 @@ using Map = std::map<std::string, std::string>;
 using SCallback = std::function<void(const std::string)>;
 using ExitCallback = std::function<void(int code)>;
 
-constexpr auto version_hash = STR_VALUE(VERSION_HASH);
-constexpr auto version = STR_VALUE(VERSION);
-constexpr auto full_version = STR_VALUE(VERSION) " (" STR_VALUE(VERSION_HASH) ")";
-
 namespace SSC {
+  constexpr auto version_hash = STR_VALUE(VERSION_HASH);
+  constexpr auto version = STR_VALUE(VERSION);
+  constexpr auto full_version = STR_VALUE(VERSION) " (" STR_VALUE(VERSION_HASH) ")";
+
   enum {
     WINDOW_HINT_NONE = 0,  // Width and height are default size
     WINDOW_HINT_MIN = 1,   // Width and height are minimum bounds
