@@ -20,9 +20,6 @@
 using namespace SSC;
 using namespace std::chrono;
 
-constexpr auto version_hash = STR_VALUE(VERSION_HASH);
-constexpr auto version = STR_VALUE(VERSION);
-constexpr auto full_version = STR_VALUE(VERSION) " (" STR_VALUE(VERSION_HASH) ")";
 auto start = std::chrono::system_clock::now();
 bool porcelain = false;
 

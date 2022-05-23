@@ -1130,6 +1130,7 @@ namespace SSC {
     auto text = std::string(
       appData["title"] + " " +
       appData["version"] + "\n" +
+      "Built with ssc v" + full_version + "\n" +
       appData["copyright"]
     );
 

@@ -681,10 +681,15 @@ namespace SSC {
     gtk_box_pack_start(GTK_BOX(content), img, false, false, 0);
 
     std::string title_value(appData["title"] + " " + appData["version"]);
+    std::string version_value("Built with ssc v" + std::string(full_version));
 
     GtkWidget *label_title = gtk_label_new("");
     gtk_label_set_markup(GTK_LABEL(label_title), title_value.c_str());
     gtk_container_add(content, label_title);
+
+    GtkWidget *label_op_version = gtk_label_new("");
+    gtk_label_set_markup(GTK_LABEL(label_op_version), version_value.c_str());
+    gtk_container_add(content, label_op_version);
 
     GtkWidget *label_copyright = gtk_label_new("");
     gtk_label_set_markup(GTK_LABEL(label_copyright), appData["copyright"].c_str());
