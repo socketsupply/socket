@@ -135,7 +135,7 @@ constexpr auto gPListInfo = R"XML(<?xml version="1.0" encoding="UTF-8"?>
 )XML";
 // Credits
 constexpr auto gCredits = R"HTML(
-	<p style="font-family: -apple-system; font-size: small;">
+	<p style="font-family: -apple-system; font-size: small; color: FieldText;">
 		Built with ssc v{{full_version}}
 	</p>
 )HTML";
