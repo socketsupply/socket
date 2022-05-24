@@ -212,7 +212,6 @@ namespace SSC {
   CDataObject::~CDataObject() {
     if(m_pFormatEtc) delete[] m_pFormatEtc;
     if(m_pStgMedium) delete[] m_pStgMedium;
-    OutputDebugString("oof\n");
   }
 
   ULONG __stdcall CDataObject::AddRef(void) {
