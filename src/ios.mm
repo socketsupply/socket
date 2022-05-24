@@ -323,6 +323,7 @@ std::map<uint64_t, Stream*> streams;
 std::map<uint64_t, GenericContext*> contexts;
 
 std::map<uint64_t, UDX*> UDXs;
+std::map<uint32_t, udx_socket_send_t> UDXRequests;
 std::map<uint64_t, UDXSocket*> udxSockets;
 std::map<uint64_t, UDXStream*> udxStreams;
 std::map<uint64_t, DescriptorContext*> descriptors;
@@ -1855,8 +1856,14 @@ bool isRunning = false;
                      ip: (std::string)ip
                      ttl: (uint32_t)ttl {
   dispatch_async(queue, ^{
-    // what is the lifetime of req? should we store in a container?
-    udx_socket_send_t* req = new udx_socket_send_t;
+    udx_socket_send_t* req;
+
+    if (UDXRequests[rid]) {
+      req = UDXRequests[rid];
+    } else {
+      req = new udx_socket_send_t;
+    }
+
     req->data = (void *)((uintptr_t) rid);
 
     struct sockaddr_in addr;
