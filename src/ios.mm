@@ -230,12 +230,12 @@ struct UDX : public Peer {
   uint64_t id;
 }
 
-struct Socket : public Peer {
+struct UDXSocket : public Peer {
   udx_socket_t udx;
   uint64_t socketId;
 };
 
-struct Stream : public Peer {
+struct UDXStream : public Peer {
   udx_stream_t stream;
   uint64_t streamId;
 
@@ -322,7 +322,7 @@ std::map<uint64_t, Server*> servers;
 std::map<uint64_t, Stream*> streams;
 std::map<uint64_t, GenericContext*> contexts;
 
-std::map<uint64_t, UDX*> udxs;
+std::map<uint64_t, UDX*> UDXs;
 std::map<uint64_t, UDXSocket*> udxSockets;
 std::map<uint64_t, UDXStream*> udxStreams;
 std::map<uint64_t, DescriptorContext*> descriptors;
@@ -1675,7 +1675,7 @@ bool isRunning = false;
         [self resolve:seq message: SSC::format(R"JSON({
           "err": {
             "serverId": "$S",
-            "message": "no such client"
+            "message": "no such server"
           }
         })JSON", std::to_string(serverId))];
       });
@@ -1836,10 +1836,14 @@ bool isRunning = false;
 - (void) udxStreamInit: (std::string)seq
                      streamId: (uint64_t)streamId {
                      // all callbacks etc are emitted with streamId
+  dispatch_async(queue, ^{
+  });
 }
 
 - (void) udxSocketClose: (std::string)seq
                      socketId: (uint64_t)socketId {
+  dispatch_async(queue, ^{
+  });
 }
 
 - (void) udxSocketSendTTL: (std::string)seq
@@ -1850,94 +1854,105 @@ bool isRunning = false;
                      port: (uint32_t)port
                      ip: (std::string)ip
                      ttl: (uint32_t)ttl {
+  dispatch_async(queue, ^{
+    // what is the lifetime of req? should we store in a container?
+    udx_socket_send_t* req = new udx_socket_send_t;
+    req->data = (void *)((uintptr_t) rid);
 
-  // what is the lifetime of req? should we store in a container?
-  udx_socket_send_t* req = new udx_socket_send_t;
-  req->data = (void *)((uintptr_t) rid);
+    struct sockaddr_in addr;
+    int err = uv_ip4_addr((char *) &ip, port, &addr);
 
-  struct sockaddr_in addr;
-  int err = uv_ip4_addr((char *) &ip, port, &addr);
+    if (err < 0) {
+      dispatch_async(dispatch_get_main_queue(), ^{
+        [self
+          resolve: seq
+          message:
+          Operator::format(
+            R"JSON({
+              "err": {
+                "socketId": "$S",
+                "requestId": "$S",
+                "message": "$S"
+              }
+            })JSON",
+            std::to_string(socketId),
+            std::to_string(requestId),
+            uv_strerror(err)
+          )
+        ];
+      });
+      return;
+    }
 
-  if (err < 0) {
-    dispatch_async(dispatch_get_main_queue(), ^{
+    uv_buf_t b = uv_buf_init(buf, buf_len);
+
+    auto on_udx_send = [](udx_socket_send_t *req, int status) {
+      Socket* socket = (Socket*)req->handle;
+
       [self
-        resolve: seq
+        emit: "callback"
         message:
-        Operator::format(
-          R"JSON({
-            "err": {
-              "socketId": "$S",
-              "requestId": "$S",
-              "message": "$S"
-            }
+          Operator::format(R"JSON({
+            "id": "$S",
+            "name": "onsend",
+            "arguments": [$i, $i]
           })JSON",
-          std::to_string(socketId),
-          std::to_string(requestId),
-          uv_strerror(err)
+          std::to_string(socket->socketId),
+          (int) ((uintptr_t) req->data),
+          (int) ((uint32_t) status)
         )
       ];
-    });
-    return;
-  }
+    };
 
-  uv_buf_t b = uv_buf_init(buf, buf_len);
+    udx_socket_send_ttl(
+      req,
+      self,
+      &b,
+      1,
+      (const struct sockaddr*) &addr,
+      ttl,
+      on_udx_send
+    );
 
-  auto on_udx_send = [](udx_socket_send_t *req, int status) {
-    Socket* socket = (Socket*)req->handle;
-
-    [self
-      emit: "callback"
-      message:
-        Operator::format(R"JSON({
-          "id": "$S",
-          "name": "onsend",
-          "arguments": [$i, $i]
-        })JSON",
-        std::to_string(socket->socketId),
-        (int) ((uintptr_t) req->data),
-        (int) ((uint32_t) status)
-      )
-    ];
-  };
-
-  udx_socket_send_ttl(
-    req,
-    self,
-    &b,
-    1,
-    (const struct sockaddr*) &addr,
-    ttl,
-    on_udx_send
-  );
-
-  if (err < 0) {
-    // emit err
-  }
+    if (err < 0) {
+      // emit err
+    }
+  });
 }
 
 - (void) udxSocketSendBufferSize: (std::string)seq
                      socketId: (uint64_t)socketId
                      size: (uint32)size {
+  dispatch_async(queue, ^{
+  });
 }
 
 - (void) udxSocketRecvBufferSize: (std::string)seq
                      socketId: (uint64_t)socketId
                      size: (uint32)size {
+  dispatch_async(queue, ^{
+  });
 }
 
 - (void) udxSocketSetTTL: (std::string)seq
                      socketId: (uint64_t)socketId
                      size: (uint32)size {
+  dispatch_async(queue, ^{
+  });
 }
 
 - (void) udxSocketBind: (std::string)seq
               socketId: (uint64_t)socketId
                   port: (uint32_t)port
                     ip: (std::string)ip {
+  dispatch_async(queue, ^{
+  });
 }
 
 - (void) udxSocketInit: (std::string)seq
               socketId: (uint64_t)socketId {
+  dispatch_async(queue, ^{
+  });
 }
 
 - (void) udxInit: (std::string)seq
@@ -1947,18 +1962,16 @@ bool isRunning = false;
     // struct uv_loop_s *loop;
     // napi_get_uv_event_loop(env, &loop);
 
-    UDX* u = udxs[udxId] = new UDX();
+    UDX* u = UDXs[udxId] = new UDX();
     u->id = udxId;
 
     auto err = udx_init(loop, u->udx);
 
     if (err != 0) {
       dispatch_async(dispatch_get_main_queue(), ^{
-        [self resolve:seq message: Operator::format(R"JSON({
-          "err": {
-            "id": "$S",
-            "message": "$S"
-          }
+        [self emit:"callback" message: Operator::format(R"JSON({
+          "id": "$S"
+          "arguments": ["$S"]
         })JSON", std::to_string(udxId), uv_strerror(err))];
       });
       return;
@@ -1971,7 +1984,6 @@ bool isRunning = false;
     }
   });
 }
-
 
 //
 // --- End network methods
