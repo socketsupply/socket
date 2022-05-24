@@ -907,8 +907,14 @@ namespace SSC {
                   Settings->put_AreDefaultScriptDialogsEnabled(TRUE);
                   Settings->put_IsWebMessageEnabled(TRUE);
                   Settings->put_IsStatusBarEnabled(FALSE);
-                  Settings->put_AreDevToolsEnabled(opts.debug == 1);
-                  Settings->put_AreDefaultContextMenusEnabled(opts.debug == 1);
+
+                  Settings->put_AreDefaultContextMenusEnabled(TRUE);
+                  #if DEBUG == 1
+                    Settings->put_AreDevToolsEnabled(TRUE);
+                  #else 
+                    Settings->put_AreDevToolsEnabled(FALSE);
+                  #endif
+
                   Settings->put_IsBuiltInErrorPageEnabled(FALSE);
                   Settings->put_IsZoomControlEnabled(FALSE);
 
