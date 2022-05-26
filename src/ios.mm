@@ -128,15 +128,15 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
 - (void) udxSocketSendBufferSize: (std::string)seq
                      socketId: (uint64_t)socketId
-                     size: (uint32)size;
+                     size: (uint32_t)size;
 
 - (void) udxSocketRecvBufferSize: (std::string)seq
                      socketId: (uint64_t)socketId
-                     size: (uint32)size;
+                     size: (uint32_t)size;
 
 - (void) udxSocketSetTTL: (std::string)seq
                      socketId: (uint64_t)socketId
-                     size: (uint32)size;
+                     size: (uint32_t)size;
 
 - (void) udxSocketBind: (std::string)seq
               socketId: (uint64_t)socketId
@@ -1035,6 +1035,7 @@ bool isRunning = false;
     client->delegate = self;
 
     write_req_t *req = (write_req_t*) malloc(sizeof(write_req_t));
+    req->data = client;
     req->buf = uv_buf_init((char* const) message.c_str(), (int) message.size());
 
     auto onWrite = [](uv_write_t *req, int status) {
@@ -1075,13 +1076,13 @@ bool isRunning = false;
 
     client->tcp->data = client;
 
-    uv_tcp_init(loop, client->tcp);
     uv_tcp_nodelay(client->tcp, 0);
     uv_tcp_keepalive(client->tcp, 1, 60);
 
     struct sockaddr_in dest4;
     struct sockaddr_in6 dest6;
 
+    // check to validate the ip is actually an ipv6 address with a regex
     if (ip.find(":") != std::string::npos) {
       uv_ip6_addr(ip.c_str(), port, &dest6);
     } else {
@@ -1845,12 +1846,50 @@ bool isRunning = false;
 - (void) udxSocketClose: (std::string)seq
                      socketId: (uint64_t)socketId {
   dispatch_async(queue, ^{
+    auto socket = UDXSockets[socketId];
+
+    if (!socket) {
+      dispatch_async(dispatch_get_main_queue(), ^{
+        [self
+          emit: "callback"
+          message:
+            Operator::format(R"JSON({
+              "id": "$S",
+              "name": "onerror",
+              "arguments": []
+            })JSON",
+            std::to_string(socket->socketId),
+            (int) ((uintptr_t) req->data),
+            (int) ((uint32_t) status)
+          )
+        ];
+      });
+      return;
+    }
+
+    int err = udx_socket_close(socket->udx, [](udx_socket_t* self) {
+      dispatch_async(dispatch_get_main_queue(), ^{
+        [self
+          emit: "callback"
+          message:
+            Operator::format(R"JSON({
+              "id": "$S",
+              "name": "onclose",
+              "arguments": []
+            })JSON",
+            std::to_string(socket->socketId),
+            (int) ((uintptr_t) req->data),
+            (int) ((uint32_t) status)
+          )
+        ];
+      });
+    });
   });
 }
 
 - (void) udxSocketSendTTL: (std::string)seq
                      socketId: (uint64_t)socketId
-                     requestId: (uint64_t)requestId // udx_socket_send_t*
+                     requestId: (uint64_t)requestId
                      rId: (uint32_t)rId
                      buf: (std::string)buf
                      port: (uint32_t)port
@@ -1859,10 +1898,10 @@ bool isRunning = false;
   dispatch_async(queue, ^{
     udx_socket_send_t* req;
 
-    if (UDXRequests[rid]) {
-      req = UDXRequests[rid];
+    if (UDXRequests[requestId]) {
+      req = UDXRequests[requestId];
     } else {
-      req = new udx_socket_send_t;
+      req = UDXRequests[requestId] = new udx_socket_send_t;
     }
 
     req->data = (void *)((uintptr_t) rid);
@@ -1930,21 +1969,21 @@ bool isRunning = false;
 
 - (void) udxSocketSendBufferSize: (std::string)seq
                      socketId: (uint64_t)socketId
-                     size: (uint32)size {
+                     size: (uint32_t)size {
   dispatch_async(queue, ^{
   });
 }
 
 - (void) udxSocketRecvBufferSize: (std::string)seq
                      socketId: (uint64_t)socketId
-                     size: (uint32)size {
+                     size: (uint32_t)size {
   dispatch_async(queue, ^{
   });
 }
 
 - (void) udxSocketSetTTL: (std::string)seq
                      socketId: (uint64_t)socketId
-                     size: (uint32)size {
+                     size: (uint32_t)size {
   dispatch_async(queue, ^{
   });
 }
@@ -1967,8 +2006,6 @@ bool isRunning = false;
            udxId: (uint64_t)udxId {
   dispatch_async(queue, ^{
     loop = uv_default_loop();
-    // struct uv_loop_s *loop;
-    // napi_get_uv_event_loop(env, &loop);
 
     UDX* u = UDXs[udxId] = new UDX();
     u->id = udxId;
