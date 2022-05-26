@@ -1679,7 +1679,7 @@ bool isRunning = false;
             "code": "ENOTFOUND",
             "message": "$S"
           }
-        })JSON", hostname, uv_strerror(err))];
+        })JSON", hostname, uv_strerror(r))];
       });
       return;
     }
@@ -2187,6 +2187,8 @@ bool isRunning = false;
 
     [self.window makeKeyAndVisible];
     [self initNetworkStatusObserver];
+
+    [self.webview evaluateJavaScript: @"console.log('x');" completionHandler: nil];
 
     return YES;
 }
