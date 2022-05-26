@@ -376,6 +376,7 @@ int main (const int argc, const char* argv[]) {
       settings["ios_provisioning_profile"] = uuid;
     }
 
+    log(prefixFile());
     fs::copy(
       fs::path(prefixFile()) / "lib",
       target / pathOutput / "lib",

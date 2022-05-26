@@ -496,7 +496,8 @@ namespace SSC {
 
   inline std::string prefixFile() {
     if (platform.mac || platform.linux) {
-      return "/usr/local/lib/socket-sdk/";
+      std::string local = getEnv("HOME");
+      return std::string(local + "/.config/socket-sdk/");
     }
 
     std::string local = getEnv("LOCALAPPDATA");
