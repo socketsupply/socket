@@ -155,6 +155,15 @@ function _cross_compile_libudx {
   git clone --depth=1 git@github.com:mafintosh/libudx.git $BUILD_DIR
   cd $BUILD_DIR
 
+  export PLATFORM="iPhoneSimulator"
+  export CC="$(xcrun -sdk iphoneos -find clang)"
+  export LD="$(xcrun -sdk iphoneos -find ld)"
+  export RANLIB=$(xcrun -sdk iphoneos -find ranlib)
+  export AR=$(xcrun -sdk iphoneos -find ar)
+  export CFLAGS="-fembed-bitcode -arch ${target} -isysroot $PLATFORMPATH/$platform.platform/Developer/SDKs/$platform$SDKVERSION.sdk -miphoneos-version-min=$SDKMINVERSION"
+  export CPPFLAGS="-fembed-bitcode -arch ${target} -isysroot $PLATFORMPATH/$platform.platform/Developer/SDKs/$platform$SDKVERSION.sdk -miphoneos-version-min=$SDKMINVERSION"
+  export LDFLAGS="-Wc,-fembed-bitcode -arch ${target} -isysroot $PLATFORMPATH/$platform.platform/Developer/SDKs/$platform$SDKVERSION.sdk"
+
   for SRC in $(git ls-files -- 'src/*.c' ':!:*io_win.c')
   do
     echo $BUILD_DIR/$SRC
@@ -165,7 +174,6 @@ function _cross_compile_libudx {
       -std=c99
   done
 
-  export AR=$(xcrun -sdk iphoneos -find ar)
   "$AR" rvs libudx.a $(ls $BUILD_DIR/*.o)
 
   #
@@ -179,6 +187,20 @@ function _cross_compile_libudx {
 
   rm -rf $BUILD_DIR
   cd $OLD_CWD
+}
+
+function _unset_env {
+  unset PLATFORM
+  unset CC
+  unset STRIP
+  unset LD
+  unset CPP
+  unset CFLAGS
+  unset AR
+  unset RANLIB
+  unset CPPFLAGS
+  unset LDFLAGS
+  unset IPHONEOS_DEPLOYMENT_TARGET
 }
 
 function _cross_compile_libuv {
@@ -248,18 +270,6 @@ function _cross_compile_libuv {
 
   rm -rf $BUILD_DIR
   cd $OLD_CWD
-
-  unset PLATFORM
-  unset CC
-  unset STRIP
-  unset LD
-  unset CPP
-  unset CFLAGS
-  unset AR
-  unset RANLIB
-  unset CPPFLAGS
-  unset LDFLAGS
-  unset IPHONEOS_DEPLOYMENT_TARGET
 }
 
 #
@@ -268,6 +278,7 @@ function _cross_compile_libuv {
 if [ "$2" == "ios" ]; then
   _cross_compile_libuv
   _cross_compile_libudx
+  _unset_env
 fi
 
 #
