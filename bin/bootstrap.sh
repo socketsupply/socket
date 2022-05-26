@@ -212,6 +212,9 @@ function _cross_compile_libuv {
   BUILD_DIR=`pwd`/lib/build
   rm -rf `pwd`/lib/uv
 
+  #
+  # Attempts to find iphoneos tool, will fail fast if xcode not installed
+  #
   xcrun -sdk iphoneos -find texturetool
 
   #
