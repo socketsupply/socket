@@ -191,11 +191,13 @@ function _cross_compile_libudx {
   cp libudx.a $DEST_DIR
   cp -r $BUILD_DIR/include $DEST_DIR
 
-  rm -rf $BUILD_DIR
   cd $OLD_CWD
 }
 
 function _unset_env {
+  BUILD_DIR=`pwd`/lib/build
+  rm -rf $BUILD_DIR
+
   unset PLATFORM
   unset CC
   unset STRIP
@@ -277,7 +279,6 @@ function _cross_compile_libuv {
   cp libuv.1.dylib $DEST_DIR
   cp -r $BUILD_DIR/include $DEST_DIR
 
-  rm -rf $BUILD_DIR
   cd $OLD_CWD
 }
 
