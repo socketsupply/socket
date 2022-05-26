@@ -223,7 +223,17 @@ function _cross_compile_libuv {
   #
   # Attempts to find iphoneos tool, will fail fast if xcode not installed
   #
-  xcrun -sdk iphoneos -find texturetool
+  xcode-select -p >/dev/null 2>&1;
+  if [ ! $? = 0 ]; then
+    echo "Xcode needs to be installed from the Mac App Store."
+    exit 1
+  fi
+
+  which autoconf >/dev/null 2>&1;
+  if [ ! $? = 0 ]; then
+    echo "Try 'brew install automake'"
+    exit 1
+  fi
 
   #
   # Shallow clone the main branch of libuv

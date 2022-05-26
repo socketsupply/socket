@@ -312,7 +312,7 @@ void PeerInfo::init (uv_udp_t* socket) {
   }
 }
 
-void parse_address (struct sockaddr *name, int* port, char* ip) {
+static void parse_address (struct sockaddr *name, int* port, char* ip) {
   struct sockaddr_in *name_in = (struct sockaddr_in *) name;
   *port = ntohs(name_in->sin_port);
   uv_ip4_name(name_in, ip, 17);
@@ -1837,9 +1837,56 @@ bool isRunning = false;
 }
 
 - (void) udxStreamInit: (std::string)seq
-                     streamId: (uint64_t)streamId {
+                     udxId: (uint64_t)udxId
+                     streamId: (uint64_t)streamId
+                     id: (uint32_t)id {
                      // all callbacks etc are emitted with streamId
   dispatch_async(queue, ^{
+    auto* udx = UDXs[udxId];
+
+    if (udx == nullptr) {
+      // TODO emit error not exists
+      return;
+    }
+
+    auto* stream = UDXStreams[streamId] = new udxStream;
+    stream->streamId = streamId;
+
+    int err = udx_stream_init(udx->udx, (udx_stream_t*) stream->stream, id);
+    if (err < 0) {
+      // TODO emit error unable to init stream
+      return;
+    }
+
+    udx_stream_firewall(
+      (udx_stream_t*) stream->stream,
+      [](udx_stream_t* streamHandle, udx_socket_t* socketHandle, const struct sockaddr* from) {
+        UDXStream* stream = (UDXStream*) streamHandle;
+        UDXSocket* socket = (UDXSocket*) socketHandle;
+ 
+        uint32_t fw = 1;
+        int port;
+        int ip[17];
+
+        parse_address((struct sockaddr*) from, ip, &port);
+
+        dispatch_async(dispatch_get_main_queue(), ^{
+          [self
+            emit: "callback"
+            message:
+              Operator::format(R"JSON({
+                "id": "$S",
+                "name": "onfirewall",
+                "arguments": [$i, "$S"]
+              })JSON",
+              std::to_string(stream->streamId),
+              port,
+              std::to_string(ip))
+            )
+          ];
+        });
+      }
+    );
   });
 }
 
@@ -1898,7 +1945,7 @@ bool isRunning = false;
   dispatch_async(queue, ^{
     udx_socket_send_t* req;
 
-    if (UDXRequests[requestId]) {
+    if (UDXRequests[requestId] != nullptr) {
       req = UDXRequests[requestId];
     } else {
       req = UDXRequests[requestId] = new udx_socket_send_t;
