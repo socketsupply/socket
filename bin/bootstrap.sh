@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 set -e;
 
-PREFIX=${PREFIX:-"/usr/local"}
+PREFIX=${PREFIX:-$HOME}
+
+echo "CREATING $PREFIX"
 
 if [ ! "$CXX" ]; then
   if [ ! -z "$LOCALAPPDATA" ]; then
@@ -56,13 +58,14 @@ function _install {
   if [ ! -z "$LOCALAPPDATA" ]; then
     libdir="$LOCALAPPDATA/Programs/socketsupply"
   else
-    libdir="$PREFIX/lib/socket-sdk"
+    libdir="$PREFIX/.config/socket-sdk"
+    mkdir -p $libdir/{bin,lib,src}
   fi
 
   echo "• Installing ssc"
   rm -rf "$libdir"
 
-  sudo mkdir -p "$libdir"
+  mkdir -p "$libdir"
   cp -r `pwd`/src "$libdir"
 
   echo "• Copying sources to $libdir/src"
@@ -73,10 +76,8 @@ function _install {
     cp -r `pwd`/lib/* "$libdir/lib"
   fi
 
-  echo "• Moving binary to $PREFIX/bin"
+  echo "• Moving binary to $PREFIX/bin (prompting to copy file into directory)"
   sudo mv `pwd`/bin/cli "/usr/local/bin/ssc"
-
-  sudo mv `pwd`/bin/cli "$PREFIX/bin/op"
 
   if [ ! $? = 0 ]; then
     echo "• Unable to move binary into place"
@@ -163,11 +164,11 @@ function _cross_compile_libudx {
   export STRIP="$(xcrun -sdk iphoneos -find strip)"
   export LD="$(xcrun -sdk iphoneos -find ld)"
   export CPP="$CC -E"
-  export CFLAGS="-fembed-bitcode -arch ${target} -isysroot $PLATFORMPATH/$platform.platform/Developer/SDKs/$platform$SDKVERSION.sdk -miphoneos-version-min=$SDKMINVERSION"
+  export CFLAGS="-Wno-nullability-completeness -fembed-bitcode -arch ${target} -isysroot $PLATFORMPATH/$platform.platform/Developer/SDKs/$platform$SDKVERSION.sdk -miphoneos-version-min=$SDKMINVERSION"
   export AR=$(xcrun -sdk iphoneos -find ar)
   export RANLIB=$(xcrun -sdk iphoneos -find ranlib)
-  export CPPFLAGS="-fembed-bitcode -arch ${target} -isysroot $PLATFORMPATH/$platform.platform/Developer/SDKs/$platform$SDKVERSION.sdk -miphoneos-version-min=$SDKMINVERSION"
-  export LDFLAGS="-Wc,-fembed-bitcode -arch ${target} -isysroot $PLATFORMPATH/$platform.platform/Developer/SDKs/$platform$SDKVERSION.sdk"
+  export CPPFLAGS="-Wno-nullability-completeness-fembed-bitcode -arch ${target} -isysroot $PLATFORMPATH/$platform.platform/Developer/SDKs/$platform$SDKVERSION.sdk -miphoneos-version-min=$SDKMINVERSION"
+  export LDFLAGS="-Wc,-fembed-bitcode,-Wno-nullability-completeness -arch ${target} -isysroot $PLATFORMPATH/$platform.platform/Developer/SDKs/$platform$SDKVERSION.sdk"
   export CPATH="$PLATFORMPATH/$platform.platform/Developer/SDKs/$platform$SDKVERSION.sdk/usr/include"
 
   for SRC in $(git ls-files -- 'src/*.c' ':!:*io_win.c')
