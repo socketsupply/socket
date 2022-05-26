@@ -155,7 +155,10 @@ function _cross_compile_libudx {
   git clone --depth=1 git@github.com:mafintosh/libudx.git $BUILD_DIR
   cd $BUILD_DIR
 
+  PLATFORMPATH="/Applications/Xcode.app/Contents/Developer/Platforms"
+
   export PLATFORM="iPhoneSimulator"
+  platform=$PLATFORM
   export CC="$(xcrun -sdk iphoneos -find clang)"
   export STRIP="$(xcrun -sdk iphoneos -find strip)"
   export LD="$(xcrun -sdk iphoneos -find ld)"
