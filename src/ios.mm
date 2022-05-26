@@ -1624,42 +1624,28 @@ bool isRunning = false;
 }
 
 - (void) dnsLookup: (std::string)seq hostname: (std::string)hostname {
-  dispatch_async(queue, ^{
+  dispatch_async(queue, ^{;
     uv_getaddrinfo_t req;
-    uv_getaddrinfo_t* reqPtr = &req;
-    uv_getaddrinfo_init(loop, reqPtr);
+    int err = uv_getaddrinfo(loop, &req, [](uv_getaddrinfo_t *resolver, int status, struct addrinfo *res) {
+      char addr[17] = {'\0'};
+      uv_ip4_name((struct sockaddr_in*) res->ai_addr, addr, 16);
 
-    uv_getaddrinfo(loop, reqPtr, [](uv_getaddrinfo_t* req, int status, struct addrinfo* res) {
-      auto self = (SSC*) req->data;
-
-      if (status < 0) {
-        dispatch_async(dispatch_get_main_queue(), ^{
-          [self resolve:self->seq message: SSC::format(R"JSON({
-            "err": {
-              "code": "ENOTFOUND",
-              "message: "No such hostname"
-            }
-          })JSON", hostname, uv_strerror(status))];
-        });
-        return;
-      }
-
-      char ipbuf[17];
-      int port;
-      parse_address(res->ai_addr, &port, ipbuf);
-      std::string ip(ipbuf);
-
-      dispatch_async(dispatch_get_main_queue(), ^{
-        [self resolve:self->seq message: SSC::format(R"JSON({
-          "data": {
-            "address": "$S",
-            "family": "$i"
-          }
-        })JSON", hostname, ip, port)];
-      });
+      NSLog(@"COMMAND %s", addr);;
 
       uv_freeaddrinfo(res);
-    }, self);
+    }, hostname.c_str(), nullptr, nullptr);
+
+    if (err < 0) {
+      dispatch_async(dispatch_get_main_queue(), ^{
+        [self resolve:seq message: SSC::format(R"JSON({
+          "err": {
+            "code": "ENOTFOUND",
+            "message": "$S"
+          }
+        })JSON", hostname, uv_strerror(err))];
+      });
+      return;
+    }
   });
 }
 
@@ -2034,7 +2020,6 @@ bool isRunning = false;
 
   if (cmd.name == "dnsLookup") {
     [self dnsLookup: seq
-           clientId: clientId
            hostname: cmd.get("hostname")
     ];
     return;
@@ -2106,13 +2091,7 @@ bool isRunning = false;
 
     // Note: you won't see any logs in the preload script before the
     // Web Inspector is opened
-    std::string preload = Str(
-      "window.system = {};\n"
-
-      "window.external = {\n"
-      "  invoke: arg => window.webkit.messageHandlers.webview.postMessage(arg)\n"
-      "};\n"
-
+    std::string  preload = Str(
       "console.log = (...args) => {\n"
       "  window.external.invoke(JSON.stringify(args));\n"
       "};\n"
@@ -2122,7 +2101,10 @@ bool isRunning = false;
       "window.addEventListener('unhandledrejection', e => console.log(e.message));\n"
       "window.addEventListener('error', e => console.log(e.reason));\n"
 
-      "" + opts.preload + "\n"
+      "window.external = {\n"
+      "  invoke: arg => window.webkit.messageHandlers.webview.postMessage(arg)\n"
+      "};\n"
+      "" + createPreload(opts) + "\n"
       "//# sourceURL=preload.js"
     );
 
