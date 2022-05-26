@@ -74,6 +74,9 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 - (void) udpSend: (std::string)seq clientId: (uint64_t)clientId message: (std::string)message offset: (int)offset len: (int)len port: (int)port ip: (const char*)ip;
 - (void) udpReadStart: (std::string)seq serverId: (uint64_t)serverId;
 
+// DNS
+- (void) dnsLookup: (std::string)seq hostname: (std::string)hostname;
+
 // Shared
 - (void) sendBufferSize: (std::string)seq clientId: (uint64_t)clientId size: (int)size;
 - (void) recvBufferSize: (std::string)seq clientId: (uint64_t)clientId size: (int)size;
@@ -1620,6 +1623,46 @@ bool isRunning = false;
   });
 }
 
+- (void) dnsLookup: (std::string)seq hostname: (std::string)hostname {
+  dispatch_async(queue, ^{
+    uv_getaddrinfo_t req;
+    uv_getaddrinfo_t* reqPtr = &req;
+    uv_getaddrinfo_init(loop, reqPtr);
+
+    uv_getaddrinfo(loop, reqPtr, [](uv_getaddrinfo_t* req, int status, struct addrinfo* res) {
+      auto self = (SSC*) req->data;
+
+      if (status < 0) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+          [self resolve:self->seq message: SSC::format(R"JSON({
+            "err": {
+              "code": "ENOTFOUND",
+              "message: "No such hostname"
+            }
+          })JSON", hostname, uv_strerror(status))];
+        });
+        return;
+      }
+
+      char ipbuf[17];
+      int port;
+      parse_address(res->ai_addr, &port, ipbuf);
+      std::string ip(ipbuf);
+
+      dispatch_async(dispatch_get_main_queue(), ^{
+        [self resolve:self->seq message: SSC::format(R"JSON({
+          "data": {
+            "address": "$S",
+            "family": "$i"
+          }
+        })JSON", hostname, ip, port)];
+      });
+
+      uv_freeaddrinfo(res);
+    }, self);
+  });
+}
+
 //
 // --- End network methods
 //
@@ -1986,6 +2029,14 @@ bool isRunning = false;
              port: std::stoi(port)
     ];
 
+    return;
+  }
+
+  if (cmd.name == "dnsLookup") {
+    [self dnsLookup: seq
+           clientId: clientId
+           hostname: cmd.get("hostname")
+    ];
     return;
   }
 
