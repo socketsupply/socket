@@ -104,6 +104,12 @@ std::map<std::string, id<WKURLSchemeTask>> tasks;
 }
 @end
 
+struct GenericContext {
+  AppDelegate* delegate;
+  uint64_t reqId;
+  std::string seq;
+};
+
 struct DescriptorContext {
   uv_file fd;
   std::string seq;
@@ -216,6 +222,7 @@ void parse_address (struct sockaddr *name, int* port, char* ip) {
 
 std::map<uint64_t, Client*> clients;
 std::map<uint64_t, Server*> servers;
+std::map<uint64_t, GenericContext*> contexts;
 std::map<uint64_t, DescriptorContext*> descriptors;
 
 struct sockaddr_in addr;
@@ -1624,18 +1631,48 @@ bool isRunning = false;
 }
 
 - (void) dnsLookup: (std::string)seq hostname: (std::string)hostname {
-  dispatch_async(queue, ^{;
-    uv_getaddrinfo_t req;
-    int err = uv_getaddrinfo(loop, &req, [](uv_getaddrinfo_t *resolver, int status, struct addrinfo *res) {
+  dispatch_async(queue, ^{
+    loop = uv_default_loop();
+    auto reqId = SSC::rand64();
+    GenericContext* ctx = contexts[reqId] = new GenericContext;
+
+    struct addrinfo hints;
+    hints.ai_family = PF_INET;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_protocol = IPPROTO_TCP;
+    hints.ai_flags = 0;
+
+    uv_getaddrinfo_t* resolver = new uv_getaddrinfo_t;
+    ctx->delegate = self;
+    ctx->seq = seq;
+
+    resolver->data = ctx;
+
+    int r = uv_getaddrinfo(loop, resolver, [](uv_getaddrinfo_t *resolver, int status, struct addrinfo *res) {
+      auto ctx = (GenericContext*) resolver->data;
+      NSLog(@"ok");
+
+      if (status < 0) {
+        // fprintf(stderr, "getaddrinfo callback error %s\n", uv_err_name(status));
+        return;
+      }
+
+      NSLog(@"ok ok");
+
       char addr[17] = {'\0'};
       uv_ip4_name((struct sockaddr_in*) res->ai_addr, addr, 16);
+      std::string ip(addr, 17);
 
-      NSLog(@"COMMAND %s", addr);;
+      dispatch_async(dispatch_get_main_queue(), ^{
+        [ctx->delegate resolve: ctx->seq message: SSC::format(R"JSON({
+          "data": "$S"
+        })JSON", ip)];
+      });
 
       uv_freeaddrinfo(res);
-    }, hostname.c_str(), nullptr, nullptr);
+    }, hostname.c_str(), nullptr, &hints);
 
-    if (err < 0) {
+    if (r < 0) {
       dispatch_async(dispatch_get_main_queue(), ^{
         [self resolve:seq message: SSC::format(R"JSON({
           "err": {
@@ -1645,6 +1682,11 @@ bool isRunning = false;
         })JSON", hostname, uv_strerror(err))];
       });
       return;
+    }
+
+    if (isRunning == false) {
+      isRunning = true;
+      uv_run(loop, UV_RUN_DEFAULT);
     }
   });
 }

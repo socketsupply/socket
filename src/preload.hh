@@ -5,6 +5,7 @@ constexpr auto gPreload = R"JS(
   const IPC = window._ipc = { nextSeq: 1, streams: {} }
 
   window._ipc.resolve = async (seq, status, value) => {
+    console.log(seq, status, value)
     try {
       value = decodeURIComponent(value)
     } catch (err) {
