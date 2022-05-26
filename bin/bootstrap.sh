@@ -157,10 +157,12 @@ function _cross_compile_libudx {
 
   export PLATFORM="iPhoneSimulator"
   export CC="$(xcrun -sdk iphoneos -find clang)"
+  export STRIP="$(xcrun -sdk iphoneos -find strip)"
   export LD="$(xcrun -sdk iphoneos -find ld)"
-  export RANLIB=$(xcrun -sdk iphoneos -find ranlib)
-  export AR=$(xcrun -sdk iphoneos -find ar)
+  export CPP="$CC -E"
   export CFLAGS="-fembed-bitcode -arch ${target} -isysroot $PLATFORMPATH/$platform.platform/Developer/SDKs/$platform$SDKVERSION.sdk -miphoneos-version-min=$SDKMINVERSION"
+  export AR=$(xcrun -sdk iphoneos -find ar)
+  export RANLIB=$(xcrun -sdk iphoneos -find ranlib)
   export CPPFLAGS="-fembed-bitcode -arch ${target} -isysroot $PLATFORMPATH/$platform.platform/Developer/SDKs/$platform$SDKVERSION.sdk -miphoneos-version-min=$SDKMINVERSION"
   export LDFLAGS="-Wc,-fembed-bitcode -arch ${target} -isysroot $PLATFORMPATH/$platform.platform/Developer/SDKs/$platform$SDKVERSION.sdk"
 
