@@ -100,6 +100,8 @@ std::map<std::string, id<WKURLSchemeTask>> tasks;
   SSC::Parse cmd(url);
   tasks[cmd.get("seq")] = task;
 
+  NSLog(@"BIRP-IPC SCHEME HANDLER");
+
   [webView route: url];
 }
 @end
@@ -1648,22 +1650,25 @@ bool isRunning = false;
 
     resolver->data = ctx;
 
+    NSLog(@"SETTING UP %s", ctx->seq.c_str());
+
     int r = uv_getaddrinfo(loop, resolver, [](uv_getaddrinfo_t *resolver, int status, struct addrinfo *res) {
       auto ctx = (GenericContext*) resolver->data;
-      NSLog(@"ok");
+
+      NSLog(@"LOOKING UP %s", ctx->seq.c_str());
 
       if (status < 0) {
         // fprintf(stderr, "getaddrinfo callback error %s\n", uv_err_name(status));
         return;
       }
 
-      NSLog(@"ok ok");
-
       char addr[17] = {'\0'};
       uv_ip4_name((struct sockaddr_in*) res->ai_addr, addr, 16);
       std::string ip(addr, 17);
 
+      NSLog(@"PLEASE RESOLVE %s", ctx->seq.c_str());
       dispatch_async(dispatch_get_main_queue(), ^{
+        NSLog(@"RESOLVING %s", ctx->seq.c_str());
         [ctx->delegate resolve: ctx->seq message: SSC::format(R"JSON({
           "data": "$S"
         })JSON", ip)];
@@ -1685,7 +1690,6 @@ bool isRunning = false;
     }
 
     if (isRunning == false) {
-      isRunning = true;
       uv_run(loop, UV_RUN_DEFAULT);
     }
   });
@@ -2080,6 +2084,8 @@ bool isRunning = false;
       return;
     }
 
+    NSLog(@"BIRP-IPC UCC");
+
     [self route: [body UTF8String]];
 }
 
@@ -2134,25 +2140,27 @@ bool isRunning = false;
     // Note: you won't see any logs in the preload script before the
     // Web Inspector is opened
     std::string  preload = Str(
-      "console.log = (...args) => {\n"
-      "  window.external.invoke(JSON.stringify(args));\n"
-      "};\n"
-
-      "console.error = console.warn = console.log;\n"
-
       "window.addEventListener('unhandledrejection', e => console.log(e.message));\n"
       "window.addEventListener('error', e => console.log(e.reason));\n"
 
       "window.external = {\n"
       "  invoke: arg => window.webkit.messageHandlers.webview.postMessage(arg)\n"
       "};\n"
+
+      "const consoleOld = console.log;\n"
+      "console.log = (...args) => {\n"
+      "  consoleOld(...args);\n"
+      "  window.external.invoke(JSON.stringify(args));\n"
+      "};\n"
+
+      "console.error = console.warn = console.log;\n"
       "" + createPreload(opts) + "\n"
       "//# sourceURL=preload.js"
     );
 
     WKUserScript* initScript = [[WKUserScript alloc]
       initWithSource: [NSString stringWithUTF8String: preload.c_str()]
-      injectionTime: WKUserScriptInjectionTimeAtDocumentEnd
+      injectionTime: WKUserScriptInjectionTimeAtDocumentStart
       forMainFrameOnly: NO];
 
     WKWebViewConfiguration *config = [[WKWebViewConfiguration alloc] init];
@@ -2188,7 +2196,11 @@ bool isRunning = false;
     [self.window makeKeyAndVisible];
     [self initNetworkStatusObserver];
 
-    [self.webview evaluateJavaScript: @"console.log('x');" completionHandler: nil];
+    // [self.webview evaluateJavaScript: @"window.bar = 2 + 2;" completionHandler:^(NSString *result, NSError *error)
+    // {
+    //     NSLog(@"Error %@",error);
+    //       NSLog(@"Result %@",result);
+    // }];
 
     return YES;
 }
