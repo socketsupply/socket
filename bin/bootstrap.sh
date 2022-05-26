@@ -165,6 +165,7 @@ function _cross_compile_libudx {
   export RANLIB=$(xcrun -sdk iphoneos -find ranlib)
   export CPPFLAGS="-fembed-bitcode -arch ${target} -isysroot $PLATFORMPATH/$platform.platform/Developer/SDKs/$platform$SDKVERSION.sdk -miphoneos-version-min=$SDKMINVERSION"
   export LDFLAGS="-Wc,-fembed-bitcode -arch ${target} -isysroot $PLATFORMPATH/$platform.platform/Developer/SDKs/$platform$SDKVERSION.sdk"
+  export CPATH="$PLATFORMPATH/$platform.platform/Developer/SDKs/$platform$SDKVERSION.sdk/usr/include"
 
   for SRC in $(git ls-files -- 'src/*.c' ':!:*io_win.c')
   do
