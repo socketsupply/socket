@@ -1652,13 +1652,19 @@ bool isRunning = false;
 
     NSLog(@"SETTING UP %s", ctx->seq.c_str());
 
-    int r = uv_getaddrinfo(loop, resolver, [](uv_getaddrinfo_t *resolver, int status, struct addrinfo *res) {
+    uv_getaddrinfo(loop, resolver, [](uv_getaddrinfo_t *resolver, int status, struct addrinfo *res) {
       auto ctx = (GenericContext*) resolver->data;
 
       NSLog(@"LOOKING UP %s", ctx->seq.c_str());
 
       if (status < 0) {
-        // fprintf(stderr, "getaddrinfo callback error %s\n", uv_err_name(status));
+        [ctx->delegate resolve: ctx->seq message: SSC::format(R"JSON({
+          "err": {
+            "code": "$S",
+            "message": "$S"
+          }
+        })JSON", std::string(uv_err_name((int) status)), std::string(uv_strerror(status)))];
+
         return;
       }
 
@@ -1676,18 +1682,6 @@ bool isRunning = false;
 
       uv_freeaddrinfo(res);
     }, hostname.c_str(), nullptr, &hints);
-
-    if (r < 0) {
-      dispatch_async(dispatch_get_main_queue(), ^{
-        [self resolve:seq message: SSC::format(R"JSON({
-          "err": {
-            "code": "ENOTFOUND",
-            "message": "$S"
-          }
-        })JSON", hostname, uv_strerror(r))];
-      });
-      return;
-    }
 
     if (isRunning == false) {
       uv_run(loop, UV_RUN_DEFAULT);
