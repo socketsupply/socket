@@ -312,7 +312,7 @@ void PeerInfo::init (uv_udp_t* socket) {
   }
 }
 
-static void parse_address (struct sockaddr *name, int* port, char* ip) {
+static void parseAddress (struct sockaddr *name, int* port, char* ip) {
   struct sockaddr_in *name_in = (struct sockaddr_in *) name;
   *port = ntohs(name_in->sin_port);
   uv_ip4_name(name_in, ip, 17);
@@ -320,14 +320,13 @@ static void parse_address (struct sockaddr *name, int* port, char* ip) {
 
 std::map<uint64_t, Client*> clients;
 std::map<uint64_t, Server*> servers;
-std::map<uint64_t, Stream*> streams;
 std::map<uint64_t, GenericContext*> contexts;
+std::map<uint64_t, DescriptorContext*> descriptors;
 
 std::map<uint64_t, UDX*> UDXs;
 std::map<uint32_t, udx_socket_send_t> UDXRequests;
-std::map<uint64_t, UDXSocket*> udxSockets;
-std::map<uint64_t, UDXStream*> udxStreams;
-std::map<uint64_t, DescriptorContext*> descriptors;
+std::map<uint64_t, UDXSocket*> UDXSockets;
+std::map<uint64_t, UDXStream*> UDXStreams;
 
 struct sockaddr_in addr;
 
@@ -337,6 +336,12 @@ typedef struct {
 } write_req_t;
 
 uv_loop_t *loop = uv_default_loop();
+
+void loopCheck () {
+  if (uv_loop_alive(loop) == 0) {
+    uv_run(loop, UV_RUN_DEFAULT);
+  }
+}
 
 @implementation NavigationDelegate
 - (void) webView: (WKWebView*) webView
@@ -439,6 +444,7 @@ uv_loop_t *loop = uv_default_loop();
     }
 
     desc->fd = fd;
+    loopCheck();
   });
 };
 
@@ -486,6 +492,8 @@ uv_loop_t *loop = uv_default_loop();
         })", std::to_string(id), std::string(uv_strerror(err)))];
       });
     }
+
+    loopCheck();
   });
 };
 
@@ -558,6 +566,8 @@ uv_loop_t *loop = uv_default_loop();
         })", std::to_string(id), std::string(uv_strerror(err)))];
       });
     }
+
+    loopCheck();
   });
 };
 
@@ -608,6 +618,8 @@ uv_loop_t *loop = uv_default_loop();
         })", std::to_string(id), std::string(uv_strerror(err)))];
       });
     }
+
+    loopCheck();
   });
 };
 
@@ -642,6 +654,8 @@ uv_loop_t *loop = uv_default_loop();
         })", std::string(uv_strerror(err)))];
       });
     }
+
+    loopCheck();
   });
 };
 
@@ -676,6 +690,7 @@ uv_loop_t *loop = uv_default_loop();
         })", std::string(uv_strerror(err)))];
       });
     }
+    loopCheck();
   });
 };
 
@@ -710,6 +725,7 @@ uv_loop_t *loop = uv_default_loop();
         })", std::string(uv_strerror(err)))];
       });
     }
+    loopCheck();
   });
 };
 
@@ -744,6 +760,7 @@ uv_loop_t *loop = uv_default_loop();
         })", std::string(uv_strerror(err)))];
       });
     }
+    loopCheck();
   });
 };
 
@@ -778,6 +795,7 @@ uv_loop_t *loop = uv_default_loop();
         })", std::string(uv_strerror(err)))];
       });
     }
+    loopCheck();
   });
 };
 
@@ -812,6 +830,7 @@ uv_loop_t *loop = uv_default_loop();
         })", std::string(uv_strerror(err)))];
       });
     }
+    loopCheck();
   });
 };
 
@@ -888,6 +907,7 @@ uv_loop_t *loop = uv_default_loop();
         })", std::string(uv_strerror(err)))];
       });
     }
+    loopCheck();
   });
 };
 
@@ -1164,9 +1184,7 @@ uv_loop_t *loop = uv_default_loop();
       return;
     }
 
-    if (uv_loop_alive(loop) == 0) {
-      uv_run(loop, UV_RUN_DEFAULT);
-    }
+    loopCheck();
   });
 }
 
@@ -1273,9 +1291,7 @@ uv_loop_t *loop = uv_default_loop();
       NSLog(@"Listener started");
     });
 
-    if (uv_loop_alive(loop) == 0) {
-      uv_run(loop, UV_RUN_DEFAULT);
-    }
+    loopCheck();
   });
 }
 
@@ -1400,9 +1416,7 @@ uv_loop_t *loop = uv_default_loop();
       })JSON")];
     });
 
-    if (uv_loop_alive(loop) == 0) {
-      uv_run(loop, UV_RUN_DEFAULT);
-    }
+    loopCheck();
   });
 }
 
@@ -1577,9 +1591,7 @@ uv_loop_t *loop = uv_default_loop();
       })JSON")];
     });
 
-    if (uv_loop_alive(loop) == 0) {
-      uv_run(loop, UV_RUN_DEFAULT);
-    }
+    loopCheck();
   });
 }
 
@@ -1691,7 +1703,7 @@ uv_loop_t *loop = uv_default_loop();
         int port;
         char ipbuf[17];
         std::string data(buf->base);
-        parse_address((struct sockaddr *) addr, &port, ipbuf);
+        parseAddress((struct sockaddr *) addr, &port, ipbuf);
         std::string ip(ipbuf);
 
         dispatch_async(dispatch_get_main_queue(), ^{
@@ -1773,9 +1785,7 @@ uv_loop_t *loop = uv_default_loop();
       uv_freeaddrinfo(res);
     }, hostname.c_str(), nullptr, &hints);
 
-    if (uv_loop_alive(loop) == 0) {
-      uv_run(loop, UV_RUN_DEFAULT);
-    }
+    loopCheck();
   });
 }
 
@@ -1836,7 +1846,7 @@ uv_loop_t *loop = uv_default_loop();
       return;
     }
 
-    auto* stream = UDXStreams[streamId] = new udxStream;
+    auto* stream = UDXStreams[streamId] = new UDXStream;
     stream->streamId = streamId;
 
     int err = udx_stream_init(udx->udx, (udx_stream_t*) stream->stream, id);
@@ -1855,7 +1865,7 @@ uv_loop_t *loop = uv_default_loop();
         int port;
         int ip[17];
 
-        parse_address((struct sockaddr*) from, ip, &port);
+        parseAddress((struct sockaddr*) from, ip, &port);
 
         dispatch_async(dispatch_get_main_queue(), ^{
           [self
@@ -2056,9 +2066,7 @@ uv_loop_t *loop = uv_default_loop();
       return;
     }
 
-    if (uv_loop_alive(loop) == 0) {
-      uv_run(loop, UV_RUN_DEFAULT);
-    }
+    loopCheck();
   });
 }
 
