@@ -1474,7 +1474,9 @@ int main (const int argc, const char* argv[]) {
 
     auto runner = trim(std::string(STR_VALUE(CMD_RUNNER)));
     auto prefix = runner.size() > 0 ? runner + std::string(" ") : runner;
-    exitCode = std::system((prefix + cmd + argvForward.str()).c_str());
+    int runExitCode = std::system((prefix + cmd + argvForward.str()).c_str());
+
+    exitCode = WEXITSTATUS(runExitCode);
   }
 
   return exitCode;
