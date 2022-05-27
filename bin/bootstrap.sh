@@ -2,8 +2,9 @@
 set -e;
 
 PREFIX=${PREFIX:-$HOME}
-
-echo "CREATING $PREFIX"
+PLATFORMPATH=""
+SDKVERSION=""
+LIPO=""
 
 if [ ! "$CXX" ]; then
   if [ ! -z "$LOCALAPPDATA" ]; then
@@ -54,7 +55,6 @@ function _build {
 function _install {
   local libdir=""
 
-  ## must be a windows environment
   if [ ! -z "$LOCALAPPDATA" ]; then
     libdir="$LOCALAPPDATA/Programs/socketsupply"
   else
@@ -141,25 +141,12 @@ function _compile_libuv {
   install_name_tool -id libuv.1.dylib $BUILD_DIR/output/$target/lib/libuv.1.dylib
 }
 
-function _cross_compile_libudx {
-  if [ ! "$CC" ]; then
-    CC="$(which clang)"
-  fi
-
-  OLD_CWD=`pwd`
-  BUILD_DIR=`pwd`/lib/build
-  rm -rf $BUILD_DIR
-  mkdir $BUILD_DIR
-  SRC_DIR=$BUILD_DIR/src
-  rm -rf `pwd`/lib/udx
-
-  git clone --depth=1 git@github.com:mafintosh/libudx.git $BUILD_DIR
-  cd $BUILD_DIR
+function _compile_libudx {
+  target=$1
+  platform=$2
 
   PLATFORMPATH="/Applications/Xcode.app/Contents/Developer/Platforms"
 
-  export PLATFORM="iPhoneSimulator"
-  platform=$PLATFORM
   export CC="$(xcrun -sdk iphoneos -find clang)"
   export STRIP="$(xcrun -sdk iphoneos -find strip)"
   export LD="$(xcrun -sdk iphoneos -find ld)"
@@ -182,17 +169,6 @@ function _cross_compile_libudx {
   done
 
   "$AR" rvs libudx.a $(ls $BUILD_DIR/*.o)
-
-  #
-  # Copy the build into the project and delete leftover build artifacts.
-  #
-  DEST_DIR=$BUILD_DIR/../udx
-  mkdir $DEST_DIR
-
-  cp libudx.a $DEST_DIR
-  cp -r $BUILD_DIR/include $DEST_DIR
-
-  cd $OLD_CWD
 }
 
 function _unset_env {
@@ -222,30 +198,12 @@ function _cross_compile_libuv {
   rm -rf `pwd`/lib/uv
 
   #
-  # Attempts to find iphoneos tool, will fail fast if xcode not installed
-  #
-  xcode-select -p >/dev/null 2>&1;
-  if [ ! $? = 0 ]; then
-    echo "Xcode needs to be installed from the Mac App Store."
-    exit 1
-  fi
-
-  which autoconf >/dev/null 2>&1;
-  if [ ! $? = 0 ]; then
-    echo "Try 'brew install automake'"
-    exit 1
-  fi
-
-  #
   # Shallow clone the main branch of libuv
   #
   rm -rf $BUILD_DIR
   git clone --depth=1 git@github.com:libuv/libuv.git lib/build
   cd $BUILD_DIR
   sh autogen.sh
-
-  _setSDKVersion iPhoneOS
-  SDKMINVERSION="8.0"
 
   #
   # Build artifacts for all platforms
@@ -259,7 +217,6 @@ function _cross_compile_libuv {
   #
   # Combine the build artifacts
   #
-  LIPO=$(xcrun -sdk iphoneos -find lipo)
 
   $LIPO -create \
     $BUILD_DIR/output/armv7/lib/libuv.a \
@@ -291,15 +248,72 @@ function _cross_compile_libuv {
   cp -r $BUILD_DIR/include $DEST_DIR
 
   cd $OLD_CWD
+  _unset_env
+}
+
+function _cross_compile_libudx {
+  if [ ! "$CC" ]; then
+    CC="$(which clang)"
+  fi
+
+  OLD_CWD=`pwd`
+  BUILD_DIR=`pwd`/lib/build
+  rm -rf $BUILD_DIR
+  mkdir $BUILD_DIR
+  SRC_DIR=$BUILD_DIR/src
+  rm -rf `pwd`/lib/udx
+
+  git clone --depth=1 git@github.com:mafintosh/libudx.git $BUILD_DIR
+  cd $BUILD_DIR
+
+  #
+  # Build artifacts for all platforms
+  #
+  _compile_libudx armv7 iPhoneOS
+  _compile_libudx armv7s iPhoneOS
+  _compile_libudx arm64 iPhoneOS
+  _compile_libudx i386 iPhoneSimulator
+  _compile_libudx x86_64 iPhoneSimulator
+
+  #
+  # Copy the build into the project and delete leftover build artifacts.
+  #
+  DEST_DIR=$BUILD_DIR/../udx
+  mkdir $DEST_DIR
+
+  cp libudx.a $DEST_DIR
+  cp -r $BUILD_DIR/include $DEST_DIR
+
+  cd $OLD_CWD
+  _unset_env
 }
 
 #
 # This will re-compile libuv for iOS (and the iOS simulator).
 #
 if [ "$2" == "ios" ]; then
+  #
+  # Attempts to find iphoneos tool, will fail fast if xcode not installed
+  #
+  xcode-select -p >/dev/null 2>&1;
+  if [ ! $? = 0 ]; then
+    echo "Xcode needs to be installed from the Mac App Store."
+    exit 1
+  fi
+
+  which autoconf >/dev/null 2>&1;
+  if [ ! $? = 0 ]; then
+    echo "Try 'brew install automake'"
+    exit 1
+  fi
+
+  LIPO=$(xcrun -sdk iphoneos -find lipo)
+
+  _setSDKVersion iPhoneOS
+  SDKMINVERSION="8.0"
+  
   _cross_compile_libuv
   _cross_compile_libudx
-  _unset_env
 fi
 
 #
