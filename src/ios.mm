@@ -1078,6 +1078,7 @@ void loopCheck () {
     };
 
     uv_write((uv_write_t*) req, (uv_stream_t*) client->tcp, &req->buf, 1, onWrite);
+    loopCheck();
   });
 }
 
@@ -1180,7 +1181,6 @@ void loopCheck () {
           }
         })", std::to_string(clientId), std::string(uv_strerror(r)))];
       });
-
       return;
     }
 
@@ -1493,6 +1493,7 @@ void loopCheck () {
 
       free(handle);
     });
+    loopCheck();
   });
 }
 
@@ -1543,6 +1544,7 @@ void loopCheck () {
       free(req);
       free(req->handle);
     });
+    loopCheck();
   });
 }
 
@@ -1669,6 +1671,7 @@ void loopCheck () {
       });
       return;
     }
+    loopCheck();
   });
 }
 
@@ -1735,6 +1738,7 @@ void loopCheck () {
         "data": {}
       })JSON")];
     });
+    loopCheck();
   });
 }
 
@@ -1884,6 +1888,7 @@ void loopCheck () {
         });
       }
     );
+    loopCheck();
   });
 }
 
@@ -1928,6 +1933,7 @@ void loopCheck () {
         ];
       });
     });
+    loopCheck();
   });
 }
 
@@ -2008,6 +2014,7 @@ void loopCheck () {
     if (err < 0) {
       // emit err
     }
+    loopCheck();
   });
 }
 
@@ -2096,41 +2103,38 @@ void loopCheck () {
   nw_path_monitor_set_queue(self.monitor, self.monitorQueue);
   nw_path_monitor_set_update_handler(self.monitor, ^(nw_path_t _Nonnull path) {
     nw_path_status_t status = nw_path_get_status(path);
-    // Determine the active interface, but how?
+
+    std::string name;
+    std::string message;
+    
     switch (status) {
       case nw_path_status_invalid: {
-        dispatch_async(dispatch_get_main_queue(), ^{
-          [self emit: "offline" message: SSC::format(R"JSON({
-            "message": "Network path is invalid"
-          })JSON")];
-        });
+        name = "offline";
+        message = "Network path is invalid";
         break;
       }
       case nw_path_status_satisfied: {
-        dispatch_async(dispatch_get_main_queue(), ^{
-          [self emit: "online" message: SSC::format(R"JSON({
-            "message": "Network is usable"
-          })JSON")];
-        });
+        name = "online";
+        message = "Network is usable";
         break;
       }
       case nw_path_status_satisfiable: {
-        dispatch_async(dispatch_get_main_queue(), ^{
-          [self emit: "online" message: SSC::format(R"JSON({
-            "message": "Network may be usable"
-          })JSON")];
-        });
+        name = "online";
+        message = "Network may be usable";
         break;
       }
       case nw_path_status_unsatisfied: {
-        dispatch_async(dispatch_get_main_queue(), ^{
-          [self emit: "offline" message: SSC::format(R"JSON({
-            "message": "Network is not usable"
-          })JSON")];
-        });
+        name = "offline";
+        message = "Network is not usable";
         break;
       }
     }
+
+    dispatch_async(dispatch_get_main_queue(), ^{
+      [self emit: name message: SSC::format(R"JSON({
+        "message": "$S"
+      })JSON", message)];
+    });
   });
 
   nw_path_monitor_start(self.monitor);
