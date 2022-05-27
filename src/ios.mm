@@ -1741,6 +1741,8 @@ bool isRunning = false;
     auto ctxId = SSC::rand64();
     GenericContext* ctx = contexts[ctxId] = new GenericContext;
     ctx->id = ctxId;
+    ctx->delegate = self;
+    ctx->seq = seq;
 
     struct addrinfo hints;
     hints.ai_family = PF_INET;
@@ -1749,9 +1751,6 @@ bool isRunning = false;
     hints.ai_flags = 0;
 
     uv_getaddrinfo_t* resolver = new uv_getaddrinfo_t;
-    ctx->delegate = self;
-    ctx->seq = seq;
-
     resolver->data = ctx;
 
     uv_getaddrinfo(loop, resolver, [](uv_getaddrinfo_t *resolver, int status, struct addrinfo *res) {
@@ -1764,7 +1763,7 @@ bool isRunning = false;
             "message": "$S"
           }
         })JSON", std::string(uv_err_name((int) status)), std::string(uv_strerror(status)))];
-
+        contexts.erase(ctx->ctxId);
         return;
       }
 
