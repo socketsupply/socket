@@ -181,7 +181,7 @@ std::map<std::string, id<WKURLSchemeTask>> tasks;
 
 struct GenericContext {
   AppDelegate* delegate;
-  uint64_t reqId;
+  uint64_t id;
   std::string seq;
 };
 
@@ -1738,8 +1738,9 @@ bool isRunning = false;
 - (void) dnsLookup: (std::string)seq hostname: (std::string)hostname {
   dispatch_async(queue, ^{
     loop = uv_default_loop();
-    auto reqId = SSC::rand64();
-    GenericContext* ctx = contexts[reqId] = new GenericContext;
+    auto ctxId = SSC::rand64();
+    GenericContext* ctx = contexts[ctxId] = new GenericContext;
+    ctx->id = ctxId;
 
     struct addrinfo hints;
     hints.ai_family = PF_INET;
@@ -1753,12 +1754,8 @@ bool isRunning = false;
 
     resolver->data = ctx;
 
-    NSLog(@"SETTING UP %s", ctx->seq.c_str());
-
     uv_getaddrinfo(loop, resolver, [](uv_getaddrinfo_t *resolver, int status, struct addrinfo *res) {
       auto ctx = (GenericContext*) resolver->data;
-
-      NSLog(@"LOOKING UP %s", ctx->seq.c_str());
 
       if (status < 0) {
         [ctx->delegate resolve: ctx->seq message: SSC::format(R"JSON({
@@ -1775,12 +1772,12 @@ bool isRunning = false;
       uv_ip4_name((struct sockaddr_in*) res->ai_addr, addr, 16);
       std::string ip(addr, 17);
 
-      NSLog(@"PLEASE RESOLVE %s", ctx->seq.c_str());
       dispatch_async(dispatch_get_main_queue(), ^{
-        NSLog(@"RESOLVING %s", ctx->seq.c_str());
         [ctx->delegate resolve: ctx->seq message: SSC::format(R"JSON({
           "data": "$S"
         })JSON", ip)];
+
+        contexts.erase(ctx->ctxId);
       });
 
       uv_freeaddrinfo(res);
