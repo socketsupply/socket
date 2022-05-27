@@ -2098,6 +2098,8 @@ bool isRunning = false;
   didFinishLaunchingWithOptions :(NSDictionary *) launchOptions {
     using namespace SSC;
 
+    platform.os = "ios";
+
     auto appFrame = [[UIScreen mainScreen] bounds];
 
     self.window = [[UIWindow alloc] initWithFrame: appFrame];
