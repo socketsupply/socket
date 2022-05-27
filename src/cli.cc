@@ -41,7 +41,7 @@ void init (Map attrs) {
   auto cwd = fs::current_path();
   fs::create_directories(cwd / "src");
   SSC::writeFile(cwd / "src" / "index.html", "<html>Hello, World</html>");
-  SSC::writeFile(cwd / "socket.config", tmpl(gDefaultConfig, attrs));
+  SSC::writeFile(cwd / "ssc.config", tmpl(gDefaultConfig, attrs));
 }
 
 static std::string getCxxFlags() {
