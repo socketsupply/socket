@@ -337,7 +337,6 @@ typedef struct {
 } write_req_t;
 
 uv_loop_t *loop = uv_default_loop();
-bool isRunning = false;
 
 @implementation NavigationDelegate
 - (void) webView: (WKWebView*) webView
@@ -1165,9 +1164,7 @@ bool isRunning = false;
       return;
     }
 
-    if (isRunning == false) {
-      isRunning = true;
-      NSLog(@"Starting loop from request");
+    if (uv_loop_alive(loop) == 0) {
       uv_run(loop, UV_RUN_DEFAULT);
     }
   });
@@ -1276,9 +1273,7 @@ bool isRunning = false;
       NSLog(@"Listener started");
     });
 
-    if (isRunning == false) {
-      isRunning = true;
-      NSLog(@"Starting loop from server");
+    if (uv_loop_alive(loop) == 0) {
       uv_run(loop, UV_RUN_DEFAULT);
     }
   });
@@ -1405,9 +1400,7 @@ bool isRunning = false;
       })JSON")];
     });
 
-    if (isRunning == false) {
-      isRunning = true;
-      NSLog(@"Starting loop from server");
+    if (uv_loop_alive(loop) == 0) {
       uv_run(loop, UV_RUN_DEFAULT);
     }
   });
@@ -1584,9 +1577,7 @@ bool isRunning = false;
       })JSON")];
     });
 
-    if (isRunning == false) {
-      isRunning = true;
-      NSLog(@"Starting loop from server");
+    if (uv_loop_alive(loop) == 0) {
       uv_run(loop, UV_RUN_DEFAULT);
     }
   });
@@ -1782,7 +1773,7 @@ bool isRunning = false;
       uv_freeaddrinfo(res);
     }, hostname.c_str(), nullptr, &hints);
 
-    if (isRunning == false) {
+    if (uv_loop_alive(loop) == 0) {
       uv_run(loop, UV_RUN_DEFAULT);
     }
   });
@@ -2065,9 +2056,7 @@ bool isRunning = false;
       return;
     }
 
-    if (isRunning == false) {
-      isRunning = true;
-      NSLog(@"Starting loop from udx init");
+    if (uv_loop_alive(loop) == 0) {
       uv_run(loop, UV_RUN_DEFAULT);
     }
   });
