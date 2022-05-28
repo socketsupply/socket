@@ -1052,9 +1052,9 @@ void loopCheck () {
 
     client->delegate = self;
 
-    write_req_t *req = (write_req_t*) malloc(sizeof(write_req_t));
-    req->data = client;
-    req->buf = uv_buf_init((char* const) message.c_str(), (int) message.size());
+    write_req_t *wr = (write_req_t*) malloc(sizeof(write_req_t));
+    wr->req.data = client;
+    wr->buf = uv_buf_init((char* const) message.c_str(), (int) message.size());
 
     auto onWrite = [](uv_write_t *req, int status) {
       auto client = reinterpret_cast<Client*>(req->data);
@@ -1076,7 +1076,7 @@ void loopCheck () {
       free(wr);
     };
 
-    uv_write((uv_write_t*) req, (uv_stream_t*) client->tcp, &req->buf, 1, onWrite);
+    uv_write((uv_write_t*) wr, (uv_stream_t*) client->tcp, &wr->buf, 1, onWrite);
     loopCheck();
   });
 }
