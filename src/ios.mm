@@ -6,8 +6,8 @@
 #include <ifaddrs.h>
 #include <arpa/inet.h>
 
-#include "lib/uv/include/uv.h"
-#include "lib/udx/include/udx.h"
+#include "include/uv.h"
+#include "include/udx.h"
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <sys/un.h>

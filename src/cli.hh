@@ -301,8 +301,8 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		290F7F82276BBE9C00486988 /* libuv.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libuv.a; path = lib/uv/libuv.a; sourceTree = "<group>"; };
-		290F7F82276BBE9D00486988 /* libudx.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libudx.a; path = lib/udx/libudx.a; sourceTree = "<group>"; };
+		290F7F82276BBE9C00486988 /* libuv.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libuv.a; path = lib/libuv.a; sourceTree = "<group>"; };
+		290F7F82276BBE9D00486988 /* libudx.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libudx.a; path = lib/libudx.a; sourceTree = "<group>"; };
 		290F7F86276BC2B000486988 /* lib */ = {isa = PBXFileReference; lastKnownFileType = folder; path = lib; sourceTree = "<group>"; };
 		29124C4A27613369001832A0 /* {{name}}.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = {{name}}.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		29124C5C2761336B001832A0 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
@@ -596,7 +596,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 				ENABLE_BITCODE = NO;
 				"EXCLUDED_ARCHS[sdk=*]" = "{{arch_exclude}}";
 				GENERATE_INFOPLIST_FILE = YES;
-				HEADER_SEARCH_PATHS = "$(PROJECT_DIR)/lib/uv/include";
+				HEADER_SEARCH_PATHS = "$(PROJECT_DIR)/include";
 				INFOPLIST_FILE = Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "{{name}}";
 				INFOPLIST_KEY_LSApplicationCategoryType = Developer;
@@ -615,8 +615,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 					"@executable_path/../Frameworks",
 				);
 				LIBRARY_SEARCH_PATHS = (
-					"$(PROJECT_DIR)/lib",
-					"$(PROJECT_DIR)/lib/uv",
+					"$(PROJECT_DIR)/lib"
 				);
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = {{bundle_identifier}};
@@ -642,7 +641,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 				"EXCLUDED_ARCHS[sdk=*]" = "";
 				"EXCLUDED_ARCHS[sdk=iphonesimulator*]" = "{{arch_exclude}}";
 				GENERATE_INFOPLIST_FILE = YES;
-				HEADER_SEARCH_PATHS = "$(PROJECT_DIR)/lib/uv/include";
+				HEADER_SEARCH_PATHS = "$(PROJECT_DIR)/include";
 				INFOPLIST_FILE = Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "{{name}}";
 				INFOPLIST_KEY_LSApplicationCategoryType = Developer;
@@ -661,8 +660,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 					"@executable_path/../Frameworks",
 				);
 				LIBRARY_SEARCH_PATHS = (
-					"$(PROJECT_DIR)/lib",
-					"$(PROJECT_DIR)/lib/uv",
+					"$(PROJECT_DIR)/lib"
 				);
 				MARKETING_VERSION = 1.0;
 				ONLY_ACTIVE_ARCH = YES;

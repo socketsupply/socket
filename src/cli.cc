@@ -382,6 +382,12 @@ int main (const int argc, const char* argv[]) {
       fs::copy_options::overwrite_existing | fs::copy_options::recursive
     );
 
+    fs::copy(
+      fs::path(prefixFile()) / "include",
+      target / pathOutput / "include",
+      fs::copy_options::overwrite_existing | fs::copy_options::recursive
+    );
+
     writeFile(target / pathOutput / "exportOptions.plist", tmpl(gXCodeExportOptions, settings));
     writeFile(target / pathOutput / "Info.plist", tmpl(gXCodePlist, settings));
     writeFile(pathToProject / "project.pbxproj", tmpl(gXCodeProject, settings));

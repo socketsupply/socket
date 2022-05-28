@@ -22,7 +22,7 @@ declare LIBUDX_REPO="git@github.com:mafintosh/libudx.git"
 
 ## Global state
 declare PREFIX
-declare BUILD_PATH="build"
+declare BUILD_PATH="$(pwd)/build"
 
 ## Global commands, may be null/empty and platform dependant
 declare AR
@@ -42,6 +42,7 @@ declare XCODE_TOOLCHAIN_PATH
 ## Global iOS (for Xcode) related constants
 declare IPHONEOS_DEPLOYMENT_TARGET="8.0"
 declare IPHONEOS_MIN_SDKVERSION="8.0"
+declare -a pids=()
 
 ##
 # Polyfill `sudo(1)` for environments that do not have it,
@@ -53,6 +54,15 @@ if ! which sudo > /dev/null 2>&1; then
     return $?
   }
 fi
+
+##
+# TODO
+##
+function onsignal () {
+  for pid in "${pids[@]}"; do
+    kill -9 "$pid" 2>/dev/null
+  done
+}
 
 ##
 # Resolves a command piping stderr to `/dev/null` returning 0
@@ -135,7 +145,7 @@ function array_contains () {
 # $1..N    Directories to list files in
 ##
 function list_files () {
-  $(which find) "$@"
+  $(which find) "$@" 2>/dev/null
   return $?
 }
 
@@ -155,7 +165,7 @@ function prechecks () {
   fi
 
   if [ "$platform_target" == "$PLATFORM_IOS" ]; then
-    required_commands+=("ar" "ld" "lipo" "ranlib" "xcrun" "xcode-select" "autoconf")
+    required_commands+=("ar" "ld" "lipo" "glibtoolize" "ranlib" "xcrun" "xcode-select" "autoconf")
   fi
 
   # Verify required commands exist
@@ -201,6 +211,8 @@ function postchecks () {
 # Returns 0 upon success, otherwise an error code exit status
 ##
 function configure () {
+  log "Configuring Socket SDK build"
+
   local platform_target="${1:-"$PLATFORM_DESKTOP"}"
 
   prechecks "$@" || return $?
@@ -217,13 +229,32 @@ function configure () {
     CXX="$(resolve_command cpp)"
   fi
 
+  export AR="${AR:-"$(resolve_command ar)"}"
+  export LD="${LD:-"$(resolve_command ld)"}"
+  export CC="${CC:-"$(resolve_command cc)"}"
   export CXX
-  export CPP="$CXX" # CPP is just CXX with extra steps
+  export CPP="${CPP:-"$(resolve_command cpp)"}"
+  export STRIP="${STRIP:-"$(resolve_command strip)"}"
+  export RANLIB="${RANLIB:-"$(resolve_command ranlib)"}"
+
+  export PREFIX=${PREFIX:-"/usr/local"}
+
+  postchecks "$@" || return $?
+}
+
+##
+#
+##
+function configure_dependencies () {
+  local platform_target="${1:-"$PLATFORM_DESKTOP"}"
 
   if [ "$platform_target"  == "$PLATFORM_IOS" ]; then
     export AR="$(xcrun -sdk iphoneos -find ar)"
     export LD="$(xcrun -sdk iphoneos -find ld)"
     export CC="$(xcrun -sdk iphoneos -find clang)"
+    export CXX="$(xcrun -sdk iphoneos -find clang++)"
+    #export CPP="$(xcrun -sdk iphoneos -find cpp)"
+    export CPP="$CC -E"
     export LIPO="$(xcrun -sdk iphoneos -find lipo)"
     export STRIP="$(xcrun -sdk iphoneos -find strip)"
     export RANLIB="$(xcrun -sdk iphoneos -find ranlib)"
@@ -233,19 +264,7 @@ function configure () {
     export XCODE_TOOLCHAIN_PATH="$XCODE_PATH/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin"
 
     export IPHONEOS_DEPLOYMENT_TARGET="8.0"
-
-    # export CPATH="$XCODE_PLATFORMS_PATH/$platform.platform/Developer/SDKs/$platform$SDKVERSION.sdk/usr/include"
-  else
-    export AR="${AR:-"$(resolve_command ar)"}"
-    export LD="${LD:-"$(resolve_command ld)"}"
-    export CC="${CC:-"$(resolve_command cc)"}"
-    export STRIP="${STRIP:-"$(resolve_command strip)"}"
-    export RANLIB="${RANLIB:-"$(resolve_command ranlib)"}"
   fi
-
-  export PREFIX=${PREFIX:-"/usr/local"}
-
-  postchecks "$@" || return $?
 }
 
 ##
@@ -304,7 +323,7 @@ function get_latest_xcode_sdk_platform_version () {
     return 0
   fi
 
-  echo "${sdks[-1]:${platform_type_length}:-4}"
+  basename "${sdks[(( ${#sdks[@]} - 1 ))]}" | sed "s/$platform_type//g" | sed "s/.sdk//g"
 }
 
 ##
@@ -323,11 +342,13 @@ function export_platform_compiler_flags () {
     CFLAGS+=" ${shared_flags[*]}"
     CFLAGS+=" -miphoneos-version-min=$IPHONEOS_MIN_SDKVERSION"
 
-    CPPFLAGS+="$CFLAGS"
+    #CPPFLAGS+="$CFLAGS"
     CXXFLAGS+="$CFLAGS"
 
     #LDFLAGS+=" -Wc,-fembed-bitcode"
     LDFLAGS+=" ${shared_flags[*]}"
+
+    export CPATH="$XCODE_PLATFORMS_PATH/$platform_type.platform/Developer/SDKs/$platform_type$sdk_version.sdk/usr/include"
   fi
 
   export CFLAGS
@@ -379,13 +400,11 @@ function compile_libuv () {
 
   local -a archs=("arm64" "i386" "x86_64")
   local -a hosts=("arm" "${archs[1]}" "${archs[2]}")
-  local pids=()
-  local i=0
 
-  rm -rf "$BUILD_PATH"/libuv || return $?
-
-  if ! git clone --depth=1 "$LIBUV_REPO" "$BUILD_PATH/libuv"; then
-    panic "Failed to clone $LIBUV_REPO"
+  if ! test -d "$BUILD_PATH/libuv"; then
+    if ! git clone --depth=1 "$LIBUV_REPO" "$BUILD_PATH/libuv"; then
+      panic "Failed to clone $LIBUV_REPO"
+    fi
   fi
 
   pushd . || return $?
@@ -395,26 +414,42 @@ function compile_libuv () {
   if [ "$platform_target" == "$PLATFORM_IOS" ]; then
     # The order corresponds to archs/hosts
     local -a platforms=("iPhoneOS" "iPhoneSimulator" "iPhoneSimulator")
-    for (( i = 0; i < ${#platforms}; i++ )); do
+    local i=0
+    for (( i = 0; i < ${#platforms[@]}; i++ )); do
       local platform="${platforms[$i]}"
       local arch="${archs[$i]}"
       local host="${hosts[$i]}"
 
-      export_platform_compiler_flags "$PLATFORM_IOS" "$arch" iPhoneOS
+      cp -rf "$BUILD_PATH/libuv" "$BUILD_PATH/$arch/libuv"
+      cd "$BUILD_PATH/$arch/libuv"
 
-      ./configure --prefix="$BUILD_PATH/$arch" --host="$host-apple-darwin"
+      mkdir -p "$BUILD_PATH/$arch/lib"
+      mkdir -p "$BUILD_PATH/$arch/include"
 
       {
-        make clean
-        make -j4
-        make install
-        install_name_tool -id libuv.1.dylib "$BUILD_PATH/$arch/lib/libuv.1.dylib"
+        export_platform_compiler_flags "$PLATFORM_IOS" "$arch" "$platform"
+        ./configure --prefix="$BUILD_PATH/$arch" --host="$host-apple-darwin"
+        make clean || return $?
+        make -j4 || return $?
+        make install || return $?
       } &
       pids+=($!)
     done
   fi
 
-  wait "${pids[@]}"
+  wait "${pids[@]}" || return $?
+  popd
+
+  mkdir -p "$BUILD_PATH/"{lib,include} || return $?
+
+  $LIPO -create                      \
+    "$BUILD_PATH/arm64/lib/libuv.a"  \
+    "$BUILD_PATH/x86_64/lib/libuv.a" \
+    "$BUILD_PATH/i386/lib/libuv.a"   \
+    -output "$BUILD_PATH/lib/libuv.a" || return $?
+
+  rm -rf "$BUILD_PATH"/include/uv*
+  cp -rf "$BUILD_PATH"/libuv/include/* "$BUILD_PATH/include"
 
   return 0
 }
@@ -425,12 +460,64 @@ function compile_libuv () {
 ##
 function compile_libudx () {
   local platform_target="${1:-"$PLATFORM_DESKTOP"}"
+  local -a archs=("arm64" "i386" "x86_64")
+  local sources=()
 
-  rm -rf "$BUILD_PATH"/libudx || return $?
-
-  if ! git clone --depth=1 "$LIBUDX_REPO" "$BUILD_PATH/libudx"; then
-    panic "Failed to clone $LIBUDX_REPO"
+  if ! test -d "$BUILD_PATH/libudx"; then
+    if ! git clone --depth=1 "$LIBUDX_REPO" "$BUILD_PATH/libudx"; then
+      panic "Failed to clone $LIBUDX_REPO"
+    fi
   fi
+
+  pushd . || return $?
+  cd "$BUILD_PATH/libudx" || return $?
+
+  read -r -d '' -a sources < <(git ls-files -- 'src/*.c' ':!:*io_win.c')
+
+  if [ "$platform_target" == "$PLATFORM_IOS" ]; then
+    # The order corresponds to archs/hosts
+    local -a platforms=("iPhoneOS" "iPhoneSimulator" "iPhoneSimulator")
+    local i=0
+    for (( i = 0; i < ${#platforms[@]}; i++ )); do
+      local platform="${platforms[$i]}"
+
+      local arch="${archs[$i]}"
+      cp -rf "$BUILD_PATH/libudx" "$BUILD_PATH/$arch/libudx"
+      cd "$BUILD_PATH/$arch/libudx"
+
+      mkdir -p "$BUILD_PATH/$arch/lib"
+      mkdir -p "$BUILD_PATH/$arch/include"
+
+      {
+        export_platform_compiler_flags "$PLATFORM_IOS" "$arch" "$platform"
+        for src in "${sources[@]}"; do
+          # shellcheck disable=SC2086
+          "$CC" -std=c99 $CXXFLAGS            \
+            -I "$BUILD_PATH/include"          \
+            -c "$BUILD_PATH/$arch/libudx/$src"
+        done
+
+        local objects=()
+        read -r -d '' -a objects < <(list_files "$BUILD_PATH/$arch/libudx/"*.o)
+        "$AR" rvs "$BUILD_PATH/$arch/lib/libudx.a" "${objects[@]}"
+      } &
+      pids+=($!)
+    done
+  fi
+
+  wait "${pids[@]}" || return $?
+  popd
+
+  mkdir -p "$BUILD_PATH/"{lib,include} || return $?
+
+  $LIPO -create                      \
+    "$BUILD_PATH/arm64/lib/libudx.a"  \
+    "$BUILD_PATH/x86_64/lib/libudx.a" \
+    "$BUILD_PATH/i386/lib/libudx.a"   \
+    -output "$BUILD_PATH/lib/libudx.a" || return $?
+
+  rm -rf "$BUILD_PATH"/include/udx*
+  cp -rf "$BUILD_PATH"/libudx/include/* "$BUILD_PATH/include"
 
   return 0
 }
@@ -443,9 +530,28 @@ function compile_dependencies () {
   shift
 
   if [ "$platform_target" == "$PLATFORM_IOS" ]; then
-    compile_libuv "$PLATFORM_IOS" "$@"
-    compile_libuv "$PLATFORM_IOS" "$@"
+    compile_libuv "$PLATFORM_IOS" "$@" || return $?
+    compile_libudx "$PLATFORM_IOS" "$@" || return $?
   fi
+
+  return 0
+}
+
+##
+# TODO
+##
+function install_dependencies () {
+  local destination="$(get_system_ssc_framework_directory)"
+
+  if ! mkdir -p "$destination/lib"; then
+    panic "Failed to make destination lib directory: $destination"
+  fi
+
+  rm -rf "$destination/lib/"*.a
+  rm -rf "$destination/include"
+  cp -rf "$BUILD_PATH/lib/"*.a "$destination/lib"
+  cp -rf "$BUILD_PATH/include/" "$destination/include"
+
   return 0
 }
 
@@ -536,10 +642,15 @@ function install_ssc () {
 ##
 function main () {
   configure "$@" || return $?
-  compile_dependencies "$@" || return $?
   compile_ssc "$@" || return $?
+
+  configure_dependencies "$@" || return $?
+  compile_dependencies "$@" || return $?
+
   install_ssc "$@" || return $?
+  install_dependencies || return $?
 }
 
+trap onsignal SIGINT SIGTERM
 ## Run the `main()` function
-main "$@"
+time main "$@"
