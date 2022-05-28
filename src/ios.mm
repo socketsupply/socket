@@ -1875,7 +1875,7 @@ void loopCheck () {
           [self
             emit: "callback"
             message:
-              Operator::format(R"JSON({
+              SSC::format(R"JSON({
                 "id": "$S",
                 "name": "onfirewall",
                 "arguments": [$i, "$S"]
@@ -1902,7 +1902,7 @@ void loopCheck () {
         [self
           emit: "callback"
           message:
-            Operator::format(R"JSON({
+            SSC::format(R"JSON({
               "id": "$S",
               "name": "onerror",
               "arguments": []
@@ -1921,7 +1921,7 @@ void loopCheck () {
         [self
           emit: "callback"
           message:
-            Operator::format(R"JSON({
+            SSC::format(R"JSON({
               "id": "$S",
               "name": "onclose",
               "arguments": []
@@ -1964,7 +1964,7 @@ void loopCheck () {
         [self
           resolve: seq
           message:
-          Operator::format(
+          SSC::format(
             R"JSON({
               "err": {
                 "socketId": "$S",
@@ -1989,7 +1989,7 @@ void loopCheck () {
       [self
         emit: "callback"
         message:
-          Operator::format(R"JSON({
+          SSC::format(R"JSON({
             "id": "$S",
             "name": "onsend",
             "arguments": [$i, $i]
@@ -2065,7 +2065,7 @@ void loopCheck () {
 
     if (err != 0) {
       dispatch_async(dispatch_get_main_queue(), ^{
-        [self emit:"callback" message: Operator::format(R"JSON({
+        [self emit:"callback" message: SSC::format(R"JSON({
           "id": "$S"
           "arguments": ["$S"]
         })JSON", std::to_string(udxId), uv_strerror(err))];
@@ -2106,7 +2106,7 @@ void loopCheck () {
 
     std::string name;
     std::string message;
-    
+
     switch (status) {
       case nw_path_status_invalid: {
         name = "offline";
