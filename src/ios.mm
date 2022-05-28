@@ -2185,12 +2185,15 @@ void loopCheck () {
                      ttl: (uint32_t)ttl {
   dispatch_async(queue, ^{
     auto* socket = UDXSockets[socketId]
+    
     if (socket == nullptr) {
-      [self resolve: seq message: SSC::format(R"JSON({
-        "err": {
-          "message": "No such socketId"
-        }
-      })JSON")];
+      dispatch_async(dispatch_get_main_queue(), ^{
+        [self resolve: seq message: SSC::format(R"JSON({
+          "err": {
+            "message": "No such socketId"
+          }
+        })JSON")];
+      });
       return;
     }
 
@@ -2199,19 +2202,23 @@ void loopCheck () {
       auto name = std::string(uv_err_name(err));
       auto message = std::string(uv_strerror(err));
 
-      [self resolve: seq message: SSC::format(R"JSON({
-        "err": {
-          "method": "udx_socket_bind",
-          "name": "$S",
-          "message": "$S"
-        }
-      })JSON", name, message)];
+      dispatch_async(dispatch_get_main_queue(), ^{
+        [self resolve: seq message: SSC::format(R"JSON({
+          "err": {
+            "method": "udx_socket_bind",
+            "name": "$S",
+            "message": "$S"
+          }
+        })JSON", name, message)];
+      });
       return;
     }
 
-    [self resolve: seq message: R"JSON({
-      "data": null
-    })JSON"];
+    dispatch_async(dispatch_get_main_queue(), ^{
+      [self resolve: seq message: R"JSON({
+        "data": null
+      })JSON"];
+    });
   });
 }
 
@@ -2226,38 +2233,46 @@ void loopCheck () {
       auto name = std::string(uv_err_name(err));
       auto message = std::string(uv_strerror(err));
 
-      [self resolve: seq message: SSC::format(R"JSON({
-        "err": {
-          "method": "uv_ip4_addr",
-          "name": "$S",
-          "message": "$S"
-        }
-      })JSON", name, message)];
+      dispatch_async(dispatch_get_main_queue(), ^{
+        [self resolve: seq message: SSC::format(R"JSON({
+          "err": {
+            "method": "uv_ip4_addr",
+            "name": "$S",
+            "message": "$S"
+          }
+        })JSON", name, message)];
+      });
       return;
     }
 
     auto* socket = UDXSockets[socketId]
     if (socket == nullptr) {
-      [self resolve: seq message: SSC::format(R"JSON({
-        "err": {
-          "message": "No such socketId"
-        }
-      })JSON")];
+      
+      dispatch_async(dispatch_get_main_queue(), ^{
+        [self resolve: seq message: SSC::format(R"JSON({
+          "err": {
+            "message": "No such socketId"
+          }
+        })JSON")];
+      });
       return;
     }
 
     err = udx_socket_bind(socket->socket, (const struct sockaddr *) &addr);
+
     if (err < 0) {
       auto name = std::string(uv_err_name(err));
       auto message = std::string(uv_strerror(err));
 
-      [self resolve: seq message: SSC::format(R"JSON({
-        "err": {
-          "method": "udx_socket_bind",
-          "name": "$S",
-          "message": "$S"
-        }
-      })JSON", name, message)];
+      dispatch_async(dispatch_get_main_queue(), ^{
+        [self resolve: seq message: SSC::format(R"JSON({
+          "err": {
+            "method": "udx_socket_bind",
+            "name": "$S",
+            "message": "$S"
+          }
+        })JSON", name, message)];
+      });
       return;
     }
 
@@ -2271,13 +2286,15 @@ void loopCheck () {
       auto name = std::string(uv_err_name(err));
       auto message = std::string(uv_strerror(err));
 
-      [self resolve: seq message: SSC::format(R"JSON({
-        "err": {
-          "method": "udx_socket_getsockname",
-          "name": "$S",
-          "message": "$S"
-        }
-      })JSON", name, message)];
+      dispatch_async(dispatch_get_main_queue(), ^{
+        [self resolve: seq message: SSC::format(R"JSON({
+          "err": {
+            "method": "udx_socket_getsockname",
+            "name": "$S",
+            "message": "$S"
+          }
+        })JSON", name, message)];
+      });
       return;
     }
 
@@ -2290,19 +2307,23 @@ void loopCheck () {
       auto name = std::string(uv_err_name(err));
       auto message = std::string(uv_strerror(err));
 
-      [self resolve: seq message: SSC::format(R"JSON({
-        "err": {
-          "method": "udx_socket_recv_start",
-          "name": "$S",
-          "message": "$S"
-        }
-      })JSON", name, message)];
+      dispatch_async(dispatch_get_main_queue(), ^{
+        [self resolve: seq message: SSC::format(R"JSON({
+          "err": {
+            "method": "udx_socket_recv_start",
+            "name": "$S",
+            "message": "$S"
+          }
+        })JSON", name, message)];
+      });
       return;
     }
 
-    [self resolve: seq message: SSC::format(R"JSON({
-      "data": $i
-    })JSON", std::to_string(local_port))];
+    dispatch_async(dispatch_get_main_queue(), ^{
+      [self resolve: seq message: SSC::format(R"JSON({
+        "data": $i
+      })JSON", std::to_string(local_port))];
+    });
   });
 }
 
