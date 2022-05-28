@@ -2525,12 +2525,6 @@ void loopCheck () {
       "  invoke: arg => window.webkit.messageHandlers.webview.postMessage(arg)\n"
       "};\n"
 
-      "const consoleOld = console.log;\n"
-      "console.log = (...args) => {\n"
-      "  consoleOld(...args);\n"
-      "  window.external.invoke(JSON.stringify(args));\n"
-      "};\n"
-
       "console.error = console.warn = console.log;\n"
       "" + createPreload(opts) + "\n"
       "//# sourceURL=preload.js"
