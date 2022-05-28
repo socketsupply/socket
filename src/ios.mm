@@ -79,21 +79,24 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 - (void) dnsLookup: (std::string)seq hostname: (std::string)hostname;
 
 // UDX
-- (void) udxStreamDestroy: (std::string)seq streamId: (uint64_t)streamId;
+- (void) udxStreamDestroy: (std::string)seq
+                 streamId: (uint64_t)streamId;
 
-- (void) udxStreamWriteEnd: (std::string)seq streamId: (uint64_t)streamId requestId: (std::string)requestId;
+- (void) udxStreamWriteEnd: (std::string)seq
+                  streamId: (uint64_t)streamId
+                 requestId: (std::string)requestId;
 
 - (void) udxStreamWrite: (std::string)seq
-                      streamId: (uint64_t)streamId
-                     requestId: (uint64_t)requestId
-                           rId: (std::string)rId
-                           buf: (std::string)buf;
+               streamId: (uint64_t)streamId
+              requestId: (uint64_t)requestId
+                    rId: (std::string)rId
+                    buf: (std::string)buf;
 
 - (void) udxStreamSend: (std::string)seq
-                      streamId: (uint64_t)streamId
-                     requestId: (uint64_t)requestId
-                           rId: (std::string)rId
-                           buf: (std::string)buf;
+              streamId: (uint64_t)streamId
+             requestId: (uint64_t)requestId
+                   rId: (std::string)rId
+                   buf: (std::string)buf;
 
 - (void) udxStreamConnect: (std::string)seq
                  streamId: (uint64_t)streamId
@@ -103,40 +106,38 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
                  remoteIp: (std::string)remoteIp;
 
 - (void) udxStreamRecvStart: (std::string)seq
-                           streamId: (uint64_t)streamId;
-                           // no buf needed, emits data with streamId
+                   streamId: (uint64_t)streamId;
 
 - (void) udxStreamSetMode: (std::string)seq
-                           streamId: (uint64_t)streamId
-                           mode: (uint32_t)mode;
+                 streamId: (uint64_t)streamId
+                     mode: (uint32_t)mode;
 
 - (void) udxStreamInit: (std::string)seq
-                     streamId: (uint64_t)streamId;
-                     // all callbacks etc are emitted with streamId
+              streamId: (uint64_t)streamId;
 
 - (void) udxSocketClose: (std::string)seq
-                     socketId: (uint64_t)socketId;
+               socketId: (uint64_t)socketId;
 
 - (void) udxSocketSendTTL: (std::string)seq
-                     socketId: (uint64_t)socketId
-                     requestId: (uint64_t)requestId // udx_socket_send_t*
-                     rId: (uint32_t)rId
-                     buf: (std::string)buf
+                 socketId: (uint64_t)socketId
+                requestId: (uint64_t)requestId // udx_socket_send_t*
+                      rId: (uint32_t)rId
+                      buf: (std::string)buf
                      port: (uint32_t)port
-                     ip: (std::string)ip
-                     ttl: (uint32_t)ttl;
+                       ip: (std::string)ip
+                      ttl: (uint32_t)ttl;
 
 - (void) udxSocketSendBufferSize: (std::string)seq
-                     socketId: (uint64_t)socketId
-                     size: (uint32_t)size;
+                        socketId: (uint64_t)socketId
+                            size: (uint32_t)size;
 
 - (void) udxSocketRecvBufferSize: (std::string)seq
-                     socketId: (uint64_t)socketId
-                     size: (uint32_t)size;
+                        socketId: (uint64_t)socketId
+                            size: (uint32_t)size;
 
 - (void) udxSocketSetTTL: (std::string)seq
-                     socketId: (uint64_t)socketId
-                     size: (uint32_t)size;
+                socketId: (uint64_t)socketId
+                    size: (uint32_t)size;
 
 - (void) udxSocketBind: (std::string)seq
               socketId: (uint64_t)socketId
@@ -145,7 +146,6 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
 - (void) udxSocketInit: (std::string)seq
               socketId: (uint64_t)socketId;
-                     // all callbacks etc are emitted with streamId
 
 - (void) udxInit: (std::string)seq
            udxId: (uint64_t)udxId;
@@ -1599,7 +1599,7 @@ void loopCheck () {
 }
 
 - (void) udpSend: (std::string)seq
-         clientId: (uint64_t)clientId
+        clientId: (uint64_t)clientId
          message: (std::string)message
           offset: (int)offset
              len: (int)len
@@ -1743,7 +1743,8 @@ void loopCheck () {
   });
 }
 
-- (void) dnsLookup: (std::string)seq hostname: (std::string)hostname {
+- (void) dnsLookup: (std::string)seq
+          hostname: (std::string)hostname {
   dispatch_async(queue, ^{
     loop = uv_default_loop();
     auto ctxId = SSC::rand64();
@@ -1807,17 +1808,17 @@ void loopCheck () {
 }
 
 - (void) udxStreamWrite: (std::string)seq
-                      streamId: (uint64_t)streamId
-                     requestId: (uint64_t)requestId
-                           rId: (std::string)rId
-                           buf: (std::string)buf {
+               streamId: (uint64_t)streamId
+              requestId: (uint64_t)requestId
+                    rId: (std::string)rId
+                    buf: (std::string)buf {
 }
 
 - (void) udxStreamSend: (std::string)seq
-                      streamId: (uint64_t)streamId
-                     requestId: (uint64_t)requestId
-                           rId: (std::string)rId
-                           buf: (std::string)buf {
+              streamId: (uint64_t)streamId
+             requestId: (uint64_t)requestId
+                   rId: (std::string)rId
+                   buf: (std::string)buf {
 }
 
 - (void) udxStreamConnect: (std::string)seq
@@ -1829,13 +1830,12 @@ void loopCheck () {
 }
 
 - (void) udxStreamRecvStart: (std::string)seq
-                           streamId: (uint64_t)streamId {
-}
-                           // no buf needed, emits data with streamId
+                   streamId: (uint64_t)streamId {
+} // no buf needed, emits data with streamId
 
 - (void) udxStreamSetMode: (std::string)seq
-                           streamId: (uint64_t)streamId
-                           mode: (uint32_t)mode {
+                 streamId: (uint64_t)streamId
+                     mode: (uint32_t)mode {
   dispatch_async(queue, ^{
     auto* stream = UDXStreams[streamId];
     if (stream == nullptr) {
@@ -1860,9 +1860,9 @@ void loopCheck () {
 }
 
 - (void) udxStreamInit: (std::string)seq
-                     udxId: (uint64_t)udxId
-                     streamId: (uint64_t)streamId
-                     id: (uint32_t)id {
+                 udxId: (uint64_t)udxId
+              streamId: (uint64_t)streamId
+                    id: (uint32_t)id {
                      // all callbacks etc are emitted with streamId
   dispatch_async(queue, ^{
     auto* udx = UDXs[udxId];
@@ -1915,7 +1915,7 @@ void loopCheck () {
 }
 
 - (void) udxSocketClose: (std::string)seq
-                     socketId: (uint64_t)socketId {
+               socketId: (uint64_t)socketId {
   dispatch_async(queue, ^{
     auto socket = UDXSockets[socketId];
 
@@ -1960,20 +1960,20 @@ void loopCheck () {
 }
 
 - (void) udxSocketSendTTL: (std::string)seq
-                     socketId: (uint64_t)socketId
-                     requestId: (uint64_t)requestId
-                     rId: (uint32_t)rId
-                     buf: (std::string)buf
+                 socketId: (uint64_t)socketId
+                requestId: (uint64_t)requestId
+                      rId: (uint32_t)rId
+                      buf: (std::string)buf
                      port: (uint32_t)port
-                     ip: (std::string)ip
-                     ttl: (uint32_t)ttl {
+                       ip: (std::string)ip
+                      ttl: (uint32_t)ttl {
   dispatch_async(queue, ^{
-    udx_socket_send_t* req;
+    UDXRequest* req;
 
     if (UDXRequests[requestId] != nullptr) {
       req = UDXRequests[requestId];
     } else {
-      req = UDXRequests[requestId] = new udx_socket_send_t;
+      req = UDXRequests[requestId] = new UDXRequest;
     }
 
     req->data = (void *)((uintptr_t) rid);
@@ -2008,19 +2008,21 @@ void loopCheck () {
     auto on_udx_send = [](udx_socket_send_t *req, int status) {
       Socket* socket = (Socket*)req->handle;
 
-      [self
-        emit: "callback"
-        message:
-          SSC::format(R"JSON({
-            "id": "$S",
-            "name": "onsend",
-            "arguments": [$i, $i]
-          })JSON",
-          std::to_string(socket->socketId),
-          (int) ((uintptr_t) req->data),
-          (int) ((uint32_t) status)
-        )
-      ];
+      dispatch_async(dispatch_get_main_queue(), ^{
+        [self
+          emit: "callback"
+          message:
+            SSC::format(R"JSON({
+              "id": "$S",
+              "name": "onsend",
+              "arguments": [$i, $i]
+            })JSON",
+            std::to_string(socket->socketId),
+            (int) ((uintptr_t) req->data),
+            (int) ((uint32_t) status)
+          )
+        ];
+      });
     };
 
     int udxErr =  udx_socket_send_ttl(
@@ -2065,11 +2067,13 @@ void loopCheck () {
     auto* socket = UDXSockets[socketId];
 
     if (socket == nullptr) {
-      [self resolve: seq message: SSC::format(R"JSON({
-        "err": {
-          "message": "No such socketId"
-        }
-      })JSON")];
+      dispatch_async(dispatch_get_main_queue(), ^{
+        [self resolve: seq message: SSC::format(R"JSON({
+          "err": {
+            "message": "No such socketId"
+          }
+        })JSON")];
+      });
       return;
     }
 
@@ -2079,18 +2083,22 @@ void loopCheck () {
       auto name = std::string(uv_err_name(err));
       auto message = std::string(uv_strerror(err));
 
-      [self resolve: seq message: SSC::format(R"JSON({
-        "err": {
-          "name": "$S",
-          "message": "$S"
-        }
-      })JSON", name, message)];
+      dispatch_async(dispatch_get_main_queue(), ^{
+        [self resolve: seq message: SSC::format(R"JSON({
+          "err": {
+            "name": "$S",
+            "message": "$S"
+          }
+        })JSON", name, message)];
+      });
       return;
     }
 
-    [self resolve: seq message: SSC::format(R"JSON({
-      "data": $i
-    })JSON", std::to_string(size))];
+    dispatch_async(dispatch_get_main_queue(), ^{
+      [self resolve: seq message: SSC::format(R"JSON({
+        "data": $i
+      })JSON", std::to_string(size))];
+    });
   });
 }
 
@@ -2101,11 +2109,13 @@ void loopCheck () {
     auto* socket = UDXSockets[socketId];
 
     if (socket == nullptr) {
-      [self resolve: seq message: SSC::format(R"JSON({
-        "err": {
-          "message": "No such socketId"
-        }
-      })JSON")];
+      dispatch_async(dispatch_get_main_queue(), ^{
+        [self resolve: seq message: SSC::format(R"JSON({
+          "err": {
+            "message": "No such socketId"
+          }
+        })JSON")];
+      });
       return;
     }
 
@@ -2115,18 +2125,22 @@ void loopCheck () {
       auto name = std::string(uv_err_name(err));
       auto message = std::string(uv_strerror(err));
 
-      [self resolve: seq message: SSC::format(R"JSON({
-        "err": {
-          "name": "$S",
-          "message": "$S"
-        }
-      })JSON", name, message)];
+      dispatch_async(dispatch_get_main_queue(), ^{
+        [self resolve: seq message: SSC::format(R"JSON({
+          "err": {
+            "name": "$S",
+            "message": "$S"
+          }
+        })JSON", name, message)];
+      });
       return;
     }
 
-    [self resolve: seq message: SSC::format(R"JSON({
-      "data": $i
-    })JSON", std::to_string(size))];
+    dispatch_async(dispatch_get_main_queue(), ^{
+      [self resolve: seq message: SSC::format(R"JSON({
+        "data": $i
+      })JSON", std::to_string(size))];
+    });
   });
 }
 
