@@ -231,7 +231,7 @@ struct UDX : public Peer {
 };
 
 struct UDXSocket : public Peer {
-  udx_socket_t udx;
+  udx_socket_t socket;
   uint64_t socketId;
 };
 
@@ -1886,7 +1886,7 @@ void loopCheck () {
       [](udx_stream_t* streamHandle, udx_socket_t* socketHandle, const struct sockaddr* from) {
         UDXStream* stream = (UDXStream*) streamHandle;
         UDXSocket* socket = (UDXSocket*) socketHandle;
- 
+
         uint32_t fw = 1;
         int port;
         int ip[17];
@@ -2088,8 +2088,26 @@ void loopCheck () {
 }
 
 - (void) udxSocketInit: (std::string)seq
+              udxId: (uint64_t)udxId
               socketId: (uint64_t)socketId {
   dispatch_async(queue, ^{
+    auto* udx = UDXs[udxId];
+
+    if (udx == nullptr) {
+      // TODO emit error not exists
+      return;
+    }
+
+    auto* socket = UDXSockets[socketId] = new UDXSocket;
+    socket->socketId = socketId;
+
+    int err = udx_socket_init(udx->udx, (udx_socket_t*) socket->socket);
+    if (err < 0) {
+      // TODO emit error unable to init stream
+      return;
+    }
+
+    loopCheck();
   });
 }
 
