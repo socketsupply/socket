@@ -1800,6 +1800,42 @@ void loopCheck () {
 //
 - (void) udxStreamDestroy: (std::string)seq
                  streamId: (uint64_t)streamId {
+  dispatch_async(queue, ^{
+    auto* stream = UDXStreams[streamId];
+
+    if (stream == nullptr) {
+      dispatch_async(dispatch_get_main_queue(), ^{
+        [self resolve: seq message: SSC::format(R"JSON({
+          "err": {
+            "message": "No such streamId"
+          }
+        })JSON")];
+      });
+      return;
+    }
+
+    int err = udx_stream_destroy(stream->stream);
+    if (err < 0) {
+      auto name = std::string(uv_err_name(err));
+      auto message = std::string(uv_strerror(err));
+
+      dispatch_async(dispatch_get_main_queue(), ^{
+        [self resolve: seq message: SSC::format(R"JSON({
+          "err": {
+            "name": "$S",
+            "message": "$S"
+          }
+        })JSON", name, message)];
+      });
+      return;
+    }
+
+    dispatch_async(dispatch_get_main_queue(), ^{
+      [self resolve: seq message: SSC::format(R"JSON({
+        "data": null
+      })JSON")];
+    });
+  });
 }
 
 - (void) udxStreamWriteEnd: (std::string)seq
