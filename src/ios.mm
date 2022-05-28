@@ -2023,7 +2023,7 @@ void loopCheck () {
       ];
     };
 
-    udx_socket_send_ttl(
+   int udxErr =  udx_socket_send_ttl(
       req,
       self,
       &b,
@@ -2033,8 +2033,26 @@ void loopCheck () {
       on_udx_send
     );
 
-    if (err < 0) {
-      // emit err
+    if (udxErr < 0) {
+      dispatch_async(dispatch_get_main_queue(), ^{
+        [self
+          resolve: seq
+          message:
+          SSC::format(
+            R"JSON({
+              "err": {
+                "socketId": "$S",
+                "requestId": "$S",
+                "message": "$S"
+              }
+            })JSON",
+            std::to_string(socketId),
+            std::to_string(requestId),
+            uv_strerror(udxErr)
+          )
+        ];
+      });
+      return;
     }
     loopCheck();
   });
