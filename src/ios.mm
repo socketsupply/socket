@@ -159,6 +159,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 @end
 
 @interface IPCSchemeHandler : NSObject<WKURLSchemeHandler>
+@property (strong, nonatomic) AppDelegate* delegate;
 - (void)webView: (AppDelegate*)webView startURLSchemeTask:(id <WKURLSchemeTask>)urlSchemeTask;
 - (void)webView: (AppDelegate*)webView stopURLSchemeTask:(id <WKURLSchemeTask>)urlSchemeTask;
 @end
@@ -229,7 +230,7 @@ struct Client : public Peer {
 struct UDX : public Peer {
   udx_t* udx;
   uint64_t id;
-}
+};
 
 struct UDXSocket : public Peer {
   udx_socket_t udx;
@@ -1770,7 +1771,7 @@ void loopCheck () {
             "message": "$S"
           }
         })JSON", std::string(uv_err_name((int) status)), std::string(uv_strerror(status)))];
-        contexts.erase(ctx->ctxId);
+        contexts.erase(ctx->id);
         return;
       }
 
@@ -1783,7 +1784,7 @@ void loopCheck () {
           "data": "$S"
         })JSON", ip)];
 
-        contexts.erase(ctx->ctxId);
+        contexts.erase(ctx->id);
       });
 
       uv_freeaddrinfo(res);
@@ -1882,7 +1883,7 @@ void loopCheck () {
               })JSON",
               std::to_string(stream->streamId),
               port,
-              std::to_string(ip))
+              std::to_string(ip)
             )
           ];
         });
@@ -2544,7 +2545,10 @@ void loopCheck () {
 
     WKWebViewConfiguration *config = [[WKWebViewConfiguration alloc] init];
 
-    [config setURLSchemeHandler:[IPCSchemeHandler new] forURLScheme:@"ipc"];
+    auto handler = [IPCSchemeHandler new];
+    handler.delegate = self;
+
+    [config setURLSchemeHandler: handler forURLScheme:@"ipc"];
 
     self.content = [config userContentController];
 
