@@ -622,7 +622,7 @@ namespace SSC {
 
     auto s = replace(sSrc, "\\+", " ");
     const unsigned char* pSrc = (const unsigned char *) s.c_str();
-    const int SRC_LEN = sSrc.length();
+    const size_t SRC_LEN = sSrc.length();
     const unsigned char* const SRC_END = pSrc + SRC_LEN;
     const unsigned char* const SRC_LAST_DEC = SRC_END - 2;
 
@@ -679,7 +679,7 @@ namespace SSC {
   static inline std::string encodeURIComponent(const std::string& sSrc) {
     const char DEC2HEX[16 + 1] = "0123456789ABCDEF";
     const unsigned char* pSrc = (const unsigned char*) sSrc.c_str();
-    const int SRC_LEN = sSrc.length();
+    const size_t SRC_LEN = sSrc.length();
     unsigned char* const pStart = new unsigned char[SRC_LEN* 3];
     unsigned char* pEnd = pStart;
     const unsigned char* const SRC_END = pSrc + SRC_LEN;
