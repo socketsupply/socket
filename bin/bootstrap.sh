@@ -309,6 +309,7 @@ if [ "$2" == "ios" ]; then
 
   LIPO=$(xcrun -sdk iphoneos -find lipo)
 
+  PLATFORMPATH="/Applications/Xcode.app/Contents/Developer/Platforms"
   _setSDKVersion iPhoneOS
   SDKMINVERSION="8.0"
   
