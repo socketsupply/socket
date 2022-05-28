@@ -2062,6 +2062,35 @@ void loopCheck () {
                      socketId: (uint64_t)socketId
                      size: (uint32_t)size {
   dispatch_async(queue, ^{
+    auto* socket = UDXSockets[socketId];
+
+    if (socket == nullptr) {
+      [self resolve: seq message: SSC::format(R"JSON({
+        "err": {
+          "message": "No such socketId"
+        }
+      })JSON")];
+      return;
+    }
+
+    int err = udx_socket_recv_buffer_size(socket, &size);
+
+    if (err < 0) {
+      auto name = std::string(uv_err_name(err));
+      auto message = std::string(uv_strerror(err));
+
+      [self resolve: seq message: SSC::format(R"JSON({
+        "err": {
+          "name": "$S",
+          "message": "$S"
+        }
+      })JSON", name, message)];
+      return;
+    }
+
+    [self resolve: seq message: SSC::format(R"JSON({
+      "data": $i
+    })JSON", std::to_string(size))];
   });
 }
 
