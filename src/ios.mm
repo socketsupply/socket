@@ -2146,8 +2146,36 @@ void loopCheck () {
 
 - (void) udxSocketSetTTL: (std::string)seq
                      socketId: (uint64_t)socketId
-                     size: (uint32_t)size {
+                     ttl: (uint32_t)ttl {
   dispatch_async(queue, ^{
+    auto* socket = UDXSockets[socketId]
+    if (socket == nullptr) {
+      [self resolve: seq message: SSC::format(R"JSON({
+        "err": {
+          "message": "No such socketId"
+        }
+      })JSON")];
+      return;
+    }
+
+    int err = udx_socket_set_ttl(socket->socket, ttl);
+    if (err < 0) {
+      auto name = std::string(uv_err_name(err));
+      auto message = std::string(uv_strerror(err));
+
+      [self resolve: seq message: SSC::format(R"JSON({
+        "err": {
+          "method": "udx_socket_bind",
+          "name": "$S",
+          "message": "$S"
+        }
+      })JSON", name, message)];
+      return;
+    }
+
+    [self resolve: seq message: R"JSON({
+      "data": null
+    })JSON"];
   });
 }
 
@@ -2173,6 +2201,14 @@ void loopCheck () {
     }
 
     auto* socket = UDXSockets[socketId]
+    if (socket == nullptr) {
+      [self resolve: seq message: SSC::format(R"JSON({
+        "err": {
+          "message": "No such socketId"
+        }
+      })JSON")];
+      return;
+    }
 
     err = udx_socket_bind(socket->socket, (const struct sockaddr *) &addr);
     if (err < 0) {
