@@ -2159,7 +2159,16 @@ void loopCheck () {
     struct sockaddr_in addr;
     int err = uv_ip4_addr(ip, port, &addr);
     if (err < 0) {
-      // TODO emit error unable to socket bind
+      auto name = std::string(uv_err_name(err));
+      auto message = std::string(uv_strerror(err));
+
+      [self resolve: seq message: SSC::format(R"JSON({
+        "err": {
+          "method": "uv_ip4_addr",
+          "name": "$S",
+          "message": "$S"
+        }
+      })JSON", name, message)];
       return;
     }
 
@@ -2167,7 +2176,16 @@ void loopCheck () {
 
     err = udx_socket_bind(socket->socket, (const struct sockaddr *) &addr);
     if (err < 0) {
-      // TODO emit error unable to socket bind
+      auto name = std::string(uv_err_name(err));
+      auto message = std::string(uv_strerror(err));
+
+      [self resolve: seq message: SSC::format(R"JSON({
+        "err": {
+          "method": "udx_socket_bind",
+          "name": "$S",
+          "message": "$S"
+        }
+      })JSON", name, message)];
       return;
     }
 
@@ -2178,7 +2196,16 @@ void loopCheck () {
     // wont error in practice
     err = udx_socket_getsockname(socket->socket, &name, &name_len);
     if (err < 0) {
-      // TODO emit error unable to socket bind
+      auto name = std::string(uv_err_name(err));
+      auto message = std::string(uv_strerror(err));
+
+      [self resolve: seq message: SSC::format(R"JSON({
+        "err": {
+          "method": "udx_socket_getsockname",
+          "name": "$S",
+          "message": "$S"
+        }
+      })JSON", name, message)];
       return;
     }
 
@@ -2188,12 +2215,22 @@ void loopCheck () {
     // wont error in practice
     err = udx_socket_recv_start(socket->socket, on_udx_message);
     if (err < 0) {
-      // TODO emit error unable to socket bind
+      auto name = std::string(uv_err_name(err));
+      auto message = std::string(uv_strerror(err));
+
+      [self resolve: seq message: SSC::format(R"JSON({
+        "err": {
+          "method": "udx_socket_recv_start",
+          "name": "$S",
+          "message": "$S"
+        }
+      })JSON", name, message)];
       return;
     }
 
-    // TODO: Send local_port back over syncIPC()
-    return local_port;
+    [self resolve: seq message: SSC::format(R"JSON({
+      "data": $i
+    })JSON", std::to_string(local_port))];
   });
 }
 
