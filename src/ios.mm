@@ -322,8 +322,10 @@ std::map<uint64_t, Server*> servers;
 std::map<uint64_t, GenericContext*> contexts;
 std::map<uint64_t, DescriptorContext*> descriptors;
 
+using UDXRequest = udx_socket_send_t;
+
 std::map<uint64_t, UDX*> UDXs;
-std::map<uint32_t, udx_socket_send_t> UDXRequests;
+std::map<uint32_t, UDXRequest*> UDXRequests;
 std::map<uint64_t, UDXSocket*> UDXSockets;
 std::map<uint64_t, UDXStream*> UDXStreams;
 
@@ -1834,6 +1836,27 @@ void loopCheck () {
 - (void) udxStreamSetMode: (std::string)seq
                            streamId: (uint64_t)streamId
                            mode: (uint32_t)mode {
+  dispatch_async(queue, ^{
+    auto* stream = UDXStreams[streamId];
+    if (stream == nullptr) {
+      dispatch_async(dispatch_get_main_queue(), ^{
+        [self reject: seq message: SSC::format(R"JSON({
+          "err": {
+            "message": "no such streamId"
+          }
+        })JSON")];
+      });
+      return;
+    }
+
+    stream->mode = mode;
+
+    dispatch_async(dispatch_get_main_queue(), ^{
+      [self resolve: seq message: SSC::format(R"JSON({
+        "data": {}
+      })JSON")];
+    });
+  });
 }
 
 - (void) udxStreamInit: (std::string)seq
