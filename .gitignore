@@ -7,3 +7,4 @@ node_modules/
 /bin/build
 /bin/ssc.exe
 /bin/cli
+bin/ssc
