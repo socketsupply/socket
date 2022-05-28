@@ -2084,6 +2084,44 @@ void loopCheck () {
                   port: (uint32_t)port
                     ip: (std::string)ip {
   dispatch_async(queue, ^{
+    struct sockaddr_in addr;
+    int err = uv_ip4_addr(ip, port, &addr);
+    if (err < 0) {
+      // TODO emit error unable to socket bind
+      return;
+    }
+
+    auto* socket = UDXSockets[socketId]
+
+    err = udx_socket_bind(socket->socket, (const struct sockaddr *) &addr);
+    if (err < 0) {
+      // TODO emit error unable to socket bind
+      return;
+    }
+
+
+    struct sockaddr name;
+    int name_len = sizeof(name);
+
+    // wont error in practice
+    err = udx_socket_getsockname(socket->socket, &name, &name_len);
+    if (err < 0) {
+      // TODO emit error unable to socket bind
+      return;
+    }
+
+    struct sockaddr_in *name_in = (struct sockaddr_in *) &name;
+    int local_port = ntohs(name_in->sin_port);
+
+    // wont error in practice
+    err = udx_socket_recv_start(socket->socket, on_udx_message);
+    if (err < 0) {
+      // TODO emit error unable to socket bind
+      return;
+    }
+
+    // TODO: Send local_port back over syncIPC()
+    return local_port;
   });
 }
 
@@ -2103,7 +2141,7 @@ void loopCheck () {
 
     int err = udx_socket_init(udx->udx, (udx_socket_t*) socket->socket);
     if (err < 0) {
-      // TODO emit error unable to init stream
+      // TODO emit error unable to init socket
       return;
     }
 
