@@ -174,9 +174,7 @@ std::map<std::string, id<WKURLSchemeTask>> tasks;
   SSC::Parse cmd(url);
   tasks[cmd.get("seq")] = task;
 
-  NSLog(@"BIRP-IPC SCHEME HANDLER");
-
-  [webView route: url];
+  [self.delegate route: url];
 }
 @end
 
