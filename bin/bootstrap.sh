@@ -1,341 +1,656 @@
 #!/usr/bin/env bash
-set -e;
 
-PREFIX=${PREFIX:-$HOME}
-PLATFORMPATH=""
-SDKVERSION=""
-LIPO=""
+# shellcheck disable=SC2155
 
-if [ ! "$CXX" ]; then
-  if [ ! -z "$LOCALAPPDATA" ]; then
-    if which clang++ >/dev/null 2>&1; then
-      CXX="$(which clang++)"
-    fi
-  fi
+## Exit immediately if a command exits with a non-zero status
+set -e
 
-  if [ ! "$CXX" ]; then
-    if which g++ >/dev/null 2>&1; then
-      CXX="$(which g++)"
-    elif which clang++ >/dev/null 2>&1; then
-      CXX="$(which clang++)"
-    fi
-  fi
-
-  if [ ! "$CXX" ]; then
-    echo "• Error: Could not determine \$CXX environment variable"
-    exit 1
-  else
-    echo "• Warning: \$CXX environment variable not set, assuming '$CXX'"
-  fi
+## Allow tracing bash execution
+if [ -n "$BASH_TRACE" ]; then
+  set -x
 fi
 
+## Global constant
+declare VERSION_FILE="VERSION.txt"
+declare PLATFORM_IOS="ios"
+declare PLATFORM_ANDROID="android"
+declare PLATFORM_DESKTOP="desktop"
+
+## Global repositories
+declare LIBUV_REPO="git@github.com:libuv/libuv.git"
+declare LIBUDX_REPO="git@github.com:mafintosh/libudx.git"
+
+## Global state
+declare PREFIX
+declare BUILD_PATH="$(pwd)/build"
+
+## Global commands, may be null/empty and platform dependant
+declare AR
+declare LD
+declare CC
+declare CPP
+declare CXX
+declare LIPO
+declare STRIP
+declare RANLIB
+
+## Global Xcode related constants, probably for iOS
+declare XCODE_PATH
+declare XCODE_PLATFORMS_PATH
+declare XCODE_TOOLCHAIN_PATH
+
+## Global iOS (for Xcode) related constants
+declare IPHONEOS_DEPLOYMENT_TARGET="8.0"
+declare IPHONEOS_MIN_SDKVERSION="8.0"
+declare -a pids=()
+
+##
+# Polyfill `sudo(1)` for environments that do not have it,
+# such as Git Bash for Windows, etc
+##
 if ! which sudo > /dev/null 2>&1; then
-  sudo () {
-    $@
+  function sudo () {
+    "$@"
     return $?
   }
 fi
 
-function _build {
-  echo '• Building ssc'
-
-  "$CXX" src/cli.cc ${CXX_FLAGS} ${CXXFLAGS} \
-    -o bin/cli \
-    -std=c++2a \
-    -DVERSION_HASH=`git rev-parse --short HEAD` \
-    -DVERSION=`cat VERSION.txt` \
-
-  if [ ! $? = 0 ]; then
-    echo "• Unable to build. See trouble shooting guide in the README.md file"
-    exit 1
-  fi
-  echo "• Success"
+##
+# TODO
+##
+function onsignal () {
+  for pid in "${pids[@]}"; do
+    kill -9 "$pid" 2>/dev/null
+  done
 }
 
-function _install {
-  local libdir=""
-
-  if [ ! -z "$LOCALAPPDATA" ]; then
-    libdir="$LOCALAPPDATA/Programs/socketsupply"
-  else
-    libdir="$PREFIX/.config/socket-sdk"
-    mkdir -p $libdir/{bin,lib,src}
-  fi
-
-  echo "• Installing ssc"
-  rm -rf "$libdir"
-
-  mkdir -p "$libdir"
-  cp -r `pwd`/src "$libdir"
-
-  echo "• Copying sources to $libdir/src"
-
-  if [ -d `pwd`/lib ]; then
-    echo "• Copying libraries to $libdir/lib"
-    mkdir -p "$libdir/lib"
-    cp -r `pwd`/lib/* "$libdir/lib"
-  fi
-
-  echo "• Moving binary to $PREFIX/bin (prompting to copy file into directory)"
-  sudo mv `pwd`/bin/cli "/usr/local/bin/ssc"
-
-  if [ ! $? = 0 ]; then
-    echo "• Unable to move binary into place"
-    exit 1
-  fi
-
-  echo -e '• Finished. Type "ssc -h" for help'
-  exit 0
+##
+# Resolves a command piping stderr to `/dev/null` returning 0
+# upon sucess, otherwise an error code exit statud
+##
+function resolve_command () {
+  which "$@" 2>/dev/null
+  return $?
 }
 
+##
+# Predicate helper function to determine if a command exists in PATH
+##
+function command_exists () {
+  resolve_command "$@" >/dev/null
+}
+
+##
+# Log pretty output to stdout
+##
+function log () {
+  echo -ne "• $*"
+  echo
+}
+
+##
+# Log pretty error to stderr
+##
+function error () {
+  {
+    echo -ne "x Error: $*"
+    echo
+  } >&2
+  return 1
+}
+
+##
+# Log pretty warning to stderr
+##
+function warn () {
+  {
+    echo -ne "• Warning: $*"
+    echo
+  } >&2
+}
+
+##
+# Log pretty error to stderr and exit
+##
+function panic () {
+  error "$@"
+  exit 1
+}
+
+##
+# Returns `0` if first argument is in array list ($2...N)
 #
-# Re-compile libudx for iOS (and the iOS simulator).
+# $1      Element to check for
+# $2...N  An array/list of values to check if $1 exists in.
 #
-function _setSDKVersion {
-  sdks=`ls $PLATFORMPATH/$1.platform/Developer/SDKs`
-  arr=()
-  for sdk in $sdks
-  do
-   echo $sdk
-   arr[${#arr[@]}]=$sdk
+# Returns 0 if $1 is in array, otherwise 1
+##
+function array_contains () {
+  local element="$1"
+  local item
+  shift
+
+  for item; do
+    if [[ "$item" == "$element" ]]; then
+      return 0
+    fi
   done
 
-  # Last item will be the current SDK, since it is alpha ordered
-  count=${#arr[@]}
-  if [ $count -gt 0 ]; then
-   sdk=${arr[$count-1]:${#1}}
-   num=`expr ${#sdk}-4`
-   SDKVERSION=${sdk:0:$num}
-  else
-   SDKVERSION="8.0"
-  fi
+  return 1
 }
 
-function _compile_libuv {
-  target=$1
-  hosttarget=$1
-  platform=$2
-
-  if [[ $hosttarget == "x86_64" ]]; then
-    xxhosttarget="i386"
-  elif [[ $hosttarget == "arm64" ]]; then
-    hosttarget="arm"
-  fi
-
-  export PLATFORM=$platform
-  export CC="$(xcrun -sdk iphoneos -find clang)"
-  export STRIP="$(xcrun -sdk iphoneos -find strip)"
-  export LD="$(xcrun -sdk iphoneos -find ld)"
-  export CPP="$CC -E"
-  export CFLAGS="-fembed-bitcode -arch ${target} -isysroot $PLATFORMPATH/$platform.platform/Developer/SDKs/$platform$SDKVERSION.sdk -miphoneos-version-min=$SDKMINVERSION"
-  export AR=$(xcrun -sdk iphoneos -find ar)
-  export RANLIB=$(xcrun -sdk iphoneos -find ranlib)
-  export CPPFLAGS="-fembed-bitcode -arch ${target} -isysroot $PLATFORMPATH/$platform.platform/Developer/SDKs/$platform$SDKVERSION.sdk -miphoneos-version-min=$SDKMINVERSION"
-  export LDFLAGS="-Wc,-fembed-bitcode -arch ${target} -isysroot $PLATFORMPATH/$platform.platform/Developer/SDKs/$platform$SDKVERSION.sdk"
-
-  ./configure --prefix="$BUILD_DIR/output/$target" --host=$hosttarget-apple-darwin
-
-  make clean
-  make
-  make install
-  install_name_tool -id libuv.1.dylib $BUILD_DIR/output/$target/lib/libuv.1.dylib
+##
+# Lists files in a directories
+#
+# $1..N    Directories to list files in
+##
+function list_files () {
+  $(which find) "$@" 2>/dev/null
+  return $?
 }
 
-function _compile_libudx {
-  target=$1
-  platform=$2
+##
+# Various prechecks before `configure()`
+#
+# [$1="desktop"] Platform target enumeration
+#
+# Returns 0 upon success, otherwise an error code exit status
+##
+function prechecks () {
+  local platform_target="${1:-"$PLATFORM_DESKTOP"}"
+  local -a required_commands=(git strip)
 
-  PLATFORMPATH="/Applications/Xcode.app/Contents/Developer/Platforms"
+  if [ -z "$HOME" ]; then
+    panic "\$HOME environment variable is not defined"
+  fi
 
-  export CC="$(xcrun -sdk iphoneos -find clang)"
-  export STRIP="$(xcrun -sdk iphoneos -find strip)"
-  export LD="$(xcrun -sdk iphoneos -find ld)"
-  export CPP="$CC -E"
-  export CFLAGS="-Wno-nullability-completeness -fembed-bitcode -arch ${target} -isysroot $PLATFORMPATH/$platform.platform/Developer/SDKs/$platform$SDKVERSION.sdk -miphoneos-version-min=$SDKMINVERSION"
-  export AR=$(xcrun -sdk iphoneos -find ar)
-  export RANLIB=$(xcrun -sdk iphoneos -find ranlib)
-  export CPPFLAGS="-Wno-nullability-completeness-fembed-bitcode -arch ${target} -isysroot $PLATFORMPATH/$platform.platform/Developer/SDKs/$platform$SDKVERSION.sdk -miphoneos-version-min=$SDKMINVERSION"
-  export LDFLAGS="-Wc,-fembed-bitcode,-Wno-nullability-completeness -arch ${target} -isysroot $PLATFORMPATH/$platform.platform/Developer/SDKs/$platform$SDKVERSION.sdk"
-  export CPATH="$PLATFORMPATH/$platform.platform/Developer/SDKs/$platform$SDKVERSION.sdk/usr/include"
+  if [ "$platform_target" == "$PLATFORM_IOS" ]; then
+    required_commands+=("ar" "ld" "lipo" "glibtoolize" "ranlib" "xcrun" "xcode-select" "autoconf")
+  fi
 
-  for SRC in $(git ls-files -- 'src/*.c' ':!:*io_win.c')
-  do
-    echo $BUILD_DIR/$SRC
-    "$CC" -c $BUILD_DIR/$SRC \
-      ${CXX_FLAGS} ${CXXFLAGS} \
-      -I$BUILD_DIR/include \
-      -I$BUILD_DIR/../uv/include \
-      -std=c99
+  # Verify required commands exist
+  for command in "${required_commands[@]}"; do
+    if ! command_exists "$command"; then
+      if [ "$command" == "xcode-select" ]; then
+        panic "Missing '$command' in PATH: Xcode needs to be installed from the Mac App Store."
+      elif [ "$command" == "autoconf" ] && [ "$platform_target" == "$PLATFORM_IOS" ]; then
+        panic "Missing '$command' in PATH: Try 'brew install automake'"
+      else
+        panic "Missing '$command' in PATH"
+      fi
+    fi
   done
-
-  "$AR" rvs libudx.a $(ls $BUILD_DIR/*.o)
 }
 
-function _unset_env {
-  BUILD_DIR=`pwd`/lib/build
-  rm -rf $BUILD_DIR
+##
+# Various postchecks after `configure()`, and before `build()`
+#
+# [$1="desktop"] Platform target enumeration
+#
+# Returns 0 upon success, otherwise an error code exit status
+##
+function postchecks () {
+  local platform_target="${1:-"$PLATFORM_DESKTOP"}"
 
-  unset PLATFORM
-  unset CC
-  unset STRIP
-  unset LD
-  unset CPP
-  unset CFLAGS
-  unset AR
-  unset RANLIB
-  unset CPPFLAGS
-  unset LDFLAGS
-  unset IPHONEOS_DEPLOYMENT_TARGET
+  if [ -z "$CXX" ]; then
+    panic "Could not determine \$CXX environment variable"
+  else
+    warn "\$CXX environment variable not set, assuming '$CXX'"
+  fi
+
+  if [ -z "$PREFIX" ]; then
+    panic "Could not determine \$PREFIX environment variable"
+  fi
 }
 
-function _cross_compile_libuv {
-  PLATFORMPATH="/Applications/Xcode.app/Contents/Developer/Platforms"
-  TOOLSPATH="/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin"
+##
+# Configure bootstrap setup, compiler, etc.
+#
+# [$1="desktop"] Platform target enumeration
+#
+# Returns 0 upon success, otherwise an error code exit status
+##
+function configure () {
+  log "Configuring Socket SDK build"
 
-  export IPHONEOS_DEPLOYMENT_TARGET="8.0"
-  OLD_CWD=`pwd`
-  BUILD_DIR=`pwd`/lib/build
-  rm -rf `pwd`/lib/uv
+  local platform_target="${1:-"$PLATFORM_DESKTOP"}"
 
-  #
-  # Shallow clone the main branch of libuv
-  #
-  rm -rf $BUILD_DIR
-  git clone --depth=1 git@github.com:libuv/libuv.git lib/build
-  cd $BUILD_DIR
-  sh autogen.sh
+  prechecks "$@" || return $?
 
-  #
-  # Build artifacts for all platforms
-  #
-  _compile_libuv armv7 iPhoneOS
-  _compile_libuv armv7s iPhoneOS
-  _compile_libuv arm64 iPhoneOS
-  _compile_libuv i386 iPhoneSimulator
-  _compile_libuv x86_64 iPhoneSimulator
+  if [ -z "$CXX" ]; then
+    CXX="$(resolve_command clang++)"
+  fi
 
-  #
-  # Combine the build artifacts
-  #
+  if [ -z "$CXX" ]; then
+    CXX="$(resolve_command g++)"
+  fi
 
-  $LIPO -create \
-    $BUILD_DIR/output/armv7/lib/libuv.a \
-    $BUILD_DIR/output/armv7s/lib/libuv.a \
-    $BUILD_DIR/output/arm64/lib/libuv.a \
-    $BUILD_DIR/output/x86_64/lib/libuv.a \
-    $BUILD_DIR/output/i386/lib/libuv.a \
-    -output libuv.a
-  $LIPO -create \
-    $BUILD_DIR/output/armv7/lib/libuv.1.dylib \
-    $BUILD_DIR/output/armv7s/lib/libuv.1.dylib \
-    $BUILD_DIR/output/arm64/lib/libuv.1.dylib \
-    $BUILD_DIR/output/x86_64/lib/libuv.1.dylib \
-    $BUILD_DIR/output/i386/lib/libuv.1.dylib \
-    -output libuv.1.dylib
+  if [ -z "$CXX" ]; then
+    CXX="$(resolve_command cpp)"
+  fi
 
-  install_name_tool -id @rpath/libuv.1.dylib libuv.1.dylib
+  export AR="${AR:-"$(resolve_command ar)"}"
+  export LD="${LD:-"$(resolve_command ld)"}"
+  export CC="${CC:-"$(resolve_command cc)"}"
+  export CXX
+  export CPP="${CPP:-"$(resolve_command cpp)"}"
+  export STRIP="${STRIP:-"$(resolve_command strip)"}"
+  export RANLIB="${RANLIB:-"$(resolve_command ranlib)"}"
 
-  $LIPO -info libuv.a
+  export PREFIX=${PREFIX:-"/usr/local"}
 
-  #
-  # Copy the build into the project and delete leftover build artifacts.
-  #
-  DEST_DIR=$BUILD_DIR/../uv
-  mkdir $DEST_DIR
-
-  cp libuv.a $DEST_DIR
-  cp libuv.1.dylib $DEST_DIR
-  cp -r $BUILD_DIR/include $DEST_DIR
-
-  cd $OLD_CWD
-  _unset_env
+  postchecks "$@" || return $?
 }
 
-function _cross_compile_libudx {
-  if [ ! "$CC" ]; then
-    CC="$(which clang)"
+##
+#
+##
+function configure_dependencies () {
+  local platform_target="${1:-"$PLATFORM_DESKTOP"}"
+
+  if [ "$platform_target"  == "$PLATFORM_IOS" ]; then
+    export AR="$(xcrun -sdk iphoneos -find ar)"
+    export LD="$(xcrun -sdk iphoneos -find ld)"
+    export CC="$(xcrun -sdk iphoneos -find clang)"
+    export CXX="$(xcrun -sdk iphoneos -find clang++)"
+    #export CPP="$(xcrun -sdk iphoneos -find cpp)"
+    export CPP="$CC -E"
+    export LIPO="$(xcrun -sdk iphoneos -find lipo)"
+    export STRIP="$(xcrun -sdk iphoneos -find strip)"
+    export RANLIB="$(xcrun -sdk iphoneos -find ranlib)"
+
+    export XCODE_PATH="/Applications/Xcode.app"
+    export XCODE_PLATFORMS_PATH="$XCODE_PATH/Contents/Developer/Platforms"
+    export XCODE_TOOLCHAIN_PATH="$XCODE_PATH/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin"
+
+    export IPHONEOS_DEPLOYMENT_TARGET="8.0"
   fi
-
-  OLD_CWD=`pwd`
-  BUILD_DIR=`pwd`/lib/build
-  rm -rf $BUILD_DIR
-  mkdir $BUILD_DIR
-  SRC_DIR=$BUILD_DIR/src
-  rm -rf `pwd`/lib/udx
-
-  git clone --depth=1 git@github.com:mafintosh/libudx.git $BUILD_DIR
-  cd $BUILD_DIR
-
-  #
-  # Build artifacts for all platforms
-  #
-  _compile_libudx armv7 iPhoneOS
-  _compile_libudx armv7s iPhoneOS
-  _compile_libudx arm64 iPhoneOS
-  _compile_libudx i386 iPhoneSimulator
-  _compile_libudx x86_64 iPhoneSimulator
-
-  #
-  # Copy the build into the project and delete leftover build artifacts.
-  #
-  DEST_DIR=$BUILD_DIR/../udx
-  mkdir $DEST_DIR
-
-  cp libudx.a $DEST_DIR
-  cp -r $BUILD_DIR/include $DEST_DIR
-
-  cd $OLD_CWD
-  _unset_env
 }
 
+##
+# Computes version hash from HEAD of Git history.
+##
+function get_version_hash () {
+  git rev-parse --short HEAD || return $?
+}
+
+##
+# Computes version from maintained `VERSION.txt` file.
+##
+function get_version () {
+  cat "$VERSION_FILE" || return $?
+}
+
+##
+# Computes correct system SSC framework directory
+##
+function get_system_ssc_framework_directory () {
+  if [ -n "$LOCALAPPDATA" ]; then # Windows/GitBash/MSYS
+    echo -e "$LOCALAPPDATA/Programs/socketsupply"
+  else
+    echo -e "$HOME/.config/socket-sdk"
+  fi
+}
+
+##
+# Computes SSC framework source files
+##
+function get_ssc_framework_sources () {
+  list_files "src/" -not -name "cli.cc" -not -name "cli.hh"
+}
+
+##
+# Computes SSC framework library files
+##
+function get_ssc_framework_libraries () {
+  list_files "lib/"
+}
+
+##
 #
-# This will re-compile libuv for iOS (and the iOS simulator).
-#
-if [ "$2" == "ios" ]; then
-  #
-  # Attempts to find iphoneos tool, will fail fast if xcode not installed
-  #
-  xcode-select -p >/dev/null 2>&1;
-  if [ ! $? = 0 ]; then
-    echo "Xcode needs to be installed from the Mac App Store."
-    exit 1
+##
+function get_latest_xcode_sdk_platform_version () {
+  local platform_type="$1"
+  local platform_type_length="${#1}"
+  local default_version="$2"
+  local sdks_path="$XCODE_PLATFORMS_PATH/$platform_type.platform/Developer/SDKS"
+  local -a sdks=()
+
+  read -r -d '' -a sdks < <(list_files "$sdks_path")
+
+  if (( ${#sdks[@]} == 0 )); then
+    echo "$default_version"
+    return 0
   fi
 
-  which autoconf >/dev/null 2>&1;
-  if [ ! $? = 0 ]; then
-    echo "Try 'brew install automake'"
-    exit 1
+  basename "${sdks[(( ${#sdks[@]} - 1 ))]}" | sed "s/$platform_type//g" | sed "s/.sdk//g"
+}
+
+##
+#
+##
+function export_platform_compiler_flags () {
+  local platform_target="${1:-"$PLATFORM_DESKTOP"}"
+  local platform_arch="$2"
+  local platform_type="$3"
+
+  if [ "$platform_target" == "$PLATFORM_IOS" ]; then
+    local sdk_version="$(get_latest_xcode_sdk_platform_version iPhoneOS 8.0)"
+    local -a shared_flags=(-arch "$platform_arch" -isysroot "$XCODE_PLATFORMS_PATH/$platform_type.platform/Developer/SDKs/$platform_type$sdk_version.sdk")
+
+    #CFLAGS+=" -fembed-bitcode"
+    CFLAGS+=" ${shared_flags[*]}"
+    CFLAGS+=" -miphoneos-version-min=$IPHONEOS_MIN_SDKVERSION"
+
+    #CPPFLAGS+="$CFLAGS"
+    CXXFLAGS+="$CFLAGS"
+
+    #LDFLAGS+=" -Wc,-fembed-bitcode"
+    LDFLAGS+=" ${shared_flags[*]}"
+
+    export CPATH="$XCODE_PLATFORMS_PATH/$platform_type.platform/Developer/SDKs/$platform_type$sdk_version.sdk/usr/include"
   fi
 
-  LIPO=$(xcrun -sdk iphoneos -find lipo)
+  export CFLAGS
+  export LDFLAGS
+  export CPPFLAGS
+  export CXXFLAGS
+}
 
-  PLATFORMPATH="/Applications/Xcode.app/Contents/Developer/Platforms"
-  _setSDKVersion iPhoneOS
-  SDKMINVERSION="8.0"
-  
-  _cross_compile_libuv
-  _cross_compile_libudx
-fi
+##
+# Compiles the `ssc(1)` command line utility program
+##
+function compile_ssc () {
+  local -a sources=("src/cli.cc")
+  local -a flags=()
 
-#
-# Clone
-#
-if [ -z "$1" ]; then
-  TMPD=$(mktemp -d)
+  # Output 'ssc' to bin ## TODO(jwerle): output to build directory
+  flags+=(-o bin/ssc)
 
-  echo '• Cloning from Github'
-  git clone --depth=1 git@github.com:socketsupply/socket-sdk.git $TMPD > /dev/null 2>&1
-
-  if [ ! $? = 0 ]; then
-    echo "• Unable to clone"
-    exit 1
+  if [ -n "${CXXFLAGS[*]}" ]; then
+    flags+=("${CXXFLAGS[@]}")
   fi
 
-  cd $TMPD
-fi
+  if [ -n "${CXX_FLAGS[*]}" ]; then
+    flags+=("${CXX_FLAGS[@]}")
+  fi
 
+  ## C++ standard, etc
+  flags+=("-std=c++2a")
+
+  # Compute version macro preprocessor definitions
+  flags+=(-DVERSION_HASH="$(get_version_hash)")
+  flags+=(-DVERSION="$(get_version)")
+
+  log "Compiling 'ssc'"
+  warn "Will execute: $CXX ${sources[*]} ${flags[*]}"
+  if ! "$CXX" "${sources[@]}" "${flags[@]}"; then
+    panic "Unable to build. See trouble shooting guide in the README.md file"
+  fi
+
+  log "Successfully compiled 'ssc'"
+  return 0
+}
+
+##
+# Compiles 'libuv' into build/
+##
+function compile_libuv () {
+  local platform_target="${1:-"$PLATFORM_DESKTOP"}"
+
+  local -a archs=("arm64" "i386" "x86_64")
+  local -a hosts=("arm" "${archs[1]}" "${archs[2]}")
+
+  if ! test -d "$BUILD_PATH/libuv"; then
+    if ! git clone --depth=1 "$LIBUV_REPO" "$BUILD_PATH/libuv"; then
+      panic "Failed to clone $LIBUV_REPO"
+    fi
+  fi
+
+  pushd . || return $?
+  cd "$BUILD_PATH/libuv" || return $?
+  sh autogen.sh || return $?
+
+  if [ "$platform_target" == "$PLATFORM_IOS" ]; then
+    # The order corresponds to archs/hosts
+    local -a platforms=("iPhoneOS" "iPhoneSimulator" "iPhoneSimulator")
+    local i=0
+    for (( i = 0; i < ${#platforms[@]}; i++ )); do
+      local platform="${platforms[$i]}"
+      local arch="${archs[$i]}"
+      local host="${hosts[$i]}"
+
+      cp -rf "$BUILD_PATH/libuv" "$BUILD_PATH/$arch/libuv"
+      cd "$BUILD_PATH/$arch/libuv"
+
+      mkdir -p "$BUILD_PATH/$arch/lib"
+      mkdir -p "$BUILD_PATH/$arch/include"
+
+      {
+        export_platform_compiler_flags "$PLATFORM_IOS" "$arch" "$platform"
+        ./configure --prefix="$BUILD_PATH/$arch" --host="$host-apple-darwin"
+        make clean || return $?
+        make -j4 || return $?
+        make install || return $?
+      } &
+      pids+=($!)
+    done
+  fi
+
+  wait "${pids[@]}" || return $?
+  popd
+
+  mkdir -p "$BUILD_PATH/"{lib,include} || return $?
+
+  $LIPO -create                      \
+    "$BUILD_PATH/arm64/lib/libuv.a"  \
+    "$BUILD_PATH/x86_64/lib/libuv.a" \
+    "$BUILD_PATH/i386/lib/libuv.a"   \
+    -output "$BUILD_PATH/lib/libuv.a" || return $?
+
+  rm -rf "$BUILD_PATH"/include/uv*
+  cp -rf "$BUILD_PATH"/libuv/include/* "$BUILD_PATH/include"
+
+  return 0
+}
+
+##
 #
-# Build and Install
+# Compiles 'libudx' into build/
+##
+function compile_libudx () {
+  local platform_target="${1:-"$PLATFORM_DESKTOP"}"
+  local -a archs=("arm64" "i386" "x86_64")
+  local sources=()
+
+  if ! test -d "$BUILD_PATH/libudx"; then
+    if ! git clone --depth=1 "$LIBUDX_REPO" "$BUILD_PATH/libudx"; then
+      panic "Failed to clone $LIBUDX_REPO"
+    fi
+  fi
+
+  pushd . || return $?
+  cd "$BUILD_PATH/libudx" || return $?
+
+  read -r -d '' -a sources < <(git ls-files -- 'src/*.c' ':!:*io_win.c')
+
+  if [ "$platform_target" == "$PLATFORM_IOS" ]; then
+    # The order corresponds to archs/hosts
+    local -a platforms=("iPhoneOS" "iPhoneSimulator" "iPhoneSimulator")
+    local i=0
+    for (( i = 0; i < ${#platforms[@]}; i++ )); do
+      local platform="${platforms[$i]}"
+
+      local arch="${archs[$i]}"
+      cp -rf "$BUILD_PATH/libudx" "$BUILD_PATH/$arch/libudx"
+      cd "$BUILD_PATH/$arch/libudx"
+
+      mkdir -p "$BUILD_PATH/$arch/lib"
+      mkdir -p "$BUILD_PATH/$arch/include"
+
+      {
+        export_platform_compiler_flags "$PLATFORM_IOS" "$arch" "$platform"
+        for src in "${sources[@]}"; do
+          # shellcheck disable=SC2086
+          "$CC" -std=c99 $CXXFLAGS            \
+            -I "$BUILD_PATH/include"          \
+            -c "$BUILD_PATH/$arch/libudx/$src"
+        done
+
+        local objects=()
+        read -r -d '' -a objects < <(list_files "$BUILD_PATH/$arch/libudx/"*.o)
+        "$AR" rvs "$BUILD_PATH/$arch/lib/libudx.a" "${objects[@]}"
+      } &
+      pids+=($!)
+    done
+  fi
+
+  wait "${pids[@]}" || return $?
+  popd
+
+  mkdir -p "$BUILD_PATH/"{lib,include} || return $?
+
+  $LIPO -create                      \
+    "$BUILD_PATH/arm64/lib/libudx.a"  \
+    "$BUILD_PATH/x86_64/lib/libudx.a" \
+    "$BUILD_PATH/i386/lib/libudx.a"   \
+    -output "$BUILD_PATH/lib/libudx.a" || return $?
+
+  rm -rf "$BUILD_PATH"/include/udx*
+  cp -rf "$BUILD_PATH"/libudx/include/* "$BUILD_PATH/include"
+
+  return 0
+}
+
+##
+# Compiles possibly platform dependant dependencies.
+##
+function compile_dependencies () {
+  local platform_target="${1:-"$PLATFORM_DESKTOP"}"
+  shift
+
+  if [ "$platform_target" == "$PLATFORM_IOS" ]; then
+    compile_libuv "$PLATFORM_IOS" "$@" || return $?
+    compile_libudx "$PLATFORM_IOS" "$@" || return $?
+  fi
+
+  return 0
+}
+
+##
+# TODO
+##
+function install_dependencies () {
+  local destination="$(get_system_ssc_framework_directory)"
+
+  if ! mkdir -p "$destination/lib"; then
+    panic "Failed to make destination lib directory: $destination"
+  fi
+
+  rm -rf "$destination/lib/"*.a
+  rm -rf "$destination/include"
+  cp -rf "$BUILD_PATH/lib/"*.a "$destination/lib"
+  cp -rf "$BUILD_PATH/include/" "$destination/include"
+
+  return 0
+}
+
+##
+# Installs 'ssc(1)' command into PATH
+##
+function install_ssc_command () {
+  local destination="$(get_system_ssc_framework_directory)"
+
+  if ! mkdir -p "$destination/bin"; then
+    panic "Failed to make destination bin directory: $destination"
+  fi
+
+  log "Installing 'ssc' into: $destination"
+  ## TODO(jwerle): use build directory
+  if ! sudo install -b "$(pwd)/bin/ssc" "$PREFIX/bin"; then
+    panic "Failed to install 'ssc' command into $PREFIX/bin"
+  fi
+
+  return 0
+}
+
+##
+# Installs SSC framework source files into library directory.
+##
+function install_ssc_sources_and_libraries () {
+  local destination="$(get_system_ssc_framework_directory)"
+  local libraries=()
+  local sources=()
+  local cwd="$(pwd)"
+
+  read -r -d '' -a sources < <(get_ssc_framework_sources)
+  read -r -d '' -a libraries < <(get_ssc_framework_libraries)
+
+  if [ -n "$LOCALAPPDATA" ]; then
+    destination="$LOCALAPPDATA/Programs/socketsupply"
+  else
+    destination="$HOME/.config/socket-sdk"
+  fi
+
+  if ! mkdir -p "$destination/"{lib,src}; then
+    panic "Failed to make destination library/source directories: $destination"
+  fi
+
+  if ! test -d "$cwd/src"; then
+    panic "./src/ directory missing in working directory"
+  fi
+
+  if ! test -d "$cwd/lib"; then
+    panic "./lib/ directory missing in working directory"
+  fi
+
+  log "Copying sources to $destination/src"
+  if ! cp -rf "${sources[@]}" "$destination/src"; then
+    panic "Failed to copy source files to $destination/src"
+  fi
+
+  log "Copying libraries to $destination/lib"
+  if ! cp -rf "${libraries[@]}" "$destination/lib"; then
+    panic "Failed to copy source files to $destination/lib"
+  fi
+
+  return 0
+}
+
+##
+# Installs 'ssc(1)' command and framework files into system.
+##
+function install_ssc () {
+  log "Installing Socket SDK Framework and 'ssc(1)' command line program"
+
+  install_ssc_command "$@" || return $?
+  install_ssc_sources_and_libraries "$@" || return $?
+
+  log "Finished installing Socket SDK Framework and 'ssc(1)'"
+  log "Type 'ssc -h' for help"
+
+  return 0
+}
+
+##
+# Main entry function.
 #
-_build
-_install
+# [$1="desktop"] Platform target enumeration such as
+#                "ios", "android", or "desktop" (default)
+#
+# Returns 0 upon success, otherwise an error code exit status
+##
+function main () {
+  configure "$@" || return $?
+  compile_ssc "$@" || return $?
+
+  configure_dependencies "$@" || return $?
+  compile_dependencies "$@" || return $?
+
+  install_ssc "$@" || return $?
+  install_dependencies || return $?
+}
+
+trap onsignal SIGINT SIGTERM
+## Run the `main()` function
+time main "$@"
