@@ -1938,7 +1938,7 @@ void loopCheck () {
       return;
     }
 
-    int err = udx_socket_close(socket->udx, [](udx_socket_t* self) {
+    int err = udx_socket_close(socket->socket, [](udx_socket_t* self) {
       dispatch_async(dispatch_get_main_queue(), ^{
         [self
           emit: "callback"
@@ -2069,6 +2069,35 @@ void loopCheck () {
                      socketId: (uint64_t)socketId
                      size: (uint32_t)size {
   dispatch_async(queue, ^{
+    auto* socket = UDXSockets[socketId];
+
+    if (socket == nullptr) {
+      [self resolve: seq message: SSC::format(R"JSON({
+        "err": {
+          "message": "No such socketId"
+        }
+      })JSON")];
+      return;
+    }
+
+    int err = udx_socket_recv_buffer_size(socket->socket, &size);
+
+    if (err < 0) {
+      auto name = std::string(uv_err_name(err));
+      auto message = std::string(uv_strerror(err));
+
+      [self resolve: seq message: SSC::format(R"JSON({
+        "err": {
+          "name": "$S",
+          "message": "$S"
+        }
+      })JSON", name, message)];
+      return;
+    }
+
+    [self resolve: seq message: SSC::format(R"JSON({
+      "data": $i
+    })JSON", std::to_string(size))];
   });
 }
 
