@@ -302,7 +302,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 /* Begin PBXFileReference section */
 		290F7F82276BBE9C00486988 /* libuv.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libuv.a; path = lib/uv/libuv.a; sourceTree = "<group>"; };
 		290F7F86276BC2B000486988 /* lib */ = {isa = PBXFileReference; lastKnownFileType = folder; path = lib; sourceTree = "<group>"; };
-		29124C4A27613369001832A0 /* {{name}}.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = {{name}}.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		29124C4A27613369001832A0 /* {{name}}.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "{{name}}.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		29124C5C2761336B001832A0 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		29124C5E2761336B001832A0 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		294A3C4E2763E5EB007B5B9A /* ios.mm */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.objcpp; indentWidth = 2; path = ios.mm; sourceTree = "<group>"; tabWidth = 2; };
@@ -390,8 +390,8 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 			);
 			dependencies = (
 			);
-			name = {{name}};
-			productName = {{name}};
+			name = "{{name}}";
+			productName = "{{name}}";
 			productReference = 29124C4A27613369001832A0 /* {{name}}.app */;
 			productType = "com.apple.product-type.application";
 		};
@@ -402,7 +402,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
-				LastUpgradeCheck = 1310;
+				LastUpgradeCheck = 1340;
 				TargetAttributes = {
 					29124C4927613369001832A0 = {
 						CreatedOnToolsVersion = 13.1;
@@ -517,6 +517,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 				IPHONEOS_DEPLOYMENT_TARGET = 14.1;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
 				SUPPORTED_PLATFORMS = "iphonesimulator iphoneos";
 			};
@@ -579,7 +580,6 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 		29124C7A2761336B001832A0 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ARCHS = "{{arch}}";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = socket.entitlements;
@@ -613,7 +613,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 					"$(PROJECT_DIR)/lib/uv",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = {{bundle_identifier}};
+				PRODUCT_BUNDLE_IDENTIFIER = "{{bundle_identifier}}";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "{{ios_provisioning_specifier}}";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -624,7 +624,6 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 		29124C7B2761336B001832A0 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ARCHS = "{{arch}}";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = socket.entitlements;
@@ -660,7 +659,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 				);
 				MARKETING_VERSION = 1.0;
 				ONLY_ACTIVE_ARCH = YES;
-				PRODUCT_BUNDLE_IDENTIFIER = {{bundle_identifier}};
+				PRODUCT_BUNDLE_IDENTIFIER = "{{bundle_identifier}}";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "{{ios_provisioning_specifier}}";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -671,7 +670,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		29124C4527613369001832A0 /* Build configuration list for PBXProject "ssc" */ = {
+		29124C4527613369001832A0 /* Build configuration list for PBXProject "{{name}}" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				29124C772761336B001832A0 /* Debug */,
@@ -680,7 +679,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		29124C792761336B001832A0 /* Build configuration list for PBXNativeTarget "ssc" */ = {
+		29124C792761336B001832A0 /* Build configuration list for PBXNativeTarget "{{name}}" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				29124C7A2761336B001832A0 /* Debug */,
@@ -692,6 +691,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 /* End XCConfigurationList section */
 	};
 	rootObject = 29124C4227613369001832A0 /* Project object */;
+
 })ASCII";
 
 //
