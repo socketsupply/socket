@@ -311,7 +311,6 @@ function get_ssc_framework_libraries () {
 ##
 function get_latest_xcode_sdk_platform_version () {
   local platform_type="$1"
-  local platform_type_length="${#1}"
   local default_version="$2"
   local sdks_path="$XCODE_PLATFORMS_PATH/$platform_type.platform/Developer/SDKS"
   local -a sdks=()
@@ -338,15 +337,10 @@ function export_platform_compiler_flags () {
     local sdk_version="$(get_latest_xcode_sdk_platform_version iPhoneOS 8.0)"
     local -a shared_flags=(-arch "$platform_arch" -isysroot "$XCODE_PLATFORMS_PATH/$platform_type.platform/Developer/SDKs/$platform_type$sdk_version.sdk")
 
-    #CFLAGS+=" -fembed-bitcode"
-    CFLAGS+=" ${shared_flags[*]}"
-    CFLAGS+=" -miphoneos-version-min=$IPHONEOS_MIN_SDKVERSION"
-
-    #CPPFLAGS+="$CFLAGS"
-    CXXFLAGS+="$CFLAGS"
-
-    #LDFLAGS+=" -Wc,-fembed-bitcode"
-    LDFLAGS+=" ${shared_flags[*]}"
+    CFLAGS="${shared_flags[*]} -miphoneos-version-min=$IPHONEOS_MIN_SDKVERSION"
+    LDFLAGS="${shared_flags[*]}"
+    CXXFLAGS="${shared_flags[*]}"
+    CPPFLAGS="$CFLAGS"
 
     export CPATH="$XCODE_PLATFORMS_PATH/$platform_type.platform/Developer/SDKs/$platform_type$sdk_version.sdk/usr/include"
   fi
@@ -409,7 +403,10 @@ function compile_libuv () {
 
   pushd . || return $?
   cd "$BUILD_PATH/libuv" || return $?
-  sh autogen.sh || return $?
+
+  if ! test -f configure; then
+    sh autogen.sh || return $?
+  fi
 
   if [ "$platform_target" == "$PLATFORM_IOS" ]; then
     # The order corresponds to archs/hosts
@@ -420,16 +417,17 @@ function compile_libuv () {
       local arch="${archs[$i]}"
       local host="${hosts[$i]}"
 
+      mkdir -p "$BUILD_PATH/$arch/"{lib,include}
+
       cp -rf "$BUILD_PATH/libuv" "$BUILD_PATH/$arch/libuv"
       cd "$BUILD_PATH/$arch/libuv"
 
-      mkdir -p "$BUILD_PATH/$arch/lib"
-      mkdir -p "$BUILD_PATH/$arch/include"
-
       {
         export_platform_compiler_flags "$PLATFORM_IOS" "$arch" "$platform"
-        ./configure --prefix="$BUILD_PATH/$arch" --host="$host-apple-darwin"
-        make clean || return $?
+        if ! test -f Makefile; then
+          ./configure --prefix="$BUILD_PATH/$arch" --host="$host-apple-darwin"
+        fi
+
         make -j4 || return $?
         make install || return $?
       } &
