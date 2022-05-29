@@ -1844,6 +1844,70 @@ void loopCheck () {
 - (void) udxStreamWriteEnd: (std::string)seq
                   streamId: (uint64_t)streamId
                  requestId: (std::string)requestId {
+
+  dispatch_async(dispatch_get_main_queue(), ^{
+    auto* stream = UDXStreams[streamId];
+    if (stream == nullptr) {
+      dispatch_async(dispatch_get_main_queue(), ^{
+        [self reject: seq message: SSC::format(R"JSON({
+          "err": {
+            "message": "no such streamId"
+          }
+        })JSON")];
+      });
+      return;
+    }
+
+    auto* request = UDXRequests[requestId];
+    if (request == nullptr) {
+      dispatch_async(dispatch_get_main_queue(), ^{
+        [self reject: seq message: SSC::format(R"JSON({
+          "err": {
+            "message": "no such requestId"
+          }
+        })JSON")];
+      });
+      return;
+    }
+
+    req->data = (void *)((uintptr_t) rid);
+    uv_buf_t b = uv_buf_init(buf, buf_len);
+
+    int err = udx_stream_write_end(req, stream, &b, 1, [](udx_stream_write_t *req, int status, int unordered) {
+      udx_napi_stream_t *n = (udx_napi_stream_t *) req->handle;
+
+      dispatch_async(dispatch_get_main_queue(), ^{
+        [self
+          emit: "callback"
+          message:
+            SSC::format(R"JSON({
+              "id": "$S",
+              "name": "onack",
+              "arguments": [$i, $i]
+            })JSON",
+            std::to_string((int) req->data),
+            std::to_string(status)
+          )
+        ];
+      });
+    }
+
+    loopCheck();
+
+    if (err < 0) {
+      dispatch_async(dispatch_get_main_queue(), ^{
+        [self resolve: seq message: SSC::format(R"JSON({
+          "data": $i
+        })JSON", err)];
+      });
+    }
+
+    dispatch_async(dispatch_get_main_queue(), ^{
+      [self resolve: seq message: SSC::format(R"JSON({
+        "data": $i
+      })JSON", err)];
+    });
+  });
 }
 
 - (void) udxStreamWrite: (std::string)seq
