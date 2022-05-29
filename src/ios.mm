@@ -2829,6 +2829,14 @@ void loopCheck () {
     return;
   }
 
+  if (cmd.name == "udxSocketSendBufferSize") {
+    [self udxSocketSendBufferSize: seq
+                         socketId: std::stoll(cmd.get("socketId"))
+                             size: std::stoi(cmd.get("size"))
+    ];
+    return;
+  }
+
   NSLog(@"%s", msg.c_str());
 }
 
