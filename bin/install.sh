@@ -547,8 +547,14 @@ function install_dependencies () {
 
   rm -rf "$destination/lib/"*.a
   rm -rf "$destination/include"
-  cp -rf "$BUILD_PATH/lib/"*.a "$destination/lib"
-  cp -rf "$BUILD_PATH/include/" "$destination/include"
+
+  if test -d "$BUILD_PATH/lib"; then
+    cp -rf "$BUILD_PATH/lib/"*.a "$destination/lib"
+  fi
+
+  if test -d "$BUILD_PATH/include"; then
+    cp -rf "$BUILD_PATH/include/" "$destination/include"
+  fi
 
   return 0
 }
