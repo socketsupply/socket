@@ -2049,7 +2049,7 @@ void loopCheck () {
 
     udx_stream_connect(
       (udx_stream_t*) stream,
-      socket,
+      (udx_socket_t*) socket,
       remoteId,
       (const struct sockaddr *) &addr,
       [](udx_stream_t *streamHandle, int status) {
@@ -2406,8 +2406,8 @@ void loopCheck () {
     };
 
     int udxErr =  udx_socket_send_ttl(
-      req,
-      self,
+      (udx_socket_send_t*) req,
+      (udx_socket_t*) socket,
       &b,
       1,
       (const struct sockaddr*) &addr,
@@ -2456,7 +2456,8 @@ void loopCheck () {
       return;
     }
 
-    int err = udx_socket_recv_buffer_size((udx_socket_t*) socket, &size);
+    int bufSize = size;
+    int err = udx_socket_recv_buffer_size((udx_socket_t*) socket, &bufSize);
 
     if (err < 0) {
       auto name = std::string(uv_err_name(err));
@@ -2476,7 +2477,7 @@ void loopCheck () {
     dispatch_async(dispatch_get_main_queue(), ^{
       [self resolve: seq message: SSC::format(R"JSON({
         "data": $i
-      })JSON", std::to_string(size))];
+      })JSON", std::to_string(bufSize))];
     });
   });
 }
@@ -2498,7 +2499,8 @@ void loopCheck () {
       return;
     }
 
-    int err = udx_socket_recv_buffer_size((udx_socket_t*) socket, &size);
+    int bufSize = size;
+    int err = udx_socket_recv_buffer_size((udx_socket_t*) socket, &bufSize);
 
     if (err < 0) {
       auto name = std::string(uv_err_name(err));
@@ -2518,7 +2520,7 @@ void loopCheck () {
     dispatch_async(dispatch_get_main_queue(), ^{
       [self resolve: seq message: SSC::format(R"JSON({
         "data": $i
-      })JSON", std::to_string(size))];
+      })JSON", std::to_string(bufSize))];
     });
   });
 }
