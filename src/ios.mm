@@ -86,7 +86,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
 - (void) udxStreamWriteEnd: (std::string)seq
                   streamId: (uint64_t)streamId
-                 requestId: (std::string)requestId
+                 requestId: (uint64_t)requestId
                        buf: (char*)buf;
 
 - (void) udxStreamWrite: (std::string)seq
@@ -328,10 +328,12 @@ std::map<uint64_t, Server*> servers;
 std::map<uint64_t, GenericContext*> contexts;
 std::map<uint64_t, DescriptorContext*> descriptors;
 
-using UDXRequest = udx_socket_send_t;
+using UDXSendRequest = udx_socket_send_t;
+using UDXWriteRequest = udx_stream_write_t;
 
 std::map<uint64_t, UDX*> UDXs;
-std::map<uint32_t, UDXRequest*> UDXRequests;
+std::map<uint64_t, UDXSendRequest*> UDXSendRequests;
+std::map<uint64_t, UDXWriteRequest*> UDXWriteRequests;
 std::map<uint64_t, UDXSocket*> UDXSockets;
 std::map<uint64_t, UDXStream*> UDXStreams;
 
@@ -1820,7 +1822,7 @@ void loopCheck () {
       return;
     }
 
-    int err = udx_stream_destroy(stream->stream);
+    int err = udx_stream_destroy((udx_stream_t*) stream);
     if (err < 0) {
       auto name = std::string(uv_err_name(err));
       auto message = std::string(uv_strerror(err));
@@ -1846,8 +1848,10 @@ void loopCheck () {
 
 - (void) udxStreamWriteEnd: (std::string)seq
                   streamId: (uint64_t)streamId
-                 requestId: (std::string)requestId
-                       buf: (char*)buf {
+                 requestId: (uint64_t)requestId
+                       rId: (int)rId
+                       buf: (char*)buf
+                    buflen: (int)buflen {
   dispatch_async(dispatch_get_main_queue(), ^{
     auto* stream = UDXStreams[streamId];
     if (stream == nullptr) {
@@ -1861,7 +1865,7 @@ void loopCheck () {
       return;
     }
 
-    auto* request = UDXRequests[requestId];
+    UDXWriteRequest* request = UDXWriteRequests[requestId];
     if (request == nullptr) {
       dispatch_async(dispatch_get_main_queue(), ^{
         [self reject: seq message: SSC::format(R"JSON({
@@ -1873,27 +1877,33 @@ void loopCheck () {
       return;
     }
 
-    req->data = (void *)((uintptr_t) rid);
-    uv_buf_t b = uv_buf_init(buf, buf_len);
+    request->data = (void*)((uintptr_t) rId);
+    uv_buf_t b = uv_buf_init(buf, buflen);
 
-    int err = udx_stream_write_end(req, stream, &b, 1, [](udx_stream_write_t *req, int status, int unordered) {
-      udx_napi_stream_t *n = (udx_napi_stream_t *) req->handle;
+    int err = udx_stream_write_end(
+      (UDXWriteRequest*) request,
+      (udx_stream_t*) stream,
+      &b,
+      1,
+      [](udx_stream_write_t *req, int status, int unordered) {
+        UDXStream* stream = (UDXStream*) req->handle;
 
-      dispatch_async(dispatch_get_main_queue(), ^{
-        [self
-          emit: "callback"
-          message:
-            SSC::format(R"JSON({
-              "id": "$S",
-              "name": "onack",
-              "arguments": [$i, $i]
-            })JSON",
-            std::to_string((int) req->data),
-            std::to_string(status)
-          )
-        ];
-      });
-    }
+        dispatch_async(dispatch_get_main_queue(), ^{
+          [stream->delegate
+            emit: "callback"
+            message:
+              SSC::format(R"JSON({
+                "id": "$S",
+                "name": "onack",
+                "arguments": [$i, $i]
+              })JSON",
+              std::to_string((uintptr_t) req->data),
+              std::to_string(status)
+            )
+          ];
+        }
+      );
+    });
 
     loopCheck();
 
@@ -1916,8 +1926,9 @@ void loopCheck () {
 - (void) udxStreamWrite: (std::string)seq
                streamId: (uint64_t)streamId
               requestId: (uint64_t)requestId
-                    rId: (std::string)rId
-                    buf: (char*)buf {
+                    rId: (uint64_t)rId
+                    buf: (char*)buf
+                 buflen: (int)buflen {
   dispatch_async(queue, ^{
     auto* stream = UDXStreams[streamId];
 
@@ -1932,8 +1943,7 @@ void loopCheck () {
       return;
     }
 
-
-    auto* request = UDXRequests[requestId];
+    UDXWriteRequest* request = UDXWriteRequests[requestId];
     if (request == nullptr) {
       dispatch_async(dispatch_get_main_queue(), ^{
         [self reject: seq message: SSC::format(R"JSON({
@@ -1945,27 +1955,33 @@ void loopCheck () {
       return;
     }
 
-    req->data = (void *)((uintptr_t) rId);
-    uv_buf_t b = uv_buf_init(buf, buf_len);
+    request->data = (void *)((uintptr_t) rId);
+    uv_buf_t b = uv_buf_init(buf, buflen);
 
-    int err = udx_stream_write(req, stream, &b, 1, [](udx_stream_write_t *req, int status, int unordered) {
-      udx_napi_stream_t *n = (udx_napi_stream_t *) req->handle;
+    int err = udx_stream_write(
+      (UDXWriteRequest*) request,
+      (udx_stream_t*) stream,
+      &b,
+      1,
+      [](udx_stream_write_t *req, int status, int unordered) {
+        UDXStream *stream = (UDXStream*) req->handle;
 
-      dispatch_async(dispatch_get_main_queue(), ^{
-        [self
-          emit: "callback"
-          message:
-            SSC::format(R"JSON({
-              "id": "$S",
-              "name": "onack",
-              "arguments": [$i, $i]
-            })JSON",
-            std::to_string((int) req->data),
-            std::to_string(status)
-          )
-        ];
-      });
-    }
+        dispatch_async(dispatch_get_main_queue(), ^{
+          [stream->delegate
+            emit: "callback"
+            message:
+              SSC::format(R"JSON({
+                "id": "$S",
+                "name": "onack",
+                "arguments": [$i, $i]
+              })JSON",
+              std::to_string((uintptr_t) req->data),
+              std::to_string(status)
+            )
+          ];
+        });
+      }
+    );
 
     loopCheck();
 
@@ -2013,7 +2029,8 @@ void loopCheck () {
     }
 
     struct sockaddr_in addr;
-    int err = uv_ip4_addr(remote_ip, remote_port, &addr);
+    int err = uv_ip4_addr((char *) &remoteIp, remotePort, &addr);
+
     if (err < 0) {
       auto name = std::string(uv_err_name(err));
       auto message = std::string(uv_strerror(err));
@@ -2030,15 +2047,15 @@ void loopCheck () {
     }
 
     udx_stream_connect(
-      (udx_stream_t *) stream->stream,
+      (udx_stream_t*) stream,
       socket,
-      remote_id,
+      remoteId,
       (const struct sockaddr *) &addr,
       [](udx_stream_t *streamHandle, int status) {
         UDXStream *stream = (UDXStream*) streamHandle;
 
         dispatch_async(dispatch_get_main_queue(), ^{
-          [self
+          [stream->delegate
             emit: "callback"
             message:
               SSC::format(R"JSON({
@@ -2051,7 +2068,7 @@ void loopCheck () {
             )
           ];
         });
-      }  
+      }
     );
 
     loopCheck();
@@ -2060,7 +2077,8 @@ void loopCheck () {
 
 - (void) udxStreamRecvStart: (std::string)seq
                    streamId: (uint64_t)streamId
-                 readBuffer: (char*)readBuffer {
+                 readBuffer: (char*)readBuffer
+                     buflen: (int)buflen {
   dispatch_async(queue, ^{
     auto* stream = UDXStreams[streamId];
     if (stream == nullptr) {
@@ -2074,53 +2092,50 @@ void loopCheck () {
       return;
     }
 
-    stream->read_buf = read_buf;
-    stream->read_buf_head = read_buf;
-    stream->read_buf_free = read_buf_len;
+    stream->read_buf = readBuffer;
+    stream->read_buf_head = readBuffer;
+    stream->read_buf_free = buflen;
 
-    auto on_udx_stream_end = [&](udx_stream_t *stream) {
-      UDXStream *n = (UDXStream *) stream;
-
-      size_t read = n->read_buf_head - n->read_buf;
-
-      dispatch_async(dispatch_get_main_queue(), ^{
-        [self
-          emit: "callback"
-          message:
-            SSC::format(R"JSON({
-              "id": "$S",
-              "name": "onend",
-              "arguments": [$i]
-            })JSON",
-            streamId,
-            (int) read
-          )
-        ];
-      });
-    };
-
-    auto on_udx_stream_read = [&](
-      udx_stream_t *stream,
+    auto on_udx_stream_read = [](
+      udx_stream_t *streamHandle,
       ssize_t read_len,
       const uv_buf_t *buf
     ) {
-      if (read_len == UV_EOF) return on_udx_stream_end(stream);
+      UDXStream* stream = (UDXStream *) streamHandle;
 
-      UDXStream *n = (UDXStream *) stream;
+      if (read_len == UV_EOF) {
+        size_t read = stream->read_buf_head - stream->read_buf;
 
-      memcpy(n->read_buf_head, buf->base, buf->len);
-
-      n->read_buf_head += buf->len;
-      n->read_buf_free -= buf->len;
-
-      if (n->mode == UDX_MODE_NON_INTERACTIVE && n->read_buf_free >= UDX_MTU) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+          [stream->delegate
+            emit: "callback"
+            message:
+              SSC::format(R"JSON({
+                "id": "$S",
+                "name": "onend",
+                "arguments": [$i]
+              })JSON",
+              std::to_string(stream->streamId),
+              (int) read
+            )
+          ];
+        });
         return;
       }
 
-      size_t read = n->read_buf_head - n->read_buf;
+      memcpy(stream->read_buf_head, buf->base, buf->len);
+
+      stream->read_buf_head += buf->len;
+      stream->read_buf_free -= buf->len;
+
+      if (stream->mode == UDX_MODE_NON_INTERACTIVE && stream->read_buf_free >= UDX_MTU) {
+        return;
+      }
+
+      size_t read = stream->read_buf_head - stream->read_buf;
 
       dispatch_async(dispatch_get_main_queue(), ^{
-        [self
+        [stream->delegate
           emit: "callback"
           message:
             SSC::format(R"JSON({
@@ -2128,24 +2143,26 @@ void loopCheck () {
               "name": "ondata",
               "arguments": [$i]
             })JSON",
-            streamId,
+            std::to_string(stream->streamId),
             (int) read
           )
         ];
       });
     };
-    auto on_udx_stream_recv = [&](
-      udx_stream_t *stream,
+
+    auto on_udx_stream_recv = [](
+      udx_stream_t *streamHandle,
       ssize_t read_len,
       const uv_buf_t *buf
     ) {
+      UDXStream* stream = (UDXStream *) streamHandle;
       NSString* str = [NSString stringWithUTF8String: buf->base];
       NSData *nsdata = [str dataUsingEncoding:NSUTF8StringEncoding];
       NSString *base64Encoded = [nsdata base64EncodedStringWithOptions:0];
 
       auto message = std::string([base64Encoded UTF8String]);
 
-      [self
+      [stream->delegate
         emit: "callback"
         message:
           SSC::format(R"JSON({
@@ -2153,14 +2170,14 @@ void loopCheck () {
             "name": "onmessage",
             "arguments": [$S]
           })JSON",
-          std::to_string(streamId),
+          std::to_string(stream->streamId),
           message
         )
       ];
     };
 
-    udx_stream_read_start((udx_stream_t *) stream->stream, on_udx_stream_read);
-    udx_stream_recv_start((udx_stream_t *) stream->stream, on_udx_stream_recv);
+    udx_stream_read_start((udx_stream_t *) stream, on_udx_stream_read);
+    udx_stream_recv_start((udx_stream_t *) stream, on_udx_stream_recv);
 
     dispatch_async(dispatch_get_main_queue(), ^{
       [self resolve: seq message: SSC::format(R"JSON({
@@ -2212,26 +2229,27 @@ void loopCheck () {
     auto* stream = UDXStreams[streamId] = new UDXStream;
     stream->streamId = streamId;
 
-    int err = udx_stream_init(udx->udx, (udx_stream_t*) stream->stream, id);
+    int err = udx_stream_init(udx->udx, (udx_stream_t*) stream, id);
     if (err < 0) {
       // TODO emit error unable to init stream
       return;
     }
 
     udx_stream_firewall(
-      (udx_stream_t*) stream->stream,
-      [](udx_stream_t* streamHandle, udx_socket_t* socketHandle, const struct sockaddr* from) {
+      (udx_stream_t*) stream,
+      [](udx_stream_t* streamHandle, udx_socket_t* socketHandle, const struct sockaddr* from) -> int {
         UDXStream* stream = (UDXStream*) streamHandle;
-        UDXSocket* socket = (UDXSocket*) socketHandle;
+        // UDXSocket* socket = (UDXSocket*) socketHandle;
 
         uint32_t fw = 1;
         int port;
-        int ip[17];
+        char ip[17];
 
-        parseAddress((struct sockaddr*) from, ip, &port);
+        parseAddress((struct sockaddr*) from, &port, ip);
+        auto ipAddress = std::string(ip);
 
         dispatch_async(dispatch_get_main_queue(), ^{
-          [self
+          [stream->delegate
             emit: "callback"
             message:
               SSC::format(R"JSON({
@@ -2241,10 +2259,12 @@ void loopCheck () {
               })JSON",
               std::to_string(stream->streamId),
               port,
-              std::to_string(ip)
+              ipAddress
             )
           ];
         });
+        
+        return fw;
       }
     );
     loopCheck();
@@ -2267,23 +2287,28 @@ void loopCheck () {
       return;
     }
 
-    int err = udx_socket_close(socket->socket, [](udx_socket_t* self) {
-      dispatch_async(dispatch_get_main_queue(), ^{
-        [self
-          emit: "callback"
-          message:
-            SSC::format(R"JSON({
-              "id": "$S",
-              "name": "onclose",
-              "arguments": []
-            })JSON",
-            std::to_string(socket->socketId),
-            (int) ((uintptr_t) req->data),
-            (int) ((uint32_t) status)
-          )
-        ];
-      });
-    });
+    int err = udx_socket_close(
+      (udx_socket_t*) socket,
+      [](udx_socket_t* socketHandle) {
+        UDXSocket* socket = (UDXSocket*) socketHandle;
+        
+        dispatch_async(dispatch_get_main_queue(), ^{
+          [socket->delegate
+            emit: "callback"
+            message:
+              SSC::format(R"JSON({
+                "id": "$S",
+                "name": "onclose",
+                "arguments": []
+              })JSON",
+              std::to_string(socket->socketId),
+              (int) ((uintptr_t) req->data),
+              (int) ((uint32_t) status)
+            )
+          ];
+        });
+      }
+    );
 
     loopCheck();
 
@@ -2304,12 +2329,12 @@ void loopCheck () {
                        ip: (std::string)ip
                       ttl: (uint32_t)ttl {
   dispatch_async(queue, ^{
-    UDXRequest* req;
+    UDXSendRequest* req;
 
-    if (UDXRequests[requestId] != nullptr) {
-      req = UDXRequests[requestId];
+    if (UDXSendRequests[requestId] != nullptr) {
+      req = UDXSendRequests[requestId];
     } else {
-      req = UDXRequests[requestId] = new UDXRequest;
+      req = UDXSendRequests[requestId] = new UDXSendRequest;
     }
 
     req->data = (void *)((uintptr_t) rid);
