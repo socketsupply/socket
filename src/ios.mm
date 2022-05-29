@@ -1958,19 +1958,11 @@ void loopCheck () {
 
     if (!socket) {
       dispatch_async(dispatch_get_main_queue(), ^{
-        [self
-          emit: "callback"
-          message:
-            SSC::format(R"JSON({
-              "id": "$S",
-              "name": "onerror",
-              "arguments": []
-            })JSON",
-            std::to_string(socket->socketId),
-            (int) ((uintptr_t) req->data),
-            (int) ((uint32_t) status)
-          )
-        ];
+        [self resolve: seq message: SSC::format(R"JSON({
+          "err": {
+            "message": "No such socketId"
+          }
+        })JSON")];
       });
       return;
     }
@@ -1992,7 +1984,14 @@ void loopCheck () {
         ];
       });
     });
+
     loopCheck();
+
+    dispatch_async(dispatch_get_main_queue(), ^{
+      [self resolve: seq message: R"JSON({
+        "data": null
+      })JSON"];
+    });
   });
 }
 
