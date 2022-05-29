@@ -145,6 +145,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
                     ip: (std::string)ip;
 
 - (void) udxSocketInit: (std::string)seq
+                 udxId: (uint64_t)udxId
               socketId: (uint64_t)socketId;
 
 - (void) udxInit: (std::string)seq
@@ -2185,7 +2186,7 @@ void loopCheck () {
                      ttl: (uint32_t)ttl {
   dispatch_async(queue, ^{
     auto* socket = UDXSockets[socketId]
-    
+
     if (socket == nullptr) {
       dispatch_async(dispatch_get_main_queue(), ^{
         [self resolve: seq message: SSC::format(R"JSON({
@@ -2247,7 +2248,6 @@ void loopCheck () {
 
     auto* socket = UDXSockets[socketId]
     if (socket == nullptr) {
-      
       dispatch_async(dispatch_get_main_queue(), ^{
         [self resolve: seq message: SSC::format(R"JSON({
           "err": {
@@ -2328,13 +2328,19 @@ void loopCheck () {
 }
 
 - (void) udxSocketInit: (std::string)seq
-              udxId: (uint64_t)udxId
+                 udxId: (uint64_t)udxId
               socketId: (uint64_t)socketId {
   dispatch_async(queue, ^{
     auto* udx = UDXs[udxId];
 
     if (udx == nullptr) {
-      // TODO emit error not exists
+      dispatch_async(dispatch_get_main_queue(), ^{
+        [self resolve: seq message: SSC::format(R"JSON({
+          "err": {
+            "message": "No such udxId"
+          }
+        })JSON")];
+      });
       return;
     }
 
@@ -2343,11 +2349,28 @@ void loopCheck () {
 
     int err = udx_socket_init(udx->udx, (udx_socket_t*) socket->socket);
     if (err < 0) {
-      // TODO emit error unable to init socket
+      auto name = std::string(uv_err_name(err));
+      auto message = std::string(uv_strerror(err));
+
+      dispatch_async(dispatch_get_main_queue(), ^{
+        [self resolve: seq message: SSC::format(R"JSON({
+          "err": {
+            "method": "udx_socket_init",
+            "name": "$S",
+            "message": "$S"
+          }
+        })JSON", name, message)];
+      });
       return;
     }
 
     loopCheck();
+
+    dispatch_async(dispatch_get_main_queue(), ^{
+      [self resolve: seq message: R"JSON({
+        "data": null
+      })JSON"];
+    });
   });
 }
 
@@ -2362,16 +2385,28 @@ void loopCheck () {
     auto err = udx_init(loop, u->udx);
 
     if (err != 0) {
+      auto name = std::string(uv_err_name(err));
+      auto message = std::string(uv_strerror(err));
+
       dispatch_async(dispatch_get_main_queue(), ^{
-        [self emit:"callback" message: SSC::format(R"JSON({
-          "id": "$S"
-          "arguments": ["$S"]
-        })JSON", std::to_string(udxId), uv_strerror(err))];
+        [self resolve: seq message: SSC::format(R"JSON({
+          "err": {
+            "method": "udx_init",
+            "name": "$S",
+            "message": "$S"
+          }
+        })JSON", name, message)];
       });
       return;
     }
 
     loopCheck();
+
+    dispatch_async(dispatch_get_main_queue(), ^{
+      [self resolve: seq message: R"JSON({
+        "data": null
+      })JSON"];
+    });
   });
 }
 
@@ -2744,6 +2779,14 @@ void loopCheck () {
   if (cmd.name == "dnsLookup") {
     [self dnsLookup: seq
            hostname: cmd.get("hostname")
+    ];
+    return;
+  }
+
+  if (cmd.name == "udxSocketInit") {
+    [self udxSocketInit: seq
+                  udxId: cmd.get("udxId")
+               socketId: cmd.get("socketId")
     ];
     return;
   }
