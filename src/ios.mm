@@ -2848,6 +2848,13 @@ void loopCheck () {
     return;
   }
 
+  if (cmd.name == "udxStreamDestroy") {
+    [self udxStreamDestroy: seq
+                   streamId: std::stoll(cmd.get("streamId"))
+    ];
+    return;
+  }
+
   NSLog(@"%s", msg.c_str());
 }
 
