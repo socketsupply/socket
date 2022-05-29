@@ -24,7 +24,7 @@ Examples: https://github.com/socketsupply/socket-sdk-examples
 For mac / linux.
 
 ```sh
-./bin/bootstrap.sh dev
+./bin/install.sh
 ```
 
 For Windows
