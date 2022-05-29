@@ -1866,6 +1866,64 @@ void loopCheck () {
                  remoteId: (uint32_t)remoteId
                remotePort: (uint32_t)remotePort
                  remoteIp: (std::string)remoteIp {
+  dispatch_async(dispatch_get_main_queue(), ^{
+    auto* stream = UDXStreams[streamId];
+
+    if (stream == nullptr) {
+      dispatch_async(dispatch_get_main_queue(), ^{
+        [self reject: seq message: SSC::format(R"JSON({
+          "err": {
+            "message": "no such streamId"
+          }
+        })JSON")];
+      });
+      return;
+    }
+
+    struct sockaddr_in addr;
+    int err = uv_ip4_addr(remote_ip, remote_port, &addr);
+    if (err < 0) {
+      auto name = std::string(uv_err_name(err));
+      auto message = std::string(uv_strerror(err));
+
+      dispatch_async(dispatch_get_main_queue(), ^{
+        [self reject: seq message: SSC::format(R"JSON({
+          "err": {
+            "name": "$S",
+            "message": "$S"
+          }
+        })JSON", name, message)];
+      });
+      return;
+    }
+
+    udx_stream_connect(
+      (udx_stream_t *) stream->stream,
+      socket,
+      remote_id,
+      (const struct sockaddr *) &addr,
+      [](udx_stream_t *streamHandle, int status) {
+        UDXStream *stream = (UDXStream*) streamHandle;
+
+        dispatch_async(dispatch_get_main_queue(), ^{
+          [self
+            emit: "callback"
+            message:
+              SSC::format(R"JSON({
+                "id": "$S",
+                "name": "onconnect",
+                "arguments": [$i]
+              })JSON",
+              std::to_string(stream->streamId),
+              std::to_string(status)
+            )
+          ];
+        });
+      }  
+    );
+
+    loopCheck();
+  });
 }
 
 - (void) udxStreamRecvStart: (std::string)seq
