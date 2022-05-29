@@ -14,6 +14,8 @@
 #include <map>
 
 #define DEFAULT_BACKLOG 128
+#define UDX_MODE_INTERACTIVE 0
+#define UDX_MODE_NON_INTERACTIVE 1
 
 constexpr auto _settings = STR_VALUE(SETTINGS);
 constexpr auto _debug = false;
@@ -90,7 +92,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
                streamId: (uint64_t)streamId
               requestId: (uint64_t)requestId
                     rId: (std::string)rId
-                    buf: (std::string)buf;
+                    buf: (char*)buf;
 
 - (void) udxStreamSend: (std::string)seq
               streamId: (uint64_t)streamId
@@ -1914,7 +1916,7 @@ void loopCheck () {
                streamId: (uint64_t)streamId
               requestId: (uint64_t)requestId
                     rId: (std::string)rId
-                    buf: (std::string)buf {
+                    buf: (char*)buf {
 }
 
 - (void) udxStreamSend: (std::string)seq
@@ -1991,8 +1993,116 @@ void loopCheck () {
 }
 
 - (void) udxStreamRecvStart: (std::string)seq
-                   streamId: (uint64_t)streamId {
-} // no buf needed, emits data with streamId
+                   streamId: (uint64_t)streamId
+                 readBuffer: (char*)readBuffer {
+  dispatch_async(queue, ^{
+    auto* stream = UDXStreams[streamId];
+    if (stream == nullptr) {
+      dispatch_async(dispatch_get_main_queue(), ^{
+        [self reject: seq message: SSC::format(R"JSON({
+          "err": {
+            "message": "no such streamId"
+          }
+        })JSON")];
+      });
+      return;
+    }
+
+    stream->read_buf = read_buf;
+    stream->read_buf_head = read_buf;
+    stream->read_buf_free = read_buf_len;
+
+    auto on_udx_stream_end = [&](udx_stream_t *stream) {
+      UDXStream *n = (UDXStream *) stream;
+
+      size_t read = n->read_buf_head - n->read_buf;
+
+      dispatch_async(dispatch_get_main_queue(), ^{
+        [self
+          emit: "callback"
+          message:
+            SSC::format(R"JSON({
+              "id": "$S",
+              "name": "onend",
+              "arguments": [$i]
+            })JSON",
+            streamId,
+            (int) read
+          )
+        ];
+      });
+    };
+
+    auto on_udx_stream_read = [&](
+      udx_stream_t *stream,
+      ssize_t read_len,
+      const uv_buf_t *buf
+    ) {
+      if (read_len == UV_EOF) return on_udx_stream_end(stream);
+
+      UDXStream *n = (UDXStream *) stream;
+
+      memcpy(n->read_buf_head, buf->base, buf->len);
+
+      n->read_buf_head += buf->len;
+      n->read_buf_free -= buf->len;
+
+      if (n->mode == UDX_MODE_NON_INTERACTIVE && n->read_buf_free >= UDX_MTU) {
+        return;
+      }
+
+      size_t read = n->read_buf_head - n->read_buf;
+
+      dispatch_async(dispatch_get_main_queue(), ^{
+        [self
+          emit: "callback"
+          message:
+            SSC::format(R"JSON({
+              "id": "$S",
+              "name": "ondata",
+              "arguments": [$i]
+            })JSON",
+            streamId,
+            (int) read
+          )
+        ];
+      });
+    };
+    auto on_udx_stream_recv = [&](
+      udx_stream_t *stream,
+      ssize_t read_len,
+      const uv_buf_t *buf
+    ) {
+      NSString* str = [NSString stringWithUTF8String: buf->base];
+      NSData *nsdata = [str dataUsingEncoding:NSUTF8StringEncoding];
+      NSString *base64Encoded = [nsdata base64EncodedStringWithOptions:0];
+
+      auto message = std::string([base64Encoded UTF8String]);
+
+      [self
+        emit: "callback"
+        message:
+          SSC::format(R"JSON({
+            "id": "$S",
+            "name": "onmessage",
+            "arguments": [$S]
+          })JSON",
+          std::to_string(streamId),
+          message
+        )
+      ];
+    };
+
+    udx_stream_read_start((udx_stream_t *) stream->stream, on_udx_stream_read);
+    udx_stream_recv_start((udx_stream_t *) stream->stream, on_udx_stream_recv);
+
+    dispatch_async(dispatch_get_main_queue(), ^{
+      [self resolve: seq message: SSC::format(R"JSON({
+        "data": {}
+      })JSON")];
+    });
+  });
+}
 
 - (void) udxStreamSetMode: (std::string)seq
                  streamId: (uint64_t)streamId
@@ -2010,7 +2120,7 @@ void loopCheck () {
       return;
     }
 
-    stream->stream->mode = mode;
+    stream->mode = mode;
 
     dispatch_async(dispatch_get_main_queue(), ^{
       [self resolve: seq message: SSC::format(R"JSON({
