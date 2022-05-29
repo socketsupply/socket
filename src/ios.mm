@@ -86,7 +86,8 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
 - (void) udxStreamWriteEnd: (std::string)seq
                   streamId: (uint64_t)streamId
-                 requestId: (std::string)requestId;
+                 requestId: (std::string)requestId
+                       buf: (char*)buf;
 
 - (void) udxStreamWrite: (std::string)seq
                streamId: (uint64_t)streamId
@@ -1845,8 +1846,8 @@ void loopCheck () {
 
 - (void) udxStreamWriteEnd: (std::string)seq
                   streamId: (uint64_t)streamId
-                 requestId: (std::string)requestId {
-
+                 requestId: (std::string)requestId
+                       buf: (char*)buf {
   dispatch_async(dispatch_get_main_queue(), ^{
     auto* stream = UDXStreams[streamId];
     if (stream == nullptr) {
