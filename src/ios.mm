@@ -125,20 +125,21 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
 - (void) udxSocketSendTTL: (std::string)seq
                  socketId: (uint64_t)socketId
-                requestId: (uint64_t)requestId // udx_socket_send_t*
+                requestId: (uint64_t)requestId
                       rId: (uint32_t)rId
                       buf: (std::string)buf
+                   buflen: (int)buflen
                      port: (uint32_t)port
                        ip: (std::string)ip
                       ttl: (uint32_t)ttl;
 
 - (void) udxSocketSendBufferSize: (std::string)seq
                         socketId: (uint64_t)socketId
-                            size: (uint32_t)size;
+                            size: (int)size;
 
 - (void) udxSocketRecvBufferSize: (std::string)seq
                         socketId: (uint64_t)socketId
-                            size: (uint32_t)size;
+                            size: (int)size;
 
 - (void) udxSocketSetTTL: (std::string)seq
                 socketId: (uint64_t)socketId
@@ -2301,14 +2302,31 @@ void loopCheck () {
                 "name": "onclose",
                 "arguments": []
               })JSON",
-              std::to_string(socket->socketId),
-              (int) ((uintptr_t) req->data),
-              (int) ((uint32_t) status)
+              std::to_string(socket->socketId)
             )
           ];
         });
       }
     );
+    
+    if (err < 0) {
+      dispatch_async(dispatch_get_main_queue(), ^{
+        [socket->delegate
+          resolve: seq
+          message: SSC::format(
+            R"JSON({
+              "err": {
+                "socketId": "$S",
+                "message": "$S"
+              }
+            })JSON",
+            std::to_string(socket->socketId),
+            uv_strerror(err)
+          )
+        ];
+      });
+      return;
+    }
 
     loopCheck();
 
@@ -2324,7 +2342,8 @@ void loopCheck () {
                  socketId: (uint64_t)socketId
                 requestId: (uint64_t)requestId
                       rId: (uint32_t)rId
-                      buf: (std::string)buf
+                      buf: (char*)buf
+                   buflen: (int)buflen
                      port: (uint32_t)port
                        ip: (std::string)ip
                       ttl: (uint32_t)ttl {
@@ -2337,7 +2356,7 @@ void loopCheck () {
       req = UDXSendRequests[requestId] = new UDXSendRequest;
     }
 
-    req->data = (void *)((uintptr_t) rid);
+    req->data = (void *)((uintptr_t) rId);
 
     struct sockaddr_in addr;
     int err = uv_ip4_addr((char *) &ip, port, &addr);
@@ -2364,13 +2383,13 @@ void loopCheck () {
       return;
     }
 
-    uv_buf_t b = uv_buf_init(buf, buf_len);
+    uv_buf_t b = uv_buf_init(buf, buflen);
 
-    auto on_udx_send = [](udx_socket_send_t *req, int status) {
-      Socket* socket = (Socket*)req->handle;
+    auto on_udx_send = [](UDXSendRequest *req, int status) {
+      UDXSocket* socket = (UDXSocket*)req->handle;
 
       dispatch_async(dispatch_get_main_queue(), ^{
-        [self
+        [socket->delegate
           emit: "callback"
           message:
             SSC::format(R"JSON({
@@ -2400,8 +2419,7 @@ void loopCheck () {
       dispatch_async(dispatch_get_main_queue(), ^{
         [self
           resolve: seq
-          message:
-          SSC::format(
+          message: SSC::format(
             R"JSON({
               "err": {
                 "socketId": "$S",
@@ -2423,9 +2441,9 @@ void loopCheck () {
 
 - (void) udxSocketSendBufferSize: (std::string)seq
                      socketId: (uint64_t)socketId
-                     size: (uint32_t)size {
+                     size: (int)size {
   dispatch_async(queue, ^{
-    auto* socket = UDXSockets[socketId];
+    UDXSocket* socket = UDXSockets[socketId];
 
     if (socket == nullptr) {
       dispatch_async(dispatch_get_main_queue(), ^{
@@ -2438,7 +2456,7 @@ void loopCheck () {
       return;
     }
 
-    int err = udx_socket_recv_buffer_size(socket, &size);
+    int err = udx_socket_recv_buffer_size((udx_socket_t*) socket, &size);
 
     if (err < 0) {
       auto name = std::string(uv_err_name(err));
@@ -2465,7 +2483,7 @@ void loopCheck () {
 
 - (void) udxSocketRecvBufferSize: (std::string)seq
                      socketId: (uint64_t)socketId
-                     size: (uint32_t)size {
+                     size: (int)size {
   dispatch_async(queue, ^{
     auto* socket = UDXSockets[socketId];
 
@@ -2480,7 +2498,7 @@ void loopCheck () {
       return;
     }
 
-    int err = udx_socket_recv_buffer_size(socket->socket, &size);
+    int err = udx_socket_recv_buffer_size((udx_socket_t*) socket, &size);
 
     if (err < 0) {
       auto name = std::string(uv_err_name(err));
@@ -2509,7 +2527,7 @@ void loopCheck () {
                      socketId: (uint64_t)socketId
                      ttl: (uint32_t)ttl {
   dispatch_async(queue, ^{
-    auto* socket = UDXSockets[socketId]
+    UDXSocket* socket = UDXSockets[socketId];
 
     if (socket == nullptr) {
       dispatch_async(dispatch_get_main_queue(), ^{
@@ -2522,7 +2540,7 @@ void loopCheck () {
       return;
     }
 
-    int err = udx_socket_set_ttl(socket->socket, ttl);
+    int err = udx_socket_set_ttl((udx_socket_t*) socket, ttl);
     if (err < 0) {
       auto name = std::string(uv_err_name(err));
       auto message = std::string(uv_strerror(err));
@@ -2553,7 +2571,9 @@ void loopCheck () {
                     ip: (std::string)ip {
   dispatch_async(queue, ^{
     struct sockaddr_in addr;
-    int err = uv_ip4_addr(ip, port, &addr);
+
+    int err = uv_ip4_addr((char*) &ip, port, &addr);
+
     if (err < 0) {
       auto name = std::string(uv_err_name(err));
       auto message = std::string(uv_strerror(err));
@@ -2570,7 +2590,8 @@ void loopCheck () {
       return;
     }
 
-    auto* socket = UDXSockets[socketId]
+    auto* socket = UDXSockets[socketId];
+    
     if (socket == nullptr) {
       dispatch_async(dispatch_get_main_queue(), ^{
         [self resolve: seq message: SSC::format(R"JSON({
@@ -2582,7 +2603,7 @@ void loopCheck () {
       return;
     }
 
-    err = udx_socket_bind(socket->socket, (const struct sockaddr *) &addr);
+    err = udx_socket_bind((udx_socket_t*) socket, (const struct sockaddr*) &addr);
 
     if (err < 0) {
       auto name = std::string(uv_err_name(err));
@@ -2605,7 +2626,8 @@ void loopCheck () {
     int name_len = sizeof(name);
 
     // wont error in practice
-    err = udx_socket_getsockname(socket->socket, &name, &name_len);
+    err = udx_socket_getsockname((udx_socket_t*) socket, &name, &name_len);
+    
     if (err < 0) {
       auto name = std::string(uv_err_name(err));
       auto message = std::string(uv_strerror(err));
@@ -2626,7 +2648,41 @@ void loopCheck () {
     int local_port = ntohs(name_in->sin_port);
 
     // wont error in practice
-    err = udx_socket_recv_start(socket->socket, on_udx_message);
+    err = udx_socket_recv_start(
+      (udx_socket_t*) socket,
+      [](udx_socket_t *socketHandle, ssize_t read_len, const uv_buf_t *buf, const struct sockaddr *from) {
+        UDXSocket *socket = (UDXSocket*) socketHandle;
+
+        int port;
+        char ip[17];
+        parseAddress((struct sockaddr *) from, &port, ip);
+        auto ipAddress = std::string(ip);
+
+        auto data = std::string(buf->base, buf->len);
+        NSString* str = [NSString stringWithUTF8String: data.c_str()];
+        NSData *nsdata = [str dataUsingEncoding:NSUTF8StringEncoding];
+        NSString *base64Encoded = [nsdata base64EncodedStringWithOptions:0];
+
+        dispatch_async(dispatch_get_main_queue(), ^{
+          [socket->delegate
+            emit: "callback"
+            message:
+              SSC::format(R"JSON({
+                "id": "$S",
+                "name": "onmessage",
+                "arguments": [$S, $i, $S]
+              })JSON",
+              std::to_string(socket->socketId),
+              std::string([base64Encoded UTF8String]),
+              port,
+              ipAddress
+            )
+          ];
+        });
+        
+      }
+    );
+    
     if (err < 0) {
       auto name = std::string(uv_err_name(err));
       auto message = std::string(uv_strerror(err));
@@ -2668,10 +2724,10 @@ void loopCheck () {
       return;
     }
 
-    auto* socket = UDXSockets[socketId] = new UDXSocket;
+    UDXSocket* socket = UDXSockets[socketId] = new UDXSocket;
     socket->socketId = socketId;
 
-    int err = udx_socket_init(udx->udx, (udx_socket_t*) socket->socket);
+    int err = udx_socket_init(udx->udx, (udx_socket_t*) socket);
     if (err < 0) {
       auto name = std::string(uv_err_name(err));
       auto message = std::string(uv_strerror(err));
