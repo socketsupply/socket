@@ -2813,6 +2813,22 @@ void loopCheck () {
     return;
   }
 
+  if (cmd.name == "udxSocketSetTTL") {
+    [self udxSocketSetTTL: seq
+                 socketId: std::stoll(cmd.get("socketId"))
+                      ttl: std::stoi(cmd.get("ttl"))
+    ];
+    return;
+  }
+
+  if (cmd.name == "udxSocketRecvBufferSize") {
+    [self udxSocketRecvBufferSize: seq
+                         socketId: std::stoll(cmd.get("socketId"))
+                             size: std::stoi(cmd.get("size"))
+    ];
+    return;
+  }
+
   NSLog(@"%s", msg.c_str());
 }
 
