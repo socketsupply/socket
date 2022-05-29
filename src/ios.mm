@@ -2807,6 +2807,13 @@ void loopCheck () {
     return;
   }
 
+  if (cmd.name == "udxSocketClose") {
+    [self udxSocketClose: seq
+                socketId: std::stoll(cmd.get("socketId"))
+    ];
+    return;
+  }
+
   NSLog(@"%s", msg.c_str());
 }
 
