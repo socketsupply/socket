@@ -2785,8 +2785,24 @@ void loopCheck () {
 
   if (cmd.name == "udxSocketInit") {
     [self udxSocketInit: seq
-                  udxId: cmd.get("udxId")
-               socketId: cmd.get("socketId")
+                  udxId: std::stoll(cmd.get("udxId"))
+               socketId: std::stoll(cmd.get("socketId"))
+    ];
+    return;
+  }
+
+  if (cmd.name == "udxInit") {
+    [self udxInit: seq
+            udxId: std::stoll(cmd.get("udxId"))
+    ];
+    return;
+  }
+
+  if (cmd.name == "udxSocketBind") {
+    [self udxSocketBind: seq
+               socketId: std::stoll(cmd.get("socketId"))
+                   port: std::stoi(cmd.get("port"))
+                     ip: cmd.get("ip")
     ];
     return;
   }
