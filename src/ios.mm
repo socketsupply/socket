@@ -113,7 +113,9 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
                      mode: (uint32_t)mode;
 
 - (void) udxStreamInit: (std::string)seq
-              streamId: (uint64_t)streamId;
+                 udxId: (uint64_t)udxId
+              streamId: (uint64_t)streamId
+                    id: (uint32_t)id;
 
 - (void) udxSocketClose: (std::string)seq
                socketId: (uint64_t)socketId;
@@ -2833,6 +2835,15 @@ void loopCheck () {
     [self udxSocketSendBufferSize: seq
                          socketId: std::stoll(cmd.get("socketId"))
                              size: std::stoi(cmd.get("size"))
+    ];
+    return;
+  }
+
+  if (cmd.name == "udxStreamInit") {
+    [self udxStreamInit: seq
+                  udxId: std::stoll(cmd.get("udxId"))
+               streamId: std::stoll(cmd.get("streamId"))
+                     id: std::stoi(cmd.get("id"))
     ];
     return;
   }
