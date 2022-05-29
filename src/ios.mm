@@ -1888,7 +1888,7 @@ void loopCheck () {
       return;
     }
 
-    stream->mode = mode;
+    stream->stream->mode = mode;
 
     dispatch_async(dispatch_get_main_queue(), ^{
       [self resolve: seq message: SSC::format(R"JSON({
@@ -2851,6 +2851,14 @@ void loopCheck () {
   if (cmd.name == "udxStreamDestroy") {
     [self udxStreamDestroy: seq
                    streamId: std::stoll(cmd.get("streamId"))
+    ];
+    return;
+  }
+
+  if (cmd.name == "udxStreamSetMode") {
+    [self udxStreamSetMode: seq
+                  streamId: std::stoll(cmd.get("streamId"))
+                      mode: std::stoi(cmd.get("mode"))
     ];
     return;
   }
