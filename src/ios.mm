@@ -175,6 +175,12 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   Parse cmd(msg);
   auto seq = cmd.get("seq");
   uint64_t clientId = 0;
+  
+  if (cmd.name == "external") {
+    NSString *url = [NSString stringWithUTF8String:SSC::decodeURIComponent(cmd.get("value")).c_str()];
+    [[UIApplication sharedApplication] openURL: [NSURL URLWithString:url] options: @{} completionHandler: nil];
+    return;
+  }
 
   if (cmd.get("fsRmDir").size() != 0) {
     auto path = cmd.get("path");
@@ -230,11 +236,10 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
   if (cmd.get("fsWrite").size() != 0) {
     auto id = std::stoll(cmd.get("id"));
-    auto data = cmd.get("data"); // TODO should be char*
     auto offset = std::stoll(cmd.get("offset"));
-    
+
     dispatch_async(queue, ^{
-      core.fsWrite(seq, id, data, offset, [&](auto seq, auto msg, auto* buf) {
+      core.fsWrite(seq, id, buf, offset, [&](auto seq, auto msg, auto* buf) {
         dispatch_async(dispatch_get_main_queue(), ^{
           [self resolve: seq msg: msg buf: buf];
         });
@@ -242,67 +247,95 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     });
   }
 
-  /* if (cmd.get("fsStat").size() != 0) {
-    [self.core fsStat: seq
-            path: cmd.get("path")];
+  if (cmd.get("fsStat").size() != 0) {
+    auto path = cmd.get("path");
+
+    dispatch_async(queue, ^{
+      core.fsStat(seq, path, [&](auto seq, auto msg, auto* buf) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+          [self resolve: seq msg: msg buf: buf];
+        });
+      });
+    });
   }
 
   if (cmd.get("fsUnlink").size() != 0) {
-    [self.core fsUnlink: seq
-              path: cmd.get("path")];
+     auto path = cmd.get("path");
+
+     dispatch_async(queue, ^{
+       core.fsUnlink(seq, path, [&](auto seq, auto msg, auto* buf) {
+         dispatch_async(dispatch_get_main_queue(), ^{
+           [self resolve: seq msg: msg buf: buf];
+         });
+       });
+     });
   }
 
   if (cmd.get("fsRename").size() != 0) {
-    [self.core fsRename: seq
-             pathA: cmd.get("oldPath")
-             pathB: cmd.get("newPath")];
+    auto pathA = cmd.get("oldPath");
+    auto pathB = cmd.get("newPath");
+
+    dispatch_async(queue, ^{
+      core.fsRename(seq, pathA, pathB, [&](auto seq, auto msg, auto* buf) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+          [self resolve: seq msg: msg buf: buf];
+        });
+      });
+    });
   }
 
   if (cmd.get("fsCopyFile").size() != 0) {
-    [self.core fsCopyFile: seq
-           pathA: cmd.get("src")
-           pathB: cmd.get("dest")
-           flags: std::stoi(cmd.get("flags"))];
+    auto pathA = cmd.get("src");
+    auto pathB = cmd.get("dest");
+    auto flags = std::stoi(cmd.get("flags"));
+
+    dispatch_async(queue, ^{
+      core.fsCopyFile(seq, pathA, pathB, flags, [&](auto seq, auto msg, auto* buf) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+          [self resolve: seq msg: msg buf: buf];
+        });
+      });
+    });
   }
 
   if (cmd.get("fsMkDir").size() != 0) {
-    [self.core fsMkDir: seq
-              path: cmd.get("path")
-              mode: std::stoi(cmd.get("mode"))];
+    auto path = cmd.get("path");
+    auto mode = std::stoi(cmd.get("mode"));
+    
+    dispatch_async(queue, ^{
+      core.fsMkDir(seq, path, mode, [&](auto seq, auto msg, auto* buf) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+          [self resolve: seq msg: msg buf: buf];
+        });
+      });
+    });
   }
 
   if (cmd.get("fsReadDir").size() != 0) {
-    [self.core fsReadDir: seq
-              path: cmd.get("path")];
+    auto path = cmd.get("path");
+
+    dispatch_async(queue, ^{
+      core.fsReadDir(seq, path, [&](auto seq, auto msg, auto* buf) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+          [self resolve: seq msg: msg buf: buf];
+        });
+      });
+    });
   }
 
-  if (cmd.get("clientId").size() != 0) {
+  /* if (cmd.get("clientId").size() != 0) {
     try {
       clientId = std::stoll(cmd.get("clientId"));
     } catch (...) {
-      [self.core resolve: seq message: SSC::format(R"JSON({
+      [self resolve: seq message: SSC::format(R"JSON({
         "err": { "message": "invalid clientid" }
       })JSON")];
       return;
     }
   }
 
-  if (cmd.name == "external") {
-    NSString *url = [NSString stringWithUTF8String:SSC::decodeURIComponent(cmd.get("value")).c_str()];
-    [[UIApplication sharedApplication] openURL: [NSURL URLWithString:url] options: @{} completionHandler: nil];
-    return;
-  }
-
   if (cmd.name == "ip") {
     auto seq = cmd.get("seq");
-
-    if (clientId == 0) {
-      [self.core reject: seq message: SSC::format(R"JSON({
-        "err": {
-          "message": "no clientid"
-        }
-      })JSON")];
-    }
 
     Client* client = clients[clientId];
 
@@ -336,8 +369,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   }
 
   if (cmd.name == "getNetworkInterfaces") {
-    [self.core resolve: seq message: [self.core getNetworkInterfaces]
-    ];
+    [self.core resolve: seq message: [self.core getNetworkInterfaces]];
     return;
   }
 
