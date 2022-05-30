@@ -578,11 +578,12 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 //
 - (void) userContentController: (WKUserContentController*) userContentController didReceiveScriptMessage: (WKScriptMessage*)scriptMessage {
     id body = [scriptMessage body];
+
     if (![body isKindOfClass:[NSString class]]) {
       return;
     }
 
-    [self route: [body UTF8String]];
+    [self route: [body UTF8String] buf: NULL];
 }
 
 - (BOOL) application: (UIApplication*)app openURL: (NSURL*)url options: (NSDictionary<UIApplicationOpenURLOptionsKey, id>*)options {
