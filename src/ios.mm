@@ -35,7 +35,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 @property nw_path_monitor_t monitor;
 @property (strong, nonatomic) NSObject<OS_dispatch_queue>* monitorQueue;
 @property SSC::Core core;
-- (void) route: (std::string)route;
+- (void) route: (std::string)msg buf: (char*)buf;
 @end
 
 @implementation NavigationDelegate
@@ -76,7 +76,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
       HTTPVersion: @"HTTP/1.1"
      headerFields: nil
     ];
-      
+
     [task didReceiveResponse: httpResponse];
 
     uint64_t postId = std::stoll(cmd.get("id"));
@@ -96,7 +96,18 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   }
 
   core.putTask(cmd.get("seq"), task);
-  [delegate route: url];
+
+  char* body = NULL;
+
+  // if there is a body on the reuqest, pass it into the method router.
+  auto rawBody = task.request.HTTPBody;
+
+  if (rawBody) {
+    const void *_Nullable data = [rawBody bytes];
+    body = (char*)data;
+  }
+
+  [delegate route: url buf: body];
 }
 @end
 
@@ -155,7 +166,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   [self.webview evaluateJavaScript: script completionHandler:nil];
 }
 
-- (void) route: (std::string)msg {
+- (void) route: (std::string)msg buf: (char*)buf {
   using namespace SSC;
   Core core;
   
