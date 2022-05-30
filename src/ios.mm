@@ -45,7 +45,6 @@ std::map<uint64_t, NSData*> postRequests;
   auto url = std::string(task.request.URL.absoluteString.UTF8String);
 
   SSC::Parse cmd(url);
-  tasks[cmd.get("seq")] = task;
 
   if (cmd.name === "post") {
     NSHTTPURLResponse *httpResponse = [[NSHTTPURLResponse alloc]
@@ -69,6 +68,7 @@ std::map<uint64_t, NSData*> postRequests;
     return;
   }
 
+  tasks[cmd.get("seq")] = task;
   [self.delegate route: url];
 }
 @end
