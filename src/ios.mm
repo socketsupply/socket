@@ -100,29 +100,16 @@ std::map<uint64_t, NSData*> postRequests;
   [self.webview evaluateJavaScript: script completionHandler:nil];
 }
 
-- (void) send: (std::string)params buf: (char*)buf {
+- (void) emit: (std::string)params buf: (char*)buf {
   uint64_t id = SSC::rand64();
-  std::string sid = std::to_string(id);
-
-  std::string js(
-    "const xhx = new XMLHttpRequest();"
-    "xhr.open('ipc://post?id=" + sid + "');"
-    "xhr.onload = e => {"
-    "  const o = new URLSearchParams('" + params + "');"
-    "  const detail = {"
-    "    data: xhr.response," +
-    "    params: Object.fromEntries(o)"
-    "  };"
-    "  window._ipc.emit('data', detail);"
-    "}"
-  );
 
   NSString* str = [NSString stringWithUTF8String:buf];
   NSData* data = [str dataUsingEncoding: NSUTF8StringEncoding];
   postRequests[id] = data;
-  
+
+  auto js = [self createPost: id, params: params];
   NSString* script = [NSString stringWithUTF8String: js.c_str()];
-  [self.webview evaluateJavaScript: initRequest completionHandler: nil];
+  [self.webview evaluateJavaScript: script completionHandler: nil];
 }
 
 - (void) resolve: (std::string)seq message: (std::string)message {

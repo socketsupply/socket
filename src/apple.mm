@@ -148,6 +148,27 @@ void loopCheck () {
 }
 
 @implementation SocketIO
+- (std::string) createPost: (uint64_t)id params: (std::string)params { 
+  std::string sid = std::to_string(id);
+
+  std::string js(
+    "const xhx = new XMLHttpRequest();"
+    "xhr.open('ipc://post?id=" + sid + "');"
+    "xhr.onload = e => {"
+    "  const o = new URLSearchParams('" + params + "');"
+    "  const detail = {"
+    "    data: xhr.response," +
+    "    params: Object.fromEntries(o)"
+    "  };"
+    "  window._ipc.emit('data', detail);"
+    "}"
+  );
+
+  NSString* str = [NSString stringWithUTF8String:buf];
+  NSData data = [str dataUsingEncoding: NSUTF8StringEncoding];
+  return data;
+}
+
 //
 // Filesystem Methods
 //
