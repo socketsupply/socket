@@ -8,36 +8,37 @@ namespace SSC {
   using callback = std::function<void(std::string, std::string)>;
 
   class Core {
-    void fsOpen (std::string seq, uint64_t id, std::string path, int flags, callback cb);
-    void fsClose (std::string seq, uint64_t id, callback cb);
-    void fsRead (std::string seq, uint64_t id, int len, int offset, callback cb);
-    void fsWrite (std::string seq, uint64_t id, std::string data, int64_t offset, callback cb);
-    void fsStat (std::string seq, std::string path, callback cb);
-    void fsUnlink (std::string seq, std::string path, callback cb);
-    void fsRename (std::string seq, std::string pathA, std::string pathB, callback cb);
-    void fsCopyFile (std::string seq, std::string pathA, std::string pathB, int flags, callback cb);
-    void fsRmDir (std::string seq, std::string path, callback cb);
-    void fsMkDir (std::string seq, std::string path, int mode, callback cb);
-    void fsReadDir (std::string seq, std::string path, callback cb);
+    public:
+      void fsOpen (std::string seq, uint64_t id, std::string path, int flags, callback cb);
+      void fsClose (std::string seq, uint64_t id, callback cb);
+      void fsRead (std::string seq, uint64_t id, int len, int offset, callback cb);
+      void fsWrite (std::string seq, uint64_t id, std::string data, int64_t offset, callback cb);
+      void fsStat (std::string seq, std::string path, callback cb);
+      void fsUnlink (std::string seq, std::string path, callback cb);
+      void fsRename (std::string seq, std::string pathA, std::string pathB, callback cb);
+      void fsCopyFile (std::string seq, std::string pathA, std::string pathB, int flags, callback cb);
+      void fsRmDir (std::string seq, std::string path, callback cb);
+      void fsMkDir (std::string seq, std::string path, int mode, callback cb);
+      void fsReadDir (std::string seq, std::string path, callback cb);
 
-    void tcpBind (std::string seq, uint64_t serverId, std::string ip, int port, callback cb);
-    void tcpConnect (std::string seq, uint64_t clientId, int port, std::string ip, callback cb);
-    void tcpSetTimeout (std::string seq, uint64_t clientId, int timeout, callback cb);
-    void tcpSetKeepAlive (std::string seq, uint64_t clientId, int timeout, callback cb);
-    void tcpSend (uint64_t clientId, std::string message, callback cb);
-    void tcpReadStart (std::string seq, uint64_t clientId, callback cb);
+      void tcpBind (std::string seq, uint64_t serverId, std::string ip, int port, callback cb);
+      void tcpConnect (std::string seq, uint64_t clientId, int port, std::string ip, callback cb);
+      void tcpSetTimeout (std::string seq, uint64_t clientId, int timeout, callback cb);
+      void tcpSetKeepAlive (std::string seq, uint64_t clientId, int timeout, callback cb);
+      void tcpSend (uint64_t clientId, std::string message, callback cb);
+      void tcpReadStart (std::string seq, uint64_t clientId, callback cb);
 
-    void udpBind (std::string seq, uint64_t serverId, std::string ip, int port, callback cb);
-    void udpSend (std::string seq, uint64_t clientId, std::string message, int offset, int len, int port, const char* ip, callback cb);
-    void udpReadStart (std::string seq, uint64_t serverId, callback cb);
+      void udpBind (std::string seq, uint64_t serverId, std::string ip, int port, callback cb);
+      void udpSend (std::string seq, uint64_t clientId, std::string message, int offset, int len, int port, const char* ip, callback cb);
+      void udpReadStart (std::string seq, uint64_t serverId, callback cb);
 
-    void sendBufferSize (std::string seq, uint64_t clientId, int size, callback cb);
-    void recvBufferSize (std::string seq, uint64_t clientId, int size, callback cb);
-    void close (std::string seq, uint64_t clientId, callback cb);
-    void shutdown (std::string seq, uint64_t clientId, callback cb);
-    void readStop (std::string seq, uint64_t clientId, callback cb);
+      void sendBufferSize (std::string seq, uint64_t clientId, int size, callback cb);
+      void recvBufferSize (std::string seq, uint64_t clientId, int size, callback cb);
+      void close (std::string seq, uint64_t clientId, callback cb);
+      void shutdown (std::string seq, uint64_t clientId, callback cb);
+      void readStop (std::string seq, uint64_t clientId, callback cb);
 
-    void dnsLookup (std::string seq, std::string hostname, callback cb);
+      void dnsLookup (std::string seq, std::string hostname, callback cb);
   }
 
   struct GenericContext {
@@ -1550,6 +1551,60 @@ namespace SSC {
     })JSON");
 
     server->cb(server->seq, json);
+    loopCheck();
+  }
+
+  void Core::dnsLookup (std::string seq, std::string hostname, callback cb) {
+    loop = uv_default_loop();
+
+    auto ctxId = SSC::rand64();
+    GenericContext* ctx = contexts[ctxId] = new GenericContext;
+    ctx->id = ctxId;
+    ctx->cb = cb;
+    ctx->seq = seq;
+
+    struct addrinfo hints;
+    hints.ai_family = PF_INET;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_protocol = IPPROTO_TCP;
+    hints.ai_flags = 0;
+
+    uv_getaddrinfo_t* resolver = new uv_getaddrinfo_t;
+    resolver->data = ctx;
+
+    uv_getaddrinfo(loop, resolver, [](uv_getaddrinfo_t *resolver, int status, struct addrinfo *res) {
+      auto ctx = (GenericContext*) resolver->data;
+
+      if (status < 0) {
+        auto json = SSC::format(R"JSON({
+          "value": {
+            "err": {
+              "code": "$S",
+              "message": "$S"
+            }
+          }
+        })JSON", std::string(uv_err_name((int) status)), std::string(uv_strerror(status)));
+        ctx->cb(ctx->seq, json);
+        contexts.erase(ctx->id);
+        return;
+      }
+
+      char addr[17] = {'\0'};
+      uv_ip4_name((struct sockaddr_in*) res->ai_addr, addr, 16);
+      std::string ip(addr, 17);
+
+      auto json = SSC::format(R"JSON({
+        "value": {
+          "data": "$S"
+        }
+      })JSON", ip);
+
+      ctx->cb(ctx->seq, json);
+      contexts.erase(ctx->id);
+
+      uv_freeaddrinfo(res);
+    }, hostname.c_str(), nullptr, &hints);
+
     loopCheck();
   }
 } // SSC
