@@ -1,44 +1,72 @@
 #include "common.hh"
-#import <Network/Network.h>
-#include <ifaddrs.h>
-#include <arpa/inet.h>
 #include "include/uv.h"
 
+#ifndef _WIN32
+#include <ifaddrs.h>
+#include <arpa/inet.h>
+#endif
+
+#if defined(__APPLE__)
+  #import <Network/Network.h>
+  using Task = id<WKURLSchemeTask>;
+#elif defined(__linux__)
+#elif defined(_WIN32)
+#endif
+
 namespace SSC {
-  using callback = std::function<void(std::string, std::string)>;
+  using callback = std::function<void(std::string, std::string, char*)>;
+  using Tasks = std::map<std::string, Task>;
+  using PostRequests = std::map<uint64_t, const uv_buf_t*>;
 
   class Core {
+    Tasks tasks;
+    PostRequests posts;
+
     public:
-      void fsOpen (std::string seq, uint64_t id, std::string path, int flags, callback cb);
-      void fsClose (std::string seq, uint64_t id, callback cb);
-      void fsRead (std::string seq, uint64_t id, int len, int offset, callback cb);
-      void fsWrite (std::string seq, uint64_t id, std::string data, int64_t offset, callback cb);
-      void fsStat (std::string seq, std::string path, callback cb);
-      void fsUnlink (std::string seq, std::string path, callback cb);
-      void fsRename (std::string seq, std::string pathA, std::string pathB, callback cb);
-      void fsCopyFile (std::string seq, std::string pathA, std::string pathB, int flags, callback cb);
-      void fsRmDir (std::string seq, std::string path, callback cb);
-      void fsMkDir (std::string seq, std::string path, int mode, callback cb);
-      void fsReadDir (std::string seq, std::string path, callback cb);
+      void fsOpen (std::string seq, uint64_t id, std::string path, int flags, callback cb) const;
+      void fsClose (std::string seq, uint64_t id, callback cb) const;
+      void fsRead (std::string seq, uint64_t id, int len, int offset, callback cb) const;
+      void fsWrite (std::string seq, uint64_t id, std::string data, int64_t offset, callback cb) const;
+      void fsStat (std::string seq, std::string path, callback cb) const;
+      void fsUnlink (std::string seq, std::string path, callback cb) const;
+      void fsRename (std::string seq, std::string pathA, std::string pathB, callback cb) const;
+      void fsCopyFile (std::string seq, std::string pathA, std::string pathB, int flags, callback cb) const;
+      void fsRmDir (std::string seq, std::string path, callback cb) const;
+      void fsMkDir (std::string seq, std::string path, int mode, callback cb) const;
+      void fsReadDir (std::string seq, std::string path, callback cb) const;
 
-      void tcpBind (std::string seq, uint64_t serverId, std::string ip, int port, callback cb);
-      void tcpConnect (std::string seq, uint64_t clientId, int port, std::string ip, callback cb);
-      void tcpSetTimeout (std::string seq, uint64_t clientId, int timeout, callback cb);
-      void tcpSetKeepAlive (std::string seq, uint64_t clientId, int timeout, callback cb);
-      void tcpSend (uint64_t clientId, std::string message, callback cb);
-      void tcpReadStart (std::string seq, uint64_t clientId, callback cb);
+      void tcpBind (std::string seq, uint64_t serverId, std::string ip, int port, callback cb) const;
+      void tcpConnect (std::string seq, uint64_t clientId, int port, std::string ip, callback cb) const;
+      void tcpSetTimeout (std::string seq, uint64_t clientId, int timeout, callback cb) const;
+      void tcpSetKeepAlive (std::string seq, uint64_t clientId, int timeout, callback cb) const;
+      void tcpSend (uint64_t clientId, std::string message, callback cb) const;
+      void tcpReadStart (std::string seq, uint64_t clientId, callback cb) const;
 
-      void udpBind (std::string seq, uint64_t serverId, std::string ip, int port, callback cb);
-      void udpSend (std::string seq, uint64_t clientId, std::string message, int offset, int len, int port, const char* ip, callback cb);
-      void udpReadStart (std::string seq, uint64_t serverId, callback cb);
+      void udpBind (std::string seq, uint64_t serverId, std::string ip, int port, callback cb) const;
+      void udpSend (std::string seq, uint64_t clientId, std::string message, int offset, int len, int port, const char* ip, callback cb) const;
+      void udpReadStart (std::string seq, uint64_t serverId, callback cb) const;
 
-      void sendBufferSize (std::string seq, uint64_t clientId, int size, callback cb);
-      void recvBufferSize (std::string seq, uint64_t clientId, int size, callback cb);
-      void close (std::string seq, uint64_t clientId, callback cb);
-      void shutdown (std::string seq, uint64_t clientId, callback cb);
-      void readStop (std::string seq, uint64_t clientId, callback cb);
+      void sendBufferSize (std::string seq, uint64_t clientId, int size, callback cb) const;
+      void recvBufferSize (std::string seq, uint64_t clientId, int size, callback cb) const;
+      void close (std::string seq, uint64_t clientId, callback cb) const;
+      void shutdown (std::string seq, uint64_t clientId, callback cb) const;
+      void readStop (std::string seq, uint64_t clientId, callback cb) const;
 
-      void dnsLookup (std::string seq, std::string hostname, callback cb);
+      void dnsLookup (std::string seq, std::string hostname, callback cb) const;
+
+      Task getTask (std::string id);
+      bool Core::hasTask (std::string id);
+      void removeTask (std::string id);
+      void putTask (Task p);
+      char* getPost (uint64_t id);
+      void removePost (uint64_t id);
+      void putPost (PostData p);
+      std::string createPost (std::string params, char* buf);
+
+      Core::Core() {
+        this->tasks = std::make_unique<Tasks>();
+        this->posts = std::make_unique<PostRequests>();
+      }
   }
 
   struct GenericContext {
@@ -163,9 +191,6 @@ namespace SSC {
   std::map<uint64_t, GenericContext*> contexts;
   std::map<uint64_t, DescriptorContext*> descriptors;
 
-  using UDXSendRequest = udx_socket_send_t;
-  using UDXWriteRequest = udx_stream_write_t;
-
   struct sockaddr_in addr;
 
   typedef struct {
@@ -179,6 +204,59 @@ namespace SSC {
     if (uv_loop_alive(loop) == 0) {
       uv_run(loop, UV_RUN_DEFAULT);
     }
+  }
+
+  bool Core::hasTask (std::string id) {
+    return posts.find(id) == posts.end();
+  }
+
+  Task Core::getTask (std::string id) {
+    if (posts.find(id) == posts.end()) return nullptr;
+    return tasks.at(id);
+  }
+
+  void Core::removeTask (std::string id) {
+    if (tasks.find(id) == tasks.end()) return;
+    tasks.erase(id);
+  }
+
+  void Core::putTask (std::string id, PostData p) {
+    tasks.insert_or_assign(id, p);
+  }
+
+  PostData Core::getPost (uint64_t id) {
+    if (posts.find(id) == posts.end()) return nullptr;
+    return posts.at(id);
+  }
+
+  void Core::putPost (uint64_t id, PostData p) {
+    posts.insert_or_assign(id, p);
+  }
+
+  void Core::removePost (uint64_t id) {
+    if (posts.find(id) == posts.end()) return;
+    posts.erase(id);
+  }
+                     
+  std::string Core::createPost (std::string params, char* buf) {
+    uint64_t id = SSC::rand64();
+    std::string sid = std::to_string(id);
+
+    std::string js(
+      "const xhr = new XMLHttpRequest();"
+      "xhr.open('ipc://post?id=" + sid + "');"
+      "xhr.onload = e => {"
+      "  const o = new URLSearchParams('" + params + "');"
+      "  const detail = {"
+      "    data: xhr.response," +
+      "    params: Object.fromEntries(o)"
+      "  };"
+      "  window._ipc.emit('" + event + "', detail);"
+      "}"
+    );
+
+    posts.insert_or_assign(id, buf);
+    return js;
   }
 
   void Core::fsOpen (std::string seq, uint64_t id, std::string path, int flags, callback cb) {
@@ -201,7 +279,7 @@ namespace SSC {
         }
       })JSON", std::to_string(desc->id));
 
-      desc->cb(desc->seq, json);
+      desc->cb(desc->seq, json, nullptr);
       uv_fs_req_cleanup(req);
     });
 
@@ -215,7 +293,7 @@ namespace SSC {
         }
       })", std::to_string(id), std::string(uv_strerror(fd)));
 
-      cb(seq, json);
+      cb(seq, json, nullptr);
       return;
     }
 
@@ -238,7 +316,7 @@ namespace SSC {
         }
       })JSON");
       
-      cb(seq, json);
+      cb(seq, json, nullptr);
       return;
     }
 
@@ -255,7 +333,7 @@ namespace SSC {
         }
       })JSON", std::to_string(desc->id));
       
-      desc->cb(desc->seq, json);
+      desc->cb(desc->seq, json, nullptr);
       uv_fs_req_cleanup(req);
     });
 
@@ -269,7 +347,7 @@ namespace SSC {
         }
       })", std::to_string(id), std::string(uv_strerror(err)));
 
-      cb(seq, json);
+      cb(seq, json, nullptr);
       return;
     }
 
@@ -289,7 +367,7 @@ namespace SSC {
         }
       })JSON");
 
-      cb(seq, json);
+      cb(seq, json, nullptr);
       return;
     }
 
@@ -315,29 +393,20 @@ namespace SSC {
           }
         })JSON");
         
-        desc->cb(desc->seq, json);
+        desc->cb(desc->seq, json, nullptr);
         return;
       }
-
-      char *data = req->bufs[0].base;
-
-      NSString* str = [NSString stringWithUTF8String: data];
-      NSData *nsdata = [str dataUsingEncoding:NSUTF8StringEncoding];
-      NSString *base64Encoded = [nsdata base64EncodedStringWithOptions:0];
-
-      auto message = std::string([base64Encoded UTF8String]);
 
       auto json = SSC::format(R"({
         "value": {
           "data": {
             "id": "$S",
-            "result": "$i",
-            "data": "$S"
+            "result": "$i"
           }
         }
-      })", std::to_string(desc->id), (int)req->result, message);
+      })", std::to_string(desc->id), (int)req->result);
       
-      desc->cb(desc->seq, json);
+      desc->cb(desc->seq, json, req->bufs[0].base);
       uv_fs_req_cleanup(req);
     });
 
@@ -351,7 +420,7 @@ namespace SSC {
         }
       })", std::to_string(id), std::string(uv_strerror(err)));
 
-      cb(seq, json);
+      cb(seq, json, nullptr);
       return;
     }
 
@@ -371,7 +440,7 @@ namespace SSC {
         }
       })JSON");
 
-      cb(seq, json);
+      cb(seq, json, nullptr);
       return;
     }
 
@@ -395,7 +464,7 @@ namespace SSC {
         }
       })", std::to_string(desc->id), (int)req->result);
       
-      desc->cb(desc->seq, json);
+      desc->cb(desc->seq, json, nullptr);
       uv_fs_req_cleanup(req);
     });
 
@@ -409,7 +478,7 @@ namespace SSC {
         }
       })", std::to_string(id), std::string(uv_strerror(err)));
 
-      cb(seq, json);
+      cb(seq, json, nullptr);
       return;
     }
 
@@ -435,7 +504,7 @@ namespace SSC {
         }
       })", std::to_string(desc->id), (int)req->result);
       
-      desc->cb(desc->seq, json);
+      desc->cb(desc->seq, json, nullptr);
 
       delete desc;
       uv_fs_req_cleanup(req);
@@ -450,7 +519,7 @@ namespace SSC {
         }
       })", std::string(uv_strerror(err)));
 
-      cb(seq, json);
+      cb(seq, json, nullptr);
       return;
     }
 
@@ -475,7 +544,7 @@ namespace SSC {
         }
       })", std::to_string(desc->id), (int)req->result);
 
-      desc->cb(desc->seq, json);
+      desc->cb(desc->seq, json, nullptr);
 
       delete desc;
       uv_fs_req_cleanup(req);
@@ -514,7 +583,7 @@ namespace SSC {
         }
       })", std::to_string(desc->id), (int)req->result);
 
-      desc->cb(desc->seq, json);
+      desc->cb(desc->seq, json, nullptr);
 
       delete desc;
       uv_fs_req_cleanup(req);
@@ -529,7 +598,7 @@ namespace SSC {
         }
       })", std::string(uv_strerror(err)));
 
-      cb(seq, json);
+      cb(seq, json, nullptr);
       return;
     }
 
@@ -555,7 +624,7 @@ namespace SSC {
         }
       })", std::to_string(desc->id), (int)req->result);
       
-      desc->cb(desc->seq, json);
+      desc->cb(desc->seq, json, nullptr);
       delete desc;
       uv_fs_req_cleanup(req);
     });
@@ -569,7 +638,7 @@ namespace SSC {
         }
       })", std::string(uv_strerror(err)));
 
-      cb(seq, json);
+      cb(seq, json, nullptr);
       return;
     }
     loopCheck();
@@ -594,7 +663,7 @@ namespace SSC {
         }
       })", std::to_string(desc->id), (int)req->result);
       
-      desc->cb(desc->seq, json);
+      desc->cb(desc->seq, json, nullptr);
       delete desc;
       uv_fs_req_cleanup(req);
     });
@@ -607,7 +676,7 @@ namespace SSC {
           }
         }
       })", std::string(uv_strerror(err)));
-      cb(seq, json);
+      cb(seq, json, nullptr);
       return;
     }
 
@@ -632,7 +701,7 @@ namespace SSC {
         }
       })", std::to_string(desc->id), (int)req->result);
 
-      desc->cb(desc->seq, json);
+      desc->cb(desc->seq, json, nullptr);
 
       delete desc;
       uv_fs_req_cleanup(req);
@@ -646,7 +715,7 @@ namespace SSC {
           }
         }
       })", std::string(uv_strerror(err)));
-      cb(seq, json);
+      cb(seq, json, nullptr);
       return;
     }
 
@@ -671,7 +740,7 @@ namespace SSC {
           }
         }
       })", std::string(uv_strerror(err)));
-      cb(seq, json);
+      cb(seq, json, nullptr);
       return;
     }
 
@@ -687,7 +756,7 @@ namespace SSC {
           }
         })", std::string(uv_strerror((int)req->result)));
 
-        ctx->cb(ctx->seq, json);
+        ctx->cb(ctx->seq, json, nullptr);
         return;
       }
 
@@ -709,7 +778,7 @@ namespace SSC {
         }
       })", encodeURIComponent(value));
       
-      ctx->cb(ctx->seq, json);
+      ctx->cb(ctx->seq, json, nullptr);
 
       uv_fs_t reqClosedir;
       uv_fs_closedir(loop, &reqClosedir, ctx->dir, [](uv_fs_t* req) {
@@ -726,7 +795,7 @@ namespace SSC {
         }
       })", std::string(uv_strerror(err)));
       
-      cb(seq, json);
+      cb(seq, json, nullptr);
       return;
     }
 
@@ -747,7 +816,7 @@ namespace SSC {
         }
       })JSON", std::to_string(clientId));
 
-      cb(seq, json);
+      cb(seq, json, nullptr);
       return;
     }
 
@@ -772,7 +841,7 @@ namespace SSC {
       }
     })JSON", std::to_string(clientId), rSize);
 
-    cb(seq, json);
+    cb(seq, json, nullptr);
     return;
   }
 
@@ -789,7 +858,7 @@ namespace SSC {
           }
         }
       })JSON", std::to_string(clientId));
-      cb(seq, json);
+      cb(seq, json, nullptr);
       return;
     }
 
@@ -814,7 +883,7 @@ namespace SSC {
       }
     })JSON", std::to_string(clientId), rSize);
 
-    cb(seq, json);
+    cb(seq, json, nullptr);
     return;
   }
 
@@ -832,7 +901,7 @@ namespace SSC {
         }
       })JSON", std::to_string(clientId));
       
-      cb("-1", json);
+      cb("-1", json, nullptr);
       return;
     }
     
@@ -858,7 +927,7 @@ namespace SSC {
           }
         })", std::to_string(ctx->clientId), uv_strerror(status));
         
-        ctx->cb("-1", json);
+        ctx->cb("-1", json, nullptr);
         return;
       }
 
@@ -914,7 +983,7 @@ namespace SSC {
             }
           }
         })", std::to_string(client->clientId), std::string(uv_strerror(status)));
-        client->cb("-1", json);
+        client->cb("-1", json, nullptr);
         return;
       }
       
@@ -928,29 +997,21 @@ namespace SSC {
         }
       })", std::to_string(client->clientId));
 
-      client->cb("-1", json);
+      client->cb("-1", json, nullptr);
 
       auto onRead = [](uv_stream_t* handle, ssize_t nread, const uv_buf_t* buf) {
         auto client = reinterpret_cast<Client*>(handle->data);
-
-        NSString* str = [NSString stringWithUTF8String: buf->base];
-        NSData *nsdata = [str dataUsingEncoding:NSUTF8StringEncoding];
-        NSString *base64Encoded = [nsdata base64EncodedStringWithOptions:0];
-
         auto clientId = std::to_string(client->clientId);
-        auto message = std::string([base64Encoded UTF8String]);
 
         auto = SSC::format(R"({
           "clientId": "$S",
           "method": "emit",
           "value": {
-            "data": {
-              "message": "$S"
-            }
+            "data": $i
           }
-        })", clientId, message);
-        
-        client->cb("-1", json);
+        })", clientId, std::to_string(buf->len));
+
+        client->cb("-1", json, buf);
       };
 
       auto allocate = [](uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf) {
@@ -979,7 +1040,7 @@ namespace SSC {
           }
         }
       })", std::to_string(clientId), std::string(uv_strerror(r)));
-      cb(seq, json);
+      cb(seq, json, nullptr);
       return;
     }
 
@@ -1011,16 +1072,18 @@ namespace SSC {
       auto* server = reinterpret_cast<Server*>(handle->data);
 
       if (status < 0) {
-        server->cb("-1", SSC::format(R"JSON({
-            "serverId": "$S",
+        auto json = SSC::format(R"JSON({
+          "serverId": "$S",
+          "value": {
             "method": "emit",
             "value": {
               "err": {
                 "message": "connection error $S"
               }
             }
-          })JSON", std::to_string(server->serverId), uv_strerror(status))];
-        });
+          }
+        })JSON", std::to_string(server->serverId), uv_strerror(status));
+        server->cb("-1", json, nullptr);
         return;
       }
 
@@ -1058,7 +1121,7 @@ namespace SSC {
           info.port
         );
 
-        server->cb("-1", json);
+        server->cb("-1", json, nullptr);
       } else {
         uv_close((uv_handle_t*) handle, [](uv_handle_t* handle) {
           free(handle);
@@ -1075,7 +1138,7 @@ namespace SSC {
           }
         }
       })JSON", std::to_string(server->serverId), std::string(uv_strerror(r)));
-      cb(seq, json);
+      cb(seq, json, nullptr);
 
       NSLog(@"Listener failed: %s", uv_strerror(r));
       return;
@@ -1085,13 +1148,13 @@ namespace SSC {
       "serverId": "$S",
       "value": {
         "data": {
-          "port": "$i",
+          "port": $i,
           "ip": "$S"
         }
       }
     })JSON", std::to_string(server->serverId), port, ip);
 
-    cb(seq, json);
+    cb(seq, json, nullptr);
     // NSLog(@"Listener started");
     loopCheck();
   }
@@ -1109,7 +1172,7 @@ namespace SSC {
         }
       })JSON", std::to_string(clientId));
 
-      cb(seq, json);
+      cb(seq, json, nullptr);
       return;
     }
 
@@ -1125,7 +1188,7 @@ namespace SSC {
       }
     })JSON");
     
-    client->cb(client->seq, json);
+    client->cb(client->seq, json, nullptr);
   }
 
   void Core::tcpReadStart (std::string seq, uint64_t clientId, callback cb) {
@@ -1140,7 +1203,7 @@ namespace SSC {
           }
         }
       })JSON", std::to_string(clientId));
-      cb(seq, json);
+      cb(seq, json, nullptr);
       return;
     }
 
@@ -1154,23 +1217,18 @@ namespace SSC {
         write_req_t *req = (write_req_t*) malloc(sizeof(write_req_t));
         req->buf = uv_buf_init(buf->base, (int) nread);
 
-        NSString* str = [NSString stringWithUTF8String: req->buf.base];
-        NSData *nsdata = [str dataUsingEncoding:NSUTF8StringEncoding];
-        NSString *base64Encoded = [nsdata base64EncodedStringWithOptions:0];
-
         auto serverId = std::to_string(client->server->serverId);
         auto clientId = std::to_string(client->clientId);
-        auto message = std::string([base64Encoded UTF8String]);
 
         auto json = SSC::format(R"JSON({
           "serverId": "$S",
           "clientId": "$S",
           "value": {
-            "data": "$S"
+            "data": $i
           }
-        })JSON", serverId, clientId, message);
+        })JSON", serverId, clientId, std::to_string(buf->len));
 
-        client->server->cb("-1", json);
+        client->server->cb("-1", json, nullptr);
         return;
       }
 
@@ -1182,7 +1240,7 @@ namespace SSC {
               "data": "$S"
             }
           })JSON", std::to_string(client->server->serverId), uv_err_name((int) nread));
-          client->server->cb("-1", json);
+          client->server->cb("-1", json, nullptr);
         }
 
         uv_close((uv_handle_t*) client->tcp, [](uv_handle_t* handle) {
@@ -1210,7 +1268,7 @@ namespace SSC {
         }
       })JSON", std::to_string(client->server->serverId), uv_strerror(err));
 
-      cb(seq, json);
+      cb(seq, json, nullptr);
       return;
     }
     
@@ -1220,7 +1278,7 @@ namespace SSC {
       }
     })JSON");
 
-    client->server->cb(client->server->seq, json);
+    client->server->cb(client->server->seq, json, nullptr);
 
     loopCheck();
   }
@@ -1237,7 +1295,7 @@ namespace SSC {
           }
         }
       })JSON", std::to_string(clientId));
-      cb(seq, json);
+      cb(seq, json, nullptr);
       return;
     }
 
@@ -1255,7 +1313,7 @@ namespace SSC {
       }
     })JSON", r);
     
-    cb(seq, json);
+    cb(seq, json, nullptr);
   }
 
  void Core::close (std::string seq, uint64_t clientId, callback cb) {
@@ -1270,7 +1328,7 @@ namespace SSC {
           }
         }
       })JSON", std::to_string(clientId));
-      cb(seq, json);
+      cb(seq, json, nullptr);
       return;
     }
 
@@ -1297,7 +1355,7 @@ namespace SSC {
         }
       })JSON");
       
-      client->cb(client->seq json);
+      client->cb(client->seq, json, nullptr);
       free(handle);
     });
 
@@ -1318,7 +1376,7 @@ namespace SSC {
         })JSON",
         std::to_string(clientId)
       );
-      cb(seq, json);
+      cb(seq, json, nullptr);
       return;
     }
 
@@ -1350,7 +1408,7 @@ namespace SSC {
         }
       })JSON", status)
       
-     client->cb(client->seq, json);
+     client->cb(client->seq, json, nullptr);
      free(req);
      free(req->handle);
     });
@@ -1381,7 +1439,7 @@ namespace SSC {
           }
         }
       })JSON", std::to_string(serverId), uv_strerror(err));
-      cb(seq, json);
+      cb(seq, json, nullptr);
       return;
     }
 
@@ -1394,7 +1452,7 @@ namespace SSC {
           "data": "$S"
         }
       })JSON", std::to_string(server->serverId), uv_strerror(err));
-      server->cb("-1", json);
+      server->cb("-1", json, nullptr);
       return;
     }
     
@@ -1404,7 +1462,7 @@ namespace SSC {
       }
     })JSON");
 
-    server->cb(server->seq, json);
+    server->cb(server->seq, json, nullptr);
 
     loopCheck();
   }
@@ -1421,7 +1479,7 @@ namespace SSC {
           }
         }
       })JSON", std::to_string(clientId));
-      cb(seq, json);
+      cb(seq, json, nullptr);
       return;
     }
 
@@ -1443,7 +1501,7 @@ namespace SSC {
           }
         }
       })JSON", std::to_string(clientId), uv_strerror(err));
-      cb(seq, json);
+      cb(seq, json, nullptr);
       return;
     }
 
@@ -1463,7 +1521,7 @@ namespace SSC {
         }
       })JSON", std::to_string(client->clientId), status);
 
-      client->cb(client->seq, json);
+      client->cb(client->seq, json, nullptr);
 
       delete[] req->bufs;
       free(req);
@@ -1478,7 +1536,7 @@ namespace SSC {
           }
         }
       })", std::to_string(client->clientId), uv_strerror(err));
-      cleint->cb("-1", json);
+      cleint->cb("-1", json, nullptr);
       return;
     }
    
@@ -1497,7 +1555,7 @@ namespace SSC {
           }
         }
       })JSON", std::to_string(serverId));
-      cb(seq, json);
+      cb(seq, json, nullptr);
       return;
     }
 
@@ -1526,7 +1584,7 @@ namespace SSC {
             "data": "$S"
           })JSON", std::to_string(server->serverId), port, ip, data)
         
-        server->cb("-1", json);
+        server->cb("-1", json, nullptr);
         return;
       }
     });
@@ -1540,7 +1598,7 @@ namespace SSC {
           }
         }
       })JSON", std::to_string(serverId), uv_strerror(err));
-      cb(seq, json);
+      cb(seq, json, nullptr);
       return;
     }
     
@@ -1550,7 +1608,7 @@ namespace SSC {
       }
     })JSON");
 
-    server->cb(server->seq, json);
+    server->cb(server->seq, json, nullptr);
     loopCheck();
   }
 
@@ -1584,7 +1642,7 @@ namespace SSC {
             }
           }
         })JSON", std::string(uv_err_name((int) status)), std::string(uv_strerror(status)));
-        ctx->cb(ctx->seq, json);
+        ctx->cb(ctx->seq, json, nullptr);
         contexts.erase(ctx->id);
         return;
       }
@@ -1599,7 +1657,7 @@ namespace SSC {
         }
       })JSON", ip);
 
-      ctx->cb(ctx->seq, json);
+      ctx->cb(ctx->seq, json, nullptr);
       contexts.erase(ctx->id);
 
       uv_freeaddrinfo(res);
