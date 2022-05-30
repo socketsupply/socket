@@ -106,7 +106,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 // JavaScript environment so it can be used by the web app and the wasm layer.
 //
 @implementation AppDelegate
-- (void) resolve: (std::string)seq message: (std::string)message buf: (const uv_buf_t*)buf {
+- (void) resolve: (std::string)seq msg: (std::string)msg buf: (const uv_buf_t*)buf {
   //
   // - If there is no sequence and there is a buffer, the source is a stream and it should
   // invoke the client to ask for it via an XHR, this will be intercepted by the scheme handler.
@@ -114,7 +114,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   // already has the meta data from the original request.
   //
   if (seq == "-1" && buf->len > 0) {
-    auto src = self.core.createPost(message, buf);
+    auto src = self.core.createPost(msg, buf);
     NSString* script = [NSString stringWithUTF8String: src.c_str()];
     [self.webview evaluateJavaScript: script completionHandler: nil];
     return;
@@ -133,9 +133,9 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     [task didReceiveResponse: httpResponse];
 
     // if buf has a size, use it as the response instead...
-    if (buf->len > 0) message = std::string(buf->base, buf->len);
+    if (buf->len > 0) msg = std::string(buf->base, buf->len);
 
-    NSString* str = [NSString stringWithUTF8String: message.c_str()];
+    NSString* str = [NSString stringWithUTF8String: msg.c_str()];
     NSData* data = [str dataUsingEncoding: NSUTF8StringEncoding];
 
     [task didReceiveData: data];
@@ -169,9 +169,9 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     auto path = cmd.get("path");
 
     dispatch_async(queue, ^{
-      core.fsRmDir(seq, path, [&](auto seq, auto json, auto* buf) {
+      core.fsRmDir(seq, path, [&](auto seq, auto msg, auto* buf) {
         dispatch_async(dispatch_get_main_queue(), ^{
-          [self resolve: seq message: json buf: buf];
+          [self resolve: seq msg: msg buf: buf];
         });
       });
     });
@@ -183,9 +183,9 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     auto flags = std::stoi(cmd.get("flags"));
 
     dispatch_async(queue, ^{
-      core.fsOpen(seq, cid, path, flags, [&](auto seq, auto json, auto*buf) {
+      core.fsOpen(seq, cid, path, flags, [&](auto seq, auto msg, auto* buf) {
         dispatch_async(dispatch_get_main_queue(), ^{
-          [self resolve: seq message: json buf: buf];
+          [self resolve: seq msg: msg buf: buf];
         });
       });
     });
@@ -195,9 +195,9 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     auto id = std::stoll(cmd.get("id"));
 
     dispatch_async(queue, ^{
-      core.fsClose(seq, id, [&](auto seq, auto json, auto*buf) {
+      core.fsClose(seq, id, [&](auto seq, auto msg, auto* buf) {
         dispatch_async(dispatch_get_main_queue(), ^{
-          [self resolve: seq message: json buf: buf];
+          [self resolve: seq msg: msg buf: buf];
         });
       });
     });
@@ -209,9 +209,9 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     auto offset = std::stoi(cmd.get("offset"));
 
     dispatch_async(queue, ^{
-      core.fsRead(seq, id, len, offset, [&](auto seq, auto json, auto*buf) {
+      core.fsRead(seq, id, len, offset, [&](auto seq, auto msg, auto* buf) {
         dispatch_async(dispatch_get_main_queue(), ^{
-          [self resolve: seq message: json buf: buf];
+          [self resolve: seq msg: msg buf: buf];
         });
       });
     });
@@ -223,9 +223,9 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     auto offset = std::stoll(cmd.get("offset"));
     
     dispatch_async(queue, ^{
-      core.fsWrite(seq, id, data, offset, [&](auto seq, auto json, auto*buf) {
+      core.fsWrite(seq, id, data, offset, [&](auto seq, auto msg, auto* buf) {
         dispatch_async(dispatch_get_main_queue(), ^{
-          [self resolve: seq message: json buf: buf];
+          [self resolve: seq msg: msg buf: buf];
         });
       });
     });
