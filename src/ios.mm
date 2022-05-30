@@ -2,11 +2,11 @@
 #include <_types/_uint64_t.h>
 #import <UIKit/UIKit.h>
 #import <Network/Network.h>
-#import "common.hh"
+#include "common.hh"
+#include "apple.hh"
 #include <ifaddrs.h>
 #include <arpa/inet.h>
 
-#include "apple.hh"
 #include "include/uv.h"
 #include "include/udx.h"
 #include <netinet/in.h>
@@ -23,11 +23,11 @@ constexpr auto _debug = false;
     decisionHandler: (void (^)(WKNavigationActionPolicy)) decisionHandler;
 @end
 
-@interface AppDelegate : UIResponder <UIApplicationDelegate, WKScriptMessageHandler, SocketIO>
+@interface AppDelegate : UIResponder <UIApplicationDelegate, WKScriptMessageHandler>
 @property (strong, nonatomic) UIWindow* window;
-@property (strong, nonatomic) WKWebView* webview;
-@property (strong, nonatomic) WKUserContentController* content;
+@property (strong, nonatomic) SocketCore* core;
 @property (strong, nonatomic) NavigationDelegate* navDelegate;
+- (void) route: (std::string)route;
 @end
 
 @interface IPCSchemeHandler : NSObject<WKURLSchemeHandler>
@@ -36,40 +36,42 @@ constexpr auto _debug = false;
 - (void)webView: (AppDelegate*)webView stopURLSchemeTask:(id <WKURLSchemeTask>)urlSchemeTask;
 @end
 
-std::map<std::string, id<WKURLSchemeTask>> tasks;
-std::map<uint64_t, NSData*> postRequests;
-
 @implementation IPCSchemeHandler
 - (void)webView: (AppDelegate*)webView stopURLSchemeTask:(id <WKURLSchemeTask>)urlSchemeTask {}
 - (void)webView: (AppDelegate*)webView startURLSchemeTask:(id <WKURLSchemeTask>)task {
+  AppDelegate* delegate = self.delegate;
+  SocketCore* core = delegate.core;
+  
   auto url = std::string(task.request.URL.absoluteString.UTF8String);
 
   SSC::Parse cmd(url);
 
-  if (cmd.name === "post") {
+  if (cmd.name == "post") {
     NSHTTPURLResponse *httpResponse = [[NSHTTPURLResponse alloc]
       initWithURL: task.request.URL
        statusCode: 200
       HTTPVersion: @"HTTP/1.1"
      headerFields: nil
     ];
-
+      
     [task didReceiveResponse: httpResponse];
 
-    uint64_t id = std::stoll(cmd.get("id"));
-    if (postRequests.find(id) == postRequests.end()) {
-      return;
+    uint64_t postId = std::stoll(cmd.get("id"));
+
+    auto post = [core getPost: postId];
+
+    if (post != nullptr) {
+      [task didReceiveData: post];
     }
 
-    [task didReceiveData: postRequests[id]];
     [task didFinish];
 
-    postRequests.erase(id);
+    [core removePost: postId];
     return;
   }
 
-  tasks[cmd.get("seq")] = task;
-  [self.delegate route: url];
+  tasks.insert_or_assign(cmd.get("seq"), task);
+  [delegate route: url];
 }
 @end
 
@@ -95,63 +97,6 @@ std::map<uint64_t, NSData*> postRequests;
 // JavaScript environment so it can be used by the web app and the wasm layer.
 //
 @implementation AppDelegate
-- (void) emit: (std::string)event message: (std::string)message {
-  NSString* script = [NSString stringWithUTF8String: SSC::emitToRenderProcess(event, SSC::encodeURIComponent(message)).c_str()];
-  [self.webview evaluateJavaScript: script completionHandler:nil];
-}
-
-- (void) emit: (std::string)params buf: (char*)buf {
-  uint64_t id = SSC::rand64();
-
-  NSString* str = [NSString stringWithUTF8String:buf];
-  NSData* data = [str dataUsingEncoding: NSUTF8StringEncoding];
-  postRequests[id] = data;
-
-  auto js = [self createPost: id, params: params];
-  NSString* script = [NSString stringWithUTF8String: js.c_str()];
-  [self.webview evaluateJavaScript: script completionHandler: nil];
-}
-
-- (void) resolve: (std::string)seq message: (std::string)message {
-  if (tasks.find(seq) != tasks.end()) {
-    auto task = tasks[seq];
-
-    NSHTTPURLResponse *httpResponse = [[NSHTTPURLResponse alloc]
-      initWithURL: task.request.URL
-       statusCode: 200
-      HTTPVersion: @"HTTP/1.1"
-     headerFields: nil
-    ];
-
-    [task didReceiveResponse: httpResponse];
-
-    NSString* str = [NSString stringWithUTF8String:message.c_str()];
-    NSData* data = [str dataUsingEncoding: NSUTF8StringEncoding];
-
-    [task didReceiveData: data];
-    [task didFinish];
-
-    tasks.erase(seq);
-    return;
-  }
-
-  NSString* script = [NSString stringWithUTF8String: SSC::resolveToRenderProcess(seq, "0", SSC::encodeURIComponent(message)).c_str()];
-  [self.webview evaluateJavaScript: script completionHandler:nil];
-}
-
-- (void) reject: (std::string)seq message: (std::string)message {
-  NSString* script = [NSString stringWithUTF8String: SSC::resolveToRenderProcess(seq, "1", SSC::encodeURIComponent(message)).c_str()];
-  [self.webview evaluateJavaScript: script completionHandler:nil];
-}
-
-- (void) applicationDidEnterBackground {
-  [self.webview evaluateJavaScript: @"window.blur()" completionHandler:nil];
-}
-
-- (void) applicationWillEnterForeground {
-  [self.webview evaluateJavaScript: @"window.focus()" completionHandler:nil];
-}
-
 - (void) route: (std::string)msg {
   using namespace SSC;
   if (msg.find("ipc://") != 0) return;
@@ -160,68 +105,68 @@ std::map<uint64_t, NSData*> postRequests;
   auto seq = cmd.get("seq");
   uint64_t clientId = 0;
 
+  if (cmd.get("fsRmDir").size() != 0) {
+    [self.core fsRmDir: seq
+             path: cmd.get("path")];
+  }
+    
   if (cmd.get("fsOpen").size() != 0) {
-    [self fsOpen: seq
+    [self.core fsOpen: seq
               id: std::stoll(cmd.get("id"))
             path: cmd.get("path")
            flags: std::stoi(cmd.get("flags"))];
   }
 
   if (cmd.get("fsClose").size() != 0) {
-    [self fsClose: seq
+    [self.core fsClose: seq
                id: std::stoll(cmd.get("id"))];
   }
 
   if (cmd.get("fsRead").size() != 0) {
-    [self fsRead: seq
+    [self.core fsRead: seq
               id: std::stoll(cmd.get("id"))
              len: std::stoi(cmd.get("len"))
           offset: std::stoi(cmd.get("offset"))];
   }
 
   if (cmd.get("fsWrite").size() != 0) {
-    [self fsWrite: seq
+    [self.core fsWrite: seq
                id: std::stoll(cmd.get("id"))
              data: cmd.get("data")
            offset: std::stoll(cmd.get("offset"))];
   }
 
   if (cmd.get("fsStat").size() != 0) {
-    [self fsStat: seq
+    [self.core fsStat: seq
             path: cmd.get("path")];
   }
 
   if (cmd.get("fsUnlink").size() != 0) {
-    [self fsUnlink: seq
+    [self.core fsUnlink: seq
               path: cmd.get("path")];
   }
 
   if (cmd.get("fsRename").size() != 0) {
-    [self fsRename: seq
+    [self.core fsRename: seq
              pathA: cmd.get("oldPath")
              pathB: cmd.get("newPath")];
   }
 
   if (cmd.get("fsCopyFile").size() != 0) {
-    [self fsCopyFile: seq
+    [self.core fsCopyFile: seq
            pathA: cmd.get("src")
            pathB: cmd.get("dest")
            flags: std::stoi(cmd.get("flags"))];
   }
 
-  if (cmd.get("fsRmDir").size() != 0) {
-    [self fsRmDir: seq
-              path: cmd.get("path")];
-  }
-
   if (cmd.get("fsMkDir").size() != 0) {
-    [self fsMkDir: seq
+    [self.core fsMkDir: seq
               path: cmd.get("path")
               mode: std::stoi(cmd.get("mode"))];
   }
 
   if (cmd.get("fsReadDir").size() != 0) {
-    [self fsReadDir: seq
+    [self.core fsReadDir: seq
               path: cmd.get("path")];
   }
 
@@ -229,18 +174,16 @@ std::map<uint64_t, NSData*> postRequests;
     try {
       clientId = std::stoll(cmd.get("clientId"));
     } catch (...) {
-      [self resolve: seq message: SSC::format(R"JSON({
+      [self.core resolve: seq message: SSC::format(R"JSON({
         "err": { "message": "invalid clientid" }
       })JSON")];
       return;
     }
   }
 
-  NSLog(@"COMMAND %s", msg.c_str());
-
   if (cmd.name == "external") {
     NSString *url = [NSString stringWithUTF8String:SSC::decodeURIComponent(cmd.get("value")).c_str()];
-    [[UIApplication sharedApplication] openURL:[NSURL URLWithString:url]];
+    [[UIApplication sharedApplication] openURL: [NSURL URLWithString:url] options: @{} completionHandler: nil];
     return;
   }
 
@@ -248,7 +191,7 @@ std::map<uint64_t, NSData*> postRequests;
     auto seq = cmd.get("seq");
 
     if (clientId == 0) {
-      [self reject: seq message: SSC::format(R"JSON({
+      [self.core reject: seq message: SSC::format(R"JSON({
         "err": {
           "message": "no clientid"
         }
@@ -258,7 +201,7 @@ std::map<uint64_t, NSData*> postRequests;
     Client* client = clients[clientId];
 
     if (client == nullptr) {
-      [self resolve: seq message: SSC::format(R"JSON({
+      [self.core resolve: seq message: SSC::format(R"JSON({
         "err": {
           "message": "not connected"
         }
@@ -287,23 +230,23 @@ std::map<uint64_t, NSData*> postRequests;
   }
 
   if (cmd.name == "getNetworkInterfaces") {
-    [self resolve: seq message: [self getNetworkInterfaces]
+    [self.core resolve: seq message: [self.core getNetworkInterfaces]
     ];
     return;
   }
 
   if (cmd.name == "readStop") {
-    [self readStop: seq clientId: clientId];
+    [self.core readStop: seq clientId: clientId];
     return;
   }
 
   if (cmd.name == "shutdown") {
-    [self shutdown: seq clientId: clientId];
+    [self.core shutdown: seq clientId: clientId];
     return;
   }
 
   if (cmd.name == "readStop") {
-    [self readStop: seq clientId: clientId];
+    [self.core readStop: seq clientId: clientId];
     return;
   }
 
@@ -315,7 +258,7 @@ std::map<uint64_t, NSData*> postRequests;
       size = 0;
     }
 
-    [self sendBufferSize: seq clientId: clientId size: size];
+    [self.core sendBufferSize: seq clientId: clientId size: size];
     return;
   }
 
@@ -327,12 +270,12 @@ std::map<uint64_t, NSData*> postRequests;
       size = 0;
     }
 
-    [self recvBufferSize: seq clientId: clientId size: size];
+    [self.core recvBufferSize: seq clientId: clientId size: size];
     return;
   }
 
   if (cmd.name == "close") {
-    [self close: seq clientId: clientId];
+    [self.core close: seq clientId: clientId];
     return;
   }
 
@@ -344,7 +287,7 @@ std::map<uint64_t, NSData*> postRequests;
     try {
       offset = std::stoi(cmd.get("offset"));
     } catch (...) {
-      [self resolve: seq message: SSC::format(R"JSON({
+      [self.core resolve: seq message: SSC::format(R"JSON({
         "err": { "message": "invalid offset" }
       })JSON")];
     }
@@ -352,7 +295,7 @@ std::map<uint64_t, NSData*> postRequests;
     try {
       len = std::stoi(cmd.get("len"));
     } catch (...) {
-      [self resolve: seq message: SSC::format(R"JSON({
+      [self.core resolve: seq message: SSC::format(R"JSON({
         "err": { "message": "invalid length" }
       })JSON")];
     }
@@ -360,12 +303,12 @@ std::map<uint64_t, NSData*> postRequests;
     try {
       port = std::stoi(cmd.get("port"));
     } catch (...) {
-      [self resolve: seq message: SSC::format(R"JSON({
+      [self.core resolve: seq message: SSC::format(R"JSON({
         "err": { "message": "invalid port" }
       })JSON")];
     }
 
-    [self udpSend: seq
+    [self.core udpSend: seq
          clientId: clientId
           message: cmd.get("data")
            offset: offset
@@ -377,7 +320,7 @@ std::map<uint64_t, NSData*> postRequests;
   }
 
   if (cmd.name == "tpcSend") {
-    [self tcpSend: clientId
+    [self.core tcpSend: clientId
           message: cmd.get("message")
     ];
     return;
@@ -389,12 +332,12 @@ std::map<uint64_t, NSData*> postRequests;
     try {
       port = std::stoi(cmd.get("port"));
     } catch (...) {
-      [self resolve: seq message: SSC::format(R"JSON({
+      [self.core resolve: seq message: SSC::format(R"JSON({
         "err": { "message": "invalid port" }
       })JSON")];
     }
 
-    [self tcpConnect: seq
+    [self.core tcpConnect: seq
             clientId: clientId
                 port: port
                   ip: cmd.get("ip")
@@ -403,7 +346,7 @@ std::map<uint64_t, NSData*> postRequests;
   }
 
   if (cmd.name == "tpcSetKeepAlive") {
-    [self tcpSetKeepAlive: seq
+    [self.core tcpSetKeepAlive: seq
                  clientId: clientId
                   timeout: std::stoi(cmd.get("timeout"))
     ];
@@ -411,7 +354,7 @@ std::map<uint64_t, NSData*> postRequests;
   }
 
   if (cmd.name == "tpcSetTimeout") {
-    [self tcpSetTimeout: seq
+    [self.core tcpSetTimeout: seq
                clientId: clientId
                 timeout: std::stoi(cmd.get("timeout"))
     ];
@@ -429,7 +372,7 @@ std::map<uint64_t, NSData*> postRequests;
     }
 
     if (ip == "error") {
-      [self resolve: cmd.get("seq")
+      [self.core resolve: cmd.get("seq")
             message: SSC::format(R"({
               "err": { "message": "offline" }
             })")
@@ -438,7 +381,7 @@ std::map<uint64_t, NSData*> postRequests;
     }
 
     if (port.size() == 0) {
-      [self reject: cmd.get("seq")
+      [self.core reject: cmd.get("seq")
            message: SSC::format(R"({
              "err": { "message": "port required" }
            })")
@@ -446,7 +389,7 @@ std::map<uint64_t, NSData*> postRequests;
       return;
     }
 
-    [self tcpBind: seq
+    [self.core tcpBind: seq
          serverId: std::stoll(serverId)
                ip: ip
              port: std::stoi(port)
@@ -456,92 +399,21 @@ std::map<uint64_t, NSData*> postRequests;
   }
 
   if (cmd.name == "dnsLookup") {
-    [self dnsLookup: seq
+    [self.core dnsLookup: seq
            hostname: cmd.get("hostname")
     ];
     return;
   }
 
-  if (cmd.name == "udxSocketInit") {
-    [self udxSocketInit: seq
-                  udxId: std::stoll(cmd.get("udxId"))
-               socketId: std::stoll(cmd.get("socketId"))
-    ];
-    return;
-  }
-
-  if (cmd.name == "udxInit") {
-    [self udxInit: seq
-            udxId: std::stoll(cmd.get("udxId"))
-    ];
-    return;
-  }
-
-  if (cmd.name == "udxSocketBind") {
-    [self udxSocketBind: seq
-               socketId: std::stoll(cmd.get("socketId"))
-                   port: std::stoi(cmd.get("port"))
-                     ip: cmd.get("ip")
-    ];
-    return;
-  }
-
-  if (cmd.name == "udxSocketClose") {
-    [self udxSocketClose: seq
-                socketId: std::stoll(cmd.get("socketId"))
-    ];
-    return;
-  }
-
-  if (cmd.name == "udxSocketSetTTL") {
-    [self udxSocketSetTTL: seq
-                 socketId: std::stoll(cmd.get("socketId"))
-                      ttl: std::stoi(cmd.get("ttl"))
-    ];
-    return;
-  }
-
-  if (cmd.name == "udxSocketRecvBufferSize") {
-    [self udxSocketRecvBufferSize: seq
-                         socketId: std::stoll(cmd.get("socketId"))
-                             size: std::stoi(cmd.get("size"))
-    ];
-    return;
-  }
-
-  if (cmd.name == "udxSocketSendBufferSize") {
-    [self udxSocketSendBufferSize: seq
-                         socketId: std::stoll(cmd.get("socketId"))
-                             size: std::stoi(cmd.get("size"))
-    ];
-    return;
-  }
-
-  if (cmd.name == "udxStreamInit") {
-    [self udxStreamInit: seq
-                  udxId: std::stoll(cmd.get("udxId"))
-               streamId: std::stoll(cmd.get("streamId"))
-                     id: std::stoi(cmd.get("id"))
-    ];
-    return;
-  }
-
-  if (cmd.name == "udxStreamDestroy") {
-    [self udxStreamDestroy: seq
-                   streamId: std::stoll(cmd.get("streamId"))
-    ];
-    return;
-  }
-
-  if (cmd.name == "udxStreamSetMode") {
-    [self udxStreamSetMode: seq
-                  streamId: std::stoll(cmd.get("streamId"))
-                      mode: std::stoi(cmd.get("mode"))
-    ];
-    return;
-  }
-
   NSLog(@"%s", msg.c_str());
+}
+
+- (void) applicationDidEnterBackground {
+  [self.core.webview evaluateJavaScript: @"window.blur()" completionHandler:nil];
+}
+
+- (void) applicationWillEnterForeground {
+  [self.core.webview evaluateJavaScript: @"window.focus()" completionHandler:nil];
 }
 
 //
@@ -561,7 +433,7 @@ std::map<uint64_t, NSData*> postRequests;
   auto str = std::string(url.absoluteString.UTF8String);
 
   // TODO can this be escaped or is the url encoded property already?
-  [self emit: "protocol" message: SSC::format(R"JSON({
+  [self.core emit: "protocol" message: SSC::format(R"JSON({
     "url": "$S",
   })JSON", str)];
 
@@ -572,6 +444,7 @@ std::map<uint64_t, NSData*> postRequests;
   didFinishLaunchingWithOptions :(NSDictionary *) launchOptions {
     using namespace SSC;
 
+    auto core = self.core = [SocketCore new];
     auto appFrame = [[UIScreen mainScreen] bounds];
 
     self.window = [[UIWindow alloc] initWithFrame: appFrame];
@@ -632,34 +505,31 @@ std::map<uint64_t, NSData*> postRequests;
 
     [config setURLSchemeHandler: handler forURLScheme:@"ipc"];
 
-    self.content = [config userContentController];
+    core.content = [config userContentController];
 
-    [self.content addScriptMessageHandler:self name: @"webview"];
-    [self.content addUserScript: initScript];
+    [core.content addScriptMessageHandler:self name: @"webview"];
+    [core.content addUserScript: initScript];
 
-    self.webview = [[WKWebView alloc] initWithFrame: appFrame configuration: config];
-    self.webview.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+    core.webview = [[WKWebView alloc] initWithFrame: appFrame configuration: config];
+    core.webview.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
 
-    [self.webview.configuration.preferences setValue: @YES forKey: @"allowFileAccessFromFileURLs"];
-    [self.webview.configuration.preferences setValue: @YES forKey: @"javaScriptEnabled"];
+    [core.webview.configuration.preferences setValue: @YES forKey: @"allowFileAccessFromFileURLs"];
+    [core.webview.configuration.preferences setValue: @YES forKey: @"javaScriptEnabled"];
 
     self.navDelegate = [[NavigationDelegate alloc] init];
-    [self.webview setNavigationDelegate: self.navDelegate];
+    [core.webview setNavigationDelegate: self.navDelegate];
 
-    [viewController.view addSubview: self.webview];
+    [viewController.view addSubview: core.webview];
 
     NSString* allowed = [[NSBundle mainBundle] resourcePath];
     NSString* url = [allowed stringByAppendingPathComponent:@"ui/index.html"];
 
-    [self.webview loadFileURL: [NSURL fileURLWithPath: url]
+    [core.webview loadFileURL: [NSURL fileURLWithPath: url]
       allowingReadAccessToURL: [NSURL fileURLWithPath: allowed]
     ];
 
-    // NSString *protocol = @"socket-sdk-loader://";
-    // [self.webview loadRequest: [protocol stringByAppendingString: url]];
-
     [self.window makeKeyAndVisible];
-    [self initNetworkStatusObserver];
+    [core initNetworkStatusObserver];
 
     return YES;
 }
@@ -670,4 +540,3 @@ int main (int argc, char *argv[]) {
     return UIApplicationMain(argc, argv, nil, NSStringFromClass([AppDelegate class]));
   }
 }
-
