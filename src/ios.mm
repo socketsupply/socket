@@ -37,6 +37,7 @@ constexpr auto _debug = false;
 @end
 
 std::map<std::string, id<WKURLSchemeTask>> tasks;
+std::map<uint64_t, NSData*> postRequests;
 
 @implementation IPCSchemeHandler
 - (void)webView: (AppDelegate*)webView stopURLSchemeTask:(id <WKURLSchemeTask>)urlSchemeTask {}
@@ -45,6 +46,28 @@ std::map<std::string, id<WKURLSchemeTask>> tasks;
 
   SSC::Parse cmd(url);
   tasks[cmd.get("seq")] = task;
+
+  if (cmd.name === "post") {
+    NSHTTPURLResponse *httpResponse = [[NSHTTPURLResponse alloc]
+      initWithURL: task.request.URL
+       statusCode: 200
+      HTTPVersion: @"HTTP/1.1"
+     headerFields: nil
+    ];
+
+    [task didReceiveResponse: httpResponse];
+
+    uint64_t id = std::stoll(cmd.get("id"));
+    if (postRequests.find(id) == postRequests.end()) {
+      return;
+    }
+
+    [task didReceiveData: postRequests[id]];
+    [task didFinish];
+
+    postRequests.erase(id);
+    return;
+  }
 
   [self.delegate route: url];
 }
@@ -78,11 +101,27 @@ std::map<std::string, id<WKURLSchemeTask>> tasks;
 }
 
 - (void) send: (std::string)params buf: (char*)buf {
-  std::string str(
-    ""
+  uint64_t id = SSC::rand64();
+  std::string sid = std::to_string(id);
+
+  std::string js(
+    "const xhx = new XMLHttpRequest();"
+    "xhr.open('ipc://post?id=" + sid + "');"
+    "xhr.onload = e => {"
+    "  const o = new URLSearchParams('" + params + "');"
+    "  const detail = {"
+    "    data: xhr.response," +
+    "    params: Object.fromEntries(o)"
+    "  };"
+    "  window._ipc.emit('data', detail);"
+    "}"
   );
+
+  NSString* str = [NSString stringWithUTF8String:buf];
+  NSData* data = [str dataUsingEncoding: NSUTF8StringEncoding];
+  postRequests[id] = data;
   
-  NSString* script = [NSString stringWithUTF8String: str.c_str()];
+  NSString* script = [NSString stringWithUTF8String: js.c_str()];
   [self.webview evaluateJavaScript: initRequest completionHandler: nil];
 }
 

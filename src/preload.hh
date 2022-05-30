@@ -69,37 +69,39 @@ constexpr auto gPreload = R"JS(
   }
 
   window._ipc.emit = (name, value, target, options) => {
-    let detail
+    let detail = value
 
-    try {
-      detail = decodeURIComponent(value)
-      detail = JSON.parse(detail)
-    } catch (err) {
-      // consider okay here because if detail is defined then
-      // `decodeURIComponent(value)` was successful and `JSON.parse(value)`
-      // was not: there could be bad/unsupported unicode in `value`
-      if (!detail) {
-        console.error(`${err.message} (${value})`)
-        return
+    if (typeof value === 'string') {
+      try {
+        detail = decodeURIComponent(value)
+        detail = JSON.parse(detail)
+      } catch (err) {
+        // consider okay here because if detail is defined then
+        // `decodeURIComponent(value)` was successful and `JSON.parse(value)`
+        // was not: there could be bad/unsupported unicode in `value`
+        if (!detail) {
+          console.error(`${err.message} (${value})`)
+          return
+        }
+      }
+
+      if (detail.event && detail.data && (detail.serverId || detail.clientId)) {
+        const stream = window._ipc.streams[detail.serverId || detail.clientId]
+        if (!stream) {
+          console.error('inbound IPC message with unknown serverId/clientId:', detail)
+          return
+        }
+
+        const value = detail.event === 'data' ? atob(detail.data) : detail.data
+
+        if (detail.event === 'data') {
+          stream.__write(detail.event, value)
+        } else if (detail.event) {
+          stream.emit(detail.event, value)
+        }
       }
     }
-
-    if (detail.event && detail.data && (detail.serverId || detail.clientId)) {
-      const stream = window._ipc.streams[detail.serverId || detail.clientId]
-      if (!stream) {
-        console.error('inbound IPC message with unknown serverId/clientId:', detail)
-        return
-      }
-
-      const value = detail.event === 'data' ? atob(detail.data) : detail.data
-
-      if (detail.event === 'data') {
-        stream.__write(detail.event, value)
-      } else if (detail.event) {
-        stream.emit(detail.event, value)
-      }
-    }
-
+ 
     const event = new window.CustomEvent(name, { detail, ...options })
     if (target) {
       target.dispatchEvent(event)
