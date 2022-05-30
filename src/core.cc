@@ -10,13 +10,16 @@
   #import <Network/Network.h>
   using Task = id<WKURLSchemeTask>;
 #elif defined(__linux__)
+  // TODO @jwerle
 #elif defined(_WIN32)
+  // TODO
 #endif
 
 namespace SSC {
-  using callback = std::function<void(std::string, std::string, char*)>;
+  using PostData = uv_buf_t;
+  using callback = std::function<void(std::string, std::string, const PostData*)>;
   using Tasks = std::map<std::string, Task>;
-  using PostRequests = std::map<uint64_t, const uv_buf_t*>;
+  using PostRequests = std::map<uint64_t, const PostData*>;
 
   class Core {
     Tasks tasks;
@@ -53,12 +56,13 @@ namespace SSC {
       void readStop (std::string seq, uint64_t clientId, callback cb) const;
 
       void dnsLookup (std::string seq, std::string hostname, callback cb) const;
+      std::string getNetworkInterfaces () const;
 
       Task getTask (std::string id);
-      bool Core::hasTask (std::string id);
+      bool hasTask (std::string id);
       void removeTask (std::string id);
-      void putTask (Task p);
-      char* getPost (uint64_t id);
+      void putTask (std::string id, Task t);
+      const uv_buf_t* getPost (uint64_t id);
       void removePost (uint64_t id);
       void putPost (PostData p);
       std::string createPost (std::string params, char* buf);
@@ -220,8 +224,8 @@ namespace SSC {
     tasks.erase(id);
   }
 
-  void Core::putTask (std::string id, PostData p) {
-    tasks.insert_or_assign(id, p);
+  void Core::putTask (std::string id, Task t) {
+    tasks.insert_or_assign(id, t);
   }
 
   PostData Core::getPost (uint64_t id) {
@@ -271,29 +275,29 @@ namespace SSC {
     int fd = uv_fs_open(loop, &req, (char*) path.c_str(), flags, 0, [](uv_fs_t* req) {
       auto desc = static_cast<DescriptorContext*>(req->data);
 
-      auto json = SSC::format(R"JSON({
+      auto msg = SSC::format(R"MSG({
         "value": {
           "data": {
             "fd": $S
           }
         }
-      })JSON", std::to_string(desc->id));
+      })MSG", std::to_string(desc->id));
 
-      desc->cb(desc->seq, json, nullptr);
+      desc->cb(desc->seq, msg, nullptr);
       uv_fs_req_cleanup(req);
     });
 
     if (fd < 0) {
-      auto json = SSC::format(R"({
+      auto msg = SSC::format(R"MSG({
         "value": {
           "err": {
             "id": "$S",
             "message": "$S"
           }
         }
-      })", std::to_string(id), std::string(uv_strerror(fd)));
+      })MSG", std::to_string(id), std::string(uv_strerror(fd)));
 
-      cb(seq, json, nullptr);
+      cb(seq, msg, nullptr);
       return;
     }
 
@@ -307,16 +311,16 @@ namespace SSC {
     desc->cb = cb;
 
     if (desc == nullptr) {
-      auto json = SSC::format(R"JSON({
+      auto msg = SSC::format(R"MSG({
         "value": {
           "err": {
             "code": "ENOTOPEN",
             "message": "No file descriptor found with that id"
           }
         }
-      })JSON");
+      })MSG");
       
-      cb(seq, json, nullptr);
+      cb(seq, msg, nullptr);
       return;
     }
 
@@ -325,29 +329,29 @@ namespace SSC {
 
     int err = uv_fs_close(loop, &req, desc->fd, [](uv_fs_t* req) {
       auto desc = static_cast<DescriptorContext*>(req->data);
-      auto json = SSC::format(R"JSON({
+      auto msg = SSC::format(R"MSG({
         "value": {
           "data": {
             "fd": $S
           }
         }
-      })JSON", std::to_string(desc->id));
+      })MSG", std::to_string(desc->id));
       
-      desc->cb(desc->seq, json, nullptr);
+      desc->cb(desc->seq, msg, nullptr);
       uv_fs_req_cleanup(req);
     });
 
     if (err) {
-      auto json = SSC::format(R"({
+      auto msg = SSC::format(R"MSG({
         "value": {
           "err": {
             "id": "$S",
             "message": "$S"
           }
         }
-      })", std::to_string(id), std::string(uv_strerror(err)));
+      })MSG", std::to_string(id), std::string(uv_strerror(err)));
 
-      cb(seq, json, nullptr);
+      cb(seq, msg, nullptr);
       return;
     }
 
@@ -358,16 +362,16 @@ namespace SSC {
     auto desc = descriptors[id];
 
     if (desc == nullptr) {
-      auto json = SSC::format(R"JSON({
+      auto msg = SSC::format(R"MSG({
         "value": {
           "err": {
             "code": "ENOTOPEN",
             "message": "No file descriptor found with that id"
           }
         }
-      })JSON");
+      })MSG");
 
-      cb(seq, json, nullptr);
+      cb(seq, msg, nullptr);
       return;
     }
 
@@ -384,43 +388,41 @@ namespace SSC {
       auto desc = static_cast<DescriptorContext*>(req->data);
 
       if (req->result < 0) {
-        auto json = SSC::format(R"JSON({
+        auto msg = SSC::format(R"MSG({
           "value": {
             "err": {
               "code": "ENOTOPEN",
               "message": "No file descriptor found with that id"
             }
           }
-        })JSON");
-        
-        desc->cb(desc->seq, json, nullptr);
+        })MSG");
+
+        desc->cb(desc->seq, msg, nullptr);
         return;
       }
 
-      auto json = SSC::format(R"({
-        "value": {
-          "data": {
-            "id": "$S",
-            "result": "$i"
-          }
-        }
-      })", std::to_string(desc->id), (int)req->result);
-      
-      desc->cb(desc->seq, json, req->bufs[0].base);
+      auto msg = SSC::format(R"MSG({
+        "Content-Type": "application/octet-stream",
+        "Content-Size": "$i",
+        "X-Method": "fsRead",
+        "X-Id": "$S"
+      })MSG", (int)req->result, std::to_string(desc->id));
+
+      desc->cb(desc->seq, msg, req->bufs[0]);
       uv_fs_req_cleanup(req);
     });
 
     if (err) {
-      auto json = SSC::format(R"({
+      auto msg = SSC::format(R"MSG({
         "value": {
           "err": {
             "id": "$S",
             "message": "$S"
           }
         }
-      })", std::to_string(id), std::string(uv_strerror(err)));
+      })MSG", std::to_string(id), std::string(uv_strerror(err)));
 
-      cb(seq, json, nullptr);
+      cb(seq, msg, nullptr);
       return;
     }
 
@@ -431,16 +433,16 @@ namespace SSC {
     auto desc = descriptors[id];
 
     if (desc == nullptr) {
-      auto json = SSC::format(R"JSON({
+      auto msg = SSC::format(R"MSG({
         "value": {
           "err": {
             "code": "ENOTOPEN",
             "message": "No file descriptor found with that id"
           }
         }
-      })JSON");
+      })MSG");
 
-      cb(seq, json, nullptr);
+      cb(seq, msg, nullptr);
       return;
     }
 
@@ -455,30 +457,30 @@ namespace SSC {
     int err = uv_fs_write(uv_default_loop(), &req, desc->fd, &buf, 1, offset, [](uv_fs_t* req) {
       auto desc = static_cast<DescriptorContext*>(req->data);
 
-      auto json = message: SSC::format(R"({
+      auto msg = message: SSC::format(R"MSG({
         "value": {
           "data": {
             "id": "$S",
             "result": "$i"
           }
         }
-      })", std::to_string(desc->id), (int)req->result);
+      })MSG", std::to_string(desc->id), (int)req->result);
       
-      desc->cb(desc->seq, json, nullptr);
+      desc->cb(desc->seq, msg, nullptr);
       uv_fs_req_cleanup(req);
     });
 
     if (err) {
-      auto json = SSC::format(R"({
+      auto msg = SSC::format(R"MSG({
         "value": {
           "err": {
             "id": "$S",
             "message": "$S"
           }
         }
-      })", std::to_string(id), std::string(uv_strerror(err)));
+      })MSG", std::to_string(id), std::string(uv_strerror(err)));
 
-      cb(seq, json, nullptr);
+      cb(seq, msg, nullptr);
       return;
     }
 
@@ -495,31 +497,31 @@ namespace SSC {
     int err = uv_fs_stat(loop, &req, (const char*) path.c_str(), [](uv_fs_t* req) {
       auto desc = static_cast<DescriptorContext*>(req->data);
 
-      auto json = message: SSC::format(R"({
+      auto msg = message: SSC::format(R"MSG({
         "value": {
           "data": {
             "id": "$S",
             "result": "$i"
           }
         }
-      })", std::to_string(desc->id), (int)req->result);
+      })MSG", std::to_string(desc->id), (int)req->result);
       
-      desc->cb(desc->seq, json, nullptr);
+      desc->cb(desc->seq, msg, nullptr);
 
       delete desc;
       uv_fs_req_cleanup(req);
     });
 
     if (err) {
-      auto json = SSC::format(R"({
+      auto msg = SSC::format(R"MSG({
         "value": {
           "err": {
             "message": "$S"
           }
         }
-      })", std::string(uv_strerror(err)));
+      })MSG", std::string(uv_strerror(err)));
 
-      cb(seq, json, nullptr);
+      cb(seq, msg, nullptr);
       return;
     }
 
@@ -535,31 +537,31 @@ namespace SSC {
 
     int err = uv_fs_unlink(loop, &req, (const char*) path.c_str(), [](uv_fs_t* req) {
       auto desc = static_cast<DescriptorContext*>(req->data);
-      auto json = SSC::format(R"({
+      auto msg = SSC::format(R"MSG({
         "value": {
           "data": {
             "id": "$S",
             "result": "$i"
           }
         }
-      })", std::to_string(desc->id), (int)req->result);
+      })MSG", std::to_string(desc->id), (int)req->result);
 
-      desc->cb(desc->seq, json, nullptr);
+      desc->cb(desc->seq, msg, nullptr);
 
       delete desc;
       uv_fs_req_cleanup(req);
     });
 
     if (err) {
-      auto json = SSC::format(R"({
+      auto msg = SSC::format(R"MSG({
         "value": {
           "err": {
             "message": "$S"
           }
         }
-      })", std::string(uv_strerror(err)));
+      })MSG", std::string(uv_strerror(err)));
       
-      cb(seq, json);
+      cb(seq, msg);
       return;
     }
     loopCheck();
@@ -574,31 +576,31 @@ namespace SSC {
 
     int err = uv_fs_rename(loop, &req, (const char*) pathA.c_str(), (const char*) pathB.c_str(), [](uv_fs_t* req) {
       auto desc = static_cast<DescriptorContext*>(req->data);
-      auto json = SSC::format(R"({
+      auto msg = SSC::format(R"MSG({
         "value": {
           "data": {
             "id": "$S",
             "result": "$i"
           }
         }
-      })", std::to_string(desc->id), (int)req->result);
+      })MSG", std::to_string(desc->id), (int)req->result);
 
-      desc->cb(desc->seq, json, nullptr);
+      desc->cb(desc->seq, msg, nullptr);
 
       delete desc;
       uv_fs_req_cleanup(req);
     });
 
     if (err) {
-      auto json = SSC::format(R"({
+      auto msg = SSC::format(R"MSG({
         "value": {
           "err": {
             "message": "$S"
           }
         }
-      })", std::string(uv_strerror(err)));
+      })MSG", std::string(uv_strerror(err)));
 
-      cb(seq, json, nullptr);
+      cb(seq, msg, nullptr);
       return;
     }
 
@@ -615,30 +617,30 @@ namespace SSC {
     int err = uv_fs_copyfile(loop, &req, (const char*) pathA.c_str(), (const char*) pathB.c_str(), flags, [](uv_fs_t* req) {
       auto desc = static_cast<DescriptorContext*>(req->data);
 
-      auto json = SSC::format(R"({
+      auto msg = SSC::format(R"MSG({
         "value": {
           "data": {
             "id": "$S",
             "result": "$i"
           }
         }
-      })", std::to_string(desc->id), (int)req->result);
+      })MSG", std::to_string(desc->id), (int)req->result);
       
-      desc->cb(desc->seq, json, nullptr);
+      desc->cb(desc->seq, msg, nullptr);
       delete desc;
       uv_fs_req_cleanup(req);
     });
 
     if (err) {
-      auto json = SSC::format(R"({
+      auto msg = SSC::format(R"MSG({
         "value": {
           "err": {
             "message": "$S"
           }
         }
-      })", std::string(uv_strerror(err)));
+      })MSG", std::string(uv_strerror(err)));
 
-      cb(seq, json, nullptr);
+      cb(seq, msg, nullptr);
       return;
     }
     loopCheck();
@@ -654,29 +656,29 @@ namespace SSC {
     int err = uv_fs_rmdir(loop, &req, (const char*) path.c_str(), [](uv_fs_t* req) {
       auto desc = static_cast<DescriptorContext*>(req->data);
 
-      auto json = SSC::format(R"({
+      auto msg = SSC::format(R"MSG({
         "value": {
           "data": {
             "id": "$S",
             "result": "$i"
           }
         }
-      })", std::to_string(desc->id), (int)req->result);
+      })MSG", std::to_string(desc->id), (int)req->result);
       
-      desc->cb(desc->seq, json, nullptr);
+      desc->cb(desc->seq, msg, nullptr);
       delete desc;
       uv_fs_req_cleanup(req);
     });
 
     if (err) {
-      auto json = SSC::format(R"({
+      auto msg = SSC::format(R"MSG({
         "value": {
           "err": {
             "message": "$S"
           }
         }
-      })", std::string(uv_strerror(err)));
-      cb(seq, json, nullptr);
+      })MSG", std::string(uv_strerror(err)));
+      cb(seq, msg, nullptr);
       return;
     }
 
@@ -692,30 +694,30 @@ namespace SSC {
 
     int err = uv_fs_mkdir(loop, &req, (const char*) path.c_str(), mode, [](uv_fs_t* req) {
       auto desc = static_cast<DescriptorContext*>(req->data);
-      auto json = SSC::format(R"({
+      auto msg = SSC::format(R"MSG({
         "value": {
           "data": {
             "id": "$S",
             "result": "$i"
           }
         }
-      })", std::to_string(desc->id), (int)req->result);
+      })MSG", std::to_string(desc->id), (int)req->result);
 
-      desc->cb(desc->seq, json, nullptr);
+      desc->cb(desc->seq, msg, nullptr);
 
       delete desc;
       uv_fs_req_cleanup(req);
     });
 
     if (err) {
-      auto json = SSC::format(R"({
+      auto msg = SSC::format(R"MSG({
         "value": {
           "err": {
             "message": "$S"
           }
         }
-      })", std::string(uv_strerror(err)));
-      cb(seq, json, nullptr);
+      })MSG", std::string(uv_strerror(err)));
+      cb(seq, msg, nullptr);
       return;
     }
 
@@ -733,14 +735,14 @@ namespace SSC {
     int err = uv_fs_opendir(loop, &ctx->reqOpendir, (const char*) path.c_str(), nullptr);
 
     if (err) {
-      auto json = SSC::format(R"({
+      auto msg = SSC::format(R"MSG({
         "value": {
           "err": {
             "message": "$S"
           }
         }
-      })", std::string(uv_strerror(err)));
-      cb(seq, json, nullptr);
+      })MSG", std::string(uv_strerror(err)));
+      cb(seq, msg, nullptr);
       return;
     }
 
@@ -748,15 +750,15 @@ namespace SSC {
       auto ctx = static_cast<DirectoryReader*>(req->data);
 
       if (req->result < 0) {
-        auto json = SSC::format(R"({
+        auto msg = SSC::format(R"MSG({
           "value": {
             "err": {
               "message": "$S"
             }
           }
-        })", std::string(uv_strerror((int)req->result)));
+        })MSG", std::string(uv_strerror((int)req->result)));
 
-        ctx->cb(ctx->seq, json, nullptr);
+        ctx->cb(ctx->seq, msg, nullptr);
         return;
       }
 
@@ -772,13 +774,13 @@ namespace SSC {
         }
       }
       
-      auto json = SSC::format(R"({
+      auto msg = SSC::format(R"MSG({
         "value": {
           "data": "$S"
         }
-      })", encodeURIComponent(value));
+      })MSG", encodeURIComponent(value));
       
-      ctx->cb(ctx->seq, json, nullptr);
+      ctx->cb(ctx->seq, msg, nullptr);
 
       uv_fs_t reqClosedir;
       uv_fs_closedir(loop, &reqClosedir, ctx->dir, [](uv_fs_t* req) {
@@ -787,15 +789,15 @@ namespace SSC {
     });
 
     if (err) {
-      auto json = SSC::format(R"({
+      auto msg = SSC::format(R"MSG({
         "value": {
           "err": {
             "message": "$S"
           }
         }
-      })", std::string(uv_strerror(err)));
+      })MSG", std::string(uv_strerror(err)));
       
-      cb(seq, json, nullptr);
+      cb(seq, msg, nullptr);
       return;
     }
 
@@ -806,7 +808,7 @@ namespace SSC {
     Client* client = clients[clientId];
 
     if (client == nullptr) {
-      auto json = SSC::format(R"JSON({
+      auto msg = SSC::format(R"MSG({
         "clientId": "$S",
         "method": "callback",
         "value": {
@@ -814,9 +816,9 @@ namespace SSC {
             "message": "Not connected"
           }
         }
-      })JSON", std::to_string(clientId));
+      })MSG", std::to_string(clientId));
 
-      cb(seq, json, nullptr);
+      cb(seq, msg, nullptr);
       return;
     }
 
@@ -831,7 +833,7 @@ namespace SSC {
     int sz = size;
     int rSize = uv_send_buffer_size(handle, &sz);
 
-    auto json = SSC::format(R"JSON({
+    auto msg = SSC::format(R"MSG({
       "clientId": "$S",
       "method": "callback",
       "value": {
@@ -839,9 +841,9 @@ namespace SSC {
           "size": $i
         }
       }
-    })JSON", std::to_string(clientId), rSize);
+    })MSG", std::to_string(clientId), rSize);
 
-    cb(seq, json, nullptr);
+    cb(seq, msg, nullptr);
     return;
   }
 
@@ -849,7 +851,7 @@ namespace SSC {
     Client* client = clients[clientId];
 
     if (client == nullptr) {
-      autp json = SSC::format(R"JSON({
+      autp msg = SSC::format(R"MSG({
         "client": "$S",
         "method": "callback",
         "value": {
@@ -857,8 +859,8 @@ namespace SSC {
             "message": "Not connected"
           }
         }
-      })JSON", std::to_string(clientId));
-      cb(seq, json, nullptr);
+      })MSG", std::to_string(clientId));
+      cb(seq, msg, nullptr);
       return;
     }
 
@@ -873,7 +875,7 @@ namespace SSC {
     int sz = size;
     int rSize = uv_recv_buffer_size(handle, &sz);
 
-    auto json = SSC::format(R"JSON({
+    auto msg = SSC::format(R"MSG({
       "clientId": "$S",
       "method": "callback",
       "value": {
@@ -881,9 +883,9 @@ namespace SSC {
           "size": $i
         }
       }
-    })JSON", std::to_string(clientId), rSize);
+    })MSG", std::to_string(clientId), rSize);
 
-    cb(seq, json, nullptr);
+    cb(seq, msg, nullptr);
     return;
   }
 
@@ -891,7 +893,7 @@ namespace SSC {
     Client* client = clients[clientId];
 
     if (client == nullptr) {
-      auto json = SSC::format(R"JSON({
+      auto msg = SSC::format(R"MSG({
         "clientId": "$S",
         "method": "emit",
         "value": {
@@ -899,9 +901,9 @@ namespace SSC {
             "message": "Not connected"
           }
         }
-      })JSON", std::to_string(clientId));
+      })MSG", std::to_string(clientId));
       
-      cb("-1", json, nullptr);
+      cb("-1", msg, nullptr);
       return;
     }
     
@@ -917,7 +919,7 @@ namespace SSC {
       auto ctx = reinterpret_cast<GenericContext*>(req->data);
 
       if (status) {
-        auto json = SSC::format(R"({
+        auto msg = SSC::format(R"MSG({
           "clientId": "$S",
           "method": "emit",
           "value": {
@@ -925,9 +927,9 @@ namespace SSC {
               "message": "Write error $S"
             }
           }
-        })", std::to_string(ctx->clientId), uv_strerror(status));
+        })MSG", std::to_string(ctx->clientId), uv_strerror(status));
         
-        ctx->cb("-1", json, nullptr);
+        ctx->cb("-1", msg, nullptr);
         return;
       }
 
@@ -974,7 +976,7 @@ namespace SSC {
       // NSLog(@"client connection?");
 
       if (status < 0) {
-        auto json = SSC::format(R"({
+        auto msg = SSC::format(R"MSG({
           "clientId": "$S",
           "method": "emit",
           "value": {
@@ -982,12 +984,12 @@ namespace SSC {
               "message": "$S"
             }
           }
-        })", std::to_string(client->clientId), std::string(uv_strerror(status)));
-        client->cb("-1", json, nullptr);
+        })MSG", std::to_string(client->clientId), std::string(uv_strerror(status)));
+        client->cb("-1", msg, nullptr);
         return;
       }
       
-      auto json = SSC::format(R"({
+      auto msg = SSC::format(R"MSG({
         "clientId": "$S",
         "method": "emit",
         "value": {
@@ -995,23 +997,22 @@ namespace SSC {
             "message": "connection"
           }
         }
-      })", std::to_string(client->clientId));
+      })MSG", std::to_string(client->clientId));
 
-      client->cb("-1", json, nullptr);
+      client->cb("-1", msg, nullptr);
 
       auto onRead = [](uv_stream_t* handle, ssize_t nread, const uv_buf_t* buf) {
         auto client = reinterpret_cast<Client*>(handle->data);
         auto clientId = std::to_string(client->clientId);
 
-        auto = SSC::format(R"({
-          "clientId": "$S",
-          "method": "emit",
-          "value": {
-            "data": $i
-          }
-        })", clientId, std::to_string(buf->len));
+        auto = SSC::format(R"MSG({
+          "Content-Type": "application/octet-stream",
+          "Content-Length": "$i",
+          "X-ClientId": "$S",
+          "X-Method": "tcpConnect"
+        })MSG", buf->len, clientId);
 
-        client->cb("-1", json, buf);
+        client->cb("-1", msg, buf);
       };
 
       auto allocate = [](uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf) {
@@ -1031,7 +1032,7 @@ namespace SSC {
     }
 
     if (r) {
-      auto json = SSC::format(R"({
+      auto msg = SSC::format(R"MSG({
         "clientId": "$S",
         "method": "callback",
         "value": {
@@ -1039,8 +1040,8 @@ namespace SSC {
             "message": "$S"
           }
         }
-      })", std::to_string(clientId), std::string(uv_strerror(r)));
-      cb(seq, json, nullptr);
+      })MSG", std::to_string(clientId), std::string(uv_strerror(r)));
+      cb(seq, msg, nullptr);
       return;
     }
 
@@ -1072,18 +1073,16 @@ namespace SSC {
       auto* server = reinterpret_cast<Server*>(handle->data);
 
       if (status < 0) {
-        auto json = SSC::format(R"JSON({
+        auto msg = SSC::format(R"MSG({
           "serverId": "$S",
+          "method": "emit",
           "value": {
-            "method": "emit",
-            "value": {
-              "err": {
-                "message": "connection error $S"
-              }
+            "err": {
+              "message": "connection error $S"
             }
           }
-        })JSON", std::to_string(server->serverId), uv_strerror(status));
-        server->cb("-1", json, nullptr);
+        })MSG", std::to_string(server->serverId), uv_strerror(status));
+        server->cb("-1", msg, nullptr);
         return;
       }
 
@@ -1102,8 +1101,8 @@ namespace SSC {
         PeerInfo info;
         info.init(client->tcp);
         
-        auto json = SSC::format(
-          R"JSON({
+        auto msg = SSC::format(
+          R"MSG({
             "serverId": "$S",
             "clientId": "$S",
             "value": {
@@ -1113,7 +1112,7 @@ namespace SSC {
                 "port": "$i"
               }
             }
-          })JSON",
+          })MSG",
           std::to_string(server->serverId),
           std::to_string(clientId),
           info.ip,
@@ -1121,7 +1120,7 @@ namespace SSC {
           info.port
         );
 
-        server->cb("-1", json, nullptr);
+        server->cb("-1", msg, nullptr);
       } else {
         uv_close((uv_handle_t*) handle, [](uv_handle_t* handle) {
           free(handle);
@@ -1130,21 +1129,21 @@ namespace SSC {
     });
 
     if (r) {
-      auto json = SSC::format(R"JSON({
+      auto msg = SSC::format(R"MSG({
         "serverId": "$S",
         "value": {
           "err": {
             "message": "$S"
           }
         }
-      })JSON", std::to_string(server->serverId), std::string(uv_strerror(r)));
-      cb(seq, json, nullptr);
+      })MSG", std::to_string(server->serverId), std::string(uv_strerror(r)));
+      cb(seq, msg, nullptr);
 
       NSLog(@"Listener failed: %s", uv_strerror(r));
       return;
     }
 
-    auto json = SSC::format(R"JSON({
+    auto msg = SSC::format(R"MSG({
       "serverId": "$S",
       "value": {
         "data": {
@@ -1152,9 +1151,9 @@ namespace SSC {
           "ip": "$S"
         }
       }
-    })JSON", std::to_string(server->serverId), port, ip);
+    })MSG", std::to_string(server->serverId), port, ip);
 
-    cb(seq, json, nullptr);
+    cb(seq, msg, nullptr);
     // NSLog(@"Listener started");
     loopCheck();
   }
@@ -1163,16 +1162,16 @@ namespace SSC {
     Client* client = clients[clientId];
 
     if (client == nullptr) {
-      auto json = SSC::format(R"JSON({
+      auto msg = SSC::format(R"MSG({
         "clientId": "$S",
         "value": {
           "err": {
             "message": "No connection found with the specified id"
           }
         }
-      })JSON", std::to_string(clientId));
+      })MSG", std::to_string(clientId));
 
-      cb(seq, json, nullptr);
+      cb(seq, msg, nullptr);
       return;
     }
 
@@ -1182,28 +1181,28 @@ namespace SSC {
 
     uv_tcp_keepalive((uv_tcp_t*) client->tcp, 1, timeout);
 
-    auto json = SSC::format(R"JSON({
+    auto msg = SSC::format(R"MSG({
       "value": {
         "data": {}
       }
-    })JSON");
+    })MSG");
     
-    client->cb(client->seq, json, nullptr);
+    client->cb(client->seq, msg, nullptr);
   }
 
   void Core::tcpReadStart (std::string seq, uint64_t clientId, callback cb) {
     Client* client = clients[clientId];
 
     if (client == nullptr) {
-      auto json = SSC::format(R"JSON({
+      auto msg = SSC::format(R"MSG({
         "clientId": "$S",
         "value": {
           "err": {
             "message": "No connection found with the specified id"
           }
         }
-      })JSON", std::to_string(clientId));
-      cb(seq, json, nullptr);
+      })MSG", std::to_string(clientId));
+      cb(seq, msg, nullptr);
       return;
     }
 
@@ -1220,27 +1219,27 @@ namespace SSC {
         auto serverId = std::to_string(client->server->serverId);
         auto clientId = std::to_string(client->clientId);
 
-        auto json = SSC::format(R"JSON({
-          "serverId": "$S",
-          "clientId": "$S",
-          "value": {
-            "data": $i
-          }
-        })JSON", serverId, clientId, std::to_string(buf->len));
+        auto msg = SSC::format(R"MSG({
+          "Content-Type": "application/octet-stream",
+          "Content-Length": "$i",
+          "X-ServerId": "$S",
+          "X-ClientId": "$S",
+          "X-Method": "tcpReadStart"
+        })MSG", serverId, clientId);
 
-        client->server->cb("-1", json, nullptr);
+        client->server->cb("-1", msg, buf);
         return;
       }
 
       if (nread < 0) {
         if (nread != UV_EOF) {
-          auto json = SSC::format(R"JSON({
+          auto msg = SSC::format(R"MSG({
             "serverId": "$S",
             "value": {
               "data": "$S"
             }
-          })JSON", std::to_string(client->server->serverId), uv_err_name((int) nread));
-          client->server->cb("-1", json, nullptr);
+          })MSG", std::to_string(client->server->serverId), uv_err_name((int) nread));
+          client->server->cb("-1", msg, nullptr);
         }
 
         uv_close((uv_handle_t*) client->tcp, [](uv_handle_t* handle) {
@@ -1259,26 +1258,26 @@ namespace SSC {
     int err = uv_read_start((uv_stream_t*) client->stream, allocateBuffer, onRead);
 
     if (err < 0) {
-      auto json = SSC::format(R"JSON({
+      auto msg = SSC::format(R"MSG({
         "serverId": "$S",
         "value": {
           "err": {
             "message": "$S"
           }
         }
-      })JSON", std::to_string(client->server->serverId), uv_strerror(err));
+      })MSG", std::to_string(client->server->serverId), uv_strerror(err));
 
-      cb(seq, json, nullptr);
+      cb(seq, msg, nullptr);
       return;
     }
     
-    auto json = SSC::format(R"JSON({
+    auto msg = SSC::format(R"MSG({
       "value": {
         "data": {}
       }
-    })JSON");
+    })MSG");
 
-    client->server->cb(client->server->seq, json, nullptr);
+    client->server->cb(client->server->seq, msg, nullptr);
 
     loopCheck();
   }
@@ -1287,15 +1286,15 @@ namespace SSC {
     Client* client = clients[clientId];
 
     if (client == nullptr) {
-      auto json = SSC::format(R"JSON({
+      auto msg = SSC::format(R"MSG({
         "clientId": "$S",
         "value": {
           "err": {
             "message": "No connection with specified id"
           }
         }
-      })JSON", std::to_string(clientId));
-      cb(seq, json, nullptr);
+      })MSG", std::to_string(clientId));
+      cb(seq, msg, nullptr);
       return;
     }
 
@@ -1307,28 +1306,28 @@ namespace SSC {
       r = uv_read_stop((uv_stream_t*) client->udp);
     }
     
-    auto json = SSC::format(R"JSON({
+    auto msg = SSC::format(R"MSG({
       "value": {
         "data": $i
       }
-    })JSON", r);
+    })MSG", r);
     
-    cb(seq, json, nullptr);
+    cb(seq, msg, nullptr);
   }
 
  void Core::close (std::string seq, uint64_t clientId, callback cb) {
     Client* client = clients[clientId];
 
     if (client == nullptr) {
-      auto json = SSC::format(R"JSON({
+      auto msg = SSC::format(R"MSG({
         "clientId": "$S",
         "value": {
           "err": {
             "message": "No connection with specified id"
           }
         }
-      })JSON", std::to_string(clientId));
-      cb(seq, json, nullptr);
+      })MSG", std::to_string(clientId));
+      cb(seq, msg, nullptr);
       return;
     }
 
@@ -1349,13 +1348,13 @@ namespace SSC {
     uv_close(handle, [](uv_handle_t* handle) {
       auto client = reinterpret_cast<Client*>(handle->data);
 
-      auto json = SSC::format(R"JSON({
+      auto msg = SSC::format(R"MSG({
         "value": {
           "data": {}
         }
-      })JSON");
+      })MSG");
       
-      client->cb(client->seq, json, nullptr);
+      client->cb(client->seq, msg, nullptr);
       free(handle);
     });
 
@@ -1366,17 +1365,17 @@ namespace SSC {
     Client* client = clients[clientId];
 
     if (client == nullptr) {
-      auto json = SSC::format(R"JSON({
+      auto msg = SSC::format(R"MSG({
         "clientId": "$S",
         "value": {
           "err": {
              "message": "No connection with specified id"
             }
           }
-        })JSON",
+        })MSG",
         std::to_string(clientId)
       );
-      cb(seq, json, nullptr);
+      cb(seq, msg, nullptr);
       return;
     }
 
@@ -1400,15 +1399,15 @@ namespace SSC {
     uv_shutdown(req, (uv_stream_t*) handle, [](uv_shutdown_t *req, int status) {
       auto client = reinterpret_cast<Client*>(req->handle->data);
 
-      auto json = SSC::format(R"JSON({
+      auto msg = SSC::format(R"MSG({
         "value": {
           "data": {
             "status": "$i"
           }
         }
-      })JSON", status)
+      })MSG", status)
       
-     client->cb(client->seq, json, nullptr);
+     client->cb(client->seq, msg, nullptr);
      free(req);
      free(req->handle);
     });
@@ -1431,38 +1430,38 @@ namespace SSC {
     err = uv_ip4_addr((char *) ip.c_str(), port, &addr);
 
     if (err < 0) {
-      auto json = SSC::format(R"JSON({
+      auto msg = SSC::format(R"MSG({
         "serverId": "$S",
         "value": {
           "err": {
             "message": "$S"
           }
         }
-      })JSON", std::to_string(serverId), uv_strerror(err));
-      cb(seq, json, nullptr);
+      })MSG", std::to_string(serverId), uv_strerror(err));
+      cb(seq, msg, nullptr);
       return;
     }
 
     err = uv_udp_bind(server->udp, (const struct sockaddr*) &addr, 0);
 
     if (err < 0) {
-      auto json = SSC::format(R"JSON({
+      auto msg = SSC::format(R"MSG({
         "serverId": "$S",
         "value": {
           "data": "$S"
         }
-      })JSON", std::to_string(server->serverId), uv_strerror(err));
-      server->cb("-1", json, nullptr);
+      })MSG", std::to_string(server->serverId), uv_strerror(err));
+      server->cb("-1", msg, nullptr);
       return;
     }
     
-    auto json = SSC::format(R"JSON({
+    auto msg = SSC::format(R"MSG({
       "value": {
         "data": {}
       }
-    })JSON");
+    })MSG");
 
-    server->cb(server->seq, json, nullptr);
+    server->cb(server->seq, msg, nullptr);
 
     loopCheck();
   }
@@ -1471,15 +1470,15 @@ namespace SSC {
     Client* client = clients[clientId];
 
     if (client == nullptr) {
-      auto json = SSC::format(R"JSON({
+      auto msg = SSC::format(R"MSG({
         "clientId": "$S",
         "value": {
           "err": {
             "message": "no such client"
           }
         }
-      })JSON", std::to_string(clientId));
-      cb(seq, json, nullptr);
+      })MSG", std::to_string(clientId));
+      cb(seq, msg, nullptr);
       return;
     }
 
@@ -1493,15 +1492,15 @@ namespace SSC {
     err = uv_ip4_addr((char *) ip, port, &addr);
 
     if (err) {
-      auto json = SSC::format(R"JSON({
+      auto msg = SSC::format(R"MSG({
         "clientId": "$S",
         "value": {
           "err": {
             "message": "$S"
           }
         }
-      })JSON", std::to_string(clientId), uv_strerror(err));
-      cb(seq, json, nullptr);
+      })MSG", std::to_string(clientId), uv_strerror(err));
+      cb(seq, msg, nullptr);
       return;
     }
 
@@ -1512,31 +1511,31 @@ namespace SSC {
     err = uv_udp_send(req, client->udp, bufs, 1, (const struct sockaddr *) &addr, [] (uv_udp_send_t *req, int status) {
       auto client = reinterpret_cast<Client*>(req->data);
       
-      auto json = SSC::format(R"JSON({
+      auto msg = SSC::format(R"MSG({
         "value": {
           "data": {
             "clientId": "$S",
             "status": "$i"
           }
         }
-      })JSON", std::to_string(client->clientId), status);
+      })MSG", std::to_string(client->clientId), status);
 
-      client->cb(client->seq, json, nullptr);
+      client->cb(client->seq, msg, nullptr);
 
       delete[] req->bufs;
       free(req);
     });
 
     if (err) {
-      auto json = SSC::format(R"({
+      auto msg = SSC::format(R"MSG({
         "clientId": "$S",
         "value": {
           "data": {
             "message": "Write error $S"
           }
         }
-      })", std::to_string(client->clientId), uv_strerror(err));
-      cleint->cb("-1", json, nullptr);
+      })MSG", std::to_string(client->clientId), uv_strerror(err));
+      cleint->cb("-1", msg, nullptr);
       return;
     }
    
@@ -1547,15 +1546,15 @@ namespace SSC {
     Server* server = servers[serverId];
 
     if (server == nullptr) {
-      auto json = SSC::format(R"JSON({
+      auto msg = SSC::format(R"MSG({
         "value": {
           "err": {
             "serverId": "$S",
             "message": "no such server"
           }
         }
-      })JSON", std::to_string(serverId));
-      cb(seq, json, nullptr);
+      })MSG", std::to_string(serverId));
+      cb(seq, msg, nullptr);
       return;
     }
 
@@ -1573,42 +1572,43 @@ namespace SSC {
       if (nread > 0) {
         int port;
         char ipbuf[17];
-        std::string data(buf->base);
         parseAddress((struct sockaddr *) addr, &port, ipbuf);
         std::string ip(ipbuf);
 
-        SSC::format(R"JSON({
-            "serverId": "$S",
-            "port": "$i",
-            "ip": "$S",
-            "data": "$S"
-          })JSON", std::to_string(server->serverId), port, ip, data)
-        
-        server->cb("-1", json, nullptr);
+        auto msg = SSC::format(R"MSG({
+          "Content-Type": "application/octet-stream",
+          "Content-Length": "$i",
+          "X-ServerId": "$S",
+          "X-Method": "udpReadStart",
+          "X-Port": "$i",
+          "X-Ip": "$S"
+        })MSG", buf->len, std::to_string(server->serverId), port, ip);
+
+        server->cb("-1", msg, buf);
         return;
       }
     });
 
     if (err < 0) {
-      auto json = SSC::format(R"JSON({
+      auto msg = SSC::format(R"MSG({
         "value": {
           "err": {
             "serverId": "$S",
             "message": "$S"
           }
         }
-      })JSON", std::to_string(serverId), uv_strerror(err));
-      cb(seq, json, nullptr);
+      })MSG", std::to_string(serverId), uv_strerror(err));
+      cb(seq, msg, nullptr);
       return;
     }
     
-    auto json = SSC::format(R"JSON({
+    auto msg = SSC::format(R"MSG({
       "value": {
         "data": {}
       }
-    })JSON");
+    })MSG");
 
-    server->cb(server->seq, json, nullptr);
+    server->cb(server->seq, msg, nullptr);
     loopCheck();
   }
 
@@ -1634,15 +1634,15 @@ namespace SSC {
       auto ctx = (GenericContext*) resolver->data;
 
       if (status < 0) {
-        auto json = SSC::format(R"JSON({
+        auto msg = SSC::format(R"MSG({
           "value": {
             "err": {
               "code": "$S",
               "message": "$S"
             }
           }
-        })JSON", std::string(uv_err_name((int) status)), std::string(uv_strerror(status)));
-        ctx->cb(ctx->seq, json, nullptr);
+        })MSG", std::string(uv_err_name((int) status)), std::string(uv_strerror(status)));
+        ctx->cb(ctx->seq, msg, nullptr);
         contexts.erase(ctx->id);
         return;
       }
@@ -1651,18 +1651,61 @@ namespace SSC {
       uv_ip4_name((struct sockaddr_in*) res->ai_addr, addr, 16);
       std::string ip(addr, 17);
 
-      auto json = SSC::format(R"JSON({
+      auto msg = SSC::format(R"MSG({
         "value": {
           "data": "$S"
         }
-      })JSON", ip);
+      })MSG", ip);
 
-      ctx->cb(ctx->seq, json, nullptr);
+      ctx->cb(ctx->seq, msg, nullptr);
       contexts.erase(ctx->id);
 
       uv_freeaddrinfo(res);
     }, hostname.c_str(), nullptr, &hints);
 
     loopCheck();
+  }
+
+  std::string Core::getNetworkInterfaces () {
+    struct ifaddrs *interfaces = nullptr;
+    struct ifaddrs *interface = nullptr;
+    int success = getifaddrs(&interfaces);
+    std::stringstream value;
+    std::stringstream v4;
+    std::stringstream v6;
+
+    if (success != 0) {
+      return "{\"err\": {\"message\":\"unable to get interfaces\"}}";
+    }
+
+    interface = interfaces;
+    v4 << "\"ipv4\":{";
+    v6 << "\"ipv6\":{";
+
+    while (interface != nullptr) {
+      std::string ip = "";
+      const struct sockaddr_in *addr = (const struct sockaddr_in*)interface->ifa_addr;
+
+      if (addr->sin_family == AF_INET) {
+        struct sockaddr_in *addr = (struct sockaddr_in*)interface->ifa_addr;
+        v4 << "\"" << interface->ifa_name << "\":\"" << SSC::addrToIPv4(addr) << "\",";
+      }
+
+      if (addr->sin_family == AF_INET6) {
+        struct sockaddr_in6 *addr = (struct sockaddr_in6*)interface->ifa_addr;
+        v6 << "\"" << interface->ifa_name << "\":\"" << SSC::addrToIPv6(addr) << "\",";
+      }
+
+      interface = interface->ifa_next;
+    }
+
+    v4 << "\"local\":\"0.0.0.0\"}";
+    v6 << "\"local\":\"::1\"}";
+
+    getifaddrs(&interfaces);
+    freeifaddrs(interfaces);
+
+    value << "{\"data\":{" << v4.str() << "," << v6.str() << "}}";
+    return value.str();
   }
 } // SSC
