@@ -1,14 +1,10 @@
 #import <Webkit/Webkit.h>
 #include <_types/_uint64_t.h>
 #import <UIKit/UIKit.h>
-#import <Network/Network.h>
-#include "common.hh"
-#include "apple.hh"
-#include <ifaddrs.h>
-#include <arpa/inet.h>
 
-#include "include/uv.h"
-#include "include/udx.h"
+#import "common.hh"
+#include "core.hh"
+
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <sys/un.h>
@@ -16,6 +12,14 @@
 
 constexpr auto _settings = STR_VALUE(SETTINGS);
 constexpr auto _debug = false;
+
+dispatch_queue_attr_t qos = dispatch_queue_attr_make_with_qos_class(
+  DISPATCH_QUEUE_CONCURRENT,
+  QOS_CLASS_USER_INITIATED,
+  -1
+);
+
+static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
 @interface NavigationDelegate : NSObject<WKNavigationDelegate>
 - (void) webView: (WKWebView*)webView
@@ -25,54 +29,13 @@ constexpr auto _debug = false;
 
 @interface AppDelegate : UIResponder <UIApplicationDelegate, WKScriptMessageHandler>
 @property (strong, nonatomic) UIWindow* window;
-@property (strong, nonatomic) SocketCore* core;
 @property (strong, nonatomic) NavigationDelegate* navDelegate;
+@property (strong, nonatomic) WKWebView* webview;
+@property (strong, nonatomic) WKUserContentController* content;
+@property nw_path_monitor_t monitor;
+@property (strong, nonatomic) NSObject<OS_dispatch_queue>* monitorQueue;
+@property SSC::Core core;
 - (void) route: (std::string)route;
-@end
-
-@interface IPCSchemeHandler : NSObject<WKURLSchemeHandler>
-@property (strong, nonatomic) AppDelegate* delegate;
-- (void)webView: (AppDelegate*)webView startURLSchemeTask:(id <WKURLSchemeTask>)urlSchemeTask;
-- (void)webView: (AppDelegate*)webView stopURLSchemeTask:(id <WKURLSchemeTask>)urlSchemeTask;
-@end
-
-@implementation IPCSchemeHandler
-- (void)webView: (AppDelegate*)webView stopURLSchemeTask:(id <WKURLSchemeTask>)urlSchemeTask {}
-- (void)webView: (AppDelegate*)webView startURLSchemeTask:(id <WKURLSchemeTask>)task {
-  AppDelegate* delegate = self.delegate;
-  SocketCore* core = delegate.core;
-  
-  auto url = std::string(task.request.URL.absoluteString.UTF8String);
-
-  SSC::Parse cmd(url);
-
-  if (cmd.name == "post") {
-    NSHTTPURLResponse *httpResponse = [[NSHTTPURLResponse alloc]
-      initWithURL: task.request.URL
-       statusCode: 200
-      HTTPVersion: @"HTTP/1.1"
-     headerFields: nil
-    ];
-      
-    [task didReceiveResponse: httpResponse];
-
-    uint64_t postId = std::stoll(cmd.get("id"));
-
-    auto post = [core getPost: postId];
-
-    if (post != nullptr) {
-      [task didReceiveData: post];
-    }
-
-    [task didFinish];
-
-    [core removePost: postId];
-    return;
-  }
-
-  tasks.insert_or_assign(cmd.get("seq"), task);
-  [delegate route: url];
-}
 @end
 
 @implementation NavigationDelegate
@@ -91,14 +54,111 @@ constexpr auto _debug = false;
 }
 @end
 
+@interface IPCSchemeHandler : NSObject<WKURLSchemeHandler>
+@property (strong, nonatomic) AppDelegate* delegate;
+- (void)webView: (AppDelegate*)webView startURLSchemeTask:(id <WKURLSchemeTask>)urlSchemeTask;
+- (void)webView: (AppDelegate*)webView stopURLSchemeTask:(id <WKURLSchemeTask>)urlSchemeTask;
+@end
+
+@implementation IPCSchemeHandler
+- (void)webView: (AppDelegate*)webView stopURLSchemeTask:(id <WKURLSchemeTask>)urlSchemeTask {}
+- (void)webView: (AppDelegate*)webView startURLSchemeTask:(id <WKURLSchemeTask>)task {
+  auto* delegate = self.delegate;
+  SSC::Core core = delegate.core;
+  auto url = std::string(task.request.URL.absoluteString.UTF8String);
+
+  SSC::Parse cmd(url);
+
+  if (cmd.name == "post") {
+    NSHTTPURLResponse *httpResponse = [[NSHTTPURLResponse alloc]
+      initWithURL: task.request.URL
+       statusCode: 200
+      HTTPVersion: @"HTTP/1.1"
+     headerFields: nil
+    ];
+      
+    [task didReceiveResponse: httpResponse];
+
+    uint64_t postId = std::stoll(cmd.get("id"));
+
+    auto post = core.getPost(postId);
+
+    if (post != nullptr) {
+      NSString* str = [NSString stringWithUTF8String: post->base];
+      NSData* data = [str dataUsingEncoding: NSUTF8StringEncoding];
+      [task didReceiveData: data];
+    }
+
+    [task didFinish];
+
+    core.removePost(postId);
+    return;
+  }
+
+  core.putTask(cmd.get("seq"), task);
+  [delegate route: url];
+}
+@end
+
 //
 // iOS has no "window". There is no navigation, just a single webview. It also
 // has no "main" process, we want to expose some network functionality to the
 // JavaScript environment so it can be used by the web app and the wasm layer.
 //
 @implementation AppDelegate
+- (void) resolve: (std::string)seq message: (std::string)message buf: (const uv_buf_t*)buf {
+  //
+  // - If there is no sequence and there is a buffer, the source is a stream and it should
+  // invoke the client to ask for it via an XHR, this will be intercepted by the scheme handler.
+  // - On the next turn, it will have a sequence and a task that will respond to the XHR which
+  // already has the meta data from the original request.
+  //
+  if (seq == "-1" && buf->len > 0) {
+    auto src = self.core.createPost(message, buf);
+    NSString* script = [NSString stringWithUTF8String: src.c_str()];
+    [self.webview evaluateJavaScript: script completionHandler: nil];
+    return;
+  }
+
+  if (self.core.hasTask(seq)) {
+    auto task = self.core.getTask(seq);
+
+    NSHTTPURLResponse *httpResponse = [[NSHTTPURLResponse alloc]
+      initWithURL: task.request.URL
+       statusCode: 200
+      HTTPVersion: @"HTTP/1.1"
+     headerFields: nil
+    ];
+
+    [task didReceiveResponse: httpResponse];
+
+    // if buf has a size, use it as the response instead...
+    if (buf->len > 0) message = std::string(buf->base, buf->len);
+
+    NSString* str = [NSString stringWithUTF8String: message.c_str()];
+    NSData* data = [str dataUsingEncoding: NSUTF8StringEncoding];
+
+    [task didReceiveData: data];
+    [task didFinish];
+
+    self.core.removeTask(seq);
+    return;
+  }
+
+  message = SSC::resolveToRenderProcess(seq, "0", SSC::encodeURIComponent(message));
+  NSString* script = [NSString stringWithUTF8String: message.c_str()];
+  [self.webview evaluateJavaScript: script completionHandler:nil];
+}
+
+- (void) emit: (std::string)event message: (std::string)message {
+  NSString* script = [NSString stringWithUTF8String: SSC::emitToRenderProcess(event, SSC::encodeURIComponent(message)).c_str()];
+  [self.webview evaluateJavaScript: script completionHandler:nil];
+}
+
 - (void) route: (std::string)msg {
   using namespace SSC;
+  Core core;
+  
   if (msg.find("ipc://") != 0) return;
 
   Parse cmd(msg);
@@ -106,37 +166,72 @@ constexpr auto _debug = false;
   uint64_t clientId = 0;
 
   if (cmd.get("fsRmDir").size() != 0) {
-    [self.core fsRmDir: seq
-             path: cmd.get("path")];
+    auto path = cmd.get("path");
+
+    dispatch_async(queue, ^{
+      core.fsRmDir(seq, path, [&](auto seq, auto json, auto* buf) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+          [self resolve: seq message: json buf: buf];
+        });
+      });
+    });
   }
-    
+
   if (cmd.get("fsOpen").size() != 0) {
-    [self.core fsOpen: seq
-              id: std::stoll(cmd.get("id"))
-            path: cmd.get("path")
-           flags: std::stoi(cmd.get("flags"))];
+    auto cid = std::stoll(cmd.get("id"));
+    auto path = cmd.get("path");
+    auto flags = std::stoi(cmd.get("flags"));
+
+    dispatch_async(queue, ^{
+      core.fsOpen(seq, cid, path, flags, [&](auto seq, auto json, auto*buf) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+          [self resolve: seq message: json buf: buf];
+        });
+      });
+    });
   }
 
   if (cmd.get("fsClose").size() != 0) {
-    [self.core fsClose: seq
-               id: std::stoll(cmd.get("id"))];
+    auto id = std::stoll(cmd.get("id"));
+
+    dispatch_async(queue, ^{
+      core.fsClose(seq, id, [&](auto seq, auto json, auto*buf) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+          [self resolve: seq message: json buf: buf];
+        });
+      });
+    });
   }
 
   if (cmd.get("fsRead").size() != 0) {
-    [self.core fsRead: seq
-              id: std::stoll(cmd.get("id"))
-             len: std::stoi(cmd.get("len"))
-          offset: std::stoi(cmd.get("offset"))];
+    auto id = std::stoll(cmd.get("id"));
+    auto len = std::stoi(cmd.get("len"));
+    auto offset = std::stoi(cmd.get("offset"));
+
+    dispatch_async(queue, ^{
+      core.fsRead(seq, id, len, offset, [&](auto seq, auto json, auto*buf) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+          [self resolve: seq message: json buf: buf];
+        });
+      });
+    });
   }
 
   if (cmd.get("fsWrite").size() != 0) {
-    [self.core fsWrite: seq
-               id: std::stoll(cmd.get("id"))
-             data: cmd.get("data")
-           offset: std::stoll(cmd.get("offset"))];
+    auto id = std::stoll(cmd.get("id"));
+    auto data = cmd.get("data"); // TODO should be char*
+    auto offset = std::stoll(cmd.get("offset"));
+    
+    dispatch_async(queue, ^{
+      core.fsWrite(seq, id, data, offset, [&](auto seq, auto json, auto*buf) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+          [self resolve: seq message: json buf: buf];
+        });
+      });
+    });
   }
 
-  if (cmd.get("fsStat").size() != 0) {
+  /* if (cmd.get("fsStat").size() != 0) {
     [self.core fsStat: seq
             path: cmd.get("path")];
   }
@@ -403,24 +498,74 @@ constexpr auto _debug = false;
            hostname: cmd.get("hostname")
     ];
     return;
-  }
+  } */
 
   NSLog(@"%s", msg.c_str());
 }
 
 - (void) applicationDidEnterBackground {
-  [self.core.webview evaluateJavaScript: @"window.blur()" completionHandler:nil];
+  [self.webview evaluateJavaScript: @"window.blur()" completionHandler:nil];
 }
 
 - (void) applicationWillEnterForeground {
-  [self.core.webview evaluateJavaScript: @"window.focus()" completionHandler:nil];
+  [self.webview evaluateJavaScript: @"window.focus()" completionHandler:nil];
+}
+
+- (void) initNetworkStatusObserver {
+  dispatch_queue_attr_t attrs = dispatch_queue_attr_make_with_qos_class(
+    DISPATCH_QUEUE_SERIAL,
+    QOS_CLASS_UTILITY,
+    DISPATCH_QUEUE_PRIORITY_DEFAULT
+  );
+
+  self.monitorQueue = dispatch_queue_create("co.socketsupply.network-monitor", attrs);
+
+  // self.monitor = nw_path_monitor_create_with_type(nw_interface_type_wifi);
+  self.monitor = nw_path_monitor_create();
+  nw_path_monitor_set_queue(self.monitor, self.monitorQueue);
+  nw_path_monitor_set_update_handler(self.monitor, ^(nw_path_t _Nonnull path) {
+    nw_path_status_t status = nw_path_get_status(path);
+
+    std::string name;
+    std::string message;
+
+    switch (status) {
+      case nw_path_status_invalid: {
+        name = "offline";
+        message = "Network path is invalid";
+        break;
+      }
+      case nw_path_status_satisfied: {
+        name = "online";
+        message = "Network is usable";
+        break;
+      }
+      case nw_path_status_satisfiable: {
+        name = "online";
+        message = "Network may be usable";
+        break;
+      }
+      case nw_path_status_unsatisfied: {
+        name = "offline";
+        message = "Network is not usable";
+        break;
+      }
+    }
+
+    dispatch_async(dispatch_get_main_queue(), ^{
+      [self emit: name message: SSC::format(R"JSON({
+        "message": "$S"
+      })JSON", message)];
+    });
+  });
+
+  nw_path_monitor_start(self.monitor);
 }
 
 //
 // Next two methods handle creating the renderer and receiving/routing messages
 //
-- (void) userContentController :(WKUserContentController *) userContentController
-  didReceiveScriptMessage :(WKScriptMessage *) scriptMessage {
+- (void) userContentController: (WKUserContentController*) userContentController didReceiveScriptMessage: (WKScriptMessage*)scriptMessage {
     id body = [scriptMessage body];
     if (![body isKindOfClass:[NSString class]]) {
       return;
@@ -429,109 +574,110 @@ constexpr auto _debug = false;
     [self route: [body UTF8String]];
 }
 
-- (BOOL) application: (UIApplication *)app openURL: (NSURL*)url options: (NSDictionary<UIApplicationOpenURLOptionsKey, id> *)options {
+- (BOOL) application: (UIApplication*)app openURL: (NSURL*)url options: (NSDictionary<UIApplicationOpenURLOptionsKey, id>*)options {
   auto str = std::string(url.absoluteString.UTF8String);
 
   // TODO can this be escaped or is the url encoded property already?
-  [self.core emit: "protocol" message: SSC::format(R"JSON({
+  [self emit: "protocol" message: SSC::format(R"JSON({
     "url": "$S",
   })JSON", str)];
 
   return YES;
 }
 
-- (BOOL) application :(UIApplication *) application
-  didFinishLaunchingWithOptions :(NSDictionary *) launchOptions {
-    using namespace SSC;
+- (BOOL) application: (UIApplication*)application didFinishLaunchingWithOptions: (NSDictionary*)launchOptions {
+  using namespace SSC;
 
-    auto core = self.core = [SocketCore new];
-    auto appFrame = [[UIScreen mainScreen] bounds];
+  Core core;
+  self.core = core;
 
-    self.window = [[UIWindow alloc] initWithFrame: appFrame];
+  auto appFrame = [[UIScreen mainScreen] bounds];
 
-    UIViewController *viewController = [[UIViewController alloc] init];
-    viewController.view.frame = appFrame;
-    self.window.rootViewController = viewController;
+  self.window = [[UIWindow alloc] initWithFrame: appFrame];
 
-    auto appData = parseConfig(decodeURIComponent(_settings));
+  UIViewController *viewController = [[UIViewController alloc] init];
+  viewController.view.frame = appFrame;
+  self.window.rootViewController = viewController;
 
-    std::stringstream env;
+  auto appData = parseConfig(decodeURIComponent(_settings));
 
-    for (auto const &envKey : split(appData["env"], ',')) {
-      auto cleanKey = trim(envKey);
-      auto envValue = getEnv(cleanKey.c_str());
+  std::stringstream env;
 
-      env << std::string(
-        cleanKey + "=" + encodeURIComponent(envValue) + "&"
-      );
-    }
+  for (auto const &envKey : split(appData["env"], ',')) {
+    auto cleanKey = trim(envKey);
+    auto envValue = getEnv(cleanKey.c_str());
 
-    env << std::string("width=" + std::to_string(appFrame.size.width) + "&");
-    env << std::string("height=" + std::to_string(appFrame.size.height) + "&");
-
-    WindowOptions opts {
-      .debug = _debug,
-      .executable = appData["executable"],
-      .title = appData["title"],
-      .version = appData["version"],
-      .preload = gPreloadMobile,
-      .env = env.str()
-    };
-
-    // Note: you won't see any logs in the preload script before the
-    // Web Inspector is opened
-    std::string  preload = Str(
-      "window.addEventListener('unhandledrejection', e => console.log(e.message));\n"
-      "window.addEventListener('error', e => console.log(e.reason));\n"
-
-      "window.external = {\n"
-      "  invoke: arg => window.webkit.messageHandlers.webview.postMessage(arg)\n"
-      "};\n"
-
-      "console.error = console.warn = console.log;\n"
-      "" + createPreload(opts) + "\n"
-      "//# sourceURL=preload.js"
+    env << std::string(
+      cleanKey + "=" + encodeURIComponent(envValue) + "&"
     );
+  }
 
-    WKUserScript* initScript = [[WKUserScript alloc]
-      initWithSource: [NSString stringWithUTF8String: preload.c_str()]
-      injectionTime: WKUserScriptInjectionTimeAtDocumentStart
-      forMainFrameOnly: NO];
+  env << std::string("width=" + std::to_string(appFrame.size.width) + "&");
+  env << std::string("height=" + std::to_string(appFrame.size.height) + "&");
 
-    WKWebViewConfiguration *config = [[WKWebViewConfiguration alloc] init];
+  WindowOptions opts {
+    .debug = _debug,
+    .executable = appData["executable"],
+    .title = appData["title"],
+    .version = appData["version"],
+    .preload = gPreloadMobile,
+    .env = env.str()
+  };
 
-    auto handler = [IPCSchemeHandler new];
-    handler.delegate = self;
+  // Note: you won't see any logs in the preload script before the
+  // Web Inspector is opened
+  std::string  preload = Str(
+    "window.addEventListener('unhandledrejection', e => console.log(e.message));\n"
+    "window.addEventListener('error', e => console.log(e.reason));\n"
 
-    [config setURLSchemeHandler: handler forURLScheme:@"ipc"];
+    "window.external = {\n"
+    "  invoke: arg => window.webkit.messageHandlers.webview.postMessage(arg)\n"
+    "};\n"
 
-    core.content = [config userContentController];
+    "console.error = console.warn = console.log;\n"
+    "" + createPreload(opts) + "\n"
+    "//# sourceURL=preload.js"
+  );
 
-    [core.content addScriptMessageHandler:self name: @"webview"];
-    [core.content addUserScript: initScript];
+  WKUserScript* initScript = [[WKUserScript alloc]
+    initWithSource: [NSString stringWithUTF8String: preload.c_str()]
+    injectionTime: WKUserScriptInjectionTimeAtDocumentStart
+    forMainFrameOnly: NO];
 
-    core.webview = [[WKWebView alloc] initWithFrame: appFrame configuration: config];
-    core.webview.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+  WKWebViewConfiguration *config = [[WKWebViewConfiguration alloc] init];
 
-    [core.webview.configuration.preferences setValue: @YES forKey: @"allowFileAccessFromFileURLs"];
-    [core.webview.configuration.preferences setValue: @YES forKey: @"javaScriptEnabled"];
+  auto handler = [IPCSchemeHandler new];
+  handler.delegate = self;
 
-    self.navDelegate = [[NavigationDelegate alloc] init];
-    [core.webview setNavigationDelegate: self.navDelegate];
+  [config setURLSchemeHandler: handler forURLScheme:@"ipc"];
 
-    [viewController.view addSubview: core.webview];
+  self.content = [config userContentController];
 
-    NSString* allowed = [[NSBundle mainBundle] resourcePath];
-    NSString* url = [allowed stringByAppendingPathComponent:@"ui/index.html"];
+  [self.content addScriptMessageHandler:self name: @"webview"];
+  [self.content addUserScript: initScript];
 
-    [core.webview loadFileURL: [NSURL fileURLWithPath: url]
-      allowingReadAccessToURL: [NSURL fileURLWithPath: allowed]
-    ];
+  self.webview = [[WKWebView alloc] initWithFrame: appFrame configuration: config];
+  self.webview.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
 
-    [self.window makeKeyAndVisible];
-    [core initNetworkStatusObserver];
+  [self.webview.configuration.preferences setValue: @YES forKey: @"allowFileAccessFromFileURLs"];
+  [self.webview.configuration.preferences setValue: @YES forKey: @"javaScriptEnabled"];
 
-    return YES;
+  self.navDelegate = [[NavigationDelegate alloc] init];
+  [self.webview setNavigationDelegate: self.navDelegate];
+
+  [viewController.view addSubview: self.webview];
+
+  NSString* allowed = [[NSBundle mainBundle] resourcePath];
+  NSString* url = [allowed stringByAppendingPathComponent:@"ui/index.html"];
+
+  [self.webview loadFileURL: [NSURL fileURLWithPath: url]
+    allowingReadAccessToURL: [NSURL fileURLWithPath: allowed]
+  ];
+
+  [self.window makeKeyAndVisible];
+  [self initNetworkStatusObserver];
+
+  return YES;
 }
 @end
 

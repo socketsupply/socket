@@ -64,8 +64,8 @@ namespace SSC {
       void putTask (std::string id, Task t);
       const uv_buf_t* getPost (uint64_t id);
       void removePost (uint64_t id);
-      void putPost (PostData p);
-      std::string createPost (std::string params, char* buf);
+      void putPost (uint64_t id, PostData p);
+      std::string createPost (std::string params, const uv_buf_t* buf);
 
       Core::Core() {
         this->tasks = std::make_unique<Tasks>();
@@ -242,7 +242,7 @@ namespace SSC {
     posts.erase(id);
   }
                      
-  std::string Core::createPost (std::string params, char* buf) {
+  std::string Core::createPost (std::string params, const uv_buf_t* buf) {
     uint64_t id = SSC::rand64();
     std::string sid = std::to_string(id);
 
