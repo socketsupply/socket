@@ -145,8 +145,8 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     return;
   }
 
-  message = SSC::resolveToRenderProcess(seq, "0", SSC::encodeURIComponent(message));
-  NSString* script = [NSString stringWithUTF8String: message.c_str()];
+  msg = SSC::resolveToRenderProcess(seq, "0", SSC::encodeURIComponent(msg));
+  NSString* script = [NSString stringWithUTF8String: msg.c_str()];
   [self.webview evaluateJavaScript: script completionHandler:nil];
 }
 
