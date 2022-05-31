@@ -1,3 +1,6 @@
+//
+// File and Network IO for all operating systems.
+//
 #include "common.hh"
 #include "include/uv.h"
 
@@ -16,14 +19,16 @@
 #endif
 
 namespace SSC {
+  using String = std::string;
+
   struct Post {
     char* body;
     int length;
-    std::map<std::string, std::string> headers;
+    std::map<String, String> headers;
   };
 
-  using callback = std::function<void(std::string, std::string, Post)>;
-  using Tasks = std::map<std::string, Task>;
+  using Cb = std::function<void(String, String, Post)>;
+  using Tasks = std::map<String, Task>;
   using PostRequests = std::map<uint64_t, Post>;
  
   class Core {
@@ -31,46 +36,46 @@ namespace SSC {
     PostRequests posts;
 
     public:
-      void fsOpen (std::string seq, uint64_t id, std::string path, int flags, callback cb) const;
-      void fsClose (std::string seq, uint64_t id, callback cb) const;
-      void fsRead (std::string seq, uint64_t id, int len, int offset, callback cb) const;
-      void fsWrite (std::string seq, uint64_t id, std::string data, int64_t offset, callback cb) const;
-      void fsStat (std::string seq, std::string path, callback cb) const;
-      void fsUnlink (std::string seq, std::string path, callback cb) const;
-      void fsRename (std::string seq, std::string pathA, std::string pathB, callback cb) const;
-      void fsCopyFile (std::string seq, std::string pathA, std::string pathB, int flags, callback cb) const;
-      void fsRmDir (std::string seq, std::string path, callback cb) const;
-      void fsMkDir (std::string seq, std::string path, int mode, callback cb) const;
-      void fsReadDir (std::string seq, std::string path, callback cb) const;
+      void fsOpen (String seq, uint64_t id, String path, int flags, Cb cb) const;
+      void fsClose (String seq, uint64_t id, Cb cb) const;
+      void fsRead (String seq, uint64_t id, int len, int offset, Cb cb) const;
+      void fsWrite (String seq, uint64_t id, String data, int64_t offset, Cb cb) const;
+      void fsStat (String seq, String path, Cb cb) const;
+      void fsUnlink (String seq, String path, Cb cb) const;
+      void fsRename (String seq, String pathA, String pathB, Cb cb) const;
+      void fsCopyFile (String seq, String pathA, String pathB, int flags, Cb cb) const;
+      void fsRmDir (String seq, String path, Cb cb) const;
+      void fsMkDir (String seq, String path, int mode, Cb cb) const;
+      void fsReadDir (String seq, String path, Cb cb) const;
 
-      void tcpBind (std::string seq, uint64_t serverId, std::string ip, int port, callback cb) const;
-      void tcpConnect (std::string seq, uint64_t clientId, int port, std::string ip, callback cb) const;
-      void tcpSetTimeout (std::string seq, uint64_t clientId, int timeout, callback cb) const;
-      void tcpSetKeepAlive (std::string seq, uint64_t clientId, int timeout, callback cb) const;
-      void tcpSend (uint64_t clientId, std::string message, callback cb) const;
-      void tcpReadStart (std::string seq, uint64_t clientId, callback cb) const;
+      void tcpBind (String seq, uint64_t serverId, String ip, int port, Cb cb) const;
+      void tcpConnect (String seq, uint64_t clientId, int port, String ip, Cb cb) const;
+      void tcpSetTimeout (String seq, uint64_t clientId, int timeout, Cb cb) const;
+      void tcpSetKeepAlive (String seq, uint64_t clientId, int timeout, Cb cb) const;
+      void tcpSend (uint64_t clientId, String message, Cb cb) const;
+      void tcpReadStart (String seq, uint64_t clientId, Cb cb) const;
 
-      void udpBind (std::string seq, uint64_t serverId, std::string ip, int port, callback cb) const;
-      void udpSend (std::string seq, uint64_t clientId, std::string message, int offset, int len, int port, const char* ip, callback cb) const;
-      void udpReadStart (std::string seq, uint64_t serverId, callback cb) const;
+      void udpBind (String seq, uint64_t serverId, String ip, int port, Cb cb) const;
+      void udpSend (String seq, uint64_t clientId, String message, int offset, int len, int port, const char* ip, Cb cb) const;
+      void udpReadStart (String seq, uint64_t serverId, Cb cb) const;
 
-      void sendBufferSize (std::string seq, uint64_t clientId, int size, callback cb) const;
-      void recvBufferSize (std::string seq, uint64_t clientId, int size, callback cb) const;
-      void close (std::string seq, uint64_t clientId, callback cb) const;
-      void shutdown (std::string seq, uint64_t clientId, callback cb) const;
-      void readStop (std::string seq, uint64_t clientId, callback cb) const;
+      void sendBufferSize (String seq, uint64_t clientId, int size, Cb cb) const;
+      void recvBufferSize (String seq, uint64_t clientId, int size, Cb cb) const;
+      void close (String seq, uint64_t clientId, Cb cb) const;
+      void shutdown (String seq, uint64_t clientId, Cb cb) const;
+      void readStop (String seq, uint64_t clientId, Cb cb) const;
 
-      void dnsLookup (std::string seq, std::string hostname, callback cb) const;
-      std::string getNetworkInterfaces () const;
+      void dnsLookup (String seq, String hostname, Cb cb) const;
+      String getNetworkInterfaces () const;
 
-      Task getTask (std::string id);
-      bool hasTask (std::string id);
-      void removeTask (std::string id);
-      void putTask (std::string id, Task t);
+      Task getTask (String id);
+      bool hasTask (String id);
+      void removeTask (String id);
+      void putTask (String id, Task t);
       Post getPost (uint64_t id);
       void removePost (uint64_t id);
       void putPost (uint64_t id, Post p);
-      std::string createPost (std::string params, Post post);
+      String createPost (String params, Post post);
 
       Core::Core() {
         this->tasks = std::make_unique<Tasks>();
@@ -79,15 +84,15 @@ namespace SSC {
   }
 
   struct GenericContext {
-    callback cb;
+    Cb cb;
     uint64_t id;
-    std::string seq;
+    String seq;
   };
 
   struct DescriptorContext {
     uv_file fd;
-    std::string seq;
-    callback cb;
+    String seq;
+    Cb cb;
     uint64_t id;
   };
 
@@ -96,13 +101,13 @@ namespace SSC {
     uv_dir_t* dir;
     uv_fs_t reqOpendir;
     uv_fs_t reqReaddir;
-    callback cb;
-    std::string seq;
+    Cb cb;
+    String seq;
   };
 
   struct Peer {
-    callback cb;
-    std::string seq;
+    Cb cb;
+    String seq;
 
     uv_tcp_t* tcp;
     uv_udp_t* udp;
@@ -124,21 +129,21 @@ namespace SSC {
     uint64_t clientId;
   };
 
-  std::string addrToIPv4 (struct sockaddr_in* sin) {
+  String addrToIPv4 (struct sockaddr_in* sin) {
     char buf[INET_ADDRSTRLEN];
     inet_ntop(AF_INET, &sin->sin_addr, buf, INET_ADDRSTRLEN);
-    return std::string(buf);
+    return String(buf);
   }
 
-  std::string addrToIPv6 (struct sockaddr_in6* sin) {
+  String addrToIPv6 (struct sockaddr_in6* sin) {
     char buf[INET6_ADDRSTRLEN];
     inet_ntop(AF_INET6, &sin->sin6_addr, buf, INET6_ADDRSTRLEN);
-    return std::string(buf);
+    return String(buf);
   }
 
   struct PeerInfo {
-    std::string ip = "";
-    std::string family = "";
+    String ip = "";
+    String family = "";
     int port = 0;
     int error = 0;
     void init(uv_tcp_t* connection);
@@ -215,21 +220,21 @@ namespace SSC {
     }
   }
 
-  bool Core::hasTask (std::string id) {
+  bool Core::hasTask (String id) {
     return posts.find(id) == posts.end();
   }
 
-  Task Core::getTask (std::string id) {
+  Task Core::getTask (String id) {
     if (posts.find(id) == posts.end()) return nullptr;
     return tasks.at(id);
   }
 
-  void Core::removeTask (std::string id) {
+  void Core::removeTask (String id) {
     if (tasks.find(id) == tasks.end()) return;
     tasks.erase(id);
   }
 
-  void Core::putTask (std::string id, Task t) {
+  void Core::putTask (String id, Task t) {
     tasks.insert_or_assign(id, t);
   }
 
@@ -247,11 +252,11 @@ namespace SSC {
     posts.erase(id);
   }
 
-  std::string Core::createPost (std::string params, Post post) {
+  String Core::createPost (String params, Post post) {
     uint64_t id = SSC::rand64();
-    std::string sid = std::to_string(id);
+    String sid = std::to_string(id);
 
-    std::string js(
+    String js(
       "const xhr = new XMLHttpRequest();"
       "xhr.open('ipc://post?id=" + sid + "');"
       "xhr.onload = e => {"
@@ -268,7 +273,7 @@ namespace SSC {
     return js;
   }
 
-  void Core::fsOpen (std::string seq, uint64_t id, std::string path, int flags, callback cb) {
+  void Core::fsOpen (String seq, uint64_t id, String path, int flags, Cb cb) {
     auto desc = descriptors[id] = new DescriptorContext;
     desc->id = id;
     desc->seq = seq;
@@ -300,7 +305,7 @@ namespace SSC {
             "message": "$S"
           }
         }
-      })MSG", std::to_string(id), std::string(uv_strerror(fd)));
+      })MSG", std::to_string(id), String(uv_strerror(fd)));
 
       cb(seq, msg, Post{});
       return;
@@ -310,7 +315,7 @@ namespace SSC {
     loopCheck();
   }
 
-  void Core::fsClose (std::string seq, uint64_t id, callback cb) {
+  void Core::fsClose (String seq, uint64_t id, Cb cb) {
     auto desc = descriptors[id];
     desc->seq = seq;
     desc->cb = cb;
@@ -354,7 +359,7 @@ namespace SSC {
             "message": "$S"
           }
         }
-      })MSG", std::to_string(id), std::string(uv_strerror(err)));
+      })MSG", std::to_string(id), String(uv_strerror(err)));
 
       cb(seq, msg, Post{});
       return;
@@ -363,7 +368,7 @@ namespace SSC {
     loopCheck();
   }
 
-  void Core::fsRead (std::string seq, uint64_t id, int len, int offset, callback cb) {
+  void Core::fsRead (String seq, uint64_t id, int len, int offset, Cb cb) {
     auto desc = descriptors[id];
 
     if (desc == nullptr) {
@@ -430,7 +435,7 @@ namespace SSC {
             "message": "$S"
           }
         }
-      })MSG", std::to_string(id), std::string(uv_strerror(err)));
+      })MSG", std::to_string(id), String(uv_strerror(err)));
 
       cb(seq, msg, Post{});
       return;
@@ -439,7 +444,7 @@ namespace SSC {
     loopCheck();
   }
 
-  void Core::fsWrite (std::string seq, uint64_t id, std::string data, int64_t offset, callback cb) {
+  void Core::fsWrite (String seq, uint64_t id, String data, int64_t offset, Cb cb) {
     auto desc = descriptors[id];
 
     if (desc == nullptr) {
@@ -488,7 +493,7 @@ namespace SSC {
             "message": "$S"
           }
         }
-      })MSG", std::to_string(id), std::string(uv_strerror(err)));
+      })MSG", std::to_string(id), String(uv_strerror(err)));
 
       cb(seq, msg, Post{});
       return;
@@ -497,7 +502,7 @@ namespace SSC {
     loopCheck();
   }
 
-  void Core::fsStat (std::string seq, std::string path, callback cb) {
+  void Core::fsStat (String seq, String path, Cb cb) {
     uv_fs_t req;
     DescriptorContext* desc = new DescriptorContext;
     desc->seq = seq;
@@ -529,7 +534,7 @@ namespace SSC {
             "message": "$S"
           }
         }
-      })MSG", std::string(uv_strerror(err)));
+      })MSG", String(uv_strerror(err)));
 
       cb(seq, msg, Post{});
       return;
@@ -538,7 +543,7 @@ namespace SSC {
     loopCheck();
   }
 
-  void Core::fsUnlink (std::string seq, std::string path, callback cb) {
+  void Core::fsUnlink (String seq, String path, Cb cb) {
     uv_fs_t req;
     DescriptorContext* desc = new DescriptorContext;
     desc->seq = seq;
@@ -569,7 +574,7 @@ namespace SSC {
             "message": "$S"
           }
         }
-      })MSG", std::string(uv_strerror(err)));
+      })MSG", String(uv_strerror(err)));
       
       cb(seq, msg);
       return;
@@ -577,7 +582,7 @@ namespace SSC {
     loopCheck();
   }
 
-  void Core::fsRename (std::string seq, std::string pathA, std::string pathB, callback cb) {
+  void Core::fsRename (String seq, String pathA, String pathB, Cb cb) {
     uv_fs_t req;
     DescriptorContext* desc = new DescriptorContext;
     desc->seq = seq;
@@ -608,7 +613,7 @@ namespace SSC {
             "message": "$S"
           }
         }
-      })MSG", std::string(uv_strerror(err)));
+      })MSG", String(uv_strerror(err)));
 
       cb(seq, msg, Post{});
       return;
@@ -617,7 +622,7 @@ namespace SSC {
     loopCheck();
   }
 
-  void Core::fsCopyFile (std::string seq, std::string pathA, std::string pathB, int flags, callback cb) {
+  void Core::fsCopyFile (String seq, String pathA, String pathB, int flags, Cb cb) {
     uv_fs_t req;
     DescriptorContext* desc = new DescriptorContext;
     desc->seq = seq;
@@ -648,7 +653,7 @@ namespace SSC {
             "message": "$S"
           }
         }
-      })MSG", std::string(uv_strerror(err)));
+      })MSG", String(uv_strerror(err)));
 
       cb(seq, msg, Post{});
       return;
@@ -656,7 +661,7 @@ namespace SSC {
     loopCheck();
   }
 
-  void Core::fsRmDir (std::string seq, std::string path, callback cb) {
+  void Core::fsRmDir (String seq, String path, Cb cb) {
     uv_fs_t req;
     DescriptorContext* desc = new DescriptorContext;
     desc->seq = seq;
@@ -687,7 +692,7 @@ namespace SSC {
             "message": "$S"
           }
         }
-      })MSG", std::string(uv_strerror(err)));
+      })MSG", String(uv_strerror(err)));
       cb(seq, msg, Post{});
       return;
     }
@@ -695,7 +700,7 @@ namespace SSC {
     loopCheck();
   }
 
-  void Core::fsMkDir (std::string seq, std::string path int mode, callback cb) {
+  void Core::fsMkDir (String seq, String path int mode, Cb cb) {
     uv_fs_t req;
     DescriptorContext* desc = new DescriptorContext;
     desc->seq = seq;
@@ -726,7 +731,7 @@ namespace SSC {
             "message": "$S"
           }
         }
-      })MSG", std::string(uv_strerror(err)));
+      })MSG", String(uv_strerror(err)));
       cb(seq, msg, Post{});
       return;
     }
@@ -734,7 +739,7 @@ namespace SSC {
     loopCheck();
   }
 
-  void Core::fsReadDir (std::string seq, std::string path, callback cb) {
+  void Core::fsReadDir (String seq, String path, Cb cb) {
     DirectoryReader* ctx = new DirectoryReader;
     ctx->seq = seq;
     ctx->cb = cb;
@@ -751,7 +756,7 @@ namespace SSC {
             "message": "$S"
           }
         }
-      })MSG", std::string(uv_strerror(err)));
+      })MSG", String(uv_strerror(err)));
       cb(seq, msg, Post{});
       return;
     }
@@ -766,13 +771,13 @@ namespace SSC {
               "message": "$S"
             }
           }
-        })MSG", std::string(uv_strerror((int)req->result)));
+        })MSG", String(uv_strerror((int)req->result)));
 
         ctx->cb(ctx->seq, msg, Post{});
         return;
       }
 
-      std::stringstream value;
+      Stringstream value;
       auto len = ctx->dir->nentries;
 
       for (int i = 0; i < len; i++) {
@@ -805,7 +810,7 @@ namespace SSC {
             "message": "$S"
           }
         }
-      })MSG", std::string(uv_strerror(err)));
+      })MSG", String(uv_strerror(err)));
       
       cb(seq, msg, Post{});
       return;
@@ -814,13 +819,13 @@ namespace SSC {
     loopCheck();
   }
 
-  void Core::sendBufferSize (std::string seq, uint64_t clientId, int size, callback cb) {
+  void Core::sendBufferSize (String seq, uint64_t clientId, int size, Cb cb) {
     Client* client = clients[clientId];
 
     if (client == nullptr) {
       auto msg = SSC::format(R"MSG({
         "clientId": "$S",
-        "method": "callback",
+        "method": "Cb",
         "value": {
           "err": {
             "message": "Not connected"
@@ -845,7 +850,7 @@ namespace SSC {
 
     auto msg = SSC::format(R"MSG({
       "clientId": "$S",
-      "method": "callback",
+      "method": "Cb",
       "value": {
         "data": {
           "size": $i
@@ -857,13 +862,13 @@ namespace SSC {
     return;
   }
 
-  void Core::recvBufferSize (std::string seq, uint64_t clientId, int size, callback cb) {
+  void Core::recvBufferSize (String seq, uint64_t clientId, int size, Cb cb) {
     Client* client = clients[clientId];
 
     if (client == nullptr) {
       autp msg = SSC::format(R"MSG({
         "client": "$S",
-        "method": "callback",
+        "method": "Cb",
         "value": {
           "err": {
             "message": "Not connected"
@@ -887,7 +892,7 @@ namespace SSC {
 
     auto msg = SSC::format(R"MSG({
       "clientId": "$S",
-      "method": "callback",
+      "method": "Cb",
       "value": {
         "data": {
           "size": $i
@@ -899,7 +904,7 @@ namespace SSC {
     return;
   }
 
-  void Core::tcpSend (uint64_t clientId, std::string message, callback cb) {
+  void Core::tcpSend (uint64_t clientId, String message, Cb cb) {
     Client* client = clients[clientId];
 
     if (client == nullptr) {
@@ -952,7 +957,7 @@ namespace SSC {
     loopCheck();
   }
 
-  void Core::tcpConnect (std::string seq, uint64_t clientId, int port, std::string ip, callback cb) {
+  void Core::tcpConnect (String seq, uint64_t clientId, int port, String ip, Cb cb) {
     uv_connect_t connect;
 
     Client* client = clients[clientId] = new Client();
@@ -971,7 +976,7 @@ namespace SSC {
     struct sockaddr_in6 dest6;
 
     // check to validate the ip is actually an ipv6 address with a regex
-    if (ip.find(":") != std::string::npos) {
+    if (ip.find(":") != String::npos) {
       uv_ip6_addr(ip.c_str(), port, &dest6);
     } else {
       uv_ip4_addr(ip.c_str(), port, &dest4);
@@ -994,7 +999,7 @@ namespace SSC {
               "message": "$S"
             }
           }
-        })MSG", std::to_string(client->clientId), std::string(uv_strerror(status)));
+        })MSG", std::to_string(client->clientId), String(uv_strerror(status)));
         client->cb("-1", msg, Post{});
         return;
       }
@@ -1039,7 +1044,7 @@ namespace SSC {
 
     int r = 0;
 
-    if (ip.find(":") != std::string::npos) {
+    if (ip.find(":") != String::npos) {
       r = uv_tcp_connect(&connect, client->tcp, (const struct sockaddr*) &dest6, onConnect);
     } else {
       r = uv_tcp_connect(&connect, client->tcp, (const struct sockaddr*) &dest4, onConnect);
@@ -1048,13 +1053,13 @@ namespace SSC {
     if (r) {
       auto msg = SSC::format(R"MSG({
         "clientId": "$S",
-        "method": "callback",
+        "method": "Cb",
         "value": {
           "err": {
             "message": "$S"
           }
         }
-      })MSG", std::to_string(clientId), std::string(uv_strerror(r)));
+      })MSG", std::to_string(clientId), String(uv_strerror(r)));
       cb(seq, msg, Post{});
       return;
     }
@@ -1062,7 +1067,7 @@ namespace SSC {
     loopCheck();
   }
 
-  void Core::tcpBind (std::string seq, uint64_t serverId, std::string ip, int port, callback cb) {
+  void Core::tcpBind (String seq, uint64_t serverId, String ip, int port, Cb cb) {
     loop = uv_default_loop();
 
     Server* server = servers[serverId] = new Server();
@@ -1150,7 +1155,7 @@ namespace SSC {
             "message": "$S"
           }
         }
-      })MSG", std::to_string(server->serverId), std::string(uv_strerror(r)));
+      })MSG", std::to_string(server->serverId), String(uv_strerror(r)));
       cb(seq, msg, Post{});
 
       NSLog(@"Listener failed: %s", uv_strerror(r));
@@ -1172,7 +1177,7 @@ namespace SSC {
     loopCheck();
   }
 
-  void Core::tcpSetKeepAlive (std::string seq, uint64_t clientId, int timeout, callback cb) {
+  void Core::tcpSetKeepAlive (String seq, uint64_t clientId, int timeout, Cb cb) {
     Client* client = clients[clientId];
 
     if (client == nullptr) {
@@ -1204,7 +1209,7 @@ namespace SSC {
     client->cb(client->seq, msg, Post{});
   }
 
-  void Core::tcpReadStart (std::string seq, uint64_t clientId, callback cb) {
+  void Core::tcpReadStart (String seq, uint64_t clientId, Cb cb) {
     Client* client = clients[clientId];
 
     if (client == nullptr) {
@@ -1300,7 +1305,7 @@ namespace SSC {
     loopCheck();
   }
 
-  void Core::readStop (std::string seq, uint64_t clientId, callback cb) {
+  void Core::readStop (String seq, uint64_t clientId, Cb cb) {
     Client* client = clients[clientId];
 
     if (client == nullptr) {
@@ -1333,7 +1338,7 @@ namespace SSC {
     cb(seq, msg, Post{});
   }
 
- void Core::close (std::string seq, uint64_t clientId, callback cb) {
+ void Core::close (String seq, uint64_t clientId, Cb cb) {
     Client* client = clients[clientId];
 
     if (client == nullptr) {
@@ -1379,7 +1384,7 @@ namespace SSC {
     loopCheck();
   }
 
-  void Core::shutdown (std::string seq, uint64_t clientId, callback cb) {
+  void Core::shutdown (String seq, uint64_t clientId, Cb cb) {
     Client* client = clients[clientId];
 
     if (client == nullptr) {
@@ -1433,7 +1438,7 @@ namespace SSC {
     loopCheck();
   }
 
-  void Core::udpBind (std::string seq, uint64_t serverId, std::string ip, int port, callback cb) {
+  void Core::udpBind (String seq, uint64_t serverId, String ip, int port, Cb cb) {
     loop = uv_default_loop();
     Server* server = servers[serverId] = new Server();
     server->udp = new uv_udp_t;
@@ -1484,7 +1489,7 @@ namespace SSC {
     loopCheck();
   }
 
- void Core::udpSend (std::string seq, uint64_t clientId, std::string message, int offset, int len, int port, const char* ip, callback cb) {
+ void Core::udpSend (String seq, uint64_t clientId, String message, int offset, int len, int port, const char* ip, Cb cb) {
     Client* client = clients[clientId];
 
     if (client == nullptr) {
@@ -1560,7 +1565,7 @@ namespace SSC {
     loopCheck();
   }
 
-  void Close::udpReadStart (std::string seq, uint64_t serverId, callback cb) {
+  void Close::udpReadStart (String seq, uint64_t serverId, Cb cb) {
     Server* server = servers[serverId];
 
     if (server == nullptr) {
@@ -1591,7 +1596,7 @@ namespace SSC {
         int port;
         char ipbuf[17];
         parseAddress((struct sockaddr *) addr, &port, ipbuf);
-        std::string ip(ipbuf);
+        String ip(ipbuf);
 
         auto headers = SSC::format(R"MSG({
           "Content-Type": "application/octet-stream",
@@ -1634,7 +1639,7 @@ namespace SSC {
     loopCheck();
   }
 
-  void Core::dnsLookup (std::string seq, std::string hostname, callback cb) {
+  void Core::dnsLookup (String seq, String hostname, Cb cb) {
     loop = uv_default_loop();
 
     auto ctxId = SSC::rand64();
@@ -1663,7 +1668,7 @@ namespace SSC {
               "message": "$S"
             }
           }
-        })MSG", std::string(uv_err_name((int) status)), std::string(uv_strerror(status)));
+        })MSG", String(uv_err_name((int) status)), String(uv_strerror(status)));
         ctx->cb(ctx->seq, msg, Post{});
         contexts.erase(ctx->id);
         return;
@@ -1671,7 +1676,7 @@ namespace SSC {
 
       char addr[17] = {'\0'};
       uv_ip4_name((struct sockaddr_in*) res->ai_addr, addr, 16);
-      std::string ip(addr, 17);
+      String ip(addr, 17);
 
       auto msg = SSC::format(R"MSG({
         "value": {
@@ -1688,13 +1693,13 @@ namespace SSC {
     loopCheck();
   }
 
-  std::string Core::getNetworkInterfaces () {
+  String Core::getNetworkInterfaces () {
     struct ifaddrs *interfaces = nullptr;
     struct ifaddrs *interface = nullptr;
     int success = getifaddrs(&interfaces);
-    std::stringstream value;
-    std::stringstream v4;
-    std::stringstream v6;
+    Stringstream value;
+    Stringstream v4;
+    Stringstream v6;
 
     if (success != 0) {
       return "{\"err\": {\"message\":\"unable to get interfaces\"}}";
@@ -1705,7 +1710,7 @@ namespace SSC {
     v6 << "\"ipv6\":{";
 
     while (interface != nullptr) {
-      std::string ip = "";
+      String ip = "";
       const struct sockaddr_in *addr = (const struct sockaddr_in*)interface->ifa_addr;
 
       if (addr->sin_family == AF_INET) {
