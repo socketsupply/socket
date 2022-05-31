@@ -18,13 +18,15 @@
   // TODO
 #endif
 
+#define DEFAULT_BACKLOG 128
+
 namespace SSC {
   using String = std::string;
 
   struct Post {
     char* body;
     int length;
-    std::map<String, String> headers;
+    String headers;
   };
 
   using Cb = std::function<void(String, String, Post)>;
@@ -32,8 +34,8 @@ namespace SSC {
   using Posts = std::map<uint64_t, Post>;
  
   class Core {
-    Tasks tasks;
-    Posts posts;
+    std::unique_ptr<Tasks> tasks;
+    std::unique_ptr<Posts> posts;
 
     public:
       void fsOpen (String seq, uint64_t id, String path, int flags, Cb cb) const;
@@ -81,7 +83,7 @@ namespace SSC {
         this->tasks = std::unique_ptr<Tasks>(new Tasks());
         this->posts = std::unique_ptr<Posts>(new Posts());
       }
-  }
+  };
 
   struct GenericContext {
     Cb cb;
@@ -116,7 +118,6 @@ namespace SSC {
     ~Peer () {
       delete this->tcp;
       delete this->udp;
-      delete this->udx;
     };
   };
 
@@ -221,35 +222,35 @@ namespace SSC {
   }
 
   bool Core::hasTask (String id) {
-    return posts.find(id) == posts.end();
+    return tasks->find(id) == tasks->end();
   }
 
   Task Core::getTask (String id) {
-    if (posts.find(id) == posts.end()) return nullptr;
-    return tasks.at(id);
+    if (tasks->find(id) == tasks->end()) return Task{};
+    return tasks->at(id);
   }
 
   void Core::removeTask (String id) {
-    if (tasks.find(id) == tasks.end()) return;
-    tasks.erase(id);
+    if (tasks->find(id) == tasks->end()) return;
+    tasks->erase(id);
   }
 
   void Core::putTask (String id, Task t) {
-    tasks.insert_or_assign(id, t);
+    tasks->insert_or_assign(id, t);
   }
 
   Post Core::getPost (uint64_t id) {
-    if (posts.find(id) == posts.end()) return nullptr;
-    return posts.at(id);
+    if (posts->find(id) == posts->end()) return Post{};
+    return posts->at(id);
   }
 
   void Core::putPost (uint64_t id, Post p) {
-    posts.insert_or_assign(id, p);
+    posts->insert_or_assign(id, p);
   }
 
   void Core::removePost (uint64_t id) {
-    if (posts.find(id) == posts.end()) return;
-    posts.erase(id);
+    if (posts->find(id) == posts->end()) return;
+    posts->erase(id);
   }
 
   String Core::createPost (String params, Post post) {
@@ -265,15 +266,15 @@ namespace SSC {
       "    data: xhr.response," +
       "    params: Object.fromEntries(o)"
       "  };"
-      "  window._ipc.emit('" + event + "', detail);"
+      "  window._ipc.emit('data', detail);"
       "}"
     );
 
-    posts.insert_or_assign(id, post);
+    posts->insert_or_assign(id, post);
     return js;
   }
 
-  void Core::fsOpen (String seq, uint64_t id, String path, int flags, Cb cb) {
+  void Core::fsOpen (String seq, uint64_t id, String path, int flags, Cb cb) const {
     auto desc = descriptors[id] = new DescriptorContext;
     desc->id = id;
     desc->seq = seq;
@@ -315,7 +316,7 @@ namespace SSC {
     loopCheck();
   }
 
-  void Core::fsClose (String seq, uint64_t id, Cb cb) {
+  void Core::fsClose (String seq, uint64_t id, Cb cb) const {
     auto desc = descriptors[id];
     desc->seq = seq;
     desc->cb = cb;
@@ -368,7 +369,7 @@ namespace SSC {
     loopCheck();
   }
 
-  void Core::fsRead (String seq, uint64_t id, int len, int offset, Cb cb) {
+  void Core::fsRead (String seq, uint64_t id, int len, int offset, Cb cb) const {
     auto desc = descriptors[id];
 
     if (desc == nullptr) {
@@ -411,7 +412,7 @@ namespace SSC {
         return;
       }
 
-      auto msg = SSC::format(R"MSG({
+      auto headers = SSC::format(R"MSG({
         "Content-Type": "application/octet-stream",
         "Content-Size": "$i",
         "X-Method": "fsRead",
@@ -419,9 +420,9 @@ namespace SSC {
       })MSG", (int)req->result, std::to_string(desc->id));
 
       Post post;
-      post.body = req->bufs[0]->base;
-      post.length = req->bufs[0]->len;
-      post.headers = msg;
+      post.body = req->bufs[0].base;
+      post.length = (int) req->bufs[0].len;
+      post.headers = headers;
       
       desc->cb(desc->seq, "", post);
       uv_fs_req_cleanup(req);
@@ -444,7 +445,7 @@ namespace SSC {
     loopCheck();
   }
 
-  void Core::fsWrite (String seq, uint64_t id, String data, int64_t offset, Cb cb) {
+  void Core::fsWrite (String seq, uint64_t id, String data, int64_t offset, Cb cb) const  {
     auto desc = descriptors[id];
 
     if (desc == nullptr) {
@@ -472,7 +473,7 @@ namespace SSC {
     int err = uv_fs_write(uv_default_loop(), &req, desc->fd, &buf, 1, offset, [](uv_fs_t* req) {
       auto desc = static_cast<DescriptorContext*>(req->data);
 
-      auto msg = message: SSC::format(R"MSG({
+      auto msg = SSC::format(R"MSG({
         "value": {
           "data": {
             "id": "$S",
@@ -502,7 +503,7 @@ namespace SSC {
     loopCheck();
   }
 
-  void Core::fsStat (String seq, String path, Cb cb) {
+  void Core::fsStat (String seq, String path, Cb cb) const {
     uv_fs_t req;
     DescriptorContext* desc = new DescriptorContext;
     desc->seq = seq;
@@ -512,7 +513,7 @@ namespace SSC {
     int err = uv_fs_stat(loop, &req, (const char*) path.c_str(), [](uv_fs_t* req) {
       auto desc = static_cast<DescriptorContext*>(req->data);
 
-      auto msg = message: SSC::format(R"MSG({
+      auto msg = SSC::format(R"MSG({
         "value": {
           "data": {
             "id": "$S",
@@ -543,7 +544,7 @@ namespace SSC {
     loopCheck();
   }
 
-  void Core::fsUnlink (String seq, String path, Cb cb) {
+  void Core::fsUnlink (String seq, String path, Cb cb) const {
     uv_fs_t req;
     DescriptorContext* desc = new DescriptorContext;
     desc->seq = seq;
@@ -576,13 +577,13 @@ namespace SSC {
         }
       })MSG", String(uv_strerror(err)));
       
-      cb(seq, msg);
+      cb(seq, msg, Post{});
       return;
     }
     loopCheck();
   }
 
-  void Core::fsRename (String seq, String pathA, String pathB, Cb cb) {
+  void Core::fsRename (String seq, String pathA, String pathB, Cb cb) const {
     uv_fs_t req;
     DescriptorContext* desc = new DescriptorContext;
     desc->seq = seq;
@@ -622,7 +623,7 @@ namespace SSC {
     loopCheck();
   }
 
-  void Core::fsCopyFile (String seq, String pathA, String pathB, int flags, Cb cb) {
+  void Core::fsCopyFile (String seq, String pathA, String pathB, int flags, Cb cb) const {
     uv_fs_t req;
     DescriptorContext* desc = new DescriptorContext;
     desc->seq = seq;
@@ -661,7 +662,7 @@ namespace SSC {
     loopCheck();
   }
 
-  void Core::fsRmDir (String seq, String path, Cb cb) {
+  void Core::fsRmDir (String seq, String path, Cb cb) const {
     uv_fs_t req;
     DescriptorContext* desc = new DescriptorContext;
     desc->seq = seq;
@@ -700,7 +701,7 @@ namespace SSC {
     loopCheck();
   }
 
-  void Core::fsMkDir (String seq, String path int mode, Cb cb) {
+  void Core::fsMkDir (String seq, String path, int mode, Cb cb) const {
     uv_fs_t req;
     DescriptorContext* desc = new DescriptorContext;
     desc->seq = seq;
@@ -739,7 +740,7 @@ namespace SSC {
     loopCheck();
   }
 
-  void Core::fsReadDir (String seq, String path, Cb cb) {
+  void Core::fsReadDir (String seq, String path, Cb cb) const {
     DirectoryReader* ctx = new DirectoryReader;
     ctx->seq = seq;
     ctx->cb = cb;
@@ -747,7 +748,7 @@ namespace SSC {
     ctx->reqOpendir.data = ctx;
     ctx->reqReaddir.data = ctx;
 
-    int err = uv_fs_opendir(loop, &ctx->reqOpendir, (const char*) path.c_str(), Post{});
+    int err = uv_fs_opendir(loop, &ctx->reqOpendir, (const char*) path.c_str(), NULL);
 
     if (err) {
       auto msg = SSC::format(R"MSG({
@@ -793,7 +794,7 @@ namespace SSC {
         "value": {
           "data": "$S"
         }
-      })MSG", encodeURIComponent(value));
+      })MSG", encodeURIComponent(value.str()));
       
       ctx->cb(ctx->seq, msg, Post{});
 
@@ -819,7 +820,7 @@ namespace SSC {
     loopCheck();
   }
 
-  void Core::sendBufferSize (String seq, uint64_t clientId, int size, Cb cb) {
+  void Core::sendBufferSize (String seq, uint64_t clientId, int size, Cb cb) const {
     Client* client = clients[clientId];
 
     if (client == nullptr) {
@@ -862,11 +863,11 @@ namespace SSC {
     return;
   }
 
-  void Core::recvBufferSize (String seq, uint64_t clientId, int size, Cb cb) {
+  void Core::recvBufferSize (String seq, uint64_t clientId, int size, Cb cb) const {
     Client* client = clients[clientId];
 
     if (client == nullptr) {
-      autp msg = SSC::format(R"MSG({
+      auto msg = SSC::format(R"MSG({
         "client": "$S",
         "method": "Cb",
         "value": {
@@ -904,7 +905,7 @@ namespace SSC {
     return;
   }
 
-  void Core::tcpSend (uint64_t clientId, String message, Cb cb) {
+  void Core::tcpSend (uint64_t clientId, String message, Cb cb) const {
     Client* client = clients[clientId];
 
     if (client == nullptr) {
@@ -942,7 +943,7 @@ namespace SSC {
               "message": "Write error $S"
             }
           }
-        })MSG", std::to_string(ctx->clientId), uv_strerror(status));
+        })MSG", std::to_string(ctx->id), uv_strerror(status));
 
         ctx->cb("-1", msg, Post{});
         return;
@@ -957,7 +958,7 @@ namespace SSC {
     loopCheck();
   }
 
-  void Core::tcpConnect (String seq, uint64_t clientId, int port, String ip, Cb cb) {
+  void Core::tcpConnect (String seq, uint64_t clientId, int port, String ip, Cb cb) const {
     uv_connect_t connect;
 
     Client* client = clients[clientId] = new Client();
@@ -1028,7 +1029,7 @@ namespace SSC {
 
         Post post;
         post.body = buf->base;
-        post.length = buf->len;
+        post.length = (int) buf->len;
         post.headers = headers;
         
         client->cb("-1", "", post);
@@ -1067,7 +1068,7 @@ namespace SSC {
     loopCheck();
   }
 
-  void Core::tcpBind (String seq, uint64_t serverId, String ip, int port, Cb cb) {
+  void Core::tcpBind (String seq, uint64_t serverId, String ip, int port, Cb cb) const {
     loop = uv_default_loop();
 
     Server* server = servers[serverId] = new Server();
@@ -1177,7 +1178,7 @@ namespace SSC {
     loopCheck();
   }
 
-  void Core::tcpSetKeepAlive (String seq, uint64_t clientId, int timeout, Cb cb) {
+  void Core::tcpSetKeepAlive (String seq, uint64_t clientId, int timeout, Cb cb) const {
     Client* client = clients[clientId];
 
     if (client == nullptr) {
@@ -1209,7 +1210,7 @@ namespace SSC {
     client->cb(client->seq, msg, Post{});
   }
 
-  void Core::tcpReadStart (String seq, uint64_t clientId, Cb cb) {
+  void Core::tcpReadStart (String seq, uint64_t clientId, Cb cb) const {
     Client* client = clients[clientId];
 
     if (client == nullptr) {
@@ -1247,7 +1248,7 @@ namespace SSC {
         
         Post post;
         post.body = buf->base;
-        post.length = buf->len;
+        post.length = (int) buf->len;
         post.headers = headers;
 
         client->server->cb("-1", "", post);
@@ -1305,7 +1306,7 @@ namespace SSC {
     loopCheck();
   }
 
-  void Core::readStop (String seq, uint64_t clientId, Cb cb) {
+  void Core::readStop (String seq, uint64_t clientId, Cb cb) const {
     Client* client = clients[clientId];
 
     if (client == nullptr) {
@@ -1338,7 +1339,7 @@ namespace SSC {
     cb(seq, msg, Post{});
   }
 
- void Core::close (String seq, uint64_t clientId, Cb cb) {
+ void Core::close (String seq, uint64_t clientId, Cb cb) const {
     Client* client = clients[clientId];
 
     if (client == nullptr) {
@@ -1384,7 +1385,7 @@ namespace SSC {
     loopCheck();
   }
 
-  void Core::shutdown (String seq, uint64_t clientId, Cb cb) {
+  void Core::shutdown (String seq, uint64_t clientId, Cb cb) const {
     Client* client = clients[clientId];
 
     if (client == nullptr) {
@@ -1428,7 +1429,7 @@ namespace SSC {
             "status": "$i"
           }
         }
-      })MSG", status)
+      })MSG", status);
       
      client->cb(client->seq, msg, Post{});
      free(req);
@@ -1438,7 +1439,7 @@ namespace SSC {
     loopCheck();
   }
 
-  void Core::udpBind (String seq, uint64_t serverId, String ip, int port, Cb cb) {
+  void Core::udpBind (String seq, uint64_t serverId, String ip, int port, Cb cb) const {
     loop = uv_default_loop();
     Server* server = servers[serverId] = new Server();
     server->udp = new uv_udp_t;
@@ -1489,7 +1490,7 @@ namespace SSC {
     loopCheck();
   }
 
- void Core::udpSend (String seq, uint64_t clientId, String message, int offset, int len, int port, const char* ip, Cb cb) {
+ void Core::udpSend (String seq, uint64_t clientId, String message, int offset, int len, int port, const char* ip, Cb cb) const {
     Client* client = clients[clientId];
 
     if (client == nullptr) {
@@ -1558,14 +1559,14 @@ namespace SSC {
           }
         }
       })MSG", std::to_string(client->clientId), uv_strerror(err));
-      cleint->cb("-1", msg, Post{});
+      client->cb("-1", msg, Post{});
       return;
     }
    
     loopCheck();
   }
 
-  void Close::udpReadStart (String seq, uint64_t serverId, Cb cb) {
+  void Core::udpReadStart (String seq, uint64_t serverId, Cb cb) const {
     Server* server = servers[serverId];
 
     if (server == nullptr) {
@@ -1608,7 +1609,7 @@ namespace SSC {
 
         Post post;
         post.body = buf->base;
-        post.length = buf->len;
+        post.length = (int) buf->len;
         post.headers = headers;
 
         server->cb("-1", "", post);
@@ -1639,7 +1640,7 @@ namespace SSC {
     loopCheck();
   }
 
-  void Core::dnsLookup (String seq, String hostname, Cb cb) {
+  void Core::dnsLookup (String seq, String hostname, Cb cb) const {
     loop = uv_default_loop();
 
     auto ctxId = SSC::rand64();
@@ -1693,7 +1694,7 @@ namespace SSC {
     loopCheck();
   }
 
-  String Core::getNetworkInterfaces () {
+  String Core::getNetworkInterfaces () const {
     struct ifaddrs *interfaces = nullptr;
     struct ifaddrs *interface = nullptr;
     int success = getifaddrs(&interfaces);
