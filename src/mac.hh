@@ -1,5 +1,4 @@
 #include "common.hh"
-#include "apple.hh"
 #import <Cocoa/Cocoa.h>
 #import <Webkit/Webkit.h>
 #import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>

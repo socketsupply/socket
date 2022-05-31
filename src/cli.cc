@@ -627,7 +627,6 @@ int main (const int argc, const char* argv[]) {
     //
     fs::copy(trim(prefixFile("src/apple.mm")), pathToDist);
     fs::copy(trim(prefixFile("src/ios.mm")), pathToDist);
-    fs::copy(trim(prefixFile("src/apple.hh")), pathToDist);
     fs::copy(trim(prefixFile("src/common.hh")), pathToDist);
     fs::copy(trim(prefixFile("src/preload.hh")), pathToDist);
 
