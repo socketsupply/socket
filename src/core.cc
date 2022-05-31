@@ -247,7 +247,7 @@ namespace SSC {
     posts.erase(id);
   }
 
-  std::string Core::createPost (std::string params, const uv_buf_t* buf) {
+  std::string Core::createPost (std::string params, Post post) {
     uint64_t id = SSC::rand64();
     std::string sid = std::to_string(id);
 
@@ -264,7 +264,7 @@ namespace SSC {
       "}"
     );
 
-    posts.insert_or_assign(id, buf);
+    posts.insert_or_assign(id, post);
     return js;
   }
 
