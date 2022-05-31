@@ -36,7 +36,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 @property (strong, nonatomic) NSObject<OS_dispatch_queue>* monitorQueue;
 @property SSC::Core core;
 - (void) route: (std::string)msg buf: (char*)buf;
-- (void) resolve: (std::string)seq msg: (std::string)msg post: (SSC::Post)post;
+- (void) send: (std::string)seq msg: (std::string)msg post: (SSC::Post)post;
 @end
 
 @implementation NavigationDelegate
@@ -128,7 +128,10 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 // JavaScript environment so it can be used by the web app and the wasm layer.
 //
 @implementation AppDelegate
-- (void) resolve: (std::string)seq msg: (std::string)msg post: (SSC::Post)post {
+//
+// This method is for when we want to send solicited or non-solicited data to the webview.
+//
+- (void) send: (std::string)seq msg: (std::string)msg post: (SSC::Post)post {
   //
   // - If there is no sequence and there is a buffer, the source is a stream and it should
   // invoke the client to ask for it via an XHR, this will be intercepted by the scheme handler.
@@ -156,7 +159,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     
     NSData* data;
 
-    // if buf has a size, use it as the response instead...
+    // if post has a length, use the post's body as the response...
     if (post.length > 0) {
       data = [NSData dataWithBytes: post.body length: post.length];
     } else {
@@ -171,16 +174,17 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     return;
   }
 
-  msg = SSC::resolveToRenderProcess(seq, "0", SSC::encodeURIComponent(msg));
+  if (seq != "-1") { // this had a sequence, we need to try to resolve it.
+    msg = SSC::resolveToRenderProcess(seq, "0", SSC::encodeURIComponent(msg));
+  }
+
   NSString* script = [NSString stringWithUTF8String: msg.c_str()];
   [self.webview evaluateJavaScript: script completionHandler:nil];
 }
 
-- (void) emit: (std::string)event message: (std::string)message {
-  NSString* script = [NSString stringWithUTF8String: SSC::emitToRenderProcess(event, SSC::encodeURIComponent(message)).c_str()];
-  [self.webview evaluateJavaScript: script completionHandler:nil];
-}
-
+//
+// This method determines what method to dispatch based on the uri.
+//
 - (void) route: (std::string)msg buf: (char*)buf {
   using namespace SSC;
   Core core;
@@ -201,9 +205,9 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     auto path = cmd.get("path");
 
     dispatch_async(queue, ^{
-      core.fsRmDir(seq, path, [&](auto seq, auto msg, Post buf) {
+      core.fsRmDir(seq, path, [&](auto seq, auto msg, auto post) {
         dispatch_async(dispatch_get_main_queue(), ^{
-          [self resolve: seq msg: msg buf: buf];
+          [self send: seq msg: msg post: post];
         });
       });
     });
@@ -215,9 +219,9 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     auto flags = std::stoi(cmd.get("flags"));
 
     dispatch_async(queue, ^{
-      core.fsOpen(seq, cid, path, flags, [&](auto seq, auto msg, auto* buf) {
+      core.fsOpen(seq, cid, path, flags, [&](auto seq, auto msg, auto post) {
         dispatch_async(dispatch_get_main_queue(), ^{
-          [self resolve: seq msg: msg buf: buf];
+          [self send: seq msg: msg post: post];
         });
       });
     });
@@ -227,9 +231,9 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     auto id = std::stoll(cmd.get("id"));
 
     dispatch_async(queue, ^{
-      core.fsClose(seq, id, [&](auto seq, auto msg, auto* buf) {
+      core.fsClose(seq, id, [&](auto seq, auto msg, auto post) {
         dispatch_async(dispatch_get_main_queue(), ^{
-          [self resolve: seq msg: msg buf: buf];
+          [self send: seq msg: msg post: post];
         });
       });
     });
@@ -241,9 +245,9 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     auto offset = std::stoi(cmd.get("offset"));
 
     dispatch_async(queue, ^{
-      core.fsRead(seq, id, len, offset, [&](auto seq, auto msg, auto* buf) {
+      core.fsRead(seq, id, len, offset, [&](auto seq, auto msg, auto post) {
         dispatch_async(dispatch_get_main_queue(), ^{
-          [self resolve: seq msg: msg buf: buf];
+          [self send: seq msg: msg post: post];
         });
       });
     });
@@ -254,9 +258,9 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     auto offset = std::stoll(cmd.get("offset"));
 
     dispatch_async(queue, ^{
-      core.fsWrite(seq, id, buf, offset, [&](auto seq, auto msg, auto* buf) {
+      core.fsWrite(seq, id, buf, offset, [&](auto seq, auto msg, auto post) {
         dispatch_async(dispatch_get_main_queue(), ^{
-          [self resolve: seq msg: msg buf: buf];
+          [self send: seq msg: msg post: post];
         });
       });
     });
@@ -266,9 +270,9 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     auto path = cmd.get("path");
 
     dispatch_async(queue, ^{
-      core.fsStat(seq, path, [&](auto seq, auto msg, auto* buf) {
+      core.fsStat(seq, path, [&](auto seq, auto msg, auto post) {
         dispatch_async(dispatch_get_main_queue(), ^{
-          [self resolve: seq msg: msg buf: buf];
+          [self send: seq msg: msg post: post];
         });
       });
     });
@@ -278,9 +282,9 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
      auto path = cmd.get("path");
 
      dispatch_async(queue, ^{
-       core.fsUnlink(seq, path, [&](auto seq, auto msg, auto* buf) {
+       core.fsUnlink(seq, path, [&](auto seq, auto msg, auto post) {
          dispatch_async(dispatch_get_main_queue(), ^{
-           [self resolve: seq msg: msg buf: buf];
+           [self send: seq msg: msg post: post];
          });
        });
      });
@@ -291,9 +295,9 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     auto pathB = cmd.get("newPath");
 
     dispatch_async(queue, ^{
-      core.fsRename(seq, pathA, pathB, [&](auto seq, auto msg, auto* buf) {
+      core.fsRename(seq, pathA, pathB, [&](auto seq, auto msg, auto post) {
         dispatch_async(dispatch_get_main_queue(), ^{
-          [self resolve: seq msg: msg buf: buf];
+          [self send: seq msg: msg post: post];
         });
       });
     });
@@ -305,9 +309,9 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     auto flags = std::stoi(cmd.get("flags"));
 
     dispatch_async(queue, ^{
-      core.fsCopyFile(seq, pathA, pathB, flags, [&](auto seq, auto msg, auto* buf) {
+      core.fsCopyFile(seq, pathA, pathB, flags, [&](auto seq, auto msg, auto post) {
         dispatch_async(dispatch_get_main_queue(), ^{
-          [self resolve: seq msg: msg buf: buf];
+          [self send: seq msg: msg post: post];
         });
       });
     });
@@ -318,9 +322,9 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     auto mode = std::stoi(cmd.get("mode"));
     
     dispatch_async(queue, ^{
-      core.fsMkDir(seq, path, mode, [&](auto seq, auto msg, auto* buf) {
+      core.fsMkDir(seq, path, mode, [&](auto seq, auto msg, auto post) {
         dispatch_async(dispatch_get_main_queue(), ^{
-          [self resolve: seq msg: msg buf: buf];
+          [self send: seq msg: msg post: post];
         });
       });
     });
@@ -330,21 +334,24 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     auto path = cmd.get("path");
 
     dispatch_async(queue, ^{
-      core.fsReadDir(seq, path, [&](auto seq, auto msg, auto* buf) {
+      core.fsReadDir(seq, path, [&](auto seq, auto msg, auto post) {
         dispatch_async(dispatch_get_main_queue(), ^{
-          [self resolve: seq msg: msg buf: buf];
+          [self send: seq msg: msg post: post];
         });
       });
     });
   }
 
-  /* if (cmd.get("clientId").size() != 0) {
+  if (cmd.get("clientId").size() != 0) {
     try {
       clientId = std::stoll(cmd.get("clientId"));
     } catch (...) {
-      [self resolve: seq message: SSC::format(R"JSON({
-        "err": { "message": "invalid clientid" }
-      })JSON")];
+      auto msg = SSC::format(R"JSON({
+        "value": {
+          "err": { "message": "invalid clientid" }
+        }
+      })JSON");
+      [self send: seq msg: msg post: Post{}];
       return;
     }
   }
@@ -355,22 +362,27 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     Client* client = clients[clientId];
 
     if (client == nullptr) {
-      [self.core resolve: seq message: SSC::format(R"JSON({
-        "err": {
-          "message": "not connected"
+      auto msg = SSC::format(R"JSON({
+        "value": {
+          "err": {
+            "message": "not connected"
+          }
         }
-      })JSON")];
+      })JSON");
+      [self send: seq msg: msg post: Post{}];
     }
 
     PeerInfo info;
     info.init(client->tcp);
 
-    auto message = SSC::format(
+    auto msg = SSC::format(
       R"JSON({
-        "data": {
-          "ip": "$S",
-          "family": "$S",
-          "port": "$i"
+        "value": {
+          "data": {
+            "ip": "$S",
+            "family": "$S",
+            "port": "$i"
+          }
         }
       })JSON",
       clientId,
@@ -379,27 +391,39 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
       info.port
     );
 
-    [self resolve: seq message: message];
+    [self send: seq msg: msg post: Post{}];
     return;
   }
 
   if (cmd.name == "getNetworkInterfaces") {
-    [self.core resolve: seq message: [self.core getNetworkInterfaces]];
+    auto msg = self.core.getNetworkInterfaces();
+    [self send: seq msg: msg post: Post{} ];
     return;
   }
 
   if (cmd.name == "readStop") {
-    [self.core readStop: seq clientId: clientId];
+    auto clientId = std::stoll(cmd.get("clientId"));
+
+    dispatch_async(queue, ^{
+      core.readStop(seq, clientId, [&](auto seq, auto msg, auto post) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+          [self send: seq msg: msg post: post];
+        });
+      });
+    });
     return;
   }
 
   if (cmd.name == "shutdown") {
-    [self.core shutdown: seq clientId: clientId];
-    return;
-  }
+    auto clientId = std::stoll(cmd.get("clientId"));
 
-  if (cmd.name == "readStop") {
-    [self.core readStop: seq clientId: clientId];
+    dispatch_async(queue, ^{
+      core.shutdown(seq, clientId, [&](auto seq, auto msg, auto post) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+          [self send: seq msg: msg post: post];
+        });
+      });
+    });
     return;
   }
 
@@ -411,7 +435,15 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
       size = 0;
     }
 
-    [self.core sendBufferSize: seq clientId: clientId size: size];
+    auto clientId = std::stoll(cmd.get("clientId"));
+
+    dispatch_async(queue, ^{
+      core.sendBufferSize(seq, clientId, size, [&](auto seq, auto msg, auto post) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+          [self send: seq msg: msg post: post];
+        });
+      });
+    });
     return;
   }
 
@@ -423,12 +455,28 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
       size = 0;
     }
 
-    [self.core recvBufferSize: seq clientId: clientId size: size];
+    auto clientId = std::stoll(cmd.get("clientId"));
+
+    dispatch_async(queue, ^{
+      core.recvBufferSize(seq, clientId, size, [&](auto seq, auto msg, auto post) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+          [self send: seq msg: msg post: post];
+        });
+      });
+    });
     return;
   }
 
   if (cmd.name == "close") {
-    [self.core close: seq clientId: clientId];
+    auto clientId = std::stoll(cmd.get("clientId"));
+
+    dispatch_async(queue, ^{
+      core.close(seq, clientId, [&](auto seq, auto msg, auto post) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+          [self send: seq msg: msg post: post];
+        });
+      });
+    });
     return;
   }
 
@@ -436,127 +484,158 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     int offset = 0;
     int len = 0;
     int port = 0;
+    std::string err;
 
     try {
       offset = std::stoi(cmd.get("offset"));
     } catch (...) {
-      [self.core resolve: seq message: SSC::format(R"JSON({
-        "err": { "message": "invalid offset" }
-      })JSON")];
+      err = "invalid offset";
     }
 
     try {
       len = std::stoi(cmd.get("len"));
     } catch (...) {
-      [self.core resolve: seq message: SSC::format(R"JSON({
-        "err": { "message": "invalid length" }
-      })JSON")];
+      err = "invalid length";
     }
 
     try {
       port = std::stoi(cmd.get("port"));
     } catch (...) {
-      [self.core resolve: seq message: SSC::format(R"JSON({
-        "err": { "message": "invalid port" }
-      })JSON")];
+      err = "invalid port";
     }
 
-    [self.core udpSend: seq
-         clientId: clientId
-          message: cmd.get("data")
-           offset: offset
-              len: len
-             port: port
-               ip: (const char*) cmd.get("ip").c_str()
-    ];
+    if (err.size() > 0) {
+      auto msg = SSC::format(R"JSON({
+        "err": { "message": "$S" }
+      })JSON", err);
+      [self send: seq msg: err post: Post{}];
+      return;
+    }
+    
+    auto ip = cmd.get("ip");
+    auto clientId = std::stoll(cmd.get("clientId"));
+
+    dispatch_async(queue, ^{
+      core.udpSend(seq, clientId, buf, offset, len, port, (const char*) ip.c_str(), [&](auto seq, auto msg, auto post) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+          [self send: seq msg: msg post: post];
+        });
+      });
+    });
     return;
   }
 
-  if (cmd.name == "tpcSend") {
-    [self.core tcpSend: clientId
-          message: cmd.get("message")
-    ];
+  if (cmd.name == "tcpSend") {
+    auto clientId = std::stoll(cmd.get("clientId"));
+
+    dispatch_async(queue, ^{
+      core.tcpSend(clientId, buf, [&](auto seq, auto msg, auto post) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+          [self send: seq msg: msg post: post];
+        });
+      });
+    });
     return;
   }
 
-  if (cmd.name == "tpcConnect") {
+  if (cmd.name == "tcpConnect") {
     int port = 0;
 
     try {
       port = std::stoi(cmd.get("port"));
     } catch (...) {
-      [self.core resolve: seq message: SSC::format(R"JSON({
+      auto msg = SSC::format(R"JSON({
         "err": { "message": "invalid port" }
-      })JSON")];
+      })JSON");
+      [self send: seq msg: msg post: Post{}];
     }
 
-    [self.core tcpConnect: seq
-            clientId: clientId
-                port: port
-                  ip: cmd.get("ip")
-    ];
-    return;
-  }
-
-  if (cmd.name == "tpcSetKeepAlive") {
-    [self.core tcpSetKeepAlive: seq
-                 clientId: clientId
-                  timeout: std::stoi(cmd.get("timeout"))
-    ];
-    return;
-  }
-
-  if (cmd.name == "tpcSetTimeout") {
-    [self.core tcpSetTimeout: seq
-               clientId: clientId
-                timeout: std::stoi(cmd.get("timeout"))
-    ];
-    return;
-  }
-
-  if (cmd.name == "tpcBind") {
-    auto serverId = cmd.get("serverId");
+    auto clientId = std::stoll(cmd.get("clientId"));
     auto ip = cmd.get("ip");
-    auto port = cmd.get("port");
-    auto seq = cmd.get("seq");
+
+    dispatch_async(queue, ^{
+      core.tcpConnect(seq, clientId, port, ip, [&](auto seq, auto msg, auto post) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+          [self send: seq msg: msg post: post];
+        });
+      });
+    });
+    return;
+  }
+
+  if (cmd.name == "tcpSetKeepAlive") {
+    auto clientId = std::stoll(cmd.get("clientId"));
+    auto timeout = std::stoi(cmd.get("timeout"));
+
+    dispatch_async(queue, ^{
+      core.tcpSetKeepAlive(seq, clientId, timeout, [&](auto seq, auto msg, auto post) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+          [self send: seq msg: msg post: post];
+        });
+      });
+    });
+    return;
+  }
+
+  if (cmd.name == "tcpSetTimeout") {
+    auto clientId = std::stoll(cmd.get("clientId"));
+    auto timeout = std::stoi(cmd.get("timeout"));
+
+    dispatch_async(queue, ^{
+      core.tcpSetTimeout(seq, clientId, timeout, [&](auto seq, auto msg, auto post) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+          [self send: seq msg: msg post: post];
+        });
+      });
+    });
+    return;
+  }
+
+  if (cmd.name == "tcpBind") {
+    auto ip = cmd.get("ip");
+    std::string err;
 
     if (ip.size() == 0) {
       ip = "0.0.0.0";
     }
 
-    if (ip == "error") {
-      [self.core resolve: cmd.get("seq")
-            message: SSC::format(R"({
-              "err": { "message": "offline" }
-            })")
-      ];
+    if (cmd.get("port").size() == 0) {
+      auto msg = SSC::format(R"({
+        "value": {
+          "err": { "message": "port required" }
+        }
+      })");
+      
+      [self send: seq msg: msg post: Post{}];
       return;
     }
 
-    if (port.size() == 0) {
-      [self.core reject: cmd.get("seq")
-           message: SSC::format(R"({
-             "err": { "message": "port required" }
-           })")
-      ];
-      return;
-    }
+    auto serverId = std::stoll(cmd.get("serverId"));
+    auto port = std::stoi(cmd.get("port"));
 
-    [self.core tcpBind: seq
-         serverId: std::stoll(serverId)
-               ip: ip
-             port: std::stoi(port)
-    ];
+    dispatch_async(queue, ^{
+      core.tcpBind(seq, serverId, ip, port, [&](auto seq, auto msg, auto post) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+          [self send: seq msg: msg post: post];
+        });
+      });
+    });
 
     return;
   }
 
   if (cmd.name == "dnsLookup") {
-    [self.core dnsLookup: seq
-           hostname: cmd.get("hostname")
-    ];
+    auto hostname = cmd.get("hostname");
+
+    dispatch_async(queue, ^{
+      core.dnsLookup(seq, hostname, [&](auto seq, auto msg, auto post) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+          [self send: seq msg: msg post: post];
+        });
+      });
+    });
     return;
-  } */
+  }
 
   NSLog(@"%s", msg.c_str());
 }
@@ -610,11 +689,11 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
       }
     }
 
-    dispatch_async(dispatch_get_main_queue(), ^{
-      [self emit: name message: SSC::format(R"JSON({
-        "message": "$S"
-      })JSON", message)];
-    });
+//    dispatch_async(dispatch_get_main_queue(), ^{
+//      [self emit: name message: SSC::format(R"JSON({
+//        "message": "$S"
+//      })JSON", message)];
+//    });
   });
 
   nw_path_monitor_start(self.monitor);
@@ -637,9 +716,9 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   auto str = std::string(url.absoluteString.UTF8String);
 
   // TODO can this be escaped or is the url encoded property already?
-  [self emit: "protocol" message: SSC::format(R"JSON({
-    "url": "$S",
-  })JSON", str)];
+//  [self emit: "protocol" message: SSC::format(R"JSON({
+//    "url": "$S",
+//  })JSON", str)];
 
   return YES;
 }
