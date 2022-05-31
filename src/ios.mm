@@ -36,7 +36,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 @property (strong, nonatomic) NSObject<OS_dispatch_queue>* monitorQueue;
 @property SSC::Core core;
 - (void) route: (std::string)msg buf: (char*)buf;
-- (void) resolve: (std::string)seq msg: (std::string)msg post: (SSC::PostData)post;
+- (void) resolve: (std::string)seq msg: (std::string)msg post: (SSC::Post)post;
 @end
 
 @implementation NavigationDelegate
@@ -128,7 +128,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 // JavaScript environment so it can be used by the web app and the wasm layer.
 //
 @implementation AppDelegate
-- (void) resolve: (std::string)seq msg: (std::string)msg post: (SSC::PostData)post {
+- (void) resolve: (std::string)seq msg: (std::string)msg post: (SSC::Post)post {
   //
   // - If there is no sequence and there is a buffer, the source is a stream and it should
   // invoke the client to ask for it via an XHR, this will be intercepted by the scheme handler.
@@ -201,7 +201,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     auto path = cmd.get("path");
 
     dispatch_async(queue, ^{
-      core.fsRmDir(seq, path, [&](auto seq, auto msg, PostData buf) {
+      core.fsRmDir(seq, path, [&](auto seq, auto msg, Post buf) {
         dispatch_async(dispatch_get_main_queue(), ^{
           [self resolve: seq msg: msg buf: buf];
         });
