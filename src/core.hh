@@ -1,6 +1,3 @@
-#ifndef SSC_CORE_H
-#define SSC_CORE_H
-
 //
 // File and Network IO for all operating systems.
 //
@@ -32,11 +29,11 @@ namespace SSC {
 
   using Cb = std::function<void(String, String, Post)>;
   using Tasks = std::map<String, Task>;
-  using PostRequests = std::map<uint64_t, Post>;
+  using Posts = std::map<uint64_t, Post>;
  
   class Core {
     Tasks tasks;
-    PostRequests posts;
+    Posts posts;
 
     public:
       void fsOpen (String seq, uint64_t id, String path, int flags, Cb cb) const;
@@ -80,9 +77,9 @@ namespace SSC {
       void putPost (uint64_t id, Post p);
       String createPost (String params, Post post);
 
-      Core::Core() {
-        this->tasks = std::make_unique<Tasks>();
-        this->posts = std::make_unique<PostRequests>();
+      Core() {
+        this->tasks = std::unique_ptr<Tasks>(new Tasks());
+        this->posts = std::unique_ptr<Posts>(new Posts());
       }
   }
 
@@ -1739,4 +1736,3 @@ namespace SSC {
     return value.str();
   }
 } // SSC
-#endif
