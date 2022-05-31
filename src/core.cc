@@ -16,11 +16,16 @@
 #endif
 
 namespace SSC {
-  using PostData = uv_buf_t;
-  using callback = std::function<void(std::string, std::string, const PostData*)>;
-  using Tasks = std::map<std::string, Task>;
-  using PostRequests = std::map<uint64_t, const PostData*>;
+  struct PostData {
+    char* body;
+    int length;
+    std::map<std::string, std::string> headers;
+  };
 
+  using callback = std::function<void(std::string, std::string, PostData)>;
+  using Tasks = std::map<std::string, Task>;
+  using PostRequests = std::map<uint64_t, PostData>;
+ 
   class Core {
     Tasks tasks;
     PostRequests posts;
@@ -62,10 +67,10 @@ namespace SSC {
       bool hasTask (std::string id);
       void removeTask (std::string id);
       void putTask (std::string id, Task t);
-      const uv_buf_t* getPost (uint64_t id);
+      PostData getPost (uint64_t id);
       void removePost (uint64_t id);
       void putPost (uint64_t id, PostData p);
-      std::string createPost (std::string params, const uv_buf_t* buf);
+      std::string createPost (std::string params, PostData post);
 
       Core::Core() {
         this->tasks = std::make_unique<Tasks>();
@@ -241,7 +246,7 @@ namespace SSC {
     if (posts.find(id) == posts.end()) return;
     posts.erase(id);
   }
-                     
+
   std::string Core::createPost (std::string params, const uv_buf_t* buf) {
     uint64_t id = SSC::rand64();
     std::string sid = std::to_string(id);
@@ -283,7 +288,7 @@ namespace SSC {
         }
       })MSG", std::to_string(desc->id));
 
-      desc->cb(desc->seq, msg, nullptr);
+      desc->cb(desc->seq, msg, PostData{});
       uv_fs_req_cleanup(req);
     });
 
@@ -297,7 +302,7 @@ namespace SSC {
         }
       })MSG", std::to_string(id), std::string(uv_strerror(fd)));
 
-      cb(seq, msg, nullptr);
+      cb(seq, msg, PostData{});
       return;
     }
 
@@ -320,7 +325,7 @@ namespace SSC {
         }
       })MSG");
       
-      cb(seq, msg, nullptr);
+      cb(seq, msg, PostData{});
       return;
     }
 
@@ -337,7 +342,7 @@ namespace SSC {
         }
       })MSG", std::to_string(desc->id));
       
-      desc->cb(desc->seq, msg, nullptr);
+      desc->cb(desc->seq, msg, PostData{});
       uv_fs_req_cleanup(req);
     });
 
@@ -351,7 +356,7 @@ namespace SSC {
         }
       })MSG", std::to_string(id), std::string(uv_strerror(err)));
 
-      cb(seq, msg, nullptr);
+      cb(seq, msg, PostData{});
       return;
     }
 
@@ -371,7 +376,7 @@ namespace SSC {
         }
       })MSG");
 
-      cb(seq, msg, nullptr);
+      cb(seq, msg, PostData{});
       return;
     }
 
@@ -397,7 +402,7 @@ namespace SSC {
           }
         })MSG");
 
-        desc->cb(desc->seq, msg, nullptr);
+        desc->cb(desc->seq, msg, PostData{});
         return;
       }
 
@@ -408,7 +413,12 @@ namespace SSC {
         "X-Id": "$S"
       })MSG", (int)req->result, std::to_string(desc->id));
 
-      desc->cb(desc->seq, msg, req->bufs[0]);
+      PostData post;
+      post.body = req->bufs[0]->base;
+      post.length = req->bufs[0]->len;
+      post.headers = msg;
+      
+      desc->cb(desc->seq, "", post);
       uv_fs_req_cleanup(req);
     });
 
@@ -422,7 +432,7 @@ namespace SSC {
         }
       })MSG", std::to_string(id), std::string(uv_strerror(err)));
 
-      cb(seq, msg, nullptr);
+      cb(seq, msg, PostData{});
       return;
     }
 
@@ -442,7 +452,7 @@ namespace SSC {
         }
       })MSG");
 
-      cb(seq, msg, nullptr);
+      cb(seq, msg, PostData{});
       return;
     }
 
@@ -466,7 +476,7 @@ namespace SSC {
         }
       })MSG", std::to_string(desc->id), (int)req->result);
       
-      desc->cb(desc->seq, msg, nullptr);
+      desc->cb(desc->seq, msg, PostData{});
       uv_fs_req_cleanup(req);
     });
 
@@ -480,7 +490,7 @@ namespace SSC {
         }
       })MSG", std::to_string(id), std::string(uv_strerror(err)));
 
-      cb(seq, msg, nullptr);
+      cb(seq, msg, PostData{});
       return;
     }
 
@@ -506,7 +516,7 @@ namespace SSC {
         }
       })MSG", std::to_string(desc->id), (int)req->result);
       
-      desc->cb(desc->seq, msg, nullptr);
+      desc->cb(desc->seq, msg, PostData{});
 
       delete desc;
       uv_fs_req_cleanup(req);
@@ -521,7 +531,7 @@ namespace SSC {
         }
       })MSG", std::string(uv_strerror(err)));
 
-      cb(seq, msg, nullptr);
+      cb(seq, msg, PostData{});
       return;
     }
 
@@ -546,7 +556,7 @@ namespace SSC {
         }
       })MSG", std::to_string(desc->id), (int)req->result);
 
-      desc->cb(desc->seq, msg, nullptr);
+      desc->cb(desc->seq, msg, PostData{});
 
       delete desc;
       uv_fs_req_cleanup(req);
@@ -585,7 +595,7 @@ namespace SSC {
         }
       })MSG", std::to_string(desc->id), (int)req->result);
 
-      desc->cb(desc->seq, msg, nullptr);
+      desc->cb(desc->seq, msg, PostData{});
 
       delete desc;
       uv_fs_req_cleanup(req);
@@ -600,7 +610,7 @@ namespace SSC {
         }
       })MSG", std::string(uv_strerror(err)));
 
-      cb(seq, msg, nullptr);
+      cb(seq, msg, PostData{});
       return;
     }
 
@@ -626,7 +636,7 @@ namespace SSC {
         }
       })MSG", std::to_string(desc->id), (int)req->result);
       
-      desc->cb(desc->seq, msg, nullptr);
+      desc->cb(desc->seq, msg, PostData{});
       delete desc;
       uv_fs_req_cleanup(req);
     });
@@ -640,7 +650,7 @@ namespace SSC {
         }
       })MSG", std::string(uv_strerror(err)));
 
-      cb(seq, msg, nullptr);
+      cb(seq, msg, PostData{});
       return;
     }
     loopCheck();
@@ -665,7 +675,7 @@ namespace SSC {
         }
       })MSG", std::to_string(desc->id), (int)req->result);
       
-      desc->cb(desc->seq, msg, nullptr);
+      desc->cb(desc->seq, msg, PostData{});
       delete desc;
       uv_fs_req_cleanup(req);
     });
@@ -678,7 +688,7 @@ namespace SSC {
           }
         }
       })MSG", std::string(uv_strerror(err)));
-      cb(seq, msg, nullptr);
+      cb(seq, msg, PostData{});
       return;
     }
 
@@ -703,7 +713,7 @@ namespace SSC {
         }
       })MSG", std::to_string(desc->id), (int)req->result);
 
-      desc->cb(desc->seq, msg, nullptr);
+      desc->cb(desc->seq, msg, PostData{});
 
       delete desc;
       uv_fs_req_cleanup(req);
@@ -717,7 +727,7 @@ namespace SSC {
           }
         }
       })MSG", std::string(uv_strerror(err)));
-      cb(seq, msg, nullptr);
+      cb(seq, msg, PostData{});
       return;
     }
 
@@ -732,7 +742,7 @@ namespace SSC {
     ctx->reqOpendir.data = ctx;
     ctx->reqReaddir.data = ctx;
 
-    int err = uv_fs_opendir(loop, &ctx->reqOpendir, (const char*) path.c_str(), nullptr);
+    int err = uv_fs_opendir(loop, &ctx->reqOpendir, (const char*) path.c_str(), PostData{});
 
     if (err) {
       auto msg = SSC::format(R"MSG({
@@ -742,7 +752,7 @@ namespace SSC {
           }
         }
       })MSG", std::string(uv_strerror(err)));
-      cb(seq, msg, nullptr);
+      cb(seq, msg, PostData{});
       return;
     }
 
@@ -758,7 +768,7 @@ namespace SSC {
           }
         })MSG", std::string(uv_strerror((int)req->result)));
 
-        ctx->cb(ctx->seq, msg, nullptr);
+        ctx->cb(ctx->seq, msg, PostData{});
         return;
       }
 
@@ -780,7 +790,7 @@ namespace SSC {
         }
       })MSG", encodeURIComponent(value));
       
-      ctx->cb(ctx->seq, msg, nullptr);
+      ctx->cb(ctx->seq, msg, PostData{});
 
       uv_fs_t reqClosedir;
       uv_fs_closedir(loop, &reqClosedir, ctx->dir, [](uv_fs_t* req) {
@@ -797,7 +807,7 @@ namespace SSC {
         }
       })MSG", std::string(uv_strerror(err)));
       
-      cb(seq, msg, nullptr);
+      cb(seq, msg, PostData{});
       return;
     }
 
@@ -818,7 +828,7 @@ namespace SSC {
         }
       })MSG", std::to_string(clientId));
 
-      cb(seq, msg, nullptr);
+      cb(seq, msg, PostData{});
       return;
     }
 
@@ -843,7 +853,7 @@ namespace SSC {
       }
     })MSG", std::to_string(clientId), rSize);
 
-    cb(seq, msg, nullptr);
+    cb(seq, msg, PostData{});
     return;
   }
 
@@ -860,7 +870,7 @@ namespace SSC {
           }
         }
       })MSG", std::to_string(clientId));
-      cb(seq, msg, nullptr);
+      cb(seq, msg, PostData{});
       return;
     }
 
@@ -885,7 +895,7 @@ namespace SSC {
       }
     })MSG", std::to_string(clientId), rSize);
 
-    cb(seq, msg, nullptr);
+    cb(seq, msg, PostData{});
     return;
   }
 
@@ -903,7 +913,7 @@ namespace SSC {
         }
       })MSG", std::to_string(clientId));
       
-      cb("-1", msg, nullptr);
+      cb("-1", msg, PostData{});
       return;
     }
     
@@ -928,8 +938,8 @@ namespace SSC {
             }
           }
         })MSG", std::to_string(ctx->clientId), uv_strerror(status));
-        
-        ctx->cb("-1", msg, nullptr);
+
+        ctx->cb("-1", msg, PostData{});
         return;
       }
 
@@ -985,7 +995,7 @@ namespace SSC {
             }
           }
         })MSG", std::to_string(client->clientId), std::string(uv_strerror(status)));
-        client->cb("-1", msg, nullptr);
+        client->cb("-1", msg, PostData{});
         return;
       }
       
@@ -999,20 +1009,24 @@ namespace SSC {
         }
       })MSG", std::to_string(client->clientId));
 
-      client->cb("-1", msg, nullptr);
+      client->cb("-1", msg, PostData{});
 
       auto onRead = [](uv_stream_t* handle, ssize_t nread, const uv_buf_t* buf) {
         auto client = reinterpret_cast<Client*>(handle->data);
         auto clientId = std::to_string(client->clientId);
 
-        auto = SSC::format(R"MSG({
+        auto headers = SSC::format(R"MSG({
           "Content-Type": "application/octet-stream",
-          "Content-Length": "$i",
           "X-ClientId": "$S",
           "X-Method": "tcpConnect"
-        })MSG", buf->len, clientId);
+        })MSG", clientId);
 
-        client->cb("-1", msg, buf);
+        PostData post;
+        post.body = buf->base;
+        post.length = buf->len;
+        post.headers = headers;
+        
+        client->cb("-1", "", post);
       };
 
       auto allocate = [](uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf) {
@@ -1041,7 +1055,7 @@ namespace SSC {
           }
         }
       })MSG", std::to_string(clientId), std::string(uv_strerror(r)));
-      cb(seq, msg, nullptr);
+      cb(seq, msg, PostData{});
       return;
     }
 
@@ -1082,7 +1096,7 @@ namespace SSC {
             }
           }
         })MSG", std::to_string(server->serverId), uv_strerror(status));
-        server->cb("-1", msg, nullptr);
+        server->cb("-1", msg, PostData{});
         return;
       }
 
@@ -1120,7 +1134,7 @@ namespace SSC {
           info.port
         );
 
-        server->cb("-1", msg, nullptr);
+        server->cb("-1", msg, PostData{});
       } else {
         uv_close((uv_handle_t*) handle, [](uv_handle_t* handle) {
           free(handle);
@@ -1137,7 +1151,7 @@ namespace SSC {
           }
         }
       })MSG", std::to_string(server->serverId), std::string(uv_strerror(r)));
-      cb(seq, msg, nullptr);
+      cb(seq, msg, PostData{});
 
       NSLog(@"Listener failed: %s", uv_strerror(r));
       return;
@@ -1153,7 +1167,7 @@ namespace SSC {
       }
     })MSG", std::to_string(server->serverId), port, ip);
 
-    cb(seq, msg, nullptr);
+    cb(seq, msg, PostData{});
     // NSLog(@"Listener started");
     loopCheck();
   }
@@ -1171,7 +1185,7 @@ namespace SSC {
         }
       })MSG", std::to_string(clientId));
 
-      cb(seq, msg, nullptr);
+      cb(seq, msg, PostData{});
       return;
     }
 
@@ -1187,7 +1201,7 @@ namespace SSC {
       }
     })MSG");
     
-    client->cb(client->seq, msg, nullptr);
+    client->cb(client->seq, msg, PostData{});
   }
 
   void Core::tcpReadStart (std::string seq, uint64_t clientId, callback cb) {
@@ -1202,7 +1216,7 @@ namespace SSC {
           }
         }
       })MSG", std::to_string(clientId));
-      cb(seq, msg, nullptr);
+      cb(seq, msg, PostData{});
       return;
     }
 
@@ -1219,15 +1233,19 @@ namespace SSC {
         auto serverId = std::to_string(client->server->serverId);
         auto clientId = std::to_string(client->clientId);
 
-        auto msg = SSC::format(R"MSG({
+        auto headers = SSC::format(R"MSG({
           "Content-Type": "application/octet-stream",
-          "Content-Length": "$i",
           "X-ServerId": "$S",
           "X-ClientId": "$S",
           "X-Method": "tcpReadStart"
         })MSG", serverId, clientId);
+        
+        PostData post;
+        post.body = buf->base;
+        post.length = buf->len;
+        post.headers = headers;
 
-        client->server->cb("-1", msg, buf);
+        client->server->cb("-1", "", post);
         return;
       }
 
@@ -1239,7 +1257,7 @@ namespace SSC {
               "data": "$S"
             }
           })MSG", std::to_string(client->server->serverId), uv_err_name((int) nread));
-          client->server->cb("-1", msg, nullptr);
+          client->server->cb("-1", msg, PostData{});
         }
 
         uv_close((uv_handle_t*) client->tcp, [](uv_handle_t* handle) {
@@ -1267,7 +1285,7 @@ namespace SSC {
         }
       })MSG", std::to_string(client->server->serverId), uv_strerror(err));
 
-      cb(seq, msg, nullptr);
+      cb(seq, msg, PostData{});
       return;
     }
     
@@ -1277,7 +1295,7 @@ namespace SSC {
       }
     })MSG");
 
-    client->server->cb(client->server->seq, msg, nullptr);
+    client->server->cb(client->server->seq, msg, PostData{});
 
     loopCheck();
   }
@@ -1294,7 +1312,7 @@ namespace SSC {
           }
         }
       })MSG", std::to_string(clientId));
-      cb(seq, msg, nullptr);
+      cb(seq, msg, PostData{});
       return;
     }
 
@@ -1312,7 +1330,7 @@ namespace SSC {
       }
     })MSG", r);
     
-    cb(seq, msg, nullptr);
+    cb(seq, msg, PostData{});
   }
 
  void Core::close (std::string seq, uint64_t clientId, callback cb) {
@@ -1327,7 +1345,7 @@ namespace SSC {
           }
         }
       })MSG", std::to_string(clientId));
-      cb(seq, msg, nullptr);
+      cb(seq, msg, PostData{});
       return;
     }
 
@@ -1354,7 +1372,7 @@ namespace SSC {
         }
       })MSG");
       
-      client->cb(client->seq, msg, nullptr);
+      client->cb(client->seq, msg, PostData{});
       free(handle);
     });
 
@@ -1375,7 +1393,7 @@ namespace SSC {
         })MSG",
         std::to_string(clientId)
       );
-      cb(seq, msg, nullptr);
+      cb(seq, msg, PostData{});
       return;
     }
 
@@ -1407,7 +1425,7 @@ namespace SSC {
         }
       })MSG", status)
       
-     client->cb(client->seq, msg, nullptr);
+     client->cb(client->seq, msg, PostData{});
      free(req);
      free(req->handle);
     });
@@ -1438,7 +1456,7 @@ namespace SSC {
           }
         }
       })MSG", std::to_string(serverId), uv_strerror(err));
-      cb(seq, msg, nullptr);
+      cb(seq, msg, PostData{});
       return;
     }
 
@@ -1451,7 +1469,7 @@ namespace SSC {
           "data": "$S"
         }
       })MSG", std::to_string(server->serverId), uv_strerror(err));
-      server->cb("-1", msg, nullptr);
+      server->cb("-1", msg, PostData{});
       return;
     }
     
@@ -1461,7 +1479,7 @@ namespace SSC {
       }
     })MSG");
 
-    server->cb(server->seq, msg, nullptr);
+    server->cb(server->seq, msg, PostData{});
 
     loopCheck();
   }
@@ -1478,7 +1496,7 @@ namespace SSC {
           }
         }
       })MSG", std::to_string(clientId));
-      cb(seq, msg, nullptr);
+      cb(seq, msg, PostData{});
       return;
     }
 
@@ -1500,7 +1518,7 @@ namespace SSC {
           }
         }
       })MSG", std::to_string(clientId), uv_strerror(err));
-      cb(seq, msg, nullptr);
+      cb(seq, msg, PostData{});
       return;
     }
 
@@ -1520,7 +1538,7 @@ namespace SSC {
         }
       })MSG", std::to_string(client->clientId), status);
 
-      client->cb(client->seq, msg, nullptr);
+      client->cb(client->seq, msg, PostData{});
 
       delete[] req->bufs;
       free(req);
@@ -1535,7 +1553,7 @@ namespace SSC {
           }
         }
       })MSG", std::to_string(client->clientId), uv_strerror(err));
-      cleint->cb("-1", msg, nullptr);
+      cleint->cb("-1", msg, PostData{});
       return;
     }
    
@@ -1554,7 +1572,7 @@ namespace SSC {
           }
         }
       })MSG", std::to_string(serverId));
-      cb(seq, msg, nullptr);
+      cb(seq, msg, PostData{});
       return;
     }
 
@@ -1575,16 +1593,20 @@ namespace SSC {
         parseAddress((struct sockaddr *) addr, &port, ipbuf);
         std::string ip(ipbuf);
 
-        auto msg = SSC::format(R"MSG({
+        auto headers = SSC::format(R"MSG({
           "Content-Type": "application/octet-stream",
-          "Content-Length": "$i",
           "X-ServerId": "$S",
           "X-Method": "udpReadStart",
           "X-Port": "$i",
           "X-Ip": "$S"
-        })MSG", buf->len, std::to_string(server->serverId), port, ip);
+        })MSG", std::to_string(server->serverId), port, ip);
 
-        server->cb("-1", msg, buf);
+        PostData post;
+        post.body = buf->base;
+        post.length = buf->len;
+        post.headers = headers;
+
+        server->cb("-1", "", post);
         return;
       }
     });
@@ -1598,7 +1620,7 @@ namespace SSC {
           }
         }
       })MSG", std::to_string(serverId), uv_strerror(err));
-      cb(seq, msg, nullptr);
+      cb(seq, msg, PostData{});
       return;
     }
     
@@ -1608,7 +1630,7 @@ namespace SSC {
       }
     })MSG");
 
-    server->cb(server->seq, msg, nullptr);
+    server->cb(server->seq, msg, PostData{});
     loopCheck();
   }
 
@@ -1642,7 +1664,7 @@ namespace SSC {
             }
           }
         })MSG", std::string(uv_err_name((int) status)), std::string(uv_strerror(status)));
-        ctx->cb(ctx->seq, msg, nullptr);
+        ctx->cb(ctx->seq, msg, PostData{});
         contexts.erase(ctx->id);
         return;
       }
@@ -1657,7 +1679,7 @@ namespace SSC {
         }
       })MSG", ip);
 
-      ctx->cb(ctx->seq, msg, nullptr);
+      ctx->cb(ctx->seq, msg, PostData{});
       contexts.erase(ctx->id);
 
       uv_freeaddrinfo(res);

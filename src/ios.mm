@@ -36,6 +36,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 @property (strong, nonatomic) NSObject<OS_dispatch_queue>* monitorQueue;
 @property SSC::Core core;
 - (void) route: (std::string)msg buf: (char*)buf;
+- (void) resolve: (std::string)seq msg: (std::string)msg post: (SSC::PostData)post;
 @end
 
 @implementation NavigationDelegate
@@ -70,21 +71,31 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   SSC::Parse cmd(url);
 
   if (cmd.name == "post") {
+    uint64_t postId = std::stoll(cmd.get("id"));
+    auto post = core.getPost(postId);
+    NSMutableDictionary* httpHeaders;
+
+    if (post.length > 0) {
+      httpHeaders[@"Content-Length"] = @(post.length);
+      auto lines = SSC::splitByRegex(",", post.headers);
+
+      for (auto& line : lines) {
+        auto pair = SSC::splitByRegex(":", line);
+        httpHeaders[pair[0]] = @(pair[1]);
+      }
+    }
+
     NSHTTPURLResponse *httpResponse = [[NSHTTPURLResponse alloc]
       initWithURL: task.request.URL
        statusCode: 200
       HTTPVersion: @"HTTP/1.1"
-     headerFields: nil
+     headerFields: httpHeaders
     ];
 
     [task didReceiveResponse: httpResponse];
 
-    uint64_t postId = std::stoll(cmd.get("id"));
-
-    auto post = core.getPost(postId);
-
-    if (post != nullptr) {
-      NSString* str = [NSString stringWithUTF8String: post->base];
+    if (post.length > 0) {
+      NSString* str = [NSString stringWithUTF8String: post.body];
       NSData* data = [str dataUsingEncoding: NSUTF8StringEncoding];
       [task didReceiveData: data];
     }
@@ -117,15 +128,15 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 // JavaScript environment so it can be used by the web app and the wasm layer.
 //
 @implementation AppDelegate
-- (void) resolve: (std::string)seq msg: (std::string)msg buf: (const uv_buf_t*)buf {
+- (void) resolve: (std::string)seq msg: (std::string)msg post: (SSC::PostData)post {
   //
   // - If there is no sequence and there is a buffer, the source is a stream and it should
   // invoke the client to ask for it via an XHR, this will be intercepted by the scheme handler.
   // - On the next turn, it will have a sequence and a task that will respond to the XHR which
   // already has the meta data from the original request.
   //
-  if (seq == "-1" && buf->len > 0) {
-    auto src = self.core.createPost(msg, buf);
+  if (seq == "-1" && post.length > 0) {
+    auto src = self.core.createPost(msg, post);
     NSString* script = [NSString stringWithUTF8String: src.c_str()];
     [self.webview evaluateJavaScript: script completionHandler: nil];
     return;
@@ -142,12 +153,16 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     ];
 
     [task didReceiveResponse: httpResponse];
+    
+    NSData* data;
 
     // if buf has a size, use it as the response instead...
-    if (buf->len > 0) msg = std::string(buf->base, buf->len);
-
-    NSString* str = [NSString stringWithUTF8String: msg.c_str()];
-    NSData* data = [str dataUsingEncoding: NSUTF8StringEncoding];
+    if (post.length > 0) {
+      data = [NSData dataWithBytes: post.body length: post.length];
+    } else {
+      NSString* str = [NSString stringWithUTF8String: msg.c_str()];
+      data = [str dataUsingEncoding: NSUTF8StringEncoding];
+    }
 
     [task didReceiveData: data];
     [task didFinish];
@@ -186,7 +201,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     auto path = cmd.get("path");
 
     dispatch_async(queue, ^{
-      core.fsRmDir(seq, path, [&](auto seq, auto msg, auto* buf) {
+      core.fsRmDir(seq, path, [&](auto seq, auto msg, PostData buf) {
         dispatch_async(dispatch_get_main_queue(), ^{
           [self resolve: seq msg: msg buf: buf];
         });
