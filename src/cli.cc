@@ -1,6 +1,5 @@
 #include "common.hh"
 #include "cli.hh"
-#include "ios.hh"
 #include "process.hh"
 #include <filesystem>
 

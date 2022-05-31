@@ -308,7 +308,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 		29124C5C2761336B001832A0 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		29124C5E2761336B001832A0 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		294A3C4E2763E5EB007B5B9A /* ios.mm */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.objcpp; indentWidth = 2; path = ios.mm; sourceTree = "<group>"; tabWidth = 2; };
-		294A3C762763E930007B5B9A /* ios.hh */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = ios.hh; sourceTree = "<group>"; };
+		294A3C762763E930007B5B9A /* core.hh */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = core.hh; sourceTree = "<group>"; };
 		294A3C792763E9C6007B5B9A /* UIKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UIKit.framework; path = System/Library/Frameworks/UIKit.framework; sourceTree = SDKROOT; };
 		294A3C7B2763EA7F007B5B9A /* WebKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WebKit.framework; path = System/Library/Frameworks/WebKit.framework; sourceTree = SDKROOT; };
 		294A3C7F27649D27007B5B9A /* preload.hh */ = {isa = PBXFileReference; fileEncoding = 4; indentWidth = 2; lastKnownFileType = sourcecode.cpp.h; path = preload.hh; sourceTree = "<group>"; tabWidth = 2; };
@@ -353,7 +353,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 				294A3C7F27649D27007B5B9A /* preload.hh */,
 				29124C5B2761336B001832A0 /* LaunchScreen.storyboard */,
 				29124C5E2761336B001832A0 /* Info.plist */,
-				294A3C762763E930007B5B9A /* ios.hh */,
+				294A3C762763E930007B5B9A /* core.hh */,
 				294A3C4E2763E5EB007B5B9A /* ios.mm */,
 				29124C4B27613369001832A0 /* Products */,
 				294A3C782763E9C6007B5B9A /* Frameworks */,

@@ -10,7 +10,7 @@
     "src/win64/WebView2LoaderStatic.lib",
     "src/win64/WebView2EnvironmentOptions.h",
     "src/common.hh",
-    "src/ios.hh",
+    "src/core.hh",
     "src/ios.mm",
     "src/linux.hh",
     "src/mac.hh",
