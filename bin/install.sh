@@ -529,7 +529,7 @@ function compile_dependencies () {
 
   if [ "$platform_target" == "$PLATFORM_IOS" ]; then
     compile_libuv "$PLATFORM_IOS" "$@" || return $?
-    compile_libudx "$PLATFORM_IOS" "$@" || return $?
+    // compile_libudx "$PLATFORM_IOS" "$@" || return $?
   fi
 
   return 0
