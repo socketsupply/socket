@@ -692,8 +692,8 @@ int main (const int argc, const char* argv[]) {
       << "xcodebuild"
       << " build " << sup
       << " -configuration " << configuration
-      << " -scheme " << settings["name"]
-      << " -destination '" << destination << "'";
+      << " -scheme " << settings["name"];
+      // << " -destination '" << destination << "'";
 
     if (flagShouldPackage) {
       archiveCommand << " -archivePath build/" << settings["name"];

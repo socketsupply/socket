@@ -415,7 +415,7 @@ function compile_libuv () {
     for (( i = 0; i < ${#platforms[@]}; i++ )); do
       local platform="${platforms[$i]}"
       local arch="${archs[$i]}"
-      local host="${hosts[$i]}"
+      local host="x86_64"  #${hosts[$i]}"
 
       mkdir -p "$BUILD_PATH/$arch/"{lib,include}
 
