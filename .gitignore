@@ -1,9 +1,9 @@
 node_modules/
 /lib/uv
+/lib/libuv.a
 /lib/udx
 *.tmp
 .DS_Store
-!/lib/libuv.a
 /bin/build
 /bin/ssc.exe
 /bin/cli

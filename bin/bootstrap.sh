@@ -3,6 +3,7 @@ set -e;
 
 PREFIX=${PREFIX:-$HOME}
 PLATFORMPATH=""
+ASSETS_DIR=""
 SDKVERSION=""
 LIPO=""
 
@@ -52,28 +53,27 @@ function _build {
   echo "• Success"
 }
 
-function _install {
-  local libdir=""
-
+function _prepare {
   if [ ! -z "$LOCALAPPDATA" ]; then
-    libdir="$LOCALAPPDATA/Programs/socketsupply"
+    ASSETS_DIR="$LOCALAPPDATA/Programs/socketsupply"
   else
-    libdir="$PREFIX/.config/socket-sdk"
-    mkdir -p $libdir/{bin,lib,src}
+    ASSETS_DIR="$PREFIX/.config/socket-sdk"
   fi
 
-  echo "• Installing ssc"
-  rm -rf "$libdir"
+  echo "• Preparing directories"
+  rm -rf "$ASSETS_DIR"
+  mkdir -p $ASSETS_DIR/{lib,src,include}
+}
 
-  mkdir -p "$libdir"
-  cp -r `pwd`/src "$libdir"
+function _install {
+  cp -r `pwd`/src "$ASSETS_DIR"
 
-  echo "• Copying sources to $libdir/src"
+  echo "• Copying sources to $ASSETS_DIR/src"
 
   if [ -d `pwd`/lib ]; then
-    echo "• Copying libraries to $libdir/lib"
-    mkdir -p "$libdir/lib"
-    cp -r `pwd`/lib/* "$libdir/lib"
+    echo "• Copying libraries to $ASSETS_DIR/lib"
+    mkdir -p "$ASSETS_DIR/lib"
+    cp -r `pwd`/lib/* "$ASSETS_DIR/lib"
   fi
 
   echo "• Moving binary to $PREFIX/bin (prompting to copy file into directory)"
@@ -148,13 +148,16 @@ function _cross_compile_libuv {
   export IPHONEOS_DEPLOYMENT_TARGET="8.0"
   OLD_CWD=`pwd`
   BUILD_DIR=`pwd`/build
-  rm -rf `pwd`/lib/uv
+  LIB_DIR=`pwd`/lib
+  rm -rf $LIB_DIR/uv
 
   #
   # Shallow clone the main branch of libuv
   #
-  rm -rf $BUILD_DIR
-  git clone --depth=1 git@github.com:libuv/libuv.git build
+  if [ ! -d "$BUILD_DIR" ]; then
+  	git clone --depth=1 git@github.com:libuv/libuv.git build
+  fi
+
   cd $BUILD_DIR
   sh autogen.sh
 
@@ -187,11 +190,10 @@ function _cross_compile_libuv {
   #
   # Copy the build into the project and delete leftover build artifacts.
   #
-  DEST_DIR=$BUILD_DIR/../lib/uv
-  mkdir $DEST_DIR >/dev/null 2>&1;
+  mkdir -p $LIB_DIR/uv/include >/dev/null 2>&1;
 
-  cp libuv.a $DEST_DIR
-  cp -r $BUILD_DIR/include $DEST_DIR
+  cp libuv.a $LIB_DIR
+  cp -r $BUILD_DIR/include $ASSETS_DIR
 
   cd $OLD_CWD
 
@@ -208,10 +210,9 @@ function _cross_compile_libuv {
   unset IPHONEOS_DEPLOYMENT_TARGET
 }
 
-#
-# This will re-compile libuv for iOS (and the iOS simulator).
-#
-if [ "$2" == "ios" ]; then
+_prepare
+
+if [ "$1" == "ios" ]; then
   #
   # Attempts to find iphoneos tool, will fail fast if xcode not installed
   #
@@ -232,25 +233,8 @@ if [ "$2" == "ios" ]; then
   PLATFORMPATH="/Applications/Xcode.app/Contents/Developer/Platforms"
   _setSDKVersion iPhoneOS
   SDKMINVERSION="8.0"
-  
+
   _cross_compile_libuv
-fi
-
-#
-# Clone
-#
-if [ -z "$1" ]; then
-  TMPD=$(mktemp -d)
-
-  echo '• Cloning from Github'
-  git clone --depth=1 git@github.com:socketsupply/socket-sdk.git $TMPD > /dev/null 2>&1
-
-  if [ ! $? = 0 ]; then
-    echo "• Unable to clone"
-    exit 1
-  fi
-
-  cd $TMPD
 fi
 
 #
