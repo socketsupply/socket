@@ -692,7 +692,7 @@ int main (const int argc, const char* argv[]) {
       << "xcodebuild"
       << " build " << sup
       << " -configuration " << configuration
-      << " -scheme " << settings["name"];
+			<< " -scheme " << settings["name"];
       // << " -destination '" << destination << "'";
 
     if (flagShouldPackage) {
@@ -918,8 +918,8 @@ int main (const int argc, const char* argv[]) {
     << " " << flags
     << " " << extraFlags
     << " -o " << binaryPath.string()
-    << " -D_IOS=" << (flagBuildForIOS ? 1 : 0)
-    << " -D_ANDROID=" << (flagBuildForAndroid ? 1 : 0)
+    << " -DIOS=" << (flagBuildForIOS ? 1 : 0)
+    << " -DANDROID=" << (flagBuildForAndroid ? 1 : 0)
     << " -DDEBUG=" << (flagDebugMode ? 1 : 0)
     << " -DPORT=" << devPort
     << " -DSETTINGS=\"" << encodeURIComponent(_settings) << "\""

@@ -1,11 +1,11 @@
 #include <stdio.h>
 #include <iostream>
-#include "common.hh"
-#include "../test.h"
+#include <filesystem>
 
 int main () {
 
-   std::cout << std::string(greeting) << std::endl;
+   auto str = std::filesystem::path("usr");
+   std::cout << str.string() << std::endl;
 
    /* const std::string test="hello world";
    std::ostringstream result;

@@ -37,10 +37,10 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 @property (strong, nonatomic) WKUserContentController* content;
 @property nw_path_monitor_t monitor;
 @property (strong, nonatomic) NSObject<OS_dispatch_queue>* monitorQueue;
-@property (strong, nonatomic) CBCentralManager *bluetoothManager;
-@property (strong, nonatomic) CBPeripheral *bluetoothPeripheral;
-@property (strong, nonatomic) NSMutableArray *Peripherals;
-@property (strong, nonatomic) CBMutableCharacteristic channel;
+@property (strong, nonatomic) CBCentralManager* bluetoothManager;
+@property (strong, nonatomic) CBPeripheral* bluetoothPeripheral;
+@property (strong, nonatomic) NSMutableArray* Peripherals;
+@property (strong, nonatomic) CBMutableCharacteristic* channel;
 @property SSC::Core* core;
 - (void) route: (std::string)msg buf: (char*)buf;
 - (void) emit: (std::string)name msg: (std::string)msg;
@@ -144,6 +144,8 @@ void uncaughtExceptionHandler (NSException *exception) {
 // JavaScript environment so it can be used by the web app and the wasm layer.
 //
 @implementation AppDelegate
+CBCentralManager* bluetoothManager;
+
 - (void) emit: (std::string)name msg: (std::string)msg {
   msg = SSC::emitToRenderProcess(name, SSC::encodeURIComponent(msg));
   NSString* script = [NSString stringWithUTF8String: msg.c_str()];
@@ -765,7 +767,7 @@ void uncaughtExceptionHandler (NSException *exception) {
            value: channel
      permissions: CBAttributePermissionsReadable
   ];
-  
+
   service.characteristics = @[characteristic];
   
   [bluetoothManager addService:myService];

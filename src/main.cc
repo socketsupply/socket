@@ -154,7 +154,7 @@ MAIN {
     auto index = cmd.find_first_of('.');
     auto executable = cmd.substr(0, index);
     auto absPath = fs::path(cwd) / fs::path(executable);
-    cmd = pathToString(absPath) + cmd.substr(index);
+    cmd = absPath.string() + cmd.substr(index);
   }
 
   if (isCommandMode) {
@@ -460,7 +460,7 @@ MAIN {
       return;
     }
 
-    #if _IOS == 0 && _ANDROID == 0
+    #if IOS == 0 && ANDROID == 0
       if (cmd.name == "bootstrap") {
         auto src = appData[platform.os + "_bootstrap_src"].c_str();
         auto dest = appData[platform.os + "_bootstrap_dest"].c_str();

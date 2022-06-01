@@ -3,7 +3,7 @@
 
 #include "preload.hh"
 
-// TODO could be conditional based on not (_WIN32, _IOS, _ANDROID)
+// TODO could be conditional based on not (_WIN32, IOS, ANDROID)
 
 #include <string>
 #include <vector>
@@ -460,12 +460,7 @@ namespace SSC {
     #endif
   }
 
-  #if _IOS == 0
-    inline std::string pathToString(const fs::path &path) {
-      auto s = path.u8string();
-      return std::string(s.begin(), s.end());
-    }
-
+  #if IOS == 0 && !defined(TARGET_OS_SIMULATOR)
     inline String readFile(fs::path path) {
       std::ifstream stream(path.c_str());
       String content;
@@ -477,7 +472,7 @@ namespace SSC {
     }
 
     inline void writeFile (fs::path path, std::string s) {
-      std::ofstream stream(pathToString(path));
+      std::ofstream stream(path.string());
       stream << s;
       stream.close();
     }

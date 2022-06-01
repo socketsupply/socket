@@ -136,7 +136,7 @@ function _compile_libuv {
   ./configure --prefix="$BUILD_DIR/output/$target" --host=$hosttarget-apple-darwin
 
   make clean
-  make
+  make -j 8
   make install
   install_name_tool -id libuv.1.dylib $BUILD_DIR/output/$target/lib/libuv.1.dylib
 }
@@ -210,6 +210,9 @@ function _cross_compile_libuv {
   unset IPHONEOS_DEPLOYMENT_TARGET
 }
 
+#
+# Build and Install
+#
 _prepare
 
 if [ "$1" == "ios" ]; then
@@ -237,8 +240,5 @@ if [ "$1" == "ios" ]; then
   _cross_compile_libuv
 fi
 
-#
-# Build and Install
-#
 _build
 _install

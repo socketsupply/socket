@@ -783,7 +783,7 @@ namespace SSC {
 
     HICON icon = (HICON) LoadImageA(
       NULL,
-      pathToString(iconPath).c_str(),
+      iconPath.string().c_str(),
       IMAGE_ICON,
       GetSystemMetrics(SM_CXSMICON),
       GetSystemMetrics(SM_CXSMICON),
@@ -873,7 +873,7 @@ namespace SSC {
     wchar_t modulefile[MAX_PATH];
     GetModuleFileNameW(NULL, modulefile, MAX_PATH);
     auto file = (fs::path { modulefile }).filename();
-    auto filename = StringToWString(pathToString(file));
+    auto filename = StringToWString(file.string());
     auto path = StringToWString(getEnv("APPDATA"));
     auto options = Microsoft::WRL::Make<CoreWebView2EnvironmentOptions>();
     options->put_AdditionalBrowserArguments(L"--allow-file-access-from-files");
@@ -1121,7 +1121,7 @@ namespace SSC {
     wchar_t filename[MAX_PATH];
     GetModuleFileNameW(NULL, filename, MAX_PATH);
     auto path = fs::path { filename }.remove_filename();
-    return pathToString(path);
+    return path.string();
   }
 
   ScreenSize Window::getScreenSize () {

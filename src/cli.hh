@@ -892,18 +892,9 @@ constexpr auto gStoryboardLaunchScreen = R"XML(<?xml version="1.0" encoding="UTF
 )XML";
 
 constexpr auto gDefaultConfig = R"CONFIG(
-#   ___  ___  ___ ___  ___ ____ ___  ___
-#  /  / /__/ /__ /__/ /__/  /  /  / /__/
-# /__/ /    /__ /  \ /  /  /  /__/ /  \
-# ----------------------- Framework ---
 #
 # Default configuration file {{version}}. Delete what you don't need.
 #
-
-# This is made available for cross-compiling. It specifies the target
-# architecture, by default it detects the machine on which the cli is
-# executing.
-# arch: x86_64
 
 # Shell command to build an application.
 build: node scripts/build.js
