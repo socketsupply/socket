@@ -150,9 +150,9 @@ AppDelegate* delegate;
 
   auto characteristic = [[CBMutableCharacteristic alloc]
     initWithType: serviceUUID
-      properties: (CBCharacteristicPropertyRead | CBCharacteristicPropertyWrite)
+      properties: CBCharacteristicPropertyRead // (CBCharacteristicPropertyRead | CBCharacteristicPropertyWrite)
            value: channel
-     permissions: (CBAttributePermissionsReadable | CBAttributePermissionsWriteable)
+     permissions: CBAttributePermissionsReadable // (CBAttributePermissionsReadable | CBAttributePermissionsWriteable)
   ];
 
   service.characteristics = @[characteristic];

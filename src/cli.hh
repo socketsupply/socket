@@ -585,7 +585,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
     29124C7A2761336B001832A0 /* Debug */ = {
       isa = XCBuildConfiguration;
       buildSettings = {
-        ARCHS = "{{arch}}";
+        ARCHS = "$(ARCHS_STANDARD)";
         ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
         CODE_SIGN_ENTITLEMENTS = socket.entitlements;
@@ -594,7 +594,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
         CURRENT_PROJECT_VERSION = 1;
         DEVELOPMENT_TEAM = {{ios_team_id}};
         ENABLE_BITCODE = NO;
-        "EXCLUDED_ARCHS[sdk=*]" = "{{arch_exclude}}";
+        "EXCLUDED_ARCHS[sdk=iphonesimulator*]" = "{{arch}}";
         GENERATE_INFOPLIST_FILE = YES;
         HEADER_SEARCH_PATHS = "$(PROJECT_DIR)/include";
         INFOPLIST_FILE = Info.plist;
@@ -629,7 +629,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
     29124C7B2761336B001832A0 /* Release */ = {
       isa = XCBuildConfiguration;
       buildSettings = {
-        ARCHS = "{{arch}}";
+        ARCHS = "$(ARCHS_STANDARD)";
         ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
         CODE_SIGN_ENTITLEMENTS = socket.entitlements;
@@ -639,7 +639,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
         DEVELOPMENT_TEAM = {{ios_team_id}};
         ENABLE_BITCODE = NO;
         "EXCLUDED_ARCHS[sdk=*]" = "";
-        "EXCLUDED_ARCHS[sdk=iphonesimulator*]" = "{{arch_exclude}}";
+        "EXCLUDED_ARCHS[sdk=iphonesimulator*]" = "{{arch}}";
         GENERATE_INFOPLIST_FILE = YES;
         HEADER_SEARCH_PATHS = "$(PROJECT_DIR)/include";
         INFOPLIST_FILE = Info.plist;
@@ -781,6 +781,8 @@ constexpr auto gXcodeEntitlements = R"XML(<?xml version="1.0" encoding="UTF-8"?>
   <key>com.apple.security.network.server</key>
   <true/>
   <key>com.apple.security.network.client</key>
+  <true/>
+  <key>com.apple.security.device.bluetooth</key>
   <true/>
 </dict>
 </plist>)XML";
