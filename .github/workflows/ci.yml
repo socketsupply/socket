@@ -1,6 +1,11 @@
 name: Socket SDK CI
 
-on: [push]
+on:
+  push:
+    branches-ignore:
+      - 'dev'
+
+
 
 jobs:
   build_on_linux:
