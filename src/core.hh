@@ -1068,6 +1068,10 @@ namespace SSC {
     loopCheck();
   }
 
+  void Core::tcpSetTimeout (String seq, uint64_t clientId, int timeout, Cb cb) const {
+    // TODO impl
+  }
+
   void Core::tcpBind (String seq, uint64_t serverId, String ip, int port, Cb cb) const {
     loop = uv_default_loop();
 

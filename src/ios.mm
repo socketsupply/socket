@@ -26,19 +26,9 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     decisionHandler: (void (^)(WKNavigationActionPolicy)) decisionHandler;
 @end
 
-@interface BluetoothDelegate : NSObject<CBCentralManagerDelegate, CBPeripheralManagerDelegate>
-@property (strong, nonatomic) CBCentralManager* centralManager;
-@property (strong, nonatomic) CBPeripheralManager* peripheralManager;
-@property (strong, nonatomic) CBPeripheral* bluetoothPeripheral;
-@property (strong, nonatomic) NSMutableArray* peripherals;
-@property (strong, nonatomic) CBMutableCharacteristic* channel;
-- (void) initBluetooth: (std::string)channelUUID;
-@end
-
 @interface AppDelegate : UIResponder <UIApplicationDelegate, WKScriptMessageHandler>
 @property (strong, nonatomic) UIWindow* window;
 @property (strong, nonatomic) NavigationDelegate* navDelegate;
-@property (strong, nonatomic) BluetoothDelegate* bluetoothDelegate;
 @property (strong, nonatomic) WKWebView* webview;
 @property (strong, nonatomic) WKUserContentController* content;
 
@@ -48,6 +38,17 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 - (void) route: (std::string)msg buf: (char*)buf;
 - (void) emit: (std::string)name msg: (std::string)msg;
 - (void) send: (std::string)seq msg: (std::string)msg post: (SSC::Post)post;
+@end
+
+
+@interface BluetoothDelegate : NSObject<CBCentralManagerDelegate, CBPeripheralManagerDelegate>
+@property (strong, nonatomic) AppDelegate* delegate;
+@property (strong, nonatomic) CBCentralManager* centralManager;
+@property (strong, nonatomic) CBPeripheralManager* peripheralManager;
+@property (strong, nonatomic) CBPeripheral* bluetoothPeripheral;
+@property (strong, nonatomic) NSMutableArray* peripherals;
+@property (strong, nonatomic) CBMutableCharacteristic* channel;
+- (void) initBluetooth: (std::string)channelUUID;
 @end
 
 @implementation BluetoothDelegate
@@ -182,7 +183,10 @@ AppDelegate* delegate;
       return; // request was out of bounds
     }
 
-    NSData* data = ""; // TODO get some data and put it here
+    // TODO get the actual data
+    std::string s = "hello";
+    NSString* str = [NSString stringWithUTF8String: s.c_str()];
+    NSData* data = [str dataUsingEncoding: NSUTF8StringEncoding];
 
     request.value = data;
     [self.peripheralManager respondToRequest: request withResult: CBATTErrorSuccess];
@@ -190,7 +194,7 @@ AppDelegate* delegate;
 }
 
 - (void) peripheralManager: (CBPeripheralManager*)peripheral didReceiveWriteRequests: (NSArray<CBATTRequest*>*)requests {
-  for (CBATTRequest *request in requests) {
+  for (CBATTRequest* request in requests) {
     if (![request.characteristic.UUID isEqual: self.channel.UUID]) {
       [self.peripheralManager respondToRequest: request withResult: CBATTErrorWriteNotPermitted];
       continue; // request was invalid
@@ -199,14 +203,15 @@ AppDelegate* delegate;
     const void *_Nullable rawData = [request.value bytes];
     char *src = (char*) rawData;
 
-    // TODO do something with this data
-    [self.peripheralManager respondToRequest: request withResult: CBATTErrorSuccess];
-  }
-}
+    // TODO return as a proper buffer
+    auto msg = SSC::format(R"JSON({
+      "value": {
+        "data": { "message": "$S" }
+      }
+    })JSON", std::string(src));
 
-- (void) peripheralManagerDidStartAdvertising: (CBPeripheralManager*)peripheral error: (NSError*)error {
-  if (error) {
-    NSLog(@"Error advertising: %@", [error localizedDescription]);
+    [self.delegate emit: "bluetooth" msg: msg];
+    [self.peripheralManager respondToRequest: request withResult: CBATTErrorSuccess];
   }
 }
 
@@ -996,8 +1001,10 @@ void uncaughtExceptionHandler (NSException *exception) {
   [self.webview.configuration.preferences setValue: @YES forKey: @"allowFileAccessFromFileURLs"];
   [self.webview.configuration.preferences setValue: @YES forKey: @"javaScriptEnabled"];
 
-  self.bluetoothDelegate = [[BluetoothDelegate alloc] init];
-  [self.bluetoothDelegate initBluetooth: appData["network_id"]];
+  auto bluetoothDelegate = [BluetoothDelegate new];
+  bluetoothDelegate.delegate = self;
+
+  [bluetoothDelegate initBluetooth: appData["network_id"]];
 
   self.navDelegate = [[NavigationDelegate alloc] init];
   [self.webview setNavigationDelegate: self.navDelegate];
