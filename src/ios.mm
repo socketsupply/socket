@@ -26,25 +26,198 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     decisionHandler: (void (^)(WKNavigationActionPolicy)) decisionHandler;
 @end
 
-@interface AppDelegate : UIResponder <
-	UIApplicationDelegate,
-	WKScriptMessageHandler,
-	CBCentralManagerDelegate,
-	CBPeripheralDelegate>
+@interface BluetoothDelegate : NSObject<CBCentralManagerDelegate, CBPeripheralManagerDelegate>
+@property (strong, nonatomic) CBCentralManager* centralManager;
+@property (strong, nonatomic) CBPeripheralManager* peripheralManager;
+@property (strong, nonatomic) CBPeripheral* bluetoothPeripheral;
+@property (strong, nonatomic) NSMutableArray* peripherals;
+@property (strong, nonatomic) CBMutableCharacteristic* channel;
+- (void) initBluetooth: (std::string)channelUUID;
+@end
+
+@interface AppDelegate : UIResponder <UIApplicationDelegate, WKScriptMessageHandler>
 @property (strong, nonatomic) UIWindow* window;
 @property (strong, nonatomic) NavigationDelegate* navDelegate;
+@property (strong, nonatomic) BluetoothDelegate* bluetoothDelegate;
 @property (strong, nonatomic) WKWebView* webview;
 @property (strong, nonatomic) WKUserContentController* content;
+
 @property nw_path_monitor_t monitor;
 @property (strong, nonatomic) NSObject<OS_dispatch_queue>* monitorQueue;
-@property (strong, nonatomic) CBCentralManager* bluetoothManager;
-@property (strong, nonatomic) CBPeripheral* bluetoothPeripheral;
-@property (strong, nonatomic) NSMutableArray* Peripherals;
-@property (strong, nonatomic) CBMutableCharacteristic* channel;
 @property SSC::Core* core;
 - (void) route: (std::string)msg buf: (char*)buf;
 - (void) emit: (std::string)name msg: (std::string)msg;
 - (void) send: (std::string)seq msg: (std::string)msg post: (SSC::Post)post;
+@end
+
+@implementation BluetoothDelegate
+AppDelegate* delegate;
+
+- (void)disconnect {
+   NSLog(@"disconnect");
+   // throw new Error('disconnect is not supported on OS X!');
+}
+
+- (void)updateRssi {
+  NSLog(@"updateRssi");
+}
+
+- (void)startAdvertisingIBeacon:(NSData *)data {
+  NSLog(@"startAdvertisingIBeacon:%@", data);
+}
+
+- (void)stopAdvertising {
+  NSLog(@"stopAdvertising");
+
+  [self.peripheralManager stopAdvertising];
+}
+
+- (void)peripheralManagerDidUpdateState:(CBPeripheralManager *)peripheral {
+    NSString *string = @"Unknown state";
+
+    switch(peripheral.state) {
+        case CBManagerStatePoweredOff:
+            string = @"CoreBluetooth BLE hardware is powered off.";
+            break;
+
+        case CBManagerStatePoweredOn:
+            string = @"CoreBluetooth BLE hardware is powered on and ready.";
+            break;
+
+        case CBManagerStateUnauthorized:
+            string = @"CoreBluetooth BLE state is unauthorized.";
+            break;
+
+        case CBManagerStateUnknown:
+            string = @"CoreBluetooth BLE state is unknown.";
+            break;
+
+        case CBManagerStateUnsupported:
+            string = @"CoreBluetooth BLE hardware is unsupported on this platform.";
+            break;
+
+        default:
+            break;
+    }
+
+    NSLog(@"%@", string);
+}
+
+- (void)peripheralManagerDidStartAdvertising:(CBPeripheralManager *)peripheral error:(nullable NSError *)error {
+  NSLog(@"peripheralManagerDidStartAdvertising: %@", peripheral.description);
+  if (error) {
+      NSLog(@"Error advertising: %@", [error localizedDescription]);
+  }
+}
+
+- (void)peripheralManager:(CBPeripheralManager *)peripheral central:(CBCentral *)central didSubscribeToCharacteristic:(CBMutableCharacteristic *)characteristic {
+    NSLog(@"didSubscribeToCharacteristic");
+}
+
+- (void)peripheralManagerIsReadyToUpdateSubscribers:(CBPeripheralManager *)peripheral {
+    NSLog(@"peripheralManagerIsReadyToUpdateSubscribers");
+}
+
+- (void)peripheralManager:(CBPeripheralManager *)peripheral didPublishL2CAPChannel:(CBL2CAPPSM)PSM error:(nullable NSError *)error {
+    NSLog(@"didPublishL2CAPChannel");
+}
+
+- (void)peripheralManager:(CBPeripheralManager *)peripheral didUnpublishL2CAPChannel:(CBL2CAPPSM)PSM error:(nullable NSError *)error {
+    NSLog(@"didUnpublishL2CAPChannel");
+}
+
+- (void)peripheralManager:(CBPeripheralManager *)peripheral didOpenL2CAPChannel:(nullable CBL2CAPChannel *)channel error:(nullable NSError *)error {
+    NSLog(@"didOpenL2CAPChannel");
+}
+
+- (void)centralManagerDidUpdateState:(CBCentralManager *)central {}
+
+- (void) initBluetooth: (std::string)channelUUID {
+  self.centralManager = [[CBCentralManager alloc] initWithDelegate:self queue:nil];
+  self.peripheralManager = [[CBPeripheralManager alloc] initWithDelegate:self queue:nil options:nil];
+  // 
+  // This ID is the same for all apps build with socket-sdk, this scopes all messages.
+  // The channelUUID scopes the application and the developer can decide what to do after that.
+  // 
+  std::string SOCKET_CHANNEL = "56702D92-69F9-4400-BEF8-D5A89FCFD31D";
+
+  NSString* sid = [NSString stringWithUTF8String: SOCKET_CHANNEL.c_str()];
+  auto serviceUUID = [CBUUID UUIDWithString: sid]; // NSUUID 
+  auto service = [[CBMutableService alloc] initWithType: serviceUUID primary:YES];
+
+  NSData *channel = [NSData dataWithBytes: channelUUID.data() length: channelUUID.length()];
+
+  auto characteristic = [[CBMutableCharacteristic alloc]
+    initWithType: serviceUUID
+      properties: (CBCharacteristicPropertyRead | CBCharacteristicPropertyWrite)
+           value: channel
+     permissions: (CBAttributePermissionsReadable | CBAttributePermissionsWriteable)
+  ];
+
+  service.characteristics = @[characteristic];
+  
+  [self.peripheralManager addService: service];
+
+  //
+  // Start advertising that we have a service with the SOCKET_CHANNEL UUID
+  //
+  [self.peripheralManager startAdvertising: @{CBAdvertisementDataServiceUUIDsKey: @[service.UUID]}];
+
+  //
+  // Start scanning for services that have the SOCKET_CHANNEL UUID
+  //
+	NSMutableArray* services = [NSMutableArray array];
+  [services addObject: serviceUUID];
+
+  [self.centralManager
+    scanForPeripheralsWithServices: services
+    options: @{CBCentralManagerScanOptionAllowDuplicatesKey: @(YES)}    
+  ];
+}
+
+- (void) peripheralManager: (CBPeripheralManager*)peripheral didReceiveReadRequest: (CBATTRequest*)request {
+  if ([request.characteristic.UUID isEqual: self.channel.UUID]) {
+    if (request.offset > self.channel.value.length) {
+      [self.peripheralManager respondToRequest: request withResult: CBATTErrorInvalidOffset];
+      return; // request was out of bounds
+    }
+
+    NSData* data = ""; // TODO get some data and put it here
+
+    request.value = data;
+    [self.peripheralManager respondToRequest: request withResult: CBATTErrorSuccess];
+  }
+}
+
+- (void) peripheralManager: (CBPeripheralManager*)peripheral didReceiveWriteRequests: (NSArray<CBATTRequest*>*)requests {
+  for (CBATTRequest *request in requests) {
+    if (![request.characteristic.UUID isEqual: self.channel.UUID]) {
+      [self.peripheralManager respondToRequest: request withResult: CBATTErrorWriteNotPermitted];
+      continue; // request was invalid
+    }
+
+    const void *_Nullable rawData = [request.value bytes];
+    char *src = (char*) rawData;
+
+    // TODO do something with this data
+    [self.peripheralManager respondToRequest: request withResult: CBATTErrorSuccess];
+  }
+}
+
+- (void) peripheralManagerDidStartAdvertising: (CBPeripheralManager*)peripheral error: (NSError*)error {
+  if (error) {
+    NSLog(@"Error advertising: %@", [error localizedDescription]);
+  }
+}
+
+- (void) centralManager: (CBCentralManager*)central didDiscoverPeripheral: (CBPeripheral*)peripheral advertisementData: (NSDictionary*)advertisementData RSSI: (NSNumber*)RSSI {
+  NSLog(@"Discovered peripheral %@", peripheral.identifier.UUIDString);
+  NSLog(@"Discovered peripheral %@", peripheral.name);
+
+	[self.peripherals addObject: peripheral];
+	[central connectPeripheral: peripheral options: nil];
+}
+
 @end
 
 @implementation NavigationDelegate
@@ -144,7 +317,6 @@ void uncaughtExceptionHandler (NSException *exception) {
 // JavaScript environment so it can be used by the web app and the wasm layer.
 //
 @implementation AppDelegate
-CBCentralManager* bluetoothManager;
 
 - (void) emit: (std::string)name msg: (std::string)msg {
   msg = SSC::emitToRenderProcess(name, SSC::encodeURIComponent(msg));
@@ -713,7 +885,7 @@ CBCentralManager* bluetoothManager;
     }
 
     dispatch_async(dispatch_get_main_queue(), ^{
-      [self emit: name message: SSC::format(R"JSON({
+      [self emit: name msg: SSC::format(R"JSON({
         "message": "$S"
       })JSON", message)];
     });
@@ -739,97 +911,17 @@ CBCentralManager* bluetoothManager;
   auto str = std::string(url.absoluteString.UTF8String);
 
   // TODO can this be escaped or is the url encoded property already?
-  [self emit: "protocol" message: SSC::format(R"JSON({
+  [self emit: "protocol" msg: SSC::format(R"JSON({
     "url": "$S",
   })JSON", str)];
 
   return YES;
 }
 
-- (void) initBluetooth: (std::string)channelUUID {
-  bluetoothManager = [[CBCentralManager alloc] initWithDelegate:self queue:nil];
-
-  //
-  // This ID is the same for all apps build with socket-sdk, this scopes all messages.
-  // The channelUUID scopes the application and the developer can decide what to do after that.
-  // 
-  std::string SOCKET_CHANNEL = "56702D92-69F9-4400-BEF8-D5A89FCFD31D";
-
-  NSString* sid = [NSString stringWithUTF8String: SOCKET_CHANNEL.c_str()];
-  auto serviceUUID = [CBUUID UUIDWithString: sid]; 
-  auto service = [[CBMutableService alloc] initWithType: serviceUUID primary:YES];
-
-  NSData *channel = [NSData dataWithBytes: channelUUID.data() length: channelUUID.length()];
-
-  auto characteristic = [[CBMutableCharacteristic alloc]
-    initWithType: myCharacteristicUUID
-      properties: CBCharacteristicPropertyRead
-           value: channel
-     permissions: CBAttributePermissionsReadable
-  ];
-
-  service.characteristics = @[characteristic];
-  
-  [bluetoothManager addService:myService];
-  // Start advertising that we have a service with the SOCKET_CHANNEL UUID
-  [bluetoothManager startAdvertising: @{CBAdvertisementDataServiceUUIDsKey: @[service.UUID]}];
-
-  // Start scanning for services that have the SOCKET_CHANNEL UUID
-	NSMutableArray* services = [NSMutableArray array];
-  [services addObject: serviceUUID];
-
-  [bluetoothManager
-    scanForPeripheralsWithServices: services
-    options: @{CBCentralManagerScanOptionAllowDuplicatesKey: @(YES)}    
-  ];
-}
-
-- (void) peripheralManager: (CBPeripheralManager*)peripheral didReceiveReadRequest: (CBATTRequest*)request {
-  if ([request.characteristic.UUID isEqual: self.channel.UUID]) {
-    if (request.offset > self.channel.value.length) {
-      [bluetoothManager respondToRequest: request withResult: CBATTErrorInvalidOffset];
-      return; // request was out of bounds
-    }
-
-    NSData* data = ""; // TODO get some data and put it here
-
-    request.value = data;
-    [bluetoothManager respondToRequest: request withResult: CBATTErrorSuccess];
-  }
-}
-
-- (void) peripheralManager: (CBPeripheralManager*)peripheral didReceiveWriteRequests: (NSArray<CBATTRequest*>*)requests {
-  for (CBATTRequest *request in requests) {
-    if (![request.characteristic.UUID isEqual: self.channel.UUID]) {
-      [bluetoothManager respondToRequest: request withResult: CBATTErrorWriteNotPermitted];
-      continue; // request was invalid
-    }
-
-    NSData *data = [request.value reverse];
-    const void *_Nullable rawData = [data bytes];
-    char *src = (char*) rawData;
-
-    // TODO do something with this data
-    [bluetoothManager respondToRequest: request withResult: CBATTErrorSuccess];
-  }
-}
-
-- (void) peripheralManagerDidStartAdvertising: (CBPeripheralManager*)peripheral error: (NSError*)error {
-  if (error) {
-    NSLog(@"Error advertising: %@", [error localizedDescription]);
-  }
-}
-
-- (void) centralManager: (CBCentralManager*)central didDiscoverPeripheral: (CBPeripheral*)peripheral advertisementData: (NSDictionary*)advertisementData RSSI: (NSNumber*)RSSI {   
-  
-}
-
 - (BOOL) application: (UIApplication*)application didFinishLaunchingWithOptions: (NSDictionary*)launchOptions {
   using namespace SSC;
 
   NSSetUncaughtExceptionHandler(&uncaughtExceptionHandler);
-
-  [self initBluetooth];
 
   self.core = new Core;
 
@@ -903,6 +995,9 @@ CBCentralManager* bluetoothManager;
 
   [self.webview.configuration.preferences setValue: @YES forKey: @"allowFileAccessFromFileURLs"];
   [self.webview.configuration.preferences setValue: @YES forKey: @"javaScriptEnabled"];
+
+  self.bluetoothDelegate = [[BluetoothDelegate alloc] init];
+  [self.bluetoothDelegate initBluetooth: appData["network_id"]];
 
   self.navDelegate = [[NavigationDelegate alloc] init];
   [self.webview setNavigationDelegate: self.navDelegate];
