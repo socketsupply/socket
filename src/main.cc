@@ -200,9 +200,6 @@ MAIN {
     std::cerr << err << std::endl;
   };
 
-  // windowFactory.getOrCreateWindow(0);
-  windowFactory.getOrCreateWindow(1);
-
   //
   // # Main -> Render
   // Launch the main process and connect callbacks to the stdio and stderr pipes.
@@ -652,6 +649,9 @@ MAIN {
   });
 
   Window* defaultWindow = windowFactory.createDefaultWindow(WindowOptions { });
+
+  // windowFactory.getOrCreateWindow(0);
+  windowFactory.getOrCreateWindow(1);
 
   if (_port > 0 || cmd.size() == 0) {
     defaultWindow->setSystemMenu(EMPTY_SEQ, std::string(
