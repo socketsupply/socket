@@ -1229,6 +1229,10 @@ namespace SSC {
 
   void Window::eval (const std::string& s) {
     app.dispatch([&, this, s] {
+      if (this->webview == nullptr) {
+        return;
+      }
+
       this->webview->ExecuteScript(
         StringToWString(s).c_str(),
         nullptr

@@ -200,6 +200,9 @@ MAIN {
     std::cerr << err << std::endl;
   };
 
+  // windowFactory.getOrCreateWindow(0);
+  windowFactory.getOrCreateWindow(1);
+
   //
   // # Main -> Render
   // Launch the main process and connect callbacks to the stdio and stderr pipes.
