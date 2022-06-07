@@ -53,13 +53,13 @@ Function Build {
     if ($?) {
       # This command creates duplicates for me
       # $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + [System.Environment]::GetEnvironmentVariable("Path","User")
-      Write-Output "- $INSTALL_PATH has been added to the path"
+      Write-Output "- ssc has been added to the path. Close you terminal to apply the changes."
     } else {
       Write-Output "- Command ssc was added to the path for the current session."
       Write-Output ""
-      Write-Output " Consider adding '$INSTALL_PATH' to your path temporarily:"
+      Write-Output "Consider adding ssc to your path temporarily:"
       Write-Output " `$env:Path += "";$INSTALL_PATH"""
-      Write-Output " or permanently (needs administrator rights):"
+      Write-Output "or permanently (needs administrator rights):"
       Write-Output " Set-ItemProperty -Path 'Registry::HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Session Manager\Environment' -Name path -Value ""$INSTALL_PATH;`$env:Path"""
       Write-Output ""
     }
