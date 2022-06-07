@@ -12,8 +12,8 @@ $LIB_PATH = "$env:LOCALAPPDATA\Programs\socketsupply\lib"
 $WORKING_PATH = $OLD_CWD
 
 Write-Output ""
-Write-Output "Consider adding '$env:LOCALAPPDATA\Programs\socketsupply\src' to your path."
-Write-Output "You can add env vars with $ env:Path += ';$env:LOCALAPPDATA\Programs\socketsupply\src' ."
+Write-Output "Consider adding '$INSTALL_PATH' to your path permanently."
+Write-Output "You can add env vars temporarily in for other terminal sessions with `$env:Path += "";$INSTALL_PATH""."
 Write-Output ""
 
 if (Test-Path -Path $INSTALL_PATH) {
@@ -47,6 +47,26 @@ Function Build {
     Write-Output "- The build tool failed to compile. Here's what you can do..."
     Exit 1
   }
+
+  if ($env:Path -notlike "*$INSTALL_PATH*") {
+    $NEW_PATH = "$INSTALL_PATH;$env:Path"
+    $env:Path = $NEW_PATH
+    Write-Output "- Command ssc was added to the path for the current session."
+
+    # This is dangerous and works only if ran as administrator
+    #
+    # Set-ItemProperty -Path 'Registry::HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Session Manager\Environment' -Name path -Value "$env:Path;$INSTALL_PATH"
+    # if ($?) {
+    #   # Next line creates duplicates for me
+    #   $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + [System.Environment]::GetEnvironmentVariable("Path","User")
+    #   Write-Output "- $INSTALL_PATH has been added to the path"
+    # } else {
+    #   Write-Output ""
+    #   Write-Output "Consider running this script as administrator or adding '$INSTALL_PATH' to your path."
+    #   Write-Output "You can add env vars with `$env:Path += "";$INSTALL_PATH""."
+    #   Write-Output ""
+    # }
+  }
 }
 
 #
@@ -64,7 +84,7 @@ Function Install-Files {
 Write-Output "- Working path set to $WORKING_PATH."
 
 if ($args[0] -eq "update") {
-  $PACKAGE_VERSION='1.0.1133-prerelease'
+  $PACKAGE_VERSION = '1.0.1133-prerelease'
   $base = "$TEMP_PATH\WebView2\build\native"
 
   Write-Output "- Updating WebView2 header files..."
