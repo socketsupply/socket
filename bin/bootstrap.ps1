@@ -57,11 +57,10 @@ Function Build {
     } else {
       Write-Output "- Command ssc was added to the path for the current session."
       Write-Output ""
-      Write-Output "Consider adding '$INSTALL_PATH' to your path."
-      Write-Output "You can add env vars temporarily in for other terminal sessions with"
-      Write-Output "`$env:Path += "";$INSTALL_PATH"""
-      Write-Output "You can add ssc command to your registry buy running next command as administrator"
-      Write-Output "Set-ItemProperty -Path 'Registry::HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Session Manager\Environment' -Name path -Value ""$INSTALL_PATH;`$env:Path"""
+      Write-Output " Consider adding '$INSTALL_PATH' to your path temporarily:"
+      Write-Output " `$env:Path += "";$INSTALL_PATH"""
+      Write-Output " or permanently (needs administrator rights):"
+      Write-Output " Set-ItemProperty -Path 'Registry::HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Session Manager\Environment' -Name path -Value ""$INSTALL_PATH;`$env:Path"""
       Write-Output ""
     }
   }
