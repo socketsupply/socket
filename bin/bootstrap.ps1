@@ -53,7 +53,6 @@ Function Build {
     if ($?) {
       # This command creates duplicates for me
       # $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
-      $env:Path = [System.Environment]::GetEnvironmentVariable
       Write-Output "- ssc has been added to the path. Close you terminal to apply the changes."
     } else {
       Write-Output "- Command ssc has been added to the path for the current session."
