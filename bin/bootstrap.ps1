@@ -57,7 +57,7 @@ Function Build {
     } else {
       Write-Output "- Command ssc was added to the path for the current session."
       Write-Output ""
-      Write-Output "Consider adding ssc to your path temporarily:"
+      Write-Output "Consider adding ssc to your path for other sessions temporarily:"
       Write-Output " `$env:Path += "";$INSTALL_PATH"""
       Write-Output "or permanently (needs administrator rights):"
       Write-Output " Set-ItemProperty -Path 'Registry::HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Session Manager\Environment' -Name path -Value ""$INSTALL_PATH;`$env:Path"""
