@@ -84,7 +84,7 @@ Function Install-Files {
 Write-Output "- Working path set to $WORKING_PATH."
 
 if ($args[0] -eq "update") {
-  $PACKAGE_VERSION = '1.0.1133-prerelease'
+  $PACKAGE_VERSION = '1.0.1248-prerelease'
   $base = "$TEMP_PATH\WebView2\build\native"
 
   Write-Output "- Updating WebView2 header files..."
@@ -114,7 +114,7 @@ Write-Output "- Checking for compiler."
 
 if ($? -ne 1) {
   Write-Output "- Installing compiler..."
-  Invoke-WebRequest https://github.com/llvm/llvm-project/releases/download/llvmorg-12.0.0/LLVM-13.0.0-win64.exe -O llvm.exe
+  Invoke-WebRequest https://github.com/llvm/llvm-project/releases/download/llvmorg-14.0.0/LLVM-14.0.0-win64.exe -O llvm.exe
   llvm.exe
 }
 
