@@ -47,8 +47,11 @@ Function Build {
     $NEW_PATH = "$INSTALL_PATH;$env:Path"
     $env:Path = $NEW_PATH
 
+    $REGISTRY = "Registry::HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Session Manager\Environment"
+    $OLD_PATH = (Get-ItemProperty -Path "$REGISTRY" -Name PATH).Path
+    $NEW_PATH= $INSTALL_PATH + ";" + $OLD_PATH
     # This only works if ran as administrator
-    Set-ItemProperty -Path 'Registry::HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Session Manager\Environment' -Name path -Value $NEW_PATH -ErrorAction SilentlyContinue
+    Set-ItemProperty -Path "$REGISTRY" -Name path -Value $NEW_PATH -ErrorAction SilentlyContinue
 
     if ($?) {
       # This command creates duplicates for me
@@ -60,7 +63,7 @@ Function Build {
       Write-Output "Consider adding ssc to your path for other sessions temporarily:"
       Write-Output " `$env:Path += "";$INSTALL_PATH"""
       Write-Output "or add it to the registry to make it available globally (needs administrator rights):"
-      Write-Output " Set-ItemProperty -Path 'Registry::HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Session Manager\Environment' -Name path -Value ""$INSTALL_PATH;`$env:Path"""
+      Write-Output " Set-ItemProperty -Path ""$REGISTRY"" -Name path -Value ""$NEW_PATH"""
       Write-Output ""
     }
   }
