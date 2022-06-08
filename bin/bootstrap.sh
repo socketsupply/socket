@@ -136,7 +136,7 @@ function _compile_libuv {
   ./configure --prefix="$BUILD_DIR/output/$target" --host=$hosttarget-apple-darwin
 
   make clean
-  make -j 8
+  make -j 10
   make install
   install_name_tool -id libuv.1.dylib $BUILD_DIR/output/$target/lib/libuv.1.dylib
 }

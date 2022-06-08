@@ -232,6 +232,13 @@ int main (const int argc, const char* argv[]) {
     settings["arch"] = platform.arch;
   }
 
+  /* if (settings.count("exclude_arch") == 0 || settings["exclude_arch"] == "auto") {
+  	std::regex pattern(platform.arch);
+    std::string all = "arm64 x86_64 i386";
+    std::string replaced = std::regex_replace(all, pattern, "");
+    settings["arch_exclude"] = trim(replaced);
+  } */
+
   std::vector<std::string> required = {
     "name",
     "title",
@@ -652,6 +659,7 @@ int main (const int argc, const char* argv[]) {
         << "xcrun"
         << " simctl"
         << " list devicetypes";
+
       auto rListDeviceTypes = exec(listDeviceTypesCommand.str().c_str());
       if (rListDeviceTypes.exitCode != 0) {
         log("failed to list device types using \"" + listDeviceTypesCommand.str() + "\"");
@@ -692,8 +700,8 @@ int main (const int argc, const char* argv[]) {
       << "xcodebuild"
       << " build " << sup
       << " -configuration " << configuration
-			<< " -scheme " << settings["name"];
-      // << " -destination '" << destination << "'";
+			<< " -scheme " << settings["name"]
+      << " -destination '" << destination << "'";
 
     if (flagShouldPackage) {
       archiveCommand << " -archivePath build/" << settings["name"];
@@ -848,6 +856,8 @@ int main (const int argc, const char* argv[]) {
           << "xcrun"
           << " simctl install booted"
           << " " + settings["name"] + ".app";
+        log(installAppCommand.str());
+
         auto rInstallApp = exec(installAppCommand.str().c_str());
         if (rInstallApp.exitCode != 0) {
           log("unable to install the app into simulator VM with command: " + installAppCommand.str());
@@ -861,8 +871,10 @@ int main (const int argc, const char* argv[]) {
         std::stringstream launchAppCommand;
         launchAppCommand
           << "xcrun"
-          << " simctl launch booted"
+          << " simctl launch --console-pty booted"
           << " " + settings["bundle_identifier"];
+        log(launchAppCommand.str());
+
         auto rlaunchApp = exec(launchAppCommand.str().c_str());
         if (rlaunchApp.exitCode != 0) {
           log("unable to launch the app: " + launchAppCommand.str());

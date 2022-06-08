@@ -743,12 +743,13 @@ constexpr auto gXCodePlist = R"XML(<?xml version="1.0" encoding="UTF-8"?>
   <key>NSHighResolutionCapable</key>
   <true/>
   <key>NSLocalNetworkUsageDescription</key>
-  <string>The app would like to connect to peers</string>
+  <string>The app would like to discover and connect to peers</string>
+  <key>NSBluetoothAlwaysUsageDescription</key>
+  <string>The app would like to discover and connect to peers</string>
   <key>NSRequiresAquaSystemAppearance</key>
   <false/>
   <key>NSSupportsAutomaticGraphicsSwitching</key>
   <true/>
-
   <key>CFBundleURLTypes</key>
   <array>
     <dict>
