@@ -246,8 +246,7 @@ int main (const int argc, const char* argv[]) {
     "title",
     "executable",
     "output",
-    "version",
-    "arch"
+    "version"
   };
 
   for (const auto &str : required) {
