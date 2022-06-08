@@ -233,13 +233,13 @@ int main (const int argc, const char* argv[]) {
   }
 
 
-  if (settings.count("archs_excluded") == 0 || settings["archs_excluded"] == "auto") {
+  if (settings.count("exclude_arch") == 0 || settings["exclude_arch"] == "auto") {
     std::regex pattern(platform.arch);
     std::regex space_re(R"(\s+)");
     std::string all = "arm64 x86_64 i386";
     std::string replaced = std::regex_replace(all, pattern, "");
     replaced = std::regex_replace(replaced, space_re, " ");
-    settings["archs_excluded"] = trim(replaced);
+    settings["exclude_arch"] = trim(replaced);
   }
   std::vector<std::string> required = {
     "name",
