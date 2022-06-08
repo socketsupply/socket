@@ -228,7 +228,7 @@ int main (const int argc, const char* argv[]) {
     settings["revision"] = "1";
   }
   
-  std::vector<std::string> archs = {
+  const std::vector<std::string> archs = {
     "arm64",
     "x86_64",
     "i386"
