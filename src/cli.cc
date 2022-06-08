@@ -227,18 +227,40 @@ int main (const int argc, const char* argv[]) {
   if (settings.count("revision") == 0) {
     settings["revision"] = "1";
   }
+  
+  std::vector<std::string> archs = {
+    "arm64",
+    "x86_64",
+    "i386"
+  };
+
 
   if (settings.count("arch") == 0 || settings["arch"] == "auto") {
     settings["arch"] = platform.arch;
+    log("setting 'arch' to " + settings["arch"]);
+  } else { 
+    // arch typecheck
+    bool found = false;
+    for (auto const& arch : archs) {
+      if (settings["arch"] == arch) {
+        found = true;
+        break;
+      }
+    }
+    if (!found) {
+      log("arch type '" + settings["arch"] + "' not supported");
+      exit(1);
+    }
   }
 
-  if (platform.mac && (settings.count("exclude_arch") == 0 || settings["exclude_arch"] == "auto")) {
-    std::regex pattern(settings["arch"]);
-    std::regex space_re(R"(\s+)");
-    std::string all = "arm64 x86_64 i386";
-    std::string replaced = std::regex_replace(all, pattern, "");
-    replaced = std::regex_replace(replaced, space_re, " ");
-    settings["exclude_arch"] = trim(replaced);
+  // populate the exclude_arch list
+  if (platform.mac) {
+    settings["exclude_arch"] = "";
+    for (auto const& arch : archs) {
+      if (arch != settings["arch"]) {
+        settings["exclude_arch"] += settings["exclude_arch"].size() > 0 ? " " + arch : arch;
+      }
+    }
   }
 
   std::vector<std::string> required = {
