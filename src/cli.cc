@@ -228,10 +228,7 @@ int main (const int argc, const char* argv[]) {
     settings["revision"] = "1";
   }
 
-  if (settings.count("arch") == 0 || settings["arch"] == "auto") {
-    settings["arch"] = platform.arch;
-  }
-
+  settings["arch"] = platform.arch;
 
   if (settings.count("exclude_arch") == 0 || settings["exclude_arch"] == "auto") {
     std::regex pattern(platform.arch);
