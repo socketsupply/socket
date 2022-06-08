@@ -237,7 +237,6 @@ int main (const int argc, const char* argv[]) {
 
   if (settings.count("arch") == 0 || settings["arch"] == "auto") {
     settings["arch"] = platform.arch;
-    log("setting 'arch' to " + settings["arch"]);
   } else { 
     // arch typecheck
     bool found = false;
