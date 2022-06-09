@@ -26,9 +26,10 @@ flags:
 
   -ios        (iOS) build for iOS
   -android    (Android) build for Android
-  -simulator  build for simulator
+  -simulator  (iOS, Android) build for simulator
   --test=1    indicate test mode
   --port=n    load "http://localhost:n"
+  --target    print package path
 )TEXT";
 
 //
@@ -964,7 +965,7 @@ constexpr auto gStoryboardLaunchScreen = R"XML(<?xml version="1.0" encoding="UTF
 
 constexpr auto gDefaultConfig = R"CONFIG(
 #
-# Default configuration file {{version}}. Delete what you don't need.
+# Default configuration file {{ssc_version}}. Delete what you don't need.
 #
 
 # Shell command to build an application.
@@ -980,7 +981,7 @@ bundle_identifier_short: boop
 copyright: (c) Beep Boop Corp. 1985
 
 # Advanced Compiler Settings for debug purposes (ie C++ compiler -g, etc).
-debug_flags: -g -O3
+debug_flags: -g
 
 # A short description of the app
 description: A UI for the beep boop network
@@ -992,7 +993,7 @@ description: A UI for the beep boop network
 executable: boop
 
 # Advanced Compiler Settings (ie C++ compiler -02, -03, etc).
-flags: -O1
+flags: -O3
 
 # A boolean that determines if stdout and stderr should get forwarded
 # forward_console: true
@@ -1138,7 +1139,7 @@ width: 1024
 #
 
 # which device to target when building for the simulator
-# ios_simulator_device:
+# ios_simulator_device: iPhone 13
 
 # a protocol to register for addeventListener('protocol', e => {})
 # ios_protocol: hyper

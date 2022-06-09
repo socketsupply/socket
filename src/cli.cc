@@ -40,7 +40,7 @@ void init (Map attrs) {
   auto cwd = fs::current_path();
   fs::create_directories(cwd / "src");
   SSC::writeFile(cwd / "src" / "index.html", "<html>Hello, World</html>");
-  SSC::writeFile(cwd / "socket.config", tmpl(gDefaultConfig, attrs));
+  SSC::writeFile(cwd / "ssc.config", tmpl(gDefaultConfig, attrs));
 }
 
 static std::string getCxxFlags() {
@@ -50,7 +50,10 @@ static std::string getCxxFlags() {
 
 int main (const int argc, const char* argv[]) {
   Map attrs;
-  attrs["version"] = SSC::version;
+  attrs["ssc_version"] = SSC::version;
+  if (platform.os == "mac") {
+    attrs["node_platform"] = platform.arch == "arm64" ? "arm64" : "x64";
+  }
 
   if (argc < 2) {
     std::cout << tmpl(gHelpText, attrs) << std::endl;
@@ -98,33 +101,47 @@ int main (const int argc, const char* argv[]) {
     }
 
     if (is(arg, "-me")) {
-      flagEntitlements = true;
+      if (platform.os != "mac") {
+        log("-me is only supported on macOS. Ignoring.");
+      } else {
+        // TODO: we don't use it
+        flagEntitlements = true;
+      }
     }
 
     if (is(arg, "-mn")) {
-      flagShouldNotarize = true;
+      if (platform.os != "mac") {
+        log("-mn is only supported on macOS. Ignoring.");
+      } else {
+        flagShouldNotarize = true;
+      }
     }
 
     if (is(arg, "-mid")) {
-      std::string command = "system_profiler SPUSBDataType -json";
-      auto r = exec(command);
-
-      if (r.exitCode == 0) {
-        std::regex re(R"REGEX("(?:iPhone(?:(?:.|\n)*?)"serial_num"\s*:\s*"([^"]*))")REGEX");
-        std::smatch match;
-        std::string uuid;
-
-        if (!std::regex_search(r.output, match, re)) {
-          log("failed to extract device uuid using \"" + command + "\"");
-          log("Is the device plugged in?");
-          exit(1);
-        }
-
-        std::cout << std::string(match[1]).insert(8, 1, '-') << std::endl;
+      if (platform.os != "mac") {
+        log("-mid is only supported on macOS.");
         exit(0);
       } else {
-        log("Could not get device id. Is the device plugged in?");
-        exit(1);
+        std::string command = "system_profiler SPUSBDataType -json";
+        auto r = exec(command);
+
+        if (r.exitCode == 0) {
+          std::regex re(R"REGEX("(?:iPhone(?:(?:.|\n)*?)"serial_num"\s*:\s*"([^"]*))")REGEX");
+          std::smatch match;
+          std::string uuid;
+
+          if (!std::regex_search(r.output, match, re)) {
+            log("failed to extract device uuid using \"" + command + "\"");
+            log("Is the device plugged in?");
+            exit(1);
+          }
+
+          std::cout << std::string(match[1]).insert(8, 1, '-') << std::endl;
+          exit(0);
+        } else {
+          log("Could not get device id. Is the device plugged in?");
+          exit(1);
+        }
       }
     }
 
