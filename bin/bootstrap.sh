@@ -155,7 +155,7 @@ function _cross_compile_libuv {
   # Shallow clone the main branch of libuv
   #
   if [ ! -d "$BUILD_DIR" ]; then
-  	git clone --depth=1 git@github.com:libuv/libuv.git build
+  	git clone --depth=1 https://github.com/libuv/libuv.git build
   fi
 
   cd $BUILD_DIR
