@@ -207,7 +207,7 @@ jobs:
 
     - name: cross-compile
       run: |
-        ./bin/bootstrap.sh dev ios
+        ./bin/bootstrap.sh ios
 
     - name: Check if ssc has a correct version
       run: |
