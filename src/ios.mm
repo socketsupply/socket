@@ -135,7 +135,6 @@ AppDelegate* delegate;
   }
 }
 
-// - (void) peripheralManager:(CBPeripheralManager*)peripheral central:(CBCentral*)central didSubscribeToCharacteristic:(CBMutableCharacteristic *)characteristic {
 - (void) peripheralManager:(CBPeripheralManager*)peripheral central:(CBCentral*)central didSubscribeToCharacteristic:(CBCharacteristic*)characteristic {
   NSLog(@"BBB didSubscribeToCharacteristic");
 }
@@ -397,11 +396,17 @@ AppDelegate* delegate;
 
   NSLog(@"BBB didUpdateNotificationStateForCharacteristic: ");
 
+  const void *_Nullable rawData = [characteristic.value bytes];
+  char *src = (char*) rawData;
+
   auto msg = SSC::format(R"JSON({
     "value": {
-      "data": { "message": "didUpdateValueForCharacteristic" }
+      "data": {
+        "message": "didUpdateValueForCharacteristic",
+        "data": "$S"
+      }
     }
-  })JSON");
+  })JSON", std::string(src));
 
   [self.delegate emit: "local-network" msg: msg];
 }
