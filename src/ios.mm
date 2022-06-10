@@ -40,26 +40,29 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 - (void) send: (std::string)seq msg: (std::string)msg post: (SSC::Post)post;
 @end
 
-@interface BluetoothDelegate : NSObject<CBCentralManagerDelegate, CBPeripheralManagerDelegate>
+@interface BluetoothDelegate : NSObject<
+	CBCentralManagerDelegate,
+	CBPeripheralManagerDelegate,
+	CBPeripheralDelegate>
 @property (strong, nonatomic) AppDelegate* delegate;
 @property (strong, nonatomic) CBCentralManager* centralManager;
 @property (strong, nonatomic) CBPeripheralManager* peripheralManager;
 @property (strong, nonatomic) CBPeripheral* bluetoothPeripheral;
 @property (strong, nonatomic) NSMutableArray* peripherals;
-@property (strong, nonatomic) CBMutableCharacteristic* channel;
-@property std::string channelId;
+@property (strong, nonatomic) CBMutableService* service;
+@property (strong, nonatomic) CBMutableCharacteristic* characteristic;
+@property (strong, nonatomic) NSString* channelId;
+@property (strong, nonatomic) NSString* serviceId;
 - (void) initBluetooth;
 - (void) setChannelId: (std::string)str;
-- (std::string) getChannelId;
 @end
 
 @implementation BluetoothDelegate
 AppDelegate* delegate;
-std::string channelId = "5A028AB0-8423-4495-88FD-28E0318289AE";
 
 - (void)disconnect {
-   NSLog(@"BBB disconnect");
-   // throw new Error('disconnect is not supported on OS X!');
+  NSLog(@"BBB disconnect");
+  // throw new Error('disconnect is not supported on OS X!');
 }
 
 - (void)updateRssi {
@@ -77,35 +80,52 @@ std::string channelId = "5A028AB0-8423-4495-88FD-28E0318289AE";
 }
 
 - (void)peripheralManagerDidUpdateState:(CBPeripheralManager *)peripheral {
-    NSString *string = @"Unknown state";
+    std::string state = "Unknown state";
+    std::string message = "Unknown state";
 
-    NSLog(@"BBB didUpdateState");
-    switch(peripheral.state) {
-        case CBManagerStatePoweredOff:
-            string = @"CoreBluetooth BLE hardware is powered off.";
-            break;
+    switch (peripheral.state) {
+      case CBManagerStatePoweredOff:
+        message = "CoreBluetooth BLE hardware is powered off.";
+        state = "CBManagerStatePoweredOff";
+        break;
 
-        case CBManagerStatePoweredOn:
-            string = @"CoreBluetooth BLE hardware is powered on and ready.";
-            break;
+      case CBManagerStatePoweredOn:
+        [self startBluetooth];
+        message = "CoreBluetooth BLE hardware is powered on and ready.";
+        state = "CBManagerStatePoweredOn";
+        break;
 
-        case CBManagerStateUnauthorized:
-            string = @"CoreBluetooth BLE state is unauthorized.";
-            break;
+      case CBManagerStateUnauthorized:
+        message = "CoreBluetooth BLE state is unauthorized.";
+        state = "CBManagerStateUnauthorized";
+        break;
 
-        case CBManagerStateUnknown:
-            string = @"CoreBluetooth BLE state is unknown.";
-            break;
+      case CBManagerStateUnknown:
+        message = "CoreBluetooth BLE state is unknown.";
+        state = "CBManagerStateUnknown";
+        break;
 
-        case CBManagerStateUnsupported:
-            string = @"CoreBluetooth BLE hardware is unsupported on this platform.";
-            break;
+      case CBManagerStateUnsupported:
+        message = "CoreBluetooth BLE hardware is unsupported on this platform.";
+        state = "CBManagerStateUnsupported";
+        break;
 
-        default:
-            break;
+      default:
+        break;
     }
 
-    NSLog(@"%@", string);
+    auto msg = SSC::format(R"JSON({
+      "value": {
+        "data": {
+          "message": "$S"
+          "state": "$S"
+        }
+      }
+    })JSON", message, state);
+
+    [self.delegate emit: "local-network" msg: msg];
+
+    NSLog(@"%@", [NSString stringWithUTF8String: msg.c_str()]);
 }
 
 - (void) peripheralManagerDidStartAdvertising: (CBPeripheralManager*)peripheral error:(nullable NSError *)error {
@@ -115,12 +135,9 @@ std::string channelId = "5A028AB0-8423-4495-88FD-28E0318289AE";
   }
 }
 
-- (void) peripheralManager:(CBPeripheralManager*)peripheral central:(CBCentral*)central didSubscribeToCharacteristic:(CBMutableCharacteristic *)characteristic {
-    NSLog(@"BBB didSubscribeToCharacteristic");
-}
-
-- (void) peripheralManagerIsReadyToUpdateSubscribers:(CBPeripheralManager*)peripheral {
-    NSLog(@"BBB peripheralManagerIsReadyToUpdateSubscribers");
+// - (void) peripheralManager:(CBPeripheralManager*)peripheral central:(CBCentral*)central didSubscribeToCharacteristic:(CBMutableCharacteristic *)characteristic {
+- (void) peripheralManager:(CBPeripheralManager*)peripheral central:(CBCentral*)central didSubscribeToCharacteristic:(CBCharacteristic*)characteristic {
+  NSLog(@"BBB didSubscribeToCharacteristic");
 }
 
 - (void) peripheralManager:(CBPeripheralManager *)peripheral didPublishL2CAPChannel:(CBL2CAPPSM)PSM error:(nullable NSError *)error {
@@ -139,69 +156,79 @@ std::string channelId = "5A028AB0-8423-4495-88FD-28E0318289AE";
   NSLog(@"BBB centralManagerDidUpdateState");
 }
 
-- (std::string) getChannelId {
-  NSLog(@"BBB getChannel");
-  return self.channelId;
-}
-
 - (void) setChannelId: (std::string)str {
-  self.channelId = str;
+  _channelId = [NSString stringWithUTF8String: str.c_str()];
 }
 
 - (void) initBluetooth {
   _centralManager = [[CBCentralManager alloc] initWithDelegate: self queue: nil];
   _peripheralManager = [[CBPeripheralManager alloc] initWithDelegate: self queue: nil options: nil];
+  _peripherals = [NSMutableArray array];
+	_channelId = @"5A028AB0-8423-4495-88FD-28E0318289AE";
+	_serviceId = @"56702D92-69F9-4400-BEF8-D5A89FCFD31D";
 
-  NSLog(@"BBB initalizeBluetooth");
+  auto msg = SSC::format(R"JSON({
+    "value": {
+      "data": { "message": "initalized" }
+    }
+  })JSON");
+
+  [self.delegate emit: "local-network" msg: msg];
+}
+
+- (void) startBluetooth {
   // 
   // This ID is the same for all apps build with socket-sdk, this scopes all messages.
   // The channelUUID scopes the application and the developer can decide what to do after that.
-  // 
-  std::string SOCKET_CHANNEL = "56702D92-69F9-4400-BEF8-D5A89FCFD31D";
+  //
+  auto serviceUUID = [CBUUID UUIDWithString: _serviceId]; // NSUUID
+  _service = [[CBMutableService alloc] initWithType: serviceUUID primary: YES];
+  auto channelUUID = [CBUUID UUIDWithString: _channelId];
 
-  NSString* sid = [NSString stringWithUTF8String: SOCKET_CHANNEL.c_str()];
-  auto serviceUUID = [CBUUID UUIDWithString: sid]; // NSUUID 
-  auto service = [[CBMutableService alloc] initWithType: serviceUUID primary:YES];
+  // NSData *channel = [NSData dataWithBytes: channelId.data() length: channelId.length()];
+  // CBCharacteristicPropertyNotifiy
 
-  auto channelId = [self getChannelId];
-  NSData *channel = [NSData dataWithBytes: channelId.data() length: channelId.length()];
-
-  auto characteristic = [[CBMutableCharacteristic alloc]
-    initWithType: serviceUUID
-      properties: CBCharacteristicPropertyRead // (CBCharacteristicPropertyRead | CBCharacteristicPropertyWrite)
-           value: channel
+  _characteristic = [[CBMutableCharacteristic alloc]
+    initWithType: channelUUID
+      properties: CBCharacteristicPropertyNotify // (CBCharacteristicPropertyRead | CBCharacteristicPropertyWrite)
+           value: nil
      permissions: CBAttributePermissionsReadable // (CBAttributePermissionsReadable | CBAttributePermissionsWriteable)
   ];
 
-  service.characteristics = @[characteristic];
+  _service.characteristics = @[_characteristic];
 
-  [self.peripheralManager addService: service];
-  NSLog(@"BBB initalizeBluetooth:addService");
+  [_peripheralManager addService: _service];
 
   //
   // Start advertising that we have a service with the SOCKET_CHANNEL UUID
   //
-  [self.peripheralManager startAdvertising: @{CBAdvertisementDataServiceUUIDsKey: @[service.UUID]}];
+  [_peripheralManager startAdvertising: @{CBAdvertisementDataServiceUUIDsKey: @[_service.UUID]}];
 
-  NSLog(@"BBB initalizeBluetooth:startAdvertising");
   //
   // Start scanning for services that have the SOCKET_CHANNEL UUID
   //
 	NSMutableArray* services = [NSMutableArray array];
   [services addObject: serviceUUID];
 
-  [self.centralManager
+  [_centralManager
     scanForPeripheralsWithServices: services
-    options: @{CBCentralManagerScanOptionAllowDuplicatesKey: @(YES)}    
+    options: @{CBCentralManagerScanOptionAllowDuplicatesKey: @(NO)}    
   ];
-
-  NSLog(@"BBB initalizeBluetooth:done");
 }
 
 - (void) peripheralManager: (CBPeripheralManager*)peripheral didReceiveReadRequest: (CBATTRequest*)request {
   NSLog(@"BBB peripheralManager:didReceiveReadRequest:");
-  if ([request.characteristic.UUID isEqual: self.channel.UUID]) {
-    if (request.offset > self.channel.value.length) {
+
+  auto msg = SSC::format(R"JSON({
+    "value": {
+      "data": { "message": "didReceiveReadRequest" }
+    }
+  })JSON");
+
+  [self.delegate emit: "local-network" msg: msg];
+
+  if ([request.characteristic.UUID isEqual: _characteristic.UUID]) {
+    if (request.offset > _characteristic.value.length) {
       [self.peripheralManager respondToRequest: request withResult: CBATTErrorInvalidOffset];
       return; // request was out of bounds
     }
@@ -218,8 +245,17 @@ std::string channelId = "5A028AB0-8423-4495-88FD-28E0318289AE";
 
 - (void) peripheralManager: (CBPeripheralManager*)peripheral didReceiveWriteRequests: (NSArray<CBATTRequest*>*)requests {
   NSLog(@"BBB peripheralManager:didReceiveWriteRequests:");
+
+  auto msg = SSC::format(R"JSON({
+    "value": {
+      "data": { "message": "didReceiveWriteRequests" }
+    }
+  })JSON");
+
+  [self.delegate emit: "local-network" msg: msg];
+
   for (CBATTRequest* request in requests) {
-    if (![request.characteristic.UUID isEqual: self.channel.UUID]) {
+    if (![request.characteristic.UUID isEqual: _characteristic.UUID]) {
       [self.peripheralManager respondToRequest: request withResult: CBATTErrorWriteNotPermitted];
       continue; // request was invalid
     }
@@ -234,17 +270,162 @@ std::string channelId = "5A028AB0-8423-4495-88FD-28E0318289AE";
       }
     })JSON", std::string(src));
 
-    [self.delegate emit: "bluetooth" msg: msg];
-    [self.peripheralManager respondToRequest: request withResult: CBATTErrorSuccess];
+    [self.delegate emit: "local-network" msg: msg];
+    [self.peripheralManager respondToRequest: request withResult: CBATTErrorSuccess];  
   }
 }
 
-- (void) centralManager: (CBCentralManager*)central didDiscoverPeripheral: (CBPeripheral*)peripheral advertisementData: (NSDictionary*)advertisementData RSSI: (NSNumber*)RSSI {
-  NSLog(@"Discovered peripheral %@", peripheral.identifier.UUIDString);
-  NSLog(@"Discovered peripheral %@", peripheral.name);
+- (void) localNetworkSend:(std::string)str uuid:(std::string)uuid {
+  auto serviceUUID = [CBUUID UUIDWithString: _serviceId];
+  auto channelUUID = [CBUUID UUIDWithString: _channelId];
 
-	[self.peripherals addObject: peripheral];
-	[central connectPeripheral: peripheral options: nil];
+  for (CBPeripheral* peripheral in _peripherals) {
+    std::string id = [peripheral.identifier.UUIDString UTF8String];
+    if ((uuid.size() > 0) && id != uuid) continue;
+
+    // NSLog(@"<0<< %@ <<<", _channelId);
+
+    // NSInteger amountToSend = self.dataToSend.length - self.sendDataIndex;
+    // if (amountToSend > 128) amountToSend = 128;
+
+    NSData *data = [NSData dataWithBytes: str.data() length: str.size()];
+    auto didSend = [_peripheralManager updateValue: data
+                                 forCharacteristic: _characteristic
+                              onSubscribedCentrals: nil];
+
+    if (!didSend) {
+      NSLog(@"BBB did not send");
+      return;
+    }
+
+    NSLog(@"BBB did send");
+    // [central maximumUpdateValueLength];
+    // https://developer.apple.com/documentation/corebluetooth/cbperipheral/1620312-maximumwritevaluelengthfortype?language=objc
+
+    /* NSData *data = [NSData dataWithBytes: str.data() length: str.size()];
+    [peripheral writeValue: data
+         forCharacteristic: _characteristic
+                      type: CBCharacteristicWriteWithResponse
+    ]; */
+
+		/* for (CBService *service in peripheral.services) {
+      if (![service.UUID isEqual: serviceUUID]) continue;
+
+ 			NSLog(@"<1<< %@ <<<", _channelId);
+
+      for (CBCharacteristic *charac in service.characteristics) {
+        if (![charac.UUID isEqual: channelUUID]) continue;
+
+  			NSLog(@"<2<< %@ <<<", _channelId);
+
+        NSData *data = [NSData dataWithBytes: str.data() length: str.size()];
+        [peripheral writeValue: data
+             forCharacteristic: charac
+                          type: CBCharacteristicWriteWithResponse
+        ];
+      }
+		}*/
+  }
+}
+
+- (void)centralManager:(CBCentralManager*)central didConnectPeripheral:(CBPeripheral*)peripheral {
+  NSLog(@"BBB didConnectPeripheral");
+  peripheral.delegate = self;
+  [peripheral discoverServices: @[[CBUUID UUIDWithString:_serviceId]]];
+}
+
+- (void) centralManager: (CBCentralManager*)central didDiscoverPeripheral: (CBPeripheral*)peripheral advertisementData: (NSDictionary*)advertisementData RSSI: (NSNumber*)RSSI {
+  std::string uuid = [peripheral.identifier.UUIDString UTF8String];
+  std::string name = [peripheral.name UTF8String];
+
+  if([_peripherals containsObject:peripheral]) return;
+
+  auto msg = SSC::format(R"JSON({
+    "value": {
+      "data": {
+        "name": "$S",
+        "uuid": "$S"
+    }
+  })JSON", name, uuid);
+
+  [self.delegate emit: "local-network" msg: msg];
+
+  [_peripherals addObject: peripheral];
+  [central connectPeripheral: peripheral options: nil];
+}
+
+- (void) peripheral:(CBPeripheral *)peripheral didDiscoverServices:(NSError *)error {
+  NSLog(@"BBB didDiscoverServices:");
+
+  for (CBService *service in peripheral.services) {
+    [peripheral discoverCharacteristics:@[[CBUUID UUIDWithString: _channelId]] forService: service];
+  }
+}
+
+- (void) peripheral:(CBPeripheral*)peripheral didDiscoverCharacteristicsForService:(CBService*)service error:(NSError*)error {
+  if (error) {
+    NSLog(@"BBB ERROR didDiscoverCharacteristicsForService: %@", error);
+    return;
+  }
+
+  NSLog(@"BBB didDiscoverCharacteristicsForService:");
+  for (CBCharacteristic* characteristic in service.characteristics) {
+    if ([characteristic.UUID isEqual: [CBUUID UUIDWithString: _channelId]]) {
+      [peripheral setNotifyValue:YES forCharacteristic: characteristic];
+    }
+  }
+}
+
+- (void)peripheralManagerIsReadyToUpdateSubscribers:(CBPeripheralManager *)peripheral {
+  // [self sendData];
+
+  NSLog(@"BBB peripheralManagerIsReadyToUpdateSubscribers:");
+  auto msg = SSC::format(R"JSON({
+    "value": {
+      "data": { "message": "peripheralManagerIsReadyToUpdateSubscribers" }
+    }
+  })JSON");
+
+  [self.delegate emit: "local-network" msg: msg];
+}
+
+- (void) peripheral:(CBPeripheral*)peripheral didUpdateValueForCharacteristic:(CBCharacteristic*)characteristic error:(NSError*)error {
+  if (error) {
+    NSLog(@"ERROR didUpdateValueForCharacteristic: %@", error);
+    return;
+  }
+
+  NSLog(@"BBB didUpdateNotificationStateForCharacteristic: ");
+
+  auto msg = SSC::format(R"JSON({
+    "value": {
+      "data": { "message": "didUpdateValueForCharacteristic" }
+    }
+  })JSON");
+
+  [self.delegate emit: "local-network" msg: msg];
+}
+
+- (void)peripheral:(CBPeripheral*)peripheral didUpdateNotificationStateForCharacteristic:(CBCharacteristic*)characteristic error:(NSError*)error {
+  if (![characteristic.UUID isEqual:[CBUUID UUIDWithString: _channelId]]) {
+    return;
+  }
+
+  auto msg = SSC::format(R"JSON({
+    "value": {
+      "data": { "message": "didUpdateNotificationStateForCharacteristic" }
+    }
+  })JSON");
+
+  [self.delegate emit: "local-network" msg: msg];
+}
+
+- (void) centralManager:(CBCentralManager *)central didFailToConnectPeripheral:(CBPeripheral *)peripheral error:(nullable NSError *)error {
+  NSLog(@"BBB didFailToConnectPeripheral: %@", [peripheral.identifier UUIDString]);
+}
+
+- (void)centralManager:(CBCentralManager *)central didDisconnectPeripheral:(CBPeripheral *)peripheral error:(NSError *)error {
+  NSLog(@"BBB didDisconnectPeripheral: %@", [peripheral.identifier UUIDString]);
 }
 
 @end
@@ -422,6 +603,16 @@ BluetoothDelegate* bluetooth;
 
   if (cmd.name == "initBluetooth") {
     [bluetooth initBluetooth];
+    return;
+  }
+
+  if (cmd.name == "localNetworkSend") {
+    [bluetooth localNetworkSend: cmd.get("value") uuid: cmd.get("uuid")];
+    return;
+  }
+
+  if (cmd.name == "log") {
+    NSLog(@"%s", cmd.get("value").c_str());
     return;
   }
   
@@ -1032,9 +1223,8 @@ BluetoothDelegate* bluetooth;
   [self.webview.configuration.preferences setValue: @YES forKey: @"allowFileAccessFromFileURLs"];
   [self.webview.configuration.preferences setValue: @YES forKey: @"javaScriptEnabled"];
 
-  auto bluetoothDelegate = [BluetoothDelegate new];
-  bluetoothDelegate.delegate = self;
-  bluetooth = bluetoothDelegate;
+  bluetooth = [BluetoothDelegate new];
+  bluetooth.delegate = self;
 
   self.navDelegate = [[NavigationDelegate alloc] init];
   [self.webview setNavigationDelegate: self.navDelegate];

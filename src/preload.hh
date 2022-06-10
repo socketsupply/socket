@@ -110,7 +110,11 @@ constexpr auto gPreload = R"JS(
     }
   }
 
-  window.system.getConfig = async o => {
+  window.parent.log = s => {
+    window.external.invoke(`ipc://log?value=${s}`)
+  }
+
+  window.parent.getConfig = async o => {
     const config = await window._ipc.send('getConfig', o)
     if (!config || typeof config !== 'string') return null
 
