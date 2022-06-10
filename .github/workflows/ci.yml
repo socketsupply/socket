@@ -216,8 +216,8 @@ jobs:
     - name: install an example app
       run: |
         git config --global user.email "devops@optool.co"
-        git config --global user.name "Optool Github Actions"
-        git clone --depth 1 git@github.com:socketsupply/socket-sdk-examples.git
+        git config --global user.name "ssc Github Actions"
+        git clone --depth 1 https://github.com/socketsupply/socket-sdk-examples.git
         cd socket-sdk-examples/tonic-ios/ && npm install
       env:
         CI: true
