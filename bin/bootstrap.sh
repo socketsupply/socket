@@ -158,7 +158,7 @@ function _cross_compile_libuv {
   	git clone --depth=1 git@github.com:libuv/libuv.git build
   fi
 
-  cd $BUILD_DIR/libuv
+  cd $BUILD_DIR
   sh autogen.sh
 
   #
