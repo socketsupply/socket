@@ -594,7 +594,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
         CURRENT_PROJECT_VERSION = 1;
         DEVELOPMENT_TEAM = {{ios_team_id}};
         ENABLE_BITCODE = NO;
-        "EXCLUDED_ARCHS[sdk=iphonesimulator*]" = "{{exclude_arch}}";
+        "EXCLUDED_ARCHS[sdk=iphonesimulator*]" = "arm64";
         GENERATE_INFOPLIST_FILE = YES;
         HEADER_SEARCH_PATHS = "$(PROJECT_DIR)/include";
         INFOPLIST_FILE = Info.plist;
@@ -639,7 +639,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
         DEVELOPMENT_TEAM = {{ios_team_id}};
         ENABLE_BITCODE = NO;
         "EXCLUDED_ARCHS[sdk=*]" = "";
-        "EXCLUDED_ARCHS[sdk=iphonesimulator*]" = "{{exclude_arch}}";
+        "EXCLUDED_ARCHS[sdk=iphonesimulator*]" = "arm64";
         GENERATE_INFOPLIST_FILE = YES;
         HEADER_SEARCH_PATHS = "$(PROJECT_DIR)/include";
         INFOPLIST_FILE = Info.plist;

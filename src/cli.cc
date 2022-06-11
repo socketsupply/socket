@@ -252,16 +252,6 @@ int main (const int argc, const char* argv[]) {
     }
   }
 
-  // populate the exclude_arch list
-  if (platform.mac) {
-    settings["exclude_arch"] = "";
-    for (auto const& arch : archs) {
-      if (arch != settings["arch"]) {
-        settings["exclude_arch"] += settings["exclude_arch"].size() > 0 ? " " + arch : arch;
-      }
-    }
-  }
-
   std::vector<std::string> required = {
     "name",
     "title",

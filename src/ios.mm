@@ -156,7 +156,8 @@ AppDelegate* delegate;
 }
 
 - (void) setChannelId: (std::string)str {
-  _channelId = [NSString stringWithUTF8String: str.c_str()];
+  NSString* channelId = [NSString stringWithUTF8String: str.c_str()];
+  _channelId = channelId;
 }
 
 - (void) initBluetooth {
@@ -282,8 +283,6 @@ AppDelegate* delegate;
     std::string id = [peripheral.identifier.UUIDString UTF8String];
     if ((uuid.size() > 0) && id != uuid) continue;
 
-    // NSLog(@"<0<< %@ <<<", _channelId);
-
     // NSInteger amountToSend = self.dataToSend.length - self.sendDataIndex;
     // if (amountToSend > 128) amountToSend = 128;
 
@@ -298,32 +297,6 @@ AppDelegate* delegate;
     }
 
     NSLog(@"BBB did send");
-    // [central maximumUpdateValueLength];
-    // https://developer.apple.com/documentation/corebluetooth/cbperipheral/1620312-maximumwritevaluelengthfortype?language=objc
-
-    /* NSData *data = [NSData dataWithBytes: str.data() length: str.size()];
-    [peripheral writeValue: data
-         forCharacteristic: _characteristic
-                      type: CBCharacteristicWriteWithResponse
-    ]; */
-
-		/* for (CBService *service in peripheral.services) {
-      if (![service.UUID isEqual: serviceUUID]) continue;
-
- 			NSLog(@"<1<< %@ <<<", _channelId);
-
-      for (CBCharacteristic *charac in service.characteristics) {
-        if (![charac.UUID isEqual: channelUUID]) continue;
-
-  			NSLog(@"<2<< %@ <<<", _channelId);
-
-        NSData *data = [NSData dataWithBytes: str.data() length: str.size()];
-        [peripheral writeValue: data
-             forCharacteristic: charac
-                          type: CBCharacteristicWriteWithResponse
-        ];
-      }
-		}*/
   }
 }
 
@@ -343,7 +316,9 @@ AppDelegate* delegate;
     "value": {
       "data": {
         "name": "$S",
-        "uuid": "$S"
+        "uuid": "$S",
+        "event": "discovery"
+      }
     }
   })JSON", name, uuid);
 
@@ -606,7 +581,7 @@ BluetoothDelegate* bluetooth;
   auto seq = cmd.get("seq");
   uint64_t clientId = 0;
 
-  if (cmd.name == "initBluetooth") {
+  if (cmd.name == "localNetworkInit") {
     [bluetooth initBluetooth];
     return;
   }
