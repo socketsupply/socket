@@ -1,6 +1,7 @@
 #include "common.hh"
 #import <Cocoa/Cocoa.h>
 #import <Webkit/Webkit.h>
+#import <CoreBluetooth/CoreBluetooth.h>
 #import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
 #include <objc/objc-runtime.h>
 

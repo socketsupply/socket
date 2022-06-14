@@ -1,5 +1,9 @@
 #ifndef PRELOAD_HH
 #define PRELOAD_HH
+//
+// This file contains JavaScipt that are injected
+// into the webview before any user code is executed.
+//
 
 constexpr auto gPreload = R"JS(
   const IPC = window._ipc = { nextSeq: 1, streams: {} }
@@ -227,4 +231,3 @@ constexpr auto gPreloadMobile = R"JS(
 )JS";
 
 #endif
-

@@ -1,5 +1,6 @@
-#import <Webkit/Webkit.h>
 #import <UIKit/UIKit.h>
+#import <Webkit/Webkit.h>
+#import <CoreBluetooth/CoreBluetooth.h>
 #import "core.hh"
 
 #include <_types/_uint64_t.h>
@@ -19,8 +20,20 @@ dispatch_queue_attr_t qos = dispatch_queue_attr_make_with_qos_class(
 
 static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
+@interface WV : WKWebView
+- (void) emit: (std::string)name msg: (std::string)msg;
+@end
+
+@implementation WV
+- (void) emit: (std::string)name msg: (std::string)msg {
+  msg = SSC::emitToRenderProcess(name, SSC::encodeURIComponent(msg));
+  NSString* script = [NSString stringWithUTF8String: msg.c_str()];
+  [self evaluateJavaScript: script completionHandler:nil];
+}
+@end
+
 @interface NavigationDelegate : NSObject<WKNavigationDelegate>
-- (void) webView: (WKWebView*)webView
+- (void) webView: (WV*)webView
     decidePolicyForNavigationAction: (WKNavigationAction*)navigationAction
     decisionHandler: (void (^)(WKNavigationActionPolicy)) decisionHandler;
 @end
@@ -28,14 +41,13 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 @interface AppDelegate : UIResponder <UIApplicationDelegate, WKScriptMessageHandler>
 @property (strong, nonatomic) UIWindow* window;
 @property (strong, nonatomic) NavigationDelegate* navDelegate;
-@property (strong, nonatomic) WKWebView* webview;
+@property (strong, nonatomic) WV* webview;
 @property (strong, nonatomic) WKUserContentController* content;
 
 @property nw_path_monitor_t monitor;
 @property (strong, nonatomic) NSObject<OS_dispatch_queue>* monitorQueue;
 @property SSC::Core* core;
 - (void) route: (std::string)msg buf: (char*)buf;
-- (void) emit: (std::string)name msg: (std::string)msg;
 - (void) send: (std::string)seq msg: (std::string)msg post: (SSC::Post)post;
 @end
 
@@ -54,12 +66,6 @@ void uncaughtExceptionHandler (NSException *exception) {
 //
 @implementation AppDelegate
 BluetoothDelegate* bluetooth;
-
-- (void) emit: (std::string)name msg: (std::string)msg {
-  msg = SSC::emitToRenderProcess(name, SSC::encodeURIComponent(msg));
-  NSString* script = [NSString stringWithUTF8String: msg.c_str()];
-  [self.webview evaluateJavaScript: script completionHandler:nil];
-}
 
 //
 // This method is for when we want to send solicited or non-solicited data to the webview.
@@ -638,7 +644,7 @@ BluetoothDelegate* bluetooth;
     }
 
     dispatch_async(dispatch_get_main_queue(), ^{
-      [self emit: name msg: SSC::format(R"JSON({
+      [self.webview emit: name msg: SSC::format(R"JSON({
         "message": "$S"
       })JSON", message)];
     });
@@ -662,7 +668,7 @@ BluetoothDelegate* bluetooth;
 
 - (void) keyboardDidHide {
   self.webview.scrollView.scrollEnabled = YES;
-  [self emit: "keyboard" msg: SSC::format(R"JSON({
+  [self.webview emit: "keyboard" msg: SSC::format(R"JSON({
     "value": {
       "data": {
 		    "event": "did-hide"
@@ -673,7 +679,7 @@ BluetoothDelegate* bluetooth;
 
 - (void) keyboardDidShow {
   self.webview.scrollView.scrollEnabled = NO;
-  [self emit: "keyboard" msg: SSC::format(R"JSON({
+  [self.webview emit: "keyboard" msg: SSC::format(R"JSON({
     "value": {
       "data": {
 		    "event": "did-show"
@@ -686,7 +692,7 @@ BluetoothDelegate* bluetooth;
   auto str = std::string(url.absoluteString.UTF8String);
 
   // TODO can this be escaped or is the url encoded property already?
-  [self emit: "protocol" msg: SSC::format(R"JSON({
+  [self.webview emit: "protocol" msg: SSC::format(R"JSON({
     "url": "$S",
   })JSON", str)];
 
@@ -696,9 +702,8 @@ BluetoothDelegate* bluetooth;
 - (BOOL) application: (UIApplication*)application didFinishLaunchingWithOptions: (NSDictionary*)launchOptions {
   using namespace SSC;
 
-  // NSSetUncaughtExceptionHandler(&uncaughtExceptionHandler);
-
-  // self.core = new Core;
+  NSSetUncaughtExceptionHandler(&uncaughtExceptionHandler);
+  self.core = new Core;
 
   auto appFrame = [[UIScreen mainScreen] bounds];
 
@@ -765,7 +770,7 @@ BluetoothDelegate* bluetooth;
   [self.content addScriptMessageHandler:self name: @"webview"];
   [self.content addUserScript: initScript];
 
-  self.webview = [[WKWebView alloc] initWithFrame: appFrame configuration: config];
+  self.webview = [[WV alloc] initWithFrame: appFrame configuration: config];
   self.webview.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
 
   [self.webview.configuration.preferences setValue: @YES forKey: @"allowFileAccessFromFileURLs"];
@@ -776,7 +781,7 @@ BluetoothDelegate* bluetooth;
   [ns addObserver: self selector: @selector(keyboardDidHide) name: UIKeyboardDidHideNotification object: nil];
 
   bluetooth = [BluetoothDelegate new];
-  bluetooth.delegate = self;
+  bluetooth.webview = self.webview; // wants to emit events to webview
 
   self.navDelegate = [[NavigationDelegate alloc] init];
   [self.webview setNavigationDelegate: self.navDelegate];

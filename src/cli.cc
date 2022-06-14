@@ -315,7 +315,7 @@ int main (const int argc, const char* argv[]) {
   // Darwin Package Prep
   // ---
   //
-  if (platform.mac && !flagBuildForIOS) {
+  if (platform.mac && !flagBuildForIOS && !flagBuildForAndroid) {
     packageName = fs::path(std::string(settings["name"] + ".app"));
     pathPackage = { target / pathOutput / packageName };
 
@@ -350,6 +350,22 @@ int main (const int argc, const char* argv[]) {
     auto credits = tmpl(gCredits, options);
 
     writeFile(pathResourcesRelativeToUserBuild / "Credits.html", credits);
+  }
+
+  if (flagBuildForAndroid) {
+    fs::remove_all(target / "dist");
+    // - create a tmp dir
+    // - read android.* files and template to tmp dir
+    // - template gGradleBuild to tmp dir
+    // - run the user build scripts to copy assets into place
+    // - run gradlew on tmp files to generate and bundle the dist dir
+    log("unfinished");
+    return 0;
+  }
+
+  if (flagBuildForIOS && !platform.mac) {
+    log("Building for iOS on a non-mac platform is unsupported");
+    exit(1);
   }
 
   if (platform.mac && flagBuildForIOS) {

@@ -1,13 +1,12 @@
-#import <CoreBluetooth/CoreBluetooth.h>
-
 //
-// Mixed-into ios.mm and mac.hh by #include
+// Mixed-into ios.mm and mac.hh by #include. This file
+// expects WV to be defined before it's included. 
 //
 @interface BluetoothDelegate : NSObject<
 	CBCentralManagerDelegate,
 	CBPeripheralManagerDelegate,
 	CBPeripheralDelegate>
-@property (strong, nonatomic) AppDelegate* delegate;
+@property (strong, nonatomic) WV* webview;
 @property (strong, nonatomic) CBCentralManager* centralManager;
 @property (strong, nonatomic) CBPeripheralManager* peripheralManager;
 @property (strong, nonatomic) CBPeripheral* bluetoothPeripheral;
@@ -21,7 +20,7 @@
 @end
 
 @implementation BluetoothDelegate
-AppDelegate* delegate;
+WV* webview;
 
 - (void)disconnect {
   NSLog(@"BBB disconnect");
@@ -85,7 +84,7 @@ AppDelegate* delegate;
       }
     })JSON", message, state);
 
-    [self.delegate emit: "local-network" msg: msg];
+    [self.webview emit: "local-network" msg: msg];
 
     NSLog(@"%@", [NSString stringWithUTF8String: msg.c_str()]);
 }
@@ -135,7 +134,7 @@ AppDelegate* delegate;
     }
   })JSON");
 
-  [self.delegate emit: "local-network" msg: msg];
+  [self.webview emit: "local-network" msg: msg];
 }
 
 - (void) startBluetooth {
@@ -187,7 +186,7 @@ AppDelegate* delegate;
     }
   })JSON");
 
-  [self.delegate emit: "local-network" msg: msg];
+  [self.webview emit: "local-network" msg: msg];
 
   if ([request.characteristic.UUID isEqual: _characteristic.UUID]) {
     if (request.offset > _characteristic.value.length) {
@@ -213,7 +212,7 @@ AppDelegate* delegate;
     }
   })JSON");
 
-  [self.delegate emit: "local-network" msg: msg];
+  [self.webview emit: "local-network" msg: msg];
 
   for (CBATTRequest* request in requests) {
     if (![request.characteristic.UUID isEqual: _characteristic.UUID]) {
@@ -230,7 +229,7 @@ AppDelegate* delegate;
         "data": { "message": "$S" }
       }
     })JSON", std::string(src));
-    [self.delegate emit: "local-network" msg: msg];
+    [self.webview emit: "local-network" msg: msg];
     [self.peripheralManager respondToRequest: request withResult: CBATTErrorSuccess];  
   }
 } */
@@ -281,7 +280,7 @@ AppDelegate* delegate;
     }
   })JSON", name, uuid);
 
-  [self.delegate emit: "local-network" msg: msg];
+  [self.webview emit: "local-network" msg: msg];
 
   [_peripherals addObject: peripheral];
   [central connectPeripheral: peripheral options: nil];
@@ -319,7 +318,7 @@ AppDelegate* delegate;
     }
   })JSON");
 
-  [self.delegate emit: "local-network" msg: msg];
+  [self.webview emit: "local-network" msg: msg];
 }
 
 - (void) peripheral:(CBPeripheral*)peripheral didUpdateValueForCharacteristic:(CBCharacteristic*)characteristic error:(NSError*)error {
@@ -346,7 +345,7 @@ AppDelegate* delegate;
 
   NSLog(@"BBB didUpdateValueForCharacteristic: %s", src);
 
-  [self.delegate emit: "local-network" msg: msg];
+  [self.webview emit: "local-network" msg: msg];
 }
 
 - (void)peripheral:(CBPeripheral*)peripheral didUpdateNotificationStateForCharacteristic:(CBCharacteristic*)characteristic error:(NSError*)error {
@@ -363,7 +362,7 @@ AppDelegate* delegate;
     }
   })JSON");
 
-  [self.delegate emit: "local-network" msg: msg];
+  [self.webview emit: "local-network" msg: msg];
 }
 
 - (void) centralManager:(CBCentralManager *)central didFailToConnectPeripheral:(CBPeripheral *)peripheral error:(nullable NSError *)error {
@@ -384,7 +383,7 @@ AppDelegate* delegate;
     }
   })JSON", name, uuid);
 
-  [self.delegate emit: "local-network" msg: msg];
+  [self.webview emit: "local-network" msg: msg];
 
   [_peripherals removeObject: peripheral];
 }
