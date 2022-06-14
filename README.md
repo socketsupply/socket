@@ -5,4 +5,4 @@
 
 ```
 
-Please read the [documentation](socket-sdk.dev)
+Please read the [documentation](https://socket-sdk.dev)
