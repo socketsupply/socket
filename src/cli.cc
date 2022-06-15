@@ -48,6 +48,15 @@ static std::string getCxxFlags() {
   return flags.size() > 0 ? " " + flags : "";
 }
 
+void printHelp (Map attrs) {
+  std::stringstream helpText;
+  helpText << tmpl(gHelpText, attrs);
+  if (platform.os == "mac") {
+    helpText << gHelpTextMac;
+  }
+  std::cout << helpText.str() << std::endl;
+}
+
 int main (const int argc, const char* argv[]) {
   Map attrs;
   attrs["ssc_version"] = SSC::version;
@@ -56,8 +65,69 @@ int main (const int argc, const char* argv[]) {
   }
 
   if (argc < 2) {
-    std::cout << tmpl(gHelpText, attrs) << std::endl;
+    printHelp(attrs);
     exit(0);
+  }
+
+  auto is = [](const std::string& s, const auto& p) -> bool {
+    return s.compare(p) == 0;
+  };
+
+  const std::vector<std::string> subcommands = {
+    "init",
+    "compile",
+    "list-build-target",
+    "mobiledeviceid"
+  };
+
+  if (argv[1][0] == '-') {
+    log(std::string("expecting subcommand, got argument ") + argv[1]);
+    exit(0);
+  }
+
+  bool found = false;
+  for (auto const subcommand : subcommands) {
+    if (is(argv[1], subcommand)) {
+      found = true;
+      break;
+    }
+  }
+  if (!found) {
+    log(std::string("subcommand ") + argv[1] + std::string(" is not supported"));
+    exit(1);
+  }
+
+  if (is(argv[1], "init")) {
+    init(attrs);
+    exit(0);
+  }
+
+  if (is(argv[1], "mobiledeviceid")) {
+    if (platform.os != "mac") {
+      log("mobiledeviceid is only supported on macOS.");
+      exit(0);
+    } else {
+      std::string command = "system_profiler SPUSBDataType -json";
+      auto r = exec(command);
+
+      if (r.exitCode == 0) {
+        std::regex re(R"REGEX("(?:iPhone(?:(?:.|\n)*?)"serial_num"\s*:\s*"([^"]*))")REGEX");
+        std::smatch match;
+        std::string uuid;
+
+        if (!std::regex_search(r.output, match, re)) {
+          log("failed to extract device uuid using \"" + command + "\"");
+          log("Is the device plugged in?");
+          exit(1);
+        }
+
+        std::cout << std::string(match[1]).insert(8, 1, '-') << std::endl;
+        exit(0);
+      } else {
+        log("Could not get device id. Is the device plugged in?");
+        exit(1);
+      }
+    }
   }
 
   bool flagRunUserBuild = false;
@@ -74,24 +144,16 @@ int main (const int argc, const char* argv[]) {
   bool flagBuildForSimulator = false;
   bool flagPrintBuildPath = false;
 
+  if (is(argv[1], "list-build-target")) {
+    porcelain = true;
+    flagPrintBuildPath = true;
+  }
+
   std::string devPort("0");
 
-  auto is = [](const std::string& s, const auto& p) -> bool {
-    return s.compare(p) == 0;
-  };
-
   for (auto const arg : std::span(argv, argc)) {
-    if (is(arg, "-c")) {
-      flagCodeSign = true;
-    }
-
     if (is(arg, "-h")) {
-      std::cout << tmpl(gHelpText, attrs) << std::endl;
-      exit(0);
-    }
-
-    if (is(arg, "-i") || is(arg, "--init")) {
-      init(attrs);
+      printHelp(attrs);
       exit(0);
     }
 
@@ -100,48 +162,24 @@ int main (const int argc, const char* argv[]) {
       exit(0);
     }
 
-    if (is(arg, "-me")) {
+    if (is(arg, "-c")) {
+      flagCodeSign = true;
+    }
+
+    if (is(arg, "-e")) {
       if (platform.os != "mac") {
-        log("-me is only supported on macOS. Ignoring.");
+        log("-e is only supported on macOS. Ignoring.");
       } else {
         // TODO: we don't use it
         flagEntitlements = true;
       }
     }
 
-    if (is(arg, "-mn")) {
+    if (is(arg, "-n")) {
       if (platform.os != "mac") {
-        log("-mn is only supported on macOS. Ignoring.");
+        log("-n is only supported on macOS. Ignoring.");
       } else {
         flagShouldNotarize = true;
-      }
-    }
-
-    if (is(arg, "-mid")) {
-      if (platform.os != "mac") {
-        log("-mid is only supported on macOS.");
-        exit(0);
-      } else {
-        std::string command = "system_profiler SPUSBDataType -json";
-        auto r = exec(command);
-
-        if (r.exitCode == 0) {
-          std::regex re(R"REGEX("(?:iPhone(?:(?:.|\n)*?)"serial_num"\s*:\s*"([^"]*))")REGEX");
-          std::smatch match;
-          std::string uuid;
-
-          if (!std::regex_search(r.output, match, re)) {
-            log("failed to extract device uuid using \"" + command + "\"");
-            log("Is the device plugged in?");
-            exit(1);
-          }
-
-          std::cout << std::string(match[1]).insert(8, 1, '-') << std::endl;
-          exit(0);
-        } else {
-          log("Could not get device id. Is the device plugged in?");
-          exit(1);
-        }
       }
     }
 
@@ -181,11 +219,6 @@ int main (const int argc, const char* argv[]) {
       flagTestMode = true;
     }
 
-    if (is(arg, "--target")) {
-      porcelain = true;
-      flagPrintBuildPath = true;
-    }
-
     if (std::string(arg).find("--port=") == 0) {
       devPort = std::string(arg).substr(7);
     }
@@ -206,14 +239,14 @@ int main (const int argc, const char* argv[]) {
   // on the os separator to make them work cross-platform.
   //
 
-  auto target = fs::path(argv[1]);
+  auto target = fs::path(argv[argc-1]);
 
-  if (argv[1][0] == '-') {
-    log("a directory was expected as the first argument");
+  if (argv[argc-1][0] == '-') {
+    log("a directory was expected as the last argument");
     exit(0);
   }
 
-  if (argv[1][0] == '.') {
+  if (argv[argc-1][0] == '.') {
     target = fs::absolute(target);
   }
 
@@ -251,7 +284,6 @@ int main (const int argc, const char* argv[]) {
     "i386"
   };
 
-
   if (settings.count("arch") == 0 || settings["arch"] == "auto") {
     settings["arch"] = platform.arch;
   } else { 
@@ -269,7 +301,7 @@ int main (const int argc, const char* argv[]) {
     }
   }
 
-  std::vector<std::string> required = {
+  const std::vector<std::string> required = {
     "name",
     "title",
     "executable",

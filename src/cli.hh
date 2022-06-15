@@ -5,31 +5,37 @@
 // Cli Help
 //
 constexpr auto gHelpText = R"TEXT(
-ssc {{version}}
+ssc {{ssc_version}}
 
 usage:
-  ssc <project-dir> [-h, ...]
+  ssc compile [OPTIONS] <project-dir>
+  ssc [SUBCOMMAND]
 
-flags:
+options:
   -b   bundle for app store
   -c   code sign the bundle
   -h   help
-  -i   init
   -v   version
-  -me  (macOS) use entitlements
-  -mn  (macOS) notarize the bundle
-  -mid (macOS) get current device id and exit
   -o   only run user build step
   -p   package the app
   -r   run after building
   -xd  turn off debug mode (production build)
 
-  -ios        (iOS) build for iOS
-  -android    (Android) build for Android
-  -simulator  (iOS, Android) build for simulator
-  --test=1    indicate test mode
-  --port=n    load "http://localhost:n"
-  --target    print package path
+  --target  cross-compilation for another platform, any of: ios, iossimulator
+  --test=1  indicate test mode
+  --port=n  load "http://localhost:n"
+
+subcommands:
+  init               initialize a new project in the current directory
+  compile            compile project
+  list-build-target  print build path to stdout
+  mobiledeviceid     get current device id
+)TEXT";
+
+constexpr auto gHelpTextMac = R"TEXT(
+macOS-specific options:
+  -e  use entitlements
+  -n  notarize the bundle
 )TEXT";
 
 //
