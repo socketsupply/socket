@@ -1176,8 +1176,10 @@ namespace SSC {
   }
 
   void Window::show (const std::string& seq) {
-    ShowWindow(window, SW_SHOW);
+    ShowWindow(window, SW_SHOWNORMAL);
     UpdateWindow(window);
+
+    BringWindowToTop(window);
 
     RECT r, r1;
     GetWindowRect(window, &r);
