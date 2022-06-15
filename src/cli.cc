@@ -80,11 +80,6 @@ int main (const int argc, const char* argv[]) {
     "mobiledeviceid"
   };
 
-  if (argv[1][0] == '-') {
-    log(std::string("expecting subcommand, got argument ") + argv[1]);
-    exit(0);
-  }
-
   bool found = false;
   for (auto const subcommand : subcommands) {
     if (is(argv[1], subcommand)) {
@@ -93,6 +88,14 @@ int main (const int argc, const char* argv[]) {
     }
   }
   if (!found) {
+    if (is(argv[1], "-v")) {
+      std::cout << SSC::full_version << std::endl;
+      exit(0);
+    }
+    if (is(argv[1], "-h")) {
+      printHelp(attrs);
+      exit(0);
+    }
     log(std::string("subcommand ") + argv[1] + std::string(" is not supported"));
     exit(1);
   }
@@ -152,16 +155,6 @@ int main (const int argc, const char* argv[]) {
   std::string devPort("0");
 
   for (auto const arg : std::span(argv, argc)) {
-    if (is(arg, "-h")) {
-      printHelp(attrs);
-      exit(0);
-    }
-
-    if (is(arg, "-v")) {
-      std::cout << SSC::full_version << std::endl;
-      exit(0);
-    }
-
     if (is(arg, "-c")) {
       flagCodeSign = true;
     }
