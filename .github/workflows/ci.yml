@@ -55,14 +55,14 @@ jobs:
 
     - name: compile example desktop
       run: |
-        ssc ./socket-sdk-examples/tonic-desktop/
+        ssc compile ./socket-sdk-examples/tonic-desktop/
       env:
         CI: true
         CXX: g++-11
 
     - name: Run example desktop tests
       run: |
-        xvfb-run --server-args="-screen 0 1920x1080x24" ssc ./socket-sdk-examples/tonic-desktop/ --test=1 -r
+        xvfb-run --server-args="-screen 0 1920x1080x24" ssc compile --test=1 -r  ./socket-sdk-examples/tonic-desktop/
       env:
         CI: true
         CXX: g++-11
@@ -124,13 +124,13 @@ jobs:
 
     - name: compile example desktop
       run: |
-        ssc ./socket-sdk-examples/tonic-desktop/
+        ssc compile ./socket-sdk-examples/tonic-desktop/
       env:
         CI: true
 
     - name: Run example desktop tests
       run: |
-        ssc ./socket-sdk-examples/tonic-desktop/ --test=1 -r
+        ssc compile --test=1 -r ./socket-sdk-examples/tonic-desktop/
       env:
         CI: true
 
@@ -173,13 +173,13 @@ jobs:
 
     - name: compile example desktop
       run: |
-        ssc ./socket-sdk-examples/tonic-desktop/
+        ssc compile ./socket-sdk-examples/tonic-desktop/
       env:
         CI: true
 
     - name: Run example desktop tests
       run: |
-        ssc ./socket-sdk-examples/tonic-desktop/ --test=1 -r
+        ssc compile --test=1 -r ./socket-sdk-examples/tonic-desktop/
       env:
         CI: true
 
@@ -225,6 +225,6 @@ jobs:
 
     - name: compile example ios
       run: |
-        ssc ./socket-sdk-examples/tonic-ios/ -ios -simulator
+        ssc compile -ios -simulator ./socket-sdk-examples/tonic-ios/ 
       env:
         CI: true
