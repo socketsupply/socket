@@ -154,7 +154,8 @@ int main (const int argc, const char* argv[]) {
 
   std::string devPort("0");
 
-  for (auto const arg : std::span(argv, argc)) {
+  auto cnt = 0;
+  for (auto const arg : std::span(argv, argc).subspan(2, argc-3)) {
     if (is(arg, "-c")) {
       flagCodeSign = true;
     }
@@ -196,16 +197,16 @@ int main (const int argc, const char* argv[]) {
       flagDebugMode = false;
     }
 
-    if (is(arg, "-ios")) {
-      flagBuildForIOS = true;
-    }
-
-    if (is(arg, "-android")) {
-      flagBuildForAndroid = true;
-    }
-
-    if (is(arg, "-simulator")) {
-      flagBuildForSimulator = true;
+    if (std::string(arg).find("--target=") == 0) {
+      auto target = std::string(arg).substr(9);
+      if (target == "ios") {
+        flagBuildForIOS = true;
+      } else if (target == "android") {
+        flagBuildForAndroid = true;
+      } else if (target == "iossimulator") {
+        flagBuildForIOS = true;
+        flagBuildForSimulator = true;
+      }
     }
 
     if (is(arg, "--test")) {

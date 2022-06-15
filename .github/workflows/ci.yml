@@ -225,6 +225,6 @@ jobs:
 
     - name: compile example ios
       run: |
-        ssc compile -ios -simulator ./socket-sdk-examples/tonic-ios/ 
+        ssc compile --target=iossimulator ./socket-sdk-examples/tonic-ios/ 
       env:
         CI: true
