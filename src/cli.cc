@@ -408,6 +408,13 @@ int main (const int argc, const char* argv[]) {
       auto pathToScheme = pathToProject / "xcshareddata" / "xcschemes";
       auto pathToProfile = target / settings["ios_provisioning_profile"];
 
+      if (!fs::exists(pathToProject)) {
+        log("provisioning profile not found: " + pathToProfile.string() + ". " +
+            "Please specify a valid provisioning profile in the " +
+            "ios_provisioning_profile field in your ssc.config");
+        exit(1);
+      }
+
       fs::create_directories(pathToProject);
       fs::create_directories(pathToScheme);
 
