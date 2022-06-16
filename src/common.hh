@@ -137,7 +137,7 @@ namespace SSC {
       bool mac = true;
       bool win = false;
       bool linux = false;
-      const std::string os = "mac";
+      std::string os = "mac";
 
     #elif defined(__linux__)
       bool mac = false;

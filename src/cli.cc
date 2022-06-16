@@ -40,7 +40,7 @@ void init (Map attrs) {
   auto cwd = fs::current_path();
   fs::create_directories(cwd / "src");
   SSC::writeFile(cwd / "src" / "index.html", "<html>Hello, World</html>");
-  SSC::writeFile(cwd / "socket.config", tmpl(gDefaultConfig, attrs));
+  SSC::writeFile(cwd / "ssc.config", tmpl(gDefaultConfig, attrs));
 }
 
 static std::string getCxxFlags() {
@@ -957,7 +957,6 @@ int main (const int argc, const char* argv[]) {
     << getEnv("CXX")
     << " " << files
     << " " << flags
-    << " " << extraFlags
     << " -o " << binaryPath.string()
     << " -DIOS=" << (flagBuildForIOS ? 1 : 0)
     << " -DANDROID=" << (flagBuildForAndroid ? 1 : 0)
@@ -1520,7 +1519,9 @@ int main (const int argc, const char* argv[]) {
 
     auto runner = trim(std::string(STR_VALUE(CMD_RUNNER)));
     auto prefix = runner.size() > 0 ? runner + std::string(" ") : runner;
-    exitCode = std::system((prefix + cmd + argvForward.str()).c_str());
+    int runExitCode = std::system((prefix + cmd + argvForward.str()).c_str());
+
+    exitCode = WEXITSTATUS(runExitCode);
   }
 
   return exitCode;

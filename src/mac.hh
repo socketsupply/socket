@@ -1,4 +1,5 @@
 #include "common.hh"
+#include "core.hh"
 #import <Cocoa/Cocoa.h>
 #import <Webkit/Webkit.h>
 #import <CoreBluetooth/CoreBluetooth.h>
@@ -10,15 +11,24 @@
   NSDraggingDestination,
   NSFilePromiseProviderDelegate,
   NSDraggingSource>
+- (void) emit: (std::string)name msg: (std::string)msg;
 - (NSDragOperation) draggingSession: (NSDraggingSession *)session
   sourceOperationMaskForDraggingContext:(NSDraggingContext)context;
 @end
+
+#include "apple.mm"
 
 @implementation WV
 std::vector<std::string> draggablePayload;
 
 int lastX = 0;
 int lastY = 0;
+
+- (void) emit: (std::string)name msg: (std::string)msg {
+  msg = SSC::emitToRenderProcess(name, SSC::encodeURIComponent(msg));
+  NSString* script = [NSString stringWithUTF8String: msg.c_str()];
+  [self evaluateJavaScript: script completionHandler:nil];
+}
 
 - (BOOL) prepareForDragOperation: (id<NSDraggingInfo>)info {
   [info setDraggingFormation: NSDraggingFormationNone];
@@ -580,9 +590,9 @@ namespace SSC {
     WKUserScript* userScript = [WKUserScript alloc];
 
     [userScript
-      initWithSource:[NSString stringWithUTF8String:preload.c_str()]
-      injectionTime:WKUserScriptInjectionTimeAtDocumentStart
-      forMainFrameOnly:NO];
+      initWithSource: [NSString stringWithUTF8String:preload.c_str()]
+      injectionTime: WKUserScriptInjectionTimeAtDocumentStart
+      forMainFrameOnly: NO];
 
     [controller
       addUserScript: userScript];
@@ -607,8 +617,6 @@ namespace SSC {
                                                  name: NSSystemColorsDidChangeNotification
                                                object: nil
     ]; */
-
-
 
     // [webview registerForDraggedTypes:
     //  [NSArray arrayWithObject:NSPasteboardTypeFileURL]];

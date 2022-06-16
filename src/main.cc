@@ -655,6 +655,9 @@ MAIN {
 
   Window* defaultWindow = windowFactory.createDefaultWindow(WindowOptions { });
 
+  // windowFactory.getOrCreateWindow(0);
+  windowFactory.getOrCreateWindow(1);
+
   if (_port > 0 || cmd.size() == 0) {
     defaultWindow->setSystemMenu(EMPTY_SEQ, std::string(
       "Developer Mode: \n"

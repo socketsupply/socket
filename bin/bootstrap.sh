@@ -6,6 +6,9 @@ PLATFORMPATH=""
 ASSETS_DIR=""
 SDKVERSION=""
 LIPO=""
+OLD_DIR=`pwd`
+LIB_DIR=`pwd`/lib
+BUILD_DIR=`pwd`/build
 
 if [ ! "$CXX" ]; then
   if [ ! -z "$LOCALAPPDATA" ]; then
@@ -25,9 +28,12 @@ if [ ! "$CXX" ]; then
   if [ ! "$CXX" ]; then
     echo "• Error: Could not determine \$CXX environment variable"
     exit 1
-  else
-    echo "• Warning: \$CXX environment variable not set, assuming '$CXX'"
   fi
+fi
+
+if ! which autoconf >/dev/null 2>&1; then
+  echo "• Error: Missing build tools, try 'brew install automake'"
+  exit 1
 fi
 
 if ! which sudo > /dev/null 2>&1; then
@@ -38,7 +44,7 @@ if ! which sudo > /dev/null 2>&1; then
 fi
 
 function _build {
-  echo '• Building ssc'
+  echo "• Compiling sources"
 
   "$CXX" src/cli.cc ${CXX_FLAGS} ${CXXFLAGS} \
     -o bin/cli \
@@ -50,7 +56,7 @@ function _build {
     echo "• Unable to build. See trouble shooting guide in the README.md file"
     exit 1
   fi
-  echo "• Success"
+  echo "• Built the ssc binary"
 }
 
 function _prepare {
@@ -61,8 +67,19 @@ function _prepare {
   fi
 
   echo "• Preparing directories"
+  rm -rf $LIB_DIR/uv
   rm -rf "$ASSETS_DIR"
   mkdir -p $ASSETS_DIR/{lib,src,include}
+
+  # Shallow clone the main branch of libuv
+  if [ ! -d "$BUILD_DIR" ]; then
+  	git clone --depth=1 https://github.com/libuv/libuv.git build > /dev/null 2>&1;
+
+    if [ ! $? = 0 ]; then
+      echo "• Unable to clone. See trouble shooting guide in the README.md file"
+      exit 1
+    fi
+  fi
 }
 
 function _install {
@@ -84,7 +101,7 @@ function _install {
     exit 1
   fi
 
-  echo -e '• Finished. Type "ssc -h" for help'
+  echo "• Finished. Type 'ssc -h' for help"
   exit 0
 }
 
@@ -96,12 +113,13 @@ function _setSDKVersion {
   arr=()
   for sdk in $sdks
   do
-   echo $sdk
+   echo "• Found SDK $sdk"
    arr[${#arr[@]}]=$sdk
   done
 
   # Last item will be the current SDK, since it is alpha ordered
   count=${#arr[@]}
+
   if [ $count -gt 0 ]; then
    sdk=${arr[$count-1]:${#1}}
    num=`expr ${#sdk}-4`
@@ -111,14 +129,31 @@ function _setSDKVersion {
   fi
 }
 
+function quiet () {
+  "$@" > /dev/null 2>&1
+}
+
+function _make_libuv {
+  quiet make clean;
+  quiet make -j 10;
+  quiet make install;
+}
+
 function _compile_libuv {
+  if [ -z "$1" ]; then
+    quiet ./configure --prefix="$BUILD_DIR/output/desktop"
+    _make_libuv
+    return
+  fi
+
+  echo "• Building for $1 $2 (Running in background)"
+  quiet sh autogen.sh
+
   target=$1
   hosttarget=$1
   platform=$2
 
-  if [[ $hosttarget == "x86_64" ]]; then
-    xxhosttarget="i386"
-  elif [[ $hosttarget == "arm64" ]]; then
+  if [[ $hosttarget == "arm64" ]]; then
     hosttarget="arm"
   fi
 
@@ -133,112 +168,67 @@ function _compile_libuv {
   export CPPFLAGS="-fembed-bitcode -arch ${target} -isysroot $PLATFORMPATH/$platform.platform/Developer/SDKs/$platform$SDKVERSION.sdk -miphoneos-version-min=$SDKMINVERSION"
   export LDFLAGS="-Wc,-fembed-bitcode -arch ${target} -isysroot $PLATFORMPATH/$platform.platform/Developer/SDKs/$platform$SDKVERSION.sdk"
 
-  ./configure --prefix="$BUILD_DIR/output/$target" --host=$hosttarget-apple-darwin
+  quiet ./configure --prefix="$BUILD_DIR/output/$target" --host=$hosttarget-apple-darwin;
 
-  make clean
-  make -j 10
-  make install
-  install_name_tool -id libuv.1.dylib $BUILD_DIR/output/$target/lib/libuv.1.dylib
+  if [ ! $? = 0 ]; then
+    echo "• Failed to configure, see trouble shooting guide."
+    exit 1
+  fi
+
+  _make_libuv
 }
 
-function _cross_compile_libuv {
+#
+# Main
+#
+_prepare
+
+cd $BUILD_DIR
+
+if [ "$1" == "ios" ]; then
+  if ! xcode-select -p >/dev/null 2>&1; then
+    echo "Error: Xcode needs to be installed from the Mac App Store."
+    exit 1
+  fi
+
+  SDKMINVERSION="8.0"
+  export IPHONEOS_DEPLOYMENT_TARGET="8.0"
+
+  LIPO=$(xcrun -sdk iphoneos -find lipo)
   PLATFORMPATH="/Applications/Xcode.app/Contents/Developer/Platforms"
   TOOLSPATH="/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin"
 
-  export IPHONEOS_DEPLOYMENT_TARGET="8.0"
-  OLD_CWD=`pwd`
-  BUILD_DIR=`pwd`/build
-  LIB_DIR=`pwd`/lib
-  rm -rf $LIB_DIR/uv
+  _setSDKVersion iPhoneOS
 
-  #
-  # Shallow clone the main branch of libuv
-  #
-  if [ ! -d "$BUILD_DIR" ]; then
-  	git clone --depth=1 https://github.com/libuv/libuv.git build
-  fi
+  {
+    _compile_libuv arm64 iPhoneOS &
+    _compile_libuv i386 iPhoneSimulator &
+    _compile_libuv x86_64 iPhoneSimulator &
+  } | cat
 
-  cd $BUILD_DIR
-  sh autogen.sh
-
-  #
-  # Build artifacts for all platforms
-  #
-  _compile_libuv arm64 iPhoneOS
-  _compile_libuv i386 iPhoneSimulator
-  _compile_libuv x86_64 iPhoneSimulator
-
-  #
-  # Combine the build artifacts
-  #
-
-  $LIPO -create \
+  quiet $LIPO -create \
     $BUILD_DIR/output/arm64/lib/libuv.a \
     $BUILD_DIR/output/x86_64/lib/libuv.a \
     $BUILD_DIR/output/i386/lib/libuv.a \
     -output libuv.a
-  $LIPO -create \
-    $BUILD_DIR/output/arm64/lib/libuv.1.dylib \
-    $BUILD_DIR/output/x86_64/lib/libuv.1.dylib \
-    $BUILD_DIR/output/i386/lib/libuv.1.dylib \
-    -output libuv.1.dylib
 
-  install_name_tool -id @rpath/libuv.1.dylib libuv.1.dylib
-
-  $LIPO -info libuv.a
-
-  #
-  # Copy the build into the project and delete leftover build artifacts.
-  #
-  mkdir -p $LIB_DIR/uv/include >/dev/null 2>&1;
-
-  cp libuv.a $LIB_DIR
-  cp -r $BUILD_DIR/include $ASSETS_DIR
-
-  cd $OLD_CWD
-
-  unset PLATFORM
-  unset CC
-  unset STRIP
-  unset LD
-  unset CPP
-  unset CFLAGS
-  unset AR
-  unset RANLIB
-  unset CPPFLAGS
-  unset LDFLAGS
-  unset IPHONEOS_DEPLOYMENT_TARGET
-}
-
-#
-# Build and Install
-#
-_prepare
-
-if [ "$1" == "ios" ]; then
-  #
-  # Attempts to find iphoneos tool, will fail fast if xcode not installed
-  #
-  xcode-select -p >/dev/null 2>&1;
   if [ ! $? = 0 ]; then
-    echo "Xcode needs to be installed from the Mac App Store."
+    echo "• Unable to combine build artifacts, see trouble shooting guide."
     exit 1
   fi
-
-  which autoconf >/dev/null 2>&1;
-  if [ ! $? = 0 ]; then
-    echo "Try 'brew install automake'"
-    exit 1
-  fi
-
-  LIPO=$(xcrun -sdk iphoneos -find lipo)
-
-  PLATFORMPATH="/Applications/Xcode.app/Contents/Developer/Platforms"
-  _setSDKVersion iPhoneOS
-  SDKMINVERSION="8.0"
-
-  _cross_compile_libuv
+else
+  _compile_libuv
 fi
+
+# Copy the build into the project
+quiet mkdir -p $LIB_DIR/uv/include;
+cp libuv.a $LIB_DIR
+cp -r $BUILD_DIR/include $ASSETS_DIR
+
+cd $OLD_DIR
+
+unset PLATFORM CC STRIP LD CPP CFLAGS AR RANLIB \
+  CPPFLAGS LDFLAGS IPHONEOS_DEPLOYMENT_TARGET
 
 _build
 _install

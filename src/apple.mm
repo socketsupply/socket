@@ -220,8 +220,8 @@ WV* webview;
       continue; // request was invalid
     }
 
-    const void *_Nullable rawData = [request.value bytes];
-    char *src = (char*) rawData;
+    const void* rawData = [request.value bytes];
+    char* src = (char*) rawData;
 
     // TODO return as a proper buffer
     auto msg = SSC::format(R"JSON({
@@ -235,8 +235,8 @@ WV* webview;
 } */
 
 - (void) localNetworkSend:(std::string)str uuid:(std::string)uuid {
-  auto serviceUUID = [CBUUID UUIDWithString: _serviceId];
-  auto channelUUID = [CBUUID UUIDWithString: _channelId];
+  // auto serviceUUID = [CBUUID UUIDWithString: _serviceId];
+  // auto channelUUID = [CBUUID UUIDWithString: _channelId];
 
   for (CBPeripheral* peripheral in _peripherals) {
     std::string id = [peripheral.identifier.UUIDString UTF8String];
@@ -329,7 +329,7 @@ WV* webview;
 
   std::string uuid = [peripheral.identifier.UUIDString UTF8String];
   std::string name = [peripheral.name UTF8String];
-  const void* _Nullable rawData = [characteristic.value bytes];
+  const void* rawData = [characteristic.value bytes];
   char* src = (char*) rawData;
 
   auto msg = SSC::format(R"JSON({
@@ -389,6 +389,12 @@ WV* webview;
 }
 @end
 
+@interface NavigationDelegate : NSObject<WKNavigationDelegate>
+- (void) webView: (WV*)webView
+  decidePolicyForNavigationAction: (WKNavigationAction*)navigationAction
+  decisionHandler: (void (^)(WKNavigationActionPolicy)) decisionHandler;
+@end
+
 @implementation NavigationDelegate
 - (void) webView: (WKWebView*) webView
     decidePolicyForNavigationAction: (WKNavigationAction*) navigationAction
@@ -406,16 +412,15 @@ WV* webview;
 @end
 
 @interface IPCSchemeHandler : NSObject<WKURLSchemeHandler>
-@property (strong, nonatomic) AppDelegate* delegate;
-- (void)webView: (AppDelegate*)webView startURLSchemeTask:(id <WKURLSchemeTask>)urlSchemeTask;
-- (void)webView: (AppDelegate*)webView stopURLSchemeTask:(id <WKURLSchemeTask>)urlSchemeTask;
+@property (strong, nonatomic) WV* webview;
+- (void)webView: (WV*)webView startURLSchemeTask:(id <WKURLSchemeTask>)urlSchemeTask;
+- (void)webView: (WV*)webView stopURLSchemeTask:(id <WKURLSchemeTask>)urlSchemeTask;
 @end
 
 @implementation IPCSchemeHandler
-- (void)webView: (AppDelegate*)webView stopURLSchemeTask:(id <WKURLSchemeTask>)urlSchemeTask {}
-- (void)webView: (AppDelegate*)webView startURLSchemeTask:(id <WKURLSchemeTask>)task {
-  auto* delegate = self.delegate;
-  SSC::Core* core = delegate.core;
+- (void)webView: (WV*)wv stopURLSchemeTask:(id<WKURLSchemeTask>)urlSchemeTask {}
+- (void)webView: (WV*)wv startURLSchemeTask:(id<WKURLSchemeTask>)task {
+  SSC::Core* core = wv.core;
   auto url = std::string(task.request.URL.absoluteString.UTF8String);
 
   SSC::Parse cmd(url);
@@ -465,7 +470,7 @@ WV* webview;
   // if there is a body on the reuqest, pass it into the method router.
 	auto rawBody = task.request.HTTPBody;
   if (rawBody) {
-    const void* _Nullable data = [rawBody bytes];
+    const void* data = [rawBody bytes];
     body = (char*)data;
   }
 

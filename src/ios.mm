@@ -21,6 +21,7 @@ dispatch_queue_attr_t qos = dispatch_queue_attr_make_with_qos_class(
 static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
 @interface WV : WKWebView
+@property SSC::Core* core;
 - (void) emit: (std::string)name msg: (std::string)msg;
 @end
 
@@ -32,11 +33,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 }
 @end
 
-@interface NavigationDelegate : NSObject<WKNavigationDelegate>
-- (void) webView: (WV*)webView
-    decidePolicyForNavigationAction: (WKNavigationAction*)navigationAction
-    decisionHandler: (void (^)(WKNavigationActionPolicy)) decisionHandler;
-@end
+#include "./apple.mm"
 
 @interface AppDelegate : UIResponder <UIApplicationDelegate, WKScriptMessageHandler>
 @property (strong, nonatomic) UIWindow* window;
@@ -50,8 +47,6 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 - (void) route: (std::string)msg buf: (char*)buf;
 - (void) send: (std::string)seq msg: (std::string)msg post: (SSC::Post)post;
 @end
-
-#include "./apple.mm"
 
 void uncaughtExceptionHandler (NSException *exception) {
   NSLog(@"%@", exception.name);
@@ -145,12 +140,6 @@ BluetoothDelegate* bluetooth;
 
   if (cmd.name == "log") {
     NSLog(@"%s", cmd.get("value").c_str());
-    return;
-  }
-  
-  if (cmd.name == "external") {
-    NSString *url = [NSString stringWithUTF8String:SSC::decodeURIComponent(cmd.get("value")).c_str()];
-    [[UIApplication sharedApplication] openURL: [NSURL URLWithString:url] options: @{} completionHandler: nil];
     return;
   }
 
@@ -308,6 +297,14 @@ BluetoothDelegate* bluetooth;
       [self send: seq msg: msg post: Post{}];
       return;
     }
+  }
+
+  NSLog(@"COMMAND %s", msg.c_str());
+
+  if (cmd.name == "external") {
+    NSString *url = [NSString stringWithUTF8String:SSC::decodeURIComponent(cmd.get("value")).c_str()];
+    [[UIApplication sharedApplication] openURL: [NSURL URLWithString:url] options: @{} completionHandler: nil];
+    return;
   }
 
   if (cmd.name == "ip") {
@@ -614,7 +611,7 @@ BluetoothDelegate* bluetooth;
   // self.monitor = nw_path_monitor_create_with_type(nw_interface_type_wifi);
   self.monitor = nw_path_monitor_create();
   nw_path_monitor_set_queue(self.monitor, self.monitorQueue);
-  nw_path_monitor_set_update_handler(self.monitor, ^(nw_path_t _Nonnull path) {
+  nw_path_monitor_set_update_handler(self.monitor, ^(nw_path_t path) {
     nw_path_status_t status = nw_path_get_status(path);
 
     std::string name;
@@ -704,6 +701,7 @@ BluetoothDelegate* bluetooth;
 
   NSSetUncaughtExceptionHandler(&uncaughtExceptionHandler);
   self.core = new Core;
+  platform.os = "ios";
 
   auto appFrame = [[UIScreen mainScreen] bounds];
 
@@ -761,7 +759,7 @@ BluetoothDelegate* bluetooth;
   WKWebViewConfiguration *config = [[WKWebViewConfiguration alloc] init];
 
   auto handler = [IPCSchemeHandler new];
-  handler.delegate = self;
+  handler.webview = webview;
 
   [config setURLSchemeHandler: handler forURLScheme:@"ipc"];
 
@@ -772,6 +770,7 @@ BluetoothDelegate* bluetooth;
 
   self.webview = [[WV alloc] initWithFrame: appFrame configuration: config];
   self.webview.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+  self.webview.core = self.core;
 
   [self.webview.configuration.preferences setValue: @YES forKey: @"allowFileAccessFromFileURLs"];
   [self.webview.configuration.preferences setValue: @YES forKey: @"javaScriptEnabled"];
