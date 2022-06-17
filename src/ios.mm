@@ -19,52 +19,25 @@ dispatch_queue_attr_t qos = dispatch_queue_attr_make_with_qos_class(
 );
 
 static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
+static SSC::Core* core;
 
-@interface WV : WKWebView
-@property SSC::Core* core;
+@interface BridgeView : WKWebView
 - (void) emit: (std::string)name msg: (std::string)msg;
+- (void) route: (std::string)msg buf: (char*)buf;
+- (void) send: (std::string)seq msg: (std::string)msg post: (SSC::Post)post;
 @end
 
-@implementation WV
+#include "./apple.mm"
+
+BluetoothDelegate* bluetooth;
+
+@implementation BridgeView
 - (void) emit: (std::string)name msg: (std::string)msg {
   msg = SSC::emitToRenderProcess(name, SSC::encodeURIComponent(msg));
   NSString* script = [NSString stringWithUTF8String: msg.c_str()];
   [self evaluateJavaScript: script completionHandler:nil];
 }
-@end
 
-#include "./apple.mm"
-
-@interface AppDelegate : UIResponder <UIApplicationDelegate, WKScriptMessageHandler>
-@property (strong, nonatomic) UIWindow* window;
-@property (strong, nonatomic) NavigationDelegate* navDelegate;
-@property (strong, nonatomic) WV* webview;
-@property (strong, nonatomic) WKUserContentController* content;
-
-@property nw_path_monitor_t monitor;
-@property (strong, nonatomic) NSObject<OS_dispatch_queue>* monitorQueue;
-@property SSC::Core* core;
-- (void) route: (std::string)msg buf: (char*)buf;
-- (void) send: (std::string)seq msg: (std::string)msg post: (SSC::Post)post;
-@end
-
-void uncaughtExceptionHandler (NSException *exception) {
-  NSLog(@"%@", exception.name);
-  NSLog(@"%@", exception.reason);
-  NSLog(@"%@", exception.callStackSymbols);
-}
-
-//
-// iOS has no "window". There is no navigation, just a single webview. It also
-// has no "main" process, we want to expose some network functionality to the
-// JavaScript environment so it can be used by the web app and the wasm layer.
-//
-@implementation AppDelegate
-BluetoothDelegate* bluetooth;
-
-//
-// This method is for when we want to send solicited or non-solicited data to the webview.
-//
 - (void) send: (std::string)seq msg: (std::string)msg post: (SSC::Post)post {
   //
   // - If there is no sequence and there is a buffer, the source is a stream and it should
@@ -73,14 +46,14 @@ BluetoothDelegate* bluetooth;
   // already has the meta data from the original request.
   //
   if (seq == "-1" && post.length > 0) {
-    auto src = self.core->createPost(msg, post);
+    auto src = core->createPost(msg, post);
     NSString* script = [NSString stringWithUTF8String: src.c_str()];
-    [self.webview evaluateJavaScript: script completionHandler: nil];
+    [self evaluateJavaScript: script completionHandler: nil];
     return;
   }
 
-  if (self.core->hasTask(seq)) {
-    auto task = self.core->getTask(seq);
+  if (core->hasTask(seq)) {
+    auto task = core->getTask(seq);
 
     NSHTTPURLResponse *httpResponse = [[NSHTTPURLResponse alloc]
       initWithURL: task.request.URL
@@ -104,7 +77,7 @@ BluetoothDelegate* bluetooth;
     [task didReceiveData: data];
     [task didFinish];
 
-    self.core->removeTask(seq);
+    core->removeTask(seq);
     return;
   }
 
@@ -113,12 +86,9 @@ BluetoothDelegate* bluetooth;
   }
 
   NSString* script = [NSString stringWithUTF8String: msg.c_str()];
-  [self.webview evaluateJavaScript: script completionHandler:nil];
+  [self evaluateJavaScript: script completionHandler:nil];
 }
 
-//
-// This method determines what method to dispatch based on the uri.
-//
 - (void) route: (std::string)msg buf: (char*)buf {
   using namespace SSC;
   
@@ -147,7 +117,7 @@ BluetoothDelegate* bluetooth;
     auto path = cmd.get("path");
 
     dispatch_async(queue, ^{
-      self.core->fsRmDir(seq, path, [&](auto seq, auto msg, auto post) {
+      core->fsRmDir(seq, path, [&](auto seq, auto msg, auto post) {
         dispatch_async(dispatch_get_main_queue(), ^{
           [self send: seq msg: msg post: post];
         });
@@ -161,7 +131,7 @@ BluetoothDelegate* bluetooth;
     auto flags = std::stoi(cmd.get("flags"));
 
     dispatch_async(queue, ^{
-      self.core->fsOpen(seq, cid, path, flags, [&](auto seq, auto msg, auto post) {
+      core->fsOpen(seq, cid, path, flags, [&](auto seq, auto msg, auto post) {
         dispatch_async(dispatch_get_main_queue(), ^{
           [self send: seq msg: msg post: post];
         });
@@ -173,7 +143,7 @@ BluetoothDelegate* bluetooth;
     auto id = std::stoll(cmd.get("id"));
 
     dispatch_async(queue, ^{
-      self.core->fsClose(seq, id, [&](auto seq, auto msg, auto post) {
+      core->fsClose(seq, id, [&](auto seq, auto msg, auto post) {
         dispatch_async(dispatch_get_main_queue(), ^{
           [self send: seq msg: msg post: post];
         });
@@ -187,7 +157,7 @@ BluetoothDelegate* bluetooth;
     auto offset = std::stoi(cmd.get("offset"));
 
     dispatch_async(queue, ^{
-      self.core->fsRead(seq, id, len, offset, [&](auto seq, auto msg, auto post) {
+      core->fsRead(seq, id, len, offset, [&](auto seq, auto msg, auto post) {
         dispatch_async(dispatch_get_main_queue(), ^{
           [self send: seq msg: msg post: post];
         });
@@ -200,7 +170,7 @@ BluetoothDelegate* bluetooth;
     auto offset = std::stoll(cmd.get("offset"));
 
     dispatch_async(queue, ^{
-      self.core->fsWrite(seq, id, buf, offset, [&](auto seq, auto msg, auto post) {
+      core->fsWrite(seq, id, buf, offset, [&](auto seq, auto msg, auto post) {
 
      dispatch_async(dispatch_get_main_queue(), ^{
           [self send: seq msg: msg post: post];
@@ -213,7 +183,7 @@ BluetoothDelegate* bluetooth;
     auto path = cmd.get("path");
 
     dispatch_async(queue, ^{
-      self.core->fsStat(seq, path, [&](auto seq, auto msg, auto post) {
+      core->fsStat(seq, path, [&](auto seq, auto msg, auto post) {
         dispatch_async(dispatch_get_main_queue(), ^{
           [self send: seq msg: msg post: post];
         });
@@ -225,7 +195,7 @@ BluetoothDelegate* bluetooth;
      auto path = cmd.get("path");
 
      dispatch_async(queue, ^{
-       self.core->fsUnlink(seq, path, [&](auto seq, auto msg, auto post) {
+       core->fsUnlink(seq, path, [&](auto seq, auto msg, auto post) {
          dispatch_async(dispatch_get_main_queue(), ^{
            [self send: seq msg: msg post: post];
          });
@@ -238,7 +208,7 @@ BluetoothDelegate* bluetooth;
     auto pathB = cmd.get("newPath");
 
     dispatch_async(queue, ^{
-      self.core->fsRename(seq, pathA, pathB, [&](auto seq, auto msg, auto post) {
+      core->fsRename(seq, pathA, pathB, [&](auto seq, auto msg, auto post) {
         dispatch_async(dispatch_get_main_queue(), ^{
           [self send: seq msg: msg post: post];
         });
@@ -252,7 +222,7 @@ BluetoothDelegate* bluetooth;
     auto flags = std::stoi(cmd.get("flags"));
 
     dispatch_async(queue, ^{
-      self.core->fsCopyFile(seq, pathA, pathB, flags, [&](auto seq, auto msg, auto post) {
+      core->fsCopyFile(seq, pathA, pathB, flags, [&](auto seq, auto msg, auto post) {
         dispatch_async(dispatch_get_main_queue(), ^{
           [self send: seq msg: msg post: post];
         });
@@ -265,7 +235,7 @@ BluetoothDelegate* bluetooth;
     auto mode = std::stoi(cmd.get("mode"));
     
     dispatch_async(queue, ^{
-      self.core->fsMkDir(seq, path, mode, [&](auto seq, auto msg, auto post) {
+      core->fsMkDir(seq, path, mode, [&](auto seq, auto msg, auto post) {
         dispatch_async(dispatch_get_main_queue(), ^{
           [self send: seq msg: msg post: post];
         });
@@ -277,7 +247,7 @@ BluetoothDelegate* bluetooth;
     auto path = cmd.get("path");
 
     dispatch_async(queue, ^{
-      self.core->fsReadDir(seq, path, [&](auto seq, auto msg, auto post) {
+      core->fsReadDir(seq, path, [&](auto seq, auto msg, auto post) {
         dispatch_async(dispatch_get_main_queue(), ^{
           [self send: seq msg: msg post: post];
         });
@@ -347,7 +317,7 @@ BluetoothDelegate* bluetooth;
   }
 
   if (cmd.name == "getNetworkInterfaces") {
-    auto msg = self.core->getNetworkInterfaces();
+    auto msg = core->getNetworkInterfaces();
     [self send: seq msg: msg post: Post{} ];
     return;
   }
@@ -356,7 +326,7 @@ BluetoothDelegate* bluetooth;
     auto clientId = std::stoll(cmd.get("clientId"));
 
     dispatch_async(queue, ^{
-      self.core->readStop(seq, clientId, [&](auto seq, auto msg, auto post) {
+      core->readStop(seq, clientId, [&](auto seq, auto msg, auto post) {
         dispatch_async(dispatch_get_main_queue(), ^{
           [self send: seq msg: msg post: post];
         });
@@ -369,7 +339,7 @@ BluetoothDelegate* bluetooth;
     auto clientId = std::stoll(cmd.get("clientId"));
 
     dispatch_async(queue, ^{
-      self.core->shutdown(seq, clientId, [&](auto seq, auto msg, auto post) {
+      core->shutdown(seq, clientId, [&](auto seq, auto msg, auto post) {
         dispatch_async(dispatch_get_main_queue(), ^{
           [self send: seq msg: msg post: post];
         });
@@ -389,7 +359,7 @@ BluetoothDelegate* bluetooth;
     auto clientId = std::stoll(cmd.get("clientId"));
 
     dispatch_async(queue, ^{
-      self.core->sendBufferSize(seq, clientId, size, [&](auto seq, auto msg, auto post) {
+      core->sendBufferSize(seq, clientId, size, [&](auto seq, auto msg, auto post) {
         dispatch_async(dispatch_get_main_queue(), ^{
           [self send: seq msg: msg post: post];
         });
@@ -409,7 +379,7 @@ BluetoothDelegate* bluetooth;
     auto clientId = std::stoll(cmd.get("clientId"));
 
     dispatch_async(queue, ^{
-      self.core->recvBufferSize(seq, clientId, size, [&](auto seq, auto msg, auto post) {
+      core->recvBufferSize(seq, clientId, size, [&](auto seq, auto msg, auto post) {
         dispatch_async(dispatch_get_main_queue(), ^{
           [self send: seq msg: msg post: post];
         });
@@ -422,7 +392,7 @@ BluetoothDelegate* bluetooth;
     auto clientId = std::stoll(cmd.get("clientId"));
 
     dispatch_async(queue, ^{
-      self.core->close(seq, clientId, [&](auto seq, auto msg, auto post) {
+      core->close(seq, clientId, [&](auto seq, auto msg, auto post) {
         dispatch_async(dispatch_get_main_queue(), ^{
           [self send: seq msg: msg post: post];
         });
@@ -467,7 +437,7 @@ BluetoothDelegate* bluetooth;
     auto clientId = std::stoll(cmd.get("clientId"));
 
     dispatch_async(queue, ^{
-      self.core->udpSend(seq, clientId, buf, offset, len, port, (const char*) ip.c_str(), [&](auto seq, auto msg, auto post) {
+      core->udpSend(seq, clientId, buf, offset, len, port, (const char*) ip.c_str(), [&](auto seq, auto msg, auto post) {
         dispatch_async(dispatch_get_main_queue(), ^{
           [self send: seq msg: msg post: post];
         });
@@ -480,7 +450,7 @@ BluetoothDelegate* bluetooth;
     auto clientId = std::stoll(cmd.get("clientId"));
 
     dispatch_async(queue, ^{
-      self.core->tcpSend(clientId, buf, [&](auto seq, auto msg, auto post) {
+      core->tcpSend(clientId, buf, [&](auto seq, auto msg, auto post) {
         dispatch_async(dispatch_get_main_queue(), ^{
           [self send: seq msg: msg post: post];
         });
@@ -505,7 +475,7 @@ BluetoothDelegate* bluetooth;
     auto ip = cmd.get("ip");
 
     dispatch_async(queue, ^{
-      self.core->tcpConnect(seq, clientId, port, ip, [&](auto seq, auto msg, auto post) {
+      core->tcpConnect(seq, clientId, port, ip, [&](auto seq, auto msg, auto post) {
         dispatch_async(dispatch_get_main_queue(), ^{
           [self send: seq msg: msg post: post];
         });
@@ -519,7 +489,7 @@ BluetoothDelegate* bluetooth;
     auto timeout = std::stoi(cmd.get("timeout"));
 
     dispatch_async(queue, ^{
-      self.core->tcpSetKeepAlive(seq, clientId, timeout, [&](auto seq, auto msg, auto post) {
+      core->tcpSetKeepAlive(seq, clientId, timeout, [&](auto seq, auto msg, auto post) {
         dispatch_async(dispatch_get_main_queue(), ^{
           [self send: seq msg: msg post: post];
         });
@@ -533,7 +503,7 @@ BluetoothDelegate* bluetooth;
     auto timeout = std::stoi(cmd.get("timeout"));
 
     dispatch_async(queue, ^{
-      self.core->tcpSetTimeout(seq, clientId, timeout, [&](auto seq, auto msg, auto post) {
+      core->tcpSetTimeout(seq, clientId, timeout, [&](auto seq, auto msg, auto post) {
         dispatch_async(dispatch_get_main_queue(), ^{
           [self send: seq msg: msg post: post];
         });
@@ -559,13 +529,13 @@ BluetoothDelegate* bluetooth;
       
       [self send: seq msg: msg post: Post{}];
       return;
-    }
+		}
 
     auto serverId = std::stoll(cmd.get("serverId"));
     auto port = std::stoi(cmd.get("port"));
 
     dispatch_async(queue, ^{
-      self.core->tcpBind(seq, serverId, ip, port, [&](auto seq, auto msg, auto post) {
+      core->tcpBind(seq, serverId, ip, port, [&](auto seq, auto msg, auto post) {
         dispatch_async(dispatch_get_main_queue(), ^{
           [self send: seq msg: msg post: post];
         });
@@ -579,7 +549,7 @@ BluetoothDelegate* bluetooth;
     auto hostname = cmd.get("hostname");
 
     dispatch_async(queue, ^{
-      self.core->dnsLookup(seq, hostname, [&](auto seq, auto msg, auto post) {
+      core->dnsLookup(seq, hostname, [&](auto seq, auto msg, auto post) {
         dispatch_async(dispatch_get_main_queue(), ^{
           [self send: seq msg: msg post: post];
         });
@@ -590,13 +560,36 @@ BluetoothDelegate* bluetooth;
 
   NSLog(@"%s", msg.c_str());
 }
+@end
 
+@interface AppDelegate : UIResponder <UIApplicationDelegate, WKScriptMessageHandler>
+@property (strong, nonatomic) UIWindow* window;
+@property (strong, nonatomic) NavigationDelegate* navDelegate;
+@property (strong, nonatomic) BridgeView* bridgeView;
+@property (strong, nonatomic) WKUserContentController* content;
+
+@property nw_path_monitor_t monitor;
+@property (strong, nonatomic) NSObject<OS_dispatch_queue>* monitorQueue;
+@end
+
+void uncaughtExceptionHandler (NSException *exception) {
+  NSLog(@"%@", exception.name);
+  NSLog(@"%@", exception.reason);
+  NSLog(@"%@", exception.callStackSymbols);
+}
+
+//
+// iOS has no "window". There is no navigation, just a single webview. It also
+// has no "main" process, we want to expose some network functionality to the
+// JavaScript environment so it can be used by the web app and the wasm layer.
+//
+@implementation AppDelegate
 - (void) applicationDidEnterBackground {
-  [self.webview evaluateJavaScript: @"window.blur()" completionHandler:nil];
+  [self.bridgeView evaluateJavaScript: @"window.blur()" completionHandler:nil];
 }
 
 - (void) applicationWillEnterForeground {
-  [self.webview evaluateJavaScript: @"window.focus()" completionHandler:nil];
+  [self.bridgeView evaluateJavaScript: @"window.focus()" completionHandler:nil];
 }
 
 - (void) initNetworkStatusObserver {
@@ -641,7 +634,7 @@ BluetoothDelegate* bluetooth;
     }
 
     dispatch_async(dispatch_get_main_queue(), ^{
-      [self.webview emit: name msg: SSC::format(R"JSON({
+      [self.bridgeView emit: name msg: SSC::format(R"JSON({
         "message": "$S"
       })JSON", message)];
     });
@@ -654,18 +647,18 @@ BluetoothDelegate* bluetooth;
 // Next two methods handle creating the renderer and receiving/routing messages
 //
 - (void) userContentController: (WKUserContentController*) userContentController didReceiveScriptMessage: (WKScriptMessage*)scriptMessage {
-    id body = [scriptMessage body];
+  id body = [scriptMessage body];
 
-    if (![body isKindOfClass:[NSString class]]) {
-      return;
-    }
+  if (![body isKindOfClass:[NSString class]]) {
+    return;
+  }
 
-    [self route: [body UTF8String] buf: NULL];
+  [self.bridgeView route: [body UTF8String] buf: NULL];
 }
 
 - (void) keyboardDidHide {
-  self.webview.scrollView.scrollEnabled = YES;
-  [self.webview emit: "keyboard" msg: SSC::format(R"JSON({
+  self.bridgeView.scrollView.scrollEnabled = YES;
+  [self.bridgeView emit: "keyboard" msg: SSC::format(R"JSON({
     "value": {
       "data": {
 		    "event": "did-hide"
@@ -675,8 +668,8 @@ BluetoothDelegate* bluetooth;
 }
 
 - (void) keyboardDidShow {
-  self.webview.scrollView.scrollEnabled = NO;
-  [self.webview emit: "keyboard" msg: SSC::format(R"JSON({
+  self.bridgeView.scrollView.scrollEnabled = NO;
+  [self.bridgeView emit: "keyboard" msg: SSC::format(R"JSON({
     "value": {
       "data": {
 		    "event": "did-show"
@@ -689,7 +682,7 @@ BluetoothDelegate* bluetooth;
   auto str = std::string(url.absoluteString.UTF8String);
 
   // TODO can this be escaped or is the url encoded property already?
-  [self.webview emit: "protocol" msg: SSC::format(R"JSON({
+  [self.bridgeView emit: "protocol" msg: SSC::format(R"JSON({
     "url": "$S",
   })JSON", str)];
 
@@ -700,7 +693,6 @@ BluetoothDelegate* bluetooth;
   using namespace SSC;
 
   NSSetUncaughtExceptionHandler(&uncaughtExceptionHandler);
-  self.core = new Core;
   platform.os = "ios";
 
   auto appFrame = [[UIScreen mainScreen] bounds];
@@ -758,9 +750,7 @@ BluetoothDelegate* bluetooth;
 
   WKWebViewConfiguration *config = [[WKWebViewConfiguration alloc] init];
 
-  auto handler = [IPCSchemeHandler new];
-  handler.webview = webview;
-
+  IPCSchemeHandler* handler = [IPCSchemeHandler new];
   [config setURLSchemeHandler: handler forURLScheme:@"ipc"];
 
   self.content = [config userContentController];
@@ -768,29 +758,29 @@ BluetoothDelegate* bluetooth;
   [self.content addScriptMessageHandler:self name: @"webview"];
   [self.content addUserScript: initScript];
 
-  self.webview = [[WV alloc] initWithFrame: appFrame configuration: config];
-  self.webview.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-  self.webview.core = self.core;
+  self.bridgeView = [[BridgeView alloc] initWithFrame: appFrame configuration: config];
+  self.bridgeView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
 
-  [self.webview.configuration.preferences setValue: @YES forKey: @"allowFileAccessFromFileURLs"];
-  [self.webview.configuration.preferences setValue: @YES forKey: @"javaScriptEnabled"];
+  [self.bridgeView.configuration.preferences setValue: @YES forKey: @"allowFileAccessFromFileURLs"];
+  [self.bridgeView.configuration.preferences setValue: @YES forKey: @"javaScriptEnabled"];
 
   NSNotificationCenter* ns = [NSNotificationCenter defaultCenter];
   [ns addObserver: self selector: @selector(keyboardDidShow) name: UIKeyboardDidShowNotification object: nil];
   [ns addObserver: self selector: @selector(keyboardDidHide) name: UIKeyboardDidHideNotification object: nil];
 
   bluetooth = [BluetoothDelegate new];
-  bluetooth.webview = self.webview; // wants to emit events to webview
+  core = new Core;
 
   self.navDelegate = [[NavigationDelegate alloc] init];
-  [self.webview setNavigationDelegate: self.navDelegate];
+  [self.bridgeView setNavigationDelegate: self.navDelegate];
 
-  [viewController.view addSubview: self.webview];
+  [viewController.view addSubview: self.bridgeView];
 
   NSString* allowed = [[NSBundle mainBundle] resourcePath];
   NSString* url = [allowed stringByAppendingPathComponent:@"ui/index.html"];
 
-  [self.webview loadFileURL: [NSURL fileURLWithPath: url]
+  [self.bridgeView
+		loadFileURL: [NSURL fileURLWithPath: url]
     allowingReadAccessToURL: [NSURL fileURLWithPath: allowed]
   ];
 

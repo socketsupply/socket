@@ -1,4 +1,4 @@
-#include "../lib/http/index.hh"
+#include "http.hh"
 #include "common.hh"
 #include "process.hh"
 

@@ -1,12 +1,12 @@
 //
 // Mixed-into ios.mm and mac.hh by #include. This file
-// expects WV to be defined before it's included. 
+// expects BridgeView to be defined before it's included. 
 //
 @interface BluetoothDelegate : NSObject<
 	CBCentralManagerDelegate,
 	CBPeripheralManagerDelegate,
 	CBPeripheralDelegate>
-@property (strong, nonatomic) WV* webview;
+@property (strong, nonatomic) BridgeView* bridgeView;
 @property (strong, nonatomic) CBCentralManager* centralManager;
 @property (strong, nonatomic) CBPeripheralManager* peripheralManager;
 @property (strong, nonatomic) CBPeripheral* bluetoothPeripheral;
@@ -20,12 +20,11 @@
 @end
 
 @implementation BluetoothDelegate
-WV* webview;
-
 - (void)disconnect {
   NSLog(@"BBB disconnect");
   // throw new Error('disconnect is not supported on OS X!');
 }
+
 - (void)updateRssi {
   NSLog(@"BBB updateRssi");
 }
@@ -41,58 +40,58 @@ WV* webview;
 }
 
 - (void) peripheralManagerDidUpdateState:(CBPeripheralManager *)peripheral {
-    std::string state = "Unknown state";
-    std::string message = "Unknown state";
+  std::string state = "Unknown state";
+  std::string message = "Unknown state";
 
-    switch (peripheral.state) {
-      case CBManagerStatePoweredOff:
-        message = "CoreBluetooth BLE hardware is powered off.";
-        state = "CBManagerStatePoweredOff";
-        break;
+  switch (peripheral.state) {
+    case CBManagerStatePoweredOff:
+      message = "CoreBluetooth BLE hardware is powered off.";
+      state = "CBManagerStatePoweredOff";
+      break;
 
-      case CBManagerStatePoweredOn:
-        [self startBluetooth];
-        message = "CoreBluetooth BLE hardware is powered on and ready.";
-        state = "CBManagerStatePoweredOn";
-        break;
+    case CBManagerStatePoweredOn:
+      [self startBluetooth];
+      message = "CoreBluetooth BLE hardware is powered on and ready.";
+      state = "CBManagerStatePoweredOn";
+      break;
 
-      case CBManagerStateUnauthorized:
-        message = "CoreBluetooth BLE state is unauthorized.";
-        state = "CBManagerStateUnauthorized";
-        break;
+    case CBManagerStateUnauthorized:
+      message = "CoreBluetooth BLE state is unauthorized.";
+      state = "CBManagerStateUnauthorized";
+      break;
 
-      case CBManagerStateUnknown:
-        message = "CoreBluetooth BLE state is unknown.";
-        state = "CBManagerStateUnknown";
-        break;
+    case CBManagerStateUnknown:
+      message = "CoreBluetooth BLE state is unknown.";
+      state = "CBManagerStateUnknown";
+      break;
 
-      case CBManagerStateUnsupported:
-        message = "CoreBluetooth BLE hardware is unsupported on this platform.";
-        state = "CBManagerStateUnsupported";
-        break;
+    case CBManagerStateUnsupported:
+      message = "CoreBluetooth BLE hardware is unsupported on this platform.";
+      state = "CBManagerStateUnsupported";
+      break;
 
-      default:
-        break;
-    }
+    default:
+      break;
+  }
 
-    auto msg = SSC::format(R"JSON({
-      "value": {
-        "data": {
-          "message": "$S"
-          "state": "$S"
-        }
+  auto msg = SSC::format(R"JSON({
+    "value": {
+      "data": {
+        "message": "$S"
+        "state": "$S"
       }
-    })JSON", message, state);
+    }
+  })JSON", message, state);
 
-    [self.webview emit: "local-network" msg: msg];
+  [self.bridgeView emit: "local-network" msg: msg];
 
-    NSLog(@"%@", [NSString stringWithUTF8String: msg.c_str()]);
+  NSLog(@"%@", [NSString stringWithUTF8String: msg.c_str()]);
 }
 
 - (void) peripheralManagerDidStartAdvertising: (CBPeripheralManager*)peripheral error:(nullable NSError *)error {
   NSLog(@"BBB peripheralManagerDidStartAdvertising: %@", peripheral.description);
   if (error) {
-      NSLog(@"BBB Error advertising: %@", [error localizedDescription]);
+    NSLog(@"BBB Error advertising: %@", [error localizedDescription]);
   }
 }
 
@@ -101,15 +100,15 @@ WV* webview;
 }
 
 - (void) peripheralManager:(CBPeripheralManager *)peripheral didPublishL2CAPChannel:(CBL2CAPPSM)PSM error:(nullable NSError *)error {
-    NSLog(@"BBB didPublishL2CAPChannel");
+  NSLog(@"BBB didPublishL2CAPChannel");
 }
 
 - (void) peripheralManager:(CBPeripheralManager *)peripheral didUnpublishL2CAPChannel:(CBL2CAPPSM)PSM error:(nullable NSError *)error {
-    NSLog(@"BBB didUnpublishL2CAPChannel");
+  NSLog(@"BBB didUnpublishL2CAPChannel");
 }
 
 - (void) peripheralManager:(CBPeripheralManager *)peripheral didOpenL2CAPChannel:(nullable CBL2CAPChannel *)channel error:(nullable NSError *)error {
-    NSLog(@"BBB didOpenL2CAPChannel");
+  NSLog(@"BBB didOpenL2CAPChannel");
 }
 
 - (void) centralManagerDidUpdateState: (CBCentralManager*)central {
@@ -134,7 +133,7 @@ WV* webview;
     }
   })JSON");
 
-  [self.webview emit: "local-network" msg: msg];
+  [self.bridgeView emit: "local-network" msg: msg];
 }
 
 - (void) startBluetooth {
@@ -186,7 +185,7 @@ WV* webview;
     }
   })JSON");
 
-  [self.webview emit: "local-network" msg: msg];
+  [self.bridgeView emit: "local-network" msg: msg];
 
   if ([request.characteristic.UUID isEqual: _characteristic.UUID]) {
     if (request.offset > _characteristic.value.length) {
@@ -212,7 +211,7 @@ WV* webview;
     }
   })JSON");
 
-  [self.webview emit: "local-network" msg: msg];
+  [self.bridgeView emit: "local-network" msg: msg];
 
   for (CBATTRequest* request in requests) {
     if (![request.characteristic.UUID isEqual: _characteristic.UUID]) {
@@ -229,7 +228,7 @@ WV* webview;
         "data": { "message": "$S" }
       }
     })JSON", std::string(src));
-    [self.webview emit: "local-network" msg: msg];
+    [self.bridgeView emit: "local-network" msg: msg];
     [self.peripheralManager respondToRequest: request withResult: CBATTErrorSuccess];  
   }
 } */
@@ -280,7 +279,7 @@ WV* webview;
     }
   })JSON", name, uuid);
 
-  [self.webview emit: "local-network" msg: msg];
+  [self.bridgeView emit: "local-network" msg: msg];
 
   [_peripherals addObject: peripheral];
   [central connectPeripheral: peripheral options: nil];
@@ -318,7 +317,7 @@ WV* webview;
     }
   })JSON");
 
-  [self.webview emit: "local-network" msg: msg];
+  [self.bridgeView emit: "local-network" msg: msg];
 }
 
 - (void) peripheral:(CBPeripheral*)peripheral didUpdateValueForCharacteristic:(CBCharacteristic*)characteristic error:(NSError*)error {
@@ -345,7 +344,7 @@ WV* webview;
 
   NSLog(@"BBB didUpdateValueForCharacteristic: %s", src);
 
-  [self.webview emit: "local-network" msg: msg];
+  [self.bridgeView emit: "local-network" msg: msg];
 }
 
 - (void)peripheral:(CBPeripheral*)peripheral didUpdateNotificationStateForCharacteristic:(CBCharacteristic*)characteristic error:(NSError*)error {
@@ -362,7 +361,7 @@ WV* webview;
     }
   })JSON");
 
-  [self.webview emit: "local-network" msg: msg];
+  [self.bridgeView emit: "local-network" msg: msg];
 }
 
 - (void) centralManager:(CBCentralManager *)central didFailToConnectPeripheral:(CBPeripheral *)peripheral error:(nullable NSError *)error {
@@ -383,14 +382,14 @@ WV* webview;
     }
   })JSON", name, uuid);
 
-  [self.webview emit: "local-network" msg: msg];
+  [self.bridgeView emit: "local-network" msg: msg];
 
   [_peripherals removeObject: peripheral];
 }
 @end
 
 @interface NavigationDelegate : NSObject<WKNavigationDelegate>
-- (void) webView: (WV*)webView
+- (void) webView: (BridgeView*)webView
   decidePolicyForNavigationAction: (WKNavigationAction*)navigationAction
   decisionHandler: (void (^)(WKNavigationActionPolicy)) decisionHandler;
 @end
@@ -412,15 +411,13 @@ WV* webview;
 @end
 
 @interface IPCSchemeHandler : NSObject<WKURLSchemeHandler>
-@property (strong, nonatomic) WV* webview;
-- (void)webView: (WV*)webView startURLSchemeTask:(id <WKURLSchemeTask>)urlSchemeTask;
-- (void)webView: (WV*)webView stopURLSchemeTask:(id <WKURLSchemeTask>)urlSchemeTask;
+- (void)webView: (BridgeView*)webView startURLSchemeTask:(id <WKURLSchemeTask>)urlSchemeTask;
+- (void)webView: (BridgeView*)webView stopURLSchemeTask:(id <WKURLSchemeTask>)urlSchemeTask;
 @end
 
 @implementation IPCSchemeHandler
-- (void)webView: (WV*)wv stopURLSchemeTask:(id<WKURLSchemeTask>)urlSchemeTask {}
-- (void)webView: (WV*)wv startURLSchemeTask:(id<WKURLSchemeTask>)task {
-  SSC::Core* core = wv.core;
+- (void)webView: (BridgeView*)bridgeView stopURLSchemeTask:(id<WKURLSchemeTask>)urlSchemeTask {}
+- (void)webView: (BridgeView*)bridgeView startURLSchemeTask:(id<WKURLSchemeTask>)task {
   auto url = std::string(task.request.URL.absoluteString.UTF8String);
 
   SSC::Parse cmd(url);
@@ -474,6 +471,6 @@ WV* webview;
     body = (char*)data;
   }
 
-  [delegate route: url buf: body];
+  [bridgeView route: url buf: body];
 }
 @end

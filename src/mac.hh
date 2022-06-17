@@ -6,19 +6,23 @@
 #import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
 #include <objc/objc-runtime.h>
 
-@interface WV : WKWebView<
+SSC::Core* core;
+
+@interface BridgeView : WKWebView<
   WKUIDelegate,
   NSDraggingDestination,
   NSFilePromiseProviderDelegate,
   NSDraggingSource>
 - (void) emit: (std::string)name msg: (std::string)msg;
 - (NSDragOperation) draggingSession: (NSDraggingSession *)session
-  sourceOperationMaskForDraggingContext:(NSDraggingContext)context;
+  sourceOperationMaskForDraggingContext: (NSDraggingContext)context;
 @end
 
 #include "apple.mm"
 
-@implementation WV
+BluetoothDelegate* bluetooth;
+
+@implementation BridgeView
 std::vector<std::string> draggablePayload;
 
 int lastX = 0;
@@ -406,7 +410,7 @@ int lastY = 0;
 @end
 
 @implementation NavigationDelegate
-- (void) webView: (WV*) webView
+- (void) webView: (BridgeView*) webView
     decidePolicyForNavigationAction: (WKNavigationAction*) navigationAction
     decisionHandler: (void (^)(WKNavigationActionPolicy)) decisionHandler {
 
@@ -439,7 +443,7 @@ namespace SSC {
 
   class Window : public IWindow {
     NSWindow* window;
-    WV* webview;
+    BridgeView* webview;
 
     public:
       App app;
@@ -597,7 +601,7 @@ namespace SSC {
     [controller
       addUserScript: userScript];
 
-    webview = [[WV alloc]
+    webview = [[BridgeView alloc]
       initWithFrame: NSZeroRect
       configuration: config];
 
