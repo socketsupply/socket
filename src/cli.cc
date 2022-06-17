@@ -115,6 +115,39 @@ int main (const int argc, const char* argv[]) {
     }
   }
 
+  if (is(subcommand, "install-app")) {
+    if (platform.os != "mac") {
+      log("install-app is only supported on macOS.");
+      exit(0);
+    } else {
+      auto path = argv[2];
+      auto target = fs::path(path);
+      if (path[0] == '.') {
+        target = fs::absolute(target);
+      }
+      auto configPath = target / "ssc.config";
+      auto _settings = WStringToString(readFile(configPath));
+      auto settings = parseConfig(_settings);
+      auto ipaPath = (
+        target /
+        settings["output"] /
+        "build" /
+        std::string(settings["name"] + ".ipa") /
+        std::string(settings["name"] + ".ipa")
+      );
+      auto r = exec("/Applications/Apple\\ Configurator.app/Contents/MacOS/cfgutil install-app " + std::string(ipaPath));
+      if (r.exitCode != 0) {
+        r = exec("cfgutil install-app " + std::string(ipaPath));
+        if (r.exitCode != 0) {
+          log("failed to install the app. Please install Apple Configurator and try again.");
+          exit(1);
+        }
+      }
+      log("successfully installed the app on your device.");
+      exit(0);
+    }
+  }
+
   auto const shouldPrintBuildTarget = is(subcommand, "print-build-target");
 
   if (is(subcommand, "compile") || shouldPrintBuildTarget) {
