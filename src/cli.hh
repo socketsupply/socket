@@ -5,30 +5,37 @@
 // Cli Help
 //
 constexpr auto gHelpText = R"TEXT(
-ssc {{version}}
+ssc {{ssc_version}}
 
 usage:
-  ssc <project-dir> [-h, ...]
+  ssc compile [OPTIONS] <project-dir>
+  ssc [SUBCOMMAND]
 
-flags:
+options:
   -b   bundle for app store
   -c   code sign the bundle
   -h   help
-  -i   init
   -v   version
-  -me  (macOS) use entitlements
-  -mn  (macOS) notarize the bundle
-  -mid (macOS) get current device id and exit
   -o   only run user build step
   -p   package the app
   -r   run after building
   -xd  turn off debug mode (production build)
 
-  -ios        (iOS) build for iOS
-  -android    (Android) build for Android
-  -simulator  build for simulator
-  --test=1    indicate test mode
-  --port=n    load "http://localhost:n"
+  --target  cross-compilation for another platform, any of: ios, iossimulator
+  --test=1  indicate test mode
+  --port=n  load "http://localhost:n"
+
+subcommands:
+  init               initialize a new project in the current directory
+  compile            compile project
+  list-build-target  print build path to stdout
+  mobiledeviceid     get current device id
+)TEXT";
+
+constexpr auto gHelpTextMac = R"TEXT(
+macOS-specific options:
+  -e  use entitlements
+  -n  notarize the bundle
 )TEXT";
 
 //
@@ -966,7 +973,7 @@ constexpr auto gStoryboardLaunchScreen = R"XML(<?xml version="1.0" encoding="UTF
 
 constexpr auto gDefaultConfig = R"CONFIG(
 #
-# Default configuration file {{version}}. Delete what you don't need.
+# Default configuration file {{ssc_version}}. Delete what you don't need.
 #
 
 # Shell command to build an application.
@@ -982,7 +989,7 @@ bundle_identifier_short: boop
 copyright: (c) Beep Boop Corp. 1985
 
 # Advanced Compiler Settings for debug purposes (ie C++ compiler -g, etc).
-debug_flags: -g -O3
+debug_flags: -g
 
 # A short description of the app
 description: A UI for the beep boop network
@@ -994,7 +1001,7 @@ description: A UI for the beep boop network
 executable: boop
 
 # Advanced Compiler Settings (ie C++ compiler -02, -03, etc).
-flags: -O1
+flags: -O3
 
 # A boolean that determines if stdout and stderr should get forwarded
 # forward_console: true
@@ -1057,7 +1064,7 @@ width: 1024
 # win_bootstrap_dest: ./node
 
 # The source of the file to download if `_bootstrap_dest` fails.
-# win_bootstrap_src: https://nodejs.org/download/release/latest/node-v18.0.0-darwin-x64.tar.gz
+# win_bootstrap_src: https://nodejs.org/download/release/v18.4.0/node-v18.4.0-win-x64.7z
 
 # The script to run after `_bootstrap_src` is successfully downloaded.
 # win_bootstrap_post: postinstall.sh
@@ -1081,7 +1088,7 @@ width: 1024
 # linux_bootstrap_dest: ./node
 
 # The source of the file to download if `_bootstrap_dest` fails.
-# linux_bootstrap_src: https://nodejs.org/download/release/latest/node-v18.0.0-darwin-x64.tar.gz
+# linux_bootstrap_src: https://nodejs.org/download/release/v18.4.0/node-v18.4.0-linux-x64.tar.gz
 
 # The script to run after `_bootstrap_src` is successfully downloaded.
 # linux_bootstrap_post: postinstall.sh
@@ -1105,7 +1112,7 @@ width: 1024
 # mac_bootstrap_dest: ./node
 
 # The source of the file to download if `_bootstrap_dest` fails.
-# mac_bootstrap_src: https://nodejs.org/download/release/latest/node-v18.0.0-darwin-x64.tar.gz
+# mac_bootstrap_src: https://nodejs.org/download/release/v18.4.0/node-v18.4.0-darwin-{{node_platform}}.tar.gz
 
 # The script to run after `_bootstrap_src` is successfully downloaded.
 # mac_bootstrap_post: postinstall.sh
@@ -1140,7 +1147,7 @@ width: 1024
 #
 
 # which device to target when building for the simulator
-# ios_simulator_device:
+# ios_simulator_device: iPhone 13
 
 # a protocol to register for addeventListener('protocol', e => {})
 # ios_protocol: hyper
