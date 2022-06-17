@@ -259,29 +259,6 @@ int main (const int argc, const char* argv[]) {
     if (settings.count("revision") == 0) {
       settings["revision"] = "1";
     }
-    
-    const std::vector<std::string> archs = {
-      "arm64",
-      "x86_64",
-      "i386"
-    };
-
-    if (settings.count("arch") == 0 || settings["arch"] == "auto") {
-      settings["arch"] = platform.arch;
-    } else { 
-      // arch typecheck
-      bool found = false;
-      for (auto const& arch : archs) {
-        if (settings["arch"] == arch) {
-          found = true;
-          break;
-        }
-      }
-      if (!found) {
-        log("arch type '" + settings["arch"] + "' not supported");
-        exit(1);
-      }
-    }
 
     const std::vector<std::string> required = {
       "name",
@@ -487,7 +464,7 @@ int main (const int argc, const char* argv[]) {
         settings["executable"] + "_" +
         settings["version"] + "-" +
         settings["revision"] + "_" +
-        settings["arch"]
+        platform.arch
       ));
 
       pathPackage = { target / pathOutput / packageName };
