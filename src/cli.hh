@@ -193,7 +193,7 @@ Categories={{linux_categories}};
 
 constexpr auto gDebianManifest = R"DEB(Package: {{deb_name}}
 Version: {{version_short}}
-Architecture: {{arch}}
+Architecture: amd64
 Maintainer: {{maintainer}}
 Description: {{title}}
  {{description}}
