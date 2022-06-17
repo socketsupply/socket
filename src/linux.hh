@@ -377,8 +377,20 @@ namespace SSC {
         auto *w = static_cast<Window*>(arg);
         if (!w) return;
 
-        w->isDragInvokedInsideWindow = false;
-        w->eval(SSC::emitToRenderProcess("dragend", "{}"));
+        /**
+         * Calling w->eval() inside button-release-event causes
+         * a Segmentation Fault on Ubuntu 22, but works fine on
+         * other linuxes like Ubuntu 20.
+         *
+         * The dragend feature causes the application to crash in
+         * all operations including non drag-drop and causes applications
+         * that do not use drag and drop at all to crash.
+         *
+         * So disabling this experimental linux dragdrop code for now.
+         */
+
+        // w->isDragInvokedInsideWindow = false;
+        // w->eval(SSC::emitToRenderProcess("dragend", "{}"));
       }),
       this
     );
