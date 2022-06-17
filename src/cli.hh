@@ -6,7 +6,7 @@ ssc {{ssc_version}}
 
 usage:
   ssc compile [OPTIONS] <project-dir>
-  ssc install-app <project-dir> (macOS only)
+  ssc install-app --target=<target> <project-dir> (macOS only)
   ssc [SUBCOMMAND]
 
 subcommands:
