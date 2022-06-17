@@ -139,7 +139,7 @@ int main (const int argc, const char* argv[]) {
       if (r.exitCode != 0) {
         r = exec("cfgutil install-app " + std::string(ipaPath));
         if (r.exitCode != 0) {
-          log("failed to install the app. Please install Apple Configurator and try again.");
+          log("failed to install the app. Please install Apple Configurator from https://apps.apple.com/us/app/apple-configurator/id1037126344 and try again.");
           exit(1);
         }
       }
