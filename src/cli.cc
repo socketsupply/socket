@@ -49,10 +49,7 @@ static std::string getCxxFlags() {
 }
 
 void printHelp (Map attrs) {
-  std::stringstream helpText;
-  helpText << tmpl(gHelpText, attrs);
-  if (platform.os == "mac") helpText << gHelpTextMac;
-  std::cout << helpText.str() << std::endl;
+  std::cout << tmpl(gHelpText, attrs) << std::endl;
 }
 
 int main (const int argc, const char* argv[]) {

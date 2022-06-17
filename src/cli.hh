@@ -6,6 +6,7 @@ ssc {{ssc_version}}
 
 usage:
   ssc compile [OPTIONS] <project-dir>
+  ssc install-app <project-dir> (macOS only)
   ssc [SUBCOMMAND]
 
 subcommands:
@@ -30,9 +31,9 @@ packaging options:
   -p  package the app
   -c  code sign
   -s  prep for app store
-)TEXT";
 
-constexpr auto gHelpTextMac = R"TEXT(  -e  specify entitlements
+macOS-specific options:
+  -e  specify entitlements
   -n  notarize
 )TEXT";
 
