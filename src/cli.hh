@@ -1062,7 +1062,7 @@ width: 1024
 # win_bootstrap_dest: ./node
 
 # The source of the file to download if `_bootstrap_dest` fails.
-# win_bootstrap_src: https://nodejs.org/download/release/latest/node-v18.0.0-darwin-x64.tar.gz
+# win_bootstrap_src: https://nodejs.org/download/release/v18.4.0/node-v18.4.0-win-x64.7z
 
 # The script to run after `_bootstrap_src` is successfully downloaded.
 # win_bootstrap_post: postinstall.sh
@@ -1086,7 +1086,7 @@ width: 1024
 # linux_bootstrap_dest: ./node
 
 # The source of the file to download if `_bootstrap_dest` fails.
-# linux_bootstrap_src: https://nodejs.org/download/release/latest/node-v18.0.0-darwin-x64.tar.gz
+# linux_bootstrap_src: https://nodejs.org/download/release/v18.4.0/node-v18.4.0-linux-x64.tar.gz
 
 # The script to run after `_bootstrap_src` is successfully downloaded.
 # linux_bootstrap_post: postinstall.sh
@@ -1110,7 +1110,7 @@ width: 1024
 # mac_bootstrap_dest: ./node
 
 # The source of the file to download if `_bootstrap_dest` fails.
-# mac_bootstrap_src: https://nodejs.org/download/release/latest/node-v18.0.0-darwin-x64.tar.gz
+# mac_bootstrap_src: https://nodejs.org/download/release/v18.4.0/node-v18.4.0-darwin-{{node_platform}}.tar.gz
 
 # The script to run after `_bootstrap_src` is successfully downloaded.
 # mac_bootstrap_post: postinstall.sh
