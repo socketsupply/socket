@@ -230,7 +230,7 @@ int main (const int argc, const char* argv[]) {
   }
 
   if (settings.count("arch") == 0 || settings["arch"] == "auto") {
-    settings["arch"] = platform.arch;
+    settings["arch"] = platform.arch == "x86_64" ? "amd64" : platform.arch;
   }
 
   std::vector<std::string> required = {
