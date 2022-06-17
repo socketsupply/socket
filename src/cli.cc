@@ -410,7 +410,7 @@ int main (const int argc, const char* argv[]) {
       settings["executable"] + "_" +
       settings["version"] + "-" +
       settings["revision"] + "_" +
-      "amd64"
+      settings["arch"]
     ));
 
     pathPackage = { target / pathOutput / packageName };
