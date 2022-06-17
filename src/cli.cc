@@ -80,7 +80,7 @@ int main (const int argc, const char* argv[]) {
   }
 
   if (is(subcommand, "init")) {
-    init();
+    init(attrs);
     exit(0);
   }
 
@@ -117,7 +117,22 @@ int main (const int argc, const char* argv[]) {
       log("install-app is only supported on macOS.");
       exit(0);
     } else {
-      auto path = argv[2];
+      if (argc < 4) {
+        std::cout << "usage: ssc install-app --target=<target> <app-path>" << std::endl;
+        exit(1);
+      }
+      if (std::string(argv[2]).find("--target=") == 0) {
+        auto target = std::string(argv[2]).substr(9);
+        // TODO: add Android support
+        if (target != "ios") {
+          std::cout << "Unsupported target: " << target << std::endl;
+          exit(1); 
+        }
+      } else {
+        std::cout << "usage: ssc install-app --target=<target> <app-path>" << std::endl;
+        exit(1);
+      }
+      auto path = argv[3];
       auto target = fs::path(path);
       if (path[0] == '.') {
         target = fs::absolute(target);
@@ -132,6 +147,7 @@ int main (const int argc, const char* argv[]) {
         std::string(settings["name"] + ".ipa") /
         std::string(settings["name"] + ".ipa")
       );
+      // TODO: handle cases when build dir is not exest and when the device is not connected
       auto r = exec("/Applications/Apple\\ Configurator.app/Contents/MacOS/cfgutil install-app " + std::string(ipaPath));
       if (r.exitCode != 0) {
         r = exec("cfgutil install-app " + std::string(ipaPath));
