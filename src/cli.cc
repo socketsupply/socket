@@ -37,6 +37,9 @@ void log (const std::string s) {
 }
 
 void init (Map attrs) {
+  if (platform.os == "mac") {
+    attrs["node_platform"] = platform.arch == "arm64" ? "arm64" : "x64";
+  }
   auto cwd = fs::current_path();
   fs::create_directories(cwd / "src");
   SSC::writeFile(cwd / "src" / "index.html", "<html>Hello, World</html>");
@@ -48,19 +51,16 @@ static std::string getCxxFlags() {
   return flags.size() > 0 ? " " + flags : "";
 }
 
-void printHelp (Map attrs) {
-  std::cout << tmpl(gHelpText, attrs) << std::endl;
+void printHelp () {
+  std::cout << gHelpText << std::endl;
 }
 
 int main (const int argc, const char* argv[]) {
   Map attrs;
   attrs["ssc_version"] = SSC::version;
-  if (platform.os == "mac") {
-    attrs["node_platform"] = platform.arch == "arm64" ? "arm64" : "x64";
-  }
 
   if (argc < 2) {
-    printHelp(attrs);
+    printHelp();
     exit(0);
   }
 
@@ -75,12 +75,12 @@ int main (const int argc, const char* argv[]) {
     exit(0);
   }
   if (is(subcommand, "-h")) {
-    printHelp(attrs);
+    printHelp();
     exit(0);
   }
 
   if (is(subcommand, "init")) {
-    init(attrs);
+    init();
     exit(0);
   }
 
