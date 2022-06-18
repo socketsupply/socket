@@ -43,8 +43,14 @@ if ! which sudo > /dev/null 2>&1; then
   }
 fi
 
+function die {
+  if [ ! $1 = 0 ]; then
+    echo "$2 - please report (https://discord.gg/YPV32gKCsH)" && exit 1
+  fi
+}
+
 function _build {
-  echo "# building cli for `uname -m`..."
+  echo "# building cli for desktop (`uname -m`)..."
 
   "$CXX" src/cli.cc ${CXX_FLAGS} ${CXXFLAGS} \
     -o bin/cli \
@@ -52,11 +58,8 @@ function _build {
     -DVERSION_HASH=`git rev-parse --short HEAD` \
     -DVERSION=`cat VERSION.txt` \
 
-  if [ ! $? = 0 ]; then
-    echo "not ok - unable to build. See trouble shooting guide in the README.md file"
-    exit 1
-  fi
-  echo "ok - built the cli"
+  die $? "not ok - unable to build. See trouble shooting guide in the README.md file"
+  echo "ok - built the cli for desktop"
 }
 
 function _prepare {
@@ -67,19 +70,15 @@ function _prepare {
   fi
 
   echo "# preparing directories..."
-  #rm -rf $LIB_DIR/uv
   rm -rf "$ASSETS_DIR"
   mkdir -p $ASSETS_DIR/{lib,src,include}
+  mkdir -p $LIB_DIR
 
-  # Shallow clone the main branch of libuv
   if [ ! -d "$BUILD_DIR" ]; then
   	git clone --depth=1 https://github.com/libuv/libuv.git $BUILD_DIR/input > /dev/null 2>&1
     rm -rf $BUILD_DIR/input/.git
 
-    if [ ! $? = 0 ]; then
-      echo "not ok - unable to clone. See trouble shooting guide in the README.md file"
-      exit 1
-    fi
+    die $? "not ok - unable to clone. See trouble shooting guide in the README.md file"
   fi
 
   echo "ok - directories prepared."
@@ -99,11 +98,7 @@ function _install {
   echo "# moving binary to $PREFIX/bin (prompting to copy file into directory)"
   sudo mv `pwd`/bin/cli "/usr/local/bin/ssc"
 
-  if [ ! $? = 0 ]; then
-    echo "not ok - unable to move binary into place"
-    exit 1
-  fi
-
+  die $? "not ok - unable to move binary into place"
   echo "ok - done. type 'ssc -h' for help"
   exit 0
 }
@@ -134,28 +129,43 @@ function quiet () {
 }
 
 function _compile_libuv {
-  if [ -z "$1" ]; then
-    quiet ./configure --prefix="$BUILD_DIR/output/desktop"
-    quiet make -j8
-    return
+  target=$1
+  hosttarget=$1
+  platform=$2
+
+  if [ -z "$target" ]; then
+    target=`uname -m`
+    platform="desktop"
   fi
 
-  echo "# building for $1 ($2)..."
-  local STAGING_DIR=$BUILD_DIR/$1-$2
+  echo "# building libuv for $platform ($target)..."
+  STAGING_DIR=$BUILD_DIR/$target-$platform
 
   if [ ! -d "$STAGING_DIR" ]; then
-    cp -r $BUILD_DIR/input/ $STAGING_DIR
+    cp -r $BUILD_DIR/input $STAGING_DIR
     cd $STAGING_DIR
  	  quiet sh autogen.sh
   else
     cd $STAGING_DIR
   fi
 
-  target=$1
-  hosttarget=$1
-  platform=$2
+  if [ $platform == "desktop" ]; then
+    mkdir -p $PREFIX
+    quiet ./configure --prefix=$STAGING_DIR/build
+    die $? "not ok - desktop configure"
 
-  if [[ $hosttarget == "arm64" ]]; then
+    quiet make clean
+    quiet make -j8
+    quiet make install
+
+    cp $STAGING_DIR/build/lib/libuv.a $LIB_DIR
+    die $? "not ok - unable to build libuv"
+    echo "ok - built libuv for $platform ($target)"
+
+    return
+  fi
+
+  if [ $hosttarget == "arm64" ]; then
     hosttarget="arm"
   fi
 
@@ -170,14 +180,12 @@ function _compile_libuv {
   export CPPFLAGS="-fembed-bitcode -arch ${target} -isysroot $PLATFORMPATH/$platform.platform/Developer/SDKs/$platform$SDKVERSION.sdk -miphoneos-version-min=$SDKMINVERSION"
   export LDFLAGS="-Wc,-fembed-bitcode -arch ${target} -isysroot $PLATFORMPATH/$platform.platform/Developer/SDKs/$platform$SDKVERSION.sdk"
 
-  quiet ./configure --prefix="$BUILD_DIR/output/$target" --host=$hosttarget-apple-darwin
+  quiet ./configure --prefix=$STAGING_DIR/build --host=$hosttarget-apple-darwin
 
-  if [ ! $? = 0 ]; then
-    echo "not ok - failed to configure, see trouble shooting guide"
-    exit 1
-  fi
+  die $? "not ok - failed to configure"
 
   quiet make -j8
+  quiet make install
 
   cd $BUILD_DIR
   echo "ok - built for $target"
@@ -187,10 +195,8 @@ _prepare
 cd $BUILD_DIR
 
 if [ "$1" == "ios" ]; then
-  if ! xcode-select -p >/dev/null 2>&1; then
-    echo "not ok - xcode needs to be installed from the mac app store"
-    exit 1
-  fi
+  quiet xcode-select -p
+  die $? "not ok - xcode needs to be installed from the mac app store"
 
   SDKMINVERSION="8.0"
   export IPHONEOS_DEPLOYMENT_TARGET="8.0"
@@ -209,24 +215,27 @@ if [ "$1" == "ios" ]; then
   for pid in $pids; do wait $pid; done
 
   quiet $LIPO -create \
-    $BUILD_DIR/output/arm64/lib/libuv.a \
-    $BUILD_DIR/output/x86_64/lib/libuv.a \
-    $BUILD_DIR/output/i386/lib/libuv.a \
-    -output libuv.a
+    $BUILD_DIR/arm64-iPhoneOS/build/lib/libuv.a \
+    $BUILD_DIR/x86_64-iPhoneSimulator/build/lib/libuv.a \
+    $BUILD_DIR/i386-iPhoneSimulator/build/lib/libuv.a \
+    -output $LIB_DIR/libuv.a
 
-  if [ ! $? = 0 ]; then
-    echo "not ok - unable to combine build artifacts, see trouble shooting guide"
-    exit 1
-  fi
+  die $? "not ok - unable to combine build artifacts"
+  echo "ok - created fat library"
 
   unset PLATFORM CC STRIP LD CPP CFLAGS AR RANLIB \
     CPPFLAGS LDFLAGS IPHONEOS_DEPLOYMENT_TARGET
+
+  cp $LIB_DIR/libuv.a $ASSETS_DIR/lib/libuv.a
+  die $? "not ok - could not copy fat library"
+  echo "ok - copied fat library"
 else
   _compile_libuv
 fi
 
-cp libuv.a $LIB_DIR
-cp -r input/include/ $ASSETS_DIR/include
+cp -r $BUILD_DIR/input/include/ $ASSETS_DIR/include
+die $? "not ok - could not copy headers"
+echo "ok - copied headers"
 cd $WORK_DIR
 
 _build

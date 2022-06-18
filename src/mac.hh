@@ -14,6 +14,7 @@ SSC::Core* core;
   NSFilePromiseProviderDelegate,
   NSDraggingSource>
 - (void) emit: (std::string)name msg: (std::string)msg;
+- (void) route: (std::string)msg buf: (char*)buf;
 - (NSDragOperation) draggingSession: (NSDraggingSession *)session
   sourceOperationMaskForDraggingContext: (NSDraggingContext)context;
 @end
@@ -27,6 +28,9 @@ std::vector<std::string> draggablePayload;
 
 int lastX = 0;
 int lastY = 0;
+
+- (void) route: (std::string)msg buf: (char*)buf {
+}
 
 - (void) emit: (std::string)name msg: (std::string)msg {
   msg = SSC::emitToRenderProcess(name, SSC::encodeURIComponent(msg));
@@ -403,25 +407,6 @@ int lastY = 0;
 - (void)userContentController: (WKUserContentController*) userContentController
       didReceiveScriptMessage: (WKScriptMessage*) scriptMessage {
         // To be overridden
-}
-@end
-
-@interface NavigationDelegate : NSObject<WKNavigationDelegate>
-@end
-
-@implementation NavigationDelegate
-- (void) webView: (BridgeView*) webView
-    decidePolicyForNavigationAction: (WKNavigationAction*) navigationAction
-    decisionHandler: (void (^)(WKNavigationActionPolicy)) decisionHandler {
-
-  // std::string base = webView.URL.absoluteString.UTF8String;
-  std::string request = navigationAction.request.URL.absoluteString.UTF8String;
-
-  if (request.find("file://") == 0 && request.find("http://localhost") == 0) {
-    decisionHandler(WKNavigationActionPolicyCancel);
-  } else {
-    decisionHandler(WKNavigationActionPolicyAllow);
-  }
 }
 @end
 

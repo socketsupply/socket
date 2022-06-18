@@ -51,9 +51,7 @@ static std::string getCxxFlags() {
 void printHelp (Map attrs) {
   std::stringstream helpText;
   helpText << tmpl(gHelpText, attrs);
-  if (platform.os == "mac") {
-    helpText << gHelpTextMac;
-  }
+  if (platform.os == "mac") helpText << gHelpTextMac;
   std::cout << helpText.str() << std::endl;
 }
 
@@ -117,9 +115,9 @@ int main (const int argc, const char* argv[]) {
     }
   }
 
-  auto const listBuildTarget = is(subcommand, "list-build-target");
+  auto const shouldListBuildTarget = is(subcommand, "list-build-target");
 
-  if (is(subcommand, "compile") || listBuildTarget) {
+  if (is(subcommand, "compile") || shouldListBuildTarget) {
     bool flagRunUserBuild = false;
     bool flagAppStore = false;
     bool flagCodeSign = false;
@@ -134,14 +132,14 @@ int main (const int argc, const char* argv[]) {
     bool flagBuildForSimulator = false;
     bool flagPrintBuildPath = false;
 
-    if (listBuildTarget) {
+    if (shouldListBuildTarget) {
       porcelain = true;
       flagPrintBuildPath = true;
     }
 
     std::string devPort("0");
-
     auto cnt = 0;
+
     for (auto const arg : std::span(argv, argc).subspan(2, argc-3)) {
       if (is(arg, "-c")) {
         flagCodeSign = true;
@@ -329,8 +327,17 @@ int main (const int argc, const char* argv[]) {
 
       log("preparing build for mac");
 
-      flags = "-std=c++2a -framework UniformTypeIdentifiers -framework CoreBluetooth -framework WebKit -framework Cocoa -ObjC++";
-      flags += getCxxFlags();
+      flags = "-std=c++2a -ObjC++";
+      flags += " -framework UniformTypeIdentifiers";
+      flags += " -framework CoreBluetooth";
+      flags += " -framework WebKit";
+      flags += " -framework Cocoa";
+      flags += " -Wno-nullability-completeness"; // ignore swift compat
+      flags += " -I" + prefixFile();
+      flags += " -I" + prefixFile("include");
+      flags += " -L" + prefixFile("lib");
+      flags += " -luv";
+      flags += " " + getCxxFlags();
 
       files += prefixFile("src/main.cc");
       files += prefixFile("src/process_unix.cc");
@@ -647,7 +654,7 @@ int main (const int argc, const char* argv[]) {
       << " --debug=" << flagDebugMode
       << argvForward.str();
 
-    log(buildCommand.str());
+    // log(buildCommand.str());
     auto r = exec(buildCommand.str().c_str());
 
     if (r.exitCode != 0) {
@@ -893,13 +900,14 @@ int main (const int argc, const char* argv[]) {
             exit(rOpenSimulator.exitCode);
           }
 
-          log("install booted VM into simulator");
           std::stringstream installAppCommand;
+
           installAppCommand
             << "xcrun"
             << " simctl install booted"
             << " " + settings["name"] + ".app";
-          log(installAppCommand.str());
+          // log(installAppCommand.str());
+          log("installed booted VM into simulator");
 
           auto rInstallApp = exec(installAppCommand.str().c_str());
           if (rInstallApp.exitCode != 0) {
@@ -910,13 +918,14 @@ int main (const int argc, const char* argv[]) {
             exit(rInstallApp.exitCode);
           }
 
-          log("launch the app in simulator");
           std::stringstream launchAppCommand;
           launchAppCommand
             << "xcrun"
             << " simctl launch --console-pty booted"
             << " " + settings["bundle_identifier"];
-          log(launchAppCommand.str());
+
+          // log(launchAppCommand.str());
+          log("launching the app in simulator");
 
           auto rlaunchApp = exec(launchAppCommand.str().c_str());
           if (rlaunchApp.exitCode != 0) {
@@ -982,7 +991,7 @@ int main (const int argc, const char* argv[]) {
       << " -DVERSION_HASH=" << SSC::version_hash
     ;
 
-    // log(compileCommand.str());
+    log(compileCommand.str());
 
     auto binExists = fs::exists(binaryPath);
     auto pathToBuiltWithFile = fs::current_path() / pathOutput / "built_with.txt";

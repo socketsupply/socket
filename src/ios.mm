@@ -1,8 +1,8 @@
 #import <UIKit/UIKit.h>
 #import <Webkit/Webkit.h>
 #import <CoreBluetooth/CoreBluetooth.h>
-#import "core.hh"
 
+#include "core.hh"
 #include <_types/_uint64_t.h>
 #include <netinet/in.h>
 #include <sys/socket.h>

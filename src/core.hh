@@ -10,7 +10,7 @@
 #endif
 
 #if defined(__APPLE__)
-  #import <Network/Network.h>
+	#import <Webkit/Webkit.h>
   using Task = id<WKURLSchemeTask>;
 #elif defined(__linux__)
   // TODO @jwerle
@@ -1163,7 +1163,7 @@ namespace SSC {
       })MSG", std::to_string(server->serverId), String(uv_strerror(r)));
       cb(seq, msg, Post{});
 
-      NSLog(@"Listener failed: %s", uv_strerror(r));
+      // NSLog(@"Listener failed: %s", uv_strerror(r));
       return;
     }
 
