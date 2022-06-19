@@ -515,22 +515,20 @@ namespace SSC {
       style |= NSWindowStyleMaskMiniaturizable;
     }
 
-    // Initialize Cocoa window
     window = [[NSWindow alloc]
-        // Initial window size
-        initWithContentRect:NSMakeRect(0, 0, opts.width, opts.height)
-                  // Window style
-                  styleMask:style
-                    backing:NSBackingStoreBuffered
-                      defer:NO];
+        initWithContentRect: NSMakeRect(0, 0, opts.width, opts.height)
+                  styleMask: style
+                    backing: NSBackingStoreBuffered
+                      defer: NO];
 
     NSArray* draggableTypes = [NSArray arrayWithObjects:
-                  NSPasteboardTypeURL,
-                  NSPasteboardTypeFileURL,
-                  (NSString*) kPasteboardTypeFileURLPromise,
-                  NSPasteboardTypeString,
-                  NSPasteboardTypeHTML,
-                  nil];
+      NSPasteboardTypeURL,
+      NSPasteboardTypeFileURL,
+      (NSString*) kPasteboardTypeFileURLPromise,
+      NSPasteboardTypeString,
+      NSPasteboardTypeHTML,
+      nil
+		];
 
     [window registerForDraggedTypes:draggableTypes];
 
@@ -538,13 +536,12 @@ namespace SSC {
     [window setContentMinSize:NSMakeSize(opts.width, opts.height)];
 
     // [window setAppearance:[NSAppearance appearanceNamed:NSAppearanceNameVibrantDark]];
-    auto bg = [NSColor controlBackgroundColor];
-    [window setBackgroundColor: bg];
+    [window setBackgroundColor: [NSColor controlBackgroundColor]];
 
     [window setOpaque:YES];
 
     if (opts.frameless) {
-      [window setTitlebarAppearsTransparent:true];
+      [window setTitlebarAppearsTransparent: true];
     }
 
     // Position window in center of screen
@@ -559,10 +556,13 @@ namespace SSC {
     // https://developer.apple.com/documentation/webkit/wkwebviewconfiguration/3585117-limitsnavigationstoappbounddomai
     // config.limitsNavigationsToAppBoundDomains = YES;
 
+    IPCSchemeHandler* handler = [IPCSchemeHandler new];
+    [config setURLSchemeHandler: handler forURLScheme:@"ipc"];
+
     WKPreferences* prefs = [config preferences];
     [prefs setJavaScriptCanOpenWindowsAutomatically:NO];
 
-    #if DEBUG == 1
+    #if DEBUG == 1 // Adds "Inspect" option to context menus
       [prefs setValue:@YES forKey:@"developerExtrasEnabled"];
     #endif
 
@@ -694,13 +694,13 @@ namespace SSC {
 
     // Initialize application
     [NSApplication sharedApplication];
-    [NSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
+    [NSApp setActivationPolicy: NSApplicationActivationPolicyRegular];
 
     // Sets the app as the active app
-    [NSApp activateIgnoringOtherApps:YES];
+    [NSApp activateIgnoringOtherApps: YES];
 
     // Add webview to window
-    [window setContentView:webview];
+    [window setContentView: webview];
 
     navigate("0", opts.url);
   }
