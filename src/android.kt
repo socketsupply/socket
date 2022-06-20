@@ -59,15 +59,14 @@ open class WebViewActivity : android.app.Activity() {
   override fun onCreate (state: android.os.Bundle?) {
     super.onCreate(state);
 
-    // @TODO(jwerle): `activity_main` needs to be defined `res/layout/main.xml`
-    this.setContentView(android.R.layout.activity_main);
-
     // @TODO(jwerle): `webview` needs to be a defined view that can
     // be referenced by an ID
     val view = WebView(findViewById(android.R.id.webview));
     val client = WebViewClient(this);
-		val settings = view.getSettings();
+    val settings = view.getSettings();
 
+    // @TODO(jwerle): `activity_main` needs to be defined `res/layout/main.xml`
+    this.setContentView(android.R.layout.activity_main);
 
     this.client = client;
     this.view = view;
