@@ -35,7 +35,7 @@ function quiet () {
   "$@" > /dev/null 2>&1
 }
 
-if ! which sudo > /dev/null 2>&1; then
+if ! quiet which sudo; then
   sudo () {
     $@
     return $?
