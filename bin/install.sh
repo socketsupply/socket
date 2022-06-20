@@ -31,11 +31,6 @@ if [ ! "$CXX" ]; then
   fi
 fi
 
-if ! which autoconf >/dev/null 2>&1; then
-  echo "not ok - missing build tools, try 'brew install automake'"
-  exit 1
-fi
-
 if ! which sudo > /dev/null 2>&1; then
   sudo () {
     $@
@@ -48,6 +43,12 @@ function die {
     echo "$2 - please report (https://discord.gg/YPV32gKCsH)" && exit 1
   fi
 }
+
+quiet which make
+die $? "not ok - missing build tools, try 'brew install automake'"
+
+quiet which autoconf
+die $? "not ok - missing build tools, try 'brew install automake'"
 
 function _build {
   echo "# building cli for desktop (`uname -m`)..."
