@@ -854,7 +854,7 @@ android {
   ndkVersion "23.0.7599858"
 
   defaultConfig {
-    applicationId "{{bundle_id}}"
+    applicationId "{{bundle_identifier}}"
     minSdkVersion 23
     targetSdkVersion 31
     versionCode 1
