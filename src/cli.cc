@@ -117,6 +117,14 @@ int main (const int argc, const char* argv[]) {
       log("install-app is only supported on macOS.");
       exit(0);
     } else {
+      const bool hasCfgUtilInPath = exec("type cfgutil").exitCode == 0;
+      const bool hasCfgUtil = fs::exists("/Applications/Apple Configurator.app/Contents/MacOS/cfgutil");
+      if (!hasCfgUtilInPath || !hasCfgUtil) {
+        log("Please install Apple Configurator from https://apps.apple.com/us/app/apple-configurator/id1037126344");
+        exit(1);
+      } else if (!hasCfgUtilInPath) {
+        log("We highly recommend to install Automation Tools from the Apple Configurator main menu.");
+      }
       if (argc < 4) {
         std::cout << "usage: ssc install-app --target=<target> <app-path>" << std::endl;
         exit(1);
@@ -147,16 +155,17 @@ int main (const int argc, const char* argv[]) {
         std::string(settings["name"] + ".ipa") /
         std::string(settings["name"] + ".ipa")
       );
-      // TODO: handle cases when build dir is not exest and when the device is not connected
-      auto r = exec("/Applications/Apple\\ Configurator.app/Contents/MacOS/cfgutil install-app " + std::string(ipaPath));
+      // TODO: this command will install the app to all connected device which were added to the provisioning profile
+      //       we should add a --ecid option support to specify the device
+      auto command = hasCfgUtilInPath
+        ? "cfgutil install-app " + std::string(ipaPath)
+        : "/Applications/Apple\\ Configurator.app/Contents/MacOS/cfgutil install-app " + std::string(ipaPath);
+      auto r = exec(command);
       if (r.exitCode != 0) {
-        r = exec("cfgutil install-app " + std::string(ipaPath));
-        if (r.exitCode != 0) {
-          log("failed to install the app. Please install Apple Configurator from https://apps.apple.com/us/app/apple-configurator/id1037126344 and try again.");
-          exit(1);
-        }
+        log("failed to install the app. Is the device plugged in?");
+        exit(1);
       }
-      log("successfully installed the app on your device.");
+      log("successfully installed the app on your device(s).");
       exit(0);
     }
   }
