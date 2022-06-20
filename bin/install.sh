@@ -31,6 +31,10 @@ if [ ! "$CXX" ]; then
   fi
 fi
 
+function quiet () {
+  "$@" > /dev/null 2>&1
+}
+
 if ! which sudo > /dev/null 2>&1; then
   sudo () {
     $@
@@ -123,10 +127,6 @@ function _setSDKVersion {
   else
    SDKVERSION="8.0"
   fi
-}
-
-function quiet () {
-  "$@" > /dev/null 2>&1
 }
 
 function _compile_libuv {
