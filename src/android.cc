@@ -1,8 +1,7 @@
 #include "android.hh"
 
 extern "C" {
-  jstring
-  package_function (create_hello_world_string)(JNIEnv *env) {
+  jstring package_function (create_hello_world_string)(JNIEnv *env) {
     return env->NewStringUTF("hello world");
   }
 
