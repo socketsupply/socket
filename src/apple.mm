@@ -1,12 +1,15 @@
+#include "core.hh"
+
 //
 // Mixed-into ios.mm and mac.hh by #include. This file
-// expects BridgeView to be defined before it's included. 
+// expects WebView to be defined before it's included.
+// All IO is routed though these common interfaces.
 //
 @interface BluetoothDelegate : NSObject<
 	CBCentralManagerDelegate,
 	CBPeripheralManagerDelegate,
 	CBPeripheralDelegate>
-@property (strong, nonatomic) BridgeView* bridgeView;
+@property (strong, nonatomic) WebView* webview;
 @property (strong, nonatomic) CBCentralManager* centralManager;
 @property (strong, nonatomic) CBPeripheralManager* peripheralManager;
 @property (strong, nonatomic) CBPeripheral* bluetoothPeripheral;
@@ -83,7 +86,7 @@
     }
   })JSON", message, state);
 
-  [self.bridgeView emit: "local-network" msg: msg];
+  [self.webview emit: "local-network" msg: msg];
 
   NSLog(@"%@", [NSString stringWithUTF8String: msg.c_str()]);
 }
@@ -133,7 +136,7 @@
     }
   })JSON");
 
-  [self.bridgeView emit: "local-network" msg: msg];
+  [self.webview emit: "local-network" msg: msg];
 }
 
 - (void) startBluetooth {
@@ -185,7 +188,7 @@
     }
   })JSON");
 
-  [self.bridgeView emit: "local-network" msg: msg];
+  [self.webview emit: "local-network" msg: msg];
 
   if ([request.characteristic.UUID isEqual: _characteristic.UUID]) {
     if (request.offset > _characteristic.value.length) {
@@ -211,7 +214,7 @@
     }
   })JSON");
 
-  [self.bridgeView emit: "local-network" msg: msg];
+  [self.webview emit: "local-network" msg: msg];
 
   for (CBATTRequest* request in requests) {
     if (![request.characteristic.UUID isEqual: _characteristic.UUID]) {
@@ -228,7 +231,7 @@
         "data": { "message": "$S" }
       }
     })JSON", std::string(src));
-    [self.bridgeView emit: "local-network" msg: msg];
+    [self.webview emit: "local-network" msg: msg];
     [self.peripheralManager respondToRequest: request withResult: CBATTErrorSuccess];  
   }
 } */
@@ -279,7 +282,7 @@
     }
   })JSON", name, uuid);
 
-  [self.bridgeView emit: "local-network" msg: msg];
+  [self.webview emit: "local-network" msg: msg];
 
   [_peripherals addObject: peripheral];
   [central connectPeripheral: peripheral options: nil];
@@ -317,7 +320,7 @@
     }
   })JSON");
 
-  [self.bridgeView emit: "local-network" msg: msg];
+  [self.webview emit: "local-network" msg: msg];
 }
 
 - (void) peripheral:(CBPeripheral*)peripheral didUpdateValueForCharacteristic:(CBCharacteristic*)characteristic error:(NSError*)error {
@@ -344,7 +347,7 @@
 
   NSLog(@"BBB didUpdateValueForCharacteristic: %s", src);
 
-  [self.bridgeView emit: "local-network" msg: msg];
+  [self.webview emit: "local-network" msg: msg];
 }
 
 - (void)peripheral:(CBPeripheral*)peripheral didUpdateNotificationStateForCharacteristic:(CBCharacteristic*)characteristic error:(NSError*)error {
@@ -361,7 +364,7 @@
     }
   })JSON");
 
-  [self.bridgeView emit: "local-network" msg: msg];
+  [self.webview emit: "local-network" msg: msg];
 }
 
 - (void) centralManager:(CBCentralManager *)central didFailToConnectPeripheral:(CBPeripheral *)peripheral error:(nullable NSError *)error {
@@ -382,24 +385,24 @@
     }
   })JSON", name, uuid);
 
-  [self.bridgeView emit: "local-network" msg: msg];
+  [self.webview emit: "local-network" msg: msg];
 
   [_peripherals removeObject: peripheral];
 }
 @end
 
 @interface NavigationDelegate : NSObject<WKNavigationDelegate>
-- (void) webView: (BridgeView*)webView
+- (void) webview: (WebView*)webview
   decidePolicyForNavigationAction: (WKNavigationAction*)navigationAction
   decisionHandler: (void (^)(WKNavigationActionPolicy)) decisionHandler;
 @end
 
 @implementation NavigationDelegate
-- (void) webView: (WKWebView*) webView
+- (void) webview: (WebView*) webview
     decidePolicyForNavigationAction: (WKNavigationAction*) navigationAction
     decisionHandler: (void (^)(WKNavigationActionPolicy)) decisionHandler {
 
-  std::string base = webView.URL.absoluteString.UTF8String;
+  std::string base = webview.URL.absoluteString.UTF8String;
   std::string request = navigationAction.request.URL.absoluteString.UTF8String;
 
   if (request.find("file://") == 0 && request.find("http://localhost") == 0) {
@@ -410,21 +413,594 @@
 }
 @end
 
+@interface Bridge : NSObject
+@property (strong, nonatomic) BluetoothDelegate* bluetooth;
+@property (string, nonatomic) WebView* webview;
+@property SSC::Core* core;
+- (bool) route: (std::string)msg buf: (char*)buf;
+- (void) emit: (std::string)name msg: (std::string)msg;
+- (void) setBluetooth: (BluetoothDelegate*)bd;
+- (void) setWebView: (WebView*)bv;
+- (void) setCore: (SSC::Core*)core;
+@end
+
+@implementation Bridge
+- (void) setBluetooth: (BluetoothDelegate*)bd {
+  self.bluetooth = bd;
+}
+
+- (void) setWebView: (WebView*)wv {
+  self.webview = wv;
+}
+
+- (void) setCore: (SSC::Core*)core;
+  self.core = core;
+}
+
+- (void) emit: (std::string)name msg: (std::string)msg {
+  msg = SSC::emitToRenderProcess(name, SSC::encodeURIComponent(msg));
+  NSString* script = [NSString stringWithUTF8String: msg.c_str()];
+  [self.webview evaluateJavaScript: script completionHandler:nil];
+}
+
+- (void) send: (std::string)seq msg: (std::string)msg post: (SSC::Post)post {
+  //
+  // - If there is no sequence and there is a buffer, the source is a stream and it should
+  // invoke the client to ask for it via an XHR, this will be intercepted by the scheme handler.
+  // - On the next turn, it will have a sequence and a task that will respond to the XHR which
+  // already has the meta data from the original request.
+  //
+  if (seq == "-1" && post.length > 0) {
+    auto src = self.core->createPost(msg, post);
+    NSString* script = [NSString stringWithUTF8String: src.c_str()];
+    [self.webview evaluateJavaScript: script completionHandler: nil];
+    return;
+  }
+
+  if (self.core->hasTask(seq)) {
+    auto task = self.core->getTask(seq);
+
+    NSHTTPURLResponse *httpResponse = [[NSHTTPURLResponse alloc]
+      initWithURL: task.request.URL
+       statusCode: 200
+      HTTPVersion: @"HTTP/1.1"
+     headerFields: nil
+    ];
+
+    [task didReceiveResponse: httpResponse];
+    
+    NSData* data;
+
+    // if post has a length, use the post's body as the response...
+    if (post.length > 0) {
+      data = [NSData dataWithBytes: post.body length: post.length];
+    } else {
+      NSString* str = [NSString stringWithUTF8String: msg.c_str()];
+      data = [str dataUsingEncoding: NSUTF8StringEncoding];
+    }
+
+    [task didReceiveData: data];
+    [task didFinish];
+
+    self.core->removeTask(seq);
+    return;
+  }
+
+  if (seq != "-1") { // this had a sequence, we need to try to resolve it.
+    msg = SSC::resolveToRenderProcess(seq, "0", SSC::encodeURIComponent(msg));
+  }
+
+  NSString* script = [NSString stringWithUTF8String: msg.c_str()];
+  [self.webview evaluateJavaScript: script completionHandler:nil];
+}
+
+// returns true if routable (regardless of success)
+- (bool) route: (std::string)msg buf: (char*)buf {
+  using namespace SSC;
+
+  if (msg.find("ipc://") != 0) return false;
+
+  Parse cmd(msg);
+  auto seq = cmd.get("seq");
+  uint64_t clientId = 0;
+
+  if (cmd.name == "localNetworkInit") {
+    [bluetooth initBluetooth];
+    return true;
+  }
+
+  if (cmd.name == "localNetworkSend") {
+    [bluetooth localNetworkSend: cmd.get("value") uuid: cmd.get("uuid")];
+    return true;
+  }
+
+  if (cmd.name == "log") {
+    NSLog(@"%s", cmd.get("value").c_str());
+    return true;
+  }
+
+  if (cmd.get("fsRmDir").size() != 0) {
+    auto path = cmd.get("path");
+
+    dispatch_async(queue, ^{
+      self.core->fsRmDir(seq, path, [&](auto seq, auto msg, auto post) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+          [self send: seq msg: msg post: post];
+        });
+      });
+    });
+    return true;
+  }
+
+  if (cmd.get("fsOpen").size() != 0) {
+    auto cid = std::stoll(cmd.get("id"));
+    auto path = cmd.get("path");
+    auto flags = std::stoi(cmd.get("flags"));
+
+    dispatch_async(queue, ^{
+      self.core->fsOpen(seq, cid, path, flags, [&](auto seq, auto msg, auto post) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+          [self send: seq msg: msg post: post];
+        });
+      });
+    });
+    return true;
+  }
+
+  if (cmd.get("fsClose").size() != 0) {
+    auto id = std::stoll(cmd.get("id"));
+
+    dispatch_async(queue, ^{
+      self.core->fsClose(seq, id, [&](auto seq, auto msg, auto post) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+          [self send: seq msg: msg post: post];
+        });
+      });
+    });
+    return true;
+  }
+
+  if (cmd.get("fsRead").size() != 0) {
+    auto id = std::stoll(cmd.get("id"));
+    auto len = std::stoi(cmd.get("len"));
+    auto offset = std::stoi(cmd.get("offset"));
+
+    dispatch_async(queue, ^{
+      self.core->fsRead(seq, id, len, offset, [&](auto seq, auto msg, auto post) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+          [self send: seq msg: msg post: post];
+        });
+      });
+    });
+    return true;
+  }
+
+  if (cmd.get("fsWrite").size() != 0) {
+    auto id = std::stoll(cmd.get("id"));
+    auto offset = std::stoll(cmd.get("offset"));
+
+    dispatch_async(queue, ^{
+      self.core->fsWrite(seq, id, buf, offset, [&](auto seq, auto msg, auto post) {
+
+     dispatch_async(dispatch_get_main_queue(), ^{
+          [self send: seq msg: msg post: post];
+        });
+      });
+    });
+    return true;
+  }
+
+  if (cmd.get("fsStat").size() != 0) {
+    auto path = cmd.get("path");
+
+    dispatch_async(queue, ^{
+      self.core->fsStat(seq, path, [&](auto seq, auto msg, auto post) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+          [self send: seq msg: msg post: post];
+        });
+      });
+    });
+    return true;
+  }
+
+  if (cmd.get("fsUnlink").size() != 0) {
+    auto path = cmd.get("path");
+
+    dispatch_async(queue, ^{
+      self.core->fsUnlink(seq, path, [&](auto seq, auto msg, auto post) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+          [self send: seq msg: msg post: post];
+        });
+      });
+    });
+    return true;
+  }
+
+  if (cmd.get("fsRename").size() != 0) {
+    auto pathA = cmd.get("oldPath");
+    auto pathB = cmd.get("newPath");
+
+    dispatch_async(queue, ^{
+      self.core->fsRename(seq, pathA, pathB, [&](auto seq, auto msg, auto post) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+          [self send: seq msg: msg post: post];
+        });
+      });
+    });
+    return true;
+  }
+
+  if (cmd.get("fsCopyFile").size() != 0) {
+    auto pathA = cmd.get("src");
+    auto pathB = cmd.get("dest");
+    auto flags = std::stoi(cmd.get("flags"));
+
+    dispatch_async(queue, ^{
+      self.core->fsCopyFile(seq, pathA, pathB, flags, [&](auto seq, auto msg, auto post) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+          [self send: seq msg: msg post: post];
+        });
+      });
+    });
+    return true;
+  }
+
+  if (cmd.get("fsMkDir").size() != 0) {
+    auto path = cmd.get("path");
+    auto mode = std::stoi(cmd.get("mode"));
+    
+    dispatch_async(queue, ^{
+      self.core->fsMkDir(seq, path, mode, [&](auto seq, auto msg, auto post) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+          [self send: seq msg: msg post: post];
+        });
+      });
+    });
+    return true;
+  }
+
+  if (cmd.get("fsReadDir").size() != 0) {
+    auto path = cmd.get("path");
+
+    dispatch_async(queue, ^{
+      self.core->fsReadDir(seq, path, [&](auto seq, auto msg, auto post) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+          [self send: seq msg: msg post: post];
+        });
+      });
+    });
+    return true;
+  }
+
+  // TODO this is a generalization that doesnt work
+  if (cmd.get("clientId").size() != 0) {
+    try {
+      clientId = std::stoll(cmd.get("clientId"));
+    } catch (...) {
+      auto msg = SSC::format(R"JSON({
+        "value": {
+          "err": { "message": "invalid clientid" }
+        }
+      })JSON");
+      [self send: seq msg: msg post: Post{}];
+      return true;
+    }
+  }
+
+  NSLog(@"COMMAND %s", msg.c_str());
+
+  if (cmd.name == "external") {
+    NSString *url = [NSString stringWithUTF8String:SSC::decodeURIComponent(cmd.get("value")).c_str()];
+    [[UIApplication sharedApplication] openURL: [NSURL URLWithString:url] options: @{} completionHandler: nil];
+    return true;
+  }
+
+  if (cmd.name == "ip") {
+    auto seq = cmd.get("seq");
+
+    Client* client = clients[clientId];
+
+    if (client == nullptr) {
+      auto msg = SSC::format(R"JSON({
+        "value": {
+          "err": {
+            "message": "not connected"
+          }
+        }
+      })JSON");
+      [self send: seq msg: msg post: Post{}];
+    }
+
+    PeerInfo info;
+    info.init(client->tcp);
+
+    auto msg = SSC::format(
+      R"JSON({
+        "value": {
+          "data": {
+            "ip": "$S",
+            "family": "$S",
+            "port": "$i"
+          }
+        }
+      })JSON",
+      clientId,
+      info.ip,
+      info.family,
+      info.port
+    );
+
+    [self send: seq msg: msg post: Post{}];
+    return true;
+  }
+
+  if (cmd.name == "getNetworkInterfaces") {
+    auto msg = self.core->getNetworkInterfaces();
+    [self send: seq msg: msg post: Post{} ];
+    return true;
+  }
+
+  if (cmd.name == "readStop") {
+    auto clientId = std::stoll(cmd.get("clientId"));
+
+    dispatch_async(queue, ^{
+      self.core->readStop(seq, clientId, [&](auto seq, auto msg, auto post) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+          [self send: seq msg: msg post: post];
+        });
+      });
+    });
+    return true;
+  }
+
+  if (cmd.name == "shutdown") {
+    auto clientId = std::stoll(cmd.get("clientId"));
+
+    dispatch_async(queue, ^{
+      self.core->shutdown(seq, clientId, [&](auto seq, auto msg, auto post) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+          [self send: seq msg: msg post: post];
+        });
+      });
+    });
+    return true;
+  }
+
+  if (cmd.name == "sendBufferSize") {
+    int size;
+    try {
+      size = std::stoi(cmd.get("size"));
+    } catch (...) {
+      size = 0;
+    }
+
+    auto clientId = std::stoll(cmd.get("clientId"));
+
+    dispatch_async(queue, ^{
+      self.core->sendBufferSize(seq, clientId, size, [&](auto seq, auto msg, auto post) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+          [self send: seq msg: msg post: post];
+        });
+      });
+    });
+    return true;
+  }
+
+  if (cmd.name == "recvBufferSize") {
+    int size;
+    try {
+      size = std::stoi(cmd.get("size"));
+    } catch (...) {
+      size = 0;
+    }
+
+    auto clientId = std::stoll(cmd.get("clientId"));
+
+    dispatch_async(queue, ^{
+      self.core->recvBufferSize(seq, clientId, size, [&](auto seq, auto msg, auto post) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+          [self send: seq msg: msg post: post];
+        });
+      });
+    });
+    return true;
+  }
+
+  if (cmd.name == "close") {
+    auto clientId = std::stoll(cmd.get("clientId"));
+
+    dispatch_async(queue, ^{
+      self.core->close(seq, clientId, [&](auto seq, auto msg, auto post) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+          [self send: seq msg: msg post: post];
+        });
+      });
+    });
+    return true;
+  }
+
+  if (cmd.name == "udpSend") {
+    int offset = 0;
+    int len = 0;
+    int port = 0;
+    std::string err;
+
+    try {
+      offset = std::stoi(cmd.get("offset"));
+    } catch (...) {
+      err = "invalid offset";
+    }
+
+    try {
+      len = std::stoi(cmd.get("len"));
+    } catch (...) {
+      err = "invalid length";
+    }
+
+    try {
+      port = std::stoi(cmd.get("port"));
+    } catch (...) {
+      err = "invalid port";
+    }
+
+    if (err.size() > 0) {
+      auto msg = SSC::format(R"JSON({
+        "err": { "message": "$S" }
+      })JSON", err);
+      [self send: seq msg: err post: Post{}];
+      return true;
+    }
+    
+    auto ip = cmd.get("ip");
+    auto clientId = std::stoll(cmd.get("clientId"));
+
+    dispatch_async(queue, ^{
+      self.core->udpSend(seq, clientId, buf, offset, len, port, (const char*) ip.c_str(), [&](auto seq, auto msg, auto post) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+          [self send: seq msg: msg post: post];
+        });
+      });
+    });
+    return true;
+  }
+
+  if (cmd.name == "tcpSend") {
+    auto clientId = std::stoll(cmd.get("clientId"));
+
+    dispatch_async(queue, ^{
+      self.core->tcpSend(clientId, buf, [&](auto seq, auto msg, auto post) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+          [self send: seq msg: msg post: post];
+        });
+      });
+    });
+    return true;
+  }
+
+  if (cmd.name == "tcpConnect") {
+    int port = 0;
+
+    try {
+      port = std::stoi(cmd.get("port"));
+    } catch (...) {
+      auto msg = SSC::format(R"JSON({
+        "err": { "message": "invalid port" }
+      })JSON");
+      [self send: seq msg: msg post: Post{}];
+      return true;
+    }
+
+    auto clientId = std::stoll(cmd.get("clientId"));
+    auto ip = cmd.get("ip");
+
+    dispatch_async(queue, ^{
+      self.core->tcpConnect(seq, clientId, port, ip, [&](auto seq, auto msg, auto post) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+          [self send: seq msg: msg post: post];
+        });
+      });
+    });
+    return true;
+  }
+
+  if (cmd.name == "tcpSetKeepAlive") {
+    auto clientId = std::stoll(cmd.get("clientId"));
+    auto timeout = std::stoi(cmd.get("timeout"));
+
+    dispatch_async(queue, ^{
+      self.core->tcpSetKeepAlive(seq, clientId, timeout, [&](auto seq, auto msg, auto post) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+          [self send: seq msg: msg post: post];
+        });
+      });
+    });
+    return true;
+  }
+
+  if (cmd.name == "tcpSetTimeout") {
+    auto clientId = std::stoll(cmd.get("clientId"));
+    auto timeout = std::stoi(cmd.get("timeout"));
+
+    dispatch_async(queue, ^{
+      self.core->tcpSetTimeout(seq, clientId, timeout, [&](auto seq, auto msg, auto post) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+          [self send: seq msg: msg post: post];
+        });
+      });
+    });
+    return true;
+  }
+
+  if (cmd.name == "tcpBind") {
+    auto ip = cmd.get("ip");
+    std::string err;
+
+    if (ip.size() == 0) {
+      ip = "0.0.0.0";
+    }
+
+    if (cmd.get("port").size() == 0) {
+      auto msg = SSC::format(R"({
+        "value": {
+          "err": { "message": "port required" }
+        }
+      })");
+      
+      [self send: seq msg: msg post: Post{}];
+      return true;
+		}
+
+    auto serverId = std::stoll(cmd.get("serverId"));
+    auto port = std::stoi(cmd.get("port"));
+
+    dispatch_async(queue, ^{
+      self.core->tcpBind(seq, serverId, ip, port, [&](auto seq, auto msg, auto post) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+          [self send: seq msg: msg post: post];
+        });
+      });
+    });
+
+    return true;
+  }
+
+  if (cmd.name == "dnsLookup") {
+    auto hostname = cmd.get("hostname");
+
+    dispatch_async(queue, ^{
+      self.core->dnsLookup(seq, hostname, [&](auto seq, auto msg, auto post) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+          [self send: seq msg: msg post: post];
+        });
+      });
+    });
+    return true;
+  }
+
+  NSLog(@"%s", msg.c_str());
+}
+@end
+
 @interface IPCSchemeHandler : NSObject<WKURLSchemeHandler>
-- (void)webView: (BridgeView*)webView startURLSchemeTask:(id <WKURLSchemeTask>)urlSchemeTask;
-- (void)webView: (BridgeView*)webView stopURLSchemeTask:(id <WKURLSchemeTask>)urlSchemeTask;
+@property (strong, nonatomic) Bridge* bridge;
+- (void)setBridge: (Bridge*)br;
+- (void)webView: (WebView*)webview startURLSchemeTask:(id <WKURLSchemeTask>)urlSchemeTask;
+- (void)webView: (WebView*)webview stopURLSchemeTask:(id <WKURLSchemeTask>)urlSchemeTask;
 @end
 
 @implementation IPCSchemeHandler
-- (void)webView: (BridgeView*)bridgeView stopURLSchemeTask:(id<WKURLSchemeTask>)urlSchemeTask {}
-- (void)webView: (BridgeView*)bridgeView startURLSchemeTask:(id<WKURLSchemeTask>)task {
+- (void)setBridge: (Bridge*)br {
+  self.bridge = br;
+}
+- (void)webView: (WebView*)webview stopURLSchemeTask:(id<WKURLSchemeTask>)urlSchemeTask {}
+- (void)webView: (WebView*)webview startURLSchemeTask:(id<WKURLSchemeTask>)task {
   auto url = std::string(task.request.URL.absoluteString.UTF8String);
 
   SSC::Parse cmd(url);
 
   if (cmd.name == "post") {
     uint64_t postId = std::stoll(cmd.get("id"));
-    auto post = core->getPost(postId);
+    auto post = self.core->getPost(postId);
     NSMutableDictionary* httpHeaders;
 
     if (post.length > 0) {
@@ -456,11 +1032,11 @@
 
     [task didFinish];
 
-    core->removePost(postId);
+    self.bridge.core->removePost(postId);
     return;
   }
 
-  core->putTask(cmd.get("seq"), task);
+  self.bridge.core->putTask(cmd.get("seq"), task);
 
   char* body = NULL;
 
@@ -471,6 +1047,6 @@
     body = (char*)data;
   }
 
-  [bridgeView route: url buf: body];
+  [self.bridge.route: url buf: body];
 }
 @end

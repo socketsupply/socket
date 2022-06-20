@@ -1,42 +1,28 @@
 #include "common.hh"
-#include "core.hh"
 #import <Cocoa/Cocoa.h>
 #import <Webkit/Webkit.h>
 #import <CoreBluetooth/CoreBluetooth.h>
 #import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
 #include <objc/objc-runtime.h>
 
-SSC::Core* core;
-
-@interface BridgeView : WKWebView<
+@interface WebView : WKWebView<
   WKUIDelegate,
   NSDraggingDestination,
   NSFilePromiseProviderDelegate,
   NSDraggingSource>
-- (void) emit: (std::string)name msg: (std::string)msg;
-- (void) route: (std::string)msg buf: (char*)buf;
 - (NSDragOperation) draggingSession: (NSDraggingSession *)session
   sourceOperationMaskForDraggingContext: (NSDraggingContext)context;
 @end
 
 #include "apple.mm"
 
-BluetoothDelegate* bluetooth;
+Bridge* bridge;
 
-@implementation BridgeView
+@implementation WebView
 std::vector<std::string> draggablePayload;
 
 int lastX = 0;
 int lastY = 0;
-
-- (void) route: (std::string)msg buf: (char*)buf {
-}
-
-- (void) emit: (std::string)name msg: (std::string)msg {
-  msg = SSC::emitToRenderProcess(name, SSC::encodeURIComponent(msg));
-  NSString* script = [NSString stringWithUTF8String: msg.c_str()];
-  [self evaluateJavaScript: script completionHandler:nil];
-}
 
 - (BOOL) prepareForDragOperation: (id<NSDraggingInfo>)info {
   [info setDraggingFormation: NSDraggingFormationNone];
@@ -594,6 +580,9 @@ namespace SSC {
       setValue:@YES
       forKey:@"allowFileAccessFromFileURLs"];
 
+    bridge.bluetooth = [BluetoothDelegate new];
+    bridge.core = new SSC::Core;
+
     // window.titlebarAppearsTransparent = true;
 
     /* [webview
@@ -660,6 +649,7 @@ namespace SSC {
             }
             String msg = [body UTF8String];
 
+            if ([router msg: msg buf: nullptr]) return;
             w->onMessage(msg);
           }),
         "v@:@"
