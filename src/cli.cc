@@ -178,7 +178,7 @@ int main (const int argc, const char* argv[]) {
         flagAppStore = true;
       }
 
-      if (is(arg, "--prod=1")) {
+      if (is(arg, "--prod")) {
         flagDebugMode = false;
       }
 

@@ -25,7 +25,7 @@ general options:
   -r  run after building
 
 packaging options:
-  --prod=1  disable debugging info, inspector, etc.
+  --prod  disable debugging info, inspector, etc.
 
   -p  package the app
   -c  code sign
