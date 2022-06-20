@@ -15,16 +15,16 @@ BUILD_DIR=$WORK_DIR/build
 
 if [ ! "$CXX" ]; then
   if [ ! -z "$LOCALAPPDATA" ]; then
-    if which clang++ >/dev/null 2>&1; then
-      CXX="$(which clang++)"
+    if command -v clang++ >/dev/null 2>&1; then
+      CXX="$(command -v clang++)"
     fi
   fi
 
   if [ ! "$CXX" ]; then
-    if which g++ >/dev/null 2>&1; then
-      CXX="$(which g++)"
-    elif which clang++ >/dev/null 2>&1; then
-      CXX="$(which clang++)"
+    if command -v g++ >/dev/null 2>&1; then
+      CXX="$(command -v g++)"
+    elif command -v clang++ >/dev/null 2>&1; then
+      CXX="$(command -v clang++)"
     fi
   fi
 
@@ -38,7 +38,7 @@ function quiet () {
   "$@" > /dev/null 2>&1
 }
 
-if ! quiet which sudo; then
+if ! quiet command -v sudo; then
   sudo () {
     $@
     return $?
@@ -51,10 +51,10 @@ function die {
   fi
 }
 
-quiet which make
+quiet command -v make
 die $? "not ok - missing build tools, try 'brew install automake'"
 
-quiet which autoconf
+quiet command -v autoconf
 die $? "not ok - missing build tools, try 'brew install automake'"
 
 function _build {
@@ -82,7 +82,7 @@ function _prepare {
   mkdir -p $ASSETS_DIR/{lib,src,include}
   mkdir -p $LIB_DIR
 
-  if [ ! -d "$BUILD_DIR" ]; then
+  if [ ! -d "$BUILD_DIR/input" ]; then
   	git clone --depth=1 https://github.com/libuv/libuv.git $BUILD_DIR/input > /dev/null 2>&1
     rm -rf $BUILD_DIR/input/.git
 
@@ -203,7 +203,7 @@ _compile_libuv
 
 if [ "$1" == "ios" ]; then
   quiet xcode-select -p
-  die $? "not ok - xcode needs to be installed from the mac app store"
+  die $? "not ok - xcode needs to be installed from the mac app store: https://apps.apple.com/us/app/xcode/id497799835"
 
   SDKMINVERSION="8.0"
   export IPHONEOS_DEPLOYMENT_TARGET="8.0"

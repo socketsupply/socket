@@ -33,9 +33,9 @@ jobs:
         sudo add-apt-repository ppa:ubuntu-toolchain-r/test
         sudo apt install gcc-11 g++-11 libwebkit2gtk-4.0-dev libcurl4-openssl-dev
 
-    - name: compile bootstrap
+    - name: install ssc 
       run: |
-        ./bin/bootstrap.sh local
+        ./bin/install.sh
       env:
         CXX: g++-11
 
@@ -95,9 +95,9 @@ jobs:
         mkdir ~/.ssh
         ssh-keyscan github.com >> ~/.ssh/known_hosts
 
-    - name: compile bootstrap
+    - name: install ssc
       run: |
-        ./bin/bootstrap.ps1 dev
+        ./bin/install.ps1
 
         echo "::add-path::$env:LOCALAPPDATA\Programs\socketsupply\src"
         echo "$env:LOCALAPPDATA\Programs\socketsupply\src" >> $env:GITHUB_PATH
@@ -146,6 +146,9 @@ jobs:
       with:
         ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
+    - name: install automake
+      run: brew install automake
+
     - name: Use Node.js
       uses: actions/setup-node@v2
       with:
@@ -153,9 +156,9 @@ jobs:
         registry-url: https://npm.pkg.github.com/
         scope: '@socketsupply'
 
-    - name: compile bootstrap
+    - name: install ssc
       run: |
-        ./bin/bootstrap.sh dev
+        ./bin/install.sh
 
     - name: Check if ssc has a correct version
       run: |
@@ -207,7 +210,7 @@ jobs:
 
     - name: cross-compile
       run: |
-        ./bin/bootstrap.sh ios
+        ./bin/install.sh ios
 
     - name: Check if ssc has a correct version
       run: |
