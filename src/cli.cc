@@ -115,9 +115,9 @@ int main (const int argc, const char* argv[]) {
     }
   }
 
-  auto const shouldListBuildTarget = is(subcommand, "list-build-target");
+  auto const shouldPrintBuildTarget = is(subcommand, "print-build-target");
 
-  if (is(subcommand, "compile") || shouldListBuildTarget) {
+  if (is(subcommand, "compile") || shouldPrintBuildTarget) {
     bool flagRunUserBuild = false;
     bool flagAppStore = false;
     bool flagCodeSign = false;
@@ -132,7 +132,7 @@ int main (const int argc, const char* argv[]) {
     bool flagBuildForSimulator = false;
     bool flagPrintBuildPath = false;
 
-    if (shouldListBuildTarget) {
+    if (shouldPrintBuildTarget) {
       porcelain = true;
       flagPrintBuildPath = true;
     }
@@ -178,7 +178,7 @@ int main (const int argc, const char* argv[]) {
         flagAppStore = true;
       }
 
-      if (is(arg, "-xd")) {
+      if (is(arg, "--prod=1")) {
         flagDebugMode = false;
       }
 

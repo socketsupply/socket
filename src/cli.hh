@@ -8,31 +8,32 @@ usage:
   ssc compile [OPTIONS] <project-dir>
   ssc [SUBCOMMAND]
 
-options:
-  -b   bundle for app store
-  -c   code sign the bundle
-  -h   help
-  -v   version
-  -o   only run user build step
-  -p   package the app
-  -r   run after building
-  -xd  turn off debug mode (production build)
-
-  --target  cross-compilation for another platform, any of: ios, iossimulator
-  --test=1  indicate test mode
-  --port=n  load "http://localhost:n"
-
 subcommands:
-  init               initialize a new project in the current directory
-  compile            compile project
-  list-build-target  print build path to stdout
-  mobiledeviceid     get current device id
+  init                create new project (in current directory)
+  compile             compile project
+  print-build-target  print build path to stdout
+  mobiledeviceid      get current device id
+
+general options:
+  --target  cross-compilation (any of: ios, iossimulator)
+  --test=1  indicate test mode
+  --port=n  load "index.html" from "http://localhost:n"
+
+  -h  help
+  -v  version
+  -o  only run user build step
+  -r  run after building
+
+packaging options:
+  --prod=1  disable debugging info, inspector, etc.
+
+  -p  package the app
+  -c  code sign
+  -s  prep for app store
 )TEXT";
 
-constexpr auto gHelpTextMac = R"TEXT(
-macOS-specific options:
-  -e  use entitlements
-  -n  notarize the bundle
+constexpr auto gHelpTextMac = R"TEXT(  -e  specify entitlements
+  -n  notarize
 )TEXT";
 
 //
