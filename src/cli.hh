@@ -155,7 +155,7 @@ constexpr auto gCredits = R"HTML(
 constexpr auto gAndroidManifest = R"XML(
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-  package="io.robertying.androidcurlexample">
+  package="co.socketsupply.{{bundle_identifier}}">
 
   <uses-permission android:name="android.permission.INTERNET" />
 
@@ -167,7 +167,7 @@ constexpr auto gAndroidManifest = R"XML(
     android:supportsRtl="true"
     android:theme="@style/AppTheme">
     <activity
-      android:name=".MainActivity"
+      android:name=".WebViewActivity"
       android:exported="true">
       <intent-filter>
         <action android:name="android.intent.action.MAIN" />
@@ -839,15 +839,20 @@ constexpr auto gXcodeEntitlements = R"XML(<?xml version="1.0" encoding="UTF-8"?>
 </plist>)XML";
 
 //
-// Android Build Config
+// Android `build.gradle`
 //
 constexpr auto gGradleBuild = R"GRADLE(
-apply plugin: 'com.android.application'
+plugins {
+  id("com.android.application") version "7.1.0-beta02" apply false
+  id("com.android.library") version "7.1.0-beta02" apply false
+  id("org.jetbrains.kotlin.android") version "1.5.30" apply false
+}
 
 android {
-  compileSdkVersion 31
-  buildToolsVersion "31.0.0"
+  compileSdkVersion 32
+  buildToolsVersion "32.0.0"
   ndkVersion "23.0.7599858"
+
   defaultConfig {
     applicationId "{{bundle_id}}"
     minSdkVersion 23
@@ -855,21 +860,51 @@ android {
     versionCode 1
     versionName "{{version}}"
   }
+
   buildTypes {
     release {
       minifyEnabled false
 			useProguard false
     }
   }
+
   externalNativeBuild {
     ndkBuild {
+      // @TODO
       path file('../build.sh')
     }
   }
 }
 
-dependencies {
+tasks.register("clean", Delete::class) {
+  delete(rootProject.buildDir)
 }
+)GRADLE";
+
+//
+// Android `settings.gradle`
+//
+constexpr auto gGradleSettings = R"GRADLE(
+pluginManagement {
+  repositories {
+    gradlePluginPortal()
+    google()
+    mavenCentral()
+  }
+}
+
+dependencyResolutionManagement {
+  repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+
+  repositories {
+    google()
+    mavenCentral()
+  }
+}
+
+rootProject.name = "{{name}}"
+// @TODO
+//include(":src")
 )GRADLE";
 
 //

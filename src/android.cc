@@ -1,5 +1,12 @@
-#include <jni.h>
+#include "android.hh"
 
-JNIEXPORT jboolean
-JNICALL Java_{{bundle_id}}_fsOpen(JNIEnv *env, jobject this, jstring seq, uint64_t id, String path, int flags, Cb cb) {
+extern "C" {
+  jstring
+  package_function (create_hello_world_string)(JNIEnv *env) {
+    return env->NewStringUTF("hello world");
+  }
+
+  jstring package_export(hello)(JNIEnv *env, jobject self) {
+    return package_function(create_hello_world_string)(env);
+  }
 }
