@@ -864,7 +864,7 @@ android {
   buildTypes {
     release {
       minifyEnabled false
-			useProguard false
+      useProguard false
     }
   }
 
