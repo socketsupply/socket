@@ -129,7 +129,7 @@ void uncaughtExceptionHandler (NSException *exception) {
   [self.webview emit: "keyboard" msg: SSC::format(R"JSON({
     "value": {
       "data": {
-		    "event": "did-hide"
+        "event": "did-hide"
       }
     }
   })JSON")];
