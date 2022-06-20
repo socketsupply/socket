@@ -1,4 +1,5 @@
 #include "core.hh"
+#import <CoreBluetooth/CoreBluetooth.h>
 
 //
 // Mixed-into ios.mm and mac.hh by #include. This file
@@ -709,7 +710,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
   if (cmd.name == "external") {
     NSString *url = [NSString stringWithUTF8String:SSC::decodeURIComponent(cmd.get("value")).c_str()];
-    #if IOS == 1
+    #if IOS == 1 || defined(TARGET_OS_SIMULATOR)
     	[[UIApplication sharedApplication] openURL: [NSURL URLWithString:url] options: @{} completionHandler: nil];
     #else
     	[[NSWorkspace sharedWorkspace] openURL:[NSURL URLWithString: url]];
@@ -1000,6 +1001,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   }
 
   NSLog(@"%s", msg.c_str());
+  return false;
 }
 @end
 

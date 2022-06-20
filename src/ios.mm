@@ -1,6 +1,10 @@
 #import <UIKit/UIKit.h>
+#import <Network/Network.h>
 #import <Webkit/Webkit.h>
-#import <CoreBluetooth/CoreBluetooth.h>
+#import "common.hh"
+
+// #include <ifaddrs.h>
+// #include <arpa/inet.h>
 
 #include <_types/_uint64_t.h>
 #include <netinet/in.h>
@@ -91,7 +95,7 @@ void uncaughtExceptionHandler (NSException *exception) {
     }
 
     dispatch_async(dispatch_get_main_queue(), ^{
-      [self.webview emit: name msg: SSC::format(R"JSON({
+      [bridge emit: name msg: SSC::format(R"JSON({
         "message": "$S"
       })JSON", message)];
     });
@@ -116,7 +120,7 @@ void uncaughtExceptionHandler (NSException *exception) {
 
 - (void) keyboardDidHide {
   self.webview.scrollView.scrollEnabled = YES;
-  [self.webview emit: "keyboard" msg: SSC::format(R"JSON({
+  [bridge emit: "keyboard" msg: SSC::format(R"JSON({
     "value": {
       "data": {
         "event": "did-hide"
@@ -127,7 +131,7 @@ void uncaughtExceptionHandler (NSException *exception) {
 
 - (void) keyboardDidShow {
   self.webview.scrollView.scrollEnabled = NO;
-  [self.webview emit: "keyboard" msg: SSC::format(R"JSON({
+  [bridge emit: "keyboard" msg: SSC::format(R"JSON({
     "value": {
       "data": {
 		    "event": "did-show"
@@ -140,7 +144,7 @@ void uncaughtExceptionHandler (NSException *exception) {
   auto str = std::string(url.absoluteString.UTF8String);
 
   // TODO can this be escaped or is the url encoded property already?
-  [self.webview emit: "protocol" msg: SSC::format(R"JSON({
+  [bridge emit: "protocol" msg: SSC::format(R"JSON({
     "url": "$S",
   })JSON", str)];
 
@@ -217,7 +221,7 @@ void uncaughtExceptionHandler (NSException *exception) {
   [self.content addScriptMessageHandler:self name: @"webview"];
   [self.content addUserScript: initScript];
 
-  self.webview = [[BridgeView alloc] initWithFrame: appFrame configuration: config];
+  self.webview = [[BridgedWebView alloc] initWithFrame: appFrame configuration: config];
   self.webview.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
 
   [self.webview.configuration.preferences setValue: @YES forKey: @"allowFileAccessFromFileURLs"];
