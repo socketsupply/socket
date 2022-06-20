@@ -11,28 +11,18 @@
 constexpr auto _settings = STR_VALUE(SETTINGS);
 constexpr auto _debug = false;
 
-dispatch_queue_attr_t qos = dispatch_queue_attr_make_with_qos_class(
-  DISPATCH_QUEUE_CONCURRENT,
-  QOS_CLASS_USER_INITIATED,
-  -1
-);
-
-static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
-
-@interface WebView : WKWebView
+@interface BridgedWebView : WKWebView
 @end
 
-#include "./apple.mm"
+#include "./apple.mm" // creates instance of bridge
 
-Bridge* bridge; // defined in apple.mm
-
-@implementation WebView 
+@implementation BridgedWebView
 @end
 
 @interface AppDelegate : UIResponder <UIApplicationDelegate, WKScriptMessageHandler>
 @property (strong, nonatomic) UIWindow* window;
 @property (strong, nonatomic) NavigationDelegate* navDelegate;
-@property (strong, nonatomic) WebView* webview;
+@property (strong, nonatomic) BridgedWebView* webview;
 @property (strong, nonatomic) WKUserContentController* content;
 
 @property nw_path_monitor_t monitor;
@@ -237,9 +227,9 @@ void uncaughtExceptionHandler (NSException *exception) {
   [ns addObserver: self selector: @selector(keyboardDidShow) name: UIKeyboardDidShowNotification object: nil];
   [ns addObserver: self selector: @selector(keyboardDidHide) name: UIKeyboardDidHideNotification object: nil];
 
-  bridge.bluetooth = [BluetoothDelegate new];
-  bridge.webview = self.webview;
-  bridge.core = new SSC::Core;
+  [bridge setBluetooth: [BluetoothDelegate new]];
+  [bridge setWebview: self.webview];
+  [bridge setCore: new SSC::Core];
 
   self.navDelegate = [[NavigationDelegate alloc] init];
   [self.webview setNavigationDelegate: self.navDelegate];

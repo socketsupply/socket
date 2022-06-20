@@ -5,7 +5,7 @@
 #import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
 #include <objc/objc-runtime.h>
 
-@interface WebView : WKWebView<
+@interface BridgedWebView : WKWebView<
   WKUIDelegate,
   NSDraggingDestination,
   NSFilePromiseProviderDelegate,
@@ -14,11 +14,9 @@
   sourceOperationMaskForDraggingContext: (NSDraggingContext)context;
 @end
 
-#include "apple.mm"
+#include "apple.mm" // creates instance of bridge
 
-Bridge* bridge;
-
-@implementation WebView
+@implementation BridgedWebView
 std::vector<std::string> draggablePayload;
 
 int lastX = 0;
@@ -414,7 +412,7 @@ namespace SSC {
 
   class Window : public IWindow {
     NSWindow* window;
-    BridgeView* webview;
+    BridgedWebView* webview;
 
     public:
       App app;
@@ -572,7 +570,7 @@ namespace SSC {
     [controller
       addUserScript: userScript];
 
-    webview = [[BridgeView alloc]
+    webview = [[BridgedWebView alloc]
       initWithFrame: NSZeroRect
       configuration: config];
 
@@ -580,8 +578,9 @@ namespace SSC {
       setValue:@YES
       forKey:@"allowFileAccessFromFileURLs"];
 
-    bridge.bluetooth = [BluetoothDelegate new];
-    bridge.core = new SSC::Core;
+    [bridge setBluetooth: [BluetoothDelegate new]];
+    [bridge setWebview: webview];
+    [bridge setCore: new SSC::Core];
 
     // window.titlebarAppearsTransparent = true;
 
@@ -649,7 +648,7 @@ namespace SSC {
             }
             String msg = [body UTF8String];
 
-            if ([router msg: msg buf: nullptr]) return;
+            if ([bridge route: msg buf: nullptr]) return;
             w->onMessage(msg);
           }),
         "v@:@"

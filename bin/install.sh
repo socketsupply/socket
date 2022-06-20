@@ -113,19 +113,19 @@ function _setSDKVersion {
   arr=()
   for sdk in $sdks
   do
-   echo "ok - found SDK $sdk"
-   arr[${#arr[@]}]=$sdk
+    echo "ok - found SDK $sdk"
+    arr[${#arr[@]}]=$sdk
   done
 
   # Last item will be the current SDK, since it is alpha ordered
   count=${#arr[@]}
 
   if [ $count -gt 0 ]; then
-   sdk=${arr[$count-1]:${#1}}
-   num=`expr ${#sdk}-4`
-   SDKVERSION=${sdk:0:$num}
+    sdk=${arr[$count-1]:${#1}}
+    num=`expr ${#sdk}-4`
+    SDKVERSION=${sdk:0:$num}
   else
-   SDKVERSION="8.0"
+    SDKVERSION="8.0"
   fi
 }
 

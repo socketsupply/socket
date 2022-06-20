@@ -2,14 +2,30 @@
 
 //
 // Mixed-into ios.mm and mac.hh by #include. This file
-// expects WebView to be defined before it's included.
+// expects BridgedWebView to be defined before it's included.
 // All IO is routed though these common interfaces.
 //
+@class Bridge;
+
+dispatch_queue_attr_t qos = dispatch_queue_attr_make_with_qos_class(
+  DISPATCH_QUEUE_CONCURRENT,
+  QOS_CLASS_USER_INITIATED,
+  -1
+);
+
+static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
+
+@interface NavigationDelegate : NSObject<WKNavigationDelegate>
+- (void) webview: (BridgedWebView*)webview
+  decidePolicyForNavigationAction: (WKNavigationAction*)navigationAction
+  decisionHandler: (void (^)(WKNavigationActionPolicy)) decisionHandler;
+@end
+
 @interface BluetoothDelegate : NSObject<
-	CBCentralManagerDelegate,
-	CBPeripheralManagerDelegate,
-	CBPeripheralDelegate>
-@property (strong, nonatomic) WebView* webview;
+  CBCentralManagerDelegate,
+  CBPeripheralManagerDelegate,
+  CBPeripheralDelegate>
+@property (strong, nonatomic) Bridge* bridge;
 @property (strong, nonatomic) CBCentralManager* centralManager;
 @property (strong, nonatomic) CBPeripheralManager* peripheralManager;
 @property (strong, nonatomic) CBPeripheral* bluetoothPeripheral;
@@ -20,6 +36,24 @@
 @property (strong, nonatomic) NSString* serviceId;
 - (void) initBluetooth;
 - (void) setChannelId: (std::string)str;
+@end
+
+@interface IPCSchemeHandler : NSObject<WKURLSchemeHandler>
+@property (strong, nonatomic) Bridge* bridge;
+- (void)setBridge: (Bridge*)br;
+- (void)webView: (BridgedWebView*)webview startURLSchemeTask:(id <WKURLSchemeTask>)urlSchemeTask;
+- (void)webView: (BridgedWebView*)webview stopURLSchemeTask:(id <WKURLSchemeTask>)urlSchemeTask;
+@end
+
+@interface Bridge : NSObject
+@property (strong, nonatomic) BluetoothDelegate* bluetooth;
+@property (strong, nonatomic) BridgedWebView* webview;
+@property (nonatomic) SSC::Core* core;
+- (bool) route: (std::string)msg buf: (char*)buf;
+- (void) emit: (std::string)name msg: (std::string)msg;
+- (void) setBluetooth: (BluetoothDelegate*)bd;
+- (void) setWebView: (BridgedWebView*)bv;
+- (void) setCore: (SSC::Core*)core;
 @end
 
 @implementation BluetoothDelegate
@@ -86,7 +120,7 @@
     }
   })JSON", message, state);
 
-  [self.webview emit: "local-network" msg: msg];
+  [self.bridge emit: "local-network" msg: msg];
 
   NSLog(@"%@", [NSString stringWithUTF8String: msg.c_str()]);
 }
@@ -136,7 +170,7 @@
     }
   })JSON");
 
-  [self.webview emit: "local-network" msg: msg];
+  [self.bridge emit: "local-network" msg: msg];
 }
 
 - (void) startBluetooth {
@@ -188,7 +222,7 @@
     }
   })JSON");
 
-  [self.webview emit: "local-network" msg: msg];
+  [self.bridge emit: "local-network" msg: msg];
 
   if ([request.characteristic.UUID isEqual: _characteristic.UUID]) {
     if (request.offset > _characteristic.value.length) {
@@ -214,7 +248,7 @@
     }
   })JSON");
 
-  [self.webview emit: "local-network" msg: msg];
+  [self.bridge emit: "local-network" msg: msg];
 
   for (CBATTRequest* request in requests) {
     if (![request.characteristic.UUID isEqual: _characteristic.UUID]) {
@@ -231,7 +265,7 @@
         "data": { "message": "$S" }
       }
     })JSON", std::string(src));
-    [self.webview emit: "local-network" msg: msg];
+    [self.bridge emit: "local-network" msg: msg];
     [self.peripheralManager respondToRequest: request withResult: CBATTErrorSuccess];  
   }
 } */
@@ -282,7 +316,7 @@
     }
   })JSON", name, uuid);
 
-  [self.webview emit: "local-network" msg: msg];
+  [self.bridge emit: "local-network" msg: msg];
 
   [_peripherals addObject: peripheral];
   [central connectPeripheral: peripheral options: nil];
@@ -320,7 +354,7 @@
     }
   })JSON");
 
-  [self.webview emit: "local-network" msg: msg];
+  [self.bridge emit: "local-network" msg: msg];
 }
 
 - (void) peripheral:(CBPeripheral*)peripheral didUpdateValueForCharacteristic:(CBCharacteristic*)characteristic error:(NSError*)error {
@@ -347,7 +381,7 @@
 
   NSLog(@"BBB didUpdateValueForCharacteristic: %s", src);
 
-  [self.webview emit: "local-network" msg: msg];
+  [self.bridge emit: "local-network" msg: msg];
 }
 
 - (void)peripheral:(CBPeripheral*)peripheral didUpdateNotificationStateForCharacteristic:(CBCharacteristic*)characteristic error:(NSError*)error {
@@ -364,7 +398,7 @@
     }
   })JSON");
 
-  [self.webview emit: "local-network" msg: msg];
+  [self.bridge emit: "local-network" msg: msg];
 }
 
 - (void) centralManager:(CBCentralManager *)central didFailToConnectPeripheral:(CBPeripheral *)peripheral error:(nullable NSError *)error {
@@ -385,20 +419,14 @@
     }
   })JSON", name, uuid);
 
-  [self.webview emit: "local-network" msg: msg];
+  [self.bridge emit: "local-network" msg: msg];
 
   [_peripherals removeObject: peripheral];
 }
 @end
 
-@interface NavigationDelegate : NSObject<WKNavigationDelegate>
-- (void) webview: (WebView*)webview
-  decidePolicyForNavigationAction: (WKNavigationAction*)navigationAction
-  decisionHandler: (void (^)(WKNavigationActionPolicy)) decisionHandler;
-@end
-
 @implementation NavigationDelegate
-- (void) webview: (WebView*) webview
+- (void) webview: (BridgedWebView*) webview
     decidePolicyForNavigationAction: (WKNavigationAction*) navigationAction
     decisionHandler: (void (^)(WKNavigationActionPolicy)) decisionHandler {
 
@@ -413,28 +441,18 @@
 }
 @end
 
-@interface Bridge : NSObject
-@property (strong, nonatomic) BluetoothDelegate* bluetooth;
-@property (string, nonatomic) WebView* webview;
-@property SSC::Core* core;
-- (bool) route: (std::string)msg buf: (char*)buf;
-- (void) emit: (std::string)name msg: (std::string)msg;
-- (void) setBluetooth: (BluetoothDelegate*)bd;
-- (void) setWebView: (WebView*)bv;
-- (void) setCore: (SSC::Core*)core;
-@end
-
 @implementation Bridge
 - (void) setBluetooth: (BluetoothDelegate*)bd {
-  self.bluetooth = bd;
+  _bluetooth = bd;
+  _bluetooth.bridge = self;
 }
 
-- (void) setWebView: (WebView*)wv {
-  self.webview = wv;
+- (void) setWebView: (BridgedWebView*)wv {
+  _webview = wv;
 }
 
-- (void) setCore: (SSC::Core*)core;
-  self.core = core;
+- (void) setCore: (SSC::Core*)core; {
+  _core = core;
 }
 
 - (void) emit: (std::string)name msg: (std::string)msg {
@@ -505,12 +523,12 @@
   uint64_t clientId = 0;
 
   if (cmd.name == "localNetworkInit") {
-    [bluetooth initBluetooth];
+    [self.bluetooth initBluetooth];
     return true;
   }
 
   if (cmd.name == "localNetworkSend") {
-    [bluetooth localNetworkSend: cmd.get("value") uuid: cmd.get("uuid")];
+    [self.bluetooth localNetworkSend: cmd.get("value") uuid: cmd.get("uuid")];
     return true;
   }
 
@@ -691,7 +709,11 @@
 
   if (cmd.name == "external") {
     NSString *url = [NSString stringWithUTF8String:SSC::decodeURIComponent(cmd.get("value")).c_str()];
-    [[UIApplication sharedApplication] openURL: [NSURL URLWithString:url] options: @{} completionHandler: nil];
+    #if IOS == 1
+    	[[UIApplication sharedApplication] openURL: [NSURL URLWithString:url] options: @{} completionHandler: nil];
+    #else
+    	[[NSWorkspace sharedWorkspace] openURL:[NSURL URLWithString: url]];
+    #endif
     return true;
   }
 
@@ -981,26 +1003,19 @@
 }
 @end
 
-@interface IPCSchemeHandler : NSObject<WKURLSchemeHandler>
-@property (strong, nonatomic) Bridge* bridge;
-- (void)setBridge: (Bridge*)br;
-- (void)webView: (WebView*)webview startURLSchemeTask:(id <WKURLSchemeTask>)urlSchemeTask;
-- (void)webView: (WebView*)webview stopURLSchemeTask:(id <WKURLSchemeTask>)urlSchemeTask;
-@end
-
 @implementation IPCSchemeHandler
 - (void)setBridge: (Bridge*)br {
   self.bridge = br;
 }
-- (void)webView: (WebView*)webview stopURLSchemeTask:(id<WKURLSchemeTask>)urlSchemeTask {}
-- (void)webView: (WebView*)webview startURLSchemeTask:(id<WKURLSchemeTask>)task {
+- (void)webView: (BridgedWebView*)webview stopURLSchemeTask:(id<WKURLSchemeTask>)urlSchemeTask {}
+- (void)webView: (BridgedWebView*)webview startURLSchemeTask:(id<WKURLSchemeTask>)task {
   auto url = std::string(task.request.URL.absoluteString.UTF8String);
 
   SSC::Parse cmd(url);
 
   if (cmd.name == "post") {
     uint64_t postId = std::stoll(cmd.get("id"));
-    auto post = self.core->getPost(postId);
+    auto post = self.bridge.core->getPost(postId);
     NSMutableDictionary* httpHeaders;
 
     if (post.length > 0) {
@@ -1047,6 +1062,8 @@
     body = (char*)data;
   }
 
-  [self.bridge.route: url buf: body];
+  [self.bridge route: url buf: body];
 }
 @end
+
+Bridge* bridge = [Bridge new]; // basically a singleton for now
