@@ -1,5 +1,5 @@
 // vim: set sw=2:
-package co.socketsupply.BUNDLE_IDENTIFIER // {{bundle_identifier}}
+package __BUNDLE_IDENTIFIER__
 
 /**
  * @TODO
@@ -77,3 +77,8 @@ open class WebViewActivity : android.app.Activity() {
     view.loadUrl("file:///android_asset/index.html");
   }
 }
+
+/**
+ * @TODO
+ */
+final class MainWebViewActivity : WebViewActivity();
