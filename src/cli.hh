@@ -16,9 +16,9 @@ subcommands:
   mobiledeviceid             get current device id
 
 general options:
-  --target  cross-compilation (any of: ios, iossimulator)
-  --test=1  indicate test mode
-  --port=n  load "index.html" from "http://localhost:n"
+  --target=<TARGET>  cross-compilation target where <TARGET> can be: ios, iossimulator, androidemulator
+  --test=1           indicate test mode
+  --port=n           load "index.html" from "http://localhost:n"
 
   -h  help
   -v  version
@@ -167,7 +167,7 @@ constexpr auto gAndroidManifest = R"XML(
     android:supportsRtl="true"
     android:theme="@style/AppTheme">
     <activity
-      android:name=".WebViewActivity"
+      android:name=".MainWebViewActivity"
       android:exported="true">
       <intent-filter>
         <action android:name="android.intent.action.MAIN" />
@@ -839,73 +839,134 @@ constexpr auto gXcodeEntitlements = R"XML(<?xml version="1.0" encoding="UTF-8"?>
 </plist>)XML";
 
 //
-// Android `build.gradle`
+// Android top level `build.gradle` in Groovy Syntax
 //
-constexpr auto gGradleBuild = R"GRADLE(
-plugins {
-  id("com.android.application") version "7.1.0-beta02" apply false
-  id("com.android.library") version "7.1.0-beta02" apply false
-  id("org.jetbrains.kotlin.android") version "1.5.30" apply false
+constexpr auto gGradleBuild = R"GROOVY(
+buildscript {
+  ext.kotlin_version = '1.7.0'
+  repositories {
+    google()
+    jcenter()
+  }
+
+  dependencies {
+    // https://mvnrepository.com/artifact/com.android.tools.build/gradle?repo=google
+    classpath 'com.android.tools.build:gradle:7.2.1'
+
+    // https://mvnrepository.com/artifact/org.jetbrains.kotlin/kotlin-gradle-plugin
+    classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+  }
 }
 
+allprojects {
+  repositories {
+    google()
+    jcenter()
+  }
+}
+
+task clean (type: Delete) {
+  delete rootProject.buildDir
+}
+)GROOVY";
+
+//
+// Android source `build.gradle` in Groovy Syntax
+//
+constexpr auto gGradleBuildForSource = R"GROOVY(
+apply plugin: 'com.android.application'
+apply plugin: 'kotlin-android'
+apply plugin: 'kotlin-android-extensions'
+
 android {
+  // https://developer.android.com/studio/releases/platforms
   compileSdkVersion 32
-  buildToolsVersion "32.0.0"
-  ndkVersion "23.0.7599858"
+  flavorDimensions "default"
 
   defaultConfig {
     applicationId "{{bundle_identifier}}"
-    minSdkVersion 23
-    targetSdkVersion 31
-    versionCode 1
-    versionName "{{version}}"
+    minSdkVersion 16
+    targetSdkVersion 30
+    // versionCode {{TODO}}
+    versionName "{{version_short}"
+  }
+
+  productFlavors {
+    dev {
+      buildConfigField "String", "URL", "\"{{TODO}}\""
+    }
+
+    live {
+      buildConfigField "String", "URL", "\"{{TODO}}\""
+    }
   }
 
   buildTypes {
     release {
+      minifyEnabled true
+      proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+      productFlavors.dev
+      productFlavors.live
+    }
+
+    debug {
       minifyEnabled false
-      useProguard false
-    }
-  }
-
-  externalNativeBuild {
-    ndkBuild {
-      // @TODO
-      path file('../build.sh')
+      proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+      productFlavors.dev
+      productFlavors.live
     }
   }
 }
 
-tasks.register("clean", Delete::class) {
-  delete(rootProject.buildDir)
+dependencies {
+  implementation fileTree(dir: 'libs', include: ['*.jar'])
+  implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
+  implementation 'androidx.appcompat:appcompat:1.2.0'
+  implementation 'com.google.android.material:material:1.2.1'
+  implementation 'androidx.localbroadcastmanager:localbroadcastmanager:1.0.0'
 }
-)GRADLE";
+)GROOVY";
 
 //
-// Android `settings.gradle`
+// Android top level `settings.gradle` in Groovy Syntax
 //
-constexpr auto gGradleSettings = R"GRADLE(
-pluginManagement {
-  repositories {
-    gradlePluginPortal()
-    google()
-    mavenCentral()
-  }
-}
-
-dependencyResolutionManagement {
-  repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
-
-  repositories {
-    google()
-    mavenCentral()
-  }
-}
-
+constexpr auto gGradleSettings = R"GROOVY(
 rootProject.name = "{{name}}"
-// @TODO
-//include(":src")
-)GRADLE";
+include ':app'
+)GROOVY";
+
+//
+// Android cpp `Android.mk` file
+//
+constexpr auto gAndroidMakefile = R"MAKE(
+)MAKE";
+
+//
+// Android `proguard-rules.pro` file
+//
+constexpr auto gProGuardRules = R"PGR(
+# Add project specific ProGuard rules here.
+# You can control the set of applied configuration files using the
+# proguardFiles setting in build.gradle.
+#
+# For more details, see
+#   http://developer.android.com/guide/developing/tools/proguard.html
+
+# If your project uses WebView with JS, uncomment the following
+# and specify the fully qualified class name to the JavaScript interface
+# class:
+#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
+#   public *;
+#}
+
+# Uncomment this to preserve the line number information for
+# debugging stack traces.
+#-keepattributes SourceFile,LineNumberTable
+
+# If you keep the line number information, uncomment this to
+# hide the original source file name.
+#-renamesourcefileattribute SourceFile
+)PGR";
 
 //
 // XCode Build Config
