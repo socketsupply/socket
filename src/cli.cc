@@ -424,6 +424,7 @@ int main (const int argc, const char* argv[]) {
     if (flagBuildForAndroid) {
       auto bundle_identifier = settings["bundle_identifier"];
       auto bundle_path = fs::path(replace(bundle_identifier, "\\.", "/")).make_preferred();
+      auto bundle_path_underscored = replace(bundle_identifier, "\\.", "_");
 
       auto output = fs::absolute(target) / settings["output"] / "android";
       auto app = output / "app";
@@ -466,16 +467,23 @@ int main (const int argc, const char* argv[]) {
       fs::copy(trim(prefixFile("src/common.hh")), cpp);
       fs::copy(trim(prefixFile("src/preload.hh")), cpp);
 
-      // JNI/NDK
-      fs::copy(trim(prefixFile("src/android.hh")), cpp);
-      fs::copy(trim(prefixFile("src/android.cc")), cpp);
-
       // Android Project
       writeFile(src / "main" / "AndroidManifest.xml", tmpl(gAndroidManifest, settings));
       writeFile(app / "proguard-rules.pro", tmpl(gProGuardRules, settings));
       writeFile(app / "build.gradle", tmpl(gGradleBuildForSource, settings));
       writeFile(output / "settings.gradle", tmpl(gGradleSettings, settings));
       writeFile(output / "build.gradle", tmpl(gGradleBuild, settings));
+
+      // JNI/NDK
+      fs::copy(trim(prefixFile("src/android.cc")), cpp);
+      writeFile(
+        cpp / "android.hh",
+        std::regex_replace(
+          WStringToString(readFile(trim(prefixFile("src/android.hh")))),
+          std::regex("__BUNDLE_IDENTIFIER__"),
+          bundle_path_underscored
+        )
+      );
 
       // Android Source
       writeFile(

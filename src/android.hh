@@ -14,7 +14,7 @@
 /**
  * Defined by the Socket SDK preprocessor
  */
-#define PACKAGE_NAME {{bundle_identifier}}
+#define PACKAGE_NAME __BUNDLE_IDENTIFIER__
 
 /**
  * Creates a named package function configured for the configured bundle
