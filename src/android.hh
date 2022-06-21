@@ -9,6 +9,8 @@
 #include <jni.h>
 #include <stdint.h>
 
+#include "core.hh"
+
 /**
  * Defined by the Socket SDK preprocessor
  */
