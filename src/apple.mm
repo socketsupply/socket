@@ -445,6 +445,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 @implementation Bridge
 - (void) setBluetooth: (BluetoothDelegate*)bd {
   _bluetooth = bd;
+  [bd initBluetooth];
   _bluetooth.bridge = self;
 }
 
@@ -710,10 +711,10 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
   if (cmd.name == "external") {
     NSString *url = [NSString stringWithUTF8String:SSC::decodeURIComponent(cmd.get("value")).c_str()];
-    #if IOS == 1 || defined(TARGET_OS_SIMULATOR)
-    	[[UIApplication sharedApplication] openURL: [NSURL URLWithString:url] options: @{} completionHandler: nil];
+    #if IOS == 0 || !defined(TARGET_OS_SIMULATOR)
+      [[NSWorkspace sharedWorkspace] openURL:[NSURL URLWithString: url]];
     #else
-    	[[NSWorkspace sharedWorkspace] openURL:[NSURL URLWithString: url]];
+      [[UIApplication sharedApplication] openURL: [NSURL URLWithString:url] options: @{} completionHandler: nil];
     #endif
     return true;
   }
