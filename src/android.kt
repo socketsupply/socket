@@ -65,8 +65,8 @@ open class WebViewActivity : android.app.Activity() {
     val client = WebViewClient(this);
     val settings = view.getSettings();
 
-    // @TODO(jwerle): `activity_main` needs to be defined `res/layout/main.xml`
-    this.setContentView(android.R.layout.activity_main);
+    // @TODO(jwerle): `webview_activity` needs to be defined `res/layout/webview_activity.xml`
+    this.setContentView(android.R.layout.webview_activity);
 
     this.client = client;
     this.view = view;
@@ -82,3 +82,16 @@ open class WebViewActivity : android.app.Activity() {
  * @TODO
  */
 final class MainWebViewActivity : WebViewActivity();
+
+/**
+ * Core bindings externally implemented in JNI/NDK
+ */
+private final class Core {
+  internal pointer: Long;
+  external fun initialize ();
+  external fun destroy ()
+
+  protected fun finalize () {
+    destroy();
+  }
+}

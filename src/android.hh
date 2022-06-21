@@ -5,6 +5,7 @@
  * Java Native Interface
  * @see https://docs.oracle.com/javase/7/docs/technotes/guides/jni/spec/jniTOC.html
  * @see https://docs.oracle.com/javase/7/docs/technotes/guides/jni/spec/functions.html
+ * @see https://docs.oracle.com/javase/7/docs/technotes/guides/jni/spec/types.html#wp276
  */
 #include <jni.h>
 #include <stdint.h>
