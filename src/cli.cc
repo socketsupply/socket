@@ -37,9 +37,7 @@ void log (const std::string s) {
 }
 
 void init (Map attrs) {
-  if (platform.os == "mac") {
-    attrs["node_platform"] = platform.arch == "arm64" ? "arm64" : "x64";
-  }
+  attrs["node_platform"] = platform.arch == "arm64" ? "arm64" : "x64";
   auto cwd = fs::current_path();
   fs::create_directories(cwd / "src");
   SSC::writeFile(cwd / "src" / "index.html", "<html>Hello, World</html>");
