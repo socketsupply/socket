@@ -24,7 +24,7 @@ extern "C" {
     env->SetLongField(self, field, (jlong) 0);
   }
 
-  void package_export(core_fsOpen)(
+  void package_export(Core_fsOpen)(
     JNIEnv *env,
     jobject self,
     jstring seq,
@@ -35,7 +35,7 @@ extern "C" {
     // @TODO(jwerle): Core::fsOpen()
   }
 
-  void package_export(core_fsClose)(
+  void package_export(Core_fsClose)(
     JNIEnv *env,
     jobject self,
     jstring seq,
@@ -44,7 +44,7 @@ extern "C" {
     // @TODO(jwerle): Core::fsClose
   }
 
-  void package_export(core_fsRead)(
+  void package_export(Core_fsRead)(
     JNIEnv *env,
     jobject self,
     jstring seq,
@@ -55,7 +55,7 @@ extern "C" {
     // @TODO(jwerle): Core::fsRead
   }
 
-  void package_export(core_fsWrite)(
+  void package_export(Core_fsWrite)(
     JNIEnv *env,
     jobject self,
     jstring seq,
@@ -66,7 +66,7 @@ extern "C" {
     // @TODO(jwerle): Core::fsWrite
   }
 
-  void package_export(core_fsStat)(
+  void package_export(Core_fsStat)(
     JNIEnv *env,
     jobject self,
     jstring seq,
@@ -75,14 +75,14 @@ extern "C" {
     // @TODO(jwerle): Core::fsStat
   }
 
-  void package_export(core_fsUnlink)(
+  void package_export(Core_fsUnlink)(
     jstring seq,
     jstring path
   ) {
     // @TODO(jwerle): Core::fsUnlink
   }
 
-  void package_export(core_fsRename)(
+  void package_export(Core_fsRename)(
     JNIEnv *env,
     jobject self,
     jstring seq,
@@ -92,7 +92,7 @@ extern "C" {
     // @TODO(jwerle): Core::fsRename
   }
 
-  void package_export(core_fsCopyFile)(
+  void package_export(Core_fsCopyFile)(
     JNIEnv *env,
     jobject self,
     jstring seq,
@@ -103,7 +103,7 @@ extern "C" {
     // @TODO(jwerle): Core::fsCopyFile
   }
 
-  void package_export(core_fsRmDir)(
+  void package_export(Core_fsRmDir)(
     JNIEnv *env,
     jobject self,
     jstring seq,
@@ -112,7 +112,7 @@ extern "C" {
     // @TODO(jwerle): Core::fsRmDir
   }
 
-  void package_export(core_fsMkDir)(
+  void package_export(Core_fsMkDir)(
     JNIEnv *env,
     jobject self,
     jstring seq,
@@ -122,7 +122,7 @@ extern "C" {
     // @TODO(jwerle): Core::fsMkDir
   }
 
-  void package_export(core_fsReadDir)(
+  void package_export(Core_fsReadDir)(
     JNIEnv *env,
     jobject self,
     jstring seq,
