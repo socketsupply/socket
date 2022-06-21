@@ -6,9 +6,9 @@ extern "C" {
     jobject self,
   ) {
     auto core = new Core();
-    jclass CoreClass env->GetObjectClass(self);
-    // "J" means `Long`
-    jfieldID field = env->GetFieldID(CoreClass, "pointer", "J"); // "J" means `Long`
+    auto CoreClass env->GetObjectClass(self);
+    auto field = env->GetFieldID(CoreClass, "pointer", "J"); // "J" means `Long`
+                                                             //
     env->SetLongField(self, field, (jlong) (void *) core);
   }
 
@@ -16,8 +16,8 @@ extern "C" {
     JNIEnv *env,
     jobject self,
   ) {
-    jclass CoreClass env->GetObjectClass(self);
-    jfieldID field = env->GetFieldID(CoreClass, "pointer", "J"); // "J" means `Long`
+    auto CoreClass env->GetObjectClass(self);
+    auto field = env->GetFieldID(CoreClass, "pointer", "J"); // "J" means `Long`
     auto core (Core *) env->GetLongField(self, field);
     delete core;
   }
