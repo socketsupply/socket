@@ -1,8 +1,5 @@
 #!/usr/bin/env bash
 set -e;
-#
-# This file compiles the cli tool and the resources it uses
-#
 
 PREFIX=${PREFIX:-$HOME}
 PLATFORMPATH=""
@@ -35,6 +32,7 @@ if [ ! "$CXX" ]; then
 fi
 
 function quiet () {
+  #"$@"
   "$@" > /dev/null 2>&1
 }
 
@@ -191,7 +189,6 @@ function _compile_libuv {
 }
 
 _prepare
-
 cd $BUILD_DIR
 
 if [ "$1" == "ios" ]; then
@@ -235,6 +232,10 @@ cp $STAGING_DIR/build/lib/libuv.a $LIB_DIR
 die $? "not ok - unable to build libuv"
 echo "ok - built libuv for $platform ($target)"
 
+mkdir -p  $ASSETS_DIR/uv/{src/unix,include}
+cp -fr $BUILD_DIR/input/src/*.{c,h} $ASSETS_DIR/uv/src
+cp -fr $BUILD_DIR/input/src/unix/*.{c,h} $ASSETS_DIR/uv/src/unix
+cp -r $BUILD_DIR/input/include/* $ASSETS_DIR/uv/include
 cp -r $BUILD_DIR/input/include/* $ASSETS_DIR/include
 die $? "not ok - could not copy headers"
 echo "ok - copied headers"
