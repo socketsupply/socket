@@ -187,6 +187,7 @@ int main (const int argc, const char* argv[]) {
     bool flagShouldPackage = false;
     bool flagBuildForIOS = false;
     bool flagBuildForAndroid = false;
+    bool flagBuildForAndroidEmulator = false;
     bool flagBuildForSimulator = false;
     bool flagPrintBuildPath = false;
 
@@ -246,6 +247,9 @@ int main (const int argc, const char* argv[]) {
           flagBuildForIOS = true;
         } else if (target == "android") {
           flagBuildForAndroid = true;
+        } else if (target == "androidemulator") {
+          flagBuildForAndroid = true;
+          flagBuildForAndroidEmulator = true;
         } else if (target == "iossimulator") {
           flagBuildForIOS = true;
           flagBuildForSimulator = true;
@@ -277,7 +281,7 @@ int main (const int argc, const char* argv[]) {
     //
 
     auto const path = argv[argc-1];
-    auto target = fs::path(path);
+    auto target = fs::absolute(fs::path(path));
 
     if (path[0] == '-') {
       log("a directory was expected as the last argument");
@@ -286,6 +290,10 @@ int main (const int argc, const char* argv[]) {
 
     if (path[0] == '.') {
       target = fs::absolute(target);
+    }
+
+    if (std::string(target).back() == '.') {
+      target = fs::path(std::string(target).substr(0, std::string(target).size() - 1));
     }
 
     auto configPath = target / "ssc.config";
@@ -414,13 +422,86 @@ int main (const int argc, const char* argv[]) {
     }
 
     if (flagBuildForAndroid) {
-      fs::remove_all(target / "dist");
-      // - create a tmp dir
-      // - read android.* files and template to tmp dir
-      // - template gGradleBuild to tmp dir
-      // - run the user build scripts to copy assets into place
-      // - run gradlew on tmp files to generate and bundle the dist dir
-      log("unfinished");
+      auto bundle_identifier = settings["bundle_identifier"];
+      auto bundle_path = fs::path(replace(bundle_identifier, "\\.", "/")).make_preferred();
+
+      auto output = fs::absolute(target) / settings["output"] / "android";
+      auto app = output / "app";
+      auto src = app / "src";
+      auto cpp = src / "main" / "cpp";
+      auto res = src / "main" / "res";
+      auto pkg = src / "main" / "java" / bundle_path;
+
+      // clean and create output directories
+      fs::remove_all(output);
+      fs::create_directories(output);
+      fs::create_directories(src);
+      fs::create_directories(cpp);
+      fs::create_directories(res);
+      fs::create_directories(pkg);
+
+      // set current path to output directory
+      fs::current_path(output);
+
+      std::stringstream gradleInitCommand;
+      gradleInitCommand
+        << "echo 1 |"
+        << "gradle "
+        << "--no-configuration-cache "
+        << "--no-build-cache "
+        << "--no-scan "
+        << "--offline "
+        << "--quiet "
+        << "init";
+
+      if (std::system(gradleInitCommand.str().c_str()) != 0) {
+        log("error: failed to invoke `gradle init` command");
+        exit(1);
+      }
+
+      //writeFile();
+
+      // Core
+      fs::copy(trim(prefixFile("src/core.hh")), cpp);
+      fs::copy(trim(prefixFile("src/common.hh")), cpp);
+      fs::copy(trim(prefixFile("src/preload.hh")), cpp);
+
+      // JNI/NDK
+      fs::copy(trim(prefixFile("src/android.hh")), cpp);
+      fs::copy(trim(prefixFile("src/android.cc")), cpp);
+
+      // Android Project
+      writeFile(src / "main" / "AndroidManifest.xml", tmpl(gAndroidManifest, settings));
+      writeFile(app / "proguard-rules.pro", tmpl(gProGuardRules, settings));
+      writeFile(app / "build.gradle", tmpl(gGradleBuildForSource, settings));
+      writeFile(output / "settings.gradle", tmpl(gGradleSettings, settings));
+      writeFile(output / "build.gradle", tmpl(gGradleBuild, settings));
+
+      // Android Source
+      writeFile(
+        pkg / "main.kt",
+        std::regex_replace(
+          WStringToString(readFile(trim(prefixFile("src/android.kt")))),
+          std::regex("__BUNDLE_IDENTIFIER__"),
+          bundle_identifier
+        )
+      );
+
+      std::stringstream gradleWrapperCommand;
+
+      if (flagDebugMode) {
+        gradleWrapperCommand
+          << "./gradlew :app:bundleDebug";
+      } else {
+        gradleWrapperCommand
+          << "./gradlew :app:bundle";
+      }
+
+      if (std::system(gradleWrapperCommand.str().c_str()) != 0) {
+        log("error: failed to invoke `gradlew` command");
+        exit(1);
+      }
+
       return 0;
     }
 
