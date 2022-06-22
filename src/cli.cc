@@ -1119,8 +1119,11 @@ int main (const int argc, const char* argv[]) {
     }
 
     if (flagBuildForAndroid) {
-      std::stringstream gradleWrapperCommand;
+      auto relativeOutput = fs::path(settings["output"]) / "android";
+      auto output = fs::absolute(target) / relativeOutput;
+      auto app = output / "app";
 
+      std::stringstream gradleWrapperCommand;
       if (flagDebugMode) {
         gradleWrapperCommand
           << "./gradlew :app:bundleDebug "
@@ -1145,10 +1148,6 @@ int main (const int argc, const char* argv[]) {
       }
 
       if (flagBuildForAndroidEmulator) {
-        auto relativeOutput = fs::path(settings["output"]) / "android";
-        auto output = fs::absolute(target) / relativeOutput;
-        auto app = output / "app";
-
         std::stringstream sdkmanager;
         std::stringstream avdmanager;
         std::string package = "'system-images;android-32;google_apis;x86_64'";
@@ -1174,22 +1173,22 @@ int main (const int argc, const char* argv[]) {
           log("error: failed to Android Virtual Device (avdmanager)");
           exit(1);
         }
+      }
 
-        if (flagShouldRun) {
-          // the emulator must be running on device SSCAVD for now
-          std::stringstream adb;
+      if (flagShouldRun) {
+        // the emulator must be running on device SSCAVD for now
+        std::stringstream adb;
 
-          adb << "adb install ";
-          if (flagDebugMode) {
-            adb << std::string(app / "build" / "outputs" / "apk" / "dev" / "debug" / "app-dev-debug.apk");
-          } else {
-            adb << std::string(app / "build" / "outputs" / "apk" / "dev" / "live" / "app-dev-release-unsigned.apk");
-          }
+        adb << "adb install ";
+        if (flagDebugMode) {
+          adb << std::string(app / "build" / "outputs" / "apk" / "dev" / "debug" / "app-dev-debug.apk");
+        } else {
+          adb << std::string(app / "build" / "outputs" / "apk" / "dev" / "live" / "app-dev-release-unsigned.apk");
+        }
 
-          if (std::system(adb.str().c_str()) != 0) {
-            log("error: failed to install APK to Android Emulator (adb)");
-            exit(1);
-          }
+        if (std::system(adb.str().c_str()) != 0) {
+          log("error: failed to install APK to Android Emulator (adb)");
+          exit(1);
         }
       }
 
