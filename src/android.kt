@@ -1,5 +1,6 @@
 // vim: set sw=2:
 package __BUNDLE_IDENTIFIER__
+import __BUNDLE_IDENTIFIER__.databinding.*
 
 /**
  * @TODO
@@ -47,7 +48,8 @@ open class WebViewClient(activity: WebViewActivity) : android.webkit.WebViewClie
  * @see https://developer.android.com/reference/kotlin/android/app/Activity
  * @TODO(jwerle): look into `androidx.appcompat.app.AppCompatActivity`
  */
-open class WebViewActivity : android.app.Activity() {
+open class WebViewActivity : androidx.appcompat.app.AppCompatActivity() {
+  private lateinit var binding: WebViewActivityBinding;
   private var client: WebViewClient? = null;
   private var view: WebView? = null;
   private val TAG = "WebViewActivity";
@@ -59,22 +61,23 @@ open class WebViewActivity : android.app.Activity() {
   override fun onCreate (state: android.os.Bundle?) {
     super.onCreate(state);
 
-    // @TODO(jwerle): `webview` needs to be a defined view that can
-    // be referenced by an ID
-    val view = WebView(findViewById(android.R.id.webview));
+    val binding = WebViewActivityBinding.inflate(layoutInflater);
     val client = WebViewClient(this);
-    val settings = view.getSettings();
+
+    val webview = binding.webview;
+    val settings = webview.getSettings();
 
     // @TODO(jwerle): `webview_activity` needs to be defined `res/layout/webview_activity.xml`
-    this.setContentView(android.R.layout.webview_activity);
-
-    this.client = client;
-    this.view = view;
+    setContentView(binding.root);
 
     settings.setJavaScriptEnabled(true);
 
-    view.setWebViewClient(client);
-    view.loadUrl("file:///android_asset/index.html");
+    webview.setWebViewClient(client);
+    webview.loadUrl("file:///android_asset/index.html");
+
+    this.binding = binding;
+    this.client = client;
+    this.view = webview as WebView;
   }
 }
 
@@ -87,7 +90,7 @@ final class MainWebViewActivity : WebViewActivity();
  * Core bindings externally implemented in JNI/NDK
  */
 private final class Core {
-  internal pointer: Long;
+  internal val pointer: Long? = null;
   external fun initialize ();
   external fun destroy ()
 

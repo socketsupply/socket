@@ -433,13 +433,20 @@ int main (const int argc, const char* argv[]) {
       auto res = src / "main" / "res";
       auto pkg = src / "main" / "java" / bundle_path;
 
+      if (settings["android_main_activity"].size() == 0) {
+        settings["android_main_activity"] = std::string(DEFAULT_ANDROID_ACTIVITY_NAME);
+      }
+
       // clean and create output directories
-      fs::remove_all(output);
+      //fs::remove_all(output);
       fs::create_directories(output);
       fs::create_directories(src);
       fs::create_directories(cpp);
-      fs::create_directories(res);
       fs::create_directories(pkg);
+
+      fs::create_directories(res);
+      fs::create_directories(res / "values");
+      fs::create_directories(res / "layout");
 
       // set current path to output directory
       fs::current_path(output);
@@ -468,11 +475,17 @@ int main (const int argc, const char* argv[]) {
       fs::copy(trim(prefixFile("src/preload.hh")), cpp);
 
       // Android Project
-      writeFile(src / "main" / "AndroidManifest.xml", tmpl(gAndroidManifest, settings));
-      writeFile(app / "proguard-rules.pro", tmpl(gProGuardRules, settings));
-      writeFile(app / "build.gradle", tmpl(gGradleBuildForSource, settings));
-      writeFile(output / "settings.gradle", tmpl(gGradleSettings, settings));
-      writeFile(output / "build.gradle", tmpl(gGradleBuild, settings));
+      writeFile(src / "main" / "AndroidManifest.xml", trim(tmpl(gAndroidManifest, settings)));
+
+      writeFile(app / "proguard-rules.pro", trim(tmpl(gProGuardRules, settings)));
+      writeFile(app / "build.gradle", trim(tmpl(gGradleBuildForSource, settings)));
+
+      writeFile(output / "settings.gradle", trim(tmpl(gGradleSettings, settings)));
+      writeFile(output / "build.gradle", trim(tmpl(gGradleBuild, settings)));
+      writeFile(output / "gradle.properties", trim(tmpl(gGradleProperties, settings)));
+
+      writeFile(res / "layout" / "web_view_activity.xml", trim(tmpl(gAndroidLayoutWebviewActivity, settings)));
+      writeFile(res / "values" / "strings.xml", trim(tmpl(gAndroidValuesStrings, settings)));
 
       // JNI/NDK
       fs::copy(trim(prefixFile("src/android.cc")), cpp);
@@ -499,15 +512,68 @@ int main (const int argc, const char* argv[]) {
 
       if (flagDebugMode) {
         gradleWrapperCommand
-          << "./gradlew :app:bundleDebug";
+          << "./gradlew :app:bundleDebug "
+          << "--warning-mode all ";
       } else {
         gradleWrapperCommand
           << "./gradlew :app:bundle";
       }
 
       if (std::system(gradleWrapperCommand.str().c_str()) != 0) {
-        log("error: failed to invoke `gradlew` command");
+        log("error: failed to invoke `gradlew :app:bundle` command");
         exit(1);
+      }
+
+      // clear stream
+      gradleWrapperCommand.str("");
+      gradleWrapperCommand << "./gradlew assemble";
+
+      if (std::system(gradleWrapperCommand.str().c_str()) != 0) {
+        log("error: failed to invoke `gradlew assemble` command");
+        exit(1);
+      }
+
+      if (flagBuildForAndroidEmulator) {
+        std::stringstream sdkmanager;
+        std::stringstream avdmanager;
+        std::stringstream adb;
+        std::string package = "'system-images;android-32;google_apis;x86_64'";
+
+        sdkmanager
+          << "sdkmanager "
+          << package;
+
+        avdmanager
+          << "avdmanager create avd "
+          << "--device 3 "
+          << "--force "
+          << "--name SSCAVD "
+          << "--abi google_apis/x86_64 "
+          << "--package " << package;
+
+        if (std::system(sdkmanager.str().c_str()) != 0) {
+          log("error: failed to initialize Android Emulator (sdkmanager)");
+          exit(1);
+        }
+
+        if (std::system(avdmanager.str().c_str()) != 0) {
+          log("error: failed to initialize Android Emulator (avdmanager)");
+          exit(1);
+        }
+
+        adb << "adb install ";
+        if (flagDebugMode) {
+          adb << std::string(app / "build" / "outputs" / "apk" / "dev" / "debug" / "app-dev-debug.apk");
+        } else {
+          adb << std::string(app / "build" / "outputs" / "apk" / "dev" / "live" / "app-dev-release-unsigned.apk");
+        }
+
+        log(adb.str().c_str());
+
+        if (std::system(adb.str().c_str()) != 0) {
+          log("error: failed to install APK to Android Emulator (adb)");
+          exit(1);
+        }
       }
 
       return 0;

@@ -149,25 +149,32 @@ constexpr auto gCredits = R"HTML(
   </p>
 )HTML";
 
+constexpr auto DEFAULT_ANDROID_ACTIVITY_NAME = "MainWebViewActivity";
+
 //
 // Android Manifest
 //
 constexpr auto gAndroidManifest = R"XML(
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-  package="co.socketsupply.{{bundle_identifier}}">
+<manifest
+  xmlns:android="http://schemas.android.com/apk/res/android"
+  package="{{bundle_identifier}}"
+>
 
   <uses-permission android:name="android.permission.INTERNET" />
 
+    <!-- @TODO(jwerle)
+    android:roundIcon="@mipmap/ic_launcher_round"
+    android:theme="@style/AppTheme"
+    android:icon="@mipmap/ic_launcher"
+    -->
   <application
     android:allowBackup="true"
-    android:icon="@mipmap/ic_launcher"
     android:label="@string/app_name"
-    android:roundIcon="@mipmap/ic_launcher_round"
     android:supportsRtl="true"
-    android:theme="@style/AppTheme">
+  >
     <activity
-      android:name=".MainWebViewActivity"
+      android:name=".{{android_main_activity}}"
       android:exported="true">
       <intent-filter>
         <action android:name="android.intent.action.MAIN" />
@@ -846,7 +853,7 @@ buildscript {
   ext.kotlin_version = '1.7.0'
   repositories {
     google()
-    jcenter()
+    mavenCentral()
   }
 
   dependencies {
@@ -861,7 +868,7 @@ buildscript {
 allprojects {
   repositories {
     google()
-    jcenter()
+    mavenCentral()
   }
 }
 
@@ -876,18 +883,22 @@ task clean (type: Delete) {
 constexpr auto gGradleBuildForSource = R"GROOVY(
 apply plugin: 'com.android.application'
 apply plugin: 'kotlin-android'
-apply plugin: 'kotlin-android-extensions'
 
 android {
   // https://developer.android.com/studio/releases/platforms
   compileSdkVersion 32
   flavorDimensions "default"
 
+  buildFeatures {
+    viewBinding true
+    dataBinding true
+  }
+
   defaultConfig {
     applicationId "{{bundle_identifier}}"
     minSdkVersion 16
     targetSdkVersion 30
-    // versionCode {{TODO}}
+    versionCode 1 // @TODO(jwerle): use from `ssc.config`
     versionName "{{version_short}"
   }
 
@@ -924,6 +935,7 @@ dependencies {
   implementation 'androidx.appcompat:appcompat:1.2.0'
   implementation 'com.google.android.material:material:1.2.1'
   implementation 'androidx.localbroadcastmanager:localbroadcastmanager:1.0.0'
+  implementation 'com.android.support.constraint:constraint-layout:2.1.4'
 }
 )GROOVY";
 
@@ -934,6 +946,33 @@ constexpr auto gGradleSettings = R"GROOVY(
 rootProject.name = "{{name}}"
 include ':app'
 )GROOVY";
+
+//
+// Android top level `gradle.properties`
+//
+constexpr auto gGradleProperties = R"GRADLE(
+# Project-wide Gradle settings.
+# IDE (e.g. Android Studio) users:
+# Gradle settings configured through the IDE *will override*
+# any settings specified in this file.
+# For more details on how to configure your build environment visit
+# http://www.gradle.org/docs/current/userguide/build_environment.html
+# Specifies the JVM arguments used for the daemon process.
+# The setting is particularly useful for tweaking memory settings.
+org.gradle.jvmargs=-Xmx2048m
+# When configured, Gradle will run in incubating parallel mode.
+# This option should only be used with decoupled projects. More details, visit
+# http://www.gradle.org/docs/current/userguide/multi_project_builds.html#sec:decoupled_projects
+# org.gradle.parallel=true
+# AndroidX package structure to make it clearer which packages are bundled with the
+# Android operating system, and which are packaged with your app"s APK
+# https://developer.android.com/topic/libraries/support-library/androidx-rn
+android.useAndroidX=true
+# Automatically convert third-party libraries to use AndroidX
+android.enableJetifier=true
+# Kotlin code style for this project: "official" or "obsolete":
+kotlin.code.style=official
+)GRADLE";
 
 //
 // Android cpp `Android.mk` file
@@ -967,6 +1006,38 @@ constexpr auto gProGuardRules = R"PGR(
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
 )PGR";
+
+//
+// Android `layout/webview_activity.xml`
+//
+constexpr auto gAndroidLayoutWebviewActivity = R"XML(
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+  xmlns:android="http://schemas.android.com/apk/res/android"
+  xmlns:app="http://schemas.android.com/apk/res-auto"
+  xmlns:tools="http://schemas.android.com/tools"
+  android:id="@+id/root"
+  android:layout_width="match_parent"
+  android:layout_height="match_parent"
+  tools:context=".{{android_main_activity}}"
+>
+  <WebView
+    android:id="@+id/webview"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    app:layout_constraintBottom_toBottomOf="parent"
+    app:layout_constraintEnd_toEndOf="parent"
+    app:layout_constraintStart_toStartOf="parent"
+    app:layout_constraintTop_toTopOf="parent"
+  />
+</androidx.constraintlayout.widget.ConstraintLayout>
+)XML";
+
+constexpr auto gAndroidValuesStrings = R"XML(
+<resources>
+  <string name="app_name">{{name}}</string>
+</resources>
+)XML";
 
 //
 // XCode Build Config
