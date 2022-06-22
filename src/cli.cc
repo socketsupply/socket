@@ -426,7 +426,8 @@ int main (const int argc, const char* argv[]) {
       auto bundle_path = fs::path(replace(bundle_identifier, "\\.", "/")).make_preferred();
       auto bundle_path_underscored = replace(bundle_identifier, "\\.", "_");
 
-      auto output = fs::absolute(target) / settings["output"] / "android";
+      auto relativeOutput = fs::path(settings["output"]) / "android";
+      auto output = fs::absolute(target) / relativeOutput;
       auto app = output / "app";
       auto src = app / "src";
       auto cpp = src / "main" / "cpp";
@@ -445,8 +446,15 @@ int main (const int argc, const char* argv[]) {
       fs::create_directories(pkg);
 
       fs::create_directories(res);
-      fs::create_directories(res / "values");
+      fs::create_directories(res / "assets");
       fs::create_directories(res / "layout");
+      fs::create_directories(res / "values");
+
+      pathResources = { src / "main" / "assets" };
+
+      pathResourcesRelativeToUserBuild = {
+        relativeOutput / "app" / "src" / "main" / "assets"
+      };
 
       // set current path to output directory
       fs::current_path(output);
@@ -507,76 +515,6 @@ int main (const int argc, const char* argv[]) {
           bundle_identifier
         )
       );
-
-      std::stringstream gradleWrapperCommand;
-
-      if (flagDebugMode) {
-        gradleWrapperCommand
-          << "./gradlew :app:bundleDebug "
-          << "--warning-mode all ";
-      } else {
-        gradleWrapperCommand
-          << "./gradlew :app:bundle";
-      }
-
-      if (std::system(gradleWrapperCommand.str().c_str()) != 0) {
-        log("error: failed to invoke `gradlew :app:bundle` command");
-        exit(1);
-      }
-
-      // clear stream
-      gradleWrapperCommand.str("");
-      gradleWrapperCommand << "./gradlew assemble";
-
-      if (std::system(gradleWrapperCommand.str().c_str()) != 0) {
-        log("error: failed to invoke `gradlew assemble` command");
-        exit(1);
-      }
-
-      if (flagBuildForAndroidEmulator) {
-        std::stringstream sdkmanager;
-        std::stringstream avdmanager;
-        std::stringstream adb;
-        std::string package = "'system-images;android-32;google_apis;x86_64'";
-
-        sdkmanager
-          << "sdkmanager "
-          << package;
-
-        avdmanager
-          << "avdmanager create avd "
-          << "--device 3 "
-          << "--force "
-          << "--name SSCAVD "
-          << "--abi google_apis/x86_64 "
-          << "--package " << package;
-
-        if (std::system(sdkmanager.str().c_str()) != 0) {
-          log("error: failed to initialize Android Emulator (sdkmanager)");
-          exit(1);
-        }
-
-        if (std::system(avdmanager.str().c_str()) != 0) {
-          log("error: failed to initialize Android Emulator (avdmanager)");
-          exit(1);
-        }
-
-        adb << "adb install ";
-        if (flagDebugMode) {
-          adb << std::string(app / "build" / "outputs" / "apk" / "dev" / "debug" / "app-dev-debug.apk");
-        } else {
-          adb << std::string(app / "build" / "outputs" / "apk" / "dev" / "live" / "app-dev-release-unsigned.apk");
-        }
-
-        log(adb.str().c_str());
-
-        if (std::system(adb.str().c_str()) != 0) {
-          log("error: failed to install APK to Android Emulator (adb)");
-          exit(1);
-        }
-      }
-
-      return 0;
     }
 
     if (flagBuildForIOS && !platform.mac) {
@@ -659,7 +597,7 @@ int main (const int argc, const char* argv[]) {
     // Linux Package Prep
     // ---
     //
-    if (platform.linux) {
+    if (platform.linux && !flagBuildForAndroid && !flagBuildForIOS) {
       log("preparing build for linux");
       flags = " -std=c++2a `pkg-config --cflags --libs gtk+-3.0 webkit2gtk-4.0`";
       flags += " " + getCxxFlags();
@@ -1177,6 +1115,84 @@ int main (const int argc, const char* argv[]) {
 
       log("completed");
       fs::current_path(oldCwd);
+      return 0;
+    }
+
+    if (flagBuildForAndroid) {
+      std::stringstream gradleWrapperCommand;
+
+      if (flagDebugMode) {
+        gradleWrapperCommand
+          << "./gradlew :app:bundleDebug "
+          << "--warning-mode all ";
+      } else {
+        gradleWrapperCommand
+          << "./gradlew :app:bundle";
+      }
+
+      if (std::system(gradleWrapperCommand.str().c_str()) != 0) {
+        log("error: failed to invoke `gradlew :app:bundle` command");
+        exit(1);
+      }
+
+      // clear stream
+      gradleWrapperCommand.str("");
+      gradleWrapperCommand << "./gradlew assemble";
+
+      if (std::system(gradleWrapperCommand.str().c_str()) != 0) {
+        log("error: failed to invoke `gradlew assemble` command");
+        exit(1);
+      }
+
+      if (flagBuildForAndroidEmulator) {
+        auto relativeOutput = fs::path(settings["output"]) / "android";
+        auto output = fs::absolute(target) / relativeOutput;
+        auto app = output / "app";
+
+        std::stringstream sdkmanager;
+        std::stringstream avdmanager;
+        std::string package = "'system-images;android-32;google_apis;x86_64'";
+
+        sdkmanager
+          << "sdkmanager "
+          << package;
+
+        avdmanager
+          << "avdmanager create avd "
+          << "--device 3 "
+          << "--force "
+          << "--name SSCAVD "
+          << "--abi google_apis/x86_64 "
+          << "--package " << package;
+
+        if (std::system(sdkmanager.str().c_str()) != 0) {
+          log("error: failed to initialize Android SDK (sdkmanager)");
+          exit(1);
+        }
+
+        if (std::system(avdmanager.str().c_str()) != 0) {
+          log("error: failed to Android Virtual Device (avdmanager)");
+          exit(1);
+        }
+
+        if (flagShouldRun) {
+          // the emulator must be running on device SSCAVD for now
+          std::stringstream adb;
+
+          adb << "adb install ";
+          if (flagDebugMode) {
+            adb << std::string(app / "build" / "outputs" / "apk" / "dev" / "debug" / "app-dev-debug.apk");
+          } else {
+            adb << std::string(app / "build" / "outputs" / "apk" / "dev" / "live" / "app-dev-release-unsigned.apk");
+          }
+
+          if (std::system(adb.str().c_str()) != 0) {
+            log("error: failed to install APK to Android Emulator (adb)");
+            exit(1);
+          }
+        }
+      }
+
       return 0;
     }
 

@@ -51,7 +51,7 @@ open class WebViewClient(activity: WebViewActivity) : android.webkit.WebViewClie
 open class WebViewActivity : androidx.appcompat.app.AppCompatActivity() {
   private lateinit var binding: WebViewActivityBinding;
   private var client: WebViewClient? = null;
-  private var view: WebView? = null;
+  private var view: android.webkit.WebView? = null;
   private val TAG = "WebViewActivity";
 
   /**
@@ -77,7 +77,7 @@ open class WebViewActivity : androidx.appcompat.app.AppCompatActivity() {
 
     this.binding = binding;
     this.client = client;
-    this.view = webview as WebView;
+    this.view = webview
   }
 }
 

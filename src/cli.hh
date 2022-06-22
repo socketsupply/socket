@@ -165,12 +165,12 @@ constexpr auto gAndroidManifest = R"XML(
 
     <!-- @TODO(jwerle)
     android:roundIcon="@mipmap/ic_launcher_round"
-    android:theme="@style/AppTheme"
     android:icon="@mipmap/ic_launcher"
     -->
   <application
     android:allowBackup="true"
     android:label="@string/app_name"
+    android:theme="@style/Theme.AppCompat.Light"
     android:supportsRtl="true"
   >
     <activity
