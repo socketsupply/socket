@@ -716,7 +716,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
   if (cmd.name == "external") {
     NSString *url = [NSString stringWithUTF8String:SSC::decodeURIComponent(cmd.get("value")).c_str()];
-    #if IOS == 0 || !defined(TARGET_OS_SIMULATOR)
+    #if MACOS == 1
       [[NSWorkspace sharedWorkspace] openURL:[NSURL URLWithString: url]];
     #else
       [[UIApplication sharedApplication] openURL: [NSURL URLWithString:url] options: @{} completionHandler: nil];

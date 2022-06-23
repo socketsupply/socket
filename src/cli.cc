@@ -332,6 +332,7 @@ int main (const int argc, const char* argv[]) {
       flags += " -framework CoreBluetooth";
       flags += " -framework WebKit";
       flags += " -framework Cocoa";
+      flags += " -DMACOS=1";
       flags += " -Wno-nullability-completeness"; // ignore swift compat
       flags += " -I" + prefixFile();
       flags += " -I" + prefixFile("include");

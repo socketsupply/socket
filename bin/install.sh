@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 set -e;
+#
+# This file compiles the cli tool and the resources it uses
+#
 
 PREFIX=${PREFIX:-$HOME}
 PLATFORMPATH=""
@@ -193,7 +196,10 @@ function _compile_libuv {
 }
 
 _prepare
+
 cd $BUILD_DIR
+
+_compile_libuv
 
 if [ "$1" == "ios" ]; then
   quiet xcode-select -p
@@ -234,7 +240,7 @@ else
   _compile_libuv
 fi
 
-cp -r $BUILD_DIR/input/include/ $ASSETS_DIR/include
+cp -r $BUILD_DIR/input/include/* $ASSETS_DIR/include
 die $? "not ok - could not copy headers"
 echo "ok - copied headers"
 cd $WORK_DIR
