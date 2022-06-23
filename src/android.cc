@@ -1,27 +1,34 @@
 #include "android.hh"
+#include <stdio.h>
 
-extern "C" {
-  void package_export(Core_initialize)(
-    JNIEnv *env,
-    jobject self,
-  ) {
-    auto CoreClass env->GetObjectClass(self);
-    auto field = env->GetFieldID(CoreClass, "pointer", "J"); // "J" means `Long`
-    auto core = new Core();
-                                                             //
-    env->SetLongField(self, field, (jlong) (void *) core);
+#define debug(format, ...)                                                     \
+  {                                                                            \
+    printf("SSC::Core::Debug:");                                               \
+    printf(format, ##__VA_ARGS__);                                             \
+    printf("\n");                                                              \
+    fflush(stdout);                                                            \
   }
 
-  void package_export(Core_destroy)(
+extern "C" {
+  jlong package_export(Core_createPointer)(
+    JNIEnv *env,
+    jobject self
+  ) {
+    auto core = new SSC::Core();
+    debug("Core::createPointer(%p)", (void *) core);
+    return (jlong) (void *) core;
+  }
+
+  void package_export(Core_destroyPointer)(
     JNIEnv *env,
     jobject self,
+    jlong pointer
   ) {
-    auto CoreClass env->GetObjectClass(self);
-    auto field = env->GetFieldID(CoreClass, "pointer", "J"); // "J" means `Long`
-    auto core (Core *) env->GetLongField(self, field);
-
-    delete core;
-    env->SetLongField(self, field, (jlong) 0);
+    if (pointer != 0) {
+      debug("Core::destroyPointer(%p)", (void *) pointer);
+      auto core = (SSC::Core *) pointer;
+      delete core;
+    }
   }
 
   void package_export(Core_fsOpen)(

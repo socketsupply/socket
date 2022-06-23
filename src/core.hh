@@ -6,6 +6,7 @@
 
 #ifndef _WIN32
 #include <ifaddrs.h>
+#include <sys/types.h>
 #include <arpa/inet.h>
 #endif
 
@@ -13,6 +14,8 @@
 	#import <Webkit/Webkit.h>
   using Task = id<WKURLSchemeTask>;
 #elif defined(__linux__)
+  class Task {
+  };
   // TODO @jwerle
 #elif defined(_WIN32)
   // TODO

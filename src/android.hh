@@ -22,7 +22,7 @@
  * suitable for definition or invocation.
  * @param The name of the package function
  */
-#define package_function(name) Java_##_PACKAGE_NAME_##name
+#define package_function(name) Java___BUNDLE_IDENTIFIER___##name
 
 /**
  * Creates a named native package export for the configured bundle suitable for

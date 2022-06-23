@@ -430,7 +430,7 @@ int main (const int argc, const char* argv[]) {
       auto output = fs::absolute(target) / relativeOutput;
       auto app = output / "app";
       auto src = app / "src";
-      auto cpp = src / "main" / "cpp";
+      auto jni = src / "main" / "jni";
       auto res = src / "main" / "res";
       auto pkg = src / "main" / "java" / bundle_path;
 
@@ -442,7 +442,7 @@ int main (const int argc, const char* argv[]) {
       //fs::remove_all(output);
       fs::create_directories(output);
       fs::create_directories(src);
-      fs::create_directories(cpp);
+      fs::create_directories(jni);
       fs::create_directories(pkg);
 
       fs::create_directories(res);
@@ -478,9 +478,16 @@ int main (const int argc, const char* argv[]) {
       //writeFile();
 
       // Core
-      fs::copy(trim(prefixFile("src/core.hh")), cpp);
-      fs::copy(trim(prefixFile("src/common.hh")), cpp);
-      fs::copy(trim(prefixFile("src/preload.hh")), cpp);
+      fs::copy(trim(prefixFile("src/core.hh")), jni);
+      fs::copy(trim(prefixFile("src/common.hh")), jni);
+      fs::copy(trim(prefixFile("src/preload.hh")), jni);
+
+      // libuv
+      fs::copy(
+        trim(prefixFile("uv")),
+        jni / "uv",
+        fs::copy_options::overwrite_existing | fs::copy_options::recursive
+      );
 
       // Android Project
       writeFile(src / "main" / "AndroidManifest.xml", trim(tmpl(gAndroidManifest, settings)));
@@ -496,15 +503,18 @@ int main (const int argc, const char* argv[]) {
       writeFile(res / "values" / "strings.xml", trim(tmpl(gAndroidValuesStrings, settings)));
 
       // JNI/NDK
-      fs::copy(trim(prefixFile("src/android.cc")), cpp);
+      fs::copy(trim(prefixFile("src/android.cc")), jni);
       writeFile(
-        cpp / "android.hh",
+        jni / "android.hh",
         std::regex_replace(
           WStringToString(readFile(trim(prefixFile("src/android.hh")))),
           std::regex("__BUNDLE_IDENTIFIER__"),
           bundle_path_underscored
         )
       );
+
+      writeFile(jni / "Android.mk", trim(tmpl(gAndroidMakefile, settings)));
+      writeFile(jni / "Application.mk", trim(tmpl(gAndroidApplicationMakefile, settings)));
 
       // Android Source
       writeFile(
@@ -1123,38 +1133,54 @@ int main (const int argc, const char* argv[]) {
       auto output = fs::absolute(target) / relativeOutput;
       auto app = output / "app";
 
-      std::stringstream gradleWrapperCommand;
-      if (flagDebugMode) {
-        gradleWrapperCommand
-          << "./gradlew :app:bundleDebug "
-          << "--warning-mode all ";
-      } else {
-        gradleWrapperCommand
-          << "./gradlew :app:bundle";
-      }
+      std::stringstream sdkmanager;
+      std::stringstream packages;
+      std::stringstream gradlew;
 
-      if (std::system(gradleWrapperCommand.str().c_str()) != 0) {
-        log("error: failed to invoke `gradlew :app:bundle` command");
+      packages
+        << "'system-images;android-32;google_apis;x86_64' "
+        << "'system-images;android-32;google_apis;arm64-v8a' ";
+
+      sdkmanager
+        << "sdkmanager "
+        << packages.str();
+
+      if (std::system(sdkmanager.str().c_str()) != 0) {
+        log("error: failed to initialize Android SDK (sdkmanager)");
         exit(1);
       }
 
-      // clear stream
-      gradleWrapperCommand.str("");
-      gradleWrapperCommand << "./gradlew assemble";
+      if (flagDebugMode) {
+        gradlew
+          << "./gradlew :app:bundleDebug "
+          << "--warning-mode all ";
 
-      if (std::system(gradleWrapperCommand.str().c_str()) != 0) {
+        if (std::system(gradlew.str().c_str()) != 0) {
+          log("error: failed to invoke `gradlew :app:bundleDebug` command");
+          exit(1);
+        }
+      } else {
+        gradlew
+          << "./gradlew :app:bundle";
+
+        if (std::system(gradlew.str().c_str()) != 0) {
+          log("error: failed to invoke `gradlew :app:bundle` command");
+          exit(1);
+        }
+      }
+
+      // clear stream
+      gradlew.str("");
+      gradlew << "./gradlew assemble";
+
+      if (std::system(gradlew.str().c_str()) != 0) {
         log("error: failed to invoke `gradlew assemble` command");
         exit(1);
       }
 
       if (flagBuildForAndroidEmulator) {
-        std::stringstream sdkmanager;
         std::stringstream avdmanager;
-        std::string package = "'system-images;android-32;google_apis;x86_64'";
-
-        sdkmanager
-          << "sdkmanager "
-          << package;
+        std::string package = "'system-images;android-32;google_apis;x86_64' ";
 
         avdmanager
           << "avdmanager create avd "
@@ -1163,11 +1189,6 @@ int main (const int argc, const char* argv[]) {
           << "--name SSCAVD "
           << "--abi google_apis/x86_64 "
           << "--package " << package;
-
-        if (std::system(sdkmanager.str().c_str()) != 0) {
-          log("error: failed to initialize Android SDK (sdkmanager)");
-          exit(1);
-        }
 
         if (std::system(avdmanager.str().c_str()) != 0) {
           log("error: failed to Android Virtual Device (avdmanager)");

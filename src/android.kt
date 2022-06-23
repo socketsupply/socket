@@ -50,8 +50,10 @@ open class WebViewClient(activity: WebViewActivity) : android.webkit.WebViewClie
  */
 open class WebViewActivity : androidx.appcompat.app.AppCompatActivity() {
   private lateinit var binding: WebViewActivityBinding;
+
   private var client: WebViewClient? = null;
   private var view: android.webkit.WebView? = null;
+  private var core: Core? = null;
   private val TAG = "WebViewActivity";
 
   /**
@@ -77,7 +79,8 @@ open class WebViewActivity : androidx.appcompat.app.AppCompatActivity() {
 
     this.binding = binding;
     this.client = client;
-    this.view = webview
+    this.view = webview;
+    this.core = Core();
   }
 }
 
@@ -90,12 +93,42 @@ final class MainWebViewActivity : WebViewActivity();
  * Core bindings externally implemented in JNI/NDK
  */
 private final class Core {
-  internal val pointer: Long? = null;
-  external fun initialize ();
-  external fun destroy ()
+  /**
+   * Internal pointer managed by `initialize() and `destroy()
+   */
+  private var pointer: Long = 0;
 
+  /**
+   * `Core` singleton definitions
+   */
+  companion object {
+    // Initialization for `Core` singleton where we load the `ssc-core` library.
+    init {
+      println("Loading 'ssc-core' native library");
+      System.loadLibrary("ssc-core");
+    }
+  }
+
+  /**
+   * `SSC::Core { ... }` lifecycle functions
+   **/
+  external fun createPointer (): Long;
+  external fun destroyPointer (pointer: Long);
+
+  /**
+   * `Core` class constructor which is initialized
+   * in the NDK/JNI layer.
+   */
+  constructor () {
+    this.pointer = this.createPointer();
+  }
+
+  /**
+   * Kotlin class internal destructor where we call `destroy()`.
+   */
   protected fun finalize () {
-    destroy();
+    this.destroyPointer(this.pointer);
+    this.pointer = 0;
   }
 
   // @TODO(jwerle): bindings below

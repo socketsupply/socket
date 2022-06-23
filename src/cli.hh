@@ -896,10 +896,22 @@ android {
 
   defaultConfig {
     applicationId "{{bundle_identifier}}"
-    minSdkVersion 16
+    minSdkVersion 24
     targetSdkVersion 30
     versionCode 1 // @TODO(jwerle): use from `ssc.config`
     versionName "{{version_short}"
+
+    externalNativeBuild {
+      ndkBuild {
+        arguments "NDK_APPLICATION_MK:=src/main/jni/Application.mk"
+      }
+    }
+  }
+
+  externalNativeBuild {
+    ndkBuild {
+      path "src/main/jni/Android.mk"
+    }
   }
 
   productFlavors {
@@ -978,6 +990,95 @@ kotlin.code.style=official
 // Android cpp `Android.mk` file
 //
 constexpr auto gAndroidMakefile = R"MAKE(
+LOCAL_PATH := $(call my-dir)
+
+## libuv.a
+include $(CLEAR_VARS)
+LOCAL_MODULE := uv
+
+UV_UNIX_SOURCE +=       \
+  async.c               \
+  atomic-ops.h          \
+  core.c                \
+  dl.c                  \
+  epoll.c               \
+  fs.c                  \
+  getaddrinfo.c         \
+  getnameinfo.c         \
+  internal.h            \
+  linux-core.c          \
+  linux-inotify.c       \
+  linux-syscalls.c      \
+  linux-syscalls.h      \
+  loop.c                \
+  loop-watcher.c        \
+  pipe.c                \
+  poll.c                \
+  process.c             \
+  proctitle.c           \
+  pthread-fixes.c       \
+  random-devurandom.c   \
+  random-getentropy.c   \
+  random-getrandom.c    \
+  random-sysctl-linux.c \
+  signal.c              \
+  spinlock.h            \
+  stream.c              \
+  tcp.c                 \
+  thread.c              \
+  tty.c                 \
+  udp.c
+
+LOCAL_CFLAGS :=              \
+  -D_GNU_SOURCE              \
+  -D_LARGEFILE_SOURCE        \
+  -D_FILE_OFFSET_BITS=64     \
+  -I$(LOCAL_PATH)/uv/include \
+  -I$(LOCAL_PATH)/uv/src     \
+  -landroid                  \
+  -g                         \
+  --std=gnu89                \
+  -pedantic                  \
+  -Wall                      \
+  -Wextra                    \
+  -Wno-unused-parameter      \
+  -Wno-pedantic              \
+  -Wno-sign-compare          \
+  -Wno-implicit-function-declaration
+
+LOCAL_SRC_FILES +=                     \
+  $(wildcard $(LOCAL_PATH)/uv/src/*.c) \
+  $(foreach file, $(UV_UNIX_SOURCE), $(LOCAL_PATH)/uv/src/unix/$(file))
+
+LOCAL_EXPORT_C_INCLUDES := $(LOCAL_PATH)/uv $(LOCAL_PATH)/uv/include
+include $(BUILD_STATIC_LIBRARY)
+
+## libssc-core.so
+include $(CLEAR_VARS)
+LOCAL_MODULE := ssc-core
+
+LOCAL_CFLAGS += \
+  -Iuv          \
+  -fPIC         \
+  -fsigned-char \
+  -fexceptions  \
+  -frtti        \
+  -std=c++2a    \
+  -g            \
+  -O0
+
+LOCAL_LDLIBS := -llog -landroid
+LOCAL_SRC_FILES = android.cc
+LOCAL_STATIC_LIBRARIES := uv
+include $(BUILD_SHARED_LIBRARY)
+)MAKE";
+
+//
+// Android cpp `Application.mk` file
+//
+constexpr auto gAndroidApplicationMakefile = R"MAKE(
+APP_ABI := all
+APP_STL := c++_static
 )MAKE";
 
 //
