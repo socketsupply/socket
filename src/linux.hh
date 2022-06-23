@@ -408,11 +408,13 @@ namespace SSC {
 
         for(size_t n = 0; uris[n] != nullptr; n++) {
           gchar* src = g_filename_from_uri(uris[n], nullptr, nullptr);
-          auto s = std::string(src);
-          if (std::find(v->begin(), v->end(), s) == v->end()) {
-            v->push_back(s);
+          if (src) {
+            auto s = std::string(src);
+            if (std::find(v->begin(), v->end(), s) == v->end()) {
+              v->push_back(s);
+            }
+            g_free(src);
           }
-          g_free(src);
         }
       }),
       this
