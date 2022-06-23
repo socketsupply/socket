@@ -20,6 +20,10 @@ constexpr auto _debug = false;
 
 #include "./apple.mm" // creates instance of bridge
 
+Bridge* bridge;
+BluetoothDelegate* bt;
+SSC::Core* core;
+
 @implementation BridgedWebView
 @end
 
@@ -156,6 +160,10 @@ void uncaughtExceptionHandler (NSException *exception) {
 
   NSSetUncaughtExceptionHandler(&uncaughtExceptionHandler);
   platform.os = "ios";
+
+  bt = [BluetoothDelegate new];
+  core = new SSC::Core;
+  bridge = [Bridge new];
 
   auto appFrame = [[UIScreen mainScreen] bounds];
 

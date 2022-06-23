@@ -159,9 +159,10 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 }
 
 - (void) initBluetooth {
+  NSMutableArray* peripherals = [[NSMutableArray alloc] init];
+  _peripherals = peripherals;
   _centralManager = [[CBCentralManager alloc] initWithDelegate: self queue: nil];
   _peripheralManager = [[CBPeripheralManager alloc] initWithDelegate: self queue: nil options: nil];
-  _peripherals = [NSMutableArray array];
 	_channelId = @"5A028AB0-8423-4495-88FD-28E0318289AE";
 	_serviceId = @"56702D92-69F9-4400-BEF8-D5A89FCFD31D";
 
@@ -298,14 +299,18 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 - (void)centralManager:(CBCentralManager*)central didConnectPeripheral:(CBPeripheral*)peripheral {
   NSLog(@"BBB didConnectPeripheral");
   peripheral.delegate = self;
-  [peripheral discoverServices: @[[CBUUID UUIDWithString:_serviceId]]];
+  [peripheral discoverServices: @[[CBUUID UUIDWithString: _serviceId]]];
 }
 
 - (void) centralManager: (CBCentralManager*)central didDiscoverPeripheral: (CBPeripheral*)peripheral advertisementData: (NSDictionary*)advertisementData RSSI: (NSNumber*)RSSI {
   std::string uuid = [peripheral.identifier.UUIDString UTF8String];
   std::string name = [peripheral.name UTF8String];
 
-  if([_peripherals containsObject:peripheral]) return;
+  if (_peripherals == nullptr) {
+    return;
+  }
+
+  if ([_peripherals containsObject: peripheral]) return;
 
   auto msg = SSC::format(R"JSON({
     "value": {
@@ -319,7 +324,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
   [self.bridge emit: "local-network" msg: msg];
 
-  [_peripherals addObject: peripheral];
+  [self.peripherals addObject: peripheral];
   [central connectPeripheral: peripheral options: nil];
 }
 
@@ -445,7 +450,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 @implementation Bridge
 - (void) setBluetooth: (BluetoothDelegate*)bd {
   _bluetooth = bd;
-  [bd initBluetooth];
+  [_bluetooth initBluetooth];
   _bluetooth.bridge = self;
 }
 
@@ -1068,5 +1073,3 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   [self.bridge route: url buf: body];
 }
 @end
-
-Bridge* bridge = [Bridge new]; // basically a singleton for now

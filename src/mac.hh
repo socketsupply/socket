@@ -15,6 +15,10 @@
 
 #include "apple.mm" // creates instance of bridge
 
+Bridge* bridge;
+BluetoothDelegate* bt;
+SSC::Core* core;
+
 @implementation BridgedWebView
 std::vector<std::string> draggablePayload;
 
@@ -480,6 +484,10 @@ namespace SSC {
   }
 
   Window::Window (App& app, WindowOptions opts) : app(app), opts(opts) {
+    bt = [BluetoothDelegate new];
+    core = new SSC::Core;
+    bridge = [Bridge new];
+
     // Window style: titled, closable, minimizable
     uint style = NSWindowStyleMaskTitled;
 
@@ -540,6 +548,7 @@ namespace SSC {
     // config.limitsNavigationsToAppBoundDomains = YES;
 
     IPCSchemeHandler* handler = [IPCSchemeHandler new];
+    handler.bridge = bridge;
     [config setURLSchemeHandler: handler forURLScheme:@"ipc"];
 
     WKPreferences* prefs = [config preferences];
@@ -577,9 +586,9 @@ namespace SSC {
       setValue:@YES
       forKey:@"allowFileAccessFromFileURLs"];
 
-    [bridge setBluetooth: [BluetoothDelegate new]];
+    [bridge setBluetooth: bt];
     [bridge setWebview: webview];
-    [bridge setCore: new SSC::Core];
+    [bridge setCore: core];
 
     // window.titlebarAppearsTransparent = true;
 
