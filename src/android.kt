@@ -83,7 +83,7 @@ open class WebViewActivity : androidx.appcompat.app.AppCompatActivity() {
     this.view = webview;
     this.core = core;
 
-    assert(core.check());
+    core.check();
   }
 }
 
@@ -129,7 +129,6 @@ private final class Core {
   external fun verifyJavaVM (): Boolean;
   external fun verifyPointer (pointer: Long): Boolean;
   external fun verifyEnvironemnt (): Boolean;
-
   @Throws(java.lang.Exception::class)
   external fun verifyNativeExceptions(): Boolean;
 
@@ -145,6 +144,7 @@ private final class Core {
    * Kotlin class internal destructor where we call `destroy()`.
    */
   protected fun finalize () {
+    android.util.Log.d(TAG, "Destroying internal NativeCore pointer");
     this.destroyPointer(this.pointer);
     this.pointer = 0;
   }

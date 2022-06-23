@@ -160,7 +160,6 @@ constexpr auto gAndroidManifest = R"XML(
   xmlns:android="http://schemas.android.com/apk/res/android"
   package="{{bundle_identifier}}"
 >
-
   <uses-permission android:name="android.permission.INTERNET" />
 
     <!-- @TODO(jwerle)
@@ -1060,6 +1059,7 @@ LOCAL_MODULE := ssc-core
 LOCAL_CFLAGS += \
   -Iuv          \
   -fPIC         \
+  -pthreads \
   -fsigned-char \
   -fexceptions  \
   -frtti        \

@@ -40,11 +40,11 @@ class NativeCore : SSC::Core {
   NativeCore(JNIEnv *env, jobject core) : Core() {
     this->env = env;
     this->env->GetJavaVM(&this->jvm);
-    this->refs.core = this->env->NewGlobalRef(core);
+    //this->refs.core = this->env->NewGlobalRef(core);
   }
 
   ~NativeCore () {
-    this->env->DeleteGlobalRef(this->refs.core);
+    //this->env->DeleteGlobalRef(this->refs.core);
   }
 
   JavaVM *
@@ -90,10 +90,10 @@ extern "C" {
     auto pointerValue = env->GetLongField(self, pointerField);
 
     if (pointer == 0 || pointerValue == 0 || pointerValue != pointer) {
-      return JNI_FALSE;
+      return false;
     }
 
-    return JNI_TRUE;
+    return true;
   }
 
   void package_export(Core_verifyNativeExceptions)(
@@ -109,10 +109,10 @@ extern "C" {
     jobject self
   ) {
     if (!uv_default_loop()) {
-      return JNI_FALSE;
+      return false;
     }
 
-    return JNI_TRUE;
+    return true;
   }
 
   jboolean package_export(Core_verifyFS)(
@@ -125,59 +125,80 @@ extern "C" {
     auto core = (NativeCore *) env->GetLongField(self, pointerField);
     auto loop = uv_default_loop();
 
+    jboolean ok = false;
+
+    struct { uv_fs_t open, read, close; } reqs = {0};
     int err = 0;
     int fd = 0;
-    uv_fs_t req;
 
-    jboolean ok = JNI_FALSE;
-
-    if (!core || !loop) {
-      return JNI_FALSE;
+    if (!core) {
+      env->ThrowNew(Exception, "core is not initialized");
+      return false;
     }
 
-    req = {0};
-    fd = uv_fs_open(loop, &req, VITAL_CHECK_FILE, 0, 0, [](uv_fs_t *req) {
+    if (!loop) {
+      env->ThrowNew(Exception, "loop is not initialized");
+      return false;
+    }
+
+    fd = uv_fs_open(loop, &reqs.open, VITAL_CHECK_FILE, 0, 0, [](uv_fs_t *req) {
       uv_fs_req_cleanup(req);
     });
 
     if (fd < 0) {
-      env->ThrowNew(Exception, "uv_fs_open() failed");
-      return JNI_FALSE;
+      env->ThrowNew(Exception, uv_strerror(fd));
+      return false;
     }
 
-    char buf[2] = {0};
-    const uv_buf_t iov = uv_buf_init(buf, 2);
+    err = uv_run(loop, UV_RUN_DEFAULT);
 
-    req = {0};
-    req.data = &ok;
-    err = uv_fs_read(loop, &req, fd, &iov, 1, 0, [](uv_fs_t* req) {
-      auto value = (char *) req->bufs[0].base;
+    if (err != 0) {
+      env->ThrowNew(Exception, uv_strerror(err));
+      return false;
+    }
 
-      if (value[0] == 'O' && value[1] == 'K') {
-        *(jboolean *) req->data = JNI_TRUE;
+    auto buf = new char[3];
+    //static char buf[2] = {0};
+    const uv_buf_t iov = uv_buf_init(buf, 3);
+
+    reqs.read.data = &ok;
+    err = uv_fs_read(loop, &reqs.read, fd, &iov, 1, 0, [](uv_fs_t* req) {
+      if (req->result == 0) {
+        //auto value = (char *) req->bufs[0].base;
+        //if (req->bufs[0].len == 2) {
+          //if (value[0] == 'O' && value[1] == 'K') {
+            //*((jboolean *) req->data) = true;
+          //}
+        //}
       }
 
       uv_fs_req_cleanup(req);
     });
 
     if (err != 0) {
-      env->ThrowNew(Exception, "uv_fs_read() failed");
-      return JNI_FALSE;
+      env->ThrowNew(Exception, uv_strerror(err));
+      return false;
     }
 
-    req = {0};
-    err = uv_fs_close(loop, &req, fd, [](uv_fs_t* req) {
+    err = uv_run(loop, UV_RUN_DEFAULT);
+
+    if (err != 0) {
+      env->ThrowNew(Exception, uv_strerror(err));
+      return false;
+    }
+
+    err = uv_fs_close(loop, &reqs.close, fd, [](uv_fs_t* req) {
       uv_fs_req_cleanup(req);
     });
 
     if (err != 0) {
-      env->ThrowNew(Exception, "uv_fs_close() failed");
-      return JNI_FALSE;
+      env->ThrowNew(Exception, uv_strerror(err));
+      return false;
     }
 
-    if (uv_run(loop, UV_RUN_DEFAULT) != 0) {
-      env->ThrowNew(Exception, "uv_run() failed");
-      return JNI_FALSE;
+    if (err != 0) {
+      env->ThrowNew(Exception, uv_strerror(err));
+      return false;
     }
 
     return ok;
