@@ -1,30 +1,45 @@
 #include "android.hh"
 #include "jni.h"
+
 #include <stdio.h>
 
 constexpr auto VITAL_CHECK_FILE = "file:///android_asset/vital_check_ok.txt";
 
+#ifdef __ANDROID__
+#include <android/log.h>
 #define debug(format, ...)                                                     \
-  {                                                                            \
-    printf("SSC::Core::Debug:");                                               \
-    printf(format, ##__VA_ARGS__);                                             \
-    printf("\n");                                                              \
-    fflush(stdout);                                                            \
-  }
+    {                                                                          \
+      __android_log_print(                                                     \
+        ANDROID_LOG_DEBUG,                                                     \
+        "NativeCore(",                                                         \
+        format,                                                                \
+        ##__VA_ARGS__                                                          \
+      );                                                                       \
+    }
+#else
+#define debug(format, ...)                                                     \
+   {                                                                           \
+     printf("SSC::Core::Debug:");                                              \
+     printf(format, ##__VA_ARGS__);                                            \
+     printf("\n");                                                             \
+     fflush(stdout);                                                           \
+   }
+#endif
 
 struct NativeRefs {
   jobject core;
+  jobject callbacks;
 };
 
 class NativeCore : SSC::Core {
-  JavaVM *vm;
+  JavaVM *jvm;
   JNIEnv *env;
   NativeRefs refs;
 
   public:
   NativeCore(JNIEnv *env, jobject core) : Core() {
     this->env = env;
-    this->env->GetJavaVM(&this->vm);
+    this->env->GetJavaVM(&this->jvm);
     this->refs.core = this->env->NewGlobalRef(core);
   }
 
@@ -34,7 +49,7 @@ class NativeCore : SSC::Core {
 
   JavaVM *
   GetJavaVM () {
-    return vm;
+    return this->jvm;
   }
 
   void * GetPointer () {
@@ -81,6 +96,14 @@ extern "C" {
     return JNI_TRUE;
   }
 
+  void package_export(Core_verifyNativeExceptions)(
+    JNIEnv *env,
+    jobject self
+  ) {
+    auto Exception = env->FindClass("java/lang/Exception");
+    env->ThrowNew(Exception, "exception check");
+  }
+
   jboolean package_export(Core_verifyLoop)(
     JNIEnv *env,
     jobject self
@@ -97,6 +120,7 @@ extern "C" {
     jobject self
   ) {
     auto CoreClass = env->GetObjectClass(self);
+    auto Exception = env->FindClass("java/lang/Exception");
     auto pointerField = env->GetFieldID(CoreClass, "pointer", "J");
     auto core = (NativeCore *) env->GetLongField(self, pointerField);
     auto loop = uv_default_loop();
@@ -117,7 +141,7 @@ extern "C" {
     });
 
     if (fd < 0) {
-      env->ThrowNew(CoreClass, "uv_fs_open() failed");
+      env->ThrowNew(Exception, "uv_fs_open() failed");
       return JNI_FALSE;
     }
 
@@ -137,7 +161,7 @@ extern "C" {
     });
 
     if (err != 0) {
-      env->ThrowNew(CoreClass, "uv_fs_read() failed");
+      env->ThrowNew(Exception, "uv_fs_read() failed");
       return JNI_FALSE;
     }
 
@@ -147,12 +171,12 @@ extern "C" {
     });
 
     if (err != 0) {
-      env->ThrowNew(CoreClass, "uv_fs_close() failed");
+      env->ThrowNew(Exception, "uv_fs_close() failed");
       return JNI_FALSE;
     }
 
     if (uv_run(loop, UV_RUN_DEFAULT) != 0) {
-      env->ThrowNew(CoreClass, "uv_run() failed");
+      env->ThrowNew(Exception, "uv_run() failed");
       return JNI_FALSE;
     }
 

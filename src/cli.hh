@@ -1067,7 +1067,7 @@ LOCAL_CFLAGS += \
   -g            \
   -O0
 
-LOCAL_LDLIBS := -llog -landroid
+LOCAL_LDLIBS := -landroid -llog
 LOCAL_SRC_FILES = android.cc
 LOCAL_STATIC_LIBRARIES := uv
 include $(BUILD_SHARED_LIBRARY)

@@ -130,6 +130,9 @@ private final class Core {
   external fun verifyPointer (pointer: Long): Boolean;
   external fun verifyEnvironemnt (): Boolean;
 
+  @Throws(java.lang.Exception::class)
+  external fun verifyNativeExceptions(): Boolean;
+
   /**
    * `Core` class constructor which is initialized
    * in the NDK/JNI layer.
@@ -157,11 +160,31 @@ private final class Core {
       android.util.Log.d(TAG, "pointer check OK");
     }
 
+    try {
+      this.verifyNativeExceptions();
+      android.util.Log.e(TAG, "native exceptions check failed");
+      return false;
+    } catch (err: Exception) {
+      if (err.message != "exception check") {
+        android.util.Log.e(TAG, "native exceptions check failed");
+        return false;
+      }
+
+      android.util.Log.d(TAG, "native exceptions check OK");
+    }
+
     if (!this.verifyLoop()) {
       android.util.Log.e(TAG, "libuv loop check failed");
       return false;
     } else {
       android.util.Log.d(TAG, "libuv loop check OK");
+    }
+
+    if (!this.verifyFS()) {
+      android.util.Log.e(TAG, "fs check failed");
+    } else {
+      android.util.Log.d(TAG, "fs check OK");
+      return false;
     }
 
     //if (!this.verifyRefs()) { return false; }
