@@ -2,6 +2,8 @@
 #include "jni.h"
 #include <stdio.h>
 
+constexpr auto VITAL_CHECK_FILE = "file:///android_asset/vital_check_ok.txt";
+
 #define debug(format, ...)                                                     \
   {                                                                            \
     printf("SSC::Core::Debug:");                                               \
@@ -51,22 +53,6 @@ extern "C" {
     return (jlong) core->GetPointer();
   }
 
-  jboolean package_export(Core_verifyPointer)(
-    JNIEnv *env,
-    jobject self,
-    jlong pointer
-  ) {
-    auto CoreClass = env->GetObjectClass(self);
-    auto pointerField = env->GetFieldID(CoreClass, "pointer", "J");
-    auto pointerValue = env->GetLongField(self, pointerField);
-
-    if (pointerValue != pointer) {
-      return JNI_FALSE;
-    }
-
-    return JNI_TRUE;
-  }
-
   void package_export(Core_destroyPointer)(
     JNIEnv *env,
     jobject self,
@@ -77,6 +63,100 @@ extern "C" {
       auto core = (NativeCore *) pointer;
       delete core;
     }
+  }
+
+  jboolean package_export(Core_verifyPointer)(
+    JNIEnv *env,
+    jobject self,
+    jlong pointer
+  ) {
+    auto CoreClass = env->GetObjectClass(self);
+    auto pointerField = env->GetFieldID(CoreClass, "pointer", "J");
+    auto pointerValue = env->GetLongField(self, pointerField);
+
+    if (pointer == 0 || pointerValue == 0 || pointerValue != pointer) {
+      return JNI_FALSE;
+    }
+
+    return JNI_TRUE;
+  }
+
+  jboolean package_export(Core_verifyLoop)(
+    JNIEnv *env,
+    jobject self
+  ) {
+    if (!uv_default_loop()) {
+      return JNI_FALSE;
+    }
+
+    return JNI_TRUE;
+  }
+
+  jboolean package_export(Core_verifyFS)(
+    JNIEnv *env,
+    jobject self
+  ) {
+    auto CoreClass = env->GetObjectClass(self);
+    auto pointerField = env->GetFieldID(CoreClass, "pointer", "J");
+    auto core = (NativeCore *) env->GetLongField(self, pointerField);
+    auto loop = uv_default_loop();
+
+    int err = 0;
+    int fd = 0;
+    uv_fs_t req;
+
+    jboolean ok = JNI_FALSE;
+
+    if (!core || !loop) {
+      return JNI_FALSE;
+    }
+
+    req = {0};
+    fd = uv_fs_open(loop, &req, VITAL_CHECK_FILE, 0, 0, [](uv_fs_t *req) {
+      uv_fs_req_cleanup(req);
+    });
+
+    if (fd < 0) {
+      env->ThrowNew(CoreClass, "uv_fs_open() failed");
+      return JNI_FALSE;
+    }
+
+    char buf[2] = {0};
+    const uv_buf_t iov = uv_buf_init(buf, 2);
+
+    req = {0};
+    req.data = &ok;
+    err = uv_fs_read(loop, &req, fd, &iov, 1, 0, [](uv_fs_t* req) {
+      auto value = (char *) req->bufs[0].base;
+
+      if (value[0] == 'O' && value[1] == 'K') {
+        *(jboolean *) req->data = JNI_TRUE;
+      }
+
+      uv_fs_req_cleanup(req);
+    });
+
+    if (err != 0) {
+      env->ThrowNew(CoreClass, "uv_fs_read() failed");
+      return JNI_FALSE;
+    }
+
+    req = {0};
+    err = uv_fs_close(loop, &req, fd, [](uv_fs_t* req) {
+      uv_fs_req_cleanup(req);
+    });
+
+    if (err != 0) {
+      env->ThrowNew(CoreClass, "uv_fs_close() failed");
+      return JNI_FALSE;
+    }
+
+    if (uv_run(loop, UV_RUN_DEFAULT) != 0) {
+      env->ThrowNew(CoreClass, "uv_run() failed");
+      return JNI_FALSE;
+    }
+
+    return ok;
   }
 
   void package_export(Core_fsOpen)(

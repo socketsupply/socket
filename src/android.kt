@@ -96,6 +96,8 @@ final class MainWebViewActivity : WebViewActivity();
  * Core bindings externally implemented in JNI/NDK
  */
 private final class Core {
+  private val TAG = "Core";
+
   /**
    * Internal pointer managed by `initialize() and `destroy()
    */
@@ -121,6 +123,8 @@ private final class Core {
   /**
    * `NativeCore` vitals
    */
+  external fun verifyFS (): Boolean;
+  external fun verifyLoop (): Boolean;
   external fun verifyRefs (): Boolean;
   external fun verifyJavaVM (): Boolean;
   external fun verifyPointer (pointer: Long): Boolean;
@@ -146,7 +150,20 @@ private final class Core {
    * Performs internal vital checks.
    */
   public fun check (): Boolean {
-    if (!this.verifyPointer(this.pointer)) { return false; }
+    if (!this.verifyPointer(this.pointer)) {
+      android.util.Log.e(TAG, "pointer check failed");
+      return false;
+    } else {
+      android.util.Log.d(TAG, "pointer check OK");
+    }
+
+    if (!this.verifyLoop()) {
+      android.util.Log.e(TAG, "libuv loop check failed");
+      return false;
+    } else {
+      android.util.Log.d(TAG, "libuv loop check OK");
+    }
+
     //if (!this.verifyRefs()) { return false; }
     //if (!this.verifyJavaVM()) { return false; }
     //if (!this.verifyEnvironemnt()) { return false; }
