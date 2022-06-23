@@ -446,7 +446,6 @@ int main (const int argc, const char* argv[]) {
       fs::create_directories(pkg);
 
       fs::create_directories(res);
-      fs::create_directories(res / "assets");
       fs::create_directories(res / "layout");
       fs::create_directories(res / "values");
 
@@ -501,6 +500,7 @@ int main (const int argc, const char* argv[]) {
 
       writeFile(res / "layout" / "web_view_activity.xml", trim(tmpl(gAndroidLayoutWebviewActivity, settings)));
       writeFile(res / "values" / "strings.xml", trim(tmpl(gAndroidValuesStrings, settings)));
+      writeFile(src / "main" / "assets" / "vital_check_ok.txt", "OK");
 
       // JNI/NDK
       fs::copy(trim(prefixFile("src/android.cc")), jni);

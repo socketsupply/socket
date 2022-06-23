@@ -1,4 +1,5 @@
 #include "android.hh"
+#include "jni.h"
 #include <stdio.h>
 
 #define debug(format, ...)                                                     \
@@ -9,14 +10,61 @@
     fflush(stdout);                                                            \
   }
 
+struct NativeRefs {
+  jobject core;
+};
+
+class NativeCore : SSC::Core {
+  JavaVM *vm;
+  JNIEnv *env;
+  NativeRefs refs;
+
+  public:
+  NativeCore(JNIEnv *env, jobject core) : Core() {
+    this->env = env;
+    this->env->GetJavaVM(&this->vm);
+    this->refs.core = this->env->NewGlobalRef(core);
+  }
+
+  ~NativeCore () {
+    this->env->DeleteGlobalRef(this->refs.core);
+  }
+
+  JavaVM *
+  GetJavaVM () {
+    return vm;
+  }
+
+  void * GetPointer () {
+    return (void *) this;
+  }
+};
+
 extern "C" {
   jlong package_export(Core_createPointer)(
     JNIEnv *env,
     jobject self
   ) {
-    auto core = new SSC::Core();
-    debug("Core::createPointer(%p)", (void *) core);
-    return (jlong) (void *) core;
+    auto core = new NativeCore(env, self);
+    auto pointer = core->GetPointer();
+    debug("Core::createPointer(%p)", pointer);
+    return (jlong) core->GetPointer();
+  }
+
+  jboolean package_export(Core_verifyPointer)(
+    JNIEnv *env,
+    jobject self,
+    jlong pointer
+  ) {
+    auto CoreClass = env->GetObjectClass(self);
+    auto pointerField = env->GetFieldID(CoreClass, "pointer", "J");
+    auto pointerValue = env->GetLongField(self, pointerField);
+
+    if (pointerValue != pointer) {
+      return JNI_FALSE;
+    }
+
+    return JNI_TRUE;
   }
 
   void package_export(Core_destroyPointer)(
@@ -26,7 +74,7 @@ extern "C" {
   ) {
     if (pointer != 0) {
       debug("Core::destroyPointer(%p)", (void *) pointer);
-      auto core = (SSC::Core *) pointer;
+      auto core = (NativeCore *) pointer;
       delete core;
     }
   }

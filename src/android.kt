@@ -65,6 +65,7 @@ open class WebViewActivity : androidx.appcompat.app.AppCompatActivity() {
 
     val binding = WebViewActivityBinding.inflate(layoutInflater);
     val client = WebViewClient(this);
+    val core = Core();
 
     val webview = binding.webview;
     val settings = webview.getSettings();
@@ -80,7 +81,9 @@ open class WebViewActivity : androidx.appcompat.app.AppCompatActivity() {
     this.binding = binding;
     this.client = client;
     this.view = webview;
-    this.core = Core();
+    this.core = core;
+
+    assert(core.check());
   }
 }
 
@@ -110,10 +113,18 @@ private final class Core {
   }
 
   /**
-   * `SSC::Core { ... }` lifecycle functions
+   * `NativeCore` lifecycle functions
    **/
   external fun createPointer (): Long;
   external fun destroyPointer (pointer: Long);
+
+  /**
+   * `NativeCore` vitals
+   */
+  external fun verifyRefs (): Boolean;
+  external fun verifyJavaVM (): Boolean;
+  external fun verifyPointer (pointer: Long): Boolean;
+  external fun verifyEnvironemnt (): Boolean;
 
   /**
    * `Core` class constructor which is initialized
@@ -129,6 +140,17 @@ private final class Core {
   protected fun finalize () {
     this.destroyPointer(this.pointer);
     this.pointer = 0;
+  }
+
+  /**
+   * Performs internal vital checks.
+   */
+  public fun check (): Boolean {
+    if (!this.verifyPointer(this.pointer)) { return false; }
+    //if (!this.verifyRefs()) { return false; }
+    //if (!this.verifyJavaVM()) { return false; }
+    //if (!this.verifyEnvironemnt()) { return false; }
+    return true;
   }
 
   // @TODO(jwerle): bindings below
