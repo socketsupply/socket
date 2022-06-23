@@ -1013,7 +1013,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
 @implementation IPCSchemeHandler
 - (void)setBridge: (Bridge*)br {
-  self.bridge = br;
+  _bridge = br;
 }
 - (void)webView: (BridgedWebView*)webview stopURLSchemeTask:(id<WKURLSchemeTask>)urlSchemeTask {}
 - (void)webView: (BridgedWebView*)webview startURLSchemeTask:(id<WKURLSchemeTask>)task {

@@ -548,7 +548,7 @@ namespace SSC {
     // config.limitsNavigationsToAppBoundDomains = YES;
 
     IPCSchemeHandler* handler = [IPCSchemeHandler new];
-    handler.bridge = bridge;
+    [handler setBridge: bridge];
     [config setURLSchemeHandler: handler forURLScheme:@"ipc"];
 
     WKPreferences* prefs = [config preferences];

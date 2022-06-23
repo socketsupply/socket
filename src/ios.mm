@@ -221,7 +221,7 @@ void uncaughtExceptionHandler (NSException *exception) {
   WKWebViewConfiguration *config = [[WKWebViewConfiguration alloc] init];
 
   IPCSchemeHandler* handler = [IPCSchemeHandler new];
-  handler.bridge = bridge;
+  [handler setBridge: bridge];
   [config setURLSchemeHandler: handler forURLScheme:@"ipc"];
 
   self.content = [config userContentController];
