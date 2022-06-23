@@ -998,14 +998,14 @@ int main (const int argc, const char* argv[]) {
         exportCommand
           << "xcodebuild"
           << " -exportArchive "
-          << " -archivePath build/" << settings["name"] << ".xcarchive"
-          << " -exportPath build/" << settings["name"] << ".ipa"
+          << " -archivePath dist/build/" << settings["name"] << ".xcarchive"
+          << " -exportPath dist/build/" << settings["name"] << ".ipa"
           << " -exportOptionsPlist " << (pathToDist / "exportOptions.plist").string();
 
         log(exportCommand.str());
         auto rExport = exec(exportCommand.str().c_str());
 
-        if (rExport.exitCode != 0) {
+        if (rExport.exitCode != 0 && rExport.exitCode != 65) {
           log("error: failed to export project");
           fs::current_path(oldCwd);
           exit(1);
