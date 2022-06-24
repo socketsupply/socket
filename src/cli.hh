@@ -161,6 +161,8 @@ constexpr auto gAndroidManifest = R"XML(
   package="{{bundle_identifier}}"
 >
   <uses-permission android:name="android.permission.INTERNET" />
+  <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
+  <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
 
     <!-- @TODO(jwerle)
     android:roundIcon="@mipmap/ic_launcher_round"

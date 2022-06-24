@@ -2,54 +2,100 @@
 #include "jni.h"
 
 #include <stdio.h>
+#include <unistd.h>
 
-constexpr auto VITAL_CHECK_FILE = "file:///android_asset/vital_check_ok.txt";
-
-#ifdef __ANDROID__
-#include <android/log.h>
-#define debug(format, ...)                                                     \
-    {                                                                          \
-      __android_log_print(                                                     \
-        ANDROID_LOG_DEBUG,                                                     \
-        "NativeCore(",                                                         \
-        format,                                                                \
-        ##__VA_ARGS__                                                          \
-      );                                                                       \
-    }
-#else
-#define debug(format, ...)                                                     \
-   {                                                                           \
-     printf("SSC::Core::Debug:");                                              \
-     printf(format, ##__VA_ARGS__);                                            \
-     printf("\n");                                                             \
-     fflush(stdout);                                                           \
-   }
-#endif
-
-struct NativeRefs {
+/**
+ * A structured collection of global/local JNI references
+ * for continued persistence in `NativeCore`.
+ */
+struct NativeCoreRefs {
   jobject core;
   jobject callbacks;
 };
 
+/**
+ * An extended `SSC::Core` class for Android NDK/JNI
+ * imeplementation.
+ */
 class NativeCore : SSC::Core {
   JavaVM *jvm;
   JNIEnv *env;
-  NativeRefs refs;
+  NativeCoreRefs refs;
+
+  class NativeString {
+    JNIEnv *env;
+    jstring ref;
+    const char *string;
+
+    public:
+    NativeString (JNIEnv *env, jstring ref) {
+      this->env = env;
+      this->ref = ref;
+      this->string = env->GetStringUTFChars(ref, 0);
+      debug("NativeString constructor called");
+    }
+
+    void Release () {
+      if (this->ref && this->string) {
+        this->env->ReleaseStringUTFChars(this->ref, this->string);
+        this->ref = 0;
+        this->string = 0;
+      }
+    }
+
+    ~NativeString () {
+      debug("NativeString deconstructor called");
+      this->Release();
+    }
+
+    const char * c_str () {
+      return string;
+    }
+
+    size_t size () {
+      if (!this->string) {
+        return 0;
+      }
+
+      return this->env->GetStringUTFLength(this->ref);
+    }
+  };
 
   public:
   NativeCore(JNIEnv *env, jobject core) : Core() {
     this->env = env;
     this->env->GetJavaVM(&this->jvm);
-    //this->refs.core = this->env->NewGlobalRef(core);
+    this->refs.core = this->env->NewGlobalRef(core);
   }
 
   ~NativeCore () {
-    //this->env->DeleteGlobalRef(this->refs.core);
+    this->env->DeleteGlobalRef(this->refs.core);
   }
 
-  JavaVM *
-  GetJavaVM () {
+  JavaVM * GetJavaVM () {
     return this->jvm;
+  }
+
+  const NativeString GetRootDirectory () {
+    // `NativeCore::getRootDirectory()`
+    return NativeString(this->env, (jstring) CallNativeCoreMethodFromEnvironment(
+      this->env,
+      this->refs.core,
+      "getRootDirectory",
+      "()Ljava/lang/String;"
+    ));
+  }
+
+  AAssetManager * GetAssetManager () {
+    // `NativeCore::getAssetManager()`
+    auto ref = CallNativeCoreMethodFromEnvironment(
+      this->env,
+      this->refs.core,
+      "getAssetManager",
+      "()Landroid/content/res/AssetManager;"
+    );
+
+    return AAssetManager_fromJava(this->env, ref);
   }
 
   void * GetPointer () {
@@ -58,7 +104,11 @@ class NativeCore : SSC::Core {
 };
 
 extern "C" {
-  jlong package_export(Core_createPointer)(
+  /**
+   * `NativeCore::createPointer()` binding.
+   * @return A pointer to a `NativeCore` instance
+   */
+  jlong exports(NativeCore, createPointer)(
     JNIEnv *env,
     jobject self
   ) {
@@ -68,43 +118,114 @@ extern "C" {
     return (jlong) core->GetPointer();
   }
 
-  void package_export(Core_destroyPointer)(
+  /**
+   * `NativeCore::destroyPointer()` binding.
+   * @param pointer Pointer to `NativeCore`
+   */
+  void exports(NativeCore, destroyPointer)(
     JNIEnv *env,
     jobject self,
     jlong pointer
   ) {
-    if (pointer != 0) {
+    if (pointer) {
       debug("Core::destroyPointer(%p)", (void *) pointer);
-      auto core = (NativeCore *) pointer;
-      delete core;
+      delete (NativeCore *) pointer;
     }
   }
 
-  jboolean package_export(Core_verifyPointer)(
+  /**
+   * `NativeCore::verifyPointer()` binding.
+   * @param pointer Pointer to verify
+   * @return `true` if verification passes, otherwise `false`.
+   */
+  jboolean exports(NativeCore, verifyPointer)(
     JNIEnv *env,
     jobject self,
     jlong pointer
   ) {
-    auto CoreClass = env->GetObjectClass(self);
-    auto pointerField = env->GetFieldID(CoreClass, "pointer", "J");
-    auto pointerValue = env->GetLongField(self, pointerField);
+    auto core = GetNativeCoreFromEnvironment(env);
 
-    if (pointer == 0 || pointerValue == 0 || pointerValue != pointer) {
+    if (!pointer || !core) {
+      return false;
+    }
+
+    if ((void *) pointer != (void *) core) {
       return false;
     }
 
     return true;
   }
 
-  void package_export(Core_verifyNativeExceptions)(
+  /**
+   * `NativeCore::verifyNativeExceptions() binding.
+   * @return `true` if verification passes, otherwise `false`.
+   */
+  void exports(NativeCore, verifyNativeExceptions)(
     JNIEnv *env,
     jobject self
   ) {
-    auto Exception = env->FindClass("java/lang/Exception");
-    env->ThrowNew(Exception, "exception check");
+    auto Exception = GetExceptionClass(env);
+    Throw(ExceptionCheck(Exception));
   }
 
-  jboolean package_export(Core_verifyLoop)(
+  /**
+   * `NativeCore::verifyRootDirectory() binding.
+   * @return `true` if verification passes, otherwise `false`.
+   */
+  jboolean exports(NativeCore, verifyRootDirectory)(
+    JNIEnv *env,
+    jobject self
+  ) {
+    auto Exception = GetExceptionClass(env);
+    auto core = GetNativeCoreFromEnvironment(env);
+
+    if (!core) {
+      Throw(NativeCoreNotInitialized(Exception));
+      return false;
+    }
+
+    auto rootDirectory = core->GetRootDirectory();
+
+    if (!rootDirectory.size()) {
+      Throw(RootDirectoryIsNotReachable(Exception));
+      return false;
+    }
+
+    debug("rootDirectoryString: %s", rootDirectory.c_str());
+
+    return true;
+  }
+
+  /**
+   * `NativeCore::verifyAssetManager() binding.
+   * @return `true` if verification passes, otherwise `false`.
+   */
+  jboolean exports(NativeCore, verifyAssetManager)(
+    JNIEnv *env,
+    jobject self
+  ) {
+    auto Exception = GetExceptionClass(env);
+    auto core = GetNativeCoreFromEnvironment(env);
+
+    if (!core) {
+      Throw(NativeCoreNotInitialized(Exception));
+      return false;
+    }
+
+    auto assetManager = core->GetAssetManager();
+    if (!assetManager) {
+      Throw(AssetManagerIsNotReachable(Exception));
+      return false;
+    }
+
+    return true;
+  }
+
+  /**
+   * `NativeCore::verifyLoop() binding.
+   * @return `true` if verification passes, otherwise `false`.
+   */
+  jboolean exports(NativeCore, verifyLoop)(
     JNIEnv *env,
     jobject self
   ) {
@@ -115,86 +236,40 @@ extern "C" {
     return true;
   }
 
-  jboolean package_export(Core_verifyFS)(
+  /**
+   * `NativeCore::verifyFileSystem() binding.
+   * @return `true` if verification passes, otherwise `false`.
+   */
+  jboolean exports(NativeCore, verifyFileSystem)(
     JNIEnv *env,
     jobject self
   ) {
-    auto CoreClass = env->GetObjectClass(self);
-    auto Exception = env->FindClass("java/lang/Exception");
-    auto pointerField = env->GetFieldID(CoreClass, "pointer", "J");
-    auto core = (NativeCore *) env->GetLongField(self, pointerField);
-    auto loop = uv_default_loop();
-
-    jboolean ok = false;
-
-    struct { uv_fs_t open, read, close; } reqs = {0};
+    auto Exception = GetExceptionClass(env);
+    auto core = GetNativeCoreFromEnvironment(env);
+    jboolean ok = true;
     int err = 0;
-    int fd = 0;
 
     if (!core) {
-      env->ThrowNew(Exception, "core is not initialized");
+      Throw(NativeCoreNotInitialized(Exception));
       return false;
     }
+
+    auto loop = uv_default_loop();
 
     if (!loop) {
-      env->ThrowNew(Exception, "loop is not initialized");
+      Throw(UVLoopNotInitialized(Exception));
       return false;
     }
 
-    fd = uv_fs_open(loop, &reqs.open, VITAL_CHECK_FILE, 0, 0, [](uv_fs_t *req) {
-      uv_fs_req_cleanup(req);
-    });
+    auto rootDirectory = core->GetRootDirectory();
 
-    if (fd < 0) {
-      env->ThrowNew(Exception, uv_strerror(fd));
-      return false;
-    }
+    // TODO(jwerle):
+    // - libuv filesystem readdir (check for files/ & cache/)
+    // - libuv filesystem write OK to files/`VITAL_CHECK_FILE`
+    // - libuv filesystem read OK from files/`VITAL_CHECK_FILE`
+    // - AssetManager `VITAL_CHECK_FILE` check
 
     err = uv_run(loop, UV_RUN_DEFAULT);
-
-    if (err != 0) {
-      env->ThrowNew(Exception, uv_strerror(err));
-      return false;
-    }
-
-    auto buf = new char[3];
-    //static char buf[2] = {0};
-    const uv_buf_t iov = uv_buf_init(buf, 3);
-
-    reqs.read.data = &ok;
-    err = uv_fs_read(loop, &reqs.read, fd, &iov, 1, 0, [](uv_fs_t* req) {
-      if (req->result == 0) {
-        //auto value = (char *) req->bufs[0].base;
-        //if (req->bufs[0].len == 2) {
-          //if (value[0] == 'O' && value[1] == 'K') {
-            //*((jboolean *) req->data) = true;
-          //}
-        //}
-      }
-
-      uv_fs_req_cleanup(req);
-    });
-
-    if (err != 0) {
-      env->ThrowNew(Exception, uv_strerror(err));
-      return false;
-    }
-
-    err = uv_run(loop, UV_RUN_DEFAULT);
-
-    if (err != 0) {
-      env->ThrowNew(Exception, uv_strerror(err));
-      return false;
-    }
-
-    err = uv_fs_close(loop, &reqs.close, fd, [](uv_fs_t* req) {
-      uv_fs_req_cleanup(req);
-    });
-
-    if (err != 0) {
-      env->ThrowNew(Exception, uv_strerror(err));
-      return false;
-    }
 
     if (err != 0) {
       env->ThrowNew(Exception, uv_strerror(err));
@@ -204,7 +279,7 @@ extern "C" {
     return ok;
   }
 
-  void package_export(Core_fsOpen)(
+  void exports(NativeCore, fsOpen)(
     JNIEnv *env,
     jobject self,
     jstring seq,
@@ -215,7 +290,7 @@ extern "C" {
     // @TODO(jwerle): Core::fsOpen()
   }
 
-  void package_export(Core_fsClose)(
+  void exports(NativeCore, fsClose)(
     JNIEnv *env,
     jobject self,
     jstring seq,
@@ -224,7 +299,7 @@ extern "C" {
     // @TODO(jwerle): Core::fsClose
   }
 
-  void package_export(Core_fsRead)(
+  void exports(NativeCore, fsRead)(
     JNIEnv *env,
     jobject self,
     jstring seq,
@@ -235,7 +310,7 @@ extern "C" {
     // @TODO(jwerle): Core::fsRead
   }
 
-  void package_export(Core_fsWrite)(
+  void exports(NativeCore, fsWrite)(
     JNIEnv *env,
     jobject self,
     jstring seq,
@@ -246,7 +321,7 @@ extern "C" {
     // @TODO(jwerle): Core::fsWrite
   }
 
-  void package_export(Core_fsStat)(
+  void exports(NativeCore, fsStat)(
     JNIEnv *env,
     jobject self,
     jstring seq,
@@ -255,14 +330,14 @@ extern "C" {
     // @TODO(jwerle): Core::fsStat
   }
 
-  void package_export(Core_fsUnlink)(
+  void exports(NativeCore, fsUnlink)(
     jstring seq,
     jstring path
   ) {
     // @TODO(jwerle): Core::fsUnlink
   }
 
-  void package_export(Core_fsRename)(
+  void exports(NativeCore, fsRename)(
     JNIEnv *env,
     jobject self,
     jstring seq,
@@ -272,7 +347,7 @@ extern "C" {
     // @TODO(jwerle): Core::fsRename
   }
 
-  void package_export(Core_fsCopyFile)(
+  void exports(NativeCore, fsCopyFile)(
     JNIEnv *env,
     jobject self,
     jstring seq,
@@ -283,7 +358,7 @@ extern "C" {
     // @TODO(jwerle): Core::fsCopyFile
   }
 
-  void package_export(Core_fsRmDir)(
+  void exports(NativeCore, fsRmDir)(
     JNIEnv *env,
     jobject self,
     jstring seq,
@@ -292,7 +367,7 @@ extern "C" {
     // @TODO(jwerle): Core::fsRmDir
   }
 
-  void package_export(Core_fsMkDir)(
+  void exports(NativeCore, fsMkDir)(
     JNIEnv *env,
     jobject self,
     jstring seq,
@@ -302,7 +377,7 @@ extern "C" {
     // @TODO(jwerle): Core::fsMkDir
   }
 
-  void package_export(Core_fsReadDir)(
+  void exports(NativeCore, fsReadDir)(
     JNIEnv *env,
     jobject self,
     jstring seq,
