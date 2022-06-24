@@ -114,6 +114,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
   auto msg = SSC::format(R"JSON({
     "value": {
+      "source": "bluetooth",
       "data": {
         "message": "$S"
         "state": "$S"
@@ -121,7 +122,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     }
   })JSON", message, state);
 
-  [self.bridge emit: "local-network" msg: msg];
+  [self.bridge emit: "network" msg: msg];
 
   NSLog(@"%@", [NSString stringWithUTF8String: msg.c_str()]);
 }
@@ -168,11 +169,12 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
   auto msg = SSC::format(R"JSON({
     "value": {
+      "source": "bluetooth",
       "data": { "message": "initalized" }
     }
   })JSON");
 
-  [self.bridge emit: "local-network" msg: msg];
+  [self.bridge emit: "network" msg: msg];
 }
 
 - (void) startBluetooth {
@@ -220,11 +222,12 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
   auto msg = SSC::format(R"JSON({
     "value": {
+      "source": "bluetooth",
       "data": { "message": "didReceiveReadRequest" }
     }
   })JSON");
 
-  [self.bridge emit: "local-network" msg: msg];
+  [self.bridge emit: "network" msg: msg];
 
   if ([request.characteristic.UUID isEqual: _characteristic.UUID]) {
     if (request.offset > _characteristic.value.length) {
@@ -246,11 +249,12 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
   auto msg = SSC::format(R"JSON({
     "value": {
+      "source": "bluetooth",
       "data": { "message": "didReceiveWriteRequests" }
     }
   })JSON");
 
-  [self.bridge emit: "local-network" msg: msg];
+  [self.bridge emit: "network" msg: msg];
 
   for (CBATTRequest* request in requests) {
     if (![request.characteristic.UUID isEqual: _characteristic.UUID]) {
@@ -264,10 +268,11 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     // TODO return as a proper buffer
     auto msg = SSC::format(R"JSON({
       "value": {
+        "source": "bluetooth",
         "data": { "message": "$S" }
       }
     })JSON", std::string(src));
-    [self.bridge emit: "local-network" msg: msg];
+    [self.bridge emit: "network" msg: msg];
     [self.peripheralManager respondToRequest: request withResult: CBATTErrorSuccess];  
   }
 } */
@@ -314,6 +319,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
   auto msg = SSC::format(R"JSON({
     "value": {
+      "source": "bluetooth",
       "data": {
         "name": "$S",
         "uuid": "$S",
@@ -322,7 +328,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     }
   })JSON", name, uuid);
 
-  [self.bridge emit: "local-network" msg: msg];
+  [self.bridge emit: "network" msg: msg];
 
   [self.peripherals addObject: peripheral];
   [central connectPeripheral: peripheral options: nil];
@@ -353,6 +359,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 - (void)peripheralManagerIsReadyToUpdateSubscribers:(CBPeripheralManager *)peripheral {
   auto msg = SSC::format(R"JSON({
     "value": {
+      "source": "bluetooth",
       "data": {
         "message": "peripheralManagerIsReadyToUpdateSubscribers",
         "event": "status"
@@ -360,7 +367,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     }
   })JSON");
 
-  [self.bridge emit: "local-network" msg: msg];
+  [self.bridge emit: "network" msg: msg];
 }
 
 - (void) peripheral:(CBPeripheral*)peripheral didUpdateValueForCharacteristic:(CBCharacteristic*)characteristic error:(NSError*)error {
@@ -376,6 +383,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
   auto msg = SSC::format(R"JSON({
     "value": {
+      "source": "bluetooth",
       "data": {
         "name": "$S",
         "uuid": "$S",
@@ -387,7 +395,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
   NSLog(@"BBB didUpdateValueForCharacteristic: %s", src);
 
-  [self.bridge emit: "local-network" msg: msg];
+  [self.bridge emit: "network" msg: msg];
 }
 
 - (void)peripheral:(CBPeripheral*)peripheral didUpdateNotificationStateForCharacteristic:(CBCharacteristic*)characteristic error:(NSError*)error {
@@ -397,6 +405,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
   auto msg = SSC::format(R"JSON({
     "value": {
+      "source": "bluetooth",
       "data": { 
         "message": "didUpdateNotificationStateForCharacteristic",
         "event": "status"
@@ -404,7 +413,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     }
   })JSON");
 
-  [self.bridge emit: "local-network" msg: msg];
+  [self.bridge emit: "network" msg: msg];
 }
 
 - (void) centralManager:(CBCentralManager *)central didFailToConnectPeripheral:(CBPeripheral *)peripheral error:(nullable NSError *)error {
@@ -417,6 +426,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
   auto msg = SSC::format(R"JSON({
     "value": {
+      "source": "bluetooth",
       "data": {
         "name": "$S",
         "uuid": "$S",
@@ -425,7 +435,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     }
   })JSON", name, uuid);
 
-  [self.bridge emit: "local-network" msg: msg];
+  [self.bridge emit: "network" msg: msg];
 
   [_peripherals removeObject: peripheral];
 }
