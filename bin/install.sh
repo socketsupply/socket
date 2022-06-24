@@ -225,7 +225,7 @@ if [ "$1" == "ios" ]; then
     $BUILD_DIR/arm64-iPhoneOS/build/lib/libuv.a \
     $BUILD_DIR/x86_64-iPhoneSimulator/build/lib/libuv.a \
     $BUILD_DIR/i386-iPhoneSimulator/build/lib/libuv.a \
-    -output $LIB_DIR/libuv.a
+    -output $LIB_DIR/libuv-mobile.a
 
   die $? "not ok - unable to combine build artifacts"
   echo "ok - created fat library"
@@ -233,7 +233,7 @@ if [ "$1" == "ios" ]; then
   unset PLATFORM CC STRIP LD CPP CFLAGS AR RANLIB \
     CPPFLAGS LDFLAGS IPHONEOS_DEPLOYMENT_TARGET
 
-  cp $LIB_DIR/libuv.a $ASSETS_DIR/lib/libuv.a
+  cp $LIB_DIR/libuv.a $ASSETS_DIR/lib/libuv-mobile.a
   die $? "not ok - could not copy fat library"
   echo "ok - copied fat library"
 else

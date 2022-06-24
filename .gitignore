@@ -1,7 +1,7 @@
 node_modules/
 /lib/uv
 /lib/libuv.a
-/lib/udx
+/lib/libuv-mobile.a
 *.tmp
 .DS_Store
 /bin/build

@@ -327,7 +327,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 /* Begin PBXBuildFile section */
     290F7EBF2768C49000486988 /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 294A3C792763E9C6007B5B9A /* UIKit.framework */; };
     290F7F87276BC2B000486988 /* lib in Resources */ = {isa = PBXBuildFile; fileRef = 290F7F86276BC2B000486988 /* lib */; };
-    290F7F88276BC2EE00486988 /* libuv.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 290F7F82276BBE9C00486988 /* libuv.a */; };
+    290F7F88276BC2EE00486988 /* libuv-mobile.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 290F7F82276BBE9C00486988 /* libuv-mobile.a */; };
     29124C5D2761336B001832A0 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 29124C5B2761336B001832A0 /* LaunchScreen.storyboard */; };
     294A3C502763E6BC007B5B9A /* ios.mm in Sources */ = {isa = PBXBuildFile; fileRef = 294A3C4E2763E5EB007B5B9A /* ios.mm */; };
     294A3C852764EAB7007B5B9A /* ui in Resources */ = {isa = PBXBuildFile; fileRef = 294A3C842764EAB7007B5B9A /* ui */; };
@@ -337,7 +337,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-    290F7F82276BBE9C00486988 /* libuv.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libuv.a; path = lib/libuv.a; sourceTree = "<group>"; };
+    290F7F82276BBE9C00486988 /* libuv-mobile.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libuv-mobile.a; path = lib/libuv-mobile.a; sourceTree = "<group>"; };
     290F7F86276BC2B000486988 /* lib */ = {isa = PBXFileReference; lastKnownFileType = folder; path = lib; sourceTree = "<group>"; };
     29124C4A27613369001832A0 /* {{name}}.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = {{name}}.app; sourceTree = BUILT_PRODUCTS_DIR; };
     29124C5C2761336B001832A0 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
@@ -361,7 +361,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
       files = (
         2996EDB22770BC1F00C672A2 /* Network.framework in Frameworks */,
         2996EDB22770BC1F00C672A3 /* CoreBluetooth.framework in Frameworks */,
-        290F7F88276BC2EE00486988 /* libuv.a in Frameworks */,
+        290F7F88276BC2EE00486988 /* libuv-mobile.a in Frameworks */,
         294A3CA02768C429007B5B9A /* WebKit.framework in Frameworks */,
         290F7EBF2768C49000486988 /* UIKit.framework in Frameworks */,
       );
@@ -373,7 +373,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
     290F7F89276CBF9900486988 /* Recovered References */ = {
       isa = PBXGroup;
       children = (
-        290F7F82276BBE9C00486988 /* libuv.a */,
+        290F7F82276BBE9C00486988 /* libuv-mobile.a */,
       );
       name = "Recovered References";
       sourceTree = "<group>";
