@@ -161,11 +161,6 @@ function _compile_libuv {
     quiet make clean
     quiet make -j8
     quiet make install
-
-    cp $STAGING_DIR/build/lib/libuv.a $LIB_DIR
-    die $? "not ok - unable to build libuv"
-    echo "ok - built libuv for $platform ($target)"
-
     return
   fi
 
@@ -199,8 +194,6 @@ _prepare
 
 cd $BUILD_DIR
 
-_compile_libuv
-
 if [ "$1" == "ios" ]; then
   quiet xcode-select -p
   die $? "not ok - xcode needs to be installed from the mac app store: https://apps.apple.com/us/app/xcode/id497799835"
@@ -225,7 +218,7 @@ if [ "$1" == "ios" ]; then
     $BUILD_DIR/arm64-iPhoneOS/build/lib/libuv.a \
     $BUILD_DIR/x86_64-iPhoneSimulator/build/lib/libuv.a \
     $BUILD_DIR/i386-iPhoneSimulator/build/lib/libuv.a \
-    -output $LIB_DIR/libuv-mobile.a
+    -output $LIB_DIR/libuv-ios.a
 
   die $? "not ok - unable to combine build artifacts"
   echo "ok - created fat library"
@@ -233,12 +226,16 @@ if [ "$1" == "ios" ]; then
   unset PLATFORM CC STRIP LD CPP CFLAGS AR RANLIB \
     CPPFLAGS LDFLAGS IPHONEOS_DEPLOYMENT_TARGET
 
-  cp $LIB_DIR/libuv.a $ASSETS_DIR/lib/libuv-mobile.a
+  cp $LIB_DIR/libuv.a $ASSETS_DIR/lib/libuv-ios.a
   die $? "not ok - could not copy fat library"
   echo "ok - copied fat library"
-else
-  _compile_libuv
 fi
+
+_compile_libuv
+
+cp $STAGING_DIR/build/lib/libuv.a $LIB_DIR
+die $? "not ok - unable to build libuv"
+echo "ok - built libuv for $platform ($target)"
 
 cp -r $BUILD_DIR/input/include/* $ASSETS_DIR/include
 die $? "not ok - could not copy headers"
