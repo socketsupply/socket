@@ -680,51 +680,58 @@ int main (const int argc, const char* argv[]) {
       }
     }
 
-    //
-    // cd into the target and run the user's build command,
-    // pass it the platform specific directory where they
-    // should send their build artifacts.
-    //
-    std::stringstream buildCommand;
-    auto oldCwd = fs::current_path();
-    fs::current_path(oldCwd / target);
+    if (settings.count("build") != 0) {
+      //
+      // cd into the target and run the user's build command,
+      // pass it the platform specific directory where they
+      // should send their build artifacts.
+      //
+      std::stringstream buildCommand;
+      auto oldCwd = fs::current_path();
+      fs::current_path(oldCwd / target);
 
-    {
-      char prefix[4096] = {0};
-      memcpy(
-        prefix,
-        pathResourcesRelativeToUserBuild.string().c_str(),
-        pathResourcesRelativeToUserBuild.string().size()
-      );
+      {
+        char prefix[4096] = {0};
+        memcpy(
+          prefix,
+          pathResourcesRelativeToUserBuild.string().c_str(),
+          pathResourcesRelativeToUserBuild.string().size()
+        );
 
-      // @TODO(jwerle): use `setEnv()` if #148 is closed
-      #if _WIN32
-        setEnv("PREFIX=prefix");
-      #else
-        setenv("PREFIX", prefix, 1);
-      #endif
-    }
+        // @TODO(jwerle): use `setEnv()` if #148 is closed
+        #if _WIN32
+          setEnv("PREFIX=prefix");
+        #else
+          setenv("PREFIX", prefix, 1);
+        #endif
+      }
 
-    buildCommand
-      << settings["build"]
-      << " "
-      << pathResourcesRelativeToUserBuild.string()
-      << " --debug=" << flagDebugMode
-      << argvForward.str();
+      buildCommand
+        << settings["build"]
+        << " "
+        << pathResourcesRelativeToUserBuild.string()
+        << " --debug=" << flagDebugMode
+        << argvForward.str();
 
-    // log(buildCommand.str());
-    auto r = exec(buildCommand.str().c_str());
+      // log(buildCommand.str());
+      auto r = exec(buildCommand.str().c_str());
 
-    if (r.exitCode != 0) {
-      log("Unable to run user build command");
+      if (r.exitCode != 0) {
+        log("Unable to run user build command");
+        log(r.output);
+        exit(r.exitCode);
+      }
+
       log(r.output);
-      exit(r.exitCode);
+      log("ran user build command");
+
+      fs::current_path(oldCwd);
+    } else {
+      fs::copy(
+        target / "src",
+        pathResourcesRelativeToUserBuild
+      );
     }
-
-    log(r.output);
-    log("ran user build command");
-
-    fs::current_path(oldCwd);
 
     if (flagBuildForIOS) {
       log("building for iOS");
