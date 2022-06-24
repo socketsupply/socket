@@ -153,6 +153,10 @@ int main (const int argc, const char* argv[]) {
         std::string(settings["name"] + ".ipa") /
         std::string(settings["name"] + ".ipa")
       );
+      if (!fs::exists(ipaPath)) {
+        log("Could not find " + ipaPath.string());
+        exit(1);
+      }
       // TODO: this command will install the app to all connected device which were added to the provisioning profile
       //       we should add a --ecid option support to specify the device
       auto command = hasCfgUtilInPath
