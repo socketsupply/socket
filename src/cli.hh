@@ -124,8 +124,6 @@ constexpr auto gPListInfo = R"XML(<?xml version="1.0" encoding="UTF-8"?>
   <string>{{bundle_identifier}}</string>
   <key>LSApplicationCategoryType</key>
   <string>{{mac_category}}</string>
-  <key>NSBluetoothAlwaysUsageDescription</key>
-  <string>The app would like to discover and connect to peers</string>
   <key>DTXcodeBuild</key>
   <string>9F2000</string>
   <key>LSMinimumSystemVersion</key>
