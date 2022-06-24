@@ -226,7 +226,7 @@ if [ "$1" == "ios" ]; then
   unset PLATFORM CC STRIP LD CPP CFLAGS AR RANLIB \
     CPPFLAGS LDFLAGS IPHONEOS_DEPLOYMENT_TARGET
 
-  cp $LIB_DIR/libuv.a $ASSETS_DIR/lib/libuv-ios.a
+  cp $LIB_DIR/libuv-ios.a $ASSETS_DIR/lib/libuv-ios.a
   die $? "not ok - could not copy fat library"
   echo "ok - copied fat library"
 fi
