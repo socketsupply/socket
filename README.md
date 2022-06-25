@@ -7,7 +7,7 @@
 
 # SYNOPSIS
 
-A Distribued Application Frameowork
+A Distributed Application Framework
 
 # DESCRIPTION
 
