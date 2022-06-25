@@ -278,9 +278,6 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 } */
 
 - (void) localNetworkSend:(std::string)str uuid:(std::string)uuid {
-  // auto serviceUUID = [CBUUID UUIDWithString: _serviceId];
-  // auto channelUUID = [CBUUID UUIDWithString: _channelId];
-
   for (CBPeripheral* peripheral in _peripherals) {
     std::string id = [peripheral.identifier.UUIDString UTF8String];
     if ((uuid.size() > 0) && id != uuid) continue;
@@ -315,7 +312,10 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     return;
   }
 
-  if ([_peripherals containsObject: peripheral]) return;
+  auto isConnected = peripheral.state != CBPeripheralStateDisconnected;
+  auto isKnown = [_peripherals containsObject: peripheral];
+
+  if (isKnown && isConnected) return;
 
   auto msg = SSC::format(R"JSON({
     "value": {
@@ -330,8 +330,8 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
   [self.bridge emit: "network" msg: msg];
 
-  [self.peripherals addObject: peripheral];
   [central connectPeripheral: peripheral options: nil];
+  [self.peripherals addObject: peripheral];
 }
 
 - (void) peripheral:(CBPeripheral *)peripheral didDiscoverServices:(NSError *)error {
