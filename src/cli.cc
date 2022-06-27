@@ -296,21 +296,6 @@ int main (const int argc, const char* argv[]) {
     auto _settings = WStringToString(readFile(configPath));
     auto settings = parseConfig(_settings);
 
-    bool noCommand = (
-      settings.count("win_cmd") == 0 &&
-      settings.count("mac_cmd") == 0 &&
-      settings.count("linux_cmd") == 0
-    );
-
-    if (noCommand) {
-      log("No entry in config file for 'win_cmd', 'mac_cmd', or 'linux_cmd'");
-    }
-
-    if (noCommand && devPort.size() == 0) {
-      log("Try specifying a port with '--port=8080'.");
-      exit(1);
-    }
-
     if (settings.count("revision") == 0) {
       settings["revision"] = "1";
     }
@@ -319,7 +304,6 @@ int main (const int argc, const char* argv[]) {
       "name",
       "title",
       "executable",
-      "output",
       "version"
     };
 
@@ -345,7 +329,7 @@ int main (const int argc, const char* argv[]) {
     settings["title"] += suffix;
     settings["executable"] += suffix;
 
-    auto pathOutput = settings["output"];
+    auto pathOutput = settings["output"].size() ? settings["output"] : "dist";
 
     if (flagRunUserBuild == false && fs::exists(pathOutput)) {
       auto p = fs::current_path() / pathOutput;
@@ -727,8 +711,11 @@ int main (const int argc, const char* argv[]) {
 
       fs::current_path(oldCwd);
     } else {
+      fs::path pathInput = settings["input"].size() == 0
+        ? target / settings["input"]
+        : target / "src";
       fs::copy(
-        target / "src",
+        pathInput,
         pathResourcesRelativeToUserBuild
       );
     }
