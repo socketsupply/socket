@@ -302,8 +302,6 @@ int main (const int argc, const char* argv[]) {
 
     const std::vector<std::string> required = {
       "name",
-      "title",
-      "executable",
       "version"
     };
 
@@ -711,7 +709,7 @@ int main (const int argc, const char* argv[]) {
 
       fs::current_path(oldCwd);
     } else {
-      fs::path pathInput = settings["input"].size() == 0
+      fs::path pathInput = settings["input"].size() > 0
         ? target / settings["input"]
         : target / "src";
       fs::copy(
