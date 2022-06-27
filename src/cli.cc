@@ -513,8 +513,47 @@ int main (const int argc, const char* argv[]) {
         )
       );
 
-      writeFile(jni / "Android.mk", trim(tmpl(gAndroidMakefile, settings)));
-      writeFile(jni / "Application.mk", trim(tmpl(gAndroidApplicationMakefile, settings)));
+      auto cflags = flagDebugMode
+        ? settings.count("debug_flags") ? settings["debug_flags"] : ""
+        : settings.count("flags") ? settings["flags"] : "";
+
+      std::stringstream pp;
+      pp
+        << "-DDEBUG=" << (flagDebugMode ? 1 : 0) << " "
+        << "-DANDROID=1" << " "
+        << "-DSETTINGS=\"" << encodeURIComponent(_settings) << "\" "
+        << "-DVERSION=" << SSC::version << " "
+        << "-DVERSION_HASH=" << SSC::version_hash << " ";
+
+      Map makefileContext;
+
+      makefileContext["cflags"] = cflags + " " + pp.str();
+      makefileContext["cflags"] += " " + settings["android_native_cflags"];
+
+      if (settings["android_native_abis"].size() > 0) {
+        makefileContext["android_native_abis"] = settings["android_native_abis"];
+      } else {
+        makefileContext["android_native_abis"] = "all";
+      }
+
+      makefileContext["android_native_sources"] = settings["android_native_sources"];
+
+      if (settings["android_native_makefile"].size() > 0) {
+        makefileContext["android_native_make_context"] =
+          trim(tmpl(tmpl(WStringToString(readFile(target / settings["android_native_makefile"])), settings), makefileContext));
+      } else {
+        makefileContext["android_native_make_context"] = "";
+      }
+
+      writeFile(
+        jni / "Application.mk",
+        trim(tmpl(tmpl(gAndroidApplicationMakefile, settings)), makefileContext)
+      );
+
+      writeFile(
+        jni / "Android.mk",
+        trim(tmpl(tmpl(gAndroidMakefile, makefileContext), settings))
+      );
 
       // Android Source
       writeFile(
@@ -525,6 +564,19 @@ int main (const int argc, const char* argv[]) {
           bundle_identifier
         )
       );
+
+      // custom source files
+      for (auto const &file : split(settings["android_sources"], ' ')) {
+        log(std::string("Android source: " + std::string(target / file)).c_str());
+        writeFile(
+          pkg / fs::path(file).filename(),
+          tmpl(std::regex_replace(
+            WStringToString(readFile(target / file )),
+            std::regex("__BUNDLE_IDENTIFIER__"),
+            bundle_identifier
+          ), settings)
+        );
+      }
     }
 
     if (flagBuildForIOS && !platform.mac) {

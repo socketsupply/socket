@@ -1061,7 +1061,7 @@ LOCAL_MODULE := ssc-core
 LOCAL_CFLAGS += \
   -Iuv          \
   -fPIC         \
-  -pthreads \
+  -pthreads     \
   -fsigned-char \
   -fexceptions  \
   -frtti        \
@@ -1069,17 +1069,22 @@ LOCAL_CFLAGS += \
   -g            \
   -O0
 
+LOCAL_CFLAGS += {{cflags}}
+
 LOCAL_LDLIBS := -landroid -llog
-LOCAL_SRC_FILES = android.cc
+LOCAL_SRC_FILES = android.cc {{android_native_sources}}
 LOCAL_STATIC_LIBRARIES := uv
 include $(BUILD_SHARED_LIBRARY)
+
+## Custom userspace Android NDK
+{{android_native_make_context}}
 )MAKE";
 
 //
 // Android cpp `Application.mk` file
 //
 constexpr auto gAndroidApplicationMakefile = R"MAKE(
-APP_ABI := all
+APP_ABI := {{android_native_abis}}
 APP_STL := c++_static
 )MAKE";
 

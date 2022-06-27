@@ -13,8 +13,8 @@ open class WebView(context: android.content.Context): android.webkit.WebView(con
  * @see https://developer.android.com/reference/kotlin/android/webkit/WebViewClient
  */
 open class WebViewClient(activity: WebViewActivity) : android.webkit.WebViewClient() {
-  private val activity = activity;
-  private val TAG = "WebViewClient";
+  protected val activity = activity;
+  protected val TAG = "WebViewClient";
 
   /**
    * Handles URL loading overrides for "file://" based URI schemes.
@@ -41,6 +41,23 @@ open class WebViewClient(activity: WebViewActivity) : android.webkit.WebViewClie
 
     return true;
   }
+
+  override fun onPageFinished (
+    view: android.webkit.WebView,
+    url: String
+  ) {
+    android.util.Log.e(TAG, "WebViewClient finished loading: $url");
+
+    val core = this.activity.core as NativeCore;
+
+    if (core.isReady) {
+      view.evaluateJavascript(core.getJavaScriptPreloadSource(), fun (result: String) {
+        android.util.Log.d(TAG, result);
+      })
+    } else {
+      android.util.Log.e(TAG, "NativeCore is not ready in WebViewClient");
+    }
+  }
 }
 
 /**
@@ -49,12 +66,13 @@ open class WebViewClient(activity: WebViewActivity) : android.webkit.WebViewClie
  * @TODO(jwerle): look into `androidx.appcompat.app.AppCompatActivity`
  */
 open class WebViewActivity : androidx.appcompat.app.AppCompatActivity() {
-  private lateinit var binding: WebViewActivityBinding;
+  protected lateinit var binding: WebViewActivityBinding;
 
-  private var client: WebViewClient? = null;
-  private var view: android.webkit.WebView? = null;
-  private var core: NativeCore? = null;
-  private val TAG = "WebViewActivity";
+  protected var client: WebViewClient? = null;
+  protected val TAG = "WebViewActivity";
+
+  public var view: android.webkit.WebView? = null;
+  public var core: NativeCore? = null;
 
   /**
    * Called when the `WebViewActivity` is starting
@@ -73,61 +91,92 @@ open class WebViewActivity : androidx.appcompat.app.AppCompatActivity() {
     // @TODO(jwerle): `webview_activity` needs to be defined `res/layout/webview_activity.xml`
     setContentView(binding.root);
 
-    settings.setJavaScriptEnabled(true);
-
-    webview.setWebViewClient(client);
-    webview.loadUrl("file:///android_asset/index.html");
-
     this.binding = binding;
     this.client = client;
     this.view = webview;
     this.core = core;
 
     // `NativeCore` class configuration
-    core.configure(NativeCoreConfiguration(
+    core.configure(GenericNativeCoreConfiguration(
       rootDirectory = getDataDir().getAbsolutePath().toString(),
       assetManager = getApplicationContext().getResources().getAssets()
     ));
 
-    core.check();
+    if (core.check()) {
+      if (core.isDebugEnabled) {
+        android.webkit.WebView.setWebContentsDebuggingEnabled(true);
+      }
+
+      settings.setJavaScriptEnabled(true);
+
+      webview.setWebViewClient(client);
+      webview.loadUrl("file:///android_asset/index.html");
+    }
+  }
+
+  fun verifyJavaScriptPreload (): Boolean {
+    return true;
+  }
+
+  fun check () {
   }
 }
 
 /**
- * @TODO
+ * An entry point for the main activity specified in
+ * `AndroidManifest.xml` and which can be overloaded in `ssc.config` for
+ * advanced usage.
  */
-final class MainWebViewActivity : WebViewActivity();
+public open class MainWebViewActivity : WebViewActivity();
+
+/**
+ * Interface for `NativeCore` configuration.kj
+ */
+public interface NativeCoreConfiguration {
+  val rootDirectory: String;
+  val assetManager: android.content.res.AssetManager;
+};
 
 /**
  * `NativeCore` class configuration used as input for `NativeCore::configure()`
  */
-private final data class NativeCoreConfiguration(
+public data class GenericNativeCoreConfiguration(
   val rootDirectory: String,
   val assetManager: android.content.res.AssetManager
-);
+) : NativeCoreConfiguration;
 
 /**
  * NativeCore bindings externally implemented in JNI/NDK
  */
-private final class NativeCore {
-  private val TAG = "NativeCore";
+public open class NativeCore {
+  protected val TAG = "NativeCore";
 
   /**
    * Internal pointer managed by `initialize() and `destroy()
    */
-  private var pointer: Long = 0;
+  protected var pointer: Long = 0;
 
   /**
    * Internal root directory for application passed directory
    * to JNI/SDK for `NativeCore`
    */
-  private var rootDirectory: String? = null
+  protected var rootDirectory: String? = null
 
   /**
    * Internal `AssetManager` instance passed directly to JNI/NDK
    * for the `NativeCore`
    */
-  private var assetManager: android.content.res.AssetManager? = null;
+  protected var assetManager: android.content.res.AssetManager? = null;
+
+  /**
+   * Set internally by the native binding if debug is enabled.
+   */
+  public var isDebugEnabled: Boolean = false;
+
+  /**
+   * Set when all checks have passed.
+   */
+  public var isReady: Boolean = false;
 
   /**
    * `NativeCore` singleton definitions
@@ -168,10 +217,25 @@ private final class NativeCore {
   external fun verifyRootDirectory (): Boolean;
 
   @Throws(java.lang.Exception::class)
+  external fun verifyPlatform (): Boolean;
+
+  @Throws(java.lang.Exception::class)
   external fun verifyAssetManager (): Boolean;
 
   @Throws(java.lang.Exception::class)
   external fun verifyNativeExceptions(): Boolean;
+
+  /**
+   * `NativeCore` internal utility bindings
+   */
+  @Throws(java.lang.Exception::class)
+  external fun configureEnvironment(): Boolean;
+
+  @Throws(java.lang.Exception::class)
+  external fun configureWebViewWindow(): Boolean;
+
+  @Throws(java.lang.Exception::class)
+  external fun getJavaScriptPreloadSource(): String;
 
   /**
    * `NativeCore` class constructor which is initialized
@@ -195,9 +259,20 @@ private final class NativeCore {
   /**
    * Configures `NativeCore` with Android dependencies.
    */
-  public fun configure (config: NativeCoreConfiguration) {
+  @Throws(java.lang.Exception::class)
+  public fun configure (config: NativeCoreConfiguration): Boolean {
     this.rootDirectory = config.rootDirectory;
     this.assetManager = config.assetManager;
+
+    if (!this.configureEnvironment()) {
+      return false;
+    }
+
+    if (!this.configureWebViewWindow()) {
+      return false;
+    }
+
+    return true;
   }
 
   /**
@@ -227,6 +302,9 @@ private final class NativeCore {
       android.util.Log.d(TAG, "pointer check OK");
     }
 
+    //if (!this.verifyRefs()) { return false; }
+    //if (!this.verifyJavaVM()) { return false; }
+
     try {
       this.verifyNativeExceptions();
       android.util.Log.e(TAG, "native exceptions check failed");
@@ -239,6 +317,8 @@ private final class NativeCore {
 
       android.util.Log.d(TAG, "native exceptions check OK");
     }
+
+    //if (!this.verifyEnvironemnt()) { return false; }
 
     try {
       if (!this.verifyRootDirectory()) {
@@ -258,6 +338,20 @@ private final class NativeCore {
       android.util.Log.d(TAG, "asset manager check OK");
     } catch (err: Exception) {
       android.util.Log.e(TAG, "asset manager check failed");
+    }
+
+    try {
+      if (!this.verifyPlatform()) {
+        android.util.Log.e(TAG, "platform check failed");
+        return false;
+      }
+
+      android.util.Log.d(TAG, "platform check OK");
+    } catch (err: Exception) {
+      android.util.Log.e(TAG, "platform check failed");
+      android.util.Log.e(TAG, err.toString());
+
+      return false;
     }
 
     if (!this.verifyLoop()) {
@@ -281,11 +375,7 @@ private final class NativeCore {
       return false;
     }
 
-    //if (!this.verifyRefs()) { return false; }
-    //if (!this.verifyJavaVM()) { return false; }
-    //if (!this.verifyEnvironemnt()) { return false; }
+    this.isReady = true;
     return true;
   }
-
-  // @TODO(jwerle): bindings below
 }

@@ -144,7 +144,11 @@ namespace SSC {
       bool mac = false;
       bool win = false;
       bool linux = true;
+      #ifdef __ANDROID__
+      const std::string os = "android";
+      #else
       const std::string os = "linux";
+      #endif
 
     #endif
   } platform;

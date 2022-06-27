@@ -1,6 +1,30 @@
 #ifndef SSC_ANDROID_H
 #define SSC_ANDROID_H
 
+#ifndef __ANDROID__
+#define __ANDROID__
+#endif
+
+#ifndef ANDROID
+#define ANDROID 1
+#endif
+
+#ifndef DEBUG
+#define DEBUG 0
+#endif
+
+#ifndef SETTINGS
+#define SETTINGS ""
+#endif
+
+#ifndef VERSION
+#define VERSION ""
+#endif
+
+#ifndef VERSION_HASH
+#define VERSION_HASH ""
+#endif
+
 /**
  * Java Native Interface
  * @see https://docs.oracle.com/javase/7/docs/technotes/guides/jni/spec/jniTOC.html
@@ -11,29 +35,18 @@
 #include <stdint.h>
 
 #include "core.hh"
+#include "linux/ipv6.h"
 
-#ifdef __ANDROID__
 #include <android/log.h>
 #include <android/asset_manager.h>
 #include <android/asset_manager_jni.h>
 
 #define debug(format, ...)                                                     \
-    {                                                                          \
-      __android_log_print(                                                     \
-        ANDROID_LOG_DEBUG,                                                     \
-        __FUNCTION__,                                                          \
-        format,                                                                \
-        ##__VA_ARGS__                                                          \
-      );                                                                       \
-    }
-#else
-// debug
-#define debug(format, ...)
-
-// AssetManager
-typedef int AAssetManager;
-#define AAssetManager_fromJava(...) (AAssetManager *) 0
-#endif
+  {                                                                            \
+    __android_log_print(                                                       \
+      ANDROID_LOG_DEBUG, __FUNCTION__, format, ##__VA_ARGS__                   \
+    );                                                                         \
+  }
 
 /**
  * @TODO
@@ -54,11 +67,16 @@ typedef int AAssetManager;
   JNIEXPORT JNICALL Java___BUNDLE_IDENTIFIER___##namespace##_##name
 
 /**
+ * Gets the `NativeCore` binding class.
+ */
+#define GetNativeCoreBindingClass(env) env->GetObjectClass(self)
+
+/**
  * Gets `NativeCore` instance pointer from environment.
  */
 #define GetNativeCoreFromEnvironment(env)                                      \
   ({                                                                           \
-    auto Class = env->GetObjectClass(self);                                    \
+    auto Class = GetNativeCoreBindingClass(env);                               \
     auto pointerField = env->GetFieldID(Class, "pointer", "J");                \
     auto core = (NativeCore *) env->GetLongField(self, pointerField);          \
     (core);                                                                    \
@@ -87,36 +105,41 @@ typedef int AAssetManager;
 /**
  * Generic `Exception` throw helper
  */
-#define Throw(...) env->ThrowNew(__VA_ARGS__)
+#define Throw(env, E) env->ThrowNew(GetExceptionClass(env), E)
 
 /**
  * `NativeCoreNotInitialized` Exception
  */
-#define NativeCoreNotInitialized(E) E, "NativeCore is not initialized"
+#define NativeCoreNotInitializedError "NativeCore is not initialized"
 
 /**
  * `UVLoopNotInitialized` Exception
  */
-#define UVLoopNotInitialized(E) E, "UVLoop is not initialized"
+#define UVLoopNotInitializedError "UVLoop is not initialized"
 
 /**
  * `ExceptionCheck` Exception
  */
-#define ExceptionCheck(E) E, "ExceptionCheck"
+#define ExceptionCheckError "ExceptionCheck"
 
 /**
  * `AssetManagerIsNotReachable` Exception
  */
-#define AssetManagerIsNotReachable(E) E, "AssetManager is not reachable through binding"
+#define AssetManagerIsNotReachableError "AssetManager is not reachable through binding"
 
 /**
  * `RootDirectoryIsNotReachable` Exception
  */
-#define RootDirectoryIsNotReachable(E) E, "Root directory in file system is not reachable through binding"
+#define RootDirectoryIsNotReachableError "Root directory in file system is not reachable through binding"
 
 /**
- * `UVFailure` Exception
+ * `UVError` Exception
  */
-#define UVFailure(E, code) E, uv_strerror(code)
+#define UVError(code) uv_strerror(code)
+
+/**
+ * `JavaScriptPreloadSourceNotInitialized` Exception
+ */
+#define JavaScriptPreloadSourceNotInitializedError "JavaScript preload source is not initialized"
 
 #endif
