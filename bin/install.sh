@@ -209,7 +209,6 @@ if [ "$1" == "ios" ]; then
 
   pids=""
   _compile_libuv arm64 iPhoneOS & pids="$pids $!"
-  _compile_libuv i386 iPhoneSimulator & pids="$pids $!"
   _compile_libuv x86_64 iPhoneSimulator & pids="$pids $!"
 
   for pid in $pids; do wait $pid; done
@@ -217,7 +216,6 @@ if [ "$1" == "ios" ]; then
   quiet $LIPO -create \
     $BUILD_DIR/arm64-iPhoneOS/build/lib/libuv.a \
     $BUILD_DIR/x86_64-iPhoneSimulator/build/lib/libuv.a \
-    $BUILD_DIR/i386-iPhoneSimulator/build/lib/libuv.a \
     -output $LIB_DIR/libuv-ios.a
 
   die $? "not ok - unable to combine build artifacts"
