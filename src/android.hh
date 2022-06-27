@@ -358,7 +358,7 @@ class NativeCore : SSC::Core {
 
     windowOptions.executable = this->config["executable"];
     windowOptions.version = this->config["version"];
-    windowOptions.preload = gPreload;
+    windowOptions.preload = gPreloadMobile;
     windowOptions.title = this->config["title"];
     windowOptions.debug = DEBUG ? true : false;
     windowOptions.env = stream.str();

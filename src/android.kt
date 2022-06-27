@@ -51,7 +51,8 @@ open class WebViewClient(activity: WebViewActivity) : android.webkit.WebViewClie
     val core = this.activity.core as NativeCore;
 
     if (core.isReady) {
-      view.evaluateJavascript(core.getJavaScriptPreloadSource(), fun (result: String) {
+      val source = core.getJavaScriptPreloadSource()
+      view.evaluateJavascript(source, fun (result: String) {
         android.util.Log.d(TAG, result);
       })
     } else {
@@ -261,6 +262,10 @@ public open class NativeCore {
    */
   @Throws(java.lang.Exception::class)
   public fun configure (config: NativeCoreConfiguration): Boolean {
+    if (this.isReady) {
+      return true;
+    }
+
     this.rootDirectory = config.rootDirectory;
     this.assetManager = config.assetManager;
 
