@@ -567,7 +567,7 @@ int main (const int argc, const char* argv[]) {
         settings["executable"];
 
       settings["linux_executable_path"] = linuxExecPath.string();
-      settings["linux_icon"] = (
+      settings["linux_icon_path"] = (
         fs::path("/usr") /
         "share" /
         "icons" /
