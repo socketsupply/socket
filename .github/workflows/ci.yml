@@ -5,10 +5,8 @@ on:
     branches-ignore:
       - 'dev'
 
-
-
 jobs:
-  build_on_linux:
+  build_for_linux:
     runs-on: ubuntu-22.04
     timeout-minutes: 5
 
@@ -37,7 +35,7 @@ jobs:
       run: |
         ./bin/install.sh
       env:
-        CXX: g++-11
+        CXX: g++-12
 
     - name: Check if Socket SDK has a correct version
       run: |
@@ -58,16 +56,68 @@ jobs:
         ssc compile ./socket-sdk-examples/desktop-node-tonic-cjs/
       env:
         CI: true
-        CXX: g++-11
+        CXX: g++-12
 
     - name: Run example desktop tests
       run: |
-        xvfb-run --server-args="-screen 0 1920x1080x24" ssc compile --test=1 -r  ./socket-sdk-examples/desktop-node-tonic-cjs/
+        xvfb-run --server-args="-screen 0 1920x1080x24" ssc run --test=1 ./socket-sdk-examples/desktop-node-tonic-cjs/
       env:
         CI: true
-        CXX: g++-11
+        CXX: g++-12
 
-  build_on_win:
+  build_for_android:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: webfactory/ssh-agent
+      uses: webfactory/ssh-agent@v0.5.4
+      with:
+        ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+    - name: Use Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: 16.x
+        registry-url: https://npm.pkg.github.com/
+        scope: '@socketsupply'
+
+    - name: Install Socket SDK deps
+      run: |
+        sudo apt install software-properties-common
+        sudo add-apt-repository ppa:ubuntu-toolchain-r/test
+        sudo apt install gcc-12 g++-12 libwebkit2gtk-4.0-dev libcurl4-openssl-dev
+
+    - name: install ssc
+      run: |
+        ./bin/install.sh
+      env:
+        CXX: g++-12
+
+    - name: Check if Socket SDK has a correct version
+      run: |
+        ./bin/ci_version_check.sh
+
+    - name: install an example app
+      run: |
+        git config --global user.email "devops@optool.co"
+        git config --global user.name "Optool Github Actions"
+        git clone --depth 1 git@github.com:socketsupply/socket-sdk-examples.git
+        cd socket-sdk-examples/desktop-node-tonic-cjs/ && npm install
+      env:
+        CI: true
+        NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
+
+    - name: compile example android app
+      run: |
+        ssc compile --platform=android ./socket-sdk-examples/desktop-node-tonic-cjs/
+      env:
+        CI: true
+        CXX: g++-12
+
+  build_for_win:
     runs-on: windows-2022
     timeout-minutes: 10
 
@@ -97,7 +147,7 @@ jobs:
 
     - name: install ssc
       run: |
-        ./bin/install.ps1
+        ./bin/install.ps1 dev
 
         echo "::add-path::$env:LOCALAPPDATA\Programs\socketsupply\src"
         echo "$env:LOCALAPPDATA\Programs\socketsupply\src" >> $env:GITHUB_PATH
@@ -107,6 +157,10 @@ jobs:
     - name: Check if ssc has a correct version
       run: |
         ./bin/ci_version_check.ps1
+
+    - name: Check ssc
+      run: |
+        ssc
 
     - name: install an example app
       run: |
@@ -130,11 +184,11 @@ jobs:
 
     - name: Run example desktop tests
       run: |
-        ssc compile --test=1 -r ./socket-sdk-examples/desktop-node-tonic-cjs/
+        ssc run --test=1 ./socket-sdk-examples/desktop-node-tonic-cjs/ 
       env:
         CI: true
 
-  build_on_mac:
+  build_for_mac:
     runs-on: macOS-12
     timeout-minutes: 5
 
@@ -182,11 +236,11 @@ jobs:
 
     - name: Run example desktop tests
       run: |
-        ssc compile --test=1 -r ./socket-sdk-examples/desktop-node-tonic-cjs/
+        ssc run --test=1 ./socket-sdk-examples/desktop-node-tonic-cjs/
       env:
         CI: true
 
-  build_on_ios:
+  build_for_ios:
     runs-on: macOS-12
     timeout-minutes: 10
 
@@ -228,6 +282,6 @@ jobs:
 
     - name: compile example ios
       run: |
-        ssc compile --target=iossimulator ./socket-sdk-examples/ios-tonic/
+        ssc compile --platform=iossimulator ./socket-sdk-examples/ios-tonic/
       env:
         CI: true

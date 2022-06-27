@@ -102,16 +102,6 @@ if ($args[0] -eq "update") {
   Exit 0
 }
 
-if ($args.Count -eq 0) {
-  $WORKING_PATH = $TEMP_PATH
-}
-
-if ($args.Count -ne 0) {
-  Build
-  Install-Files
-  Exit 0
-}
-
 Write-Output "- Checking for compiler."
 (Get-Command clang++) > $null
 
@@ -128,18 +118,6 @@ if ($? -ne 1) {
   Write-Output "- Please install git."
   Exit 1
 }
-
-#
-# Get clone to a temp dir and navigate into it
-#
-Write-Output "- Fetching files to '$WORKING_PATH'..."
-Remove-Item -Recurse -Force $WORKING_PATH
-$BRANCH = (git branch --show-current)
-if ($? -ne 1) {
-  $BRANCH = "master" 
-}
-Write-Output "- Fetching branch '$BRANCH'..."
-(git clone --branch=$BRANCH --depth=1 git@github.com:socketsupply/socket-sdk.git "$($WORKING_PATH)") > $null
 
 cd $WORKING_PATH
 

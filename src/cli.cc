@@ -2,6 +2,7 @@
 #include "cli.hh"
 #include "process.hh"
 #include <filesystem>
+#include <cstring>
 
 #ifdef _WIN32
 #include <shlwapi.h>
@@ -20,10 +21,9 @@ using namespace SSC;
 using namespace std::chrono;
 
 auto start = std::chrono::system_clock::now();
-bool porcelain = false;
 
 void log (const std::string s) {
-  if (porcelain || s.size() == 0) return;
+  if (s.size() == 0) return;
 
   #ifdef _WIN32 // unicode console support
     SetConsoleOutputCP(CP_UTF8);
@@ -36,29 +36,255 @@ void log (const std::string s) {
   start = std::chrono::system_clock::now();
 }
 
-void init (Map attrs) {
-  attrs["node_platform"] = platform.arch == "arm64" ? "arm64" : "x64";
-  auto cwd = fs::current_path();
-  fs::create_directories(cwd / "src");
-  SSC::writeFile(cwd / "src" / "index.html", "<html>Hello, World</html>");
-  SSC::writeFile(cwd / "ssc.config", tmpl(gDefaultConfig, attrs));
+int runApp (const fs::path& path, const std::string& args) {
+  auto cmd = path.string();
+  if (!fs::exists(path)) {
+    log("executable not found: " + cmd);
+    return 1;
+  }
+  auto runner = trim(std::string(STR_VALUE(CMD_RUNNER)));
+  auto prefix = runner.size() > 0 ? runner + std::string(" ") : runner;
+  return std::system((prefix + cmd + " " + args).c_str());
 }
+
+void runIOSSimulator (Map& settings) {
+  std::string deviceType;
+  std::stringstream listDeviceTypesCommand;
+  listDeviceTypesCommand
+    << "xcrun"
+    << " simctl"
+    << " list devicetypes";
+
+  auto rListDeviceTypes = exec(listDeviceTypesCommand.str().c_str());
+  if (rListDeviceTypes.exitCode != 0) {
+    log("failed to list device types using \"" + listDeviceTypesCommand.str() + "\"");
+    if (rListDeviceTypes.output.size() > 0) {
+      log(rListDeviceTypes.output);
+    }
+    exit(rListDeviceTypes.exitCode);
+  }
+
+  std::regex reDeviceType(settings["ios_simulator_device"] + "\\s\\((com.apple.CoreSimulator.SimDeviceType.(?:.+))\\)");
+  std::smatch match;
+
+  if (std::regex_search(rListDeviceTypes.output, match, reDeviceType)) {
+    deviceType = match.str(1);
+    log("simulator device type: " + deviceType);
+  } else {
+    auto rListDevices = exec("xcrun simctl list devicetypes | grep iPhone");
+    log(
+      "failed to find device type: " + settings["ios_simulator_device"] + ". " +
+      "Please provide correct device name for the \"ios_simulator_device\". " +
+      "The list of available devices:\n" + rListDevices.output
+    );
+    if (rListDevices.output.size() > 0) {
+      log(rListDevices.output);
+    }
+    exit(rListDevices.exitCode);
+  }
+
+  std::stringstream listDevicesCommand;
+  listDevicesCommand
+    << "xcrun"
+    << " simctl"
+    << " list devices available";
+  auto rListDevices = exec(listDevicesCommand.str().c_str());
+  if (rListDevices.exitCode != 0) {
+    log("failed to list available devices using \"" + listDevicesCommand.str() + "\"");
+    if (rListDevices.output.size() > 0) {
+      log(rListDevices.output);
+    }
+    exit(rListDevices.exitCode);
+  }
+
+  auto iosSimulatorDeviceSuffix = settings["ios_simulator_device"];
+  std::replace(iosSimulatorDeviceSuffix.begin(), iosSimulatorDeviceSuffix.end(), ' ', '_');
+  std::regex reSocketSDKDevice("SocketSDKSimulator_" + iosSimulatorDeviceSuffix + "\\s\\((.+)\\)\\s\\((.+)\\)");
+
+  std::string uuid;
+  bool booted = false;
+
+  if (std::regex_search(rListDevices.output, match, reSocketSDKDevice)) {
+    uuid = match.str(1);
+    booted = match.str(2).find("Booted") != std::string::npos;
+
+    log("found SocketSDK simulator VM for " + settings["ios_simulator_device"] + " with uuid: " + uuid);
+    if (booted) {
+      log("SocketSDK simulator VM is booted");
+    } else {
+      log("SocketSDK simulator VM is not booted");
+    }
+  } else {
+    log("creating a new iOS simulator VM for " + settings["ios_simulator_device"]);
+
+    std::stringstream listRuntimesCommand;
+    listRuntimesCommand
+      << "xcrun"
+      << " simctl"
+      << " list runtimes available";
+    auto rListRuntimes = exec(listRuntimesCommand.str().c_str());
+    if (rListRuntimes.exitCode != 0) {
+      log("failed to list available runtimes using \"" + listRuntimesCommand.str() + "\"");
+      if (rListRuntimes.output.size() > 0) {
+        log(rListRuntimes.output);
+      }
+      exit(rListRuntimes.exitCode);
+    }
+    auto const runtimes = split(rListRuntimes.output, '\n');
+    std::string runtime;
+    // TODO: improve iOS version detection
+    for (auto it = runtimes.rbegin(); it != runtimes.rend(); ++it) {
+      if (it->find("iOS") != std::string::npos) {
+        runtime = trim(*it);
+        log("found runtime: " + runtime);
+        break;
+      }
+    }
+
+    std::regex reRuntime(R"(com.apple.CoreSimulator.SimRuntime.iOS(?:.*))");
+    std::smatch matchRuntime;
+    std::string runtimeId;
+
+    if (std::regex_search(runtime, matchRuntime, reRuntime)) {
+      runtimeId = matchRuntime.str(0);
+    }
+
+    std::stringstream createSimulatorCommand;
+    createSimulatorCommand
+      << "xcrun simctl"
+      << " create SocketSDKSimulator_" + iosSimulatorDeviceSuffix
+      << " " << deviceType
+      << " " << runtimeId;
+
+    auto rCreateSimulator = exec(createSimulatorCommand.str().c_str());
+    if (rCreateSimulator.exitCode != 0) {
+      log("unable to create simulator VM");
+      if (rCreateSimulator.output.size() > 0) {
+        log(rCreateSimulator.output);
+      }
+      exit(rCreateSimulator.exitCode);
+    }
+    uuid = rCreateSimulator.output;
+  }
+
+  if (!booted) {
+    log("booting VM " + uuid);
+    std::stringstream bootSimulatorCommand;
+    bootSimulatorCommand
+      << "xcrun"
+      << " simctl boot " << uuid;
+    auto rBootSimulator = exec(bootSimulatorCommand.str().c_str());
+    if (rBootSimulator.exitCode != 0) {
+      log("unable to boot simulator VM with command: " + bootSimulatorCommand.str());
+      if (rBootSimulator.output.size() > 0) {
+        log(rBootSimulator.output);
+      }
+      exit(rBootSimulator.exitCode);
+    }
+  }
+
+  log("run simulator");
+
+  auto pathToXCode = fs::path("/Applications") / "Xcode.app" / "Contents";
+  auto pathToSimulator = pathToXCode / "Developer" / "Applications" / "Simulator.app";
+
+  std::stringstream simulatorCommand;
+  simulatorCommand
+    << "open "
+    << pathToSimulator.string()
+    << " --args -CurrentDeviceUDID " << uuid;
+
+  auto rOpenSimulator = exec(simulatorCommand.str().c_str());
+  if (rOpenSimulator.exitCode != 0) {
+    log("unable to run simulator");
+    if (rOpenSimulator.output.size() > 0) {
+      log(rOpenSimulator.output);
+    }
+    exit(rOpenSimulator.exitCode);
+  }
+
+  std::stringstream installAppCommand;
+  std::string app = (settings["name"] + ".app");
+  auto pathToApp = fs::path(settings["output"]) / app;
+
+  installAppCommand
+    << "xcrun"
+    << " simctl install booted "
+    << pathToApp.string();
+  // log(installAppCommand.str());
+  log("installed booted VM into simulator");
+
+  auto rInstallApp = exec(installAppCommand.str().c_str());
+  if (rInstallApp.exitCode != 0) {
+    log("unable to install the app into simulator VM with command: " + installAppCommand.str());
+    if (rInstallApp.output.size() > 0) {
+      log(rInstallApp.output);
+    }
+    exit(rInstallApp.exitCode);
+  }
+
+  std::stringstream launchAppCommand;
+  launchAppCommand
+    << "xcrun"
+    << " simctl launch --console-pty booted"
+    << " " + settings["bundle_identifier"];
+
+  // log(launchAppCommand.str());
+  log("launching the app in simulator");
+
+  auto rlaunchApp = exec(launchAppCommand.str().c_str());
+  if (rlaunchApp.exitCode != 0) {
+    log("unable to launch the app: " + launchAppCommand.str());
+    if (rlaunchApp.output.size() > 0) {
+      log(rlaunchApp.output);
+    }
+    exit(rlaunchApp.exitCode);
+  }
+};
 
 static std::string getCxxFlags() {
   auto flags = getEnv("CXX_FLAGS");
   return flags.size() > 0 ? " " + flags : "";
 }
 
-void printHelp (Map& attrs) {
-  std::cout <<tmpl(gHelpText, attrs) << std::endl;
+void printHelp (const std::string& command, Map& attrs) {
+  if (command == "ssc") {
+    std::cout << tmpl(gHelpText, attrs) << std::endl;
+  } else if (command == "compile") {
+    std::cout << tmpl(gHelpTextCompile, attrs) << std::endl;
+  } else if (command == "list-devices") {
+    std::cout << tmpl(gHelpTextListDevices, attrs) << std::endl;
+  } else if (command == "init") {
+    std::cout << tmpl(gHelpTextInit, attrs) << std::endl;
+  } else if (command == "install-app") {
+    std::cout << tmpl(gHelpTextInstallApp, attrs) << std::endl;
+  } else if (command == "print-build-dir") {
+    std::cout << tmpl(gHelpTextPrintBuildDir, attrs) << std::endl;
+  } else if (command == "run") {
+    std::cout << tmpl(gHelpTextRun, attrs) << std::endl;
+  }
+}
+
+inline std::string getCfgUtilPath() {
+  const bool hasCfgUtilInPath = exec("command -v cfgutil").exitCode == 0;
+  if (hasCfgUtilInPath) {
+    return "cfgutil";
+  }
+  const bool hasCfgUtil = fs::exists("/Applications/Apple Configurator.app/Contents/MacOS/cfgutil");
+  if (hasCfgUtil) {
+    log("We highly recommend to install Automation Tools from the Apple Configurator main menu.");
+    return "/Applications/Apple\\ Configurator.app/Contents/MacOS/cfgutil";
+  }
+  log("Please install Apple Configurator from https://apps.apple.com/us/app/apple-configurator/id1037126344");
+  exit(1);
 }
 
 int main (const int argc, const char* argv[]) {
   Map attrs;
-  attrs["ssc_version"] = SSC::version;
+  attrs["ssc_version"] = SSC::full_version;
 
   if (argc < 2) {
-    printHelp(attrs);
+    printHelp("ssc", attrs);
     exit(0);
   }
 
@@ -66,89 +292,296 @@ int main (const int argc, const char* argv[]) {
     return s.compare(p) == 0;
   };
 
+  auto optionValue = [](const std::string& s, const auto& p) -> std::string {
+    auto string = p + std::string("=");
+    if (std::string(s).find(string) == 0) {
+      auto value = s.substr(string.size());
+      if (value.size() == 0) {
+        log("missing value for option " + std::string(p));
+        exit(1);
+      }
+      return value;
+    }
+    return "";
+  };
+
   auto const subcommand = argv[1];
 
-  if (is(subcommand, "-v")) {
+  if (is(subcommand, "-v") || is(subcommand, "--version")) {  
     std::cout << SSC::full_version << std::endl;
     exit(0);
   }
 
-  if (is(subcommand, "-h")) {
-    printHelp(attrs);
+  if (is(subcommand, "-h") || is(subcommand, "--help")) {
+    printHelp("ssc", attrs);
     exit(0);
   }
 
-  if (is(subcommand, "init")) {
-    init(attrs);
+  if (subcommand[0] == '-') {
+    log("unknown option: " + std::string(subcommand));
+    printHelp("ssc", attrs);
     exit(0);
   }
 
-  if (is(subcommand, "mobiledeviceid")) {
-    if (platform.os != "mac") {
-      log("mobiledeviceid is only supported on macOS.");
-      exit(0);
-    } else {
-      std::string command = "system_profiler SPUSBDataType -json";
+  auto const lastOption = argv[argc-1];
+  fs::path targetPath;
+  int numberOfOptions = argc - 3;
+
+  // if no path provided, use current directory
+  if (argc == 2 || lastOption[0] == '-') {
+    numberOfOptions = argc - 2;
+    targetPath = fs::absolute(".");
+  } else if (lastOption[0] == '.') {
+    targetPath = fs::absolute(lastOption);
+  } else {
+    targetPath = fs::path(lastOption);
+  }
+
+  bool flagDebugMode = true;
+  std::string _settings;
+  Map settings = {{}};
+
+  struct Paths {
+    fs::path pathBin;
+    fs::path pathPackage;
+    fs::path pathResourcesRelativeToUserBuild;
+  };
+
+  auto getPaths = [&](std::string platform) -> Paths {
+    Paths paths;
+    if (platform == "mac") {
+      fs::path pathBase = "Contents";
+      fs::path packageName = fs::path(settings["name"] + ".app");
+      paths.pathPackage = { targetPath / settings["output"] / packageName };
+      paths.pathBin = { paths.pathPackage / pathBase / "MacOS" };
+      paths.pathResourcesRelativeToUserBuild = {
+        settings["output"] /
+        packageName /
+        pathBase /
+        "Resources"
+      };
+      return paths;
+    } else if (platform == "linux") {
+      // this follows the .deb file naming convention
+      fs::path packageName = (
+        settings["executable"] + "_" +
+        settings["version"] + "-" +
+        settings["revision"] + "_" +
+        "amd64"
+      );
+      paths.pathPackage = { targetPath / settings["output"] / packageName };
+      paths.pathBin = {
+        paths.pathPackage /
+        "opt" /
+        settings["name"]
+      };;
+      paths.pathResourcesRelativeToUserBuild = paths.pathBin;
+      return paths;
+    } else if (platform == "win32") {
+      paths.pathPackage = { 
+        targetPath /
+        settings["output"] /
+        fs::path(settings["executable"] + "-" +settings["version"])
+      };
+
+      paths.pathBin = paths.pathPackage;
+      paths.pathResourcesRelativeToUserBuild = paths.pathPackage;
+      return paths;
+    } else if (platform == "ios" || platform == "iossimulator") {
+      fs::path pathBase = "Contents";
+      fs::path packageName = settings["name"] + ".app";
+      paths.pathPackage = { targetPath / settings["output"] / packageName };
+      paths.pathBin = { paths.pathPackage / pathBase / "MacOS" };
+      paths.pathResourcesRelativeToUserBuild = fs::path(settings["output"]) / "ui";
+      return paths;
+    } else if (platform == "android") {
+      auto relativeOutput = fs::path(settings["output"]) / "android";
+      auto output = fs::absolute(targetPath) / relativeOutput;
+      paths.pathResourcesRelativeToUserBuild = {
+        relativeOutput / "app" / "src" / "main" / "assets"
+      };
+      return paths;
+    }
+    log("unknown platform: " + platform);
+    exit(1);
+  };
+
+  auto createSubcommand = [&](const std::string& subcommand, const std::vector<std::string>& options, const bool& needsConfig, std::function<void(std::span<const char *>)> subcommandHandler) -> void {
+    if (argv[1] == subcommand) {
+      if (argc > 2 && (is(argv[2], "-h") || is(argv[2], "--help"))) {
+        printHelp(subcommand, attrs);
+        exit(0);
+      }
+      auto commandlineOptions = std::span(argv, argc).subspan(2, numberOfOptions);
+      for (auto const& arg : commandlineOptions) {
+        auto isAcceptableOption = false;
+        for (auto const& option : options) {
+          if (is(arg, option) || optionValue(arg, option).size() > 0) {
+            isAcceptableOption = true;
+            break;
+          }
+        }
+        if (!isAcceptableOption) {
+          log("unrecognized option: " + std::string(arg));
+          printHelp(subcommand, attrs);
+          exit(1);
+        }
+      }
+
+      if (needsConfig) {
+        auto configPath = targetPath / "ssc.config";
+        if (!fs::exists(configPath) && !is(subcommand, "init")) {
+          log("ssc.config not found in " + targetPath.string());
+          exit(1);
+        }
+        _settings = WStringToString(readFile(configPath));
+        settings = parseConfig(_settings);
+
+        settings["output"] = settings["output"].size() > 0 ? settings["output"] : "dist";
+
+        for (auto const arg : std::span(argv, argc).subspan(2, numberOfOptions)) {
+          if (is(arg, "--prod")) {
+            flagDebugMode = false;
+            break;
+          }
+        }
+
+        std::string suffix = "";
+
+        if (flagDebugMode) {
+          suffix += "-dev";
+        }
+
+        std::replace(settings["name"].begin(), settings["name"].end(), ' ', '_');
+        settings["name"] += suffix;
+        settings["title"] += suffix;
+        settings["executable"] += suffix;
+      }
+      subcommandHandler(commandlineOptions);
+    }
+  };
+
+  createSubcommand("init", {}, false, [&](const std::span<const char *>& options) -> void {
+    attrs["node_platform"] = platform.arch == "arm64" ? "arm64" : "x64";
+    fs::create_directories(targetPath / "src");
+    SSC::writeFile(targetPath / "src" / "index.html", "<html>Hello, World</html>");
+    SSC::writeFile(targetPath / "ssc.config", tmpl(gDefaultConfig, attrs));
+    exit(0);
+  });
+
+  createSubcommand("list-devices", { "--platform", "--ecid", "--udid", "--only" }, false, [&](const std::span<const char *>& options) -> void {
+    std::string targetPlatform = "";
+    bool isUdid = false;
+    bool isEcid = false;
+    bool isOnly = false;
+    for (auto const& option : options) {
+      auto platform = optionValue(options[0], "--platform");
+      if (platform.size() > 0) {
+        targetPlatform = platform;
+      }
+      if (is(option, "--udid")) {
+        isUdid = true;
+      }
+      if (is(option, "--ecid")) {
+        isEcid = true;
+      }
+      if (is(option, "--only")) {
+        isOnly = true;
+      }
+    }
+    if (targetPlatform == "ios" && platform.os == "mac") {
+      if (isUdid && isEcid) {
+        log("--udid and --ecid are mutually exclusive");
+        printHelp("list-devices", attrs);
+        exit(1);
+      }
+      if (isOnly && !isUdid && !isEcid) {
+        log("--only requires --udid or --ecid");
+        printHelp("list-devices", attrs);
+        exit(1);
+      }
+      std::string cfgUtilPath = getCfgUtilPath();
+      std::string command = cfgUtilPath + " list-devices";
       auto r = exec(command);
 
       if (r.exitCode == 0) {
-        std::regex re(R"REGEX("(?:iPhone(?:(?:.|\n)*?)"serial_num"\s*:\s*"([^"]*))")REGEX");
-        std::smatch match;
+        std::regex re(R"(ECID:\s(\S*)\s*UDID:\s(\S*).*Name:\s(.*))");
+        std::smatch matches;
         std::string uuid;
 
-        if (!std::regex_search(r.output, match, re)) {
-          log("failed to extract device uuid using \"" + command + "\"");
-          log("Is the device plugged in?");
-          exit(1);
+        while (std::regex_search(r.output, matches, re)) {
+          auto ecid = matches[1];
+          auto udid = matches[2];
+          auto name = matches[3];
+          if (isUdid) {
+            if (isOnly) {
+              std::cout << udid << std::endl;
+              break;
+            } else {
+              std::cout << name << ": " << udid << std::endl;
+            }
+          } else if (isEcid) {
+            if (isOnly) {
+              std::cout << ecid << std::endl;
+              break;
+            } else {
+              std::cout << name << ": " << ecid << std::endl;
+            }
+          } else {
+            std::cout << name << std::endl;
+            std::cout << "ECID: " << ecid << " UDID: " << udid << std::endl;
+            if (isOnly) break;
+          }
+          r.output = matches.suffix();
         }
-
-        std::cout << std::string(match[1]).insert(8, 1, '-') << std::endl;
         exit(0);
       } else {
-        log("Could not get device id. Is the device plugged in?");
+        log("Could not list devices using " + command);
         exit(1);
       }
+    } else {
+      log("list-devices is only supported for iOS devices on macOS.");
+      exit(0);
     }
-  }
+  });
 
-  if (is(subcommand, "install-app")) {
+  createSubcommand("install-app", { "--platform", "--device" }, true, [&](const std::span<const char *>& options) -> void {
     if (platform.os != "mac") {
       log("install-app is only supported on macOS.");
       exit(0);
     } else {
-      const bool hasCfgUtilInPath = exec("type cfgutil").exitCode == 0;
-      const bool hasCfgUtil = fs::exists("/Applications/Apple Configurator.app/Contents/MacOS/cfgutil");
-      if (!hasCfgUtilInPath || !hasCfgUtil) {
-        log("Please install Apple Configurator from https://apps.apple.com/us/app/apple-configurator/id1037126344");
-        exit(1);
-      } else if (!hasCfgUtilInPath) {
-        log("We highly recommend to install Automation Tools from the Apple Configurator main menu.");
-      }
-      if (argc < 4) {
-        std::cout << "usage: ssc install-app --target=<target> <app-path>" << std::endl;
-        exit(1);
-      }
-      if (std::string(argv[2]).find("--target=") == 0) {
-        auto target = std::string(argv[2]).substr(9);
-        // TODO: add Android support
-        if (target != "ios") {
-          std::cout << "Unsupported target: " << target << std::endl;
-          exit(1);
+      const std::string cfgUtilPath = getCfgUtilPath();
+      std::string commandOptions = "";
+      std::string platform = "";
+      // we need to find platform first
+      for (auto const option : options) {
+        auto targetPlatform = optionValue(option, "--platform");
+        if (targetPlatform.size() > 0) {
+          // TODO: add Android support
+          if (targetPlatform != "ios") {
+            std::cout << "Unsupported platform: " << targetPlatform << std::endl;
+            exit(1); 
+          }
+          platform = targetPlatform;
         }
-      } else {
-        std::cout << "usage: ssc install-app --target=<target> <app-path>" << std::endl;
+      }
+      if (platform.size() == 0) {
+        log("--platform option is required.");
+        printHelp("install-app", attrs);
         exit(1);
       }
-      auto path = argv[3];
-      auto target = fs::path(path);
-      if (path[0] == '.') {
-        target = fs::absolute(target);
+      // then we need to find device
+      for (auto const option : options) {
+        auto device = optionValue(option, "--device");
+        if (device.size() > 0) {
+          if (platform == "ios") {
+            commandOptions += " --ecid " + device + " ";
+          }
+        }
       }
-      auto configPath = target / "ssc.config";
-      auto _settings = WStringToString(readFile(configPath));
-      auto settings = parseConfig(_settings);
+
       auto ipaPath = (
-        target /
+        targetPath /
         settings["output"] /
         "build" /
         std::string(settings["name"] + ".ipa") /
@@ -158,11 +591,9 @@ int main (const int argc, const char* argv[]) {
         log("Could not find " + ipaPath.string());
         exit(1);
       }
-      // TODO: this command will install the app to all connected device which were added to the provisioning profile
-      //       we should add a --ecid option support to specify the device
-      auto command = hasCfgUtilInPath
-        ? "cfgutil install-app " + ipaPath.string()
-        : "/Applications/Apple\\ Configurator.app/Contents/MacOS/cfgutil install-app " + ipaPath.string();
+      // this command will install the app to first connected device which were
+      // added to the provisioning profile if no --device is provided.
+      auto command = cfgUtilPath + " " + commandOptions + "install-app " + ipaPath.string();
       auto r = exec(command);
       if (r.exitCode != 0) {
         log("failed to install the app. Is the device plugged in?");
@@ -171,35 +602,46 @@ int main (const int argc, const char* argv[]) {
       log("successfully installed the app on your device(s).");
       exit(0);
     }
-  }
+  });
 
-  auto const shouldPrintBuildTarget = is(subcommand, "print-build-target");
+  createSubcommand("print-build-dir", { "--platform", "--prod" }, true, [&](const std::span<const char *>& options) -> void {
+    // if --platform is specified, use the build path for the specified platform
+    for (auto const option : options) {
+      auto targetPlatform = optionValue(option, "--platform");
+      if (targetPlatform.size() > 0) {
+        fs::path path = getPaths(targetPlatform).pathResourcesRelativeToUserBuild;
+        std::cout << path.string() << std::endl;
+        exit(0);
+      }
+    }
+    // if no --platform option provided, print current platform build path
+    std::cout << getPaths(platform.os).pathResourcesRelativeToUserBuild << std::endl;
+    exit(0);
+  });
 
-  if (is(subcommand, "compile") || shouldPrintBuildTarget) {
+  createSubcommand("compile", { "--platform", "--port", "-o", "-r", "--prod", "-p", "-c", "-s", "-e", "-n", "--test=1" }, true, [&](const std::span<const char *>& options) -> void {
     bool flagRunUserBuild = false;
     bool flagAppStore = false;
     bool flagCodeSign = false;
     bool flagShouldRun = false;
     bool flagEntitlements = false;
     bool flagShouldNotarize = false;
-    bool flagDebugMode = true;
-    bool flagTestMode = false;
     bool flagShouldPackage = false;
     bool flagBuildForIOS = false;
     bool flagBuildForAndroid = false;
     bool flagBuildForAndroidEmulator = false;
     bool flagBuildForSimulator = false;
-    bool flagPrintBuildPath = false;
-
-    if (shouldPrintBuildTarget) {
-      porcelain = true;
-      flagPrintBuildPath = true;
-    }
+    std::string argvForward = "";
 
     std::string devPort("0");
     auto cnt = 0;
 
-    for (auto const arg : std::span(argv, argc).subspan(2, argc-3)) {
+    for (auto const arg : options) {
+      if (is(arg, "-h") || is(arg, "--help")) {
+        printHelp("compile", attrs);
+        exit(0);
+      }
+
       if (is(arg, "-c")) {
         flagCodeSign = true;
       }
@@ -229,7 +671,7 @@ int main (const int argc, const char* argv[]) {
         flagShouldPackage = true;
       }
 
-      if (is(arg, "-r")) {
+      if (is(arg, "-r") || is(arg, "--run")) {
         flagShouldRun = true;
       }
 
@@ -237,32 +679,47 @@ int main (const int argc, const char* argv[]) {
         flagAppStore = true;
       }
 
-      if (is(arg, "--prod")) {
-        flagDebugMode = false;
+      if (is(arg, "--test=1")) {
+        argvForward = "--test=1";
       }
 
-      if (std::string(arg).find("--target=") == 0) {
-        auto target = std::string(arg).substr(9);
-        if (target == "ios") {
+      auto targetPlatform = optionValue(arg, "--platform");
+      if (targetPlatform.size() > 0) {
+        if (targetPlatform == "ios") {
           flagBuildForIOS = true;
-        } else if (target == "android") {
+        } else if (targetPlatform == "android") {
           flagBuildForAndroid = true;
-        } else if (target == "androidemulator") {
+        } else if (targetPlatform == "androidemulator") {
           flagBuildForAndroid = true;
           flagBuildForAndroidEmulator = true;
-        } else if (target == "iossimulator") {
+        } else if (targetPlatform == "iossimulator") {
           flagBuildForIOS = true;
           flagBuildForSimulator = true;
         }
       }
 
-      if (is(arg, "--test")) {
-        flagTestMode = true;
+      auto port = optionValue(arg, "--port");
+      if (port.size() > 0) {
+        devPort = port;
       }
+    }
 
-      if (std::string(arg).find("--port=") == 0) {
-        devPort = std::string(arg).substr(7);
+    const std::vector<std::string> required = {
+      "name",
+      "title",
+      "executable",
+      "version"
+    };
+
+    for (const auto &str : required) {
+      if (settings.count(str) == 0) {
+        log("'" + str + "' value is required in ssc.config");
+        exit(1);
       }
+    }
+
+    if (settings.count("revision") == 0) {
+      settings["revision"] = "1";
     }
 
     if (getEnv("CXX").size() == 0) {
@@ -275,76 +732,8 @@ int main (const int argc, const char* argv[]) {
       }
     }
 
-    //
-    // TODO(@heapwolf) split path values from the settings file
-    // on the os separator to make them work cross-platform.
-    //
-
-    auto const path = argv[argc-1];
-    auto target = fs::absolute(fs::path(path));
-
-    if (path[0] == '-') {
-      log("a directory was expected as the last argument");
-      exit(1);
-    }
-
-    if (path[0] == '.') {
-      target = fs::absolute(target);
-    }
-
-    if (target.string().back() == '.') {
-      target = fs::path(target.string().substr(0, target.string().size() - 1));
-    }
-
-    auto configPath = target / "ssc.config";
-
-    if (!fs::exists(configPath)) {
-      porcelain = false;
-      log("ssc.config not found in " + target.string());
-      exit(1);
-    }
-
-    auto _settings = WStringToString(readFile(configPath));
-    auto settings = parseConfig(_settings);
-
-    if (settings.count("revision") == 0) {
-      settings["revision"] = "1";
-    }
-
-    const std::vector<std::string> required = {
-      "name",
-      "title",
-      "executable",
-      "version"
-    };
-
-    for (const auto &str : required) {
-      if (settings.count(str) == 0) {
-        log("'" + str + "' key/value is required");
-        exit(1);
-      }
-    }
-
-    std::string suffix = "";
-
-    if (flagDebugMode) {
-      suffix += "-dev";
-    }
-
-    if (flagTestMode) {
-      suffix += "-test";
-    }
-
-    std::replace(settings["name"].begin(), settings["name"].end(), ' ', '_');
-    settings["name"] += suffix;
-    settings["title"] += suffix;
-    settings["executable"] += suffix;
-
-    auto pathOutput = settings["output"].size() ? settings["output"] : "dist";
-
-    if (flagRunUserBuild == false && fs::exists(pathOutput)) {
-      auto p = fs::current_path() / pathOutput;
-
+    if (flagRunUserBuild == false && fs::exists(settings["output"])) {
+      auto p = fs::current_path() / fs::path(settings["output"]);
       try {
         fs::remove_all(p);
         log(std::string("cleaned: " + p.string()));
@@ -356,27 +745,20 @@ int main (const int argc, const char* argv[]) {
       }
     }
 
-    auto executable = fs::path(
-      settings["executable"] + (platform.win ? ".exe" : ""));
+    auto executable = fs::path(settings["executable"] + (platform.win ? ".exe" : ""));
 
     std::string flags;
     std::string files;
 
-    fs::path pathBin;
     fs::path pathResources;
-    fs::path pathResourcesRelativeToUserBuild;
-    fs::path pathPackage;
     fs::path pathToArchive;
-    fs::path packageName;
+    Paths paths = getPaths(platform.os);
 
     //
     // Darwin Package Prep
     // ---
     //
     if (platform.mac && !flagBuildForIOS && !flagBuildForAndroid) {
-      packageName = fs::path(std::string(settings["name"] + ".app"));
-      pathPackage = { target / pathOutput / packageName };
-
       log("preparing build for mac");
 
       flags = "-std=c++2a -ObjC++";
@@ -397,28 +779,18 @@ int main (const int argc, const char* argv[]) {
       files += prefixFile("src/process_unix.cc");
 
       fs::path pathBase = "Contents";
+      pathResources = { paths.pathPackage / pathBase / "Resources" };
 
-      pathBin = { pathPackage / pathBase / "MacOS" };
-      pathResources = { pathPackage / pathBase / "Resources" };
-
-      pathResourcesRelativeToUserBuild = {
-        pathOutput /
-        packageName /
-        pathBase /
-        "Resources"
-      };
-
-      fs::create_directories(pathBin);
+      fs::create_directories(paths.pathBin);
       fs::create_directories(pathResources);
 
       auto plistInfo = tmpl(gPListInfo, settings);
 
-      writeFile(pathPackage / pathBase / "Info.plist", plistInfo);
+      writeFile(paths.pathPackage / pathBase / "Info.plist", plistInfo);
 
-      Map options = {{ "full_version", std::string(SSC::full_version) }};
-      auto credits = tmpl(gCredits, options);
+      auto credits = tmpl(gCredits, attrs);
 
-      writeFile(pathResourcesRelativeToUserBuild / "Credits.html", credits);
+      writeFile(paths.pathResourcesRelativeToUserBuild / "Credits.html", credits);
     }
 
     if (flagBuildForAndroid) {
@@ -426,8 +798,9 @@ int main (const int argc, const char* argv[]) {
       auto bundle_path = fs::path(replace(bundle_identifier, "\\.", "/")).make_preferred();
       auto bundle_path_underscored = replace(bundle_identifier, "\\.", "_");
 
+      // TODO: move some paths to getPaths("android")
       auto relativeOutput = fs::path(settings["output"]) / "android";
-      auto output = fs::absolute(target) / relativeOutput;
+      auto output = fs::absolute(targetPath) / relativeOutput;
       auto app = output / "app";
       auto src = app / "src";
       auto jni = src / "main" / "jni";
@@ -450,10 +823,6 @@ int main (const int argc, const char* argv[]) {
       fs::create_directories(res / "values");
 
       pathResources = { src / "main" / "assets" };
-
-      pathResourcesRelativeToUserBuild = {
-        relativeOutput / "app" / "src" / "main" / "assets"
-      };
 
       // set current path to output directory
       fs::current_path(output);
@@ -649,7 +1018,7 @@ int main (const int argc, const char* argv[]) {
         appendFile(
           jni / "android.cc",
           tmpl(std::regex_replace(
-            WStringToString(readFile(target / file )),
+            WStringToString(readFile(targetPath / file )),
             std::regex("__BUNDLE_IDENTIFIER__"),
             bundle_identifier
           ), settings)
@@ -658,7 +1027,7 @@ int main (const int argc, const char* argv[]) {
 
       if (settings["android_native_makefile"].size() > 0) {
         makefileContext["android_native_make_context"] =
-          trim(tmpl(tmpl(WStringToString(readFile(target / settings["android_native_makefile"])), settings), makefileContext));
+          trim(tmpl(tmpl(WStringToString(readFile(targetPath / settings["android_native_makefile"])), settings), makefileContext));
       } else {
         makefileContext["android_native_make_context"] = "";
       }
@@ -689,7 +1058,7 @@ int main (const int argc, const char* argv[]) {
         writeFile(
           pkg / fs::path(file).filename(),
           tmpl(std::regex_replace(
-            WStringToString(readFile(target / file )),
+            WStringToString(readFile(targetPath / file )),
             std::regex("__BUNDLE_IDENTIFIER__"),
             bundle_identifier
           ), settings)
@@ -703,13 +1072,13 @@ int main (const int argc, const char* argv[]) {
     }
 
     if (platform.mac && flagBuildForIOS) {
-      fs::remove_all(target / "dist");
+      fs::remove_all(targetPath / settings["output"]);
 
       auto projectName = (settings["name"] + ".xcodeproj");
       auto schemeName = (settings["name"] + ".xcscheme");
-      auto pathToProject = target / pathOutput / projectName;
+      auto pathToProject = targetPath / settings["output"] / projectName;
       auto pathToScheme = pathToProject / "xcshareddata" / "xcschemes";
-      auto pathToProfile = target / settings["ios_provisioning_profile"];
+      auto pathToProfile = targetPath / settings["ios_provisioning_profile"];
 
       fs::create_directories(pathToProject);
       fs::create_directories(pathToScheme);
@@ -752,25 +1121,23 @@ int main (const int argc, const char* argv[]) {
 
       fs::copy(
         fs::path(prefixFile()) / "lib",
-        target / pathOutput / "lib",
+        targetPath / settings["output"] / "lib",
         fs::copy_options::overwrite_existing | fs::copy_options::recursive
       );
 
       fs::copy(
         fs::path(prefixFile()) / "include",
-        target / pathOutput / "include",
+        targetPath / settings["output"] / "include",
         fs::copy_options::overwrite_existing | fs::copy_options::recursive
       );
 
-      writeFile(target / pathOutput / "exportOptions.plist", tmpl(gXCodeExportOptions, settings));
-      writeFile(target / pathOutput / "Info.plist", tmpl(gXCodePlist, settings));
+      writeFile(targetPath / settings["output"] / "exportOptions.plist", tmpl(gXCodeExportOptions, settings));
+      writeFile(targetPath / settings["output"] / "Info.plist", tmpl(gXCodePlist, settings));
       writeFile(pathToProject / "project.pbxproj", tmpl(gXCodeProject, settings));
       writeFile(pathToScheme / schemeName, tmpl(gXCodeScheme, settings));
 
-      pathResources = fs::path { target / pathOutput / "ui" };
+      pathResources = fs::path { targetPath / settings["output"] / "ui" };
       fs::create_directories(pathResources);
-
-      pathResourcesRelativeToUserBuild = fs::path(pathOutput) / "ui";
     }
 
     //
@@ -786,51 +1153,25 @@ int main (const int argc, const char* argv[]) {
       flags += " -L" + prefixFile("lib");
       flags += " -luv";
 
-      pathOutput += "/linux";
-
       files += prefixFile("src/main.cc");
       files += prefixFile("src/process_unix.cc");
 
-      // this follows the .deb file naming convention
-      packageName = fs::path((
-        settings["executable"] + "_" +
-        settings["version"] + "-" +
-        settings["revision"] + "_" +
-        "amd64"
-      ));
-
-      pathPackage = { target / pathOutput / packageName };
-
-      fs::path pathBase = {
-        pathPackage /
-        "opt" /
-        settings["name"]
-      };
-
-      pathBin = pathBase;
-      pathResources = pathBase;
-
-      pathResourcesRelativeToUserBuild = {
-        pathOutput /
-        packageName /
-        "opt" /
-        settings["name"]
-      };
+      pathResources = paths.pathBin;
 
       fs::path pathControlFile = {
-        pathPackage /
+        paths.pathPackage /
         "DEBIAN"
       };
 
       fs::path pathManifestFile = {
-        pathPackage /
+        paths.pathPackage /
         "usr" /
         "share" /
         "applications"
       };
 
       fs::path pathIcons = {
-        pathPackage /
+        paths.pathPackage /
         "usr" /
         "share" /
         "icons" /
@@ -868,7 +1209,7 @@ int main (const int argc, const char* argv[]) {
 
       writeFile(pathControlFile / "control", tmpl(gDebianManifest, settings));
 
-      auto pathToIconSrc = (target / settings["linux_icon"]).string();
+      auto pathToIconSrc = (targetPath / settings["linux_icon"]).string();
       auto pathToIconDest = (pathIcons / (settings["executable"] + ".png")).string();
 
       if (!fs::exists(pathToIconDest)) {
@@ -893,20 +1234,10 @@ int main (const int argc, const char* argv[]) {
       files += prefixFile("src\\main.cc");
       files += prefixFile("src\\process_win.cc");
 
-      packageName = fs::path((
-        settings["executable"] + "-" +
-        settings["version"]
-      ));
-
-      pathPackage = { target / pathOutput / packageName };
-      pathBin = pathPackage;
-
-      pathResourcesRelativeToUserBuild = pathPackage;
-
-      fs::create_directories(pathPackage);
+      fs::create_directories(paths.pathPackage);
 
       auto p = fs::path {
-        pathResourcesRelativeToUserBuild /
+        paths.pathResourcesRelativeToUserBuild /
         "AppxManifest.xml"
       };
 
@@ -919,47 +1250,29 @@ int main (const int argc, const char* argv[]) {
         settings["win_version"] = "0.0.0.0";
       }
 
-      settings["exe"] = settings["executable"] + ".exe";
+      settings["exe"] = executable.string();
 
       writeFile(p, tmpl(gWindowsAppManifest, settings));
 
       // TODO Copy the files into place
     }
 
-    if (flagPrintBuildPath) {
-      std::cout << pathResourcesRelativeToUserBuild.string();
-      exit(0);
-    }
-
     log("package prepared");
 
-    std::stringstream argvForward;
-
-    int c = 0;
-    for (auto const arg : std::span(argv, argc)) {
-      c++;
-      auto argStr = std::string(arg);
-
-      if (c > 2) {
-        if ("-r" == argStr || "-o" == argStr) continue;
-        if (argStr.find("-") != 0) continue;
-        argvForward << " " << argStr;
-      }
-    }
-
+    auto pathResourcesRelativeToUserBuild = getPaths(platform.os).pathResourcesRelativeToUserBuild;
     if (settings.count("build") != 0) {
       //
-      // cd into the target and run the user's build command,
+      // cd into the targetPath and run the user's build command,
       // pass it the platform specific directory where they
       // should send their build artifacts.
       //
       std::stringstream buildCommand;
       auto oldCwd = fs::current_path();
-      fs::current_path(oldCwd / target);
+      fs::current_path(oldCwd / targetPath);
 
       {
         char prefix[4096] = {0};
-        memcpy(
+        std::memcpy(
           prefix,
           pathResourcesRelativeToUserBuild.string().c_str(),
           pathResourcesRelativeToUserBuild.string().size()
@@ -977,8 +1290,7 @@ int main (const int argc, const char* argv[]) {
         << settings["build"]
         << " "
         << pathResourcesRelativeToUserBuild.string()
-        << " --debug=" << flagDebugMode
-        << argvForward.str();
+        << " --debug=" << flagDebugMode;
 
       // log(buildCommand.str());
       auto r = exec(buildCommand.str().c_str());
@@ -989,14 +1301,13 @@ int main (const int argc, const char* argv[]) {
         exit(r.exitCode);
       }
 
-      log(r.output);
       log("ran user build command");
 
       fs::current_path(oldCwd);
     } else {
       fs::path pathInput = settings["input"].size() > 0
-        ? target / settings["input"]
-        : target / "src";
+        ? targetPath / settings["input"]
+        : targetPath / "src";
       fs::copy(
         pathInput,
         pathResourcesRelativeToUserBuild
@@ -1007,7 +1318,7 @@ int main (const int argc, const char* argv[]) {
       log("building for iOS");
 
       auto oldCwd = fs::current_path();
-      auto pathToDist = oldCwd / target / "dist";
+      auto pathToDist = oldCwd / targetPath / settings["output"];
 
       fs::create_directories(pathToDist);
       fs::current_path(pathToDist);
@@ -1033,48 +1344,10 @@ int main (const int argc, const char* argv[]) {
       // building, signing, bundling, archiving, noterizing, and uploading.
       //
       std::stringstream archiveCommand;
-      std::string destination = "generic/platform=iOS";
+      std::string destination = flagBuildForSimulator
+        ? "platform=iOS Simulator,OS=latest,name=" + settings["ios_simulator_device"]
+        : "generic/platform=iOS";
       std::string deviceType;
-
-      if (flagBuildForSimulator) {
-        destination = "platform=iOS Simulator,OS=latest,name=" + settings["ios_simulator_device"];
-
-        std::stringstream listDeviceTypesCommand;
-        listDeviceTypesCommand
-          << "xcrun"
-          << " simctl"
-          << " list devicetypes";
-
-        auto rListDeviceTypes = exec(listDeviceTypesCommand.str().c_str());
-        if (rListDeviceTypes.exitCode != 0) {
-          log("failed to list device types using \"" + listDeviceTypesCommand.str() + "\"");
-          if (rListDeviceTypes.output.size() > 0) {
-            log(rListDeviceTypes.output);
-          }
-          exit(rListDeviceTypes.exitCode);
-        }
-
-        std::regex reDeviceType(settings["ios_simulator_device"] + "\\s\\((com.apple.CoreSimulator.SimDeviceType.(?:.+))\\)");
-        std::smatch match;
-
-        if (std::regex_search(rListDeviceTypes.output, match, reDeviceType)) {
-          deviceType = match.str(1);
-          log("simulator device type: " + deviceType);
-        } else {
-          auto rListDevices = exec("xcrun simctl list devicetypes | grep iPhone");
-
-          log(
-            "failed to find device type: " + settings["ios_simulator_device"] + ". " +
-            "Please provide correct device name for the \"ios_simulator_device\". " +
-            "The list of available devices:\n" + rListDevices.output
-          );
-
-          if (rListDevices.output.size() > 0) {
-            log(rListDevices.output);
-          }
-          exit(rListDevices.exitCode);
-        }
-      }
 
       if (settings["ios_codesign_identity"].size() == 0) {
         settings["ios_codesign_identity"] = "iPhone Distribution";
@@ -1118,165 +1391,8 @@ int main (const int argc, const char* argv[]) {
 
       log("created archive");
 
-      if (flagBuildForSimulator) {
-        std::stringstream listDevicesCommand;
-        listDevicesCommand
-          << "xcrun"
-          << " simctl"
-          << " list devices available";
-        auto rListDevices = exec(listDevicesCommand.str().c_str());
-        if (rListDevices.exitCode != 0) {
-          log("failed to list available devices using \"" + listDevicesCommand.str() + "\"");
-          if (rListDevices.output.size() > 0) {
-            log(rListDevices.output);
-          }
-          exit(rListDevices.exitCode);
-        }
-
-        auto iosSimulatorDeviceSuffix = settings["ios_simulator_device"];
-        std::replace(iosSimulatorDeviceSuffix.begin(), iosSimulatorDeviceSuffix.end(), ' ', '_');
-        std::regex reSocketSDKDevice("SocketSDKSimulator_" + iosSimulatorDeviceSuffix + "\\s\\((.+)\\)\\s\\((.+)\\)");
-        std::smatch match;
-
-        std::string uuid;
-        bool booted = false;
-
-        if (std::regex_search(rListDevices.output, match, reSocketSDKDevice)) {
-          uuid = match.str(1);
-          booted = match.str(2).find("Booted") != std::string::npos;
-
-          log("found SocketSDK simulator VM for " + settings["ios_simulator_device"] + " with uuid: " + uuid);
-          if (booted) {
-            log("SocketSDK simulator VM is booted");
-          } else {
-            log("SocketSDK simulator VM is not booted");
-          }
-        } else {
-          log("creating a new iOS simulator VM for " + settings["ios_simulator_device"]);
-
-          std::stringstream listRuntimesCommand;
-          listRuntimesCommand
-            << "xcrun"
-            << " simctl"
-            << " list runtimes available";
-          auto rListRuntimes = exec(listRuntimesCommand.str().c_str());
-          if (rListRuntimes.exitCode != 0) {
-            log("failed to list available runtimes using \"" + listRuntimesCommand.str() + "\"");
-            if (rListRuntimes.output.size() > 0) {
-              log(rListRuntimes.output);
-            }
-            exit(rListRuntimes.exitCode);
-          }
-          auto const runtimes = split(rListRuntimes.output, '\n');
-          std::string runtime;
-          // TODO: improve iOS version detection
-          for (auto it = runtimes.rbegin(); it != runtimes.rend(); ++it) {
-            if (it->find("iOS") != std::string::npos) {
-              runtime = trim(*it);
-              log("found runtime: " + runtime);
-              break;
-            }
-          }
-
-          std::regex reRuntime(R"(com.apple.CoreSimulator.SimRuntime.iOS(?:.*))");
-          std::smatch matchRuntime;
-          std::string runtimeId;
-
-          if (std::regex_search(runtime, matchRuntime, reRuntime)) {
-            runtimeId = matchRuntime.str(0);
-          }
-
-          std::stringstream createSimulatorCommand;
-          createSimulatorCommand
-            << "xcrun simctl"
-            << " create SocketSDKSimulator_" + iosSimulatorDeviceSuffix
-            << " " << deviceType
-            << " " << runtimeId;
-
-          auto rCreateSimulator = exec(createSimulatorCommand.str().c_str());
-          if (rCreateSimulator.exitCode != 0) {
-            log("unable to create simulator VM");
-            if (rCreateSimulator.output.size() > 0) {
-              log(rCreateSimulator.output);
-            }
-            exit(rCreateSimulator.exitCode);
-          }
-          uuid = rCreateSimulator.output;
-        }
-
-        if (!booted) {
-          log("booting VM " + uuid);
-          std::stringstream bootSimulatorCommand;
-          bootSimulatorCommand
-            << "xcrun"
-            << " simctl boot " << uuid;
-          auto rBootSimulator = exec(bootSimulatorCommand.str().c_str());
-          if (rBootSimulator.exitCode != 0) {
-            log("unable to boot simulator VM with command: " + bootSimulatorCommand.str());
-            if (rBootSimulator.output.size() > 0) {
-              log(rBootSimulator.output);
-            }
-            exit(rBootSimulator.exitCode);
-          }
-        }
-
-        if (flagShouldRun) {
-          log("run simulator");
-
-          auto pathToXCode = fs::path("/Applications") / "Xcode.app" / "Contents";
-          auto pathToSimulator = pathToXCode / "Developer" / "Applications" / "Simulator.app";
-
-          std::stringstream simulatorCommand;
-          simulatorCommand
-            << "open "
-            << pathToSimulator.string()
-            << " --args -CurrentDeviceUDID " << uuid;
-
-          auto rOpenSimulator = exec(simulatorCommand.str().c_str());
-          if (rOpenSimulator.exitCode != 0) {
-            log("unable to run simulator");
-            if (rOpenSimulator.output.size() > 0) {
-              log(rOpenSimulator.output);
-            }
-            exit(rOpenSimulator.exitCode);
-          }
-
-          std::stringstream installAppCommand;
-
-          installAppCommand
-            << "xcrun"
-            << " simctl install booted"
-            << " " + settings["name"] + ".app";
-          // log(installAppCommand.str());
-          log("installed booted VM into simulator");
-
-          auto rInstallApp = exec(installAppCommand.str().c_str());
-          if (rInstallApp.exitCode != 0) {
-            log("unable to install the app into simulator VM with command: " + installAppCommand.str());
-            if (rInstallApp.output.size() > 0) {
-              log(rInstallApp.output);
-            }
-            exit(rInstallApp.exitCode);
-          }
-
-          std::stringstream launchAppCommand;
-          launchAppCommand
-            << "xcrun"
-            << " simctl launch --console-pty booted"
-            << " " + settings["bundle_identifier"];
-
-          // log(launchAppCommand.str());
-          log("launching the app in simulator");
-
-          auto rlaunchApp = exec(launchAppCommand.str().c_str());
-          if (rlaunchApp.exitCode != 0) {
-            log("unable to launch the app: " + launchAppCommand.str());
-            if (rlaunchApp.output.size() > 0) {
-              log(rlaunchApp.output);
-            }
-            exit(rlaunchApp.exitCode);
-          }
-        }
+      if (flagBuildForSimulator && flagShouldRun) {
+        runIOSSimulator(settings);
       }
 
       if (flagShouldPackage) {
@@ -1301,18 +1417,14 @@ int main (const int argc, const char* argv[]) {
         log("exported archive");
       }
 
-      // TODO(@chicoxyzzy): run on iPhone
-      // if (flagShouldRun && !flagRunOnSimulator) {
-      // }
-
       log("completed");
       fs::current_path(oldCwd);
-      return 0;
+      exit(0);
     }
 
     if (flagBuildForAndroid) {
       auto relativeOutput = fs::path(settings["output"]) / "android";
-      auto output = fs::absolute(target) / relativeOutput;
+      auto output = fs::absolute(targetPath) / relativeOutput;
       auto app = output / "app";
       auto androidHome = getEnv("ANDROID_HOME");
 
@@ -1321,7 +1433,7 @@ int main (const int argc, const char* argv[]) {
           androidHome = getEnv("HOME") + "/android";
         } else if (platform.os == "mac") {
           androidHome = getEnv("HOME") + "/Library/Android/sdk";
-        } else if (platform.os == "win") {
+        } else if (platform.os == "win32") {
           // TODO
         }
       }
@@ -1419,11 +1531,11 @@ int main (const int argc, const char* argv[]) {
         }
       }
 
-      return 0;
+      exit(0);
     }
 
     std::stringstream compileCommand;
-    auto binaryPath = pathBin / executable;
+    auto binaryPath = paths.pathBin / executable;
 
     auto extraFlags = flagDebugMode
       ? settings.count("debug_flags") ? settings["debug_flags"] : ""
@@ -1447,7 +1559,7 @@ int main (const int argc, const char* argv[]) {
     // log(compileCommand.str());
 
     auto binExists = fs::exists(binaryPath);
-    auto pathToBuiltWithFile = fs::current_path() / pathOutput / "built_with.txt";
+    auto pathToBuiltWithFile = fs::current_path() / settings["output"] / "built_with.txt";
     auto oldHash = WStringToString(readFile(pathToBuiltWithFile));
 
     if (flagRunUserBuild == false || !binExists || oldHash != SSC::version_hash) {
@@ -1472,7 +1584,7 @@ int main (const int argc, const char* argv[]) {
     //
     if (flagShouldPackage && platform.linux) {
       fs::path pathSymLinks = {
-        pathPackage /
+        paths.pathPackage /
         "usr" /
         "local" /
         "bin"
@@ -1494,9 +1606,9 @@ int main (const int argc, const char* argv[]) {
 
       archiveCommand
         << "dpkg-deb --build --root-owner-group "
-        << pathPackage.string()
+        << paths.pathPackage.string()
         << " "
-        << (target / pathOutput).string();
+        << (targetPath / settings["output"]).string();
 
       auto r = std::system(archiveCommand.str().c_str());
 
@@ -1538,7 +1650,7 @@ int main (const int argc, const char* argv[]) {
       std::string entitlements = "";
 
       if (settings.count("entitlements") == 1) {
-        // entitlements = " --entitlements " + (target / settings["entitlements"]).string();
+        // entitlements = " --entitlements " + (targetPath / settings["entitlements"]).string();
       }
 
       if (settings.count("mac_sign") == 0) {
@@ -1576,11 +1688,11 @@ int main (const int argc, const char* argv[]) {
       signCommand
         << "codesign"
         << commonFlags.str()
-        << (pathBin / executable).string()
+        << binaryPath.string()
 
         << "; codesign"
         << commonFlags.str()
-        << pathPackage.string();
+        << paths.pathPackage.string();
 
       log(signCommand.str());
       auto r = exec(signCommand.str());
@@ -1605,9 +1717,9 @@ int main (const int argc, const char* argv[]) {
     if (flagShouldPackage && platform.mac) {
       std::stringstream zipCommand;
       auto ext = ".zip";
-      auto pathToBuild = target / pathOutput / "build";
+      auto pathToBuild = targetPath / settings["output"] / "build";
 
-      pathToArchive = target / pathOutput / (settings["executable"] + ext);
+      pathToArchive = targetPath / settings["output"] / (settings["executable"] + ext);
 
       zipCommand
         << "ditto"
@@ -1616,7 +1728,7 @@ int main (const int argc, const char* argv[]) {
         << " --sequesterRsrc"
         << " --keepParent"
         << " "
-        << pathPackage.string()
+        << paths.pathPackage.string()
         << " "
         << pathToArchive.string();
 
@@ -1817,7 +1929,7 @@ int main (const int argc, const char* argv[]) {
         return hr;
       };
 
-      std::wstring appx(StringToWString(pathPackage.string()) + L".appx");
+      std::wstring appx(StringToWString(paths.pathPackage.string()) + L".appx");
 
       HRESULT hr = CoInitializeEx(NULL, COINIT_MULTITHREADED);
 
@@ -1882,12 +1994,12 @@ int main (const int argc, const char* argv[]) {
           }
         };
 
-        addFiles(pathPackage.c_str(), fs::path {});
+        addFiles(paths.pathPackage.c_str(), fs::path {});
 
         IStream* manifestStream = NULL;
 
         if (SUCCEEDED(hr)) {
-          auto p = (fs::path { pathPackage / "AppxManifest.xml" });
+          auto p = fs::path({ paths.pathPackage / "AppxManifest.xml" });
 
           hr = SHCreateStreamOnFileEx(
             p.c_str(),
@@ -1986,39 +2098,55 @@ int main (const int argc, const char* argv[]) {
         << " /tr http://timestamp.digicert.com"
         << " /td sha256"
         << " /fd sha256"
-        << " " << pathPackage.string() << ".appx"
+        << " " << paths.pathPackage.string() << ".appx"
         << "\"";
 
-        log(signCommand.str());
-        auto r = exec(signCommand.str().c_str());
+      log(signCommand.str());
+      auto r = exec(signCommand.str().c_str());
 
-        if (r.exitCode != 0) {
-          log("Unable to sign");
-          log(pathPackage.string());
-          log(r.output);
-          exit(r.exitCode);
-        }
+      if (r.exitCode != 0) {
+        log("Unable to sign");
+        log(paths.pathPackage.string());
+        log(r.output);
+        exit(r.exitCode);
+      }
     }
 
     int exitCode = 0;
     if (flagShouldRun) {
-      std::string execName = "";
-      if (platform.win) {
-        execName = (settings["executable"] + ".exe");
-      } else {
-        execName = (settings["executable"]);
-      }
-
-      auto cmd = (pathBin / execName).string();
-
-      auto runner = trim(std::string(STR_VALUE(CMD_RUNNER)));
-      auto prefix = runner.size() > 0 ? runner + std::string(" ") : runner;
-      exitCode = std::system((prefix + cmd + argvForward.str()).c_str());
+      exitCode = runApp(binaryPath, argvForward);
     }
 
-    return exitCode;
-  }
+    exit(exitCode);
+  });
 
-  std::cout << "Error: subcommand 'ssc " << subcommand << "' is not supported.\nFor more information try 'ssc -h'." << std::endl;
+  createSubcommand("run", { "--platform", "--prod", "--test=1" }, true, [&](const std::span<const char *>& options) -> void {
+    std::string argvForward = "";
+    bool isIosSimulator = false;
+    for (auto const& option : options) {
+      auto targetPlatform = optionValue(option, "--platform");
+      if (targetPlatform.size() != 0) {
+        if (targetPlatform == "iossimulator") {
+          isIosSimulator = true;
+        } else {
+          log("Unknown platform: " + targetPlatform);
+          exit(1);
+        }
+      }
+      if (is(option, "--test=1")) {
+        argvForward = "--test=1";
+      }
+    }
+    if (isIosSimulator) {
+      runIOSSimulator(settings);
+    } else {
+      auto executable = fs::path(settings["executable"] + (platform.win ? ".exe" : ""));
+      auto exitCode = runApp(getPaths(platform.os).pathBin / executable, argvForward);
+      exit(exitCode);
+    }
+  });
+
+  log("subcommand 'ssc " + std::string(subcommand) + "' is not supported.");
+  printHelp("ssc", attrs);
   exit(1);
 }

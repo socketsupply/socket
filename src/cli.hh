@@ -5,25 +5,35 @@ constexpr auto gHelpText = R"TEXT(
 ssc v{{ssc_version}}
 
 usage:
-  ssc compile [OPTIONS] <project-dir>
-  ssc install-app --target=<target> <project-dir> (macOS only)
-  ssc [SUBCOMMAND]
+  ssc [SUBCOMMAND] [OPTIONS] [<project-dir>]
+  ssc [SUBCOMMAND] -h
 
 subcommands:
-  init                       create new project (in current directory)
-  compile                    compile project
-  print-build-target <path>  print build path to stdout
-  mobiledeviceid             get current device id
+  compile             compile project
+  list-devices        get list of connected devices
+  init                create new project (in current directory)
+  install-app         install app to device
+  print-build-dir     print build path to stdout
+  run                 run application
 
 general options:
-  --target=<TARGET>  cross-compilation target where <TARGET> can be: ios, iossimulator, androidemulator
-  --test=1           indicate test mode
-  --port=n           load "index.html" from "http://localhost:n"
-
   -h  help
   -v  version
-  -o  only run user build step
-  -r  run after building
+)TEXT";
+constexpr auto gHelpTextCompile = R"TEXT(
+ssc v{{ssc_version}}
+
+Run application.
+
+usage:
+  ssc compile [options] [<project-dir>]
+
+general options:
+  --platform  cross-compilation target. Can be: ios, iossimulator, androidemulator
+  --port=n    load "index.html" from "http://localhost:n"
+  -o          only run user build step
+  -r          run after building
+  --test=1    indicate test mode
 
 packaging options:
   --prod  disable debugging info, inspector, etc.
@@ -35,6 +45,65 @@ packaging options:
 macOS-specific options:
   -e  specify entitlements
   -n  notarize
+)TEXT";
+constexpr auto gHelpTextListDevices = R"TEXT(
+ssc v{{ssc_version}}
+
+Get list of connected devices.
+
+usage:
+  ssc list-devices --platform=ios [--ecid | --udid] [--only]
+
+options:
+  --platform  any of: ios, android
+  --ecid      show device ECID
+  --udid      show device UDID
+  --only      only show ECID or UDID of the first device
+)TEXT";
+constexpr auto gHelpTextInit = R"TEXT(
+ssc v{{ssc_version}}
+
+Create new project. If path is not provided, new project will be created in the current directory.
+
+usage:
+  ssc init [<project-dir>]
+)TEXT";
+constexpr auto gHelpTextInstallApp = R"TEXT(
+ssc v{{ssc_version}}
+
+Install app to device. We only support iOS at the moment.
+
+usage:
+  ssc install-app [--platform=ios] [--device=ecid]
+
+options:
+  --platform  ios; if not specified, runs on current platfrom
+  --device    ecid of device to install to; if not specified, runs on current device
+)TEXT";
+constexpr auto gHelpTextPrintBuildDir = R"TEXT(
+ssc v{{ssc_version}}
+
+Create new project (in current directory)
+
+usage:
+  ssc print-build-dir [--platform=<platform>] [--prod] [<project-dir>]
+
+options:
+  --platform  ios; if not specified, runs on current platfrom
+  --prod      use production build directory
+)TEXT";
+constexpr auto gHelpTextRun = R"TEXT(
+ssc v{{ssc_version}}
+
+Run application.
+
+usage:
+  ssc run [options] [<project-dir>]
+
+options:
+  --platform  iossimulator; if not specified, runs on current platfrom
+  --prod      run production build
+  --test=1    indicate test mode
 )TEXT";
 
 //
@@ -145,7 +214,7 @@ constexpr auto gPListInfo = R"XML(<?xml version="1.0" encoding="UTF-8"?>
 // Credits
 constexpr auto gCredits = R"HTML(
   <p style="font-family: -apple-system; font-size: small; color: FieldText;">
-    Built with ssc v{{full_version}}
+    Built with ssc v{{ssc_version}}
   </p>
 )HTML";
 
@@ -1233,7 +1302,7 @@ constexpr auto gStoryboardLaunchScreen = R"XML(<?xml version="1.0" encoding="UTF
 
 constexpr auto gDefaultConfig = R"CONFIG(
 #
-# Default configuration file {{ssc_version}}. Delete what you don't need.
+# Default configuration file for ssc v{{ssc_version}}. Delete what you don't need.
 #
 
 # Shell command to build an application.
