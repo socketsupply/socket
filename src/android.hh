@@ -35,7 +35,6 @@
 #include <stdint.h>
 
 #include "core.hh"
-#include "linux/ipv6.h"
 
 #include <android/log.h>
 #include <android/asset_manager.h>
