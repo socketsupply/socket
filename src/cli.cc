@@ -36,7 +36,7 @@ void log (const std::string s) {
   start = std::chrono::system_clock::now();
 }
 
-void init (Map& attrs) {
+void init (Map attrs) {
   attrs["node_platform"] = platform.arch == "arm64" ? "arm64" : "x64";
   auto cwd = fs::current_path();
   fs::create_directories(cwd / "src");
@@ -410,7 +410,7 @@ int main (const int argc, const char* argv[]) {
     }
 
     if (flagBuildForAndroid) {
-      fs::remove_all(target / settings["output"]);
+      fs::remove_all(target / "dist");
       // - create a tmp dir
       // - read android.* files and template to tmp dir
       // - template gGradleBuild to tmp dir
@@ -426,7 +426,7 @@ int main (const int argc, const char* argv[]) {
     }
 
     if (platform.mac && flagBuildForIOS) {
-      fs::remove_all(target / settings["output"]);
+      fs::remove_all(target / "dist");
 
       auto projectName = (settings["name"] + ".xcodeproj");
       auto schemeName = (settings["name"] + ".xcscheme");
@@ -724,7 +724,7 @@ int main (const int argc, const char* argv[]) {
       log("building for iOS");
 
       auto oldCwd = fs::current_path();
-      auto pathToDist = oldCwd / target / settings["output"];
+      auto pathToDist = oldCwd / target / "dist";
 
       fs::create_directories(pathToDist);
       fs::current_path(pathToDist);
