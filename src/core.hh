@@ -1,3 +1,5 @@
+#ifndef SSC_CORE_H
+#define SSC_CORE_H
 //
 // File and Network IO for all operating systems.
 //
@@ -1743,3 +1745,4 @@ namespace SSC {
     return value.str();
   }
 } // SSC
+#endif

@@ -481,6 +481,13 @@ namespace SSC {
       stream << s;
       stream.close();
     }
+
+    inline void appendFile (fs::path path, std::string s) {
+      std::ofstream stream;
+      stream.open(path.string(), std::ios_base::app);
+      stream << s;
+      stream.close();
+    }
   #endif
 
   inline std::string prefixFile(std::string s) {

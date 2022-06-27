@@ -149,7 +149,7 @@ constexpr auto gCredits = R"HTML(
   </p>
 )HTML";
 
-constexpr auto DEFAULT_ANDROID_ACTIVITY_NAME = "MainWebViewActivity";
+constexpr auto DEFAULT_ANDROID_ACTIVITY_NAME = ".MainWebViewActivity";
 
 //
 // Android Manifest
@@ -175,7 +175,7 @@ constexpr auto gAndroidManifest = R"XML(
     android:supportsRtl="true"
   >
     <activity
-      android:name=".{{android_main_activity}}"
+      android:name="{{android_main_activity}}"
       android:exported="true">
       <intent-filter>
         <action android:name="android.intent.action.MAIN" />
@@ -1072,7 +1072,7 @@ LOCAL_CFLAGS += \
 LOCAL_CFLAGS += {{cflags}}
 
 LOCAL_LDLIBS := -landroid -llog
-LOCAL_SRC_FILES = android.cc {{android_native_sources}}
+LOCAL_SRC_FILES = android.cc
 LOCAL_STATIC_LIBRARIES := uv
 include $(BUILD_SHARED_LIBRARY)
 

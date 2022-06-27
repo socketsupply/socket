@@ -536,7 +536,19 @@ int main (const int argc, const char* argv[]) {
         makefileContext["android_native_abis"] = "all";
       }
 
-      makefileContext["android_native_sources"] = settings["android_native_sources"];
+      // custom native sources
+      for (auto const &file : split(settings["android_native_sources"], ' ')) {
+        auto filename = fs::path(file).filename();
+        // log(std::string("Android NDK source: " + std::string(target / file)).c_str());
+        appendFile(
+          jni / "android.cc",
+          tmpl(std::regex_replace(
+            WStringToString(readFile(target / file )),
+            std::regex("__BUNDLE_IDENTIFIER__"),
+            bundle_identifier
+          ), settings)
+        );
+      }
 
       if (settings["android_native_makefile"].size() > 0) {
         makefileContext["android_native_make_context"] =
@@ -547,7 +559,7 @@ int main (const int argc, const char* argv[]) {
 
       writeFile(
         jni / "Application.mk",
-        trim(tmpl(tmpl(gAndroidApplicationMakefile, settings)), makefileContext)
+        trim(tmpl(tmpl(gAndroidApplicationMakefile, makefileContext), settings))
       );
 
       writeFile(
@@ -567,7 +579,7 @@ int main (const int argc, const char* argv[]) {
 
       // custom source files
       for (auto const &file : split(settings["android_sources"], ' ')) {
-        log(std::string("Android source: " + std::string(target / file)).c_str());
+        // log(std::string("Android source: " + std::string(target / file)).c_str());
         writeFile(
           pkg / fs::path(file).filename(),
           tmpl(std::regex_replace(

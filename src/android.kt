@@ -14,7 +14,7 @@ open class WebView(context: android.content.Context): android.webkit.WebView(con
  */
 open class WebViewClient(activity: WebViewActivity) : android.webkit.WebViewClient() {
   protected val activity = activity;
-  protected val TAG = "WebViewClient";
+  open protected val TAG = "WebViewClient";
 
   /**
    * Handles URL loading overrides for "file://" based URI schemes.
@@ -68,11 +68,11 @@ open class WebViewClient(activity: WebViewActivity) : android.webkit.WebViewClie
 open class WebViewActivity : androidx.appcompat.app.AppCompatActivity() {
   protected lateinit var binding: WebViewActivityBinding;
 
-  protected var client: WebViewClient? = null;
-  protected val TAG = "WebViewActivity";
+  open protected var client: WebViewClient? = null;
+  open protected val TAG = "WebViewActivity";
 
-  public var view: android.webkit.WebView? = null;
-  public var core: NativeCore? = null;
+  open public var view: android.webkit.WebView? = null;
+  open public var core: NativeCore? = null;
 
   /**
    * Called when the `WebViewActivity` is starting
@@ -141,8 +141,8 @@ public interface NativeCoreConfiguration {
  * `NativeCore` class configuration used as input for `NativeCore::configure()`
  */
 public data class GenericNativeCoreConfiguration(
-  val rootDirectory: String,
-  val assetManager: android.content.res.AssetManager
+  override val rootDirectory: String,
+  override val assetManager: android.content.res.AssetManager
 ) : NativeCoreConfiguration;
 
 /**
@@ -157,18 +157,6 @@ public open class NativeCore {
   protected var pointer: Long = 0;
 
   /**
-   * Internal root directory for application passed directory
-   * to JNI/SDK for `NativeCore`
-   */
-  protected var rootDirectory: String? = null
-
-  /**
-   * Internal `AssetManager` instance passed directly to JNI/NDK
-   * for the `NativeCore`
-   */
-  protected var assetManager: android.content.res.AssetManager? = null;
-
-  /**
    * Set internally by the native binding if debug is enabled.
    */
   public var isDebugEnabled: Boolean = false;
@@ -177,6 +165,18 @@ public open class NativeCore {
    * Set when all checks have passed.
    */
   public var isReady: Boolean = false;
+
+  /**
+   * Internal root directory for application passed directory
+   * to JNI/SDK for `NativeCore`
+   */
+  private var rootDirectory: String? = null
+
+  /**
+   * Internal `AssetManager` instance passed directly to JNI/NDK
+   * for the `NativeCore`
+   */
+  private var assetManager: android.content.res.AssetManager? = null;
 
   /**
    * `NativeCore` singleton definitions
