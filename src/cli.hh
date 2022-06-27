@@ -1084,7 +1084,7 @@ width: 1024
 # linux_cmd: beepboop
 
 # The icon to use for identifying your app in Linux desktop environments.
-# linux_icon: src\icon.png
+# linux_icon: src/icon.png
 
 # If the `_cmd` fails, ssc will "touch" the following file, if that fails it will
 # try to download whatever you specify for the `_bootstrap_src` value.

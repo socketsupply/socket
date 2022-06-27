@@ -302,6 +302,8 @@ int main (const int argc, const char* argv[]) {
 
     const std::vector<std::string> required = {
       "name",
+      "title",
+      "executable",
       "version"
     };
 
@@ -565,7 +567,7 @@ int main (const int argc, const char* argv[]) {
         settings["executable"];
 
       settings["linux_executable_path"] = linuxExecPath.string();
-      settings["linux_icon_path"] = (
+      settings["linux_icon"] = (
         fs::path("/usr") /
         "share" /
         "icons" /
