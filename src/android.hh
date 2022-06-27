@@ -66,12 +66,12 @@
   JNIEXPORT JNICALL Java___BUNDLE_IDENTIFIER___##namespace##_##name
 
 /**
- * Gets the `NativeCore` binding class.
+ * Gets the `NativeCore` binding class from the JNI environment.
  */
 #define GetNativeCoreBindingClass(env) env->GetObjectClass(self)
 
 /**
- * Gets `NativeCore` instance pointer from environment.
+ * Gets `NativeCore` instance pointer from JNI environment.
  */
 #define GetNativeCoreFromEnvironment(env)                                      \
   ({                                                                           \
@@ -82,7 +82,7 @@
   })
 
 /**
- * Gets JNI `Exception` class from environment.
+ * Gets the JNI `Exception` class from environment.
  */
 #define GetExceptionClass(env)                                                 \
   ({                                                                           \
@@ -107,38 +107,15 @@
 #define Throw(env, E) env->ThrowNew(GetExceptionClass(env), E)
 
 /**
- * `NativeCoreNotInitialized` Exception
- */
-#define NativeCoreNotInitializedError "NativeCore is not initialized"
-
-/**
- * `UVLoopNotInitialized` Exception
- */
-#define UVLoopNotInitializedError "UVLoop is not initialized"
-
-/**
- * `ExceptionCheck` Exception
- */
-#define ExceptionCheckError "ExceptionCheck"
-
-/**
- * `AssetManagerIsNotReachable` Exception
- */
-#define AssetManagerIsNotReachableError "AssetManager is not reachable through binding"
-
-/**
- * `RootDirectoryIsNotReachable` Exception
- */
-#define RootDirectoryIsNotReachableError "Root directory in file system is not reachable through binding"
-
-/**
- * `UVError` Exception
+ * Translate a libuv error to a message suitable for `Throw(...)`
  */
 #define UVError(code) uv_strerror(code)
 
-/**
- * `JavaScriptPreloadSourceNotInitialized` Exception
- */
+#define AssetManagerIsNotReachableError "AssetManager is not reachable through binding"
+#define ExceptionCheckError "ExceptionCheck"
 #define JavaScriptPreloadSourceNotInitializedError "JavaScript preload source is not initialized"
+#define NativeCoreNotInitializedError "NativeCore is not initialized"
+#define RootDirectoryIsNotReachableError "Root directory in file system is not reachable through binding"
+#define UVLoopNotInitializedError "UVLoop is not initialized"
 
 #endif
