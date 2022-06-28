@@ -790,6 +790,8 @@ constexpr auto gXCodePlist = R"XML(<?xml version="1.0" encoding="UTF-8"?>
   <string>The app would like to discover and connect to peers</string>
   <key>NSBluetoothAlwaysUsageDescription</key>
   <string>The app would like to discover and connect to peers</string>
+  <key>NSBluetoothPeripheralUsageDescription</key>
+  <string>The app would like to discover and connect to peers</string>
   <key>NSRequiresAquaSystemAppearance</key>
   <false/>
   <key>NSSupportsAutomaticGraphicsSwitching</key>

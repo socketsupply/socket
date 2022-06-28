@@ -152,6 +152,11 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
 - (void) centralManagerDidUpdateState: (CBCentralManager*)central {
   NSLog(@"BBB centralManagerDidUpdateState");
+  switch (central.state) {
+    case CBCentralManagerStatePoweredOn:
+      [_centralManager scanForPeripheralsWithServices:nil options:nil];
+      break;
+  }
 }
 
 - (void) setChannelId: (std::string)str {
@@ -234,7 +239,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
   [_centralManager
     scanForPeripheralsWithServices: services
-    options: @{CBCentralManagerScanOptionAllowDuplicatesKey: @(YES)}
+    options: @{CBCentralManagerScanOptionAllowDuplicatesKey: @(NO)}
   ];
 }
 
@@ -299,24 +304,21 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 } */
 
 - (void) localNetworkSend:(std::string)str uuid:(std::string)uuid {
-  for (CBPeripheral* peripheral in _peripherals) {
-    std::string id = [peripheral.identifier.UUIDString UTF8String];
-    if ((uuid.size() > 0) && id != uuid) continue;
+  // for (CBPeripheral* peripheral in _peripherals) {
 
-    // NSInteger amountToSend = self.dataToSend.length - self.sendDataIndex;
-		// if (amountToSend > 128) amountToSend = 128;
-    NSData *data = [NSData dataWithBytes: str.data() length: str.size()];
-    auto didSend = [_peripheralManager updateValue: data
-                                 forCharacteristic: _characteristic
-                              onSubscribedCentrals: nil];
+  // NSInteger amountToSend = self.dataToSend.length - self.sendDataIndex;
+	// if (amountToSend > 128) amountToSend = 128;
+  NSData *data = [NSData dataWithBytes: str.data() length: str.size()];
+  auto didSend = [_peripheralManager updateValue: data
+                               forCharacteristic: _characteristic
+                            onSubscribedCentrals: nil];
 
-    if (!didSend) {
-      NSLog(@"BBB did not send");
-      return;
-    }
-
-    NSLog(@"BBB did send");
+  if (!didSend) {
+    NSLog(@"BBB did not send");
+    return;
   }
+
+  NSLog(@"BBB did send");
 }
 
 - (void) centralManager: (CBCentralManager*)central didConnectPeripheral: (CBPeripheral*)peripheral {
@@ -330,8 +332,14 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     return;
   }
 
-  auto uuid = std::string([peripheral.identifier.UUIDString UTF8String]);
-  auto name = std::string([peripheral.name UTF8String]);
+  if (peripheral.identifier == nil || peripheral.name == nil) {
+    [self.peripherals addObject: peripheral];
+    [central connectPeripheral: peripheral options: nil];
+    return;
+  }
+
+  std::string uuid = std::string([peripheral.identifier.UUIDString UTF8String]);
+  std::string name = std::string([peripheral.name UTF8String]);
 
   if (uuid.size() == 0 || name.size() == 0) return;
 
@@ -399,9 +407,19 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     return;
   }
 
-  std::string uuid = [peripheral.identifier.UUIDString UTF8String];
-  std::string name = [peripheral.name UTF8String];
+  std::string uuid = "";
+  std::string name = "";
+
+  if (peripheral.identifier != nil) {
+    uuid = [peripheral.identifier.UUIDString UTF8String];
+  }
+
+  if (peripheral.name != nil) {
+    name = [peripheral.name UTF8String];
+  }
+
   const void* rawData = [characteristic.value bytes];
+  // [self.peripherals addObject: peripheral];
   char* src = (char*) rawData;
 
   auto msg = SSC::format(R"JSON({
@@ -440,12 +458,35 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 }
 
 - (void) centralManager: (CBCentralManager*)central didFailToConnectPeripheral: (CBPeripheral*)peripheral error: (nullable NSError*)error {
-  NSLog(@"BBB didFailToConnectPeripheral: %@", [peripheral.identifier UUIDString]);
+  if (error != nil) {
+    NSLog(@"BBB failed to connect %@", error.debugDescription);
+    return;
+  }
+
+  if ([_peripherals containsObject: peripheral]) {
+    [_peripherals removeObject: peripheral];
+  }
 }
 
 - (void) centralManager: (CBCentralManager*)central didDisconnectPeripheral: (CBPeripheral*)peripheral error: (NSError*)error {
-  std::string uuid = [peripheral.identifier.UUIDString UTF8String];
-  std::string name = [peripheral.name UTF8String];
+  if (error != nil) {
+    [_centralManager connectPeripheral: peripheral options: nil];
+    NSLog(@"BBB device did disconnect %@", error.debugDescription);
+    return;
+  }
+
+  [_centralManager connectPeripheral: peripheral options: nil];
+
+  std::string uuid = "";
+  std::string name = "";
+
+  if (peripheral.identifier != nil) {
+    uuid = [peripheral.identifier.UUIDString UTF8String];
+  }
+
+  if (peripheral.name != nil) {
+    name = [peripheral.name UTF8String];
+  }
 
   auto msg = SSC::format(R"JSON({
     "value": {
@@ -459,8 +500,6 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   })JSON", name, uuid);
 
   [self.bridge emit: "network" msg: msg];
-
-  [_peripherals removeObject: peripheral];
 }
 @end
 
@@ -498,7 +537,9 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 - (void) emit: (std::string)name msg: (std::string)msg {
   msg = SSC::emitToRenderProcess(name, SSC::encodeURIComponent(msg));
   NSString* script = [NSString stringWithUTF8String: msg.c_str()];
-  [self.webview evaluateJavaScript: script completionHandler:nil];
+  dispatch_async(dispatch_get_main_queue(), ^{
+    [self.webview evaluateJavaScript: script completionHandler:nil];
+  });
 }
 
 - (void) send: (std::string)seq msg: (std::string)msg post: (SSC::Post)post {
