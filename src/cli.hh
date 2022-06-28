@@ -10,10 +10,10 @@ usage:
   ssc [SUBCOMMAND]
 
 subcommands:
-  init                create new project (in current directory)
-  compile             compile project
-  print-build-target  print build path to stdout
-  mobiledeviceid      get current device id
+  init                       create new project (in current directory)
+  compile                    compile project
+  print-build-target <path>  print build path to stdout
+  mobiledeviceid             get current device id
 
 general options:
   --target  cross-compilation (any of: ios, iossimulator)
@@ -60,6 +60,8 @@ constexpr auto gPListInfo = R"XML(<?xml version="1.0" encoding="UTF-8"?>
   <string>17D102</string>
   <key>NSCameraUsageDescription</key>
   <string>This app needs access to the camera</string>
+  <key>NSBluetoothAlwaysUsageDescription</key>
+  <string>The app would like to discover and connect to peers</string>
   <key>NSMainNibFile</key>
   <string>MainMenu</string>
   <key>LSMultipleInstancesProhibited</key>

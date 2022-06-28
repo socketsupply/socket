@@ -290,9 +290,11 @@ int main (const int argc, const char* argv[]) {
     auto configPath = target / "ssc.config";
 
     if (!fs::exists(configPath)) {
+      porcelain = false;
       log("ssc.config not found in " + target.string());
       exit(1);
     }
+
     auto _settings = WStringToString(readFile(configPath));
     auto settings = parseConfig(_settings);
 

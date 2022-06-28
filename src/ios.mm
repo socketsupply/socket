@@ -122,25 +122,29 @@ void uncaughtExceptionHandler (NSException *exception) {
   [bridge route: [body UTF8String] buf: NULL];
 }
 
-- (void) keyboardDidHide {
+- (void) keyboardWillHide {
   self.webview.scrollView.scrollEnabled = YES;
   [bridge emit: "keyboard" msg: SSC::format(R"JSON({
-    "value": {
-      "data": {
-        "event": "did-hide"
-      }
-    }
+    "value": { "data": { "event": "will-hide" } }
+  })JSON")];
+}
+
+- (void) keyboardDidHide {
+  [bridge emit: "keyboard" msg: SSC::format(R"JSON({
+    "value": { "data": { "event": "did-hide" } }
+  })JSON")];
+}
+
+- (void) keyboardWillShow {
+  self.webview.scrollView.scrollEnabled = NO;
+  [bridge emit: "keyboard" msg: SSC::format(R"JSON({
+    "value": { "data": { "event": "will-show" } }
   })JSON")];
 }
 
 - (void) keyboardDidShow {
-  self.webview.scrollView.scrollEnabled = NO;
   [bridge emit: "keyboard" msg: SSC::format(R"JSON({
-    "value": {
-      "data": {
-		    "event": "did-show"
-      }
-    }
+    "value": { "data": { "event": "did-show" } }
   })JSON")];
 }
 
@@ -238,6 +242,8 @@ void uncaughtExceptionHandler (NSException *exception) {
   NSNotificationCenter* ns = [NSNotificationCenter defaultCenter];
   [ns addObserver: self selector: @selector(keyboardDidShow) name: UIKeyboardDidShowNotification object: nil];
   [ns addObserver: self selector: @selector(keyboardDidHide) name: UIKeyboardDidHideNotification object: nil];
+  [ns addObserver: self selector: @selector(keyboardWillShow) name: UIKeyboardWillShowNotification object: nil];
+  [ns addObserver: self selector: @selector(keyboardWillHide) name: UIKeyboardWillHideNotification object: nil];
 
   [bridge setBluetooth: [BluetoothDelegate new]];
   [bridge setWebview: self.webview];

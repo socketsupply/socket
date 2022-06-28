@@ -167,12 +167,17 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 	_channelId = @"5A028AB0-8423-4495-88FD-28E0318289AE";
 	_serviceId = @"56702D92-69F9-4400-BEF8-D5A89FCFD31D";
 
+  // auto channelId = std::string([_channelId UTF8String]);
+  // auto serviceId = std::string([_serviceId UTF8String]);
+
   auto msg = SSC::format(R"JSON({
     "value": {
       "source": "bluetooth",
-      "data": { "message": "initalized" }
+      "data": {
+        "event": "init"
+      }
     }
-  })JSON");
+  })JSON" /* channelId, serviceId */);
 
   [self.bridge emit: "network" msg: msg];
 }
@@ -205,6 +210,22 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   //
   [_peripheralManager startAdvertising: @{CBAdvertisementDataServiceUUIDsKey: @[_service.UUID]}];
 
+  /* std::string uuid = [_service.peripheral.identifier.UUIDString UTF8String];
+  std::string name = [_service.peripheral.name UTF8String];
+
+  auto msg = SSC::format(R"JSON({
+    "value": {
+      "source": "bluetooth",
+      "data": {
+        "name": "$S",
+        "uuid": "$S",
+        "event": "advertising"
+      }
+    }
+  })JSON", name, uuid);
+
+  [self.bridge emit: "network" msg: msg]; */
+
   //
   // Start scanning for services that have the SOCKET_CHANNEL UUID
   //
@@ -213,7 +234,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
   [_centralManager
     scanForPeripheralsWithServices: services
-    options: @{CBCentralManagerScanOptionAllowDuplicatesKey: @(NO)}    
+    options: @{CBCentralManagerScanOptionAllowDuplicatesKey: @(YES)}
   ];
 }
 
@@ -298,19 +319,21 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   }
 }
 
-- (void)centralManager:(CBCentralManager*)central didConnectPeripheral:(CBPeripheral*)peripheral {
+- (void) centralManager: (CBCentralManager*)central didConnectPeripheral: (CBPeripheral*)peripheral {
   NSLog(@"BBB didConnectPeripheral");
   peripheral.delegate = self;
   [peripheral discoverServices: @[[CBUUID UUIDWithString: _serviceId]]];
 }
 
 - (void) centralManager: (CBCentralManager*)central didDiscoverPeripheral: (CBPeripheral*)peripheral advertisementData: (NSDictionary*)advertisementData RSSI: (NSNumber*)RSSI {
-  std::string uuid = [peripheral.identifier.UUIDString UTF8String];
-  std::string name = [peripheral.name UTF8String];
-
   if (_peripherals == nullptr) {
     return;
   }
+
+  auto uuid = std::string([peripheral.identifier.UUIDString UTF8String]);
+  auto name = std::string([peripheral.name UTF8String]);
+
+  if (uuid.size() == 0 || name.size() == 0) return;
 
   auto isConnected = peripheral.state != CBPeripheralStateDisconnected;
   auto isKnown = [_peripherals containsObject: peripheral];
@@ -323,7 +346,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
       "data": {
         "name": "$S",
         "uuid": "$S",
-        "event": "peer-joined"
+        "event": "peer-discovered"
       }
     }
   })JSON", name, uuid);
@@ -334,7 +357,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   [self.peripherals addObject: peripheral];
 }
 
-- (void) peripheral:(CBPeripheral *)peripheral didDiscoverServices:(NSError *)error {
+- (void) peripheral: (CBPeripheral*)peripheral didDiscoverServices: (NSError*)error {
   NSLog(@"BBB didDiscoverServices:");
 
   for (CBService *service in peripheral.services) {
@@ -356,7 +379,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   }
 }
 
-- (void)peripheralManagerIsReadyToUpdateSubscribers:(CBPeripheralManager *)peripheral {
+- (void) peripheralManagerIsReadyToUpdateSubscribers: (CBPeripheralManager*)peripheral {
   auto msg = SSC::format(R"JSON({
     "value": {
       "source": "bluetooth",
@@ -416,11 +439,11 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   [self.bridge emit: "network" msg: msg];
 }
 
-- (void) centralManager:(CBCentralManager *)central didFailToConnectPeripheral:(CBPeripheral *)peripheral error:(nullable NSError *)error {
+- (void) centralManager: (CBCentralManager*)central didFailToConnectPeripheral: (CBPeripheral*)peripheral error: (nullable NSError*)error {
   NSLog(@"BBB didFailToConnectPeripheral: %@", [peripheral.identifier UUIDString]);
 }
 
-- (void) centralManager:(CBCentralManager*)central didDisconnectPeripheral:(CBPeripheral*)peripheral error:(NSError*)error {
+- (void) centralManager: (CBCentralManager*)central didDisconnectPeripheral: (CBPeripheral*)peripheral error: (NSError*)error {
   std::string uuid = [peripheral.identifier.UUIDString UTF8String];
   std::string name = [peripheral.name UTF8String];
 
@@ -430,7 +453,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
       "data": {
         "name": "$S",
         "uuid": "$S",
-        "event": "peer-parted"
+        "event": "peer-disconnected"
       }
     }
   })JSON", name, uuid);
