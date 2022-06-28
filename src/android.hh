@@ -129,7 +129,9 @@ typedef std::map<std::string, std::string> EnvironmentVariables;
 #define AssetManagerIsNotReachableError "AssetManager is not reachable through binding"
 #define ExceptionCheckError "ExceptionCheck"
 #define JavaScriptPreloadSourceNotInitializedError "JavaScript preload source is not initialized"
+#define NativeCoreJavaVMNotInitializedError "NativeCore JavaVM is not initialized"
 #define NativeCoreNotInitializedError "NativeCore is not initialized"
+#define NativeCoreRefsNotInitializedError "NativeCore refs are not initialized"
 #define RootDirectoryIsNotReachableError "Root directory in file system is not reachable through binding"
 #define UVLoopNotInitializedError "UVLoop is not initialized"
 
@@ -364,11 +366,8 @@ class NativeCore : SSC::Core {
     windowOptions.env = stream.str();
 
     this->javaScriptPreloadSource.assign(
-      "window.addEventListener('unhandledrejection', e => console.log(e.message));\n"
-      "window.addEventListener('error', e => console.log(e.reason));\n"
-      "window.external = {\n"
-      "  invoke: arg => window.webkit.messageHandlers.webview.postMessage(arg)\n"
-      "};\n"
+      "window.addEventListener('unhandledrejection', e => console.log(e.message || e));\n"
+      "window.addEventListener('error', e => console.log(e.reason || e.message || e));\n"
       "console.error = console.warn = console.log;\n"
       "" + createPreload(windowOptions) + "\n"
       "//# sourceURL=preload.js"
@@ -399,6 +398,10 @@ class NativeCore : SSC::Core {
 
   AppConfig & GetAppConfig () {
     return this->config;
+  }
+
+  const NativeCoreRefs & GetRefs () {
+    return this->refs;
   }
 
   const EnvironmentVariables & GetEnvironmentVariables () {

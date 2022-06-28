@@ -48,9 +48,9 @@ open class WebViewClient(activity: WebViewActivity) : android.webkit.WebViewClie
   ) {
     android.util.Log.e(TAG, "WebViewClient finished loading: $url");
 
-    val core = this.activity.core as NativeCore;
+    val core = this.activity.core
 
-    if (core.isReady) {
+    if (core != null && core.isReady) {
       val source = core.getJavaScriptPreloadSource()
       view.evaluateJavascript(source, fun (result: String) {
         android.util.Log.d(TAG, result);
@@ -111,6 +111,7 @@ open class WebViewActivity : androidx.appcompat.app.AppCompatActivity() {
       settings.setJavaScriptEnabled(true);
 
       webview.setWebViewClient(client);
+      webview.addJavascriptInterface(ExternalWebViewInterface(this), "external");
       webview.loadUrl("file:///android_asset/index.html");
     }
   }
@@ -120,6 +121,82 @@ open class WebViewActivity : androidx.appcompat.app.AppCompatActivity() {
   }
 
   fun check () {
+  }
+}
+
+/**
+ * External JavaScript interface attached to the webview at
+ * `window.external`
+ */
+public open class ExternalWebViewInterface(activity: WebViewActivity) {
+  final protected val TAG = "ExternalWebViewInterface";
+
+  /**
+   * A reference to the core `WebViewActivity`
+   */
+  protected val activity = activity;
+
+  @android.webkit.JavascriptInterface
+  fun throwError (message: String) {
+    val view = this.activity.view;
+
+    if (view != null) {
+      val source = "throw new Error($message)";
+      view.evaluateJavascript(source, null);
+    }
+  }
+
+  /**
+   * Low level external message handler
+   */
+  @android.webkit.JavascriptInterface
+  final fun invoke (message: String) {
+    val core = this.activity.core;
+
+    if (core == null || !core.isReady) {
+      this.throwError("Missing NativeCore in WebViewActivity.");
+      return;
+    }
+
+    android.util.Log.d(TAG, "invoke($message)");
+  }
+}
+
+/**
+ * A container for a parseable IPC message (ipc://...)
+ */
+class IPCMessage  {
+  public var uri: android.net.Uri? = null;
+
+  public val command: String? get() = this.uri?.getHost();
+
+  constructor (message: String? = null) {
+    if (message != null) {
+      this.uri = android.net.Uri.parse(message);
+    } else {
+      this.uri = android.net.Uri.parse("ipc://");
+    }
+  }
+
+  public fun get (key: String): String? {
+    return this.uri?.getQueryParameter(key);
+  }
+
+  public fun set (key: String, value: String): Boolean {
+    val uri = this.uri
+
+    if (uri == null) {
+      return false;
+    }
+
+    this.uri = uri.buildUpon().appendQueryParameter(key, value).build();
+
+    return true;
+  }
+
+  public fun delete (key: String): Boolean {
+    // @TODO
+    return false;
   }
 }
 
@@ -307,8 +384,9 @@ public open class NativeCore {
       android.util.Log.d(TAG, "pointer check OK");
     }
 
-    //if (!this.verifyRefs()) { return false; }
-    //if (!this.verifyJavaVM()) { return false; }
+    // @TODO
+    if (!this.verifyRefs()) { return false; }
+    if (!this.verifyJavaVM()) { return false; }
 
     try {
       this.verifyNativeExceptions();
@@ -323,7 +401,8 @@ public open class NativeCore {
       android.util.Log.d(TAG, "native exceptions check OK");
     }
 
-    //if (!this.verifyEnvironemnt()) { return false; }
+    // @TODO
+    if (!this.verifyEnvironemnt()) { return false; }
 
     try {
       if (!this.verifyRootDirectory()) {

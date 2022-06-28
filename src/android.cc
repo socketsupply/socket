@@ -159,6 +159,73 @@ extern "C" {
   }
 
   /**
+   * `NativeCore::verifyEnvironment()` binding.
+   * @return `true` if verification passes, otherwise `false`.
+   */
+  jboolean exports(NativeCore, verifyEnvironment)(
+    JNIEnv *env,
+    jobject self
+  ) {
+    auto core = GetNativeCoreFromEnvironment(env);
+
+    if (!core) {
+      Throw(env, NativeCoreNotInitializedError);
+      return false;
+    }
+
+    // @TODO
+    return true;
+  }
+
+  /**
+   * `NativeCore::verifyJavaVM()` binding.
+   * @return `true` if verification passes, otherwise `false`.
+   */
+  jboolean exports(NativeCore, verifyJavaVM)(
+    JNIEnv *env,
+    jobject self
+  ) {
+    auto core = GetNativeCoreFromEnvironment(env);
+
+    if (!core) {
+      Throw(env, NativeCoreNotInitializedError);
+      return false;
+    }
+
+    if (!core->GetJavaVM()) {
+      Throw(env, NativeCoreJavaVMNotInitializedError);
+      return false;
+    }
+
+    return true;
+  }
+
+  /**
+   * `NativeCore::verifyRefs()` binding.
+   * @return `true` if verification passes, otherwise `false`.
+   */
+  jboolean exports(NativeCore, verifyRefs)(
+    JNIEnv *env,
+    jobject self
+  ) {
+    auto core = GetNativeCoreFromEnvironment(env);
+
+    if (!core) {
+      Throw(env, NativeCoreNotInitializedError);
+      return false;
+    }
+
+    auto refs = core->GetRefs();
+
+    if (!refs.core) {
+      Throw(env, NativeCoreRefsNotInitializedError);
+      return false;
+    }
+
+    return true;
+  }
+
+  /**
    * `NativeCore::verifyFileSystem()` binding.
    * @return `true` if verification passes, otherwise `false`.
    */
