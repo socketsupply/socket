@@ -9,3 +9,19 @@ node_modules/
 /bin/cli
 bin/ssc
 build/
+META-INF/
+
+# Ignore Gradle project-specific cache directory
+.gradle
+
+# Ignore Gradle build output directory
+build
+gradle
+gradlew
+gradlew.bat
+.project
+.settings/
+.clang-format
+.vimrc
+*.gradle*
+compile_flags.txt
