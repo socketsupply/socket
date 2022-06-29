@@ -72,6 +72,8 @@ open class WebViewActivity : androidx.appcompat.app.AppCompatActivity() {
   open protected var client: WebViewClient? = null;
   open protected val TAG = "WebViewActivity";
 
+  open public var externalInterface: ExternalWebViewInterface? = null;
+  open public var bridge: Bridge? = null;
   open public var view: android.webkit.WebView? = null;
   open public var core: NativeCore? = null;
 
@@ -82,7 +84,9 @@ open class WebViewActivity : androidx.appcompat.app.AppCompatActivity() {
   override fun onCreate (state: android.os.Bundle?) {
     super.onCreate(state);
 
+    val externalInterface = ExternalWebViewInterface(this);
     val binding = WebViewActivityBinding.inflate(layoutInflater);
+    val bridge = Bridge(this);
     val client = WebViewClient(this);
     val core = NativeCore();
 
@@ -92,7 +96,9 @@ open class WebViewActivity : androidx.appcompat.app.AppCompatActivity() {
     // @TODO(jwerle): `webview_activity` needs to be defined `res/layout/webview_activity.xml`
     setContentView(binding.root);
 
+    this.externalInterface = externalInterface;
     this.binding = binding;
+    this.bridge = bridge;
     this.client = client;
     this.view = webview;
     this.core = core;
@@ -111,16 +117,46 @@ open class WebViewActivity : androidx.appcompat.app.AppCompatActivity() {
       settings.setJavaScriptEnabled(true);
 
       webview.setWebViewClient(client);
-      webview.addJavascriptInterface(ExternalWebViewInterface(this), "external");
+      webview.addJavascriptInterface(externalInterface, "external");
       webview.loadUrl("file:///android_asset/index.html");
     }
   }
+}
 
-  fun verifyJavaScriptPreload (): Boolean {
-    return true;
+public open class Bridge(activity: WebViewActivity) {
+  final protected val TAG = "Bridge";
+
+  companion object Bridge {
+    val OK_STATE = "0";
+    val ERROR_STATE = "1";
   }
 
-  fun check () {
+  /**
+   * A reference to the core `WebViewActivity`
+   */
+  protected val activity = activity;
+
+  fun evaluateJavascript (
+    source: String,
+    callback: android.webkit.ValueCallback<String?>? = null
+  ) {
+    this.activity.externalInterface?.evaluateJavascript(source, callback)
+  }
+
+  public fun send (seq: String, message: String?): Boolean {
+    val source = activity.core?.getResolveToRenderProcessJavaScript(
+      seq,
+      Bridge.OK_STATE,
+      message ?: "",
+      true
+    )
+
+    if (source != null) {
+      this.evaluateJavascript(source);
+      return true;
+    }
+
+    return false;
   }
 }
 
@@ -136,13 +172,23 @@ public open class ExternalWebViewInterface(activity: WebViewActivity) {
    */
   protected val activity = activity;
 
-  fun throwError (message: String) {
-    val view = this.activity.view;
+  fun evaluateJavascript (
+    source: String,
+    callback: android.webkit.ValueCallback<String?>? = null
+  ) {
+    this.activity.runOnUiThread(fun () {
+      this.activity.view?.evaluateJavascript(source, callback);
+    })
+  }
 
-    if (view != null) {
-      val source = "throw new Error($message)";
-      view.evaluateJavascript(source, null);
-    }
+  fun throwError (message: String) {
+    val source = "throw new Error($message)";
+    this.evaluateJavascript(source, null);
+  }
+
+  fun log (message: String) {
+    val source = "console.log(\"$message\")";
+    this.evaluateJavascript(source, null);
   }
 
   /**
@@ -151,16 +197,37 @@ public open class ExternalWebViewInterface(activity: WebViewActivity) {
   @android.webkit.JavascriptInterface
   final fun invoke (value: String) {
     val core = this.activity.core;
-
-    if (core == null || !core.isReady) {
-      this.throwError("Missing NativeCore in WebViewActivity.");
-      return;
-    }
-
+    val bridge = this.activity.bridge;
     val message = IPCMessage(value);
 
+    if (core == null || !core.isReady) {
+      return this.throwError("Missing NativeCore in WebViewActivity.");
+    }
+
+    if (null == bridge) {
+      return this.throwError("Missing Bridge in WebViewActivity.");
+    }
+
     when (message.command) {
-      "log", "stdout" -> android.util.Log.d(TAG, message.get("value"));
+      "log", "stdout" -> android.util.Log.d(TAG, message.value);
+
+      "external", "openExternal" -> {
+        if (message.value.length == 0) {
+          throw RuntimeException("openExternal: Missing URL value.")
+        }
+
+        this.activity.startActivity(
+          android.content.Intent(
+            android.content.Intent.ACTION_VIEW,
+            android.net.Uri.parse(message.value)
+          )
+        );
+      }
+
+      "getNetworkInterfaces" -> {
+        bridge.send(message.seq, core.getNetworkInterfaces())
+      }
+
       else -> {
         android.util.Log.d(TAG, message.toString());
         android.util.Log.d(TAG, "invoke($value)");
@@ -179,7 +246,7 @@ class IPCMessage  {
   internal var uri: android.net.Uri? = null;
 
   /**
-   * Parsed getter command in `ipc://<command>[?query]`
+   * `command` in IPC URI accessor.
    */
   public var command: String
     get () = this.uri?.getHost() ?: ""
@@ -188,7 +255,28 @@ class IPCMessage  {
         ?.buildUpon()
         ?.authority(command)
         ?.build()
-    }
+    };
+
+  /**
+   * `value` in IPC URI query accessor.
+   */
+  public var value: String
+    get () = this.get("value");
+    set (value) { this.set("value", value); }
+
+  /**
+   * `seq` in IPC URI query accessor.
+   */
+  public var seq: String
+    get () = this.get("seq");
+    set (seq) { this.set("seq", seq); }
+
+  /**
+   * `state` in IPC URI query accessor.
+   */
+  public var state: String
+    get () = this.get("state", Bridge.OK_STATE);
+    set (state) { this.set("state", state); }
 
   constructor (message: String? = null) {
     if (message != null) {
@@ -198,8 +286,8 @@ class IPCMessage  {
     }
   }
 
-  public fun get (key: String): String {
-    return this.uri?.getQueryParameter(key) ?: "";
+  public fun get (key: String, default: String = ""): String {
+    return this.uri?.getQueryParameter(key) ?: default;
   }
 
   public fun set (key: String, value: String): Boolean {
@@ -363,6 +451,32 @@ public open class NativeCore {
 
   @Throws(java.lang.Exception::class)
   external fun getJavaScriptPreloadSource(): String;
+
+  @Throws(java.lang.Exception::class)
+  external fun getResolveToRenderProcessJavaScript(
+    seq: String,
+    state: String,
+    value: String,
+    shouldEncodeValue: Boolean
+  ): String
+
+  @Throws(java.lang.Exception::class)
+  external fun getEmitToRenderProcessJavaScript(
+    event: String,
+    value: String
+  ): String;
+
+  @Throws(java.lang.Exception::class)
+  external fun getStreamToRenderProcessJavaScript(
+    id: String,
+    value: String
+  ): String
+
+  /**
+   * `NativeCore` bindings
+   */
+  @Throws(java.lang.Exception::class)
+  external fun getNetworkInterfaces(): String;
 
   /**
    * `NativeCore` class constructor which is initialized
