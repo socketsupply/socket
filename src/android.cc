@@ -64,7 +64,7 @@ extern "C" {
     JNIEnv *env,
     jobject self
   ) {
-    Throw(env, ExceptionCheckError);
+    Throw(env, ExceptionCheckException);
   }
 
   /**
@@ -78,14 +78,14 @@ extern "C" {
     auto core = GetNativeCoreFromEnvironment(env);
 
     if (!core) {
-      Throw(env, NativeCoreNotInitializedError);
+      Throw(env, NativeCoreNotInitializedException);
       return false;
     }
 
     auto rootDirectory = core->GetRootDirectory();
 
     if (!rootDirectory.size()) {
-      Throw(env, RootDirectoryIsNotReachableError);
+      Throw(env, RootDirectoryIsNotReachableException);
       return false;
     }
 
@@ -103,14 +103,14 @@ extern "C" {
     auto core = GetNativeCoreFromEnvironment(env);
 
     if (!core) {
-      Throw(env, NativeCoreNotInitializedError);
+      Throw(env, NativeCoreNotInitializedException);
       return false;
     }
 
     auto assetManager = core->GetAssetManager();
 
     if (!assetManager) {
-      Throw(env, AssetManagerIsNotReachableError);
+      Throw(env, AssetManagerIsNotReachableException);
       return false;
     }
 
@@ -128,7 +128,7 @@ extern "C" {
     auto core = GetNativeCoreFromEnvironment(env);
 
     if (!core) {
-      Throw(env, NativeCoreNotInitializedError);
+      Throw(env, NativeCoreNotInitializedException);
       return false;
     }
 
@@ -169,7 +169,7 @@ extern "C" {
     auto core = GetNativeCoreFromEnvironment(env);
 
     if (!core) {
-      Throw(env, NativeCoreNotInitializedError);
+      Throw(env, NativeCoreNotInitializedException);
       return false;
     }
 
@@ -188,12 +188,12 @@ extern "C" {
     auto core = GetNativeCoreFromEnvironment(env);
 
     if (!core) {
-      Throw(env, NativeCoreNotInitializedError);
+      Throw(env, NativeCoreNotInitializedException);
       return false;
     }
 
     if (!core->GetJavaVM()) {
-      Throw(env, NativeCoreJavaVMNotInitializedError);
+      Throw(env, NativeCoreJavaVMNotInitializedException);
       return false;
     }
 
@@ -211,14 +211,14 @@ extern "C" {
     auto core = GetNativeCoreFromEnvironment(env);
 
     if (!core) {
-      Throw(env, NativeCoreNotInitializedError);
+      Throw(env, NativeCoreNotInitializedException);
       return false;
     }
 
     auto refs = core->GetRefs();
 
     if (!refs.core) {
-      Throw(env, NativeCoreRefsNotInitializedError);
+      Throw(env, NativeCoreRefsNotInitializedException);
       return false;
     }
 
@@ -238,7 +238,7 @@ extern "C" {
     int err = 0;
 
     if (!core) {
-      Throw(env, NativeCoreNotInitializedError);
+      Throw(env, NativeCoreNotInitializedException);
       return false;
     }
 
@@ -247,7 +247,7 @@ extern "C" {
     struct { uv_fs_t opendir, readdir; } requests = {0};
 
     if (!loop) {
-      Throw(env, UVLoopNotInitializedError);
+      Throw(env, UVLoopNotInitializedException);
       return false;
     }
 
@@ -256,7 +256,7 @@ extern "C" {
     err = uv_fs_opendir(loop, &requests.opendir, rootDirectory.c_str(), nullptr);
 
     if (err != 0) {
-      Throw(env, UVError(err));
+      Throw(env, UVException(err));
       return false;
     }
 
@@ -269,7 +269,7 @@ extern "C" {
     err = uv_run(loop, UV_RUN_DEFAULT);
 
     if (err != 0) {
-      Throw(env, UVError(err));
+      Throw(env, UVException(err));
       return false;
     }
 
@@ -287,7 +287,7 @@ extern "C" {
     auto core = GetNativeCoreFromEnvironment(env);
 
     if (!core) {
-      Throw(env, NativeCoreNotInitializedError);
+      Throw(env, NativeCoreNotInitializedException);
       return false;
     }
 
@@ -305,7 +305,7 @@ extern "C" {
     auto core = GetNativeCoreFromEnvironment(env);
 
     if (!core) {
-      Throw(env, NativeCoreNotInitializedError);
+      Throw(env, NativeCoreNotInitializedException);
       return false;
     }
 
@@ -323,14 +323,14 @@ extern "C" {
     auto core = GetNativeCoreFromEnvironment(env);
 
     if (!core) {
-      Throw(env, NativeCoreNotInitializedError);
+      Throw(env, NativeCoreNotInitializedException);
       return env->NewStringUTF("");
     }
 
     auto preload = core->GetJavaScriptPreloadSource();
 
     if (!preload) {
-      Throw(env, JavaScriptPreloadSourceNotInitializedError);
+      Throw(env, JavaScriptPreloadSourceNotInitializedException);
       return env->NewStringUTF("");
     }
 
