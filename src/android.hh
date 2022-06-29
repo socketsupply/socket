@@ -366,11 +366,21 @@ class NativeCore : public SSC::Core {
     windowOptions.env = stream.str();
 
     this->javaScriptPreloadSource.assign(
-      "window.addEventListener('unhandledrejection', e => console.log(e.message || e));\n"
-      "window.addEventListener('error', e => console.log(e.reason || e.message || e));\n"
-      "console.error = console.warn = console.log;\n"
-      "" + createPreload(windowOptions) + "\n"
-      "//# sourceURL=preload.js"
+      "console.error = console.warn = console.log;          \n"
+      "                                                     \n"
+      "window.addEventListener('unhandledrejection', e => { \n"
+      "  console.log(e.reason || e.message || e);           \n"
+      "});                                                  \n"
+      "                                                     \n"
+      "window.addEventListener('error', e => {              \n"
+      "  const message = e.reason || e.message || e;        \n"
+      "  if (!/debug-evaluate/.test(message)) {             \n"
+      "    console.log(message);                            \n"
+      "  }                                                  \n"
+      "});                                                  \n"
+      "                                                     \n"
+      "" + createPreload(windowOptions) + "                 \n"
+      "//# sourceURL=preload.js                             \n"
     );
 
     stream.str(""); // clear stream
