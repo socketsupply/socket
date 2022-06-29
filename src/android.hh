@@ -124,16 +124,16 @@ typedef std::map<std::string, std::string> EnvironmentVariables;
 /**
  * Translate a libuv error to a message suitable for `Throw(...)`
  */
-#define UVError(code) uv_strerror(code)
+#define UVException(code) uv_strerror(code)
 
-#define AssetManagerIsNotReachableError "AssetManager is not reachable through binding"
-#define ExceptionCheckError "ExceptionCheck"
-#define JavaScriptPreloadSourceNotInitializedError "JavaScript preload source is not initialized"
-#define NativeCoreJavaVMNotInitializedError "NativeCore JavaVM is not initialized"
-#define NativeCoreNotInitializedError "NativeCore is not initialized"
-#define NativeCoreRefsNotInitializedError "NativeCore refs are not initialized"
-#define RootDirectoryIsNotReachableError "Root directory in file system is not reachable through binding"
-#define UVLoopNotInitializedError "UVLoop is not initialized"
+#define AssetManagerIsNotReachableException "AssetManager is not reachable through binding"
+#define ExceptionCheckException "ExceptionCheck"
+#define JavaScriptPreloadSourceNotInitializedException "JavaScript preload source is not initialized"
+#define NativeCoreJavaVMNotInitializedException "NativeCore JavaVM is not initialized"
+#define NativeCoreNotInitializedException "NativeCore is not initialized"
+#define NativeCoreRefsNotInitializedException "NativeCore refs are not initialized"
+#define RootDirectoryIsNotReachableException "Root directory in file system is not reachable through binding"
+#define UVLoopNotInitializedException "UVLoop is not initialized"
 
 /**
  * A container for a JNI string (jstring).
@@ -261,7 +261,7 @@ class NativeCoreRefs {
   }
 
   ~NativeCoreRefs () {
-    this->Release();
+    // noop: `NativeCore` will called `Release()` manually
   }
 
   void Release () {
@@ -429,7 +429,11 @@ class NativeCore : SSC::Core {
       "()Landroid/content/res/AssetManager;"
     );
 
-    return AAssetManager_fromJava(this->env, ref);
+    if (ref) {
+      return AAssetManager_fromJava(this->env, ref);
+    }
+
+    return nullptr;
   }
 
   const char * GetJavaScriptPreloadSource () {
