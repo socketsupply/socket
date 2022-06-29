@@ -273,7 +273,7 @@ class NativeCoreRefs {
  * An extended `SSC::Core` class for Android NDK/JNI
  * imeplementation.
  */
-class NativeCore : SSC::Core {
+class NativeCore : public SSC::Core {
   // special floating variable that points to `refs.core`
   jobject self;
 
