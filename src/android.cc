@@ -337,6 +337,57 @@ extern "C" {
     return env->NewStringUTF(preload);
   }
 
+  /**
+   * `NativeCore::getResolveToRenderProcessJavaScript()` binding.
+   * @return JavaScript source code injected into WebView that performs an IPC resolution
+   */
+  jstring exports(NativeCore, getResolveToRenderProcessJavaScript)(
+    JNIEnv *env,
+    jobject self,
+    jstring seq,
+    jstring state,
+    jstring value,
+    jboolean shouldEncodeValue
+  ) {
+    using SSC::encodeURIComponent;
+    using SSC::resolveToRenderProcess;
+
+    auto core = GetNativeCoreFromEnvironment(env);
+
+    if (!core) {
+      Throw(env, NativeCoreNotInitializedException);
+      return env->NewStringUTF("");
+    }
+
+    return env->NewStringUTF(
+      resolveToRenderProcess(
+        NativeString(env, seq).str(),
+        NativeString(env, state).str(),
+        shouldEncodeValue
+          ? encodeURIComponent(NativeString(env, value).str())
+          : NativeString(env, value).str()
+      ).c_str()
+    );
+  }
+
+  /**
+   * `NativeCore::getNetworkInterfaces()` binding.
+   * @return Network interfaces in JSON format
+   */
+  jstring exports(NativeCore, getNetworkInterfaces)(
+    JNIEnv *env,
+    jobject self
+  ) {
+    auto core = GetNativeCoreFromEnvironment(env);
+
+    if (!core) {
+      Throw(env, NativeCoreNotInitializedException);
+      return env->NewStringUTF("");
+    }
+
+    return env->NewStringUTF(core->getNetworkInterfaces().c_str());
+  }
+
   void exports(NativeCore, fsOpen)(
     JNIEnv *env,
     jobject self,
