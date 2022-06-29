@@ -15,6 +15,11 @@
 #if defined(__APPLE__)
 	#import <Webkit/Webkit.h>
   using Task = id<WKURLSchemeTask>;
+#elif defined(__ANDROID__)
+  class Task {
+    public:
+      uint64_t id;
+  };
 #elif defined(__linux__)
   class Task {
   };

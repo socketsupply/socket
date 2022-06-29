@@ -108,11 +108,13 @@ typedef std::map<std::string, std::string> EnvironmentVariables;
 /**
  * Calls method on `NativeCore` instance in environment.
  */
-#define CallNativeCoreMethodFromEnvironment(env, object, method, signature)    \
+#define CallNativeCoreMethodFromEnvironment(                                   \
+  env, object, method, signature, ...                                          \
+)                                                                              \
   ({                                                                           \
     auto Class = env->GetObjectClass(object);                                  \
     auto id = env->GetMethodID(Class, method, signature);                      \
-    auto value = env->CallObjectMethod(object, id);                            \
+    auto value = env->CallObjectMethod(object, id, ##__VA_ARGS__);             \
     (value);                                                                   \
   })
 
@@ -269,6 +271,54 @@ class NativeCoreRefs {
   }
 };
 
+// Forward declaration
+class NativeCore;
+
+class NativeFileSystem {
+  NativeCore *core;
+  public:
+    NativeFileSystem (NativeCore *core) {
+      this->core = core;
+    }
+
+  void Open (std::string seq, uint64_t id, std::string path, int flags) {
+    reinterpret_cast<SSC::Core *>(this->core)->fsOpen(seq, id, path, flags, [&](auto seq, auto msg, auto post) {
+    });
+  }
+
+  void Close (std::string seq, uint64_t id) {
+    reinterpret_cast<SSC::Core *>(this->core)->fsClose(seq, id, [&](auto seq, auto msg, auto post) {
+    });
+  }
+
+  void Read (std::string seq, uint64_t id, int len, int offset) {
+  }
+
+  void Write (std::string seq, uint64_t id, std::string data, int16_t offset) {
+  }
+
+  void Stat (std::string seq, std::string path) {
+  }
+
+  void Unlink (std::string seq, std::string path) {
+  }
+
+  void Rename (std::string seq, std::string from, std::string to) {
+  }
+
+  void CopyFile (std::string seq, std::string from, std::string to, int flags) {
+  }
+
+  void RemoveDirectory (std::string seq, std::string path) {
+  }
+
+  void MakeDirectory (std::string seq, std::string path, int mode) {
+  }
+
+  void ReadDirectory (std::string seq, std::string path) {
+  }
+};
+
 /**
  * An extended `SSC::Core` class for Android NDK/JNI
  * imeplementation.
@@ -284,6 +334,7 @@ class NativeCore : public SSC::Core {
   // Native
   NativeCoreRefs refs;
   NativeString rootDirectory;
+  NativeFileSystem fs;
 
   // webkti webview
   std::string javaScriptPreloadSource;
@@ -295,6 +346,7 @@ class NativeCore : public SSC::Core {
 
   public:
   NativeCore (JNIEnv *env, jobject core) : Core(),
+    fs(this),
     refs(env),
     config(),
     rootDirectory(env),

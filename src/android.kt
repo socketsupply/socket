@@ -358,6 +358,46 @@ public data class GenericNativeCoreConfiguration(
 ) : NativeCoreConfiguration;
 
 /**
+ * @TODO
+ */
+public open class NativeFileSystem(core: NativeCore) {
+  val core = core;
+
+  fun open () {
+  }
+
+  fun close () {
+  }
+
+  fun read () {
+  }
+
+  fun write () {
+  }
+
+  fun stat () {
+  }
+
+  fun unlink () {
+  }
+
+  fun rename () {
+  }
+
+  fun copyFile () {
+  }
+
+  fun rmdir () {
+  }
+
+  fun mkdir () {
+  }
+
+  fun readdir () {
+  }
+}
+
+/**
  * NativeCore bindings externally implemented in JNI/NDK
  */
 public open class NativeCore {
@@ -367,6 +407,11 @@ public open class NativeCore {
    * Internal pointer managed by `initialize() and `destroy()
    */
   protected var pointer: Long = 0;
+
+  /**
+   * TODO
+   */
+  protected callbacks: MutableMap<Int, (String) -> Unit);
 
   /**
    * Set internally by the native binding if debug is enabled.
@@ -534,6 +579,9 @@ public open class NativeCore {
    */
   public fun getRootDirectory (): String? {
     return this.rootDirectory;
+  }
+
+  public fun callback (id: Int, errorMessage: String, data: String) {
   }
 
   /**
