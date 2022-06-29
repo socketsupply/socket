@@ -1108,6 +1108,24 @@ int main (const int argc, const char* argv[]) {
     }
 
     //
+    // MacOS Stripping
+    //
+    if (platform.mac) {
+      std::stringstream stripCommand;
+     
+      stripCommand 
+        << "strip"
+        << " " << binaryPath
+        << " -u";
+
+      auto r = exec(stripCommand.str().c_str());
+      if (r.exitCode != 0) {
+        log(r.output);
+        exit(r.exitCode);
+      }
+    }
+
+    //
     // MacOS Code Signing
     // ---
     //

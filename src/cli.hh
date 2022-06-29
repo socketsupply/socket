@@ -69,7 +69,7 @@ constexpr auto gPListInfo = R"XML(<?xml version="1.0" encoding="UTF-8"?>
   <key>CFBundlePackageType</key>
   <string>APPL</string>
   <key>CFBundleIconFile</key>
-  <string>index.icns</string>
+  <string>icon.icns</string>
   <key>CFBundleShortVersionString</key>
   <string>{{version_short} Build {{revision}}</string>
   <key>NSHighResolutionCapable</key>

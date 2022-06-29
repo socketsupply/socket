@@ -31,6 +31,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 @property (strong, nonatomic) CBPeripheralManager* peripheralManager;
 @property (strong, nonatomic) CBPeripheral* bluetoothPeripheral;
 @property (strong, nonatomic) NSMutableArray* peripherals;
+@property (strong, nonatomic) NSMutableArray* services;
 @property (strong, nonatomic) CBMutableService* service;
 @property (strong, nonatomic) CBMutableCharacteristic* characteristic;
 @property (strong, nonatomic) NSString* channelId;
@@ -166,6 +167,8 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
 - (void) initBluetooth {
   NSMutableArray* peripherals = [[NSMutableArray alloc] init];
+  NSMutableArray* services = [[NSMutableArray alloc] init];
+  _services = services;
   _peripherals = peripherals;
   _centralManager = [[CBCentralManager alloc] initWithDelegate: self queue: nil];
   _peripheralManager = [[CBPeripheralManager alloc] initWithDelegate: self queue: nil options: nil];
@@ -234,12 +237,11 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   //
   // Start scanning for services that have the SOCKET_CHANNEL UUID
   //
-  NSMutableArray* services = [NSMutableArray array];
-  [services addObject: serviceUUID];
+  [_services addObject: serviceUUID];
 
   [_centralManager
-    scanForPeripheralsWithServices: services
-    options: @{CBCentralManagerScanOptionAllowDuplicatesKey: @(NO)}
+    scanForPeripheralsWithServices: _services
+    options: @{CBCentralManagerScanOptionAllowDuplicatesKey: @(YES)}
   ];
 }
 
@@ -303,7 +305,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   }
 } */
 
-- (void) localNetworkSend:(std::string)str uuid:(std::string)uuid {
+- (void) localNetworkAdvertise: (std::string)str uuid:(std::string)uuid {
   // for (CBPeripheral* peripheral in _peripherals) {
 
   // NSInteger amountToSend = self.dataToSend.length - self.sendDataIndex;
@@ -328,13 +330,13 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 }
 
 - (void) centralManager: (CBCentralManager*)central didDiscoverPeripheral: (CBPeripheral*)peripheral advertisementData: (NSDictionary*)advertisementData RSSI: (NSNumber*)RSSI {
-  if (_peripherals == nullptr) {
-    return;
-  }
-
   if (peripheral.identifier == nil || peripheral.name == nil) {
     [self.peripherals addObject: peripheral];
-    [central connectPeripheral: peripheral options: nil];
+
+    NSTimeInterval _scanTimeout = 0.5;
+    [NSTimer timerWithTimeInterval: _scanTimeout repeats: NO block:^(NSTimer* timer) {
+      [_centralManager connectPeripheral: peripheral options: nil];
+    }];
     return;
   }
 
@@ -407,6 +409,8 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     return;
   }
 
+  if (characteristic.value == nil) return;
+
   std::string uuid = "";
   std::string name = "";
 
@@ -419,7 +423,6 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   }
 
   const void* rawData = [characteristic.value bytes];
-  // [self.peripherals addObject: peripheral];
   char* src = (char*) rawData;
 
   auto msg = SSC::format(R"JSON({
@@ -458,14 +461,20 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 }
 
 - (void) centralManager: (CBCentralManager*)central didFailToConnectPeripheral: (CBPeripheral*)peripheral error: (nullable NSError*)error {
-  if (error != nil) {
-    NSLog(@"BBB failed to connect %@", error.debugDescription);
-    return;
-  }
+  // if (error != nil) {
+  //  NSLog(@"BBB failed to connect %@", error.debugDescription);
+  //  return;
+  // }
 
-  if ([_peripherals containsObject: peripheral]) {
-    [_peripherals removeObject: peripheral];
-  }
+  NSTimeInterval _scanTimeout = 0.5;
+
+  [NSTimer timerWithTimeInterval: _scanTimeout repeats: NO block:^(NSTimer* timer) {
+    [_centralManager connectPeripheral: peripheral options: nil];
+
+    // if ([_peripherals containsObject: peripheral]) {
+    //  [_peripherals removeObject: peripheral];
+    // }
+  }];
 }
 
 - (void) centralManager: (CBCentralManager*)central didDisconnectPeripheral: (CBPeripheral*)peripheral error: (NSError*)error {
@@ -603,13 +612,13 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   auto seq = cmd.get("seq");
   uint64_t clientId = 0;
 
-  if (cmd.name == "localNetworkInit") {
+  if (cmd.name == "networkSubscribe") {
     [self.bluetooth initBluetooth];
     return true;
   }
 
-  if (cmd.name == "localNetworkSend") {
-    [self.bluetooth localNetworkSend: cmd.get("value") uuid: cmd.get("uuid")];
+  if (cmd.name == "networkAdvertise") {
+    [self.bluetooth localNetworkAdvertise: cmd.get("value") uuid: cmd.get("uuid")];
     return true;
   }
 
