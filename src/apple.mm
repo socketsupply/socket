@@ -155,7 +155,10 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   NSLog(@"BBB centralManagerDidUpdateState");
   switch (central.state) {
     case CBCentralManagerStatePoweredOn:
-      [_centralManager scanForPeripheralsWithServices:nil options:nil];
+      [_centralManager
+        scanForPeripheralsWithServices: _services
+        options: @{CBCentralManagerScanOptionAllowDuplicatesKey: @(YES)}
+      ];
       break;
   }
 }
@@ -576,7 +579,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     ];
 
     [task didReceiveResponse: httpResponse];
-    
+
     NSData* data;
 
     // if post has a length, use the post's body as the response...
