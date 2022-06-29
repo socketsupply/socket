@@ -136,7 +136,6 @@ public open class ExternalWebViewInterface(activity: WebViewActivity) {
    */
   protected val activity = activity;
 
-  @android.webkit.JavascriptInterface
   fun throwError (message: String) {
     val view = this.activity.view;
 
@@ -150,7 +149,7 @@ public open class ExternalWebViewInterface(activity: WebViewActivity) {
    * Low level external message handler
    */
   @android.webkit.JavascriptInterface
-  final fun invoke (message: String) {
+  final fun invoke (value: String) {
     val core = this.activity.core;
 
     if (core == null || !core.isReady) {
@@ -158,7 +157,15 @@ public open class ExternalWebViewInterface(activity: WebViewActivity) {
       return;
     }
 
-    android.util.Log.d(TAG, "invoke($message)");
+    val message = IPCMessage(value);
+
+    when (message.command) {
+      "log", "stdout" -> android.util.Log.d(TAG, message.get("value"));
+      else -> {
+        android.util.Log.d(TAG, message.toString());
+        android.util.Log.d(TAG, "invoke($value)");
+      }
+    }
   }
 }
 
@@ -166,9 +173,22 @@ public open class ExternalWebViewInterface(activity: WebViewActivity) {
  * A container for a parseable IPC message (ipc://...)
  */
 class IPCMessage  {
-  public var uri: android.net.Uri? = null;
+  /**
+   * Internal URI representation of an `ipc://...` message
+   */
+  internal var uri: android.net.Uri? = null;
 
-  public val command: String? get() = this.uri?.getHost();
+  /**
+   * Parsed getter command in `ipc://<command>[?query]`
+   */
+  public var command: String
+    get () = this.uri?.getHost() ?: ""
+    set (command) {
+      this.uri = this.uri
+        ?.buildUpon()
+        ?.authority(command)
+        ?.build()
+    }
 
   constructor (message: String? = null) {
     if (message != null) {
@@ -178,25 +198,51 @@ class IPCMessage  {
     }
   }
 
-  public fun get (key: String): String? {
-    return this.uri?.getQueryParameter(key);
+  public fun get (key: String): String {
+    return this.uri?.getQueryParameter(key) ?: "";
   }
 
   public fun set (key: String, value: String): Boolean {
-    val uri = this.uri
+    this.uri = this.uri
+      ?.buildUpon()
+      ?.appendQueryParameter(key, value)
+      ?.build();
 
-    if (uri == null) {
+    if (this.uri == null) {
       return false;
     }
-
-    this.uri = uri.buildUpon().appendQueryParameter(key, value).build();
 
     return true;
   }
 
   public fun delete (key: String): Boolean {
-    // @TODO
-    return false;
+    if (this.uri?.getQueryParameter(key) == null) {
+      return false;
+    }
+
+    val params = this.uri?.getQueryParameterNames();
+    val tmp = this.uri?.buildUpon()?.clearQuery();
+
+    if (params != null) {
+      for (param: String in params) {
+        if (!param.equals(key)) {
+          val value = this.uri?.getQueryParameter(param)
+          tmp?.appendQueryParameter(param, value);
+        }
+      }
+    }
+
+    this.uri = tmp?.build();
+
+    return true;
+  }
+
+  override public fun toString(): String {
+    if (this.uri == null) {
+      return "";
+    }
+
+    return this.uri.toString();
   }
 }
 
@@ -303,6 +349,9 @@ public open class NativeCore {
   @Throws(java.lang.Exception::class)
   external fun verifyNativeExceptions(): Boolean;
 
+  @Throws(java.lang.Exception::class)
+  external fun verifyEnvironment(): Boolean;
+
   /**
    * `NativeCore` internal utility bindings
    */
@@ -402,7 +451,7 @@ public open class NativeCore {
     }
 
     // @TODO
-    if (!this.verifyEnvironemnt()) { return false; }
+    if (!this.verifyEnvironment()) { return false; }
 
     try {
       if (!this.verifyRootDirectory()) {
