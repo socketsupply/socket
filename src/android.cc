@@ -371,6 +371,60 @@ extern "C" {
   }
 
   /**
+   * `NativeCore::getEmitToRenderProcessJavaScript()` binding.
+   * @return JavaScript source code injected into WebView that performs an IPC event emission.
+   */
+  jstring exports(NativeCore, getEmitToRenderProcessJavaScript)(
+    JNIEnv *env,
+    jobject self,
+    jstring event,
+    jstring value
+  ) {
+    using SSC::emitToRenderProcess;
+
+    auto core = GetNativeCoreFromEnvironment(env);
+
+    if (!core) {
+      Throw(env, NativeCoreNotInitializedException);
+      return env->NewStringUTF("");
+    }
+
+    return env->NewStringUTF(
+      emitToRenderProcess(
+        NativeString(env, event).str(),
+        NativeString(env, value).str()
+      ).c_str()
+    );
+  }
+
+  /**
+   * `NativeCore::getStreamToRenderProcessJavaScript()` binding.
+   * @return JavaScript source code injected into WebView that performs an IPC stream callback.
+   */
+  jstring exports(NativeCore, getStreamToRenderProcessJavaScript)(
+    JNIEnv *env,
+    jobject self,
+    jstring id,
+    jstring value
+  ) {
+    using SSC::streamToRenderProcess;
+
+    auto core = GetNativeCoreFromEnvironment(env);
+
+    if (!core) {
+      Throw(env, NativeCoreNotInitializedException);
+      return env->NewStringUTF("");
+    }
+
+    return env->NewStringUTF(
+      streamToRenderProcess(
+        NativeString(env, id).str(),
+        NativeString(env, value).str()
+      ).c_str()
+    );
+  }
+
+  /**
    * `NativeCore::getNetworkInterfaces()` binding.
    * @return Network interfaces in JSON format
    */
