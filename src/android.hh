@@ -43,14 +43,14 @@
 #include <map>
 #include <string>
 
-// SSC
-#include "common.hh"
-#include "core.hh"
-
 // android
 #include <android/log.h>
 #include <android/asset_manager.h>
 #include <android/asset_manager_jni.h>
+
+// SSC
+#include "common.hh"
+#include "core.hh"
 
 typedef std::map<std::string, std::string> AppConfig;
 typedef std::map<std::string, std::string> EnvironmentVariables;
@@ -112,16 +112,32 @@ typedef std::map<std::string, std::string> EnvironmentVariables;
   env, object, method, signature, ...                                          \
 )                                                                              \
   ({                                                                           \
-    auto Class = env->GetObjectClass(object);                                  \
-    auto id = env->GetMethodID(Class, method, signature);                      \
-    auto value = env->CallObjectMethod(object, id, ##__VA_ARGS__);             \
-    (value);                                                                   \
+    auto _Class = env->GetObjectClass(object);                                 \
+    auto _id = env->GetMethodID(_Class, method, signature);                    \
+    auto _value = env->CallObjectMethod(object, _id, ##__VA_ARGS__);           \
+    (_value);                                                                  \
+  })
+
+/**
+ * TODO
+ */
+#define CallNativeCoreCallbackMethodFromEnvironment(                           \
+  env, object, method, signature, ...                                          \
+)                                                                              \
+  ({                                                                           \
+    auto _Class = env->GetObjectClass(object);                                 \
+    auto _id = env->GetMethodID(_Class, method, signature);                    \
+    env->CallVoidMethod(object, _id, ##__VA_ARGS__);                           \
   })
 
 /**
  * Generic `Exception` throw helper
  */
-#define Throw(env, E) env->ThrowNew(GetExceptionClass(env), E)
+#define Throw(env, E)                                                          \
+  ({                                                                           \
+    env->ThrowNew(GetExceptionClass(env), E);                                  \
+    (void) 0;                                                                  \
+  });
 
 /**
  * Translate a libuv error to a message suitable for `Throw(...)`
@@ -272,52 +288,8 @@ class NativeCoreRefs {
 };
 
 // Forward declaration
-class NativeCore;
-
-class NativeFileSystem {
-  NativeCore *core;
-  public:
-    NativeFileSystem (NativeCore *core) {
-      this->core = core;
-    }
-
-  void Open (std::string seq, uint64_t id, std::string path, int flags) {
-    reinterpret_cast<SSC::Core *>(this->core)->fsOpen(seq, id, path, flags, [&](auto seq, auto msg, auto post) {
-    });
-  }
-
-  void Close (std::string seq, uint64_t id) {
-    reinterpret_cast<SSC::Core *>(this->core)->fsClose(seq, id, [&](auto seq, auto msg, auto post) {
-    });
-  }
-
-  void Read (std::string seq, uint64_t id, int len, int offset) {
-  }
-
-  void Write (std::string seq, uint64_t id, std::string data, int16_t offset) {
-  }
-
-  void Stat (std::string seq, std::string path) {
-  }
-
-  void Unlink (std::string seq, std::string path) {
-  }
-
-  void Rename (std::string seq, std::string from, std::string to) {
-  }
-
-  void CopyFile (std::string seq, std::string from, std::string to, int flags) {
-  }
-
-  void RemoveDirectory (std::string seq, std::string path) {
-  }
-
-  void MakeDirectory (std::string seq, std::string path, int mode) {
-  }
-
-  void ReadDirectory (std::string seq, std::string path) {
-  }
-};
+typedef jlong NativeCallbackID;
+typedef uint64_t NativeCoreID;
 
 /**
  * An extended `SSC::Core` class for Android NDK/JNI
@@ -334,7 +306,6 @@ class NativeCore : public SSC::Core {
   // Native
   NativeCoreRefs refs;
   NativeString rootDirectory;
-  NativeFileSystem fs;
 
   // webkti webview
   std::string javaScriptPreloadSource;
@@ -346,7 +317,6 @@ class NativeCore : public SSC::Core {
 
   public:
   NativeCore (JNIEnv *env, jobject core) : Core(),
-    fs(this),
     refs(env),
     config(),
     rootDirectory(env),
@@ -504,6 +474,178 @@ class NativeCore : public SSC::Core {
     }
 
     return javaScriptPreloadSource.c_str();
+  }
+};
+
+class NativeFileSystem {
+  NativeCore *core;
+  JNIEnv *env;
+
+ struct NativeFileSystemRequestContext {
+   SSC::DescriptorContext *descriptor;
+   NativeFileSystem *fs;
+   NativeCallbackID callback;
+   NativeCoreID id;
+   NativeCore *core;
+   uv_fs_t request;
+ };
+
+  public:
+  NativeFileSystem (JNIEnv *env, NativeCore *core) {
+    this->env = env;
+    this->core = core;
+  }
+
+  NativeFileSystemRequestContext * CreateRequestContext (
+    std::string seq,
+    NativeCoreID id,
+    NativeCallbackID callback
+  ) {
+    auto context = new NativeFileSystemRequestContext();
+
+    context->descriptor = new SSC::DescriptorContext();
+    context->callback = callback;
+    context->core = this->core;
+    context->fs = this;
+    context->id = id;
+
+    context->descriptor->seq = seq;
+    context->descriptor->id = id;
+
+    context->request.data = context;
+
+    SSC::descriptors[id] = context->descriptor;
+    return context;
+  }
+
+  const std::string CreateJSONError (
+    NativeCoreID id,
+    const std::string message
+  ) {
+    return SSC::format(R"MSG({
+      "value": {
+        "err": {
+          "id": "$S",
+          "message": "$S"
+        }
+      }
+    })MSG", std::to_string(id), message);
+  }
+
+  void CallbackAndFinalizeContext (
+    NativeFileSystemRequestContext *context,
+    std::string data
+  ) {
+    auto refs = context->core->GetRefs();
+    auto jvm = context->core->GetJavaVM();
+    JNIEnv *env = 0;
+
+    jvm->AttachCurrentThread(&env, 0);
+
+    CallNativeCoreCallbackMethodFromEnvironment(
+      env,
+      refs.core,
+      "callback",
+      "(JLjava/lang/String;)V",
+      context->callback,
+      env->NewStringUTF(data.c_str())
+    );
+
+    delete context;
+
+    //jvm->DetachCurrentThread();
+  }
+
+  void Open (
+    std::string seq,
+    NativeCoreID id,
+    std::string path,
+    int flags,
+    NativeCallbackID callback
+  ) {
+    using SSC::format;
+
+    auto context = this->CreateRequestContext(seq, id, callback);
+    auto loop = uv_default_loop();
+
+    int mode = S_IRUSR | S_IWUSR;
+    int err = 0;
+
+    err = uv_fs_open(loop, &context->request, path.c_str(), flags, mode, [](uv_fs_t *req) {
+      auto context = (NativeFileSystemRequestContext *) req->data;
+      auto id = context->id;
+      auto fd = req->result;
+
+      std::string data;
+
+      if (fd < 0) {
+        auto err = std::string(uv_strerror(fd));
+        data = context->fs->CreateJSONError(id, err);
+      } else {
+        data = format(
+          R"MSG({"value":{"data":{"id": "$S", "fd": $S}}})MSG",
+          std::to_string(id),
+          std::to_string(fd)
+        );
+      }
+
+      context->fs->CallbackAndFinalizeContext(context, data);
+      uv_fs_req_cleanup(req);
+    });
+
+    if (err < 0) {
+      delete context;
+      return Throw(this->env, UVException(err));
+    }
+
+    err = uv_run(loop, UV_RUN_DEFAULT);
+
+    if (err < 0) {
+      delete context;
+      return Throw(this->env, UVException(err));
+    }
+  }
+
+  void
+  Close (std::string seq, uint64_t id) {
+    // reinterpret_cast<SSC::Core *>(this->core)->fsClose(seq, id, [&](auto seq,
+    // auto msg, auto post) { });
+  }
+
+  void
+  Read (std::string seq, uint64_t id, int len, int offset) {
+  }
+
+  void
+  Write (std::string seq, uint64_t id, std::string data, int16_t offset) {
+  }
+
+  void
+  Stat (std::string seq, std::string path) {
+  }
+
+  void
+  Unlink (std::string seq, std::string path) {
+  }
+
+  void
+  Rename (std::string seq, std::string from, std::string to) {
+  }
+
+  void
+  CopyFile (std::string seq, std::string from, std::string to, int flags) {
+  }
+
+  void
+  RemoveDirectory (std::string seq, std::string path) {
+  }
+
+  void
+  MakeDirectory (std::string seq, std::string path, int mode) {
+  }
+
+  void
+  ReadDirectory (std::string seq, std::string path) {
   }
 };
 

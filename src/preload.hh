@@ -242,6 +242,25 @@ constexpr auto gPreloadMobile = R"JS(
   window.system.openExternal = o => {
     window.external.invoke(`ipc://external?value=${encodeURIComponent(o)}`)
   }
+
+  window.system.fs = new class FileSystem {
+    id = 0
+
+    async request (type, data) {
+      const id = ++this.id
+      const { value } = await window._ipc.send(type, { id, ...data })
+
+      if (value.err) {
+        throw Object.assign(new Error(value.err.message), value.err)
+      }
+
+      return value.data
+    }
+
+    async open (path, flags, mode) {
+      return await this.request('fsOpen', { path, flags, mode })
+    }
+  }
 )JS";
 
 #endif

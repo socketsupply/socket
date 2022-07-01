@@ -105,11 +105,15 @@ open class WebViewActivity : androidx.appcompat.app.AppCompatActivity() {
 
     // `NativeCore` class configuration
     core.configure(GenericNativeCoreConfiguration(
-      rootDirectory = getDataDir().getAbsolutePath().toString(),
+      //rootDirectory = getDataDir().getAbsolutePath().toString(),
+      //rootDirectory = getFilesDir().getAbsolutePath().toString(),
+      rootDirectory = getExternalFilesDir(null)?.getAbsolutePath().toString() ?: "",
       assetManager = getApplicationContext().getResources().getAssets()
     ));
 
     if (core.check()) {
+      val index = core.getPathToIndexHTML();
+
       if (core.isDebugEnabled) {
         android.webkit.WebView.setWebContentsDebuggingEnabled(true);
       }
@@ -118,11 +122,14 @@ open class WebViewActivity : androidx.appcompat.app.AppCompatActivity() {
 
       webview.setWebViewClient(client);
       webview.addJavascriptInterface(externalInterface, "external");
-      webview.loadUrl("file:///android_asset/index.html");
+      webview.loadUrl("file:///android_asset/$index");
     }
   }
 }
 
+/**
+ * @TODO
+ */
 public open class Bridge(activity: WebViewActivity) {
   final protected val TAG = "Bridge";
 
@@ -226,6 +233,19 @@ public open class ExternalWebViewInterface(activity: WebViewActivity) {
 
       "getNetworkInterfaces" -> {
         bridge.send(message.seq, core.getNetworkInterfaces())
+      }
+
+      "fsOpen" -> {
+        val id = message.get("id").toLong();
+        val path = message.get("path");
+        val root = java.nio.file.Paths.get(core.getRootDirectory())
+        val resolved = root.resolve(java.nio.file.Paths.get(path));
+
+        // @TODO: validate arguments
+        core.fs.open(message.seq, id, resolved.toString(), 0, fun (data: String) {
+          bridge.send(message.seq, data)
+          android.util.Log.d(TAG, "in open callback $data");
+        })
       }
 
       else -> {
@@ -363,7 +383,15 @@ public data class GenericNativeCoreConfiguration(
 public open class NativeFileSystem(core: NativeCore) {
   val core = core;
 
-  fun open () {
+  fun open (
+    seq: String = "",
+    id: Long = 0,
+    path: String,
+    flags: Int,
+    callback: (String) -> Unit
+  ) {
+    val callbackId = core.queueCallback(callback)
+    core.fsOpen(seq, id, path, flags, callbackId);
   }
 
   fun close () {
@@ -409,9 +437,19 @@ public open class NativeCore {
   protected var pointer: Long = 0;
 
   /**
+   * @TODO
+   */
+  protected var nextCallbackId: Long = 0;
+
+  /**
+   * @TODO
+   */
+  public var fs: NativeFileSystem;
+
+  /**
    * TODO
    */
-  protected callbacks: MutableMap<Int, (String) -> Unit);
+  public val callbacks = mutableMapOf<Long, (String) -> Unit>();
 
   /**
    * Set internally by the native binding if debug is enabled.
@@ -480,25 +518,28 @@ public open class NativeCore {
   external fun verifyAssetManager (): Boolean;
 
   @Throws(java.lang.Exception::class)
-  external fun verifyNativeExceptions(): Boolean;
+  external fun verifyNativeExceptions (): Boolean;
 
   @Throws(java.lang.Exception::class)
-  external fun verifyEnvironment(): Boolean;
+  external fun verifyEnvironment (): Boolean;
 
   /**
    * `NativeCore` internal utility bindings
    */
   @Throws(java.lang.Exception::class)
-  external fun configureEnvironment(): Boolean;
+  external fun configureEnvironment (): Boolean;
 
   @Throws(java.lang.Exception::class)
-  external fun configureWebViewWindow(): Boolean;
+  external fun configureWebViewWindow (): Boolean;
 
   @Throws(java.lang.Exception::class)
-  external fun getJavaScriptPreloadSource(): String;
+  external fun getPathToIndexHTML(): String;
 
   @Throws(java.lang.Exception::class)
-  external fun getResolveToRenderProcessJavaScript(
+  external fun getJavaScriptPreloadSource (): String;
+
+  @Throws(java.lang.Exception::class)
+  external fun getResolveToRenderProcessJavaScript (
     seq: String,
     state: String,
     value: String,
@@ -506,13 +547,13 @@ public open class NativeCore {
   ): String
 
   @Throws(java.lang.Exception::class)
-  external fun getEmitToRenderProcessJavaScript(
+  external fun getEmitToRenderProcessJavaScript (
     event: String,
     value: String
   ): String;
 
   @Throws(java.lang.Exception::class)
-  external fun getStreamToRenderProcessJavaScript(
+  external fun getStreamToRenderProcessJavaScript (
     id: String,
     value: String
   ): String
@@ -521,7 +562,16 @@ public open class NativeCore {
    * `NativeCore` bindings
    */
   @Throws(java.lang.Exception::class)
-  external fun getNetworkInterfaces(): String;
+  external fun getNetworkInterfaces (): String;
+
+  @Throws(java.lang.Exception::class)
+  external fun fsOpen (
+    seq: String,
+    id: Long,
+    path: String,
+    flags: Int,
+    callback: Long
+  );
 
   /**
    * `NativeCore` class constructor which is initialized
@@ -529,6 +579,7 @@ public open class NativeCore {
    */
   constructor () {
     this.pointer = this.createPointer();
+    this.fs = NativeFileSystem(this);
   }
 
   /**
@@ -581,7 +632,33 @@ public open class NativeCore {
     return this.rootDirectory;
   }
 
-  public fun callback (id: Int, errorMessage: String, data: String) {
+  /**
+   * Returns the next available callback ID
+   */
+  public fun getNextAvailableCallbackId (): Long {
+    return this.nextCallbackId++;
+  }
+
+  /**
+   * @TODO
+   */
+  public fun callback (id: Long, data: String) {
+    val cb = this.callbacks.get(id);
+
+    if (cb != null) {
+      cb.invoke(data);
+    }
+
+    android.util.Log.d(TAG, "callback: id=$id data=$data");
+  }
+
+  /**
+   * @TODO
+   */
+  public fun queueCallback (cb: (String) -> Unit): Long {
+    val id = this.getNextAvailableCallbackId()
+    this.callbacks[id] = cb;
+    return id;
   }
 
   /**

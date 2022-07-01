@@ -1,4 +1,5 @@
 #include "android.hh"
+#include "jni.h"
 
 /**
  * `NativeCore` JNI/NDK bindings.
@@ -313,6 +314,31 @@ extern "C" {
   }
 
   /**
+   * `NativeCore::getPathToIndexHTML()` binding.
+   * @return Path relative to `assets/` directory where `index.html` lives.
+   */
+  jstring exports(NativeCore, getPathToIndexHTML)(
+    JNIEnv *env,
+    jobject self
+  ) {
+    auto core = GetNativeCoreFromEnvironment(env);
+
+    if (!core) {
+      Throw(env, NativeCoreNotInitializedException);
+      return env->NewStringUTF("");
+    }
+
+    auto config = core->GetAppConfig();
+    auto index = config["android_index_html"];
+
+    if (index.size() > 0) {
+      return env->NewStringUTF(index.c_str());
+    }
+
+    return env->NewStringUTF("index.html");
+  }
+
+  /**
    * `NativeCore::getJavaScriptPreloadSource()` binding.
    * @return JavaScript preload source code injected into WebView.
    */
@@ -446,11 +472,26 @@ extern "C" {
     JNIEnv *env,
     jobject self,
     jstring seq,
-    uint64_t id,
+    jlong id,
     jstring path,
-    int flags
+    jint flags,
+    jlong callback
   ) {
-    // @TODO(jwerle): Core::fsOpen()
+    auto core = GetNativeCoreFromEnvironment(env);
+
+    if (!core) {
+      return Throw(env, NativeCoreNotInitializedException);
+    }
+
+    auto fs = NativeFileSystem(env, core);
+
+    fs.Open(
+      NativeString(env, seq).str(),
+      (NativeCoreID) id,
+      NativeString(env, path).str(),
+      (int) flags,
+      (NativeCallbackID) callback
+    );
   }
 
   void exports(NativeCore, fsClose)(
