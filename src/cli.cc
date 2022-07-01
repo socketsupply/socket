@@ -72,6 +72,7 @@ int main (const int argc, const char* argv[]) {
     std::cout << SSC::full_version << std::endl;
     exit(0);
   }
+
   if (is(subcommand, "-h")) {
     printHelp();
     exit(0);

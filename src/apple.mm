@@ -36,6 +36,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 @property (strong, nonatomic) CBMutableCharacteristic* characteristic;
 @property (strong, nonatomic) NSString* channelId;
 @property (strong, nonatomic) NSString* serviceId;
+@property (strong, nonatomic) NSData* lastWrite;
 - (void) initBluetooth;
 - (void) setChannelId: (std::string)str;
 @end
@@ -154,12 +155,19 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 - (void) centralManagerDidUpdateState: (CBCentralManager*)central {
   NSLog(@"BBB centralManagerDidUpdateState");
   switch (central.state) {
-    case CBCentralManagerStatePoweredOn:
+    case CBManagerStatePoweredOff:
+    case CBManagerStateResetting:
+    case CBManagerStateUnauthorized:
+    case CBManagerStateUnknown:
+    case CBManagerStateUnsupported:
+      break;
+
+    case CBManagerStatePoweredOn:
       [_centralManager
         scanForPeripheralsWithServices: _services
         options: @{CBCentralManagerScanOptionAllowDuplicatesKey: @(YES)}
       ];
-      break;
+    break;
   }
 }
 
@@ -171,6 +179,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 - (void) initBluetooth {
   NSMutableArray* peripherals = [[NSMutableArray alloc] init];
   NSMutableArray* services = [[NSMutableArray alloc] init];
+  _lastWrite = nil;
   _services = services;
   _peripherals = peripherals;
   _centralManager = [[CBCentralManager alloc] initWithDelegate: self queue: nil];
@@ -207,9 +216,9 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
   _characteristic = [[CBMutableCharacteristic alloc]
     initWithType: channelUUID
-      properties: CBCharacteristicPropertyNotify // (CBCharacteristicPropertyRead | CBCharacteristicPropertyWrite)
+      properties: (CBCharacteristicPropertyNotify | CBCharacteristicPropertyRead | CBCharacteristicPropertyWrite)
            value: nil
-     permissions: CBAttributePermissionsReadable // (CBAttributePermissionsReadable | CBAttributePermissionsWriteable)
+     permissions: (CBAttributePermissionsReadable | CBAttributePermissionsWriteable)
   ];
 
   _service.characteristics = @[_characteristic];
@@ -248,7 +257,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   ];
 }
 
-/* - (void) peripheralManager: (CBPeripheralManager*)peripheral didReceiveReadRequest: (CBATTRequest*)request {
+- (void) peripheralManager: (CBPeripheralManager*)peripheral didReceiveReadRequest: (CBATTRequest*)request {
   NSLog(@"BBB peripheralManager:didReceiveReadRequest:");
 
   auto msg = SSC::format(R"JSON({
@@ -260,22 +269,13 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
   [self.bridge emit: "network" msg: msg];
 
-  if ([request.characteristic.UUID isEqual: _characteristic.UUID]) {
-    if (request.offset > _characteristic.value.length) {
-      [self.peripheralManager respondToRequest: request withResult: CBATTErrorInvalidOffset];
-      return; // request was out of bounds
-    }
+  if (_lastWrite == nil) return;
 
-    // TODO get the actual data
-//     std::string s = "hello";
-//         NSString* str = [NSString stringWithUTF8String: s.c_str()];
-//             NSData* data = [str dataUsingEncoding: NSUTF8StringEncoding];
-    request.value = data;
-    [self.peripheralManager respondToRequest: request withResult: CBATTErrorSuccess];
-  }
+  request.value = _lastWrite;
+  [_peripheralManager respondToRequest: request withResult: CBATTErrorSuccess];
 }
 
-- (void) peripheralManager: (CBPeripheralManager*)peripheral didReceiveWriteRequests: (NSArray<CBATTRequest*>*)requests {
+/* - (void) peripheralManager: (CBPeripheralManager*)peripheral didReceiveWriteRequests: (NSArray<CBATTRequest*>*)requests {
   NSLog(@"BBB peripheralManager:didReceiveWriteRequests:");
 
   auto msg = SSC::format(R"JSON({
@@ -309,26 +309,25 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 } */
 
 - (void) localNetworkAdvertise: (std::string)str uuid:(std::string)uuid {
-  // for (CBPeripheral* peripheral in _peripherals) {
-
   // NSInteger amountToSend = self.dataToSend.length - self.sendDataIndex;
 	// if (amountToSend > 128) amountToSend = 128;
-  NSData *data = [NSData dataWithBytes: str.data() length: str.size()];
-  auto didSend = [_peripheralManager updateValue: data
+  _lastWrite = [NSData dataWithBytes: str.data() length: str.size()];
+  auto didWrite = [_peripheralManager updateValue: _lastWrite
                                forCharacteristic: _characteristic
                             onSubscribedCentrals: nil];
 
-  if (!didSend) {
-    NSLog(@"BBB did not send");
+  if (!didWrite) {
+    NSLog(@"BBB did not write");
     return;
   }
 
-  NSLog(@"BBB did send");
+  NSLog(@"BBB did write");
 }
 
 - (void) centralManager: (CBCentralManager*)central didConnectPeripheral: (CBPeripheral*)peripheral {
   NSLog(@"BBB didConnectPeripheral");
   peripheral.delegate = self;
+  [peripheral setNotifyValue: YES forCharacteristic: _characteristic];
   [peripheral discoverServices: @[[CBUUID UUIDWithString: _serviceId]]];
 }
 
@@ -338,7 +337,8 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
     NSTimeInterval _scanTimeout = 0.5;
     [NSTimer timerWithTimeInterval: _scanTimeout repeats: NO block:^(NSTimer* timer) {
-      [_centralManager connectPeripheral: peripheral options: nil];
+      NSLog(@"BBB reconnecting");
+      [self->_centralManager connectPeripheral: peripheral options: nil];
     }];
     return;
   }
@@ -346,12 +346,21 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   std::string uuid = std::string([peripheral.identifier.UUIDString UTF8String]);
   std::string name = std::string([peripheral.name UTF8String]);
 
-  if (uuid.size() == 0 || name.size() == 0) return;
+  if (uuid.size() == 0 || name.size() == 0) {
+    NSLog(@"device has no meta information");
+    return;
+  }
 
   auto isConnected = peripheral.state != CBPeripheralStateDisconnected;
   auto isKnown = [_peripherals containsObject: peripheral];
 
-  if (isKnown && isConnected) return;
+  if (isKnown && isConnected) {
+    return;
+  } else if (isKnown) {
+    NSLog(@"BBB isKnown (reconnecting)");
+    [_centralManager connectPeripheral: peripheral options: nil];
+    return;
+  }
 
   auto msg = SSC::format(R"JSON({
     "value": {
@@ -366,34 +375,42 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
   [self.bridge emit: "network" msg: msg];
 
-  [central connectPeripheral: peripheral options: nil];
+  peripheral.delegate = self;
   [self.peripherals addObject: peripheral];
+
+  [_centralManager connectPeripheral: peripheral options: nil];
 }
 
 - (void) peripheral: (CBPeripheral*)peripheral didDiscoverServices: (NSError*)error {
-  NSLog(@"BBB didDiscoverServices:");
-
-  for (CBService *service in peripheral.services) {
-    [peripheral discoverCharacteristics:@[[CBUUID UUIDWithString: _channelId]] forService: service];
-  }
-}
-
-- (void) peripheral:(CBPeripheral*)peripheral didDiscoverCharacteristicsForService:(CBService*)service error:(NSError*)error {
   if (error) {
-    NSLog(@"BBB ERROR didDiscoverCharacteristicsForService: %@", error);
+    NSLog(@"BBB peripheral:didDiscoverService:error: %@", error);
     return;
   }
 
-  NSLog(@"BBB didDiscoverCharacteristicsForService:");
+  NSLog(@"BBB peripheral:didDiscoverServices:error:");
+  for (CBService *service in peripheral.services) {
+    [peripheral discoverCharacteristics:@[[CBUUID UUIDWithString: _channelId]] forService: service];
+    // [peripheral readValueForCharacteristic: _characteristic];
+  }
+}
+
+- (void) peripheral: (CBPeripheral*)peripheral didDiscoverCharacteristicsForService: (CBService*)service error: (NSError*)error {
+  if (error) {
+    NSLog(@"BBB peripheral:didDiscoverCharacteristicsForService:error: %@", error);
+    return;
+  }
+
   for (CBCharacteristic* characteristic in service.characteristics) {
     if ([characteristic.UUID isEqual: [CBUUID UUIDWithString: _channelId]]) {
-      [peripheral setNotifyValue:YES forCharacteristic: characteristic];
+      NSLog(@"BBB peripheral:didDiscoverCharacteristicsForService:error:");
+      [peripheral setNotifyValue: YES forCharacteristic: characteristic];
+      [peripheral readValueForCharacteristic: characteristic];
     }
   }
 }
 
 - (void) peripheralManagerIsReadyToUpdateSubscribers: (CBPeripheralManager*)peripheral {
-  auto msg = SSC::format(R"JSON({
+  /* auto msg = SSC::format(R"JSON({
     "value": {
       "source": "bluetooth",
       "data": {
@@ -403,10 +420,10 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     }
   })JSON");
 
-  [self.bridge emit: "network" msg: msg];
+  [self.bridge emit: "network" msg: msg]; */
 }
 
-- (void) peripheral:(CBPeripheral*)peripheral didUpdateValueForCharacteristic:(CBCharacteristic*)characteristic error:(NSError*)error {
+- (void) peripheral: (CBPeripheral*)peripheral didUpdateValueForCharacteristic: (CBCharacteristic*)characteristic error:(NSError*)error {
   if (error) {
     NSLog(@"ERROR didUpdateValueForCharacteristic: %@", error);
     return;
@@ -445,12 +462,12 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   [self.bridge emit: "network" msg: msg];
 }
 
-- (void)peripheral:(CBPeripheral*)peripheral didUpdateNotificationStateForCharacteristic:(CBCharacteristic*)characteristic error:(NSError*)error {
+- (void) peripheral: (CBPeripheral*)peripheral didUpdateNotificationStateForCharacteristic: (CBCharacteristic*)characteristic error: (NSError*)error {
   if (![characteristic.UUID isEqual:[CBUUID UUIDWithString: _channelId]]) {
     return;
   }
 
-  auto msg = SSC::format(R"JSON({
+  /* auto msg = SSC::format(R"JSON({
     "value": {
       "source": "bluetooth",
       "data": { 
@@ -460,7 +477,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     }
   })JSON");
 
-  [self.bridge emit: "network" msg: msg];
+  [self.bridge emit: "network" msg: msg]; */
 }
 
 - (void) centralManager: (CBCentralManager*)central didFailToConnectPeripheral: (CBPeripheral*)peripheral error: (nullable NSError*)error {
@@ -472,7 +489,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   NSTimeInterval _scanTimeout = 0.5;
 
   [NSTimer timerWithTimeInterval: _scanTimeout repeats: NO block:^(NSTimer* timer) {
-    [_centralManager connectPeripheral: peripheral options: nil];
+    [self->_centralManager connectPeripheral: peripheral options: nil];
 
     // if ([_peripherals containsObject: peripheral]) {
     //  [_peripherals removeObject: peripheral];
@@ -489,7 +506,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
   [_centralManager connectPeripheral: peripheral options: nil];
 
-  std::string uuid = "";
+  /* std::string uuid = "";
   std::string name = "";
 
   if (peripheral.identifier != nil) {
@@ -511,7 +528,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     }
   })JSON", name, uuid);
 
-  [self.bridge emit: "network" msg: msg];
+  [self.bridge emit: "network" msg: msg]; */
 }
 @end
 
