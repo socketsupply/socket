@@ -25,7 +25,9 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 @interface BluetoothDelegate : NSObject<
   CBCentralManagerDelegate,
   CBPeripheralManagerDelegate,
-  CBPeripheralDelegate>
+  CBPeripheralDelegate> {
+    std::string lastWrite;
+}
 @property (strong, nonatomic) Bridge* bridge;
 @property (strong, nonatomic) CBCentralManager* centralManager;
 @property (strong, nonatomic) CBPeripheralManager* peripheralManager;
@@ -36,9 +38,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 @property (strong, nonatomic) CBMutableCharacteristic* characteristic;
 @property (strong, nonatomic) NSString* channelId;
 @property (strong, nonatomic) NSString* serviceId;
-@property (strong, nonatomic) NSData* lastWrite;
 - (void) initBluetooth;
-- (void) setChannelId: (std::string)str;
 @end
 
 @interface IPCSchemeHandler : NSObject<WKURLSchemeHandler>
@@ -60,21 +60,19 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 @end
 
 @implementation BluetoothDelegate
-- (void)disconnect {
-  NSLog(@"BBB disconnect");
-  // throw new Error('disconnect is not supported on OS X!');
-}
+// - (void)disconnect {
+// }
 
-- (void)updateRssi {
-  NSLog(@"BBB updateRssi");
-}
+// - (void)updateRssi {
+//  NSLog(@"CoreBluetooth: updateRssi");
+// }
 
-- (void) startAdvertisingIBeacon:(NSData *)data {
-  NSLog(@"BBB startAdvertisingIBeacon:%@", data);
-}
+// - (void) startAdvertisingIBeacon:(NSData *)data {
+//  NSLog(@"CoreBluetooth: startAdvertisingIBeacon:%@", data);
+// }
 
 - (void) stopAdvertising {
-  NSLog(@"BBB stopAdvertising");
+  NSLog(@"CoreBluetooth: stopAdvertising");
 
   [self.peripheralManager stopAdvertising];
 }
@@ -129,31 +127,30 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   NSLog(@"%@", [NSString stringWithUTF8String: msg.c_str()]);
 }
 
-- (void) peripheralManagerDidStartAdvertising: (CBPeripheralManager*)peripheral error:(nullable NSError *)error {
-  NSLog(@"BBB peripheralManagerDidStartAdvertising: %@", peripheral.description);
+- (void) peripheralManagerDidStartAdvertising: (CBPeripheralManager*)peripheral error: (NSError*)error {
   if (error) {
-    NSLog(@"BBB Error advertising: %@", [error localizedDescription]);
+    NSLog(@"CoreBluetooth: Error advertising: %@", [error localizedDescription]);
   }
 }
 
-- (void) peripheralManager:(CBPeripheralManager*)peripheral central:(CBCentral*)central didSubscribeToCharacteristic:(CBCharacteristic*)characteristic {
-  NSLog(@"BBB didSubscribeToCharacteristic");
+- (void) peripheralManager: (CBPeripheralManager*)peripheral central: (CBCentral*)central didSubscribeToCharacteristic: (CBCharacteristic*)characteristic {
+  NSLog(@"CoreBluetooth: didSubscribeToCharacteristic");
 }
 
-- (void) peripheralManager:(CBPeripheralManager *)peripheral didPublishL2CAPChannel:(CBL2CAPPSM)PSM error:(nullable NSError *)error {
-  NSLog(@"BBB didPublishL2CAPChannel");
-}
+// - (void) peripheralManager:(CBPeripheralManager *)peripheral didPublishL2CAPChannel:(CBL2CAPPSM)PSM error: (NSError*)error {
+//  NSLog(@"CoreBluetooth: didPublishL2CAPChannel");
+// }
 
-- (void) peripheralManager:(CBPeripheralManager *)peripheral didUnpublishL2CAPChannel:(CBL2CAPPSM)PSM error:(nullable NSError *)error {
-  NSLog(@"BBB didUnpublishL2CAPChannel");
-}
+// - (void) peripheralManager:(CBPeripheralManager *)peripheral didUnpublishL2CAPChannel:(CBL2CAPPSM)PSM error: (NSError*)error {
+//  NSLog(@"CoreBluetooth: didUnpublishL2CAPChannel");
+// }
 
-- (void) peripheralManager:(CBPeripheralManager *)peripheral didOpenL2CAPChannel:(nullable CBL2CAPChannel *)channel error:(nullable NSError *)error {
-  NSLog(@"BBB didOpenL2CAPChannel");
-}
+// - (void) peripheralManager: (CBPeripheralManager*)peripheral didOpenL2CAPChannel: (CBL2CAPChannel*)channel error: (NSError*)error {
+//  NSLog(@"CoreBluetooth: didOpenL2CAPChannel");
+// }
 
 - (void) centralManagerDidUpdateState: (CBCentralManager*)central {
-  NSLog(@"BBB centralManagerDidUpdateState");
+  NSLog(@"CoreBluetooth: centralManagerDidUpdateState");
   switch (central.state) {
     case CBManagerStatePoweredOff:
     case CBManagerStateResetting:
@@ -171,15 +168,9 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   }
 }
 
-- (void) setChannelId: (std::string)str {
-  NSString* channelId = [NSString stringWithUTF8String: str.c_str()];
-  _channelId = channelId;
-}
-
 - (void) initBluetooth {
   NSMutableArray* peripherals = [[NSMutableArray alloc] init];
   NSMutableArray* services = [[NSMutableArray alloc] init];
-  _lastWrite = nil;
   _services = services;
   _peripherals = peripherals;
   _centralManager = [[CBCentralManager alloc] initWithDelegate: self queue: nil];
@@ -200,6 +191,17 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   })JSON" /* channelId, serviceId */);
 
   [self.bridge emit: "network" msg: msg];
+}
+
+- (void) startScanning {
+  if (_centralManager.isScanning) return;
+
+  NSLog(@"CoreBluetooth: startScanning");
+
+  [_centralManager
+    scanForPeripheralsWithServices: _services
+    options: @{CBCentralManagerScanOptionAllowDuplicatesKey: @(YES)}
+  ];
 }
 
 - (void) startBluetooth {
@@ -251,14 +253,13 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   //
   [_services addObject: serviceUUID];
 
-  [_centralManager
-    scanForPeripheralsWithServices: _services
-    options: @{CBCentralManagerScanOptionAllowDuplicatesKey: @(YES)}
-  ];
+  [self startScanning];
 }
 
 - (void) peripheralManager: (CBPeripheralManager*)peripheral didReceiveReadRequest: (CBATTRequest*)request {
-  NSLog(@"BBB peripheralManager:didReceiveReadRequest:");
+  if (lastWrite.size() == 0) return;
+
+  NSLog(@"CoreBluetooth: peripheralManager:didReceiveReadRequest:");
 
   auto msg = SSC::format(R"JSON({
     "value": {
@@ -269,14 +270,12 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
   [self.bridge emit: "network" msg: msg];
 
-  if (_lastWrite == nil) return;
-
-  request.value = _lastWrite;
+  request.value = [NSData dataWithBytes: lastWrite.data() length: lastWrite.size()];
   [_peripheralManager respondToRequest: request withResult: CBATTErrorSuccess];
 }
 
 /* - (void) peripheralManager: (CBPeripheralManager*)peripheral didReceiveWriteRequests: (NSArray<CBATTRequest*>*)requests {
-  NSLog(@"BBB peripheralManager:didReceiveWriteRequests:");
+  NSLog(@"CoreBluetooth: peripheralManager:didReceiveWriteRequests:");
 
   auto msg = SSC::format(R"JSON({
     "value": {
@@ -309,23 +308,40 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 } */
 
 - (void) localNetworkAdvertise: (std::string)str uuid:(std::string)uuid {
+  if (str.size() == 0) return;
+
+  if (uuid.size() > 0) {
+    self.channelId = [NSString stringWithUTF8String: uuid.c_str()];
+  }
+
+  lastWrite = str;
+
   // NSInteger amountToSend = self.dataToSend.length - self.sendDataIndex;
-	// if (amountToSend > 128) amountToSend = 128;
-  _lastWrite = [NSData dataWithBytes: str.data() length: str.size()];
-  auto didWrite = [_peripheralManager updateValue: _lastWrite
-                               forCharacteristic: _characteristic
-                            onSubscribedCentrals: nil];
+	// if (amountToSend > 512) amountToSend = 512;
+
+  // for (CBPeripheral* peripheral in _peripherals) {
+  //  [self->_centralManager connectPeripheral: peripheral options: nil];
+  // }
+
+  auto* data = [NSData dataWithBytes: str.data() length: str.size()];
+
+  auto didWrite = [
+    _peripheralManager
+      updateValue: data
+      forCharacteristic: _characteristic
+      onSubscribedCentrals: nil
+  ];
 
   if (!didWrite) {
-    NSLog(@"BBB did not write");
+    NSLog(@"CoreBluetooth: did not write");
     return;
   }
 
-  NSLog(@"BBB did write");
+  NSLog(@"CoreBluetooth: did write");
 }
 
 - (void) centralManager: (CBCentralManager*)central didConnectPeripheral: (CBPeripheral*)peripheral {
-  NSLog(@"BBB didConnectPeripheral");
+  NSLog(@"CoreBluetooth: didConnectPeripheral");
   peripheral.delegate = self;
   [peripheral setNotifyValue: YES forCharacteristic: _characteristic];
   [peripheral discoverServices: @[[CBUUID UUIDWithString: _serviceId]]];
@@ -337,7 +353,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
     NSTimeInterval _scanTimeout = 0.5;
     [NSTimer timerWithTimeInterval: _scanTimeout repeats: NO block:^(NSTimer* timer) {
-      NSLog(@"BBB reconnecting");
+      NSLog(@"CoreBluetooth: reconnecting");
       [self->_centralManager connectPeripheral: peripheral options: nil];
     }];
     return;
@@ -357,7 +373,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   if (isKnown && isConnected) {
     return;
   } else if (isKnown) {
-    NSLog(@"BBB isKnown (reconnecting)");
+    NSLog(@"CoreBluetooth: isKnown (reconnecting)");
     [_centralManager connectPeripheral: peripheral options: nil];
     return;
   }
@@ -383,28 +399,27 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
 - (void) peripheral: (CBPeripheral*)peripheral didDiscoverServices: (NSError*)error {
   if (error) {
-    NSLog(@"BBB peripheral:didDiscoverService:error: %@", error);
+    NSLog(@"CoreBluetooth: peripheral:didDiscoverService:error: %@", error);
     return;
   }
 
-  NSLog(@"BBB peripheral:didDiscoverServices:error:");
+  NSLog(@"CoreBluetooth: peripheral:didDiscoverServices:error:");
   for (CBService *service in peripheral.services) {
     [peripheral discoverCharacteristics:@[[CBUUID UUIDWithString: _channelId]] forService: service];
-    // [peripheral readValueForCharacteristic: _characteristic];
   }
 }
 
 - (void) peripheral: (CBPeripheral*)peripheral didDiscoverCharacteristicsForService: (CBService*)service error: (NSError*)error {
   if (error) {
-    NSLog(@"BBB peripheral:didDiscoverCharacteristicsForService:error: %@", error);
+    NSLog(@"CoreBluetooth: peripheral:didDiscoverCharacteristicsForService:error: %@", error);
     return;
   }
 
   for (CBCharacteristic* characteristic in service.characteristics) {
     if ([characteristic.UUID isEqual: [CBUUID UUIDWithString: _channelId]]) {
-      NSLog(@"BBB peripheral:didDiscoverCharacteristicsForService:error:");
-      [peripheral setNotifyValue: YES forCharacteristic: characteristic];
+      NSLog(@"CoreBluetooth: peripheral:didDiscoverCharacteristicsForService:error:");
       [peripheral readValueForCharacteristic: characteristic];
+      [peripheral setNotifyValue: YES forCharacteristic: characteristic];
     }
   }
 }
@@ -457,7 +472,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     }
   })JSON", name, uuid, std::string(src));
 
-  NSLog(@"BBB didUpdateValueForCharacteristic: %s", src);
+  NSLog(@"CoreBluetooth: didUpdateValueForCharacteristic: %s", src);
 
   [self.bridge emit: "network" msg: msg];
 }
@@ -480,9 +495,9 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   [self.bridge emit: "network" msg: msg]; */
 }
 
-- (void) centralManager: (CBCentralManager*)central didFailToConnectPeripheral: (CBPeripheral*)peripheral error: (nullable NSError*)error {
+- (void) centralManager: (CBCentralManager*)central didFailToConnectPeripheral: (CBPeripheral*)peripheral error: (NSError*)error {
   // if (error != nil) {
-  //  NSLog(@"BBB failed to connect %@", error.debugDescription);
+  //  NSLog(@"CoreBluetooth: failed to connect %@", error.debugDescription);
   //  return;
   // }
 
@@ -500,7 +515,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 - (void) centralManager: (CBCentralManager*)central didDisconnectPeripheral: (CBPeripheral*)peripheral error: (NSError*)error {
   if (error != nil) {
     [_centralManager connectPeripheral: peripheral options: nil];
-    NSLog(@"BBB device did disconnect %@", error.debugDescription);
+    NSLog(@"CoreBluetooth: device did disconnect %@", error.debugDescription);
     return;
   }
 
@@ -566,9 +581,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 - (void) emit: (std::string)name msg: (std::string)msg {
   msg = SSC::emitToRenderProcess(name, SSC::encodeURIComponent(msg));
   NSString* script = [NSString stringWithUTF8String: msg.c_str()];
-  dispatch_async(dispatch_get_main_queue(), ^{
-    [self.webview evaluateJavaScript: script completionHandler:nil];
-  });
+  [self.webview evaluateJavaScript: script completionHandler: nil];
 }
 
 - (void) send: (std::string)seq msg: (std::string)msg post: (SSC::Post)post {
