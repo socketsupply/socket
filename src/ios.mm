@@ -55,6 +55,7 @@ void uncaughtExceptionHandler (NSException *exception) {
 
 - (void) applicationWillEnterForeground {
   [self.webview evaluateJavaScript: @"window.focus()" completionHandler:nil];
+  [[bridge bluetooth] startScanning];
 }
 
 - (void) initNetworkStatusObserver {
