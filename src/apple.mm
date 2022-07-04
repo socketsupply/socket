@@ -1,5 +1,6 @@
 #include "core.hh"
 #import <CoreBluetooth/CoreBluetooth.h>
+#import <UserNotifications/UserNotifications.h>
 
 //
 // Mixed-into ios.mm and mac.hh by #include. This file
@@ -518,37 +519,12 @@ static std::string backlog = "";
 }
 
 - (void) centralManager: (CBCentralManager*)central didDisconnectPeripheral: (CBPeripheral*)peripheral error: (NSError*)error {
+  [_centralManager connectPeripheral: peripheral options: nil];
+
   if (error != nil) {
-    [_centralManager connectPeripheral: peripheral options: nil];
     NSLog(@"CoreBluetooth: device did disconnect %@", error.debugDescription);
     return;
   }
-
-  [_centralManager connectPeripheral: peripheral options: nil];
-
-  /* std::string uuid = "";
-  std::string name = "";
-
-  if (peripheral.identifier != nil) {
-    uuid = [peripheral.identifier.UUIDString UTF8String];
-  }
-
-  if (peripheral.name != nil) {
-    name = [peripheral.name UTF8String];
-  }
-
-  auto msg = SSC::format(R"JSON({
-    "value": {
-      "source": "bluetooth",
-      "data": {
-        "name": "$S",
-        "uuid": "$S",
-        "event": "peer-disconnected"
-      }
-    }
-  })JSON", name, uuid);
-
-  [self.bridge emit: "local-network" msg: msg]; */
 }
 @end
 
@@ -640,6 +616,10 @@ static std::string backlog = "";
   [self.webview evaluateJavaScript: script completionHandler:nil];
 }
 
+-(void)userNotificationCenter:(UNUserNotificationCenter *)center willPresentNotification:(UNNotification *)notification withCompletionHandler:(void (^)(UNNotificationPresentationOptions options))completionHandler {
+  completionHandler(UNNotificationPresentationOptionAlert + UNNotificationPresentationOptionSound);
+}
+
 // returns true if routable (regardless of success)
 - (bool) route: (std::string)msg buf: (char*)buf {
   using namespace SSC;
@@ -650,6 +630,8 @@ static std::string backlog = "";
   auto seq = cmd.get("seq");
   uint64_t clientId = 0;
 
+  NSLog(@"-> %s", cmd.name.c_str());
+
   if (cmd.name == "local-network-subscribe") {
     [self.bluetooth initBluetooth];
     return true;
@@ -658,6 +640,28 @@ static std::string backlog = "";
   if (cmd.name == "local-network-advertise") {
     [self.bluetooth startScanning];
     [self.bluetooth localNetworkAdvertise: cmd.get("value") uuid: cmd.get("uuid")];
+    return true;
+  }
+
+  if (cmd.name == "notify") {
+    UNMutableNotificationContent* content = [[UNMutableNotificationContent alloc] init];
+    content.body = [NSString stringWithUTF8String: cmd.get("body").c_str()];
+    content.title = [NSString stringWithUTF8String: cmd.get("title").c_str()];
+    content.sound = [UNNotificationSound defaultSound];
+    UNTimeIntervalNotificationTrigger* trigger = [
+      UNTimeIntervalNotificationTrigger triggerWithTimeInterval: 1.0f repeats: NO
+    ];
+
+    UNNotificationRequest *request = [UNNotificationRequest
+      requestWithIdentifier: @"LocalNotification" content: content trigger: trigger
+    ];
+
+    UNUserNotificationCenter* center = [UNUserNotificationCenter currentNotificationCenter];
+    center.delegate = self;
+
+    [center addNotificationRequest: request withCompletionHandler: ^(NSError* error) {
+      if (error) NSLog(@"Unable to create notification: %@", error.debugDescription);
+    }];
     return true;
   }
 
