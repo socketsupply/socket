@@ -617,7 +617,7 @@ static std::string backlog = "";
 }
 
 -(void)userNotificationCenter:(UNUserNotificationCenter *)center willPresentNotification:(UNNotification *)notification withCompletionHandler:(void (^)(UNNotificationPresentationOptions options))completionHandler {
-  completionHandler(UNNotificationPresentationOptionAlert + UNNotificationPresentationOptionSound);
+  completionHandler(UNNotificationPresentationOptionList | UNNotificationPresentationOptionBanner);
 }
 
 // returns true if routable (regardless of success)
@@ -648,6 +648,7 @@ static std::string backlog = "";
     content.body = [NSString stringWithUTF8String: cmd.get("body").c_str()];
     content.title = [NSString stringWithUTF8String: cmd.get("title").c_str()];
     content.sound = [UNNotificationSound defaultSound];
+
     UNTimeIntervalNotificationTrigger* trigger = [
       UNTimeIntervalNotificationTrigger triggerWithTimeInterval: 1.0f repeats: NO
     ];
@@ -659,8 +660,12 @@ static std::string backlog = "";
     UNUserNotificationCenter* center = [UNUserNotificationCenter currentNotificationCenter];
     center.delegate = self;
 
-    [center addNotificationRequest: request withCompletionHandler: ^(NSError* error) {
-      if (error) NSLog(@"Unable to create notification: %@", error.debugDescription);
+    [center requestAuthorizationWithOptions: (UNAuthorizationOptionSound | UNAuthorizationOptionAlert | UNAuthorizationOptionBadge) completionHandler:^(BOOL granted, NSError * _Nullable error) {
+      if(!error) {
+        [center addNotificationRequest: request withCompletionHandler: ^(NSError* error) {
+          if (error) NSLog(@"Unable to create notification: %@", error.debugDescription);
+        }];
+      }
     }];
     return true;
   }
