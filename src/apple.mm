@@ -657,7 +657,7 @@ static std::string backlog = "";
     UNUserNotificationCenter* center = [UNUserNotificationCenter currentNotificationCenter];
     center.delegate = self;
 
-    [center requestAuthorizationWithOptions: (UNAuthorizationOptionSound | UNAuthorizationOptionAlert | UNAuthorizationOptionBadge) completionHandler:^(BOOL granted, NSError * _Nullable error) {
+    [center requestAuthorizationWithOptions: (UNAuthorizationOptionSound | UNAuthorizationOptionAlert | UNAuthorizationOptionBadge) completionHandler:^(BOOL granted, NSError* error) {
       if(!error) {
         [center addNotificationRequest: request withCompletionHandler: ^(NSError* error) {
           if (error) NSLog(@"Unable to create notification: %@", error.debugDescription);
@@ -1089,26 +1089,27 @@ static std::string backlog = "";
   }
 
   if (cmd.name == "udpBind") {
-    auto serverId = std::stoll(cmd.get("serverId"));
-    auto port = std::stoi(cmd.get("port"));
     auto ip = cmd.get("ip");
     std::string err;
 
-    if (serverId.size() == 0) {
+    if (ip.size() == 0) {
+      ip = "0.0.0.0";
+    }
+
+    if (cmd.get("serverId").size() == 0) {
       auto msg = SSC::format(R"({ "value": { "err": { "message": "property 'serverId' required" } } })");
       [self send: seq msg: msg post: Post{}];
       return true;
     }
 
-    if (port.size() == 0) {
+    if (cmd.get("port").size() == 0) {
       auto msg = SSC::format(R"({ "value": { "err": { "message": "property 'port' required" } } })");
       [self send: seq msg: msg post: Post{}];
       return true;
     }
 
-    if (ip.size() == 0) {
-      ip = "0.0.0.0";
-    }
+    auto port = std::stoi(cmd.get("port"));
+    auto serverId = std::stoll(cmd.get("serverId"));
 
     dispatch_async(queue, ^{
       self.core->udpBind(seq, serverId, ip, port, [&](auto seq, auto msg, auto post) {
