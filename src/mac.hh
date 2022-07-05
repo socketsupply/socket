@@ -609,13 +609,13 @@ namespace SSC {
     bool exiting = false;
 
     WindowDelegate* delegate = [WindowDelegate alloc];
-    [controller addScriptMessageHandler:delegate name:@"webview"];
+    [controller addScriptMessageHandler: delegate name: @"webview"];
 
     // Set delegate to window
     [window setDelegate:delegate];
 
     NavigationDelegate *navDelegate = [[NavigationDelegate alloc] init];
-    [webview setNavigationDelegate:navDelegate];
+    [webview setNavigationDelegate: navDelegate];
 
     if (!isDelegateSet) {
       isDelegateSet = true;
@@ -712,8 +712,8 @@ namespace SSC {
   }
 
   void Window::show (const std::string& seq) {
-    [window makeKeyAndOrderFront:nil];
-    [NSApp activateIgnoringOtherApps:YES];
+    [window makeKeyAndOrderFront: nil];
+    [NSApp activateIgnoringOtherApps: YES];
 
     if (seq.size() > 0) {
       auto index = std::to_string(this->opts.index);
@@ -760,8 +760,8 @@ namespace SSC {
 
     if (!menuItem) return;
 
-    [menuItem setTarget:nil];
-    [menuItem setAction:NULL];
+    [menuItem setTarget: nil];
+    [menuItem setAction: NULL];
   }
 
   void Window::navigate (const std::string& seq, const std::string& value) {

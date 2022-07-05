@@ -308,7 +308,7 @@ static std::string backlog = "";
       }
     })JSON", std::string(src));
     [self.bridge emit: "local-network" msg: msg];
-    [self.peripheralManager respondToRequest: request withResult: CBATTErrorSuccess];  
+    [self.peripheralManager respondToRequest: request withResult: CBATTErrorSuccess];
   }
 } */
 
@@ -491,7 +491,7 @@ static std::string backlog = "";
   /* auto msg = SSC::format(R"JSON({
     "value": {
       "source": "bluetooth",
-      "data": { 
+      "data": {
         "message": "didUpdateNotificationStateForCharacteristic",
         "event": "status"
       }
@@ -630,15 +630,12 @@ static std::string backlog = "";
   auto seq = cmd.get("seq");
   uint64_t clientId = 0;
 
-  NSLog(@"-> %s", cmd.name.c_str());
-
   if (cmd.name == "local-network-subscribe") {
     [self.bluetooth initBluetooth];
     return true;
   }
 
   if (cmd.name == "local-network-advertise") {
-    [self.bluetooth startScanning];
     [self.bluetooth localNetworkAdvertise: cmd.get("value") uuid: cmd.get("uuid")];
     return true;
   }
@@ -804,7 +801,7 @@ static std::string backlog = "";
   if (cmd.get("fsMkDir").size() != 0) {
     auto path = cmd.get("path");
     auto mode = std::stoi(cmd.get("mode"));
-    
+
     dispatch_async(queue, ^{
       self.core->fsMkDir(seq, path, mode, [&](auto seq, auto msg, auto post) {
         dispatch_async(dispatch_get_main_queue(), ^{
@@ -1010,7 +1007,7 @@ static std::string backlog = "";
       [self send: seq msg: err post: Post{}];
       return true;
     }
-    
+
     auto ip = cmd.get("ip");
     auto clientId = std::stoll(cmd.get("clientId"));
 
@@ -1091,6 +1088,39 @@ static std::string backlog = "";
     return true;
   }
 
+  if (cmd.name == "udpBind") {
+    auto serverId = std::stoll(cmd.get("serverId"));
+    auto port = std::stoi(cmd.get("port"));
+    auto ip = cmd.get("ip");
+    std::string err;
+
+    if (serverId.size() == 0) {
+      auto msg = SSC::format(R"({ "value": { "err": { "message": "property 'serverId' required" } } })");
+      [self send: seq msg: msg post: Post{}];
+      return true;
+    }
+
+    if (port.size() == 0) {
+      auto msg = SSC::format(R"({ "value": { "err": { "message": "property 'port' required" } } })");
+      [self send: seq msg: msg post: Post{}];
+      return true;
+    }
+
+    if (ip.size() == 0) {
+      ip = "0.0.0.0";
+    }
+
+    dispatch_async(queue, ^{
+      self.core->udpBind(seq, serverId, ip, port, [&](auto seq, auto msg, auto post) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+          [self send: seq msg: msg post: post];
+        });
+      });
+    });
+
+    return true;
+  }
+
   if (cmd.name == "tcpBind") {
     auto ip = cmd.get("ip");
     std::string err;
@@ -1105,7 +1135,7 @@ static std::string backlog = "";
           "err": { "message": "port required" }
         }
       })");
-      
+
       [self send: seq msg: msg post: Post{}];
       return true;
 		}
