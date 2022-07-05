@@ -271,16 +271,26 @@ constexpr auto gPreloadMobile = R"JS(
     }
 
     async open (path, flags, mode) {
+      if (typeof flags === 'object' && flags !== null) {
+        mode = flags.mode
+        flags = flags.flags
+      }
+
       // TODO(jwerle): discuss fs.read instead of fsOpen
       return await this.request('fsOpen', { path, flags, mode }, { id: true })
     }
 
     async close (id) {
       // TODO(jwerle): discuss fd.close instead of fsClose
-      return await this.request('fsClose', { id, fd: id })
+      return await this.request('fsClose', { id })
     }
 
     async read (id, size, offset = 0) {
+      if (typeof size === 'object' && size !== null) {
+        offset = size.offset || 0
+        size = size.size
+      }
+
       // TODO(jwerle): discuss fs.read instead of fsRead
       return await this.request('fsRead', { id, size, offset })
     }

@@ -299,18 +299,11 @@ NativeFileSystem::CreateRequestContext(
 ) const {
   auto context = new NativeFileSystemRequestContext();
 
-  context->descriptor = new SSC::DescriptorContext();
   context->callback = callback;
   context->core = this->core;
   context->fs = this;
   context->id = id;
 
-  context->descriptor->seq = seq;
-  context->descriptor->id = id;
-
-  context->request.data = context;
-
-  SSC::descriptors[id] = context->descriptor;
   return context;
 }
 
@@ -362,54 +355,13 @@ NativeFileSystem::Open(
   int flags,
   NativeCallbackID callback
 ) const {
-  using SSC::format;
-
   auto context = this->CreateRequestContext(seq, id, callback);
-  auto loop = uv_default_loop();
+  auto core = reinterpret_cast<SSC::Core *>(this->core);
+  auto mode = S_IRUSR | S_IWUSR;
 
-  int mode = S_IRUSR | S_IWUSR;
-  int err = 0;
-
-  err = uv_fs_open(
-    loop,
-    &context->request,
-    path.c_str(),
-    flags,
-    mode,
-    [] (uv_fs_t *req) {
-      auto context = (NativeFileSystemRequestContext *) req->data;
-      auto id = context->id;
-      auto fd = req->result;
-
-      std::string data;
-
-      if (fd < 0) {
-        auto err = std::string(uv_strerror(fd));
-        data = context->fs->CreateJSONError(id, err);
-      } else {
-        data = format(
-          R"MSG({"value":{"data":{"id": "$S", "fd": $S}}})MSG",
-          std::to_string(id),
-          std::to_string(fd)
-        );
-      }
-
-      context->fs->CallbackAndFinalizeContext(context, data);
-      uv_fs_req_cleanup(req);
-    }
-  );
-
-  if (err < 0) {
-    delete context;
-    return Throw(this->env, UVException(err));
-  }
-
-  err = uv_run(loop, UV_RUN_DEFAULT);
-
-  if (err < 0) {
-    delete context;
-    return Throw(this->env, UVException(err));
-  }
+  core->fsOpen(seq, id, path, flags, mode, [context](auto seq, auto data, auto post) {
+    context->fs->CallbackAndFinalizeContext(context, data);
+  });
 }
 
 void

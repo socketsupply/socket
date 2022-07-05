@@ -43,7 +43,7 @@ namespace SSC {
     std::unique_ptr<Posts> posts;
 
     public:
-      void fsOpen (String seq, uint64_t id, String path, int flags, Cb cb) const;
+      void fsOpen (String seq, uint64_t id, String path, int flags, int mode, Cb cb) const;
       void fsClose (String seq, uint64_t id, Cb cb) const;
       void fsRead (String seq, uint64_t id, int len, int offset, Cb cb) const;
       void fsWrite (String seq, uint64_t id, String data, int64_t offset, Cb cb) const;
@@ -135,6 +135,14 @@ namespace SSC {
     uint64_t clientId;
   };
 
+  uv_loop_t* defaultLoop () {
+    return uv_default_loop();
+  }
+
+  void runDefaultLoop () {
+    uv_run(defaultLoop(), UV_RUN_DEFAULT);
+  }
+
   String addrToIPv4 (struct sockaddr_in* sin) {
     char buf[INET_ADDRSTRLEN];
     inet_ntop(AF_INET, &sin->sin_addr, buf, INET_ADDRSTRLEN);
@@ -218,14 +226,6 @@ namespace SSC {
     uv_buf_t buf;
   } write_req_t;
 
-  static uv_loop_t *loop = uv_default_loop();
-
-  void loopCheck () {
-    if (uv_loop_alive(loop) == 0) {
-      uv_run(loop, UV_RUN_DEFAULT);
-    }
-  }
-
   bool Core::hasTask (String id) {
     if (id.size() == 0) return false;
     return tasks->find(id) == tasks->end();
@@ -280,31 +280,48 @@ namespace SSC {
     return js;
   }
 
-  void Core::fsOpen (String seq, uint64_t id, String path, int flags, Cb cb) const {
+  void Core::fsOpen (String seq, uint64_t id, String path, int flags, int mode, Cb cb) const {
+    auto filename = path.c_str();
+
     auto desc = descriptors[id] = new DescriptorContext;
     desc->id = id;
     desc->seq = seq;
     desc->cb = cb;
 
-    uv_fs_t req;
-    req.data = desc;
+    auto req = new uv_fs_t;
+    req->data = desc;
 
-    int fd = uv_fs_open(loop, &req, (char*) path.c_str(), flags, 0, [](uv_fs_t* req) {
+    auto err = uv_fs_open(defaultLoop(), req, filename, flags, mode, [](uv_fs_t* req) {
       auto desc = static_cast<DescriptorContext*>(req->data);
+      std::string msg;
 
-      auto msg = SSC::format(R"MSG({
-        "value": {
-          "data": {
-            "fd": $S
+      if (req->result < 0) {
+        msg = SSC::format(R"MSG({
+         "value": {
+           "err": {
+             "id": "$S",
+             "message": "$S"
+           }
+         }
+        })MSG", std::to_string(desc->id), String(uv_strerror(req->result)));
+      } else {
+        desc->fd = req->result;
+        msg = SSC::format(R"MSG({
+          "value": {
+            "data": {
+              "id": "$S",
+              "fd": $S
+            }
           }
-        }
-      })MSG", std::to_string(desc->id));
+        })MSG", std::to_string(desc->id), std::to_string(desc->fd));
+      }
 
       desc->cb(desc->seq, msg, Post{});
       uv_fs_req_cleanup(req);
+      delete req;
     });
 
-    if (fd < 0) {
+    if (err < 0) {
       auto msg = SSC::format(R"MSG({
         "value": {
           "err": {
@@ -312,50 +329,67 @@ namespace SSC {
             "message": "$S"
           }
         }
-      })MSG", std::to_string(id), String(uv_strerror(fd)));
+      })MSG", std::to_string(id), String(uv_strerror(err)));
 
       cb(seq, msg, Post{});
       return;
     }
 
-    desc->fd = fd;
-    loopCheck();
+    runDefaultLoop();
   }
 
   void Core::fsClose (String seq, uint64_t id, Cb cb) const {
     auto desc = descriptors[id];
-    desc->seq = seq;
-    desc->cb = cb;
 
     if (desc == nullptr) {
       auto msg = SSC::format(R"MSG({
         "value": {
           "err": {
+            "id": "$S",
             "code": "ENOTOPEN",
             "message": "No file descriptor found with that id"
           }
         }
-      })MSG");
+      })MSG", std::to_string(id));
 
       cb(seq, msg, Post{});
       return;
     }
 
-    uv_fs_t req;
-    req.data = desc;
+    desc->seq = seq;
+    desc->cb = cb;
 
-    int err = uv_fs_close(loop, &req, desc->fd, [](uv_fs_t* req) {
+    auto req = new uv_fs_t;
+    req->data = desc;
+
+    auto err = uv_fs_close(defaultLoop(), req, desc->fd, [](uv_fs_t* req) {
       auto desc = static_cast<DescriptorContext*>(req->data);
-      auto msg = SSC::format(R"MSG({
-        "value": {
-          "data": {
-            "fd": $S
+      std::string msg;
+
+      if (req->result < 0) {
+        msg = SSC::format(R"MSG({
+         "value": {
+           "err": {
+             "id": "$S",
+             "message": "$S"
+           }
+         }
+        })MSG", std::to_string(desc->id), String(uv_strerror(req->result)));
+      } else {
+        msg = SSC::format(R"MSG({
+          "value": {
+            "data": {
+              "id": "$S",
+              "fd": $S
+            }
           }
-        }
-      })MSG", std::to_string(desc->id));
+        })MSG", std::to_string(desc->id), std::to_string(desc->fd));
+      }
 
       desc->cb(desc->seq, msg, Post{});
+
       uv_fs_req_cleanup(req);
+      delete req;
     });
 
     if (err) {
@@ -372,7 +406,7 @@ namespace SSC {
       return;
     }
 
-    loopCheck();
+    runDefaultLoop();
   }
 
   void Core::fsRead (String seq, uint64_t id, int len, int offset, Cb cb) const {
@@ -395,46 +429,47 @@ namespace SSC {
     desc->seq = seq;
     desc->cb = cb;
 
-    uv_fs_t req;
-    req.data = desc;
+    auto req = new uv_fs_t;
+    req->data = desc;
 
     auto buf = new char[len];
     const uv_buf_t iov = uv_buf_init(buf, (int) len);
 
-    int err = uv_fs_read(loop, &req, desc->fd, &iov, 1, offset, [](uv_fs_t* req) {
+    auto err = uv_fs_read(defaultLoop(), req, desc->fd, &iov, 1, offset, [](uv_fs_t* req) {
       auto desc = static_cast<DescriptorContext*>(req->data);
 
       if (req->result < 0) {
         auto msg = SSC::format(R"MSG({
           "value": {
             "err": {
-              "code": "ENOTOPEN",
-              "message": "No file descriptor found with that id"
+              "id": "$S",
+              "message": "$S"
             }
           }
-        })MSG");
+        })MSG", std::to_string(desc->id), String(uv_strerror(req->result)));
 
         desc->cb(desc->seq, msg, Post{});
-        return;
+      } else {
+        auto headers = SSC::format(R"MSG({
+          "Content-Type": "application/octet-stream",
+          "Content-Size": "$i",
+          "X-Method": "fsRead",
+          "X-Id": "$S"
+        })MSG", (int)req->result, std::to_string(desc->id));
+
+        Post post;
+        post.body = req->bufs[0].base;
+        post.length = (int) req->bufs[0].len;
+        post.headers = headers;
+
+        desc->cb(desc->seq, "", post);
       }
 
-      auto headers = SSC::format(R"MSG({
-        "Content-Type": "application/octet-stream",
-        "Content-Size": "$i",
-        "X-Method": "fsRead",
-        "X-Id": "$S"
-      })MSG", (int)req->result, std::to_string(desc->id));
-
-      Post post;
-      post.body = req->bufs[0].base;
-      post.length = (int) req->bufs[0].len;
-      post.headers = headers;
-
-      desc->cb(desc->seq, "", post);
       uv_fs_req_cleanup(req);
+      delete req;
     });
 
-    if (err) {
+    if (err < 0) {
       auto msg = SSC::format(R"MSG({
         "value": {
           "err": {
@@ -448,7 +483,7 @@ namespace SSC {
       return;
     }
 
-    loopCheck();
+    runDefaultLoop();
   }
 
   void Core::fsWrite (String seq, uint64_t id, String data, int64_t offset, Cb cb) const  {
@@ -471,28 +506,43 @@ namespace SSC {
     desc->seq = seq;
     desc->cb = cb;
 
-    uv_fs_t req;
-    req.data = desc;
+    auto req = new uv_fs_t;
+    req->data = desc;
 
     const uv_buf_t buf = uv_buf_init((char*) data.c_str(), (int) data.size());
 
-    int err = uv_fs_write(uv_default_loop(), &req, desc->fd, &buf, 1, offset, [](uv_fs_t* req) {
+    auto err = uv_fs_write(uv_default_loop(), req, desc->fd, &buf, 1, offset, [](uv_fs_t* req) {
       auto desc = static_cast<DescriptorContext*>(req->data);
+      std::string msg;
 
-      auto msg = SSC::format(R"MSG({
-        "value": {
-          "data": {
-            "id": "$S",
-            "result": "$i"
+      if (req->result < 0) {
+        msg = SSC::format(R"MSG({
+          "value": {
+            "err": {
+              "id": "$S",
+              "message": "$S"
+            }
           }
-        }
-      })MSG", std::to_string(desc->id), (int)req->result);
+        })MSG", std::to_string(desc->id), String(uv_strerror(req->result)));
+
+        desc->cb(desc->seq, msg, Post{});
+      } else {
+        msg = SSC::format(R"MSG({
+          "value": {
+            "data": {
+              "id": "$S",
+              "result": "$i"
+            }
+          }
+        })MSG", std::to_string(desc->id), (int)req->result);
+      }
 
       desc->cb(desc->seq, msg, Post{});
       uv_fs_req_cleanup(req);
+      delete req;
     });
 
-    if (err) {
+    if (err < 0) {
       auto msg = SSC::format(R"MSG({
         "value": {
           "err": {
@@ -506,35 +556,44 @@ namespace SSC {
       return;
     }
 
-    loopCheck();
+    runDefaultLoop();
   }
 
   void Core::fsStat (String seq, String path, Cb cb) const {
-    uv_fs_t req;
     DescriptorContext* desc = new DescriptorContext;
     desc->seq = seq;
     desc->cb = cb;
-    req.data = desc;
 
-    int err = uv_fs_stat(loop, &req, (const char*) path.c_str(), [](uv_fs_t* req) {
+    auto req = new uv_fs_t;
+    req->data = desc;
+
+    auto err = uv_fs_stat(defaultLoop(), req, (const char*) path.c_str(), [](uv_fs_t* req) {
       auto desc = static_cast<DescriptorContext*>(req->data);
 
-      auto msg = SSC::format(R"MSG({
-        "value": {
-          "data": {
-            "id": "$S",
-            "result": "$i"
+      std::string msg;
+
+      if (req->result < 0) {
+        msg = SSC::format(R"MSG({
+          "value": {
+            "err": {
+              "id": "$S",
+              "message": "$S"
+            }
           }
-        }
-      })MSG", std::to_string(desc->id), (int)req->result);
+        })MSG", std::to_string(desc->id), String(uv_strerror(req->result)));
+      } else {
+        msg = "{}";
+        // @TODO
+      }
 
       desc->cb(desc->seq, msg, Post{});
 
-      delete desc;
       uv_fs_req_cleanup(req);
+      delete desc;
+      delete req;
     });
 
-    if (err) {
+    if (err < 0) {
       auto msg = SSC::format(R"MSG({
         "value": {
           "err": {
@@ -544,10 +603,11 @@ namespace SSC {
       })MSG", String(uv_strerror(err)));
 
       cb(seq, msg, Post{});
+      delete desc;
       return;
     }
 
-    loopCheck();
+    runDefaultLoop();
   }
 
   void Core::fsUnlink (String seq, String path, Cb cb) const {
@@ -557,7 +617,7 @@ namespace SSC {
     desc->cb = cb;
     req.data = desc;
 
-    int err = uv_fs_unlink(loop, &req, (const char*) path.c_str(), [](uv_fs_t* req) {
+    int err = uv_fs_unlink(defaultLoop(), &req, (const char*) path.c_str(), [](uv_fs_t* req) {
       auto desc = static_cast<DescriptorContext*>(req->data);
       auto msg = SSC::format(R"MSG({
         "value": {
@@ -586,7 +646,7 @@ namespace SSC {
       cb(seq, msg, Post{});
       return;
     }
-    loopCheck();
+    runDefaultLoop();
   }
 
   void Core::fsRename (String seq, String pathA, String pathB, Cb cb) const {
@@ -596,7 +656,7 @@ namespace SSC {
     desc->cb = cb;
     req.data = desc;
 
-    int err = uv_fs_rename(loop, &req, (const char*) pathA.c_str(), (const char*) pathB.c_str(), [](uv_fs_t* req) {
+    int err = uv_fs_rename(defaultLoop(), &req, (const char*) pathA.c_str(), (const char*) pathB.c_str(), [](uv_fs_t* req) {
       auto desc = static_cast<DescriptorContext*>(req->data);
       auto msg = SSC::format(R"MSG({
         "value": {
@@ -626,7 +686,7 @@ namespace SSC {
       return;
     }
 
-    loopCheck();
+    runDefaultLoop();
   }
 
   void Core::fsCopyFile (String seq, String pathA, String pathB, int flags, Cb cb) const {
@@ -636,7 +696,7 @@ namespace SSC {
     desc->cb = cb;
     req.data = desc;
 
-    int err = uv_fs_copyfile(loop, &req, (const char*) pathA.c_str(), (const char*) pathB.c_str(), flags, [](uv_fs_t* req) {
+    int err = uv_fs_copyfile(defaultLoop(), &req, (const char*) pathA.c_str(), (const char*) pathB.c_str(), flags, [](uv_fs_t* req) {
       auto desc = static_cast<DescriptorContext*>(req->data);
 
       auto msg = SSC::format(R"MSG({
@@ -665,7 +725,7 @@ namespace SSC {
       cb(seq, msg, Post{});
       return;
     }
-    loopCheck();
+    runDefaultLoop();
   }
 
   void Core::fsRmDir (String seq, String path, Cb cb) const {
@@ -675,7 +735,7 @@ namespace SSC {
     desc->cb = cb;
     req.data = desc;
 
-    int err = uv_fs_rmdir(loop, &req, (const char*) path.c_str(), [](uv_fs_t* req) {
+    int err = uv_fs_rmdir(defaultLoop(), &req, (const char*) path.c_str(), [](uv_fs_t* req) {
       auto desc = static_cast<DescriptorContext*>(req->data);
 
       auto msg = SSC::format(R"MSG({
@@ -704,7 +764,7 @@ namespace SSC {
       return;
     }
 
-    loopCheck();
+    runDefaultLoop();
   }
 
   void Core::fsMkDir (String seq, String path, int mode, Cb cb) const {
@@ -714,7 +774,7 @@ namespace SSC {
     desc->cb = cb;
     req.data = desc;
 
-    int err = uv_fs_mkdir(loop, &req, (const char*) path.c_str(), mode, [](uv_fs_t* req) {
+    int err = uv_fs_mkdir(defaultLoop(), &req, (const char*) path.c_str(), mode, [](uv_fs_t* req) {
       auto desc = static_cast<DescriptorContext*>(req->data);
       auto msg = SSC::format(R"MSG({
         "value": {
@@ -743,7 +803,7 @@ namespace SSC {
       return;
     }
 
-    loopCheck();
+    runDefaultLoop();
   }
 
   void Core::fsReadDir (String seq, String path, Cb cb) const {
@@ -754,7 +814,7 @@ namespace SSC {
     ctx->reqOpendir.data = ctx;
     ctx->reqReaddir.data = ctx;
 
-    int err = uv_fs_opendir(loop, &ctx->reqOpendir, (const char*) path.c_str(), NULL);
+    int err = uv_fs_opendir(defaultLoop(), &ctx->reqOpendir, (const char*) path.c_str(), NULL);
 
     if (err) {
       auto msg = SSC::format(R"MSG({
@@ -768,7 +828,7 @@ namespace SSC {
       return;
     }
 
-    err = uv_fs_readdir(loop, &ctx->reqReaddir, ctx->dir, [](uv_fs_t* req) {
+    err = uv_fs_readdir(defaultLoop(), &ctx->reqReaddir, ctx->dir, [](uv_fs_t* req) {
       auto ctx = static_cast<DirectoryReader*>(req->data);
 
       if (req->result < 0) {
@@ -805,7 +865,7 @@ namespace SSC {
       ctx->cb(ctx->seq, msg, Post{});
 
       uv_fs_t reqClosedir;
-      uv_fs_closedir(loop, &reqClosedir, ctx->dir, [](uv_fs_t* req) {
+      uv_fs_closedir(defaultLoop(), &reqClosedir, ctx->dir, [](uv_fs_t* req) {
         uv_fs_req_cleanup(req);
       });
     });
@@ -823,7 +883,7 @@ namespace SSC {
       return;
     }
 
-    loopCheck();
+    runDefaultLoop();
   }
 
   void Core::sendBufferSize (String seq, uint64_t clientId, int size, Cb cb) const {
@@ -961,7 +1021,7 @@ namespace SSC {
     };
 
     uv_write((uv_write_t*) wr, (uv_stream_t*) client->tcp, &wr->buf, 1, onWrite);
-    loopCheck();
+    runDefaultLoop();
   }
 
   void Core::tcpConnect (String seq, uint64_t clientId, int port, String ip, Cb cb) const {
@@ -972,7 +1032,7 @@ namespace SSC {
     client->clientId = clientId;
     client->tcp = new uv_tcp_t;
 
-    uv_tcp_init(loop, client->tcp);
+    uv_tcp_init(defaultLoop(), client->tcp);
 
     client->tcp->data = client;
 
@@ -1071,7 +1131,7 @@ namespace SSC {
       return;
     }
 
-    loopCheck();
+    runDefaultLoop();
   }
 
   void Core::tcpSetTimeout (String seq, uint64_t clientId, int timeout, Cb cb) const {
@@ -1079,15 +1139,13 @@ namespace SSC {
   }
 
   void Core::tcpBind (String seq, uint64_t serverId, String ip, int port, Cb cb) const {
-    loop = uv_default_loop();
-
     Server* server = servers[serverId] = new Server();
     server->tcp = new uv_tcp_t;
     server->cb = cb;
     server->serverId = serverId;
     server->tcp->data = &server;
 
-    uv_tcp_init(loop, server->tcp);
+    uv_tcp_init(defaultLoop(), server->tcp);
     struct sockaddr_in addr;
 
     // addr.sin_port = htons(port);
@@ -1125,7 +1183,7 @@ namespace SSC {
 
       client->tcp->data = client;
 
-      uv_tcp_init(loop, client->tcp);
+      uv_tcp_init(defaultLoop(), client->tcp);
 
       if (uv_accept(handle, (uv_stream_t*) handle) == 0) {
         PeerInfo info;
@@ -1185,7 +1243,7 @@ namespace SSC {
 
     cb(seq, msg, Post{});
     // NSLog(@"Listener started");
-    loopCheck();
+    runDefaultLoop();
   }
 
   void Core::tcpSetKeepAlive (String seq, uint64_t clientId, int timeout, Cb cb) const {
@@ -1313,7 +1371,7 @@ namespace SSC {
 
     client->server->cb(client->server->seq, msg, Post{});
 
-    loopCheck();
+    runDefaultLoop();
   }
 
   void Core::readStop (String seq, uint64_t clientId, Cb cb) const {
@@ -1392,7 +1450,7 @@ namespace SSC {
       free(handle);
     });
 
-    loopCheck();
+    runDefaultLoop();
   }
 
   void Core::shutdown (String seq, uint64_t clientId, Cb cb) const {
@@ -1442,15 +1500,15 @@ namespace SSC {
       })MSG", status);
 
      client->cb(client->seq, msg, Post{});
+
      free(req);
      free(req->handle);
     });
 
-    loopCheck();
+    runDefaultLoop();
   }
 
   void Core::udpBind (String seq, uint64_t serverId, String ip, int port, Cb cb) const {
-    loop = uv_default_loop();
     Server* server = servers[serverId] = new Server();
     server->udp = new uv_udp_t;
     server->seq = seq;
@@ -1495,7 +1553,8 @@ namespace SSC {
     })MSG");
 
     server->cb(server->seq, msg, Post{});
-    loopCheck();
+
+    runDefaultLoop();
   }
 
  void Core::udpSend (String seq, uint64_t clientId, String message, int offset, int len, int port, const char* ip, Cb cb) const {
@@ -1570,8 +1629,8 @@ namespace SSC {
       client->cb("-1", msg, Post{});
       return;
     }
-
-    loopCheck();
+   
+    runDefaultLoop();
   }
 
   void Core::udpReadStart (String seq, uint64_t serverId, Cb cb) const {
@@ -1645,12 +1704,10 @@ namespace SSC {
     })MSG");
 
     server->cb(server->seq, msg, Post{});
-    loopCheck();
+    runDefaultLoop();
   }
 
   void Core::dnsLookup (String seq, String hostname, Cb cb) const {
-    loop = uv_default_loop();
-
     auto ctxId = SSC::rand64();
     GenericContext* ctx = contexts[ctxId] = new GenericContext;
     ctx->id = ctxId;
@@ -1666,7 +1723,7 @@ namespace SSC {
     uv_getaddrinfo_t* resolver = new uv_getaddrinfo_t;
     resolver->data = ctx;
 
-    uv_getaddrinfo(loop, resolver, [](uv_getaddrinfo_t *resolver, int status, struct addrinfo *res) {
+    uv_getaddrinfo(defaultLoop(), resolver, [](uv_getaddrinfo_t *resolver, int status, struct addrinfo *res) {
       auto ctx = (GenericContext*) resolver->data;
 
       if (status < 0) {
@@ -1699,7 +1756,7 @@ namespace SSC {
       uv_freeaddrinfo(res);
     }, hostname.c_str(), nullptr, &hints);
 
-    loopCheck();
+    runDefaultLoop();
   }
 
   String Core::getNetworkInterfaces () const {

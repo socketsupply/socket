@@ -688,9 +688,10 @@ static std::string backlog = "";
     auto cid = std::stoull(cmd.get("id"));
     auto path = cmd.get("path");
     auto flags = std::stoi(cmd.get("flags"));
+    auto flags = std::stoi(cmd.get("mode"));
 
     dispatch_async(queue, ^{
-      self.core->fsOpen(seq, cid, path, flags, [&](auto seq, auto msg, auto post) {
+      self.core->fsOpen(seq, cid, path, flags, mode, [&](auto seq, auto msg, auto post) {
         dispatch_async(dispatch_get_main_queue(), ^{
           [self send: seq msg: msg post: post];
         });

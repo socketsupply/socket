@@ -270,7 +270,6 @@ struct NativeFileSystemRequestContext {
   NativeCallbackID callback;
   NativeCoreID id;
   NativeCore *core;
-  uv_fs_t request;
 };
 
 class NativeFileSystem {
