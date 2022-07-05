@@ -82,9 +82,6 @@ Function Install-Files {
   Write-Output "- Installing Files to '$INSTALL_PATH'."
   Copy-Item $WORKING_PATH\bin\ssc.exe -Destination $INSTALL_PATH
   Copy-Item -Path "$WORKING_PATH\src\*" -Destination $INSTALL_PATH -Recurse -Container
-
-  Write-Output "- Installing Files to '$LIB_PATH'."
-  Copy-Item -Path "$WORKING_PATH\lib\*" -Destination $LIB_PATH -Recurse -Container
 }
 
 Write-Output "- Working path set to $WORKING_PATH."
