@@ -31,7 +31,7 @@ constexpr auto gPreload = R"JS(
     if (status === 0) {
       await window._ipc[seq].resolve(value)
     } else {
-      const err = new Error(JSON.stringify(value))
+      const err = new Error(typeof value === 'string' ? value : JSON.stringify(value))
       await window._ipc[seq].reject(err);
     }
     delete window._ipc[seq];
@@ -244,11 +244,24 @@ constexpr auto gPreloadMobile = R"JS(
   }
 
   window.system.fs = new class FileSystem {
-    id = 0
+    async [Symbol.for('system.fs.id')] () {
+      return await window._ipc.send('fs.id')
+    }
 
-    async request (type, data) {
-      const id = ++this.id
-      const { value } = await window._ipc.send(type, { id, ...data })
+    async request (type, data, opts) {
+      const params = { ...data }
+
+      if (!params.id && opts?.id === true) {
+        params.id = await this[Symbol.for('system.fs.id')]()
+      }
+
+      for (const key in params) {
+        if (params[key] === undefined) {
+          delete params[key]
+        }
+      }
+
+      const { value } = await window._ipc.send(type, params)
 
       if (value.err) {
         throw Object.assign(new Error(value.err.message), value.err)
@@ -258,7 +271,18 @@ constexpr auto gPreloadMobile = R"JS(
     }
 
     async open (path, flags, mode) {
-      return await this.request('fsOpen', { path, flags, mode })
+      // TODO(jwerle): discuss fs.read instead of fsOpen
+      return await this.request('fsOpen', { path, flags, mode }, { id: true })
+    }
+
+    async close (id) {
+      // TODO(jwerle): discuss fd.close instead of fsClose
+      return await this.request('fsClose', { id, fd: id })
+    }
+
+    async read (id, size, offset = 0) {
+      // TODO(jwerle): discuss fs.read instead of fsRead
+      return await this.request('fsRead', { id, size, offset })
     }
   }
 )JS";
