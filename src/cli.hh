@@ -909,6 +909,11 @@ android {
     }
   }
 
+  aaptOptions {
+    {{android_aapt}}
+    noCompress {{android_aapt_no_compress}}
+  }
+
   externalNativeBuild {
     ndkBuild {
       path "src/main/jni/Android.mk"

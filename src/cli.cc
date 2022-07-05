@@ -488,6 +488,50 @@ int main (const int argc, const char* argv[]) {
         fs::copy_options::overwrite_existing | fs::copy_options::recursive
       );
 
+      auto aaptNoCompressOptionsNormalized = std::vector<std::string>();
+      auto aaptNoCompressDefaultOptions = split(R"OPTIONS("htm","html","txt","js","jsx","mjs","ts","css","xml")OPTIONS", ',');
+      auto aaptNoCompressOptions = split(settings["android_aapt_no_compress"], ',');
+
+      settings["android_aapt_no_compress"] = "";
+
+      for (auto const &option: aaptNoCompressOptions) {
+        auto value = trim(option);
+
+        if ('"' != value[0]) {
+          value = "\"" + value + "\"";
+        }
+
+        if (settings["android_aapt_no_compress"].size() > 0) {
+          settings["android_aapt_no_compress"] += ", ";
+        }
+
+        settings["android_aapt_no_compress"] = value;
+        aaptNoCompressOptionsNormalized.push_back(value);
+      }
+
+      for (auto const &option: aaptNoCompressDefaultOptions) {
+        auto value = trim(option);
+
+
+        auto cursor = std::find(
+          aaptNoCompressOptionsNormalized.begin(),
+          aaptNoCompressOptionsNormalized.end(),
+          trim(option)
+        );
+
+        if (cursor == aaptNoCompressOptionsNormalized.end()) {
+          if (settings["android_aapt_no_compress"].size() > 0) {
+            settings["android_aapt_no_compress"] += ", ";
+          }
+
+          settings["android_aapt_no_compress"] += value;
+        }
+      }
+
+      if (settings["android_aapt"].size() == 0) {
+        settings["android_aapt"] = "";
+      }
+
       // Android Project
       writeFile(src / "main" / "AndroidManifest.xml", trim(tmpl(gAndroidManifest, settings)));
 
