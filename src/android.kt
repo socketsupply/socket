@@ -94,7 +94,7 @@ open class WebViewActivity : androidx.appcompat.app.AppCompatActivity() {
     val settings = webview.getSettings();
 
     // @TODO(jwerle): `webview_activity` needs to be defined `res/layout/webview_activity.xml`
-    setContentView(binding.root);
+    this.setContentView(binding.root);
 
     this.externalInterface = externalInterface;
     this.binding = binding;
@@ -105,10 +105,13 @@ open class WebViewActivity : androidx.appcompat.app.AppCompatActivity() {
 
     // `NativeCore` class configuration
     core.configure(GenericNativeCoreConfiguration(
-      //rootDirectory = getDataDir().getAbsolutePath().toString(),
-      //rootDirectory = getFilesDir().getAbsolutePath().toString(),
-      rootDirectory = getExternalFilesDir(null)?.getAbsolutePath().toString() ?: "",
-      assetManager = getApplicationContext().getResources().getAssets()
+      rootDirectory = this.getExternalFilesDir(null)
+        ?.getAbsolutePath().toString()
+        ?: "",
+
+      assetManager = this.getApplicationContext()
+        .getResources()
+        .getAssets()
     ));
 
     if (core.check()) {
@@ -150,10 +153,17 @@ public open class Bridge(activity: WebViewActivity) {
     this.activity.externalInterface?.evaluateJavascript(source, callback)
   }
 
-  public fun send (seq: String, message: String?): Boolean {
+  /**
+   * @TODO
+   */
+  public fun send (
+    seq: String,
+    message: String?,
+    state: String = Bridge.OK_STATE
+  ): Boolean {
     val source = activity.core?.getResolveToRenderProcessJavaScript(
       seq,
-      Bridge.OK_STATE,
+      state,
       message ?: "",
       true
     )
@@ -164,6 +174,13 @@ public open class Bridge(activity: WebViewActivity) {
     }
 
     return false;
+  }
+
+  /**
+   * @TODO
+   */
+  public fun throwError (seq: String, message: String?) {
+    this.send(seq, "\"$message\"", Bridge.ERROR_STATE);
   }
 }
 
@@ -179,17 +196,124 @@ public open class ExternalWebViewInterface(activity: WebViewActivity) {
    */
   protected val activity = activity;
 
+  /**
+   * Registered invocation interfaces.
+   */
+  protected val interfaces = mutableMapOf<String, (IPCMessage, String) -> String?>();
+
+  /**
+   * Registers a bridge interface by name and callback
+   */
+  public fun registerInterface (
+    name: String,
+    callback: (IPCMessage, String) -> String?
+  ) {
+    interfaces[name] = callback;
+  }
+
+  /**
+   * `ExternalWebViewInterface` class initializer
+   */
+  init {
+    this.registerInterface("fs", fun (message: IPCMessage, value: String): String? {
+      val core = this.activity.core;
+      val bridge = this.activity.bridge;
+
+      if (core == null || bridge == null) {
+        return null;
+      }
+
+      when (message.command) {
+        // sync + async
+        "fs.id", "fsId" -> {
+          val id = core.fs.getNextAvailableId().toString()
+          bridge.send(message.seq, id);
+          return id;
+        }
+
+        "fs.open", "fsOpen" -> {
+          if (!message.has("id")) {
+            bridge.throwError(message.seq, "'id' is required.");
+            return null;
+          }
+
+          if (!message.has("path")) {
+            bridge.throwError(message.seq, "'path' is required.");
+            return null;
+          }
+
+          var path = message.get("path");
+          val uri = android.net.Uri.parse(path);
+          val id = message.get("id").toLong();
+
+          if (
+            uri.getScheme() == "file" &&
+            uri.getHost() == "" &&
+            uri.getPathSegments().get(0) == "android_asset"
+          ) {
+            val pathSegments = uri.getPathSegments();
+            path = pathSegments
+              .slice(1..pathSegments.size - 1)
+              .joinToString("/");
+
+            core.fs.openAsset(message.seq, id, path, fun (data: String) {
+              bridge.send(message.seq, data);
+            })
+          } else {
+            val root = java.nio.file.Paths.get(core.getRootDirectory())
+            val flags = message.get("flags", "0").toInt()
+            val resolved = root.resolve(java.nio.file.Paths.get(path));
+
+            core.fs.open(message.seq, id, resolved.toString(), flags, fun (data: String) {
+              bridge.send(message.seq, data);
+            });
+          }
+
+          return message.seq;
+        }
+
+        "fs.read", "fsRead" -> {
+          if (!message.has("id")) {
+            bridge.throwError(message.seq, "'id' is required.");
+            return null;
+          }
+
+          if (!message.has("size")) {
+            bridge.throwError(message.seq, "'size' is required.");
+            return null;
+          }
+
+          val id = message.get("id").toLong();
+          val size = message.get("size").toInt();
+          val offset = message.get("offset", "0").toInt();
+
+
+          if (core.fs.isAssetId(id)) {
+            core.fs.readAsset(id, offset, size, fun (data: String) {
+              bridge.send(message.seq, data);
+            })
+          } else {
+          }
+
+          return message.seq;
+        }
+      }
+
+      return null;
+    });
+  }
+
   fun evaluateJavascript (
     source: String,
     callback: android.webkit.ValueCallback<String?>? = null
   ) {
     this.activity.runOnUiThread(fun () {
       this.activity.view?.evaluateJavascript(source, callback);
-    })
+    });
   }
 
-  fun throwError (message: String) {
-    val source = "throw new Error($message)";
+  fun throwGlobalError (message: String) {
+    val source = "throw new Error(\"$message\")";
     this.evaluateJavascript(source, null);
   }
 
@@ -202,25 +326,33 @@ public open class ExternalWebViewInterface(activity: WebViewActivity) {
    * Low level external message handler
    */
   @android.webkit.JavascriptInterface
-  final fun invoke (value: String) {
+  final fun invoke (value: String): String? {
     val core = this.activity.core;
     val bridge = this.activity.bridge;
     val message = IPCMessage(value);
 
     if (core == null || !core.isReady) {
-      return this.throwError("Missing NativeCore in WebViewActivity.");
+      this.throwGlobalError("Missing NativeCore in WebViewActivity.");
+      return null;
     }
 
-    if (null == bridge) {
-      return this.throwError("Missing Bridge in WebViewActivity.");
+    if (bridge == null) {
+      throw RuntimeException("Missing Bridge in WebViewActivity.");
+    }
+
+    if (message.command.length == 0) {
+      throw RuntimeException("Invoke: Missing 'command' in IPC.");
     }
 
     when (message.command) {
-      "log", "stdout" -> android.util.Log.d(TAG, message.value);
+      "log", "stdout" -> {
+        android.util.Log.d(TAG, message.value);
+        return null;
+      }
 
       "external", "openExternal" -> {
         if (message.value.length == 0) {
-          throw RuntimeException("openExternal: Missing URL value.")
+          throw RuntimeException("openExternal: Missing 'value' (URL) in IPC.");
         }
 
         this.activity.startActivity(
@@ -229,30 +361,38 @@ public open class ExternalWebViewInterface(activity: WebViewActivity) {
             android.net.Uri.parse(message.value)
           )
         );
+
+        return null;
       }
 
       "getNetworkInterfaces" -> {
-        bridge.send(message.seq, core.getNetworkInterfaces())
-      }
+        if (message.seq.length == 0) {
+          throw RuntimeException("getNetworkInterfaces: Missing 'seq' in IPC.");
+        }
 
-      "fsOpen" -> {
-        val id = message.get("id").toLong();
-        val path = message.get("path");
-        val root = java.nio.file.Paths.get(core.getRootDirectory())
-        val resolved = root.resolve(java.nio.file.Paths.get(path));
-
-        // @TODO: validate arguments
-        core.fs.open(message.seq, id, resolved.toString(), 0, fun (data: String) {
-          bridge.send(message.seq, data)
-          android.util.Log.d(TAG, "in open callback $data");
-        })
-      }
-
-      else -> {
-        android.util.Log.d(TAG, message.toString());
-        android.util.Log.d(TAG, "invoke($value)");
+        bridge.send(message.seq, core.getNetworkInterfaces());
+        return message.seq;
       }
     }
+
+    // try interfaces
+    for ((name, callback)  in this.interfaces) {
+      val returnValue = callback.invoke(message, value);
+      if (returnValue != null) {
+        return returnValue;
+      }
+    }
+
+    if (message.has("seq")) {
+      bridge.throwError(
+        message.seq,
+        "Unknown command in IPC: ${message.command}"
+      );
+
+      return null;
+    }
+
+    throw RuntimeException("Invalid IPC invocation.");
   }
 }
 
@@ -306,8 +446,18 @@ class IPCMessage  {
     }
   }
 
-  public fun get (key: String, default: String = ""): String {
-    return this.uri?.getQueryParameter(key) ?: default;
+  public fun get (key: String, defaultValue: String = ""): String {
+    val value = this.uri?.getQueryParameter(key);
+
+    if (value != null && value.length > 0) {
+      return value;
+    }
+
+    return defaultValue;
+  }
+
+  public fun has (key: String): Boolean {
+    return this.get(key).length > 0;
   }
 
   public fun set (key: String, value: String): Boolean {
@@ -361,6 +511,42 @@ class IPCMessage  {
  */
 public open class MainWebViewActivity : WebViewActivity();
 
+public class JSONError(id: String, message: String, extra: String = "") {
+  val id = id;
+  val extra = extra;
+  val message = message;
+
+  constructor (id: Long, message: String, extra: String = "")
+  : this(id.toString(), message, extra) { }
+
+  override fun toString () = """{
+    "value": {
+      "err": {
+        "id": "$id",
+        "message": "$message" ${if (extra.length > 0) "," else ""}
+        $extra
+      }
+    }
+  }""";
+}
+
+public class JSONData(id: String, data: String = "") {
+  val id = id;
+  val data = data;
+
+  constructor (id: Long, data: String = "")
+  : this(id.toString(), data) { }
+
+  override fun toString () = """{
+    "value": {
+      "data": {
+        "id": "$id" ${if (data.length > 0) "," else ""}
+        $data
+      }
+    }
+  }""";
+}
+
 /**
  * Interface for `NativeCore` configuration.kj
  */
@@ -381,9 +567,27 @@ public data class GenericNativeCoreConfiguration(
  * @TODO
  */
 public open class NativeFileSystem(core: NativeCore) {
-  val core = core;
+  protected val TAG = "NativeFileSystem";
 
-  fun open (
+  val core = core;
+  var nextId: Long = 0;
+
+  val openAssets = mutableMapOf<Long, android.content.res.AssetFileDescriptor>();
+  val openAssetInputStreams = mutableMapOf<Long, java.io.FileInputStream>();
+
+  public fun getNextAvailableId (): Long {
+    return ++this.nextId;
+  }
+
+  public fun isAssetId (id: Long): Boolean {
+    if (openAssets[id] != null) {
+      return true;
+    }
+
+    return false;
+  }
+
+  public fun open (
     seq: String = "",
     id: Long = 0,
     path: String,
@@ -394,10 +598,89 @@ public open class NativeFileSystem(core: NativeCore) {
     core.fsOpen(seq, id, path, flags, callbackId);
   }
 
+  public fun openAsset (
+      seq: String = "",
+      id: Long = 0,
+      path: String,
+      callback: (String) -> Unit
+  ) {
+    val assetManager = core.getAssetManager();
+
+    if (assetManager == null) {
+      return callback(JSONError(id, "AssetManager is not initialized.").toString());
+    }
+
+    val fd = try {
+      assetManager.openFd(path);
+    } catch (err: Exception) {
+      var message = err.toString();
+
+      when (err) {
+        is java.io.FileNotFoundException -> {
+          message = "No such file or directory: ${err.message}";
+        }
+      }
+
+      callback(JSONError(id, message).toString())
+
+      null;
+    }
+
+    if (fd == null) {
+      return;
+    }
+
+    if (!fd.getFileDescriptor().valid()) {
+      callback(JSONError(id, "Invalid file descriptor.").toString());
+      return;
+    }
+
+    this.openAssets[id] = fd;
+    //this.openAssetInputStreams[id] = input;
+
+    //input.mark(0);
+
+    callback(JSONData(
+      id, "\"fd\": ${fd.getParcelFileDescriptor().getFd()}"
+    ).toString());
+  }
+
   fun close () {
   }
 
-  fun read () {
+  public fun closeAsset () {
+  }
+
+  public fun read () {
+  }
+
+  public fun readAsset (
+    id: Long = 0,
+    offset: Int = 0,
+    size: Int,
+    callback: (String) -> Unit
+  ) {
+    val fd = this.openAssets[id];
+    //val input = this.openAssetInputStreams[id];
+
+    //if (fd == null || input == null) {
+    if (fd == null) {
+      callback(JSONError(id, "Invalid file descriptor.").toString());
+      return
+    }
+
+    val input = fd.createInputStream();
+    val buffer = ByteArray(size);
+    try {
+      input.read(buffer, offset, size);
+      val bytes = String(java.util.Base64.getEncoder().encode(buffer));
+      callback(JSONData(id, "\"bytes\": \"$bytes\"").toString());
+    } catch (err: Exception) {
+      var message = err.toString();
+      callback(JSONError(id, message).toString());
+    }
+
+    input.close();
   }
 
   fun write () {
