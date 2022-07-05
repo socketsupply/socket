@@ -33,7 +33,7 @@ jobs:
         sudo add-apt-repository ppa:ubuntu-toolchain-r/test
         sudo apt install gcc-11 g++-11 libwebkit2gtk-4.0-dev libcurl4-openssl-dev
 
-    - name: install ssc 
+    - name: install ssc
       run: |
         ./bin/install.sh
       env:
@@ -48,21 +48,21 @@ jobs:
         git config --global user.email "devops@optool.co"
         git config --global user.name "Optool Github Actions"
         git clone --depth 1 git@github.com:socketsupply/socket-sdk-examples.git
-        cd socket-sdk-examples/tonic-desktop/ && npm install
+        cd socket-sdk-examples/desktop-tonic/ && npm install
       env:
         CI: true
         NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
 
     - name: compile example desktop
       run: |
-        ssc compile ./socket-sdk-examples/tonic-desktop/
+        ssc compile ./socket-sdk-examples/desktop-tonic/
       env:
         CI: true
         CXX: g++-11
 
     - name: Run example desktop tests
       run: |
-        xvfb-run --server-args="-screen 0 1920x1080x24" ssc compile --test=1 -r  ./socket-sdk-examples/tonic-desktop/
+        xvfb-run --server-args="-screen 0 1920x1080x24" ssc compile --test=1 -r  ./socket-sdk-examples/desktop-tonic/
       env:
         CI: true
         CXX: g++-11
@@ -117,20 +117,20 @@ jobs:
         git config --global user.email "devops@optool.co"
         git config --global user.name "Optool Github Actions"
         git clone --depth 1 git@github.com:socketsupply/socket-sdk-examples.git
-        cd socket-sdk-examples/tonic-desktop/ && npm install
+        cd socket-sdk-examples/desktop-tonic/ && npm install
       env:
         CI: true
         NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
 
     - name: compile example desktop
       run: |
-        ssc compile ./socket-sdk-examples/tonic-desktop/
+        ssc compile ./socket-sdk-examples/desktop-tonic/
       env:
         CI: true
 
     - name: Run example desktop tests
       run: |
-        ssc compile --test=1 -r ./socket-sdk-examples/tonic-desktop/
+        ssc compile --test=1 -r ./socket-sdk-examples/desktop-tonic/
       env:
         CI: true
 
@@ -169,20 +169,20 @@ jobs:
         git config --global user.email "devops@optool.co"
         git config --global user.name "Optool Github Actions"
         git clone --depth 1 git@github.com:socketsupply/socket-sdk-examples.git
-        cd socket-sdk-examples/tonic-desktop/ && npm install
+        cd socket-sdk-examples/desktop-tonic/ && npm install
       env:
         CI: true
         NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
 
     - name: compile example desktop
       run: |
-        ssc compile ./socket-sdk-examples/tonic-desktop/
+        ssc compile ./socket-sdk-examples/desktop-tonic/
       env:
         CI: true
 
     - name: Run example desktop tests
       run: |
-        ssc compile --test=1 -r ./socket-sdk-examples/tonic-desktop/
+        ssc compile --test=1 -r ./socket-sdk-examples/desktop-tonic/
       env:
         CI: true
 
@@ -228,6 +228,6 @@ jobs:
 
     - name: compile example ios
       run: |
-        ssc compile --target=iossimulator ./socket-sdk-examples/tonic-ios/ 
+        ssc compile --target=iossimulator ./socket-sdk-examples/tonic-ios/
       env:
         CI: true
