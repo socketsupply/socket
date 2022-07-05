@@ -1,592 +1,1024 @@
 #include "android.hh"
-#include "jni.h"
+
+#pragma NativeString
+
+NativeString::NativeString(JNIEnv *env) {
+  this->env = env;
+  this->ref = 0;
+  this->length = 0;
+  this->string = 0;
+  this->needsRelease = false;
+}
+
+NativeString::NativeString(const NativeString &copy)
+  : env(copy.env)
+  , ref(copy.ref)
+  , length(copy.length)
+  , string(copy.string)
+  , needsRelease(false) {
+  // noop copy constructor
+}
+
+NativeString::NativeString(JNIEnv *env, jstring ref)
+  : NativeString(env) {
+  if (ref) {
+    this->Set(ref);
+  }
+}
+
+NativeString::NativeString(JNIEnv *env, std::string string)
+  : NativeString(env) {
+  if (string.size() > 0) {
+    this->Set(string);
+  }
+}
+
+NativeString::NativeString(JNIEnv *env, const char *string)
+  : NativeString(env) {
+  if (string) {
+    this->Set(string);
+  }
+}
+
+NativeString::~NativeString() {
+  this->Release();
+}
+
+void
+NativeString::Set(std::string string) {
+  this->Set(string.c_str());
+}
+
+void
+NativeString::Set(const char *string) {
+  this->Set(this->env->NewStringUTF(string));
+}
+
+void
+NativeString::Set(jstring ref) {
+  if (ref) {
+    this->ref = ref;
+    this->string = this->env->GetStringUTFChars(ref, &this->needsRelease);
+    this->length = this->env->GetStringUTFLength(this->ref);
+  }
+}
+
+void
+NativeString::Release() {
+  if (this->ref && this->string && this->needsRelease) {
+    this->env->ReleaseStringUTFChars(this->ref, this->string);
+  }
+
+  this->ref = 0;
+  this->length = 0;
+  this->string = 0;
+  this->needsRelease = false;
+}
+
+const char *
+NativeString::c_str() {
+  return this->string;
+}
+
+const std::string
+NativeString::str() {
+  std::string value;
+
+  if (this->string) {
+    value.assign(this->string);
+  }
+
+  return value;
+}
+
+const jstring
+NativeString::jstr() {
+  return this->ref;
+}
+
+const size_t
+NativeString::size() {
+  if (!this->string || !this->ref) {
+    return 0;
+  }
+
+  return this->length;
+}
+
+#pragma NativeCoreRefs
+
+void
+NativeCoreRefs::Release() {
+  this->env->DeleteGlobalRef(this->core);
+}
+
+#pragma NativeCore
+
+NativeCore::NativeCore(JNIEnv *env, jobject core)
+  : Core()
+  , refs(env)
+  , config()
+  , rootDirectory(env)
+  , environmentVariables()
+  , javaScriptPreloadSource("") {
+  this->env = env;
+  this->env->GetJavaVM(&this->jvm);
+  this->refs.core = this->env->NewGlobalRef(core);
+  this->self = this->refs.core;
+}
+
+NativeCore::~NativeCore() {
+  this->rootDirectory.Release();
+  this->refs.Release();
+
+  this->env = 0;
+  this->jvm = 0;
+}
+
+jboolean
+NativeCore::ConfigureEnvironment() {
+  using SSC::createPreload;
+  using SSC::decodeURIComponent;
+  using SSC::encodeURIComponent;
+  using SSC::getEnv;
+  using SSC::parseConfig;
+  using SSC::split;
+  using SSC::trim;
+
+  std::stringstream stream;
+
+  // `NativeCore::getRootDirectory()`
+  this->rootDirectory.Set((jstring) CallNativeCoreMethodFromEnvironment(
+    this->env, this->refs.core, "getRootDirectory", "()Ljava/lang/String;"
+  ));
+
+  if (this->rootDirectory.size() == 0) {
+    return false;
+  }
+
+  this->config = parseConfig(decodeURIComponent(STR_VALUE(SETTINGS)));
+
+  for (auto const &tuple : this->config) {
+    auto key = tuple.first;
+    auto value = tuple.second;
+
+    debug("AppConfig: %s = %s", key.c_str(), value.c_str());
+  }
+
+  for (auto const &var : split(this->config["env"], ',')) {
+    auto key = trim(var);
+    auto value = getEnv(key.c_str());
+
+    if (value.size() > 0) {
+      stream << key << "=" << encodeURIComponent(value) << "&";
+      environmentVariables[key] = value;
+      debug("EnvironmentVariable: %s=%s", key.c_str(), value.c_str());
+    }
+  }
+
+  windowOptions.executable = this->config["executable"];
+  windowOptions.version = this->config["version"];
+  windowOptions.preload = gPreloadMobile;
+  windowOptions.title = this->config["title"];
+  windowOptions.debug = DEBUG ? true : false;
+  windowOptions.env = stream.str();
+
+  this->javaScriptPreloadSource.assign(
+    "console.error = console.warn = console.log;          \n"
+    "                                                     \n"
+    "window.addEventListener('unhandledrejection', e => { \n"
+    "  console.log(e.reason || e.message || e);           \n"
+    "});                                                  \n"
+    "                                                     \n"
+    "window.addEventListener('error', e => {              \n"
+    "  const message = e.reason || e.message || e;        \n"
+    "  if (!/debug-evaluate/.test(message)) {             \n"
+    "    console.log(message);                            \n"
+    "  }                                                  \n"
+    "});                                                  \n"
+    "                                                     \n"
+    + createPreload(windowOptions)
+    + "//# sourceURL=preload.js                           \n"
+  );
+
+  stream.str(""); // clear stream
+
+  if (windowOptions.debug) {
+    auto Class = GetNativeCoreBindingClass(this->env);
+    auto isDebugEnabledField =
+      this->env->GetFieldID(Class, "isDebugEnabled", "Z");
+    this->env->SetBooleanField(self, isDebugEnabledField, true);
+  }
+
+  return true;
+}
+
+jboolean
+NativeCore::ConfigureWebViewWindow() {
+  return true;
+}
+
+void *
+NativeCore::GetPointer() const {
+  return (void *) this;
+}
+
+JavaVM *
+NativeCore::GetJavaVM() {
+  return this->jvm;
+}
+
+AppConfig &
+NativeCore::GetAppConfig() {
+  return this->config;
+}
+
+const NativeCoreRefs &
+NativeCore::GetRefs() const {
+  return this->refs;
+}
+
+const EnvironmentVariables &
+NativeCore::GetEnvironmentVariables() const {
+  return this->environmentVariables;
+}
+
+const NativeString &
+NativeCore::GetRootDirectory() const {
+  return this->rootDirectory;
+}
+
+NativeString
+NativeCore::GetPlatformType() const {
+  return NativeString(this->env, "linux");
+}
+
+NativeString
+NativeCore::GetPlatformOS() const {
+  return NativeString(this->env, "android");
+}
+
+AAssetManager *
+NativeCore::GetAssetManager() const {
+  // `NativeCore::getAssetManager()`
+  auto ref = CallNativeCoreMethodFromEnvironment(
+    this->env,
+    this->refs.core,
+    "getAssetManager",
+    "()Landroid/content/res/AssetManager;"
+  );
+
+  if (ref) {
+    return AAssetManager_fromJava(this->env, ref);
+  }
+
+  return nullptr;
+}
+
+const char *
+NativeCore::GetJavaScriptPreloadSource() const {
+  if (this->javaScriptPreloadSource.size() == 0) {
+    return nullptr;
+  }
+
+  return this->javaScriptPreloadSource.c_str();
+}
+
+#pragma NativeFileSystem
+
+NativeFileSystem::NativeFileSystem(JNIEnv *env, NativeCore *core) {
+  this->env = env;
+  this->core = core;
+}
+
+NativeFileSystemRequestContext *
+NativeFileSystem::CreateRequestContext(
+  NativeCoreSequence seq,
+  NativeCoreID id,
+  NativeCallbackID callback
+) const {
+  auto context = new NativeFileSystemRequestContext();
+
+  context->descriptor = new SSC::DescriptorContext();
+  context->callback = callback;
+  context->core = this->core;
+  context->fs = this;
+  context->id = id;
+
+  context->descriptor->seq = seq;
+  context->descriptor->id = id;
+
+  context->request.data = context;
+
+  SSC::descriptors[id] = context->descriptor;
+  return context;
+}
+
+const std::string
+NativeFileSystem::CreateJSONError(NativeCoreID id, const std::string message)
+  const {
+  return SSC::format(
+    R"MSG({
+      "value": {
+        "err": {
+          "id": "$S",
+          "message": "$S"
+        }
+      }
+    })MSG",
+    std::to_string(id),
+    message
+  );
+}
+
+void
+NativeFileSystem::CallbackAndFinalizeContext(
+  NativeFileSystemRequestContext *context,
+  std::string data
+) const {
+  auto refs = context->core->GetRefs();
+  auto jvm = context->core->GetJavaVM();
+  JNIEnv *env = 0;
+
+  jvm->AttachCurrentThread(&env, 0);
+
+  CallNativeCoreCallbackMethodFromEnvironment(
+    env,
+    refs.core,
+    "callback",
+    "(JLjava/lang/String;)V",
+    context->callback,
+    env->NewStringUTF(data.c_str())
+  );
+
+  delete context;
+}
+
+void
+NativeFileSystem::Open(
+  NativeCoreSequence seq,
+  NativeCoreID id,
+  std::string path,
+  int flags,
+  NativeCallbackID callback
+) const {
+  using SSC::format;
+
+  auto context = this->CreateRequestContext(seq, id, callback);
+  auto loop = uv_default_loop();
+
+  int mode = S_IRUSR | S_IWUSR;
+  int err = 0;
+
+  err = uv_fs_open(
+    loop,
+    &context->request,
+    path.c_str(),
+    flags,
+    mode,
+    [] (uv_fs_t *req) {
+      auto context = (NativeFileSystemRequestContext *) req->data;
+      auto id = context->id;
+      auto fd = req->result;
+
+      std::string data;
+
+      if (fd < 0) {
+        auto err = std::string(uv_strerror(fd));
+        data = context->fs->CreateJSONError(id, err);
+      } else {
+        data = format(
+          R"MSG({"value":{"data":{"id": "$S", "fd": $S}}})MSG",
+          std::to_string(id),
+          std::to_string(fd)
+        );
+      }
+
+      context->fs->CallbackAndFinalizeContext(context, data);
+      uv_fs_req_cleanup(req);
+    }
+  );
+
+  if (err < 0) {
+    delete context;
+    return Throw(this->env, UVException(err));
+  }
+
+  err = uv_run(loop, UV_RUN_DEFAULT);
+
+  if (err < 0) {
+    delete context;
+    return Throw(this->env, UVException(err));
+  }
+}
+
+void
+NativeFileSystem::Close(NativeCoreSequence seq, NativeCoreID id) const {
+  // reinterpret_cast<SSC::Core *>(this->core)->fsClose(seq, id, [&](auto seq,
+  // auto msg, auto post) { });
+}
+
+void
+NativeFileSystem::Read(NativeCoreSequence seq, NativeCoreID id, int len, int offset)
+  const {
+}
+
+void
+NativeFileSystem::Write(
+  NativeCoreSequence seq,
+  NativeCoreID id,
+  std::string data,
+  int16_t offset
+) const {
+}
+
+void
+NativeFileSystem::Stat(NativeCoreSequence seq, std::string path) const {
+}
+
+void
+NativeFileSystem::Unlink(NativeCoreSequence seq, std::string path) const {
+}
+
+void
+NativeFileSystem::Rename(
+  NativeCoreSequence seq,
+  std::string from,
+  std::string to
+) const {
+}
+
+void
+NativeFileSystem::CopyFile(
+  NativeCoreSequence seq,
+  std::string from,
+  std::string to,
+  int flags
+) const {
+}
+
+void
+NativeFileSystem::RemoveDirectory(NativeCoreSequence seq, std::string path) const {
+}
+
+void
+NativeFileSystem::MakeDirectory(NativeCoreSequence seq, std::string path, int mode)
+  const {
+}
+
+void
+NativeFileSystem::ReadDirectory(NativeCoreSequence seq, std::string path) const {
+}
+
+#pragma Bindings
 
 /**
  * `NativeCore` JNI/NDK bindings.
  */
 extern "C" {
-  /**
-   * `NativeCore::createPointer()` binding.
-   * @return A pointer to a `NativeCore` instance
-   */
-  jlong exports(NativeCore, createPointer)(
-    JNIEnv *env,
-    jobject self
-  ) {
-    auto core = new NativeCore(env, self);
-    auto pointer = core->GetPointer();
-    debug("Core::createPointer(%p)", pointer);
-    return (jlong) core->GetPointer();
+/**
+ * `NativeCore::createPointer()` binding.
+ * @return A pointer to a `NativeCore` instance
+ */
+jlong
+exports (NativeCore, createPointer)(JNIEnv *env, jobject self) {
+  auto core = new NativeCore(env, self);
+  auto pointer = core->GetPointer();
+  debug("Core::createPointer(%p)", pointer);
+  return (jlong) core->GetPointer();
+}
+
+/**
+ * `NativeCore::destroyPointer()` binding.
+ * @param pointer Pointer to `NativeCore`
+ */
+void
+exports (NativeCore, destroyPointer)(JNIEnv *env, jobject self, jlong pointer) {
+  if (pointer) {
+    debug("Core::destroyPointer(%p)", (void *) pointer);
+    delete (NativeCore *) pointer;
+  }
+}
+
+/**
+ * `NativeCore::verifyPointer()` binding.
+ * @param pointer Pointer to verify
+ * @return `true` if verification passes, otherwise `false`.
+ */
+jboolean
+exports (NativeCore, verifyPointer)(JNIEnv *env, jobject self, jlong pointer) {
+  auto core = GetNativeCoreFromEnvironment(env);
+
+  if (!pointer || !core) {
+    return false;
   }
 
-  /**
-   * `NativeCore::destroyPointer()` binding.
-   * @param pointer Pointer to `NativeCore`
-   */
-  void exports(NativeCore, destroyPointer)(
-    JNIEnv *env,
-    jobject self,
-    jlong pointer
-  ) {
-    if (pointer) {
-      debug("Core::destroyPointer(%p)", (void *) pointer);
-      delete (NativeCore *) pointer;
-    }
+  if ((void *) pointer != (void *) core) {
+    return false;
   }
 
-  /**
-   * `NativeCore::verifyPointer()` binding.
-   * @param pointer Pointer to verify
-   * @return `true` if verification passes, otherwise `false`.
-   */
-  jboolean exports(NativeCore, verifyPointer)(
-    JNIEnv *env,
-    jobject self,
-    jlong pointer
-  ) {
-    auto core = GetNativeCoreFromEnvironment(env);
+  return true;
+}
 
-    if (!pointer || !core) {
-      return false;
-    }
+/**
+ * `NativeCore::verifyNativeExceptions()` binding.
+ * @return `true` if verification passes, otherwise `false`.
+ */
+void
+exports (NativeCore, verifyNativeExceptions)(JNIEnv *env, jobject self) {
+  Throw(env, ExceptionCheckException);
+}
 
-    if ((void *) pointer != (void *) core) {
-      return false;
-    }
+/**
+ * `NativeCore::verifyRootDirectory()` binding.
+ * @return `true` if verification passes, otherwise `false`.
+ */
+jboolean
+exports (NativeCore, verifyRootDirectory)(JNIEnv *env, jobject self) {
+  auto core = GetNativeCoreFromEnvironment(env);
 
-    return true;
+  if (!core) {
+    Throw(env, NativeCoreNotInitializedException);
+    return false;
   }
 
-  /**
-   * `NativeCore::verifyNativeExceptions()` binding.
-   * @return `true` if verification passes, otherwise `false`.
-   */
-  void exports(NativeCore, verifyNativeExceptions)(
-    JNIEnv *env,
-    jobject self
-  ) {
-    Throw(env, ExceptionCheckException);
+  auto rootDirectory = core->GetRootDirectory();
+
+  if (!rootDirectory.size()) {
+    Throw(env, RootDirectoryIsNotReachableException);
+    return false;
   }
 
-  /**
-   * `NativeCore::verifyRootDirectory()` binding.
-   * @return `true` if verification passes, otherwise `false`.
-   */
-  jboolean exports(NativeCore, verifyRootDirectory)(
-    JNIEnv *env,
-    jobject self
-  ) {
-    auto core = GetNativeCoreFromEnvironment(env);
+  return true;
+}
 
-    if (!core) {
-      Throw(env, NativeCoreNotInitializedException);
-      return false;
-    }
+/**
+ * `NativeCore::verifyAssetManager()` binding.
+ * @return `true` if verification passes, otherwise `false`.
+ */
+jboolean
+exports (NativeCore, verifyAssetManager)(JNIEnv *env, jobject self) {
+  auto core = GetNativeCoreFromEnvironment(env);
 
-    auto rootDirectory = core->GetRootDirectory();
-
-    if (!rootDirectory.size()) {
-      Throw(env, RootDirectoryIsNotReachableException);
-      return false;
-    }
-
-    return true;
+  if (!core) {
+    Throw(env, NativeCoreNotInitializedException);
+    return false;
   }
 
-  /**
-   * `NativeCore::verifyAssetManager()` binding.
-   * @return `true` if verification passes, otherwise `false`.
-   */
-  jboolean exports(NativeCore, verifyAssetManager)(
-    JNIEnv *env,
-    jobject self
-  ) {
-    auto core = GetNativeCoreFromEnvironment(env);
+  auto assetManager = core->GetAssetManager();
 
-    if (!core) {
-      Throw(env, NativeCoreNotInitializedException);
-      return false;
-    }
-
-    auto assetManager = core->GetAssetManager();
-
-    if (!assetManager) {
-      Throw(env, AssetManagerIsNotReachableException);
-      return false;
-    }
-
-    return true;
+  if (!assetManager) {
+    Throw(env, AssetManagerIsNotReachableException);
+    return false;
   }
 
-  /**
-   * `NativeCore::verifyPlatform()` binding.
-   * @return `true` if verification passes, otherwise `false`.
-   */
-  jboolean exports(NativeCore, verifyPlatform)(
-    JNIEnv *env,
-    jobject self
-  ) {
-    auto core = GetNativeCoreFromEnvironment(env);
+  return true;
+}
 
-    if (!core) {
-      Throw(env, NativeCoreNotInitializedException);
-      return false;
-    }
+/**
+ * `NativeCore::verifyPlatform()` binding.
+ * @return `true` if verification passes, otherwise `false`.
+ */
+jboolean
+exports (NativeCore, verifyPlatform)(JNIEnv *env, jobject self) {
+  auto core = GetNativeCoreFromEnvironment(env);
 
-    if (core->GetPlatformOS().str() != "android") {
-      return false;
-    }
-
-    if (core->GetPlatformType().str() != "linux") {
-      return false;
-    }
-
-    return true;
+  if (!core) {
+    Throw(env, NativeCoreNotInitializedException);
+    return false;
   }
 
-  /**
-   * `NativeCore::verifyLoop()` binding.
-   * @return `true` if verification passes, otherwise `false`.
-   */
-  jboolean exports(NativeCore, verifyLoop)(
-    JNIEnv *env,
-    jobject self
-  ) {
-    if (!uv_default_loop()) {
-      return false;
-    }
-
-    return true;
+  if (core->GetPlatformOS().str() != "android") {
+    return false;
   }
 
-  /**
-   * `NativeCore::verifyEnvironment()` binding.
-   * @return `true` if verification passes, otherwise `false`.
-   */
-  jboolean exports(NativeCore, verifyEnvironment)(
-    JNIEnv *env,
-    jobject self
-  ) {
-    auto core = GetNativeCoreFromEnvironment(env);
-
-    if (!core) {
-      Throw(env, NativeCoreNotInitializedException);
-      return false;
-    }
-
-    // @TODO
-    return true;
+  if (core->GetPlatformType().str() != "linux") {
+    return false;
   }
 
-  /**
-   * `NativeCore::verifyJavaVM()` binding.
-   * @return `true` if verification passes, otherwise `false`.
-   */
-  jboolean exports(NativeCore, verifyJavaVM)(
-    JNIEnv *env,
-    jobject self
-  ) {
-    auto core = GetNativeCoreFromEnvironment(env);
+  return true;
+}
 
-    if (!core) {
-      Throw(env, NativeCoreNotInitializedException);
-      return false;
-    }
-
-    if (!core->GetJavaVM()) {
-      Throw(env, NativeCoreJavaVMNotInitializedException);
-      return false;
-    }
-
-    return true;
+/**
+ * `NativeCore::verifyLoop()` binding.
+ * @return `true` if verification passes, otherwise `false`.
+ */
+jboolean
+exports (NativeCore, verifyLoop)(JNIEnv *env, jobject self) {
+  if (!uv_default_loop()) {
+    return false;
   }
 
-  /**
-   * `NativeCore::verifyRefs()` binding.
-   * @return `true` if verification passes, otherwise `false`.
-   */
-  jboolean exports(NativeCore, verifyRefs)(
-    JNIEnv *env,
-    jobject self
-  ) {
-    auto core = GetNativeCoreFromEnvironment(env);
+  return true;
+}
 
-    if (!core) {
-      Throw(env, NativeCoreNotInitializedException);
-      return false;
-    }
+/**
+ * `NativeCore::verifyEnvironment()` binding.
+ * @return `true` if verification passes, otherwise `false`.
+ */
+jboolean
+exports (NativeCore, verifyEnvironment)(JNIEnv *env, jobject self) {
+  auto core = GetNativeCoreFromEnvironment(env);
 
-    auto refs = core->GetRefs();
-
-    if (!refs.core) {
-      Throw(env, NativeCoreRefsNotInitializedException);
-      return false;
-    }
-
-    return true;
+  if (!core) {
+    Throw(env, NativeCoreNotInitializedException);
+    return false;
   }
 
-  /**
-   * `NativeCore::verifyFileSystem()` binding.
-   * @return `true` if verification passes, otherwise `false`.
-   */
-  jboolean exports(NativeCore, verifyFileSystem)(
-    JNIEnv *env,
-    jobject self
-  ) {
-    auto core = GetNativeCoreFromEnvironment(env);
-    jboolean ok = true;
-    int err = 0;
+  // @TODO
+  return true;
+}
 
-    if (!core) {
-      Throw(env, NativeCoreNotInitializedException);
-      return false;
-    }
+/**
+ * `NativeCore::verifyJavaVM()` binding.
+ * @return `true` if verification passes, otherwise `false`.
+ */
+jboolean
+exports (NativeCore, verifyJavaVM)(JNIEnv *env, jobject self) {
+  auto core = GetNativeCoreFromEnvironment(env);
 
-    auto loop = uv_default_loop();
-
-    struct { uv_fs_t opendir, readdir; } requests = {0};
-
-    if (!loop) {
-      Throw(env, UVLoopNotInitializedException);
-      return false;
-    }
-
-    auto rootDirectory = core->GetRootDirectory();
-
-    err = uv_fs_opendir(loop, &requests.opendir, rootDirectory.c_str(), nullptr);
-
-    if (err != 0) {
-      Throw(env, UVException(err));
-      return false;
-    }
-
-    // TODO(jwerle):
-    // - libuv filesystem readdir (check for files/ & cache/)
-    // - libuv filesystem write OK to files/`VITAL_CHECK_FILE`
-    // - libuv filesystem read OK from files/`VITAL_CHECK_FILE`
-    // - AssetManager `VITAL_CHECK_FILE` check
-
-    err = uv_run(loop, UV_RUN_DEFAULT);
-
-    if (err != 0) {
-      Throw(env, UVException(err));
-      return false;
-    }
-
-    return ok;
+  if (!core) {
+    Throw(env, NativeCoreNotInitializedException);
+    return false;
   }
 
-  /**
-   * `NativeCore::configureEnvironment()` binding.
-   * @return `true` if configuration was succcessful, otherwise `false`.
-   */
-  jboolean exports(NativeCore, configureEnvironment)(
-    JNIEnv *env,
-    jobject self
-  ) {
-    auto core = GetNativeCoreFromEnvironment(env);
-
-    if (!core) {
-      Throw(env, NativeCoreNotInitializedException);
-      return false;
-    }
-
-    return core->ConfigureEnvironment();
+  if (!core->GetJavaVM()) {
+    Throw(env, NativeCoreJavaVMNotInitializedException);
+    return false;
   }
 
-  /**
-   * `NativeCore::configureWebViewWindow()` binding.
-   * @return `true` if configuration was succcessful, otherwise `false`.
-   */
-  jboolean exports(NativeCore, configureWebViewWindow)(
-    JNIEnv *env,
-    jobject self
-  ) {
-    auto core = GetNativeCoreFromEnvironment(env);
+  return true;
+}
 
-    if (!core) {
-      Throw(env, NativeCoreNotInitializedException);
-      return false;
-    }
+/**
+ * `NativeCore::verifyRefs()` binding.
+ * @return `true` if verification passes, otherwise `false`.
+ */
+jboolean
+exports (NativeCore, verifyRefs)(JNIEnv *env, jobject self) {
+  auto core = GetNativeCoreFromEnvironment(env);
 
-    return core->ConfigureWebViewWindow();
+  if (!core) {
+    Throw(env, NativeCoreNotInitializedException);
+    return false;
   }
 
-  /**
-   * `NativeCore::getPathToIndexHTML()` binding.
-   * @return Path relative to `assets/` directory where `index.html` lives.
-   */
-  jstring exports(NativeCore, getPathToIndexHTML)(
-    JNIEnv *env,
-    jobject self
-  ) {
-    auto core = GetNativeCoreFromEnvironment(env);
+  auto refs = core->GetRefs();
 
-    if (!core) {
-      Throw(env, NativeCoreNotInitializedException);
-      return env->NewStringUTF("");
-    }
-
-    auto config = core->GetAppConfig();
-    auto index = config["android_index_html"];
-
-    if (index.size() > 0) {
-      return env->NewStringUTF(index.c_str());
-    }
-
-    return env->NewStringUTF("index.html");
+  if (!refs.core) {
+    Throw(env, NativeCoreRefsNotInitializedException);
+    return false;
   }
 
-  /**
-   * `NativeCore::getJavaScriptPreloadSource()` binding.
-   * @return JavaScript preload source code injected into WebView.
-   */
-  jstring exports(NativeCore, getJavaScriptPreloadSource)(
-    JNIEnv *env,
-    jobject self
-  ) {
-    auto core = GetNativeCoreFromEnvironment(env);
+  return true;
+}
 
-    if (!core) {
-      Throw(env, NativeCoreNotInitializedException);
-      return env->NewStringUTF("");
-    }
+/**
+ * `NativeCore::verifyFileSystem()` binding.
+ * @return `true` if verification passes, otherwise `false`.
+ */
+jboolean
+exports (NativeCore, verifyFileSystem)(JNIEnv *env, jobject self) {
+  auto core = GetNativeCoreFromEnvironment(env);
+  jboolean ok = true;
+  int err = 0;
 
-    auto preload = core->GetJavaScriptPreloadSource();
-
-    if (!preload) {
-      Throw(env, JavaScriptPreloadSourceNotInitializedException);
-      return env->NewStringUTF("");
-    }
-
-    return env->NewStringUTF(preload);
+  if (!core) {
+    Throw(env, NativeCoreNotInitializedException);
+    return false;
   }
 
-  /**
-   * `NativeCore::getResolveToRenderProcessJavaScript()` binding.
-   * @return JavaScript source code injected into WebView that performs an IPC resolution
-   */
-  jstring exports(NativeCore, getResolveToRenderProcessJavaScript)(
-    JNIEnv *env,
-    jobject self,
-    jstring seq,
-    jstring state,
-    jstring value,
-    jboolean shouldEncodeValue
-  ) {
-    using SSC::encodeURIComponent;
-    using SSC::resolveToRenderProcess;
+  auto loop = uv_default_loop();
 
-    auto core = GetNativeCoreFromEnvironment(env);
+  struct {
+    uv_fs_t opendir, readdir;
+  } requests = { 0 };
 
-    if (!core) {
-      Throw(env, NativeCoreNotInitializedException);
-      return env->NewStringUTF("");
-    }
-
-    return env->NewStringUTF(
-      resolveToRenderProcess(
-        NativeString(env, seq).str(),
-        NativeString(env, state).str(),
-        shouldEncodeValue
-          ? encodeURIComponent(NativeString(env, value).str())
-          : NativeString(env, value).str()
-      ).c_str()
-    );
+  if (!loop) {
+    Throw(env, UVLoopNotInitializedException);
+    return false;
   }
 
-  /**
-   * `NativeCore::getEmitToRenderProcessJavaScript()` binding.
-   * @return JavaScript source code injected into WebView that performs an IPC event emission.
-   */
-  jstring exports(NativeCore, getEmitToRenderProcessJavaScript)(
-    JNIEnv *env,
-    jobject self,
-    jstring event,
-    jstring value
-  ) {
-    using SSC::emitToRenderProcess;
+  auto rootDirectory = core->GetRootDirectory();
 
-    auto core = GetNativeCoreFromEnvironment(env);
+  err = uv_fs_opendir(loop, &requests.opendir, rootDirectory.c_str(), nullptr);
 
-    if (!core) {
-      Throw(env, NativeCoreNotInitializedException);
-      return env->NewStringUTF("");
-    }
-
-    return env->NewStringUTF(
-      emitToRenderProcess(
-        NativeString(env, event).str(),
-        NativeString(env, value).str()
-      ).c_str()
-    );
+  if (err != 0) {
+    Throw(env, UVException(err));
+    return false;
   }
 
-  /**
-   * `NativeCore::getStreamToRenderProcessJavaScript()` binding.
-   * @return JavaScript source code injected into WebView that performs an IPC stream callback.
-   */
-  jstring exports(NativeCore, getStreamToRenderProcessJavaScript)(
-    JNIEnv *env,
-    jobject self,
-    jstring id,
-    jstring value
-  ) {
-    using SSC::streamToRenderProcess;
+  // TODO(jwerle):
+  // - libuv filesystem readdir (check for files/ & cache/)
+  // - libuv filesystem write OK to files/`VITAL_CHECK_FILE`
+  // - libuv filesystem read OK from files/`VITAL_CHECK_FILE`
+  // - AssetManager `VITAL_CHECK_FILE` check
 
-    auto core = GetNativeCoreFromEnvironment(env);
+  err = uv_run(loop, UV_RUN_DEFAULT);
 
-    if (!core) {
-      Throw(env, NativeCoreNotInitializedException);
-      return env->NewStringUTF("");
-    }
-
-    return env->NewStringUTF(
-      streamToRenderProcess(
-        NativeString(env, id).str(),
-        NativeString(env, value).str()
-      ).c_str()
-    );
+  if (err != 0) {
+    Throw(env, UVException(err));
+    return false;
   }
 
-  /**
-   * `NativeCore::getNetworkInterfaces()` binding.
-   * @return Network interfaces in JSON format
-   */
-  jstring exports(NativeCore, getNetworkInterfaces)(
-    JNIEnv *env,
-    jobject self
-  ) {
-    auto core = GetNativeCoreFromEnvironment(env);
+  return ok;
+}
 
-    if (!core) {
-      Throw(env, NativeCoreNotInitializedException);
-      return env->NewStringUTF("");
-    }
+/**
+ * `NativeCore::configureEnvironment()` binding.
+ * @return `true` if configuration was succcessful, otherwise `false`.
+ */
+jboolean
+exports (NativeCore, configureEnvironment)(JNIEnv *env, jobject self) {
+  auto core = GetNativeCoreFromEnvironment(env);
 
-    return env->NewStringUTF(core->getNetworkInterfaces().c_str());
+  if (!core) {
+    Throw(env, NativeCoreNotInitializedException);
+    return false;
   }
 
-  void exports(NativeCore, fsOpen)(
-    JNIEnv *env,
-    jobject self,
-    jstring seq,
-    jlong id,
-    jstring path,
-    jint flags,
-    jlong callback
-  ) {
-    auto core = GetNativeCoreFromEnvironment(env);
+  return core->ConfigureEnvironment();
+}
 
-    if (!core) {
-      return Throw(env, NativeCoreNotInitializedException);
-    }
+/**
+ * `NativeCore::configureWebViewWindow()` binding.
+ * @return `true` if configuration was succcessful, otherwise `false`.
+ */
+jboolean
+exports (NativeCore, configureWebViewWindow)(JNIEnv *env, jobject self) {
+  auto core = GetNativeCoreFromEnvironment(env);
 
-    auto fs = NativeFileSystem(env, core);
-
-    fs.Open(
-      NativeString(env, seq).str(),
-      (NativeCoreID) id,
-      NativeString(env, path).str(),
-      (int) flags,
-      (NativeCallbackID) callback
-    );
+  if (!core) {
+    Throw(env, NativeCoreNotInitializedException);
+    return false;
   }
 
-  void exports(NativeCore, fsClose)(
-    JNIEnv *env,
-    jobject self,
-    jstring seq,
-    uint64_t id
-  ) {
-    // @TODO(jwerle): Core::fsClose
+  return core->ConfigureWebViewWindow();
+}
+
+/**
+ * `NativeCore::getPathToIndexHTML()` binding.
+ * @return Path relative to `assets/` directory where `index.html` lives.
+ */
+jstring
+exports (NativeCore, getPathToIndexHTML)(JNIEnv *env, jobject self) {
+  auto core = GetNativeCoreFromEnvironment(env);
+
+  if (!core) {
+    Throw(env, NativeCoreNotInitializedException);
+    return env->NewStringUTF("");
   }
 
-  void exports(NativeCore, fsRead)(
-    JNIEnv *env,
-    jobject self,
-    jstring seq,
-    uint64_t id,
-    int len,
-    int offset
-  ) {
-    // @TODO(jwerle): Core::fsRead
+  auto config = core->GetAppConfig();
+  auto index = config["android_index_html"];
+
+  if (index.size() > 0) {
+    return env->NewStringUTF(index.c_str());
   }
 
-  void exports(NativeCore, fsWrite)(
-    JNIEnv *env,
-    jobject self,
-    jstring seq,
-    uint64_t id,
-    jstring data,
-    int64_t offset
-  ) {
-    // @TODO(jwerle): Core::fsWrite
+  return env->NewStringUTF("index.html");
+}
+
+/**
+ * `NativeCore::getJavaScriptPreloadSource()` binding.
+ * @return JavaScript preload source code injected into WebView.
+ */
+jstring
+exports (NativeCore, getJavaScriptPreloadSource)(JNIEnv *env, jobject self) {
+  auto core = GetNativeCoreFromEnvironment(env);
+
+  if (!core) {
+    Throw(env, NativeCoreNotInitializedException);
+    return env->NewStringUTF("");
   }
 
-  void exports(NativeCore, fsStat)(
-    JNIEnv *env,
-    jobject self,
-    jstring seq,
-    jstring path
-  ) {
-    // @TODO(jwerle): Core::fsStat
+  auto preload = core->GetJavaScriptPreloadSource();
+
+  if (!preload) {
+    Throw(env, JavaScriptPreloadSourceNotInitializedException);
+    return env->NewStringUTF("");
   }
 
-  void exports(NativeCore, fsUnlink)(
-    jstring seq,
-    jstring path
-  ) {
-    // @TODO(jwerle): Core::fsUnlink
+  return env->NewStringUTF(preload);
+}
+
+/**
+ * `NativeCore::getResolveToRenderProcessJavaScript()` binding.
+ * @return JavaScript source code injected into WebView that performs an IPC
+ * resolution
+ */
+jstring
+exports (NativeCore, getResolveToRenderProcessJavaScript)(
+  JNIEnv *env,
+  jobject self,
+  jstring seq,
+  jstring state,
+  jstring value,
+  jboolean shouldEncodeValue
+) {
+  using SSC::encodeURIComponent;
+  using SSC::resolveToRenderProcess;
+
+  auto core = GetNativeCoreFromEnvironment(env);
+
+  if (!core) {
+    Throw(env, NativeCoreNotInitializedException);
+    return env->NewStringUTF("");
   }
 
-  void exports(NativeCore, fsRename)(
-    JNIEnv *env,
-    jobject self,
-    jstring seq,
-    jstring pathA,
-    jstring pathB
-  ) {
-    // @TODO(jwerle): Core::fsRename
+  auto resolved = NativeString(env, value).str();
+
+  if (shouldEncodeValue) {
+    resolved = encodeURIComponent(resolved);
   }
 
-  void exports(NativeCore, fsCopyFile)(
-    JNIEnv *env,
-    jobject self,
-    jstring seq,
-    jstring pathA,
-    jstring pathB,
-    int flags
-  ) {
-    // @TODO(jwerle): Core::fsCopyFile
+  auto javascript = resolveToRenderProcess(
+    NativeString(env, seq).str(), NativeString(env, state).str(), resolved
+  );
+
+  return env->NewStringUTF(javascript.c_str());
+}
+
+/**
+ * `NativeCore::getEmitToRenderProcessJavaScript()` binding.
+ * @return JavaScript source code injected into WebView that performs an IPC
+ * event emission.
+ */
+jstring
+exports (NativeCore, getEmitToRenderProcessJavaScript)(
+  JNIEnv *env, jobject self, jstring event, jstring value
+) {
+  using SSC::emitToRenderProcess;
+
+  auto core = GetNativeCoreFromEnvironment(env);
+
+  if (!core) {
+    Throw(env, NativeCoreNotInitializedException);
+    return env->NewStringUTF("");
   }
 
-  void exports(NativeCore, fsRmDir)(
-    JNIEnv *env,
-    jobject self,
-    jstring seq,
-    jstring path
-  ) {
-    // @TODO(jwerle): Core::fsRmDir
+  auto javascript = emitToRenderProcess(
+    NativeString(env, event).str(), NativeString(env, value).str()
+  );
+
+  return env->NewStringUTF(javascript.c_str());
+}
+
+/**
+ * `NativeCore::getStreamToRenderProcessJavaScript()` binding.
+ * @return JavaScript source code injected into WebView that performs an IPC
+ * stream callback.
+ */
+jstring
+exports (NativeCore, getStreamToRenderProcessJavaScript)(
+  JNIEnv *env, jobject self, jstring id, jstring value
+) {
+  using SSC::streamToRenderProcess;
+
+  auto core = GetNativeCoreFromEnvironment(env);
+
+  if (!core) {
+    Throw(env, NativeCoreNotInitializedException);
+    return env->NewStringUTF("");
   }
 
-  void exports(NativeCore, fsMkDir)(
-    JNIEnv *env,
-    jobject self,
-    jstring seq,
-    jstring path,
-    int mode
-  ) {
-    // @TODO(jwerle): Core::fsMkDir
+  auto javascript = streamToRenderProcess(
+    NativeString(env, id).str(), NativeString(env, value).str()
+  );
+
+  return env->NewStringUTF(javascript.c_str());
+}
+
+/**
+ * `NativeCore::getNetworkInterfaces()` binding.
+ * @return Network interfaces in JSON format
+ */
+jstring
+exports (NativeCore, getNetworkInterfaces)(JNIEnv *env, jobject self) {
+  auto core = GetNativeCoreFromEnvironment(env);
+
+  if (!core) {
+    Throw(env, NativeCoreNotInitializedException);
+    return env->NewStringUTF("");
   }
 
-  void exports(NativeCore, fsReadDir)(
-    JNIEnv *env,
-    jobject self,
-    jstring seq,
-    jstring path
-  ) {
-    // @TODO(jwerle): Core::fsReadDir
+  return env->NewStringUTF(core->getNetworkInterfaces().c_str());
+}
+
+jstring
+exports (NativeCore, fsConstants)(JNIEnv *env, jobject self, jstring seq) {
+  auto core = GetNativeCoreFromEnvironment(env);
+
+  if (!core) {
+    Throw(env, NativeCoreNotInitializedException);
+    return env->NewStringUTF("");
   }
+
+  // auto fs = NativeFileSystem(env, core);
+}
+
+void
+exports (NativeCore, fsOpen)(
+  JNIEnv *env,
+  jobject self,
+  jstring seq,
+  jlong id,
+  jstring path,
+  jint flags,
+  jlong callback
+) {
+  auto core = GetNativeCoreFromEnvironment(env);
+
+  if (!core) {
+    return Throw(env, NativeCoreNotInitializedException);
+  }
+
+  auto fs = NativeFileSystem(env, core);
+
+  fs.Open(
+    NativeString(env, seq).str(),
+    (NativeCoreID) id,
+    NativeString(env, path).str(),
+    (int) flags,
+    (NativeCallbackID) callback
+  );
+}
+
+void
+exports (NativeCore, fsClose)(
+  JNIEnv *env, jobject self, jstring seq, NativeCoreID id
+) {
+  // @TODO(jwerle): Core::fsClose
+}
+
+void
+exports (NativeCore, fsRead)(
+  JNIEnv *env, jobject self, jstring seq, NativeCoreID id, int len, int offset
+) {
+  // @TODO(jwerle): Core::fsRead
+}
+
+void
+exports (NativeCore, fsWrite)(
+  JNIEnv *env,
+  jobject self,
+  jstring seq,
+  NativeCoreID id,
+  jstring data,
+  int64_t offset
+) {
+  // @TODO(jwerle): Core::fsWrite
+}
+
+void
+exports (NativeCore, fsStat)(
+  JNIEnv *env, jobject self, jstring seq, jstring path
+) {
+  // @TODO(jwerle): Core::fsStat
+}
+
+void
+exports (NativeCore, fsUnlink)(jstring seq, jstring path) {
+  // @TODO(jwerle): Core::fsUnlink
+}
+
+void
+exports (NativeCore, fsRename)(
+  JNIEnv *env, jobject self, jstring seq, jstring pathA, jstring pathB
+) {
+  // @TODO(jwerle): Core::fsRename
+}
+
+void
+exports (NativeCore, fsCopyFile)(
+  JNIEnv *env,
+  jobject self,
+  jstring seq,
+  jstring pathA,
+  jstring pathB,
+  int flags
+) {
+  // @TODO(jwerle): Core::fsCopyFile
+}
+
+void
+exports (NativeCore, fsRmDir)(
+  JNIEnv *env, jobject self, jstring seq, jstring path
+) {
+  // @TODO(jwerle): Core::fsRmDir
+}
+
+void
+exports (NativeCore, fsMkDir)(
+  JNIEnv *env, jobject self, jstring seq, jstring path, int mode
+) {
+  // @TODO(jwerle): Core::fsMkDir
+}
+
+void
+exports (NativeCore, fsReadDir)(
+  JNIEnv *env, jobject self, jstring seq, jstring path
+) {
+  // @TODO(jwerle): Core::fsReadDir
+}
 }
