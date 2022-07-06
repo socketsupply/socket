@@ -259,7 +259,6 @@ namespace SSC {
   std::string resolveToRenderProcess(const std::string& seq, const std::string& state, const std::string& value) {
     return std::string(
       "(() => {"
-      "  console.log('xxx');"
       "  const seq = Number(`" + seq + "`);"
       "  const state = Number(`" + state + "`);"
       "  const value = `" + value + "`;"

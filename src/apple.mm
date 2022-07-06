@@ -1090,28 +1090,53 @@ static std::string backlog = "";
   if (cmd.name == "udpBind") {
     auto ip = cmd.get("ip");
     std::string err;
+    int port;
+    uint64_t serverId;
 
     if (ip.size() == 0) {
       ip = "0.0.0.0";
     }
 
-    if (cmd.get("serverId").size() == 0) {
+    try {
+      serverId = std::stoull(cmd.get("serverId"));
+    } catch (...) {
       auto msg = SSC::format(R"({ "value": { "err": { "message": "property 'serverId' required" } } })");
       [self send: seq msg: msg post: Post{}];
       return true;
     }
 
-    if (cmd.get("port").size() == 0) {
+    try {
+      port = std::stoi(cmd.get("port"));
+    } catch (...) {
       auto msg = SSC::format(R"({ "value": { "err": { "message": "property 'port' required" } } })");
       [self send: seq msg: msg post: Post{}];
       return true;
     }
 
-    auto port = std::stoi(cmd.get("port"));
-    auto serverId = std::stoull(cmd.get("serverId"));
-
     dispatch_async(queue, ^{
       self.core->udpBind(seq, serverId, ip, port, [&](auto seq, auto msg, auto post) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+          [self send: seq msg: msg post: post];
+        });
+      });
+    });
+
+    return true;
+  }
+
+  if (cmd.name == "udpReadStart") {
+    uint64_t serverId;
+
+    try {
+      serverId = std::stoull(cmd.get("serverId"));
+    } catch (...) {
+      auto msg = SSC::format(R"({ "value": { "err": { "message": "property 'serverId' required" } } })");
+      [self send: seq msg: msg post: Post{}];
+      return true;
+    }
+
+    dispatch_async(queue, ^{
+      self.core->udpReadStart(seq, serverId, [&](auto seq, auto msg, auto post) {
         dispatch_async(dispatch_get_main_queue(), ^{
           [self send: seq msg: msg post: post];
         });

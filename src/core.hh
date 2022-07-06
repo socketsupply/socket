@@ -1628,7 +1628,7 @@ namespace SSC {
             "message": "$S"
           }
         }
-      })MSG", std::to_string(serverId), uv_strerror(err));
+      })MSG", std::to_string(serverId), std::string(uv_strerror(err)));
       cb(seq, msg, Post{});
       return;
     }
