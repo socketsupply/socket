@@ -1543,7 +1543,7 @@ namespace SSC {
       return;
     }
 
-    uv_udp_init(loop, server->udp);
+    uv_udp_init(defaultLoop(), server->udp);
     err = uv_udp_bind(server->udp, (const struct sockaddr*)&addr, UV_UDP_REUSEADDR);
 
     if (err < 0) {
