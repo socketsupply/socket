@@ -721,6 +721,7 @@ namespace SSC {
   class IWindow {
     public:
       int index = 0;
+      void* bridge;
       WindowOptions opts;
       SCallback onMessage = [](const std::string) {};
       ExitCallback onExit = nullptr;

@@ -15,7 +15,6 @@
 
 #include "apple.mm" // creates instance of bridge
 
-Bridge* bridge;
 BluetoothDelegate* bt;
 SSC::Core* core;
 
@@ -486,7 +485,9 @@ namespace SSC {
   Window::Window (App& app, WindowOptions opts) : app(app), opts(opts) {
     bt = [BluetoothDelegate new];
     core = new SSC::Core;
-    bridge = [Bridge new];
+
+    Bridge* bridge = [Bridge new];
+    this->bridge = (void*)bridge;
 
     // Window style: titled, closable, minimizable
     uint style = NSWindowStyleMaskTitled;

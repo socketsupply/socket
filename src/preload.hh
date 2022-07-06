@@ -9,7 +9,6 @@ constexpr auto gPreload = R"JS(
   const IPC = window._ipc = { nextSeq: 1, streams: {} }
 
   window._ipc.resolve = async (seq, status, value) => {
-    console.log('>>> RESOLVE IPC', seq, status, value)
     try {
       value = decodeURIComponent(value)
     } catch (err) {
@@ -17,7 +16,6 @@ constexpr auto gPreload = R"JS(
       return
     }
 
-    console.log('>>> RESOLVE/DECODE IPC', seq, status, value)
     try {
       value = JSON.parse(value)
     } catch (err) {
@@ -30,7 +28,6 @@ constexpr auto gPreload = R"JS(
       return
     }
 
-    console.log('>>> RESOLVE/PARSE IPC', seq, status, value)
     if (status === 0) {
       await window._ipc[seq].resolve(value)
     } else {

@@ -579,7 +579,6 @@ static std::string backlog = "";
   }
 
   if ((seq != "-1") && (post.length > 0) && self.core->hasTask(seq)) {
-    NSLog(@">>> TASK %s", seq.c_str());
     auto task = self.core->getTask(seq);
 
     NSHTTPURLResponse *httpResponse = [[NSHTTPURLResponse alloc]
@@ -613,7 +612,6 @@ static std::string backlog = "";
   }
 
   NSString* script = [NSString stringWithUTF8String: msg.c_str()];
-  NSLog(@"--- %@", script);
   [self.webview evaluateJavaScript: script completionHandler:nil];
 }
 
