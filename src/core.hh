@@ -415,8 +415,6 @@ namespace SSC {
   void Core::fsRead (String seq, uint64_t id, int len, int offset, Cb cb) const {
     auto desc = descriptors[id];
 
-    __android_log_print(ANDROID_LOG_DEBUG, __FUNCTION__, "here 1");
-
     if (desc == nullptr) {
       auto msg = SSC::format(R"MSG({
         "value": {
@@ -431,29 +429,22 @@ namespace SSC {
       return;
     }
 
-    __android_log_print(ANDROID_LOG_DEBUG, __FUNCTION__, "here 2");
     desc->seq = seq;
     desc->cb = cb;
 
-    __android_log_print(ANDROID_LOG_DEBUG, __FUNCTION__, "here 3");
     auto req = new uv_fs_t;
     req->data = desc;
-
-    __android_log_print(ANDROID_LOG_DEBUG, __FUNCTION__, "here 4");
 
     auto buf = new char[len];
     const uv_buf_t iov = uv_buf_init(buf, len * sizeof(char));
     desc->data = buf;
-    __android_log_print(ANDROID_LOG_DEBUG, __FUNCTION__, "here 5");
 
     auto err = uv_fs_read(defaultLoop(), req, desc->fd, &iov, 1, offset, [](uv_fs_t* req) {
       auto desc = static_cast<DescriptorContext*>(req->data);
       std::string msg;
       Post post = {0};
-    __android_log_print(ANDROID_LOG_DEBUG, __FUNCTION__, "here A");
 
       if (req->result < 0) {
-    __android_log_print(ANDROID_LOG_DEBUG, __FUNCTION__, "here B");
         msg = SSC::format(R"MSG({
           "value": {
             "err": {
@@ -463,7 +454,6 @@ namespace SSC {
           }
         })MSG", std::to_string(desc->id), String(uv_strerror(req->result)));
       } else {
-    __android_log_print(ANDROID_LOG_DEBUG, __FUNCTION__, "here C");
         auto headers = SSC::format(R"MSG({
           "Content-Type": "application/octet-stream",
           "Content-Size": "$i",
@@ -476,7 +466,6 @@ namespace SSC {
         post.headers = headers;
       }
 
-    __android_log_print(ANDROID_LOG_DEBUG, __FUNCTION__, "here D");
       desc->cb(desc->seq, msg, post);
 
       uv_fs_req_cleanup(req);
@@ -490,9 +479,7 @@ namespace SSC {
       delete req;
     });
 
-    __android_log_print(ANDROID_LOG_DEBUG, __FUNCTION__, "here 6");
     if (err < 0) {
-    __android_log_print(ANDROID_LOG_DEBUG, __FUNCTION__, "here ERR");
       auto msg = SSC::format(R"MSG({
         "value": {
           "err": {
@@ -506,7 +493,6 @@ namespace SSC {
       return;
     }
 
-    __android_log_print(ANDROID_LOG_DEBUG, __FUNCTION__, "here END");
     runDefaultLoop();
   }
 
