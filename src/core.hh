@@ -1562,12 +1562,18 @@ namespace SSC {
       "data": {}
     })MSG");
 
+    static uv_timer_t t;
+    uv_timer_init(loop, &t);
+    uv_timer_start(&t, [](uv_timer_t *timer) {
+      NSLog(@"HELLO");
+    }, 1000, 100);
+
     server->cb(server->seq, msg, Post{});
 
     runDefaultLoop();
   }
 
- void Core::udpSend (String seq, uint64_t clientId, String message, int offset, int len, int port, const char* ip, Cb cb) const {
+  void Core::udpSend (String seq, uint64_t clientId, String message, int offset, int len, int port, const char* ip, Cb cb) const {
     Client* client = clients[clientId];
 
     if (client == nullptr) {
@@ -1639,7 +1645,7 @@ namespace SSC {
       client->cb("-1", msg, Post{});
       return;
     }
-   
+
     runDefaultLoop();
   }
 
@@ -1668,7 +1674,7 @@ namespace SSC {
     };
 
     int err = uv_udp_recv_start(server->udp, allocate, [](uv_udp_t *handle, ssize_t nread, const uv_buf_t *buf, const struct sockaddr *addr, unsigned flags) {
-      Server *server = (Server*) handle->data;
+      Server *server = (Server*)handle->data;
 
       if (nread > 0) {
         int port;

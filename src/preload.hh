@@ -192,8 +192,8 @@ constexpr auto gPreloadDesktop = R"JS(
     return { err, data: serverId }
   }
 
-  window.system.udpReadStart = async (serverId) => {
-    window.external.invoke(`ipc://udpReadStart?serverId=${serverId}`)
+  window.system.udpReadStart = serverId => {
+    return window._ipc.send('udpReadStart', { serverId })
   }
 
   window.system.setBackgroundColor = opts => {
