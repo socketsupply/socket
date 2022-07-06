@@ -32,6 +32,7 @@ namespace SSC {
     char* body;
     int length;
     String headers;
+    bool bodyNeedsFree;
   };
 
   using Cb = std::function<void(String, String, Post)>;
@@ -466,17 +467,12 @@ namespace SSC {
         post.body = (char *) desc->data;
         post.length = req->result;
         post.headers = headers;
+        post.bodyNeedsFree = true;
       }
 
       desc->cb(desc->seq, msg, post);
 
       uv_fs_req_cleanup(req);
-
-      // @TODO(jwerle): this should be free'd by the caller of this function
-      if (false && post.body) {
-        delete post.body;
-        post.body = 0;
-      }
 
       delete req;
     });

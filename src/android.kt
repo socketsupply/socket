@@ -79,6 +79,8 @@ open class WebViewClient(activity: WebViewActivity) : android.webkit.WebViewClie
           "Access-Control-Allow-Origin" to "*"
         ));
 
+        core.freePostData(id);
+
         return response;
       }
     }
@@ -948,6 +950,9 @@ public open class NativeCore {
 
   @Throws(java.lang.Exception::class)
   external fun getPostData (id: String): ByteArray;
+
+  @Throws(java.lang.Exception::class)
+  external fun freePostData (id: String);
 
   @Throws(java.lang.Exception::class)
   external fun fsOpen (

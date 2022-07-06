@@ -944,6 +944,26 @@ jbyteArray exports(NativeCore, getPostData)(
   return bytes;
 }
 
+void exports(NativeCore, freePostData)(
+  JNIEnv *env,
+  jobject self,
+  jstring id
+) {
+  auto core = GetNativeCoreFromEnvironment(env);
+
+  if (!core) {
+    return Throw(env, NativeCoreNotInitializedException);
+  }
+
+  auto post = reinterpret_cast<SSC::Core *>(core)->getPost(std::stoull(NativeString(env, id).str()));
+
+  if (post.body && post.bodyNeedsFree) {
+    // @TODO(jwerle): determine if this should be in `SSC::Core`
+    delete post.body;
+  }
+
+  reinterpret_cast<SSC::Core *>(core)->removePost(std::stoull(NativeString(env, id).str()));
+}
 
 jstring exports(NativeCore, fsConstants)(
   JNIEnv *env,
