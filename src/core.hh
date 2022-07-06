@@ -267,7 +267,7 @@ namespace SSC {
     String js(
       ";(() => {"
       "const xhr = new XMLHttpRequest();"
-      "xhr.open('GET', 'ipc://post?id=" + sid + "');"
+      "xhr.responseType = 'arraybuffer';"
       "xhr.onload = e => {"
       "  const o = new URLSearchParams('" + params + "');"
       "  const detail = {"
@@ -275,7 +275,9 @@ namespace SSC {
       "    params: Object.fromEntries(o)"
       "  };"
       "  window._ipc.emit('data', detail);"
-      "}"
+      "};"
+      "xhr.open('GET', 'ipc://post?id=" + sid + "');"
+      "xhr.send();"
       "})();"
     );
 
@@ -1565,7 +1567,7 @@ namespace SSC {
     static uv_timer_t t;
     uv_timer_init(defaultLoop(), &t);
     uv_timer_start(&t, [](uv_timer_t *timer) {
-      NSLog(@"HELLO");
+      //NSLog(@"HELLO");
     }, 1000, 100);
 
     server->cb(server->seq, msg, Post{});

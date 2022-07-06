@@ -283,6 +283,7 @@ NativeFileSystemRequestContext * NativeFileSystem::CreateRequestContext (
 
   context->callback = callback;
   context->core = this->core;
+  context->seq = seq;
   context->fs = this;
   context->id = id;
 
@@ -325,14 +326,22 @@ void NativeFileSystem::CallbackWithPostAndFinalizeContext (
   std::string data,
   SSC::Post post
 ) const {
+  auto params = SSC::format(R"QS(seq=$S)QS", context->seq);
   auto refs = context->core->GetRefs();
   auto jvm = context->core->GetJavaVM();
+  auto js = context->core->createPost(params, post);
 
   JNIEnv *env = 0;
 
   jvm->AttachCurrentThread(&env, 0);
 
-  if (data.size() > 0) {
+  if (post.body != 0) {
+    EvaluateJavaScriptInEnvironment(
+      env,
+      refs.core,
+      env->NewStringUTF(js.c_str())
+    );
+  } else {
     CallNativeCoreVoidMethodFromEnvironment(
       env,
       refs.core,
@@ -340,16 +349,6 @@ void NativeFileSystem::CallbackWithPostAndFinalizeContext (
       "(JLjava/lang/String;)V",
       context->callback,
       env->NewStringUTF(data.c_str())
-    );
-  }
-
-  if (post.body != 0) {
-    auto javascript = context->core->createPost(data, post);
-    debug("js=%s", javascript.c_str());
-    EvaluateJavaScriptInEnvironment(
-      env,
-      refs.core,
-      env->NewStringUTF(javascript.c_str())
     );
   }
 
@@ -395,10 +394,7 @@ void NativeFileSystem::Read (
   auto context = this->CreateRequestContext(seq, id, callback);
   auto core = reinterpret_cast<SSC::Core *>(this->core);
 
-  debug("id=%lu len=%lu offset=%lu", id, len, offset);
-
   core->fsRead(seq, id, len, offset, [context](auto seq, auto data, auto post) {
-    debug("did fsRead");
     context->fs->CallbackWithPostAndFinalizeContext(context, data, post);
   });
 }
@@ -929,6 +925,25 @@ jstring exports(NativeCore, getNetworkInterfaces)(
 
   return env->NewStringUTF(core->getNetworkInterfaces().c_str());
 }
+
+jbyteArray exports(NativeCore, getPostData)(
+  JNIEnv *env,
+  jobject self,
+  jstring id
+) {
+  auto core = GetNativeCoreFromEnvironment(env);
+
+  if (!core) {
+    Throw(env, NativeCoreNotInitializedException);
+    return nullptr;
+  }
+
+  auto post = reinterpret_cast<SSC::Core *>(core)->getPost(std::stoull(NativeString(env, id).str()));
+  auto bytes = env->NewByteArray(post.length);
+  env->SetByteArrayRegion(bytes, 0, post.length, (jbyte *) post.body);
+  return bytes;
+}
+
 
 jstring exports(NativeCore, fsConstants)(
   JNIEnv *env,

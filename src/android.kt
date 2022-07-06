@@ -25,6 +25,10 @@ open class WebViewClient(activity: WebViewActivity) : android.webkit.WebViewClie
   ): Boolean {
     val url = request.getUrl();
 
+    if (url.getScheme() == "ipc") {
+      return true;
+    }
+
     if (url.getScheme() != "file") {
       return false;
     }
@@ -52,8 +56,30 @@ open class WebViewClient(activity: WebViewActivity) : android.webkit.WebViewClie
     if (url.getScheme() == "ipc") {
       if (request.getMethod() == "GET") {
         android.util.Log.e(TAG, "Intercepting request for $url");
-        //val response = android.webkit.WebResourceResponse()
-        //return response;
+        val core = this.activity.core
+
+        if (core == null) {
+          return null
+        }
+
+        val id = url.getQueryParameter("id")
+        if (id == null) {
+          return null;
+        }
+
+        val stream = java.io.ByteArrayInputStream(core.getPostData(id));
+
+        val response = android.webkit.WebResourceResponse(
+          "application/octet-stream",
+          "utf-8",
+          stream
+        );
+
+        response.setResponseHeaders(mapOf(
+          "Access-Control-Allow-Origin" to "*"
+        ));
+
+        return response;
       }
     }
 
@@ -919,6 +945,9 @@ public open class NativeCore {
    */
   @Throws(java.lang.Exception::class)
   external fun getNetworkInterfaces (): String;
+
+  @Throws(java.lang.Exception::class)
+  external fun getPostData (id: String): ByteArray;
 
   @Throws(java.lang.Exception::class)
   external fun fsOpen (

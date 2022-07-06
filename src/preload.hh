@@ -9,18 +9,20 @@ constexpr auto gPreload = R"JS(
   const IPC = window._ipc = { nextSeq: 1, streams: {} }
 
   window._ipc.resolve = async (seq, status, value) => {
-    try {
-      value = decodeURIComponent(value)
-    } catch (err) {
-      console.error(`${err.message} (${value})`)
-      return
-    }
+    if (typeof value === 'string') {
+      try {
+        value = decodeURIComponent(value)
+      } catch (err) {
+        console.error(`${err.message} (${value})`)
+        return
+      }
 
-    try {
-      value = JSON.parse(value)
-    } catch (err) {
-      console.error(`${err.message} (${value})`)
-      return
+      try {
+        value = JSON.parse(value)
+      } catch (err) {
+        console.error(`${err.message} (${value})`)
+        return
+      }
     }
 
     if (!window._ipc[seq]) {
@@ -39,6 +41,7 @@ constexpr auto gPreload = R"JS(
 
   window._ipc.send = (name, o) => {
     const seq = window._ipc.nextSeq++
+    const index = window.process.index
     let serialized = ''
 
     const promise = new Promise((resolve, reject) => {
@@ -55,7 +58,7 @@ constexpr auto gPreload = R"JS(
 
       const params = {
         ...o,
-        index: window.process.index,
+        index,
         seq
       }
 
@@ -69,7 +72,7 @@ constexpr auto gPreload = R"JS(
     }
 
     window.external.invoke(`ipc://${name}?${serialized}`)
-    return promise
+    return Object.assign(promise, { index, seq })
   }
 
   window._ipc.emit = (name, value, target, options) => {
@@ -248,12 +251,8 @@ constexpr auto gPreloadMobile = R"JS(
       return await window._ipc.send('fs.id')
     }
 
-    async request (type, data, opts) {
+    request (type, data) {
       const params = { ...data }
-
-      if (!params.id && opts?.id === true) {
-        params.id = await this[Symbol.for('system.fs.id')]()
-      }
 
       for (const key in params) {
         if (params[key] === undefined) {
@@ -261,13 +260,23 @@ constexpr auto gPreloadMobile = R"JS(
         }
       }
 
-      const { value } = await window._ipc.send(type, params)
+      const promise = window._ipc.send(type, params)
+      const { seq, index } = promise
+      const resolved = promise.then((result) => {
+        const value = result?.value || result
 
-      if (value.err) {
-        throw Object.assign(new Error(value.err.message), value.err)
-      }
+        if (value?.err) {
+          throw Object.assign(new Error(value.err.message), value.err)
+        }
 
-      return value.data
+        if (value && 'data' in value) {
+          return value.data
+        }
+
+        return value
+      })
+
+      return Object.assign(resolved, { seq, index })
     }
 
     async open (path, flags, mode) {
@@ -276,10 +285,11 @@ constexpr auto gPreloadMobile = R"JS(
         flags = flags.flags
       }
 
-      const params = { path, flags, mode }
+      const id = await this[Symbol.for('system.fs.id')]()
+      const params = { id, path, flags, mode }
       const opts = { id: true }
       // TODO(jwerle): discuss fs.read instead of fsOpen
-      return await this.request('fsOpen', params, opts)
+      return await this.request('fsOpen', params)
     }
 
     async close (id) {
@@ -297,7 +307,22 @@ constexpr auto gPreloadMobile = R"JS(
 
       const params = { id, size, offset }
       // TODO(jwerle): discuss fs.read instead of fsRead
-      return await this.request('fsRead', params)
+      const request = this.request('fsRead', params)
+      const { seq } = request
+
+      window.addEventListener('data', ondata)
+
+      return request
+
+      function ondata (event) {
+        if (event.detail?.data) {
+          const { data, params } = event.detail
+          if (parseInt(params.seq) === parseInt(seq)) {
+            window.removeEventListener('data', ondata)
+            window._ipc.resolve(seq, 0, new Uint8Array(data))
+          }
+        }
+      }
     }
   }
 )JS";

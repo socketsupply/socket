@@ -261,8 +261,8 @@ class NativeCoreRefs {
 };
 
 struct NativeFileSystemRequestContext {
-  SSC::DescriptorContext *descriptor;
   const NativeFileSystem *fs;
+  NativeCoreSequence seq;
   NativeCallbackID callback;
   NativeCoreID id;
   NativeCore *core;
