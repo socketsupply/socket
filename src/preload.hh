@@ -276,13 +276,17 @@ constexpr auto gPreloadMobile = R"JS(
         flags = flags.flags
       }
 
+      const params = { path, flags, mode }
+      const opts = { id: true }
       // TODO(jwerle): discuss fs.read instead of fsOpen
-      return await this.request('fsOpen', { path, flags, mode }, { id: true })
+      return await this.request('fsOpen', params, opts)
     }
 
     async close (id) {
+      const params = { id }
       // TODO(jwerle): discuss fd.close instead of fsClose
-      return await this.request('fsClose', { id })
+      await this.request('fsClose', params)
+      return true
     }
 
     async read (id, size, offset = 0) {
@@ -291,8 +295,9 @@ constexpr auto gPreloadMobile = R"JS(
         size = size.size
       }
 
+      const params = { id, size, offset }
       // TODO(jwerle): discuss fs.read instead of fsRead
-      return await this.request('fsRead', { id, size, offset })
+      return await this.request('fsRead', params)
     }
   }
 )JS";

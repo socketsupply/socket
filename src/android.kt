@@ -42,6 +42,24 @@ open class WebViewClient(activity: WebViewActivity) : android.webkit.WebViewClie
     return true;
   }
 
+  override fun shouldInterceptRequest (
+    view: android.webkit.WebView,
+    request: android.webkit.WebResourceRequest
+  ): android.webkit.WebResourceResponse? {
+    val url = request.getUrl();
+
+    android.util.Log.e(TAG, "${url.getScheme()} ${request.getMethod()}");
+    if (url.getScheme() == "ipc") {
+      if (request.getMethod() == "GET") {
+        android.util.Log.e(TAG, "Intercepting request for $url");
+        //val response = android.webkit.WebResourceResponse()
+        //return response;
+      }
+    }
+
+    return null;
+  }
+
   override fun onPageFinished (
     view: android.webkit.WebView,
     url: String
@@ -88,7 +106,7 @@ open class WebViewActivity : androidx.appcompat.app.AppCompatActivity() {
     val binding = WebViewActivityBinding.inflate(layoutInflater);
     val bridge = Bridge(this);
     val client = WebViewClient(this);
-    val core = NativeCore();
+    val core = NativeCore(this);
 
     val webview = binding.webview;
     val settings = webview.getSettings();
@@ -256,7 +274,7 @@ public open class ExternalWebViewInterface(activity: WebViewActivity) {
               .slice(1..pathSegments.size - 1)
               .joinToString("/");
 
-            core.fs.openAsset(message.seq, id, path, fun (data: String) {
+            core.fs.openAsset(id, path, fun (data: String) {
               bridge.send(message.seq, data);
             })
           } else {
@@ -267,6 +285,27 @@ public open class ExternalWebViewInterface(activity: WebViewActivity) {
             core.fs.open(message.seq, id, resolved.toString(), flags, fun (data: String) {
               bridge.send(message.seq, data);
             });
+          }
+
+          return message.seq;
+        }
+
+        "fs.close", "fsClose" -> {
+          if (!message.has("id")) {
+            bridge.throwError(message.seq, "'id' is required.");
+            return null;
+          }
+
+          val id = message.get("id").toLong();
+
+          if (core.fs.isAssetId(id)) {
+            core.fs.closeAsset(id, fun (data: String) {
+              bridge.send(message.seq, data);
+            });
+          } else {
+            core.fs.close(message.seq, id, fun (data: String) {
+              bridge.send(message.seq, data);
+            })
           }
 
           return message.seq;
@@ -287,12 +326,14 @@ public open class ExternalWebViewInterface(activity: WebViewActivity) {
           val size = message.get("size").toInt();
           val offset = message.get("offset", "0").toInt();
 
-
           if (core.fs.isAssetId(id)) {
             core.fs.readAsset(id, offset, size, fun (data: String) {
               bridge.send(message.seq, data);
             })
           } else {
+            core.fs.read(message.seq, id, offset, size, fun (data: String) {
+              bridge.send(message.seq, data);
+            });
           }
 
           return message.seq;
@@ -308,6 +349,7 @@ public open class ExternalWebViewInterface(activity: WebViewActivity) {
     callback: android.webkit.ValueCallback<String?>? = null
   ) {
     this.activity.runOnUiThread(fun () {
+      android.util.Log.d(TAG, "evaluateJavascript: $source");
       this.activity.view?.evaluateJavascript(source, callback);
     });
   }
@@ -572,8 +614,9 @@ public open class NativeFileSystem(core: NativeCore) {
   val core = core;
   var nextId: Long = 0;
 
-  val openAssets = mutableMapOf<Long, android.content.res.AssetFileDescriptor>();
-  val openAssetInputStreams = mutableMapOf<Long, java.io.FileInputStream>();
+  //val openAssets = mutableMapOf<Long, android.content.res.AssetFileDescriptor>();
+  val openAssets = mutableMapOf<Long, String>();
+  //val openAssets = mutableListOf<Long>();
 
   public fun getNextAvailableId (): Long {
     return ++this.nextId;
@@ -599,10 +642,9 @@ public open class NativeFileSystem(core: NativeCore) {
   }
 
   public fun openAsset (
-      seq: String = "",
-      id: Long = 0,
-      path: String,
-      callback: (String) -> Unit
+    id: Long = 0,
+    path: String,
+    callback: (String) -> Unit
   ) {
     val assetManager = core.getAssetManager();
 
@@ -635,23 +677,43 @@ public open class NativeFileSystem(core: NativeCore) {
       return;
     }
 
-    this.openAssets[id] = fd;
-    //this.openAssetInputStreams[id] = input;
+    fd.close();
 
-    //input.mark(0);
+    this.openAssets[id] = path;
 
-    callback(JSONData(
-      id, "\"fd\": ${fd.getParcelFileDescriptor().getFd()}"
-    ).toString());
+    callback(JSONData(id, "\"fd\": ${id}").toString());
   }
 
-  fun close () {
+  public fun close (
+    seq: String = "",
+    id: Long = 0,
+    callback: (String) -> Unit
+  ) {
+    val callbackId = core.queueCallback(callback)
+    core.fsClose(seq, id, callbackId);
   }
 
-  public fun closeAsset () {
+  public fun closeAsset (
+    id: Long = 0,
+    callback: (String) -> Unit
+  ) {
+    if (this.openAssets[id] == null) {
+      return callback(JSONError(id, "Invalid file descriptor.").toString());
+    }
+
+    this.openAssets.remove(id);
+    return callback(JSONData(id).toString());
   }
 
-  public fun read () {
+  public fun read (
+    seq: String = "",
+    id: Long = 0,
+    offset: Int = 0,
+    size: Int,
+    callback: (String) -> Unit
+  ) {
+    val callbackId = core.queueCallback(callback)
+    core.fsRead(seq, id, size, offset, callbackId);
   }
 
   public fun readAsset (
@@ -660,17 +722,22 @@ public open class NativeFileSystem(core: NativeCore) {
     size: Int,
     callback: (String) -> Unit
   ) {
-    val fd = this.openAssets[id];
-    //val input = this.openAssetInputStreams[id];
+    val path = this.openAssets[id];
 
-    //if (fd == null || input == null) {
-    if (fd == null) {
-      callback(JSONError(id, "Invalid file descriptor.").toString());
-      return
+    if (path == null) {
+      return callback(JSONError(id, "Invalid file descriptor.").toString());
     }
 
+    val assetManager = core.getAssetManager();
+
+    if (assetManager == null) {
+      return callback(JSONError(id, "AssetManager is not initialized.").toString());
+    }
+
+    val fd = assetManager.openFd(path);
     val input = fd.createInputStream();
     val buffer = ByteArray(size);
+
     try {
       input.read(buffer, offset, size);
       val bytes = String(java.util.Base64.getEncoder().encode(buffer));
@@ -681,6 +748,7 @@ public open class NativeFileSystem(core: NativeCore) {
     }
 
     input.close();
+    fd.close();
   }
 
   fun write () {
@@ -713,6 +781,11 @@ public open class NativeFileSystem(core: NativeCore) {
  */
 public open class NativeCore {
   protected val TAG = "NativeCore";
+
+  /**
+   * A reference to the activity that created this instance.
+   */
+  public var activity: WebViewActivity;
 
   /**
    * Internal pointer managed by `initialize() and `destroy()
@@ -856,11 +929,28 @@ public open class NativeCore {
     callback: Long
   );
 
+  @Throws(java.lang.Exception::class)
+  external fun fsClose (
+    seq: String,
+    id: Long,
+    callback: Long
+  );
+
+  @Throws(java.lang.Exception::class)
+  external fun fsRead (
+    seq: String,
+    id: Long,
+    size: Int,
+    offset: Int,
+    callback: Long
+  );
+
   /**
    * `NativeCore` class constructor which is initialized
    * in the NDK/JNI layer.
    */
-  constructor () {
+  constructor (activity: WebViewActivity) {
+    this.activity = activity;
     this.pointer = this.createPointer();
     this.fs = NativeFileSystem(this);
   }
@@ -920,6 +1010,13 @@ public open class NativeCore {
    */
   public fun getNextAvailableCallbackId (): Long {
     return this.nextCallbackId++;
+  }
+
+  /**
+   * @TODO
+   */
+  public fun evaluateJavascript (source: String) {
+    this.activity.externalInterface?.evaluateJavascript(source, null);
   }
 
   /**

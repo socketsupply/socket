@@ -2,7 +2,7 @@
 
 #pragma NativeString
 
-NativeString::NativeString(JNIEnv *env) {
+NativeString::NativeString (JNIEnv *env) {
   this->env = env;
   this->ref = 0;
   this->length = 0;
@@ -10,52 +10,52 @@ NativeString::NativeString(JNIEnv *env) {
   this->needsRelease = false;
 }
 
-NativeString::NativeString(const NativeString &copy)
+NativeString::NativeString (const NativeString &copy)
   : env(copy.env)
   , ref(copy.ref)
   , length(copy.length)
   , string(copy.string)
-  , needsRelease(false) {
+  , needsRelease(false)
+{
   // noop copy constructor
 }
 
-NativeString::NativeString(JNIEnv *env, jstring ref)
-  : NativeString(env) {
+NativeString::NativeString (JNIEnv *env, jstring ref)
+  : NativeString(env)
+{
   if (ref) {
     this->Set(ref);
   }
 }
 
-NativeString::NativeString(JNIEnv *env, std::string string)
-  : NativeString(env) {
+NativeString::NativeString (JNIEnv *env, std::string string)
+  : NativeString(env)
+{
   if (string.size() > 0) {
     this->Set(string);
   }
 }
 
-NativeString::NativeString(JNIEnv *env, const char *string)
+NativeString::NativeString (JNIEnv *env, const char *string)
   : NativeString(env) {
   if (string) {
     this->Set(string);
   }
 }
 
-NativeString::~NativeString() {
+NativeString::~NativeString () {
   this->Release();
 }
 
-void
-NativeString::Set(std::string string) {
+void NativeString::Set (std::string string) {
   this->Set(string.c_str());
 }
 
-void
-NativeString::Set(const char *string) {
+void NativeString::Set (const char *string) {
   this->Set(this->env->NewStringUTF(string));
 }
 
-void
-NativeString::Set(jstring ref) {
+void NativeString::Set (jstring ref) {
   if (ref) {
     this->ref = ref;
     this->string = this->env->GetStringUTFChars(ref, &this->needsRelease);
@@ -63,8 +63,7 @@ NativeString::Set(jstring ref) {
   }
 }
 
-void
-NativeString::Release() {
+void NativeString::Release () {
   if (this->ref && this->string && this->needsRelease) {
     this->env->ReleaseStringUTFChars(this->ref, this->string);
   }
@@ -75,13 +74,11 @@ NativeString::Release() {
   this->needsRelease = false;
 }
 
-const char *
-NativeString::c_str() {
+const char * NativeString::c_str () {
   return this->string;
 }
 
-const std::string
-NativeString::str() {
+const std::string NativeString::str () {
   std::string value;
 
   if (this->string) {
@@ -91,13 +88,11 @@ NativeString::str() {
   return value;
 }
 
-const jstring
-NativeString::jstr() {
+const jstring NativeString::jstr () {
   return this->ref;
 }
 
-const size_t
-NativeString::size() {
+const size_t NativeString::size () {
   if (!this->string || !this->ref) {
     return 0;
   }
@@ -107,27 +102,27 @@ NativeString::size() {
 
 #pragma NativeCoreRefs
 
-void
-NativeCoreRefs::Release() {
+void NativeCoreRefs::Release () {
   this->env->DeleteGlobalRef(this->core);
 }
 
 #pragma NativeCore
 
-NativeCore::NativeCore(JNIEnv *env, jobject core)
+NativeCore::NativeCore (JNIEnv *env, jobject core)
   : Core()
   , refs(env)
   , config()
   , rootDirectory(env)
   , environmentVariables()
-  , javaScriptPreloadSource("") {
+  , javaScriptPreloadSource("")
+{
   this->env = env;
   this->env->GetJavaVM(&this->jvm);
   this->refs.core = this->env->NewGlobalRef(core);
   this->self = this->refs.core;
 }
 
-NativeCore::~NativeCore() {
+NativeCore::~NativeCore () {
   this->rootDirectory.Release();
   this->refs.Release();
 
@@ -135,8 +130,7 @@ NativeCore::~NativeCore() {
   this->jvm = 0;
 }
 
-jboolean
-NativeCore::ConfigureEnvironment() {
+jboolean NativeCore::ConfigureEnvironment () {
   using SSC::createPreload;
   using SSC::decodeURIComponent;
   using SSC::encodeURIComponent;
@@ -213,53 +207,43 @@ NativeCore::ConfigureEnvironment() {
   return true;
 }
 
-jboolean
-NativeCore::ConfigureWebViewWindow() {
+jboolean NativeCore::ConfigureWebViewWindow () {
   return true;
 }
 
-void *
-NativeCore::GetPointer() const {
+void * NativeCore::GetPointer () const {
   return (void *) this;
 }
 
-JavaVM *
-NativeCore::GetJavaVM() {
+JavaVM * NativeCore::GetJavaVM () {
   return this->jvm;
 }
 
-AppConfig &
-NativeCore::GetAppConfig() {
+AppConfig & NativeCore::GetAppConfig () {
   return this->config;
 }
 
-const NativeCoreRefs &
-NativeCore::GetRefs() const {
+const NativeCoreRefs & NativeCore::GetRefs () const {
   return this->refs;
 }
 
-const EnvironmentVariables &
-NativeCore::GetEnvironmentVariables() const {
+const EnvironmentVariables & NativeCore::GetEnvironmentVariables () const {
   return this->environmentVariables;
 }
 
-const NativeString &
-NativeCore::GetRootDirectory() const {
+const NativeString & NativeCore::GetRootDirectory () const {
   return this->rootDirectory;
 }
 
-NativeString
-NativeCore::GetPlatformType() const {
+NativeString NativeCore::GetPlatformType () const {
   return NativeString(this->env, "linux");
 }
 
-NativeString
-NativeCore::GetPlatformOS() const {
+NativeString NativeCore::GetPlatformOS () const {
   return NativeString(this->env, "android");
 }
 
-AAssetManager *
-NativeCore::GetAssetManager() const {
+AAssetManager * NativeCore::GetAssetManager () const {
   // `NativeCore::getAssetManager()`
   auto ref = CallNativeCoreMethodFromEnvironment(
     this->env,
@@ -275,8 +259,7 @@ NativeCore::GetAssetManager() const {
   return nullptr;
 }
 
-const char *
-NativeCore::GetJavaScriptPreloadSource() const {
+const char * NativeCore::GetJavaScriptPreloadSource () const {
   if (this->javaScriptPreloadSource.size() == 0) {
     return nullptr;
   }
@@ -286,13 +269,12 @@ NativeCore::GetJavaScriptPreloadSource() const {
 
 #pragma NativeFileSystem
 
-NativeFileSystem::NativeFileSystem(JNIEnv *env, NativeCore *core) {
+NativeFileSystem::NativeFileSystem (JNIEnv *env, NativeCore *core) {
   this->env = env;
   this->core = core;
 }
 
-NativeFileSystemRequestContext *
-NativeFileSystem::CreateRequestContext(
+NativeFileSystemRequestContext * NativeFileSystem::CreateRequestContext (
   NativeCoreSequence seq,
   NativeCoreID id,
   NativeCallbackID callback
@@ -307,25 +289,16 @@ NativeFileSystem::CreateRequestContext(
   return context;
 }
 
-const std::string
-NativeFileSystem::CreateJSONError(NativeCoreID id, const std::string message)
+const std::string NativeFileSystem::CreateJSONError (NativeCoreID id, const std::string message)
   const {
   return SSC::format(
-    R"MSG({
-      "value": {
-        "err": {
-          "id": "$S",
-          "message": "$S"
-        }
-      }
-    })MSG",
+    R"MSG({"value":{"err":{"id": "$S", "message": "$S" }}})MSG",
     std::to_string(id),
     message
   );
 }
 
-void
-NativeFileSystem::CallbackAndFinalizeContext(
+void NativeFileSystem::CallbackAndFinalizeContext (
   NativeFileSystemRequestContext *context,
   std::string data
 ) const {
@@ -335,7 +308,7 @@ NativeFileSystem::CallbackAndFinalizeContext(
 
   jvm->AttachCurrentThread(&env, 0);
 
-  CallNativeCoreCallbackMethodFromEnvironment(
+  CallNativeCoreVoidMethodFromEnvironment(
     env,
     refs.core,
     "callback",
@@ -347,8 +320,43 @@ NativeFileSystem::CallbackAndFinalizeContext(
   delete context;
 }
 
-void
-NativeFileSystem::Open(
+void NativeFileSystem::CallbackWithPostAndFinalizeContext (
+  NativeFileSystemRequestContext *context,
+  std::string data,
+  SSC::Post post
+) const {
+  auto refs = context->core->GetRefs();
+  auto jvm = context->core->GetJavaVM();
+
+  JNIEnv *env = 0;
+
+  jvm->AttachCurrentThread(&env, 0);
+
+  if (data.size() > 0) {
+    CallNativeCoreVoidMethodFromEnvironment(
+      env,
+      refs.core,
+      "callback",
+      "(JLjava/lang/String;)V",
+      context->callback,
+      env->NewStringUTF(data.c_str())
+    );
+  }
+
+  if (post.body != 0) {
+    auto javascript = context->core->createPost(data, post);
+    debug("js=%s", javascript.c_str());
+    EvaluateJavaScriptInEnvironment(
+      env,
+      refs.core,
+      env->NewStringUTF(javascript.c_str())
+    );
+  }
+
+  delete context;
+}
+
+void NativeFileSystem::Open (
   NativeCoreSequence seq,
   NativeCoreID id,
   std::string path,
@@ -364,19 +372,38 @@ NativeFileSystem::Open(
   });
 }
 
-void
-NativeFileSystem::Close(NativeCoreSequence seq, NativeCoreID id) const {
-  // reinterpret_cast<SSC::Core *>(this->core)->fsClose(seq, id, [&](auto seq,
-  // auto msg, auto post) { });
+void NativeFileSystem::Close (
+  NativeCoreSequence seq,
+  NativeCoreID id,
+  NativeCallbackID callback
+) const {
+  auto context = this->CreateRequestContext(seq, id, callback);
+  auto core = reinterpret_cast<SSC::Core *>(this->core);
+
+  core->fsClose(seq, id, [context](auto seq, auto data, auto post) {
+    context->fs->CallbackAndFinalizeContext(context, data);
+  });
 }
 
-void
-NativeFileSystem::Read(NativeCoreSequence seq, NativeCoreID id, int len, int offset)
-  const {
+void NativeFileSystem::Read (
+  NativeCoreSequence seq,
+  NativeCoreID id,
+  int len,
+  int offset,
+  NativeCallbackID callback
+) const {
+  auto context = this->CreateRequestContext(seq, id, callback);
+  auto core = reinterpret_cast<SSC::Core *>(this->core);
+
+  debug("id=%lu len=%lu offset=%lu", id, len, offset);
+
+  core->fsRead(seq, id, len, offset, [context](auto seq, auto data, auto post) {
+    debug("did fsRead");
+    context->fs->CallbackWithPostAndFinalizeContext(context, data, post);
+  });
 }
 
-void
-NativeFileSystem::Write(
+void NativeFileSystem::Write (
   NativeCoreSequence seq,
   NativeCoreID id,
   std::string data,
@@ -384,24 +411,25 @@ NativeFileSystem::Write(
 ) const {
 }
 
-void
-NativeFileSystem::Stat(NativeCoreSequence seq, std::string path) const {
+void NativeFileSystem::Stat (
+  NativeCoreSequence seq,
+  std::string path
+) const {
 }
 
-void
-NativeFileSystem::Unlink(NativeCoreSequence seq, std::string path) const {
+void NativeFileSystem::Unlink (
+  NativeCoreSequence seq, std::string path
+) const {
 }
 
-void
-NativeFileSystem::Rename(
+void NativeFileSystem::Rename (
   NativeCoreSequence seq,
   std::string from,
   std::string to
 ) const {
 }
 
-void
-NativeFileSystem::CopyFile(
+void NativeFileSystem::CopyFile (
   NativeCoreSequence seq,
   std::string from,
   std::string to,
@@ -409,17 +437,23 @@ NativeFileSystem::CopyFile(
 ) const {
 }
 
-void
-NativeFileSystem::RemoveDirectory(NativeCoreSequence seq, std::string path) const {
+void NativeFileSystem::RemoveDirectory (
+  NativeCoreSequence seq,
+  std::string path
+) const {
 }
 
-void
-NativeFileSystem::MakeDirectory(NativeCoreSequence seq, std::string path, int mode)
-  const {
+void NativeFileSystem::MakeDirectory (
+  NativeCoreSequence seq,
+  std::string path,
+  int mode
+) const {
 }
 
-void
-NativeFileSystem::ReadDirectory(NativeCoreSequence seq, std::string path) const {
+void NativeFileSystem::ReadDirectory (
+  NativeCoreSequence seq,
+  std::string path
+) const {
 }
 
 #pragma Bindings
@@ -432,8 +466,10 @@ extern "C" {
  * `NativeCore::createPointer()` binding.
  * @return A pointer to a `NativeCore` instance
  */
-jlong
-exports (NativeCore, createPointer)(JNIEnv *env, jobject self) {
+jlong exports(NativeCore, createPointer)(
+  JNIEnv *env,
+  jobject self
+) {
   auto core = new NativeCore(env, self);
   auto pointer = core->GetPointer();
   debug("Core::createPointer(%p)", pointer);
@@ -444,8 +480,11 @@ exports (NativeCore, createPointer)(JNIEnv *env, jobject self) {
  * `NativeCore::destroyPointer()` binding.
  * @param pointer Pointer to `NativeCore`
  */
-void
-exports (NativeCore, destroyPointer)(JNIEnv *env, jobject self, jlong pointer) {
+void exports(NativeCore, destroyPointer)(
+  JNIEnv *env,
+  jobject self,
+  jlong pointer
+) {
   if (pointer) {
     debug("Core::destroyPointer(%p)", (void *) pointer);
     delete (NativeCore *) pointer;
@@ -457,8 +496,11 @@ exports (NativeCore, destroyPointer)(JNIEnv *env, jobject self, jlong pointer) {
  * @param pointer Pointer to verify
  * @return `true` if verification passes, otherwise `false`.
  */
-jboolean
-exports (NativeCore, verifyPointer)(JNIEnv *env, jobject self, jlong pointer) {
+jboolean exports(NativeCore, verifyPointer)(
+  JNIEnv *env,
+  jobject self,
+  jlong pointer
+) {
   auto core = GetNativeCoreFromEnvironment(env);
 
   if (!pointer || !core) {
@@ -476,8 +518,10 @@ exports (NativeCore, verifyPointer)(JNIEnv *env, jobject self, jlong pointer) {
  * `NativeCore::verifyNativeExceptions()` binding.
  * @return `true` if verification passes, otherwise `false`.
  */
-void
-exports (NativeCore, verifyNativeExceptions)(JNIEnv *env, jobject self) {
+void exports(NativeCore, verifyNativeExceptions)(
+  JNIEnv *env,
+  jobject self
+) {
   Throw(env, ExceptionCheckException);
 }
 
@@ -485,8 +529,10 @@ exports (NativeCore, verifyNativeExceptions)(JNIEnv *env, jobject self) {
  * `NativeCore::verifyRootDirectory()` binding.
  * @return `true` if verification passes, otherwise `false`.
  */
-jboolean
-exports (NativeCore, verifyRootDirectory)(JNIEnv *env, jobject self) {
+jboolean exports(NativeCore, verifyRootDirectory)(
+  JNIEnv *env,
+  jobject self
+) {
   auto core = GetNativeCoreFromEnvironment(env);
 
   if (!core) {
@@ -508,8 +554,10 @@ exports (NativeCore, verifyRootDirectory)(JNIEnv *env, jobject self) {
  * `NativeCore::verifyAssetManager()` binding.
  * @return `true` if verification passes, otherwise `false`.
  */
-jboolean
-exports (NativeCore, verifyAssetManager)(JNIEnv *env, jobject self) {
+jboolean exports(NativeCore, verifyAssetManager)(
+  JNIEnv *env,
+  jobject self
+) {
   auto core = GetNativeCoreFromEnvironment(env);
 
   if (!core) {
@@ -531,8 +579,10 @@ exports (NativeCore, verifyAssetManager)(JNIEnv *env, jobject self) {
  * `NativeCore::verifyPlatform()` binding.
  * @return `true` if verification passes, otherwise `false`.
  */
-jboolean
-exports (NativeCore, verifyPlatform)(JNIEnv *env, jobject self) {
+jboolean exports(NativeCore, verifyPlatform)(
+  JNIEnv *env,
+  jobject self
+) {
   auto core = GetNativeCoreFromEnvironment(env);
 
   if (!core) {
@@ -555,8 +605,10 @@ exports (NativeCore, verifyPlatform)(JNIEnv *env, jobject self) {
  * `NativeCore::verifyLoop()` binding.
  * @return `true` if verification passes, otherwise `false`.
  */
-jboolean
-exports (NativeCore, verifyLoop)(JNIEnv *env, jobject self) {
+jboolean exports(NativeCore, verifyLoop)(
+  JNIEnv *env,
+  jobject self
+) {
   if (!uv_default_loop()) {
     return false;
   }
@@ -568,8 +620,10 @@ exports (NativeCore, verifyLoop)(JNIEnv *env, jobject self) {
  * `NativeCore::verifyEnvironment()` binding.
  * @return `true` if verification passes, otherwise `false`.
  */
-jboolean
-exports (NativeCore, verifyEnvironment)(JNIEnv *env, jobject self) {
+jboolean exports(NativeCore, verifyEnvironment)(
+  JNIEnv *env,
+  jobject self
+) {
   auto core = GetNativeCoreFromEnvironment(env);
 
   if (!core) {
@@ -585,8 +639,10 @@ exports (NativeCore, verifyEnvironment)(JNIEnv *env, jobject self) {
  * `NativeCore::verifyJavaVM()` binding.
  * @return `true` if verification passes, otherwise `false`.
  */
-jboolean
-exports (NativeCore, verifyJavaVM)(JNIEnv *env, jobject self) {
+jboolean exports(NativeCore, verifyJavaVM)(
+  JNIEnv *env,
+  jobject self
+) {
   auto core = GetNativeCoreFromEnvironment(env);
 
   if (!core) {
@@ -606,8 +662,10 @@ exports (NativeCore, verifyJavaVM)(JNIEnv *env, jobject self) {
  * `NativeCore::verifyRefs()` binding.
  * @return `true` if verification passes, otherwise `false`.
  */
-jboolean
-exports (NativeCore, verifyRefs)(JNIEnv *env, jobject self) {
+jboolean exports(NativeCore, verifyRefs)(
+  JNIEnv *env,
+  jobject self
+) {
   auto core = GetNativeCoreFromEnvironment(env);
 
   if (!core) {
@@ -629,8 +687,10 @@ exports (NativeCore, verifyRefs)(JNIEnv *env, jobject self) {
  * `NativeCore::verifyFileSystem()` binding.
  * @return `true` if verification passes, otherwise `false`.
  */
-jboolean
-exports (NativeCore, verifyFileSystem)(JNIEnv *env, jobject self) {
+jboolean exports(NativeCore, verifyFileSystem)(
+  JNIEnv *env,
+  jobject self
+) {
   auto core = GetNativeCoreFromEnvironment(env);
   jboolean ok = true;
   int err = 0;
@@ -680,8 +740,10 @@ exports (NativeCore, verifyFileSystem)(JNIEnv *env, jobject self) {
  * `NativeCore::configureEnvironment()` binding.
  * @return `true` if configuration was succcessful, otherwise `false`.
  */
-jboolean
-exports (NativeCore, configureEnvironment)(JNIEnv *env, jobject self) {
+jboolean exports(NativeCore, configureEnvironment)(
+  JNIEnv *env,
+  jobject self
+) {
   auto core = GetNativeCoreFromEnvironment(env);
 
   if (!core) {
@@ -696,8 +758,10 @@ exports (NativeCore, configureEnvironment)(JNIEnv *env, jobject self) {
  * `NativeCore::configureWebViewWindow()` binding.
  * @return `true` if configuration was succcessful, otherwise `false`.
  */
-jboolean
-exports (NativeCore, configureWebViewWindow)(JNIEnv *env, jobject self) {
+jboolean exports(NativeCore, configureWebViewWindow)(
+  JNIEnv *env,
+  jobject self
+) {
   auto core = GetNativeCoreFromEnvironment(env);
 
   if (!core) {
@@ -712,8 +776,10 @@ exports (NativeCore, configureWebViewWindow)(JNIEnv *env, jobject self) {
  * `NativeCore::getPathToIndexHTML()` binding.
  * @return Path relative to `assets/` directory where `index.html` lives.
  */
-jstring
-exports (NativeCore, getPathToIndexHTML)(JNIEnv *env, jobject self) {
+jstring exports(NativeCore, getPathToIndexHTML)(
+  JNIEnv *env,
+  jobject self
+) {
   auto core = GetNativeCoreFromEnvironment(env);
 
   if (!core) {
@@ -735,8 +801,10 @@ exports (NativeCore, getPathToIndexHTML)(JNIEnv *env, jobject self) {
  * `NativeCore::getJavaScriptPreloadSource()` binding.
  * @return JavaScript preload source code injected into WebView.
  */
-jstring
-exports (NativeCore, getJavaScriptPreloadSource)(JNIEnv *env, jobject self) {
+jstring exports(NativeCore, getJavaScriptPreloadSource)(
+  JNIEnv *env,
+  jobject self
+) {
   auto core = GetNativeCoreFromEnvironment(env);
 
   if (!core) {
@@ -759,8 +827,7 @@ exports (NativeCore, getJavaScriptPreloadSource)(JNIEnv *env, jobject self) {
  * @return JavaScript source code injected into WebView that performs an IPC
  * resolution
  */
-jstring
-exports (NativeCore, getResolveToRenderProcessJavaScript)(
+jstring exports(NativeCore, getResolveToRenderProcessJavaScript)(
   JNIEnv *env,
   jobject self,
   jstring seq,
@@ -796,9 +863,11 @@ exports (NativeCore, getResolveToRenderProcessJavaScript)(
  * @return JavaScript source code injected into WebView that performs an IPC
  * event emission.
  */
-jstring
-exports (NativeCore, getEmitToRenderProcessJavaScript)(
-  JNIEnv *env, jobject self, jstring event, jstring value
+jstring exports(NativeCore, getEmitToRenderProcessJavaScript)(
+  JNIEnv *env,
+  jobject self,
+  jstring event,
+  jstring value
 ) {
   using SSC::emitToRenderProcess;
 
@@ -821,9 +890,11 @@ exports (NativeCore, getEmitToRenderProcessJavaScript)(
  * @return JavaScript source code injected into WebView that performs an IPC
  * stream callback.
  */
-jstring
-exports (NativeCore, getStreamToRenderProcessJavaScript)(
-  JNIEnv *env, jobject self, jstring id, jstring value
+jstring exports(NativeCore, getStreamToRenderProcessJavaScript)(
+  JNIEnv *env,
+  jobject self,
+  jstring id,
+  jstring value
 ) {
   using SSC::streamToRenderProcess;
 
@@ -845,8 +916,10 @@ exports (NativeCore, getStreamToRenderProcessJavaScript)(
  * `NativeCore::getNetworkInterfaces()` binding.
  * @return Network interfaces in JSON format
  */
-jstring
-exports (NativeCore, getNetworkInterfaces)(JNIEnv *env, jobject self) {
+jstring exports(NativeCore, getNetworkInterfaces)(
+  JNIEnv *env,
+  jobject self
+) {
   auto core = GetNativeCoreFromEnvironment(env);
 
   if (!core) {
@@ -857,8 +930,11 @@ exports (NativeCore, getNetworkInterfaces)(JNIEnv *env, jobject self) {
   return env->NewStringUTF(core->getNetworkInterfaces().c_str());
 }
 
-jstring
-exports (NativeCore, fsConstants)(JNIEnv *env, jobject self, jstring seq) {
+jstring exports(NativeCore, fsConstants)(
+  JNIEnv *env,
+  jobject self,
+  jstring seq
+) {
   auto core = GetNativeCoreFromEnvironment(env);
 
   if (!core) {
@@ -869,8 +945,7 @@ exports (NativeCore, fsConstants)(JNIEnv *env, jobject self, jstring seq) {
   // auto fs = NativeFileSystem(env, core);
 }
 
-void
-exports (NativeCore, fsOpen)(
+void exports(NativeCore, fsOpen)(
   JNIEnv *env,
   jobject self,
   jstring seq,
@@ -896,22 +971,42 @@ exports (NativeCore, fsOpen)(
   );
 }
 
-void
-exports (NativeCore, fsClose)(
-  JNIEnv *env, jobject self, jstring seq, NativeCoreID id
+void exports(NativeCore, fsClose)(
+  JNIEnv *env,
+  jobject self,
+  jstring seq,
+  NativeCoreID id
 ) {
   // @TODO(jwerle): Core::fsClose
 }
 
-void
-exports (NativeCore, fsRead)(
-  JNIEnv *env, jobject self, jstring seq, NativeCoreID id, int len, int offset
+void exports(NativeCore, fsRead)(
+  JNIEnv *env,
+  jobject self,
+  jstring seq,
+  NativeCoreID id,
+  int len,
+  int offset,
+  NativeCallbackID callback
 ) {
-  // @TODO(jwerle): Core::fsRead
+  auto core = GetNativeCoreFromEnvironment(env);
+
+  if (!core) {
+    return Throw(env, NativeCoreNotInitializedException);
+  }
+
+  auto fs = NativeFileSystem(env, core);
+
+  fs.Read(
+    NativeString(env, seq).str(),
+    (NativeCoreID) id,
+    len,
+    offset,
+    callback
+  );
 }
 
-void
-exports (NativeCore, fsWrite)(
+void exports(NativeCore, fsWrite)(
   JNIEnv *env,
   jobject self,
   jstring seq,
@@ -922,27 +1017,33 @@ exports (NativeCore, fsWrite)(
   // @TODO(jwerle): Core::fsWrite
 }
 
-void
-exports (NativeCore, fsStat)(
-  JNIEnv *env, jobject self, jstring seq, jstring path
+void exports(NativeCore, fsStat)(
+  JNIEnv *env,
+  jobject self,
+  jstring seq,
+  jstring path
 ) {
   // @TODO(jwerle): Core::fsStat
 }
 
-void
-exports (NativeCore, fsUnlink)(jstring seq, jstring path) {
+void exports(NativeCore, fsUnlink)(
+  jstring seq,
+  jstring path
+) {
   // @TODO(jwerle): Core::fsUnlink
 }
 
-void
-exports (NativeCore, fsRename)(
-  JNIEnv *env, jobject self, jstring seq, jstring pathA, jstring pathB
+void exports(NativeCore, fsRename)(
+  JNIEnv *env,
+  jobject self,
+  jstring seq,
+  jstring pathA,
+  jstring pathB
 ) {
   // @TODO(jwerle): Core::fsRename
 }
 
-void
-exports (NativeCore, fsCopyFile)(
+void exports(NativeCore, fsCopyFile)(
   JNIEnv *env,
   jobject self,
   jstring seq,
@@ -953,23 +1054,30 @@ exports (NativeCore, fsCopyFile)(
   // @TODO(jwerle): Core::fsCopyFile
 }
 
-void
-exports (NativeCore, fsRmDir)(
-  JNIEnv *env, jobject self, jstring seq, jstring path
+void exports(NativeCore, fsRmDir)(
+  JNIEnv *env,
+  jobject self,
+  jstring seq,
+  jstring path
 ) {
   // @TODO(jwerle): Core::fsRmDir
 }
 
-void
-exports (NativeCore, fsMkDir)(
-  JNIEnv *env, jobject self, jstring seq, jstring path, int mode
+void exports(NativeCore, fsMkDir)(
+  JNIEnv *env,
+  jobject self,
+  jstring seq,
+  jstring path,
+  int mode
 ) {
   // @TODO(jwerle): Core::fsMkDir
 }
 
-void
-exports (NativeCore, fsReadDir)(
-  JNIEnv *env, jobject self, jstring seq, jstring path
+void exports(NativeCore, fsReadDir)(
+  JNIEnv *env,
+  jobject self,
+  jstring seq,
+  jstring path
 ) {
   // @TODO(jwerle): Core::fsReadDir
 }

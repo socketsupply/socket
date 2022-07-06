@@ -135,7 +135,7 @@ class NativeCore;
 /**
  * Calls `callback(id, data)` method on `NativeCore` instance in environment.
  */
-#define CallNativeCoreCallbackMethodFromEnvironment(                           \
+#define CallNativeCoreVoidMethodFromEnvironment(                               \
   env, object, method, signature, ...                                          \
 )                                                                              \
   ({                                                                           \
@@ -143,6 +143,14 @@ class NativeCore;
     auto _id = env->GetMethodID(_Class, method, signature);                    \
     env->CallVoidMethod(object, _id, ##__VA_ARGS__);                           \
   })
+
+/**
+ * @TODO
+ */
+#define EvaluateJavaScriptInEnvironment(env, object, source)                   \
+  CallNativeCoreVoidMethodFromEnvironment(                                     \
+    env, object, "evaluateJavascript", "(Ljava/lang/String;)V", source        \
+  );
 
 /**
  * Generic `Exception` throw helper
@@ -189,16 +197,12 @@ class NativeString {
   /**
    * `NativeString` class constructors.
    */
-  NativeString(JNIEnv *env);
-  NativeString(const NativeString &copy);
-  NativeString(JNIEnv *env, jstring ref);
-  NativeString(JNIEnv *env, std::string string);
-  NativeString(JNIEnv *env, const char *string);
-
-  /**
-   * `NativeString` class destructor.
-   */
-  ~NativeString();
+  NativeString (JNIEnv *env);
+  NativeString (const NativeString &copy);
+  NativeString (JNIEnv *env, jstring ref);
+  NativeString (JNIEnv *env, std::string string);
+  NativeString (JNIEnv *env, const char *string);
+  ~NativeString ();
 
   /**
    * @TODO
@@ -214,29 +218,22 @@ class NativeString {
   /**
    * Various ways to set the internal value of a `NativeString` instance.
    */
-  void
-  Set (std::string string);
-  void
-  Set (const char *string);
-  void
-  Set (jstring ref);
+  void Set (std::string string);
+  void Set (const char *string);
+  void Set (jstring ref);
 
   /**
    * Releases memory back to the JavaVM is needed. This is called
    * internally by the `NativeString` destructor.
    */
-  void
-  Release ();
+  void Release ();
 
   /**
    * Various ways to convert a `NativeString` to other string representations.
    */
-  const char *
-  c_str ();
-  const std::string
-  str ();
-  const jstring
-  jstr ();
+  const char * c_str ();
+  const std::string str ();
+  const jstring jstr ();
 
   /**
    * Returns the computed size of internal string representation.
@@ -256,12 +253,11 @@ class NativeCoreRefs {
   jobject core;
   jobject callbacks;
 
-  NativeCoreRefs(JNIEnv *env) {
+  NativeCoreRefs (JNIEnv *env) {
     this->env = env;
   }
 
-  void
-  Release ();
+  void Release ();
 };
 
 struct NativeFileSystemRequestContext {
@@ -277,26 +273,31 @@ class NativeFileSystem {
   JNIEnv *env;
 
   public:
-  NativeFileSystem(JNIEnv *env, NativeCore *core);
+  NativeFileSystem (JNIEnv *env, NativeCore *core);
 
-  NativeFileSystemRequestContext *
-  CreateRequestContext (
+  NativeFileSystemRequestContext * CreateRequestContext (
     NativeCoreSequence seq,
     NativeCoreID id,
     NativeCallbackID callback
   ) const;
 
-  const std::string
-  CreateJSONError (NativeCoreID id, const std::string message) const;
+  const std::string CreateJSONError (
+    NativeCoreID id,
+    const std::string message
+  ) const;
 
-  void
-  CallbackAndFinalizeContext (
+  void CallbackAndFinalizeContext (
     NativeFileSystemRequestContext *context,
     std::string data
   ) const;
 
-  void
-  Open (
+  void CallbackWithPostAndFinalizeContext (
+    NativeFileSystemRequestContext *context,
+    std::string data,
+    SSC::Post post
+  ) const;
+
+  void Open (
     NativeCoreSequence seq,
     NativeCoreID id,
     std::string path,
@@ -304,29 +305,51 @@ class NativeFileSystem {
     NativeCallbackID callback
   ) const;
 
-  void
-  Close (NativeCoreSequence seq, NativeCoreID id) const;
+  void Close (
+    NativeCoreSequence seq,
+    NativeCoreID id,
+    NativeCallbackID callback
+  ) const;
 
-  void
-  Read (NativeCoreSequence seq, NativeCoreID id, int len, int offset) const;
+  void Read (
+    NativeCoreSequence seq,
+    NativeCoreID id,
+    int len,
+    int offset,
+    NativeCallbackID callback
+  ) const;
 
-  void
-  Write (NativeCoreSequence seq, NativeCoreID id, std::string data, int16_t offset) const;
+  void Write (
+    NativeCoreSequence seq,
+    NativeCoreID id,
+    std::string data,
+    int16_t offset
+  ) const;
 
-  void
-  Stat (NativeCoreSequence seq, std::string path) const;
+  void Stat (
+    NativeCoreSequence seq,
+    std::string path
+  ) const;
 
-  void
-  Unlink (NativeCoreSequence seq, std::string path) const;
+  void Unlink (
+    NativeCoreSequence seq,
+    std::string path
+  ) const;
 
-  void
-  Rename (NativeCoreSequence seq, std::string from, std::string to) const;
+  void Rename (
+    NativeCoreSequence seq,
+    std::string from,
+    std::string to
+  ) const;
 
-  void
-  CopyFile (NativeCoreSequence seq, std::string from, std::string to, int flags) const;
+  void CopyFile (
+    NativeCoreSequence seq,
+    std::string from,
+    std::string to,
+    int flags
+  ) const;
 
-  void
-  RemoveDirectory (NativeCoreSequence seq, std::string path) const;
+  void RemoveDirectory (NativeCoreSequence seq, std::string path) const;
 
   void
   MakeDirectory (NativeCoreSequence seq, std::string path, int mode) const;
@@ -360,95 +383,32 @@ class NativeCore : public SSC::Core {
   EnvironmentVariables environmentVariables;
 
   public:
-  NativeCore(JNIEnv *env, jobject core);
-  ~NativeCore();
+  NativeCore (JNIEnv *env, jobject core);
+  ~NativeCore ();
 
-  /**
-   * @TODO
-   */
-  jboolean
-  ConfigureEnvironment ();
+  jboolean ConfigureEnvironment ();
+  jboolean ConfigureWebViewWindow ();
 
-  /**
-   * @TODO
-   */
-  jboolean
-  ConfigureWebViewWindow ();
+  void * GetPointer () const;
 
-  /**
-   * @TODO
-   */
-  void *
-  GetPointer () const;
+  JavaVM * GetJavaVM ();
 
-  /**
-   * @TODO
-   */
-  JavaVM *
-  GetJavaVM ();
+  AppConfig & GetAppConfig ();
 
-  /**
-   * @TODO
-   */
-  AppConfig &
-  GetAppConfig ();
+  const NativeString GetAppConfigValue (const char *key) const;
+  const NativeString GetAppConfigValue (std::string key) const;
+  const EnvironmentVariables & GetEnvironmentVariables () const;
 
-  const NativeString
-  GetAppConfigValue (const char *key) const;
+  const NativeFileSystem GetNativeFileSystem () const;
+  const NativeString & GetRootDirectory () const;
+  const NativeCoreRefs & GetRefs () const;
 
-  /**
-   * @TODO
-   */
-  const NativeString
-  GetAppConfigValue (std::string key) const;
+  AAssetManager * GetAssetManager () const;
 
-  /**
-   * @TODO
-   */
-  const EnvironmentVariables &
-  GetEnvironmentVariables () const;
+  NativeString GetPlatformType () const;
+  NativeString GetPlatformOS () const;
 
-  /**
-   * @TODO
-   */
-  const NativeFileSystem
-  GetNativeFileSystem () const;
-
-  /**
-   * @TODO
-   */
-  const NativeString &
-  GetRootDirectory () const;
-
-  /**
-   * @TODO
-   */
-  const NativeCoreRefs &
-  GetRefs () const;
-
-  /**
-   * @TODO
-   */
-  AAssetManager *
-  GetAssetManager () const;
-
-  /**
-   * @TODO
-   */
-  NativeString
-  GetPlatformType () const;
-
-  /**
-   * @TODO
-   */
-  NativeString
-  GetPlatformOS () const;
-
-  /**
-   * @TODO
-   */
-  const char *
-  GetJavaScriptPreloadSource () const;
+  const char * GetJavaScriptPreloadSource () const;
 };
 
 #endif
