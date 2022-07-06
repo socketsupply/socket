@@ -9,6 +9,7 @@ constexpr auto gPreload = R"JS(
   const IPC = window._ipc = { nextSeq: 1, streams: {} }
 
   window._ipc.resolve = async (seq, status, value) => {
+    console.log('>>> RESOLVE IPC', seq, status, value)
     try {
       value = decodeURIComponent(value)
     } catch (err) {
@@ -16,6 +17,7 @@ constexpr auto gPreload = R"JS(
       return
     }
 
+    console.log('>>> RESOLVE/DECODE IPC', seq, status, value)
     try {
       value = JSON.parse(value)
     } catch (err) {
@@ -28,6 +30,7 @@ constexpr auto gPreload = R"JS(
       return
     }
 
+    console.log('>>> RESOLVE/PARSE IPC', seq, status, value)
     if (status === 0) {
       await window._ipc[seq].resolve(value)
     } else {
@@ -105,7 +108,7 @@ constexpr auto gPreload = R"JS(
         }
       }
     }
- 
+
     const event = new window.CustomEvent(name, { detail, ...options })
     if (target) {
       target.dispatchEvent(event)
@@ -149,6 +152,10 @@ constexpr auto gPreload = R"JS(
 )JS";
 
 constexpr auto gPreloadDesktop = R"JS(
+  window.system.rand64 = () => {
+    return window.crypto.getRandomValues(new BigUint64Array(1))[0].toString()
+  }
+
   window.system.send = o => {
     let value = ''
 
@@ -180,6 +187,12 @@ constexpr auto gPreloadDesktop = R"JS(
     const index = window.process.index
     const o = new URLSearchParams({ width, height, index }).toString()
     window.external.invoke(`ipc://size?${o}`)
+  }
+
+  window.system.udpBind = async (port) => {
+    const serverId = window.system.rand64()
+    const { err } = await window._ipc.send('udpBind', { port, serverId })
+    return { err, data: serverId }
   }
 
   window.system.setBackgroundColor = opts => {

@@ -55,7 +55,7 @@ static std::string backlog = "";
 - (bool) route: (std::string)msg buf: (char*)buf;
 - (void) emit: (std::string)name msg: (std::string)msg;
 - (void) setBluetooth: (BluetoothDelegate*)bd;
-- (void) setWebView: (BridgedWebView*)bv;
+- (void) setWebview: (BridgedWebView*)bv;
 - (void) setCore: (SSC::Core*)core;
 @end
 
@@ -423,7 +423,6 @@ static std::string backlog = "";
 
   for (CBCharacteristic* characteristic in service.characteristics) {
     if ([characteristic.UUID isEqual: [CBUUID UUIDWithString: _channelId]]) {
-      NSLog(@"CoreBluetooth: peripheral:didDiscoverCharacteristicsForService:error:");
       [peripheral setNotifyValue: YES forCharacteristic: characteristic];
       [peripheral readValueForCharacteristic: characteristic];
     }
@@ -551,7 +550,7 @@ static std::string backlog = "";
   _bluetooth.bridge = self;
 }
 
-- (void) setWebView: (BridgedWebView*)wv {
+- (void) setWebview: (BridgedWebView*)wv {
   _webview = wv;
 }
 
@@ -579,7 +578,8 @@ static std::string backlog = "";
     return;
   }
 
-  if (self.core->hasTask(seq)) {
+  if ((seq != "-1") && (post.length > 0) && self.core->hasTask(seq)) {
+    NSLog(@">>> TASK %s", seq.c_str());
     auto task = self.core->getTask(seq);
 
     NSHTTPURLResponse *httpResponse = [[NSHTTPURLResponse alloc]
@@ -613,6 +613,7 @@ static std::string backlog = "";
   }
 
   NSString* script = [NSString stringWithUTF8String: msg.c_str()];
+  NSLog(@"--- %@", script);
   [self.webview evaluateJavaScript: script completionHandler:nil];
 }
 
@@ -655,7 +656,7 @@ static std::string backlog = "";
     ];
 
     UNUserNotificationCenter* center = [UNUserNotificationCenter currentNotificationCenter];
-    center.delegate = self;
+    // center.delegate = self;
 
     [center requestAuthorizationWithOptions: (UNAuthorizationOptionSound | UNAuthorizationOptionAlert | UNAuthorizationOptionBadge) completionHandler:^(BOOL granted, NSError* error) {
       if(!error) {
@@ -686,7 +687,7 @@ static std::string backlog = "";
   }
 
   if (cmd.get("fsOpen").size() != 0) {
-    auto cid = std::stoll(cmd.get("id"));
+    auto cid = std::stoull(cmd.get("id"));
     auto path = cmd.get("path");
     auto flags = std::stoi(cmd.get("flags"));
 
@@ -701,7 +702,7 @@ static std::string backlog = "";
   }
 
   if (cmd.get("fsClose").size() != 0) {
-    auto id = std::stoll(cmd.get("id"));
+    auto id = std::stoull(cmd.get("id"));
 
     dispatch_async(queue, ^{
       self.core->fsClose(seq, id, [&](auto seq, auto msg, auto post) {
@@ -714,7 +715,7 @@ static std::string backlog = "";
   }
 
   if (cmd.get("fsRead").size() != 0) {
-    auto id = std::stoll(cmd.get("id"));
+    auto id = std::stoull(cmd.get("id"));
     auto len = std::stoi(cmd.get("len"));
     auto offset = std::stoi(cmd.get("offset"));
 
@@ -729,8 +730,8 @@ static std::string backlog = "";
   }
 
   if (cmd.get("fsWrite").size() != 0) {
-    auto id = std::stoll(cmd.get("id"));
-    auto offset = std::stoll(cmd.get("offset"));
+    auto id = std::stoull(cmd.get("id"));
+    auto offset = std::stoull(cmd.get("offset"));
 
     dispatch_async(queue, ^{
       self.core->fsWrite(seq, id, buf, offset, [&](auto seq, auto msg, auto post) {
@@ -828,7 +829,7 @@ static std::string backlog = "";
   // TODO this is a generalization that doesnt work
   if (cmd.get("clientId").size() != 0) {
     try {
-      clientId = std::stoll(cmd.get("clientId"));
+      clientId = std::stoull(cmd.get("clientId"));
     } catch (...) {
       auto msg = SSC::format(R"JSON({
         "value": {
@@ -898,7 +899,7 @@ static std::string backlog = "";
   }
 
   if (cmd.name == "readStop") {
-    auto clientId = std::stoll(cmd.get("clientId"));
+    auto clientId = std::stoull(cmd.get("clientId"));
 
     dispatch_async(queue, ^{
       self.core->readStop(seq, clientId, [&](auto seq, auto msg, auto post) {
@@ -911,7 +912,7 @@ static std::string backlog = "";
   }
 
   if (cmd.name == "shutdown") {
-    auto clientId = std::stoll(cmd.get("clientId"));
+    auto clientId = std::stoull(cmd.get("clientId"));
 
     dispatch_async(queue, ^{
       self.core->shutdown(seq, clientId, [&](auto seq, auto msg, auto post) {
@@ -931,7 +932,7 @@ static std::string backlog = "";
       size = 0;
     }
 
-    auto clientId = std::stoll(cmd.get("clientId"));
+    auto clientId = std::stoull(cmd.get("clientId"));
 
     dispatch_async(queue, ^{
       self.core->sendBufferSize(seq, clientId, size, [&](auto seq, auto msg, auto post) {
@@ -951,7 +952,7 @@ static std::string backlog = "";
       size = 0;
     }
 
-    auto clientId = std::stoll(cmd.get("clientId"));
+    auto clientId = std::stoull(cmd.get("clientId"));
 
     dispatch_async(queue, ^{
       self.core->recvBufferSize(seq, clientId, size, [&](auto seq, auto msg, auto post) {
@@ -964,7 +965,7 @@ static std::string backlog = "";
   }
 
   if (cmd.name == "close") {
-    auto clientId = std::stoll(cmd.get("clientId"));
+    auto clientId = std::stoull(cmd.get("clientId"));
 
     dispatch_async(queue, ^{
       self.core->close(seq, clientId, [&](auto seq, auto msg, auto post) {
@@ -1009,7 +1010,7 @@ static std::string backlog = "";
     }
 
     auto ip = cmd.get("ip");
-    auto clientId = std::stoll(cmd.get("clientId"));
+    auto clientId = std::stoull(cmd.get("clientId"));
 
     dispatch_async(queue, ^{
       self.core->udpSend(seq, clientId, buf, offset, len, port, (const char*) ip.c_str(), [&](auto seq, auto msg, auto post) {
@@ -1022,7 +1023,7 @@ static std::string backlog = "";
   }
 
   if (cmd.name == "tcpSend") {
-    auto clientId = std::stoll(cmd.get("clientId"));
+    auto clientId = std::stoull(cmd.get("clientId"));
 
     dispatch_async(queue, ^{
       self.core->tcpSend(clientId, buf, [&](auto seq, auto msg, auto post) {
@@ -1047,7 +1048,7 @@ static std::string backlog = "";
       return true;
     }
 
-    auto clientId = std::stoll(cmd.get("clientId"));
+    auto clientId = std::stoull(cmd.get("clientId"));
     auto ip = cmd.get("ip");
 
     dispatch_async(queue, ^{
@@ -1061,7 +1062,7 @@ static std::string backlog = "";
   }
 
   if (cmd.name == "tcpSetKeepAlive") {
-    auto clientId = std::stoll(cmd.get("clientId"));
+    auto clientId = std::stoull(cmd.get("clientId"));
     auto timeout = std::stoi(cmd.get("timeout"));
 
     dispatch_async(queue, ^{
@@ -1075,7 +1076,7 @@ static std::string backlog = "";
   }
 
   if (cmd.name == "tcpSetTimeout") {
-    auto clientId = std::stoll(cmd.get("clientId"));
+    auto clientId = std::stoull(cmd.get("clientId"));
     auto timeout = std::stoi(cmd.get("timeout"));
 
     dispatch_async(queue, ^{
@@ -1109,7 +1110,7 @@ static std::string backlog = "";
     }
 
     auto port = std::stoi(cmd.get("port"));
-    auto serverId = std::stoll(cmd.get("serverId"));
+    auto serverId = std::stoull(cmd.get("serverId"));
 
     dispatch_async(queue, ^{
       self.core->udpBind(seq, serverId, ip, port, [&](auto seq, auto msg, auto post) {
@@ -1141,7 +1142,7 @@ static std::string backlog = "";
       return true;
 		}
 
-    auto serverId = std::stoll(cmd.get("serverId"));
+    auto serverId = std::stoull(cmd.get("serverId"));
     auto port = std::stoi(cmd.get("port"));
 
     dispatch_async(queue, ^{
@@ -1184,7 +1185,7 @@ static std::string backlog = "";
   SSC::Parse cmd(url);
 
   if (cmd.name == "post") {
-    uint64_t postId = std::stoll(cmd.get("id"));
+    uint64_t postId = std::stoull(cmd.get("id"));
     auto post = self.bridge.core->getPost(postId);
     NSMutableDictionary* httpHeaders;
 
@@ -1221,8 +1222,9 @@ static std::string backlog = "";
     return;
   }
 
-  self.bridge.core->putTask(cmd.get("seq"), task);
+  NSLog(@"Bridgetask: put task");
 
+  self.bridge.core->putTask(cmd.get("seq"), task);
   char* body = NULL;
 
   // if there is a body on the reuqest, pass it into the method router.

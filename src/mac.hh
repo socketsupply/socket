@@ -586,10 +586,6 @@ namespace SSC {
       setValue:@YES
       forKey:@"allowFileAccessFromFileURLs"];
 
-    [bridge setBluetooth: bt];
-    [bridge setWebview: webview];
-    [bridge setCore: core];
-
     // window.titlebarAppearsTransparent = true;
 
     /* [webview
@@ -616,6 +612,10 @@ namespace SSC {
 
     NavigationDelegate *navDelegate = [[NavigationDelegate alloc] init];
     [webview setNavigationDelegate: navDelegate];
+
+    [bridge setBluetooth: bt];
+    [bridge setWebview: webview];
+    [bridge setCore: core];
 
     if (!isDelegateSet) {
       isDelegateSet = true;

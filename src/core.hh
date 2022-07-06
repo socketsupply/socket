@@ -32,7 +32,7 @@ namespace SSC {
   using Cb = std::function<void(String, String, Post)>;
   using Tasks = std::map<String, Task>;
   using Posts = std::map<uint64_t, Post>;
- 
+
   class Core {
     std::unique_ptr<Tasks> tasks;
     std::unique_ptr<Posts> posts;
@@ -222,6 +222,7 @@ namespace SSC {
   }
 
   bool Core::hasTask (String id) {
+    if (id.size() == 0) return false;
     return tasks->find(id) == tasks->end();
   }
 
@@ -330,7 +331,7 @@ namespace SSC {
           }
         }
       })MSG");
-      
+
       cb(seq, msg, Post{});
       return;
     }
@@ -347,7 +348,7 @@ namespace SSC {
           }
         }
       })MSG", std::to_string(desc->id));
-      
+
       desc->cb(desc->seq, msg, Post{});
       uv_fs_req_cleanup(req);
     });
@@ -423,7 +424,7 @@ namespace SSC {
       post.body = req->bufs[0].base;
       post.length = (int) req->bufs[0].len;
       post.headers = headers;
-      
+
       desc->cb(desc->seq, "", post);
       uv_fs_req_cleanup(req);
     });
@@ -481,7 +482,7 @@ namespace SSC {
           }
         }
       })MSG", std::to_string(desc->id), (int)req->result);
-      
+
       desc->cb(desc->seq, msg, Post{});
       uv_fs_req_cleanup(req);
     });
@@ -521,7 +522,7 @@ namespace SSC {
           }
         }
       })MSG", std::to_string(desc->id), (int)req->result);
-      
+
       desc->cb(desc->seq, msg, Post{});
 
       delete desc;
@@ -576,7 +577,7 @@ namespace SSC {
           }
         }
       })MSG", String(uv_strerror(err)));
-      
+
       cb(seq, msg, Post{});
       return;
     }
@@ -641,7 +642,7 @@ namespace SSC {
           }
         }
       })MSG", std::to_string(desc->id), (int)req->result);
-      
+
       desc->cb(desc->seq, msg, Post{});
       delete desc;
       uv_fs_req_cleanup(req);
@@ -680,7 +681,7 @@ namespace SSC {
           }
         }
       })MSG", std::to_string(desc->id), (int)req->result);
-      
+
       desc->cb(desc->seq, msg, Post{});
       delete desc;
       uv_fs_req_cleanup(req);
@@ -789,13 +790,13 @@ namespace SSC {
           value << ",";
         }
       }
-      
+
       auto msg = SSC::format(R"MSG({
         "value": {
           "data": "$S"
         }
       })MSG", encodeURIComponent(value.str()));
-      
+
       ctx->cb(ctx->seq, msg, Post{});
 
       uv_fs_t reqClosedir;
@@ -812,7 +813,7 @@ namespace SSC {
           }
         }
       })MSG", String(uv_strerror(err)));
-      
+
       cb(seq, msg, Post{});
       return;
     }
@@ -918,11 +919,11 @@ namespace SSC {
           }
         }
       })MSG", std::to_string(clientId));
-      
+
       cb("-1", msg, Post{});
       return;
     }
-    
+
     GenericContext* ctx = contexts[clientId] = new GenericContext;
     ctx->id = clientId;
     ctx->cb = cb;
@@ -1004,7 +1005,7 @@ namespace SSC {
         client->cb("-1", msg, Post{});
         return;
       }
-      
+
       auto msg = SSC::format(R"MSG({
         "clientId": "$S",
         "method": "emit",
@@ -1031,7 +1032,7 @@ namespace SSC {
         post.body = buf->base;
         post.length = (int) buf->len;
         post.headers = headers;
-        
+
         client->cb("-1", "", post);
       };
 
@@ -1124,7 +1125,7 @@ namespace SSC {
       if (uv_accept(handle, (uv_stream_t*) handle) == 0) {
         PeerInfo info;
         info.init(client->tcp);
-        
+
         auto msg = SSC::format(
           R"MSG({
             "serverId": "$S",
@@ -1210,7 +1211,7 @@ namespace SSC {
         "data": {}
       }
     })MSG");
-    
+
     client->cb(client->seq, msg, Post{});
   }
 
@@ -1249,7 +1250,7 @@ namespace SSC {
           "X-ClientId": "$S",
           "X-Method": "tcpReadStart"
         })MSG", serverId, clientId);
-        
+
         Post post;
         post.body = buf->base;
         post.length = (int) buf->len;
@@ -1298,7 +1299,7 @@ namespace SSC {
       cb(seq, msg, Post{});
       return;
     }
-    
+
     auto msg = SSC::format(R"MSG({
       "value": {
         "data": {}
@@ -1333,13 +1334,13 @@ namespace SSC {
     } else {
       r = uv_read_stop((uv_stream_t*) client->udp);
     }
-    
+
     auto msg = SSC::format(R"MSG({
       "value": {
         "data": $i
       }
     })MSG", r);
-    
+
     cb(seq, msg, Post{});
   }
 
@@ -1381,7 +1382,7 @@ namespace SSC {
           "data": {}
         }
       })MSG");
-      
+
       client->cb(client->seq, msg, Post{});
       free(handle);
     });
@@ -1434,7 +1435,7 @@ namespace SSC {
           }
         }
       })MSG", status);
-      
+
      client->cb(client->seq, msg, Post{});
      free(req);
      free(req->handle);
@@ -1455,42 +1456,40 @@ namespace SSC {
     int err;
     struct sockaddr_in addr;
 
-    err = uv_ip4_addr((char *) ip.c_str(), port, &addr);
+    err = uv_ip4_addr((char*) ip.c_str(), port, &addr);
 
     if (err < 0) {
       auto msg = SSC::format(R"MSG({
-        "serverId": "$S",
-        "value": {
-          "err": {
-            "message": "$S"
-          }
+        "source": "udp",
+        "err": {
+          "serverId": "$S",
+          "message": "uv_ip4_addr: $S"
         }
-      })MSG", std::to_string(serverId), uv_strerror(err));
+      })MSG", std::to_string(serverId), std::string(uv_strerror(err)));
       cb(seq, msg, Post{});
       return;
     }
 
-    err = uv_udp_bind(server->udp, (const struct sockaddr*) &addr, 0);
+    uv_udp_init(loop, server->udp);
+    err = uv_udp_bind(server->udp, (const struct sockaddr*)&addr, UV_UDP_REUSEADDR);
 
     if (err < 0) {
       auto msg = SSC::format(R"MSG({
-        "serverId": "$S",
-        "value": {
-          "data": "$S"
+        "source": "udp",
+        "err": {
+          "serverId": "$S",
+          "message": "uv_udp_bind: $S"
         }
-      })MSG", std::to_string(server->serverId), uv_strerror(err));
+      })MSG", std::to_string(server->serverId), std::string(uv_strerror(err)));
       server->cb("-1", msg, Post{});
       return;
     }
-    
+
     auto msg = SSC::format(R"MSG({
-      "value": {
-        "data": {}
-      }
+      "data": {}
     })MSG");
 
     server->cb(server->seq, msg, Post{});
-
     loopCheck();
   }
 
@@ -1517,7 +1516,7 @@ namespace SSC {
     uv_udp_send_t* req = new uv_udp_send_t;
     req->data = client;
 
-    err = uv_ip4_addr((char *) ip, port, &addr);
+    err = uv_ip4_addr((char*) ip, port, &addr);
 
     if (err) {
       auto msg = SSC::format(R"MSG({
@@ -1538,7 +1537,7 @@ namespace SSC {
 
     err = uv_udp_send(req, client->udp, bufs, 1, (const struct sockaddr *) &addr, [] (uv_udp_send_t *req, int status) {
       auto client = reinterpret_cast<Client*>(req->data);
-      
+
       auto msg = SSC::format(R"MSG({
         "value": {
           "data": {
@@ -1566,7 +1565,7 @@ namespace SSC {
       client->cb("-1", msg, Post{});
       return;
     }
-   
+
     loopCheck();
   }
 
@@ -1633,7 +1632,7 @@ namespace SSC {
       cb(seq, msg, Post{});
       return;
     }
-    
+
     auto msg = SSC::format(R"MSG({
       "value": {
         "data": {}
