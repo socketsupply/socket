@@ -52,7 +52,7 @@ function advice {
   if [ "$(uname)" == "Darwin" ]; then 
     echo "brew install $1"
   elif [ "$(expr substr $(uname -s) 1 5)" == "Linux" ]; then
-    echo "apt-install $1"
+    echo "apt-get install $1"
   fi
 }
 
