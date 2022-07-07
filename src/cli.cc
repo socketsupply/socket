@@ -49,8 +49,8 @@ static std::string getCxxFlags() {
   return flags.size() > 0 ? " " + flags : "";
 }
 
-void printHelp () {
-  std::cout << gHelpText << std::endl;
+void printHelp (Map& attrs) {
+  std::cout <<tmpl(gHelpText, attrs) << std::endl;
 }
 
 int main (const int argc, const char* argv[]) {
@@ -58,7 +58,7 @@ int main (const int argc, const char* argv[]) {
   attrs["ssc_version"] = SSC::version;
 
   if (argc < 2) {
-    printHelp();
+    printHelp(attrs);
     exit(0);
   }
 
@@ -74,7 +74,7 @@ int main (const int argc, const char* argv[]) {
   }
 
   if (is(subcommand, "-h")) {
-    printHelp();
+    printHelp(attrs);
     exit(0);
   }
 

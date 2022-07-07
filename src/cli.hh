@@ -2,7 +2,7 @@
 // Cli Help
 //
 constexpr auto gHelpText = R"TEXT(
-ssc {{ssc_version}}
+ssc v{{ssc_version}}
 
 usage:
   ssc compile [OPTIONS] <project-dir>
