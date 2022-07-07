@@ -1253,7 +1253,7 @@ int main (const int argc, const char* argv[]) {
       }
 
       #ifdef _WIN32
-      // @TODO
+        setEnv((std::string("ANDROID_HOME=") + androidHome).c_str());
       #else
         setenv("ANDROID_HOME", androidHome.c_str(), 1);
       #endif
@@ -1329,7 +1329,7 @@ int main (const int argc, const char* argv[]) {
         std::stringstream adb;
 
         adb
-          << androidHome << "/cmdline-tools/latest/bin/"
+          << androidHome << "/platform-tools/"
           << "adb "
           << "install ";
 
