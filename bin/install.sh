@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-set -e;
 
 PREFIX=${PREFIX:-$HOME}
 PLATFORMPATH=""
@@ -54,6 +53,9 @@ die $? "not ok - missing build tools, try 'brew install automake'"
 
 quiet command -v autoconf
 die $? "not ok - missing build tools, try 'brew install automake'"
+
+quiet command -v libtool
+die $? "not ok - missing build tools, try 'brew install libtool'"
 
 function _build {
   echo "# building cli for desktop (`uname -m`)..."
