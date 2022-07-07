@@ -161,8 +161,8 @@ int main (const int argc, const char* argv[]) {
       // TODO: this command will install the app to all connected device which were added to the provisioning profile
       //       we should add a --ecid option support to specify the device
       auto command = hasCfgUtilInPath
-        ? "cfgutil install-app " + std::string(ipaPath)
-        : "/Applications/Apple\\ Configurator.app/Contents/MacOS/cfgutil install-app " + std::string(ipaPath);
+        ? "cfgutil install-app " + ipaPath.string()
+        : "/Applications/Apple\\ Configurator.app/Contents/MacOS/cfgutil install-app " + ipaPath.string();
       auto r = exec(command);
       if (r.exitCode != 0) {
         log("failed to install the app. Is the device plugged in?");
@@ -292,8 +292,8 @@ int main (const int argc, const char* argv[]) {
       target = fs::absolute(target);
     }
 
-    if (std::string(target).back() == '.') {
-      target = fs::path(std::string(target).substr(0, std::string(target).size() - 1));
+    if (target.string().back() == '.') {
+      target = fs::path(target.string().substr(0, target.string().size() - 1));
     }
 
     auto configPath = target / "ssc.config";
@@ -1334,9 +1334,9 @@ int main (const int argc, const char* argv[]) {
           << "install ";
 
         if (flagDebugMode) {
-          adb << std::string(app / "build" / "outputs" / "apk" / "dev" / "debug" / "app-dev-debug.apk");
+          adb << (app / "build" / "outputs" / "apk" / "dev" / "debug" / "app-dev-debug.apk").string();
         } else {
-          adb << std::string(app / "build" / "outputs" / "apk" / "dev" / "live" / "app-dev-release-unsigned.apk");
+          adb << (app / "build" / "outputs" / "apk" / "dev" / "live" / "app-dev-release-unsigned.apk").string();
         }
 
         if (std::system(adb.str().c_str()) != 0) {
