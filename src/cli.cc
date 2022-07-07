@@ -1240,6 +1240,17 @@ int main (const int argc, const char* argv[]) {
       auto relativeOutput = fs::path(settings["output"]) / "android";
       auto output = fs::absolute(target) / relativeOutput;
       auto app = output / "app";
+      auto androidHome = getEnv("ANDROID_HOME");
+
+      if (androidHome.size() == 0) {
+        if (platform.os == "linux") {
+          androidHome = getEnv("HOME") + "/android";
+        } else if (platform.os == "mac") {
+          androidHome = getEnv("HOME") + "/Library/Android/sdk";
+        } else if (platform.os == "win") {
+          // TODO
+        }
+      }
 
       std::stringstream sdkmanager;
       std::stringstream packages;
@@ -1251,6 +1262,7 @@ int main (const int argc, const char* argv[]) {
         << "'system-images;android-32;google_apis;arm64-v8a' ";
 
       sdkmanager
+        << androidHome << "/cmdline-tools/latest/bin/"
         << "sdkmanager "
         << packages.str();
 
@@ -1292,6 +1304,7 @@ int main (const int argc, const char* argv[]) {
         std::string package = "'system-images;android-32;google_apis;x86_64' ";
 
         avdmanager
+          << androidHome << "/cmdline-tools/latest/bin/"
           << "avdmanager create avd "
           << "--device 3 "
           << "--force "
@@ -1309,7 +1322,11 @@ int main (const int argc, const char* argv[]) {
         // the emulator must be running on device SSCAVD for now
         std::stringstream adb;
 
-        adb << "adb install ";
+        adb
+          << androidHome << "/cmdline-tools/latest/bin/"
+          << "adb "
+          << "install ";
+
         if (flagDebugMode) {
           adb << std::string(app / "build" / "outputs" / "apk" / "dev" / "debug" / "app-dev-debug.apk");
         } else {

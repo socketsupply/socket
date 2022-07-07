@@ -54,8 +54,10 @@ die $? "not ok - missing build tools, try 'brew install automake'"
 quiet command -v autoconf
 die $? "not ok - missing build tools, try 'brew install automake'"
 
-quiet command -v libtool
-die $? "not ok - missing build tools, try 'brew install libtool'"
+if [ "Darwin" == "$(uname)" ]; then
+  quiet command -v libtool
+  die $? "not ok - missing build tools, try 'brew install libtool'"
+fi
 
 function _build {
   echo "# building cli for desktop (`uname -m`)..."
