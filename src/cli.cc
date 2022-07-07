@@ -1252,6 +1252,12 @@ int main (const int argc, const char* argv[]) {
         }
       }
 
+      #ifdef _WIN32
+      // @TODO
+      #else
+        setenv("ANDROID_HOME", androidHome.c_str(), 1);
+      #endif
+
       std::stringstream sdkmanager;
       std::stringstream packages;
       std::stringstream gradlew;
