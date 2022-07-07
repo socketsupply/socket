@@ -1246,6 +1246,7 @@ int main (const int argc, const char* argv[]) {
       std::stringstream gradlew;
 
       packages
+        << "ndk-bundle "
         << "'system-images;android-32;google_apis;x86_64' "
         << "'system-images;android-32;google_apis;arm64-v8a' ";
 
