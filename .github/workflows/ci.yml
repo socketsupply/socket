@@ -9,19 +9,19 @@ on:
 
 jobs:
   build_on_linux:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     timeout-minutes: 5
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
 
     - name: webfactory/ssh-agent
-      uses: webfactory/ssh-agent@v0.4.1
+      uses: webfactory/ssh-agent@v0.5.4
       with:
         ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
     - name: Use Node.js
-      uses: actions/setup-node@v2
+      uses: actions/setup-node@v3
       with:
         node-version: 16.x
         registry-url: https://npm.pkg.github.com/
@@ -72,7 +72,7 @@ jobs:
     timeout-minutes: 10
 
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v3
       with:
         ref: ${{ github.event.inputs.tag }}
     # The webfactory/ssh-agent module does not work on Windows anymore
@@ -135,14 +135,14 @@ jobs:
         CI: true
 
   build_on_mac:
-    runs-on: macOS-11
+    runs-on: macOS-12
     timeout-minutes: 5
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
 
     - name: webfactory/ssh-agent
-      uses: webfactory/ssh-agent@v0.4.1
+      uses: webfactory/ssh-agent@v0.5.4
       with:
         ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
@@ -150,7 +150,7 @@ jobs:
       run: brew install automake
 
     - name: Use Node.js
-      uses: actions/setup-node@v2
+      uses: actions/setup-node@v3
       with:
         node-version: 16.x
         registry-url: https://npm.pkg.github.com/
@@ -187,14 +187,14 @@ jobs:
         CI: true
 
   build_on_ios:
-    runs-on: macOS-11
+    runs-on: macOS-12
     timeout-minutes: 10
 
     steps:
     - uses: actions/checkout@v2
 
     - name: webfactory/ssh-agent
-      uses: webfactory/ssh-agent@v0.4.1
+      uses: webfactory/ssh-agent@v0.5.4
       with:
         ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
@@ -202,7 +202,7 @@ jobs:
       run: brew install automake
 
     - name: Use Node.js
-      uses: actions/setup-node@v2
+      uses: actions/setup-node@v3
       with:
         node-version: 16.x
         registry-url: https://npm.pkg.github.com/
