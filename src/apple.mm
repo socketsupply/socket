@@ -1211,10 +1211,11 @@ static std::string backlog = "";
   if (cmd.name == "post") {
     uint64_t postId = std::stoull(cmd.get("id"));
     auto post = self.bridge.core->getPost(postId);
-    NSMutableDictionary* httpHeaders;
+    NSMutableDictionary* httpHeaders = [NSMutableDictionary dictionary];
 
     if (post.length > 0) {
-      httpHeaders[@"Content-Length"] = @(post.length);
+      httpHeaders[@"Content-Length"] = [@(post.length) stringValue];
+      httpHeaders[@"Access-Control-Allow-Origin"] = @"*";
       auto lines = SSC::split(post.headers, ',');
 
       for (auto& line : lines) {
@@ -1226,10 +1227,10 @@ static std::string backlog = "";
     }
 
     NSHTTPURLResponse *httpResponse = [[NSHTTPURLResponse alloc]
-      initWithURL: task.request.URL
-       statusCode: 200
-      HTTPVersion: @"HTTP/1.1"
-     headerFields: httpHeaders
+       initWithURL: task.request.URL
+        statusCode: 200
+       HTTPVersion: @"HTTP/1.1"
+      headerFields: httpHeaders
     ];
 
     [task didReceiveResponse: httpResponse];
