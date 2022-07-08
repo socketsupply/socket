@@ -457,12 +457,12 @@ namespace SSC {
           }
         })MSG", std::to_string(desc->id), String(uv_strerror(req->result)));
       } else {
-        auto headers = SSC::format(R"MSG({
-          "Content-Type": "application/octet-stream",
-          "Content-Size": "$i",
-          "X-Method": "fsRead",
-          "X-Id": "$S"
-        })MSG", (int)req->result, std::to_string(desc->id));
+        auto headers = SSC::format(R"MSG(
+          "Content-Type": application/octet-stream
+          "Content-Size": $i
+          "X-Method": fsRead
+          "X-Id": $S
+        )MSG", (int)req->result, std::to_string(desc->id));
 
         post.body = (char *) desc->data;
         post.length = req->result;
@@ -1096,11 +1096,11 @@ namespace SSC {
         auto client = reinterpret_cast<Client*>(handle->data);
         auto clientId = std::to_string(client->clientId);
 
-        auto headers = SSC::format(R"MSG({
-          "Content-Type": "application/octet-stream",
-          "X-ClientId": "$S",
-          "X-Method": "tcpConnect"
-        })MSG", clientId);
+        auto headers = SSC::format(R"MSG(
+          "Content-Type": application/octet-stream
+          "X-ClientId": $S
+          "X-Method": tcpConnect
+        )MSG", clientId);
 
         Post post;
         post.body = buf->base;
@@ -1317,12 +1317,12 @@ namespace SSC {
         auto serverId = std::to_string(client->server->serverId);
         auto clientId = std::to_string(client->clientId);
 
-        auto headers = SSC::format(R"MSG({
-          "Content-Type": "application/octet-stream",
-          "X-ServerId": "$S",
-          "X-ClientId": "$S",
-          "X-Method": "tcpReadStart"
-        })MSG", serverId, clientId);
+        auto headers = SSC::format(R"MSG(
+          "Content-Type": application/octet-stream
+          "X-ServerId": $S
+          "X-ClientId": $S
+          "X-Method": tcpReadStart
+        )MSG", serverId, clientId);
 
         Post post;
         post.body = buf->base;
@@ -1678,13 +1678,13 @@ namespace SSC {
         parseAddress((struct sockaddr *) addr, &port, ipbuf);
         String ip(ipbuf);
 
-        auto headers = SSC::format(R"MSG({
-          "Content-Type": "application/octet-stream",
-          "X-ServerId": "$S",
-          "X-Method": "udpReadStart",
-          "X-Port": "$i",
-          "X-Ip": "$S"
-        })MSG", std::to_string(server->serverId), port, ip);
+        auto headers = SSC::format(R"MSG(
+          "Content-Type": application/octet-stream
+          "X-ServerId": $S
+          "X-Method": udpReadStart
+          "X-Port": $i
+          "X-Ip": $S
+        )MSG", std::to_string(server->serverId), port, ip);
 
         Post post;
         post.body = buf->base;
