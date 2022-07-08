@@ -1560,12 +1560,6 @@ namespace SSC {
       "data": {}
     })MSG");
 
-    static uv_timer_t t;
-    uv_timer_init(defaultLoop(), &t);
-    uv_timer_start(&t, [](uv_timer_t *timer) {
-      //NSLog(@"HELLO");
-    }, 1000, 100);
-
     server->cb(server->seq, msg, Post{});
 
     runDefaultLoop();
