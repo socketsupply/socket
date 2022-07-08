@@ -59,8 +59,9 @@ typedef std::map<std::string, std::string> AppConfig;
 typedef std::map<std::string, std::string> EnvironmentVariables;
 
 typedef std::string NativeCoreSequence;
-typedef jlong NativeCallbackID;
-typedef uint64_t NativeCoreID;
+typedef uint64_t NativeID;
+typedef NativeID NativeCallbackID;
+typedef NativeID NativeCoreID;
 
 // Forward declaration
 class NativeFileSystem;
@@ -144,12 +145,19 @@ class NativeCore;
     env->CallVoidMethod(object, _id, ##__VA_ARGS__);                           \
   })
 
+
+/**
+ * Converts a `jstring` to an ID type
+ */
+#define GetIDFromJString(env, string)                                          \
+  std::stoull(NativeString(env, string).str())
+
 /**
  * @TODO
  */
 #define EvaluateJavaScriptInEnvironment(env, object, source)                   \
   CallNativeCoreVoidMethodFromEnvironment(                                     \
-    env, object, "evaluateJavascript", "(Ljava/lang/String;)V", source        \
+    env, object, "evaluateJavascript", "(Ljava/lang/String;)V", source         \
   );
 
 /**

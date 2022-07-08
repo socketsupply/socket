@@ -634,6 +634,14 @@ static std::string backlog = "";
     return true;
   }
 
+  if (cmd.get("fsConstants").size() != 0) {
+    dispatch_async(queue, ^{
+      auto constants = self.core->fsConstants();
+      [self send: seq msg: constants post: Post{}];
+    });
+    return true;
+  }
+
   if (cmd.get("fsRmDir").size() != 0) {
     auto path = cmd.get("path");
 

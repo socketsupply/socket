@@ -149,11 +149,12 @@ open class WebViewClient(activity: WebViewActivity) : android.webkit.WebViewClie
     return null;
   }
 
-  override fun onPageFinished (
+  override fun onPageStarted (
     view: android.webkit.WebView,
-    url: String
+    url: String,
+    bitmap: android.graphics.Bitmap?
   ) {
-    android.util.Log.e(TAG, "WebViewClient finished loading: $url");
+    android.util.Log.e(TAG, "WebViewClient is loading: $url");
 
     val core = this.activity.core
 
@@ -385,7 +386,7 @@ public open class ExternalWebViewInterface(activity: WebViewActivity) {
 
           var path = message.get("path");
           val uri = android.net.Uri.parse(path);
-          val id = message.get("id").toLong();
+          val id = message.get("id")
 
           if (
             uri.getScheme() == "file" &&
@@ -419,7 +420,7 @@ public open class ExternalWebViewInterface(activity: WebViewActivity) {
             return null;
           }
 
-          val id = message.get("id").toLong();
+          val id = message.get("id")
 
           if (core.fs.isAssetId(id)) {
             core.fs.closeAsset(id, fun (data: String) {
@@ -445,7 +446,7 @@ public open class ExternalWebViewInterface(activity: WebViewActivity) {
             return null;
           }
 
-          val id = message.get("id").toLong();
+          val id = message.get("id")
           val size = message.get("size").toInt();
           val offset = message.get("offset", "0").toInt();
 
@@ -694,9 +695,6 @@ public class JSONError(id: String, message: String, extra: String = "") {
   val extra = extra;
   val message = message;
 
-  constructor (id: Long, message: String, extra: String = "")
-  : this(id.toString(), message, extra) { }
-
   override fun toString () = """{
     "value": {
       "err": {
@@ -711,9 +709,6 @@ public class JSONError(id: String, message: String, extra: String = "") {
 public class JSONData(id: String, data: String = "") {
   val id = id;
   val data = data;
-
-  constructor (id: Long, data: String = "")
-  : this(id.toString(), data) { }
 
   override fun toString () = """{
     "value": {
@@ -750,15 +745,13 @@ public open class NativeFileSystem(core: NativeCore) {
   val core = core;
   var nextId: Long = 0;
 
-  //val openAssets = mutableMapOf<Long, android.content.res.AssetFileDescriptor>();
-  val openAssets = mutableMapOf<Long, String>();
-  //val openAssets = mutableListOf<Long>();
+  val openAssets = mutableMapOf<String, String>();
 
-  public fun getNextAvailableId (): Long {
-    return ++this.nextId;
+  public fun getNextAvailableId (): String {
+    return (++this.nextId).toString();
   }
 
-  public fun isAssetId (id: Long): Boolean {
+  public fun isAssetId (id: String): Boolean {
     if (openAssets[id] != null) {
       return true;
     }
@@ -768,7 +761,7 @@ public open class NativeFileSystem(core: NativeCore) {
 
   public fun open (
     seq: String = "",
-    id: Long = 0,
+    id: String,
     path: String,
     flags: Int,
     callback: (String) -> Unit
@@ -778,7 +771,7 @@ public open class NativeFileSystem(core: NativeCore) {
   }
 
   public fun openAsset (
-    id: Long = 0,
+    id: String,
     path: String,
     callback: (String) -> Unit
   ) {
@@ -822,7 +815,7 @@ public open class NativeFileSystem(core: NativeCore) {
 
   public fun close (
     seq: String = "",
-    id: Long = 0,
+    id: String,
     callback: (String) -> Unit
   ) {
     val callbackId = core.queueCallback(callback)
@@ -830,7 +823,7 @@ public open class NativeFileSystem(core: NativeCore) {
   }
 
   public fun closeAsset (
-    id: Long = 0,
+    id: String,
     callback: (String) -> Unit
   ) {
     if (this.openAssets[id] == null) {
@@ -843,7 +836,7 @@ public open class NativeFileSystem(core: NativeCore) {
 
   public fun read (
     seq: String = "",
-    id: Long = 0,
+    id: String,
     offset: Int = 0,
     size: Int,
     callback: (String) -> Unit
@@ -853,7 +846,7 @@ public open class NativeFileSystem(core: NativeCore) {
   }
 
   public fun readAsset (
-    id: Long = 0,
+    id: String,
     offset: Int = 0,
     size: Int,
     callback: (String) -> Unit
@@ -941,7 +934,7 @@ public open class NativeCore {
   /**
    * TODO
    */
-  public val callbacks = mutableMapOf<Long, (String) -> Unit>();
+  public val callbacks = mutableMapOf<String, (String) -> Unit>();
 
   /**
    * Set internally by the native binding if debug is enabled.
@@ -1068,26 +1061,26 @@ public open class NativeCore {
   @Throws(java.lang.Exception::class)
   external fun fsOpen (
     seq: String,
-    id: Long,
+    id: String,
     path: String,
     flags: Int,
-    callback: Long
+    callback: String
   );
 
   @Throws(java.lang.Exception::class)
   external fun fsClose (
     seq: String,
-    id: Long,
-    callback: Long
+    id: String,
+    callback: String
   );
 
   @Throws(java.lang.Exception::class)
   external fun fsRead (
     seq: String,
-    id: Long,
+    id: String,
     size: Int,
     offset: Int,
-    callback: Long
+    callback: String
   );
 
   /**
@@ -1153,8 +1146,8 @@ public open class NativeCore {
   /**
    * Returns the next available callback ID
    */
-  public fun getNextAvailableCallbackId (): Long {
-    return this.nextCallbackId++;
+  public fun getNextAvailableCallbackId (): String {
+    return (this.nextCallbackId++).toString();
   }
 
   /**
@@ -1167,7 +1160,7 @@ public open class NativeCore {
   /**
    * @TODO
    */
-  public fun callback (id: Long, data: String) {
+  public fun callback (id: String, data: String) {
     val cb = this.callbacks.get(id);
 
     if (cb != null) {
@@ -1180,7 +1173,7 @@ public open class NativeCore {
   /**
    * @TODO
    */
-  public fun queueCallback (cb: (String) -> Unit): Long {
+  public fun queueCallback (cb: (String) -> Unit): String {
     val id = this.getNextAvailableCallbackId()
     this.callbacks[id] = cb;
     return id;

@@ -313,7 +313,7 @@ void NativeFileSystem::CallbackAndFinalizeContext (
     env,
     refs.core,
     "callback",
-    "(JLjava/lang/String;)V",
+    "(Ljava/lang/String;Ljava/lang/String;)V",
     context->callback,
     env->NewStringUTF(data.c_str())
   );
@@ -346,7 +346,7 @@ void NativeFileSystem::CallbackWithPostAndFinalizeContext (
       env,
       refs.core,
       "callback",
-      "(JLjava/lang/String;)V",
+      "(Ljava/lang/String;Ljava/lang/String;)V",
       context->callback,
       env->NewStringUTF(data.c_str())
     );
@@ -938,9 +938,11 @@ jbyteArray exports(NativeCore, getPostData)(
     return nullptr;
   }
 
-  auto post = reinterpret_cast<SSC::Core *>(core)->getPost(std::stoull(NativeString(env, id).str()));
+  auto post = reinterpret_cast<SSC::Core *>(core)->getPost(GetIDFromJString(env, id));
   auto bytes = env->NewByteArray(post.length);
+
   env->SetByteArrayRegion(bytes, 0, post.length, (jbyte *) post.body);
+
   return bytes;
 }
 
@@ -955,14 +957,16 @@ void exports(NativeCore, freePostData)(
     return Throw(env, NativeCoreNotInitializedException);
   }
 
-  auto post = reinterpret_cast<SSC::Core *>(core)->getPost(std::stoull(NativeString(env, id).str()));
+  auto postId = GetIDFromJString(env, id);
+  auto post = reinterpret_cast<SSC::Core *>(core)->getPost(postId);
 
   if (post.body && post.bodyNeedsFree) {
     // @TODO(jwerle): determine if this should be in `SSC::Core`
     delete post.body;
+    post.body = 0;
   }
 
-  reinterpret_cast<SSC::Core *>(core)->removePost(std::stoull(NativeString(env, id).str()));
+  reinterpret_cast<SSC::Core *>(core)->removePost(postId);
 }
 
 jstring exports(NativeCore, fsConstants)(
@@ -986,10 +990,10 @@ void exports(NativeCore, fsOpen)(
   JNIEnv *env,
   jobject self,
   jstring seq,
-  jlong id,
+  jstring id,
   jstring path,
   jint flags,
-  jlong callback
+  jstring callback
 ) {
   auto core = GetNativeCoreFromEnvironment(env);
 
@@ -1001,7 +1005,7 @@ void exports(NativeCore, fsOpen)(
 
   fs.Open(
     NativeString(env, seq).str(),
-    (NativeCoreID) id,
+    (NativeCoreID) GetIDFromJString(env, id),
     NativeString(env, path).str(),
     (int) flags,
     (NativeCallbackID) callback
@@ -1012,7 +1016,7 @@ void exports(NativeCore, fsClose)(
   JNIEnv *env,
   jobject self,
   jstring seq,
-  NativeCoreID id
+  jstring id
 ) {
   // @TODO(jwerle): Core::fsClose
 }
@@ -1021,7 +1025,7 @@ void exports(NativeCore, fsRead)(
   JNIEnv *env,
   jobject self,
   jstring seq,
-  NativeCoreID id,
+  jstring id,
   int len,
   int offset,
   NativeCallbackID callback
@@ -1036,7 +1040,7 @@ void exports(NativeCore, fsRead)(
 
   fs.Read(
     NativeString(env, seq).str(),
-    (NativeCoreID) id,
+    (NativeCoreID) GetIDFromJString(env, id),
     len,
     offset,
     callback
@@ -1047,7 +1051,7 @@ void exports(NativeCore, fsWrite)(
   JNIEnv *env,
   jobject self,
   jstring seq,
-  NativeCoreID id,
+  jstring id,
   jstring data,
   int64_t offset
 ) {
@@ -1058,13 +1062,17 @@ void exports(NativeCore, fsStat)(
   JNIEnv *env,
   jobject self,
   jstring seq,
+  jstring id,
   jstring path
 ) {
   // @TODO(jwerle): Core::fsStat
 }
 
 void exports(NativeCore, fsUnlink)(
+  JNIEnv *env,
+  jobject self,
   jstring seq,
+  jstring id,
   jstring path
 ) {
   // @TODO(jwerle): Core::fsUnlink
@@ -1074,6 +1082,7 @@ void exports(NativeCore, fsRename)(
   JNIEnv *env,
   jobject self,
   jstring seq,
+  jstring id,
   jstring pathA,
   jstring pathB
 ) {
@@ -1084,6 +1093,7 @@ void exports(NativeCore, fsCopyFile)(
   JNIEnv *env,
   jobject self,
   jstring seq,
+  jstring id,
   jstring pathA,
   jstring pathB,
   int flags
@@ -1095,6 +1105,7 @@ void exports(NativeCore, fsRmDir)(
   JNIEnv *env,
   jobject self,
   jstring seq,
+  jstring id,
   jstring path
 ) {
   // @TODO(jwerle): Core::fsRmDir
@@ -1104,6 +1115,7 @@ void exports(NativeCore, fsMkDir)(
   JNIEnv *env,
   jobject self,
   jstring seq,
+  jstring id,
   jstring path,
   int mode
 ) {
@@ -1114,6 +1126,7 @@ void exports(NativeCore, fsReadDir)(
   JNIEnv *env,
   jobject self,
   jstring seq,
+  jstring id,
   jstring path
 ) {
   // @TODO(jwerle): Core::fsReadDir
