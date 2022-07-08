@@ -458,10 +458,10 @@ namespace SSC {
         })MSG", std::to_string(desc->id), String(uv_strerror(req->result)));
       } else {
         auto headers = SSC::format(R"MSG(
-          "Content-Type": application/octet-stream
-          "Content-Size": $i
-          "X-Method": fsRead
-          "X-Id": $S
+          Content-Type: "application/octet-stream"
+          Content-Size: "$i"
+          X-Method: "fsRead"
+          X-Id: "$S"
         )MSG", (int)req->result, std::to_string(desc->id));
 
         post.body = (char *) desc->data;
@@ -1097,9 +1097,9 @@ namespace SSC {
         auto clientId = std::to_string(client->clientId);
 
         auto headers = SSC::format(R"MSG(
-          "Content-Type": application/octet-stream
-          "X-ClientId": $S
-          "X-Method": tcpConnect
+          Content-Type: "application/octet-stream"
+          X-ClientId: "$S"
+          X-Method: "tcpConnect"
         )MSG", clientId);
 
         Post post;
@@ -1318,10 +1318,17 @@ namespace SSC {
         auto clientId = std::to_string(client->clientId);
 
         auto headers = SSC::format(R"MSG(
+<<<<<<< HEAD
           "Content-Type": application/octet-stream
           "X-ServerId": $S
           "X-ClientId": $S
           "X-Method": tcpReadStart
+=======
+          Content-Type: "application/octet-stream"
+          X-ServerId: "$S"
+          X-ClientId: "$S"
+          X-Method: "tcpReadStart"
+>>>>>>> 8fdc9dc (fix(src/core.hh): fix headers in post data)
         )MSG", serverId, clientId);
 
         Post post;
@@ -1679,11 +1686,19 @@ namespace SSC {
         String ip(ipbuf);
 
         auto headers = SSC::format(R"MSG(
+<<<<<<< HEAD
           Content-Type: application/octet-stream
           X-ServerId: $S
           X-Method: udpReadStart
           X-Port: $i
           X-Ip: $S
+=======
+          Content-Type: "application/octet-stream"
+          X-ServerId: "$S"
+          X-Method: "udpReadStart"
+          X-Port: "$i"
+          X-Ip: "$S"
+>>>>>>> 8fdc9dc (fix(src/core.hh): fix headers in post data)
         )MSG", std::to_string(server->serverId), port, ip);
 
         Post post;
