@@ -1679,11 +1679,11 @@ namespace SSC {
         String ip(ipbuf);
 
         auto headers = SSC::format(R"MSG(
-          "Content-Type": application/octet-stream
-          "X-ServerId": $S
-          "X-Method": udpReadStart
-          "X-Port": $i
-          "X-Ip": $S
+          Content-Type: application/octet-stream
+          X-ServerId: $S
+          X-Method: udpReadStart
+          X-Port: $i
+          X-Ip: $S
         )MSG", std::to_string(server->serverId), port, ip);
 
         Post post;

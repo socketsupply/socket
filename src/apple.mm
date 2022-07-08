@@ -1216,12 +1216,12 @@ static std::string backlog = "";
     if (post.length > 0) {
       httpHeaders[@"Content-Length"] = [@(post.length) stringValue];
       httpHeaders[@"Access-Control-Allow-Origin"] = @"*";
-      auto lines = SSC::split(post.headers, ',');
+      auto lines = SSC::split(SSC::trim(post.headers), '\n');
 
       for (auto& line : lines) {
-        auto pair = SSC::split(line, ':');
-        NSString* key = [NSString stringWithUTF8String: pair[0].c_str()];
-        NSString* value = [NSString stringWithUTF8String: pair[1].c_str()];
+        auto pair = SSC::split(SSC::trim(line), ':');
+        NSString* key = [NSString stringWithUTF8String: SSC::trim(pair[0]).c_str()];
+        NSString* value = [NSString stringWithUTF8String: SSC::trim(pair[1]).c_str()];
         httpHeaders[key] = value;
       }
     }
