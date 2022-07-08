@@ -977,7 +977,9 @@ jstring exports(NativeCore, fsConstants)(
     return env->NewStringUTF("");
   }
 
-  // auto fs = NativeFileSystem(env, core);
+  auto constants = NativeFileSystem::GetEncodedConstants();
+
+  return env->NewStringUTF(constants.c_str());
 }
 
 void exports(NativeCore, fsOpen)(

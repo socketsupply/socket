@@ -273,7 +273,32 @@ class NativeFileSystem {
   JNIEnv *env;
 
   public:
+
+  typedef std::map<std::string, std::string> Constants;
+
   NativeFileSystem (JNIEnv *env, NativeCore *core);
+
+  static const Constants GetConstants () {
+    return static_cast<Constants>(SSC::Core::fsConstants());
+  }
+
+  static const std::string GetEncodedConstants () {
+    using SSC::encodeURIComponent;
+
+    auto constants = GetConstants();
+    std::stringstream stream;
+
+    for (auto const &tuple : constants) {
+      auto key = tuple.first;
+      auto value = tuple.second;
+
+      stream
+        << encodeURIComponent(key) << "="
+        << encodeURIComponent(value) << "&";
+    }
+
+    return stream.str();
+  }
 
   NativeFileSystemRequestContext * CreateRequestContext (
     NativeCoreSequence seq,

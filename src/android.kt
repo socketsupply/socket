@@ -53,24 +53,16 @@ open class WebViewClient(activity: WebViewActivity) : android.webkit.WebViewClie
     val url = request.getUrl();
 
     android.util.Log.e(TAG, "${url.getScheme()} ${request.getMethod()}");
-    if (url.getScheme() == "ipc") {
-      if (request.getMethod() == "GET") {
-        android.util.Log.e(TAG, "Intercepting request for $url");
-        val core = this.activity.core
 
-        if (core == null) {
-          return null
-        }
+    if (url.getScheme() != "ipc") {
+      return null;
+    }
 
-        val id = url.getQueryParameter("id")
-        if (id == null) {
-          return null;
-        }
-
-        val stream = java.io.ByteArrayInputStream(core.getPostData(id));
-
+    when (url.getHost()) {
+      "ping" -> {
+        val stream = java.io.ByteArrayInputStream("pong".toByteArray());
         val response = android.webkit.WebResourceResponse(
-          "application/octet-stream",
+          "text/plain",
           "utf-8",
           stream
         );
@@ -79,7 +71,76 @@ open class WebViewClient(activity: WebViewActivity) : android.webkit.WebViewClie
           "Access-Control-Allow-Origin" to "*"
         ));
 
-        core.freePostData(id);
+        return response;
+      }
+
+      "post" -> {
+        if (request.getMethod() == "GET") {
+          val core = this.activity.core
+          val id = url.getQueryParameter("id")
+
+          if (core == null || id == null) {
+            return null
+          }
+
+          val stream = java.io.ByteArrayInputStream(core.getPostData(id));
+          val response = android.webkit.WebResourceResponse(
+            "application/octet-stream",
+            "utf-8",
+            stream
+          );
+
+          response.setResponseHeaders(mapOf(
+            "Access-Control-Allow-Origin" to "*"
+          ));
+
+          core.freePostData(id);
+
+          return response;
+        }
+      }
+
+      else -> {
+        val externalInterface = this.activity.externalInterface
+
+        if (externalInterface == null) {
+          return null;
+        }
+
+        val value = url.toString();
+        val stream = java.io.PipedOutputStream();
+        val message = IPCMessage(value);
+        val response = android.webkit.WebResourceResponse(
+          "text/plain",
+          "utf-8",
+          java.io.PipedInputStream(stream)
+        );
+
+        response.setResponseHeaders(mapOf(
+          "Access-Control-Allow-Origin" to "*"
+        ));
+
+        // try interfaces
+        for ((name, callback)  in externalInterface.interfaces) {
+          val returnValue = externalInterface.invokeInterface(
+            name,
+            message,
+            value,
+            fun (seq: String, data: String) {
+              android.util.Log.d(TAG, data);
+              stream.write(data.toByteArray(), 0, data.length);
+              stream.close();
+            },
+            fun (seq: String, error: String) {
+              stream.write(error.toByteArray(), 0, error.length);
+              stream.close();
+            }
+          );
+
+          if (returnValue != null) {
+            break;
+          }
+        }
 
         return response;
       }
@@ -245,23 +306,51 @@ public open class ExternalWebViewInterface(activity: WebViewActivity) {
   /**
    * Registered invocation interfaces.
    */
-  protected val interfaces = mutableMapOf<String, (IPCMessage, String) -> String?>();
+  public val interfaces = mutableMapOf<
+    String, // name
+    ( // callback
+      IPCMessage,
+      String,
+      (String, String) -> Unit,
+      (String, String) -> Unit
+    ) -> String?
+  >();
 
   /**
    * Registers a bridge interface by name and callback
    */
   public fun registerInterface (
     name: String,
-    callback: (IPCMessage, String) -> String?
+    callback: (
+      IPCMessage,
+      String,
+      (String, String) -> Unit,
+      (String, String) -> Unit
+    ) -> String?,
   ) {
     interfaces[name] = callback;
+  }
+
+  public fun invokeInterface (
+    name: String,
+    message: IPCMessage,
+    value: String,
+    callback: (String, String) -> Unit,
+    throwError: (String, String) -> Unit
+  ): String? {
+    return interfaces[name]?.invoke(message, value, callback, throwError);
   }
 
   /**
    * `ExternalWebViewInterface` class initializer
    */
   init {
-    this.registerInterface("fs", fun (message: IPCMessage, value: String): String? {
+    this.registerInterface("fs", fun (
+      message: IPCMessage,
+      value: String,
+      callback: (String, String) -> Unit,
+      throwError: (String, String) -> Unit
+    ): String? {
       val core = this.activity.core;
       val bridge = this.activity.bridge;
 
@@ -273,18 +362,24 @@ public open class ExternalWebViewInterface(activity: WebViewActivity) {
         // sync + async
         "fs.id", "fsId" -> {
           val id = core.fs.getNextAvailableId().toString()
-          bridge.send(message.seq, id);
+          callback(message.seq, id);
           return id;
+        }
+
+        "fs.constants", "fsConstants" -> {
+          val constants = core.fsConstants();
+          callback(message.seq, constants);
+          return message.seq;
         }
 
         "fs.open", "fsOpen" -> {
           if (!message.has("id")) {
-            bridge.throwError(message.seq, "'id' is required.");
+            throwError(message.seq, "'id' is required.");
             return null;
           }
 
           if (!message.has("path")) {
-            bridge.throwError(message.seq, "'path' is required.");
+            throwError(message.seq, "'path' is required.");
             return null;
           }
 
@@ -303,7 +398,7 @@ public open class ExternalWebViewInterface(activity: WebViewActivity) {
               .joinToString("/");
 
             core.fs.openAsset(id, path, fun (data: String) {
-              bridge.send(message.seq, data);
+              callback(message.seq, data);
             })
           } else {
             val root = java.nio.file.Paths.get(core.getRootDirectory())
@@ -311,7 +406,7 @@ public open class ExternalWebViewInterface(activity: WebViewActivity) {
             val resolved = root.resolve(java.nio.file.Paths.get(path));
 
             core.fs.open(message.seq, id, resolved.toString(), flags, fun (data: String) {
-              bridge.send(message.seq, data);
+              callback(message.seq, data);
             });
           }
 
@@ -320,7 +415,7 @@ public open class ExternalWebViewInterface(activity: WebViewActivity) {
 
         "fs.close", "fsClose" -> {
           if (!message.has("id")) {
-            bridge.throwError(message.seq, "'id' is required.");
+            throwError(message.seq, "'id' is required.");
             return null;
           }
 
@@ -328,11 +423,11 @@ public open class ExternalWebViewInterface(activity: WebViewActivity) {
 
           if (core.fs.isAssetId(id)) {
             core.fs.closeAsset(id, fun (data: String) {
-              bridge.send(message.seq, data);
+              callback(message.seq, data);
             });
           } else {
             core.fs.close(message.seq, id, fun (data: String) {
-              bridge.send(message.seq, data);
+              callback(message.seq, data);
             })
           }
 
@@ -341,12 +436,12 @@ public open class ExternalWebViewInterface(activity: WebViewActivity) {
 
         "fs.read", "fsRead" -> {
           if (!message.has("id")) {
-            bridge.throwError(message.seq, "'id' is required.");
+            throwError(message.seq, "'id' is required.");
             return null;
           }
 
           if (!message.has("size")) {
-            bridge.throwError(message.seq, "'size' is required.");
+            throwError(message.seq, "'size' is required.");
             return null;
           }
 
@@ -356,11 +451,11 @@ public open class ExternalWebViewInterface(activity: WebViewActivity) {
 
           if (core.fs.isAssetId(id)) {
             core.fs.readAsset(id, offset, size, fun (data: String) {
-              bridge.send(message.seq, data);
+              callback(message.seq, data);
             })
           } else {
             core.fs.read(message.seq, id, offset, size, fun (data: String) {
-              bridge.send(message.seq, data);
+              callback(message.seq, data);
             });
           }
 
@@ -447,7 +542,20 @@ public open class ExternalWebViewInterface(activity: WebViewActivity) {
 
     // try interfaces
     for ((name, callback)  in this.interfaces) {
-      val returnValue = callback.invoke(message, value);
+      val returnValue = this.invokeInterface(
+        name,
+        message,
+        value,
+        fun (seq: String, data: String) {
+          if (seq.length  > 0|| data.length > 0) {
+            bridge.send(seq, data);
+          }
+        },
+        fun (seq: String, error: String) {
+          bridge.throwError(seq, error);
+        }
+      );
+
       if (returnValue != null) {
         return returnValue;
       }
@@ -953,6 +1061,9 @@ public open class NativeCore {
 
   @Throws(java.lang.Exception::class)
   external fun freePostData (id: String);
+
+  @Throws(java.lang.Exception::class)
+  external fun fsConstants (): String;
 
   @Throws(java.lang.Exception::class)
   external fun fsOpen (

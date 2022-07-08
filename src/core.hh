@@ -44,6 +44,195 @@ namespace SSC {
     std::unique_ptr<Posts> posts;
 
     public:
+      static std::map<std::string, std::string> fsConstants () {
+        std::map<std::string, std::string> constants;
+
+        #define SET_CONSTANT(c) constants[#c] = std::to_string(c);
+        #ifdef O_RDONLY
+          SET_CONSTANT(O_RDONLY);
+        #endif
+
+        #ifdef O_WRONLY
+          SET_CONSTANT(O_WRONLY);
+        #endif
+
+        #ifdef O_RDWR
+          SET_CONSTANT(O_RDWR);
+        #endif
+
+        #ifdef O_APPEND
+          SET_CONSTANT(O_APPEND);
+        #endif
+
+        #ifdef O_ASYNC
+          SET_CONSTANT(O_ASYNC);
+        #endif
+
+        #ifdef O_CLOEXEC
+          SET_CONSTANT(O_CLOEXEC);
+        #endif
+
+        #ifdef O_CREAT
+          SET_CONSTANT(O_CREAT);
+        #endif
+
+        #ifdef O_DIRECT
+          SET_CONSTANT(O_DIRECT);
+        #endif
+
+        #ifdef O_DIRECTORY
+          SET_CONSTANT(O_DIRECTORY);
+        #endif
+
+        #ifdef O_DSYNC
+          SET_CONSTANT(O_DSYNC);
+        #endif
+
+        #ifdef O_EXCL
+          SET_CONSTANT(O_EXCL);
+        #endif
+
+        #ifdef O_LARGEFILE
+          SET_CONSTANT(O_LARGEFILE);
+        #endif
+
+        #ifdef O_NOATIME
+          SET_CONSTANT(O_NOATIME);
+        #endif
+
+        #ifdef O_NOCTTY
+          SET_CONSTANT(O_NOCTTY);
+        #endif
+
+        #ifdef O_NOFOLLOW
+          SET_CONSTANT(O_NOFOLLOW);
+        #endif
+
+        #ifdef O_NONBLOCK
+          SET_CONSTANT(O_NONBLOCK);
+        #endif
+
+        #ifdef O_NDELAY
+          SET_CONSTANT(O_NDELAY);
+        #endif
+
+        #ifdef O_PATH
+          SET_CONSTANT(O_PATH);
+        #endif
+
+        #ifdef O_SYNC
+          SET_CONSTANT(O_SYNC);
+        #endif
+
+        #ifdef O_TMPFILE
+          SET_CONSTANT(O_TMPFILE);
+        #endif
+
+        #ifdef O_TRUNC
+          SET_CONSTANT(O_TRUNC);
+        #endif
+
+        #ifdef S_IFMT
+          SET_CONSTANT(S_IFMT);
+        #endif
+
+        #ifdef S_IFREG
+          SET_CONSTANT(S_IFREG);
+        #endif
+
+        #ifdef S_IFDIR
+          SET_CONSTANT(S_IFDIR);
+        #endif
+
+        #ifdef S_IFCHR
+          SET_CONSTANT(S_IFCHR);
+        #endif
+
+        #ifdef S_IFBLK
+          SET_CONSTANT(S_IFBLK);
+        #endif
+
+        #ifdef S_IFIFO
+          SET_CONSTANT(S_IFIFO);
+        #endif
+
+        #ifdef S_IFLNK
+          SET_CONSTANT(S_IFLNK);
+        #endif
+
+        #ifdef S_IFSOCK
+          SET_CONSTANT(S_IFSOCK);
+        #endif
+
+        #ifdef S_IRWXU
+          SET_CONSTANT(S_IRWXU);
+        #endif
+
+        #ifdef S_IRUSR
+          SET_CONSTANT(S_IRUSR);
+        #endif
+
+        #ifdef S_IWUSR
+          SET_CONSTANT(S_IWUSR);
+        #endif
+
+        #ifdef S_IXUSR
+          SET_CONSTANT(S_IXUSR);
+        #endif
+
+        #ifdef S_IRWXG
+          SET_CONSTANT(S_IRWXG);
+        #endif
+
+        #ifdef S_IRGRP
+          SET_CONSTANT(S_IRGRP);
+        #endif
+
+        #ifdef S_IWGRP
+          SET_CONSTANT(S_IWGRP);
+        #endif
+
+        #ifdef S_IXGRP
+          SET_CONSTANT(S_IXGRP);
+        #endif
+
+        #ifdef S_IRWXO
+          SET_CONSTANT(S_IRWXO);
+        #endif
+
+        #ifdef S_IROTH
+          SET_CONSTANT(S_IROTH);
+        #endif
+
+        #ifdef S_IWOTH
+          SET_CONSTANT(S_IWOTH);
+        #endif
+
+        #ifdef S_IXOTH
+          SET_CONSTANT(S_IXOTH);
+        #endif
+
+        #ifdef F_OK
+          SET_CONSTANT(F_OK);
+        #endif
+
+        #ifdef R_OK
+          SET_CONSTANT(R_OK);
+        #endif
+
+        #ifdef W_OK
+          SET_CONSTANT(W_OK);
+        #endif
+
+        #ifdef X_OK
+          SET_CONSTANT(X_OK);
+        #endif
+
+        #undef SET_CONSTANT
+
+        return constants;
+      }
+
       void fsOpen (String seq, uint64_t id, String path, int flags, int mode, Cb cb) const;
       void fsClose (String seq, uint64_t id, Cb cb) const;
       void fsRead (String seq, uint64_t id, int len, int offset, Cb cb) const;
@@ -1318,17 +1507,10 @@ namespace SSC {
         auto clientId = std::to_string(client->clientId);
 
         auto headers = SSC::format(R"MSG(
-<<<<<<< HEAD
-          "Content-Type": application/octet-stream
-          "X-ServerId": $S
-          "X-ClientId": $S
-          "X-Method": tcpReadStart
-=======
           Content-Type: "application/octet-stream"
           X-ServerId: "$S"
           X-ClientId: "$S"
           X-Method: "tcpReadStart"
->>>>>>> 8fdc9dc (fix(src/core.hh): fix headers in post data)
         )MSG", serverId, clientId);
 
         Post post;
@@ -1686,19 +1868,11 @@ namespace SSC {
         String ip(ipbuf);
 
         auto headers = SSC::format(R"MSG(
-<<<<<<< HEAD
-          Content-Type: application/octet-stream
-          X-ServerId: $S
-          X-Method: udpReadStart
-          X-Port: $i
-          X-Ip: $S
-=======
           Content-Type: "application/octet-stream"
           X-ServerId: "$S"
           X-Method: "udpReadStart"
           X-Port: "$i"
           X-Ip: "$S"
->>>>>>> 8fdc9dc (fix(src/core.hh): fix headers in post data)
         )MSG", std::to_string(server->serverId), port, ip);
 
         Post post;
