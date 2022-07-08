@@ -884,13 +884,13 @@ apply plugin: 'com.android.application'
 apply plugin: 'kotlin-android'
 
 android {
-  compileSdkVersion {{compile_version}}
+  compileSdkVersion 32
   flavorDimensions "default"
 
   defaultConfig {
     applicationId "{{bundle_identifier}}"
-    minSdkVersion {{min_sdk}}
-    targetSdkVersion {{target_version}}
+    minSdkVersion 24
+    targetSdkVersion 32
     versionCode {{revision}}
     versionName "{{version_short}"
 
