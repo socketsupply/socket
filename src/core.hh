@@ -1002,6 +1002,7 @@ namespace SSC {
     ctx->cb = cb;
 
     write_req_t *wr = (write_req_t*) malloc(sizeof(write_req_t));
+    memset(wr, 0, sizeof(write_req_t));
     wr->req.data = ctx;
     wr->buf = uv_buf_init((char* const) message.c_str(), (int) message.size());
 
@@ -1112,6 +1113,7 @@ namespace SSC {
       auto allocate = [](uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf) {
         buf->base = (char*) malloc(suggested_size);
         buf->len = suggested_size;
+        memset(buf->base, 0, buf->len);
       };
 
       uv_read_start((uv_stream_t*) connect->handle, allocate, onRead);
@@ -1353,6 +1355,7 @@ namespace SSC {
     auto allocateBuffer = [](uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf) {
       buf->base = (char*) malloc(suggested_size);
       buf->len = suggested_size;
+      memset(buf->base, 0, buf->len);
     };
 
     int err = uv_read_start((uv_stream_t*) client->stream, allocateBuffer, onRead);
@@ -1663,6 +1666,7 @@ namespace SSC {
     auto allocate = [](uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf) {
       buf->base = (char*) malloc(suggested_size);
       buf->len = suggested_size;
+      memset(buf->base, 0, buf->len);
     };
 
     int err = uv_udp_recv_start(server->udp, allocate, [](uv_udp_t *handle, ssize_t nread, const uv_buf_t *buf, const struct sockaddr *addr, unsigned flags) {
