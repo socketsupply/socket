@@ -170,7 +170,7 @@ constexpr auto gAndroidManifest = R"XML(
     -->
   <application
     android:allowBackup="true"
-    android:label="@string/app_name"
+    android:label="{{name}}"
     android:theme="@style/Theme.AppCompat.Light"
     android:supportsRtl="true"
   >
@@ -858,10 +858,8 @@ buildscript {
   }
 
   dependencies {
-    // https://mvnrepository.com/artifact/com.android.tools.build/gradle?repo=google
     classpath 'com.android.tools.build:gradle:7.2.1'
 
-    // https://mvnrepository.com/artifact/org.jetbrains.kotlin/kotlin-gradle-plugin
     classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
   }
 }
@@ -886,20 +884,14 @@ apply plugin: 'com.android.application'
 apply plugin: 'kotlin-android'
 
 android {
-  // https://developer.android.com/studio/releases/platforms
-  compileSdkVersion 32
+  compileSdkVersion {{compile_version}}
   flavorDimensions "default"
-
-  buildFeatures {
-    viewBinding true
-    dataBinding true
-  }
 
   defaultConfig {
     applicationId "{{bundle_identifier}}"
-    minSdkVersion 24
-    targetSdkVersion 30
-    versionCode 1 // @TODO(jwerle): use from `ssc.config`
+    minSdkVersion {{min_sdk}}
+    targetSdkVersion {{target_version}}
+    versionCode {{revision}}
     versionName "{{version_short}"
 
     ndk {
@@ -954,7 +946,6 @@ android {
 dependencies {
   implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
   implementation 'androidx.appcompat:appcompat:1.2.0'
-  implementation 'com.android.support.constraint:constraint-layout:2.1.4'
 }
 )GROOVY";
 
@@ -1108,29 +1099,17 @@ constexpr auto gProGuardRules = R"PGR(
 )PGR";
 
 //
-// Android `layout/webview_activity.xml`
+// Android `layout/web_view_activity.xml`
 //
 constexpr auto gAndroidLayoutWebviewActivity = R"XML(
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout
+<WebView
   xmlns:android="http://schemas.android.com/apk/res/android"
   xmlns:app="http://schemas.android.com/apk/res-auto"
-  xmlns:tools="http://schemas.android.com/tools"
-  android:id="@+id/root"
+  android:id="@+id/webview"
   android:layout_width="match_parent"
   android:layout_height="match_parent"
-  tools:context=".{{android_main_activity}}"
->
-  <WebView
-    android:id="@+id/webview"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    app:layout_constraintBottom_toBottomOf="parent"
-    app:layout_constraintEnd_toEndOf="parent"
-    app:layout_constraintStart_toStartOf="parent"
-    app:layout_constraintTop_toTopOf="parent"
-  />
-</androidx.constraintlayout.widget.ConstraintLayout>
+/>
 )XML";
 
 constexpr auto gAndroidValuesStrings = R"XML(

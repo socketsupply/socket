@@ -1,6 +1,5 @@
 // vim: set sw=2:
 package __BUNDLE_IDENTIFIER__
-import __BUNDLE_IDENTIFIER__.databinding.*
 
 fun decodeURIComponent (string: String): String {
   val normalized = string.replace("+", "%2B")
@@ -178,8 +177,6 @@ open class WebViewClient(activity: WebViewActivity) : android.webkit.WebViewClie
  * @TODO(jwerle): look into `androidx.appcompat.app.AppCompatActivity`
  */
 open class WebViewActivity : androidx.appcompat.app.AppCompatActivity() {
-  protected lateinit var binding: WebViewActivityBinding
-
   open protected var client: WebViewClient? = null
   open protected val TAG = "WebViewActivity"
 
@@ -195,20 +192,16 @@ open class WebViewActivity : androidx.appcompat.app.AppCompatActivity() {
   override fun onCreate (state: android.os.Bundle?) {
     super.onCreate(state)
 
+    setContentView(R.layout.web_view_activity)
     val externalInterface = ExternalWebViewInterface(this)
-    val binding = WebViewActivityBinding.inflate(layoutInflater)
     val bridge = Bridge(this)
     val client = WebViewClient(this)
     val core = NativeCore(this)
 
-    val webview = binding.webview
+    val webview = findViewById<android.webkit.WebView>(R.id.webview)
     val settings = webview.getSettings()
 
-    // @TODO(jwerle): `webview_activity` needs to be defined `res/layout/webview_activity.xml`
-    this.setContentView(binding.root)
-
     this.externalInterface = externalInterface
-    this.binding = binding
     this.bridge = bridge
     this.client = client
     this.view = webview
