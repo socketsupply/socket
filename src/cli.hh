@@ -889,7 +889,7 @@ android {
 
   defaultConfig {
     applicationId "{{bundle_identifier}}"
-    minSdkVersion 24
+    minSdkVersion 26
     targetSdkVersion 32
     versionCode {{revision}}
     versionName "{{version_short}"
