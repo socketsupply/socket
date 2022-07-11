@@ -235,12 +235,8 @@ const NativeString & NativeCore::GetRootDirectory () const {
   return this->rootDirectory;
 }
 
-NativeString NativeCore::GetPlatformType () const {
-  return NativeString(this->env, "linux");
-}
-
-NativeString NativeCore::GetPlatformOS () const {
-  return NativeString(this->env, "android");
+const std::string NativeCore::GetNetworkInterfaces() const {
+  return this->getNetworkInterfaces();
 }
 
 AAssetManager * NativeCore::GetAssetManager () const {
@@ -307,7 +303,7 @@ void NativeFileSystem::CallbackAndFinalizeContext (
   auto jvm = context->core->GetJavaVM();
   JNIEnv *env = 0;
 
-  jvm->AttachCurrentThread(&env, 0);
+  auto attached = jvm->AttachCurrentThread(&env, 0);
 
   CallNativeCoreVoidMethodFromEnvironment(
     env,
@@ -319,6 +315,10 @@ void NativeFileSystem::CallbackAndFinalizeContext (
   );
 
   delete context;
+
+  if (attached) {
+    jvm->DetachCurrentThread();
+  }
 }
 
 void NativeFileSystem::CallbackWithPostAndFinalizeContext (
@@ -333,7 +333,7 @@ void NativeFileSystem::CallbackWithPostAndFinalizeContext (
 
   JNIEnv *env = 0;
 
-  jvm->AttachCurrentThread(&env, 0);
+  auto attached = jvm->AttachCurrentThread(&env, 0);
 
   if (post.body != 0) {
     EvaluateJavaScriptInEnvironment(
@@ -353,6 +353,24 @@ void NativeFileSystem::CallbackWithPostAndFinalizeContext (
   }
 
   delete context;
+
+  if (attached) {
+    jvm->DetachCurrentThread();
+  }
+}
+
+void NativeFileSystem::Access (
+  NativeCoreSequence seq,
+  std::string path,
+  int mode,
+  NativeCallbackID callback
+) const {
+  auto context = this->CreateRequestContext(seq, 0, callback);
+  auto core = reinterpret_cast<SSC::Core *>(this->core);
+
+  core->fsAccess(seq, path, mode, [context](auto seq, auto data, auto post) {
+    context->fs->CallbackAndFinalizeContext(context, data);
+  });
 }
 
 void NativeFileSystem::Open (
@@ -360,11 +378,11 @@ void NativeFileSystem::Open (
   NativeCoreID id,
   std::string path,
   int flags,
+  int mode,
   NativeCallbackID callback
 ) const {
   auto context = this->CreateRequestContext(seq, id, callback);
   auto core = reinterpret_cast<SSC::Core *>(this->core);
-  auto mode = S_IRUSR | S_IWUSR;
 
   core->fsOpen(seq, id, path, flags, mode, [context](auto seq, auto data, auto post) {
     context->fs->CallbackAndFinalizeContext(context, data);
@@ -409,8 +427,28 @@ void NativeFileSystem::Write (
 
 void NativeFileSystem::Stat (
   NativeCoreSequence seq,
-  std::string path
+  std::string path,
+  NativeCallbackID callback
 ) const {
+  auto context = this->CreateRequestContext(seq, 0, callback);
+  auto core = reinterpret_cast<SSC::Core *>(this->core);
+
+  core->fsStat(seq, path, [context](auto seq, auto data, auto post) {
+    context->fs->CallbackAndFinalizeContext(context, data);
+  });
+}
+
+void NativeFileSystem::FStat (
+  NativeCoreSequence seq,
+  NativeCoreID id,
+  NativeCallbackID callback
+) const {
+  auto context = this->CreateRequestContext(seq, id, callback);
+  auto core = reinterpret_cast<SSC::Core *>(this->core);
+
+  core->fsFStat(seq, id, [context](auto seq, auto data, auto post) {
+    context->fs->CallbackAndFinalizeContext(context, data);
+  });
 }
 
 void NativeFileSystem::Unlink (
@@ -565,32 +603,6 @@ jboolean exports(NativeCore, verifyAssetManager)(
 
   if (!assetManager) {
     Throw(env, AssetManagerIsNotReachableException);
-    return false;
-  }
-
-  return true;
-}
-
-/**
- * `NativeCore::verifyPlatform()` binding.
- * @return `true` if verification passes, otherwise `false`.
- */
-jboolean exports(NativeCore, verifyPlatform)(
-  JNIEnv *env,
-  jobject self
-) {
-  auto core = GetNativeCoreFromEnvironment(env);
-
-  if (!core) {
-    Throw(env, NativeCoreNotInitializedException);
-    return false;
-  }
-
-  if (core->GetPlatformOS().str() != "android") {
-    return false;
-  }
-
-  if (core->GetPlatformType().str() != "linux") {
     return false;
   }
 
@@ -923,7 +935,108 @@ jstring exports(NativeCore, getNetworkInterfaces)(
     return env->NewStringUTF("");
   }
 
-  return env->NewStringUTF(core->getNetworkInterfaces().c_str());
+  return env->NewStringUTF(core->GetNetworkInterfaces().c_str());
+}
+
+/**
+ * `NativeCore::getPlatformArch()` binding.
+ * @return Network interfaces in JSON format
+ */
+jstring exports(NativeCore, getPlatformArch)(
+  JNIEnv *env,
+  jobject self
+) {
+  auto core = GetNativeCoreFromEnvironment(env);
+
+  if (!core) {
+    Throw(env, NativeCoreNotInitializedException);
+    return env->NewStringUTF("");
+  }
+
+  auto msg = SSC::format(
+    R"JSON({"value":{"data":"$S"}})JSON",
+    SSC::platform.arch
+  );
+
+  return env->NewStringUTF(msg.c_str());
+}
+
+/**
+ * `NativeCore::getPlatformType()` binding.
+ * @return Network interfaces in JSON format
+ */
+jstring exports(NativeCore, getPlatformType)(
+  JNIEnv *env,
+  jobject self
+) {
+  auto core = GetNativeCoreFromEnvironment(env);
+
+  if (!core) {
+    Throw(env, NativeCoreNotInitializedException);
+    return env->NewStringUTF("");
+  }
+
+  auto msg = SSC::format(
+    R"JSON({"value":{"data":"$S"}})JSON",
+    std::string("linux")
+  );
+
+  return env->NewStringUTF(msg.c_str());
+}
+
+/**
+ * `NativeCore::getPlatformOS()` binding.
+ * @return Network interfaces in JSON format
+ */
+jstring exports(NativeCore, getPlatformOS)(
+  JNIEnv *env,
+  jobject self
+) {
+  auto core = GetNativeCoreFromEnvironment(env);
+
+  if (!core) {
+    Throw(env, NativeCoreNotInitializedException);
+    return env->NewStringUTF("");
+  }
+
+  auto msg = SSC::format(
+    R"JSON({"value":{"data":"$S"}})JSON",
+    "android"
+  );
+
+  return env->NewStringUTF(msg.c_str());
+}
+
+jstring exports(NativeCore, getEncodedFSConstants)(
+  JNIEnv *env,
+  jobject self,
+  jstring seq
+) {
+  auto core = GetNativeCoreFromEnvironment(env);
+
+  if (!core) {
+    Throw(env, NativeCoreNotInitializedException);
+    return env->NewStringUTF("");
+  }
+
+  auto constants = NativeFileSystem::GetEncodedConstants();
+  return env->NewStringUTF(constants.c_str());
+}
+
+jstring exports(NativeCore, getFSConstants)(
+  JNIEnv *env,
+  jobject self,
+  jstring seq
+) {
+  auto core = GetNativeCoreFromEnvironment(env);
+
+  if (!core) {
+    Throw(env, NativeCoreNotInitializedException);
+    return env->NewStringUTF("");
+  }
+
+  auto constants = reinterpret_cast<SSC::Core *>(core)->getFSConstants();
+  return env->NewStringUTF(constants.c_str());
 }
 
 jbyteArray exports(NativeCore, getPostData)(
@@ -938,7 +1051,8 @@ jbyteArray exports(NativeCore, getPostData)(
     return nullptr;
   }
 
-  auto post = reinterpret_cast<SSC::Core *>(core)->getPost(GetIDFromJString(env, id));
+  auto postId = GetNativeCoreIDFromJString(env, id);
+  auto post = reinterpret_cast<SSC::Core *>(core)->getPost(postId);
   auto bytes = env->NewByteArray(post.length);
 
   env->SetByteArrayRegion(bytes, 0, post.length, (jbyte *) post.body);
@@ -957,7 +1071,7 @@ void exports(NativeCore, freePostData)(
     return Throw(env, NativeCoreNotInitializedException);
   }
 
-  auto postId = GetIDFromJString(env, id);
+  auto postId = GetNativeCoreIDFromJString(env, id);
   auto post = reinterpret_cast<SSC::Core *>(core)->getPost(postId);
 
   if (post.body && post.bodyNeedsFree) {
@@ -969,21 +1083,28 @@ void exports(NativeCore, freePostData)(
   reinterpret_cast<SSC::Core *>(core)->removePost(postId);
 }
 
-jstring exports(NativeCore, fsConstants)(
+void exports(NativeCore, fsAccess)(
   JNIEnv *env,
   jobject self,
-  jstring seq
+  jstring seq,
+  jstring path,
+  jint mode,
+  jstring callback
 ) {
   auto core = GetNativeCoreFromEnvironment(env);
 
   if (!core) {
-    Throw(env, NativeCoreNotInitializedException);
-    return env->NewStringUTF("");
+    return Throw(env, NativeCoreNotInitializedException);
   }
 
-  auto constants = NativeFileSystem::GetEncodedConstants();
+  auto fs = NativeFileSystem(env, core);
 
-  return env->NewStringUTF(constants.c_str());
+  fs.Access(
+    NativeString(env, seq).str(),
+    NativeString(env, path).str(),
+    (int) mode,
+    (NativeCallbackID) callback
+  );
 }
 
 void exports(NativeCore, fsOpen)(
@@ -993,6 +1114,7 @@ void exports(NativeCore, fsOpen)(
   jstring id,
   jstring path,
   jint flags,
+  jint mode,
   jstring callback
 ) {
   auto core = GetNativeCoreFromEnvironment(env);
@@ -1005,9 +1127,10 @@ void exports(NativeCore, fsOpen)(
 
   fs.Open(
     NativeString(env, seq).str(),
-    (NativeCoreID) GetIDFromJString(env, id),
+    GetNativeCoreIDFromJString(env, id),
     NativeString(env, path).str(),
     (int) flags,
+    (int) mode,
     (NativeCallbackID) callback
   );
 }
@@ -1016,9 +1139,22 @@ void exports(NativeCore, fsClose)(
   JNIEnv *env,
   jobject self,
   jstring seq,
-  jstring id
+  jstring id,
+  jstring callback
 ) {
-  // @TODO(jwerle): Core::fsClose
+  auto core = GetNativeCoreFromEnvironment(env);
+
+  if (!core) {
+    return Throw(env, NativeCoreNotInitializedException);
+  }
+
+  auto fs = NativeFileSystem(env, core);
+
+  fs.Close(
+    NativeString(env, seq).str(),
+    GetNativeCoreIDFromJString(env, id),
+    (NativeCallbackID) callback
+  );
 }
 
 void exports(NativeCore, fsRead)(
@@ -1028,7 +1164,7 @@ void exports(NativeCore, fsRead)(
   jstring id,
   int len,
   int offset,
-  NativeCallbackID callback
+  jstring callback
 ) {
   auto core = GetNativeCoreFromEnvironment(env);
 
@@ -1040,10 +1176,10 @@ void exports(NativeCore, fsRead)(
 
   fs.Read(
     NativeString(env, seq).str(),
-    (NativeCoreID) GetIDFromJString(env, id),
+    GetNativeCoreIDFromJString(env, id),
     len,
     offset,
-    callback
+    (NativeCallbackID) callback
   );
 }
 
@@ -1062,10 +1198,44 @@ void exports(NativeCore, fsStat)(
   JNIEnv *env,
   jobject self,
   jstring seq,
-  jstring id,
-  jstring path
+  jstring path,
+  jstring callback
 ) {
-  // @TODO(jwerle): Core::fsStat
+  auto core = GetNativeCoreFromEnvironment(env);
+
+  if (!core) {
+    return Throw(env, NativeCoreNotInitializedException);
+  }
+
+  auto fs = NativeFileSystem(env, core);
+
+  fs.Stat(
+    NativeString(env, seq).str(),
+    NativeString(env, path).str(),
+    (NativeCallbackID) callback
+  );
+}
+
+void exports(NativeCore, fsFStat)(
+  JNIEnv *env,
+  jobject self,
+  jstring seq,
+  jstring id,
+  jstring callback
+) {
+  auto core = GetNativeCoreFromEnvironment(env);
+
+  if (!core) {
+    return Throw(env, NativeCoreNotInitializedException);
+  }
+
+  auto fs = NativeFileSystem(env, core);
+
+  fs.FStat(
+    NativeString(env, seq).str(),
+    GetNativeCoreIDFromJString(env, id),
+    (NativeCallbackID) callback
+  );
 }
 
 void exports(NativeCore, fsUnlink)(

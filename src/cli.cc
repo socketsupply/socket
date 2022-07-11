@@ -532,6 +532,43 @@ int main (const int argc, const char* argv[]) {
         settings["android_aapt"] = "";
       }
 
+      if (settings["android_native_abis"].size() == 0) {
+        settings["android_native_abis"] = "";
+      }
+
+      if (settings["android_ndk_abi_filters"].size() == 0) {
+        settings["android_ndk_abi_filters"] = settings["android_native_abis"];
+      }
+
+      if (settings["android_ndk_abi_filters"].size() == 0) {
+        settings["android_ndk_abi_filters"] = "'arm64-v8a', 'x86_64'";
+      } else {
+        auto filters = settings["android_ndk_abi_filters"];
+        settings["android_ndk_abi_filters"] = "";
+
+        for (auto const &filter : split(filters, ' ')) {
+          auto value = trim(replace(filter, "\"", "'"));
+
+          if (value.size() == 0) {
+            continue;
+          }
+
+          if (value[0] != '\'') {
+            value = "'" + value;
+          }
+
+          if (value[value.size() - 1] != '\'') {
+            value += "'";
+          }
+
+          if (settings["android_ndk_abi_filters"].size() > 0) {
+            settings["android_ndk_abi_filters"] += ", ";
+          }
+
+          settings["android_ndk_abi_filters"] += value;
+        }
+      }
+
       // Android Project
       writeFile(src / "main" / "AndroidManifest.xml", trim(tmpl(gAndroidManifest, settings)));
 

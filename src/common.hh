@@ -252,6 +252,7 @@ namespace SSC {
       "  window.process.version = `" + opts.version + "`;\n"
       "  window.process.debug = " + std::to_string(opts.debug) + ";\n"
       "  window.process.platform = `" + platform.os + "`;\n"
+      "  window.process.arch = `" + platform.arch + "`;\n"
       "  window.process.env = Object.fromEntries(new URLSearchParams(`" +  opts.env + "`));\n"
       "  window.process.argv = [" + opts.argv + "];\n"
       "  " + gPreload + "\n"

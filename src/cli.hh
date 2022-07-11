@@ -902,6 +902,10 @@ android {
     versionCode 1 // @TODO(jwerle): use from `ssc.config`
     versionName "{{version_short}"
 
+    ndk {
+      abiFilters {{android_ndk_abi_filters}}
+    }
+
     externalNativeBuild {
       ndkBuild {
         arguments "NDK_APPLICATION_MK:=src/main/jni/Application.mk"
@@ -934,7 +938,7 @@ android {
     release {
       minifyEnabled true
       proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
-      productFlavors.dev
+      //productFlavors.dev
       productFlavors.live
     }
 
@@ -942,17 +946,14 @@ android {
       minifyEnabled false
       proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
       productFlavors.dev
-      productFlavors.live
+      //productFlavors.live
     }
   }
 }
 
 dependencies {
-  implementation fileTree(dir: 'libs', include: ['*.jar'])
   implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
   implementation 'androidx.appcompat:appcompat:1.2.0'
-  implementation 'com.google.android.material:material:1.2.1'
-  implementation 'androidx.localbroadcastmanager:localbroadcastmanager:1.0.0'
   implementation 'com.android.support.constraint:constraint-layout:2.1.4'
 }
 )GROOVY";
@@ -969,26 +970,12 @@ include ':app'
 // Android top level `gradle.properties`
 //
 constexpr auto gGradleProperties = R"GRADLE(
-# Project-wide Gradle settings.
-# IDE (e.g. Android Studio) users:
-# Gradle settings configured through the IDE *will override*
-# any settings specified in this file.
-# For more details on how to configure your build environment visit
-# http://www.gradle.org/docs/current/userguide/build_environment.html
-# Specifies the JVM arguments used for the daemon process.
-# The setting is particularly useful for tweaking memory settings.
 org.gradle.jvmargs=-Xmx2048m
-# When configured, Gradle will run in incubating parallel mode.
-# This option should only be used with decoupled projects. More details, visit
-# http://www.gradle.org/docs/current/userguide/multi_project_builds.html#sec:decoupled_projects
-# org.gradle.parallel=true
-# AndroidX package structure to make it clearer which packages are bundled with the
-# Android operating system, and which are packaged with your app"s APK
-# https://developer.android.com/topic/libraries/support-library/androidx-rn
+org.gradle.parallel=true
+
 android.useAndroidX=true
-# Automatically convert third-party libraries to use AndroidX
 android.enableJetifier=true
-# Kotlin code style for this project: "official" or "obsolete":
+
 kotlin.code.style=official
 )GRADLE";
 

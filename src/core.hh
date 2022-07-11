@@ -44,7 +44,7 @@ namespace SSC {
     std::unique_ptr<Posts> posts;
 
     public:
-      static std::map<std::string, std::string> fsConstants () {
+      static std::map<std::string, std::string> getFSConstantsMap () {
         std::map<std::string, std::string> constants;
 
         #define SET_CONSTANT(c) constants[#c] = std::to_string(c);
@@ -233,17 +233,21 @@ namespace SSC {
         return constants;
       }
 
-      void fsOpen (String seq, uint64_t id, String path, int flags, int mode, Cb cb) const;
+      String getFSConstants () const;
+
+      void fsAccess (String seq, String path, int mode, Cb cb) const;
+      void fsCopyFile (String seq, String pathA, String pathB, int flags, Cb cb) const;
       void fsClose (String seq, uint64_t id, Cb cb) const;
+      void fsFStat (String seq, uint64_t id, Cb cb) const;
+      void fsMkDir (String seq, String path, int mode, Cb cb) const;
+      void fsOpen (String seq, uint64_t id, String path, int flags, int mode, Cb cb) const;
       void fsRead (String seq, uint64_t id, int len, int offset, Cb cb) const;
-      void fsWrite (String seq, uint64_t id, String data, int64_t offset, Cb cb) const;
+      void fsReadDir (String seq, String path, Cb cb) const;
+      void fsRename (String seq, String pathA, String pathB, Cb cb) const;
+      void fsRmDir (String seq, String path, Cb cb) const;
       void fsStat (String seq, String path, Cb cb) const;
       void fsUnlink (String seq, String path, Cb cb) const;
-      void fsRename (String seq, String pathA, String pathB, Cb cb) const;
-      void fsCopyFile (String seq, String pathA, String pathB, int flags, Cb cb) const;
-      void fsRmDir (String seq, String path, Cb cb) const;
-      void fsMkDir (String seq, String path, int mode, Cb cb) const;
-      void fsReadDir (String seq, String path, Cb cb) const;
+      void fsWrite (String seq, uint64_t id, String data, int64_t offset, Cb cb) const;
 
       void tcpBind (String seq, uint64_t serverId, String ip, int port, Cb cb) const;
       void tcpConnect (String seq, uint64_t clientId, int port, String ip, Cb cb) const;
@@ -326,12 +330,12 @@ namespace SSC {
     uint64_t clientId;
   };
 
-  uv_loop_t* defaultLoop () {
+  uv_loop_t* getDefaultLoop () {
     return uv_default_loop();
   }
 
   void runDefaultLoop () {
-    uv_run(defaultLoop(), UV_RUN_DEFAULT);
+    uv_run(getDefaultLoop(), UV_RUN_DEFAULT);
   }
 
   String addrToIPv4 (struct sockaddr_in* sin) {
@@ -484,36 +488,109 @@ namespace SSC {
     return js;
   }
 
-  void Core::fsOpen (String seq, uint64_t id, String path, int flags, int mode, Cb cb) const {
-    auto filename = path.c_str();
+  String Core::getFSConstants () const {
+    auto constants = Core::getFSConstantsMap();
+    auto count = constants.size();
+    std::stringstream stream;
 
-    auto desc = descriptors[id] = new DescriptorContext;
-    desc->id = id;
+    stream << "{";
+    stream << "\"value\": {";
+    stream << "\"data\": {";
+
+    for (auto const &tuple : constants) {
+      auto key = tuple.first;
+      auto value = tuple.second;
+
+      stream << "\"" << key << "\":" << value;
+
+      if (--count > 0) {
+        stream << ",";
+      }
+    }
+
+    stream << "}";
+    stream << "}";
+    stream << "}";
+
+    return stream.str();
+  }
+
+  void Core::fsAccess (String seq, String path, int mode, Cb cb) const {
+    auto filename = path.c_str();
+    auto loop = getDefaultLoop();
+    auto desc = new DescriptorContext;
+    auto req = new uv_fs_t;
+
+    req->data = desc;
     desc->seq = seq;
     desc->cb = cb;
 
-    auto req = new uv_fs_t;
-    req->data = desc;
-
-    auto err = uv_fs_open(defaultLoop(), req, filename, flags, mode, [](uv_fs_t* req) {
+    auto err = uv_fs_access(loop, req, filename, mode, [](uv_fs_t* req) {
       auto desc = static_cast<DescriptorContext*>(req->data);
       std::string msg;
 
       if (req->result < 0) {
-        msg = SSC::format(R"MSG({
-          "err": {
-            "id": "$S",
-            "message": "$S"
-          }
-        })MSG", std::to_string(desc->id), String(uv_strerror(req->result)));
+        msg = SSC::format(
+          R"MSG({{"err":{"message":"$S"}})MSG",
+          String(uv_strerror(req->result))
+        );
+      } else {
+        msg = SSC::format(
+          R"MSG({"data":{"mode":$S}})MSG",
+          std::to_string(req->flags)
+        );
+      }
+
+      desc->cb(desc->seq, msg, Post{});
+      uv_fs_req_cleanup(req);
+      delete desc;
+      delete req;
+    });
+
+    if (err < 0) {
+      auto msg = SSC::format(
+        R"MSG({"err":{"message":"$S"}})MSG",
+        String(uv_strerror(err))
+      );
+
+      cb(seq, msg, Post{});
+      delete desc;
+      delete req;
+      return;
+    }
+
+    runDefaultLoop();
+  }
+
+  void Core::fsOpen (String seq, uint64_t id, String path, int flags, int mode, Cb cb) const {
+    auto filename = path.c_str();
+    auto loop = getDefaultLoop();
+    auto desc = descriptors[id] = new DescriptorContext;
+    auto req = new uv_fs_t;
+
+    req->data = desc;
+
+    desc->id = id;
+    desc->seq = seq;
+    desc->cb = cb;
+
+    auto err = uv_fs_open(loop, req, filename, flags, mode, [](uv_fs_t* req) {
+      auto desc = static_cast<DescriptorContext*>(req->data);
+      std::string msg;
+
+      if (req->result < 0) {
+        msg = SSC::format(
+          R"MSG({"err":{"id":"$S","message":"$S"}})MSG",
+          std::to_string(desc->id),
+          String(uv_strerror(req->result))
+        );
       } else {
         desc->fd = req->result;
-        msg = SSC::format(R"MSG({
-          "data": {
-            "id": "$S",
-            "fd": $S
-          }
-        })MSG", std::to_string(desc->id), std::to_string(desc->fd));
+        msg = SSC::format(
+          R"MSG({"data":{"id":"$S","fd":$S}})MSG",
+          std::to_string(desc->id),
+          std::to_string(desc->fd)
+        );
       }
 
       desc->cb(desc->seq, msg, Post{});
@@ -530,6 +607,7 @@ namespace SSC {
       })MSG", std::to_string(id), String(uv_strerror(err)));
 
       cb(seq, msg, Post{});
+      delete req;
       return;
     }
 
@@ -558,7 +636,7 @@ namespace SSC {
     auto req = new uv_fs_t;
     req->data = desc;
 
-    auto err = uv_fs_close(defaultLoop(), req, desc->fd, [](uv_fs_t* req) {
+    auto err = uv_fs_close(getDefaultLoop(), req, desc->fd, [](uv_fs_t* req) {
       auto desc = static_cast<DescriptorContext*>(req->data);
       std::string msg;
 
@@ -624,9 +702,9 @@ namespace SSC {
     const uv_buf_t iov = uv_buf_init(buf, len * sizeof(char));
     desc->data = buf;
 
-    auto err = uv_fs_read(defaultLoop(), req, desc->fd, &iov, 1, offset, [](uv_fs_t* req) {
+    auto err = uv_fs_read(getDefaultLoop(), req, desc->fd, &iov, 1, offset, [](uv_fs_t* req) {
       auto desc = static_cast<DescriptorContext*>(req->data);
-      std::string msg;
+      std::string msg = "{}";
       Post post = {0};
 
       if (req->result < 0) {
@@ -650,7 +728,8 @@ namespace SSC {
         post.bodyNeedsFree = true;
       }
 
-      desc->cb(desc->seq, "{}", post);
+      desc->data = 0;
+      desc->cb(desc->seq, msg, post);
 
       uv_fs_req_cleanup(req);
 
@@ -672,7 +751,7 @@ namespace SSC {
     runDefaultLoop();
   }
 
-  void Core::fsWrite (String seq, uint64_t id, String data, int64_t offset, Cb cb) const  {
+  void Core::fsWrite (String seq, uint64_t id, String data, int64_t offset, Cb cb) const {
     auto desc = descriptors[id];
 
     if (desc == nullptr) {
@@ -706,8 +785,6 @@ namespace SSC {
             "message": "$S"
           }
         })MSG", std::to_string(desc->id), String(uv_strerror(req->result)));
-
-        desc->cb(desc->seq, msg, Post{});
       } else {
         msg = SSC::format(R"MSG({
           "data": {
@@ -745,9 +822,8 @@ namespace SSC {
     auto req = new uv_fs_t;
     req->data = desc;
 
-    auto err = uv_fs_stat(defaultLoop(), req, (const char*) path.c_str(), [](uv_fs_t* req) {
+    auto err = uv_fs_stat(getDefaultLoop(), req, (const char*) path.c_str(), [](uv_fs_t* req) {
       auto desc = static_cast<DescriptorContext*>(req->data);
-
       std::string msg;
 
       if (req->result < 0) {
@@ -756,10 +832,53 @@ namespace SSC {
             "id": "$S",
             "message": "$S"
           }
-        })MSG", std::to_string(desc->id), String(uv_strerror(req->result)));
+        })MSG", String(uv_strerror(req->result)));
       } else {
-        msg = "{}";
-        // @TODO
+        auto stats = uv_fs_get_statbuf(req);
+        msg = SSC::format(
+            R"MSG({
+            "value": {
+              "data": {
+                "st_dev": "$S",
+                "st_mode": "$S",
+                "st_nlink": "$S",
+                "st_uid": "$S",
+                "st_gid": "$S",
+                "st_rdev": "$S",
+                "st_ino": "$S",
+                "st_size": "$S",
+                "st_blksize": "$S",
+                "st_blocks": "$S",
+                "st_flags": "$S",
+                "st_gen": "$S",
+                "st_atim": { "tv_sec": "$S", "tv_nsec": "$S" },
+                "st_mtim": { "tv_sec": "$S", "tv_nsec": "$S" },
+                "st_ctim": { "tv_sec": "$S", "tv_nsec": "$S" },
+                "st_birthtim": { "tv_sec": "$S", "tv_nsec": "$S" }
+              }
+            }
+          })MSG",
+          std::to_string(stats->st_dev),
+          std::to_string(stats->st_mode),
+          std::to_string(stats->st_nlink),
+          std::to_string(stats->st_uid),
+          std::to_string(stats->st_gid),
+          std::to_string(stats->st_rdev),
+          std::to_string(stats->st_ino),
+          std::to_string(stats->st_size),
+          std::to_string(stats->st_blksize),
+          std::to_string(stats->st_blocks),
+          std::to_string(stats->st_flags),
+          std::to_string(stats->st_gen),
+          std::to_string(stats->st_atim.tv_sec),
+          std::to_string(stats->st_atim.tv_nsec),
+          std::to_string(stats->st_mtim.tv_sec),
+          std::to_string(stats->st_mtim.tv_nsec),
+          std::to_string(stats->st_ctim.tv_sec),
+          std::to_string(stats->st_ctim.tv_nsec),
+          std::to_string(stats->st_birthtim.tv_sec),
+          std::to_string(stats->st_birthtim.tv_nsec)
+        );
       }
 
       desc->cb(desc->seq, msg, Post{});
@@ -777,7 +896,119 @@ namespace SSC {
       })MSG", String(uv_strerror(err)));
 
       cb(seq, msg, Post{});
+
       delete desc;
+      delete req;
+
+      return;
+    }
+
+    runDefaultLoop();
+  }
+
+  void Core::fsFStat (String seq, uint64_t id, Cb cb) const {
+    auto desc = descriptors[id];
+
+    if (desc == nullptr) {
+      auto msg = SSC::format(R"MSG({
+        "value": {
+          "err": {
+            "code": "ENOTOPEN",
+            "message": "No file descriptor found with that id"
+          }
+        }
+      })MSG");
+
+      cb(seq, msg, Post{});
+      return;
+    }
+
+    desc->seq = seq;
+    desc->cb = cb;
+
+    auto req = new uv_fs_t;
+    req->data = desc;
+
+    auto err = uv_fs_fstat(getDefaultLoop(), req, desc->fd, [](uv_fs_t* req) {
+      auto desc = static_cast<DescriptorContext*>(req->data);
+      std::string msg;
+
+      if (req->result < 0) {
+        msg = SSC::format(R"MSG({
+          "value": {
+            "err": {
+              "id": "$S",
+              "message": "$S"
+            }
+          }
+        })MSG", std::to_string(desc->id), String(uv_strerror(req->result)));
+      } else {
+        auto stats = uv_fs_get_statbuf(req);
+        msg = SSC::trim(SSC::format(
+            R"MSG({
+            "value": {
+              "data": {
+                "id": "$S",
+                "st_dev": "$S",
+                "st_mode": "$S",
+                "st_nlink": "$S",
+                "st_uid": "$S",
+                "st_gid": "$S",
+                "st_rdev": "$S",
+                "st_ino": "$S",
+                "st_size": "$S",
+                "st_blksize": "$S",
+                "st_blocks": "$S",
+                "st_flags": "$S",
+                "st_gen": "$S",
+                "st_atim": { "tv_sec": "$S", "tv_nsec": "$S" },
+                "st_mtim": { "tv_sec": "$S", "tv_nsec": "$S" },
+                "st_ctim": { "tv_sec": "$S", "tv_nsec": "$S" },
+                "st_birthtim": { "tv_sec": "$S", "tv_nsec": "$S" }
+              }
+            }
+          })MSG",
+          std::to_string(desc->id),
+          std::to_string(stats->st_dev),
+          std::to_string(stats->st_mode),
+          std::to_string(stats->st_nlink),
+          std::to_string(stats->st_uid),
+          std::to_string(stats->st_gid),
+          std::to_string(stats->st_rdev),
+          std::to_string(stats->st_ino),
+          std::to_string(stats->st_size),
+          std::to_string(stats->st_blksize),
+          std::to_string(stats->st_blocks),
+          std::to_string(stats->st_flags),
+          std::to_string(stats->st_gen),
+          std::to_string(stats->st_atim.tv_sec),
+          std::to_string(stats->st_atim.tv_nsec),
+          std::to_string(stats->st_mtim.tv_sec),
+          std::to_string(stats->st_mtim.tv_nsec),
+          std::to_string(stats->st_ctim.tv_sec),
+          std::to_string(stats->st_ctim.tv_nsec),
+          std::to_string(stats->st_birthtim.tv_sec),
+          std::to_string(stats->st_birthtim.tv_nsec)
+        ));
+      }
+
+      desc->cb(desc->seq, msg, Post{});
+      uv_fs_req_cleanup(req);
+      delete req;
+    });
+
+    if (err < 0) {
+      auto msg = SSC::format(R"MSG({
+        "value": {
+          "err": {
+            "id": "$S",
+            "message": "$S"
+          }
+        }
+      })MSG", std::to_string(id), String(uv_strerror(err)));
+
+      cb(seq, msg, Post{});
+      delete req;
       return;
     }
 
@@ -791,7 +1022,7 @@ namespace SSC {
     desc->cb = cb;
     req.data = desc;
 
-    int err = uv_fs_unlink(defaultLoop(), &req, (const char*) path.c_str(), [](uv_fs_t* req) {
+    int err = uv_fs_unlink(getDefaultLoop(), &req, (const char*) path.c_str(), [](uv_fs_t* req) {
       auto desc = static_cast<DescriptorContext*>(req->data);
       auto msg = SSC::format(R"MSG({
         "data": {
@@ -826,7 +1057,7 @@ namespace SSC {
     desc->cb = cb;
     req.data = desc;
 
-    int err = uv_fs_rename(defaultLoop(), &req, (const char*) pathA.c_str(), (const char*) pathB.c_str(), [](uv_fs_t* req) {
+    int err = uv_fs_rename(getDefaultLoop(), &req, (const char*) pathA.c_str(), (const char*) pathB.c_str(), [](uv_fs_t* req) {
       auto desc = static_cast<DescriptorContext*>(req->data);
       auto msg = SSC::format(R"MSG({
         "data": {
@@ -862,7 +1093,7 @@ namespace SSC {
     desc->cb = cb;
     req.data = desc;
 
-    int err = uv_fs_copyfile(defaultLoop(), &req, (const char*) pathA.c_str(), (const char*) pathB.c_str(), flags, [](uv_fs_t* req) {
+    int err = uv_fs_copyfile(getDefaultLoop(), &req, (const char*) pathA.c_str(), (const char*) pathB.c_str(), flags, [](uv_fs_t* req) {
       auto desc = static_cast<DescriptorContext*>(req->data);
 
       auto msg = SSC::format(R"MSG({
@@ -897,7 +1128,7 @@ namespace SSC {
     desc->cb = cb;
     req.data = desc;
 
-    int err = uv_fs_rmdir(defaultLoop(), &req, (const char*) path.c_str(), [](uv_fs_t* req) {
+    int err = uv_fs_rmdir(getDefaultLoop(), &req, (const char*) path.c_str(), [](uv_fs_t* req) {
       auto desc = static_cast<DescriptorContext*>(req->data);
 
       auto msg = SSC::format(R"MSG({
@@ -932,7 +1163,7 @@ namespace SSC {
     desc->cb = cb;
     req.data = desc;
 
-    int err = uv_fs_mkdir(defaultLoop(), &req, (const char*) path.c_str(), mode, [](uv_fs_t* req) {
+    int err = uv_fs_mkdir(getDefaultLoop(), &req, (const char*) path.c_str(), mode, [](uv_fs_t* req) {
       auto desc = static_cast<DescriptorContext*>(req->data);
       auto msg = SSC::format(R"MSG({
         "data": {
@@ -968,7 +1199,7 @@ namespace SSC {
     ctx->reqOpendir.data = ctx;
     ctx->reqReaddir.data = ctx;
 
-    int err = uv_fs_opendir(defaultLoop(), &ctx->reqOpendir, (const char*) path.c_str(), NULL);
+    int err = uv_fs_opendir(getDefaultLoop(), &ctx->reqOpendir, (const char*) path.c_str(), NULL);
 
     if (err) {
       auto msg = SSC::format(R"MSG({
@@ -980,7 +1211,7 @@ namespace SSC {
       return;
     }
 
-    err = uv_fs_readdir(defaultLoop(), &ctx->reqReaddir, ctx->dir, [](uv_fs_t* req) {
+    err = uv_fs_readdir(getDefaultLoop(), &ctx->reqReaddir, ctx->dir, [](uv_fs_t* req) {
       auto ctx = static_cast<DirectoryReader*>(req->data);
 
       if (req->result < 0) {
@@ -1013,7 +1244,7 @@ namespace SSC {
       ctx->cb(ctx->seq, msg, Post{});
 
       uv_fs_t reqClosedir;
-      uv_fs_closedir(defaultLoop(), &reqClosedir, ctx->dir, [](uv_fs_t* req) {
+      uv_fs_closedir(getDefaultLoop(), &reqClosedir, ctx->dir, [](uv_fs_t* req) {
         uv_fs_req_cleanup(req);
       });
     });
@@ -1167,7 +1398,7 @@ namespace SSC {
     client->clientId = clientId;
     client->tcp = new uv_tcp_t;
 
-    uv_tcp_init(defaultLoop(), client->tcp);
+    uv_tcp_init(getDefaultLoop(), client->tcp);
 
     client->tcp->data = client;
 
@@ -1275,7 +1506,7 @@ namespace SSC {
     server->serverId = serverId;
     server->tcp->data = &server;
 
-    uv_tcp_init(defaultLoop(), server->tcp);
+    uv_tcp_init(getDefaultLoop(), server->tcp);
     struct sockaddr_in addr;
 
     // addr.sin_port = htons(port);
@@ -1311,7 +1542,7 @@ namespace SSC {
 
       client->tcp->data = client;
 
-      uv_tcp_init(defaultLoop(), client->tcp);
+      uv_tcp_init(getDefaultLoop(), client->tcp);
 
       if (uv_accept(handle, (uv_stream_t*) handle) == 0) {
         PeerInfo info;
@@ -1629,7 +1860,7 @@ namespace SSC {
       return;
     }
 
-    uv_udp_init(defaultLoop(), server->udp);
+    uv_udp_init(getDefaultLoop(), server->udp);
     err = uv_udp_bind(server->udp, (const struct sockaddr*)&addr, UV_UDP_REUSEADDR);
 
     if (err < 0) {
@@ -1803,7 +2034,7 @@ namespace SSC {
     uv_getaddrinfo_t* resolver = new uv_getaddrinfo_t;
     resolver->data = ctx;
 
-    uv_getaddrinfo(defaultLoop(), resolver, [](uv_getaddrinfo_t *resolver, int status, struct addrinfo *res) {
+    uv_getaddrinfo(getDefaultLoop(), resolver, [](uv_getaddrinfo_t *resolver, int status, struct addrinfo *res) {
       auto ctx = (GenericContext*) resolver->data;
 
       if (status < 0) {
@@ -1871,7 +2102,7 @@ namespace SSC {
     getifaddrs(&interfaces);
     freeifaddrs(interfaces);
 
-    value << "{\"data\":{" << v4.str() << "," << v6.str() << "}}";
+    value << "{\"value\":{\"data\":{" << v4.str() << "," << v6.str() << "}}}";
     return value.str();
   }
 } // SSC

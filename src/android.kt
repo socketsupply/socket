@@ -2,19 +2,24 @@
 package __BUNDLE_IDENTIFIER__
 import __BUNDLE_IDENTIFIER__.databinding.*
 
+fun decodeURIComponent (string: String): String {
+  val normalized = string.replace("+", "%2B")
+  return java.net.URLDecoder.decode(normalized, "UTF-8").replace("%2B", "+")
+}
+
 /**
  * @TODO
  * @see https://developer.android.com/reference/kotlin/android/webkit/WebView
  */
-open class WebView(context: android.content.Context): android.webkit.WebView(context);
+open class WebView(context: android.content.Context): android.webkit.WebView(context)
 
 /**
  * @TODO
  * @see https://developer.android.com/reference/kotlin/android/webkit/WebViewClient
  */
 open class WebViewClient(activity: WebViewActivity) : android.webkit.WebViewClient() {
-  protected val activity = activity;
-  open protected val TAG = "WebViewClient";
+  protected val activity = activity
+  open protected val TAG = "WebViewClient"
 
   /**
    * Handles URL loading overrides for "file://" based URI schemes.
@@ -23,55 +28,55 @@ open class WebViewClient(activity: WebViewActivity) : android.webkit.WebViewClie
     view: android.webkit.WebView,
     request: android.webkit.WebResourceRequest
   ): Boolean {
-    val url = request.getUrl();
+    val url = request.getUrl()
 
     if (url.getScheme() == "ipc") {
-      return true;
+      return true
     }
 
     if (url.getScheme() != "file") {
-      return false;
+      return false
     }
 
-    val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, url);
+    val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, url)
 
     try {
-      this.activity.startActivity(intent);
+      this.activity.startActivity(intent)
     } catch (err: Error) {
       // @TODO(jwelre): handle this error gracefully
-      android.util.Log.e(TAG, err.toString());
-      return false;
+      android.util.Log.e(TAG, err.toString())
+      return false
     }
 
-    return true;
+    return true
   }
 
   override fun shouldInterceptRequest (
     view: android.webkit.WebView,
     request: android.webkit.WebResourceRequest
   ): android.webkit.WebResourceResponse? {
-    val url = request.getUrl();
+    val url = request.getUrl()
 
-    android.util.Log.e(TAG, "${url.getScheme()} ${request.getMethod()}");
+    android.util.Log.e(TAG, "${url.getScheme()} ${request.getMethod()}")
 
     if (url.getScheme() != "ipc") {
-      return null;
+      return null
     }
 
     when (url.getHost()) {
       "ping" -> {
-        val stream = java.io.ByteArrayInputStream("pong".toByteArray());
+        val stream = java.io.ByteArrayInputStream("pong".toByteArray())
         val response = android.webkit.WebResourceResponse(
           "text/plain",
           "utf-8",
           stream
-        );
+        )
 
         response.setResponseHeaders(mapOf(
           "Access-Control-Allow-Origin" to "*"
-        ));
+        ))
 
-        return response;
+        return response
       }
 
       "post" -> {
@@ -83,20 +88,20 @@ open class WebViewClient(activity: WebViewActivity) : android.webkit.WebViewClie
             return null
           }
 
-          val stream = java.io.ByteArrayInputStream(core.getPostData(id));
+          val stream = java.io.ByteArrayInputStream(core.getPostData(id))
           val response = android.webkit.WebResourceResponse(
             "application/octet-stream",
             "utf-8",
             stream
-          );
+          )
 
           response.setResponseHeaders(mapOf(
             "Access-Control-Allow-Origin" to "*"
-          ));
+          ))
 
-          core.freePostData(id);
+          core.freePostData(id)
 
-          return response;
+          return response
         }
       }
 
@@ -104,21 +109,21 @@ open class WebViewClient(activity: WebViewActivity) : android.webkit.WebViewClie
         val externalInterface = this.activity.externalInterface
 
         if (externalInterface == null) {
-          return null;
+          return null
         }
 
-        val value = url.toString();
-        val stream = java.io.PipedOutputStream();
-        val message = IPCMessage(value);
+        val value = url.toString()
+        val stream = java.io.PipedOutputStream()
+        val message = IPCMessage(value)
         val response = android.webkit.WebResourceResponse(
           "text/plain",
           "utf-8",
           java.io.PipedInputStream(stream)
-        );
+        )
 
         response.setResponseHeaders(mapOf(
           "Access-Control-Allow-Origin" to "*"
-        ));
+        ))
 
         // try interfaces
         for ((name, callback)  in externalInterface.interfaces) {
@@ -127,26 +132,24 @@ open class WebViewClient(activity: WebViewActivity) : android.webkit.WebViewClie
             message,
             value,
             fun (seq: String, data: String) {
-              android.util.Log.d(TAG, data);
-              stream.write(data.toByteArray(), 0, data.length);
-              stream.close();
+              android.util.Log.d(TAG, data)
+              stream.write(data.toByteArray(), 0, data.length)
+              stream.close()
             },
             fun (seq: String, error: String) {
-              stream.write(error.toByteArray(), 0, error.length);
-              stream.close();
+              stream.write(error.toByteArray(), 0, error.length)
+              stream.close()
             }
-          );
+          )
 
           if (returnValue != null) {
-            break;
+            return response
           }
         }
-
-        return response;
       }
     }
 
-    return null;
+    return null
   }
 
   override fun onPageStarted (
@@ -154,17 +157,17 @@ open class WebViewClient(activity: WebViewActivity) : android.webkit.WebViewClie
     url: String,
     bitmap: android.graphics.Bitmap?
   ) {
-    android.util.Log.e(TAG, "WebViewClient is loading: $url");
+    android.util.Log.e(TAG, "WebViewClient is loading: $url")
 
     val core = this.activity.core
 
     if (core != null && core.isReady) {
       val source = core.getJavaScriptPreloadSource()
       view.evaluateJavascript(source, fun (result: String) {
-        android.util.Log.d(TAG, result);
+        android.util.Log.d(TAG, result)
       })
     } else {
-      android.util.Log.e(TAG, "NativeCore is not ready in WebViewClient");
+      android.util.Log.e(TAG, "NativeCore is not ready in WebViewClient")
     }
   }
 }
@@ -175,41 +178,41 @@ open class WebViewClient(activity: WebViewActivity) : android.webkit.WebViewClie
  * @TODO(jwerle): look into `androidx.appcompat.app.AppCompatActivity`
  */
 open class WebViewActivity : androidx.appcompat.app.AppCompatActivity() {
-  protected lateinit var binding: WebViewActivityBinding;
+  protected lateinit var binding: WebViewActivityBinding
 
-  open protected var client: WebViewClient? = null;
-  open protected val TAG = "WebViewActivity";
+  open protected var client: WebViewClient? = null
+  open protected val TAG = "WebViewActivity"
 
-  open public var externalInterface: ExternalWebViewInterface? = null;
-  open public var bridge: Bridge? = null;
-  open public var view: android.webkit.WebView? = null;
-  open public var core: NativeCore? = null;
+  open public var externalInterface: ExternalWebViewInterface? = null
+  open public var bridge: Bridge? = null
+  open public var view: android.webkit.WebView? = null
+  open public var core: NativeCore? = null
 
   /**
    * Called when the `WebViewActivity` is starting
    * @see https://developer.android.com/reference/kotlin/android/app/Activity#onCreate(android.os.Bundle)
    */
   override fun onCreate (state: android.os.Bundle?) {
-    super.onCreate(state);
+    super.onCreate(state)
 
-    val externalInterface = ExternalWebViewInterface(this);
-    val binding = WebViewActivityBinding.inflate(layoutInflater);
-    val bridge = Bridge(this);
-    val client = WebViewClient(this);
-    val core = NativeCore(this);
+    val externalInterface = ExternalWebViewInterface(this)
+    val binding = WebViewActivityBinding.inflate(layoutInflater)
+    val bridge = Bridge(this)
+    val client = WebViewClient(this)
+    val core = NativeCore(this)
 
-    val webview = binding.webview;
-    val settings = webview.getSettings();
+    val webview = binding.webview
+    val settings = webview.getSettings()
 
     // @TODO(jwerle): `webview_activity` needs to be defined `res/layout/webview_activity.xml`
-    this.setContentView(binding.root);
+    this.setContentView(binding.root)
 
-    this.externalInterface = externalInterface;
-    this.binding = binding;
-    this.bridge = bridge;
-    this.client = client;
-    this.view = webview;
-    this.core = core;
+    this.externalInterface = externalInterface
+    this.binding = binding
+    this.bridge = bridge
+    this.client = client
+    this.view = webview
+    this.core = core
 
     // `NativeCore` class configuration
     core.configure(GenericNativeCoreConfiguration(
@@ -220,20 +223,20 @@ open class WebViewActivity : androidx.appcompat.app.AppCompatActivity() {
       assetManager = this.getApplicationContext()
         .getResources()
         .getAssets()
-    ));
+    ))
 
     if (core.check()) {
-      val index = core.getPathToIndexHTML();
+      val index = core.getPathToIndexHTML()
 
       if (core.isDebugEnabled) {
-        android.webkit.WebView.setWebContentsDebuggingEnabled(true);
+        android.webkit.WebView.setWebContentsDebuggingEnabled(true)
       }
 
-      settings.setJavaScriptEnabled(true);
+      settings.setJavaScriptEnabled(true)
 
-      webview.setWebViewClient(client);
-      webview.addJavascriptInterface(externalInterface, "external");
-      webview.loadUrl("file:///android_asset/$index");
+      webview.setWebViewClient(client)
+      webview.addJavascriptInterface(externalInterface, "external")
+      webview.loadUrl("file:///android_asset/$index")
     }
   }
 }
@@ -242,17 +245,17 @@ open class WebViewActivity : androidx.appcompat.app.AppCompatActivity() {
  * @TODO
  */
 public open class Bridge(activity: WebViewActivity) {
-  final protected val TAG = "Bridge";
+  final protected val TAG = "Bridge"
 
   companion object Bridge {
-    val OK_STATE = "0";
-    val ERROR_STATE = "1";
+    val OK_STATE = "0"
+    val ERROR_STATE = "1"
   }
 
   /**
    * A reference to the core `WebViewActivity`
    */
-  protected val activity = activity;
+  protected val activity = activity
 
   fun evaluateJavascript (
     source: String,
@@ -277,18 +280,18 @@ public open class Bridge(activity: WebViewActivity) {
     )
 
     if (source != null) {
-      this.evaluateJavascript(source);
-      return true;
+      this.evaluateJavascript(source)
+      return true
     }
 
-    return false;
+    return false
   }
 
   /**
    * @TODO
    */
   public fun throwError (seq: String, message: String?) {
-    this.send(seq, "\"$message\"", Bridge.ERROR_STATE);
+    this.send(seq, "\"$message\"", Bridge.ERROR_STATE)
   }
 }
 
@@ -297,12 +300,12 @@ public open class Bridge(activity: WebViewActivity) {
  * `window.external`
  */
 public open class ExternalWebViewInterface(activity: WebViewActivity) {
-  final protected val TAG = "ExternalWebViewInterface";
+  final protected val TAG = "ExternalWebViewInterface"
 
   /**
    * A reference to the core `WebViewActivity`
    */
-  protected val activity = activity;
+  protected val activity = activity
 
   /**
    * Registered invocation interfaces.
@@ -315,7 +318,7 @@ public open class ExternalWebViewInterface(activity: WebViewActivity) {
       (String, String) -> Unit,
       (String, String) -> Unit
     ) -> String?
-  >();
+  >()
 
   /**
    * Registers a bridge interface by name and callback
@@ -329,7 +332,7 @@ public open class ExternalWebViewInterface(activity: WebViewActivity) {
       (String, String) -> Unit
     ) -> String?,
   ) {
-    interfaces[name] = callback;
+    interfaces[name] = callback
   }
 
   public fun invokeInterface (
@@ -339,53 +342,141 @@ public open class ExternalWebViewInterface(activity: WebViewActivity) {
     callback: (String, String) -> Unit,
     throwError: (String, String) -> Unit
   ): String? {
-    return interfaces[name]?.invoke(message, value, callback, throwError);
+    return interfaces[name]?.invoke(message, value, callback, throwError)
   }
 
   /**
    * `ExternalWebViewInterface` class initializer
    */
   init {
+    this.registerInterface("os", fun (
+      message: IPCMessage,
+      value: String,
+      callback: (String, String) -> Unit,
+      throwError: (String, String) -> Unit
+    ): String? {
+      val core = this.activity.core
+      val bridge = this.activity.bridge
+
+      if (core == null || bridge == null) {
+        return null
+      }
+
+      when (message.command) {
+        "getNetworkInterfaces" -> {
+          if (message.seq.length == 0) {
+            throw RuntimeException("getNetworkInterfaces: Missing 'seq' in IPC.")
+          }
+
+          callback(message.seq, core.getNetworkInterfaces())
+          return message.seq
+        }
+
+        "getPlatformArch" -> {
+          if (message.seq.length == 0) {
+            throw RuntimeException("getPlatformArch: Missing 'seq' in IPC.")
+          }
+
+          callback(message.seq, core.getPlatformArch())
+          return message.seq
+        }
+
+        "getPlatformType" -> {
+          if (message.seq.length == 0) {
+            throw RuntimeException("getPlatformType: Missing 'seq' in IPC.")
+          }
+
+          callback(message.seq, core.getPlatformType())
+          return message.seq
+        }
+
+        "getPlatformOS" -> {
+          if (message.seq.length == 0) {
+            throw RuntimeException("getPlatformOS: Missing 'seq' in IPC.")
+          }
+
+          callback(message.seq, core.getPlatformOS())
+          return message.seq
+        }
+      }
+
+      return null
+    })
+
     this.registerInterface("fs", fun (
       message: IPCMessage,
       value: String,
       callback: (String, String) -> Unit,
       throwError: (String, String) -> Unit
     ): String? {
-      val core = this.activity.core;
-      val bridge = this.activity.bridge;
+      val core = this.activity.core
+      val bridge = this.activity.bridge
 
       if (core == null || bridge == null) {
-        return null;
+        return null
       }
 
       when (message.command) {
         // sync + async
         "fs.id", "fsId" -> {
           val id = core.fs.getNextAvailableId().toString()
-          callback(message.seq, id);
-          return id;
+          callback(message.seq, id)
+          return id
         }
 
-        "fs.constants", "fsConstants" -> {
-          val constants = core.fsConstants();
-          callback(message.seq, constants);
-          return message.seq;
+        "fs.constants", "fsConstants", "getFSConstants" -> {
+          val constants = core.getFSConstants()
+          callback(message.seq, constants)
+          return message.seq
+        }
+
+        "fs.access", "fsAccess" -> {
+          if (!message.has("path")) {
+            throwError(message.seq, "'path' is required.")
+            return null
+          }
+
+          var path = message.get("path")
+          val uri = android.net.Uri.parse(path)
+
+          if (
+            uri.getScheme() == "file" &&
+            uri.getHost() == "" &&
+            uri.getPathSegments().get(0) == "android_asset"
+          ) {
+            val pathSegments = uri.getPathSegments()
+            path = pathSegments
+              .slice(1..pathSegments.size - 1)
+              .joinToString("/")
+
+              // @TODO
+          } else {
+            val seq = message.seq
+            val root = java.nio.file.Paths.get(core.getRootDirectory())
+            val mode = message.get("mode", "0").toInt()
+            val resolved = root.resolve(java.nio.file.Paths.get(path))
+
+            core.fs.access(seq, resolved.toString(), mode, fun (data: String) {
+              callback(message.seq, data)
+            })
+          }
+
+          return message.seq
         }
 
         "fs.open", "fsOpen" -> {
           if (!message.has("id")) {
-            throwError(message.seq, "'id' is required.");
-            return null;
+            throwError(message.seq, "'id' is required.")
+            return null
           }
 
           if (!message.has("path")) {
-            throwError(message.seq, "'path' is required.");
-            return null;
+            throwError(message.seq, "'path' is required.")
+            return null
           }
 
-          var path = message.get("path");
-          val uri = android.net.Uri.parse(path);
+          var path = message.get("path")
+          val uri = android.net.Uri.parse(path)
           val id = message.get("id")
 
           if (
@@ -393,79 +484,129 @@ public open class ExternalWebViewInterface(activity: WebViewActivity) {
             uri.getHost() == "" &&
             uri.getPathSegments().get(0) == "android_asset"
           ) {
-            val pathSegments = uri.getPathSegments();
+            val pathSegments = uri.getPathSegments()
             path = pathSegments
               .slice(1..pathSegments.size - 1)
-              .joinToString("/");
+              .joinToString("/")
 
             core.fs.openAsset(id, path, fun (data: String) {
-              callback(message.seq, data);
+              callback(message.seq, data)
             })
           } else {
+            val seq = message.seq
             val root = java.nio.file.Paths.get(core.getRootDirectory())
+            val mode = message.get("mode", "0").toInt()
             val flags = message.get("flags", "0").toInt()
-            val resolved = root.resolve(java.nio.file.Paths.get(path));
+            val resolved = root.resolve(java.nio.file.Paths.get(path))
 
-            core.fs.open(message.seq, id, resolved.toString(), flags, fun (data: String) {
-              callback(message.seq, data);
-            });
+            core.fs.open(seq, id, resolved.toString(), flags, mode, fun (data: String) {
+              callback(message.seq, data)
+            })
           }
 
-          return message.seq;
+          return message.seq
         }
 
         "fs.close", "fsClose" -> {
           if (!message.has("id")) {
-            throwError(message.seq, "'id' is required.");
-            return null;
+            throwError(message.seq, "'id' is required.")
+            return null
           }
 
           val id = message.get("id")
 
           if (core.fs.isAssetId(id)) {
             core.fs.closeAsset(id, fun (data: String) {
-              callback(message.seq, data);
-            });
+              callback(message.seq, data)
+            })
           } else {
             core.fs.close(message.seq, id, fun (data: String) {
-              callback(message.seq, data);
+              callback(message.seq, data)
             })
           }
 
-          return message.seq;
+          return message.seq
         }
 
         "fs.read", "fsRead" -> {
           if (!message.has("id")) {
-            throwError(message.seq, "'id' is required.");
-            return null;
+            throwError(message.seq, "'id' is required.")
+            return null
           }
 
           if (!message.has("size")) {
-            throwError(message.seq, "'size' is required.");
-            return null;
+            throwError(message.seq, "'size' is required.")
+            return null
           }
 
           val id = message.get("id")
-          val size = message.get("size").toInt();
-          val offset = message.get("offset", "0").toInt();
+          val size = message.get("size").toInt()
+          val offset = message.get("offset", "0").toInt()
 
           if (core.fs.isAssetId(id)) {
             core.fs.readAsset(id, offset, size, fun (data: String) {
-              callback(message.seq, data);
+              callback(message.seq, data)
             })
           } else {
             core.fs.read(message.seq, id, offset, size, fun (data: String) {
-              callback(message.seq, data);
-            });
+              callback(message.seq, data)
+            })
           }
 
-          return message.seq;
+          return message.seq
+        }
+
+        "fs.stat", "fsStat" -> {
+          var path = message.get("path")
+          val uri = android.net.Uri.parse(path)
+
+          if (
+            uri.getScheme() == "file" &&
+            uri.getHost() == "" &&
+            uri.getPathSegments().get(0) == "android_asset"
+          ) {
+            val pathSegments = uri.getPathSegments()
+            path = pathSegments
+              .slice(1..pathSegments.size - 1)
+              .joinToString("/")
+
+              // @TODO: statAsset()
+          } else {
+            val root = java.nio.file.Paths.get(core.getRootDirectory())
+            val flags = message.get("flags", "0").toInt()
+            val resolved = root.resolve(java.nio.file.Paths.get(path))
+
+            core.fs.stat(message.seq, resolved.toString(), fun (data: String) {
+              callback(message.seq, data)
+            })
+          }
+
+          return message.seq
+        }
+
+        "fs.fstat", "fsFStat" -> {
+          if (!message.has("id")) {
+            throwError(message.seq, "'id' is required.")
+            return null
+          }
+
+          val id = message.get("id")
+
+          if (core.fs.isAssetId(id)) {
+            // @TODO fstatAsset
+          } else {
+            android.util.Log.d(TAG, "fstat($message.seq, $id)")
+            core.fs.fstat(message.seq, id, fun (data: String) {
+              callback(message.seq, data)
+            })
+          }
+
+          return message.seq
         }
       }
 
-      return null;
-    });
+      return null
+    })
   }
 
   fun evaluateJavascript (
@@ -473,19 +614,19 @@ public open class ExternalWebViewInterface(activity: WebViewActivity) {
     callback: android.webkit.ValueCallback<String?>? = null
   ) {
     this.activity.runOnUiThread(fun () {
-      android.util.Log.d(TAG, "evaluateJavascript: $source");
-      this.activity.view?.evaluateJavascript(source, callback);
-    });
+      android.util.Log.d(TAG, "evaluateJavascript: $source")
+      this.activity.view?.evaluateJavascript(source, callback)
+    })
   }
 
   fun throwGlobalError (message: String) {
-    val source = "throw new Error(\"$message\")";
-    this.evaluateJavascript(source, null);
+    val source = "throw new Error(\"$message\")"
+    this.evaluateJavascript(source, null)
   }
 
   fun log (message: String) {
-    val source = "console.log(\"$message\")";
-    this.evaluateJavascript(source, null);
+    val source = "console.log(\"$message\")"
+    this.evaluateJavascript(source, null)
   }
 
   /**
@@ -493,32 +634,32 @@ public open class ExternalWebViewInterface(activity: WebViewActivity) {
    */
   @android.webkit.JavascriptInterface
   final fun invoke (value: String): String? {
-    val core = this.activity.core;
-    val bridge = this.activity.bridge;
-    val message = IPCMessage(value);
+    val core = this.activity.core
+    val bridge = this.activity.bridge
+    val message = IPCMessage(value)
 
     if (core == null || !core.isReady) {
-      this.throwGlobalError("Missing NativeCore in WebViewActivity.");
-      return null;
+      this.throwGlobalError("Missing NativeCore in WebViewActivity.")
+      return null
     }
 
     if (bridge == null) {
-      throw RuntimeException("Missing Bridge in WebViewActivity.");
+      throw RuntimeException("Missing Bridge in WebViewActivity.")
     }
 
     if (message.command.length == 0) {
-      throw RuntimeException("Invoke: Missing 'command' in IPC.");
+      throw RuntimeException("Invoke: Missing 'command' in IPC.")
     }
 
     when (message.command) {
       "log", "stdout" -> {
-        android.util.Log.d(TAG, message.value);
-        return null;
+        android.util.Log.d(TAG, message.value)
+        return null
       }
 
       "external", "openExternal" -> {
         if (message.value.length == 0) {
-          throw RuntimeException("openExternal: Missing 'value' (URL) in IPC.");
+          throw RuntimeException("openExternal: Missing 'value' (URL) in IPC.")
         }
 
         this.activity.startActivity(
@@ -526,18 +667,9 @@ public open class ExternalWebViewInterface(activity: WebViewActivity) {
             android.content.Intent.ACTION_VIEW,
             android.net.Uri.parse(message.value)
           )
-        );
+        )
 
-        return null;
-      }
-
-      "getNetworkInterfaces" -> {
-        if (message.seq.length == 0) {
-          throw RuntimeException("getNetworkInterfaces: Missing 'seq' in IPC.");
-        }
-
-        bridge.send(message.seq, core.getNetworkInterfaces());
-        return message.seq;
+        return null
       }
     }
 
@@ -549,16 +681,16 @@ public open class ExternalWebViewInterface(activity: WebViewActivity) {
         value,
         fun (seq: String, data: String) {
           if (seq.length  > 0|| data.length > 0) {
-            bridge.send(seq, data);
+            bridge.send(seq, data)
           }
         },
         fun (seq: String, error: String) {
-          bridge.throwError(seq, error);
+          bridge.throwError(seq, error)
         }
-      );
+      )
 
       if (returnValue != null) {
-        return returnValue;
+        return returnValue
       }
     }
 
@@ -566,12 +698,12 @@ public open class ExternalWebViewInterface(activity: WebViewActivity) {
       bridge.throwError(
         message.seq,
         "Unknown command in IPC: ${message.command}"
-      );
+      )
 
-      return null;
+      return null
     }
 
-    throw RuntimeException("Invalid IPC invocation.");
+    throw RuntimeException("Invalid IPC invocation.")
   }
 }
 
@@ -582,7 +714,7 @@ class IPCMessage  {
   /**
    * Internal URI representation of an `ipc://...` message
    */
-  internal var uri: android.net.Uri? = null;
+  internal var uri: android.net.Uri? = null
 
   /**
    * `command` in IPC URI accessor.
@@ -594,92 +726,92 @@ class IPCMessage  {
         ?.buildUpon()
         ?.authority(command)
         ?.build()
-    };
+    }
 
   /**
    * `value` in IPC URI query accessor.
    */
   public var value: String
-    get () = this.get("value");
-    set (value) { this.set("value", value); }
+    get () = this.get("value")
+    set (value) { this.set("value", value) }
 
   /**
    * `seq` in IPC URI query accessor.
    */
   public var seq: String
-    get () = this.get("seq");
-    set (seq) { this.set("seq", seq); }
+    get () = this.get("seq")
+    set (seq) { this.set("seq", seq) }
 
   /**
    * `state` in IPC URI query accessor.
    */
   public var state: String
-    get () = this.get("state", Bridge.OK_STATE);
-    set (state) { this.set("state", state); }
+    get () = this.get("state", Bridge.OK_STATE)
+    set (state) { this.set("state", state) }
 
   constructor (message: String? = null) {
     if (message != null) {
-      this.uri = android.net.Uri.parse(message);
+      this.uri = android.net.Uri.parse(message)
     } else {
-      this.uri = android.net.Uri.parse("ipc://");
+      this.uri = android.net.Uri.parse("ipc://")
     }
   }
 
   public fun get (key: String, defaultValue: String = ""): String {
-    val value = this.uri?.getQueryParameter(key);
+    val value = this.uri?.getQueryParameter(key)
 
     if (value != null && value.length > 0) {
-      return value;
+      return value
     }
 
-    return defaultValue;
+    return defaultValue
   }
 
   public fun has (key: String): Boolean {
-    return this.get(key).length > 0;
+    return this.get(key).length > 0
   }
 
   public fun set (key: String, value: String): Boolean {
     this.uri = this.uri
       ?.buildUpon()
       ?.appendQueryParameter(key, value)
-      ?.build();
+      ?.build()
 
     if (this.uri == null) {
-      return false;
+      return false
     }
 
-    return true;
+    return true
   }
 
   public fun delete (key: String): Boolean {
     if (this.uri?.getQueryParameter(key) == null) {
-      return false;
+      return false
     }
 
-    val params = this.uri?.getQueryParameterNames();
-    val tmp = this.uri?.buildUpon()?.clearQuery();
+    val params = this.uri?.getQueryParameterNames()
+    val tmp = this.uri?.buildUpon()?.clearQuery()
 
     if (params != null) {
       for (param: String in params) {
         if (!param.equals(key)) {
           val value = this.uri?.getQueryParameter(param)
-          tmp?.appendQueryParameter(param, value);
+          tmp?.appendQueryParameter(param, value)
         }
       }
     }
 
-    this.uri = tmp?.build();
+    this.uri = tmp?.build()
 
-    return true;
+    return true
   }
 
   override public fun toString(): String {
     if (this.uri == null) {
-      return "";
+      return ""
     }
 
-    return this.uri.toString();
+    return this.uri.toString()
   }
 }
 
@@ -688,12 +820,12 @@ class IPCMessage  {
  * `AndroidManifest.xml` and which can be overloaded in `ssc.config` for
  * advanced usage.
  */
-public open class MainWebViewActivity : WebViewActivity();
+public open class MainWebViewActivity : WebViewActivity()
 
 public class JSONError(id: String, message: String, extra: String = "") {
-  val id = id;
-  val extra = extra;
-  val message = message;
+  val id = id
+  val extra = extra
+  val message = message
 
   override fun toString () = """{
     "value": {
@@ -703,12 +835,12 @@ public class JSONError(id: String, message: String, extra: String = "") {
         $extra
       }
     }
-  }""";
+  }"""
 }
 
 public class JSONData(id: String, data: String = "") {
-  val id = id;
-  val data = data;
+  val id = id
+  val data = data
 
   override fun toString () = """{
     "value": {
@@ -717,16 +849,16 @@ public class JSONData(id: String, data: String = "") {
         $data
       }
     }
-  }""";
+  }"""
 }
 
 /**
  * Interface for `NativeCore` configuration.kj
  */
 public interface NativeCoreConfiguration {
-  val rootDirectory: String;
-  val assetManager: android.content.res.AssetManager;
-};
+  val rootDirectory: String
+  val assetManager: android.content.res.AssetManager
+}
 
 /**
  * `NativeCore` class configuration used as input for `NativeCore::configure()`
@@ -734,40 +866,69 @@ public interface NativeCoreConfiguration {
 public data class GenericNativeCoreConfiguration(
   override val rootDirectory: String,
   override val assetManager: android.content.res.AssetManager
-) : NativeCoreConfiguration;
+) : NativeCoreConfiguration
 
 /**
  * @TODO
  */
 public open class NativeFileSystem(core: NativeCore) {
-  protected val TAG = "NativeFileSystem";
+  protected val TAG = "NativeFileSystem"
 
-  val core = core;
-  var nextId: Long = 0;
+  val core = core
+  var nextId: Long = 0
 
-  val openAssets = mutableMapOf<String, String>();
+  val openAssets = mutableMapOf<String, String>()
+
+  public val constants = mutableMapOf<String, Int>();
+
+  init {
+    val encodedConstants = this.core.getEncodedFSConstants().split('&')
+    for (pair in encodedConstants) {
+      val kv = pair.split('=')
+
+      if (kv.size == 2) {
+        val key = decodeURIComponent(kv[0])
+        val value = decodeURIComponent(kv[1]).toInt()
+
+        constants[key] = value
+        android.util.Log.d(TAG, "Setting constant $key=$value")
+      }
+    }
+  }
 
   public fun getNextAvailableId (): String {
-    return (++this.nextId).toString();
+    return (++this.nextId).toString()
   }
 
   public fun isAssetId (id: String): Boolean {
     if (openAssets[id] != null) {
-      return true;
+      return true
     }
 
-    return false;
+    return false
   }
+
+  public fun access (
+    seq: String = "",
+    path: String,
+    mode: Int,
+    callback: (String) -> Unit
+  ) {
+    val callbackId = core.queueCallback(callback)
+    core.fsAccess(seq, path, mode, callbackId)
+  }
+
 
   public fun open (
     seq: String = "",
     id: String,
     path: String,
     flags: Int,
+    mode: Int,
     callback: (String) -> Unit
   ) {
     val callbackId = core.queueCallback(callback)
-    core.fsOpen(seq, id, path, flags, callbackId);
+    core.fsOpen(seq, id, path, flags, mode, callbackId)
   }
 
   public fun openAsset (
@@ -775,42 +936,42 @@ public open class NativeFileSystem(core: NativeCore) {
     path: String,
     callback: (String) -> Unit
   ) {
-    val assetManager = core.getAssetManager();
+    val assetManager = core.getAssetManager()
 
     if (assetManager == null) {
-      return callback(JSONError(id, "AssetManager is not initialized.").toString());
+      return callback(JSONError(id, "AssetManager is not initialized.").toString())
     }
 
     val fd = try {
-      assetManager.openFd(path);
+      assetManager.openFd(path)
     } catch (err: Exception) {
-      var message = err.toString();
+      var message = err.toString()
 
       when (err) {
         is java.io.FileNotFoundException -> {
-          message = "No such file or directory: ${err.message}";
+          message = "No such file or directory: ${err.message}"
         }
       }
 
       callback(JSONError(id, message).toString())
 
-      null;
+      null
     }
 
     if (fd == null) {
-      return;
+      return
     }
 
     if (!fd.getFileDescriptor().valid()) {
-      callback(JSONError(id, "Invalid file descriptor.").toString());
-      return;
+      callback(JSONError(id, "Invalid file descriptor.").toString())
+      return
     }
 
-    fd.close();
+    fd.close()
 
-    this.openAssets[id] = path;
+    this.openAssets[id] = path
 
-    callback(JSONData(id, "\"fd\": ${id}").toString());
+    callback(JSONData(id, "\"fd\": ${id}").toString())
   }
 
   public fun close (
@@ -819,7 +980,7 @@ public open class NativeFileSystem(core: NativeCore) {
     callback: (String) -> Unit
   ) {
     val callbackId = core.queueCallback(callback)
-    core.fsClose(seq, id, callbackId);
+    core.fsClose(seq, id, callbackId)
   }
 
   public fun closeAsset (
@@ -827,11 +988,11 @@ public open class NativeFileSystem(core: NativeCore) {
     callback: (String) -> Unit
   ) {
     if (this.openAssets[id] == null) {
-      return callback(JSONError(id, "Invalid file descriptor.").toString());
+      return callback(JSONError(id, "Invalid file descriptor.").toString())
     }
 
-    this.openAssets.remove(id);
-    return callback(JSONData(id).toString());
+    this.openAssets.remove(id)
+    return callback(JSONData(id).toString())
   }
 
   public fun read (
@@ -842,7 +1003,7 @@ public open class NativeFileSystem(core: NativeCore) {
     callback: (String) -> Unit
   ) {
     val callbackId = core.queueCallback(callback)
-    core.fsRead(seq, id, size, offset, callbackId);
+    core.fsRead(seq, id, size, offset, callbackId)
   }
 
   public fun readAsset (
@@ -851,39 +1012,55 @@ public open class NativeFileSystem(core: NativeCore) {
     size: Int,
     callback: (String) -> Unit
   ) {
-    val path = this.openAssets[id];
+    val path = this.openAssets[id]
 
     if (path == null) {
-      return callback(JSONError(id, "Invalid file descriptor.").toString());
+      return callback(JSONError(id, "Invalid file descriptor.").toString())
     }
 
-    val assetManager = core.getAssetManager();
+    val assetManager = core.getAssetManager()
 
     if (assetManager == null) {
-      return callback(JSONError(id, "AssetManager is not initialized.").toString());
+      return callback(JSONError(id, "AssetManager is not initialized.").toString())
     }
 
-    val fd = assetManager.openFd(path);
-    val input = fd.createInputStream();
-    val buffer = ByteArray(size);
+    val fd = assetManager.openFd(path)
+    val input = fd.createInputStream()
+    val buffer = ByteArray(size)
 
     try {
-      input.read(buffer, offset, size);
-      val bytes = String(java.util.Base64.getEncoder().encode(buffer));
-      callback(JSONData(id, "\"bytes\": \"$bytes\"").toString());
+      input.read(buffer, offset, size)
+      val bytes = String(java.util.Base64.getEncoder().encode(buffer))
+      callback(JSONData(id, "\"bytes\": \"$bytes\"").toString())
     } catch (err: Exception) {
-      var message = err.toString();
-      callback(JSONError(id, message).toString());
+      var message = err.toString()
+      callback(JSONError(id, message).toString())
     }
 
-    input.close();
-    fd.close();
+    input.close()
+    fd.close()
   }
 
   fun write () {
   }
 
-  fun stat () {
+  fun stat (
+    seq: String = "",
+    path: String,
+    callback: (String) -> Unit
+  ) {
+    val callbackId = core.queueCallback(callback)
+    core.fsStat(seq, path, callbackId)
+  }
+
+  public fun fstat (
+    seq: String = "",
+    id: String,
+    callback: (String) -> Unit
+  ) {
+    val callbackId = core.queueCallback(callback)
+    android.util.Log.d(TAG, "$seq $id $callbackId")
+    core.fsFStat(seq, id, callbackId)
   }
 
   fun unlink () {
@@ -909,42 +1086,42 @@ public open class NativeFileSystem(core: NativeCore) {
  * NativeCore bindings externally implemented in JNI/NDK
  */
 public open class NativeCore {
-  protected val TAG = "NativeCore";
+  protected val TAG = "NativeCore"
 
   /**
    * A reference to the activity that created this instance.
    */
-  public var activity: WebViewActivity;
+  public var activity: WebViewActivity
 
   /**
    * Internal pointer managed by `initialize() and `destroy()
    */
-  protected var pointer: Long = 0;
+  protected var pointer: Long = 0
 
   /**
    * @TODO
    */
-  protected var nextCallbackId: Long = 0;
+  protected var nextCallbackId: Long = 0
 
   /**
    * @TODO
    */
-  public var fs: NativeFileSystem;
+  public var fs: NativeFileSystem
 
   /**
    * TODO
    */
-  public val callbacks = mutableMapOf<String, (String) -> Unit>();
+  public val callbacks = mutableMapOf<String, (String) -> Unit>()
 
   /**
    * Set internally by the native binding if debug is enabled.
    */
-  public var isDebugEnabled: Boolean = false;
+  public var isDebugEnabled: Boolean = false
 
   /**
    * Set when all checks have passed.
    */
-  public var isReady: Boolean = false;
+  public var isReady: Boolean = false
 
   /**
    * Internal root directory for application passed directory
@@ -956,7 +1133,7 @@ public open class NativeCore {
    * Internal `AssetManager` instance passed directly to JNI/NDK
    * for the `NativeCore`
    */
-  private var assetManager: android.content.res.AssetManager? = null;
+  private var assetManager: android.content.res.AssetManager? = null
 
   /**
    * `NativeCore` singleton definitions
@@ -964,64 +1141,61 @@ public open class NativeCore {
   companion object {
     // Initialization for `NativeCore` singleton where we load the `ssc-core` library.
     init {
-      println("Loading 'ssc-core' native library");
-      System.loadLibrary("ssc-core");
+      println("Loading 'ssc-core' native library")
+      System.loadLibrary("ssc-core")
     }
   }
 
   /**
    * `NativeCore` lifecycle functions
    **/
-  external fun createPointer (): Long;
-  external fun destroyPointer (pointer: Long);
+  external fun createPointer (): Long
+  external fun destroyPointer (pointer: Long)
 
   /**
    * `NativeCore` vitals
    */
   @Throws(java.lang.Exception::class)
-  external fun verifyFileSystem (): Boolean;
+  external fun verifyFileSystem (): Boolean
 
   @Throws(java.lang.Exception::class)
-  external fun verifyLoop (): Boolean;
+  external fun verifyLoop (): Boolean
 
   @Throws(java.lang.Exception::class)
-  external fun verifyRefs (): Boolean;
+  external fun verifyRefs (): Boolean
 
   @Throws(java.lang.Exception::class)
-  external fun verifyJavaVM (): Boolean;
+  external fun verifyJavaVM (): Boolean
 
   @Throws(java.lang.Exception::class)
-  external fun verifyPointer (pointer: Long): Boolean;
+  external fun verifyPointer (pointer: Long): Boolean
 
   @Throws(java.lang.Exception::class)
-  external fun verifyRootDirectory (): Boolean;
+  external fun verifyRootDirectory (): Boolean
 
   @Throws(java.lang.Exception::class)
-  external fun verifyPlatform (): Boolean;
+  external fun verifyAssetManager (): Boolean
 
   @Throws(java.lang.Exception::class)
-  external fun verifyAssetManager (): Boolean;
+  external fun verifyNativeExceptions (): Boolean
 
   @Throws(java.lang.Exception::class)
-  external fun verifyNativeExceptions (): Boolean;
-
-  @Throws(java.lang.Exception::class)
-  external fun verifyEnvironment (): Boolean;
+  external fun verifyEnvironment (): Boolean
 
   /**
    * `NativeCore` internal utility bindings
    */
   @Throws(java.lang.Exception::class)
-  external fun configureEnvironment (): Boolean;
+  external fun configureEnvironment (): Boolean
 
   @Throws(java.lang.Exception::class)
-  external fun configureWebViewWindow (): Boolean;
+  external fun configureWebViewWindow (): Boolean
 
   @Throws(java.lang.Exception::class)
-  external fun getPathToIndexHTML(): String;
+  external fun getPathToIndexHTML(): String
 
   @Throws(java.lang.Exception::class)
-  external fun getJavaScriptPreloadSource (): String;
+  external fun getJavaScriptPreloadSource (): String
 
   @Throws(java.lang.Exception::class)
   external fun getResolveToRenderProcessJavaScript (
@@ -1035,7 +1209,7 @@ public open class NativeCore {
   external fun getEmitToRenderProcessJavaScript (
     event: String,
     value: String
-  ): String;
+  ): String
 
   @Throws(java.lang.Exception::class)
   external fun getStreamToRenderProcessJavaScript (
@@ -1047,16 +1221,50 @@ public open class NativeCore {
    * `NativeCore` bindings
    */
   @Throws(java.lang.Exception::class)
-  external fun getNetworkInterfaces (): String;
+  external fun getNetworkInterfaces (): String
 
   @Throws(java.lang.Exception::class)
-  external fun getPostData (id: String): ByteArray;
+  external fun getPlatformArch(): String
 
   @Throws(java.lang.Exception::class)
-  external fun freePostData (id: String);
+  external fun getPlatformType(): String
 
   @Throws(java.lang.Exception::class)
-  external fun fsConstants (): String;
+  external fun getPlatformOS(): String
+
+  @Throws(java.lang.Exception::class)
+  external fun getEncodedFSConstants (): String
+
+  @Throws(java.lang.Exception::class)
+  external fun getFSConstants (): String
+
+  @Throws(java.lang.Exception::class)
+  external fun getPostData (id: String): ByteArray
+
+  @Throws(java.lang.Exception::class)
+  external fun freePostData (id: String)
+
+  @Throws(java.lang.Exception::class)
+  external fun fsAccess (
+    seq: String,
+    path: String,
+    mode: Int,
+    callback: String
+  )
+
+  @Throws(java.lang.Exception::class)
+  external fun fsClose (
+    seq: String,
+    id: String,
+    callback: String
+  )
+
+  @Throws(java.lang.Exception::class)
+  external fun fsFStat (
+    seq: String,
+    id: String,
+    callback: String
+  )
 
   @Throws(java.lang.Exception::class)
   external fun fsOpen (
@@ -1064,15 +1272,9 @@ public open class NativeCore {
     id: String,
     path: String,
     flags: Int,
+    mode: Int,
     callback: String
-  );
-
-  @Throws(java.lang.Exception::class)
-  external fun fsClose (
-    seq: String,
-    id: String,
-    callback: String
-  );
+  )
 
   @Throws(java.lang.Exception::class)
   external fun fsRead (
@@ -1081,27 +1283,34 @@ public open class NativeCore {
     size: Int,
     offset: Int,
     callback: String
-  );
+  )
+
+  @Throws(java.lang.Exception::class)
+  external fun fsStat (
+    seq: String,
+    path: String,
+    callback: String
+  )
 
   /**
    * `NativeCore` class constructor which is initialized
    * in the NDK/JNI layer.
    */
   constructor (activity: WebViewActivity) {
-    this.activity = activity;
-    this.pointer = this.createPointer();
-    this.fs = NativeFileSystem(this);
+    this.activity = activity
+    this.pointer = this.createPointer()
+    this.fs = NativeFileSystem(this)
   }
 
   /**
    * Kotlin class internal destructor where we call `destroy()`.
    */
   protected fun finalize () {
-    android.util.Log.d(TAG, "Destroying internal NativeCore pointer");
-    this.destroyPointer(this.pointer);
+    android.util.Log.d(TAG, "Destroying internal NativeCore pointer")
+    this.destroyPointer(this.pointer)
 
-    this.assetManager = null;
-    this.pointer = 0;
+    this.assetManager = null
+    this.pointer = 0
   }
 
   /**
@@ -1110,21 +1319,21 @@ public open class NativeCore {
   @Throws(java.lang.Exception::class)
   public fun configure (config: NativeCoreConfiguration): Boolean {
     if (this.isReady) {
-      return true;
+      return true
     }
 
-    this.rootDirectory = config.rootDirectory;
-    this.assetManager = config.assetManager;
+    this.rootDirectory = config.rootDirectory
+    this.assetManager = config.assetManager
 
     if (!this.configureEnvironment()) {
-      return false;
+      return false
     }
 
     if (!this.configureWebViewWindow()) {
-      return false;
+      return false
     }
 
-    return true;
+    return true
   }
 
   /**
@@ -1132,7 +1341,7 @@ public open class NativeCore {
    * @notice This function is used by the `NativeCore`
    */
   public fun getAssetManager (): android.content.res.AssetManager? {
-    return this.assetManager;
+    return this.assetManager
   }
 
   /**
@@ -1140,34 +1349,35 @@ public open class NativeCore {
    * @notice This function is used by the `NativeCore`
    */
   public fun getRootDirectory (): String? {
-    return this.rootDirectory;
+    return this.rootDirectory
   }
 
   /**
    * Returns the next available callback ID
    */
   public fun getNextAvailableCallbackId (): String {
-    return (this.nextCallbackId++).toString();
+    return (this.nextCallbackId++).toString()
   }
 
   /**
    * @TODO
    */
   public fun evaluateJavascript (source: String) {
-    this.activity.externalInterface?.evaluateJavascript(source, null);
+    this.activity.externalInterface?.evaluateJavascript(source, null)
   }
 
   /**
    * @TODO
    */
   public fun callback (id: String, data: String) {
-    val cb = this.callbacks.get(id);
+    val cb = this.callbacks.get(id)
 
     if (cb != null) {
-      cb.invoke(data);
+      cb.invoke(data)
+      //this.callbacks.remove(id)
     }
 
-    android.util.Log.d(TAG, "callback: id=$id data=$data");
+    android.util.Log.d(TAG, "callback: id=$id data=$data")
   }
 
   /**
@@ -1175,8 +1385,8 @@ public open class NativeCore {
    */
   public fun queueCallback (cb: (String) -> Unit): String {
     val id = this.getNextAvailableCallbackId()
-    this.callbacks[id] = cb;
-    return id;
+    this.callbacks[id] = cb
+    return id
   }
 
   /**
@@ -1184,88 +1394,74 @@ public open class NativeCore {
    */
   public fun check (): Boolean {
     if (!this.verifyPointer(this.pointer)) {
-      android.util.Log.e(TAG, "pointer check failed");
-      return false;
+      android.util.Log.e(TAG, "pointer check failed")
+      return false
     } else {
-      android.util.Log.d(TAG, "pointer check OK");
+      android.util.Log.d(TAG, "pointer check OK")
     }
 
     // @TODO
-    if (!this.verifyRefs()) { return false; }
-    if (!this.verifyJavaVM()) { return false; }
+    if (!this.verifyRefs()) { return false }
+    if (!this.verifyJavaVM()) { return false }
 
     try {
-      this.verifyNativeExceptions();
-      android.util.Log.e(TAG, "native exceptions check failed");
-      return false;
+      this.verifyNativeExceptions()
+      android.util.Log.e(TAG, "native exceptions check failed")
+      return false
     } catch (err: Exception) {
       if (err.message != "ExceptionCheck") {
-        android.util.Log.e(TAG, "native exceptions check failed");
-        return false;
+        android.util.Log.e(TAG, "native exceptions check failed")
+        return false
       }
 
-      android.util.Log.d(TAG, "native exceptions check OK");
+      android.util.Log.d(TAG, "native exceptions check OK")
     }
 
     // @TODO
-    if (!this.verifyEnvironment()) { return false; }
+    if (!this.verifyEnvironment()) { return false }
 
     try {
       if (!this.verifyRootDirectory()) {
-        android.util.Log.e(TAG, "root directory check failed");
-        return false;
+        android.util.Log.e(TAG, "root directory check failed")
+        return false
       }
-      android.util.Log.d(TAG, "root directory check OK");
+      android.util.Log.d(TAG, "root directory check OK")
     } catch (err: Exception) {
-      android.util.Log.e(TAG, "root directory check failed");
+      android.util.Log.e(TAG, "root directory check failed")
     }
 
     try {
       if (!this.verifyAssetManager()) {
-        android.util.Log.e(TAG, "asset manager check failed");
-        return false;
+        android.util.Log.e(TAG, "asset manager check failed")
+        return false
       }
-      android.util.Log.d(TAG, "asset manager check OK");
+      android.util.Log.d(TAG, "asset manager check OK")
     } catch (err: Exception) {
-      android.util.Log.e(TAG, "asset manager check failed");
-    }
-
-    try {
-      if (!this.verifyPlatform()) {
-        android.util.Log.e(TAG, "platform check failed");
-        return false;
-      }
-
-      android.util.Log.d(TAG, "platform check OK");
-    } catch (err: Exception) {
-      android.util.Log.e(TAG, "platform check failed");
-      android.util.Log.e(TAG, err.toString());
-
-      return false;
+      android.util.Log.e(TAG, "asset manager check failed")
     }
 
     if (!this.verifyLoop()) {
-      android.util.Log.e(TAG, "libuv loop check failed");
-      return false;
+      android.util.Log.e(TAG, "libuv loop check failed")
+      return false
     } else {
-      android.util.Log.d(TAG, "libuv loop check OK");
+      android.util.Log.d(TAG, "libuv loop check OK")
     }
 
     try {
       if (!this.verifyFileSystem()) {
-        android.util.Log.e(TAG, "filesystem check failed");
-        return false;
+        android.util.Log.e(TAG, "filesystem check failed")
+        return false
       }
 
-      android.util.Log.d(TAG, "filesystem check OK");
+      android.util.Log.d(TAG, "filesystem check OK")
     } catch (err: Exception) {
-      android.util.Log.e(TAG, "filesystem check failed");
-      android.util.Log.e(TAG, err.toString());
+      android.util.Log.e(TAG, "filesystem check failed")
+      android.util.Log.e(TAG, err.toString())
 
-      return false;
+      return false
     }
 
-    this.isReady = true;
-    return true;
+    this.isReady = true
+    return true
   }
 }

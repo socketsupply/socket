@@ -727,6 +727,19 @@ static std::string backlog = "";
     return true;
   }
 
+  if (cmd.get("fsFStat").size() != 0) {
+    auto id = std::stoull(cmd.get("id"));
+
+    dispatch_async(queue, ^{
+      self.core->fsFStat(seq, id, [&](auto seq, auto msg, auto post) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+          [self send: seq msg: msg post: post];
+        });
+      });
+    });
+    return true;
+  }
+
   if (cmd.get("fsUnlink").size() != 0) {
     auto path = cmd.get("path");
 
@@ -858,6 +871,30 @@ static std::string backlog = "";
 
   if (cmd.name == "getNetworkInterfaces") {
     auto msg = self.core->getNetworkInterfaces();
+    [self send: seq msg: msg post: Post{} ];
+    return true;
+  }
+
+  if (cmd.name == "getPlatformOS") {
+    auto msg = SSC::format(R"JSON({
+      "value": { "data": "$S" }
+    })JSON", SSC::platform.os);
+    [self send: seq msg: msg post: Post{} ];
+    return true;
+  }
+
+  if (cmd.name == "getPlatformType") {
+    auto msg = SSC::format(R"JSON({
+      "value": { "data": "$S" }
+    })JSON", SSC::platform.os);
+    [self send: seq msg: msg post: Post{} ];
+    return true;
+  }
+
+  if (cmd.name == "getPlatformArch") {
+    auto msg = SSC::format(R"JSON({
+      "value": { "data": "$S" }
+    })JSON", SSC::platform.arch);
     [self send: seq msg: msg post: Post{} ];
     return true;
   }

@@ -10,8 +10,10 @@ constexpr auto gPreload = R"JS(
 
   window._ipc.resolve = async (seq, status, value) => {
     if (typeof value === 'string') {
+      let didDecodeURIComponent = false
       try {
         value = decodeURIComponent(value)
+        didDecodeURIComponent = true
       } catch (err) {
         console.error(`${err.message} (${value})`)
         return
@@ -20,8 +22,10 @@ constexpr auto gPreload = R"JS(
       try {
         value = JSON.parse(value)
       } catch (err) {
-        console.error(`${err.message} (${value})`)
-        return
+        if (!didDecodeURIComponent) {
+          console.error(`${err.message} (${value})`)
+          return
+        }
       }
     }
 

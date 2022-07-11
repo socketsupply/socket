@@ -105,6 +105,7 @@ class NativeCore;
  */
 #define GetNativeCoreFromEnvironment(env)                                      \
   ({                                                                           \
+    debug("Loading NativeCore from environment");                              \
     auto Class = GetNativeCoreBindingClass(env);                               \
     auto pointerField = env->GetFieldID(Class, "pointer", "J");                \
     auto core = (NativeCore *) env->GetLongField(self, pointerField);          \
@@ -149,8 +150,8 @@ class NativeCore;
 /**
  * Converts a `jstring` to an ID type
  */
-#define GetIDFromJString(env, string)                                          \
-  std::stoull(NativeString(env, string).str())
+#define GetNativeCoreIDFromJString(env, string)                                \
+  (NativeCoreID) std::stoull(NativeString(env, string).str())
 
 /**
  * @TODO
@@ -217,7 +218,6 @@ class NativeString {
    */
   const NativeString &
   operator= (const NativeString &string) {
-    debug("COPY NativeString");
     *this = string;
     this->needsRelease = false;
     return *this;
@@ -287,7 +287,7 @@ class NativeFileSystem {
   NativeFileSystem (JNIEnv *env, NativeCore *core);
 
   static const Constants GetConstants () {
-    return static_cast<Constants>(SSC::Core::fsConstants());
+    return static_cast<Constants>(SSC::Core::getFSConstantsMap());
   }
 
   static const std::string GetEncodedConstants () {
@@ -330,11 +330,19 @@ class NativeFileSystem {
     SSC::Post post
   ) const;
 
+  void Access (
+    NativeCoreSequence seq,
+    std::string path,
+    int mode,
+    NativeCallbackID callback
+  ) const;
+
   void Open (
     NativeCoreSequence seq,
     NativeCoreID id,
     std::string path,
     int flags,
+    int mode,
     NativeCallbackID callback
   ) const;
 
@@ -359,9 +367,16 @@ class NativeFileSystem {
     int16_t offset
   ) const;
 
+  void FStat (
+    NativeCoreSequence seq,
+    NativeCoreID id,
+    NativeCallbackID callback
+  ) const;
+
   void Stat (
     NativeCoreSequence seq,
-    std::string path
+    std::string path,
+    NativeCallbackID callback
   ) const;
 
   void Unlink (
@@ -438,9 +453,7 @@ class NativeCore : public SSC::Core {
 
   AAssetManager * GetAssetManager () const;
 
-  NativeString GetPlatformType () const;
-  NativeString GetPlatformOS () const;
-
+  const std::string GetNetworkInterfaces() const;
   const char * GetJavaScriptPreloadSource () const;
 };
 
