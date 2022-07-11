@@ -7,6 +7,27 @@ rm -f "$root/build.gradle" "$root/gradle.properties"
 
 ## build.gradle
 cat > "$root/build.gradle" << GRADLE
+buildscript {
+  ext.kotlin_version = '1.7.0'
+  repositories {
+    google()
+    mavenCentral()
+  }
+
+  dependencies {
+    classpath 'com.android.tools.build:gradle:7.2.1'
+
+    classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:\$kotlin_version"
+  }
+}
+
+allprojects {
+  repositories {
+    google()
+    mavenCentral()
+  }
+}
+
 apply plugin: 'com.android.application'
 apply plugin: 'kotlin-android'
 
