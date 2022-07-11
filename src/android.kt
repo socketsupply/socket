@@ -107,10 +107,7 @@ open class WebViewClient(activity: WebViewActivity) : android.webkit.WebViewClie
       else -> {
         val bridge = this.activity.bridge ?: return null
 
-        if (bridge == null) {
-          return null
-        }
-
+        val value = url.toString();
         val value = url.toString()
         val stream = java.io.PipedOutputStream()
         val message = IPCMessage(value)
@@ -388,7 +385,7 @@ public open class Bridge(activity: WebViewActivity) {
       callback: (String, String) -> Unit,
       throwError: (String, String) -> Unit
     ): String? {
-      val core = this.activity.core
+      val core = activity.core
 
       if (core == null) {
         return null
