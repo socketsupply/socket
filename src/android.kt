@@ -17,97 +17,91 @@ open class WebView(context: android.content.Context): android.webkit.WebView(con
  * @see https://developer.android.com/reference/kotlin/android/webkit/WebViewClient
  */
 open class WebViewClient(activity: WebViewActivity) : android.webkit.WebViewClient() {
-  protected val activity = activity
-  open protected val TAG = "WebViewClient"
+    protected val activity = activity
+    open protected val TAG = "WebViewClient"
 
-  /**
-   * Handles URL loading overrides for "file://" based URI schemes.
-   */
-  override fun shouldOverrideUrlLoading (
-    view: android.webkit.WebView,
-    request: android.webkit.WebResourceRequest
-  ): Boolean {
-    val url = request.getUrl()
+    /**
+     * Handles URL loading overrides for "file://" based URI schemes.
+     */
+    override fun shouldOverrideUrlLoading(
+        view: android.webkit.WebView, request: android.webkit.WebResourceRequest
+    ): Boolean {
+        val url = request.url
 
-    if (url.getScheme() == "ipc") {
-      return true
-    }
-
-    if (url.getScheme() != "file") {
-      return false
-    }
-
-    val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, url)
-
-    try {
-      this.activity.startActivity(intent)
-    } catch (err: Error) {
-      // @TODO(jwelre): handle this error gracefully
-      android.util.Log.e(TAG, err.toString())
-      return false
-    }
-
-    return true
-  }
-
-  override fun shouldInterceptRequest (
-    view: android.webkit.WebView,
-    request: android.webkit.WebResourceRequest
-  ): android.webkit.WebResourceResponse? {
-    val url = request.getUrl()
-
-    android.util.Log.e(TAG, "${url.getScheme()} ${request.getMethod()}")
-
-    if (url.getScheme() != "ipc") {
-      return null
-    }
-
-    when (url.getHost()) {
-      "ping" -> {
-        val stream = java.io.ByteArrayInputStream("pong".toByteArray())
-        val response = android.webkit.WebResourceResponse(
-          "text/plain",
-          "utf-8",
-          stream
-        )
-
-        response.setResponseHeaders(mapOf(
-          "Access-Control-Allow-Origin" to "*"
-        ))
-
-        return response
-      }
-
-      "post" -> {
-        if (request.getMethod() == "GET") {
-          val core = this.activity.core
-          val id = url.getQueryParameter("id")
-
-          if (core == null || id == null) {
-            return null
-          }
-
-          val stream = java.io.ByteArrayInputStream(core.getPostData(id))
-          val response = android.webkit.WebResourceResponse(
-            "application/octet-stream",
-            "utf-8",
-            stream
-          )
-
-          response.setResponseHeaders(mapOf(
-            "Access-Control-Allow-Origin" to "*"
-          ))
-
-          core.freePostData(id)
-
-          return response
+        if (url.scheme == "ipc") {
+            return true
         }
-      }
+
+        if (url.scheme != "file") {
+            return false
+        }
+
+        val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, url)
+
+        try {
+            this.activity.startActivity(intent)
+        } catch (err: Error) {
+            // @TODO(jwelre): handle this error gracefully
+            android.util.Log.e(TAG, err.toString())
+            return false
+        }
+
+        return true
+    }
+
+    override fun shouldInterceptRequest(
+        view: android.webkit.WebView, request: android.webkit.WebResourceRequest
+    ): android.webkit.WebResourceResponse? {
+        val url = request.url
+
+        android.util.Log.e(TAG, "${url.scheme} ${request.method}")
+
+        if (url.scheme != "ipc") {
+            return null
+        }
+
+        when (url.host) {
+            "ping" -> {
+                val stream = java.io.ByteArrayInputStream("pong".toByteArray())
+                val response = android.webkit.WebResourceResponse(
+                    "text/plain", "utf-8", stream
+                )
+
+                response.responseHeaders = mapOf(
+                    "Access-Control-Allow-Origin" to "*"
+                )
+
+                return response
+            }
+
+            "post" -> {
+                if (request.method == "GET") {
+                    val core = this.activity.core
+                    val id = url.getQueryParameter("id")
+
+                    if (core == null || id == null) {
+                        return null
+                    }
+
+                    val stream = java.io.ByteArrayInputStream(core.getPostData(id))
+                    val response = android.webkit.WebResourceResponse(
+                        "application/octet-stream", "utf-8", stream
+                    )
+
+                    response.responseHeaders = mapOf(
+                        "Access-Control-Allow-Origin" to "*"
+                    )
+
+                    core.freePostData(id)
+
+                    return response
+                }
+            }
 
       else -> {
         val bridge = this.activity.bridge ?: return null
 
-        val value = url.toString();
+        val value = url.toString()
         val value = url.toString()
         val stream = java.io.PipedOutputStream()
         val message = IPCMessage(value)
@@ -117,55 +111,51 @@ open class WebViewClient(activity: WebViewActivity) : android.webkit.WebViewClie
           java.io.PipedInputStream(stream)
         )
 
-        response.setResponseHeaders(mapOf(
-          "Access-Control-Allow-Origin" to "*"
-        ))
+        response.responseHeaders = mapOf(
+            "Access-Control-Allow-Origin" to "*"
+        )
 
-        // try interfaces
-        for ((name, callback)  in bridge.interfaces) {
-          val returnValue = bridge.invokeInterface(
-            name,
-            message,
-            value,
-            fun (seq: String, data: String) {
-              android.util.Log.d(TAG, data)
-              stream.write(data.toByteArray(), 0, data.length)
-              stream.close()
-            },
-            fun (seq: String, error: String) {
-              stream.write(error.toByteArray(), 0, error.length)
-              stream.close()
+                // try interfaces
+                for ((name, _) in bridge.interfaces) {
+                    val returnValue = bridge.invokeInterface(name,
+                        message,
+                        value,
+                        callback = { _: String, data: String ->
+                            android.util.Log.d(TAG, data)
+                            stream.write(data.toByteArray(), 0, data.length)
+                            stream.close()
+                        },
+                        throwError = { _: String, error: String ->
+                            stream.write(error.toByteArray(), 0, error.length)
+                            stream.close()
+                        })
+
+                    if (returnValue != null) {
+                        return response
+                    }
+                }
             }
-          )
-
-          if (returnValue != null) {
-            return response
-          }
         }
-      }
+
+        return null
     }
 
-    return null
-  }
+    override fun onPageStarted(
+        view: android.webkit.WebView, url: String, bitmap: android.graphics.Bitmap?
+    ) {
+        android.util.Log.e(TAG, "WebViewClient is loading: $url")
 
-  override fun onPageStarted (
-    view: android.webkit.WebView,
-    url: String,
-    bitmap: android.graphics.Bitmap?
-  ) {
-    android.util.Log.e(TAG, "WebViewClient is loading: $url")
+        val core = activity.core
 
-    val core = this.activity.core
-
-    if (core != null && core.isReady) {
-      val source = core.getJavaScriptPreloadSource()
-      view.evaluateJavascript(source, fun (result: String) {
-        android.util.Log.d(TAG, result)
-      })
-    } else {
-      android.util.Log.e(TAG, "NativeCore is not ready in WebViewClient")
+        if (core != null && core.isReady) {
+            val source = core.getJavaScriptPreloadSource()
+            view.evaluateJavascript(source) {
+                android.util.Log.d(TAG, it)
+            }
+        } else {
+            android.util.Log.e(TAG, "NativeCore is not ready in WebViewClient")
+        }
     }
-  }
 }
 
 /**
