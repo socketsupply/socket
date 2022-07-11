@@ -3,6 +3,8 @@
 
 declare root="$(dirname "$(dirname "${BASH_SOURCE[0]}")")"
 
+cd "$root" || exit $?
+
 rm -f "$root/build.gradle" "$root/gradle.properties"
 
 ## build.gradle
@@ -61,3 +63,5 @@ android.enableJetifier=true
 
 kotlin.code.style=official
 GRADLE
+
+gradle wrapper
