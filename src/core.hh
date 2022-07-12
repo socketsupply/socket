@@ -2091,7 +2091,7 @@ namespace SSC {
     getifaddrs(&interfaces);
     freeifaddrs(interfaces);
 
-    value << "{\"value\":{\"data\":{" << v4.str() << "," << v6.str() << "}}}";
+    value << "{\"data\":{" << v4.str() << "," << v6.str() << "}}";
     return value.str();
   }
 } // SSC
