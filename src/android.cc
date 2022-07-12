@@ -289,7 +289,7 @@ NativeFileSystemRequestContext * NativeFileSystem::CreateRequestContext (
 const std::string NativeFileSystem::CreateJSONError (NativeCoreID id, const std::string message)
   const {
   return SSC::format(
-    R"MSG({"value":{"err":{"id": "$S", "message": "$S" }}})MSG",
+    R"MSG({"err":{"id":"$S","message":"$S"}})MSG",
     std::to_string(id),
     message
   );
@@ -954,7 +954,7 @@ jstring exports(NativeCore, getPlatformArch)(
   }
 
   auto msg = SSC::format(
-    R"JSON({"value":{"data":"$S"}})JSON",
+    R"JSON({"data":"$S"})JSON",
     SSC::platform.arch
   );
 
@@ -977,7 +977,7 @@ jstring exports(NativeCore, getPlatformType)(
   }
 
   auto msg = SSC::format(
-    R"JSON({"value":{"data":"$S"}})JSON",
+    R"JSON({"data":"$S"})JSON",
     std::string("linux")
   );
 
@@ -1000,8 +1000,8 @@ jstring exports(NativeCore, getPlatformOS)(
   }
 
   auto msg = SSC::format(
-    R"JSON({"value":{"data":"$S"}})JSON",
-    "android"
+    R"JSON({"data":"$S"})JSON",
+    std::string("android")
   );
 
   return env->NewStringUTF(msg.c_str());

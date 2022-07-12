@@ -828,12 +828,10 @@ public class JSONError(id: String, message: String, extra: String = "") {
   val message = message
 
   override fun toString () = """{
-    "value": {
-      "err": {
-        "id": "$id",
-        "message": "$message" ${if (extra.length > 0) "," else ""}
-        $extra
-      }
+    "err": {
+      "id": "$id",
+      "message": "$message" ${if (extra.length > 0) "," else ""}
+      $extra
     }
   }"""
 }
@@ -843,11 +841,9 @@ public class JSONData(id: String, data: String = "") {
   val data = data
 
   override fun toString () = """{
-    "value": {
-      "data": {
-        "id": "$id" ${if (data.length > 0) "," else ""}
-        $data
-      }
+    "data": {
+      "id": "$id" ${if (data.length > 0) "," else ""}
+      $data
     }
   }"""
 }

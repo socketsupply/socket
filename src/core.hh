@@ -494,7 +494,6 @@ namespace SSC {
     std::stringstream stream;
 
     stream << "{";
-    stream << "\"value\": {";
     stream << "\"data\": {";
 
     for (auto const &tuple : constants) {
@@ -508,7 +507,6 @@ namespace SSC {
       }
     }
 
-    stream << "}";
     stream << "}";
     stream << "}";
 
@@ -836,26 +834,24 @@ namespace SSC {
       } else {
         auto stats = uv_fs_get_statbuf(req);
         msg = SSC::format(
-            R"MSG({
-            "value": {
-              "data": {
-                "st_dev": "$S",
-                "st_mode": "$S",
-                "st_nlink": "$S",
-                "st_uid": "$S",
-                "st_gid": "$S",
-                "st_rdev": "$S",
-                "st_ino": "$S",
-                "st_size": "$S",
-                "st_blksize": "$S",
-                "st_blocks": "$S",
-                "st_flags": "$S",
-                "st_gen": "$S",
-                "st_atim": { "tv_sec": "$S", "tv_nsec": "$S" },
-                "st_mtim": { "tv_sec": "$S", "tv_nsec": "$S" },
-                "st_ctim": { "tv_sec": "$S", "tv_nsec": "$S" },
-                "st_birthtim": { "tv_sec": "$S", "tv_nsec": "$S" }
-              }
+          R"MSG({
+            "data": {
+              "st_dev": "$S",
+              "st_mode": "$S",
+              "st_nlink": "$S",
+              "st_uid": "$S",
+              "st_gid": "$S",
+              "st_rdev": "$S",
+              "st_ino": "$S",
+              "st_size": "$S",
+              "st_blksize": "$S",
+              "st_blocks": "$S",
+              "st_flags": "$S",
+              "st_gen": "$S",
+              "st_atim": { "tv_sec": "$S", "tv_nsec": "$S" },
+              "st_mtim": { "tv_sec": "$S", "tv_nsec": "$S" },
+              "st_ctim": { "tv_sec": "$S", "tv_nsec": "$S" },
+              "st_birthtim": { "tv_sec": "$S", "tv_nsec": "$S" }
             }
           })MSG",
           std::to_string(stats->st_dev),
@@ -911,11 +907,9 @@ namespace SSC {
 
     if (desc == nullptr) {
       auto msg = SSC::format(R"MSG({
-        "value": {
-          "err": {
-            "code": "ENOTOPEN",
-            "message": "No file descriptor found with that id"
-          }
+        "err": {
+          "code": "ENOTOPEN",
+          "message": "No file descriptor found with that id"
         }
       })MSG");
 
@@ -935,37 +929,34 @@ namespace SSC {
 
       if (req->result < 0) {
         msg = SSC::format(R"MSG({
-          "value": {
-            "err": {
-              "id": "$S",
-              "message": "$S"
-            }
+          "err": {
+            "id": "$S",
+            "message": "$S"
           }
-        })MSG", std::to_string(desc->id), String(uv_strerror(req->result)));
+        })MSG",
+        std::to_string(desc->id),
+        String(uv_strerror(req->result)));
       } else {
         auto stats = uv_fs_get_statbuf(req);
-        msg = SSC::trim(SSC::format(
-            R"MSG({
-            "value": {
-              "data": {
-                "id": "$S",
-                "st_dev": "$S",
-                "st_mode": "$S",
-                "st_nlink": "$S",
-                "st_uid": "$S",
-                "st_gid": "$S",
-                "st_rdev": "$S",
-                "st_ino": "$S",
-                "st_size": "$S",
-                "st_blksize": "$S",
-                "st_blocks": "$S",
-                "st_flags": "$S",
-                "st_gen": "$S",
-                "st_atim": { "tv_sec": "$S", "tv_nsec": "$S" },
-                "st_mtim": { "tv_sec": "$S", "tv_nsec": "$S" },
-                "st_ctim": { "tv_sec": "$S", "tv_nsec": "$S" },
-                "st_birthtim": { "tv_sec": "$S", "tv_nsec": "$S" }
-              }
+        msg = SSC::trim(SSC::format(R"MSG({
+            "data": {
+              "id": "$S",
+              "st_dev": "$S",
+              "st_mode": "$S",
+              "st_nlink": "$S",
+              "st_uid": "$S",
+              "st_gid": "$S",
+              "st_rdev": "$S",
+              "st_ino": "$S",
+              "st_size": "$S",
+              "st_blksize": "$S",
+              "st_blocks": "$S",
+              "st_flags": "$S",
+              "st_gen": "$S",
+              "st_atim": { "tv_sec": "$S", "tv_nsec": "$S" },
+              "st_mtim": { "tv_sec": "$S", "tv_nsec": "$S" },
+              "st_ctim": { "tv_sec": "$S", "tv_nsec": "$S" },
+              "st_birthtim": { "tv_sec": "$S", "tv_nsec": "$S" }
             }
           })MSG",
           std::to_string(desc->id),
@@ -999,11 +990,9 @@ namespace SSC {
 
     if (err < 0) {
       auto msg = SSC::format(R"MSG({
-        "value": {
-          "err": {
-            "id": "$S",
-            "message": "$S"
-          }
+        "err": {
+          "id": "$S",
+          "message": "$S"
         }
       })MSG", std::to_string(id), String(uv_strerror(err)));
 
@@ -2102,7 +2091,7 @@ namespace SSC {
     getifaddrs(&interfaces);
     freeifaddrs(interfaces);
 
-    value << "{\"value\":{\"data\":{" << v4.str() << "," << v6.str() << "}}}";
+    value << "{\"data\":{" << v4.str() << "," << v6.str() << "}}";
     return value.str();
   }
 } // SSC
