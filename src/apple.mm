@@ -445,10 +445,11 @@ static std::string backlog = "";
   post.length = (int) characteristic.value.length;
 
   post.headers = SSC::format(R"MSG(
-    "Event-Source": bluetooth
-    "Event-Name": data
-    "Device-Name": $S
-    "Device-UUID": $S
+    Content-Type: application/octet-stream
+    Event-Source: bluetooth
+    Event-Name: data
+    Device-Name: $S
+    Device-UUID: $S
   )MSG", name, uuid);
 
   std::string seq = "-1";

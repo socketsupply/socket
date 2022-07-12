@@ -460,12 +460,17 @@ namespace SSC {
       "xhr.responseType = 'arraybuffer';"
       "xhr.onload = e => {"
       "  let o = `" + params + "`;"
+      "  let headers = xhr.getAllResponseHeaders()"
+      "    .trim().split(/[\\r\\n]+/);"
       "  try { o = JSON.parse(o) } catch (err) {"
       "    console.error(err, `string<${o}>`)"
       "  };"
       "  const detail = {"
       "    data: xhr.response,"
       "    sid: '" + sid + "',"
+      "    headers: Object.fromEntries("
+      "      headers.map(l => l.split(/\\s*:\\s*/))"
+      "    ),"
       "    params: o"
       "  };"
       "  window._ipc.emit('data', detail);"
@@ -633,10 +638,10 @@ namespace SSC {
         })MSG", std::to_string(desc->id), String(uv_strerror(req->result)));
       } else {
         auto headers = SSC::format(R"MSG(
-          Content-Type: "application/octet-stream"
-          Content-Size: "$i"
-          X-Method: "fsRead"
-          X-Id: "$S"
+          Content-Type: application/octet-stream
+          Content-Size: $i
+          Method: fsRead
+          Id: $S
         )MSG", (int)req->result, std::to_string(desc->id));
 
         post.body = (char *) desc->data;
@@ -1214,9 +1219,9 @@ namespace SSC {
         auto clientId = std::to_string(client->clientId);
 
         auto headers = SSC::format(R"MSG(
-          Content-Type: "application/octet-stream"
-          X-ClientId: "$S"
-          X-Method: "tcpConnect"
+          Content-Type: application/octet-stream
+          ClientId: $S
+          Method: tcpConnect
         )MSG", clientId);
 
         Post post;
@@ -1749,11 +1754,11 @@ namespace SSC {
         String ip(ipbuf);
 
         auto headers = SSC::format(R"MSG(
-          Content-Type: "application/octet-stream"
-          X-ServerId: "$S"
-          X-Method: "udpReadStart"
-          X-Port: "$i"
-          X-Ip: "$S"
+          Content-Type: application/octet-stream
+          ServerId: $S
+          Method: udpReadStart
+          Port: $i
+          Ip: $S
         )MSG", std::to_string(server->serverId), port, ip);
 
         Post post;
