@@ -25,3 +25,5 @@ gradlew.bat
 .vimrc
 *.gradle*
 compile_flags.txt
+.classpath
+gradle.properties
