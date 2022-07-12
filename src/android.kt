@@ -167,58 +167,46 @@ open class WebViewActivity : androidx.appcompat.app.AppCompatActivity() {
   open protected var client: WebViewClient? = null
   open protected val TAG = "WebViewActivity"
 
-  open public var externalInterface: ExternalWebViewInterface? = null
-  open public var bridge: Bridge? = null
-  open public var view: android.webkit.WebView? = null
-  open public var core: NativeCore? = null
+    open var externalInterface: ExternalWebViewInterface? = null
+    open var bridge: Bridge? = null
+    open var view: android.webkit.WebView? = null
+    open var core: NativeCore? = null
 
-  /**
-   * Called when the `WebViewActivity` is starting
-   * @see https://developer.android.com/reference/kotlin/android/app/Activity#onCreate(android.os.Bundle)
-   */
-  override fun onCreate (state: android.os.Bundle?) {
-    super.onCreate(state)
+    /**
+     * Called when the `WebViewActivity` is starting
+     * @see https://developer.android.com/reference/kotlin/android/app/Activity#onCreate(android.os.Bundle)
+     */
+    override fun onCreate(state: android.os.Bundle?) {
+        super.onCreate(state)
+        setContentView(R.layout.web_view_activity)
+        val client = WebViewClient(this)
+        val externalInterface = ExternalWebViewInterface(this)
 
-    setContentView(R.layout.web_view_activity)
-    val externalInterface = ExternalWebViewInterface(this)
-    val bridge = Bridge(this)
-    val client = WebViewClient(this)
-    val core = NativeCore(this)
+        this.externalInterface = externalInterface
+        this.bridge = Bridge(this)
+        this.client = client
+        this.view = findViewById(R.id.webview)
+        this.core = NativeCore(this).apply {
+            configure(
+                GenericNativeCoreConfiguration(
+                    rootDirectory = getExternalFilesDir(null)?.absolutePath ?: "",
+                    assetManager = applicationContext.resources.assets
+                )
+            )
+            if (check()) {
+                val index = getPathToIndexHTML()
 
-    val webview = findViewById<android.webkit.WebView>(R.id.webview)
-    val settings = webview.getSettings()
+                android.webkit.WebView.setWebContentsDebuggingEnabled(isDebugEnabled)
 
-    this.externalInterface = externalInterface
-    this.bridge = bridge
-    this.client = client
-    this.view = webview
-    this.core = core
-
-    // `NativeCore` class configuration
-    core.configure(GenericNativeCoreConfiguration(
-      rootDirectory = this.getExternalFilesDir(null)
-        ?.getAbsolutePath().toString()
-        ?: "",
-
-      assetManager = this.getApplicationContext()
-        .getResources()
-        .getAssets()
-    ))
-
-    if (core.check()) {
-      val index = core.getPathToIndexHTML()
-
-      if (core.isDebugEnabled) {
-        android.webkit.WebView.setWebContentsDebuggingEnabled(true)
-      }
-
-      settings.setJavaScriptEnabled(true)
-
-      webview.setWebViewClient(client)
-      webview.addJavascriptInterface(externalInterface, "external")
-      webview.loadUrl("file:///android_asset/$index")
+                view?.apply {
+                    settings.javaScriptEnabled = true
+                    webViewClient = client
+                    addJavascriptInterface(externalInterface, "external")
+                    loadUrl("file:///android_asset/$index")
+                }
+            }
+        }
     }
-  }
 }
 
 /**
