@@ -636,7 +636,7 @@ static std::string backlog = "";
 
   if (cmd.get("fsConstants").size() != 0) {
     dispatch_async(queue, ^{
-      auto constants = self.core->fsConstants();
+      auto constants = self.core->getFSConstants();
       [self send: seq msg: constants post: Post{}];
     });
     return true;
