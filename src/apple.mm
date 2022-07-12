@@ -524,7 +524,6 @@ static std::string backlog = "";
 - (void) emit: (std::string)name msg: (std::string)msg {
   msg = SSC::emitToRenderProcess(name, SSC::encodeURIComponent(msg));
   NSString* script = [NSString stringWithUTF8String: msg.c_str()];
-  NSLog(@"--> %@", script);
   [self.webview evaluateJavaScript: script completionHandler: nil];
 }
 
