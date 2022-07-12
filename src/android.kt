@@ -771,15 +771,11 @@ class IPCMessage(message: String?) {
  */
 public open class MainWebViewActivity : WebViewActivity()
 
-public class JSONError(id: String, message: String, extra: String = "") {
-  val id = id
-  val extra = extra
-  val message = message
-
-  override fun toString () = """{
+class JSONError(private val id: String, private val message: String, private val extra: String = "") {
+    override fun toString() = """{
     "err": {
       "id": "$id",
-      "message": "$message" ${if (extra.length > 0) "," else ""}
+      "message": "$message" ${if (extra.isNotEmpty()) "," else ""}
       $extra
     }
   }"""
