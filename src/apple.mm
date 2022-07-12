@@ -112,15 +112,13 @@ static std::string backlog = "";
       break;
   }
 
-  auto msg = SSC::format(R"JSON({
-    "value": {
+  auto msg = SSC::format(R"MSG({
+    "data": {
       "source": "bluetooth",
-      "data": {
-        "message": "$S",
-        "state": "$S"
-      }
+      "message": "$S",
+      "state": "$S"
     }
-  })JSON", message, state);
+  })MSG", message, state);
 
   [self.bridge emit: "local-network" msg: msg];
 
@@ -181,14 +179,12 @@ static std::string backlog = "";
   // auto channelId = std::string([_channelId UTF8String]);
   // auto serviceId = std::string([_serviceId UTF8String]);
 
-  auto msg = SSC::format(R"JSON({
-    "value": {
+  auto msg = SSC::format(R"MSG({
+    "data": {
       "source": "bluetooth",
-      "data": {
-        "event": "init"
-      }
+      "event": "init"
     }
-  })JSON" /* channelId, serviceId */);
+  })MSG" /* channelId, serviceId */);
 
   [self.bridge emit: "local-network" msg: msg];
 }
@@ -244,15 +240,13 @@ static std::string backlog = "";
 
   auto last = backlog;
 
-  /* auto msg = SSC::format(R"JSON({
-    "value": {
+  /* auto msg = SSC::format(R"MSG({
+    "data": {
       "source": "bluetooth",
-      "data": {
-        "message": "didReceiveReadRequest",
-        "str": "$S"
-      }
+      "message": "didReceiveReadRequest",
+      "str": "$S"
     }
-  })JSON", last);
+  })MSG", last);
 
   [self.bridge emit: "local-network" msg: msg]; */
 
@@ -266,12 +260,12 @@ static std::string backlog = "";
 /* - (void) peripheralManager: (CBPeripheralManager*)peripheral didReceiveWriteRequests: (NSArray<CBATTRequest*>*)requests {
   NSLog(@"CoreBluetooth: peripheralManager:didReceiveWriteRequests:");
 
-  auto msg = SSC::format(R"JSON({
-    "value": {
+  auto msg = SSC::format(R"MSG({
+    "data": {
       "source": "bluetooth",
-      "data": { "message": "didReceiveWriteRequests" }
+      "message": "didReceiveWriteRequests"
     }
-  })JSON");
+  })MSG");
 
   [self.bridge emit: "local-network" msg: msg];
 
@@ -285,12 +279,12 @@ static std::string backlog = "";
     char* src = (char*) rawData;
 
     // TODO return as a proper buffer
-    auto msg = SSC::format(R"JSON({
-      "value": {
+    auto msg = SSC::format(R"MSG({
+      "data": {
         "source": "bluetooth",
-        "data": { "message": "$S" }
+        "message": "$S"
       }
-    })JSON", std::string(src));
+    })MSG", std::string(src));
     [self.bridge emit: "local-network" msg: msg];
     [self.peripheralManager respondToRequest: request withResult: CBATTErrorSuccess];
   }
@@ -360,16 +354,14 @@ static std::string backlog = "";
     return;
   }
 
-  auto msg = SSC::format(R"JSON({
-    "value": {
+  auto msg = SSC::format(R"MSG({
+    "data": {
       "source": "bluetooth",
-      "data": {
-        "name": "$S",
-        "uuid": "$S",
-        "event": "peer-discovered"
-      }
+      "name": "$S",
+      "uuid": "$S",
+      "event": "peer-discovered"
     }
-  })JSON", name, uuid);
+  })MSG", name, uuid);
 
   [self.bridge emit: "local-network" msg: msg];
 
@@ -414,15 +406,13 @@ static std::string backlog = "";
 }
 
 - (void) peripheralManagerIsReadyToUpdateSubscribers: (CBPeripheralManager*)peripheral {
-  /* auto msg = SSC::format(R"JSON({
-    "value": {
+  /* auto msg = SSC::format(R"MSG({
+    "data": {
       "source": "bluetooth",
-      "data": {
-        "message": "peripheralManagerIsReadyToUpdateSubscribers",
-        "event": "status"
-      }
+      "message": "peripheralManagerIsReadyToUpdateSubscribers",
+      "event": "status"
     }
-  })JSON");
+  })MSG");
 
   [self.bridge emit: "local-network" msg: msg]; */
 }
@@ -803,11 +793,9 @@ static std::string backlog = "";
     try {
       clientId = std::stoull(cmd.get("clientId"));
     } catch (...) {
-      auto msg = SSC::format(R"JSON({
-        "value": {
-          "err": { "message": "invalid clientid" }
-        }
-      })JSON");
+      auto msg = SSC::format(R"MSG({
+        "err": { "message": "invalid clientid" }
+      })MSG");
       [self send: seq msg: msg post: Post{}];
       return true;
     }
@@ -831,13 +819,11 @@ static std::string backlog = "";
     Client* client = clients[clientId];
 
     if (client == nullptr) {
-      auto msg = SSC::format(R"JSON({
-        "value": {
-          "err": {
-            "message": "not connected"
-          }
+      auto msg = SSC::format(R"MSG({
+        "err": {
+          "message": "not connected"
         }
-      })JSON");
+      })MSG");
       [self send: seq msg: msg post: Post{}];
     }
 
@@ -845,15 +831,13 @@ static std::string backlog = "";
     info.init(client->tcp);
 
     auto msg = SSC::format(
-      R"JSON({
-        "value": {
-          "data": {
-            "ip": "$S",
-            "family": "$S",
-            "port": "$i"
-          }
+      R"MSG({
+        "data": {
+          "ip": "$S",
+          "family": "$S",
+          "port": "$i"
         }
-      })JSON",
+      })MSG",
       clientId,
       info.ip,
       info.family,
@@ -1013,9 +997,9 @@ static std::string backlog = "";
     try {
       port = std::stoi(cmd.get("port"));
     } catch (...) {
-      auto msg = SSC::format(R"JSON({
+      auto msg = SSC::format(R"MSG({
         "err": { "message": "invalid port" }
-      })JSON");
+      })MSG");
       [self send: seq msg: msg post: Post{}];
       return true;
     }
@@ -1074,7 +1058,7 @@ static std::string backlog = "";
     try {
       serverId = std::stoull(cmd.get("serverId"));
     } catch (...) {
-      auto msg = SSC::format(R"({ "value": { "err": { "message": "property 'serverId' required" } } })");
+      auto msg = SSC::format(R"({ "err": { "message": "property 'serverId' required" } })");
       [self send: seq msg: msg post: Post{}];
       return true;
     }
@@ -1082,7 +1066,7 @@ static std::string backlog = "";
     try {
       port = std::stoi(cmd.get("port"));
     } catch (...) {
-      auto msg = SSC::format(R"({ "value": { "err": { "message": "property 'port' required" } } })");
+      auto msg = SSC::format(R"({ "err": { "message": "property 'port' required" } })");
       [self send: seq msg: msg post: Post{}];
       return true;
     }
@@ -1104,7 +1088,7 @@ static std::string backlog = "";
     try {
       serverId = std::stoull(cmd.get("serverId"));
     } catch (...) {
-      auto msg = SSC::format(R"({ "value": { "err": { "message": "property 'serverId' required" } } })");
+      auto msg = SSC::format(R"({ "err": { "message": "property 'serverId' required" } })");
       [self send: seq msg: msg post: Post{}];
       return true;
     }
@@ -1130,9 +1114,7 @@ static std::string backlog = "";
 
     if (cmd.get("port").size() == 0) {
       auto msg = SSC::format(R"({
-        "value": {
-          "err": { "message": "port required" }
-        }
+        "err": { "message": "port required" }
       })");
 
       [self send: seq msg: msg post: Post{}];
