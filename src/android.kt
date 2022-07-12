@@ -54,7 +54,7 @@ open class WebViewClient(activity: WebViewActivity) : android.webkit.WebViewClie
     ): android.webkit.WebResourceResponse? {
         val url = request.url
 
-        android.util.Log.e(TAG, "${url.scheme} ${request.method}")
+        android.util.Log.d(TAG, "${url.scheme} ${request.method}")
 
         if (url.scheme != "ipc") {
             return null
@@ -142,7 +142,7 @@ open class WebViewClient(activity: WebViewActivity) : android.webkit.WebViewClie
     override fun onPageStarted(
         view: android.webkit.WebView, url: String, bitmap: android.graphics.Bitmap?
     ) {
-        android.util.Log.e(TAG, "WebViewClient is loading: $url")
+        android.util.Log.d(TAG, "WebViewClient is loading: $url")
 
         val core = activity.core
 
@@ -270,34 +270,31 @@ public open class Bridge(activity: WebViewActivity) {
   /**
    * @TODO
    */
-  public fun throwError (seq: String, message: String?) {
+  fun throwError (seq: String, message: String?) {
     this.send(seq, "\"$message\"", Bridge.ERROR_STATE)
   }
 
-  /**
-   * Registers a bridge interface by name and callback
-   */
-  public fun registerInterface (
-    name: String,
-    callback: (
-      IPCMessage,
-      String,
-      (String, String) -> Unit,
-      (String, String) -> Unit
-    ) -> String?,
-  ) {
-    interfaces[name] = callback
-  }
+    /**
+     * Registers a bridge interface by name and callback
+     */
+    fun registerInterface(
+        name: String,
+        callback: (
+            IPCMessage, String, (String, String) -> Unit, (String, String) -> Unit
+        ) -> String?,
+    ) {
+        interfaces[name] = callback
+    }
 
-  public fun invokeInterface (
-    name: String,
-    message: IPCMessage,
-    value: String,
-    callback: (String, String) -> Unit,
-    throwError: (String, String) -> Unit
-  ): String? {
-    return interfaces[name]?.invoke(message, value, callback, throwError)
-  }
+    fun invokeInterface(
+        name: String,
+        message: IPCMessage,
+        value: String,
+        callback: (String, String) -> Unit,
+        throwError: (String, String) -> Unit
+    ): String? {
+        return interfaces[name]?.invoke(message, value, callback, throwError)
+    }
 
   /**
    * `ExternalWebViewInterface` class initializer
@@ -575,19 +572,19 @@ public open class ExternalWebViewInterface(activity: WebViewActivity) {
   protected val activity = activity
 
 
-  fun evaluateJavascript (
-    source: String,
-    callback: android.webkit.ValueCallback<String?>? = null
-  ) {
-    this.activity.runOnUiThread(fun () {
-      android.util.Log.d(TAG, "evaluateJavascript: $source")
-      this.activity.view?.evaluateJavascript(source, callback)
-    })
-  }
+    fun evaluateJavascript(
+        source: String, 
+        callback: android.webkit.ValueCallback<String?>? = null
+    ) {
+        activity.runOnUiThread {
+            android.util.Log.d(TAG, "evaluateJavascript: $source")
+            activity.view?.evaluateJavascript(source, callback)
+        }
+    }
 
   fun throwGlobalError (message: String) {
     val source = "throw new Error(\"$message\")"
-    this.evaluateJavascript(source, null)
+    evaluateJavascript(source, null)
   }
 
   /**
@@ -599,73 +596,70 @@ public open class ExternalWebViewInterface(activity: WebViewActivity) {
     val bridge = this.activity.bridge
     val message = IPCMessage(value)
 
-    if (core == null || !core.isReady) {
-      this.throwGlobalError("Missing NativeCore in WebViewActivity.")
-      return null
-    }
-
-    if (bridge == null) {
-      throw RuntimeException("Missing Bridge in WebViewActivity.")
-    }
-
-    if (message.command.length == 0) {
-      throw RuntimeException("Invoke: Missing 'command' in IPC.")
-    }
-
-    when (message.command) {
-      "log", "stdout" -> {
-        android.util.Log.d(TAG, message.value)
-        return null
-      }
-
-      "external", "openExternal" -> {
-        if (message.value.length == 0) {
-          throw RuntimeException("openExternal: Missing 'value' (URL) in IPC.")
+        if (core == null || !core.isReady) {
+            throwGlobalError("Missing NativeCore in WebViewActivity.")
+            return null
         }
 
-        this.activity.startActivity(
-          android.content.Intent(
-            android.content.Intent.ACTION_VIEW,
-            android.net.Uri.parse(message.value)
-          )
-        )
-
-        return null
-      }
-    }
-
-    // try bridge interfaces
-    for ((name, callback)  in bridge.interfaces) {
-      val returnValue = bridge.invokeInterface(
-        name,
-        message,
-        value,
-        fun (seq: String, data: String) {
-          if (seq.length  > 0|| data.length > 0) {
-            bridge.send(seq, data)
-          }
-        },
-        fun (seq: String, error: String) {
-          bridge.throwError(seq, error)
+        if (bridge == null) {
+            throw RuntimeException("Missing Bridge in WebViewActivity.")
         }
-      )
 
-      if (returnValue != null) {
-        return returnValue
-      }
+        if (message.command.isEmpty()) {
+            throw RuntimeException("Invoke: Missing 'command' in IPC.")
+        }
+
+        when (message.command) {
+            "log", "stdout" -> {
+                android.util.Log.d(TAG, message.value)
+                return null
+            }
+
+            "external", "openExternal" -> {
+                require(message.value.isNotEmpty()) { "openExternal: Missing 'value' (URL) in IPC." }
+
+                this.activity.startActivity(
+                    android.content.Intent(
+                        android.content.Intent.ACTION_VIEW, android.net.Uri.parse(message.value)
+                    )
+                )
+
+                return null
+            }
+        }
+
+
+        // try interfaces
+        for ((name, _) in bridge.interfaces) {
+            val returnValue =
+                bridge.invokeInterface(
+                    name,
+                    message,
+                    value,
+                    callback = { seq: String, data: String ->
+                        if (seq.isNotEmpty() || data.isNotEmpty()) {
+                            bridge.send(seq, data)
+                        }
+                    },
+                    throwError = { seq: String, error: String ->
+                        bridge.throwError(seq, error)
+                    })
+
+            if (returnValue != null) {
+                return returnValue
+            }
+        }
+
+        if (message.has("seq")) {
+            bridge.throwError(
+                message.seq, "Unknown command in IPC: ${message.command}"
+            )
+
+            return null
+        }
+
+        throw RuntimeException("Invalid IPC invocation.")
     }
-
-    if (message.has("seq")) {
-      bridge.throwError(
-        message.seq,
-        "Unknown command in IPC: ${message.command}"
-      )
-
-      return null
-    }
-
-    throw RuntimeException("Invalid IPC invocation.")
-  }
 }
 
 /**
