@@ -974,9 +974,9 @@ static std::string backlog = "";
     }
 
     if (err.size() > 0) {
-      auto msg = SSC::format(R"JSON({
-        "err": { "message": "$S" }
-      })JSON", err);
+      auto msg = SSC::format(R"MSG({
+        message": "$S" }
+      })MSG", err);
       [self send: seq msg: err post: Post{}];
       return true;
     }
