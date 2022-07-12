@@ -326,7 +326,7 @@ void NativeFileSystem::CallbackWithPostAndFinalizeContext (
   std::string data,
   SSC::Post post
 ) const {
-  auto params = SSC::format(R"QS(seq=$S)QS", context->seq);
+  auto params = SSC::format(R"QS({"seq":$S})QS", context->seq);
   auto refs = context->core->GetRefs();
   auto jvm = context->core->GetJavaVM();
   auto js = context->core->createPost(params, post);
