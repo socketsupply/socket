@@ -460,7 +460,7 @@ namespace SSC {
       "xhr.responseType = 'arraybuffer';"
       "xhr.onload = e => {"
       "  let o = `" + params + "`;"
-      "  let headers = xhr.getAllResponseHeaders()"
+      "  let headers = `" + post.headers + "`"
       "    .trim().split(/[\\r\\n]+/);"
       "  try { o = JSON.parse(o) } catch (err) {"
       "    console.error(err, `string<${o}>`)"
