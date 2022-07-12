@@ -272,7 +272,7 @@ namespace SSC {
       Post getPost (uint64_t id);
       void removePost (uint64_t id);
       void putPost (uint64_t id, Post p);
-      String createPost (String params, String headers, Post post);
+      String createPost (String params, Post post);
 
       Core() {
         this->tasks = std::unique_ptr<Tasks>(new Tasks());
@@ -450,7 +450,7 @@ namespace SSC {
     posts->erase(id);
   }
 
-  String Core::createPost (String params, String headers, Post post) {
+  String Core::createPost (String params, Post post) {
     uint64_t id = SSC::rand64();
     String sid = std::to_string(id);
 
