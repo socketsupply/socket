@@ -105,9 +105,9 @@ open class WebViewClient(activity: WebViewActivity) : android.webkit.WebViewClie
       }
 
       else -> {
-        val externalInterface = this.activity.externalInterface
+        val bridge = this.activity.bridge
 
-        if (externalInterface == null) {
+        if (bridge == null) {
           return null
         }
 
@@ -125,8 +125,8 @@ open class WebViewClient(activity: WebViewActivity) : android.webkit.WebViewClie
         ))
 
         // try interfaces
-        for ((name, callback)  in externalInterface.interfaces) {
-          val returnValue = externalInterface.invokeInterface(
+        for ((name, callback)  in bridge.interfaces) {
+          val returnValue = bridge.invokeInterface(
             name,
             message,
             value,
@@ -240,15 +240,28 @@ open class WebViewActivity : androidx.appcompat.app.AppCompatActivity() {
 public open class Bridge(activity: WebViewActivity) {
   final protected val TAG = "Bridge"
 
-  companion object Bridge {
-    val OK_STATE = "0"
-    val ERROR_STATE = "1"
-  }
-
   /**
    * A reference to the core `WebViewActivity`
    */
   protected val activity = activity
+
+  /**
+   * Registered invocation interfaces.
+   */
+  public val interfaces = mutableMapOf<
+    String, // name
+    ( // callback
+      IPCMessage,
+      String,
+      (String, String) -> Unit,
+      (String, String) -> Unit
+    ) -> String?
+  >()
+
+  companion object Bridge {
+    val OK_STATE = "0"
+    val ERROR_STATE = "1"
+  }
 
   fun evaluateJavascript (
     source: String,
@@ -286,32 +299,6 @@ public open class Bridge(activity: WebViewActivity) {
   public fun throwError (seq: String, message: String?) {
     this.send(seq, "\"$message\"", Bridge.ERROR_STATE)
   }
-}
-
-/**
- * External JavaScript interface attached to the webview at
- * `window.external`
- */
-public open class ExternalWebViewInterface(activity: WebViewActivity) {
-  final protected val TAG = "ExternalWebViewInterface"
-
-  /**
-   * A reference to the core `WebViewActivity`
-   */
-  protected val activity = activity
-
-  /**
-   * Registered invocation interfaces.
-   */
-  public val interfaces = mutableMapOf<
-    String, // name
-    ( // callback
-      IPCMessage,
-      String,
-      (String, String) -> Unit,
-      (String, String) -> Unit
-    ) -> String?
-  >()
 
   /**
    * Registers a bridge interface by name and callback
@@ -349,9 +336,8 @@ public open class ExternalWebViewInterface(activity: WebViewActivity) {
       throwError: (String, String) -> Unit
     ): String? {
       val core = this.activity.core
-      val bridge = this.activity.bridge
 
-      if (core == null || bridge == null) {
+      if (core == null) {
         return null
       }
 
@@ -403,9 +389,8 @@ public open class ExternalWebViewInterface(activity: WebViewActivity) {
       throwError: (String, String) -> Unit
     ): String? {
       val core = this.activity.core
-      val bridge = this.activity.bridge
 
-      if (core == null || bridge == null) {
+      if (core == null) {
         return null
       }
 
@@ -601,6 +586,20 @@ public open class ExternalWebViewInterface(activity: WebViewActivity) {
       return null
     })
   }
+}
+
+/**
+ * External JavaScript interface attached to the webview at
+ * `window.external`
+ */
+public open class ExternalWebViewInterface(activity: WebViewActivity) {
+  final protected val TAG = "ExternalWebViewInterface"
+
+  /**
+   * A reference to the core `WebViewActivity`
+   */
+  protected val activity = activity
+
 
   fun evaluateJavascript (
     source: String,
@@ -614,11 +613,6 @@ public open class ExternalWebViewInterface(activity: WebViewActivity) {
 
   fun throwGlobalError (message: String) {
     val source = "throw new Error(\"$message\")"
-    this.evaluateJavascript(source, null)
-  }
-
-  fun log (message: String) {
-    val source = "console.log(\"$message\")"
     this.evaluateJavascript(source, null)
   }
 
@@ -666,9 +660,9 @@ public open class ExternalWebViewInterface(activity: WebViewActivity) {
       }
     }
 
-    // try interfaces
-    for ((name, callback)  in this.interfaces) {
-      val returnValue = this.invokeInterface(
+    // try bridge interfaces
+    for ((name, callback)  in bridge.interfaces) {
+      val returnValue = bridge.invokeInterface(
         name,
         message,
         value,
