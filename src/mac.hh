@@ -483,11 +483,13 @@ namespace SSC {
   }
 
   Window::Window (App& app, WindowOptions opts) : app(app), opts(opts) {
-    bt = [BluetoothDelegate new];
     core = new SSC::Core;
 
     Bridge* bridge = [Bridge new];
     this->bridge = (void*)bridge;
+
+    bt = [BluetoothDelegate new];
+    [bt setBridge: bridge];
 
     // Window style: titled, closable, minimizable
     uint style = NSWindowStyleMaskTitled;

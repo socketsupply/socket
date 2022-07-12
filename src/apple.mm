@@ -43,7 +43,6 @@ static std::string backlog = "";
 
 @interface IPCSchemeHandler : NSObject<WKURLSchemeHandler>
 @property (strong, nonatomic) Bridge* bridge;
-- (void)setBridge: (Bridge*)br;
 - (void)webView: (BridgedWebView*)webview startURLSchemeTask:(id <WKURLSchemeTask>)urlSchemeTask;
 - (void)webView: (BridgedWebView*)webview stopURLSchemeTask:(id <WKURLSchemeTask>)urlSchemeTask;
 @end
@@ -54,6 +53,7 @@ static std::string backlog = "";
 @property (nonatomic) SSC::Core* core;
 - (bool) route: (std::string)msg buf: (char*)buf;
 - (void) emit: (std::string)name msg: (std::string)msg;
+- (void) send: (std::string)seq msg: (std::string)msg post: (SSC::Post)post;
 - (void) setBluetooth: (BluetoothDelegate*)bd;
 - (void) setWebview: (BridgedWebView*)bv;
 - (void) setCore: (SSC::Core*)core;
@@ -230,22 +230,6 @@ static std::string backlog = "";
   //
   [_peripheralManager startAdvertising: @{CBAdvertisementDataServiceUUIDsKey: @[_service.UUID]}];
 
-  /* std::string uuid = [_service.peripheral.identifier.UUIDString UTF8String];
-  std::string name = [_service.peripheral.name UTF8String];
-
-  auto msg = SSC::format(R"JSON({
-    "value": {
-      "source": "bluetooth",
-      "data": {
-        "name": "$S",
-        "uuid": "$S",
-        "event": "advertising"
-      }
-    }
-  })JSON", name, uuid);
-
-  [self.bridge emit: "local-network" msg: msg]; */
-
   //
   // Start scanning for services that have the SOCKET_CHANNEL UUID
   //
@@ -260,7 +244,7 @@ static std::string backlog = "";
 
   auto last = backlog;
 
-  auto msg = SSC::format(R"JSON({
+  /* auto msg = SSC::format(R"JSON({
     "value": {
       "source": "bluetooth",
       "data": {
@@ -270,7 +254,7 @@ static std::string backlog = "";
     }
   })JSON", last);
 
-  [self.bridge emit: "local-network" msg: msg];
+  [self.bridge emit: "local-network" msg: msg]; */
 
   if (last.size() == 0) return;
 
@@ -456,48 +440,36 @@ static std::string backlog = "";
 
   if (peripheral.identifier != nil) {
     uuid = [peripheral.identifier.UUIDString UTF8String];
+    std::replace(uuid.begin(), uuid.end(), '\n', ' '); // Secure
   }
 
   if (peripheral.name != nil) {
     name = [peripheral.name UTF8String];
+    std::replace(name.begin(), name.end(), '\n', ' '); // Secure
   }
 
   const void* rawData = [characteristic.value bytes];
-  char* src = (char*) rawData;
 
-  auto msg = SSC::format(R"JSON({
-    "value": {
-      "source": "bluetooth",
-      "data": {
-        "name": "$S",
-        "uuid": "$S",
-        "data": "$S",
-        "event": "peer-message"
-      }
-    }
-  })JSON", name, uuid, std::string(src));
+  SSC::Post post;
+  post.body = (char*) rawData;
+  post.length = (int) characteristic.value.length;
 
-  NSLog(@"CoreBluetooth: didUpdateValueForCharacteristic: %s", src);
+  post.headers = SSC::format(R"MSG(
+    "Event-Source": bluetooth
+    "Event-Name": data
+    "Device-Name": $S
+    "Device-UUID": $S
+  )MSG", name, uuid);
 
-  [self.bridge emit: "local-network" msg: msg];
+  std::string seq = "-1";
+  std::string msg = "data";
+  [self.bridge send: seq msg: msg post: post];
 }
 
 - (void) peripheral: (CBPeripheral*)peripheral didUpdateNotificationStateForCharacteristic: (CBCharacteristic*)characteristic error: (NSError*)error {
   if (![characteristic.UUID isEqual:[CBUUID UUIDWithString: _channelId]]) {
     return;
   }
-
-  /* auto msg = SSC::format(R"JSON({
-    "value": {
-      "source": "bluetooth",
-      "data": {
-        "message": "didUpdateNotificationStateForCharacteristic",
-        "event": "status"
-      }
-    }
-  })JSON");
-
-  [self.bridge emit: "local-network" msg: msg]; */
 }
 
 - (void) centralManager: (CBCentralManager*)central didFailToConnectPeripheral: (CBPeripheral*)peripheral error: (NSError*)error {
@@ -1199,9 +1171,6 @@ static std::string backlog = "";
 @end
 
 @implementation IPCSchemeHandler
-- (void)setBridge: (Bridge*)br {
-  _bridge = br;
-}
 - (void)webView: (BridgedWebView*)webview stopURLSchemeTask:(id<WKURLSchemeTask>)urlSchemeTask {}
 - (void)webView: (BridgedWebView*)webview startURLSchemeTask:(id<WKURLSchemeTask>)task {
   auto url = std::string(task.request.URL.absoluteString.UTF8String);

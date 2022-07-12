@@ -112,7 +112,7 @@ void uncaughtExceptionHandler (NSException *exception) {
 //
 // When a message is received try to route it.
 // Messages may also be received and routed via the custom scheme handler.
-// 
+//
 - (void) userContentController: (WKUserContentController*) userContentController didReceiveScriptMessage: (WKScriptMessage*)scriptMessage {
   id body = [scriptMessage body];
 
@@ -166,9 +166,11 @@ void uncaughtExceptionHandler (NSException *exception) {
   NSSetUncaughtExceptionHandler(&uncaughtExceptionHandler);
   platform.os = "ios";
 
-  bt = [BluetoothDelegate new];
   core = new SSC::Core;
   bridge = [Bridge new];
+
+  bt = [BluetoothDelegate new];
+  [bt setBridge: bridge];
 
   auto appFrame = [[UIScreen mainScreen] bounds];
 
