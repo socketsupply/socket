@@ -138,6 +138,7 @@ $BRANCH = (git branch --show-current)
 if ($? -ne 1) {
   $BRANCH = "master" 
 }
+Write-Output "- Fetching branch '$BRANCH'..."
 (git clone --branch=$BRANCH --depth=1 git@github.com:socketsupply/socket-sdk.git "$($WORKING_PATH)") > $null
 
 cd $WORKING_PATH
