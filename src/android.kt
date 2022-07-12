@@ -102,7 +102,6 @@ open class WebViewClient(activity: WebViewActivity) : android.webkit.WebViewClie
         val bridge = this.activity.bridge ?: return null
 
         val value = url.toString()
-        val value = url.toString()
         val stream = java.io.PipedOutputStream()
         val message = IPCMessage(value)
         val response = android.webkit.WebResourceResponse(
@@ -213,7 +212,6 @@ open class WebViewActivity : androidx.appcompat.app.AppCompatActivity() {
  * @TODO
  */
 public open class Bridge(activity: WebViewActivity) {
-  final protected val TAG = "Bridge"
 
   /**
    * A reference to the core `WebViewActivity`
@@ -234,8 +232,9 @@ public open class Bridge(activity: WebViewActivity) {
   >()
 
   companion object {
-    val OK_STATE = "0"
-    val ERROR_STATE = "1"
+    const val OK_STATE = "0"
+    const val ERROR_STATE = "1"
+    const val TAG = "Bridge"
   }
 
   fun evaluateJavascript (
@@ -248,7 +247,7 @@ public open class Bridge(activity: WebViewActivity) {
   /**
    * @TODO
    */
-  public fun send (
+  fun send (
     seq: String,
     message: String?,
     state: String = Bridge.OK_STATE
@@ -260,13 +259,13 @@ public open class Bridge(activity: WebViewActivity) {
       true
     )
 
-    if (source != null) {
-      this.evaluateJavascript(source)
-      return true
-    }
+        if (source != null) {
+            this.evaluateJavascript(source)
+            return true
+        }
 
-    return false
-  }
+        return false
+    }
 
   /**
    * @TODO
