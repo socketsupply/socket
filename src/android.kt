@@ -105,7 +105,7 @@ open class WebViewClient(activity: WebViewActivity) : android.webkit.WebViewClie
       }
 
       else -> {
-        val bridge = this.activity.bridge
+        val bridge = this.activity.bridge ?: return null
 
         if (bridge == null) {
           return null
@@ -258,7 +258,7 @@ public open class Bridge(activity: WebViewActivity) {
     ) -> String?
   >()
 
-  companion object Bridge {
+  companion object {
     val OK_STATE = "0"
     val ERROR_STATE = "1"
   }
