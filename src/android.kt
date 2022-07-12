@@ -665,109 +665,103 @@ public open class ExternalWebViewInterface(activity: WebViewActivity) {
 /**
  * A container for a parseable IPC message (ipc://...)
  */
-class IPCMessage  {
-  /**
-   * Internal URI representation of an `ipc://...` message
-   */
-  internal var uri: android.net.Uri? = null
+class IPCMessage(message: String?) {
 
-  /**
-   * `command` in IPC URI accessor.
-   */
-  public var command: String
-    get () = this.uri?.getHost() ?: ""
-    set (command) {
-      this.uri = this.uri
-        ?.buildUpon()
-        ?.authority(command)
-        ?.build()
-    }
-
-  /**
-   * `value` in IPC URI query accessor.
-   */
-  public var value: String
-    get () = this.get("value")
-    set (value) { this.set("value", value) }
-
-  /**
-   * `seq` in IPC URI query accessor.
-   */
-  public var seq: String
-    get () = this.get("seq")
-    set (seq) { this.set("seq", seq) }
-
-  /**
-   * `state` in IPC URI query accessor.
-   */
-  public var state: String
-    get () = this.get("state", Bridge.OK_STATE)
-    set (state) { this.set("state", state) }
-
-  constructor (message: String? = null) {
-    if (message != null) {
-      this.uri = android.net.Uri.parse(message)
-    } else {
-      this.uri = android.net.Uri.parse("ipc://")
-    }
-  }
-
-  public fun get (key: String, defaultValue: String = ""): String {
-    val value = this.uri?.getQueryParameter(key)
-
-    if (value != null && value.length > 0) {
-      return value
-    }
-
-    return defaultValue
-  }
-
-  public fun has (key: String): Boolean {
-    return this.get(key).length > 0
-  }
-
-  public fun set (key: String, value: String): Boolean {
-    this.uri = this.uri
-      ?.buildUpon()
-      ?.appendQueryParameter(key, value)
-      ?.build()
-
-    if (this.uri == null) {
-      return false
-    }
-
-    return true
-  }
-
-  public fun delete (key: String): Boolean {
-    if (this.uri?.getQueryParameter(key) == null) {
-      return false
-    }
-
-    val params = this.uri?.getQueryParameterNames()
-    val tmp = this.uri?.buildUpon()?.clearQuery()
-
-    if (params != null) {
-      for (param: String in params) {
-        if (!param.equals(key)) {
-          val value = this.uri?.getQueryParameter(param)
-          tmp?.appendQueryParameter(param, value)
+    /**
+     * Internal URI representation of an `ipc://...` message
+     */
+    var uri: android.net.Uri? =
+        if (message != null) {
+            android.net.Uri.parse(message)
+        } else {
+            android.net.Uri.parse("ipc://")
         }
-      }
+
+    /**
+     * `command` in IPC URI accessor.
+     */
+    var command: String
+        get() = uri?.host ?: ""
+        set(command) {
+            uri = uri?.buildUpon()?.authority(command)?.build()
+        }
+
+    /**
+     * `value` in IPC URI query accessor.
+     */
+    var value: String
+        get() = get("value")
+        set(value) {
+            set("value", value)
+        }
+
+    /**
+     * `seq` in IPC URI query accessor.
+     */
+    var seq: String
+        get() = get("seq")
+        set(seq) {
+            set("seq", seq)
+        }
+
+    /**
+     * `state` in IPC URI query accessor.
+     */
+    var state: String
+        get() = get("state", Bridge.OK_STATE)
+        set(state) {
+            set("state", state)
+        }
+
+    fun get(key: String, defaultValue: String = ""): String {
+        val value = uri?.getQueryParameter(key)
+
+        return if (value != null && value.isNotEmpty()) {
+            value
+        } else {
+            defaultValue
+        }
     }
 
-    this.uri = tmp?.build()
-
-    return true
-  }
-
-  override public fun toString(): String {
-    if (this.uri == null) {
-      return ""
+    fun has(key: String): Boolean {
+        return get(key).isNotEmpty()
     }
 
-    return this.uri.toString()
-  }
+    fun set(key: String, value: String): Boolean {
+        uri = uri?.buildUpon()?.appendQueryParameter(key, value)?.build()
+
+        return uri == null
+    }
+
+    fun delete(key: String): Boolean {
+        if (uri?.getQueryParameter(key) == null) {
+            return false
+        }
+
+        val params = uri?.queryParameterNames
+        val tmp = uri?.buildUpon()?.clearQuery()
+
+        if (params != null) {
+            for (param: String in params) {
+                if (!param.equals(key)) {
+                    val value = uri?.getQueryParameter(param)
+                    tmp?.appendQueryParameter(param, value)
+                }
+            }
+        }
+
+        uri = tmp?.build()
+
+        return true
+    }
+
+    override fun toString(): String {
+        if (uri == null) {
+            return ""
+        }
+
+        return uri.toString()
+    }
 }
 
 /**
