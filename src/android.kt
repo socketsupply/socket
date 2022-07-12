@@ -810,215 +810,182 @@ public data class GenericNativeCoreConfiguration(
 /**
  * @TODO
  */
-public open class NativeFileSystem(core: NativeCore) {
-  protected val TAG = "NativeFileSystem"
+open class NativeFileSystem(private val core: NativeCore) {
+    protected val TAG = "NativeFileSystem"
 
-  val core = core
-  var nextId: Long = 0
+    var nextId: Long = 0
 
-  val openAssets = mutableMapOf<String, String>()
+    private val openAssets = mutableMapOf<String, String>()
 
-  public val constants = mutableMapOf<String, Int>();
+    val constants = mutableMapOf<String, Int>();
 
-  init {
-    val encodedConstants = this.core.getEncodedFSConstants().split('&')
-    for (pair in encodedConstants) {
-      val kv = pair.split('=')
+    init {
+        val encodedConstants = core.getEncodedFSConstants().split('&')
+        for (pair in encodedConstants) {
+            val kv = pair.split('=')
 
-      if (kv.size == 2) {
-        val key = decodeURIComponent(kv[0])
-        val value = decodeURIComponent(kv[1]).toInt()
+            if (kv.size == 2) {
+                val key = decodeURIComponent(kv[0])
+                val value = decodeURIComponent(kv[1]).toInt()
 
-        constants[key] = value
-        android.util.Log.d(TAG, "Setting constant $key=$value")
-      }
-    }
-  }
-
-  public fun getNextAvailableId (): String {
-    return (++this.nextId).toString()
-  }
-
-  public fun isAssetId (id: String): Boolean {
-    if (openAssets[id] != null) {
-      return true
-    }
-
-    return false
-  }
-
-  public fun access (
-    seq: String = "",
-    path: String,
-    mode: Int,
-    callback: (String) -> Unit
-  ) {
-    val callbackId = core.queueCallback(callback)
-    core.fsAccess(seq, path, mode, callbackId)
-  }
-
-
-  public fun open (
-    seq: String = "",
-    id: String,
-    path: String,
-    flags: Int,
-    mode: Int,
-    callback: (String) -> Unit
-  ) {
-    val callbackId = core.queueCallback(callback)
-    core.fsOpen(seq, id, path, flags, mode, callbackId)
-  }
-
-  public fun openAsset (
-    id: String,
-    path: String,
-    callback: (String) -> Unit
-  ) {
-    val assetManager = core.getAssetManager()
-
-    if (assetManager == null) {
-      return callback(JSONError(id, "AssetManager is not initialized.").toString())
-    }
-
-    val fd = try {
-      assetManager.openFd(path)
-    } catch (err: Exception) {
-      var message = err.toString()
-
-      when (err) {
-        is java.io.FileNotFoundException -> {
-          message = "No such file or directory: ${err.message}"
+                constants[key] = value
+                android.util.Log.d(TAG, "Setting constant $key=$value")
+            }
         }
-      }
-
-      callback(JSONError(id, message).toString())
-
-      null
     }
 
-    if (fd == null) {
-      return
+    fun getNextAvailableId(): String {
+        return (++this.nextId).toString()
     }
 
-    if (!fd.getFileDescriptor().valid()) {
-      callback(JSONError(id, "Invalid file descriptor.").toString())
-      return
+    fun isAssetId(id: String): Boolean {
+        if (openAssets[id] != null) {
+            return true
+        }
+
+        return false
     }
 
-    fd.close()
-
-    this.openAssets[id] = path
-
-    callback(JSONData(id, "\"fd\": ${id}").toString())
-  }
-
-  public fun close (
-    seq: String = "",
-    id: String,
-    callback: (String) -> Unit
-  ) {
-    val callbackId = core.queueCallback(callback)
-    core.fsClose(seq, id, callbackId)
-  }
-
-  public fun closeAsset (
-    id: String,
-    callback: (String) -> Unit
-  ) {
-    if (this.openAssets[id] == null) {
-      return callback(JSONError(id, "Invalid file descriptor.").toString())
+    fun access(
+        seq: String = "", path: String, mode: Int, callback: (String) -> Unit
+    ) {
+        val callbackId = core.queueCallback(callback)
+        core.fsAccess(seq, path, mode, callbackId)
     }
 
-    this.openAssets.remove(id)
-    return callback(JSONData(id).toString())
-  }
 
-  public fun read (
-    seq: String = "",
-    id: String,
-    offset: Int = 0,
-    size: Int,
-    callback: (String) -> Unit
-  ) {
-    val callbackId = core.queueCallback(callback)
-    core.fsRead(seq, id, size, offset, callbackId)
-  }
-
-  public fun readAsset (
-    id: String,
-    offset: Int = 0,
-    size: Int,
-    callback: (String) -> Unit
-  ) {
-    val path = this.openAssets[id]
-
-    if (path == null) {
-      return callback(JSONError(id, "Invalid file descriptor.").toString())
+    fun open(
+        seq: String = "",
+        id: String,
+        path: String,
+        flags: Int,
+        mode: Int,
+        callback: (String) -> Unit
+    ) {
+        val callbackId = core.queueCallback(callback)
+        core.fsOpen(seq, id, path, flags, mode, callbackId)
     }
 
-    val assetManager = core.getAssetManager()
+    fun openAsset(
+        id: String, path: String, callback: (String) -> Unit
+    ) {
+        val assetManager = core.getAssetManager()
+            ?: return callback(JSONError(id, "AssetManager is not initialized.").toString())
 
-    if (assetManager == null) {
-      return callback(JSONError(id, "AssetManager is not initialized.").toString())
+        val fd = try {
+            assetManager.openFd(path)
+        } catch (err: Exception) {
+            var message = err.toString()
+
+            when (err) {
+                is java.io.FileNotFoundException -> {
+                    message = "No such file or directory: ${err.message}"
+                }
+            }
+
+            callback(JSONError(id, message).toString())
+
+            null
+        } ?: return
+
+        if (!fd.fileDescriptor.valid()) {
+            callback(JSONError(id, "Invalid file descriptor.").toString())
+            return
+        }
+
+        fd.close()
+
+        openAssets[id] = path
+
+        callback(JSONData(id, "\"fd\": $id").toString())
     }
 
-    val fd = assetManager.openFd(path)
-    val input = fd.createInputStream()
-    val buffer = ByteArray(size)
-
-    try {
-      input.read(buffer, offset, size)
-      val bytes = String(java.util.Base64.getEncoder().encode(buffer))
-      callback(JSONData(id, "\"bytes\": \"$bytes\"").toString())
-    } catch (err: Exception) {
-      var message = err.toString()
-      callback(JSONError(id, message).toString())
+    fun close(
+        seq: String = "", id: String, callback: (String) -> Unit
+    ) {
+        val callbackId = core.queueCallback(callback)
+        core.fsClose(seq, id, callbackId)
     }
 
-    input.close()
-    fd.close()
-  }
+    fun closeAsset(
+        id: String, callback: (String) -> Unit
+    ) {
+        if (openAssets[id] == null) {
+            return callback(JSONError(id, "Invalid file descriptor.").toString())
+        }
 
-  fun write () {
-  }
+        openAssets.remove(id)
+        return callback(JSONData(id).toString())
+    }
 
-  fun stat (
-    seq: String = "",
-    path: String,
-    callback: (String) -> Unit
-  ) {
-    val callbackId = core.queueCallback(callback)
-    core.fsStat(seq, path, callbackId)
-  }
+    fun read(
+        seq: String = "", id: String, offset: Int = 0, size: Int, callback: (String) -> Unit
+    ) {
+        val callbackId = core.queueCallback(callback)
+        core.fsRead(seq, id, size, offset, callbackId)
+    }
 
-  public fun fstat (
-    seq: String = "",
-    id: String,
-    callback: (String) -> Unit
-  ) {
-    val callbackId = core.queueCallback(callback)
-    android.util.Log.d(TAG, "$seq $id $callbackId")
-    core.fsFStat(seq, id, callbackId)
-  }
+    fun readAsset(
+        id: String, offset: Int = 0, size: Int, callback: (String) -> Unit
+    ) {
+        val path = openAssets[id]
+            ?: return callback(JSONError(id, "Invalid file descriptor.").toString())
 
-  fun unlink () {
-  }
+        val assetManager = core.getAssetManager()
+            ?: return callback(JSONError(id, "AssetManager is not initialized.").toString())
 
-  fun rename () {
-  }
+        val fd = assetManager.openFd(path)
+        val input = fd.createInputStream()
+        val buffer = ByteArray(size)
 
-  fun copyFile () {
-  }
+        try {
+            input.read(buffer, offset, size)
+            val bytes = String(java.util.Base64.getEncoder().encode(buffer))
+            callback(JSONData(id, "\"bytes\": \"$bytes\"").toString())
+        } catch (err: Exception) {
+            val message = err.toString()
+            callback(JSONError(id, message).toString())
+        }
 
-  fun rmdir () {
-  }
+        input.close()
+        fd.close()
+    }
 
-  fun mkdir () {
-  }
+    fun write() {
+    }
 
-  fun readdir () {
-  }
+    fun stat(
+        seq: String = "", path: String, callback: (String) -> Unit
+    ) {
+        val callbackId = core.queueCallback(callback)
+        core.fsStat(seq, path, callbackId)
+    }
+
+    fun fstat(
+        seq: String = "", id: String, callback: (String) -> Unit
+    ) {
+        val callbackId = core.queueCallback(callback)
+        android.util.Log.d(TAG, "$seq $id $callbackId")
+        core.fsFStat(seq, id, callbackId)
+    }
+
+    fun unlink() {
+    }
+
+    fun rename() {
+    }
+
+    fun copyFile() {
+    }
+
+    fun rmdir() {
+    }
+
+    fun mkdir() {
+    }
+
+    fun readdir() {
+    }
 }
 
 /**
