@@ -991,383 +991,359 @@ open class NativeFileSystem(private val core: NativeCore) {
 /**
  * NativeCore bindings externally implemented in JNI/NDK
  */
-public open class NativeCore {
-  protected val TAG = "NativeCore"
+open class NativeCore
+/**
+ * `NativeCore` class constructor which is initialized
+ * in the NDK/JNI layer.
+ */(
+    /**
+     * A reference to the activity that created this instance.
+     */
+    var activity: WebViewActivity
+) {
+    protected val TAG = "NativeCore"
 
-  /**
-   * A reference to the activity that created this instance.
-   */
-  public var activity: WebViewActivity
+    /**
+     * Internal pointer managed by `initialize() and `destroy()
+     */
+    protected var pointer: Long = 0
 
-  /**
-   * Internal pointer managed by `initialize() and `destroy()
-   */
-  protected var pointer: Long = 0
+    /**
+     * @TODO
+     */
+    protected var nextCallbackId: Long = 0
 
-  /**
-   * @TODO
-   */
-  protected var nextCallbackId: Long = 0
+    /**
+     * @TODO
+     */
+    var fs: NativeFileSystem
 
-  /**
-   * @TODO
-   */
-  public var fs: NativeFileSystem
+    /**
+     * TODO
+     */
+    val callbacks = mutableMapOf<String, (String) -> Unit>()
 
-  /**
-   * TODO
-   */
-  public val callbacks = mutableMapOf<String, (String) -> Unit>()
+    /**
+     * Set internally by the native binding if debug is enabled.
+     */
+    var isDebugEnabled: Boolean = false
 
-  /**
-   * Set internally by the native binding if debug is enabled.
-   */
-  public var isDebugEnabled: Boolean = false
+    /**
+     * Set when all checks have passed.
+     */
+    var isReady: Boolean = false
 
-  /**
-   * Set when all checks have passed.
-   */
-  public var isReady: Boolean = false
+    /**
+     * Internal root directory for application passed directory
+     * to JNI/SDK for `NativeCore`
+     */
+    private var rootDirectory: String? = null
 
-  /**
-   * Internal root directory for application passed directory
-   * to JNI/SDK for `NativeCore`
-   */
-  private var rootDirectory: String? = null
+    /**
+     * Internal `AssetManager` instance passed directly to JNI/NDK
+     * for the `NativeCore`
+     */
+    private var assetManager: android.content.res.AssetManager? = null
 
-  /**
-   * Internal `AssetManager` instance passed directly to JNI/NDK
-   * for the `NativeCore`
-   */
-  private var assetManager: android.content.res.AssetManager? = null
+    /**
+     * `NativeCore` singleton definitions
+     */
+    companion object {
+        // Initialization for `NativeCore` singleton where we load the `ssc-core` library.
+        init {
+            println("Loading 'ssc-core' native library")
+            System.loadLibrary("ssc-core")
+        }
+    }
 
-  /**
-   * `NativeCore` singleton definitions
-   */
-  companion object {
-    // Initialization for `NativeCore` singleton where we load the `ssc-core` library.
+    /**
+     * `NativeCore` lifecycle functions
+     **/
+    external fun createPointer(): Long
+    external fun destroyPointer(pointer: Long)
+
+    /**
+     * `NativeCore` vitals
+     */
+    @Throws(java.lang.Exception::class)
+    external fun verifyFileSystem(): Boolean
+
+    @Throws(java.lang.Exception::class)
+    external fun verifyLoop(): Boolean
+
+    @Throws(java.lang.Exception::class)
+    external fun verifyRefs(): Boolean
+
+    @Throws(java.lang.Exception::class)
+    external fun verifyJavaVM(): Boolean
+
+    @Throws(java.lang.Exception::class)
+    external fun verifyPointer(pointer: Long): Boolean
+
+    @Throws(java.lang.Exception::class)
+    external fun verifyRootDirectory(): Boolean
+
+    @Throws(java.lang.Exception::class)
+    external fun verifyAssetManager(): Boolean
+
+    @Throws(java.lang.Exception::class)
+    external fun verifyNativeExceptions(): Boolean
+
+    @Throws(java.lang.Exception::class)
+    external fun verifyEnvironment(): Boolean
+
+    /**
+     * `NativeCore` internal utility bindings
+     */
+    @Throws(java.lang.Exception::class)
+    external fun configureEnvironment(): Boolean
+
+    @Throws(java.lang.Exception::class)
+    external fun configureWebViewWindow(): Boolean
+
+    @Throws(java.lang.Exception::class)
+    external fun getPathToIndexHTML(): String
+
+    @Throws(java.lang.Exception::class)
+    external fun getJavaScriptPreloadSource(): String
+
+    @Throws(java.lang.Exception::class)
+    external fun getResolveToRenderProcessJavaScript(
+        seq: String, state: String, value: String, shouldEncodeValue: Boolean
+    ): String
+
+    @Throws(java.lang.Exception::class)
+    external fun getEmitToRenderProcessJavaScript(
+        event: String, value: String
+    ): String
+
+    @Throws(java.lang.Exception::class)
+    external fun getStreamToRenderProcessJavaScript(
+        id: String, value: String
+    ): String
+
+    /**
+     * `NativeCore` bindings
+     */
+    @Throws(java.lang.Exception::class)
+    external fun getNetworkInterfaces(): String
+
+    @Throws(java.lang.Exception::class)
+    external fun getPlatformArch(): String
+
+    @Throws(java.lang.Exception::class)
+    external fun getPlatformType(): String
+
+    @Throws(java.lang.Exception::class)
+    external fun getPlatformOS(): String
+
+    @Throws(java.lang.Exception::class)
+    external fun getEncodedFSConstants(): String
+
+    @Throws(java.lang.Exception::class)
+    external fun getFSConstants(): String
+
+    @Throws(java.lang.Exception::class)
+    external fun getPostData(id: String): ByteArray
+
+    @Throws(java.lang.Exception::class)
+    external fun freePostData(id: String)
+
+    @Throws(java.lang.Exception::class)
+    external fun fsAccess(
+        seq: String, path: String, mode: Int, callback: String
+    )
+
+    @Throws(java.lang.Exception::class)
+    external fun fsClose(
+        seq: String, id: String, callback: String
+    )
+
+    @Throws(java.lang.Exception::class)
+    external fun fsFStat(
+        seq: String, id: String, callback: String
+    )
+
+    @Throws(java.lang.Exception::class)
+    external fun fsOpen(
+        seq: String, id: String, path: String, flags: Int, mode: Int, callback: String
+    )
+
+    @Throws(java.lang.Exception::class)
+    external fun fsRead(
+        seq: String, id: String, size: Int, offset: Int, callback: String
+    )
+
+    @Throws(java.lang.Exception::class)
+    external fun fsStat(
+        seq: String, path: String, callback: String
+    )
+
     init {
-      println("Loading 'ssc-core' native library")
-      System.loadLibrary("ssc-core")
-    }
-  }
-
-  /**
-   * `NativeCore` lifecycle functions
-   **/
-  external fun createPointer (): Long
-  external fun destroyPointer (pointer: Long)
-
-  /**
-   * `NativeCore` vitals
-   */
-  @Throws(java.lang.Exception::class)
-  external fun verifyFileSystem (): Boolean
-
-  @Throws(java.lang.Exception::class)
-  external fun verifyLoop (): Boolean
-
-  @Throws(java.lang.Exception::class)
-  external fun verifyRefs (): Boolean
-
-  @Throws(java.lang.Exception::class)
-  external fun verifyJavaVM (): Boolean
-
-  @Throws(java.lang.Exception::class)
-  external fun verifyPointer (pointer: Long): Boolean
-
-  @Throws(java.lang.Exception::class)
-  external fun verifyRootDirectory (): Boolean
-
-  @Throws(java.lang.Exception::class)
-  external fun verifyAssetManager (): Boolean
-
-  @Throws(java.lang.Exception::class)
-  external fun verifyNativeExceptions (): Boolean
-
-  @Throws(java.lang.Exception::class)
-  external fun verifyEnvironment (): Boolean
-
-  /**
-   * `NativeCore` internal utility bindings
-   */
-  @Throws(java.lang.Exception::class)
-  external fun configureEnvironment (): Boolean
-
-  @Throws(java.lang.Exception::class)
-  external fun configureWebViewWindow (): Boolean
-
-  @Throws(java.lang.Exception::class)
-  external fun getPathToIndexHTML(): String
-
-  @Throws(java.lang.Exception::class)
-  external fun getJavaScriptPreloadSource (): String
-
-  @Throws(java.lang.Exception::class)
-  external fun getResolveToRenderProcessJavaScript (
-    seq: String,
-    state: String,
-    value: String,
-    shouldEncodeValue: Boolean
-  ): String
-
-  @Throws(java.lang.Exception::class)
-  external fun getEmitToRenderProcessJavaScript (
-    event: String,
-    value: String
-  ): String
-
-  @Throws(java.lang.Exception::class)
-  external fun getStreamToRenderProcessJavaScript (
-    id: String,
-    value: String
-  ): String
-
-  /**
-   * `NativeCore` bindings
-   */
-  @Throws(java.lang.Exception::class)
-  external fun getNetworkInterfaces (): String
-
-  @Throws(java.lang.Exception::class)
-  external fun getPlatformArch(): String
-
-  @Throws(java.lang.Exception::class)
-  external fun getPlatformType(): String
-
-  @Throws(java.lang.Exception::class)
-  external fun getPlatformOS(): String
-
-  @Throws(java.lang.Exception::class)
-  external fun getEncodedFSConstants (): String
-
-  @Throws(java.lang.Exception::class)
-  external fun getFSConstants (): String
-
-  @Throws(java.lang.Exception::class)
-  external fun getPostData (id: String): ByteArray
-
-  @Throws(java.lang.Exception::class)
-  external fun freePostData (id: String)
-
-  @Throws(java.lang.Exception::class)
-  external fun fsAccess (
-    seq: String,
-    path: String,
-    mode: Int,
-    callback: String
-  )
-
-  @Throws(java.lang.Exception::class)
-  external fun fsClose (
-    seq: String,
-    id: String,
-    callback: String
-  )
-
-  @Throws(java.lang.Exception::class)
-  external fun fsFStat (
-    seq: String,
-    id: String,
-    callback: String
-  )
-
-  @Throws(java.lang.Exception::class)
-  external fun fsOpen (
-    seq: String,
-    id: String,
-    path: String,
-    flags: Int,
-    mode: Int,
-    callback: String
-  )
-
-  @Throws(java.lang.Exception::class)
-  external fun fsRead (
-    seq: String,
-    id: String,
-    size: Int,
-    offset: Int,
-    callback: String
-  )
-
-  @Throws(java.lang.Exception::class)
-  external fun fsStat (
-    seq: String,
-    path: String,
-    callback: String
-  )
-
-  /**
-   * `NativeCore` class constructor which is initialized
-   * in the NDK/JNI layer.
-   */
-  constructor (activity: WebViewActivity) {
-    this.activity = activity
-    this.pointer = this.createPointer()
-    this.fs = NativeFileSystem(this)
-  }
-
-  /**
-   * Kotlin class internal destructor where we call `destroy()`.
-   */
-  protected fun finalize () {
-    android.util.Log.d(TAG, "Destroying internal NativeCore pointer")
-    this.destroyPointer(this.pointer)
-
-    this.assetManager = null
-    this.pointer = 0
-  }
-
-  /**
-   * Configures `NativeCore` with Android dependencies.
-   */
-  @Throws(java.lang.Exception::class)
-  public fun configure (config: NativeCoreConfiguration): Boolean {
-    if (this.isReady) {
-      return true
+        this.pointer = this.createPointer()
+        this.fs = NativeFileSystem(this)
     }
 
-    this.rootDirectory = config.rootDirectory
-    this.assetManager = config.assetManager
+    /**
+     * Kotlin class internal destructor where we call `destroy()`.
+     */
+    protected fun finalize() {
+        android.util.Log.d(TAG, "Destroying internal NativeCore pointer")
+        this.destroyPointer(this.pointer)
 
-    if (!this.configureEnvironment()) {
-      return false
+        this.assetManager = null
+        this.pointer = 0
     }
 
-    if (!this.configureWebViewWindow()) {
-      return false
+    /**
+     * Configures `NativeCore` with Android dependencies.
+     */
+    @Throws(java.lang.Exception::class)
+    fun configure(config: NativeCoreConfiguration): Boolean {
+        if (isReady) {
+            return true
+        }
+
+        this.rootDirectory = config.rootDirectory
+        this.assetManager = config.assetManager
+
+        if (!configureEnvironment()) {
+            return false
+        }
+
+        if (!configureWebViewWindow()) {
+            return false
+        }
+
+        return true
     }
 
-    return true
-  }
-
-  /**
-   * Returns the internal `AssetManager` instance.
-   * @notice This function is used by the `NativeCore`
-   */
-  public fun getAssetManager (): android.content.res.AssetManager? {
-    return this.assetManager
-  }
-
-  /**
-   * Returns the internal rootDirectory string.
-   * @notice This function is used by the `NativeCore`
-   */
-  public fun getRootDirectory (): String? {
-    return this.rootDirectory
-  }
-
-  /**
-   * Returns the next available callback ID
-   */
-  public fun getNextAvailableCallbackId (): String {
-    return (this.nextCallbackId++).toString()
-  }
-
-  /**
-   * @TODO
-   */
-  public fun evaluateJavascript (source: String) {
-    this.activity.externalInterface?.evaluateJavascript(source, null)
-  }
-
-  /**
-   * @TODO
-   */
-  public fun callback (id: String, data: String) {
-    val cb = this.callbacks.get(id)
-
-    if (cb != null) {
-      cb.invoke(data)
-      //this.callbacks.remove(id)
+    /**
+     * Returns the internal `AssetManager` instance.
+     * @notice This function is used by the `NativeCore`
+     */
+    fun getAssetManager(): android.content.res.AssetManager? {
+        return this.assetManager
     }
 
-    android.util.Log.d(TAG, "callback: id=$id data=$data")
-  }
-
-  /**
-   * @TODO
-   */
-  public fun queueCallback (cb: (String) -> Unit): String {
-    val id = this.getNextAvailableCallbackId()
-    this.callbacks[id] = cb
-    return id
-  }
-
-  /**
-   * Performs internal vital checks.
-   */
-  public fun check (): Boolean {
-    if (!this.verifyPointer(this.pointer)) {
-      android.util.Log.e(TAG, "pointer check failed")
-      return false
-    } else {
-      android.util.Log.d(TAG, "pointer check OK")
+    /**
+     * Returns the internal rootDirectory string.
+     * @notice This function is used by the `NativeCore`
+     */
+    fun getRootDirectory(): String? {
+        return this.rootDirectory
     }
 
-    // @TODO
-    if (!this.verifyRefs()) { return false }
-    if (!this.verifyJavaVM()) { return false }
-
-    try {
-      this.verifyNativeExceptions()
-      android.util.Log.e(TAG, "native exceptions check failed")
-      return false
-    } catch (err: Exception) {
-      if (err.message != "ExceptionCheck") {
-        android.util.Log.e(TAG, "native exceptions check failed")
-        return false
-      }
-
-      android.util.Log.d(TAG, "native exceptions check OK")
+    /**
+     * Returns the next available callback ID
+     */
+    fun getNextAvailableCallbackId(): String {
+        return (this.nextCallbackId++).toString()
     }
 
-    // @TODO
-    if (!this.verifyEnvironment()) { return false }
-
-    try {
-      if (!this.verifyRootDirectory()) {
-        android.util.Log.e(TAG, "root directory check failed")
-        return false
-      }
-      android.util.Log.d(TAG, "root directory check OK")
-    } catch (err: Exception) {
-      android.util.Log.e(TAG, "root directory check failed")
+    /**
+     * @TODO
+     */
+    fun evaluateJavascript(source: String) {
+        this.activity.externalInterface?.evaluateJavascript(source, null)
     }
 
-    try {
-      if (!this.verifyAssetManager()) {
-        android.util.Log.e(TAG, "asset manager check failed")
-        return false
-      }
-      android.util.Log.d(TAG, "asset manager check OK")
-    } catch (err: Exception) {
-      android.util.Log.e(TAG, "asset manager check failed")
+    /**
+     * @TODO
+     */
+    fun callback(id: String, data: String) {
+        this.callbacks[id]?.invoke(data)
+        android.util.Log.d(TAG, "callback: id=$id data=$data")
     }
 
-    if (!this.verifyLoop()) {
-      android.util.Log.e(TAG, "libuv loop check failed")
-      return false
-    } else {
-      android.util.Log.d(TAG, "libuv loop check OK")
+    /**
+     * @TODO
+     */
+    fun queueCallback(cb: (String) -> Unit): String {
+        val id = this.getNextAvailableCallbackId()
+        this.callbacks[id] = cb
+        return id
     }
 
-    try {
-      if (!this.verifyFileSystem()) {
-        android.util.Log.e(TAG, "filesystem check failed")
-        return false
-      }
+    /**
+     * Performs internal vital checks.
+     */
+    fun check(): Boolean {
+        if (!verifyPointer(pointer)) {
+            android.util.Log.e(TAG, "pointer check failed")
+            return false
+        } else {
+            android.util.Log.d(TAG, "pointer check OK")
+        }
 
-      android.util.Log.d(TAG, "filesystem check OK")
-    } catch (err: Exception) {
-      android.util.Log.e(TAG, "filesystem check failed")
-      android.util.Log.e(TAG, err.toString())
+        // @TODO
+        if (!verifyRefs()) {
+            return false
+        }
+        if (!verifyJavaVM()) {
+            return false
+        }
 
-      return false
+        try {
+            verifyNativeExceptions()
+            android.util.Log.e(TAG, "native exceptions check failed")
+            return false
+        } catch (err: Exception) {
+            if (err.message != "ExceptionCheck") {
+                android.util.Log.e(TAG, "native exceptions check failed")
+                return false
+            }
+
+            android.util.Log.d(TAG, "native exceptions check OK")
+        }
+
+        // @TODO
+        if (!verifyEnvironment()) {
+            return false
+        }
+
+        try {
+            if (!verifyRootDirectory()) {
+                android.util.Log.e(TAG, "root directory check failed")
+                return false
+            }
+            android.util.Log.d(TAG, "root directory check OK")
+        } catch (err: Exception) {
+            android.util.Log.e(TAG, "root directory check failed")
+        }
+
+        try {
+            if (!verifyAssetManager()) {
+                android.util.Log.e(TAG, "asset manager check failed")
+                return false
+            }
+            android.util.Log.d(TAG, "asset manager check OK")
+        } catch (err: Exception) {
+            android.util.Log.e(TAG, "asset manager check failed")
+        }
+
+        if (!verifyLoop()) {
+            android.util.Log.e(TAG, "libuv loop check failed")
+            return false
+        } else {
+            android.util.Log.d(TAG, "libuv loop check OK")
+        }
+
+        try {
+            if (!verifyFileSystem()) {
+                android.util.Log.e(TAG, "filesystem check failed")
+                return false
+            }
+
+            android.util.Log.d(TAG, "filesystem check OK")
+        } catch (err: Exception) {
+            android.util.Log.e(TAG, "filesystem check failed")
+            android.util.Log.e(TAG, err.toString())
+
+            return false
+        }
+
+        isReady = true
+        return true
     }
-
-    this.isReady = true
-    return true
-  }
 }
