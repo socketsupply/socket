@@ -211,7 +211,7 @@ open class WebViewActivity : androidx.appcompat.app.AppCompatActivity() {
 /**
  * @TODO
  */
-public open class Bridge(activity: WebViewActivity) {
+open class Bridge(activity: WebViewActivity) {
 
   /**
    * A reference to the core `WebViewActivity`
@@ -221,7 +221,7 @@ public open class Bridge(activity: WebViewActivity) {
   /**
    * Registered invocation interfaces.
    */
-  public val interfaces = mutableMapOf<
+  val interfaces = mutableMapOf<
     String, // name
     ( // callback
       IPCMessage,
@@ -573,7 +573,7 @@ public open class ExternalWebViewInterface(activity: WebViewActivity) {
 
 
     fun evaluateJavascript(
-        source: String, 
+        source: String,
         callback: android.webkit.ValueCallback<String?>? = null
     ) {
         activity.runOnUiThread {
@@ -781,13 +781,11 @@ class JSONError(private val id: String, private val message: String, private val
   }"""
 }
 
-public class JSONData(id: String, data: String = "") {
-  val id = id
-  val data = data
+class JSONData(private val id: String, private val  data: String = "") {
 
-  override fun toString () = """{
+    override fun toString() = """{
     "data": {
-      "id": "$id" ${if (data.length > 0) "," else ""}
+      "id": "$id" ${if (data.isNotEmpty()) "," else ""}
       $data
     }
   }"""
