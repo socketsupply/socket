@@ -452,7 +452,7 @@ static std::string backlog = "";
   )MSG", name, uuid);
 
   std::string seq = "-1";
-  std::string msg = "data";
+  std::string msg = "{}";
   [self.bridge send: seq msg: msg post: post];
 }
 

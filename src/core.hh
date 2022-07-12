@@ -461,7 +461,7 @@ namespace SSC {
       "xhr.onload = e => {"
       "  let o = `" + params + "`;"
       "  try { o = JSON.parse(o) } catch (err) {"
-      "    console.error(err)"
+      "    console.error(err, `string<${o}>`)"
       "  };"
       "  const detail = {"
       "    data: xhr.response,"
