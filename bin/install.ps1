@@ -134,7 +134,11 @@ if ($? -ne 1) {
 #
 Write-Output "- Fetching files to '$WORKING_PATH'..."
 Remove-Item -Recurse -Force $WORKING_PATH
-(git clone --depth=1 git@github.com:socketsupply/socket-sdk.git "$($WORKING_PATH)") > $null
+$BRANCH = (git branch --show-current)
+if ($? -ne 1) {
+  $BRANCH = "master" 
+}
+(git clone --branch=$BRANCH --depth=1 git@github.com:socketsupply/socket-sdk.git "$($WORKING_PATH)") > $null
 
 cd $WORKING_PATH
 
