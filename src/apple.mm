@@ -445,11 +445,11 @@ static std::string backlog = "";
   post.length = (int) characteristic.value.length;
 
   post.headers = SSC::format(R"MSG(
-    Content-Type: application/octet-stream
-    Event-Source: bluetooth
-    Event-Name: data
-    Device-Name: $S
-    Device-UUID: $S
+    content-type: application/octet-stream
+    source: bluetooth
+    event: data
+    device-name: $S
+    device-uuid: $S
   )MSG", name, uuid);
 
   std::string seq = "-1";
@@ -1211,8 +1211,8 @@ static std::string backlog = "";
     NSMutableDictionary* httpHeaders = [NSMutableDictionary dictionary];
 
     if (post.length > 0) {
-      httpHeaders[@"Content-Length"] = [@(post.length) stringValue];
-      httpHeaders[@"Access-Control-Allow-Origin"] = @"*";
+      httpHeaders[@"content-length"] = [@(post.length) stringValue];
+      httpHeaders[@"access-control-allow-origin"] = @"*";
       auto lines = SSC::split(SSC::trim(post.headers), '\n');
 
       for (auto& line : lines) {

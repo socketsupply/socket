@@ -714,10 +714,10 @@ namespace SSC {
         })MSG", std::to_string(desc->id), String(uv_strerror(req->result)));
       } else {
         auto headers = SSC::format(R"MSG(
-          Content-Type: application/octet-stream
-          Content-Size: $i
-          Method: fsRead
-          Id: $S
+          content-type: application/octet-stream
+          content-length: $i
+          event: fsRead
+          id: $S
         )MSG", (int)req->result, std::to_string(desc->id));
 
         post.body = (char *) desc->data;
@@ -1439,10 +1439,11 @@ namespace SSC {
         auto clientId = std::to_string(client->clientId);
 
         auto headers = SSC::format(R"MSG(
-          Content-Type: application/octet-stream
-          ClientId: $S
-          Method: tcpConnect
-        )MSG", clientId);
+          content-type: application/octet-stream
+          content-length: $i
+          clientId: $S
+          event: tcpConnect
+        )MSG", (int) buf->len, clientId);
 
         Post post;
         post.body = buf->base;
@@ -1644,11 +1645,11 @@ namespace SSC {
         auto clientId = std::to_string(client->clientId);
 
         auto headers = SSC::format(R"MSG(
-          Content-Type: application/octet-stream
-          ServerId: $S
-          ClientId: $S
-          BytesRead: $i
-          Method: tcpReadStart
+          content-type: application/octet-stream
+          serverId: $S
+          clientId: $S
+          read: $i
+          event: tcpReadStart
         )MSG", serverId, clientId, (int) nread);
 
         Post post;
@@ -1974,11 +1975,11 @@ namespace SSC {
         String ip(ipbuf);
 
         auto headers = SSC::format(R"MSG(
-          Content-Type: application/octet-stream
-          ServerId: $S
-          Method: udpReadStart
-          Port: $i
-          Ip: $S
+          content-type: application/octet-stream
+          serverId: $S
+          event: udpReadStart
+          port: $i
+          ip: $S
         )MSG", std::to_string(server->serverId), port, ip);
 
         Post post;
