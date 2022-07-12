@@ -267,17 +267,15 @@ constexpr auto gPreloadMobile = R"JS(
       const promise = window._ipc.send(type, params)
       const { seq, index } = promise
       const resolved = promise.then((result) => {
-        const value = result?.value || result
-
-        if (value?.err) {
-          throw Object.assign(new Error(value.err.message), value.err)
+        if (result?.err) {
+          throw Object.assign(new Error(result.err.message), result.err)
         }
 
-        if (value && 'data' in value) {
-          return value.data
+        if (result && 'data' in result) {
+          return result.data
         }
 
-        return value
+        return result
       })
 
       return Object.assign(resolved, { seq, index })
