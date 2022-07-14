@@ -828,8 +828,10 @@ class JSONError(
   }"""
 }
 
-class JSONData(private val id: String, private val data: String = "") {
-
+class JSONData(
+  private val id: String,
+  private val data: String = ""
+) {
   override fun toString() = """{
     "data": {
       "id": "$id" ${if (data.isNotEmpty()) "," else ""}
