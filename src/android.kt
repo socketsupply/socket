@@ -103,6 +103,24 @@ open class WebViewClient(activity: WebViewActivity) : android.webkit.WebViewClie
       else -> {
         val bridge = this.activity.bridge ?: return null
 
+        if (request.method == "OPTIONS") {
+          val stream = java.io.PipedOutputStream()
+          val response = android.webkit.WebResourceResponse(
+            "text/plain",
+            "utf-8",
+            java.io.PipedInputStream(stream)
+          )
+
+          response.responseHeaders = mapOf(
+            "Access-Control-Allow-Origin" to "*",
+            "Access-Control-Allow-Headers" to "*",
+            "Access-Control-Allow-Methods" to "*"
+          )
+
+          stream.close()
+          return response
+        }
+
         val value = url.toString()
         val stream = java.io.PipedOutputStream()
         val message = IPCMessage(value)
@@ -114,7 +132,8 @@ open class WebViewClient(activity: WebViewActivity) : android.webkit.WebViewClie
 
         response.responseHeaders = mapOf(
           "Access-Control-Allow-Origin" to "*",
-          "Access-Control-Allow-Headers" to "*"
+          "Access-Control-Allow-Headers" to "*",
+          "Access-Control-Allow-Methods" to "*"
         )
 
         // try interfaces
@@ -124,7 +143,6 @@ open class WebViewClient(activity: WebViewActivity) : android.webkit.WebViewClie
             message,
             value,
             callback = { _: String, data: String ->
-              android.util.Log.d(TAG, data)
               stream.write(data.toByteArray(), 0, data.length)
               stream.close()
             },
@@ -138,6 +156,8 @@ open class WebViewClient(activity: WebViewActivity) : android.webkit.WebViewClie
             return response
           }
         }
+
+        stream.close()
       }
     }
 
@@ -155,9 +175,7 @@ open class WebViewClient(activity: WebViewActivity) : android.webkit.WebViewClie
 
     if (core != null && core.isReady) {
       val source = core.getJavaScriptPreloadSource()
-      view.evaluateJavascript(source) {
-        android.util.Log.d(TAG, it)
-      }
+      view.evaluateJavascript(source)
     } else {
       android.util.Log.e(TAG, "NativeCore is not ready in WebViewClient")
     }
@@ -224,6 +242,8 @@ open class Bridge(activity: WebViewActivity) {
    * A reference to the core `WebViewActivity`
    */
   protected val activity = activity
+
+  val buffers = mutableMapOf<String, ByteArray>()
 
   /**
    * Registered invocation interfaces.
@@ -303,6 +323,11 @@ open class Bridge(activity: WebViewActivity) {
     callback: (String, String) -> Unit,
     throwError: (String, String) -> Unit
   ): String? {
+    if (this.buffers[message.seq] != null && message.bytes == null) {
+      message.bytes = this.buffers[message.seq]
+      this.buffers.remove(message.seq)
+    }
+
     return interfaces[name]?.invoke(message, value, callback, throwError)
   }
 
@@ -310,6 +335,46 @@ open class Bridge(activity: WebViewActivity) {
    * `ExternalWebViewInterface` class initializer
    */
   init {
+    this.registerInterface("buffer", fun (
+      message: IPCMessage,
+      value: String,
+      callback: (String, String) -> Unit,
+      throwError: (String, String) -> Unit
+    ): String? {
+      val core = this.activity.core
+      val bytes = message.bytes
+
+      if (core == null) {
+        return null
+      }
+
+      if (message.bytes == null) {
+        return null
+      }
+
+      if (message.seq.isEmpty()) {
+        return null
+      }
+
+      when (message.command) {
+        "buffer.queue" -> {
+          if (bytes == null) {
+            return null
+          }
+
+          this.buffers[message.seq] = bytes
+          return message.seq
+        }
+
+        "buffer.release" -> {
+          this.buffers.remove(message.seq)
+          return message.seq
+        }
+      }
+
+      return null
+    })
+
     this.registerInterface("os", fun(
       message: IPCMessage,
       value: String,
@@ -369,7 +434,11 @@ open class Bridge(activity: WebViewActivity) {
       callback: (String, String) -> Unit,
       throwError: (String, String) -> Unit
     ): String? {
-      val core = activity.core ?: return null
+      val core = this.activity.core
+
+      if (core == null) {
+        return null
+      }
 
       when (message.command) {
         // sync + async
@@ -578,7 +647,6 @@ open class Bridge(activity: WebViewActivity) {
           if (core.fs.isAssetId(id)) {
             // @TODO fstatAsset
           } else {
-            android.util.Log.d(TAG, "fstat($message.seq, $id)")
             core.fs.fstat(message.seq, id, fun(data: String) {
               callback(message.seq, data)
             })
@@ -611,7 +679,6 @@ open class ExternalWebViewInterface(activity: WebViewActivity) {
     callback: android.webkit.ValueCallback<String?>? = null
   ) {
     activity.runOnUiThread {
-      android.util.Log.d(TAG, "evaluateJavascript: $source")
       activity.view?.evaluateJavascript(source, callback)
     }
   }
@@ -878,7 +945,6 @@ open class NativeFileSystem(core: NativeCore) {
         val value = decodeURIComponent(kv[1]).toInt()
 
         constants[key] = value
-        android.util.Log.d(TAG, "Setting constant $key=$value")
       }
     }
   }
@@ -920,6 +986,8 @@ open class NativeFileSystem(core: NativeCore) {
   ) {
     core?.apply {
       fsOpen(seq, id, path, flags, mode, queueCallback(callback))
+    }
+  }
 
   fun openAsset(
     id: String,
@@ -1053,7 +1121,6 @@ open class NativeFileSystem(core: NativeCore) {
   ) {
     core?.apply {
       val callbackId = queueCallback(callback)
-      android.util.Log.d(TAG, "$seq $id $callbackId")
       fsFStat(seq, id, callbackId)
     }
   }
@@ -1366,7 +1433,6 @@ open class NativeCore(var activity: WebViewActivity) {
    */
   fun callback(id: String, data: String) {
     this.callbacks[id]?.invoke(data)
-    android.util.Log.d(TAG, "callback: id=$id data=$data")
   }
 
   /**
