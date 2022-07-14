@@ -243,6 +243,29 @@ constexpr auto gPreloadMobile = R"JS(
   window.system.openExternal = o => {
     window.external.invoke(`ipc://external?value=${encodeURIComponent(o)}`)
   }
+
+  void (() => {
+    const { send, open } = XMLHttpRequest.prototype
+    Object.assign(XMLHttpRequest.prototype, {
+      open (method, url, ...args) {
+        const seq = new URLSearchParams(url.split('?')[1]).get('seq')
+
+        if (seq) {
+          this.seq = seq
+        }
+
+        return open.call(this, method, url, ...args)
+      },
+
+      send (body) {
+        if (body && typeof this.seq !== 'undefined' && /android/i.test(window.process?.platform)) {
+          window.external.invoke(`ipc://buffer.queue?seq=${this.seq}`, body)
+        }
+
+        return send.call(this, body)
+      }
+    })
+  })();
 )JS";
 
 #endif
