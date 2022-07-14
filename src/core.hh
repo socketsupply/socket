@@ -1976,18 +1976,22 @@ namespace SSC {
 
         auto headers = SSC::format(R"MSG(
           content-type: application/octet-stream
-          serverId: $S
-          event: udpReadStart
-          port: $i
-          ip: $S
-        )MSG", std::to_string(server->serverId), port, ip);
+          content-length: $i
+        )MSG", (int) buf->len);
 
         Post post;
         post.body = buf->base;
         post.length = (int) buf->len;
         post.headers = headers;
 
-        server->cb("-1", "{}", post);
+        auto msg = SSC::format(R"MSG(
+          "serverId": "$S",
+          "event": "udpReadStart",
+          "port": $i,
+          "ip": "$S"
+        )MSG", std::to_string(server->serverId), port, ip);
+
+        server->cb("-1", msg, post);
         return;
       }
     });
