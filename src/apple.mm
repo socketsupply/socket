@@ -446,14 +446,19 @@ static std::string backlog = "";
 
   post.headers = SSC::format(R"MSG(
     content-type: application/octet-stream
-    source: bluetooth
-    event: data
-    device-name: $S
-    device-uuid: $S
-  )MSG", name, uuid);
+    content-length: $i
+  )MSG", post.length);
 
   std::string seq = "-1";
-  std::string msg = "{}";
+
+  std::string msg = SSC::format(R"MSG({
+    "data": {
+      "source": "bluetooth",
+      "uuid": "$S",
+      "name": "$S"
+    }
+  })MSG", name, uuid);
+
   [self.bridge send: seq msg: msg post: post];
 }
 

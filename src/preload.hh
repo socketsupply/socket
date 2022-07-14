@@ -193,16 +193,6 @@ constexpr auto gPreloadDesktop = R"JS(
     window.external.invoke(`ipc://size?${o}`)
   }
 
-  window.system.udpBind = async (port) => {
-    const serverId = window.system.rand64()
-    const { err } = await window._ipc.send('udpBind', { port, serverId })
-    return { err, data: serverId }
-  }
-
-  window.system.udpReadStart = serverId => {
-    return window._ipc.send('udpReadStart', { serverId })
-  }
-
   window.system.setBackgroundColor = opts => {
     opts.index = window.process.index
     const o = new URLSearchParams(opts).toString()
