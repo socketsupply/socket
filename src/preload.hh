@@ -43,7 +43,7 @@ constexpr auto gPreload = R"JS(
     delete window._ipc[seq];
   }
 
-  window._ipc.send = (name, o, data) => {
+  window._ipc.send = (name, o) => {
     const seq = window._ipc.nextSeq++
     const index = window.process.index
     let serialized = ''
@@ -75,11 +75,7 @@ constexpr auto gPreload = R"JS(
       return Promise.reject(err.message)
     }
 
-    if (data && data.length) {
-      window.external.invoke(`ipc://${name}?${serialized}`, data)
-    } else {
-      window.external.invoke(`ipc://${name}?${serialized}`)
-    }
+    window.external.invoke(`ipc://${name}?${serialized}`)
 
     return Object.assign(promise, { index, seq })
   }
