@@ -175,7 +175,7 @@ open class WebViewClient(activity: WebViewActivity) : android.webkit.WebViewClie
 
     if (core != null && core.isReady) {
       val source = core.getJavaScriptPreloadSource()
-      view.evaluateJavascript(source)
+      view.evaluateJavascript(source, null)
     } else {
       android.util.Log.e(TAG, "NativeCore is not ready in WebViewClient")
     }
