@@ -1637,6 +1637,18 @@ namespace SSC {
     auto onRead = [](uv_stream_t* handle, ssize_t nread, const uv_buf_t *buf) {
       auto client = reinterpret_cast<Client*>(handle->data);
 
+      if (nread == UV_EOF) {
+        auto msg = SSC::format(R"MSG({
+          "data": {
+            "serverId": "$S",
+            "message": "EOF"
+          }
+        })MSG", std::to_string(client->server->serverId));
+
+        client->server->cb("-1", msg, Post{});
+        return;
+      }
+
       if (nread > 0) {
         write_req_t *req = (write_req_t*) malloc(sizeof(write_req_t));
         req->buf = uv_buf_init(buf->base, (int) nread);
@@ -1662,17 +1674,6 @@ namespace SSC {
       }
 
       if (nread < 0) {
-        if (nread != UV_EOF) {
-          auto msg = SSC::format(R"MSG({
-            "err": {
-              "serverId": "$S",
-              "message": "zero bytes read before UV_EOF"
-            }
-          })MSG", std::to_string(client->server->serverId));
-
-          client->server->cb("-1", msg, Post{});
-        }
-
         uv_close((uv_handle_t*) client->tcp, [](uv_handle_t* handle) {
           free(handle);
         });
@@ -1968,6 +1969,17 @@ namespace SSC {
     int err = uv_udp_recv_start(server->udp, allocate, [](uv_udp_t *handle, ssize_t nread, const uv_buf_t *buf, const struct sockaddr *addr, unsigned flags) {
       Server *server = (Server*)handle->data;
 
+      if (nread == UV_EOF) {
+        auto msg = SSC::format(R"MSG({
+          "data": {
+            "serverId": "$S",
+            "EOF": true
+          }
+        })MSG", std::to_string(server->serverId));
+        server->cb("-1", msg, Post{});
+        return;
+      }
+
       if (nread > 0) {
         int port;
         char ipbuf[17];
@@ -1992,7 +2004,6 @@ namespace SSC {
         )MSG", std::to_string(server->serverId), port, ip);
 
         server->cb("-1", msg, post);
-        return;
       }
     });
 

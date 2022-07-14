@@ -882,7 +882,7 @@ static std::string backlog = "";
 
   if (cmd.name == "getPlatformOS") {
     auto msg = SSC::format(R"JSON({
-      "value": { "data": "$S" }
+      "data": "$S"
     })JSON", SSC::platform.os);
     [self send: seq msg: msg post: Post{} ];
     return true;
@@ -890,7 +890,7 @@ static std::string backlog = "";
 
   if (cmd.name == "getPlatformType") {
     auto msg = SSC::format(R"JSON({
-      "value": { "data": "$S" }
+      "data": "$S"
     })JSON", SSC::platform.os);
     [self send: seq msg: msg post: Post{} ];
     return true;
@@ -898,7 +898,7 @@ static std::string backlog = "";
 
   if (cmd.name == "getPlatformArch") {
     auto msg = SSC::format(R"JSON({
-      "value": { "data": "$S" }
+      "data": "$S"
     })JSON", SSC::platform.arch);
     [self send: seq msg: msg post: Post{} ];
     return true;
