@@ -529,12 +529,12 @@ namespace SSC {
 
       if (req->result < 0) {
         msg = SSC::format(
-          R"MSG({{"err":{"message":"$S"}})MSG",
+          R"MSG({ "err": { "message": "$S" } })MSG",
           String(uv_strerror(req->result))
         );
       } else {
         msg = SSC::format(
-          R"MSG({"data":{"mode":$S}})MSG",
+          R"MSG({ "data": { "mode": "$S" } })MSG",
           std::to_string(req->flags)
         );
       }
@@ -547,7 +547,7 @@ namespace SSC {
 
     if (err < 0) {
       auto msg = SSC::format(
-        R"MSG({"err":{"message":"$S"}})MSG",
+        R"MSG({ "err": { "message": "$S" } })MSG",
         String(uv_strerror(err))
       );
 
@@ -578,14 +578,14 @@ namespace SSC {
 
       if (req->result < 0) {
         msg = SSC::format(
-          R"MSG({"err":{"id":"$S","message":"$S"}})MSG",
+          R"MSG({ "err": { "id": "$S", "message": "$S" } })MSG",
           std::to_string(desc->id),
           String(uv_strerror(req->result))
         );
       } else {
         desc->fd = req->result;
         msg = SSC::format(
-          R"MSG({"data":{"id":"$S","fd":$S}})MSG",
+          R"MSG({ "data": { "id": "$S", "fd": $S } })MSG",
           std::to_string(desc->id),
           std::to_string(desc->fd)
         );
@@ -1639,10 +1639,8 @@ namespace SSC {
 
       if (nread == UV_EOF) {
         auto msg = SSC::format(R"MSG({
-          "data": {
-            "serverId": "$S",
-            "message": "EOF"
-          }
+          "serverId": "$S",
+          "EOF": true
         })MSG", std::to_string(client->server->serverId));
 
         client->server->cb("-1", msg, Post{});
@@ -1971,10 +1969,8 @@ namespace SSC {
 
       if (nread == UV_EOF) {
         auto msg = SSC::format(R"MSG({
-          "data": {
-            "serverId": "$S",
-            "EOF": true
-          }
+          "serverId": "$S",
+          "EOF": true
         })MSG", std::to_string(server->serverId));
         server->cb("-1", msg, Post{});
         return;
