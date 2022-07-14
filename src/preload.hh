@@ -43,7 +43,7 @@ constexpr auto gPreload = R"JS(
     delete window._ipc[seq];
   }
 
-  window._ipc.send = (name, o) => {
+  window._ipc.send = (name, o, data) => {
     const seq = window._ipc.nextSeq++
     const index = window.process.index
     let serialized = ''
@@ -75,7 +75,12 @@ constexpr auto gPreload = R"JS(
       return Promise.reject(err.message)
     }
 
-    window.external.invoke(`ipc://${name}?${serialized}`)
+    if (data && data.length) {
+      window.external.invoke(`ipc://${name}?${serialized}`, data)
+    } else {
+      window.external.invoke(`ipc://${name}?${serialized}`)
+    }
+
     return Object.assign(promise, { index, seq })
   }
 
@@ -235,87 +240,8 @@ constexpr auto gPreloadDesktop = R"JS(
 )JS";
 
 constexpr auto gPreloadMobile = R"JS(
-  window.system.getNetworkInterfaces = o => window._ipc.send('getNetworkInterfaces', o)
   window.system.openExternal = o => {
     window.external.invoke(`ipc://external?value=${encodeURIComponent(o)}`)
-  }
-
-  window.system.fs = new class FileSystem {
-    async [Symbol.for('system.fs.id')] () {
-      return await window._ipc.send('fs.id')
-    }
-
-    request (type, data) {
-      const params = { ...data }
-
-      for (const key in params) {
-        if (params[key] === undefined) {
-          delete params[key]
-        }
-      }
-
-      const promise = window._ipc.send(type, params)
-      const { seq, index } = promise
-      const resolved = promise.then((result) => {
-        if (result?.err) {
-          throw Object.assign(new Error(result.err.message), result.err)
-        }
-
-        if (result && 'data' in result) {
-          return result.data
-        }
-
-        return result
-      })
-
-      return Object.assign(resolved, { seq, index })
-    }
-
-    async open (path, flags, mode) {
-      if (typeof flags === 'object' && flags !== null) {
-        mode = flags.mode
-        flags = flags.flags
-      }
-
-      const id = await this[Symbol.for('system.fs.id')]()
-      const params = { id, path, flags, mode }
-      const opts = { id: true }
-      // TODO(jwerle): discuss fs.read instead of fsOpen
-      return await this.request('fsOpen', params)
-    }
-
-    async close (id) {
-      const params = { id }
-      // TODO(jwerle): discuss fd.close instead of fsClose
-      await this.request('fsClose', params)
-      return true
-    }
-
-    async read (id, size, offset = 0) {
-      if (typeof size === 'object' && size !== null) {
-        offset = size.offset || 0
-        size = size.size
-      }
-
-      const params = { id, size, offset }
-      // TODO(jwerle): discuss fs.read instead of fsRead
-      const request = this.request('fsRead', params)
-      const { seq } = request
-
-      window.addEventListener('data', ondata)
-
-      return request
-
-      function ondata (event) {
-        if (event.detail?.data) {
-          const { data, params } = event.detail
-          if (parseInt(params.seq) === parseInt(seq)) {
-            window.removeEventListener('data', ondata)
-            window._ipc.resolve(seq, 0, new Uint8Array(data))
-          }
-        }
-      }
-    }
   }
 )JS";
 

@@ -364,7 +364,8 @@ class NativeFileSystem {
     NativeCoreSequence seq,
     NativeCoreID id,
     std::string data,
-    int16_t offset
+    int16_t offset,
+    NativeCallbackID callback
   ) const;
 
   void FStat (

@@ -421,8 +421,15 @@ void NativeFileSystem::Write (
   NativeCoreSequence seq,
   NativeCoreID id,
   std::string data,
-  int16_t offset
+  int16_t offset,
+  NativeCallbackID callback
 ) const {
+  auto context = this->CreateRequestContext(seq, id, callback);
+  auto core = reinterpret_cast<SSC::Core *>(this->core);
+
+  core->fsWrite(seq, id,  data, offset, [context](auto seq, auto data, auto post) {
+    context->fs->CallbackAndFinalizeContext(context, data);
+  });
 }
 
 void NativeFileSystem::Stat (
@@ -1189,9 +1196,24 @@ void exports(NativeCore, fsWrite)(
   jstring seq,
   jstring id,
   jstring data,
-  int64_t offset
+  int64_t offset,
+  jstring callback
 ) {
-  // @TODO(jwerle): Core::fsWrite
+  auto core = GetNativeCoreFromEnvironment(env);
+
+  if (!core) {
+    return Throw(env, NativeCoreNotInitializedException);
+  }
+
+  auto fs = NativeFileSystem(env, core);
+
+  fs.Write(
+    NativeString(env, seq).str(),
+    GetNativeCoreIDFromJString(env, id),
+    NativeString(env, data).str(),
+    offset,
+    (NativeCallbackID) callback
+  );
 }
 
 void exports(NativeCore, fsStat)(

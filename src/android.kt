@@ -6,7 +6,6 @@ fun decodeURIComponent(string: String): String {
   return java.net.URLDecoder.decode(normalized, "UTF-8").replace("%2B", "+")
 }
 
-
 /**
  * @TODO
  * @see https://developer.android.com/reference/kotlin/android/webkit/WebView
@@ -51,7 +50,8 @@ open class WebViewClient(activity: WebViewActivity) : android.webkit.WebViewClie
   }
 
   override fun shouldInterceptRequest(
-    view: android.webkit.WebView, request: android.webkit.WebResourceRequest
+    view: android.webkit.WebView,
+    request: android.webkit.WebResourceRequest
   ): android.webkit.WebResourceResponse? {
     val url = request.url
 
@@ -90,7 +90,8 @@ open class WebViewClient(activity: WebViewActivity) : android.webkit.WebViewClie
           )
 
           response.responseHeaders = mapOf(
-            "Access-Control-Allow-Origin" to "*"
+            "Access-Control-Allow-Origin" to "*",
+            "Access-Control-Allow-Headers" to "*"
           )
 
           core.freePostData(id)
@@ -112,12 +113,14 @@ open class WebViewClient(activity: WebViewActivity) : android.webkit.WebViewClie
         )
 
         response.responseHeaders = mapOf(
-          "Access-Control-Allow-Origin" to "*"
+          "Access-Control-Allow-Origin" to "*",
+          "Access-Control-Allow-Headers" to "*"
         )
 
         // try interfaces
         for ((name, _) in bridge.interfaces) {
-          val returnValue = bridge.invokeInterface(name,
+          val returnValue = bridge.invokeInterface(
+            name,
             message,
             value,
             callback = { _: String, data: String ->
@@ -125,6 +128,7 @@ open class WebViewClient(activity: WebViewActivity) : android.webkit.WebViewClie
               stream.write(data.toByteArray(), 0, data.length)
               stream.close()
             },
+
             throwError = { _: String, error: String ->
               stream.write(error.toByteArray(), 0, error.length)
               stream.close()
@@ -141,7 +145,9 @@ open class WebViewClient(activity: WebViewActivity) : android.webkit.WebViewClie
   }
 
   override fun onPageStarted(
-    view: android.webkit.WebView, url: String, bitmap: android.graphics.Bitmap?
+    view: android.webkit.WebView,
+    url: String,
+    bitmap: android.graphics.Bitmap?
   ) {
     android.util.Log.d(TAG, "WebViewClient is loading: $url")
 
@@ -224,18 +230,18 @@ open class Bridge(activity: WebViewActivity) {
    */
   val interfaces = mutableMapOf<
     String, // name
-      ( // callback
-    IPCMessage,
-    String,
-    (String, String) -> Unit,
-    (String, String) -> Unit
-  ) -> String?
-    >()
+    ( // callback
+      IPCMessage,
+      String,
+      (String, String) -> Unit,
+      (String, String) -> Unit
+    ) -> String?
+  >()
 
   companion object {
+    const val TAG = "Bridge"
     const val OK_STATE = "0"
     const val ERROR_STATE = "1"
-    const val TAG = "Bridge"
   }
 
   fun evaluateJavascript(
@@ -281,7 +287,10 @@ open class Bridge(activity: WebViewActivity) {
   fun registerInterface(
     name: String,
     callback: (
-      IPCMessage, String, (String, String) -> Unit, (String, String) -> Unit
+      IPCMessage,
+      String,
+      (String, String) -> Unit,
+      (String, String) -> Unit
     ) -> String?,
   ) {
     interfaces[name] = callback
@@ -502,6 +511,34 @@ open class Bridge(activity: WebViewActivity) {
           return message.seq
         }
 
+        "fs.write", "fsWrite" -> {
+          val bytes = message.bytes
+
+          if (!message.has("id")) {
+            throwError(message.seq, "'id' is required.")
+            return null
+          }
+
+          if (bytes == null) {
+            throwError(message.seq, "Missing required bytes.")
+            return null
+          }
+
+          val id = message.get("id")
+          val data = String(bytes)
+          val offset = message.get("offset", "0").toInt()
+
+          if (core.fs.isAssetId(id)) {
+            callback(message.seq, JSONError(id, "AssetManager does not support writes.").toString())
+          } else {
+            core.fs.write(message.seq, id, data, offset, fun(data: String) {
+              callback(message.seq, data)
+            })
+          }
+
+          return message.seq
+        }
+
         "fs.stat", "fsStat" -> {
           var path = message.get("path")
           val uri = android.net.Uri.parse(path)
@@ -584,14 +621,21 @@ open class ExternalWebViewInterface(activity: WebViewActivity) {
     evaluateJavascript(source, null)
   }
 
+  @android.webkit.JavascriptInterface
+  final fun invoke(value: String): String? {
+    return this.invoke(value, null)
+  }
+
   /**
    * Low level external message handler
    */
   @android.webkit.JavascriptInterface
-  final fun invoke(value: String): String? {
+  final fun invoke(value: String, bytes: ByteArray?): String? {
     val core = this.activity.core
     val bridge = this.activity.bridge
     val message = IPCMessage(value)
+
+    message.bytes = bytes
 
     if (core == null || !core.isReady) {
       throwGlobalError("Missing NativeCore in WebViewActivity.")
@@ -625,7 +669,6 @@ open class ExternalWebViewInterface(activity: WebViewActivity) {
       }
     }
 
-
     // try interfaces
     for ((name, _) in bridge.interfaces) {
       val returnValue =
@@ -638,6 +681,7 @@ open class ExternalWebViewInterface(activity: WebViewActivity) {
               bridge.send(seq, data)
             }
           },
+
           throwError = { seq: String, error: String ->
             bridge.throwError(seq, error)
           })
@@ -709,6 +753,8 @@ class IPCMessage(message: String?) {
     set(state) {
       set("state", state)
     }
+
+  var bytes: ByteArray? = null
 
   fun get(key: String, defaultValue: String = ""): String {
     val value = uri?.getQueryParameter(key)
@@ -815,11 +861,9 @@ open class NativeFileSystem(core: NativeCore) {
   val TAG = "NativeFileSystem"
 
   private var core: NativeCore? = core
-
-  var nextId: Long = 0
-
   private val openAssets = mutableMapOf<String, String>()
 
+  var nextId: Long = 0
   val constants = mutableMapOf<String, Int>();
 
   init {
@@ -854,14 +898,15 @@ open class NativeFileSystem(core: NativeCore) {
   }
 
   fun access(
-    seq: String = "", path: String, mode: Int, callback: (String) -> Unit
+    seq: String = "",
+    path: String,
+    mode: Int,
+    callback: (String) -> Unit
   ) {
     core?.apply {
       fsAccess(seq, path, mode, queueCallback(callback))
-
     }
   }
-
 
   fun open(
     seq: String = "",
@@ -873,11 +918,11 @@ open class NativeFileSystem(core: NativeCore) {
   ) {
     core?.apply {
       fsOpen(seq, id, path, flags, mode, queueCallback(callback))
-    }
-  }
 
   fun openAsset(
-    id: String, path: String, callback: (String) -> Unit
+    id: String,
+    path: String,
+    callback: (String) -> Unit
   ) {
     val assetManager = core?.getAssetManager()
       ?: return callback(JSONError(id, "AssetManager is not initialized.").toString())
@@ -896,7 +941,11 @@ open class NativeFileSystem(core: NativeCore) {
       callback(JSONError(id, message).toString())
 
       null
-    } ?: return
+    }
+
+    if (fd == null) {
+      return
+    }
 
     if (!fd.fileDescriptor.valid()) {
       callback(JSONError(id, "Invalid file descriptor.").toString())
@@ -911,7 +960,9 @@ open class NativeFileSystem(core: NativeCore) {
   }
 
   fun close(
-    seq: String = "", id: String, callback: (String) -> Unit
+    seq: String = "",
+    id: String,
+    callback: (String) -> Unit
   ) {
     core?.apply {
       fsClose(seq, id, queueCallback(callback))
@@ -919,7 +970,8 @@ open class NativeFileSystem(core: NativeCore) {
   }
 
   fun closeAsset(
-    id: String, callback: (String) -> Unit
+    id: String,
+    callback: (String) -> Unit
   ) {
     if (openAssets[id] == null) {
       return callback(JSONError(id, "Invalid file descriptor.").toString())
@@ -930,7 +982,11 @@ open class NativeFileSystem(core: NativeCore) {
   }
 
   fun read(
-    seq: String = "", id: String, offset: Int = 0, size: Int, callback: (String) -> Unit
+    seq: String = "",
+    id: String,
+    offset: Int = 0,
+    size: Int,
+    callback: (String) -> Unit
   ) {
     core?.apply {
       fsRead(seq, id, size, offset, queueCallback(callback))
@@ -938,7 +994,10 @@ open class NativeFileSystem(core: NativeCore) {
   }
 
   fun readAsset(
-    id: String, offset: Int = 0, size: Int, callback: (String) -> Unit
+    id: String,
+    offset: Int = 0,
+    size: Int,
+    callback: (String) -> Unit
   ) {
     val path = openAssets[id]
       ?: return callback(JSONError(id, "Invalid file descriptor.").toString())
@@ -963,11 +1022,22 @@ open class NativeFileSystem(core: NativeCore) {
     fd.close()
   }
 
-  fun write() {
+  fun write(
+    seq: String = "",
+    id: String,
+    data: String,
+    offset: Int = 0,
+    callback: (String) -> Unit
+  ) {
+    core?.apply {
+      fsWrite(seq, id, data, offset, queueCallback(callback))
+    }
   }
 
   fun stat(
-    seq: String = "", path: String, callback: (String) -> Unit
+    seq: String = "",
+    path: String,
+    callback: (String) -> Unit
   ) {
     core?.apply {
       fsStat(seq, path, queueCallback(callback))
@@ -975,7 +1045,9 @@ open class NativeFileSystem(core: NativeCore) {
   }
 
   fun fstat(
-    seq: String = "", id: String, callback: (String) -> Unit
+    seq: String = "",
+    id: String,
+    callback: (String) -> Unit
   ) {
     core?.apply {
       val callbackId = queueCallback(callback)
@@ -1006,16 +1078,7 @@ open class NativeFileSystem(core: NativeCore) {
 /**
  * NativeCore bindings externally implemented in JNI/NDK
  */
-open class NativeCore
-/**
- * `NativeCore` class constructor which is initialized
- * in the NDK/JNI layer.
- */(
-  /**
-   * A reference to the activity that created this instance.
-   */
-  var activity: WebViewActivity
-) {
+open class NativeCore(var activity: WebViewActivity) {
   val TAG = "NativeCore"
 
   /**
@@ -1124,17 +1187,22 @@ open class NativeCore
 
   @Throws(java.lang.Exception::class)
   external fun getResolveToRenderProcessJavaScript(
-    seq: String, state: String, value: String, shouldEncodeValue: Boolean
+    seq: String,
+    state: String,
+    value: String,
+    shouldEncodeValue: Boolean
   ): String
 
   @Throws(java.lang.Exception::class)
   external fun getEmitToRenderProcessJavaScript(
-    event: String, value: String
+    event: String,
+    value: String
   ): String
 
   @Throws(java.lang.Exception::class)
   external fun getStreamToRenderProcessJavaScript(
-    id: String, value: String
+    id: String,
+    value: String
   ): String
 
   /**
@@ -1166,32 +1234,59 @@ open class NativeCore
 
   @Throws(java.lang.Exception::class)
   external fun fsAccess(
-    seq: String, path: String, mode: Int, callback: String
+    seq: String,
+    path: String,
+    mode: Int,
+    callback: String
   )
 
   @Throws(java.lang.Exception::class)
   external fun fsClose(
-    seq: String, id: String, callback: String
+    seq: String,
+    id: String,
+    callback: String
   )
 
   @Throws(java.lang.Exception::class)
   external fun fsFStat(
-    seq: String, id: String, callback: String
+    seq: String,
+    id: String,
+    callback: String
   )
 
   @Throws(java.lang.Exception::class)
   external fun fsOpen(
-    seq: String, id: String, path: String, flags: Int, mode: Int, callback: String
+    seq: String,
+    id: String,
+    path: String,
+    flags: Int,
+    mode: Int,
+    callback: String
   )
 
   @Throws(java.lang.Exception::class)
   external fun fsRead(
-    seq: String, id: String, size: Int, offset: Int, callback: String
+    seq: String,
+    id: String,
+    size: Int,
+    offset: Int,
+    callback: String
+  )
+
+  @Throws(java.lang.Exception::class)
+  external fun fsWrite(
+    seq: String,
+    id: String,
+    data: String,
+    offset: Int,
+    callback: String
   )
 
   @Throws(java.lang.Exception::class)
   external fun fsStat(
-    seq: String, path: String, callback: String
+    seq: String,
+    path: String,
+    callback: String
   )
 
   init {
