@@ -120,7 +120,7 @@ static std::string backlog = "";
     }
   })MSG", message, state);
 
-  [self.bridge emit: "local-network" msg: msg];
+  [self.bridge emit: "bluetooth" msg: msg];
 
   NSLog(@"%@", [NSString stringWithUTF8String: msg.c_str()]);
 }
@@ -186,7 +186,7 @@ static std::string backlog = "";
     }
   })MSG" /* channelId, serviceId */);
 
-  [self.bridge emit: "local-network" msg: msg];
+  [self.bridge emit: "bluetooth" msg: msg];
 }
 
 - (void) startScanning {
@@ -248,7 +248,7 @@ static std::string backlog = "";
     }
   })MSG", last);
 
-  [self.bridge emit: "local-network" msg: msg]; */
+  [self.bridge emit: "bluetooth" msg: msg]; */
 
   if (last.size() == 0) return;
 
@@ -267,7 +267,7 @@ static std::string backlog = "";
     }
   })MSG");
 
-  [self.bridge emit: "local-network" msg: msg];
+  [self.bridge emit: "bluetooth" msg: msg];
 
   for (CBATTRequest* request in requests) {
     if (![request.characteristic.UUID isEqual: _characteristic.UUID]) {
@@ -285,25 +285,30 @@ static std::string backlog = "";
         "message": "$S"
       }
     })MSG", std::string(src));
-    [self.bridge emit: "local-network" msg: msg];
+    [self.bridge emit: "bluetooth" msg: msg];
     [self.peripheralManager respondToRequest: request withResult: CBATTErrorSuccess];
   }
 } */
 
-- (void) localNetworkAdvertise: (std::string)str uuid:(std::string)uuid {
+- (void) bluetoothAdvertise: (std::string)str uuid:(std::string)uuid {
   if (str.size() == 0) return;
 
+  [self bluetoothAdvertise: str.data() length: str.size() uuid: uuid];
+}
+
+- (void) bluetoothAdvertise: (char*)buf length: (int)len uuid: (std::string)uuid {
   if (uuid.size() > 0) {
     self.channelId = [NSString stringWithUTF8String: uuid.c_str()];
   }
 
   backlog = str;
-  [self startScanning];
+  [self startScanning]; // noop if already scanning.
 
+  // TODO (@heapwolf) enforce max message legth and split into multiple writes.
   // NSInteger amountToSend = self.dataToSend.length - self.sendDataIndex;
 	// if (amountToSend > 512) amountToSend = 512;
 
-  auto* data = [NSData dataWithBytes: str.data() length: str.size()];
+  auto* data = [NSData dataWithBytes: buf length: len];
 
   auto didWrite = [
     _peripheralManager
@@ -363,7 +368,7 @@ static std::string backlog = "";
     }
   })MSG", name, uuid);
 
-  [self.bridge emit: "local-network" msg: msg];
+  [self.bridge emit: "bluetooth" msg: msg];
 
   if (isKnown) {
     NSLog(@"CoreBluetooth: isKnown (reconnecting)");
@@ -414,7 +419,7 @@ static std::string backlog = "";
     }
   })MSG");
 
-  [self.bridge emit: "local-network" msg: msg]; */
+  [self.bridge emit: "bluetooth" msg: msg]; */
 }
 
 - (void) peripheral: (CBPeripheral*)peripheral didUpdateValueForCharacteristic: (CBCharacteristic*)characteristic error:(NSError*)error {
@@ -597,13 +602,21 @@ static std::string backlog = "";
   auto seq = cmd.get("seq");
   uint64_t clientId = 0;
 
-  if (cmd.name == "local-network-subscribe") {
+  if (cmd.name == "bluetooth-subscribe") {
     [self.bluetooth initBluetooth];
     return true;
   }
 
-  if (cmd.name == "local-network-advertise") {
-    [self.bluetooth localNetworkAdvertise: cmd.get("value") uuid: cmd.get("uuid")];
+  if (cmd.name == "bluetooth-advertise") {
+    auto uuid = cmd.get("uuid");
+
+    if (buf != nullptr) {
+      int length = std::stoi(cmd.get("length"));
+      [self.bluetooth bluetoothAdvertise: data length: length uuid: uuid];
+    } else {
+      [self.bluetooth bluetoothAdvertise: cmd.get("value") uuid: uuid];
+    }
+
     return true;
   }
 
