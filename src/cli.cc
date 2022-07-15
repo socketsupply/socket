@@ -1031,7 +1031,13 @@ int main (const int argc, const char* argv[]) {
           log("simulator device type: " + deviceType);
         } else {
           auto rListDevices = exec("xcrun simctl list devicetypes | grep iPhone");
-          log("failed to find device type: " + settings["ios_simulator_device"] + ". Please provide correct device name for the \"ios_simulator_device\". The list of available devices:\n" + rListDevices.output);
+
+          log(
+            "failed to find device type: " + settings["ios_simulator_device"] + ". " +
+            "Please provide correct device name for the \"ios_simulator_device\". " +
+            "The list of available devices:\n" + rListDevices.output
+          );
+
           if (rListDevices.output.size() > 0) {
             log(rListDevices.output);
           }
