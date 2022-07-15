@@ -16,7 +16,6 @@ dispatch_queue_attr_t qos = dispatch_queue_attr_make_with_qos_class(
 );
 
 static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
-static std::string backlog = "";
 
 @interface NavigationDelegate : NSObject<WKNavigationDelegate>
 - (void) webview: (BridgedWebView*)webview
@@ -182,10 +181,7 @@ static std::string backlog = "";
   _peripherals = peripherals;
   _centralManager = [[CBCentralManager alloc] initWithDelegate: self queue: nil];
   _peripheralManager = [[CBPeripheralManager alloc] initWithDelegate: self queue: nil options: nil];
-	_channelId = @"5A028AB0-8423-4495-88FD-28E0318289AE";
 	_serviceId = @"56702D92-69F9-4400-BEF8-D5A89FCFD31D";
-
-  auto channelId = std::string([_channelId UTF8String]);
   auto serviceId = std::string([_serviceId UTF8String]);
 
   auto msg = SSC::format(R"MSG({
@@ -208,27 +204,61 @@ static std::string backlog = "";
   ];
 }
 
-- (void) startBluetooth {
-  //
-  // This ID is the same for all apps build with socket-sdk, this scopes all messages.
-  // The channelUUID scopes the application and the developer can decide what to do after that.
-  //
-  auto serviceUUID = [CBUUID UUIDWithString: _serviceId]; // NSUUID
-  _service = [[CBMutableService alloc] initWithType: serviceUUID primary: YES];
-  auto channelUUID = [CBUUID UUIDWithString: _channelId];
+- (void) setValue: (std::string)seq buf: (char*)buf length: (int)len uuid: (std::string)uuid {
+  auto channelUUID = [CBUUID UUIDWithString: [NSString stringWithUTF8String: uuid.c_str()];
 
-  // NSData *channel = [NSData dataWithBytes: channelId.data() length: channelId.length()];
-  // CBCharacteristicPropertyNotifiy
+  [self startScanning]; // noop if already scanning.
 
-  _characteristic = [[CBMutableCharacteristic alloc]
-    initWithType: channelUUID
-      properties: (CBCharacteristicPropertyNotify | CBCharacteristicPropertyRead | CBCharacteristicPropertyWrite)
-           value: nil
-     permissions: (CBAttributePermissionsReadable | CBAttributePermissionsWriteable)
+  CBMutableCharacteristic* ch;
+
+  for (CBMutableCharacteristic* characteristic in _service.characteristics) {
+    if (![characteristic.UUID isEqual: channelUUID]) {
+      ch = characteristic;
+      break;
+    }
+  }
+
+  if (!ch) {
+    ch = [[CBMutableCharacteristic alloc]
+      initWithType: channelUUID
+        properties: (CBCharacteristicPropertyNotify | CBCharacteristicPropertyRead | CBCharacteristicPropertyWrite)
+             value: nil
+       permissions: (CBAttributePermissionsReadable | CBAttributePermissionsWriteable)
+    ];
+
+    [_service.characteristics addObject: @(ch)];
+  }
+
+  // TODO (@heapwolf) enforce max message legth and split into multiple writes.
+  // NSInteger amountToSend = self.dataToSend.length - self.sendDataIndex;
+	// if (amountToSend > 512) amountToSend = 512;
+
+  auto* data = [NSData dataWithBytes: buf length: len];
+
+  auto didWrite = [
+    _peripheralManager
+      updateValue: data
+      forCharacteristic: ch
+      onSubscribedCentrals: nil
   ];
 
-  _service.characteristics = @[_characteristic];
+  if (!didWrite) {
+    NSLog(@"CoreBluetooth: did not write");
+    return;
+  }
 
+  NSLog(@"CoreBluetooth: did write");
+}
+
+- (void) setValue: (std::string)str uuid:(std::string)uuid {
+  if (str.size() == 0) return;
+
+  [self setValue: str.data() length: str.size() uuid: uuid];
+}
+
+- (void) startBluetoothService {
+  auto serviceUUID = [CBUUID UUIDWithString: _serviceId]; // NSUUID
+  _service = [[CBMutableService alloc] initWithType: serviceUUID primary: YES];
   [_peripheralManager addService: _service];
 
   //
@@ -245,22 +275,30 @@ static std::string backlog = "";
 }
 
 - (void) peripheralManager: (CBPeripheralManager*)peripheral didReceiveReadRequest: (CBATTRequest*)request {
-
   NSLog(@"CoreBluetooth: peripheralManager:didReceiveReadRequest:");
 
-  auto last = backlog;
+  CBMutableCharacteristic* ch;
+
+  for (CBMutableCharacteristic* characteristic in _service.characteristics) {
+    if ([characteristic.UUID isEqual: request.characteristic.UUID]) {
+      ch = characteristic;
+      break;
+    }
+  }
+
+  const void* rawData = [ch.value bytes];
+  char* src = (char*) rawData;
 
   auto msg = SSC::format(R"MSG({
     "data": {
-      "event": "didReceiveReadRequest"
+      "event": "didReceiveReadRequest",
+      "value": "$S"
     }
-  })MSG");
+  })MSG", std::string(src));
 
   [self.bridge emit: "bluetooth" msg: msg];
 
-  if (last.size() == 0) return;
-
-  request.value = [NSData dataWithBytes: last.data() length: last.size()];
+  request.value = ch.value;
   [_peripheralManager respondToRequest: request withResult: CBATTErrorSuccess];
   [self startScanning];
 }
@@ -295,42 +333,6 @@ static std::string backlog = "";
     [self.peripheralManager respondToRequest: request withResult: CBATTErrorSuccess];
   }
 } */
-
-- (void) bluetoothAdvertise: (std::string)str uuid:(std::string)uuid {
-  if (str.size() == 0) return;
-
-  [self bluetoothAdvertise: str.data() length: str.size() uuid: uuid];
-}
-
-- (void) bluetoothAdvertise: (char*)buf length: (int)len uuid: (std::string)uuid {
-  if (uuid.size() > 0) {
-    self.channelId = [NSString stringWithUTF8String: uuid.c_str()];
-  }
-
-  backlog = std::string(buf);
-
-  [self startScanning]; // noop if already scanning.
-
-  // TODO (@heapwolf) enforce max message legth and split into multiple writes.
-  // NSInteger amountToSend = self.dataToSend.length - self.sendDataIndex;
-	// if (amountToSend > 512) amountToSend = 512;
-
-  auto* data = [NSData dataWithBytes: buf length: len];
-
-  auto didWrite = [
-    _peripheralManager
-      updateValue: data
-      forCharacteristic: _characteristic
-      onSubscribedCentrals: nil
-  ];
-
-  if (!didWrite) {
-    NSLog(@"CoreBluetooth: did not write");
-    return;
-  }
-
-  NSLog(@"CoreBluetooth: did write");
-}
 
 - (void) centralManager: (CBCentralManager*)central didConnectPeripheral: (CBPeripheral*)peripheral {
   NSLog(@"CoreBluetooth: didConnectPeripheral");
@@ -398,7 +400,7 @@ static std::string backlog = "";
 
   NSLog(@"CoreBluetooth: peripheral:didDiscoverServices:error:");
   for (CBService *service in peripheral.services) {
-    [peripheral discoverCharacteristics: @[[CBUUID UUIDWithString: _channelId]] forService: service];
+    [peripheral discoverCharacteristics: _service.characteristics forService: service];
   }
 }
 
@@ -408,10 +410,12 @@ static std::string backlog = "";
     return;
   }
 
-  for (CBCharacteristic* characteristic in service.characteristics) {
-    if ([characteristic.UUID isEqual: [CBUUID UUIDWithString: _channelId]]) {
-      [peripheral setNotifyValue: YES forCharacteristic: characteristic];
-      [peripheral readValueForCharacteristic: characteristic];
+  for (CBCharacteristic* characteristic in service.characteristics) { // loop over discovered
+    for (CBMutableCharacteristic* ch in _service.characteristics) { // for each known
+      if ([characteristic.UUID isEqual: ch.UUID]) { // if its a match
+        [peripheral setNotifyValue: YES forCharacteristic: characteristic];
+        [peripheral readValueForCharacteristic: characteristic];
+      }
     }
   }
 }
@@ -474,9 +478,6 @@ static std::string backlog = "";
 }
 
 - (void) peripheral: (CBPeripheral*)peripheral didUpdateNotificationStateForCharacteristic: (CBCharacteristic*)characteristic error: (NSError*)error {
-  if (![characteristic.UUID isEqual:[CBUUID UUIDWithString: _channelId]]) {
-    return;
-  }
 }
 
 - (void) centralManager: (CBCentralManager*)central didFailToConnectPeripheral: (CBPeripheral*)peripheral error: (NSError*)error {
@@ -525,7 +526,7 @@ static std::string backlog = "";
 @implementation Bridge
 - (void) setBluetooth: (BluetoothDelegate*)bd {
   _bluetooth = bd;
-  [_bluetooth initBluetooth];
+  [_bluetooth startBluetoothService];
   _bluetooth.bridge = self;
 }
 
@@ -608,19 +609,19 @@ static std::string backlog = "";
   auto seq = cmd.get("seq");
   uint64_t clientId = 0;
 
-  if (cmd.name == "bluetooth-subscribe") {
-    [self.bluetooth initBluetooth];
+  if (cmd.name == "bluetooth-start") {
+    [self.bluetooth startBluetoothService];
     return true;
   }
 
-  if (cmd.name == "bluetooth-advertise") {
+  if (cmd.name == "bluetooth-set") {
     auto uuid = cmd.get("uuid");
 
     if (buf != nullptr) {
       int length = std::stoi(cmd.get("length"));
-      [self.bluetooth bluetoothAdvertise: buf length: length uuid: uuid];
+      [self.bluetooth setValue: buf length: length uuid: uuid];
     } else {
-      [self.bluetooth bluetoothAdvertise: cmd.get("value") uuid: uuid];
+      [self.bluetooth setValue: cmd.get("value") uuid: uuid];
     }
 
     return true;
