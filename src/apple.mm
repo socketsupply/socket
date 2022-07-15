@@ -368,7 +368,7 @@ static std::string backlog = "";
 
   auto msg = SSC::format(R"MSG({
     "data" : {
-      "event": "peer-discovered",
+      "event": "peerDiscovered",
       "name": "$S",
       "uuid": "$S"
     }
