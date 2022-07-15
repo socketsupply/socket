@@ -114,8 +114,7 @@ static std::string backlog = "";
 
   auto msg = SSC::format(R"MSG({
     "data": {
-      "source": "bluetooth",
-      "message": "$S",
+      "event: "state",
       "state": "$S"
     }
   })MSG", message, state);
@@ -127,7 +126,17 @@ static std::string backlog = "";
 
 - (void) peripheralManagerDidStartAdvertising: (CBPeripheralManager*)peripheral error: (NSError*)error {
   if (error) {
-    NSLog(@"CoreBluetooth: Error advertising: %@", [error localizedDescription]);
+    auto desc = std::string([error.debugDescription UTF8String]);
+    std::replace(desc.begin(), desc.end(), '"', '\''); // Secure
+
+    auto msg = SSC::format(R"MSG({
+      "err": {
+        "event": "peripheralManagerDidStartAdvertising",
+        "message: "$S"
+      }
+    })MSG", message, desc);
+
+    [self.bridge emit: "bluetooth" msg: msg];
   }
 }
 
@@ -176,15 +185,16 @@ static std::string backlog = "";
 	_channelId = @"5A028AB0-8423-4495-88FD-28E0318289AE";
 	_serviceId = @"56702D92-69F9-4400-BEF8-D5A89FCFD31D";
 
-  // auto channelId = std::string([_channelId UTF8String]);
-  // auto serviceId = std::string([_serviceId UTF8String]);
+  auto channelId = std::string([_channelId UTF8String]);
+  auto serviceId = std::string([_serviceId UTF8String]);
 
   auto msg = SSC::format(R"MSG({
-    "data": {
-      "source": "bluetooth",
-      "event": "init"
+    "data" : {
+      "event": "init",
+      "channelId": "$S",
+      "serviceId": "$S"
     }
-  })MSG" /* channelId, serviceId */);
+  })MSG", channelId, serviceId);
 
   [self.bridge emit: "bluetooth" msg: msg];
 }
@@ -240,15 +250,13 @@ static std::string backlog = "";
 
   auto last = backlog;
 
-  /* auto msg = SSC::format(R"MSG({
+  auto msg = SSC::format(R"MSG({
     "data": {
-      "source": "bluetooth",
-      "message": "didReceiveReadRequest",
-      "str": "$S"
+      "event": "didReceiveReadRequest"
     }
-  })MSG", last);
+  })MSG");
 
-  [self.bridge emit: "bluetooth" msg: msg]; */
+  [self.bridge emit: "bluetooth" msg: msg];
 
   if (last.size() == 0) return;
 
@@ -262,7 +270,6 @@ static std::string backlog = "";
 
   auto msg = SSC::format(R"MSG({
     "data": {
-      "source": "bluetooth",
       "message": "didReceiveWriteRequests"
     }
   })MSG");
@@ -281,7 +288,6 @@ static std::string backlog = "";
     // TODO return as a proper buffer
     auto msg = SSC::format(R"MSG({
       "data": {
-        "source": "bluetooth",
         "message": "$S"
       }
     })MSG", std::string(src));
@@ -361,11 +367,10 @@ static std::string backlog = "";
   }
 
   auto msg = SSC::format(R"MSG({
-    "data": {
-      "source": "bluetooth",
+    "data" : {
+      "event": "peer-discovered",
       "name": "$S",
-      "uuid": "$S",
-      "event": "peer-discovered"
+      "uuid": "$S"
     }
   })MSG", name, uuid);
 
@@ -459,9 +464,9 @@ static std::string backlog = "";
 
   std::string msg = SSC::format(R"MSG({
     "data": {
-      "source": "bluetooth",
-      "uuid": "$S",
-      "name": "$S"
+      "event": "data",
+      "name": "$S",
+      "uuid": "$S"
     }
   })MSG", name, uuid);
 
