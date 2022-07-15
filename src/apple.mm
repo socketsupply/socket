@@ -301,7 +301,8 @@ static std::string backlog = "";
     self.channelId = [NSString stringWithUTF8String: uuid.c_str()];
   }
 
-  backlog = str;
+  backlog = std::string(buf);
+
   [self startScanning]; // noop if already scanning.
 
   // TODO (@heapwolf) enforce max message legth and split into multiple writes.
@@ -612,7 +613,7 @@ static std::string backlog = "";
 
     if (buf != nullptr) {
       int length = std::stoi(cmd.get("length"));
-      [self.bluetooth bluetoothAdvertise: data length: length uuid: uuid];
+      [self.bluetooth bluetoothAdvertise: buf length: length uuid: uuid];
     } else {
       [self.bluetooth bluetoothAdvertise: cmd.get("value") uuid: uuid];
     }
