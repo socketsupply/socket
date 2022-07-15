@@ -1046,6 +1046,37 @@ jstring exports(NativeCore, getFSConstants)(
   return env->NewStringUTF(constants.c_str());
 }
 
+jstring exports(NativeCore, createPost)(
+  JNIEnv *env,
+  jobject self,
+  jstring params,
+  jstring headers,
+  jbyteArray bytes
+) {
+  auto core = GetNativeCoreFromEnvironment(env);
+
+  if (!core) {
+    Throw(env, NativeCoreNotInitializedException);
+    return nullptr;
+  }
+
+  auto size = env->GetArrayLength(bytes);
+  auto body = new char[size];
+  env->GetByteArrayRegion(bytes, 0, size, (jbyte *) body);
+
+  auto js = core->createPost(
+    NativeString(env, params).str(),
+    SSC::Post {
+      .length = size,
+      .headers = NativeString(env, headers).str(),
+      .body = body,
+      .bodyNeedsFree = true
+    }
+  );
+
+  return env->NewStringUTF(js.c_str());
+}
+
 jbyteArray exports(NativeCore, getPostData)(
   JNIEnv *env,
   jobject self,

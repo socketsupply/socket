@@ -65,7 +65,9 @@ open class WebViewClient(activity: WebViewActivity) : android.webkit.WebViewClie
       "ping" -> {
         val stream = java.io.ByteArrayInputStream("pong".toByteArray())
         val response = android.webkit.WebResourceResponse(
-          "text/plain", "utf-8", stream
+          "text/plain",
+          "utf-8",
+          stream
         )
 
         response.responseHeaders = mapOf(
@@ -84,9 +86,12 @@ open class WebViewClient(activity: WebViewActivity) : android.webkit.WebViewClie
             return null
           }
 
-          val stream = java.io.ByteArrayInputStream(core.getPostData(id))
+          val bytes = core.getPostData(id)
+          val stream = java.io.ByteArrayInputStream(bytes)
           val response = android.webkit.WebResourceResponse(
-            "application/octet-stream", "utf-8", stream
+            "application/octet-stream",
+            "utf-8",
+            stream
           )
 
           response.responseHeaders = mapOf(
@@ -150,7 +155,8 @@ open class WebViewClient(activity: WebViewActivity) : android.webkit.WebViewClie
             throwError = { _: String, error: String ->
               stream.write(error.toByteArray(), 0, error.length)
               stream.close()
-            })
+            }
+          )
 
           if (returnValue != null) {
             return response
@@ -568,7 +574,7 @@ open class Bridge(activity: WebViewActivity) {
           val offset = message.get("offset", "0").toInt()
 
           if (core.fs.isAssetId(id)) {
-            core.fs.readAsset(id, offset, size, fun(data: String) {
+            core.fs.readAsset(message.seq, id, offset, size, fun(data: String) {
               callback(message.seq, data)
             })
           } else {
@@ -929,8 +935,16 @@ data class GenericNativeCoreConfiguration(
 open class NativeFileSystem(core: NativeCore) {
   val TAG = "NativeFileSystem"
 
+  data class AssetDescriptorContext(
+    val id: String,
+    val path: String,
+    var position: Int = 0,
+    var fd: android.content.res.AssetFileDescriptor? = null,
+    var stream: java.io.FileInputStream? = null
+  );
+
   private var core: NativeCore? = core
-  private val openAssets = mutableMapOf<String, String>()
+  private val openAssets = mutableMapOf<String, AssetDescriptorContext>()
 
   var nextId: Long = 0
   val constants = mutableMapOf<String, Int>();
@@ -1024,7 +1038,7 @@ open class NativeFileSystem(core: NativeCore) {
 
     fd.close()
 
-    openAssets[id] = path
+    openAssets[id] = AssetDescriptorContext(id, path)
 
     callback(JSONData(id, "\"fd\": $id").toString())
   }
@@ -1043,9 +1057,11 @@ open class NativeFileSystem(core: NativeCore) {
     id: String,
     callback: (String) -> Unit
   ) {
-    if (openAssets[id] == null) {
-      return callback(JSONError(id, "Invalid file descriptor.").toString())
-    }
+    val descriptor = openAssets[id]
+      ?: return callback(JSONError(id, "Invalid file descriptor.").toString())
+
+    descriptor.fd?.close()
+    descriptor.stream?.close()
 
     openAssets.remove(id)
     return callback(JSONData(id).toString())
@@ -1064,32 +1080,63 @@ open class NativeFileSystem(core: NativeCore) {
   }
 
   fun readAsset(
+    seq: String = "",
     id: String,
     offset: Int = 0,
     size: Int,
     callback: (String) -> Unit
   ) {
-    val path = openAssets[id]
+    val descriptor = openAssets[id]
       ?: return callback(JSONError(id, "Invalid file descriptor.").toString())
 
     val assetManager = core?.getAssetManager()
       ?: return callback(JSONError(id, "AssetManager is not initialized.").toString())
 
-    val fd = assetManager.openFd(path)
-    val input = fd.createInputStream()
-    val buffer = ByteArray(size)
+    val buffer = ByteArray(size.toInt())
+    val start = (
+      if (offset >= 0) kotlin.math.min(size, offset)
+      else descriptor.position
+    )
 
-    try {
-      input.read(buffer, offset, size)
-      val bytes = String(java.util.Base64.getEncoder().encode(buffer))
-      callback(JSONData(id, "\"bytes\": \"$bytes\"").toString())
-    } catch (err: Exception) {
-      val message = err.toString()
-      callback(JSONError(id, message).toString())
+    if (descriptor.fd != null && offset >= 0 && offset < descriptor.position) {
+      descriptor.fd?.close()
+      descriptor.stream?.close()
+
+      descriptor.fd = null
+      descriptor.stream = null
     }
 
-    input.close()
-    fd.close()
+    if (descriptor.fd == null) {
+      descriptor.fd = assetManager.openFd(descriptor.path)
+      descriptor.stream = descriptor.fd?.createInputStream()
+    }
+
+    if (start > descriptor.position) {
+      descriptor.position = descriptor.stream?.skip(
+        start.toLong() - descriptor.position
+      )?.toInt() ?: 0
+    }
+
+    val bytesRead = try {
+      descriptor.stream?.read(buffer, 0, size)
+    } catch (err: Exception) {
+      return callback(JSONError(id, err.toString()).toString())
+    }
+
+    if (bytesRead != null && bytesRead > 0) {
+      val encoder = java.util.Base64.getEncoder()
+      val bytes = buffer.slice(0..bytesRead - 1).toByteArray()
+
+      descriptor.position += bytesRead
+
+      try {
+        core?.apply {
+          evaluateJavascript(createPost( "{\"seq\": \"$seq\"}", "", bytes))
+        }
+      } catch (err: Exception) {
+        return callback(JSONError(id, err.toString()).toString())
+      }
+    }
   }
 
   fun write(
@@ -1300,6 +1347,13 @@ open class NativeCore(var activity: WebViewActivity) {
 
   @Throws(java.lang.Exception::class)
   external fun freePostData(id: String)
+
+  @Throws(java.lang.Exception::class)
+  external fun createPost(
+    params: String,
+    headers: String,
+    bytes: ByteArray
+  ): String
 
   @Throws(java.lang.Exception::class)
   external fun fsAccess(
