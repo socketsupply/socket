@@ -85,7 +85,8 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
       break;
 
     case CBManagerStatePoweredOn:
-      [self startBluetooth];
+      [self startAdvertising];
+      [self startScanning];
       message = "CoreBluetooth BLE hardware is powered on and ready.";
       state = "CBManagerStatePoweredOn";
       break;
@@ -252,6 +253,10 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   [self setValue: str.data() length: str.size() uuid: uuid];
 }
 
+- (void) startAdvertising {
+  [_peripheralManager startAdvertising: @{CBAdvertisementDataServiceUUIDsKey: _serviceIds}];
+}
+
 - (void) startBluetoothService: (std::string)sid {
   auto sUUID = [CBUUID UUIDWithString: [NSString stringWithUTF8String: sid.c_str()];
   auto service = [[CBMutableService alloc] initWithType: sUUID primary: YES];
@@ -260,8 +265,8 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   [_peripheralManager addService: service];
 
   [_serviceIds addObject: sUUID];
-  [_peripheralManager startAdvertising: @{CBAdvertisementDataServiceUUIDsKey: _serviceIds}];
 
+  [self startAdvertising];
   [self startScanning];
 }
 
@@ -525,7 +530,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 @implementation Bridge
 - (void) setBluetooth: (BluetoothDelegate*)bd {
   _bluetooth = bd;
-  [_bluetooth startBluetoothService];
+  [_bluetooth initBluetooth];
   _bluetooth.bridge = self;
 }
 
@@ -609,7 +614,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   uint64_t clientId = 0;
 
   if (cmd.name == "bluetooth-start") {
-    [self.bluetooth startBluetoothService];
+    [self.bluetooth startBluetoothService: cmd.get("serviceId")];
     return true;
   }
 
