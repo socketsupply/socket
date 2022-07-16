@@ -49,7 +49,7 @@ function die {
 }
 
 function advice {
-  if [ "$(uname)" == "Darwin" ]; then 
+  if [ "$(uname)" == "Darwin" ]; then
     echo "brew install $1"
   elif [ "$(expr substr $(uname -s) 1 5)" == "Linux" ]; then
     echo "apt-get install $1"
@@ -62,7 +62,9 @@ die $? "not ok - missing build tools, try '$(advice "automake")'"
 quiet command -v autoconf
 die $? "not ok - missing build tools, try '$(advice "automake")'"
 
-if [ "$(uname)" == "Darwin" ]; then 
+if [ "$(uname)" == "Darwin" ]; then
+  quiet command -v glibtoolize
+  die $? "not ok - missing build tools, try 'brew install libtool'"
   quiet command -v libtool
   die $? "not ok - missing build tools, try 'brew install libtool'"
 fi
