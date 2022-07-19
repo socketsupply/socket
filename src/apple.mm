@@ -470,7 +470,13 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   }
 
   const void* rawData = [characteristic.value bytes];
-  std::string key = [characteristic.UUID.UUIDString UTF8String];
+  std::string characteristicId = [characteristic.UUID.UUIDString UTF8String];
+  std::string sid = "";
+
+  for (NSString* ssid in [_serviceMap allKeys]) {
+    NSString* scid = characteristic.UUID.UUIDString;
+    if ([_serviceMap[ssid] containsObject: scid]) sid = [scid UTF8String];
+  }
 
   SSC::Post post;
   post.body = (char*) rawData;
@@ -487,11 +493,12 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     "data": {
       "event": "data",
       "source": "bluetooth",
-      "key": "$S",
+      "characteristicId": "$S",
+      "serviceId": "$S",
       "name": "$S",
       "uuid": "$S"
     }
-  })MSG", key, name, uuid);
+  })MSG", characteristicId, name, uuid);
 
   [self.bridge send: seq msg: msg post: post];
 }
