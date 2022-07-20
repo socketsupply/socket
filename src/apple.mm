@@ -205,6 +205,18 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 // https://developer.apple.com/documentation/corebluetooth/cbmutableservice#
 //
 - (void) setValue: (std::string)seq buf: (char*)buf len: (int)len sid: (std::string)sid cid: (std::string)cid {
+  if (sid.size() != 36) {
+    auto msg = SSC::format(R"MSG({ "err": { "message": "invalid serviceId" } })MSG");
+    [self.bridge send: seq msg: msg post: SSC::Post{}];
+    return;
+  }
+
+  if (cid.size() != 36) {
+    auto msg = SSC::format(R"MSG({ "err": { "message": "invalid characteristicId" } })MSG");
+    [self.bridge send: seq msg: msg post: SSC::Post{}];
+    return;
+  }
+
   NSString* ssid = [NSString stringWithUTF8String: sid.c_str()];
   NSString* scid = [NSString stringWithUTF8String: cid.c_str()];
   auto sUUID = [CBUUID UUIDWithString: ssid];
@@ -266,6 +278,19 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
 - (void) startService: (std::string)sid { // start advertising and scanning for a new service
   NSString* ssid = [NSString stringWithUTF8String: sid.c_str()];
+
+  if (sid.size() != 36) {
+    auto msg = SSC::format(R"MSG({
+      "err": {
+        "serviceId": "$S",
+        "message": "Invalid serviceId"
+      }
+    })MSG", sid);
+
+    [self.bridge send: "-1" msg: msg post: SSC::Post{}];
+    return;
+  }
+
   auto sUUID = [CBUUID UUIDWithString: ssid];
 
   if (_services[ssid]) {
@@ -647,6 +672,19 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     auto sid = cmd.get("serviceId");
     auto cid = cmd.get("characteristicId");
     auto seq = cmd.get("seq");
+
+    if (sid.size() != 36) {
+      auto msg = SSC::format(R"MSG({ "err": { "message": "invalid serviceId" } })MSG");
+      [self send: seq msg: msg post: Post{}];
+      return true;
+    }
+
+    if (sid.size() != 36) {
+      auto msg = SSC::format(R"MSG({ "err": { "message": "invalid characteristicId" } })MSG");
+      [self send: seq msg: msg post: Post{}];
+      return true;
+    }
+
     char* value;
     int len;
 
