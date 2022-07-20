@@ -19,6 +19,16 @@ open class WebView(context: android.content.Context) : android.webkit.WebView(co
 open class WebViewClient(activity: WebViewActivity) : android.webkit.WebViewClient() {
   protected val activity = activity
   open protected val TAG = "WebViewClient"
+  open protected var assetLoader: androidx.webkit.WebViewAssetLoader? = null
+
+  init {
+    this.assetLoader = androidx.webkit.WebViewAssetLoader.Builder()
+      .addPathHandler(
+        "/assets/",
+        androidx.webkit.WebViewAssetLoader.AssetsPathHandler(activity)
+      )
+      .build()
+  }
 
   /**
    * Handles URL loading overrides for "file://" based URI schemes.
@@ -32,8 +42,12 @@ open class WebViewClient(activity: WebViewActivity) : android.webkit.WebViewClie
       return true
     }
 
-    if (url.scheme != "file") {
-      return false
+    if (url.scheme == "file") {
+      return true
+    }
+
+    if (url.host == "appassets.androidplatform.net") {
+      return true
     }
 
     val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, url)
@@ -56,6 +70,12 @@ open class WebViewClient(activity: WebViewActivity) : android.webkit.WebViewClie
     val url = request.url
 
     android.util.Log.d(TAG, "${url.scheme} ${request.method}")
+
+    val assetLoaderRequest = this.assetLoader?.shouldInterceptRequest(url)
+
+    if (assetLoaderRequest != null) {
+      return assetLoaderRequest
+    }
 
     if (url.scheme != "ipc") {
       return null
@@ -194,8 +214,9 @@ open class WebViewClient(activity: WebViewActivity) : android.webkit.WebViewClie
  * @TODO(jwerle): look into `androidx.appcompat.app.AppCompatActivity`
  */
 open class WebViewActivity : androidx.appcompat.app.AppCompatActivity() {
-  open protected var client: WebViewClient? = null
   open protected val TAG = "WebViewActivity"
+  open protected var client: WebViewClient? = null
+  open protected val timer = java.util.Timer()
 
   open var externalInterface: ExternalWebViewInterface? = null
   open var bridge: Bridge? = null
@@ -203,12 +224,14 @@ open class WebViewActivity : androidx.appcompat.app.AppCompatActivity() {
   open var core: NativeCore? = null
 
   /**
-   * Called when the `WebViewActivity` is starting
+   * Called when the `WebViewActivity` is first created
    * @see https://developer.android.com/reference/kotlin/android/app/Activity#onCreate(android.os.Bundle)
    */
   override fun onCreate(state: android.os.Bundle?) {
     super.onCreate(state)
+
     setContentView(R.layout.web_view_activity)
+
     val client = WebViewClient(this)
     val externalInterface = ExternalWebViewInterface(this)
 
@@ -223,6 +246,7 @@ open class WebViewActivity : androidx.appcompat.app.AppCompatActivity() {
           assetManager = applicationContext.resources.assets
         )
       )
+
       if (check()) {
         val index = getPathToIndexHTML()
 
@@ -230,11 +254,42 @@ open class WebViewActivity : androidx.appcompat.app.AppCompatActivity() {
 
         view?.apply {
           settings.javaScriptEnabled = true
+
+          // allow list
+          settings.allowFileAccess = true
+          settings.allowContentAccess = true
+          settings.allowFileAccessFromFileURLs = true
+
           webViewClient = client
           addJavascriptInterface(externalInterface, "external")
-          loadUrl("file:///android_asset/$index")
+          loadUrl("https://appassets.androidplatform.net/assets/$index")
         }
       }
+    }
+
+    val core = this.core
+    this.timer.schedule(
+      kotlin.concurrent.timerTask {
+        core?.apply {
+          android.util.Log.d(TAG, "Expiring old post data")
+          expirePostData()
+        }
+      },
+      30L * 1024L, // delay
+      30L * 1024L //period
+    )
+  }
+
+  override fun onDestroy() {
+    super.onDestroy()
+
+    this.timer?.apply {
+      cancel()
+      purge()
+    }
+
+    this.core?.apply {
+      freeAllPostData()
     }
   }
 }
@@ -1131,7 +1186,7 @@ open class NativeFileSystem(core: NativeCore) {
 
       try {
         core?.apply {
-          evaluateJavascript(createPost( "{\"seq\": \"$seq\"}", "", bytes))
+          evaluateJavascript(createPost("{\"seq\": \"$seq\"}", "", bytes))
         }
       } catch (err: Exception) {
         return callback(JSONError(id, err.toString()).toString())
@@ -1347,6 +1402,12 @@ open class NativeCore(var activity: WebViewActivity) {
 
   @Throws(java.lang.Exception::class)
   external fun freePostData(id: String)
+
+  @Throws(java.lang.Exception::class)
+  external fun freeAllPostData()
+
+  @Throws(java.lang.Exception::class)
+  external fun expirePostData()
 
   @Throws(java.lang.Exception::class)
   external fun createPost(

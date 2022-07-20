@@ -945,7 +945,8 @@ android {
 
 dependencies {
   implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
-  implementation 'androidx.appcompat:appcompat:1.2.0'
+  implementation 'androidx.appcompat:appcompat:1.4.2'
+  implementation 'androidx.webkit:webkit:1.4.0'
 }
 )GROOVY";
 

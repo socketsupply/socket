@@ -29,6 +29,8 @@ namespace SSC {
   using String = std::string;
 
   struct Post {
+    uint64_t id;
+    uint64_t ttl;
     char* body;
     int length;
     String headers;
@@ -273,8 +275,11 @@ namespace SSC {
       bool hasTask (String id);
       void removeTask (String id);
       void putTask (String id, Task t);
+
       Post getPost (uint64_t id);
       void removePost (uint64_t id);
+      void removeAllPosts ();
+      void expirePosts ();
       void putPost (uint64_t id, Post p);
       String createPost (String params, Post post);
 
@@ -445,18 +450,50 @@ namespace SSC {
     return posts->at(id);
   }
 
+  void Core::expirePosts () {
+    auto now = std::chrono::system_clock::now()
+      .time_since_epoch()
+      .count();
+
+    for (auto const &tuple : *posts) {
+      auto id = tuple.first;
+      auto post = tuple.second;
+
+      if (post.ttl < now) {
+        removePost(id);
+      }
+    }
+  }
+
   void Core::putPost (uint64_t id, Post p) {
     posts->insert_or_assign(id, p);
   }
 
   void Core::removePost (uint64_t id) {
     if (posts->find(id) == posts->end()) return;
+    auto post = getPost(id);
+
+    if (post.body && post.bodyNeedsFree) {
+      delete post.body;
+      post.body = nullptr;
+    }
+
     posts->erase(id);
   }
 
   String Core::createPost (String params, Post post) {
-    uint64_t id = SSC::rand64();
-    String sid = std::to_string(id);
+    if (post.id == 0) {
+      post.id = SSC::rand64();
+    }
+
+    post.ttl = std::chrono::time_point_cast<std::chrono::milliseconds>(
+      std::chrono::system_clock::now() +
+      std::chrono::milliseconds(32 * 1024)
+    )
+      .time_since_epoch()
+      .count();
+
+    String sid = std::to_string(post.id);
 
     String js(
       ";(() => {"
@@ -484,8 +521,14 @@ namespace SSC {
       "})();"
     );
 
-    posts->insert_or_assign(id, post);
+    posts->insert_or_assign(post.id, post);
     return js;
+  }
+
+  void Core::removeAllPosts () {
+    for (auto const &tuple : *posts) {
+      removePost(tuple.first);
+    }
   }
 
   String Core::getFSConstants () const {

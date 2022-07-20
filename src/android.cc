@@ -1112,13 +1112,33 @@ void exports(NativeCore, freePostData)(
   auto postId = GetNativeCoreIDFromJString(env, id);
   auto post = reinterpret_cast<SSC::Core *>(core)->getPost(postId);
 
-  if (post.body && post.bodyNeedsFree) {
-    // @TODO(jwerle): determine if this should be in `SSC::Core`
-    delete post.body;
-    post.body = 0;
+  reinterpret_cast<SSC::Core *>(core)->removePost(postId);
+}
+
+void exports(NativeCore, freeAllPostData)(
+  JNIEnv *env,
+  jobject self
+) {
+  auto core = GetNativeCoreFromEnvironment(env);
+
+  if (!core) {
+    return Throw(env, NativeCoreNotInitializedException);
   }
 
-  reinterpret_cast<SSC::Core *>(core)->removePost(postId);
+  reinterpret_cast<SSC::Core *>(core)->removeAllPosts();
+}
+
+void exports(NativeCore, expirePostData)(
+  JNIEnv *env,
+  jobject self
+) {
+  auto core = GetNativeCoreFromEnvironment(env);
+
+  if (!core) {
+    return Throw(env, NativeCoreNotInitializedException);
+  }
+
+  reinterpret_cast<SSC::Core *>(core)->expirePosts();
 }
 
 void exports(NativeCore, fsAccess)(
