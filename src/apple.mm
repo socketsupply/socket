@@ -34,7 +34,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 @property (strong, nonatomic) NSMutableArray* peripherals;
 @property (strong, nonatomic) NSMutableDictionary* services;
 @property (strong, nonatomic) NSMutableDictionary* serviceMap;
-- (void) setValue: (std::string)seq value: (char*)buf len: (int)len sid: (std::string)sid cid: (std::string)cid;
+- (void) setValue: (std::string)seq buf: (char*)buf len: (int)len sid: (std::string)sid cid: (std::string)cid;
 - (void) startService: (std::string)sid;
 - (void) startAdvertising;
 - (void) startScanning;
@@ -658,7 +658,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
       len = cmd.get("value").size();
     }
 
-    [self.bluetooth setValue: seq value: value len: len sid: sid cid: cid];
+    [self.bluetooth setValue: seq buf: value len: len sid: sid cid: cid];
     return true;
   }
 
