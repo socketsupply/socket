@@ -477,9 +477,9 @@ int main (const int argc, const char* argv[]) {
       //writeFile();
 
       // Core
-      fs::copy(trim(prefixFile("src/core.hh")), jni);
-      fs::copy(trim(prefixFile("src/common.hh")), jni);
-      fs::copy(trim(prefixFile("src/preload.hh")), jni);
+      fs::copy(trim(prefixFile("src/core.hh")), jni, fs::copy_options::overwrite_existing);
+      fs::copy(trim(prefixFile("src/common.hh")), jni, fs::copy_options::overwrite_existing);
+      fs::copy(trim(prefixFile("src/preload.hh")), jni, fs::copy_options::overwrite_existing);
 
       // libuv
       fs::copy(
@@ -584,7 +584,7 @@ int main (const int argc, const char* argv[]) {
       writeFile(src / "main" / "assets" / "vital_check_ok.txt", "OK");
 
       // JNI/NDK
-      fs::copy(trim(prefixFile("src/android.cc")), jni);
+      fs::copy(trim(prefixFile("src/android.cc")), jni, fs::copy_options::overwrite_existing);
       writeFile(
         jni / "android.hh",
         std::regex_replace(
