@@ -679,7 +679,7 @@ namespace SSC {
           String(uv_strerror((int)req->result))
         );
       } else {
-        desc->fd = req->result;
+        desc->fd = (int) req->result;
         msg = SSC::format(
           R"MSG({ "data": { "id": "$S", "fd": $S } })MSG",
           std::to_string(desc->id),
@@ -817,7 +817,7 @@ namespace SSC {
         )MSG", std::to_string(req->result), std::to_string(desc->id));
 
         post.body = (char *) desc->data;
-        post.length = req->result;
+        post.length = (int) req->result;
         post.headers = headers;
         post.bodyNeedsFree = true;
       }

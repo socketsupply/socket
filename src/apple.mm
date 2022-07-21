@@ -33,9 +33,11 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 @property (strong, nonatomic) CBPeripheral* bluetoothPeripheral;
 @property (strong, nonatomic) NSMutableArray* peripherals;
 @property (strong, nonatomic) NSMutableDictionary* services;
+@property (strong, nonatomic) NSMutableDictionary* characteristics;
 @property (strong, nonatomic) NSMutableDictionary* serviceMap;
-- (void) setValue: (std::string)seq buf: (char*)buf len: (int)len sid: (std::string)sid cid: (std::string)cid;
-- (void) startService: (std::string)sid;
+- (void) publishCharacteristic: (std::string)seq buf: (char*)buf len: (int)len sid: (std::string)sid cid: (std::string)cid;
+- (void) subscribeCharacteristic: (std::string)seq sid: (std::string)sid cid: (std::string)cid;
+- (void) startService: (std::string)seq sid: (std::string)sid;
 - (void) startAdvertising;
 - (void) startScanning;
 - (void) initBluetooth;
@@ -139,7 +141,10 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     })MSG", desc);
 
     [self.bridge emit: "bluetooth" msg: msg];
+    return;
   }
+
+  NSLog(@"CoreBluetooth didStartAdvertising: %@", _serviceMap);
 }
 
 - (void) peripheralManager: (CBPeripheralManager*)peripheralManager central: (CBCentral*)central didSubscribeToCharacteristic: (CBCharacteristic*)characteristic {
@@ -177,6 +182,8 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 - (void) initBluetooth {
   _peripherals = [[NSMutableArray alloc] init];
   _serviceMap = [[NSMutableDictionary alloc] init];
+  _services = [[NSMutableDictionary alloc] init];
+  _characteristics = [[NSMutableDictionary alloc] init];
   _centralManager = [[CBCentralManager alloc] initWithDelegate: self queue: nil];
   _peripheralManager = [[CBPeripheralManager alloc] initWithDelegate: self queue: nil options: nil];
 }
@@ -189,12 +196,11 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     [uuids addObject: [CBUUID UUIDWithString: key]];
   }
 
+  [_peripheralManager stopAdvertising];
   [_peripheralManager startAdvertising: @{CBAdvertisementDataServiceUUIDsKey: [uuids copy]}];
 }
 
 - (void) startScanning {
-  NSLog(@"CoreBluetooth: startScanning");
-
   NSArray* keys = [_serviceMap allKeys];
   if ([keys count] == 0) {
     NSLog(@"No keys to scan for");
@@ -207,63 +213,68 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     [uuids addObject: [CBUUID UUIDWithString: key]];
   }
 
+  NSLog(@"CoreBluetooth: startScanning %@", uuids);
+
   [_centralManager
     scanForPeripheralsWithServices: [uuids copy]
     options: @{CBCentralManagerScanOptionAllowDuplicatesKey: @(YES)}
   ];
 }
 
-//
-// This method needs to remove the service, add back all characteristics and
-// re-add it to the manager. So we use a set which ensures unique UUIDs.
-//
-// https://developer.apple.com/documentation/corebluetooth/cbmutableservice#
-//
-- (void) setValue: (std::string)seq buf: (char*)buf len: (int)len sid: (std::string)sid cid: (std::string)cid {
-  if (sid.size() != 36) {
+-(void) subscribeCharacteristic: (std::string)seq sid: (std::string)sid cid: (std::string)cid {
+  NSString* ssid = [NSString stringWithUTF8String: sid.c_str()];
+  NSString* scid = [NSString stringWithUTF8String: cid.c_str()];
+
+  CBMutableCharacteristic* ch = [[CBMutableCharacteristic alloc]
+    initWithType: [CBUUID UUIDWithString: scid]
+      properties: (CBCharacteristicPropertyNotify | CBCharacteristicPropertyRead | CBCharacteristicPropertyWrite)
+           value: nil
+     permissions: (CBAttributePermissionsReadable | CBAttributePermissionsWriteable)
+  ];
+
+  if (!_characteristics[ssid]) {
+    _characteristics[ssid] = [NSMutableSet setWithObject: ch];
+  } else {
+    [_characteristics[ssid] addObject: ch];
+  }
+
+  if (!_serviceMap[ssid]) {
+    _serviceMap[ssid] = [NSMutableSet setWithObject: [CBUUID UUIDWithString: scid]];
+  } else {
+    [_serviceMap[ssid] addObject: [CBUUID UUIDWithString: scid]];
+  }
+
+  auto msg = SSC::format(R"MSG({
+    "data": {
+      "serviceId": "$S",
+      "characteristicId": "$S",
+      "message": "Started"
+    }
+  })MSG", sid, cid);
+
+  NSLog(@"SUBSCRBE CHAR %s", msg.c_str());
+
+  [self.bridge send: seq msg: msg post: SSC::Post{}];
+}
+
+- (void) publishCharacteristic: (std::string)seq buf: (char*)buf len: (int)len sid: (std::string)sid cid: (std::string)cid {
+  NSString* ssid = [NSString stringWithUTF8String: sid.c_str()];
+  NSString* scid = [NSString stringWithUTF8String: cid.c_str()];
+
+  auto sUUID = [CBUUID UUIDWithString: ssid];
+  auto cUUID = [CBUUID UUIDWithString: scid];
+
+  if (!_serviceMap[ssid]) {
     auto msg = SSC::format(R"MSG({ "err": { "message": "invalid serviceId" } })MSG");
     [self.bridge send: seq msg: msg post: SSC::Post{}];
     return;
   }
 
-  if (cid.size() != 36) {
+  if (![_serviceMap[ssid] containsObject: cUUID]) {
     auto msg = SSC::format(R"MSG({ "err": { "message": "invalid characteristicId" } })MSG");
     [self.bridge send: seq msg: msg post: SSC::Post{}];
     return;
   }
-
-  NSString* ssid = [NSString stringWithUTF8String: sid.c_str()];
-  NSString* scid = [NSString stringWithUTF8String: cid.c_str()];
-  auto sUUID = [CBUUID UUIDWithString: ssid];
-  auto cUUID = [CBUUID UUIDWithString: scid];
-
-  CBMutableCharacteristic* characteristic;
-
-  BOOL isPrimary = NO;
-  if ([[_serviceMap allKeys] count] == 0) isPrimary = YES;
-  CBMutableService* service = [[CBMutableService alloc] initWithType: sUUID primary: isPrimary];
-
-  if (_serviceMap[ssid]) {
-    [_serviceMap[ssid] addObject: cUUID];
-  } else {
-    _serviceMap[ssid] = [NSMutableSet setWithObject: cUUID];
-  }
-
-  NSMutableArray* characteristics = [[NSMutableArray alloc] init];
-
-  for (CBUUID* uuid in _serviceMap[ssid]) {
-    CBMutableCharacteristic* ch = [[CBMutableCharacteristic alloc]
-      initWithType: uuid
-        properties: (CBCharacteristicPropertyNotify | CBCharacteristicPropertyRead | CBCharacteristicPropertyWrite)
-             value: nil
-       permissions: (CBAttributePermissionsReadable | CBAttributePermissionsWriteable)
-    ];
-
-    if (uuid == cUUID) characteristic = ch;
-    [characteristics addObject: ch];
-  }
-
-  service.characteristics = [characteristics copy];
 
   [self startScanning]; // noop if already scanning.
   [self startAdvertising]; // noop if already advertising.
@@ -279,6 +290,13 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
   auto* data = [NSData dataWithBytes: buf length: len];
 
+  CBMutableCharacteristic* characteristic;
+  for (CBMutableCharacteristic* ch in _characteristics[ssid]) {
+    if ([ch.UUID isEqual: cUUID]) characteristic = ch;
+  }
+
+  characteristic.value = data;
+
   auto didWrite = [
     _peripheralManager
       updateValue: data
@@ -291,37 +309,37 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     return;
   }
 
-  NSLog(@"CoreBluetooth: did write");
+  NSLog(@"CoreBluetooth: did write '%@' %@", data, characteristic);
 }
 
-- (void) startService: (std::string)sid { // start advertising and scanning for a new service
+- (void) startService: (std::string)seq sid: (std::string)sid { // start advertising and scanning for a new service
   NSString* ssid = [NSString stringWithUTF8String: sid.c_str()];
 
-  if (sid.size() != 36) {
-    auto msg = SSC::format(R"MSG({
-      "err": {
-        "serviceId": "$S",
-        "message": "Invalid serviceId"
-      }
-    })MSG", sid);
-
-    [self.bridge send: "-1" msg: msg post: SSC::Post{}];
-    return;
-  }
-
   auto sUUID = [CBUUID UUIDWithString: ssid];
+  CBMutableService* service = _services[ssid];
 
-  if (_services[ssid]) {
-    [_peripheralManager removeService: _services[ssid]];
+  if (!service) {
+    service = [[CBMutableService alloc] initWithType: sUUID primary: YES];
+
+    service.characteristics = [_characteristics[ssid] copy];
+
+    [_services setValue: service forKey: ssid];
+    [_peripheralManager addService: service];
+
+    NSLog(@"Creating service with %@", _characteristics[ssid]);
   }
-
-  auto service = [[CBMutableService alloc] initWithType: sUUID primary: YES];
-
-  [_services setValue: service forKey: ssid];
-  [_peripheralManager addService: service];
 
   [self startAdvertising];
   [self startScanning];
+
+  auto msg = SSC::format(R"MSG({
+    "data": {
+      "serviceId": "$S",
+      "message": "Started"
+    }
+  })MSG", sid);
+
+  [self.bridge send:seq msg: msg post:SSC::Post{}];
 }
 
 - (void) peripheralManager: (CBPeripheralManager*)peripheral didReceiveReadRequest: (CBATTRequest*)request {
@@ -329,9 +347,11 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
   CBMutableCharacteristic* ch;
 
-  for (CBMutableService* service in _services) {
-    for (CBMutableCharacteristic* c in service.characteristics) {
-      if ([c.UUID isEqual: request.characteristic.UUID]) {
+  for (NSString* key in _services) {
+    NSMutableSet* characteristics = _characteristics[key];
+
+    for (CBMutableCharacteristic* c in characteristics) {
+      if (c.UUID == request.characteristic.UUID) {
         ch = c;
         break;
       }
@@ -353,6 +373,8 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   })MSG"); // , std::string(src));
 
   [self.bridge emit: "bluetooth" msg: msg];
+
+  // NSData* value = [NSData dataWithBytes: ch.value.bytes length: ch.value.length];
 
   request.value = ch.value;
   [_peripheralManager respondToRequest: request withResult: CBATTErrorSuccess];
@@ -447,7 +469,15 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   NSLog(@"CoreBluetooth: didConnectPeripheral");
   peripheral.delegate = self;
   // [peripheral setNotifyValue: YES forCharacteristic: _characteristic];
-  [peripheral discoverServices: [_serviceMap allKeys]];
+
+  NSArray* keys = [_serviceMap allKeys];
+  NSMutableArray* uuids = [[NSMutableArray alloc] init];
+
+  for (NSString* key in keys) {
+    [uuids addObject: [CBUUID UUIDWithString: key]];
+  }
+
+  [peripheral discoverServices: uuids];
 }
 
 - (void) peripheral: (CBPeripheral*)peripheral didDiscoverServices: (NSError*)error {
@@ -456,11 +486,12 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     return;
   }
 
-  NSLog(@"CoreBluetooth: peripheral:didDiscoverServices:error:");
   for (CBService *service in peripheral.services) {
     NSString* key = service.UUID.UUIDString;
-    NSArray* values = [_serviceMap[key] allObjects];
-    [peripheral discoverCharacteristics: values forService: service];
+    NSArray* uuids = [_serviceMap[key] allObjects];
+
+    NSLog(@"CoreBluetooth: peripheral:didDiscoverServices withChracteristics: %@", uuids);
+    [peripheral discoverCharacteristics: [uuids copy] forService: service];
   }
 }
 
@@ -470,9 +501,23 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     return;
   }
 
+  NSLog(@"FOUND CHARS FOR SERVICE %@", service);
+
+  NSString* key = service.UUID.UUIDString;
+  NSArray* uuids = [[_serviceMap[key] allObjects] copy];
+
+  /* for (CBCharacteristic* characteristic in service.characteristics) { // loop over discovered
+    [peripheral setNotifyValue: YES forCharacteristic: characteristic];
+    [peripheral readValueForCharacteristic: characteristic];
+    NSLog(@"CHAR -> %@", characteristic);
+  } */
+
   for (CBCharacteristic* characteristic in service.characteristics) { // loop over discovered
-    for (CBMutableCharacteristic* ch in [_serviceMap[service.UUID] allObjects]) { // for each known
-      if ([characteristic.UUID isEqual: ch.UUID]) { // if its a match
+    NSLog(@"FOUND CHARACTERISTIC %@", characteristic);
+
+    for (CBUUID* cUUID in uuids) { // for each known
+      if ([characteristic.UUID isEqual: cUUID]) { // if its a match
+        NSLog(@"CHARACTERISTIC MATCH");
         [peripheral setNotifyValue: YES forCharacteristic: characteristic];
         [peripheral readValueForCharacteristic: characteristic];
       }
@@ -541,7 +586,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
       "name": "$S",
       "uuid": "$S"
     }
-  })MSG", characteristicId, name, uuid);
+  })MSG", characteristicId, sid, name, uuid);
 
   [self.bridge send: seq msg: msg post: post];
 }
@@ -682,11 +727,20 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   /// @param serviceId String
   ///
   if (cmd.name == "bluetooth-start") {
-    [self.bluetooth startService: cmd.get("serviceId")];
+    [self.bluetooth startService: seq sid: cmd.get("serviceId")];
     return true;
   }
 
-  if (cmd.name == "bluetooth-set") {
+  if (cmd.name == "bluetooth-subscribe") {
+    auto cid = cmd.get("characteristicId");
+    auto sid = cmd.get("serviceId");
+    auto seq = cmd.get("seq");
+
+    [self.bluetooth subscribeCharacteristic: seq sid: sid cid: cid];
+    return true;
+  }
+
+  if (cmd.name == "bluetooth-publish") {
     auto sid = cmd.get("serviceId");
     auto cid = cmd.get("characteristicId");
     auto seq = cmd.get("seq");
@@ -711,10 +765,10 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
       value = buf;
     } else {
       value = cmd.get("value").data();
-      len = cmd.get("value").size();
+      len = (int) cmd.get("value").size();
     }
 
-    [self.bluetooth setValue: seq buf: value len: len sid: sid cid: cid];
+    [self.bluetooth publishCharacteristic: seq buf: value len: len sid: sid cid: cid];
     return true;
   }
 
@@ -1367,6 +1421,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
   // if there is a body on the reuqest, pass it into the method router.
 	auto rawBody = task.request.HTTPBody;
+
   if (rawBody) {
     const void* data = [rawBody bytes];
     body = (char*)data;
