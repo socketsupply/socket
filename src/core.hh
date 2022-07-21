@@ -380,11 +380,11 @@ namespace SSC {
     if (addr.ss_family == AF_INET) {
       family = "ipv4";
       ip = addrToIPv4((struct sockaddr_in*) &addr);
-      port = (int) htons(((struct sockaddr_in*) &addr)->sin_port);
+      port = (int)htons(((struct sockaddr_in*) &addr)->sin_port);
     } else {
       family = "ipv6";
       ip = addrToIPv6((struct sockaddr_in6*) &addr);
-      port = (int) htons(((struct sockaddr_in6*) &addr)->sin6_port);
+      port = (int)htons(((struct sockaddr_in6*) &addr)->sin6_port);
     }
   }
 
@@ -402,11 +402,11 @@ namespace SSC {
     if (addr.ss_family == AF_INET) {
       family = "ipv4";
       ip = addrToIPv4((struct sockaddr_in*) &addr);
-      port = (int) htons(((struct sockaddr_in*) &addr)->sin_port);
+      port = (int)htons(((struct sockaddr_in*) &addr)->sin_port);
     } else {
       family = "ipv6";
       ip = addrToIPv6((struct sockaddr_in6*) &addr);
-      port = (int) htons(((struct sockaddr_in6*) &addr)->sin6_port);
+      port = (int)htons(((struct sockaddr_in6*) &addr)->sin6_port);
     }
   }
 
@@ -676,7 +676,7 @@ namespace SSC {
         msg = SSC::format(
           R"MSG({ "err": { "id": "$S", "message": "$S" } })MSG",
           std::to_string(desc->id),
-          String(uv_strerror(req->result))
+          String(uv_strerror((int)req->result))
         );
       } else {
         desc->fd = req->result;
@@ -740,7 +740,7 @@ namespace SSC {
             "id": "$S",
             "message": "$S"
           }
-        })MSG", std::to_string(desc->id), String(uv_strerror(req->result)));
+        })MSG", std::to_string(desc->id), String(uv_strerror((int)req->result)));
       } else {
         msg = SSC::format(R"MSG({
           "data": {
@@ -807,7 +807,7 @@ namespace SSC {
             "id": "$S",
             "message": "$S"
           }
-        })MSG", std::to_string(desc->id), String(uv_strerror(req->result)));
+        })MSG", std::to_string(desc->id), String(uv_strerror((int)req->result)));
       } else {
         auto headers = SSC::format(R"MSG(
           content-type: application/octet-stream
@@ -866,7 +866,7 @@ namespace SSC {
     auto req = new uv_fs_t;
     req->data = desc;
 
-    const uv_buf_t buf = uv_buf_init((char*) data.c_str(), (int) data.size());
+    const uv_buf_t buf = uv_buf_init((char*) data.c_str(), (int)data.size());
 
     auto err = uv_fs_write(uv_default_loop(), req, desc->fd, &buf, 1, offset, [](uv_fs_t* req) {
       auto desc = static_cast<DescriptorContext*>(req->data);
@@ -878,7 +878,7 @@ namespace SSC {
             "id": "$S",
             "message": "$S"
           }
-        })MSG", std::to_string(desc->id), String(uv_strerror(req->result)));
+        })MSG", std::to_string(desc->id), String(uv_strerror((int)req->result)));
       } else {
         msg = SSC::format(R"MSG({
           "data": {
@@ -926,7 +926,7 @@ namespace SSC {
             "id": "$S",
             "message": "$S"
           }
-        })MSG", String(uv_strerror(req->result)));
+        })MSG", String(uv_strerror((int)req->result)));
       } else {
         auto stats = uv_fs_get_statbuf(req);
         msg = SSC::format(
@@ -1031,7 +1031,7 @@ namespace SSC {
           }
         })MSG",
         std::to_string(desc->id),
-        String(uv_strerror(req->result)));
+        String(uv_strerror((int)req->result)));
       } else {
         auto stats = uv_fs_get_statbuf(req);
         msg = SSC::trim(SSC::format(R"MSG({
@@ -1448,7 +1448,7 @@ namespace SSC {
     write_req_t *wr = (write_req_t*) malloc(sizeof(write_req_t));
     memset(wr, 0, sizeof(write_req_t));
     wr->req.data = ctx;
-    wr->buf = uv_buf_init((char* const) message.c_str(), (int) message.size());
+    wr->buf = uv_buf_init((char* const) message.c_str(), (int)message.size());
 
     auto onWrite = [](uv_write_t *req, int status) {
       auto ctx = reinterpret_cast<GenericContext*>(req->data);
@@ -1539,11 +1539,11 @@ namespace SSC {
           content-length: $i
           clientId: $S
           event: tcpConnect
-        )MSG", (int) buf->len, clientId);
+        )MSG", (int)buf->len, clientId);
 
         Post post;
         post.body = buf->base;
-        post.length = (int) buf->len;
+        post.length = (int)buf->len;
         post.headers = headers;
 
         client->cb("-1", "{}", post);
@@ -1745,7 +1745,7 @@ namespace SSC {
 
       if (nread > 0) {
         write_req_t *req = (write_req_t*) malloc(sizeof(write_req_t));
-        req->buf = uv_buf_init(buf->base, (int) nread);
+        req->buf = uv_buf_init(buf->base, (int)nread);
 
         auto serverId = std::to_string(client->server->serverId);
         auto clientId = std::to_string(client->clientId);
@@ -1756,11 +1756,11 @@ namespace SSC {
           clientId: $S
           read: $i
           event: tcpReadStart
-        )MSG", serverId, clientId, (int) nread);
+        )MSG", serverId, clientId, (int)nread);
 
         Post post;
         post.body = buf->base;
-        post.length = (int) buf->len;
+        post.length = (int)buf->len;
         post.headers = headers;
 
         client->server->cb("-1", "{}", post);
@@ -2081,11 +2081,11 @@ namespace SSC {
         auto headers = SSC::format(R"MSG(
           content-type: application/octet-stream
           content-length: $i
-        )MSG", (int) buf->len);
+        )MSG", (int)buf->len);
 
         Post post;
         post.body = buf->base;
-        post.length = (int) buf->len;
+        post.length = (int)buf->len;
         post.headers = headers;
 
         auto msg = SSC::format(R"MSG(
@@ -2140,7 +2140,7 @@ namespace SSC {
             "code": "$S",
             "message": "$S"
           }
-        })MSG", String(uv_err_name((int) status)), String(uv_strerror(status)));
+        })MSG", String(uv_err_name((int)status)), String(uv_strerror(status)));
         ctx->cb(ctx->seq, msg, Post{});
         contexts.erase(ctx->id);
         return;

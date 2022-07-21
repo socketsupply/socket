@@ -229,7 +229,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   CBMutableService* service = [[CBMutableService alloc] initWithType: sUUID primary: isPrimary];
 
   if (_serviceMap[ssid]) {
-    [_serviceMap[ssid] add: cUUID];
+    [_serviceMap[ssid] addObject: cUUID];
   } else {
     _serviceMap[ssid] = [NSMutableSet setWithObject: cUUID];
   }
