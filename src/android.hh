@@ -337,11 +337,9 @@ class NativeFileSystem {
     NativeCallbackID callback
   ) const;
 
-  void Open (
+  void Chmod (
     NativeCoreSequence seq,
-    NativeCoreID id,
     std::string path,
-    int flags,
     int mode,
     NativeCallbackID callback
   ) const;
@@ -349,6 +347,21 @@ class NativeFileSystem {
   void Close (
     NativeCoreSequence seq,
     NativeCoreID id,
+    NativeCallbackID callback
+  ) const;
+
+  void FStat (
+    NativeCoreSequence seq,
+    NativeCoreID id,
+    NativeCallbackID callback
+  ) const;
+
+  void Open (
+    NativeCoreSequence seq,
+    NativeCoreID id,
+    std::string path,
+    int flags,
+    int mode,
     NativeCallbackID callback
   ) const;
 
@@ -360,6 +373,12 @@ class NativeFileSystem {
     NativeCallbackID callback
   ) const;
 
+  void Stat (
+    NativeCoreSequence seq,
+    std::string path,
+    NativeCallbackID callback
+  ) const;
+
   void Write (
     NativeCoreSequence seq,
     NativeCoreID id,
@@ -367,44 +386,6 @@ class NativeFileSystem {
     int16_t offset,
     NativeCallbackID callback
   ) const;
-
-  void FStat (
-    NativeCoreSequence seq,
-    NativeCoreID id,
-    NativeCallbackID callback
-  ) const;
-
-  void Stat (
-    NativeCoreSequence seq,
-    std::string path,
-    NativeCallbackID callback
-  ) const;
-
-  void Unlink (
-    NativeCoreSequence seq,
-    std::string path
-  ) const;
-
-  void Rename (
-    NativeCoreSequence seq,
-    std::string from,
-    std::string to
-  ) const;
-
-  void CopyFile (
-    NativeCoreSequence seq,
-    std::string from,
-    std::string to,
-    int flags
-  ) const;
-
-  void RemoveDirectory (NativeCoreSequence seq, std::string path) const;
-
-  void
-  MakeDirectory (NativeCoreSequence seq, std::string path, int mode) const;
-
-  void
-  ReadDirectory (NativeCoreSequence seq, std::string path) const;
 };
 
 /**
