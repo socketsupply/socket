@@ -238,8 +238,9 @@ namespace SSC {
       String getFSConstants () const;
 
       void fsAccess (String seq, String path, int mode, Cb cb) const;
-      void fsCopyFile (String seq, String pathA, String pathB, int flags, Cb cb) const;
+      void fsChmod (String seq, String path, int mode, Cb cb) const;
       void fsClose (String seq, uint64_t id, Cb cb) const;
+      void fsCopyFile (String seq, String pathA, String pathB, int flags, Cb cb) const;
       void fsFStat (String seq, uint64_t id, Cb cb) const;
       void fsMkDir (String seq, String path, int mode, Cb cb) const;
       void fsOpen (String seq, uint64_t id, String path, int flags, int mode, Cb cb) const;
@@ -567,6 +568,53 @@ namespace SSC {
     desc->cb = cb;
 
     auto err = uv_fs_access(loop, req, filename, mode, [](uv_fs_t* req) {
+      auto desc = static_cast<DescriptorContext*>(req->data);
+      std::string msg;
+
+      if (req->result < 0) {
+        msg = SSC::format(
+          R"MSG({ "err": { "message": "$S" } })MSG",
+          String(uv_strerror(req->result))
+        );
+      } else {
+        msg = SSC::format(
+          R"MSG({ "data": { "mode": "$S" } })MSG",
+          std::to_string(req->flags)
+        );
+      }
+
+      desc->cb(desc->seq, msg, Post{});
+      uv_fs_req_cleanup(req);
+      delete desc;
+      delete req;
+    });
+
+    if (err < 0) {
+      auto msg = SSC::format(
+        R"MSG({ "err": { "message": "$S" } })MSG",
+        String(uv_strerror(err))
+      );
+
+      cb(seq, msg, Post{});
+      delete desc;
+      delete req;
+      return;
+    }
+
+    runDefaultLoop();
+  }
+
+  void Core::fsChmod (String seq, String path, int mode, Cb cb) const {
+    auto filename = path.c_str();
+    auto loop = getDefaultLoop();
+    auto desc = new DescriptorContext;
+    auto req = new uv_fs_t;
+
+    req->data = desc;
+    desc->seq = seq;
+    desc->cb = cb;
+
+    auto err = uv_fs_chmod(loop, req, filename, mode, [](uv_fs_t* req) {
       auto desc = static_cast<DescriptorContext*>(req->data);
       std::string msg;
 
