@@ -6,6 +6,22 @@ fun decodeURIComponent(string: String): String {
   return java.net.URLDecoder.decode(normalized, "UTF-8").replace("%2B", "+")
 }
 
+fun isAssetUri (uri: android.net.Uri): Boolean {
+  if (
+      uri.scheme == "file" &&
+      uri.host == "" &&
+      uri.pathSegments.get(0) == "android_asset"
+  ) {
+    return true
+  }
+
+  if (uri.host == "appassets.androidplatform.net") {
+    return true
+  }
+
+  return false
+}
+
 /**
  * @TODO
  * @see https://developer.android.com/reference/kotlin/android/webkit/WebView
@@ -46,7 +62,7 @@ open class WebViewClient(activity: WebViewActivity) : android.webkit.WebViewClie
       return true
     }
 
-    if (url.host == "appassets.androidplatform.net") {
+    if (isAssetUri(url)) {
       return true
     }
 
@@ -172,9 +188,10 @@ open class WebViewClient(activity: WebViewActivity) : android.webkit.WebViewClie
               stream.close()
             },
 
-            throwError = { _: String, error: String ->
+            throwError = { seq: String, error: String ->
               stream.write(error.toByteArray(), 0, error.length)
               stream.close()
+              seq
             }
           )
 
@@ -315,7 +332,7 @@ open class Bridge(activity: WebViewActivity) {
       IPCMessage,
       String,
       (String, String) -> Unit,
-      (String, String) -> Unit
+      (String, String) -> String
     ) -> String?
   >()
 
@@ -358,8 +375,9 @@ open class Bridge(activity: WebViewActivity) {
   /**
    * @TODO
    */
-  fun throwError(seq: String, message: String?) {
+  fun throwError(seq: String, message: String?): String {
     this.send(seq, "\"$message\"", Bridge.ERROR_STATE)
+    return seq
   }
 
   /**
@@ -371,7 +389,7 @@ open class Bridge(activity: WebViewActivity) {
       IPCMessage,
       String,
       (String, String) -> Unit,
-      (String, String) -> Unit
+      (String, String) -> String
     ) -> String?,
   ) {
     interfaces[name] = callback
@@ -382,7 +400,7 @@ open class Bridge(activity: WebViewActivity) {
     message: IPCMessage,
     value: String,
     callback: (String, String) -> Unit,
-    throwError: (String, String) -> Unit
+    throwError: (String, String) -> String
   ): String? {
     if (this.buffers[message.seq] != null && message.bytes == null) {
       message.bytes = this.buffers[message.seq]
@@ -400,7 +418,7 @@ open class Bridge(activity: WebViewActivity) {
       message: IPCMessage,
       value: String,
       callback: (String, String) -> Unit,
-      throwError: (String, String) -> Unit
+      throwError: (String, String) -> String
     ): String? {
       val core = this.activity.core
       val bytes = message.bytes
@@ -440,7 +458,7 @@ open class Bridge(activity: WebViewActivity) {
       message: IPCMessage,
       value: String,
       callback: (String, String) -> Unit,
-      throwError: (String, String) -> Unit
+      throwError: (String, String) -> String
     ): String? {
       val core = this.activity.core
 
@@ -493,7 +511,7 @@ open class Bridge(activity: WebViewActivity) {
       message: IPCMessage,
       value: String,
       callback: (String, String) -> Unit,
-      throwError: (String, String) -> Unit
+      throwError: (String, String) -> String
     ): String? {
       val core = this.activity.core
 
@@ -502,39 +520,21 @@ open class Bridge(activity: WebViewActivity) {
       }
 
       when (message.command) {
-        // sync + async
-        "fs.id", "fsId" -> {
-          val id = core.fs.getNextAvailableId().toString()
-          callback(message.seq, id)
-          return id
-        }
-
-        "fs.constants", "fsConstants", "getFSConstants" -> {
-          val constants = core.getFSConstants()
-          callback(message.seq, constants)
-          return message.seq
-        }
-
         "fs.access", "fsAccess" -> {
           if (!message.has("path")) {
-            throwError(message.seq, "'path' is required.")
-            return null
+            return throwError(message.seq, "'path' is required.")
           }
 
           var path = message.get("path")
           val uri = android.net.Uri.parse(path)
 
-          if (
-            uri.getScheme() == "file" &&
-            uri.getHost() == "" &&
-            uri.getPathSegments().get(0) == "android_asset"
-          ) {
+          if (isAssetUri(uri)) {
             val pathSegments = uri.getPathSegments()
             path = pathSegments
               .slice(1..pathSegments.size - 1)
               .joinToString("/")
 
-            // @TODO
+            // @TODO(jwerle): core.fs.accessAsset()
           } else {
             val seq = message.seq
             val root = java.nio.file.Paths.get(core.getRootDirectory())
@@ -549,26 +549,97 @@ open class Bridge(activity: WebViewActivity) {
           return message.seq
         }
 
+        "fs.chmod", "fsChmod" -> {
+          if (!message.has("path")) {
+            return throwError(message.seq, "'path' is required.")
+          }
+
+          if (!message.has("mode")) {
+            return throwError(message.seq, "'path' is required.")
+          }
+
+          var path = message.get("path")
+          val uri = android.net.Uri.parse(path)
+
+          if (isAssetUri(uri)) {
+            val pathSegments = uri.getPathSegments()
+            path = pathSegments
+              .slice(1..pathSegments.size - 1)
+              .joinToString("/")
+
+            // @TODO(jwerle): core.fs.chmodAsset()
+          } else {
+            val seq = message.seq
+            val root = java.nio.file.Paths.get(core.getRootDirectory())
+            val mode = message.get("mode").toInt()
+            val resolved = root.resolve(java.nio.file.Paths.get(path))
+
+            core.fs.chmod(seq, resolved.toString(), mode, fun(data: String) {
+              callback(message.seq, data)
+            })
+          }
+
+          return message.seq
+        }
+
+        "fs.close", "fsClose" -> {
+          if (!message.has("id")) {
+            return throwError(message.seq, "'id' is required.")
+          }
+
+          val id = message.get("id")
+
+          if (core.fs.isAssetId(id)) {
+            core.fs.closeAsset(id, fun(data: String) {
+              callback(message.seq, data)
+            })
+          } else {
+            core.fs.close(message.seq, id, fun(data: String) {
+              callback(message.seq, data)
+            })
+          }
+
+          return message.seq
+        }
+
+        "fs.constants", "fsConstants", "getFSConstants" -> {
+          val constants = core.getFSConstants()
+          callback(message.seq, constants)
+          return message.seq
+        }
+
+        "fs.fstat", "fsFStat" -> {
+          if (!message.has("id")) {
+            return throwError(message.seq, "'id' is required.")
+          }
+
+          val id = message.get("id")
+
+          if (core.fs.isAssetId(id)) {
+            // @TODO fstatAsset
+          } else {
+            core.fs.fstat(message.seq, id, fun(data: String) {
+              callback(message.seq, data)
+            })
+          }
+
+          return message.seq
+        }
+
         "fs.open", "fsOpen" -> {
           if (!message.has("id")) {
-            throwError(message.seq, "'id' is required.")
-            return null
+            return throwError(message.seq, "'id' is required.")
           }
 
           if (!message.has("path")) {
-            throwError(message.seq, "'path' is required.")
-            return null
+            return throwError(message.seq, "'path' is required.")
           }
 
           var path = message.get("path")
           val uri = android.net.Uri.parse(path)
           val id = message.get("id")
 
-          if (
-            uri.scheme == "file" &&
-            uri.host == "" &&
-            uri.pathSegments[0] == "android_asset"
-          ) {
+          if (isAssetUri(uri)) {
             val pathSegments = uri.pathSegments
             path = pathSegments
               .slice(1 until pathSegments.size)
@@ -592,36 +663,13 @@ open class Bridge(activity: WebViewActivity) {
           return message.seq
         }
 
-        "fs.close", "fsClose" -> {
-          if (!message.has("id")) {
-            throwError(message.seq, "'id' is required.")
-            return null
-          }
-
-          val id = message.get("id")
-
-          if (core.fs.isAssetId(id)) {
-            core.fs.closeAsset(id, fun(data: String) {
-              callback(message.seq, data)
-            })
-          } else {
-            core.fs.close(message.seq, id, fun(data: String) {
-              callback(message.seq, data)
-            })
-          }
-
-          return message.seq
-        }
-
         "fs.read", "fsRead" -> {
           if (!message.has("id")) {
-            throwError(message.seq, "'id' is required.")
-            return null
+            return throwError(message.seq, "'id' is required.")
           }
 
           if (!message.has("size")) {
-            throwError(message.seq, "'size' is required.")
-            return null
+            return throwError(message.seq, "'size' is required.")
           }
 
           val id = message.get("id")
@@ -641,43 +689,11 @@ open class Bridge(activity: WebViewActivity) {
           return message.seq
         }
 
-        "fs.write", "fsWrite" -> {
-          val bytes = message.bytes
-
-          if (!message.has("id")) {
-            throwError(message.seq, "'id' is required.")
-            return null
-          }
-
-          if (bytes == null) {
-            throwError(message.seq, "Missing required bytes.")
-            return null
-          }
-
-          val id = message.get("id")
-          val data = String(bytes)
-          val offset = message.get("offset", "0").toInt()
-
-          if (core.fs.isAssetId(id)) {
-            callback(message.seq, JSONError(id, "AssetManager does not support writes.").toString())
-          } else {
-            core.fs.write(message.seq, id, data, offset, fun(data: String) {
-              callback(message.seq, data)
-            })
-          }
-
-          return message.seq
-        }
-
         "fs.stat", "fsStat" -> {
           var path = message.get("path")
           val uri = android.net.Uri.parse(path)
 
-          if (
-            uri.scheme == "file" &&
-            uri.host == "" &&
-            uri.pathSegments[0] == "android_asset"
-          ) {
+          if (isAssetUri(uri)) {
             val pathSegments = uri.pathSegments
             path = pathSegments
               .slice(1 until pathSegments.size)
@@ -697,18 +713,25 @@ open class Bridge(activity: WebViewActivity) {
           return message.seq
         }
 
-        "fs.fstat", "fsFStat" -> {
+        "fs.write", "fsWrite" -> {
+          val bytes = message.bytes
+
           if (!message.has("id")) {
-            throwError(message.seq, "'id' is required.")
-            return null
+            return throwError(message.seq, "'id' is required.")
+          }
+
+          if (bytes == null) {
+            return throwError(message.seq, "Missing required bytes.")
           }
 
           val id = message.get("id")
+          val data = String(bytes)
+          val offset = message.get("offset", "0").toInt()
 
           if (core.fs.isAssetId(id)) {
-            // @TODO fstatAsset
+            callback(message.seq, JSONError(id, "AssetManager does not support writes.").toString())
           } else {
-            core.fs.fstat(message.seq, id, fun(data: String) {
+            core.fs.write(message.seq, id, data, offset, fun(data: String) {
               callback(message.seq, data)
             })
           }
@@ -1045,6 +1068,58 @@ open class NativeFileSystem(core: NativeCore) {
     }
   }
 
+  fun chmod(
+    seq: String = "",
+    path: String,
+    mode: Int,
+    callback: (String) -> Unit
+  ) {
+    core?.apply {
+      fsChmod(seq, path, mode, queueCallback(callback))
+    }
+  }
+
+  fun close(
+    seq: String = "",
+    id: String,
+    callback: (String) -> Unit
+  ) {
+    core?.apply {
+      fsClose(seq, id, queueCallback(callback))
+    }
+  }
+
+  fun closeAsset(
+    id: String,
+    callback: (String) -> Unit
+  ) {
+    val descriptor = openAssets[id]
+      ?: return callback(JSONError(id, "Invalid file descriptor.").toString())
+
+    descriptor.fd?.close()
+    descriptor.stream?.close()
+
+    openAssets.remove(id)
+    return callback(JSONData(id).toString())
+  }
+
+  fun copyFile() {
+  }
+
+  fun fstat(
+    seq: String = "",
+    id: String,
+    callback: (String) -> Unit
+  ) {
+    core?.apply {
+      val callbackId = queueCallback(callback)
+      fsFStat(seq, id, callbackId)
+    }
+  }
+
+  fun mkdir() {
+  }
+
   fun open(
     seq: String = "",
     id: String,
@@ -1096,30 +1171,6 @@ open class NativeFileSystem(core: NativeCore) {
     openAssets[id] = AssetDescriptorContext(id, path)
 
     callback(JSONData(id, "\"fd\": $id").toString())
-  }
-
-  fun close(
-    seq: String = "",
-    id: String,
-    callback: (String) -> Unit
-  ) {
-    core?.apply {
-      fsClose(seq, id, queueCallback(callback))
-    }
-  }
-
-  fun closeAsset(
-    id: String,
-    callback: (String) -> Unit
-  ) {
-    val descriptor = openAssets[id]
-      ?: return callback(JSONError(id, "Invalid file descriptor.").toString())
-
-    descriptor.fd?.close()
-    descriptor.stream?.close()
-
-    openAssets.remove(id)
-    return callback(JSONData(id).toString())
   }
 
   fun read(
@@ -1194,16 +1245,13 @@ open class NativeFileSystem(core: NativeCore) {
     }
   }
 
-  fun write(
-    seq: String = "",
-    id: String,
-    data: String,
-    offset: Int = 0,
-    callback: (String) -> Unit
-  ) {
-    core?.apply {
-      fsWrite(seq, id, data, offset, queueCallback(callback))
-    }
+  fun readdir() {
+  }
+
+  fun rename() {
+  }
+
+  fun rmdir() {
   }
 
   fun stat(
@@ -1216,33 +1264,19 @@ open class NativeFileSystem(core: NativeCore) {
     }
   }
 
-  fun fstat(
+  fun write(
     seq: String = "",
     id: String,
+    data: String,
+    offset: Int = 0,
     callback: (String) -> Unit
   ) {
     core?.apply {
-      val callbackId = queueCallback(callback)
-      fsFStat(seq, id, callbackId)
+      fsWrite(seq, id, data, offset, queueCallback(callback))
     }
   }
 
   fun unlink() {
-  }
-
-  fun rename() {
-  }
-
-  fun copyFile() {
-  }
-
-  fun rmdir() {
-  }
-
-  fun mkdir() {
-  }
-
-  fun readdir() {
   }
 }
 
@@ -1416,8 +1450,19 @@ open class NativeCore(var activity: WebViewActivity) {
     bytes: ByteArray
   ): String
 
+  /**
+   * FileSystem APIs
+   **/
   @Throws(java.lang.Exception::class)
   external fun fsAccess(
+    seq: String,
+    path: String,
+    mode: Int,
+    callback: String
+  )
+
+  @Throws(java.lang.Exception::class)
+  external fun fsChmod(
     seq: String,
     path: String,
     mode: Int,
@@ -1458,18 +1503,18 @@ open class NativeCore(var activity: WebViewActivity) {
   )
 
   @Throws(java.lang.Exception::class)
+  external fun fsStat(
+    seq: String,
+    path: String,
+    callback: String
+  )
+
+  @Throws(java.lang.Exception::class)
   external fun fsWrite(
     seq: String,
     id: String,
     data: String,
     offset: Int,
-    callback: String
-  )
-
-  @Throws(java.lang.Exception::class)
-  external fun fsStat(
-    seq: String,
-    path: String,
     callback: String
   )
 
@@ -1508,6 +1553,11 @@ open class NativeCore(var activity: WebViewActivity) {
 
     if (!configureWebViewWindow()) {
       return false
+    }
+
+    // skip checks if not in debug mode
+    if (isDebugEnabled == false) {
+      isReady = true
     }
 
     return true
@@ -1563,6 +1613,10 @@ open class NativeCore(var activity: WebViewActivity) {
    * Performs internal vital checks.
    */
   fun check(): Boolean {
+    if (isReady) {
+      return true
+    }
+
     if (!verifyPointer(pointer)) {
       android.util.Log.e(TAG, "pointer check failed")
       return false
