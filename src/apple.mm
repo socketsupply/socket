@@ -223,7 +223,10 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   auto cUUID = [CBUUID UUIDWithString: scid];
 
   CBMutableCharacteristic* characteristic;
-  CBMutableService* service;
+
+  BOOL isPrimary = NO;
+  if ([[_serviceMap allKeys] count] == 0) isPrimary = YES;
+  CBMutableService* service = [[CBMutableService alloc] initWithType: sUUID primary: isPrimary];
 
   if (_serviceMap[ssid]) {
     [_serviceMap[ssid] add: cUUID];
@@ -231,10 +234,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     _serviceMap[ssid] = [NSMutableSet setWithObject: cUUID];
   }
 
-  [self startScanning]; // noop if already scanning.
-  [self startAdvertising]; // noop if already advertising.
-
-  NSMutableArray* characteristics = [NSMutableArray array];
+  NSMutableArray* characteristics = [[NSMutableArray alloc] init];
 
   for (CBUUID* uuid in _serviceMap[ssid]) {
     CBMutableCharacteristic* ch = [[CBMutableCharacteristic alloc]
@@ -249,6 +249,9 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   }
 
   service.characteristics = [characteristics copy];
+
+  [self startScanning]; // noop if already scanning.
+  [self startAdvertising]; // noop if already advertising.
 
   if (len == 0) {
     NSLog(@"CoreBluetooth: characteristic added");
