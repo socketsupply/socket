@@ -127,12 +127,14 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
 - (void) peripheralManagerDidStartAdvertising: (CBPeripheralManager*)peripheral error: (NSError*)error {
   if (error) {
+    NSLog(@"CoreBluetooth: %@", error);
     auto desc = std::string([error.debugDescription UTF8String]);
     std::replace(desc.begin(), desc.end(), '"', '\''); // Secure
 
     auto msg = SSC::format(R"MSG({
       "err": {
-        "event": "peripheralManagerDidStartAdvertising"
+        "event": "peripheralManagerDidStartAdvertising",
+        "message": "$S"
       }
     })MSG", desc);
 
@@ -180,7 +182,14 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 }
 
 - (void) startAdvertising {
-  [_peripheralManager startAdvertising: @{CBAdvertisementDataServiceUUIDsKey: [_serviceMap allKeys]}];
+  NSArray* keys = [_serviceMap allKeys];
+  NSMutableArray* uuids = [[NSMutableArray alloc] init];
+
+  for (NSString* key in keys) {
+    [uuids addObject: [CBUUID UUIDWithString: key]];
+  }
+
+  [_peripheralManager startAdvertising: @{CBAdvertisementDataServiceUUIDsKey: [uuids copy]}];
 }
 
 - (void) startScanning {
@@ -192,8 +201,14 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     return;
   }
 
+  NSMutableArray* uuids = [[NSMutableArray alloc] init];
+
+  for (NSString* key in keys) {
+    [uuids addObject: [CBUUID UUIDWithString: key]];
+  }
+
   [_centralManager
-    scanForPeripheralsWithServices: keys
+    scanForPeripheralsWithServices: [uuids copy]
     options: @{CBCentralManagerScanOptionAllowDuplicatesKey: @(YES)}
   ];
 }
