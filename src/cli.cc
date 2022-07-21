@@ -569,8 +569,32 @@ int main (const int argc, const char* argv[]) {
         }
       }
 
+      Map manifestContext;
+
+      manifestContext["android_manifest_xml_permissions"] = "";
+
+      if (settings["android_manifest_permissions"].size() > 0) {
+        settings["android_manifest_permissions"] = replace(settings["android_manifest_permissions"], ",", " ");
+        for (auto const &value: split(settings["android_manifest_permissions"], ' ')) {
+          auto permission = replace(trim(value), "\"", "");
+          std::stringstream xml;
+
+          std::transform(permission.begin(), permission.end(), permission.begin(), ::toupper);
+
+          xml
+            << "<uses-permission android:name="
+            << "\"android.permission." << permission << "\""
+            << " />";
+
+          manifestContext["android_manifest_xml_permissions"] += xml.str() + "\n";
+        }
+      }
+
       // Android Project
-      writeFile(src / "main" / "AndroidManifest.xml", trim(tmpl(gAndroidManifest, settings)));
+      writeFile(
+        src / "main" / "AndroidManifest.xml",
+        trim(tmpl(tmpl(gAndroidManifest, settings), manifestContext))
+      );
 
       writeFile(app / "proguard-rules.pro", trim(tmpl(gProGuardRules, settings)));
       writeFile(app / "build.gradle", trim(tmpl(gGradleBuildForSource, settings)));
@@ -585,6 +609,7 @@ int main (const int argc, const char* argv[]) {
 
       // JNI/NDK
       fs::copy(trim(prefixFile("src/android.cc")), jni, fs::copy_options::overwrite_existing);
+
       writeFile(
         jni / "android.hh",
         std::regex_replace(

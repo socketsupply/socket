@@ -573,8 +573,8 @@ namespace SSC {
 
       if (req->result < 0) {
         msg = SSC::format(
-          R"MSG({ "err": { "message": "$S" } })MSG",
-          String(uv_strerror(req->result))
+          R"MSG({ "err": { "code": $S "message": "$S" } })MSG",
+          req->result, String(uv_strerror(req->result))
         );
       } else {
         msg = SSC::format(
@@ -591,8 +591,8 @@ namespace SSC {
 
     if (err < 0) {
       auto msg = SSC::format(
-        R"MSG({ "err": { "message": "$S" } })MSG",
-        String(uv_strerror(err))
+        R"MSG({ "err": { "code": $S "message": "$S" } })MSG",
+        err, String(uv_strerror(err))
       );
 
       cb(seq, msg, Post{});
@@ -620,8 +620,8 @@ namespace SSC {
 
       if (req->result < 0) {
         msg = SSC::format(
-          R"MSG({ "err": { "message": "$S" } })MSG",
-          String(uv_strerror(req->result))
+          R"MSG({ "err": { "code": $S "message": "$S" } })MSG",
+          req->result, String(uv_strerror(req->result))
         );
       } else {
         msg = SSC::format(
@@ -638,8 +638,8 @@ namespace SSC {
 
     if (err < 0) {
       auto msg = SSC::format(
-        R"MSG({ "err": { "message": "$S" } })MSG",
-        String(uv_strerror(err))
+        R"MSG({ "err": { "code": $S "message": "$S" } })MSG",
+        err, String(uv_strerror(err))
       );
 
       cb(seq, msg, Post{});

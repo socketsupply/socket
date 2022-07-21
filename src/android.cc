@@ -182,21 +182,21 @@ jboolean NativeCore::ConfigureEnvironment () {
   windowOptions.env = stream.str();
 
   this->javaScriptPreloadSource.assign(
-    "console.error = console.warn = console.log;          \n"
-    "                                                     \n"
-    "window.addEventListener('unhandledrejection', e => { \n"
-    "  console.log(e.reason || e.message || e);           \n"
-    "});                                                  \n"
-    "                                                     \n"
-    "window.addEventListener('error', e => {              \n"
-    "  const message = e.reason || e.message || e;        \n"
-    "  if (!/debug-evaluate/.test(message)) {             \n"
-    "    console.log(message);                            \n"
-    "  }                                                  \n"
-    "});                                                  \n"
-    "                                                     \n"
+    "console.error = console.debug = console.warn = console.log; \n"
+    "                                                            \n"
+    "window.addEventListener('unhandledrejection', e => {        \n"
+    "  console.log(e.reason || e.message || e);                  \n"
+    "});                                                         \n"
+    "                                                            \n"
+    "window.addEventListener('error', e => {                     \n"
+    "  const message = e.reason || e.message || e;               \n"
+    "  if (!/debug-evaluate/.test(message)) {                    \n"
+    "    console.log(message);                                   \n"
+    "  }                                                         \n"
+    "});                                                         \n"
+    "                                                            \n"
     + createPreload(windowOptions)
-    + "//# sourceURL=preload.js                           \n"
+    + "//# sourceURL=preload.js                                  \n"
   );
 
   stream.str(""); // clear stream

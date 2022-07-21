@@ -161,8 +161,10 @@ constexpr auto gAndroidManifest = R"XML(
   package="{{bundle_identifier}}"
 >
   <uses-permission android:name="android.permission.INTERNET" />
-  <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
-  <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
+  <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+  <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+
+  {{android_manifest_xml_permissions}}
 
     <!-- @TODO(jwerle)
     android:roundIcon="@mipmap/ic_launcher_round"
@@ -170,7 +172,7 @@ constexpr auto gAndroidManifest = R"XML(
     -->
   <application
     android:allowBackup="true"
-    android:label="{{name}}"
+    android:label="{{title}}"
     android:theme="@style/Theme.AppCompat.Light"
     android:supportsRtl="true"
   >
