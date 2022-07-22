@@ -37,9 +37,15 @@ constexpr auto gPreload = R"JS(
     if (status === 0) {
       await window._ipc[seq].resolve(value)
     } else {
-      const err = new Error(typeof value === 'string' ? value : JSON.stringify(value))
+      const err = value instanceof Error
+        ? value
+        : value?.err instanceof Error
+         ? value.err
+         : new Error(typeof value === 'string' ? value : JSON.stringify(value))
+
       await window._ipc[seq].reject(err);
     }
+
     delete window._ipc[seq];
   }
 

@@ -1,4 +1,5 @@
 #include "common.hh"
+#include "core.hh"
 
 #include <JavaScriptCore/JavaScript.h>
 #include <gtk/gtk.h>
@@ -9,6 +10,21 @@ static GtkTargetEntry droppableTypes[] = {
 };
 
 namespace SSC {
+  class Bridge {
+    public:
+      IWindow *window;
+      Core *core;
+
+      Bridge (IWindow *window) {
+        this->core = new Core();
+        this->window = window;
+      }
+
+      bool route (std::string msg, char *buf) const;
+      void send (std::string seq, std::string msg, Post post) const;
+      bool invoke (Parse &cmd, Cb cb) const;
+  };
+
   class App : public IApp {
     public:
       App(int);
@@ -40,6 +56,7 @@ namespace SSC {
 
     public:
       App app;
+      Bridge bridge;
       WindowOptions opts;
       Window(App&, WindowOptions);
 
@@ -104,7 +121,91 @@ namespace SSC {
     );
   }
 
-  Window::Window (App& app, WindowOptions opts) : app(app), opts(opts) {
+  bool Bridge::invoke (Parse &cmd, Cb cb) const {
+    auto seq  = cmd.get("seq");
+
+    if (cmd.name == "post") {
+      auto id = std::stoull(cmd.get("id"));
+      if (this->core->hasPost(id)) {
+        auto post = this->core->getPost(id);
+        cb(seq, "", post);
+        return true;
+      }
+    }
+
+    if (cmd.name == "getFSConstants" || cmd.name == "fs.constants") {
+      cb(seq, this->core->getFSConstants(), Post{});
+      return true;
+    }
+
+    if (cmd.name == "fsAccess" || cmd.name == "fs.access") {
+      auto path = decodeURIComponent(cmd.get("path"));
+      auto mode = std::stoi(cmd.get("mode"));
+      this->core->fsAccess(seq, path, mode, cb);
+      return true;
+    }
+
+    if (cmd.name == "fsChmod" || cmd.name == "fs.chmod") {
+      auto path = decodeURIComponent(cmd.get("path"));
+      auto mode = std::stoi(cmd.get("mode"));
+      this->core->fsChmod(seq, path, mode, cb);
+      return true;
+    }
+
+    if (cmd.name == "fsClose" || cmd.name == "fs.close") {
+      auto id = std::stoull(cmd.get("id"));
+      this->core->fsClose(seq, id, cb);
+      return true;
+    }
+
+    if (cmd.name == "fsOpen" || cmd.name == "fs.open") {
+      auto path = decodeURIComponent(cmd.get("path"));
+      auto flags = std::stoi(cmd.get("flags"));
+      auto mode = std::stoi(cmd.get("mode"));
+      auto id = std::stoull(cmd.get("id"));
+      this->core->fsOpen(seq, id, path, flags, mode, cb);
+      return true;
+    }
+
+    if (cmd.name == "fsRead" || cmd.name == "fs.read") {
+      auto id = std::stoull(cmd.get("id"));
+      auto size = std::stoi(cmd.get("size"));
+      auto offset = std::stoi(cmd.get("offset"));
+      this->core->fsRead(seq, id, size, offset, cb);
+      return true;
+    }
+
+    return false;
+  }
+
+  bool Bridge::route (std::string msg, char *buf) const {
+    Parse cmd(msg);
+
+    return this->invoke(cmd, [this](auto seq, auto msg, auto post) {
+      this->send(seq, msg, post);
+    });
+  }
+
+  void Bridge::send (std::string seq, std::string msg, Post post) const {
+    if (post.length > 0) {
+      auto params = format(R"JSON({ "seq": $S })JSON", seq);
+      auto script = this->core->createPost(params, post);
+      this->window->eval(script);
+      return;
+    }
+
+    if (seq != "-1") {
+      msg = resolveToRenderProcess(seq, "0", encodeURIComponent(msg));
+    }
+
+    this->window->eval(msg);
+  }
+
+  Window::Window (App& app, WindowOptions opts)
+    : app(app)
+    , opts(opts)
+    , bridge((IWindow *) this)
+  {
     setenv("GTK_OVERLAY_SCROLLING", "1", 1);
     accel_group = gtk_accel_group_new();
     popupId = 0;
@@ -124,13 +225,48 @@ namespace SSC {
     WebKitUserContentManager* cm = webkit_user_content_manager_new();
     webkit_user_content_manager_register_script_message_handler(cm, "external");
 
+    webkit_web_context_register_uri_scheme(
+      webkit_web_context_get_default(),
+      "ipc",
+      [](WebKitURISchemeRequest *request, gpointer arg) {
+        auto *window = static_cast<Window*>(arg);
+        auto uri = std::string(webkit_uri_scheme_request_get_uri(request));
+        auto msg = std::string(uri);
+
+        Parse cmd(msg);
+
+        window->bridge.invoke(cmd, [&](auto seq, auto result, auto post) {
+          auto size = post.length > 0 ? post.length - 1: result.size();
+          auto body = post.body != nullptr && post.length > 0
+            ? post.body
+            : result.c_str();
+
+          auto stream = g_memory_input_stream_new_from_data(body, size, 0);
+          auto response = webkit_uri_scheme_response_new(stream, result.size());
+
+          webkit_uri_scheme_response_set_content_type(
+            response,
+            "application/octet-stream"
+          );
+
+          webkit_uri_scheme_request_finish_with_response(request, response);
+
+          window->bridge.core->removePost(post.id);
+        });
+      },
+      this,
+      0
+    );
+
     g_signal_connect(
       cm,
       "script-message-received::external",
       G_CALLBACK(+[](WebKitUserContentManager*, WebKitJavascriptResult* r, gpointer arg) {
         auto *w = static_cast<Window*>(arg);
         JSCValue* value = webkit_javascript_result_get_js_value(r);
+        //auto bytes = jsc_value_to_string_as_bytes(value);
         std::string str = std::string(jsc_value_to_string(value));
+        if (w->bridge.route(str, nullptr)) return;
         if (w->onMessage != nullptr) w->onMessage(str);
       }),
       this

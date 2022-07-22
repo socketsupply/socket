@@ -29,12 +29,12 @@ namespace SSC {
   using String = std::string;
 
   struct Post {
-    uint64_t id;
-    uint64_t ttl;
-    char* body;
-    int length;
+    uint64_t id = 0;
+    uint64_t ttl = 0;
+    char* body = nullptr;
+    int length = 0;
     String headers;
-    bool bodyNeedsFree;
+    bool bodyNeedsFree = false;
   };
 
   using Cb = std::function<void(String, String, Post)>;
@@ -278,6 +278,7 @@ namespace SSC {
       void putTask (String id, Task t);
 
       Post getPost (uint64_t id);
+      bool hasPost (uint64_t id);
       void removePost (uint64_t id);
       void removeAllPosts ();
       void expirePosts ();
@@ -451,6 +452,10 @@ namespace SSC {
     return posts->at(id);
   }
 
+  bool Core::hasPost (uint64_t id) {
+    return posts->find(id) != posts->end();
+  }
+
   void Core::expirePosts () {
     auto now = std::chrono::system_clock::now()
       .time_since_epoch()
@@ -573,12 +578,12 @@ namespace SSC {
 
       if (req->result < 0) {
         msg = SSC::format(
-          R"MSG({ "err": { "code": $S "message": "$S" } })MSG",
-          req->result, String(uv_strerror(req->result))
+          R"MSG({ "err": { "code": $S, "message": "$S" } })MSG",
+          std::to_string(req->result), String(uv_strerror(req->result))
         );
       } else {
         msg = SSC::format(
-          R"MSG({ "data": { "mode": "$S" } })MSG",
+          R"MSG({ "data": { "mode": $S } })MSG",
           std::to_string(req->flags)
         );
       }
@@ -591,8 +596,8 @@ namespace SSC {
 
     if (err < 0) {
       auto msg = SSC::format(
-        R"MSG({ "err": { "code": $S "message": "$S" } })MSG",
-        err, String(uv_strerror(err))
+        R"MSG({ "err": { "code": $S, "message": "$S" } })MSG",
+        std::to_string(err), String(uv_strerror(err))
       );
 
       cb(seq, msg, Post{});
@@ -620,8 +625,8 @@ namespace SSC {
 
       if (req->result < 0) {
         msg = SSC::format(
-          R"MSG({ "err": { "code": $S "message": "$S" } })MSG",
-          req->result, String(uv_strerror(req->result))
+          R"MSG({ "err": { "code": $S, "message": "$S" } })MSG",
+          std::to_string(req->result), String(uv_strerror(req->result))
         );
       } else {
         msg = SSC::format(
@@ -638,8 +643,8 @@ namespace SSC {
 
     if (err < 0) {
       auto msg = SSC::format(
-        R"MSG({ "err": { "code": $S "message": "$S" } })MSG",
-        err, String(uv_strerror(err))
+        R"MSG({ "err": { "code": $S, "message": "$S" } })MSG",
+        std::to_string(err), String(uv_strerror(err))
       );
 
       cb(seq, msg, Post{});
@@ -806,10 +811,10 @@ namespace SSC {
       } else {
         auto headers = SSC::format(R"MSG(
           content-type: application/octet-stream
-          content-length: $i
+          content-length: $S
           event: fsRead
           id: $S
-        )MSG", (int)req->result, std::to_string(desc->id));
+        )MSG", std::to_string(req->result), std::to_string(desc->id));
 
         post.body = (char *) desc->data;
         post.length = req->result;
