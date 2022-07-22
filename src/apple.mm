@@ -337,8 +337,6 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 }
 
 - (void) peripheralManager: (CBPeripheralManager*)peripheral didReceiveReadRequest: (CBATTRequest*)request {
-  NSLog(@"CoreBluetooth: peripheralManager:didReceiveReadRequest:");
-
   CBMutableCharacteristic* ch;
 
   for (NSString* key in _services) {
@@ -356,19 +354,6 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     NSLog(@"CoreBluetooth: No local characteristic found for request");
     return;
   }
-
-  // const void* rawData = [ch.value bytes];
-  // char* src = (char*) rawData;
-
-  auto msg = SSC::format(R"MSG({
-    "data": {
-      "event": "didReceiveReadRequest",
-    }
-  })MSG"); // , std::string(src));
-
-  [self.bridge emit: "bluetooth" msg: msg];
-
-  // NSData* value = [NSData dataWithBytes: ch.value.bytes length: ch.value.length];
 
   request.value = ch.value;
   [_peripheralManager respondToRequest: request withResult: CBATTErrorSuccess];
