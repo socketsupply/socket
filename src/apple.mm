@@ -69,10 +69,6 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 //  NSLog(@"CoreBluetooth: updateRssi");
 // }
 
-// - (void) startAdvertisingIBeacon:(NSData *)data {
-//  NSLog(@"CoreBluetooth: startAdvertisingIBeacon:%@", data);
-// }
-
 - (void) stopAdvertising {
   NSLog(@"CoreBluetooth: stopAdvertising");
 
@@ -148,18 +144,6 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 - (void) peripheralManager: (CBPeripheralManager*)peripheralManager central: (CBCentral*)central didSubscribeToCharacteristic: (CBCharacteristic*)characteristic {
   NSLog(@"CoreBluetooth: didSubscribeToCharacteristic");
 }
-
-// - (void) peripheralManager:(CBPeripheralManager *)peripheral didPublishL2CAPChannel:(CBL2CAPPSM)PSM error: (NSError*)error {
-//  NSLog(@"CoreBluetooth: didPublishL2CAPChannel");
-// }
-
-// - (void) peripheralManager:(CBPeripheralManager *)peripheral didUnpublishL2CAPChannel:(CBL2CAPPSM)PSM error: (NSError*)error {
-//  NSLog(@"CoreBluetooth: didUnpublishL2CAPChannel");
-// }
-
-// - (void) peripheralManager: (CBPeripheralManager*)peripheral didOpenL2CAPChannel: (CBL2CAPChannel*)channel error: (NSError*)error {
-//  NSLog(@"CoreBluetooth: didOpenL2CAPChannel");
-// }
 
 - (void) centralManagerDidUpdateState: (CBCentralManager*)central {
   NSLog(@"CoreBluetooth: centralManagerDidUpdateState");
@@ -362,37 +346,6 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   [self startAdvertising];
 }
 
-/* - (void) peripheralManager: (CBPeripheralManager*)peripheral didReceiveWriteRequests: (NSArray<CBATTRequest*>*)requests {
-  NSLog(@"CoreBluetooth: peripheralManager:didReceiveWriteRequests:");
-
-  auto msg = SSC::format(R"MSG({
-    "data": {
-      "message": "didReceiveWriteRequests"
-    }
-  })MSG");
-
-  [self.bridge emit: "bluetooth" msg: msg];
-
-  for (CBATTRequest* request in requests) {
-    if (![request.characteristic.UUID isEqual: _characteristic.UUID]) {
-      [self.peripheralManager respondToRequest: request withResult: CBATTErrorWriteNotPermitted];
-      continue; // request was invalid
-    }
-
-    const void* rawData = [request.value bytes];
-    char* src = (char*) rawData;
-
-    // TODO return as a proper buffer
-    auto msg = SSC::format(R"MSG({
-      "data": {
-        "message": "$S"
-      }
-    })MSG", std::string(src));
-    [self.bridge emit: "bluetooth" msg: msg];
-    [self.peripheralManager respondToRequest: request withResult: CBATTErrorSuccess];
-  }
-} */
-
 - (void) centralManager: (CBCentralManager*)central didDiscoverPeripheral: (CBPeripheral*)peripheral advertisementData: (NSDictionary*)advertisementData RSSI: (NSNumber*)RSSI {
   if (peripheral.identifier == nil || peripheral.name == nil) {
     [self.peripherals addObject: peripheral];
@@ -430,18 +383,20 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
   [self.bridge emit: "bluetooth" msg: msg];
 
-  if (isKnown) {
-    NSLog(@"CoreBluetooth: isKnown (reconnecting)");
-    [_centralManager connectPeripheral: peripheral options: nil];
-    // [peripheral readValueForCharacteristic: _characteristic];
-    return;
+  if (!isKnown) {
+    peripheral.delegate = self;
+    [self.peripherals addObject: peripheral];
   }
 
-  peripheral.delegate = self;
-  [self.peripherals addObject: peripheral];
-
   [_centralManager connectPeripheral: peripheral options: nil];
-  // [peripheral readValueForCharacteristic: _characteristic];
+
+  for (CBService *service in peripheral.services) {
+    NSString* key = service.UUID.UUIDString;
+    NSArray* characteristics = [_characteristics[key] allObjects];
+    for (CBCharacteristic* ch in characteristics) {
+      [peripheral readValueForCharacteristic: ch];
+    }
+  }
 }
 
 - (void) centralManager: (CBCentralManager*)central didConnectPeripheral: (CBPeripheral*)peripheral {
