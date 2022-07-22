@@ -123,8 +123,6 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   })MSG", message, state);
 
   [self.bridge emit: "bluetooth" msg: msg];
-
-  NSLog(@"%@", [NSString stringWithUTF8String: msg.c_str()]);
 }
 
 - (void) peripheralManagerDidStartAdvertising: (CBPeripheralManager*)peripheral error: (NSError*)error {
@@ -252,8 +250,6 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     }
   })MSG", sid, cid);
 
-  NSLog(@"SUBSCRBE CHAR %s", msg.c_str());
-
   [self.bridge send: seq msg: msg post: SSC::Post{}];
 }
 
@@ -325,8 +321,6 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
     [_services setValue: service forKey: ssid];
     [_peripheralManager addService: service];
-
-    NSLog(@"Creating service with %@", _characteristics[ssid]);
   }
 
   [self startAdvertising];
@@ -501,23 +495,12 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     return;
   }
 
-  NSLog(@"FOUND CHARS FOR SERVICE %@", service);
-
   NSString* key = service.UUID.UUIDString;
   NSArray* uuids = [[_serviceMap[key] allObjects] copy];
 
-  /* for (CBCharacteristic* characteristic in service.characteristics) { // loop over discovered
-    [peripheral setNotifyValue: YES forCharacteristic: characteristic];
-    [peripheral readValueForCharacteristic: characteristic];
-    NSLog(@"CHAR -> %@", characteristic);
-  } */
-
   for (CBCharacteristic* characteristic in service.characteristics) { // loop over discovered
-    NSLog(@"FOUND CHARACTERISTIC %@", characteristic);
-
     for (CBUUID* cUUID in uuids) { // for each known
       if ([characteristic.UUID isEqual: cUUID]) { // if its a match
-        NSLog(@"CHARACTERISTIC MATCH");
         [peripheral setNotifyValue: YES forCharacteristic: characteristic];
         [peripheral readValueForCharacteristic: characteristic];
       }
@@ -543,7 +526,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     return;
   }
 
-  if (characteristic.value == nil) return;
+  if (!characteristic.value || characteristic.value.length == 0) return;
 
   std::string uuid = "";
   std::string name = "";
@@ -557,18 +540,18 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     std::replace(name.begin(), name.end(), '\n', ' '); // Secure
   }
 
-  const void* rawData = [characteristic.value bytes];
   std::string characteristicId = [characteristic.UUID.UUIDString UTF8String];
   std::string sid = "";
 
   for (NSString* ssid in [_serviceMap allKeys]) {
-    NSString* scid = characteristic.UUID.UUIDString;
-    if ([_serviceMap[ssid] containsObject: scid]) sid = [scid UTF8String];
+    if ([_serviceMap[ssid] containsObject: characteristic.UUID]) {
+      sid = [ssid UTF8String];
+    }
   }
 
   SSC::Post post;
-  post.body = (char*) rawData;
-  post.length = (int) characteristic.value.length;
+  post.body = (char*)characteristic.value.bytes;
+  post.length = (int)characteristic.value.length;
 
   post.headers = SSC::format(R"MSG(
     content-type: application/octet-stream
@@ -1413,8 +1396,6 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     self.bridge.core->removePost(postId);
     return;
   }
-
-  NSLog(@"Bridgetask: put task");
 
   self.bridge.core->putTask(cmd.get("seq"), task);
   char* body = NULL;
