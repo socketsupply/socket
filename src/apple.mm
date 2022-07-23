@@ -491,6 +491,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   }
 
   SSC::Post post;
+  post.id = SSC::rand64();
   post.body = (char*)characteristic.value.bytes;
   post.length = (int)characteristic.value.length;
 
@@ -511,8 +512,6 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
       "uuid": "$S"
     }
   })MSG", characteristicId, sid, name, uuid);
-
-  NSLog(@"DID SEE UPDATE -> %s", msg.c_str());
 
   [self.bridge send: seq msg: msg post: post];
 }
