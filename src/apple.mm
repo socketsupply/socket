@@ -233,6 +233,18 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     [_serviceMap[ssid] addObject: [CBUUID UUIDWithString: scid]];
   }
 
+  CBMutableService* service = _services[ssid];
+
+  if (!service) {
+    auto sUUID = [CBUUID UUIDWithString: ssid];
+    service = [[CBMutableService alloc] initWithType: sUUID primary: YES];
+
+    service.characteristics = _characteristics[ssid];
+
+    [_services setValue: service forKey: ssid];
+    [_peripheralManager addService: service];
+  }
+
   auto msg = SSC::format(R"MSG({
     "data": {
       "serviceId": "$S",
@@ -299,20 +311,6 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 }
 
 - (void) startService: (std::string)seq sid: (std::string)sid { // start advertising and scanning for a new service
-  NSString* ssid = [NSString stringWithUTF8String: sid.c_str()];
-
-  auto sUUID = [CBUUID UUIDWithString: ssid];
-  CBMutableService* service = _services[ssid];
-
-  if (!service) {
-    service = [[CBMutableService alloc] initWithType: sUUID primary: YES];
-
-    service.characteristics = [_characteristics[ssid] copy];
-
-    [_services setValue: service forKey: ssid];
-    [_peripheralManager addService: service];
-  }
-
   [self startScanning];
 
   auto msg = SSC::format(R"MSG({
@@ -362,30 +360,12 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     return;
   }
 
-  std::string uuid = std::string([peripheral.identifier.UUIDString UTF8String]);
-  std::string name = std::string([peripheral.name UTF8String]);
-
-  if (uuid.size() == 0 || name.size() == 0) {
-    NSLog(@"device has no meta information");
-    return;
-  }
-
   auto isConnected = peripheral.state != CBPeripheralStateDisconnected;
   auto isKnown = [_peripherals containsObject: peripheral];
 
   if (isKnown && isConnected) {
     return;
   }
-
-  auto msg = SSC::format(R"MSG({
-    "data" : {
-      "event": "peerDiscovered",
-      "name": "$S",
-      "uuid": "$S"
-    }
-  })MSG", name, uuid);
-
-  [self.bridge emit: "bluetooth" msg: msg];
 
   if (!isKnown) {
     peripheral.delegate = self;
@@ -413,6 +393,24 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   for (NSString* key in keys) {
     [uuids addObject: [CBUUID UUIDWithString: key]];
   }
+
+  std::string uuid = std::string([peripheral.identifier.UUIDString UTF8String]);
+  std::string name = std::string([peripheral.name UTF8String]);
+
+  if (uuid.size() == 0 || name.size() == 0) {
+    NSLog(@"device has no meta information");
+    return;
+  }
+
+  auto msg = SSC::format(R"MSG({
+    "data" : {
+      "event": "connect",
+      "name": "$S",
+      "uuid": "$S"
+    }
+  })MSG", name, uuid);
+
+  [self.bridge emit: "bluetooth" msg: msg];
 
   [peripheral discoverServices: uuids];
 }
@@ -452,7 +450,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 }
 
 - (void) peripheralManagerIsReadyToUpdateSubscribers: (CBPeripheralManager*)peripheral {
-  /* auto msg = SSC::format(R"MSG({
+  auto msg = SSC::format(R"MSG({
     "data": {
       "source": "bluetooth",
       "message": "peripheralManagerIsReadyToUpdateSubscribers",
@@ -460,7 +458,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     }
   })MSG");
 
-  [self.bridge emit: "bluetooth" msg: msg]; */
+  [self.bridge emit: "bluetooth" msg: msg];
 }
 
 - (void) peripheral: (CBPeripheral*)peripheral didUpdateValueForCharacteristic: (CBCharacteristic*)characteristic error:(NSError*)error {
@@ -513,6 +511,8 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
       "uuid": "$S"
     }
   })MSG", characteristicId, sid, name, uuid);
+
+  NSLog(@"DID SEE UPDATE -> %s", msg.c_str());
 
   [self.bridge send: seq msg: msg post: post];
 }
