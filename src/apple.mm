@@ -86,7 +86,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
       break;
 
     case CBManagerStatePoweredOn:
-      [self startAdvertising];
+      // [self startAdvertising];
       [self startScanning];
       message = "CoreBluetooth BLE hardware is powered on and ready.";
       state = "CBManagerStatePoweredOn";
@@ -171,14 +171,17 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 }
 
 - (void) startAdvertising {
+  if (_peripheralManager.isAdvertising) return;
+
   NSArray* keys = [_serviceMap allKeys];
+  if ([keys count] == 0) return;
+
   NSMutableArray* uuids = [[NSMutableArray alloc] init];
 
   for (NSString* key in keys) {
     [uuids addObject: [CBUUID UUIDWithString: key]];
   }
 
-  [_peripheralManager stopAdvertising];
   [_peripheralManager startAdvertising: @{CBAdvertisementDataServiceUUIDsKey: [uuids copy]}];
 }
 
@@ -201,6 +204,10 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     scanForPeripheralsWithServices: [uuids copy]
     options: @{CBCentralManagerScanOptionAllowDuplicatesKey: @(YES)}
   ];
+}
+
+- (void) peripheralManager: (CBPeripheralManager*)peripheral didAddService: (CBService*)service error: (NSError *)error {
+  [self startAdvertising];
 }
 
 -(void) subscribeCharacteristic: (std::string)seq sid: (std::string)sid cid: (std::string)cid {
@@ -257,7 +264,6 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   }
 
   [self startScanning]; // noop if already scanning.
-  [self startAdvertising]; // noop if already advertising.
 
   if (len == 0) {
     NSLog(@"CoreBluetooth: characteristic added");
@@ -307,7 +313,6 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     [_peripheralManager addService: service];
   }
 
-  [self startAdvertising];
   [self startScanning];
 
   auto msg = SSC::format(R"MSG({
@@ -343,7 +348,6 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   [_peripheralManager respondToRequest: request withResult: CBATTErrorSuccess];
 
   [self startScanning];
-  [self startAdvertising];
 }
 
 - (void) centralManager: (CBCentralManager*)central didDiscoverPeripheral: (CBPeripheral*)peripheral advertisementData: (NSDictionary*)advertisementData RSSI: (NSNumber*)RSSI {
@@ -402,7 +406,6 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 - (void) centralManager: (CBCentralManager*)central didConnectPeripheral: (CBPeripheral*)peripheral {
   NSLog(@"CoreBluetooth: didConnectPeripheral");
   peripheral.delegate = self;
-  // [peripheral setNotifyValue: YES forCharacteristic: _characteristic];
 
   NSArray* keys = [_serviceMap allKeys];
   NSMutableArray* uuids = [[NSMutableArray alloc] init];
@@ -438,9 +441,9 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   NSString* key = service.UUID.UUIDString;
   NSArray* uuids = [[_serviceMap[key] allObjects] copy];
 
-  for (CBCharacteristic* characteristic in service.characteristics) { // loop over discovered
-    for (CBUUID* cUUID in uuids) { // for each known
-      if ([characteristic.UUID isEqual: cUUID]) { // if its a match
+  for (CBCharacteristic* characteristic in service.characteristics) {
+    for (CBUUID* cUUID in uuids) {
+      if ([characteristic.UUID isEqual: cUUID]) {
         [peripheral setNotifyValue: YES forCharacteristic: characteristic];
         [peripheral readValueForCharacteristic: characteristic];
       }

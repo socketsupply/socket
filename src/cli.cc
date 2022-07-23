@@ -133,7 +133,7 @@ int main (const int argc, const char* argv[]) {
         // TODO: add Android support
         if (target != "ios") {
           std::cout << "Unsupported target: " << target << std::endl;
-          exit(1); 
+          exit(1);
         }
       } else {
         std::cout << "usage: ssc install-app --target=<target> <app-path>" << std::endl;
@@ -1444,7 +1444,7 @@ int main (const int argc, const char* argv[]) {
       << " -DVERSION_HASH=" << SSC::version_hash
     ;
 
-    log(compileCommand.str());
+    // log(compileCommand.str());
 
     auto binExists = fs::exists(binaryPath);
     auto pathToBuiltWithFile = fs::current_path() / pathOutput / "built_with.txt";
@@ -1511,8 +1511,8 @@ int main (const int argc, const char* argv[]) {
     //
     if (platform.mac) {
       std::stringstream stripCommand;
-     
-      stripCommand 
+
+      stripCommand
         << "strip"
         << " " << binaryPath
         << " -u";
