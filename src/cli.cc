@@ -25,7 +25,11 @@ using namespace std::chrono;
 
 auto start = std::chrono::system_clock::now();
 
+bool flagDebugMode = true;
+bool flagQuietMode = false;
+
 void log (const std::string s) {
+  if (flagQuietMode) return;
   if (s.size() == 0) return;
 
   #ifdef _WIN32 // unicode console support
@@ -340,7 +344,6 @@ int main (const int argc, const char* argv[]) {
     targetPath = fs::path(lastOption);
   }
 
-  bool flagDebugMode = true;
   std::string _settings;
   Map settings = {{}};
 
@@ -626,7 +629,7 @@ int main (const int argc, const char* argv[]) {
     exit(0);
   });
 
-  createSubcommand("compile", { "--platform", "--port", "-o", "-r", "--prod", "-p", "-c", "-s", "-e", "-n", "--test=1" }, true, [&](const std::span<const char *>& options) -> void {
+  createSubcommand("compile", { "--platform", "--port", "--quiet", "-o", "-r", "--prod", "-p", "-c", "-s", "-e", "-n", "--test=1" }, true, [&](const std::span<const char *>& options) -> void {
     bool flagRunUserBuild = false;
     bool flagAppStore = false;
     bool flagCodeSign = false;
@@ -688,6 +691,10 @@ int main (const int argc, const char* argv[]) {
 
       if (is(arg, "--test=1")) {
         argvForward = "--test=1";
+      }
+
+      if (is(arg, "--quiet")) {
+        flagQuietMode = true;
       }
 
       auto targetPlatform = optionValue(arg, "--platform");
@@ -1001,7 +1008,7 @@ int main (const int argc, const char* argv[]) {
 
       std::stringstream pp;
       pp
-        << "-DDEBUG=" << (flagDebugMode ? 1 : 0) << " "
+        << "-DDEBUG=" << (flagDebugMode && !flagQuietMode ? 1 : 0) << " "
         << "-DANDROID=1" << " "
         << "-DSETTINGS=\"" << encodeURIComponent(_settings) << "\" "
         << "-DVERSION=" << SSC::version << " "
@@ -1297,7 +1304,7 @@ int main (const int argc, const char* argv[]) {
         << settings["build"]
         << " "
         << pathResourcesRelativeToUserBuild.string()
-        << " --debug=" << flagDebugMode;
+        << " --debug=" << flagDebugMode && !flagQuietMode;
 
       // log(buildCommand.str());
       auto r = exec(buildCommand.str().c_str());
@@ -1470,7 +1477,7 @@ int main (const int argc, const char* argv[]) {
         exit(1);
       }
 
-      if (flagDebugMode) {
+      if (flagDebugMode && !flagQuietMode) {
         gradlew
           << "./gradlew :app:bundleDebug "
           << "--warning-mode all ";
@@ -1556,7 +1563,7 @@ int main (const int argc, const char* argv[]) {
       << " -o " << binaryPath.string()
       << " -DIOS=" << (flagBuildForIOS ? 1 : 0)
       << " -DANDROID=" << (flagBuildForAndroid ? 1 : 0)
-      << " -DDEBUG=" << (flagDebugMode ? 1 : 0)
+      << " -DDEBUG=" << (flagDebugMode && !flagQuietMode ? 1 : 0)
       << " -DPORT=" << devPort
       << " -DSETTINGS=\"" << encodeURIComponent(_settings) << "\""
       << " -DVERSION=" << SSC::version
@@ -2127,9 +2134,10 @@ int main (const int argc, const char* argv[]) {
     exit(exitCode);
   });
 
-  createSubcommand("run", { "--platform", "--prod", "--test=1" }, true, [&](const std::span<const char *>& options) -> void {
+  createSubcommand("run", { "--platform", "--prod", "--quiet", "--test=1" }, true, [&](const std::span<const char *>& options) -> void {
     std::string argvForward = "";
     bool isIosSimulator = false;
+    bool shouldBeQuiet = false;
     for (auto const& option : options) {
       auto targetPlatform = optionValue(option, "--platform");
       if (targetPlatform.size() != 0) {
@@ -2142,6 +2150,9 @@ int main (const int argc, const char* argv[]) {
       }
       if (is(option, "--test=1")) {
         argvForward = "--test=1";
+      }
+      if (is(option, "--quiet")) {
+        flagQuietMode = true;
       }
     }
     if (isIosSimulator) {
