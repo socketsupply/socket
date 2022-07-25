@@ -2137,7 +2137,6 @@ int main (const int argc, const char* argv[]) {
   createSubcommand("run", { "--platform", "--prod", "--test=1" }, true, [&](const std::span<const char *>& options) -> void {
     std::string argvForward = "";
     bool isIosSimulator = false;
-    bool shouldBeQuiet = false;
     for (auto const& option : options) {
       auto targetPlatform = optionValue(option, "--platform");
       if (targetPlatform.size() != 0) {
