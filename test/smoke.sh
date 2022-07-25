@@ -1,4 +1,5 @@
 #!/bin/bash
+PLATFORM=`uname -s`
 
 function quiet () {
   "$@" > /dev/null 2>&1
@@ -36,7 +37,7 @@ die $? "the compile command executed"
 #
 # MacOS
 #
-if [ "`uname -s`" = "Darwin"]; then
+if [ "$PLATFORM" == "Darwin" ]; then
   quiet stat build/beepboop-dev.app/Contents/MacOS/boop-dev
   die $? "the compile command created a binary in the correct location"
 
@@ -45,17 +46,17 @@ if [ "`uname -s`" = "Darwin"]; then
 
   function run (args) {
     var app = new Application("build/beepboop-dev.app/Contents/MacOS/boop-dev");
-    app.activate();
-    var window = app.windows[0];
-    console.log(window);
+    // app.activate();
+    // var window = app.windows[0];
+    console.log(Object.getOwnPropertyNames(app));
   }
-  EOD
+EOD
 fi
 
 #
 # Linux
 #
-if [ "`uname -s`" = "linux"]; then
+if [ "$PLATFORM" == "linux" ]; then
   echo "TODO"
   exit 1
 fi
@@ -63,7 +64,7 @@ fi
 #
 # Windows (via WSL)
 #
-if [[ "`uname -a`" == *"$indows"* ]]; then
+if [ "`uname -a`" == *"indows"* ]; then
   echo "TODO"
   exit 1
 fi
