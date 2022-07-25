@@ -492,7 +492,11 @@ int main (const int argc, const char* argv[]) {
         isOnly = true;
       }
     }
-    if (targetPlatform == "ios" && platform.os == "mac") {
+    if (targetPlatform.size() == 0) {
+      log("error: --platfrom option is required");
+      exit(1);
+    }
+    if (targetPlatform == "ios" && platform.mac) {
       if (isUdid && isEcid) {
         log("--udid and --ecid are mutually exclusive");
         printHelp("list-devices", attrs);
