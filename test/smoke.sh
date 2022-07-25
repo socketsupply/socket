@@ -41,15 +41,11 @@ if [ "$PLATFORM" == "Darwin" ]; then
   quiet stat build/beepboop-dev.app/Contents/MacOS/boop-dev
   die $? "the compile command created a binary in the correct location"
 
-  osascript -l JavaScript <<EOD
-  'use strict'
-
-  function run (args) {
-    var app = new Application("build/beepboop-dev.app/Contents/MacOS/boop-dev");
-    // app.activate();
-    // var window = app.windows[0];
-    console.log(Object.getOwnPropertyNames(app));
-  }
+  osascript <<EOD
+    set pathToApp to "build/beepboop-dev.app"
+    tell application pathToApp to activate
+    delay 1
+    tell application pathToApp to quit
 EOD
 fi
 
