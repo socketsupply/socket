@@ -2,6 +2,15 @@
 #import <CoreBluetooth/CoreBluetooth.h>
 #import <UserNotifications/UserNotifications.h>
 
+#if DEBUG
+#warning LOGGING ENABLED
+#define DebugLog(fmt, ...) NSLog((@"%s " fmt), __PRETTY_FUNCTION__, ##__VA_ARGS__)
+
+#else
+#define DebugLog(...)
+
+#endif
+
 //
 // Mixed-into ios.mm and mac.hh by #include. This file
 // expects BridgedWebView to be defined before it's included.
@@ -66,11 +75,11 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 // }
 
 // - (void)updateRssi {
-//  NSLog(@"CoreBluetooth: updateRssi");
+//  DebugLog(@"CoreBluetooth: updateRssi");
 // }
 
 - (void) stopAdvertising {
-  NSLog(@"CoreBluetooth: stopAdvertising");
+  DebugLog(@"CoreBluetooth: stopAdvertising");
 
   [self.peripheralManager stopAdvertising];
 }
@@ -123,7 +132,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
 - (void) peripheralManagerDidStartAdvertising: (CBPeripheralManager*)peripheral error: (NSError*)error {
   if (error) {
-    NSLog(@"CoreBluetooth: %@", error);
+    DebugLog(@"CoreBluetooth: %@", error);
     auto desc = std::string([error.debugDescription UTF8String]);
     std::replace(desc.begin(), desc.end(), '"', '\''); // Secure
 
@@ -138,15 +147,15 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     return;
   }
 
-  NSLog(@"CoreBluetooth didStartAdvertising: %@", _serviceMap);
+  DebugLog(@"CoreBluetooth didStartAdvertising: %@", _serviceMap);
 }
 
 - (void) peripheralManager: (CBPeripheralManager*)peripheralManager central: (CBCentral*)central didSubscribeToCharacteristic: (CBCharacteristic*)characteristic {
-  NSLog(@"CoreBluetooth: didSubscribeToCharacteristic");
+  DebugLog(@"CoreBluetooth: didSubscribeToCharacteristic");
 }
 
 - (void) centralManagerDidUpdateState: (CBCentralManager*)central {
-  NSLog(@"CoreBluetooth: centralManagerDidUpdateState");
+  DebugLog(@"CoreBluetooth: centralManagerDidUpdateState");
   switch (central.state) {
     case CBManagerStatePoweredOff:
     case CBManagerStateResetting:
@@ -188,7 +197,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 - (void) startScanning {
   NSArray* keys = [_serviceMap allKeys];
   if ([keys count] == 0) {
-    NSLog(@"No keys to scan for");
+    DebugLog(@"No keys to scan for");
     return;
   }
 
@@ -198,7 +207,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     [uuids addObject: [CBUUID UUIDWithString: key]];
   }
 
-  NSLog(@"CoreBluetooth: startScanning %@", uuids);
+  DebugLog(@"CoreBluetooth: startScanning %@", uuids);
 
   [_centralManager
     scanForPeripheralsWithServices: [uuids copy]
@@ -278,7 +287,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   [self startScanning]; // noop if already scanning.
 
   if (len == 0) {
-    NSLog(@"CoreBluetooth: characteristic added");
+    DebugLog(@"CoreBluetooth: characteristic added");
     return;
   }
 
@@ -303,11 +312,11 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   ];
 
   if (!didWrite) {
-    NSLog(@"CoreBluetooth: did not write");
+    DebugLog(@"CoreBluetooth: did not write");
     return;
   }
 
-  NSLog(@"CoreBluetooth: did write '%@' %@", data, characteristic);
+  DebugLog(@"CoreBluetooth: did write '%@' %@", data, characteristic);
 }
 
 - (void) startService: (std::string)seq sid: (std::string)sid { // start advertising and scanning for a new service
@@ -338,7 +347,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   }
 
   if (!ch) {
-    NSLog(@"CoreBluetooth: No local characteristic found for request");
+    DebugLog(@"CoreBluetooth: No local characteristic found for request");
     return;
   }
 
@@ -354,7 +363,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
     NSTimeInterval _scanTimeout = 0.5;
     [NSTimer timerWithTimeInterval: _scanTimeout repeats: NO block:^(NSTimer* timer) {
-      NSLog(@"CoreBluetooth: reconnecting");
+      DebugLog(@"CoreBluetooth: reconnecting");
       [self->_centralManager connectPeripheral: peripheral options: nil];
     }];
     return;
@@ -384,7 +393,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 }
 
 - (void) centralManager: (CBCentralManager*)central didConnectPeripheral: (CBPeripheral*)peripheral {
-  NSLog(@"CoreBluetooth: didConnectPeripheral");
+  DebugLog(@"CoreBluetooth: didConnectPeripheral");
   peripheral.delegate = self;
 
   NSArray* keys = [_serviceMap allKeys];
@@ -398,7 +407,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   std::string name = std::string([peripheral.name UTF8String]);
 
   if (uuid.size() == 0 || name.size() == 0) {
-    NSLog(@"device has no meta information");
+    DebugLog(@"device has no meta information");
     return;
   }
 
@@ -417,7 +426,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
 - (void) peripheral: (CBPeripheral*)peripheral didDiscoverServices: (NSError*)error {
   if (error) {
-    NSLog(@"CoreBluetooth: peripheral:didDiscoverService:error: %@", error);
+    DebugLog(@"CoreBluetooth: peripheral:didDiscoverService:error: %@", error);
     return;
   }
 
@@ -425,14 +434,14 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     NSString* key = service.UUID.UUIDString;
     NSArray* uuids = [_serviceMap[key] allObjects];
 
-    NSLog(@"CoreBluetooth: peripheral:didDiscoverServices withChracteristics: %@", uuids);
+    DebugLog(@"CoreBluetooth: peripheral:didDiscoverServices withChracteristics: %@", uuids);
     [peripheral discoverCharacteristics: [uuids copy] forService: service];
   }
 }
 
 - (void) peripheral: (CBPeripheral*)peripheral didDiscoverCharacteristicsForService: (CBService*)service error: (NSError*)error {
   if (error) {
-    NSLog(@"CoreBluetooth: peripheral:didDiscoverCharacteristicsForService:error: %@", error);
+    DebugLog(@"CoreBluetooth: peripheral:didDiscoverCharacteristicsForService:error: %@", error);
     return;
   }
 
@@ -463,7 +472,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
 - (void) peripheral: (CBPeripheral*)peripheral didUpdateValueForCharacteristic: (CBCharacteristic*)characteristic error:(NSError*)error {
   if (error) {
-    NSLog(@"ERROR didUpdateValueForCharacteristic: %@", error);
+    DebugLog(@"ERROR didUpdateValueForCharacteristic: %@", error);
     return;
   }
 
@@ -521,7 +530,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
 - (void) centralManager: (CBCentralManager*)central didFailToConnectPeripheral: (CBPeripheral*)peripheral error: (NSError*)error {
   // if (error != nil) {
-  //  NSLog(@"CoreBluetooth: failed to connect %@", error.debugDescription);
+  //  DebugLog(@"CoreBluetooth: failed to connect %@", error.debugDescription);
   //  return;
   // }
 
@@ -540,7 +549,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   [_centralManager connectPeripheral: peripheral options: nil];
 
   if (error != nil) {
-    NSLog(@"CoreBluetooth: device did disconnect %@", error.debugDescription);
+    DebugLog(@"CoreBluetooth: device did disconnect %@", error.debugDescription);
     return;
   }
 }
@@ -717,7 +726,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     [center requestAuthorizationWithOptions: (UNAuthorizationOptionSound | UNAuthorizationOptionAlert | UNAuthorizationOptionBadge) completionHandler:^(BOOL granted, NSError* error) {
       if(!error) {
         [center addNotificationRequest: request withCompletionHandler: ^(NSError* error) {
-          if (error) NSLog(@"Unable to create notification: %@", error.debugDescription);
+          if (error) DebugLog(@"Unable to create notification: %@", error.debugDescription);
         }];
       }
     }];
@@ -725,7 +734,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   }
 
   if (cmd.name == "log") {
-    NSLog(@"%s", cmd.get("value").c_str());
+    DebugLog(@"%s", cmd.get("value").c_str());
     return true;
   }
 
@@ -917,7 +926,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     }
   }
 
-  NSLog(@"COMMAND %s", msg.c_str());
+  DebugLog(@"COMMAND %s", msg.c_str());
 
   if (cmd.name == "external") {
     NSString *url = [NSString stringWithUTF8String:SSC::decodeURIComponent(cmd.get("value")).c_str()];
@@ -1288,7 +1297,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     return true;
   }
 
-  NSLog(@"%s", msg.c_str());
+  DebugLog(@"%s", msg.c_str());
   return false;
 }
 @end
