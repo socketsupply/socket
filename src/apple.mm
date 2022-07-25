@@ -3,12 +3,9 @@
 #import <UserNotifications/UserNotifications.h>
 
 #if DEBUG
-#warning LOGGING ENABLED
 #define DebugLog(fmt, ...) NSLog((@"%s " fmt), __PRETTY_FUNCTION__, ##__VA_ARGS__)
-
 #else
 #define DebugLog(...)
-
 #endif
 
 //

@@ -2134,7 +2134,7 @@ int main (const int argc, const char* argv[]) {
     exit(exitCode);
   });
 
-  createSubcommand("run", { "--platform", "--prod", "--quiet", "--test=1" }, true, [&](const std::span<const char *>& options) -> void {
+  createSubcommand("run", { "--platform", "--prod", "--test=1" }, true, [&](const std::span<const char *>& options) -> void {
     std::string argvForward = "";
     bool isIosSimulator = false;
     bool shouldBeQuiet = false;
@@ -2150,9 +2150,6 @@ int main (const int argc, const char* argv[]) {
       }
       if (is(option, "--test=1")) {
         argvForward = "--test=1";
-      }
-      if (is(option, "--quiet")) {
-        flagQuietMode = true;
       }
     }
     if (isIosSimulator) {
