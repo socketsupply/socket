@@ -115,8 +115,10 @@ function _install {
     cp -r `pwd`/lib/* "$ASSETS_DIR/lib"
   fi
 
-  echo "# moving binary to $PREFIX/bin (prompting to copy file into directory)"
-  sudo mv `pwd`/bin/cli "/usr/local/bin/ssc"
+  if [ -z "$TEST" ]; then
+    echo "# moving binary to $PREFIX/bin (prompting to copy file into directory)"
+    sudo mv `pwd`/bin/cli "/usr/local/bin/ssc"
+  fi
 
   die $? "not ok - unable to move binary into place"
   echo "ok - done. type 'ssc -h' for help"

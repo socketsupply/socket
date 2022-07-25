@@ -1237,7 +1237,7 @@ constexpr auto gDefaultConfig = R"CONFIG(
 #
 
 # Shell command to build an application.
-build: node scripts/build.js
+# build: bash build.sh
 
 # A unique ID that identifies the bundle (used by all app stores).
 bundle_identifier: com.beepboop
