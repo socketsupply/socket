@@ -1008,7 +1008,7 @@ int main (const int argc, const char* argv[]) {
 
       std::stringstream pp;
       pp
-        << "-DDEBUG=" << (flagDebugMode && !flagQuietMode ? 1 : 0) << " "
+        << "-DDEBUG=" << (flagDebugMode ? 1 : 0) << " "
         << "-DANDROID=1" << " "
         << "-DSETTINGS=\"" << encodeURIComponent(_settings) << "\" "
         << "-DVERSION=" << SSC::version << " "
@@ -1304,7 +1304,7 @@ int main (const int argc, const char* argv[]) {
         << settings["build"]
         << " "
         << pathResourcesRelativeToUserBuild.string()
-        << " --debug=" << flagDebugMode && !flagQuietMode;
+        << " --debug=" << flagDebugMode;
 
       // log(buildCommand.str());
       auto r = exec(buildCommand.str().c_str());
@@ -1477,7 +1477,7 @@ int main (const int argc, const char* argv[]) {
         exit(1);
       }
 
-      if (flagDebugMode && !flagQuietMode) {
+      if (flagDebugMode) {
         gradlew
           << "./gradlew :app:bundleDebug "
           << "--warning-mode all ";
@@ -1563,7 +1563,7 @@ int main (const int argc, const char* argv[]) {
       << " -o " << binaryPath.string()
       << " -DIOS=" << (flagBuildForIOS ? 1 : 0)
       << " -DANDROID=" << (flagBuildForAndroid ? 1 : 0)
-      << " -DDEBUG=" << (flagDebugMode && !flagQuietMode ? 1 : 0)
+      << " -DDEBUG=" << (flagDebugMode ? 1 : 0)
       << " -DPORT=" << devPort
       << " -DSETTINGS=\"" << encodeURIComponent(_settings) << "\""
       << " -DVERSION=" << SSC::version
