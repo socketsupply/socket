@@ -2,7 +2,10 @@
 #include "cli.hh"
 #include "process.hh"
 #include <filesystem>
+
+#ifdef __linux__ 
 #include <cstring>
+#endif
 
 #ifdef _WIN32
 #include <shlwapi.h>
