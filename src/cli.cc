@@ -1548,35 +1548,32 @@ int main (const int argc, const char* argv[]) {
       exit(0);
     }
 
-    std::stringstream compileCommand;
     auto binaryPath = paths.pathBin / executable;
 
-    auto extraFlags = flagDebugMode
-      ? settings.count("debug_flags") ? settings["debug_flags"] : ""
-      : settings.count("flags") ? settings["flags"] : "";
+    if (flagRunUserBuild == false) {
+      std::stringstream compileCommand;
 
-    compileCommand
-      << getEnv("CXX")
-      << " " << files
-      << " " << flags
-      << " " << extraFlags
-      << " -o " << binaryPath.string()
-      << " -DIOS=" << (flagBuildForIOS ? 1 : 0)
-      << " -DANDROID=" << (flagBuildForAndroid ? 1 : 0)
-      << " -DDEBUG=" << (flagDebugMode ? 1 : 0)
-      << " -DPORT=" << devPort
-      << " -DSETTINGS=\"" << encodeURIComponent(_settings) << "\""
-      << " -DVERSION=" << SSC::version
-      << " -DVERSION_HASH=" << SSC::version_hash
-    ;
+      auto extraFlags = flagDebugMode
+        ? settings.count("debug_flags") ? settings["debug_flags"] : ""
+        : settings.count("flags") ? settings["flags"] : "";
 
-    // log(compileCommand.str());
+      compileCommand
+        << getEnv("CXX")
+        << " " << files
+        << " " << flags
+        << " " << extraFlags
+        << " -o " << binaryPath.string()
+        << " -DIOS=" << (flagBuildForIOS ? 1 : 0)
+        << " -DANDROID=" << (flagBuildForAndroid ? 1 : 0)
+        << " -DDEBUG=" << (flagDebugMode ? 1 : 0)
+        << " -DPORT=" << devPort
+        << " -DSETTINGS=\"" << encodeURIComponent(_settings) << "\""
+        << " -DVERSION=" << SSC::version
+        << " -DVERSION_HASH=" << SSC::version_hash
+      ;
 
-    auto binExists = fs::exists(binaryPath);
-    auto pathToBuiltWithFile = fs::current_path() / settings["output"] / "built_with.txt";
-    auto oldHash = WStringToString(readFile(pathToBuiltWithFile));
+      // log(compileCommand.str());
 
-    if (flagRunUserBuild == false || !binExists || oldHash != SSC::version_hash) {
       auto r = exec(compileCommand.str());
 
       if (r.exitCode != 0) {
@@ -1584,10 +1581,6 @@ int main (const int argc, const char* argv[]) {
         log(r.output);
         exit(r.exitCode);
       }
-
-      log(r.output);
-
-      writeFile(pathToBuiltWithFile, SSC::version_hash);
 
       log("compiled native binary");
     }
