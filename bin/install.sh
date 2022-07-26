@@ -117,6 +117,7 @@ function _install {
 
   if [ -z "$TEST" ]; then
     echo "# moving binary to $PREFIX/bin (prompting to copy file into directory)"
+    sudo mkdir -p /usr/local/bin
     sudo mv `pwd`/bin/cli "/usr/local/bin/ssc"
   fi
 
