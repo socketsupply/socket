@@ -23,7 +23,7 @@ cd test/tmp
 
 echo # the init command creates dirs and ouputs files
 
-../../bin/cli init
+quiet ../../bin/cli init
 
 quiet stat src/index.html
 die $? "the index.html file exists"
@@ -41,11 +41,13 @@ if [ "$PLATFORM" == "Darwin" ]; then
   quiet stat build/beepboop-dev.app/Contents/MacOS/boop-dev
   die $? "the compile command created a binary in the correct location"
 
+  pathToApp=$PWD/build/beepboop-dev.app
+
   osascript <<EOD
-    set pathToApp to "build/beepboop-dev.app"
-    tell application pathToApp to activate
+    set app to POSIX file "$pathToApp" as alias
+    tell application app to activate
     delay 1
-    tell application pathToApp to quit
+    tell application app to quit
 EOD
 fi
 

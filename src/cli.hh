@@ -106,6 +106,11 @@ options:
   --test=1    indicate test mode
 )TEXT";
 
+constexpr auto gHelloWorld = R"HTML(
+<body style="display: grid; justify-content: center; align-content: center; font-family: helvetica;">
+  <h1>Hello, World.</h1>
+)HTML";
+
 //
 // Darwin config
 //

@@ -3,7 +3,7 @@
 #include "process.hh"
 #include <filesystem>
 
-#ifdef __linux__ 
+#ifdef __linux__
 #include <cstring>
 #endif
 
@@ -314,7 +314,7 @@ int main (const int argc, const char* argv[]) {
 
   auto const subcommand = argv[1];
 
-  if (is(subcommand, "-v") || is(subcommand, "--version")) {  
+  if (is(subcommand, "-v") || is(subcommand, "--version")) {
     std::cout << SSC::full_version << std::endl;
     exit(0);
   }
@@ -384,7 +384,7 @@ int main (const int argc, const char* argv[]) {
       paths.pathResourcesRelativeToUserBuild = paths.pathBin;
       return paths;
     } else if (platform == "win32") {
-      paths.pathPackage = { 
+      paths.pathPackage = {
         targetPath /
         settings["output"] /
         fs::path(settings["executable"] + "-" +settings["version"])
@@ -470,7 +470,7 @@ int main (const int argc, const char* argv[]) {
   createSubcommand("init", {}, false, [&](const std::span<const char *>& options) -> void {
     attrs["node_platform"] = platform.arch == "arm64" ? "arm64" : "x64";
     fs::create_directories(targetPath / "src");
-    SSC::writeFile(targetPath / "src" / "index.html", "<html>Hello, World</html>");
+    SSC::writeFile(targetPath / "src" / "index.html", gHelloWorld);
     SSC::writeFile(targetPath / "ssc.config", tmpl(gDefaultConfig, attrs));
     exit(0);
   });
@@ -570,7 +570,7 @@ int main (const int argc, const char* argv[]) {
           // TODO: add Android support
           if (targetPlatform != "ios") {
             std::cout << "Unsupported platform: " << targetPlatform << std::endl;
-            exit(1); 
+            exit(1);
           }
           platform = targetPlatform;
         }
