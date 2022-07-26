@@ -54,7 +54,7 @@ int runApp (const fs::path& path, const std::string& args) {
   return std::system((prefix + cmd + " " + args).c_str());
 }
 
-void runIOSSimulator (Map& settings) {
+void runIOSSimulator (const fs::path& path, Map& settings) {
   std::string deviceType;
   std::stringstream listDeviceTypesCommand;
   listDeviceTypesCommand
@@ -211,13 +211,11 @@ void runIOSSimulator (Map& settings) {
   }
 
   std::stringstream installAppCommand;
-  std::string app = (settings["name"] + ".app");
-  auto pathToApp = fs::path(settings["output"]) / app;
 
   installAppCommand
     << "xcrun"
     << " simctl install booted "
-    << pathToApp.string();
+    << path.string();
   // log(installAppCommand.str());
   log("installed booted VM into simulator");
 
@@ -351,17 +349,26 @@ int main (const int argc, const char* argv[]) {
     fs::path pathBin;
     fs::path pathPackage;
     fs::path pathResourcesRelativeToUserBuild;
+    fs::path platformSpecificOutputPath;
   };
 
   auto getPaths = [&](std::string platform) -> Paths {
     Paths paths;
+    std::string platformPath = platform == "win32"
+      ? "win"
+      : platform;
+    paths.platformSpecificOutputPath = {
+      targetPath /
+      settings["output"] /
+      platformPath
+    };
     if (platform == "mac") {
       fs::path pathBase = "Contents";
       fs::path packageName = fs::path(settings["name"] + ".app");
-      paths.pathPackage = { targetPath / settings["output"] / packageName };
+      paths.pathPackage = { paths.platformSpecificOutputPath  / packageName };
       paths.pathBin = { paths.pathPackage / pathBase / "MacOS" };
       paths.pathResourcesRelativeToUserBuild = {
-        settings["output"] /
+        paths.platformSpecificOutputPath  /
         packageName /
         pathBase /
         "Resources"
@@ -375,7 +382,7 @@ int main (const int argc, const char* argv[]) {
         settings["revision"] + "_" +
         "amd64"
       );
-      paths.pathPackage = { targetPath / settings["output"] / packageName };
+      paths.pathPackage = { paths.platformSpecificOutputPath  / packageName };
       paths.pathBin = {
         paths.pathPackage /
         "opt" /
@@ -384,24 +391,23 @@ int main (const int argc, const char* argv[]) {
       paths.pathResourcesRelativeToUserBuild = paths.pathBin;
       return paths;
     } else if (platform == "win32") {
-      paths.pathPackage = {
-        targetPath /
-        settings["output"] /
+      paths.pathPackage = { 
+        paths.platformSpecificOutputPath  /
         fs::path(settings["executable"] + "-" +settings["version"])
       };
 
       paths.pathBin = paths.pathPackage;
       paths.pathResourcesRelativeToUserBuild = paths.pathPackage;
       return paths;
-    } else if (platform == "ios" || platform == "iossimulator") {
+    } else if (platform == "ios" || platform == "ios-simulator") {
       fs::path pathBase = "Contents";
       fs::path packageName = settings["name"] + ".app";
-      paths.pathPackage = { targetPath / settings["output"] / packageName };
-      paths.pathBin = { paths.pathPackage / pathBase / "MacOS" };
-      paths.pathResourcesRelativeToUserBuild = fs::path(settings["output"]) / "ui";
+      paths.pathPackage = { paths.platformSpecificOutputPath  / packageName };
+      paths.pathBin = { paths.platformSpecificOutputPath  / pathBase / "MacOS" };
+      paths.pathResourcesRelativeToUserBuild = paths.platformSpecificOutputPath / "ui";
       return paths;
-    } else if (platform == "android") {
-      auto relativeOutput = fs::path(settings["output"]) / "android";
+    } else if (platform == "android" || platform == "android-simulator") {
+      auto relativeOutput = paths.platformSpecificOutputPath  / "android";
       auto output = fs::absolute(targetPath) / relativeOutput;
       paths.pathResourcesRelativeToUserBuild = {
         relativeOutput / "app" / "src" / "main" / "assets"
@@ -562,20 +568,19 @@ int main (const int argc, const char* argv[]) {
     } else {
       const std::string cfgUtilPath = getCfgUtilPath();
       std::string commandOptions = "";
-      std::string platform = "";
+      std::string targetPlatform = "";
       // we need to find platform first
       for (auto const option : options) {
-        auto targetPlatform = optionValue(option, "--platform");
+        targetPlatform = optionValue(option, "--platform");
         if (targetPlatform.size() > 0) {
           // TODO: add Android support
           if (targetPlatform != "ios") {
             std::cout << "Unsupported platform: " << targetPlatform << std::endl;
             exit(1);
           }
-          platform = targetPlatform;
         }
       }
-      if (platform.size() == 0) {
+      if (targetPlatform.size() == 0) {
         log("--platform option is required.");
         printHelp("install-app", attrs);
         exit(1);
@@ -584,15 +589,14 @@ int main (const int argc, const char* argv[]) {
       for (auto const option : options) {
         auto device = optionValue(option, "--device");
         if (device.size() > 0) {
-          if (platform == "ios") {
+          if (targetPlatform == "ios") {
             commandOptions += " --ecid " + device + " ";
           }
         }
       }
 
       auto ipaPath = (
-        targetPath /
-        settings["output"] /
+        getPaths(targetPlatform).platformSpecificOutputPath /
         "build" /
         std::string(settings["name"] + ".ipa") /
         std::string(settings["name"] + ".ipa")
@@ -642,6 +646,7 @@ int main (const int argc, const char* argv[]) {
     bool flagBuildForAndroidEmulator = false;
     bool flagBuildForSimulator = false;
     std::string argvForward = "";
+    std::string targetPlatform = "";
 
     std::string devPort("0");
     auto cnt = 0;
@@ -697,16 +702,16 @@ int main (const int argc, const char* argv[]) {
         flagQuietMode = true;
       }
 
-      auto targetPlatform = optionValue(arg, "--platform");
+      targetPlatform = optionValue(arg, "--platform");
       if (targetPlatform.size() > 0) {
         if (targetPlatform == "ios") {
           flagBuildForIOS = true;
         } else if (targetPlatform == "android") {
           flagBuildForAndroid = true;
-        } else if (targetPlatform == "androidemulator") {
+        } else if (targetPlatform == "android-emulator") {
           flagBuildForAndroid = true;
           flagBuildForAndroidEmulator = true;
-        } else if (targetPlatform == "iossimulator") {
+        } else if (targetPlatform == "ios-simulator") {
           flagBuildForIOS = true;
           flagBuildForSimulator = true;
         }
@@ -746,8 +751,10 @@ int main (const int argc, const char* argv[]) {
       }
     }
 
-    if (flagRunUserBuild == false && fs::exists(settings["output"])) {
-      auto p = fs::current_path() / fs::path(settings["output"]);
+    targetPlatform = targetPlatform.size() > 0 ? targetPlatform : platform.os;
+    Paths paths = getPaths(targetPlatform);
+    if (flagRunUserBuild == false && fs::exists(paths.platformSpecificOutputPath)) {
+      auto p = fs::current_path() / fs::path(paths.platformSpecificOutputPath);
       try {
         fs::remove_all(p);
         log(std::string("cleaned: " + p.string()));
@@ -766,7 +773,6 @@ int main (const int argc, const char* argv[]) {
 
     fs::path pathResources;
     fs::path pathToArchive;
-    Paths paths = getPaths(platform.os);
 
     //
     // Darwin Package Prep
@@ -812,9 +818,7 @@ int main (const int argc, const char* argv[]) {
       auto bundle_path = fs::path(replace(bundle_identifier, "\\.", "/")).make_preferred();
       auto bundle_path_underscored = replace(bundle_identifier, "\\.", "_");
 
-      // TODO: move some paths to getPaths("android")
-      auto relativeOutput = fs::path(settings["output"]) / "android";
-      auto output = fs::absolute(targetPath) / relativeOutput;
+      auto output = paths.platformSpecificOutputPath;
       auto app = output / "app";
       auto src = app / "src";
       auto jni = src / "main" / "jni";
@@ -1086,11 +1090,11 @@ int main (const int argc, const char* argv[]) {
     }
 
     if (platform.mac && flagBuildForIOS) {
-      fs::remove_all(targetPath / settings["output"]);
+      fs::remove_all(paths.platformSpecificOutputPath);
 
       auto projectName = (settings["name"] + ".xcodeproj");
       auto schemeName = (settings["name"] + ".xcscheme");
-      auto pathToProject = targetPath / settings["output"] / projectName;
+      auto pathToProject = paths.platformSpecificOutputPath / projectName;
       auto pathToScheme = pathToProject / "xcshareddata" / "xcschemes";
       auto pathToProfile = targetPath / settings["ios_provisioning_profile"];
 
@@ -1135,22 +1139,22 @@ int main (const int argc, const char* argv[]) {
 
       fs::copy(
         fs::path(prefixFile()) / "lib",
-        targetPath / settings["output"] / "lib",
+        paths.platformSpecificOutputPath / "lib",
         fs::copy_options::overwrite_existing | fs::copy_options::recursive
       );
 
       fs::copy(
         fs::path(prefixFile()) / "include",
-        targetPath / settings["output"] / "include",
+        paths.platformSpecificOutputPath / "include",
         fs::copy_options::overwrite_existing | fs::copy_options::recursive
       );
 
-      writeFile(targetPath / settings["output"] / "exportOptions.plist", tmpl(gXCodeExportOptions, settings));
-      writeFile(targetPath / settings["output"] / "Info.plist", tmpl(gXCodePlist, settings));
+      writeFile(paths.platformSpecificOutputPath / "exportOptions.plist", tmpl(gXCodeExportOptions, settings));
+      writeFile(paths.platformSpecificOutputPath / "Info.plist", tmpl(gXCodePlist, settings));
       writeFile(pathToProject / "project.pbxproj", tmpl(gXCodeProject, settings));
       writeFile(pathToScheme / schemeName, tmpl(gXCodeScheme, settings));
 
-      pathResources = fs::path { targetPath / settings["output"] / "ui" };
+      pathResources = paths.platformSpecificOutputPath / "ui";
       fs::create_directories(pathResources);
     }
 
@@ -1273,7 +1277,7 @@ int main (const int argc, const char* argv[]) {
 
     log("package prepared");
 
-    auto pathResourcesRelativeToUserBuild = getPaths(platform.os).pathResourcesRelativeToUserBuild;
+    auto pathResourcesRelativeToUserBuild = paths.pathResourcesRelativeToUserBuild;
     if (settings.count("build") != 0) {
       //
       // cd into the targetPath and run the user's build command,
@@ -1332,7 +1336,7 @@ int main (const int argc, const char* argv[]) {
       log("building for iOS");
 
       auto oldCwd = fs::current_path();
-      auto pathToDist = oldCwd / targetPath / settings["output"];
+      auto pathToDist = oldCwd / paths.platformSpecificOutputPath;
 
       fs::create_directories(pathToDist);
       fs::current_path(pathToDist);
@@ -1406,7 +1410,9 @@ int main (const int argc, const char* argv[]) {
       log("created archive");
 
       if (flagBuildForSimulator && flagShouldRun) {
-        runIOSSimulator(settings);
+        std::string app = (settings["name"] + ".app");
+        auto pathToApp = paths.platformSpecificOutputPath / app;
+        runIOSSimulator(pathToApp, settings);
       }
 
       if (flagShouldPackage) {
@@ -1437,9 +1443,7 @@ int main (const int argc, const char* argv[]) {
     }
 
     if (flagBuildForAndroid) {
-      auto relativeOutput = fs::path(settings["output"]) / "android";
-      auto output = fs::absolute(targetPath) / relativeOutput;
-      auto app = output / "app";
+      auto app = paths.platformSpecificOutputPath / "app";
       auto androidHome = getEnv("ANDROID_HOME");
 
       if (androidHome.size() == 0) {
@@ -1615,7 +1619,7 @@ int main (const int argc, const char* argv[]) {
         << "dpkg-deb --build --root-owner-group "
         << paths.pathPackage.string()
         << " "
-        << (targetPath / settings["output"]).string();
+        << (paths.platformSpecificOutputPath).string();
 
       auto r = std::system(archiveCommand.str().c_str());
 
@@ -1724,9 +1728,9 @@ int main (const int argc, const char* argv[]) {
     if (flagShouldPackage && platform.mac) {
       std::stringstream zipCommand;
       auto ext = ".zip";
-      auto pathToBuild = targetPath / settings["output"] / "build";
+      auto pathToBuild = paths.platformSpecificOutputPath / "build";
 
-      pathToArchive = targetPath / settings["output"] / (settings["executable"] + ext);
+      pathToArchive = paths.platformSpecificOutputPath / (settings["executable"] + ext);
 
       zipCommand
         << "ditto"
@@ -2130,10 +2134,11 @@ int main (const int argc, const char* argv[]) {
   createSubcommand("run", { "--platform", "--prod", "--test=1" }, true, [&](const std::span<const char *>& options) -> void {
     std::string argvForward = "";
     bool isIosSimulator = false;
+    Paths paths = getPaths(platform.os);
     for (auto const& option : options) {
       auto targetPlatform = optionValue(option, "--platform");
       if (targetPlatform.size() != 0) {
-        if (targetPlatform == "iossimulator") {
+        if (targetPlatform == "ios-simulator") {
           isIosSimulator = true;
         } else {
           log("Unknown platform: " + targetPlatform);
@@ -2145,10 +2150,12 @@ int main (const int argc, const char* argv[]) {
       }
     }
     if (isIosSimulator) {
-      runIOSSimulator(settings);
+      std::string app = (settings["name"] + ".app");
+      auto pathToApp = paths.platformSpecificOutputPath / app;
+      runIOSSimulator(pathToApp, settings);
     } else {
       auto executable = fs::path(settings["executable"] + (platform.win ? ".exe" : ""));
-      auto exitCode = runApp(getPaths(platform.os).pathBin / executable, argvForward);
+      auto exitCode = runApp(paths.pathBin / executable, argvForward);
       exit(exitCode);
     }
   });
