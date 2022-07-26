@@ -218,14 +218,6 @@ constexpr auto gPreload = R"JS(
         return send.call(this, body)
       }
     })
-
-    function bytesToSring(bytes) {
-      var chars = [];
-      for (var i = 0, n = bytes.length; i < n;) {
-        chars.push(((bytes[i++] & 0xff) << 8) | (bytes[i++] & 0xff));
-      }
-      return String.fromCharCode.apply(null, chars);
-    }
   })();
 )JS";
 
