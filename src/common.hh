@@ -540,6 +540,7 @@ namespace SSC {
       int index = -1;
       std::string value = "";
       std::string name = "";
+      std::string uri = "";
       std::string get(const std::string&);
   };
 
@@ -553,6 +554,7 @@ namespace SSC {
   //
   inline Parse::Parse(const std::string& s) {
     std::string str = s;
+    uri = str;
 
     // bail if missing protocol prefix
     if (str.find("ipc://") == -1) return;
@@ -712,10 +714,20 @@ namespace SSC {
   // Interfaces make sure all operating systems implement the same stuff
   //
   class IApp {
+    // an opaque pointer to the configured `WindowFactory<Window, App>`
+    void *windowFactory = nullptr;
+
     public:
       bool shouldExit = false;
       ExitCallback onExit = nullptr;
       void exit(int code);
+      void setWindowFactory(void *windowFactory) {
+        this->windowFactory = windowFactory;
+      }
+
+      void * getWindowFactory() {
+        return this->windowFactory;
+      }
 
       virtual int run() = 0;
       virtual void kill() = 0;
@@ -807,8 +819,10 @@ namespace SSC {
           WindowWithMetadata (
             WindowFactory &factory,
             App &app,
-            WindowOptions opts)
-          : Window(app, opts), factory(factory) {
+            WindowOptions opts
+          ) : Window(app, opts)
+            , factory(factory)
+          {
             // noop
           }
 

@@ -38,6 +38,8 @@ MAIN {
   App app(instanceId);
   WindowFactory<Window, App> windowFactory(app);
 
+  app.setWindowFactory(&windowFactory);
+
   //
   // SETTINGS and DEBUG are compile time variables provided by the compiler.
   //

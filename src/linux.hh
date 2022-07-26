@@ -1,32 +1,139 @@
-#include "common.hh"
-#include "core.hh"
+#include <stdlib.h>
+#include <math.h>
 
 #include <JavaScriptCore/JavaScript.h>
-#include <gtk/gtk.h>
 #include <webkit2/webkit2.h>
+#include <gtk/gtk.h>
+
+#include "common.hh"
+#include "core.hh"
 
 static GtkTargetEntry droppableTypes[] = {
   { (char*) "text/uri-list", 0, 0 }
 };
 
 namespace SSC {
-  class Bridge {
-    public:
-      IWindow *window;
-      Core *core;
+  std::map<std::string, std::string> bufferQueue;
 
-      Bridge (IWindow *window) {
-        this->core = new Core();
-        this->window = window;
+#define UTF8_IN_URANGE(c, a, b) (             \
+    (unsigned char) c >= (unsigned char) a && \
+    (unsigned char) c <= (unsigned char) b    \
+)
+
+  static inline size_t decodeUTF8 (char *output, const char *input, size_t length) {
+    unsigned char cp = 0; // code point
+    unsigned char lower = 0x80;
+    unsigned char upper = 0xBF;
+
+    int x = 0; // cp needed
+    int y = 0; // cp  seen
+    int size = 0; // output size
+
+    for (int i = 0; i < length; ++i) {
+      auto b = (unsigned char) input[i];
+
+      if (b == 0) {
+        output[size++] = 0;
+        continue;
       }
 
-      bool route (std::string msg, char *buf) const;
-      void send (std::string seq, std::string msg, Post post) const;
-      bool invoke (Parse &cmd, Cb cb) const;
+      if (x == 0) {
+        // 1 byte
+        if (UTF8_IN_URANGE(b, 0x00, 0x7F)) {
+          output[size++] = b;
+          continue;
+        }
+
+        if (!UTF8_IN_URANGE(b, 0xC2, 0xF4)) {
+          break;
+        }
+
+        // 2 byte
+        if (UTF8_IN_URANGE(b, 0xC2, 0xDF)) {
+          x = 1;
+          cp = b - 0xC0;
+        }
+
+        // 3 byte
+        if (UTF8_IN_URANGE(b, 0xE0, 0xEF)) {
+          if (b == 0xE0) {
+            lower = 0xA0;
+          } else if (b == 0xED) {
+            upper = 0x9F;
+          }
+
+          x = 2;
+          cp = b - 0xE0;
+        }
+
+        // 4 byte
+        if (UTF8_IN_URANGE(b, 0xF0, 0xF4)) {
+          if (b == 0xF0) {
+            lower = 0x90;
+          } else if (b == 0xF4) {
+            upper = 0x8F;
+          }
+
+          x = 3;
+          cp = b - 0xF0;
+        }
+
+        cp = cp * pow(64, x);
+        continue;
+      }
+
+      if (!UTF8_IN_URANGE(b, lower, upper)) {
+        lower = 0x80;
+        upper = 0xBF;
+
+        // revert
+        cp = 0;
+        x = 0;
+        y = 0;
+        i--;
+        continue;
+      }
+
+      lower = 0x80;
+      upper = 0xBF;
+      y++;
+      cp += (b - 0x80) * pow(64, x - y);
+
+      if (y != x) {
+        continue;
+      }
+
+      output[size++] = cp;
+      // continue to next
+      cp = 0;
+      x = 0;
+      y = 0;
+    }
+
+    output[size] = 0;
+
+    return size;
+  }
+
+  class Bridge {
+    public:
+      IApp *app;
+      Core *core;
+
+      Bridge (IApp *app) {
+        this->core = new Core();
+        this->app = app;
+      }
+
+      bool route (std::string msg, char *buf, size_t bufsize);
+      void send (Parse &cmd, std::string seq, std::string msg, Post post);
+      bool invoke (Parse &cmd, char *buf, size_t bufsize, Cb cb);
+      bool invoke (Parse &cmd, Cb cb);
   };
 
   class App : public IApp {
     public:
+      Bridge bridge;
       App(int);
 
       static std::atomic<bool> isReady;
@@ -56,7 +163,6 @@ namespace SSC {
 
     public:
       App app;
-      Bridge bridge;
       WindowOptions opts;
       Window(App&, WindowOptions);
 
@@ -84,9 +190,55 @@ namespace SSC {
       int openExternal(const std::string& s);
   };
 
-  App::App (int instanceId) {
+  App::App (int instanceId) : bridge(this) {
+    auto webkitContext = webkit_web_context_get_default();
     gtk_init_check(0, nullptr);
     // TODO enforce single instance is set
+    webkit_web_context_register_uri_scheme(
+      webkitContext,
+      "ipc",
+      [](WebKitURISchemeRequest *request, gpointer arg) {
+        auto *app = static_cast<App*>(arg);
+        auto uri = std::string(webkit_uri_scheme_request_get_uri(request));
+        auto msg = std::string(uri);
+
+        Parse cmd(msg);
+
+        auto invoked = app->bridge.invoke(cmd, [&](auto seq, auto result, auto post) {
+          auto size = post.body != 0 ? post.length : result.size();
+          auto body = post.body != nullptr && post.length > 0
+            ? post.body
+            : result.c_str();
+
+          // stream body is free'd in `Post{}`
+          auto stream = g_memory_input_stream_new_from_data(body, size, 0);
+          auto response = webkit_uri_scheme_response_new(stream, result.size());
+
+          webkit_uri_scheme_response_set_content_type(
+            response,
+            "application/octet-stream"
+          );
+
+          webkit_uri_scheme_request_finish_with_response(request, response);
+
+          app->bridge.core->removePost(post.id);
+        });
+
+        if (!invoked) {
+          auto stream = g_memory_input_stream_new_from_data("", 0, 0);
+          auto response = webkit_uri_scheme_response_new(stream, 0);
+
+          webkit_uri_scheme_response_set_content_type(
+            response,
+            "application/octet-stream"
+          );
+
+          webkit_uri_scheme_request_finish_with_response(request, response);
+        }
+      },
+      this,
+      0
+    );
   }
 
   int App::run () {
@@ -121,7 +273,11 @@ namespace SSC {
     );
   }
 
-  bool Bridge::invoke (Parse &cmd, Cb cb) const {
+  bool Bridge::invoke (Parse &cmd, Cb cb) {
+    return this->invoke(cmd, 0, 0, cb);
+  }
+
+  bool Bridge::invoke (Parse &cmd, char *buf, size_t bufsize, Cb cb) {
     auto seq  = cmd.get("seq");
 
     if (cmd.name == "post") {
@@ -135,6 +291,14 @@ namespace SSC {
 
     if (cmd.name == "getFSConstants" || cmd.name == "fs.constants") {
       cb(seq, this->core->getFSConstants(), Post{});
+      return true;
+    }
+
+    if (cmd.name == "buffer.queue" && buf != nullptr) {
+      auto key = std::to_string(cmd.index) + seq;
+      auto str = std::string();
+      str.assign(buf, bufsize);
+      bufferQueue[key] = str;
       return true;
     }
 
@@ -175,22 +339,53 @@ namespace SSC {
       return true;
     }
 
+    if (cmd.name == "fsWrite" || cmd.name == "fs.write") {
+      auto key = std::to_string(cmd.index) + seq;
+      if (bufferQueue.count(key)) {
+        auto id = std::stoull(cmd.get("id"));
+        auto offset = std::stoi(cmd.get("offset"));
+        auto buffer = bufferQueue[key];
+
+        this->core->fsWrite(seq, id, buffer, offset, cb);
+        bufferQueue.erase(bufferQueue.find(key));
+        return true;
+      }
+    }
+
     return false;
   }
 
-  bool Bridge::route (std::string msg, char *buf) const {
+  bool Bridge::route (std::string msg, char *buf, size_t bufsize) {
     Parse cmd(msg);
 
-    return this->invoke(cmd, [this](auto seq, auto msg, auto post) {
-      this->send(seq, msg, post);
+    return this->invoke(cmd, buf, bufsize, [&cmd, this](auto seq, auto msg, auto post) {
+      this->send(cmd, seq, msg, post);
     });
   }
 
-  void Bridge::send (std::string seq, std::string msg, Post post) const {
-    if (post.length > 0) {
+  void Bridge::send (Parse &cmd, std::string seq, std::string msg, Post post) {
+    if (cmd.index == -1) {
+      // @TODO(jwerle): print warning
+      return;
+    }
+
+    auto windowFactory = reinterpret_cast<WindowFactory<Window, App> *>(app->getWindowFactory());
+    if (windowFactory == nullptr) {
+      // @TODO(jwerle): print warning
+      return;
+    }
+
+    auto window = windowFactory->getWindow(cmd.index);
+
+    if (window == nullptr) {
+      // @TODO(jwerle): print warning
+      return;
+    }
+
+    if (post.body) {
       auto params = format(R"JSON({ "seq": $S })JSON", seq);
       auto script = this->core->createPost(params, post);
-      this->window->eval(script);
+      window->eval(script);
       return;
     }
 
@@ -198,14 +393,10 @@ namespace SSC {
       msg = resolveToRenderProcess(seq, "0", encodeURIComponent(msg));
     }
 
-    this->window->eval(msg);
+    window->eval(msg);
   }
 
-  Window::Window (App& app, WindowOptions opts)
-    : app(app)
-    , opts(opts)
-    , bridge((IWindow *) this)
-  {
+  Window::Window (App& app, WindowOptions opts) : app(app) , opts(opts) {
     setenv("GTK_OVERLAY_SCROLLING", "1", 1);
     accel_group = gtk_accel_group_new();
     popupId = 0;
@@ -225,49 +416,50 @@ namespace SSC {
     WebKitUserContentManager* cm = webkit_user_content_manager_new();
     webkit_user_content_manager_register_script_message_handler(cm, "external");
 
-    webkit_web_context_register_uri_scheme(
-      webkit_web_context_get_default(),
-      "ipc",
-      [](WebKitURISchemeRequest *request, gpointer arg) {
-        auto *window = static_cast<Window*>(arg);
-        auto uri = std::string(webkit_uri_scheme_request_get_uri(request));
-        auto msg = std::string(uri);
-
-        Parse cmd(msg);
-
-        window->bridge.invoke(cmd, [&](auto seq, auto result, auto post) {
-          auto size = post.length > 0 ? post.length - 1: result.size();
-          auto body = post.body != nullptr && post.length > 0
-            ? post.body
-            : result.c_str();
-
-          auto stream = g_memory_input_stream_new_from_data(body, size, 0);
-          auto response = webkit_uri_scheme_response_new(stream, result.size());
-
-          webkit_uri_scheme_response_set_content_type(
-            response,
-            "application/octet-stream"
-          );
-
-          webkit_uri_scheme_request_finish_with_response(request, response);
-
-          window->bridge.core->removePost(post.id);
-        });
-      },
-      this,
-      0
-    );
-
     g_signal_connect(
       cm,
       "script-message-received::external",
       G_CALLBACK(+[](WebKitUserContentManager*, WebKitJavascriptResult* r, gpointer arg) {
-        auto *w = static_cast<Window*>(arg);
-        JSCValue* value = webkit_javascript_result_get_js_value(r);
-        //auto bytes = jsc_value_to_string_as_bytes(value);
-        std::string str = std::string(jsc_value_to_string(value));
-        if (w->bridge.route(str, nullptr)) return;
-        if (w->onMessage != nullptr) w->onMessage(str);
+        auto *window = static_cast<Window*>(arg);
+        auto value = webkit_javascript_result_get_js_value(r);
+        auto str = std::string(jsc_value_to_string(value));
+
+        char *buf = nullptr;
+        size_t bufsize = 0;
+
+        if (str.size() >= 2 && str.at(0) == 'b' && str.at(1) == '4') {
+          gsize size = 0;
+          auto bytes = jsc_value_to_string_as_bytes(value);
+          auto data = (char *) g_bytes_get_data(bytes, &size);
+
+          if (size > 6) {
+            auto index = new char[2]{0};
+            auto seq = new char[2]{0};
+
+            buf = new char[size - 6]{0};
+
+            decodeUTF8(index, data + 2, 2);
+            decodeUTF8(seq, data + 4, 2);
+            bufsize = decodeUTF8(buf, data + 6, size - 6);
+
+            str = std::string("ipc://buffer.queue?")
+              + std::string("index=") + std::string(index)
+              + std::string("&seq=") + std::string(seq);
+
+            delete index;
+            delete seq;
+          }
+        }
+
+        if (!window->app.bridge.route(str, buf, bufsize)) {
+          if (window->onMessage != nullptr) {
+            window->onMessage(str);
+          }
+        }
+
+        if (buf != nullptr) {
+          delete buf;
+        }
       }),
       this
     );

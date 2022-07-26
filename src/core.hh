@@ -337,21 +337,22 @@ namespace SSC {
     uint64_t clientId;
   };
 
-  uv_loop_t* getDefaultLoop () {
+  static uv_loop_t* getDefaultLoop () {
     return uv_default_loop();
   }
 
-  void runDefaultLoop () {
-    uv_run(getDefaultLoop(), UV_RUN_DEFAULT);
+  static void runDefaultLoop () {
+    auto loop = getDefaultLoop();
+    uv_run(loop, UV_RUN_DEFAULT);
   }
 
-  String addrToIPv4 (struct sockaddr_in* sin) {
+  static String addrToIPv4 (struct sockaddr_in* sin) {
     char buf[INET_ADDRSTRLEN];
     inet_ntop(AF_INET, &sin->sin_addr, buf, INET_ADDRSTRLEN);
     return String(buf);
   }
 
-  String addrToIPv6 (struct sockaddr_in6* sin) {
+  static String addrToIPv6 (struct sockaddr_in6* sin) {
     char buf[INET6_ADDRSTRLEN];
     inet_ntop(AF_INET6, &sin->sin6_addr, buf, INET6_ADDRSTRLEN);
     return String(buf);
@@ -866,7 +867,7 @@ namespace SSC {
     auto req = new uv_fs_t;
     req->data = desc;
 
-    const uv_buf_t buf = uv_buf_init((char*) data.c_str(), (int)data.size());
+    const uv_buf_t buf = uv_buf_init((char*) data.data(), (int) data.size());
 
     auto err = uv_fs_write(uv_default_loop(), req, desc->fd, &buf, 1, offset, [](uv_fs_t* req) {
       auto desc = static_cast<DescriptorContext*>(req->data);

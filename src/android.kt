@@ -418,7 +418,7 @@ open class Bridge(activity: WebViewActivity) {
       message: IPCMessage,
       value: String,
       callback: (String, String) -> Unit,
-      throwError: (String, String) -> String
+      throwError: (String, String) -> Unit
     ): String? {
       val core = this.activity.core
       val bytes = message.bytes
@@ -467,7 +467,7 @@ open class Bridge(activity: WebViewActivity) {
       }
 
       when (message.command) {
-        "getNetworkInterfaces" -> {
+        "os.networkInterfaces", "getNetworkInterfaces" -> {
           if (message.seq.isEmpty()) {
             throw RuntimeException("getNetworkInterfaces: Missing 'seq' in IPC.")
           }
@@ -476,7 +476,7 @@ open class Bridge(activity: WebViewActivity) {
           return message.seq
         }
 
-        "getPlatformArch" -> {
+        "os.arch", "getPlatformArch" -> {
           if (message.seq.isEmpty()) {
             throw RuntimeException("getPlatformArch: Missing 'seq' in IPC.")
           }
@@ -485,7 +485,7 @@ open class Bridge(activity: WebViewActivity) {
           return message.seq
         }
 
-        "getPlatformType" -> {
+        "os.type", "getPlatformType" -> {
           if (message.seq.isEmpty()) {
             throw RuntimeException("getPlatformType: Missing 'seq' in IPC.")
           }
@@ -494,7 +494,7 @@ open class Bridge(activity: WebViewActivity) {
           return message.seq
         }
 
-        "getPlatformOS" -> {
+        "os.platform", "getPlatformOS" -> {
           if (message.seq.isEmpty()) {
             throw RuntimeException("getPlatformOS: Missing 'seq' in IPC.")
           }

@@ -160,6 +160,73 @@ constexpr auto gPreload = R"JS(
       }
     }
   }
+
+  // initialize `XMLHttpRequest` IPC intercept
+  void (() => {
+    const { send, open } = XMLHttpRequest.prototype
+    Object.assign(XMLHttpRequest.prototype, {
+      open (method, url, ...args) {
+        const seq = new URL(url).searchParams.get('seq')
+
+        if (seq) {
+          this.seq = seq
+        }
+
+        return open.call(this, method, url, ...args)
+      },
+
+      async send (body) {
+        const index = window.process.index
+        const { seq } = this
+
+        if (typeof body !== 'undefined' && typeof seq !== 'undefined') {
+          if (/android/i.test(window.process?.platform)) {
+            window.external.invoke(`ipc://buffer.queue?seq=${seq}`, body)
+          }
+
+          if (/linux/i.test(window.process?.platform)) {
+            if (body?.buffer instanceof ArrayBuffer) {
+              const type = new Uint8Array([0x62, 0x34]) // 'b4'
+              const header = new Uint8Array(4)
+              const buffer = new Uint8Array(
+                type.length +
+                header.length +
+                body.length
+              )
+
+              header.set(new TextEncoder().encode(index))
+              header.set(new TextEncoder().encode(seq), 2)
+
+              //  <type> |      <header>     | <body>
+              // "b4"(2) | index(2) + seq(2) | body(n)
+              buffer.set(type)
+              buffer.set(header, type.length)
+              buffer.set(body, type.length + header.length)
+
+              let data = String.fromCharCode(...buffer)
+
+              try { data = decodeURIComponent(escape(data)) }
+              catch (err) { void err }
+
+              await window.external.invoke(data)
+            }
+          }
+
+          return send.call(this, null)
+        }
+
+        return send.call(this, body)
+      }
+    })
+
+    function bytesToSring(bytes) {
+      var chars = [];
+      for (var i = 0, n = bytes.length; i < n;) {
+        chars.push(((bytes[i++] & 0xff) << 8) | (bytes[i++] & 0xff));
+      }
+      return String.fromCharCode.apply(null, chars);
+    }
+  })();
 )JS";
 
 constexpr auto gPreloadDesktop = R"JS(
@@ -245,29 +312,6 @@ constexpr auto gPreloadMobile = R"JS(
   window.system.openExternal = o => {
     window.external.invoke(`ipc://external?value=${encodeURIComponent(o)}`)
   }
-
-  void (() => {
-    const { send, open } = XMLHttpRequest.prototype
-    Object.assign(XMLHttpRequest.prototype, {
-      open (method, url, ...args) {
-        const seq = new URLSearchParams(url.split('?')[1]).get('seq')
-
-        if (seq) {
-          this.seq = seq
-        }
-
-        return open.call(this, method, url, ...args)
-      },
-
-      send (body) {
-        if (body && typeof this.seq !== 'undefined' && /android/i.test(window.process?.platform)) {
-          window.external.invoke(`ipc://buffer.queue?seq=${this.seq}`, body)
-        }
-
-        return send.call(this, body)
-      }
-    })
-  })();
 )JS";
 
 #endif
