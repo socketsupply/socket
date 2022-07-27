@@ -897,11 +897,39 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     return true;
   }
 
-  if (cmd.name == "fsReadDir") {
+  if (cmd.name == "fsOpendir") {
+    auto id = std::stoull(cmd.get("id"));
     auto path = cmd.get("path");
 
     dispatch_async(queue, ^{
-      self.core->fsReadDir(seq, path, [&](auto seq, auto msg, auto post) {
+      self.core->fsOpendir(seq, id, path, [&](auto seq, auto msg, auto post) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+          [self send: seq msg: msg post: post];
+        });
+      });
+    });
+    return true;
+  }
+
+  if (cmd.name == "fsReaddir") {
+    auto id = std::stoull(cmd.get("id"));
+    auto entries = std::stoi(cmd.get("entries", "256"));
+
+    dispatch_async(queue, ^{
+      self.core->fsReaddir(seq, id, entries, [&](auto seq, auto msg, auto post) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+          [self send: seq msg: msg post: post];
+        });
+      });
+    });
+    return true;
+  }
+
+  if (cmd.name == "fsClosedir") {
+    auto id = std::stoull(cmd.get("id"));
+
+    dispatch_async(queue, ^{
+      self.core->fsClosedir(seq, id, [&](auto seq, auto msg, auto post) {
         dispatch_async(dispatch_get_main_queue(), ^{
           [self send: seq msg: msg post: post];
         });
