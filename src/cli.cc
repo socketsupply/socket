@@ -418,7 +418,12 @@ int main (const int argc, const char* argv[]) {
     exit(1);
   };
 
-  auto createSubcommand = [&](const std::string& subcommand, const std::vector<std::string>& options, const bool& needsConfig, std::function<void(std::span<const char *>)> subcommandHandler) -> void {
+  auto createSubcommand = [&](
+    const std::string& subcommand,
+    const std::vector<std::string>& options,
+    const bool& needsConfig,
+    std::function<void(std::span<const char *>)> subcommandHandler
+  ) -> void {
     if (argv[1] == subcommand) {
       if (argc > 2 && (is(argv[2], "-h") || is(argv[2], "--help"))) {
         printHelp(subcommand, attrs);

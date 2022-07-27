@@ -278,15 +278,41 @@ namespace SSC {
   }
 
   bool Bridge::invoke (Parse &cmd, char *buf, size_t bufsize, Cb cb) {
-    auto seq  = cmd.get("seq");
+    auto seq = cmd.get("seq");
+    auto id = cmd.get("id");
 
     if (cmd.name == "post") {
-      auto id = std::stoull(cmd.get("id"));
-      if (this->core->hasPost(id)) {
-        auto post = this->core->getPost(id);
+      if (id.size() == 0) {
+        auto err = SSC::format(R"MSG({
+          "err": {
+            "id", "$S",
+            "type": "InternalError",
+            "message": "'id' is required"
+          }
+        })MSG", id);
+
+        cb(err, "", Post{});
+        return true;
+      }
+
+      auto pid = std::stoull(id);
+
+      if (this->core->hasPost(pid)) {
+        auto post = this->core->getPost(pid);
         cb(seq, "", post);
         return true;
       }
+
+      auto err = SSC::format(R"MSG({
+        "err": {
+          "id", "$S",
+          "type": "InternalError",
+          "message": "Invalid 'id' for post"
+        }
+      })MSG", id);
+
+      cb(err, "", Post{});
+      return true;
     }
 
     if (cmd.name == "getFSConstants" || cmd.name == "fs.constants") {
@@ -295,6 +321,19 @@ namespace SSC {
     }
 
     if (cmd.name == "buffer.queue" && buf != nullptr) {
+      if (seq.size() == 0) {
+        auto err = SSC::format(R"MSG({
+          "err": {
+            "id": "$S",
+            "type": "InternalError",
+            "message": "Missing 'seq' for buffer queue"
+          }
+        })MSG", id);
+
+        cb(err, "", Post{});
+        return true;
+      }
+
       auto key = std::to_string(cmd.index) + seq;
       auto str = std::string();
       str.assign(buf, bufsize);
@@ -303,22 +342,91 @@ namespace SSC {
     }
 
     if (cmd.name == "fsAccess" || cmd.name == "fs.access") {
+      if (cmd.get("path").size() == 0) {
+        auto err = SSC::format(R"MSG({
+          "err": {
+            "type": "InternalError",
+            "message": "'path' is required"
+          }
+        })MSG");
+
+        cb(err, "", Post{});
+        return true;
+      }
+
+      if (cmd.get("mode").size() == 0) {
+        auto err = SSC::format(R"MSG({
+          "err": {
+            "type": "InternalError",
+            "message": "'mode' is required"
+          }
+        })MSG");
+
+        cb(err, "", Post{});
+        return true;
+      }
+
       auto path = decodeURIComponent(cmd.get("path"));
       auto mode = std::stoi(cmd.get("mode"));
+
       this->core->fsAccess(seq, path, mode, cb);
       return true;
     }
 
     if (cmd.name == "fsChmod" || cmd.name == "fs.chmod") {
+      if (cmd.get("path").size() == 0) {
+        auto err = SSC::format(R"MSG({
+          "err": {
+            "type": "InternalError",
+            "message": "'path' is required"
+          }
+        })MSG");
+
+        cb(err, "", Post{});
+        return true;
+      }
+
+      if (cmd.get("mode").size() == 0) {
+        auto err = SSC::format(R"MSG({
+          "err": {
+            "type": "InternalError",
+            "message": "'mode' is required"
+          }
+        })MSG");
+
+        cb(err, "", Post{});
+        return true;
+      }
+
       auto path = decodeURIComponent(cmd.get("path"));
       auto mode = std::stoi(cmd.get("mode"));
+
       this->core->fsChmod(seq, path, mode, cb);
       return true;
     }
 
     if (cmd.name == "fsClose" || cmd.name == "fs.close") {
+      if (cmd.get("mode").size() == 0) {
+        auto err = SSC::format(R"MSG({
+          "err": {
+            "type": "InternalError",
+            "message": "'mode' is required"
+          }
+        })MSG");
+
+        cb(err, "", Post{});
+        return true;
+      }
       auto id = std::stoull(cmd.get("id"));
       this->core->fsClose(seq, id, cb);
+      return true;
+    }
+
+    if (cmd.name == "fsCopyFile" || cmd.name == "fs.copyFile") {
+      auto src = cmd.get("src");
+      auto dest = cmd.get("dest");
+      auto mode = std::stoi(cmd.get("dest"));
+      this->core->fsCopyFile(seq, src, dest, mode, cb);
       return true;
     }
 

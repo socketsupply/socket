@@ -469,7 +469,7 @@ open class Bridge(activity: WebViewActivity) {
       when (message.command) {
         "os.networkInterfaces", "getNetworkInterfaces" -> {
           if (message.seq.isEmpty()) {
-            throw RuntimeException("getNetworkInterfaces: Missing 'seq' in IPC.")
+            throw RuntimeException("getNetworkInterfaces: Missing 'seq' in IPC")
           }
 
           callback(message.seq, core.getNetworkInterfaces())
@@ -478,7 +478,7 @@ open class Bridge(activity: WebViewActivity) {
 
         "os.arch", "getPlatformArch" -> {
           if (message.seq.isEmpty()) {
-            throw RuntimeException("getPlatformArch: Missing 'seq' in IPC.")
+            throw RuntimeException("getPlatformArch: Missing 'seq' in IPC")
           }
 
           callback(message.seq, core.getPlatformArch())
@@ -487,7 +487,7 @@ open class Bridge(activity: WebViewActivity) {
 
         "os.type", "getPlatformType" -> {
           if (message.seq.isEmpty()) {
-            throw RuntimeException("getPlatformType: Missing 'seq' in IPC.")
+            throw RuntimeException("getPlatformType: Missing 'seq' in IPC")
           }
 
           callback(message.seq, core.getPlatformType())
@@ -496,7 +496,7 @@ open class Bridge(activity: WebViewActivity) {
 
         "os.platform", "getPlatformOS" -> {
           if (message.seq.isEmpty()) {
-            throw RuntimeException("getPlatformOS: Missing 'seq' in IPC.")
+            throw RuntimeException("getPlatformOS: Missing 'seq' in IPC")
           }
 
           callback(message.seq, core.getPlatformOS())
@@ -522,7 +522,7 @@ open class Bridge(activity: WebViewActivity) {
       when (message.command) {
         "fs.access", "fsAccess" -> {
           if (!message.has("path")) {
-            return throwError(message.seq, "'path' is required.")
+            return throwError(message.seq, "'path' is required")
           }
 
           var path = message.get("path")
@@ -551,11 +551,11 @@ open class Bridge(activity: WebViewActivity) {
 
         "fs.chmod", "fsChmod" -> {
           if (!message.has("path")) {
-            return throwError(message.seq, "'path' is required.")
+            return throwError(message.seq, "'path' is required")
           }
 
           if (!message.has("mode")) {
-            return throwError(message.seq, "'path' is required.")
+            return throwError(message.seq, "'path' is required")
           }
 
           var path = message.get("path")
@@ -584,7 +584,7 @@ open class Bridge(activity: WebViewActivity) {
 
         "fs.close", "fsClose" -> {
           if (!message.has("id")) {
-            return throwError(message.seq, "'id' is required.")
+            return throwError(message.seq, "'id' is required")
           }
 
           val id = message.get("id")
@@ -610,7 +610,7 @@ open class Bridge(activity: WebViewActivity) {
 
         "fs.fstat", "fsFStat" -> {
           if (!message.has("id")) {
-            return throwError(message.seq, "'id' is required.")
+            return throwError(message.seq, "'id' is required")
           }
 
           val id = message.get("id")
@@ -628,11 +628,11 @@ open class Bridge(activity: WebViewActivity) {
 
         "fs.open", "fsOpen" -> {
           if (!message.has("id")) {
-            return throwError(message.seq, "'id' is required.")
+            return throwError(message.seq, "'id' is required")
           }
 
           if (!message.has("path")) {
-            return throwError(message.seq, "'path' is required.")
+            return throwError(message.seq, "'path' is required")
           }
 
           var path = message.get("path")
@@ -665,11 +665,11 @@ open class Bridge(activity: WebViewActivity) {
 
         "fs.read", "fsRead" -> {
           if (!message.has("id")) {
-            return throwError(message.seq, "'id' is required.")
+            return throwError(message.seq, "'id' is required")
           }
 
           if (!message.has("size")) {
-            return throwError(message.seq, "'size' is required.")
+            return throwError(message.seq, "'size' is required")
           }
 
           val id = message.get("id")
@@ -717,11 +717,11 @@ open class Bridge(activity: WebViewActivity) {
           val bytes = message.bytes
 
           if (!message.has("id")) {
-            return throwError(message.seq, "'id' is required.")
+            return throwError(message.seq, "'id' is required")
           }
 
           if (bytes == null) {
-            return throwError(message.seq, "Missing required bytes.")
+            return throwError(message.seq, "Missing required bytes")
           }
 
           val id = message.get("id")
@@ -729,7 +729,7 @@ open class Bridge(activity: WebViewActivity) {
           val offset = message.get("offset", "0").toInt()
 
           if (core.fs.isAssetId(id)) {
-            callback(message.seq, JSONError(id, "AssetManager does not support writes.").toString())
+            callback(message.seq, JSONError(id, "AssetManager does not support writes").toString())
           } else {
             core.fs.write(message.seq, id, data, offset, fun(data: String) {
               callback(message.seq, data)
@@ -789,16 +789,16 @@ open class ExternalWebViewInterface(activity: WebViewActivity) {
     message.bytes = bytes
 
     if (core == null || !core.isReady) {
-      throwGlobalError("Missing NativeCore in WebViewActivity.")
+      throwGlobalError("Missing NativeCore in WebViewActivity")
       return null
     }
 
     if (bridge == null) {
-      throw RuntimeException("Missing Bridge in WebViewActivity.")
+      throw RuntimeException("Missing Bridge in WebViewActivity")
     }
 
     if (message.command.isEmpty()) {
-      throw RuntimeException("Invoke: Missing 'command' in IPC.")
+      throw RuntimeException("Invoke: Missing 'command' in IPC")
     }
 
     when (message.command) {
@@ -808,7 +808,7 @@ open class ExternalWebViewInterface(activity: WebViewActivity) {
       }
 
       "external", "openExternal" -> {
-        require(message.value.isNotEmpty()) { "openExternal: Missing 'value' (URL) in IPC." }
+        require(message.value.isNotEmpty()) { "openExternal: Missing 'value' (URL) in IPC" }
 
         this.activity.startActivity(
           android.content.Intent(
@@ -850,7 +850,7 @@ open class ExternalWebViewInterface(activity: WebViewActivity) {
       return null
     }
 
-    throw RuntimeException("Invalid IPC invocation.")
+    throw RuntimeException("Invalid IPC invocation")
   }
 }
 
@@ -973,6 +973,7 @@ class JSONError(
   override fun toString() = """{
     "err": {
       "id": "$id",
+      "type": "InternalError",
       "message": "$message" ${if (extra.isNotEmpty()) "," else ""}
       $extra
     }
@@ -1094,7 +1095,7 @@ open class NativeFileSystem(core: NativeCore) {
     callback: (String) -> Unit
   ) {
     val descriptor = openAssets[id]
-      ?: return callback(JSONError(id, "Invalid file descriptor.").toString())
+      ?: return callback(JSONError(id, "Invalid file descriptor").toString())
 
     descriptor.fd?.close()
     descriptor.stream?.close()
@@ -1139,7 +1140,7 @@ open class NativeFileSystem(core: NativeCore) {
     callback: (String) -> Unit
   ) {
     val assetManager = core?.getAssetManager()
-      ?: return callback(JSONError(id, "AssetManager is not initialized.").toString())
+      ?: return callback(JSONError(id, "AssetManager is not initialized").toString())
 
     val fd = try {
       assetManager.openFd(path)
@@ -1162,7 +1163,7 @@ open class NativeFileSystem(core: NativeCore) {
     }
 
     if (!fd.fileDescriptor.valid()) {
-      callback(JSONError(id, "Invalid file descriptor.").toString())
+      callback(JSONError(id, "Invalid file descriptor").toString())
       return
     }
 
@@ -1193,10 +1194,10 @@ open class NativeFileSystem(core: NativeCore) {
     callback: (String) -> Unit
   ) {
     val descriptor = openAssets[id]
-      ?: return callback(JSONError(id, "Invalid file descriptor.").toString())
+      ?: return callback(JSONError(id, "Invalid file descriptor").toString())
 
     val assetManager = core?.getAssetManager()
-      ?: return callback(JSONError(id, "AssetManager is not initialized.").toString())
+      ?: return callback(JSONError(id, "AssetManager is not initialized").toString())
 
     val buffer = ByteArray(size.toInt())
     val start = (

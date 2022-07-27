@@ -50,6 +50,39 @@ namespace SSC {
         std::map<std::string, std::string> constants;
 
         #define SET_CONSTANT(c) constants[#c] = std::to_string(c);
+
+        #ifdef UV_DIRENT_UNKNOWN
+          SET_CONSTANT(UV_DIRENT_UNKNOWN)
+        #endif
+
+        #ifdef UV_DIRENT_FILE
+          SET_CONSTANT(UV_DIRENT_FILE)
+        #endif
+
+        #ifdef UV_DIRENT_DIR
+          SET_CONSTANT(UV_DIRENT_DIR)
+        #endif
+
+        #ifdef UV_DIRENT_LINK
+          SET_CONSTANT(UV_DIRENT_LINK)
+        #endif
+
+        #ifdef UV_DIRENT_FIFO
+          SET_CONSTANT(UV_DIRENT_FIFO)
+        #endif
+
+        #ifdef UV_DIRENT_SOCKET
+          SET_CONSTANT(UV_DIRENT_SOCKET)
+        #endif
+
+        #ifdef UV_DIRENT_CHAR
+          SET_CONSTANT(UV_DIRENT_CHAR)
+        #endif
+
+        #ifdef UV_DIRENT_BLOCK
+          SET_CONSTANT(UV_DIRENT_BLOCK)
+        #endif
+
         #ifdef O_RDONLY
           SET_CONSTANT(O_RDONLY);
         #endif
@@ -239,13 +272,15 @@ namespace SSC {
 
       void fsAccess (String seq, String path, int mode, Cb cb) const;
       void fsChmod (String seq, String path, int mode, Cb cb) const;
+      void fsCopyFile (String seq, String src, String dst, int mode, Cb cb) const;
       void fsClose (String seq, uint64_t id, Cb cb) const;
-      void fsCopyFile (String seq, String pathA, String pathB, int flags, Cb cb) const;
       void fsFStat (String seq, uint64_t id, Cb cb) const;
       void fsMkDir (String seq, String path, int mode, Cb cb) const;
       void fsOpen (String seq, uint64_t id, String path, int flags, int mode, Cb cb) const;
+      void fsOpendir (String seq, uint64_t id, String path, Cb cb) const;
       void fsRead (String seq, uint64_t id, int len, int offset, Cb cb) const;
       void fsReadDir (String seq, String path, Cb cb) const;
+      void fsReaddir (String seq, uint64_t id, Cb cb) const;
       void fsRename (String seq, String pathA, String pathB, Cb cb) const;
       void fsRmDir (String seq, String path, Cb cb) const;
       void fsStat (String seq, String path, Cb cb) const;
@@ -299,6 +334,9 @@ namespace SSC {
 
   struct DescriptorContext {
     uv_file fd;
+    uv_dir_t *dir;
+    // 256 which corresponds to DirectoryHandle.MAX_BUFFER_SIZE
+    uv_dirent_t dirents[256];
     String seq;
     Cb cb;
     uint64_t id;
@@ -702,6 +740,55 @@ namespace SSC {
       })MSG", std::to_string(id), String(uv_strerror(err)));
 
       cb(seq, msg, Post{});
+      delete req;
+      return;
+    }
+
+    runDefaultLoop();
+  }
+
+  void Core::fsOpendir(String seq, uint64_t id, String path, Cb cb) const {
+    auto filename = path.c_str();
+    auto loop = getDefaultLoop();
+    auto desc = descriptors[id] = new DescriptorContext;
+    auto req = new uv_fs_t;
+
+    req->data = desc;
+
+    desc->id = id;
+    desc->cb = cb;
+    desc->seq = seq;
+
+    auto err = uv_fs_opendir(loop, req, filename, [](uv_fs_t *req) {
+      auto desc = static_cast<DescriptorContext*>(req->data);
+      std::string msg;
+
+      if (req->result < 0) {
+        msg = SSC::format(
+          R"MSG({ "err": { "id": "$S", "message": "$S" } })MSG",
+          std::to_string(desc->id),
+          String(uv_strerror((int)req->result))
+        );
+      } else {
+        msg = SSC::format(
+          R"MSG({ "data": { "id": "$S" } })MSG",
+          std::to_string(desc->id)
+        );
+      }
+
+      desc->cb(desc->seq, msg, Post{});
+      uv_fs_req_cleanup(req);
+      delete req;
+    });
+
+    if (err < 0) {
+      auto msg = SSC::format(
+        R"MSG({ "err": { "code": $S, "message": "$S" } })MSG",
+        std::to_string(err), String(uv_strerror(err))
+      );
+
+      cb(seq, msg, Post{});
+      delete desc;
       delete req;
       return;
     }
