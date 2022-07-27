@@ -564,6 +564,13 @@ MAIN {
       return;
     }
 
+    if (cmd.name == "menu") {
+      const auto seq = cmd.get("seq");
+      const auto value = cmd.get("value");
+      window->setSystemMenu(seq, decodeURIComponent(value));
+      return;
+    }
+
     if (cmd.name == "menuItemEnabled") {
       const auto seq = cmd.get("seq");
       const auto enabled = cmd.get("enabled").find("true") != -1;
