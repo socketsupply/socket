@@ -735,7 +735,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     return true;
   }
 
-  if (cmd.get("fsConstants").size() != 0) {
+  if (cmd.get("getFSConstants").size() != 0) {
     dispatch_async(queue, ^{
       auto constants = self.core->getFSConstants();
       [self send: seq msg: constants post: Post{}];
