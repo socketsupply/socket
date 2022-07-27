@@ -274,13 +274,13 @@ namespace SSC {
       void fsChmod (String seq, String path, int mode, Cb cb) const;
       void fsCopyFile (String seq, String src, String dst, int mode, Cb cb) const;
       void fsClose (String seq, uint64_t id, Cb cb) const;
+      void fsClosedir (String seq, uint64_t id, Cb cb) const;
       void fsFStat (String seq, uint64_t id, Cb cb) const;
       void fsMkDir (String seq, String path, int mode, Cb cb) const;
       void fsOpen (String seq, uint64_t id, String path, int flags, int mode, Cb cb) const;
       void fsOpendir (String seq, uint64_t id, String path, Cb cb) const;
       void fsRead (String seq, uint64_t id, int len, int offset, Cb cb) const;
-      void fsReadDir (String seq, String path, Cb cb) const;
-      void fsReaddir (String seq, uint64_t id, Cb cb) const;
+      void fsReaddir (String seq, uint64_t id, size_t entries, Cb cb) const;
       void fsRename (String seq, String pathA, String pathB, Cb cb) const;
       void fsRmDir (String seq, String path, Cb cb) const;
       void fsStat (String seq, String path, Cb cb) const;
@@ -334,22 +334,13 @@ namespace SSC {
 
   struct DescriptorContext {
     uv_file fd;
-    uv_dir_t *dir;
+    uv_dir_t *dir = nullptr;
     // 256 which corresponds to DirectoryHandle.MAX_BUFFER_SIZE
     uv_dirent_t dirents[256];
     String seq;
     Cb cb;
     uint64_t id;
     void *data;
-  };
-
-  struct DirectoryReader {
-    uv_dirent_t dirents;
-    uv_dir_t* dir;
-    uv_fs_t reqOpendir;
-    uv_fs_t reqReaddir;
-    Cb cb;
-    String seq;
   };
 
   struct Peer {
@@ -757,6 +748,7 @@ namespace SSC {
 
     desc->id = id;
     desc->cb = cb;
+    desc->dir = nullptr;
     desc->seq = seq;
 
     auto err = uv_fs_opendir(loop, req, filename, [](uv_fs_t *req) {
@@ -773,6 +765,99 @@ namespace SSC {
         msg = SSC::format(
           R"MSG({ "data": { "id": "$S" } })MSG",
           std::to_string(desc->id)
+        );
+      }
+
+      desc->dir = (uv_dir_t *) req->ptr;
+      desc->cb(desc->seq, msg, Post{});
+      uv_fs_req_cleanup(req);
+      delete req;
+    });
+
+    if (err < 0) {
+      auto msg = SSC::format(
+        R"MSG({ "err": { "code": $S, "message": "$S" } })MSG",
+        std::to_string(err), String(uv_strerror(err))
+      );
+
+      cb(seq, msg, Post{});
+      delete desc;
+      delete req;
+      return;
+    }
+
+    runDefaultLoop();
+  }
+
+  void Core::fsReaddir(String seq, uint64_t id, size_t nentries, Cb cb) const {
+    auto desc = descriptors[id];
+
+    if (desc == nullptr) {
+      auto msg = SSC::format(R"MSG({
+        "err": {
+          "id": "$S",
+          "code": "ENOTOPEN",
+          "message": "No directory descriptor found with that id"
+        }
+      })MSG", std::to_string(id));
+
+      cb(seq, msg, Post{});
+      return;
+    }
+
+    if (desc->dir == nullptr) {
+      auto msg = SSC::format(R"MSG({
+        "err": {
+          "id": "$S",
+          "code": "ENOTOPEN",
+          "message": "Directory descriptor with that id is not open"
+        }
+      })MSG", std::to_string(id));
+
+      cb(seq, msg, Post{});
+      return;
+    }
+
+    auto loop = getDefaultLoop();
+    auto req = new uv_fs_t;
+    req->data = desc;
+
+    desc->seq = seq;
+    desc->cb = cb;
+    desc->dir->dirents = desc->dirents;
+    desc->dir->nentries = nentries;
+
+    auto err = uv_fs_readdir(loop, req, desc->dir, [](uv_fs_t *req) {
+      auto desc = static_cast<DescriptorContext*>(req->data);
+      std::string msg;
+
+      if (req->result < 0) {
+        msg = SSC::format(
+          R"MSG({ "err": { "id": "$S", "message": "$S" } })MSG",
+          std::to_string(desc->id),
+          String(uv_strerror((int)req->result))
+        );
+      } else {
+        Stringstream entries;
+        entries << "[";
+
+        for (int i = 0; i < req->result; ++i) {
+          entries << "{";
+          entries << "\"type\":" << std::to_string(desc->dir->dirents[i].type) << ",";
+          entries << "\"name\":" << "\"" << desc->dir->dirents[i].name << "\"";
+          entries << "}";
+
+          if (i + 1 < req->result) {
+            entries << ", ";
+          }
+        }
+
+        entries << "]";
+
+        msg = SSC::format(
+          R"MSG({ "data": { "id": "$S", "entries": $S } })MSG",
+          std::to_string(desc->id),
+          entries.str()
         );
       }
 
@@ -857,6 +942,72 @@ namespace SSC {
     }
 
     runDefaultLoop();
+
+    descriptors.erase(id);
+  }
+
+  void Core::fsClosedir (String seq, uint64_t id, Cb cb) const {
+    auto desc = descriptors[id];
+
+    if (desc == nullptr) {
+      auto msg = SSC::format(R"MSG({
+        "err": {
+          "id": "$S",
+          "code": "ENOTOPEN",
+          "message": "No directory descriptor found with that id"
+        }
+      })MSG", std::to_string(id));
+
+      cb(seq, msg, Post{});
+      return;
+    }
+
+    desc->seq = seq;
+    desc->cb = cb;
+
+    auto req = new uv_fs_t;
+    req->data = desc;
+
+    auto err = uv_fs_closedir(getDefaultLoop(), req, desc->dir, [](uv_fs_t* req) {
+      auto desc = static_cast<DescriptorContext*>(req->data);
+      std::string msg;
+
+      if (req->result < 0) {
+        msg = SSC::format(R"MSG({
+          "err": {
+            "id": "$S",
+            "message": "$S"
+          }
+        })MSG", std::to_string(desc->id), String(uv_strerror((int)req->result)));
+      } else {
+        msg = SSC::format(R"MSG({
+          "data": {
+            "id": "$S"
+          }
+        })MSG", std::to_string(desc->id));
+      }
+
+      desc->cb(desc->seq, msg, Post{});
+
+      uv_fs_req_cleanup(req);
+      delete req;
+    });
+
+    if (err < 0) {
+      auto msg = SSC::format(R"MSG({
+        "err": {
+          "id": "$S",
+          "message": "$S"
+        }
+      })MSG", std::to_string(id), String(uv_strerror(err)));
+
+      cb(seq, msg, Post{});
+      return;
+    }
+
+    runDefaultLoop();
+
+    descriptors.erase(id);
   }
 
   void Core::fsRead (String seq, uint64_t id, int len, int offset, Cb cb) const {
@@ -1357,78 +1508,6 @@ namespace SSC {
           "message": "$S"
         }
       })MSG", String(uv_strerror(err)));
-      cb(seq, msg, Post{});
-      return;
-    }
-
-    runDefaultLoop();
-  }
-
-  void Core::fsReadDir (String seq, String path, Cb cb) const {
-    DirectoryReader* ctx = new DirectoryReader;
-    ctx->seq = seq;
-    ctx->cb = cb;
-
-    ctx->reqOpendir.data = ctx;
-    ctx->reqReaddir.data = ctx;
-
-    int err = uv_fs_opendir(getDefaultLoop(), &ctx->reqOpendir, (const char*) path.c_str(), NULL);
-
-    if (err) {
-      auto msg = SSC::format(R"MSG({
-        "err": {
-          "message": "$S"
-        }
-      })MSG", String(uv_strerror(err)));
-      cb(seq, msg, Post{});
-      return;
-    }
-
-    err = uv_fs_readdir(getDefaultLoop(), &ctx->reqReaddir, ctx->dir, [](uv_fs_t* req) {
-      auto ctx = static_cast<DirectoryReader*>(req->data);
-
-      if (req->result < 0) {
-        auto msg = SSC::format(R"MSG({
-          "err": {
-            "message": "$S"
-          }
-        })MSG", String(uv_strerror((int)req->result)));
-
-        ctx->cb(ctx->seq, msg, Post{});
-        return;
-      }
-
-      Stringstream value;
-      auto len = ctx->dir->nentries;
-
-      for (int i = 0; i < len; i++) {
-        value << "\"" << ctx->dir->dirents[i].name << "\"";
-
-        if (i < len - 1) {
-          // Assumes the user does not use commas in their file names.
-          value << ",";
-        }
-      }
-
-      auto msg = SSC::format(R"MSG({
-        "data": "$S"
-      })MSG", encodeURIComponent(value.str()));
-
-      ctx->cb(ctx->seq, msg, Post{});
-
-      uv_fs_t reqClosedir;
-      uv_fs_closedir(getDefaultLoop(), &reqClosedir, ctx->dir, [](uv_fs_t* req) {
-        uv_fs_req_cleanup(req);
-      });
-    });
-
-    if (err) {
-      auto msg = SSC::format(R"MSG({
-        "err": {
-          "message": "$S"
-        }
-      })MSG", String(uv_strerror(err)));
-
       cb(seq, msg, Post{});
       return;
     }

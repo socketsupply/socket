@@ -279,9 +279,10 @@ namespace SSC {
 
   bool Bridge::invoke (Parse &cmd, char *buf, size_t bufsize, Cb cb) {
     auto seq = cmd.get("seq");
-    auto id = cmd.get("id");
 
     if (cmd.name == "post") {
+      auto id = cmd.get("id");
+
       if (id.size() == 0) {
         auto err = SSC::format(R"MSG({
           "err": {
@@ -291,7 +292,7 @@ namespace SSC {
           }
         })MSG", id);
 
-        cb(err, "", Post{});
+        cb(seq, err, Post{});
         return true;
       }
 
@@ -311,7 +312,7 @@ namespace SSC {
         }
       })MSG", id);
 
-      cb(err, "", Post{});
+      cb(seq, err, Post{});
       return true;
     }
 
@@ -321,6 +322,8 @@ namespace SSC {
     }
 
     if (cmd.name == "buffer.queue" && buf != nullptr) {
+      auto id = cmd.get("id");
+
       if (seq.size() == 0) {
         auto err = SSC::format(R"MSG({
           "err": {
@@ -330,7 +333,7 @@ namespace SSC {
           }
         })MSG", id);
 
-        cb(err, "", Post{});
+        cb(seq, err, Post{});
         return true;
       }
 
@@ -350,7 +353,7 @@ namespace SSC {
           }
         })MSG");
 
-        cb(err, "", Post{});
+        cb(seq, err, Post{});
         return true;
       }
 
@@ -362,7 +365,7 @@ namespace SSC {
           }
         })MSG");
 
-        cb(err, "", Post{});
+        cb(seq, err, Post{});
         return true;
       }
 
@@ -382,7 +385,7 @@ namespace SSC {
           }
         })MSG");
 
-        cb(err, "", Post{});
+        cb(seq, err, Post{});
         return true;
       }
 
@@ -394,7 +397,7 @@ namespace SSC {
           }
         })MSG");
 
-        cb(err, "", Post{});
+        cb(seq, err, Post{});
         return true;
       }
 
@@ -406,19 +409,38 @@ namespace SSC {
     }
 
     if (cmd.name == "fsClose" || cmd.name == "fs.close") {
-      if (cmd.get("mode").size() == 0) {
+      if (cmd.get("id").size() == 0) {
         auto err = SSC::format(R"MSG({
           "err": {
             "type": "InternalError",
-            "message": "'mode' is required"
+            "message": "'id' is required"
           }
         })MSG");
 
-        cb(err, "", Post{});
+        cb(seq, err, Post{});
         return true;
       }
+
       auto id = std::stoull(cmd.get("id"));
       this->core->fsClose(seq, id, cb);
+      return true;
+    }
+
+    if (cmd.name == "fsClosedir" || cmd.name == "fs.closedir") {
+      if (cmd.get("id").size() == 0) {
+        auto err = SSC::format(R"MSG({
+          "err": {
+            "type": "InternalError",
+            "message": "'id' is required"
+          }
+        })MSG");
+
+        cb(seq, err, Post{});
+        return true;
+      }
+
+      auto id = std::stoull(cmd.get("id"));
+      this->core->fsClosedir(seq, id, cb);
       return true;
     }
 
@@ -439,11 +461,62 @@ namespace SSC {
       return true;
     }
 
+    if (cmd.name == "fsOpendir" || cmd.name == "fs.opendir") {
+      if (cmd.get("id").size() == 0) {
+        auto err = SSC::format(R"MSG({
+          "err": {
+            "type": "InternalError",
+            "message": "'id' is required"
+          }
+        })MSG");
+
+        cb(seq, err, Post{});
+        return true;
+      }
+
+      if (cmd.get("path").size() == 0) {
+        auto err = SSC::format(R"MSG({
+          "err": {
+            "type": "InternalError",
+            "message": "'path' is required"
+          }
+        })MSG");
+
+        cb(seq, err, Post{});
+        return true;
+      }
+
+      auto path = decodeURIComponent(cmd.get("path"));
+      auto id = std::stoull(cmd.get("id"));
+
+      this->core->fsOpendir(seq, id, path,  cb);
+      return true;
+    }
+
     if (cmd.name == "fsRead" || cmd.name == "fs.read") {
       auto id = std::stoull(cmd.get("id"));
       auto size = std::stoi(cmd.get("size"));
       auto offset = std::stoi(cmd.get("offset"));
       this->core->fsRead(seq, id, size, offset, cb);
+      return true;
+    }
+
+    if (cmd.name == "fsReaddir" || cmd.name == "fs.readdir") {
+      if (cmd.get("id").size() == 0) {
+        auto err = SSC::format(R"MSG({
+          "err": {
+            "type": "InternalError",
+            "message": "'id' is required"
+          }
+        })MSG");
+
+        cb(seq, err, Post{});
+        return true;
+      }
+
+      auto id = std::stoull(cmd.get("id"));
+      auto entries = std::stoi(cmd.get("entries", "256"));
+      this->core->fsReaddir(seq, id, entries, cb);
       return true;
     }
 

@@ -527,6 +527,7 @@ namespace SSC {
       std::string name = "";
       std::string uri = "";
       std::string get(const std::string&);
+      std::string get(const std::string&, const std::string&);
   };
 
   struct ScreenSize {
@@ -579,6 +580,10 @@ namespace SSC {
 
   std::string Parse::get(const std::string& s) {
     return args.count(s) ? args[s] : "";
+  }
+
+  std::string Parse::get(const std::string& s, const std::string& fallback) {
+    return args.count(s) ? args[s] : fallback;
   }
 
   //
