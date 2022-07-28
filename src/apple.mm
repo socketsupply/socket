@@ -797,7 +797,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     dispatch_async(queue, ^{
       self.core->fsClose(seq, id, [&](auto seq, auto msg, auto post) {
         dispatch_async(dispatch_get_main_queue(), ^{
-          auto desc = SSC::descriptors[cid];
+          auto desc = SSC::descriptors[id];
           auto js = SSC::format(R"JS(
               window.process.openFds.delete("$S", false)
             )JS",
@@ -959,7 +959,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     dispatch_async(queue, ^{
       self.core->fsOpendir(seq, id, path, [&](auto seq, auto msg, auto post) {
         dispatch_async(dispatch_get_main_queue(), ^{
-          auto desc = SSC::descriptors[cid];
+          auto desc = SSC::descriptors[id];
           auto js = SSC::format(R"JS(
               window.process.openFds.set("$S", {
                 id: "$S",
@@ -1004,7 +1004,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     dispatch_async(queue, ^{
       self.core->fsClosedir(seq, id, [&](auto seq, auto msg, auto post) {
         dispatch_async(dispatch_get_main_queue(), ^{
-          auto desc = SSC::descriptors[cid];
+          auto desc = SSC::descriptors[id];
           auto js = SSC::format(R"JS(
               window.process.openFds.delete("$S", false)
             )JS",
