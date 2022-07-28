@@ -603,7 +603,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     return;
   }
 
-  if ((seq != "-1") && (post.length > 0) && self.core->hasTask(seq)) {
+  if ((seq != "-1") && self.core->hasTask(seq)) {
     auto task = self.core->getTask(seq);
 
     NSHTTPURLResponse *httpResponse = [[NSHTTPURLResponse alloc]

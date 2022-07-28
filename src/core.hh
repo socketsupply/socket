@@ -431,7 +431,7 @@ namespace SSC {
 
   bool Core::hasTask (String id) {
     if (id.size() == 0) return false;
-    return tasks->find(id) == tasks->end();
+    return tasks->find(id) != tasks->end();
   }
 
   Task Core::getTask (String id) {
