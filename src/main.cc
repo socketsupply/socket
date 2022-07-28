@@ -296,7 +296,7 @@ MAIN {
 
       if (cmd.name == "heartbeat") {
         if (seq.size() > 0) {
-          window->onMessage(resolvePromise(seq, OK_STATE, "\"heartbeat\""));
+          window->resolvePromise(seq, OK_STATE, "\"heartbeat\"");
         }
 
         return;
@@ -339,11 +339,11 @@ MAIN {
           "}"
         );
 
-        window->onMessage(resolvePromise(
+        window->resolvePromise(
           seq,
           OK_STATE,
           encodeURIComponent(value)
-        ));
+        );
 
         return;
       }
@@ -362,19 +362,19 @@ MAIN {
           indexMain = std::stoi(cmd.get("indexMain"));
           indexSub = std::stoi(cmd.get("indexSub"));
         } catch (...) {
-          window->onMessage(resolvePromise(seq, OK_STATE, ""));
+          window->resolvePromise(seq, OK_STATE, "");
           return;
         }
 
         window->setSystemMenuItemEnabled(enabled, indexMain, indexSub);
-        window->onMessage(resolvePromise(seq, OK_STATE, ""));
+        window->resolvePromise(seq, OK_STATE, "");
         return;
       }
 
       if (cmd.name == "external") {
         window->openExternal(decodeURIComponent(value));
         if (seq.size() > 0) {
-          window->onMessage(resolvePromise(seq, OK_STATE, "null"));
+          window->resolvePromise(seq, OK_STATE, "null");
         }
         return;
       }
@@ -388,13 +388,13 @@ MAIN {
         window->exit(exitCode);
 
         if (seq.size() > 0) {
-          window->onMessage(resolvePromise(seq, OK_STATE, "null"));
+          window->resolvePromise(seq, OK_STATE, "null");
         }
         return;
       }
 
       if (cmd.name == "resolve") {
-        window->eval(resolvePromise(seq, cmd.get("state"), value));
+        window->resolvePromise(seq, cmd.get("state"), value);
         return;
       }
 
@@ -407,7 +407,7 @@ MAIN {
       }
 
       if (cmd.name == "getConfig") {
-        window->onMessage(resolvePromise(seq, OK_STATE, _settings));
+        window->resolvePromise(seq, OK_STATE, _settings);
         return;
       }
     });
@@ -581,12 +581,12 @@ MAIN {
         indexMain = std::stoi(cmd.get("indexMain"));
         indexSub = std::stoi(cmd.get("indexSub"));
       } catch (...) {
-        window->onMessage(resolvePromise(seq, OK_STATE, ""));
+        window->resolvePromise(seq, OK_STATE, "");
         return;
       }
 
       window->setSystemMenuItemEnabled(enabled, indexMain, indexSub);
-      window->onMessage(resolvePromise(seq, OK_STATE, ""));
+      window->resolvePromise(seq, OK_STATE, "");
       return;
     }
 
@@ -623,7 +623,7 @@ MAIN {
     if (cmd.name == "getConfig") {
       const auto seq = cmd.get("seq");
       auto wrapped = ("\"" + std::string(_settings) + "\"");
-      window->eval(resolvePromise(seq, OK_STATE, encodeURIComponent(wrapped)));
+      window->resolvePromise(seq, OK_STATE, encodeURIComponent(wrapped));
       return;
     }
 

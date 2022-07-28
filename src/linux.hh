@@ -390,7 +390,7 @@ namespace SSC {
     }
 
     if (seq != "-1") {
-      msg = resolvePromise(seq, "0", encodeURIComponent(msg));
+      msg = SSC::resolveToRenderProcess(seq, "0", encodeURIComponent(msg));
     }
 
     window->eval(msg);
@@ -927,7 +927,7 @@ namespace SSC {
 
     if (seq.size() > 0) {
       auto index = std::to_string(this->opts.index);
-      this->onMessage(resolvePromise(seq, "0", index));
+      this->resolvePromise(seq, "0", index);
     }
   }
 
@@ -938,7 +938,7 @@ namespace SSC {
 
     if (seq.size() > 0) {
       auto index = std::to_string(this->opts.index);
-      this->onMessage(resolvePromise(seq, "0", index));
+      this->resolvePromise(seq, "0", index);
     }
   }
 
@@ -978,7 +978,7 @@ namespace SSC {
 
     if (seq.size() > 0) {
       auto index = std::to_string(this->opts.index);
-      this->onMessage(resolvePromise(seq, "0", index));
+      this->resolvePromise(seq, "0", index);
     }
   }
 
@@ -988,7 +988,7 @@ namespace SSC {
 
     if (seq.size() > 0) {
       auto index = std::to_string(this->opts.index);
-      this->onMessage(resolvePromise(seq, "0", index));
+      this->resolvePromise(seq, "0", index);
     }
   }
 
@@ -1074,7 +1074,7 @@ namespace SSC {
 
     if (seq.size() > 0) {
       auto index = std::to_string(this->opts.index);
-      this->onMessage(resolvePromise(seq, "0", index));
+      this->resolvePromise(seq, "0", index);
     }
   }
 
@@ -1203,7 +1203,7 @@ namespace SSC {
 
     if (seq.size() > 0) {
       auto index = std::to_string(this->opts.index);
-      this->onMessage(resolvePromise(seq, "0", index));
+      this->resolvePromise(seq, "0", index);
     }
   }
 
@@ -1409,7 +1409,7 @@ namespace SSC {
 
     guint response = gtk_dialog_run(GTK_DIALOG(dialog));
     if (response != GTK_RESPONSE_ACCEPT && response != SELECT_RESPONSE) {
-      this->eval(resolvePromise(seq, "0", "null"));
+      this->resolvePromise(seq, "0", "null");
       gtk_widget_destroy(dialog);
       return;
     }
@@ -1434,7 +1434,7 @@ namespace SSC {
     g_slist_free(filenames);
 
     auto wrapped = std::string("\"" + std::string(result) + "\"");
-    this->eval(resolvePromise(seq, "0", encodeURIComponent(wrapped)));
+    this->resolvePromise(seq, "0", encodeURIComponent(wrapped));
     gtk_widget_destroy(dialog);
   }
 }

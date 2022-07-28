@@ -303,20 +303,6 @@ namespace SSC {
     );
   }
 
-  std::string resolvePromise(const std::string& seq, const std::string& state, const std::string& value) {
-    if (seq.find("R")) {
-      return std::string(
-        "(() => {"
-        "  const seq = Number(`" + seq + "`);"
-        "  const state = Number(`" + state + "`);"
-        "  const value = `" + value + "`;"
-        "  window._ipc.resolve(seq, state, value);"
-        "})()"
-      );
-    }
-    return std::string("ipc://resolve?seq=" + seq + "&state=" + state + "&value=" + value);
-  }
-
   //
   // Helper functions...
   //
@@ -748,6 +734,7 @@ namespace SSC {
       WindowOptions opts;
       SCallback onMessage = [](const std::string) {};
       ExitCallback onExit = nullptr;
+      void resolvePromise (const std::string& seq, const std::string& state, const std::string& value);
 
       virtual void eval(const std::string&) = 0;
       virtual void show(const std::string&) = 0;
@@ -767,6 +754,27 @@ namespace SSC {
       virtual ScreenSize getScreenSize() = 0;
   };
 
+  std::string resolveToRenderProcess(const std::string& seq, const std::string& state, const std::string& value) {
+    return std::string(
+      "(() => {"
+      "  const seq = String(`" + seq + "`);"
+      "  const state = Number(`" + state + "`);"
+      "  const value = `" + value + "`;"
+      "  window._ipc.resolve(seq, state, value);"
+      "})()"
+    );
+  }
+
+  std::string resolveToMainProcess(const std::string& seq, const std::string& state, const std::string& value) {
+    return std::string("ipc://resolve?seq=" + seq + "&state=" + state + "&value=" + value);
+  }
+
+  void IWindow::resolvePromise (const std::string& seq, const std::string& state, const std::string& value) {
+    if (seq.find("R") == 0) {
+      this->eval(resolveToRenderProcess(seq, state, value));
+    }
+    this->onMessage(resolveToMainProcess(seq, state, value));
+  }
 
   struct WindowFactoryOptions {
     int defaultHeight = 0;
