@@ -735,7 +735,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     return true;
   }
 
-  if (cmd.get("getFSConstants").size() != 0) {
+  if (cmd.name == "getFSConstants") {
     dispatch_async(queue, ^{
       auto constants = self.core->getFSConstants();
       [self send: seq msg: constants post: Post{}];
@@ -743,7 +743,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     return true;
   }
 
-  if (cmd.get("fsRmDir").size() != 0) {
+  if (cmd.name == "fsRmDir") {
     auto path = cmd.get("path");
 
     dispatch_async(queue, ^{
@@ -756,7 +756,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     return true;
   }
 
-  if (cmd.get("fsOpen").size() != 0) {
+  if (cmd.name == "fsOpen") {
     auto cid = std::stoull(cmd.get("id"));
     auto path = cmd.get("path");
     auto flags = std::stoi(cmd.get("flags"));
@@ -772,7 +772,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     return true;
   }
 
-  if (cmd.get("fsClose").size() != 0) {
+  if (cmd.name == "fsClose") {
     auto id = std::stoull(cmd.get("id"));
 
     dispatch_async(queue, ^{
@@ -785,7 +785,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     return true;
   }
 
-  if (cmd.get("fsRead").size() != 0) {
+  if (cmd.name == "fsRead") {
     auto id = std::stoull(cmd.get("id"));
     auto len = std::stoi(cmd.get("len"));
     auto offset = std::stoi(cmd.get("offset"));
@@ -800,7 +800,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     return true;
   }
 
-  if (cmd.get("fsWrite").size() != 0) {
+  if (cmd.name == "fsWrite") {
     auto id = std::stoull(cmd.get("id"));
     auto offset = std::stoull(cmd.get("offset"));
 
@@ -815,7 +815,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     return true;
   }
 
-  if (cmd.get("fsStat").size() != 0) {
+  if (cmd.name == "fsStat") {
     auto path = cmd.get("path");
 
     dispatch_async(queue, ^{
@@ -828,7 +828,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     return true;
   }
 
-  if (cmd.get("fsFStat").size() != 0) {
+  if (cmd.name == "fsFStat") {
     auto id = std::stoull(cmd.get("id"));
 
     dispatch_async(queue, ^{
@@ -841,7 +841,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     return true;
   }
 
-  if (cmd.get("fsUnlink").size() != 0) {
+  if (cmd.name == "fsUnlink") {
     auto path = cmd.get("path");
 
     dispatch_async(queue, ^{
@@ -854,7 +854,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     return true;
   }
 
-  if (cmd.get("fsRename").size() != 0) {
+  if (cmd.name == "fsRename") {
     auto pathA = cmd.get("oldPath");
     auto pathB = cmd.get("newPath");
 
@@ -868,7 +868,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     return true;
   }
 
-  if (cmd.get("fsCopyFile").size() != 0) {
+  if (cmd.name == "fsCopyFile") {
     auto pathA = cmd.get("src");
     auto pathB = cmd.get("dest");
     auto flags = std::stoi(cmd.get("flags"));
@@ -883,7 +883,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     return true;
   }
 
-  if (cmd.get("fsMkDir").size() != 0) {
+  if (cmd.name == "fsMkdir") {
     auto path = cmd.get("path");
     auto mode = std::stoi(cmd.get("mode"));
 
@@ -897,7 +897,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     return true;
   }
 
-  if (cmd.get("fsReadDir").size() != 0) {
+  if (cmd.name == "fsReadDir") {
     auto path = cmd.get("path");
 
     dispatch_async(queue, ^{
