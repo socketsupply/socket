@@ -262,17 +262,6 @@ namespace SSC {
     );
   }
 
-  std::string resolveToRenderProcess(const std::string& seq, const std::string& state, const std::string& value) {
-    return std::string(
-      "(() => {"
-      "  const seq = Number(`" + seq + "`);"
-      "  const state = Number(`" + state + "`);"
-      "  const value = `" + value + "`;"
-      "  window._ipc.resolve(seq, state, value);"
-      "})()"
-    );
-  }
-
   std::string emitToRenderProcess(const std::string& event, const std::string& value) {
     return std::string(
       "(() => {"
@@ -314,7 +303,17 @@ namespace SSC {
     );
   }
 
-  std::string resolveToMainProcess(const std::string& seq, const std::string& state, const std::string& value) {
+  std::string resolvePromise(const std::string& seq, const std::string& state, const std::string& value) {
+    if (seq.find("R")) {
+      return std::string(
+        "(() => {"
+        "  const seq = Number(`" + seq + "`);"
+        "  const state = Number(`" + state + "`);"
+        "  const value = `" + value + "`;"
+        "  window._ipc.resolve(seq, state, value);"
+        "})()"
+      );
+    }
     return std::string("ipc://resolve?seq=" + seq + "&state=" + state + "&value=" + value);
   }
 

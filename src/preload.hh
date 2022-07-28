@@ -50,7 +50,7 @@ constexpr auto gPreload = R"JS(
   }
 
   window._ipc.send = (name, o) => {
-    const seq = window._ipc.nextSeq++
+    const seq = 'R' + window._ipc.nextSeq++
     const index = window.process.index
     let serialized = ''
 
@@ -68,6 +68,7 @@ constexpr auto gPreload = R"JS(
 
       const params = {
         ...o,
+        render: true,
         index,
         seq
       }

@@ -833,7 +833,7 @@ extern "C" {
     jboolean shouldEncodeValue
   ) {
     using SSC::encodeURIComponent;
-    using SSC::resolveToRenderProcess;
+    using SSC::resolvePromise;
 
     auto core = GetNativeCoreFromEnvironment(env);
 
@@ -848,7 +848,7 @@ extern "C" {
       resolved = encodeURIComponent(resolved);
     }
 
-    auto javascript = resolveToRenderProcess(
+    auto javascript = resolvePromise(
       NativeString(env, seq).str(),
       NativeString(env, state).str(),
       resolved

@@ -911,7 +911,7 @@ namespace SSC {
                   Settings->put_AreDefaultContextMenusEnabled(TRUE);
                   #if DEBUG == 1
                     Settings->put_AreDevToolsEnabled(TRUE);
-                  #else 
+                  #else
                     Settings->put_AreDevToolsEnabled(FALSE);
                   #endif
 
@@ -1204,7 +1204,7 @@ namespace SSC {
 
     if (seq.size() > 0) {
       auto index = std::to_string(this->opts.index);
-      this->onMessage(resolveToMainProcess(seq, "0", index));
+      this->onMessage(resolvePromise(seq, "0", index));
     }
   }
 
@@ -1215,7 +1215,7 @@ namespace SSC {
 
     if (seq.size() > 0) {
       auto index = std::to_string(this->opts.index);
-      this->onMessage(resolveToMainProcess(seq, "0", index));
+      this->onMessage(resolvePromise(seq, "0", index));
     }
   }
 
@@ -1259,7 +1259,7 @@ namespace SSC {
               state = "0";
             }
 
-            this->onMessage(resolveToMainProcess(seq, state, index));
+            this->onMessage(resolvePromise(seq, state, index));
             webview->remove_NavigationCompleted(token);
 
             return S_OK;
@@ -1279,7 +1279,7 @@ namespace SSC {
       std::string state = "0"; // can this call actually fail?
       auto index = std::to_string(this->opts.index);
 
-      this->onMessage(resolveToMainProcess(seq, state, index));
+      this->onMessage(resolvePromise(seq, state, index));
     }
   }
 
@@ -1320,7 +1320,7 @@ namespace SSC {
 
     if (seq.size() > 0) {
       auto index = std::to_string(this->opts.index);
-      this->onMessage(resolveToMainProcess(seq, "0", index));
+      this->onMessage(resolvePromise(seq, "0", index));
     }
   }
 
@@ -1409,7 +1409,7 @@ namespace SSC {
 
     if (seq.size() > 0) {
       auto index = std::to_string(this->opts.index);
-      this->onMessage(resolveToMainProcess(seq, "0", index));
+      this->onMessage(resolvePromise(seq, "0", index));
     }
   }
 
@@ -1742,7 +1742,7 @@ namespace SSC {
       }
 
     auto wrapped_result_string =  std::string("\"" + result_string + "\"");
-    this->eval(resolveToRenderProcess(seq, "0", encodeURIComponent(wrapped_result_string)));
+    this->eval(resolvePromise(seq, "0", encodeURIComponent(wrapped_result_string)));
 
     if (isSave) {
       dialog.save->Release();

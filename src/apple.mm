@@ -633,7 +633,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   }
 
   if (seq != "-1") { // this had a sequence, we need to try to resolve it.
-    msg = SSC::resolveToRenderProcess(seq, "0", SSC::encodeURIComponent(msg));
+    msg = SSC::resolvePromise(seq, "0", SSC::encodeURIComponent(msg));
   }
 
   NSString* script = [NSString stringWithUTF8String: msg.c_str()];

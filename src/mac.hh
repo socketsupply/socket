@@ -720,7 +720,7 @@ namespace SSC {
 
     if (seq.size() > 0) {
       auto index = std::to_string(this->opts.index);
-      this->onMessage(resolveToMainProcess(seq, "0", index));
+      this->onMessage(resolvePromise(seq, "0", index));
     }
   }
 
@@ -741,7 +741,7 @@ namespace SSC {
 
     if (seq.size() > 0) {
       auto index = std::to_string(this->opts.index);
-      this->onMessage(resolveToMainProcess(seq, "0", index));
+      this->onMessage(resolvePromise(seq, "0", index));
     }
   }
 
@@ -775,7 +775,7 @@ namespace SSC {
 
     if (seq.size() > 0) {
       auto index = std::to_string(this->opts.index);
-      this->onMessage(resolveToMainProcess(seq, "0", index));
+      this->onMessage(resolvePromise(seq, "0", index));
     }
   }
 
@@ -784,7 +784,7 @@ namespace SSC {
 
     if (seq.size() > 0) {
       auto index = std::to_string(this->opts.index);
-      this->onMessage(resolveToMainProcess(seq, "0", index));
+      this->onMessage(resolvePromise(seq, "0", index));
     }
   }
 
@@ -794,7 +794,7 @@ namespace SSC {
 
     if (seq.size() > 0) {
       auto index = std::to_string(this->opts.index);
-      this->onMessage(resolveToMainProcess(seq, "0", index));
+      this->onMessage(resolvePromise(seq, "0", index));
     }
   }
 
@@ -1026,7 +1026,7 @@ namespace SSC {
 
     if (seq.size() > 0) {
       auto index = std::to_string(this->opts.index);
-      this->onMessage(resolveToMainProcess(seq, "0", index));
+      this->onMessage(resolvePromise(seq, "0", index));
     }
   }
 
@@ -1103,7 +1103,7 @@ namespace SSC {
       if ([dialog_save runModal] == NSModalResponseOK) {
         String url = (char*) [[[dialog_save URL] path] UTF8String];
         auto wrapped = std::string("\"" + url + "\"");
-        this->eval(resolveToRenderProcess(seq, "0", encodeURIComponent(wrapped)));
+        this->eval(resolvePromise(seq, "0", encodeURIComponent(wrapped)));
       }
       return;
     }
@@ -1130,6 +1130,6 @@ namespace SSC {
     }
 
     auto wrapped = std::string("\"" + result + "\"");
-    this->eval(resolveToRenderProcess(seq, "0", encodeURIComponent(wrapped)));
+    this->eval(resolvePromise(seq, "0", encodeURIComponent(wrapped)));
   }
 }
