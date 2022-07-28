@@ -816,7 +816,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     return true;
   }
 
-  if (cmd.get("fsCloseOpenDescriptor").size() != 0) {
+  if (cmd.name == "fsCloseOpenDescriptor") {
     auto id = std::stoull(cmd.get("id"));
 
     dispatch_async(queue, ^{
@@ -829,7 +829,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     return true;
   }
 
-  if (cmd.get("fsCloseOpenDescriptors").size() != 0) {
+  if (cmd.name == "fsCloseOpenDescriptors") {
     dispatch_async(queue, ^{
       self.core->fsCloseOpenDescriptors(seq, [&](auto seq, auto msg, auto post) {
         dispatch_async(dispatch_get_main_queue(), ^{
@@ -943,7 +943,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     auto mode = std::stoi(cmd.get("mode"));
 
     dispatch_async(queue, ^{
-      self.core->fsMkDir(seq, path, mode, [&](auto seq, auto msg, auto post) {
+      self.core->fsMkdir(seq, path, mode, [&](auto seq, auto msg, auto post) {
         dispatch_async(dispatch_get_main_queue(), ^{
           [self send: seq msg: msg post: post];
         });

@@ -278,7 +278,7 @@ namespace SSC {
       void fsCloseOpenDescriptor (String seq, uint64_t id, Cb cb) const ;
       void fsCloseOpenDescriptors (String seq, Cb cb) const ;
       void fsFStat (String seq, uint64_t id, Cb cb) const;
-      void fsMkDir (String seq, String path, int mode, Cb cb) const;
+      void fsMkdir (String seq, String path, int mode, Cb cb) const;
       void fsOpen (String seq, uint64_t id, String path, int flags, int mode, Cb cb) const;
       void fsOpendir (String seq, uint64_t id, String path, Cb cb) const;
       void fsRead (String seq, uint64_t id, int len, int offset, Cb cb) const;
@@ -1541,7 +1541,7 @@ namespace SSC {
     runDefaultLoop();
   }
 
-  void Core::fsMkDir (String seq, String path, int mode, Cb cb) const {
+  void Core::fsMkdir (String seq, String path, int mode, Cb cb) const {
     uv_fs_t req;
     DescriptorContext* desc = new DescriptorContext;
     desc->seq = seq;
