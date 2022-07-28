@@ -435,8 +435,9 @@ class NativeCore : public SSC::Core {
 
   AAssetManager * GetAssetManager () const;
 
-  const std::string GetNetworkInterfaces() const;
+  const std::string GetNetworkInterfaces () const;
   const char * GetJavaScriptPreloadSource () const;
+  void UpdateOpenDescriptorsInEnvironment () const;
 };
 
 #endif

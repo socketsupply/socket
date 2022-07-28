@@ -267,6 +267,36 @@ const char * NativeCore::GetJavaScriptPreloadSource () const {
   return this->javaScriptPreloadSource.c_str();
 }
 
+void NativeCore::UpdateOpenDescriptorsInEnvironment () const {
+  std::stringstream js;
+
+  js << "window.process.openFds.clear(false);";
+
+  for (auto const &tuple : SSC::descriptors) {
+    auto desc = tuple.second;
+    auto id = std::to_string(desc->id);
+
+    js << SSC::format(R"JS(
+        window.process.openFds.set("$S", {
+          id: "$S",
+          fd: "$S",
+          type: "$S"
+        });
+      )JS",
+      id,
+      id,
+      desc->dir != nullptr ? id : std::to_string(desc->fd),
+      std::string(desc->dir != nullptr ? "directory": "file")
+    );
+  }
+
+  EvaluateJavaScriptInEnvironment(
+    this->env,
+    this->refs.core,
+    env->NewStringUTF(js.str().c_str())
+  );
+}
+
 #pragma NativeFileSystem
 
 NativeFileSystem::NativeFileSystem (JNIEnv *env, NativeCore *core) {
@@ -399,7 +429,8 @@ void NativeFileSystem::Close (
   auto context = this->CreateRequestContext(seq, id, callback);
   auto core = reinterpret_cast<SSC::Core *>(this->core);
 
-  core->fsClose(seq, id, [context](auto seq, auto data, auto post) {
+  core->fsClose(seq, id, [this, context](auto seq, auto data, auto post) {
+    this->UpdateOpenDescriptorsInEnvironment();
     context->fs->CallbackAndFinalizeContext(context, data);
   });
 }
@@ -428,7 +459,8 @@ void NativeFileSystem::Open (
   auto context = this->CreateRequestContext(seq, id, callback);
   auto core = reinterpret_cast<SSC::Core *>(this->core);
 
-  core->fsOpen(seq, id, path, flags, mode, [context](auto seq, auto data, auto post) {
+  core->fsOpen(seq, id, path, flags, mode, [this, context](auto seq, auto data, auto post) {
+    this->UpdateOpenDescriptorsInEnvironment();
     context->fs->CallbackAndFinalizeContext(context, data);
   });
 }
@@ -1115,6 +1147,19 @@ extern "C" {
     }
 
     reinterpret_cast<SSC::Core *>(core)->expirePosts();
+  }
+
+  void exports(NativeCore, updateOpenDescriptorsInEnvironment)(
+    JNIEnv *env,
+    jobject self
+  ) {
+    auto core = GetNativeCoreFromEnvironment(env);
+
+    if (!core) {
+      return Throw(env, NativeCoreNotInitializedException);
+    }
+
+    core->UpdateOpenDescriptorsInEnvironment();
   }
 
   void exports(NativeCore, fsAccess)(

@@ -275,6 +275,8 @@ namespace SSC {
       void fsCopyFile (String seq, String src, String dst, int mode, Cb cb) const;
       void fsClose (String seq, uint64_t id, Cb cb) const;
       void fsClosedir (String seq, uint64_t id, Cb cb) const;
+      void fsCloseOpenDescriptor (String seq, uint64_t id, Cb cb) const ;
+      void fsCloseOpenDescriptors (String seq, Cb cb) const ;
       void fsFStat (String seq, uint64_t id, Cb cb) const;
       void fsMkDir (String seq, String path, int mode, Cb cb) const;
       void fsOpen (String seq, uint64_t id, String path, int flags, int mode, Cb cb) const;
@@ -708,6 +710,7 @@ namespace SSC {
           std::to_string(desc->id),
           String(uv_strerror((int)req->result))
         );
+        SSC::descriptors.erase(desc->id);
       } else {
         desc->fd = (int) req->result;
         msg = SSC::format(
@@ -761,6 +764,7 @@ namespace SSC {
           std::to_string(desc->id),
           String(uv_strerror((int)req->result))
         );
+        SSC::descriptors.erase(desc->id);
       } else {
         msg = SSC::format(
           R"MSG({ "data": { "id": "$S" } })MSG",
@@ -926,7 +930,10 @@ namespace SSC {
       desc->cb(desc->seq, msg, Post{});
 
       uv_fs_req_cleanup(req);
+      SSC::descriptors.erase(desc->id);
+
       delete req;
+      delete desc;
     });
 
     if (err < 0) {
@@ -942,8 +949,6 @@ namespace SSC {
     }
 
     runDefaultLoop();
-
-    descriptors.erase(id);
   }
 
   void Core::fsClosedir (String seq, uint64_t id, Cb cb) const {
@@ -990,7 +995,10 @@ namespace SSC {
       desc->cb(desc->seq, msg, Post{});
 
       uv_fs_req_cleanup(req);
+      SSC::descriptors.erase(desc->id);
+
       delete req;
+      delete desc;
     });
 
     if (err < 0) {
@@ -1006,8 +1014,61 @@ namespace SSC {
     }
 
     runDefaultLoop();
+  }
 
-    descriptors.erase(id);
+  void Core::fsCloseOpenDescriptor (String seq, uint64_t id, Cb cb) const {
+    auto desc = descriptors[id];
+
+    if (desc == nullptr) {
+      auto msg = SSC::format(R"MSG({
+        "err": {
+          "id": "$S",
+          "code": "ENOTOPEN",
+          "message": "No descriptor found with that id"
+        }
+      })MSG", std::to_string(id));
+
+      cb(seq, msg, Post{});
+      return;
+    }
+
+    if (desc->dir != nullptr) {
+      this->fsClosedir(seq, id, cb);
+    } else {
+      this->fsClose(seq, id, cb);
+    }
+  }
+
+  void Core::fsCloseOpenDescriptors(String seq, Cb cb) const {
+    int pending = SSC::descriptors.size();
+    std::vector<uint64_t> ids;
+
+    for (auto const &tuple : SSC::descriptors) {
+      ids.push_back(tuple.first);
+    }
+
+    for (auto const id : ids) {
+      auto desc = SSC::descriptors[id];
+      pending--;
+
+      if (desc == nullptr) {
+        continue;
+      }
+
+      if (desc->dir != nullptr) {
+        this->fsClosedir(seq, desc->id, [pending, cb](auto seq, auto msg, auto post) {
+          if (pending == 0) {
+            cb(seq, msg, post);
+          }
+        });
+      } else {
+        this->fsClose(seq, desc->id, [pending, cb](auto seq, auto msg, auto post) {
+          if (pending == 0) {
+            cb(seq, msg, post);
+          }
+        });
+      }
+    }
   }
 
   void Core::fsRead (String seq, uint64_t id, int len, int offset, Cb cb) const {

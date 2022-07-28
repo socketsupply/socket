@@ -765,6 +765,25 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     dispatch_async(queue, ^{
       self.core->fsOpen(seq, cid, path, flags, mode, [&](auto seq, auto msg, auto post) {
         dispatch_async(dispatch_get_main_queue(), ^{
+          auto desc = SSC::descriptors[cid];
+          auto js = SSC::format(R"JS(
+              window.process.openFds.set("$S", {
+                id: "$S",
+                fd: "$S",
+                type: "$S"
+              })
+            )JS",
+            cmd.get("id"),
+            cmd.get("id"),
+            std::to_string(desc->fd),
+            "file"
+          );
+
+          [self.webview
+            evaluateJavaScript: [NSString stringWithUTF8String: js.c_str()]
+            completionHandler: nil
+          ];
+
           [self send: seq msg: msg post: post];
         });
       });
@@ -777,6 +796,42 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
     dispatch_async(queue, ^{
       self.core->fsClose(seq, id, [&](auto seq, auto msg, auto post) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+          auto desc = SSC::descriptors[cid];
+          auto js = SSC::format(R"JS(
+              window.process.openFds.delete("$S", false)
+            )JS",
+            cmd.get("id")
+          );
+
+          [self.webview
+            evaluateJavaScript: [NSString stringWithUTF8String: js.c_str()]
+            completionHandler: nil
+          ];
+
+          [self send: seq msg: msg post: post];
+        });
+      });
+    });
+    return true;
+  }
+
+  if (cmd.get("fsCloseOpenDescriptor").size() != 0) {
+    auto id = std::stoull(cmd.get("id"));
+
+    dispatch_async(queue, ^{
+      self.core->fsCloseOpenDescriptor(seq, id, [&](auto seq, auto msg, auto post) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+          [self send: seq msg: msg post: post];
+        });
+      });
+    });
+    return true;
+  }
+
+  if (cmd.get("fsCloseOpenDescriptors").size() != 0) {
+    dispatch_async(queue, ^{
+      self.core->fsCloseOpenDescriptors(seq, [&](auto seq, auto msg, auto post) {
         dispatch_async(dispatch_get_main_queue(), ^{
           [self send: seq msg: msg post: post];
         });
@@ -904,6 +959,24 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     dispatch_async(queue, ^{
       self.core->fsOpendir(seq, id, path, [&](auto seq, auto msg, auto post) {
         dispatch_async(dispatch_get_main_queue(), ^{
+          auto desc = SSC::descriptors[cid];
+          auto js = SSC::format(R"JS(
+              window.process.openFds.set("$S", {
+                id: "$S",
+                fd: "$S",
+                type: "$S"
+              })
+            )JS",
+            cmd.get("id"),
+            cmd.get("id"),
+            cmd.get("id"),
+            "directory"
+          );
+
+          [self.webview
+            evaluateJavaScript: [NSString stringWithUTF8String: js.c_str()]
+            completionHandler: nil
+          ];
           [self send: seq msg: msg post: post];
         });
       });
@@ -931,6 +1004,18 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     dispatch_async(queue, ^{
       self.core->fsClosedir(seq, id, [&](auto seq, auto msg, auto post) {
         dispatch_async(dispatch_get_main_queue(), ^{
+          auto desc = SSC::descriptors[cid];
+          auto js = SSC::format(R"JS(
+              window.process.openFds.delete("$S", false)
+            )JS",
+            cmd.get("id")
+          );
+
+          [self.webview
+            evaluateJavaScript: [NSString stringWithUTF8String: js.c_str()]
+            completionHandler: nil
+          ];
+
           [self send: seq msg: msg post: post];
         });
       });

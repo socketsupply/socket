@@ -1451,6 +1451,9 @@ open class NativeCore(var activity: WebViewActivity) {
     bytes: ByteArray
   ): String
 
+  @Throws(java.lang.Exception::class)
+  external fun updateOpenDescriptorsInEnvironment()
+
   /**
    * FileSystem APIs
    **/

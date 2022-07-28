@@ -220,6 +220,31 @@ constexpr auto gPreload = R"JS(
       }
     })
   })();
+
+  window.process.openFds.delete = async (id, shouldClose) => {
+    if (shouldClose !== false) {
+      return window.process.openFds.close(id)
+    }
+
+    return Map.prototype.delete.call(window.process.openFds, id)
+  }
+
+  window.process.openFds.close = async (id) => {
+    await window._ipc.send('fsCloseOpenDescriptor', { id })
+    return Map.prototype.delete.call(window.process.openFds, id)
+  }
+
+  window.process.openFds.clear = async (shouldClose) => {
+    if (shouldClose !== false) {
+      await window._ipc.send('fsCloseOpenDescriptors')
+    }
+
+    return Map.prototype.clear.call(window.process.openFds)
+  }
+
+  window.process.openFds.closeAll = async () => {
+    return window.process.openFds.clear()
+  }
 )JS";
 
 constexpr auto gPreloadDesktop = R"JS(

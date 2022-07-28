@@ -444,6 +444,29 @@ namespace SSC {
       return true;
     }
 
+    if (cmd.name == "fsCloseOpenDescriptor" || cmd.name == "fs.closseOpenDescriptor") {
+      if (cmd.get("id").size() == 0) {
+        auto err = SSC::format(R"MSG({
+          "err": {
+            "type": "InternalError",
+            "message": "'id' is required"
+          }
+        })MSG");
+
+        cb(seq, err, Post{});
+        return true;
+      }
+
+      auto id = std::stoull(cmd.get("id"));
+      this->core->fsCloseOpenDescriptor(seq, id, cb);
+      return true;
+    }
+
+    if (cmd.name == "fsCloseOpenDescriptors" || cmd.name == "fs.closseOpenDescriptors") {
+      this->core->fsCloseOpenDescriptors(seq, cb);
+      return true;
+    }
+
     if (cmd.name == "fsCopyFile" || cmd.name == "fs.copyFile") {
       auto src = cmd.get("src");
       auto dest = cmd.get("dest");
@@ -574,6 +597,34 @@ namespace SSC {
       msg = SSC::resolveToRenderProcess(seq, "0", encodeURIComponent(msg));
     }
 
+    if (cmd.get("id").size() > 0) {
+      auto id = std::stoull(cmd.get("id"));
+
+      if (SSC::descriptors[id] != nullptr) {
+        auto desc = SSC::descriptors[id];
+        auto js = SSC::format(R"JS(
+            window.process.openFds.set("$S", {
+              id: "$S",
+              fd: "$S",
+              type: "$S"
+            })
+          )JS",
+          cmd.get("id"),
+          cmd.get("id"),
+          desc->dir != nullptr ? cmd.get("id") : std::to_string(desc->fd),
+          std::string(desc->dir != nullptr ? "directory": "file")
+        );
+
+        window->eval(js);
+      } else {
+        auto js = SSC::format(R"JS(
+          window.process.openFds.delete("$S", false)
+        )JS", cmd.get("id"));
+
+        window->eval(js);
+      }
+    }
+
     window->eval(msg);
   }
 
@@ -681,14 +732,44 @@ namespace SSC {
       G_OBJECT(webview),
       "load-changed",
       G_CALLBACK(+[](WebKitWebView* wv, WebKitLoadEvent event, gpointer arg) {
-        auto *w = static_cast<Window*>(arg);
+        auto *window = static_cast<Window*>(arg);
+        auto core = window->app.bridge.core;
 
         if (event == WEBKIT_LOAD_STARTED) {
-          auto uri = webkit_web_view_get_uri(wv);
+          window->app.isReady = false;
+
+          if (window->opts.debug) {
+            if (SSC::descriptors.size() > 0) {
+              std::cout
+                << "• WebView reloaded with "
+                << std::to_string(SSC::descriptors.size())
+                << " open file descriptors."
+                << std::endl;
+            }
+          }
         }
 
         if (event == WEBKIT_LOAD_FINISHED) {
-          w->app.isReady = true;
+          for (auto const &tuple : SSC::descriptors) {
+            auto desc = tuple.second;
+            auto id = std::to_string(desc->id);
+            auto js = SSC::format(R"JS(
+                window.process.openFds.set("$S", {
+                  id: "$S",
+                  fd: "$S",
+                  type: "$S"
+                })
+              )JS",
+              id,
+              id,
+              desc->dir != nullptr ? id : std::to_string(desc->fd),
+              std::string(desc->dir != nullptr ? "directory": "file")
+            );
+
+            window->eval(js);
+          }
+
+          window->app.isReady = true;
         }
       }),
       this
