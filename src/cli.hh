@@ -1504,3 +1504,23 @@ width: 1024
 # The team ID needed for iOS distribution and development
 # ios_team_id:
 )CONFIG";
+
+constexpr auto gDefaultGitignore = R"GITIGNORE(
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+
+# Ignore all files in the node_modules folder
+node_modules/
+
+# Default output directory
+build/
+
+# Provisioning profile
+*.mobileprovision
+)GITIGNORE";

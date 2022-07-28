@@ -478,6 +478,7 @@ int main (const int argc, const char* argv[]) {
     fs::create_directories(targetPath / "src");
     SSC::writeFile(targetPath / "src" / "index.html", gHelloWorld);
     SSC::writeFile(targetPath / "ssc.config", tmpl(gDefaultConfig, attrs));
+    SSC::writeFile(targetPath / ".gitignore", tmpl(gDefaultGitignore, attrs));
     exit(0);
   });
 
