@@ -591,19 +591,19 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
 - (void) send: (std::string)seq msg: (std::string)msg post: (SSC::Post)post {
   //
-  // - If there is no sequence and there is a buffer, the source is a stream and it should
-  // invoke the client to ask for it via an XHR, this will be intercepted by the scheme handler.
-  // - On the next turn, it will have a sequence and a task that will respond to the XHR which
-  // already has the meta data from the original request.
+  // - If there is a buffer, the source is a stream and it should invoked by the
+  //   client to ask for it via an XHR, this will be intercepted by the scheme handler.
+  // - On the next turn, it ill respond to the XHR which /already has the meta data from the original request.
   //
-  if (seq == "-1" && post.length > 0) {
-    auto src = self.core->createPost(msg, post);
+  if (post.body) {
+    auto params = SSC::format(R"JSON({ "seq": $S })JSON", seq);
+    auto src = self.core->createPost(params, post);
     NSString* script = [NSString stringWithUTF8String: src.c_str()];
     [self.webview evaluateJavaScript: script completionHandler: nil];
     return;
   }
 
-  if ((seq != "-1") && self.core->hasTask(seq)) {
+  if (seq != "-1" && self.core->hasTask(seq)) {
     auto task = self.core->getTask(seq);
 
     NSHTTPURLResponse *httpResponse = [[NSHTTPURLResponse alloc]
@@ -618,7 +618,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     NSData* data;
 
     // if post has a length, use the post's body as the response...
-    if (post.length > 0) {
+    if (post.body) {
       data = [NSData dataWithBytes: post.body length: post.length];
     } else {
       NSString* str = [NSString stringWithUTF8String: msg.c_str()];
@@ -636,8 +636,10 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     msg = SSC::resolveToRenderProcess(seq, "0", SSC::encodeURIComponent(msg));
   }
 
-  NSString* script = [NSString stringWithUTF8String: msg.c_str()];
-  [self.webview evaluateJavaScript: script completionHandler:nil];
+  if (msg.size() > 0) {
+    NSString* script = [NSString stringWithUTF8String: msg.c_str()];
+    [self.webview evaluateJavaScript: script completionHandler:nil];
+  }
 }
 
 -(void)userNotificationCenter:(UNUserNotificationCenter *)center willPresentNotification:(UNNotification *)notification withCompletionHandler:(void (^)(UNNotificationPresentationOptions options))completionHandler {
@@ -738,16 +740,18 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   if (cmd.name == "getFSConstants") {
     dispatch_async(queue, ^{
       auto constants = self.core->getFSConstants();
-      [self send: seq msg: constants post: Post{}];
+      dispatch_async(dispatch_get_main_queue(), ^{
+        [self send: seq msg: constants post: Post{}];
+      });
     });
     return true;
   }
 
-  if (cmd.name == "fsRmDir") {
-    auto path = cmd.get("path");
+  if (cmd.name == "fsRmdir") {
+    auto path = decodeURIComponent(cmd.get("path"));
 
     dispatch_async(queue, ^{
-      self.core->fsRmDir(seq, path, [&](auto seq, auto msg, auto post) {
+      self.core->fsRmdir(seq, path, [&](auto seq, auto msg, auto post) {
         dispatch_async(dispatch_get_main_queue(), ^{
           [self send: seq msg: msg post: post];
         });
@@ -758,32 +762,13 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
   if (cmd.name == "fsOpen") {
     auto cid = std::stoull(cmd.get("id"));
-    auto path = cmd.get("path");
+    auto path = decodeURIComponent(cmd.get("path"));
     auto flags = std::stoi(cmd.get("flags"));
     auto mode = std::stoi(cmd.get("mode"));
 
     dispatch_async(queue, ^{
       self.core->fsOpen(seq, cid, path, flags, mode, [&](auto seq, auto msg, auto post) {
         dispatch_async(dispatch_get_main_queue(), ^{
-          auto desc = SSC::descriptors[cid];
-          auto js = SSC::format(R"JS(
-              window.process.openFds.set("$S", {
-                id: "$S",
-                fd: "$S",
-                type: "$S"
-              })
-            )JS",
-            cmd.get("id"),
-            cmd.get("id"),
-            std::to_string(desc->fd),
-            "file"
-          );
-
-          [self.webview
-            evaluateJavaScript: [NSString stringWithUTF8String: js.c_str()]
-            completionHandler: nil
-          ];
-
           [self send: seq msg: msg post: post];
         });
       });
@@ -795,20 +780,8 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     auto id = std::stoull(cmd.get("id"));
 
     dispatch_async(queue, ^{
-      self.core->fsClose(seq, id, [&](auto seq, auto msg, auto post) {
+      self.core->fsClose(seq, id, [&, id](auto seq, auto msg, auto post) {
         dispatch_async(dispatch_get_main_queue(), ^{
-          auto desc = SSC::descriptors[id];
-          auto js = SSC::format(R"JS(
-              window.process.openFds.delete("$S", false)
-            )JS",
-            cmd.get("id")
-          );
-
-          [self.webview
-            evaluateJavaScript: [NSString stringWithUTF8String: js.c_str()]
-            completionHandler: nil
-          ];
-
           [self send: seq msg: msg post: post];
         });
       });
@@ -820,7 +793,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     auto id = std::stoull(cmd.get("id"));
 
     dispatch_async(queue, ^{
-      self.core->fsCloseOpenDescriptor(seq, id, [&](auto seq, auto msg, auto post) {
+      self.core->fsCloseOpenDescriptor(seq, id, [&, id](auto seq, auto msg, auto post) {
         dispatch_async(dispatch_get_main_queue(), ^{
           [self send: seq msg: msg post: post];
         });
@@ -842,11 +815,11 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
   if (cmd.name == "fsRead") {
     auto id = std::stoull(cmd.get("id"));
-    auto len = std::stoi(cmd.get("len"));
+    auto size = std::stoi(cmd.get("size"));
     auto offset = std::stoi(cmd.get("offset"));
 
     dispatch_async(queue, ^{
-      self.core->fsRead(seq, id, len, offset, [&](auto seq, auto msg, auto post) {
+      self.core->fsRead(seq, id, size, offset, [&](auto seq, auto msg, auto post) {
         dispatch_async(dispatch_get_main_queue(), ^{
           [self send: seq msg: msg post: post];
         });
@@ -861,8 +834,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
     dispatch_async(queue, ^{
       self.core->fsWrite(seq, id, buf, offset, [&](auto seq, auto msg, auto post) {
-
-     dispatch_async(dispatch_get_main_queue(), ^{
+        dispatch_async(dispatch_get_main_queue(), ^{
           [self send: seq msg: msg post: post];
         });
       });
@@ -871,7 +843,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   }
 
   if (cmd.name == "fsStat") {
-    auto path = cmd.get("path");
+    auto path = decodeURIComponent(cmd.get("path"));
 
     dispatch_async(queue, ^{
       self.core->fsStat(seq, path, [&](auto seq, auto msg, auto post) {
@@ -897,7 +869,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   }
 
   if (cmd.name == "fsUnlink") {
-    auto path = cmd.get("path");
+    auto path = decodeURIComponent(cmd.get("path"));
 
     dispatch_async(queue, ^{
       self.core->fsUnlink(seq, path, [&](auto seq, auto msg, auto post) {
@@ -910,11 +882,11 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   }
 
   if (cmd.name == "fsRename") {
-    auto pathA = cmd.get("oldPath");
-    auto pathB = cmd.get("newPath");
+    auto src = decodeURIComponent(cmd.get("src"));
+    auto dst = decodeURIComponent(cmd.get("dst"));
 
     dispatch_async(queue, ^{
-      self.core->fsRename(seq, pathA, pathB, [&](auto seq, auto msg, auto post) {
+      self.core->fsRename(seq, src, dst, [&](auto seq, auto msg, auto post) {
         dispatch_async(dispatch_get_main_queue(), ^{
           [self send: seq msg: msg post: post];
         });
@@ -924,12 +896,12 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   }
 
   if (cmd.name == "fsCopyFile") {
-    auto pathA = cmd.get("src");
-    auto pathB = cmd.get("dest");
-    auto flags = std::stoi(cmd.get("flags"));
+    auto flags = std::stoi(cmd.get("flags", "0"));
+    auto src = decodeURIComponent(cmd.get("src"));
+    auto dst = decodeURIComponent(cmd.get("dst"));
 
     dispatch_async(queue, ^{
-      self.core->fsCopyFile(seq, pathA, pathB, flags, [&](auto seq, auto msg, auto post) {
+      self.core->fsCopyFile(seq, src, dst, flags, [&](auto seq, auto msg, auto post) {
         dispatch_async(dispatch_get_main_queue(), ^{
           [self send: seq msg: msg post: post];
         });
@@ -939,7 +911,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   }
 
   if (cmd.name == "fsMkdir") {
-    auto path = cmd.get("path");
+    auto path = decodeURIComponent(cmd.get("path"));
     auto mode = std::stoi(cmd.get("mode"));
 
     dispatch_async(queue, ^{
@@ -954,29 +926,11 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
   if (cmd.name == "fsOpendir") {
     auto id = std::stoull(cmd.get("id"));
-    auto path = cmd.get("path");
+    auto path = decodeURIComponent(cmd.get("path"));
 
     dispatch_async(queue, ^{
       self.core->fsOpendir(seq, id, path, [&](auto seq, auto msg, auto post) {
         dispatch_async(dispatch_get_main_queue(), ^{
-          auto desc = SSC::descriptors[id];
-          auto js = SSC::format(R"JS(
-              window.process.openFds.set("$S", {
-                id: "$S",
-                fd: "$S",
-                type: "$S"
-              })
-            )JS",
-            cmd.get("id"),
-            cmd.get("id"),
-            cmd.get("id"),
-            "directory"
-          );
-
-          [self.webview
-            evaluateJavaScript: [NSString stringWithUTF8String: js.c_str()]
-            completionHandler: nil
-          ];
           [self send: seq msg: msg post: post];
         });
       });
@@ -1002,20 +956,8 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     auto id = std::stoull(cmd.get("id"));
 
     dispatch_async(queue, ^{
-      self.core->fsClosedir(seq, id, [&](auto seq, auto msg, auto post) {
+      self.core->fsClosedir(seq, id, [&, id](auto seq, auto msg, auto post) {
         dispatch_async(dispatch_get_main_queue(), ^{
-          auto desc = SSC::descriptors[id];
-          auto js = SSC::format(R"JS(
-              window.process.openFds.delete("$S", false)
-            )JS",
-            cmd.get("id")
-          );
-
-          [self.webview
-            evaluateJavaScript: [NSString stringWithUTF8String: js.c_str()]
-            completionHandler: nil
-          ];
-
           [self send: seq msg: msg post: post];
         });
       });
@@ -1085,7 +1027,9 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
   if (cmd.name == "getNetworkInterfaces") {
     auto msg = self.core->getNetworkInterfaces();
-    [self send: seq msg: msg post: Post{} ];
+    dispatch_async(dispatch_get_main_queue(), ^{
+      [self send: seq msg: msg post: Post{} ];
+    });
     return true;
   }
 
@@ -1093,7 +1037,10 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     auto msg = SSC::format(R"JSON({
       "data": "$S"
     })JSON", SSC::platform.os);
-    [self send: seq msg: msg post: Post{} ];
+
+    dispatch_async(dispatch_get_main_queue(), ^{
+      [self send: seq msg: msg post: Post{} ];
+    });
     return true;
   }
 
@@ -1101,7 +1048,10 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     auto msg = SSC::format(R"JSON({
       "data": "$S"
     })JSON", SSC::platform.os);
-    [self send: seq msg: msg post: Post{} ];
+
+    dispatch_async(dispatch_get_main_queue(), ^{
+      [self send: seq msg: msg post: Post{} ];
+    });
     return true;
   }
 
@@ -1109,7 +1059,10 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     auto msg = SSC::format(R"JSON({
       "data": "$S"
     })JSON", SSC::platform.arch);
-    [self send: seq msg: msg post: Post{} ];
+
+    dispatch_async(dispatch_get_main_queue(), ^{
+      [self send: seq msg: msg post: Post{} ];
+    });
     return true;
   }
 
@@ -1424,9 +1377,14 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     auto post = self.bridge.core->getPost(postId);
     NSMutableDictionary* httpHeaders = [NSMutableDictionary dictionary];
 
+    httpHeaders[@"access-control-allow-origin"] = @"*";
+    httpHeaders[@"content-length"] = 0;
+
     if (post.length > 0) {
       httpHeaders[@"content-length"] = [@(post.length) stringValue];
-      httpHeaders[@"access-control-allow-origin"] = @"*";
+    }
+
+    if (post.headers.size() > 0) {
       auto lines = SSC::split(SSC::trim(post.headers), '\n');
 
       for (auto& line : lines) {
@@ -1446,15 +1404,24 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
     [task didReceiveResponse: httpResponse];
 
-    if (post.length > 0) {
-      NSString* str = [NSString stringWithUTF8String: post.body];
+    if (post.body) {
+      NSData *data = [NSData dataWithBytes: post.body length: post.length];
+      [task didReceiveData: data];
+    } else {
+      NSString* str = [NSString stringWithUTF8String: ""];
       NSData* data = [str dataUsingEncoding: NSUTF8StringEncoding];
       [task didReceiveData: data];
     }
 
     [task didFinish];
 
-    self.bridge.core->removePost(postId);
+    dispatch_async(dispatch_get_main_queue(), ^{
+      // 256ms timeout before removing post and potentially freeing `post.body`
+      NSTimeInterval timeout = 0.256;
+      auto block = ^(NSTimer* timer) { self.bridge.core->removePost(postId); };
+      [NSTimer timerWithTimeInterval: timeout repeats: NO block: block ];
+    });
+
     return;
   }
 
