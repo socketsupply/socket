@@ -268,6 +268,8 @@ const char * NativeCore::GetJavaScriptPreloadSource () const {
 }
 
 void NativeCore::UpdateOpenDescriptorsInEnvironment () const {
+  std::lock_guard<std::recursive_mutex> guard(SSC::descriptorsMutex);
+
   std::stringstream js;
 
   js << "window.process.openFds.clear(false);";
