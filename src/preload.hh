@@ -68,7 +68,6 @@ constexpr auto gPreload = R"JS(
 
       const params = {
         ...o,
-        render: true,
         index,
         seq
       }

@@ -2604,7 +2604,7 @@ namespace SSC {
     }
 
     auto msg = SSC::format(R"MSG({ "data": {} })MSG");
-    server->cb(server->seq, msg, Post{});
+    server->cb(seq, msg, Post{});
     runDefaultLoop();
   }
 
