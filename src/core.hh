@@ -452,6 +452,7 @@ namespace SSC {
   std::map<uint64_t, Server*> servers;
   std::map<uint64_t, GenericContext*> contexts;
   std::map<uint64_t, DescriptorContext*> descriptors;
+  std::recursive_mutex descriptorsMutex;
 
   struct sockaddr_in addr;
 
@@ -697,6 +698,8 @@ namespace SSC {
   }
 
   void Core::fsOpen (String seq, uint64_t id, String path, int flags, int mode, Cb cb) const {
+    std::lock_guard<std::recursive_mutex> guard(descriptorsMutex);
+
     auto filename = path.c_str();
     auto loop = getDefaultLoop();
     auto desc = descriptors[id] = new DescriptorContext;
@@ -758,6 +761,8 @@ namespace SSC {
   }
 
   void Core::fsOpendir(String seq, uint64_t id, String path, Cb cb) const {
+    std::lock_guard<std::recursive_mutex> guard(descriptorsMutex);
+
     auto filename = path.c_str();
     auto loop = getDefaultLoop();
     auto desc = descriptors[id] = new DescriptorContext;
@@ -818,6 +823,8 @@ namespace SSC {
   }
 
   void Core::fsReaddir(String seq, uint64_t id, size_t nentries, Cb cb) const {
+    std::lock_guard<std::recursive_mutex> guard(descriptorsMutex);
+
     auto desc = descriptors[id];
 
     if (desc == nullptr) {
@@ -913,6 +920,8 @@ namespace SSC {
   }
 
   void Core::fsClose (String seq, uint64_t id, Cb cb) const {
+    std::lock_guard<std::recursive_mutex> guard(descriptorsMutex);
+
     auto desc = descriptors[id];
 
     if (desc == nullptr) {
@@ -983,6 +992,8 @@ namespace SSC {
   }
 
   void Core::fsClosedir (String seq, uint64_t id, Cb cb) const {
+    std::lock_guard<std::recursive_mutex> guard(descriptorsMutex);
+
     auto desc = descriptors[id];
 
     if (desc == nullptr) {
@@ -1052,6 +1063,8 @@ namespace SSC {
   }
 
   void Core::fsCloseOpenDescriptor (String seq, uint64_t id, Cb cb) const {
+    std::lock_guard<std::recursive_mutex> guard(descriptorsMutex);
+
     auto desc = descriptors[id];
 
     if (desc == nullptr) {
@@ -1075,6 +1088,8 @@ namespace SSC {
   }
 
   void Core::fsCloseOpenDescriptors(String seq, Cb cb) const {
+    std::lock_guard<std::recursive_mutex> guard(descriptorsMutex);
+
     int pending = SSC::descriptors.size();
     std::vector<uint64_t> ids;
 
@@ -1107,6 +1122,8 @@ namespace SSC {
   }
 
   void Core::fsRead (String seq, uint64_t id, int len, int offset, Cb cb) const {
+    std::lock_guard<std::recursive_mutex> guard(descriptorsMutex);
+
     auto desc = descriptors[id];
 
     if (desc == nullptr) {
@@ -1175,6 +1192,8 @@ namespace SSC {
   }
 
   void Core::fsWrite (String seq, uint64_t id, String data, int64_t offset, Cb cb) const {
+    std::lock_guard<std::recursive_mutex> guard(descriptorsMutex);
+
     auto desc = descriptors[id];
 
     if (desc == nullptr) {
