@@ -589,7 +589,7 @@ namespace SSC {
     }
 
     if (post.body) {
-      auto params = format(R"JSON({ "seq": $S })JSON", seq);
+      auto params = format(R"JSON({ "seq": "$S" })JSON", seq);
       auto script = this->core->createPost(params, post);
       window->eval(script);
       return;
@@ -743,12 +743,21 @@ namespace SSC {
           window->app.isReady = false;
 
           if (window->opts.debug) {
+            int count = 0;
+            for (auto const &tuple : SSC::descriptors) {
+              auto desc = tuple.second;
+              if (desc == nullptr || (desc->fd == 0 && desc->dir == nullptr)) {
+                continue;
+              }
 
-            if (SSC::descriptors.size() > 0) {
+              count++;
+            }
+
+            if (count > 0) {
               std::cout
                 << "• WebView reloaded with "
-                << std::to_string(SSC::descriptors.size())
-                << " open file descriptors."
+                << std::to_string(count)
+                << " open descriptor contexts."
                 << std::endl;
             }
           }
@@ -757,6 +766,10 @@ namespace SSC {
         if (event == WEBKIT_LOAD_FINISHED) {
           for (auto const &tuple : SSC::descriptors) {
             auto desc = tuple.second;
+            if (desc == nullptr || (desc->fd == 0 && desc->dir == nullptr)) {
+              continue;
+            }
+
             auto id = std::to_string(desc->id);
             auto js = SSC::format(R"JS(
                 window.process.openFds.set("$S", {
