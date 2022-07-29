@@ -1133,6 +1133,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
       dispatch_async(queue, ^{
         [self send: seq msg: msg post: Post{}];
       });
+      return true;
     }
 
     auto connectionId = std::stoull(strId);
