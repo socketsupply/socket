@@ -128,26 +128,65 @@ namespace SSC {
     #endif
 
     #if defined(_WIN32)
+      const std::string os = "win32";
       bool mac = false;
       bool win = true;
       bool linux = false;
-      const std::string os = "win32";
+      bool unix = false;
 
     #elif defined(__APPLE__)
+      std::string os = "mac";
       bool mac = true;
       bool win = false;
       bool linux = false;
-      std::string os = "mac";
+
+      #if defined(__unix__) || defined(unix) || defined(__unix)
+      bool unix = true;
+      #else
+      bool unix = false;
+      #endif
+
 
     #elif defined(__linux__)
-    #undef linux
-      bool mac = false;
-      bool win = false;
-      bool linux = true;
+      #undef linux
       #ifdef __ANDROID__
       const std::string os = "android";
       #else
       const std::string os = "linux";
+      #endif
+
+      bool mac = false;
+      bool win = false;
+      bool linux = true;
+
+      #if defined(__unix__) || defined(unix) || defined(__unix)
+      bool unix = true;
+      #else
+      bool unix = false;
+      #endif
+
+    #elif defined(__FreeBSD__)
+      const std::string os = "freebsd";
+      bool mac = false;
+      bool win = false;
+      bool linux = false;
+
+      #if defined(__unix__) || defined(unix) || defined(__unix)
+      bool unix = true;
+      #else
+      bool unix = false;
+      #endif
+
+    #elif defined(BSD)
+      const std::string os = "openbsd";
+      bool mac = false;
+      bool win = false;
+      bool linux = false;
+
+      #if defined(__unix__) || defined(unix) || defined(__unix)
+      bool unix = true;
+      #else
+      bool unix = false;
       #endif
 
     #endif

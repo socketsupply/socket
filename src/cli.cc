@@ -1182,6 +1182,7 @@ int main (const int argc, const char* argv[]) {
 
       pathResources = paths.pathBin;
 
+      // @TODO(jwerle): support other Linux based OS
       fs::path pathControlFile = {
         paths.pathPackage /
         "DEBIAN"
