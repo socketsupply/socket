@@ -167,9 +167,10 @@ constexpr auto gPreload = R"JS(
     const { send, open } = XMLHttpRequest.prototype
     Object.assign(XMLHttpRequest.prototype, {
       open (method, url, ...args) {
+        this.readyState = XMLHttpRequest.OPENED
+        this.method = method
         this.url = new URL(url)
         this.seq = this.url.searchParams.get('seq')
-
 
         return open.call(this, method, url, ...args)
       },
@@ -181,7 +182,8 @@ constexpr auto gPreload = R"JS(
         if (url?.protocol === 'ipc:') {
           if (typeof body !== 'undefined' && typeof seq !== 'undefined') {
             if (/android/i.test(window.process?.platform)) {
-              window.external.invoke(`ipc://buffer.queue?seq=${seq}`, body)
+              await window.external.invoke(`ipc://buffer.queue?seq=${seq}`, body)
+              return send.call(this, null)
             }
 
             if (/linux/i.test(window.process?.platform)) {
@@ -210,9 +212,9 @@ constexpr auto gPreload = R"JS(
 
                 await window.external.invoke(data)
               }
-            }
 
-            return send.call(this, null)
+              return send.call(this, null)
+            }
           }
         }
 

@@ -659,7 +659,7 @@ namespace SSC {
             }
             String msg = [body UTF8String];
 
-            if ([bridge route: msg buf: nullptr]) return;
+            if ([bridge route: msg buf: nullptr bufsize: 0]) return;
             w->onMessage(msg);
           }),
         "v@:@"

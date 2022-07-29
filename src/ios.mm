@@ -120,7 +120,7 @@ void uncaughtExceptionHandler (NSException *exception) {
     return;
   }
 
-  [bridge route: [body UTF8String] buf: NULL];
+  [bridge route: [body UTF8String] buf: NULL bufsize: 0];
 }
 
 - (void) keyboardWillHide {

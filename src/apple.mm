@@ -59,7 +59,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 @property (strong, nonatomic) BluetoothDelegate* bluetooth;
 @property (strong, nonatomic) BridgedWebView* webview;
 @property (nonatomic) SSC::Core* core;
-- (bool) route: (std::string)msg buf: (char*)buf;
+- (bool) route: (std::string)msg buf: (char*)buf bufsize: (size_t)bufsize;
 - (void) emit: (std::string)name msg: (std::string)msg;
 - (void) send: (std::string)seq msg: (std::string)msg post: (SSC::Post)post;
 - (void) setBluetooth: (BluetoothDelegate*)bd;
@@ -605,12 +605,16 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
   if (seq != "-1" && self.core->hasTask(seq)) {
     auto task = self.core->getTask(seq);
+    NSMutableDictionary* httpHeaders = [NSMutableDictionary dictionary];
+
+    httpHeaders[@"access-control-allow-origin"] = @"*";
+    httpHeaders[@"access-control-allow-methods"] = @"*";
 
     NSHTTPURLResponse *httpResponse = [[NSHTTPURLResponse alloc]
       initWithURL: task.request.URL
        statusCode: 200
       HTTPVersion: @"HTTP/1.1"
-     headerFields: nil
+      headerFields: httpHeaders
     ];
 
     [task didReceiveResponse: httpResponse];
@@ -649,7 +653,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 }
 
 // returns true if routable (regardless of success)
-- (bool) route: (std::string)msg buf: (char*)buf {
+- (bool) route: (std::string)msg buf: (char*)buf bufsize: (size_t)bufsize{
   using namespace SSC;
 
   if (msg.find("ipc://") != 0) return false;
@@ -828,9 +832,10 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   if (cmd.name == "fsWrite") {
     auto id = std::stoull(cmd.get("id"));
     auto offset = std::stoull(cmd.get("offset"));
+    auto data = std::string(buf, bufsize);
 
     dispatch_async(queue, ^{
-      self.core->fsWrite(seq, id, buf, offset, [&](auto seq, auto msg, auto post) {
+      self.core->fsWrite(seq, id, data, offset, [&](auto seq, auto msg, auto post) {
         [self send: seq msg: msg post: post];
       });
     });
@@ -1327,6 +1332,24 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
   SSC::Parse cmd(url);
 
+  if (std::string(task.request.HTTPMethod.UTF8String) == "OPTIONS") {
+    NSMutableDictionary* httpHeaders = [NSMutableDictionary dictionary];
+
+    httpHeaders[@"access-control-allow-origin"] = @"*";
+    httpHeaders[@"access-control-allow-methods"] = @"*";
+
+    NSHTTPURLResponse *httpResponse = [[NSHTTPURLResponse alloc]
+      initWithURL: task.request.URL
+       statusCode: 200
+      HTTPVersion: @"HTTP/1.1"
+     headerFields: httpHeaders
+    ];
+
+    [task didReceiveResponse: httpResponse];
+    [task didFinish];
+    return;
+  }
+
   if (cmd.name == "post") {
     uint64_t postId = std::stoull(cmd.get("id"));
     auto post = self.bridge.core->getPost(postId);
@@ -1382,15 +1405,17 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
   self.bridge.core->putTask(cmd.get("seq"), task);
   char* body = NULL;
+  size_t bufsize = 0;
 
   // if there is a body on the reuqest, pass it into the method router.
 	auto rawBody = task.request.HTTPBody;
 
   if (rawBody) {
     const void* data = [rawBody bytes];
+    bufsize = [rawBody length];
     body = (char*)data;
   }
 
-  [self.bridge route: url buf: body];
+  [self.bridge route: url buf: body bufsize: bufsize];
 }
 @end
