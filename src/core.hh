@@ -724,7 +724,7 @@ namespace SSC {
           String(uv_strerror((int)req->result))
         );
 
-        SSC::descriptors[desc->id] = nullptr;
+        SSC::descriptors.erase(desc->id);
         delete desc;
       } else {
         desc->fd = (int) req->result;
@@ -749,7 +749,7 @@ namespace SSC {
         }
       })MSG", std::to_string(id), String(uv_strerror(err)));
 
-      descriptors[id] = nullptr;
+      SSC::descriptors.erase(desc->id);
       delete desc;
       delete req;
 
@@ -788,7 +788,7 @@ namespace SSC {
           String(uv_strerror((int)req->result))
         );
 
-        SSC::descriptors[desc->id] = nullptr;
+        SSC::descriptors.erase(desc->id);
         delete desc;
       } else {
         msg = SSC::format(
@@ -811,7 +811,7 @@ namespace SSC {
         std::to_string(err), String(uv_strerror(err))
       );
 
-      descriptors[id] = nullptr;
+      SSC::descriptors.erase(desc->id);
       delete desc;
       delete req;
 
@@ -965,7 +965,8 @@ namespace SSC {
           }
         })MSG", std::to_string(desc->id), std::to_string(desc->fd));
 
-        SSC::descriptors[desc->id] = nullptr;
+        desc->fd = 0;
+        SSC::descriptors.erase(desc->id);
         delete desc;
       }
 
@@ -1037,7 +1038,7 @@ namespace SSC {
         })MSG", std::to_string(desc->id));
 
         desc->dir = nullptr;
-        SSC::descriptors[desc->id] = nullptr;
+        SSC::descriptors.erase(desc->id);
         delete desc;
       }
 
@@ -1087,11 +1088,13 @@ namespace SSC {
     }
   }
 
-  void Core::fsCloseOpenDescriptors(String seq, Cb cb) const {
+  void Core::fsCloseOpenDescriptors (String seq, Cb cb) const {
     std::lock_guard<std::recursive_mutex> guard(descriptorsMutex);
 
-    int pending = SSC::descriptors.size();
     std::vector<uint64_t> ids;
+    std::string msg = "";
+    int pending = SSC::descriptors.size();
+    int queued = 0;
 
     for (auto const &tuple : SSC::descriptors) {
       ids.push_back(tuple.first);
@@ -1106,18 +1109,24 @@ namespace SSC {
       }
 
       if (desc->dir != nullptr) {
+        queued++;
         this->fsClosedir(seq, desc->id, [pending, cb](auto seq, auto msg, auto post) {
           if (pending == 0) {
             cb(seq, msg, post);
           }
         });
       } else if (desc->fd > 0) {
+        queued++;
         this->fsClose(seq, desc->id, [pending, cb](auto seq, auto msg, auto post) {
           if (pending == 0) {
             cb(seq, msg, post);
           }
         });
       }
+    }
+
+    if (queued == 0) {
+      cb(seq, msg, Post{});
     }
   }
 
