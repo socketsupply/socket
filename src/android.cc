@@ -276,6 +276,11 @@ void NativeCore::UpdateOpenDescriptorsInEnvironment () const {
 
   for (auto const &tuple : SSC::descriptors) {
     auto desc = tuple.second;
+
+    if (desc == nullptr || (desc->fd == 0 && desc->dir == nullptr)) {
+      continue;
+    }
+
     auto id = std::to_string(desc->id);
 
     js << SSC::format(R"JS(
