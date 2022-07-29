@@ -1119,6 +1119,32 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     return true;
   }
 
+  if (cmd.name == "udpGetSockName") {
+    auto strId = cmd.get("id");
+    bool isClient = cmd.get("isClient").size() > 0;
+
+    if (strId.size() == 0) {
+      auto msg = SSC::format(R"MSG({
+        "err": {
+          "message": "expected either .id"
+        }
+      })MSG");
+
+      dispatch_async(queue, ^{
+        [self send: seq msg: msg post: Post{}];
+      });
+    }
+
+    auto connectionId = std::stoull(strId);
+
+    dispatch_async(queue, ^{
+      self.core->udpGetSockName(seq, connectionId, isClient, [&](auto seq, auto msg, auto post) {
+        [self send: seq msg: msg post: post];
+      });
+    });
+    return true;
+  }
+
   if (cmd.name == "udpSend") {
     int offset = 0;
     int len = 0;

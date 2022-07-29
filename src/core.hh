@@ -299,6 +299,7 @@ namespace SSC {
       void udpBind (String seq, uint64_t serverId, String ip, int port, Cb cb) const;
       void udpSend (String seq, uint64_t clientId, String message, int offset, int len, int port, const char* ip, Cb cb) const;
       void udpReadStart (String seq, uint64_t serverId, Cb cb) const;
+      void udpGetSockName (String seq, uint64_t clientId, bool isClient, Cb cb) const;
 
       void sendBufferSize (String seq, uint64_t clientId, int size, Cb cb) const;
       void recvBufferSize (String seq, uint64_t clientId, int size, Cb cb) const;
@@ -2353,8 +2354,8 @@ namespace SSC {
 
     if (err < 0) {
       auto msg = SSC::format(R"MSG({
-        "source": "udp",
         "err": {
+          "source": "udp",
           "serverId": "$S",
           "message": "uv_ip4_addr: $S"
         }
@@ -2368,8 +2369,8 @@ namespace SSC {
 
     if (err < 0) {
       auto msg = SSC::format(R"MSG({
-        "source": "udp",
         "err": {
+          "source": "udp",
           "serverId": "$S",
           "message": "uv_udp_bind: $S"
         }
@@ -2379,12 +2380,82 @@ namespace SSC {
     }
 
     auto msg = SSC::format(R"MSG({
-      "data": {}
-    })MSG");
+      "data": {
+        "source": "udp",
+        "serverId": "$S",
+        "event": "listening"
+      }
+    })MSG", std::to_string(server->serverId));
 
     server->cb(server->seq, msg, Post{});
 
     runDefaultLoop();
+  }
+
+  void Core::udpGetSockName (String seq, uint64_t xId, bool isClient, Cb cb) const {
+    struct sockaddr sockname;
+    int len = sizeof(sockname);
+    int err = 0;
+
+    if (isClient) {
+      Client* client = clients[xId];
+
+      if (client == nullptr) {
+        auto msg = SSC::format(R"MSG({
+          "err": {
+            "source": "udp",
+            "clientId": "$S",
+            "message": "no such client"
+          }
+        })MSG", std::to_string(xId));
+        cb(seq, msg, Post{});
+        return;
+      }
+
+      err = uv_udp_getsockname(client->udp, &sockname, &len);
+    } else {
+      Server* server = servers[xId];
+
+      if (server == nullptr) {
+        auto msg = SSC::format(R"MSG({
+          "err": {
+            "source": "udp",
+            "serverId": "$S",
+            "message": "no such server"
+          }
+        })MSG", std::to_string(xId));
+        cb(seq, msg, Post{});
+        return;
+      }
+
+      err = uv_udp_getsockname(server->udp, &sockname, &len);
+    }
+
+    if (err < 0) {
+      auto msg = SSC::format(R"MSG({
+        "err": {
+          "source": "udp",
+          "serverId": "$S",
+          "message": "uv_udp_getsockname: $S"
+        }
+      })MSG", std::to_string(xId), std::string(uv_strerror(err)));
+      cb(seq, msg, Post{});
+      return;
+    }
+
+    auto name = ((struct sockaddr_in*)&sockname);
+    int port = htons(name->sin_port);
+    std::string ip = std::string((char*)inet_ntoa(name->sin_addr));
+
+    auto msg = SSC::format(R"MSG({
+      "data": {
+        "source": "udp",
+        "clientId": "$S",
+        "ip": "$S",
+        "port": "$i"
+      }
+    })MSG", std::to_string(xId), ip, port);
+    cb(seq, msg, Post{});
   }
 
   void Core::udpSend (String seq, uint64_t clientId, String message, int offset, int len, int port, const char* ip, Cb cb) const {
@@ -2393,6 +2464,7 @@ namespace SSC {
     if (client == nullptr) {
       auto msg = SSC::format(R"MSG({
         "err": {
+          "source": "udp",
           "clientId": "$S",
           "message": "no such client"
         }
@@ -2461,6 +2533,7 @@ namespace SSC {
     if (server == nullptr) {
       auto msg = SSC::format(R"MSG({
         "err": {
+          "source": "udp",
           "serverId": "$S",
           "message": "no such server"
         }
@@ -2506,12 +2579,13 @@ namespace SSC {
         post.length = (int)buf->len;
         post.headers = headers;
 
-        auto msg = SSC::format(R"MSG(
+        auto msg = SSC::format(R"MSG({
+          "source": "udp",
           "serverId": "$S",
           "event": "udpReadStart",
           "port": $i,
           "ip": "$S"
-        )MSG", std::to_string(server->serverId), port, ip);
+        })MSG", std::to_string(server->serverId), port, ip);
 
         server->cb("-1", msg, post);
       }
@@ -2520,6 +2594,7 @@ namespace SSC {
     if (err < 0) {
       auto msg = SSC::format(R"MSG({
         "err": {
+          "source": "udp",
           "serverId": "$S",
           "message": "$S"
         }
