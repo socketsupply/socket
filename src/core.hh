@@ -33,7 +33,7 @@ namespace SSC {
     uint64_t ttl = 0;
     char* body = nullptr;
     int length = 0;
-    String headers;
+    String headers = "";
     bool bodyNeedsFree = false;
   };
 
@@ -284,7 +284,7 @@ namespace SSC {
       void fsRead (String seq, uint64_t id, int len, int offset, Cb cb) const;
       void fsReaddir (String seq, uint64_t id, size_t entries, Cb cb) const;
       void fsRename (String seq, String pathA, String pathB, Cb cb) const;
-      void fsRmDir (String seq, String path, Cb cb) const;
+      void fsRmdir (String seq, String path, Cb cb) const;
       void fsStat (String seq, String path, Cb cb) const;
       void fsUnlink (String seq, String path, Cb cb) const;
       void fsWrite (String seq, uint64_t id, String data, int64_t offset, Cb cb) const;
@@ -335,7 +335,7 @@ namespace SSC {
   };
 
   struct DescriptorContext {
-    uv_file fd;
+    uv_file fd = 0;
     uv_dir_t *dir = nullptr;
     // 256 which corresponds to DirectoryHandle.MAX_BUFFER_SIZE
     uv_dirent_t dirents[256];
@@ -374,7 +374,7 @@ namespace SSC {
 
   static void runDefaultLoop () {
     auto loop = getDefaultLoop();
-    uv_run(loop, UV_RUN_DEFAULT);
+    uv_run(loop, UV_RUN_ONCE);
   }
 
   static String addrToIPv4 (struct sockaddr_in* sin) {
@@ -539,8 +539,8 @@ namespace SSC {
       "xhr.responseType = 'arraybuffer';"
       "xhr.onload = e => {"
       "  let o = `" + params + "`;"
-      "  let headers = `" + post.headers + "`"
-      "    .trim().split(/[\\r\\n]+/);"
+      "  let headers = `" + SSC::trim(post.headers) + "`"
+      "    .trim().split(/[\\r\\n]+/).filter(Boolean);"
       "  try { o = JSON.parse(o) } catch (err) {"
       "    console.error(err, `string<${o}>`)"
       "  };"
@@ -600,12 +600,14 @@ namespace SSC {
     auto desc = new DescriptorContext;
     auto req = new uv_fs_t;
 
-    req->data = desc;
     desc->seq = seq;
     desc->cb = cb;
 
+    req->data = desc;
+
     auto err = uv_fs_access(loop, req, filename, mode, [](uv_fs_t* req) {
       auto desc = static_cast<DescriptorContext*>(req->data);
+      auto seq = desc->seq;
       std::string msg;
 
       if (req->result < 0) {
@@ -620,10 +622,11 @@ namespace SSC {
         );
       }
 
-      desc->cb(desc->seq, msg, Post{});
       uv_fs_req_cleanup(req);
       delete desc;
       delete req;
+
+      desc->cb(seq, msg, Post{});
     });
 
     if (err < 0) {
@@ -632,9 +635,10 @@ namespace SSC {
         std::to_string(err), String(uv_strerror(err))
       );
 
-      cb(seq, msg, Post{});
       delete desc;
       delete req;
+
+      cb(seq, msg, Post{});
       return;
     }
 
@@ -647,12 +651,14 @@ namespace SSC {
     auto desc = new DescriptorContext;
     auto req = new uv_fs_t;
 
-    req->data = desc;
     desc->seq = seq;
     desc->cb = cb;
 
+    req->data = desc;
+
     auto err = uv_fs_chmod(loop, req, filename, mode, [](uv_fs_t* req) {
       auto desc = static_cast<DescriptorContext*>(req->data);
+      auto seq = desc->seq;
       std::string msg;
 
       if (req->result < 0) {
@@ -667,10 +673,11 @@ namespace SSC {
         );
       }
 
-      desc->cb(desc->seq, msg, Post{});
       uv_fs_req_cleanup(req);
       delete desc;
       delete req;
+
+      desc->cb(seq, msg, Post{});
     });
 
     if (err < 0) {
@@ -679,9 +686,10 @@ namespace SSC {
         std::to_string(err), String(uv_strerror(err))
       );
 
-      cb(seq, msg, Post{});
       delete desc;
       delete req;
+
+      cb(seq, msg, Post{});
       return;
     }
 
@@ -694,14 +702,16 @@ namespace SSC {
     auto desc = descriptors[id] = new DescriptorContext;
     auto req = new uv_fs_t;
 
-    req->data = desc;
-
     desc->id = id;
-    desc->seq = seq;
     desc->cb = cb;
+    desc->seq = seq;
+
+    req->data = desc;
 
     auto err = uv_fs_open(loop, req, filename, flags, mode, [](uv_fs_t* req) {
       auto desc = static_cast<DescriptorContext*>(req->data);
+      auto seq = desc->seq;
+      auto cb = desc->cb;
       std::string msg;
 
       if (req->result < 0) {
@@ -710,7 +720,9 @@ namespace SSC {
           std::to_string(desc->id),
           String(uv_strerror((int)req->result))
         );
-        SSC::descriptors.erase(desc->id);
+
+        SSC::descriptors[desc->id] = nullptr;
+        delete desc;
       } else {
         desc->fd = (int) req->result;
         msg = SSC::format(
@@ -720,9 +732,10 @@ namespace SSC {
         );
       }
 
-      desc->cb(desc->seq, msg, Post{});
       uv_fs_req_cleanup(req);
       delete req;
+
+      cb(seq, msg, Post{});
     });
 
     if (err < 0) {
@@ -733,8 +746,11 @@ namespace SSC {
         }
       })MSG", std::to_string(id), String(uv_strerror(err)));
 
-      cb(seq, msg, Post{});
+      descriptors[id] = nullptr;
+      delete desc;
       delete req;
+
+      cb(seq, msg, Post{});
       return;
     }
 
@@ -747,15 +763,17 @@ namespace SSC {
     auto desc = descriptors[id] = new DescriptorContext;
     auto req = new uv_fs_t;
 
-    req->data = desc;
-
     desc->id = id;
     desc->cb = cb;
-    desc->dir = nullptr;
     desc->seq = seq;
+    desc->dir = nullptr;
+
+    req->data = desc;
 
     auto err = uv_fs_opendir(loop, req, filename, [](uv_fs_t *req) {
       auto desc = static_cast<DescriptorContext*>(req->data);
+      auto seq = desc->seq;
+      auto cb = desc->cb;
       std::string msg;
 
       if (req->result < 0) {
@@ -764,18 +782,22 @@ namespace SSC {
           std::to_string(desc->id),
           String(uv_strerror((int)req->result))
         );
-        SSC::descriptors.erase(desc->id);
+
+        SSC::descriptors[desc->id] = nullptr;
+        delete desc;
       } else {
         msg = SSC::format(
           R"MSG({ "data": { "id": "$S" } })MSG",
           std::to_string(desc->id)
         );
+
+        desc->dir = (uv_dir_t *) req->ptr;
       }
 
-      desc->dir = (uv_dir_t *) req->ptr;
-      desc->cb(desc->seq, msg, Post{});
       uv_fs_req_cleanup(req);
       delete req;
+
+      cb(seq, msg, Post{});
     });
 
     if (err < 0) {
@@ -784,9 +806,11 @@ namespace SSC {
         std::to_string(err), String(uv_strerror(err))
       );
 
-      cb(seq, msg, Post{});
+      descriptors[id] = nullptr;
       delete desc;
       delete req;
+
+      cb(seq, msg, Post{});
       return;
     }
 
@@ -824,15 +848,18 @@ namespace SSC {
 
     auto loop = getDefaultLoop();
     auto req = new uv_fs_t;
-    req->data = desc;
 
     desc->seq = seq;
     desc->cb = cb;
     desc->dir->dirents = desc->dirents;
     desc->dir->nentries = nentries;
 
+    req->data = desc;
+
     auto err = uv_fs_readdir(loop, req, desc->dir, [](uv_fs_t *req) {
       auto desc = static_cast<DescriptorContext*>(req->data);
+      auto seq = desc->seq;
+      auto cb = desc->cb;
       std::string msg;
 
       if (req->result < 0) {
@@ -865,9 +892,10 @@ namespace SSC {
         );
       }
 
-      desc->cb(desc->seq, msg, Post{});
       uv_fs_req_cleanup(req);
       delete req;
+
+      cb(seq, msg, Post{});
     });
 
     if (err < 0) {
@@ -877,7 +905,6 @@ namespace SSC {
       );
 
       cb(seq, msg, Post{});
-      delete desc;
       delete req;
       return;
     }
@@ -901,14 +928,17 @@ namespace SSC {
       return;
     }
 
+    auto req = new uv_fs_t;
+
     desc->seq = seq;
     desc->cb = cb;
 
-    auto req = new uv_fs_t;
     req->data = desc;
 
     auto err = uv_fs_close(getDefaultLoop(), req, desc->fd, [](uv_fs_t* req) {
       auto desc = static_cast<DescriptorContext*>(req->data);
+      auto seq = desc->seq;
+      auto cb = desc->cb;
       std::string msg;
 
       if (req->result < 0) {
@@ -925,15 +955,15 @@ namespace SSC {
             "fd": $S
           }
         })MSG", std::to_string(desc->id), std::to_string(desc->fd));
+
+        SSC::descriptors[desc->id] = nullptr;
+        delete desc;
       }
 
-      desc->cb(desc->seq, msg, Post{});
-
       uv_fs_req_cleanup(req);
-      SSC::descriptors.erase(desc->id);
-
       delete req;
-      delete desc;
+
+      cb(seq, msg, Post{});
     });
 
     if (err < 0) {
@@ -944,6 +974,7 @@ namespace SSC {
         }
       })MSG", std::to_string(id), String(uv_strerror(err)));
 
+      delete req;
       cb(seq, msg, Post{});
       return;
     }
@@ -967,14 +998,17 @@ namespace SSC {
       return;
     }
 
+    auto req = new uv_fs_t;
+
     desc->seq = seq;
     desc->cb = cb;
 
-    auto req = new uv_fs_t;
     req->data = desc;
 
     auto err = uv_fs_closedir(getDefaultLoop(), req, desc->dir, [](uv_fs_t* req) {
       auto desc = static_cast<DescriptorContext*>(req->data);
+      auto seq = desc->seq;
+      auto cb = desc->cb;
       std::string msg;
 
       if (req->result < 0) {
@@ -990,15 +1024,16 @@ namespace SSC {
             "id": "$S"
           }
         })MSG", std::to_string(desc->id));
+
+        desc->dir = nullptr;
+        SSC::descriptors[desc->id] = nullptr;
+        delete desc;
       }
 
-      desc->cb(desc->seq, msg, Post{});
+      cb(seq, msg, Post{});
 
       uv_fs_req_cleanup(req);
-      SSC::descriptors.erase(desc->id);
-
       delete req;
-      delete desc;
     });
 
     if (err < 0) {
@@ -1034,7 +1069,7 @@ namespace SSC {
 
     if (desc->dir != nullptr) {
       this->fsClosedir(seq, id, cb);
-    } else {
+    } else if (desc->fd > 0){
       this->fsClose(seq, id, cb);
     }
   }
@@ -1061,7 +1096,7 @@ namespace SSC {
             cb(seq, msg, post);
           }
         });
-      } else {
+      } else if (desc->fd > 0) {
         this->fsClose(seq, desc->id, [pending, cb](auto seq, auto msg, auto post) {
           if (pending == 0) {
             cb(seq, msg, post);
@@ -1086,18 +1121,20 @@ namespace SSC {
       return;
     }
 
+    auto req = new uv_fs_t;
+    auto buf = new char[len];
+    const uv_buf_t iov = uv_buf_init(buf, len * sizeof(char));
+
+    desc->data = buf;
     desc->seq = seq;
     desc->cb = cb;
 
-    auto req = new uv_fs_t;
     req->data = desc;
-
-    auto buf = new char[len];
-    const uv_buf_t iov = uv_buf_init(buf, len * sizeof(char));
-    desc->data = buf;
 
     auto err = uv_fs_read(getDefaultLoop(), req, desc->fd, &iov, 1, offset, [](uv_fs_t* req) {
       auto desc = static_cast<DescriptorContext*>(req->data);
+      auto seq = desc->seq;
+      auto cb = desc->cb;
       std::string msg = "{}";
       Post post = {0};
 
@@ -1109,21 +1146,13 @@ namespace SSC {
           }
         })MSG", std::to_string(desc->id), String(uv_strerror((int)req->result)));
       } else {
-        auto headers = SSC::format(R"MSG(
-          content-type: application/octet-stream
-          content-length: $S
-          event: fsRead
-          id: $S
-        )MSG", std::to_string(req->result), std::to_string(desc->id));
-
         post.body = (char *) desc->data;
         post.length = (int) req->result;
-        post.headers = headers;
         post.bodyNeedsFree = true;
       }
 
       desc->data = 0;
-      desc->cb(desc->seq, msg, post);
+      cb(seq, msg, post);
 
       uv_fs_req_cleanup(req);
 
@@ -1160,16 +1189,18 @@ namespace SSC {
       return;
     }
 
+    const uv_buf_t buf = uv_buf_init((char*) data.data(), (int) data.size());
+    auto req = new uv_fs_t;
+
     desc->seq = seq;
     desc->cb = cb;
 
-    auto req = new uv_fs_t;
     req->data = desc;
-
-    const uv_buf_t buf = uv_buf_init((char*) data.data(), (int) data.size());
 
     auto err = uv_fs_write(uv_default_loop(), req, desc->fd, &buf, 1, offset, [](uv_fs_t* req) {
       auto desc = static_cast<DescriptorContext*>(req->data);
+      auto seq = desc->seq;
+      auto cb = desc->cb;
       std::string msg;
 
       if (req->result < 0) {
@@ -1188,7 +1219,7 @@ namespace SSC {
         })MSG", std::to_string(desc->id), (int)req->result);
       }
 
-      desc->cb(desc->seq, msg, Post{});
+      cb(seq, msg, Post{});
       uv_fs_req_cleanup(req);
       delete req;
     });
@@ -1210,14 +1241,17 @@ namespace SSC {
 
   void Core::fsStat (String seq, String path, Cb cb) const {
     DescriptorContext* desc = new DescriptorContext;
+    auto req = new uv_fs_t;
+
     desc->seq = seq;
     desc->cb = cb;
 
-    auto req = new uv_fs_t;
     req->data = desc;
 
     auto err = uv_fs_stat(getDefaultLoop(), req, (const char*) path.c_str(), [](uv_fs_t* req) {
       auto desc = static_cast<DescriptorContext*>(req->data);
+      auto seq = desc->seq;
+      auto cb = desc->cb;
       std::string msg;
 
       if (req->result < 0) {
@@ -1273,11 +1307,12 @@ namespace SSC {
         );
       }
 
-      desc->cb(desc->seq, msg, Post{});
-
       uv_fs_req_cleanup(req);
+
       delete desc;
       delete req;
+
+      cb(seq, msg, Post{});
     });
 
     if (err < 0) {
@@ -1287,10 +1322,11 @@ namespace SSC {
         }
       })MSG", String(uv_strerror(err)));
 
-      cb(seq, msg, Post{});
 
       delete desc;
       delete req;
+
+      cb(seq, msg, Post{});
 
       return;
     }
@@ -1313,14 +1349,17 @@ namespace SSC {
       return;
     }
 
+    auto req = new uv_fs_t;
+
     desc->seq = seq;
     desc->cb = cb;
 
-    auto req = new uv_fs_t;
     req->data = desc;
 
     auto err = uv_fs_fstat(getDefaultLoop(), req, desc->fd, [](uv_fs_t* req) {
       auto desc = static_cast<DescriptorContext*>(req->data);
+      auto seq = desc->seq;
+      auto cb = desc->cb;
       std::string msg;
 
       if (req->result < 0) {
@@ -1379,9 +1418,10 @@ namespace SSC {
         ));
       }
 
-      desc->cb(desc->seq, msg, Post{});
       uv_fs_req_cleanup(req);
       delete req;
+
+      cb(seq, msg, Post{});
     });
 
     if (err < 0) {
@@ -1392,8 +1432,9 @@ namespace SSC {
         }
       })MSG", std::to_string(id), String(uv_strerror(err)));
 
-      cb(seq, msg, Post{});
       delete req;
+
+      cb(seq, msg, Post{});
       return;
     }
 
@@ -1401,25 +1442,45 @@ namespace SSC {
   }
 
   void Core::fsUnlink (String seq, String path, Cb cb) const {
-    uv_fs_t req;
-    DescriptorContext* desc = new DescriptorContext;
+    auto filename = path.c_str();
+    auto loop = getDefaultLoop();
+    auto desc = new DescriptorContext;
+    auto req = new uv_fs_t;
+
     desc->seq = seq;
     desc->cb = cb;
-    req.data = desc;
 
-    int err = uv_fs_unlink(getDefaultLoop(), &req, (const char*) path.c_str(), [](uv_fs_t* req) {
+    req->data = desc;
+
+    auto err = uv_fs_unlink(loop, req, filename, [](uv_fs_t* req) {
       auto desc = static_cast<DescriptorContext*>(req->data);
-      auto msg = SSC::format(R"MSG({
-        "data": {
-          "id": "$S",
-          "result": "$i"
-        }
-      })MSG", std::to_string(desc->id), (int)req->result);
+      auto seq = desc->seq;
+      auto cb = desc->cb;
+      std::string msg;
 
-      desc->cb(desc->seq, msg, Post{});
+      if (req->result < 0) {
+        msg = SSC::format(R"MSG({
+          "err": {
+            "id": "$S",
+            "message": "$S"
+          }
+        })MSG",
+        std::to_string(desc->id),
+        String(uv_strerror((int)req->result)));
+      } else {
+        msg = SSC::format(R"MSG({
+          "data": {
+            "result": "$i"
+          }
+        })MSG", (int)req->result);
+      }
 
-      delete desc;
       uv_fs_req_cleanup(req);
+
+      delete req;
+      delete desc;
+
+      cb(seq, msg, Post{});
     });
 
     if (err) {
@@ -1428,33 +1489,58 @@ namespace SSC {
           "message": "$S"
         }
       })MSG", String(uv_strerror(err)));
+
+      delete req;
+      delete desc;
 
       cb(seq, msg, Post{});
       return;
     }
+
     runDefaultLoop();
   }
 
   void Core::fsRename (String seq, String pathA, String pathB, Cb cb) const {
-    uv_fs_t req;
-    DescriptorContext* desc = new DescriptorContext;
+    auto loop = getDefaultLoop();
+    auto desc = new DescriptorContext;
+    auto src = pathA.c_str();
+    auto dst = pathB.c_str();
+    auto req = new uv_fs_t;
+
     desc->seq = seq;
     desc->cb = cb;
-    req.data = desc;
 
-    int err = uv_fs_rename(getDefaultLoop(), &req, (const char*) pathA.c_str(), (const char*) pathB.c_str(), [](uv_fs_t* req) {
+    req->data = desc;
+
+    auto err = uv_fs_rename(loop, req, src, dst, [](uv_fs_t* req) {
       auto desc = static_cast<DescriptorContext*>(req->data);
-      auto msg = SSC::format(R"MSG({
-        "data": {
-          "id": "$S",
-          "result": "$i"
-        }
-      })MSG", std::to_string(desc->id), (int)req->result);
+      auto seq = desc->seq;
+      auto cb = desc->cb;
+      std::string msg;
 
-      desc->cb(desc->seq, msg, Post{});
+      if (req->result < 0) {
+        msg = SSC::format(R"MSG({
+          "err": {
+            "id": "$S",
+            "message": "$S"
+          }
+        })MSG",
+        std::to_string(desc->id),
+        String(uv_strerror((int)req->result)));
+      } else {
+        msg = SSC::format(R"MSG({
+          "data": {
+            "result": "$i"
+          }
+        })MSG", (int)req->result);
+      }
 
-      delete desc;
       uv_fs_req_cleanup(req);
+
+      delete req;
+      delete desc;
+
+      cb(seq, msg, Post{});
     });
 
     if (err) {
@@ -1463,6 +1549,9 @@ namespace SSC {
           "message": "$S"
         }
       })MSG", String(uv_strerror(err)));
+
+      delete req;
+      delete desc;
 
       cb(seq, msg, Post{});
       return;
@@ -1472,25 +1561,46 @@ namespace SSC {
   }
 
   void Core::fsCopyFile (String seq, String pathA, String pathB, int flags, Cb cb) const {
-    uv_fs_t req;
-    DescriptorContext* desc = new DescriptorContext;
+    auto loop = getDefaultLoop();
+    auto desc = new DescriptorContext;
+    auto src = pathA.c_str();
+    auto dst = pathB.c_str();
+    auto req = new uv_fs_t;
+
     desc->seq = seq;
     desc->cb = cb;
-    req.data = desc;
 
-    int err = uv_fs_copyfile(getDefaultLoop(), &req, (const char*) pathA.c_str(), (const char*) pathB.c_str(), flags, [](uv_fs_t* req) {
+    req->data = desc;
+
+    auto err = uv_fs_copyfile(loop, req, src, dst, flags, [](uv_fs_t* req) {
       auto desc = static_cast<DescriptorContext*>(req->data);
+      auto seq = desc->seq;
+      auto cb = desc->cb;
+      std::string msg;
 
-      auto msg = SSC::format(R"MSG({
-        "data": {
-          "id": "$S",
-          "result": "$i"
-        }
-      })MSG", std::to_string(desc->id), (int)req->result);
+      if (req->result < 0) {
+        msg = SSC::format(R"MSG({
+          "err": {
+            "id": "$S",
+            "message": "$S"
+          }
+        })MSG",
+        std::to_string(desc->id),
+        String(uv_strerror((int)req->result)));
+      } else {
+        msg = SSC::format(R"MSG({
+          "data": {
+            "result": "$i"
+          }
+        })MSG", (int)req->result);
+      }
 
-      desc->cb(desc->seq, msg, Post{});
-      delete desc;
       uv_fs_req_cleanup(req);
+
+      delete req;
+      delete desc;
+
+      cb(seq, msg, Post{});
     });
 
     if (err) {
@@ -1499,33 +1609,57 @@ namespace SSC {
           "message": "$S"
         }
       })MSG", String(uv_strerror(err)));
+
+      delete req;
+      delete desc;
 
       cb(seq, msg, Post{});
       return;
     }
+
     runDefaultLoop();
   }
 
-  void Core::fsRmDir (String seq, String path, Cb cb) const {
-    uv_fs_t req;
-    DescriptorContext* desc = new DescriptorContext;
+  void Core::fsRmdir (String seq, String path, Cb cb) const {
+    auto filename = path.c_str();
+    auto loop = getDefaultLoop();
+    auto desc = new DescriptorContext;
+    auto req = new uv_fs_t;
+
     desc->seq = seq;
     desc->cb = cb;
-    req.data = desc;
 
-    int err = uv_fs_rmdir(getDefaultLoop(), &req, (const char*) path.c_str(), [](uv_fs_t* req) {
+    req->data = desc;
+
+    auto err = uv_fs_rmdir(loop, req, filename, [](uv_fs_t* req) {
       auto desc = static_cast<DescriptorContext*>(req->data);
+      auto seq = desc->seq;
+      auto cb = desc->cb;
+      std::string msg;
 
-      auto msg = SSC::format(R"MSG({
-        "data": {
-          "id": "$S",
-          "result": "$i"
-        }
-      })MSG", std::to_string(desc->id), (int)req->result);
+      if (req->result < 0) {
+        msg = SSC::format(R"MSG({
+          "err": {
+            "id": "$S",
+            "message": "$S"
+          }
+        })MSG",
+        std::to_string(desc->id),
+        String(uv_strerror((int)req->result)));
+      } else {
+        msg = SSC::format(R"MSG({
+          "data": {
+            "result": "$i"
+          }
+        })MSG", (int)req->result);
+      }
 
-      desc->cb(desc->seq, msg, Post{});
-      delete desc;
       uv_fs_req_cleanup(req);
+
+      delete req;
+      delete desc;
+
+      cb(seq, msg, Post{});
     });
 
     if (err) {
@@ -1534,6 +1668,10 @@ namespace SSC {
           "message": "$S"
         }
       })MSG", String(uv_strerror(err)));
+
+      delete req;
+      delete desc;
+
       cb(seq, msg, Post{});
       return;
     }
@@ -1542,25 +1680,45 @@ namespace SSC {
   }
 
   void Core::fsMkdir (String seq, String path, int mode, Cb cb) const {
-    uv_fs_t req;
-    DescriptorContext* desc = new DescriptorContext;
+    auto filename = path.c_str();
+    auto loop = getDefaultLoop();
+    auto desc = new DescriptorContext;
+    auto req = new uv_fs_t;
+
     desc->seq = seq;
     desc->cb = cb;
-    req.data = desc;
 
-    int err = uv_fs_mkdir(getDefaultLoop(), &req, (const char*) path.c_str(), mode, [](uv_fs_t* req) {
+    req->data = desc;
+
+    auto err = uv_fs_mkdir(loop, req, filename, mode, [](uv_fs_t* req) {
       auto desc = static_cast<DescriptorContext*>(req->data);
-      auto msg = SSC::format(R"MSG({
-        "data": {
-          "id": "$S",
-          "result": "$i"
-        }
-      })MSG", std::to_string(desc->id), (int)req->result);
+      auto seq = desc->seq;
+      auto cb = desc->cb;
+      std::string msg;
 
-      desc->cb(desc->seq, msg, Post{});
+      if (req->result < 0) {
+        msg = SSC::format(R"MSG({
+          "err": {
+            "id": "$S",
+            "message": "$S"
+          }
+        })MSG",
+        std::to_string(desc->id),
+        String(uv_strerror((int)req->result)));
+      } else {
+        msg = SSC::format(R"MSG({
+          "data": {
+            "result": "$i"
+          }
+        })MSG", (int)req->result);
+      }
 
-      delete desc;
       uv_fs_req_cleanup(req);
+
+      delete req;
+      delete desc;
+
+      cb(seq, msg, Post{});
     });
 
     if (err) {
@@ -1569,6 +1727,10 @@ namespace SSC {
           "message": "$S"
         }
       })MSG", String(uv_strerror(err)));
+
+      delete req;
+      delete desc;
+
       cb(seq, msg, Post{});
       return;
     }
