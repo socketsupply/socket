@@ -596,7 +596,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   // - On the next turn, it ill respond to the XHR which /already has the meta data from the original request.
   //
   if (post.body) {
-    auto params = SSC::format(R"JSON({ "seq": $S })JSON", seq);
+    auto params = SSC::format(R"JSON({ "seq": "$S" })JSON", seq);
     auto src = self.core->createPost(params, post);
     NSString* script = [NSString stringWithUTF8String: src.c_str()];
     [self.webview evaluateJavaScript: script completionHandler: nil];
@@ -637,8 +637,10 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   }
 
   if (msg.size() > 0) {
-    NSString* script = [NSString stringWithUTF8String: msg.c_str()];
-    [self.webview evaluateJavaScript: script completionHandler:nil];
+    dispatch_async(dispatch_get_main_queue(), ^{
+      NSString* script = [NSString stringWithUTF8String: msg.c_str()];
+      [self.webview evaluateJavaScript: script completionHandler:nil];
+    });
   }
 }
 
@@ -660,7 +662,9 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   /// @param serviceId String
   ///
   if (cmd.name == "bluetooth-start") {
-    [self.bluetooth startService: seq sid: cmd.get("serviceId")];
+    dispatch_async(queue, ^{
+      [self.bluetooth startService: seq sid: cmd.get("serviceId")];
+    });
     return true;
   }
 
@@ -669,7 +673,9 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     auto sid = cmd.get("serviceId");
     auto seq = cmd.get("seq");
 
-    [self.bluetooth subscribeCharacteristic: seq sid: sid cid: cid];
+    dispatch_async(queue, ^{
+      [self.bluetooth subscribeCharacteristic: seq sid: sid cid: cid];
+    });
     return true;
   }
 
@@ -680,13 +686,18 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
     if (sid.size() != 36) {
       auto msg = SSC::format(R"MSG({ "err": { "message": "invalid serviceId" } })MSG");
-      [self send: seq msg: msg post: Post{}];
+
+      dispatch_async(queue, ^{
+        [self send: seq msg: msg post: Post{}];
+      });
       return true;
     }
 
     if (sid.size() != 36) {
       auto msg = SSC::format(R"MSG({ "err": { "message": "invalid characteristicId" } })MSG");
-      [self send: seq msg: msg post: Post{}];
+      dispatch_async(queue, ^{
+        [self send: seq msg: msg post: Post{}];
+      });
       return true;
     }
 
@@ -740,9 +751,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   if (cmd.name == "getFSConstants") {
     dispatch_async(queue, ^{
       auto constants = self.core->getFSConstants();
-      dispatch_async(dispatch_get_main_queue(), ^{
-        [self send: seq msg: constants post: Post{}];
-      });
+      [self send: seq msg: constants post: Post{}];
     });
     return true;
   }
@@ -752,9 +761,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
     dispatch_async(queue, ^{
       self.core->fsRmdir(seq, path, [&](auto seq, auto msg, auto post) {
-        dispatch_async(dispatch_get_main_queue(), ^{
-          [self send: seq msg: msg post: post];
-        });
+        [self send: seq msg: msg post: post];
       });
     });
     return true;
@@ -768,9 +775,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
     dispatch_async(queue, ^{
       self.core->fsOpen(seq, cid, path, flags, mode, [&](auto seq, auto msg, auto post) {
-        dispatch_async(dispatch_get_main_queue(), ^{
-          [self send: seq msg: msg post: post];
-        });
+        [self send: seq msg: msg post: post];
       });
     });
     return true;
@@ -781,9 +786,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
     dispatch_async(queue, ^{
       self.core->fsClose(seq, id, [&, id](auto seq, auto msg, auto post) {
-        dispatch_async(dispatch_get_main_queue(), ^{
-          [self send: seq msg: msg post: post];
-        });
+        [self send: seq msg: msg post: post];
       });
     });
     return true;
@@ -794,9 +797,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
     dispatch_async(queue, ^{
       self.core->fsCloseOpenDescriptor(seq, id, [&, id](auto seq, auto msg, auto post) {
-        dispatch_async(dispatch_get_main_queue(), ^{
-          [self send: seq msg: msg post: post];
-        });
+        [self send: seq msg: msg post: post];
       });
     });
     return true;
@@ -805,9 +806,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   if (cmd.name == "fsCloseOpenDescriptors") {
     dispatch_async(queue, ^{
       self.core->fsCloseOpenDescriptors(seq, [&](auto seq, auto msg, auto post) {
-        dispatch_async(dispatch_get_main_queue(), ^{
-          [self send: seq msg: msg post: post];
-        });
+        [self send: seq msg: msg post: post];
       });
     });
     return true;
@@ -820,9 +819,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
     dispatch_async(queue, ^{
       self.core->fsRead(seq, id, size, offset, [&](auto seq, auto msg, auto post) {
-        dispatch_async(dispatch_get_main_queue(), ^{
-          [self send: seq msg: msg post: post];
-        });
+        [self send: seq msg: msg post: post];
       });
     });
     return true;
@@ -834,9 +831,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
     dispatch_async(queue, ^{
       self.core->fsWrite(seq, id, buf, offset, [&](auto seq, auto msg, auto post) {
-        dispatch_async(dispatch_get_main_queue(), ^{
-          [self send: seq msg: msg post: post];
-        });
+        [self send: seq msg: msg post: post];
       });
     });
     return true;
@@ -847,9 +842,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
     dispatch_async(queue, ^{
       self.core->fsStat(seq, path, [&](auto seq, auto msg, auto post) {
-        dispatch_async(dispatch_get_main_queue(), ^{
-          [self send: seq msg: msg post: post];
-        });
+        [self send: seq msg: msg post: post];
       });
     });
     return true;
@@ -860,9 +853,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
     dispatch_async(queue, ^{
       self.core->fsFStat(seq, id, [&](auto seq, auto msg, auto post) {
-        dispatch_async(dispatch_get_main_queue(), ^{
-          [self send: seq msg: msg post: post];
-        });
+        [self send: seq msg: msg post: post];
       });
     });
     return true;
@@ -873,9 +864,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
     dispatch_async(queue, ^{
       self.core->fsUnlink(seq, path, [&](auto seq, auto msg, auto post) {
-        dispatch_async(dispatch_get_main_queue(), ^{
-          [self send: seq msg: msg post: post];
-        });
+        [self send: seq msg: msg post: post];
       });
     });
     return true;
@@ -887,9 +876,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
     dispatch_async(queue, ^{
       self.core->fsRename(seq, src, dst, [&](auto seq, auto msg, auto post) {
-        dispatch_async(dispatch_get_main_queue(), ^{
-          [self send: seq msg: msg post: post];
-        });
+        [self send: seq msg: msg post: post];
       });
     });
     return true;
@@ -902,9 +889,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
     dispatch_async(queue, ^{
       self.core->fsCopyFile(seq, src, dst, flags, [&](auto seq, auto msg, auto post) {
-        dispatch_async(dispatch_get_main_queue(), ^{
-          [self send: seq msg: msg post: post];
-        });
+        [self send: seq msg: msg post: post];
       });
     });
     return true;
@@ -916,9 +901,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
     dispatch_async(queue, ^{
       self.core->fsMkdir(seq, path, mode, [&](auto seq, auto msg, auto post) {
-        dispatch_async(dispatch_get_main_queue(), ^{
-          [self send: seq msg: msg post: post];
-        });
+        [self send: seq msg: msg post: post];
       });
     });
     return true;
@@ -930,9 +913,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
     dispatch_async(queue, ^{
       self.core->fsOpendir(seq, id, path, [&](auto seq, auto msg, auto post) {
-        dispatch_async(dispatch_get_main_queue(), ^{
-          [self send: seq msg: msg post: post];
-        });
+        [self send: seq msg: msg post: post];
       });
     });
     return true;
@@ -944,9 +925,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
     dispatch_async(queue, ^{
       self.core->fsReaddir(seq, id, entries, [&](auto seq, auto msg, auto post) {
-        dispatch_async(dispatch_get_main_queue(), ^{
-          [self send: seq msg: msg post: post];
-        });
+        [self send: seq msg: msg post: post];
       });
     });
     return true;
@@ -957,9 +936,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
     dispatch_async(queue, ^{
       self.core->fsClosedir(seq, id, [&, id](auto seq, auto msg, auto post) {
-        dispatch_async(dispatch_get_main_queue(), ^{
-          [self send: seq msg: msg post: post];
-        });
+        [self send: seq msg: msg post: post];
       });
     });
     return true;
@@ -1001,7 +978,9 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
           "message": "not connected"
         }
       })MSG");
-      [self send: seq msg: msg post: Post{}];
+      dispatch_async(queue, ^{
+        [self send: seq msg: msg post: Post{}];
+      });
     }
 
     PeerInfo info;
@@ -1026,41 +1005,41 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   }
 
   if (cmd.name == "getNetworkInterfaces") {
-    auto msg = self.core->getNetworkInterfaces();
-    dispatch_async(dispatch_get_main_queue(), ^{
+    dispatch_async(queue, ^{
+      auto msg = self.core->getNetworkInterfaces();
       [self send: seq msg: msg post: Post{} ];
     });
     return true;
   }
 
   if (cmd.name == "getPlatformOS") {
-    auto msg = SSC::format(R"JSON({
-      "data": "$S"
-    })JSON", SSC::platform.os);
+    dispatch_async(queue, ^{
+      auto msg = SSC::format(R"JSON({
+        "data": "$S"
+      })JSON", SSC::platform.os);
 
-    dispatch_async(dispatch_get_main_queue(), ^{
       [self send: seq msg: msg post: Post{} ];
     });
     return true;
   }
 
   if (cmd.name == "getPlatformType") {
-    auto msg = SSC::format(R"JSON({
-      "data": "$S"
-    })JSON", SSC::platform.os);
+    dispatch_async(queue, ^{
+      auto msg = SSC::format(R"JSON({
+        "data": "$S"
+      })JSON", SSC::platform.os);
 
-    dispatch_async(dispatch_get_main_queue(), ^{
       [self send: seq msg: msg post: Post{} ];
     });
     return true;
   }
 
   if (cmd.name == "getPlatformArch") {
-    auto msg = SSC::format(R"JSON({
-      "data": "$S"
-    })JSON", SSC::platform.arch);
+    dispatch_async(queue, ^{
+      auto msg = SSC::format(R"JSON({
+        "data": "$S"
+      })JSON", SSC::platform.arch);
 
-    dispatch_async(dispatch_get_main_queue(), ^{
       [self send: seq msg: msg post: Post{} ];
     });
     return true;
@@ -1071,9 +1050,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
     dispatch_async(queue, ^{
       self.core->readStop(seq, clientId, [&](auto seq, auto msg, auto post) {
-        dispatch_async(dispatch_get_main_queue(), ^{
-          [self send: seq msg: msg post: post];
-        });
+        [self send: seq msg: msg post: post];
       });
     });
     return true;
@@ -1084,9 +1061,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
     dispatch_async(queue, ^{
       self.core->shutdown(seq, clientId, [&](auto seq, auto msg, auto post) {
-        dispatch_async(dispatch_get_main_queue(), ^{
-          [self send: seq msg: msg post: post];
-        });
+        [self send: seq msg: msg post: post];
       });
     });
     return true;
@@ -1104,9 +1079,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
     dispatch_async(queue, ^{
       self.core->sendBufferSize(seq, clientId, size, [&](auto seq, auto msg, auto post) {
-        dispatch_async(dispatch_get_main_queue(), ^{
-          [self send: seq msg: msg post: post];
-        });
+        [self send: seq msg: msg post: post];
       });
     });
     return true;
@@ -1124,9 +1097,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
     dispatch_async(queue, ^{
       self.core->recvBufferSize(seq, clientId, size, [&](auto seq, auto msg, auto post) {
-        dispatch_async(dispatch_get_main_queue(), ^{
-          [self send: seq msg: msg post: post];
-        });
+        [self send: seq msg: msg post: post];
       });
     });
     return true;
@@ -1137,9 +1108,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
     dispatch_async(queue, ^{
       self.core->close(seq, clientId, [&](auto seq, auto msg, auto post) {
-        dispatch_async(dispatch_get_main_queue(), ^{
-          [self send: seq msg: msg post: post];
-        });
+        [self send: seq msg: msg post: post];
       });
     });
     return true;
@@ -1182,9 +1151,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
     dispatch_async(queue, ^{
       self.core->udpSend(seq, clientId, buf, offset, len, port, (const char*) ip.c_str(), [&](auto seq, auto msg, auto post) {
-        dispatch_async(dispatch_get_main_queue(), ^{
-          [self send: seq msg: msg post: post];
-        });
+        [self send: seq msg: msg post: post];
       });
     });
     return true;
@@ -1195,9 +1162,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
     dispatch_async(queue, ^{
       self.core->tcpSend(clientId, buf, [&](auto seq, auto msg, auto post) {
-        dispatch_async(dispatch_get_main_queue(), ^{
-          [self send: seq msg: msg post: post];
-        });
+        [self send: seq msg: msg post: post];
       });
     });
     return true;
@@ -1221,9 +1186,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
     dispatch_async(queue, ^{
       self.core->tcpConnect(seq, clientId, port, ip, [&](auto seq, auto msg, auto post) {
-        dispatch_async(dispatch_get_main_queue(), ^{
-          [self send: seq msg: msg post: post];
-        });
+        [self send: seq msg: msg post: post];
       });
     });
     return true;
@@ -1235,9 +1198,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
     dispatch_async(queue, ^{
       self.core->tcpSetKeepAlive(seq, clientId, timeout, [&](auto seq, auto msg, auto post) {
-        dispatch_async(dispatch_get_main_queue(), ^{
-          [self send: seq msg: msg post: post];
-        });
+        [self send: seq msg: msg post: post];
       });
     });
     return true;
@@ -1249,9 +1210,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
     dispatch_async(queue, ^{
       self.core->tcpSetTimeout(seq, clientId, timeout, [&](auto seq, auto msg, auto post) {
-        dispatch_async(dispatch_get_main_queue(), ^{
-          [self send: seq msg: msg post: post];
-        });
+        [self send: seq msg: msg post: post];
       });
     });
     return true;
@@ -1338,9 +1297,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
     dispatch_async(queue, ^{
       self.core->tcpBind(seq, serverId, ip, port, [&](auto seq, auto msg, auto post) {
-        dispatch_async(dispatch_get_main_queue(), ^{
-          [self send: seq msg: msg post: post];
-        });
+        [self send: seq msg: msg post: post];
       });
     });
 
@@ -1352,9 +1309,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
     dispatch_async(queue, ^{
       self.core->dnsLookup(seq, hostname, [&](auto seq, auto msg, auto post) {
-        dispatch_async(dispatch_get_main_queue(), ^{
-          [self send: seq msg: msg post: post];
-        });
+        [self send: seq msg: msg post: post];
       });
     });
     return true;
