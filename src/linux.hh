@@ -568,6 +568,8 @@ namespace SSC {
   }
 
   void Bridge::send (Parse &cmd, std::string seq, std::string msg, Post post) {
+    std::lock_guard<std::recursive_mutex> guard(SSC::descriptorsMutex);
+
     if (cmd.index == -1) {
       // @TODO(jwerle): print warning
       return;
@@ -732,6 +734,8 @@ namespace SSC {
       G_OBJECT(webview),
       "load-changed",
       G_CALLBACK(+[](WebKitWebView* wv, WebKitLoadEvent event, gpointer arg) {
+        std::lock_guard<std::recursive_mutex> guard(SSC::descriptorsMutex);
+
         auto *window = static_cast<Window*>(arg);
         auto core = window->app.bridge.core;
 
@@ -739,6 +743,7 @@ namespace SSC {
           window->app.isReady = false;
 
           if (window->opts.debug) {
+
             if (SSC::descriptors.size() > 0) {
               std::cout
                 << "• WebView reloaded with "
