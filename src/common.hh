@@ -311,7 +311,7 @@ namespace SSC {
         "  const uri = `ipc://log?index=${index}&value=${value}`;   \n"
         "  window.external.invoke(uri);                             \n"
         "};                                                         \n"
-        "console.warn = console.error = console.debug = console.log;\n";
+        "console.warn = console.error = console.log;                \n";
     }
 
     for (auto const &tuple : appData) {
