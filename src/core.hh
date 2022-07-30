@@ -307,7 +307,7 @@ namespace SSC {
       void shutdown (String seq, uint64_t clientId, Cb cb) const;
       void readStop (String seq, uint64_t clientId, Cb cb) const;
 
-      void dnsLookup (String seq, String hostname, Cb cb) const;
+      void dnsLookup (String seq, uint64_t id, String hostname, Cb cb) const;
       String getNetworkInterfaces () const;
 
       Task getTask (String id);
@@ -2554,6 +2554,8 @@ namespace SSC {
     int err = uv_udp_recv_start(server->udp, allocate, [](uv_udp_t *handle, ssize_t nread, const uv_buf_t *buf, const struct sockaddr *addr, unsigned flags) {
       Server *server = (Server*)handle->data;
 
+      NSLog(@"BYTES READ -> %i", (int)nread);
+
       if (nread == UV_EOF) {
         auto msg = SSC::format(R"MSG({
           "serverId": "$S",
@@ -2583,10 +2585,12 @@ namespace SSC {
           "source": "udp",
           "serverId": "$S",
           "event": "udpReadStart",
+          "bytes": $i,
           "port": $i,
           "ip": "$S"
-        })MSG", std::to_string(server->serverId), port, ip);
+        })MSG", std::to_string(server->serverId), post.length, port, ip);
 
+        NSLog(@"READ -> %s", msg.c_str());
         server->cb("-1", msg, post);
       }
     });
@@ -2608,7 +2612,7 @@ namespace SSC {
     runDefaultLoop();
   }
 
-  void Core::dnsLookup (String seq, String hostname, Cb cb) const {
+  void Core::dnsLookup (String seq, uint64_t id, String hostname, Cb cb) const {
     auto ctxId = SSC::rand64();
     GenericContext* ctx = contexts[ctxId] = new GenericContext;
     ctx->id = ctxId;
@@ -2643,7 +2647,13 @@ namespace SSC {
       uv_ip4_name((struct sockaddr_in*) res->ai_addr, addr, 16);
       String ip(addr, 17);
 
-      auto msg = SSC::format(R"MSG({ "data": "$S" })MSG", ip);
+      auto msg = SSC::format(R"MSG({
+        "data": {
+          "id": "$S",
+          "ip": "$S"
+        }
+      })MSG", std::to_string(id), ip);
+
       ctx->cb(ctx->seq, msg, Post{});
       contexts.erase(ctx->id);
 

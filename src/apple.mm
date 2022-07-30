@@ -1341,9 +1341,10 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
   if (cmd.name == "dnsLookup") {
     auto hostname = cmd.get("hostname");
+    auto xId = cmd.get("id");
 
     dispatch_async(queue, ^{
-      self.core->dnsLookup(seq, hostname, [&](auto seq, auto msg, auto post) {
+      self.core->dnsLookup(seq, xId, hostname, [&](auto seq, auto msg, auto post) {
         [self send: seq msg: msg post: post];
       });
     });
