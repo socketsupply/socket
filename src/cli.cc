@@ -51,7 +51,8 @@ int runApp (const fs::path& path, const std::string& args) {
   }
   auto runner = trim(std::string(STR_VALUE(CMD_RUNNER)));
   auto prefix = runner.size() > 0 ? runner + std::string(" ") : runner;
-  return WEXITSTATUS(std::system((prefix + cmd + " " + args).c_str()));
+  auto status = std::system((prefix + cmd + " " + args).c_str());
+  return WEXITSTATUS(status);
 }
 
 void runIOSSimulator (const fs::path& path, Map& settings) {
