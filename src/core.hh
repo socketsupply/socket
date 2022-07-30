@@ -2634,10 +2634,11 @@ namespace SSC {
       if (status < 0) {
         auto msg = SSC::format(R"MSG({
           "err": {
+            "id": "$S",
             "code": "$S",
             "message": "$S"
           }
-        })MSG", String(uv_err_name((int)status)), String(uv_strerror(status)));
+        })MSG", std::to_string(id), String(uv_err_name((int)status)), String(uv_strerror(status)));
         ctx->cb(ctx->seq, msg, Post{});
         contexts.erase(ctx->id);
         return;
