@@ -696,8 +696,12 @@ namespace SSC {
     [NSApplication sharedApplication];
     [NSApp setActivationPolicy: NSApplicationActivationPolicyRegular];
 
-    // Sets the app as the active app
-    [NSApp activateIgnoringOtherApps: YES];
+    if (opts.headless) {
+      [NSApp activateIgnoringOtherApps: NO];
+    } else {
+      // Sets the app as the active app
+      [NSApp activateIgnoringOtherApps: YES];
+    }
 
     // Add webview to window
     [window setContentView: webview];
@@ -715,11 +719,13 @@ namespace SSC {
   }
 
   void Window::show (const std::string& seq) {
-    if (this->opts.headless == false) {
+    if (this->opts.headless == true) {
+      [NSApp activateIgnoringOtherApps: NO];
+    } else {
       [window makeKeyAndOrderFront: nil];
+      [NSApp activateIgnoringOtherApps: YES];
     }
 
-    [NSApp activateIgnoringOtherApps: YES];
 
     if (seq.size() > 0) {
       auto index = std::to_string(this->opts.index);
