@@ -748,7 +748,12 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   }
 
   if (cmd.name == "log") {
-    DebugLog(@"%s", cmd.get("value").c_str());
+    auto value = decodeURIComponent(cmd.get("value"));
+    if (platform.os == "mac") {
+      printf("%s\n", value.c_str());
+    } else {
+      DebugLog(@"%s", value.c_str());
+    }
     return true;
   }
 
@@ -959,8 +964,6 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
       return true;
     }
   }
-
-  DebugLog(@"COMMAND %s", msg.c_str());
 
   if (cmd.name == "external") {
     NSString *url = [NSString stringWithUTF8String:SSC::decodeURIComponent(cmd.get("value")).c_str()];
@@ -1347,7 +1350,6 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     return true;
   }
 
-  DebugLog(@"%s", msg.c_str());
   return false;
 }
 @end

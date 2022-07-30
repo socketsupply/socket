@@ -715,7 +715,7 @@ namespace SSC {
   }
 
   void Window::show (const std::string& seq) {
-    if (this->opts.headless === false) {
+    if (this->opts.headless == false) {
       [window makeKeyAndOrderFront: nil];
     }
 
