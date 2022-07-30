@@ -225,6 +225,16 @@ namespace SSC {
         });
 
         if (!invoked) {
+          auto windowFactory = reinterpret_cast<WindowFactory<Window, App> *>(app->getWindowFactory());
+
+          if (windowFactory) {
+            auto window = windowFactory->getWindow(cmd.index);
+
+            if (window && window->onMessage) {
+              window->onMessage(msg);
+            }
+          }
+
           auto stream = g_memory_input_stream_new_from_data("", 0, 0);
           auto response = webkit_uri_scheme_response_new(stream, 0);
 
