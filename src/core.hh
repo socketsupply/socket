@@ -2635,6 +2635,7 @@ namespace SSC {
         auto msg = SSC::format(R"MSG({
           "err": {
             "id": "$S",
+            "source": "dnsLookup",
             "code": "$S",
             "message": "$S"
           }
@@ -2650,6 +2651,7 @@ namespace SSC {
 
       auto msg = SSC::format(R"MSG({
         "data": {
+          "source": "dnsLookup",
           "id": "$S",
           "ip": "$S"
         }
