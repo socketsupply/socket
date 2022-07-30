@@ -33,6 +33,7 @@ general options:
   --port=n    load "index.html" from "http://localhost:n"
   -o          only run user build step
   -r          run after building
+  --headless  run headlessly
   --test=1    indicate test mode
 
 packaging options:

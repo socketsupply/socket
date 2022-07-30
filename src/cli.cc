@@ -639,7 +639,7 @@ int main (const int argc, const char* argv[]) {
     exit(0);
   });
 
-  createSubcommand("compile", { "--platform", "--port", "--quiet", "-o", "-r", "--prod", "-p", "-c", "-s", "-e", "-n", "--test=1" }, true, [&](const std::span<const char *>& options) -> void {
+  createSubcommand("compile", { "--platform", "--port", "--quiet", "-o", "-r", "--prod", "-p", "-c", "-s", "-e", "-n", "--test=1", "--headless" }, true, [&](const std::span<const char *>& options) -> void {
     bool flagRunUserBuild = false;
     bool flagAppStore = false;
     bool flagCodeSign = false;
@@ -700,8 +700,12 @@ int main (const int argc, const char* argv[]) {
         flagAppStore = true;
       }
 
-      if (is(arg, "--test=1")) {
-        argvForward = "--test=1";
+      if (is(arg, "--test=1") || is(arg, "--test")) {
+        argvForward += "--test=1";
+      }
+
+      if (is(arg, "--headless")) {
+        argvForward += "--headless";
       }
 
       if (is(arg, "--quiet")) {
@@ -2138,7 +2142,7 @@ int main (const int argc, const char* argv[]) {
     exit(exitCode);
   });
 
-  createSubcommand("run", { "--platform", "--prod", "--test=1" }, true, [&](const std::span<const char *>& options) -> void {
+  createSubcommand("run", { "--platform", "--prod", "--test=1", "--headless" }, true, [&](const std::span<const char *>& options) -> void {
     std::string argvForward = "";
     bool isIosSimulator = false;
     Paths paths = getPaths(platform.os);
@@ -2152,10 +2156,16 @@ int main (const int argc, const char* argv[]) {
           exit(1);
         }
       }
-      if (is(option, "--test=1")) {
-        argvForward = "--test=1";
+
+      if (is(option, "--test=1") || is(option, "--test")) {
+        argvForward += "--test=1";
+      }
+
+      if (is(option, "--headless")) {
+        argvForward += "--headless";
       }
     }
+
     if (isIosSimulator) {
       std::string app = (settings["name"] + ".app");
       auto pathToApp = paths.platformSpecificOutputPath / app;

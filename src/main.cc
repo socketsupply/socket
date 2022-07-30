@@ -60,6 +60,7 @@ MAIN {
   std::stringstream argvForward;
 
   bool isCommandMode = false;
+  bool isHeadless = false;
   bool isTest = false;
 
   int exitCode = 0;
@@ -98,6 +99,10 @@ MAIN {
 
     if (versionRequested) {
       wantsVersion = true;
+    }
+
+    if (s.find("--headless") == 0) {
+      isHeadless = true;
     }
 
     if (s.find("--test") == 0) {
@@ -462,6 +467,12 @@ MAIN {
       return;
     }
 
+    if (cmd.name == "log" || cmd.name == "stdout") {
+      auto value = cmd.get("value");
+      writeToStdout(decodeURIComponent(value));
+      return;
+    }
+
     #if IOS == 0 && ANDROID == 0
       if (cmd.name == "bootstrap") {
         auto src = appData[platform.os + "_bootstrap_src"].c_str();
@@ -655,6 +666,7 @@ MAIN {
   windowFactory.configure(WindowFactoryOptions {
     .defaultHeight = height,
     .defaultWidth = width,
+    .headless = isHeadless,
     .isTest = isTest,
     .argv = argvArray.str(),
     .cwd = cwd,

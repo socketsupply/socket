@@ -211,7 +211,8 @@ namespace SSC {
     int debug = 0;
     int port = 0;
     bool isTest = false;
-    bool forwardConsole = 0;
+    bool headless = false;
+    bool forwardConsole = false;
     std::string cwd = "";
     std::string executable = "";
     std::string title = "";
@@ -279,7 +280,7 @@ namespace SSC {
     std::string cleanCwd = std::string(opts.cwd);
     std::replace(cleanCwd.begin(), cleanCwd.end(), '\\', '/');
 
-    return std::string(
+    auto preload = std::string(
       "(() => {"
       "  window.system = {};\n"
       "  window.process = {};\n"
@@ -294,12 +295,35 @@ namespace SSC {
       "  window.process.arch = `" + platform.arch + "`;\n"
       "  window.process.env = Object.fromEntries(new URLSearchParams(`" +  opts.env + "`));\n"
       "  window.process.openFds = new Map();\n"
+      "  window.process.config = {};\n"
       "  window.process.argv = [" + opts.argv + "];\n"
       "  " + gPreload + "\n"
       "  " + opts.preload + "\n"
-      "})()\n"
-      "//# sourceURL=preload.js"
     );
+
+    if (opts.headless) {
+      preload += "                                                  \n"
+        "console.log = (...args) => {                               \n"
+        "  const { index } = window.process;                        \n"
+        "  const value = args                                       \n"
+        "    .map(encodeURIComponent)                               \n"
+        "    .join('');                                             \n"
+        "  const uri = `ipc://log?index=${index}&value=${value}`;   \n"
+        "  window.external.invoke(uri);                             \n"
+        "};                                                         \n"
+        "console.warn = console.error = console.debug = console.log;\n";
+    }
+
+    for (auto const &tuple : appData) {
+      auto key = tuple.first;
+      auto value = tuple.second;
+      preload += "  window.process.config['" + key  + "'] = '" + value + "';\n";
+    }
+
+    preload += "  Object.seal(Object.freeze(window.process.config));\n";
+    preload += "})()\n";
+    preload += "//# sourceURL=preload.js";
+    return preload;
   }
 
   std::string emitToRenderProcess(const std::string& event, const std::string& value) {
@@ -824,6 +848,7 @@ namespace SSC {
   struct WindowFactoryOptions {
     int defaultHeight = 0;
     int defaultWidth = 0;
+    bool headless = false;
     bool isTest;
     std::string argv = "";
     std::string cwd = "";
@@ -980,6 +1005,7 @@ namespace SSC {
         this->options.defaultWidth = configuration.defaultWidth;
         this->options.onMessage = configuration.onMessage;
         this->options.onExit = configuration.onExit;
+        this->options.headless = configuration.headless;
         this->options.isTest = configuration.isTest;
         this->options.argv = configuration.argv;
         this->options.cwd = configuration.cwd;
@@ -1115,6 +1141,7 @@ namespace SSC {
 #endif
           .port = opts.port,
           .isTest = this->options.isTest,
+          .headless = this->options.headless || opts.headless || appData["headless"] == "true",
           .forwardConsole = appData["forward_console"] == "true",
 
           .cwd = this->options.cwd,

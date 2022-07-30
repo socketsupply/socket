@@ -1176,31 +1176,33 @@ namespace SSC {
   }
 
   void Window::show (const std::string& seq) {
-    ShowWindow(window, SW_SHOWNORMAL);
-    UpdateWindow(window);
+    if (this->opts.headless == false) {
+      ShowWindow(window, SW_SHOWNORMAL);
+      UpdateWindow(window);
 
-    BringWindowToTop(window);
+      BringWindowToTop(window);
 
-    RECT r, r1;
-    GetWindowRect(window, &r);
-    GetWindowRect(GetDesktopWindow(), &r1);
+      RECT r, r1;
+      GetWindowRect(window, &r);
+      GetWindowRect(GetDesktopWindow(), &r1);
 
-    MoveWindow(window, (
-      (r1.right-r1.left) - (r.right-r.left)) / 2,
-      ((r1.bottom-r1.top) - (r.bottom-r.top)) / 2,
-      (r.right-r.left),
-      (r.bottom-r.top),
-      0
-    );
+      MoveWindow(window, (
+        (r1.right-r1.left) - (r.right-r.left)) / 2,
+        ((r1.bottom-r1.top) - (r.bottom-r.top)) / 2,
+        (r.right-r.left),
+        (r.bottom-r.top),
+        0
+      );
 
-    RECT rc;
-    rc.top = 0;
-    rc.left = 0;
-    rc.bottom = 0;
-    rc.right = 0;
-    InvalidateRect(this->window, &rc, true);
-    DrawMenuBar(this->window);
-    RedrawWindow(this->window, NULL, NULL, RDW_INVALIDATE | RDW_ERASE);
+      RECT rc;
+      rc.top = 0;
+      rc.left = 0;
+      rc.bottom = 0;
+      rc.right = 0;
+      InvalidateRect(this->window, &rc, true);
+      DrawMenuBar(this->window);
+      RedrawWindow(this->window, NULL, NULL, RDW_INVALIDATE | RDW_ERASE);
+    }
 
     if (seq.size() > 0) {
       auto index = std::to_string(this->opts.index);

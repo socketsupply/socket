@@ -715,7 +715,10 @@ namespace SSC {
   }
 
   void Window::show (const std::string& seq) {
-    [window makeKeyAndOrderFront: nil];
+    if (this->opts.headless === false) {
+      [window makeKeyAndOrderFront: nil];
+    }
+
     [NSApp activateIgnoringOtherApps: YES];
 
     if (seq.size() > 0) {

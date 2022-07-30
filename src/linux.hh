@@ -1122,7 +1122,6 @@ namespace SSC {
       "" + createPreload(opts) + "\n"
     );
 
-
     WebKitUserContentManager *manager =
       webkit_web_view_get_user_content_manager(WEBKIT_WEB_VIEW(webview));
 
@@ -1202,8 +1201,11 @@ namespace SSC {
 
   void Window::show(const std::string &seq) {
     gtk_widget_realize(this->window);
-    gtk_widget_show_all(this->window);
-    gtk_window_present(GTK_WINDOW(this->window));
+
+    if (this->opts.headless == false) {
+      gtk_widget_show_all(this->window);
+      gtk_window_present(GTK_WINDOW(this->window));
+    }
 
     if (seq.size() > 0) {
       auto index = std::to_string(this->opts.index);
