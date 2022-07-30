@@ -51,7 +51,7 @@ int runApp (const fs::path& path, const std::string& args) {
   }
   auto runner = trim(std::string(STR_VALUE(CMD_RUNNER)));
   auto prefix = runner.size() > 0 ? runner + std::string(" ") : runner;
-  return std::system((prefix + cmd + " " + args).c_str());
+  return WEXITSTATUS(std::system((prefix + cmd + " " + args).c_str()));
 }
 
 void runIOSSimulator (const fs::path& path, Map& settings) {
@@ -763,6 +763,14 @@ int main (const int argc, const char* argv[]) {
 
     targetPlatform = targetPlatform.size() > 0 ? targetPlatform : platform.os;
     Paths paths = getPaths(targetPlatform);
+
+    auto executable = fs::path(settings["executable"] + (platform.win ? ".exe" : ""));
+    auto binaryPath = paths.pathBin / executable;
+
+    if (!fs::exists(binaryPath)) {
+      flagRunUserBuild = false;
+    }
+
     if (flagRunUserBuild == false && fs::exists(paths.platformSpecificOutputPath)) {
       auto p = fs::current_path() / fs::path(paths.platformSpecificOutputPath);
       try {
@@ -775,8 +783,6 @@ int main (const int argc, const char* argv[]) {
         exit(1);
       }
     }
-
-    auto executable = fs::path(settings["executable"] + (platform.win ? ".exe" : ""));
 
     std::string flags;
     std::string files;
@@ -1562,8 +1568,6 @@ int main (const int argc, const char* argv[]) {
 
       exit(0);
     }
-
-    auto binaryPath = paths.pathBin / executable;
 
     if (flagRunUserBuild == false) {
       std::stringstream compileCommand;
