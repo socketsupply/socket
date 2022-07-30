@@ -43,16 +43,64 @@ void log (const std::string s) {
   start = std::chrono::system_clock::now();
 }
 
-int runApp (const fs::path& path, const std::string& args) {
+int runApp (const fs::path& path, const std::string& args, bool headless) {
   auto cmd = path.string();
+  int status = 0;
+
   if (!fs::exists(path)) {
     log("executable not found: " + cmd);
     return 1;
   }
+
   auto runner = trim(std::string(STR_VALUE(CMD_RUNNER)));
   auto prefix = runner.size() > 0 ? runner + std::string(" ") : runner;
-  auto status = std::system((prefix + cmd + " " + args).c_str());
+
+  if (headless) {
+    auto runner = appData["headless_runner"];
+    auto runnerFlags = appData["headless_runner_flags"];
+
+    std::string headlessCommand = "";
+
+    if (runner.size() == 0) {
+      runner = appData["headless_" + platform.os + "_runner"];
+    }
+
+    if (runnerFlags.size() == 0) {
+      runnerFlags = appData["headless_" + platform.os + "_runner_flags"];
+    }
+
+    if (platform.linux) {
+      // use xvfb for linux as a default
+      if (runner.size() == 0) {
+        runner = "xvfb-run";
+        status = std::system((runner + " --help >/dev/null").c_str());
+        if (WEXITSTATUS(status) != 0) {
+          runner = "";
+        }
+      }
+
+      if (runnerFlags.size() == 0) {
+        // use sane defaults if 'xvfb-run' is used
+        if (runner == "xvfb-run") {
+          runnerFlags = "--server-args='-screen 0 1920x1080x24'";
+        }
+      }
+
+      if (runner != "false") {
+        headlessCommand = runner + " " + runnerFlags + " ";
+      }
+    }
+
+    status = std::system((headlessCommand + prefix + cmd + " " + args).c_str());
+  } else {
+    status = std::system((prefix + cmd + " " + args).c_str());
+  }
+
   return WEXITSTATUS(status);
+}
+
+int runApp (const fs::path& path, const std::string& args) {
+  return runApp(path, args, false);
 }
 
 void runIOSSimulator (const fs::path& path, Map& settings) {
@@ -644,6 +692,7 @@ int main (const int argc, const char* argv[]) {
     bool flagRunUserBuild = false;
     bool flagAppStore = false;
     bool flagCodeSign = false;
+    bool flagHeadless = false;
     bool flagShouldRun = false;
     bool flagEntitlements = false;
     bool flagShouldNotarize = false;
@@ -707,6 +756,7 @@ int main (const int argc, const char* argv[]) {
 
       if (is(arg, "--headless")) {
         argvForward += "--headless";
+        flagHeadless = true;
       }
 
       if (is(arg, "--quiet")) {
@@ -2141,7 +2191,7 @@ int main (const int argc, const char* argv[]) {
 
     int exitCode = 0;
     if (flagShouldRun) {
-      exitCode = runApp(binaryPath, argvForward);
+      exitCode = runApp(binaryPath, argvForward, flagHeadless);
     }
 
     exit(exitCode);
@@ -2150,6 +2200,7 @@ int main (const int argc, const char* argv[]) {
   createSubcommand("run", { "--platform", "--prod", "--test=1", "--headless" }, true, [&](const std::span<const char *>& options) -> void {
     std::string argvForward = "";
     bool isIosSimulator = false;
+    bool flagHeadless = false;
     Paths paths = getPaths(platform.os);
     for (auto const& option : options) {
       auto targetPlatform = optionValue(option, "--platform");
@@ -2168,6 +2219,7 @@ int main (const int argc, const char* argv[]) {
 
       if (is(option, "--headless")) {
         argvForward += "--headless";
+        flagHeadless = true;
       }
     }
 
@@ -2177,7 +2229,7 @@ int main (const int argc, const char* argv[]) {
       runIOSSimulator(pathToApp, settings);
     } else {
       auto executable = fs::path(settings["executable"] + (platform.win ? ".exe" : ""));
-      auto exitCode = runApp(paths.pathBin / executable, argvForward);
+      auto exitCode = runApp(paths.pathBin / executable, argvForward, flagHeadless);
       exit(exitCode);
     }
   });
