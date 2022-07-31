@@ -773,6 +773,7 @@ namespace SSC {
 
     public:
       bool shouldExit = false;
+      bool fromSSC = false;
       ExitCallback onExit = nullptr;
       void exit(int code);
       void setWindowFactory(void *windowFactory) {

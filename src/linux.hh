@@ -133,6 +133,7 @@ namespace SSC {
 
   class App : public IApp {
     public:
+      bool fromSSC = false;
       Bridge bridge;
       App(int);
 

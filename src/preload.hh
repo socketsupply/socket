@@ -175,11 +175,15 @@ constexpr auto gPreload = R"JS(
       },
 
       async send (body) {
-        const { seq, url } = this
+        const { method, seq, url } = this
         const index = window.process.index
 
         if (url?.protocol === 'ipc:') {
-          if (typeof body !== 'undefined' && typeof seq !== 'undefined') {
+          if (
+              /put|post/i.test(method) &&
+              typeof body !== 'undefined' &&
+              typeof seq !== 'undefined'
+           ) {
             if (/android/i.test(window.process?.platform)) {
               await window.external.invoke(`ipc://buffer.queue?seq=${seq}`, body)
               return send.call(this, null)
@@ -265,8 +269,8 @@ constexpr auto gPreloadDesktop = R"JS(
     return window._ipc.send('send', { value })
   }
 
-  window.system.exit = o => window._ipc.send('exit', o)
   window.system.openExternal = o => window._ipc.send('external', o)
+  window.system.exit = o => window._ipc.send('exit', o)
   window.system.setTitle = o => window._ipc.send('title', o)
   window.system.inspect = o => window.external.invoke(`ipc://inspect`)
   window.system.bootstrap = o => window.external.invoke(`ipc://bootstrap`)
@@ -381,6 +385,9 @@ constexpr auto gPreloadMobile = R"JS(
   window.system.openExternal = o => {
     window.external.invoke(`ipc://external?value=${encodeURIComponent(o)}`)
   }
+
+  window.system.exit = o => window._ipc.send('exit', o)
+  window.system.setTitle = o => window._ipc.send('title', o)
 )JS";
 
 #endif

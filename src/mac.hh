@@ -404,6 +404,7 @@ namespace SSC {
     NSAutoreleasePool* pool = [NSAutoreleasePool new];
 
     public:
+      bool fromSSC = false;
       App(int);
       int run();
       void kill();
@@ -476,7 +477,11 @@ namespace SSC {
   void App::kill () {
     // Distinguish window closing with app exiting
     shouldExit = true;
-    [NSApp terminate:nil];
+    // if we were not launched from the cli, just use `terminate()`
+    // exit code status will not be captured
+    if (!fromSSC) {
+      [NSApp terminate:nil];
+    }
   }
 
   void App::restart () {

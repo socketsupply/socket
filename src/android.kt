@@ -166,7 +166,7 @@ open class WebViewClient(activity: WebViewActivity) : android.webkit.WebViewClie
         val stream = java.io.PipedOutputStream()
         val message = IPCMessage(value)
         val response = android.webkit.WebResourceResponse(
-          "text/plain",
+          "application/octet-stream",
           "utf-8",
           java.io.PipedInputStream(stream)
         )
@@ -418,16 +418,12 @@ open class Bridge(activity: WebViewActivity) {
       message: IPCMessage,
       value: String,
       callback: (String, String) -> Unit,
-      throwError: (String, String) -> Unit
+      throwError: (String, String) -> String
     ): String? {
       val core = this.activity.core
       val bytes = message.bytes
 
       if (core == null) {
-        return null
-      }
-
-      if (message.bytes == null) {
         return null
       }
 
@@ -437,11 +433,10 @@ open class Bridge(activity: WebViewActivity) {
 
       when (message.command) {
         "buffer.queue" -> {
-          if (bytes == null) {
-            return null
+          if (bytes != null) {
+            this.buffers[message.seq] = bytes
           }
 
-          this.buffers[message.seq] = bytes
           return message.seq
         }
 
@@ -500,6 +495,38 @@ open class Bridge(activity: WebViewActivity) {
           }
 
           callback(message.seq, core.getPlatformOS())
+          return message.seq
+        }
+      }
+
+      return null
+    })
+
+    this.registerInterface("bluetooth", fun(
+      message: IPCMessage,
+      value: String,
+      callback: (String, String) -> Unit,
+      throwError: (String, String) -> String
+    ): String? {
+      val core = this.activity.core
+
+      if (core == null) {
+        return null
+      }
+
+      when (message.command) {
+        "bluetooth.start", "bluetooth-start" -> {
+          // @TODO
+          return message.seq
+        }
+
+        "bluetooth.subscribe", "bluetooth-subscribe" -> {
+          // @TODO
+          return message.seq
+        }
+
+        "bluetooth.publish", "bluetooth-publish" -> {
+          // @TODO
           return message.seq
         }
       }
@@ -596,6 +623,7 @@ open class Bridge(activity: WebViewActivity) {
           } else {
             core.fs.close(message.seq, id, fun(data: String) {
               callback(message.seq, data)
+              core.updateOpenDescriptorsInEnvironment()
             })
           }
 
@@ -657,6 +685,7 @@ open class Bridge(activity: WebViewActivity) {
 
             core.fs.open(seq, id, resolved.toString(), flags, mode, fun(data: String) {
               callback(message.seq, data)
+              core.updateOpenDescriptorsInEnvironment()
             })
           }
 
@@ -805,6 +834,16 @@ open class ExternalWebViewInterface(activity: WebViewActivity) {
       "log", "stdout" -> {
         android.util.Log.d(TAG, message.value)
         return null
+      }
+
+      "title" -> {
+        // noop
+        return null
+      }
+
+      "exit" -> {
+        android.util.Log.d(TAG, "__EXIT_SIGNAL__=${message.value}")
+        this.activity.finishAndRemoveTask()
       }
 
       "external", "openExternal" -> {

@@ -962,6 +962,7 @@ apply plugin: 'kotlin-android'
 
 android {
   compileSdkVersion 32
+  ndkVersion "25.0.8775105"
   flavorDimensions "default"
 
   defaultConfig {

@@ -44,6 +44,7 @@ namespace SSC {
 
   class App: public IApp {
     public:
+      bool fromSSC = false;
       MSG msg;
       WNDCLASSEX wcex;
       _In_ HINSTANCE hInstance;

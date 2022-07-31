@@ -175,6 +175,7 @@ jboolean NativeCore::ConfigureEnvironment () {
   }
 
   windowOptions.executable = this->config["executable"];
+  windowOptions.headless = this->config["headless"] == "true";
   windowOptions.version = this->config["version"];
   windowOptions.preload = gPreloadMobile;
   windowOptions.title = this->config["title"];
@@ -267,8 +268,13 @@ const char * NativeCore::GetJavaScriptPreloadSource () const {
   return this->javaScriptPreloadSource.c_str();
 }
 
-void NativeCore::UpdateOpenDescriptorsInEnvironment () const {
+void NativeCore::UpdateOpenDescriptorsInEnvironment () {
   std::lock_guard<std::recursive_mutex> guard(SSC::descriptorsMutex);
+  auto refs = this->GetRefs();
+  auto jvm = this->GetJavaVM();
+  JNIEnv *env = 0;
+
+  auto attached = jvm->AttachCurrentThread(&env, 0);
 
   std::stringstream js;
 
@@ -298,10 +304,14 @@ void NativeCore::UpdateOpenDescriptorsInEnvironment () const {
   }
 
   EvaluateJavaScriptInEnvironment(
-    this->env,
+    env,
     this->refs.core,
     env->NewStringUTF(js.str().c_str())
   );
+
+  if (attached) {
+    jvm->DetachCurrentThread();
+  }
 }
 
 #pragma NativeFileSystem
@@ -437,7 +447,6 @@ void NativeFileSystem::Close (
   auto core = reinterpret_cast<SSC::Core *>(this->core);
 
   core->fsClose(seq, id, [this, context](auto seq, auto data, auto post) {
-    this->UpdateOpenDescriptorsInEnvironment();
     context->fs->CallbackAndFinalizeContext(context, data);
   });
 }
@@ -467,7 +476,6 @@ void NativeFileSystem::Open (
   auto core = reinterpret_cast<SSC::Core *>(this->core);
 
   core->fsOpen(seq, id, path, flags, mode, [this, context](auto seq, auto data, auto post) {
-    this->UpdateOpenDescriptorsInEnvironment();
     context->fs->CallbackAndFinalizeContext(context, data);
   });
 }
@@ -1083,10 +1091,13 @@ extern "C" {
     auto js = core->createPost(
       NativeString(env, params).str(),
       SSC::Post{
+        .id = 0,
+        .ttl = 0,
+        .body = body,
         .length = size,
         .headers = NativeString(env, headers).str(),
-        .body = body,
-        .bodyNeedsFree = true}
+        .bodyNeedsFree = true
+      }
     );
 
     return env->NewStringUTF(js.c_str());

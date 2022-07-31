@@ -101,9 +101,9 @@ int runApp (const fs::path& path, const std::string& args, bool headless) {
       }
     }
 
-    status = std::system((headlessCommand + prefix + cmd + " " + args).c_str());
+    status = std::system((headlessCommand + prefix + cmd + " " + args + " --from-ssc").c_str());
   } else {
-    status = std::system((prefix + cmd + " " + args).c_str());
+    status = std::system((prefix + cmd + " " + args + " --from-ssc").c_str());
   }
 
   return WEXITSTATUS(status);
@@ -465,11 +465,10 @@ int main (const int argc, const char* argv[]) {
       paths.pathBin = { paths.platformSpecificOutputPath  / pathBase / "MacOS" };
       paths.pathResourcesRelativeToUserBuild = paths.platformSpecificOutputPath / "ui";
       return paths;
-    } else if (platform == "android" || platform == "android-simulator") {
-      auto relativeOutput = paths.platformSpecificOutputPath  / "android";
-      auto output = fs::absolute(targetPath) / relativeOutput;
+    } else if (platform == "android" || platform == "android-emulator") {
+      auto output = fs::absolute(targetPath) / paths.platformSpecificOutputPath;
       paths.pathResourcesRelativeToUserBuild = {
-        relativeOutput / "app" / "src" / "main" / "assets"
+        paths.platformSpecificOutputPath / "app" / "src" / "main" / "assets"
       };
       return paths;
     }
@@ -773,18 +772,20 @@ int main (const int argc, const char* argv[]) {
         flagQuietMode = true;
       }
 
-      targetPlatform = optionValue(arg, "--platform");
-      if (targetPlatform.size() > 0) {
-        if (targetPlatform == "ios") {
-          flagBuildForIOS = true;
-        } else if (targetPlatform == "android") {
-          flagBuildForAndroid = true;
-        } else if (targetPlatform == "android-emulator") {
-          flagBuildForAndroid = true;
-          flagBuildForAndroidEmulator = true;
-        } else if (targetPlatform == "ios-simulator") {
-          flagBuildForIOS = true;
-          flagBuildForSimulator = true;
+      if (targetPlatform.size() == 0) {
+        targetPlatform = optionValue(arg, "--platform");
+        if (targetPlatform.size() > 0) {
+          if (targetPlatform == "ios") {
+            flagBuildForIOS = true;
+          } else if (targetPlatform == "android") {
+            flagBuildForAndroid = true;
+          } else if (targetPlatform == "android-emulator") {
+            flagBuildForAndroid = true;
+            flagBuildForAndroidEmulator = true;
+          } else if (targetPlatform == "ios-simulator") {
+            flagBuildForIOS = true;
+            flagBuildForSimulator = true;
+          }
         }
       }
 
@@ -1546,32 +1547,77 @@ int main (const int argc, const char* argv[]) {
       auto androidHome = getEnv("ANDROID_HOME");
 
       if (androidHome.size() == 0) {
-        if (platform.os == "linux") {
-          androidHome = getEnv("HOME") + "/android";
-        } else if (platform.os == "mac") {
+        androidHome = appData["android_" + platform.os + "_home"];
+      }
+
+      if (androidHome.size() == 0) {
+        androidHome = appData["android_home"];
+      }
+
+      if (androidHome.size() == 0) {
+        if (!platform.win) {
+          auto cmd = std::string(
+            "dirname $(dirname $(readlink $(which sdkmanager 2>/dev/null) 2>/dev/null) 2>/dev/null) 2>/dev/null"
+          );
+
+          auto r = exec(cmd);
+
+          if (r.exitCode == 0) {
+            androidHome = trim(r.output);
+          }
+        }
+      }
+
+      if (androidHome.size() == 0) {
+        if (platform.mac) {
           androidHome = getEnv("HOME") + "/Library/Android/sdk";
-        } else if (platform.os == "win32") {
+        } else if (platform.unix) {
+          androidHome = getEnv("HOME") + "/android";
+        } else if (platform.win) {
           // TODO
         }
       }
 
-      #ifdef _WIN32
+      if (androidHome.size() > 0) {
+        #ifdef _WIN32
         setEnv((std::string("ANDROID_HOME=") + androidHome).c_str());
-      #else
+        #else
         setenv("ANDROID_HOME", androidHome.c_str(), 1);
-      #endif
+        #endif
+
+        log("warning: 'ANDROID_HOME' is set to '" + androidHome + "'");
+      }
 
       std::stringstream sdkmanager;
       std::stringstream packages;
       std::stringstream gradlew;
 
+      if (platform.unix) {
+        gradlew
+          << "ANDROID_HOME=" << androidHome << " ";
+      }
+
+      if (platform.mac && platform.arch == "arm64") {
+        log("warning: 'arm64' may be an unsupported archicture for the Android NDK which may cause the build to fail.");
+        log("         Please see https://stackoverflow.com/a/69555276 to work around this.");
+      }
+
       packages
-        << "ndk-bundle "
+        << "'ndk;25.0.8775105' "
+        << "'platform-tools' "
+        << "'platforms;android-32' "
+        << "'emulator' "
+        << "'patcher;v4' "
         << "'system-images;android-32;google_apis;x86_64' "
         << "'system-images;android-32;google_apis;arm64-v8a' ";
 
+      if (!platform.win) {
+        if (std::system("sdkmanager --version 2>&1 >/dev/null") != 0) {
+          sdkmanager << androidHome << "/cmdline-tools/latest/bin/";
+        }
+      }
+
       sdkmanager
-        << androidHome << "/cmdline-tools/latest/bin/"
         << "sdkmanager "
         << packages.str();
 
@@ -1612,10 +1658,15 @@ int main (const int argc, const char* argv[]) {
         std::stringstream avdmanager;
         std::string package = "'system-images;android-32;google_apis;x86_64' ";
 
+        if (!platform.win) {
+          if (std::system("avdmanager list 2>&1 >/dev/null") != 0) {
+            avdmanager << androidHome << "/cmdline-tools/latest/bin/";
+          }
+        }
+
         avdmanager
-          << androidHome << "/cmdline-tools/latest/bin/"
           << "avdmanager create avd "
-          << "--device 3 "
+          << "--device 1 "
           << "--force "
           << "--name SSCAVD "
           << "--abi google_apis/x86_64 "
@@ -1631,15 +1682,20 @@ int main (const int argc, const char* argv[]) {
         // the emulator must be running on device SSCAVD for now
         std::stringstream adb;
 
+        if (!platform.win) {
+          if (std::system("adb --version 2>&1 >/dev/null") != 0) {
+            adb << androidHome << "/platform-tools/";
+          }
+        }
+
         adb
-          << androidHome << "/platform-tools/"
           << "adb "
           << "install ";
 
         if (flagDebugMode) {
           adb << (app / "build" / "outputs" / "apk" / "dev" / "debug" / "app-dev-debug.apk").string();
         } else {
-          adb << (app / "build" / "outputs" / "apk" / "dev" / "live" / "app-dev-release-unsigned.apk").string();
+          adb << (app / "build" / "outputs" / "apk" / "dev" / "release" / "app-dev-release-unsigned.apk").string();
         }
 
         if (std::system(adb.str().c_str()) != 0) {
