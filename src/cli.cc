@@ -14,11 +14,12 @@
 #include <shlwapi.h>
 #include <strsafe.h>
 #include <comdef.h>
-#include <unistd.h>
 #include <AppxPackaging.h>
 #pragma comment(lib, "Shlwapi.lib")
 #pragma comment(lib, "Urlmon.lib")
 #define _stat stat
+#else
+#include <unistd.h>
 #endif
 
 #ifndef CMD_RUNNER
