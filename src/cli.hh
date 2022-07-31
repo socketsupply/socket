@@ -1079,7 +1079,6 @@ UV_UNIX_SOURCE +=       \
   poll.c                \
   process.c             \
   proctitle.c           \
-  pthread-fixes.c       \
   random-devurandom.c   \
   random-getentropy.c   \
   random-getrandom.c    \
