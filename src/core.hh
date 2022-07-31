@@ -2554,7 +2554,7 @@ namespace SSC {
     int err = uv_udp_recv_start(server->udp, allocate, [](uv_udp_t *handle, ssize_t nread, const uv_buf_t *buf, const struct sockaddr *addr, unsigned flags) {
       Server *server = (Server*)handle->data;
 
-      NSLog(@"BYTES READ -> %i", (int)nread);
+      // NSLog(@"BYTES READ -> %i", (int)nread);
 
       if (nread == UV_EOF) {
         auto msg = SSC::format(R"MSG({
@@ -2590,7 +2590,7 @@ namespace SSC {
           "ip": "$S"
         })MSG", std::to_string(server->serverId), post.length, port, ip);
 
-        NSLog(@"READ -> %s", msg.c_str());
+        // NSLog(@"READ -> %s", msg.c_str());
         server->cb("-1", msg, post);
       }
     });
