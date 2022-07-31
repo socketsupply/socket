@@ -7,6 +7,9 @@
 #include <cstring>
 #endif
 
+#include <sys/types.h>
+#include <sys/stat.h>
+
 #ifdef _WIN32
 #include <shlwapi.h>
 #include <strsafe.h>
@@ -18,6 +21,10 @@
 
 #ifndef CMD_RUNNER
 #define CMD_RUNNER
+#endif
+
+#ifndef BUILD_TIME
+#define BUILD_TIME 0
 #endif
 
 using namespace SSC;
@@ -689,7 +696,7 @@ int main (const int argc, const char* argv[]) {
   });
 
   createSubcommand("compile", { "--platform", "--port", "--quiet", "-o", "-r", "--prod", "-p", "-c", "-s", "-e", "-n", "--test=1", "--headless" }, true, [&](const std::span<const char *>& options) -> void {
-    bool flagRunUserBuild = false;
+    bool flagRunUserBuildOnly = false;
     bool flagAppStore = false;
     bool flagCodeSign = false;
     bool flagHeadless = false;
@@ -735,7 +742,7 @@ int main (const int argc, const char* argv[]) {
       }
 
       if (is(arg, "-o")) {
-        flagRunUserBuild = true;
+        flagRunUserBuildOnly = true;
       }
 
       if (is(arg, "-p")) {
@@ -817,12 +824,33 @@ int main (const int argc, const char* argv[]) {
 
     auto executable = fs::path(settings["executable"] + (platform.win ? ".exe" : ""));
     auto binaryPath = paths.pathBin / executable;
+    auto configPath = targetPath / "ssc.config";
 
     if (!fs::exists(binaryPath)) {
-      flagRunUserBuild = false;
+      flagRunUserBuildOnly = false;
+    } else {
+      struct stat stats;
+      if (stat(binaryPath.c_str(), &stats) == 0) {
+        if (BUILD_TIME > stats.st_mtime) {
+          flagRunUserBuildOnly = false;
+        }
+      }
     }
 
-    if (flagRunUserBuild == false && fs::exists(paths.platformSpecificOutputPath)) {
+    if (flagRunUserBuildOnly) {
+      struct stat binaryPathStats;
+      struct stat configPathStats;
+
+      if (stat(binaryPath.c_str(), &binaryPathStats) == 0) {
+        if (stat(configPath.c_str(), &configPathStats) == 0) {
+          if (configPathStats.st_mtime > binaryPathStats.st_mtime) {
+            flagRunUserBuildOnly = false;
+          }
+        }
+      }
+    }
+
+    if (flagRunUserBuildOnly == false && fs::exists(paths.platformSpecificOutputPath)) {
       auto p = fs::current_path() / fs::path(paths.platformSpecificOutputPath);
       try {
         fs::remove_all(p);
@@ -1620,7 +1648,7 @@ int main (const int argc, const char* argv[]) {
       exit(0);
     }
 
-    if (flagRunUserBuild == false) {
+    if (flagRunUserBuildOnly == false) {
       std::stringstream compileCommand;
 
       auto extraFlags = flagDebugMode

@@ -2639,9 +2639,10 @@ namespace SSC {
             "code": "$S",
             "message": "$S"
           }
-        })MSG", std::to_string(id), String(uv_err_name((int)status)), String(uv_strerror(status)));
+        })MSG", std::to_string(ctx->id), String(uv_err_name((int)status)), String(uv_strerror(status)));
         ctx->cb(ctx->seq, msg, Post{});
         contexts.erase(ctx->id);
+        delete ctx;
         return;
       }
 
@@ -2655,10 +2656,11 @@ namespace SSC {
           "id": "$S",
           "ip": "$S"
         }
-      })MSG", std::to_string(id), ip);
+      })MSG", std::to_string(ctx->id), ip);
 
       ctx->cb(ctx->seq, msg, Post{});
       contexts.erase(ctx->id);
+      delete ctx;
 
       uv_freeaddrinfo(res);
     }, hostname.c_str(), nullptr, &hints);

@@ -33,9 +33,10 @@ Write-Output "- Created $LIB_PATH"
 Function Build {
   $VERSION_HASH = $(git rev-parse --short HEAD) 2>&1 | % ToString
   $VERSION = $(type VERSION.txt) 2>&1 | % ToString
+  $BUILD_TIME = [int] (New-TimeSpan -Start (Get-Date "01/01/1970") -End (Get-Date)).TotalSeconds
 
   Write-Output "- Compiling the build tool"
-  clang++ src\cli.cc -o $WORKING_PATH\bin\ssc.exe -std=c++20 -DVERSION_HASH="$($VERSION_HASH)" -DVERSION="$($VERSION)"
+  clang++ src\cli.cc -o $WORKING_PATH\bin\ssc.exe -std=c++20 -DBUILD_TIME="$($BUILD_TIME)" -DVERSION_HASH="$($VERSION_HASH)" -DVERSION="$($VERSION)"
   # -I 'C:\Program Files (x86)\Windows Kits\10\Include\10.0.19041.0\shared' `
 
   if ($? -ne 1) {

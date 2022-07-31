@@ -75,6 +75,7 @@ function _build {
   "$CXX" src/cli.cc ${CXX_FLAGS} ${CXXFLAGS} \
     -o bin/cli \
     -std=c++2a \
+    -DBUILD_TIME="$(date '+%s')" \
     -DVERSION_HASH=`git rev-parse --short HEAD` \
     -DVERSION=`cat VERSION.txt` \
 
