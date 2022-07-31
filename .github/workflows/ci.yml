@@ -124,6 +124,7 @@ jobs:
         ssc compile --platform=android ./socket-sdk-examples/desktop-node-tonic-cjs/
       env:
         CI: true
+        SSC_CI: true
         CXX: g++-12
 
   build_for_win:

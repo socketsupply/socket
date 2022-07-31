@@ -1543,6 +1543,19 @@ int main (const int argc, const char* argv[]) {
     }
 
     if (flagBuildForAndroid) {
+      // just build for CI
+      if (getEnv("SSC_CI").size() > 0) {
+        std::stringstream gradlew;
+        gradlew << "./gradlew build";
+
+        if (std::system(gradlew.str().c_str()) != 0) {
+          log("error: failed to invoke `gradlew build` command");
+          exit(1);
+        }
+
+        exit(0);
+      }
+
       auto app = paths.platformSpecificOutputPath / "app";
       auto androidHome = getEnv("ANDROID_HOME");
 
