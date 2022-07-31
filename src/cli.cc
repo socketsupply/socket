@@ -833,7 +833,7 @@ int main (const int argc, const char* argv[]) {
       flagRunUserBuildOnly = false;
     } else {
       struct stat stats;
-      if (stat(binaryPath.c_str(), &stats) == 0) {
+      if (stat(WStringToString(binaryPath.c_str()), &stats) == 0) {
         if (BUILD_TIME > stats.st_mtime) {
           flagRunUserBuildOnly = false;
         }
@@ -844,8 +844,8 @@ int main (const int argc, const char* argv[]) {
       struct stat binaryPathStats;
       struct stat configPathStats;
 
-      if (stat(binaryPath.c_str(), &binaryPathStats) == 0) {
-        if (stat(configPath.c_str(), &configPathStats) == 0) {
+      if (stat(WStringToString(binaryPath.c_str()), &binaryPathStats) == 0) {
+        if (stat(WStringToString(configPath.c_str()), &configPathStats) == 0) {
           if (configPathStats.st_mtime > binaryPathStats.st_mtime) {
             flagRunUserBuildOnly = false;
           }
