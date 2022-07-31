@@ -844,6 +844,7 @@ open class ExternalWebViewInterface(activity: WebViewActivity) {
       "exit" -> {
         android.util.Log.d(TAG, "__EXIT_SIGNAL__=${message.value}")
         this.activity.finishAndRemoveTask()
+        return message.seq
       }
 
       "external", "openExternal" -> {
