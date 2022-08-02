@@ -83,6 +83,10 @@ namespace SSC {
     WINDOW_HINT_FIXED = 3  // Window size can not be changed by a user
   };
 
+  static inline std::string encodeURIComponent(const std::string& sSrc);
+  static inline std::string decodeURIComponent(const std::string& sSrc);
+  static inline std::string trim(std::string str);
+
   //
   // Cross platform support for strings
   //
@@ -295,7 +299,14 @@ namespace SSC {
       "  window.process.arch = `" + platform.arch + "`;\n"
       "  window.process.env = Object.fromEntries(new URLSearchParams(`" +  opts.env + "`));\n"
       "  window.process.openFds = new Map();\n"
-      "  window.process.config = {};\n"
+      "  window.process.config = Object.create({\n"
+      "    get size () { return Object.keys(this).length }, \n"
+      "    get (key) { \n"
+      "      if (typeof key !== 'string') throw new TypeError('Expecting key to be a string.')\n"
+      "      key = key.toLowerCase()\n"
+      "      return key in this ? this[key] : null \n"
+      "    }\n"
+      "  });\n"
       "  window.process.argv = [" + opts.argv + "];\n"
       "  " + gPreload + "\n"
       "  " + opts.preload + "\n"
@@ -315,14 +326,37 @@ namespace SSC {
     }
 
     for (auto const &tuple : appData) {
-      auto key = tuple.first;
-      auto value = tuple.second;
-      preload += "  window.process.config['" + key  + "'] = '" + value + "';\n";
+      auto key = trim(tuple.first);
+      auto value = trim(tuple.second);
+
+      // skip empty key/value and comments
+      if (key.size() == 0 || value.size() == 0 || key.rfind("#", 0) == 0) {
+        continue;
+      }
+
+      preload += "  void (() => { \n";
+      preload += "    const key = decodeURIComponent('" + encodeURIComponent(key) + "').toLowerCase()\n";
+
+      if (value == "true" || value == "false") {
+        preload += "    window.process.config[key] = " + value + "\n";
+      } else {
+        preload += "    const value = '" + encodeURIComponent(value) + "'\n";
+        preload += "    if (!Number.isNaN(parseFloat(value))) {\n";
+        preload += "      window.process.config[key] = parseFloat(value);\n";
+        preload += "    } else { \n";
+        preload += "      let val = decodeURIComponent(value);\n";
+        preload += "      try { val = JSON.parse(val) } catch (err) {}\n";
+        preload += "      window.process.config[key] = val;\n";
+        preload += "    }\n";
+      }
+
+      preload += "  })();\n";
     }
 
     preload += "  Object.seal(Object.freeze(window.process.config));\n";
-    preload += "})()\n";
+    preload += "})();\n";
     preload += "//# sourceURL=preload.js";
+
     return preload;
   }
 
@@ -388,8 +422,7 @@ namespace SSC {
     return vec;
   }
 
-  inline std::string
-  trim(std::string str) {
+  static inline std::string trim(std::string str) {
     str.erase(0, str.find_first_not_of(" \r\n\t"));
     str.erase(str.find_last_not_of(" \r\n\t") + 1);
     return str;
