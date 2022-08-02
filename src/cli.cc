@@ -17,7 +17,6 @@
 #include <AppxPackaging.h>
 #pragma comment(lib, "Shlwapi.lib")
 #pragma comment(lib, "Urlmon.lib")
-#define _stat stat
 #else
 #include <unistd.h>
 #endif
