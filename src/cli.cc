@@ -873,6 +873,11 @@ int main (const int argc, const char* argv[]) {
     fs::path pathResources;
     fs::path pathToArchive;
 
+    if (platform.mac && exec("xcode-select -p").exitCode != 0) {
+      log("Please install Xcode from https://apps.apple.com/us/app/xcode/id497799835");
+      exit(1);
+    }
+
     //
     // Darwin Package Prep
     // ---
