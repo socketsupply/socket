@@ -600,7 +600,7 @@ namespace SSC {
     }
 
     if (post.body) {
-      auto script = this->core->createPost(seq, params, post);
+      auto script = this->core->createPost(seq, "{}", post);
       window->eval(script);
       return;
     }
