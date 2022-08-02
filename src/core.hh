@@ -2611,8 +2611,10 @@ namespace SSC {
 
       if (nread == UV_EOF) {
         auto msg = SSC::format(R"MSG({
-          "serverId": "$S",
-          "EOF": true
+          "data": {
+            "serverId": "$S",
+            "EOF": true
+          }
         })MSG", std::to_string(server->serverId));
         server->cb("-1", msg, Post{});
         return;
@@ -2635,15 +2637,15 @@ namespace SSC {
         post.headers = headers;
 
         auto msg = SSC::format(R"MSG({
-          "source": "udp",
-          "serverId": "$S",
-          "event": "udpReadStart",
-          "bytes": $i,
-          "port": $i,
-          "ip": "$S"
+          "data": {
+            "source": "udpReadStart",
+            "serverId": "$S",
+            "bytes": $i,
+            "port": $i,
+            "ip": "$S"
+          }
         })MSG", std::to_string(server->serverId), post.length, port, ip);
 
-        // NSLog(@"READ -> %s", msg.c_str());
         server->cb("-1", msg, post);
       }
     });

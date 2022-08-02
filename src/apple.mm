@@ -736,10 +736,9 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     ];
 
     UNUserNotificationCenter* center = [UNUserNotificationCenter currentNotificationCenter];
-    // center.delegate = self;
 
     [center requestAuthorizationWithOptions: (UNAuthorizationOptionSound | UNAuthorizationOptionAlert | UNAuthorizationOptionBadge) completionHandler:^(BOOL granted, NSError* error) {
-      if(!error) {
+      if (error) {
         [center addNotificationRequest: request withCompletionHandler: ^(NSError* error) {
           if (error) DebugLog(@"Unable to create notification: %@", error.debugDescription);
         }];
