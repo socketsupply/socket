@@ -102,22 +102,6 @@ constexpr auto gPreload = R"JS(
           return
         }
       }
-
-      if (detail.event && detail.data && (detail.serverId || detail.clientId)) {
-        const stream = window._ipc.streams[detail.serverId || detail.clientId]
-        if (!stream) {
-          console.error('inbound IPC message with unknown serverId/clientId:', detail)
-          return
-        }
-
-        const value = detail.event === 'data' ? atob(detail.data) : detail.data
-
-        if (detail.event === 'data') {
-          stream.__write(detail.event, value)
-        } else if (detail.event) {
-          stream.emit(detail.event, value)
-        }
-      }
     }
 
     const event = new window.CustomEvent(name, { detail, ...options })
