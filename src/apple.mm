@@ -1174,7 +1174,9 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
     if (err.size() > 0) {
       auto msg = SSC::format(R"MSG({
-        message": "$S" }
+        "err": {
+          "message": "$S"
+        }
       })MSG", err);
       [self send: seq msg: err post: Post{}];
       return true;
