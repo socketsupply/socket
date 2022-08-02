@@ -770,7 +770,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     auto path = decodeURIComponent(cmd.get("path"));
 
     dispatch_async(queue, ^{
-      self.core->fsRmdir(seq, path, [&](auto seq, auto msg, auto post) {
+      self.core->fsRmdir(seq, path, [=](auto seq, auto msg, auto post) {
         [self send: seq msg: msg post: post];
       });
     });
@@ -784,7 +784,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     auto mode = std::stoi(cmd.get("mode"));
 
     dispatch_async(queue, ^{
-      self.core->fsOpen(seq, cid, path, flags, mode, [&](auto seq, auto msg, auto post) {
+      self.core->fsOpen(seq, cid, path, flags, mode, [=](auto seq, auto msg, auto post) {
         [self send: seq msg: msg post: post];
       });
     });
@@ -795,7 +795,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     auto id = std::stoull(cmd.get("id"));
 
     dispatch_async(queue, ^{
-      self.core->fsClose(seq, id, [&](auto seq, auto msg, auto post) {
+      self.core->fsClose(seq, id, [=](auto seq, auto msg, auto post) {
         [self send: seq msg: msg post: post];
       });
     });
@@ -806,7 +806,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     auto id = std::stoull(cmd.get("id"));
 
     dispatch_async(queue, ^{
-      self.core->fsCloseOpenDescriptor(seq, id, [&](auto seq, auto msg, auto post) {
+      self.core->fsCloseOpenDescriptor(seq, id, [=](auto seq, auto msg, auto post) {
         [self send: seq msg: msg post: post];
       });
     });
@@ -815,7 +815,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
   if (cmd.name == "fsCloseOpenDescriptors") {
     dispatch_async(queue, ^{
-      self.core->fsCloseOpenDescriptors(seq, [&](auto seq, auto msg, auto post) {
+      self.core->fsCloseOpenDescriptors(seq, [=](auto seq, auto msg, auto post) {
         [self send: seq msg: msg post: post];
       });
     });
@@ -828,7 +828,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     auto offset = std::stoi(cmd.get("offset"));
 
     dispatch_async(queue, ^{
-      self.core->fsRead(seq, id, size, offset, [&](auto seq, auto msg, auto post) {
+      self.core->fsRead(seq, id, size, offset, [=](auto seq, auto msg, auto post) {
         [self send: seq msg: msg post: post];
       });
     });
@@ -841,7 +841,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     auto data = std::string(buf, bufsize);
 
     dispatch_async(queue, ^{
-      self.core->fsWrite(seq, id, data, offset, [&](auto seq, auto msg, auto post) {
+      self.core->fsWrite(seq, id, data, offset, [=](auto seq, auto msg, auto post) {
         [self send: seq msg: msg post: post];
       });
     });
@@ -852,7 +852,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     auto path = decodeURIComponent(cmd.get("path"));
 
     dispatch_async(queue, ^{
-      self.core->fsStat(seq, path, [&](auto seq, auto msg, auto post) {
+      self.core->fsStat(seq, path, [=](auto seq, auto msg, auto post) {
         [self send: seq msg: msg post: post];
       });
     });
@@ -863,7 +863,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     auto id = std::stoull(cmd.get("id"));
 
     dispatch_async(queue, ^{
-      self.core->fsFStat(seq, id, [&](auto seq, auto msg, auto post) {
+      self.core->fsFStat(seq, id, [=](auto seq, auto msg, auto post) {
         [self send: seq msg: msg post: post];
       });
     });
@@ -874,7 +874,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     auto path = decodeURIComponent(cmd.get("path"));
 
     dispatch_async(queue, ^{
-      self.core->fsUnlink(seq, path, [&](auto seq, auto msg, auto post) {
+      self.core->fsUnlink(seq, path, [=](auto seq, auto msg, auto post) {
         [self send: seq msg: msg post: post];
       });
     });
@@ -886,7 +886,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     auto dst = decodeURIComponent(cmd.get("dst"));
 
     dispatch_async(queue, ^{
-      self.core->fsRename(seq, src, dst, [&](auto seq, auto msg, auto post) {
+      self.core->fsRename(seq, src, dst, [=](auto seq, auto msg, auto post) {
         [self send: seq msg: msg post: post];
       });
     });
@@ -899,7 +899,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     auto dst = decodeURIComponent(cmd.get("dst"));
 
     dispatch_async(queue, ^{
-      self.core->fsCopyFile(seq, src, dst, flags, [&](auto seq, auto msg, auto post) {
+      self.core->fsCopyFile(seq, src, dst, flags, [=](auto seq, auto msg, auto post) {
         [self send: seq msg: msg post: post];
       });
     });
@@ -911,7 +911,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     auto mode = std::stoi(cmd.get("mode"));
 
     dispatch_async(queue, ^{
-      self.core->fsMkdir(seq, path, mode, [&](auto seq, auto msg, auto post) {
+      self.core->fsMkdir(seq, path, mode, [=](auto seq, auto msg, auto post) {
         [self send: seq msg: msg post: post];
       });
     });
@@ -923,7 +923,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     auto path = decodeURIComponent(cmd.get("path"));
 
     dispatch_async(queue, ^{
-      self.core->fsOpendir(seq, id, path, [&](auto seq, auto msg, auto post) {
+      self.core->fsOpendir(seq, id, path, [=](auto seq, auto msg, auto post) {
         [self send: seq msg: msg post: post];
       });
     });
@@ -935,7 +935,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     auto entries = std::stoi(cmd.get("entries", "256"));
 
     dispatch_async(queue, ^{
-      self.core->fsReaddir(seq, id, entries, [&](auto seq, auto msg, auto post) {
+      self.core->fsReaddir(seq, id, entries, [=](auto seq, auto msg, auto post) {
         [self send: seq msg: msg post: post];
       });
     });
@@ -946,7 +946,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     auto id = std::stoull(cmd.get("id"));
 
     dispatch_async(queue, ^{
-      self.core->fsClosedir(seq, id, [&](auto seq, auto msg, auto post) {
+      self.core->fsClosedir(seq, id, [=](auto seq, auto msg, auto post) {
         [self send: seq msg: msg post: post];
       });
     });
@@ -1058,7 +1058,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     auto clientId = std::stoull(cmd.get("clientId"));
 
     dispatch_async(queue, ^{
-      self.core->readStop(seq, clientId, [&](auto seq, auto msg, auto post) {
+      self.core->readStop(seq, clientId, [=](auto seq, auto msg, auto post) {
         [self send: seq msg: msg post: post];
       });
     });
@@ -1069,7 +1069,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     auto clientId = std::stoull(cmd.get("clientId"));
 
     dispatch_async(queue, ^{
-      self.core->shutdown(seq, clientId, [&](auto seq, auto msg, auto post) {
+      self.core->shutdown(seq, clientId, [=](auto seq, auto msg, auto post) {
         [self send: seq msg: msg post: post];
       });
     });
@@ -1087,7 +1087,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     auto clientId = std::stoull(cmd.get("clientId"));
 
     dispatch_async(queue, ^{
-      self.core->sendBufferSize(seq, clientId, size, [&](auto seq, auto msg, auto post) {
+      self.core->sendBufferSize(seq, clientId, size, [=](auto seq, auto msg, auto post) {
         [self send: seq msg: msg post: post];
       });
     });
@@ -1105,7 +1105,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     auto clientId = std::stoull(cmd.get("clientId"));
 
     dispatch_async(queue, ^{
-      self.core->recvBufferSize(seq, clientId, size, [&](auto seq, auto msg, auto post) {
+      self.core->recvBufferSize(seq, clientId, size, [=](auto seq, auto msg, auto post) {
         [self send: seq msg: msg post: post];
       });
     });
@@ -1116,7 +1116,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     auto clientId = std::stoull(cmd.get("clientId"));
 
     dispatch_async(queue, ^{
-      self.core->close(seq, clientId, [&](auto seq, auto msg, auto post) {
+      self.core->close(seq, clientId, [=](auto seq, auto msg, auto post) {
         [self send: seq msg: msg post: post];
       });
     });
@@ -1143,7 +1143,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     auto connectionId = std::stoull(strId);
 
     dispatch_async(queue, ^{
-      self.core->udpGetSockName(seq, connectionId, isClient, [&](auto seq, auto msg, auto post) {
+      self.core->udpGetSockName(seq, connectionId, isClient, [=](auto seq, auto msg, auto post) {
         [self send: seq msg: msg post: post];
       });
     });
@@ -1186,7 +1186,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     auto clientId = std::stoull(cmd.get("clientId"));
 
     dispatch_async(queue, ^{
-      self.core->udpSend(seq, clientId, buf, offset, len, port, (const char*) ip.c_str(), [&](auto seq, auto msg, auto post) {
+      self.core->udpSend(seq, clientId, buf, offset, len, port, (const char*) ip.c_str(), [=](auto seq, auto msg, auto post) {
         [self send: seq msg: msg post: post];
       });
     });
@@ -1197,7 +1197,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     auto clientId = std::stoull(cmd.get("clientId"));
 
     dispatch_async(queue, ^{
-      self.core->tcpSend(clientId, buf, [&](auto seq, auto msg, auto post) {
+      self.core->tcpSend(clientId, buf, [=](auto seq, auto msg, auto post) {
         [self send: seq msg: msg post: post];
       });
     });
@@ -1221,7 +1221,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     auto ip = cmd.get("ip");
 
     dispatch_async(queue, ^{
-      self.core->tcpConnect(seq, clientId, port, ip, [&](auto seq, auto msg, auto post) {
+      self.core->tcpConnect(seq, clientId, port, ip, [=](auto seq, auto msg, auto post) {
         [self send: seq msg: msg post: post];
       });
     });
@@ -1233,7 +1233,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     auto timeout = std::stoi(cmd.get("timeout"));
 
     dispatch_async(queue, ^{
-      self.core->tcpSetKeepAlive(seq, clientId, timeout, [&](auto seq, auto msg, auto post) {
+      self.core->tcpSetKeepAlive(seq, clientId, timeout, [=](auto seq, auto msg, auto post) {
         [self send: seq msg: msg post: post];
       });
     });
@@ -1245,7 +1245,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     auto timeout = std::stoi(cmd.get("timeout"));
 
     dispatch_async(queue, ^{
-      self.core->tcpSetTimeout(seq, clientId, timeout, [&](auto seq, auto msg, auto post) {
+      self.core->tcpSetTimeout(seq, clientId, timeout, [=](auto seq, auto msg, auto post) {
         [self send: seq msg: msg post: post];
       });
     });
@@ -1279,7 +1279,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     }
 
     dispatch_async(queue, ^{
-      self.core->udpBind(seq, serverId, ip, port, [&](auto seq, auto msg, auto post) {
+      self.core->udpBind(seq, serverId, ip, port, [=](auto seq, auto msg, auto post) {
         dispatch_async(dispatch_get_main_queue(), ^{
           [self send: seq msg: msg post: post];
         });
@@ -1301,7 +1301,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     }
 
     dispatch_async(queue, ^{
-      self.core->udpReadStart(seq, serverId, [&](auto seq, auto msg, auto post) {
+      self.core->udpReadStart(seq, serverId, [=](auto seq, auto msg, auto post) {
         dispatch_async(dispatch_get_main_queue(), ^{
           [self send: seq msg: msg post: post];
         });
@@ -1332,7 +1332,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     auto port = std::stoi(cmd.get("port"));
 
     dispatch_async(queue, ^{
-      self.core->tcpBind(seq, serverId, ip, port, [&](auto seq, auto msg, auto post) {
+      self.core->tcpBind(seq, serverId, ip, port, [=](auto seq, auto msg, auto post) {
         [self send: seq msg: msg post: post];
       });
     });
@@ -1345,7 +1345,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     auto xId = std::stoull(cmd.get("id"));
 
     dispatch_async(queue, ^{
-      self.core->dnsLookup(seq, xId, hostname, [&](auto seq, auto msg, auto post) {
+      self.core->dnsLookup(seq, xId, hostname, [=](auto seq, auto msg, auto post) {
         [self send: seq msg: msg post: post];
       });
     });
