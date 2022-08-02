@@ -377,10 +377,9 @@ void NativeFileSystem::CallbackWithPostAndFinalizeContext (
   std::string data,
   SSC::Post post
 ) const {
-  auto params = SSC::format(R"QS({ "seq": "$S" })QS", context->seq);
   auto refs = context->core->GetRefs();
   auto jvm = context->core->GetJavaVM();
-  auto js = context->core->createPost(params, post);
+  auto js = context->core->createPost(context->seq, "", post);
 
   JNIEnv *env = 0;
 
@@ -1073,6 +1072,7 @@ extern "C" {
   jstring exports(NativeCore, createPost)(
     JNIEnv *env,
     jobject self,
+    jstring seq,
     jstring params,
     jstring headers,
     jbyteArray bytes
@@ -1089,6 +1089,7 @@ extern "C" {
     env->GetByteArrayRegion(bytes, 0, size, (jbyte *) body);
 
     auto js = core->createPost(
+      NativeString(env, seq).str(),
       NativeString(env, params).str(),
       SSC::Post{
         .id = 0,

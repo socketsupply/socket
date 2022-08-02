@@ -596,8 +596,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   // - On the next turn, it ill respond to the XHR which /already has the meta data from the original request.
   //
   if (post.body) {
-    auto params = SSC::format(R"JSON({ "seq": "$S" })JSON", seq);
-    auto src = self.core->createPost(params, post);
+    auto src = self.core->createPost(seq, msg, post);
     NSString* script = [NSString stringWithUTF8String: src.c_str()];
     [self.webview evaluateJavaScript: script completionHandler: nil];
     return;

@@ -600,8 +600,7 @@ namespace SSC {
     }
 
     if (post.body) {
-      auto params = format(R"JSON({ "seq": "$S" })JSON", seq);
-      auto script = this->core->createPost(params, post);
+      auto script = this->core->createPost(seq, params, post);
       window->eval(script);
       return;
     }

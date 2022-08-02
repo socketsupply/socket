@@ -1278,7 +1278,7 @@ open class NativeFileSystem(core: NativeCore) {
 
       try {
         core?.apply {
-          evaluateJavascript(createPost("{\"seq\": \"$seq\"}", "", bytes))
+          evaluateJavascript(createPost(seq, "{}", "", bytes))
         }
       } catch (err: Exception) {
         return callback(JSONError(id, err.toString()).toString())
@@ -1486,6 +1486,7 @@ open class NativeCore(var activity: WebViewActivity) {
 
   @Throws(java.lang.Exception::class)
   external fun createPost(
+    seq: String,
     params: String,
     headers: String,
     bytes: ByteArray

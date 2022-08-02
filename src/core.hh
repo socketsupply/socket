@@ -321,7 +321,7 @@ namespace SSC {
       void removeAllPosts ();
       void expirePosts ();
       void putPost (uint64_t id, Post p);
-      String createPost (String params, Post post);
+      String createPost (String seq, String params, Post post);
 
       Core() {
         this->tasks = std::unique_ptr<Tasks>(new Tasks());
@@ -531,7 +531,7 @@ namespace SSC {
     posts->erase(id);
   }
 
-  String Core::createPost (String params, Post post) {
+  String Core::createPost (String seq, String params, Post post) {
     if (post.id == 0) {
       post.id = SSC::rand64();
     }
@@ -551,6 +551,7 @@ namespace SSC {
       "xhr.responseType = 'arraybuffer';"
       "xhr.onload = e => {"
       "  let o = `" + params + "`;"
+      "  o.seq = `" + seq + "`;"
       "  let headers = `" + SSC::trim(post.headers) + "`"
       "    .trim().split(/[\\r\\n]+/).filter(Boolean);"
       "  try { o = JSON.parse(o) } catch (err) {"
