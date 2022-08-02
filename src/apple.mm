@@ -119,7 +119,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
   auto msg = SSC::format(R"MSG({
     "data": {
-      "event: "state",
+      "event": "state",
       "state": "$S"
     }
   })MSG", message, state);
@@ -636,7 +636,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     return;
   }
 
-  if (seq != "-1") { // this had a sequence, we need to try to resolve it.
+  if (seq != "-1" && seq.size() > 0) { // this had a sequence, we need to try to resolve it.
     msg = SSC::resolveToRenderProcess(seq, "0", SSC::encodeURIComponent(msg));
   }
 
