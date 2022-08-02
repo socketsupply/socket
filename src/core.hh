@@ -373,9 +373,19 @@ namespace SSC {
     return uv_default_loop();
   }
 
+  std::atomic<bool> isLoopRunning = false;
+  std::recursive_mutex loopMutex;
+
   static void runDefaultLoop () {
+    if (isLoopRunning) {
+      return;
+    }
+
+    std::lock_guard<std::recursive_mutex> guard(loopMutex);
+    isLoopRunning = true;
     auto loop = getDefaultLoop();
-    uv_run(loop, UV_RUN_ONCE);
+    while (uv_run(loop, UV_RUN_NOWAIT));
+    isLoopRunning = false;
   }
 
   static String addrToIPv4 (struct sockaddr_in* sin) {
@@ -699,7 +709,7 @@ namespace SSC {
   }
 
   void Core::fsOpen (String seq, uint64_t id, String path, int flags, int mode, Cb cb) const {
-    std::lock_guard<std::recursive_mutex> guard(descriptorsMutex);
+    std::unique_lock<std::recursive_mutex> guard(descriptorsMutex);
 
     auto filename = path.c_str();
     auto loop = getDefaultLoop();
@@ -725,8 +735,10 @@ namespace SSC {
           String(uv_strerror((int)req->result))
         );
 
+        std::unique_lock<std::recursive_mutex> guard(descriptorsMutex);
         SSC::descriptors.erase(desc->id);
         delete desc;
+        guard.unlock();
       } else {
         desc->fd = (int) req->result;
         msg = SSC::format(
@@ -741,6 +753,8 @@ namespace SSC {
 
       cb(seq, msg, Post{});
     });
+
+    guard.unlock();
 
     if (err < 0) {
       auto msg = SSC::format(R"MSG({
@@ -762,7 +776,7 @@ namespace SSC {
   }
 
   void Core::fsOpendir(String seq, uint64_t id, String path, Cb cb) const {
-    std::lock_guard<std::recursive_mutex> guard(descriptorsMutex);
+    std::unique_lock<std::recursive_mutex> guard(descriptorsMutex);
 
     auto filename = path.c_str();
     auto loop = getDefaultLoop();
@@ -789,8 +803,10 @@ namespace SSC {
           String(uv_strerror((int)req->result))
         );
 
+        std::unique_lock<std::recursive_mutex> guard(descriptorsMutex);
         SSC::descriptors.erase(desc->id);
         delete desc;
+        guard.unlock();
       } else {
         msg = SSC::format(
           R"MSG({ "data": { "id": "$S" } })MSG",
@@ -805,6 +821,8 @@ namespace SSC {
 
       cb(seq, msg, Post{});
     });
+
+    guard.unlock();
 
     if (err < 0) {
       auto msg = SSC::format(
@@ -824,7 +842,7 @@ namespace SSC {
   }
 
   void Core::fsReaddir(String seq, uint64_t id, size_t nentries, Cb cb) const {
-    std::lock_guard<std::recursive_mutex> guard(descriptorsMutex);
+    std::unique_lock<std::recursive_mutex> guard(descriptorsMutex);
 
     auto desc = descriptors[id];
 
@@ -836,6 +854,8 @@ namespace SSC {
           "message": "No directory descriptor found with that id"
         }
       })MSG", std::to_string(id));
+
+      guard.unlock();
 
       cb(seq, msg, Post{});
       return;
@@ -849,6 +869,8 @@ namespace SSC {
           "message": "Directory descriptor with that id is not open"
         }
       })MSG", std::to_string(id));
+
+      guard.unlock();
 
       cb(seq, msg, Post{});
       return;
@@ -906,6 +928,8 @@ namespace SSC {
       cb(seq, msg, Post{});
     });
 
+    guard.unlock();
+
     if (err < 0) {
       auto msg = SSC::format(
         R"MSG({ "err": { "code": $S, "message": "$S" } })MSG",
@@ -921,7 +945,7 @@ namespace SSC {
   }
 
   void Core::fsClose (String seq, uint64_t id, Cb cb) const {
-    std::lock_guard<std::recursive_mutex> guard(descriptorsMutex);
+    std::unique_lock<std::recursive_mutex> guard(descriptorsMutex);
 
     auto desc = descriptors[id];
 
@@ -933,6 +957,8 @@ namespace SSC {
           "message": "No file descriptor found with that id"
         }
       })MSG", std::to_string(id));
+
+      guard.unlock();
 
       cb(seq, msg, Post{});
       return;
@@ -967,8 +993,10 @@ namespace SSC {
         })MSG", std::to_string(desc->id), std::to_string(desc->fd));
 
         desc->fd = 0;
+        std::unique_lock<std::recursive_mutex> guard(descriptorsMutex);
         SSC::descriptors.erase(desc->id);
         delete desc;
+        guard.unlock();
       }
 
       uv_fs_req_cleanup(req);
@@ -976,6 +1004,8 @@ namespace SSC {
 
       cb(seq, msg, Post{});
     });
+
+    guard.unlock();
 
     if (err < 0) {
       auto msg = SSC::format(R"MSG({
@@ -994,7 +1024,7 @@ namespace SSC {
   }
 
   void Core::fsClosedir (String seq, uint64_t id, Cb cb) const {
-    std::lock_guard<std::recursive_mutex> guard(descriptorsMutex);
+    std::unique_lock<std::recursive_mutex> guard(descriptorsMutex);
 
     auto desc = descriptors[id];
 
@@ -1006,6 +1036,8 @@ namespace SSC {
           "message": "No directory descriptor found with that id"
         }
       })MSG", std::to_string(id));
+
+      guard.unlock();
 
       cb(seq, msg, Post{});
       return;
@@ -1038,9 +1070,11 @@ namespace SSC {
           }
         })MSG", std::to_string(desc->id));
 
+        std::unique_lock<std::recursive_mutex> guard(descriptorsMutex);
         desc->dir = nullptr;
         SSC::descriptors.erase(desc->id);
         delete desc;
+        guard.unlock();
       }
 
       cb(seq, msg, Post{});
@@ -1048,6 +1082,8 @@ namespace SSC {
       uv_fs_req_cleanup(req);
       delete req;
     });
+
+    guard.unlock();
 
     if (err < 0) {
       auto msg = SSC::format(R"MSG({
@@ -1065,7 +1101,7 @@ namespace SSC {
   }
 
   void Core::fsCloseOpenDescriptor (String seq, uint64_t id, Cb cb) const {
-    std::lock_guard<std::recursive_mutex> guard(descriptorsMutex);
+    std::unique_lock<std::recursive_mutex> guard(descriptorsMutex);
 
     auto desc = descriptors[id];
 
@@ -1077,6 +1113,8 @@ namespace SSC {
           "message": "No descriptor found with that id"
         }
       })MSG", std::to_string(id));
+
+      guard.unlock();
 
       cb(seq, msg, Post{});
       return;
@@ -1090,7 +1128,7 @@ namespace SSC {
   }
 
   void Core::fsCloseOpenDescriptors (String seq, Cb cb) const {
-    std::lock_guard<std::recursive_mutex> guard(descriptorsMutex);
+    std::unique_lock<std::recursive_mutex> guard(descriptorsMutex);
 
     std::vector<uint64_t> ids;
     std::string msg = "";
@@ -1126,13 +1164,15 @@ namespace SSC {
       }
     }
 
+    guard.unlock();
+
     if (queued == 0) {
       cb(seq, msg, Post{});
     }
   }
 
   void Core::fsRead (String seq, uint64_t id, int len, int offset, Cb cb) const {
-    std::lock_guard<std::recursive_mutex> guard(descriptorsMutex);
+    std::unique_lock<std::recursive_mutex> guard(descriptorsMutex);
 
     auto desc = descriptors[id];
 
@@ -1143,6 +1183,8 @@ namespace SSC {
           "message": "No file descriptor found with that id"
         }
       })MSG");
+
+      guard.unlock();
 
       cb(seq, msg, Post{});
       return;
@@ -1186,6 +1228,8 @@ namespace SSC {
       delete req;
     });
 
+    guard.unlock();
+
     if (err < 0) {
       auto msg = SSC::format(R"MSG({
         "err": {
@@ -1202,7 +1246,7 @@ namespace SSC {
   }
 
   void Core::fsWrite (String seq, uint64_t id, String data, int64_t offset, Cb cb) const {
-    std::lock_guard<std::recursive_mutex> guard(descriptorsMutex);
+    std::unique_lock<std::recursive_mutex> guard(descriptorsMutex);
 
     auto desc = descriptors[id];
 
@@ -1213,6 +1257,8 @@ namespace SSC {
           "message": "No file descriptor found with that id"
         }
       })MSG");
+
+      guard.unlock();
 
       cb(seq, msg, Post{});
       return;
@@ -1252,6 +1298,8 @@ namespace SSC {
       uv_fs_req_cleanup(req);
       delete req;
     });
+
+    guard.unlock();
 
     if (err < 0) {
       auto msg = SSC::format(R"MSG({
@@ -1364,6 +1412,7 @@ namespace SSC {
   }
 
   void Core::fsFStat (String seq, uint64_t id, Cb cb) const {
+    std::unique_lock<std::recursive_mutex> guard(descriptorsMutex);
     auto desc = descriptors[id];
 
     if (desc == nullptr) {
@@ -1373,6 +1422,8 @@ namespace SSC {
           "message": "No file descriptor found with that id"
         }
       })MSG");
+
+      guard.unlock();
 
       cb(seq, msg, Post{});
       return;
@@ -1452,6 +1503,8 @@ namespace SSC {
 
       cb(seq, msg, Post{});
     });
+
+    guard.unlock();
 
     if (err < 0) {
       auto msg = SSC::format(R"MSG({

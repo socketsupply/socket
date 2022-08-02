@@ -662,6 +662,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   auto seq = cmd.get("seq");
   uint64_t clientId = 0;
 
+  // printf("%s\n", cmd.uri.c_str());
   /// ipc bluetooth-start
   /// @param serviceId String
   ///
@@ -794,7 +795,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     auto id = std::stoull(cmd.get("id"));
 
     dispatch_async(queue, ^{
-      self.core->fsClose(seq, id, [&, id](auto seq, auto msg, auto post) {
+      self.core->fsClose(seq, id, [&](auto seq, auto msg, auto post) {
         [self send: seq msg: msg post: post];
       });
     });
@@ -805,7 +806,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     auto id = std::stoull(cmd.get("id"));
 
     dispatch_async(queue, ^{
-      self.core->fsCloseOpenDescriptor(seq, id, [&, id](auto seq, auto msg, auto post) {
+      self.core->fsCloseOpenDescriptor(seq, id, [&](auto seq, auto msg, auto post) {
         [self send: seq msg: msg post: post];
       });
     });
@@ -945,7 +946,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     auto id = std::stoull(cmd.get("id"));
 
     dispatch_async(queue, ^{
-      self.core->fsClosedir(seq, id, [&, id](auto seq, auto msg, auto post) {
+      self.core->fsClosedir(seq, id, [&](auto seq, auto msg, auto post) {
         [self send: seq msg: msg post: post];
       });
     });
