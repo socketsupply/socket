@@ -355,6 +355,15 @@ namespace SSC {
       return true;
     }
 
+    if (cmd.name == "event") {
+      auto event = decodeURIComponent(cmd.get("value"));
+      auto data = decodeURIComponent(cmd.get("data"));
+      auto seq = cmd.get("seq");
+
+      this->core->handleEvent(seq, event, data, cb);
+      return true;
+    }
+
     if (cmd.name == "fsAccess" || cmd.name == "fs.access") {
       if (cmd.get("path").size() == 0) {
         auto err = SSC::format(R"MSG({
@@ -455,7 +464,7 @@ namespace SSC {
       return true;
     }
 
-    if (cmd.name == "fsCloseOpenDescriptor" || cmd.name == "fs.closseOpenDescriptor") {
+    if (cmd.name == "fsCloseOpenDescriptor" || cmd.name == "fs.closeOpenDescriptor") {
       if (cmd.get("id").size() == 0) {
         auto err = SSC::format(R"MSG({
           "err": {
@@ -473,8 +482,9 @@ namespace SSC {
       return true;
     }
 
-    if (cmd.name == "fsCloseOpenDescriptors" || cmd.name == "fs.closseOpenDescriptors") {
-      this->core->fsCloseOpenDescriptors(seq, cb);
+    if (cmd.name == "fsCloseOpenDescriptors" || cmd.name == "fs.closeOpenDescriptors") {
+      auto preserveRetained = cmd.get("retain") != "false";
+      this->core->fsCloseOpenDescriptors(seq, preserveRetained, cb);
       return true;
     }
 
@@ -532,6 +542,13 @@ namespace SSC {
       auto size = std::stoi(cmd.get("size"));
       auto offset = std::stoi(cmd.get("offset"));
       this->core->fsRead(seq, id, size, offset, cb);
+      return true;
+    }
+
+    if (cmd.name == "fsRetainDescriptor" || cmd.name == "fs.retainDescriptor") {
+      auto id = std::stoull(cmd.get("id"));
+
+      this->core->fsRetainDescriptor(seq, id, cb);
       return true;
     }
 
@@ -611,30 +628,6 @@ namespace SSC {
 
     if (cmd.get("id").size() > 0) {
       auto id = std::stoull(cmd.get("id"));
-
-      if (SSC::descriptors[id] != nullptr) {
-        auto desc = SSC::descriptors[id];
-        auto js = SSC::format(R"JS(
-            window.process.openFds.set("$S", {
-              id: "$S",
-              fd: "$S",
-              type: "$S"
-            })
-          )JS",
-          cmd.get("id"),
-          cmd.get("id"),
-          desc->dir != nullptr ? cmd.get("id") : std::to_string(desc->fd),
-          std::string(desc->dir != nullptr ? "directory": "file")
-        );
-
-        window->eval(js);
-      } else {
-        auto js = SSC::format(R"JS(
-          window.process.openFds.delete("$S", false)
-        )JS", cmd.get("id"));
-
-        window->eval(js);
-      }
     }
 
     window->eval(msg);
@@ -751,52 +744,9 @@ namespace SSC {
 
         if (event == WEBKIT_LOAD_STARTED) {
           window->app.isReady = false;
-
-          if (window->opts.debug) {
-            int count = 0;
-            for (auto const &tuple : SSC::descriptors) {
-              auto desc = tuple.second;
-              if (desc == nullptr || (desc->fd == 0 && desc->dir == nullptr)) {
-                continue;
-              }
-
-              count++;
-            }
-
-            if (count > 0) {
-              std::cout
-                << "• WebView reloaded with "
-                << std::to_string(count)
-                << " open descriptor contexts."
-                << std::endl;
-            }
-          }
         }
 
         if (event == WEBKIT_LOAD_FINISHED) {
-          for (auto const &tuple : SSC::descriptors) {
-            auto desc = tuple.second;
-            if (desc == nullptr || (desc->fd == 0 && desc->dir == nullptr)) {
-              continue;
-            }
-
-            auto id = std::to_string(desc->id);
-            auto js = SSC::format(R"JS(
-                window.process.openFds.set("$S", {
-                  id: "$S",
-                  fd: "$S",
-                  type: "$S"
-                })
-              )JS",
-              id,
-              id,
-              desc->dir != nullptr ? id : std::to_string(desc->fd),
-              std::string(desc->dir != nullptr ? "directory": "file")
-            );
-
-            window->eval(js);
-          }
-
           window->app.isReady = true;
         }
       }),

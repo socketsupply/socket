@@ -270,19 +270,23 @@ namespace SSC {
 
       String getFSConstants () const;
 
+      void handleEvent (String seq, String event, String data, Cb cb) const;
+
       void fsAccess (String seq, String path, int mode, Cb cb) const;
       void fsChmod (String seq, String path, int mode, Cb cb) const;
       void fsCopyFile (String seq, String src, String dst, int mode, Cb cb) const;
       void fsClose (String seq, uint64_t id, Cb cb) const;
       void fsClosedir (String seq, uint64_t id, Cb cb) const;
-      void fsCloseOpenDescriptor (String seq, uint64_t id, Cb cb) const ;
-      void fsCloseOpenDescriptors (String seq, Cb cb) const ;
+      void fsCloseOpenDescriptor (String seq, uint64_t id, Cb cb) const;
+      void fsCloseOpenDescriptors (String seq, Cb cb) const;
+      void fsCloseOpenDescriptors (String seq, bool preserveRetained, Cb cb) const;
       void fsFStat (String seq, uint64_t id, Cb cb) const;
       void fsMkdir (String seq, String path, int mode, Cb cb) const;
       void fsOpen (String seq, uint64_t id, String path, int flags, int mode, Cb cb) const;
       void fsOpendir (String seq, uint64_t id, String path, Cb cb) const;
       void fsRead (String seq, uint64_t id, int len, int offset, Cb cb) const;
       void fsReaddir (String seq, uint64_t id, size_t entries, Cb cb) const;
+      void fsRetainDescriptor (String seq, uint64_t id, Cb cb) const;
       void fsRename (String seq, String pathA, String pathB, Cb cb) const;
       void fsRmdir (String seq, String path, Cb cb) const;
       void fsStat (String seq, String path, Cb cb) const;
@@ -343,6 +347,8 @@ namespace SSC {
     String seq;
     Cb cb;
     uint64_t id;
+    bool retained = false;
+    bool stale = false;
     void *data;
   };
 
@@ -374,10 +380,6 @@ namespace SSC {
     uint64_t clientId;
     bool ephemeral = false;
   };
-
-  static uv_loop_t* getDefaultLoop () {
-    return uv_default_loop();
-  }
 
   std::atomic<bool> isLoopRunning = false;
   std::recursive_mutex loopMutex;
@@ -476,12 +478,229 @@ namespace SSC {
   std::recursive_mutex contextsMutex;
   std::recursive_mutex descriptorsMutex;
 
-  // struct sockaddr_in addr;
+  std::atomic<bool> didTimersInit = false;
+  std::atomic<bool> didTimersStart = false;
+  std::recursive_mutex timersMutex;
+  std::recursive_mutex timersInitMutex;
+  std::recursive_mutex timersStartMutex;
+
+  struct Timer {
+    uv_timer_t handle;
+    uv_timer_cb invoke;
+    uint64_t timeout = 0;
+    uint64_t interval = 0;
+    bool repeated = false;
+    bool started = false;
+  };
+
+  struct Timers {
+    Core core; // isolate
+    Timer releaseWeakDescriptors = {
+      .repeated = true,
+      .timeout = 16 * 1024, // 16 * 1000
+      .invoke = [](uv_timer_t *handle) {
+        std::unique_lock<std::recursive_mutex> descriptorsGuard(descriptorsMutex);
+        std::lock_guard<std::recursive_mutex> timersGuard(timersMutex);
+
+        std::vector<uint64_t> ids;
+        std::string msg = "";
+
+        auto core = reinterpret_cast<Core *>(handle->data);
+
+        for (auto const &tuple : SSC::descriptors) {
+          ids.push_back(tuple.first);
+        }
+
+        descriptorsGuard.unlock();
+
+        for (auto const id : ids) {
+          descriptorsGuard.lock();
+          auto desc = SSC::descriptors[id];
+          descriptorsGuard.unlock();
+
+          if (desc == nullptr) {
+            descriptorsGuard.lock();
+            SSC::descriptors.erase(id);
+            descriptorsGuard.unlock();
+            continue;
+          }
+
+          if (desc->retained || !desc->stale) {
+            continue;
+          }
+
+          // printf("Releasing weak descriptor %llu\n", desc->id);
+
+          if (desc->dir != nullptr) {
+            core->fsClosedir("", desc->id, [](auto seq, auto msg, auto post) {
+              // noop
+            });
+          } else if (desc->fd > 0) {
+            core->fsClose("", desc->id, [](auto seq, auto msg, auto post) {
+              // noop
+            });
+          } else {
+            // free
+            descriptorsGuard.lock();
+            SSC::descriptors.erase(id);
+            descriptorsGuard.unlock();
+            delete desc;
+          }
+        }
+      }
+    };
+  };
+
+  Timers timers;
+
+  static void initTimers ();
+  static void startTimers ();
+
+  static uv_loop_t* getDefaultLoop () {
+    return uv_default_loop();
+  }
+
+  static void runDefaultLoop () {
+    if (isLoopRunning) {
+      return;
+    }
+
+    std::lock_guard<std::recursive_mutex> guard(loopMutex);
+
+    auto loop = getDefaultLoop();
+
+    initTimers();
+    startTimers();
+
+    printf("before uv_run()\n");
+    isLoopRunning = true;
+    while (uv_run(loop, UV_RUN_NOWAIT) > 0);
+    isLoopRunning = false;
+    printf("after uv_run()\n");
+  }
+
+  static void initTimers () {
+    std::lock_guard<std::recursive_mutex> guard(timersInitMutex);
+
+    if (didTimersInit) {
+      return;
+    }
+
+    auto loop = getDefaultLoop();
+
+    std::vector<Timer *> timersToInit = {
+      &timers.releaseWeakDescriptors
+    };
+
+    for (const auto& timer : timersToInit) {
+      uv_timer_init(loop, &timer->handle);
+      timer->handle.data = (void *) &timers.core;
+    }
+
+    didTimersInit = true;
+  }
+
+  static void startTimers () {
+    std::lock_guard<std::recursive_mutex> guard(timersStartMutex);
+
+    if (didTimersStart) {
+      return;
+    }
+
+    std::vector<Timer *> timersToStart = {
+      &timers.releaseWeakDescriptors
+    };
+
+    for (const auto& timer : timersToStart) {
+      if (!timer->started) {
+        uv_timer_start(
+          &timer->handle,
+          timer->invoke,
+          timer->timeout,
+          timer->repeated
+            ? timer->interval > 0 ? timer->interval : timer->timeout
+            : 0
+        );
+
+        // set once
+        timer->started = true;
+      } else {
+        uv_timer_again(&timer->handle);
+      }
+    }
+
+    didTimersStart = true;
+  }
+
+  static void stopTimers () {
+    std::lock_guard<std::recursive_mutex> guard(timersStartMutex);
+
+    if (didTimersStart == false) {
+      return;
+    }
+
+    std::vector<Timer *> timersToStop = {
+      &timers.releaseWeakDescriptors
+    };
+
+    for (const auto& timer : timersToStop) {
+      if (timer->started) {
+        uv_timer_stop(&timer->handle);
+      }
+    }
+
+    didTimersStart = false;
+  }
+
+  struct sockaddr_in addr;
 
   typedef struct {
     uv_write_t req;
     uv_buf_t buf;
   } write_req_t;
+
+  void Core::fsRetainDescriptor (String seq, uint64_t id, Cb cb) const {
+    std::lock_guard<std::recursive_mutex> guard(descriptorsMutex);
+
+    auto desc = descriptors[id];
+
+    if (desc == nullptr) {
+      auto msg = SSC::format(R"MSG({
+        "err": {
+          "id": "$S",
+          "code": "ENOTOPEN",
+          "message": "No file descriptor found with that id"
+        }
+      })MSG", std::to_string(id));
+
+      cb(seq, msg, Post{});
+      return;
+    }
+
+    desc->retained = true;
+    auto msg = SSC::format(
+      R"MSG({ "data": { "id": "$S" } })MSG",
+      std::to_string(desc->id)
+    );
+
+    cb(seq, msg, Post{});
+  }
+
+  void Core::handleEvent (String seq, String event, String data, Cb cb) const {
+    // init page
+    if (event == "domcontentloaded") {
+      std::unique_lock<std::recursive_mutex> guard(descriptorsMutex);
+
+      for (auto const &tuple : SSC::descriptors) {
+        auto desc = tuple.second;
+        desc->stale = true;
+      }
+
+      guard.unlock();
+    }
+
+    cb(seq, "", Post{});
+  }
 
   bool Core::hasTask (String id) {
     if (id.size() == 0) return false;
@@ -858,6 +1077,8 @@ namespace SSC {
 
     auto desc = descriptors[id];
 
+    guard.unlock();
+
     if (desc == nullptr) {
       auto msg = SSC::format(R"MSG({
         "err": {
@@ -867,7 +1088,6 @@ namespace SSC {
         }
       })MSG", std::to_string(id));
 
-      guard.unlock();
 
       cb(seq, msg, Post{});
       return;
@@ -881,8 +1101,6 @@ namespace SSC {
           "message": "Directory descriptor with that id is not open"
         }
       })MSG", std::to_string(id));
-
-      guard.unlock();
 
       cb(seq, msg, Post{});
       return;
@@ -939,8 +1157,6 @@ namespace SSC {
 
       cb(seq, msg, Post{});
     });
-
-    guard.unlock();
 
     if (err < 0) {
       auto msg = SSC::format(
@@ -1132,6 +1348,8 @@ namespace SSC {
       return;
     }
 
+    guard.unlock();
+
     if (desc->dir != nullptr) {
       this->fsClosedir(seq, id, cb);
     } else if (desc->fd > 0){
@@ -1140,6 +1358,10 @@ namespace SSC {
   }
 
   void Core::fsCloseOpenDescriptors (String seq, Cb cb) const {
+    return this->fsCloseOpenDescriptors(seq, false, cb);
+  }
+
+  void Core::fsCloseOpenDescriptors (String seq, bool preserveRetained, Cb cb) const {
     std::unique_lock<std::recursive_mutex> guard(descriptorsMutex);
 
     std::vector<uint64_t> ids;
@@ -1151,11 +1373,22 @@ namespace SSC {
       ids.push_back(tuple.first);
     }
 
+    guard.unlock();
+
     for (auto const id : ids) {
+      guard.lock();
       auto desc = SSC::descriptors[id];
       pending--;
+      guard.unlock();
 
       if (desc == nullptr) {
+        guard.lock();
+        SSC::descriptors.erase(desc->id);
+        guard.unlock();
+        continue;
+      }
+
+      if (preserveRetained  && desc->retained) {
         continue;
       }
 
@@ -1175,8 +1408,6 @@ namespace SSC {
         });
       }
     }
-
-    guard.unlock();
 
     if (queued == 0) {
       cb(seq, msg, Post{});

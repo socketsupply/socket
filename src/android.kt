@@ -623,7 +623,6 @@ open class Bridge(activity: WebViewActivity) {
           } else {
             core.fs.close(message.seq, id, fun(data: String) {
               callback(message.seq, data)
-              core.updateOpenDescriptorsInEnvironment()
             })
           }
 
@@ -685,7 +684,6 @@ open class Bridge(activity: WebViewActivity) {
 
             core.fs.open(seq, id, resolved.toString(), flags, mode, fun(data: String) {
               callback(message.seq, data)
-              core.updateOpenDescriptorsInEnvironment()
             })
           }
 
@@ -1491,9 +1489,6 @@ open class NativeCore(var activity: WebViewActivity) {
     headers: String,
     bytes: ByteArray
   ): String
-
-  @Throws(java.lang.Exception::class)
-  external fun updateOpenDescriptorsInEnvironment()
 
   /**
    * FileSystem APIs

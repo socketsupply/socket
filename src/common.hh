@@ -298,7 +298,6 @@ namespace SSC {
       "  window.process.platform = `" + platform.os + "`;\n"
       "  window.process.arch = `" + platform.arch + "`;\n"
       "  window.process.env = Object.fromEntries(new URLSearchParams(`" +  opts.env + "`));\n"
-      "  window.process.openFds = new Map();\n"
       "  window.process.config = Object.create({\n"
       "    get size () { return Object.keys(this).length }, \n"
       "    get (key) { \n"

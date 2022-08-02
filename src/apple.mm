@@ -759,10 +759,34 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     return true;
   }
 
-  if (cmd.name == "getFSConstants") {
+  if (cmd.name == "event") {
+    auto event = decodeURIComponent(cmd.get("value"));
+    auto data = decodeURIComponent(cmd.get("data"));
+    auto seq = cmd.get("seq");
+
+    dispatch_async(queue, ^{
+      self.core->handleEvent(seq, event, data, [=](auto seq, auto msg, auto post) {
+        [self send: seq msg: msg post: Post{}];
+      });
+    });
+    return true;
+   }
+
+  if (cmd.name == "getFSConstants" || cmd.name == "fs.constants") {
     dispatch_async(queue, ^{
       auto constants = self.core->getFSConstants();
       [self send: seq msg: constants post: Post{}];
+    });
+    return true;
+  }
+
+  if (cmd.name == "fsRetainDescriptor" || cmd.name == "fs.retainDescriptor") {
+    auto id = std::stoull(cmd.get("id"));
+
+    dispatch_async(queue, ^{
+      self.core->fsRetainDescriptor(seq, id, [=](auto seq, auto msg, auto post) {
+        [self send: seq msg: msg post: post];
+      });
     });
     return true;
   }
@@ -803,7 +827,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     return true;
   }
 
-  if (cmd.name == "fsCloseOpenDescriptor") {
+  if (cmd.name == "fsCloseOpenDescriptor" || cmd.name == "fs.closeOpenDescriptor") {
     auto id = std::stoull(cmd.get("id"));
 
     dispatch_async(queue, ^{
@@ -814,9 +838,10 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     return true;
   }
 
-  if (cmd.name == "fsCloseOpenDescriptors") {
+  if (cmd.name == "fsCloseOpenDescriptors" || cmd.name == "fs.closeOpenDescriptors") {
+    auto preserveRetained = cmd.get("retain") != "false";
     dispatch_async(queue, ^{
-      self.core->fsCloseOpenDescriptors(seq, [=](auto seq, auto msg, auto post) {
+      self.core->fsCloseOpenDescriptors(seq, preserveRetained, [=](auto seq, auto msg, auto post) {
         [self send: seq msg: msg post: post];
       });
     });
