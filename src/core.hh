@@ -297,7 +297,7 @@ namespace SSC {
       void tcpReadStart (String seq, uint64_t clientId, Cb cb) const;
 
       void udpBind (String seq, uint64_t serverId, String ip, int port, Cb cb) const;
-      void udpSend (String seq, uint64_t clientId, char* buf, int offset, int len, int port, const char* ip, Cb cb) const;
+      void udpSend (String seq, uint64_t clientId, char* buf, int offset, int len, int port, const char* ip, bool ephemeral, Cb cb) const;
       void udpReadStart (String seq, uint64_t serverId, Cb cb) const;
       void udpGetSockName (String seq, uint64_t clientId, bool isClient, Cb cb) const;
 
@@ -346,18 +346,23 @@ namespace SSC {
     void *data;
   };
 
+  typedef enum {
+    PEER_TYPE_NONE = 0,
+    PEER_TYPE_TCP = 1,
+    PEER_TYPE_UDP = 2,
+    PEER_TYPE_MAX = 0xf
+  } peer_type_t;
+
   struct Peer {
     Cb cb;
     String seq;
+    uint64_t id;
 
-    uv_tcp_t* tcp;
-    uv_udp_t* udp;
+    uv_tcp_t tcp;
+    uv_udp_t udp;
     uv_stream_t* stream;
-
-    ~Peer () {
-      delete this->tcp;
-      delete this->udp;
-    };
+    peer_type_t type; // can be bit or'd
+    struct sockaddr_in addr;
   };
 
   struct Server : public Peer {
@@ -367,6 +372,7 @@ namespace SSC {
   struct Client : public Peer {
     Server* server;
     uint64_t clientId;
+    bool ephemeral = false;
   };
 
   static uv_loop_t* getDefaultLoop () {
@@ -463,9 +469,13 @@ namespace SSC {
   std::map<uint64_t, Server*> servers;
   std::map<uint64_t, GenericContext*> contexts;
   std::map<uint64_t, DescriptorContext*> descriptors;
+
+  std::recursive_mutex clientsMutex;
+  std::recursive_mutex serversMutex;
+  std::recursive_mutex contextsMutex;
   std::recursive_mutex descriptorsMutex;
 
-  struct sockaddr_in addr;
+  // struct sockaddr_in addr;
 
   typedef struct {
     uv_write_t req;
@@ -1822,6 +1832,7 @@ namespace SSC {
   }
 
   void Core::sendBufferSize (String seq, uint64_t clientId, int size, Cb cb) const {
+    std::lock_guard<std::recursive_mutex> guard(clientsMutex);
     Client* client = clients[clientId];
 
     if (client == nullptr) {
@@ -1839,10 +1850,19 @@ namespace SSC {
 
     uv_handle_t* handle;
 
-    if (client->tcp != nullptr) {
-      handle = (uv_handle_t*) client->tcp;
+    if ((PEER_TYPE_TCP & client->type) == PEER_TYPE_TCP) {
+      handle = (uv_handle_t*) &client->tcp;
+    } else if ((PEER_TYPE_UDP & client->type) == PEER_TYPE_UDP) {
+      handle = (uv_handle_t*) &client->udp;
     } else {
-      handle = (uv_handle_t*) client->udp;
+      auto msg = SSC::format(R"MSG({
+        "err": {
+          "message": "Handle is not valid"
+        }
+      })MSG");
+
+      cb(seq, msg, Post{});
+      return;
     }
 
     int sz = size;
@@ -1861,6 +1881,7 @@ namespace SSC {
   }
 
   void Core::recvBufferSize (String seq, uint64_t clientId, int size, Cb cb) const {
+    std::lock_guard<std::recursive_mutex> guard(clientsMutex);
     Client* client = clients[clientId];
 
     if (client == nullptr) {
@@ -1877,10 +1898,19 @@ namespace SSC {
 
     uv_handle_t* handle;
 
-    if (client->tcp != nullptr) {
-      handle = (uv_handle_t*) client->tcp;
+    if ((PEER_TYPE_TCP & client->type) == PEER_TYPE_TCP) {
+      handle = (uv_handle_t*) &client->tcp;
+    } else if ((PEER_TYPE_UDP & client->type) == PEER_TYPE_UDP) {
+      handle = (uv_handle_t*) &client->udp;
     } else {
-      handle = (uv_handle_t*) client->udp;
+      auto msg = SSC::format(R"MSG({
+        "err": {
+          "message": "Handle is not valid"
+        }
+      })MSG");
+
+      cb(seq, msg, Post{});
+      return;
     }
 
     int sz = size;
@@ -1899,6 +1929,7 @@ namespace SSC {
   }
 
   void Core::tcpSend (uint64_t clientId, String message, Cb cb) const {
+    std::lock_guard<std::recursive_mutex> guard(clientsMutex);
     Client* client = clients[clientId];
 
     if (client == nullptr) {
@@ -1944,24 +1975,25 @@ namespace SSC {
       free(wr);
     };
 
-    uv_write((uv_write_t*) wr, (uv_stream_t*) client->tcp, &wr->buf, 1, onWrite);
+    uv_write((uv_write_t*) wr, (uv_stream_t*) &client->tcp, &wr->buf, 1, onWrite);
     runDefaultLoop();
   }
 
   void Core::tcpConnect (String seq, uint64_t clientId, int port, String ip, Cb cb) const {
+    std::lock_guard<std::recursive_mutex> guard(clientsMutex);
     uv_connect_t connect;
 
     Client* client = clients[clientId] = new Client();
     client->cb = cb;
+    client->type = PEER_TYPE_TCP;
     client->clientId = clientId;
-    client->tcp = new uv_tcp_t;
 
-    uv_tcp_init(getDefaultLoop(), client->tcp);
+    uv_tcp_init(getDefaultLoop(), &client->tcp);
 
-    client->tcp->data = client;
+    client->tcp.data = client;
 
-    uv_tcp_nodelay(client->tcp, 0);
-    uv_tcp_keepalive(client->tcp, 1, 60);
+    uv_tcp_nodelay(&client->tcp, 0);
+    uv_tcp_keepalive(&client->tcp, 1, 60);
 
     struct sockaddr_in dest4;
     struct sockaddr_in6 dest6;
@@ -2034,9 +2066,9 @@ namespace SSC {
     int r = 0;
 
     if (ip.find(":") != String::npos) {
-      r = uv_tcp_connect(&connect, client->tcp, (const struct sockaddr*) &dest6, onConnect);
+      r = uv_tcp_connect(&connect, &client->tcp, (const struct sockaddr*) &dest6, onConnect);
     } else {
-      r = uv_tcp_connect(&connect, client->tcp, (const struct sockaddr*) &dest4, onConnect);
+      r = uv_tcp_connect(&connect, &client->tcp, (const struct sockaddr*) &dest4, onConnect);
     }
 
     if (r) {
@@ -2059,13 +2091,14 @@ namespace SSC {
   }
 
   void Core::tcpBind (String seq, uint64_t serverId, String ip, int port, Cb cb) const {
+    std::lock_guard<std::recursive_mutex> guard(serversMutex);
     Server* server = servers[serverId] = new Server();
-    server->tcp = new uv_tcp_t;
     server->cb = cb;
+    server->type = PEER_TYPE_TCP;
     server->serverId = serverId;
-    server->tcp->data = &server;
+    server->tcp.data = &server;
 
-    uv_tcp_init(getDefaultLoop(), server->tcp);
+    uv_tcp_init(getDefaultLoop(), &server->tcp);
     struct sockaddr_in addr;
 
     // addr.sin_port = htons(port);
@@ -2074,8 +2107,8 @@ namespace SSC {
     // NSLog(@"LISTENING %s:%i", ip.c_str(), port);
 
     uv_ip4_addr(ip.c_str(), port, &addr);
-    uv_tcp_simultaneous_accepts(server->tcp, 0);
-    uv_tcp_bind(server->tcp, (const struct sockaddr*) &addr, 0);
+    uv_tcp_simultaneous_accepts(&server->tcp, 0);
+    uv_tcp_bind(&server->tcp, (const struct sockaddr*) &addr, 0);
 
     int r = uv_listen((uv_stream_t*) &server, DEFAULT_BACKLOG, [](uv_stream_t* handle, int status) {
       auto* server = reinterpret_cast<Server*>(handle->data);
@@ -2097,15 +2130,14 @@ namespace SSC {
       client->clientId = clientId;
       client->server = server;
       client->stream = handle;
-      client->tcp = new uv_tcp_t;
 
-      client->tcp->data = client;
+      client->tcp.data = client;
 
-      uv_tcp_init(getDefaultLoop(), client->tcp);
+      uv_tcp_init(getDefaultLoop(), &client->tcp);
 
       if (uv_accept(handle, (uv_stream_t*) handle) == 0) {
         PeerInfo info;
-        info.init(client->tcp);
+        info.init(&client->tcp);
 
         auto msg = SSC::format(
           R"MSG({
@@ -2159,6 +2191,7 @@ namespace SSC {
   }
 
   void Core::tcpSetKeepAlive (String seq, uint64_t clientId, int timeout, Cb cb) const {
+    std::lock_guard<std::recursive_mutex> guard(clientsMutex);
     Client* client = clients[clientId];
 
     if (client == nullptr) {
@@ -2177,7 +2210,7 @@ namespace SSC {
     client->cb = cb;
     client->clientId = clientId;
 
-    uv_tcp_keepalive((uv_tcp_t*) client->tcp, 1, timeout);
+    uv_tcp_keepalive((uv_tcp_t*) &client->tcp, 1, timeout);
 
     auto msg = SSC::format(R"MSG({
       "data": {}
@@ -2187,6 +2220,7 @@ namespace SSC {
   }
 
   void Core::tcpReadStart (String seq, uint64_t clientId, Cb cb) const {
+    std::lock_guard<std::recursive_mutex> guard(clientsMutex);
     Client* client = clients[clientId];
 
     if (client == nullptr) {
@@ -2241,7 +2275,7 @@ namespace SSC {
       }
 
       if (nread < 0) {
-        uv_close((uv_handle_t*) client->tcp, [](uv_handle_t* handle) {
+        uv_close((uv_handle_t*) &client->tcp, [](uv_handle_t* handle) {
           free(handle);
         });
       }
@@ -2291,10 +2325,19 @@ namespace SSC {
 
     int r;
 
-    if (client->tcp) {
-      r = uv_read_stop((uv_stream_t*) client->tcp);
+    if ((PEER_TYPE_TCP & client->type) == PEER_TYPE_TCP) {
+      r = uv_read_stop((uv_stream_t*) &client->tcp);
+    } else if ((PEER_TYPE_UDP & client->type) == PEER_TYPE_UDP) {
+      r = uv_read_stop((uv_stream_t*) &client->udp);
     } else {
-      r = uv_read_stop((uv_stream_t*) client->udp);
+      auto msg = SSC::format(R"MSG({
+        "err": {
+          "message": "Handle is not valid"
+        }
+      })MSG");
+
+      cb(seq, msg, Post{});
+      return;
     }
 
     auto msg = SSC::format(R"MSG({ "data": $i })MSG", r);
@@ -2321,10 +2364,19 @@ namespace SSC {
 
     uv_handle_t* handle;
 
-    if (client->tcp != nullptr) {
-      handle = (uv_handle_t*) client->tcp;
+    if ((PEER_TYPE_TCP & client->type) == PEER_TYPE_TCP) {
+      handle = (uv_handle_t*) &client->tcp;
+    } else if ((PEER_TYPE_UDP & client->type) == PEER_TYPE_UDP) {
+      handle = (uv_handle_t*) &client->udp;
     } else {
-      handle = (uv_handle_t*) client->udp;
+      auto msg = SSC::format(R"MSG({
+        "err": {
+          "message": "Handle is not valid"
+        }
+      })MSG");
+
+      cb(seq, msg, Post{});
+      return;
     }
 
     handle->data = client;
@@ -2364,10 +2416,19 @@ namespace SSC {
 
     uv_handle_t* handle;
 
-    if (client->tcp != nullptr) {
-     handle = (uv_handle_t*) client->tcp;
+    if ((PEER_TYPE_TCP & client->type) == PEER_TYPE_TCP) {
+      handle = (uv_handle_t*) &client->tcp;
+    } else if ((PEER_TYPE_UDP & client->type) == PEER_TYPE_UDP) {
+      handle = (uv_handle_t*) &client->udp;
     } else {
-     handle = (uv_handle_t*) client->udp;
+      auto msg = SSC::format(R"MSG({
+        "err": {
+          "message": "Handle is not valid"
+        }
+      })MSG");
+
+      cb(seq, msg, Post{});
+      return;
     }
 
     handle->data = client;
@@ -2394,17 +2455,18 @@ namespace SSC {
   }
 
   void Core::udpBind (String seq, uint64_t serverId, String ip, int port, Cb cb) const {
+    std::unique_lock<std::recursive_mutex> guard(serversMutex);
     Server* server = servers[serverId] = new Server();
-    server->udp = new uv_udp_t;
-    server->seq = seq;
-    server->serverId = serverId;
     server->cb = cb;
-    server->udp->data = server;
+    server->seq = seq;
+    server->type = PEER_TYPE_UDP;
+    server->serverId = serverId;
+    server->udp.data = server;
 
     int err;
     struct sockaddr_in addr;
 
-    err = uv_ip4_addr((char*) ip.c_str(), port, &addr);
+    err = uv_ip4_addr((char*) ip.c_str(), port, &server->addr);
 
     if (err < 0) {
       auto msg = SSC::format(R"MSG({
@@ -2414,12 +2476,15 @@ namespace SSC {
           "message": "uv_ip4_addr: $S"
         }
       })MSG", std::to_string(serverId), std::string(uv_strerror(err)));
+      guard.unlock();
       cb(seq, msg, Post{});
       return;
     }
 
-    uv_udp_init(getDefaultLoop(), server->udp);
-    err = uv_udp_bind(server->udp, (const struct sockaddr*)&addr, UV_UDP_REUSEADDR);
+    uv_udp_init(getDefaultLoop(), &server->udp);
+    err = uv_udp_bind(&server->udp, (const struct sockaddr*)&server->addr, UV_UDP_REUSEADDR);
+
+    guard.unlock();
 
     if (err < 0) {
       auto msg = SSC::format(R"MSG({
@@ -2429,7 +2494,7 @@ namespace SSC {
           "message": "uv_udp_bind: $S"
         }
       })MSG", std::to_string(server->serverId), std::string(uv_strerror(err)));
-      server->cb("-1", msg, Post{});
+      cb(seq, msg, Post{});
       return;
     }
 
@@ -2441,7 +2506,7 @@ namespace SSC {
       }
     })MSG", std::to_string(server->serverId));
 
-    server->cb(server->seq, msg, Post{});
+    cb(server->seq, msg, Post{});
 
     runDefaultLoop();
   }
@@ -2452,6 +2517,7 @@ namespace SSC {
     int err = 0;
 
     if (isClient) {
+      std::lock_guard<std::recursive_mutex> guard(clientsMutex);
       Client* client = clients[xId];
 
       if (client == nullptr) {
@@ -2466,8 +2532,9 @@ namespace SSC {
         return;
       }
 
-      err = uv_udp_getsockname(client->udp, &sockname, &len);
+      err = uv_udp_getsockname(&client->udp, &sockname, &len);
     } else {
+      std::lock_guard<std::recursive_mutex> guard(serversMutex);
       Server* server = servers[xId];
 
       if (server == nullptr) {
@@ -2482,7 +2549,7 @@ namespace SSC {
         return;
       }
 
-      err = uv_udp_getsockname(server->udp, &sockname, &len);
+      err = uv_udp_getsockname(&server->udp, &sockname, &len);
     }
 
     if (err < 0) {
@@ -2512,17 +2579,30 @@ namespace SSC {
     cb(seq, msg, Post{});
   }
 
-  void Core::udpSend (String seq, uint64_t clientId, char* buf, int offset, int len, int port, const char* ip, Cb cb) const {
-    Client* client = clients[clientId] = new Client();
+  void Core::udpSend (String seq, uint64_t clientId, char* buf, int offset, int len, int port, const char* ip, bool ephemeral, Cb cb) const {
+    std::unique_lock<std::recursive_mutex> guard(clientsMutex);
+    Client* client = nullptr;
+    auto loop = getDefaultLoop();
 
+    if (ephemeral) {
+      client = new Client();
+      client->ephemeral = true;
+      uv_udp_init(loop, &client->udp);
+    } else if (clients[clientId] != nullptr) {
+      client = clients[clientId];
+    } else {
+      client = clients[clientId] = new Client();
+      uv_udp_init(loop, &client->udp);
+    }
+
+    client->id = clientId;
     client->cb = cb;
     client->seq = seq;
+    client->type = PEER_TYPE_UDP;
+    client->clientId = clientId;
 
     int err;
-    uv_udp_send_t* req = new uv_udp_send_t;
-    req->data = client;
-
-    err = uv_ip4_addr((char*) ip, port, &addr);
+    err = uv_ip4_addr((char*) ip, port, &client->addr);
 
     if (err) {
       auto msg = SSC::format(R"MSG({
@@ -2531,32 +2611,53 @@ namespace SSC {
           "message": "$S"
         }
       })MSG", std::to_string(clientId), std::string(uv_strerror(err)));
+
+      guard.unlock();
       cb(seq, msg, Post{});
       return;
     }
 
-    uv_buf_t bufs[1];
-    bufs[0] = uv_buf_init(buf + offset, len);
+    uv_buf_t buffer = uv_buf_init(buf + offset, len);
+    uv_udp_send_t* req = new uv_udp_send_t;
 
-    err = uv_udp_send(req, client->udp, bufs, 1, (const struct sockaddr*)&addr, [](uv_udp_send_t *req, int status) {
+    req->data = client;
+
+    err = uv_udp_send(req, &client->udp, &buffer, 1, (const struct sockaddr*)&client->addr, [](uv_udp_send_t *req, int status) {
+      std::lock_guard<std::recursive_mutex> guard(clientsMutex);
       auto client = reinterpret_cast<Client*>(req->data);
+      std::string msg = "";
 
-      NSLog(@"SENT");
-      auto msg = SSC::format(R"MSG({
-        "data": {
-          "clientId": "$S",
-          "status": "$i"
-        }
-      })MSG", std::to_string(client->clientId), status);
+      if (status < 0) {
+        msg = SSC::format(R"MSG({
+          "err": {
+            "clientId": "$S",
+            "message": "%S"
+          }
+        })MSG", std::to_string(client->id), uv_strerror(status));
+      } else {
+        NSLog(@"SENT");
+        msg = SSC::format(R"MSG({
+          "data": {
+            "clientId": "$S",
+            "status": "$i"
+          }
+        })MSG", std::to_string(client->id), status);
+      }
 
       client->cb(client->seq, msg, Post{});
 
-      delete[] req->bufs;
-      clients.erase(client->clientId);
-      free(req);
+      if (client->ephemeral) {
+        clients.erase(client->id);
+
+        delete[] req->bufs;
+        delete client;
+        delete req;
+      }
     });
 
-    if (err) {
+    guard.unlock();
+
+    if (err < 0) {
       NSLog(@"SHIT NO ERROR");
       auto msg = SSC::format(R"MSG({
         "err": {
@@ -2565,7 +2666,8 @@ namespace SSC {
         }
       })MSG", std::to_string(client->clientId), std::string(uv_strerror(err)));
 
-      client->cb("-1", msg, Post{});
+      cb(seq, msg, Post{});
+      delete req;
       return;
     }
 
@@ -2573,6 +2675,7 @@ namespace SSC {
   }
 
   void Core::udpReadStart (String seq, uint64_t serverId, Cb cb) const {
+    std::unique_lock<std::recursive_mutex> guard(serversMutex);
     Server* server = servers[serverId];
 
     if (server == nullptr) {
@@ -2583,7 +2686,9 @@ namespace SSC {
           "message": "no such server"
         }
       })MSG", std::to_string(serverId));
+
       cb(seq, msg, Post{});
+      guard.unlock();
       return;
     }
 
@@ -2596,10 +2701,11 @@ namespace SSC {
       memset(buf->base, 0, buf->len);
     };
 
-    int err = uv_udp_recv_start(server->udp, allocate, [](uv_udp_t *handle, ssize_t nread, const uv_buf_t *buf, const struct sockaddr *addr, unsigned flags) {
+    int err = uv_udp_recv_start(&server->udp, allocate, [](uv_udp_t *handle, ssize_t nread, const uv_buf_t *buf, const struct sockaddr *addr, unsigned flags) {
+      std::lock_guard<std::recursive_mutex> guard(serversMutex);
       Server *server = (Server*)handle->data;
 
-      // NSLog(@"BYTES READ -> %i", (int)nread);
+      NSLog(@"BYTES READ -> %i", (int)nread);
 
       if (nread == UV_EOF) {
         auto msg = SSC::format(R"MSG({
@@ -2621,11 +2727,11 @@ namespace SSC {
         auto headers = SSC::format(R"MSG(
           content-type: application/octet-stream
           content-length: $i
-        )MSG", (int)buf->len);
+        )MSG", (int) nread);
 
         Post post;
         post.body = buf->base;
-        post.length = (int)buf->len;
+        post.length = (int) nread;
         post.headers = headers;
 
         auto msg = SSC::format(R"MSG({
@@ -2639,6 +2745,9 @@ namespace SSC {
         })MSG", std::to_string(server->serverId), post.length, port, ip);
 
         server->cb("-1", msg, post);
+      } else {
+        auto msg = SSC::format(R"MSG({ "data": {} })MSG");
+        server->cb("-1", msg, Post{});
       }
     });
 
@@ -2651,11 +2760,13 @@ namespace SSC {
         }
       })MSG", std::to_string(serverId), std::string(uv_strerror(err)));
       cb(seq, msg, Post{});
+      guard.unlock();
       return;
     }
 
     auto msg = SSC::format(R"MSG({ "data": {} })MSG");
     server->cb(seq, msg, Post{});
+    guard.unlock();
     runDefaultLoop();
   }
 

@@ -596,42 +596,46 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   // - On the next turn, it ill respond to the XHR which /already has the meta data from the original request.
   //
   if (post.body) {
-    auto src = self.core->createPost(seq, msg, post);
-    NSString* script = [NSString stringWithUTF8String: src.c_str()];
-    [self.webview evaluateJavaScript: script completionHandler: nil];
+    dispatch_async(dispatch_get_main_queue(), ^{
+      auto src = self.core->createPost(seq, msg, post);
+      NSString* script = [NSString stringWithUTF8String: src.c_str()];
+      [self.webview evaluateJavaScript: script completionHandler: nil];
+    });
     return;
   }
 
   if (seq != "-1" && self.core->hasTask(seq)) {
-    auto task = self.core->getTask(seq);
-    NSMutableDictionary* httpHeaders = [NSMutableDictionary dictionary];
+    dispatch_async(dispatch_get_main_queue(), ^{
+      auto task = self.core->getTask(seq);
+      NSMutableDictionary* httpHeaders = [NSMutableDictionary dictionary];
 
-    httpHeaders[@"access-control-allow-origin"] = @"*";
-    httpHeaders[@"access-control-allow-methods"] = @"*";
+      httpHeaders[@"access-control-allow-origin"] = @"*";
+      httpHeaders[@"access-control-allow-methods"] = @"*";
 
-    NSHTTPURLResponse *httpResponse = [[NSHTTPURLResponse alloc]
-      initWithURL: task.request.URL
-       statusCode: 200
-      HTTPVersion: @"HTTP/1.1"
-      headerFields: httpHeaders
-    ];
+      NSHTTPURLResponse *httpResponse = [[NSHTTPURLResponse alloc]
+         initWithURL: task.request.URL
+          statusCode: 200
+         HTTPVersion: @"HTTP/1.1"
+        headerFields: httpHeaders
+      ];
 
-    [task didReceiveResponse: httpResponse];
+      [task didReceiveResponse: httpResponse];
 
-    NSData* data;
+      NSData* data;
 
-    // if post has a length, use the post's body as the response...
-    if (post.body) {
+      // if post has a length, use the post's body as the response...
+      if (post.body) {
       data = [NSData dataWithBytes: post.body length: post.length];
-    } else {
-      NSString* str = [NSString stringWithUTF8String: msg.c_str()];
-      data = [str dataUsingEncoding: NSUTF8StringEncoding];
-    }
+      } else {
+        NSString* str = [NSString stringWithUTF8String: msg.c_str()];
+        data = [str dataUsingEncoding: NSUTF8StringEncoding];
+      }
 
-    [task didReceiveData: data];
-    [task didFinish];
+      [task didReceiveData: data];
+      [task didFinish];
 
-    self.core->removeTask(seq);
+      self.core->removeTask(seq);
+    });
     return;
   }
 
@@ -991,7 +995,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     }
 
     PeerInfo info;
-    info.init(client->tcp);
+    info.init(&client->tcp);
 
     auto msg = SSC::format(
       R"MSG({
@@ -1154,6 +1158,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     uint64_t clientId;
     std::string err;
 
+    auto ephemeral = cmd.get("ephemeral") == "true";
     auto strOffset = cmd.get("offset");
     auto strPort = cmd.get("port");
     auto ip = cmd.get("address");
@@ -1193,7 +1198,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     }
 
     dispatch_async(queue, ^{
-      self.core->udpSend(seq, clientId, buf, offset, (int)bufsize, port, (const char*) ip.c_str(), [=](auto seq, auto msg, auto post) {
+      self.core->udpSend(seq, clientId, buf, offset, (int)bufsize, port, (const char*) ip.c_str(), ephemeral, [=](auto seq, auto msg, auto post) {
         [self send: seq msg: msg post: post];
       });
     });
@@ -1287,9 +1292,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
     dispatch_async(queue, ^{
       self.core->udpBind(seq, serverId, ip, port, [=](auto seq, auto msg, auto post) {
-        dispatch_async(dispatch_get_main_queue(), ^{
-          [self send: seq msg: msg post: post];
-        });
+        [self send: seq msg: msg post: post];
       });
     });
 
@@ -1309,9 +1312,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
     dispatch_async(queue, ^{
       self.core->udpReadStart(seq, serverId, [=](auto seq, auto msg, auto post) {
-        dispatch_async(dispatch_get_main_queue(), ^{
-          [self send: seq msg: msg post: post];
-        });
+        [self send: seq msg: msg post: post];
       });
     });
 
