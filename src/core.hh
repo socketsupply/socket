@@ -2633,7 +2633,7 @@ namespace SSC {
             "clientId": "$S",
             "message": "%S"
           }
-        })MSG", std::to_string(client->id), uv_strerror(status));
+        })MSG", std::to_string(client->id), std::string(uv_strerror(status)));
       } else {
         NSLog(@"SENT");
         msg = SSC::format(R"MSG({
@@ -2658,7 +2658,6 @@ namespace SSC {
     guard.unlock();
 
     if (err < 0) {
-      NSLog(@"SHIT NO ERROR");
       auto msg = SSC::format(R"MSG({
         "err": {
           "clientId": "$S",
