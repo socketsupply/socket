@@ -297,7 +297,7 @@ namespace SSC {
       void tcpReadStart (String seq, uint64_t clientId, Cb cb) const;
 
       void udpBind (String seq, uint64_t serverId, String ip, int port, Cb cb) const;
-      void udpSend (String seq, uint64_t clientId, String message, int offset, int len, int port, const char* ip, Cb cb) const;
+      void udpSend (String seq, uint64_t clientId, char* buf, int offset, int len, int port, const char* ip, Cb cb) const;
       void udpReadStart (String seq, uint64_t serverId, Cb cb) const;
       void udpGetSockName (String seq, uint64_t clientId, bool isClient, Cb cb) const;
 
@@ -2512,20 +2512,8 @@ namespace SSC {
     cb(seq, msg, Post{});
   }
 
-  void Core::udpSend (String seq, uint64_t clientId, String message, int offset, int len, int port, const char* ip, Cb cb) const {
-    Client* client = clients[clientId];
-
-    if (client == nullptr) {
-      auto msg = SSC::format(R"MSG({
-        "err": {
-          "source": "udp",
-          "clientId": "$S",
-          "message": "no such client"
-        }
-      })MSG", std::to_string(clientId));
-      cb(seq, msg, Post{});
-      return;
-    }
+  void Core::udpSend (String seq, uint64_t clientId, char* buf, int offset, int len, int port, const char* ip, Cb cb) const {
+    Client* client = clients[clientId] = new Client();
 
     client->cb = cb;
     client->seq = seq;
@@ -2542,18 +2530,18 @@ namespace SSC {
           "clientId": "$S",
           "message": "$S"
         }
-      })MSG", std::to_string(clientId), uv_strerror(err));
+      })MSG", std::to_string(clientId), std::string(uv_strerror(err)));
       cb(seq, msg, Post{});
       return;
     }
 
     uv_buf_t bufs[1];
-    char* base = (char*) message.c_str();
-    bufs[0] = uv_buf_init(base + offset, len);
+    bufs[0] = uv_buf_init(buf + offset, len);
 
-    err = uv_udp_send(req, client->udp, bufs, 1, (const struct sockaddr *) &addr, [] (uv_udp_send_t *req, int status) {
+    err = uv_udp_send(req, client->udp, bufs, 1, (const struct sockaddr*)&addr, [](uv_udp_send_t *req, int status) {
       auto client = reinterpret_cast<Client*>(req->data);
 
+      NSLog(@"SENT");
       auto msg = SSC::format(R"MSG({
         "data": {
           "clientId": "$S",
@@ -2564,16 +2552,19 @@ namespace SSC {
       client->cb(client->seq, msg, Post{});
 
       delete[] req->bufs;
+      clients.erase(client->clientId);
       free(req);
     });
 
     if (err) {
+      NSLog(@"SHIT NO ERROR");
       auto msg = SSC::format(R"MSG({
-        "data": {
+        "err": {
           "clientId": "$S",
           "message": "Write error $S"
         }
-      })MSG", std::to_string(client->clientId), uv_strerror(err));
+      })MSG", std::to_string(client->clientId), std::string(uv_strerror(err)));
+
       client->cb("-1", msg, Post{});
       return;
     }

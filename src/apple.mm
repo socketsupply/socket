@@ -1150,26 +1150,36 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
   if (cmd.name == "udpSend") {
     int offset = 0;
-    int len = 0;
     int port = 0;
+    uint64_t clientId;
     std::string err;
 
-    try {
-      offset = std::stoi(cmd.get("offset"));
-    } catch (...) {
-      err = "invalid offset";
+    auto strOffset = cmd.get("offset");
+    auto strPort = cmd.get("port");
+    auto ip = cmd.get("address");
+
+    if (strOffset.size() > 0) {
+      try {
+        offset = std::stoi(strOffset);
+      } catch (...) {
+        err = "invalid offset";
+      }
     }
 
     try {
-      len = std::stoi(cmd.get("len"));
-    } catch (...) {
-      err = "invalid length";
-    }
-
-    try {
-      port = std::stoi(cmd.get("port"));
+      port = std::stoi(strPort);
     } catch (...) {
       err = "invalid port";
+    }
+
+    if (ip.size() == 0) {
+      ip = "0.0.0.0";
+    }
+
+    try {
+      clientId = std::stoull(cmd.get("clientId"));
+    } catch (...) {
+      err = "invalid clientId";
     }
 
     if (err.size() > 0) {
@@ -1182,11 +1192,8 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
       return true;
     }
 
-    auto ip = cmd.get("ip");
-    auto clientId = std::stoull(cmd.get("clientId"));
-
     dispatch_async(queue, ^{
-      self.core->udpSend(seq, clientId, buf, offset, len, port, (const char*) ip.c_str(), [=](auto seq, auto msg, auto post) {
+      self.core->udpSend(seq, clientId, buf, offset, (int)bufsize, port, (const char*) ip.c_str(), [=](auto seq, auto msg, auto post) {
         [self send: seq msg: msg post: post];
       });
     });
