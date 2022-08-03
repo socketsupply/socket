@@ -773,7 +773,18 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     return true;
    }
 
-  if (cmd.name == "getFSConstants" || cmd.name == "fs.constants") {
+  if (cmd.name == "render.eval") {
+    std::string value = "window._ipc.evaluate('" + cmd.get("value") + "')";
+
+    dispatch_async(queue, ^{
+      NSString* script = [NSString stringWithUTF8String: valuec_str()];
+      [self.webview evaluateJavaScript: script completionHandler:nil];
+    });
+
+    return true;
+  }
+
+  if (cmd.name == "getFSConstants") {
     dispatch_async(queue, ^{
       auto constants = self.core->getFSConstants();
       [self send: seq msg: constants post: Post{}];
