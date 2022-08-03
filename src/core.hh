@@ -572,11 +572,9 @@ namespace SSC {
     initTimers();
     startTimers();
 
-    printf("before uv_run()\n");
     isLoopRunning = true;
     while (uv_run(loop, UV_RUN_NOWAIT) > 0);
     isLoopRunning = false;
-    printf("after uv_run()\n");
   }
 
   static void initTimers () {
@@ -651,8 +649,6 @@ namespace SSC {
 
     didTimersStart = false;
   }
-
-  struct sockaddr_in addr;
 
   typedef struct {
     uv_write_t req;
