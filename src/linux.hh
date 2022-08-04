@@ -14,6 +14,7 @@ static GtkTargetEntry droppableTypes[] = {
 
 namespace SSC {
   std::map<std::string, std::string> bufferQueue;
+  std::recursive_mutex windowFactoryMutex;
 
 #define UTF8_IN_URANGE(c, a, b) (             \
     (unsigned char) c >= (unsigned char) a && \
@@ -120,15 +121,37 @@ namespace SSC {
       IApp *app;
       Core *core;
 
+      class ThreadContext {
+        public:
+          typedef std::function<void(Bridge::ThreadContext *)> Function;
+          Bridge *bridge;
+          Function fn;
+          Core *core;
+
+          ThreadContext (Bridge *bridge) {
+            this->bridge = bridge;
+            this->core = bridge->core;
+          }
+
+          static void Dispatch (Bridge *bridge, Function fn) {
+            auto threadContext = new Bridge::ThreadContext(bridge);
+            threadContext->fn = fn;
+            bridge->app->dispatch([threadContext] {
+             threadContext->fn(threadContext);
+             delete threadContext;
+            });
+          }
+      };
+
       Bridge (IApp *app) {
         this->core = new Core();
         this->app = app;
       }
 
       bool route (std::string msg, char *buf, size_t bufsize);
-      void send (Parse &cmd, std::string seq, std::string msg, Post post);
-      bool invoke (Parse &cmd, char *buf, size_t bufsize, Cb cb);
-      bool invoke (Parse &cmd, Cb cb);
+      void send (Parse cmd, std::string seq, std::string msg, Post post);
+      bool invoke (Parse cmd, char *buf, size_t bufsize, Cb cb);
+      bool invoke (Parse cmd, Cb cb);
   };
 
   class App : public IApp {
@@ -199,13 +222,15 @@ namespace SSC {
       webkitContext,
       "ipc",
       [](WebKitURISchemeRequest *request, gpointer arg) {
+        std::lock_guard<std::recursive_mutex> guard(windowFactoryMutex);
+
         auto *app = static_cast<App*>(arg);
         auto uri = std::string(webkit_uri_scheme_request_get_uri(request));
         auto msg = std::string(uri);
 
         Parse cmd(msg);
 
-        auto invoked = app->bridge.invoke(cmd, [&](auto seq, auto result, auto post) {
+        auto invoked = app->bridge.invoke(cmd, [=](auto seq, auto result, auto post) {
           auto size = post.body != 0 ? post.length : result.size();
           auto body = post.body != nullptr && post.length > 0
             ? post.body
@@ -284,11 +309,11 @@ namespace SSC {
     );
   }
 
-  bool Bridge::invoke (Parse &cmd, Cb cb) {
+  bool Bridge::invoke (Parse cmd, Cb cb) {
     return this->invoke(cmd, 0, 0, cb);
   }
 
-  bool Bridge::invoke (Parse &cmd, char *buf, size_t bufsize, Cb cb) {
+  bool Bridge::invoke (Parse cmd, char *buf, size_t bufsize, Cb cb) {
     auto seq = cmd.get("seq");
 
     if (cmd.name == "post") {
@@ -356,11 +381,13 @@ namespace SSC {
     }
 
     if (cmd.name == "event") {
-      auto event = decodeURIComponent(cmd.get("value"));
-      auto data = decodeURIComponent(cmd.get("data"));
-      auto seq = cmd.get("seq");
+      Bridge::ThreadContext::Dispatch(this, [=](auto ctx) {
+        auto event = decodeURIComponent(cmd.get("value"));
+        auto data = decodeURIComponent(cmd.get("data"));
+        auto seq = cmd.get("seq");
 
-      this->core->handleEvent(seq, event, data, cb);
+        ctx->core->handleEvent(seq, event, data, cb);
+      });
       return true;
     }
 
@@ -389,10 +416,12 @@ namespace SSC {
         return true;
       }
 
-      auto path = decodeURIComponent(cmd.get("path"));
-      auto mode = std::stoi(cmd.get("mode"));
+      Bridge::ThreadContext::Dispatch(this, [=](auto ctx) {
+        auto path = decodeURIComponent(cmd.get("path"));
+        auto mode = std::stoi(cmd.get("mode"));
 
-      this->core->fsAccess(seq, path, mode, cb);
+        ctx->core->fsAccess(seq, path, mode, cb);
+      });
       return true;
     }
 
@@ -421,10 +450,12 @@ namespace SSC {
         return true;
       }
 
-      auto path = decodeURIComponent(cmd.get("path"));
-      auto mode = std::stoi(cmd.get("mode"));
+      Bridge::ThreadContext::Dispatch(this, [=](auto ctx) {
+        auto path = decodeURIComponent(cmd.get("path"));
+        auto mode = std::stoi(cmd.get("mode"));
 
-      this->core->fsChmod(seq, path, mode, cb);
+        ctx->core->fsChmod(seq, path, mode, cb);
+      });
       return true;
     }
 
@@ -441,8 +472,10 @@ namespace SSC {
         return true;
       }
 
-      auto id = std::stoull(cmd.get("id"));
-      this->core->fsClose(seq, id, cb);
+      Bridge::ThreadContext::Dispatch(this, [=](auto ctx) {
+        auto id = std::stoull(cmd.get("id"));
+        ctx->core->fsClose(seq, id, cb);
+      });
       return true;
     }
 
@@ -459,8 +492,10 @@ namespace SSC {
         return true;
       }
 
-      auto id = std::stoull(cmd.get("id"));
-      this->core->fsClosedir(seq, id, cb);
+      Bridge::ThreadContext::Dispatch(this, [=](auto ctx) {
+        auto id = std::stoull(cmd.get("id"));
+        ctx->core->fsClosedir(seq, id, cb);
+      });
       return true;
     }
 
@@ -477,31 +512,43 @@ namespace SSC {
         return true;
       }
 
-      auto id = std::stoull(cmd.get("id"));
-      this->core->fsCloseOpenDescriptor(seq, id, cb);
+      Bridge::ThreadContext::Dispatch(this, [=](auto ctx) {
+        auto id = std::stoull(cmd.get("id"));
+        ctx->core->fsCloseOpenDescriptor(seq, id, cb);
+      });
       return true;
     }
 
     if (cmd.name == "fsCloseOpenDescriptors" || cmd.name == "fs.closeOpenDescriptors") {
-      auto preserveRetained = cmd.get("retain") != "false";
-      this->core->fsCloseOpenDescriptors(seq, preserveRetained, cb);
+      Bridge::ThreadContext::Dispatch(this, [=](auto ctx) {
+        auto preserveRetained = cmd.get("retain") != "false";
+        ctx->core->fsCloseOpenDescriptors(seq, preserveRetained, cb);
+      });
       return true;
     }
 
     if (cmd.name == "fsCopyFile" || cmd.name == "fs.copyFile") {
-      auto src = cmd.get("src");
-      auto dest = cmd.get("dest");
-      auto mode = std::stoi(cmd.get("dest"));
-      this->core->fsCopyFile(seq, src, dest, mode, cb);
+      Bridge::ThreadContext::Dispatch(this, [=](auto ctx) {
+        auto src = cmd.get("src");
+        auto dest = cmd.get("dest");
+        auto mode = std::stoi(cmd.get("dest"));
+
+        ctx->core->fsCopyFile(seq, src, dest, mode, cb);
+      });
       return true;
     }
 
     if (cmd.name == "fsOpen" || cmd.name == "fs.open") {
-      auto path = decodeURIComponent(cmd.get("path"));
-      auto flags = std::stoi(cmd.get("flags"));
-      auto mode = std::stoi(cmd.get("mode"));
-      auto id = std::stoull(cmd.get("id"));
-      this->core->fsOpen(seq, id, path, flags, mode, cb);
+      Bridge::ThreadContext::Dispatch(this, [=](auto ctx) {
+        auto seq = cmd.get("seq");
+        auto path = decodeURIComponent(cmd.get("path"));
+        auto flags = std::stoi(cmd.get("flags"));
+        auto mode = std::stoi(cmd.get("mode"));
+        auto id = std::stoull(cmd.get("id"));
+
+        ctx->core->fsOpen(seq, id, path, flags, mode, cb);
+      });
+
       return true;
     }
 
@@ -530,25 +577,32 @@ namespace SSC {
         return true;
       }
 
-      auto path = decodeURIComponent(cmd.get("path"));
-      auto id = std::stoull(cmd.get("id"));
+      Bridge::ThreadContext::Dispatch(this, [=](auto ctx) {
+        auto path = decodeURIComponent(cmd.get("path"));
+        auto id = std::stoull(cmd.get("id"));
 
-      this->core->fsOpendir(seq, id, path,  cb);
+        ctx->core->fsOpendir(seq, id, path,  cb);
+      });
       return true;
     }
 
     if (cmd.name == "fsRead" || cmd.name == "fs.read") {
-      auto id = std::stoull(cmd.get("id"));
-      auto size = std::stoi(cmd.get("size"));
-      auto offset = std::stoi(cmd.get("offset"));
-      this->core->fsRead(seq, id, size, offset, cb);
+      Bridge::ThreadContext::Dispatch(this, [=](auto ctx) {
+        auto id = std::stoull(cmd.get("id"));
+        auto size = std::stoi(cmd.get("size"));
+        auto offset = std::stoi(cmd.get("offset"));
+
+        ctx->core->fsRead(seq, id, size, offset, cb);
+      });
       return true;
     }
 
     if (cmd.name == "fsRetainDescriptor" || cmd.name == "fs.retainDescriptor") {
-      auto id = std::stoull(cmd.get("id"));
+      Bridge::ThreadContext::Dispatch(this, [=](auto ctx) {
+        auto id = std::stoull(cmd.get("id"));
 
-      this->core->fsRetainDescriptor(seq, id, cb);
+        ctx->core->fsRetainDescriptor(seq, id, cb);
+      });
       return true;
     }
 
@@ -565,21 +619,26 @@ namespace SSC {
         return true;
       }
 
-      auto id = std::stoull(cmd.get("id"));
-      auto entries = std::stoi(cmd.get("entries", "256"));
-      this->core->fsReaddir(seq, id, entries, cb);
+      Bridge::ThreadContext::Dispatch(this, [=](auto ctx) {
+        auto id = std::stoull(cmd.get("id"));
+        auto entries = std::stoi(cmd.get("entries", "256"));
+
+        ctx->core->fsReaddir(seq, id, entries, cb);
+      });
       return true;
     }
 
     if (cmd.name == "fsWrite" || cmd.name == "fs.write") {
       auto key = std::to_string(cmd.index) + seq;
       if (bufferQueue.count(key)) {
-        auto id = std::stoull(cmd.get("id"));
-        auto offset = std::stoi(cmd.get("offset"));
-        auto buffer = bufferQueue[key];
+        Bridge::ThreadContext::Dispatch(this, [=](auto ctx) {
+          auto id = std::stoull(cmd.get("id"));
+          auto offset = std::stoi(cmd.get("offset"));
+          auto buffer = bufferQueue[key];
 
-        this->core->fsWrite(seq, id, buffer, offset, cb);
-        bufferQueue.erase(bufferQueue.find(key));
+          ctx->core->fsWrite(seq, id, buffer, offset, cb);
+          bufferQueue.erase(bufferQueue.find(key));
+        });
         return true;
       }
     }
@@ -590,13 +649,14 @@ namespace SSC {
   bool Bridge::route (std::string msg, char *buf, size_t bufsize) {
     Parse cmd(msg);
 
-    return this->invoke(cmd, buf, bufsize, [&cmd, this](auto seq, auto msg, auto post) {
+    return this->invoke(cmd, buf, bufsize, [cmd, this](auto seq, auto msg, auto post) {
       this->send(cmd, seq, msg, post);
     });
   }
 
-  void Bridge::send (Parse &cmd, std::string seq, std::string msg, Post post) {
-    std::lock_guard<std::recursive_mutex> guard(SSC::descriptorsMutex);
+  void Bridge::send (Parse cmd, std::string seq, std::string msg, Post post) {
+    std::lock_guard<std::recursive_mutex> guard1(SSC::descriptorsMutex);
+    std::lock_guard<std::recursive_mutex> guard2(windowFactoryMutex);
 
     if (cmd.index == -1) {
       // @TODO(jwerle): print warning
