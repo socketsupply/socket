@@ -590,27 +590,16 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 }
 
 - (void) send: (std::string)seq msg: (std::string)msg post: (SSC::Post)post {
-  //
-  // - If there is a buffer, the source is a stream and it should invoked by the
-  //   client to ask for it via an XHR, this will be intercepted by the scheme handler.
-  // - On the next turn, it ill respond to the XHR which /already has the meta data from the original request.
-  //
-  if (post.body) {
-    dispatch_async(dispatch_get_main_queue(), ^{
-      auto src = self.core->createPost(seq, msg, post);
-      NSString* script = [NSString stringWithUTF8String: src.c_str()];
-      [self.webview evaluateJavaScript: script completionHandler: nil];
-    });
-    return;
-  }
 
   if (seq != "-1" && self.core->hasTask(seq)) {
     dispatch_async(dispatch_get_main_queue(), ^{
+      NSMutableDictionary* httpHeaders = [[NSMutableDictionary alloc] init];
       auto task = self.core->getTask(seq);
-      NSMutableDictionary* httpHeaders = [NSMutableDictionary dictionary];
+      auto length = post.body ? post.length : msg.size();
 
       httpHeaders[@"access-control-allow-origin"] = @"*";
       httpHeaders[@"access-control-allow-methods"] = @"*";
+      httpHeaders[@"content-length"] = [@(length) stringValue];
 
       NSHTTPURLResponse *httpResponse = [[NSHTTPURLResponse alloc]
          initWithURL: task.request.URL
@@ -621,20 +610,30 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
       [task didReceiveResponse: httpResponse];
 
-      NSData* data;
-
-      // if post has a length, use the post's body as the response...
       if (post.body) {
-      data = [NSData dataWithBytes: post.body length: post.length];
-      } else {
+        NSData *data = [NSData dataWithBytes: post.body length: post.length];
+        [task didReceiveData: data];
+      } else if (msg.size() > 0) {
         NSString* str = [NSString stringWithUTF8String: msg.c_str()];
-        data = [str dataUsingEncoding: NSUTF8StringEncoding];
+        NSData *data = [str dataUsingEncoding: NSUTF8StringEncoding];
+        [task didReceiveData: data];
       }
 
-      [task didReceiveData: data];
-      [task didFinish];
-
       self.core->removeTask(seq);
+
+      [task retain];
+      [task didFinish];
+      [httpHeaders release];
+      [httpResponse release];
+    });
+    return;
+  }
+
+  if (post.body) {
+    dispatch_async(dispatch_get_main_queue(), ^{
+      auto src = self.core->createPost(seq, msg, post);
+      NSString* script = [NSString stringWithUTF8String: src.c_str()];
+      [self.webview evaluateJavaScript: script completionHandler: nil];
     });
     return;
   }
@@ -1386,20 +1385,18 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
     [task didReceiveResponse: httpResponse];
     [task didFinish];
+    [httpResponse release];
+
     return;
   }
 
   if (cmd.name == "post") {
+    NSMutableDictionary* httpHeaders = [NSMutableDictionary dictionary];
     uint64_t postId = std::stoull(cmd.get("id"));
     auto post = self.bridge.core->getPost(postId);
-    NSMutableDictionary* httpHeaders = [NSMutableDictionary dictionary];
 
     httpHeaders[@"access-control-allow-origin"] = @"*";
-    httpHeaders[@"content-length"] = 0;
-
-    if (post.length > 0) {
-      httpHeaders[@"content-length"] = [@(post.length) stringValue];
-    }
+    httpHeaders[@"content-length"] = [@(post.length) stringValue];
 
     if (post.headers.size() > 0) {
       auto lines = SSC::split(SSC::trim(post.headers), '\n');
@@ -1431,6 +1428,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     }
 
     [task didFinish];
+    [httpResponse release];
 
     dispatch_async(dispatch_get_main_queue(), ^{
       // 256ms timeout before removing post and potentially freeing `post.body`
@@ -1442,12 +1440,16 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     return;
   }
 
-  self.bridge.core->putTask(cmd.get("seq"), task);
-  char* body = NULL;
   size_t bufsize = 0;
+  char *body = NULL;
+  auto seq = cmd.get("seq");
+
+  if (seq.size() > 0) {
+    self.bridge.core->putTask(seq, [task retain]);
+  }
 
   // if there is a body on the reuqest, pass it into the method router.
-	auto rawBody = task.request.HTTPBody;
+  auto rawBody = task.request.HTTPBody;
 
   if (rawBody) {
     const void* data = [rawBody bytes];
