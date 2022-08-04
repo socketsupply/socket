@@ -486,18 +486,17 @@ namespace SSC {
 
   struct Timer {
     uv_timer_t handle;
-    uv_timer_cb invoke;
-    uint64_t timeout = 0;
-    uint64_t interval = 0;
     bool repeated = false;
     bool started = false;
+    uint64_t timeout = 0;
+    uint64_t interval = 0;
+    uv_timer_cb invoke;
   };
 
   struct Timers {
     Core core; // isolate
     Timer releaseWeakDescriptors = {
-      .repeated = true,
-      .timeout = 16 * 1024, // 16 * 1000
+      .timeout = 0,
       .invoke = [](uv_timer_t *handle) {
         std::unique_lock<std::recursive_mutex> descriptorsGuard(descriptorsMutex);
         std::lock_guard<std::recursive_mutex> timersGuard(timersMutex);
@@ -551,26 +550,42 @@ namespace SSC {
     };
   };
 
-  Timers timers;
+  static Timers timers;
+  static uv_loop_t defaultLoop = {0};
+
+  static std::atomic<bool> didLoopInit = false;
+  static std::atomic<bool> isLoopRunning = false;
+  static std::recursive_mutex loopMutex;
 
   static void initTimers ();
   static void startTimers ();
 
+  static void initLoop () {
+    std::lock_guard<std::recursive_mutex> guard(loopMutex);
+    if (didLoopInit) {
+      return;
+    }
+
+    uv_loop_init(&defaultLoop);
+    didLoopInit = true;
+  }
+
   static uv_loop_t* getDefaultLoop () {
-    return uv_default_loop();
+    initLoop();
+    return &defaultLoop;
   }
 
   static void runDefaultLoop () {
+    std::lock_guard<std::recursive_mutex> guard(loopMutex);
+
     if (isLoopRunning) {
       return;
     }
 
-    std::lock_guard<std::recursive_mutex> guard(loopMutex);
-
-    auto loop = getDefaultLoop();
-
     initTimers();
     startTimers();
+
+    auto loop = getDefaultLoop();
 
     isLoopRunning = true;
     while (uv_run(loop, UV_RUN_NOWAIT) > 0);
@@ -601,10 +616,6 @@ namespace SSC {
   static void startTimers () {
     std::lock_guard<std::recursive_mutex> guard(timersStartMutex);
 
-    if (didTimersStart) {
-      return;
-    }
-
     std::vector<Timer *> timersToStart = {
       &timers.releaseWeakDescriptors
     };
@@ -626,8 +637,6 @@ namespace SSC {
         uv_timer_again(&timer->handle);
       }
     }
-
-    didTimersStart = true;
   }
 
   static void stopTimers () {
@@ -696,6 +705,8 @@ namespace SSC {
     }
 
     cb(seq, "", Post{});
+
+    runDefaultLoop();
   }
 
   bool Core::hasTask (String id) {
