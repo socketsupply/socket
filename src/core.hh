@@ -381,22 +381,6 @@ namespace SSC {
     bool ephemeral = false;
   };
 
-  std::atomic<bool> isLoopRunning = false;
-  std::recursive_mutex loopMutex;
-
-  static void runDefaultLoop () {
-    if (isLoopRunning) {
-      return;
-    }
-
-    std::lock_guard<std::recursive_mutex> guard(loopMutex);
-
-    auto loop = getDefaultLoop();
-    isLoopRunning = true;
-    while (uv_run(loop, UV_RUN_NOWAIT) > 0);
-    isLoopRunning = false;
-  }
-
   static String addrToIPv4 (struct sockaddr_in* sin) {
     char buf[INET_ADDRSTRLEN];
     inet_ntop(AF_INET, &sin->sin_addr, buf, INET_ADDRSTRLEN);
@@ -496,9 +480,9 @@ namespace SSC {
   struct Timers {
     Core core; // isolate
     Timer releaseWeakDescriptors = {
-      .timeout = 0,
+      .timeout = 256,
       .invoke = [](uv_timer_t *handle) {
-        std::unique_lock<std::recursive_mutex> descriptorsGuard(descriptorsMutex);
+        std::lock_guard<std::recursive_mutex> descriptorsGuard(descriptorsMutex);
         std::lock_guard<std::recursive_mutex> timersGuard(timersMutex);
 
         std::vector<uint64_t> ids;
@@ -510,17 +494,11 @@ namespace SSC {
           ids.push_back(tuple.first);
         }
 
-        descriptorsGuard.unlock();
-
         for (auto const id : ids) {
-          descriptorsGuard.lock();
           auto desc = SSC::descriptors[id];
-          descriptorsGuard.unlock();
 
           if (desc == nullptr) {
-            descriptorsGuard.lock();
             SSC::descriptors.erase(id);
-            descriptorsGuard.unlock();
             continue;
           }
 
@@ -540,9 +518,7 @@ namespace SSC {
             });
           } else {
             // free
-            descriptorsGuard.lock();
             SSC::descriptors.erase(id);
-            descriptorsGuard.unlock();
             delete desc;
           }
         }
@@ -561,10 +537,11 @@ namespace SSC {
   static void startTimers ();
 
   static void initLoop () {
-    std::lock_guard<std::recursive_mutex> guard(loopMutex);
     if (didLoopInit) {
       return;
     }
+
+    std::lock_guard<std::recursive_mutex> guard(loopMutex);
 
     uv_loop_init(&defaultLoop);
     didLoopInit = true;
@@ -576,11 +553,11 @@ namespace SSC {
   }
 
   static void runDefaultLoop () {
-    std::lock_guard<std::recursive_mutex> guard(loopMutex);
-
     if (isLoopRunning) {
       return;
     }
+
+    std::lock_guard<std::recursive_mutex> guard(loopMutex);
 
     initTimers();
     startTimers();
@@ -588,16 +565,16 @@ namespace SSC {
     auto loop = getDefaultLoop();
 
     isLoopRunning = true;
-    while (uv_run(loop, UV_RUN_NOWAIT) > 0);
+    while (uv_run(loop, UV_RUN_NOWAIT));
     isLoopRunning = false;
   }
 
   static void initTimers () {
-    std::lock_guard<std::recursive_mutex> guard(timersInitMutex);
-
     if (didTimersInit) {
       return;
     }
+
+    std::lock_guard<std::recursive_mutex> guard(timersInitMutex);
 
     auto loop = getDefaultLoop();
 
@@ -637,14 +614,17 @@ namespace SSC {
         uv_timer_again(&timer->handle);
       }
     }
+
+    didTimersStart = false;
   }
 
   static void stopTimers () {
-    std::lock_guard<std::recursive_mutex> guard(timersStartMutex);
-
     if (didTimersStart == false) {
       return;
     }
+
+    std::lock_guard<std::recursive_mutex> guard(timersStartMutex);
+
 
     std::vector<Timer *> timersToStop = {
       &timers.releaseWeakDescriptors
@@ -694,14 +674,12 @@ namespace SSC {
   void Core::handleEvent (String seq, String event, String data, Cb cb) const {
     // init page
     if (event == "domcontentloaded") {
-      std::unique_lock<std::recursive_mutex> guard(descriptorsMutex);
+      std::lock_guard<std::recursive_mutex> guard(descriptorsMutex);
 
       for (auto const &tuple : SSC::descriptors) {
         auto desc = tuple.second;
         desc->stale = true;
       }
-
-      guard.unlock();
     }
 
     cb(seq, "", Post{});
