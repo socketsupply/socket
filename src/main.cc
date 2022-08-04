@@ -1,4 +1,3 @@
-#include "http.hh"
 #include "common.hh"
 #include "process.hh"
 
@@ -478,58 +477,6 @@ MAIN {
       writeToStdout(decodeURIComponent(value));
       return;
     }
-
-    #if IOS == 0 && ANDROID == 0
-      if (cmd.name == "bootstrap") {
-        auto src = appData[platform.os + "_bootstrap_src"].c_str();
-        auto dest = appData[platform.os + "_bootstrap_dest"].c_str();
-
-        if (fs::exists(dest)) return;
-
-        std::ofstream f(dest);
-
-        if (!f) {
-          std::cerr << "Failed to open " << dest << std::endl;
-          return;
-        }
-
-        httplib::ContentReceiver onContent = [&](
-            const char *data,
-            size_t len) -> bool {
-          f.write(data, len);
-          return true;
-        };
-
-        auto onProgress = [&](uint64_t current, uint64_t total) -> bool {
-          auto p = current * 100 / total;
-          auto progress = "\"" + std::to_string(p) + "\"";
-          window->eval(emitToRenderProcess("main-bootstrap-progress", progress));
-
-          if (p != 1) return true;
-
-          auto r = exec(appData[platform.os + "_bootstrap_post"]);
-
-          if (r.exitCode == 0) {
-            window->eval(emitToRenderProcess("main-bootstrap-success", progress));
-          } else {
-            auto msg = r.output.size() > 0 ? r.output : "\"Command failed\"";
-            window->eval(emitToRenderProcess("main-bootstrap-failure", msg));
-          }
-
-          return true;
-        };
-
-        const httplib::Headers h;
-        auto client = httplib::Client("https://go.microsoft.com");
-        auto res = client.Get("/fwlink/p/?LinkId=2124703", onContent, onProgress);
-
-        if (res->status != 200) {
-          auto msg = "{\"status\":" + std::to_string(res->status) + "}";
-          window->eval(emitToRenderProcess("main-bootstrap-failure", msg));
-          return;
-        }
-      }
-    #endif
 
     if (cmd.name == "exit") {
       try {

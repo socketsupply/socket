@@ -1039,19 +1039,8 @@ namespace SSC {
     auto res = init();
 
     if (!SUCCEEDED(res)) {
-      httplib::Client cli("https://go.microsoft.com");
-      auto res = cli.Get("/fwlink/p/?LinkId=2124703");
-
-      if (res->status != 200) {
-        alert("Windows needs to be updated before it can run this software");
-        return;
-      }
-
-      writeFile("webview2.exe", res->body);
-      auto r = exec("webview2.exe");
-      if (r.exitCode != 0) {
-        // TODO: handle this
-      }
+      // 1. power-shell-out to download and run webview installer
+      // 2. restart app
     }
   }
 
