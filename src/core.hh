@@ -2584,15 +2584,17 @@ namespace SSC {
     Client* client = nullptr;
     auto loop = getDefaultLoop();
 
-    if (ephemeral) {
-      client = new Client();
-      client->ephemeral = true;
-      uv_udp_init(loop, &client->udp);
-    } else if (clients[clientId] != nullptr) {
+    if (clients[clientId] != nullptr) {
       client = clients[clientId];
     } else {
-      client = clients[clientId] = new Client();
+      client = new Client();
       uv_udp_init(loop, &client->udp);
+
+      if (ephemeral) {
+        client->ephemeral = true;
+      } else {
+        clients[clientId] = client;
+      }
     }
 
     client->id = clientId;
@@ -2631,7 +2633,7 @@ namespace SSC {
         msg = SSC::format(R"MSG({
           "err": {
             "clientId": "$S",
-            "message": "%S"
+            "message": "$S"
           }
         })MSG", std::to_string(client->id), std::string(uv_strerror(status)));
       } else {
@@ -2647,12 +2649,11 @@ namespace SSC {
       client->cb(client->seq, msg, Post{});
 
       if (client->ephemeral) {
-        clients.erase(client->id);
-
-        delete[] req->bufs;
+        uv_close((uv_handle_t *) &client->udp, 0);
         delete client;
-        delete req;
       }
+
+      delete req;
     });
 
     guard.unlock();
@@ -2666,6 +2667,12 @@ namespace SSC {
       })MSG", std::to_string(client->clientId), std::string(uv_strerror(err)));
 
       cb(seq, msg, Post{});
+
+      if (ephemeral) {
+        uv_close((uv_handle_t *) &client->udp, 0);
+        delete client;
+      }
+
       delete req;
       return;
     }
@@ -2732,6 +2739,7 @@ namespace SSC {
         post.body = buf->base;
         post.length = (int) nread;
         post.headers = headers;
+        post.bodyNeedsFree = true;
 
         auto msg = SSC::format(R"MSG({
           "data": {
@@ -2744,9 +2752,6 @@ namespace SSC {
         })MSG", std::to_string(server->serverId), post.length, port, ip);
 
         server->cb("-1", msg, post);
-      } else {
-        auto msg = SSC::format(R"MSG({ "data": {} })MSG");
-        server->cb("-1", msg, Post{});
       }
     });
 
@@ -2763,9 +2768,9 @@ namespace SSC {
       return;
     }
 
-    auto msg = SSC::format(R"MSG({ "data": {} })MSG");
-    server->cb(seq, msg, Post{});
     guard.unlock();
+    auto msg = SSC::format(R"MSG({ "data": {} })MSG");
+    cb(seq, msg, Post{});
     runDefaultLoop();
   }
 
