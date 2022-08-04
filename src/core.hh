@@ -388,9 +388,10 @@ namespace SSC {
     }
 
     std::lock_guard<std::recursive_mutex> guard(loopMutex);
-    isLoopRunning = true;
+
     auto loop = getDefaultLoop();
-    while (uv_run(loop, UV_RUN_NOWAIT));
+    isLoopRunning = true;
+    while (uv_run(loop, UV_RUN_NOWAIT) > 0);
     isLoopRunning = false;
   }
 
@@ -1275,15 +1276,19 @@ namespace SSC {
       return;
     }
 
-    const uv_buf_t buf = uv_buf_init((char*) data.data(), (int) data.size());
+    auto bytes = new char[data.size()];
+    memcpy(bytes, data.data(), data.size());
+
+    const uv_buf_t buf = uv_buf_init((char*) bytes, (int) data.size());
     auto req = new uv_fs_t;
 
     desc->seq = seq;
     desc->cb = cb;
 
     req->data = desc;
+    req->ptr = bytes;
 
-    auto err = uv_fs_write(uv_default_loop(), req, desc->fd, &buf, 1, offset, [](uv_fs_t* req) {
+    auto err = uv_fs_write(getDefaultLoop(), req, desc->fd, &buf, 1, offset, [](uv_fs_t* req) {
       auto desc = static_cast<DescriptorContext*>(req->data);
       auto seq = desc->seq;
       auto cb = desc->cb;
@@ -1307,6 +1312,7 @@ namespace SSC {
 
       cb(seq, msg, Post{});
       uv_fs_req_cleanup(req);
+      delete req->ptr;
       delete req;
     });
 
