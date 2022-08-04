@@ -2637,7 +2637,7 @@ namespace SSC {
           }
         })MSG", std::to_string(client->id), std::string(uv_strerror(status)));
       } else {
-        NSLog(@"SENT");
+        // NSLog(@"SENT");
         msg = SSC::format(R"MSG({
           "data": {
             "clientId": "$S",
@@ -2711,7 +2711,7 @@ namespace SSC {
       std::lock_guard<std::recursive_mutex> guard(serversMutex);
       Server *server = (Server*)handle->data;
 
-      NSLog(@"BYTES READ -> %i", (int)nread);
+      // NSLog(@"BYTES READ -> %i", (int)nread);
 
       if (nread == UV_EOF) {
         auto msg = SSC::format(R"MSG({
