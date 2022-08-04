@@ -592,9 +592,12 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 - (void) send: (std::string)seq msg: (std::string)msg post: (SSC::Post)post {
 
   if (seq != "-1" && self.core->hasTask(seq)) {
+    auto task = self.core->getTask(seq);
+    self.core->removeTask(seq);
+    [task retain];
+
     dispatch_async(dispatch_get_main_queue(), ^{
       NSMutableDictionary* httpHeaders = [[NSMutableDictionary alloc] init];
-      auto task = self.core->getTask(seq);
       auto length = post.body ? post.length : msg.size();
 
       httpHeaders[@"access-control-allow-origin"] = @"*";
@@ -619,9 +622,6 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
         [task didReceiveData: data];
       }
 
-      self.core->removeTask(seq);
-
-      [task retain];
       [task didFinish];
       [httpHeaders release];
       [httpResponse release];
