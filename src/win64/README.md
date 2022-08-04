@@ -5,5 +5,5 @@ conversation gets really stupid, go ahead, google for it.
 
 The headers needed to compile using this are here https://www.nuget.org/packages/Microsoft.Web.WebView2
 
-Running `.\bin\bootstrap.ps1 update` will get the latest copy of the `WebView2.h` file from the package
+Running `.\bin\install.ps1` will get the latest copy of the `WebView2.h` file from the package
 and extract it into this repo.

@@ -257,7 +257,7 @@ constexpr auto gPreloadDesktop = R"JS(
   window.system.exit = o => window._ipc.send('exit', o)
   window.system.setTitle = o => window._ipc.send('title', o)
   window.system.inspect = o => window.external.invoke(`ipc://inspect`)
-  window.system.bootstrap = o => window.external.invoke(`ipc://bootstrap`)
+
   window.system.reload = o => window.external.invoke(`ipc://reload`)
 
   window.system.show = (index = 0) => {

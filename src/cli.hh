@@ -1394,16 +1394,6 @@ width: 1024
 # TODO description & value
 # win_publisher: CN=Beep Boop Corp., O=Beep Boop Corp., L=San Francisco, S=California, C=US
 
-# If the `_cmd` fails, ssc will "touch" the following file, if that fails it will
-# try to download whatever you specify for the `_bootstrap_src` value.
-# win_bootstrap_dest: ./node
-
-# The source of the file to download if `_bootstrap_dest` fails.
-# win_bootstrap_src: https://nodejs.org/download/release/v18.4.0/node-v18.4.0-win-x64.7z
-
-# The script to run after `_bootstrap_src` is successfully downloaded.
-# win_bootstrap_post: postinstall.sh
-
 #
 # Linux
 # ---
@@ -1418,16 +1408,6 @@ width: 1024
 # The icon to use for identifying your app in Linux desktop environments.
 # linux_icon: src/icon.png
 
-# If the `_cmd` fails, ssc will "touch" the following file, if that fails it will
-# try to download whatever you specify for the `_bootstrap_src` value.
-# linux_bootstrap_dest: ./node
-
-# The source of the file to download if `_bootstrap_dest` fails.
-# linux_bootstrap_src: https://nodejs.org/download/release/v18.4.0/node-v18.4.0-linux-x64.tar.gz
-
-# The script to run after `_bootstrap_src` is successfully downloaded.
-# linux_bootstrap_post: postinstall.sh
-
 #
 # MacOS
 # ---
@@ -1441,16 +1421,6 @@ width: 1024
 
 # The command to execute to spawn the "back-end" process.
 # mac_cmd:
-
-# If the `_cmd` fails, ssc will "touch" the following file, if that fails it will
-# try to download whatever you specify for the `_bootstrap_src` value.
-# mac_bootstrap_dest: ./node
-
-# The source of the file to download if `_bootstrap_dest` fails.
-# mac_bootstrap_src: https://nodejs.org/download/release/v18.4.0/node-v18.4.0-darwin-{{node_platform}}.tar.gz
-
-# The script to run after `_bootstrap_src` is successfully downloaded.
-# mac_bootstrap_post: postinstall.sh
 
 # TODO description & value
 # mac_distribution_method:
