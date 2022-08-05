@@ -656,6 +656,7 @@ namespace SSC {
         "err": {
           "id": "$S",
           "code": "ENOTOPEN",
+          "type": "NotFoundError",
           "message": "No file descriptor found with that id"
         }
       })MSG", std::to_string(id));
@@ -1074,6 +1075,7 @@ namespace SSC {
         "err": {
           "id": "$S",
           "code": "ENOTOPEN",
+          "type": "NotFoundError",
           "message": "No directory descriptor found with that id"
         }
       })MSG", std::to_string(id));
@@ -1176,6 +1178,7 @@ namespace SSC {
         "err": {
           "id": "$S",
           "code": "ENOTOPEN",
+          "type": "NotFoundError",
           "message": "No file descriptor found with that id"
         }
       })MSG", std::to_string(id));
@@ -1254,6 +1257,7 @@ namespace SSC {
         "err": {
           "id": "$S",
           "code": "ENOTOPEN",
+          "type": "NotFoundError",
           "message": "No directory descriptor found with that id"
         }
       })MSG", std::to_string(id));
@@ -1331,6 +1335,7 @@ namespace SSC {
         "err": {
           "id": "$S",
           "code": "ENOTOPEN",
+          "type": "NotFoundError",
           "message": "No descriptor found with that id"
         }
       })MSG", std::to_string(id));
@@ -1408,6 +1413,7 @@ namespace SSC {
       auto msg = SSC::format(R"MSG({
         "err": {
           "code": "ENOTOPEN",
+          "type": "NotFoundError",
           "message": "No file descriptor found with that id"
         }
       })MSG");
