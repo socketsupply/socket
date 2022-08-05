@@ -192,7 +192,7 @@ constexpr auto gPreload = R"JS(
 )JS";
 
 constexpr auto gPreloadDesktop = R"JS(
-  window.system.send = o => {
+  window.parent.send = o => {
     let value = ''
 
     try {
@@ -204,18 +204,18 @@ constexpr auto gPreloadDesktop = R"JS(
     return window._ipc.send('send', { value })
   }
 
-  window.system.openExternal = o => window._ipc.send('external', o)
-  window.system.exit = o => window._ipc.send('exit', o)
-  window.system.setTitle = o => window._ipc.send('title', o)
-  window.system.inspect = o => window.external.invoke(`ipc://inspect`)
+  window.parent.openExternal = o => window._ipc.send('external', o)
+  window.parent.exit = o => window._ipc.send('exit', o)
+  window.parent.setTitle = o => window._ipc.send('title', o)
+  window.parent.inspect = o => window.external.invoke(`ipc://inspect`)
 
-  window.system.reload = o => window.external.invoke(`ipc://reload`)
+  window.parent.reload = o => window.external.invoke(`ipc://reload`)
 
-  window.system.show = (index = 0) => {
+  window.parent.show = (index = 0) => {
     return window._ipc.send('show', { index })
   }
 
-  window.system.hide = (index = 0) => {
+  window.parent.hide = (index = 0) => {
     return window._ipc.send('hide', { index })
   }
 
@@ -225,13 +225,13 @@ constexpr auto gPreloadDesktop = R"JS(
     window.external.invoke(`ipc://size?${o}`)
   }
 
-  window.system.setBackgroundColor = opts => {
+  window.parent.setBackgroundColor = opts => {
     opts.index = window.process.index
     const o = new URLSearchParams(opts).toString()
     window.external.invoke(`ipc://background?${o}`)
   }
 
-  window.system.setSystemMenuItemEnabled = value => {
+  window.parent.setSystemMenuItemEnabled = value => {
     return window._ipc.send('systemMenuItemEnabled', value)
   }
 
@@ -244,12 +244,12 @@ constexpr auto gPreloadDesktop = R"JS(
     }
   })
 
-  window.system.dialog = async o => {
+  window.parent.dialog = async o => {
     const files = await window._ipc.send('dialog', o);
     return typeof files === 'string' ? files.split('\n') : [];
   }
 
-  window.system.setContextMenu = o => {
+  window.parent.setContextMenu = o => {
     o = Object
       .entries(o)
       .flatMap(a => a.join(':'))
@@ -257,7 +257,7 @@ constexpr auto gPreloadDesktop = R"JS(
     return window._ipc.send('context', o)
   }
 
-  window.system.setMenu = o => {
+  window.parent.setMenu = o => {
     const menu = o.value
 
     // validate the menu
@@ -307,8 +307,6 @@ constexpr auto gPreloadDesktop = R"JS(
     return window._ipc.send('menu', o)
   }
 
-  window.parent = window.system
-
   if (window?.process?.port > 0) {
     window.addEventListener('menuItemSelected', e => {
       window.location.reload()
@@ -317,12 +315,12 @@ constexpr auto gPreloadDesktop = R"JS(
 )JS";
 
 constexpr auto gPreloadMobile = R"JS(
-  window.system.openExternal = o => {
+  window.parent.openExternal = o => {
     window.external.invoke(`ipc://external?value=${encodeURIComponent(o)}`)
   }
 
-  window.system.exit = o => window._ipc.send('exit', o)
-  window.system.setTitle = o => window._ipc.send('title', o)
+  window.parent.exit = o => window._ipc.send('exit', o)
+  window.parent.setTitle = o => window._ipc.send('title', o)
 )JS";
 
 #endif

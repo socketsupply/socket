@@ -286,7 +286,7 @@ namespace SSC {
 
     auto preload = std::string(
       "(() => {"
-      "  window.system = {};\n"
+      "  window.parent = {};\n"
       "  window.process = {};\n"
       "  window.process.index = Number(`" + std::to_string(opts.index) + "`);\n"
       "  window.process.port = Number(`" + std::to_string(opts.port) + "`);\n"
@@ -353,6 +353,14 @@ namespace SSC {
     }
 
     preload += "  Object.seal(Object.freeze(window.process.config));\n";
+    preload += std::string(
+      "  window.system = new Proxy(window.parent, {\n"
+      "    get(target, prop, receiver) {\n"
+      "      console.warn(`window.system.${prop} is depreceated. Use window.parent.${prop} instead.`);\n"
+      "      return Reflect.get(...arguments);\n"
+      "    }\n"
+      "  });\n"
+    );
     preload += "})();\n";
     preload += "//# sourceURL=preload.js";
 
