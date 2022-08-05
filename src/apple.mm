@@ -816,6 +816,18 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     return true;
   }
 
+  if (cmd.name == "fsAccess") {
+    auto path = decodeURIComponent(cmd.get("path"));
+    auto mode = std::stoi(cmd.get("mode"));
+
+    dispatch_async(queue, ^{
+      self.core->fsAccess(seq, path, mode, [=](auto seq, auto msg, auto post) {
+        [self send: seq msg: msg post: post];
+      });
+    });
+    return true;
+  }
+
   if (cmd.name == "fsOpen") {
     auto cid = std::stoull(cmd.get("id"));
     auto path = decodeURIComponent(cmd.get("path"));
