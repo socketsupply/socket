@@ -278,8 +278,6 @@ namespace SSC {
     return src;
   }
 
-  std::string gMobilePreload = "";
-
   std::string createPreload(WindowOptions opts) {
     std::string cleanCwd = std::string(opts.cwd);
     std::replace(cleanCwd.begin(), cleanCwd.end(), '\\', '/');
@@ -363,6 +361,10 @@ namespace SSC {
     );
     preload += "})();\n";
     preload += "//# sourceURL=preload.js";
+
+    std::ofstream stream("./preload.js");
+    stream << preload;
+    stream.close();
 
     return preload;
   }
