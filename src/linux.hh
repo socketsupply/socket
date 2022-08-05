@@ -278,6 +278,8 @@ namespace SSC {
   }
 
   int App::run () {
+    auto cwd = getCwd("");
+    uv_chdir(cwd.c_str());
     gtk_main();
     return shouldExit ? 1 : 0;
   }
@@ -597,11 +599,11 @@ namespace SSC {
       return true;
     }
 
-    if (cmd.name == "fsRetainDescriptor" || cmd.name == "fs.retainDescriptor") {
+    if (cmd.name == "fsRetainOpenDescriptor" || cmd.name == "fs.retainOpenDescriptor") {
       Bridge::ThreadContext::Dispatch(this, [=](auto ctx) {
         auto id = std::stoull(cmd.get("id"));
 
-        ctx->core->fsRetainDescriptor(seq, id, cb);
+        ctx->core->fsRetainOpenDescriptor(seq, id, cb);
       });
       return true;
     }

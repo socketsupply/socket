@@ -457,6 +457,8 @@ namespace SSC {
         [NSApp sendEvent:event];
     } */
 
+    auto cwd = getCwd("");
+    uv_chdir(cwd.c_str());
     [NSApp run];
     return shouldExit;
   }

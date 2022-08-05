@@ -1045,6 +1045,10 @@ namespace SSC {
   }
 
   int App::run () {
+    // @TODO(jwerle)
+    // auto cwd = getCwd("");
+    // uv_chdir(cwd.c_str());
+
     MSG msg;
     BOOL res = GetMessage(&msg, nullptr, 0, 0);
 
