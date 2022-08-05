@@ -594,7 +594,10 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   if (seq != "-1" && self.core->hasTask(seq)) {
     auto task = self.core->getTask(seq);
     self.core->removeTask(seq);
+
+    #if !__has_feature(objc_arc)
     [task retain];
+    #endif
 
     dispatch_async(dispatch_get_main_queue(), ^{
       NSMutableDictionary* httpHeaders = [[NSMutableDictionary alloc] init];
@@ -623,8 +626,10 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
       }
 
       [task didFinish];
+      #if !__has_feature(objc_arc)
       [httpHeaders release];
       [httpResponse release];
+      #endif
     });
     return;
   }
@@ -1419,7 +1424,9 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
     [task didReceiveResponse: httpResponse];
     [task didFinish];
+    #if !__has_feature(objc_arc)
     [httpResponse release];
+    #endif
 
     return;
   }
@@ -1462,7 +1469,9 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     }
 
     [task didFinish];
+    #if !__has_feature(objc_arc)
     [httpResponse release];
+    #endif
 
     dispatch_async(dispatch_get_main_queue(), ^{
       // 256ms timeout before removing post and potentially freeing `post.body`
@@ -1479,7 +1488,11 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   auto seq = cmd.get("seq");
 
   if (seq.size() > 0) {
-    self.bridge.core->putTask(seq, [task retain]);
+    #if !__has_feature(objc_arc)
+    [task retain];
+    #else
+
+    self.bridge.core->putTask(seq, task);
   }
 
   // if there is a body on the reuqest, pass it into the method router.
@@ -1517,7 +1530,9 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     [task didReceiveResponse: httpResponse];
     [task didReceiveData: data];
     [task didFinish];
+    #if !__has_feature(objc_arc)
     [httpResponse release];
+    #endif
   }
 }
 @end
