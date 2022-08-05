@@ -125,35 +125,6 @@ constexpr auto gPreload = R"JS(
     window.external.invoke(`ipc://log?value=${s}`)
   }
 
-  window.parent.getConfig = async o => {
-    const config = await window._ipc.send('getConfig', o)
-    if (!config || typeof config !== 'string') return null
-
-    return decodeURIComponent(config)
-      .split('\n')
-      .map(trim)
-      .filter(filterOutComments)
-      .filter(filterOutEmptyLine)
-      .map(splitTuple)
-      .reduce(reduceTuple, {})
-
-    function trim (line) { return line.trim() }
-    function filterOutComments (line) { return !/^\s*#/.test(line) }
-    function filterOutEmptyLine (line) { return line && line.length }
-
-    function splitTuple (line) {
-      return line.split(/:(.*)/).filter(filterOutEmptyLine).map(trim)
-    }
-
-    function reduceTuple (object, tuple) {
-      try {
-        return Object.assign(object, { [tuple[0]]: JSON.parse(tuple[1]) })
-      } catch {
-        return Object.assign(object, { [tuple[0]]: tuple[1] })
-      }
-    }
-  }
-
   // initialize `XMLHttpRequest` IPC intercept
   void (() => {
     const { send, open } = XMLHttpRequest.prototype
