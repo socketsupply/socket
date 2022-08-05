@@ -238,7 +238,7 @@ namespace SSC {
 
           // stream body is free'd in `Post{}`
           auto stream = g_memory_input_stream_new_from_data(body, size, 0);
-          auto response = webkit_uri_scheme_response_new(stream, result.size());
+          auto response = webkit_uri_scheme_response_new(stream, size);
 
           webkit_uri_scheme_response_set_content_type(
             response,
@@ -261,8 +261,16 @@ namespace SSC {
             }
           }
 
-          auto stream = g_memory_input_stream_new_from_data("", 0, 0);
-          auto response = webkit_uri_scheme_response_new(stream, 0);
+          auto msg = SSC::format(R"MSG({
+            "err": {
+              "message": "Not found",
+              "type": "NotFoundError",
+              "url": "$S"
+            }
+          })MSG", url);
+
+          auto stream = g_memory_input_stream_new_from_data(msg.c_str(), msg.size(), 0);
+          auto response = webkit_uri_scheme_response_new(stream, msg.size());
 
           webkit_uri_scheme_response_set_content_type(
             response,
@@ -499,6 +507,12 @@ namespace SSC {
         ctx->core->fsClosedir(seq, id, cb);
       });
       return true;
+    }
+
+    if (cmd.name == "fsGetOpenDescriptors" || cmd.name == "fs.getOpenDescriptors") {
+      Bridge::ThreadContext::Dispatch(this, [=](auto ctx) {
+        ctx->core->fsGetOpenDescriptors(seq, cb);
+      });
     }
 
     if (cmd.name == "fsCloseOpenDescriptor" || cmd.name == "fs.closeOpenDescriptor") {

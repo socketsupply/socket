@@ -780,6 +780,15 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     return true;
   }
 
+  if (cmd.name == "fsGetOpenDescriptors" || cmd.name == "fs.getOpenDescriptors") {
+    dispatch_async(queue, ^{
+      self.core->fsGetOpenDescriptors(seq, [=](auto seq, auto msg, auto post) {
+        [self send: seq msg: msg post: post];
+      });
+    });
+    return true;
+  }
+
   if (cmd.name == "fsRetainOpenDescriptor" || cmd.name == "fs.retainOpenDescriptor") {
     auto id = std::stoull(cmd.get("id"));
 
@@ -1482,6 +1491,33 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     body = (char*)data;
   }
 
-  [self.bridge route: url buf: body bufsize: bufsize];
+  if (![self.bridge route: url buf: body bufsize: bufsize]) {
+    NSMutableDictionary* httpHeaders = [NSMutableDictionary dictionary];
+    auto msg = SSC::format(R"MSG({
+      "err": {
+        "message": "Not found",
+        "type": "NotFoundError",
+        "url": "$S"
+      }
+    })MSG", url);
+
+    auto str = [NSString stringWithUTF8String: msg.c_str()];
+    auto data = [str dataUsingEncoding: NSUTF8StringEncoding];
+
+    httpHeaders[@"access-control-allow-origin"] = @"*";
+    httpHeaders[@"content-length"] = [@(msg.size()) stringValue];
+
+    NSHTTPURLResponse *httpResponse = [[NSHTTPURLResponse alloc]
+       initWithURL: task.request.URL
+        statusCode: 404
+       HTTPVersion: @"HTTP/1.1"
+      headerFields: httpHeaders
+    ];
+
+    [task didReceiveResponse: httpResponse];
+    [task didReceiveData: data];
+    [task didFinish];
+    [httpResponse release];
+  }
 }
 @end

@@ -9,7 +9,8 @@ constexpr auto gPreload = R"JS(
   document.addEventListener('DOMContentLoaded', () => {
     queueMicrotask(async () => {
       try {
-        window.external.invoke('ipc://event?value=domcontentloaded').catch(console.error)
+        const index = window.process?.index || 0
+        window.external.invoke(`ipc://event?value=domcontentloaded&index=${index}`).catch(console.error)
       } catch (err) { console.error(err) }
     })
   })

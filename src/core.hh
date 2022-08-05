@@ -281,6 +281,7 @@ namespace SSC {
       void fsCloseOpenDescriptors (String seq, Cb cb) const;
       void fsCloseOpenDescriptors (String seq, bool preserveRetained, Cb cb) const;
       void fsFStat (String seq, uint64_t id, Cb cb) const;
+      void fsGetOpenDescriptors (String seq, Cb cb) const;
       void fsMkdir (String seq, String path, int mode, Cb cb) const;
       void fsOpen (String seq, uint64_t id, String path, int flags, int mode, Cb cb) const;
       void fsOpendir (String seq, uint64_t id, String path, Cb cb) const;
@@ -1755,6 +1756,41 @@ namespace SSC {
     }
 
     runDefaultLoop();
+  }
+
+  void Core::fsGetOpenDescriptors (String seq, Cb cb) const {
+    std::lock_guard<std::recursive_mutex> guard(descriptorsMutex);
+
+    std::string msg = "";
+    int pending = SSC::descriptors.size();
+
+    msg += "{ \"data\": [";
+    for (auto const &tuple : SSC::descriptors) {
+      auto desc = tuple.second;
+      if (!desc) {
+        continue;
+      }
+
+      std::lock_guard<std::recursive_mutex> descriptorLock(desc->mutex);
+
+      if (desc->stale || !desc->retained) {
+        continue;
+      }
+
+      msg += SSC::format(
+        R"MSG({ "id": "$S", "fd": "$S", "type": "$S" })MSG",
+        std::to_string(desc->id),
+        std::to_string(desc->dir ? desc->id : desc->fd),
+        desc->dir ? "directory" : "file"
+      );
+
+      if (--pending > 0) {
+        msg += ", ";
+      }
+    }
+    msg += "] }";
+
+    cb(seq, msg, Post{});
   }
 
   void Core::fsUnlink (String seq, String path, Cb cb) const {
