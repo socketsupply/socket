@@ -267,7 +267,7 @@ namespace SSC {
               "type": "NotFoundError",
               "url": "$S"
             }
-          })MSG", url);
+          })MSG", uri);
 
           auto stream = g_memory_input_stream_new_from_data(msg.c_str(), msg.size(), 0);
           auto response = webkit_uri_scheme_response_new(stream, msg.size());
