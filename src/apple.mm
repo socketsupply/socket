@@ -1490,7 +1490,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   if (seq.size() > 0) {
     #if !__has_feature(objc_arc)
     [task retain];
-    #else
+    #endif
 
     self.bridge.core->putTask(seq, task);
   }
