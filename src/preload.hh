@@ -221,10 +221,6 @@ constexpr auto gPreload = R"JS(
 )JS";
 
 constexpr auto gPreloadDesktop = R"JS(
-  window.system.rand64 = () => {
-    return window.crypto.getRandomValues(new BigUint64Array(1))[0].toString()
-  }
-
   window.system.send = o => {
     let value = ''
 
