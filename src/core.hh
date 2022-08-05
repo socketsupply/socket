@@ -286,7 +286,7 @@ namespace SSC {
       void fsOpendir (String seq, uint64_t id, String path, Cb cb) const;
       void fsRead (String seq, uint64_t id, int len, int offset, Cb cb) const;
       void fsReaddir (String seq, uint64_t id, size_t entries, Cb cb) const;
-      void fsRetainDescriptor (String seq, uint64_t id, Cb cb) const;
+      void fsRetainOpenDescriptor (String seq, uint64_t id, Cb cb) const;
       void fsRename (String seq, String pathA, String pathB, Cb cb) const;
       void fsRmdir (String seq, String path, Cb cb) const;
       void fsStat (String seq, String path, Cb cb) const;
@@ -349,6 +349,7 @@ namespace SSC {
     uint64_t id;
     bool retained = false;
     bool stale = false;
+    std::recursive_mutex mutex;
     void *data;
   };
 
@@ -644,7 +645,7 @@ namespace SSC {
     uv_buf_t buf;
   } write_req_t;
 
-  void Core::fsRetainDescriptor (String seq, uint64_t id, Cb cb) const {
+  void Core::fsRetainOpenDescriptor (String seq, uint64_t id, Cb cb) const {
     std::lock_guard<std::recursive_mutex> guard(descriptorsMutex);
 
     auto desc = descriptors[id];
@@ -662,6 +663,7 @@ namespace SSC {
       return;
     }
 
+    std::lock_guard<std::recursive_mutex> descriptorLock(desc->mutex);
     desc->retained = true;
     auto msg = SSC::format(
       R"MSG({ "data": { "id": "$S" } })MSG",
@@ -678,6 +680,7 @@ namespace SSC {
 
       for (auto const &tuple : SSC::descriptors) {
         auto desc = tuple.second;
+        std::lock_guard<std::recursive_mutex> descriptorLock(desc->mutex);
         desc->stale = true;
       }
     }
@@ -927,11 +930,14 @@ namespace SSC {
   void Core::fsOpen (String seq, uint64_t id, String path, int flags, int mode, Cb cb) const {
     std::unique_lock<std::recursive_mutex> guard(descriptorsMutex);
 
+    auto desc = descriptors[id] = new DescriptorContext;
+    guard.unlock();
+
     auto filename = path.c_str();
     auto loop = getDefaultLoop();
-    auto desc = descriptors[id] = new DescriptorContext;
     auto req = new uv_fs_t;
 
+    std::lock_guard<std::recursive_mutex> descriptorLock(desc->mutex);
     desc->id = id;
     desc->cb = cb;
     desc->seq = seq;
@@ -940,6 +946,8 @@ namespace SSC {
 
     auto err = uv_fs_open(loop, req, filename, flags, mode, [](uv_fs_t* req) {
       auto desc = static_cast<DescriptorContext*>(req->data);
+      std::lock_guard<std::recursive_mutex> descriptorLock(desc->mutex);
+
       auto seq = desc->seq;
       auto cb = desc->cb;
       std::string msg;
@@ -951,10 +959,9 @@ namespace SSC {
           String(uv_strerror((int)req->result))
         );
 
-        std::unique_lock<std::recursive_mutex> guard(descriptorsMutex);
+        std::lock_guard<std::recursive_mutex> guard(descriptorsMutex);
         SSC::descriptors.erase(desc->id);
         delete desc;
-        guard.unlock();
       } else {
         desc->fd = (int) req->result;
         msg = SSC::format(
@@ -969,8 +976,6 @@ namespace SSC {
 
       cb(seq, msg, Post{});
     });
-
-    guard.unlock();
 
     if (err < 0) {
       auto msg = SSC::format(R"MSG({
@@ -993,12 +998,14 @@ namespace SSC {
 
   void Core::fsOpendir(String seq, uint64_t id, String path, Cb cb) const {
     std::unique_lock<std::recursive_mutex> guard(descriptorsMutex);
+    auto desc = descriptors[id] = new DescriptorContext;
+    guard.unlock();
 
     auto filename = path.c_str();
     auto loop = getDefaultLoop();
-    auto desc = descriptors[id] = new DescriptorContext;
     auto req = new uv_fs_t;
 
+    std::lock_guard<std::recursive_mutex> descriptorLock(desc->mutex);
     desc->id = id;
     desc->cb = cb;
     desc->seq = seq;
@@ -1008,6 +1015,8 @@ namespace SSC {
 
     auto err = uv_fs_opendir(loop, req, filename, [](uv_fs_t *req) {
       auto desc = static_cast<DescriptorContext*>(req->data);
+
+      std::lock_guard<std::recursive_mutex> descriptorLock(desc->mutex);
       auto seq = desc->seq;
       auto cb = desc->cb;
       std::string msg;
@@ -1019,10 +1028,9 @@ namespace SSC {
           String(uv_strerror((int)req->result))
         );
 
-        std::unique_lock<std::recursive_mutex> guard(descriptorsMutex);
+        std::lock_guard<std::recursive_mutex> guard(descriptorsMutex);
         SSC::descriptors.erase(desc->id);
         delete desc;
-        guard.unlock();
       } else {
         msg = SSC::format(
           R"MSG({ "data": { "id": "$S" } })MSG",
@@ -1037,8 +1045,6 @@ namespace SSC {
 
       cb(seq, msg, Post{});
     });
-
-    guard.unlock();
 
     if (err < 0) {
       auto msg = SSC::format(
@@ -1059,9 +1065,7 @@ namespace SSC {
 
   void Core::fsReaddir(String seq, uint64_t id, size_t nentries, Cb cb) const {
     std::unique_lock<std::recursive_mutex> guard(descriptorsMutex);
-
     auto desc = descriptors[id];
-
     guard.unlock();
 
     if (desc == nullptr) {
@@ -1077,6 +1081,8 @@ namespace SSC {
       cb(seq, msg, Post{});
       return;
     }
+
+    std::lock_guard<std::recursive_mutex> descriptorLock(desc->mutex);
 
     if (desc->dir == nullptr) {
       auto msg = SSC::format(R"MSG({
@@ -1103,6 +1109,8 @@ namespace SSC {
 
     auto err = uv_fs_readdir(loop, req, desc->dir, [](uv_fs_t *req) {
       auto desc = static_cast<DescriptorContext*>(req->data);
+
+      std::lock_guard<std::recursive_mutex> descriptorLock(desc->mutex);
       auto seq = desc->seq;
       auto cb = desc->cb;
       std::string msg;
@@ -1159,8 +1167,8 @@ namespace SSC {
 
   void Core::fsClose (String seq, uint64_t id, Cb cb) const {
     std::unique_lock<std::recursive_mutex> guard(descriptorsMutex);
-
     auto desc = descriptors[id];
+    guard.unlock();
 
     if (desc == nullptr) {
       auto msg = SSC::format(R"MSG({
@@ -1171,7 +1179,6 @@ namespace SSC {
         }
       })MSG", std::to_string(id));
 
-      guard.unlock();
 
       cb(seq, msg, Post{});
       return;
@@ -1179,6 +1186,7 @@ namespace SSC {
 
     auto req = new uv_fs_t;
 
+    std::lock_guard<std::recursive_mutex> descriptorLock(desc->mutex);
     desc->seq = seq;
     desc->cb = cb;
 
@@ -1186,9 +1194,11 @@ namespace SSC {
 
     auto err = uv_fs_close(getDefaultLoop(), req, desc->fd, [](uv_fs_t* req) {
       auto desc = static_cast<DescriptorContext*>(req->data);
+
+      std::lock_guard<std::recursive_mutex> descriptorLock(desc->mutex);
+      std::string msg;
       auto seq = desc->seq;
       auto cb = desc->cb;
-      std::string msg;
 
       if (req->result < 0) {
         msg = SSC::format(R"MSG({
@@ -1206,10 +1216,9 @@ namespace SSC {
         })MSG", std::to_string(desc->id), std::to_string(desc->fd));
 
         desc->fd = 0;
-        std::unique_lock<std::recursive_mutex> guard(descriptorsMutex);
+        std::lock_guard<std::recursive_mutex> guard(descriptorsMutex);
         SSC::descriptors.erase(desc->id);
         delete desc;
-        guard.unlock();
       }
 
       uv_fs_req_cleanup(req);
@@ -1217,8 +1226,6 @@ namespace SSC {
 
       cb(seq, msg, Post{});
     });
-
-    guard.unlock();
 
     if (err < 0) {
       auto msg = SSC::format(R"MSG({
@@ -1238,8 +1245,8 @@ namespace SSC {
 
   void Core::fsClosedir (String seq, uint64_t id, Cb cb) const {
     std::unique_lock<std::recursive_mutex> guard(descriptorsMutex);
-
     auto desc = descriptors[id];
+    guard.unlock();
 
     if (desc == nullptr) {
       auto msg = SSC::format(R"MSG({
@@ -1250,14 +1257,15 @@ namespace SSC {
         }
       })MSG", std::to_string(id));
 
-      guard.unlock();
 
       cb(seq, msg, Post{});
       return;
     }
 
+
     auto req = new uv_fs_t;
 
+    std::lock_guard<std::recursive_mutex> descriptorLock(desc->mutex);
     desc->seq = seq;
     desc->cb = cb;
 
@@ -1265,9 +1273,11 @@ namespace SSC {
 
     auto err = uv_fs_closedir(getDefaultLoop(), req, desc->dir, [](uv_fs_t* req) {
       auto desc = static_cast<DescriptorContext*>(req->data);
+
+      std::lock_guard<std::recursive_mutex> descriptorLock(desc->mutex);
+      std::string msg;
       auto seq = desc->seq;
       auto cb = desc->cb;
-      std::string msg;
 
       if (req->result < 0) {
         msg = SSC::format(R"MSG({
@@ -1283,11 +1293,10 @@ namespace SSC {
           }
         })MSG", std::to_string(desc->id));
 
-        std::unique_lock<std::recursive_mutex> guard(descriptorsMutex);
+        std::lock_guard<std::recursive_mutex> guard(descriptorsMutex);
         desc->dir = nullptr;
         SSC::descriptors.erase(desc->id);
         delete desc;
-        guard.unlock();
       }
 
       cb(seq, msg, Post{});
@@ -1295,8 +1304,6 @@ namespace SSC {
       uv_fs_req_cleanup(req);
       delete req;
     });
-
-    guard.unlock();
 
     if (err < 0) {
       auto msg = SSC::format(R"MSG({
@@ -1314,7 +1321,7 @@ namespace SSC {
   }
 
   void Core::fsCloseOpenDescriptor (String seq, uint64_t id, Cb cb) const {
-    std::unique_lock<std::recursive_mutex> guard(descriptorsMutex);
+    std::lock_guard<std::recursive_mutex> guard(descriptorsMutex);
 
     auto desc = descriptors[id];
 
@@ -1327,13 +1334,11 @@ namespace SSC {
         }
       })MSG", std::to_string(id));
 
-      guard.unlock();
-
       cb(seq, msg, Post{});
       return;
     }
 
-    guard.unlock();
+    std::lock_guard<std::recursive_mutex> descriptorLock(desc->mutex);
 
     if (desc->dir != nullptr) {
       this->fsClosedir(seq, id, cb);
@@ -1347,7 +1352,7 @@ namespace SSC {
   }
 
   void Core::fsCloseOpenDescriptors (String seq, bool preserveRetained, Cb cb) const {
-    std::unique_lock<std::recursive_mutex> guard(descriptorsMutex);
+    std::lock_guard<std::recursive_mutex> guard(descriptorsMutex);
 
     std::vector<uint64_t> ids;
     std::string msg = "";
@@ -1358,18 +1363,12 @@ namespace SSC {
       ids.push_back(tuple.first);
     }
 
-    guard.unlock();
-
     for (auto const id : ids) {
-      guard.lock();
       auto desc = SSC::descriptors[id];
       pending--;
-      guard.unlock();
 
       if (desc == nullptr) {
-        guard.lock();
         SSC::descriptors.erase(desc->id);
-        guard.unlock();
         continue;
       }
 
@@ -1401,8 +1400,8 @@ namespace SSC {
 
   void Core::fsRead (String seq, uint64_t id, int len, int offset, Cb cb) const {
     std::unique_lock<std::recursive_mutex> guard(descriptorsMutex);
-
     auto desc = descriptors[id];
+    guard.unlock();
 
     if (desc == nullptr) {
       auto msg = SSC::format(R"MSG({
@@ -1412,16 +1411,15 @@ namespace SSC {
         }
       })MSG");
 
-      guard.unlock();
-
       cb(seq, msg, Post{});
       return;
     }
 
-    auto req = new uv_fs_t;
     auto buf = new char[len];
+    auto req = new uv_fs_t;
     const uv_buf_t iov = uv_buf_init(buf, len * sizeof(char));
 
+    std::lock_guard<std::recursive_mutex> descriptorLock(desc->mutex);
     desc->data = buf;
     desc->seq = seq;
     desc->cb = cb;
@@ -1430,9 +1428,11 @@ namespace SSC {
 
     auto err = uv_fs_read(getDefaultLoop(), req, desc->fd, &iov, 1, offset, [](uv_fs_t* req) {
       auto desc = static_cast<DescriptorContext*>(req->data);
+
+      std::lock_guard<std::recursive_mutex> descriptorLock(desc->mutex);
+      std::string msg = "{}";
       auto seq = desc->seq;
       auto cb = desc->cb;
-      std::string msg = "{}";
       Post post = {0};
 
       if (req->result < 0) {
@@ -1456,8 +1456,6 @@ namespace SSC {
       delete req;
     });
 
-    guard.unlock();
-
     if (err < 0) {
       auto msg = SSC::format(R"MSG({
         "err": {
@@ -1475,8 +1473,8 @@ namespace SSC {
 
   void Core::fsWrite (String seq, uint64_t id, String data, int64_t offset, Cb cb) const {
     std::unique_lock<std::recursive_mutex> guard(descriptorsMutex);
-
     auto desc = descriptors[id];
+    guard.unlock();
 
     if (desc == nullptr) {
       auto msg = SSC::format(R"MSG({
@@ -1486,11 +1484,11 @@ namespace SSC {
         }
       })MSG");
 
-      guard.unlock();
 
       cb(seq, msg, Post{});
       return;
     }
+
 
     auto bytes = new char[data.size()];
     memcpy(bytes, data.data(), data.size());
@@ -1498,6 +1496,7 @@ namespace SSC {
     const uv_buf_t buf = uv_buf_init((char*) bytes, (int) data.size());
     auto req = new uv_fs_t;
 
+    std::lock_guard<std::recursive_mutex> descriptorLock(desc->mutex);
     desc->seq = seq;
     desc->cb = cb;
 
@@ -1506,9 +1505,11 @@ namespace SSC {
 
     auto err = uv_fs_write(getDefaultLoop(), req, desc->fd, &buf, 1, offset, [](uv_fs_t* req) {
       auto desc = static_cast<DescriptorContext*>(req->data);
+
+      std::lock_guard<std::recursive_mutex> descriptorLock(desc->mutex);
+      std::string msg;
       auto seq = desc->seq;
       auto cb = desc->cb;
-      std::string msg;
 
       if (req->result < 0) {
         msg = SSC::format(R"MSG({
@@ -1528,11 +1529,11 @@ namespace SSC {
 
       cb(seq, msg, Post{});
       uv_fs_req_cleanup(req);
-      delete req->ptr;
+      if (req->ptr) {
+        delete (char *) req->ptr;
+      }
       delete req;
     });
-
-    guard.unlock();
 
     if (err < 0) {
       auto msg = SSC::format(R"MSG({
@@ -1647,6 +1648,7 @@ namespace SSC {
   void Core::fsFStat (String seq, uint64_t id, Cb cb) const {
     std::unique_lock<std::recursive_mutex> guard(descriptorsMutex);
     auto desc = descriptors[id];
+    guard.unlock();
 
     if (desc == nullptr) {
       auto msg = SSC::format(R"MSG({
@@ -1656,21 +1658,22 @@ namespace SSC {
         }
       })MSG");
 
-      guard.unlock();
 
       cb(seq, msg, Post{});
       return;
     }
 
-    auto req = new uv_fs_t;
-
+    std::lock_guard<std::recursive_mutex> descriptorLock(desc->mutex);
     desc->seq = seq;
     desc->cb = cb;
 
+    auto req = new uv_fs_t;
     req->data = desc;
 
     auto err = uv_fs_fstat(getDefaultLoop(), req, desc->fd, [](uv_fs_t* req) {
       auto desc = static_cast<DescriptorContext*>(req->data);
+
+      std::lock_guard<std::recursive_mutex> descriptorLock(desc->mutex);
       auto seq = desc->seq;
       auto cb = desc->cb;
       std::string msg;
@@ -1737,8 +1740,6 @@ namespace SSC {
       cb(seq, msg, Post{});
     });
 
-    guard.unlock();
-
     if (err < 0) {
       auto msg = SSC::format(R"MSG({
         "err": {
@@ -1759,12 +1760,12 @@ namespace SSC {
   void Core::fsUnlink (String seq, String path, Cb cb) const {
     auto filename = path.c_str();
     auto loop = getDefaultLoop();
-    auto desc = new DescriptorContext;
-    auto req = new uv_fs_t;
 
+    auto desc = new DescriptorContext;
     desc->seq = seq;
     desc->cb = cb;
 
+    auto req = new uv_fs_t;
     req->data = desc;
 
     auto err = uv_fs_unlink(loop, req, filename, [](uv_fs_t* req) {
@@ -1817,14 +1818,14 @@ namespace SSC {
 
   void Core::fsRename (String seq, String pathA, String pathB, Cb cb) const {
     auto loop = getDefaultLoop();
-    auto desc = new DescriptorContext;
     auto src = pathA.c_str();
     auto dst = pathB.c_str();
-    auto req = new uv_fs_t;
 
+    auto desc = new DescriptorContext;
     desc->seq = seq;
     desc->cb = cb;
 
+    auto req = new uv_fs_t;
     req->data = desc;
 
     auto err = uv_fs_rename(loop, req, src, dst, [](uv_fs_t* req) {
@@ -1877,14 +1878,14 @@ namespace SSC {
 
   void Core::fsCopyFile (String seq, String pathA, String pathB, int flags, Cb cb) const {
     auto loop = getDefaultLoop();
-    auto desc = new DescriptorContext;
     auto src = pathA.c_str();
     auto dst = pathB.c_str();
-    auto req = new uv_fs_t;
 
+    auto desc = new DescriptorContext;
     desc->seq = seq;
     desc->cb = cb;
 
+    auto req = new uv_fs_t;
     req->data = desc;
 
     auto err = uv_fs_copyfile(loop, req, src, dst, flags, [](uv_fs_t* req) {
@@ -1938,12 +1939,12 @@ namespace SSC {
   void Core::fsRmdir (String seq, String path, Cb cb) const {
     auto filename = path.c_str();
     auto loop = getDefaultLoop();
-    auto desc = new DescriptorContext;
-    auto req = new uv_fs_t;
 
+    auto desc = new DescriptorContext;
     desc->seq = seq;
     desc->cb = cb;
 
+    auto req = new uv_fs_t;
     req->data = desc;
 
     auto err = uv_fs_rmdir(loop, req, filename, [](uv_fs_t* req) {
@@ -1997,12 +1998,12 @@ namespace SSC {
   void Core::fsMkdir (String seq, String path, int mode, Cb cb) const {
     auto filename = path.c_str();
     auto loop = getDefaultLoop();
-    auto desc = new DescriptorContext;
-    auto req = new uv_fs_t;
 
+    auto desc = new DescriptorContext;
     desc->seq = seq;
     desc->cb = cb;
 
+    auto req = new uv_fs_t;
     req->data = desc;
 
     auto err = uv_fs_mkdir(loop, req, filename, mode, [](uv_fs_t* req) {

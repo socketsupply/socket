@@ -780,11 +780,11 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     return true;
   }
 
-  if (cmd.name == "fsRetainDescriptor" || cmd.name == "fs.retainDescriptor") {
+  if (cmd.name == "fsRetainOpenDescriptor" || cmd.name == "fs.retainOpenDescriptor") {
     auto id = std::stoull(cmd.get("id"));
 
     dispatch_async(queue, ^{
-      self.core->fsRetainDescriptor(seq, id, [=](auto seq, auto msg, auto post) {
+      self.core->fsRetainOpenDescriptor(seq, id, [=](auto seq, auto msg, auto post) {
         [self send: seq msg: msg post: post];
       });
     });
