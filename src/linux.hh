@@ -117,7 +117,7 @@ namespace SSC {
   }
 
   struct CallbackContext {
-    Cb *cb;
+    Cb cb;
     std::string seq;
     Window *window;
     void *data;
@@ -430,7 +430,7 @@ namespace SSC {
             );
 
             g_error_free(error);
-            cb(ctx->seq, msg, Post{});
+            ctx->cb(ctx->seq, msg, Post{});
           } else {
             // @TODO `webkit_web_view_run_javascript_finish()`
             // @see https://webkitgtk.org/reference/webkit2gtk/2.5.1/WebKitWebView.html#webkit-web-view-run-javascript-finish
