@@ -771,20 +771,41 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
       });
     });
     return true;
-   }
+  }
 
   if (cmd.name == "render.eval") {
-    std::string value = "window._ipc.evaluate('" + cmd.get("value") + "')";
+    std::string value = "with ({ system: {} }) { " + decodeURIComponent(cmd.get("value") + " }");
+    auto seq = cmd.get("seq");
 
-    dispatch_async(queue, ^{
-      NSString* script = [NSString stringWithUTF8String: valuec_str()];
-      [self.webview evaluateJavaScript: script completionHandler:nil];
-    });
+      NSString* script = [NSString stringWithUTF8String: value.c_str()];
+      dispatch_async(dispatch_get_main_queue(), ^{
+        [self.webview evaluateJavaScript: script completionHandler: ^(id result, NSError *error) {
+          if (result) {
+            auto msg = std::string([[NSString stringWithFormat:@"%@", result] UTF8String]);
+            [self send: seq msg: msg post: Post{}];
+          } else if (error) {
+            auto err = encodeURIComponent(std::string([[NSString stringWithFormat:@"%@", error.userInfo[@"WKJavaScriptExceptionMessage"]] UTF8String]));
+            if (err == "(null)") {
+              [self send: seq msg: "null" post: Post{}];
+              return;
+            }
+
+            auto msg = SSC::format(
+              R"MSG({"err": { "message": "$S" } })MSG",
+              err
+             );
+
+            [self send: seq msg: msg post: Post{}];
+          } else {
+            [self send: seq msg: "undefined" post: Post{}];
+          }
+        }];
+      });
 
     return true;
   }
 
-  if (cmd.name == "getFSConstants") {
+  if (cmd.name == "getFSConstants" || cmd.name == "fs.constants") {
     dispatch_async(queue, ^{
       auto constants = self.core->getFSConstants();
       [self send: seq msg: constants post: Post{}];

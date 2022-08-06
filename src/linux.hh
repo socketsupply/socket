@@ -116,6 +116,13 @@ namespace SSC {
     return size;
   }
 
+  struct CallbackContext {
+    Cb *cb;
+    std::string seq;
+    Window *window;
+    void *data;
+  };
+
   class Bridge {
     public:
       IApp *app;
@@ -174,7 +181,6 @@ namespace SSC {
   class Window : public IWindow {
     GtkAccelGroup *accel_group;
     GtkWidget* window;
-    GtkWidget* webview;
     GtkWidget* menubar = nullptr;
     GtkWidget* vbox;
     GtkWidget* popup;
@@ -187,6 +193,7 @@ namespace SSC {
 
     public:
       App app;
+      GtkWidget* webview;
       WindowOptions opts;
       Window(App&, WindowOptions);
 
@@ -387,6 +394,50 @@ namespace SSC {
 
       cb(seq, msg, Post{});
       return true;
+    }
+
+    if (cmd.name == "render.eval" && cmd.index >= 0) {
+      auto windowFactory = reinterpret_cast<WindowFactory<Window, App> *>(app->getWindowFactory());
+      if (windowFactory == nullptr) {
+        // @TODO(jwerle): print warning
+        return false;
+      }
+
+      auto window = windowFactory->getWindow(cmd.index);
+
+      if (window == nullptr) {
+        return false;
+      }
+
+      std::string value = "with ({ system: {} }) { " + decodeURIComponent(cmd.get("value") + " }");
+      auto ctx = new CallbackContext { cb, cmd.uri, window, (void *) this };
+      webkit_web_view_run_javascript(
+        WEBKIT_WEB_VIEW(window->webview),
+        nullptr,
+        [](GObject *object, GAsyncResult *res, gpointer data) {
+          GError *error = nullptr;
+          auto ctx = reinterpret_cast<CallbackContext *>(data);
+          auto result = webkit_web_view_run_javascript_finish(
+            WEBKIT_WEB_VIEW(ctx->window->webview),
+            res,
+            &error
+          );
+
+          if (!result) {
+            auto msg = SSC::format(
+              R"MSG({"err": { "message": "$S" } })MSG",
+              std::string(error->message)
+            );
+
+            g_error_free(error);
+            cb(ctx->seq, msg, Post{});
+          } else {
+            // @TODO `webkit_web_view_run_javascript_finish()`
+            // @see https://webkitgtk.org/reference/webkit2gtk/2.5.1/WebKitWebView.html#webkit-web-view-run-javascript-finish
+          }
+        },
+        ctx
+       );
     }
 
     if (cmd.name == "getFSConstants" || cmd.name == "fs.constants") {

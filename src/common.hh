@@ -308,16 +308,16 @@ namespace SSC {
     );
 
     if (opts.headless) {
-      preload += "                                                  \n"
-        "console.log = (...args) => {                               \n"
-        "  const { index } = window.process;                        \n"
-        "  const value = args                                       \n"
-        "    .map(encodeURIComponent)                               \n"
-        "    .join('');                                             \n"
-        "  const uri = `ipc://log?index=${index}&value=${value}`;   \n"
-        "  window.external.invoke(uri);                             \n"
-        "};                                                         \n"
-        "console.warn = console.error = console.log;                \n";
+      preload += "                                                     \n"
+        "console.log = (...args) => {                                  \n"
+        "  const { index } = window.process;                           \n"
+        "  const value = args                                          \n"
+        "    .map(encodeURIComponent)                                  \n"
+        "    .join('');                                                \n"
+        "  const uri = `ipc://stdout?index=${index}&value=${value}\n`; \n"
+        "  window.external.invoke(uri);                                \n"
+        "};                                                            \n"
+        "console.warn = console.error = console.log;                   \n";
     }
 
     for (auto const &tuple : appData) {
