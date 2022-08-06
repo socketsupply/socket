@@ -413,6 +413,7 @@ namespace SSC {
       auto ctx = new CallbackContext { cb, cmd.uri, window, (void *) this };
       webkit_web_view_run_javascript(
         WEBKIT_WEB_VIEW(window->webview),
+        value.c_str(),
         nullptr,
         [](GObject *object, GAsyncResult *res, gpointer data) {
           GError *error = nullptr;
