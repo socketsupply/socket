@@ -36,6 +36,7 @@ auto start = std::chrono::system_clock::now();
 
 bool flagDebugMode = true;
 bool flagQuietMode = false;
+Map defaultTemplateAttrs = {{ "ssc_version", SSC::full_version }};
 
 void log (const std::string s) {
   if (flagQuietMode) return;
@@ -138,8 +139,8 @@ void runIOSSimulator (const fs::path& path, Map& settings) {
   } else {
     auto rListDevices = exec("xcrun simctl list devicetypes | grep iPhone");
     log(
-      "failed to find device type: " + settings["ios_simulator_device"] + ". " +
-      "Please provide correct device name for the \"ios_simulator_device\". " +
+      "failed to find device type: " + settings["ios_simulator_device"] + ". "
+      "Please provide correct device name for the \"ios_simulator_device\". "
       "The list of available devices:\n" + rListDevices.output
     );
     if (rListDevices.output.size() > 0) {
@@ -310,21 +311,21 @@ static std::string getCxxFlags() {
   return flags.size() > 0 ? " " + flags : "";
 }
 
-void printHelp (const std::string& command, Map& attrs) {
+void printHelp (const std::string& command) {
   if (command == "ssc") {
-    std::cout << tmpl(gHelpText, attrs) << std::endl;
+    std::cout << tmpl(gHelpText, defaultTemplateAttrs) << std::endl;
   } else if (command == "compile") {
-    std::cout << tmpl(gHelpTextCompile, attrs) << std::endl;
+    std::cout << tmpl(gHelpTextCompile, defaultTemplateAttrs) << std::endl;
   } else if (command == "list-devices") {
-    std::cout << tmpl(gHelpTextListDevices, attrs) << std::endl;
+    std::cout << tmpl(gHelpTextListDevices, defaultTemplateAttrs) << std::endl;
   } else if (command == "init") {
-    std::cout << tmpl(gHelpTextInit, attrs) << std::endl;
+    std::cout << tmpl(gHelpTextInit, defaultTemplateAttrs) << std::endl;
   } else if (command == "install-app") {
-    std::cout << tmpl(gHelpTextInstallApp, attrs) << std::endl;
+    std::cout << tmpl(gHelpTextInstallApp, defaultTemplateAttrs) << std::endl;
   } else if (command == "print-build-dir") {
-    std::cout << tmpl(gHelpTextPrintBuildDir, attrs) << std::endl;
+    std::cout << tmpl(gHelpTextPrintBuildDir, defaultTemplateAttrs) << std::endl;
   } else if (command == "run") {
-    std::cout << tmpl(gHelpTextRun, attrs) << std::endl;
+    std::cout << tmpl(gHelpTextRun, defaultTemplateAttrs) << std::endl;
   }
 }
 
@@ -343,11 +344,8 @@ inline std::string getCfgUtilPath() {
 }
 
 int main (const int argc, const char* argv[]) {
-  Map attrs;
-  attrs["ssc_version"] = SSC::full_version;
-
   if (argc < 2) {
-    printHelp("ssc", attrs);
+    printHelp("ssc");
     exit(0);
   }
 
@@ -376,13 +374,13 @@ int main (const int argc, const char* argv[]) {
   }
 
   if (is(subcommand, "-h") || is(subcommand, "--help")) {
-    printHelp("ssc", attrs);
+    printHelp("ssc");
     exit(0);
   }
 
   if (subcommand[0] == '-') {
     log("unknown option: " + std::string(subcommand));
-    printHelp("ssc", attrs);
+    printHelp("ssc");
     exit(0);
   }
 
@@ -445,7 +443,7 @@ int main (const int argc, const char* argv[]) {
         paths.pathPackage /
         "opt" /
         settings["name"]
-      };;
+      };
       paths.pathResourcesRelativeToUserBuild = paths.pathBin;
       return paths;
     } else if (platform == "win32") {
@@ -483,7 +481,7 @@ int main (const int argc, const char* argv[]) {
   ) -> void {
     if (argv[1] == subcommand) {
       if (argc > 2 && (is(argv[2], "-h") || is(argv[2], "--help"))) {
-        printHelp(subcommand, attrs);
+        printHelp(subcommand);
         exit(0);
       }
       auto commandlineOptions = std::span(argv, argc).subspan(2, numberOfOptions);
@@ -497,7 +495,7 @@ int main (const int argc, const char* argv[]) {
         }
         if (!isAcceptableOption) {
           log("unrecognized option: " + std::string(arg));
-          printHelp(subcommand, attrs);
+          printHelp(subcommand);
           exit(1);
         }
       }
@@ -536,11 +534,10 @@ int main (const int argc, const char* argv[]) {
   };
 
   createSubcommand("init", {}, false, [&](const std::span<const char *>& options) -> void {
-    attrs["node_platform"] = platform.arch == "arm64" ? "arm64" : "x64";
     fs::create_directories(targetPath / "src");
     SSC::writeFile(targetPath / "src" / "index.html", gHelloWorld);
-    SSC::writeFile(targetPath / "ssc.config", tmpl(gDefaultConfig, attrs));
-    SSC::writeFile(targetPath / ".gitignore", tmpl(gDefaultGitignore, attrs));
+    SSC::writeFile(targetPath / "ssc.config", tmpl(gDefaultConfig, defaultTemplateAttrs));
+    SSC::writeFile(targetPath / ".gitignore", gDefaultGitignore);
     exit(0);
   });
 
@@ -571,12 +568,12 @@ int main (const int argc, const char* argv[]) {
     if (targetPlatform == "ios" && platform.mac) {
       if (isUdid && isEcid) {
         log("--udid and --ecid are mutually exclusive");
-        printHelp("list-devices", attrs);
+        printHelp("list-devices");
         exit(1);
       }
       if (isOnly && !isUdid && !isEcid) {
         log("--only requires --udid or --ecid");
-        printHelp("list-devices", attrs);
+        printHelp("list-devices");
         exit(1);
       }
       std::string cfgUtilPath = getCfgUtilPath();
@@ -645,7 +642,7 @@ int main (const int argc, const char* argv[]) {
       }
       if (targetPlatform.size() == 0) {
         log("--platform option is required.");
-        printHelp("install-app", attrs);
+        printHelp("install-app");
         exit(1);
       }
       // then we need to find device
@@ -717,7 +714,7 @@ int main (const int argc, const char* argv[]) {
 
     for (auto const arg : options) {
       if (is(arg, "-h") || is(arg, "--help")) {
-        printHelp("compile", attrs);
+        printHelp("compile");
         exit(0);
       }
 
@@ -911,7 +908,7 @@ int main (const int argc, const char* argv[]) {
 
       writeFile(paths.pathPackage / pathBase / "Info.plist", plistInfo);
 
-      auto credits = tmpl(gCredits, attrs);
+      auto credits = tmpl(gCredits, defaultTemplateAttrs);
 
       writeFile(paths.pathResourcesRelativeToUserBuild / "Credits.html", credits);
     }
@@ -2339,6 +2336,6 @@ int main (const int argc, const char* argv[]) {
   });
 
   log("subcommand 'ssc " + std::string(subcommand) + "' is not supported.");
-  printHelp("ssc", attrs);
+  printHelp("ssc");
   exit(1);
 }
