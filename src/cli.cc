@@ -447,7 +447,7 @@ int main (const int argc, const char* argv[]) {
       paths.pathResourcesRelativeToUserBuild = paths.pathBin;
       return paths;
     } else if (platform == "win32") {
-      paths.pathPackage = { 
+      paths.pathPackage = {
         paths.platformSpecificOutputPath  /
         fs::path(settings["executable"] + "-" +settings["version"])
       };
@@ -888,7 +888,6 @@ int main (const int argc, const char* argv[]) {
       flags += " -framework WebKit";
       flags += " -framework Cocoa";
       flags += " -DMACOS=1";
-      flags += " -Wno-nullability-completeness"; // ignore swift compat
       flags += " -I" + prefixFile();
       flags += " -I" + prefixFile("include");
       flags += " -L" + prefixFile("lib");

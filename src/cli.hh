@@ -20,6 +20,7 @@ general options:
   -h  help
   -v  version
 )TEXT";
+
 constexpr auto gHelpTextCompile = R"TEXT(
 ssc v{{ssc_version}}
 
@@ -45,6 +46,7 @@ macOS-specific options:
   -e  specify entitlements
   -n  notarize
 )TEXT";
+
 constexpr auto gHelpTextListDevices = R"TEXT(
 ssc v{{ssc_version}}
 
@@ -59,6 +61,7 @@ options:
   --udid      show device UDID
   --only      only show ECID or UDID of the first device
 )TEXT";
+
 constexpr auto gHelpTextInit = R"TEXT(
 ssc v{{ssc_version}}
 
@@ -67,6 +70,7 @@ Create new project. If path is not provided, new project will be created in the 
 usage:
   ssc init [<project-dir>]
 )TEXT";
+
 constexpr auto gHelpTextInstallApp = R"TEXT(
 ssc v{{ssc_version}}
 
@@ -79,6 +83,7 @@ options:
   --platform  ios; if not specified, runs on current platfrom
   --device    ecid of device to install to; if not specified, runs on current device
 )TEXT";
+
 constexpr auto gHelpTextPrintBuildDir = R"TEXT(
 ssc v{{ssc_version}}
 
@@ -91,6 +96,7 @@ options:
   --platform  ios; if not specified, runs on current platfrom
   --prod      use production build directory
 )TEXT";
+
 constexpr auto gHelpTextRun = R"TEXT(
 ssc v{{ssc_version}}
 
