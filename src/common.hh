@@ -361,11 +361,6 @@ namespace SSC {
     );
     preload += "})();\n";
     preload += "//# sourceURL=preload.js";
-
-    std::ofstream stream("./preload.js");
-    stream << preload;
-    stream.close();
-
     return preload;
   }
 
