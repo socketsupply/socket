@@ -1442,6 +1442,11 @@ int main (const int argc, const char* argv[]) {
         exit(1);
       }
 
+      if (settings["ios_team_id"].size() == 0) {
+        log("error: 'ios_team_id' option is empty");
+        exit(1);
+      }
+
       log("building for iOS");
 
       auto oldCwd = fs::current_path();
