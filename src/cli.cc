@@ -114,6 +114,10 @@ int runApp (const fs::path& path, const std::string& args) {
 }
 
 void runIOSSimulator (const fs::path& path, Map& settings) {
+  if (settings["ios_simulator_device"].size() == 0) {
+    log("error: 'ios_simulator_device' option is empty");
+    exit(1);
+  }
   std::string deviceType;
   std::stringstream listDeviceTypesCommand;
   listDeviceTypesCommand
@@ -1433,6 +1437,11 @@ int main (const int argc, const char* argv[]) {
     }
 
     if (flagBuildForIOS) {
+      if (flagBuildForSimulator && settings["ios_simulator_device"].size() == 0) {
+        log("error: 'ios_simulator_device' option is empty");
+        exit(1);
+      }
+
       log("building for iOS");
 
       auto oldCwd = fs::current_path();
