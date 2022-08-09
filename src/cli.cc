@@ -2310,18 +2310,8 @@ int main (const int argc, const char* argv[]) {
     std::string argvForward = "";
     bool isIosSimulator = false;
     bool flagHeadless = false;
-    Paths paths = getPaths(platform.os);
+    std::string targetPlatform = "";
     for (auto const& option : options) {
-      auto targetPlatform = optionValue(option, "--platform");
-      if (targetPlatform.size() != 0) {
-        if (targetPlatform == "ios-simulator") {
-          isIosSimulator = true;
-        } else {
-          log("Unknown platform: " + targetPlatform);
-          exit(1);
-        }
-      }
-
       if (is(option, "--test=1") || is(option, "--test")) {
         argvForward += "--test=1";
       }
@@ -2330,7 +2320,22 @@ int main (const int argc, const char* argv[]) {
         argvForward += "--headless";
         flagHeadless = true;
       }
+
+      if (targetPlatform.size() == 0) {
+        targetPlatform = optionValue(option, "--platform");
+        if (targetPlatform.size() > 0) {
+          if (targetPlatform == "ios-simulator") {
+            isIosSimulator = true;
+          } else {
+            log("Unknown platform: " + targetPlatform);
+            exit(1);
+          }
+        }
+      }
     }
+
+    targetPlatform = targetPlatform.size() > 0 ? targetPlatform : platform.os;
+    Paths paths = getPaths(targetPlatform);
 
     if (isIosSimulator) {
       std::string app = (settings["name"] + ".app");
