@@ -774,7 +774,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   }
 
   if (cmd.name == "window.eval") {
-    std::string value = "decodeURIComponent(cmd.get("value"));
+    std::string value = decodeURIComponent(cmd.get("value"));
     auto seq = cmd.get("seq");
 
     NSString* script = [NSString stringWithUTF8String: value.c_str()];
