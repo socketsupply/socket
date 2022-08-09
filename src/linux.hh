@@ -338,7 +338,6 @@ namespace SSC {
           }
         })MSG", id);
 
-        cb(seq, err, Post{});
         return true;
       }
 
@@ -657,6 +656,119 @@ namespace SSC {
         });
         return true;
       }
+    }
+
+    if (cmd.name == "udpBind" || cmd.name == "udp.bind") {
+      if (cmd.get("serverId").size() == 0) {
+        auto err = SSC::format(R"MSG({
+          "err": {
+            "type": "InternalError",
+            "message": "'serverId' is required"
+          }
+        })MSG");
+
+        cb(seq, err, Post{});
+        return true;
+      }
+
+      if (cmd.get("port").size() == 0) {
+        auto err = SSC::format(R"MSG({
+          "err": {
+            "type": "InternalError",
+            "message": "'port' is required"
+          }
+        })MSG");
+
+        cb(seq, err, Post{});
+        return true;
+      }
+
+      Bridge::ThreadContext::Dispatch(this, [=](auto ctx) {
+        auto ip = cmd.get("ip");
+        int port;
+        uint64_t serverId;
+
+        if (ip.size() == 0) {
+          ip = "0.0.0.0";
+        }
+
+        port = std::stoi(cmd.get("port"));
+        serverId = std::stoull(cmd.get("serverId"));
+
+        ctx->core->udpBind(seq, serverId, ip, port, cb);
+      });
+      return true;
+    }
+
+    if (cmd.name == "udpReadStart" || cmd.name == "udp.readStart") {
+      if (cmd.get("serverId").size() == 0) {
+        auto err = SSC::format(R"MSG({
+          "err": {
+            "type": "InternalError",
+            "message": "'serverId' is required"
+          }
+        })MSG");
+
+        cb(seq, err, Post{});
+        return true;
+      }
+
+      Bridge::ThreadContext::Dispatch(this, [=](auto ctx) {
+        auto serverId = std::stoull(cmd.get("serverId"));
+        ctx->core->udpBind(seq, serverId, cb);
+      });
+      return true;
+    }
+
+    if (cmd.name == "udpSend" || cmd.name == "udp.send") {
+      int offset = 0;
+      int port = 0;
+      uint64_t clientId;
+      std::string err;
+
+      auto ephemeral = cmd.get("ephemeral") == "true";
+      auto strOffset = cmd.get("offset");
+      auto strPort = cmd.get("port");
+      auto ip = cmd.get("address");
+
+      if (strOffset.size() > 0) {
+        try {
+          offset = std::stoi(strOffset);
+        } catch (...) {
+          err = "invalid offset";
+        }
+      }
+
+      try {
+        port = std::stoi(strPort);
+      } catch (...) {
+        err = "invalid port";
+      }
+
+      if (ip.size() == 0) {
+        ip = "0.0.0.0";
+      }
+
+      try {
+        clientId = std::stoull(cmd.get("clientId"));
+      } catch (...) {
+        err = "invalid clientId";
+      }
+
+      if (err.size() > 0) {
+        auto msg = SSC::format(R"MSG({
+          "err": {
+            "message": "$S"
+          }
+        })MSG", err);
+        cb(seq, err, Post{});
+        return true;
+      }
+
+      Bridge::ThreadContext::Dispatch(this, [=](auto ctx) {
+        ctx->core->udpSend(seq, clientId, buf, offset, (int)bufsize, port, cb);
+      });
+      return true;
     }
 
     return false;
