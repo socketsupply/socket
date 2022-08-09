@@ -28,12 +28,13 @@ usage:
   ssc compile [options] [<project-dir>]
 
 general options:
-  --platform  cross-compilation target. Can be: ios, ios-simulator, android-emulator
-  --port=n    load "index.html" from "http://localhost:n"
-  -o          only run user build step
-  -r          run after building
-  --headless  run headlessly
-  --test=1    indicate test mode
+  --platform        cross-compilation target. Can be: ios, ios-simulator, android-emulator
+  --port=n          load "index.html" from "http://localhost:n"
+  -o                only run user build step
+  -r                run after building
+  --headless        run headlessly
+  --test=1          indicate test mode
+  --config=<path>   path to config file (ssc.config)
 
 packaging options:
   --prod  disable debugging info, inspector, etc.
