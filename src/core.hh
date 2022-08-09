@@ -1,8 +1,6 @@
 #ifndef SSC_CORE_H
 #define SSC_CORE_H
-//
-// File and Network IO for all operating systems.
-//
+
 #include "common.hh"
 #include "include/uv.h"
 
@@ -15,12 +13,6 @@
 #if defined(__APPLE__)
 	#import <Webkit/Webkit.h>
   using Task = id<WKURLSchemeTask>;
-#elif defined(__linux__)
-  class Task {
-  };
-  // TODO @jwerle
-#elif defined(_WIN32)
-  // TODO
 #endif
 
 #define DEFAULT_BACKLOG 128
@@ -2747,7 +2739,7 @@ namespace SSC {
     }
 
     uv_udp_init(getDefaultLoop(), &server->udp);
-    err = uv_udp_bind(&server->udp, (const struct sockaddr*)&server->addr, UV_UDP_REUSEADDR);
+    err = uv_udp_bind(&server->udp, (const struct sockaddr*)&server->addr, 0);
 
     guard.unlock();
 
@@ -2975,8 +2967,6 @@ namespace SSC {
     int err = uv_udp_recv_start(&server->udp, allocate, [](uv_udp_t *handle, ssize_t nread, const uv_buf_t *buf, const struct sockaddr *addr, unsigned flags) {
       std::lock_guard<std::recursive_mutex> guard(serversMutex);
       Server *server = (Server*)handle->data;
-
-      // NSLog(@"BYTES READ -> %i", (int)nread);
 
       if (nread == UV_EOF) {
         auto msg = SSC::format(R"MSG({

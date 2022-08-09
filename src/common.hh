@@ -3,8 +3,6 @@
 
 #include "preload.hh"
 
-// TODO could be conditional based on not (_WIN32, IOS, ANDROID)
-
 #include <string>
 #include <vector>
 #include <map>
