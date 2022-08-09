@@ -459,12 +459,14 @@ namespace SSC {
                   R"MSG({"err": { "message": "$S" } })MSG",
                   std::string(message)
                 );
-              } else {
+              } else if (string) {
                 msg = std::string(string);
               }
 
               ctx->cb(ctx->seq, msg, Post{});
-              g_free(string);
+              if (string) {
+                g_free(string);
+              }
             } else {
               auto msg = SSC::format(
                 R"MSG({"err": { "message": "Error: An unknown JavaScript evaluation error has occurred" } })MSG"
@@ -932,7 +934,7 @@ namespace SSC {
       return;
     }
 
-    if (seq != "-1") {
+    if (seq != "-1" && seq.size() > 0) {
       msg = SSC::resolveToRenderProcess(seq, "0", encodeURIComponent(msg));
     }
 
