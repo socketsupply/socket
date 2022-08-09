@@ -784,8 +784,10 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
           auto msg = std::string([[NSString stringWithFormat:@"%@", result] UTF8String]);
           [self send: seq msg: msg post: Post{}];
         } else if (error) {
-          auto message = [[NSString stringWithFormat:@"%@", error.userInfo[@"WKJavaScriptExceptionMessage"]] UTF8String];
-          auto err = encodeURIComponent(std::string());
+          auto exception = error.userInfo[@"WKJavaScriptExceptionMessage"];
+          auto message = [[NSString stringWithFormat:@"%@", exception] UTF8String];
+          auto err = encodeURIComponent(std::string(message));
+
           if (err == "(null)") {
             [self send: seq msg: "null" post: Post{}];
             return;
