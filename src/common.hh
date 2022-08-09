@@ -349,14 +349,25 @@ namespace SSC {
     }
 
     preload += "  Object.seal(Object.freeze(window.process.config));\n";
+
+    // depreceate usage of 'window.system' in favor of 'window.parent'
     preload += std::string(
-      "  window.system = new Proxy(window.parent, {\n"
-      "    get(target, prop, receiver) {\n"
-      "      console.warn(`window.system.${prop} is depreceated. Use window.parent.${prop} instead.`);\n"
-      "      return Reflect.get(...arguments);\n"
-      "    }\n"
-      "  });\n"
+      "  Object.defineProperty(window, 'system', {          \n"
+      "    configurable: false,                             \n"
+      "    enumerable: false,                               \n"
+      "    writable: false,                                 \n"
+      "    value: new Proxy(window.parent, {                \n"
+      "      get (target, prop, receiver) {                 \n"
+      "        console.warn(                                \n"
+      "          `window.system.${prop} is depreceated. ` + \n"
+      "          `Use window.parent.${prop} instead.`       \n"
+      "         );                                          \n"
+      "        return Reflect.get(...arguments);            \n"
+      "      }                                              \n"
+      "    })                                               \n"
+      "  });                                                \n"
     );
+
     preload += "})();\n";
     preload += "//# sourceURL=preload.js";
     return preload;
