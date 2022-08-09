@@ -716,7 +716,7 @@ namespace SSC {
 
       Bridge::ThreadContext::Dispatch(this, [=](auto ctx) {
         auto serverId = std::stoull(cmd.get("serverId"));
-        ctx->core->udpBind(seq, serverId, cb);
+        ctx->core->udpReadStart(seq, serverId, cb);
       });
       return true;
     }
@@ -767,7 +767,7 @@ namespace SSC {
       }
 
       Bridge::ThreadContext::Dispatch(this, [=](auto ctx) {
-        ctx->core->udpSend(seq, clientId, buf, offset, (int)bufsize, port, cb);
+        ctx->core->udpSend(seq, clientId, buf, offset, (int)bufsize, port, ip.c_str(), ephemeral, cb);
       });
       return true;
     }

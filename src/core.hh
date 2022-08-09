@@ -13,6 +13,8 @@
 #if defined(__APPLE__)
 	#import <Webkit/Webkit.h>
   using Task = id<WKURLSchemeTask>;
+#else
+  class Task {};
 #endif
 
 #define DEFAULT_BACKLOG 128
