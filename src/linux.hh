@@ -396,7 +396,7 @@ namespace SSC {
       return true;
     }
 
-    if (cmd.name == "render.eval" && cmd.index >= 0) {
+    if (cmd.name == "window.eval" && cmd.index >= 0) {
       auto windowFactory = reinterpret_cast<WindowFactory<Window, App> *>(app->getWindowFactory());
       if (windowFactory == nullptr) {
         // @TODO(jwerle): print warning
@@ -409,8 +409,9 @@ namespace SSC {
         return false;
       }
 
-      std::string value = "with ({ system: {} }) { " + decodeURIComponent(cmd.get("value") + " }");
-      auto ctx = new CallbackContext { cb, cmd.uri, window, (void *) this };
+      auto value = decodeURIComponent(cmd.get("value"));
+
+      auto ctx = new CallbackContext { cb, seq, window, (void *) this };
       webkit_web_view_run_javascript(
         WEBKIT_WEB_VIEW(window->webview),
         value.c_str(),
@@ -426,19 +427,59 @@ namespace SSC {
 
           if (!result) {
             auto msg = SSC::format(
-              R"MSG({"err": { "message": "$S" } })MSG",
+              R"MSG({"err": { "code": "$S", "message": "$S" } })MSG",
+              std::to_string(error->code),
               std::string(error->message)
             );
 
             g_error_free(error);
             ctx->cb(ctx->seq, msg, Post{});
+            return;
           } else {
-            // @TODO `webkit_web_view_run_javascript_finish()`
-            // @see https://webkitgtk.org/reference/webkit2gtk/2.5.1/WebKitWebView.html#webkit-web-view-run-javascript-finish
+            auto value = webkit_javascript_result_get_js_value(result);
+
+            if (
+              jsc_value_is_null(value) ||
+              jsc_value_is_array(value) ||
+              jsc_value_is_object(value) ||
+              jsc_value_is_number(value) ||
+              jsc_value_is_string(value) ||
+              jsc_value_is_function(value) ||
+              jsc_value_is_undefined(value) ||
+              jsc_value_is_constructor(value)
+            ) {
+              auto context = jsc_value_get_context(value);
+              auto string = jsc_value_to_string(value);
+              auto exception = jsc_context_get_exception(context);
+              std::string msg = "";
+
+              if (exception) {
+                auto message = jsc_exception_get_message(exception);
+                msg = SSC::format(
+                  R"MSG({"err": { "message": "$S" } })MSG",
+                  std::string(message)
+                );
+              } else {
+                msg = std::string(string);
+              }
+
+              ctx->cb(ctx->seq, msg, Post{});
+              g_free(string);
+            } else {
+              auto msg = SSC::format(
+                R"MSG({"err": { "message": "Error: An unknown JavaScript evaluation error has occurred" } })MSG"
+               );
+
+              ctx->cb(ctx->seq, msg, Post{});
+            }
           }
+
+          webkit_javascript_result_unref(result);
         },
         ctx
-       );
+      );
+
+      return true;
     }
 
     if (cmd.name == "getFSConstants" || cmd.name == "fs.constants") {
@@ -592,6 +633,7 @@ namespace SSC {
       Bridge::ThreadContext::Dispatch(this, [=](auto ctx) {
         ctx->core->fsGetOpenDescriptors(seq, cb);
       });
+      return true;
     }
 
     if (cmd.name == "fsCloseOpenDescriptor" || cmd.name == "fs.closeOpenDescriptor") {
