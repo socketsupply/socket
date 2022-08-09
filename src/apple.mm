@@ -152,7 +152,6 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 }
 
 - (void) centralManagerDidUpdateState: (CBCentralManager*)central {
-  DebugLog(@"CoreBluetooth: centralManagerDidUpdateState");
   switch (central.state) {
     case CBManagerStatePoweredOff:
     case CBManagerStateResetting:
@@ -193,10 +192,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
 - (void) startScanning {
   NSArray* keys = [_serviceMap allKeys];
-  if ([keys count] == 0) {
-    DebugLog(@"No keys to scan for");
-    return;
-  }
+  if ([keys count] == 0) return;
 
   NSMutableArray* uuids = [[NSMutableArray alloc] init];
 
