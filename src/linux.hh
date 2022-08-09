@@ -338,6 +338,7 @@ namespace SSC {
           }
         })MSG", id);
 
+        cb(seq, err, Post{});
         return true;
       }
 
