@@ -840,8 +840,10 @@ constexpr auto gXCodeExportOptions = R"XML(<?xml version="1.0" encoding="UTF-8"?
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-  {{ios_distribution_method}}
-  {{ios_team_id}}
+  <key>method</key>
+  <string>{{ios_distribution_method}}</string>
+  <key>teamID</key>
+  <string>{{ios_team_id}}</string>
   <key>uploadBitcode</key>
   <true/>
   <key>compileBitcode</key>
