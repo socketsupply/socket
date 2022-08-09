@@ -722,7 +722,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
         CODE_SIGN_IDENTITY = "{{ios_codesign_identity}}";
         CODE_SIGN_STYLE = Manual;
         CURRENT_PROJECT_VERSION = 1;
-        DEVELOPMENT_TEAM = {{ios_team_id}};
+        DEVELOPMENT_TEAM = {{apple_team_id}};
         ENABLE_BITCODE = NO;
         "EXCLUDED_ARCHS[sdk=iphonesimulator*]" = arm64;
         GENERATE_INFOPLIST_FILE = YES;
@@ -768,7 +768,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
         CODE_SIGN_IDENTITY = "iPhone Distribution";
         CODE_SIGN_STYLE = Manual;
         CURRENT_PROJECT_VERSION = 1;
-        DEVELOPMENT_TEAM = {{ios_team_id}};
+        DEVELOPMENT_TEAM = {{apple_team_id}};
         ENABLE_BITCODE = NO;
         "EXCLUDED_ARCHS[sdk=*]" = "";
         "EXCLUDED_ARCHS[sdk=iphonesimulator*]" = arm64;
@@ -843,7 +843,7 @@ constexpr auto gXCodeExportOptions = R"XML(<?xml version="1.0" encoding="UTF-8"?
   <key>method</key>
   <string>{{ios_distribution_method}}</string>
   <key>teamID</key>
-  <string>{{ios_team_id}}</string>
+  <string>{{apple_team_id}}</string>
   <key>uploadBitcode</key>
   <true/>
   <key>compileBitcode</key>
@@ -1411,6 +1411,14 @@ width: 1024
 # linux_icon: src/icon.png
 
 #
+# MacOS and iOS
+# ---
+#
+
+# The team ID needed for MacOS and iOS distribution and development
+# apple_team_id:
+
+#
 # MacOS
 # ---
 #
@@ -1445,9 +1453,6 @@ width: 1024
 # TODO description & value
 # mac_sign_paths:
 
-# The team ID needed for MacOS distribution and development
-# mac_team_id:
-
 #
 # iOS
 # ---
@@ -1455,9 +1460,6 @@ width: 1024
 
 # which device to target when building for the simulator
 # ios_simulator_device: iPhone 13
-
-# a protocol to register for addeventListener('protocol', e => {})
-# ios_protocol: hyper
 
 # A relative path to the plist of application entitlements
 # ios_entitlements:
@@ -1473,9 +1475,6 @@ width: 1024
 
 # TODO description & value
 # ios_signing_certificate:
-
-# The team ID needed for iOS distribution and development
-# ios_team_id:
 )CONFIG";
 
 constexpr auto gDefaultGitignore = R"GITIGNORE(
