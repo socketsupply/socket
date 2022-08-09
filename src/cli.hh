@@ -23,8 +23,6 @@ general options:
 constexpr auto gHelpTextCompile = R"TEXT(
 ssc v{{ssc_version}}
 
-Run application.
-
 usage:
   ssc compile [options] [<project-dir>]
 
@@ -95,8 +93,6 @@ options:
 )TEXT";
 constexpr auto gHelpTextRun = R"TEXT(
 ssc v{{ssc_version}}
-
-Run application.
 
 usage:
   ssc run [options] [<project-dir>]
