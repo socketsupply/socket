@@ -853,7 +853,7 @@ constexpr auto gXCodeExportOptions = R"XML(<?xml version="1.0" encoding="UTF-8"?
   <key>signingStyle</key>
   <string>manual</string>
   <key>signingCertificate</key>
-  <string>{{ios_signing_certificate}}</string>
+  <string>{{ios_codesign_identity}}</string>
   <key>provisioningProfiles</key>
   <dict>
     <key>{{bundle_identifier}}</key>
@@ -1319,9 +1319,6 @@ constexpr auto gDefaultConfig = R"CONFIG(
 # A unique ID that identifies the bundle (used by all app stores).
 bundle_identifier: com.beepboop
 
-# A unique ID that identifies the bundle (used by all app stores).
-bundle_identifier_short: boop
-
 # A string that gets used in the about dialog and package meta info.
 copyright: (c) Beep Boop Corp. 1985
 
@@ -1448,7 +1445,7 @@ width: 1024
 # mac_sign:
 
 # TODO description & value
-# mac_signing_certificate:
+# mac_codesign_identity:
 
 # TODO description & value
 # mac_sign_paths:
@@ -1474,7 +1471,7 @@ width: 1024
 # ios_provisioning_profile:
 
 # TODO description & value
-# ios_signing_certificate:
+# ios_codesign_identity:
 )CONFIG";
 
 constexpr auto gDefaultGitignore = R"GITIGNORE(
