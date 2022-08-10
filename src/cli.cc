@@ -32,6 +32,9 @@
 using namespace SSC;
 using namespace std::chrono;
 
+std::string _settings;
+Map settings = {{}};
+
 auto start = std::chrono::system_clock::now();
 
 bool flagDebugMode = true;
@@ -66,39 +69,38 @@ int runApp (const fs::path& path, const std::string& args, bool headless) {
   auto prefix = runner.size() > 0 ? runner + std::string(" ") : runner;
 
   if (headless) {
-    auto runner = appData["headless_runner"];
-    auto runnerFlags = appData["headless_runner_flags"];
-
+    auto headlessRunner = settings["headless_runner"];
+    auto headlessRunnerFlags = settings["headless_runner_flags"];
     std::string headlessCommand = "";
 
-    if (runner.size() == 0) {
-      runner = appData["headless_" + platform.os + "_runner"];
+    if (headlessRunner.size() == 0) {
+      headlessRunner = settings["headless_" + platform.os + "_runner"];
     }
 
-    if (runnerFlags.size() == 0) {
-      runnerFlags = appData["headless_" + platform.os + "_runner_flags"];
+    if (headlessRunnerFlags.size() == 0) {
+      headlessRunnerFlags = settings["headless_" + platform.os + "_runner_flags"];
     }
 
     if (platform.linux) {
       // use xvfb for linux as a default
-      if (runner.size() == 0) {
-        runner = "xvfb-run";
-        status = std::system((runner + " --help >/dev/null").c_str());
+      if (headlessRunner.size() == 0) {
+        headlessRunner = "xvfb-run";
+        status = std::system((headlessRunner + " --help >/dev/null").c_str());
         if (WEXITSTATUS(status) != 0) {
-          runner = "";
+          headlessRunner = "";
         }
       }
 
-      if (runnerFlags.size() == 0) {
+      if (headlessRunnerFlags.size() == 0) {
         // use sane defaults if 'xvfb-run' is used
-        if (runner == "xvfb-run") {
-          runnerFlags = "--server-args='-screen 0 1920x1080x24'";
+        if (headlessRunner == "xvfb-run") {
+          headlessRunnerFlags = "--server-args='-screen 0 1920x1080x24'";
         }
       }
+    }
 
-      if (runner != "false") {
-        headlessCommand = runner + " " + runnerFlags + " ";
-      }
+    if (headlessRunner != "false") {
+      headlessCommand = headlessRunner + " " + headlessRunnerFlags + " ";
     }
 
     status = std::system((headlessCommand + prefix + cmd + " " + args + " --from-ssc").c_str());
@@ -401,9 +403,6 @@ int main (const int argc, const char* argv[]) {
   } else {
     targetPath = fs::path(lastOption);
   }
-
-  std::string _settings;
-  Map settings = {{}};
 
   struct Paths {
     fs::path pathBin;
@@ -1579,11 +1578,11 @@ int main (const int argc, const char* argv[]) {
       auto androidHome = getEnv("ANDROID_HOME");
 
       if (androidHome.size() == 0) {
-        androidHome = appData["android_" + platform.os + "_home"];
+        androidHome = settings["android_" + platform.os + "_home"];
       }
 
       if (androidHome.size() == 0) {
-        androidHome = appData["android_home"];
+        androidHome = settings["android_home"];
       }
 
       if (androidHome.size() == 0) {
