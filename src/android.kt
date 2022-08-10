@@ -845,6 +845,18 @@ open class ExternalWebViewInterface(activity: WebViewActivity) {
         return message.seq
       }
 
+      "window.eval", "eval" -> {
+        try {
+          this.evaluateJavascript(decodeURIComponent(message.get("value")), fun (result: String) {
+            callback(string)
+          })
+        } catch (err: Exception) {
+          return callback(JSONError(id, err.toString()).toString())
+        }
+
+        return message.seq
+      }
+
       "external", "openExternal" -> {
         require(message.value.isNotEmpty()) { "openExternal: Missing 'value' (URL) in IPC" }
 
