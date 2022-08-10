@@ -847,7 +847,7 @@ open class ExternalWebViewInterface(activity: WebViewActivity) {
 
       "window.eval", "eval" -> {
         try {
-          this.evaluateJavascript(decodeURIComponent(message.get("value")), fun (result: String) {
+          this.evaluateJavascript(decodeURIComponent(message.get("value")), fun (result: String?) {
             callback(string)
           })
         } catch (err: Exception) {
