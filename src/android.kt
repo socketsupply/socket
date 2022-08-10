@@ -848,10 +848,10 @@ open class ExternalWebViewInterface(activity: WebViewActivity) {
       "window.eval", "eval" -> {
         try {
           this.evaluateJavascript(decodeURIComponent(message.get("value")), fun (result: String?) {
-            callback(string)
+            bridge.send(message.seq, result)
           })
         } catch (err: Exception) {
-          return callback(JSONError(id, err.toString()).toString())
+          return bridge.throwError(message.seq, JSONError(id, err.toString()).toString())
         }
 
         return message.seq
