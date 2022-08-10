@@ -17,10 +17,6 @@ constexpr auto gPreload = R"JS(
 
   const IPC = window._ipc = { nextSeq: 1, streams: {} }
 
-  window._ipc.evaluate = (string) => {
-    return eval(decodeURIComponent(string))
-  }
-
   window._ipc.resolve = async (seq, status, value) => {
     if (typeof value === 'string') {
       let didDecodeURIComponent = false
