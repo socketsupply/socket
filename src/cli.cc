@@ -463,7 +463,7 @@ int main (const int argc, const char* argv[]) {
       fs::path pathBase = "Contents";
       fs::path packageName = settings["name"] + ".app";
       paths.pathPackage = { paths.platformSpecificOutputPath  / packageName };
-      paths.pathBin = { paths.platformSpecificOutputPath  / pathBase / "MacOS" };
+      paths.pathBin = { paths.platformSpecificOutputPath / pathBase / "MacOS" };
       paths.pathResourcesRelativeToUserBuild = paths.platformSpecificOutputPath / "ui";
       return paths;
     } else if (platform == "android" || platform == "android-emulator") {

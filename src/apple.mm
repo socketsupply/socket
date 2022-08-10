@@ -1069,6 +1069,20 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     return true;
   }
 
+  if (cmd.name == "cwd") {
+    NSFileManager *fileManager;
+    NSString *currentDirectoryPath;
+
+    fileManager = [NSFileManager defaultManager];
+    currentDirectoryPath = [fileManager currentDirectoryPath];
+
+    dispatch_async(queue, ^{
+      auto msg = [currentDirectoryPath UTF8String];
+      [self send: seq msg: msg post: Post{} ];
+    });
+    return true;
+  }
+
   if (cmd.name == "getPlatformOS") {
     dispatch_async(queue, ^{
       auto msg = SSC::format(R"JSON({
