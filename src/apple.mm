@@ -1083,7 +1083,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     return true;
   }
 
-  if (cmd.name == "getPlatformOS") {
+  if (cmd.name == "getPlatformOS" || cmd.name == "os.platform") {
     dispatch_async(queue, ^{
       auto msg = SSC::format(R"JSON({
         "data": "$S"
@@ -1094,7 +1094,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     return true;
   }
 
-  if (cmd.name == "getPlatformType") {
+  if (cmd.name == "getPlatformType" || cmd.name == "os.type") {
     dispatch_async(queue, ^{
       auto msg = SSC::format(R"JSON({
         "data": "$S"
@@ -1105,7 +1105,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     return true;
   }
 
-  if (cmd.name == "getPlatformArch") {
+  if (cmd.name == "getPlatformArch" || cmd.name == "os.arch") {
     dispatch_async(queue, ^{
       auto msg = SSC::format(R"JSON({
         "data": "$S"

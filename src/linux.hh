@@ -362,6 +362,33 @@ namespace SSC {
       return true;
     }
 
+    if (cmd.name == "getPlatformOS" || cmd.name == "os.platform") {
+      auto msg = SSC::format(R"JSON({
+        "data": "$S"
+      })JSON", SSC::platform.os);
+
+      cb(seq, msg, Post{});
+      return true;
+    }
+
+    if (cmd.name == "getPlatformType" || cmd.name == "os.type") {
+      auto msg = SSC::format(R"JSON({
+        "data": "$S"
+      })JSON", SSC::platform.os);
+
+      cb(seq, msg, Post{});
+      return true;
+    }
+
+    if (cmd.name == "getPlatformArch" || cmd.name == "os.arch") {
+      auto msg = SSC::format(R"JSON({
+        "data": "$S"
+      })JSON", SSC::platform.arch);
+
+      cb(seq, msg, Post{});
+      return true;
+    }
+
     if (cmd.name == "getFSConstants" || cmd.name == "fs.constants") {
       cb(seq, this->core->getFSConstants(), Post{});
       return true;
