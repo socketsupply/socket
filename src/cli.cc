@@ -710,7 +710,7 @@ int main (const int argc, const char* argv[]) {
     bool flagBuildForAndroidEmulator = false;
     bool flagBuildForSimulator = false;
 
-    std::string configPath = targetPath / "ssc.config";
+    auto configPath = targetPath / "ssc.config";
     std::string argvForward = "";
     std::string targetPlatform = "";
 
