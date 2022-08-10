@@ -27,7 +27,7 @@ SSC::Core* core;
 @implementation BridgedWebView
 @end
 
-@interface AppDelegate : UIResponder <UIApplicationDelegate, WKScriptMessageHandler>
+@interface AppDelegate : UIResponder <UIApplicationDelegate, WKScriptMessageHandler, UIScrollViewDelegate>
 @property (strong, nonatomic) UIWindow* window;
 @property (strong, nonatomic) NavigationDelegate* navDelegate;
 @property (strong, nonatomic) BridgedWebView* webview;
@@ -149,6 +149,22 @@ void uncaughtExceptionHandler (NSException *exception) {
   })JSON")];
 }
 
+- (void) keyboardWillChange: (NSNotification*)notification {
+  NSDictionary* keyboardInfo = [notification userInfo];
+  NSValue* keyboardFrameBegin = [keyboardInfo valueForKey: UIKeyboardFrameEndUserInfoKey];
+  CGRect rect = [keyboardFrameBegin CGRectValue];
+  CGFloat width = rect.size.width;
+  CGFloat height = rect.size.height;
+
+  [bridge emit: "keyboard" msg: SSC::format(R"JSON({
+    "value": { "data": { "event": "will-change", "width": "$S", "height": "$S" } }
+  })JSON", std::to_string((float)width), std::to_string((float)height))];
+}
+
+- (void) scrollViewDidScroll: (UIScrollView*)scrollView {
+  scrollView.bounds = self.webview.bounds;
+}
+
 - (BOOL) application: (UIApplication*)app openURL: (NSURL*)url options: (NSDictionary<UIApplicationOpenURLOptionsKey, id>*)options {
   auto str = std::string(url.absoluteString.UTF8String);
 
@@ -247,6 +263,7 @@ void uncaughtExceptionHandler (NSException *exception) {
   [ns addObserver: self selector: @selector(keyboardDidHide) name: UIKeyboardDidHideNotification object: nil];
   [ns addObserver: self selector: @selector(keyboardWillShow) name: UIKeyboardWillShowNotification object: nil];
   [ns addObserver: self selector: @selector(keyboardWillHide) name: UIKeyboardWillHideNotification object: nil];
+  [ns addObserver: self selector: @selector(keyboardWillChange:) name: UIKeyboardWillChangeFrameNotification object: nil];
 
   [bridge setBluetooth: [BluetoothDelegate new]];
   [bridge setWebview: self.webview];
@@ -264,6 +281,8 @@ void uncaughtExceptionHandler (NSException *exception) {
 		loadFileURL: [NSURL fileURLWithPath: url]
     allowingReadAccessToURL: [NSURL fileURLWithPath: allowed]
   ];
+
+  self.webview.scrollView.delegate = self;
 
   [self.window makeKeyAndVisible];
   [self initNetworkStatusObserver];
