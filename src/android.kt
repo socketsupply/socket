@@ -851,7 +851,7 @@ open class ExternalWebViewInterface(activity: WebViewActivity) {
             bridge.send(message.seq, result)
           })
         } catch (err: Exception) {
-          return bridge.throwError(message.seq, JSONError(id, err.toString()).toString())
+          return bridge.throwError(message.seq, JSONError("null", err.toString()).toString())
         }
 
         return message.seq
