@@ -696,7 +696,7 @@ int main (const int argc, const char* argv[]) {
     exit(0);
   });
 
-  createSubcommand("compile", { "--platform", "--port", "--quiet", "-o", "-r", "--prod", "-p", "-c", "-s", "-e", "-n", "--test=1", "--headless", "--config" }, true, [&](const std::span<const char *>& options) -> void {
+  createSubcommand("compile", { "--platform", "--port", "--quiet", "-o", "-r", "--prod", "-p", "-c", "-s", "-e", "-n", "--test=1", "--headless" }, true, [&](const std::span<const char *>& options) -> void {
     bool flagRunUserBuildOnly = false;
     bool flagAppStore = false;
     bool flagCodeSign = false;
@@ -710,7 +710,6 @@ int main (const int argc, const char* argv[]) {
     bool flagBuildForAndroidEmulator = false;
     bool flagBuildForSimulator = false;
 
-    auto configPath = targetPath / "ssc.config";
     std::string argvForward = "";
     std::string targetPlatform = "";
 
@@ -773,10 +772,6 @@ int main (const int argc, const char* argv[]) {
         flagQuietMode = true;
       }
 
-      if (is(arg, "--config")) {
-        configPath = optionValue(arg, "--config");
-      }
-
       if (targetPlatform.size() == 0) {
         targetPlatform = optionValue(arg, "--platform");
         if (targetPlatform.size() > 0) {
@@ -833,6 +828,7 @@ int main (const int argc, const char* argv[]) {
 
     auto executable = fs::path(settings["executable"] + (platform.win ? ".exe" : ""));
     auto binaryPath = paths.pathBin / executable;
+    auto configPath = targetPath / "ssc.config";
 
     if (!fs::exists(binaryPath)) {
       flagRunUserBuildOnly = false;
