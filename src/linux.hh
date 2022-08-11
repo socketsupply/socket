@@ -410,8 +410,8 @@ namespace SSC {
       }
 
       auto value = decodeURIComponent(cmd.get("value"));
-
       auto ctx = new CallbackContext { cb, seq, window, (void *) this };
+
       webkit_web_view_run_javascript(
         WEBKIT_WEB_VIEW(window->webview),
         value.c_str(),
