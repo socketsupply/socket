@@ -1113,7 +1113,10 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     NSString *cwd = [NSHomeDirectory() stringByAppendingPathComponent: currentDirectoryPath];
 
     dispatch_async(queue, ^{
-      [self send: seq msg: [cwd UTF8String] post: Post{} ];
+      auto msg = SSC::format(R"JSON({
+        "data": "$S"
+      })JSON", std::string([cwd UTF8String]));
+      [self send: seq msg: msg post: Post{} ];
     });
     return true;
   }
