@@ -1075,10 +1075,10 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
     fileManager = [NSFileManager defaultManager];
     currentDirectoryPath = [fileManager currentDirectoryPath];
+    NSString *cwd = [NSHomeDirectory() stringByAppendingPathComponent: currentDirectoryPath];
 
     dispatch_async(queue, ^{
-      auto msg = [currentDirectoryPath UTF8String];
-      [self send: seq msg: msg post: Post{} ];
+      [self send: seq msg: [cwd UTF8String] post: Post{} ];
     });
     return true;
   }
