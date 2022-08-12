@@ -3130,11 +3130,10 @@ namespace SSC {
     ctx->cb = cb;
     ctx->seq = seq;
 
-    struct addrinfo hints;
-    hints.ai_family = PF_INET;
-    hints.ai_socktype = SOCK_STREAM;
-    hints.ai_protocol = IPPROTO_TCP;
-    hints.ai_flags = 0;
+    struct addrinfo hints = {0};
+    hints.ai_family = AF_UNSPEC; // `AF_INET` or `AF_INET6`
+    hints.ai_socktype = 0; // `0` for any
+    hints.ai_protocol = 0; // `0` for any
 
     uv_getaddrinfo_t* resolver = new uv_getaddrinfo_t;
     resolver->data = ctx;
