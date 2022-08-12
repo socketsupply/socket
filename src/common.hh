@@ -314,7 +314,7 @@ namespace SSC {
         "  const value = args                                          \n"
         "    .map(encodeURIComponent)                                  \n"
         "    .join('');                                                \n"
-        "  const uri = `ipc://stdout?index=${index}&value=${value}\n`; \n"
+        "  const uri = `ipc://stdout?index=${index}&value=${value}`;   \n"
         "  window.external.invoke(uri);                                \n"
         "};                                                            \n"
         "console.warn = console.error = console.log;                   \n";
