@@ -2833,6 +2833,7 @@ namespace SSC {
     int len = sizeof(sockname);
     int err = 0;
 
+    std::lock_guard<std::recursive_mutex> guard(clientsMutex);
     Client* client = clients[clientId];
 
     if (client == nullptr) {
@@ -2847,7 +2848,6 @@ namespace SSC {
       return;
     }
 
-    std::lock_guard<std::recursive_mutex> guard(clientsMutex);
     PeerInfo info;
     info.init(&client->udp);
 
