@@ -3145,8 +3145,6 @@ namespace SSC {
       if (status < 0) {
         auto msg = SSC::format(R"MSG({
           "err": {
-            "id": "$S",
-            "source": "dnsLookup",
             "code": "$S",
             "message": "$S"
           }
@@ -3163,11 +3161,10 @@ namespace SSC {
 
       auto msg = SSC::format(R"MSG({
         "data": {
-          "source": "dnsLookup",
-          "id": "$S",
-          "ip": "$S"
+          "address": "$S",
+          "family": $i
         }
-      })MSG", std::to_string(ctx->id), ip);
+      })MSG", ip, res->ai_family == AF_INET ? 4 : res->ai_family == AF_INET6 ? 6 : 0);
 
       ctx->cb(ctx->seq, msg, Post{});
       contexts.erase(ctx->id);

@@ -1552,7 +1552,13 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   }
 
   if (cmd.name == "dnsLookup") {
+    auto xId = std::stoull(cmd.get("serverId"));
     auto hostname = cmd.get("hostname");
+    // TODO: support these options
+    // auto family = std::stoi(cmd.get("family"));
+    // auto hints = std::stoi(cmd.get("hints"));
+    // auto all = bool(std::stoi(cmd.get("all")));
+    // auto verbatim = bool(std::stoi(cmd.get("verbatim")));
 
     dispatch_async(queue, ^{
       self.core->dnsLookup(seq, hostname, [=](auto seq, auto msg, auto post) {
