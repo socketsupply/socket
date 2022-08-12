@@ -1223,6 +1223,56 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     return true;
   }
 
+  if (cmd.name == "udpConnect") {
+    auto strId = cmd.get("clientId");
+    std::string err;
+    uint64_t clientId = 0ll;
+    int port = 0;
+    auto strPort = cmd.get("port");
+    auto ip = cmd.get("address");
+
+    if (strId.size() == 0) {
+      err = "invalid clientId";
+    } else {
+      try {
+        clientId = std::stoull(cmd.get("clientId"));
+      } catch (...) {
+        err = "invalid clientId";
+      }
+    }
+
+    if (strPort.size() == 0) {
+      err = "invalid port";
+    } else {
+      try {
+        port = std::stoi(strPort);
+      } catch (...) {
+        err = "invalid port";
+      }
+    }
+
+    if (err.size() > 0) {
+      auto msg = SSC::format(R"MSG({
+        "err": {
+          "message": "$S"
+        }
+      })MSG", err);
+      [self send: seq msg: msg post: Post{}];
+      return true;
+    }
+
+    if (ip.size() == 0) {
+      ip = "0.0.0.0";
+    }
+
+    dispatch_async(queue, ^{
+      self.core->udpConnect(seq, clientId, (const char*) ip.c_str(), port, [=](auto seq, auto msg, auto post) {
+        [self send: seq msg: msg post: post];
+      });
+    });
+    return true;
+  }
+
   if (cmd.name == "udpGetSockName") {
     auto strId = cmd.get("id");
     bool isClient = cmd.get("isClient").size() > 0;
@@ -1304,7 +1354,24 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   }
 
   if (cmd.name == "tcpSend") {
-    auto clientId = std::stoull(cmd.get("clientId"));
+    uint64_t clientId = 0ll;
+    std::string err = "";
+
+    try {
+      clientId = std::stoull(cmd.get("clientId"));
+    } catch (...) {
+      err = "invalid clientId";
+    }
+
+    if (err.size() > 0) {
+      auto msg = SSC::format(R"MSG({
+        "err": {
+          "message": "$S"
+        }
+      })MSG", err);
+      [self send: seq msg: err post: Post{}];
+      return true;
+    }
 
     dispatch_async(queue, ^{
       self.core->tcpSend(clientId, buf, [=](auto seq, auto msg, auto post) {
@@ -1366,7 +1433,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     auto ip = cmd.get("ip");
     std::string err;
     int port;
-    uint64_t serverId;
+    uint64_t serverId = 0ll;
 
     if (ip.size() == 0) {
       ip = "0.0.0.0";
@@ -1419,6 +1486,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
   if (cmd.name == "tcpBind") {
     auto ip = cmd.get("ip");
+    uint64_t serverId = 0ll;
     std::string err;
 
     if (ip.size() == 0) {
@@ -1434,7 +1502,14 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
       return true;
 		}
 
-    auto serverId = std::stoull(cmd.get("serverId"));
+    try {
+      serverId = std::stoull(cmd.get("serverId"));
+    } catch (...) {
+      auto msg = SSC::format(R"({ "err": { "message": "property 'serverId' required" } })");
+      [self send: seq msg: msg post: Post{}];
+      return true;
+    }
+
     auto port = std::stoi(cmd.get("port"));
 
     dispatch_async(queue, ^{
@@ -1448,7 +1523,15 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
   if (cmd.name == "dnsLookup") {
     auto hostname = cmd.get("hostname");
-    auto xId = std::stoull(cmd.get("id"));
+    uint64_t xId = 0ll;
+
+    try {
+      xId = std::stoull(cmd.get("id"));
+    } catch(...) {
+      auto msg = SSC::format(R"({ "err": { "message": "property 'id' required" } })");
+      [self send: seq msg: msg post: Post{}];
+      return true;
+    }
 
     dispatch_async(queue, ^{
       self.core->dnsLookup(seq, xId, hostname, [=](auto seq, auto msg, auto post) {

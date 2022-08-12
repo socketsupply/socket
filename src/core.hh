@@ -296,7 +296,7 @@ namespace SSC {
       void tcpReadStart (String seq, uint64_t clientId, Cb cb) const;
 
       void udpBind (String seq, uint64_t serverId, String ip, int port, Cb cb) const;
-      void udpConnect (String seq, uint64_t clientId, String ip, int port, Cb cb) const;
+      void udpConnect (String seq, uint64_t clientId, const char* ip, int port, Cb cb) const;
       void udpSend (String seq, uint64_t clientId, char* buf, int offset, int len, int port, const char* ip, bool ephemeral, Cb cb) const;
       void udpReadStart (String seq, uint64_t serverId, Cb cb) const;
       void udpGetSockName (String seq, uint64_t clientId, bool isClient, Cb cb) const;
@@ -2771,7 +2771,7 @@ namespace SSC {
     runDefaultLoop();
   }
 
-  void Core::udpConnect (String seq, uint64_t clientId, String ip, int port, Cb cb) const {
+  void Core::udpConnect (String seq, uint64_t clientId, const char* ip, int port, Cb cb) const {
     std::lock_guard<std::recursive_mutex> guard(clientsMutex);
     Client* client = nullptr;
     auto loop = getDefaultLoop();
@@ -2790,7 +2790,7 @@ namespace SSC {
     client->clientId = clientId;
 
     int err;
-    err = uv_ip4_addr((char*) ip, port, &client->addr);
+    err = uv_ip4_addr(ip, port, &client->addr);
 
     if (err < 0) {
       auto msg = SSC::format(R"MSG({
@@ -2804,7 +2804,7 @@ namespace SSC {
       return;
     }
 
-    err = uv_udp_connect(&client->udp, &client->addr);
+    err = uv_udp_connect(&client->udp, (const struct sockaddr*)&client->addr);
 
     if (err < 0) {
       auto msg = SSC::format(R"MSG({
