@@ -296,6 +296,7 @@ namespace SSC {
       void tcpReadStart (String seq, uint64_t clientId, Cb cb) const;
 
       void udpBind (String seq, uint64_t serverId, String ip, int port, Cb cb) const;
+      void udpConnect (String seq, uint64_t clientId, String ip, int port, Cb cb) const;
       void udpSend (String seq, uint64_t clientId, char* buf, int offset, int len, int port, const char* ip, bool ephemeral, Cb cb) const;
       void udpReadStart (String seq, uint64_t serverId, Cb cb) const;
       void udpGetSockName (String seq, uint64_t clientId, bool isClient, Cb cb) const;
@@ -2768,6 +2769,53 @@ namespace SSC {
     cb(server->seq, msg, Post{});
 
     runDefaultLoop();
+  }
+
+  void Core::udpConnect (String seq, uint64_t clientId, String ip, int port, Cb cb) const {
+    std::lock_guard<std::recursive_mutex> guard(clientsMutex);
+    Client* client = nullptr;
+    auto loop = getDefaultLoop();
+
+    if (clients[clientId] != nullptr) {
+      client = clients[clientId];
+    } else {
+      client = new Client();
+      uv_udp_init(loop, &client->udp);
+    }
+
+    client->id = clientId;
+    client->cb = cb;
+    client->seq = seq;
+    client->type = PEER_TYPE_UDP;
+    client->clientId = clientId;
+
+    int err;
+    err = uv_ip4_addr((char*) ip, port, &client->addr);
+
+    if (err < 0) {
+      auto msg = SSC::format(R"MSG({
+        "err": {
+          "source": "udp",
+          "clientId": "$S",
+          "message": "uv_udp_connect: $S"
+        }
+      })MSG", std::to_string(clientId), std::string(uv_strerror(err)));
+
+      cb(seq, msg, Post{});
+      return;
+    }
+
+    uv_udp_connect(&client->udp, &client->addr);
+
+    auto msg = SSC::format(R"MSG({
+      "data": {
+        "source": "udp",
+        "ip": "$S",
+        "port": "$i",
+        "clientId": "$s"
+      }
+    })MSG", ip, port, std::to_string(clientId));
+    cb(seq, msg, Post{});
   }
 
   void Core::udpGetSockName (String seq, uint64_t xId, bool isClient, Cb cb) const {
