@@ -1251,6 +1251,10 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
       }
     }
 
+    if (port == 0) {
+      err = "Can not bind to port 0";
+    }
+
     if (err.size() > 0) {
       auto msg = SSC::format(R"MSG({
         "err": {
@@ -1266,7 +1270,33 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     }
 
     dispatch_async(queue, ^{
-      self.core->udpConnect(seq, clientId, (const char*) ip.c_str(), port, [=](auto seq, auto msg, auto post) {
+      self.core->udpConnect(seq, clientId, (const char*)ip.c_str(), port, [=](auto seq, auto msg, auto post) {
+        [self send: seq msg: msg post: post];
+      });
+    });
+    return true;
+  }
+
+  if (cmd.name == "udpGetPeerName") {
+    auto sId = cmd.get("clientId");
+
+    if (sId.size() == 0) {
+      auto msg = SSC::format(R"MSG({
+        "err": {
+          "message": "expected .clientId"
+        }
+      })MSG");
+
+      dispatch_async(queue, ^{
+        [self send: seq msg: msg post: Post{}];
+      });
+      return true;
+    }
+
+    auto cId = std::stoull(sId);
+
+    dispatch_async(queue, ^{
+      self.core->udpGetPeerName(seq, cId, [=](auto seq, auto msg, auto post) {
         [self send: seq msg: msg post: post];
       });
     });
@@ -1274,10 +1304,10 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   }
 
   if (cmd.name == "udpGetSockName") {
-    auto strId = cmd.get("id");
+    auto sId = cmd.get("id");
     bool isClient = cmd.get("isClient").size() > 0;
 
-    if (strId.size() == 0) {
+    if (sId.size() == 0) {
       auto msg = SSC::format(R"MSG({
         "err": {
           "message": "expected either .id"
@@ -1290,10 +1320,10 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
       return true;
     }
 
-    auto connectionId = std::stoull(strId);
+    auto cId = std::stoull(sId);
 
     dispatch_async(queue, ^{
-      self.core->udpGetSockName(seq, connectionId, isClient, [=](auto seq, auto msg, auto post) {
+      self.core->udpGetSockName(seq, cId, isClient, [=](auto seq, auto msg, auto post) {
         [self send: seq msg: msg post: post];
       });
     });

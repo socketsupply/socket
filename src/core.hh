@@ -298,6 +298,7 @@ namespace SSC {
       void udpBind (String seq, uint64_t serverId, String ip, int port, Cb cb) const;
       void udpConnect (String seq, uint64_t clientId, const char* ip, int port, Cb cb) const;
       void udpSend (String seq, uint64_t clientId, char* buf, int offset, int len, int port, const char* ip, bool ephemeral, Cb cb) const;
+      void udpGetPeerName (String seq, uint64_t clientId, Cb cb) const;
       void udpReadStart (String seq, uint64_t serverId, Cb cb) const;
       void udpGetSockName (String seq, uint64_t clientId, bool isClient, Cb cb) const;
 
@@ -2824,6 +2825,41 @@ namespace SSC {
         "clientId": "$S"
       }
     })MSG", std::string(ip), port, std::to_string(clientId));
+    cb(seq, msg, Post{});
+  }
+
+  void Core::udpGetPeerName (String seq, uint64_t clientId, Cb cb) const {
+    struct sockaddr sockname;
+    int len = sizeof(sockname);
+    int err = 0;
+
+    Client* client = clients[clientId];
+
+    if (client == nullptr) {
+      auto msg = SSC::format(R"MSG({
+        "err": {
+          "source": "udp",
+          "clientId": "$S",
+          "message": "no such client"
+        }
+      })MSG", std::to_string(clientId));
+      cb(seq, msg, Post{});
+      return;
+    }
+
+    std::lock_guard<std::recursive_mutex> guard(clientsMutex);
+    PeerInfo info;
+    info.init(&client->udp);
+
+    auto msg = SSC::format(R"MSG({
+      "data": {
+        "source": "udp",
+        "clientId": "$S",
+        "ip": "$S",
+        "port": "$i",
+        "family": "$S"
+      }
+    })MSG", std::to_string(clientId), info.ip, info.port, info.family);
     cb(seq, msg, Post{});
   }
 
