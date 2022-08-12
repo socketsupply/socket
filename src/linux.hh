@@ -396,6 +396,14 @@ namespace SSC {
       return true;
     }
 
+    if (cmd.name == "getNetworkInterfaces" || cmd.name == "os.networkInterfaces") {
+      Bridge::ThreadContext::Dispatch(this, [=](auto ctx) {
+        auto msg = ctx.core->getNetworkInterfaces();
+        cb(seq, msg, Post{});
+      });
+      return true;
+    }
+
     if (cmd.name == "window.eval" && cmd.index >= 0) {
       auto windowFactory = reinterpret_cast<WindowFactory<Window, App> *>(app->getWindowFactory());
       if (windowFactory == nullptr) {
