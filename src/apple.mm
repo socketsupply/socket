@@ -1225,7 +1225,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
   if (cmd.name == "udpConnect") {
     auto strId = cmd.get("clientId");
-    std::string err;
+    std::string err = "";
     uint64_t clientId = 0ll;
     int port = 0;
     auto strPort = cmd.get("port");
@@ -1523,18 +1523,9 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
   if (cmd.name == "dnsLookup") {
     auto hostname = cmd.get("hostname");
-    uint64_t xId = 0ll;
-
-    try {
-      xId = std::stoull(cmd.get("id"));
-    } catch(...) {
-      auto msg = SSC::format(R"({ "err": { "message": "property 'id' required" } })");
-      [self send: seq msg: msg post: Post{}];
-      return true;
-    }
 
     dispatch_async(queue, ^{
-      self.core->dnsLookup(seq, xId, hostname, [=](auto seq, auto msg, auto post) {
+      self.core->dnsLookup(seq, hostname, [=](auto seq, auto msg, auto post) {
         [self send: seq msg: msg post: post];
       });
     });

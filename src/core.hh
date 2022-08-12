@@ -307,7 +307,7 @@ namespace SSC {
       void shutdown (String seq, uint64_t clientId, Cb cb) const;
       void readStop (String seq, uint64_t clientId, Cb cb) const;
 
-      void dnsLookup (String seq, uint64_t id, String hostname, Cb cb) const;
+      void dnsLookup (String seq, String hostname, Cb cb) const;
       String getNetworkInterfaces () const;
 
       Task getTask (String id);
@@ -2271,8 +2271,6 @@ namespace SSC {
     auto onConnect = [](uv_connect_t* connect, int status) {
       auto* client = reinterpret_cast<Client*>(connect->handle->data);
 
-      // NSLog(@"client connection?");
-
       if (status < 0) {
         auto msg = SSC::format(R"MSG({
           "err": {
@@ -2823,9 +2821,9 @@ namespace SSC {
         "source": "udp",
         "ip": "$S",
         "port": "$i",
-        "clientId": "$s"
+        "clientId": "$S"
       }
-    })MSG", ip, port, std::to_string(clientId));
+    })MSG", std::string(ip), port, std::to_string(clientId));
     cb(seq, msg, Post{});
   }
 
@@ -2955,7 +2953,6 @@ namespace SSC {
           }
         })MSG", std::to_string(client->id), std::string(uv_strerror(status)));
       } else {
-        // NSLog(@"SENT");
         msg = SSC::format(R"MSG({
           "data": {
             "clientId": "$S",
@@ -3090,7 +3087,7 @@ namespace SSC {
     runDefaultLoop();
   }
 
-  void Core::dnsLookup (String seq, uint64_t id, String hostname, Cb cb) const {
+  void Core::dnsLookup (String seq, String hostname, Cb cb) const {
     auto ctxId = SSC::rand64();
     GenericContext* ctx = contexts[ctxId] = new GenericContext;
     ctx->id = ctxId;
