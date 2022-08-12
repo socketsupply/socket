@@ -449,6 +449,39 @@ open class Bridge(activity: WebViewActivity) {
       return null
     })
 
+    this.registerInterface("dns", fun(
+      message: IPCMessage,
+      value: String,
+      callback: (String, String) -> Unit,
+      throwError: (String, String) -> String
+    ): String? {
+      val core = this.activity.core
+
+      if (core == null) {
+        return null
+      }
+
+      when (message.command) {
+        "dnsLookup", "dns.lookup" -> {
+          val hostname = message.get("hostname")
+          val seq = message.seq
+
+          if (hostname.isEmpty()) {
+            throw RuntimeException("dns.lookup: Missing 'hostname' in IPC")
+          }
+
+          core.dns.lookup(seq, hostname, fun (data: String) {
+            callback(message.seq, data)
+          })
+
+          return message.seq
+        }
+      }
+
+      return null
+    })
+
+
     this.registerInterface("os", fun(
       message: IPCMessage,
       value: String,
@@ -1061,6 +1094,29 @@ data class GenericNativeCoreConfiguration(
 /**
  * @TODO
  */
+open class NativeDNS(core: NativeCore) {
+  val TAG = "NativeDNS"
+
+  private var core: NativeCore? = core
+
+  fun lookup (
+    seq: String = "",
+    hostname: String,
+    callback: (String) -> Unit
+  ) {
+    core?.apply {
+      dnsLookup(seq, hostname, queueCallback(callback))
+    }
+  }
+
+  fun finalize() {
+    core = null
+  }
+}
+
+/**
+ * @TODO
+ */
 open class NativeFileSystem(core: NativeCore) {
   val TAG = "NativeFileSystem"
 
@@ -1352,6 +1408,11 @@ open class NativeCore(var activity: WebViewActivity) {
   var fs: NativeFileSystem
 
   /**
+   * @TODO
+   */
+  var dns: NativeDNS
+
+  /**
    * TODO
    */
   val callbacks = mutableMapOf<String, (String) -> Unit>()
@@ -1501,6 +1562,13 @@ open class NativeCore(var activity: WebViewActivity) {
     bytes: ByteArray
   ): String
 
+  @Throws(java.lang.Exception::class)
+  external fun dnsLookup(
+    seq: String,
+    hostname: String,
+    callback: String
+  )
+
   /**
    * FileSystem APIs
    **/
@@ -1571,6 +1639,7 @@ open class NativeCore(var activity: WebViewActivity) {
 
   init {
     this.pointer = this.createPointer()
+    this.dns = NativeDNS(this)
     this.fs = NativeFileSystem(this)
   }
 

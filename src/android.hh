@@ -421,7 +421,7 @@ class NativeCore : public SSC::Core {
 
   void * GetPointer () const;
 
-  JavaVM * GetJavaVM ();
+  JavaVM * GetJavaVM () const;
 
   AppConfig & GetAppConfig ();
 
@@ -437,6 +437,17 @@ class NativeCore : public SSC::Core {
 
   const std::string GetNetworkInterfaces () const;
   const char * GetJavaScriptPreloadSource () const;
+
+  void Callback (
+    NativeCallbackID callback,
+    std::string data
+  ) const;
+
+  void DNSLookup (
+    NativeCoreSequence seq,
+    std::string hostname,
+    NativeCallbackID callback
+  ) const;
 };
 
 #endif

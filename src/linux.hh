@@ -492,8 +492,12 @@ namespace SSC {
       return true;
     }
 
-    if (cmd.name == "getFSConstants" || cmd.name == "fs.constants") {
-      cb(seq, this->core->getFSConstants(), Post{});
+    if (cmd.name == "dnsLookup") {
+      auto hostname = cmd.get("hostname");
+
+      Bridge::ThreadContext::Dispatch(this, [=](auto ctx) {
+        ctx->core->dnsLookup(seq, hostname, cb);
+      });
       return true;
     }
 
@@ -528,6 +532,11 @@ namespace SSC {
 
         ctx->core->handleEvent(seq, event, data, cb);
       });
+      return true;
+    }
+
+    if (cmd.name == "getFSConstants" || cmd.name == "fs.constants") {
+      cb(seq, this->core->getFSConstants(), Post{});
       return true;
     }
 

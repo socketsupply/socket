@@ -220,7 +220,7 @@ void * NativeCore::GetPointer () const {
   return (void *) this;
 }
 
-JavaVM * NativeCore::GetJavaVM () {
+JavaVM * NativeCore::GetJavaVM () const {
   return this->jvm;
 }
 
@@ -266,6 +266,40 @@ const char * NativeCore::GetJavaScriptPreloadSource () const {
   }
 
   return this->javaScriptPreloadSource.c_str();
+}
+
+void NativeCore::Callback (
+  NativeCallbackID callback,
+  std::string data
+) const {
+  auto refs = this->GetRefs();
+  auto jvm = this->GetJavaVM();
+  JNIEnv *env = 0;
+
+  auto attached = jvm->AttachCurrentThread(&env, 0);
+
+  CallNativeCoreVoidMethodFromEnvironment(
+    env,
+    refs.core,
+    "callback",
+    "(Ljava/lang/String;Ljava/lang/String;)V",
+    callback,
+    env->NewStringUTF(data.c_str())
+  );
+
+  if (attached) {
+    jvm->DetachCurrentThread();
+  }
+}
+
+void NativeCore::DNSLookup (
+  NativeCoreSequence seq,
+  std::string hostname,
+  NativeCallbackID callback
+) const {
+  reinterpret_cast<const SSC::Core *>(this)->dnsLookup(seq, hostname, [=](auto seq, auto msg, auto post) {
+    this->Callback(callback, msg);
+  });
 }
 
 #pragma NativeFileSystem
@@ -1120,6 +1154,26 @@ extern "C" {
     }
 
     reinterpret_cast<SSC::Core *>(core)->expirePosts();
+  }
+
+  void exports(NativeCore, dnsLookup)(
+    JNIEnv *env,
+    jobject self,
+    jstring seq,
+    jstring hostname,
+    jstring callback
+  ) {
+    auto core = GetNativeCoreFromEnvironment(env);
+
+    if (!core) {
+      return Throw(env, NativeCoreNotInitializedException);
+    }
+
+    core->DNSLookup(
+      NativeString(env, seq).str(),
+      NativeString(env, hostname).str(),
+      (NativeCallbackID) callback
+    );
   }
 
   void exports(NativeCore, fsAccess)(
