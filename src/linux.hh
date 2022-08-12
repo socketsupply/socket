@@ -398,7 +398,7 @@ namespace SSC {
 
     if (cmd.name == "getNetworkInterfaces" || cmd.name == "os.networkInterfaces") {
       Bridge::ThreadContext::Dispatch(this, [=](auto ctx) {
-        auto msg = ctx.core->getNetworkInterfaces();
+        auto msg = ctx->core->getNetworkInterfaces();
         cb(seq, msg, Post{});
       });
       return true;
