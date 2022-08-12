@@ -2800,12 +2800,23 @@ namespace SSC {
           "message": "uv_udp_connect: $S"
         }
       })MSG", std::to_string(clientId), std::string(uv_strerror(err)));
-
       cb(seq, msg, Post{});
       return;
     }
 
-    uv_udp_connect(&client->udp, &client->addr);
+    err = uv_udp_connect(&client->udp, &client->addr);
+
+    if (err < 0) {
+      auto msg = SSC::format(R"MSG({
+        "err": {
+          "source": "udp",
+          "clientId": "$S",
+          "message": "uv_udp_connect: $S"
+        }
+      })MSG", std::to_string(clientId), std::string(uv_strerror(err)));
+      cb(seq, msg, Post{});
+      return;
+    }
 
     auto msg = SSC::format(R"MSG({
       "data": {
