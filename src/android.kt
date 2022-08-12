@@ -259,7 +259,7 @@ open class WebViewActivity : androidx.appcompat.app.AppCompatActivity() {
     this.core = NativeCore(this).apply {
       configure(
         GenericNativeCoreConfiguration(
-          rootDirectory = getExternalFilesDir(null)?.absolutePath ?: "",
+          rootDirectory = getExternalFilesDir(null)?.absolutePath ?: "/sdcard/Android/data/__BUNDLE_IDENTIFIER__/files",
           assetManager = applicationContext.resources.assets
         )
       )
@@ -1281,7 +1281,6 @@ open class NativeFileSystem(core: NativeCore) {
     }
 
     if (bytesRead != null && bytesRead > 0) {
-      val encoder = java.util.Base64.getEncoder()
       val bytes = buffer.slice(0..bytesRead - 1).toByteArray()
 
       descriptor.position += bytesRead
