@@ -377,6 +377,7 @@ namespace SSC {
     Server* server;
     uint64_t clientId;
     bool ephemeral = false;
+    bool connected = false;
   };
 
   static String addrToIPv4 (struct sockaddr_in* sin) {
@@ -412,11 +413,11 @@ namespace SSC {
     }
 
     if (addr.ss_family == AF_INET) {
-      family = "ipv4";
+      family = "IPv4";
       ip = addrToIPv4((struct sockaddr_in*) &addr);
       port = (int)htons(((struct sockaddr_in*) &addr)->sin_port);
     } else {
-      family = "ipv6";
+      family = "IPv6";
       ip = addrToIPv6((struct sockaddr_in6*) &addr);
       port = (int)htons(((struct sockaddr_in6*) &addr)->sin6_port);
     }
@@ -434,11 +435,11 @@ namespace SSC {
     }
 
     if (addr.ss_family == AF_INET) {
-      family = "ipv4";
+      family = "IPv4";
       ip = addrToIPv4((struct sockaddr_in*) &addr);
       port = (int)htons(((struct sockaddr_in*) &addr)->sin_port);
     } else {
-      family = "ipv6";
+      family = "IPv6";
       ip = addrToIPv6((struct sockaddr_in6*) &addr);
       port = (int)htons(((struct sockaddr_in6*) &addr)->sin6_port);
     }
@@ -2259,7 +2260,7 @@ namespace SSC {
     struct sockaddr_in dest4;
     struct sockaddr_in6 dest6;
 
-    // check to validate the ip is actually an ipv6 address with a regex
+    // check to validate the ip is actually an IPv6 address with a regex
     if (ip.find(":") != String::npos) {
       uv_ip6_addr(ip.c_str(), port, &dest6);
     } else {
@@ -2775,18 +2776,20 @@ namespace SSC {
     Client* client = nullptr;
     auto loop = getDefaultLoop();
 
-    if (clients[clientId] != nullptr) {
-      client = clients[clientId];
-    } else {
+    if (clients[clientId] == nullptr) {
       client = new Client();
+      clients[clientId] = client;
       uv_udp_init(loop, &client->udp);
+    } else {
+      client = clients[clientId];
     }
 
     client->id = clientId;
+    client->clientId = clientId;
+
     client->cb = cb;
     client->seq = seq;
     client->type = PEER_TYPE_UDP;
-    client->clientId = clientId;
 
     int err;
     err = uv_ip4_addr(ip, port, &client->addr);
@@ -2825,7 +2828,11 @@ namespace SSC {
         "clientId": "$S"
       }
     })MSG", std::string(ip), port, std::to_string(clientId));
+
+    client->connected = true;
+
     cb(seq, msg, Post{});
+    runDefaultLoop();
   }
 
   void Core::udpGetPeerName (String seq, uint64_t clientId, Cb cb) const {
@@ -2940,6 +2947,10 @@ namespace SSC {
       client = clients[clientId];
     } else {
       client = new Client();
+      client->id = clientId;
+      client->clientId = clientId;
+      client->type = PEER_TYPE_UDP;
+
       uv_udp_init(loop, &client->udp);
 
       if (ephemeral) {
@@ -2949,11 +2960,8 @@ namespace SSC {
       }
     }
 
-    client->id = clientId;
     client->cb = cb;
     client->seq = seq;
-    client->type = PEER_TYPE_UDP;
-    client->clientId = clientId;
 
     int err;
     err = uv_ip4_addr((char*) ip, port, &client->addr);
@@ -2976,7 +2984,13 @@ namespace SSC {
 
     req->data = client;
 
-    err = uv_udp_send(req, &client->udp, &buffer, 1, (const struct sockaddr*)&client->addr, [](uv_udp_send_t *req, int status) {
+    struct sockaddr* addr = NULL;
+
+    if (!client->connected) {
+      addr = (struct sockaddr*)&client->addr;
+    }
+
+    err = uv_udp_send(req, &client->udp, &buffer, 1, addr, [](uv_udp_send_t *req, int status) {
       std::lock_guard<std::recursive_mutex> guard(clientsMutex);
       auto client = reinterpret_cast<Client*>(req->data);
       std::string msg = "";
@@ -3013,7 +3027,7 @@ namespace SSC {
       auto msg = SSC::format(R"MSG({
         "err": {
           "clientId": "$S",
-          "message": "Write error $S"
+          "message": "Write error: $S"
         }
       })MSG", std::to_string(client->clientId), std::string(uv_strerror(err)));
 
