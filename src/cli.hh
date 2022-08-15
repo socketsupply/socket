@@ -915,7 +915,7 @@ constexpr auto gXcodeEntitlements = R"XML(<?xml version="1.0" encoding="UTF-8"?>
 <plist version="1.0">
 <dict>
   <key>get-task-allow</key>
-  <{{apple_get_task_allow}}/>
+  <{{apple_instruments}}/>
   <key>com.apple.security.app-sandbox</key>
   <true/>
   <key>com.apple.security.network.server</key>
