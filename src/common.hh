@@ -701,7 +701,7 @@ namespace SSC {
   // encoded as a URI component. This prevents escaping the
   // protocol.
   //
-  const char HEX2DEC[256] = {
+  static const signed char HEX2DEC[256] = {
     /*       0  1  2  3   4  5  6  7   8  9  A  B   C  D  E  F */
     /* 0 */ -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1,
     /* 1 */ -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1,
@@ -763,7 +763,7 @@ namespace SSC {
     return sResult;
   }
 
-  const char SAFE[256] = {
+  static const char SAFE[256] = {
       /*      0 1 2 3  4 5 6 7  8 9 A B  C D E F */
       /* 0 */ 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0,
       /* 1 */ 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0,
