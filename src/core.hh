@@ -3152,21 +3152,26 @@ namespace SSC {
           content-length: $i
         )MSG", (int) nread);
 
-        Post post;
+        Post post = {0};
         post.body = buf->base;
         post.length = (int) nread;
         post.headers = headers;
         post.bodyNeedsFree = true;
 
         auto msg = SSC::format(R"MSG({
-          "data": {
-            "source": "udpReadStart",
-            "serverId": "$S",
-            "bytes": $i,
-            "port": $i,
-            "ip": "$S"
-          }
-        })MSG", std::to_string(server->serverId), post.length, port, ip);
+            "data": {
+              "source": "udpReadStart",
+              "serverId": "$S",
+              "bytes": $S,
+              "port": $S,
+              "ip": "$S"
+            }
+          })MSG",
+          std::to_string(server->serverId),
+          std::to_string(post.length),
+          std::to_string(port),
+          ip
+        );
 
         server->cb("-1", msg, post);
       }

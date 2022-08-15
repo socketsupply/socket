@@ -796,8 +796,9 @@ namespace SSC {
           ctx->core->fsWrite(seq, id, buffer, offset, cb);
           bufferQueue.erase(bufferQueue.find(key));
         });
-        return true;
       }
+
+      return true;
     }
 
     if (cmd.name == "udpBind" || cmd.name == "udp.bind") {
@@ -857,7 +858,13 @@ namespace SSC {
 
       Bridge::ThreadContext::Dispatch(this, [=](auto ctx) {
         auto serverId = std::stoull(cmd.get("serverId"));
-        ctx->core->udpReadStart(seq, serverId, cb);
+        ctx->core->udpReadStart(seq, serverId, [=](auto seq, auto msg, auto post){
+          if (seq.size() && seq != "-1") {
+            cb(seq, msg, post);
+          } else {
+            ctx->bridge->send(cmd, seq, msg, post);
+          }
+        });
       });
       return true;
     }
@@ -908,7 +915,10 @@ namespace SSC {
       }
 
       Bridge::ThreadContext::Dispatch(this, [=](auto ctx) {
-        ctx->core->udpSend(seq, clientId, buf, offset, (int)bufsize, port, ip.c_str(), ephemeral, cb);
+        auto key = std::to_string(cmd.index) + seq;
+        auto buffer = bufferQueue[key];
+        bufferQueue.erase(bufferQueue.find(key));
+        ctx->core->udpSend(seq, clientId, buffer.data(), offset, (int)buffer.size(), port, ip.c_str(), ephemeral, cb);
       });
       return true;
     }
@@ -947,17 +957,13 @@ namespace SSC {
     }
 
     if (post.body) {
-      auto script = this->core->createPost(seq, "{}", post);
+      auto script = this->core->createPost(seq, msg, post);
       window->eval(script);
       return;
     }
 
     if (seq != "-1" && seq.size() > 0) {
       msg = SSC::resolveToRenderProcess(seq, "0", encodeURIComponent(msg));
-    }
-
-    if (cmd.get("id").size() > 0) {
-      auto id = std::stoull(cmd.get("id"));
     }
 
     window->eval(msg);
@@ -1000,14 +1006,15 @@ namespace SSC {
           auto data = (char *) g_bytes_get_data(bytes, &size);
 
           if (size > 6) {
-            auto index = new char[2]{0};
-            auto seq = new char[2]{0};
+            size_t offset = 10; // buf offset
+            auto index = new char[4]{0};
+            auto seq = new char[4]{0};
 
-            buf = new char[size - 6]{0};
+            buf = new char[size - offset]{0};
 
-            decodeUTF8(index, data + 2, 2);
-            decodeUTF8(seq, data + 4, 2);
-            bufsize = decodeUTF8(buf, data + 6, size - 6);
+            decodeUTF8(index, data + 2, 4);
+            decodeUTF8(seq, data + 6, 4);
+            bufsize = decodeUTF8(buf, data + offset, size - offset);
 
             str = std::string("ipc://buffer.queue?")
               + std::string("index=") + std::string(index)
@@ -1015,6 +1022,7 @@ namespace SSC {
 
             delete index;
             delete seq;
+
           }
         }
 
