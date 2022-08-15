@@ -49,24 +49,31 @@ function die {
 }
 
 function advice {
-  if [ "$(uname)" == "Darwin" ]; then
+  if [[ "`uname -s`" == "Darwin" ]]; then
     echo "brew install $1"
-  elif [ "$(expr substr $(uname -s) 1 5)" == "Linux" ]; then
+  elif [[ "`uname -r`" == *"ARCH"* ]]; then
+    echo "sudo pacman -S $1"
+  elif [[ "`uname -s`" == *"Linux"* ]]; then
     echo "apt-get install $1"
   fi
 }
 
 quiet command -v make
-die $? "not ok - missing build tools, try '$(advice "automake")'"
+die $? "not ok - missing build tools, try \"$(advice "automake")\""
 
 quiet command -v autoconf
-die $? "not ok - missing build tools, try '$(advice "automake")'"
+die $? "not ok - missing build tools, try \"$(advice "automake")\""
 
 if [ "$(uname)" == "Darwin" ]; then
   quiet command -v glibtoolize
   die $? "not ok - missing build tools, try 'brew install libtool'"
   quiet command -v libtool
   die $? "not ok - missing build tools, try 'brew install libtool'"
+fi
+
+if [ "$(uname)" == "Linux" ]; then
+  quiet command -v pkg-config
+  die $? "not ok - missing pkg-config tool, \"$(advice 'pkg-config')\""
 fi
 
 function _build {
@@ -77,7 +84,7 @@ function _build {
     -std=c++2a \
     -DBUILD_TIME="$(date '+%s')" \
     -DVERSION_HASH=`git rev-parse --short HEAD` \
-    -DVERSION=`cat VERSION.txt` \
+    -DVERSION=`cat VERSION.txt`
 
   die $? "not ok - unable to build. See trouble shooting guide in the README.md file"
   echo "ok - built the cli for desktop"
