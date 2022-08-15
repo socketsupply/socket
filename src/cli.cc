@@ -524,6 +524,7 @@ int main (const int argc, const char* argv[]) {
         std::string suffix = "";
 
         if (flagDebugMode) {
+          settings["apple_instruments"] = "true";
           suffix += "-dev";
         }
 
@@ -1469,7 +1470,7 @@ int main (const int argc, const char* argv[]) {
 
       writeFile(pathBase / "LaunchScreen.storyboard", gStoryboardLaunchScreen);
       // TODO allow the user to copy their own if they have one
-      writeFile(pathToDist / "socket.entitlements", gXcodeEntitlements);
+      writeFile(pathToDist / "socket.entitlements", tmpl(gXcodeEntitlements, settings));
 
       //
       // For iOS we're going to bail early and let XCode infrastructure handle
@@ -1511,7 +1512,7 @@ int main (const int argc, const char* argv[]) {
           << " CODE_SIGNING_ALLOWED=\"NO\"";
       }
 
-      log(archiveCommand.str().c_str());
+      // log(archiveCommand.str().c_str());
       auto rArchive = exec(archiveCommand.str().c_str());
 
       if (rArchive.exitCode != 0) {
@@ -1539,7 +1540,7 @@ int main (const int argc, const char* argv[]) {
           << " -exportPath build/" << settings["name"] << ".ipa"
           << " -exportOptionsPlist " << (pathToDist / "exportOptions.plist").string();
 
-        log(exportCommand.str());
+        // log(exportCommand.str());
         auto rExport = exec(exportCommand.str().c_str());
 
         if (rExport.exitCode != 0) {

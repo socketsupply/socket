@@ -914,6 +914,8 @@ constexpr auto gXcodeEntitlements = R"XML(<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+  <key>get-task-allow</key>
+  <{{apple_get_task_allow}}/>
   <key>com.apple.security.app-sandbox</key>
   <true/>
   <key>com.apple.security.network.server</key>
@@ -1415,6 +1417,13 @@ width: 1024
 # The team ID needed for MacOS and iOS distribution and development
 # apple_team_id:
 
+# Setting this to true will create a special build (that is absolutely
+# not secure) but it will allow you to attach the apple instruments apps
+# to the process while it is running on a device. You can learn more
+# here - https://help.apple.com/instruments/mac/current/#/dev7b09c84f5
+#
+# apple_instruments: true
+
 #
 # MacOS
 # ---
@@ -1461,8 +1470,8 @@ width: 1024
 # A relative path to the plist of application entitlements
 # ios_entitlements:
 
-# TODO description & value
-# ios_distribution_method:
+# Describes how Xcode should export the archive. Available options: app-store, package, ad-hoc, enterprise, development, and developer-id.
+# ios_distribution_method: ad-hoc
 
 # TODO description & value
 # ios_provisioning_profile_specifier:
