@@ -7,4 +7,4 @@
 
 [![Socket SDK CI](https://github.com/socketsupply/socket-sdk/actions/workflows/ci.yml/badge.svg?branch=dev)](https://github.com/socketsupply/socket-sdk/actions/workflows/ci.yml)
 
-Please read the [documentation](https://socket-sdk.dev)
+Please read the [documentation](https://sockets.sh)
