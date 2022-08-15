@@ -29,7 +29,7 @@ jobs:
       run: |
         sudo apt install software-properties-common
         sudo add-apt-repository ppa:ubuntu-toolchain-r/test
-        sudo apt install gcc-12 g++-12 libwebkit2gtk-4.0-dev libcurl4-openssl-dev
+        sudo apt install gcc-12 g++-12 libwebkit2gtk-4.1-dev libcurl4-openssl-dev
 
     - name: install ssc
       run: |
