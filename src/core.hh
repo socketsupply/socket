@@ -3180,6 +3180,8 @@ namespace SSC {
         ip = String(addr, 40);
       }
 
+      ip = ip.erase(ip.find('\0'));
+
       auto msg = SSC::format(R"MSG({
         "data": {
           "address": "$S",
