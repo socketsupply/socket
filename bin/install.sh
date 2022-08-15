@@ -117,9 +117,10 @@ function _install {
   fi
 
   if [ -z "$TEST" ]; then
-    echo "# moving binary to $PREFIX/bin (prompting to copy file into directory)"
+    local binDest="/usr/local/bin/ssc"
+    echo "# moving binary to $binDest (prompting to copy file into directory)"
     sudo mkdir -p /usr/local/bin
-    sudo mv `pwd`/bin/cli "/usr/local/bin/ssc"
+    sudo mv `pwd`/bin/cli $binDest
   fi
 
   die $? "not ok - unable to move binary into place"
