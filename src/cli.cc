@@ -526,6 +526,8 @@ int main (const int argc, const char* argv[]) {
         if (flagDebugMode) {
           settings["apple_instruments"] = "true";
           suffix += "-dev";
+        } else {
+          settings["apple_instruments"] = "false";
         }
 
         std::replace(settings["name"].begin(), settings["name"].end(), ' ', '_');
