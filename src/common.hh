@@ -638,6 +638,9 @@ namespace SSC {
       std::string uri = "";
       std::string get(const std::string&) const;
       std::string get(const std::string&, const std::string) const;
+      const char * c_str () const {
+        return this->uri.c_str();
+      }
   };
 
   struct ScreenSize {
