@@ -10,6 +10,10 @@
 #include <arpa/inet.h>
 #endif
 
+#ifdef __linux__
+#include <gtk/gtk.h>
+#endif
+
 #if defined(__APPLE__)
 	#import <Webkit/Webkit.h>
   using Task = id<WKURLSchemeTask>;
@@ -534,6 +538,36 @@ namespace SSC {
 
   static void initTimers ();
   static void startTimers ();
+  static uv_loop_t* getDefaultLoop ();
+
+#ifdef __linux__
+  struct UVSource {
+    GSource base; // should ALWAYS be first member
+    gpointer tag;
+  };
+
+    // @see https://api.gtkd.org/glib.c.types.GSourceFuncs.html
+  static GSourceFuncs loopSourceFunctions = {
+    .prepare = [](GSource *source, gint *timeout) -> gboolean {
+      auto loop = getDefaultLoop();
+        uv_update_time(loop);
+
+        if (!uv_loop_alive(loop)) {
+          return false;
+        }
+
+        *timeout = uv_backend_timeout(loop);
+        return 0 == *timeout;
+      },
+
+      .dispatch = [](GSource *source, GSourceFunc callback, gpointer user_data) -> gboolean {
+        auto loop = getDefaultLoop();
+        uv_run(loop, UV_RUN_NOWAIT);
+        return G_SOURCE_CONTINUE;
+      }
+    };
+
+#endif
 
   static void initLoop () {
     if (didLoopInit) {
@@ -542,7 +576,24 @@ namespace SSC {
 
     std::lock_guard<std::recursive_mutex> guard(loopMutex);
 
+    if (didLoopInit) {
+      return;
+    }
+
     uv_loop_init(&defaultLoop);
+
+#ifdef __linux__
+    GSource *source = g_source_new(&loopSourceFunctions, sizeof(UVSource));
+    UVSource *uvSource = (UVSource *) source;
+    uvSource->tag = g_source_add_unix_fd(
+      source,
+      uv_backend_fd(&defaultLoop),
+      (GIOCondition) (G_IO_IN | G_IO_OUT | G_IO_ERR)
+    );
+
+    g_source_attach(source, nullptr);
+#endif
+
     didLoopInit = true;
   }
 
@@ -564,7 +615,11 @@ namespace SSC {
     auto loop = getDefaultLoop();
 
     isLoopRunning = true;
+#ifdef __linux__
+    uv_run(loop, UV_RUN_NOWAIT);
+#else
     while (uv_run(loop, UV_RUN_NOWAIT));
+#endif
     isLoopRunning = false;
   }
 
@@ -2766,7 +2821,7 @@ namespace SSC {
       }
     })MSG", std::to_string(server->serverId));
 
-    cb(server->seq, msg, Post{});
+    cb(seq, msg, Post{});
 
     runDefaultLoop();
   }
@@ -3075,7 +3130,6 @@ namespace SSC {
     int err = uv_udp_recv_start(&server->udp, allocate, [](uv_udp_t *handle, ssize_t nread, const uv_buf_t *buf, const struct sockaddr *addr, unsigned flags) {
       std::lock_guard<std::recursive_mutex> guard(serversMutex);
       Server *server = (Server*)handle->data;
-
       if (nread == UV_EOF) {
         auto msg = SSC::format(R"MSG({
           "data": {

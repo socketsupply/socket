@@ -295,6 +295,7 @@ namespace SSC {
   int App::run () {
     auto cwd = getCwd("");
     uv_chdir(cwd.c_str());
+    SSC::initLoop();
     gtk_main();
     return shouldExit ? 1 : 0;
   }
