@@ -3168,9 +3168,17 @@ namespace SSC {
         return;
       }
 
-      char addr[17] = {'\0'};
-      uv_ip4_name((struct sockaddr_in*) res->ai_addr, addr, 16);
-      String ip(addr, 17);
+      String ip = "";
+
+      if (res->ai_family == AF_INET) {
+        char addr[17] = {'\0'};
+        uv_ip4_name((struct sockaddr_in*)(res->ai_addr), addr, 16);
+        ip = String(addr, 17);
+      } else if (res->ai_family == AF_INET6) {
+        char addr[40] = {'\0'};
+        uv_ip6_name((struct sockaddr_in6*)(res->ai_addr), addr, 39);
+        ip = String(addr, 40);
+      }
 
       auto msg = SSC::format(R"MSG({
         "data": {
