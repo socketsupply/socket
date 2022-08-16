@@ -2268,7 +2268,7 @@ namespace SSC {
 
     peer->seq = seq;
     peer->cb = cb;
-    peer->peerId = peerId;
+    peer->id = peerId;
 
     uv_handle_t* handle;
 
@@ -2318,7 +2318,7 @@ namespace SSC {
 
     peer->seq = seq;
     peer->cb = cb;
-    peer->peerId = peerId;
+    peer->id = peerId;
 
     uv_handle_t* handle;
 
@@ -2364,7 +2364,7 @@ namespace SSC {
     peer->cb = cb;
     peer->seq = seq;
     peer->type = PEER_TYPE_UDP;
-    peer->peerId = peerId;
+    peer->id = peerId;
     peer->udp.data = peer;
 
     int err;
@@ -2397,7 +2397,7 @@ namespace SSC {
           "peerId": "$S",
           "message": "uv_udp_bind: $S"
         }
-      })MSG", std::to_string(peer->peerId), std::string(uv_strerror(err)));
+      })MSG", std::to_string(peer->id), std::string(uv_strerror(err)));
       cb(seq, msg, Post{});
       return;
     }
@@ -2408,7 +2408,7 @@ namespace SSC {
         "peerId": "$S",
         "event": "listening"
       }
-    })MSG", std::to_string(peer->peerId));
+    })MSG", std::to_string(peer->id));
 
     cb(seq, msg, Post{});
     runDefaultLoop();
@@ -2428,7 +2428,6 @@ namespace SSC {
     }
 
     peer->id = peerId;
-    peer->peerId = peerId;
 
     peer->cb = cb;
     peer->seq = seq;
@@ -2572,7 +2571,6 @@ namespace SSC {
     } else {
       peer = new Peer();
       peer->id = peerId;
-      peer->peerId = peerId;
       peer->type = PEER_TYPE_UDP;
 
       uv_udp_init(loop, &peer->udp);
@@ -2653,7 +2651,7 @@ namespace SSC {
           "peerId": "$S",
           "message": "Write error: $S"
         }
-      })MSG", std::to_string(peer->peerId), std::string(uv_strerror(err)));
+      })MSG", std::to_string(peer->id), std::string(uv_strerror(err)));
 
       cb(seq, msg, Post{});
 
@@ -2706,7 +2704,7 @@ namespace SSC {
             "peerId": "$S",
             "EOF": true
           }
-        })MSG", std::to_string(peer->peerId));
+        })MSG", std::to_string(peer->id));
         peer->cb("-1", msg, Post{});
         return;
       }
@@ -2729,6 +2727,7 @@ namespace SSC {
         post.bodyNeedsFree = true;
 
         auto msg = SSC::format(R"MSG({
+<<<<<<< HEAD
             "data": {
               "source": "udpReadStart",
               "serverId": "$S",
@@ -2742,6 +2741,16 @@ namespace SSC {
           port,
           ip
         );
+=======
+          "data": {
+            "source": "udpReadStart",
+            "peerId": "$S",
+            "bytes": $i,
+            "port": $i,
+            "ip": "$S"
+          }
+        })MSG", std::to_string(peer->id), post.length, port, ip);
+>>>>>>> 4ae8d76 (wip)
 
         peer->cb("-1", msg, post);
       }

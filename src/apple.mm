@@ -1062,9 +1062,9 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   if (cmd.name == "ip") {
     auto seq = cmd.get("seq");
 
-    Client* client = clients[peerId];
+    Peer* peer = peers[peerId];
 
-    if (client == nullptr) {
+    if (peer == nullptr) {
       auto msg = SSC::format(R"MSG({
         "err": {
           "message": "not connected"
@@ -1076,7 +1076,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     }
 
     PeerInfo info;
-    info.init(&client->tcp);
+    info.init(&peer->tcp);
 
     auto msg = SSC::format(
       R"MSG({
