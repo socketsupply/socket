@@ -1399,82 +1399,6 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     return true;
   }
 
-  /* if (cmd.name == "tcpSend") {
-    uint64_t peerId = 0ll;
-    std::string err = "";
-
-    try {
-      peerId = std::stoull(cmd.get("id"));
-    } catch (...) {
-      err = "invalid peerId";
-    }
-
-    if (err.size() > 0) {
-      auto msg = SSC::format(R"MSG({
-        "err": {
-          "message": "$S"
-        }
-      })MSG", err);
-      [self send: seq msg: err post: Post{}];
-      return true;
-    }
-
-    dispatch_async(queue, ^{
-      self.core->tcpSend(peerId, buf, [=](auto seq, auto msg, auto post) {
-        [self send: seq msg: msg post: post];
-      });
-    });
-    return true;
-  } */
-
-  /* if (cmd.name == "tcpConnect") {
-    int port = 0;
-
-    try {
-      port = std::stoi(cmd.get("port"));
-    } catch (...) {
-      auto msg = SSC::format(R"MSG({
-        "err": { "message": "invalid port" }
-      })MSG");
-      [self send: seq msg: msg post: Post{}];
-      return true;
-    }
-
-    auto peerId = std::stoull(cmd.get("id"));
-    auto ip = cmd.get("ip");
-
-    dispatch_async(queue, ^{
-      self.core->tcpConnect(seq, peerId, port, ip, [=](auto seq, auto msg, auto post) {
-        [self send: seq msg: msg post: post];
-      });
-    });
-    return true;
-  } */
-
-  /* if (cmd.name == "tcpSetKeepAlive") {
-    auto peerId = std::stoull(cmd.get("id"));
-    auto timeout = std::stoi(cmd.get("timeout"));
-
-    dispatch_async(queue, ^{
-      self.core->tcpSetKeepAlive(seq, peerId, timeout, [=](auto seq, auto msg, auto post) {
-        [self send: seq msg: msg post: post];
-      });
-    });
-    return true;
-  } */
-
-  /* if (cmd.name == "tcpSetTimeout") {
-    auto peerId = std::stoull(cmd.get("id"));
-    auto timeout = std::stoi(cmd.get("timeout"));
-
-    dispatch_async(queue, ^{
-      self.core->tcpSetTimeout(seq, peerId, timeout, [=](auto seq, auto msg, auto post) {
-        [self send: seq msg: msg post: post];
-      });
-    });
-    return true;
-  } */
-
   if (cmd.name == "udpBind") {
     auto ip = cmd.get("ip");
     std::string err;
@@ -1529,43 +1453,6 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
     return true;
   }
-
-  /* if (cmd.name == "tcpBind") {
-    auto ip = cmd.get("ip");
-    uint64_t peerId = 0ll;
-    std::string err;
-
-    if (ip.size() == 0) {
-      ip = "0.0.0.0";
-    }
-
-    if (cmd.get("port").size() == 0) {
-      auto msg = SSC::format(R"({
-        "err": { "message": "port required" }
-      })");
-
-      [self send: seq msg: msg post: Post{}];
-      return true;
-		}
-
-    try {
-      peerId = std::stoull(cmd.get("id"));
-    } catch (...) {
-      auto msg = SSC::format(R"({ "err": { "message": "property 'peerId' required" } })");
-      [self send: seq msg: msg post: Post{}];
-      return true;
-    }
-
-    auto port = std::stoi(cmd.get("port"));
-
-    dispatch_async(queue, ^{
-      self.core->tcpBind(seq, peerId, ip, port, [=](auto seq, auto msg, auto post) {
-        [self send: seq msg: msg post: post];
-      });
-    });
-
-    return true;
-  } */
 
   if (cmd.name == "dnsLookup" || cmd.name == "dns.lookup") {
     auto strId = cmd.get("id");
