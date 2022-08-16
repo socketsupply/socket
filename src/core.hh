@@ -2206,25 +2206,6 @@ namespace SSC {
     if (peer == nullptr) {
       auto msg = SSC::format(R"MSG({
         "err": {
-          "clientId": "$S",
-          "method": "Cb",
-          "message": "$S"
-        }
-      })MSG", std::to_string(clientId), String(uv_strerror(r)));
-      cb(seq, msg, Post{});
-      return;
-    }
-
-    runDefaultLoop();
-  }
-
-  void Core::readStop (String seq, uint64_t clientId, Cb cb) const {
-    Client* client = clients[clientId];
-
-    if (client == nullptr) {
-      auto msg = SSC::format(R"MSG({
-        "err": {
-          "clientId": "$S",
           "peerId": "$S",
           "message": "No connection with specified id"
         }
@@ -2376,7 +2357,7 @@ namespace SSC {
       auto msg = SSC::format(R"MSG({
         "err": {
           "source": "udp",
-          "peerId": "$S",
+          "id": "$S",
           "message": "uv_ip4_addr: $S"
         }
       })MSG", std::to_string(peerId), std::string(uv_strerror(err)));
@@ -2394,7 +2375,7 @@ namespace SSC {
       auto msg = SSC::format(R"MSG({
         "err": {
           "source": "udp",
-          "peerId": "$S",
+          "id": "$S",
           "message": "uv_udp_bind: $S"
         }
       })MSG", std::to_string(peer->id), std::string(uv_strerror(err)));
@@ -2405,7 +2386,7 @@ namespace SSC {
     auto msg = SSC::format(R"MSG({
       "data": {
         "source": "udp",
-        "peerId": "$S",
+        "id": "$S",
         "event": "listening"
       }
     })MSG", std::to_string(peer->id));
@@ -2428,7 +2409,6 @@ namespace SSC {
     }
 
     peer->id = peerId;
-
     peer->cb = cb;
     peer->seq = seq;
     peer->type = PEER_TYPE_UDP;
@@ -2440,7 +2420,7 @@ namespace SSC {
       auto msg = SSC::format(R"MSG({
         "err": {
           "source": "udp",
-          "peerId": "$S",
+          "id": "$S",
           "message": "uv_udp_connect: $S"
         }
       })MSG", std::to_string(peerId), std::string(uv_strerror(err)));
@@ -2454,7 +2434,7 @@ namespace SSC {
       auto msg = SSC::format(R"MSG({
         "err": {
           "source": "udp",
-          "peerId": "$S",
+          "id": "$S",
           "message": "uv_udp_connect: $S"
         }
       })MSG", std::to_string(peerId), std::string(uv_strerror(err)));
@@ -2467,7 +2447,7 @@ namespace SSC {
         "source": "udp",
         "ip": "$S",
         "port": $i,
-        "peerId": "$S"
+        "id": "$S"
       }
     })MSG", std::string(ip), port, std::to_string(peerId));
 
@@ -2489,7 +2469,7 @@ namespace SSC {
       auto msg = SSC::format(R"MSG({
         "err": {
           "source": "udp",
-          "peerId": "$S",
+          "id": "$S",
           "message": "no such peer"
         }
       })MSG", std::to_string(peerId));
@@ -2503,7 +2483,7 @@ namespace SSC {
     auto msg = SSC::format(R"MSG({
       "data": {
         "source": "udp",
-        "peerId": "$S",
+        "id": "$S",
         "ip": "$S",
         "port": $i,
         "family": "$S"
@@ -2538,7 +2518,7 @@ namespace SSC {
       auto msg = SSC::format(R"MSG({
         "err": {
           "source": "udp",
-          "peerId": "$S",
+          "id": "$S",
           "message": "uv_udp_getsockname: $S"
         }
       })MSG", std::to_string(peerId), std::string(uv_strerror(err)));
@@ -2553,7 +2533,7 @@ namespace SSC {
     auto msg = SSC::format(R"MSG({
       "data": {
         "source": "udp",
-        "peerId": "$S",
+        "id": "$S",
         "ip": "$S",
         "port": $i
       }
@@ -2591,7 +2571,7 @@ namespace SSC {
     if (err) {
       auto msg = SSC::format(R"MSG({
         "err": {
-          "peerId": "$S",
+          "id": "$S",
           "message": "$S"
         }
       })MSG", std::to_string(peerId), std::string(uv_strerror(err)));
@@ -2620,14 +2600,14 @@ namespace SSC {
       if (status < 0) {
         msg = SSC::format(R"MSG({
           "err": {
-            "peerId": "$S",
+            "id": "$S",
             "message": "$S"
           }
         })MSG", std::to_string(peer->id), std::string(uv_strerror(status)));
       } else {
         msg = SSC::format(R"MSG({
           "data": {
-            "peerId": "$S",
+            "id": "$S",
             "status": "$i"
           }
         })MSG", std::to_string(peer->id), status);
@@ -2648,7 +2628,7 @@ namespace SSC {
     if (err < 0) {
       auto msg = SSC::format(R"MSG({
         "err": {
-          "peerId": "$S",
+          "id": "$S",
           "message": "Write error: $S"
         }
       })MSG", std::to_string(peer->id), std::string(uv_strerror(err)));
@@ -2675,7 +2655,7 @@ namespace SSC {
       auto msg = SSC::format(R"MSG({
         "err": {
           "source": "udp",
-          "peerId": "$S",
+          "id": "$S",
           "message": "no such handle"
         }
       })MSG", std::to_string(peerId));
@@ -2727,7 +2707,6 @@ namespace SSC {
         post.bodyNeedsFree = true;
 
         auto msg = SSC::format(R"MSG({
-<<<<<<< HEAD
             "data": {
               "source": "udpReadStart",
               "serverId": "$S",
@@ -2736,22 +2715,11 @@ namespace SSC {
               "ip": "$S"
             }
           })MSG",
-          std::to_string(peer->id),
+          std::to_string(server->serverId),
           std::to_string(post.length),
           port,
           ip
         );
-=======
-          "data": {
-            "source": "udpReadStart",
-            "peerId": "$S",
-            "bytes": $i,
-            "port": $i,
-            "ip": "$S"
-          }
-        })MSG", std::to_string(peer->id), post.length, port, ip);
->>>>>>> 4ae8d76 (wip)
-
         peer->cb("-1", msg, post);
       }
     });
@@ -2760,7 +2728,7 @@ namespace SSC {
       auto msg = SSC::format(R"MSG({
         "err": {
           "source": "udp",
-          "peerId": "$S",
+          "id": "$S",
           "message": "$S"
         }
       })MSG", std::to_string(peerId), std::string(uv_strerror(err)));
