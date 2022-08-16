@@ -663,7 +663,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
   Parse cmd(msg);
   auto seq = cmd.get("seq");
-  uint64_t clientId = 0;
+  uint64_t peerId = 0;
 
   // printf("%s\n", cmd.uri.c_str());
   /// ipc bluetooth-start
@@ -1037,12 +1037,12 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   }
 
   // TODO this is a generalization that doesnt work
-  if (cmd.get("clientId").size() != 0) {
+  if (cmd.get("peerId").size() != 0) {
     try {
-      clientId = std::stoull(cmd.get("clientId"));
+      peerId = std::stoull(cmd.get("peerId"));
     } catch (...) {
       auto msg = SSC::format(R"MSG({
-        "err": { "message": "invalid clientid" }
+        "err": { "message": "invalid peerId" }
       })MSG");
       [self send: seq msg: msg post: Post{}];
       return true;
@@ -1062,7 +1062,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   if (cmd.name == "ip") {
     auto seq = cmd.get("seq");
 
-    Client* client = clients[clientId];
+    Client* client = clients[peerId];
 
     if (client == nullptr) {
       auto msg = SSC::format(R"MSG({
@@ -1086,7 +1086,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
           "port": "$i"
         }
       })MSG",
-      clientId,
+      peerId,
       info.ip,
       info.family,
       info.port
@@ -1099,7 +1099,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   if (cmd.name == "getNetworkInterfaces") {
     dispatch_async(queue, ^{
       auto msg = self.core->getNetworkInterfaces();
-      [self send: seq msg: msg post: Post{} ];
+      [self send: seq msg: msg post: Post{}];
     });
     return true;
   }
@@ -1116,7 +1116,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
       auto msg = SSC::format(R"JSON({
         "data": "$S"
       })JSON", std::string([cwd UTF8String]));
-      [self send: seq msg: msg post: Post{} ];
+      [self send: seq msg: msg post: Post{}];
     });
     return true;
   }
@@ -1127,7 +1127,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
         "data": "$S"
       })JSON", SSC::platform.os);
 
-      [self send: seq msg: msg post: Post{} ];
+      [self send: seq msg: msg post: Post{}];
     });
     return true;
   }
@@ -1138,7 +1138,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
         "data": "$S"
       })JSON", SSC::platform.os);
 
-      [self send: seq msg: msg post: Post{} ];
+      [self send: seq msg: msg post: Post{}];
     });
     return true;
   }
@@ -1149,16 +1149,16 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
         "data": "$S"
       })JSON", SSC::platform.arch);
 
-      [self send: seq msg: msg post: Post{} ];
+      [self send: seq msg: msg post: Post{}];
     });
     return true;
   }
 
   if (cmd.name == "readStop") {
-    auto clientId = std::stoull(cmd.get("clientId"));
+    auto peerId = std::stoull(cmd.get("peerId"));
 
     dispatch_async(queue, ^{
-      self.core->readStop(seq, clientId, [=](auto seq, auto msg, auto post) {
+      self.core->readStop(seq, peerId, [=](auto seq, auto msg, auto post) {
         [self send: seq msg: msg post: post];
       });
     });
@@ -1166,10 +1166,10 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   }
 
   if (cmd.name == "shutdown") {
-    auto clientId = std::stoull(cmd.get("clientId"));
+    auto peerId = std::stoull(cmd.get("peerId"));
 
     dispatch_async(queue, ^{
-      self.core->shutdown(seq, clientId, [=](auto seq, auto msg, auto post) {
+      self.core->shutdown(seq, peerId, [=](auto seq, auto msg, auto post) {
         [self send: seq msg: msg post: post];
       });
     });
@@ -1184,10 +1184,10 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
       size = 0;
     }
 
-    auto clientId = std::stoull(cmd.get("clientId"));
+    auto peerId = std::stoull(cmd.get("peerId"));
 
     dispatch_async(queue, ^{
-      self.core->sendBufferSize(seq, clientId, size, [=](auto seq, auto msg, auto post) {
+      self.core->sendBufferSize(seq, peerId, size, [=](auto seq, auto msg, auto post) {
         [self send: seq msg: msg post: post];
       });
     });
@@ -1196,16 +1196,33 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
   if (cmd.name == "recvBufferSize") {
     int size;
+    uint64_t xId = 0ll;
+    std::string err = "";
+
     try {
       size = std::stoi(cmd.get("size"));
     } catch (...) {
       size = 0;
     }
 
-    auto clientId = std::stoull(cmd.get("clientId"));
+    try {
+      xId = std::stoull(cmd.get("id"));
+    } catch (...) {
+      err = "Unable to parse .id property";
+    }
+
+    if (err.size() > 0) {
+      dispatch_async(queue, ^{
+        auto msg = SSC::format(R"JSON({
+          "err": "$S"
+        })JSON", err);
+
+        [self send: seq msg: msg post: Post{}];
+      });
+    }
 
     dispatch_async(queue, ^{
-      self.core->recvBufferSize(seq, clientId, size, [=](auto seq, auto msg, auto post) {
+      self.core->recvBufferSize(seq, xId, size, [=](auto seq, auto msg, auto post) {
         [self send: seq msg: msg post: post];
       });
     });
@@ -1213,31 +1230,31 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   }
 
   if (cmd.name == "close") {
-    auto clientId = std::stoull(cmd.get("clientId"));
+    auto peerId = std::stoull(cmd.get("peerId"));
 
     dispatch_async(queue, ^{
-      self.core->close(seq, clientId, [=](auto seq, auto msg, auto post) {
+      self.core->close(seq, peerId, [=](auto seq, auto msg, auto post) {
         [self send: seq msg: msg post: post];
       });
     });
     return true;
   }
 
-  if (cmd.name == "udpConnect") {
-    auto strId = cmd.get("clientId");
+  if (cmd.name == "udpConnect" || cmd.name == "udp.connect") {
+    auto strId = cmd.get("peerId");
     std::string err = "";
-    uint64_t clientId = 0ll;
+    uint64_t peerId = 0ll;
     int port = 0;
     auto strPort = cmd.get("port");
     auto ip = cmd.get("address");
 
     if (strId.size() == 0) {
-      err = "invalid clientId";
+      err = "invalid peerId";
     } else {
       try {
-        clientId = std::stoull(cmd.get("clientId"));
+        peerId = std::stoull(cmd.get("peerId"));
       } catch (...) {
-        err = "invalid clientId";
+        err = "invalid peerId";
       }
     }
 
@@ -1270,20 +1287,20 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     }
 
     dispatch_async(queue, ^{
-      self.core->udpConnect(seq, clientId, (const char*)ip.c_str(), port, [=](auto seq, auto msg, auto post) {
+      self.core->udpConnect(seq, peerId, (const char*)ip.c_str(), port, [=](auto seq, auto msg, auto post) {
         [self send: seq msg: msg post: post];
       });
     });
     return true;
   }
 
-  if (cmd.name == "udpGetPeerName") {
-    auto sId = cmd.get("clientId");
+  if (cmd.name == "udpGetPeerName" || cmd.name == "udp.getPeerName") {
+    auto sId = cmd.get("peerId");
 
     if (sId.size() == 0) {
       auto msg = SSC::format(R"MSG({
         "err": {
-          "message": "expected .clientId"
+          "message": "expected .peerId"
         }
       })MSG");
 
@@ -1303,11 +1320,10 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     return true;
   }
 
-  if (cmd.name == "udpGetSockName") {
-    auto sId = cmd.get("id");
-    bool isClient = cmd.get("isClient").size() > 0;
+  if (cmd.name == "udpGetSockName" || cmd.name == "udp.getSockName") {
+    auto strId = cmd.get("id");
 
-    if (sId.size() == 0) {
+    if (strId.size() == 0) {
       auto msg = SSC::format(R"MSG({
         "err": {
           "message": "expected either .id"
@@ -1323,17 +1339,17 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     auto cId = std::stoull(sId);
 
     dispatch_async(queue, ^{
-      self.core->udpGetSockName(seq, cId, isClient, [=](auto seq, auto msg, auto post) {
+      self.core->udpGetSockName(seq, cId, [=](auto seq, auto msg, auto post) {
         [self send: seq msg: msg post: post];
       });
     });
     return true;
   }
 
-  if (cmd.name == "udpSend") {
+  if (cmd.name == "udpSend" || cmd.name == "udp.send") {
     int offset = 0;
     int port = 0;
-    uint64_t clientId;
+    uint64_t peerId;
     std::string err;
 
     auto ephemeral = cmd.get("ephemeral") == "true";
@@ -1360,9 +1376,9 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     }
 
     try {
-      clientId = std::stoull(cmd.get("clientId"));
+      peerId = std::stoull(cmd.get("peerId"));
     } catch (...) {
-      err = "invalid clientId";
+      err = "invalid peerId";
     }
 
     if (err.size() > 0) {
@@ -1376,21 +1392,21 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     }
 
     dispatch_async(queue, ^{
-      self.core->udpSend(seq, clientId, buf, offset, (int)bufsize, port, (const char*) ip.c_str(), ephemeral, [=](auto seq, auto msg, auto post) {
+      self.core->udpSend(seq, peerId, buf, offset, (int)bufsize, port, (const char*) ip.c_str(), ephemeral, [=](auto seq, auto msg, auto post) {
         [self send: seq msg: msg post: post];
       });
     });
     return true;
   }
 
-  if (cmd.name == "tcpSend") {
-    uint64_t clientId = 0ll;
+  /* if (cmd.name == "tcpSend") {
+    uint64_t peerId = 0ll;
     std::string err = "";
 
     try {
-      clientId = std::stoull(cmd.get("clientId"));
+      peerId = std::stoull(cmd.get("peerId"));
     } catch (...) {
-      err = "invalid clientId";
+      err = "invalid peerId";
     }
 
     if (err.size() > 0) {
@@ -1404,14 +1420,14 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     }
 
     dispatch_async(queue, ^{
-      self.core->tcpSend(clientId, buf, [=](auto seq, auto msg, auto post) {
+      self.core->tcpSend(peerId, buf, [=](auto seq, auto msg, auto post) {
         [self send: seq msg: msg post: post];
       });
     });
     return true;
-  }
+  } */
 
-  if (cmd.name == "tcpConnect") {
+  /* if (cmd.name == "tcpConnect") {
     int port = 0;
 
     try {
@@ -1424,55 +1440,55 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
       return true;
     }
 
-    auto clientId = std::stoull(cmd.get("clientId"));
+    auto peerId = std::stoull(cmd.get("peerId"));
     auto ip = cmd.get("ip");
 
     dispatch_async(queue, ^{
-      self.core->tcpConnect(seq, clientId, port, ip, [=](auto seq, auto msg, auto post) {
+      self.core->tcpConnect(seq, peerId, port, ip, [=](auto seq, auto msg, auto post) {
         [self send: seq msg: msg post: post];
       });
     });
     return true;
-  }
+  } */
 
-  if (cmd.name == "tcpSetKeepAlive") {
-    auto clientId = std::stoull(cmd.get("clientId"));
+  /* if (cmd.name == "tcpSetKeepAlive") {
+    auto peerId = std::stoull(cmd.get("peerId"));
     auto timeout = std::stoi(cmd.get("timeout"));
 
     dispatch_async(queue, ^{
-      self.core->tcpSetKeepAlive(seq, clientId, timeout, [=](auto seq, auto msg, auto post) {
+      self.core->tcpSetKeepAlive(seq, peerId, timeout, [=](auto seq, auto msg, auto post) {
         [self send: seq msg: msg post: post];
       });
     });
     return true;
-  }
+  } */
 
-  if (cmd.name == "tcpSetTimeout") {
-    auto clientId = std::stoull(cmd.get("clientId"));
+  /* if (cmd.name == "tcpSetTimeout") {
+    auto peerId = std::stoull(cmd.get("peerId"));
     auto timeout = std::stoi(cmd.get("timeout"));
 
     dispatch_async(queue, ^{
-      self.core->tcpSetTimeout(seq, clientId, timeout, [=](auto seq, auto msg, auto post) {
+      self.core->tcpSetTimeout(seq, peerId, timeout, [=](auto seq, auto msg, auto post) {
         [self send: seq msg: msg post: post];
       });
     });
     return true;
-  }
+  } */
 
   if (cmd.name == "udpBind") {
     auto ip = cmd.get("ip");
     std::string err;
     int port;
-    uint64_t serverId = 0ll;
+    uint64_t peerId = 0ll;
 
     if (ip.size() == 0) {
       ip = "0.0.0.0";
     }
 
     try {
-      serverId = std::stoull(cmd.get("serverId"));
+      peerId = std::stoull(cmd.get("peerId"));
     } catch (...) {
-      auto msg = SSC::format(R"({ "err": { "message": "property 'serverId' required" } })");
+      auto msg = SSC::format(R"({ "err": { "message": "property 'peerId' required" } })");
       [self send: seq msg: msg post: Post{}];
       return true;
     }
@@ -1486,7 +1502,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     }
 
     dispatch_async(queue, ^{
-      self.core->udpBind(seq, serverId, ip, port, [=](auto seq, auto msg, auto post) {
+      self.core->udpBind(seq, peerId, ip, port, [=](auto seq, auto msg, auto post) {
         [self send: seq msg: msg post: post];
       });
     });
@@ -1494,19 +1510,19 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     return true;
   }
 
-  if (cmd.name == "udpReadStart") {
-    uint64_t serverId;
+  if (cmd.name == "udpReadStart" || cmd.name == "udp.readStart") {
+    uint64_t peerId;
 
     try {
-      serverId = std::stoull(cmd.get("serverId"));
+      peerId = std::stoull(cmd.get("peerId"));
     } catch (...) {
-      auto msg = SSC::format(R"({ "err": { "message": "property 'serverId' required" } })");
+      auto msg = SSC::format(R"({ "err": { "message": "property 'peerId' required" } })");
       [self send: seq msg: msg post: Post{}];
       return true;
     }
 
     dispatch_async(queue, ^{
-      self.core->udpReadStart(seq, serverId, [=](auto seq, auto msg, auto post) {
+      self.core->udpReadStart(seq, peerId, [=](auto seq, auto msg, auto post) {
         [self send: seq msg: msg post: post];
       });
     });
@@ -1514,9 +1530,9 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     return true;
   }
 
-  if (cmd.name == "tcpBind") {
+  /* if (cmd.name == "tcpBind") {
     auto ip = cmd.get("ip");
-    uint64_t serverId = 0ll;
+    uint64_t peerId = 0ll;
     std::string err;
 
     if (ip.size() == 0) {
@@ -1533,9 +1549,9 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 		}
 
     try {
-      serverId = std::stoull(cmd.get("serverId"));
+      peerId = std::stoull(cmd.get("peerId"));
     } catch (...) {
-      auto msg = SSC::format(R"({ "err": { "message": "property 'serverId' required" } })");
+      auto msg = SSC::format(R"({ "err": { "message": "property 'peerId' required" } })");
       [self send: seq msg: msg post: Post{}];
       return true;
     }
@@ -1543,16 +1559,16 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     auto port = std::stoi(cmd.get("port"));
 
     dispatch_async(queue, ^{
-      self.core->tcpBind(seq, serverId, ip, port, [=](auto seq, auto msg, auto post) {
+      self.core->tcpBind(seq, peerId, ip, port, [=](auto seq, auto msg, auto post) {
         [self send: seq msg: msg post: post];
       });
     });
 
     return true;
-  }
+  } */
 
-  if (cmd.name == "dnsLookup") {
-    auto xId = std::stoull(cmd.get("serverId"));
+  if (cmd.name == "dnsLookup" || cmd.name == "dns.lookup") {
+    auto xId = std::stoull(cmd.get("peerId"));
     auto hostname = cmd.get("hostname");
     // TODO: support these options
     // auto family = std::stoi(cmd.get("family"));

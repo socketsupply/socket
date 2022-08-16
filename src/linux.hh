@@ -802,11 +802,11 @@ namespace SSC {
     }
 
     if (cmd.name == "udpBind" || cmd.name == "udp.bind") {
-      if (cmd.get("serverId").size() == 0) {
+      if (cmd.get("peerId").size() == 0) {
         auto err = SSC::format(R"MSG({
           "err": {
             "type": "InternalError",
-            "message": "'serverId' is required"
+            "message": "'peerId' is required"
           }
         })MSG");
 
@@ -829,26 +829,26 @@ namespace SSC {
       Bridge::ThreadContext::Dispatch(this, [=](auto ctx) {
         auto ip = cmd.get("ip");
         int port;
-        uint64_t serverId;
+        uint64_t peerId;
 
         if (ip.size() == 0) {
           ip = "0.0.0.0";
         }
 
         port = std::stoi(cmd.get("port"));
-        serverId = std::stoull(cmd.get("serverId"));
+        peerId = std::stoull(cmd.get("peerId"));
 
-        ctx->core->udpBind(seq, serverId, ip, port, cb);
+        ctx->core->udpBind(seq, peerId, ip, port, cb);
       });
       return true;
     }
 
     if (cmd.name == "udpReadStart" || cmd.name == "udp.readStart") {
-      if (cmd.get("serverId").size() == 0) {
+      if (cmd.get("peerId").size() == 0) {
         auto err = SSC::format(R"MSG({
           "err": {
             "type": "InternalError",
-            "message": "'serverId' is required"
+            "message": "'peerId' is required"
           }
         })MSG");
 
@@ -857,8 +857,8 @@ namespace SSC {
       }
 
       Bridge::ThreadContext::Dispatch(this, [=](auto ctx) {
-        auto serverId = std::stoull(cmd.get("serverId"));
-        ctx->core->udpReadStart(seq, serverId, [=](auto seq, auto msg, auto post){
+        auto peerId = std::stoull(cmd.get("id"));
+        ctx->core->udpReadStart(seq, peerId, [=](auto seq, auto msg, auto post){
           if (seq.size() && seq != "-1") {
             cb(seq, msg, post);
           } else {
@@ -872,7 +872,7 @@ namespace SSC {
     if (cmd.name == "udpSend" || cmd.name == "udp.send") {
       int offset = 0;
       int port = 0;
-      uint64_t clientId;
+      uint64_t peerId;
       std::string err;
 
       auto ephemeral = cmd.get("ephemeral") == "true";
@@ -899,9 +899,9 @@ namespace SSC {
       }
 
       try {
-        clientId = std::stoull(cmd.get("clientId"));
+        peerId = std::stoull(cmd.get("peerId"));
       } catch (...) {
-        err = "invalid clientId";
+        err = "invalid peerId";
       }
 
       if (err.size() > 0) {
@@ -918,7 +918,7 @@ namespace SSC {
         auto key = std::to_string(cmd.index) + seq;
         auto buffer = bufferQueue[key];
         bufferQueue.erase(bufferQueue.find(key));
-        ctx->core->udpSend(seq, clientId, buffer.data(), offset, (int)buffer.size(), port, ip.c_str(), ephemeral, cb);
+        ctx->core->udpSend(seq, peerId, buffer.data(), offset, (int)buffer.size(), port, ip.c_str(), ephemeral, cb);
       });
       return true;
     }
