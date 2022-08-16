@@ -890,8 +890,6 @@ namespace SSC {
       }
 
       Bridge::ThreadContext::Dispatch(this, [=](auto ctx) {
-        auto peerId = std::stoull(cmd.get("id"));
-
         ctx->core->udpConnect(seq, peerId, (const char*)ip.c_str(), port, [=](auto seq, auto msg, auto post){
           if (seq.size() && seq != "-1") {
             cb(seq, msg, post);
