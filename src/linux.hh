@@ -890,13 +890,7 @@ namespace SSC {
       }
 
       Bridge::ThreadContext::Dispatch(this, [=](auto ctx) {
-        ctx->core->udpConnect(seq, peerId, (const char*)ip.c_str(), port, [=](auto seq, auto msg, auto post){
-          if (seq.size() && seq != "-1") {
-            cb(seq, msg, post);
-          } else {
-            ctx->bridge->send(cmd, seq, msg, post);
-          }
-        });
+        ctx->core->udpConnect(seq, peerId, (const char*)ip.c_str(), port, cb);
       });
 
       return true;
