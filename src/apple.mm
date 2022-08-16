@@ -1037,9 +1037,9 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   }
 
   // TODO this is a generalization that doesnt work
-  if (cmd.get("peerId").size() != 0) {
+  if (cmd.get("id").size() != 0) {
     try {
-      peerId = std::stoull(cmd.get("peerId"));
+      peerId = std::stoull(cmd.get("id"));
     } catch (...) {
       auto msg = SSC::format(R"MSG({
         "err": { "message": "invalid peerId" }
@@ -1155,7 +1155,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   }
 
   if (cmd.name == "readStop") {
-    auto peerId = std::stoull(cmd.get("peerId"));
+    auto peerId = std::stoull(cmd.get("id"));
 
     dispatch_async(queue, ^{
       self.core->readStop(seq, peerId, [=](auto seq, auto msg, auto post) {
@@ -1166,7 +1166,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   }
 
   if (cmd.name == "shutdown") {
-    auto peerId = std::stoull(cmd.get("peerId"));
+    auto peerId = std::stoull(cmd.get("id"));
 
     dispatch_async(queue, ^{
       self.core->shutdown(seq, peerId, [=](auto seq, auto msg, auto post) {
@@ -1184,7 +1184,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
       size = 0;
     }
 
-    auto peerId = std::stoull(cmd.get("peerId"));
+    auto peerId = std::stoull(cmd.get("id"));
 
     dispatch_async(queue, ^{
       self.core->sendBufferSize(seq, peerId, size, [=](auto seq, auto msg, auto post) {
@@ -1230,7 +1230,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   }
 
   if (cmd.name == "close") {
-    auto peerId = std::stoull(cmd.get("peerId"));
+    auto peerId = std::stoull(cmd.get("id"));
 
     dispatch_async(queue, ^{
       self.core->close(seq, peerId, [=](auto seq, auto msg, auto post) {
@@ -1241,7 +1241,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   }
 
   if (cmd.name == "udpConnect" || cmd.name == "udp.connect") {
-    auto strId = cmd.get("peerId");
+    auto strId = cmd.get("id");
     std::string err = "";
     uint64_t peerId = 0ll;
     int port = 0;
@@ -1252,7 +1252,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
       err = "invalid peerId";
     } else {
       try {
-        peerId = std::stoull(cmd.get("peerId"));
+        peerId = std::stoull(cmd.get("id"));
       } catch (...) {
         err = "invalid peerId";
       }
@@ -1295,7 +1295,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   }
 
   if (cmd.name == "udpGetPeerName" || cmd.name == "udp.getPeerName") {
-    auto strId = cmd.get("peerId");
+    auto strId = cmd.get("id");
 
     if (strId.size() == 0) {
       auto msg = SSC::format(R"MSG({
@@ -1376,7 +1376,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     }
 
     try {
-      peerId = std::stoull(cmd.get("peerId"));
+      peerId = std::stoull(cmd.get("id"));
     } catch (...) {
       err = "invalid peerId";
     }
@@ -1404,7 +1404,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     std::string err = "";
 
     try {
-      peerId = std::stoull(cmd.get("peerId"));
+      peerId = std::stoull(cmd.get("id"));
     } catch (...) {
       err = "invalid peerId";
     }
@@ -1440,7 +1440,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
       return true;
     }
 
-    auto peerId = std::stoull(cmd.get("peerId"));
+    auto peerId = std::stoull(cmd.get("id"));
     auto ip = cmd.get("ip");
 
     dispatch_async(queue, ^{
@@ -1452,7 +1452,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   } */
 
   /* if (cmd.name == "tcpSetKeepAlive") {
-    auto peerId = std::stoull(cmd.get("peerId"));
+    auto peerId = std::stoull(cmd.get("id"));
     auto timeout = std::stoi(cmd.get("timeout"));
 
     dispatch_async(queue, ^{
@@ -1464,7 +1464,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   } */
 
   /* if (cmd.name == "tcpSetTimeout") {
-    auto peerId = std::stoull(cmd.get("peerId"));
+    auto peerId = std::stoull(cmd.get("id"));
     auto timeout = std::stoi(cmd.get("timeout"));
 
     dispatch_async(queue, ^{
@@ -1486,7 +1486,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     }
 
     try {
-      peerId = std::stoull(cmd.get("peerId"));
+      peerId = std::stoull(cmd.get("id"));
     } catch (...) {
       auto msg = SSC::format(R"({ "err": { "message": "property 'peerId' required" } })");
       [self send: seq msg: msg post: Post{}];
@@ -1514,7 +1514,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     uint64_t peerId;
 
     try {
-      peerId = std::stoull(cmd.get("peerId"));
+      peerId = std::stoull(cmd.get("id"));
     } catch (...) {
       auto msg = SSC::format(R"({ "err": { "message": "property 'peerId' required" } })");
       [self send: seq msg: msg post: Post{}];
@@ -1549,7 +1549,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 		}
 
     try {
-      peerId = std::stoull(cmd.get("peerId"));
+      peerId = std::stoull(cmd.get("id"));
     } catch (...) {
       auto msg = SSC::format(R"({ "err": { "message": "property 'peerId' required" } })");
       [self send: seq msg: msg post: Post{}];
@@ -1568,7 +1568,31 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   } */
 
   if (cmd.name == "dnsLookup" || cmd.name == "dns.lookup") {
-    auto xId = std::stoull(cmd.get("peerId"));
+    auto strId = cmd.get("id");
+    std::string err = "";
+    uint64_t peerId = 0ll;
+
+    if (strId.size() == 0) {
+      err = "invalid id";
+    } else {
+      try {
+        peerId = std::stoull(cmd.get("id"));
+      } catch (...) {
+        err = "invalid id";
+      }
+    }
+
+    if (err.size() > 0) {
+      dispatch_async(queue, ^{
+        auto msg = SSC::format(R"JSON({
+          "err": "$S"
+        })JSON", err);
+
+        [self send: seq msg: msg post: Post{}];
+      });
+      return true;
+    }
+
     auto hostname = cmd.get("hostname");
     // TODO: support these options
     // auto family = std::stoi(cmd.get("family"));

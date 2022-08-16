@@ -802,11 +802,11 @@ namespace SSC {
     }
 
     if (cmd.name == "udpBind" || cmd.name == "udp.bind") {
-      if (cmd.get("peerId").size() == 0) {
+      if (cmd.get("id").size() == 0) {
         auto err = SSC::format(R"MSG({
           "err": {
             "type": "InternalError",
-            "message": "'peerId' is required"
+            "message": ".id is required"
           }
         })MSG");
 
@@ -836,7 +836,7 @@ namespace SSC {
         }
 
         port = std::stoi(cmd.get("port"));
-        peerId = std::stoull(cmd.get("peerId"));
+        peerId = std::stoull(cmd.get("id"));
 
         ctx->core->udpBind(seq, peerId, ip, port, cb);
       });
@@ -844,11 +844,11 @@ namespace SSC {
     }
 
     if (cmd.name == "udpReadStart" || cmd.name == "udp.readStart") {
-      if (cmd.get("peerId").size() == 0) {
+      if (cmd.get("id").size() == 0) {
         auto err = SSC::format(R"MSG({
           "err": {
             "type": "InternalError",
-            "message": "'peerId' is required"
+            "message": ".id is required"
           }
         })MSG");
 
@@ -858,6 +858,7 @@ namespace SSC {
 
       Bridge::ThreadContext::Dispatch(this, [=](auto ctx) {
         auto peerId = std::stoull(cmd.get("id"));
+
         ctx->core->udpReadStart(seq, peerId, [=](auto seq, auto msg, auto post){
           if (seq.size() && seq != "-1") {
             cb(seq, msg, post);
@@ -899,9 +900,9 @@ namespace SSC {
       }
 
       try {
-        peerId = std::stoull(cmd.get("peerId"));
+        peerId = std::stoull(cmd.get("id"));
       } catch (...) {
-        err = "invalid peerId";
+        err = "invalid id";
       }
 
       if (err.size() > 0) {
