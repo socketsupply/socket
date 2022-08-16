@@ -1076,7 +1076,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     }
 
     PeerInfo info;
-    info.init(&peer->tcp);
+    info.init(&peer->udp);
 
     auto msg = SSC::format(
       R"MSG({
@@ -1295,9 +1295,9 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   }
 
   if (cmd.name == "udpGetPeerName" || cmd.name == "udp.getPeerName") {
-    auto sId = cmd.get("peerId");
+    auto strId = cmd.get("peerId");
 
-    if (sId.size() == 0) {
+    if (strId.size() == 0) {
       auto msg = SSC::format(R"MSG({
         "err": {
           "message": "expected .peerId"
@@ -1310,10 +1310,10 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
       return true;
     }
 
-    auto cId = std::stoull(sId);
+    auto peerId = std::stoull(strId);
 
     dispatch_async(queue, ^{
-      self.core->udpGetPeerName(seq, cId, [=](auto seq, auto msg, auto post) {
+      self.core->udpGetPeerName(seq, peerId, [=](auto seq, auto msg, auto post) {
         [self send: seq msg: msg post: post];
       });
     });
@@ -1336,10 +1336,10 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
       return true;
     }
 
-    auto cId = std::stoull(sId);
+    auto peerId = std::stoull(strId);
 
     dispatch_async(queue, ^{
-      self.core->udpGetSockName(seq, cId, [=](auto seq, auto msg, auto post) {
+      self.core->udpGetSockName(seq, peerId, [=](auto seq, auto msg, auto post) {
         [self send: seq msg: msg post: post];
       });
     });
