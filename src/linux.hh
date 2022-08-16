@@ -843,6 +843,67 @@ namespace SSC {
       return true;
     }
 
+    if (cmd.name == "udpConnect" || cmd.name == "udp.connect") {
+      auto strId = cmd.get("id");
+      std::string err = "";
+      uint64_t peerId = 0ll;
+      int port = 0;
+      auto strPort = cmd.get("port");
+      auto ip = cmd.get("address");
+
+      if (strId.size() == 0) {
+        err = "invalid peerId";
+      } else {
+        try {
+          peerId = std::stoull(cmd.get("id"));
+        } catch (...) {
+          err = "invalid peerId";
+        }
+      }
+
+      if (strPort.size() == 0) {
+        err = "invalid port";
+      } else {
+        try {
+          port = std::stoi(strPort);
+        } catch (...) {
+          err = "invalid port";
+        }
+      }
+
+      if (port == 0) {
+        err = "Can not bind to port 0";
+      }
+
+      if (err.size() > 0) {
+        auto msg = SSC::format(R"MSG({
+          "err": {
+            "message": "$S"
+          }
+        })MSG", err);
+        cb(seq, msg, Post{});
+        return true;
+      }
+
+      if (ip.size() == 0) {
+        ip = "0.0.0.0";
+      }
+
+      Bridge::ThreadContext::Dispatch(this, [=](auto ctx) {
+        auto peerId = std::stoull(cmd.get("id"));
+
+        ctx->core->udpConnect(seq, peerId, (const char*)ip.c_str(), port, [=](auto seq, auto msg, auto post){
+          if (seq.size() && seq != "-1") {
+            cb(seq, msg, post);
+          } else {
+            ctx->bridge->send(cmd, seq, msg, post);
+          }
+        });
+      });
+
+      return true;
+    }
+
     if (cmd.name == "udpReadStart" || cmd.name == "udp.readStart") {
       if (cmd.get("id").size() == 0) {
         auto err = SSC::format(R"MSG({
