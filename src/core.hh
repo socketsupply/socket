@@ -2144,7 +2144,7 @@ namespace SSC {
 
     auto msg = SSC::format(R"MSG({
       "data": {
-        "peerId": "$S",
+        "id": "$S",
         "method": "Cb",
         "size": $i
       }
@@ -2161,7 +2161,7 @@ namespace SSC {
     if (peer == nullptr) {
       auto msg = SSC::format(R"MSG({
         "err": {
-          "peerId": "$S",
+          "id": "$S",
           "method": "Cb",
           "message": "Not connected"
         }
@@ -2190,7 +2190,7 @@ namespace SSC {
 
     auto msg = SSC::format(R"MSG({
       "data": {
-        "peerId": "$S",
+        "id": "$S",
         "method": "Cb",
         "size": $i
       }
@@ -2206,7 +2206,7 @@ namespace SSC {
     if (peer == nullptr) {
       auto msg = SSC::format(R"MSG({
         "err": {
-          "peerId": "$S",
+          "id": "$S",
           "message": "No connection with specified id"
         }
       })MSG", std::to_string(peerId));
@@ -2239,7 +2239,7 @@ namespace SSC {
     if (peer == nullptr) {
       auto msg = SSC::format(R"MSG({
         "err": {
-          "peerId": "$S",
+          "id": "$S",
           "message": "No connection with specified id"
         }
       })MSG", std::to_string(peerId));
@@ -2286,7 +2286,7 @@ namespace SSC {
       auto msg = SSC::format(
         R"MSG({
           "err": {
-            "peerId": "$S",
+            "id": "$S",
             "message": "No connection with specified id"
           }
         })MSG",
@@ -2681,7 +2681,7 @@ namespace SSC {
       if (nread == UV_EOF) {
         auto msg = SSC::format(R"MSG({
           "data": {
-            "peerId": "$S",
+            "id": "$S",
             "EOF": true
           }
         })MSG", std::to_string(peer->id));
