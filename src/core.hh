@@ -2461,7 +2461,7 @@ namespace SSC {
               "clientId": "$S",
               "ip": "$S",
               "family": "$S",
-              "port": "$i"
+              "port": $i
             }
           })MSG",
           std::to_string(server->serverId),
@@ -2879,7 +2879,7 @@ namespace SSC {
       "data": {
         "source": "udp",
         "ip": "$S",
-        "port": "$i",
+        "port": $i,
         "clientId": "$S"
       }
     })MSG", std::string(ip), port, std::to_string(clientId));
@@ -2918,7 +2918,7 @@ namespace SSC {
         "source": "udp",
         "clientId": "$S",
         "ip": "$S",
-        "port": "$i",
+        "port": $i,
         "family": "$S"
       }
     })MSG", std::to_string(clientId), info.ip, info.port, info.family);
@@ -2987,7 +2987,7 @@ namespace SSC {
         "source": "udp",
         "clientId": "$S",
         "ip": "$S",
-        "port": "$i"
+        "port": $i
       }
     })MSG", std::to_string(xId), ip, port);
     cb(seq, msg, Post{});
@@ -3163,13 +3163,13 @@ namespace SSC {
               "source": "udpReadStart",
               "serverId": "$S",
               "bytes": $S,
-              "port": $S,
+              "port": $i,
               "ip": "$S"
             }
           })MSG",
           std::to_string(server->serverId),
           std::to_string(post.length),
-          std::to_string(port),
+          port,
           ip
         );
 
