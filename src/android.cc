@@ -181,6 +181,7 @@ jboolean NativeCore::ConfigureEnvironment () {
   windowOptions.title = this->config["title"];
   windowOptions.debug = DEBUG ? true : false;
   windowOptions.env = stream.str();
+  windowOptions.cwd = this->rootDirectory.str();
 
   this->javaScriptPreloadSource.assign(
     "console.error = console.debug = console.warn = console.log; \n"
