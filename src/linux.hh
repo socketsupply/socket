@@ -801,6 +801,26 @@ namespace SSC {
       return true;
     }
 
+    if (cmd.name == "udpClose" || cmd.name == "udp.close") {
+      uint64_t peerId = 0ll;
+      std::string err = "";
+
+      if (cmd.get("id").size() == 0) {
+        err = ".id is required";
+      } else {
+        try {
+          peerId = std::stoull(cmd.get("id"));
+        } catch (...) {
+          err = "property .id is invalid";
+        }
+      }
+
+      Bridge::ThreadContext::Dispatch(this, [=](auto ctx) {
+        ctx->core->close(seq, peerId, cb);
+      });
+      return true;
+    }
+
     if (cmd.name == "udpBind" || cmd.name == "udp.bind") {
       if (cmd.get("id").size() == 0) {
         auto err = SSC::format(R"MSG({
