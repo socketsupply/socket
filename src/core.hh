@@ -2262,7 +2262,6 @@ namespace SSC {
 
     uv_close((uv_handle_t*)&peer->udp, 0);
     peer->closed = true;
-    peers.erase(peerId);
 
     auto msg = SSC::format(R"MSG({ "data": {} })MSG");
     cb(seq, msg, Post{});
