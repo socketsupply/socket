@@ -1229,7 +1229,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     return true;
   }
 
-  if (cmd.name == "close") {
+  if (cmd.name == "udpClose") {
     auto peerId = std::stoull(cmd.get("id"));
 
     dispatch_async(queue, ^{
