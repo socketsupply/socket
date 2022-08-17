@@ -10,7 +10,7 @@
 #include <arpa/inet.h>
 #endif
 
-#ifdef __linux__
+#if defined(__linux__) && !defined(__ANDROID__)
 #include <gtk/gtk.h>
 #endif
 
@@ -501,7 +501,7 @@ namespace SSC {
   static void startTimers ();
   static uv_loop_t* getDefaultLoop ();
 
-#ifdef __linux__
+#if defined(__linux__) && !defined(__ANDROID__)
   struct UVSource {
     GSource base; // should ALWAYS be first member
     gpointer tag;
@@ -543,7 +543,7 @@ namespace SSC {
 
     uv_loop_init(&defaultLoop);
 
-#ifdef __linux__
+#if defined(__linux__) && !defined(__ANDROID__)
     GSource *source = g_source_new(&loopSourceFunctions, sizeof(UVSource));
     UVSource *uvSource = (UVSource *) source;
     uvSource->tag = g_source_add_unix_fd(
@@ -576,7 +576,7 @@ namespace SSC {
     auto loop = getDefaultLoop();
 
     isLoopRunning = true;
-#ifdef __linux__
+#if defined(__linux__) && !defined(__ANDROID__)
     uv_run(loop, UV_RUN_NOWAIT);
 #else
     while (uv_run(loop, UV_RUN_NOWAIT));

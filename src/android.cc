@@ -1177,6 +1177,98 @@ extern "C" {
     );
   }
 
+  void exports(NativeCore, udpClose)(
+    JNIEnv *env,
+    jobject self,
+    jstring seq,
+    jstring id
+  ) {
+    auto core = GetNativeCoreFromEnvironment(env);
+
+    if (!core) {
+      return Throw(env, NativeCoreNotInitializedException);
+    }
+  }
+
+  void exports(NativeCore, udpBind)(
+    JNIEnv *env,
+    jobject self,
+    jstring seq,
+    jstring id,
+    jstring ip,
+    jint port,
+    jstring callback
+  ) {
+    auto core = GetNativeCoreFromEnvironment(env);
+
+    if (!core) {
+      return Throw(env, NativeCoreNotInitializedException);
+    }
+  }
+
+  void exports(NativeCore, udpConnect)(
+    JNIEnv *env,
+    jobject self,
+    jstring seq,
+    jstring id,
+    jstring ip,
+    jint port,
+    jstring callback
+  ) {
+    auto core = GetNativeCoreFromEnvironment(env);
+
+    if (!core) {
+      return Throw(env, NativeCoreNotInitializedException);
+    }
+  }
+
+  void exports(NativeCore, udpGetPeerName)(
+    JNIEnv *env,
+    jobject self,
+    jstring seq,
+    jstring id,
+    jstring callback
+  ) {
+    auto core = GetNativeCoreFromEnvironment(env);
+
+    if (!core) {
+      return Throw(env, NativeCoreNotInitializedException);
+    }
+  }
+
+  void exports(NativeCore, udpReadStart)(
+    JNIEnv *env,
+    jobject self,
+    jstring seq,
+    jstring id,
+    jstring callback
+  ) {
+    auto core = GetNativeCoreFromEnvironment(env);
+
+    if (!core) {
+      return Throw(env, NativeCoreNotInitializedException);
+    }
+  }
+
+  void exports(NativeCore, udpSend)(
+    JNIEnv *env,
+    jobject self,
+    jstring seq,
+    jstring id,
+    jstring data,
+    jint size,
+    jstring ip,
+    jint port,
+    jboolean ephemeral,
+    jstring callback
+  ) {
+    auto core = GetNativeCoreFromEnvironment(env);
+
+    if (!core) {
+      return Throw(env, NativeCoreNotInitializedException);
+    }
+  }
+
   void exports(NativeCore, fsAccess)(
     JNIEnv *env,
     jobject self,

@@ -414,6 +414,38 @@ open class Bridge(activity: WebViewActivity) {
    * `ExternalWebViewInterface` class initializer
    */
   init {
+    this.registerInterface("bluetooth", fun(
+      message: IPCMessage,
+      value: String,
+      callback: (String, String) -> Unit,
+      throwError: (String, String) -> String
+    ): String? {
+      val core = this.activity.core
+
+      if (core == null) {
+        return null
+      }
+
+      when (message.command) {
+        "bluetooth.start", "bluetooth-start" -> {
+          // @TODO
+          return message.seq
+        }
+
+        "bluetooth.subscribe", "bluetooth-subscribe" -> {
+          // @TODO
+          return message.seq
+        }
+
+        "bluetooth.publish", "bluetooth-publish" -> {
+          // @TODO
+          return message.seq
+        }
+      }
+
+      return null
+    })
+
     this.registerInterface("buffer", fun (
       message: IPCMessage,
       value: String,
@@ -474,92 +506,6 @@ open class Bridge(activity: WebViewActivity) {
             callback(message.seq, data)
           })
 
-          return message.seq
-        }
-      }
-
-      return null
-    })
-
-
-    this.registerInterface("os", fun(
-      message: IPCMessage,
-      value: String,
-      callback: (String, String) -> Unit,
-      throwError: (String, String) -> String
-    ): String? {
-      val core = this.activity.core
-
-      if (core == null) {
-        return null
-      }
-
-      when (message.command) {
-        "os.networkInterfaces", "getNetworkInterfaces" -> {
-          if (message.seq.isEmpty()) {
-            throw RuntimeException("getNetworkInterfaces: Missing 'seq' in IPC")
-          }
-
-          callback(message.seq, core.getNetworkInterfaces())
-          return message.seq
-        }
-
-        "os.arch", "getPlatformArch" -> {
-          if (message.seq.isEmpty()) {
-            throw RuntimeException("getPlatformArch: Missing 'seq' in IPC")
-          }
-
-          callback(message.seq, core.getPlatformArch())
-          return message.seq
-        }
-
-        "os.type", "getPlatformType" -> {
-          if (message.seq.isEmpty()) {
-            throw RuntimeException("getPlatformType: Missing 'seq' in IPC")
-          }
-
-          callback(message.seq, core.getPlatformType())
-          return message.seq
-        }
-
-        "os.platform", "getPlatformOS" -> {
-          if (message.seq.isEmpty()) {
-            throw RuntimeException("getPlatformOS: Missing 'seq' in IPC")
-          }
-
-          callback(message.seq, core.getPlatformOS())
-          return message.seq
-        }
-      }
-
-      return null
-    })
-
-    this.registerInterface("bluetooth", fun(
-      message: IPCMessage,
-      value: String,
-      callback: (String, String) -> Unit,
-      throwError: (String, String) -> String
-    ): String? {
-      val core = this.activity.core
-
-      if (core == null) {
-        return null
-      }
-
-      when (message.command) {
-        "bluetooth.start", "bluetooth-start" -> {
-          // @TODO
-          return message.seq
-        }
-
-        "bluetooth.subscribe", "bluetooth-subscribe" -> {
-          // @TODO
-          return message.seq
-        }
-
-        "bluetooth.publish", "bluetooth-publish" -> {
-          // @TODO
           return message.seq
         }
       }
@@ -794,6 +740,116 @@ open class Bridge(activity: WebViewActivity) {
             core.fs.write(message.seq, id, data, offset, fun(data: String) {
               callback(message.seq, data)
             })
+          }
+
+          return message.seq
+        }
+      }
+
+      return null
+    })
+
+    this.registerInterface("os", fun(
+      message: IPCMessage,
+      value: String,
+      callback: (String, String) -> Unit,
+      throwError: (String, String) -> String
+    ): String? {
+      val core = this.activity.core
+
+      if (core == null) {
+        return null
+      }
+
+      when (message.command) {
+        "os.networkInterfaces", "getNetworkInterfaces" -> {
+          if (message.seq.isEmpty()) {
+            throw RuntimeException("getNetworkInterfaces: Missing 'seq' in IPC")
+          }
+
+          callback(message.seq, core.getNetworkInterfaces())
+          return message.seq
+        }
+
+        "os.arch", "getPlatformArch" -> {
+          if (message.seq.isEmpty()) {
+            throw RuntimeException("getPlatformArch: Missing 'seq' in IPC")
+          }
+
+          callback(message.seq, core.getPlatformArch())
+          return message.seq
+        }
+
+        "os.type", "getPlatformType" -> {
+          if (message.seq.isEmpty()) {
+            throw RuntimeException("getPlatformType: Missing 'seq' in IPC")
+          }
+
+          callback(message.seq, core.getPlatformType())
+          return message.seq
+        }
+
+        "os.platform", "getPlatformOS" -> {
+          if (message.seq.isEmpty()) {
+            throw RuntimeException("getPlatformOS: Missing 'seq' in IPC")
+          }
+
+          callback(message.seq, core.getPlatformOS())
+          return message.seq
+        }
+      }
+
+      return null
+    })
+
+    this.registerInterface("udp", fun(
+      message: IPCMessage,
+      value: String,
+      callback: (String, String) -> Unit,
+      throwError: (String, String) -> String
+    ): String? {
+      val core = this.activity.core
+
+      if (core == null) {
+        return null
+      }
+
+      when (message.command) {
+        "udpClose", "udp.close" -> {
+          if (message.seq.isEmpty()) {
+            throw RuntimeException("getNetworkInterfaces: Missing 'seq' in IPC")
+          }
+
+          return message.seq
+        }
+
+        "udpBind", "udp.bind" -> {
+          if (message.seq.isEmpty()) {
+            throw RuntimeException("getNetworkInterfaces: Missing 'seq' in IPC")
+          }
+
+          return message.seq
+        }
+
+        "udpConnect", "udp.connect" -> {
+          if (message.seq.isEmpty()) {
+            throw RuntimeException("getNetworkInterfaces: Missing 'seq' in IPC")
+          }
+
+          return message.seq
+        }
+
+        "udpReadStart", "udp.readStart" -> {
+          if (message.seq.isEmpty()) {
+            throw RuntimeException("getNetworkInterfaces: Missing 'seq' in IPC")
+          }
+
+          return message.seq
+        }
+
+        "udpSend", "udp.send" -> {
+          if (message.seq.isEmpty()) {
+            throw RuntimeException("getNetworkInterfaces: Missing 'seq' in IPC")
           }
 
           return message.seq
@@ -1114,6 +1170,86 @@ open class NativeDNS(core: NativeCore) {
   }
 }
 
+open class NativeUDP(core: NativeCore) {
+  val TAG = "NativeUDP"
+
+  private var core: NativeCore? = core
+
+  fun bind (
+    seq: String = "",
+    id: String,
+    ip: String,
+    port: Int,
+    callback: (String) -> Unit
+  ) {
+    core?.apply {
+      udpBind(seq, id, ip, port, queueCallback(callback))
+    }
+  }
+
+  fun close (
+    seq: String = "",
+    id: String,
+    callback: (String) -> Unit
+  ) {
+    core?.apply {
+      udpClose(seq, id, queueCallback(callback))
+    }
+  }
+
+  fun connect (
+    seq: String = "",
+    id: String,
+    ip: String,
+    port: Int,
+    callback: (String) -> Unit
+  ) {
+    core?.apply {
+      udpConnect(seq, id, ip, port, queueCallback(callback))
+    }
+  }
+
+  fun getPeerName (
+    seq: String = "",
+    id: String,
+    callback: (String) -> Unit
+  ) {
+    core?.apply {
+      udpGetPeerName(seq, id, queueCallback(callback))
+    }
+  }
+
+  fun readStart (
+    seq: String = "",
+    id: String,
+    callback: (String) -> Unit
+  ) {
+    core?.apply {
+      udpReadStart(seq, id, queueCallback(callback))
+    }
+  }
+
+  fun send (
+    seq: String = "",
+    id: String,
+    data: String,
+    size: Int,
+    ip: String,
+    port: Int,
+    ephemeral: Boolean,
+    callback: (String) -> Unit
+  ) {
+    core?.apply {
+      udpSend(seq, id, data, size, ip, port, ephemeral, queueCallback(callback))
+    }
+  }
+
+  fun finalize() {
+    core = null
+  }
+}
+
+
 /**
  * @TODO
  */
@@ -1413,6 +1549,11 @@ open class NativeCore(var activity: WebViewActivity) {
   var dns: NativeDNS
 
   /**
+   * @TODO
+   */
+  var udp: NativeUDP
+
+  /**
    * TODO
    */
   val callbacks = mutableMapOf<String, (String) -> Unit>()
@@ -1562,10 +1703,67 @@ open class NativeCore(var activity: WebViewActivity) {
     bytes: ByteArray
   ): String
 
+  /**
+   * DNS APIs
+   */
   @Throws(java.lang.Exception::class)
   external fun dnsLookup(
     seq: String,
     hostname: String,
+    callback: String
+  )
+
+  /**
+   * UDP APIs
+   */
+  @Throws(java.lang.Exception::class)
+  external fun udpClose(
+    seq: String,
+    id: String,
+    callback: String
+  )
+
+  @Throws(java.lang.Exception::class)
+  external fun udpBind(
+    seq: String,
+    id: String,
+    ip: String,
+    port: Int,
+    callback: String
+  )
+
+  @Throws(java.lang.Exception::class)
+  external fun udpConnect(
+    seq: String,
+    id: String,
+    ip: String,
+    port: Int,
+    callback: String
+  )
+
+  @Throws(java.lang.Exception::class)
+  external fun udpGetPeerName(
+    seq: String,
+    id: String,
+    callback: String
+  )
+
+  @Throws(java.lang.Exception::class)
+  external fun udpReadStart(
+    seq: String,
+    id: String,
+    callback: String
+  )
+
+  @Throws(java.lang.Exception::class)
+  external fun udpSend(
+    seq: String,
+    id: String,
+    data: String,
+    size: Int,
+    ip: String,
+    port: Int,
+    ephemeral: Boolean,
     callback: String
   )
 
@@ -1640,6 +1838,7 @@ open class NativeCore(var activity: WebViewActivity) {
   init {
     this.pointer = this.createPointer()
     this.dns = NativeDNS(this)
+    this.udp = NativeUDP(this)
     this.fs = NativeFileSystem(this)
   }
 
