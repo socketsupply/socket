@@ -1,3 +1,4 @@
+#include <cstdint>
 #include <stdlib.h>
 #include <math.h>
 
@@ -123,6 +124,8 @@ namespace SSC {
     void *data;
   };
 
+  static std::map<uint64_t, void *> threadContextsForBridge;
+
   class Bridge {
     public:
       IApp *app;
@@ -131,6 +134,7 @@ namespace SSC {
       class ThreadContext {
         public:
           typedef std::function<void(Bridge::ThreadContext *)> Function;
+
           Bridge *bridge;
           Function fn;
           Core *core;
@@ -140,12 +144,36 @@ namespace SSC {
             this->core = bridge->core;
           }
 
+          static void Release (uint64_t contextId) {
+            if (threadContextsForBridge.find(contextId) != threadContextsForBridge.end()) {
+              auto pointer = threadContextsForBridge.at(contextId);
+              threadContextsForBridge.erase(contextId);
+              if (pointer != nullptr) {
+                auto threadContext = reinterpret_cast<Bridge::ThreadContext *>(pointer);
+                delete threadContext;
+              }
+            }
+          }
+
           static void Dispatch (Bridge *bridge, Function fn) {
+            return Dispatch(bridge, 0, fn);
+          }
+
+          static void Dispatch (Bridge *bridge, uint64_t contextId, Function fn) {
             auto threadContext = new Bridge::ThreadContext(bridge);
+            auto keepContextAlive = contextId > 0;
+
+            if (keepContextAlive) {
+              threadContextsForBridge.insert_or_assign(contextId, (void *) threadContext);
+            }
+
             threadContext->fn = fn;
-            bridge->app->dispatch([threadContext] {
-             threadContext->fn(threadContext);
-             delete threadContext;
+            bridge->app->dispatch([threadContext, keepContextAlive] {
+              threadContext->fn(threadContext);
+
+              if (!keepContextAlive) {
+                delete threadContext;
+              }
             });
           }
       };
@@ -816,7 +844,10 @@ namespace SSC {
       }
 
       Bridge::ThreadContext::Dispatch(this, [=](auto ctx) {
-        ctx->core->close(seq, peerId, cb);
+        ctx->core->close(seq, peerId, [=](auto seq, auto msg, auto post) {
+          cb(seq, msg, post);
+          Bridge::ThreadContext::Release(peerId);
+        });
       });
       return true;
     }
@@ -950,9 +981,8 @@ namespace SSC {
         return true;
       }
 
-      Bridge::ThreadContext::Dispatch(this, [=](auto ctx) {
-        auto peerId = std::stoull(cmd.get("id"));
-
+      auto peerId = std::stoull(cmd.get("id"));
+      Bridge::ThreadContext::Dispatch(this, peerId, [=](auto ctx) {
         ctx->core->udpReadStart(seq, peerId, [=](auto seq, auto msg, auto post){
           if (seq.size() && seq != "-1") {
             cb(seq, msg, post);
@@ -1034,6 +1064,11 @@ namespace SSC {
     std::lock_guard<std::recursive_mutex> guard2(windowFactoryMutex);
 
     if (cmd.index == -1) {
+      // @TODO(jwerle): print warning
+      return;
+    }
+
+    if (app == nullptr) {
       // @TODO(jwerle): print warning
       return;
     }
