@@ -2247,36 +2247,10 @@ namespace SSC {
       return;
     }
 
-    peer->seq = seq;
-    peer->cb = cb;
-    peer->id = peerId;
-
-    uv_handle_t* handle;
-
-    if ((PEER_TYPE_UDP & peer->type) == PEER_TYPE_UDP) {
-      handle = (uv_handle_t*) &peer->udp;
-    } else {
-      auto msg = SSC::format(R"MSG({
-        "err": {
-          "message": "Handle is not valid"
-        }
-      })MSG");
-
-      cb(seq, msg, Post{});
-      return;
-    }
-
-    handle->data = peer;
-
-    uv_close(handle, [](uv_handle_t* handle) {
-      auto peer = reinterpret_cast<Peer*>(handle->data);
-
-      auto msg = SSC::format(R"MSG({ "data": {} })MSG");
-      peer->cb(peer->seq, msg, Post{});
-      free(handle);
-    });
-
-    runDefaultLoop();
+    uv_close((uv_handle_t*)&peer->udp, 0);
+    auto msg = SSC::format(R"MSG({ "data": {} })MSG");
+    peer->cb(seq, msg, Post{});
+    delete peer;
   }
 
   void Core::shutdown (String seq, uint64_t peerId, Cb cb) const {
