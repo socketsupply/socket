@@ -2248,8 +2248,21 @@ namespace SSC {
       return;
     }
 
+    if (peer->closed) {
+      auto msg = SSC::format(R"MSG({
+        "err": {
+          "id": "$S",
+          "code": "ERR_SOCKET_DGRAM_NOT_RUNNING",
+          "message": "the socket has already been closed"
+        }
+      })MSG", std::to_string(peerId));
+      cb(seq, msg, Post{});
+      return;
+    }
+
     uv_close((uv_handle_t*)&peer->udp, 0);
-    delete peer;
+    peer->closed = true;
+    peers.erase(peerId);
 
     auto msg = SSC::format(R"MSG({ "data": {} })MSG");
     cb(seq, msg, Post{});
