@@ -125,6 +125,7 @@ namespace SSC {
   };
 
   static std::map<uint64_t, void *> threadContextsForBridge;
+  static std::recursive_mutex threadContextsForBridgeMutex;
 
   class Bridge {
     public:
@@ -145,6 +146,8 @@ namespace SSC {
           }
 
           static void Release (uint64_t contextId) {
+            std::lock_guard<std::recursive_mutex> guard(threadContextsForBridgeMutex);
+
             if (threadContextsForBridge.find(contextId) != threadContextsForBridge.end()) {
               auto pointer = threadContextsForBridge.at(contextId);
               threadContextsForBridge.erase(contextId);
@@ -160,6 +163,8 @@ namespace SSC {
           }
 
           static void Dispatch (Bridge *bridge, uint64_t contextId, Function fn) {
+            std::lock_guard<std::recursive_mutex> guard(threadContextsForBridgeMutex);
+
             auto threadContext = new Bridge::ThreadContext(bridge);
             auto keepContextAlive = contextId > 0;
 
