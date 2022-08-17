@@ -294,7 +294,7 @@ namespace SSC {
 
       void udpBind (String seq, uint64_t peerId, String ip, int port, Cb cb) const;
       void udpConnect (String seq, uint64_t peerId, const char* ip, int port, Cb cb) const;
-      void udpSend (String seq, uint64_t peerId, char* buf, int offset, int len, int port, const char* ip, bool ephemeral, Cb cb) const;
+      void udpSend (String seq, uint64_t peerId, char* buf, int len, int port, const char* ip, bool ephemeral, Cb cb) const;
       void udpGetPeerName (String seq, uint64_t peerId, Cb cb) const;
       void udpReadStart (String seq, uint64_t peerId, Cb cb) const;
       void udpGetSockName (String seq, uint64_t peerId, Cb cb) const;
@@ -2529,7 +2529,7 @@ namespace SSC {
     cb(seq, msg, Post{});
   }
 
-  void Core::udpSend (String seq, uint64_t peerId, char* buf, int offset, int len, int port, const char* ip, bool ephemeral, Cb cb) const {
+  void Core::udpSend (String seq, uint64_t peerId, char* buf, int len, int port, const char* ip, bool ephemeral, Cb cb) const {
     std::unique_lock<std::recursive_mutex> guard(peersMutex);
     Peer* peer = nullptr;
     auto loop = getDefaultLoop();
@@ -2569,7 +2569,7 @@ namespace SSC {
       return;
     }
 
-    uv_buf_t buffer = uv_buf_init(buf + offset, len);
+    uv_buf_t buffer = uv_buf_init(buf, len);
     uv_udp_send_t* req = new uv_udp_send_t;
 
     req->data = peer;
