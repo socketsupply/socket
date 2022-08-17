@@ -368,7 +368,7 @@ void NativeFileSystem::CallbackWithPostAndFinalizeContext (
 ) const {
   auto refs = context->core->GetRefs();
   auto jvm = context->core->GetJavaVM();
-  auto js = context->core->createPost(context->seq, "", post);
+  auto js = context->core->createPost(context->seq, data, post);
 
   JNIEnv *env = 0;
 
@@ -550,7 +550,7 @@ void NativeUDP::CallbackWithPostInContext (
 ) const {
   auto refs = context->core->GetRefs();
   auto jvm = context->core->GetJavaVM();
-  auto js = context->core->createPost(context->seq, "", post);
+  auto js = context->core->createPost(context->seq, data, post);
 
   JNIEnv *env = 0;
 
@@ -611,7 +611,7 @@ void NativeUDP::CallbackWithPostAndFinalizeContext (
 ) const {
   auto refs = context->core->GetRefs();
   auto jvm = context->core->GetJavaVM();
-  auto js = context->core->createPost(context->seq, "", post);
+  auto js = context->core->createPost(context->seq, data, post);
 
   JNIEnv *env = 0;
 
