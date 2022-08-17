@@ -732,7 +732,7 @@ void NativeUDP::Send (
   auto context = this->CreateRequestContext(seq, id, callback);
   auto core = reinterpret_cast<SSC::Core *>(this->core);
 
-  core->udpSend(seq, id, data.data(), 0, size, port, (const char *) ip.c_str(), ephemeral, [context](auto seq, auto data, auto post) {
+  core->udpSend(seq, id, data.data(), size, port, (const char *) ip.c_str(), ephemeral, [context](auto seq, auto data, auto post) {
     context->udp->CallbackAndFinalizeContext(context, data);
   });
 }
