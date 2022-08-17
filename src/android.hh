@@ -66,6 +66,7 @@ typedef NativeID NativeCoreID;
 // Forward declaration
 class NativeFileSystem;
 class NativeCore;
+class NativeUDP;
 
 /**
  * @TODO
@@ -384,6 +385,105 @@ class NativeFileSystem {
     NativeCoreID id,
     std::string data,
     int16_t offset,
+    NativeCallbackID callback
+  ) const;
+};
+
+struct NativeUDPRequestContext {
+  const NativeUDP *udp;
+  NativeCoreSequence seq;
+  NativeCallbackID callback;
+  NativeCoreID id;
+  NativeCore *core;
+};
+
+/**
+ * An interface for core UDP APIs
+ */
+class NativeUDP {
+  NativeCore *core;
+  JNIEnv *env;
+
+  public:
+
+  NativeUDP (JNIEnv *env, NativeCore *core);
+
+  NativeUDPRequestContext * CreateRequestContext (
+    NativeCoreSequence seq,
+    NativeCoreID id,
+    NativeCallbackID callback
+  ) const;
+
+  const std::string CreateJSONError (
+    NativeCoreID id,
+    const std::string message
+  ) const;
+
+  void CallbackWithPostInContext (
+    NativeUDPRequestContext *context,
+    std::string data,
+    SSC::Post post
+  ) const;
+
+  void CallbackAndFinalizeContext (
+    NativeUDPRequestContext *context,
+    std::string data
+  ) const;
+
+  void CallbackWithPostAndFinalizeContext (
+    NativeUDPRequestContext *context,
+    std::string data,
+    SSC::Post post
+  ) const;
+
+  void Bind (
+    NativeCoreSequence seq,
+    NativeCoreID id,
+    std::string ip,
+    int port,
+    NativeCallbackID callback
+  ) const;
+
+  void Close (
+    NativeCoreSequence seq,
+    NativeCoreID id,
+    NativeCallbackID callback
+  ) const;
+
+  void Connect (
+    NativeCoreSequence seq,
+    NativeCoreID id,
+    std::string ip,
+    int port,
+    NativeCallbackID callback
+  ) const;
+
+  void Disconnect (
+    NativeCoreSequence seq,
+    NativeCoreID id,
+    NativeCallbackID callback
+  ) const;
+
+  void GetPeerName (
+    NativeCoreSequence seq,
+    NativeCoreID id,
+    NativeCallbackID callback
+  ) const;
+
+  void ReadStart (
+    NativeCoreSequence seq,
+    NativeCoreID id,
+    NativeCallbackID callback
+  ) const;
+
+  void Send (
+    NativeCoreSequence seq,
+    NativeCoreID id,
+    std::string data,
+    int16_t size,
+    std::string ip,
+    int port,
+    bool ephemeral,
     NativeCallbackID callback
   ) const;
 };

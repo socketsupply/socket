@@ -511,6 +511,233 @@ void NativeFileSystem::Write (
   });
 }
 
+#pragma NativeUDP
+
+NativeUDP::NativeUDP (JNIEnv *env, NativeCore *core) {
+  this->env = env;
+  this->core = core;
+}
+
+NativeUDPRequestContext * NativeUDP::CreateRequestContext (
+  NativeCoreSequence seq,
+  NativeCoreID id,
+  NativeCallbackID callback
+) const {
+  auto context = new NativeUDPRequestContext();
+
+  context->callback = callback;
+  context->core = this->core;
+  context->seq = seq;
+  context->udp = this;
+  context->id = id;
+
+  return context;
+}
+
+const std::string NativeUDP::CreateJSONError (NativeCoreID id, const std::string message)
+  const {
+  return SSC::format(
+    R"MSG({"err":{"id":"$S","message":"$S"}})MSG",
+    std::to_string(id),
+    message
+  );
+}
+
+void NativeUDP::CallbackWithPostInContext (
+  NativeUDPRequestContext *context,
+  std::string data,
+  SSC::Post post
+) const {
+  auto refs = context->core->GetRefs();
+  auto jvm = context->core->GetJavaVM();
+  auto js = context->core->createPost(context->seq, "", post);
+
+  JNIEnv *env = 0;
+
+  auto attached = jvm->AttachCurrentThread(&env, 0);
+
+  if (post.body != 0) {
+    EvaluateJavaScriptInEnvironment(
+      env,
+      refs.core,
+      env->NewStringUTF(js.c_str())
+    );
+  } else {
+    CallNativeCoreVoidMethodFromEnvironment(
+      env,
+      refs.core,
+      "callback",
+      "(Ljava/lang/String;Ljava/lang/String;)V",
+      context->callback,
+      env->NewStringUTF(data.c_str())
+    );
+  }
+
+  if (attached) {
+    jvm->DetachCurrentThread();
+  }
+}
+
+void NativeUDP::CallbackAndFinalizeContext (
+  NativeUDPRequestContext *context,
+  std::string data
+) const {
+  auto refs = context->core->GetRefs();
+  auto jvm = context->core->GetJavaVM();
+  JNIEnv *env = 0;
+
+  auto attached = jvm->AttachCurrentThread(&env, 0);
+
+  CallNativeCoreVoidMethodFromEnvironment(
+    env,
+    refs.core,
+    "callback",
+    "(Ljava/lang/String;Ljava/lang/String;)V",
+    context->callback,
+    env->NewStringUTF(data.c_str())
+  );
+
+  delete context;
+
+  if (attached) {
+    jvm->DetachCurrentThread();
+  }
+}
+
+void NativeUDP::CallbackWithPostAndFinalizeContext (
+  NativeUDPRequestContext *context,
+  std::string data,
+  SSC::Post post
+) const {
+  auto refs = context->core->GetRefs();
+  auto jvm = context->core->GetJavaVM();
+  auto js = context->core->createPost(context->seq, "", post);
+
+  JNIEnv *env = 0;
+
+  auto attached = jvm->AttachCurrentThread(&env, 0);
+
+  if (post.body != 0) {
+    EvaluateJavaScriptInEnvironment(
+      env,
+      refs.core,
+      env->NewStringUTF(js.c_str())
+    );
+  } else {
+    CallNativeCoreVoidMethodFromEnvironment(
+      env,
+      refs.core,
+      "callback",
+      "(Ljava/lang/String;Ljava/lang/String;)V",
+      context->callback,
+      env->NewStringUTF(data.c_str())
+    );
+  }
+
+  delete context;
+
+  if (attached) {
+    jvm->DetachCurrentThread();
+  }
+}
+
+void NativeUDP::Bind (
+  NativeCoreSequence seq,
+  NativeCoreID id,
+  std::string ip,
+  int port,
+  NativeCallbackID callback
+) const {
+  auto context = this->CreateRequestContext(seq, id, callback);
+  auto core = reinterpret_cast<SSC::Core *>(this->core);
+
+  core->udpBind(seq, id, ip, port, [context](auto seq, auto data, auto post) {
+    context->udp->CallbackAndFinalizeContext(context, data);
+  });
+}
+
+void NativeUDP::Close (
+  NativeCoreSequence seq,
+  NativeCoreID id,
+  NativeCallbackID callback
+) const {
+  auto context = this->CreateRequestContext(seq, id, callback);
+  auto core = reinterpret_cast<SSC::Core *>(this->core);
+
+  core->close(seq, id, [context](auto seq, auto data, auto post) {
+    context->udp->CallbackAndFinalizeContext(context, data);
+  });
+}
+
+void NativeUDP::Connect (
+  NativeCoreSequence seq,
+  NativeCoreID id,
+  std::string ip,
+  int port,
+  NativeCallbackID callback
+) const {
+  auto context = this->CreateRequestContext(seq, id, callback);
+  auto core = reinterpret_cast<SSC::Core *>(this->core);
+
+  // @TODO(jwerle): just use `std::string` for `ip`
+  core->udpConnect(seq, id, (const char *) ip.c_str(), port, [context](auto seq, auto data, auto post) {
+    context->udp->CallbackAndFinalizeContext(context, data);
+  });
+}
+
+void NativeUDP::Disconnect (
+  NativeCoreSequence seq,
+  NativeCoreID id,
+  NativeCallbackID callback
+) const {
+  // TODO(jwerle)
+}
+
+void NativeUDP::GetPeerName (
+  NativeCoreSequence seq,
+  NativeCoreID id,
+  NativeCallbackID callback
+) const {
+  auto context = this->CreateRequestContext(seq, id, callback);
+  auto core = reinterpret_cast<SSC::Core *>(this->core);
+
+  core->udpGetPeerName(seq, id, [context](auto seq, auto data, auto post) {
+    context->udp->CallbackAndFinalizeContext(context, data);
+  });
+}
+
+void NativeUDP::ReadStart (
+  NativeCoreSequence seq,
+  NativeCoreID id,
+  NativeCallbackID callback
+) const {
+  auto context = this->CreateRequestContext(seq, id, callback);
+  auto core = reinterpret_cast<SSC::Core *>(this->core);
+
+  core->udpReadStart(seq, id, [context](auto seq, auto data, auto post) {
+    context->udp->CallbackWithPostInContext(context, data, post);
+  });
+}
+
+void NativeUDP::Send (
+  NativeCoreSequence seq,
+  NativeCoreID id,
+  std::string data,
+  int16_t size,
+  std::string ip,
+  int port,
+  bool ephemeral,
+  NativeCallbackID callback
+) const {
+  auto context = this->CreateRequestContext(seq, id, callback);
+  auto core = reinterpret_cast<SSC::Core *>(this->core);
+
+  core->udpSend(seq, id, data.data(), 0, size, port, (const char *) ip.c_str(), ephemeral, [context](auto seq, auto data, auto post) {
+    context->udp->CallbackAndFinalizeContext(context, data);
+  });
+}
+
+
 // clang-format on
 
 #pragma Bindings
@@ -1181,13 +1408,22 @@ extern "C" {
     JNIEnv *env,
     jobject self,
     jstring seq,
-    jstring id
+    jstring id,
+    jstring callback
   ) {
     auto core = GetNativeCoreFromEnvironment(env);
 
     if (!core) {
       return Throw(env, NativeCoreNotInitializedException);
     }
+
+    auto udp = NativeUDP(env, core);
+
+    udp.Close(
+      NativeString(env, seq).str(),
+      GetNativeCoreIDFromJString(env, id),
+      (NativeCallbackID) callback
+    );
   }
 
   void exports(NativeCore, udpBind)(
@@ -1204,6 +1440,16 @@ extern "C" {
     if (!core) {
       return Throw(env, NativeCoreNotInitializedException);
     }
+
+    auto udp = NativeUDP(env, core);
+
+    udp.Bind(
+      NativeString(env, seq).str(),
+      GetNativeCoreIDFromJString(env, id),
+      NativeString(env, ip).str(),
+      (int) port,
+      (NativeCallbackID) callback
+    );
   }
 
   void exports(NativeCore, udpConnect)(
@@ -1220,6 +1466,38 @@ extern "C" {
     if (!core) {
       return Throw(env, NativeCoreNotInitializedException);
     }
+
+    auto udp = NativeUDP(env, core);
+
+    udp.Connect(
+      NativeString(env, seq).str(),
+      GetNativeCoreIDFromJString(env, id),
+      NativeString(env, ip).str(),
+      (int) port,
+      (NativeCallbackID) callback
+    );
+  }
+
+  void exports(NativeCore, udpDisconnect)(
+    JNIEnv *env,
+    jobject self,
+    jstring seq,
+    jstring id,
+    jstring callback
+  ) {
+    auto core = GetNativeCoreFromEnvironment(env);
+
+    if (!core) {
+      return Throw(env, NativeCoreNotInitializedException);
+    }
+
+    auto udp = NativeUDP(env, core);
+
+    udp.Disconnect(
+      NativeString(env, seq).str(),
+      GetNativeCoreIDFromJString(env, id),
+      (NativeCallbackID) callback
+    );
   }
 
   void exports(NativeCore, udpGetPeerName)(
@@ -1234,6 +1512,14 @@ extern "C" {
     if (!core) {
       return Throw(env, NativeCoreNotInitializedException);
     }
+
+    auto udp = NativeUDP(env, core);
+
+    udp.GetPeerName(
+      NativeString(env, seq).str(),
+      GetNativeCoreIDFromJString(env, id),
+      (NativeCallbackID) callback
+    );
   }
 
   void exports(NativeCore, udpReadStart)(
@@ -1248,6 +1534,14 @@ extern "C" {
     if (!core) {
       return Throw(env, NativeCoreNotInitializedException);
     }
+
+    auto udp = NativeUDP(env, core);
+
+    udp.ReadStart(
+      NativeString(env, seq).str(),
+      GetNativeCoreIDFromJString(env, id),
+      (NativeCallbackID) callback
+    );
   }
 
   void exports(NativeCore, udpSend)(
@@ -1267,6 +1561,19 @@ extern "C" {
     if (!core) {
       return Throw(env, NativeCoreNotInitializedException);
     }
+
+    auto udp = NativeUDP(env, core);
+
+    udp.Send(
+      NativeString(env, seq).str(),
+      GetNativeCoreIDFromJString(env, id),
+      NativeString(env, data).str(),
+      (int) size,
+      NativeString(env, ip).str(),
+      (int) port,
+      (bool) ephemeral,
+      (NativeCallbackID) callback
+    );
   }
 
   void exports(NativeCore, fsAccess)(

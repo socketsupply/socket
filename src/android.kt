@@ -820,6 +820,12 @@ open class Bridge(activity: WebViewActivity) {
             throw RuntimeException("getNetworkInterfaces: Missing 'seq' in IPC")
           }
 
+          val id = message.get("id")
+
+          core.udp.close(message.seq, id, fun (data: String) {
+            callback(message.seq, data)
+          })
+
           return message.seq
         }
 
@@ -827,6 +833,14 @@ open class Bridge(activity: WebViewActivity) {
           if (message.seq.isEmpty()) {
             throw RuntimeException("getNetworkInterfaces: Missing 'seq' in IPC")
           }
+
+          val id = message.get("id")
+          val ip = message.get("address")
+          val port = message.get("port", "0").toInt()
+
+          core.udp.bind(message.seq, id, ip, port, fun (data: String) {
+            callback(message.seq, data)
+          })
 
           return message.seq
         }
@@ -836,6 +850,14 @@ open class Bridge(activity: WebViewActivity) {
             throw RuntimeException("getNetworkInterfaces: Missing 'seq' in IPC")
           }
 
+          val id = message.get("id")
+          val ip = message.get("address")
+          val port = message.get("port", "0").toInt()
+
+          core.udp.connect(message.seq, id, ip, port, fun (data: String) {
+            callback(message.seq, data)
+          })
+
           return message.seq
         }
 
@@ -844,13 +866,40 @@ open class Bridge(activity: WebViewActivity) {
             throw RuntimeException("getNetworkInterfaces: Missing 'seq' in IPC")
           }
 
+          val id = message.get("id")
+
+          core.udp.readStart(message.seq, id, fun (data: String) {
+            callback(message.seq, data)
+          })
+
           return message.seq
         }
 
         "udpSend", "udp.send" -> {
+          val bytes = message.bytes
+
           if (message.seq.isEmpty()) {
             throw RuntimeException("getNetworkInterfaces: Missing 'seq' in IPC")
           }
+
+          if (!message.has("id")) {
+            return throwError(message.seq, "'id' is required")
+          }
+
+          if (bytes == null) {
+            return throwError(message.seq, "Missing required bytes")
+          }
+
+          val id = message.get("id")
+          val ip = message.get("address")
+          val data = String()
+          val port = message.get("port", "0").toInt()
+          val size = message.get("size").toInt()
+          val ephemeral = message.get("ephemeral") == "true"
+
+          core.udp.send(message.seq, id, data, size, ip, port, ephemeral, fun (data: String) {
+            callback(message.seq, data)
+          })
 
           return message.seq
         }
