@@ -364,6 +364,7 @@ namespace SSC {
     peer_type_t type; // can be bit or'd
     bool ephemeral = false;
     bool connected = false;
+    bool closed = false;
     struct sockaddr_in addr;
   };
 
@@ -2248,9 +2249,10 @@ namespace SSC {
     }
 
     uv_close((uv_handle_t*)&peer->udp, 0);
-    auto msg = SSC::format(R"MSG({ "data": {} })MSG");
-    peer->cb(seq, msg, Post{});
     delete peer;
+
+    auto msg = SSC::format(R"MSG({ "data": {} })MSG");
+    cb(seq, msg, Post{});
   }
 
   void Core::shutdown (String seq, uint64_t peerId, Cb cb) const {
