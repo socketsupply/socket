@@ -1400,7 +1400,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   }
 
   if (cmd.name == "udpBind") {
-    auto ip = cmd.get("ip");
+    auto ip = cmd.get("address");
     std::string err;
     int port;
     uint64_t peerId = 0ll;
