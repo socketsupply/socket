@@ -529,13 +529,12 @@ namespace SSC {
     if (cmd.name == "dnsLookup") {
       auto hostname = cmd.get("hostname");
       auto strFamily = cmd.get("family");
-      int family;
+      int family = 0;
 
       if (strFamily.size() > 0) {
         try {
           family = std::stoi(strFamily);
         } catch (...) {
-          family = 0;
         }
       }
 

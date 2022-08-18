@@ -1455,32 +1455,19 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   }
 
   if (cmd.name == "dnsLookup" || cmd.name == "dns.lookup") {
-    auto strId = cmd.get("id");
+    auto hostname = cmd.get("hostname");
     std::string err = "";
-    uint64_t peerId = 0ll;
 
-    if (strId.size() == 0) {
-      err = "invalid id";
-    } else {
+    auto strFamily = cmd.get("family");
+    int family = 0;
+
+    if (strFamily.size() > 0) {
       try {
-        peerId = std::stoull(cmd.get("id"));
+        family = std::stoi(strFamily);
       } catch (...) {
-        err = "invalid id";
       }
     }
 
-    if (err.size() > 0) {
-      dispatch_async(queue, ^{
-        auto msg = SSC::format(R"JSON({
-          "err": "$S"
-        })JSON", err);
-
-        [self send: seq msg: msg post: Post{}];
-      });
-      return true;
-    }
-
-    auto hostname = cmd.get("hostname");
     // TODO: support these options
     // auto family = std::stoi(cmd.get("family"));
     // auto hints = std::stoi(cmd.get("hints"));
@@ -1488,7 +1475,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     // auto verbatim = bool(std::stoi(cmd.get("verbatim")));
 
     dispatch_async(queue, ^{
-      self.core->dnsLookup(seq, hostname, [=](auto seq, auto msg, auto post) {
+      self.core->dnsLookup(seq, hostname, family, [=](auto seq, auto msg, auto post) {
         [self send: seq msg: msg post: post];
       });
     });
