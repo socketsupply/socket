@@ -1048,7 +1048,7 @@ namespace SSC {
         auto key = std::to_string(cmd.index) + seq;
         auto buffer = bufferQueue[key];
         bufferQueue.erase(bufferQueue.find(key));
-        ctx->core->udpSend(seq, peerId, buffer.data(), offset, (int)buffer.size(), port, ip.c_str(), ephemeral, cb);
+        ctx->core->udpSend(seq, peerId, buffer.data(), (int)buffer.size(), port, ip.c_str(), ephemeral, cb);
       });
       return true;
     }
