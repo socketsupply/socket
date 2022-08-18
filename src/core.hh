@@ -2743,11 +2743,10 @@ namespace SSC {
   }
 
   void Core::dnsLookup (String seq, String hostname, Cb cb) const {
-    auto ctxId = SSC::rand64();
-    Request* ctx = requests[ctxId] = new Request;
-    ctx->id = ctxId;
-    ctx->cb = cb;
-    ctx->seq = seq;
+    auto* rctx = new Request();
+    requests[rctx->id] = rctx;
+    rctx->cb = cb;
+    rctx->seq = seq;
 
     struct addrinfo hints = {0};
     hints.ai_family = AF_UNSPEC; // `AF_INET` or `AF_INET6`
@@ -2755,10 +2754,10 @@ namespace SSC {
     hints.ai_protocol = 0; // `0` for any
 
     uv_getaddrinfo_t* resolver = new uv_getaddrinfo_t;
-    resolver->data = ctx;
+    resolver->data = rctx;
 
     uv_getaddrinfo(getDefaultLoop(), resolver, [](uv_getaddrinfo_t *resolver, int status, struct addrinfo *res) {
-      auto ctx = (Request*) resolver->data;
+      auto rctx = (Request*) resolver->data;
 
       if (status < 0) {
         auto msg = SSC::format(R"MSG({
@@ -2766,10 +2765,10 @@ namespace SSC {
             "code": "$S",
             "message": "$S"
           }
-        })MSG", std::to_string(ctx->id), String(uv_err_name((int)status)), String(uv_strerror(status)));
-        ctx->cb(ctx->seq, msg, Post{});
-        requests.erase(ctx->id);
-        delete ctx;
+        })MSG", std::to_string(rctx->id), String(uv_err_name((int)status)), String(uv_strerror(status)));
+        rctx->cb(rctx->seq, msg, Post{});
+        requests.erase(rctx->id);
+        delete rctx;
         return;
       }
 
@@ -2794,9 +2793,9 @@ namespace SSC {
         }
       })MSG", ip, res->ai_family == AF_INET ? 4 : res->ai_family == AF_INET6 ? 6 : 0);
 
-      ctx->cb(ctx->seq, msg, Post{});
-      requests.erase(ctx->id);
-      delete ctx;
+      rctx->cb(rctx->seq, msg, Post{});
+      requests.erase(rctx->id);
+      delete rctx;
 
       uv_freeaddrinfo(res);
     }, hostname.c_str(), nullptr, &hints);
