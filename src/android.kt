@@ -817,7 +817,7 @@ open class Bridge(activity: WebViewActivity) {
       when (message.command) {
         "udpClose", "udp.close" -> {
           if (message.seq.isEmpty()) {
-            throw RuntimeException("getNetworkInterfaces: Missing 'seq' in IPC")
+            throw RuntimeException("udp.close: Missing 'seq' in IPC")
           }
 
           val id = message.get("id")
@@ -831,7 +831,7 @@ open class Bridge(activity: WebViewActivity) {
 
         "udpBind", "udp.bind" -> {
           if (message.seq.isEmpty()) {
-            throw RuntimeException("getNetworkInterfaces: Missing 'seq' in IPC")
+            throw RuntimeException("udp.bind: Missing 'seq' in IPC")
           }
 
           val id = message.get("id")
@@ -847,7 +847,7 @@ open class Bridge(activity: WebViewActivity) {
 
         "udpConnect", "udp.connect" -> {
           if (message.seq.isEmpty()) {
-            throw RuntimeException("getNetworkInterfaces: Missing 'seq' in IPC")
+            throw RuntimeException("udp.connect: Missing 'seq' in IPC")
           }
 
           val id = message.get("id")
@@ -863,7 +863,7 @@ open class Bridge(activity: WebViewActivity) {
 
         "udpReadStart", "udp.readStart" -> {
           if (message.seq.isEmpty()) {
-            throw RuntimeException("getNetworkInterfaces: Missing 'seq' in IPC")
+            throw RuntimeException("udp.readStart: Missing 'seq' in IPC")
           }
 
           val id = message.get("id")
@@ -879,11 +879,15 @@ open class Bridge(activity: WebViewActivity) {
           val bytes = message.bytes
 
           if (message.seq.isEmpty()) {
-            throw RuntimeException("getNetworkInterfaces: Missing 'seq' in IPC")
+            throw RuntimeException("udp.send: Missing 'seq' in IPC")
           }
 
           if (!message.has("id")) {
             return throwError(message.seq, "'id' is required")
+          }
+
+          if (!message.has("address")) {
+            return throwError(message.seq, "'address' is required")
           }
 
           if (bytes == null) {
@@ -892,10 +896,12 @@ open class Bridge(activity: WebViewActivity) {
 
           val id = message.get("id")
           val ip = message.get("address")
-          val data = String()
+          val data = String(bytes)
           val port = message.get("port", "0").toInt()
-          val size = message.get("size").toInt()
+          val size = message.get("size", bytes.size.toString()).toInt()
           val ephemeral = message.get("ephemeral") == "true"
+
+          android.util.Log.d(TAG, "message= ${message}")
 
           core.udp.send(message.seq, id, data, size, ip, port, ephemeral, fun (data: String) {
             callback(message.seq, data)
