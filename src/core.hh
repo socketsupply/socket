@@ -327,12 +327,6 @@ namespace SSC {
       }
   };
 
-  struct GenericContext {
-    Cb cb;
-    uint64_t id;
-    String seq;
-  };
-
   struct DescriptorContext {
     uv_file fd = 0;
     uv_dir_t *dir = nullptr;
@@ -366,6 +360,16 @@ namespace SSC {
     bool connected = false;
     bool closed = false;
     struct sockaddr_in addr;
+  };
+
+  struct Request {
+    Peer* peer;
+    Cb cb;
+    uint64_t id;
+    String seq;
+    Request () {
+      id = SSC::rand64();
+    }
   };
 
   static String addrToIPv4 (struct sockaddr_in* sin) {
@@ -417,11 +421,11 @@ namespace SSC {
   }
 
   std::map<uint64_t, Peer*> peers;
-  std::map<uint64_t, GenericContext*> contexts;
+  std::map<uint64_t, Request*> requests;
   std::map<uint64_t, DescriptorContext*> descriptors;
 
   std::recursive_mutex peersMutex;
-  std::recursive_mutex contextsMutex;
+  std::recursive_mutex requestsMutex;
   std::recursive_mutex descriptorsMutex;
 
   std::atomic<bool> didTimersInit = false;
@@ -2550,11 +2554,8 @@ namespace SSC {
       }
     }
 
-    peer->cb = cb;
-    peer->seq = seq;
-
     int err;
-    err = uv_ip4_addr((char*) ip, port, &peer->addr);
+    err = uv_ip4_addr((char*)ip, port, &peer->addr);
 
     if (err) {
       auto msg = SSC::format(R"MSG({
@@ -2572,7 +2573,13 @@ namespace SSC {
     uv_buf_t buffer = uv_buf_init(buf, len);
     uv_udp_send_t* req = new uv_udp_send_t;
 
-    req->data = peer;
+    auto* rctx = new Request();
+    requests[rctx->id] = rctx;
+    rctx->peer = peer;
+    rctx->cb = cb;
+    rctx->seq = seq;
+
+    req->data = rctx;
 
     struct sockaddr* addr = NULL;
 
@@ -2582,7 +2589,7 @@ namespace SSC {
 
     err = uv_udp_send(req, &peer->udp, &buffer, 1, addr, [](uv_udp_send_t *req, int status) {
       std::lock_guard<std::recursive_mutex> guard(peersMutex);
-      auto peer = reinterpret_cast<Peer*>(req->data);
+      auto rctx = reinterpret_cast<Request*>(req->data);
       std::string msg = "";
 
       if (status < 0) {
@@ -2591,23 +2598,25 @@ namespace SSC {
             "id": "$S",
             "message": "$S"
           }
-        })MSG", std::to_string(peer->id), std::string(uv_strerror(status)));
+        })MSG", std::to_string(rctx->peer->id), std::string(uv_strerror(status)));
       } else {
         msg = SSC::format(R"MSG({
           "data": {
             "id": "$S",
             "status": "$i"
           }
-        })MSG", std::to_string(peer->id), status);
+        })MSG", std::to_string(rctx->peer->id), status);
       }
 
-      peer->cb(peer->seq, msg, Post{});
+      rctx->cb(rctx->seq, msg, Post{});
 
       if (peer->ephemeral) {
-        uv_close((uv_handle_t *) &peer->udp, 0);
+        uv_close((uv_handle_t*)&ctx->peer->udp, 0);
         delete peer;
       }
 
+      requests.erase(rctx->id);
+      delete rctx;
       delete req;
     });
 
@@ -2628,6 +2637,8 @@ namespace SSC {
         delete peer;
       }
 
+      requests.erase(rctx->id);
+      delete rctx;
       delete req;
       return;
     }
@@ -2733,7 +2744,7 @@ namespace SSC {
 
   void Core::dnsLookup (String seq, String hostname, Cb cb) const {
     auto ctxId = SSC::rand64();
-    GenericContext* ctx = contexts[ctxId] = new GenericContext;
+    Request* ctx = requests[ctxId] = new Request;
     ctx->id = ctxId;
     ctx->cb = cb;
     ctx->seq = seq;
@@ -2747,7 +2758,7 @@ namespace SSC {
     resolver->data = ctx;
 
     uv_getaddrinfo(getDefaultLoop(), resolver, [](uv_getaddrinfo_t *resolver, int status, struct addrinfo *res) {
-      auto ctx = (GenericContext*) resolver->data;
+      auto ctx = (Request*) resolver->data;
 
       if (status < 0) {
         auto msg = SSC::format(R"MSG({
@@ -2757,7 +2768,7 @@ namespace SSC {
           }
         })MSG", std::to_string(ctx->id), String(uv_err_name((int)status)), String(uv_strerror(status)));
         ctx->cb(ctx->seq, msg, Post{});
-        contexts.erase(ctx->id);
+        requests.erase(ctx->id);
         delete ctx;
         return;
       }
@@ -2784,7 +2795,7 @@ namespace SSC {
       })MSG", ip, res->ai_family == AF_INET ? 4 : res->ai_family == AF_INET6 ? 6 : 0);
 
       ctx->cb(ctx->seq, msg, Post{});
-      contexts.erase(ctx->id);
+      requests.erase(ctx->id);
       delete ctx;
 
       uv_freeaddrinfo(res);
