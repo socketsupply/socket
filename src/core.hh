@@ -292,12 +292,13 @@ namespace SSC {
       void fsUnlink (String seq, String path, Cb cb) const;
       void fsWrite (String seq, uint64_t id, String data, int64_t offset, Cb cb) const;
 
-      void udpBind (String seq, uint64_t peerId, String ip, int port, Cb cb) const;
-      void udpConnect (String seq, uint64_t peerId, const char* ip, int port, Cb cb) const;
-      void udpSend (String seq, uint64_t peerId, char* buf, int len, int port, const char* ip, bool ephemeral, Cb cb) const;
+      void udpBind (String seq, uint64_t peerId, String address, int port, Cb cb) const;
+      void udpConnect (String seq, uint64_t peerId, String address, int port, Cb cb) const;
       void udpGetPeerName (String seq, uint64_t peerId, Cb cb) const;
-      void udpReadStart (String seq, uint64_t peerId, Cb cb) const;
       void udpGetSockName (String seq, uint64_t peerId, Cb cb) const;
+      void udpGetState (String seq, uint64_t peerId,  Cb cb) const;
+      void udpReadStart (String seq, uint64_t peerId, Cb cb) const;
+      void udpSend (String seq, uint64_t peerId, char* buf, int len, int port, String address, bool ephemeral, Cb cb) const;
 
       void sendBufferSize (String seq, uint64_t peerId, int size, Cb cb) const;
       void recvBufferSize (String seq, uint64_t peerId, int size, Cb cb) const;
@@ -327,6 +328,32 @@ namespace SSC {
       }
   };
 
+  // forward
+  struct Peer;
+  struct PeerRequest;
+  struct DescriptorContext;
+
+  static uv_loop_t defaultLoop = {0};
+
+  static std::map<uint64_t, Peer*> peers;
+  static std::map<uint64_t, PeerRequest*> requests;
+  static std::map<uint64_t, DescriptorContext*> descriptors;
+
+  static std::recursive_mutex peersMutex;
+  static std::recursive_mutex requestsMutex;
+  static std::recursive_mutex descriptorsMutex;
+
+  static std::recursive_mutex timersMutex;
+  static std::recursive_mutex timersInitMutex;
+  static std::recursive_mutex timersStartMutex;
+
+  static std::atomic<bool> didLoopInit = false;
+  static std::atomic<bool> didTimersInit = false;
+  static std::atomic<bool> didTimersStart = false;
+
+  static std::atomic<bool> isLoopRunning = false;
+  static std::recursive_mutex loopMutex;
+
   struct DescriptorContext {
     uv_file fd = 0;
     uv_dir_t *dir = nullptr;
@@ -340,97 +367,6 @@ namespace SSC {
     std::recursive_mutex mutex;
     void *data;
   };
-
-  typedef enum {
-    PEER_TYPE_NONE = 0,
-    PEER_TYPE_TCP = 1,
-    PEER_TYPE_UDP = 2,
-    PEER_TYPE_MAX = 0xf
-  } peer_type_t;
-
-  struct Peer {
-    Cb cb;
-    String seq;
-    uint64_t id;
-
-    uv_udp_t udp;
-    uv_stream_t* stream;
-    peer_type_t type; // can be bit or'd
-    bool ephemeral = false;
-    bool connected = false;
-    bool closed = false;
-    struct sockaddr_in addr;
-  };
-
-  struct Request {
-    Peer* peer;
-    Cb cb;
-    uint64_t id;
-    String seq;
-    uv_udp_send_t* req;
-  };
-
-  static String addrToIPv4 (struct sockaddr_in* sin) {
-    char buf[INET_ADDRSTRLEN];
-    inet_ntop(AF_INET, &sin->sin_addr, buf, INET_ADDRSTRLEN);
-    return String(buf);
-  }
-
-  static String addrToIPv6 (struct sockaddr_in6* sin) {
-    char buf[INET6_ADDRSTRLEN];
-    inet_ntop(AF_INET6, &sin->sin6_addr, buf, INET6_ADDRSTRLEN);
-    return String(buf);
-  }
-
-  struct PeerInfo {
-    String ip = "";
-    String family = "";
-    int port = 0;
-    int error = 0;
-    void init(uv_udp_t* socket);
-  };
-
-  void PeerInfo::init (uv_udp_t* socket) {
-    int namelen;
-    struct sockaddr_storage addr;
-    namelen = sizeof(addr);
-
-    error = uv_udp_getpeername(socket, (struct sockaddr*) &addr, &namelen);
-
-    if (error) {
-      return;
-    }
-
-    if (addr.ss_family == AF_INET) {
-      family = "IPv4";
-      ip = addrToIPv4((struct sockaddr_in*) &addr);
-      port = (int)htons(((struct sockaddr_in*) &addr)->sin_port);
-    } else {
-      family = "IPv6";
-      ip = addrToIPv6((struct sockaddr_in6*) &addr);
-      port = (int)htons(((struct sockaddr_in6*) &addr)->sin6_port);
-    }
-  }
-
-  static void parseAddress (struct sockaddr *name, int* port, char* ip) {
-    struct sockaddr_in *name_in = (struct sockaddr_in *) name;
-    *port = ntohs(name_in->sin_port);
-    uv_ip4_name(name_in, ip, 17);
-  }
-
-  std::map<uint64_t, Peer*> peers;
-  std::map<std::string, Request*> requests;
-  std::map<uint64_t, DescriptorContext*> descriptors;
-
-  std::recursive_mutex peersMutex;
-  std::recursive_mutex requestsMutex;
-  std::recursive_mutex descriptorsMutex;
-
-  std::atomic<bool> didTimersInit = false;
-  std::atomic<bool> didTimersStart = false;
-  std::recursive_mutex timersMutex;
-  std::recursive_mutex timersInitMutex;
-  std::recursive_mutex timersStartMutex;
 
   struct Timer {
     uv_timer_t handle;
@@ -491,11 +427,6 @@ namespace SSC {
   };
 
   static Timers timers;
-  static uv_loop_t defaultLoop = {0};
-
-  static std::atomic<bool> didLoopInit = false;
-  static std::atomic<bool> isLoopRunning = false;
-  static std::recursive_mutex loopMutex;
 
   static void initTimers ();
   static void startTimers ();
@@ -654,6 +585,519 @@ namespace SSC {
     didTimersStart = false;
   }
 
+
+  static String addrToIPv4 (struct sockaddr_in* sin) {
+    char buf[INET_ADDRSTRLEN];
+    inet_ntop(AF_INET, &sin->sin_addr, buf, INET_ADDRSTRLEN);
+    return String(buf);
+  }
+
+  static String addrToIPv6 (struct sockaddr_in6* sin) {
+    char buf[INET6_ADDRSTRLEN];
+    inet_ntop(AF_INET6, &sin->sin6_addr, buf, INET6_ADDRSTRLEN);
+    return String(buf);
+  }
+
+  static void parseAddress (struct sockaddr *name, int* port, char* address) {
+    struct sockaddr_in *name_in = (struct sockaddr_in *) name;
+    *port = ntohs(name_in->sin_port);
+    uv_ip4_name(name_in, address, 17);
+  }
+
+  typedef enum {
+    PEER_TYPE_NONE = 0,
+    PEER_TYPE_TCP = 1 << 1,
+    PEER_TYPE_UDP = 1 << 2,
+    PEER_TYPE_MAX = 0xF
+  } peer_type_t;
+
+  typedef enum {
+    PEER_FLAG_NONE = 0,
+    PEER_FLAG_EPHEMERAL = 1 << 1
+  } peer_flag_t;
+
+  typedef enum {
+    PEER_STATE_NONE = 0,
+    PEER_STATE_OPEN = 1 << 1,
+    PEER_STATE_CLOSED = 1 << 2,
+    PEER_STATE_BOUND = 1 << 3,
+    PEER_STATE_CONNECTED = 1 << 4
+  } peer_state_t;
+
+  struct PeerRequest {
+    uint64_t id;
+    String seq;
+    Cb cb;
+    Peer* peer;
+
+    PeerRequest () {
+      id = SSC::rand64();
+    }
+
+    PeerRequest (String s, Cb c)
+      : PeerRequest(s, c, nullptr)
+    {
+      // noop
+    }
+
+    PeerRequest (String s, Cb c, Peer *p) {
+      id = SSC::rand64();
+      cb = c;
+      seq = s;
+      peer = p;
+    }
+
+    void end (String seq, String msg, Post post) const {
+      cb(seq, msg, post);
+      delete this;
+    }
+
+    void end (String seq, String msg) const {
+      cb(seq, msg, Post{});
+      delete this;
+    }
+
+    void end (String msg, Post post) const {
+      cb(seq, msg, post);
+      delete this;
+    }
+
+    void end (String msg) const {
+      cb(seq, msg, Post{});
+      delete this;
+    }
+  };
+
+  struct LocalPeerInfo {
+    String address = "";
+    String family = "";
+    int port = 0;
+    int err = 0;
+
+    void init (uv_udp_t* socket) {
+      struct sockaddr_storage addr;
+      int namelen = sizeof(addr);
+
+      address = "";
+      port = 0;
+      family = "";
+
+      err = uv_udp_getsockname(socket, (struct sockaddr*) &addr, &namelen);
+
+      if (err) {
+        return;
+      }
+
+      if (addr.ss_family == AF_INET) {
+        family = "IPv4";
+        address = addrToIPv4((struct sockaddr_in*) &addr);
+        port = (int)htons(((struct sockaddr_in*) &addr)->sin_port);
+      } else {
+        family = "IPv6";
+        address = addrToIPv6((struct sockaddr_in6*) &addr);
+        port = (int)htons(((struct sockaddr_in6*) &addr)->sin6_port);
+      }
+    }
+  };
+
+  struct RemotePeerInfo {
+    String address = "";
+    String family = "";
+    int port = 0;
+    int err = 0;
+
+    void init (uv_udp_t* socket) {
+      struct sockaddr_storage addr;
+      int namelen = sizeof(addr);
+
+      address = "";
+      port = 0;
+      family = "";
+
+      err = uv_udp_getpeername(socket, (struct sockaddr*) &addr, &namelen);
+
+      if (err) {
+        return;
+      }
+
+      if (addr.ss_family == AF_INET) {
+        family = "IPv4";
+        address = addrToIPv4((struct sockaddr_in*) &addr);
+        port = (int)htons(((struct sockaddr_in*) &addr)->sin_port);
+      } else {
+        family = "IPv6";
+        address = addrToIPv6((struct sockaddr_in6*) &addr);
+        port = (int)htons(((struct sockaddr_in6*) &addr)->sin6_port);
+      }
+    }
+  };
+
+  /**
+   * A generic structure for a bound or connected peer.
+   */
+  struct Peer {
+    Cb cb;
+    Cb onudpread;
+    std::function<void(Peer *)> onclose;
+
+    String seq = "";
+    uint64_t id = 0;
+
+    // peer state
+    RemotePeerInfo remote;
+    LocalPeerInfo local;
+    peer_type_t type = PEER_TYPE_NONE;
+    peer_flag_t flags = PEER_FLAG_NONE;
+    peer_state_t state = PEER_STATE_NONE;
+
+    // uv
+    uv_udp_t udp;
+    uv_stream_t* stream;
+
+    struct sockaddr_in addr;
+    std::recursive_mutex mutex;
+
+    /**
+     * Checks if a `Peer` exists by `peerId`.
+     */
+    static bool exists (uint64_t peerId) {
+      std::lock_guard<std::recursive_mutex> guard(peersMutex);
+      return peers.find(peerId) != peers.end();
+    }
+
+    /**
+     * Remove a `Peer` by `peerId` optionally auto closing it.
+     */
+    static void remove (uint64_t peerId) { return remove(peerId, false); }
+    static void remove (uint64_t peerId, bool autoClose) {
+      std::lock_guard<std::recursive_mutex> guard(peersMutex);
+      if (exists(peerId)) {
+        if (autoClose) {
+          auto peer = get(peerId);
+          // will call `peers.erase()`
+          peer->close();
+        } else {
+          peers.erase(peerId);
+        }
+      }
+    }
+
+    /**
+     * Get a peer by `peerId` returning `nullptr` if it doesn't exist.
+     */
+    static Peer* get (uint64_t peerId) {
+      std::lock_guard<std::recursive_mutex> guard(peersMutex);
+      if (!exists(peerId)) return nullptr;
+      return peers.at(peerId);
+    }
+
+    /**
+     * Factory for creating a new `Peer` of `peerType` and `peerId`
+     */
+    static Peer* create (peer_type_t peerType, uint64_t peerId) {
+      return Peer::create(peerType, peerId, false);
+    }
+
+    static Peer* create (
+      peer_type_t peerType,
+      uint64_t peerId,
+      bool isEphemeral
+    ) {
+      std::lock_guard<std::recursive_mutex> guard(peersMutex);
+
+      if (exists(peerId)) {
+        auto peer = get(peerId);
+        if (isEphemeral) {
+          peer->flags = (peer_flag_t) (peer->flags | PEER_FLAG_EPHEMERAL);
+        }
+
+        return peer;
+      }
+
+      auto peer = new Peer(peerType, peerId, isEphemeral);
+      peers[peer->id] = peer;
+      return peer;
+    }
+
+    /**
+     * Private `Peer` class constructor
+     */
+    Peer (peer_type_t peerType, uint64_t peerId, bool isEphemeral) {
+      std::lock_guard<std::recursive_mutex> guard(peersMutex);
+      auto loop = getDefaultLoop();
+
+      id = peerId;
+      type = peerType;
+
+      udp.data = (void *) this;
+
+      if ((PEER_TYPE_UDP & type) == PEER_TYPE_UDP) {
+        uv_udp_init(loop, &udp);
+      }
+
+      if (isEphemeral) {
+        flags = (peer_flag_t) (flags | PEER_FLAG_EPHEMERAL);
+      }
+    }
+
+    ~Peer () {
+      std::lock_guard<std::recursive_mutex> guard(mutex);
+      // will call `close()`
+      Peer::remove(id, true);
+    }
+
+    void initRemotePeerInfo () {
+      std::lock_guard<std::recursive_mutex> guard(mutex);
+
+      if ((PEER_TYPE_UDP & type) == PEER_TYPE_UDP) {
+        remote.init(&udp);
+      }
+
+      if (isConnected()) {
+        setState(PEER_STATE_CONNECTED);
+      }
+    }
+
+    void initLocalPeerInfo () {
+      std::lock_guard<std::recursive_mutex> guard(mutex);
+
+      if ((PEER_TYPE_UDP & type) == PEER_TYPE_UDP) {
+        remote.init(&udp);
+      }
+
+      if (isConnected()) {
+        setState(PEER_STATE_CONNECTED);
+      }
+    }
+
+    void setState (peer_state_t value) {
+      std::lock_guard<std::recursive_mutex> guard(mutex);
+      state = (peer_state_t) (state | value);
+    }
+
+    void removeState (peer_state_t value) {
+      std::lock_guard<std::recursive_mutex> guard(mutex);
+      state = (peer_state_t) (state & ~value);
+    }
+
+    bool hasState (peer_state_t value) {
+      std::lock_guard<std::recursive_mutex> guard(mutex);
+      return (value & state) == value;
+    }
+
+    const struct sockaddr* getSockAddr () {
+      std::lock_guard<std::recursive_mutex> guard(mutex);
+      return (const struct sockaddr *) &addr;
+    }
+
+    const RemotePeerInfo* getRemotePeerInfo () {
+      std::lock_guard<std::recursive_mutex> guard(mutex);
+      if ((PEER_TYPE_UDP & type) == PEER_TYPE_UDP) {
+        remote.init(&udp);
+      }
+      return &remote;
+    }
+
+    const LocalPeerInfo* getLocalPeerInfo () {
+      std::lock_guard<std::recursive_mutex> guard(mutex);
+      if ((PEER_TYPE_UDP & type) == PEER_TYPE_UDP) {
+        local.init(&udp);
+      }
+      return &local;
+    }
+
+    bool isEphemeral () {
+      std::lock_guard<std::recursive_mutex> guard(mutex);
+      return (PEER_FLAG_EPHEMERAL & flags) == PEER_FLAG_EPHEMERAL;
+    }
+
+    bool isBound () {
+      std::lock_guard<std::recursive_mutex> guard(mutex);
+      return hasState(PEER_STATE_BOUND);
+    }
+
+    bool isActive () {
+      std::lock_guard<std::recursive_mutex> guard(mutex);
+      // can eventually test for a `tcp` handle
+      return uv_is_active((const uv_handle_t *) &udp);
+    }
+
+    bool isClosing () {
+      std::lock_guard<std::recursive_mutex> guard(mutex);
+      // can eventually test for a `tcp` handle
+      return uv_is_closing((const uv_handle_t *) &udp);
+    }
+
+    bool isClosed () {
+      std::lock_guard<std::recursive_mutex> guard(mutex);
+      return hasState(PEER_STATE_CLOSED);
+    }
+
+    bool isConnected () {
+      std::lock_guard<std::recursive_mutex> guard(mutex);
+      if ((PEER_TYPE_UDP & type) == PEER_TYPE_UDP) {
+        auto info = getRemotePeerInfo();
+        return info->err == 0;
+      }
+      return false;
+    }
+
+    int bind (std::string address, int port) {
+      std::lock_guard<std::recursive_mutex> guard(mutex);
+      int err = 0;
+
+      err = uv_ip4_addr((char *) address.c_str(), port, &addr);
+      if (err < 0) {
+        return err;
+      }
+
+      err = uv_udp_bind(&udp, getSockAddr(), 0);
+      if (err < 0) {
+        return err;
+      }
+
+      setState(PEER_STATE_BOUND);
+      initLocalPeerInfo();
+      return err;
+    }
+
+    int connect (std::string address, int port) {
+      std::lock_guard<std::recursive_mutex> guard(mutex);
+      int err = 0;
+
+      err = uv_ip4_addr((char *) address.c_str(), port, &addr);
+      if (err < 0) {
+        return err;
+      }
+
+      err = uv_udp_connect(&udp, getSockAddr());
+      if (err < 0) {
+        return err;
+      }
+
+      setState(PEER_STATE_CONNECTED);
+      initRemotePeerInfo();
+      return err;
+    }
+
+    void send (PeerRequest *ctx, char *buf, int len, int port, String address) {
+      std::lock_guard<std::recursive_mutex> guard(mutex);
+      auto loop = getDefaultLoop();
+      int err = 0;
+
+      err = uv_ip4_addr((char *) address.c_str(), port, &addr);
+
+      if (err) {
+        auto msg = SSC::format(R"MSG({
+          "err": {
+            "id": "$S",
+            "message": "$S"
+          }
+        })MSG", std::to_string(id), std::string(uv_strerror(err)));
+
+        return ctx->end(msg);
+      }
+
+      struct sockaddr* sockaddr = NULL;
+      if (!isConnected()) {
+        sockaddr = (struct sockaddr *) getSockAddr();
+      }
+
+      auto buffer = uv_buf_init(buf, len);
+      auto req = new uv_udp_send_t;
+      req->data = (void *) ctx;
+      ctx->peer = this;
+
+      err = uv_udp_send(req, &udp, &buffer, 1, sockaddr, [](uv_udp_send_t *req, int status) {
+        auto ctx = reinterpret_cast<PeerRequest*>(req->data);
+        auto peer = ctx->peer;
+        std::string msg = "";
+
+        if (status < 0) {
+          msg = SSC::format(R"MSG({
+            "err": {
+              "id": "$S",
+              "message": "$S"
+            }
+          })MSG", std::to_string(peer->id), std::string(uv_strerror(status)));
+        } else {
+          msg = SSC::format(R"MSG({
+            "data": {
+              "id": "$S",
+              "status": "$i"
+            }
+          })MSG", std::to_string(peer->id), status);
+        }
+
+        ctx->end(msg);
+
+        if (peer->isEphemeral()) {
+          peer->close([] (Peer *peer) {
+            delete peer;
+          });
+        }
+      });
+
+      if (err < 0) {
+        auto msg = SSC::format(R"MSG({
+          "err": {
+            "id": "$S",
+            "message": "Write error: $S"
+          }
+        })MSG", std::to_string(id), std::string(uv_strerror(err)));
+
+        ctx->end(msg);
+
+        if (isEphemeral()) {
+          close([] (Peer *peer) {
+            delete peer;
+          });
+        }
+
+        delete req;
+        return;
+      }
+
+      runDefaultLoop();
+    }
+
+    void close () {
+      std::lock_guard<std::recursive_mutex> guard(mutex);
+      static auto noop = [](Peer *){};
+      close(noop);
+    }
+
+    void close (std::function<void(Peer *)> onclose) {
+      std::lock_guard<std::recursive_mutex> guard(mutex);
+
+      if (!isActive()) {
+        return onclose(this);
+      }
+
+      if (isClosed() || isClosing()) {
+        return onclose(this);
+      }
+
+      if ((PEER_TYPE_UDP & type) == PEER_TYPE_UDP) {
+        this->onclose = onclose;
+        uv_close((uv_handle_t*) &udp, [](uv_handle_t *handle) {
+          auto peer = (Peer *) handle->data;
+
+          if (peer != nullptr) {
+            std::lock_guard<std::recursive_mutex> guard(peer->mutex);
+
+            // reset state and set to CLOSED
+            peer->state = PEER_STATE_CLOSED;
+            Peer::remove(peer->id);
+            peer->onclose(peer);
+          }
+        });
+
+        runDefaultLoop();
+      }
+    }
+  };
+
   typedef struct {
     uv_write_t req;
     uv_buf_t buf;
@@ -700,7 +1144,7 @@ namespace SSC {
       }
     }
 
-    cb(seq, "", Post{});
+    cb(seq, "{}", Post{});
 
     runDefaultLoop();
   }
@@ -721,7 +1165,7 @@ namespace SSC {
   }
 
   void Core::putTask (String id, Task t) {
-    tasks->insert(std::pair<std::string, Task>(id, t));
+    tasks->insert_or_assign(id, t);
   }
 
   Post Core::getPost (uint64_t id) {
@@ -2237,12 +2681,12 @@ namespace SSC {
   }
 
   void Core::close (String seq, uint64_t peerId, Cb cb) const {
-    Peer* peer = peers[peerId];
-
-    if (peer == nullptr) {
+    if (!Peer::exists(peerId)) {
       auto msg = SSC::format(R"MSG({
         "err": {
           "id": "$S",
+          "code": "NOT_FOUND_ERR",
+          "type": "NotFoundError",
           "message": "No connection with specified id"
         }
       })MSG", std::to_string(peerId));
@@ -2250,23 +2694,24 @@ namespace SSC {
       return;
     }
 
-    if (peer->closed) {
+    auto peer = Peer::get(peerId);
+
+    if (peer->isClosed() || peer->isClosing()) {
       auto msg = SSC::format(R"MSG({
         "err": {
           "id": "$S",
           "code": "ERR_SOCKET_DGRAM_NOT_RUNNING",
-          "message": "the socket has already been closed"
+          "type": "InternalError",
+          "message": "The socket has already been closed"
         }
       })MSG", std::to_string(peerId));
       cb(seq, msg, Post{});
       return;
     }
 
-    uv_close((uv_handle_t*)&peer->udp, 0);
-    peer->closed = true;
-
-    auto msg = SSC::format(R"MSG({ "data": {} })MSG");
-    cb(seq, msg, Post{});
+    peer->close([cb, seq] (Peer *) {
+      cb(seq, "{}", Post{});
+    });
   }
 
   void Core::shutdown (String seq, uint64_t peerId, Cb cb) const {
@@ -2329,46 +2774,45 @@ namespace SSC {
     runDefaultLoop();
   }
 
-  void Core::udpBind (String seq, uint64_t peerId, String ip, int port, Cb cb) const {
-    std::unique_lock<std::recursive_mutex> guard(peersMutex);
-    Peer* peer = peers[peerId] = new Peer();
-    peer->cb = cb;
-    peer->seq = seq;
-    peer->type = PEER_TYPE_UDP;
-    peer->id = peerId;
-    peer->udp.data = peer;
-
-    int err;
-    struct sockaddr_in addr;
-
-    err = uv_ip4_addr((char*) ip.c_str(), port, &peer->addr);
-
-    if (err < 0) {
+  void Core::udpBind (String seq, uint64_t peerId, String address, int port, Cb cb) const {
+    if (Peer::exists(peerId) && Peer::get(peerId)->isBound()) {
       auto msg = SSC::format(R"MSG({
         "err": {
-          "source": "udp",
           "id": "$S",
-          "message": "uv_ip4_addr: $S"
+          "code": "ERR_SOCKET_ALREADY_BOUND",
+          "source": "udp",
+          "message": ": Socket is already bound"
         }
-      })MSG", std::to_string(peerId), std::string(uv_strerror(err)));
-      guard.unlock();
+      })MSG", std::to_string(peerId));
       cb(seq, msg, Post{});
       return;
     }
 
-    uv_udp_init(getDefaultLoop(), &peer->udp);
-    err = uv_udp_bind(&peer->udp, (const struct sockaddr*)&peer->addr, 0);
-
-    guard.unlock();
+    auto peer = Peer::create(PEER_TYPE_UDP, peerId);
+    auto err = peer->bind(address, port);
 
     if (err < 0) {
       auto msg = SSC::format(R"MSG({
         "err": {
-          "source": "udp",
           "id": "$S",
-          "message": "uv_udp_bind: $S"
+          "source": "udp",
+          "message": "$S"
         }
-      })MSG", std::to_string(peer->id), std::string(uv_strerror(err)));
+      })MSG", std::to_string(peerId), std::string(uv_strerror(err)));
+      cb(seq, msg, Post{});
+      return;
+    }
+
+    auto info = peer->getLocalPeerInfo();
+
+    if (info->err < 0) {
+      auto msg = SSC::format(R"MSG({
+        "err": {
+          "id": "$S",
+          "source": "udp",
+          "message": "$S"
+        }
+      })MSG", std::to_string(peerId), std::string(uv_strerror(info->err)));
       cb(seq, msg, Post{});
       return;
     }
@@ -2376,56 +2820,29 @@ namespace SSC {
     auto msg = SSC::format(R"MSG({
       "data": {
         "source": "udp",
+        "event": "listening",
         "id": "$S",
-        "event": "listening"
+        "address": "$S",
+        "port": $i,
+        "family": "$S"
       }
-    })MSG", std::to_string(peer->id));
+    })MSG", std::to_string(peerId), info->address, info->port, info->family);
 
     cb(seq, msg, Post{});
+
     runDefaultLoop();
   }
 
-  void Core::udpConnect (String seq, uint64_t peerId, const char* ip, int port, Cb cb) const {
-    std::lock_guard<std::recursive_mutex> guard(peersMutex);
-    Peer* peer = nullptr;
-    auto loop = getDefaultLoop();
-
-    if (peers[peerId] == nullptr) {
-      peer = new Peer();
-      peers[peerId] = peer;
-      uv_udp_init(loop, &peer->udp);
-    } else {
-      peer = peers[peerId];
-    }
-
-    peer->id = peerId;
-    peer->cb = cb;
-    peer->seq = seq;
-    peer->type = PEER_TYPE_UDP;
-
-    int err;
-    err = uv_ip4_addr(ip, port, &peer->addr);
+  void Core::udpConnect (String seq, uint64_t peerId, String address, int port, Cb cb) const {
+    auto peer = Peer::create(PEER_TYPE_UDP, peerId);
+    auto err = peer->connect(address, port);
 
     if (err < 0) {
       auto msg = SSC::format(R"MSG({
         "err": {
-          "source": "udp",
           "id": "$S",
-          "message": "uv_udp_connect: $S"
-        }
-      })MSG", std::to_string(peerId), std::string(uv_strerror(err)));
-      cb(seq, msg, Post{});
-      return;
-    }
-
-    err = uv_udp_connect(&peer->udp, (const struct sockaddr*)&peer->addr);
-
-    if (err < 0) {
-      auto msg = SSC::format(R"MSG({
-        "err": {
           "source": "udp",
-          "id": "$S",
-          "message": "uv_udp_connect: $S"
+          "message": "$S"
         }
       })MSG", std::to_string(peerId), std::string(uv_strerror(err)));
       cb(seq, msg, Post{});
@@ -2435,27 +2852,19 @@ namespace SSC {
     auto msg = SSC::format(R"MSG({
       "data": {
         "source": "udp",
-        "ip": "$S",
+        "address": "$S",
         "port": $i,
         "id": "$S"
       }
-    })MSG", std::string(ip), port, std::to_string(peerId));
-
-    peer->connected = true;
+    })MSG", std::string(address), port, std::to_string(peerId));
 
     cb(seq, msg, Post{});
+
     runDefaultLoop();
   }
 
   void Core::udpGetPeerName (String seq, uint64_t peerId, Cb cb) const {
-    struct sockaddr sockname;
-    int len = sizeof(sockname);
-    int err = 0;
-
-    std::lock_guard<std::recursive_mutex> guard(peersMutex);
-    Peer* peer = peers[peerId];
-
-    if (peer == nullptr) {
+    if (!Peer::exists(peerId)) {
       auto msg = SSC::format(R"MSG({
         "err": {
           "source": "udp",
@@ -2467,187 +2876,125 @@ namespace SSC {
       return;
     }
 
-    PeerInfo info;
-    info.init(&peer->udp);
+    auto peer = Peer::get(peerId);
+    auto info = peer->getRemotePeerInfo();
+
+    if (info->err < 0) {
+      auto msg = SSC::format(R"MSG({
+        "err": {
+          "source": "udp",
+          "id": "$S",
+          "message": "$S"
+        }
+      })MSG", std::to_string(peerId), std::string(uv_strerror(info->err)));
+      cb(seq, msg, Post{});
+      return;
+    }
 
     auto msg = SSC::format(R"MSG({
       "data": {
         "source": "udp",
         "id": "$S",
-        "ip": "$S",
+        "address": "$S",
         "port": $i,
         "family": "$S"
       }
-    })MSG", std::to_string(peerId), info.ip, info.port, info.family);
+    })MSG", std::to_string(peerId), info->address, info->port, info->family);
+
     cb(seq, msg, Post{});
   }
 
   void Core::udpGetSockName (String seq, uint64_t peerId, Cb cb) const {
-    struct sockaddr sockname;
-    int len = sizeof(sockname);
-    int err = 0;
-
-    std::lock_guard<std::recursive_mutex> guard(peersMutex);
-    Peer* peer = peers[peerId];
-
-    if (peer == nullptr) {
+    if (!Peer::exists(peerId)) {
       auto msg = SSC::format(R"MSG({
         "err": {
           "source": "udp",
           "id": "$S",
-          "message": "no handle found for id provided"
+          "message": "no such peer"
         }
       })MSG", std::to_string(peerId));
       cb(seq, msg, Post{});
       return;
     }
 
-    err = uv_udp_getsockname(&peer->udp, &sockname, &len);
+    auto peer = Peer::get(peerId);
+    auto info = peer->getLocalPeerInfo();
 
-    if (err < 0) {
+    if (info->err < 0) {
       auto msg = SSC::format(R"MSG({
         "err": {
           "source": "udp",
           "id": "$S",
-          "message": "uv_udp_getsockname: $S"
+          "message": "$S"
         }
-      })MSG", std::to_string(peerId), std::string(uv_strerror(err)));
+      })MSG", std::to_string(peerId), std::string(uv_strerror(info->err)));
       cb(seq, msg, Post{});
       return;
     }
-
-    auto name = ((struct sockaddr_in*)&sockname);
-    int port = htons(name->sin_port);
-    std::string ip = std::string((char*)inet_ntoa(name->sin_addr));
 
     auto msg = SSC::format(R"MSG({
       "data": {
         "source": "udp",
         "id": "$S",
-        "ip": "$S",
-        "port": $i
+        "address": "$S",
+        "port": $i,
+        "family": "$S"
       }
-    })MSG", std::to_string(peerId), ip, port);
+    })MSG", std::to_string(peerId), info->address, info->port, info->family);
+
     cb(seq, msg, Post{});
   }
 
-  void Core::udpSend (String seq, uint64_t peerId, char* buf, int len, int port, const char* ip, bool ephemeral, Cb cb) const {
-    std::unique_lock<std::recursive_mutex> guard(peersMutex);
-    Peer* peer = nullptr;
-    auto loop = getDefaultLoop();
-
-    if (peers[peerId] != nullptr) {
-      peer = peers[peerId];
-    } else {
-      peer = new Peer();
-      peer->id = peerId;
-      peer->type = PEER_TYPE_UDP;
-
-      uv_udp_init(loop, &peer->udp);
-
-      if (ephemeral) {
-        peer->ephemeral = true;
-      } else {
-        peers[peerId] = peer;
-      }
-    }
-
-    int err;
-    err = uv_ip4_addr((char*)ip, port, &peer->addr);
-
-    if (err) {
+  void Core::udpGetState (String seq, uint64_t peerId,  Cb cb) const {
+    if (!Peer::exists(peerId)) {
       auto msg = SSC::format(R"MSG({
         "err": {
+          "source": "udp",
           "id": "$S",
-          "message": "$S"
+          "code": "NOT_FOUND_ERR",
+          "message": "no such peer"
         }
-      })MSG", std::to_string(peerId), std::string(uv_strerror(err)));
-
-      guard.unlock();
+      })MSG", std::to_string(peerId));
       cb(seq, msg, Post{});
       return;
     }
 
-    uv_buf_t buffer = uv_buf_init(buf, len);
-
-    auto* rctx = new Request();
-    requests.insert(std::pair<std::string, Request*>(seq, rctx));
-    rctx->peer = peer;
-    rctx->cb = cb;
-    rctx->seq = seq;
-    rctx->req = new uv_udp_send_t;
-    rctx->req->data = rctx;
-
-    struct sockaddr* addr = NULL;
-
-    if (!peer->connected) {
-      addr = (struct sockaddr*)&peer->addr;
-    }
-
-    err = uv_udp_send(rctx->req, &peer->udp, &buffer, 1, addr, [](uv_udp_send_t *req, int status) {
-      std::lock_guard<std::recursive_mutex> guard(peersMutex);
-      auto* rctx = reinterpret_cast<Request*>(req->data);
-      std::string msg = "";
-
-      if (status < 0) {
-        msg = SSC::format(R"MSG({
-          "err": {
-            "id": "$S",
-            "message": "$S"
-          }
-        })MSG", std::to_string(rctx->peer->id), std::string(uv_strerror(status)));
-      } else {
-        msg = SSC::format(R"MSG({
-          "data": {
-            "id": "$S",
-            "status": "$i"
-          }
-        })MSG", std::to_string(rctx->peer->id), status);
-      }
-
-      rctx->cb(rctx->seq, msg, Post{});
-
-      if (rctx->peer->ephemeral) {
-        uv_close((uv_handle_t*)&rctx->peer->udp, 0);
-        delete rctx->peer;
-      }
-
-      requests.erase(rctx->seq);
-      delete rctx->req;
-      delete rctx;
-    });
-
-    guard.unlock();
-
-    if (err < 0) {
-      auto msg = SSC::format(R"MSG({
-        "err": {
+    auto peer = Peer::get(peerId);
+    auto msg = SSC::format(R"MSG({
+        "data": {
+          "source": "udp",
           "id": "$S",
-          "message": "Write error: $S"
+          "type": "$S",
+          "ephemeral": $S,
+          "bound": $S,
+          "active": $S,
+          "closing": $S,
+          "closed": $S,
+          "connected": $S
         }
-      })MSG", std::to_string(peer->id), std::string(uv_strerror(err)));
+      })MSG",
+      std::to_string(peerId),
+      std::string(((PEER_TYPE_UDP & peer->type) == PEER_TYPE_UDP) ? "udp" : ""),
+      std::string(peer->isEphemeral() ? "true" : "false"),
+      std::string(peer->isBound() ? "true" : "false"),
+      std::string(peer->isActive() ? "true" : "false"),
+      std::string(peer->isClosing() ? "true" : "false"),
+      std::string(peer->isClosed() ? "true" : "false"),
+      std::string(peer->isConnected() ? "true" : "false")
+    );
 
-      cb(seq, msg, Post{});
+    cb(seq, msg, Post{});
+  }
 
-      if (ephemeral) {
-        uv_close((uv_handle_t *) &peer->udp, 0);
-        delete peer;
-      }
+  void Core::udpSend (String seq, uint64_t peerId, char* buf, int len, int port, String address, bool ephemeral, Cb cb) const {
+    auto peer = Peer::create(PEER_TYPE_UDP, peerId, ephemeral);
+    auto ctx = new PeerRequest(seq, cb);
 
-      requests.erase(rctx->seq);
-      delete rctx->req;
-      delete rctx;
-      return;
-    }
-
-    runDefaultLoop();
+    peer->send(ctx, buf, len, port, address);
   }
 
   void Core::udpReadStart (String seq, uint64_t peerId, Cb cb) const {
-    std::unique_lock<std::recursive_mutex> guard(peersMutex);
-    Peer* peer = peers[peerId];
-
-    if (peer == nullptr) {
+    if (!Peer::exists(peerId)) {
       auto msg = SSC::format(R"MSG({
         "err": {
           "source": "udp",
@@ -2657,12 +3004,44 @@ namespace SSC {
       })MSG", std::to_string(peerId));
 
       cb(seq, msg, Post{});
-      guard.unlock();
       return;
     }
 
-    peer->cb = cb;
-    peer->seq = seq;
+    auto peer = Peer::get(peerId);
+
+    if (peer->isActive()) {
+      /**
+      auto msg = SSC::format(R"MSG({
+        "err": {
+          "source": "udp",
+          "id": "$S",
+          "message": ""
+        }
+      })MSG", std::to_string(peerId));
+
+      cb(seq, msg, Post{});
+      return;
+      */
+
+      auto msg = SSC::format(R"MSG({ "data": {} })MSG");
+      cb(seq, msg, Post{});
+      return;
+    }
+
+    if (peer->isClosing()) {
+      auto msg = SSC::format(R"MSG({
+        "err": {
+          "source": "udp",
+          "id": "$S",
+          "message": "handle is closing"
+        }
+      })MSG", std::to_string(peerId));
+
+      cb(seq, msg, Post{});
+      return;
+    }
+
+    peer->onudpread = cb;
 
     auto allocate = [](uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf) {
       buf->base = (char*) malloc(suggested_size);
@@ -2681,7 +3060,7 @@ namespace SSC {
             "EOF": true
           }
         })MSG", std::to_string(peer->id));
-        peer->cb("-1", msg, Post{});
+        peer->onudpread("-1", msg, Post{});
         return;
       }
 
@@ -2708,7 +3087,7 @@ namespace SSC {
               "id": "$S",
               "bytes": $S,
               "port": $i,
-              "ip": "$S"
+              "address": "$S"
             }
           })MSG",
           std::to_string(peer->id),
@@ -2716,11 +3095,12 @@ namespace SSC {
           port,
           ip
         );
-        peer->cb("-1", msg, post);
+        peer->onudpread("-1", msg, post);
       }
     });
 
-    if (err < 0) {
+    // `UV_EALREADY || UV_EBUSY` means there is active IO on the underlying handle
+    if (err < 0 && err != UV_EALREADY && err != UV_EBUSY) {
       auto msg = SSC::format(R"MSG({
         "err": {
           "source": "udp",
@@ -2729,19 +3109,17 @@ namespace SSC {
         }
       })MSG", std::to_string(peerId), std::string(uv_strerror(err)));
       cb(seq, msg, Post{});
-      guard.unlock();
       return;
     }
 
-    guard.unlock();
     auto msg = SSC::format(R"MSG({ "data": {} })MSG");
     cb(seq, msg, Post{});
     runDefaultLoop();
   }
 
   void Core::dnsLookup (String seq, String hostname, int family, Cb cb) const {
-    auto* rctx = new Request();
-    requests[seq] = rctx;
+    auto* rctx = new PeerRequest();
+    requests[rctx->id] = rctx;
     rctx->cb = cb;
     rctx->seq = seq;
 
@@ -2762,7 +3140,7 @@ namespace SSC {
     resolver->data = rctx;
 
     uv_getaddrinfo(getDefaultLoop(), resolver, [](uv_getaddrinfo_t *resolver, int status, struct addrinfo *res) {
-      auto rctx = (Request*) resolver->data;
+      auto rctx = (PeerRequest*) resolver->data;
 
       if (status < 0) {
         auto msg = SSC::format(R"MSG({
@@ -2772,34 +3150,34 @@ namespace SSC {
           }
         })MSG", std::to_string(rctx->id), String(uv_err_name((int)status)), String(uv_strerror(status)));
         rctx->cb(rctx->seq, msg, Post{});
-        requests.erase(rctx->seq);
+        requests.erase(rctx->id);
         delete rctx;
         return;
       }
 
-      String ip = "";
+      String address = "";
 
       if (res->ai_family == AF_INET) {
         char addr[17] = {'\0'};
         uv_ip4_name((struct sockaddr_in*)(res->ai_addr), addr, 16);
-        ip = String(addr, 17);
+        address = String(addr, 17);
       } else if (res->ai_family == AF_INET6) {
         char addr[40] = {'\0'};
         uv_ip6_name((struct sockaddr_in6*)(res->ai_addr), addr, 39);
-        ip = String(addr, 40);
+        address = String(addr, 40);
       }
 
-      ip = ip.erase(ip.find('\0'));
+      address = address.erase(address.find('\0'));
 
       auto msg = SSC::format(R"MSG({
         "data": {
           "address": "$S",
           "family": $i
         }
-      })MSG", ip, res->ai_family == AF_INET ? 4 : res->ai_family == AF_INET6 ? 6 : 0);
+      })MSG", address, res->ai_family == AF_INET ? 4 : res->ai_family == AF_INET6 ? 6 : 0);
 
       rctx->cb(rctx->seq, msg, Post{});
-      requests.erase(rctx->seq);
+      requests.erase(rctx->id);
       delete rctx;
 
       uv_freeaddrinfo(res);
@@ -2825,7 +3203,7 @@ namespace SSC {
     v6 << "\"ipv6\":{";
 
     while (interface != nullptr) {
-      String ip = "";
+      String address = "";
       const struct sockaddr_in *addr = (const struct sockaddr_in*)interface->ifa_addr;
 
       if (addr->sin_family == AF_INET) {
