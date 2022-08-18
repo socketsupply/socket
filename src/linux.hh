@@ -528,9 +528,19 @@ namespace SSC {
 
     if (cmd.name == "dnsLookup") {
       auto hostname = cmd.get("hostname");
+      auto strFamily = cmd.get("family");
+      int family;
+
+      if (strFamily.size() > 0) {
+        try {
+          family = std::stoi(strFamily);
+        } catch (...) {
+          family = 0;
+        }
+      }
 
       Bridge::ThreadContext::Dispatch(this, [=](auto ctx) {
-        ctx->core->dnsLookup(seq, hostname, cb);
+        ctx->core->dnsLookup(seq, hostname, family, cb);
       });
       return true;
     }

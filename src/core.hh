@@ -305,7 +305,7 @@ namespace SSC {
       void shutdown (String seq, uint64_t peerId, Cb cb) const;
       void readStop (String seq, uint64_t peerId, Cb cb) const;
 
-      void dnsLookup (String seq, String hostname, Cb cb) const;
+      void dnsLookup (String seq, String hostname, int family, Cb cb) const;
       String getNetworkInterfaces () const;
 
       Task getTask (String id);
@@ -2742,14 +2742,22 @@ namespace SSC {
     runDefaultLoop();
   }
 
-  void Core::dnsLookup (String seq, String hostname, Cb cb) const {
+  void Core::dnsLookup (String seq, String hostname, int family, Cb cb) const {
     auto* rctx = new Request();
     requests[rctx->id] = rctx;
     rctx->cb = cb;
     rctx->seq = seq;
 
     struct addrinfo hints = {0};
-    hints.ai_family = AF_UNSPEC; // `AF_INET` or `AF_INET6`
+
+    if (family == 6) {
+      hints.ai_family = AF_INET6;
+    } else if (family == 4) {
+      hints.ai_family = AF_INET;
+    } else {
+      hints.ai_family = AF_UNSPEC;
+    }
+
     hints.ai_socktype = 0; // `0` for any
     hints.ai_protocol = 0; // `0` for any
 
