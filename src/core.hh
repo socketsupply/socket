@@ -2610,9 +2610,9 @@ namespace SSC {
 
       rctx->cb(rctx->seq, msg, Post{});
 
-      if (peer->ephemeral) {
-        uv_close((uv_handle_t*)&ctx->peer->udp, 0);
-        delete peer;
+      if (rctx->peer->ephemeral) {
+        uv_close((uv_handle_t*)&rctx->peer->udp, 0);
+        delete rctx->peer;
       }
 
       requests.erase(rctx->id);
