@@ -892,7 +892,7 @@ namespace SSC {
       }
 
       Bridge::ThreadContext::Dispatch(this, [=](auto ctx) {
-        auto ip = cmd.get("ip");
+        auto ip = cmd.get("address");
         int port;
         uint64_t peerId;
 
