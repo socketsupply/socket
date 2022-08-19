@@ -955,7 +955,7 @@ namespace SSC {
       }
 
       Bridge::ThreadContext::Dispatch(this, [=](auto ctx) {
-        ctx->core->udpConnect(seq, peerId, (const char*)ip.c_str(), port, cb);
+        ctx->core->udpConnect(seq, peerId, ip, port, cb);
       });
 
       return true;
@@ -1057,7 +1057,7 @@ namespace SSC {
         auto key = std::to_string(cmd.index) + seq;
         auto buffer = bufferQueue[key];
         bufferQueue.erase(bufferQueue.find(key));
-        ctx->core->udpSend(seq, peerId, buffer.data(), (int)buffer.size(), port, ip.c_str(), ephemeral, cb);
+        ctx->core->udpSend(seq, peerId, buffer.data(), (int)buffer.size(), port, ip, ephemeral, cb);
       });
       return true;
     }

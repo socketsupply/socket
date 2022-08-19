@@ -680,7 +680,7 @@ void NativeUDP::Connect (
   auto core = reinterpret_cast<SSC::Core *>(this->core);
 
   // @TODO(jwerle): just use `std::string` for `ip`
-  core->udpConnect(seq, id, (const char *) ip.c_str(), port, [context](auto seq, auto data, auto post) {
+  core->udpConnect(seq, id, ip, port, [context](auto seq, auto data, auto post) {
     context->udp->CallbackAndFinalizeContext(context, data);
   });
 }
@@ -734,7 +734,7 @@ void NativeUDP::Send (
   auto core = reinterpret_cast<SSC::Core *>(this->core);
 
   debug("udpSend: %d | %s", size, data.data());
-  core->udpSend(seq, id, data.data(), size, port, (const char *) ip.c_str(), ephemeral, [context](auto seq, auto data, auto post) {
+  core->udpSend(seq, id, data.data(), size, port, ip, ephemeral, [context](auto seq, auto data, auto post) {
     context->udp->CallbackAndFinalizeContext(context, data);
   });
 }
