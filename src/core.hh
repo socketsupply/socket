@@ -1086,13 +1086,10 @@ namespace SSC {
 
       if ((PEER_TYPE_UDP & type) == PEER_TYPE_UDP) {
         this->onclose = onclose;
-        __android_log_print(ANDROID_LOG_DEBUG, __FUNCTION__, "before close");
         uv_close((uv_handle_t*) &udp, [](uv_handle_t *handle) {
           auto peer = (Peer *) handle->data;
 
-        __android_log_print(ANDROID_LOG_DEBUG, __FUNCTION__, "in close");
           if (peer != nullptr) {
-        __android_log_print(ANDROID_LOG_DEBUG, __FUNCTION__, "close has peer");
             std::lock_guard<std::recursive_mutex> guard(peer->mutex);
 
             // reset state and set to CLOSED
@@ -1103,8 +1100,6 @@ namespace SSC {
         });
 
         runDefaultLoop();
-      } else {
-        __android_log_print(ANDROID_LOG_DEBUG, __FUNCTION__, "no close");
       }
     }
   };
