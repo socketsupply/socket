@@ -862,6 +862,48 @@ open class Bridge(activity: WebViewActivity) {
           return message.seq
         }
 
+        "udpGetPeerName", "udp.getPeerName" -> {
+          if (message.seq.isEmpty()) {
+            throw RuntimeException("udp.getPeerName: Missing 'seq' in IPC")
+          }
+
+          val id = message.get("id")
+
+          core.udp.getPeerName(message.seq, id, fun (data: String) {
+            callback(message.seq, data)
+          })
+
+          return message.seq
+        }
+
+        "udpGetSockName", "udp.getSockName" -> {
+          if (message.seq.isEmpty()) {
+            throw RuntimeException("udp.getSockName: Missing 'seq' in IPC")
+          }
+
+          val id = message.get("id")
+
+          core.udp.getSockName(message.seq, id, fun (data: String) {
+            callback(message.seq, data)
+          })
+
+          return message.seq
+        }
+
+        "udpGetState", "udp.getState" -> {
+          if (message.seq.isEmpty()) {
+            throw RuntimeException("udp.getState: Missing 'seq' in IPC")
+          }
+
+          val id = message.get("id")
+
+          core.udp.getState(message.seq, id, fun (data: String) {
+            callback(message.seq, data)
+          })
+
+          return message.seq
+        }
+
         "udpReadStart", "udp.readStart" -> {
           if (message.seq.isEmpty()) {
             throw RuntimeException("udp.readStart: Missing 'seq' in IPC")
@@ -1273,6 +1315,26 @@ open class NativeUDP(core: NativeCore) {
   ) {
     core?.apply {
       udpGetPeerName(seq, id, queueCallback(callback))
+    }
+  }
+
+  fun getSockName (
+    seq: String = "",
+    id: String,
+    callback: (String) -> Unit
+  ) {
+    core?.apply {
+      udpGetSockName(seq, id, queueCallback(callback))
+    }
+  }
+
+  fun getState (
+    seq: String = "",
+    id: String,
+    callback: (String) -> Unit
+  ) {
+    core?.apply {
+      udpGetState(seq, id, queueCallback(callback))
     }
   }
 
@@ -1801,6 +1863,20 @@ open class NativeCore(var activity: WebViewActivity) {
 
   @Throws(java.lang.Exception::class)
   external fun udpGetPeerName(
+    seq: String,
+    id: String,
+    callback: String
+  )
+
+  @Throws(java.lang.Exception::class)
+  external fun udpGetSockName(
+    seq: String,
+    id: String,
+    callback: String
+  )
+
+  @Throws(java.lang.Exception::class)
+  external fun udpGetState(
     seq: String,
     id: String,
     callback: String

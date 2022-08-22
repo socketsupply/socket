@@ -470,6 +470,18 @@ class NativeUDP {
     NativeCallbackID callback
   ) const;
 
+  void GetSockName (
+    NativeCoreSequence seq,
+    NativeCoreID id,
+    NativeCallbackID callback
+  ) const;
+
+  void GetState (
+    NativeCoreSequence seq,
+    NativeCoreID id,
+    NativeCallbackID callback
+  ) const;
+
   void ReadStart (
     NativeCoreSequence seq,
     NativeCoreID id,

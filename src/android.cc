@@ -707,6 +707,32 @@ void NativeUDP::GetPeerName (
   });
 }
 
+void NativeUDP::GetSockName (
+  NativeCoreSequence seq,
+  NativeCoreID id,
+  NativeCallbackID callback
+) const {
+  auto context = this->CreateRequestContext(seq, id, callback);
+  auto core = reinterpret_cast<SSC::Core *>(this->core);
+
+  core->udpGetSockName(seq, id, [context](auto seq, auto data, auto post) {
+    context->udp->CallbackAndFinalizeContext(context, data);
+  });
+}
+
+void NativeUDP::GetState (
+  NativeCoreSequence seq,
+  NativeCoreID id,
+  NativeCallbackID callback
+) const {
+  auto context = this->CreateRequestContext(seq, id, callback);
+  auto core = reinterpret_cast<SSC::Core *>(this->core);
+
+  core->udpGetState(seq, id, [context](auto seq, auto data, auto post) {
+    context->udp->CallbackAndFinalizeContext(context, data);
+  });
+}
+
 void NativeUDP::ReadStart (
   NativeCoreSequence seq,
   NativeCoreID id,
@@ -1521,6 +1547,50 @@ extern "C" {
     auto udp = NativeUDP(env, core);
 
     udp.GetPeerName(
+      NativeString(env, seq).str(),
+      GetNativeCoreIDFromJString(env, id),
+      (NativeCallbackID) callback
+    );
+  }
+
+  void exports(NativeCore, udpGetSockName)(
+    JNIEnv *env,
+    jobject self,
+    jstring seq,
+    jstring id,
+    jstring callback
+  ) {
+    auto core = GetNativeCoreFromEnvironment(env);
+
+    if (!core) {
+      return Throw(env, NativeCoreNotInitializedException);
+    }
+
+    auto udp = NativeUDP(env, core);
+
+    udp.GetSockName(
+      NativeString(env, seq).str(),
+      GetNativeCoreIDFromJString(env, id),
+      (NativeCallbackID) callback
+    );
+  }
+
+  void exports(NativeCore, udpGetState)(
+    JNIEnv *env,
+    jobject self,
+    jstring seq,
+    jstring id,
+    jstring callback
+  ) {
+    auto core = GetNativeCoreFromEnvironment(env);
+
+    if (!core) {
+      return Throw(env, NativeCoreNotInitializedException);
+    }
+
+    auto udp = NativeUDP(env, core);
+
+    udp.GetState(
       NativeString(env, seq).str(),
       GetNativeCoreIDFromJString(env, id),
       (NativeCallbackID) callback
