@@ -891,6 +891,7 @@ int main (const int argc, const char* argv[]) {
       flags = "-std=c++2a -ObjC++";
       flags += " -framework UniformTypeIdentifiers";
       flags += " -framework CoreBluetooth";
+      flags += " -framework Network";
       flags += " -framework UserNotifications";
       flags += " -framework WebKit";
       flags += " -framework Cocoa";

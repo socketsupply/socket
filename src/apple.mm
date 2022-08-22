@@ -1,4 +1,5 @@
 #include "core.hh"
+#import <Network/Network.h>
 #import <CoreBluetooth/CoreBluetooth.h>
 #import <UserNotifications/UserNotifications.h>
 
@@ -59,6 +60,8 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 @property (strong, nonatomic) BluetoothDelegate* bluetooth;
 @property (strong, nonatomic) BridgedWebView* webview;
 @property (nonatomic) SSC::Core* core;
+@property nw_path_monitor_t monitor;
+@property (strong, nonatomic) NSObject<OS_dispatch_queue>* monitorQueue;
 - (bool) route: (std::string)msg buf: (char*)buf bufsize: (size_t)bufsize;
 - (void) emit: (std::string)name msg: (std::string)msg;
 - (void) send: (std::string)seq msg: (std::string)msg post: (SSC::Post)post;
@@ -571,6 +574,57 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   _bluetooth.bridge = self;
 }
 
+- (void) initNetworkStatusObserver {
+  dispatch_queue_attr_t attrs = dispatch_queue_attr_make_with_qos_class(
+    DISPATCH_QUEUE_SERIAL,
+    QOS_CLASS_UTILITY,
+    DISPATCH_QUEUE_PRIORITY_DEFAULT
+  );
+
+  self.monitorQueue = dispatch_queue_create("co.socketsupply.network-monitor", attrs);
+
+  // self.monitor = nw_path_monitor_create_with_type(nw_interface_type_wifi);
+  self.monitor = nw_path_monitor_create();
+  nw_path_monitor_set_queue(self.monitor, self.monitorQueue);
+  nw_path_monitor_set_update_handler(self.monitor, ^(nw_path_t path) {
+    nw_path_status_t status = nw_path_get_status(path);
+
+    std::string name;
+    std::string message;
+
+    switch (status) {
+      case nw_path_status_invalid: {
+        name = "offline";
+        message = "Network path is invalid";
+        break;
+      }
+      case nw_path_status_satisfied: {
+        name = "online";
+        message = "Network is usable";
+        break;
+      }
+      case nw_path_status_satisfiable: {
+        name = "online";
+        message = "Network may be usable";
+        break;
+      }
+      case nw_path_status_unsatisfied: {
+        name = "offline";
+        message = "Network is not usable";
+        break;
+      }
+    }
+
+    dispatch_async(dispatch_get_main_queue(), ^{
+      [self emit: name msg: SSC::format(R"JSON({
+        "message": "$S"
+      })JSON", message)];
+    });
+  });
+
+  nw_path_monitor_start(self.monitor);
+}
+
 - (void) setWebview: (BridgedWebView*)wv {
   _webview = wv;
 }
@@ -586,7 +640,6 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 }
 
 - (void) send: (std::string)seq msg: (std::string)msg post: (SSC::Post)post {
-
   if (seq != "-1" && self.core->hasTask(seq)) {
     auto task = self.core->getTask(seq);
     self.core->removeTask(seq);
@@ -663,6 +716,8 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
   Parse cmd(msg);
   auto seq = cmd.get("seq");
+  // NSLog(@"Route<%s> - [%s:%i]", cmd.name.c_str(), buf, (int)bufsize);
+
   uint64_t peerId = 0;
 
   // printf("%s\n", cmd.uri.c_str());

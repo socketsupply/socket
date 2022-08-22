@@ -1,10 +1,6 @@
 #import <UIKit/UIKit.h>
-#import <Network/Network.h>
 #import <Webkit/Webkit.h>
 #import "common.hh"
-
-// #include <ifaddrs.h>
-// #include <arpa/inet.h>
 
 #include <_types/_uint64_t.h>
 #include <netinet/in.h>
@@ -32,9 +28,6 @@ SSC::Core* core;
 @property (strong, nonatomic) NavigationDelegate* navDelegate;
 @property (strong, nonatomic) BridgedWebView* webview;
 @property (strong, nonatomic) WKUserContentController* content;
-
-@property nw_path_monitor_t monitor;
-@property (strong, nonatomic) NSObject<OS_dispatch_queue>* monitorQueue;
 @end
 
 void uncaughtExceptionHandler (NSException *exception) {
@@ -56,57 +49,6 @@ void uncaughtExceptionHandler (NSException *exception) {
 - (void) applicationWillEnterForeground {
   [self.webview evaluateJavaScript: @"window.focus()" completionHandler:nil];
   [[bridge bluetooth] startScanning];
-}
-
-- (void) initNetworkStatusObserver {
-  dispatch_queue_attr_t attrs = dispatch_queue_attr_make_with_qos_class(
-    DISPATCH_QUEUE_SERIAL,
-    QOS_CLASS_UTILITY,
-    DISPATCH_QUEUE_PRIORITY_DEFAULT
-  );
-
-  self.monitorQueue = dispatch_queue_create("co.socketsupply.network-monitor", attrs);
-
-  // self.monitor = nw_path_monitor_create_with_type(nw_interface_type_wifi);
-  self.monitor = nw_path_monitor_create();
-  nw_path_monitor_set_queue(self.monitor, self.monitorQueue);
-  nw_path_monitor_set_update_handler(self.monitor, ^(nw_path_t path) {
-    nw_path_status_t status = nw_path_get_status(path);
-
-    std::string name;
-    std::string message;
-
-    switch (status) {
-      case nw_path_status_invalid: {
-        name = "offline";
-        message = "Network path is invalid";
-        break;
-      }
-      case nw_path_status_satisfied: {
-        name = "online";
-        message = "Network is usable";
-        break;
-      }
-      case nw_path_status_satisfiable: {
-        name = "online";
-        message = "Network may be usable";
-        break;
-      }
-      case nw_path_status_unsatisfied: {
-        name = "offline";
-        message = "Network is not usable";
-        break;
-      }
-    }
-
-    dispatch_async(dispatch_get_main_queue(), ^{
-      [bridge emit: name msg: SSC::format(R"JSON({
-        "message": "$S"
-      })JSON", message)];
-    });
-  });
-
-  nw_path_monitor_start(self.monitor);
 }
 
 //

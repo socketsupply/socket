@@ -367,9 +367,7 @@ namespace SSC {
     Cb cb;
     uint64_t id;
     String seq;
-    Request () {
-      id = SSC::rand64();
-    }
+    uv_udp_send_t* req;
   };
 
   static String addrToIPv4 (struct sockaddr_in* sin) {
@@ -421,7 +419,7 @@ namespace SSC {
   }
 
   std::map<uint64_t, Peer*> peers;
-  std::map<uint64_t, Request*> requests;
+  std::map<std::string, Request*> requests;
   std::map<uint64_t, DescriptorContext*> descriptors;
 
   std::recursive_mutex peersMutex;
@@ -723,7 +721,7 @@ namespace SSC {
   }
 
   void Core::putTask (String id, Task t) {
-    tasks->insert_or_assign(id, t);
+    tasks->insert(std::pair<std::string, Task>(id, t));
   }
 
   Post Core::getPost (uint64_t id) {
@@ -2571,15 +2569,14 @@ namespace SSC {
     }
 
     uv_buf_t buffer = uv_buf_init(buf, len);
-    uv_udp_send_t* req = new uv_udp_send_t;
 
     auto* rctx = new Request();
-    requests[rctx->id] = rctx;
+    requests.insert(std::pair<std::string, Request*>(seq, rctx));
     rctx->peer = peer;
     rctx->cb = cb;
     rctx->seq = seq;
-
-    req->data = rctx;
+    rctx->req = new uv_udp_send_t;
+    rctx->req->data = rctx;
 
     struct sockaddr* addr = NULL;
 
@@ -2587,9 +2584,9 @@ namespace SSC {
       addr = (struct sockaddr*)&peer->addr;
     }
 
-    err = uv_udp_send(req, &peer->udp, &buffer, 1, addr, [](uv_udp_send_t *req, int status) {
+    err = uv_udp_send(rctx->req, &peer->udp, &buffer, 1, addr, [](uv_udp_send_t *req, int status) {
       std::lock_guard<std::recursive_mutex> guard(peersMutex);
-      auto rctx = reinterpret_cast<Request*>(req->data);
+      auto* rctx = reinterpret_cast<Request*>(req->data);
       std::string msg = "";
 
       if (status < 0) {
@@ -2615,9 +2612,9 @@ namespace SSC {
         delete rctx->peer;
       }
 
-      requests.erase(rctx->id);
+      requests.erase(rctx->seq);
+      delete rctx->req;
       delete rctx;
-      delete req;
     });
 
     guard.unlock();
@@ -2637,9 +2634,9 @@ namespace SSC {
         delete peer;
       }
 
-      requests.erase(rctx->id);
+      requests.erase(rctx->seq);
+      delete rctx->req;
       delete rctx;
-      delete req;
       return;
     }
 
@@ -2744,7 +2741,7 @@ namespace SSC {
 
   void Core::dnsLookup (String seq, String hostname, int family, Cb cb) const {
     auto* rctx = new Request();
-    requests[rctx->id] = rctx;
+    requests[seq] = rctx;
     rctx->cb = cb;
     rctx->seq = seq;
 
@@ -2775,7 +2772,7 @@ namespace SSC {
           }
         })MSG", std::to_string(rctx->id), String(uv_err_name((int)status)), String(uv_strerror(status)));
         rctx->cb(rctx->seq, msg, Post{});
-        requests.erase(rctx->id);
+        requests.erase(rctx->seq);
         delete rctx;
         return;
       }
@@ -2802,7 +2799,7 @@ namespace SSC {
       })MSG", ip, res->ai_family == AF_INET ? 4 : res->ai_family == AF_INET6 ? 6 : 0);
 
       rctx->cb(rctx->seq, msg, Post{});
-      requests.erase(rctx->id);
+      requests.erase(rctx->seq);
       delete rctx;
 
       uv_freeaddrinfo(res);
