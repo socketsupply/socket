@@ -546,6 +546,7 @@ class NativeCore : public SSC::Core {
   void DNSLookup (
     NativeCoreSequence seq,
     std::string hostname,
+    int family,
     NativeCallbackID callback
   ) const;
 };

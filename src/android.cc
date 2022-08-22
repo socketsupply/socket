@@ -296,9 +296,10 @@ void NativeCore::Callback (
 void NativeCore::DNSLookup (
   NativeCoreSequence seq,
   std::string hostname,
+  int family,
   NativeCallbackID callback
 ) const {
-  reinterpret_cast<const SSC::Core *>(this)->dnsLookup(seq, hostname, [=](auto seq, auto msg, auto post) {
+  reinterpret_cast<const SSC::Core *>(this)->dnsLookup(seq, hostname, family, [=](auto seq, auto msg, auto post) {
     this->Callback(callback, msg);
   });
 }
@@ -1391,6 +1392,7 @@ extern "C" {
     jobject self,
     jstring seq,
     jstring hostname,
+    jint family,
     jstring callback
   ) {
     auto core = GetNativeCoreFromEnvironment(env);
@@ -1402,6 +1404,7 @@ extern "C" {
     core->DNSLookup(
       NativeString(env, seq).str(),
       NativeString(env, hostname).str(),
+      (int) family,
       (NativeCallbackID) callback
     );
   }

@@ -496,13 +496,14 @@ open class Bridge(activity: WebViewActivity) {
       when (message.command) {
         "dnsLookup", "dns.lookup" -> {
           val hostname = message.get("hostname")
+          val family = message.get("family", "4").toInt()
           val seq = message.seq
 
           if (hostname.isEmpty()) {
             throw RuntimeException("dns.lookup: Missing 'hostname' in IPC")
           }
 
-          core.dns.lookup(seq, hostname, fun (data: String) {
+          core.dns.lookup(seq, hostname, family, fun (data: String) {
             callback(message.seq, data)
           })
 
@@ -1213,10 +1214,11 @@ open class NativeDNS(core: NativeCore) {
   fun lookup (
     seq: String = "",
     hostname: String,
+    family: Int,
     callback: (String) -> Unit
   ) {
     core?.apply {
-      dnsLookup(seq, hostname, queueCallback(callback))
+      dnsLookup(seq, hostname, family, queueCallback(callback))
     }
   }
 
@@ -1765,6 +1767,7 @@ open class NativeCore(var activity: WebViewActivity) {
   external fun dnsLookup(
     seq: String,
     hostname: String,
+    family: Int,
     callback: String
   )
 
