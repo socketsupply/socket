@@ -1114,37 +1114,42 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     return true;
   }
 
-  if (cmd.name == "ip") {
-    auto seq = cmd.get("seq");
+  if (cmd.name == "ip" || cmd.name == "address") {
+    if (cmd.name == "ip") {
+      NSLog(@"'ipc://ip' is deprecated please use 'ipc://address' instead");
+    }
 
-    Peer* peer = peers[peerId];
-
-    if (peer == nullptr) {
+    if (!Peer::exists(peerId)) {
       auto msg = SSC::format(R"MSG({
         "err": {
           "message": "not connected"
         }
       })MSG");
+
       dispatch_async(queue, ^{
         [self send: seq msg: msg post: Post{}];
       });
     }
 
-    PeerInfo info;
-    info.init(&peer->udp);
+    auto peer = Peer::get(peerId);
+    auto info = peer->getRemotePeerInfo();
+    auto seq = cmd.get("seq");
 
     auto msg = SSC::format(
       R"MSG({
         "data": {
+          "id": "$S",
           "ip": "$S",
+          "address": "$S",
           "family": "$S",
           "port": "$i"
         }
       })MSG",
       peerId,
-      info.ip,
-      info.family,
-      info.port
+      info->address,
+      info->address,
+      info->family,
+      info->port
     );
 
     [self send: seq msg: msg post: Post{}];
@@ -1395,6 +1400,32 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
     dispatch_async(queue, ^{
       self.core->udpGetSockName(seq, peerId, [=](auto seq, auto msg, auto post) {
+        [self send: seq msg: msg post: post];
+      });
+    });
+    return true;
+  }
+
+  if (cmd.name == "udpGetState" || cmd.name == "udp.getState") {
+    auto strId = cmd.get("id");
+
+    if (strId.size() == 0) {
+      auto msg = SSC::format(R"MSG({
+        "err": {
+          "message": "expected either .id"
+        }
+      })MSG");
+
+      dispatch_async(queue, ^{
+        [self send: seq msg: msg post: Post{}];
+      });
+      return true;
+    }
+
+    auto peerId = std::stoull(strId);
+
+    dispatch_async(queue, ^{
+      self.core->udpGetState(seq, peerId, [=](auto seq, auto msg, auto post) {
         [self send: seq msg: msg post: post];
       });
     });

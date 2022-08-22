@@ -982,6 +982,48 @@ namespace SSC {
       return true;
     }
 
+    if (cmd.name == "udpGetSockName" || cmd.name == "udp.getSockName") {
+      auto strId = cmd.get("id");
+
+      if (strId.size() == 0) {
+        auto msg = SSC::format(R"MSG({
+          "err": {
+            "message": "expected .peerId"
+          }
+        })MSG");
+        cb(seq, msg, Post{});
+        return true;
+      }
+
+      auto peerId = std::stoull(strId);
+
+      Bridge::ThreadContext::Dispatch(this, [=](auto ctx) {
+        ctx->core->udpGetSockName(seq, peerId, cb);
+      });
+      return true;
+    }
+
+    if (cmd.name == "udpGetState" || cmd.name == "udp.getState") {
+      auto strId = cmd.get("id");
+
+      if (strId.size() == 0) {
+        auto msg = SSC::format(R"MSG({
+          "err": {
+            "message": "expected .peerId"
+          }
+        })MSG");
+        cb(seq, msg, Post{});
+        return true;
+      }
+
+      auto peerId = std::stoull(strId);
+
+      Bridge::ThreadContext::Dispatch(this, [=](auto ctx) {
+        ctx->core->udpGetState(seq, peerId, cb);
+      });
+      return true;
+    }
+
     if (cmd.name == "udpReadStart" || cmd.name == "udp.readStart") {
       if (cmd.get("id").size() == 0) {
         auto err = SSC::format(R"MSG({
