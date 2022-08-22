@@ -618,7 +618,7 @@ namespace SSC {
 
   typedef enum {
     PEER_STATE_NONE = 0,
-    PEER_STATE_OPEN = 1 << 1,
+    PEER_STATE_XXX = 1 << 1,
     PEER_STATE_CLOSED = 1 << 2,
     PEER_STATE_BOUND = 1 << 3,
     PEER_STATE_CONNECTED = 1 << 4
@@ -629,6 +629,7 @@ namespace SSC {
     String seq;
     Cb cb;
     Peer* peer;
+    void *data = nullptr;
 
     PeerRequest () {
       id = SSC::rand64();
@@ -1003,10 +1004,13 @@ namespace SSC {
         sockaddr = (struct sockaddr *) getSockAddr();
       }
 
-      auto buffer = uv_buf_init(buf, len);
+      auto tmp = new char[len]{0};
+      memcpy(tmp, buf, len);
+      auto buffer = uv_buf_init(tmp, len);
       auto req = new uv_udp_send_t;
       req->data = (void *) ctx;
       ctx->peer = this;
+      ctx->data = tmp;
 
       err = uv_udp_send(req, &udp, &buffer, 1, sockaddr, [](uv_udp_send_t *req, int status) {
         auto ctx = reinterpret_cast<PeerRequest*>(req->data);
@@ -1030,6 +1034,8 @@ namespace SSC {
         }
 
         ctx->end(msg);
+
+        delete (char *) ctx->data;
 
         if (peer->isEphemeral()) {
           peer->close([] (Peer *peer) {
@@ -1080,10 +1086,13 @@ namespace SSC {
 
       if ((PEER_TYPE_UDP & type) == PEER_TYPE_UDP) {
         this->onclose = onclose;
+        __android_log_print(ANDROID_LOG_DEBUG, __FUNCTION__, "before close");
         uv_close((uv_handle_t*) &udp, [](uv_handle_t *handle) {
           auto peer = (Peer *) handle->data;
 
+        __android_log_print(ANDROID_LOG_DEBUG, __FUNCTION__, "in close");
           if (peer != nullptr) {
+        __android_log_print(ANDROID_LOG_DEBUG, __FUNCTION__, "close has peer");
             std::lock_guard<std::recursive_mutex> guard(peer->mutex);
 
             // reset state and set to CLOSED
@@ -1094,6 +1103,8 @@ namespace SSC {
         });
 
         runDefaultLoop();
+      } else {
+        __android_log_print(ANDROID_LOG_DEBUG, __FUNCTION__, "no close");
       }
     }
   };

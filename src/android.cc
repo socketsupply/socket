@@ -526,7 +526,7 @@ NativeUDPRequestContext * NativeUDP::CreateRequestContext (
 ) const {
   auto context = new NativeUDPRequestContext();
 
-  context->callback = callback;
+  context->callback = (NativeCallbackID) env->NewWeakGlobalRef((jobject) callback);
   context->core = this->core;
   context->seq = seq;
   context->udp = this;
@@ -563,7 +563,7 @@ void NativeUDP::CallbackWithPostInContext (
       refs.core,
       env->NewStringUTF(js.c_str())
     );
-  } else {
+  } else if (context->seq.size() > 0 && context->seq != "-1") {
     CallNativeCoreVoidMethodFromEnvironment(
       env,
       refs.core,
@@ -589,6 +589,7 @@ void NativeUDP::CallbackAndFinalizeContext (
 
   auto attached = jvm->AttachCurrentThread(&env, 0);
 
+  debug("BEFORE\n");
   CallNativeCoreVoidMethodFromEnvironment(
     env,
     refs.core,
@@ -597,6 +598,7 @@ void NativeUDP::CallbackAndFinalizeContext (
     context->callback,
     env->NewStringUTF(data.c_str())
   );
+  debug("AFTER\n");
 
   delete context;
 
@@ -741,7 +743,7 @@ void NativeUDP::ReadStart (
   auto context = this->CreateRequestContext(seq, id, callback);
   auto core = reinterpret_cast<SSC::Core *>(this->core);
 
-  core->udpReadStart(seq, id, [context](auto seq, auto data, auto post) {
+  core->udpReadStart(seq, id, [](auto seq, auto data, auto post) {
     debug("udpReadStart callback");
     context->udp->CallbackWithPostInContext(context, data, post);
   });
