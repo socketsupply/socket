@@ -3034,11 +3034,9 @@ namespace SSC {
     peer->onudpread = cb;
 
     auto allocate = [](uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf) {
-      if (suggested_size > 0) {
-        buf->base = (char*) malloc(suggested_size);
-        buf->len = suggested_size;
-        memset(buf->base, 0, buf->len);
-      }
+      buf->base = (char*) malloc(suggested_size);
+      buf->len = suggested_size;
+      memset(buf->base, 0, buf->len);
     };
 
     int err = uv_udp_recv_start(&peer->udp, allocate, [](uv_udp_t *handle, ssize_t nread, const uv_buf_t *buf, const struct sockaddr *addr, unsigned flags) {
@@ -3068,6 +3066,7 @@ namespace SSC {
         post.body = buf->base;
         post.length = (int) nread;
         post.headers = headers;
+        post.bodyNeedsFree = true;
 
         auto msg = SSC::format(R"MSG({
             "data": {
@@ -3084,10 +3083,6 @@ namespace SSC {
           ip
         );
         peer->onudpread("-1", msg, post);
-      }
-
-      if (buf->base) {
-        free(buf->base);
       }
     });
 
