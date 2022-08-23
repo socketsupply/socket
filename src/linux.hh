@@ -112,8 +112,6 @@ namespace SSC {
       y = 0;
     }
 
-    output[size] = 0;
-
     return size;
   }
 
@@ -277,7 +275,7 @@ namespace SSC {
             : result.c_str();
 
           // stream body is free'd in `Post{}`
-          auto stream = g_memory_input_stream_new_from_data(body, size, 0);
+          auto stream = g_memory_input_stream_new_from_data(body, size, free);
           auto response = webkit_uri_scheme_response_new(stream, size);
 
           webkit_uri_scheme_response_set_content_type(
@@ -288,6 +286,8 @@ namespace SSC {
           webkit_uri_scheme_request_finish_with_response(request, response);
 
           app->bridge.core->removePost(post.id);
+
+          g_object_unref(stream);
         });
 
         if (!invoked) {
@@ -318,6 +318,7 @@ namespace SSC {
           );
 
           webkit_uri_scheme_request_finish_with_response(request, response);
+          g_object_unref(stream);
         }
       },
       this,
@@ -835,8 +836,8 @@ namespace SSC {
           auto offset = std::stoi(cmd.get("offset"));
           auto buffer = bufferQueue[key];
 
-          ctx->core->fsWrite(seq, id, buffer, offset, cb);
           bufferQueue.erase(bufferQueue.find(key));
+          ctx->core->fsWrite(seq, id, buffer, offset, cb);
         });
       }
 
@@ -1192,23 +1193,22 @@ namespace SSC {
           auto data = (char *) g_bytes_get_data(bytes, &size);
 
           if (size > 6) {
-            size_t offset = 10; // buf offset
+            size_t offset = 2 + 4 + 20; // buf offset
             auto index = new char[4]{0};
-            auto seq = new char[4]{0};
+            auto seq = new char[20]{0};
 
             buf = new char[size - offset]{0};
 
             decodeUTF8(index, data + 2, 4);
-            decodeUTF8(seq, data + 6, 4);
+            decodeUTF8(seq, data + 6, 20);
             bufsize = decodeUTF8(buf, data + offset, size - offset);
 
             str = std::string("ipc://buffer.queue?")
               + std::string("index=") + std::string(index)
               + std::string("&seq=") + std::string(seq);
 
-            delete index;
-            delete seq;
-
+            delete [] index;
+            delete [] seq;
           }
         }
 
@@ -1219,7 +1219,7 @@ namespace SSC {
         }
 
         if (buf != nullptr) {
-          delete buf;
+          delete [] buf;
         }
       }),
       this
