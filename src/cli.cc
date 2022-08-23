@@ -770,7 +770,8 @@ int main (const int argc, const char* argv[]) {
 
       auto runArg = optionValue(arg, "--run-arg");
       if (runArg.size() > 0) {
-        argvForward += " " + std::string(arg);
+        argvForward += " --test=" + runArg;
+        // argvForward += " " + std::string(option);
       }
 
       if (is(arg, "--headless")) {
