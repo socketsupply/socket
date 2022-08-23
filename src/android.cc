@@ -156,11 +156,13 @@ jboolean NativeCore::ConfigureEnvironment () {
 
   this->config = parseConfig(decodeURIComponent(STR_VALUE(SETTINGS)));
 
-  for (auto const &tuple : this->config) {
-    auto key = tuple.first;
-    auto value = tuple.second;
+  if (DEBUG) {
+    for (auto const &tuple : this->config) {
+      auto key = tuple.first;
+      auto value = tuple.second;
 
-    debug("AppConfig: %s = %s", key.c_str(), value.c_str());
+      debug("AppConfig: %s = %s", key.c_str(), value.c_str());
+    }
   }
 
   for (auto const &var : split(this->config["env"], ',')) {
@@ -170,7 +172,9 @@ jboolean NativeCore::ConfigureEnvironment () {
     if (value.size() > 0) {
       stream << key << "=" << encodeURIComponent(value) << "&";
       environmentVariables[key] = value;
-      debug("EnvironmentVariable: %s=%s", key.c_str(), value.c_str());
+      if (DEBUG) {
+        debug("EnvironmentVariable: %s=%s", key.c_str(), value.c_str());
+      }
     }
   }
 
@@ -589,7 +593,6 @@ void NativeUDP::CallbackAndFinalizeContext (
 
   auto attached = jvm->AttachCurrentThread(&env, 0);
 
-  debug("BEFORE\n");
   CallNativeCoreVoidMethodFromEnvironment(
     env,
     refs.core,
@@ -598,7 +601,6 @@ void NativeUDP::CallbackAndFinalizeContext (
     context->callback,
     env->NewStringUTF(data.c_str())
   );
-  debug("AFTER\n");
 
   delete context;
 
@@ -760,7 +762,6 @@ void NativeUDP::Send (
   auto context = this->CreateRequestContext(seq, id, callback);
   auto core = reinterpret_cast<SSC::Core *>(this->core);
 
-  debug("udpSend: %d | %s", size, data.data());
   core->udpSend(seq, id, data.data(), size, port, ip, ephemeral, [context](auto seq, auto data, auto post) {
     context->udp->CallbackAndFinalizeContext(context, data);
   });
@@ -785,7 +786,6 @@ extern "C" {
   ) {
     auto core = new NativeCore(env, self);
     auto pointer = core->GetPointer();
-    debug("Core::createPointer(%p)", pointer);
     return (jlong) core->GetPointer();
   }
 

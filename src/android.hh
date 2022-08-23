@@ -68,15 +68,16 @@ class NativeFileSystem;
 class NativeCore;
 class NativeUDP;
 
-/**
- * @TODO
- */
+#if DEBUG
 #define debug(format, ...)                                                     \
   {                                                                            \
     __android_log_print(                                                       \
       ANDROID_LOG_DEBUG, __FUNCTION__, format, ##__VA_ARGS__                   \
     );                                                                         \
   }
+#else
+#define debug(format, ...)
+#endif
 
 /**
  * @TODO

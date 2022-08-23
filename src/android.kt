@@ -200,7 +200,19 @@ open class WebViewClient(activity: WebViewActivity) : android.webkit.WebViewClie
           }
         }
 
-        stream.close()
+        val err = JSONError(
+          id = message.get("id"),
+          type = "NotFoundError",
+          extra = "\"url\": \"$url\"",
+          message = "Not found"
+        ).toString()
+
+        android.util.Log.d(TAG, "ERR: $err")
+
+        response.setStatusCodeAndReasonPhrase(404, "Not found")
+        response.setData(
+          java.io.ByteArrayInputStream(err.toByteArray())
+        )
       }
     }
 
@@ -1079,15 +1091,17 @@ open class ExternalWebViewInterface(activity: WebViewActivity) {
       }
     }
 
-    if (message.has("seq")) {
-      bridge.throwError(
-        message.seq, "Unknown command in IPC: ${message.command}"
-      )
+    val err = JSONError(
+      id = message.get("id"),
+      type = "NotFoundError",
+      message = "Not found"
+    ).toString()
 
-      return null
+    if (message.has("seq")) {
+      bridge.send(message.seq, err)
     }
 
-    throw RuntimeException("Invalid IPC invocation")
+    return err
   }
 }
 
@@ -1205,13 +1219,14 @@ open class MainWebViewActivity : WebViewActivity()
 class JSONError(
   private val id: String,
   private val message: String,
-  private val extra: String = ""
+  private val extra: String = "",
+  private val type: String = "InternalError"
 ) {
   override fun toString() = """{
     "err": {
       "id": "$id",
-      "type": "InternalError",
-      "message": "$message" ${if (extra.isNotEmpty()) "," else ""}
+      "type": "$type",
+      "message": "$message"${if (extra.isNotEmpty()) "," else ""}
       $extra
     }
   }"""
