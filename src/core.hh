@@ -629,7 +629,6 @@ namespace SSC {
     String seq;
     Cb cb;
     Peer* peer;
-    void *data = nullptr;
 
     PeerRequest () {
       id = SSC::rand64();
@@ -1004,13 +1003,11 @@ namespace SSC {
         sockaddr = (struct sockaddr *) getSockAddr();
       }
 
-      auto tmp = new char[len]{0};
-      memcpy(tmp, buf, len);
-      auto buffer = uv_buf_init(tmp, len);
+      auto buffer = uv_buf_init(buf, len);
       auto req = new uv_udp_send_t;
+
       req->data = (void *) ctx;
       ctx->peer = this;
-      ctx->data = tmp;
 
       err = uv_udp_send(req, &udp, &buffer, 1, sockaddr, [](uv_udp_send_t *req, int status) {
         auto ctx = reinterpret_cast<PeerRequest*>(req->data);
@@ -1035,7 +1032,7 @@ namespace SSC {
 
         ctx->end(msg);
 
-        delete (char *) ctx->data;
+        delete req;
 
         if (peer->isEphemeral()) {
           peer->close([] (Peer *peer) {
@@ -3016,19 +3013,6 @@ namespace SSC {
     auto peer = Peer::get(peerId);
 
     if (peer->isActive()) {
-      /**
-      auto msg = SSC::format(R"MSG({
-        "err": {
-          "source": "udp",
-          "id": "$S",
-          "message": ""
-        }
-      })MSG", std::to_string(peerId));
-
-      cb(seq, msg, Post{});
-      return;
-      */
-
       auto msg = SSC::format(R"MSG({ "data": {} })MSG");
       cb(seq, msg, Post{});
       return;
@@ -3050,9 +3034,11 @@ namespace SSC {
     peer->onudpread = cb;
 
     auto allocate = [](uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf) {
-      buf->base = (char*) malloc(suggested_size);
-      buf->len = suggested_size;
-      memset(buf->base, 0, buf->len);
+      if (suggested_size > 0) {
+        buf->base = (char*) malloc(suggested_size);
+        buf->len = suggested_size;
+        memset(buf->base, 0, buf->len);
+      }
     };
 
     int err = uv_udp_recv_start(&peer->udp, allocate, [](uv_udp_t *handle, ssize_t nread, const uv_buf_t *buf, const struct sockaddr *addr, unsigned flags) {
@@ -3067,10 +3053,7 @@ namespace SSC {
           }
         })MSG", std::to_string(peer->id));
         peer->onudpread("-1", msg, Post{});
-        return;
-      }
-
-      if (nread > 0) {
+      } else if (nread > 0) {
         int port;
         char ipbuf[17];
         parseAddress((struct sockaddr *) addr, &port, ipbuf);
@@ -3085,7 +3068,6 @@ namespace SSC {
         post.body = buf->base;
         post.length = (int) nread;
         post.headers = headers;
-        post.bodyNeedsFree = true;
 
         auto msg = SSC::format(R"MSG({
             "data": {
@@ -3102,6 +3084,10 @@ namespace SSC {
           ip
         );
         peer->onudpread("-1", msg, post);
+      }
+
+      if (buf->base) {
+        free(buf->base);
       }
     });
 
