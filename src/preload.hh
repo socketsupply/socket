@@ -156,7 +156,7 @@ constexpr auto gPreload = R"JS(
             if (/linux/i.test(window.process?.platform)) {
               if (body?.buffer instanceof ArrayBuffer) {
                 const type = new Uint8Array([0x62, 0x34]) // 'b4'
-                const header = new Uint8Array(8)
+                const header = new Uint8Array(24)
                 const buffer = new Uint8Array(
                   type.length +
                   header.length +
