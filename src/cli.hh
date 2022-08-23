@@ -34,7 +34,7 @@ general options:
   -r            run after building
   --headless    run headlessly
   --run-arg     an argument to pass to the application
-  --build-arg   an argument to pass to the build step
+  --test        indicate test mode
 
 packaging options:
   --prod  disable debugging info, inspector, etc.

@@ -699,7 +699,7 @@ int main (const int argc, const char* argv[]) {
     exit(0);
   });
 
-  createSubcommand("compile", { "--platform", "--port", "--quiet", "-o", "-r", "--prod", "-p", "-c", "-s", "-e", "-n", "--build-arg", "--run-arg", "--headless" }, true, [&](const std::span<const char *>& options) -> void {
+  createSubcommand("compile", { "--platform", "--port", "--quiet", "-o", "-r", "--prod", "-p", "-c", "-s", "-e", "-n", "--test", "--run-arg", "--headless" }, true, [&](const std::span<const char *>& options) -> void {
     bool flagRunUserBuildOnly = false;
     bool flagAppStore = false;
     bool flagCodeSign = false;
@@ -712,10 +712,10 @@ int main (const int argc, const char* argv[]) {
     bool flagBuildForAndroid = false;
     bool flagBuildForAndroidEmulator = false;
     bool flagBuildForSimulator = false;
+    bool flagBuildTest = false;
 
     std::string argvForward = "";
     std::string targetPlatform = "";
-    std::string customBuildArg = "";
 
     std::string devPort("0");
     auto cnt = 0;
@@ -763,9 +763,9 @@ int main (const int argc, const char* argv[]) {
         flagAppStore = true;
       }
 
-      auto buildArg = optionValue(arg, "--build-arg");
-      if (buildArg.size() > 0) {
-        customBuildArg += " " + std::string(arg);
+      if (is(arg, "--test")) {
+        argvForward += "--test";
+        flagBuildTest = true;
       }
 
       auto runArg = optionValue(arg, "--run-arg");
@@ -1426,8 +1426,8 @@ int main (const int argc, const char* argv[]) {
         << " --debug="
         << flagDebugMode;
 
-      if (customBuildArg.size() > 0) {
-        buildCommand << " " << customBuildArg;
+      if (flagBuildTest) {
+        buildCommand << " --test=true";
       }
 
       // log(buildCommand.str());
@@ -2335,7 +2335,8 @@ int main (const int argc, const char* argv[]) {
     for (auto const& option : options) {
       auto testPath = optionValue(option, "--run-arg");
       if (testPath.size() > 0) {
-        argvForward += " " + std::string(option);
+        argvForward += " --test=" + testPath;
+        // argvForward += " " + std::string(option);
       }
 
       if (is(option, "--headless")) {
