@@ -227,7 +227,7 @@ void uncaughtExceptionHandler (NSException *exception) {
   self.webview.scrollView.delegate = self;
 
   [self.window makeKeyAndVisible];
-  [self initNetworkStatusObserver];
+  [bridge initNetworkStatusObserver];
 
   return YES;
 }
