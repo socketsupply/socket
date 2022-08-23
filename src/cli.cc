@@ -1351,7 +1351,7 @@ int main (const int argc, const char* argv[]) {
       log("preparing build for win");
       auto prefix = prefixFile();
 
-      flags = " -std=c++20"
+      flags = " -std=c++2a"
         " -I" + prefix +
         " -I" + prefix + "\\src\\win64"
         " -L" + prefix + "\\src\\win64"
