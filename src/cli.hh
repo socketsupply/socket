@@ -33,7 +33,8 @@ general options:
   -o            only run user build step
   -r            run after building
   --headless    run headlessly
-  --test=1      indicate test mode
+  --run-arg     an argument to pass to the application
+  --build-arg   an argument to pass to the build step
 
 packaging options:
   --prod  disable debugging info, inspector, etc.
@@ -106,7 +107,7 @@ usage:
 options:
   --platform  iossimulator; if not specified, runs on current platfrom
   --prod      run production build
-  --test=1    indicate test mode
+  --run-arg   an argument to pass to the application
 )TEXT";
 
 constexpr auto gHelloWorld = R"HTML(

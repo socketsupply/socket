@@ -699,7 +699,7 @@ int main (const int argc, const char* argv[]) {
     exit(0);
   });
 
-  createSubcommand("compile", { "--platform", "--port", "--quiet", "-o", "-r", "--prod", "-p", "-c", "-s", "-e", "-n", "--test", "--test-path", "--headless" }, true, [&](const std::span<const char *>& options) -> void {
+  createSubcommand("compile", { "--platform", "--port", "--quiet", "-o", "-r", "--prod", "-p", "-c", "-s", "-e", "-n", "--build-arg", "--run-arg", "--headless" }, true, [&](const std::span<const char *>& options) -> void {
     bool flagRunUserBuildOnly = false;
     bool flagAppStore = false;
     bool flagCodeSign = false;
@@ -712,10 +712,10 @@ int main (const int argc, const char* argv[]) {
     bool flagBuildForAndroid = false;
     bool flagBuildForAndroidEmulator = false;
     bool flagBuildForSimulator = false;
-    bool flagBuildTest = false;
 
     std::string argvForward = "";
     std::string targetPlatform = "";
+    std::string customBuildArg = "";
 
     std::string devPort("0");
     auto cnt = 0;
@@ -763,16 +763,14 @@ int main (const int argc, const char* argv[]) {
         flagAppStore = true;
       }
 
-      if (is(arg, "--test")) {
-        argvForward += "--test";
-        flagBuildTest = true;
+      auto buildArg = optionValue(arg, "--build-arg");
+      if (buildArg.size() > 0) {
+        customBuildArg += " " + std::string(arg);
       }
 
-      auto testPath = optionValue(arg, "--test-path");
-      if (testPath.size() > 0) {
-        // argvForward += " " + std::string(option);
-        argvForward += " --test=" + testPath;
-        flagBuildTest = true;
+      auto runArg = optionValue(arg, "--run-arg");
+      if (runArg.size() > 0) {
+        argvForward += " " + std::string(arg);
       }
 
       if (is(arg, "--headless")) {
@@ -1427,9 +1425,9 @@ int main (const int argc, const char* argv[]) {
         << pathResourcesRelativeToUserBuild.string()
         << " --debug="
         << flagDebugMode;
-      
-      if (flagBuildTest) {
-        buildCommand << " --test=true";
+
+      if (customBuildArg.size() > 0) {
+        buildCommand << " " << customBuildArg;
       }
 
       // log(buildCommand.str());
@@ -2329,16 +2327,15 @@ int main (const int argc, const char* argv[]) {
     exit(exitCode);
   });
 
-  createSubcommand("run", { "--platform", "--prod", "--test-path",  "--headless" }, true, [&](const std::span<const char *>& options) -> void {
+  createSubcommand("run", { "--platform", "--prod", "--run-arg",  "--headless" }, true, [&](const std::span<const char *>& options) -> void {
     std::string argvForward = "";
     bool isIosSimulator = false;
     bool flagHeadless = false;
     std::string targetPlatform = "";
     for (auto const& option : options) {
-      auto testPath = optionValue(option, "--test-path");
+      auto testPath = optionValue(option, "--run-arg");
       if (testPath.size() > 0) {
-        // argvForward += " " + std::string(option);
-        argvForward += " --test=" + testPath;
+        argvForward += " " + std::string(option);
       }
 
       if (is(option, "--headless")) {
