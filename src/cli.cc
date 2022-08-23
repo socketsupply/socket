@@ -699,7 +699,7 @@ int main (const int argc, const char* argv[]) {
     exit(0);
   });
 
-  createSubcommand("compile", { "--platform", "--port", "--quiet", "-o", "-r", "--prod", "-p", "-c", "-s", "-e", "-n", "--test=1", "--headless" }, true, [&](const std::span<const char *>& options) -> void {
+  createSubcommand("compile", { "--platform", "--port", "--quiet", "-o", "-r", "--prod", "-p", "-c", "-s", "-e", "-n", "--test", "--test-path", "--headless" }, true, [&](const std::span<const char *>& options) -> void {
     bool flagRunUserBuildOnly = false;
     bool flagAppStore = false;
     bool flagCodeSign = false;
@@ -712,6 +712,7 @@ int main (const int argc, const char* argv[]) {
     bool flagBuildForAndroid = false;
     bool flagBuildForAndroidEmulator = false;
     bool flagBuildForSimulator = false;
+    bool flagBuildTest = false;
 
     std::string argvForward = "";
     std::string targetPlatform = "";
@@ -762,8 +763,16 @@ int main (const int argc, const char* argv[]) {
         flagAppStore = true;
       }
 
-      if (is(arg, "--test=1") || is(arg, "--test")) {
-        argvForward += "--test=1";
+      if (is(arg, "--test")) {
+        argvForward += "--test";
+        flagBuildTest = true;
+      }
+
+      auto testPath = optionValue(arg, "--test-path");
+      if (testPath.size() > 0) {
+        // argvForward += " " + std::string(option);
+        argvForward += " --test=" + testPath;
+        flagBuildTest = true;
       }
 
       if (is(arg, "--headless")) {
@@ -1416,7 +1425,12 @@ int main (const int argc, const char* argv[]) {
         << settings["build"]
         << " "
         << pathResourcesRelativeToUserBuild.string()
-        << " --debug=" << flagDebugMode;
+        << " --debug="
+        << flagDebugMode;
+      
+      if (flagBuildTest) {
+        buildCommand << " --test=true";
+      }
 
       // log(buildCommand.str());
       auto r = exec(buildCommand.str().c_str());
@@ -2315,14 +2329,16 @@ int main (const int argc, const char* argv[]) {
     exit(exitCode);
   });
 
-  createSubcommand("run", { "--platform", "--prod", "--test=1", "--headless" }, true, [&](const std::span<const char *>& options) -> void {
+  createSubcommand("run", { "--platform", "--prod", "--test-path",  "--headless" }, true, [&](const std::span<const char *>& options) -> void {
     std::string argvForward = "";
     bool isIosSimulator = false;
     bool flagHeadless = false;
     std::string targetPlatform = "";
     for (auto const& option : options) {
-      if (is(option, "--test=1") || is(option, "--test")) {
-        argvForward += "--test=1";
+      auto testPath = optionValue(option, "--test-path");
+      if (testPath.size() > 0) {
+        // argvForward += " " + std::string(option);
+        argvForward += " --test=" + testPath;
       }
 
       if (is(option, "--headless")) {
