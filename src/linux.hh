@@ -362,13 +362,13 @@ namespace SSC {
   }
 
   bool Bridge::invoke (Parse cmd, Cb cb) {
-    return this->invoke(cmd, 0, 0, cb);
+    return this->invoke(cmd, nullptr, 0, cb);
   }
 
   bool Bridge::invoke (Parse cmd, char *buf, size_t bufsize, Cb cb) {
     auto seq = cmd.get("seq");
 
-    if (cmd.name == "post") {
+    if (cmd.name == "post" || cmd.name == "data") {
       auto id = cmd.get("id");
 
       if (id.size() == 0) {
@@ -527,7 +527,7 @@ namespace SSC {
       return true;
     }
 
-    if (cmd.name == "dnsLookup") {
+    if (cmd.name == "dnsLookup" || cmd.name == "dns.lookup") {
       auto hostname = cmd.get("hostname");
       auto strFamily = cmd.get("family");
       int family = 0;
@@ -561,10 +561,10 @@ namespace SSC {
         return true;
       }
 
-      auto key = std::to_string(cmd.index) + seq;
+      auto bufferKey = std::to_string(cmd.index) + seq;
       auto str = std::string();
       str.assign(buf, bufsize);
-      bufferQueue[key] = str;
+      bufferQueue[bufferKey] = str;
       return true;
     }
 
@@ -829,14 +829,14 @@ namespace SSC {
     }
 
     if (cmd.name == "fsWrite" || cmd.name == "fs.write") {
-      auto key = std::to_string(cmd.index) + seq;
-      if (bufferQueue.count(key)) {
+      auto bufferKey = std::to_string(cmd.index) + seq;
+      if (bufferQueue.count(bufferKey)) {
         Bridge::ThreadContext::Dispatch(this, [=](auto ctx) {
           auto id = std::stoull(cmd.get("id"));
           auto offset = std::stoi(cmd.get("offset"));
-          auto buffer = bufferQueue[key];
+          auto buffer = bufferQueue[bufferKey];
 
-          bufferQueue.erase(bufferQueue.find(key));
+          bufferQueue.erase(bufferQueue.find(bufferKey));
           ctx->core->fsWrite(seq, id, buffer, offset, cb);
         });
       }
@@ -1097,10 +1097,13 @@ namespace SSC {
       }
 
       Bridge::ThreadContext::Dispatch(this, [=](auto ctx) {
-        auto key = std::to_string(cmd.index) + seq;
-        auto buffer = bufferQueue[key];
-        bufferQueue.erase(bufferQueue.find(key));
-        ctx->core->udpSend(seq, peerId, buffer.data(), (int)buffer.size(), port, ip, ephemeral, cb);
+        auto bufferKey = std::to_string(cmd.index) + seq;
+        auto buffer = bufferQueue[bufferKey];
+        auto data = buffer.data();
+        auto size = buffer.size();
+
+        bufferQueue.erase(bufferQueue.find(bufferKey));
+        ctx->core->udpSend(seq, peerId, data, size, port, ip, ephemeral, cb);
       });
       return true;
     }
@@ -1113,6 +1116,10 @@ namespace SSC {
 
     return this->invoke(cmd, buf, bufsize, [cmd, this](auto seq, auto msg, auto post) {
       this->send(cmd, seq, msg, post);
+
+      if (this->core->hasPost(post.id)) {
+        this->core->removePost(post.id);
+      }
     });
   }
 
@@ -1197,10 +1204,10 @@ namespace SSC {
             auto index = new char[4]{0};
             auto seq = new char[20]{0};
 
-            buf = new char[size - offset]{0};
-
             decodeUTF8(index, data + 2, 4);
-            decodeUTF8(seq, data + 6, 20);
+            decodeUTF8(seq, data + 2 + 4, 20);
+
+            buf = new char[size - offset]{0};
             bufsize = decodeUTF8(buf, data + offset, size - offset);
 
             str = std::string("ipc://buffer.queue?")
