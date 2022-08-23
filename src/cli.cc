@@ -699,7 +699,7 @@ int main (const int argc, const char* argv[]) {
     exit(0);
   });
 
-  createSubcommand("compile", { "--platform", "--port", "--quiet", "-o", "-r", "--prod", "-p", "-c", "-s", "-e", "-n", "--test", "--run-arg", "--headless" }, true, [&](const std::span<const char *>& options) -> void {
+  createSubcommand("compile", { "--platform", "--port", "--quiet", "-o", "-r", "--prod", "-p", "-c", "-s", "-e", "-n", "--test", "--headless" }, true, [&](const std::span<const char *>& options) -> void {
     bool flagRunUserBuildOnly = false;
     bool flagAppStore = false;
     bool flagCodeSign = false;
@@ -764,18 +764,18 @@ int main (const int argc, const char* argv[]) {
       }
 
       if (is(arg, "--test")) {
-        argvForward += "--test";
         flagBuildTest = true;
+        argvForward += " --test";
       }
 
-      auto runArg = optionValue(arg, "--run-arg");
-      if (runArg.size() > 0) {
-        argvForward += " --test=" + runArg;
-        // argvForward += " " + std::string(option);
+      auto testArg = optionValue(arg, "--test");
+      if (testArg.size() > 0) {
+        flagBuildTest = true;
+        argvForward += " " + std::string(arg);
       }
 
       if (is(arg, "--headless")) {
-        argvForward += "--headless";
+        argvForward += " --headless";
         flagHeadless = true;
       }
 
@@ -2328,20 +2328,22 @@ int main (const int argc, const char* argv[]) {
     exit(exitCode);
   });
 
-  createSubcommand("run", { "--platform", "--prod", "--run-arg",  "--headless" }, true, [&](const std::span<const char *>& options) -> void {
+  createSubcommand("run", { "--platform", "--prod", "--test",  "--headless" }, true, [&](const std::span<const char *>& options) -> void {
     std::string argvForward = "";
     bool isIosSimulator = false;
     bool flagHeadless = false;
     std::string targetPlatform = "";
     for (auto const& option : options) {
-      auto testPath = optionValue(option, "--run-arg");
+      if (is(option, "--test")) {
+        argvForward += " --test";
+      }
+      auto testPath = optionValue(option, "--test");
       if (testPath.size() > 0) {
-        argvForward += " --test=" + testPath;
-        // argvForward += " " + std::string(option);
+        argvForward += " " + std::string(option);
       }
 
       if (is(option, "--headless")) {
-        argvForward += "--headless";
+        argvForward += " --headless";
         flagHeadless = true;
       }
 

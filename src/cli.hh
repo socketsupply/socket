@@ -28,13 +28,12 @@ usage:
   ssc compile [options] [<project-dir>]
 
 general options:
-  --platform    cross-compilation target. Can be: ios, ios-simulator, android-emulator
-  --port=n      load "index.html" from "http://localhost:n"
-  -o            only run user build step
-  -r            run after building
-  --headless    run headlessly
-  --run-arg     an argument to pass to the application
-  --test        indicate test mode
+  --platform     cross-compilation target. Can be: ios, ios-simulator, android-emulator
+  --port=n       load "index.html" from "http://localhost:n"
+  -o             only run user build step
+  -r             run after building
+  --headless     run headlessly
+  --test[=value] indicate test mode
 
 packaging options:
   --prod  disable debugging info, inspector, etc.
@@ -105,9 +104,9 @@ usage:
   ssc run [options] [<project-dir>]
 
 options:
-  --platform  iossimulator; if not specified, runs on current platfrom
-  --prod      run production build
-  --run-arg   an argument to pass to the application
+  --platform     iossimulator; if not specified, runs on current platfrom
+  --prod         run production build
+  --test[=value] indicate test mode
 )TEXT";
 
 constexpr auto gHelloWorld = R"HTML(
