@@ -1144,8 +1144,12 @@ namespace SSC {
 
       for (auto const &tuple : SSC::descriptors) {
         auto desc = tuple.second;
-        std::lock_guard<std::recursive_mutex> descriptorLock(desc->mutex);
-        desc->stale = true;
+        if (desc != nullptr) {
+          std::lock_guard<std::recursive_mutex> descriptorLock(desc->mutex);
+          desc->stale = true;
+        } else {
+          SSC::descriptors.erase(tuple.first);
+        }
       }
     }
 
