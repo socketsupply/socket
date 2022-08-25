@@ -621,9 +621,13 @@ namespace SSC {
   typedef enum {
     PEER_STATE_NONE = 0,
     PEER_STATE_XXX = 1 << 1,
+    // general states
     PEER_STATE_CLOSED = 1 << 2,
-    PEER_STATE_BOUND = 1 << 3,
-    PEER_STATE_CONNECTED = 1 << 4
+    // udp states
+    PEER_STATE_UDP_BOUND = 1 << 3,
+    PEER_STATE_UDP_CONNECTED = 1 << 4,
+    PEER_STATE_UDP_RECV_STARTED = 1 << 5,
+    PEER_STATE_MAX = 1 << 0xF
   } peer_state_t;
 
   struct PeerRequest {
@@ -739,7 +743,7 @@ namespace SSC {
    */
   struct Peer {
     Cb cb;
-    Cb onudpread;
+    Cb onrecv;
     std::function<void(Peer *)> onclose;
 
     String seq = "";
@@ -856,7 +860,7 @@ namespace SSC {
       }
 
       if (isConnected()) {
-        setState(PEER_STATE_CONNECTED);
+        setState(PEER_STATE_UDP_CONNECTED);
       }
     }
 
@@ -868,7 +872,7 @@ namespace SSC {
       }
 
       if (isConnected()) {
-        setState(PEER_STATE_CONNECTED);
+        setState(PEER_STATE_UDP_CONNECTED);
       }
     }
 
@@ -915,7 +919,7 @@ namespace SSC {
 
     bool isBound () {
       std::lock_guard<std::recursive_mutex> guard(mutex);
-      return hasState(PEER_STATE_BOUND);
+      return hasState(PEER_STATE_UDP_BOUND);
     }
 
     bool isActive () {
@@ -958,7 +962,7 @@ namespace SSC {
         return err;
       }
 
-      setState(PEER_STATE_BOUND);
+      setState(PEER_STATE_UDP_BOUND);
       initLocalPeerInfo();
       return err;
     }
@@ -977,7 +981,7 @@ namespace SSC {
         return err;
       }
 
-      setState(PEER_STATE_CONNECTED);
+      setState(PEER_STATE_UDP_CONNECTED);
       initRemotePeerInfo();
       return err;
     }
@@ -1064,6 +1068,70 @@ namespace SSC {
       }
 
       runDefaultLoop();
+    }
+
+    int recv (Cb onrecv) {
+      if (hasState(PEER_STATE_UDP_RECV_STARTED)) {
+        return UV_EALREADY;
+      }
+
+      this->onrecv = onrecv;
+      setState(PEER_STATE_UDP_RECV_STARTED);
+
+      auto allocate = [](uv_handle_t *handle, size_t size, uv_buf_t *buf) {
+        buf->base = (char *) malloc(size);
+        buf->len = size;
+        memset(buf->base, 0, buf->len);
+      };
+
+      return uv_udp_recv_start(&udp, allocate, [](uv_udp_t *handle, ssize_t nread, const uv_buf_t *buf, const struct sockaddr *addr, unsigned flags) {
+        std::lock_guard<std::recursive_mutex> guard(peersMutex);
+        Peer *peer = (Peer*)handle->data;
+
+        if (nread == UV_EOF) {
+          auto msg = SSC::format(R"MSG({
+            "data": {
+              "id": "$S",
+              "EOF": true
+            }
+          })MSG", std::to_string(peer->id));
+
+          peer->onrecv("-1", msg, Post{});
+        } else if (nread > 0) {
+          int port;
+          char ipbuf[17];
+          parseAddress((struct sockaddr *) addr, &port, ipbuf);
+          String ip(ipbuf);
+
+          auto headers = SSC::format(R"MSG(
+            content-type: application/octet-stream
+            content-length: $i
+          )MSG", (int) nread);
+
+          Post post = {0};
+          post.body = buf->base;
+          post.length = (int) nread;
+          post.headers = headers;
+          post.bodyNeedsFree = true;
+
+          auto msg = SSC::format(R"MSG({
+            "data": {
+              "source": "udpReadStart",
+              "id": "$S",
+              "bytes": $S,
+              "port": $i,
+              "address": "$S"
+            }
+          })MSG",
+            std::to_string(peer->id),
+            std::to_string(post.length),
+            port,
+            ip
+          );
+
+          peer->onrecv("-1", msg, post);
+        }
+      });
     }
 
     void close () {
@@ -3048,60 +3116,20 @@ namespace SSC {
       return;
     }
 
-    peer->onudpread = cb;
+    if (peer->hasState(PEER_STATE_UDP_RECV_STARTED)) {
+      auto msg = SSC::format(R"MSG({
+        "err": {
+          "source": "udp",
+          "id": "$S",
+          "message": "handle is already listening"
+        }
+      })MSG", std::to_string(peerId));
 
-    auto allocate = [](uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf) {
-      buf->base = (char*) malloc(suggested_size);
-      buf->len = suggested_size;
-      memset(buf->base, 0, buf->len);
-    };
+      cb(seq, msg, Post{});
+      return;
+    }
 
-    int err = uv_udp_recv_start(&peer->udp, allocate, [](uv_udp_t *handle, ssize_t nread, const uv_buf_t *buf, const struct sockaddr *addr, unsigned flags) {
-      std::lock_guard<std::recursive_mutex> guard(peersMutex);
-      Peer *peer = (Peer*)handle->data;
-
-      if (nread == UV_EOF) {
-        auto msg = SSC::format(R"MSG({
-          "data": {
-            "id": "$S",
-            "EOF": true
-          }
-        })MSG", std::to_string(peer->id));
-        peer->onudpread("-1", msg, Post{});
-      } else if (nread > 0) {
-        int port;
-        char ipbuf[17];
-        parseAddress((struct sockaddr *) addr, &port, ipbuf);
-        String ip(ipbuf);
-
-        auto headers = SSC::format(R"MSG(
-          content-type: application/octet-stream
-          content-length: $i
-        )MSG", (int) nread);
-
-        Post post = {0};
-        post.body = buf->base;
-        post.length = (int) nread;
-        post.headers = headers;
-        post.bodyNeedsFree = true;
-
-        auto msg = SSC::format(R"MSG({
-            "data": {
-              "source": "udpReadStart",
-              "id": "$S",
-              "bytes": $S,
-              "port": $i,
-              "address": "$S"
-            }
-          })MSG",
-          std::to_string(peer->id),
-          std::to_string(post.length),
-          port,
-          ip
-        );
-        peer->onudpread("-1", msg, post);
-      }
-    });
+    auto err = peer->recv(cb);
 
     // `UV_EALREADY || UV_EBUSY` means there is active IO on the underlying handle
     if (err < 0 && err != UV_EALREADY && err != UV_EBUSY) {
