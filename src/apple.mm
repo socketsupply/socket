@@ -1477,9 +1477,12 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
       return true;
     }
 
+    auto tmp = new char[bufsize]{0};
+    memcpy(tmp, buf, bufsize);
     dispatch_async(queue, ^{
-      self.core->udpSend(seq, peerId, buf, (int)bufsize, port, ip, ephemeral, [=](auto seq, auto msg, auto post) {
+      self.core->udpSend(seq, peerId, tmp, (int)bufsize, port, ip, ephemeral, [=](auto seq, auto msg, auto post) {
         [self send: seq msg: msg post: post];
+        delete [] tmp;
       });
     });
     return true;
