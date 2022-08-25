@@ -340,6 +340,8 @@ namespace SSC {
   static std::map<uint64_t, DescriptorContext*> descriptors;
 
   static std::recursive_mutex peersMutex;
+  static std::recursive_mutex tasksMutex;
+  static std::recursive_mutex postsMutex;
   static std::recursive_mutex requestsMutex;
   static std::recursive_mutex descriptorsMutex;
 
@@ -1153,34 +1155,41 @@ namespace SSC {
   }
 
   bool Core::hasTask (String id) {
+    std::lock_guard<std::recursive_mutex> guard(tasksMutex);
     if (id.size() == 0) return false;
     return tasks->find(id) != tasks->end();
   }
 
   Task Core::getTask (String id) {
+    std::lock_guard<std::recursive_mutex> guard(tasksMutex);
     if (tasks->find(id) == tasks->end()) return Task{};
     return tasks->at(id);
   }
 
   void Core::removeTask (String id) {
+    std::lock_guard<std::recursive_mutex> guard(tasksMutex);
     if (tasks->find(id) == tasks->end()) return;
     tasks->erase(id);
   }
 
   void Core::putTask (String id, Task t) {
+    std::lock_guard<std::recursive_mutex> guard(tasksMutex);
     tasks->insert_or_assign(id, t);
   }
 
   Post Core::getPost (uint64_t id) {
+    std::lock_guard<std::recursive_mutex> guard(postsMutex);
     if (posts->find(id) == posts->end()) return Post{};
     return posts->at(id);
   }
 
   bool Core::hasPost (uint64_t id) {
+    std::lock_guard<std::recursive_mutex> guard(postsMutex);
     return posts->find(id) != posts->end();
   }
 
   void Core::expirePosts () {
+    std::lock_guard<std::recursive_mutex> guard(postsMutex);
     auto now = std::chrono::system_clock::now()
       .time_since_epoch()
       .count();
@@ -1196,10 +1205,12 @@ namespace SSC {
   }
 
   void Core::putPost (uint64_t id, Post p) {
+    std::lock_guard<std::recursive_mutex> guard(postsMutex);
     posts->insert_or_assign(id, p);
   }
 
   void Core::removePost (uint64_t id) {
+    std::lock_guard<std::recursive_mutex> guard(postsMutex);
     if (posts->find(id) == posts->end()) return;
     auto post = getPost(id);
 
@@ -1212,6 +1223,7 @@ namespace SSC {
   }
 
   String Core::createPost (String seq, String params, Post post) {
+    std::lock_guard<std::recursive_mutex> guard(postsMutex);
     if (post.id == 0) {
       post.id = SSC::rand64();
     }
@@ -1257,6 +1269,7 @@ namespace SSC {
   }
 
   void Core::removeAllPosts () {
+    std::lock_guard<std::recursive_mutex> guard(postsMutex);
     for (auto const &tuple : *posts) {
       removePost(tuple.first);
     }
