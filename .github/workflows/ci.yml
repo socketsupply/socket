@@ -60,7 +60,7 @@ jobs:
 
     - name: Run example desktop tests
       run: |
-        xvfb-run --server-args="-screen 0 1920x1080x24" ssc run --test ./socket-sdk-examples/desktop-node-tonic-cjs/
+        xvfb-run --server-args="-screen 0 1920x1080x24" ssc run --test=1 ./socket-sdk-examples/desktop-node-tonic-cjs/
       env:
         CI: true
         CXX: g++-12
@@ -194,7 +194,7 @@ jobs:
 
     - name: Run example desktop tests
       run: |
-        ssc run --test ./socket-sdk-examples/desktop-node-tonic-cjs/ 
+        ssc run --test=1 ./socket-sdk-examples/desktop-node-tonic-cjs/ 
       env:
         CI: true
 
@@ -246,7 +246,7 @@ jobs:
 
     - name: Run example desktop tests
       run: |
-        ssc run --test ./socket-sdk-examples/desktop-node-tonic-cjs/
+        ssc run --test=1 ./socket-sdk-examples/desktop-node-tonic-cjs/
       env:
         CI: true
 
