@@ -336,13 +336,11 @@ namespace SSC {
   static uv_loop_t defaultLoop = {0};
 
   static std::map<uint64_t, Peer*> peers;
-  static std::map<uint64_t, PeerRequest*> requests;
   static std::map<uint64_t, DescriptorContext*> descriptors;
 
   static std::recursive_mutex peersMutex;
   static std::recursive_mutex tasksMutex;
   static std::recursive_mutex postsMutex;
-  static std::recursive_mutex requestsMutex;
   static std::recursive_mutex descriptorsMutex;
 
   static std::recursive_mutex timersMutex;
@@ -3150,10 +3148,8 @@ namespace SSC {
   }
 
   void Core::dnsLookup (String seq, String hostname, int family, Cb cb) const {
-    auto* rctx = new PeerRequest();
-    requests[rctx->id] = rctx;
-    rctx->cb = cb;
-    rctx->seq = seq;
+    auto ctx = new PeerRequest(seq, cb);
+    auto loop = getDefaultLoop();
 
     struct addrinfo hints = {0};
 
@@ -3169,10 +3165,10 @@ namespace SSC {
     hints.ai_protocol = 0; // `0` for any
 
     uv_getaddrinfo_t* resolver = new uv_getaddrinfo_t;
-    resolver->data = rctx;
+    resolver->data = ctx;
 
-    uv_getaddrinfo(getDefaultLoop(), resolver, [](uv_getaddrinfo_t *resolver, int status, struct addrinfo *res) {
-      auto rctx = (PeerRequest*) resolver->data;
+    uv_getaddrinfo(loop, resolver, [](uv_getaddrinfo_t *resolver, int status, struct addrinfo *res) {
+      auto ctx = (PeerRequest*) resolver->data;
 
       if (status < 0) {
         auto msg = SSC::format(R"MSG({
@@ -3180,10 +3176,10 @@ namespace SSC {
             "code": "$S",
             "message": "$S"
           }
-        })MSG", std::to_string(rctx->id), String(uv_err_name((int)status)), String(uv_strerror(status)));
-        rctx->cb(rctx->seq, msg, Post{});
-        requests.erase(rctx->id);
-        delete rctx;
+        })MSG", String(uv_err_name((int)status)), String(uv_strerror(status)));
+
+        ctx->end(msg);
+
         return;
       }
 
@@ -3208,9 +3204,7 @@ namespace SSC {
         }
       })MSG", address, res->ai_family == AF_INET ? 4 : res->ai_family == AF_INET6 ? 6 : 0);
 
-      rctx->cb(rctx->seq, msg, Post{});
-      requests.erase(rctx->id);
-      delete rctx;
+      ctx->end(msg);
 
       uv_freeaddrinfo(res);
     }, hostname.c_str(), nullptr, &hints);
