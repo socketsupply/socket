@@ -1253,7 +1253,13 @@ int main (const int argc, const char* argv[]) {
       }
 
       fs::copy(
-        fs::path(prefixFile()) / "lib",
+        fs::path(prefixFile()) / "lib" / "uv",
+        paths.platformSpecificOutputPath / "lib",
+        fs::copy_options::overwrite_existing | fs::copy_options::recursive
+      );
+
+      fs::copy(
+        fs::path(prefixFile()) / "lib" / "libuv-ios.a",
         paths.platformSpecificOutputPath / "lib",
         fs::copy_options::overwrite_existing | fs::copy_options::recursive
       );
