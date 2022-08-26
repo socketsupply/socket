@@ -1258,7 +1258,9 @@ int main (const int argc, const char* argv[]) {
           paths.platformSpecificOutputPath / "lib",
           fs::copy_options::overwrite_existing | fs::copy_options::recursive
         );        
-      } else {
+      }
+
+      if (!flagBuildForSimulator) {
         fs::copy(
           fs::path(prefixFile()) / "lib" / "uv",
           paths.platformSpecificOutputPath / "lib",
