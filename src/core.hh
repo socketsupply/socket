@@ -14,6 +14,9 @@
 #include <gtk/gtk.h>
 #endif
 
+#include <chrono>
+#include <thread>
+
 #if defined(__APPLE__)
 	#import <Webkit/Webkit.h>
   using Task = id<WKURLSchemeTask>;
@@ -431,160 +434,8 @@ namespace SSC {
   static void initTimers ();
   static void startTimers ();
   static uv_loop_t* getDefaultLoop ();
-
-#if defined(__linux__) && !defined(__ANDROID__)
-  struct UVSource {
-    GSource base; // should ALWAYS be first member
-    gpointer tag;
-  };
-
-    // @see https://api.gtkd.org/glib.c.types.GSourceFuncs.html
-  static GSourceFuncs loopSourceFunctions = {
-    .prepare = [](GSource *source, gint *timeout) -> gboolean {
-      auto loop = getDefaultLoop();
-        uv_update_time(loop);
-
-        if (!uv_loop_alive(loop)) {
-          return false;
-        }
-
-        *timeout = uv_backend_timeout(loop);
-        return 0 == *timeout;
-      },
-
-      .dispatch = [](GSource *source, GSourceFunc callback, gpointer user_data) -> gboolean {
-        auto loop = getDefaultLoop();
-        uv_run(loop, UV_RUN_NOWAIT);
-        return G_SOURCE_CONTINUE;
-      }
-    };
-
-#endif
-
-  static void initLoop () {
-    if (didLoopInit) {
-      return;
-    }
-
-    std::lock_guard<std::recursive_mutex> guard(loopMutex);
-
-    if (didLoopInit) {
-      return;
-    }
-
-    uv_loop_init(&defaultLoop);
-
-#if defined(__linux__) && !defined(__ANDROID__)
-    GSource *source = g_source_new(&loopSourceFunctions, sizeof(UVSource));
-    UVSource *uvSource = (UVSource *) source;
-    uvSource->tag = g_source_add_unix_fd(
-      source,
-      uv_backend_fd(&defaultLoop),
-      (GIOCondition) (G_IO_IN | G_IO_OUT | G_IO_ERR)
-    );
-
-    g_source_attach(source, nullptr);
-#endif
-
-    didLoopInit = true;
-  }
-
-  static uv_loop_t* getDefaultLoop () {
-    initLoop();
-    return &defaultLoop;
-  }
-
-  static void runDefaultLoop () {
-    if (isLoopRunning) {
-      return;
-    }
-
-    std::lock_guard<std::recursive_mutex> guard(loopMutex);
-
-    initTimers();
-    startTimers();
-
-    auto loop = getDefaultLoop();
-
-    isLoopRunning = true;
-#if defined(__linux__) && !defined(__ANDROID__)
-    uv_run(loop, UV_RUN_NOWAIT);
-#else
-    while (uv_run(loop, UV_RUN_NOWAIT));
-#endif
-    isLoopRunning = false;
-  }
-
-  static void initTimers () {
-    if (didTimersInit) {
-      return;
-    }
-
-    std::lock_guard<std::recursive_mutex> guard(timersInitMutex);
-
-    auto loop = getDefaultLoop();
-
-    std::vector<Timer *> timersToInit = {
-      &timers.releaseWeakDescriptors
-    };
-
-    for (const auto& timer : timersToInit) {
-      uv_timer_init(loop, &timer->handle);
-      timer->handle.data = (void *) &timers.core;
-    }
-
-    didTimersInit = true;
-  }
-
-  static void startTimers () {
-    std::lock_guard<std::recursive_mutex> guard(timersStartMutex);
-
-    std::vector<Timer *> timersToStart = {
-      &timers.releaseWeakDescriptors
-    };
-
-    for (const auto& timer : timersToStart) {
-      if (!timer->started) {
-        uv_timer_start(
-          &timer->handle,
-          timer->invoke,
-          timer->timeout,
-          timer->repeated
-            ? timer->interval > 0 ? timer->interval : timer->timeout
-            : 0
-        );
-
-        // set once
-        timer->started = true;
-      } else {
-        uv_timer_again(&timer->handle);
-      }
-    }
-
-    didTimersStart = false;
-  }
-
-  static void stopTimers () {
-    if (didTimersStart == false) {
-      return;
-    }
-
-    std::lock_guard<std::recursive_mutex> guard(timersStartMutex);
-
-
-    std::vector<Timer *> timersToStop = {
-      &timers.releaseWeakDescriptors
-    };
-
-    for (const auto& timer : timersToStop) {
-      if (timer->started) {
-        uv_timer_stop(&timer->handle);
-      }
-    }
-
-    didTimersStart = false;
-  }
-
+  static void runDefaultLoop();
+  static void stopDefaultLoop();
 
   static String addrToIPv4 (struct sockaddr_in* sin) {
     char buf[INET_ADDRSTRLEN];
@@ -761,6 +612,28 @@ namespace SSC {
     struct sockaddr_in addr;
     std::recursive_mutex mutex;
 
+    static void resumeAllBound () {
+      std::lock_guard<std::recursive_mutex> guard(peersMutex);
+
+      for (auto const &tuple : peers) {
+        auto peer = tuple.second;
+        if (peer != nullptr && peer->isBound()) {
+          peer->recvstart();
+        }
+      }
+    }
+
+    static void pauseAllBound () {
+      std::lock_guard<std::recursive_mutex> guard(peersMutex);
+
+      for (auto const &tuple : peers) {
+        auto peer = tuple.second;
+        if (peer != nullptr && peer->isBound()) {
+          peer->recvstop();
+        }
+      }
+    }
+
     /**
      * Checks if a `Peer` exists by `peerId`.
      */
@@ -866,7 +739,7 @@ namespace SSC {
       std::lock_guard<std::recursive_mutex> guard(mutex);
 
       if ((PEER_TYPE_UDP & type) == PEER_TYPE_UDP) {
-        remote.init(&udp);
+        local.init(&udp);
       }
 
       if (isConnected()) {
@@ -946,6 +819,34 @@ namespace SSC {
       return false;
     }
 
+    int bind () {
+      auto info = getLocalPeerInfo();
+
+      if (info->err) {
+        return info->err;
+      }
+
+      return bind(info->address, info->port);
+    }
+
+    int rebind () {
+      int rc = 0;
+
+      if (isBound()) {
+        rc = this->recvstop();
+
+        if (rc != 0) {
+          rc = this->bind();
+        }
+
+        if (rc == 0) {
+          rc = this->recvstart();
+        }
+      }
+
+      return rc;
+    }
+
     int bind (std::string address, int port) {
       std::lock_guard<std::recursive_mutex> guard(mutex);
       int err = 0;
@@ -962,7 +863,7 @@ namespace SSC {
 
       setState(PEER_STATE_UDP_BOUND);
       initLocalPeerInfo();
-      return err;
+      return local.err;
     }
 
     int connect (std::string address, int port) {
@@ -981,7 +882,7 @@ namespace SSC {
 
       setState(PEER_STATE_UDP_CONNECTED);
       initRemotePeerInfo();
-      return err;
+      return remote.err;
     }
 
     void send (PeerRequest *ctx, char *buf, int len, int port, String address) {
@@ -1068,7 +969,11 @@ namespace SSC {
       runDefaultLoop();
     }
 
-    int recv (Cb onrecv) {
+    int recvstart () {
+      return this->recvstart(this->onrecv);
+    }
+
+    int recvstart (Cb onrecv) {
       if (hasState(PEER_STATE_UDP_RECV_STARTED)) {
         return UV_EALREADY;
       }
@@ -1084,7 +989,12 @@ namespace SSC {
 
       return uv_udp_recv_start(&udp, allocate, [](uv_udp_t *handle, ssize_t nread, const uv_buf_t *buf, const struct sockaddr *addr, unsigned flags) {
         std::lock_guard<std::recursive_mutex> guard(peersMutex);
-        Peer *peer = (Peer*)handle->data;
+        auto peer = (Peer *) handle->data;
+
+        if (nread == UV_ENOTCONN) {
+          peer->recvstop();
+          return;
+        }
 
         if (nread == UV_EOF) {
           auto msg = SSC::format(R"MSG({
@@ -1132,6 +1042,11 @@ namespace SSC {
       });
     }
 
+    int recvstop () {
+      std::lock_guard<std::recursive_mutex> guard(mutex);
+      return uv_udp_recv_stop(&this->udp);
+    }
+
     void close () {
       std::lock_guard<std::recursive_mutex> guard(mutex);
       static auto noop = [](Peer *){};
@@ -1168,6 +1083,175 @@ namespace SSC {
       }
     }
   };
+
+#if defined(__linux__) && !defined(__ANDROID__)
+  struct UVSource {
+    GSource base; // should ALWAYS be first member
+    gpointer tag;
+  };
+
+    // @see https://api.gtkd.org/glib.c.types.GSourceFuncs.html
+  static GSourceFuncs loopSourceFunctions = {
+    .prepare = [](GSource *source, gint *timeout) -> gboolean {
+      auto loop = getDefaultLoop();
+        uv_update_time(loop);
+
+        if (!uv_loop_alive(loop)) {
+          return false;
+        }
+
+        *timeout = uv_backend_timeout(loop);
+        return 0 == *timeout;
+      },
+
+      .dispatch = [](GSource *source, GSourceFunc callback, gpointer user_data) -> gboolean {
+        auto loop = getDefaultLoop();
+        uv_run(loop, UV_RUN_NOWAIT);
+        return G_SOURCE_CONTINUE;
+      }
+    };
+
+#endif
+
+  static void initLoop () {
+    if (didLoopInit) {
+      return;
+    }
+
+    std::lock_guard<std::recursive_mutex> guard(loopMutex);
+
+    if (didLoopInit) {
+      return;
+    }
+
+    uv_loop_init(&defaultLoop);
+
+#if defined(__linux__) && !defined(__ANDROID__)
+    GSource *source = g_source_new(&loopSourceFunctions, sizeof(UVSource));
+    UVSource *uvSource = (UVSource *) source;
+    uvSource->tag = g_source_add_unix_fd(
+      source,
+      uv_backend_fd(&defaultLoop),
+      (GIOCondition) (G_IO_IN | G_IO_OUT | G_IO_ERR)
+    );
+
+    g_source_attach(source, nullptr);
+#endif
+
+    didLoopInit = true;
+  }
+
+  static uv_loop_t* getDefaultLoop () {
+    initLoop();
+    return &defaultLoop;
+  }
+
+  static void stopDefaultLoop() {
+    Peer::pauseAllBound();
+
+    if (!isLoopRunning) {
+      return;
+    }
+
+    auto loop = getDefaultLoop();
+    uv_run(loop, UV_RUN_NOWAIT);
+    uv_stop(&defaultLoop);
+    isLoopRunning = false;
+  }
+
+  static void runDefaultLoop () {
+    if (isLoopRunning) {
+      return;
+    }
+
+    std::lock_guard<std::recursive_mutex> guard(loopMutex);
+
+    initTimers();
+    startTimers();
+
+    auto loop = getDefaultLoop();
+
+    isLoopRunning = true;
+    Peer::resumeAllBound();
+#if defined(__linux__) && !defined(__ANDROID__)
+    uv_run(loop, UV_RUN_NOWAIT);
+#else
+    while (isLoopRunning && uv_run(loop, UV_RUN_NOWAIT) > 0) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(32));
+    }
+#endif
+    isLoopRunning = false;
+  }
+
+  static void initTimers () {
+    if (didTimersInit) {
+      return;
+    }
+
+    std::lock_guard<std::recursive_mutex> guard(timersInitMutex);
+
+    auto loop = getDefaultLoop();
+
+    std::vector<Timer *> timersToInit = {
+      &timers.releaseWeakDescriptors
+    };
+
+    for (const auto& timer : timersToInit) {
+      uv_timer_init(loop, &timer->handle);
+      timer->handle.data = (void *) &timers.core;
+    }
+
+    didTimersInit = true;
+  }
+
+  static void startTimers () {
+    std::lock_guard<std::recursive_mutex> guard(timersStartMutex);
+
+    std::vector<Timer *> timersToStart = {
+      &timers.releaseWeakDescriptors
+    };
+
+    for (const auto& timer : timersToStart) {
+      if (!timer->started) {
+        uv_timer_start(
+          &timer->handle,
+          timer->invoke,
+          timer->timeout,
+          timer->repeated
+            ? timer->interval > 0 ? timer->interval : timer->timeout
+            : 0
+        );
+
+        // set once
+        timer->started = true;
+      } else {
+        uv_timer_again(&timer->handle);
+      }
+    }
+
+    didTimersStart = false;
+  }
+
+  static void stopTimers () {
+    if (didTimersStart == false) {
+      return;
+    }
+
+    std::lock_guard<std::recursive_mutex> guard(timersStartMutex);
+
+
+    std::vector<Timer *> timersToStop = {
+      &timers.releaseWeakDescriptors
+    };
+
+    for (const auto& timer : timersToStop) {
+      if (timer->started) {
+        uv_timer_stop(&timer->handle);
+      }
+    }
+
+    didTimersStart = false;
+  }
 
   typedef struct {
     uv_write_t req;
@@ -3083,8 +3167,8 @@ namespace SSC {
     if (!Peer::exists(peerId)) {
       auto msg = SSC::format(R"MSG({
         "err": {
-          "source": "udp",
           "id": "$S",
+          "source": "udp",
           "message": "no such handle"
         }
       })MSG", std::to_string(peerId));
@@ -3104,8 +3188,8 @@ namespace SSC {
     if (peer->isClosing()) {
       auto msg = SSC::format(R"MSG({
         "err": {
-          "source": "udp",
           "id": "$S",
+          "source": "udp",
           "message": "handle is closing"
         }
       })MSG", std::to_string(peerId));
@@ -3117,8 +3201,8 @@ namespace SSC {
     if (peer->hasState(PEER_STATE_UDP_RECV_STARTED)) {
       auto msg = SSC::format(R"MSG({
         "err": {
-          "source": "udp",
           "id": "$S",
+          "source": "udp",
           "message": "handle is already listening"
         }
       })MSG", std::to_string(peerId));
@@ -3127,14 +3211,14 @@ namespace SSC {
       return;
     }
 
-    auto err = peer->recv(cb);
+    auto err = peer->recvstart(cb);
 
     // `UV_EALREADY || UV_EBUSY` means there is active IO on the underlying handle
     if (err < 0 && err != UV_EALREADY && err != UV_EBUSY) {
       auto msg = SSC::format(R"MSG({
         "err": {
-          "source": "udp",
           "id": "$S",
+          "source": "udp",
           "message": "$S"
         }
       })MSG", std::to_string(peerId), std::string(uv_strerror(err)));
@@ -3198,11 +3282,18 @@ namespace SSC {
       address = address.erase(address.find('\0'));
 
       auto msg = SSC::format(R"MSG({
-        "data": {
-          "address": "$S",
-          "family": $i
-        }
-      })MSG", address, res->ai_family == AF_INET ? 4 : res->ai_family == AF_INET6 ? 6 : 0);
+          "data": {
+            "address": "$S",
+            "family": $i
+          }
+        })MSG",
+        address,
+        res->ai_family == AF_INET
+          ? 4
+          : res->ai_family == AF_INET6
+            ? 6
+            : 0
+      );
 
       ctx->end(msg);
 

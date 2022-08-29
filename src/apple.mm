@@ -18,7 +18,8 @@
 
 dispatch_queue_attr_t qos = dispatch_queue_attr_make_with_qos_class(
   DISPATCH_QUEUE_CONCURRENT,
-  QOS_CLASS_USER_INITIATED,
+  //QOS_CLASS_USER_INITIATED,
+  QOS_CLASS_BACKGROUND,
   -1
 );
 

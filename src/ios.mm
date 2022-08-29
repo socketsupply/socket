@@ -42,13 +42,25 @@ void uncaughtExceptionHandler (NSException *exception) {
 // JavaScript environment so it can be used by the web app and the wasm layer.
 //
 @implementation AppDelegate
-- (void) applicationDidEnterBackground {
+- (void) applicationDidEnterBackground: (UIApplication*)application {
   [self.webview evaluateJavaScript: @"window.blur()" completionHandler:nil];
 }
 
-- (void) applicationWillEnterForeground {
+- (void) applicationWillEnterForeground: (UIApplication*)application {
   [self.webview evaluateJavaScript: @"window.focus()" completionHandler:nil];
   [[bridge bluetooth] startScanning];
+}
+
+- (void) applicationDidBecomeActive: (UIApplication*)application {
+  dispatch_async(queue, ^{
+    SSC::runDefaultLoop();
+  });
+}
+
+- (void) applicationWillResignActive: (UIApplication*)application {
+  dispatch_async(queue, ^{
+    SSC::stopDefaultLoop();
+  });
 }
 
 //
