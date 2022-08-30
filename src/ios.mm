@@ -168,13 +168,18 @@ void uncaughtExceptionHandler (NSException *exception) {
   env << std::string("width=" + std::to_string(appFrame.size.width) + "&");
   env << std::string("height=" + std::to_string(appFrame.size.height) + "&");
 
+  NSFileManager *fileManager = [NSFileManager defaultManager];
+  NSString *currentDirectoryPath = [fileManager currentDirectoryPath];
+  NSString *cwd = [NSHomeDirectory() stringByAppendingPathComponent: currentDirectoryPath];
+
   WindowOptions opts {
     .debug = _debug,
     .executable = appData["executable"],
     .title = appData["title"],
     .version = appData["version"],
     .preload = gPreloadMobile,
-    .env = env.str()
+    .env = env.str(),
+    .cwd = std::string([cwd UTF8String])
   };
 
   // Note: you won't see any logs in the preload script before the

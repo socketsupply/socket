@@ -1159,7 +1159,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     return true;
   }
 
-  if (cmd.name == "getNetworkInterfaces") {
+  if (cmd.name == "getNetworkInterfaces" || cmd.name == "os.networkInterfaces") {
     dispatch_async(queue, ^{
       auto msg = self.core->getNetworkInterfaces();
       [self send: seq msg: msg post: Post{}];
@@ -1167,7 +1167,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     return true;
   }
 
-  if (cmd.name == "cwd") {
+  if (cmd.name == "cwd" || cmd.name == "process.cwd") {
     NSFileManager *fileManager;
     NSString *currentDirectoryPath;
 
