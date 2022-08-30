@@ -728,15 +728,15 @@ namespace SSC {
     int init () {
       std::lock_guard<std::recursive_mutex> guard(this->mutex);
       auto loop = getDefaultLoop();
-      int rc = 0;
+      int err = 0;
 
       if ((PEER_TYPE_UDP & this->type) == PEER_TYPE_UDP) {
         memset(&this->udp, 0, sizeof(uv_udp_t));
-        rc = uv_udp_init(loop, &this->udp);
+        err = uv_udp_init(loop, &this->udp);
         this->udp.data = (void *) this;
       }
 
-      return rc;
+      return err;
     }
 
     void initRemotePeerInfo () {
@@ -820,11 +820,7 @@ namespace SSC {
 
     bool isConnected () {
       std::lock_guard<std::recursive_mutex> guard(this->mutex);
-      if ((PEER_TYPE_UDP & this->type) == PEER_TYPE_UDP) {
-        auto info = this->getRemotePeerInfo();
-        return info->err == 0;
-      }
-      return false;
+      return this->hasState(PEER_STATE_UDP_CONNECTED);
     }
 
     bool isPaused () {
@@ -848,13 +844,11 @@ namespace SSC {
       auto sockaddr = this->getSockAddr();
       int err = 0;
 
-      err = uv_ip4_addr((char *) address.c_str(), port, &this->addr);
-      if (err < 0) {
+      if ((err = uv_ip4_addr((char *) address.c_str(), port, &this->addr))) {
         return err;
       }
 
-      err = uv_udp_bind(&this->udp, sockaddr, UV_UDP_REUSEADDR);
-      if (err < 0) {
+      if ((err = uv_udp_bind(&this->udp, sockaddr, UV_UDP_REUSEADDR))) {
         return err;
       }
 
@@ -865,23 +859,23 @@ namespace SSC {
 
     int rebind () {
       std::lock_guard<std::recursive_mutex> guard(this->mutex);
-      int rc = 0;
+      int err = 0;
 
-      if ((rc = this->recvstop())) {
-        return rc;
+      if ((err = this->recvstop())) {
+        return err;
       }
 
       memset((void *) &this->addr, 0, sizeof(struct sockaddr_in));
 
-      if ((rc = this->bind())) {
-        return rc;
+      if ((err = this->bind())) {
+        return err;
       }
 
-      if ((rc = this->recvstart())) {
-        return rc;
+      if ((err = this->recvstart())) {
+        return err;
       }
 
-      return rc;
+      return err;
     }
 
     int connect (std::string address, int port) {
@@ -889,13 +883,11 @@ namespace SSC {
       auto sockaddr = this->getSockAddr();
       int err = 0;
 
-      err = uv_ip4_addr((char *) address.c_str(), port, &this->addr);
-      if (err < 0) {
+      if ((err = uv_ip4_addr((char *) address.c_str(), port, &this->addr))) {
         return err;
       }
 
-      err = uv_udp_connect(&udp, sockaddr);
-      if (err < 0) {
+      if ((err = uv_udp_connect(&udp, sockaddr))) {
         return err;
       }
 
@@ -909,26 +901,25 @@ namespace SSC {
       auto loop = getDefaultLoop();
       int err = 0;
 
-      struct sockaddr_in tmpaddr = {0};
-      struct sockaddr_in *addr = this->isConnected()
-        ? &tmpaddr
-        : &this->addr;
+      struct sockaddr *sockaddr = nullptr;
 
-      struct sockaddr* sockaddr = this->isConnected()
-        ? (struct sockaddr *) &tmpaddr
-        : (struct sockaddr *) this->getSockAddr();
+      if (!this->isConnected()) {
+        sockaddr = (struct sockaddr *) this->getSockAddr();
+      }
 
-      err = uv_ip4_addr((char *) address.c_str(), port, addr);
+      if (!this->isConnected()) {
+        err = uv_ip4_addr((char *) address.c_str(), port, &this->addr);
 
-      if (err) {
-        auto msg = SSC::format(R"MSG({
-          "err": {
-            "id": "$S",
-            "message": "$S"
-          }
-        })MSG", std::to_string(id), std::string(uv_strerror(err)));
+        if (err) {
+          auto msg = SSC::format(R"MSG({
+            "err": {
+              "id": "$S",
+              "message": "$S"
+            }
+          })MSG", std::to_string(id), std::string(uv_strerror(err)));
 
-        return ctx->end(msg);
+          return ctx->end(msg);
+        }
       }
 
       auto buffer = uv_buf_init(buf, len);
@@ -958,8 +949,6 @@ namespace SSC {
           })MSG", std::to_string(peer->id), status);
         }
 
-        ctx->end(msg);
-
         delete req;
 
         if (peer->isEphemeral()) {
@@ -967,6 +956,8 @@ namespace SSC {
             delete peer;
           });
         }
+
+        ctx->end(msg);
       });
 
       if (err < 0) {
@@ -977,7 +968,7 @@ namespace SSC {
           }
         })MSG", std::to_string(id), std::string(uv_strerror(err)));
 
-        ctx->end(msg);
+        delete req;
 
         if (isEphemeral()) {
           close([] (Peer *peer) {
@@ -985,8 +976,7 @@ namespace SSC {
           });
         }
 
-        delete req;
-        return;
+        ctx->end(msg);
       }
     }
 
