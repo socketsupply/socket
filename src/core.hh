@@ -1244,7 +1244,9 @@ namespace SSC {
 #if defined(__linux__) && !defined(__ANDROID__)
     uv_run(loop, UV_RUN_NOWAIT);
 #else
-    while (isLoopRunning && uv_run(loop, UV_RUN_NOWAIT));
+    while (isLoopRunning && uv_run(loop, UV_RUN_NOWAIT)) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(0));
+    }
 #endif
 
     isLoopRunning = false;
