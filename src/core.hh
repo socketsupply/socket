@@ -476,6 +476,7 @@ namespace SSC {
     PEER_STATE_UDP_BOUND = 1 << 3,
     PEER_STATE_UDP_CONNECTED = 1 << 4,
     PEER_STATE_UDP_RECV_STARTED = 1 << 5,
+    PEER_STATE_UDP_PAUSED = 1 << 6,
     PEER_STATE_MAX = 1 << 0xF
   } peer_state_t;
 
@@ -614,13 +615,11 @@ namespace SSC {
 
     static void resumeAllBound () {
       std::lock_guard<std::recursive_mutex> guard(peersMutex);
-      printf("resumeAllBound()\n");
 
       for (auto const &tuple : peers) {
         auto peer = tuple.second;
         if (peer != nullptr && !peer->isActive() && peer->isBound()) {
-          peer->recvstart();
-          printf("isActive (resume) = %d\n", peer->isActive());
+          peer->resume();
         }
       }
 
@@ -629,15 +628,15 @@ namespace SSC {
 
     static void pauseAllBound () {
       std::lock_guard<std::recursive_mutex> guard(peersMutex);
-      printf("pauseAllBound()\n");
 
       for (auto const &tuple : peers) {
         auto peer = tuple.second;
-        if (peer != nullptr && peer->isActive() && peer->isBound()) {
-          peer->recvstop();
-          printf("isActive (pause) = %d\n", peer->isActive());
+        if (peer != nullptr && peer->isBound()) {
+          peer->pause();
         }
       }
+
+      runDefaultLoop();
     }
 
     /**
@@ -712,8 +711,6 @@ namespace SSC {
       this->id = peerId;
       this->type = peerType;
 
-      this->udp.data = (void *) this;
-
       if (isEphemeral) {
         this->flags = (peer_flag_t) (this->flags | PEER_FLAG_EPHEMERAL);
       }
@@ -723,18 +720,23 @@ namespace SSC {
 
     ~Peer () {
       std::lock_guard<std::recursive_mutex> guard(this->mutex);
-      this->udp.data = nullptr;
       // will call `peers.erase(this->id)` and `close()`
       Peer::remove(this->id, true);
+      this->udp.data = nullptr;
     }
 
-    void init () {
+    int init () {
       std::lock_guard<std::recursive_mutex> guard(this->mutex);
       auto loop = getDefaultLoop();
+      int rc = 0;
 
       if ((PEER_TYPE_UDP & this->type) == PEER_TYPE_UDP) {
-        uv_udp_init(loop, &this->udp);
+        memset(&this->udp, 0, sizeof(uv_udp_t));
+        rc = uv_udp_init(loop, &this->udp);
+        this->udp.data = (void *) this;
       }
+
+      return rc;
     }
 
     void initRemotePeerInfo () {
@@ -825,6 +827,11 @@ namespace SSC {
       return false;
     }
 
+    bool isPaused () {
+      std::lock_guard<std::recursive_mutex> guard(this->mutex);
+      return this->hasState(PEER_STATE_UDP_PAUSED);
+    }
+
     int bind () {
       std::lock_guard<std::recursive_mutex> guard(this->mutex);
       auto info = this->getLocalPeerInfo();
@@ -856,28 +863,26 @@ namespace SSC {
       return this->local.err;
     }
 
-    /*
     int rebind () {
       std::lock_guard<std::recursive_mutex> guard(this->mutex);
       int rc = 0;
 
-      if (rc = this->recvstop()) {
+      if ((rc = this->recvstop())) {
         return rc;
       }
 
       memset((void *) &this->addr, 0, sizeof(struct sockaddr_in));
 
-      if (rc = this->bind()) {
+      if ((rc = this->bind())) {
         return rc;
       }
 
-      if (rc = this->recvstart()) {
+      if ((rc = this->recvstart())) {
         return rc;
       }
 
       return rc;
     }
-    */
 
     int connect (std::string address, int port) {
       std::lock_guard<std::recursive_mutex> guard(this->mutex);
@@ -1001,16 +1006,24 @@ namespace SSC {
       this->setState(PEER_STATE_UDP_RECV_STARTED);
 
       auto allocate = [](uv_handle_t *handle, size_t size, uv_buf_t *buf) {
-        buf->base = (char *) malloc(size);
-        buf->len = size;
-        memset(buf->base, 0, buf->len);
+        if (size > 0) {
+          buf->base = (char *) malloc(size);
+          buf->len = size;
+          memset(buf->base, 0, buf->len);
+        }
       };
 
       return uv_udp_recv_start(&udp, allocate, [](uv_udp_t *handle, ssize_t nread, const uv_buf_t *buf, const struct sockaddr *addr, unsigned flags) {
         std::lock_guard<std::recursive_mutex> guard(peersMutex);
         auto peer = (Peer *) handle->data;
 
-        printf("uv_udp_recv_start(%d): %s\n", nread, uv_strerror(nread));
+        // printf("uv_udp_recv_start(%d): %s\n", nread, uv_strerror(nread));
+
+        if (nread <= 0) {
+          if (buf && buf->base) {
+            free(buf->base);
+          }
+        }
 
         if (nread == UV_ENOTCONN) {
           peer->recvstop();
@@ -1038,6 +1051,7 @@ namespace SSC {
           )MSG", (int) nread);
 
           Post post = {0};
+          post.id = SSC::rand64();
           post.body = buf->base;
           post.length = (int) nread;
           post.headers = headers;
@@ -1065,8 +1079,46 @@ namespace SSC {
 
     int recvstop () {
       std::lock_guard<std::recursive_mutex> guard(this->mutex);
-      this->removeState(PEER_STATE_UDP_RECV_STARTED);
-      int rc = uv_udp_recv_stop(&this->udp);
+      int rc = 0;
+
+      if (this->hasState(PEER_STATE_UDP_RECV_STARTED)) {
+        this->removeState(PEER_STATE_UDP_RECV_STARTED);
+        rc = uv_udp_recv_stop(&this->udp);
+      }
+
+      return rc;
+    }
+
+    int resume () {
+      std::lock_guard<std::recursive_mutex> guard(this->mutex);
+      int rc = 0;
+
+      if ((rc = this->init())) {
+        return rc;
+      }
+
+      if ((rc = this->rebind())) {
+        return rc;
+      }
+
+      this->removeState(PEER_STATE_UDP_PAUSED);
+
+      return rc;
+    }
+
+    int pause () {
+      std::lock_guard<std::recursive_mutex> guard(this->mutex);
+      int rc = 0;
+
+      if ((rc = this->recvstop())) {
+        return rc;
+      }
+
+      if (!this->isPaused() && !this->isClosing()) {
+        this->setState(PEER_STATE_UDP_PAUSED);
+        uv_close((uv_handle_t*) &this->udp, 0);
+      }
+
       return rc;
     }
 
@@ -1089,7 +1141,7 @@ namespace SSC {
 
       if ((PEER_TYPE_UDP & type) == PEER_TYPE_UDP) {
         this->onclose = onclose;
-        uv_close((uv_handle_t*) &udp, [](uv_handle_t *handle) {
+        uv_close((uv_handle_t*) &this->udp, [](uv_handle_t *handle) {
           auto peer = (Peer *) handle->data;
 
           if (peer != nullptr) {
@@ -1193,17 +1245,15 @@ namespace SSC {
 
     auto loop = getDefaultLoop();
 
-    printf("before uv_run()\n");
     isLoopRunning = true;
+
 #if defined(__linux__) && !defined(__ANDROID__)
     uv_run(loop, UV_RUN_NOWAIT);
-#elif defined(__APPLE__)
-    while (isLoopRunning && uv_run(loop, UV_RUN_NOWAIT));
 #else
     while (isLoopRunning && uv_run(loop, UV_RUN_NOWAIT));
 #endif
+
     isLoopRunning = false;
-    printf("after uv_run()\n");
   }
 
   static void initTimers () {
@@ -1392,7 +1442,8 @@ namespace SSC {
     auto post = getPost(id);
 
     if (post.body && post.bodyNeedsFree) {
-      delete post.body;
+      delete [] post.body;
+      post.bodyNeedsFree = false;
       post.body = nullptr;
     }
 
@@ -2100,6 +2151,7 @@ namespace SSC {
           }
         })MSG", std::to_string(desc->id), String(uv_strerror((int)req->result)));
       } else {
+        post.id = SSC::rand64();
         post.body = (char *) desc->data;
         post.length = (int) req->result;
         post.bodyNeedsFree = true;
