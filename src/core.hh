@@ -909,7 +909,16 @@ namespace SSC {
       auto loop = getDefaultLoop();
       int err = 0;
 
-      err = uv_ip4_addr((char *) address.c_str(), port, &addr);
+      struct sockaddr_in tmpaddr = {0};
+      struct sockaddr_in *addr = this->isConnected()
+        ? &tmpaddr
+        : &this->addr;
+
+      struct sockaddr* sockaddr = this->isConnected()
+        ? (struct sockaddr *) &tmpaddr
+        : (struct sockaddr *) this->getSockAddr();
+
+      err = uv_ip4_addr((char *) address.c_str(), port, addr);
 
       if (err) {
         auto msg = SSC::format(R"MSG({
@@ -920,11 +929,6 @@ namespace SSC {
         })MSG", std::to_string(id), std::string(uv_strerror(err)));
 
         return ctx->end(msg);
-      }
-
-      struct sockaddr* sockaddr = NULL;
-      if (!isConnected()) {
-        sockaddr = (struct sockaddr *) getSockAddr();
       }
 
       auto buffer = uv_buf_init(buf, len);
