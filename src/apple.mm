@@ -688,7 +688,9 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     dispatch_async(dispatch_get_main_queue(), ^{
       auto src = self.core->createPost(seq, msg, post);
       NSString* script = [NSString stringWithUTF8String: src.c_str()];
-      [self.webview evaluateJavaScript: script completionHandler: nil];
+      [self.webview evaluateJavaScript: script completionHandler: ^(NSString *result, NSError *err) {
+        self.core->removePost(post.id);
+      }];
     });
     return;
   }
