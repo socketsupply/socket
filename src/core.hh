@@ -746,10 +746,6 @@ namespace SSC {
       if ((PEER_TYPE_UDP & this->type) == PEER_TYPE_UDP) {
         this->remote.init(&this->udp);
       }
-
-      if (this->isConnected()) {
-        this->setState(PEER_STATE_UDP_CONNECTED);
-      }
     }
 
     void initLocalPeerInfo () {
@@ -757,10 +753,6 @@ namespace SSC {
 
       if ((PEER_TYPE_UDP & this->type) == PEER_TYPE_UDP) {
         this->local.init(&this->udp);
-      }
-
-      if (this->isConnected()) {
-        this->setState(PEER_STATE_UDP_CONNECTED);
       }
     }
 
@@ -1111,7 +1103,7 @@ namespace SSC {
 
       if (!this->isPaused() && !this->isClosing()) {
         this->setState(PEER_STATE_UDP_PAUSED);
-        uv_close((uv_handle_t*) &this->udp, 0);
+        uv_close((uv_handle_t*) &this->udp, nullptr);
       }
 
       return rc;
@@ -1165,22 +1157,22 @@ namespace SSC {
   static GSourceFuncs loopSourceFunctions = {
     .prepare = [](GSource *source, gint *timeout) -> gboolean {
       auto loop = getDefaultLoop();
-        uv_update_time(loop);
+      uv_update_time(loop);
 
-        if (!uv_loop_alive(loop)) {
-          return false;
-        }
-
-        *timeout = uv_backend_timeout(loop);
-        return 0 == *timeout;
-      },
-
-      .dispatch = [](GSource *source, GSourceFunc callback, gpointer user_data) -> gboolean {
-        auto loop = getDefaultLoop();
-        uv_run(loop, UV_RUN_NOWAIT);
-        return G_SOURCE_CONTINUE;
+      if (!uv_loop_alive(loop)) {
+        return false;
       }
-    };
+
+      *timeout = uv_backend_timeout(loop);
+      return 0 == *timeout;
+    },
+
+    .dispatch = [](GSource *source, GSourceFunc callback, gpointer user_data) -> gboolean {
+      auto loop = getDefaultLoop();
+      uv_run(loop, UV_RUN_NOWAIT);
+      return G_SOURCE_CONTINUE;
+    }
+  };
 
 #endif
 
@@ -3319,7 +3311,12 @@ namespace SSC {
 
     auto msg = SSC::format(R"MSG({ "data": {} })MSG");
     cb(seq, msg, Post{});
-    runDefaultLoop();
+
+#if defined(__linux__) && !defined(__ANDROID__)
+    runDefaultLoop(UV_RUN_NOWAIT);
+#else
+    while (runDefaultLoop(UV_RUN_NOWAIT));
+#endif
   }
 
   void Core::dnsLookup (String seq, String hostname, int family, Cb cb) const {
