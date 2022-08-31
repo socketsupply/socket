@@ -285,8 +285,6 @@ namespace SSC {
 
           webkit_uri_scheme_request_finish_with_response(request, response);
 
-          app->bridge.core->removePost(post.id);
-
           g_object_unref(stream);
         });
 
@@ -1116,10 +1114,6 @@ namespace SSC {
 
     return this->invoke(cmd, buf, bufsize, [cmd, this](auto seq, auto msg, auto post) {
       this->send(cmd, seq, msg, post);
-
-      if (this->core->hasPost(post.id)) {
-        this->core->removePost(post.id);
-      }
     });
   }
 

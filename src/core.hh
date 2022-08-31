@@ -1448,6 +1448,7 @@ namespace SSC {
 
   String Core::createPost (String seq, String params, Post post) {
     std::lock_guard<std::recursive_mutex> guard(postsMutex);
+
     if (post.id == 0) {
       post.id = SSC::rand64();
     }
@@ -2119,9 +2120,9 @@ namespace SSC {
       return;
     }
 
-    auto buf = new char[len];
+    auto buf = new char[len]{0};
     auto req = new uv_fs_t;
-    const uv_buf_t iov = uv_buf_init(buf, len * sizeof(char));
+    const uv_buf_t iov = uv_buf_init(buf, len);
 
     std::lock_guard<std::recursive_mutex> descriptorLock(desc->mutex);
     desc->data = buf;
@@ -2154,11 +2155,12 @@ namespace SSC {
       }
 
       desc->data = 0;
-      cb(seq, msg, post);
 
       uv_fs_req_cleanup(req);
 
       delete req;
+
+      cb(seq, msg, post);
     });
 
     if (err < 0) {
