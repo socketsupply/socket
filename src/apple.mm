@@ -1649,12 +1649,15 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     [httpResponse release];
     #endif
 
-    dispatch_async(dispatch_get_main_queue(), ^{
-      // 256ms timeout before removing post and potentially freeing `post.body`
-      NSTimeInterval timeout = 0.256;
-      auto block = ^(NSTimer* timer) { self.bridge.core->removePost(postId); };
-      [NSTimer timerWithTimeInterval: timeout repeats: NO block: block ];
-    });
+    // 256ms timeout before removing post and potentially freeing `post.body`
+    NSTimeInterval timeout = 0.256;
+    auto block = ^(NSTimer* timer) {
+      dispatch_async(dispatch_get_main_queue(), ^{
+        self.bridge.core->removePost(postId);
+      });
+    };
+
+    [NSTimer timerWithTimeInterval: timeout repeats: NO block: block ];
 
     return;
   }
