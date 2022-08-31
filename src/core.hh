@@ -3289,7 +3289,7 @@ namespace SSC {
       return;
     }
 
-    std:cout << "UDP - READSTART" << std::endl;
+    std::cout << "UDP - READSTART" << std::endl;
 
     auto err = peer->recvstart(cb);
 
