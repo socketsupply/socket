@@ -1252,26 +1252,11 @@ int main (const int argc, const char* argv[]) {
         settings["ios_provisioning_profile"] = uuid;
       }
 
-      if (flagBuildForSimulator) {
-        fs::copy(
-          fs::path(prefixFile()) / "lib",
-          paths.platformSpecificOutputPath / "lib",
-          fs::copy_options::overwrite_existing | fs::copy_options::recursive
-        );        
-      }
-
-      if (!flagBuildForSimulator) {
-        fs::copy(
-          fs::path(prefixFile()) / "lib",
-          paths.platformSpecificOutputPath / "lib",
-          fs::copy_options::overwrite_existing | fs::copy_options::recursive
-        );
-        fs::copy(
-          fs::path(prefixFile()) / "lib" / "libuv-ios.a",
-          paths.platformSpecificOutputPath / "lib",
-          fs::copy_options::overwrite_existing | fs::copy_options::recursive
-        );
-      }
+      fs::copy(
+        fs::path(prefixFile()) / "lib",
+        paths.platformSpecificOutputPath / "lib",
+        fs::copy_options::overwrite_existing | fs::copy_options::recursive
+      );
 
       fs::copy(
         fs::path(prefixFile()) / "include",
