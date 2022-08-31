@@ -434,8 +434,9 @@ namespace SSC {
   static void initTimers ();
   static void startTimers ();
   static uv_loop_t* getDefaultLoop ();
-  static void runDefaultLoop();
-  static void stopDefaultLoop();
+  static int runDefaultLoop ();
+  static int runDefaultLoop (uv_run_mode);
+  static void stopDefaultLoop ();
 
   static String addrToIPv4 (struct sockaddr_in* sin) {
     char buf[INET_ADDRSTRLEN];
@@ -1150,8 +1151,6 @@ namespace SSC {
             }
           }
         });
-
-        runDefaultLoop();
       }
     }
   };
@@ -1190,12 +1189,7 @@ namespace SSC {
       return;
     }
 
-    std::lock_guard<std::recursive_mutex> guard(loopMutex);
-
-    if (didLoopInit) {
-      return;
-    }
-
+    didLoopInit = true;
     uv_loop_init(&defaultLoop);
 
 #if defined(__linux__) && !defined(__ANDROID__)
@@ -1209,8 +1203,6 @@ namespace SSC {
 
     g_source_attach(source, nullptr);
 #endif
-
-    didLoopInit = true;
   }
 
   static uv_loop_t* getDefaultLoop () {
@@ -1223,33 +1215,33 @@ namespace SSC {
     uv_stop(&defaultLoop);
   }
 
-  static void runDefaultLoop () {
+  static int runDefaultLoop () {
+#if defined(__linux__)
+    return runDefaultLoop(UV_RUN_NOWAIT);
+#else
+    return runDefaultLoop(UV_RUN_ONCE);
+#endif
+  }
+
+  static int runDefaultLoop (uv_run_mode mode) {
     if (isLoopRunning) {
-      return;
+      return 0;
     }
 
-    std::lock_guard<std::recursive_mutex> guard(loopMutex);
+    std::lock_guard<std::recursive_mutex> loopGuard(loopMutex);
 
     if (isLoopRunning) {
-      return;
+      return 0;
     }
 
     initTimers();
     startTimers();
 
-    auto loop = getDefaultLoop();
-
     isLoopRunning = true;
-
-#if defined(__linux__) && !defined(__ANDROID__)
-    uv_run(loop, UV_RUN_NOWAIT);
-#else
-    while (isLoopRunning && uv_run(loop, UV_RUN_NOWAIT)) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(0));
-    }
-#endif
-
+    auto loop = getDefaultLoop();
+    auto rc = uv_run(loop, mode);
     isLoopRunning = false;
+    return rc;
   }
 
   static void initTimers () {
@@ -1328,6 +1320,7 @@ namespace SSC {
   } write_req_t;
 
   void Core::fsRetainOpenDescriptor (String seq, uint64_t id, Cb cb) const {
+    std::lock_guard<std::recursive_mutex> loopGuard(loopMutex);
     std::lock_guard<std::recursive_mutex> guard(descriptorsMutex);
 
     auto desc = descriptors[id];
@@ -1526,6 +1519,7 @@ namespace SSC {
   }
 
   void Core::fsAccess (String seq, String path, int mode, Cb cb) const {
+    std::lock_guard<std::recursive_mutex> loopGuard(loopMutex);
     auto filename = path.c_str();
     auto loop = getDefaultLoop();
     auto desc = new DescriptorContext;
@@ -1539,6 +1533,7 @@ namespace SSC {
     auto err = uv_fs_access(loop, req, filename, mode, [](uv_fs_t* req) {
       auto desc = static_cast<DescriptorContext*>(req->data);
       auto seq = desc->seq;
+      auto cb = desc->cb;
       std::string msg;
 
       if (req->result < 0) {
@@ -1557,7 +1552,7 @@ namespace SSC {
       delete desc;
       delete req;
 
-      desc->cb(seq, msg, Post{});
+      cb(seq, msg, Post{});
     });
 
     if (err < 0) {
@@ -1577,6 +1572,7 @@ namespace SSC {
   }
 
   void Core::fsChmod (String seq, String path, int mode, Cb cb) const {
+    std::lock_guard<std::recursive_mutex> loopGuard(loopMutex);
     auto filename = path.c_str();
     auto loop = getDefaultLoop();
     auto desc = new DescriptorContext;
@@ -1628,6 +1624,7 @@ namespace SSC {
   }
 
   void Core::fsOpen (String seq, uint64_t id, String path, int flags, int mode, Cb cb) const {
+    std::lock_guard<std::recursive_mutex> loopGuard(loopMutex);
     std::unique_lock<std::recursive_mutex> guard(descriptorsMutex);
 
     auto desc = descriptors[id] = new DescriptorContext;
@@ -1697,6 +1694,7 @@ namespace SSC {
   }
 
   void Core::fsOpendir(String seq, uint64_t id, String path, Cb cb) const {
+    std::lock_guard<std::recursive_mutex> loopGuard(loopMutex);
     std::unique_lock<std::recursive_mutex> guard(descriptorsMutex);
     auto desc = descriptors[id] = new DescriptorContext;
     guard.unlock();
@@ -1764,6 +1762,7 @@ namespace SSC {
   }
 
   void Core::fsReaddir(String seq, uint64_t id, size_t nentries, Cb cb) const {
+    std::lock_guard<std::recursive_mutex> loopGuard(loopMutex);
     std::unique_lock<std::recursive_mutex> guard(descriptorsMutex);
     auto desc = descriptors[id];
     guard.unlock();
@@ -1867,6 +1866,7 @@ namespace SSC {
   }
 
   void Core::fsClose (String seq, uint64_t id, Cb cb) const {
+    std::lock_guard<std::recursive_mutex> loopGuard(loopMutex);
     std::unique_lock<std::recursive_mutex> guard(descriptorsMutex);
     auto desc = descriptors[id];
     guard.unlock();
@@ -1946,6 +1946,7 @@ namespace SSC {
   }
 
   void Core::fsClosedir (String seq, uint64_t id, Cb cb) const {
+    std::lock_guard<std::recursive_mutex> loopGuard(loopMutex);
     std::unique_lock<std::recursive_mutex> guard(descriptorsMutex);
     auto desc = descriptors[id];
     guard.unlock();
@@ -2024,6 +2025,7 @@ namespace SSC {
   }
 
   void Core::fsCloseOpenDescriptor (String seq, uint64_t id, Cb cb) const {
+    std::lock_guard<std::recursive_mutex> loopGuard(loopMutex);
     std::lock_guard<std::recursive_mutex> guard(descriptorsMutex);
 
     auto desc = descriptors[id];
@@ -2056,6 +2058,7 @@ namespace SSC {
   }
 
   void Core::fsCloseOpenDescriptors (String seq, bool preserveRetained, Cb cb) const {
+    std::lock_guard<std::recursive_mutex> loopGuard(loopMutex);
     std::lock_guard<std::recursive_mutex> guard(descriptorsMutex);
 
     std::vector<uint64_t> ids;
@@ -2103,8 +2106,11 @@ namespace SSC {
   }
 
   void Core::fsRead (String seq, uint64_t id, int len, int offset, Cb cb) const {
+    std::lock_guard<std::recursive_mutex> loopGuard(loopMutex);
     std::unique_lock<std::recursive_mutex> guard(descriptorsMutex);
+
     auto desc = descriptors[id];
+    auto loop = getDefaultLoop();
     guard.unlock();
 
     if (desc == nullptr) {
@@ -2131,7 +2137,7 @@ namespace SSC {
 
     req->data = desc;
 
-    auto err = uv_fs_read(getDefaultLoop(), req, desc->fd, &iov, 1, offset, [](uv_fs_t* req) {
+    auto err = uv_fs_read(loop, req, desc->fd, &iov, 1, offset, [](uv_fs_t* req) {
       auto desc = static_cast<DescriptorContext*>(req->data);
 
       std::lock_guard<std::recursive_mutex> descriptorLock(desc->mutex);
@@ -2179,6 +2185,7 @@ namespace SSC {
   }
 
   void Core::fsWrite (String seq, uint64_t id, String data, int64_t offset, Cb cb) const {
+    std::lock_guard<std::recursive_mutex> loopGuard(loopMutex);
     std::unique_lock<std::recursive_mutex> guard(descriptorsMutex);
     auto desc = descriptors[id];
     guard.unlock();
@@ -2258,6 +2265,7 @@ namespace SSC {
   }
 
   void Core::fsStat (String seq, String path, Cb cb) const {
+    std::lock_guard<std::recursive_mutex> loopGuard(loopMutex);
     DescriptorContext* desc = new DescriptorContext;
     auto req = new uv_fs_t;
 
@@ -2353,6 +2361,7 @@ namespace SSC {
   }
 
   void Core::fsFStat (String seq, uint64_t id, Cb cb) const {
+    std::lock_guard<std::recursive_mutex> loopGuard(loopMutex);
     std::unique_lock<std::recursive_mutex> guard(descriptorsMutex);
     auto desc = descriptors[id];
     guard.unlock();
@@ -2465,6 +2474,7 @@ namespace SSC {
   }
 
   void Core::fsGetOpenDescriptors (String seq, Cb cb) const {
+    std::lock_guard<std::recursive_mutex> loopGuard(loopMutex);
     std::lock_guard<std::recursive_mutex> guard(descriptorsMutex);
 
     std::string msg = "";
@@ -2500,6 +2510,7 @@ namespace SSC {
   }
 
   void Core::fsUnlink (String seq, String path, Cb cb) const {
+    std::lock_guard<std::recursive_mutex> loopGuard(loopMutex);
     auto filename = path.c_str();
     auto loop = getDefaultLoop();
 
@@ -2559,6 +2570,7 @@ namespace SSC {
   }
 
   void Core::fsRename (String seq, String pathA, String pathB, Cb cb) const {
+    std::lock_guard<std::recursive_mutex> loopGuard(loopMutex);
     auto loop = getDefaultLoop();
     auto src = pathA.c_str();
     auto dst = pathB.c_str();
@@ -2619,6 +2631,7 @@ namespace SSC {
   }
 
   void Core::fsCopyFile (String seq, String pathA, String pathB, int flags, Cb cb) const {
+    std::lock_guard<std::recursive_mutex> loopGuard(loopMutex);
     auto loop = getDefaultLoop();
     auto src = pathA.c_str();
     auto dst = pathB.c_str();
@@ -2679,6 +2692,7 @@ namespace SSC {
   }
 
   void Core::fsRmdir (String seq, String path, Cb cb) const {
+    std::lock_guard<std::recursive_mutex> loopGuard(loopMutex);
     auto filename = path.c_str();
     auto loop = getDefaultLoop();
 
@@ -2738,6 +2752,7 @@ namespace SSC {
   }
 
   void Core::fsMkdir (String seq, String path, int mode, Cb cb) const {
+    std::lock_guard<std::recursive_mutex> loopGuard(loopMutex);
     auto filename = path.c_str();
     auto loop = getDefaultLoop();
 
@@ -2955,6 +2970,8 @@ namespace SSC {
     peer->close([cb, seq] (Peer *) {
       cb(seq, "{}", Post{});
     });
+
+    runDefaultLoop(UV_RUN_NOWAIT);
   }
 
   void Core::shutdown (String seq, uint64_t peerId, Cb cb) const {
