@@ -854,7 +854,6 @@ namespace SSC {
 
       this->setState(PEER_STATE_UDP_BOUND);
       this->initLocalPeerInfo();
-      std::cout << "UDP - BIND" << std::endl;
       return this->local.err;
     }
 
@@ -894,7 +893,6 @@ namespace SSC {
 
       this->setState(PEER_STATE_UDP_CONNECTED);
       this->initRemotePeerInfo();
-      std::cout << "UDP - CONNECT" << std::endl;
       return this->remote.err;
     }
 
@@ -934,8 +932,6 @@ namespace SSC {
         auto ctx = reinterpret_cast<PeerRequest*>(req->data);
         auto peer = ctx->peer;
         std::string msg = "";
-
-        std::cout << "UDP - SENT" << std::endl;
 
         if (status < 0) {
           msg = SSC::format(R"MSG({
@@ -3288,8 +3284,6 @@ namespace SSC {
       cb(seq, msg, Post{});
       return;
     }
-
-    std::cout << "UDP - READSTART" << std::endl;
 
     auto err = peer->recvstart(cb);
 
