@@ -1128,7 +1128,7 @@ namespace SSC {
   void Window::about () {
     auto text = std::string(
       appData["title"] + " " +
-      appData["version"] + "\n" +
+      "v" + appData["version"] + "\n" +
       "Built with ssc v" + SSC::full_version + "\n" +
       appData["copyright"]
     );

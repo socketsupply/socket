@@ -138,7 +138,7 @@ MAIN {
   appData["name"] += suffix;
   appData["title"] += suffix;
 
-  argvForward << " --version=" << appData["version"];
+  argvForward << " --version=v" << appData["version"];
   argvForward << " --name=" << appData["name"];
 
   #if DEBUG == 1

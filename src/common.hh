@@ -1204,13 +1204,13 @@ namespace SSC {
           .port = opts.port,
           .isTest = this->options.isTest,
           .headless = this->options.headless || opts.headless || appData["headless"] == "true",
-          .forwardConsole = appData["forward_console"] == "true",
+          .forwardConsole = appData["linux_log_stdout"] == "true",
 
           .cwd = this->options.cwd,
           .executable = appData["executable"],
           .title = opts.title.size() > 0 ? opts.title : appData["title"],
           .url = opts.url.size() > 0 ? opts.url : "data:text/html,<html>",
-          .version = appData["version"],
+          .version = "v" + appData["version"],
           .argv = this->options.argv,
           .preload = opts.preload.size() > 0 ? opts.preload : gPreloadDesktop,
           .env = env.str()

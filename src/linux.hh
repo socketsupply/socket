@@ -1789,7 +1789,7 @@ namespace SSC {
 
     gtk_box_pack_start(GTK_BOX(content), img, false, false, 0);
 
-    std::string title_value(appData["title"] + " " + appData["version"]);
+    std::string title_value(appData["title"] + " v" + appData["version"]);
     std::string version_value("Built with ssc v" + std::string(SSC::full_version));
 
     GtkWidget *label_title = gtk_label_new("");

@@ -180,7 +180,7 @@ void uncaughtExceptionHandler (NSException *exception) {
     .debug = _debug,
     .executable = appData["executable"],
     .title = appData["title"],
-    .version = appData["version"],
+    .version = "v" + appData["version"],
     .preload = gPreloadMobile,
     .env = env.str(),
     .cwd = std::string([cwd UTF8String])

@@ -132,7 +132,7 @@ constexpr auto gPListInfo = R"XML(<?xml version="1.0" encoding="UTF-8"?>
   <key>DTSDKBuild</key>
   <string>10.13</string>
   <key>CFBundleVersion</key>
-  <string>{{version}}</string>
+  <string>v{{version}}</string>
   <key>BuildMachineOSBuild</key>
   <string>17D102</string>
   <key>NSCameraUsageDescription</key>
@@ -148,7 +148,7 @@ constexpr auto gPListInfo = R"XML(<?xml version="1.0" encoding="UTF-8"?>
   <key>CFBundleIconFile</key>
   <string>icon.icns</string>
   <key>CFBundleShortVersionString</key>
-  <string>{{version_short} Build {{revision}}</string>
+  <string>{{version} Build {{revision}}</string>
   <key>NSHighResolutionCapable</key>
   <true/>
   <key>NSMicrophoneUsageDescription</key>
@@ -271,7 +271,7 @@ constexpr auto gAndroidManifest = R"XML(
 constexpr auto gDestkopManifest = R"INI(
 [Desktop Entry]
 Encoding=UTF-8
-Version={{version}}
+Version=v{{version}}
 Name={{name}}
 Terminal=false
 Type=Application
@@ -283,7 +283,7 @@ Categories={{linux_categories}};
 )INI";
 
 constexpr auto gDebianManifest = R"DEB(Package: {{deb_name}}
-Version: {{version_short}}
+Version: {{version}}
 Architecture: amd64
 Maintainer: {{maintainer}}
 Description: {{title}}
@@ -334,7 +334,7 @@ constexpr auto gWindowsAppManifest = R"XML(<?xml version="1.0" encoding="utf-8"?
   </Capabilities>
   <Applications>
     <Application
-      Id="HelloWorld"
+      Id="{{executable}}"
       EntryPoint="Windows.FullTrustApplication"
       Executable="{{exe}}"
     >
@@ -974,7 +974,7 @@ android {
     minSdkVersion 26
     targetSdkVersion 32
     versionCode {{revision}}
-    versionName "{{version_short}"
+    versionName "{{version}}"
 
     ndk {
       abiFilters {{android_ndk_abi_filters}}
@@ -1334,14 +1334,11 @@ description: A UI for the beep boop network
 # An array of environment variables, separated by commas
 # env: USER, TMPDIR, PWD
 
-# The name of the product (ie Beep or Boop).
+# The name of the file to be output.
 executable: boop
 
 # Advanced Compiler Settings (ie C++ compiler -02, -03, etc).
 flags: -O3
-
-# A boolean that determines if stdout and stderr should get forwarded
-# forward_console: true
 
 # The initial height of the first window.
 height: 750
@@ -1358,23 +1355,20 @@ height: 750
 # The name of the program
 name: beepboop
 
-# The binary output path
-output: build
+# The binary output path. It's recommended to add this path to .gitignore.
+output: dist
+
+# TODO: maybe the user doesn't need to know about this?
+# revision: 123
 
 # The initial title of the window (can have spaces and symbols etc).
 title: Beep Boop
 
-# A string that indicates the version of the cli tool and resources.
-version: v0.0.1
-
-# A string that indicates the version for MacOS.
-version_short: 0.0.1
+# A string that indicates the version of the application. It should be a semver triple like 1.0.0
+version: 0.0.1
 
 # The initial width of the first window.
 width: 1024
-
-# TODO: maybe the user doesn't need to know about this?
-# revision: 123
 
 #
 # Windows
@@ -1393,7 +1387,7 @@ width: 1024
 # A relative path to the pfx file used for signing.
 # win_pfx: certs/cert.pfx
 
-# TODO description & value
+# The signing information needed by the appx api.
 # win_publisher: CN=Beep Boop Corp., O=Beep Boop Corp., L=San Francisco, S=California, C=US
 
 #
@@ -1410,6 +1404,9 @@ width: 1024
 # The icon to use for identifying your app in Linux desktop environments.
 # linux_icon: src/icon.png
 
+# A boolean that determines if WebKit WebView logs should get forwarded to stdout and stderr
+# linux_log_stdout: true
+
 #
 # MacOS and iOS
 # ---
@@ -1417,13 +1414,6 @@ width: 1024
 
 # The team ID needed for MacOS and iOS distribution and development
 # apple_team_id:
-
-# Setting this to true will create a special build (that is absolutely
-# not secure) but it will allow you to attach the apple instruments apps
-# to the process while it is running on a device. You can learn more
-# here - https://help.apple.com/instruments/mac/current/#/dev7b09c84f5
-#
-# apple_instruments: true
 
 #
 # MacOS
@@ -1439,17 +1429,8 @@ width: 1024
 # The command to execute to spawn the "back-end" process.
 # mac_cmd:
 
-# TODO description & value
-# mac_distribution_method:
-
-# TODO description & value
-# mac_entitlements:
-
 # The icon to use for identifying your app on MacOS.
 # mac_icon:
-
-# TODO description & value
-# mac_provisioning_profile:
 
 # TODO description & value
 # mac_sign:
@@ -1468,14 +1449,8 @@ width: 1024
 # which device to target when building for the simulator
 # ios_simulator_device: iPhone 13
 
-# A relative path to the plist of application entitlements
-# ios_entitlements:
-
 # Describes how Xcode should export the archive. Available options: app-store, package, ad-hoc, enterprise, development, and developer-id.
 # ios_distribution_method: ad-hoc
-
-# TODO description & value
-# ios_provisioning_profile_specifier:
 
 # The provisioning profile that is used for signing (should be mac?)
 # ios_provisioning_profile:

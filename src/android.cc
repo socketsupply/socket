@@ -180,7 +180,7 @@ jboolean NativeCore::ConfigureEnvironment () {
 
   windowOptions.executable = this->config["executable"];
   windowOptions.headless = this->config["headless"] == "true";
-  windowOptions.version = this->config["version"];
+  windowOptions.version = "v" + this->config["version"];
   windowOptions.preload = gPreloadMobile;
   windowOptions.title = this->config["title"];
   windowOptions.debug = DEBUG ? true : false;

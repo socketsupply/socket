@@ -437,7 +437,7 @@ int main (const int argc, const char* argv[]) {
       // this follows the .deb file naming convention
       fs::path packageName = (
         settings["executable"] + "_" +
-        settings["version"] + "-" +
+        "v" + settings["version"] + "-" +
         settings["revision"] + "_" +
         "amd64"
       );
@@ -452,7 +452,7 @@ int main (const int argc, const char* argv[]) {
     } else if (platform == "win32") {
       paths.pathPackage = {
         paths.platformSpecificOutputPath  /
-        fs::path(settings["executable"] + "-" +settings["version"])
+        fs::path(settings["executable"] + "-v" + settings["version"])
       };
 
       paths.pathBin = paths.pathPackage;
@@ -512,7 +512,9 @@ int main (const int argc, const char* argv[]) {
         _settings = WStringToString(readFile(configPath));
         settings = parseConfig(_settings);
 
+        // default values
         settings["output"] = settings["output"].size() > 0 ? settings["output"] : "dist";
+      | settings["lang"] = settings["lang"].size() > 0 ? settings["lang"] : "en-us";
 
         for (auto const arg : std::span(argv, argc).subspan(2, numberOfOptions)) {
           if (is(arg, "--prod")) {
@@ -1375,9 +1377,9 @@ int main (const int argc, const char* argv[]) {
         "AppxManifest.xml"
       };
 
-      if (settings["version_short"].size() > 0) {
-        auto versionShort = settings["version_short"];
-        auto winversion = split(versionShort, '-')[0];
+      if (settings["version"].size() > 0) {
+        auto version = settings["version"];
+        auto winversion = split(version, '-')[0];
 
         settings["win_version"] = winversion + ".0";
       } else {
