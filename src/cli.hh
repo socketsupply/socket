@@ -1420,6 +1420,8 @@ width: 1024
 # ---
 #
 
+# macOS code signing guide: https://sockets.sh/guides/#macos-1
+
 # Mac App Store icon
 # mac_appstore_icon: src/icons/icon.png
 
@@ -1446,17 +1448,22 @@ width: 1024
 # ---
 #
 
-# which device to target when building for the simulator
-# ios_simulator_device: iPhone 13
+# iOS code signing guide: https://sockets.sh/guides/#ios-1
+
+# TODO description & value
+# ios_codesign_identity:
 
 # Describes how Xcode should export the archive. Available options: app-store, package, ad-hoc, enterprise, development, and developer-id.
 # ios_distribution_method: ad-hoc
 
-# The provisioning profile that is used for signing (should be mac?)
+# A path to the provisioning profile used for signing iOS app.
 # ios_provisioning_profile:
 
-# TODO description & value
-# ios_codesign_identity:
+# A provisioning specifier used for signing iOS app.
+# ios_provisioning_specifier:
+
+# which device to target when building for the simulator
+# ios_simulator_device: iPhone 13
 )CONFIG";
 
 constexpr auto gDefaultGitignore = R"GITIGNORE(
