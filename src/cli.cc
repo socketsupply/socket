@@ -514,7 +514,7 @@ int main (const int argc, const char* argv[]) {
 
         // default values
         settings["output"] = settings["output"].size() > 0 ? settings["output"] : "dist";
-      | settings["lang"] = settings["lang"].size() > 0 ? settings["lang"] : "en-us";
+        settings["lang"] = settings["lang"].size() > 0 ? settings["lang"] : "en-us";
 
         for (auto const arg : std::span(argv, argc).subspan(2, numberOfOptions)) {
           if (is(arg, "--prod")) {
