@@ -1000,7 +1000,13 @@ namespace SSC {
         }
       };
 
-      return uv_udp_recv_start(&udp, allocate, [](uv_udp_t *handle, ssize_t nread, const uv_buf_t *buf, const struct sockaddr *addr, unsigned flags) {
+      auto recv = [](
+        uv_udp_t *handle,
+        ssize_t nread,
+        const uv_buf_t *buf,
+        const struct sockaddr *addr,
+        unsigned flags
+      ) {
         std::lock_guard<std::recursive_mutex> guard(peersMutex);
         auto peer = (Peer *) handle->data;
 
@@ -1061,7 +1067,9 @@ namespace SSC {
 
           peer->onrecv("-1", msg, post);
         }
-      });
+      };
+
+      return uv_udp_recv_start( &this->udp, allocate, recv);;
     }
 
     int recvstop () {
@@ -3243,7 +3251,7 @@ namespace SSC {
     auto ctx = new PeerRequest(seq, cb);
 
     peer->send(ctx, buf, len, port, address);
-    runDefaultLoop();
+    runDefaultLoop(UV_RUN_NOWAIT);
   }
 
   void Core::udpReadStart (String seq, uint64_t peerId, Cb cb) const {
@@ -3312,11 +3320,7 @@ namespace SSC {
     auto msg = SSC::format(R"MSG({ "data": {} })MSG");
     cb(seq, msg, Post{});
 
-#if defined(__linux__) && !defined(__ANDROID__)
     runDefaultLoop(UV_RUN_NOWAIT);
-#else
-    while (runDefaultLoop(UV_RUN_NOWAIT));
-#endif
   }
 
   void Core::dnsLookup (String seq, String hostname, int family, Cb cb) const {
