@@ -354,8 +354,19 @@ namespace SSC {
   static std::atomic<bool> didTimersInit = false;
   static std::atomic<bool> didTimersStart = false;
 
+  static std::atomic<int> lastLoopStatus = false;
   static std::atomic<bool> isLoopRunning = false;
   static std::recursive_mutex loopMutex;
+
+#if defined(__APPLE__)
+  static dispatch_queue_attr_t loopQueueQOS = dispatch_queue_attr_make_with_qos_class(
+    DISPATCH_QUEUE_SERIAL,
+    QOS_CLASS_BACKGROUND,
+    -1
+  );
+
+  static dispatch_queue_t loopQueue = dispatch_queue_create("ssc.queue", loopQueueQOS);
+#endif
 
   struct DescriptorContext {
     uv_file fd = 0;
@@ -834,6 +845,7 @@ namespace SSC {
 
     int bind (std::string address, int port) {
       std::lock_guard<std::recursive_mutex> guard(this->mutex);
+
       auto sockaddr = this->getSockAddr();
       int err = 0;
 
@@ -984,10 +996,11 @@ namespace SSC {
     }
 
     int recvstart (Cb onrecv) {
-      std::lock_guard<std::recursive_mutex> guard(this->mutex);
       if (this->hasState(PEER_STATE_UDP_RECV_STARTED)) {
         return UV_EALREADY;
       }
+
+      std::lock_guard<std::recursive_mutex> guard(this->mutex);
 
       this->onrecv = onrecv;
       this->setState(PEER_STATE_UDP_RECV_STARTED);
@@ -1177,7 +1190,7 @@ namespace SSC {
 
     .dispatch = [](GSource *source, GSourceFunc callback, gpointer user_data) -> gboolean {
       auto loop = getDefaultLoop();
-      uv_run(loop, UV_RUN_NOWAIT);
+      lastLoopStatus = uv_run(loop, UV_RUN_NOWAIT);
       return G_SOURCE_CONTINUE;
     }
   };
@@ -1216,11 +1229,7 @@ namespace SSC {
   }
 
   static int runDefaultLoop () {
-#if defined(__linux__)
     return runDefaultLoop(UV_RUN_NOWAIT);
-#else
-    return runDefaultLoop(UV_RUN_ONCE);
-#endif
   }
 
   static int runDefaultLoop (uv_run_mode mode) {
@@ -1230,18 +1239,75 @@ namespace SSC {
 
     std::lock_guard<std::recursive_mutex> loopGuard(loopMutex);
 
-    if (isLoopRunning) {
-      return 0;
-    }
+    auto loop = getDefaultLoop();
 
     initTimers();
     startTimers();
 
+    lastLoopStatus = 0;
+
+#if defined(__APPLE__)
+    if (!uv_loop_alive(loop)) {
+      isLoopRunning = false;
+      return 0;
+    }
+
     isLoopRunning = true;
-    auto loop = getDefaultLoop();
-    auto rc = uv_run(loop, mode);
+
+    auto timeout = uv_backend_timeout(loop);
+
+    if (timeout == -1) {
+      dispatch_async(loopQueue, ^{
+        std::lock_guard<std::recursive_mutex> loopGuard(loopMutex);
+
+        if (!uv_loop_alive(loop)) {
+          isLoopRunning = false;
+          return;
+        }
+
+        lastLoopStatus = uv_run(loop, mode);
+        isLoopRunning = false;
+        if (lastLoopStatus) {
+          runDefaultLoop(mode);
+        }
+      });
+      return 0;
+    }
+
+    dispatch_source_t loopPoll = dispatch_source_create(
+      DISPATCH_SOURCE_TYPE_TIMER,
+      0,
+      0,
+      loopQueue
+    );
+
+    dispatch_source_set_timer(
+      loopPoll,
+      dispatch_time(DISPATCH_TIME_NOW, timeout*0.001 * NSEC_PER_SEC),
+      timeout*0.001 * NSEC_PER_SEC, // interval
+      2*timeout*0.001 * NSEC_PER_SEC // "leeway"
+    );
+
+    dispatch_source_set_event_handler(loopPoll, ^{
+      std::lock_guard<std::recursive_mutex> loopGuard(loopMutex);
+
+      if (!uv_loop_alive(loop)) {
+        dispatch_source_cancel(loopPoll); // cancel if no more work to poll
+        isLoopRunning = false;
+        return;
+      }
+
+      lastLoopStatus = uv_run(loop, mode);
+    });
+
+    dispatch_resume(loopPoll);
+#else
+    isLoopRunning = true;
+    lastLoopStatus = uv_run(loop, mode);
     isLoopRunning = false;
-    return rc;
+#endif
+
+    return lastLoopStatus;
   }
 
   static void initTimers () {
@@ -2971,7 +3037,7 @@ namespace SSC {
       cb(seq, "{}", Post{});
     });
 
-    runDefaultLoop(UV_RUN_NOWAIT);
+    runDefaultLoop();
   }
 
   void Core::shutdown (String seq, uint64_t peerId, Cb cb) const {
@@ -3248,10 +3314,11 @@ namespace SSC {
 
   void Core::udpSend (String seq, uint64_t peerId, char* buf, int len, int port, String address, bool ephemeral, Cb cb) const {
     auto peer = Peer::create(PEER_TYPE_UDP, peerId, ephemeral);
+    auto loop = getDefaultLoop();
     auto ctx = new PeerRequest(seq, cb);
 
     peer->send(ctx, buf, len, port, address);
-    runDefaultLoop(UV_RUN_NOWAIT);
+    runDefaultLoop();
   }
 
   void Core::udpReadStart (String seq, uint64_t peerId, Cb cb) const {
@@ -3320,7 +3387,7 @@ namespace SSC {
     auto msg = SSC::format(R"MSG({ "data": {} })MSG");
     cb(seq, msg, Post{});
 
-    runDefaultLoop(UV_RUN_NOWAIT);
+    runDefaultLoop();
   }
 
   void Core::dnsLookup (String seq, String hostname, int family, Cb cb) const {
