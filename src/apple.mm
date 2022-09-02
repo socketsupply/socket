@@ -18,8 +18,7 @@
 
 dispatch_queue_attr_t qos = dispatch_queue_attr_make_with_qos_class(
   DISPATCH_QUEUE_CONCURRENT,
-  //QOS_CLASS_USER_INITIATED,
-  QOS_CLASS_BACKGROUND,
+  QOS_CLASS_BACKGROUND, //QOS_CLASS_USER_INITIATED,
   -1
 );
 
@@ -727,14 +726,14 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
   /// ipc bluetooth-start
   /// @param serviceId String
   ///
-  if (cmd.name == "bluetooth-start") {
+  if (cmd.name == "bluetooth-start" || cmd.name == "bluetooth.start") {
     dispatch_async(queue, ^{
       [self.bluetooth startService: seq sid: cmd.get("serviceId")];
     });
     return true;
   }
 
-  if (cmd.name == "bluetooth-subscribe") {
+  if (cmd.name == "bluetooth-subscribe" || cmd.name == "bluetooth.subscribe") {
     auto cid = cmd.get("characteristicId");
     auto sid = cmd.get("serviceId");
     auto seq = cmd.get("seq");
@@ -745,7 +744,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     return true;
   }
 
-  if (cmd.name == "bluetooth-publish") {
+  if (cmd.name == "bluetooth-publish" || cmd.name == "bluetooth.publish") {
     auto sid = cmd.get("serviceId");
     auto cid = cmd.get("characteristicId");
     auto seq = cmd.get("seq");
@@ -894,7 +893,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     return true;
   }
 
-  if (cmd.name == "fsRmdir") {
+  if (cmd.name == "fsRmdir" || cmd.name == "fs.rmdir") {
     auto path = decodeURIComponent(cmd.get("path"));
 
     dispatch_async(queue, ^{
@@ -905,7 +904,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     return true;
   }
 
-  if (cmd.name == "fsAccess") {
+  if (cmd.name == "fsAccess" || cmd.name == "fs.access") {
     auto path = decodeURIComponent(cmd.get("path"));
     auto mode = std::stoi(cmd.get("mode"));
 
@@ -917,7 +916,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     return true;
   }
 
-  if (cmd.name == "fsOpen") {
+  if (cmd.name == "fsOpen" || cmd.name == "fs.open") {
     auto cid = std::stoull(cmd.get("id"));
     auto path = decodeURIComponent(cmd.get("path"));
     auto flags = std::stoi(cmd.get("flags"));
@@ -931,7 +930,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     return true;
   }
 
-  if (cmd.name == "fsClose") {
+  if (cmd.name == "fsClose" || cmd.name == "fs.close") {
     auto id = std::stoull(cmd.get("id"));
 
     dispatch_async(queue, ^{
@@ -963,7 +962,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     return true;
   }
 
-  if (cmd.name == "fsRead") {
+  if (cmd.name == "fsRead" || cmd.name == "fs.read") {
     auto id = std::stoull(cmd.get("id"));
     auto size = std::stoi(cmd.get("size"));
     auto offset = std::stoi(cmd.get("offset"));
@@ -976,7 +975,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     return true;
   }
 
-  if (cmd.name == "fsWrite") {
+  if (cmd.name == "fsWrite" || cmd.name == "fs.write") {
     auto id = std::stoull(cmd.get("id"));
     auto offset = std::stoull(cmd.get("offset"));
     auto data = std::string(buf, bufsize);
@@ -989,7 +988,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     return true;
   }
 
-  if (cmd.name == "fsStat") {
+  if (cmd.name == "fsStat" || cmd.name == "fs.stat") {
     auto path = decodeURIComponent(cmd.get("path"));
 
     dispatch_async(queue, ^{
@@ -1000,7 +999,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     return true;
   }
 
-  if (cmd.name == "fsFStat") {
+  if (cmd.name == "fsFStat" || cmd.name == "fs.fstat") {
     auto id = std::stoull(cmd.get("id"));
 
     dispatch_async(queue, ^{
@@ -1011,7 +1010,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     return true;
   }
 
-  if (cmd.name == "fsUnlink") {
+  if (cmd.name == "fsUnlink" || cmd.name == "fs.unlink") {
     auto path = decodeURIComponent(cmd.get("path"));
 
     dispatch_async(queue, ^{
@@ -1022,7 +1021,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     return true;
   }
 
-  if (cmd.name == "fsRename") {
+  if (cmd.name == "fsRename" || cmd.name == "fs.rename") {
     auto src = decodeURIComponent(cmd.get("src"));
     auto dst = decodeURIComponent(cmd.get("dst"));
 
@@ -1034,7 +1033,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     return true;
   }
 
-  if (cmd.name == "fsCopyFile") {
+  if (cmd.name == "fsCopyFile" || cmd.name == "fs.copyFile") {
     auto flags = std::stoi(cmd.get("flags", "0"));
     auto src = decodeURIComponent(cmd.get("src"));
     auto dst = decodeURIComponent(cmd.get("dst"));
@@ -1047,7 +1046,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     return true;
   }
 
-  if (cmd.name == "fsMkdir") {
+  if (cmd.name == "fsMkdir" || cmd.name == "fs.mkdir") {
     auto path = decodeURIComponent(cmd.get("path"));
     auto mode = std::stoi(cmd.get("mode"));
 
@@ -1059,7 +1058,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     return true;
   }
 
-  if (cmd.name == "fsOpendir") {
+  if (cmd.name == "fsOpendir" || cmd.name == "fs.opendir") {
     auto id = std::stoull(cmd.get("id"));
     auto path = decodeURIComponent(cmd.get("path"));
 
@@ -1071,7 +1070,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     return true;
   }
 
-  if (cmd.name == "fsReaddir") {
+  if (cmd.name == "fsReaddir" || cmd.name == "fs.readdir") {
     auto id = std::stoull(cmd.get("id"));
     auto entries = std::stoi(cmd.get("entries", "256"));
 
@@ -1083,7 +1082,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     return true;
   }
 
-  if (cmd.name == "fsClosedir") {
+  if (cmd.name == "fsClosedir" || cmd.name == "fs.closedir") {
     auto id = std::stoull(cmd.get("id"));
 
     dispatch_async(queue, ^{
@@ -1107,55 +1106,13 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     }
   }
 
-  if (cmd.name == "external") {
+  if (cmd.name == "external" || cmd.name == "open.external") {
     NSString *url = [NSString stringWithUTF8String:SSC::decodeURIComponent(cmd.get("value")).c_str()];
     #if MACOS == 1
       [[NSWorkspace sharedWorkspace] openURL:[NSURL URLWithString: url]];
     #else
       [[UIApplication sharedApplication] openURL: [NSURL URLWithString:url] options: @{} completionHandler: nil];
     #endif
-    return true;
-  }
-
-  if (cmd.name == "ip" || cmd.name == "address") {
-    if (cmd.name == "ip") {
-      NSLog(@"'ipc://ip' is deprecated please use 'ipc://address' instead");
-    }
-
-    if (!Peer::exists(peerId)) {
-      auto msg = SSC::format(R"MSG({
-        "err": {
-          "message": "not connected"
-        }
-      })MSG");
-
-      dispatch_async(queue, ^{
-        [self send: seq msg: msg post: Post{}];
-      });
-    }
-
-    auto peer = Peer::get(peerId);
-    auto info = peer->getRemotePeerInfo();
-    auto seq = cmd.get("seq");
-
-    auto msg = SSC::format(
-      R"MSG({
-        "data": {
-          "id": "$S",
-          "ip": "$S",
-          "address": "$S",
-          "family": "$S",
-          "port": "$i"
-        }
-      })MSG",
-      peerId,
-      info->address,
-      info->address,
-      info->family,
-      info->port
-    );
-
-    [self send: seq msg: msg post: Post{}];
     return true;
   }
 
@@ -1491,7 +1448,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     return true;
   }
 
-  if (cmd.name == "udpBind") {
+  if (cmd.name == "udpBind" || cmd.name == "udp.bind") {
     auto ip = cmd.get("address");
     std::string err;
     int port;
