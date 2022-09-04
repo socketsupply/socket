@@ -114,11 +114,10 @@ namespace SSC {
     #define Str(s) s
     #define StringToWString(s) s
     #define WStringToString(s) s
-
   #endif
 
   //
-  // Reporting on the platform (for the cli).
+  // Reporting on the platform.
   //
   struct {
     #if defined(__x86_64__) || defined(_M_X64)
@@ -132,63 +131,76 @@ namespace SSC {
     #if defined(_WIN32)
       const std::string os = "win32";
       bool mac = false;
+      bool ios = false;
       bool win = true;
       bool linux = false;
       bool unix = false;
 
     #elif defined(__APPLE__)
-      std::string os = "mac";
-      bool mac = true;
+      #include <TargetConditionals.h>
+
       bool win = false;
       bool linux = false;
 
-      #if defined(__unix__) || defined(unix) || defined(__unix)
-      bool unix = true;
+      #if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
+        std::string os = "ios";
+        bool ios = true;
+        bool mac = false;
       #else
-      bool unix = false;
+        std::string os = "mac";
+        bool ios = false;
+        bool mac = true;
       #endif
 
+      #if defined(__unix__) || defined(unix) || defined(__unix)
+        bool unix = true;
+      #else
+        bool unix = false;
+      #endif
 
     #elif defined(__linux__)
       #undef linux
       #ifdef __ANDROID__
-      const std::string os = "android";
+        const std::string os = "android";
       #else
-      const std::string os = "linux";
+        const std::string os = "linux";
       #endif
 
       bool mac = false;
+      bool ios = false;
       bool win = false;
       bool linux = true;
 
       #if defined(__unix__) || defined(unix) || defined(__unix)
-      bool unix = true;
+        bool unix = true;
       #else
-      bool unix = false;
+        bool unix = false;
       #endif
 
     #elif defined(__FreeBSD__)
       const std::string os = "freebsd";
       bool mac = false;
+      bool ios = false;
       bool win = false;
       bool linux = false;
 
       #if defined(__unix__) || defined(unix) || defined(__unix)
-      bool unix = true;
+        bool unix = true;
       #else
-      bool unix = false;
+        bool unix = false;
       #endif
 
     #elif defined(BSD)
       const std::string os = "openbsd";
+      bool ios = false;
       bool mac = false;
       bool win = false;
       bool linux = false;
 
       #if defined(__unix__) || defined(unix) || defined(__unix)
-      bool unix = true;
+        bool unix = true;
       #else
-      bool unix = false;
+        bool unix = false;
       #endif
 
     #endif
@@ -561,7 +573,7 @@ namespace SSC {
     #endif
   }
 
-  #if IOS == 0 && !defined(TARGET_OS_SIMULATOR)
+  #if !TARGET_OS_IPHONE && !TARGET_OS_SIMULATOR
     inline String readFile(fs::path path) {
       std::ifstream stream(path.c_str());
       String content;

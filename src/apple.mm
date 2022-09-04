@@ -809,8 +809,9 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
 
   if (cmd.name == "log") {
     auto value = decodeURIComponent(cmd.get("value"));
-    if (platform.os == "mac") {
+    if (platform.os == "mac" || platform.os == "ios") {
       printf("%s\n", value.c_str());
+      NSLog(@"DEBUG - %s\n", value.c_str());
     } else {
       DebugLog(@"%s", value.c_str());
     }
