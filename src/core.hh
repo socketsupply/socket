@@ -333,13 +333,14 @@ namespace SSC {
 
   // forward
   struct Peer;
-  struct PeerRequest;
-  struct DescriptorContext;
+  struct PeerRequestContext;
+  struct Descriptor;
+  struct DescriptorRequestContext;
 
-  static uv_loop_t defaultLoop = {0};
+  static uv_loop_t eventLoop = {0};
 
   static std::map<uint64_t, Peer*> peers;
-  static std::map<uint64_t, DescriptorContext*> descriptors;
+  static std::map<uint64_t, Descriptor*> descriptors;
 
   static std::recursive_mutex peersMutex;
   static std::recursive_mutex tasksMutex;
@@ -354,21 +355,21 @@ namespace SSC {
   static std::atomic<bool> didTimersInit = false;
   static std::atomic<bool> didTimersStart = false;
 
-  static std::atomic<int> lastLoopStatus = false;
   static std::atomic<bool> isLoopRunning = false;
   static std::recursive_mutex loopMutex;
 
 #if defined(__APPLE__)
   static dispatch_queue_attr_t loopQueueQOS = dispatch_queue_attr_make_with_qos_class(
     DISPATCH_QUEUE_SERIAL,
-    QOS_CLASS_BACKGROUND,
+    QOS_CLASS_DEFAULT,
     -1
   );
 
   static dispatch_queue_t loopQueue = dispatch_queue_create("ssc.queue", loopQueueQOS);
+  static dispatch_semaphore_t loopSemaphore = dispatch_semaphore_create(1);
 #endif
 
-  struct DescriptorContext {
+  struct Descriptor {
     uv_file fd = 0;
     uv_dir_t *dir = nullptr;
     // 256 which corresponds to DirectoryHandle.MAX_BUFFER_SIZE
@@ -444,10 +445,10 @@ namespace SSC {
 
   static void initTimers ();
   static void startTimers ();
-  static uv_loop_t* getDefaultLoop ();
-  static int runDefaultLoop ();
-  static int runDefaultLoop (uv_run_mode);
-  static void stopDefaultLoop ();
+  static uv_loop_t* getEventLoop ();
+  static int runEventLoop ();
+  static int runEventLoop (uv_run_mode);
+  static void stopEventLoop ();
 
   static String addrToIPv4 (struct sockaddr_in* sin) {
     char buf[INET_ADDRSTRLEN];
@@ -492,47 +493,44 @@ namespace SSC {
     PEER_STATE_MAX = 1 << 0xF
   } peer_state_t;
 
-  struct PeerRequest {
+  struct PeerRequestContext {
     uint64_t id;
     String seq;
     Cb cb;
     Peer* peer;
 
-    PeerRequest () {
-      id = SSC::rand64();
+    PeerRequestContext () {
+      this->id = SSC::rand64();
     }
 
-    PeerRequest (String s, Cb c)
-      : PeerRequest(s, c, nullptr)
+    PeerRequestContext (String s, Cb c)
+      : PeerRequestContext(s, c, nullptr)
     {
       // noop
     }
 
-    PeerRequest (String s, Cb c, Peer *p) {
-      id = SSC::rand64();
-      cb = c;
-      seq = s;
-      peer = p;
+    PeerRequestContext (String s, Cb c, Peer *p) {
+      this->id = SSC::rand64();
+      this->cb = c;
+      this->seq = s;
+      this->peer = p;
     }
 
-    void end (String seq, String msg, Post post) const {
-      cb(seq, msg, post);
+    void end (String seq, String msg, Post post) {
+      this->cb(seq, msg, post);
       delete this;
     }
 
-    void end (String seq, String msg) const {
-      cb(seq, msg, Post{});
-      delete this;
+    void end (String seq, String msg) {
+      this->end(seq, msg, Post{});
     }
 
-    void end (String msg, Post post) const {
-      cb(seq, msg, post);
-      delete this;
+    void end (String msg, Post post) {
+      this->end(this->seq, msg, post);
     }
 
-    void end (String msg) const {
-      cb(seq, msg, Post{});
-      delete this;
+    void end (String msg) {
+      this->end(this->seq, msg, Post{});
     }
   };
 
@@ -635,7 +633,7 @@ namespace SSC {
         }
       }
 
-      runDefaultLoop();
+      runEventLoop();
     }
 
     static void pauseAllBound () {
@@ -648,7 +646,7 @@ namespace SSC {
         }
       }
 
-      runDefaultLoop();
+      runEventLoop();
     }
 
     /**
@@ -718,7 +716,6 @@ namespace SSC {
      */
     Peer (peer_type_t peerType, uint64_t peerId, bool isEphemeral) {
       std::lock_guard<std::recursive_mutex> guard(peersMutex);
-      auto loop = getDefaultLoop();
 
       this->id = peerId;
       this->type = peerType;
@@ -739,7 +736,7 @@ namespace SSC {
 
     int init () {
       std::lock_guard<std::recursive_mutex> guard(this->mutex);
-      auto loop = getDefaultLoop();
+      auto loop = getEventLoop();
       int err = 0;
 
       if ((PEER_TYPE_UDP & this->type) == PEER_TYPE_UDP) {
@@ -901,9 +898,9 @@ namespace SSC {
       return this->remote.err;
     }
 
-    void send (PeerRequest *ctx, char *buf, int len, int port, String address) {
+    void send (PeerRequestContext *ctx, char *buf, int len, int port, String address) {
       std::lock_guard<std::recursive_mutex> guard(this->mutex);
-      auto loop = getDefaultLoop();
+      auto loop = getEventLoop();
       int err = 0;
 
       struct sockaddr *sockaddr = nullptr;
@@ -934,7 +931,7 @@ namespace SSC {
       ctx->peer = this;
 
       err = uv_udp_send(req, &udp, &buffer, 1, sockaddr, [](uv_udp_send_t *req, int status) {
-        auto ctx = reinterpret_cast<PeerRequest*>(req->data);
+        auto ctx = reinterpret_cast<PeerRequestContext*>(req->data);
         auto peer = ctx->peer;
         std::string msg = "";
 
@@ -1159,12 +1156,90 @@ namespace SSC {
             peer->state = PEER_STATE_CLOSED;
             Peer::remove(peer->id);
             if (peer->onclose != nullptr) {
-              peer->onclose(peer);
               peer->onclose = nullptr;
             }
           }
         });
+
+        onclose(this);
       }
+    }
+  };
+
+  struct DescriptorRequestContext {
+    uint64_t id;
+    String seq = "";
+    Descriptor *desc = nullptr;
+    uv_fs_t *req = nullptr;
+    uv_buf_t iov[16];
+    int offset = 0;
+    Cb cb;
+
+    DescriptorRequestContext (Descriptor *d) {
+      this->id = SSC::rand64();
+      this->desc = d;
+    }
+
+    DescriptorRequestContext (Descriptor *d, String s, Cb c)
+      : DescriptorRequestContext(d, s, c, nullptr)
+    {
+      // noop
+    }
+
+    DescriptorRequestContext (Descriptor *d, String s, Cb c, uv_fs_t *r) {
+      this->id = SSC::rand64();
+      this->cb = c;
+      this->seq = s;
+      this->req = r;
+      this->desc = d;
+    }
+
+    void setBuffer (int index, int len, char *base) {
+      this->iov[index].base = base;
+      this->iov[index].len = len;
+    }
+
+    void freeBuffer (int index) {
+      if (this->iov[index].base != nullptr) {
+        delete (char *) this->iov[index].base;
+        this->iov[index].base = nullptr;
+      }
+
+      this->iov[index].len = 0;
+    }
+
+    char* getBuffer (int index) {
+      return this->iov[index].base;
+    }
+
+    size_t getBufferSize (int index) {
+      return this->iov[index].len;
+    }
+
+    void end (String seq, String msg, Post post) {
+      auto callback = this->cb;
+
+      this->cb = nullptr;
+
+      uv_fs_req_cleanup(req);
+      delete this->req;
+      delete this;
+
+      if (callback != nullptr) {
+        callback(seq, msg, post);
+      }
+    }
+
+    void end (String seq, String msg) {
+      this->end(seq, msg, Post{});
+    }
+
+    void end (String msg, Post post) {
+      this->end(seq, msg, post);
+    }
+
+    void end (String msg) {
+      this->end(seq, msg, Post{});
     }
   };
 
@@ -1177,7 +1252,7 @@ namespace SSC {
     // @see https://api.gtkd.org/glib.c.types.GSourceFuncs.html
   static GSourceFuncs loopSourceFunctions = {
     .prepare = [](GSource *source, gint *timeout) -> gboolean {
-      auto loop = getDefaultLoop();
+      auto loop = getEventLoop();
       uv_update_time(loop);
 
       if (!uv_loop_alive(loop)) {
@@ -1189,8 +1264,8 @@ namespace SSC {
     },
 
     .dispatch = [](GSource *source, GSourceFunc callback, gpointer user_data) -> gboolean {
-      auto loop = getDefaultLoop();
-      lastLoopStatus = uv_run(loop, UV_RUN_NOWAIT);
+      auto loop = getEventLoop();
+      uv_run(loop, UV_RUN_NOWAIT);
       return G_SOURCE_CONTINUE;
     }
   };
@@ -1203,14 +1278,14 @@ namespace SSC {
     }
 
     didLoopInit = true;
-    uv_loop_init(&defaultLoop);
+    uv_loop_init(&eventLoop);
 
 #if defined(__linux__) && !defined(__ANDROID__)
     GSource *source = g_source_new(&loopSourceFunctions, sizeof(UVSource));
     UVSource *uvSource = (UVSource *) source;
     uvSource->tag = g_source_add_unix_fd(
       source,
-      uv_backend_fd(&defaultLoop),
+      uv_backend_fd(&eventLoop),
       (GIOCondition) (G_IO_IN | G_IO_OUT | G_IO_ERR)
     );
 
@@ -1218,61 +1293,69 @@ namespace SSC {
 #endif
   }
 
-  static uv_loop_t* getDefaultLoop () {
+  static uv_loop_t* getEventLoop () {
     initLoop();
-    return &defaultLoop;
+    return &eventLoop;
   }
 
-  static void stopDefaultLoop() {
+  static void stopEventLoop() {
     isLoopRunning = false;
-    uv_stop(&defaultLoop);
+    uv_stop(&eventLoop);
   }
 
-  static int runDefaultLoop () {
-    return runDefaultLoop(UV_RUN_NOWAIT);
+  static int runEventLoop () {
+    return runEventLoop(UV_RUN_NOWAIT);
   }
 
-  static int runDefaultLoop (uv_run_mode mode) {
+  static int runEventLoop (uv_run_mode mode) {
     if (isLoopRunning) {
       return 0;
     }
 
-    std::lock_guard<std::recursive_mutex> loopGuard(loopMutex);
-
-    auto loop = getDefaultLoop();
+    auto loop = getEventLoop();
+    int rc = 0;
 
     initTimers();
     startTimers();
 
-    lastLoopStatus = 0;
-
 #if defined(__APPLE__)
     if (!uv_loop_alive(loop)) {
       isLoopRunning = false;
+      dispatch_semaphore_signal(loopSemaphore);
       return 0;
     }
 
-    isLoopRunning = true;
-
     auto timeout = uv_backend_timeout(loop);
+
+    isLoopRunning = true;
 
     if (timeout == -1) {
       dispatch_async(loopQueue, ^{
         std::lock_guard<std::recursive_mutex> loopGuard(loopMutex);
 
-        if (!uv_loop_alive(loop)) {
+        dispatch_semaphore_wait(loopSemaphore, DISPATCH_TIME_FOREVER);;
+
+        if (!isLoopRunning || !uv_loop_alive(loop)) {
           isLoopRunning = false;
+          dispatch_semaphore_signal(loopSemaphore);
           return;
         }
 
-        lastLoopStatus = uv_run(loop, mode);
+        while (
+          isLoopRunning &&
+          uv_run(loop, mode) &&
+          uv_loop_alive(loop) &&
+          uv_backend_timeout(loop) == -1
+        );
+
         isLoopRunning = false;
-        if (lastLoopStatus) {
-          runDefaultLoop(mode);
-        }
+        dispatch_semaphore_signal(loopSemaphore);
       });
+
       return 0;
     }
+
+    dispatch_semaphore_wait(loopSemaphore, DISPATCH_TIME_FOREVER);;
 
     dispatch_source_t loopPoll = dispatch_source_create(
       DISPATCH_SOURCE_TYPE_TIMER,
@@ -1285,29 +1368,49 @@ namespace SSC {
       loopPoll,
       dispatch_time(DISPATCH_TIME_NOW, timeout*0.001 * NSEC_PER_SEC),
       timeout*0.001 * NSEC_PER_SEC, // interval
-      2*timeout*0.001 * NSEC_PER_SEC // "leeway"
+      2*timeout*0.001 * NSEC_PER_SEC // max interval timeout ("leeway")
     );
 
     dispatch_source_set_event_handler(loopPoll, ^{
-      std::lock_guard<std::recursive_mutex> loopGuard(loopMutex);
-
-      if (!uv_loop_alive(loop)) {
-        dispatch_source_cancel(loopPoll); // cancel if no more work to poll
+      if (!isLoopRunning || !uv_loop_alive(loop)) {
         isLoopRunning = false;
+        dispatch_source_cancel(loopPoll); // cancel if no more work to poll
+        dispatch_semaphore_signal(loopSemaphore);
         return;
       }
 
-      lastLoopStatus = uv_run(loop, mode);
+      while (
+        isLoopRunning &&
+        uv_run(loop, mode) &&
+        uv_loop_alive(loop) &&
+        uv_backend_timeout(loop) == -1
+      );
+
+      if (!isLoopRunning) { // likely form `stopEventLoop()`
+        dispatch_source_cancel(loopPoll);
+        dispatch_semaphore_signal(loopSemaphore);
+        return;
+      }
+
+      auto timeout = uv_backend_timeout(loop);
+      // update poll timeout
+      dispatch_source_set_timer(
+        loopPoll,
+        dispatch_time(DISPATCH_TIME_NOW, timeout*0.001 * NSEC_PER_SEC),
+        timeout*0.001 * NSEC_PER_SEC, // interval
+        2*timeout*0.001 * NSEC_PER_SEC // max interval timeout ("leeway")
+      );
     });
 
     dispatch_resume(loopPoll);
 #else
+    std::lock_guard<std::recursive_mutex> loopGuard(loopMutex);
     isLoopRunning = true;
-    lastLoopStatus = uv_run(loop, mode);
+    rc = uv_run(loop, mode);
     isLoopRunning = false;
 #endif
 
-    return lastLoopStatus;
+    return rc;
   }
 
   static void initTimers () {
@@ -1317,7 +1420,7 @@ namespace SSC {
 
     std::lock_guard<std::recursive_mutex> guard(timersInitMutex);
 
-    auto loop = getDefaultLoop();
+    auto loop = getEventLoop();
 
     std::vector<Timer *> timersToInit = {
       &timers.releaseWeakDescriptors
@@ -1433,7 +1536,7 @@ namespace SSC {
 
     cb(seq, "{}", Post{});
 
-    runDefaultLoop();
+    runEventLoop();
   }
 
   bool Core::hasTask (String id) {
@@ -1587,8 +1690,8 @@ namespace SSC {
   void Core::fsAccess (String seq, String path, int mode, Cb cb) const {
     std::lock_guard<std::recursive_mutex> loopGuard(loopMutex);
     auto filename = path.c_str();
-    auto loop = getDefaultLoop();
-    auto desc = new DescriptorContext;
+    auto loop = getEventLoop();
+    auto desc = new Descriptor;
     auto req = new uv_fs_t;
 
     desc->seq = seq;
@@ -1597,7 +1700,7 @@ namespace SSC {
     req->data = desc;
 
     auto err = uv_fs_access(loop, req, filename, mode, [](uv_fs_t* req) {
-      auto desc = static_cast<DescriptorContext*>(req->data);
+      auto desc = static_cast<Descriptor*>(req->data);
       auto seq = desc->seq;
       auto cb = desc->cb;
       std::string msg;
@@ -1634,14 +1737,14 @@ namespace SSC {
       return;
     }
 
-    runDefaultLoop();
+    runEventLoop();
   }
 
   void Core::fsChmod (String seq, String path, int mode, Cb cb) const {
     std::lock_guard<std::recursive_mutex> loopGuard(loopMutex);
     auto filename = path.c_str();
-    auto loop = getDefaultLoop();
-    auto desc = new DescriptorContext;
+    auto loop = getEventLoop();
+    auto desc = new Descriptor;
     auto req = new uv_fs_t;
 
     desc->seq = seq;
@@ -1650,7 +1753,7 @@ namespace SSC {
     req->data = desc;
 
     auto err = uv_fs_chmod(loop, req, filename, mode, [](uv_fs_t* req) {
-      auto desc = static_cast<DescriptorContext*>(req->data);
+      auto desc = static_cast<Descriptor*>(req->data);
       auto seq = desc->seq;
       std::string msg;
 
@@ -1686,18 +1789,18 @@ namespace SSC {
       return;
     }
 
-    runDefaultLoop();
+    runEventLoop();
   }
 
   void Core::fsOpen (String seq, uint64_t id, String path, int flags, int mode, Cb cb) const {
     std::lock_guard<std::recursive_mutex> loopGuard(loopMutex);
     std::unique_lock<std::recursive_mutex> guard(descriptorsMutex);
 
-    auto desc = descriptors[id] = new DescriptorContext;
+    auto desc = descriptors[id] = new Descriptor;
     guard.unlock();
 
     auto filename = path.c_str();
-    auto loop = getDefaultLoop();
+    auto loop = getEventLoop();
     auto req = new uv_fs_t;
 
     std::lock_guard<std::recursive_mutex> descriptorLock(desc->mutex);
@@ -1708,7 +1811,7 @@ namespace SSC {
     req->data = desc;
 
     auto err = uv_fs_open(loop, req, filename, flags, mode, [](uv_fs_t* req) {
-      auto desc = static_cast<DescriptorContext*>(req->data);
+      auto desc = static_cast<Descriptor*>(req->data);
       std::lock_guard<std::recursive_mutex> descriptorLock(desc->mutex);
 
       auto seq = desc->seq;
@@ -1756,17 +1859,17 @@ namespace SSC {
       return;
     }
 
-    runDefaultLoop();
+    runEventLoop();
   }
 
   void Core::fsOpendir(String seq, uint64_t id, String path, Cb cb) const {
     std::lock_guard<std::recursive_mutex> loopGuard(loopMutex);
     std::unique_lock<std::recursive_mutex> guard(descriptorsMutex);
-    auto desc = descriptors[id] = new DescriptorContext;
+    auto desc = descriptors[id] = new Descriptor;
     guard.unlock();
 
     auto filename = path.c_str();
-    auto loop = getDefaultLoop();
+    auto loop = getEventLoop();
     auto req = new uv_fs_t;
 
     std::lock_guard<std::recursive_mutex> descriptorLock(desc->mutex);
@@ -1778,7 +1881,7 @@ namespace SSC {
     req->data = desc;
 
     auto err = uv_fs_opendir(loop, req, filename, [](uv_fs_t *req) {
-      auto desc = static_cast<DescriptorContext*>(req->data);
+      auto desc = static_cast<Descriptor*>(req->data);
 
       std::lock_guard<std::recursive_mutex> descriptorLock(desc->mutex);
       auto seq = desc->seq;
@@ -1824,7 +1927,7 @@ namespace SSC {
       return;
     }
 
-    runDefaultLoop();
+    runEventLoop();
   }
 
   void Core::fsReaddir(String seq, uint64_t id, size_t nentries, Cb cb) const {
@@ -1863,7 +1966,7 @@ namespace SSC {
       return;
     }
 
-    auto loop = getDefaultLoop();
+    auto loop = getEventLoop();
     auto req = new uv_fs_t;
 
     desc->seq = seq;
@@ -1874,7 +1977,7 @@ namespace SSC {
     req->data = desc;
 
     auto err = uv_fs_readdir(loop, req, desc->dir, [](uv_fs_t *req) {
-      auto desc = static_cast<DescriptorContext*>(req->data);
+      auto desc = static_cast<Descriptor*>(req->data);
 
       std::lock_guard<std::recursive_mutex> descriptorLock(desc->mutex);
       auto seq = desc->seq;
@@ -1928,7 +2031,7 @@ namespace SSC {
       return;
     }
 
-    runDefaultLoop();
+    runEventLoop();
   }
 
   void Core::fsClose (String seq, uint64_t id, Cb cb) const {
@@ -1960,8 +2063,8 @@ namespace SSC {
 
     req->data = desc;
 
-    auto err = uv_fs_close(getDefaultLoop(), req, desc->fd, [](uv_fs_t* req) {
-      auto desc = static_cast<DescriptorContext*>(req->data);
+    auto err = uv_fs_close(getEventLoop(), req, desc->fd, [](uv_fs_t* req) {
+      auto desc = static_cast<Descriptor*>(req->data);
 
       std::lock_guard<std::recursive_mutex> descriptorLock(desc->mutex);
       std::string msg;
@@ -2008,7 +2111,7 @@ namespace SSC {
       return;
     }
 
-    runDefaultLoop();
+    runEventLoop();
   }
 
   void Core::fsClosedir (String seq, uint64_t id, Cb cb) const {
@@ -2041,8 +2144,8 @@ namespace SSC {
 
     req->data = desc;
 
-    auto err = uv_fs_closedir(getDefaultLoop(), req, desc->dir, [](uv_fs_t* req) {
-      auto desc = static_cast<DescriptorContext*>(req->data);
+    auto err = uv_fs_closedir(getEventLoop(), req, desc->dir, [](uv_fs_t* req) {
+      auto desc = static_cast<Descriptor*>(req->data);
 
       std::lock_guard<std::recursive_mutex> descriptorLock(desc->mutex);
       std::string msg;
@@ -2087,7 +2190,7 @@ namespace SSC {
       return;
     }
 
-    runDefaultLoop();
+    runEventLoop();
   }
 
   void Core::fsCloseOpenDescriptor (String seq, uint64_t id, Cb cb) const {
@@ -2176,7 +2279,7 @@ namespace SSC {
     std::unique_lock<std::recursive_mutex> guard(descriptorsMutex);
 
     auto desc = descriptors[id];
-    auto loop = getDefaultLoop();
+    auto loop = getEventLoop();
     guard.unlock();
 
     if (desc == nullptr) {
@@ -2192,24 +2295,26 @@ namespace SSC {
       return;
     }
 
-    auto buf = new char[len]{0};
     auto req = new uv_fs_t;
-    const uv_buf_t iov = uv_buf_init(buf, len);
+    auto buf = new char[len]{0};
+    auto ctx = new DescriptorRequestContext(desc, seq, cb, req);
 
-    std::lock_guard<std::recursive_mutex> descriptorLock(desc->mutex);
-    desc->data = buf;
-    desc->seq = seq;
-    desc->cb = cb;
+    ctx->setBuffer(0, len, buf);
+    ctx->offset = offset;
 
-    req->data = desc;
+    req->data = ctx;
 
-    auto err = uv_fs_read(loop, req, desc->fd, &iov, 1, offset, [](uv_fs_t* req) {
-      auto desc = static_cast<DescriptorContext*>(req->data);
+    // printf("uv_fs_read(id=%llu, size=%d, offset=%d)\n", desc->id, len, ctx->offset);
+    auto err = uv_fs_read(loop, req, desc->fd, ctx->iov, 1, offset, [](uv_fs_t* req) {
+      auto ctx = static_cast<DescriptorRequestContext*>(req->data);
+      auto desc = ctx->desc;
+      auto loop = getEventLoop();
 
-      std::lock_guard<std::recursive_mutex> descriptorLock(desc->mutex);
+      if (ctx->offset >= 0 && req->result == 0) {
+        // printf("uv_fs_read(id=%llu) = %d\n", desc->id, (int) req->result);
+      }
+
       std::string msg = "{}";
-      auto seq = desc->seq;
-      auto cb = desc->cb;
       Post post = {0};
 
       if (req->result < 0) {
@@ -2219,20 +2324,19 @@ namespace SSC {
             "message": "$S"
           }
         })MSG", std::to_string(desc->id), String(uv_strerror((int)req->result)));
+
+        auto buf = ctx->getBuffer(0);
+        if (buf != nullptr) {
+          delete [] buf;
+        }
       } else {
         post.id = SSC::rand64();
-        post.body = (char *) desc->data;
+        post.body = ctx->getBuffer(0);
         post.length = (int) req->result;
         post.bodyNeedsFree = true;
       }
 
-      desc->data = 0;
-
-      uv_fs_req_cleanup(req);
-
-      delete req;
-
-      cb(seq, msg, post);
+      ctx->end(msg, post);
     });
 
     if (err < 0) {
@@ -2243,11 +2347,12 @@ namespace SSC {
         }
       })MSG", std::to_string(id), String(uv_strerror(err)));
 
-      cb(seq, msg, Post{});
+      delete [] buf;
+      ctx->end(msg);
       return;
     }
 
-    runDefaultLoop();
+    runEventLoop(UV_RUN_ONCE);
   }
 
   void Core::fsWrite (String seq, uint64_t id, String data, int64_t offset, Cb cb) const {
@@ -2283,8 +2388,8 @@ namespace SSC {
     req->data = desc;
     req->ptr = bytes;
 
-    auto err = uv_fs_write(getDefaultLoop(), req, desc->fd, &buf, 1, offset, [](uv_fs_t* req) {
-      auto desc = static_cast<DescriptorContext*>(req->data);
+    auto err = uv_fs_write(getEventLoop(), req, desc->fd, &buf, 1, offset, [](uv_fs_t* req) {
+      auto desc = static_cast<Descriptor*>(req->data);
 
       std::lock_guard<std::recursive_mutex> descriptorLock(desc->mutex);
       std::string msg;
@@ -2309,6 +2414,7 @@ namespace SSC {
 
       cb(seq, msg, Post{});
       uv_fs_req_cleanup(req);
+      // `uv_fs_req_cleanup()` should free this
       if (req->ptr) {
         delete (char *) req->ptr;
       }
@@ -2327,12 +2433,12 @@ namespace SSC {
       return;
     }
 
-    runDefaultLoop();
+    runEventLoop();
   }
 
   void Core::fsStat (String seq, String path, Cb cb) const {
     std::lock_guard<std::recursive_mutex> loopGuard(loopMutex);
-    DescriptorContext* desc = new DescriptorContext;
+    Descriptor* desc = new Descriptor;
     auto req = new uv_fs_t;
 
     desc->seq = seq;
@@ -2340,8 +2446,8 @@ namespace SSC {
 
     req->data = desc;
 
-    auto err = uv_fs_stat(getDefaultLoop(), req, (const char*) path.c_str(), [](uv_fs_t* req) {
-      auto desc = static_cast<DescriptorContext*>(req->data);
+    auto err = uv_fs_stat(getEventLoop(), req, (const char*) path.c_str(), [](uv_fs_t* req) {
+      auto desc = static_cast<Descriptor*>(req->data);
       auto seq = desc->seq;
       auto cb = desc->cb;
       std::string msg;
@@ -2423,7 +2529,7 @@ namespace SSC {
       return;
     }
 
-    runDefaultLoop();
+    runEventLoop();
   }
 
   void Core::fsFStat (String seq, uint64_t id, Cb cb) const {
@@ -2452,8 +2558,8 @@ namespace SSC {
     auto req = new uv_fs_t;
     req->data = desc;
 
-    auto err = uv_fs_fstat(getDefaultLoop(), req, desc->fd, [](uv_fs_t* req) {
-      auto desc = static_cast<DescriptorContext*>(req->data);
+    auto err = uv_fs_fstat(getEventLoop(), req, desc->fd, [](uv_fs_t* req) {
+      auto desc = static_cast<Descriptor*>(req->data);
 
       std::lock_guard<std::recursive_mutex> descriptorLock(desc->mutex);
       auto seq = desc->seq;
@@ -2536,7 +2642,7 @@ namespace SSC {
       return;
     }
 
-    runDefaultLoop();
+    runEventLoop();
   }
 
   void Core::fsGetOpenDescriptors (String seq, Cb cb) const {
@@ -2578,9 +2684,9 @@ namespace SSC {
   void Core::fsUnlink (String seq, String path, Cb cb) const {
     std::lock_guard<std::recursive_mutex> loopGuard(loopMutex);
     auto filename = path.c_str();
-    auto loop = getDefaultLoop();
+    auto loop = getEventLoop();
 
-    auto desc = new DescriptorContext;
+    auto desc = new Descriptor;
     desc->seq = seq;
     desc->cb = cb;
 
@@ -2588,7 +2694,7 @@ namespace SSC {
     req->data = desc;
 
     auto err = uv_fs_unlink(loop, req, filename, [](uv_fs_t* req) {
-      auto desc = static_cast<DescriptorContext*>(req->data);
+      auto desc = static_cast<Descriptor*>(req->data);
       auto seq = desc->seq;
       auto cb = desc->cb;
       std::string msg;
@@ -2632,16 +2738,16 @@ namespace SSC {
       return;
     }
 
-    runDefaultLoop();
+    runEventLoop();
   }
 
   void Core::fsRename (String seq, String pathA, String pathB, Cb cb) const {
     std::lock_guard<std::recursive_mutex> loopGuard(loopMutex);
-    auto loop = getDefaultLoop();
+    auto loop = getEventLoop();
     auto src = pathA.c_str();
     auto dst = pathB.c_str();
 
-    auto desc = new DescriptorContext;
+    auto desc = new Descriptor;
     desc->seq = seq;
     desc->cb = cb;
 
@@ -2649,7 +2755,7 @@ namespace SSC {
     req->data = desc;
 
     auto err = uv_fs_rename(loop, req, src, dst, [](uv_fs_t* req) {
-      auto desc = static_cast<DescriptorContext*>(req->data);
+      auto desc = static_cast<Descriptor*>(req->data);
       auto seq = desc->seq;
       auto cb = desc->cb;
       std::string msg;
@@ -2693,16 +2799,16 @@ namespace SSC {
       return;
     }
 
-    runDefaultLoop();
+    runEventLoop();
   }
 
   void Core::fsCopyFile (String seq, String pathA, String pathB, int flags, Cb cb) const {
     std::lock_guard<std::recursive_mutex> loopGuard(loopMutex);
-    auto loop = getDefaultLoop();
+    auto loop = getEventLoop();
     auto src = pathA.c_str();
     auto dst = pathB.c_str();
 
-    auto desc = new DescriptorContext;
+    auto desc = new Descriptor;
     desc->seq = seq;
     desc->cb = cb;
 
@@ -2710,7 +2816,7 @@ namespace SSC {
     req->data = desc;
 
     auto err = uv_fs_copyfile(loop, req, src, dst, flags, [](uv_fs_t* req) {
-      auto desc = static_cast<DescriptorContext*>(req->data);
+      auto desc = static_cast<Descriptor*>(req->data);
       auto seq = desc->seq;
       auto cb = desc->cb;
       std::string msg;
@@ -2754,15 +2860,15 @@ namespace SSC {
       return;
     }
 
-    runDefaultLoop();
+    runEventLoop();
   }
 
   void Core::fsRmdir (String seq, String path, Cb cb) const {
     std::lock_guard<std::recursive_mutex> loopGuard(loopMutex);
     auto filename = path.c_str();
-    auto loop = getDefaultLoop();
+    auto loop = getEventLoop();
 
-    auto desc = new DescriptorContext;
+    auto desc = new Descriptor;
     desc->seq = seq;
     desc->cb = cb;
 
@@ -2770,7 +2876,7 @@ namespace SSC {
     req->data = desc;
 
     auto err = uv_fs_rmdir(loop, req, filename, [](uv_fs_t* req) {
-      auto desc = static_cast<DescriptorContext*>(req->data);
+      auto desc = static_cast<Descriptor*>(req->data);
       auto seq = desc->seq;
       auto cb = desc->cb;
       std::string msg;
@@ -2814,15 +2920,15 @@ namespace SSC {
       return;
     }
 
-    runDefaultLoop();
+    runEventLoop();
   }
 
   void Core::fsMkdir (String seq, String path, int mode, Cb cb) const {
     std::lock_guard<std::recursive_mutex> loopGuard(loopMutex);
     auto filename = path.c_str();
-    auto loop = getDefaultLoop();
+    auto loop = getEventLoop();
 
-    auto desc = new DescriptorContext;
+    auto desc = new Descriptor;
     desc->seq = seq;
     desc->cb = cb;
 
@@ -2830,7 +2936,7 @@ namespace SSC {
     req->data = desc;
 
     auto err = uv_fs_mkdir(loop, req, filename, mode, [](uv_fs_t* req) {
-      auto desc = static_cast<DescriptorContext*>(req->data);
+      auto desc = static_cast<Descriptor*>(req->data);
       auto seq = desc->seq;
       auto cb = desc->cb;
       std::string msg;
@@ -2874,7 +2980,7 @@ namespace SSC {
       return;
     }
 
-    runDefaultLoop();
+    runEventLoop();
   }
 
   void Core::sendBufferSize (String seq, uint64_t peerId, int size, Cb cb) const {
@@ -3037,7 +3143,7 @@ namespace SSC {
       cb(seq, "{}", Post{});
     });
 
-    runDefaultLoop();
+    runEventLoop();
   }
 
   void Core::shutdown (String seq, uint64_t peerId, Cb cb) const {
@@ -3097,7 +3203,7 @@ namespace SSC {
      free(req->handle);
     });
 
-    runDefaultLoop();
+    runEventLoop();
   }
 
   void Core::udpBind (String seq, uint64_t peerId, String address, int port, Cb cb) const {
@@ -3156,7 +3262,7 @@ namespace SSC {
 
     cb(seq, msg, Post{});
 
-    runDefaultLoop();
+    runEventLoop();
   }
 
   void Core::udpConnect (String seq, uint64_t peerId, String address, int port, Cb cb) const {
@@ -3186,7 +3292,7 @@ namespace SSC {
 
     cb(seq, msg, Post{});
 
-    runDefaultLoop();
+    runEventLoop();
   }
 
   void Core::udpGetPeerName (String seq, uint64_t peerId, Cb cb) const {
@@ -3313,15 +3419,18 @@ namespace SSC {
   }
 
   void Core::udpSend (String seq, uint64_t peerId, char* buf, int len, int port, String address, bool ephemeral, Cb cb) const {
+    std::lock_guard<std::recursive_mutex> loopGuard(loopMutex);
     auto peer = Peer::create(PEER_TYPE_UDP, peerId, ephemeral);
-    auto loop = getDefaultLoop();
-    auto ctx = new PeerRequest(seq, cb);
+    auto loop = getEventLoop();
+    auto ctx = new PeerRequestContext(seq, cb);
 
     peer->send(ctx, buf, len, port, address);
-    runDefaultLoop();
+
+    runEventLoop(UV_RUN_ONCE);
   }
 
   void Core::udpReadStart (String seq, uint64_t peerId, Cb cb) const {
+    std::lock_guard<std::recursive_mutex> loopGuard(loopMutex);
     if (!Peer::exists(peerId)) {
       auto msg = SSC::format(R"MSG({
         "err": {
@@ -3387,12 +3496,12 @@ namespace SSC {
     auto msg = SSC::format(R"MSG({ "data": {} })MSG");
     cb(seq, msg, Post{});
 
-    runDefaultLoop();
+    runEventLoop();
   }
 
   void Core::dnsLookup (String seq, String hostname, int family, Cb cb) const {
-    auto ctx = new PeerRequest(seq, cb);
-    auto loop = getDefaultLoop();
+    auto ctx = new PeerRequestContext(seq, cb);
+    auto loop = getEventLoop();
 
     struct addrinfo hints = {0};
 
@@ -3411,7 +3520,7 @@ namespace SSC {
     resolver->data = ctx;
 
     uv_getaddrinfo(loop, resolver, [](uv_getaddrinfo_t *resolver, int status, struct addrinfo *res) {
-      auto ctx = (PeerRequest*) resolver->data;
+      auto ctx = (PeerRequestContext*) resolver->data;
 
       if (status < 0) {
         auto msg = SSC::format(R"MSG({
@@ -3459,7 +3568,7 @@ namespace SSC {
       uv_freeaddrinfo(res);
     }, hostname.c_str(), nullptr, &hints);
 
-    runDefaultLoop();
+    runEventLoop();
   }
 
   String Core::getNetworkInterfaces () const {
