@@ -1390,7 +1390,7 @@ open class NativeUDP(core: NativeCore) {
 open class NativeFileSystem(core: NativeCore) {
   val TAG = "NativeFileSystem"
 
-  data class AssetDescriptorContext(
+  data class AssetDescriptor(
     val id: String,
     val path: String,
     var position: Int = 0,
@@ -1399,7 +1399,7 @@ open class NativeFileSystem(core: NativeCore) {
   );
 
   private var core: NativeCore? = core
-  private val openAssets = mutableMapOf<String, AssetDescriptorContext>()
+  private val openAssets = mutableMapOf<String, AssetDescriptor>()
 
   var nextId: Long = 0
   val constants = mutableMapOf<String, Int>();
@@ -1545,7 +1545,7 @@ open class NativeFileSystem(core: NativeCore) {
 
     fd.close()
 
-    openAssets[id] = AssetDescriptorContext(id, path)
+    openAssets[id] = AssetDescriptor(id, path)
 
     callback(JSONData(id, "\"fd\": $id").toString())
   }
