@@ -54,14 +54,14 @@ void uncaughtExceptionHandler (NSException *exception) {
 - (void) applicationDidBecomeActive: (UIApplication*)application {
   dispatch_async(queue, ^{
     SSC::Peer::resumeAllBound();
-    SSC::runDefaultLoop();
+    SSC::runEventLoop();
   });
 }
 
 - (void) applicationWillResignActive: (UIApplication*)application {
   dispatch_async(queue, ^{
     SSC::Peer::pauseAllBound();
-    SSC::stopDefaultLoop();
+    SSC::stopEventLoop();
   });
 }
 
