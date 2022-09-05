@@ -22,7 +22,7 @@ dispatch_queue_attr_t qos = dispatch_queue_attr_make_with_qos_class(
   -1
 );
 
-static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
+static dispatch_queue_t queue = dispatch_queue_create("co.socketsupply.queue.core", qos);
 
 @interface NavigationDelegate : NSObject<WKNavigationDelegate>
 - (void) webview: (BridgedWebView*)webview
@@ -581,7 +581,7 @@ static dispatch_queue_t queue = dispatch_queue_create("ssc.queue", qos);
     DISPATCH_QUEUE_PRIORITY_DEFAULT
   );
 
-  self.monitorQueue = dispatch_queue_create("co.socketsupply.network-monitor", attrs);
+  self.monitorQueue = dispatch_queue_create("co.socketsupply.queue.network-monitor", attrs);
 
   // self.monitor = nw_path_monitor_create_with_type(nw_interface_type_wifi);
   self.monitor = nw_path_monitor_create();

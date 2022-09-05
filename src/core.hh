@@ -359,14 +359,14 @@ namespace SSC {
   static std::recursive_mutex loopMutex;
 
 #if defined(__APPLE__)
-  static dispatch_queue_attr_t loopQueueQOS = dispatch_queue_attr_make_with_qos_class(
+  static dispatch_queue_attr_t eventLoopQueueAttrs = dispatch_queue_attr_make_with_qos_class(
     DISPATCH_QUEUE_SERIAL,
     QOS_CLASS_DEFAULT,
     -1
   );
 
-  static dispatch_queue_t loopQueue = dispatch_queue_create("ssc.queue", loopQueueQOS);
-  static dispatch_semaphore_t loopSemaphore = dispatch_semaphore_create(1);
+  static dispatch_queue_t eventLoopQueue = dispatch_queue_create("co.socketsupply.queue.event-loop", eventLoopQueueAttrs);
+  static dispatch_semaphore_t eventLoopSemaphore = dispatch_semaphore_create(1);
 #endif
 
   struct Descriptor {
@@ -1156,12 +1156,11 @@ namespace SSC {
             peer->state = PEER_STATE_CLOSED;
             Peer::remove(peer->id);
             if (peer->onclose != nullptr) {
+              peer->onclose(peer);
               peer->onclose = nullptr;
             }
           }
         });
-
-        onclose(this);
       }
     }
   };
@@ -1327,7 +1326,7 @@ namespace SSC {
 #if defined(__APPLE__)
     if (!uv_loop_alive(loop)) {
       isLoopRunning = false;
-      dispatch_semaphore_signal(loopSemaphore);
+      dispatch_semaphore_signal(eventLoopSemaphore);
       return 0;
     }
 
@@ -1336,14 +1335,13 @@ namespace SSC {
     isLoopRunning = true;
 
     if (timeout == -1) {
-      dispatch_async(loopQueue, ^{
+      dispatch_async(eventLoopQueue, ^{
         std::lock_guard<std::recursive_mutex> loopGuard(loopMutex);
-
-        dispatch_semaphore_wait(loopSemaphore, DISPATCH_TIME_FOREVER);;
+        dispatch_semaphore_wait(eventLoopSemaphore, DISPATCH_TIME_FOREVER);;
 
         if (!isLoopRunning || !uv_loop_alive(loop)) {
           isLoopRunning = false;
-          dispatch_semaphore_signal(loopSemaphore);
+          dispatch_semaphore_signal(eventLoopSemaphore);
           return;
         }
 
@@ -1355,33 +1353,33 @@ namespace SSC {
         );
 
         isLoopRunning = false;
-        dispatch_semaphore_signal(loopSemaphore);
+        dispatch_semaphore_signal(eventLoopSemaphore);
       });
 
       return 0;
     }
 
-    dispatch_semaphore_wait(loopSemaphore, DISPATCH_TIME_FOREVER);;
+    dispatch_semaphore_wait(eventLoopSemaphore, DISPATCH_TIME_FOREVER);;
 
     dispatch_source_t loopPoll = dispatch_source_create(
       DISPATCH_SOURCE_TYPE_TIMER,
       0,
       0,
-      loopQueue
+      eventLoopQueue
     );
 
     dispatch_source_set_timer(
       loopPoll,
       dispatch_time(DISPATCH_TIME_NOW, timeout*0.001 * NSEC_PER_SEC),
-      timeout*0.001 * NSEC_PER_SEC, // interval
-      2*timeout*0.001 * NSEC_PER_SEC // max interval timeout ("leeway")
+      DISPATCH_TIME_FOREVER, // interval
+      timeout*0.01 * NSEC_PER_SEC // max interval timeout ("leeway")
     );
 
     dispatch_source_set_event_handler(loopPoll, ^{
       if (!isLoopRunning || !uv_loop_alive(loop)) {
         isLoopRunning = false;
         dispatch_source_cancel(loopPoll); // cancel if no more work to poll
-        dispatch_semaphore_signal(loopSemaphore);
+        dispatch_semaphore_signal(eventLoopSemaphore);
         return;
       }
 
@@ -1396,7 +1394,7 @@ namespace SSC {
 
       if (!isLoopRunning) { // likely form `stopEventLoop()`
         dispatch_source_cancel(loopPoll);
-        dispatch_semaphore_signal(loopSemaphore);
+        dispatch_semaphore_signal(eventLoopSemaphore);
         return;
       }
 
@@ -1405,8 +1403,8 @@ namespace SSC {
       dispatch_source_set_timer(
         loopPoll,
         dispatch_time(DISPATCH_TIME_NOW, timeout*0.001 * NSEC_PER_SEC),
-        timeout*0.001 * NSEC_PER_SEC, // interval
-        2*timeout*0.001 * NSEC_PER_SEC // max interval timeout ("leeway")
+        DISPATCH_TIME_FOREVER, // interval
+        timeout*0.01 * NSEC_PER_SEC // max interval timeout ("leeway")
       );
     });
 
