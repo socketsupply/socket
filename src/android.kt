@@ -815,6 +815,28 @@ open class Bridge(activity: WebViewActivity) {
       return null
     })
 
+    this.registerInterface("process", fun(
+      message: IPCMessage,
+      value: String,
+      callback: (String, String) -> Unit,
+      throwError: (String, String) -> String
+    ): String? {
+      val core = this.activity.core
+
+      if (core == null) {
+        return null
+      }
+
+      when (message.command) {
+        "process.cwd", "cwd" -> {
+          callback(message.seq, core.getRootDirectory() ?: "")
+          return message.seq
+        }
+      }
+
+      return null
+    })
+
     this.registerInterface("udp", fun(
       message: IPCMessage,
       value: String,

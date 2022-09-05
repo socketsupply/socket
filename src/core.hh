@@ -1304,7 +1304,13 @@ namespace SSC {
   }
 
   static int runEventLoop () {
+#if defined(__ANDROID__)
+    return runEventLoop(UV_RUN_ONCE);
+#elif defined(__APPLE__) || defined(__linux__)
     return runEventLoop(UV_RUN_NOWAIT);
+#else
+    return runEventLoop(UV_RUN_DEFAULT);
+#endif
   }
 
   static int runEventLoop (uv_run_mode mode) {
@@ -1379,7 +1385,9 @@ namespace SSC {
         return;
       }
 
-      while (
+      do {
+        std::lock_guard<std::recursive_mutex> loopGuard(loopMutex);
+      } while (
         isLoopRunning &&
         uv_run(loop, mode) &&
         uv_loop_alive(loop) &&

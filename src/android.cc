@@ -188,8 +188,6 @@ jboolean NativeCore::ConfigureEnvironment () {
   windowOptions.cwd = this->rootDirectory.str();
 
   this->javaScriptPreloadSource.assign(
-    "console.error = console.debug = console.warn = console.log; \n"
-    "                                                            \n"
     "window.addEventListener('unhandledrejection', e => {        \n"
     "  console.log(e.reason || e.message || e);                  \n"
     "});                                                         \n"
