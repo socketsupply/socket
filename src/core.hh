@@ -342,21 +342,18 @@ namespace SSC {
   static std::map<uint64_t, Peer*> peers;
   static std::map<uint64_t, Descriptor*> descriptors;
 
-  static std::recursive_mutex peersMutex;
-  static std::recursive_mutex tasksMutex;
-  static std::recursive_mutex postsMutex;
   static std::recursive_mutex descriptorsMutex;
-
+  static std::recursive_mutex loopMutex;
+  static std::recursive_mutex peersMutex;
+  static std::recursive_mutex postsMutex;
+  static std::recursive_mutex tasksMutex;
   static std::recursive_mutex timersMutex;
-  static std::recursive_mutex timersInitMutex;
-  static std::recursive_mutex timersStartMutex;
 
   static std::atomic<bool> didLoopInit = false;
   static std::atomic<bool> didTimersInit = false;
   static std::atomic<bool> didTimersStart = false;
 
   static std::atomic<bool> isLoopRunning = false;
-  static std::recursive_mutex loopMutex;
 
 #if defined(__APPLE__)
   static dispatch_queue_attr_t eventLoopQueueAttrs = dispatch_queue_attr_make_with_qos_class(
@@ -604,14 +601,13 @@ namespace SSC {
   struct Peer {
     Cb cb;
     Cb onrecv;
-    std::function<void(Peer *)> onclose;
 
     String seq = "";
     uint64_t id = 0;
 
     // peer state
-    RemotePeerInfo remote;
     LocalPeerInfo local;
+    RemotePeerInfo remote;
     peer_type_t type = PEER_TYPE_NONE;
     peer_flag_t flags = PEER_FLAG_NONE;
     peer_state_t state = PEER_STATE_NONE;
@@ -739,7 +735,7 @@ namespace SSC {
       auto loop = getEventLoop();
       int err = 0;
 
-      if ((PEER_TYPE_UDP & this->type) == PEER_TYPE_UDP) {
+      if (this->type == PEER_TYPE_UDP) {
         memset(&this->udp, 0, sizeof(uv_udp_t));
         err = uv_udp_init(loop, &this->udp);
         this->udp.data = (void *) this;
@@ -751,7 +747,7 @@ namespace SSC {
     void initRemotePeerInfo () {
       std::lock_guard<std::recursive_mutex> guard(this->mutex);
 
-      if ((PEER_TYPE_UDP & this->type) == PEER_TYPE_UDP) {
+      if (this->type == PEER_TYPE_UDP) {
         this->remote.init(&this->udp);
       }
     }
@@ -759,7 +755,7 @@ namespace SSC {
     void initLocalPeerInfo () {
       std::lock_guard<std::recursive_mutex> guard(this->mutex);
 
-      if ((PEER_TYPE_UDP & this->type) == PEER_TYPE_UDP) {
+      if (this->type == PEER_TYPE_UDP) {
         this->local.init(&this->udp);
       }
     }
@@ -1136,31 +1132,28 @@ namespace SSC {
     void close (std::function<void(Peer *)> onclose) {
       std::lock_guard<std::recursive_mutex> guard(this->mutex);
 
-      if (!isActive()) {
+      if (!this->isActive()) {
         return onclose(this);
       }
 
-      if (isClosed() || isClosing()) {
+      if (this->isClosed() || this->isClosing()) {
         return onclose(this);
       }
 
-      if ((PEER_TYPE_UDP & type) == PEER_TYPE_UDP) {
-        this->onclose = onclose;
+      if (this->type == PEER_TYPE_UDP) {
+        // reset state and set to CLOSED
+        this->state = PEER_STATE_CLOSED;
+
         uv_close((uv_handle_t*) &this->udp, [](uv_handle_t *handle) {
           auto peer = (Peer *) handle->data;
 
           if (peer != nullptr) {
             std::lock_guard<std::recursive_mutex> guard(peer->mutex);
-
-            // reset state and set to CLOSED
-            peer->state = PEER_STATE_CLOSED;
             Peer::remove(peer->id);
-            if (peer->onclose != nullptr) {
-              peer->onclose(peer);
-              peer->onclose = nullptr;
-            }
           }
         });
+
+        onclose(this);
       }
     }
   };
@@ -1372,7 +1365,7 @@ namespace SSC {
       loopPoll,
       dispatch_time(DISPATCH_TIME_NOW, timeout*0.001 * NSEC_PER_SEC),
       DISPATCH_TIME_FOREVER, // interval
-      timeout*0.01 * NSEC_PER_SEC // max interval timeout ("leeway")
+      timeout*0.001 * NSEC_PER_SEC // max interval timeout ("leeway")
     );
 
     dispatch_source_set_event_handler(loopPoll, ^{
@@ -1383,9 +1376,7 @@ namespace SSC {
         return;
       }
 
-      do {
-        std::lock_guard<std::recursive_mutex> loopGuard(loopMutex);
-      } while (
+      while (
         isLoopRunning &&
         uv_run(loop, mode) &&
         uv_loop_alive(loop) &&
@@ -1399,12 +1390,16 @@ namespace SSC {
       }
 
       auto timeout = uv_backend_timeout(loop);
+      if (timeout == -1) {
+        timeout = 0;
+      }
+
       // update poll timeout
       dispatch_source_set_timer(
         loopPoll,
         dispatch_time(DISPATCH_TIME_NOW, timeout*0.001 * NSEC_PER_SEC),
         DISPATCH_TIME_FOREVER, // interval
-        timeout*0.01 * NSEC_PER_SEC // max interval timeout ("leeway")
+        timeout*0.001 * NSEC_PER_SEC // max interval timeout ("leeway")
       );
     });
 
@@ -1424,7 +1419,7 @@ namespace SSC {
       return;
     }
 
-    std::lock_guard<std::recursive_mutex> guard(timersInitMutex);
+    std::lock_guard<std::recursive_mutex> guard(timersMutex);
 
     auto loop = getEventLoop();
 
@@ -1441,14 +1436,16 @@ namespace SSC {
   }
 
   static void startTimers () {
-    std::lock_guard<std::recursive_mutex> guard(timersStartMutex);
+    std::lock_guard<std::recursive_mutex> guard(timersMutex);
 
     std::vector<Timer *> timersToStart = {
       &timers.releaseWeakDescriptors
     };
 
     for (const auto& timer : timersToStart) {
-      if (!timer->started) {
+      if (timer->started) {
+        uv_timer_again(&timer->handle);
+      } else {
         uv_timer_start(
           &timer->handle,
           timer->invoke,
@@ -1460,8 +1457,6 @@ namespace SSC {
 
         // set once
         timer->started = true;
-      } else {
-        uv_timer_again(&timer->handle);
       }
     }
 
@@ -1473,8 +1468,7 @@ namespace SSC {
       return;
     }
 
-    std::lock_guard<std::recursive_mutex> guard(timersStartMutex);
-
+    std::lock_guard<std::recursive_mutex> guard(timersMutex);
 
     std::vector<Timer *> timersToStop = {
       &timers.releaseWeakDescriptors
@@ -3009,7 +3003,7 @@ namespace SSC {
 
     uv_handle_t* handle;
 
-    if ((PEER_TYPE_UDP & peer->type) == PEER_TYPE_UDP) {
+    if (peer->type == PEER_TYPE_UDP) {
       handle = (uv_handle_t*) &peer->udp;
     } else {
       auto msg = SSC::format(R"MSG({
@@ -3055,7 +3049,7 @@ namespace SSC {
 
     uv_handle_t* handle;
 
-    if ((PEER_TYPE_UDP & peer->type) == PEER_TYPE_UDP) {
+    if (peer->type == PEER_TYPE_UDP) {
       handle = (uv_handle_t*) &peer->udp;
     } else {
       auto msg = SSC::format(R"MSG({
@@ -3099,7 +3093,7 @@ namespace SSC {
 
     int r;
 
-    if ((PEER_TYPE_UDP & peer->type) == PEER_TYPE_UDP) {
+    if (peer->type == PEER_TYPE_UDP) {
       r = uv_read_stop((uv_stream_t*) &peer->udp);
     } else {
       auto msg = SSC::format(R"MSG({
@@ -3153,9 +3147,9 @@ namespace SSC {
   }
 
   void Core::shutdown (String seq, uint64_t peerId, Cb cb) const {
-    Peer* peer = peers[peerId];
+    auto ctx = new PeerRequestContext(seq, cb);
 
-    if (peer == nullptr) {
+    if (!Peer::exists(peerId)) {
       auto msg = SSC::format(
         R"MSG({
           "err": {
@@ -3166,17 +3160,15 @@ namespace SSC {
         std::to_string(peerId)
       );
 
-      cb(seq, msg, Post{});
+      ctx->end(msg);
       return;
     }
 
-    peer->seq = seq;
-    peer->cb = cb;
-    peer->id = peerId;
+    auto peer = Peer::get(peerId);
 
     uv_handle_t* handle;
 
-    if ((PEER_TYPE_UDP & peer->type) == PEER_TYPE_UDP) {
+    if (peer->type == PEER_TYPE_UDP) {
       handle = (uv_handle_t*) &peer->udp;
     } else {
       auto msg = SSC::format(R"MSG({
@@ -3185,29 +3177,55 @@ namespace SSC {
         }
       })MSG");
 
-      cb(seq, msg, Post{});
+      ctx->end(msg);
       return;
     }
 
-    handle->data = peer;
-
     uv_shutdown_t *req = new uv_shutdown_t;
-    req->data = handle;
+    ctx->peer = peer;
+    req->data = ctx;
 
-    uv_shutdown(req, (uv_stream_t*) handle, [](uv_shutdown_t *req, int status) {
-      auto peer = reinterpret_cast<Peer*>(req->handle->data);
+    auto err = uv_shutdown(req, (uv_stream_t*) handle, [](uv_shutdown_t *req, int status) {
+      auto ctx = reinterpret_cast<PeerRequestContext *>(req->data);
+      auto peer = ctx->peer;
 
-      auto msg = SSC::format(R"MSG({
-        "data": {
-          "status": "$i"
-        }
-      })MSG", status);
+      std::string msg = "";
 
-     peer->cb(peer->seq, msg, Post{});
+      if (status < 0) {
+        msg = SSC::format(R"MSG({
+          "err": {
+            "id": "$S",
+            "source": "shutdown",
+            "message": "$S"
+          }
+        })MSG", std::to_string(peer->id), std::string(uv_strerror(status)));
+      } else {
+        msg = SSC::format(R"MSG({
+          "data": {
+            "id": "$S",
+            "status": "$i"
+          }
+        })MSG", std::to_string(peer->id), status);
 
-     free(req);
-     free(req->handle);
+        Peer::remove(peer->id, true);
+      }
+
+      ctx->end(msg);
+
+      delete req;
     });
+
+    if (err < 0) {
+      auto msg = SSC::format(R"MSG({
+        "err": {
+          "id": "$S",
+          "source": "shutdown",
+          "message": "$S"
+        }
+      })MSG", std::to_string(peerId), std::string(uv_strerror(err)));
+      ctx->end(msg);
+      return;
+    }
 
     runEventLoop();
   }
@@ -3412,7 +3430,7 @@ namespace SSC {
         }
       })MSG",
       std::to_string(peerId),
-      std::string(((PEER_TYPE_UDP & peer->type) == PEER_TYPE_UDP) ? "udp" : ""),
+      std::string(peer->type == PEER_TYPE_UDP ? "udp" : ""),
       std::string(peer->isEphemeral() ? "true" : "false"),
       std::string(peer->isBound() ? "true" : "false"),
       std::string(peer->isActive() ? "true" : "false"),
