@@ -51,6 +51,10 @@ void uncaughtExceptionHandler (NSException *exception) {
   [[bridge bluetooth] startScanning];
 }
 
+- (void) applicationWillTerminate: (UIApplication*)application {
+  // @TODO(jwerle): what should we do here?
+}
+
 - (void) applicationDidBecomeActive: (UIApplication*)application {
   dispatch_async(queue, ^{
     SSC::Peer::resumeAllBound();
