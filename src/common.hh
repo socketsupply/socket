@@ -1204,7 +1204,7 @@ namespace SSC {
           .port = opts.port,
           .isTest = this->options.isTest,
           .headless = this->options.headless || opts.headless || appData["headless"] == "true",
-          .forwardConsole = appData["linux_log_stdout"] == "true",
+          .forwardConsole = appData["linux_forward_console_to_stdout"] == "true",
 
           .cwd = this->options.cwd,
           .executable = appData["executable"],

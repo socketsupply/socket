@@ -1405,7 +1405,7 @@ width: 1024
 # linux_icon: src/icon.png
 
 # A boolean that determines if WebKit WebView logs should get forwarded to stdout and stderr
-# linux_log_stdout: true
+# linux_forward_console_to_stdout: true
 
 #
 # MacOS and iOS
