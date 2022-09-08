@@ -1364,7 +1364,9 @@ int main (const int argc, const char* argv[]) {
       flags = " -std=c++2a"
         " -I" + prefix +
         " -I" + prefix + "\\src\\win64"
+        " -I" + prefix + "\\src\\uv"
         " -L" + prefix + "\\src\\win64"
+        " -L" + prefix + "\\src\\uv"
       ;
 
       files += prefixFile("src\\main.cc");

@@ -6,8 +6,7 @@ node_modules/
 .DS_Store
 /bin/build
 /bin/ssc.exe
-/bin/cli
-bin/ssc
+/bin/ssc
 build/
 META-INF/
 

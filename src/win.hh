@@ -1,3 +1,4 @@
+#include "uv.h"
 #include "common.hh"
 #include "win64/WebView2.h"
 #include "win64/WebView2EnvironmentOptions.h"
@@ -13,6 +14,7 @@
 #pragma comment(lib,"version.lib")
 #pragma comment(lib,"user32.lib")
 #pragma comment(lib,"WebView2LoaderStatic.lib")
+#pragma comment(lib,"uv_a.lib")
 
 // for dark mode...
 #include <uxtheme.h>
