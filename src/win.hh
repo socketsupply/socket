@@ -173,18 +173,18 @@ namespace SSC {
   class CDataObject : public IDataObject {
     public:
       HRESULT __stdcall QueryInterface (REFIID iid, void ** ppvObject);
-      ULONG   __stdcall AddRef (void);
-      ULONG   __stdcall Release (void);
+      ULONG __stdcall AddRef (void);
+      ULONG __stdcall Release (void);
 
-      HRESULT __stdcall GetData				(FORMATETC *pFormatEtc,  STGMEDIUM *pMedium);
-      HRESULT __stdcall GetDataHere			(FORMATETC *pFormatEtc,  STGMEDIUM *pMedium);
-      HRESULT __stdcall QueryGetData			(FORMATETC *pFormatEtc);
-      HRESULT __stdcall GetCanonicalFormatEtc (FORMATETC *pFormatEct,  FORMATETC *pFormatEtcOut);
-      HRESULT __stdcall SetData				(FORMATETC *pFormatEtc,  STGMEDIUM *pMedium,  BOOL fRelease);
-      HRESULT __stdcall EnumFormatEtc			(DWORD      dwDirection, IEnumFORMATETC **ppEnumFormatEtc);
-      HRESULT __stdcall DAdvise				(FORMATETC *pFormatEtc,  DWORD advf, IAdviseSink *pAdvSink, DWORD *pdwConnection);
-      HRESULT __stdcall DUnadvise				(DWORD      dwConnection);
-      HRESULT __stdcall EnumDAdvise			(IEnumSTATDATA **ppEnumAdvise);
+      HRESULT __stdcall GetData(FORMATETC *pFormatEtc, STGMEDIUM *pMedium);
+      HRESULT __stdcall GetDataHere(FORMATETC *pFormatEtc, STGMEDIUM *pMedium);
+      HRESULT __stdcall QueryGetData(FORMATETC *pFormatEtc);
+      HRESULT __stdcall GetCanonicalFormatEtc(FORMATETC *pFormatEct, FORMATETC *pFormatEtcOut);
+      HRESULT __stdcall SetData(FORMATETC *pFormatEtc, STGMEDIUM *pMedium, BOOL fRelease);
+      HRESULT __stdcall EnumFormatEtc(DWORD dwDirection, IEnumFORMATETC **ppEnumFormatEtc);
+      HRESULT __stdcall DAdvise(FORMATETC *pFormatEtc, DWORD advf, IAdviseSink *pAdvSink, DWORD *pdwConnection);
+      HRESULT __stdcall DUnadvise(DWORD dwConnection);
+      HRESULT __stdcall EnumDAdvise(IEnumSTATDATA **ppEnumAdvise);
 
       CDataObject(FORMATETC *fmt, STGMEDIUM *stgmed, int count);
       ~CDataObject();

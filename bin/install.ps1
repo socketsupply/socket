@@ -1,7 +1,3 @@
-#
-# TODO convert this to a nuget package
-# https://docs.microsoft.com/en-us/nuget/create-packages/creating-a-package
-#
 $OLD_CWD = (Get-Location).Path
 
 $TEMP_PATH = Join-Path $Env:Temp $(New-Guid)
@@ -11,21 +7,26 @@ $INSTALL_PATH = "$env:LOCALAPPDATA\Programs\socketsupply\src"
 $LIB_PATH = "$env:LOCALAPPDATA\Programs\socketsupply\lib"
 $WORKING_PATH = $OLD_CWD
 
+if ((Get-Command "cmake.exe" -ErrorAction SilentlyContinue) -eq $null) {
+  Write-Output "not ok - cmake not installed (try 'choco install cmake')"
+  Exit
+}
+
 if (Test-Path -Path $INSTALL_PATH) {
   Remove-Item -Recurse -Force $INSTALL_PATH
-  Write-Output "- Cleaned $INSTALL_PATH"
+  Write-Output "ok - cleaned $INSTALL_PATH"
 }
 
 if (Test-Path -Path $LIB_PATH) {
   Remove-Item -Recurse -Force $LIB_PATH
-  Write-Output "- Cleaned $LIB_PATH"
+  Write-Output "ok - cleaned $LIB_PATH"
 }
 
 (New-Item -ItemType Directory -Force -Path $INSTALL_PATH) > $null
-Write-Output "- Created $INSTALL_PATH"
+Write-Output "ok - created $INSTALL_PATH"
 
 (New-Item -ItemType Directory -Force -Path $LIB_PATH) > $null
-Write-Output "- Created $LIB_PATH"
+Write-Output "ok - created $LIB_PATH"
 
 #
 # Compile with the current git revision of the repository
@@ -34,22 +35,35 @@ Function Build {
   $VERSION_HASH = $(git rev-parse --short HEAD) 2>&1 | % ToString
   $VERSION = $(type VERSION.txt) 2>&1 | % ToString
   $BUILD_TIME = [int] (New-TimeSpan -Start (Get-Date "01/01/1970") -End (Get-Date)).TotalSeconds
+  $BUILD_PATH = "$WORKING_PATH\build"
 
-  Write-Output "- Compiling the build tool"
+  (New-Item -ItemType Directory -Force -Path "$BUILD_PATH") > $null
+  (git clone -q --depth=1 git@github.com:libuv/libuv.git $BUILD_PATH\input) > $null
+  (New-Item -ItemType Directory -Force -Path "$BUILD_PATH\input\build") > $null
+  Write-Output "ok - cloned libuv $BUILD_PATH\input"
+
+  cd "$BUILD_PATH\input\build"
+  Write-Output "# bulding libuv..."
+  (cmake ..) > $null
+  cd $WORKING_PATH
+  (cmake --build "$BUILD_PATH\input\build" -j 8) > $null
+  Write-Output "ok - built libuv"
+
+  Write-Output "# compiling the build tool..."
   clang++ src\cli.cc -o $WORKING_PATH\bin\ssc.exe -std=c++2a -DBUILD_TIME="$($BUILD_TIME)" -DVERSION_HASH="$($VERSION_HASH)" -DVERSION="$($VERSION)"
   # -I 'C:\Program Files (x86)\Windows Kits\10\Include\10.0.19041.0\shared' `
 
   if ($? -ne 1) {
-    Write-Output "- The build tool failed to compile. Here's what you can do..."
+    Write-Output "not ok - the build tool failed to compile. Here's what you can do..."
     Exit 1
   }
 
   if ($env:Path -notlike "*$INSTALL_PATH*") {
     $NEW_PATH = "$INSTALL_PATH;$env:Path"
     $env:Path = $NEW_PATH
-    Write-Output "- Command ssc has been added to the path for the current session."
+    Write-Output "ok - cpmmand ssc has been added to the path for the current session."
     Write-Output ""
-    Write-Output "Consider adding ssc to your path for other sessions:"
+    Write-Output "# consider adding ssc to your path for other sessions:"
     Write-Output " `$env:Path = ""$INSTALL_PATH;`$env:Path"""
     Write-Output ""
 
@@ -80,18 +94,18 @@ Function Build {
 # Install the files we will want to use for builds
 #
 Function Install-Files {
-  Write-Output "- Installing Files to '$INSTALL_PATH'."
   Copy-Item $WORKING_PATH\bin\ssc.exe -Destination $INSTALL_PATH
   Copy-Item -Path "$WORKING_PATH\src\*" -Destination $INSTALL_PATH -Recurse -Container
+  Write-Output "ok - installed files to '$INSTALL_PATH'."
 }
 
-Write-Output "- Working path set to $WORKING_PATH."
+Write-Output "# working path set to $WORKING_PATH"
 
 if ($args[0] -eq "update") {
   $PACKAGE_VERSION = '1.0.1248-prerelease'
   $base = "$TEMP_PATH\WebView2\build\native"
 
-  Write-Output "- Updating WebView2 header files..."
+  Write-Output "# updating WebView2 header files..."
   #https://docs.microsoft.com/en-us/microsoft-edge/webview2/concepts/versioning
   Invoke-WebRequest https://www.nuget.org/api/v2/package/Microsoft.Web.WebView2/$PACKAGE_VERSION -O $TEMP_PATH\webview2.zip
   Expand-Archive -Path $TEMP_PATH\WebView2.zip -DestinationPath $TEMP_PATH\WebView2
@@ -99,24 +113,23 @@ if ($args[0] -eq "update") {
   Copy-Item -Path $base\include\WebView2EnvironmentOptions.h $WORKING_PATH\src\win64
   Copy-Item -Path $base\include\WebView2Experimental.h $WORKING_PATH\src\win64
   Copy-Item -Path $base\x64\WebView2LoaderStatic.lib $WORKING_PATH\src\win64
+  Write-Output "ok - updated WebView2 header files..."
 
   Exit 0
 }
 
-Write-Output "- Checking for compiler."
 (Get-Command clang++) > $null
 
 if ($? -ne 1) {
-  Write-Output "- Installing compiler..."
+  Write-Output "# installing llvm..."
   Invoke-WebRequest https://github.com/llvm/llvm-project/releases/download/llvmorg-14.0.0/LLVM-14.0.0-win64.exe -O llvm.exe
   llvm.exe
 }
 
-Write-Output "- Checking for git."
 (Get-Command git) > $null
 
 if ($? -ne 1) {
-  Write-Output "- Please install git."
+  Write-Output "not ok - git is not installed"
   Exit 1
 }
 
