@@ -13,6 +13,7 @@ Function Build {
   $BUILD_PATH = "$WORKING_PATH\build"
 
   if (-not (Test-Path -Path $BUILD_PATH -PathType Container)) {
+    Write-Output "# cloning libuv from github..."
     (git clone -q --depth=1 git@github.com:libuv/libuv.git $BUILD_PATH) > $null
     (New-Item -ItemType Directory -Force -Path "$BUILD_PATH\lib") > $null
     Write-Output "ok - cloned libuv $BUILD_PATH"
@@ -145,6 +146,9 @@ if ($? -ne 1) {
 
 refreshenv
 
+#
+# If you're a maintainer this is for updating the WebView2 deps
+#
 if ($args[0] -eq "update") {
   Install-WebView2
   Exit 0
