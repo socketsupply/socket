@@ -6,12 +6,6 @@ $TEMP_PATH = Join-Path $Env:Temp $(New-Guid)
 $SRC_PATH = "$env:LOCALAPPDATA\Programs\socketsupply\src"
 $LIB_PATH = "$env:LOCALAPPDATA\Programs\socketsupply\lib"
 $WORKING_PATH = $OLD_CWD
-$BUILD_PATH = "$WORKING_PATH\build"
-
-if ((Get-Command "cmake.exe" -ErrorAction SilentlyContinue) -eq $null) {
-  Write-Output "not ok - cmake not installed (try 'choco install cmake')"
-  Exit
-}
 
 if (Test-Path -Path $SRC_PATH) {
   Remove-Item -Recurse -Force $SRC_PATH
@@ -36,6 +30,7 @@ Function Build {
   $VERSION_HASH = $(git rev-parse --short HEAD) 2>&1 | % ToString
   $VERSION = $(type VERSION.txt) 2>&1 | % ToString
   $BUILD_TIME = [int] (New-TimeSpan -Start (Get-Date "01/01/1970") -End (Get-Date)).TotalSeconds
+  $BUILD_PATH = "$WORKING_PATH\build"
 
   (git clone -q --depth=1 git@github.com:libuv/libuv.git $BUILD_PATH) > $null
   (New-Item -ItemType Directory -Force -Path "$BUILD_PATH\lib") > $null
@@ -47,6 +42,7 @@ Function Build {
   cd "$WORKING_PATH"
   (cmake --build "$BUILD_PATH\lib" --config Release) > $null
   Write-Output "ok - built libuv"
+
   Copy-Item -Path "$BUILD_PATH\include\*" -Destination $SRC_PATH -Recurse -Container
   Copy-Item $BUILD_PATH\lib\Release\uv_a.lib -Destination $SRC_PATH\uv
 
@@ -120,12 +116,31 @@ if ($args[0] -eq "update") {
   Exit 0
 }
 
+
+(Get-Command cmake.exe) > $null
+
+if ($? -ne 1) {
+  if ($env:PROCESSOR_ARCHITECTURE -eq '*64*') {
+    Write-Output "# installing cmake..."
+    Invoke-WebRequest https://github.com/Kitware/CMake/releases/download/v3.24.1/cmake-3.24.1-windows-x86_64.msi -O cmake.msi
+    cmake.msi
+  } else {
+    Write-Output "not ok - cmake required (try 'choco install cmake')"
+    Exit
+  }
+}
+
 (Get-Command clang++) > $null
 
 if ($? -ne 1) {
-  Write-Output "# installing llvm..."
-  Invoke-WebRequest https://github.com/llvm/llvm-project/releases/download/llvmorg-14.0.0/LLVM-14.0.0-win64.exe -O llvm.exe
-  llvm.exe
+  if ($env:PROCESSOR_ARCHITECTURE -eq '*64*') {
+    Write-Output "# installing llvm..."
+    Invoke-WebRequest https://github.com/llvm/llvm-project/releases/download/llvmorg-15.0.0/LLVM-15.0.0-win64.exe -O llvm.exe
+    llvm.exe
+  } else {
+    Write-Output "not ok - llvm toolchain required (try 'choco install llvm')"
+    Exit
+  }
 }
 
 (Get-Command git) > $null
