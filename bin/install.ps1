@@ -40,7 +40,7 @@ Function Build {
   if ($env:Path -notlike "*$SRC_PATH*") {
     $NEW_PATH = "$SRC_PATH;$env:Path"
     $env:Path = $NEW_PATH
-    Write-Output "ok - cpmmand ssc has been added to the path for the current session."
+    Write-Output "ok - command ssc has been added to the path for the current session."
     Write-Output ""
     Write-Output "# consider adding ssc to your path for other sessions:"
     Write-Output " `$env:Path = ""$SRC_PATH;`$env:Path"""
@@ -110,10 +110,10 @@ if ($? -ne 1) {
   iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
 }
 
-(Get-Command "clang++.exe") > $null
+Get-Command clang++.exe -ErrorAction SilentlyContinue
 
 if ($? -ne 1) {
-  choco install llvm
+  choco install llvm --confirm --force
 
   if ($? -ne 1) {
     Write-Output "not ok - unable to install llvm"
@@ -121,10 +121,10 @@ if ($? -ne 1) {
   }
 }
 
-(Get-Command "cmake.exe") > $null
+Get-Command "cmake.exe" -ErrorAction SilentlyContinue
 
 if ($? -ne 1) {
-  choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System'
+  choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System' --confirm --force
 
   if ($? -ne 1) {
     Write-Output "not ok - unable to install cmake"
@@ -142,6 +142,8 @@ if ($? -ne 1) {
     Exit 1
   }
 }
+
+refreshenv
 
 if ($args[0] -eq "update") {
   Install-WebView2
