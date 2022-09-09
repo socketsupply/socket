@@ -100,7 +100,7 @@ Function Install-WebView2 {
   Write-Output "ok - updated WebView2 header files..."
 }
 
-(Get-Command choco.exe) > $null
+(Get-Command "choco.exe" -ErrorAction SilentlyContinue) > $null
 
 if ($? -ne 1) {
   $InstallDir='C:\ProgramData\chocoportable'
@@ -110,7 +110,7 @@ if ($? -ne 1) {
   iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
 }
 
-Get-Command clang++.exe -ErrorAction SilentlyContinue
+(Get-Command "clang++.exe" -ErrorAction SilentlyContinue) > $null
 
 if ($? -ne 1) {
   choco install llvm --confirm --force
@@ -121,7 +121,7 @@ if ($? -ne 1) {
   }
 }
 
-Get-Command "cmake.exe" -ErrorAction SilentlyContinue
+(Get-Command "cmake.exe" -ErrorAction SilentlyContinue) > $null
 
 if ($? -ne 1) {
   choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System' --confirm --force
@@ -132,7 +132,7 @@ if ($? -ne 1) {
   }
 }
 
-(Get-Command "git.exe") > $null
+(Get-Command "git.exe" -ErrorAction SilentlyContinue) > $null
 
 if ($? -ne 1) {
   choco install git
