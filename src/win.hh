@@ -883,10 +883,23 @@ namespace SSC {
     auto file = (fs::path { modulefile }).filename();
     auto filename = StringToWString(file.string());
     auto path = StringToWString(getEnv("APPDATA"));
+
     auto options = Microsoft::WRL::Make<CoreWebView2EnvironmentOptions>();
     options->put_AdditionalBrowserArguments(L"--allow-file-access-from-files");
 
-    // auto optionsExperimental = Microsoft::WRL::Make<ICoreWebView2ExperimentalEnvironmentOptions>();
+    auto optionsExperimental = Microsoft::WRL::Make<ICoreWebView2ExperimentalEnvironmentOptions>();
+    if (options.As(&optionsExperimental) == S_OK) {
+      auto customSchemeRegistration = Microsoft::WRL::Make<CoreWebView2CustomSchemeRegistration>(L"ipc");
+      // TODO(@heapwolf) add the custom reg from the user config IF it is defined.
+      ICoreWebView2ExperimentalCustomSchemeRegistration* registrations[1] = {
+        customSchemeRegistration.Get()
+      };
+
+      optionsExperimental->SetCustomSchemeRegistrations(
+        1,
+        static_cast<ICoreWebView2ExperimentalCustomSchemeRegistration**>(registrations)
+      );
+    }
 
     auto init = [&]() -> HRESULT {
       return CreateCoreWebView2EnvironmentWithOptions(
@@ -958,7 +971,7 @@ namespace SSC {
 
                   webview->add_NavigationStarting(
                     Callback<ICoreWebView2NavigationStartingEventHandler>(
-                      [&](ICoreWebView2 *, ICoreWebView2NavigationStartingEventArgs *e) {
+                      [&](ICoreWebView2*, ICoreWebView2NavigationStartingEventArgs *e) {
                         PWSTR uri;
                         e->get_Uri(&uri);
                         std::string url(WStringToString(uri));
@@ -972,6 +985,39 @@ namespace SSC {
                       }
                     ).Get(),
                     &tokenNavigation
+                  );
+
+                  EventRegistrationToken tokenSchemaFilter;
+                  webview->AddWebResourceRequestedFilter(L"*", COREWEBVIEW2_WEB_RESOURCE_CONTEXT_XML_HTTP_REQUEST);
+
+                  CHECK_FAILURE(webview->add_WebResourceRequested(
+                    Callback<ICoreWebView2WebResourceRequestedEventHandler>(
+                      [&](ICoreWebView2*, ICoreWebView2WebResourceRequestedEventArgs* e) {
+                        COREWEBVIEW2_WEB_RESOURCE_CONTEXT resourceContext;
+                        CHECK_FAILURE(args->get_ResourceContext(&resourceContext));
+                        // Override the response with the data.
+                        // If put_Response is not called, the request will continue as normal.
+                        auto response = Microsoft::WRL::Make<ICoreWebView2WebResourceResponse>();
+                        auto environment = Microsoft::WRL::Make<ICoreWebView2Environment>();
+                        auto webview2 = Microsoft::WRL::Make<ICoreWebView2_2>();
+
+                        CHECK_FAILURE(webview->QueryInterface(IID_PPV_ARGS(&webview2)));
+                        CHECK_FAILURE(webview2->get_Environment(&environment));
+
+                        CHECK_FAILURE(environment->CreateWebResourceResponse(
+                          nullptr,
+                          200,
+                          L"xxx",
+                          L"Content-Type: application/octet-stream",
+                          &response)
+                        );
+
+                        CHECK_FAILURE(args->put_Response(response.get()));
+                        return S_OK;
+                      }
+                    ).Get(),
+                    &tokenSchemaFilter
+                    )
                   );
 
                   EventRegistrationToken tokenNewWindow;
