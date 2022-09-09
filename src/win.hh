@@ -828,7 +828,12 @@ namespace SSC {
       app.hInstance, NULL
     );
 
-    /* BOOL mode = FALSE;
+    /*
+
+    // TODO(@heapwolf) its not clear why but some native components don't take on the dark mode
+    // attributes. This could be windows 10/11 bugs but there may be a different way to handle changes.
+
+    BOOL mode = FALSE;
 
     if (shouldSystemUseDarkMode()) {
       allowDarkModeForApp(true);
@@ -880,6 +885,8 @@ namespace SSC {
     auto path = StringToWString(getEnv("APPDATA"));
     auto options = Microsoft::WRL::Make<CoreWebView2EnvironmentOptions>();
     options->put_AdditionalBrowserArguments(L"--allow-file-access-from-files");
+
+    // auto optionsExperimental = Microsoft::WRL::Make<ICoreWebView2ExperimentalEnvironmentOptions>();
 
     auto init = [&]() -> HRESULT {
       return CreateCoreWebView2EnvironmentWithOptions(

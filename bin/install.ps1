@@ -1,27 +1,8 @@
 $OLD_CWD = (Get-Location).Path
 
-$TEMP_PATH = Join-Path $Env:Temp $(New-Guid)
-(New-Item -Type Directory -Path $TEMP_PATH) > $null
-
 $SRC_PATH = "$env:LOCALAPPDATA\Programs\socketsupply\src"
 $LIB_PATH = "$env:LOCALAPPDATA\Programs\socketsupply\lib"
 $WORKING_PATH = $OLD_CWD
-
-if (Test-Path -Path $SRC_PATH) {
-  Remove-Item -Recurse -Force $SRC_PATH
-  Write-Output "ok - cleaned $SRC_PATH"
-}
-
-if (Test-Path -Path $LIB_PATH) {
-  Remove-Item -Recurse -Force $LIB_PATH
-  Write-Output "ok - cleaned $LIB_PATH"
-}
-
-(New-Item -ItemType Directory -Force -Path $SRC_PATH) > $null
-Write-Output "ok - created $SRC_PATH"
-
-(New-Item -ItemType Directory -Force -Path $LIB_PATH) > $null
-Write-Output "ok - created $LIB_PATH"
 
 #
 # Compile with the current git revision of the repository
@@ -97,9 +78,13 @@ Function Install-Files {
   Write-Output "ok - installed files to '$SRC_PATH'."
 }
 
-Write-Output "# working path set to $WORKING_PATH"
+#
+# Get and extract just the WebView2 files that we need
+#
+Function Install-WebView2 {
+  $TEMP_PATH = Join-Path $Env:Temp $(New-Guid)
+  (New-Item -Type Directory -Path $TEMP_PATH) > $null
 
-if ($args[0] -eq "update") {
   $PACKAGE_VERSION = '1.0.1248-prerelease'
   $base = "$TEMP_PATH\WebView2\build\native"
 
@@ -112,44 +97,73 @@ if ($args[0] -eq "update") {
   Copy-Item -Path $base\include\WebView2Experimental.h $WORKING_PATH\src\win64
   Copy-Item -Path $base\x64\WebView2LoaderStatic.lib $WORKING_PATH\src\win64
   Write-Output "ok - updated WebView2 header files..."
-
-  Exit 0
 }
 
+(Get-Command choco.exe) > $null
+
+if ($? -ne 1) {
+  $InstallDir='C:\ProgramData\chocoportable'
+  $env:ChocolateyInstall="$InstallDir"
+
+  Set-ExecutionPolicy Bypass -Scope Process -Force;
+  iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
+}
+
+(Get-Command clang++.exe) > $null
+
+if ($? -ne 1) {
+  choco install llvm
+
+  if ($? -ne 1) {
+    Write-Output "not ok - unable to install llvm"
+    Exit 1
+  }
+}
 
 (Get-Command cmake.exe) > $null
 
 if ($? -ne 1) {
-  if ($env:PROCESSOR_ARCHITECTURE -eq '*64*') {
-    Write-Output "# installing cmake..."
-    Invoke-WebRequest https://github.com/Kitware/CMake/releases/download/v3.24.1/cmake-3.24.1-windows-x86_64.msi -O cmake.msi
-    cmake.msi
-  } else {
-    Write-Output "not ok - cmake required (try 'choco install cmake')"
-    Exit
-  }
-}
+  choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System'
 
-(Get-Command clang++) > $null
-
-if ($? -ne 1) {
-  if ($env:PROCESSOR_ARCHITECTURE -eq '*64*') {
-    Write-Output "# installing llvm..."
-    Invoke-WebRequest https://github.com/llvm/llvm-project/releases/download/llvmorg-15.0.0/LLVM-15.0.0-win64.exe -O llvm.exe
-    llvm.exe
-  } else {
-    Write-Output "not ok - llvm toolchain required (try 'choco install llvm')"
-    Exit
+  if ($? -ne 1) {
+    Write-Output "not ok - unable to install cmake"
+    Exit 1
   }
 }
 
 (Get-Command git) > $null
 
 if ($? -ne 1) {
-  Write-Output "not ok - git is not installed"
-  Exit 1
+  choco install git
+
+  if ($? -ne 1) {
+    Write-Output "not ok - unable to install git"
+    Exit 1
+  }
 }
 
+if ($args[0] -eq "update") {
+  Install-WebView2
+  Exit 0
+}
+
+if (Test-Path -Path $SRC_PATH) {
+  Remove-Item -Recurse -Force $SRC_PATH
+  Write-Output "ok - cleaned $SRC_PATH"
+}
+
+if (Test-Path -Path $LIB_PATH) {
+  Remove-Item -Recurse -Force $LIB_PATH
+  Write-Output "ok - cleaned $LIB_PATH"
+}
+
+(New-Item -ItemType Directory -Force -Path $SRC_PATH) > $null
+Write-Output "ok - created $SRC_PATH"
+
+(New-Item -ItemType Directory -Force -Path $LIB_PATH) > $null
+Write-Output "ok - created $LIB_PATH"
+
+Write-Output "# working path set to $WORKING_PATH"
 cd $WORKING_PATH
 
 Build
