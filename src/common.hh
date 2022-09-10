@@ -969,7 +969,7 @@ namespace SSC {
 
           void show (const std::string &seq) {
             auto index = std::to_string(this->opts.index);
-            factory.debug("Showing Window#" + index + " (seq=" + seq + ")");
+            factory.log("Showing Window#" + index + " (seq=" + seq + ")");
             status = WindowStatus::WINDOW_SHOWING;
             Window::show(seq);
             status = WindowStatus::WINDOW_SHOWN;
@@ -981,7 +981,7 @@ namespace SSC {
               status < WindowStatus::WINDOW_EXITING
             ) {
               auto index = std::to_string(this->opts.index);
-              factory.debug("Hiding Window#" + index + " (seq=" + seq + ")");
+              factory.log("Hiding Window#" + index + " (seq=" + seq + ")");
               status = WindowStatus::WINDOW_HIDING;
               Window::hide(seq);
               status = WindowStatus::WINDOW_HIDDEN;
@@ -991,7 +991,7 @@ namespace SSC {
           void close (int code) {
             if (status < WindowStatus::WINDOW_CLOSING) {
               auto index = std::to_string(this->opts.index);
-              factory.debug("Closing Window#" + index + " (code=" + std::to_string(code) + ")");
+              factory.log("Closing Window#" + index + " (code=" + std::to_string(code) + ")");
               status = WindowStatus::WINDOW_CLOSING;
               Window::close(code);
               status = WindowStatus::WINDOW_CLOSED;
@@ -1002,7 +1002,7 @@ namespace SSC {
           void exit (int code) {
             if (status < WindowStatus::WINDOW_EXITING) {
               auto index = std::to_string(this->opts.index);
-              factory.debug("Exiting Window#" + index + " (code=" + std::to_string(code) + ")");
+              factory.log("Exiting Window#" + index + " (code=" + std::to_string(code) + ")");
               status = WindowStatus::WINDOW_EXITING;
               Window::exit(code);
               status = WindowStatus::WINDOW_EXITED;
@@ -1013,7 +1013,7 @@ namespace SSC {
           void kill () {
             if (status < WindowStatus::WINDOW_KILLING) {
               auto index = std::to_string(this->opts.index);
-              factory.debug("Killing Window#" + index);
+              factory.log("Killing Window#" + index);
               status = WindowStatus::WINDOW_KILLING;
               Window::kill();
               status = WindowStatus::WINDOW_KILLED;
@@ -1073,7 +1073,7 @@ namespace SSC {
         this->options.cwd = configuration.cwd;
       }
 
-      void inline debug (const std::string line) {
+      void inline log (const std::string line) {
         if (destroyed) return;
 #if DEBUG
         using namespace std::chrono;
@@ -1217,7 +1217,7 @@ namespace SSC {
         };
 
 #if DEBUG
-        this->debug("Creating Window#" + std::to_string(opts.index));
+        this->log("Creating Window#" + std::to_string(opts.index));
 #endif
         auto window = new WindowWithMetadata(*this, app, windowOptions);
 
