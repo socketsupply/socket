@@ -820,7 +820,6 @@ class NativeThreadContext {
     }
 
     static void StartReleaseThread () {
-      isDispatchThreadRunning = true;
       isReleaseThreadRunning = true;
       int emptyPolls = 0;
 
