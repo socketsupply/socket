@@ -1109,7 +1109,7 @@ int main (const int argc, const char* argv[]) {
 
       writeFile(res / "layout" / "web_view_activity.xml", trim(tmpl(gAndroidLayoutWebviewActivity, settings)));
       writeFile(res / "values" / "strings.xml", trim(tmpl(gAndroidValuesStrings, settings)));
-      writeFile(src / "main" / "assets" / "vital_check_ok.txt", "OK");
+      writeFile(src / "main" / "assets" / "__ssc_vital_check_ok_file__.txt", "OK");
 
       // JNI/NDK
       fs::copy(trim(prefixFile("src/android.cc")), jni, fs::copy_options::overwrite_existing);
