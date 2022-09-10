@@ -1793,6 +1793,24 @@ open class NativeCore(var activity: WebViewActivity) {
   external fun stopEventLoop(): Boolean
 
   @Throws(java.lang.Exception::class)
+  external fun startDispatchThread(): Boolean
+
+  @Throws(java.lang.Exception::class)
+  external fun stopDispatchThread(): Boolean
+
+  @Throws(java.lang.Exception::class)
+  external fun startReleaseThread(): Boolean
+
+  @Throws(java.lang.Exception::class)
+  external fun stopReleaseThread(): Boolean
+
+  @Throws(java.lang.Exception::class)
+  external fun cancelAllDispatchThreads(): Boolean
+
+  @Throws(java.lang.Exception::class)
+  external fun stolAllDispatchThreads(): Boolean
+
+  @Throws(java.lang.Exception::class)
   external fun configureEnvironment(): Boolean
 
   @Throws(java.lang.Exception::class)

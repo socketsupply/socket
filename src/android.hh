@@ -1168,7 +1168,6 @@ class NativeThreadContext {
         SleepInThisThread(POLL_TIMEOUT);
       }
 
-      // `Wait()` will eventually wait for the thread to join here
       if (!ctx->isCancelled && work.joinable()) {
         work.join();
       }
