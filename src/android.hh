@@ -699,10 +699,10 @@ class NativeThreadContext {
     }
 
     /**
-     * AddContexts a context for dispatch. The context may already be queued, so
-     * calling `AddContext()` again will queue the context for execution again.
+     * PushContexts a context for dispatch. The context may already be queued, so
+     * calling `PushContext()` again will queue the context for execution again.
      */
-    static void AddContext (NativeThreadContext *context) {
+    static void PushContext (NativeThreadContext *context) {
       SetContext(context);
       {
         Lock lock(globalMutex);
@@ -963,7 +963,7 @@ class NativeThreadContext {
       const void *data,
       Function fn
     ) {
-      AddContext(
+      PushContext(
         new NativeThreadContext(core, contextId, data, fn)
       );
     }
