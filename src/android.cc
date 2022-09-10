@@ -7,9 +7,9 @@
 
 NativeString::NativeString (JNIEnv *env) {
   this->env = env;
-  this->ref = 0;
+  this->ref = nullptr;
   this->length = 0;
-  this->string = 0;
+  this->string = nullptr;
   this->needsRelease = false;
 }
 
@@ -72,9 +72,9 @@ void NativeString::Release () {
     this->env->ReleaseStringUTFChars(this->ref, this->string);
   }
 
-  this->ref = 0;
+  this->ref = nullptr;
   this->length = 0;
-  this->string = 0;
+  this->string = nullptr;
   this->needsRelease = false;
 }
 
@@ -110,6 +110,67 @@ void NativeCoreRefs::Release () {
   this->env->DeleteGlobalRef(this->core);
 }
 
+#pragma NativeCallbackRef
+NativeCallbackRef::NativeCallbackRef (
+  NativeCore *core,
+  NativeCallbackID id,
+  std::string name,
+  std::string signature
+) {
+  JNIEnv *env = nullptr;
+  auto jvm = core->GetJavaVM();
+  auto attached = jvm->AttachCurrentThread(&env, 0);
+
+  this->signature = signature;
+  this->name = name;
+  this->core = core;
+  this->ref = env->NewGlobalRef((jobject) id);
+  this->id = id;
+
+  if (attached) {
+    jvm->DetachCurrentThread();
+  }
+}
+
+NativeCallbackRef::~NativeCallbackRef () {
+  JNIEnv *env = nullptr;
+
+  if (this->ref) {
+    auto jvm = this->core->GetJavaVM();
+    auto attached = jvm->AttachCurrentThread(&env, 0);
+    env->DeleteGlobalRef((jobject) this->ref);
+    if (attached) {
+      jvm->DetachCurrentThread();
+    }
+  }
+
+  this->signature = "";
+  this->name = "";
+  this->core = nullptr;
+  this->ref = nullptr;
+  this->id = 0;
+}
+
+template <typename ...Args> void NativeCallbackRef::Call (Args ...args) {
+  JNIEnv *env = nullptr;
+  auto jvm = this->core->GetJavaVM();
+  auto refs = this->core->GetRefs();
+  auto attached = jvm->AttachCurrentThread(&env, 0);
+
+  CallNativeCoreVoidMethodFromEnvironment(
+    env,
+    refs.core,
+    this->name.c_str(),
+    this->signature.c_str(),
+    this->ref,
+    args...
+  );
+
+  if (attached) {
+    jvm->DetachCurrentThread();
+  }
+}
+
 #pragma NativeCore
 
 NativeCore::NativeCore (JNIEnv *env, jobject core)
@@ -130,8 +191,8 @@ NativeCore::~NativeCore () {
   this->rootDirectory.Release();
   this->refs.Release();
 
-  this->env = 0;
-  this->jvm = 0;
+  this->env = nullptr;
+  this->jvm = nullptr;
 }
 
 jboolean NativeCore::ConfigureEnvironment () {
@@ -219,6 +280,48 @@ jboolean NativeCore::ConfigureWebViewWindow () {
   return true;
 }
 
+NativeRequestContext * NativeCore::CreateRequestContext (
+  NativeCoreSequence seq,
+  NativeCoreID id,
+  NativeCallbackID callback
+) const {
+  auto context = new NativeRequestContext();
+
+  context->callback = new NativeCallbackRef(
+    (NativeCore *) this,
+    callback,
+    "callback",
+    "(Ljava/lang/String;Ljava/lang/String;)V"
+  );
+
+  context->core = (NativeCore *) this;
+  context->seq = seq;
+  context->id = id;
+
+  return context;
+}
+
+void NativeCore::EvaluateJavaScript (std::string js) {
+  return this->EvaluateJavaScript(js.c_str());
+}
+
+void NativeCore::EvaluateJavaScript (const char *js) {
+  JNIEnv *env = nullptr;
+  auto jvm = this->GetJavaVM();
+  auto refs = this->GetRefs();
+  auto attached = jvm->AttachCurrentThread(&env, 0);
+
+  EvaluateJavaScriptInEnvironment(
+    env,
+    refs.core,
+    env->NewStringUTF(js)
+  );
+
+  if (attached) {
+    jvm->DetachCurrentThread();
+  }
+}
+
 void * NativeCore::GetPointer () const {
   return (void *) this;
 }
@@ -272,27 +375,27 @@ const char * NativeCore::GetJavaScriptPreloadSource () const {
 }
 
 void NativeCore::Callback (
+  NativeCallbackRef *callback,
+  std::string data
+) const {
+  if (callback != nullptr) {
+    callback->Call(env->NewStringUTF(data.c_str()));
+    delete callback;
+  }
+}
+
+void NativeCore::Callback (
   NativeCallbackID callback,
   std::string data
 ) const {
-  auto refs = this->GetRefs();
-  auto jvm = this->GetJavaVM();
-  JNIEnv *env = 0;
-
-  auto attached = jvm->AttachCurrentThread(&env, 0);
-
-  CallNativeCoreVoidMethodFromEnvironment(
-    env,
-    refs.core,
-    "callback",
-    "(Ljava/lang/String;Ljava/lang/String;)V",
+  auto context = new NativeCallbackRef(
+    (NativeCore*) this,
     callback,
-    env->NewStringUTF(data.c_str())
+    "callback",
+    "(Ljava/lang/String;Ljava/lang/String;)V"
   );
 
-  if (attached) {
-    jvm->DetachCurrentThread();
-  }
+  return this->Callback(context, data);
 }
 
 void NativeCore::DNSLookup (
@@ -301,8 +404,13 @@ void NativeCore::DNSLookup (
   int family,
   NativeCallbackID callback
 ) const {
-  reinterpret_cast<const SSC::Core *>(this)->dnsLookup(seq, hostname, family, [=](auto seq, auto msg, auto post) {
-    this->Callback(callback, msg);
+  auto context = this->CreateRequestContext(seq, 0, callback);
+  NativeThreadContext::Dispatch(this, [context, hostname, family](auto thread, auto data) {
+    auto core = reinterpret_cast<SSC::Core *>(context->core);
+
+    core->dnsLookup(context->seq, hostname, family, [context](auto seq, auto data, auto post) {
+      context->CallbackAndFinalizeContext(data);
+    });
   });
 }
 
@@ -313,92 +421,15 @@ NativeFileSystem::NativeFileSystem (JNIEnv *env, NativeCore *core) {
   this->core = core;
 }
 
-NativeFileSystemRequestContext * NativeFileSystem::CreateRequestContext (
-  NativeCoreSequence seq,
+const std::string NativeFileSystem::CreateJSONError (
   NativeCoreID id,
-  NativeCallbackID callback
+  const std::string message
 ) const {
-  auto context = new NativeFileSystemRequestContext();
-
-  context->callback = callback;
-  context->core = this->core;
-  context->seq = seq;
-  context->fs = this;
-  context->id = id;
-
-  return context;
-}
-
-const std::string NativeFileSystem::CreateJSONError (NativeCoreID id, const std::string message)
-  const {
   return SSC::format(
     R"MSG({"err":{"id":"$S","message":"$S"}})MSG",
     std::to_string(id),
     message
   );
-}
-
-void NativeFileSystem::CallbackAndFinalizeContext (
-  NativeFileSystemRequestContext *context,
-  std::string data
-) const {
-  auto refs = context->core->GetRefs();
-  auto jvm = context->core->GetJavaVM();
-  JNIEnv *env = 0;
-
-  auto attached = jvm->AttachCurrentThread(&env, 0);
-
-  CallNativeCoreVoidMethodFromEnvironment(
-    env,
-    refs.core,
-    "callback",
-    "(Ljava/lang/String;Ljava/lang/String;)V",
-    context->callback,
-    env->NewStringUTF(data.c_str())
-  );
-
-  delete context;
-
-  if (attached) {
-    jvm->DetachCurrentThread();
-  }
-}
-
-void NativeFileSystem::CallbackWithPostAndFinalizeContext (
-  NativeFileSystemRequestContext *context,
-  std::string data,
-  SSC::Post post
-) const {
-  auto refs = context->core->GetRefs();
-  auto jvm = context->core->GetJavaVM();
-  auto js = context->core->createPost(context->seq, data, post);
-
-  JNIEnv *env = 0;
-
-  auto attached = jvm->AttachCurrentThread(&env, 0);
-
-  if (post.body != 0) {
-    EvaluateJavaScriptInEnvironment(
-      env,
-      refs.core,
-      env->NewStringUTF(js.c_str())
-    );
-  } else {
-    CallNativeCoreVoidMethodFromEnvironment(
-      env,
-      refs.core,
-      "callback",
-      "(Ljava/lang/String;Ljava/lang/String;)V",
-      context->callback,
-      env->NewStringUTF(data.c_str())
-    );
-  }
-
-  delete context;
-
-  if (attached) {
-    jvm->DetachCurrentThread();
-  }
 }
 
 void NativeFileSystem::Access (
@@ -407,11 +438,13 @@ void NativeFileSystem::Access (
   int mode,
   NativeCallbackID callback
 ) const {
-  auto context = this->CreateRequestContext(seq, 0, callback);
-  auto core = reinterpret_cast<SSC::Core *>(this->core);
+  auto context = this->core->CreateRequestContext(seq, 0, callback);
+  NativeThreadContext::Dispatch(this->core, [context, path, mode](auto thread, auto data) {
+    auto core = reinterpret_cast<SSC::Core *>(context->core);
 
-  core->fsAccess(seq, path, mode, [context](auto seq, auto data, auto post) {
-    context->fs->CallbackAndFinalizeContext(context, data);
+    core->fsAccess(context->seq, path, mode, [context](auto seq, auto data, auto post) {
+      context->CallbackAndFinalizeContext(data);
+    });
   });
 }
 
@@ -421,11 +454,13 @@ void NativeFileSystem::Chmod (
   int mode,
   NativeCallbackID callback
 ) const {
-  auto context = this->CreateRequestContext(seq, 0, callback);
-  auto core = reinterpret_cast<SSC::Core *>(this->core);
+  auto context = this->core->CreateRequestContext(seq, 0, callback);
+  NativeThreadContext::Dispatch(this->core, [context, path, mode](auto thread, auto data) {
+    auto core = reinterpret_cast<SSC::Core *>(context->core);
 
-  core->fsChmod(seq, path, mode, [context](auto seq, auto data, auto post) {
-    context->fs->CallbackAndFinalizeContext(context, data);
+    core->fsChmod(context->seq, path, mode, [context](auto seq, auto data, auto post) {
+      context->CallbackAndFinalizeContext(data);
+    });
   });
 }
 
@@ -434,11 +469,13 @@ void NativeFileSystem::Close (
   NativeCoreID id,
   NativeCallbackID callback
 ) const {
-  auto context = this->CreateRequestContext(seq, id, callback);
-  auto core = reinterpret_cast<SSC::Core *>(this->core);
+  auto context = this->core->CreateRequestContext(seq, id, callback);
+  NativeThreadContext::Dispatch(this->core, [context](auto thread, auto data) {
+    auto core = reinterpret_cast<SSC::Core *>(context->core);
 
-  core->fsClose(seq, id, [this, context](auto seq, auto data, auto post) {
-    context->fs->CallbackAndFinalizeContext(context, data);
+    core->fsClose(context->seq, context->id, [context](auto seq, auto data, auto post) {
+      context->CallbackAndFinalizeContext(data);
+    });
   });
 }
 
@@ -447,11 +484,13 @@ void NativeFileSystem::FStat (
   NativeCoreID id,
   NativeCallbackID callback
 ) const {
-  auto context = this->CreateRequestContext(seq, id, callback);
-  auto core = reinterpret_cast<SSC::Core *>(this->core);
+  auto context = this->core->CreateRequestContext(seq, id, callback);
+  NativeThreadContext::Dispatch(this->core, [context](auto thread, auto data) {
+    auto core = reinterpret_cast<SSC::Core *>(context->core);
 
-  core->fsFStat(seq, id, [context](auto seq, auto data, auto post) {
-    context->fs->CallbackAndFinalizeContext(context, data);
+    core->fsFStat(context->seq, context->id, [context](auto seq, auto data, auto post) {
+      context->CallbackAndFinalizeContext(data);
+    });
   });
 }
 
@@ -463,11 +502,13 @@ void NativeFileSystem::Open (
   int mode,
   NativeCallbackID callback
 ) const {
-  auto context = this->CreateRequestContext(seq, id, callback);
-  auto core = reinterpret_cast<SSC::Core *>(this->core);
+  auto context = this->core->CreateRequestContext(seq, id, callback);
+  NativeThreadContext::Dispatch(this->core, [context, path, flags, mode](auto thread, auto data) {
+    auto core = reinterpret_cast<SSC::Core *>(context->core);
 
-  core->fsOpen(seq, id, path, flags, mode, [this, context](auto seq, auto data, auto post) {
-    context->fs->CallbackAndFinalizeContext(context, data);
+    core->fsOpen(context->seq, context->id, path, flags, mode, [context](auto seq, auto data, auto post) {
+      context->CallbackAndFinalizeContext(data);
+    });
   });
 }
 
@@ -478,11 +519,13 @@ void NativeFileSystem::Read (
   int offset,
   NativeCallbackID callback
 ) const {
-  auto context = this->CreateRequestContext(seq, id, callback);
-  auto core = reinterpret_cast<SSC::Core *>(this->core);
+  auto context = this->core->CreateRequestContext(seq, id, callback);
+  NativeThreadContext::Dispatch(this->core, [context, len, offset](auto thread, auto data) {
+    auto core = reinterpret_cast<SSC::Core *>(context->core);
 
-  core->fsRead(seq, id, len, offset, [context](auto seq, auto data, auto post) {
-    context->fs->CallbackWithPostAndFinalizeContext(context, data, post);
+    core->fsRead(context->seq, context->id, len, offset, [context](auto seq, auto data, auto post) {
+      context->CallbackWithPostAndFinalizeContext(data, post);
+    });
   });
 }
 
@@ -491,11 +534,13 @@ void NativeFileSystem::Stat (
   std::string path,
   NativeCallbackID callback
 ) const {
-  auto context = this->CreateRequestContext(seq, 0, callback);
-  auto core = reinterpret_cast<SSC::Core *>(this->core);
+  auto context = this->core->CreateRequestContext(seq, 0, callback);
+  NativeThreadContext::Dispatch(this->core, [context, path](auto thread, auto data) {
+    auto core = reinterpret_cast<SSC::Core *>(context->core);
 
-  core->fsStat(seq, path, [context](auto seq, auto data, auto post) {
-    context->fs->CallbackAndFinalizeContext(context, data);
+    core->fsStat(context->seq, path, [context](auto seq, auto data, auto post) {
+      context->CallbackAndFinalizeContext(data);
+    });
   });
 }
 
@@ -506,11 +551,13 @@ void NativeFileSystem::Write (
   int16_t offset,
   NativeCallbackID callback
 ) const {
-  auto context = this->CreateRequestContext(seq, id, callback);
-  auto core = reinterpret_cast<SSC::Core *>(this->core);
+  auto context = this->core->CreateRequestContext(seq, id, callback);
+  NativeThreadContext::Dispatch(this->core, [context, data, offset](auto thread, auto _) {
+    auto core = reinterpret_cast<SSC::Core *>(context->core);
 
-  core->fsWrite(seq, id,  data, offset, [context](auto seq, auto data, auto post) {
-    context->fs->CallbackAndFinalizeContext(context, data);
+    core->fsWrite(context->seq, context->id,  data, offset, [context](auto seq, auto data, auto post) {
+      context->CallbackAndFinalizeContext(data);
+    });
   });
 }
 
@@ -519,22 +566,6 @@ void NativeFileSystem::Write (
 NativeUDP::NativeUDP (JNIEnv *env, NativeCore *core) {
   this->env = env;
   this->core = core;
-}
-
-NativeUDPRequestContext * NativeUDP::CreateRequestContext (
-  NativeCoreSequence seq,
-  NativeCoreID id,
-  NativeCallbackID callback
-) const {
-  auto context = new NativeUDPRequestContext();
-
-  context->callback = (NativeCallbackID) env->NewWeakGlobalRef((jobject) callback);
-  context->core = this->core;
-  context->seq = seq;
-  context->udp = this;
-  context->id = id;
-
-  return context;
 }
 
 const std::string NativeUDP::CreateJSONError (NativeCoreID id, const std::string message)
@@ -546,102 +577,69 @@ const std::string NativeUDP::CreateJSONError (NativeCoreID id, const std::string
   );
 }
 
-void NativeUDP::CallbackWithPostInContext (
-  NativeUDPRequestContext *context,
+void NativeRequestContext::CallbackWithPostInContext (
   std::string data,
   SSC::Post post
 ) const {
-  auto refs = context->core->GetRefs();
-  auto jvm = context->core->GetJavaVM();
-  auto js = context->core->createPost(context->seq, data, post);
-
-  JNIEnv *env = 0;
-
-  auto attached = jvm->AttachCurrentThread(&env, 0);
+  JNIEnv *env = nullptr;
 
   if (post.body != 0) {
-    EvaluateJavaScriptInEnvironment(
-      env,
-      refs.core,
-      env->NewStringUTF(js.c_str())
-    );
-  } else if (context->seq.size() > 0 && context->seq != "-1") {
-    CallNativeCoreVoidMethodFromEnvironment(
-      env,
-      refs.core,
-      "callback",
-      "(Ljava/lang/String;Ljava/lang/String;)V",
-      context->callback,
+    auto js = this->core->createPost(this->seq, data, post);
+    this->core->EvaluateJavaScript(js);
+  } else if (this->seq.size() > 0 && this->seq != "-1") {
+    auto jvm = this->core->GetJavaVM();
+    auto attached = jvm->AttachCurrentThread(&env, 0);
+    this->callback->Call(
       env->NewStringUTF(data.c_str())
     );
-  }
 
-  if (attached) {
-    jvm->DetachCurrentThread();
+    if (attached) {
+      jvm->DetachCurrentThread();
+    }
   }
 }
 
-void NativeUDP::CallbackAndFinalizeContext (
-  NativeUDPRequestContext *context,
+void NativeRequestContext::CallbackAndFinalizeContext (
   std::string data
 ) const {
-  auto refs = context->core->GetRefs();
-  auto jvm = context->core->GetJavaVM();
-  JNIEnv *env = 0;
-
+  JNIEnv *env = nullptr;
+  auto jvm = this->core->GetJavaVM();
   auto attached = jvm->AttachCurrentThread(&env, 0);
 
-  CallNativeCoreVoidMethodFromEnvironment(
-    env,
-    refs.core,
-    "callback",
-    "(Ljava/lang/String;Ljava/lang/String;)V",
-    context->callback,
+  this->callback->Call(
     env->NewStringUTF(data.c_str())
   );
 
-  delete context;
-
   if (attached) {
     jvm->DetachCurrentThread();
   }
+
+  delete this;
 }
 
-void NativeUDP::CallbackWithPostAndFinalizeContext (
-  NativeUDPRequestContext *context,
+void NativeRequestContext::CallbackWithPostAndFinalizeContext (
   std::string data,
   SSC::Post post
 ) const {
-  auto refs = context->core->GetRefs();
-  auto jvm = context->core->GetJavaVM();
-  auto js = context->core->createPost(context->seq, data, post);
-
-  JNIEnv *env = 0;
-
-  auto attached = jvm->AttachCurrentThread(&env, 0);
+  JNIEnv *env = nullptr;
 
   if (post.body != 0) {
-    EvaluateJavaScriptInEnvironment(
-      env,
-      refs.core,
-      env->NewStringUTF(js.c_str())
-    );
+    auto js = this->core->createPost(this->seq, data, post);
+    this->core->EvaluateJavaScript(js);
   } else {
-    CallNativeCoreVoidMethodFromEnvironment(
-      env,
-      refs.core,
-      "callback",
-      "(Ljava/lang/String;Ljava/lang/String;)V",
-      context->callback,
+    auto jvm = this->core->GetJavaVM();
+    auto attached = jvm->AttachCurrentThread(&env, 0);
+
+    this->callback->Call(
       env->NewStringUTF(data.c_str())
     );
+
+    if (attached) {
+      jvm->DetachCurrentThread();
+    }
   }
 
-  delete context;
-
-  if (attached) {
-    jvm->DetachCurrentThread();
-  }
+  delete this;
 }
 
 void NativeUDP::Bind (
@@ -651,11 +649,13 @@ void NativeUDP::Bind (
   int port,
   NativeCallbackID callback
 ) const {
-  auto context = this->CreateRequestContext(seq, id, callback);
-  auto core = reinterpret_cast<SSC::Core *>(this->core);
+  auto context = this->core->CreateRequestContext(seq, id, callback);
+  NativeThreadContext::Dispatch(this->core, [context, ip, port](auto thread, auto data) {
+    auto core = reinterpret_cast<SSC::Core *>(context->core);
 
-  core->udpBind(seq, id, ip, port, [context](auto seq, auto data, auto post) {
-    context->udp->CallbackAndFinalizeContext(context, data);
+    core->udpBind(context->seq, context->id, ip, port, [context](auto seq, auto data, auto post) {
+      context->CallbackAndFinalizeContext(data);
+    });
   });
 }
 
@@ -664,11 +664,13 @@ void NativeUDP::Close (
   NativeCoreID id,
   NativeCallbackID callback
 ) const {
-  auto context = this->CreateRequestContext(seq, id, callback);
-  auto core = reinterpret_cast<SSC::Core *>(this->core);
+  auto context = this->core->CreateRequestContext(seq, id, callback);
+  NativeThreadContext::Dispatch(this->core, [context](auto thread, auto data) {
+    auto core = reinterpret_cast<SSC::Core *>(context->core);
 
-  core->close(seq, id, [context](auto seq, auto data, auto post) {
-    context->udp->CallbackAndFinalizeContext(context, data);
+    core->close(context->seq, context->id, [context](auto seq, auto data, auto post) {
+      context->CallbackAndFinalizeContext(data);
+    });
   });
 }
 
@@ -679,11 +681,13 @@ void NativeUDP::Connect (
   int port,
   NativeCallbackID callback
 ) const {
-  auto context = this->CreateRequestContext(seq, id, callback);
-  auto core = reinterpret_cast<SSC::Core *>(this->core);
+  auto context = this->core->CreateRequestContext(seq, id, callback);
+  NativeThreadContext::Dispatch(this->core, [context, ip, port](auto thread, auto data) {
+    auto core = reinterpret_cast<SSC::Core *>(context->core);
 
-  core->udpConnect(seq, id, ip, port, [context](auto seq, auto data, auto post) {
-    context->udp->CallbackAndFinalizeContext(context, data);
+    core->udpConnect(context->seq, context->id, ip, port, [context](auto seq, auto data, auto post) {
+      context->CallbackAndFinalizeContext(data);
+    });
   });
 }
 
@@ -700,11 +704,13 @@ void NativeUDP::GetPeerName (
   NativeCoreID id,
   NativeCallbackID callback
 ) const {
-  auto context = this->CreateRequestContext(seq, id, callback);
-  auto core = reinterpret_cast<SSC::Core *>(this->core);
+  auto context = this->core->CreateRequestContext(seq, id, callback);
+  NativeThreadContext::Dispatch(this->core, [context](auto thread, auto data) {
+    auto core = reinterpret_cast<SSC::Core *>(context->core);
 
-  core->udpGetPeerName(seq, id, [context](auto seq, auto data, auto post) {
-    context->udp->CallbackAndFinalizeContext(context, data);
+    core->udpGetPeerName(context->seq, context->id, [context](auto seq, auto data, auto post) {
+      context->CallbackAndFinalizeContext(data);
+    });
   });
 }
 
@@ -713,11 +719,13 @@ void NativeUDP::GetSockName (
   NativeCoreID id,
   NativeCallbackID callback
 ) const {
-  auto context = this->CreateRequestContext(seq, id, callback);
-  auto core = reinterpret_cast<SSC::Core *>(this->core);
+  auto context = this->core->CreateRequestContext(seq, id, callback);
+  NativeThreadContext::Dispatch(this->core, [context](auto thread, auto data) {
+    auto core = reinterpret_cast<SSC::Core *>(context->core);
 
-  core->udpGetSockName(seq, id, [context](auto seq, auto data, auto post) {
-    context->udp->CallbackAndFinalizeContext(context, data);
+    core->udpGetSockName(context->seq, context->id, [context](auto seq, auto data, auto post) {
+      context->CallbackAndFinalizeContext(data);
+    });
   });
 }
 
@@ -726,11 +734,13 @@ void NativeUDP::GetState (
   NativeCoreID id,
   NativeCallbackID callback
 ) const {
-  auto context = this->CreateRequestContext(seq, id, callback);
-  auto core = reinterpret_cast<SSC::Core *>(this->core);
+  auto context = this->core->CreateRequestContext(seq, id, callback);
+  NativeThreadContext::Dispatch(this->core, [context](auto thread, auto data) {
+    auto core = reinterpret_cast<SSC::Core *>(context->core);
 
-  core->udpGetState(seq, id, [context](auto seq, auto data, auto post) {
-    context->udp->CallbackAndFinalizeContext(context, data);
+    core->udpGetState(context->seq, context->id, [context](auto seq, auto data, auto post) {
+      context->CallbackAndFinalizeContext(data);
+    });
   });
 }
 
@@ -739,11 +749,13 @@ void NativeUDP::ReadStart (
   NativeCoreID id,
   NativeCallbackID callback
 ) const {
-  auto context = this->CreateRequestContext(seq, id, callback);
-  auto core = reinterpret_cast<SSC::Core *>(this->core);
+  auto context = this->core->CreateRequestContext(seq, id, callback);
+  NativeThreadContext::Dispatch(this->core, [context](auto thread, auto data) {
+    auto core = reinterpret_cast<SSC::Core *>(context->core);
 
-  core->udpReadStart(seq, id, [context](auto seq, auto data, auto post) {
-    context->udp->CallbackWithPostInContext(context, data, post);
+    core->udpReadStart(context->seq, context->id, [context](auto seq, auto data, auto post) {
+      context->CallbackWithPostInContext(data, post);
+    });
   });
 }
 
@@ -757,14 +769,104 @@ void NativeUDP::Send (
   bool ephemeral,
   NativeCallbackID callback
 ) const {
-  auto context = this->CreateRequestContext(seq, id, callback);
-  auto core = reinterpret_cast<SSC::Core *>(this->core);
+  auto context = this->core->CreateRequestContext(seq, id, callback);
+  NativeThreadContext::Dispatch(this->core, [context, data, size, ip, port, ephemeral](auto thread, auto _) {
+    auto core = reinterpret_cast<SSC::Core *>(context->core);
 
-  core->udpSend(seq, id, data.data(), size, port, ip, ephemeral, [context](auto seq, auto data, auto post) {
-    context->udp->CallbackAndFinalizeContext(context, data);
+    core->udpSend(context->seq, context->id, (char *) data.data(), size, port, ip, ephemeral, [context](auto seq, auto data, auto post) {
+      context->CallbackAndFinalizeContext(data);
+    });
   });
 }
 
+#pragma NativeThreadContext
+
+NativeThreadContext::NativeThreadContext (
+  const NativeCore *core,
+  NativeID contextId,
+  const void *data,
+  Function function
+) {
+  this->core = core;
+  this->data = data;
+  this->Set(contextId, function);
+  this->semaphore.release();
+}
+
+NativeThreadContext::~NativeThreadContext () {
+  if (this->thread != nullptr) {
+    this->Cancel();
+    delete this->thread;
+    this->thread = nullptr;
+  }
+}
+
+void NativeThreadContext::Set (
+  NativeID contextId,
+  NativeThreadContext::Function function
+) {
+  this->id = contextId;
+  this->function = function;
+
+  if (contextId == 0) {
+    this->id = SSC::rand64();
+    this->shouldAutoRelease = true;
+  }
+}
+
+bool NativeThreadContext::Dispatch () {
+  Lock lock(this->mutex);
+
+  if (
+    this->thread != nullptr ||
+    this->isDispatched ||
+    this->isInvoked ||
+    this->isReleasing ||
+    this->isRunning
+  ) {
+    return false;
+  }
+
+  this->thread = new std::thread(&NativeThreadContext::StartThread, this);
+  this->isDispatched = true;
+  return true;
+}
+
+bool NativeThreadContext::Release () {
+  if (this->isReleasing) {
+    return false;
+  }
+
+  this->isReleasing = true;
+  if (!this->isCancelled) {
+    this->Wait();
+  }
+  return NativeThreadContext::ReleaseContext(this->id);
+}
+
+void NativeThreadContext::Wait () {
+  if (this->thread != nullptr) {
+    auto thread = this->thread;
+    this->thread = nullptr;
+
+    if (thread->joinable()) {
+      thread->join();
+    }
+
+    Lock lock(this->mutex);
+    delete thread;
+  }
+}
+
+void NativeThreadContext::Stop () {
+  this->isRunning = false;
+}
+
+void NativeThreadContext::Cancel () {
+  // atomic
+  this->isCancelled = true;
+  this->isRunning = false;
+}
 
 // clang-format on
 
@@ -1020,6 +1122,86 @@ extern "C" {
     }
 
     return true;
+  }
+
+  /**
+   * Run the core event loop.
+   */
+  void exports(NativeCore, runEventLoop)(
+    JNIEnv *env,
+    jobject self
+  ) {
+    SSC::runEventLoop();
+  }
+
+  /**
+   * Signal a stop of the core event loop.
+   */
+  void exports(NativeCore, stopEventLoop)(
+    JNIEnv *env,
+    jobject self
+  ) {
+    SSC::stopEventLoop();
+  }
+
+  /**
+   * Starts the dispatch thread.
+   */
+  void exports(NativeCore, startDispatchThread)(
+    JNIEnv *env,
+    jobject self
+  ) {
+    NativeThreadContext::KickDispatchThread();
+  }
+
+  /**
+   * Stops the dispatch thread.
+   */
+  void exports(NativeCore, stopDispatchThread)(
+    JNIEnv *env,
+    jobject self
+  ) {
+    NativeThreadContext::StopDispatchThread();
+  }
+
+  /**
+   * Starts the release thread.
+   */
+  void exports(NativeCore, startReleaseThread)(
+    JNIEnv *env,
+    jobject self
+  ) {
+    NativeThreadContext::KickReleaseThread();
+  }
+
+  /**
+   * Stop the release thread.
+   */
+  void exports(NativeCore, stopReleaseThread)(
+    JNIEnv *env,
+    jobject self
+  ) {
+    NativeThreadContext::StopReleaseThread();
+  }
+
+  /**
+   * Cancel all dispatch thread contexts.
+   */
+  void exports(NativeCore, cancelAllDispatchThreads)(
+    JNIEnv *env,
+    jobject self
+  ) {
+    NativeThreadContext::CancelAll();
+  }
+
+  /**
+   * Stop all dispatch thread contexts.
+   */
+  void exports(NativeCore, stopAllDispatchThreads)(
+    JNIEnv *env,
+    jobject self
+  ) {
+    NativeThreadContext::StopAll();
   }
 
   /**

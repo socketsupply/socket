@@ -1787,6 +1787,12 @@ open class NativeCore(var activity: WebViewActivity) {
    * `NativeCore` internal utility bindings
    */
   @Throws(java.lang.Exception::class)
+  external fun runEventLoop(): Boolean
+
+  @Throws(java.lang.Exception::class)
+  external fun stopEventLoop(): Boolean
+
+  @Throws(java.lang.Exception::class)
   external fun configureEnvironment(): Boolean
 
   @Throws(java.lang.Exception::class)

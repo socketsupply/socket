@@ -25,6 +25,18 @@
 #  define VERSION_HASH ""
 #endif
 
+// defined before includes below
+#if DEBUG
+#define debug(format, ...)                                                  \
+  {                                                                            \
+    __android_log_print(                                                       \
+      ANDROID_LOG_DEBUG, __FUNCTION__, format, ##__VA_ARGS__                   \
+    );                                                                         \
+  }
+#else
+#define debug(format, ...)
+#endif
+
 /**
  * Java Native Interface
  * @see
@@ -44,6 +56,8 @@
 // c++
 #include <any>
 #include <map>
+#include <queue>
+#include <semaphore>
 #include <string>
 
 // android
@@ -55,34 +69,32 @@
 #include "common.hh"
 #include "core.hh"
 
-typedef std::map<std::string, std::string> AppConfig;
-typedef std::map<std::string, std::string> EnvironmentVariables;
-
 typedef std::string NativeCoreSequence;
 typedef uint64_t NativeID;
 typedef NativeID NativeCallbackID;
 typedef NativeID NativeCoreID;
 
+typedef std::map<std::string, std::string> AppConfig;
+typedef std::binary_semaphore BinarySemaphore; // aka `std::counting_semaphore<1>`
+typedef std::map<std::string, std::string> EnvironmentVariables;
+typedef std::recursive_mutex Mutex;
+typedef std::lock_guard<Mutex> Lock;
+typedef std::queue<NativeID> Queue;
+typedef std::thread Thread;
+
+template <int k> using Semaphore = std::counting_semaphore<k>;
+
 // Forward declaration
-class NativeFileSystem;
+class NativeCallbackRef;
 class NativeCore;
+class NativeFileSystem;
 class NativeUDP;
 
-#if DEBUG
-#define debug(format, ...)                                                     \
-  {                                                                            \
-    __android_log_print(                                                       \
-      ANDROID_LOG_DEBUG, __FUNCTION__, format, ##__VA_ARGS__                   \
-    );                                                                         \
-  }
-#else
-#define debug(format, ...)
-#endif
-
 /**
- * @TODO
+ * A file that should contain the contents `OK`. It is used during init
+ * time verificatino checks.
  */
-#define VITAL_CHECK_FILE "vital_check_ok.txt"
+#define SSC_VITAL_CHECK_OK_FILE "__ssc_vital_check_ok_file__.txt"
 
 /**
  * Defined by the Socket SDK preprocessor
@@ -107,10 +119,10 @@ class NativeUDP;
  */
 #define GetNativeCoreFromEnvironment(env)                                      \
   ({                                                                           \
-    debug("Loading NativeCore from environment");                              \
     auto Class = GetNativeCoreBindingClass(env);                               \
     auto pointerField = env->GetFieldID(Class, "pointer", "J");                \
     auto core = (NativeCore *) env->GetLongField(self, pointerField);          \
+    debug("NativeCore loaded in environment");                                 \
     (core);                                                                    \
   })
 
@@ -270,12 +282,54 @@ class NativeCoreRefs {
   void Release ();
 };
 
-struct NativeFileSystemRequestContext {
-  const NativeFileSystem *fs;
-  NativeCoreSequence seq;
-  NativeCallbackID callback;
-  NativeCoreID id;
-  NativeCore *core;
+/**
+ * A container for a callback pointer and JVM global ref
+ */
+class NativeCallbackRef {
+  public:
+  jobject ref = nullptr;
+  NativeCore *core = nullptr;
+  NativeCallbackID id = 0;
+  std::string name;
+  std::string signature;
+
+  NativeCallbackRef () {};
+  NativeCallbackRef (
+    NativeCore *core,
+    NativeCallbackID id,
+    std::string name,
+    std::string signature
+  );
+
+  ~NativeCallbackRef ();
+
+  template <typename ...Args> void Call (Args ...args);
+};
+
+class NativeRequestContext {
+  public:
+  NativeCoreSequence seq = "";
+  NativeCoreID id = 0;
+  NativeCore *core = nullptr;
+  NativeCallbackRef *callback = nullptr;
+
+  ~NativeRequestContext () {
+    if (this->callback != nullptr) {
+      delete this->callback;
+    }
+  }
+
+  void CallbackAndFinalizeContext (std::string data) const;
+
+  void CallbackWithPostAndFinalizeContext (
+    std::string data,
+    SSC::Post post
+  ) const;
+
+  void CallbackWithPostInContext (
+    std::string data,
+    SSC::Post post
+  ) const;
 };
 
 class NativeFileSystem {
@@ -310,26 +364,9 @@ class NativeFileSystem {
     return stream.str();
   }
 
-  NativeFileSystemRequestContext * CreateRequestContext (
-    NativeCoreSequence seq,
-    NativeCoreID id,
-    NativeCallbackID callback
-  ) const;
-
   const std::string CreateJSONError (
     NativeCoreID id,
     const std::string message
-  ) const;
-
-  void CallbackAndFinalizeContext (
-    NativeFileSystemRequestContext *context,
-    std::string data
-  ) const;
-
-  void CallbackWithPostAndFinalizeContext (
-    NativeFileSystemRequestContext *context,
-    std::string data,
-    SSC::Post post
   ) const;
 
   void Access (
@@ -390,14 +427,6 @@ class NativeFileSystem {
   ) const;
 };
 
-struct NativeUDPRequestContext {
-  const NativeUDP *udp;
-  NativeCoreSequence seq;
-  NativeCallbackID callback;
-  NativeCoreID id;
-  NativeCore *core;
-};
-
 /**
  * An interface for core UDP APIs
  */
@@ -409,32 +438,9 @@ class NativeUDP {
 
   NativeUDP (JNIEnv *env, NativeCore *core);
 
-  NativeUDPRequestContext * CreateRequestContext (
-    NativeCoreSequence seq,
-    NativeCoreID id,
-    NativeCallbackID callback
-  ) const;
-
   const std::string CreateJSONError (
     NativeCoreID id,
     const std::string message
-  ) const;
-
-  void CallbackWithPostInContext (
-    NativeUDPRequestContext *context,
-    std::string data,
-    SSC::Post post
-  ) const;
-
-  void CallbackAndFinalizeContext (
-    NativeUDPRequestContext *context,
-    std::string data
-  ) const;
-
-  void CallbackWithPostAndFinalizeContext (
-    NativeUDPRequestContext *context,
-    std::string data,
-    SSC::Post post
   ) const;
 
   void Bind (
@@ -532,10 +538,17 @@ class NativeCore : public SSC::Core {
   jboolean ConfigureEnvironment ();
   jboolean ConfigureWebViewWindow ();
 
+  NativeRequestContext * CreateRequestContext (
+    NativeCoreSequence seq,
+    NativeCoreID id,
+    NativeCallbackID callback
+  ) const;
+
+  void EvaluateJavaScript (std::string js);
+  void EvaluateJavaScript (const char *js);
+
   void * GetPointer () const;
-
   JavaVM * GetJavaVM () const;
-
   AppConfig & GetAppConfig ();
 
   const NativeString GetAppConfigValue (const char *key) const;
@@ -552,6 +565,11 @@ class NativeCore : public SSC::Core {
   const char * GetJavaScriptPreloadSource () const;
 
   void Callback (
+    NativeCallbackRef *callback,
+    std::string data
+  ) const;
+
+  void Callback (
     NativeCallbackID callback,
     std::string data
   ) const;
@@ -562,6 +580,618 @@ class NativeCore : public SSC::Core {
     int family,
     NativeCallbackID callback
   ) const;
+};
+
+/**
+ * A structured container for a threaded dispatch queue
+ */
+class NativeThreadContext {
+  public:
+    typedef std::map<NativeID, NativeThreadContext*> Contexts;
+    typedef std::function<void(NativeThreadContext*, const void*)> Function;
+
+    /**
+     * Maximum number of concurrent dispatch/release threads.
+     */
+    static constexpr int MAX_DISPATCH_CONCURRENCY = 8;
+    static constexpr int MAX_RELEASE_CONCURRENCY = 4;
+
+    /**
+     * Maximum empty polls for dispatch worker before stopping main loop.
+     */
+    static constexpr int MAX_EMPTY_POLLS = 1024;
+
+    /**
+     * Timeout in milliseconds when polling in dispatch/release threads.
+     */
+    static constexpr int POLL_TIMEOUT = 4; // in milliseconds
+
+    /**
+     * Static/global recursive mutex for threaded atomic operations during
+     * dispatch/release.
+     */
+    static inline Mutex globalMutex;
+
+    /**
+     * Dispatch/release threads.
+     */
+    static inline Thread *globalDispatchThread;
+    static inline Thread *globalReleaseThread;
+
+    /**
+     * Thread queues
+     */
+    static inline Queue globalDispatchQueue;
+    static inline Queue globalReleaseQueue;
+
+    /**
+     * Atomic global queue sizes
+     */
+    static inline std::atomic<uint64_t> globalDispatchQueueSize = 0;
+    static inline std::atomic<uint64_t> globalReleaseQueueSize = 0;
+    static inline std::atomic<uint64_t> globalDispatchPopSize = 0;
+    static inline std::atomic<uint64_t> globalReleasePopSize = 0;
+
+    /**
+     * Thread semaphores.
+     */
+    static inline Semaphore<MAX_DISPATCH_CONCURRENCY> globalDispatchSemaphore;
+    static inline Semaphore<MAX_RELEASE_CONCURRENCY> globalReleaseSemaphore;
+
+    /**
+     * Atomic thread running state predicates.
+     */
+    static inline std::atomic<bool> isDispatchThreadRunning = false;
+    static inline std::atomic<bool> isReleaseThreadRunning = false;
+    static inline std::atomic<bool> didDispatchThreadHaveFirstKick = false;
+    static inline std::atomic<bool> didReleaseThreadHaveFirstKick = false;
+
+    /**
+     * Static map of all currently dispacthed contexts. Mapping an
+     * `id` to a `NativeThreadContext*`
+     */
+    static inline Contexts contexts;
+
+    /**
+     * Atomic state predicates for instance.
+     */
+    std::atomic<bool> isCancelled = false;
+    std::atomic<bool> isDispatched = false;
+    std::atomic<bool> isInvoked = false;
+    std::atomic<bool> isReleasing = false;
+    std::atomic<bool> isRunning = false;
+    std::atomic<bool> shouldAutoRelease = false;
+
+    // instance state
+    const NativeCore *core = nullptr;
+    const void *data = nullptr;
+    Function function = nullptr;
+    NativeID id = 0;
+
+    // thread state
+    BinarySemaphore semaphore;
+    Thread *thread = nullptr; // initialized in `Dispatch()`
+    Mutex mutex;
+
+    /**
+     * `NativeThreadContext` class constructor.
+     */
+    NativeThreadContext (
+      const NativeCore *core,
+      NativeID contextId,
+      const void *data,
+      Function fn
+    );
+
+    /**
+     * `NativeThreadContext` class destructor.
+     * This will call `Release()` internally.
+     */
+    ~NativeThreadContext ();
+
+    /**
+     * Helper function to sleep `ms` milliseconds in the current thread.
+     */
+    static void SleepInThisThread (int64_t ms) {
+      if (ms >= 0) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(ms));
+      }
+    }
+
+    /**
+     * AddContexts a context for dispatch. The context may already be queued, so
+     * calling `AddContext()` again will queue the context for execution again.
+     */
+    static void AddContext (NativeThreadContext *context) {
+      SetContext(context);
+      {
+        Lock lock(globalMutex);
+        globalDispatchQueue.push(context->id);
+        globalDispatchQueueSize = globalDispatchQueue.size();
+      }
+      KickThreads();
+    }
+
+    /**
+     * PopContexts next item in dispatch queue and dispatches it. The
+     * dispatched thread
+     */
+    static void PopContext () {
+      NativeThreadContext *ctx = nullptr;
+
+      globalDispatchSemaphore.acquire(); // wait (signaled in ThreadRunner)
+      if (globalDispatchQueueSize > 0) {
+        Lock lock(globalMutex);
+        auto contextId = globalDispatchQueue.front();
+        globalDispatchQueue.pop();
+        globalDispatchQueueSize = globalDispatchQueue.size();
+        ctx = Get(contextId);
+      }
+
+      if (ctx == nullptr) {
+        globalDispatchSemaphore.release();
+        return;
+      }
+
+      globalDispatchPopSize++;
+      if (ctx->Dispatch()) {
+        // max total timeout ~= `POLL_TIMEOUT * POLL_TIMEOUT`
+        int timeouts = POLL_TIMEOUT;
+        while (!ctx->isInvoked && timeouts-- > 0) {
+          SleepInThisThread(POLL_TIMEOUT);
+        }
+
+        if (ctx->shouldAutoRelease) {
+          Lock lock(globalMutex);
+          globalReleaseQueue.push(ctx->id);
+          globalReleaseQueueSize = globalReleaseQueue.size();
+        }
+      }
+    }
+
+    /**
+     * Stops all thread contexts.
+     */
+    static void StopAll () {
+      Lock lock(globalMutex);
+      for (auto const &tuple : contexts) {
+        auto ctx = tuple.second;
+        if (ctx != nullptr) {
+          ctx->Stop();
+        }
+      }
+    }
+
+    /**
+     * Stops and cancels all thread contexts.
+     */
+    static void CancelAll () {
+      Lock lock(globalMutex);
+      std::vector<NativeID> ids = {0};
+      for (auto const &tuple : contexts) {
+        auto ctx = tuple.second;
+        if (ctx != nullptr) {
+          ctx->Stop();
+          ctx->Cancel();
+          ids.push_back(ctx->id);
+        }
+      }
+
+      for (auto const id : ids) {
+        ReleaseContext(id);
+      }
+
+      while (globalDispatchQueue.size() > 0) {
+        globalDispatchQueue.pop();
+      }
+
+      globalDispatchQueueSize = 0;
+    }
+
+    /**
+     * Global thread runner.
+     */
+    static void StartDispatchThread () {
+      isDispatchThreadRunning = true;
+      auto loop = SSC::getEventLoop();
+      int emptyPolls = 0;
+
+      while (isDispatchThreadRunning) {
+        if (
+          globalDispatchQueueSize == 0 &&
+          globalDispatchPopSize == 0 &&
+          !uv_loop_alive(loop)
+        ) {
+          // max timeout = `MAX_EMPTY_POLLS * POLL_TIMEOUT`
+          if (++emptyPolls > MAX_EMPTY_POLLS) {
+            break;
+          }
+
+          SleepInThisThread(POLL_TIMEOUT);
+          continue;
+        }
+
+        emptyPolls = 0;
+        PopContext();
+        SleepInThisThread(POLL_TIMEOUT);
+      }
+
+      isDispatchThreadRunning = false;
+    }
+
+    static void StartReleaseThread () {
+      isDispatchThreadRunning = true;
+      isReleaseThreadRunning = true;
+      int emptyPolls = 0;
+
+      while (isReleaseThreadRunning) {
+        NativeThreadContext *ctx = nullptr;
+
+        if (globalReleaseQueueSize == 0 && globalReleasePopSize == 0) {
+          if (++emptyPolls > MAX_EMPTY_POLLS) {
+            break;
+          }
+
+          SleepInThisThread(POLL_TIMEOUT);
+          continue;
+        }
+
+        emptyPolls = 0;
+
+        while (ctx == nullptr && globalReleaseQueueSize > 0) {
+          Lock lock(globalMutex);
+          auto contextId = globalReleaseQueue.front();
+          globalReleaseQueue.pop();
+          globalReleaseQueueSize = globalReleaseQueue.size();
+          globalReleasePopSize++;
+          ctx = Get(contextId);
+        }
+
+        if (ctx != nullptr) {
+          if (!ctx->isRunning || ctx->isCancelled) {
+            globalReleaseSemaphore.acquire();
+            ctx->Release();
+            globalReleaseSemaphore.release();
+          } else {
+            Lock lock(globalMutex);
+            globalReleaseQueue.push(ctx->id);
+            globalReleaseQueueSize = globalReleaseQueue.size();
+          }
+        }
+
+        SleepInThisThread(POLL_TIMEOUT);
+      }
+
+      isReleaseThreadRunning = false;
+    }
+
+    /**
+     * Sends stop signal to stop global dispatch thread.
+     */
+    static void StopDispatchThread () {
+      isDispatchThreadRunning = false;
+    }
+
+    /**
+     * Sends stop signal to stop global release thread.
+     */
+    static void StopReleaseThread () {
+      isReleaseThreadRunning = false;
+    }
+
+    /**
+     * Creates or recycles the dispatch thread.
+     */
+    static void KickDispatchThread () {
+      if (!didDispatchThreadHaveFirstKick) {
+        didDispatchThreadHaveFirstKick = true;
+        globalDispatchSemaphore.release();
+      }
+
+      if (!isDispatchThreadRunning && globalDispatchThread != nullptr) {
+        if (globalDispatchThread->joinable()) {
+          isDispatchThreadRunning = false;
+          globalDispatchThread->join();
+        }
+
+        Lock lock(globalMutex);
+        delete globalDispatchThread;
+        globalDispatchThread = nullptr;
+      }
+
+      if (globalDispatchThread == nullptr) {
+        Lock lock(globalMutex);
+        isDispatchThreadRunning = true;
+        globalDispatchThread = new std::thread(&StartDispatchThread);
+      }
+    }
+
+    /**
+     * Creates or recycles the release thread.
+     */
+    static void KickReleaseThread () {
+      if (!didReleaseThreadHaveFirstKick) {
+        didReleaseThreadHaveFirstKick = true;
+        globalReleaseSemaphore.release();
+      }
+
+      if (!isReleaseThreadRunning && globalReleaseThread != nullptr) {
+        if (globalReleaseThread->joinable()) {
+          isReleaseThreadRunning = false;
+          globalReleaseThread->join();
+        }
+
+        Lock lock(globalMutex);
+        delete globalReleaseThread;
+        globalReleaseThread = nullptr;
+      }
+
+      if (globalReleaseThread == nullptr) {
+        Lock lock(globalMutex);
+        isReleaseThreadRunning = true;
+        globalReleaseThread = new std::thread(&StartReleaseThread);
+      }
+    }
+
+    /**
+     * Creates or recycles the dispatch and release threads.
+     */
+    static void KickThreads () {
+      KickDispatchThread();
+      KickReleaseThread();
+    }
+
+    /**
+     * Dispatches worker in `fn` of context `contextId`. If `contextId` is `0` then
+     * the dispacted work is auto released after invocation.
+     */
+    static void Dispatch (const NativeCore *core, Function fn) {
+      return Dispatch(core, 0, nullptr, fn);
+    }
+
+    static void Dispatch (const NativeCore *core, NativeID contextId, Function fn) {
+      return Dispatch(core, contextId, nullptr, fn);
+    }
+
+    static void Dispatch (const NativeCore *core, const void *data, Function fn) {
+      return Dispatch(core, 0, data, fn);
+    }
+
+    static void Dispatch (
+      const NativeCore *core,
+      NativeID contextId,
+      const void *data,
+      Function fn
+    ) {
+      AddContext(
+        new NativeThreadContext(core, contextId, data, fn)
+      );
+    }
+
+    /**
+     * Releases work for a given context
+     */
+    static bool ReleaseContext (NativeThreadContext *context) {
+      if (context != nullptr) {
+        return ReleaseContext(context->id);
+      }
+
+      return false;
+    }
+
+    static bool ReleaseContext (NativeID contextId) {
+      auto ctx = Get(contextId);
+
+      if (ctx == nullptr) {
+        return false;
+      }
+
+      if (ctx->isInvoked && globalReleasePopSize > 0) {
+        globalReleasePopSize--;
+      }
+
+      RemoveContext(contextId);
+      ctx->Cancel();
+      ctx->Wait();
+      delete ctx;
+
+      return true;
+    }
+
+    /**
+     * Sets a `NativeThreadContext` indexed by a context id.
+     */
+    static void SetContext (NativeThreadContext *context) {
+      if (context != nullptr) {
+        return SetContext(context->id, context);
+      }
+    }
+
+    static void SetContext (NativeID contextId, NativeThreadContext *context) {
+      Lock lock(globalMutex);
+      contexts.insert_or_assign(contextId, context);
+    }
+
+    /**
+     * Gets a known `NativeThreadContext` by `contextId`.
+     */
+    static NativeThreadContext* Get (NativeID contextId) {
+      Lock lock(globalMutex);
+      auto search = contexts.find(contextId);
+      auto end = contexts.end();
+
+      if (search != end) {
+        return search->second;
+      }
+
+      return nullptr;
+    }
+
+    /**
+     * Removes a known `NativeThreadContext` by `contextId`.
+     */
+    static bool RemoveContext (NativeThreadContext *context) {
+      if (context != nullptr) {
+        return RemoveContext(context->id);
+      }
+
+      return false;
+    }
+
+    static bool RemoveContext (NativeID contextId) {
+      Lock lock(globalMutex);
+      auto search = contexts.find(contextId);
+      auto end = contexts.end();
+
+      if (search != end) {
+        contexts.erase(contextId);
+        return true;
+      }
+
+      return false;
+    }
+
+    /**
+     * A work runner function that is started by and monitored in the
+     * `StartThread` function as a child thread for an executed
+     * `NativeThreadContext` instance. The thread will execute the work
+     * associated with the `NativeThreadContext` and any pending work in the
+     * dispatch queue. The thread has a timeout to keep alive for future work
+     * that is queued.
+     */
+    static void ThreadRunner (NativeThreadContext *ctx) {
+      auto first = ctx;
+
+      while (isDispatchThreadRunning && ctx != nullptr) {
+        ctx->semaphore.acquire();
+        if (
+          first->isCancelled || ctx->isCancelled ||
+          !first->isRunning || !ctx->isRunning
+        ) {
+          ctx->isRunning = false;
+
+          if (ctx == first) {
+            ctx->semaphore.release();
+            break;
+          }
+        } else if (!ctx->isInvoked && (ctx == first || !ctx->isDispatched)) {
+          ctx->isInvoked = true;
+          ctx->function(ctx, ctx->data);
+          if (ctx != first) {
+            ctx->isRunning = false;
+          }
+        }
+
+        ctx->semaphore.release();
+
+        if (globalDispatchPopSize > 0) {
+          globalDispatchPopSize--;
+        }
+
+        // keep alive (ms) ~= 1024*POLL_TIMEOUT*POLL_TIMEOUT
+        int timeouts = 1024 * POLL_TIMEOUT;
+        while (
+          timeouts-- > 0 &&
+          isDispatchThreadRunning &&
+          globalDispatchQueueSize == 0
+        ) {
+          SleepInThisThread(POLL_TIMEOUT);
+        }
+
+        if (globalDispatchQueueSize == 0) {
+          debug(
+            "Dispatch queue empty - "
+            "thread context work runner will eventually exit (id=%lu)",
+            ctx->id
+          );
+          break;
+        }
+
+        ctx = nullptr;
+
+        if (isDispatchThreadRunning && globalDispatchQueueSize > 0) {
+          Lock lock(globalMutex);
+          auto contextId = globalDispatchQueue.front();
+          globalDispatchQueue.pop();
+          globalDispatchQueueSize = globalDispatchQueue.size();
+
+          ctx = Get(contextId);
+
+          if (ctx != nullptr) {
+            ctx->isRunning = true;
+            globalDispatchPopSize++;
+
+            if (ctx->shouldAutoRelease) {
+              globalReleaseQueue.push(ctx->id);
+              globalReleaseQueueSize = globalReleaseQueue.size();
+            }
+          }
+        }
+      }
+
+      // requeue thread if started, but not invoked
+      if (ctx != nullptr && ctx->isRunning && !ctx->isInvoked && !ctx->isCancelled) {
+        Lock lock(globalMutex);
+        globalDispatchQueue.push(ctx->id);
+        globalDispatchQueueSize = globalDispatchQueue.size();
+        if (globalDispatchPopSize > 0) {
+          globalDispatchPopSize--;
+        }
+      }
+
+      // finally, after draining the queue and max keep alive
+      // set first context in run loop as not running to signal
+      // `StartThread` that execution in this thread is "done" and that
+      // the release thread can garbage collect this thread
+      if (first != nullptr) {
+        first->isRunning = false;
+      }
+    }
+
+    /**
+     * The function that runs the dispatched worker in the executed thread.
+     */
+    static void StartThread (NativeThreadContext *ctx) {
+      if (ctx == nullptr || ctx->isCancelled || ctx->isInvoked || ctx->isRunning) {
+        globalDispatchSemaphore.release(); // signal release for more work
+        return;
+      }
+
+      // this value is set to `false` upon completion of work in the
+      // `ThreadRunner` function thread and again upon termination of this one
+      ctx->isRunning = true;
+      Thread work(&ThreadRunner, ctx);
+
+      // monitor work on `ThreadRunner` function thread until it is no longer
+      // running (or stopped), or cancelled
+      while (isDispatchThreadRunning && ctx->isRunning && !ctx->isCancelled) {
+        SleepInThisThread(POLL_TIMEOUT);
+      }
+
+      // `Wait()` will eventually wait for the thread to join here
+      if (!ctx->isCancelled && work.joinable()) {
+        work.join();
+      }
+
+      // release thread for more work
+      ctx->isRunning = false;
+      globalDispatchSemaphore.release(); // signal release for more work
+    }
+
+    /**
+     * Sets dispatch worker function for context id
+     */
+    void Set (NativeID contextId, Function fn);
+    void Set (Function fn);
+
+    /**
+     * Atomic dispatch worker thread functions.
+     */
+    void Cancel ();
+    bool Dispatch ();
+    bool Release ();
+    void Stop ();
+    void Wait ();
 };
 
 #endif
