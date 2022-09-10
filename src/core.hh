@@ -1262,7 +1262,7 @@ namespace SSC {
 
     void freeBuffer (int index) {
       if (this->iov[index].base != nullptr) {
-        delete (char *) this->iov[index].base;
+        delete [] (char *) this->iov[index].base;
         this->iov[index].base = nullptr;
       }
 
@@ -1739,7 +1739,7 @@ namespace SSC {
     auto post = getPost(id);
 
     if (post.body && post.bodyNeedsFree) {
-      delete post.body;
+      delete [] post.body;
       post.bodyNeedsFree = false;
       post.body = nullptr;
     }
@@ -2555,7 +2555,7 @@ namespace SSC {
       uv_fs_req_cleanup(req);
       // `uv_fs_req_cleanup()` should free this
       if (req->ptr) {
-        delete (char *) req->ptr;
+        delete [] (char *) req->ptr;
       }
       delete req;
     });
