@@ -1250,7 +1250,7 @@ static dispatch_queue_t queue = dispatch_queue_create("co.socketsupply.queue.cor
     return true;
   }
 
-  if (cmd.name == "udpClose") {
+  if (cmd.name == "udpClose" || cmd.name == "udp.close") {
     auto peerId = std::stoull(cmd.get("id"));
 
     dispatch_async(queue, ^{
