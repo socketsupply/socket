@@ -15,16 +15,20 @@
 #endif
 
 #include <chrono>
+#include <semaphore>
 #include <thread>
 
 #if defined(__APPLE__)
 	#import <Webkit/Webkit.h>
   using Task = id<WKURLSchemeTask>;
+#  define debug(format, ...) NSLog(@format, ##__VA_ARGS__)
 #else
   class Task {};
 #endif
 
-#define DEFAULT_BACKLOG 128
+#ifndef debug
+#  define debug(format, ...) fprintf(stderr, format "\n", ##__VA_ARGS__)
+#endif
 
 namespace SSC {
   using String = std::string;
@@ -337,6 +341,7 @@ namespace SSC {
   struct Descriptor;
   struct DescriptorRequestContext;
 
+  static constexpr int POLL_TIMEOUT = 16; // in milliseconds
   static uv_loop_t eventLoop = {0};
 
   static std::map<uint64_t, Peer*> peers;
@@ -364,6 +369,9 @@ namespace SSC {
 
   static dispatch_queue_t eventLoopQueue = dispatch_queue_create("co.socketsupply.queue.event-loop", eventLoopQueueAttrs);
   static dispatch_semaphore_t eventLoopSemaphore = dispatch_semaphore_create(1);
+#else
+  static std::binary_semaphore eventLoopSemaphore = {0};
+  static std::thread *eventLoopThread = nullptr;
 #endif
 
   struct Descriptor {
@@ -392,7 +400,7 @@ namespace SSC {
   struct Timers {
     Core core; // isolate
     Timer releaseWeakDescriptors = {
-      .timeout = 256,
+      .timeout = 256, // in milliseconds
       .invoke = [](uv_timer_t *handle) {
         std::lock_guard<std::recursive_mutex> descriptorsGuard(descriptorsMutex);
         std::lock_guard<std::recursive_mutex> timersGuard(timersMutex);
@@ -532,65 +540,109 @@ namespace SSC {
   };
 
   struct LocalPeerInfo {
+    struct sockaddr_storage addr;
     String address = "";
     String family = "";
     int port = 0;
     int err = 0;
 
-    void init (uv_udp_t* socket) {
-      struct sockaddr_storage addr;
-      int namelen = sizeof(addr);
+    int getsockname (uv_udp_t *socket, struct sockaddr *addr) {
+      int namelen = sizeof(struct sockaddr_storage);
+      return uv_udp_getsockname(socket, addr, &namelen);
+    }
 
-      address = "";
-      port = 0;
-      family = "";
+    int getsockname (uv_tcp_t *socket, struct sockaddr *addr) {
+      int namelen = sizeof(struct sockaddr_storage);
+      return uv_tcp_getsockname(socket, addr, &namelen);
+    }
 
-      err = uv_udp_getsockname(socket, (struct sockaddr*) &addr, &namelen);
+    void init (uv_udp_t *socket) {
+      this->address = "";
+      this->family = "";
+      this->port = 0;
 
-      if (err) {
+      if ((this->err = getsockname(socket, (struct sockaddr *) &this->addr))) {
         return;
       }
 
-      if (addr.ss_family == AF_INET) {
-        family = "IPv4";
-        address = addrToIPv4((struct sockaddr_in*) &addr);
-        port = (int)htons(((struct sockaddr_in*) &addr)->sin_port);
-      } else {
-        family = "IPv6";
-        address = addrToIPv6((struct sockaddr_in6*) &addr);
-        port = (int)htons(((struct sockaddr_in6*) &addr)->sin6_port);
+      this->init(&this->addr);
+    }
+
+    void init (uv_tcp_t *socket) {
+      this->address = "";
+      this->family = "";
+      this->port = 0;
+
+      if ((this->err = getsockname(socket, (struct sockaddr *) &this->addr))) {
+        return;
+      }
+
+      this->init(&this->addr);
+    }
+
+    void init (const struct sockaddr_storage *addr) {
+      if (addr->ss_family == AF_INET) {
+        this->family = "IPv4";
+        this->address = addrToIPv4((struct sockaddr_in*) addr);
+        this->port = (int) htons(((struct sockaddr_in*) addr)->sin_port);
+      } else if (addr->ss_family == AF_INET6) {
+        this->family = "IPv6";
+        this->address = addrToIPv6((struct sockaddr_in6*) addr);
+        this->port = (int) htons(((struct sockaddr_in6*) addr)->sin6_port);
       }
     }
   };
 
   struct RemotePeerInfo {
+    struct sockaddr_storage addr;
     String address = "";
     String family = "";
     int port = 0;
     int err = 0;
 
-    void init (uv_udp_t* socket) {
-      struct sockaddr_storage addr;
-      int namelen = sizeof(addr);
+    int getpeername (uv_udp_t *socket, struct sockaddr *addr) {
+      int namelen = sizeof(struct sockaddr_storage);
+      return uv_udp_getpeername(socket, addr, &namelen);
+    }
 
-      address = "";
-      port = 0;
-      family = "";
+    int getpeername (uv_tcp_t *socket, struct sockaddr *addr) {
+      int namelen = sizeof(struct sockaddr_storage);
+      return uv_tcp_getpeername(socket, addr, &namelen);
+    }
 
-      err = uv_udp_getpeername(socket, (struct sockaddr*) &addr, &namelen);
+    void init (uv_udp_t *socket) {
+      this->address = "";
+      this->family = "";
+      this->port = 0;
 
-      if (err) {
+      if ((this->err = getpeername(socket, (struct sockaddr *) &this->addr))) {
         return;
       }
 
-      if (addr.ss_family == AF_INET) {
-        family = "IPv4";
-        address = addrToIPv4((struct sockaddr_in*) &addr);
-        port = (int)htons(((struct sockaddr_in*) &addr)->sin_port);
-      } else {
-        family = "IPv6";
-        address = addrToIPv6((struct sockaddr_in6*) &addr);
-        port = (int)htons(((struct sockaddr_in6*) &addr)->sin6_port);
+      this->init(&this->addr);
+    }
+
+    void init (uv_tcp_t *socket) {
+      this->address = "";
+      this->family = "";
+      this->port = 0;
+
+      if ((this->err = getpeername(socket, (struct sockaddr *) &this->addr))) {
+        return;
+      }
+
+      this->init(&this->addr);
+    }
+
+    void init (const struct sockaddr_storage *addr) {
+      if (addr->ss_family == AF_INET) {
+        this->family = "IPv4";
+        this->address = addrToIPv4((struct sockaddr_in*) addr);
+        this->port = (int) htons(((struct sockaddr_in*) addr)->sin_port);
+      } else if (addr->ss_family == AF_INET6) {
+        this->family = "IPv6";
+        this->address = addrToIPv6((struct sockaddr_in6*) addr);
+        this->port = (int) htons(((struct sockaddr_in6*) addr)->sin6_port);
       }
     }
   };
@@ -599,10 +651,18 @@ namespace SSC {
    * A generic structure for a bound or connected peer.
    */
   struct Peer {
-    Cb cb;
-    Cb onrecv;
+    // uv
+    union {
+      uv_udp_t udp;
+      uv_tcp_t tcp; // XXX: FIXME
+    } handle;
 
-    String seq = "";
+    struct {
+      std::vector<std::function<void(Peer *)>> onclose;
+    } callbacks;
+
+    Cb recv;
+
     uint64_t id = 0;
 
     // peer state
@@ -611,10 +671,6 @@ namespace SSC {
     peer_type_t type = PEER_TYPE_NONE;
     peer_flag_t flags = PEER_FLAG_NONE;
     peer_state_t state = PEER_STATE_NONE;
-
-    // uv
-    uv_udp_t udp;
-    uv_stream_t* stream;
 
     struct sockaddr_in addr;
     std::recursive_mutex mutex;
@@ -727,7 +783,7 @@ namespace SSC {
       std::lock_guard<std::recursive_mutex> guard(this->mutex);
       // will call `peers.erase(this->id)` and `close()`
       Peer::remove(this->id, true);
-      this->udp.data = nullptr;
+      memset(&this->handle, 0, sizeof(this->handle));
     }
 
     int init () {
@@ -736,9 +792,15 @@ namespace SSC {
       int err = 0;
 
       if (this->type == PEER_TYPE_UDP) {
-        memset(&this->udp, 0, sizeof(uv_udp_t));
-        err = uv_udp_init(loop, &this->udp);
-        this->udp.data = (void *) this;
+        memset(&this->handle, 0, sizeof(this->handle));
+        err = uv_udp_init(loop, (uv_udp_t *) &this->handle);
+        this->handle.udp.data = (void *) this;
+      }
+
+      if (this->type == PEER_TYPE_TCP) {
+        memset(&this->handle, 0, sizeof(this->handle));
+        err = uv_udp_init(loop, (uv_udp_t *) &this->handle);
+        this->handle.tcp.data = (void *) this;
       }
 
       return err;
@@ -748,7 +810,7 @@ namespace SSC {
       std::lock_guard<std::recursive_mutex> guard(this->mutex);
 
       if (this->type == PEER_TYPE_UDP) {
-        this->remote.init(&this->udp);
+        this->remote.init((uv_udp_t *) &this->handle);
       }
     }
 
@@ -756,7 +818,7 @@ namespace SSC {
       std::lock_guard<std::recursive_mutex> guard(this->mutex);
 
       if (this->type == PEER_TYPE_UDP) {
-        this->local.init(&this->udp);
+        this->local.init((uv_udp_t *) &this->handle);
       }
     }
 
@@ -802,12 +864,12 @@ namespace SSC {
 
     bool isActive () {
       std::lock_guard<std::recursive_mutex> guard(this->mutex);
-      return uv_is_active((const uv_handle_t *) &this->udp);
+      return uv_is_active((const uv_handle_t *) &this->handle);
     }
 
     bool isClosing () {
       std::lock_guard<std::recursive_mutex> guard(this->mutex);
-      return uv_is_closing((const uv_handle_t *) &this->udp);
+      return uv_is_closing((const uv_handle_t *) &this->handle);
     }
 
     bool isClosed () {
@@ -846,7 +908,7 @@ namespace SSC {
         return err;
       }
 
-      if ((err = uv_udp_bind(&this->udp, sockaddr, UV_UDP_REUSEADDR))) {
+      if ((err = uv_udp_bind((uv_udp_t *) &this->handle, sockaddr, UV_UDP_REUSEADDR))) {
         return err;
       }
 
@@ -885,7 +947,7 @@ namespace SSC {
         return err;
       }
 
-      if ((err = uv_udp_connect(&udp, sockaddr))) {
+      if ((err = uv_udp_connect((uv_udp_t *) &this->handle, sockaddr))) {
         return err;
       }
 
@@ -926,7 +988,7 @@ namespace SSC {
       req->data = (void *) ctx;
       ctx->peer = this;
 
-      err = uv_udp_send(req, &udp, &buffer, 1, sockaddr, [](uv_udp_send_t *req, int status) {
+      err = uv_udp_send(req, (uv_udp_t *) &this->handle, &buffer, 1, sockaddr, [](uv_udp_send_t *req, int status) {
         auto ctx = reinterpret_cast<PeerRequestContext*>(req->data);
         auto peer = ctx->peer;
         std::string msg = "";
@@ -981,8 +1043,8 @@ namespace SSC {
     int recvstart () {
       std::lock_guard<std::recursive_mutex> guard(this->mutex);
 
-      if (this->onrecv != nullptr) {
-        return this->recvstart(this->onrecv);
+      if (this->recv != nullptr) {
+        return this->recvstart(this->recv);
       }
 
       return UV_EINVAL;
@@ -995,7 +1057,7 @@ namespace SSC {
 
       std::lock_guard<std::recursive_mutex> guard(this->mutex);
 
-      this->onrecv = onrecv;
+      this->recv = onrecv;
       this->setState(PEER_STATE_UDP_RECV_STARTED);
 
       auto allocate = [](uv_handle_t *handle, size_t size, uv_buf_t *buf) {
@@ -1037,7 +1099,7 @@ namespace SSC {
             }
           })MSG", std::to_string(peer->id));
 
-          peer->onrecv("-1", msg, Post{});
+          peer->recv("-1", msg, Post{});
         } else if (nread > 0) {
           int port;
           char ipbuf[17];
@@ -1071,11 +1133,11 @@ namespace SSC {
             ip
           );
 
-          peer->onrecv("-1", msg, post);
+          peer->recv("-1", msg, post);
         }
       };
 
-      return uv_udp_recv_start( &this->udp, allocate, recv);;
+      return uv_udp_recv_start((uv_udp_t *) &this->handle, allocate, recv);;
     }
 
     int recvstop () {
@@ -1084,7 +1146,7 @@ namespace SSC {
 
       if (this->hasState(PEER_STATE_UDP_RECV_STARTED)) {
         this->removeState(PEER_STATE_UDP_RECV_STARTED);
-        rc = uv_udp_recv_stop(&this->udp);
+        rc = uv_udp_recv_stop((uv_udp_t *) &this->handle);
       }
 
       return rc;
@@ -1117,7 +1179,7 @@ namespace SSC {
 
       if (!this->isPaused() && !this->isClosing()) {
         this->setState(PEER_STATE_UDP_PAUSED);
-        uv_close((uv_handle_t*) &this->udp, nullptr);
+        uv_close((uv_handle_t *) &this->handle, nullptr);
       }
 
       return rc;
@@ -1130,30 +1192,37 @@ namespace SSC {
     }
 
     void close (std::function<void(Peer *)> onclose) {
-      std::lock_guard<std::recursive_mutex> guard(this->mutex);
-
       if (!this->isActive()) {
         return onclose(this);
       }
 
-      if (this->isClosed() || this->isClosing()) {
+      if (this->isClosed()) {
         return onclose(this);
       }
 
+      this->callbacks.onclose.push_back(onclose);
+
+      if (this->isClosing()) {
+        return;
+      }
+
       if (this->type == PEER_TYPE_UDP) {
+        std::lock_guard<std::recursive_mutex> guard(this->mutex);
         // reset state and set to CLOSED
         this->state = PEER_STATE_CLOSED;
 
-        uv_close((uv_handle_t*) &this->udp, [](uv_handle_t *handle) {
+        uv_close((uv_handle_t*) &this->handle, [](uv_handle_t *handle) {
           auto peer = (Peer *) handle->data;
 
           if (peer != nullptr) {
             std::lock_guard<std::recursive_mutex> guard(peer->mutex);
+            for (auto const &onclose : peer->callbacks.onclose) {
+              onclose(peer);
+            }
+            peer->callbacks.onclose.clear();
             Peer::remove(peer->id);
           }
         });
-
-        onclose(this);
       }
     }
   };
@@ -1245,12 +1314,12 @@ namespace SSC {
   static GSourceFuncs loopSourceFunctions = {
     .prepare = [](GSource *source, gint *timeout) -> gboolean {
       auto loop = getEventLoop();
-      uv_update_time(loop);
 
       if (!uv_loop_alive(loop)) {
         return false;
       }
 
+      uv_update_time(loop);
       *timeout = uv_backend_timeout(loop);
       return 0 == *timeout;
     },
@@ -1264,7 +1333,7 @@ namespace SSC {
 
 #endif
 
-  static void initLoop () {
+  static void initEventLoop () {
     if (didLoopInit) {
       return;
     }
@@ -1272,6 +1341,8 @@ namespace SSC {
     didLoopInit = true;
     uv_loop_init(&eventLoop);
 
+#if !defined(__APPLE__)
+    eventLoopSemaphore.release();
 #if defined(__linux__) && !defined(__ANDROID__)
     GSource *source = g_source_new(&loopSourceFunctions, sizeof(UVSource));
     UVSource *uvSource = (UVSource *) source;
@@ -1283,22 +1354,48 @@ namespace SSC {
 
     g_source_attach(source, nullptr);
 #endif
+#endif
   }
 
   static uv_loop_t* getEventLoop () {
-    initLoop();
+    initEventLoop();
     return &eventLoop;
   }
 
   static void stopEventLoop() {
     isLoopRunning = false;
     uv_stop(&eventLoop);
+#if defined(__ANDROID__)
+    if (eventLoopThread != nullptr) {
+      eventLoopSemaphore.acquire();
+      if (eventLoopThread->joinable()) {
+        eventLoopThread->join();
+      }
+
+      delete eventLoopThread;
+      eventLoopThread = nullptr;
+      eventLoopSemaphore.release();
+    }
+#endif
+  }
+
+  static void sleepEventLoop (int64_t ms) {
+    if (ms >= 0) {
+      auto loop = getEventLoop();
+      uv_update_time(loop);
+      auto timeout = uv_backend_timeout(loop);
+      ms = timeout > ms ? timeout : ms;
+      std::this_thread::sleep_for(std::chrono::milliseconds(ms));
+    }
+  }
+
+  static void sleepEventLoop () {
+    auto loop = getEventLoop();
+    sleepEventLoop(uv_backend_timeout(loop));
   }
 
   static int runEventLoop () {
-#if defined(__ANDROID__)
-    return runEventLoop(UV_RUN_ONCE);
-#elif defined(__APPLE__) || defined(__linux__)
+#if defined(__ANDROID__) || defined(__APPLE__) || defined(__linux__)
     return runEventLoop(UV_RUN_NOWAIT);
 #else
     return runEventLoop(UV_RUN_DEFAULT);
@@ -1315,6 +1412,7 @@ namespace SSC {
 
     initTimers();
     startTimers();
+    uv_update_time(loop);
 
 #if defined(__APPLE__)
     if (!uv_loop_alive(loop)) {
@@ -1330,7 +1428,6 @@ namespace SSC {
     if (timeout == -1) {
       dispatch_async(eventLoopQueue, ^{
         std::lock_guard<std::recursive_mutex> loopGuard(loopMutex);
-        dispatch_semaphore_wait(eventLoopSemaphore, DISPATCH_TIME_FOREVER);;
 
         if (!isLoopRunning || !uv_loop_alive(loop)) {
           isLoopRunning = false;
@@ -1338,7 +1435,9 @@ namespace SSC {
           return;
         }
 
-        while (
+        do {
+          uv_update_time(loop);
+        } while (
           isLoopRunning &&
           uv_run(loop, mode) &&
           uv_loop_alive(loop) &&
@@ -1346,7 +1445,6 @@ namespace SSC {
         );
 
         isLoopRunning = false;
-        dispatch_semaphore_signal(eventLoopSemaphore);
       });
 
       return 0;
@@ -1369,6 +1467,8 @@ namespace SSC {
     );
 
     dispatch_source_set_event_handler(loopPoll, ^{
+      uv_update_time(loop);
+
       if (!isLoopRunning || !uv_loop_alive(loop)) {
         isLoopRunning = false;
         dispatch_source_cancel(loopPoll); // cancel if no more work to poll
@@ -1376,7 +1476,9 @@ namespace SSC {
         return;
       }
 
-      while (
+      do {
+        uv_update_time(loop);
+      } while (
         isLoopRunning &&
         uv_run(loop, mode) &&
         uv_loop_alive(loop) &&
@@ -1389,9 +1491,10 @@ namespace SSC {
         return;
       }
 
+      uv_update_time(loop);
       auto timeout = uv_backend_timeout(loop);
       if (timeout == -1) {
-        timeout = 0;
+        timeout = POLL_TIMEOUT;
       }
 
       // update poll timeout
@@ -1404,11 +1507,43 @@ namespace SSC {
     });
 
     dispatch_resume(loopPoll);
-#else
-    std::lock_guard<std::recursive_mutex> loopGuard(loopMutex);
+#elif defined(__linux__) && !defined(__ANDROID__) // linux desktop
+    // the linux implementation uses glib sources for polled event sourcing
+    // to actually execute our loop in tandem with glib's event loop
     isLoopRunning = true;
-    rc = uv_run(loop, mode);
+    if (mode == UV_RUN_DEFAULT) {
+      rc = uv_run(loop, mode);
+    } else {
+      std::lock_guard<std::recursive_mutex> loopGuard(loopMutex);
+      rc = uv_run(loop, mode);
+    }
     isLoopRunning = false;
+#else
+    isLoopRunning = true;
+    eventLoopSemaphore.acquire(); // wait
+
+    if (eventLoopThread != nullptr) {
+      if(eventLoopThread->joinable()) {
+        eventLoopThread->join();
+      }
+
+      delete eventLoopThread;
+    }
+
+    eventLoopThread = new std::thread([loop, mode]() {
+      // main loop in thread to poll and spin the event loop
+      while (isLoopRunning) {
+        sleepEventLoop(POLL_TIMEOUT);
+        while (isLoopRunning && uv_loop_alive(loop)) {
+          std::lock_guard<std::recursive_mutex> loopGuard(loopMutex);
+          uv_run(loop, mode);
+          sleepEventLoop(0);
+        }
+      }
+
+      isLoopRunning = false;
+      eventLoopSemaphore.release(); // signal
+    });
 #endif
 
     return rc;
@@ -1442,21 +1577,20 @@ namespace SSC {
       &timers.releaseWeakDescriptors
     };
 
-    for (const auto& timer : timersToStart) {
+    for (const auto &timer : timersToStart) {
       if (timer->started) {
         uv_timer_again(&timer->handle);
       } else {
-        uv_timer_start(
+        timer->started = 0 == uv_timer_start(
           &timer->handle,
           timer->invoke,
           timer->timeout,
-          timer->repeated
-            ? timer->interval > 0 ? timer->interval : timer->timeout
-            : 0
+          !timer->repeated
+            ? 0
+            : timer->interval > 0
+              ? timer->interval
+              : timer->timeout
         );
-
-        // set once
-        timer->started = true;
       }
     }
 
@@ -1575,6 +1709,7 @@ namespace SSC {
 
   void Core::expirePosts () {
     std::lock_guard<std::recursive_mutex> guard(postsMutex);
+    std::vector<uint64_t> ids;
     auto now = std::chrono::system_clock::now()
       .time_since_epoch()
       .count();
@@ -1584,8 +1719,12 @@ namespace SSC {
       auto post = tuple.second;
 
       if (post.ttl < now) {
-        removePost(id);
+        ids.push_back(id);
       }
+    }
+
+    for (auto const id : ids) {
+      removePost(id);
     }
   }
 
@@ -1600,7 +1739,7 @@ namespace SSC {
     auto post = getPost(id);
 
     if (post.body && post.bodyNeedsFree) {
-      delete [] post.body;
+      delete post.body;
       post.bodyNeedsFree = false;
       post.body = nullptr;
     }
@@ -2352,7 +2491,7 @@ namespace SSC {
       return;
     }
 
-    runEventLoop(UV_RUN_ONCE);
+    runEventLoop();
   }
 
   void Core::fsWrite (String seq, uint64_t id, String data, int64_t offset, Cb cb) const {
@@ -3004,7 +3143,7 @@ namespace SSC {
     uv_handle_t* handle;
 
     if (peer->type == PEER_TYPE_UDP) {
-      handle = (uv_handle_t*) &peer->udp;
+      handle = (uv_handle_t*) &peer->handle;
     } else {
       auto msg = SSC::format(R"MSG({
         "err": {
@@ -3047,23 +3186,10 @@ namespace SSC {
       return;
     }
 
-    uv_handle_t* handle;
+    auto handle = (uv_handle_t*) &peer->handle;
 
-    if (peer->type == PEER_TYPE_UDP) {
-      handle = (uv_handle_t*) &peer->udp;
-    } else {
-      auto msg = SSC::format(R"MSG({
-        "err": {
-          "message": "Handle is not valid"
-        }
-      })MSG");
-
-      cb(seq, msg, Post{});
-      return;
-    }
-
-    int sz = size;
-    int rSize = uv_recv_buffer_size(handle, &sz);
+    auto sz = size;
+    auto rSize = uv_recv_buffer_size(handle, &sz);
 
     auto msg = SSC::format(R"MSG({
       "data": {
@@ -3091,26 +3217,15 @@ namespace SSC {
       return;
     }
 
-    int r;
+    auto stream = (uv_stream_t *) &peer->handle;
+    auto result = uv_read_stop(stream);
+    auto msg = SSC::format(R"MSG({ "data": $i })MSG", result);
 
-    if (peer->type == PEER_TYPE_UDP) {
-      r = uv_read_stop((uv_stream_t*) &peer->udp);
-    } else {
-      auto msg = SSC::format(R"MSG({
-        "err": {
-          "message": "Handle is not valid"
-        }
-      })MSG");
-
-      cb(seq, msg, Post{});
-      return;
-    }
-
-    auto msg = SSC::format(R"MSG({ "data": $i })MSG", r);
     cb(seq, msg, Post{});
   }
 
   void Core::close (String seq, uint64_t peerId, Cb cb) const {
+    std::lock_guard<std::recursive_mutex> loopGuard(loopMutex);
     if (!Peer::exists(peerId)) {
       auto msg = SSC::format(R"MSG({
         "err": {
@@ -3139,10 +3254,9 @@ namespace SSC {
       return;
     }
 
-    peer->close([cb, seq] (Peer *) {
-      cb(seq, "{}", Post{});
-    });
+    peer->close();
 
+    cb(seq, "{}", Post{});
     runEventLoop();
   }
 
@@ -3164,24 +3278,10 @@ namespace SSC {
       return;
     }
 
+    auto req = new uv_shutdown_t;
     auto peer = Peer::get(peerId);
+    auto handle = (uv_handle_t *) &peer->handle;
 
-    uv_handle_t* handle;
-
-    if (peer->type == PEER_TYPE_UDP) {
-      handle = (uv_handle_t*) &peer->udp;
-    } else {
-      auto msg = SSC::format(R"MSG({
-        "err": {
-          "message": "Handle is not valid"
-        }
-      })MSG");
-
-      ctx->end(msg);
-      return;
-    }
-
-    uv_shutdown_t *req = new uv_shutdown_t;
     ctx->peer = peer;
     req->data = ctx;
 
@@ -3231,6 +3331,7 @@ namespace SSC {
   }
 
   void Core::udpBind (String seq, uint64_t peerId, String address, int port, Cb cb) const {
+    std::lock_guard<std::recursive_mutex> loopGuard(loopMutex);
     if (Peer::exists(peerId) && Peer::get(peerId)->isBound()) {
       auto msg = SSC::format(R"MSG({
         "err": {
@@ -3290,6 +3391,7 @@ namespace SSC {
   }
 
   void Core::udpConnect (String seq, uint64_t peerId, String address, int port, Cb cb) const {
+    std::lock_guard<std::recursive_mutex> loopGuard(loopMutex);
     auto peer = Peer::create(PEER_TYPE_UDP, peerId);
     auto err = peer->connect(address, port);
 
@@ -3450,7 +3552,7 @@ namespace SSC {
 
     peer->send(ctx, buf, len, port, address);
 
-    runEventLoop(UV_RUN_ONCE);
+    runEventLoop();
   }
 
   void Core::udpReadStart (String seq, uint64_t peerId, Cb cb) const {
@@ -3524,6 +3626,7 @@ namespace SSC {
   }
 
   void Core::dnsLookup (String seq, String hostname, int family, Cb cb) const {
+    std::lock_guard<std::recursive_mutex> loopGuard(loopMutex);
     auto ctx = new PeerRequestContext(seq, cb);
     auto loop = getEventLoop();
 
