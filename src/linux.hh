@@ -269,6 +269,11 @@ namespace SSC {
         Parse cmd(msg);
 
         auto invoked = app->bridge.invoke(cmd, [=](auto seq, auto result, auto post) {
+          if (seq.size() == 0 || seq == "-1") {
+            app->bridge->send(cmd, seq, result, post);
+            return;
+          }
+
           auto size = post.body != 0 ? post.length : result.size();
           auto body = post.body != nullptr && post.length > 0
             ? post.body
@@ -1038,13 +1043,7 @@ namespace SSC {
 
       auto peerId = std::stoull(cmd.get("id"));
       Bridge::ThreadContext::Dispatch(this, peerId, [=](auto ctx) {
-        ctx->core->udpReadStart(seq, peerId, [=](auto seq, auto msg, auto post){
-          if (seq.size() && seq != "-1") {
-            cb(seq, msg, post);
-          } else {
-            ctx->bridge->send(cmd, seq, msg, post);
-          }
-        });
+        ctx->core->udpReadStart(seq, peerId, cb);
       });
       return true;
     }
@@ -1144,7 +1143,7 @@ namespace SSC {
       return;
     }
 
-    if (post.body) {
+    if (post.body || seq == "-1") {
       auto script = this->core->createPost(seq, msg, post);
       window->eval(script);
       return;
