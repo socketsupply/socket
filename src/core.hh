@@ -1544,6 +1544,7 @@ namespace SSC {
           } else {
             std::lock_guard<std::recursive_mutex> loopGuard(loopMutex);
             uv_run(loop, mode);
+            sleepEventLoop(0);
           }
         }
       }

@@ -188,6 +188,7 @@ NativeCore::NativeCore (JNIEnv *env, jobject core)
 
 NativeCore::~NativeCore () {
   this->rootDirectory.Release();
+  this->semaphore.release();
   this->refs.Release();
 
   this->env = nullptr;
@@ -308,15 +309,19 @@ void NativeCore::EvaluateJavaScript (std::string js) {
 }
 
 void NativeCore::EvaluateJavaScript (const char *js) {
-  Lock lock(this->mutex);
   auto ctx = this->AttachCurrentThreadToJavaVM();
   auto refs = this->GetRefs();
 
-  EvaluateJavaScriptInEnvironment(
-    ctx.env,
-    refs.core,
-    ctx.env->NewStringUTF(js)
-  );
+  this->Wait();
+  {
+    Lock lock(this->mutex);
+    EvaluateJavaScriptInEnvironment(
+      ctx.env,
+      refs.core,
+      ctx.env->NewStringUTF(js)
+    );
+  }
+  this->Signal();
 
   if (ctx.attached) {
     this->DetachCurrentThreadFromJavaVM();
@@ -380,7 +385,6 @@ const char * NativeCore::GetJavaScriptPreloadSource () const {
 }
 
 const NativeCore::JNIEnvContext NativeCore::AttachCurrentThreadToJavaVM () {
-  Lock lock(this->mutex);
   NativeCore::JNIEnvContext ctx(this->GetJavaVM());
 
   if (ctx.jvm != nullptr) {
@@ -396,7 +400,6 @@ const NativeCore::JNIEnvContext NativeCore::AttachCurrentThreadToJavaVM () {
 }
 
 void NativeCore::DetachCurrentThreadFromJavaVM () {
-  Lock lock(this->mutex);
   JNIEnv *env = nullptr;
   auto jvm = this->GetJavaVM();
   if (jvm != nullptr) {
@@ -409,10 +412,14 @@ void NativeCore::Callback (
   std::string data
 ) {
   if (callback != nullptr) {
-    Lock lock(this->mutex);
     auto ctx = this->AttachCurrentThreadToJavaVM();
-    callback->Call(ctx.env->NewStringUTF(data.c_str()));
-    delete callback;
+
+    {
+      Lock lock(this->mutex);
+      callback->Call(ctx.env->NewStringUTF(data.c_str()));
+      delete callback;
+    }
+
     if (ctx.attached) {
       this->DetachCurrentThreadFromJavaVM();
     }
@@ -604,23 +611,20 @@ void NativeRequestContext::Send (
   std::string data,
   SSC::Post post
 ) const {
-  this->core->Wait();
-
   if (post.body != 0 || this->seq == "-1") {
     auto js = this->core->createPost(this->seq, data, post);
     this->core->EvaluateJavaScript(js);
   } else if (this->seq.size() > 0 && this->seq != "-1") {
-    Lock lock(this->core->mutex);
+    this->core->Wait();
     auto ctx = this->core->AttachCurrentThreadToJavaVM();
 
     this->callback->Call(ctx.env->NewStringUTF(data.c_str()));
+    this->core->Signal();
 
     if (ctx.attached) {
       this->core->DetachCurrentThreadFromJavaVM();
     }
   }
-
-  this->core->Signal();
 }
 
 void NativeRequestContext::Finalize (
