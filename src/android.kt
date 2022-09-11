@@ -1245,10 +1245,10 @@ class JSONError(
   private val message: String,
   private val extra: String = "",
   private val type: String = "InternalError",
-  private val source: String = "",
+  private val source: String? = "",
 ) {
   override fun toString() = """{
-    "source": "$source",
+    "source": "${if (source != null) source else ""}",
     "err": {
       "id": "$id",
       "type": "$type",

@@ -79,10 +79,10 @@ typedef std::binary_semaphore BinarySemaphore; // aka `std::counting_semaphore<1
 typedef std::map<std::string, std::string> EnvironmentVariables;
 typedef std::recursive_mutex Mutex;
 typedef std::lock_guard<Mutex> Lock;
-typedef std::queue<NativeID> Queue;
 typedef std::thread Thread;
 
-template <int k> using Semaphore = std::counting_semaphore<k>;
+template <typename T> using Queue = std::queue<T>;
+template <int K> using Semaphore = std::counting_semaphore<K>;
 
 // Forward declaration
 class NativeCallbackRef;
@@ -122,7 +122,7 @@ class NativeUDP;
     auto Class = GetNativeCoreBindingClass(env);                               \
     auto pointerField = env->GetFieldID(Class, "pointer", "J");                \
     auto core = (NativeCore *) env->GetLongField(self, pointerField);          \
-    debug("NativeCore loaded in environment");                                 \
+    if (!core) { debug("NativeCore failed to load in environment"); }          \
     (core);                                                                    \
   })
 
@@ -273,7 +273,6 @@ class NativeCoreRefs {
 
   public:
   jobject core;
-  jobject callbacks;
 
   NativeCoreRefs (JNIEnv *env) {
     this->env = env;
@@ -319,17 +318,22 @@ class NativeRequestContext {
     }
   }
 
-  void CallbackAndFinalizeContext (std::string data) const;
-
-  void CallbackWithPostAndFinalizeContext (
+  void Send (std::string data, SSC::Post post) const;
+  void Send (
+    NativeCoreSequence seq,
     std::string data,
     SSC::Post post
   ) const;
 
-  void CallbackWithPostInContext (
+  void Finalize (
+    NativeCoreSequence seq,
     std::string data,
     SSC::Post post
   ) const;
+  void Finalize (NativeCoreSequence seq, std::string data) const;
+  void Finalize (std::string data, SSC::Post) const;
+  void Finalize (std::string data) const;
+  void Finalize (SSC::Post post) const;
 };
 
 class NativeFileSystem {
@@ -363,11 +367,6 @@ class NativeFileSystem {
 
     return stream.str();
   }
-
-  const std::string CreateJSONError (
-    NativeCoreID id,
-    const std::string message
-  ) const;
 
   void Access (
     NativeCoreSequence seq,
@@ -437,11 +436,6 @@ class NativeUDP {
   public:
 
   NativeUDP (JNIEnv *env, NativeCore *core);
-
-  const std::string CreateJSONError (
-    NativeCoreID id,
-    const std::string message
-  ) const;
 
   void Bind (
     NativeCoreSequence seq,
@@ -518,6 +512,7 @@ class NativeCore : public SSC::Core {
   // JNI
   JavaVM *jvm;
   JNIEnv *env;
+  int jniVersion = 0;
 
   // Native
   NativeCoreRefs refs;
@@ -525,13 +520,31 @@ class NativeCore : public SSC::Core {
 
   // webkti webview
   std::string javaScriptPreloadSource;
+
+  public:
+  // thread
+  Semaphore<64> semaphore;
+  Mutex mutex;
+
+  // window options
   SSC::WindowOptions windowOptions;
 
   // application
   AppConfig config;
   EnvironmentVariables environmentVariables;
 
-  public:
+  struct JNIEnvContext {
+    JNIEnv *env = nullptr;
+    JavaVM *jvm = nullptr;
+    int status = 0;
+    int version = 0;
+    bool attached = false;
+
+    JNIEnvContext (JavaVM *jvm) {
+      this->jvm = jvm;
+    }
+  };
+
   NativeCore (JNIEnv *env, jobject core);
   ~NativeCore ();
 
@@ -561,18 +574,23 @@ class NativeCore : public SSC::Core {
 
   AAssetManager * GetAssetManager () const;
 
+  const int GetJNIVersion () const;
+
   const std::string GetNetworkInterfaces () const;
   const char * GetJavaScriptPreloadSource () const;
+
+  const JNIEnvContext AttachCurrentThreadToJavaVM ();
+  void DetachCurrentThreadFromJavaVM ();
 
   void Callback (
     NativeCallbackRef *callback,
     std::string data
-  ) const;
+  );
 
   void Callback (
     NativeCallbackID callback,
     std::string data
-  ) const;
+  );
 
   void DNSLookup (
     NativeCoreSequence seq,
@@ -580,6 +598,14 @@ class NativeCore : public SSC::Core {
     int family,
     NativeCallbackID callback
   ) const;
+
+  inline void Wait () {
+    this->semaphore.acquire();
+  }
+
+  inline void Signal () {
+    this->semaphore.release();
+  }
 };
 
 /**
@@ -593,8 +619,8 @@ class NativeThreadContext {
     /**
      * Maximum number of concurrent dispatch/release threads.
      */
-    static constexpr int MAX_DISPATCH_CONCURRENCY = 8;
-    static constexpr int MAX_RELEASE_CONCURRENCY = 4;
+    static constexpr int MAX_DISPATCH_CONCURRENCY = 64;
+    static constexpr int MAX_RELEASE_CONCURRENCY = 16;
 
     /**
      * Maximum empty polls for dispatch worker before stopping main loop.
@@ -621,8 +647,8 @@ class NativeThreadContext {
     /**
      * Thread queues
      */
-    static inline Queue globalDispatchQueue;
-    static inline Queue globalReleaseQueue;
+    static inline Queue<NativeID> globalDispatchQueue;
+    static inline Queue<NativeID> globalReleaseQueue;
 
     /**
      * Atomic global queue sizes
