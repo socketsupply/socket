@@ -407,39 +407,6 @@ void NativeCore::DetachCurrentThreadFromJavaVM () {
   }
 }
 
-void NativeCore::Callback (
-  NativeCallbackRef *callback,
-  std::string data
-) {
-  if (callback != nullptr) {
-    auto ctx = this->AttachCurrentThreadToJavaVM();
-
-    {
-      Lock lock(this->mutex);
-      callback->Call(ctx.env->NewStringUTF(data.c_str()));
-      delete callback;
-    }
-
-    if (ctx.attached) {
-      this->DetachCurrentThreadFromJavaVM();
-    }
-  }
-}
-
-void NativeCore::Callback (
-  NativeCallbackID callback,
-  std::string data
-) {
-  auto context = new NativeCallbackRef(
-    (NativeCore*) this,
-    callback,
-    "callback",
-    "(Ljava/lang/String;Ljava/lang/String;)V"
-  );
-
-  return this->Callback(context, data);
-}
-
 void NativeCore::DNSLookup (
   NativeCoreSequence seq,
   std::string hostname,

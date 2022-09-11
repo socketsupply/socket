@@ -582,16 +582,6 @@ class NativeCore : public SSC::Core {
   const JNIEnvContext AttachCurrentThreadToJavaVM ();
   void DetachCurrentThreadFromJavaVM ();
 
-  void Callback (
-    NativeCallbackRef *callback,
-    std::string data
-  );
-
-  void Callback (
-    NativeCallbackID callback,
-    std::string data
-  );
-
   void DNSLookup (
     NativeCoreSequence seq,
     std::string hostname,
