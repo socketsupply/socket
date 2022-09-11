@@ -2498,14 +2498,10 @@ namespace SSC {
   }
 
   void Core::fsRead (String seq, uint64_t id, int len, int offset, Cb cb) const {
-    debug("BEGIN fsRead");
-    debug("before lock");
     std::unique_lock<std::recursive_mutex> guard(descriptorsMutex);
-    debug("after lock");
 
     auto desc = descriptors[id];
     auto loop = getEventLoop();
-    debug("release lock");
     guard.unlock();
 
     if (desc == nullptr) {
@@ -2533,13 +2529,9 @@ namespace SSC {
 
     int err = 0;
     {
-      debug("before loop lock");
       std::lock_guard<std::recursive_mutex> loopGuard(loopMutex);
-      debug("after loop lock");
       // printf("uv_fs_read(id=%llu, size=%d, offset=%d)\n", desc->id, len, ctx->offset);
-      debug("before uv_fs_read");
       err = uv_fs_read(loop, req, desc->fd, ctx->iov, 1, offset, [](uv_fs_t* req) {
-        debug("in uv_fs_read");
         auto ctx = static_cast<DescriptorRequestContext*>(req->data);
         auto desc = ctx->desc;
         auto loop = getEventLoop();
@@ -2573,8 +2565,6 @@ namespace SSC {
 
         ctx->end(msg, post);
       });
-
-      debug("after uv_fs_read");
     }
 
     if (err < 0) {
@@ -3705,11 +3695,13 @@ namespace SSC {
   }
 
   void Core::udpSend (String seq, uint64_t peerId, char* buf, int len, int port, String address, bool ephemeral, Cb cb) const {
-    auto peer = Peer::create(PEER_TYPE_UDP, peerId, ephemeral);
-    auto loop = getEventLoop();
-    auto ctx = new PeerRequestContext(seq, cb);
-
-    peer->send(ctx, buf, len, port, address);
+    {
+      std::lock_guard<std::recursive_mutex> loopGuard(loopMutex);
+      auto peer = Peer::create(PEER_TYPE_UDP, peerId, ephemeral);
+      auto loop = getEventLoop();
+      auto ctx = new PeerRequestContext(seq, cb);
+      peer->send(ctx, buf, len, port, address);
+    }
 
     runEventLoop();
   }
