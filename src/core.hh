@@ -995,6 +995,7 @@ namespace SSC {
 
         if (status < 0) {
           msg = SSC::format(R"MSG({
+            "source": "udp.send",
             "err": {
               "id": "$S",
               "message": "$S"
@@ -1002,6 +1003,7 @@ namespace SSC {
           })MSG", std::to_string(peer->id), std::string(uv_strerror(status)));
         } else {
           msg = SSC::format(R"MSG({
+            "source": "udp.send",
             "data": {
               "id": "$S",
               "status": "$i"
@@ -1022,6 +1024,7 @@ namespace SSC {
 
       if (err < 0) {
         auto msg = SSC::format(R"MSG({
+          "source": "udp.send",
           "err": {
             "id": "$S",
             "message": "Write error: $S"
@@ -1062,7 +1065,7 @@ namespace SSC {
 
       auto allocate = [](uv_handle_t *handle, size_t size, uv_buf_t *buf) {
         if (size > 0) {
-          buf->base = (char *) malloc(size);
+          buf->base = (char *) new char[size]{0};
           buf->len = size;
           memset(buf->base, 0, buf->len);
         }
@@ -1093,6 +1096,7 @@ namespace SSC {
 
         if (nread == UV_EOF) {
           auto msg = SSC::format(R"MSG({
+            "source": "udp.readStart",
             "data": {
               "id": "$S",
               "EOF": true
@@ -1119,8 +1123,8 @@ namespace SSC {
           post.bodyNeedsFree = true;
 
           auto msg = SSC::format(R"MSG({
+            "source": "udp.readStart",
             "data": {
-              "source": "udpReadStart",
               "id": "$S",
               "bytes": $S,
               "port": $i,
@@ -1630,6 +1634,7 @@ namespace SSC {
 
     if (desc == nullptr) {
       auto msg = SSC::format(R"MSG({
+        "source": "fs.retainOpenDescriptor",
         "err": {
           "id": "$S",
           "code": "ENOTOPEN",
@@ -1644,9 +1649,12 @@ namespace SSC {
 
     std::lock_guard<std::recursive_mutex> descriptorLock(desc->mutex);
     desc->retained = true;
-    auto msg = SSC::format(
-      R"MSG({ "data": { "id": "$S" } })MSG",
-      std::to_string(desc->id)
+    auto msg = SSC::format(R"MSG({
+      "source": "fs.retainOpenDescriptor",
+      "data": {
+        "id": "$S"
+      }
+    })MSG", std::to_string(desc->id)
     );
 
     cb(seq, msg, Post{});
@@ -1772,7 +1780,7 @@ namespace SSC {
       "  let headers = `" + SSC::trim(post.headers) + "`"
       "    .trim().split(/[\\r\\n]+/).filter(Boolean);"
       "  try { o = JSON.parse(o) } catch (err) {"
-      "    console.error(err, `string<${o}>`)"
+      "    console.error(err.stack || err, o)"
       "  };"
       "  o.seq = `" + seq + "`;"
       "  const detail = {"
@@ -1845,15 +1853,20 @@ namespace SSC {
       std::string msg;
 
       if (req->result < 0) {
-        msg = SSC::format(
-          R"MSG({ "err": { "code": $S, "message": "$S" } })MSG",
-          std::to_string(req->result), String(uv_strerror(req->result))
-        );
+        msg = SSC::format(R"MSG({
+          "source": "fs.access",
+          "err": {
+            "code": $S,
+            "message": "$S"
+          }
+        })MSG",
+        std::to_string(req->result), String(uv_strerror(req->result)));
       } else {
-        msg = SSC::format(
-          R"MSG({ "data": { "mode": $S } })MSG",
-          std::to_string(req->flags)
-        );
+        msg = SSC::format(R"MSG({
+          "source": "fs.access",
+          "data": { "mode": $S }
+        })MSG",
+        std::to_string(req->flags));
       }
 
       uv_fs_req_cleanup(req);
@@ -1864,10 +1877,14 @@ namespace SSC {
     });
 
     if (err < 0) {
-      auto msg = SSC::format(
-        R"MSG({ "err": { "code": $S, "message": "$S" } })MSG",
-        std::to_string(err), String(uv_strerror(err))
-      );
+      auto msg = SSC::format(R"MSG({
+        "source": "fs.access",
+        "err": {
+          "code": $S,
+          "message": "$S"
+        }
+      })MSG",
+      std::to_string(err), String(uv_strerror(err)));
 
       delete desc;
       delete req;
@@ -1897,15 +1914,21 @@ namespace SSC {
       std::string msg;
 
       if (req->result < 0) {
-        msg = SSC::format(
-          R"MSG({ "err": { "code": $S, "message": "$S" } })MSG",
-          std::to_string(req->result), String(uv_strerror(req->result))
-        );
+        msg = SSC::format(R"MSG({
+          "source": "fs.chmod",
+          "err": {
+            "code": $S,
+            "message": "$S"
+          }
+        })MSG",
+        std::to_string(req->result), String(uv_strerror(req->result)));
       } else {
-        msg = SSC::format(
-          R"MSG({ "data": { "mode": "$S" } })MSG",
-          std::to_string(req->flags)
-        );
+        msg = SSC::format(R"MSG({
+          "source": "fs.chmod",
+          "data": {
+            "mode": "$S"
+          }
+        })MSG", std::to_string(req->flags));
       }
 
       uv_fs_req_cleanup(req);
@@ -1916,10 +1939,14 @@ namespace SSC {
     });
 
     if (err < 0) {
-      auto msg = SSC::format(
-        R"MSG({ "err": { "code": $S, "message": "$S" } })MSG",
-        std::to_string(err), String(uv_strerror(err))
-      );
+      auto msg = SSC::format(R"MSG({
+        "source": "fs.chmod",
+        "err": {
+          "code": $S,
+          "message": "$S"
+        }
+      })MSG",
+      std::to_string(err), String(uv_strerror(err)));
 
       delete desc;
       delete req;
@@ -1958,22 +1985,28 @@ namespace SSC {
       std::string msg;
 
       if (req->result < 0) {
-        msg = SSC::format(
-          R"MSG({ "err": { "id": "$S", "message": "$S" } })MSG",
-          std::to_string(desc->id),
-          String(uv_strerror((int)req->result))
-        );
+        msg = SSC::format(R"MSG({
+          "source": "fs.open",
+          "err": {
+            "id": "$S",
+            "message": "$S"
+          }
+        })MSG",
+        std::to_string(desc->id), String(uv_strerror((int)req->result)));
 
         std::lock_guard<std::recursive_mutex> guard(descriptorsMutex);
         SSC::descriptors.erase(desc->id);
         delete desc;
       } else {
         desc->fd = (int) req->result;
-        msg = SSC::format(
-          R"MSG({ "data": { "id": "$S", "fd": $S } })MSG",
-          std::to_string(desc->id),
-          std::to_string(desc->fd)
-        );
+        msg = SSC::format(R"MSG({
+          "source": "fs.open",
+          "data": {
+            "id": "$S",
+            "fd": $S
+          }
+        })MSG",
+        std::to_string(desc->id), std::to_string(desc->fd));
       }
 
       uv_fs_req_cleanup(req);
@@ -1984,6 +2017,7 @@ namespace SSC {
 
     if (err < 0) {
       auto msg = SSC::format(R"MSG({
+        "source": "fs.open",
         "err": {
           "id": "$S",
           "message": "$S"
@@ -2028,20 +2062,26 @@ namespace SSC {
       std::string msg;
 
       if (req->result < 0) {
-        msg = SSC::format(
-          R"MSG({ "err": { "id": "$S", "message": "$S" } })MSG",
-          std::to_string(desc->id),
-          String(uv_strerror((int)req->result))
-        );
+        msg = SSC::format(R"MSG({
+          "source": "fs.opendir",
+          "err": {
+            "id": "$S",
+            "message": "$S"
+          }
+        })MSG",
+        std::to_string(desc->id), String(uv_strerror((int)req->result)));
 
         std::lock_guard<std::recursive_mutex> guard(descriptorsMutex);
         SSC::descriptors.erase(desc->id);
         delete desc;
       } else {
-        msg = SSC::format(
-          R"MSG({ "data": { "id": "$S" } })MSG",
-          std::to_string(desc->id)
-        );
+        msg = SSC::format(R"MSG({
+          "source": "fs.opendir",
+          "data": {
+            "id": "$S"
+          }
+        })MSG",
+        std::to_string(desc->id));
 
         desc->dir = (uv_dir_t *) req->ptr;
       }
@@ -2053,10 +2093,14 @@ namespace SSC {
     });
 
     if (err < 0) {
-      auto msg = SSC::format(
-        R"MSG({ "err": { "code": $S, "message": "$S" } })MSG",
-        std::to_string(err), String(uv_strerror(err))
-      );
+      auto msg = SSC::format(R"MSG({
+        "source": "fs.opendir",
+        "err": {
+          "code": $S,
+          "message": "$S"
+        }
+      })MSG",
+      std::to_string(err), String(uv_strerror(err)));
 
       SSC::descriptors.erase(desc->id);
       delete desc;
@@ -2077,6 +2121,7 @@ namespace SSC {
 
     if (desc == nullptr) {
       auto msg = SSC::format(R"MSG({
+        "source": "fs.readdir",
         "err": {
           "id": "$S",
           "code": "ENOTOPEN",
@@ -2094,6 +2139,7 @@ namespace SSC {
 
     if (desc->dir == nullptr) {
       auto msg = SSC::format(R"MSG({
+        "source": "fs.readdir",
         "err": {
           "id": "$S",
           "code": "ENOTOPEN",
@@ -2124,10 +2170,14 @@ namespace SSC {
       std::string msg;
 
       if (req->result < 0) {
-        msg = SSC::format(
-          R"MSG({ "err": { "id": "$S", "message": "$S" } })MSG",
-          std::to_string(desc->id),
-          String(uv_strerror((int)req->result))
+        msg = SSC::format(R"MSG({
+          "source": "fs.readdir",
+          "err": {
+            "id": "$S",
+            "message": "$S"
+          }
+        })MSG",
+        std::to_string(desc->id), String(uv_strerror((int)req->result))
         );
       } else {
         Stringstream entries;
@@ -2146,11 +2196,14 @@ namespace SSC {
 
         entries << "]";
 
-        msg = SSC::format(
-          R"MSG({ "data": { "id": "$S", "entries": $S } })MSG",
-          std::to_string(desc->id),
-          entries.str()
-        );
+        msg = SSC::format(R"MSG({
+          "source": "fs.readdir",
+          "data": {
+            "id": "$S",
+            "entries": $S
+          }
+        })MSG",
+        std::to_string(desc->id), entries.str());
       }
 
       uv_fs_req_cleanup(req);
@@ -2160,10 +2213,14 @@ namespace SSC {
     });
 
     if (err < 0) {
-      auto msg = SSC::format(
-        R"MSG({ "err": { "code": $S, "message": "$S" } })MSG",
-        std::to_string(err), String(uv_strerror(err))
-      );
+      auto msg = SSC::format(R"MSG({
+        "source": "fs.readdir",
+        "err": {
+          "code": $S,
+          "message": "$S"
+        }
+      })MSG",
+      std::to_string(err), String(uv_strerror(err)));
 
       cb(seq, msg, Post{});
       delete req;
@@ -2181,6 +2238,7 @@ namespace SSC {
 
     if (desc == nullptr) {
       auto msg = SSC::format(R"MSG({
+        "source": "fs.close",
         "err": {
           "id": "$S",
           "code": "ENOTOPEN",
@@ -2212,6 +2270,7 @@ namespace SSC {
 
       if (req->result < 0) {
         msg = SSC::format(R"MSG({
+          "source": "fs.close",
           "err": {
             "id": "$S",
             "message": "$S"
@@ -2219,6 +2278,7 @@ namespace SSC {
         })MSG", std::to_string(desc->id), String(uv_strerror((int)req->result)));
       } else {
         msg = SSC::format(R"MSG({
+          "source": "fs.close",
           "data": {
             "id": "$S",
             "fd": $S
@@ -2239,6 +2299,7 @@ namespace SSC {
 
     if (err < 0) {
       auto msg = SSC::format(R"MSG({
+        "source": "fs.close",
         "err": {
           "id": "$S",
           "message": "$S"
@@ -2261,6 +2322,7 @@ namespace SSC {
 
     if (desc == nullptr) {
       auto msg = SSC::format(R"MSG({
+        "source": "fs.closedir",
         "err": {
           "id": "$S",
           "code": "ENOTOPEN",
@@ -2293,6 +2355,7 @@ namespace SSC {
 
       if (req->result < 0) {
         msg = SSC::format(R"MSG({
+          "source": "fs.closedir",
           "err": {
             "id": "$S",
             "message": "$S"
@@ -2319,6 +2382,7 @@ namespace SSC {
 
     if (err < 0) {
       auto msg = SSC::format(R"MSG({
+        "source": "fs.closedir",
         "err": {
           "id": "$S",
           "message": "$S"
@@ -2340,6 +2404,7 @@ namespace SSC {
 
     if (desc == nullptr) {
       auto msg = SSC::format(R"MSG({
+        "source": "fs.closeOpenDescriptor",
         "err": {
           "id": "$S",
           "code": "ENOTOPEN",
@@ -2423,6 +2488,7 @@ namespace SSC {
 
     if (desc == nullptr) {
       auto msg = SSC::format(R"MSG({
+        "source": "fs.read",
         "err": {
           "code": "ENOTOPEN",
           "type": "NotFoundError",
@@ -2458,6 +2524,7 @@ namespace SSC {
 
       if (req->result < 0) {
         msg = SSC::format(R"MSG({
+          "source": "fs.read",
           "err": {
             "id": "$S",
             "message": "$S"
@@ -2480,6 +2547,7 @@ namespace SSC {
 
     if (err < 0) {
       auto msg = SSC::format(R"MSG({
+        "source": "fs.read",
         "err": {
           "id": "$S",
           "message": "$S"
@@ -2502,17 +2570,16 @@ namespace SSC {
 
     if (desc == nullptr) {
       auto msg = SSC::format(R"MSG({
+        "source": "fs.write",
         "err": {
           "code": "ENOTOPEN",
           "message": "No file descriptor found with that id"
         }
       })MSG");
 
-
       cb(seq, msg, Post{});
       return;
     }
-
 
     auto bytes = new char[data.size()];
     memcpy(bytes, data.data(), data.size());
@@ -2537,6 +2604,7 @@ namespace SSC {
 
       if (req->result < 0) {
         msg = SSC::format(R"MSG({
+          "source": "fs.write",
           "err": {
             "id": "$S",
             "message": "$S"
@@ -2544,6 +2612,7 @@ namespace SSC {
         })MSG", std::to_string(desc->id), String(uv_strerror((int)req->result)));
       } else {
         msg = SSC::format(R"MSG({
+          "source": "fs.write",
           "data": {
             "id": "$S",
             "result": "$i"
@@ -2553,7 +2622,7 @@ namespace SSC {
 
       cb(seq, msg, Post{});
       uv_fs_req_cleanup(req);
-      // `uv_fs_req_cleanup()` should free this
+      // `uv_fs_req_cleanup()` _should_ free this
       if (req->ptr) {
         delete [] (char *) req->ptr;
       }
@@ -2562,6 +2631,7 @@ namespace SSC {
 
     if (err < 0) {
       auto msg = SSC::format(R"MSG({
+        "source": "fs.write",
         "err": {
           "id": "$S",
           "message": "$S"
@@ -2593,6 +2663,7 @@ namespace SSC {
 
       if (req->result < 0) {
         msg = SSC::format(R"MSG({
+          "source": "fs.stat",
           "err": {
             "id": "$S",
             "message": "$S"
@@ -2602,6 +2673,7 @@ namespace SSC {
         auto stats = uv_fs_get_statbuf(req);
         msg = SSC::format(
           R"MSG({
+            "source": "fs.stat",
             "data": {
               "st_dev": "$S",
               "st_mode": "$S",
@@ -2654,6 +2726,7 @@ namespace SSC {
 
     if (err < 0) {
       auto msg = SSC::format(R"MSG({
+        "source": "fs.stat",
         "err": {
           "message": "$S"
         }
@@ -2679,6 +2752,7 @@ namespace SSC {
 
     if (desc == nullptr) {
       auto msg = SSC::format(R"MSG({
+        "source": "fs.fstat",
         "err": {
           "code": "ENOTOPEN",
           "message": "No file descriptor found with that id"
@@ -2707,6 +2781,7 @@ namespace SSC {
 
       if (req->result < 0) {
         msg = SSC::format(R"MSG({
+          "source": "fs.fstat",
           "err": {
             "id": "$S",
             "message": "$S"
@@ -2717,6 +2792,7 @@ namespace SSC {
       } else {
         auto stats = uv_fs_get_statbuf(req);
         msg = SSC::trim(SSC::format(R"MSG({
+            "source": "fs.fstat",
             "data": {
               "id": "$S",
               "st_dev": "$S",
@@ -2769,6 +2845,7 @@ namespace SSC {
 
     if (err < 0) {
       auto msg = SSC::format(R"MSG({
+        "source": "fs.fstat",
         "err": {
           "id": "$S",
           "message": "$S"
@@ -2791,7 +2868,7 @@ namespace SSC {
     std::string msg = "";
     int pending = SSC::descriptors.size();
 
-    msg += "{ \"data\": [";
+    msg += "{ \"source\": \"fs.getOpenDescriptors\", \"data\": [";
     for (auto const &tuple : SSC::descriptors) {
       auto desc = tuple.second;
       if (!desc) {
@@ -2840,6 +2917,7 @@ namespace SSC {
 
       if (req->result < 0) {
         msg = SSC::format(R"MSG({
+          "source": "fs.unlink",
           "err": {
             "id": "$S",
             "message": "$S"
@@ -2849,6 +2927,7 @@ namespace SSC {
         String(uv_strerror((int)req->result)));
       } else {
         msg = SSC::format(R"MSG({
+          "source": "fs.unlink",
           "data": {
             "result": "$i"
           }
@@ -2865,6 +2944,7 @@ namespace SSC {
 
     if (err) {
       auto msg = SSC::format(R"MSG({
+        "source": "fs.unlink",
         "err": {
           "message": "$S"
         }
@@ -2901,6 +2981,7 @@ namespace SSC {
 
       if (req->result < 0) {
         msg = SSC::format(R"MSG({
+          "source": "fs.rename",
           "err": {
             "id": "$S",
             "message": "$S"
@@ -2910,6 +2991,7 @@ namespace SSC {
         String(uv_strerror((int)req->result)));
       } else {
         msg = SSC::format(R"MSG({
+          "source": "fs.rename",
           "data": {
             "result": "$i"
           }
@@ -2926,6 +3008,7 @@ namespace SSC {
 
     if (err) {
       auto msg = SSC::format(R"MSG({
+        "source": "fs.rename",
         "err": {
           "message": "$S"
         }
@@ -2962,6 +3045,7 @@ namespace SSC {
 
       if (req->result < 0) {
         msg = SSC::format(R"MSG({
+          "source": "fs.copyFile",
           "err": {
             "id": "$S",
             "message": "$S"
@@ -2971,6 +3055,7 @@ namespace SSC {
         String(uv_strerror((int)req->result)));
       } else {
         msg = SSC::format(R"MSG({
+          "source": "fs.copyFile",
           "data": {
             "result": "$i"
           }
@@ -2987,6 +3072,7 @@ namespace SSC {
 
     if (err) {
       auto msg = SSC::format(R"MSG({
+        "source": "fs.copyFile",
         "err": {
           "message": "$S"
         }
@@ -3022,6 +3108,7 @@ namespace SSC {
 
       if (req->result < 0) {
         msg = SSC::format(R"MSG({
+          "source": "fs.rmdir",
           "err": {
             "id": "$S",
             "message": "$S"
@@ -3031,6 +3118,7 @@ namespace SSC {
         String(uv_strerror((int)req->result)));
       } else {
         msg = SSC::format(R"MSG({
+          "source": "fs.rmdir",
           "data": {
             "result": "$i"
           }
@@ -3047,6 +3135,7 @@ namespace SSC {
 
     if (err) {
       auto msg = SSC::format(R"MSG({
+        "source": "fs.rmdir",
         "err": {
           "message": "$S"
         }
@@ -3082,6 +3171,7 @@ namespace SSC {
 
       if (req->result < 0) {
         msg = SSC::format(R"MSG({
+          "source": "fs.mkdir",
           "err": {
             "id": "$S",
             "message": "$S"
@@ -3091,6 +3181,7 @@ namespace SSC {
         String(uv_strerror((int)req->result)));
       } else {
         msg = SSC::format(R"MSG({
+          "source": "fs.mkdir",
           "data": {
             "result": "$i"
           }
@@ -3107,6 +3198,7 @@ namespace SSC {
 
     if (err) {
       auto msg = SSC::format(R"MSG({
+        "source": "fs.mkdir",
         "err": {
           "message": "$S"
         }
@@ -3129,6 +3221,7 @@ namespace SSC {
 
     if (peer == nullptr) {
       auto msg = SSC::format(R"MSG({
+        "source": "fs.sendBufferSize",
         "err": {
           "id": "$S",
           "method": "sendBufferSize",
@@ -3146,6 +3239,7 @@ namespace SSC {
       handle = (uv_handle_t*) &peer->handle;
     } else {
       auto msg = SSC::format(R"MSG({
+        "source": "fs.sendBufferSize",
         "err": {
           "message": "Handle is not valid"
         }
@@ -3159,6 +3253,7 @@ namespace SSC {
     int rSize = uv_send_buffer_size(handle, &sz);
 
     auto msg = SSC::format(R"MSG({
+      "source": "fs.sendBufferSize",
       "data": {
         "id": "$S",
         "method": "Cb",
@@ -3176,6 +3271,7 @@ namespace SSC {
 
     if (peer == nullptr) {
       auto msg = SSC::format(R"MSG({
+        "source": "fs.recvBufferSize",
         "err": {
           "id": "$S",
           "method": "Cb",
@@ -3192,6 +3288,7 @@ namespace SSC {
     auto rSize = uv_recv_buffer_size(handle, &sz);
 
     auto msg = SSC::format(R"MSG({
+      "source": "fs.recvBufferSize",
       "data": {
         "id": "$S",
         "method": "Cb",
@@ -3208,6 +3305,7 @@ namespace SSC {
 
     if (peer == nullptr) {
       auto msg = SSC::format(R"MSG({
+        "source": "fs.readStop",
         "err": {
           "id": "$S",
           "message": "No connection with specified id"
@@ -3219,7 +3317,10 @@ namespace SSC {
 
     auto stream = (uv_stream_t *) &peer->handle;
     auto result = uv_read_stop(stream);
-    auto msg = SSC::format(R"MSG({ "data": $i })MSG", result);
+    auto msg = SSC::format(R"MSG({
+      "source": "fs.readStop",
+      "data": $i
+    })MSG", result);
 
     cb(seq, msg, Post{});
   }
@@ -3228,6 +3329,7 @@ namespace SSC {
     std::lock_guard<std::recursive_mutex> loopGuard(loopMutex);
     if (!Peer::exists(peerId)) {
       auto msg = SSC::format(R"MSG({
+        "source": "close",
         "err": {
           "id": "$S",
           "code": "NOT_FOUND_ERR",
@@ -3243,6 +3345,7 @@ namespace SSC {
 
     if (peer->isClosed() || peer->isClosing()) {
       auto msg = SSC::format(R"MSG({
+        "source": "close",
         "err": {
           "id": "$S",
           "code": "ERR_SOCKET_DGRAM_NOT_RUNNING",
@@ -3266,6 +3369,7 @@ namespace SSC {
     if (!Peer::exists(peerId)) {
       auto msg = SSC::format(
         R"MSG({
+          "source": "shutdown",
           "err": {
             "id": "$S",
             "message": "No connection with specified id"
@@ -3293,14 +3397,15 @@ namespace SSC {
 
       if (status < 0) {
         msg = SSC::format(R"MSG({
+          "source": "shutdown",
           "err": {
             "id": "$S",
-            "source": "shutdown",
             "message": "$S"
           }
         })MSG", std::to_string(peer->id), std::string(uv_strerror(status)));
       } else {
         msg = SSC::format(R"MSG({
+          "source": "shutdown",
           "data": {
             "id": "$S",
             "status": "$i"
@@ -3317,6 +3422,7 @@ namespace SSC {
 
     if (err < 0) {
       auto msg = SSC::format(R"MSG({
+        "source": "shutdown",
         "err": {
           "id": "$S",
           "source": "shutdown",
@@ -3334,10 +3440,10 @@ namespace SSC {
     std::lock_guard<std::recursive_mutex> loopGuard(loopMutex);
     if (Peer::exists(peerId) && Peer::get(peerId)->isBound()) {
       auto msg = SSC::format(R"MSG({
+        "source": "udp.bind",
         "err": {
           "id": "$S",
           "code": "ERR_SOCKET_ALREADY_BOUND",
-          "source": "udp",
           "message": ": Socket is already bound"
         }
       })MSG", std::to_string(peerId));
@@ -3350,9 +3456,9 @@ namespace SSC {
 
     if (err < 0) {
       auto msg = SSC::format(R"MSG({
+        "source": "udp.bind",
         "err": {
           "id": "$S",
-          "source": "udp",
           "message": "$S"
         }
       })MSG", std::to_string(peerId), std::string(uv_strerror(err)));
@@ -3364,9 +3470,9 @@ namespace SSC {
 
     if (info->err < 0) {
       auto msg = SSC::format(R"MSG({
+        "source": "udp.bind",
         "err": {
           "id": "$S",
-          "source": "udp",
           "message": "$S"
         }
       })MSG", std::to_string(peerId), std::string(uv_strerror(info->err)));
@@ -3375,8 +3481,8 @@ namespace SSC {
     }
 
     auto msg = SSC::format(R"MSG({
+      "source": "udp.bind",
       "data": {
-        "source": "udp",
         "event": "listening",
         "id": "$S",
         "address": "$S",
@@ -3399,7 +3505,7 @@ namespace SSC {
       auto msg = SSC::format(R"MSG({
         "err": {
           "id": "$S",
-          "source": "udp",
+          "source": "udp.connect",
           "message": "$S"
         }
       })MSG", std::to_string(peerId), std::string(uv_strerror(err)));
@@ -3409,7 +3515,7 @@ namespace SSC {
 
     auto msg = SSC::format(R"MSG({
       "data": {
-        "source": "udp",
+        "source": "udp.connect",
         "address": "$S",
         "port": $i,
         "id": "$S"
@@ -3425,7 +3531,7 @@ namespace SSC {
     if (!Peer::exists(peerId)) {
       auto msg = SSC::format(R"MSG({
         "err": {
-          "source": "udp",
+          "source": "udp.getPeerName",
           "id": "$S",
           "message": "no such peer"
         }
@@ -3440,7 +3546,7 @@ namespace SSC {
     if (info->err < 0) {
       auto msg = SSC::format(R"MSG({
         "err": {
-          "source": "udp",
+          "source": "udp.getPeerName",
           "id": "$S",
           "message": "$S"
         }
@@ -3451,7 +3557,7 @@ namespace SSC {
 
     auto msg = SSC::format(R"MSG({
       "data": {
-        "source": "udp",
+        "source": "udp.getPeerName",
         "id": "$S",
         "address": "$S",
         "port": $i,
@@ -3466,7 +3572,7 @@ namespace SSC {
     if (!Peer::exists(peerId)) {
       auto msg = SSC::format(R"MSG({
         "err": {
-          "source": "udp",
+          "source": "udp.getSockName",
           "id": "$S",
           "message": "no such peer"
         }
@@ -3481,7 +3587,7 @@ namespace SSC {
     if (info->err < 0) {
       auto msg = SSC::format(R"MSG({
         "err": {
-          "source": "udp",
+          "source": "udp.getSockName",
           "id": "$S",
           "message": "$S"
         }
@@ -3492,7 +3598,7 @@ namespace SSC {
 
     auto msg = SSC::format(R"MSG({
       "data": {
-        "source": "udp",
+        "source": "udp.getSockName",
         "id": "$S",
         "address": "$S",
         "port": $i,
@@ -3507,9 +3613,9 @@ namespace SSC {
     if (!Peer::exists(peerId)) {
       auto msg = SSC::format(R"MSG({
         "err": {
-          "source": "udp",
           "id": "$S",
           "code": "NOT_FOUND_ERR",
+          "source": "udp.getState",
           "message": "no such peer"
         }
       })MSG", std::to_string(peerId));
@@ -3520,7 +3626,7 @@ namespace SSC {
     auto peer = Peer::get(peerId);
     auto msg = SSC::format(R"MSG({
         "data": {
-          "source": "udp",
+          "source": "udp.getState",
           "id": "$S",
           "type": "$S",
           "ephemeral": $S,
@@ -3561,7 +3667,7 @@ namespace SSC {
       auto msg = SSC::format(R"MSG({
         "err": {
           "id": "$S",
-          "source": "udp",
+          "source": "udp.readStart",
           "message": "no such handle"
         }
       })MSG", std::to_string(peerId));
@@ -3582,7 +3688,7 @@ namespace SSC {
       auto msg = SSC::format(R"MSG({
         "err": {
           "id": "$S",
-          "source": "udp",
+          "source": "udp.readStart",
           "message": "handle is closing"
         }
       })MSG", std::to_string(peerId));
@@ -3595,7 +3701,7 @@ namespace SSC {
       auto msg = SSC::format(R"MSG({
         "err": {
           "id": "$S",
-          "source": "udp",
+          "source": "udp.readStart",
           "message": "handle is already listening"
         }
       })MSG", std::to_string(peerId));
@@ -3611,7 +3717,7 @@ namespace SSC {
       auto msg = SSC::format(R"MSG({
         "err": {
           "id": "$S",
-          "source": "udp",
+          "source": "udp.readStart",
           "message": "$S"
         }
       })MSG", std::to_string(peerId), std::string(uv_strerror(err)));
@@ -3651,6 +3757,7 @@ namespace SSC {
 
       if (status < 0) {
         auto msg = SSC::format(R"MSG({
+          "source": "dns.lookup",
           "err": {
             "code": "$S",
             "message": "$S"
@@ -3677,6 +3784,7 @@ namespace SSC {
       address = address.erase(address.find('\0'));
 
       auto msg = SSC::format(R"MSG({
+          "source": "dns.lookup",
           "data": {
             "address": "$S",
             "family": $i

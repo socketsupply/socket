@@ -683,7 +683,7 @@ static dispatch_queue_t queue = dispatch_queue_create("co.socketsupply.queue.cor
     return;
   }
 
-  if (post.body) {
+  if (post.body || seq == "-1") {
     dispatch_async(dispatch_get_main_queue(), ^{
       auto src = self.core->createPost(seq, msg, post);
       NSString* script = [NSString stringWithUTF8String: src.c_str()];
@@ -1250,7 +1250,7 @@ static dispatch_queue_t queue = dispatch_queue_create("co.socketsupply.queue.cor
     return true;
   }
 
-  if (cmd.name == "udpClose" || cmd.name == "udp.close") {
+  if (cmd.name == "udpClose" || cmd.name == "udp.close" || cmd.name == "close") {
     auto peerId = std::stoull(cmd.get("id"));
 
     dispatch_async(queue, ^{
@@ -1624,7 +1624,7 @@ static dispatch_queue_t queue = dispatch_queue_create("co.socketsupply.queue.cor
   char *body = NULL;
   auto seq = cmd.get("seq");
 
-  if (seq.size() > 0) {
+  if (seq.size() > 0 && seq != "-1") {
     #if !__has_feature(objc_arc)
     [task retain];
     #endif

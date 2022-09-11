@@ -204,7 +204,8 @@ open class WebViewClient(activity: WebViewActivity) : android.webkit.WebViewClie
           id = message.get("id"),
           type = "NotFoundError",
           extra = "\"url\": \"$url\"",
-          message = "Not found"
+          message = "Not found",
+          source = url.host
         ).toString()
 
         android.util.Log.d(TAG, "ERR: $err")
@@ -1116,7 +1117,8 @@ open class ExternalWebViewInterface(activity: WebViewActivity) {
     val err = JSONError(
       id = message.get("id"),
       type = "NotFoundError",
-      message = "Not found"
+      message = "Not found",
+      source = message.command
     ).toString()
 
     if (message.has("seq")) {
@@ -1242,9 +1244,11 @@ class JSONError(
   private val id: String,
   private val message: String,
   private val extra: String = "",
-  private val type: String = "InternalError"
+  private val type: String = "InternalError",
+  private val source: String = "",
 ) {
   override fun toString() = """{
+    "source": "$source",
     "err": {
       "id": "$id",
       "type": "$type",
@@ -1256,9 +1260,11 @@ class JSONError(
 
 class JSONData(
   private val id: String,
-  private val data: String = ""
+  private val data: String = "",
+  private val source: String = "",
 ) {
   override fun toString() = """{
+    "source": "$source",
     "data": {
       "id": "$id" ${if (data.isNotEmpty()) "," else ""}
       $data
