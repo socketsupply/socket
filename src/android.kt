@@ -84,10 +84,9 @@ open class WebViewClient(activity: WebViewActivity) : android.webkit.WebViewClie
     request: android.webkit.WebResourceRequest
   ): android.webkit.WebResourceResponse? {
     val url = request.url
-
-    android.util.Log.d(TAG, "${url.scheme} ${request.method}")
-
     val assetLoaderRequest = this.assetLoader?.shouldInterceptRequest(url)
+
+    // android.util.Log.d(TAG, "${url.scheme} ${request.method}")
 
     if (assetLoaderRequest != null) {
       return assetLoaderRequest
@@ -979,7 +978,7 @@ open class Bridge(activity: WebViewActivity) {
           val size = message.get("size", bytes.size.toString()).toInt()
           val ephemeral = message.get("ephemeral") == "true"
 
-          android.util.Log.d(TAG, "message= ${message}")
+          // android.util.Log.d(TAG, "message= ${message}")
 
           core.udp.send(message.seq, id, data, size, ip, port, ephemeral, fun (data: String) {
             callback(message.seq, data)
