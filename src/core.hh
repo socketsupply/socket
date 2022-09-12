@@ -341,7 +341,7 @@ namespace SSC {
   struct Descriptor;
   struct DescriptorRequestContext;
 
-  static constexpr int POLL_TIMEOUT = 16; // in milliseconds
+  static constexpr int EVENT_LOOP_POLL_TIMEOUT = 32; // in milliseconds
   static uv_loop_t eventLoop = {0};
 
   static std::map<uint64_t, Peer*> peers;
@@ -490,12 +490,16 @@ namespace SSC {
     PEER_STATE_XXX = 1 << 1,
     // general states
     PEER_STATE_CLOSED = 1 << 2,
-    // udp states
-    PEER_STATE_UDP_BOUND = 1 << 3,
-    PEER_STATE_UDP_CONNECTED = 1 << 4,
-    PEER_STATE_UDP_RECV_STARTED = 1 << 5,
-    PEER_STATE_UDP_PAUSED = 1 << 6,
-    PEER_STATE_MAX = 1 << 0xF
+    // udp states (10)
+    PEER_STATE_UDP_BOUND = 1 << 10,
+    PEER_STATE_UDP_CONNECTED = 1 << 11,
+    PEER_STATE_UDP_RECV_STARTED = 1 << 12,
+    PEER_STATE_UDP_PAUSED = 1 << 13,
+    // tcp states (20)
+    PEER_STATE_TCP_BOUND = 1 << 20,
+    PEER_STATE_TCP_CONNECTED = 1 << 21,
+    PEER_STATE_TCP_PAUSED = 1 << 13,
+    PEER_STATE_MAX = 1 << 0xFF
   } peer_state_t;
 
   struct PeerRequestContext {
@@ -718,7 +722,6 @@ namespace SSC {
       if (Peer::exists(peerId)) {
         if (autoClose) {
           auto peer = Peer::get(peerId);
-          // will call `peers.erase()`
           peer->close();
         }
 
@@ -781,8 +784,7 @@ namespace SSC {
 
     ~Peer () {
       std::lock_guard<std::recursive_mutex> guard(this->mutex);
-      // will call `peers.erase(this->id)` and `close()`
-      Peer::remove(this->id, true);
+      Peer::remove(this->id, true); // auto close
       memset(&this->handle, 0, sizeof(this->handle));
     }
 
@@ -799,27 +801,23 @@ namespace SSC {
 
       if (this->type == PEER_TYPE_TCP) {
         memset(&this->handle, 0, sizeof(this->handle));
-        err = uv_udp_init(loop, (uv_udp_t *) &this->handle);
+        err = uv_tcp_init(loop, (uv_tcp_t *) &this->handle);
         this->handle.tcp.data = (void *) this;
       }
 
       return err;
     }
 
-    void initRemotePeerInfo () {
+    int initRemotePeerInfo () {
       std::lock_guard<std::recursive_mutex> guard(this->mutex);
-
-      if (this->type == PEER_TYPE_UDP) {
-        this->remote.init((uv_udp_t *) &this->handle);
-      }
+      this->remote.init((uv_udp_t *) &this->handle);
+      return this->remote.err;
     }
 
-    void initLocalPeerInfo () {
+    int initLocalPeerInfo () {
       std::lock_guard<std::recursive_mutex> guard(this->mutex);
-
-      if (this->type == PEER_TYPE_UDP) {
-        this->local.init((uv_udp_t *) &this->handle);
-      }
+      this->local.init((uv_udp_t *) &this->handle);
+      return this->local.err;
     }
 
     void setState (peer_state_t value) {
@@ -852,6 +850,16 @@ namespace SSC {
       return &this->local;
     }
 
+    bool isUDP () {
+      std::lock_guard<std::recursive_mutex> guard(this->mutex);
+      return this->type == PEER_TYPE_UDP;
+    }
+
+    bool isTCP () {
+      std::lock_guard<std::recursive_mutex> guard(this->mutex);
+      return this->type == PEER_TYPE_TCP;
+    }
+
     bool isEphemeral () {
       std::lock_guard<std::recursive_mutex> guard(this->mutex);
       return (PEER_FLAG_EPHEMERAL & this->flags) == PEER_FLAG_EPHEMERAL;
@@ -859,7 +867,10 @@ namespace SSC {
 
     bool isBound () {
       std::lock_guard<std::recursive_mutex> guard(this->mutex);
-      return this->hasState(PEER_STATE_UDP_BOUND);
+      return (
+        this->isUDP() && this->hasState(PEER_STATE_UDP_BOUND) ||
+        this->isTCP() && this->hasState(PEER_STATE_TCP_BOUND)
+      );
     }
 
     bool isActive () {
@@ -879,12 +890,18 @@ namespace SSC {
 
     bool isConnected () {
       std::lock_guard<std::recursive_mutex> guard(this->mutex);
-      return this->hasState(PEER_STATE_UDP_CONNECTED);
+      return (
+        this->isUDP() && this->hasState(PEER_STATE_UDP_CONNECTED) ||
+        this->isTCP() && this->hasState(PEER_STATE_TCP_CONNECTED)
+      );
     }
 
     bool isPaused () {
       std::lock_guard<std::recursive_mutex> guard(this->mutex);
-      return this->hasState(PEER_STATE_UDP_PAUSED);
+      return (
+        this->isUDP() && this->hasState(PEER_STATE_UDP_PAUSED) ||
+        this->isTCP() && this->hasState(PEER_STATE_TCP_PAUSED)
+      );
     }
 
     int bind () {
@@ -904,25 +921,33 @@ namespace SSC {
       auto sockaddr = this->getSockAddr();
       int err = 0;
 
-      if ((err = uv_ip4_addr((char *) address.c_str(), port, &this->addr))) {
-        return err;
+      if (this->isUDP()) {
+        if ((err = uv_ip4_addr((char *) address.c_str(), port, &this->addr))) {
+          return err;
+        }
+
+        if ((err = uv_udp_bind((uv_udp_t *) &this->handle, sockaddr, UV_UDP_REUSEADDR))) {
+          return err;
+        }
+
+        this->setState(PEER_STATE_UDP_BOUND);
       }
 
-      if ((err = uv_udp_bind((uv_udp_t *) &this->handle, sockaddr, UV_UDP_REUSEADDR))) {
-        return err;
+      if (this->isTCP()) {
+        // @TODO: `bind()` + `listen()?`
       }
 
-      this->setState(PEER_STATE_UDP_BOUND);
-      this->initLocalPeerInfo();
-      return this->local.err;
+      return this->initLocalPeerInfo();
     }
 
     int rebind () {
       std::lock_guard<std::recursive_mutex> guard(this->mutex);
       int err = 0;
 
-      if ((err = this->recvstop())) {
-        return err;
+      if (this->isUDP()) {
+        if ((err = this->recvstop())) {
+          return err;
+        }
       }
 
       memset((void *) &this->addr, 0, sizeof(struct sockaddr_in));
@@ -931,8 +956,10 @@ namespace SSC {
         return err;
       }
 
-      if ((err = this->recvstart())) {
-        return err;
+      if (this->isUDP()) {
+        if ((err = this->recvstart())) {
+          return err;
+        }
       }
 
       return err;
@@ -947,21 +974,36 @@ namespace SSC {
         return err;
       }
 
-      if ((err = uv_udp_connect((uv_udp_t *) &this->handle, sockaddr))) {
-        return err;
+      if (this->isUDP()) {
+        if ((err = uv_udp_connect((uv_udp_t *) &this->handle, sockaddr))) {
+          return err;
+        }
+
+        this->setState(PEER_STATE_UDP_CONNECTED);
       }
 
-      this->setState(PEER_STATE_UDP_CONNECTED);
-      this->initRemotePeerInfo();
-      return this->remote.err;
+      return this->initRemotePeerInfo();
     }
 
-    void send (PeerRequestContext *ctx, char *buf, int len, int port, String address) {
+    void send (std::string seq, char *buf, int len, int port, String address, Cb cb) {
       std::lock_guard<std::recursive_mutex> guard(this->mutex);
       auto loop = getEventLoop();
+      auto ctx = new PeerRequestContext(seq, cb);
       int err = 0;
 
       struct sockaddr *sockaddr = nullptr;
+
+      if (!this->isUDP()) {
+        auto msg = SSC::format(R"MSG({
+          "source": "udp.send",
+          "err": {
+            "id": "$S",
+            "message": "Invalid UDP state"
+          }
+        })MSG", std::to_string(this->id));
+
+        return ctx->end(msg);
+      }
 
       if (!this->isConnected()) {
         sockaddr = (struct sockaddr *) this->getSockAddr();
@@ -972,6 +1014,7 @@ namespace SSC {
 
         if (err) {
           auto msg = SSC::format(R"MSG({
+            "source": "udp.send",
             "err": {
               "id": "$S",
               "message": "$S"
@@ -1443,14 +1486,14 @@ namespace SSC {
           return;
         }
 
-        while (isLoopRunning && uv_loop_alive(loop)) {
-          if (mode == UV_RUN_DEFAULT) {
-            uv_run(loop, mode);
-          } else {
-            sleepEventLoop(POLL_TIMEOUT);
-            uv_run(loop, mode);
-          }
-        }
+        do {
+          uv_update_time(loop);
+        } while (
+          isLoopRunning &&
+          uv_run(loop, mode) &&
+          uv_loop_alive(loop) &&
+          uv_backend_timeout(loop) == -1
+        );
 
         isLoopRunning = false;
       });
@@ -1484,15 +1527,14 @@ namespace SSC {
         return;
       }
 
-      while (isLoopRunning && uv_loop_alive(loop)) {
-        if (mode == UV_RUN_DEFAULT) {
-          uv_run(loop, mode);
-        } else {
-          sleepEventLoop(POLL_TIMEOUT);
-          std::lock_guard<std::recursive_mutex> loopGuard(loopMutex);
-          uv_run(loop, mode);
-        }
-      }
+      do {
+        uv_update_time(loop);
+      } while (
+        isLoopRunning &&
+        uv_run(loop, mode) &&
+        uv_loop_alive(loop) &&
+        uv_backend_timeout(loop) == -1
+      );
 
       if (!isLoopRunning) { // likely form `stopEventLoop()`
         dispatch_source_cancel(loopPoll);
@@ -1503,7 +1545,7 @@ namespace SSC {
       uv_update_time(loop);
       auto timeout = uv_backend_timeout(loop);
       if (timeout == -1) {
-        timeout = POLL_TIMEOUT;
+        timeout = EVENT_LOOP_POLL_TIMEOUT;
       }
 
       // update poll timeout
@@ -1523,6 +1565,7 @@ namespace SSC {
       rc = uv_run(loop, mode);
     } else {
       std::lock_guard<std::recursive_mutex> loopGuard(loopMutex);
+      sleepEventLoop();
       rc = uv_run(loop, mode);
     }
     isLoopRunning = false;
@@ -1539,20 +1582,22 @@ namespace SSC {
     }
 
     eventLoopThread = new std::thread([loop, mode]() {
+      //debug("start eventLoopThread");
       // main loop in thread to poll and spin the event loop
       while (isLoopRunning) {
-        sleepEventLoop(POLL_TIMEOUT);
-        while (isLoopRunning && uv_loop_alive(loop)) {
-          if (mode == UV_RUN_DEFAULT) {
-            uv_run(loop, mode);
-          } else {
-            sleepEventLoop(POLL_TIMEOUT);
-            std::lock_guard<std::recursive_mutex> loopGuard(loopMutex);
-            uv_run(loop, mode);
-          }
-        }
+        sleepEventLoop(EVENT_LOOP_POLL_TIMEOUT);
+
+        do {
+          std::lock_guard<std::recursive_mutex> loopGuard(loopMutex);
+          sleepEventLoop();
+        } while (
+          isLoopRunning &&
+          uv_run(loop, mode) &&
+          uv_loop_alive(loop)
+        );
       }
 
+      //debug("finish eventLoopThread");
       isLoopRunning = false;
       eventLoopSemaphore.release(); // signal
     });
@@ -3704,9 +3749,7 @@ namespace SSC {
     {
       std::lock_guard<std::recursive_mutex> loopGuard(loopMutex);
       auto peer = Peer::create(PEER_TYPE_UDP, peerId, ephemeral);
-      auto loop = getEventLoop();
-      auto ctx = new PeerRequestContext(seq, cb);
-      peer->send(ctx, buf, len, port, address);
+      peer->send(seq, buf, len, port, address, cb);
     }
 
     runEventLoop();
