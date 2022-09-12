@@ -118,27 +118,20 @@ NativeCallbackRef::NativeCallbackRef (
   std::string signature
 ) {
   Lock lock(core->mutex);
-  auto ctx = core->AttachCurrentThreadToJavaVM();
+  NativeCore::JNIEnvAttachment ctx(core);
 
   this->signature = signature;
   this->name = name;
   this->core = core;
   this->ref = ctx.env->NewGlobalRef((jobject) id);
   this->id = id;
-
-  if (ctx.attached) {
-    core->DetachCurrentThreadFromJavaVM();
-  }
 }
 
 NativeCallbackRef::~NativeCallbackRef () {
   Lock lock(this->core->mutex);
   if (this->ref) {
-    auto ctx = this->core->AttachCurrentThreadToJavaVM();
+    NativeCore::JNIEnvAttachment ctx(this->core);
     ctx.env->DeleteGlobalRef((jobject) this->ref);
-    if (ctx.attached) {
-      this->core->DetachCurrentThreadFromJavaVM();
-    }
   }
 
   this->signature = "";
@@ -150,21 +143,19 @@ NativeCallbackRef::~NativeCallbackRef () {
 
 template <typename ...Args> void NativeCallbackRef::Call (Args ...args) {
   Lock lock(this->core->mutex);
+  NativeCore::JNIEnvAttachment ctx(this->core);
 
-  auto ctx = this->core->AttachCurrentThreadToJavaVM();
   auto refs = this->core->GetRefs();
 
-  CallNativeCoreVoidMethodFromEnvironment(
-    ctx.env,
-    refs.core,
-    this->name.c_str(),
-    this->signature.c_str(),
-    this->ref,
-    args...
-  );
-
-  if (ctx.attached) {
-    this->core->DetachCurrentThreadFromJavaVM();
+  if (!ctx.HasException()) {
+    CallNativeCoreVoidMethodFromEnvironment(
+      ctx.env,
+      refs.core,
+      this->name.c_str(),
+      this->signature.c_str(),
+      this->ref,
+      args...
+    );
   }
 }
 
@@ -310,19 +301,15 @@ void NativeCore::EvaluateJavaScript (std::string js) {
 
 void NativeCore::EvaluateJavaScript (const char *js) {
   Lock lock(this->mutex);
-  auto ctx = this->AttachCurrentThreadToJavaVM();
+  NativeCore::JNIEnvAttachment ctx(this);
   auto refs = this->GetRefs();
 
-  this->Wait();
-  EvaluateJavaScriptInEnvironment(
-    ctx.env,
-    refs.core,
-    ctx.env->NewStringUTF(js)
-  );
-  this->Signal();
-
-  if (ctx.attached) {
-    this->DetachCurrentThreadFromJavaVM();
+  if (!ctx.HasException()) {
+    EvaluateJavaScriptInEnvironment(
+      ctx.env,
+      refs.core,
+      ctx.env->NewStringUTF(js)
+    );
   }
 }
 
@@ -380,29 +367,6 @@ const char * NativeCore::GetJavaScriptPreloadSource () const {
   }
 
   return this->javaScriptPreloadSource.c_str();
-}
-
-const NativeCore::JNIEnvContext NativeCore::AttachCurrentThreadToJavaVM () {
-  NativeCore::JNIEnvContext ctx(this->GetJavaVM());
-
-  if (ctx.jvm != nullptr) {
-    ctx.version = this->GetJNIVersion();
-    ctx.status = ctx.jvm->GetEnv((void **) &ctx.env, ctx.version);
-
-    if (ctx.status == JNI_EDETACHED) {
-      ctx.attached = ctx.jvm->AttachCurrentThread(&ctx.env, 0);
-    }
-  }
-
-  return ctx;
-}
-
-void NativeCore::DetachCurrentThreadFromJavaVM () {
-  JNIEnv *env = nullptr;
-  auto jvm = this->GetJavaVM();
-  if (jvm != nullptr) {
-    jvm->DetachCurrentThread();
-  }
 }
 
 void NativeCore::DNSLookup (
@@ -580,16 +544,9 @@ void NativeRequestContext::Send (
     auto js = this->core->createPost(this->seq, data, post);
     this->core->EvaluateJavaScript(js);
   } else if (this->seq.size() > 0 && this->seq != "-1") {
-    this->core->Wait();
     Lock lock(this->core->mutex);
-    auto ctx = this->core->AttachCurrentThreadToJavaVM();
-
+    NativeCore::JNIEnvAttachment ctx(this->core);
     this->callback->Call(ctx.env->NewStringUTF(data.c_str()));
-    this->core->Signal();
-
-    if (ctx.attached) {
-      this->core->DetachCurrentThreadFromJavaVM();
-    }
   }
 }
 

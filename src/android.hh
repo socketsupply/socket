@@ -533,15 +533,67 @@ class NativeCore : public SSC::Core {
   AppConfig config;
   EnvironmentVariables environmentVariables;
 
-  struct JNIEnvContext {
+  struct JNIEnvAttachment {
     JNIEnv *env = nullptr;
     JavaVM *jvm = nullptr;
     int status = 0;
     int version = 0;
     bool attached = false;
 
-    JNIEnvContext (JavaVM *jvm) {
+    JNIEnvAttachment () {}
+    JNIEnvAttachment (NativeCore *core) {
+      auto jvm = core->GetJavaVM();
+      auto version = core->GetJNIVersion();
+      this->Attach(jvm, version);
+    }
+
+    JNIEnvAttachment (JavaVM *jvm, int version) {
+      this->Attach(jvm, version);
+    }
+
+    ~JNIEnvAttachment () {
+      this->Detach();
+    }
+
+    void Attach (JavaVM *jvm, int version) {
       this->jvm = jvm;
+      this->version = version;
+
+      if (jvm != nullptr) {
+        this->status = this->jvm->GetEnv((void **) &this->env, this->version);
+
+        if (this->status == JNI_EDETACHED) {
+          this->attached = this->jvm->AttachCurrentThread(&this->env, 0);
+        }
+      }
+    }
+
+    void Detach () {
+      auto jvm = this->jvm;
+      auto attached = this->attached;
+
+      if (this->HasException()) {
+        this->PrintException();
+      }
+
+      this->env = nullptr;
+      this->jvm = nullptr;
+      this->status = 0;
+      this->attached = false;
+
+      if (attached && jvm != nullptr) {
+        jvm->DetachCurrentThread();
+      }
+    }
+
+    inline bool HasException () {
+      return this->env != nullptr && this->env->ExceptionCheck();
+    }
+
+    inline void PrintException () {
+      if (this->env != nullptr) {
+        this->env->ExceptionDescribe();
+      }
     }
   };
 
@@ -579,9 +631,6 @@ class NativeCore : public SSC::Core {
   const std::string GetNetworkInterfaces () const;
   const char * GetJavaScriptPreloadSource () const;
 
-  const JNIEnvContext AttachCurrentThreadToJavaVM ();
-  void DetachCurrentThreadFromJavaVM ();
-
   void DNSLookup (
     NativeCoreSequence seq,
     std::string hostname,
@@ -618,9 +667,14 @@ class NativeThreadContext {
     static constexpr int MAX_EMPTY_POLLS = 1024;
 
     /**
-     * Timeout in milliseconds when polling in dispatch/release threads.
+     * Timeout in milliseconds when polling in dispatch threads.
      */
-    static constexpr int POLL_TIMEOUT = 4; // in milliseconds
+    static constexpr int DISPATCH_POLL_TIMEOUT = 8; // in milliseconds
+
+    /**
+     * Timeout in milliseconds when polling in release threads.
+     */
+    static constexpr int RELEASE_POLL_TIMEOUT = 256; // in milliseconds
 
     /**
      * Static/global recursive mutex for threaded atomic operations during
@@ -749,12 +803,12 @@ class NativeThreadContext {
         return;
       }
 
-      globalDispatchPopSize++;
       if (ctx->Dispatch()) {
-        // max total timeout ~= `POLL_TIMEOUT * POLL_TIMEOUT`
-        int timeouts = POLL_TIMEOUT;
+        globalDispatchPopSize++;
+        // max total timeout ~= `DISPATCH_POLL_TIMEOUT * DISPATCH_POLL_TIMEOUT`
+        int timeouts = DISPATCH_POLL_TIMEOUT;
         while (!ctx->isInvoked && timeouts-- > 0) {
-          SleepInThisThread(POLL_TIMEOUT);
+          SleepInThisThread(DISPATCH_POLL_TIMEOUT);
         }
 
         if (ctx->shouldAutoRelease) {
@@ -813,23 +867,22 @@ class NativeThreadContext {
       int emptyPolls = 0;
 
       while (isDispatchThreadRunning) {
-        if (
-          globalDispatchQueueSize == 0 &&
-          globalDispatchPopSize == 0 &&
-          !uv_loop_alive(loop)
-        ) {
-          // max timeout = `MAX_EMPTY_POLLS * POLL_TIMEOUT`
-          if (++emptyPolls > MAX_EMPTY_POLLS) {
+        SleepInThisThread(DISPATCH_POLL_TIMEOUT);
+        if (globalDispatchQueueSize == 0) {
+          if (
+            !uv_loop_alive(loop) &&
+            globalDispatchPopSize == 0 &&
+            ++emptyPolls > MAX_EMPTY_POLLS
+          ) {
             break;
           }
 
-          SleepInThisThread(POLL_TIMEOUT);
+          SleepInThisThread(DISPATCH_POLL_TIMEOUT);
           continue;
         }
 
         emptyPolls = 0;
         PopContext();
-        SleepInThisThread(POLL_TIMEOUT);
       }
 
       isDispatchThreadRunning = false;
@@ -841,13 +894,14 @@ class NativeThreadContext {
 
       while (isReleaseThreadRunning) {
         NativeThreadContext *ctx = nullptr;
+        continue;
 
         if (globalReleaseQueueSize == 0 && globalReleasePopSize == 0) {
           if (++emptyPolls > MAX_EMPTY_POLLS) {
             break;
           }
 
-          SleepInThisThread(POLL_TIMEOUT);
+          SleepInThisThread(DISPATCH_POLL_TIMEOUT);
           continue;
         }
 
@@ -874,7 +928,7 @@ class NativeThreadContext {
           }
         }
 
-        SleepInThisThread(POLL_TIMEOUT);
+        SleepInThisThread(DISPATCH_POLL_TIMEOUT);
       }
 
       isReleaseThreadRunning = false;
@@ -1103,14 +1157,14 @@ class NativeThreadContext {
           globalDispatchPopSize--;
         }
 
-        // keep alive (ms) ~= 1024*POLL_TIMEOUT*POLL_TIMEOUT
-        int timeouts = 1024 * POLL_TIMEOUT;
+        // keep alive (ms) ~= 1024*DISPATCH_POLL_TIMEOUT*DISPATCH_POLL_TIMEOUT
+        int timeouts = 1024 * DISPATCH_POLL_TIMEOUT;
         while (
           timeouts-- > 0 &&
           isDispatchThreadRunning &&
           globalDispatchQueueSize == 0
         ) {
-          SleepInThisThread(POLL_TIMEOUT);
+          SleepInThisThread(DISPATCH_POLL_TIMEOUT);
         }
 
         if (globalDispatchQueueSize == 0) {
@@ -1180,7 +1234,7 @@ class NativeThreadContext {
       // monitor work on `ThreadRunner` function thread until it is no longer
       // running (or stopped), or cancelled
       while (isDispatchThreadRunning && ctx->isRunning && !ctx->isCancelled) {
-        SleepInThisThread(POLL_TIMEOUT);
+        SleepInThisThread(DISPATCH_POLL_TIMEOUT);
       }
 
       if (!ctx->isCancelled && work.joinable()) {
