@@ -310,8 +310,6 @@ open class WebViewActivity : androidx.appcompat.app.AppCompatActivity() {
   }
 
   override fun onDestroy() {
-    super.onDestroy()
-
     this.timer?.apply {
       cancel()
       purge()
@@ -319,7 +317,32 @@ open class WebViewActivity : androidx.appcompat.app.AppCompatActivity() {
 
     this.core?.apply {
       freeAllPostData()
+      stopEventLoop()
+      stopDispatchThread()
+      stopReleaseThread()
     }
+
+    super.onDestroy()
+  }
+
+  override fun onPause () {
+    this.core?.apply {
+      stopEventLoop()
+      stopDispatchThread()
+      stopReleaseThread()
+    }
+
+    super.onPause()
+  }
+
+  override fun onResume () {
+    this.core?.apply {
+      runEventLoop()
+      startDispatchThread()
+      startReleaseThread()
+    }
+
+    super.onResume()
   }
 }
 
@@ -377,7 +400,7 @@ open class Bridge(activity: WebViewActivity) {
     )
 
     if (source != null) {
-      this.evaluateJavascript(source)
+      this.evaluateJavascript("queueMicrotask(() => { $source; });")
       return true
     }
 

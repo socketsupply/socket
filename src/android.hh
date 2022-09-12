@@ -798,24 +798,22 @@ class NativeThreadContext {
         ctx = Get(contextId);
       }
 
-      if (ctx == nullptr) {
+      if (ctx == nullptr || !ctx->Dispatch()) {
         globalDispatchSemaphore.release();
         return;
       }
 
-      if (ctx->Dispatch()) {
-        globalDispatchPopSize++;
-        // max total timeout ~= `DISPATCH_POLL_TIMEOUT * DISPATCH_POLL_TIMEOUT`
-        int timeouts = DISPATCH_POLL_TIMEOUT;
-        while (!ctx->isInvoked && timeouts-- > 0) {
-          SleepInThisThread(DISPATCH_POLL_TIMEOUT);
-        }
+      globalDispatchPopSize++;
+      // max total timeout ~= `DISPATCH_POLL_TIMEOUT * DISPATCH_POLL_TIMEOUT`
+      int timeouts = DISPATCH_POLL_TIMEOUT;
+      while (isDispatchThreadRunning && !ctx->isInvoked && timeouts-- > 0) {
+        SleepInThisThread(DISPATCH_POLL_TIMEOUT);
+      }
 
-        if (ctx->shouldAutoRelease) {
-          Lock lock(globalMutex);
-          globalReleaseQueue.push(ctx->id);
-          globalReleaseQueueSize = globalReleaseQueue.size();
-        }
+      if (ctx->shouldAutoRelease) {
+        Lock lock(globalMutex);
+        globalReleaseQueue.push(ctx->id);
+        globalReleaseQueueSize = globalReleaseQueue.size();
       }
     }
 
