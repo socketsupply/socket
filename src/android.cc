@@ -309,18 +309,16 @@ void NativeCore::EvaluateJavaScript (std::string js) {
 }
 
 void NativeCore::EvaluateJavaScript (const char *js) {
+  Lock lock(this->mutex);
   auto ctx = this->AttachCurrentThreadToJavaVM();
   auto refs = this->GetRefs();
 
   this->Wait();
-  {
-    Lock lock(this->mutex);
-    EvaluateJavaScriptInEnvironment(
-      ctx.env,
-      refs.core,
-      ctx.env->NewStringUTF(js)
-    );
-  }
+  EvaluateJavaScriptInEnvironment(
+    ctx.env,
+    refs.core,
+    ctx.env->NewStringUTF(js)
+  );
   this->Signal();
 
   if (ctx.attached) {
@@ -583,6 +581,7 @@ void NativeRequestContext::Send (
     this->core->EvaluateJavaScript(js);
   } else if (this->seq.size() > 0 && this->seq != "-1") {
     this->core->Wait();
+    Lock lock(this->core->mutex);
     auto ctx = this->core->AttachCurrentThreadToJavaVM();
 
     this->callback->Call(ctx.env->NewStringUTF(data.c_str()));

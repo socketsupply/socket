@@ -1411,6 +1411,8 @@ namespace SSC {
       return 0;
     }
 
+    isLoopRunning = true;
+
     auto loop = getEventLoop();
     int rc = 0;
 
@@ -1426,8 +1428,6 @@ namespace SSC {
     }
 
     auto timeout = uv_backend_timeout(loop);
-
-    isLoopRunning = true;
 
     if (timeout == -1) {
       dispatch_async(eventLoopQueue, ^{
@@ -1514,7 +1514,6 @@ namespace SSC {
 #elif defined(__linux__) && !defined(__ANDROID__) // linux desktop
     // the linux implementation uses glib sources for polled event sourcing
     // to actually execute our loop in tandem with glib's event loop
-    isLoopRunning = true;
     if (mode == UV_RUN_DEFAULT) {
       rc = uv_run(loop, mode);
     } else {
@@ -1523,8 +1522,8 @@ namespace SSC {
     }
     isLoopRunning = false;
 #else
-    isLoopRunning = true;
     eventLoopSemaphore.acquire(); // wait
+    std::lock_guard<std::recursive_mutex> loopGuard(loopMutex);
 
     if (eventLoopThread != nullptr) {
       if(eventLoopThread->joinable()) {
@@ -1542,9 +1541,9 @@ namespace SSC {
           if (mode == UV_RUN_DEFAULT) {
             uv_run(loop, mode);
           } else {
+            sleepEventLoop(POLL_TIMEOUT);
             std::lock_guard<std::recursive_mutex> loopGuard(loopMutex);
             uv_run(loop, mode);
-            sleepEventLoop(0);
           }
         }
       }
