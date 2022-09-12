@@ -1428,6 +1428,10 @@ static dispatch_queue_t queue = dispatch_queue_create("co.socketsupply.queue.cor
       err = "invalid peerId";
     }
 
+    if (bufsize <= 0) {
+      err = "invalid buffer size";
+    }
+
     if (err.size() > 0) {
       auto msg = SSC::format(R"MSG({
         "err": {
