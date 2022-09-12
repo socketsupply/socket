@@ -1197,10 +1197,14 @@ namespace SSC {
 
     void close (std::function<void(Peer *)> onclose) {
       if (!this->isActive()) {
+        std::lock_guard<std::recursive_mutex> guard(this->mutex);
+        Peer::remove(this->id);
         return onclose(this);
       }
 
       if (this->isClosed()) {
+        std::lock_guard<std::recursive_mutex> guard(this->mutex);
+        Peer::remove(this->id);
         return onclose(this);
       }
 
@@ -1220,11 +1224,11 @@ namespace SSC {
 
           if (peer != nullptr) {
             std::lock_guard<std::recursive_mutex> guard(peer->mutex);
+            Peer::remove(peer->id);
             for (auto const &onclose : peer->callbacks.onclose) {
               onclose(peer);
             }
             peer->callbacks.onclose.clear();
-            Peer::remove(peer->id);
           }
         });
       }
@@ -1439,14 +1443,14 @@ namespace SSC {
           return;
         }
 
-        do {
-          uv_update_time(loop);
-        } while (
-          isLoopRunning &&
-          uv_run(loop, mode) &&
-          uv_loop_alive(loop) &&
-          uv_backend_timeout(loop) == -1
-        );
+        while (isLoopRunning && uv_loop_alive(loop)) {
+          if (mode == UV_RUN_DEFAULT) {
+            uv_run(loop, mode);
+          } else {
+            sleepEventLoop(POLL_TIMEOUT);
+            uv_run(loop, mode);
+          }
+        }
 
         isLoopRunning = false;
       });
@@ -1480,14 +1484,15 @@ namespace SSC {
         return;
       }
 
-      do {
-        uv_update_time(loop);
-      } while (
-        isLoopRunning &&
-        uv_run(loop, mode) &&
-        uv_loop_alive(loop) &&
-        uv_backend_timeout(loop) == -1
-      );
+      while (isLoopRunning && uv_loop_alive(loop)) {
+        if (mode == UV_RUN_DEFAULT) {
+          uv_run(loop, mode);
+        } else {
+          sleepEventLoop(POLL_TIMEOUT);
+          std::lock_guard<std::recursive_mutex> loopGuard(loopMutex);
+          uv_run(loop, mode);
+        }
+      }
 
       if (!isLoopRunning) { // likely form `stopEventLoop()`
         dispatch_source_cancel(loopPoll);
@@ -3403,10 +3408,11 @@ namespace SSC {
 
     {
       std::lock_guard<std::recursive_mutex> loopGuard(loopMutex);
-      peer->close();
+      peer->close([=](auto peer) {
+        cb(seq, "{}", Post{});
+      });
     }
 
-    cb(seq, "{}", Post{});
     runEventLoop();
   }
 
