@@ -980,6 +980,7 @@ namespace SSC {
           return err;
         }
 
+        // @TODO(jwerle): support flags in `bind()`
         if ((err = uv_udp_bind((uv_udp_t *) &this->handles.bind, sockaddr, UV_UDP_REUSEADDR))) {
           return err;
         }
