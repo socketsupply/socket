@@ -1576,7 +1576,7 @@ namespace SSC {
     // the linux implementation uses glib sources for polled event sourcing
     // to actually execute our loop in tandem with glib's event loop
     std::lock_guard<std::recursive_mutex> lock(loopMutex);
-    rc = uv_run(loop, UV_RUN_NOWAIT);
+    rc = uv_run(getEventLoop(), UV_RUN_NOWAIT);
     isLoopRunning = false;
 #else
     std::lock_guard<std::recursive_mutex> lock(loopMutex);
