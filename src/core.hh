@@ -975,7 +975,7 @@ namespace SSC {
       auto sockaddr = (struct sockaddr*) &this->addr.bind;
       int err = 0;
 
-      if (this->isUDP() && !this->isBound()) {
+      if (this->isUDP()) {
         if ((err = uv_ip4_addr((char *) address.c_str(), port, &this->addr.bind))) {
           return err;
         }
@@ -1564,8 +1564,10 @@ namespace SSC {
 
     int rc = 0;
 
-    initTimers();
-    startTimers();
+    dispatchEventLoop([]() {
+      initTimers();
+      startTimers();
+    });
 
 #if defined(__APPLE__)
     std::lock_guard<std::recursive_mutex> lock(loopMutex);
