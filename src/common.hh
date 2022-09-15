@@ -409,14 +409,15 @@ namespace SSC {
     return std::string(
       "(() => {"
       "  const detail = {"
-      "    title: `" + title + "`,"
-      "    parent: `" + parent + "`,"
+      "    title: '" + title + "',"
+      "    parent: '" + parent + "',"
       "    state: '0'"
       "  };"
 
-      "  if (" + seq + " > 0 && window._ipc[" + seq + "]) {"
-      "    window._ipc[" + seq + "].resolve(detail);"
-      "    delete window._ipc[" + seq + "];"
+      "  if (" + seq + " > 0 && window._ipc['R" + seq + "']) {"
+      "    console.log('resolveMenuSelection: ' + " + seq + ");"
+      "    window._ipc['R" + seq + "'].resolve(detail);"
+      "    delete window._ipc['R" + seq + "'];"
       "    return;"
       "  }"
 
