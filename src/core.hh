@@ -707,7 +707,8 @@ namespace SSC {
     peer_flag_t flags = PEER_FLAG_NONE;
     peer_state_t state = PEER_STATE_NONE;
 
-    struct sockaddr_in addr;
+    struct sockaddr_in bindaddr;
+    struct sockaddr_in connaddr;
     std::recursive_mutex mutex;
 
     static void resumeAllBound () {
@@ -818,7 +819,6 @@ namespace SSC {
     ~Peer () {
       std::lock_guard<std::recursive_mutex> guard(this->mutex);
       Peer::remove(this->id, true); // auto close
-      memset(&this->handle, 0, sizeof(this->handle));
     }
 
     int init () {
@@ -826,14 +826,14 @@ namespace SSC {
       auto loop = getEventLoop();
       int err = 0;
 
+      memset(&this->handle, 0, sizeof(this->handle));
+
       if (this->type == PEER_TYPE_UDP) {
-        memset(&this->handle, 0, sizeof(this->handle));
         err = uv_udp_init(loop, (uv_udp_t *) &this->handle);
         this->handle.udp.data = (void *) this;
       }
 
       if (this->type == PEER_TYPE_TCP) {
-        memset(&this->handle, 0, sizeof(this->handle));
         err = uv_tcp_init(loop, (uv_tcp_t *) &this->handle);
         this->handle.tcp.data = (void *) this;
       }
@@ -843,13 +843,17 @@ namespace SSC {
 
     int initRemotePeerInfo () {
       std::lock_guard<std::recursive_mutex> guard(this->mutex);
-      this->remote.init((uv_udp_t *) &this->handle);
+      if (this->type == PEER_TYPE_UDP) {
+        this->remote.init((uv_udp_t *) &this->handle);
+      }
       return this->remote.err;
     }
 
     int initLocalPeerInfo () {
       std::lock_guard<std::recursive_mutex> guard(this->mutex);
-      this->local.init((uv_udp_t *) &this->handle);
+      if (this->type == PEER_TYPE_UDP) {
+        this->local.init((uv_udp_t *) &this->handle);
+      }
       return this->local.err;
     }
 
@@ -866,11 +870,6 @@ namespace SSC {
     bool hasState (peer_state_t value) {
       std::lock_guard<std::recursive_mutex> guard(this->mutex);
       return (value & this->state) == value;
-    }
-
-    const struct sockaddr* getSockAddr () {
-      std::lock_guard<std::recursive_mutex> guard(this->mutex);
-      return (const struct sockaddr *) &this->addr;
     }
 
     const RemotePeerInfo* getRemotePeerInfo () {
@@ -901,8 +900,8 @@ namespace SSC {
     bool isBound () {
       std::lock_guard<std::recursive_mutex> guard(this->mutex);
       return (
-        this->isUDP() && this->hasState(PEER_STATE_UDP_BOUND) ||
-        this->isTCP() && this->hasState(PEER_STATE_TCP_BOUND)
+        (this->isUDP() && this->hasState(PEER_STATE_UDP_BOUND)) ||
+        (this->isTCP() && this->hasState(PEER_STATE_TCP_BOUND))
       );
     }
 
@@ -924,16 +923,16 @@ namespace SSC {
     bool isConnected () {
       std::lock_guard<std::recursive_mutex> guard(this->mutex);
       return (
-        this->isUDP() && this->hasState(PEER_STATE_UDP_CONNECTED) ||
-        this->isTCP() && this->hasState(PEER_STATE_TCP_CONNECTED)
+        (this->isUDP() && this->hasState(PEER_STATE_UDP_CONNECTED)) ||
+        (this->isTCP() && this->hasState(PEER_STATE_TCP_CONNECTED))
       );
     }
 
     bool isPaused () {
       std::lock_guard<std::recursive_mutex> guard(this->mutex);
       return (
-        this->isUDP() && this->hasState(PEER_STATE_UDP_PAUSED) ||
-        this->isTCP() && this->hasState(PEER_STATE_TCP_PAUSED)
+        (this->isUDP() && this->hasState(PEER_STATE_UDP_PAUSED)) ||
+        (this->isTCP() && this->hasState(PEER_STATE_TCP_PAUSED))
       );
     }
 
@@ -949,15 +948,15 @@ namespace SSC {
 
     int bind (std::string address, int port) {
       std::lock_guard<std::recursive_mutex> guard(this->mutex);
-      auto sockaddr = this->getSockAddr();
+      auto sockaddr = (struct sockaddr*) &this->bindaddr;
       int err = 0;
 
       if (this->isUDP()) {
-        if ((err = uv_ip4_addr((char *) address.c_str(), port, &this->addr))) {
+        if ((err = uv_ip4_addr((char *) address.c_str(), port, &this->bindaddr))) {
           return err;
         }
 
-        if ((err = uv_udp_bind((uv_udp_t *) &this->handle, sockaddr, UV_UDP_REUSEADDR))) {
+        if ((err = uv_udp_bind((uv_udp_t *) &this->handle.udp, sockaddr, 0))) {
           return err;
         }
 
@@ -981,7 +980,7 @@ namespace SSC {
         }
       }
 
-      memset((void *) &this->addr, 0, sizeof(struct sockaddr_in));
+      memset((void *) &this->bindaddr, 0, sizeof(struct sockaddr_in));
 
       if ((err = this->bind())) {
         return err;
@@ -998,10 +997,10 @@ namespace SSC {
 
     int connect (std::string address, int port) {
       std::lock_guard<std::recursive_mutex> guard(this->mutex);
-      auto sockaddr = this->getSockAddr();
+      auto sockaddr = (struct sockaddr*) &this->connaddr;
       int err = 0;
 
-      if ((err = uv_ip4_addr((char *) address.c_str(), port, &this->addr))) {
+      if ((err = uv_ip4_addr((char *) address.c_str(), port, &this->connaddr))) {
         return err;
       }
 
@@ -1037,11 +1036,8 @@ namespace SSC {
       }
 
       if (!this->isConnected()) {
-        sockaddr = (struct sockaddr *) this->getSockAddr();
-      }
-
-      if (!this->isConnected()) {
-        err = uv_ip4_addr((char *) address.c_str(), port, &this->addr);
+        sockaddr = (struct sockaddr *) &this->connaddr;
+        err = uv_ip4_addr((char *) address.c_str(), port, &this->connaddr);
 
         if (err) {
           auto msg = SSC::format(R"MSG({
@@ -3251,7 +3247,7 @@ namespace SSC {
         "err": {
           "id": "$S",
           "code": "ERR_SOCKET_ALREADY_BOUND",
-          "message": ": Socket is already bound"
+          "message": "Socket is already bound"
         }
       })MSG", std::to_string(peerId));
       cb(seq, msg, Post{});
