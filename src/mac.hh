@@ -852,7 +852,7 @@ namespace SSC {
 
   void Window::setContextMenu (const std::string& seq, const std::string& value) {
     auto menuItems = split(value, '_');
-    auto id = std::stoi(seq);
+    auto id = std::stoi(seq.substr(1)); // remove the 'R' prefix
 
     NSPoint mouseLocation = [NSEvent mouseLocation];
     NSMenu *pMenu = [[[NSMenu alloc] initWithTitle:@"contextMenu"] autorelease];
