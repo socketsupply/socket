@@ -1569,7 +1569,7 @@ static dispatch_queue_t queue = dispatch_queue_create("co.socketsupply.queue.cor
     return;
   }
 
-  if (cmd.name == "post") {
+  if (cmd.name == "post" || cmd.name == "data") {
     NSMutableDictionary* httpHeaders = [NSMutableDictionary dictionary];
     uint64_t postId = std::stoull(cmd.get("id"));
     auto post = self.bridge.core->getPost(postId);

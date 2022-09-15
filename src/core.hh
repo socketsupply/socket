@@ -341,9 +341,6 @@ namespace SSC {
   struct Descriptor;
   struct DescriptorRequestContext;
 
-  static constexpr int EVENT_LOOP_POLL_TIMEOUT = 32; // in milliseconds
-  static uv_loop_t eventLoop = {0};
-
   static std::map<uint64_t, Peer*> peers;
   static std::map<uint64_t, Descriptor*> descriptors;
 
@@ -360,6 +357,9 @@ namespace SSC {
 
   static std::atomic<bool> isLoopRunning = false;
 
+  static constexpr int EVENT_LOOP_POLL_TIMEOUT = 32; // in milliseconds
+  static uv_loop_t eventLoop = {0};
+
 #if defined(__APPLE__)
   static dispatch_queue_attr_t eventLoopQueueAttrs = dispatch_queue_attr_make_with_qos_class(
     DISPATCH_QUEUE_SERIAL,
@@ -367,25 +367,48 @@ namespace SSC {
     -1
   );
 
-  static dispatch_queue_t eventLoopQueue = dispatch_queue_create("co.socketsupply.queue.event-loop", eventLoopQueueAttrs);
-  static dispatch_semaphore_t eventLoopSemaphore = dispatch_semaphore_create(1);
+  static dispatch_queue_t eventLoopQueue = dispatch_queue_create(
+    "co.socketsupply.queue.event-loop",
+    eventLoopQueueAttrs
+  );
 #else
-  static std::binary_semaphore eventLoopSemaphore = {0};
   static std::thread *eventLoopThread = nullptr;
 #endif
 
   struct Descriptor {
     uv_file fd = 0;
     uv_dir_t *dir = nullptr;
-    // 256 which corresponds to DirectoryHandle.MAX_BUFFER_SIZE
-    uv_dirent_t dirents[256];
     String seq;
     Cb cb;
     uint64_t id;
-    bool retained = false;
-    bool stale = false;
+    std::atomic<bool> retained = false;
+    std::atomic<bool> stale = false;
     std::recursive_mutex mutex;
     void *data;
+
+    static Descriptor * get (uint64_t id) {
+      std::lock_guard<std::recursive_mutex> guard(descriptorsMutex);
+      if (descriptors.find(id) != descriptors.end()) {
+        return descriptors.at(id);
+      }
+      return nullptr;
+    }
+
+    static void remove (uint64_t id) {
+      std::lock_guard<std::recursive_mutex> guard(descriptorsMutex);
+      if (descriptors.find(id) != descriptors.end()) {
+        descriptors.erase(id);
+      }
+    }
+
+    static bool exists (uint64_t id) {
+      std::lock_guard<std::recursive_mutex> guard(descriptorsMutex);
+      return descriptors.find(id) != descriptors.end();
+    }
+
+    Descriptor (uint64_t id) {
+      this->id = id;
+    }
   };
 
   struct Timer {
@@ -403,30 +426,26 @@ namespace SSC {
       .timeout = 256, // in milliseconds
       .invoke = [](uv_timer_t *handle) {
         std::lock_guard<std::recursive_mutex> descriptorsGuard(descriptorsMutex);
-        std::lock_guard<std::recursive_mutex> timersGuard(timersMutex);
-
         std::vector<uint64_t> ids;
         std::string msg = "";
 
         auto core = reinterpret_cast<Core *>(handle->data);
 
-        for (auto const &tuple : SSC::descriptors) {
+        for (auto const &tuple : descriptors) {
           ids.push_back(tuple.first);
         }
 
         for (auto const id : ids) {
-          auto desc = SSC::descriptors[id];
+          auto desc = descriptors.at(id);
 
           if (desc == nullptr) {
-            SSC::descriptors.erase(id);
+            descriptors.erase(id);
             continue;
           }
 
           if (desc->retained || !desc->stale) {
             continue;
           }
-
-          // printf("Releasing weak descriptor %llu\n", desc->id);
 
           if (desc->dir != nullptr) {
             core->fsClosedir("", desc->id, [](auto seq, auto msg, auto post) {
@@ -438,7 +457,7 @@ namespace SSC {
             });
           } else {
             // free
-            SSC::descriptors.erase(id);
+            descriptors.erase(id);
             delete desc;
           }
         }
@@ -446,14 +465,19 @@ namespace SSC {
     };
   };
 
+  // timers
   static Timers timers;
-
   static void initTimers ();
   static void startTimers ();
+
+  // loop
   static uv_loop_t* getEventLoop ();
+  static int getEventLoopTimeout ();
+  static bool isLoopAlive ();
   static int runEventLoop ();
   static int runEventLoop (uv_run_mode);
   static void stopEventLoop ();
+  static void dispatchEventLoop (std::function<void(uv_loop_t *)> dispatch);
 
   static String addrToIPv4 (struct sockaddr_in* sin) {
     char buf[INET_ADDRSTRLEN];
@@ -507,6 +531,10 @@ namespace SSC {
     String seq;
     Cb cb;
     Peer* peer;
+    char *buf;
+    int bufsize;
+    String address;
+    int port;
 
     PeerRequestContext () {
       this->id = SSC::rand64();
@@ -526,8 +554,11 @@ namespace SSC {
     }
 
     void end (String seq, String msg, Post post) {
-      this->cb(seq, msg, post);
+      auto cb = this->cb;
       delete this;
+      if (cb != nullptr) {
+        cb(seq, msg, post);
+      }
     }
 
     void end (String seq, String msg) {
@@ -718,13 +749,15 @@ namespace SSC {
      */
     static void remove (uint64_t peerId) { return Peer::remove(peerId, false); }
     static void remove (uint64_t peerId, bool autoClose) {
-      std::lock_guard<std::recursive_mutex> guard(peersMutex);
       if (Peer::exists(peerId)) {
         if (autoClose) {
           auto peer = Peer::get(peerId);
-          peer->close();
+          if (peer != nullptr) {
+            peer->close();
+          }
         }
 
+        std::lock_guard<std::recursive_mutex> guard(peersMutex);
         peers.erase(peerId);
       }
     }
@@ -733,8 +766,8 @@ namespace SSC {
      * Get a peer by `peerId` returning `nullptr` if it doesn't exist.
      */
     static Peer* get (uint64_t peerId) {
-      std::lock_guard<std::recursive_mutex> guard(peersMutex);
       if (!Peer::exists(peerId)) return nullptr;
+      std::lock_guard<std::recursive_mutex> guard(peersMutex);
       return peers.at(peerId);
     }
 
@@ -750,18 +783,20 @@ namespace SSC {
       uint64_t peerId,
       bool isEphemeral
     ) {
-      std::lock_guard<std::recursive_mutex> guard(peersMutex);
-
       if (Peer::exists(peerId)) {
         auto peer = Peer::get(peerId);
-        if (isEphemeral) {
-          peer->flags = (peer_flag_t) (peer->flags | PEER_FLAG_EPHEMERAL);
+        if (peer != nullptr) {
+          std::lock_guard<std::recursive_mutex> guard(peer->mutex);
+          if (isEphemeral) {
+            peer->flags = (peer_flag_t) (peer->flags | PEER_FLAG_EPHEMERAL);
+          }
         }
 
         return peer;
       }
 
       auto peer = new Peer(peerType, peerId, isEphemeral);
+      std::lock_guard<std::recursive_mutex> guard(peersMutex);
       peers[peer->id] = peer;
       return peer;
     }
@@ -770,8 +805,6 @@ namespace SSC {
      * Private `Peer` class constructor
      */
     Peer (peer_type_t peerType, uint64_t peerId, bool isEphemeral) {
-      std::lock_guard<std::recursive_mutex> guard(peersMutex);
-
       this->id = peerId;
       this->type = peerType;
 
@@ -905,7 +938,6 @@ namespace SSC {
     }
 
     int bind () {
-      std::lock_guard<std::recursive_mutex> guard(this->mutex);
       auto info = this->getLocalPeerInfo();
 
       if (info->err) {
@@ -917,7 +949,6 @@ namespace SSC {
 
     int bind (std::string address, int port) {
       std::lock_guard<std::recursive_mutex> guard(this->mutex);
-
       auto sockaddr = this->getSockAddr();
       int err = 0;
 
@@ -1097,11 +1128,10 @@ namespace SSC {
     }
 
     int recvstart (Cb onrecv) {
+      std::lock_guard<std::recursive_mutex> guard(this->mutex);
       if (this->hasState(PEER_STATE_UDP_RECV_STARTED)) {
         return UV_EALREADY;
       }
-
-      std::lock_guard<std::recursive_mutex> guard(this->mutex);
 
       this->recv = onrecv;
       this->setState(PEER_STATE_UDP_RECV_STARTED);
@@ -1114,17 +1144,14 @@ namespace SSC {
         }
       };
 
-      auto recv = [](
+      auto receive = [](
         uv_udp_t *handle,
         ssize_t nread,
         const uv_buf_t *buf,
         const struct sockaddr *addr,
         unsigned flags
       ) {
-        std::lock_guard<std::recursive_mutex> guard(peersMutex);
         auto peer = (Peer *) handle->data;
-
-        // printf("uv_udp_recv_start(%d): %s\n", nread, uv_strerror(nread));
 
         if (nread <= 0) {
           if (buf && buf->base) {
@@ -1184,15 +1211,15 @@ namespace SSC {
         }
       };
 
-      return uv_udp_recv_start((uv_udp_t *) &this->handle, allocate, recv);;
+      return uv_udp_recv_start((uv_udp_t *) &this->handle, allocate, receive);
     }
 
     int recvstop () {
-      std::lock_guard<std::recursive_mutex> guard(this->mutex);
       int rc = 0;
 
       if (this->hasState(PEER_STATE_UDP_RECV_STARTED)) {
         this->removeState(PEER_STATE_UDP_RECV_STARTED);
+        std::lock_guard<std::recursive_mutex> guard(this->mutex);
         rc = uv_udp_recv_stop((uv_udp_t *) &this->handle);
       }
 
@@ -1200,7 +1227,6 @@ namespace SSC {
     }
 
     int resume () {
-      std::lock_guard<std::recursive_mutex> guard(this->mutex);
       int rc = 0;
 
       if ((rc = this->init())) {
@@ -1217,7 +1243,6 @@ namespace SSC {
     }
 
     int pause () {
-      std::lock_guard<std::recursive_mutex> guard(this->mutex);
       int rc = 0;
 
       if ((rc = this->recvstop())) {
@@ -1226,6 +1251,7 @@ namespace SSC {
 
       if (!this->isPaused() && !this->isClosing()) {
         this->setState(PEER_STATE_UDP_PAUSED);
+        std::lock_guard<std::recursive_mutex> guard(this->mutex);
         uv_close((uv_handle_t *) &this->handle, nullptr);
       }
 
@@ -1239,14 +1265,13 @@ namespace SSC {
     }
 
     void close (std::function<void(Peer *)> onclose) {
+      std::lock_guard<std::recursive_mutex> guard(this->mutex);
       if (!this->isActive()) {
-        std::lock_guard<std::recursive_mutex> guard(this->mutex);
         Peer::remove(this->id);
         return onclose(this);
       }
 
       if (this->isClosed()) {
-        std::lock_guard<std::recursive_mutex> guard(this->mutex);
         Peer::remove(this->id);
         return onclose(this);
       }
@@ -1258,7 +1283,6 @@ namespace SSC {
       }
 
       if (this->type == PEER_TYPE_UDP) {
-        std::lock_guard<std::recursive_mutex> guard(this->mutex);
         // reset state and set to CLOSED
         this->state = PEER_STATE_CLOSED;
 
@@ -1282,28 +1306,35 @@ namespace SSC {
     uint64_t id;
     String seq = "";
     Descriptor *desc = nullptr;
-    uv_fs_t *req = nullptr;
+    uv_fs_t req;
     uv_buf_t iov[16];
+    // 256 which corresponds to DirectoryHandle.MAX_BUFFER_SIZE
+    uv_dirent_t dirents[256];
+    uv_loop_t *loop;
     int offset = 0;
+    int result = 0;
     Cb cb;
 
-    DescriptorRequestContext (Descriptor *d) {
+    DescriptorRequestContext () {}
+    DescriptorRequestContext (Descriptor *desc)
+      : DescriptorRequestContext(desc, "", nullptr) {}
+    DescriptorRequestContext (String seq, Cb cb)
+      : DescriptorRequestContext(nullptr, seq, cb) {}
+    DescriptorRequestContext (Descriptor *desc, String seq, Cb cb) {
       this->id = SSC::rand64();
-      this->desc = d;
+      this->cb = cb;
+      this->seq = seq;
+      this->desc = desc;
+      this->loop = getEventLoop();
+      this->req.data = (void *) this;
     }
 
-    DescriptorRequestContext (Descriptor *d, String s, Cb c)
-      : DescriptorRequestContext(d, s, c, nullptr)
-    {
-      // noop
-    }
+    ~DescriptorRequestContext () {
+      if (this->req.ptr) {
+        delete [] (char *) this->req.ptr;
+      }
 
-    DescriptorRequestContext (Descriptor *d, String s, Cb c, uv_fs_t *r) {
-      this->id = SSC::rand64();
-      this->cb = c;
-      this->seq = s;
-      this->req = r;
-      this->desc = d;
+      uv_fs_req_cleanup(&this->req);
     }
 
     void setBuffer (int index, int len, char *base) {
@@ -1329,16 +1360,12 @@ namespace SSC {
     }
 
     void end (String seq, String msg, Post post) {
-      auto callback = this->cb;
+      auto cb = this->cb;
 
-      this->cb = nullptr;
-
-      uv_fs_req_cleanup(req);
-      delete this->req;
       delete this;
 
-      if (callback != nullptr) {
-        callback(seq, msg, post);
+      if (cb != nullptr) {
+        cb(seq, msg, post);
       }
     }
 
@@ -1347,11 +1374,11 @@ namespace SSC {
     }
 
     void end (String msg, Post post) {
-      this->end(seq, msg, post);
+      this->end(this->seq, msg, post);
     }
 
     void end (String msg) {
-      this->end(seq, msg, Post{});
+      this->end(this->seq, msg, Post{});
     }
   };
 
@@ -1366,12 +1393,11 @@ namespace SSC {
     .prepare = [](GSource *source, gint *timeout) -> gboolean {
       auto loop = getEventLoop();
 
-      if (!uv_loop_alive(loop)) {
+      if (!isLoopAlive()) {
         return false;
       }
 
-      uv_update_time(loop);
-      *timeout = uv_backend_timeout(loop);
+      *timeout = getEventLoopTimeout();
       return 0 == *timeout;
     },
 
@@ -1392,8 +1418,6 @@ namespace SSC {
     didLoopInit = true;
     uv_loop_init(&eventLoop);
 
-#if !defined(__APPLE__)
-    eventLoopSemaphore.release();
 #if defined(__linux__) && !defined(__ANDROID__)
     GSource *source = g_source_new(&loopSourceFunctions, sizeof(UVSource));
     UVSource *uvSource = (UVSource *) source;
@@ -1405,7 +1429,6 @@ namespace SSC {
 
     g_source_attach(source, nullptr);
 #endif
-#endif
   }
 
   static uv_loop_t* getEventLoop () {
@@ -1413,194 +1436,138 @@ namespace SSC {
     return &eventLoop;
   }
 
+  static int getEventLoopTimeout () {
+    auto loop = getEventLoop();
+    uv_update_time(loop);
+    return uv_backend_timeout(loop);
+  }
+
+  static bool isLoopAlive () {
+    return uv_loop_alive(getEventLoop());
+  }
+
   static void stopEventLoop() {
     isLoopRunning = false;
     uv_stop(&eventLoop);
+    std::lock_guard<std::recursive_mutex> lock(loopMutex);
 #if defined(__ANDROID__)
     if (eventLoopThread != nullptr) {
-      eventLoopSemaphore.acquire();
       if (eventLoopThread->joinable()) {
         eventLoopThread->join();
       }
 
       delete eventLoopThread;
       eventLoopThread = nullptr;
-      eventLoopSemaphore.release();
     }
 #endif
   }
 
   static void sleepEventLoop (int64_t ms) {
-    if (ms >= 0) {
-      auto loop = getEventLoop();
-      uv_update_time(loop);
-      auto timeout = uv_backend_timeout(loop);
+    if (ms > 0) {
+      auto timeout = getEventLoopTimeout();
       ms = timeout > ms ? timeout : ms;
       std::this_thread::sleep_for(std::chrono::milliseconds(ms));
     }
   }
 
   static void sleepEventLoop () {
+    sleepEventLoop(getEventLoopTimeout());
+  }
+
+  struct EventLoopDispatchContext {
+    typedef std::function<void()> Callback;
+    uv_async_t async;
+    uv_handle_t *handle;
+    Callback dispatch;
+
+    EventLoopDispatchContext (Callback dispatch) {
+      this->dispatch = dispatch;
+      this->handle = (uv_handle_t *) &this->async;
+      this->handle->data = this;
+    }
+
+    void close () {
+      uv_close(this->handle, [](uv_handle_t *handle) {
+        if (handle != nullptr) {
+          delete (EventLoopDispatchContext *) handle->data;
+        }
+      });
+    }
+  };
+
+  static void dispatchEventLoop (EventLoopDispatchContext::Callback dispatch) {
+    std::lock_guard<std::recursive_mutex> lock(loopMutex);
     auto loop = getEventLoop();
-    sleepEventLoop(uv_backend_timeout(loop));
+    auto ctx = new EventLoopDispatchContext(dispatch);
+
+    uv_async_init(loop, &ctx->async, [](uv_async_t *async) {
+      auto self = (EventLoopDispatchContext *) async->data;
+      self->dispatch();
+      self->close();
+    });
+
+    uv_async_send(&ctx->async);
+    runEventLoop();
+  }
+
+  static int pollEventLoop () {
+    auto loop = getEventLoop();
+
+    while (isLoopRunning) {
+      sleepEventLoop(EVENT_LOOP_POLL_TIMEOUT);
+
+      do {
+        auto timeout = getEventLoopTimeout();
+        if (timeout >= 0) {
+          uv_run(loop, UV_RUN_DEFAULT);
+        } else {
+          do {
+            std::lock_guard<std::recursive_mutex> lock(loopMutex);
+            if (!isLoopRunning || !uv_run(loop, UV_RUN_NOWAIT)) {
+              break;
+            }
+          }
+          while (isLoopAlive() && getEventLoopTimeout() == -1);
+        }
+      } while (isLoopRunning && isLoopAlive());
+    }
+
+    isLoopRunning = false;
   }
 
   static int runEventLoop () {
-#if defined(__ANDROID__) || defined(__APPLE__) || defined(__linux__)
-    return runEventLoop(UV_RUN_NOWAIT);
-#else
-    return runEventLoop(UV_RUN_DEFAULT);
-#endif
-  }
-
-  static int runEventLoop (uv_run_mode mode) {
     if (isLoopRunning) {
       return 0;
     }
 
     isLoopRunning = true;
 
-    auto loop = getEventLoop();
     int rc = 0;
 
     initTimers();
     startTimers();
-    uv_update_time(loop);
 
 #if defined(__APPLE__)
-    if (!uv_loop_alive(loop)) {
-      isLoopRunning = false;
-      dispatch_semaphore_signal(eventLoopSemaphore);
-      return 0;
-    }
-
-    auto timeout = uv_backend_timeout(loop);
-
-    if (timeout == -1) {
-      dispatch_async(eventLoopQueue, ^{
-        std::lock_guard<std::recursive_mutex> loopGuard(loopMutex);
-
-        if (!isLoopRunning || !uv_loop_alive(loop)) {
-          isLoopRunning = false;
-          dispatch_semaphore_signal(eventLoopSemaphore);
-          return;
-        }
-
-        do {
-          uv_update_time(loop);
-        } while (
-          isLoopRunning &&
-          uv_run(loop, mode) &&
-          uv_loop_alive(loop) &&
-          uv_backend_timeout(loop) == -1
-        );
-
-        isLoopRunning = false;
-      });
-
-      return 0;
-    }
-
-    dispatch_semaphore_wait(eventLoopSemaphore, DISPATCH_TIME_FOREVER);;
-
-    dispatch_source_t loopPoll = dispatch_source_create(
-      DISPATCH_SOURCE_TYPE_TIMER,
-      0,
-      0,
-      eventLoopQueue
-    );
-
-    dispatch_source_set_timer(
-      loopPoll,
-      dispatch_time(DISPATCH_TIME_NOW, timeout*0.001 * NSEC_PER_SEC),
-      DISPATCH_TIME_FOREVER, // interval
-      timeout*0.001 * NSEC_PER_SEC // max interval timeout ("leeway")
-    );
-
-    dispatch_source_set_event_handler(loopPoll, ^{
-      uv_update_time(loop);
-
-      if (!isLoopRunning || !uv_loop_alive(loop)) {
-        isLoopRunning = false;
-        dispatch_source_cancel(loopPoll); // cancel if no more work to poll
-        dispatch_semaphore_signal(eventLoopSemaphore);
-        return;
-      }
-
-      do {
-        uv_update_time(loop);
-      } while (
-        isLoopRunning &&
-        uv_run(loop, mode) &&
-        uv_loop_alive(loop) &&
-        uv_backend_timeout(loop) == -1
-      );
-
-      if (!isLoopRunning) { // likely form `stopEventLoop()`
-        dispatch_source_cancel(loopPoll);
-        dispatch_semaphore_signal(eventLoopSemaphore);
-        return;
-      }
-
-      uv_update_time(loop);
-      auto timeout = uv_backend_timeout(loop);
-      if (timeout == -1) {
-        timeout = EVENT_LOOP_POLL_TIMEOUT;
-      }
-
-      // update poll timeout
-      dispatch_source_set_timer(
-        loopPoll,
-        dispatch_time(DISPATCH_TIME_NOW, timeout*0.001 * NSEC_PER_SEC),
-        DISPATCH_TIME_FOREVER, // interval
-        timeout*0.001 * NSEC_PER_SEC // max interval timeout ("leeway")
-      );
-    });
-
-    dispatch_resume(loopPoll);
+    std::lock_guard<std::recursive_mutex> lock(loopMutex);
+    dispatch_async(eventLoopQueue, ^{ pollEventLoop(); });
 #elif defined(__linux__) && !defined(__ANDROID__) // linux desktop
     // the linux implementation uses glib sources for polled event sourcing
     // to actually execute our loop in tandem with glib's event loop
-    if (mode == UV_RUN_DEFAULT) {
-      rc = uv_run(loop, mode);
-    } else {
-      std::lock_guard<std::recursive_mutex> loopGuard(loopMutex);
-      sleepEventLoop();
-      rc = uv_run(loop, mode);
-    }
+    std::lock_guard<std::recursive_mutex> lock(loopMutex);
+    rc = uv_run(loop, UV_RUN_NOWAIT);
     isLoopRunning = false;
 #else
-    eventLoopSemaphore.acquire(); // wait
-    std::lock_guard<std::recursive_mutex> loopGuard(loopMutex);
-
+    std::lock_guard<std::recursive_mutex> lock(loopMutex);
     if (eventLoopThread != nullptr) {
-      if(eventLoopThread->joinable()) {
+      if (eventLoopThread->joinable()) {
         eventLoopThread->join();
       }
 
       delete eventLoopThread;
+      eventLoopThread = nullptr;
     }
 
-    eventLoopThread = new std::thread([loop, mode]() {
-      //debug("start eventLoopThread");
-      // main loop in thread to poll and spin the event loop
-      while (isLoopRunning) {
-        sleepEventLoop(EVENT_LOOP_POLL_TIMEOUT);
-
-        do {
-          std::lock_guard<std::recursive_mutex> loopGuard(loopMutex);
-          sleepEventLoop();
-        } while (
-          isLoopRunning &&
-          uv_run(loop, mode) &&
-          uv_loop_alive(loop)
-        );
-      }
-
-      //debug("finish eventLoopThread");
-      isLoopRunning = false;
-      eventLoopSemaphore.release(); // signal
-    });
+    eventLoopThread = new std::thread(&pollEventLoop);
 #endif
 
     return rc;
@@ -1680,13 +1647,12 @@ namespace SSC {
   } write_req_t;
 
   void Core::fsRetainOpenDescriptor (String seq, uint64_t id, Cb cb) const {
-    std::lock_guard<std::recursive_mutex> loopGuard(loopMutex);
-    std::lock_guard<std::recursive_mutex> guard(descriptorsMutex);
-
-    auto desc = descriptors[id];
+    auto desc = Descriptor::get(id);
+    auto ctx = new DescriptorRequestContext(seq, cb);
+    std::string msg;
 
     if (desc == nullptr) {
-      auto msg = SSC::format(R"MSG({
+      msg = SSC::format(R"MSG({
         "source": "fs.retainOpenDescriptor",
         "err": {
           "id": "$S",
@@ -1695,22 +1661,18 @@ namespace SSC {
           "message": "No file descriptor found with that id"
         }
       })MSG", std::to_string(id));
-
-      cb(seq, msg, Post{});
-      return;
+    } else {
+      std::lock_guard<std::recursive_mutex> descriptorLock(desc->mutex);
+      desc->retained = true;
+      auto msg = SSC::format(R"MSG({
+        "source": "fs.retainOpenDescriptor",
+        "data": {
+          "id": "$S"
+        }
+      })MSG", std::to_string(desc->id));
     }
 
-    std::lock_guard<std::recursive_mutex> descriptorLock(desc->mutex);
-    desc->retained = true;
-    auto msg = SSC::format(R"MSG({
-      "source": "fs.retainOpenDescriptor",
-      "data": {
-        "id": "$S"
-      }
-    })MSG", std::to_string(desc->id)
-    );
-
-    cb(seq, msg, Post{});
+    ctx->end(msg);
   }
 
   void Core::handleEvent (String seq, String event, String data, Cb cb) const {
@@ -1718,13 +1680,13 @@ namespace SSC {
     if (event == "domcontentloaded") {
       std::lock_guard<std::recursive_mutex> guard(descriptorsMutex);
 
-      for (auto const &tuple : SSC::descriptors) {
+      for (auto const &tuple : descriptors) {
         auto desc = tuple.second;
         if (desc != nullptr) {
           std::lock_guard<std::recursive_mutex> descriptorLock(desc->mutex);
           desc->stale = true;
         } else {
-          SSC::descriptors.erase(tuple.first);
+          descriptors.erase(tuple.first);
         }
       }
     }
@@ -1769,18 +1731,20 @@ namespace SSC {
   }
 
   void Core::expirePosts () {
-    std::lock_guard<std::recursive_mutex> guard(postsMutex);
     std::vector<uint64_t> ids;
     auto now = std::chrono::system_clock::now()
       .time_since_epoch()
       .count();
 
-    for (auto const &tuple : *posts) {
-      auto id = tuple.first;
-      auto post = tuple.second;
+    {
+      std::lock_guard<std::recursive_mutex> guard(postsMutex);
+      for (auto const &tuple : *posts) {
+        auto id = tuple.first;
+        auto post = tuple.second;
 
-      if (post.ttl < now) {
-        ids.push_back(id);
+        if (post.ttl < now) {
+          ids.push_back(id);
+        }
       }
     }
 
@@ -1795,10 +1759,10 @@ namespace SSC {
   }
 
   void Core::removePost (uint64_t id) {
-    std::lock_guard<std::recursive_mutex> guard(postsMutex);
     if (posts->find(id) == posts->end()) return;
     auto post = getPost(id);
 
+    std::lock_guard<std::recursive_mutex> guard(postsMutex);
     if (post.body && post.bodyNeedsFree) {
       delete [] post.body;
       post.bodyNeedsFree = false;
@@ -1844,7 +1808,7 @@ namespace SSC {
       "    ),"
       "    params: o"
       "  };"
-      "  window._ipc.emit('data', detail);"
+      "  queueMicrotask(() => window._ipc.emit('data', detail));"
       "};"
       "xhr.open('GET', 'ipc://post?id=" + sid + "');"
       "xhr.send();"
@@ -1856,9 +1820,21 @@ namespace SSC {
   }
 
   void Core::removeAllPosts () {
-    std::lock_guard<std::recursive_mutex> guard(postsMutex);
-    for (auto const &tuple : *posts) {
-      removePost(tuple.first);
+    std::vector<uint64_t> ids;
+    auto now = std::chrono::system_clock::now()
+      .time_since_epoch()
+      .count();
+
+    {
+      std::lock_guard<std::recursive_mutex> guard(postsMutex);
+      for (auto const &tuple : *posts) {
+        auto id = tuple.first;
+        ids.push_back(id);
+      }
+    }
+
+    for (auto const id : ids) {
+      removePost(id);
     }
   }
 
@@ -1888,23 +1864,12 @@ namespace SSC {
   }
 
   void Core::fsAccess (String seq, String path, int mode, Cb cb) const {
-    auto filename = path.c_str();
-    auto loop = getEventLoop();
-    auto desc = new Descriptor;
-    auto req = new uv_fs_t;
+    dispatchEventLoop([=]() {
+      auto filename = path.c_str();
+      auto ctx = new DescriptorRequestContext(seq, cb);
 
-    desc->seq = seq;
-    desc->cb = cb;
-
-    req->data = desc;
-
-    int err = 0;
-    {
-      std::unique_lock<std::recursive_mutex> loopGuard(loopMutex);
-      err = uv_fs_access(loop, req, filename, mode, [](uv_fs_t* req) {
-        auto desc = static_cast<Descriptor*>(req->data);
-        auto seq = desc->seq;
-        auto cb = desc->cb;
+      auto err = uv_fs_access(ctx->loop, &ctx->req, filename, mode, [](uv_fs_t* req) {
+        auto ctx = (DescriptorRequestContext *) req->data;
         std::string msg;
 
         if (req->result < 0) {
@@ -1915,60 +1880,41 @@ namespace SSC {
               "message": "$S"
             }
           })MSG",
-          std::to_string(req->result), String(uv_strerror(req->result)));
+          std::to_string(req->result),
+          String(uv_strerror(req->result)));
         } else {
           msg = SSC::format(R"MSG({
             "source": "fs.access",
-            "data": { "mode": $S }
-          })MSG",
-          std::to_string(req->flags));
+            "data": {
+              "mode": $S
+            }
+          })MSG", std::to_string(req->flags));
         }
 
-        uv_fs_req_cleanup(req);
-        delete desc;
-        delete req;
-
-        cb(seq, msg, Post{});
+        ctx->end(msg);
       });
-    }
 
-    if (err < 0) {
-      auto msg = SSC::format(R"MSG({
-        "source": "fs.access",
-        "err": {
-          "code": $S,
-          "message": "$S"
-        }
-      })MSG",
-      std::to_string(err), String(uv_strerror(err)));
+      if (err < 0) {
+        auto msg = SSC::format(R"MSG({
+          "source": "fs.access",
+          "err": {
+            "code": $S,
+            "message": "$S"
+          }
+        })MSG", std::to_string(err), String(uv_strerror(err)));
 
-      delete desc;
-      delete req;
-
-      cb(seq, msg, Post{});
-      return;
-    }
-
-    runEventLoop();
+        ctx->end(msg);
+      }
+    });
   }
 
   void Core::fsChmod (String seq, String path, int mode, Cb cb) const {
-    auto filename = path.c_str();
-    auto loop = getEventLoop();
-    auto desc = new Descriptor;
-    auto req = new uv_fs_t;
+    dispatchEventLoop([=]() {
+      auto filename = path.c_str();
+      auto ctx = new DescriptorRequestContext(seq, cb);
 
-    desc->seq = seq;
-    desc->cb = cb;
-
-    req->data = desc;
-
-    int err = 0;
-    {
-      std::unique_lock<std::recursive_mutex> loopGuard(loopMutex);
-      err = uv_fs_chmod(loop, req, filename, mode, [](uv_fs_t* req) {
-        auto desc = static_cast<Descriptor*>(req->data);
-        auto seq = desc->seq;
+      auto err = uv_fs_chmod(ctx->loop, &ctx->req, filename, mode, [](uv_fs_t* req) {
+        auto ctx = (DescriptorRequestContext *) req->data;
         std::string msg;
 
         if (req->result < 0) {
@@ -1979,7 +1925,8 @@ namespace SSC {
               "message": "$S"
             }
           })MSG",
-          std::to_string(req->result), String(uv_strerror(req->result)));
+          std::to_string(req->result),
+          String(uv_strerror(req->result)));
         } else {
           msg = SSC::format(R"MSG({
             "source": "fs.chmod",
@@ -1989,60 +1936,32 @@ namespace SSC {
           })MSG", std::to_string(req->flags));
         }
 
-        uv_fs_req_cleanup(req);
-        delete desc;
-        delete req;
-
-        desc->cb(seq, msg, Post{});
+        ctx->end(msg);
       });
-    }
 
-    if (err < 0) {
-      auto msg = SSC::format(R"MSG({
-        "source": "fs.chmod",
-        "err": {
-          "code": $S,
-          "message": "$S"
-        }
-      })MSG",
-      std::to_string(err), String(uv_strerror(err)));
+      if (err < 0) {
+        auto msg = SSC::format(R"MSG({
+          "source": "fs.chmod",
+          "err": {
+            "code": $S,
+            "message": "$S"
+          }
+        })MSG", std::to_string(err), String(uv_strerror(err)));
 
-      delete desc;
-      delete req;
-
-      cb(seq, msg, Post{});
-      return;
-    }
-
-    runEventLoop();
+        ctx->end(msg);
+      }
+    });
   }
 
   void Core::fsOpen (String seq, uint64_t id, String path, int flags, int mode, Cb cb) const {
-    std::unique_lock<std::recursive_mutex> guard(descriptorsMutex);
+    dispatchEventLoop([=]() {
+      auto filename = path.c_str();
+      auto desc = new Descriptor(id);
+      auto ctx = new DescriptorRequestContext(desc, seq, cb);
 
-    auto desc = descriptors[id] = new Descriptor;
-    guard.unlock();
-
-    auto filename = path.c_str();
-    auto loop = getEventLoop();
-    auto req = new uv_fs_t;
-
-    std::lock_guard<std::recursive_mutex> descriptorLock(desc->mutex);
-    desc->id = id;
-    desc->cb = cb;
-    desc->seq = seq;
-
-    req->data = desc;
-
-    int err = 0;
-    {
-      std::lock_guard<std::recursive_mutex> loopGuard(loopMutex);
-      err = uv_fs_open(loop, req, filename, flags, mode, [](uv_fs_t* req) {
-        auto desc = static_cast<Descriptor*>(req->data);
-        std::lock_guard<std::recursive_mutex> descriptorLock(desc->mutex);
-
-        auto seq = desc->seq;
-        auto cb = desc->cb;
+      auto err = uv_fs_open(ctx->loop, &ctx->req, filename, flags, mode, [](uv_fs_t* req) {
+        auto ctx = (DescriptorRequestContext *) req->data;
+        auto desc = ctx->desc;
         std::string msg;
 
         if (req->result < 0) {
@@ -2050,16 +1969,16 @@ namespace SSC {
             "source": "fs.open",
             "err": {
               "id": "$S",
+              "code": $S,
               "message": "$S"
             }
           })MSG",
-          std::to_string(desc->id), String(uv_strerror((int)req->result)));
+          std::to_string(desc->id),
+          std::to_string(req->result),
+          String(uv_strerror(req->result)));
 
-          std::lock_guard<std::recursive_mutex> guard(descriptorsMutex);
-          SSC::descriptors.erase(desc->id);
           delete desc;
         } else {
-          desc->fd = (int) req->result;
           msg = SSC::format(R"MSG({
             "source": "fs.open",
             "data": {
@@ -2067,62 +1986,46 @@ namespace SSC {
               "fd": $S
             }
           })MSG",
-          std::to_string(desc->id), std::to_string(desc->fd));
+          std::to_string(desc->id),
+          std::to_string(req->result));
+
+          // insert into `descriptors` map
+          std::lock_guard<std::recursive_mutex> guard(descriptorsMutex);
+          desc->fd = (int) req->result;
+          descriptors.insert_or_assign(desc->id, desc);
         }
 
-        uv_fs_req_cleanup(req);
-        delete req;
-
-        cb(seq, msg, Post{});
+        ctx->end(msg);
       });
-    }
 
-    if (err < 0) {
-      auto msg = SSC::format(R"MSG({
-        "source": "fs.open",
-        "err": {
-          "id": "$S",
-          "message": "$S"
-        }
-      })MSG", std::to_string(id), String(uv_strerror(err)));
+      if (err < 0) {
+        auto msg = SSC::format(R"MSG({
+          "source": "fs.open",
+          "err": {
+            "id": "$S",
+            "code": $S,
+            "message": "$S"
+          }
+        })MSG",
+        std::to_string(id),
+        std::to_string(err),
+        String(uv_strerror(err)));
 
-      SSC::descriptors.erase(desc->id);
-      delete desc;
-      delete req;
-
-      cb(seq, msg, Post{});
-      return;
-    }
-
-    runEventLoop();
+        delete desc;
+        ctx->end(msg);
+      }
+    });
   }
 
   void Core::fsOpendir(String seq, uint64_t id, String path, Cb cb) const {
-    std::unique_lock<std::recursive_mutex> guard(descriptorsMutex);
-    auto desc = descriptors[id] = new Descriptor;
-    guard.unlock();
+    dispatchEventLoop([=]() {
+      auto filename = path.c_str();
+      auto desc =  new Descriptor(id);
+      auto ctx = new DescriptorRequestContext(desc, seq, cb);
 
-    auto filename = path.c_str();
-    auto loop = getEventLoop();
-    auto req = new uv_fs_t;
-
-    std::lock_guard<std::recursive_mutex> descriptorLock(desc->mutex);
-    desc->id = id;
-    desc->cb = cb;
-    desc->seq = seq;
-    desc->dir = nullptr;
-
-    req->data = desc;
-
-    int err = 0;
-    {
-      std::lock_guard<std::recursive_mutex> loopGuard(loopMutex);
-      err = uv_fs_opendir(loop, req, filename, [](uv_fs_t *req) {
-        auto desc = static_cast<Descriptor*>(req->data);
-
-        std::lock_guard<std::recursive_mutex> descriptorLock(desc->mutex);
-        auto seq = desc->seq;
-        auto cb = desc->cb;
+      auto err = uv_fs_opendir(ctx->loop, &ctx->req, filename, [](uv_fs_t *req) {
+        auto ctx = (DescriptorRequestContext *) req->data;
+        auto desc = ctx->desc;
         std::string msg;
 
         if (req->result < 0) {
@@ -2130,13 +2033,14 @@ namespace SSC {
             "source": "fs.opendir",
             "err": {
               "id": "$S",
+              "code": $S,
               "message": "$S"
             }
           })MSG",
-          std::to_string(desc->id), String(uv_strerror((int)req->result)));
+          std::to_string(desc->id),
+          std::to_string(req->result),
+          String(uv_strerror(req->result)));
 
-          std::lock_guard<std::recursive_mutex> guard(descriptorsMutex);
-          SSC::descriptors.erase(desc->id);
           delete desc;
         } else {
           msg = SSC::format(R"MSG({
@@ -2147,93 +2051,76 @@ namespace SSC {
           })MSG",
           std::to_string(desc->id));
 
+          // insert into `descriptors` map
+          std::lock_guard<std::recursive_mutex> guard(descriptorsMutex);
           desc->dir = (uv_dir_t *) req->ptr;
+          descriptors.insert_or_assign(desc->id, desc);
         }
 
-        uv_fs_req_cleanup(req);
-        delete req;
-
-        cb(seq, msg, Post{});
+        ctx->end(msg);
       });
-    }
 
-    if (err < 0) {
-      auto msg = SSC::format(R"MSG({
-        "source": "fs.opendir",
-        "err": {
-          "code": $S,
-          "message": "$S"
-        }
-      })MSG",
-      std::to_string(err), String(uv_strerror(err)));
+      if (err < 0) {
+        auto msg = SSC::format(R"MSG({
+          "source": "fs.opendir",
+          "err": {
+            "id": "$S",
+            "code": $S,
+            "message": "$S"
+          }
+        })MSG",
+        std::to_string(id),
+        std::to_string(err),
+        String(uv_strerror(err)));
 
-      SSC::descriptors.erase(desc->id);
-      delete desc;
-      delete req;
-
-      cb(seq, msg, Post{});
-      return;
-    }
-
-    runEventLoop();
+        delete desc;
+        ctx->end(msg);
+      }
+    });
   }
 
-  void Core::fsReaddir(String seq, uint64_t id, size_t nentries, Cb cb) const {
-    std::unique_lock<std::recursive_mutex> guard(descriptorsMutex);
-    auto desc = descriptors[id];
-    guard.unlock();
+  void Core::fsReaddir (String seq, uint64_t id, size_t nentries, Cb cb) const {
+    dispatchEventLoop([=]() {
+      auto desc = Descriptor::get(id);
+      auto ctx = new DescriptorRequestContext(desc, seq, cb);
 
-    if (desc == nullptr) {
-      auto msg = SSC::format(R"MSG({
-        "source": "fs.readdir",
-        "err": {
-          "id": "$S",
-          "code": "ENOTOPEN",
-          "type": "NotFoundError",
-          "message": "No directory descriptor found with that id"
-        }
-      })MSG", std::to_string(id));
+      if (desc == nullptr) {
+        auto msg = SSC::format(R"MSG({
+          "source": "fs.readdir",
+          "err": {
+            "id": "$S",
+            "code": "ENOTOPEN",
+            "type": "NotFoundError",
+            "message": "No directory descriptor found with that id"
+          }
+        })MSG", std::to_string(id));
 
+        ctx->end(msg);
+        return;
+      }
 
-      cb(seq, msg, Post{});
-      return;
-    }
+      std::lock_guard<std::recursive_mutex> descriptorLock(desc->mutex);
 
-    std::lock_guard<std::recursive_mutex> descriptorLock(desc->mutex);
+      if (desc->dir == nullptr) {
+        auto msg = SSC::format(R"MSG({
+          "source": "fs.readdir",
+          "err": {
+            "id": "$S",
+            "code": "ENOTOPEN",
+            "message": "Directory descriptor with that id is not open"
+          }
+        })MSG", std::to_string(id));
 
-    if (desc->dir == nullptr) {
-      auto msg = SSC::format(R"MSG({
-        "source": "fs.readdir",
-        "err": {
-          "id": "$S",
-          "code": "ENOTOPEN",
-          "message": "Directory descriptor with that id is not open"
-        }
-      })MSG", std::to_string(id));
+        ctx->end(msg);
+        return;
+      }
 
-      cb(seq, msg, Post{});
-      return;
-    }
+      desc->dir->dirents = ctx->dirents;
+      desc->dir->nentries = nentries;
 
-    auto loop = getEventLoop();
-    auto req = new uv_fs_t;
-
-    desc->seq = seq;
-    desc->cb = cb;
-    desc->dir->dirents = desc->dirents;
-    desc->dir->nentries = nentries;
-
-    req->data = desc;
-
-    int err = 0;
-    {
-      std::lock_guard<std::recursive_mutex> loopGuard(loopMutex);
-      err = uv_fs_readdir(loop, req, desc->dir, [](uv_fs_t *req) {
-        auto desc = static_cast<Descriptor*>(req->data);
-
-        std::lock_guard<std::recursive_mutex> descriptorLock(desc->mutex);
-        auto seq = desc->seq;
-        auto cb = desc->cb;
+      auto err = uv_fs_readdir(ctx->loop, &ctx->req, desc->dir, [](uv_fs_t *req) {
+        auto ctx = (DescriptorRequestContext *) req->data;
+        auto desc = ctx->desc;
         std::string msg;
 
         if (req->result < 0) {
@@ -2241,11 +2128,14 @@ namespace SSC {
             "source": "fs.readdir",
             "err": {
               "id": "$S",
+              "code": $S,
               "message": "$S"
             }
           })MSG",
-          std::to_string(desc->id), String(uv_strerror((int)req->result)));
-          } else {
+          std::to_string(desc->id),
+          std::to_string(req->result),
+          String(uv_strerror(req->result)));
+        } else {
           Stringstream entries;
           entries << "[";
 
@@ -2269,81 +2159,68 @@ namespace SSC {
               "entries": $S
             }
           })MSG",
-          std::to_string(desc->id), entries.str());
-          }
-
-        uv_fs_req_cleanup(req);
-        delete req;
-
-        cb(seq, msg, Post{});
-      });
-    }
-
-    if (err < 0) {
-      auto msg = SSC::format(R"MSG({
-        "source": "fs.readdir",
-        "err": {
-          "code": $S,
-          "message": "$S"
+          std::to_string(desc->id),
+          entries.str());
         }
-      })MSG",
-      std::to_string(err), String(uv_strerror(err)));
 
-      cb(seq, msg, Post{});
-      delete req;
-      return;
-    }
+        ctx->end(msg);
+      });
 
-    runEventLoop();
+      if (err < 0) {
+        auto msg = SSC::format(R"MSG({
+          "source": "fs.readdir",
+          "err": {
+            "id": "$S",
+            "code": $S,
+            "message": "$S"
+          }
+        })MSG",
+        std::to_string(id),
+        std::to_string(err),
+        String(uv_strerror(err)));
+
+        ctx->end(msg);
+      }
+    });
   }
 
   void Core::fsClose (String seq, uint64_t id, Cb cb) const {
-    std::unique_lock<std::recursive_mutex> guard(descriptorsMutex);
-    auto desc = descriptors[id];
-    guard.unlock();
+    dispatchEventLoop([=]() {
+      auto desc = Descriptor::get(id);
+      auto ctx = new DescriptorRequestContext(desc, seq, cb);
 
-    if (desc == nullptr) {
-      auto msg = SSC::format(R"MSG({
-        "source": "fs.close",
-        "err": {
-          "id": "$S",
-          "code": "ENOTOPEN",
-          "type": "NotFoundError",
-          "message": "No file descriptor found with that id"
-        }
-      })MSG", std::to_string(id));
+      if (desc == nullptr) {
+        auto msg = SSC::format(R"MSG({
+          "source": "fs.close",
+          "err": {
+            "id": "$S",
+            "code": "ENOTOPEN",
+            "type": "NotFoundError",
+            "message": "No file descriptor found with that id"
+          }
+        })MSG", std::to_string(id));
 
+        ctx->end(msg);
+        return;
+      }
 
-      cb(seq, msg, Post{});
-      return;
-    }
-
-    std::lock_guard<std::recursive_mutex> descriptorLock(desc->mutex);
-    auto req = new uv_fs_t;
-    desc->seq = seq;
-    desc->cb = cb;
-
-    req->data = desc;
-
-    int err = 0;
-    {
-      std::lock_guard<std::recursive_mutex> loopGuard(loopMutex);
-      err = uv_fs_close(getEventLoop(), req, desc->fd, [](uv_fs_t* req) {
-        auto desc = static_cast<Descriptor*>(req->data);
-
-        std::lock_guard<std::recursive_mutex> descriptorLock(desc->mutex);
+      auto err = uv_fs_close(ctx->loop, &ctx->req, desc->fd, [](uv_fs_t* req) {
+        auto ctx = (DescriptorRequestContext *) req->data;
+        auto desc = ctx->desc;
         std::string msg;
-        auto seq = desc->seq;
-        auto cb = desc->cb;
 
         if (req->result < 0) {
           msg = SSC::format(R"MSG({
             "source": "fs.close",
             "err": {
               "id": "$S",
+              "code": $S,
               "message": "$S"
             }
-          })MSG", std::to_string(desc->id), String(uv_strerror((int)req->result)));
+          })MSG",
+          std::to_string(desc->id),
+          std::to_string(req->result),
+          String(uv_strerror(req->result)));
         } else {
           msg = SSC::format(R"MSG({
             "source": "fs.close",
@@ -2351,85 +2228,72 @@ namespace SSC {
               "id": "$S",
               "fd": $S
             }
-          })MSG", std::to_string(desc->id), std::to_string(desc->fd));
+          })MSG",
+          std::to_string(desc->id),
+          std::to_string(desc->fd));
 
-          desc->fd = 0;
-          std::lock_guard<std::recursive_mutex> guard(descriptorsMutex);
-          SSC::descriptors.erase(desc->id);
+          Descriptor::remove(desc->id);
           delete desc;
         }
 
-        uv_fs_req_cleanup(req);
-        delete req;
-
-        cb(seq, msg, Post{});
+        ctx->end(msg);
       });
-    }
 
-    if (err < 0) {
-      auto msg = SSC::format(R"MSG({
-        "source": "fs.close",
-        "err": {
-          "id": "$S",
-          "message": "$S"
-        }
-      })MSG", std::to_string(id), String(uv_strerror(err)));
+      if (err < 0) {
+        auto msg = SSC::format(R"MSG({
+          "source": "fs.close",
+          "err": {
+            "id": "$S",
+            "code": $S,
+            "message": "$S"
+          }
+        })MSG",
+        std::to_string(id),
+        std::to_string(err),
+        String(uv_strerror(err)));
 
-      delete req;
-      cb(seq, msg, Post{});
-      return;
-    }
-
-    runEventLoop();
+        ctx->end(msg);
+      }
+    });
   }
 
   void Core::fsClosedir (String seq, uint64_t id, Cb cb) const {
-    std::unique_lock<std::recursive_mutex> guard(descriptorsMutex);
-    auto desc = descriptors[id];
-    guard.unlock();
+    dispatchEventLoop([=]() {
+      auto desc = Descriptor::get(id);
+      auto ctx = new DescriptorRequestContext(desc, seq, cb);
 
-    if (desc == nullptr) {
-      auto msg = SSC::format(R"MSG({
-        "source": "fs.closedir",
-        "err": {
-          "id": "$S",
-          "code": "ENOTOPEN",
-          "type": "NotFoundError",
-          "message": "No directory descriptor found with that id"
-        }
-      })MSG", std::to_string(id));
+      if (desc == nullptr) {
+        auto msg = SSC::format(R"MSG({
+          "source": "fs.closedir",
+          "err": {
+            "id": "$S",
+            "code": "ENOTOPEN",
+            "type": "NotFoundError",
+            "message": "No directory descriptor found with that id"
+          }
+        })MSG", std::to_string(id));
 
+        ctx->end(msg);
+        return;
+      }
 
-      cb(seq, msg, Post{});
-      return;
-    }
-
-    std::lock_guard<std::recursive_mutex> descriptorLock(desc->mutex);
-    auto req = new uv_fs_t;
-    desc->seq = seq;
-    desc->cb = cb;
-
-    req->data = desc;
-
-    int err = 0;
-    {
-      std::lock_guard<std::recursive_mutex> loopGuard(loopMutex);
-      err = uv_fs_closedir(getEventLoop(), req, desc->dir, [](uv_fs_t* req) {
-        auto desc = static_cast<Descriptor*>(req->data);
-
-        std::lock_guard<std::recursive_mutex> descriptorLock(desc->mutex);
+      auto err = uv_fs_closedir(ctx->loop, &ctx->req, desc->dir, [](uv_fs_t* req) {
+        auto ctx = (DescriptorRequestContext *) req->data;
+        auto desc = ctx->desc;
         std::string msg;
-        auto seq = desc->seq;
-        auto cb = desc->cb;
 
         if (req->result < 0) {
           msg = SSC::format(R"MSG({
             "source": "fs.closedir",
             "err": {
               "id": "$S",
+              "code": $S,
               "message": "$S"
             }
-          })MSG", std::to_string(desc->id), String(uv_strerror((int)req->result)));
+          })MSG",
+          std::to_string(desc->id),
+          std::to_string(req->result),
+          String(uv_strerror(req->result)));
         } else {
           msg = SSC::format(R"MSG({
             "source": "fs.closedir",
@@ -2438,39 +2302,33 @@ namespace SSC {
             }
           })MSG", std::to_string(desc->id));
 
-          std::lock_guard<std::recursive_mutex> guard(descriptorsMutex);
-          desc->dir = nullptr;
-          SSC::descriptors.erase(desc->id);
+          Descriptor::remove(desc->id);
           delete desc;
         }
 
-        cb(seq, msg, Post{});
-
-        uv_fs_req_cleanup(req);
-        delete req;
+        ctx->end(msg);
       });
-    }
 
-    if (err < 0) {
-      auto msg = SSC::format(R"MSG({
-        "source": "fs.closedir",
-        "err": {
-          "id": "$S",
-          "message": "$S"
-        }
-      })MSG", std::to_string(id), String(uv_strerror(err)));
+      if (err < 0) {
+        auto msg = SSC::format(R"MSG({
+          "source": "fs.closedir",
+          "err": {
+            "id": "$S",
+            "code": $S,
+            "message": "$S"
+          }
+        })MSG",
+        std::to_string(id),
+        std::to_string(err),
+        String(uv_strerror(err)));
 
-      cb(seq, msg, Post{});
-      return;
-    }
-
-    runEventLoop();
+        ctx->end(msg);
+      }
+    });
   }
 
   void Core::fsCloseOpenDescriptor (String seq, uint64_t id, Cb cb) const {
-    std::lock_guard<std::recursive_mutex> guard(descriptorsMutex);
-
-    auto desc = descriptors[id];
+    auto desc = Descriptor::get(id);
 
     if (desc == nullptr) {
       auto msg = SSC::format(R"MSG({
@@ -2505,19 +2363,19 @@ namespace SSC {
 
     std::vector<uint64_t> ids;
     std::string msg = "";
-    int pending = SSC::descriptors.size();
+    int pending = descriptors.size();
     int queued = 0;
 
-    for (auto const &tuple : SSC::descriptors) {
+    for (auto const &tuple : descriptors) {
       ids.push_back(tuple.first);
     }
 
     for (auto const id : ids) {
-      auto desc = SSC::descriptors[id];
+      auto desc = descriptors[id];
       pending--;
 
       if (desc == nullptr) {
-        SSC::descriptors.erase(desc->id);
+        descriptors.erase(desc->id);
         continue;
       }
 
@@ -2548,65 +2406,55 @@ namespace SSC {
   }
 
   void Core::fsRead (String seq, uint64_t id, int len, int offset, Cb cb) const {
-    std::unique_lock<std::recursive_mutex> guard(descriptorsMutex);
+    dispatchEventLoop([=]() {
+      auto desc = Descriptor::get(id);
+      auto ctx = new DescriptorRequestContext(desc, seq, cb);
 
-    auto desc = descriptors[id];
-    auto loop = getEventLoop();
-    guard.unlock();
+      if (desc == nullptr) {
+        auto msg = SSC::format(R"MSG({
+          "source": "fs.read",
+          "err": {
+            "id": "$S",
+            "code": "ENOTOPEN",
+            "type": "NotFoundError",
+            "message": "No file descriptor found with that id"
+          }
+        })MSG", std::to_string(id));
 
-    if (desc == nullptr) {
-      auto msg = SSC::format(R"MSG({
-        "source": "fs.read",
-        "err": {
-          "code": "ENOTOPEN",
-          "type": "NotFoundError",
-          "message": "No file descriptor found with that id"
-        }
-      })MSG");
+        ctx->end(msg);
+        return;
+      }
 
-      cb(seq, msg, Post{});
-      return;
-    }
+      auto buf = new char[len]{0};
+      ctx->setBuffer(0, len, buf);
 
-    auto req = new uv_fs_t;
-    auto buf = new char[len]{0};
-    auto ctx = new DescriptorRequestContext(desc, seq, cb, req);
-
-    ctx->setBuffer(0, len, buf);
-    ctx->offset = offset;
-
-    req->data = ctx;
-
-    int err = 0;
-    {
-      std::lock_guard<std::recursive_mutex> loopGuard(loopMutex);
-      // printf("uv_fs_read(id=%llu, size=%d, offset=%d)\n", desc->id, len, ctx->offset);
-      err = uv_fs_read(loop, req, desc->fd, ctx->iov, 1, offset, [](uv_fs_t* req) {
+      auto err = uv_fs_read(ctx->loop, &ctx->req, desc->fd, ctx->iov, 1, offset, [](uv_fs_t* req) {
         auto ctx = static_cast<DescriptorRequestContext*>(req->data);
         auto desc = ctx->desc;
-        auto loop = getEventLoop();
-
-        if (ctx->offset >= 0 && req->result == 0) {
-          // printf("uv_fs_read(id=%llu) = %d\n", desc->id, (int) req->result);
-        }
-
-        std::string msg = "{}";
+        std::string msg;
         Post post = {0};
+
+        std::lock_guard<std::recursive_mutex> descriptorLock(desc->mutex);
 
         if (req->result < 0) {
           msg = SSC::format(R"MSG({
             "source": "fs.read",
             "err": {
               "id": "$S",
+              "code": $S,
               "message": "$S"
             }
-          })MSG", std::to_string(desc->id), String(uv_strerror((int)req->result)));
+          })MSG",
+          std::to_string(desc->id),
+          std::to_string(req->result),
+          String(uv_strerror(req->result)));
 
           auto buf = ctx->getBuffer(0);
           if (buf != nullptr) {
             delete [] buf;
           }
         } else {
+          msg = "{}";
           post.id = SSC::rand64();
           post.body = ctx->getBuffer(0);
           post.length = (int) req->result;
@@ -2615,140 +2463,125 @@ namespace SSC {
 
         ctx->end(msg, post);
       });
-    }
 
-    if (err < 0) {
-      auto msg = SSC::format(R"MSG({
-        "source": "fs.read",
-        "err": {
-          "id": "$S",
-          "message": "$S"
-        }
-      })MSG", std::to_string(id), String(uv_strerror(err)));
+      if (err < 0) {
+        auto msg = SSC::format(R"MSG({
+          "source": "fs.read",
+          "err": {
+            "id": "$S",
+            "message": "$S"
+          }
+        })MSG", std::to_string(id), String(uv_strerror(err)));
 
-      delete [] buf;
-      ctx->end(msg);
-      return;
-    }
-
-    runEventLoop();
+        delete [] buf;
+        ctx->end(msg);
+      }
+    });
   }
 
   void Core::fsWrite (String seq, uint64_t id, String data, int64_t offset, Cb cb) const {
-    std::unique_lock<std::recursive_mutex> guard(descriptorsMutex);
-    auto desc = descriptors[id];
-    guard.unlock();
+    dispatchEventLoop([=]() {
+      auto desc = Descriptor::get(id);
+      auto ctx = new DescriptorRequestContext(desc, seq, cb);
 
-    if (desc == nullptr) {
-      auto msg = SSC::format(R"MSG({
-        "source": "fs.write",
-        "err": {
-          "code": "ENOTOPEN",
-          "message": "No file descriptor found with that id"
-        }
-      })MSG");
+      if (desc == nullptr) {
+        auto msg = SSC::format(R"MSG({
+          "source": "fs.write",
+          "err": {
+            "id": "$S",
+            "code": "ENOTOPEN",
+            "type": "NotFoundError",
+            "message": "No file descriptor found with that id"
+          }
+        })MSG", std::to_string(id));
 
-      cb(seq, msg, Post{});
-      return;
-    }
+        ctx->end(msg);
+        return;
+      }
 
-    auto loop = getEventLoop();
-    auto bytes = new char[data.size()];
-    memcpy(bytes, data.data(), data.size());
+      auto size = data.size();
+      auto bytes = new char[size]{0};
 
-    auto buf = uv_buf_init((char*) bytes, (int) data.size());
-    auto req = new uv_fs_t;
+      memcpy(bytes, data.data(), size);
 
-    std::lock_guard<std::recursive_mutex> descriptorLock(desc->mutex);
-    desc->seq = seq;
-    desc->cb = cb;
+      ctx->setBuffer(0, size, bytes);
 
-    req->data = desc;
-    req->ptr = bytes;
-
-    int err = 0;
-    {
-      std::lock_guard<std::recursive_mutex> loopGuard(loopMutex);
-      err = uv_fs_write(getEventLoop(), req, desc->fd, &buf, 1, offset, [](uv_fs_t* req) {
-        auto desc = static_cast<Descriptor*>(req->data);
-
-        std::lock_guard<std::recursive_mutex> descriptorLock(desc->mutex);
+      auto err = uv_fs_write(ctx->loop, &ctx->req, desc->fd, ctx->iov, 1, offset, [](uv_fs_t* req) {
+        auto ctx = static_cast<DescriptorRequestContext*>(req->data);
+        auto desc = ctx->desc;
         std::string msg;
-        auto seq = desc->seq;
-        auto cb = desc->cb;
 
         if (req->result < 0) {
           msg = SSC::format(R"MSG({
             "source": "fs.write",
             "err": {
               "id": "$S",
+              "code": $S,
               "message": "$S"
             }
-          })MSG", std::to_string(desc->id), String(uv_strerror((int)req->result)));
+          })MSG",
+          std::to_string(desc->id),
+          std::to_string(req->result),
+          String(uv_strerror(req->result)));
         } else {
           msg = SSC::format(R"MSG({
             "source": "fs.write",
             "data": {
               "id": "$S",
-              "result": "$i"
+              "result": "$S"
             }
-          })MSG", std::to_string(desc->id), (int)req->result);
+          })MSG",
+          std::to_string(desc->id),
+          std::to_string(req->result));
         }
 
-        cb(seq, msg, Post{});
-        uv_fs_req_cleanup(req);
-        // `uv_fs_req_cleanup()` _should_ free this
-        if (req->ptr) {
-          delete [] (char *) req->ptr;
+        auto bytes = ctx->getBuffer(0);
+        if (bytes != nullptr) {
+          delete [] bytes;
         }
 
-        delete req;
+        ctx->end(msg);
       });
-    }
 
-    if (err < 0) {
-      auto msg = SSC::format(R"MSG({
-        "source": "fs.write",
-        "err": {
-          "id": "$S",
-          "message": "$S"
-        }
-      })MSG", std::to_string(id), String(uv_strerror(err)));
+      if (err < 0) {
+        auto msg = SSC::format(R"MSG({
+          "source": "fs.write",
+          "err": {
+            "id": "$S",
+            "code": $S,
+            "message": "$S"
+          }
+        })MSG",
+        std::to_string(id),
+        std::to_string(err),
+        String(uv_strerror(err)));
 
-      cb(seq, msg, Post{});
-      return;
-    }
-
-    runEventLoop();
+        delete [] bytes;
+        ctx->end(msg);
+      }
+    });
   }
 
   void Core::fsStat (String seq, String path, Cb cb) const {
-    Descriptor* desc = new Descriptor;
-    auto req = new uv_fs_t;
+    dispatchEventLoop([=]() {
+      auto filename = path.c_str();
+      auto ctx = new DescriptorRequestContext(seq, cb);
 
-    desc->seq = seq;
-    desc->cb = cb;
-
-    req->data = desc;
-
-    int err = 0;
-    {
-      std::lock_guard<std::recursive_mutex> loopGuard(loopMutex);
-      err = uv_fs_stat(getEventLoop(), req, (const char*) path.c_str(), [](uv_fs_t* req) {
-        auto desc = static_cast<Descriptor*>(req->data);
-        auto seq = desc->seq;
-        auto cb = desc->cb;
+      auto err = uv_fs_stat(ctx->loop, &ctx->req, filename, [](uv_fs_t *req) {
+        auto ctx = (DescriptorRequestContext *) req->data;
         std::string msg;
 
         if (req->result < 0) {
           msg = SSC::format(R"MSG({
             "source": "fs.stat",
             "err": {
-              "id": "$S",
+              "code": $S,
               "message": "$S"
             }
-          })MSG", String(uv_strerror((int)req->result)));
-          } else {
+          })MSG",
+          std::to_string(req->result),
+          String(uv_strerror(req->result)));
+        } else {
             auto stats = uv_fs_get_statbuf(req);
             msg = SSC::format(R"MSG({
               "source": "fs.stat",
@@ -2794,70 +2627,48 @@ namespace SSC {
           );
         }
 
-        uv_fs_req_cleanup(req);
-
-        delete desc;
-        delete req;
-
-        cb(seq, msg, Post{});
+        ctx->end(msg);
       });
-    }
 
-    if (err < 0) {
-      auto msg = SSC::format(R"MSG({
-        "source": "fs.stat",
-        "err": {
-          "message": "$S"
-        }
-      })MSG", String(uv_strerror(err)));
+      if (err < 0) {
+        auto msg = SSC::format(R"MSG({
+          "source": "fs.stat",
+          "err": {
+            "code": $S,
+            "message": "$S"
+          }
+        })MSG",
+        std::to_string(err),
+        String(uv_strerror(err)));
 
-
-      delete desc;
-      delete req;
-
-      cb(seq, msg, Post{});
-
-      return;
-    }
-
-    runEventLoop();
+        ctx->end(msg);
+      }
+    });
   }
 
   void Core::fsFStat (String seq, uint64_t id, Cb cb) const {
-    std::unique_lock<std::recursive_mutex> guard(descriptorsMutex);
-    auto desc = descriptors[id];
-    guard.unlock();
+    dispatchEventLoop([=]() {
+      auto desc = Descriptor::get(id);
+      auto ctx = new DescriptorRequestContext(desc, seq, cb);
 
-    if (desc == nullptr) {
-      auto msg = SSC::format(R"MSG({
-        "source": "fs.fstat",
-        "err": {
-          "code": "ENOTOPEN",
-          "message": "No file descriptor found with that id"
-        }
-      })MSG");
+      if (desc == nullptr) {
+        auto msg = SSC::format(R"MSG({
+          "err": {
+          "source": "fs.read",
+            "id": "$S",
+            "code": "ENOTOPEN",
+            "type": "NotFoundError",
+            "message": "No file descriptor found with that id"
+          }
+        })MSG", std::to_string(id));
 
+        ctx->end(msg);
+        return;
+      }
 
-      cb(seq, msg, Post{});
-      return;
-    }
-
-    std::lock_guard<std::recursive_mutex> descriptorLock(desc->mutex);
-    auto req = new uv_fs_t;
-    desc->seq = seq;
-    desc->cb = cb;
-
-    req->data = desc;
-
-    int err = 0;
-    {
-      std::lock_guard<std::recursive_mutex> loopGuard(loopMutex);
-      err = uv_fs_fstat(getEventLoop(), req, desc->fd, [](uv_fs_t* req) {
-        auto desc = static_cast<Descriptor*>(req->data);
-
-        std::lock_guard<std::recursive_mutex> descriptorLock(desc->mutex);
-        auto seq = desc->seq;
-        auto cb = desc->cb;
+      auto err = uv_fs_fstat(ctx->loop, &ctx->req, desc->fd, [](uv_fs_t *req) {
+        auto ctx = (DescriptorRequestContext *) req->data;
+        auto desc = ctx->desc;
         std::string msg;
 
         if (req->result < 0) {
@@ -2865,11 +2676,13 @@ namespace SSC {
             "source": "fs.fstat",
             "err": {
               "id": "$S",
+              "code": $S,
               "message": "$S"
             }
           })MSG",
           std::to_string(desc->id),
-          String(uv_strerror((int)req->result)));
+          std::to_string(req->result),
+          String(uv_strerror(req->result)));
         } else {
           auto stats = uv_fs_get_statbuf(req);
           msg = SSC::trim(SSC::format(R"MSG({
@@ -2917,39 +2730,35 @@ namespace SSC {
           std::to_string(stats->st_birthtim.tv_nsec)));
         }
 
-        uv_fs_req_cleanup(req);
-        delete req;
-
-        cb(seq, msg, Post{});
+        ctx->end(msg);
       });
-    }
 
-    if (err < 0) {
-      auto msg = SSC::format(R"MSG({
-        "source": "fs.fstat",
-        "err": {
-          "id": "$S",
-          "message": "$S"
-        }
-      })MSG", std::to_string(id), String(uv_strerror(err)));
+      if (err < 0) {
+        auto msg = SSC::format(R"MSG({
+          "source": "fs.fstat",
+          "err": {
+            "id": "$S",
+            "code": $S,
+            "message": "$S"
+          }
+        })MSG",
+        std::to_string(id),
+        std::to_string(err),
+        String(uv_strerror(err)));
 
-      delete req;
-
-      cb(seq, msg, Post{});
-      return;
-    }
-
-    runEventLoop();
+        ctx->end(msg);
+      }
+    });
   }
 
   void Core::fsGetOpenDescriptors (String seq, Cb cb) const {
     std::lock_guard<std::recursive_mutex> guard(descriptorsMutex);
 
     std::string msg = "";
-    int pending = SSC::descriptors.size();
+    int pending = descriptors.size();
 
     msg += "{ \"source\": \"fs.getOpenDescriptors\", \"data\": [";
-    for (auto const &tuple : SSC::descriptors) {
+    for (auto const &tuple : descriptors) {
       auto desc = tuple.second;
       if (!desc) {
         continue;
@@ -2978,341 +2787,244 @@ namespace SSC {
   }
 
   void Core::fsUnlink (String seq, String path, Cb cb) const {
-    auto filename = path.c_str();
-    auto loop = getEventLoop();
+    dispatchEventLoop([=]() {
+      auto filename = path.c_str();
+      auto ctx = new DescriptorRequestContext(seq, cb);
 
-    auto desc = new Descriptor;
-    auto req = new uv_fs_t;
-    desc->seq = seq;
-    desc->cb = cb;
-
-    req->data = desc;
-
-    int err = 0;
-    {
-      std::lock_guard<std::recursive_mutex> loopGuard(loopMutex);
-      err = uv_fs_unlink(loop, req, filename, [](uv_fs_t* req) {
-        auto desc = static_cast<Descriptor*>(req->data);
-        auto seq = desc->seq;
-        auto cb = desc->cb;
+      auto err = uv_fs_unlink(ctx->loop, &ctx->req, filename, [](uv_fs_t *req) {
+        auto ctx = (DescriptorRequestContext *) req->data;
         std::string msg;
 
         if (req->result < 0) {
           msg = SSC::format(R"MSG({
             "source": "fs.unlink",
             "err": {
-              "id": "$S",
+              "code": $S,
               "message": "$S"
             }
           })MSG",
-          std::to_string(desc->id),
-          String(uv_strerror((int)req->result)));
+          std::to_string(req->result),
+          String(uv_strerror(req->result)));
         } else {
           msg = SSC::format(R"MSG({
             "source": "fs.unlink",
             "data": {
-              "result": "$i"
+              "result": "$S"
             }
-          })MSG", (int)req->result);
+          })MSG", std::to_string(req->result));
         }
 
-        uv_fs_req_cleanup(req);
-
-        delete req;
-        delete desc;
-
-        cb(seq, msg, Post{});
+        ctx->end(msg);
       });
-    }
 
-    if (err) {
-      auto msg = SSC::format(R"MSG({
-        "source": "fs.unlink",
-        "err": {
-          "message": "$S"
-        }
-      })MSG", String(uv_strerror(err)));
+      if (err < 0) {
+        auto msg = SSC::format(R"MSG({
+          "source": "fs.unlink",
+          "err": {
+            "code": $S,
+            "message": "$S"
+          }
+        })MSG",
+        std::to_string(err),
+        String(uv_strerror(err)));
 
-      delete req;
-      delete desc;
-
-      cb(seq, msg, Post{});
-      return;
-    }
-
-    runEventLoop();
+        ctx->end(msg);
+      }
+    });
   }
 
   void Core::fsRename (String seq, String pathA, String pathB, Cb cb) const {
-    auto loop = getEventLoop();
-    auto src = pathA.c_str();
-    auto dst = pathB.c_str();
+    dispatchEventLoop([=]() {
+      auto ctx = new DescriptorRequestContext(seq, cb);
+      auto src = pathA.c_str();
+      auto dst = pathB.c_str();
 
-    auto desc = new Descriptor;
-    auto req = new uv_fs_t;
-    desc->seq = seq;
-    desc->cb = cb;
-
-    req->data = desc;
-
-    int err = 0;
-    {
-      std::lock_guard<std::recursive_mutex> loopGuard(loopMutex);
-      err = uv_fs_rename(loop, req, src, dst, [](uv_fs_t* req) {
-        auto desc = static_cast<Descriptor*>(req->data);
-        auto seq = desc->seq;
-        auto cb = desc->cb;
+      auto err = uv_fs_rename(ctx->loop, &ctx->req, src, dst, [](uv_fs_t *req) {
+        auto ctx = (DescriptorRequestContext *) req->data;
         std::string msg;
 
         if (req->result < 0) {
           msg = SSC::format(R"MSG({
             "source": "fs.rename",
             "err": {
-              "id": "$S",
+              "code": $S,
               "message": "$S"
             }
           })MSG",
-          std::to_string(desc->id),
+          std::to_string(req->result),
           String(uv_strerror((int)req->result)));
         } else {
           msg = SSC::format(R"MSG({
             "source": "fs.rename",
             "data": {
-              "result": "$i"
+              "result": "$S"
             }
-          })MSG", (int)req->result);
+          })MSG", std::to_string(req->result));
         }
 
-        uv_fs_req_cleanup(req);
-
-        delete req;
-        delete desc;
-
-        cb(seq, msg, Post{});
+        ctx->end(msg);
       });
-    }
 
-    if (err) {
-      auto msg = SSC::format(R"MSG({
-        "source": "fs.rename",
-        "err": {
-          "message": "$S"
-        }
-      })MSG", String(uv_strerror(err)));
+      if (err < 0) {
+        auto msg = SSC::format(R"MSG({
+          "source": "fs.rename",
+          "err": {
+            "code": $S,
+            "message": "$S"
+          }
+        })MSG",
+        std::to_string(err),
+        String(uv_strerror(err)));
 
-      delete req;
-      delete desc;
-
-      cb(seq, msg, Post{});
-      return;
-    }
-
-    runEventLoop();
+        ctx->end(msg);
+      }
+    });
   }
 
   void Core::fsCopyFile (String seq, String pathA, String pathB, int flags, Cb cb) const {
-    auto loop = getEventLoop();
-    auto src = pathA.c_str();
-    auto dst = pathB.c_str();
+    dispatchEventLoop([=]() {
+      auto ctx = new DescriptorRequestContext(seq, cb);
+      auto src = pathA.c_str();
+      auto dst = pathB.c_str();
 
-    auto desc = new Descriptor;
-    desc->seq = seq;
-    desc->cb = cb;
-
-    auto req = new uv_fs_t;
-    req->data = desc;
-
-    int err = 0;
-    {
-      std::lock_guard<std::recursive_mutex> loopGuard(loopMutex);
-      err = uv_fs_copyfile(loop, req, src, dst, flags, [](uv_fs_t* req) {
-        auto desc = static_cast<Descriptor*>(req->data);
-        auto seq = desc->seq;
-        auto cb = desc->cb;
+      auto err = uv_fs_copyfile(ctx->loop, &ctx->req, src, dst, flags, [](uv_fs_t *req) {
+        auto ctx = (DescriptorRequestContext *) req->data;
         std::string msg;
 
         if (req->result < 0) {
           msg = SSC::format(R"MSG({
             "source": "fs.copyFile",
             "err": {
-              "id": "$S",
+              "code": $S,
               "message": "$S"
             }
           })MSG",
-          std::to_string(desc->id),
+          std::to_string(req->result),
           String(uv_strerror((int)req->result)));
         } else {
           msg = SSC::format(R"MSG({
             "source": "fs.copyFile",
             "data": {
-              "result": "$i"
+              "result": "$S"
             }
-          })MSG", (int)req->result);
+          })MSG", std::to_string(req->result));
         }
 
-        uv_fs_req_cleanup(req);
-
-        delete req;
-        delete desc;
-
-        cb(seq, msg, Post{});
+        ctx->end(msg);
       });
-    }
 
-    if (err) {
-      auto msg = SSC::format(R"MSG({
-        "source": "fs.copyFile",
-        "err": {
-          "message": "$S"
-        }
-      })MSG", String(uv_strerror(err)));
+      if (err < 0) {
+        auto msg = SSC::format(R"MSG({
+          "source": "fs.copyFile",
+          "err": {
+            "code": $S,
+            "message": "$S"
+          }
+        })MSG",
+        std::to_string(err),
+        String(uv_strerror(err)));
 
-      delete req;
-      delete desc;
-
-      cb(seq, msg, Post{});
-      return;
-    }
-
-    runEventLoop();
+        ctx->end(msg);
+      }
+    });
   }
 
   void Core::fsRmdir (String seq, String path, Cb cb) const {
-    auto filename = path.c_str();
-    auto loop = getEventLoop();
+    dispatchEventLoop([=]() {
+      auto filename = path.c_str();
+      auto ctx = new DescriptorRequestContext(seq, cb);
 
-    auto desc = new Descriptor;
-    desc->seq = seq;
-    desc->cb = cb;
-
-    auto req = new uv_fs_t;
-    req->data = desc;
-
-    int err = 0;
-    {
-      std::lock_guard<std::recursive_mutex> loopGuard(loopMutex);
-      err = uv_fs_rmdir(loop, req, filename, [](uv_fs_t* req) {
-        auto desc = static_cast<Descriptor*>(req->data);
-        auto seq = desc->seq;
-        auto cb = desc->cb;
+      auto err = uv_fs_rmdir(ctx->loop, &ctx->req, filename, [](uv_fs_t *req) {
+        auto ctx = (DescriptorRequestContext *) req->data;
         std::string msg;
 
         if (req->result < 0) {
           msg = SSC::format(R"MSG({
             "source": "fs.rmdir",
             "err": {
-              "id": "$S",
+              "code": $S,
               "message": "$S"
             }
           })MSG",
-          std::to_string(desc->id),
-          String(uv_strerror((int)req->result)));
+          std::to_string(req->result),
+          String(uv_strerror(req->result)));
         } else {
           msg = SSC::format(R"MSG({
             "source": "fs.rmdir",
             "data": {
-              "result": "$i"
+              "result": "$S"
             }
-          })MSG", (int)req->result);
+          })MSG", std::to_string(req->result));
         }
 
-        uv_fs_req_cleanup(req);
-
-        delete req;
-        delete desc;
-
-        cb(seq, msg, Post{});
+        ctx->end(msg);
       });
-    }
 
-    if (err) {
-      auto msg = SSC::format(R"MSG({
-        "source": "fs.rmdir",
-        "err": {
-          "message": "$S"
-        }
-      })MSG", String(uv_strerror(err)));
+      if (err < 0) {
+        auto msg = SSC::format(R"MSG({
+          "source": "fs.rmdir",
+          "err": {
+            "code": $S,
+            "message": "$S"
+          }
+        })MSG",
+        std::to_string(err),
+        String(uv_strerror(err)));
 
-      delete req;
-      delete desc;
-
-      cb(seq, msg, Post{});
-      return;
-    }
-
-    runEventLoop();
+        ctx->end(msg);
+      }
+    });
   }
 
   void Core::fsMkdir (String seq, String path, int mode, Cb cb) const {
-    auto filename = path.c_str();
-    auto loop = getEventLoop();
+    dispatchEventLoop([=]() {
+      auto filename = path.c_str();
+      auto ctx = new DescriptorRequestContext(seq, cb);
 
-    auto desc = new Descriptor;
-    desc->seq = seq;
-    desc->cb = cb;
-
-    auto req = new uv_fs_t;
-    req->data = desc;
-
-    int err = 0;
-    {
-      std::lock_guard<std::recursive_mutex> loopGuard(loopMutex);
-      err = uv_fs_mkdir(loop, req, filename, mode, [](uv_fs_t* req) {
-        auto desc = static_cast<Descriptor*>(req->data);
-        auto seq = desc->seq;
-        auto cb = desc->cb;
+      auto err = uv_fs_mkdir(ctx->loop, &ctx->req, filename, mode, [](uv_fs_t *req) {
+        auto ctx = (DescriptorRequestContext *) req->data;
         std::string msg;
 
         if (req->result < 0) {
           msg = SSC::format(R"MSG({
             "source": "fs.mkdir",
             "err": {
-              "id": "$S",
+              "code": $S,
               "message": "$S"
             }
           })MSG",
-          std::to_string(desc->id),
-          String(uv_strerror((int)req->result)));
+          std::to_string(req->result),
+          String(uv_strerror(req->result)));
         } else {
           msg = SSC::format(R"MSG({
             "source": "fs.mkdir",
             "data": {
-              "result": "$i"
+              "result": "$S"
             }
-          })MSG", (int)req->result);
+          })MSG", std::to_string(req->result));
         }
 
-        uv_fs_req_cleanup(req);
-
-        delete req;
-        delete desc;
-
-        cb(seq, msg, Post{});
+        ctx->end(msg);
       });
-    }
 
-    if (err) {
-      auto msg = SSC::format(R"MSG({
-        "source": "fs.mkdir",
-        "err": {
-          "message": "$S"
-        }
-      })MSG", String(uv_strerror(err)));
+      if (err < 0) {
+        auto msg = SSC::format(R"MSG({
+          "source": "fs.mkdir",
+          "err": {
+            "code": $S,
+            "message": "$S"
+          }
+        })MSG",
+        std::to_string(err),
+        String(uv_strerror(err)));
 
-      delete req;
-      delete desc;
-
-      cb(seq, msg, Post{});
-      return;
-    }
-
-    runEventLoop();
+        ctx->end(msg);
+      }
+    });
   }
 
   void Core::sendBufferSize (String seq, uint64_t peerId, int size, Cb cb) const {
-    std::lock_guard<std::recursive_mutex> guard(peersMutex);
-
-    Peer* peer = peers[peerId];
+    auto peer = Peer::get(peerId);
 
     if (peer == nullptr) {
       auto msg = SSC::format(R"MSG({
@@ -3328,6 +3040,7 @@ namespace SSC {
       return;
     }
 
+    std::lock_guard<std::recursive_mutex> guard(peer->mutex);
     uv_handle_t* handle;
 
     if (peer->type == PEER_TYPE_UDP) {
@@ -3361,8 +3074,7 @@ namespace SSC {
   }
 
   void Core::recvBufferSize (String seq, uint64_t peerId, int size, Cb cb) const {
-    std::lock_guard<std::recursive_mutex> guard(peersMutex);
-    Peer* peer = peers[peerId];
+    auto peer = Peer::get(peerId);
 
     if (peer == nullptr) {
       auto msg = SSC::format(R"MSG({
@@ -3377,6 +3089,7 @@ namespace SSC {
       return;
     }
 
+    std::lock_guard<std::recursive_mutex> guard(peer->mutex);
     auto handle = (uv_handle_t*) &peer->handle;
 
     auto sz = size;
@@ -3396,7 +3109,7 @@ namespace SSC {
   }
 
   void Core::readStop (String seq, uint64_t peerId, Cb cb) const {
-    Peer* peer = peers[peerId];
+    auto peer = Peer::get(peerId);
 
     if (peer == nullptr) {
       auto msg = SSC::format(R"MSG({
@@ -3410,6 +3123,7 @@ namespace SSC {
       return;
     }
 
+    std::lock_guard<std::recursive_mutex> guard(peer->mutex);
     auto stream = (uv_stream_t *) &peer->handle;
     auto result = uv_read_stop(stream);
     auto msg = SSC::format(R"MSG({
@@ -3451,14 +3165,11 @@ namespace SSC {
       return;
     }
 
-    {
-      std::lock_guard<std::recursive_mutex> loopGuard(loopMutex);
+    dispatchEventLoop([=]() {
       peer->close([=](auto peer) {
         cb(seq, "{}", Post{});
       });
-    }
-
-    runEventLoop();
+    });
   }
 
   void Core::shutdown (String seq, uint64_t peerId, Cb cb) const {
@@ -3547,79 +3258,79 @@ namespace SSC {
       return;
     }
 
-    auto peer = Peer::create(PEER_TYPE_UDP, peerId);
-    auto err = peer->bind(address, port);
+    dispatchEventLoop([=]() {
+      auto peer = Peer::create(PEER_TYPE_UDP, peerId);
+      auto err = peer->bind(address, port);
 
-    if (err < 0) {
-      auto msg = SSC::format(R"MSG({
-        "source": "udp.bind",
-        "err": {
-          "id": "$S",
-          "message": "$S"
-        }
-      })MSG", std::to_string(peerId), std::string(uv_strerror(err)));
-      cb(seq, msg, Post{});
-      return;
-    }
-
-    auto info = peer->getLocalPeerInfo();
-
-    if (info->err < 0) {
-      auto msg = SSC::format(R"MSG({
-        "source": "udp.bind",
-        "err": {
-          "id": "$S",
-          "message": "$S"
-        }
-      })MSG", std::to_string(peerId), std::string(uv_strerror(info->err)));
-      cb(seq, msg, Post{});
-      return;
-    }
-
-    auto msg = SSC::format(R"MSG({
-      "source": "udp.bind",
-      "data": {
-        "event": "listening",
-        "id": "$S",
-        "address": "$S",
-        "port": $i,
-        "family": "$S"
+      if (err < 0) {
+        auto msg = SSC::format(R"MSG({
+          "source": "udp.bind",
+          "err": {
+            "id": "$S",
+            "message": "$S"
+          }
+        })MSG", std::to_string(peerId), std::string(uv_strerror(err)));
+        cb(seq, msg, Post{});
+        return;
       }
-    })MSG", std::to_string(peerId), info->address, info->port, info->family);
 
-    cb(seq, msg, Post{});
+      auto info = peer->getLocalPeerInfo();
 
-    runEventLoop();
+      if (info->err < 0) {
+        auto msg = SSC::format(R"MSG({
+          "source": "udp.bind",
+          "err": {
+            "id": "$S",
+            "message": "$S"
+          }
+        })MSG", std::to_string(peerId), std::string(uv_strerror(info->err)));
+        cb(seq, msg, Post{});
+        return;
+      }
+
+      auto msg = SSC::format(R"MSG({
+        "source": "udp.bind",
+        "data": {
+          "event": "listening",
+          "id": "$S",
+          "address": "$S",
+          "port": $i,
+          "family": "$S"
+        }
+      })MSG", std::to_string(peerId), info->address, info->port, info->family);
+
+      cb(seq, msg, Post{});
+    });
   }
 
   void Core::udpConnect (String seq, uint64_t peerId, String address, int port, Cb cb) const {
-    auto peer = Peer::create(PEER_TYPE_UDP, peerId);
-    auto err = peer->connect(address, port);
+    dispatchEventLoop([=]() {
+      auto peer = Peer::create(PEER_TYPE_UDP, peerId);
+      auto err = peer->connect(address, port);
 
-    if (err < 0) {
+      if (err < 0) {
+        auto msg = SSC::format(R"MSG({
+          "source": "udp.connect",
+          "err": {
+            "id": "$S",
+            "message": "$S"
+          }
+        })MSG", std::to_string(peerId), std::string(uv_strerror(err)));
+        cb(seq, msg, Post{});
+        return;
+      }
+
       auto msg = SSC::format(R"MSG({
         "source": "udp.connect",
-        "err": {
-          "id": "$S",
-          "message": "$S"
+        "data": {
+          "address": "$S",
+          "port": $i,
+          "id": "$S"
         }
-      })MSG", std::to_string(peerId), std::string(uv_strerror(err)));
+      })MSG", std::string(address), port, std::to_string(peerId));
+
       cb(seq, msg, Post{});
-      return;
-    }
-
-    auto msg = SSC::format(R"MSG({
-      "source": "udp.connect",
-      "data": {
-        "address": "$S",
-        "port": $i,
-        "id": "$S"
-      }
-    })MSG", std::string(address), port, std::to_string(peerId));
-
-    cb(seq, msg, Post{});
-
-    runEventLoop();
+    });
   }
 
   void Core::udpGetPeerName (String seq, uint64_t peerId, Cb cb) const {
@@ -3719,11 +3430,25 @@ namespace SSC {
     }
 
     auto peer = Peer::get(peerId);
+
+    if (!peer->isUDP()) {
+      auto msg = SSC::format(R"MSG({
+        "source": "udp.getState",
+        "err": {
+          "id": "$S",
+          "code": "NOT_FOUND_ERR",
+          "message": "no such peer"
+        }
+      })MSG", std::to_string(peerId));
+      cb(seq, msg, Post{});
+      return;
+    }
+
     auto msg = SSC::format(R"MSG({
         "source": "udp.getState",
         "data": {
           "id": "$S",
-          "type": "$S",
+          "type": "udp",
           "ephemeral": $S,
           "bound": $S,
           "active": $S,
@@ -3733,7 +3458,6 @@ namespace SSC {
         }
       })MSG",
       std::to_string(peerId),
-      std::string(peer->type == PEER_TYPE_UDP ? "udp" : ""),
       std::string(peer->isEphemeral() ? "true" : "false"),
       std::string(peer->isBound() ? "true" : "false"),
       std::string(peer->isActive() ? "true" : "false"),
@@ -3746,13 +3470,18 @@ namespace SSC {
   }
 
   void Core::udpSend (String seq, uint64_t peerId, char* buf, int len, int port, String address, bool ephemeral, Cb cb) const {
-    {
-      std::lock_guard<std::recursive_mutex> loopGuard(loopMutex);
+    dispatchEventLoop([=]() {
       auto peer = Peer::create(PEER_TYPE_UDP, peerId, ephemeral);
-      peer->send(seq, buf, len, port, address, cb);
-    }
+      auto ctx = new PeerRequestContext(seq, cb);
 
-    runEventLoop();
+      ctx->buf = buf;
+      ctx->bufsize = len;
+      ctx->port = port;
+      ctx->address = address;
+      ctx->peer = peer;
+
+      ctx->peer->send(ctx->seq, ctx->buf, ctx->bufsize, ctx->port, ctx->address, ctx->cb);
+    });
   }
 
   void Core::udpReadStart (String seq, uint64_t peerId, Cb cb) const {
@@ -3808,80 +3537,85 @@ namespace SSC {
       return;
     }
 
-    auto err = peer->recvstart(cb);
+    dispatchEventLoop([=]() {
+      auto err = peer->recvstart(cb);
 
-    // `UV_EALREADY || UV_EBUSY` means there is active IO on the underlying handle
-    if (err < 0 && err != UV_EALREADY && err != UV_EBUSY) {
-      auto msg = SSC::format(R"MSG({
-        "err": {
-          "id": "$S",
-          "source": "udp.readStart",
-          "message": "$S"
-        }
-      })MSG", std::to_string(peerId), std::string(uv_strerror(err)));
-      cb(seq, msg, Post{});
-      return;
-    }
-
-    auto msg = SSC::format(R"MSG({ "data": {} })MSG");
-    cb(seq, msg, Post{});
-
-    runEventLoop();
-  }
-
-  void Core::dnsLookup (String seq, String hostname, int family, Cb cb) const {
-    std::lock_guard<std::recursive_mutex> loopGuard(loopMutex);
-    auto ctx = new PeerRequestContext(seq, cb);
-    auto loop = getEventLoop();
-
-    struct addrinfo hints = {0};
-
-    if (family == 6) {
-      hints.ai_family = AF_INET6;
-    } else if (family == 4) {
-      hints.ai_family = AF_INET;
-    } else {
-      hints.ai_family = AF_UNSPEC;
-    }
-
-    hints.ai_socktype = 0; // `0` for any
-    hints.ai_protocol = 0; // `0` for any
-
-    uv_getaddrinfo_t* resolver = new uv_getaddrinfo_t;
-    resolver->data = ctx;
-
-    uv_getaddrinfo(loop, resolver, [](uv_getaddrinfo_t *resolver, int status, struct addrinfo *res) {
-      auto ctx = (PeerRequestContext*) resolver->data;
-
-      if (status < 0) {
+      // `UV_EALREADY || UV_EBUSY` means there is active IO on the underlying handle
+      if (err < 0 && err != UV_EALREADY && err != UV_EBUSY) {
         auto msg = SSC::format(R"MSG({
-          "source": "dns.lookup",
+          "source": "udp.readStart",
           "err": {
-            "code": "$S",
+            "id": "$S",
             "message": "$S"
           }
-        })MSG", String(uv_err_name((int)status)), String(uv_strerror(status)));
-
-        ctx->end(msg);
-
+        })MSG", std::to_string(peerId), std::string(uv_strerror(err)));
+        cb(seq, msg, Post{});
         return;
       }
 
-      String address = "";
+      auto msg = SSC::format(R"MSG({
+        "data": {
+          "id": "$S"
+        }
+      })MSG", std::to_string(peerId));
+      cb(seq, msg, Post{});
+    });
+  }
 
-      if (res->ai_family == AF_INET) {
-        char addr[17] = {'\0'};
-        uv_ip4_name((struct sockaddr_in*)(res->ai_addr), addr, 16);
-        address = String(addr, 17);
-      } else if (res->ai_family == AF_INET6) {
-        char addr[40] = {'\0'};
-        uv_ip6_name((struct sockaddr_in6*)(res->ai_addr), addr, 39);
-        address = String(addr, 40);
+  void Core::dnsLookup (String seq, String hostname, int family, Cb cb) const {
+    dispatchEventLoop([=]() {
+      auto ctx = new PeerRequestContext(seq, cb);
+      auto loop = getEventLoop();
+
+      struct addrinfo hints = {0};
+
+      if (family == 6) {
+        hints.ai_family = AF_INET6;
+      } else if (family == 4) {
+        hints.ai_family = AF_INET;
+      } else {
+        hints.ai_family = AF_UNSPEC;
       }
 
-      address = address.erase(address.find('\0'));
+      hints.ai_socktype = 0; // `0` for any
+      hints.ai_protocol = 0; // `0` for any
 
-      auto msg = SSC::format(R"MSG({
+      uv_getaddrinfo_t* resolver = new uv_getaddrinfo_t;
+      resolver->data = ctx;
+
+      auto err = uv_getaddrinfo(loop, resolver, [](uv_getaddrinfo_t *resolver, int status, struct addrinfo *res) {
+        auto ctx = (PeerRequestContext*) resolver->data;
+
+        if (status < 0) {
+          auto msg = SSC::format(R"MSG({
+            "source": "dns.lookup",
+            "err": {
+              "code": $S,
+              "message": "$S"
+            }
+          })MSG",
+          std::to_string(status),
+          String(uv_strerror(status)));
+
+          ctx->end(msg);
+          return;
+        }
+
+        String address = "";
+
+        if (res->ai_family == AF_INET) {
+          char addr[17] = {'\0'};
+          uv_ip4_name((struct sockaddr_in*)(res->ai_addr), addr, 16);
+          address = String(addr, 17);
+        } else if (res->ai_family == AF_INET6) {
+          char addr[40] = {'\0'};
+          uv_ip6_name((struct sockaddr_in6*)(res->ai_addr), addr, 39);
+          address = String(addr, 40);
+        }
+
+        address = address.erase(address.find('\0'));
+
+        auto msg = SSC::format(R"MSG({
           "source": "dns.lookup",
           "data": {
             "address": "$S",
@@ -3893,15 +3627,27 @@ namespace SSC {
           ? 4
           : res->ai_family == AF_INET6
             ? 6
-            : 0
-      );
+            : 0);
 
-      ctx->end(msg);
+        uv_freeaddrinfo(res);
+        ctx->end(msg);
 
-      uv_freeaddrinfo(res);
-    }, hostname.c_str(), nullptr, &hints);
+      }, hostname.c_str(), nullptr, &hints);
 
-    runEventLoop();
+      if (err < 0) {
+        auto msg = SSC::format(R"MSG({
+          "source": "dns.lookup",
+          "err": {
+            "code": $S,
+            "message": "$S"
+          }
+        })MSG",
+        std::to_string(err),
+        std::string(uv_strerror(err)));
+
+        ctx->end(msg);
+      }
+    });
   }
 
   String Core::getNetworkInterfaces () const {
