@@ -540,7 +540,6 @@ void NativeRequestContext::Send (
   std::string data,
   SSC::Post post
 ) const {
-  // sendQueue.push([=]() {});
   if (post.body != 0 || this->seq == "-1") {
     auto js = this->core->createPost(this->seq, data, post);
     this->core->EvaluateJavaScript(js);

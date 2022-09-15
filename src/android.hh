@@ -669,7 +669,7 @@ class NativeThreadContext {
     /**
      * Timeout in milliseconds when polling in dispatch threads.
      */
-    static constexpr int DISPATCH_POLL_TIMEOUT = 8; // in milliseconds
+    static constexpr int DISPATCH_POLL_TIMEOUT = 256; // in milliseconds
 
     /**
      * Timeout in milliseconds when polling in release threads.
@@ -699,8 +699,6 @@ class NativeThreadContext {
      */
     static inline std::atomic<uint64_t> globalDispatchQueueSize = 0;
     static inline std::atomic<uint64_t> globalReleaseQueueSize = 0;
-    static inline std::atomic<uint64_t> globalDispatchPopSize = 0;
-    static inline std::atomic<uint64_t> globalReleasePopSize = 0;
 
     /**
      * Thread semaphores.
@@ -803,7 +801,6 @@ class NativeThreadContext {
         return;
       }
 
-      globalDispatchPopSize++;
       // max total timeout ~= `DISPATCH_POLL_TIMEOUT * DISPATCH_POLL_TIMEOUT`
       int timeouts = DISPATCH_POLL_TIMEOUT;
       while (isDispatchThreadRunning && !ctx->isInvoked && timeouts-- > 0) {
@@ -861,25 +858,8 @@ class NativeThreadContext {
      */
     static void StartDispatchThread () {
       isDispatchThreadRunning = true;
-      auto loop = SSC::getEventLoop();
-      int emptyPolls = 0;
-
       while (isDispatchThreadRunning) {
         SleepInThisThread(DISPATCH_POLL_TIMEOUT);
-        if (globalDispatchQueueSize == 0) {
-          if (
-            !uv_loop_alive(loop) &&
-            globalDispatchPopSize == 0 &&
-            ++emptyPolls > MAX_EMPTY_POLLS
-          ) {
-            break;
-          }
-
-          SleepInThisThread(DISPATCH_POLL_TIMEOUT);
-          continue;
-        }
-
-        emptyPolls = 0;
         PopContext();
       }
 
@@ -891,26 +871,14 @@ class NativeThreadContext {
       int emptyPolls = 0;
 
       while (isReleaseThreadRunning) {
+        SleepInThisThread(RELEASE_POLL_TIMEOUT);
         NativeThreadContext *ctx = nullptr;
-        continue;
-
-        if (globalReleaseQueueSize == 0 && globalReleasePopSize == 0) {
-          if (++emptyPolls > MAX_EMPTY_POLLS) {
-            break;
-          }
-
-          SleepInThisThread(DISPATCH_POLL_TIMEOUT);
-          continue;
-        }
-
-        emptyPolls = 0;
 
         while (ctx == nullptr && globalReleaseQueueSize > 0) {
           Lock lock(globalMutex);
           auto contextId = globalReleaseQueue.front();
           globalReleaseQueue.pop();
           globalReleaseQueueSize = globalReleaseQueue.size();
-          globalReleasePopSize++;
           ctx = Get(contextId);
         }
 
@@ -1053,10 +1021,6 @@ class NativeThreadContext {
         return false;
       }
 
-      if (ctx->isInvoked && globalReleasePopSize > 0) {
-        globalReleasePopSize--;
-      }
-
       RemoveContext(contextId);
       ctx->Cancel();
       ctx->Wait();
@@ -1151,10 +1115,6 @@ class NativeThreadContext {
 
         ctx->semaphore.release();
 
-        if (globalDispatchPopSize > 0) {
-          globalDispatchPopSize--;
-        }
-
         // keep alive (ms) ~= 1024*DISPATCH_POLL_TIMEOUT*DISPATCH_POLL_TIMEOUT
         int timeouts = 1024 * DISPATCH_POLL_TIMEOUT;
         while (
@@ -1186,7 +1146,6 @@ class NativeThreadContext {
 
           if (ctx != nullptr) {
             ctx->isRunning = true;
-            globalDispatchPopSize++;
 
             if (ctx->shouldAutoRelease) {
               globalReleaseQueue.push(ctx->id);
@@ -1201,9 +1160,6 @@ class NativeThreadContext {
         Lock lock(globalMutex);
         globalDispatchQueue.push(ctx->id);
         globalDispatchQueueSize = globalDispatchQueue.size();
-        if (globalDispatchPopSize > 0) {
-          globalDispatchPopSize--;
-        }
       }
 
       // finally, after draining the queue and max keep alive
