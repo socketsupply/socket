@@ -296,16 +296,16 @@ namespace SSC {
       "(() => {"
       "  window.parent = {};\n"
       "  window.process = {};\n"
-      "  window.process.index = Number(`" + std::to_string(opts.index) + "`);\n"
-      "  window.process.port = Number(`" + std::to_string(opts.port) + "`);\n"
-      "  window.process.cwd = () => `" + cleanCwd + "`;\n"
-      "  window.process.title = `" + opts.title + "`;\n"
-      "  window.process.executable = `" + opts.executable + "`;\n"
-      "  window.process.version = `" + opts.version + "`;\n"
+      "  window.process.index = Number('" + std::to_string(opts.index) + "');\n"
+      "  window.process.port = Number('" + std::to_string(opts.port) + "');\n"
+      "  window.process.cwd = () => '" + cleanCwd + "';\n"
+      "  window.process.title = '" + opts.title + "';\n"
+      "  window.process.executable = '" + opts.executable + "';\n"
+      "  window.process.version = '" + opts.version + "';\n"
       "  window.process.debug = " + std::to_string(opts.debug) + ";\n"
-      "  window.process.platform = `" + platform.os + "`;\n"
-      "  window.process.arch = `" + platform.arch + "`;\n"
-      "  window.process.env = Object.fromEntries(new URLSearchParams(`" +  opts.env + "`));\n"
+      "  window.process.platform = '" + platform.os + "';\n"
+      "  window.process.arch = '" + platform.arch + "';\n"
+      "  window.process.env = Object.fromEntries(new URLSearchParams('" +  opts.env + "'));\n"
       "  window.process.config = Object.create({\n"
       "    get size () { return Object.keys(this).length }, \n"
       "    get (key) { \n"
@@ -371,8 +371,8 @@ namespace SSC {
       "    value: new Proxy(window.parent, {                \n"
       "      get (target, prop, receiver) {                 \n"
       "        console.warn(                                \n"
-      "          `window.system.${prop} is depreceated. ` + \n"
-      "          `Use window.parent.${prop} instead.`       \n"
+      "          'window.system.${prop} is depreceated. ' + \n"
+      "          'Use window.parent.${prop} instead.'       \n"
       "         );                                          \n"
       "        return Reflect.get(...arguments);            \n"
       "      }                                              \n"
@@ -388,8 +388,8 @@ namespace SSC {
   std::string emitToRenderProcess(const std::string& event, const std::string& value) {
     return std::string(
       "(() => {"
-      "  const name = `" + event + "`;"
-      "  const value = `" + value + "`;"
+      "  const name = '" + event + "';"
+      "  const value = '" + value + "';"
       "  window._ipc.emit(name, value);"
       "})()"
     );
@@ -398,8 +398,8 @@ namespace SSC {
   std::string streamToRenderProcess(const std::string& id, const std::string& value) {
     return std::string(
       "(() => {"
-      "  const id = `" + id + "`;"
-      "  const value = `" + value + "`;"
+      "  const id = '" + id + "';"
+      "  const value = '" + value + "';"
       "  window._ipc.callbacks[id] && window._ipc.callbacks[id](null, value);"
       "})()"
     );
@@ -888,9 +888,9 @@ namespace SSC {
   std::string resolveToRenderProcess(const std::string& seq, const std::string& state, const std::string& value) {
     return std::string(
       "(() => {"
-      "  const seq = String(`" + seq + "`);"
-      "  const state = Number(`" + state + "`);"
-      "  const value = `" + value + "`;"
+      "  const seq = String('" + seq + "');"
+      "  const state = Number('" + state + "');"
+      "  const value = '" + value + "';"
       "  window._ipc.resolve(seq, state, value);"
       "})()"
     );
