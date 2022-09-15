@@ -3402,15 +3402,21 @@ namespace SSC {
       return;
     }
 
-    auto msg = SSC::format(R"MSG({
-      "source": "udp.getSockName",
-      "data": {
-        "id": "$S",
-        "address": "$S",
-        "port": $i,
-        "family": "$S"
-      }
-    })MSG", std::to_string(peerId), info->address, info->port, info->family);
+    auto msg = SSC::format(
+      R"MSG({
+        "source": "udp.getSockName",
+        "data": {
+          "id": "$S",
+          "address": "$S",
+          "port": $i,
+          "family": "$S"
+        }
+      })MSG",
+      std::to_string(peerId),
+      info->address,
+      info->port,
+      info->family
+    );
 
     cb(seq, msg, Post{});
   }
@@ -3444,7 +3450,8 @@ namespace SSC {
       return;
     }
 
-    auto msg = SSC::format(R"MSG({
+    auto msg = SSC::format(
+      R"MSG({
         "source": "udp.getState",
         "data": {
           "id": "$S",
@@ -3542,13 +3549,18 @@ namespace SSC {
 
       // `UV_EALREADY || UV_EBUSY` means there is active IO on the underlying handle
       if (err < 0 && err != UV_EALREADY && err != UV_EBUSY) {
-        auto msg = SSC::format(R"MSG({
-          "source": "udp.readStart",
-          "err": {
-            "id": "$S",
-            "message": "$S"
-          }
-        })MSG", std::to_string(peerId), std::string(uv_strerror(err)));
+        auto msg = SSC::format(
+          R"MSG({
+            "source": "udp.readStart",
+            "err": {
+              "id": "$S",
+              "message": "$S"
+            }
+          })MSG",
+          std::to_string(peerId),
+          std::string(uv_strerror(err))
+        );
+
         cb(seq, msg, Post{});
         return;
       }
@@ -3587,15 +3599,17 @@ namespace SSC {
         auto ctx = (PeerRequestContext*) resolver->data;
 
         if (status < 0) {
-          auto msg = SSC::format(R"MSG({
-            "source": "dns.lookup",
-            "err": {
-              "code": $S,
-              "message": "$S"
-            }
-          })MSG",
-          std::to_string(status),
-          String(uv_strerror(status)));
+          auto msg = SSC::format(
+            R"MSG({
+              "source": "dns.lookup",
+              "err": {
+                "code": $S,
+                "message": "$S"
+              }
+            })MSG",
+            std::to_string(status),
+            String(uv_strerror(status))
+          );
 
           ctx->end(msg);
           return;
@@ -3615,19 +3629,23 @@ namespace SSC {
 
         address = address.erase(address.find('\0'));
 
-        auto msg = SSC::format(R"MSG({
-          "source": "dns.lookup",
-          "data": {
-            "address": "$S",
-            "family": $i
-          }
-        })MSG",
-        address,
-        res->ai_family == AF_INET
+        auto family = res->ai_family == AF_INET
           ? 4
           : res->ai_family == AF_INET6
             ? 6
-            : 0);
+            : 0;
+
+        auto msg = SSC::format(
+          R"MSG({
+            "source": "dns.lookup",
+            "data": {
+              "address": "$S",
+              "family": $i
+            }
+          })MSG",
+          address,
+          family
+        );
 
         uv_freeaddrinfo(res);
         ctx->end(msg);
@@ -3635,15 +3653,17 @@ namespace SSC {
       }, hostname.c_str(), nullptr, &hints);
 
       if (err < 0) {
-        auto msg = SSC::format(R"MSG({
-          "source": "dns.lookup",
-          "err": {
-            "code": $S,
-            "message": "$S"
-          }
-        })MSG",
-        std::to_string(err),
-        std::string(uv_strerror(err)));
+        auto msg = SSC::format(
+          R"MSG({
+            "source": "dns.lookup",
+            "err": {
+              "code": $S,
+              "message": "$S"
+            }
+          })MSG",
+          std::to_string(err),
+          std::string(uv_strerror(err))
+        );
 
         ctx->end(msg);
       }
