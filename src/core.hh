@@ -1510,7 +1510,7 @@ namespace SSC {
     runEventLoop();
   }
 
-  static int pollEventLoop () {
+  static void pollEventLoop () {
     auto loop = getEventLoop();
 
     while (isLoopRunning) {
