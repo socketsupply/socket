@@ -415,7 +415,6 @@ namespace SSC {
       "  };"
 
       "  if (" + seq + " > 0 && window._ipc['R" + seq + "']) {"
-      "    console.log('resolveMenuSelection: ' + " + seq + ");"
       "    window._ipc['R" + seq + "'].resolve(detail);"
       "    delete window._ipc['R" + seq + "'];"
       "    return;"
