@@ -895,8 +895,9 @@ open class Bridge(activity: WebViewActivity) {
           val id = message.get("id")
           val ip = message.get("address")
           val port = message.get("port", "0").toInt()
+          val reuseAddr = message.get("reuseAddr", "false") == "true"
 
-          core.udp.bind(message.seq, id, ip, port, fun (data: String) {
+          core.udp.bind(message.seq, id, ip, port, reuseAddr, fun (data: String) {
             callback(message.seq, data)
           })
 
@@ -1344,10 +1345,11 @@ open class NativeUDP(core: NativeCore) {
     id: String,
     ip: String,
     port: Int,
+    reuseAddr: Boolean,
     callback: (String) -> Unit
   ) {
     core?.apply {
-      udpBind(seq, id, ip, port, queueCallback(callback))
+      udpBind(seq, id, ip, port, reuseAddr, queueCallback(callback))
     }
   }
 
@@ -1938,6 +1940,7 @@ open class NativeCore(var activity: WebViewActivity) {
     id: String,
     ip: String,
     port: Int,
+    reuseAddr: Boolean,
     callback: String
   )
 

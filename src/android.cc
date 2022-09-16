@@ -590,13 +590,14 @@ void NativeUDP::Bind (
   NativeCoreID id,
   std::string ip,
   int port,
+  bool reuseAddr,
   NativeCallbackID callback
 ) const {
   auto context = this->core->CreateRequestContext(seq, id, callback);
   NativeThreadContext::Dispatch(this->core, [context, ip, port](auto thread, auto data) {
     auto core = reinterpret_cast<SSC::Core *>(context->core);
 
-    core->udpBind(context->seq, context->id, ip, port, [context](auto seq, auto data, auto post) {
+    core->udpBind(context->seq, context->id, ip, port, reuseAddr, [context](auto seq, auto data, auto post) {
       context->Finalize(seq, data);
     });
   });
@@ -1586,6 +1587,7 @@ extern "C" {
     jstring id,
     jstring ip,
     jint port,
+    jboolean reuseAddr,
     jstring callback
   ) {
     auto core = GetNativeCoreFromEnvironment(env);
@@ -1601,6 +1603,7 @@ extern "C" {
       GetNativeCoreIDFromJString(env, id),
       NativeString(env, ip).str(),
       (int) port,
+      (bool) reuseAddr,
       (NativeCallbackID) callback
     );
   }

@@ -897,6 +897,7 @@ namespace SSC {
 
       Bridge::ThreadContext::Dispatch(this, [=](auto ctx) {
         auto ip = cmd.get("address");
+        auto reuseAddr = cmd.get("reuseAddr") == "true";
         int port;
         uint64_t peerId;
 
@@ -907,7 +908,7 @@ namespace SSC {
         port = std::stoi(cmd.get("port"));
         peerId = std::stoull(cmd.get("id"));
 
-        ctx->core->udpBind(seq, peerId, ip, port, cb);
+        ctx->core->udpBind(seq, peerId, ip, port, reuseAddr, cb);
       });
       return true;
     }

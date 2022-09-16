@@ -1455,6 +1455,7 @@ static dispatch_queue_t queue = dispatch_queue_create("co.socketsupply.queue.cor
 
   if (cmd.name == "udpBind" || cmd.name == "udp.bind") {
     auto ip = cmd.get("address");
+    auto reuseAddr = cmd.get("reuseAddr") == "true";
     std::string err;
     int port;
     uint64_t peerId = 0ll;
@@ -1480,7 +1481,7 @@ static dispatch_queue_t queue = dispatch_queue_create("co.socketsupply.queue.cor
     }
 
     dispatch_async(queue, ^{
-      self.core->udpBind(seq, peerId, ip, port, [=](auto seq, auto msg, auto post) {
+      self.core->udpBind(seq, peerId, ip, port, reuseAddr, [=](auto seq, auto msg, auto post) {
         [self send: seq msg: msg post: post];
       });
     });

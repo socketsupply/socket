@@ -442,6 +442,7 @@ class NativeUDP {
     NativeCoreID id,
     std::string ip,
     int port,
+    bool reuseAddr,
     NativeCallbackID callback
   ) const;
 
