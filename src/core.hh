@@ -465,6 +465,27 @@ namespace SSC {
     };
   };
 
+  struct EventLoopDispatchContext {
+    typedef std::function<void()> Callback;
+    uv_async_t async;
+    uv_handle_t *handle;
+    Callback dispatch;
+
+    EventLoopDispatchContext (Callback dispatch) {
+      this->dispatch = dispatch;
+      this->handle = (uv_handle_t *) &this->async;
+      this->handle->data = this;
+    }
+
+    void close () {
+      uv_close(this->handle, [](uv_handle_t *handle) {
+        if (handle != nullptr) {
+          delete (EventLoopDispatchContext *) handle->data;
+        }
+      });
+    }
+  };
+
   // timers
   static Timers timers;
   static void initTimers ();
@@ -477,7 +498,7 @@ namespace SSC {
   static int runEventLoop ();
   static int runEventLoop (uv_run_mode);
   static void stopEventLoop ();
-  static void dispatchEventLoop (std::function<void(uv_loop_t *)> dispatch);
+  static void dispatchEventLoop (EventLoopDispatchContext::Callback dispatch);
 
   static String addrToIPv4 (struct sockaddr_in* sin) {
     char buf[INET_ADDRSTRLEN];
@@ -715,29 +736,28 @@ namespace SSC {
     peer_state_t state = PEER_STATE_NONE;
 
     static void resumeAllBound () {
-      std::lock_guard<std::recursive_mutex> guard(peersMutex);
-
-      for (auto const &tuple : peers) {
-        auto peer = tuple.second;
-        if (peer != nullptr && !peer->isActive() && peer->isBound()) {
-          peer->resume();
+      dispatchEventLoop([=]() {
+        std::lock_guard<std::recursive_mutex> guard(peersMutex);
+        for (auto const &tuple : peers) {
+          auto peer = tuple.second;
+          if (peer != nullptr && !peer->isActive() && peer->isBound()) {
+            peer->resume();
+          }
         }
-      }
-
-      runEventLoop();
+      });
     }
 
     static void pauseAllBound () {
-      std::lock_guard<std::recursive_mutex> guard(peersMutex);
+      dispatchEventLoop([=]() {
+        std::lock_guard<std::recursive_mutex> guard(peersMutex);
 
-      for (auto const &tuple : peers) {
-        auto peer = tuple.second;
-        if (peer != nullptr && peer->isBound()) {
-          peer->pause();
+        for (auto const &tuple : peers) {
+          auto peer = tuple.second;
+          if (peer != nullptr && peer->isBound()) {
+            peer->pause();
+          }
         }
-      }
-
-      runEventLoop();
+      });
     }
 
     /**
@@ -1224,6 +1244,7 @@ namespace SSC {
         }
       };
 
+      std::lock_guard<std::recursive_mutex> lock(loopMutex);
       return uv_udp_recv_start((uv_udp_t *) &this->handle, allocate, receive);
     }
 
@@ -1233,6 +1254,7 @@ namespace SSC {
       if (this->hasState(PEER_STATE_UDP_RECV_STARTED)) {
         this->removeState(PEER_STATE_UDP_RECV_STARTED);
         std::lock_guard<std::recursive_mutex> guard(this->mutex);
+        std::lock_guard<std::recursive_mutex> lock(loopMutex);
         rc = uv_udp_recv_stop((uv_udp_t *) &this->handle);
       }
 
@@ -1472,27 +1494,6 @@ namespace SSC {
   static void sleepEventLoop () {
     sleepEventLoop(getEventLoopTimeout());
   }
-
-  struct EventLoopDispatchContext {
-    typedef std::function<void()> Callback;
-    uv_async_t async;
-    uv_handle_t *handle;
-    Callback dispatch;
-
-    EventLoopDispatchContext (Callback dispatch) {
-      this->dispatch = dispatch;
-      this->handle = (uv_handle_t *) &this->async;
-      this->handle->data = this;
-    }
-
-    void close () {
-      uv_close(this->handle, [](uv_handle_t *handle) {
-        if (handle != nullptr) {
-          delete (EventLoopDispatchContext *) handle->data;
-        }
-      });
-    }
-  };
 
   static void dispatchEventLoop (EventLoopDispatchContext::Callback dispatch) {
     std::lock_guard<std::recursive_mutex> lock(loopMutex);
@@ -3544,34 +3545,32 @@ namespace SSC {
       return;
     }
 
-    dispatchEventLoop([=]() {
-      auto err = peer->recvstart(cb);
+    auto err = peer->recvstart(cb);
 
-      // `UV_EALREADY || UV_EBUSY` means there is active IO on the underlying handle
-      if (err < 0 && err != UV_EALREADY && err != UV_EBUSY) {
-        auto msg = SSC::format(
-          R"MSG({
-            "source": "udp.readStart",
-            "err": {
-              "id": "$S",
-              "message": "$S"
-            }
-          })MSG",
-          std::to_string(peerId),
-          std::string(uv_strerror(err))
-        );
+    // `UV_EALREADY || UV_EBUSY` means there is active IO on the underlying handle
+    if (err < 0 && err != UV_EALREADY && err != UV_EBUSY) {
+      auto msg = SSC::format(
+        R"MSG({
+          "source": "udp.readStart",
+          "err": {
+            "id": "$S",
+            "message": "$S"
+          }
+        })MSG",
+        std::to_string(peerId),
+        std::string(uv_strerror(err))
+      );
 
-        cb(seq, msg, Post{});
-        return;
-      }
-
-      auto msg = SSC::format(R"MSG({
-        "data": {
-          "id": "$S"
-        }
-      })MSG", std::to_string(peerId));
       cb(seq, msg, Post{});
-    });
+      return;
+    }
+
+    auto msg = SSC::format(R"MSG({
+      "data": {
+        "id": "$S"
+      }
+    })MSG", std::to_string(peerId));
+    cb(seq, msg, Post{});
   }
 
   void Core::dnsLookup (String seq, String hostname, int family, Cb cb) const {
