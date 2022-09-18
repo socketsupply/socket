@@ -594,7 +594,7 @@ void NativeUDP::Bind (
   NativeCallbackID callback
 ) const {
   auto context = this->core->CreateRequestContext(seq, id, callback);
-  NativeThreadContext::Dispatch(this->core, [context, ip, port](auto thread, auto data) {
+  NativeThreadContext::Dispatch(this->core, [context, ip, port, reuseAddr](auto thread, auto data) {
     auto core = reinterpret_cast<SSC::Core *>(context->core);
 
     core->udpBind(context->seq, context->id, ip, port, reuseAddr, [context](auto seq, auto data, auto post) {
