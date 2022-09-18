@@ -269,19 +269,15 @@ namespace SSC {
         Parse cmd(msg);
 
         auto invoked = app->bridge.invoke(cmd, [=](auto seq, auto result, auto post) {
-          if (seq.size() == 0 || seq == "-1") {
-            app->bridge->send(cmd, seq, result, post);
-            return;
-          }
+          auto size = post.body != nullptr ? post.length : result.size();
+          auto body = post.body != nullptr ? post.body : result.c_str();
 
-          auto size = post.body != 0 ? post.length : result.size();
-          auto body = post.body != nullptr && post.length > 0
-            ? post.body
-            : result.c_str();
-
-          // stream body is free'd in `Post{}`
-          auto stream = g_memory_input_stream_new_from_data(body, size, free);
+          // `post.body` is free'd with `freeFunction`
+          post.bodyNeedsFree = false;
+          auto freeFunction = post.body != nullptr ? free : nullptr;
+          auto stream = g_memory_input_stream_new_from_data(body, size, freeFunction);
           auto response = webkit_uri_scheme_response_new(stream, size);
+
 
           webkit_uri_scheme_response_set_content_type(
             response,
@@ -332,7 +328,6 @@ namespace SSC {
   int App::run () {
     auto cwd = getCwd("");
     uv_chdir(cwd.c_str());
-    SSC::initLoop();
     gtk_main();
     return shouldExit ? 1 : 0;
   }
@@ -391,7 +386,7 @@ namespace SSC {
 
       if (this->core->hasPost(pid)) {
         auto post = this->core->getPost(pid);
-        cb(seq, "", post);
+        cb(seq, "{}", post);
         return true;
       }
 
