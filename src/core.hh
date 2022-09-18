@@ -496,7 +496,6 @@ namespace SSC {
   static int getEventLoopTimeout ();
   static bool isLoopAlive ();
   static int runEventLoop ();
-  static int runEventLoop (uv_run_mode);
   static void stopEventLoop ();
   static void dispatchEventLoop (EventLoopDispatchContext::Callback dispatch);
 
@@ -1412,9 +1411,7 @@ namespace SSC {
     // @see https://api.gtkd.org/glib.c.types.GSourceFuncs.html
   static GSourceFuncs loopSourceFunctions = {
     .prepare = [](GSource *source, gint *timeout) -> gboolean {
-      auto loop = getEventLoop();
-
-      if (!isLoopAlive()) {
+      if (!isLoopAlive() || !isLoopRunning) {
         return false;
       }
 
@@ -1423,6 +1420,7 @@ namespace SSC {
     },
 
     .dispatch = [](GSource *source, GSourceFunc callback, gpointer user_data) -> gboolean {
+      std::lock_guard<std::recursive_mutex> lock(loopMutex);
       auto loop = getEventLoop();
       uv_run(loop, UV_RUN_NOWAIT);
       return G_SOURCE_CONTINUE;
@@ -1557,7 +1555,6 @@ namespace SSC {
     // to actually execute our loop in tandem with glib's event loop
     std::lock_guard<std::recursive_mutex> lock(loopMutex);
     rc = uv_run(getEventLoop(), UV_RUN_NOWAIT);
-    isLoopRunning = false;
 #else
     std::lock_guard<std::recursive_mutex> lock(loopMutex);
     if (eventLoopThread != nullptr) {
@@ -2482,6 +2479,10 @@ namespace SSC {
   }
 
   void Core::fsWrite (String seq, uint64_t id, String data, int64_t offset, Cb cb) const {
+    auto size = data.size();
+    auto bytes = new char[size]{0};
+
+    memcpy(bytes, data.data(), size);
     dispatchEventLoop([=]() {
       auto desc = Descriptor::get(id);
       auto ctx = new DescriptorRequestContext(desc, seq, cb);
@@ -2497,14 +2498,10 @@ namespace SSC {
           }
         })MSG", std::to_string(id));
 
+        delete [] bytes;
         ctx->end(msg);
         return;
       }
-
-      auto size = data.size();
-      auto bytes = new char[size]{0};
-
-      memcpy(bytes, data.data(), size);
 
       ctx->setBuffer(0, size, bytes);
 
@@ -3478,17 +3475,22 @@ namespace SSC {
   }
 
   void Core::udpSend (String seq, uint64_t peerId, char* buf, int len, int port, String address, bool ephemeral, Cb cb) const {
+    auto buffer = new char[len]{0};
+    memcpy(buffer, buf, len);
     dispatchEventLoop([=]() {
       auto peer = Peer::create(PEER_TYPE_UDP, peerId, ephemeral);
       auto ctx = new PeerRequestContext(seq, cb);
 
-      ctx->buf = buf;
+      ctx->buf = buffer;
       ctx->bufsize = len;
       ctx->port = port;
       ctx->address = address;
       ctx->peer = peer;
 
-      ctx->peer->send(ctx->seq, ctx->buf, ctx->bufsize, ctx->port, ctx->address, ctx->cb);
+      ctx->peer->send(ctx->seq, ctx->buf, ctx->bufsize, ctx->port, ctx->address, [ctx](auto seq, auto msg, auto post) {
+        delete [] ctx->buf;
+        ctx->cb(seq, msg, post);
+      });
     });
   }
 
