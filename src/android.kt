@@ -330,6 +330,7 @@ open class WebViewActivity : androidx.appcompat.app.AppCompatActivity() {
       stopEventLoop()
       stopDispatchThread()
       stopReleaseThread()
+      pauseAllPeers()
     }
 
     super.onPause()
@@ -340,6 +341,7 @@ open class WebViewActivity : androidx.appcompat.app.AppCompatActivity() {
       runEventLoop()
       startDispatchThread()
       startReleaseThread()
+      resumeAllPeers()
     }
 
     super.onResume()
@@ -1823,6 +1825,12 @@ open class NativeCore(var activity: WebViewActivity) {
   external fun stopEventLoop(): Boolean
 
   @Throws(java.lang.Exception::class)
+  external fun resumeAllPeers(): Boolean
+
+  @Throws(java.lang.Exception::class)
+  external fun pauseAllPeers(): Boolean
+
+  @Throws(java.lang.Exception::class)
   external fun startDispatchThread(): Boolean
 
   @Throws(java.lang.Exception::class)
@@ -1863,12 +1871,6 @@ open class NativeCore(var activity: WebViewActivity) {
   @Throws(java.lang.Exception::class)
   external fun getEmitToRenderProcessJavaScript(
     event: String,
-    value: String
-  ): String
-
-  @Throws(java.lang.Exception::class)
-  external fun getStreamToRenderProcessJavaScript(
-    id: String,
     value: String
   ): String
 

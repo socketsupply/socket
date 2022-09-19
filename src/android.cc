@@ -1088,6 +1088,26 @@ extern "C" {
   }
 
   /**
+   * Resume all bound/connected peers
+   */
+  void exports(NativeCore, resumeAllPeers)(
+    JNIEnv *env,
+    jobject self
+  ) {
+    SSC::Peer::resumeAll();
+  }
+
+  /**
+   * Pause all bound/connected peers
+   */
+  void exports(NativeCore, pauseAllPeers)(
+    JNIEnv *env,
+    jobject self
+  ) {
+    SSC::Peer::pauseAll();
+  }
+
+  /**
    * Starts the dispatch thread.
    */
   void exports(NativeCore, startDispatchThread)(
@@ -1293,34 +1313,6 @@ extern "C" {
 
     auto javascript = emitToRenderProcess(
       NativeString(env, event).str(),
-      NativeString(env, value).str()
-    );
-
-    return env->NewStringUTF(javascript.c_str());
-  }
-
-  /**
-   * `NativeCore::getStreamToRenderProcessJavaScript()` binding.
-   * @return JavaScript source code injected into WebView that performs an IPC
-   * stream callback.
-   */
-  jstring exports(NativeCore, getStreamToRenderProcessJavaScript)(
-    JNIEnv *env,
-    jobject self,
-    jstring id,
-    jstring value
-  ) {
-    using SSC::streamToRenderProcess;
-
-    auto core = GetNativeCoreFromEnvironment(env);
-
-    if (!core) {
-      Throw(env, NativeCoreNotInitializedException);
-      return env->NewStringUTF("");
-    }
-
-    auto javascript = streamToRenderProcess(
-      NativeString(env, id).str(),
       NativeString(env, value).str()
     );
 
