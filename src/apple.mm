@@ -722,7 +722,6 @@ static dispatch_queue_t queue = dispatch_queue_create("co.socketsupply.queue.cor
 
   uint64_t peerId = 0;
 
-  // printf("%s\n", cmd.uri.c_str());
   /// ipc bluetooth-start
   /// @param serviceId String
   ///
