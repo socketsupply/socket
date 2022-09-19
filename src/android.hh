@@ -27,7 +27,7 @@
 
 // defined before includes below
 #if DEBUG
-#define debug(format, ...)                                                  \
+#define debug(format, ...)                                                     \
   {                                                                            \
     __android_log_print(                                                       \
       ANDROID_LOG_DEBUG, __FUNCTION__, format, ##__VA_ARGS__                   \
@@ -659,13 +659,9 @@ class NativeThreadContext {
     /**
      * Maximum number of concurrent dispatch/release threads.
      */
+    // @TODO(jwerle): use `2*sysconf(_SC_NPROCESSORS_ONLN)` instead
     static constexpr int MAX_DISPATCH_CONCURRENCY = 64;
     static constexpr int MAX_RELEASE_CONCURRENCY = 16;
-
-    /**
-     * Maximum empty polls for dispatch worker before stopping main loop.
-     */
-    static constexpr int MAX_EMPTY_POLLS = 1024;
 
     /**
      * Timeout in milliseconds when polling in dispatch threads.
