@@ -734,25 +734,25 @@ namespace SSC {
     peer_flag_t flags = PEER_FLAG_NONE;
     peer_state_t state = PEER_STATE_NONE;
 
-    static void resumeAllBound () {
+    static void resumeAll () {
       dispatchEventLoop([=]() {
         std::lock_guard<std::recursive_mutex> guard(peersMutex);
         for (auto const &tuple : peers) {
           auto peer = tuple.second;
-          if (peer != nullptr && !peer->isActive() && peer->isBound()) {
+          if (peer != nullptr && (peer->isBound() || peer->isConnected())) {
             peer->resume();
           }
         }
       });
     }
 
-    static void pauseAllBound () {
+    static void pauseAll () {
       dispatchEventLoop([=]() {
         std::lock_guard<std::recursive_mutex> guard(peersMutex);
 
         for (auto const &tuple : peers) {
           auto peer = tuple.second;
-          if (peer != nullptr && peer->isBound()) {
+          if (peer != nullptr && (peer->isBound() || peer->isConnected())) {
             peer->pause();
           }
         }
