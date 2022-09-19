@@ -293,7 +293,7 @@ namespace SSC {
     std::replace(cleanCwd.begin(), cleanCwd.end(), '\\', '/');
 
     auto preload = std::string(
-      "(() => {"
+      ";(() => {"
       "  window.parent = {};\n"
       "  window.process = {};\n"
       "  window.process.index = Number('" + std::to_string(opts.index) + "');\n"
@@ -341,7 +341,7 @@ namespace SSC {
         continue;
       }
 
-      preload += "  void (() => { \n";
+      preload += "  ;(() => { \n";
       preload += "    const key = decodeURIComponent('" + encodeURIComponent(key) + "').toLowerCase()\n";
 
       if (value == "true" || value == "false") {
@@ -381,48 +381,40 @@ namespace SSC {
     );
 
     preload += "})();\n";
-    preload += "//# sourceURL=preload.js";
+    preload += "//# sourceURL=preload.js\n";
     return preload;
   }
 
   std::string emitToRenderProcess(const std::string& event, const std::string& value) {
     return std::string(
-      "(() => {"
-      "  const name = '" + event + "';"
-      "  const value = '" + value + "';"
-      "  window._ipc.emit(name, value);"
-      "})()"
-    );
-  }
-
-  std::string streamToRenderProcess(const std::string& id, const std::string& value) {
-    return std::string(
-      "(() => {"
-      "  const id = '" + id + "';"
-      "  const value = '" + value + "';"
-      "  window._ipc.callbacks[id] && window._ipc.callbacks[id](null, value);"
-      "})()"
+      ";(() => {\n"
+      "  const name = decodeURIComponent(`" + event + "`);\n"
+      "  const value = `" + value + "`;\n"
+      "  window._ipc.emit(name, value);\n"
+      "})();\n"
+      "//# sourceURL=emit-to-render-process.js\n"
     );
   }
 
   std::string resolveMenuSelection(const std::string& seq, const std::string& title, const std::string& parent) {
     return std::string(
-      "(() => {"
-      "  const detail = {"
-      "    title: '" + title + "',"
-      "    parent: '" + parent + "',"
-      "    state: '0'"
-      "  };"
+      ";(() => {\n"
+      "  const detail = {\n"
+      "    title: decodeURIComponent(`" + title + "`),\n"
+      "    parent: decodeURIComponent(`" + parent + "`),\n"
+      "    state: '0'\n"
+      "  };\n"
 
-      "  if (" + seq + " > 0 && window._ipc['R" + seq + "']) {"
-      "    window._ipc['R" + seq + "'].resolve(detail);"
-      "    delete window._ipc['R" + seq + "'];"
-      "    return;"
-      "  }"
+      "  if (" + seq + " > 0 && window._ipc['R" + seq + "']) {\n"
+      "    window._ipc['R" + seq + "'].resolve(detail);\n"
+      "    delete window._ipc['R" + seq + "'];\n"
+      "    return;\n"
+      "  }\n"
 
-      "  const event = new window.CustomEvent('menuItemSelected', { detail });"
-      "  window.dispatchEvent(event);"
-      "})()"
+      "  const event = new window.CustomEvent('menuItemSelected', { detail });\n"
+      "  window.dispatchEvent(event);\n"
+      "})();\n"
+      "//# sourceURL=resolve-menu-selection.js\n"
     );
   }
 
