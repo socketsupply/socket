@@ -1666,13 +1666,10 @@ namespace SSC {
     };
   }
 
-  void Window::eval(const std::string& s) {
+  void Window::eval(const std::string& source) {
     webkit_web_view_run_javascript(
       WEBKIT_WEB_VIEW(webview),
-      std::string(
-        "try { " + s + "; } "
-        "catch (err) { console.error(err.stack || err.message || err); }"
-      ).c_str(),
+      std::string(source).c_str(),
       nullptr,
       nullptr,
       nullptr
