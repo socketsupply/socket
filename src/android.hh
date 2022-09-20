@@ -440,7 +440,7 @@ class NativeUDP {
   void Bind (
     NativeCoreSequence seq,
     NativeCoreID id,
-    std::string ip,
+    std::string address,
     int port,
     bool reuseAddr,
     NativeCallbackID callback
@@ -455,7 +455,7 @@ class NativeUDP {
   void Connect (
     NativeCoreSequence seq,
     NativeCoreID id,
-    std::string ip,
+    std::string address,
     int port,
     NativeCallbackID callback
   ) const;
@@ -495,7 +495,7 @@ class NativeUDP {
     NativeCoreID id,
     std::string data,
     int16_t size,
-    std::string ip,
+    std::string address,
     int port,
     bool ephemeral,
     NativeCallbackID callback

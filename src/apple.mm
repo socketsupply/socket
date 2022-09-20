@@ -1314,6 +1314,32 @@ static dispatch_queue_t queue = dispatch_queue_create("co.socketsupply.queue.cor
     return true;
   }
 
+  if (cmd.name == "udpDisconnect" || cmd.name == "udp.disconnect") {
+    auto strId = cmd.get("id");
+
+    if (strId.size() == 0) {
+      auto msg = SSC::format(R"MSG({
+        "err": {
+          "message": "expected .peerId"
+        }
+      })MSG");
+
+      dispatch_async(queue, ^{
+        [self send: seq msg: msg post: Post{}];
+      });
+      return true;
+    }
+
+    auto peerId = std::stoull(strId);
+
+    dispatch_async(queue, ^{
+      self.core->udpDisconnect(seq, peerId, [=](auto seq, auto msg, auto post) {
+        [self send: seq msg: msg post: post];
+      });
+    });
+    return true;
+  }
+
   if (cmd.name == "udpGetPeerName" || cmd.name == "udp.getPeerName") {
     auto strId = cmd.get("id");
 
@@ -1501,6 +1527,26 @@ static dispatch_queue_t queue = dispatch_queue_create("co.socketsupply.queue.cor
 
     dispatch_async(queue, ^{
       self.core->udpReadStart(seq, peerId, [=](auto seq, auto msg, auto post) {
+        [self send: seq msg: msg post: post];
+      });
+    });
+
+    return true;
+  }
+
+  if (cmd.name == "udpReadStop" || cmd.name == "udp.readStop") {
+    uint64_t peerId;
+
+    try {
+      peerId = std::stoull(cmd.get("id"));
+    } catch (...) {
+      auto msg = SSC::format(R"({ "err": { "message": "property 'peerId' required" } })");
+      [self send: seq msg: msg post: Post{}];
+      return true;
+    }
+
+    dispatch_async(queue, ^{
+      self.core->udpReadStop(seq, peerId, [=](auto seq, auto msg, auto post) {
         [self send: seq msg: msg post: post];
       });
     });

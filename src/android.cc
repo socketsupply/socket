@@ -255,7 +255,6 @@ jboolean NativeCore::ConfigureEnvironment () {
     "});                                                         \n"
     "                                                            \n"
     + createPreload(windowOptions)
-    + "//# sourceURL=preload.js                                  \n"
   );
 
   stream.str(""); // clear stream
@@ -582,22 +581,22 @@ void NativeRequestContext::Finalize (
 void NativeRequestContext::Finalize (
   SSC::Post post
 ) const {
-  this->Finalize(this->seq, "", post);
+  this->Finalize(this->seq, "{}", post);
 }
 
 void NativeUDP::Bind (
   NativeCoreSequence seq,
   NativeCoreID id,
-  std::string ip,
+  std::string address,
   int port,
   bool reuseAddr,
   NativeCallbackID callback
 ) const {
   auto context = this->core->CreateRequestContext(seq, id, callback);
-  NativeThreadContext::Dispatch(this->core, [context, ip, port, reuseAddr](auto thread, auto data) {
+  NativeThreadContext::Dispatch(this->core, [context, address, port, reuseAddr](auto thread, auto data) {
     auto core = reinterpret_cast<SSC::Core *>(context->core);
 
-    core->udpBind(context->seq, context->id, ip, port, reuseAddr, [context](auto seq, auto data, auto post) {
+    core->udpBind(context->seq, context->id, address, port, reuseAddr, [context](auto seq, auto data, auto post) {
       context->Finalize(seq, data);
     });
   });
@@ -640,7 +639,14 @@ void NativeUDP::Disconnect (
   NativeCoreID id,
   NativeCallbackID callback
 ) const {
-  // TODO(jwerle)
+  auto context = this->core->CreateRequestContext(seq, id, callback);
+  NativeThreadContext::Dispatch(this->core, [context](auto thread, auto data) {
+    auto core = reinterpret_cast<SSC::Core *>(context->core);
+
+    core->udpDisconnect(context->seq, context->id, [context](auto seq, auto data, auto post) {
+      context->Finalize(seq, data);
+    });
+  });
 }
 
 void NativeUDP::GetPeerName (
@@ -708,16 +714,16 @@ void NativeUDP::Send (
   NativeCoreID id,
   std::string data,
   int16_t size,
-  std::string ip,
+  std::string address,
   int port,
   bool ephemeral,
   NativeCallbackID callback
 ) const {
   auto context = this->core->CreateRequestContext(seq, id, callback);
-  NativeThreadContext::Dispatch(this->core, [context, data, size, ip, port, ephemeral](auto thread, auto _) {
+  NativeThreadContext::Dispatch(this->core, [context, data, size, address, port, ephemeral](auto thread, auto _) {
     auto core = reinterpret_cast<SSC::Core *>(context->core);
 
-    core->udpSend(context->seq, context->id, (char *) data.data(), size, port, ip, ephemeral, [context](auto seq, auto data, auto post) {
+    core->udpSend(context->seq, context->id, (char *) data.data(), size, port, address, ephemeral, [context](auto seq, auto data, auto post) {
       context->Finalize(seq, data);
     });
   });
@@ -1577,7 +1583,7 @@ extern "C" {
     jobject self,
     jstring seq,
     jstring id,
-    jstring ip,
+    jstring address,
     jint port,
     jboolean reuseAddr,
     jstring callback
@@ -1593,7 +1599,7 @@ extern "C" {
     udp.Bind(
       NativeString(env, seq).str(),
       GetNativeCoreIDFromJString(env, id),
-      NativeString(env, ip).str(),
+      NativeString(env, address).str(),
       (int) port,
       (bool) reuseAddr,
       (NativeCallbackID) callback
@@ -1605,7 +1611,7 @@ extern "C" {
     jobject self,
     jstring seq,
     jstring id,
-    jstring ip,
+    jstring address,
     jint port,
     jstring callback
   ) {
@@ -1620,7 +1626,7 @@ extern "C" {
     udp.Connect(
       NativeString(env, seq).str(),
       GetNativeCoreIDFromJString(env, id),
-      NativeString(env, ip).str(),
+      NativeString(env, address).str(),
       (int) port,
       (NativeCallbackID) callback
     );
@@ -1743,7 +1749,7 @@ extern "C" {
     jstring id,
     jstring data,
     jint size,
-    jstring ip,
+    jstring address,
     jint port,
     jboolean ephemeral,
     jstring callback
@@ -1761,7 +1767,7 @@ extern "C" {
       GetNativeCoreIDFromJString(env, id),
       NativeString(env, data).str(),
       (int) size,
-      NativeString(env, ip).str(),
+      NativeString(env, address).str(),
       (int) port,
       (bool) ephemeral,
       (NativeCallbackID) callback

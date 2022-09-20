@@ -961,6 +961,27 @@ namespace SSC {
       return true;
     }
 
+    if (cmd.name == "udpDisconnect" || cmd.name == "udp.disconnect") {
+      auto strId = cmd.get("id");
+
+      if (strId.size() == 0) {
+        auto msg = SSC::format(R"MSG({
+          "err": {
+            "message": "expected .peerId"
+          }
+        })MSG");
+        cb(seq, msg, Post{});
+        return true;
+      }
+
+      auto peerId = std::stoull(strId);
+
+      Bridge::ThreadContext::Dispatch(this, [=](auto ctx) {
+        ctx->core->udpDisconnect(seq, peerId, cb);
+      });
+      return true;
+    }
+
     if (cmd.name == "udpGetPeerName" || cmd.name == "udp.getPeerName") {
       auto strId = cmd.get("id");
 
@@ -1040,6 +1061,26 @@ namespace SSC {
       auto peerId = std::stoull(cmd.get("id"));
       Bridge::ThreadContext::Dispatch(this, peerId, [=](auto ctx) {
         ctx->core->udpReadStart(seq, peerId, cb);
+      });
+      return true;
+    }
+
+    if (cmd.name == "udpReadStop" || cmd.name == "udp.readStop") {
+      if (cmd.get("id").size() == 0) {
+        auto err = SSC::format(R"MSG({
+          "err": {
+            "type": "InternalError",
+            "message": ".id is required"
+          }
+        })MSG");
+
+        cb(seq, err, Post{});
+        return true;
+      }
+
+      auto peerId = std::stoull(cmd.get("id"));
+      Bridge::ThreadContext::Dispatch(this, peerId, [=](auto ctx) {
+        ctx->core->udpReadStop(seq, peerId, cb);
       });
       return true;
     }

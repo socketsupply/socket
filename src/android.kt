@@ -895,11 +895,11 @@ open class Bridge(activity: WebViewActivity) {
           }
 
           val id = message.get("id")
-          val ip = message.get("address")
           val port = message.get("port", "0").toInt()
+          val address = message.get("address")
           val reuseAddr = message.get("reuseAddr", "false") == "true"
 
-          core.udp.bind(message.seq, id, ip, port, reuseAddr, fun (data: String) {
+          core.udp.bind(message.seq, id, address, port, reuseAddr, fun (data: String) {
             callback(message.seq, data)
           })
 
@@ -912,10 +912,10 @@ open class Bridge(activity: WebViewActivity) {
           }
 
           val id = message.get("id")
-          val ip = message.get("address")
           val port = message.get("port", "0").toInt()
+          val address = message.get("address")
 
-          core.udp.connect(message.seq, id, ip, port, fun (data: String) {
+          core.udp.connect(message.seq, id, address, port, fun (data: String) {
             callback(message.seq, data)
           })
 
@@ -978,6 +978,20 @@ open class Bridge(activity: WebViewActivity) {
           return message.seq
         }
 
+        "udpReadStop", "udp.readStop" -> {
+          if (message.seq.isEmpty()) {
+            throw RuntimeException("udp.readStop: Missing 'seq' in IPC")
+          }
+
+          val id = message.get("id")
+
+          core.udp.readStop(message.seq, id, fun (data: String) {
+            callback(message.seq, data)
+          })
+
+          return message.seq
+        }
+
         "udpSend", "udp.send" -> {
           val bytes = message.bytes
 
@@ -998,15 +1012,15 @@ open class Bridge(activity: WebViewActivity) {
           }
 
           val id = message.get("id")
-          val ip = message.get("address")
           val data = String(bytes)
           val port = message.get("port", "0").toInt()
           val size = message.get("size", bytes.size.toString()).toInt()
+          val address = message.get("address")
           val ephemeral = message.get("ephemeral") == "true"
 
           // android.util.Log.d(TAG, "message= ${message}")
 
-          core.udp.send(message.seq, id, data, size, ip, port, ephemeral, fun (data: String) {
+          core.udp.send(message.seq, id, data, size, address, port, ephemeral, fun (data: String) {
             callback(message.seq, data)
           })
 
@@ -1345,13 +1359,13 @@ open class NativeUDP(core: NativeCore) {
   fun bind (
     seq: String = "",
     id: String,
-    ip: String,
+    address: String,
     port: Int,
     reuseAddr: Boolean,
     callback: (String) -> Unit
   ) {
     core?.apply {
-      udpBind(seq, id, ip, port, reuseAddr, queueCallback(callback))
+      udpBind(seq, id, address, port, reuseAddr, queueCallback(callback))
     }
   }
 
@@ -1368,12 +1382,22 @@ open class NativeUDP(core: NativeCore) {
   fun connect (
     seq: String = "",
     id: String,
-    ip: String,
+    address: String,
     port: Int,
     callback: (String) -> Unit
   ) {
     core?.apply {
-      udpConnect(seq, id, ip, port, queueCallback(callback))
+      udpConnect(seq, id, address, port, queueCallback(callback))
+    }
+  }
+
+  fun disconnect (
+    seq: String = "",
+    id: String,
+    callback: (String) -> Unit
+  ) {
+    core?.apply {
+      udpDisconnect(seq, id, queueCallback(callback))
     }
   }
 
@@ -1417,18 +1441,28 @@ open class NativeUDP(core: NativeCore) {
     }
   }
 
+  fun readStop (
+    seq: String = "",
+    id: String,
+    callback: (String) -> Unit
+  ) {
+    core?.apply {
+      udpReadStop(seq, id, queueCallback(callback))
+    }
+  }
+
   fun send (
     seq: String = "",
     id: String,
     data: String,
     size: Int,
-    ip: String,
+    address: String,
     port: Int,
     ephemeral: Boolean,
     callback: (String) -> Unit
   ) {
     core?.apply {
-      udpSend(seq, id, data, size, ip, port, ephemeral, queueCallback(callback))
+      udpSend(seq, id, data, size, address, port, ephemeral, queueCallback(callback))
     }
   }
 
@@ -1956,6 +1990,13 @@ open class NativeCore(var activity: WebViewActivity) {
   )
 
   @Throws(java.lang.Exception::class)
+  external fun udpDisconnect(
+    seq: String,
+    id: String,
+    callback: String
+  )
+
+  @Throws(java.lang.Exception::class)
   external fun udpGetPeerName(
     seq: String,
     id: String,
@@ -1978,6 +2019,13 @@ open class NativeCore(var activity: WebViewActivity) {
 
   @Throws(java.lang.Exception::class)
   external fun udpReadStart(
+    seq: String,
+    id: String,
+    callback: String
+  )
+
+  @Throws(java.lang.Exception::class)
+  external fun udpReadStop(
     seq: String,
     id: String,
     callback: String
