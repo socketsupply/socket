@@ -301,10 +301,12 @@ namespace SSC {
 
       void udpBind (String seq, uint64_t peerId, String address, int port, bool reuseAddr, Cb cb) const;
       void udpConnect (String seq, uint64_t peerId, String address, int port, Cb cb) const;
+      void udpDisconnect (String seq, uint64_t peerId, Cb cb) const;
       void udpGetPeerName (String seq, uint64_t peerId, Cb cb) const;
       void udpGetSockName (String seq, uint64_t peerId, Cb cb) const;
       void udpGetState (String seq, uint64_t peerId,  Cb cb) const;
       void udpReadStart (String seq, uint64_t peerId, Cb cb) const;
+      void udpReadStop (String seq, uint64_t peerId, Cb cb) const;
       void udpSend (String seq, uint64_t peerId, char* buf, int len, int port, String address, bool ephemeral, Cb cb) const;
 
       void sendBufferSize (String seq, uint64_t peerId, int size, Cb cb) const;
@@ -716,6 +718,7 @@ namespace SSC {
 
     // callbacks
     Cb recv;
+    std::vector<std::function<void()>> onclose;
 
     // instance state
     uint64_t id = 0;
@@ -885,7 +888,7 @@ namespace SSC {
       return this->local.err;
     }
 
-    void setState (peer_state_t value) {
+    void addState (peer_state_t value) {
       std::lock_guard<std::recursive_mutex> guard(this->mutex);
       this->state = (peer_state_t) (this->state | value);
     }
@@ -1000,7 +1003,7 @@ namespace SSC {
           return err;
         }
 
-        this->setState(PEER_STATE_UDP_BOUND);
+        this->addState(PEER_STATE_UDP_BOUND);
       }
 
       if (this->isTCP()) {
@@ -1049,10 +1052,29 @@ namespace SSC {
           return err;
         }
 
-        this->setState(PEER_STATE_UDP_CONNECTED);
+        this->addState(PEER_STATE_UDP_CONNECTED);
       }
 
       return this->initRemotePeerInfo();
+    }
+
+    int disconnect () {
+      std::lock_guard<std::recursive_mutex> guard(this->mutex);
+      int err = 0;
+
+      if (this->isUDP()) {
+        if (this->isConnected()) {
+          // calling `uv_udp_connect()` with `nullptr` for `addr`
+          // should disconnect the connected socket
+          if ((err = uv_udp_connect((uv_udp_t *) &this->handle, nullptr))) {
+            return err;
+          }
+
+          this->removeState(PEER_STATE_UDP_CONNECTED);
+        }
+      }
+
+      return err;
     }
 
     void send (std::string seq, char *buf, int len, int port, String address, Cb cb) {
@@ -1166,7 +1188,7 @@ namespace SSC {
       }
 
       this->recv = onrecv;
-      this->setState(PEER_STATE_UDP_RECV_STARTED);
+      this->addState(PEER_STATE_UDP_RECV_STARTED);
 
       auto allocate = [](uv_handle_t *handle, size_t size, uv_buf_t *buf) {
         if (size > 0) {
@@ -1248,60 +1270,73 @@ namespace SSC {
     }
 
     int recvstop () {
-      int rc = 0;
+      int err = 0;
 
       if (this->hasState(PEER_STATE_UDP_RECV_STARTED)) {
         this->removeState(PEER_STATE_UDP_RECV_STARTED);
         std::lock_guard<std::recursive_mutex> guard(this->mutex);
         std::lock_guard<std::recursive_mutex> lock(loopMutex);
-        rc = uv_udp_recv_stop((uv_udp_t *) &this->handle);
+        err = uv_udp_recv_stop((uv_udp_t *) &this->handle);
       }
 
-      return rc;
+      return err;
     }
 
     int resume () {
-      int rc = 0;
+      int err = 0;
 
-      if ((rc = this->init())) {
-        return rc;
+      if ((err = this->init())) {
+        return err;
       }
 
-      if ((rc = this->rebind())) {
-        return rc;
+      if (this->isBound()) {
+        if ((err = this->rebind())) {
+          return err;
+        }
+      } else if (this->isConnected()) {
+        // @TODO
       }
 
       this->removeState(PEER_STATE_UDP_PAUSED);
 
-      return rc;
+      return err;
     }
 
     int pause () {
-      int rc = 0;
+      int err = 0;
 
-      if ((rc = this->recvstop())) {
-        return rc;
+      if ((err = this->recvstop())) {
+        return err;
       }
 
       if (!this->isPaused() && !this->isClosing()) {
-        this->setState(PEER_STATE_UDP_PAUSED);
-        std::lock_guard<std::recursive_mutex> guard(this->mutex);
-        uv_close((uv_handle_t *) &this->handle, nullptr);
+        this->addState(PEER_STATE_UDP_PAUSED);
+        if (this->isBound()) {
+          std::lock_guard<std::recursive_mutex> guard(this->mutex);
+          uv_close((uv_handle_t *) &this->handle, nullptr);
+        } else if (this->isConnected()) {
+          // TODO
+        }
       }
 
-      return rc;
+      return err;
     }
 
     void close () {
+      return this->close(nullptr);
+    }
+
+    void close (std::function<void()> onclose) {
       std::lock_guard<std::recursive_mutex> guard(this->mutex);
-      if (!this->isActive()) {
-        Peer::remove(this->id);
-        return;
-      }
 
       if (this->isClosed()) {
         Peer::remove(this->id);
+        onclose();
         return;
+      }
+
+      if (onclose != nullptr) {
+        this->onclose.push_back(onclose);
       }
 
       if (this->isClosing()) {
@@ -1314,6 +1349,12 @@ namespace SSC {
           auto peer = (Peer *) handle->data;
           if (peer != nullptr) {
             peer->removeState(PEER_STATE_UDP_BOUND);
+            peer->removeState(PEER_STATE_UDP_CONNECTED);
+            peer->removeState(PEER_STATE_UDP_RECV_STARTED);
+            std::lock_guard<std::recursive_mutex> guard(peer->mutex);
+            for (const auto onclose : peer->onclose) {
+              onclose();
+            }
             Peer::remove(peer->id);
             delete peer;
           }
@@ -3049,7 +3090,7 @@ namespace SSC {
       auto msg = SSC::format(R"MSG({
         "source": "fs.sendBufferSize",
         "err": {
-          "message": "Handle is not valid"
+          "message": "Peer is not valid"
         }
       })MSG");
 
@@ -3166,8 +3207,15 @@ namespace SSC {
     }
 
     dispatchEventLoop([=]() {
-      peer->close();
-      cb(seq, "{}", Post{});
+      peer->close([=]() {
+        auto msg = SSC::format(R"MSG({
+          "source": "close",
+          "data": {
+            "id": "$S",
+          }
+        })MSG", std::to_string(peerId));
+        cb(seq, msg, Post{});
+      });
     });
   }
 
@@ -3319,14 +3367,69 @@ namespace SSC {
         return;
       }
 
+      auto info = peer->getRemotePeerInfo();
+
+      if (info->err < 0) {
+        auto msg = SSC::format(R"MSG({
+          "source": "udp.getPeerName",
+          "err": {
+            "id": "$S",
+            "message": "$S"
+          }
+        })MSG", std::to_string(peerId), std::string(uv_strerror(info->err)));
+        cb(seq, msg, Post{});
+        return;
+      }
+
       auto msg = SSC::format(R"MSG({
         "source": "udp.connect",
         "data": {
+          "id": "$S",
           "address": "$S",
           "port": $i,
+          "family": "$S"
+        }
+      })MSG", std::to_string(peerId), info->address, info->port, info->family);
+
+      cb(seq, msg, Post{});
+    });
+  }
+
+  void Core::udpDisconnect (String seq, uint64_t peerId, Cb cb) const {
+    dispatchEventLoop([=]() {
+      if (!Peer::exists(peerId)) {
+        auto msg = SSC::format(R"MSG({
+          "source": "udp.disconnect",
+          "err": {
+            "id": "$S",
+            "message": "No such peer"
+          }
+        })MSG", std::to_string(peerId));
+        cb(seq, msg, Post{});
+        return;
+      }
+
+      auto peer = Peer::get(peerId);
+      auto err = peer->disconnect();
+
+      if (err < 0) {
+        auto msg = SSC::format(R"MSG({
+          "source": "udp.disconnect",
+          "err": {
+            "id": "$S",
+            "message": "$S"
+          }
+        })MSG", std::to_string(peerId), std::string(uv_strerror(err)));
+        cb(seq, msg, Post{});
+        return;
+      }
+
+      auto msg = SSC::format(R"MSG({
+        "source": "udp.disconnect",
+        "data": {
           "id": "$S"
         }
-      })MSG", std::string(address), port, std::to_string(peerId));
+      })MSG", std::to_string(peerId));
 
       cb(seq, msg, Post{});
     });
@@ -3338,7 +3441,7 @@ namespace SSC {
         "source": "udp.getPeerName",
         "err": {
           "id": "$S",
-          "message": "no such peer"
+          "message": "No such peer"
         }
       })MSG", std::to_string(peerId));
       cb(seq, msg, Post{});
@@ -3379,7 +3482,7 @@ namespace SSC {
         "source": "udp.getSockName",
         "err": {
           "id": "$S",
-          "message": "no such peer"
+          "message": "No such peer"
         }
       })MSG", std::to_string(peerId));
       cb(seq, msg, Post{});
@@ -3427,7 +3530,7 @@ namespace SSC {
         "err": {
           "id": "$S",
           "code": "NOT_FOUND_ERR",
-          "message": "no such peer"
+          "message": "No such peer"
         }
       })MSG", std::to_string(peerId));
       cb(seq, msg, Post{});
@@ -3442,7 +3545,7 @@ namespace SSC {
         "err": {
           "id": "$S",
           "code": "NOT_FOUND_ERR",
-          "message": "no such peer"
+          "message": "No such peer"
         }
       })MSG", std::to_string(peerId));
       cb(seq, msg, Post{});
@@ -3501,7 +3604,7 @@ namespace SSC {
         "source": "udp.readStart",
         "err": {
           "id": "$S",
-          "message": "no such handle"
+          "message": "No such peer"
         }
       })MSG", std::to_string(peerId));
 
@@ -3527,7 +3630,7 @@ namespace SSC {
         "source": "udp.readStart",
         "err": {
           "id": "$S",
-          "message": "handle is closing"
+          "message": "Peer is closing"
         }
       })MSG", std::to_string(peerId));
 
@@ -3540,7 +3643,7 @@ namespace SSC {
        "source": "udp.readStart",
         "err": {
           "id": "$S",
-          "message": "handle is already listening"
+          "message": "Peer is already receiving"
         }
       })MSG", std::to_string(peerId));
 
@@ -3555,6 +3658,75 @@ namespace SSC {
       auto msg = SSC::format(
         R"MSG({
           "source": "udp.readStart",
+          "err": {
+            "id": "$S",
+            "message": "$S"
+          }
+        })MSG",
+        std::to_string(peerId),
+        std::string(uv_strerror(err))
+      );
+
+      cb(seq, msg, Post{});
+      return;
+    }
+
+    auto msg = SSC::format(R"MSG({
+      "data": {
+        "id": "$S"
+      }
+    })MSG", std::to_string(peerId));
+    cb(seq, msg, Post{});
+  }
+
+  void Core::udpReadStop (String seq, uint64_t peerId, Cb cb) const {
+    if (!Peer::exists(peerId)) {
+      auto msg = SSC::format(R"MSG({
+        "source": "udp.readStop",
+        "err": {
+          "id": "$S",
+          "message": "No such peer"
+        }
+      })MSG", std::to_string(peerId));
+
+      cb(seq, msg, Post{});
+      return;
+    }
+
+    auto peer = Peer::get(peerId);
+
+    if (peer->isClosing()) {
+      auto msg = SSC::format(R"MSG({
+        "source": "udp.readStop",
+        "err": {
+          "id": "$S",
+          "message": "Peer is closing"
+        }
+      })MSG", std::to_string(peerId));
+
+      cb(seq, msg, Post{});
+      return;
+    }
+
+    if (!peer->hasState(PEER_STATE_UDP_RECV_STARTED)) {
+      auto msg = SSC::format(R"MSG({
+       "source": "udp.readStop",
+        "err": {
+          "id": "$S",
+          "message": "Peer is not receiving"
+        }
+      })MSG", std::to_string(peerId));
+
+      cb(seq, msg, Post{});
+      return;
+    }
+
+    auto err = peer->recvstop();
+
+    if (err < 0) {
+      auto msg = SSC::format(
+        R"MSG({
+          "source": "udp.readStop",
           "err": {
             "id": "$S",
             "message": "$S"
