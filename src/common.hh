@@ -553,15 +553,16 @@ namespace SSC {
     return eo;
   }
 
-  inline void writeToStdout(const std::string &str) {
+  inline void stdWrite(const std::string &str, bool isError) {
     #ifdef _WIN32
       std::stringstream ss;
       ss << str << std::endl;
       auto lineStr = ss.str();
 
-      WriteConsoleA(GetStdHandle(STD_OUTPUT_HANDLE), lineStr.c_str(), lineStr.size(), NULL, NULL);
+      auto handle = isError ? STD_ERROR_HANDLE : STD_OUTPUT_HANDLE;
+      WriteConsoleA(GetStdHandle(handle), lineStr.c_str(), lineStr.size(), NULL, NULL);
     #else
-      std::cout << str << std::endl;
+      (isError ? std::cerr : std::cout) << str << std::endl;
     #endif
   }
 

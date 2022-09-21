@@ -122,8 +122,19 @@ constexpr auto gPreload = R"JS(
     }
   }
 
-  window.parent.log = s => {
-    window.external.invoke(`ipc://log?value=${s}`)
+  if (process.platform !== 'linux') {
+    const clog = console.log
+    const cerr = console.error
+
+    console.log = (...args) => {
+      clog(...args)
+      window.external.invoke(`ipc://stdout?value=${args}`)
+    }
+
+    console.error = (...args) => {
+      cerr(...args)
+      window.external.invoke(`ipc://stderr?value=${args}`)
+    }
   }
 
   // initialize `XMLHttpRequest` IPC intercept

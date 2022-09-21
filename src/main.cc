@@ -229,8 +229,13 @@ MAIN {
       auto value = cmd.get("value");
       auto seq = cmd.get("seq");
 
-      if (cmd.name == "stdout") {
-        writeToStdout(decodeURIComponent(value));
+      if (cmd.name == "log" || cmd.name == "stdout") {
+        stdWrite(decodeURIComponent(value), false);
+        return;
+      }
+
+      if (cmd.name == "stderr") {
+        stdWrite(decodeURIComponent(value), true);
         return;
       }
 
@@ -448,6 +453,7 @@ MAIN {
     Parse cmd(out);
 
     auto window = windowFactory.getWindow(cmd.index);
+    auto value = cmd.get("value");
 
     // the window must exist
     if (!window && cmd.index >= 0) {
@@ -467,20 +473,24 @@ MAIN {
     if (cmd.name == "title") {
       window->setTitle(
         cmd.get("seq"),
-        decodeURIComponent(cmd.get("value"))
+        decodeURIComponent(value)
       );
       return;
     }
 
     if (cmd.name == "log" || cmd.name == "stdout") {
-      auto value = cmd.get("value");
-      writeToStdout(decodeURIComponent(value));
+      stdWrite(decodeURIComponent(value), false);
+      return;
+    }
+
+    if (cmd.name == "stderr") {
+      stdWrite(decodeURIComponent(value), true);
       return;
     }
 
     if (cmd.name == "exit") {
       try {
-        exitCode = std::stoi(decodeURIComponent(cmd.get("value")));
+        exitCode = std::stoi(decodeURIComponent(value));
       } catch (...) {
       }
 
@@ -524,13 +534,12 @@ MAIN {
     }
 
     if (cmd.name == "external") {
-      window->openExternal(decodeURIComponent(cmd.get("value")));
+      window->openExternal(decodeURIComponent(value));
       return;
     }
 
     if (cmd.name == "menu") {
       const auto seq = cmd.get("seq");
-      const auto value = cmd.get("value");
       window->setSystemMenu(seq, decodeURIComponent(value));
       return;
     }
@@ -555,32 +564,21 @@ MAIN {
     }
 
     if (cmd.name == "dialog") {
-      bool isSave = cmd.get("type").compare("save") == 0;
-      bool allowDirs = cmd.get("allowDirs").compare("true") == 0;
-      bool allowFiles = cmd.get("allowFiles").compare("true") == 0;
-      bool allowMultiple = cmd.get("allowMultiple").compare("true") == 0;
+      bool bSave = cmd.get("type").compare("save") == 0;
+      bool bDirs = cmd.get("allowDirs").compare("true") == 0;
+      bool bFiles = cmd.get("allowFiles").compare("true") == 0;
+      bool bMulti = cmd.get("allowMultiple").compare("true") == 0;
       std::string defaultName = decodeURIComponent(cmd.get("defaultName"));
       std::string defaultPath = decodeURIComponent(cmd.get("defaultPath"));
       std::string title = decodeURIComponent(cmd.get("title"));
 
-      window->openDialog(
-        cmd.get("seq"),
-        isSave,
-        allowDirs,
-        allowFiles,
-        allowMultiple,
-        defaultPath,
-        title,
-        defaultName
-      );
-
+      window->openDialog(cmd.get("seq"), bSave, bDirs, bFiles, bMulti, defaultPath, title, defaultName);
       return;
     }
 
     if (cmd.name == "context") {
       auto seq = cmd.get("seq");
-      auto value = decodeURIComponent(cmd.get("value"));
-      window->setContextMenu(seq, value);
+      window->setContextMenu(seq, decodeURIComponent(value));
       return;
     }
 

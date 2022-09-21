@@ -1664,11 +1664,8 @@ namespace SSC {
     GdkRGBA rgba = {0};
     webkit_web_view_set_background_color(WEBKIT_WEB_VIEW(webview), &rgba);
 
-    if (this->opts.forwardConsole) {
-      webkit_settings_set_enable_write_console_messages_to_stdout(settings, true);
-    }
-
     if (this->opts.debug) {
+      webkit_settings_set_enable_write_console_messages_to_stdout(settings, true);
       webkit_settings_set_enable_developer_extras(settings, true);
     }
 
