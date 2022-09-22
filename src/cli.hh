@@ -211,6 +211,11 @@ constexpr auto gPListInfo = R"XML(<?xml version="1.0" encoding="UTF-8"?>
   <string>{{name}}</string>
   <key>NSSupportsAutomaticGraphicsSwitching</key>
   <true/>
+  <key>SoftResourceLimits</key>
+  <dict>
+      <key>NumberOfFiles</key>
+      <integer>{{file_limit}}</integer>
+  </dict>
   <key>WKAppBoundDomains</key>
   <array>
       <string>localhost</string>
@@ -1329,10 +1334,10 @@ copyright: (c) Beep Boop Corp. 1985
 # Advanced Compiler Settings for debug purposes (ie C++ compiler -g, etc).
 debug_flags: -g
 
-# A short description of the app
+# A short description of the app.
 description: A UI for the beep boop network
 
-# An array of environment variables, separated by commas
+# An array of environment variables, separated by commas.
 # env: USER, TMPDIR, PWD
 
 # The name of the file to be output.
@@ -1340,6 +1345,9 @@ executable: boop
 
 # Advanced Compiler Settings (ie C++ compiler -02, -03, etc).
 flags: -O3
+
+# Set the limit of files that can be opened by your process.
+file_limit: 1024
 
 # The initial height of the first window.
 height: 750

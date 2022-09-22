@@ -822,6 +822,10 @@ int main (const int argc, const char* argv[]) {
       }
     }
 
+    if (settings.count("file_limit") == 0) {
+      settings["file_limit"] = "2048";
+    }
+
     if (settings.count("revision") == 0) {
       settings["revision"] = "1";
     }
