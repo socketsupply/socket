@@ -1236,25 +1236,33 @@ int main (const int argc, const char* argv[]) {
         auto r = exec(command);
         std::regex reUuid(R"(<key>UUID<\/key>\n\s*<string>(.*)<\/string>)");
         std::smatch matchUuid;
-        std::string uuid;
 
         if (!std::regex_search(r.output, matchUuid, reUuid)) {
           log("failed to extract uuid from provisioning profile using \"" + command + "\"");
           exit(1);
         }
 
-        uuid = matchUuid.str(1);
+        std::string uuid = matchUuid.str(1);
 
         std::regex reProvSpec(R"(<key>Name<\/key>\n\s*<string>(.*)<\/string>)");
         std::smatch matchProvSpec;
-        std::string provSpec;
 
         if (!std::regex_search(r.output, matchProvSpec, reProvSpec)) {
           log("failed to extract Provisioning Specifier from provisioning profile using \"" + command + "\"");
           exit(1);
         }
 
-        provSpec = matchProvSpec.str(1);
+        std::string provSpec = matchProvSpec.str(1);
+
+        std::regex reTeamId(R"(<key>com\.apple\.developer\.team-identifier<\/key>\n\s*<string>(.*)<\/string>)");
+        std::smatch matchTeamId;
+
+        if (!std::regex_search(r.output, matchTeamId, reTeamId)) {
+          log("failed to extract Team Id from provisioning profile using \"" + command + "\"");
+          exit(1);
+        }
+
+        std::string team = matchTeamId.str(1);
 
         auto pathToInstalledProfile = fs::path(getEnv("HOME")) /
           "Library" /
@@ -1268,6 +1276,7 @@ int main (const int argc, const char* argv[]) {
 
         settings["ios_provisioning_profile"] = uuid;
         settings["ios_provisioning_specifier"] = provSpec;
+        settings["apple_team_id"] = team;
       }
 
       fs::copy(
@@ -1476,11 +1485,6 @@ int main (const int argc, const char* argv[]) {
     if (flagBuildForIOS) {
       if (flagBuildForSimulator && settings["ios_simulator_device"].size() == 0) {
         log("error: 'ios_simulator_device' option is empty");
-        exit(1);
-      }
-
-      if (settings["apple_team_id"].size() == 0) {
-        log("error: 'apple_team_id' option is empty");
         exit(1);
       }
 

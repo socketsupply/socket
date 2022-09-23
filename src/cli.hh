@@ -1414,14 +1414,6 @@ width: 1024
 # linux_icon: src/icon.png
 
 #
-# MacOS and iOS
-# ---
-#
-
-# The team ID needed for MacOS and iOS distribution and development
-# apple_team_id:
-
-#
 # MacOS
 # ---
 #
