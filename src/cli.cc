@@ -1234,16 +1234,27 @@ int main (const int argc, const char* argv[]) {
         );
 
         auto r = exec(command);
-        std::regex re(R"(<key>UUID<\/key>\n\s*<string>(.*)<\/string>)");
-        std::smatch match;
+        std::regex reUuid(R"(<key>UUID<\/key>\n\s*<string>(.*)<\/string>)");
+        std::smatch matchUuid;
         std::string uuid;
 
-        if (!std::regex_search(r.output, match, re)) {
+        if (!std::regex_search(r.output, matchUuid, reUuid)) {
           log("failed to extract uuid from provisioning profile using \"" + command + "\"");
           exit(1);
         }
 
-        uuid = match.str(1);
+        uuid = matchUuid.str(1);
+
+        std::regex reProvSpec(R"(<key>Name<\/key>\n\s*<string>(.*)<\/string>)");
+        std::smatch matchProvSpec;
+        std::string provSpec;
+
+        if (!std::regex_search(r.output, matchProvSpec, reProvSpec)) {
+          log("failed to extract Provisioning Specifier from provisioning profile using \"" + command + "\"");
+          exit(1);
+        }
+
+        provSpec = matchProvSpec.str(1);
 
         auto pathToInstalledProfile = fs::path(getEnv("HOME")) /
           "Library" /
@@ -1256,6 +1267,7 @@ int main (const int argc, const char* argv[]) {
         }
 
         settings["ios_provisioning_profile"] = uuid;
+        settings["ios_provisioning_specifier"] = provSpec;
       }
 
       fs::copy(
@@ -1559,7 +1571,7 @@ int main (const int argc, const char* argv[]) {
 
         exportCommand
           << "xcodebuild"
-          << " -exportArchive "
+          << " -exportArchive"
           << " -archivePath build/" << settings["name"] << ".xcarchive"
           << " -exportPath build/" << settings["name"] << ".ipa"
           << " -exportOptionsPlist " << (pathToDist / "exportOptions.plist").string();

@@ -1465,9 +1465,6 @@ width: 1024
 # A path to the provisioning profile used for signing iOS app.
 # ios_provisioning_profile:
 
-# A provisioning specifier used for signing iOS app.
-# ios_provisioning_specifier:
-
 # which device to target when building for the simulator
 # ios_simulator_device: iPhone 13
 )CONFIG";
