@@ -1194,53 +1194,58 @@ static dispatch_queue_t queue = dispatch_queue_create("co.socketsupply.queue.cor
     return true;
   }
 
-  if (cmd.name == "sendBufferSize") {
-    int size;
+  if (cmd.name == "sendBufferSize" || cmd.name == "send.bufferSize") {
+    auto size = std::stoi(cmd.get("size", "0"));
+    uint64_t id = 0ll;
+
     try {
-      size = std::stoi(cmd.get("size"));
+      id = std::stoull(cmd.get("id"));
     } catch (...) {
-      size = 0;
+      dispatch_async(queue, ^{
+        auto err = SSC::format(R"MSG({
+          "source": "send.bufferSize",
+          "err": {
+            "type": "InternalError",
+            "message": ".id is required"
+          }
+        })MSG");
+
+        [self send: seq msg: err post: Post{}];
+      });
+      return true;
     }
 
-    auto peerId = std::stoull(cmd.get("id"));
-
     dispatch_async(queue, ^{
-      self.core->sendBufferSize(seq, peerId, size, [=](auto seq, auto msg, auto post) {
+      self.core->sendBufferSize(seq, id, size, [=](auto seq, auto msg, auto post) {
         [self send: seq msg: msg post: post];
       });
     });
     return true;
   }
 
-  if (cmd.name == "recvBufferSize") {
-    int size;
-    uint64_t xId = 0ll;
-    std::string err = "";
+  if (cmd.name == "recvBufferSize" || cmd.name == "recv.bufferSize") {
+    auto size = std::stoi(cmd.get("size", "0"));
+    uint64_t id = 0ll;
 
     try {
-      size = std::stoi(cmd.get("size"));
+      id = std::stoull(cmd.get("id"));
     } catch (...) {
-      size = 0;
-    }
-
-    try {
-      xId = std::stoull(cmd.get("id"));
-    } catch (...) {
-      err = "Unable to parse .id property";
-    }
-
-    if (err.size() > 0) {
       dispatch_async(queue, ^{
-        auto msg = SSC::format(R"JSON({
-          "err": "$S"
-        })JSON", err);
+        auto err = SSC::format(R"MSG({
+          "source": "recv.bufferSize",
+          "err": {
+            "type": "InternalError",
+            "message": ".id is required"
+          }
+        })MSG");
 
-        [self send: seq msg: msg post: Post{}];
+        [self send: seq msg: err post: Post{}];
       });
+      return true;
     }
 
     dispatch_async(queue, ^{
-      self.core->recvBufferSize(seq, xId, size, [=](auto seq, auto msg, auto post) {
+      self.core->recvBufferSize(seq, id, size, [=](auto seq, auto msg, auto post) {
         [self send: seq msg: msg post: post];
       });
     });

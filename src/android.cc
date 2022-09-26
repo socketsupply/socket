@@ -368,6 +368,36 @@ const char * NativeCore::GetJavaScriptPreloadSource () const {
   return this->javaScriptPreloadSource.c_str();
 }
 
+void NativeCore::SendBufferSize (
+  NativeCoreSequence seq,
+  NativeCoreID id,
+  int size,
+  NativeCallbackID callback
+) {
+  auto context = this->CreateRequestContext(seq, id, callback);
+  NativeThreadContext::Dispatch(this, [context, hostname, family](auto thread, auto data) {
+    auto core = reinterpret_cast<SSC::Core *>(context->core);
+    core->sendBufferSize(seq, id, [context](auto seq, auto data, auto post) {
+      context->Finalize(seq, data);
+    });
+  });
+}
+
+void NativeCore::RecvBufferSize (
+  NativeCoreSequence seq,
+  NativeCoreID id,
+  int size,
+  NativeCallbackID callback
+) {
+  auto context = this->CreateRequestContext(seq, id, callback);
+  NativeThreadContext::Dispatch(this, [context, hostname, family](auto thread, auto data) {
+    auto core = reinterpret_cast<SSC::Core *>(context->core);
+    core->recvBufferSize(seq, id, [context](auto seq, auto data, auto post) {
+      context->Finalize(seq, data);
+    });
+  });
+}
+
 void NativeCore::DNSLookup (
   NativeCoreSequence seq,
   std::string hostname,
@@ -1532,6 +1562,48 @@ extern "C" {
     }
 
     reinterpret_cast<SSC::Core *>(core)->expirePosts();
+  }
+
+  void exports(NativeCore, sendBufferSize)(
+    JNIEnv *env,
+    jobject self,
+    jstring seq,
+    jstring id,
+    jstring callback
+  ) {
+    auto core = GetNativeCoreFromEnvironment(env);
+
+    if (!core) {
+      return Throw(env, NativeCoreNotInitializedException);
+    }
+
+    core->SendBufferSize(
+      NativeString(env, seq).str(),
+      GetNativeCoreIDFromJString(env, id),
+      (int) size,
+      (NativeCallbackID) callback
+    );
+  }
+
+  void exports(NativeCore, RecvBufferSize)(
+    JNIEnv *env,
+    jobject self,
+    jstring seq,
+    jstring id,
+    jstring callback
+  ) {
+    auto core = GetNativeCoreFromEnvironment(env);
+
+    if (!core) {
+      return Throw(env, NativeCoreNotInitializedException);
+    }
+
+    core->RecvBufferSize(
+      NativeString(env, seq).str(),
+      GetNativeCoreIDFromJString(env, id),
+      (int) size,
+      (NativeCallbackID) callback
+    );
   }
 
   void exports(NativeCore, dnsLookup)(

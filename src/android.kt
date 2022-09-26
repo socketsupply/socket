@@ -787,6 +787,54 @@ open class Bridge(activity: WebViewActivity) {
       return null
     })
 
+    this.registerInterface("internal", fun (
+      message: IPCMessage,
+      value: String,
+      callback: (String, String) -> Unit,
+      throwError: (String, String) -> String
+    ): String? {
+      val core = this.activity.core
+      val bytes = message.bytes
+
+      if (core == null) {
+        return null
+      }
+
+      if (message.seq.isEmpty()) {
+        return null
+      }
+
+      when (message.command) {
+        "send.bufferSize" -> {
+          if (!message.has("id")) {
+            return throwError(message.seq, "'id' is required")
+          }
+
+          val id = message.get("id")
+          val size = message.get("size", "0").toInt()
+          core.sendBufferSize(message.seq, id, size, fun (data: String) {
+            callback(message.seq, data)
+          })
+          return message.seq
+        }
+
+        "recv.bufferSize" -> {
+          if (!message.has("id")) {
+            return throwError(message.seq, "'id' is required")
+          }
+
+          val id = message.get("id")
+          val size = message.get("size", "0").toInt()
+          core.recvBufferSize(message.seq, id, size, fun (data: String) {
+            callback(message.seq, data)
+          })
+          return message.seq
+        }
+      }
+
+      return null
+    })
+
     this.registerInterface("os", fun(
       message: IPCMessage,
       value: String,
@@ -1948,6 +1996,22 @@ open class NativeCore(var activity: WebViewActivity) {
     headers: String,
     bytes: ByteArray
   ): String
+
+  @Throws(java.lang.Exception::class)
+  external fun sendBufferSize(
+    seq: String,
+    id: String,
+    size: int,
+    callback: String
+  )
+
+  @Throws(java.lang.Exception::class)
+  external fun recvBufferSize(
+    seq: String,
+    id: String,
+    size: int,
+    callback: String
+  )
 
   /**
    * DNS APIs
