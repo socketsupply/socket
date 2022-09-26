@@ -18,7 +18,7 @@
 
 dispatch_queue_attr_t qos = dispatch_queue_attr_make_with_qos_class(
   DISPATCH_QUEUE_CONCURRENT,
-  QOS_CLASS_DEFAULT,
+  QOS_CLASS_USER_INITIATED,
   -1
 );
 
@@ -687,9 +687,7 @@ static dispatch_queue_t queue = dispatch_queue_create("co.socketsupply.queue.cor
     dispatch_async(dispatch_get_main_queue(), ^{
       auto src = self.core->createPost(seq, msg, post);
       NSString* script = [NSString stringWithUTF8String: src.c_str()];
-      [self.webview evaluateJavaScript: script completionHandler: ^(NSString *result, NSError *err) {
-        self.core->removePost(post.id);
-      }];
+      [self.webview evaluateJavaScript: script completionHandler: nil];
     });
     return;
   }
@@ -701,7 +699,7 @@ static dispatch_queue_t queue = dispatch_queue_create("co.socketsupply.queue.cor
   if (msg.size() > 0) {
     dispatch_async(dispatch_get_main_queue(), ^{
       NSString* script = [NSString stringWithUTF8String: msg.c_str()];
-      [self.webview evaluateJavaScript: script completionHandler:nil];
+      [self.webview evaluateJavaScript: script completionHandler: nil];
     });
   }
 }
@@ -1657,8 +1655,8 @@ static dispatch_queue_t queue = dispatch_queue_create("co.socketsupply.queue.cor
     [httpResponse release];
     #endif
 
-    // 256ms timeout before removing post and potentially freeing `post.body`
-    NSTimeInterval timeout = 0.256;
+    // 16ms timeout before removing post and potentially freeing `post.body`
+    NSTimeInterval timeout = 0.16;
     auto block = ^(NSTimer* timer) {
       dispatch_async(dispatch_get_main_queue(), ^{
         self.bridge.core->removePost(postId);
