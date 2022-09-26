@@ -384,21 +384,22 @@ namespace SSC {
 
       auto pid = std::stoull(id);
 
-      if (this->core->hasPost(pid)) {
-        auto post = this->core->getPost(pid);
-        cb(seq, "{}", post);
+      if (!this->core->hasPost(pid)) {
+        auto err = SSC::format(R"MSG({
+          "err": {
+            "id", "$S",
+            "type": "InternalError",
+            "message": "Invalid 'id' for post"
+          }
+        })MSG", id);
+
+        cb(seq, err, Post{});
         return true;
       }
 
-      auto err = SSC::format(R"MSG({
-        "err": {
-          "id", "$S",
-          "type": "InternalError",
-          "message": "Invalid 'id' for post"
-        }
-      })MSG", id);
-
-      cb(seq, err, Post{});
+      auto post = this->core->getPost(pid);
+      cb(seq, "{}", post);
+      this->core->removePost(pid);
       return true;
     }
 
