@@ -17,6 +17,7 @@
 #include <chrono>
 #include <semaphore>
 #include <thread>
+#include <queue>
 
 #if defined(__APPLE__)
 	#import <Webkit/Webkit.h>
@@ -343,6 +344,8 @@ namespace SSC {
   struct Descriptor;
   struct DescriptorRequestContext;
 
+  using EventLoopDispatchCallback = std::function<void()>;
+
   static std::map<uint64_t, Peer*> peers;
   static std::map<uint64_t, Descriptor*> descriptors;
 
@@ -361,6 +364,8 @@ namespace SSC {
 
   static constexpr int EVENT_LOOP_POLL_TIMEOUT = 32; // in milliseconds
   static uv_loop_t eventLoop = {0};
+  static uv_async_t eventLoopAsync = {0};
+  static std::queue<EventLoopDispatchCallback> eventLoopDispatchQueue;
 
 #if defined(__APPLE__)
   static dispatch_queue_attr_t eventLoopQueueAttrs = dispatch_queue_attr_make_with_qos_class(
@@ -411,6 +416,26 @@ namespace SSC {
     Descriptor (uint64_t id) {
       this->id = id;
     }
+
+    bool isDirectory () {
+      std::lock_guard<std::recursive_mutex> guard(this->mutex);
+      return this->dir != nullptr;
+    }
+
+    bool isFile () {
+      std::lock_guard<std::recursive_mutex> guard(this->mutex);
+      return this->fd > 0 && this->dir == nullptr;
+    }
+
+    bool isRetained () {
+      std::lock_guard<std::recursive_mutex> guard(this->mutex);
+      return this->retained;
+    }
+
+    bool isStale () {
+      std::lock_guard<std::recursive_mutex> guard(this->mutex);
+      return this->stale;
+    }
   };
 
   struct Timer {
@@ -427,17 +452,19 @@ namespace SSC {
     Timer releaseWeakDescriptors = {
       .timeout = 256, // in milliseconds
       .invoke = [](uv_timer_t *handle) {
-        std::lock_guard<std::recursive_mutex> descriptorsGuard(descriptorsMutex);
         std::vector<uint64_t> ids;
         std::string msg = "";
 
         auto core = reinterpret_cast<Core *>(handle->data);
-
-        for (auto const &tuple : descriptors) {
-          ids.push_back(tuple.first);
+        {
+          std::lock_guard<std::recursive_mutex> descriptorsGuard(descriptorsMutex);
+          for (auto const &tuple : descriptors) {
+            ids.push_back(tuple.first);
+          }
         }
 
         for (auto const id : ids) {
+          std::lock_guard<std::recursive_mutex> descriptorsGuard(descriptorsMutex);
           auto desc = descriptors.at(id);
 
           if (desc == nullptr) {
@@ -445,16 +472,16 @@ namespace SSC {
             continue;
           }
 
-          if (desc->retained || !desc->stale) {
+          if (desc->isRetained() || !desc->isStale()) {
             continue;
           }
 
-          if (desc->dir != nullptr) {
-            core->fsClosedir("", desc->id, [](auto seq, auto msg, auto post) {
+          if (desc->isDirectory()) {
+            core->fsClosedir("", id, [](auto seq, auto msg, auto post) {
               // noop
             });
-          } else if (desc->fd > 0) {
-            core->fsClose("", desc->id, [](auto seq, auto msg, auto post) {
+          } else if (desc->isFile()) {
+            core->fsClose("", id, [](auto seq, auto msg, auto post) {
               // noop
             });
           } else {
@@ -465,27 +492,6 @@ namespace SSC {
         }
       }
     };
-  };
-
-  struct EventLoopDispatchContext {
-    typedef std::function<void()> Callback;
-    uv_async_t async;
-    uv_handle_t *handle;
-    Callback dispatch;
-
-    EventLoopDispatchContext (Callback dispatch) {
-      this->dispatch = dispatch;
-      this->handle = (uv_handle_t *) &this->async;
-      this->handle->data = this;
-    }
-
-    void close () {
-      uv_close(this->handle, [](uv_handle_t *handle) {
-        if (handle != nullptr) {
-          delete (EventLoopDispatchContext *) handle->data;
-        }
-      });
-    }
   };
 
   // timers
@@ -499,7 +505,7 @@ namespace SSC {
   static bool isLoopAlive ();
   static int runEventLoop ();
   static void stopEventLoop ();
-  static void dispatchEventLoop (EventLoopDispatchContext::Callback dispatch);
+  static void dispatchEventLoop (EventLoopDispatchCallback dispatch);
 
   static String addrToIPv4 (struct sockaddr_in* sin) {
     char buf[INET_ADDRSTRLEN];
@@ -752,7 +758,6 @@ namespace SSC {
     static void pauseAll () {
       dispatchEventLoop([=]() {
         std::lock_guard<std::recursive_mutex> guard(peersMutex);
-
         for (auto const &tuple : peers) {
           auto peer = tuple.second;
           if (peer != nullptr && (peer->isBound() || peer->isConnected())) {
@@ -812,8 +817,8 @@ namespace SSC {
       if (Peer::exists(peerId)) {
         auto peer = Peer::get(peerId);
         if (peer != nullptr) {
-          std::lock_guard<std::recursive_mutex> guard(peer->mutex);
           if (isEphemeral) {
+            std::lock_guard<std::recursive_mutex> guard(peer->mutex);
             peer->flags = (peer_flag_t) (peer->flags | PEER_FLAG_EPHEMERAL);
           }
         }
@@ -842,7 +847,6 @@ namespace SSC {
     }
 
     ~Peer () {
-      std::lock_guard<std::recursive_mutex> guard(this->mutex);
       Peer::remove(this->id, true); // auto close
     }
 
@@ -929,7 +933,6 @@ namespace SSC {
     }
 
     bool isBound () {
-      std::lock_guard<std::recursive_mutex> guard(this->mutex);
       return (
         (this->isUDP() && this->hasState(PEER_STATE_UDP_BOUND)) ||
         (this->isTCP() && this->hasState(PEER_STATE_TCP_BOUND))
@@ -947,12 +950,10 @@ namespace SSC {
     }
 
     bool isClosed () {
-      std::lock_guard<std::recursive_mutex> guard(this->mutex);
       return this->hasState(PEER_STATE_CLOSED);
     }
 
     bool isConnected () {
-      std::lock_guard<std::recursive_mutex> guard(this->mutex);
       return (
         (this->isUDP() && this->hasState(PEER_STATE_UDP_CONNECTED)) ||
         (this->isTCP() && this->hasState(PEER_STATE_TCP_CONNECTED))
@@ -960,7 +961,6 @@ namespace SSC {
     }
 
     bool isPaused () {
-      std::lock_guard<std::recursive_mutex> guard(this->mutex);
       return (
         (this->isUDP() && this->hasState(PEER_STATE_UDP_PAUSED)) ||
         (this->isTCP() && this->hasState(PEER_STATE_TCP_PAUSED))
@@ -1014,7 +1014,6 @@ namespace SSC {
     }
 
     int rebind () {
-      std::lock_guard<std::recursive_mutex> guard(this->mutex);
       int err = 0;
 
       if (this->isUDP()) {
@@ -1023,6 +1022,7 @@ namespace SSC {
         }
       }
 
+      std::lock_guard<std::recursive_mutex> guard(this->mutex);
       memset((void *) &this->addr, 0, sizeof(struct sockaddr_in));
 
       if ((err = this->bind())) {
@@ -1059,13 +1059,13 @@ namespace SSC {
     }
 
     int disconnect () {
-      std::lock_guard<std::recursive_mutex> guard(this->mutex);
       int err = 0;
 
       if (this->isUDP()) {
         if (this->isConnected()) {
           // calling `uv_udp_connect()` with `nullptr` for `addr`
           // should disconnect the connected socket
+          std::lock_guard<std::recursive_mutex> guard(this->mutex);
           if ((err = uv_udp_connect((uv_udp_t *) &this->handle, nullptr))) {
             return err;
           }
@@ -1172,8 +1172,6 @@ namespace SSC {
     }
 
     int recvstart () {
-      std::lock_guard<std::recursive_mutex> guard(this->mutex);
-
       if (this->recv != nullptr) {
         return this->recvstart(this->recv);
       }
@@ -1182,12 +1180,10 @@ namespace SSC {
     }
 
     int recvstart (Cb onrecv) {
-      std::lock_guard<std::recursive_mutex> guard(this->mutex);
       if (this->hasState(PEER_STATE_UDP_RECV_STARTED)) {
         return UV_EALREADY;
       }
 
-      this->recv = onrecv;
       this->addState(PEER_STATE_UDP_RECV_STARTED);
 
       auto allocate = [](uv_handle_t *handle, size_t size, uv_buf_t *buf) {
@@ -1265,6 +1261,8 @@ namespace SSC {
         }
       };
 
+      std::lock_guard<std::recursive_mutex> guard(this->mutex);
+      this->recv = onrecv;
       std::lock_guard<std::recursive_mutex> lock(loopMutex);
       return uv_udp_recv_start((uv_udp_t *) &this->handle, allocate, receive);
     }
@@ -1274,7 +1272,6 @@ namespace SSC {
 
       if (this->hasState(PEER_STATE_UDP_RECV_STARTED)) {
         this->removeState(PEER_STATE_UDP_RECV_STARTED);
-        std::lock_guard<std::recursive_mutex> guard(this->mutex);
         std::lock_guard<std::recursive_mutex> lock(loopMutex);
         err = uv_udp_recv_stop((uv_udp_t *) &this->handle);
       }
@@ -1285,19 +1282,21 @@ namespace SSC {
     int resume () {
       int err = 0;
 
-      if ((err = this->init())) {
-        return err;
-      }
-
-      if (this->isBound()) {
-        if ((err = this->rebind())) {
+      if (this->isPaused()) {
+        if ((err = this->init())) {
           return err;
         }
-      } else if (this->isConnected()) {
-        // @TODO
-      }
 
-      this->removeState(PEER_STATE_UDP_PAUSED);
+        if (this->isBound()) {
+          if ((err = this->rebind())) {
+            return err;
+          }
+        } else if (this->isConnected()) {
+          // @TODO
+        }
+
+        this->removeState(PEER_STATE_UDP_PAUSED);
+      }
 
       return err;
     }
@@ -1327,8 +1326,6 @@ namespace SSC {
     }
 
     void close (std::function<void()> onclose) {
-      std::lock_guard<std::recursive_mutex> guard(this->mutex);
-
       if (this->isClosed()) {
         Peer::remove(this->id);
         onclose();
@@ -1336,6 +1333,7 @@ namespace SSC {
       }
 
       if (onclose != nullptr) {
+        std::lock_guard<std::recursive_mutex> guard(this->mutex);
         this->onclose.push_back(onclose);
       }
 
@@ -1344,18 +1342,21 @@ namespace SSC {
       }
 
       if (this->type == PEER_TYPE_UDP) {
+        std::lock_guard<std::recursive_mutex> guard(this->mutex);
         // reset state and set to CLOSED
         uv_close((uv_handle_t*) &this->handle, [](uv_handle_t *handle) {
           auto peer = (Peer *) handle->data;
           if (peer != nullptr) {
-            peer->removeState(PEER_STATE_UDP_BOUND);
-            peer->removeState(PEER_STATE_UDP_CONNECTED);
-            peer->removeState(PEER_STATE_UDP_RECV_STARTED);
-            std::lock_guard<std::recursive_mutex> guard(peer->mutex);
+            peer->removeState((peer_state_t) (
+              PEER_STATE_UDP_BOUND |
+              PEER_STATE_UDP_CONNECTED |
+              PEER_STATE_UDP_RECV_STARTED
+            ));
+
             for (const auto onclose : peer->onclose) {
               onclose();
             }
-            Peer::remove(peer->id);
+
             delete peer;
           }
         });
@@ -1476,7 +1477,16 @@ namespace SSC {
     }
 
     didLoopInit = true;
+    std::lock_guard<std::recursive_mutex> lock(loopMutex);
     uv_loop_init(&eventLoop);
+    uv_async_init(&eventLoop, &eventLoopAsync, [](uv_async_t *handle) {
+      std::lock_guard<std::recursive_mutex> lock(loopMutex);
+      while (eventLoopDispatchQueue.size() > 0) {
+        auto dispatch = eventLoopDispatchQueue.front();
+        if (dispatch != nullptr) dispatch();
+        eventLoopDispatchQueue.pop();
+      }
+    });
 
 #if defined(__linux__) && !defined(__ANDROID__)
     GSource *source = g_source_new(&loopSourceFunctions, sizeof(UVSource));
@@ -1534,20 +1544,16 @@ namespace SSC {
     sleepEventLoop(getEventLoopTimeout());
   }
 
-  static void dispatchEventLoop (EventLoopDispatchContext::Callback dispatch) {
-    std::lock_guard<std::recursive_mutex> lock(loopMutex);
-    auto loop = getEventLoop();
-    auto ctx = new EventLoopDispatchContext(dispatch);
-
-    uv_async_init(loop, &ctx->async, [](uv_async_t *async) {
-      auto self = (EventLoopDispatchContext *) async->data;
-      auto loop = getEventLoop();
-      self->dispatch();
-      self->close();
-    });
-
-    uv_async_send(&ctx->async);
+  static void signalDispatchEventLoop () {
+    initEventLoop();
+    uv_async_send(&eventLoopAsync);
     runEventLoop();
+  }
+
+  static void dispatchEventLoop (EventLoopDispatchCallback callback) {
+    std::lock_guard<std::recursive_mutex> lock(loopMutex);
+    eventLoopDispatchQueue.push(callback);
+    signalDispatchEventLoop();
   }
 
   static void pollEventLoop () {
@@ -1557,17 +1563,7 @@ namespace SSC {
       sleepEventLoop(EVENT_LOOP_POLL_TIMEOUT);
 
       do {
-        auto timeout = getEventLoopTimeout();
-        if (timeout >= 0) {
-          uv_run(loop, UV_RUN_DEFAULT);
-        } else {
-          do {
-            std::lock_guard<std::recursive_mutex> lock(loopMutex);
-            if (!isLoopRunning || !uv_run(loop, UV_RUN_NOWAIT)) {
-              break;
-            }
-          } while (isLoopAlive() && getEventLoopTimeout() == -1);
-        }
+        uv_run(loop, UV_RUN_DEFAULT);
       } while (isLoopRunning && isLoopAlive());
     }
 
@@ -1598,6 +1594,7 @@ namespace SSC {
     rc = uv_run(getEventLoop(), UV_RUN_NOWAIT);
 #else
     std::lock_guard<std::recursive_mutex> lock(loopMutex);
+    // clean up old thread if still running
     if (eventLoopThread != nullptr) {
       if (eventLoopThread->joinable()) {
         eventLoopThread->join();
@@ -1771,20 +1768,18 @@ namespace SSC {
   }
 
   void Core::expirePosts () {
+    std::lock_guard<std::recursive_mutex> guard(postsMutex);
     std::vector<uint64_t> ids;
     auto now = std::chrono::system_clock::now()
       .time_since_epoch()
       .count();
 
-    {
-      std::lock_guard<std::recursive_mutex> guard(postsMutex);
-      for (auto const &tuple : *posts) {
-        auto id = tuple.first;
-        auto post = tuple.second;
+    for (auto const &tuple : *posts) {
+      auto id = tuple.first;
+      auto post = tuple.second;
 
-        if (post.ttl < now) {
-          ids.push_back(id);
-        }
+      if (post.ttl < now) {
+        ids.push_back(id);
       }
     }
 
@@ -1799,10 +1794,10 @@ namespace SSC {
   }
 
   void Core::removePost (uint64_t id) {
+    std::lock_guard<std::recursive_mutex> guard(postsMutex);
     if (posts->find(id) == posts->end()) return;
     auto post = getPost(id);
 
-    std::lock_guard<std::recursive_mutex> guard(postsMutex);
     if (post.body && post.bodyNeedsFree) {
       delete [] post.body;
       post.bodyNeedsFree = false;
@@ -1861,17 +1856,15 @@ namespace SSC {
   }
 
   void Core::removeAllPosts () {
+      std::lock_guard<std::recursive_mutex> guard(postsMutex);
     std::vector<uint64_t> ids;
     auto now = std::chrono::system_clock::now()
       .time_since_epoch()
       .count();
 
-    {
-      std::lock_guard<std::recursive_mutex> guard(postsMutex);
-      for (auto const &tuple : *posts) {
-        auto id = tuple.first;
-        ids.push_back(id);
-      }
+    for (auto const &tuple : *posts) {
+      auto id = tuple.first;
+      ids.push_back(id);
     }
 
     for (auto const id : ids) {
@@ -2140,9 +2133,7 @@ namespace SSC {
         return;
       }
 
-      std::lock_guard<std::recursive_mutex> descriptorLock(desc->mutex);
-
-      if (desc->dir == nullptr) {
+      if (!desc->isDirectory()) {
         auto msg = SSC::format(R"MSG({
           "source": "fs.readdir",
           "err": {
@@ -2156,6 +2147,7 @@ namespace SSC {
         return;
       }
 
+      std::lock_guard<std::recursive_mutex> descriptorLock(desc->mutex);
       desc->dir->dirents = ctx->dirents;
       desc->dir->nentries = nentries;
 
@@ -2386,11 +2378,9 @@ namespace SSC {
       return;
     }
 
-    std::lock_guard<std::recursive_mutex> descriptorLock(desc->mutex);
-
-    if (desc->dir != nullptr) {
+    if (desc->isDirectory()) {
       this->fsClosedir(seq, id, cb);
-    } else if (desc->fd > 0){
+    } else if (desc->isFile()) {
       this->fsClose(seq, id, cb);
     }
   }
@@ -2416,24 +2406,24 @@ namespace SSC {
       pending--;
 
       if (desc == nullptr) {
-        descriptors.erase(desc->id);
+        descriptors.erase(id);
         continue;
       }
 
-      if (preserveRetained  && desc->retained) {
+      if (preserveRetained && desc->isRetained()) {
         continue;
       }
 
-      if (desc->dir != nullptr) {
+      if (desc->isDirectory()) {
         queued++;
-        this->fsClosedir(seq, desc->id, [pending, cb](auto seq, auto msg, auto post) {
+        this->fsClosedir(seq, id, [pending, cb](auto seq, auto msg, auto post) {
           if (pending == 0) {
             cb(seq, msg, post);
           }
         });
-      } else if (desc->fd > 0) {
+      } else if (desc->isFile()) {
         queued++;
-        this->fsClose(seq, desc->id, [pending, cb](auto seq, auto msg, auto post) {
+        this->fsClose(seq, id, [pending, cb](auto seq, auto msg, auto post) {
           if (pending == 0) {
             cb(seq, msg, post);
           }
@@ -2814,7 +2804,7 @@ namespace SSC {
       msg += SSC::format(
         R"MSG({ "id": "$S", "fd": "$S", "type": "$S" })MSG",
         std::to_string(desc->id),
-        std::to_string(desc->dir ? desc->id : desc->fd),
+        std::to_string(desc->isDirectory() ? desc->id : desc->fd),
         desc->dir ? "directory" : "file"
       );
 
