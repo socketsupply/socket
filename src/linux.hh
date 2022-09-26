@@ -1143,10 +1143,10 @@ namespace SSC {
       return true;
     }
 
-    if (cmd.name == "sendBufferSize" || "send.bufferSize") {
+    if (cmd.name == "bufferSize") {
       if (cmd.get("id").size() == 0) {
         auto err = SSC::format(R"MSG({
-          "source": "send.bufferSize",
+          "source": "bufferSize",
           "err": {
             "type": "InternalError",
             "message": ".id is required"
@@ -1157,55 +1157,14 @@ namespace SSC {
         return true;
       }
 
+      auto buffer = std::stoi(cmd.get("buffer", "0"));
       auto size = std::stoi(cmd.get("size", "0"));
       auto id  = std::stoull(cmd.get("id"));
+
       Bridge::ThreadContext::Dispatch(this, [=](auto ctx) {
-        ctx->core->sendBufferSize(seq, id, size, cb);
+        ctx->core->bufferSize(seq, id, size, buffer, cb);
       });
-      return true;
-    }
 
-    if (cmd.name == "recvBufferSize" || cmd.name == "recv.bufferSize") {
-      if (cmd.get("id").size() == 0) {
-        auto err = SSC::format(R"MSG({
-          "source": "recv.bufferSize",
-          "err": {
-            "type": "InternalError",
-            "message": ".id is required"
-          }
-        })MSG");
-
-        cb(seq, err, Post{});
-        return true;
-      }
-
-      auto size = std::stoi(cmd.get("size", "0"));
-      auto id  = std::stoull(cmd.get("id"));
-      Bridge::ThreadContext::Dispatch(this, [=](auto ctx) {
-        ctx->core->recvBufferSize(seq, id, size, cb);
-      });
-      return true;
-    }
-
-    if (cmd.name == "sendBufferSize" || cmd.name == "send.bufferSize") {
-      if (cmd.get("id").size() == 0) {
-        auto err = SSC::format(R"MSG({
-          "source": "send.bufferSize",
-          "err": {
-            "type": "InternalError",
-            "message": ".id is required"
-          }
-        })MSG");
-
-        cb(seq, err, Post{});
-        return true;
-      }
-
-      auto size = std::stoi(cmd.get("size", "0"));
-      auto id  = std::stoull(cmd.get("id"));
-      Bridge::ThreadContext::Dispatch(this, [=](auto ctx) {
-        ctx->core->sendBufferSize(seq, id, size, cb);
-      });
       return true;
     }
 

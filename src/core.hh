@@ -310,8 +310,7 @@ namespace SSC {
       void udpReadStop (String seq, uint64_t peerId, Cb cb) const;
       void udpSend (String seq, uint64_t peerId, char* buf, int len, int port, String address, bool ephemeral, Cb cb) const;
 
-      void sendBufferSize (String seq, uint64_t peerId, int size, Cb cb) const;
-      void recvBufferSize (String seq, uint64_t peerId, int size, Cb cb) const;
+      void bufferSize (String seq, uint64_t peerId, int size, int buffer, Cb cb) const;
       void close (String seq, uint64_t peerId, Cb cb) const;
       void shutdown (String seq, uint64_t peerId, Cb cb) const;
       void readStop (String seq, uint64_t peerId, Cb cb) const;
@@ -3055,13 +3054,22 @@ namespace SSC {
     });
   }
 
-  void Core::sendBufferSize (String seq, uint64_t peerId, int size, Cb cb) const {
+  void Core::bufferSize (String seq, uint64_t peerId, int size, int buffer, Cb cb) const {
+    static int RECV_BUFFER = 1;
+    static int SEND_BUFFER = 0;
+
+    if (buffer < 0) {
+      buffer = 0;
+    } else if (buffer > 1) {
+      buffer = 1;
+    }
+
     dispatchEventLoop([=]() {
       auto peer = Peer::get(peerId);
 
       if (peer == nullptr) {
         auto msg = SSC::format(R"MSG({
-          "source": "send.bufferSize",
+          "source": "bufferSize",
           "err": {
             "id": "$S",
             "code": "NOT_FOUND_ERR",
@@ -3075,11 +3083,13 @@ namespace SSC {
 
       std::lock_guard<std::recursive_mutex> guard(peer->mutex);
       auto handle = (uv_handle_t*) &peer->handle;
-      auto err = uv_send_buffer_size(handle, (int *) &size);
+      auto err = buffer == RECV_BUFFER
+       ? uv_recv_buffer_size(handle, (int *) &size)
+       : uv_send_buffer_size(handle, (int *) &size);
 
       if (err < 0) {
         auto msg = SSC::format(R"MSG({
-          "source": "send.bufferSize",
+          "source": "bufferSize",
           "err": {
             "id": "$S",
             "message": "$S"
@@ -3092,55 +3102,7 @@ namespace SSC {
       }
 
       auto msg = SSC::format(R"MSG({
-        "source": "send.bufferSize",
-        "data": {
-          "id": "$S",
-          "size": $i
-        }
-      })MSG", std::to_string(peerId), size);
-
-      cb(seq, msg, Post{});
-    });
-  }
-
-  void Core::recvBufferSize (String seq, uint64_t peerId, int size, Cb cb) const {
-    dispatchEventLoop([=]() {
-      auto peer = Peer::get(peerId);
-
-      if (peer == nullptr) {
-        auto msg = SSC::format(R"MSG({
-          "source": "recv.bufferSize",
-          "err": {
-            "id": "$S",
-            "code": "NOT_FOUND_ERR",
-            "type": "NotFoundError",
-            "message": "No peer with specified id"
-          }
-        })MSG", std::to_string(peerId));
-        cb(seq, msg, Post{});
-        return;
-      }
-
-      std::lock_guard<std::recursive_mutex> guard(peer->mutex);
-      auto handle = (uv_handle_t*) &peer->handle;
-      auto err = uv_recv_buffer_size(handle, (int *) &size);
-
-      if (err < 0) {
-        auto msg = SSC::format(R"MSG({
-          "source": "recv.bufferSize",
-          "err": {
-            "id": "$S",
-            "message": "$S"
-          }
-        })MSG",
-        std::to_string(peerId),
-        std::string(uv_strerror(err)));
-        cb(seq, msg, Post{});
-        return;
-      }
-
-      auto msg = SSC::format(R"MSG({
-        "source": "recv.bufferSize",
+        "source": "bufferSize",
         "data": {
           "id": "$S",
           "size": $i

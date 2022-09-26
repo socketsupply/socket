@@ -632,17 +632,11 @@ class NativeCore : public SSC::Core {
   const std::string GetNetworkInterfaces () const;
   const char * GetJavaScriptPreloadSource () const;
 
-  void SendBufferSize (
+  void BufferSize (
     NativeCoreSequence seq,
     NativeCoreID id,
     int size,
-    NativeCallbackID callback
-  );
-
-  void RecvBufferSize (
-    NativeCoreSequence seq,
-    NativeCoreID id,
-    int size,
+    int buffer,
     NativeCallbackID callback
   );
 

@@ -1194,7 +1194,8 @@ static dispatch_queue_t queue = dispatch_queue_create("co.socketsupply.queue.cor
     return true;
   }
 
-  if (cmd.name == "sendBufferSize" || cmd.name == "send.bufferSize") {
+  if (cmd.name == "bufferSize") {
+    auto buffer = std::stoi(cmd.get("buffer", "0"));
     auto size = std::stoi(cmd.get("size", "0"));
     uint64_t id = 0ll;
 
@@ -1203,7 +1204,7 @@ static dispatch_queue_t queue = dispatch_queue_create("co.socketsupply.queue.cor
     } catch (...) {
       dispatch_async(queue, ^{
         auto err = SSC::format(R"MSG({
-          "source": "send.bufferSize",
+          "source": "bufferSize",
           "err": {
             "type": "InternalError",
             "message": ".id is required"
@@ -1216,36 +1217,7 @@ static dispatch_queue_t queue = dispatch_queue_create("co.socketsupply.queue.cor
     }
 
     dispatch_async(queue, ^{
-      self.core->sendBufferSize(seq, id, size, [=](auto seq, auto msg, auto post) {
-        [self send: seq msg: msg post: post];
-      });
-    });
-    return true;
-  }
-
-  if (cmd.name == "recvBufferSize" || cmd.name == "recv.bufferSize") {
-    auto size = std::stoi(cmd.get("size", "0"));
-    uint64_t id = 0ll;
-
-    try {
-      id = std::stoull(cmd.get("id"));
-    } catch (...) {
-      dispatch_async(queue, ^{
-        auto err = SSC::format(R"MSG({
-          "source": "recv.bufferSize",
-          "err": {
-            "type": "InternalError",
-            "message": ".id is required"
-          }
-        })MSG");
-
-        [self send: seq msg: err post: Post{}];
-      });
-      return true;
-    }
-
-    dispatch_async(queue, ^{
-      self.core->recvBufferSize(seq, id, size, [=](auto seq, auto msg, auto post) {
+      self.core->bufferSize(seq, id, size, buffer, [=](auto seq, auto msg, auto post) {
         [self send: seq msg: msg post: post];
       });
     });

@@ -368,31 +368,17 @@ const char * NativeCore::GetJavaScriptPreloadSource () const {
   return this->javaScriptPreloadSource.c_str();
 }
 
-void NativeCore::SendBufferSize (
+void NativeCore::BufferSize (
   NativeCoreSequence seq,
   NativeCoreID id,
   int size,
+  int buffer,
   NativeCallbackID callback
 ) {
   auto context = this->CreateRequestContext(seq, id, callback);
-  NativeThreadContext::Dispatch(this, [context, hostname, family](auto thread, auto data) {
+  NativeThreadContext::Dispatch(this, [context, size, buffer](auto thread, auto data) {
     auto core = reinterpret_cast<SSC::Core *>(context->core);
-    core->sendBufferSize(seq, id, [context](auto seq, auto data, auto post) {
-      context->Finalize(seq, data);
-    });
-  });
-}
-
-void NativeCore::RecvBufferSize (
-  NativeCoreSequence seq,
-  NativeCoreID id,
-  int size,
-  NativeCallbackID callback
-) {
-  auto context = this->CreateRequestContext(seq, id, callback);
-  NativeThreadContext::Dispatch(this, [context, hostname, family](auto thread, auto data) {
-    auto core = reinterpret_cast<SSC::Core *>(context->core);
-    core->recvBufferSize(seq, id, [context](auto seq, auto data, auto post) {
+    core->bufferSize(seq, id, size, buffer, [context](auto seq, auto data, auto post) {
       context->Finalize(seq, data);
     });
   });
@@ -1564,11 +1550,12 @@ extern "C" {
     reinterpret_cast<SSC::Core *>(core)->expirePosts();
   }
 
-  void exports(NativeCore, sendBufferSize)(
+  void exports(NativeCore, bufferSize)(
     JNIEnv *env,
     jobject self,
     jstring seq,
     jstring id,
+    jint buffer,
     jstring callback
   ) {
     auto core = GetNativeCoreFromEnvironment(env);
@@ -1577,31 +1564,11 @@ extern "C" {
       return Throw(env, NativeCoreNotInitializedException);
     }
 
-    core->SendBufferSize(
+    core->bufferSize(
       NativeString(env, seq).str(),
       GetNativeCoreIDFromJString(env, id),
       (int) size,
-      (NativeCallbackID) callback
-    );
-  }
-
-  void exports(NativeCore, RecvBufferSize)(
-    JNIEnv *env,
-    jobject self,
-    jstring seq,
-    jstring id,
-    jstring callback
-  ) {
-    auto core = GetNativeCoreFromEnvironment(env);
-
-    if (!core) {
-      return Throw(env, NativeCoreNotInitializedException);
-    }
-
-    core->RecvBufferSize(
-      NativeString(env, seq).str(),
-      GetNativeCoreIDFromJString(env, id),
-      (int) size,
+      (int) buffer,
       (NativeCallbackID) callback
     );
   }
