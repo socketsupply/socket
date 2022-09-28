@@ -3,16 +3,17 @@
 
 #include "preload.hh"
 
-#include <string>
-#include <vector>
-#include <map>
 #include <any>
 #include <iostream>
-#include <sstream>
-#include <regex>
-#include <fstream>
-#include <span>
 #include <filesystem>
+#include <fstream>
+#include <map>
+#include <mutex>
+#include <regex>
+#include <span>
+#include <sstream>
+#include <string>
+#include <vector>
 
 #if defined(_WIN32)
 #include <Windows.h>
@@ -946,7 +947,7 @@ namespace SSC {
       class WindowWithMetadata : public Window {
         public:
           WindowStatus status;
-          WindowFactory<Window, App> factory;
+          WindowFactory<Window, App> &factory;
 
           WindowWithMetadata (
             WindowFactory &factory,
@@ -1023,10 +1024,11 @@ namespace SSC {
       std::chrono::system_clock::time_point lastDebugLogLine;
 #endif
 
-      App app;
+      App &app;
       bool destroyed = false;
       std::vector<bool> inits;
       std::vector<WindowWithMetadata*> windows;
+      std::recursive_mutex mutex;
 
       WindowFactory (App &app) :
         app(app),
@@ -1088,6 +1090,7 @@ namespace SSC {
       }
 
       Window* getWindow (int index, WindowStatus status) {
+        std::lock_guard<std::recursive_mutex> guard(this->mutex);
         if (this->destroyed) return nullptr;
         if (
           getWindowStatus(index) > WindowStatus::WINDOW_NONE &&
@@ -1119,6 +1122,7 @@ namespace SSC {
       }
 
       WindowStatus getWindowStatus (int index) {
+        std::lock_guard<std::recursive_mutex> guard(this->mutex);
         if (this->destroyed) return WindowStatus::WINDOW_NONE;
         if (index >= 0 && inits[index]) {
           return windows[index]->status;
@@ -1128,6 +1132,7 @@ namespace SSC {
       }
 
       void destroyWindow (int index) {
+        std::lock_guard<std::recursive_mutex> guard(this->mutex);
         if (destroyed) return;
         if (index >= 0 && inits[index] && windows[index] != nullptr) {
           return destroyWindow(windows[index]);
@@ -1142,6 +1147,7 @@ namespace SSC {
       }
 
       void destroyWindow (Window* window) {
+        std::lock_guard<std::recursive_mutex> guard(this->mutex);
         if (destroyed) return;
         if (window != nullptr && windows[window->index] != nullptr) {
           auto metadata = reinterpret_cast<WindowWithMetadata*>(window);
@@ -1162,6 +1168,7 @@ namespace SSC {
       }
 
       Window* createWindow (WindowOptions opts) {
+        std::lock_guard<std::recursive_mutex> guard(this->mutex);
         if (destroyed) return nullptr;
         std::stringstream env;
 
