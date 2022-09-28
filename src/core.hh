@@ -502,7 +502,7 @@ namespace SSC {
   static uv_loop_t* getEventLoop ();
   static int getEventLoopTimeout ();
   static bool isLoopAlive ();
-  static int runEventLoop ();
+  static void runEventLoop ();
   static void stopEventLoop ();
   static void dispatchEventLoop (EventLoopDispatchCallback dispatch);
 
@@ -1519,8 +1519,10 @@ namespace SSC {
   static void stopEventLoop() {
     isLoopRunning = false;
     uv_stop(&eventLoop);
+#if defined(__APPLE__)
+    // noop
+#elif defined(__ANDROID__) || !defined(__linux__)
     std::lock_guard<std::recursive_mutex> lock(loopMutex);
-#if defined(__ANDROID__)
     if (eventLoopThread != nullptr) {
       if (eventLoopThread->joinable()) {
         eventLoopThread->join();
@@ -1546,8 +1548,8 @@ namespace SSC {
 
   static void signalDispatchEventLoop () {
     initEventLoop();
-    uv_async_send(&eventLoopAsync);
     runEventLoop();
+    uv_async_send(&eventLoopAsync);
   }
 
   static void dispatchEventLoop (EventLoopDispatchCallback callback) {
@@ -1570,15 +1572,14 @@ namespace SSC {
     isLoopRunning = false;
   }
 
-  static int runEventLoop () {
+  static void runEventLoop () {
     if (isLoopRunning) {
-      return 0;
+      return;
     }
 
     isLoopRunning = true;
 
-    int rc = 0;
-
+    initEventLoop();
     dispatchEventLoop([]() {
       initTimers();
       startTimers();
@@ -1587,12 +1588,7 @@ namespace SSC {
 #if defined(__APPLE__)
     std::lock_guard<std::recursive_mutex> lock(loopMutex);
     dispatch_async(eventLoopQueue, ^{ pollEventLoop(); });
-#elif defined(__linux__) && !defined(__ANDROID__) // linux desktop
-    // the linux implementation uses glib sources for polled event sourcing
-    // to actually execute our loop in tandem with glib's event loop
-    std::lock_guard<std::recursive_mutex> lock(loopMutex);
-    rc = uv_run(getEventLoop(), UV_RUN_NOWAIT);
-#else
+#elif defined(__ANDROID__) || !defined(__linux__)
     std::lock_guard<std::recursive_mutex> lock(loopMutex);
     // clean up old thread if still running
     if (eventLoopThread != nullptr) {
@@ -1606,8 +1602,6 @@ namespace SSC {
 
     eventLoopThread = new std::thread(&pollEventLoop);
 #endif
-
-    return rc;
   }
 
   static void initTimers () {
@@ -2218,25 +2212,25 @@ namespace SSC {
   }
 
   void Core::fsClose (String seq, uint64_t id, Cb cb) const {
-    dispatchEventLoop([=]() {
-      auto desc = Descriptor::get(id);
-      auto ctx = new DescriptorRequestContext(desc, seq, cb);
+    auto desc = Descriptor::get(id);
+    auto ctx = new DescriptorRequestContext(desc, seq, cb);
 
-      if (desc == nullptr) {
-        auto msg = SSC::format(R"MSG({
-          "source": "fs.close",
-          "err": {
-            "id": "$S",
-            "code": "ENOTOPEN",
-            "type": "NotFoundError",
-            "message": "No file descriptor found with that id"
-          }
-        })MSG", std::to_string(id));
+    if (desc == nullptr) {
+      auto msg = SSC::format(R"MSG({
+        "source": "fs.close",
+        "err": {
+          "id": "$S",
+          "code": "ENOTOPEN",
+          "type": "NotFoundError",
+          "message": "No file descriptor found with that id"
+        }
+      })MSG", std::to_string(id));
 
-        ctx->end(msg);
-        return;
-      }
+      ctx->end(msg);
+      return;
+    }
 
+    dispatchEventLoop([ctx, desc]() {
       auto err = uv_fs_close(ctx->loop, &ctx->req, desc->fd, [](uv_fs_t* req) {
         auto ctx = (DescriptorRequestContext *) req->data;
         auto desc = ctx->desc;
@@ -2281,7 +2275,7 @@ namespace SSC {
             "message": "$S"
           }
         })MSG",
-        std::to_string(id),
+        std::to_string(desc->id),
         std::to_string(err),
         String(uv_strerror(err)));
 
@@ -2437,7 +2431,6 @@ namespace SSC {
   }
 
   void Core::fsRead (String seq, uint64_t id, int len, int offset, Cb cb) const {
-    dispatchEventLoop([=]() {
       auto desc = Descriptor::get(id);
       auto ctx = new DescriptorRequestContext(desc, seq, cb);
 
@@ -2459,13 +2452,12 @@ namespace SSC {
       auto buf = new char[len]{0};
       ctx->setBuffer(0, len, buf);
 
+    dispatchEventLoop([=]() {
       auto err = uv_fs_read(ctx->loop, &ctx->req, desc->fd, ctx->iov, 1, offset, [](uv_fs_t* req) {
         auto ctx = static_cast<DescriptorRequestContext*>(req->data);
         auto desc = ctx->desc;
-        std::string msg;
+        std::string msg = "";
         Post post = {0};
-
-        std::lock_guard<std::recursive_mutex> descriptorLock(desc->mutex);
 
         if (req->result < 0) {
           msg = SSC::format(R"MSG({
@@ -2485,7 +2477,6 @@ namespace SSC {
             delete [] buf;
           }
         } else {
-          msg = "{}";
           post.id = SSC::rand64();
           post.body = ctx->getBuffer(0);
           post.length = (int) req->result;
@@ -2572,6 +2563,7 @@ namespace SSC {
         }
 
         ctx->end(msg);
+
       });
 
       if (err < 0) {
