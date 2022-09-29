@@ -189,16 +189,11 @@ void uncaughtExceptionHandler (NSException *exception) {
   // Note: you won't see any logs in the preload script before the
   // Web Inspector is opened
   std::string  preload = Str(
-    "window.addEventListener('unhandledrejection', e => console.log(e.message));\n"
-    "window.addEventListener('error', e => console.log(e.reason));\n"
-
     "window.external = {\n"
     "  invoke: arg => window.webkit.messageHandlers.webview.postMessage(arg)\n"
     "};\n"
 
-    "console.error = console.warn = console.log;\n"
     "" + createPreload(opts) + "\n"
-    "//# sourceURL=preload.js"
   );
 
   WKUserScript* initScript = [[WKUserScript alloc]

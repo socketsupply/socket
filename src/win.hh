@@ -875,6 +875,7 @@ namespace SSC {
       "window.external = {\n"
       "  invoke: arg => window.chrome.webview.postMessage(arg)\n"
       "};\n"
+
       "" + createPreload(opts) + "\n"
     );
 
