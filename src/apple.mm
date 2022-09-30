@@ -1132,6 +1132,7 @@ static dispatch_queue_t queue = dispatch_queue_create("co.socketsupply.queue.cor
 
     dispatch_async(queue, ^{
       auto msg = SSC::format(R"JSON({
+        "source": "process.cwd",
         "data": "$S"
       })JSON", std::string([cwd UTF8String]));
       [self send: seq msg: msg post: Post{}];
@@ -1142,6 +1143,7 @@ static dispatch_queue_t queue = dispatch_queue_create("co.socketsupply.queue.cor
   if (cmd.name == "getPlatformOS" || cmd.name == "os.platform") {
     dispatch_async(queue, ^{
       auto msg = SSC::format(R"JSON({
+        "source": "os.platform",
         "data": "$S"
       })JSON", SSC::platform.os);
 
@@ -1153,6 +1155,7 @@ static dispatch_queue_t queue = dispatch_queue_create("co.socketsupply.queue.cor
   if (cmd.name == "getPlatformType" || cmd.name == "os.type") {
     dispatch_async(queue, ^{
       auto msg = SSC::format(R"JSON({
+        "source": "os.type",
         "data": "$S"
       })JSON", SSC::platform.os);
 
@@ -1164,6 +1167,7 @@ static dispatch_queue_t queue = dispatch_queue_create("co.socketsupply.queue.cor
   if (cmd.name == "getPlatformArch" || cmd.name == "os.arch") {
     dispatch_async(queue, ^{
       auto msg = SSC::format(R"JSON({
+        "source": "os.arch",
         "data": "$S"
       })JSON", SSC::platform.arch);
 
@@ -1269,6 +1273,7 @@ static dispatch_queue_t queue = dispatch_queue_create("co.socketsupply.queue.cor
 
     if (err.size() > 0) {
       auto msg = SSC::format(R"MSG({
+        "source": "udp.connect",
         "err": {
           "message": "$S"
         }
@@ -1294,6 +1299,7 @@ static dispatch_queue_t queue = dispatch_queue_create("co.socketsupply.queue.cor
 
     if (strId.size() == 0) {
       auto msg = SSC::format(R"MSG({
+        "source": "udp.disconnect",
         "err": {
           "message": "expected .peerId"
         }
@@ -1320,6 +1326,7 @@ static dispatch_queue_t queue = dispatch_queue_create("co.socketsupply.queue.cor
 
     if (strId.size() == 0) {
       auto msg = SSC::format(R"MSG({
+        "source": "udp.getPeerName",
         "err": {
           "message": "expected .peerId"
         }
@@ -1346,6 +1353,7 @@ static dispatch_queue_t queue = dispatch_queue_create("co.socketsupply.queue.cor
 
     if (strId.size() == 0) {
       auto msg = SSC::format(R"MSG({
+        "source": "udp.getSockName",
         "err": {
           "message": "expected either .id"
         }
@@ -1372,6 +1380,7 @@ static dispatch_queue_t queue = dispatch_queue_create("co.socketsupply.queue.cor
 
     if (strId.size() == 0) {
       auto msg = SSC::format(R"MSG({
+        "source": "udp.getState",
         "err": {
           "message": "expected either .id"
         }
@@ -1434,6 +1443,7 @@ static dispatch_queue_t queue = dispatch_queue_create("co.socketsupply.queue.cor
 
     if (err.size() > 0) {
       auto msg = SSC::format(R"MSG({
+        "source": "udp.send",
         "err": {
           "message": "$S"
         }
