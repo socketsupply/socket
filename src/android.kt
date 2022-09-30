@@ -161,6 +161,7 @@ open class WebViewClient(activity: WebViewActivity) : android.webkit.WebViewClie
           return response
         }
 
+        val core = this.activity.core
         val value = url.toString()
         val stream = java.io.PipedOutputStream()
         val message = IPCMessage(value)
@@ -182,9 +183,24 @@ open class WebViewClient(activity: WebViewActivity) : android.webkit.WebViewClie
             name,
             message,
             value,
-            callback = { _: String, data: String ->
-              stream.write(data.toByteArray(), 0, data.length)
-              stream.close()
+            callback = fun (_: String, data: String, postId: String) {
+              try {
+                if (postId != "" && postId != "0") {
+                  core?.apply {
+                    val bytes = getPostData(postId)
+                    android.util.Log.d(TAG, "${url.host} ${bytes.size} bytes for ${postId}")
+                    stream.write(bytes, 0, bytes.size)
+                    freePostData(postId)
+                  }
+                } else {
+                  val bytes = data.toByteArray()
+                  stream.write(bytes, 0, bytes.size)
+                }
+
+                stream.close()
+              } catch (err: Exception) {
+                android.util.Log.d(TAG, "ERR (${url.host}): $err")
+              }
             },
 
             throwError = { seq: String, error: String ->
@@ -318,8 +334,6 @@ open class WebViewActivity : androidx.appcompat.app.AppCompatActivity() {
     this.core?.apply {
       freeAllPostData()
       stopEventLoop()
-      stopDispatchThread()
-      stopReleaseThread()
     }
 
     super.onDestroy()
@@ -328,8 +342,6 @@ open class WebViewActivity : androidx.appcompat.app.AppCompatActivity() {
   override fun onPause () {
     this.core?.apply {
       stopEventLoop()
-      stopDispatchThread()
-      stopReleaseThread()
       pauseAllPeers()
     }
 
@@ -339,8 +351,6 @@ open class WebViewActivity : androidx.appcompat.app.AppCompatActivity() {
   override fun onResume () {
     this.core?.apply {
       runEventLoop()
-      startDispatchThread()
-      startReleaseThread()
       resumeAllPeers()
     }
 
@@ -368,7 +378,7 @@ open class Bridge(activity: WebViewActivity) {
     ( // callback
       IPCMessage,
       String,
-      (String, String) -> Unit,
+      (String, String, String) -> Unit,
       (String, String) -> String
     ) -> String?
   >()
@@ -425,7 +435,7 @@ open class Bridge(activity: WebViewActivity) {
     callback: (
       IPCMessage,
       String,
-      (String, String) -> Unit,
+      (String, String, String) -> Unit,
       (String, String) -> String
     ) -> String?,
   ) {
@@ -436,7 +446,7 @@ open class Bridge(activity: WebViewActivity) {
     name: String,
     message: IPCMessage,
     value: String,
-    callback: (String, String) -> Unit,
+    callback: (String, String, String) -> Unit,
     throwError: (String, String) -> String
   ): String? {
     if (this.buffers[message.seq] != null && message.bytes == null) {
@@ -454,7 +464,7 @@ open class Bridge(activity: WebViewActivity) {
     this.registerInterface("bluetooth", fun(
       message: IPCMessage,
       value: String,
-      callback: (String, String) -> Unit,
+      callback: (String, String, String) -> Unit,
       throwError: (String, String) -> String
     ): String? {
       val core = this.activity.core
@@ -486,7 +496,7 @@ open class Bridge(activity: WebViewActivity) {
     this.registerInterface("buffer", fun (
       message: IPCMessage,
       value: String,
-      callback: (String, String) -> Unit,
+      callback: (String, String, String) -> Unit,
       throwError: (String, String) -> String
     ): String? {
       val core = this.activity.core
@@ -521,7 +531,7 @@ open class Bridge(activity: WebViewActivity) {
     this.registerInterface("dns", fun(
       message: IPCMessage,
       value: String,
-      callback: (String, String) -> Unit,
+      callback: (String, String, String) -> Unit,
       throwError: (String, String) -> String
     ): String? {
       val core = this.activity.core
@@ -540,8 +550,8 @@ open class Bridge(activity: WebViewActivity) {
             throw RuntimeException("dns.lookup: Missing 'hostname' in IPC")
           }
 
-          core.dns.lookup(seq, hostname, family, fun (data: String) {
-            callback(message.seq, data)
+          core.dns.lookup(seq, hostname, family, fun (data: String, postId: String) {
+            callback(message.seq, data, postId)
           })
 
           return message.seq
@@ -554,7 +564,7 @@ open class Bridge(activity: WebViewActivity) {
     this.registerInterface("fs", fun(
       message: IPCMessage,
       value: String,
-      callback: (String, String) -> Unit,
+      callback: (String, String, String) -> Unit,
       throwError: (String, String) -> String
     ): String? {
       val core = this.activity.core
@@ -585,8 +595,8 @@ open class Bridge(activity: WebViewActivity) {
             val mode = message.get("mode", "0").toInt()
             val resolved = root.resolve(java.nio.file.Paths.get(path))
 
-            core.fs.access(seq, resolved.toString(), mode, fun(data: String) {
-              callback(message.seq, data)
+            core.fs.access(seq, resolved.toString(), mode, fun(data: String, postId: String) {
+              callback(message.seq, data, postId)
             })
           }
 
@@ -618,8 +628,8 @@ open class Bridge(activity: WebViewActivity) {
             val mode = message.get("mode").toInt()
             val resolved = root.resolve(java.nio.file.Paths.get(path))
 
-            core.fs.chmod(seq, resolved.toString(), mode, fun(data: String) {
-              callback(message.seq, data)
+            core.fs.chmod(seq, resolved.toString(), mode, fun(data: String, postId: String) {
+              callback(message.seq, data, postId)
             })
           }
 
@@ -634,12 +644,12 @@ open class Bridge(activity: WebViewActivity) {
           val id = message.get("id")
 
           if (core.fs.isAssetId(id)) {
-            core.fs.closeAsset(id, fun(data: String) {
-              callback(message.seq, data)
+            core.fs.closeAsset(id, fun(data: String, postId: String) {
+              callback(message.seq, data, postId)
             })
           } else {
-            core.fs.close(message.seq, id, fun(data: String) {
-              callback(message.seq, data)
+            core.fs.close(message.seq, id, fun(data: String, postId: String) {
+              callback(message.seq, data, postId)
             })
           }
 
@@ -648,7 +658,7 @@ open class Bridge(activity: WebViewActivity) {
 
         "fs.constants", "fsConstants", "getFSConstants" -> {
           val constants = core.getFSConstants()
-          callback(message.seq, constants)
+          callback(message.seq, constants, "")
           return message.seq
         }
 
@@ -662,8 +672,8 @@ open class Bridge(activity: WebViewActivity) {
           if (core.fs.isAssetId(id)) {
             // @TODO fstatAsset
           } else {
-            core.fs.fstat(message.seq, id, fun(data: String) {
-              callback(message.seq, data)
+            core.fs.fstat(message.seq, id, fun(data: String, postId: String) {
+              callback(message.seq, data, postId)
             })
           }
 
@@ -689,8 +699,8 @@ open class Bridge(activity: WebViewActivity) {
               .slice(1 until pathSegments.size)
               .joinToString("/")
 
-            core.fs.openAsset(id, path, fun(data: String) {
-              callback(message.seq, data)
+            core.fs.openAsset(id, path, fun(data: String, postId: String) {
+              callback(message.seq, data, postId)
             })
           } else {
             val seq = message.seq
@@ -699,8 +709,8 @@ open class Bridge(activity: WebViewActivity) {
             val flags = message.get("flags", "0").toInt()
             val resolved = root.resolve(java.nio.file.Paths.get(path))
 
-            core.fs.open(seq, id, resolved.toString(), flags, mode, fun(data: String) {
-              callback(message.seq, data)
+            core.fs.open(seq, id, resolved.toString(), flags, mode, fun(data: String, postId: String) {
+              callback(message.seq, data, postId)
             })
           }
 
@@ -721,12 +731,12 @@ open class Bridge(activity: WebViewActivity) {
           val offset = message.get("offset", "0").toInt()
 
           if (core.fs.isAssetId(id)) {
-            core.fs.readAsset(message.seq, id, offset, size, fun(data: String) {
-              callback(message.seq, data)
+            core.fs.readAsset(message.seq, id, offset, size, fun(data: String, postId: String) {
+              callback(message.seq, data, postId)
             })
           } else {
-            core.fs.read(message.seq, id, offset, size, fun(data: String) {
-              callback(message.seq, data)
+            core.fs.read(message.seq, id, offset, size, fun(data: String, postId: String) {
+              callback(message.seq, data, postId)
             })
           }
 
@@ -749,8 +759,8 @@ open class Bridge(activity: WebViewActivity) {
             val flags = message.get("flags", "0").toInt()
             val resolved = root.resolve(java.nio.file.Paths.get(path))
 
-            core.fs.stat(message.seq, resolved.toString(), fun(data: String) {
-              callback(message.seq, data)
+            core.fs.stat(message.seq, resolved.toString(), fun(data: String, postId: String) {
+              callback(message.seq, data, postId)
             })
           }
 
@@ -769,14 +779,13 @@ open class Bridge(activity: WebViewActivity) {
           }
 
           val id = message.get("id")
-          val data = String(bytes)
           val offset = message.get("offset", "0").toInt()
 
           if (core.fs.isAssetId(id)) {
-            callback(message.seq, JSONError(id, "AssetManager does not support writes").toString())
+            callback(message.seq, JSONError(id, "AssetManager does not support writes").toString(), "")
           } else {
-            core.fs.write(message.seq, id, data, offset, fun(data: String) {
-              callback(message.seq, data)
+            core.fs.write(message.seq, id, bytes, offset, fun(data: String, postId: String) {
+              callback(message.seq, data, postId)
             })
           }
 
@@ -790,11 +799,10 @@ open class Bridge(activity: WebViewActivity) {
     this.registerInterface("bufferSize", fun (
       message: IPCMessage,
       value: String,
-      callback: (String, String) -> Unit,
+      callback: (String, String, String) -> Unit,
       throwError: (String, String) -> String
     ): String? {
       val core = this.activity.core
-      val bytes = message.bytes
 
       if (core == null) {
         return null
@@ -814,8 +822,8 @@ open class Bridge(activity: WebViewActivity) {
           val size = message.get("size", "0").toInt()
           val buffer = message.get("buffer", "0").toInt()
 
-          core.bufferSize(message.seq, id, size, buffer, fun (data: String) {
-            callback(message.seq, data)
+          core.bufferSize(message.seq, id, size, buffer, fun (data: String, postId: String) {
+            callback(message.seq, data, postId)
           })
           return message.seq
         }
@@ -827,7 +835,7 @@ open class Bridge(activity: WebViewActivity) {
     this.registerInterface("os", fun(
       message: IPCMessage,
       value: String,
-      callback: (String, String) -> Unit,
+      callback: (String, String, String) -> Unit,
       throwError: (String, String) -> String
     ): String? {
       val core = this.activity.core
@@ -842,7 +850,7 @@ open class Bridge(activity: WebViewActivity) {
             throw RuntimeException("getNetworkInterfaces: Missing 'seq' in IPC")
           }
 
-          callback(message.seq, core.getNetworkInterfaces())
+          callback(message.seq, core.getNetworkInterfaces(), "")
           return message.seq
         }
 
@@ -851,7 +859,7 @@ open class Bridge(activity: WebViewActivity) {
             throw RuntimeException("getPlatformArch: Missing 'seq' in IPC")
           }
 
-          callback(message.seq, core.getPlatformArch())
+          callback(message.seq, core.getPlatformArch(), "")
           return message.seq
         }
 
@@ -860,7 +868,7 @@ open class Bridge(activity: WebViewActivity) {
             throw RuntimeException("getPlatformType: Missing 'seq' in IPC")
           }
 
-          callback(message.seq, core.getPlatformType())
+          callback(message.seq, core.getPlatformType(), "")
           return message.seq
         }
 
@@ -869,7 +877,7 @@ open class Bridge(activity: WebViewActivity) {
             throw RuntimeException("getPlatformOS: Missing 'seq' in IPC")
           }
 
-          callback(message.seq, core.getPlatformOS())
+          callback(message.seq, core.getPlatformOS(), "")
           return message.seq
         }
       }
@@ -880,7 +888,7 @@ open class Bridge(activity: WebViewActivity) {
     this.registerInterface("process", fun(
       message: IPCMessage,
       value: String,
-      callback: (String, String) -> Unit,
+      callback: (String, String, String) -> Unit,
       throwError: (String, String) -> String
     ): String? {
       val core = this.activity.core
@@ -891,7 +899,7 @@ open class Bridge(activity: WebViewActivity) {
 
       when (message.command) {
         "process.cwd", "cwd" -> {
-          callback(message.seq, core.getRootDirectory() ?: "")
+          callback(message.seq, core.getRootDirectory() ?: "", "")
           return message.seq
         }
       }
@@ -902,7 +910,7 @@ open class Bridge(activity: WebViewActivity) {
     this.registerInterface("udp", fun(
       message: IPCMessage,
       value: String,
-      callback: (String, String) -> Unit,
+      callback: (String, String, String) -> Unit,
       throwError: (String, String) -> String
     ): String? {
       val core = this.activity.core
@@ -919,8 +927,8 @@ open class Bridge(activity: WebViewActivity) {
 
           val id = message.get("id")
 
-          core.udp.close(message.seq, id, fun (data: String) {
-            callback(message.seq, data)
+          core.udp.close(message.seq, id, fun (data: String, postId: String) {
+            callback(message.seq, data, postId)
           })
 
           return message.seq
@@ -936,8 +944,8 @@ open class Bridge(activity: WebViewActivity) {
           val address = message.get("address")
           val reuseAddr = message.get("reuseAddr", "false") == "true"
 
-          core.udp.bind(message.seq, id, address, port, reuseAddr, fun (data: String) {
-            callback(message.seq, data)
+          core.udp.bind(message.seq, id, address, port, reuseAddr, fun (data: String, postId: String) {
+            callback(message.seq, data, postId)
           })
 
           return message.seq
@@ -952,8 +960,22 @@ open class Bridge(activity: WebViewActivity) {
           val port = message.get("port", "0").toInt()
           val address = message.get("address")
 
-          core.udp.connect(message.seq, id, address, port, fun (data: String) {
-            callback(message.seq, data)
+          core.udp.connect(message.seq, id, address, port, fun (data: String, postId: String) {
+            callback(message.seq, data, postId)
+          })
+
+          return message.seq
+        }
+
+        "udpDisdisconnect", "udp.disconnect" -> {
+          if (message.seq.isEmpty()) {
+            throw RuntimeException("udp.disconnect: Missing 'seq' in IPC")
+          }
+
+          val id = message.get("id")
+
+          core.udp.disconnect(message.seq, id, fun (data: String, postId: String) {
+            callback(message.seq, data, postId)
           })
 
           return message.seq
@@ -966,8 +988,8 @@ open class Bridge(activity: WebViewActivity) {
 
           val id = message.get("id")
 
-          core.udp.getPeerName(message.seq, id, fun (data: String) {
-            callback(message.seq, data)
+          core.udp.getPeerName(message.seq, id, fun (data: String, postId: String) {
+            callback(message.seq, data, postId)
           })
 
           return message.seq
@@ -980,8 +1002,8 @@ open class Bridge(activity: WebViewActivity) {
 
           val id = message.get("id")
 
-          core.udp.getSockName(message.seq, id, fun (data: String) {
-            callback(message.seq, data)
+          core.udp.getSockName(message.seq, id, fun (data: String, postId: String) {
+            callback(message.seq, data, postId)
           })
 
           return message.seq
@@ -994,8 +1016,8 @@ open class Bridge(activity: WebViewActivity) {
 
           val id = message.get("id")
 
-          core.udp.getState(message.seq, id, fun (data: String) {
-            callback(message.seq, data)
+          core.udp.getState(message.seq, id, fun (data: String, postId: String) {
+            callback(message.seq, data, postId)
           })
 
           return message.seq
@@ -1008,8 +1030,8 @@ open class Bridge(activity: WebViewActivity) {
 
           val id = message.get("id")
 
-          core.udp.readStart(message.seq, id, fun (data: String) {
-            callback(message.seq, data)
+          core.udp.readStart(message.seq, id, fun (data: String, postId: String) {
+            callback(message.seq, data, postId)
           })
 
           return message.seq
@@ -1022,8 +1044,8 @@ open class Bridge(activity: WebViewActivity) {
 
           val id = message.get("id")
 
-          core.udp.readStop(message.seq, id, fun (data: String) {
-            callback(message.seq, data)
+          core.udp.readStop(message.seq, id, fun (data: String, postId: String) {
+            callback(message.seq, data, postId)
           })
 
           return message.seq
@@ -1049,7 +1071,6 @@ open class Bridge(activity: WebViewActivity) {
           }
 
           val id = message.get("id")
-          val data = String(bytes)
           val port = message.get("port", "0").toInt()
           val size = message.get("size", bytes.size.toString()).toInt()
           val address = message.get("address")
@@ -1057,8 +1078,8 @@ open class Bridge(activity: WebViewActivity) {
 
           // android.util.Log.d(TAG, "message= ${message}")
 
-          core.udp.send(message.seq, id, data, size, address, port, ephemeral, fun (data: String) {
-            callback(message.seq, data)
+          core.udp.send(message.seq, id, bytes, size, address, port, ephemeral, fun (data: String, postId: String) {
+            callback(message.seq, data, postId)
           })
 
           return message.seq
@@ -1175,8 +1196,13 @@ open class ExternalWebViewInterface(activity: WebViewActivity) {
           name,
           message,
           value,
-          callback = { seq: String, data: String ->
-            if (seq.isNotEmpty() || data.isNotEmpty()) {
+          callback = { seq: String, data: String, postId: String ->
+            if (postId != "" && postId != "0") {
+              val bytes = core.getPostData(postId)
+              core?.apply {
+                evaluateJavascript(createPost(seq, postId, data, "", bytes))
+              }
+            } else if (seq.isNotEmpty() || data.isNotEmpty()) {
               bridge.send(seq, data)
             }
           },
@@ -1376,7 +1402,7 @@ open class NativeDNS(core: NativeCore) {
     seq: String = "",
     hostname: String,
     family: Int,
-    callback: (String) -> Unit
+    callback: (String, String) -> Unit
   ) {
     core?.apply {
       dnsLookup(seq, hostname, family, queueCallback(callback))
@@ -1399,7 +1425,7 @@ open class NativeUDP(core: NativeCore) {
     address: String,
     port: Int,
     reuseAddr: Boolean,
-    callback: (String) -> Unit
+    callback: (String, String) -> Unit
   ) {
     core?.apply {
       udpBind(seq, id, address, port, reuseAddr, queueCallback(callback))
@@ -1409,7 +1435,7 @@ open class NativeUDP(core: NativeCore) {
   fun close (
     seq: String = "",
     id: String,
-    callback: (String) -> Unit
+    callback: (String, String) -> Unit
   ) {
     core?.apply {
       udpClose(seq, id, queueCallback(callback))
@@ -1421,7 +1447,7 @@ open class NativeUDP(core: NativeCore) {
     id: String,
     address: String,
     port: Int,
-    callback: (String) -> Unit
+    callback: (String, String) -> Unit
   ) {
     core?.apply {
       udpConnect(seq, id, address, port, queueCallback(callback))
@@ -1431,7 +1457,7 @@ open class NativeUDP(core: NativeCore) {
   fun disconnect (
     seq: String = "",
     id: String,
-    callback: (String) -> Unit
+    callback: (String, String) -> Unit
   ) {
     core?.apply {
       udpDisconnect(seq, id, queueCallback(callback))
@@ -1441,7 +1467,7 @@ open class NativeUDP(core: NativeCore) {
   fun getPeerName (
     seq: String = "",
     id: String,
-    callback: (String) -> Unit
+    callback: (String, String) -> Unit
   ) {
     core?.apply {
       udpGetPeerName(seq, id, queueCallback(callback))
@@ -1451,7 +1477,7 @@ open class NativeUDP(core: NativeCore) {
   fun getSockName (
     seq: String = "",
     id: String,
-    callback: (String) -> Unit
+    callback: (String, String) -> Unit
   ) {
     core?.apply {
       udpGetSockName(seq, id, queueCallback(callback))
@@ -1461,7 +1487,7 @@ open class NativeUDP(core: NativeCore) {
   fun getState (
     seq: String = "",
     id: String,
-    callback: (String) -> Unit
+    callback: (String, String) -> Unit
   ) {
     core?.apply {
       udpGetState(seq, id, queueCallback(callback))
@@ -1471,7 +1497,7 @@ open class NativeUDP(core: NativeCore) {
   fun readStart (
     seq: String = "",
     id: String,
-    callback: (String) -> Unit
+    callback: (String, String) -> Unit
   ) {
     core?.apply {
       udpReadStart(seq, id, queueCallback(callback))
@@ -1481,7 +1507,7 @@ open class NativeUDP(core: NativeCore) {
   fun readStop (
     seq: String = "",
     id: String,
-    callback: (String) -> Unit
+    callback: (String, String) -> Unit
   ) {
     core?.apply {
       udpReadStop(seq, id, queueCallback(callback))
@@ -1491,12 +1517,12 @@ open class NativeUDP(core: NativeCore) {
   fun send (
     seq: String = "",
     id: String,
-    data: String,
+    data: ByteArray,
     size: Int,
     address: String,
     port: Int,
     ephemeral: Boolean,
-    callback: (String) -> Unit
+    callback: (String, String) -> Unit
   ) {
     core?.apply {
       udpSend(seq, id, data, size, address, port, ephemeral, queueCallback(callback))
@@ -1563,7 +1589,7 @@ open class NativeFileSystem(core: NativeCore) {
     seq: String = "",
     path: String,
     mode: Int,
-    callback: (String) -> Unit
+    callback: (String, String) -> Unit
   ) {
     core?.apply {
       fsAccess(seq, path, mode, queueCallback(callback))
@@ -1574,7 +1600,7 @@ open class NativeFileSystem(core: NativeCore) {
     seq: String = "",
     path: String,
     mode: Int,
-    callback: (String) -> Unit
+    callback: (String, String) -> Unit
   ) {
     core?.apply {
       fsChmod(seq, path, mode, queueCallback(callback))
@@ -1584,7 +1610,7 @@ open class NativeFileSystem(core: NativeCore) {
   fun close(
     seq: String = "",
     id: String,
-    callback: (String) -> Unit
+    callback: (String, String) -> Unit
   ) {
     core?.apply {
       fsClose(seq, id, queueCallback(callback))
@@ -1593,16 +1619,16 @@ open class NativeFileSystem(core: NativeCore) {
 
   fun closeAsset(
     id: String,
-    callback: (String) -> Unit
+    callback: (String, String) -> Unit
   ) {
     val descriptor = openAssets[id]
-      ?: return callback(JSONError(id, "Invalid file descriptor").toString())
+      ?: return callback(JSONError(id, "Invalid file descriptor").toString(), "")
 
     descriptor.fd?.close()
     descriptor.stream?.close()
 
     openAssets.remove(id)
-    return callback(JSONData(id).toString())
+    return callback(JSONData(id).toString(), "")
   }
 
   fun copyFile() {
@@ -1611,7 +1637,7 @@ open class NativeFileSystem(core: NativeCore) {
   fun fstat(
     seq: String = "",
     id: String,
-    callback: (String) -> Unit
+    callback: (String, String) -> Unit
   ) {
     core?.apply {
       val callbackId = queueCallback(callback)
@@ -1628,7 +1654,7 @@ open class NativeFileSystem(core: NativeCore) {
     path: String,
     flags: Int,
     mode: Int,
-    callback: (String) -> Unit
+    callback: (String, String) -> Unit
   ) {
     core?.apply {
       fsOpen(seq, id, path, flags, mode, queueCallback(callback))
@@ -1638,10 +1664,10 @@ open class NativeFileSystem(core: NativeCore) {
   fun openAsset(
     id: String,
     path: String,
-    callback: (String) -> Unit
+    callback: (String, String) -> Unit
   ) {
     val assetManager = core?.getAssetManager()
-      ?: return callback(JSONError(id, "AssetManager is not initialized").toString())
+      ?: return callback(JSONError(id, "AssetManager is not initialized").toString(), "")
 
     val fd = try {
       assetManager.openFd(path)
@@ -1654,7 +1680,7 @@ open class NativeFileSystem(core: NativeCore) {
         }
       }
 
-      callback(JSONError(id, message).toString())
+      callback(JSONError(id, message).toString(), "")
 
       null
     }
@@ -1664,7 +1690,7 @@ open class NativeFileSystem(core: NativeCore) {
     }
 
     if (!fd.fileDescriptor.valid()) {
-      callback(JSONError(id, "Invalid file descriptor").toString())
+      callback(JSONError(id, "Invalid file descriptor").toString(), "")
       return
     }
 
@@ -1672,7 +1698,7 @@ open class NativeFileSystem(core: NativeCore) {
 
     openAssets[id] = AssetDescriptor(id, path)
 
-    callback(JSONData(id, "\"fd\": $id").toString())
+    callback(JSONData(id, "\"fd\": $id").toString(), "")
   }
 
   fun read(
@@ -1680,7 +1706,7 @@ open class NativeFileSystem(core: NativeCore) {
     id: String,
     offset: Int = 0,
     size: Int,
-    callback: (String) -> Unit
+    callback: (String, String) -> Unit
   ) {
     core?.apply {
       fsRead(seq, id, size, offset, queueCallback(callback))
@@ -1692,13 +1718,13 @@ open class NativeFileSystem(core: NativeCore) {
     id: String,
     offset: Int = 0,
     size: Int,
-    callback: (String) -> Unit
+    callback: (String, String) -> Unit
   ) {
     val descriptor = openAssets[id]
-      ?: return callback(JSONError(id, "Invalid file descriptor").toString())
+      ?: return callback(JSONError(id, "Invalid file descriptor").toString(), "")
 
     val assetManager = core?.getAssetManager()
-      ?: return callback(JSONError(id, "AssetManager is not initialized").toString())
+      ?: return callback(JSONError(id, "AssetManager is not initialized").toString(), "")
 
     val buffer = ByteArray(size.toInt())
     val start = (
@@ -1728,7 +1754,7 @@ open class NativeFileSystem(core: NativeCore) {
     val bytesRead = try {
       descriptor.stream?.read(buffer, 0, size)
     } catch (err: Exception) {
-      return callback(JSONError(id, err.toString()).toString())
+      return callback(JSONError(id, err.toString()).toString(), "")
     }
 
     if (bytesRead != null && bytesRead > 0) {
@@ -1738,10 +1764,10 @@ open class NativeFileSystem(core: NativeCore) {
 
       try {
         core?.apply {
-          evaluateJavascript(createPost(seq, "{}", "", bytes))
+          evaluateJavascript(createPost(seq, "0", "{}", "", bytes))
         }
       } catch (err: Exception) {
-        return callback(JSONError(id, err.toString()).toString())
+        return callback(JSONError(id, err.toString()).toString(), "")
       }
     }
   }
@@ -1758,7 +1784,7 @@ open class NativeFileSystem(core: NativeCore) {
   fun stat(
     seq: String = "",
     path: String,
-    callback: (String) -> Unit
+    callback: (String, String) -> Unit
   ) {
     core?.apply {
       fsStat(seq, path, queueCallback(callback))
@@ -1768,9 +1794,9 @@ open class NativeFileSystem(core: NativeCore) {
   fun write(
     seq: String = "",
     id: String,
-    data: String,
+    data: ByteArray,
     offset: Int = 0,
-    callback: (String) -> Unit
+    callback: (String, String) -> Unit
   ) {
     core?.apply {
       fsWrite(seq, id, data, offset, queueCallback(callback))
@@ -1815,7 +1841,7 @@ open class NativeCore(var activity: WebViewActivity) {
   /**
    * TODO
    */
-  val callbacks = mutableMapOf<String, (String) -> Unit>()
+  val callbacks = mutableMapOf<String, (String, String) -> Unit>()
 
   /**
    * Set internally by the native binding if debug is enabled.
@@ -1902,24 +1928,6 @@ open class NativeCore(var activity: WebViewActivity) {
   external fun pauseAllPeers(): Boolean
 
   @Throws(java.lang.Exception::class)
-  external fun startDispatchThread(): Boolean
-
-  @Throws(java.lang.Exception::class)
-  external fun stopDispatchThread(): Boolean
-
-  @Throws(java.lang.Exception::class)
-  external fun startReleaseThread(): Boolean
-
-  @Throws(java.lang.Exception::class)
-  external fun stopReleaseThread(): Boolean
-
-  @Throws(java.lang.Exception::class)
-  external fun cancelAllDispatchThreads(): Boolean
-
-  @Throws(java.lang.Exception::class)
-  external fun stolAllDispatchThreads(): Boolean
-
-  @Throws(java.lang.Exception::class)
   external fun configureEnvironment(): Boolean
 
   @Throws(java.lang.Exception::class)
@@ -1981,6 +1989,7 @@ open class NativeCore(var activity: WebViewActivity) {
   @Throws(java.lang.Exception::class)
   external fun createPost(
     seq: String,
+    id: String,
     params: String,
     headers: String,
     bytes: ByteArray
@@ -1991,9 +2000,20 @@ open class NativeCore(var activity: WebViewActivity) {
     seq: String,
     id: String,
     size: Int,
-    buffer: Int
+    buffer: Int,
     callback: String
   )
+
+  @Throws(java.lang.Exception::class)
+  fun bufferSize(
+    seq: String,
+    id: String,
+    size: Int,
+    buffer: Int,
+    callback: (String, String) -> Unit
+  ) {
+    bufferSize(seq, id, size, buffer, queueCallback(callback))
+  }
 
   /**
    * DNS APIs
@@ -2081,7 +2101,7 @@ open class NativeCore(var activity: WebViewActivity) {
   external fun udpSend(
     seq: String,
     id: String,
-    data: String,
+    data: ByteArray,
     size: Int,
     ip: String,
     port: Int,
@@ -2152,7 +2172,7 @@ open class NativeCore(var activity: WebViewActivity) {
   external fun fsWrite(
     seq: String,
     id: String,
-    data: String,
+    data: ByteArray,
     offset: Int,
     callback: String
   )
@@ -2237,14 +2257,14 @@ open class NativeCore(var activity: WebViewActivity) {
   /**
    * @TODO
    */
-  fun callback(id: String, data: String) {
-    this.callbacks[id]?.invoke(data)
+  fun callback(id: String, data: String, postId: String) {
+    this.callbacks[id]?.invoke(data, postId)
   }
 
   /**
    * @TODO
    */
-  fun queueCallback(cb: (String) -> Unit): String {
+  fun queueCallback(cb: (String, String) -> Unit): String {
     val id = this.getNextAvailableCallbackId()
     this.callbacks[id] = cb
     return id
