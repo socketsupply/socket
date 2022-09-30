@@ -581,10 +581,12 @@ namespace SSC {
 
     void end (String seq, String msg, Post post) {
       auto cb = this->cb;
-      delete this;
+
       if (cb != nullptr) {
         cb(seq, msg, post);
       }
+
+      delete this;
     }
 
     void end (String seq, String msg) {
@@ -1226,9 +1228,9 @@ namespace SSC {
           peer->recv("-1", msg, Post{});
         } else if (nread > 0) {
           int port;
-          char ipbuf[17];
-          parseAddress((struct sockaddr *) addr, &port, ipbuf);
-          String ip(ipbuf);
+          char addressbuf[17];
+          parseAddress((struct sockaddr *) addr, &port, addressbuf);
+          String address(addressbuf);
 
           auto headers = SSC::format(R"MSG(
             content-type: application/octet-stream
@@ -1254,7 +1256,7 @@ namespace SSC {
             std::to_string(peer->id),
             std::to_string(post.length),
             port,
-            ip
+            address
           );
 
           peer->recv("-1", msg, post);
@@ -1392,10 +1394,6 @@ namespace SSC {
     }
 
     ~DescriptorRequestContext () {
-      if (this->req.ptr) {
-        delete [] (char *) this->req.ptr;
-      }
-
       uv_fs_req_cleanup(&this->req);
     }
 
@@ -1424,11 +1422,11 @@ namespace SSC {
     void end (String seq, String msg, Post post) {
       auto cb = this->cb;
 
-      delete this;
-
       if (cb != nullptr) {
         cb(seq, msg, post);
       }
+
+      delete this;
     }
 
     void end (String seq, String msg) {
@@ -1480,8 +1478,9 @@ namespace SSC {
     std::lock_guard<std::recursive_mutex> lock(loopMutex);
     uv_loop_init(&eventLoop);
     uv_async_init(&eventLoop, &eventLoopAsync, [](uv_async_t *handle) {
-      std::lock_guard<std::recursive_mutex> lock(loopMutex);
-      while (eventLoopDispatchQueue.size() > 0) {
+      while (true) {
+        std::lock_guard<std::recursive_mutex> lock(loopMutex);
+        if (eventLoopDispatchQueue.size() == 0) break;
         auto dispatch = eventLoopDispatchQueue.front();
         if (dispatch != nullptr) dispatch();
         eventLoopDispatchQueue.pop();
@@ -1784,6 +1783,12 @@ namespace SSC {
 
   void Core::putPost (uint64_t id, Post p) {
     std::lock_guard<std::recursive_mutex> guard(postsMutex);
+    p.ttl = std::chrono::time_point_cast<std::chrono::milliseconds>(
+      std::chrono::system_clock::now() +
+      std::chrono::milliseconds(32 * 1024)
+    )
+      .time_since_epoch()
+      .count();
     posts->insert_or_assign(id, p);
   }
 
@@ -1807,13 +1812,6 @@ namespace SSC {
     if (post.id == 0) {
       post.id = SSC::rand64();
     }
-
-    post.ttl = std::chrono::time_point_cast<std::chrono::milliseconds>(
-      std::chrono::system_clock::now() +
-      std::chrono::milliseconds(32 * 1024)
-    )
-      .time_since_epoch()
-      .count();
 
     String sid = std::to_string(post.id);
 
@@ -1845,7 +1843,7 @@ namespace SSC {
       "//# sourceURL=post.js"
     );
 
-    posts->insert_or_assign(post.id, post);
+    putPost(post.id, post);
     return js;
   }
 
@@ -2017,9 +2015,9 @@ namespace SSC {
           std::to_string(desc->id),
           std::to_string(req->result));
 
+          desc->fd = (int) req->result;
           // insert into `descriptors` map
           std::lock_guard<std::recursive_mutex> guard(descriptorsMutex);
-          desc->fd = (int) req->result;
           descriptors.insert_or_assign(desc->id, desc);
         }
 
@@ -2050,7 +2048,6 @@ namespace SSC {
       auto filename = path.c_str();
       auto desc =  new Descriptor(id);
       auto ctx = new DescriptorRequestContext(desc, seq, cb);
-
       auto err = uv_fs_opendir(ctx->loop, &ctx->req, filename, [](uv_fs_t *req) {
         auto ctx = (DescriptorRequestContext *) req->data;
         auto desc = ctx->desc;
@@ -2079,9 +2076,9 @@ namespace SSC {
           })MSG",
           std::to_string(desc->id));
 
+          desc->dir = (uv_dir_t *) req->ptr;
           // insert into `descriptors` map
           std::lock_guard<std::recursive_mutex> guard(descriptorsMutex);
-          desc->dir = (uv_dir_t *) req->ptr;
           descriptors.insert_or_assign(desc->id, desc);
         }
 
@@ -2097,7 +2094,7 @@ namespace SSC {
             "message": "$S"
           }
         })MSG",
-        std::to_string(id),
+        std::to_string(desc->id),
         std::to_string(err),
         String(uv_strerror(err)));
 
@@ -2109,8 +2106,8 @@ namespace SSC {
 
   void Core::fsReaddir (String seq, uint64_t id, size_t nentries, Cb cb) const {
     dispatchEventLoop([=]() {
-      auto desc = Descriptor::get(id);
-      auto ctx = new DescriptorRequestContext(desc, seq, cb);
+    auto desc = Descriptor::get(id);
+    auto ctx = new DescriptorRequestContext(desc, seq, cb);
 
       if (desc == nullptr) {
         auto msg = SSC::format(R"MSG({
@@ -2285,10 +2282,8 @@ namespace SSC {
   }
 
   void Core::fsClosedir (String seq, uint64_t id, Cb cb) const {
-    dispatchEventLoop([=]() {
-      auto desc = Descriptor::get(id);
-      auto ctx = new DescriptorRequestContext(desc, seq, cb);
-
+    auto desc = Descriptor::get(id);
+    auto ctx = new DescriptorRequestContext(desc, seq, cb);
       if (desc == nullptr) {
         auto msg = SSC::format(R"MSG({
           "source": "fs.closedir",
@@ -2304,6 +2299,7 @@ namespace SSC {
         return;
       }
 
+    dispatchEventLoop([=]() {
       auto err = uv_fs_closedir(ctx->loop, &ctx->req, desc->dir, [](uv_fs_t* req) {
         auto ctx = (DescriptorRequestContext *) req->data;
         auto desc = ctx->desc;
@@ -2431,6 +2427,7 @@ namespace SSC {
   }
 
   void Core::fsRead (String seq, uint64_t id, int len, int offset, Cb cb) const {
+    dispatchEventLoop([=]() {
       auto desc = Descriptor::get(id);
       auto ctx = new DescriptorRequestContext(desc, seq, cb);
 
@@ -2452,11 +2449,10 @@ namespace SSC {
       auto buf = new char[len]{0};
       ctx->setBuffer(0, len, buf);
 
-    dispatchEventLoop([=]() {
       auto err = uv_fs_read(ctx->loop, &ctx->req, desc->fd, ctx->iov, 1, offset, [](uv_fs_t* req) {
         auto ctx = static_cast<DescriptorRequestContext*>(req->data);
         auto desc = ctx->desc;
-        std::string msg = "";
+        std::string msg = "{}";
         Post post = {0};
 
         if (req->result < 0) {
@@ -2503,7 +2499,7 @@ namespace SSC {
 
   void Core::fsWrite (String seq, uint64_t id, String data, int64_t offset, Cb cb) const {
     auto size = data.size();
-    auto bytes = new char[size]{0};
+    auto bytes = new char[size > 0 ? size : 1]{0};
 
     memcpy(bytes, data.data(), size);
     dispatchEventLoop([=]() {
@@ -2776,35 +2772,35 @@ namespace SSC {
 
   void Core::fsGetOpenDescriptors (String seq, Cb cb) const {
     std::lock_guard<std::recursive_mutex> guard(descriptorsMutex);
-
-    std::string msg = "";
     int pending = descriptors.size();
+    std::string msg = "{\n"
+      "  \"source\": \"fs.getOpenDescriptors\",\n"
+      "  \"data\": [";
 
-    msg += "{ \"source\": \"fs.getOpenDescriptors\", \"data\": [";
     for (auto const &tuple : descriptors) {
       auto desc = tuple.second;
       if (!desc) {
         continue;
       }
 
-      std::lock_guard<std::recursive_mutex> descriptorLock(desc->mutex);
-
-      if (desc->stale || !desc->retained) {
+      if (desc->isStale() && !desc->isRetained()) {
         continue;
       }
 
-      msg += SSC::format(
-        R"MSG({ "id": "$S", "fd": "$S", "type": "$S" })MSG",
-        std::to_string(desc->id),
-        std::to_string(desc->isDirectory() ? desc->id : desc->fd),
-        desc->dir ? "directory" : "file"
-      );
+      msg += SSC::format(R"MSG({
+        "id": "$S",
+        "fd": "$S",
+        "type": "$S"
+      })MSG",
+      std::to_string(desc->id),
+      std::to_string(desc->isDirectory() ? desc->id : desc->fd),
+      desc->dir ? "directory" : "file");
 
       if (--pending > 0) {
-        msg += ", ";
+        msg += ",\n";
       }
     }
-    msg += "] }";
+    msg += "]\n}";
 
     cb(seq, msg, Post{});
   }
@@ -3132,42 +3128,42 @@ namespace SSC {
   }
 
   void Core::close (String seq, uint64_t peerId, Cb cb) const {
-    if (!Peer::exists(peerId)) {
-      auto msg = SSC::format(R"MSG({
-        "source": "close",
-        "err": {
-          "id": "$S",
-          "code": "NOT_FOUND_ERR",
-          "type": "NotFoundError",
-          "message": "No peer with specified id"
-        }
-      })MSG", std::to_string(peerId));
-      cb(seq, msg, Post{});
-      return;
-    }
-
-    auto peer = Peer::get(peerId);
-
-    if (peer->isClosed() || peer->isClosing()) {
-      auto msg = SSC::format(R"MSG({
-        "source": "close",
-        "err": {
-          "id": "$S",
-          "code": "ERR_SOCKET_DGRAM_NOT_RUNNING",
-          "type": "InternalError",
-          "message": "The socket has already been closed"
-        }
-      })MSG", std::to_string(peerId));
-      cb(seq, msg, Post{});
-      return;
-    }
-
     dispatchEventLoop([=]() {
+      if (!Peer::exists(peerId)) {
+        auto msg = SSC::format(R"MSG({
+          "source": "close",
+          "err": {
+            "id": "$S",
+            "code": "NOT_FOUND_ERR",
+            "type": "NotFoundError",
+            "message": "No peer with specified id"
+          }
+        })MSG", std::to_string(peerId));
+        cb(seq, msg, Post{});
+        return;
+      }
+
+      auto peer = Peer::get(peerId);
+
+      if (peer->isClosed() || peer->isClosing()) {
+        auto msg = SSC::format(R"MSG({
+          "source": "close",
+          "err": {
+            "id": "$S",
+            "code": "ERR_SOCKET_DGRAM_NOT_RUNNING",
+            "type": "InternalError",
+            "message": "The socket has already been closed"
+          }
+        })MSG", std::to_string(peerId));
+        cb(seq, msg, Post{});
+        return;
+      }
+
       peer->close([=]() {
         auto msg = SSC::format(R"MSG({
           "source": "close",
           "data": {
-            "id": "$S",
+            "id": "$S"
           }
         })MSG", std::to_string(peerId));
         cb(seq, msg, Post{});
@@ -3535,21 +3531,21 @@ namespace SSC {
   }
 
   void Core::udpSend (String seq, uint64_t peerId, char* buf, int len, int port, String address, bool ephemeral, Cb cb) const {
-    auto buffer = new char[len]{0};
+    auto buffer = new char[len > 0 ? len : 1]{0};
+    auto peer = Peer::create(PEER_TYPE_UDP, peerId, ephemeral);
+    auto ctx = new PeerRequestContext(seq, cb);
+
     memcpy(buffer, buf, len);
+    ctx->bufsize = len;
+    ctx->buf = buffer;
+    ctx->port = port;
+    ctx->address = address;
+    ctx->peer = peer;
+
     dispatchEventLoop([=]() {
-      auto peer = Peer::create(PEER_TYPE_UDP, peerId, ephemeral);
-      auto ctx = new PeerRequestContext(seq, cb);
-
-      ctx->buf = buffer;
-      ctx->bufsize = len;
-      ctx->port = port;
-      ctx->address = address;
-      ctx->peer = peer;
-
       ctx->peer->send(ctx->seq, ctx->buf, ctx->bufsize, ctx->port, ctx->address, [ctx](auto seq, auto msg, auto post) {
-        delete [] ctx->buf;
         ctx->cb(seq, msg, post);
+        delete [] ctx->buf;
       });
     });
   }
@@ -3628,6 +3624,7 @@ namespace SSC {
     }
 
     auto msg = SSC::format(R"MSG({
+      "source": "udp.readStart",
       "data": {
         "id": "$S"
       }
@@ -3636,52 +3633,52 @@ namespace SSC {
   }
 
   void Core::udpReadStop (String seq, uint64_t peerId, Cb cb) const {
-    if (!Peer::exists(peerId)) {
-      auto msg = SSC::format(R"MSG({
-        "source": "udp.readStop",
-        "err": {
-          "id": "$S",
-          "message": "No such peer"
-        }
-      })MSG", std::to_string(peerId));
+    dispatchEventLoop([=] {
+      if (!Peer::exists(peerId)) {
+        auto msg = SSC::format(R"MSG({
+          "source": "udp.readStop",
+          "err": {
+            "id": "$S",
+            "message": "No such peer"
+          }
+        })MSG", std::to_string(peerId));
 
-      cb(seq, msg, Post{});
-      return;
-    }
+        cb(seq, msg, Post{});
+        return;
+      }
 
-    auto peer = Peer::get(peerId);
+      auto peer = Peer::get(peerId);
 
-    if (peer->isClosing()) {
-      auto msg = SSC::format(R"MSG({
-        "source": "udp.readStop",
-        "err": {
-          "id": "$S",
-          "message": "Peer is closing"
-        }
-      })MSG", std::to_string(peerId));
+      if (peer->isClosing()) {
+        auto msg = SSC::format(R"MSG({
+          "source": "udp.readStop",
+          "err": {
+            "id": "$S",
+            "message": "Peer is closing"
+          }
+        })MSG", std::to_string(peerId));
 
-      cb(seq, msg, Post{});
-      return;
-    }
+        cb(seq, msg, Post{});
+        return;
+      }
 
-    if (!peer->hasState(PEER_STATE_UDP_RECV_STARTED)) {
-      auto msg = SSC::format(R"MSG({
-       "source": "udp.readStop",
-        "err": {
-          "id": "$S",
-          "message": "Peer is not receiving"
-        }
-      })MSG", std::to_string(peerId));
+      if (!peer->hasState(PEER_STATE_UDP_RECV_STARTED)) {
+        auto msg = SSC::format(R"MSG({
+         "source": "udp.readStop",
+          "err": {
+            "id": "$S",
+            "message": "Peer is not receiving"
+          }
+        })MSG", std::to_string(peerId));
 
-      cb(seq, msg, Post{});
-      return;
-    }
+        cb(seq, msg, Post{});
+        return;
+      }
 
-    auto err = peer->recvstop();
+      auto err = peer->recvstop();
 
-    if (err < 0) {
-      auto msg = SSC::format(
-        R"MSG({
+      if (err < 0) {
+        auto msg = SSC::format(R"MSG({
           "source": "udp.readStop",
           "err": {
             "id": "$S",
@@ -3689,19 +3686,20 @@ namespace SSC {
           }
         })MSG",
         std::to_string(peerId),
-        std::string(uv_strerror(err))
-      );
+        std::string(uv_strerror(err)));
 
-      cb(seq, msg, Post{});
-      return;
-    }
-
-    auto msg = SSC::format(R"MSG({
-      "data": {
-        "id": "$S"
+        cb(seq, msg, Post{});
+        return;
       }
-    })MSG", std::to_string(peerId));
-    cb(seq, msg, Post{});
+
+      auto msg = SSC::format(R"MSG({
+        "source": "udp.readStop",
+        "data": {
+          "id": "$S"
+        }
+      })MSG", std::to_string(peerId));
+      cb(seq, msg, Post{});
+    });
   }
 
   void Core::dnsLookup (String seq, String hostname, int family, Cb cb) const {
