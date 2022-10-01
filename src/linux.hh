@@ -115,7 +115,7 @@ namespace SSC {
   }
 
   struct CallbackContext {
-    Cb cb;
+    Callback cb;
     std::string seq;
     Window *window;
     void *data;
@@ -133,8 +133,8 @@ namespace SSC {
 
       bool route (std::string msg, char *buf, size_t bufsize);
       void send (Parse cmd, std::string seq, std::string msg, Post post);
-      bool invoke (Parse cmd, char *buf, size_t bufsize, Cb cb);
-      bool invoke (Parse cmd, Cb cb);
+      bool invoke (Parse cmd, char *buf, size_t bufsize, Callback cb);
+      bool invoke (Parse cmd, Callback cb);
   };
 
   class App : public IApp {
@@ -301,11 +301,11 @@ namespace SSC {
     );
   }
 
-  bool Bridge::invoke (Parse cmd, Cb cb) {
+  bool Bridge::invoke (Parse cmd, Callback cb) {
     return this->invoke(cmd, nullptr, 0, cb);
   }
 
-  bool Bridge::invoke (Parse cmd, char *buf, size_t bufsize, Cb cb) {
+  bool Bridge::invoke (Parse cmd, char *buf, size_t bufsize, Callback cb) {
     auto seq = cmd.get("seq");
 
     if (cmd.name == "post" || cmd.name == "data") {

@@ -1,24 +1,162 @@
-#include "common.hh"
-#import <Cocoa/Cocoa.h>
-#import <Webkit/Webkit.h>
-#import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
-#include <objc/objc-runtime.h>
+#include "../core/runtime-preload.hh"
+#include "../core/core.hh"
+#include "window.hh"
 
-@interface BridgedWebView : WKWebView<
-  WKUIDelegate,
-  NSDraggingDestination,
-  NSFilePromiseProviderDelegate,
-  NSDraggingSource>
-- (NSDragOperation) draggingSession: (NSDraggingSession *)session
-  sourceOperationMaskForDraggingContext: (NSDraggingContext)context;
+@implementation SSCNavigationDelegate
+- (void) webview: (SSCBridgedWebView*) webview
+    decidePolicyForNavigationAction: (WKNavigationAction*) navigationAction
+    decisionHandler: (void (^)(WKNavigationActionPolicy)) decisionHandler {
+
+  std::string base = webview.URL.absoluteString.UTF8String;
+  std::string request = navigationAction.request.URL.absoluteString.UTF8String;
+
+  if (request.find("file://") == 0 && request.find("http://localhost") == 0) {
+    decisionHandler(WKNavigationActionPolicyCancel);
+  } else {
+    decisionHandler(WKNavigationActionPolicyAllow);
+  }
+}
 @end
 
-#include "apple.mm" // creates instance of bridge
+@implementation SSCIPCSchemeHandler
+- (void)webView: (SSCBridgedWebView*)webview stopURLSchemeTask:(id<WKURLSchemeTask>)urlSchemeTask {}
+- (void)webView: (SSCBridgedWebView*)webview startURLSchemeTask:(id<WKURLSchemeTask>)task {
+  auto url = std::string(task.request.URL.absoluteString.UTF8String);
 
-BluetoothDelegate* bt;
-SSC::Core* core;
+  SSC::Parse cmd(url);
 
-@implementation BridgedWebView
+  if (std::string(task.request.HTTPMethod.UTF8String) == "OPTIONS") {
+    NSMutableDictionary* httpHeaders = [NSMutableDictionary dictionary];
+
+    httpHeaders[@"access-control-allow-origin"] = @"*";
+    httpHeaders[@"access-control-allow-methods"] = @"*";
+
+    NSHTTPURLResponse *httpResponse = [[NSHTTPURLResponse alloc]
+      initWithURL: task.request.URL
+       statusCode: 200
+      HTTPVersion: @"HTTP/1.1"
+     headerFields: httpHeaders
+    ];
+
+    [task didReceiveResponse: httpResponse];
+    [task didFinish];
+    #if !__has_feature(objc_arc)
+    [httpResponse release];
+    #endif
+
+    return;
+  }
+
+  if (cmd.name == "post" || cmd.name == "data") {
+    NSMutableDictionary* httpHeaders = [NSMutableDictionary dictionary];
+    uint64_t postId = std::stoull(cmd.get("id"));
+    auto post = self.bridge.core->getPost(postId);
+
+    httpHeaders[@"access-control-allow-origin"] = @"*";
+    httpHeaders[@"content-length"] = [@(post.length) stringValue];
+
+    if (post.headers.size() > 0) {
+      auto lines = SSC::split(SSC::trim(post.headers), '\n');
+
+      for (auto& line : lines) {
+        auto pair = SSC::split(SSC::trim(line), ':');
+        NSString* key = [NSString stringWithUTF8String: SSC::trim(pair[0]).c_str()];
+        NSString* value = [NSString stringWithUTF8String: SSC::trim(pair[1]).c_str()];
+        httpHeaders[key] = value;
+      }
+    }
+
+    NSHTTPURLResponse *httpResponse = [[NSHTTPURLResponse alloc]
+       initWithURL: task.request.URL
+        statusCode: 200
+       HTTPVersion: @"HTTP/1.1"
+      headerFields: httpHeaders
+    ];
+
+    [task didReceiveResponse: httpResponse];
+
+    if (post.body) {
+      NSData *data = [NSData dataWithBytes: post.body length: post.length];
+      [task didReceiveData: data];
+    } else {
+      NSString* str = [NSString stringWithUTF8String: ""];
+      NSData* data = [str dataUsingEncoding: NSUTF8StringEncoding];
+      [task didReceiveData: data];
+    }
+
+    [task didFinish];
+    #if !__has_feature(objc_arc)
+    [httpResponse release];
+    #endif
+
+    // 16ms timeout before removing post and potentially freeing `post.body`
+    NSTimeInterval timeout = 0.16;
+    auto block = ^(NSTimer* timer) {
+      dispatch_async(dispatch_get_main_queue(), ^{
+        self.bridge.core->removePost(postId);
+      });
+    };
+
+    [NSTimer timerWithTimeInterval: timeout repeats: NO block: block ];
+
+    return;
+  }
+
+  size_t bufsize = 0;
+  char *body = NULL;
+  auto seq = cmd.get("seq");
+
+  if (seq.size() > 0 && seq != "-1") {
+    #if !__has_feature(objc_arc)
+    [task retain];
+    #endif
+
+    self.bridge.core->putTask(seq, task);
+  }
+
+  // if there is a body on the reuqest, pass it into the method router.
+  auto rawBody = task.request.HTTPBody;
+
+  if (rawBody) {
+    const void* data = [rawBody bytes];
+    bufsize = [rawBody length];
+    body = (char*)data;
+  }
+
+  if (![self.bridge route: url buf: body bufsize: bufsize]) {
+    NSMutableDictionary* httpHeaders = [NSMutableDictionary dictionary];
+    auto msg = SSC::format(R"MSG({
+      "err": {
+        "message": "Not found",
+        "type": "NotFoundError",
+        "url": "$S"
+      }
+    })MSG", url);
+
+    auto str = [NSString stringWithUTF8String: msg.c_str()];
+    auto data = [str dataUsingEncoding: NSUTF8StringEncoding];
+
+    httpHeaders[@"access-control-allow-origin"] = @"*";
+    httpHeaders[@"content-length"] = [@(msg.size()) stringValue];
+
+    NSHTTPURLResponse *httpResponse = [[NSHTTPURLResponse alloc]
+       initWithURL: task.request.URL
+        statusCode: 404
+       HTTPVersion: @"HTTP/1.1"
+      headerFields: httpHeaders
+    ];
+
+    [task didReceiveResponse: httpResponse];
+    [task didReceiveData: data];
+    [task didFinish];
+    #if !__has_feature(objc_arc)
+    [httpResponse release];
+    #endif
+  }
+}
+@end
+
+@implementation SSCBridgedWebView
 std::vector<std::string> draggablePayload;
 
 int lastX = 0;
@@ -384,12 +522,7 @@ int lastY = 0;
 
 @end
 
-@interface WindowDelegate : NSObject <NSWindowDelegate, WKScriptMessageHandler>
-- (void)userContentController: (WKUserContentController*) userContentController
-      didReceiveScriptMessage: (WKScriptMessage*) scriptMessage;
-@end
-
-@implementation WindowDelegate
+@implementation SSCWindowDelegate
 - (void)userContentController: (WKUserContentController*) userContentController
       didReceiveScriptMessage: (WKScriptMessage*) scriptMessage {
         // To be overridden
@@ -397,97 +530,9 @@ int lastY = 0;
 @end
 
 namespace SSC {
-
   static bool isDelegateSet = false;
-
-  class App : public IApp {
-    NSAutoreleasePool* pool = [NSAutoreleasePool new];
-
-    public:
-      bool fromSSC = false;
-      App(int);
-      int run();
-      void kill();
-      void restart();
-      void dispatch(std::function<void()> work);
-      std::string getCwd(const std::string&);
-  };
-
-  class Window : public IWindow {
-    NSWindow* window;
-    BridgedWebView* webview;
-
-    public:
-      App app;
-      WindowOptions opts;
-      Window(App&, WindowOptions);
-
-      void eval(const std::string&);
-      void show(const std::string&);
-      void hide(const std::string&);
-      void kill();
-      void exit(int code);
-      void close(int code);
-      void navigate(const std::string&, const std::string&);
-      void setTitle(const std::string&, const std::string&);
-      void setSize(const std::string&, int, int, int);
-      void setContextMenu(const std::string&, const std::string&);
-      void closeContextMenu(const std::string&);
-      void setBackgroundColor(int r, int g, int b, float a);
-      void closeContextMenu();
-      void openDialog(const std::string&, bool, bool, bool, bool, const std::string&, const std::string&, const std::string&);
-      void showInspector();
-
-      void setSystemMenu(const std::string& seq, const std::string& menu);
-      void setSystemMenuItemEnabled(bool enabled, int barPos, int menuPos);
-      int openExternal(const std::string& s);
-      ScreenSize getScreenSize();
-  };
-
-  App::App (int instanceId) {
-    // TODO enforce single instance is set
-  }
-
-  int App::run () {
-    /* NSEvent* event = [NSApp nextEventMatchingMask:NSEventMaskAny
-                                        untilDate:[NSDate distantFuture]
-                                           inMode:NSDefaultRunLoopMode
-                                          dequeue:true];
-    if (event) {
-        [NSApp sendEvent:event];
-    } */
-
-    auto cwd = getCwd("");
-    uv_chdir(cwd.c_str());
-    [NSApp run];
-    return shouldExit;
-  }
-
-  // We need to dispatch any code that touches
-  // a window back into the main thread.
-  void App::dispatch(std::function<void()> f) {
-    auto priority = DISPATCH_QUEUE_PRIORITY_DEFAULT;
-    auto queue = dispatch_get_global_queue(priority, 0);
-
-    dispatch_async(queue, ^{
-      dispatch_sync(dispatch_get_main_queue(), ^{
-        f();
-      });
-    });
-  }
-
-  void App::kill () {
-    // Distinguish window closing with app exiting
-    shouldExit = true;
-    // if we were not launched from the cli, just use `terminate()`
-    // exit code status will not be captured
-    if (!fromSSC) {
-      [NSApp terminate:nil];
-    }
-  }
-
-  void App::restart () {
-  }
+  static BluetoothDelegate* bt;
+  static SSC::Core* core;
 
   Window::Window (App& app, WindowOptions opts) : app(app), opts(opts) {
     core = new SSC::Core;
@@ -557,7 +602,7 @@ namespace SSC {
     // https://developer.apple.com/documentation/webkit/wkwebviewconfiguration/3585117-limitsnavigationstoappbounddomai
     // config.limitsNavigationsToAppBoundDomains = YES;
 
-    IPCSchemeHandler* handler = [IPCSchemeHandler new];
+    SSCIPCSchemeHandler* handler = [SSCIPCSchemeHandler new];
     [handler setBridge: bridge];
     [config setURLSchemeHandler: handler forURLScheme:@"ipc"];
 
@@ -589,7 +634,7 @@ namespace SSC {
     [controller
       addUserScript: userScript];
 
-    webview = [[BridgedWebView alloc]
+    webview = [[SSCBridgedWebView alloc]
       initWithFrame: NSZeroRect
       configuration: config];
 
@@ -615,13 +660,13 @@ namespace SSC {
     //
     bool exiting = false;
 
-    WindowDelegate* delegate = [WindowDelegate alloc];
+    SSCWindowDelegate* delegate = [SSCWindowDelegate alloc];
     [controller addScriptMessageHandler: delegate name: @"webview"];
 
     // Set delegate to window
     [window setDelegate:delegate];
 
-    NavigationDelegate *navDelegate = [[NavigationDelegate alloc] init];
+    SSCNavigationDelegate *navDelegate = [[SSCNavigationDelegate alloc] init];
     [webview setNavigationDelegate: navDelegate];
 
     [bridge setBluetooth: bt];
@@ -632,7 +677,7 @@ namespace SSC {
       isDelegateSet = true;
 
       class_replaceMethod(
-        [WindowDelegate class],
+        [SSCWindowDelegate class],
         @selector(windowShouldClose:),
         imp_implementationWithBlock(
           [&](id self, SEL cmd, id notification) {
@@ -654,7 +699,7 @@ namespace SSC {
       );
 
       class_replaceMethod(
-        [WindowDelegate class],
+        [SSCWindowDelegate class],
         @selector(userContentController:didReceiveScriptMessage:),
         imp_implementationWithBlock(
           [=](id self, SEL cmd, WKScriptMessage* scriptMessage) {
@@ -674,7 +719,7 @@ namespace SSC {
       );
 
       class_addMethod(
-        [WindowDelegate class],
+        [SSCWindowDelegate class],
         @selector(menuItemSelected:),
         imp_implementationWithBlock(
           [=](id self, SEL _cmd, id item) {

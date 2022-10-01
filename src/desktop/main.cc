@@ -1,13 +1,9 @@
-#include "common.hh"
-#include "process.hh"
+#include "../core/core.hh"
 
-#if defined(_WIN32)
-  #include "win.hh"
-#elif defined(__APPLE__)
-  #include "mac.hh"
-#elif defined(__linux__)
-  #include "linux.hh"
-#endif
+#include "../app/app.hh"
+#include "../process/process.hh"
+#include "../window/window.hh"
+#include "../window/factory.hh"
 
 #if defined(_WIN32)
   #include <io.h>
@@ -18,6 +14,25 @@
   #include <sys/wait.h>
   #define ISATTY isatty
   #define FILENO fileno
+#endif
+
+//
+// A cross platform MAIN macro that
+// magically gives us argc and argv.
+//
+#if defined(_WIN32)
+#define MAIN                       \
+  int argc = __argc;               \
+  char** argv = __argv;            \
+  int CALLBACK WinMain(            \
+    _In_ HINSTANCE instanceId,     \
+    _In_ HINSTANCE hPrevInstance,  \
+    _In_ LPSTR lpCmdLine,          \
+    _In_ int nCmdShow)
+#else
+#define MAIN                       \
+  int instanceId = 0;              \
+  int main (int argc, char** argv)
 #endif
 
 #define InvalidWindowIndexError(index) \
@@ -51,7 +66,7 @@ MAIN {
   const std::string EMPTY_SEQ = std::string("");
 
   auto cwd = app.getCwd(argv[0]);
-  appData = parseConfig(decodeURIComponent(_settings));
+  Map appData = parseConfig(decodeURIComponent(_settings));
 
   std::string suffix = "";
 
@@ -618,6 +633,7 @@ MAIN {
     .defaultHeight = height,
     .defaultWidth = width,
     .headless = isHeadless,
+    .appData = appData,
     .isTest = isTest,
     .argv = argvArray.str(),
     .cwd = cwd,

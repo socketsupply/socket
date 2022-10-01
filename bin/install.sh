@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 
-PREFIX=${PREFIX:-$HOME}
-PLATFORMPATH=""
-ASSETS_DIR=""
-SDKVERSION=""
+declare dirname="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$dirname/generate-runtime-preload-sources.sh"
+
 LIPO=""
 WORK_DIR=`pwd`
+PREFIX="${PREFIX:-$HOME}"
 LIB_DIR=$WORK_DIR/lib
 BUILD_DIR=$WORK_DIR/build
 
@@ -77,9 +77,12 @@ if [ "$(uname)" == "Linux" ]; then
 fi
 
 function _build {
-  echo "# building cli for desktop (`uname -m`)..."
+  echo "# building preload JavaScript"
+  generate-runtime-preload-sources
+  die $? "not ok - unable to build. See trouble shooting guide in the README.md file"
 
-  "$CXX" src/cli.cc ${CXX_FLAGS} ${CXXFLAGS} \
+  echo "# building cli for desktop (`uname -m`)..."
+  "$CXX" src/cli/cli.cc ${CXX_FLAGS} ${CXXFLAGS} \
     -o bin/cli \
     -std=c++2a \
     -DBUILD_TIME="$(date '+%s')" \

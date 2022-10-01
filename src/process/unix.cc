@@ -1,4 +1,3 @@
-#include "process.hh"
 #include <algorithm>
 #include <bitset>
 #include <cstdlib>
@@ -12,6 +11,8 @@
 #include <sstream>
 #include <signal.h>
 
+#include "process.hh"
+
 namespace SSC {
 
 const static std::stringstream initial;
@@ -20,9 +21,9 @@ Process::Data::Data() noexcept : id(-1) {}
 
 Process::Process(
   const std::function<int()> &function,
-  cb read_stdout,
-  cb read_stderr,
-  cb on_exit,
+  MessageCallback read_stdout,
+  MessageCallback read_stderr,
+  MessageCallback on_exit,
   bool open_stdin, const Config &config
 ) noexcept:
   closed(true),
@@ -35,10 +36,10 @@ Process::Process(
   open(function);
   read();
 
-  exitCb = on_exit;
+  exitCallback = on_exit;
 
   signal(SIGCHLD, [](int code) {
-    exitCb(std::to_string(code));
+    exitCallback(std::to_string(code));
   });
 }
 

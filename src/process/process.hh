@@ -1,5 +1,5 @@
-#ifndef SSC_HPP_
-#define SSC_HPP_
+#ifndef SSC_PROCESS_PROCESS_H
+#define SSC_PROCESS_PROCESS_H
 
 #include <functional>
 #include <mutex>
@@ -10,28 +10,73 @@
 #include <sys/wait.h>
 #endif
 
-inline const std::vector<std::string>
-splitc(const std::string& s, const char& c) {
-  std::string buff;
-  std::vector<std::string> vec;
+#ifndef WIFEXITED
+#define WIFEXITED(w) ((w) & 0x7f)
+#endif
 
-  for (auto n : s) {
-    if (n != c) {
-      buff += n;
-    } else if (n == c) {
-      vec.push_back(buff);
-      buff = "";
-    }
-  }
+#ifndef WEXITSTATUS
+#define WEXITSTATUS(w) (((w) & 0xff00) >> 8)
+#endif
 
-  vec.push_back(buff);
-
-  return vec;
-}
+#include "../core/common.hh"
 
 namespace SSC {
-  using cb = std::function<void(std::string)>;
-  static std::function<void(std::string)> exitCb;
+  using MessageCallback = std::function<void(std::string)>;
+  static MessageCallback exitCallback;
+
+  struct ExecOutput {
+    std::string output;
+    int exitCode = 0;
+  };
+
+  inline ExecOutput exec(std::string command) {
+    command = command + " 2>&1";
+
+    ExecOutput eo;
+    FILE* pipe;
+    size_t count;
+    int exitCode = 0;
+    const int bufsize = 128;
+    std::array<char, 128> buffer;
+
+    #ifdef _WIN32
+      //
+      // https://docs.microsoft.com/en-us/cpp/c-runtime-library/reference/popen-wpopen?view=msvc-160
+      // _popen works fine in a console application... ok fine that's all we need it for... thanks.
+      //
+      pipe = _popen((const char*) command.c_str(), "rt");
+    #else
+      pipe = popen((const char*) command.c_str(), "r");
+    #endif
+
+    if (pipe == NULL) {
+      std::cout << "error: unable to open the command" << std::endl;
+      exit(1);
+    }
+
+    do {
+      if ((count = fread(buffer.data(), 1, bufsize, pipe)) > 0) {
+        eo.output.insert(eo.output.end(), std::begin(buffer), std::next(std::begin(buffer), count));
+      }
+    } while (count > 0);
+
+    #ifdef _WIN32
+    exitCode = _pclose(pipe);
+    #else
+    exitCode = pclose(pipe);
+    #endif
+
+    if (!WIFEXITED(exitCode) || exitCode != 0) {
+      auto status = WEXITSTATUS(exitCode);
+      if (status && exitCode) {
+        exitCode = status;
+      }
+    }
+
+    eo.exitCode = exitCode;
+
+    return eo;
+  }
 
   // Additional parameters to Process constructors.
   struct Config {
@@ -97,9 +142,9 @@ namespace SSC {
       const std::string &command,
       const std::string &argv,
       const std::string &path = std::string(""),
-      cb read_stdout = nullptr,
-      cb read_stderr = nullptr,
-      cb on_exit = nullptr,
+      MessageCallback read_stdout = nullptr,
+      MessageCallback read_stderr = nullptr,
+      MessageCallback on_exit = nullptr,
       bool open_stdin = true,
       const Config &config = {}) noexcept;
 
@@ -108,9 +153,9 @@ namespace SSC {
     // Supported on Unix-like systems only.
     Process(
       const std::function<int()> &function,
-      cb read_stdout = nullptr,
-      cb read_stderr = nullptr,
-      cb on_exit = nullptr,
+      MessageCallback read_stdout = nullptr,
+      MessageCallback read_stderr = nullptr,
+      MessageCallback on_exit = nullptr,
       bool open_stdin = true,
       const Config &config = {}) noexcept;
 #endif
@@ -141,9 +186,9 @@ namespace SSC {
     Data data;
     bool closed;
     std::mutex close_mutex;
-    cb read_stdout;
-    cb read_stderr;
-    cb on_exit;
+    MessageCallback read_stdout;
+    MessageCallback read_stderr;
+    MessageCallback on_exit;
 #ifndef _WIN32
     std::thread stdout_stderr_thread;
 #else
@@ -179,9 +224,9 @@ namespace SSC {
     const std::string &command,
     const std::string &argv,
     const std::string &path,
-    cb read_stdout,
-    cb read_stderr,
-    cb on_exit,
+    MessageCallback read_stdout,
+    MessageCallback read_stderr,
+    MessageCallback on_exit,
     bool open_stdin,
     const Config &config) noexcept
       : closed(true),

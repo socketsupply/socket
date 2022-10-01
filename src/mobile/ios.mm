@@ -11,22 +11,22 @@
 constexpr auto _settings = STR_VALUE(SETTINGS);
 constexpr auto _debug = false;
 
-@interface BridgedWebView : WKWebView
+@interface SSCBridgedWebView : WKWebView
 @end
 
-#include "./apple.mm" // creates instance of bridge
+#include "../core.hh" // creates instance of bridge
 
 Bridge* bridge;
 BluetoothDelegate* bt;
 SSC::Core* core;
 
-@implementation BridgedWebView
+@implementation SSCBridgedWebView
 @end
 
 @interface AppDelegate : UIResponder <UIApplicationDelegate, WKScriptMessageHandler, UIScrollViewDelegate>
 @property (strong, nonatomic) UIWindow* window;
 @property (strong, nonatomic) NavigationDelegate* navDelegate;
-@property (strong, nonatomic) BridgedWebView* webview;
+@property (strong, nonatomic) SSCBridgedWebView* webview;
 @property (strong, nonatomic) WKUserContentController* content;
 @end
 
@@ -212,7 +212,7 @@ void uncaughtExceptionHandler (NSException *exception) {
   [self.content addScriptMessageHandler:self name: @"webview"];
   [self.content addUserScript: initScript];
 
-  self.webview = [[BridgedWebView alloc] initWithFrame: appFrame configuration: config];
+  self.webview = [[SSCBridgedWebView alloc] initWithFrame: appFrame configuration: config];
   self.webview.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
 
   [self.webview.configuration.preferences setValue: @YES forKey: @"allowFileAccessFromFileURLs"];
@@ -227,7 +227,7 @@ void uncaughtExceptionHandler (NSException *exception) {
 
   [bridge setBluetooth: [BluetoothDelegate new]];
   [bridge setWebview: self.webview];
-  [bridge setCore: new SSC::Core];
+  [bridge setCore: core];
 
   self.navDelegate = [[NavigationDelegate alloc] init];
   [self.webview setNavigationDelegate: self.navDelegate];

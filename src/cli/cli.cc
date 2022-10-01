@@ -1,20 +1,26 @@
-#include "common.hh"
-#include "cli.hh"
-#include "process.hh"
+#include "../core/common.hh"
+#include "../process/process.hh"
+#include "templates.hh"
+
 #include <filesystem>
 
 #ifdef __linux__
 #include <cstring>
 #endif
 
-#include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 
 #ifdef _WIN32
+#include <array>
+#include <AppxPackaging.h>
+#include <comdef.h>
+#include <functional>
 #include <shlwapi.h>
 #include <strsafe.h>
-#include <comdef.h>
-#include <AppxPackaging.h>
+#include <tchar.h>
+#include <Windows.h>
+#include <wrl.h>
 #pragma comment(lib, "Shlwapi.lib")
 #pragma comment(lib, "Urlmon.lib")
 #else
@@ -916,8 +922,17 @@ int main (const int argc, const char* argv[]) {
       flags += " -luv";
       flags += " " + getCxxFlags();
 
-      files += prefixFile("src/main.cc");
-      files += prefixFile("src/process_unix.cc");
+      files += prefixFile("src/desktop/main.cc");
+      files += prefixFile("src/core/core.cc");
+      files += prefixFile("src/core/udp.cc");
+      files += prefixFile("src/core/fs.cc");
+      files += prefixFile("src/core/apple.mm");
+      files += prefixFile("src/core/loop.cc");
+      files += prefixFile("src/core/timers.cc");
+      files += prefixFile("src/core/peer.cc");
+      files += prefixFile("src/app/mac.cc");
+      files += prefixFile("src/window/mac.cc");
+      files += prefixFile("src/process/unix.cc");
 
       fs::path pathBase = "Contents";
       pathResources = { paths.pathPackage / pathBase / "Resources" };
@@ -1313,8 +1328,9 @@ int main (const int argc, const char* argv[]) {
       flags += " -L" + prefixFile("lib");
       flags += " -luv";
 
-      files += prefixFile("src/main.cc");
-      files += prefixFile("src/process_unix.cc");
+      files += prefixFile("src/desktop/main.cc");
+      files += prefixFile("src/process/unix.cc");
+      files += prefixFile("src/window/linux.cc");
 
       pathResources = paths.pathBin;
 
@@ -1394,8 +1410,9 @@ int main (const int argc, const char* argv[]) {
         " -L" + prefix + "\\src\\uv"
       ;
 
-      files += prefixFile("src\\main.cc");
-      files += prefixFile("src\\process_win.cc");
+      files += prefixFile("src\\desktop\\main.cc");
+      files += prefixFile("src\\process\\win.cc");
+      files += prefixFile("src\\window\\win.cc");
 
       fs::create_directories(paths.pathPackage);
 
