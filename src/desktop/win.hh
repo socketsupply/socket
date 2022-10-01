@@ -1,7 +1,7 @@
 #include "uv.h"
-#include "common.hh"
-#include "win64/WebView2.h"
-#include "win64/WebView2EnvironmentOptions.h"
+#include "core/common.hh"
+#include "desktop/win64/WebView2.h"
+#include "desktop/win64/WebView2EnvironmentOptions.h"
 
 #include <signal.h>
 #include <future>
