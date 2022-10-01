@@ -37,9 +37,9 @@ namespace SSC {
 
 PRE
 
-    emit "gPreload" "$srcdir/api/runtime.js"
-    emit "gPreloadDesktop" "$srcdir/api/desktop.js"
-    emit "gPreloadMobile" "$srcdir/api/mobile.js"
+    emit "gPreload" "$srcdir/lib/runtime.js"
+    emit "gPreloadDesktop" "$srcdir/lib/desktop.js"
+    emit "gPreloadMobile" "$srcdir/lib/mobile.js"
 
     cat << PRE
 } // namespace SSC
