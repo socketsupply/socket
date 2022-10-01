@@ -154,8 +154,9 @@ if (-not (Test-Path -Path $SRC_PATH)) {
 Write-Output "# working path set to $WORKING_PATH"
 cd $WORKING_PATH
 
-Build
+Write-Output "# fetching webview2 deps"
 Install-WebView2
+Build
 Install-Files
 
 cd $OLD_CWD
