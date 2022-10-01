@@ -1516,11 +1516,11 @@ int main (const int argc, const char* argv[]) {
       //
       // Copy and or create the source files we need for the build.
       //
-      fs::copy(trim(prefixFile("src/ios.mm")), pathToDist);
-      fs::copy(trim(prefixFile("src/apple.mm")), pathToDist);
-      fs::copy(trim(prefixFile("src/common.hh")), pathToDist);
-      fs::copy(trim(prefixFile("src/core.hh")), pathToDist);
-      fs::copy(trim(prefixFile("src/preload.hh")), pathToDist);
+      fs::copy(trim(prefixFile("src/mobile/ios.mm")), pathToDist);
+      fs::copy(trim(prefixFile("src/core/apple.mm")), pathToDist);
+      fs::copy(trim(prefixFile("src/core/common.hh")), pathToDist);
+      fs::copy(trim(prefixFile("src/core/core.hh")), pathToDist);
+      fs::copy(trim(prefixFile("src/core/runtime-preload.hh")), pathToDist);
 
       auto pathBase = pathToDist / "Base.lproj";
       fs::create_directories(pathBase);
