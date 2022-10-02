@@ -2,6 +2,7 @@
 #define SSC_CORE_COMMON_H
 
 #include <math.h>
+#include <errno.h>
 
 #include <any>
 #include <array>
