@@ -14,7 +14,10 @@ function emit () {
 
   echo "// file= $(basename "$file")"
   echo "constexpr auto ${name} =" 'R"JS('
+  echo ";(() => {"
   cat "$file"
+  echo "})();"
+  echo "//# sourceURL=$(basename "$file")"
   echo ')JS";'
   echo
 }

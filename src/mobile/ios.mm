@@ -1,6 +1,4 @@
-#import <UIKit/UIKit.h>
 #import <Webkit/Webkit.h>
-#import "common.hh"
 
 #include <_types/_uint64_t.h>
 #include <netinet/in.h>
@@ -8,26 +6,26 @@
 #include <sys/un.h>
 #include <map>
 
+#include "../core/runtime-preload.hh"
+#include "../window/window.hh"
+#include "../core/apple.hh"
+#include "../core/core.hh"
+
 constexpr auto _settings = STR_VALUE(SETTINGS);
 constexpr auto _debug = false;
 
-@interface SSCBridgedWebView : WKWebView
-@end
-
-#include "../core.hh" // creates instance of bridge
-
-Bridge* bridge;
-BluetoothDelegate* bt;
-SSC::Core* core;
-
-@implementation SSCBridgedWebView
-@end
-
-@interface AppDelegate : UIResponder <UIApplicationDelegate, WKScriptMessageHandler, UIScrollViewDelegate>
+@interface AppDelegate : UIResponder <UIApplicationDelegate, WKScriptMessageHandler, UIScrollViewDelegate> {
+  Bridge* bridge;
+  BluetoothDelegate* bluetooth;
+  SSC::Core* core;
+}
 @property (strong, nonatomic) UIWindow* window;
-@property (strong, nonatomic) NavigationDelegate* navDelegate;
+@property (strong, nonatomic) SSCNavigationDelegate* navDelegate;
 @property (strong, nonatomic) SSCBridgedWebView* webview;
 @property (strong, nonatomic) WKUserContentController* content;
+@end
+
+@implementation SSCBridgedWebView
 @end
 
 void uncaughtExceptionHandler (NSException *exception) {
@@ -57,15 +55,15 @@ void uncaughtExceptionHandler (NSException *exception) {
 
 - (void) applicationDidBecomeActive: (UIApplication*)application {
   dispatch_async(queue, ^{
-    SSC::Peer::resumeAll();
-    SSC::runEventLoop();
+    core->resumeAllPeers();
+    core->runEventLoop();
   });
 }
 
 - (void) applicationWillResignActive: (UIApplication*)application {
   dispatch_async(queue, ^{
-    SSC::Peer::pauseAll();
-    SSC::stopEventLoop();
+    core->stopEventLoop();
+    core->pauseAllPeers();
   });
 }
 
@@ -145,8 +143,8 @@ void uncaughtExceptionHandler (NSException *exception) {
   core = new SSC::Core;
   bridge = [Bridge new];
 
-  bt = [BluetoothDelegate new];
-  [bt setBridge: bridge];
+  bluetooth = [BluetoothDelegate new];
+  [bluetooth setBridge: bridge];
 
   auto appFrame = [[UIScreen mainScreen] bounds];
 
@@ -181,7 +179,7 @@ void uncaughtExceptionHandler (NSException *exception) {
     .executable = appData["executable"],
     .title = appData["title"],
     .version = "v" + appData["version"],
-    .preload = gPreloadMobile,
+    .preload = SSC::gPreloadMobile,
     .env = env.str(),
     .cwd = std::string([cwd UTF8String])
   };
@@ -193,7 +191,7 @@ void uncaughtExceptionHandler (NSException *exception) {
     "  invoke: arg => window.webkit.messageHandlers.webview.postMessage(arg)\n"
     "};\n"
 
-    "" + createPreload(opts) + "\n"
+    "" + SSC::createPreload(opts) + "\n"
   );
 
   WKUserScript* initScript = [[WKUserScript alloc]
@@ -203,7 +201,7 @@ void uncaughtExceptionHandler (NSException *exception) {
 
   WKWebViewConfiguration *config = [[WKWebViewConfiguration alloc] init];
 
-  IPCSchemeHandler* handler = [IPCSchemeHandler new];
+  SSCIPCSchemeHandler* handler = [SSCIPCSchemeHandler new];
   [handler setBridge: bridge];
   [config setURLSchemeHandler: handler forURLScheme:@"ipc"];
 
@@ -229,7 +227,7 @@ void uncaughtExceptionHandler (NSException *exception) {
   [bridge setWebview: self.webview];
   [bridge setCore: core];
 
-  self.navDelegate = [[NavigationDelegate alloc] init];
+  self.navDelegate = [[SSCNavigationDelegate alloc] init];
   [self.webview setNavigationDelegate: self.navDelegate];
 
   [viewController.view addSubview: self.webview];

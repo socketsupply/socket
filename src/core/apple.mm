@@ -1,10 +1,165 @@
 #include "core.hh"
+#include "apple.hh"
 
 #if DEBUG
 #define DebugLog(fmt, ...) NSLog((@"%s " fmt), __PRETTY_FUNCTION__, ##__VA_ARGS__)
 #else
 #define DebugLog(...)
 #endif
+
+@implementation SSCNavigationDelegate
+- (void) webview: (SSCBridgedWebView*) webview
+    decidePolicyForNavigationAction: (WKNavigationAction*) navigationAction
+    decisionHandler: (void (^)(WKNavigationActionPolicy)) decisionHandler {
+
+  std::string base = webview.URL.absoluteString.UTF8String;
+  std::string request = navigationAction.request.URL.absoluteString.UTF8String;
+
+  if (request.find("file://") == 0 && request.find("http://localhost") == 0) {
+    decisionHandler(WKNavigationActionPolicyCancel);
+  } else {
+    decisionHandler(WKNavigationActionPolicyAllow);
+  }
+}
+@end
+
+@implementation SSCIPCSchemeHandler
+- (void)webView: (SSCBridgedWebView*)webview stopURLSchemeTask:(id<WKURLSchemeTask>)urlSchemeTask {}
+- (void)webView: (SSCBridgedWebView*)webview startURLSchemeTask:(id<WKURLSchemeTask>)task {
+  auto url = std::string(task.request.URL.absoluteString.UTF8String);
+
+  SSC::Parse cmd(url);
+
+  if (std::string(task.request.HTTPMethod.UTF8String) == "OPTIONS") {
+    NSMutableDictionary* httpHeaders = [NSMutableDictionary dictionary];
+
+    httpHeaders[@"access-control-allow-origin"] = @"*";
+    httpHeaders[@"access-control-allow-methods"] = @"*";
+
+    NSHTTPURLResponse *httpResponse = [[NSHTTPURLResponse alloc]
+      initWithURL: task.request.URL
+       statusCode: 200
+      HTTPVersion: @"HTTP/1.1"
+     headerFields: httpHeaders
+    ];
+
+    [task didReceiveResponse: httpResponse];
+    [task didFinish];
+    #if !__has_feature(objc_arc)
+    [httpResponse release];
+    #endif
+
+    return;
+  }
+
+  if (cmd.name == "post" || cmd.name == "data") {
+    NSMutableDictionary* httpHeaders = [NSMutableDictionary dictionary];
+    uint64_t postId = std::stoull(cmd.get("id"));
+    auto post = self.bridge.core->getPost(postId);
+
+    httpHeaders[@"access-control-allow-origin"] = @"*";
+    httpHeaders[@"content-length"] = [@(post.length) stringValue];
+
+    if (post.headers.size() > 0) {
+      auto lines = SSC::split(SSC::trim(post.headers), '\n');
+
+      for (auto& line : lines) {
+        auto pair = SSC::split(SSC::trim(line), ':');
+        NSString* key = [NSString stringWithUTF8String: SSC::trim(pair[0]).c_str()];
+        NSString* value = [NSString stringWithUTF8String: SSC::trim(pair[1]).c_str()];
+        httpHeaders[key] = value;
+      }
+    }
+
+    NSHTTPURLResponse *httpResponse = [[NSHTTPURLResponse alloc]
+       initWithURL: task.request.URL
+        statusCode: 200
+       HTTPVersion: @"HTTP/1.1"
+      headerFields: httpHeaders
+    ];
+
+    [task didReceiveResponse: httpResponse];
+
+    if (post.body) {
+      NSData *data = [NSData dataWithBytes: post.body length: post.length];
+      [task didReceiveData: data];
+    } else {
+      NSString* str = [NSString stringWithUTF8String: ""];
+      NSData* data = [str dataUsingEncoding: NSUTF8StringEncoding];
+      [task didReceiveData: data];
+    }
+
+    [task didFinish];
+    #if !__has_feature(objc_arc)
+    [httpResponse release];
+    #endif
+
+    // 16ms timeout before removing post and potentially freeing `post.body`
+    NSTimeInterval timeout = 0.16;
+    auto block = ^(NSTimer* timer) {
+      dispatch_async(dispatch_get_main_queue(), ^{
+        self.bridge.core->removePost(postId);
+      });
+    };
+
+    [NSTimer timerWithTimeInterval: timeout repeats: NO block: block ];
+
+    return;
+  }
+
+  size_t bufsize = 0;
+  char *body = NULL;
+  auto seq = cmd.get("seq");
+
+  if (seq.size() > 0 && seq != "-1") {
+    #if !__has_feature(objc_arc)
+    [task retain];
+    #endif
+
+    [self.bridge putTask: seq task: task];
+  }
+
+  // if there is a body on the reuqest, pass it into the method router.
+  auto rawBody = task.request.HTTPBody;
+
+  if (rawBody) {
+    const void* data = [rawBody bytes];
+    bufsize = [rawBody length];
+    body = (char*)data;
+  }
+
+  if (![self.bridge route: url buf: body bufsize: bufsize]) {
+    NSMutableDictionary* httpHeaders = [NSMutableDictionary dictionary];
+    auto msg = SSC::format(R"MSG({
+      "err": {
+        "message": "Not found",
+        "type": "NotFoundError",
+        "url": "$S"
+      }
+    })MSG", url);
+
+    auto str = [NSString stringWithUTF8String: msg.c_str()];
+    auto data = [str dataUsingEncoding: NSUTF8StringEncoding];
+
+    httpHeaders[@"access-control-allow-origin"] = @"*";
+    httpHeaders[@"content-length"] = [@(msg.size()) stringValue];
+
+    NSHTTPURLResponse *httpResponse = [[NSHTTPURLResponse alloc]
+       initWithURL: task.request.URL
+        statusCode: 404
+       HTTPVersion: @"HTTP/1.1"
+      headerFields: httpHeaders
+    ];
+
+    [task didReceiveResponse: httpResponse];
+    [task didReceiveData: data];
+    [task didFinish];
+    #if !__has_feature(objc_arc)
+    [httpResponse release];
+    #endif
+  }
+}
+@end
 
 @implementation BluetoothDelegate
 // - (void)disconnect {
@@ -488,6 +643,35 @@
 @end
 
 @implementation Bridge
+- (id) init {
+  self = [super init];
+  tasks = std::unique_ptr<SSC::Tasks>(new SSC::Tasks());
+  return self;
+}
+
+- (SSC::Task) getTask: (SSC::String) id {
+  std::lock_guard<std::recursive_mutex> guard(tasksMutex);
+  if (tasks->find(id) == tasks->end()) return SSC::Task{};
+  return tasks->at(id);
+}
+
+- (bool) hasTask: (SSC::String) id {
+  std::lock_guard<std::recursive_mutex> guard(tasksMutex);
+  if (id.size() == 0) return false;
+  return tasks->find(id) != tasks->end();
+}
+
+- (void) removeTask: (SSC::String) id {
+  std::lock_guard<std::recursive_mutex> guard(tasksMutex);
+  if (tasks->find(id) == tasks->end()) return;
+  tasks->erase(id);
+}
+
+- (void) putTask: (SSC::String) id task: (SSC::Task) task {
+  std::lock_guard<std::recursive_mutex> guard(tasksMutex);
+  tasks->insert_or_assign(id, task);
+}
+
 - (void) setBluetooth: (BluetoothDelegate*)bd {
   _bluetooth = bd;
   [_bluetooth initBluetooth];
@@ -560,9 +744,9 @@
 }
 
 - (void) send: (std::string)seq msg: (std::string)msg post: (SSC::Post)post {
-  if (seq != "-1" && self.core->hasTask(seq)) {
-    auto task = self.core->getTask(seq);
-    self.core->removeTask(seq);
+  if (seq != "-1" && [self hasTask: seq]) {
+    auto task = [self getTask: seq];
+    [self removeTask: seq];
 
     #if !__has_feature(objc_arc)
     [task retain];

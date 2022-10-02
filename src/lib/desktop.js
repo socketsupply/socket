@@ -1,4 +1,3 @@
-
 window.parent.send = o => {
   let value = ''
 

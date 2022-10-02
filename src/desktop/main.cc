@@ -1,6 +1,5 @@
-#include "../core/core.hh"
-
 #include "../app/app.hh"
+#include "../core/core.hh"
 #include "../process/process.hh"
 #include "../window/window.hh"
 #include "../window/factory.hh"

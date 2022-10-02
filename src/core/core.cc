@@ -1,11 +1,24 @@
 #include "core.hh"
 namespace SSC {
+  static std::recursive_mutex instanceMutex;
   static Core *instance = nullptr;
 
   Core::Core () {
-    this->tasks = std::unique_ptr<Tasks>(new Tasks());
+    std::lock_guard<std::recursive_mutex> lock(instanceMutex);
     this->posts = std::unique_ptr<Posts>(new Posts());
+
+    if (instance == nullptr) {
+      instance = this;
+    }
+
     initEventLoop();
+  }
+
+  Core::~Core () {
+    std::lock_guard<std::recursive_mutex> lock(instanceMutex);
+    if (instance == this) {
+      instance = nullptr;
+    }
   }
 
   void Core::handleEvent (String seq, String event, String data, Callback cb) {
@@ -27,29 +40,6 @@ namespace SSC {
     cb(seq, "{}", Post{});
 
     runEventLoop();
-  }
-
-  bool Core::hasTask (String id) {
-    std::lock_guard<std::recursive_mutex> guard(tasksMutex);
-    if (id.size() == 0) return false;
-    return tasks->find(id) != tasks->end();
-  }
-
-  Task Core::getTask (String id) {
-    std::lock_guard<std::recursive_mutex> guard(tasksMutex);
-    if (tasks->find(id) == tasks->end()) return Task{};
-    return tasks->at(id);
-  }
-
-  void Core::removeTask (String id) {
-    std::lock_guard<std::recursive_mutex> guard(tasksMutex);
-    if (tasks->find(id) == tasks->end()) return;
-    tasks->erase(id);
-  }
-
-  void Core::putTask (String id, Task t) {
-    std::lock_guard<std::recursive_mutex> guard(tasksMutex);
-    tasks->insert_or_assign(id, t);
   }
 
   Post Core::getPost (uint64_t id) {
@@ -151,11 +141,8 @@ namespace SSC {
   }
 
   void Core::removeAllPosts () {
-      std::lock_guard<std::recursive_mutex> guard(postsMutex);
+    std::lock_guard<std::recursive_mutex> guard(postsMutex);
     std::vector<uint64_t> ids;
-    auto now = std::chrono::system_clock::now()
-      .time_since_epoch()
-      .count();
 
     for (auto const &tuple : *posts) {
       auto id = tuple.first;

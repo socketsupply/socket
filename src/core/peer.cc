@@ -440,7 +440,6 @@ namespace SSC {
 
   void Peer::send (std::string seq, char *buf, int len, int port, String address, Callback cb) {
     std::lock_guard<std::recursive_mutex> guard(this->mutex);
-    auto loop = this->core->getEventLoop();
     auto ctx = new PeerRequestContext(seq, cb);
     int err = 0;
 
@@ -719,7 +718,7 @@ namespace SSC {
             PEER_STATE_UDP_RECV_STARTED
           ));
 
-          for (const auto onclose : peer->onclose) {
+          for (const auto &onclose : peer->onclose) {
             onclose();
           }
 

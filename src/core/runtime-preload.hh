@@ -11,31 +11,25 @@ namespace SSC {
     std::string cleanCwd = std::string(opts.cwd);
     std::replace(cleanCwd.begin(), cleanCwd.end(), '\\', '/');
 
-    auto preload = std::string(
-      ";(() => {"
-      "  window.parent = {};\n"
-      "  window.process = {};\n"
-      "  window.process.index = Number('" + std::to_string(opts.index) + "');\n"
-      "  window.process.port = Number('" + std::to_string(opts.port) + "');\n"
-      "  window.process.cwd = () => '" + cleanCwd + "';\n"
-      "  window.process.title = '" + opts.title + "';\n"
-      "  window.process.executable = '" + opts.executable + "';\n"
-      "  window.process.version = '" + opts.version + "';\n"
-      "  window.process.debug = " + std::to_string(opts.debug) + ";\n"
-      "  window.process.platform = '" + platform.os + "';\n"
-      "  window.process.arch = '" + platform.arch + "';\n"
-      "  window.process.env = Object.fromEntries(new URLSearchParams('" +  opts.env + "'));\n"
-      "  window.process.config = Object.create({\n"
-      "    get size () { return Object.keys(this).length }, \n"
-      "    get (key) { \n"
-      "      if (typeof key !== 'string') throw new TypeError('Expecting key to be a string.')\n"
-      "      key = key.toLowerCase()\n"
-      "      return key in this ? this[key] : null \n"
-      "    }\n"
-      "  });\n"
-      "  window.process.argv = [" + opts.argv + "];\n"
-      "  " + gPreload + "\n"
-      "  " + opts.preload + "\n"
+    auto preload =std::string(gPreload) + std::string(
+      "\n;(() => {                                                    \n"
+      "Object.assign(window.process, {                                \n"
+      "  arch: '" + platform.arch + "',                               \n"
+      "  cwd: () => '" + cleanCwd + "',                               \n"
+      "  debug: " + std::to_string(opts.debug) + ",                   \n"
+      "  executable: '" + opts.executable + "',                       \n"
+      "  index: Number('" + std::to_string(opts.index) + "'),         \n"
+      "  platform: '" + platform.os + "',                             \n"
+      "  port: Number('" + std::to_string(opts.port) + "'),           \n"
+      "  title: '" + opts.title + "',                                 \n"
+      "  version: '" + opts.version + "',                             \n"
+      "});                                                            \n"
+      "Object.assign(                                                 \n"
+      "  window.process.env,                                          \n"
+      "  Object.fromEntries(new URLSearchParams('" +  opts.env + "')) \n"
+      ");                                                             \n"
+      "window.process.argv = [" + opts.argv + "];                     \n"
+      "" + opts.preload
     );
 
     if (opts.headless) {
@@ -101,7 +95,6 @@ namespace SSC {
     );
 
     preload += "})();\n";
-    preload += "//# sourceURL=preload.js\n";
     return preload;
   }
 }

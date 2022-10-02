@@ -1,158 +1,22 @@
+#import <Webkit/Webkit.h>
+#import <Network/Network.h>
+#import <CoreBluetooth/CoreBluetooth.h>
+#import <UserNotifications/UserNotifications.h>
+
 #include "../core/runtime-preload.hh"
+#include "../core/apple.hh"
 #include "../core/core.hh"
 #include "window.hh"
 
-@implementation SSCNavigationDelegate
-- (void) webview: (SSCBridgedWebView*) webview
-    decidePolicyForNavigationAction: (WKNavigationAction*) navigationAction
-    decisionHandler: (void (^)(WKNavigationActionPolicy)) decisionHandler {
-
-  std::string base = webview.URL.absoluteString.UTF8String;
-  std::string request = navigationAction.request.URL.absoluteString.UTF8String;
-
-  if (request.find("file://") == 0 && request.find("http://localhost") == 0) {
-    decisionHandler(WKNavigationActionPolicyCancel);
-  } else {
-    decisionHandler(WKNavigationActionPolicyAllow);
-  }
-}
+@interface SSCWindowDelegate : NSObject <NSWindowDelegate, WKScriptMessageHandler>
+- (void) userContentController: (WKUserContentController*) userContentController
+      didReceiveScriptMessage: (WKScriptMessage*) scriptMessage;
 @end
 
-@implementation SSCIPCSchemeHandler
-- (void)webView: (SSCBridgedWebView*)webview stopURLSchemeTask:(id<WKURLSchemeTask>)urlSchemeTask {}
-- (void)webView: (SSCBridgedWebView*)webview startURLSchemeTask:(id<WKURLSchemeTask>)task {
-  auto url = std::string(task.request.URL.absoluteString.UTF8String);
-
-  SSC::Parse cmd(url);
-
-  if (std::string(task.request.HTTPMethod.UTF8String) == "OPTIONS") {
-    NSMutableDictionary* httpHeaders = [NSMutableDictionary dictionary];
-
-    httpHeaders[@"access-control-allow-origin"] = @"*";
-    httpHeaders[@"access-control-allow-methods"] = @"*";
-
-    NSHTTPURLResponse *httpResponse = [[NSHTTPURLResponse alloc]
-      initWithURL: task.request.URL
-       statusCode: 200
-      HTTPVersion: @"HTTP/1.1"
-     headerFields: httpHeaders
-    ];
-
-    [task didReceiveResponse: httpResponse];
-    [task didFinish];
-    #if !__has_feature(objc_arc)
-    [httpResponse release];
-    #endif
-
-    return;
-  }
-
-  if (cmd.name == "post" || cmd.name == "data") {
-    NSMutableDictionary* httpHeaders = [NSMutableDictionary dictionary];
-    uint64_t postId = std::stoull(cmd.get("id"));
-    auto post = self.bridge.core->getPost(postId);
-
-    httpHeaders[@"access-control-allow-origin"] = @"*";
-    httpHeaders[@"content-length"] = [@(post.length) stringValue];
-
-    if (post.headers.size() > 0) {
-      auto lines = SSC::split(SSC::trim(post.headers), '\n');
-
-      for (auto& line : lines) {
-        auto pair = SSC::split(SSC::trim(line), ':');
-        NSString* key = [NSString stringWithUTF8String: SSC::trim(pair[0]).c_str()];
-        NSString* value = [NSString stringWithUTF8String: SSC::trim(pair[1]).c_str()];
-        httpHeaders[key] = value;
-      }
-    }
-
-    NSHTTPURLResponse *httpResponse = [[NSHTTPURLResponse alloc]
-       initWithURL: task.request.URL
-        statusCode: 200
-       HTTPVersion: @"HTTP/1.1"
-      headerFields: httpHeaders
-    ];
-
-    [task didReceiveResponse: httpResponse];
-
-    if (post.body) {
-      NSData *data = [NSData dataWithBytes: post.body length: post.length];
-      [task didReceiveData: data];
-    } else {
-      NSString* str = [NSString stringWithUTF8String: ""];
-      NSData* data = [str dataUsingEncoding: NSUTF8StringEncoding];
-      [task didReceiveData: data];
-    }
-
-    [task didFinish];
-    #if !__has_feature(objc_arc)
-    [httpResponse release];
-    #endif
-
-    // 16ms timeout before removing post and potentially freeing `post.body`
-    NSTimeInterval timeout = 0.16;
-    auto block = ^(NSTimer* timer) {
-      dispatch_async(dispatch_get_main_queue(), ^{
-        self.bridge.core->removePost(postId);
-      });
-    };
-
-    [NSTimer timerWithTimeInterval: timeout repeats: NO block: block ];
-
-    return;
-  }
-
-  size_t bufsize = 0;
-  char *body = NULL;
-  auto seq = cmd.get("seq");
-
-  if (seq.size() > 0 && seq != "-1") {
-    #if !__has_feature(objc_arc)
-    [task retain];
-    #endif
-
-    self.bridge.core->putTask(seq, task);
-  }
-
-  // if there is a body on the reuqest, pass it into the method router.
-  auto rawBody = task.request.HTTPBody;
-
-  if (rawBody) {
-    const void* data = [rawBody bytes];
-    bufsize = [rawBody length];
-    body = (char*)data;
-  }
-
-  if (![self.bridge route: url buf: body bufsize: bufsize]) {
-    NSMutableDictionary* httpHeaders = [NSMutableDictionary dictionary];
-    auto msg = SSC::format(R"MSG({
-      "err": {
-        "message": "Not found",
-        "type": "NotFoundError",
-        "url": "$S"
-      }
-    })MSG", url);
-
-    auto str = [NSString stringWithUTF8String: msg.c_str()];
-    auto data = [str dataUsingEncoding: NSUTF8StringEncoding];
-
-    httpHeaders[@"access-control-allow-origin"] = @"*";
-    httpHeaders[@"content-length"] = [@(msg.size()) stringValue];
-
-    NSHTTPURLResponse *httpResponse = [[NSHTTPURLResponse alloc]
-       initWithURL: task.request.URL
-        statusCode: 404
-       HTTPVersion: @"HTTP/1.1"
-      headerFields: httpHeaders
-    ];
-
-    [task didReceiveResponse: httpResponse];
-    [task didReceiveData: data];
-    [task didFinish];
-    #if !__has_feature(objc_arc)
-    [httpResponse release];
-    #endif
-  }
+@implementation SSCWindowDelegate
+- (void)userContentController: (WKUserContentController*) userContentController
+      didReceiveScriptMessage: (WKScriptMessage*) scriptMessage {
+        // To be overridden
 }
 @end
 
@@ -518,14 +382,6 @@ int lastY = 0;
 - (NSString*) filePromiseProvider: (NSFilePromiseProvider*)filePromiseProvider fileNameForType:(NSString *)fileType {
   std::string file(std::to_string(SSC::rand64()) + ".download");
   return [NSString stringWithUTF8String:file.c_str()];
-}
-
-@end
-
-@implementation SSCWindowDelegate
-- (void)userContentController: (WKUserContentController*) userContentController
-      didReceiveScriptMessage: (WKScriptMessage*) scriptMessage {
-        // To be overridden
 }
 @end
 

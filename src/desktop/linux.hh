@@ -16,113 +16,15 @@ static GtkTargetEntry droppableTypes[] = {
 namespace SSC {
   std::map<std::string, std::string> bufferQueue;
 
-#define IN_URANGE(c, a, b) (             \
-    (unsigned char) c >= (unsigned char) a && \
-    (unsigned char) c <= (unsigned char) b    \
-)
-
-  static inline size_t decodeUTF8 (char *output, const char *input, size_t length) {
-    unsigned char cp = 0; // code point
-    unsigned char lower = 0x80;
-    unsigned char upper = 0xBF;
-
-    int x = 0; // cp needed
-    int y = 0; // cp  seen
-    int size = 0; // output size
-
-    for (int i = 0; i < length; ++i) {
-      auto b = (unsigned char) input[i];
-
-      if (b == 0) {
-        output[size++] = 0;
-        continue;
-      }
-
-      if (x == 0) {
-        // 1 byte
-        if (IN_URANGE(b, 0x00, 0x7F)) {
-          output[size++] = b;
-          continue;
-        }
-
-        if (!IN_URANGE(b, 0xC2, 0xF4)) {
-          break;
-        }
-
-        // 2 byte
-        if (IN_URANGE(b, 0xC2, 0xDF)) {
-          x = 1;
-          cp = b - 0xC0;
-        }
-
-        // 3 byte
-        if (IN_URANGE(b, 0xE0, 0xEF)) {
-          if (b == 0xE0) {
-            lower = 0xA0;
-          } else if (b == 0xED) {
-            upper = 0x9F;
-          }
-
-          x = 2;
-          cp = b - 0xE0;
-        }
-
-        // 4 byte
-        if (IN_URANGE(b, 0xF0, 0xF4)) {
-          if (b == 0xF0) {
-            lower = 0x90;
-          } else if (b == 0xF4) {
-            upper = 0x8F;
-          }
-
-          x = 3;
-          cp = b - 0xF0;
-        }
-
-        cp = cp * pow(64, x);
-        continue;
-      }
-
-      if (!IN_URANGE(b, lower, upper)) {
-        lower = 0x80;
-        upper = 0xBF;
-
-        // revert
-        cp = 0;
-        x = 0;
-        y = 0;
-        i--;
-        continue;
-      }
-
-      lower = 0x80;
-      upper = 0xBF;
-      y++;
-      cp += (b - 0x80) * pow(64, x - y);
-
-      if (y != x) {
-        continue;
-      }
-
-      output[size++] = cp;
-      // continue to next
-      cp = 0;
-      x = 0;
-      y = 0;
-    }
-
-    return size;
-  }
-
-  struct CallbackContext {
-    Callback cb;
-    std::string seq;
-    Window *window;
-    void *data;
-  };
-
   class Bridge {
     public:
+      struct CallbackContext {
+        Callback cb;
+        std::string seq;
+        Window *window;
+        void *data;
+      };
+
       IApp *app;
       Core *core;
 
@@ -394,7 +296,7 @@ namespace SSC {
       }
 
       auto value = decodeURIComponent(cmd.get("value"));
-      auto ctx = new CallbackContext { cb, seq, window, (void *) this };
+      auto ctx = new Bridge::CallbackContext { cb, seq, window, (void *) this };
 
       webkit_web_view_run_javascript(
         WEBKIT_WEB_VIEW(window->webview),
@@ -402,7 +304,7 @@ namespace SSC {
         nullptr,
         [](GObject *object, GAsyncResult *res, gpointer data) {
           GError *error = nullptr;
-          auto ctx = reinterpret_cast<CallbackContext *>(data);
+          auto ctx = reinterpret_cast<Bridge::CallbackContext *>(data);
           auto result = webkit_web_view_run_javascript_finish(
             WEBKIT_WEB_VIEW(ctx->window->webview),
             res,

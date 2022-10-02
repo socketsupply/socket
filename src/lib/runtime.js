@@ -1,4 +1,31 @@
-const IPC = window._ipc = { nextSeq: 1, streams: {} }
+window.parent = new class Parent {}
+window.process = new class Process {
+  arch = null
+  argv = []
+  config = new class ProcessConfig {
+    get size () {
+      return Object.keys(this).length
+    }
+
+    get (key) {
+      if (typeof key !== 'string') throw new TypeError('Expecting key to be a string.')
+      key = key.toLowerCase()
+      return key in this ? this[key] : null
+    }
+  }
+
+  debug = false
+  env = {}
+  executable = null
+  index = 0
+  port = 0
+  title = null
+  version = null
+
+  cwd () {
+    return null
+  }
+}
 
 document.addEventListener('DOMContentLoaded', () => {
   queueMicrotask(async () => {
@@ -10,108 +37,111 @@ document.addEventListener('DOMContentLoaded', () => {
   })
 })
 
+window._ipc = new class IPC {
+  nextSeq = 1
+  streams = {}
 
-IPC.resolve = async (seq, status, value) => {
-  if (typeof value === 'string') {
-    let didDecodeURIComponent = false
-    try {
-      value = decodeURIComponent(value)
-      didDecodeURIComponent = true
-    } catch (err) {
-      console.error(`${err.message} (${value})`)
+  async resolve (seq, status, value) {
+    if (typeof value === 'string') {
+      let didDecodeURIComponent = false
+      try {
+        value = decodeURIComponent(value)
+        didDecodeURIComponent = true
+      } catch (err) {
+        console.error(`${err.message} (${value})`)
+        return
+      }
+
+      try {
+        value = JSON.parse(value)
+      } catch (err) {
+        if (!didDecodeURIComponent) {
+          console.error(`${err.message} (${value})`)
+          return
+        }
+      }
+    }
+
+    if (!this[seq]) {
+      console.error('inbound IPC message with unknown sequence:', seq, value)
       return
     }
 
+    if (status === 0) {
+      await this[seq].resolve(value)
+    } else {
+      const err = value instanceof Error
+        ? value
+        : value?.err instanceof Error
+        ? value.err
+        : new Error(typeof value === 'string' ? value : JSON.stringify(value))
+
+      await this[seq].reject(err);
+    }
+
+    delete this[seq];
+  }
+
+  send (name, value) {
+    const seq = 'R' + this.nextSeq++
+    const index = window.process.index
+    let serialized = ''
+
+    const promise = new Promise((resolve, reject) => {
+      this[seq] = {
+        resolve: resolve,
+        reject: reject
+      }
+    })
+
     try {
-      value = JSON.parse(value)
+      if (({}).toString.call(value) !== '[object Object]') {
+        value = { value }
+      }
+
+      const params = {
+        ...value,
+        index,
+        seq
+      }
+
+      serialized = new URLSearchParams(params).toString()
+      serialized = serialized.replace(/\+/g, '%20')
+
     } catch (err) {
-      if (!didDecodeURIComponent) {
-        console.error(`${err.message} (${value})`)
-        return
+      console.error(`${err.message} (${serialized})`)
+      return Promise.reject(err.message)
+    }
+
+    window.external.invoke(`ipc://${name}?${serialized}`)
+
+    return Object.assign(promise, { index, seq })
+  }
+
+  emit (name, value, target, options) {
+    let detail = value
+
+    if (typeof value === 'string') {
+      try {
+        detail = decodeURIComponent(value)
+        detail = JSON.parse(detail)
+      } catch (err) {
+        // consider okay here because if detail is defined then
+        // `decodeURIComponent(value)` was successful and `JSON.parse(value)`
+        // was not: there could be bad/unsupported unicode in `value`
+        if (!detail) {
+          console.error(`${err.message} (${value})`)
+          return
+        }
       }
     }
-  }
 
-  if (!IPC[seq]) {
-    console.error('inbound IPC message with unknown sequence:', seq, value)
-    return
-  }
-
-  if (status === 0) {
-    await IPC[seq].resolve(value)
-  } else {
-    const err = value instanceof Error
-      ? value
-      : value?.err instanceof Error
-      ? value.err
-      : new Error(typeof value === 'string' ? value : JSON.stringify(value))
-
-    await IPC[seq].reject(err);
-  }
-
-  delete IPC[seq];
-}
-
-IPC.send = (name, o) => {
-  const seq = 'R' + IPC.nextSeq++
-  const index = window.process.index
-  let serialized = ''
-
-  const promise = new Promise((resolve, reject) => {
-    IPC[seq] = {
-      resolve: resolve,
-      reject: reject
+    const event = new window.CustomEvent(name, { detail, ...options })
+    if (target) {
+      target.dispatchEvent(event)
+    } else {
+      window.dispatchEvent(event)
     }
-  })
-
-  try {
-    if (({}).toString.call(o) !== '[object Object]') {
-      o = { value: o }
-    }
-
-    const params = {
-      ...o,
-      index,
-      seq
-    }
-
-    serialized = new URLSearchParams(params).toString()
-
-    serialized = serialized.replace(/\+/g, '%20')
-
-  } catch (err) {
-    console.error(`${err.message} (${serialized})`)
-    return Promise.reject(err.message)
-  }
-
-  window.external.invoke(`ipc://${name}?${serialized}`)
-
-  return Object.assign(promise, { index, seq })
-}
-
-IPC.emit = (name, value, target, options) => {
-  let detail = value
-
-  if (typeof value === 'string') {
-    try {
-      detail = decodeURIComponent(value)
-      detail = JSON.parse(detail)
-    } catch (err) {
-      // consider okay here because if detail is defined then
-      // `decodeURIComponent(value)` was successful and `JSON.parse(value)`
-      // was not: there could be bad/unsupported unicode in `value`
-      if (!detail) {
-        console.error(`${err.message} (${value})`)
-        return
-      }
-    }
-  }
-
-  const event = new window.CustomEvent(name, { detail, ...options })
-  if (target) {
-    target.dispatchEvent(event)
-  } else {
-    window.dispatchEvent(event)
   }
 }
 

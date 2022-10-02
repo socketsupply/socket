@@ -181,7 +181,7 @@ namespace SSC {
     return vec;
   }
 
-  inline template <typename ...Args> std::string format (const std::string& s, Args ...args) {
+  template <typename ...Args> std::string format (const std::string& s, Args ...args) {
     auto copy = s;
     std::stringstream res;
     std::vector<std::any> vec;

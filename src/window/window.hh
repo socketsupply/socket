@@ -2,34 +2,18 @@
 #define SSC_WINDOW_WINDOW_H
 
 #ifdef __APPLE__
-#import <Cocoa/Cocoa.h>
 #import <Webkit/Webkit.h>
 #import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
-#include <objc/objc-runtime.h>
+
+#include "../core/apple.hh"
+#elif defined(__linux__) && !defined(__ANDROID__)
+#include <JavaScriptCore/JavaScript.h>
+#include <webkit2/webkit2.h>
+#include <gtk/gtk.h>
 #endif
 
 #include "../core/core.hh"
-
-#ifdef __APPLE__
-@interface SSCWindowDelegate : NSObject <NSWindowDelegate, WKScriptMessageHandler>
-- (void) userContentController: (WKUserContentController*) userContentController
-      didReceiveScriptMessage: (WKScriptMessage*) scriptMessage;
-@end
-
-@interface SSCNavigationDelegate : NSObject<WKNavigationDelegate>
-- (void) webview: (SSCBridgedWebView*)webview
-  decidePolicyForNavigationAction: (WKNavigationAction*) navigationAction
-  decisionHandler: (void (^)(WKNavigationActionPolicy)) decisionHandler;
-@end
-
-@interface SSCIPCSchemeHandler : NSObject<WKURLSchemeHandler>
-@property (strong, nonatomic) Bridge* bridge;
-- (void) webView: (SSCBridgedWebView*) webview
-  startURLSchemeTask: (id <WKURLSchemeTask> )urlSchemeTask;
-- (void) webView: (SSCBridgedWebView* )webview
-  stopURLSchemeTask: (id <WKURLSchemeTask>) urlSchemeTask;
-@end
-#endif
+#include "../app/app.hh"
 
 namespace SSC {
   class Window;
@@ -102,9 +86,22 @@ namespace SSC {
   }
 
   class Window : public IWindow {
-#ifdef __APPLE__
+#if defined(__APPLE__) && !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR
     NSWindow* window;
     SSCBridgedWebView* webview;
+#elif defined(__linux__) && !defined(__ANDROID__)
+    GtkSelectionData *selectionData = nullptr;
+    GtkAccelGroup *accelGroup = nullptr;
+    GtkWidget *webview = nullptr;
+    GtkWidget *window = nullptr;
+    GtkWidget *menubar = nullptr;
+    GtkWidget *vbox = nullptr;
+    GtkWidget *popup = nullptr;
+    std::vector<std::string> draggablePayload;
+    double dragLastX = 0;
+    double dragLastY = 0;
+    bool isDragInvokedInsideWindow;
+    int popupId;
 #endif
 
     public:
@@ -136,5 +133,4 @@ namespace SSC {
 
 }
 
-#include "factory.hh"
 #endif

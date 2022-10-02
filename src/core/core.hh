@@ -2,7 +2,7 @@
 #define SSC_CORE_CORE_H
 
 #include "common.hh"
-#include "include/uv.h"
+#include "uv.h"
 
 #ifndef _WIN32
 #include <ifaddrs.h>
@@ -20,10 +20,13 @@
 #include <queue>
 
 #if defined(__APPLE__)
-#import <Webkit/Webkit.h>
-#import <Network/Network.h>
-#import <CoreBluetooth/CoreBluetooth.h>
-#import <UserNotifications/UserNotifications.h>
+#if !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR
+#include <objc/objc-runtime.h>
+#import <Cocoa/Cocoa.h>
+#else
+#import <Foundation/Foundation.h>
+#import <UIKit/UIKit.h>
+#endif
 
 #ifndef debug
 #define debug(format, ...) NSLog(@format, ##__VA_ARGS__)
@@ -31,19 +34,12 @@
 #endif
 
 #ifndef debug
-#  define debug(format, ...) fprintf(stderr, format "\n", ##__VA_ARGS__)
+#define debug(format, ...) fprintf(stderr, format "\n", ##__VA_ARGS__)
 #endif
 
 namespace SSC {
-#if defined(__APPLE__)
-  using Task = id<WKURLSchemeTask>;
-#else
-  class Task {};
-#endif
-
   using ID = uint64_t;
   using String = std::string;
-  using Tasks = std::map<String, Task>;
   using EventLoopDispatchCallback = std::function<void()>;
 
   constexpr int EVENT_LOOP_POLL_TIMEOUT = 32; // in milliseconds
@@ -317,7 +313,6 @@ namespace SSC {
 
   class Core {
     public:
-      std::unique_ptr<Tasks> tasks;
       std::unique_ptr<Posts> posts;
       std::map<uint64_t, Descriptor*> descriptors;
       std::map<uint64_t, Peer*> peers;
@@ -326,7 +321,6 @@ namespace SSC {
       std::recursive_mutex loopMutex;
       std::recursive_mutex peersMutex;
       std::recursive_mutex postsMutex;
-      std::recursive_mutex tasksMutex;
       std::recursive_mutex timersMutex;
 
       std::atomic<bool> didLoopInit = false;
@@ -355,6 +349,7 @@ namespace SSC {
 #endif
 
       Core ();
+      ~Core ();
 
       // fs
       static std::map<String, String> getFSConstantsMap ();
@@ -413,11 +408,6 @@ namespace SSC {
       void dnsLookup (String seq, String hostname, int family, Callback cb);
       void handleEvent (String seq, String event, String data, Callback cb);
 
-      Task getTask (String id);
-      bool hasTask (String id);
-      void removeTask (String id);
-      void putTask (String id, Task t);
-
       Post getPost (uint64_t id);
       bool hasPost (uint64_t id);
       void removePost (uint64_t id);
@@ -462,52 +452,5 @@ static dispatch_queue_attr_t qos = dispatch_queue_attr_make_with_qos_class(
 
 static dispatch_queue_t queue = dispatch_queue_create("co.socketsupply.queue.core", qos);
 
-#if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
-@interface SSCBridgedWebView : WKWebView
-@end
-#else
-@interface SSCBridgedWebView : WKWebView<
-  WKUIDelegate,
-  NSDraggingDestination,
-  NSFilePromiseProviderDelegate,
-  NSDraggingSource>
-- (NSDragOperation) draggingSession: (NSDraggingSession *) session
-sourceOperationMaskForDraggingContext: (NSDraggingContext) context;
-@end
-#endif
-
-@interface BluetoothDelegate : NSObject<
-  CBCentralManagerDelegate,
-  CBPeripheralManagerDelegate,
-  CBPeripheralDelegate>
-@property (strong, nonatomic) Bridge* bridge;
-@property (strong, nonatomic) CBCentralManager* centralManager;
-@property (strong, nonatomic) CBPeripheralManager* peripheralManager;
-@property (strong, nonatomic) CBPeripheral* bluetoothPeripheral;
-@property (strong, nonatomic) NSMutableArray* peripherals;
-@property (strong, nonatomic) NSMutableDictionary* services;
-@property (strong, nonatomic) NSMutableDictionary* characteristics;
-@property (strong, nonatomic) NSMutableDictionary* serviceMap;
-- (void) publishCharacteristic: (SSC::String)seq buf: (char*)buf len: (int)len sid: (SSC::String)sid cid: (SSC::String)cid;
-- (void) subscribeCharacteristic: (SSC::String)seq sid: (SSC::String)sid cid: (SSC::String)cid;
-- (void) startService: (SSC::String)seq sid: (SSC::String)sid;
-- (void) startAdvertising;
-- (void) startScanning;
-- (void) initBluetooth;
-@end
-
-@interface Bridge : NSObject
-@property (strong, nonatomic) BluetoothDelegate* bluetooth;
-@property (strong, nonatomic) SSCBridgedWebView* webview;
-@property (nonatomic) SSC::Core* core;
-@property nw_path_monitor_t monitor;
-@property (strong, nonatomic) NSObject<OS_dispatch_queue>* monitorQueue;
-- (bool) route: (SSC::String)msg buf: (char*)buf bufsize: (size_t)bufsize;
-- (void) emit: (SSC::String)name msg: (SSC::String)msg;
-- (void) send: (SSC::String)seq msg: (SSC::String)msg post: (SSC::Post)post;
-- (void) setBluetooth: (BluetoothDelegate*)bd;
-- (void) setWebview: (SSCBridgedWebView*)bv;
-- (void) setCore: (SSC::Core*)core;
-@end
 #endif
 #endif

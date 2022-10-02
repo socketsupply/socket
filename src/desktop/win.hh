@@ -25,18 +25,6 @@
 #pragma comment(lib,"Dwmapi.lib")
 #pragma comment(lib,"Gdi32.lib")
 
-inline void alert (const std::wstring &ws) {
-  MessageBoxA(nullptr, SSC::WStringToString(ws).c_str(), _TEXT("Alert"), MB_OK | MB_ICONSTOP);
-}
-
-inline void alert (const std::string &s) {
-  MessageBoxA(nullptr, s.c_str(), _TEXT("Alert"), MB_OK | MB_ICONSTOP);
-}
-
-inline void alert (const char* s) {
-  MessageBoxA(nullptr, s, _TEXT("Alert"), MB_OK | MB_ICONSTOP);
-}
-
 namespace SSC {
   using IEnvHandler = ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler;
   using IConHandler = ICoreWebView2CreateCoreWebView2ControllerCompletedHandler;
