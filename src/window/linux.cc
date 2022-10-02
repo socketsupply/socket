@@ -3,6 +3,7 @@
 #include <math.h>
 
 #include "../core/core.hh"
+#include "../app/app.hh"
 #include "window.hh"
 
 static GtkTargetEntry droppableTypes[] = {

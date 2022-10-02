@@ -1,35 +1,20 @@
 #include "app.hh"
 #include "../core/core.hh"
+#include "../window/window.hh"
 
 namespace SSC {
   static Map bufferQueue;
 
-  class Bridge {
-    public:
-      struct CallbackContext {
-        Callback cb;
-        std::string seq;
-        Window *window;
-        void *data;
-      };
-
-      App *app;
-      Core *core;
-
-      Bridge (IApp *app) {
-        this->core = new Core();
-        this->app = app;
-      }
-
-      bool route (std::string msg, char *buf, size_t bufsize);
-      void send (Parse cmd, std::string seq, std::string msg, Post post);
-      bool invoke (Parse cmd, char *buf, size_t bufsize, Callback cb);
-      bool invoke (Parse cmd, Callback cb);
+  struct CallbackContext {
+    Callback cb;
+    std::string seq;
+    Window *window;
+    void *data;
   };
 
   std::atomic<bool> App::isReady {false};
 
-  App::App (int instanceId) : bridge(this) {
+  App::App (int instanceId)  {
     auto webkitContext = webkit_web_context_get_default();
     gtk_init_check(0, nullptr);
     // TODO enforce single instance is set
@@ -226,7 +211,7 @@ namespace SSC {
       }
 
       auto value = decodeURIComponent(cmd.get("value"));
-      auto ctx = new Bridge::CallbackContext { cb, seq, window, (void *) this };
+      auto ctx = new CallbackContext { cb, seq, window, (void *) this };
 
       webkit_web_view_run_javascript(
         WEBKIT_WEB_VIEW(window->webview),
@@ -234,7 +219,7 @@ namespace SSC {
         nullptr,
         [](GObject *object, GAsyncResult *res, gpointer data) {
           GError *error = nullptr;
-          auto ctx = reinterpret_cast<Bridge::CallbackContext *>(data);
+          auto ctx = reinterpret_cast<CallbackContext *>(data);
           auto result = webkit_web_view_run_javascript_finish(
             WEBKIT_WEB_VIEW(ctx->window->webview),
             res,

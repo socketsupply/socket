@@ -434,6 +434,5 @@ namespace SSC {
       void sleepEventLoop (int64_t ms);
       void sleepEventLoop ();
   };
-
 } // SSC
 #endif

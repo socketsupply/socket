@@ -68,6 +68,24 @@ namespace SSC {
     this->onMessage(resolveToMainProcess(seq, state, value));
   }
 
+#ifdef __linux__
+  class Bridge {
+    public:
+      App *app;
+      Core *core;
+
+      Bridge (App *app) {
+        this->core = new Core();
+        this->app = app;
+      }
+
+      bool route (std::string msg, char *buf, size_t bufsize);
+      void send (Parse cmd, std::string seq, std::string msg, Post post);
+      bool invoke (Parse cmd, char *buf, size_t bufsize, Callback cb);
+      bool invoke (Parse cmd, Callback cb);
+  };
+#endif
+
   class Window : public IWindow {
     public:
       App app;
