@@ -4,16 +4,25 @@
 #ifdef __APPLE__
 #import <Webkit/Webkit.h>
 #import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
-
 #include "../core/apple.hh"
+
 #elif defined(__linux__) && !defined(__ANDROID__)
 #include <JavaScriptCore/JavaScript.h>
 #include <webkit2/webkit2.h>
 #include <gtk/gtk.h>
+#elif defined(_WIN32)
+#include "win64/WebView2.h"
+#include "win64/WebView2EnvironmentOptions.h"
+#include <shobjidl.h>
+#include <shlobj_core.h>
+
+#include <dwmapi.h>
+#include <wingdi.h>
 #endif
 
 #include "../core/core.hh"
 #include "../app/app.hh"
+#include "options.hh"
 
 namespace SSC {
   class Window;
@@ -23,32 +32,6 @@ namespace SSC {
     WINDOW_HINT_MIN = 1,   // Width and height are minimum bounds
     WINDOW_HINT_MAX = 2,   // Width and height are maximum bounds
     WINDOW_HINT_FIXED = 3  // Window size can not be changed by a user
-  };
-
-  struct WindowOptions {
-    bool resizable = true;
-    bool frameless = false;
-    bool utility = false;
-    bool canExit = false;
-    int height = 0;
-    int width = 0;
-    int index = 0;
-    int debug = 0;
-    int port = 0;
-    bool isTest = false;
-    bool headless = false;
-    bool forwardConsole = false;
-    std::string cwd = "";
-    std::string executable = "";
-    std::string title = "";
-    std::string url = "data:text/html,<html>";
-    std::string version = "";
-    std::string argv = "";
-    std::string preload = "";
-    std::string env;
-    Map appData;
-    MessageCallback onMessage = [](const std::string) {};
-    ExitCallback onExit = nullptr;
   };
 
   class IWindow {
@@ -86,29 +69,42 @@ namespace SSC {
   }
 
   class Window : public IWindow {
-#if defined(__APPLE__) && !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR
-    NSWindow* window;
-    SSCBridgedWebView* webview;
-#elif defined(__linux__) && !defined(__ANDROID__)
-    GtkSelectionData *selectionData = nullptr;
-    GtkAccelGroup *accelGroup = nullptr;
-    GtkWidget *webview = nullptr;
-    GtkWidget *window = nullptr;
-    GtkWidget *menubar = nullptr;
-    GtkWidget *vbox = nullptr;
-    GtkWidget *popup = nullptr;
-    std::vector<std::string> draggablePayload;
-    double dragLastX = 0;
-    double dragLastY = 0;
-    bool isDragInvokedInsideWindow;
-    int popupId;
-#endif
-
     public:
       App app;
       WindowOptions opts;
+
+#if defined(__APPLE__) && !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR
+      NSWindow* window;
+      SSCBridgedWebView* webview;
+#elif defined(__linux__) && !defined(__ANDROID__)
+      GtkSelectionData *selectionData = nullptr;
+      GtkAccelGroup *accelGroup = nullptr;
+      GtkWidget *webview = nullptr;
+      GtkWidget *window = nullptr;
+      GtkWidget *menubar = nullptr;
+      GtkWidget *vbox = nullptr;
+      GtkWidget *popup = nullptr;
+      std::vector<std::string> draggablePayload;
+      double dragLastX = 0;
+      double dragLastY = 0;
+      bool isDragInvokedInsideWindow;
+      int popupId;
+#elif defined(_WIN32)
+      static LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
+      ICoreWebView2Controller *controller = nullptr;
+      ICoreWebView2 *webview = nullptr;
+      HMENU systemMenu;
+      DWORD mainThread = GetCurrentThreadId();
+      POINT m_minsz = POINT {0, 0};
+      POINT m_maxsz = POINT {0, 0};
+      DragDrop* drop;
+      HWND window;
+      void resize (HWND window);
+#endif
+
       Window(App&, WindowOptions);
 
+      void about();
       void eval(const std::string&);
       void show(const std::string&);
       void hide(const std::string&);
@@ -120,6 +116,7 @@ namespace SSC {
       void setSize(const std::string&, int, int, int);
       void setContextMenu(const std::string&, const std::string&);
       void closeContextMenu(const std::string&);
+      void closeContextMenu();
       void setBackgroundColor(int r, int g, int b, float a);
       void closeContextMenu();
       void openDialog(const std::string&, bool, bool, bool, bool, const std::string&, const std::string&, const std::string&);
@@ -130,7 +127,5 @@ namespace SSC {
       int openExternal(const std::string& s);
       ScreenSize getScreenSize();
   };
-
 }
-
 #endif

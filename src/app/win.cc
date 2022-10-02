@@ -1,13 +1,17 @@
+#include <signal.h>
+#include <future>
+#include <chrono>
+#include <shobjidl.h>
+#include <shlobj_core.h>
+
 #include "app.hh"
+#include "../window/window.hh"
 #include "../core/core.hh"
 
-namespace SSC {
-  using IEnvHandler = ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler;
-  using IConHandler = ICoreWebView2CreateCoreWebView2ControllerCompletedHandler;
-  using INavHandler = ICoreWebView2NavigationCompletedEventHandler;
-  using IRecHandler = ICoreWebView2WebMessageReceivedEventHandler;
-  using IArgs = ICoreWebView2WebMessageReceivedEventArgs;
+#include <uxtheme.h>
+#pragma comment(lib,"UxTheme.lib")
 
+namespace SSC {
   inline void alert (const std::wstring &ws) {
     MessageBoxA(nullptr, SSC::WStringToString(ws).c_str(), _TEXT("Alert"), MB_OK | MB_ICONSTOP);
   }
@@ -21,4 +25,67 @@ namespace SSC {
   }
 
   std::atomic<bool> App::isReady {false};
+
+  App::App(void* h): hInstance((_In_ HINSTANCE) h) {
+    #if DEBUG == 1
+      AllocConsole();
+      freopen_s(&console, "CONOUT$", "w", stdout);
+    #endif
+
+    HMODULE hUxtheme = LoadLibraryExW(L"uxtheme.dll", nullptr, LOAD_LIBRARY_SEARCH_SYSTEM32);
+
+    setWindowCompositionAttribute = reinterpret_cast<SetWindowCompositionAttribute>(GetProcAddress(
+      GetModuleHandleW(L"user32.dll"),
+      "SetWindowCompositionAttribute")
+    );
+
+    if (hUxtheme) {
+      refreshImmersiveColorPolicyState =
+        (RefreshImmersiveColorPolicyState) GetProcAddress(hUxtheme, MAKEINTRESOURCEA(104));
+
+      shouldSystemUseDarkMode =
+        (ShouldSystemUseDarkMode) GetProcAddress(hUxtheme, MAKEINTRESOURCEA(138));
+
+      allowDarkModeForApp =
+        (AllowDarkModeForApp) GetProcAddress(hUxtheme, MAKEINTRESOURCEA(135));
+    }
+
+    allowDarkModeForApp(shouldSystemUseDarkMode());
+    refreshImmersiveColorPolicyState();
+
+    // this fixes bad default quality DPI.
+    SetProcessDPIAware();
+
+    auto iconPath = fs::path { getCwd("") / fs::path { "index.ico" } };
+
+    HICON icon = (HICON) LoadImageA(
+      NULL,
+      iconPath.string().c_str(),
+      IMAGE_ICON,
+      GetSystemMetrics(SM_CXSMICON),
+      GetSystemMetrics(SM_CXSMICON),
+      LR_LOADFROMFILE
+    );
+
+    auto *szWindowClass = L"DesktopApp";
+    auto *szTitle = L"Socket SDK";
+
+    wcex.cbSize = sizeof(WNDCLASSEX);
+    wcex.style = CS_HREDRAW | CS_VREDRAW;
+    wcex.cbClsExtra = 0;
+    wcex.cbWndExtra = 0;
+    wcex.hInstance = hInstance;
+    wcex.hIcon = LoadIcon(hInstance, IDI_APPLICATION);
+    wcex.hCursor = LoadCursor(NULL, IDC_ARROW);
+    wcex.hbrBackground = bgBrush;
+    wcex.lpszMenuName = NULL;
+    wcex.lpszClassName = TEXT("DesktopApp");
+    wcex.hIconSm = icon; // ico doesn't auto scale, needs 16x16 icon lol fuck you bill
+    wcex.hIcon = icon;
+    wcex.lpfnWndProc = Window::WndProc;
+
+    if (!RegisterClassEx(&wcex)) {
+      alert("Application could not launch, possible missing resources.");
+    }
+  };
 }

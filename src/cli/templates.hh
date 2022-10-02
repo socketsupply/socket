@@ -1258,7 +1258,20 @@ LOCAL_CFLAGS += \
 LOCAL_CFLAGS += {{cflags}}
 
 LOCAL_LDLIBS := -landroid -llog
-LOCAL_SRC_FILES = android.cc
+LOCAL_SRC_FILES =    \
+  core/android.cc    \
+  core/core.cc       \
+  core/fs.cc         \
+  core/ipc.cc        \
+  core/javascript.cc \
+  core/loop.cc       \
+  core/peer.cc       \
+  core/timers.cc     \
+  core/udp.cc        \
+  mobile/android.cc
+
+LOCAL_SRC_FILES += $(wildcard $(LOCAL_PATH)/ext/*.cc)
+
 LOCAL_STATIC_LIBRARIES := uv
 include $(BUILD_SHARED_LIBRARY)
 

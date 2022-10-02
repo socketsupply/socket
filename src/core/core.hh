@@ -15,6 +15,7 @@
 #endif
 
 #include <chrono>
+#include <functional>
 #include <semaphore>
 #include <thread>
 #include <queue>
@@ -402,7 +403,7 @@ namespace SSC {
       Peer* createPeer (peer_type_t type, uint64_t id, bool isEphemeral);
 
       // core
-      String getNetworkInterfaces ();
+      String getNetworkInterfaces () const;
       void bufferSize (String seq, uint64_t peerId, int size, int buffer, Callback cb);
       void close (String seq, uint64_t peerId, Callback cb);
       void dnsLookup (String seq, String hostname, int family, Callback cb);
@@ -435,22 +436,4 @@ namespace SSC {
   };
 
 } // SSC
-
-#if defined(__APPLE__)
-//
-// Mixed-into ios.mm and mac.hh by #include. This file
-// expects SSCBridgedWebView to be defined before it's included.
-// All IO is routed though these common interfaces.
-//
-@class Bridge;
-
-static dispatch_queue_attr_t qos = dispatch_queue_attr_make_with_qos_class(
-  DISPATCH_QUEUE_CONCURRENT,
-  QOS_CLASS_USER_INITIATED,
-  -1
-);
-
-static dispatch_queue_t queue = dispatch_queue_create("co.socketsupply.queue.core", qos);
-
-#endif
 #endif

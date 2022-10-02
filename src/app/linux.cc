@@ -3,9 +3,6 @@
 
 namespace SSC {
   static Map bufferQueue;
-  static GtkTargetEntry droppableTypes[] = {
-    { (char*) "text/uri-list", 0, 0 }
-  };
 
   class Bridge {
     public:

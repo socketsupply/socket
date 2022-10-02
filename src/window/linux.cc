@@ -1,11 +1,18 @@
-#include "../core/runtime-preload.hh"
+#include <cstdint>
+#include <stdlib.h>
+#include <math.h>
+
 #include "../core/core.hh"
 #include "window.hh"
+
+static GtkTargetEntry droppableTypes[] = {
+  { (char*) "text/uri-list", 0, 0 }
+};
 
 namespace SSC {
   Window::Window (App& app, WindowOptions opts) : app(app) , opts(opts) {
     setenv("GTK_OVERLAY_SCROLLING", "1", 1);
-    accelGroup = gtk_accelGroup_new();
+    accel_group = gtk_accel_group_new();
     popupId = 0;
     window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
     popup = nullptr;
@@ -766,7 +773,7 @@ namespace SSC {
               gtk_widget_add_accelerator(
                 item,
                 "activate",
-                accelGroup,
+                accel_group,
                 (guint) key[0],
                 mask,
                 GTK_ACCEL_VISIBLE

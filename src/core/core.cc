@@ -154,7 +154,7 @@ namespace SSC {
     }
   }
 
-  String Core::getNetworkInterfaces () {
+  String Core::getNetworkInterfaces () const {
     struct ifaddrs *interfaces = nullptr;
     struct ifaddrs *interface = nullptr;
     int success = getifaddrs(&interfaces);

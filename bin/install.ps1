@@ -95,9 +95,9 @@ Function Install-WebView2 {
   Invoke-WebRequest https://www.nuget.org/api/v2/package/Microsoft.Web.WebView2/$PACKAGE_VERSION -O $TEMP_PATH\webview2.zip
   Expand-Archive -Path $TEMP_PATH\WebView2.zip -DestinationPath $TEMP_PATH\WebView2
   Copy-Item -Path $base\include\WebView2.h $WORKING_PATH\src\win64
-  Copy-Item -Path $base\include\WebView2EnvironmentOptions.h $WORKING_PATH\src\desktop\win64
-  Copy-Item -Path $base\include\WebView2Experimental.h $WORKING_PATH\src\desktop\win64
-  Copy-Item -Path $base\x64\WebView2LoaderStatic.lib $WORKING_PATH\src\desktop\win64
+  Copy-Item -Path $base\include\WebView2EnvironmentOptions.h $WORKING_PATH\src\window\win64
+  Copy-Item -Path $base\include\WebView2Experimental.h $WORKING_PATH\src\window\win64
+  Copy-Item -Path $base\x64\WebView2LoaderStatic.lib $WORKING_PATH\src\window\win64
   Write-Output "ok - updated WebView2 header files..."
 }
 

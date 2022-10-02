@@ -121,7 +121,7 @@ namespace SSC {
     signalDispatchEventLoop();
   }
 
-  static void pollEventLoop (auto core) {
+  void pollEventLoop (Core *core) {
     auto loop = core->getEventLoop();
 
     while (core->isLoopRunning) {

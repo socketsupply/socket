@@ -3,8 +3,7 @@
 
 #include "runtime-preload-sources.hh"
 
-#include "../app/app.hh"
-#include "../window/window.hh"
+#include "../window/options.hh"
 
 namespace SSC {
   inline std::string createPreload (WindowOptions opts) {

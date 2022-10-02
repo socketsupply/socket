@@ -969,8 +969,13 @@ int main (const int argc, const char* argv[]) {
       //fs::remove_all(output);
       fs::create_directories(output);
       fs::create_directories(src);
-      fs::create_directories(jni);
       fs::create_directories(pkg);
+      fs::create_directories(jni);
+      fs::create_directories(jni / "app");
+      fs::create_directories(jni / "core");
+      fs::create_directories(jni / "mobile");
+      fs::create_directories(jni / "window");
+      fs::create_directories(jni / "src");
 
       fs::create_directories(res);
       fs::create_directories(res / "layout");
@@ -1000,9 +1005,23 @@ int main (const int argc, const char* argv[]) {
       //writeFile();
 
       // Core
-      fs::copy(trim(prefixFile("src/core.hh")), jni, fs::copy_options::overwrite_existing);
-      fs::copy(trim(prefixFile("src/common.hh")), jni, fs::copy_options::overwrite_existing);
-      fs::copy(trim(prefixFile("src/preload.hh")), jni, fs::copy_options::overwrite_existing);
+      fs::copy(trim(prefixFile("src/mobile/android.cc")), jni / "mobile", fs::copy_options::overwrite_existing);
+      fs::copy(trim(prefixFile("src/mobile/android.kt")), jni / "mobile", fs::copy_options::overwrite_existing);
+      fs::copy(trim(prefixFile("src/window/window.hh")), jni / "window", fs::copy_options::overwrite_existing);
+      fs::copy(trim(prefixFile("src/window/options.hh")), jni / "window", fs::copy_options::overwrite_existing);
+      fs::copy(trim(prefixFile("src/core/android.cc")), jni / "core", fs::copy_options::overwrite_existing);
+      fs::copy(trim(prefixFile("src/core/common.hh")), jni / "core", fs::copy_options::overwrite_existing);
+      fs::copy(trim(prefixFile("src/core/core.cc")), jni / "core", fs::copy_options::overwrite_existing);
+      fs::copy(trim(prefixFile("src/core/core.hh")), jni / "core", fs::copy_options::overwrite_existing);
+      fs::copy(trim(prefixFile("src/core/fs.cc")), jni / "core", fs::copy_options::overwrite_existing);
+      fs::copy(trim(prefixFile("src/core/ipc.cc")), jni / "core", fs::copy_options::overwrite_existing);
+      fs::copy(trim(prefixFile("src/core/javascript.cc")), jni / "core", fs::copy_options::overwrite_existing);
+      fs::copy(trim(prefixFile("src/core/loop.cc")), jni / "core", fs::copy_options::overwrite_existing);
+      fs::copy(trim(prefixFile("src/core/peer.cc")), jni / "core", fs::copy_options::overwrite_existing);
+      fs::copy(trim(prefixFile("src/core/runtime-preload.hh")), jni / "core", fs::copy_options::overwrite_existing);
+      fs::copy(trim(prefixFile("src/core/runtime-preload-sources.hh")), jni / "core", fs::copy_options::overwrite_existing);
+      fs::copy(trim(prefixFile("src/core/timers.cc")), jni / "core", fs::copy_options::overwrite_existing);
+      fs::copy(trim(prefixFile("src/core/udp.cc")), jni / "core", fs::copy_options::overwrite_existing);
 
       // libuv
       fs::copy(
@@ -1130,13 +1149,10 @@ int main (const int argc, const char* argv[]) {
       writeFile(res / "values" / "strings.xml", trim(tmpl(gAndroidValuesStrings, settings)));
       writeFile(src / "main" / "assets" / "__ssc_vital_check_ok_file__.txt", "OK");
 
-      // JNI/NDK
-      fs::copy(trim(prefixFile("src/android.cc")), jni, fs::copy_options::overwrite_existing);
-
       writeFile(
-        jni / "android.hh",
+        jni / "core" / "android.hh",
         std::regex_replace(
-          WStringToString(readFile(trim(prefixFile("src/android.hh")))),
+          WStringToString(readFile(trim(prefixFile("src/core/android.hh")))),
           std::regex("__BUNDLE_IDENTIFIER__"),
           bundle_path_underscored
         )
@@ -1169,8 +1185,8 @@ int main (const int argc, const char* argv[]) {
       for (auto const &file : split(settings["android_native_sources"], ' ')) {
         auto filename = fs::path(file).filename();
         // log(std::string("Android NDK source: " + std::string(target / file)).c_str());
-        appendFile(
-          jni / "android.cc",
+        writeFile(
+          jni / "src" / file,
           tmpl(std::regex_replace(
             WStringToString(readFile(targetPath / file )),
             std::regex("__BUNDLE_IDENTIFIER__"),
@@ -1200,7 +1216,7 @@ int main (const int argc, const char* argv[]) {
       writeFile(
         pkg / "main.kt",
         std::regex_replace(
-          WStringToString(readFile(trim(prefixFile("src/android.kt")))),
+          WStringToString(readFile(trim(prefixFile("src/mobile/android.kt")))),
           std::regex("__BUNDLE_IDENTIFIER__"),
           bundle_identifier
         )
@@ -1328,14 +1344,16 @@ int main (const int argc, const char* argv[]) {
       flags += " -L" + prefixFile("lib");
       flags += " -luv";
 
-      files += prefixFile("src/desktop/main.cc");
-      files += prefixFile("src/core/core.cc");
-      files += prefixFile("src/core/udp.cc");
-      files += prefixFile("src/core/fs.cc");
-      files += prefixFile("src/core/loop.cc");
-      files += prefixFile("src/core/timers.cc");
-      files += prefixFile("src/core/peer.cc");
       files += prefixFile("src/app/linux.cc");
+      files += prefixFile("src/core/core.cc");
+      files += prefixFile("src/core/fs.cc");
+      files += prefixFile("src/core/ipc.cc");
+      files += prefixFile("src/core/javascript.cc");
+      files += prefixFile("src/core/loop.cc");
+      files += prefixFile("src/core/peer.cc");
+      files += prefixFile("src/core/timers.cc");
+      files += prefixFile("src/core/udp.cc");
+      files += prefixFile("src/desktop/main.cc");
       files += prefixFile("src/window/linux.cc");
       files += prefixFile("src/process/unix.cc");
 
@@ -1417,14 +1435,16 @@ int main (const int argc, const char* argv[]) {
         " -L" + prefix + "\\src\\uv"
       ;
 
-      files += prefixFile("src\\desktop\\main.cc");
-      files += prefixFile("src\\core\\core.cc");
-      files += prefixFile("src\\core\\udp.cc");
-      files += prefixFile("src\\core\\fs.cc");
-      files += prefixFile("src\\core\\loop.cc");
-      files += prefixFile("src\\core\\timers.cc");
-      files += prefixFile("src\\core\\peer.cc");
       files += prefixFile("src\\app\\win.cc");
+      files += prefixFile("src\\core\\core.cc");
+      files += prefixFile("src\\core\\fs.cc");
+      files += prefixFile("src\\core\\ipc.cc");
+      files += prefixFile("src\\core\\javascript.cc");
+      files += prefixFile("src\\core\\loop.cc");
+      files += prefixFile("src\\core\\peer.cc");
+      files += prefixFile("src\\core\\timers.cc");
+      files += prefixFile("src\\core\\udp.cc");
+      files += prefixFile("src\\desktop\\main.cc");
       files += prefixFile("src\\window\\win.cc");
       files += prefixFile("src\\process\\win.cc");
 
@@ -1535,7 +1555,7 @@ int main (const int argc, const char* argv[]) {
       // Copy and or create the source files we need for the build.
       //
       fs::copy(trim(prefixFile("src/mobile/ios.mm")), pathToDist / "mobile");
-      fs::copy(trim(prefixFile("src/window/window.hh")), pathToDist / "window");
+      fs::copy(trim(prefixFile("src/window/options.hh")), pathToDist / "window");
       fs::copy(trim(prefixFile("src/app/app.hh")), pathToDist / "app");
       fs::copy(trim(prefixFile("src/core/runtime-preload-sources.hh")), pathToDist / "core");
       fs::copy(trim(prefixFile("src/core/runtime-preload.hh")), pathToDist / "core");

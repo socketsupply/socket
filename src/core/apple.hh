@@ -13,6 +13,16 @@ namespace SSC {
   using Tasks = std::map<String, Task>;
 }
 
+@class Bridge;
+
+static dispatch_queue_attr_t qos = dispatch_queue_attr_make_with_qos_class(
+  DISPATCH_QUEUE_CONCURRENT,
+  QOS_CLASS_USER_INITIATED,
+  -1
+);
+
+static dispatch_queue_t queue = dispatch_queue_create("co.socketsupply.queue.core", qos);
+
 #if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
 @interface SSCBridgedWebView : WKWebView
 @end
@@ -65,7 +75,6 @@ sourceOperationMaskForDraggingContext: (NSDraggingContext) context;
   std::unique_ptr<SSC::Tasks> tasks;
   std::recursive_mutex tasksMutex;
 }
-
 @property (strong, nonatomic) BluetoothDelegate* bluetooth;
 @property (strong, nonatomic) SSCBridgedWebView* webview;
 @property (nonatomic) SSC::Core* core;
