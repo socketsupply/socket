@@ -1,6 +1,8 @@
 #ifndef SSC_CORE_COMMON_H
 #define SSC_CORE_COMMON_H
 
+#include <math.h>
+
 #include <any>
 #include <iostream>
 #include <filesystem>

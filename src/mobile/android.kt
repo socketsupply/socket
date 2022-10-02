@@ -226,9 +226,10 @@ open class WebViewClient(activity: WebViewActivity) : android.webkit.WebViewClie
         android.util.Log.d(TAG, "ERR: $err")
 
         response.setStatusCodeAndReasonPhrase(404, "Not found")
-        response.setData(
-          java.io.ByteArrayInputStream(err.toByteArray())
-        )
+        stream.write(err.toByteArray(), 0, err.length)
+        stream.close()
+
+        return response
       }
     }
 

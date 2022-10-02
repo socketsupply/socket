@@ -2,7 +2,7 @@
 #define SSC_APP_APP_H
 
 #ifdef __APPLE__
-#if !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR
+#if !defined(TARGET_OS_IPHONE) && !defined(TARGET_IPHONE_SIMULATOR)
 #include <Cocoa/Cocoa.h>
 #include <objc/objc-runtime.h>
 #endif
@@ -64,6 +64,7 @@ namespace SSC {
 
       static std::atomic<bool> isReady;
       bool fromSSC = false;
+      Map appData;
 #ifdef _WIN32
       App (void *);
 #else

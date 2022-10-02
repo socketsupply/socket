@@ -330,7 +330,7 @@ namespace SSC {
           .version = "v" + opts.appData["version"],
           .argv = this->options.argv,
           .preload = opts.preload.size() > 0 ? opts.preload : gPreloadDesktop,
-          .env = env.str()
+          .env = env.str(),
           .appData = opts.appData.size() > 0 ? opts.appData : this->options.appData
         };
 
@@ -358,7 +358,7 @@ namespace SSC {
           .width = opts.width,
           .index = 0,
 #ifdef PORT
-          .port = PORT
+          .port = PORT,
 #endif
           .appData = opts.appData
         });
