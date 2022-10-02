@@ -1189,15 +1189,11 @@ UV_UNIX_SOURCE +=       \
   atomic-ops.h          \
   core.c                \
   dl.c                  \
-  epoll.c               \
   fs.c                  \
   getaddrinfo.c         \
   getnameinfo.c         \
   internal.h            \
-  linux-core.c          \
-  linux-inotify.c       \
-  linux-syscalls.c      \
-  linux-syscalls.h      \
+  linux.c               \
   loop.c                \
   loop-watcher.c        \
   pipe.c                \
@@ -1209,7 +1205,6 @@ UV_UNIX_SOURCE +=       \
   random-getrandom.c    \
   random-sysctl-linux.c \
   signal.c              \
-  spinlock.h            \
   stream.c              \
   tcp.c                 \
   thread.c              \

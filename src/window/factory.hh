@@ -322,7 +322,6 @@ namespace SSC {
           .isTest = this->options.isTest,
           .headless = this->options.headless || opts.headless || opts.appData["headless"] == "true",
           .forwardConsole = opts.appData["linux_forward_console_to_stdout"] == "true",
-          .appData = opts.appData.size() > 0 ? opts.appData : this->options.appData,
 
           .cwd = this->options.cwd,
           .executable = opts.appData["executable"],
@@ -332,6 +331,7 @@ namespace SSC {
           .argv = this->options.argv,
           .preload = opts.preload.size() > 0 ? opts.preload : gPreloadDesktop,
           .env = env.str()
+          .appData = opts.appData.size() > 0 ? opts.appData : this->options.appData
         };
 
 #if DEBUG
@@ -355,12 +355,12 @@ namespace SSC {
           .frameless = false,
           .canExit = true,
           .height = opts.height,
-          .appData = opts.appData,
           .width = opts.width,
           .index = 0,
 #ifdef PORT
           .port = PORT
 #endif
+          .appData = opts.appData
         });
       }
   };

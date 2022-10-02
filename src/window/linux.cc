@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <math.h>
 
+#include "../core/runtime-preload.hh"
 #include "../core/core.hh"
 #include "../app/app.hh"
 #include "window.hh"
@@ -13,7 +14,7 @@ static GtkTargetEntry droppableTypes[] = {
 namespace SSC {
   Window::Window (App& app, WindowOptions opts) : app(app) , opts(opts) {
     setenv("GTK_OVERLAY_SCROLLING", "1", 1);
-    accel_group = gtk_accel_group_new();
+    accelGroup = gtk_accel_group_new();
     popupId = 0;
     window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
     popup = nullptr;
@@ -620,7 +621,7 @@ namespace SSC {
     GtkContainer *content = GTK_CONTAINER(body);
 
     std::string imgPath = "/usr/share/icons/hicolor/256x256/apps/" +
-      appData["executable"] +
+      app.appData["executable"] +
       ".png";
 
     GdkPixbuf *pixbuf = gdk_pixbuf_new_from_file_at_scale(
@@ -637,7 +638,7 @@ namespace SSC {
 
     gtk_box_pack_start(GTK_BOX(content), img, false, false, 0);
 
-    std::string title_value(appData["title"] + " v" + appData["version"]);
+    std::string title_value(app.appData["title"] + " v" + app.appData["version"]);
     std::string version_value("Built with ssc v" + std::string(SSC::full_version));
 
     GtkWidget *label_title = gtk_label_new("");
@@ -649,7 +650,7 @@ namespace SSC {
     gtk_container_add(content, label_op_version);
 
     GtkWidget *label_copyright = gtk_label_new("");
-    gtk_label_set_markup(GTK_LABEL(label_copyright), appData["copyright"].c_str());
+    gtk_label_set_markup(GTK_LABEL(label_copyright), app.appData["copyright"].c_str());
     gtk_container_add(content, label_copyright);
 
     g_signal_connect(
@@ -772,7 +773,7 @@ namespace SSC {
               gtk_widget_add_accelerator(
                 item,
                 "activate",
-                accel_group,
+                accelGroup,
                 (guint) key[0],
                 mask,
                 GTK_ACCEL_VISIBLE

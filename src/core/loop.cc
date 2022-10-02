@@ -21,8 +21,8 @@ namespace SSC {
     },
 
     .dispatch = [](GSource *source, GSourceFunc callback, gpointer user_data) -> gboolean {
-      std::lock_guard<std::recursive_mutex> lock(loopMutex);
       auto core = reinterpret_cast<UVSource *>(source)->core;
+      std::lock_guard<std::recursive_mutex> lock(core->loopMutex);
       auto loop = core->getEventLoop();
       uv_run(loop, UV_RUN_NOWAIT);
       return G_SOURCE_CONTINUE;

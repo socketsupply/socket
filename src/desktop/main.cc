@@ -65,7 +65,7 @@ MAIN {
   const std::string EMPTY_SEQ = std::string("");
 
   auto cwd = app.getCwd(argv[0]);
-  Map appData = parseConfig(decodeURIComponent(_settings));
+  app.appData = parseConfig(decodeURIComponent(_settings));
 
   std::string suffix = "";
 
@@ -145,22 +145,22 @@ MAIN {
   }
 
   #if DEBUG == 1
-    appData["name"] += "-dev";
-    appData["title"] += "-dev";
+    app.appData["name"] += "-dev";
+    app.appData["title"] += "-dev";
   #endif
 
-  appData["name"] += suffix;
-  appData["title"] += suffix;
+  app.appData["name"] += suffix;
+  app.appData["title"] += suffix;
 
-  argvForward << " --version=v" << appData["version"];
-  argvForward << " --name=" << appData["name"];
+  argvForward << " --version=v" << app.appData["version"];
+  argvForward << " --name=" << app.appData["name"];
 
   #if DEBUG == 1
     argvForward << " --debug=1";
   #endif
 
   std::stringstream env;
-  for (auto const &envKey : split(appData["env"], ',')) {
+  for (auto const &envKey : split(app.appData["env"], ',')) {
     auto cleanKey = trim(envKey);
     auto envValue = getEnv(cleanKey.c_str());
 
@@ -171,9 +171,9 @@ MAIN {
 
   std::string cmd;
   if (platform.os == "win32") {
-    cmd = appData["win_cmd"];
+    cmd = app.appData["win_cmd"];
   } else {
-    cmd = appData[platform.os + "_cmd"];
+    cmd = app.appData[platform.os + "_cmd"];
   }
 
   if (cmd[0] == '.') {
@@ -219,8 +219,8 @@ MAIN {
     return exitCode;
   }
 
-  int height = appData["height"].size() > 0 ? std::stoi(appData["height"]) : 0;
-  int width = appData["width"].size() > 0 ? std::stoi(appData["width"]) : 0;
+  int height = app.appData["height"].size() > 0 ? std::stoi(app.appData["height"]) : 0;
+  int width = app.appData["width"].size() > 0 ? std::stoi(app.appData["width"]) : 0;
 
   auto onStdErr = [&](auto err) {
     std::cerr << err << std::endl;
@@ -632,7 +632,7 @@ MAIN {
     .defaultHeight = height,
     .defaultWidth = width,
     .headless = isHeadless,
-    .appData = appData,
+    .appData = app.appData,
     .isTest = isTest,
     .argv = argvArray.str(),
     .cwd = cwd,

@@ -120,36 +120,40 @@ namespace SSC {
       void resize (HWND window);
 #endif
 
-      Window(App&, WindowOptions);
+      Window (App&, WindowOptions);
 
-      void about();
-      void eval(const std::string&);
-      void show(const std::string&);
-      void hide(const std::string&);
-      void kill();
-      void exit(int code);
-      void close(int code);
-      void navigate(const std::string&, const std::string&);
-      void setTitle(const std::string&, const std::string&);
-      void setSize(const std::string&, int, int, int);
-      void setContextMenu(const std::string&, const std::string&);
-      void closeContextMenu(const std::string&);
-      void closeContextMenu();
-      void setBackgroundColor(int r, int g, int b, float a);
-      void openDialog( // @TODO(jwerle): use `OpenDialogOptions` here instead
+      void about ();
+      void eval (const std::string&);
+      void show (const std::string&);
+      void hide (const std::string&);
+      void kill ();
+      void exit (int code);
+      void close (int code);
+      void navigate (const std::string&, const std::string&);
+      void setTitle (const std::string&, const std::string&);
+      void setSize (const std::string&, int, int, int);
+      void setContextMenu (const std::string&, const std::string&);
+      void closeContextMenu (const std::string&);
+      void closeContextMenu ();
+#if defined(__linux__) && !defined(__ANDROID__)
+      void closeContextMenu (GtkWidget *, const std::string&);
+#endif
+      void setBackgroundColor (int r, int g, int b, float a);
+      void setSystemMenuItemEnabled (bool enabled, int barPos, int menuPos);
+      void setSystemMenu (const std::string& seq, const std::string& menu);
+      ScreenSize getScreenSize ();
+      void showInspector ();
+      int openExternal (const std::string& s);
+      void openDialog ( // @TODO(jwerle): use `OpenDialogOptions` here instead
         const std::string&,
         bool,
         bool,
         bool,
         bool,
-        const std::string&, const std::string&, const std::string&
+        const std::string&,
+        const std::string&,
+        const std::string&
       );
-      void showInspector();
-
-      void setSystemMenu(const std::string& seq, const std::string& menu);
-      void setSystemMenuItemEnabled(bool enabled, int barPos, int menuPos);
-      int openExternal(const std::string& s);
-      ScreenSize getScreenSize();
   };
 }
 #endif

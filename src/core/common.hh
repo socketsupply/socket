@@ -24,6 +24,11 @@
 #define TO_STR(arg) #arg
 #define STR_VALUE(arg) TO_STR(arg)
 
+#define IN_URANGE(c, a, b) (                  \
+    (unsigned char) c >= (unsigned char) a && \
+    (unsigned char) c <= (unsigned char) b    \
+)
+
 #define IMAX_BITS(m) ((m)/((m) % 255+1) / 255 % 255 * 8 + 7-86 / ((m) % 255+12))
 #define RAND_MAX_WIDTH IMAX_BITS(RAND_MAX)
 
@@ -33,13 +38,13 @@ namespace SSC {
   using MessageCallback = std::function<void(const std::string)>;
   using ExitCallback = std::function<void(int code)>;
 
+  constexpr auto full_version = STR_VALUE(VERSION) " (" STR_VALUE(VERSION_HASH) ")";
   constexpr auto version_hash = STR_VALUE(VERSION_HASH);
   constexpr auto version = STR_VALUE(VERSION);
-  constexpr auto full_version = STR_VALUE(VERSION) " (" STR_VALUE(VERSION_HASH) ")";
 
-  static inline std::string encodeURIComponent(const std::string& sSrc);
-  static inline std::string decodeURIComponent(const std::string& sSrc);
-  static inline std::string trim(std::string str);
+  static inline std::string encodeURIComponent (const std::string& sSrc);
+  static inline std::string decodeURIComponent (const std::string& sSrc);
+  static inline std::string trim (std::string str);
 
   //
   // Cross platform support for strings
@@ -179,6 +184,99 @@ namespace SSC {
     vec.push_back(buff);
 
     return vec;
+  }
+
+  static inline size_t decodeUTF8 (char *output, const char *input, size_t length) {
+    unsigned char cp = 0; // code point
+    unsigned char lower = 0x80;
+    unsigned char upper = 0xBF;
+
+    int x = 0; // cp needed
+    int y = 0; // cp  seen
+    int size = 0; // output size
+
+    for (int i = 0; i < length; ++i) {
+      auto b = (unsigned char) input[i];
+
+      if (b == 0) {
+        output[size++] = 0;
+        continue;
+      }
+
+      if (x == 0) {
+        // 1 byte
+        if (IN_URANGE(b, 0x00, 0x7F)) {
+          output[size++] = b;
+          continue;
+        }
+
+        if (!IN_URANGE(b, 0xC2, 0xF4)) {
+          break;
+        }
+
+        // 2 byte
+        if (IN_URANGE(b, 0xC2, 0xDF)) {
+          x = 1;
+          cp = b - 0xC0;
+        }
+
+        // 3 byte
+        if (IN_URANGE(b, 0xE0, 0xEF)) {
+          if (b == 0xE0) {
+            lower = 0xA0;
+          } else if (b == 0xED) {
+            upper = 0x9F;
+          }
+
+          x = 2;
+          cp = b - 0xE0;
+        }
+
+        // 4 byte
+        if (IN_URANGE(b, 0xF0, 0xF4)) {
+          if (b == 0xF0) {
+            lower = 0x90;
+          } else if (b == 0xF4) {
+            upper = 0x8F;
+          }
+
+          x = 3;
+          cp = b - 0xF0;
+        }
+
+        cp = cp * pow(64, x);
+        continue;
+      }
+
+      if (!IN_URANGE(b, lower, upper)) {
+        lower = 0x80;
+        upper = 0xBF;
+
+        // revert
+        cp = 0;
+        x = 0;
+        y = 0;
+        i--;
+        continue;
+      }
+
+      lower = 0x80;
+      upper = 0xBF;
+      y++;
+      cp += (b - 0x80) * pow(64, x - y);
+
+      if (y != x) {
+        continue;
+      }
+
+      output[size++] = cp;
+      // continue to next
+      cp = 0;
+      x = 0;
+      y = 0;
+    }
+
+    return size;
   }
 
   template <typename ...Args> std::string format (const std::string& s, Args ...args) {

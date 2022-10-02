@@ -48,9 +48,10 @@ namespace SSC {
   }
 
   class App : public IApp {
+    public:
 #ifdef __APPLE__
 #if !defined(TARGET_OS_IPHONE) && !defined(TARGET_IPHONE_SIMULATOR)
-    NSAutoreleasePool* pool = [NSAutoreleasePool new];
+      NSAutoreleasePool* pool = [NSAutoreleasePool new];
 #endif
 #elif defined(_WIN32)
       MSG msg;
@@ -61,7 +62,6 @@ namespace SSC {
       Bridge *bridge;
 #endif
 
-    public:
       static std::atomic<bool> isReady;
       bool fromSSC = false;
 #ifdef _WIN32
