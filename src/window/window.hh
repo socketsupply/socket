@@ -118,8 +118,14 @@ namespace SSC {
       void closeContextMenu(const std::string&);
       void closeContextMenu();
       void setBackgroundColor(int r, int g, int b, float a);
-      void closeContextMenu();
-      void openDialog(const std::string&, bool, bool, bool, bool, const std::string&, const std::string&, const std::string&);
+      void openDialog( // @TODO(jwerle): use `OpenDialogOptions` here instead
+        const std::string&,
+        bool,
+        bool,
+        bool,
+        bool,
+        const std::string&, const std::string&, const std::string&
+      );
       void showInspector();
 
       void setSystemMenu(const std::string& seq, const std::string& menu);
