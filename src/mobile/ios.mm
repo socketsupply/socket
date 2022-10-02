@@ -7,7 +7,7 @@
 #include <map>
 
 #include "../core/runtime-preload.hh"
-#include "../window/window.hh"
+#include "../window/options.hh"
 #include "../core/apple.hh"
 #include "../core/core.hh"
 
