@@ -632,12 +632,12 @@ MAIN {
     .defaultHeight = height,
     .defaultWidth = width,
     .headless = isHeadless,
-    .appData = app.appData,
     .isTest = isTest,
     .argv = argvArray.str(),
     .cwd = cwd,
+    .appData = app.appData,
     .onMessage = onMessage,
-    .onExit = shutdownHandler,
+    .onExit = shutdownHandler
   });
 
   Window* defaultWindow = windowFactory.createDefaultWindow(WindowOptions { });

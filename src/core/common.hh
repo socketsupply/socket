@@ -4,9 +4,11 @@
 #include <math.h>
 
 #include <any>
+#include <array>
 #include <iostream>
 #include <filesystem>
 #include <fstream>
+#include <functional>
 #include <map>
 #include <mutex>
 #include <regex>
@@ -14,6 +16,12 @@
 #include <sstream>
 #include <string>
 #include <vector>
+
+#if defined(_WIN32)
+#include <Windows.h>
+#include <tchar.h>
+#include <wrl.h>
+#endif
 
 #ifndef DEBUG
 #define DEBUG 0
