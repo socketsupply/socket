@@ -15,6 +15,7 @@ namespace SSC {
   std::atomic<bool> App::isReady {false};
 
   App::App (int instanceId)  {
+    this->bridge =  new Bridge(this);
     auto webkitContext = webkit_web_context_get_default();
     gtk_init_check(0, nullptr);
     // TODO enforce single instance is set
@@ -28,7 +29,7 @@ namespace SSC {
 
         Parse cmd(msg);
 
-        auto invoked = app->bridge.invoke(cmd, [=](auto seq, auto result, auto post) {
+        auto invoked = app->bridge->invoke(cmd, [=](auto seq, auto result, auto post) {
           auto size = post.body != nullptr ? post.length : result.size();
           auto body = post.body != nullptr ? post.body : result.c_str();
 

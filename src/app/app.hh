@@ -12,6 +12,10 @@
 #include "../core/core.hh"
 
 namespace SSC {
+#ifdef __linux__
+  class Bridge;
+#endif
+
   //
   // Interfaces make sure all operating systems implement the same stuff
   //
@@ -53,6 +57,8 @@ namespace SSC {
       WNDCLASSEX wcex;
       _In_ HINSTANCE hInstance;
       DWORD mainThread = GetCurrentThreadId();
+#elif defined(__linux__)
+      Bridge *bridge;
 #endif
 
     public:
@@ -63,11 +69,11 @@ namespace SSC {
 #else
       App (int);
 #endif
-      int run();
-      void kill();
-      void restart();
-      void dispatch(std::function<void()> work);
-      std::string getCwd(const std::string&);
+      int run ();
+      void kill ();
+      void restart ();
+      void dispatch (std::function<void()> work);
+      std::string getCwd (const std::string&);
   };
 }
 #endif

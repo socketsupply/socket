@@ -68,7 +68,7 @@ namespace SSC {
           }
         }
 
-        if (!window->app.bridge.route(str, buf, bufsize)) {
+        if (!window->app.bridge->route(str, buf, bufsize)) {
           if (window->onMessage != nullptr) {
             window->onMessage(str);
           }
@@ -118,8 +118,6 @@ namespace SSC {
       "load-changed",
       G_CALLBACK(+[](WebKitWebView* wv, WebKitLoadEvent event, gpointer arg) {
         auto *window = static_cast<Window*>(arg);
-        auto core = window->app.bridge.core;
-
         if (event == WEBKIT_LOAD_STARTED) {
           window->app.isReady = false;
         }
