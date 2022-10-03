@@ -6,6 +6,7 @@ $LIB_PATH = "$env:LOCALAPPDATA\Programs\socketsupply\lib"
 $BIN_PATH = "$env:LOCALAPPDATA\Programs\socketsupply\bin"
 $INCLUDE_PATH = "$env:LOCALAPPDATA\Programs\socketsupply\include"
 $WORKING_PATH = $OLD_CWD
+$WORKING_BUILD_PATH = "$WORKING_PATH\build"
 
 #
 # Compile with the current git revision of the repository
@@ -14,24 +15,40 @@ Function Build {
   $VERSION_HASH = $(git rev-parse --short HEAD) 2>&1 | % ToString
   $VERSION = $(type VERSION.txt) 2>&1 | % ToString
   $BUILD_TIME = [int] (New-TimeSpan -Start (Get-Date "01/01/1970") -End (Get-Date)).TotalSeconds
-  $BUILD_PATH = "$WORKING_PATH\build"
 
-  if (-not (Test-Path -Path $BUILD_PATH -PathType Container)) {
+  if (-not (Test-Path -Path "$WORKING_BUILD_PATH\libuv" -PathType Container)) {
+    (New-Item -ItemType Directory -Force -Path "$WORKING_BUILD_PATH") > $null
     Write-Output "# cloning libuv from github..."
-    (git clone -q --depth=1 https://github.com/libuv/libuv.git $BUILD_PATH) > $null
-    (New-Item -ItemType Directory -Force -Path "$BUILD_PATH\lib") > $null
-    Write-Output "ok - cloned libuv $BUILD_PATH"
+    (git clone -q --depth=1 https://github.com/libuv/libuv.git $WORKING_BUILD_PATH\libuv) > $null
+    Write-Output "ok - cloned libuv into $WORKING_BUILD_PATH\libuv"
+  }
 
-    cd "$BUILD_PATH\lib"
+  if (-not (Test-Path -Path "$WORKING_BUILD_PATH\libuv\build\Release\uv_a.lib" -PathType Leaf)) {
+    (New-Item -ItemType Directory -Force -Path "$WORKING_BUILD_PATH\libuv\build") > $null
+
     Write-Output "# bulding libuv..."
+    cd "$WORKING_BUILD_PATH\libuv\build"
     (cmake ..) > $null
-    cd "$WORKING_PATH"
-    (cmake --build "$BUILD_PATH\lib" --config Release) > $null
+
+    cd "$WORKING_BUILD_PATH\libuv"
+    (cmake --build "$WORKING_BUILD_PATH\libuv\build" --config Release) > $null
     Write-Output "ok - built libuv"
   }
 
+  if (-not (Test-Path -Path "$WORKING_BUILD_PATH\lib\uv_a.lib" -PathType Leaf)) {
+    (New-Item -ItemType Directory -Force -Path "$WORKING_BUILD_PATH\lib") > $null
+    Copy-Item $WORKING_BUILD_PATH\libuv\build\Release\uv_a.lib -Destination "$WORKING_BUILD_PATH\lib\uv_a.lib"
+  }
+
+  if (-not (Test-Path -Path "$WORKING_BUILD_PATH\include\uv.h" -PathType Leaf)) {
+    (New-Item -ItemType Directory -Force -Path "$WORKING_BUILD_PATH\include") > $null
+    Copy-Item -Path "$WORKING_BUILD_PATH\libuv\include\*" -Destination "$WORKING_BUILD_PATH\include" -Recurse -Force
+  }
+
+  cd "$WORKING_PATH"
+  (New-Item -ItemType Directory -Force -Path "$WORKING_BUILD_PATH\bin") > $null
   Write-Output "# compiling the build tool..."
-  clang++ src\cli\cli.cc -o $WORKING_PATH\bin\ssc.exe -std=c++2a -DSSC_BUILD_TIME="$($BUILD_TIME)" -DSSC_VERSION_HASH="$($VERSION_HASH)" -DSSC_VERSION="$($VERSION)"
+  clang++ src\cli\cli.cc -o $WORKING_BUILD_PATH\bin\ssc.exe -std=c++2a -DSSC_BUILD_TIME="$($BUILD_TIME)" -DSSC_VERSION_HASH="$($VERSION_HASH)" -DSSC_VERSION="$($VERSION)"
   # -I 'C:\Program Files (x86)\Windows Kits\10\Include\10.0.19041.0\shared' `
 
   if ($? -ne 1) {
@@ -81,17 +98,18 @@ Function Install-Files {
   (New-Item -ItemType Directory -Force -Path "$INCLUDE_PATH") > $null
 
   # install `bin\`
-  Copy-Item $WORKING_PATH\bin\ssc.exe -Destination "$BIN_PATH"
+  Copy-Item -Path "$WORKING_BUILD_PATH\bin\*" -Destination "$BIN_PATH"
 
   # install `include\`
-  Copy-Item -Path "$BUILD_PATH\include\*" -Destination "$INCLUDE_PATH\include" -Recurse -Container
+  Copy-Item -Path "$WORKING_PATH\include\*" -Destination "$INCLUDE_PATH" -Recurse -Force
+  Copy-Item -Path "$WORKING_BUILD_PATH\include\*" -Destination "$INCLUDE_PATH" -Recurse -Force
 
   # install `src\`
-  Copy-Item -Path "$WORKING_PATH\src\*" -Destination "$SRC_PATH\src" -Recurse -Force
+  Copy-Item -Path "$WORKING_PATH\src\*" -Destination "$SRC_PATH" -Recurse -Force
 
   # install `lib\`
-  Copy-Item -Path "$WORKING_PATH\lib\*" -Destination "$LIB_PATH\lib" -Recurse -Force
-  Copy-Item $BUILD_PATH\lib\Release\uv_a.lib -Destination "$LIB_PATH\uv_a.lib"
+  Copy-Item -Path "$WORKING_PATH\lib\*" -Destination "$LIB_PATH" -Recurse -Force
+  Copy-Item -Path "$WORKING_BUILD_PATH\lib\*" -Destination "$LIB_PATH" -Recurse -Force
 
   Write-Output "ok - installed files to '$ASSET_PATH'."
 }
@@ -109,20 +127,20 @@ Function Install-WebView2 {
 
   # ensure paths
   (New-Item -Type Directory -Path $tmpdir) > $null
-  (New-Item -ItemType Directory -Force -Path "$LIB_PATH") > $null
-  (New-Item -ItemType Directory -Force -Path "$INCLUDE_PATH") > $null
+  (New-Item -ItemType Directory -Force -Path "$WORKING_BUILD_PATH\lib") > $null
+  (New-Item -ItemType Directory -Force -Path "$WORKING_BUILD_PATH\include\WebView2") > $null
 
   # download and extract
   Write-Output "# downloading latest WebView2 header and library files..."
   Invoke-WebRequest "https://www.nuget.org/api/v2/package/Microsoft.Web.WebView2/$webview2_version" -O "$tmpdir\webview2.zip"
   Expand-Archive -Path $tmpdir\WebView2.zip -DestinationPath $tmpdir\WebView2
 
-  # install files
+  # install files into project `lib\` dir
   Write-Output "# installing latest WebView2 header and library files..."
-  Copy-Item -Path $base\include\WebView2.h "$INCLUDE_PATH"
-  Copy-Item -Path $base\include\WebView2Experimental.h "$INCLUDE_PATH"
-  Copy-Item -Path $base\include\WebView2EnvironmentOptions.h "$INCLUDE_PATH"
-  Copy-Item -Path $base\x64\WebView2LoaderStatic.lib "$LIB_PATH"
+  Copy-Item -Path $base\include\WebView2.h "$WORKING_BUILD_PATH\include\WebView2"
+  Copy-Item -Path $base\include\WebView2Experimental.h "$WORKING_BUILD_PATH\include\WebView2"
+  Copy-Item -Path $base\include\WebView2EnvironmentOptions.h "$WORKING_BUILD_PATH\include\WebView2"
+  Copy-Item -Path $base\x64\WebView2LoaderStatic.lib "$WORKING_BUILD_PATH\lib"
 
   Write-Output "ok - updated WebView2 header files..."
 }

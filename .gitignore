@@ -26,3 +26,10 @@ gradlew.bat
 compile_flags.txt
 .classpath
 gradle.properties
+include/WebView2/README.md
+include/WebView2/WebView2.h
+include/WebView2/WebView2EnvironmentOptions.h
+include/WebView2/WebView2Experimental.h
+lib/WebView2LoaderStatic.lib
+lib/libuv-ios.a
+lib/libuv.a
