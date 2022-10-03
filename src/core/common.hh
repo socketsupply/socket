@@ -4,6 +4,7 @@
 #include <errno.h>
 #include <math.h>
 #include <stdlib.h>
+#include <stdio.h>
 
 #if !defined(_WIN32)
 #include <arpa/inet.h>

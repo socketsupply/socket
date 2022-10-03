@@ -8,6 +8,8 @@
 #pragma comment(lib, "Gdi32.lib")
 
 namespace SSC {
+  static FILE* console;
+
   inline void alert (const SSC::WString &ws) {
     MessageBoxA(nullptr, SSC::WStringToString(ws).c_str(), _TEXT("Alert"), MB_OK | MB_ICONSTOP);
   }
@@ -30,20 +32,20 @@ namespace SSC {
 
     HMODULE hUxtheme = LoadLibraryExW(L"uxtheme.dll", nullptr, LOAD_LIBRARY_SEARCH_SYSTEM32);
 
-    setWindowCompositionAttribute = reinterpret_cast<SetWindowCompositionAttribute>(GetProcAddress(
+    SSC::setWindowCompositionAttribute = reinterpret_cast<SSC::SetWindowCompositionAttribute>(GetProcAddress(
       GetModuleHandleW(L"user32.dll"),
       "SetWindowCompositionAttribute")
     );
 
     if (hUxtheme) {
-      refreshImmersiveColorPolicyState =
-        (RefreshImmersiveColorPolicyState) GetProcAddress(hUxtheme, MAKEINTRESOURCEA(104));
+      SSC::refreshImmersiveColorPolicyState =
+        (SSC::RefreshImmersiveColorPolicyState) GetProcAddress(hUxtheme, MAKEINTRESOURCEA(104));
 
-      shouldSystemUseDarkMode =
-        (ShouldSystemUseDarkMode) GetProcAddress(hUxtheme, MAKEINTRESOURCEA(138));
+      SSC::shouldSystemUseDarkMode =
+        (SSC::ShouldSystemUseDarkMode) GetProcAddress(hUxtheme, MAKEINTRESOURCEA(138));
 
-      allowDarkModeForApp =
-        (AllowDarkModeForApp) GetProcAddress(hUxtheme, MAKEINTRESOURCEA(135));
+      SSC::allowDarkModeForApp =
+        (SSC::AllowDarkModeForApp) GetProcAddress(hUxtheme, MAKEINTRESOURCEA(135));
     }
 
     allowDarkModeForApp(shouldSystemUseDarkMode());

@@ -156,45 +156,59 @@ namespace SSC {
   }
 
   String Core::getNetworkInterfaces () const {
-    struct ifaddrs *interfaces = nullptr;
-    struct ifaddrs *interface = nullptr;
-    int success = getifaddrs(&interfaces);
+    uv_interface_address_t *interfaces = nullptr;
     StringStream value;
     StringStream v4;
     StringStream v6;
+    int count = 0;
 
-    if (success != 0) {
+    int rc = uv_interface_addresses(&interfaces, &count);
+    debug("rc=%d: %s", rc, uv_strerror(rc));
+    if (rc != 0) {
       return "{\"err\": {\"message\":\"unable to get interfaces\"}}";
     }
 
-    interface = interfaces;
+    debug("count=%lu", count);
     v4 << "\"ipv4\":{";
     v6 << "\"ipv6\":{";
 
-    while (interface != nullptr) {
-      String address = "";
-      const struct sockaddr_in *addr = (const struct sockaddr_in*)interface->ifa_addr;
+    for (int i = 0; i < count; ++i) {
+      uv_interface_address_t interface = interfaces[i];
+      struct sockaddr_in *addr = (struct sockaddr_in*) &interface.address.address4;
+      char mac[18] = {0};
+      snprintf(mac, 18, "%02x:%02x:%02x:%02x:%02x:%02x",
+        (unsigned char) interface.phys_addr[0],
+        (unsigned char) interface.phys_addr[1],
+        (unsigned char) interface.phys_addr[2],
+        (unsigned char) interface.phys_addr[3],
+        (unsigned char) interface.phys_addr[4],
+        (unsigned char) interface.phys_addr[5]
+      );
 
       if (addr->sin_family == AF_INET) {
-        struct sockaddr_in *addr = (struct sockaddr_in*)interface->ifa_addr;
-        v4 << "\"" << interface->ifa_name << "\":\"" << SSC::addrToIPv4(addr) << "\",";
+        v4 << "\"" << interface.name << "\":{";
+        v4 << "\"address\":\"" << SSC::addrToIPv4(addr) << "\",";
+        v4 << "\"mac\":\"" << String(mac, 17) << "\",";
+        v4 << "\"internal\":" << (interface.is_internal == 0 ? "false" : "true") << "";
+        v4 << "},";
       }
 
       if (addr->sin_family == AF_INET6) {
-        struct sockaddr_in6 *addr = (struct sockaddr_in6*)interface->ifa_addr;
-        v6 << "\"" << interface->ifa_name << "\":\"" << SSC::addrToIPv6(addr) << "\",";
+        v6 << "\"" << interface.name << "\":\{";
+        v6 << "\"address\":\"" << SSC::addrToIPv6((struct sockaddr_in6*) addr) << "\",";
+        v6 << "\"mac\":\"" << String(mac, 17) << "\",";
+        v6 << "\"internal\":" << (interface.is_internal == 0 ? "false" : "true") << "";
+        v6 << "},";
       }
-
-      interface = interface->ifa_next;
     }
+
+    uv_free_interface_addresses(interfaces, count);
 
     v4 << "\"local\":\"0.0.0.0\"}";
     v6 << "\"local\":\"::1\"}";
 
-    getifaddrs(&interfaces);
-    freeifaddrs(interfaces);
-
     value << "{\"data\":{" << v4.str() << "," << v6.str() << "}}";
+
     return value.str();
   }
 

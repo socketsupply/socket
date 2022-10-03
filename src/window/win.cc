@@ -1,79 +1,17 @@
 #include "window.hh"
 
-static inline void alert (const SSC::WString &ws) {
-  MessageBoxA(nullptr, SSC::WStringToString(ws).c_str(), _TEXT("Alert"), MB_OK | MB_ICONSTOP);
-}
-
-static inline void alert (const SSC::String &s) {
-  MessageBoxA(nullptr, s.c_str(), _TEXT("Alert"), MB_OK | MB_ICONSTOP);
-}
-
-static inline void alert (const char* s) {
-  MessageBoxA(nullptr, s, _TEXT("Alert"), MB_OK | MB_ICONSTOP);
-}
-
 namespace SSC {
-  using IEnvHandler = ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler;
-  using IConHandler = ICoreWebView2CreateCoreWebView2ControllerCompletedHandler;
-  using INavHandler = ICoreWebView2NavigationCompletedEventHandler;
-  using IRecHandler = ICoreWebView2WebMessageReceivedEventHandler;
-  using IArgs = ICoreWebView2WebMessageReceivedEventArgs;
+  static inline void alert (const SSC::WString &ws) {
+    MessageBoxA(nullptr, SSC::WStringToString(ws).c_str(), _TEXT("Alert"), MB_OK | MB_ICONSTOP);
+  }
 
-	// constexpr COLORREF darkBkColor = 0x383838;
-	// constexpr COLORREF darkTextColor = 0xFFFFFF;
-	// static HBRUSH hbrBkgnd = nullptr;
+  static inline void alert (const SSC::String &s) {
+    MessageBoxA(nullptr, s.c_str(), _TEXT("Alert"), MB_OK | MB_ICONSTOP);
+  }
 
-  enum WINDOWCOMPOSITIONATTRIB {
-    WCA_UNDEFINED = 0,
-    WCA_NCRENDERING_ENABLED = 1,
-    WCA_NCRENDERING_POLICY = 2,
-    WCA_TRANSITIONS_FORCEDISABLED = 3,
-    WCA_ALLOW_NCPAINT = 4,
-    WCA_CAPTION_BUTTON_BOUNDS = 5,
-    WCA_NONCLIENT_RTL_LAYOUT = 6,
-    WCA_FORCE_ICONIC_REPRESENTATION = 7,
-    WCA_EXTENDED_FRAME_BOUNDS = 8,
-    WCA_HAS_ICONIC_BITMAP = 9,
-    WCA_THEME_ATTRIBUTES = 10,
-    WCA_NCRENDERING_EXILED = 11,
-    WCA_NCADORNMENTINFO = 12,
-    WCA_EXCLUDED_FROM_LIVEPREVIEW = 13,
-    WCA_VIDEO_OVERLAY_ACTIVE = 14,
-    WCA_FORCE_ACTIVEWINDOW_APPEARANCE = 15,
-    WCA_DISALLOW_PEEK = 16,
-    WCA_CLOAK = 17,
-    WCA_CLOAKED = 18,
-    WCA_ACCENT_POLICY = 19,
-    WCA_FREEZE_REPRESENTATION = 20,
-    WCA_EVER_UNCLOAKED = 21,
-    WCA_VISUAL_OWNER = 22,
-    WCA_HOLOGRAPHIC = 23,
-    WCA_EXCLUDED_FROM_DDA = 24,
-    WCA_PASSIVEUPDATEMODE = 25,
-    WCA_USEDARKMODECOLORS = 26,
-    WCA_LAST = 27
-  };
-
-  struct WINDOWCOMPOSITIONATTRIBDATA {
-    WINDOWCOMPOSITIONATTRIB Attrib;
-    PVOID pvData;
-    SIZE_T cbData;
-  };
-
-  using RefreshImmersiveColorPolicyState = VOID(WINAPI*)();
-  using ShouldSystemUseDarkMode = BOOL(WINAPI*)();
-  using AllowDarkModeForApp = BOOL(WINAPI*)(BOOL allow);
-  using SetWindowCompositionAttribute = BOOL(WINAPI *)(HWND hWnd, WINDOWCOMPOSITIONATTRIBDATA*);
-
-  static RefreshImmersiveColorPolicyState refreshImmersiveColorPolicyState = nullptr;
-  static ShouldSystemUseDarkMode shouldSystemUseDarkMode = nullptr;
-  static AllowDarkModeForApp allowDarkModeForApp = nullptr;
-  static SetWindowCompositionAttribute setWindowCompositionAttribute = nullptr;
-
-  static auto bgBrush = CreateSolidBrush(RGB(0, 0, 0));
-  static FILE* console;
-
-  class DragDrop;
+  static inline void alert (const char* s) {
+    MessageBoxA(nullptr, s, _TEXT("Alert"), MB_OK | MB_ICONSTOP);
+  }
 
   class CDataObject : public IDataObject {
     public:
@@ -95,14 +33,14 @@ namespace SSC {
       ~CDataObject();
 
     private:
-      int LookupFormatEtc(FORMATETC *pFormatEtc);
+      int LookupFormatEtc (FORMATETC *pFormatEtc);
       LONG m_lRefCount;
       FORMATETC *m_pFormatEtc;
       STGMEDIUM *m_pStgMedium;
       LONG m_nNumFormats;
   };
 
-  CDataObject::CDataObject(FORMATETC *fmtetc, STGMEDIUM *stgmed, int count) {
+  CDataObject::CDataObject (FORMATETC *fmtetc, STGMEDIUM *stgmed, int count) {
     m_lRefCount  = 1;
     m_nNumFormats = count;
 
@@ -115,16 +53,16 @@ namespace SSC {
     }
   }
 
-  CDataObject::~CDataObject() {
+  CDataObject::~CDataObject () {
     if(m_pFormatEtc) delete[] m_pFormatEtc;
     if(m_pStgMedium) delete[] m_pStgMedium;
   }
 
-  ULONG __stdcall CDataObject::AddRef(void) {
+  ULONG __stdcall CDataObject::AddRef (void) {
     return InterlockedIncrement(&m_lRefCount);
   }
 
-  ULONG __stdcall CDataObject::Release(void) {
+  ULONG __stdcall CDataObject::Release (void) {
     LONG count = InterlockedDecrement(&m_lRefCount);
 
     if (count == 0) {
@@ -135,7 +73,7 @@ namespace SSC {
     }
   }
 
-  HRESULT __stdcall CDataObject::QueryInterface(REFIID iid, void **ppvObject){
+  HRESULT __stdcall CDataObject::QueryInterface (REFIID iid, void **ppvObject){
     if (iid == IID_IDataObject || iid == IID_IUnknown) {
       AddRef();
       *ppvObject = this;
@@ -146,7 +84,7 @@ namespace SSC {
     }
   }
 
-  HGLOBAL DupMem(HGLOBAL hMem) {
+  HGLOBAL DupMem (HGLOBAL hMem) {
     DWORD len = GlobalSize(hMem);
     PVOID source = GlobalLock(hMem);
     PVOID dest = GlobalAlloc(GMEM_FIXED, len);
@@ -156,7 +94,7 @@ namespace SSC {
     return dest;
   }
 
-  int CDataObject::LookupFormatEtc(FORMATETC *pFormatEtc) {
+  int CDataObject::LookupFormatEtc (FORMATETC *pFormatEtc) {
     for (int i = 0; i < m_nNumFormats; i++) {
       if((pFormatEtc->tymed & m_pFormatEtc[i].tymed)   &&
         pFormatEtc->cfFormat == m_pFormatEtc[i].cfFormat &&
