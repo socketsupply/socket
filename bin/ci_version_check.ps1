@@ -1,11 +1,11 @@
 $BIN_PATH = "$env:LOCALAPPDATA\Programs\socketsupply\bin"
 
 if ($env:Path -notlike "*$BIN_PATH*") {
-  $NEW_PATH = "$BIN_PATH;$env:Path"
-    $env:Path = $NEW_PATH
+  $new_path = "$BIN_PATH;$env:Path"
+  $env:Path = $new_path
 }
 
-$VERSION_SSC = $(ssc.exe -v) 2>&1 | % ToString
+$VERSION_SSC = $(ssc -v) 2>&1 | % ToString
 $VERSION_TXT = $(type VERSION.txt) 2>&1 | % ToString
 $VERSION_GIT = $(git rev-parse --short HEAD) 2>&1 | % ToString
 $VERSION_EXPECTED = "$VERSION_TXT ($VERSION_GIT)"
