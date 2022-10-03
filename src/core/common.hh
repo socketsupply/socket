@@ -6,9 +6,11 @@
 #include <stdlib.h>
 
 #if !defined(_WIN32)
+#include <arpa/inet.h>
 #include <ifaddrs.h>
 #include <sys/socket.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 #include <unistd.h>
 #endif
 
@@ -59,7 +61,6 @@
 #if defined(_WIN32)
 #include <Windows.h>
 
-#include <arpa/inet.h>
 #include <dwmapi.h>
 #include <io.h>
 #include <tchar.h>
@@ -71,8 +72,8 @@
 #include <shlobj_core.h>
 #include <shobjidl.h>
 
-#define ISATTY _isatty
-#define FILENO _fileno
+#define isatty _isatty
+#define fileno _fileno
 
 #pragma comment(lib,"advapi32.lib")
 #pragma comment(lib,"shell32.lib")
@@ -80,11 +81,6 @@
 #pragma comment(lib,"user32.lib")
 #pragma comment(lib,"uv_a.lib")
 #pragma comment(lib,"Gdi32.lib")
-#else // !_WIN32
-#include <unistd.h>
-#include <sys/wait.h>
-#define ISATTY isatty
-#define FILENO fileno
 #endif
 
 #include <any>
