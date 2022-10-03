@@ -74,13 +74,6 @@
 
 #define isatty _isatty
 #define fileno _fileno
-
-#pragma comment(lib, "advapi32.lib")
-#pragma comment(lib, "shell32.lib")
-#pragma comment(lib, "version.lib")
-#pragma comment(lib, "user32.lib")
-#pragma comment(lib, "uv_a.lib")
-#pragma comment(lib, "Gdi32.lib")
 #endif
 
 #include <any>

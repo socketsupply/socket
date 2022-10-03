@@ -4,8 +4,9 @@
 #include "app.hh"
 
 #include <uxtheme.h>
-#pragma comment(lib,"UxTheme.lib")
-#pragma comment(lib,"Dwmapi.lib")
+#pragma comment(lib, "UxTheme.lib")
+#pragma comment(lib, "Dwmapi.lib")
+#pragma comment(lib, "Gdi32.lib")
 
 namespace SSC {
   inline void alert (const SSC::WString &ws) {
