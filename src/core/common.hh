@@ -4,12 +4,12 @@
 #include <errno.h>
 #include <math.h>
 #include <stdlib.h>
-#include <sys/socket.h>
-#include <sys/types.h>
 #include <unistd.h>
 
 #if !defined(_WIN32)
 #include <ifaddrs.h>
+#include <sys/socket.h>
+#include <sys/types.h>
 #endif
 
 // macOS/iOS
