@@ -4,15 +4,6 @@
 #include <shobjidl.h>
 #include <shlobj_core.h>
 
-#pragma comment(lib,"advapi32.lib")
-#pragma comment(lib,"shell32.lib")
-#pragma comment(lib,"version.lib")
-#pragma comment(lib,"user32.lib")
-#pragma comment(lib,"WebView2LoaderStatic.lib")
-#pragma comment(lib,"uv_a.lib")
-#pragma comment(lib,"Dwmapi.lib")
-#pragma comment(lib,"Gdi32.lib")
-
 #include "window.hh"
 #include "../app/app.hh"
 #include "../core/core.hh"
