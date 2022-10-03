@@ -97,19 +97,31 @@ Function Install-Files {
   (New-Item -ItemType Directory -Force -Path "$SRC_PATH") > $null
   (New-Item -ItemType Directory -Force -Path "$INCLUDE_PATH") > $null
 
-  # install `bin\`
-  Copy-Item -Path "$WORKING_BUILD_PATH\bin\*" -Destination "$BIN_PATH"
-
   # install `include\`
-  Copy-Item -Path "$WORKING_PATH\include\*" -Destination "$INCLUDE_PATH" -Recurse -Force
-  Copy-Item -Path "$WORKING_BUILD_PATH\include\*" -Destination "$INCLUDE_PATH" -Recurse -Force
+  if (Test-Path -Path "$WORKING_PATH\include" -PathType Container) {
+    Copy-Item -Path "$WORKING_PATH\include\*" -Destination "$INCLUDE_PATH" -Recurse -Force
+  }
+
+  if (Test-Path -Path "$WORKING_BUILD_PATH\include" -PathType Container) {
+    Copy-Item -Path "$WORKING_BUILD_PATH\include\*" -Destination "$INCLUDE_PATH" -Recurse -Force
+  }
+
+  # install `lib\`
+  if (Test-Path -Path "$WORKING_PATH\lib" -PathType Container) {
+    Copy-Item -Path "$WORKING_PATH\lib\*" -Destination "$LIB_PATH" -Recurse -Force
+  }
+
+  if (Test-Path -Path "$WORKING_BUILD_PATH\lib" -PathType Container) {
+    Copy-Item -Path "$WORKING_BUILD_PATH\lib\*" -Destination "$LIB_PATH" -Recurse -Force
+  }
+
+  # install `bin\`
+  if (Test-Path -Path "$WORKING_BUILD_PATH\include" -PathType Container) {
+    Copy-Item -Path "$WORKING_BUILD_PATH\bin\*" -Destination "$BIN_PATH"
+  }
 
   # install `src\`
   Copy-Item -Path "$WORKING_PATH\src\*" -Destination "$SRC_PATH" -Recurse -Force
-
-  # install `lib\`
-  Copy-Item -Path "$WORKING_PATH\lib\*" -Destination "$LIB_PATH" -Recurse -Force
-  Copy-Item -Path "$WORKING_BUILD_PATH\lib\*" -Destination "$LIB_PATH" -Recurse -Force
 
   Write-Output "ok - installed files to '$ASSET_PATH'."
 }
