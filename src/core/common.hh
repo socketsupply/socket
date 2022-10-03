@@ -2,12 +2,15 @@
 #define SSC_CORE_COMMON_H
 
 #include <errno.h>
-#include <ifaddrs.h>
 #include <math.h>
 #include <stdlib.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
+
+#if !defined(_WIN32)
+#include <ifaddrs.h>
+#endif
 
 // macOS/iOS
 #if defined(__APPLE__)
