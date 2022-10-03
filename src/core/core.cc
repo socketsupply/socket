@@ -159,9 +159,9 @@ namespace SSC {
     struct ifaddrs *interfaces = nullptr;
     struct ifaddrs *interface = nullptr;
     int success = getifaddrs(&interfaces);
-    Stringstream value;
-    Stringstream v4;
-    Stringstream v6;
+    StringStream value;
+    StringStream v4;
+    StringStream v6;
 
     if (success != 0) {
       return "{\"err\": {\"message\":\"unable to get interfaces\"}}";
@@ -286,7 +286,7 @@ namespace SSC {
             }
           })MSG",
           std::to_string(err),
-          std::string(uv_strerror(err))
+          SSC::String(uv_strerror(err))
         );
 
         ctx->end(msg);
@@ -336,7 +336,7 @@ namespace SSC {
           }
         })MSG",
         std::to_string(peerId),
-        std::string(uv_strerror(err)));
+        SSC::String(uv_strerror(err)));
         cb(seq, msg, Post{});
         return;
       }

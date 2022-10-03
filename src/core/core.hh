@@ -18,8 +18,6 @@
 #endif
 
 namespace SSC {
-  using ID = uint64_t;
-  using String = std::string;
   using EventLoopDispatchCallback = std::function<void()>;
 
   constexpr int EVENT_LOOP_POLL_TIMEOUT = 32; // in milliseconds

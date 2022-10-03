@@ -8,11 +8,11 @@
 #pragma comment(lib,"Dwmapi.lib")
 
 namespace SSC {
-  inline void alert (const std::wstring &ws) {
+  inline void alert (const SSC::WString &ws) {
     MessageBoxA(nullptr, SSC::WStringToString(ws).c_str(), _TEXT("Alert"), MB_OK | MB_ICONSTOP);
   }
 
-  inline void alert (const std::string &s) {
+  inline void alert (const SSC::String &s) {
     MessageBoxA(nullptr, s.c_str(), _TEXT("Alert"), MB_OK | MB_ICONSTOP);
   }
 

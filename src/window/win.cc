@@ -1,14 +1,14 @@
 #include "window.hh"
 
-inline void alert (const std::wstring &ws) {
+static inline void alert (const SSC::WString &ws) {
   MessageBoxA(nullptr, SSC::WStringToString(ws).c_str(), _TEXT("Alert"), MB_OK | MB_ICONSTOP);
 }
 
-inline void alert (const std::string &s) {
+static inline void alert (const SSC::String &s) {
   MessageBoxA(nullptr, s.c_str(), _TEXT("Alert"), MB_OK | MB_ICONSTOP);
 }
 
-inline void alert (const char* s) {
+static inline void alert (const char* s) {
   MessageBoxA(nullptr, s, _TEXT("Alert"), MB_OK | MB_ICONSTOP);
 }
 
@@ -311,7 +311,7 @@ namespace SSC {
   }
 
   class DragDrop : public IDropTarget {
-    std::vector<std::string> draggablePayload;
+    SSC::Vector<SSC::String> draggablePayload;
     unsigned int refCount;
 
     public:
@@ -379,12 +379,12 @@ namespace SSC {
       this->draggablePayload.clear();
 
       if (list != 0) {
-        draggablePayload = SSC::split(std::string(list), ';');
+        draggablePayload = SSC::split(SSC::String(list), ';');
 
         GlobalUnlock(list);
         ReleaseStgMedium(&medium);
 
-        std::string json = (
+        SSC::String json = (
           "{"
           "  \"count\":" + std::to_string(this->draggablePayload.size()) + ","
           "  \"inbound\": true,"
@@ -436,7 +436,7 @@ namespace SSC {
       point.x = dragPoint.x - position.x;
       point.y = dragPoint.y - position.y;
 
-      std::string json = (
+      SSC::String json = (
         "{"
         "  \"count\":" + std::to_string(this->draggablePayload.size()) + ","
         "  \"inbound\": false,"
@@ -466,7 +466,7 @@ namespace SSC {
       STGMEDIUM medium = { TYMED_HGLOBAL, { 0 }, 0 };
       UINT len = 0;
 
-      std::vector<std::string> files = this->draggablePayload;
+      SSC::Vector<SSC::String> files = this->draggablePayload;
 
       for (auto &file : files) {
         file = file.substr(12);
@@ -492,8 +492,8 @@ namespace SSC {
       GetCursorPos(&(dropFiles->pt));
 
       char *dropFilePtr = (char *) &dropFiles[1];
-      for (std::vector<std::string>::size_type i = 0; i < files.size(); ++i) {
-        std::string &file = files[i];
+      for (SSC::Vector<SSC::String>::size_type i = 0; i < files.size(); ++i) {
+        SSC::String &file = files[i];
 
         len = (file.length() + 1);
 
@@ -562,7 +562,7 @@ namespace SSC {
       HDROP drop;
       int count;
 
-      std::stringstream filesStringArray;
+      SSC::StringStream filesStringArray;
 
       GetClientRect(child, &rect);
       position = { rect.left, rect.top };
@@ -595,7 +595,7 @@ namespace SSC {
           // append escaped file path with wrapped quotes ('"')
           filesStringArray
             << '"'
-            << SSC::replace(std::string(buf), "\\\\", "\\\\")
+            << SSC::replace(SSC::String(buf), "\\\\", "\\\\")
             << '"';
 
           if (i < count - 1) {
@@ -624,7 +624,7 @@ namespace SSC {
         ) {
           *dragEffect = DROPEFFECT_MOVE;
           for (auto &src : this->draggablePayload) {
-            std::string json = (
+            SSC::String json = (
               "{"
               "  \"src\": \"" + src + "\","
               "  \"x\":" + std::to_string(point.x) + ","
@@ -635,7 +635,7 @@ namespace SSC {
             this->window->eval(SSC::emitToRenderProcess("drop", json));
           }
 
-          std::string json = (
+          SSC::String json = (
             "{"
             "  \"x\":" + std::to_string(point.x) + ","
             "  \"y\":" + std::to_string(point.y) + ""
@@ -711,7 +711,7 @@ namespace SSC {
     ShowWindow(window, SW_SHOW);
     SetWindowLongPtr(window, GWLP_USERDATA, (LONG_PTR) this);
 
-    std::string preload(
+    SSC::String preload(
       "window.external = {\n"
       "  invoke: arg => window.chrome.webview.postMessage(arg)\n"
       "};\n"
@@ -721,8 +721,8 @@ namespace SSC {
     wchar_t modulefile[MAX_PATH];
     GetModuleFileNameW(NULL, modulefile, MAX_PATH);
     auto file = (fs::path { modulefile }).filename();
-    auto filename = StringToWString(file.string());
-    auto path = StringToWString(getEnv("APPDATA"));
+    auto filename = SSC::StringToWString(file.string());
+    auto path = SSC::StringToWString(getEnv("APPDATA"));
 
     auto options = Microsoft::WRL::Make<CoreWebView2EnvironmentOptions>();
     options->put_AdditionalBrowserArguments(L"--allow-file-access-from-files");
@@ -795,7 +795,7 @@ namespace SSC {
                       wchar_t* buf = new wchar_t[l+1];
                       GetWindowTextW(hWnd, buf, l+1);
 
-                      if (WStringToString(buf).find("Chrome") != std::string::npos) {
+                      if (SSC::WStringToString(buf).find("Chrome") != SSC::String::npos) {
                         RevokeDragDrop(hWnd);
                         Window* w = reinterpret_cast<Window*>(GetWindowLongPtr((HWND)window, GWLP_USERDATA));
                         w->drop->childWindow = hWnd;
@@ -814,7 +814,7 @@ namespace SSC {
                       [&](ICoreWebView2*, ICoreWebView2NavigationStartingEventArgs *e) {
                         PWSTR uri;
                         e->get_Uri(&uri);
-                        std::string url(WStringToString(uri));
+                        SSC::String url(SSC::WStringToString(uri));
 
                         if (url.find("file://") != 0 && url.find("http://localhost") != 0) {
                           e->put_Cancel(true);
@@ -867,7 +867,7 @@ namespace SSC {
                       [&](ICoreWebView2* wv, ICoreWebView2NewWindowRequestedEventArgs* e) {
                         // PWSTR uri;
                         // e->get_Uri(&uri);
-                        // std::string url(WStringToString(uri));
+                        // String url(WStringToString(uri));
                         e->put_Handled(true);
                         return S_OK;
                       }
@@ -876,7 +876,7 @@ namespace SSC {
                   );
 
                   webview->AddScriptToExecuteOnDocumentCreated(
-                    StringToWString(preload).c_str(),
+                    SSC::StringToWString(preload).c_str(),
                     Callback<ICoreWebView2AddScriptToExecuteOnDocumentCreatedCompletedHandler>(
                       [&](HRESULT error, PCWSTR id) -> HRESULT {
                         return S_OK;
@@ -892,8 +892,8 @@ namespace SSC {
                       args->TryGetWebMessageAsString(&messageRaw);
 
                       if (onMessage != nullptr) {
-                        std::wstring message(messageRaw);
-                        onMessage(WStringToString(message));
+                      SSC::WString message(messageRaw);
+                        onMessage(SSC::WStringToString(message));
                       }
 
                       CoTaskMemFree(messageRaw);
@@ -1006,7 +1006,7 @@ namespace SSC {
     future.get();
   }
 
-  std::string App::getCwd (const std::string& _) {
+  SSC::String App::getCwd (const SSC::String& _) {
     wchar_t filename[MAX_PATH];
     GetModuleFileNameW(NULL, filename, MAX_PATH);
     auto path = fs::path { filename }.remove_filename();
@@ -1021,10 +1021,10 @@ namespace SSC {
   }
 
   void Window::about () {
-    auto text = std::string(
+    auto text = SSC::String(
       app.appData["title"] + " " +
       "v" + app.appData["version"] + "\n" +
-      "Built with ssc v" + SSC::full_version + "\n" +
+      "Built with ssc v" + SSC::VERSION_FULL_STRING + "\n" +
       app.appData["copyright"]
     );
 
@@ -1064,7 +1064,7 @@ namespace SSC {
     }
   }
 
-  void Window::show (const std::string& seq) {
+  void Window::show (const SSC::String& seq) {
     if (this->opts.headless == false) {
       ShowWindow(window, SW_SHOWNORMAL);
       UpdateWindow(window);
@@ -1099,7 +1099,7 @@ namespace SSC {
     }
   }
 
-  void Window::hide (const std::string& seq) {
+  void Window::hide (const SSC::String& seq) {
     ShowWindow(window, SW_HIDE);
     UpdateWindow(window);
     this->eval(emitToRenderProcess("windowHide", "{}"));
@@ -1120,20 +1120,20 @@ namespace SSC {
     controller->put_Bounds(bounds);
   }
 
-  void Window::eval (const std::string& s) {
+  void Window::eval (const SSC::String& s) {
     app.dispatch([&, this, s] {
       if (this->webview == nullptr) {
         return;
       }
 
       this->webview->ExecuteScript(
-        StringToWString(s).c_str(),
+        SSC::StringToWString(s).c_str(),
         nullptr
       );
     });
   }
 
-  void Window::navigate (const std::string& seq, const std::string& value) {
+  void Window::navigate (const SSC::String& seq, const SSC::String& value) {
     auto index = std::to_string(this->opts.index);
 
     app.dispatch([&, this, seq, value, index] {
@@ -1141,7 +1141,7 @@ namespace SSC {
       this->webview->add_NavigationCompleted(
         Callback<ICoreWebView2NavigationCompletedEventHandler>(
           [&, this, seq, index, token](ICoreWebView2* sender, ICoreWebView2NavigationCompletedEventArgs* args) -> HRESULT {
-            std::string state = "1";
+            SSC::String state = "1";
 
             BOOL success;
             args->get_IsSuccess(&success);
@@ -1159,22 +1159,22 @@ namespace SSC {
         &token
       );
 
-      webview->Navigate(StringToWString(value).c_str());
+      webview->Navigate(SSC::StringToWString(value).c_str());
     });
   }
 
-  void Window::setTitle (const std::string& seq, const std::string& title) {
+  void Window::setTitle (const SSC::String& seq, const SSC::String& title) {
     SetWindowText(window, title.c_str());
 
     if (onMessage != nullptr) {
-      std::string state = "0"; // can this call actually fail?
+      SSC::String state = "0"; // can this call actually fail?
       auto index = std::to_string(this->opts.index);
 
       this->resolvePromise(seq, state, index);
     }
   }
 
-  void Window::setSize (const std::string& seq, int width, int height, int hints) {
+  void Window::setSize (const SSC::String& seq, int width, int height, int hints) {
     auto style = GetWindowLong(window, GWL_STYLE);
 
     if (hints == WINDOW_HINT_FIXED) {
@@ -1215,8 +1215,8 @@ namespace SSC {
     }
   }
 
-  void Window::setSystemMenu (const std::string& seq, const std::string& value) {
-    std::string menu = value;
+  void Window::setSystemMenu (const SSC::String& seq, const SSC::String& value) {
+    SSC::String menu = value;
 
     HMENU hMenubar = GetMenu(window);
 
@@ -1251,32 +1251,32 @@ namespace SSC {
         auto parts = split(line, ':');
         auto title = parts[0];
         int mask = 0;
-        std::string key = "";
+        SSC::String key = "";
 
         auto accelerators = split(parts[1], '+');
-        auto accl = std::string("");
+        auto accl = SSC::String("");
 
         key = trim(parts[1]) == "_" ? "" : trim(accelerators[0]);
 
         if (key.size() > 0) {
-          bool isShift = std::string("ABCDEFGHIJKLMNOPQRSTUVWXYZ").find(key) != -1;
+          bool isShift = SSC::String("ABCDEFGHIJKLMNOPQRSTUVWXYZ").find(key) != -1;
           accl = key;
 
           if (accelerators.size() > 1) {
-            accl = std::string(trim(accelerators[1]) + "+" + key);
+            accl = SSC::String(trim(accelerators[1]) + "+" + key);
             accl = replace(accl, "CommandOrControl", "Ctrl");
             accl = replace(accl, "Command", "Ctrl");
             accl = replace(accl, "Control", "Ctrl");
           }
 
           if (isShift) {
-            accl = std::string("Shift+" + accl);
+            accl = SSC::String("Shift+" + accl);
           }
         }
 
-        auto display = std::string(title + "\t" + accl);
+        auto display = SSC::String(title + "\t" + accl);
         AppendMenuA(hMenu, MF_STRING, itemId, display.c_str());
-        menuMap[itemId] = std::string(title + "\t" + menuTitle);
+        menuMap[itemId] = SSC::String(title + "\t" + menuTitle);
         itemId++;
       }
 
@@ -1312,21 +1312,21 @@ namespace SSC {
     // @TODO(jwerle)
   }
 
-  void Window::closeContextMenu(const std::string &seq) {
+  void Window::closeContextMenu(const SSC::String &seq) {
     // @TODO(jwerle)
   }
 
-  void Window::setContextMenu (const std::string& seq, const std::string& value) {
+  void Window::setContextMenu (const SSC::String& seq, const SSC::String& value) {
     HMENU hPopupMenu = CreatePopupMenu();
 
     auto menuItems = split(value, '_');
     int index = 1;
-    std::vector<std::string> lookup;
+    std::vector<SSC::String> lookup;
     lookup.push_back("");
 
     for (auto item : menuItems) {
       auto pair = split(trim(item), ':');
-      auto key = std::string("");
+      auto key = SSC::String("");
 
       if (pair.size() > 1) {
         key = pair[1];
@@ -1360,7 +1360,7 @@ namespace SSC {
     this->eval(resolveMenuSelection(seq, lookup.at(selection), "contextMenu"));
   }
 
-  int Window::openExternal (const std::string& url) {
+  int Window::openExternal (const SSC::String& url) {
     ShellExecute(nullptr, "Open", url .c_str(), nullptr, nullptr, SW_SHOWNORMAL);
     // TODO how to detect success here. do we care?
     return 0;
@@ -1375,17 +1375,17 @@ namespace SSC {
   }
 
   void Window::openDialog (
-      const std::string& seq,
+      const SSC::String& seq,
       bool isSave,
       bool allowDirs,
       bool allowFiles,
       bool allowMultiple,
-      const std::string& defaultPath,
-      const std::string& title,
-      const std::string& defaultName)
+      const SSC::String& defaultPath,
+      const SSC::String& title,
+      const SSC::String& defaultName)
   {
-    std::vector<std::string> result_paths;
-    std::string result_string = "";
+    std::vector<SSC::String> result_paths;
+    SSC::String result_string = "";
     IShellItemArray *results;
     IShellItem *single_result;
     DWORD dialog_options;
@@ -1480,7 +1480,7 @@ namespace SSC {
       auto normalizedDefaultPath = defaultPath;
       std::replace(normalizedDefaultPath.begin(), normalizedDefaultPath.end(), '/', '\\');
       result = SHCreateItemFromParsingName(
-        std::wstring(normalizedDefaultPath.begin(), normalizedDefaultPath.end()).c_str(),
+        SSC::WString(normalizedDefaultPath.begin(), normalizedDefaultPath.end()).c_str(),
         NULL,
         IID_PPV_ARGS(&defaultFolder)
       );
@@ -1507,11 +1507,11 @@ namespace SSC {
     if (!title.empty()) {
       if (isSave) {
         result = dialog.save->SetTitle(
-          std::wstring(title.begin(), title.end()).c_str()
+          SSC::WString(title.begin(), title.end()).c_str()
         );
       } else {
         result = dialog.open->SetTitle(
-          std::wstring(title.begin(), title.end()).c_str()
+          SSC::WString(title.begin(), title.end()).c_str()
         );
       }
 
@@ -1525,11 +1525,11 @@ namespace SSC {
     if (!defaultName.empty()) {
       if (isSave) {
         result = dialog.save->SetFileName(
-          std::wstring(defaultName.begin(), defaultName.end()).c_str()
+          SSC::WString(defaultName.begin(), defaultName.end()).c_str()
         );
       } else {
         result = dialog.open->SetFileName(
-          std::wstring(defaultName.begin(), defaultName.end()).c_str()
+          SSC::WString(defaultName.begin(), defaultName.end()).c_str()
         );
       }
 
@@ -1587,7 +1587,7 @@ namespace SSC {
         return;
       }
 
-      result_paths.push_back(WStringToString(std::wstring(buf)));
+      result_paths.push_back(SSC::WStringToString(SSC::WString(buf)));
       single_result->Release();
 
       CoTaskMemFree(buf);
@@ -1620,7 +1620,7 @@ namespace SSC {
           return;
         }
 
-        result_paths.push_back(WStringToString(std::wstring(buf)));
+        result_paths.push_back(SSC::WStringToString(SSC::WString(buf)));
         path->Release();
         CoTaskMemFree(buf);
       }
@@ -1632,7 +1632,7 @@ namespace SSC {
         result_string += result_paths[i];
       }
 
-    auto wrapped_result_string =  std::string("\"" + result_string + "\"");
+    auto wrapped_result_string =  String("\"" + result_string + "\"");
     this->resolvePromise(seq, "0", encodeURIComponent(wrapped_result_string));
 
     if (isSave) {
@@ -1672,19 +1672,19 @@ namespace SSC {
           break;
         }
 
-        std::string meta(w->menuMap[wParam]);
+        String meta(w->menuMap[wParam]);
         auto parts = split(meta, '\t');
 
         if (parts.size() > 1) {
           auto title = parts[0];
           auto parent = parts[1];
 
-          if (std::string(title).find("About") == 0) {
+          if (String(title).find("About") == 0) {
             w->about();
             break;
           }
 
-          if (std::string(title).find("Quit") == 0) {
+          if (String(title).find("Quit") == 0) {
             w->exit(0);
             break;
           }
@@ -1730,7 +1730,7 @@ namespace SSC {
 
       case WM_SETTINGCHANGE: {
         char* s = (char *) lParam;
-        std::string name(s);
+        String name(s);
 
         if (name.find("ImmersiveColorSet") != -1) {
           BOOL darkMode = shouldSystemUseDarkMode();

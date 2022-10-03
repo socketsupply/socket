@@ -32,7 +32,7 @@ namespace SSC {
       virtual void kill() = 0;
       virtual void restart() = 0;
       virtual void dispatch(std::function<void()> work) = 0;
-      virtual std::string getCwd(const std::string&) = 0;
+      virtual SSC::String getCwd(const SSC::String&) = 0;
   };
 
   inline void IApp::exit (int code) {
@@ -66,7 +66,7 @@ namespace SSC {
       void kill ();
       void restart ();
       void dispatch (std::function<void()> work);
-      std::string getCwd (const std::string&);
+      SSC::String getCwd (const SSC::String&);
   };
 
 #ifdef __linux__
@@ -80,8 +80,8 @@ namespace SSC {
         this->app = app;
       }
 
-      bool route (std::string msg, char *buf, size_t bufsize);
-      void send (Parse cmd, std::string seq, std::string msg, Post post);
+      bool route (SSC::String msg, char *buf, size_t bufsize);
+      void send (Parse cmd, SSC::String seq, SSC::String msg, Post post);
       bool invoke (Parse cmd, char *buf, size_t bufsize, Callback cb);
       bool invoke (Parse cmd, Callback cb);
   };

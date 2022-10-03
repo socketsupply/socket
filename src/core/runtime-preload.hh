@@ -6,11 +6,11 @@
 #include "../window/options.hh"
 
 namespace SSC {
-  inline std::string createPreload (WindowOptions opts) {
-    std::string cleanCwd = std::string(opts.cwd);
+  inline SSC::String createPreload (WindowOptions opts) {
+    SSC::String cleanCwd = SSC::String(opts.cwd);
     std::replace(cleanCwd.begin(), cleanCwd.end(), '\\', '/');
 
-    auto preload =std::string(gPreload) + std::string(
+    auto preload =SSC::String(gPreload) + SSC::String(
       "\n;(() => {                                                    \n"
       "Object.assign(window.process, {                                \n"
       "  arch: '" + platform.arch + "',                               \n"
@@ -76,7 +76,7 @@ namespace SSC {
     preload += "  Object.seal(Object.freeze(window.process.config));\n";
 
     // depreceate usage of 'window.system' in favor of 'window.parent'
-    preload += std::string(
+    preload += SSC::String(
       "  Object.defineProperty(window, 'system', {          \n"
       "    configurable: false,                             \n"
       "    enumerable: false,                               \n"

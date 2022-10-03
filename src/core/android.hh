@@ -1,33 +1,20 @@
 #ifndef SSC_ANDROID_H
 #define SSC_ANDROID_H
 
-#ifndef __ANDROID__
-#  define __ANDROID__
-#endif
-
-#ifndef ANDROID
-#  define ANDROID 1
-#endif
-
 // SSC
 #include "../window/options.hh"
 #include "runtime-preload.hh"
 #include "core.hh"
 
-typedef std::string NativeCoreSequence;
+using namespace SSC;
+
+typedef SSC::String NativeCoreSequence;
 typedef uint64_t NativeID;
 typedef NativeID NativeCallbackID;
 typedef NativeID NativeCoreID;
 
-typedef std::map<std::string, std::string> AppConfig;
-typedef std::binary_semaphore BinarySemaphore; // aka `std::counting_semaphore<1>`
-typedef std::map<std::string, std::string> EnvironmentVariables;
-typedef std::recursive_mutex Mutex;
-typedef std::lock_guard<Mutex> Lock;
-typedef std::thread Thread;
-
-template <typename T> using Queue = std::queue<T>;
-template <int K> using Semaphore = std::counting_semaphore<K>;
+typedef SSC::Map AppConfig;
+typedef SSC::Map EnvironmentVariables;
 
 // Forward declaration
 class NativeCallbackRef;
@@ -168,7 +155,7 @@ class NativeString {
   NativeString (JNIEnv *env);
   NativeString (const NativeString &copy);
   NativeString (JNIEnv *env, jstring ref);
-  NativeString (JNIEnv *env, std::string string);
+  NativeString (JNIEnv *env, SSC::String string);
   NativeString (JNIEnv *env, const char *string);
   ~NativeString ();
 
@@ -185,7 +172,7 @@ class NativeString {
   /**
    * Various ways to set the internal value of a `NativeString` instance.
    */
-  void Set (std::string string);
+  void Set (SSC::String string);
   void Set (const char *string);
   void Set (jstring ref);
 
@@ -199,7 +186,7 @@ class NativeString {
    * Various ways to convert a `NativeString` to other string representations.
    */
   const char * c_str ();
-  const std::string str ();
+  const SSC::String str ();
   const jstring jstr ();
 
   /**
@@ -234,15 +221,15 @@ class NativeCallbackRef {
   jobject ref = nullptr;
   NativeCore *core = nullptr;
   NativeCallbackID id = 0;
-  std::string name;
-  std::string signature;
+  SSC::String name;
+  SSC::String signature;
 
   NativeCallbackRef () {};
   NativeCallbackRef (
     NativeCore *core,
     NativeCallbackID id,
-    std::string name,
-    std::string signature
+    SSC::String name,
+    SSC::String signature
   );
 
   ~NativeCallbackRef ();
@@ -263,21 +250,21 @@ class NativeRequestContext {
     }
   }
 
-  void Send (std::string data, SSC::Post post) const;
+  void Send (SSC::String data, SSC::Post post) const;
   void Send (
     NativeCoreSequence seq,
-    std::string data,
+    SSC::String data,
     SSC::Post post
   ) const;
 
   void Finalize (
     NativeCoreSequence seq,
-    std::string data,
+    SSC::String data,
     SSC::Post post
   ) const;
-  void Finalize (NativeCoreSequence seq, std::string data) const;
-  void Finalize (std::string data, SSC::Post) const;
-  void Finalize (std::string data) const;
+  void Finalize (NativeCoreSequence seq, SSC::String data) const;
+  void Finalize (SSC::String data, SSC::Post) const;
+  void Finalize (SSC::String data) const;
   void Finalize (SSC::Post post) const;
 };
 
@@ -287,7 +274,7 @@ class NativeFileSystem {
 
   public:
 
-  typedef std::map<std::string, std::string> Constants;
+  typedef std::map<SSC::String, SSC::String> Constants;
 
   NativeFileSystem (JNIEnv *env, NativeCore *core);
 
@@ -295,11 +282,11 @@ class NativeFileSystem {
     return static_cast<Constants>(SSC::Core::getFSConstantsMap());
   }
 
-  static const std::string GetEncodedConstants () {
+  static const SSC::String GetEncodedConstants () {
     using SSC::encodeURIComponent;
 
     auto constants = GetConstants();
-    std::stringstream stream;
+    SSC::StringStream stream;
 
     for (auto const &tuple : constants) {
       auto key = tuple.first;
@@ -315,14 +302,14 @@ class NativeFileSystem {
 
   void Access (
     NativeCoreSequence seq,
-    std::string path,
+    SSC::String path,
     int mode,
     NativeCallbackID callback
   ) const;
 
   void Chmod (
     NativeCoreSequence seq,
-    std::string path,
+    SSC::String path,
     int mode,
     NativeCallbackID callback
   ) const;
@@ -342,7 +329,7 @@ class NativeFileSystem {
   void Open (
     NativeCoreSequence seq,
     NativeCoreID id,
-    std::string path,
+    SSC::String path,
     int flags,
     int mode,
     NativeCallbackID callback
@@ -358,7 +345,7 @@ class NativeFileSystem {
 
   void Stat (
     NativeCoreSequence seq,
-    std::string path,
+    SSC::String path,
     NativeCallbackID callback
   ) const;
 
@@ -386,7 +373,7 @@ class NativeUDP {
   void Bind (
     NativeCoreSequence seq,
     NativeCoreID id,
-    std::string address,
+    SSC::String address,
     int port,
     bool reuseAddr,
     NativeCallbackID callback
@@ -401,7 +388,7 @@ class NativeUDP {
   void Connect (
     NativeCoreSequence seq,
     NativeCoreID id,
-    std::string address,
+    SSC::String address,
     int port,
     NativeCallbackID callback
   ) const;
@@ -447,7 +434,7 @@ class NativeUDP {
     NativeCoreID id,
     char *data,
     int16_t size,
-    std::string address,
+    SSC::String address,
     int port,
     bool ephemeral,
     NativeCallbackID callback
@@ -472,7 +459,7 @@ class NativeCore : public SSC::Core {
   NativeString rootDirectory;
 
   // webkti webview
-  std::string javaScriptPreloadSource;
+  SSC::String javaScriptPreloadSource;
 
   public:
   // thread
@@ -562,7 +549,7 @@ class NativeCore : public SSC::Core {
     NativeCallbackID callback
   ) const;
 
-  void EvaluateJavaScript (std::string js);
+  void EvaluateJavaScript (SSC::String js);
   void EvaluateJavaScript (const char *js);
 
   void * GetPointer () const;
@@ -570,7 +557,7 @@ class NativeCore : public SSC::Core {
   AppConfig & GetAppConfig ();
 
   const NativeString GetAppConfigValue (const char *key) const;
-  const NativeString GetAppConfigValue (std::string key) const;
+  const NativeString GetAppConfigValue (SSC::String key) const;
   const EnvironmentVariables & GetEnvironmentVariables () const;
 
   const NativeFileSystem GetNativeFileSystem () const;
@@ -581,7 +568,7 @@ class NativeCore : public SSC::Core {
 
   const int GetJNIVersion () const;
 
-  const std::string GetNetworkInterfaces () const;
+  const SSC::String GetNetworkInterfaces () const;
   const char * GetJavaScriptPreloadSource () const;
 
   void BufferSize (
@@ -594,7 +581,7 @@ class NativeCore : public SSC::Core {
 
   void DNSLookup (
     NativeCoreSequence seq,
-    std::string hostname,
+    SSC::String hostname,
     int family,
     NativeCallbackID callback
   ) const;

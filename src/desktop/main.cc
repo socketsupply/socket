@@ -23,7 +23,7 @@
 #endif
 
 #define InvalidWindowIndexError(index) \
-  std::string("Invalid index given for window: ") + std::to_string(index)
+  SSC::String("Invalid index given for window: ") + std::to_string(index)
 
 using namespace SSC;
 
@@ -42,23 +42,23 @@ MAIN {
   app.setWindowFactory(&windowFactory);
 
   //
-  // SETTINGS and DEBUG are compile time variables provided by the compiler.
+  // SSC_SETTINGS and DEBUG are compile time variables provided by the compiler.
   //
-  constexpr auto _settings = STR_VALUE(SETTINGS);
+  constexpr auto _settings = STR_VALUE(SSC_SETTINGS);
   constexpr auto _debug = DEBUG;
   constexpr auto _port = PORT;
 
-  const std::string OK_STATE = "0";
-  const std::string ERROR_STATE = "1";
-  const std::string EMPTY_SEQ = std::string("");
+  const SSC::String OK_STATE = "0";
+  const SSC::String ERROR_STATE = "1";
+  const SSC::String EMPTY_SEQ = SSC::String("");
 
   auto cwd = app.getCwd(argv[0]);
   app.appData = parseConfig(decodeURIComponent(_settings));
 
-  std::string suffix = "";
+  SSC::String suffix = "";
 
-  std::stringstream argvArray;
-  std::stringstream argvForward;
+  SSC::StringStream argvArray;
+  SSC::StringStream argvForward;
 
   bool isCommandMode = false;
   bool isHeadless = false;
@@ -75,7 +75,7 @@ MAIN {
   // isn't the most robust way of doing this. possible a URI-encoded query
   // string would be more in-line with how everything else works.
   for (auto const arg : std::span(argv, argc)) {
-    auto s = std::string(arg);
+    auto s = SSC::String(arg);
 
     argvArray
       << "'"
@@ -128,7 +128,7 @@ MAIN {
     } else if (versionRequested) {
       argvForward << " " << "version --warn-arg-usage=" << s;
     } else if (c > 1 || isCommandMode) {
-      argvForward << " " << std::string(arg);
+      argvForward << " " << SSC::String(arg);
     }
   }
 
@@ -147,17 +147,17 @@ MAIN {
     argvForward << " --debug=1";
   #endif
 
-  std::stringstream env;
+  SSC::StringStream env;
   for (auto const &envKey : split(app.appData["env"], ',')) {
     auto cleanKey = trim(envKey);
     auto envValue = getEnv(cleanKey.c_str());
 
-    env << std::string(
+    env << SSC::String(
       cleanKey + "=" + encodeURIComponent(envValue) + "&"
     );
   }
 
-  std::string cmd;
+  SSC::String cmd;
   if (platform.os == "win32") {
     cmd = app.appData["win_cmd"];
   } else {
@@ -178,7 +178,7 @@ MAIN {
       cmd,
       argvForward.str(),
       cwd,
-      [&](std::string const &out) {
+      [&](SSC::String const &out) {
         Parse cmd(out);
 
         if (cmd.name != "exit") {
@@ -188,8 +188,8 @@ MAIN {
           exit(exitCode);
         }
       },
-      [](std::string const &out) { std::cerr << out; },
-      [](std::string const &code){ exit(std::stoi(code)); }
+      [](SSC::String const &out) { std::cerr << out; },
+      [](SSC::String const &code){ exit(std::stoi(code)); }
     );
 
     shutdownHandler = [&](int signum) {
@@ -218,7 +218,7 @@ MAIN {
   // # Main -> Render
   // Launch the main process and connect callbacks to the stdio and stderr pipes.
   //
-  auto onStdOut = [&](std::string const &out) {
+  auto onStdOut = [&](SSC::String const &out) {
     //
     // ## Dispatch
     // Messages from the main process may be sent to the render process. If they
@@ -246,7 +246,7 @@ MAIN {
         return;
       }
 
-      if (cmd.index > SOCKET_MAX_WINDOWS) {
+      if (cmd.index > SSC_MAX_WINDOWS) {
         // @TODO: print warning
         return;
       }
@@ -349,7 +349,7 @@ MAIN {
       if (cmd.name == "getScreenSize") {
         auto size = window->getScreenSize();
 
-        std::string value(
+        SSC::String value(
           "{"
             "\"width\":" + std::to_string(size.width) + ","
             "\"height\":" + std::to_string(size.height) + ""
@@ -436,7 +436,7 @@ MAIN {
     cwd,
     onStdOut,
     onStdErr,
-    [&](std::string const &code) {
+    [&](SSC::String const &code) {
       for (auto& window : windowFactory.windows) {
         window->eval(emitToRenderProcess("main-exit", code));
       }
@@ -570,9 +570,9 @@ MAIN {
       bool bDirs = cmd.get("allowDirs").compare("true") == 0;
       bool bFiles = cmd.get("allowFiles").compare("true") == 0;
       bool bMulti = cmd.get("allowMultiple").compare("true") == 0;
-      std::string defaultName = decodeURIComponent(cmd.get("defaultName"));
-      std::string defaultPath = decodeURIComponent(cmd.get("defaultPath"));
-      std::string title = decodeURIComponent(cmd.get("title"));
+      SSC::String defaultName = decodeURIComponent(cmd.get("defaultName"));
+      SSC::String defaultPath = decodeURIComponent(cmd.get("defaultPath"));
+      SSC::String title = decodeURIComponent(cmd.get("title"));
 
       window->openDialog(cmd.get("seq"), bSave, bDirs, bFiles, bMulti, defaultPath, title, defaultName);
       return;
@@ -586,7 +586,7 @@ MAIN {
 
     if (cmd.name == "getConfig") {
       const auto seq = cmd.get("seq");
-      auto wrapped = ("\"" + std::string(_settings) + "\"");
+      auto wrapped = ("\"" + SSC::String(_settings) + "\"");
       window->resolvePromise(seq, OK_STATE, encodeURIComponent(wrapped));
       return;
     }
@@ -634,7 +634,7 @@ MAIN {
   windowFactory.getOrCreateWindow(1);
 
   if (_port > 0 || cmd.size() == 0) {
-    defaultWindow->setSystemMenu(EMPTY_SEQ, std::string(
+    defaultWindow->setSystemMenu(EMPTY_SEQ, SSC::String(
       "Developer Mode: \n"
       "  Reload: r + CommandOrControl\n"
       "  Quit: q + CommandOrControl\n"

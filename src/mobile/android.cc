@@ -528,7 +528,7 @@ extern "C" {
       return env->NewStringUTF("");
     }
 
-    auto msg = SSC::format(R"JSON({"data":"$S"})JSON", std::string("linux"));
+    auto msg = SSC::format(R"JSON({"data":"$S"})JSON", SSC::String("linux"));
 
     return env->NewStringUTF(msg.c_str());
   }
@@ -548,7 +548,7 @@ extern "C" {
       return env->NewStringUTF("");
     }
 
-    auto msg = SSC::format(R"JSON({"data":"$S"})JSON", std::string("android"));
+    auto msg = SSC::format(R"JSON({"data":"$S"})JSON", SSC::String("android"));
 
     return env->NewStringUTF(msg.c_str());
   }

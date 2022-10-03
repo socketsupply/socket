@@ -75,12 +75,12 @@
 #define isatty _isatty
 #define fileno _fileno
 
-#pragma comment(lib,"advapi32.lib")
-#pragma comment(lib,"shell32.lib")
-#pragma comment(lib,"version.lib")
-#pragma comment(lib,"user32.lib")
-#pragma comment(lib,"uv_a.lib")
-#pragma comment(lib,"Gdi32.lib")
+#pragma comment(lib, "advapi32.lib")
+#pragma comment(lib, "shell32.lib")
+#pragma comment(lib, "version.lib")
+#pragma comment(lib, "user32.lib")
+#pragma comment(lib, "uv_a.lib")
+#pragma comment(lib, "Gdi32.lib")
 #endif
 
 #include <any>
@@ -106,20 +106,16 @@
 #define DEBUG 0
 #endif
 
-#ifndef SETTINGS
-#  define SETTINGS ""
+#ifndef SSC_SETTINGS
+#define SSC_SETTINGS ""
 #endif
 
-#ifndef VERSION
-#  define VERSION ""
+#ifndef SSC_VERSION
+#define SSC_VERSION ""
 #endif
 
-#ifndef VERSION_HASH
-#  define VERSION_HASH ""
-#endif
-
-#ifndef SOCKET_MAX_WINDOWS
-#define SOCKET_MAX_WINDOWS 32
+#ifndef SSC_VERSION_HASH
+#define SSC_VERSION_HASH ""
 #endif
 
 #if !DEBUG
@@ -140,65 +136,76 @@
 #define IMAX_BITS(m) ((m)/((m) % 255+1) / 255 % 255 * 8 + 7-86 / ((m) % 255+12))
 #define RAND_MAX_WIDTH IMAX_BITS(RAND_MAX)
 
+#define ToWString(string) WString(L##string)
+#define ToString(string) String(string)
+
 namespace SSC {
+#if defined(_WIN32)
+  using namespace Microsoft::WRL;
+#endif
+
   namespace fs = std::filesystem;
-  using Map = std::map<std::string, std::string>;
-  using MessageCallback = std::function<void(const std::string)>;
+
+  using ID = uint64_t;
+  using String = std::string;
+  using StringStream = std::stringstream;
+  using WString = std::wstring;
+  using WStringStream = std::wstringstream;
+
+  template <int K> using Semaphore = std::counting_semaphore<K>;
+  template <typename T> using Queue = std::queue<T>;
+  template <typename T> using Vector = std::vector<T>;
+
+  using Map = std::map<String, String>;
+  using Mutex = std::recursive_mutex;
+  using Thread = std::thread;
+  using Lock = std::lock_guard<Mutex>;
   using ExitCallback = std::function<void(int code)>;
+  using MessageCallback = std::function<void(const String)>;
+  using BinarySemaphore = Semaphore<1>; // aka `Semaphore<1>`
 
-  constexpr auto full_version = STR_VALUE(VERSION) " (" STR_VALUE(VERSION_HASH) ")";
-  constexpr auto version_hash = STR_VALUE(VERSION_HASH);
-  constexpr auto version = STR_VALUE(VERSION);
+  inline const auto VERSION_FULL_STRING = ToString(STR_VALUE(SSC_VERSION) " (" STR_VALUE(SSC_VERSION_HASH) ")");
+  inline const auto VERSION_HASH_STRING = ToString(STR_VALUE(SSC_VERSION_HASH));
+  inline const auto VERSION_STRING = ToString(STR_VALUE(SSC_VERSION));
 
-  inline std::string encodeURIComponent (const std::string& sSrc);
-  inline std::string decodeURIComponent (const std::string& sSrc);
-  inline std::string trim (std::string str);
+  inline String encodeURIComponent (const String& sSrc);
+  inline String decodeURIComponent (const String& sSrc);
+  inline String trim (String str);
 
-  //
-  // Cross platform support for strings
-  //
-  #if defined(_WIN32)
-    using String = std::wstring;
-    using Stringstream = std::wstringstream;
-    using namespace Microsoft::WRL;
-    #define Str(s) L##s
-    #define RegExp std::wregex
+  inline WString StringToWString (const String& s) {
+    WString temp(s.length(), L' ');
+    std::copy(s.begin(), s.end(), temp.begin());
+    return temp;
+  }
 
-    inline std::wstring StringToWString (const std::string& s) {
-      std::wstring temp(s.length(), L' ');
-      std::copy(s.begin(), s.end(), temp.begin());
-      return temp;
-    }
+  inline WString StringToWString (const WString& s) {
+    return s;
+  }
 
-    inline std::string WStringToString (const std::wstring& s) {
-      std::string temp(s.length(), ' ');
-      std::copy(s.begin(), s.end(), temp.begin());
-      return temp;
-    }
+  inline String WStringToString (const WString& s) {
+    String temp(s.length(), ' ');
+    std::copy(s.begin(), s.end(), temp.begin());
+    return temp;
+  }
 
-  #else
-    using String = std::string;
-    using Stringstream = std::stringstream;
-    #define RegExp std::regex
-    #define Str(s) s
-    #define StringToWString(s) s
-    #define WStringToString(s) s
-  #endif
+  inline String WStringToString (const String& s) {
+    return s;
+  }
 
   //
   // Reporting on the platform.
   //
   struct {
     #if defined(__x86_64__) || defined(_M_X64)
-      const std::string arch = "x86_64";
+      const String arch = "x86_64";
     #elif defined(__aarch64__) || defined(_M_ARM64)
-      const std::string arch = "arm64";
+      const String arch = "arm64";
     #else
-      const std::string arch = "unknown";
+      const String arch = "unknown";
     #endif
 
     #if defined(_WIN32)
-      const std::string os = "win32";
+      const String os = "win32";
       bool mac = false;
       bool ios = false;
       bool win = true;
@@ -210,11 +217,11 @@ namespace SSC {
       bool linux = false;
 
       #if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
-        std::string os = "ios";
+        String os = "ios";
         bool ios = true;
         bool mac = false;
       #else
-        std::string os = "mac";
+        String os = "mac";
         bool ios = false;
         bool mac = true;
       #endif
@@ -228,9 +235,9 @@ namespace SSC {
     #elif defined(__linux__)
       #undef linux
       #ifdef __ANDROID__
-        const std::string os = "android";
+        const String os = "android";
       #else
-        const std::string os = "linux";
+        const String os = "linux";
       #endif
 
       bool mac = false;
@@ -245,7 +252,7 @@ namespace SSC {
       #endif
 
     #elif defined(__FreeBSD__)
-      const std::string os = "freebsd";
+      const String os = "freebsd";
       bool mac = false;
       bool ios = false;
       bool win = false;
@@ -258,7 +265,7 @@ namespace SSC {
       #endif
 
     #elif defined(BSD)
-      const std::string os = "openbsd";
+      const String os = "openbsd";
       bool ios = false;
       bool mac = false;
       bool win = false;
@@ -273,10 +280,10 @@ namespace SSC {
     #endif
   } platform;
 
-  inline const std::vector<std::string>
-  splitc(const std::string& s, const char& c) {
-    std::string buff;
-    std::vector<std::string> vec;
+  inline const Vector<String>
+  splitc (const String& s, const char& c) {
+    String buff;
+    Vector<String> vec;
 
     for (auto n : s) {
       if (n != c) {
@@ -385,10 +392,10 @@ namespace SSC {
     return size;
   }
 
-  template <typename ...Args> std::string format (const std::string& s, Args ...args) {
+  template <typename ...Args> String format (const String& s, Args ...args) {
     auto copy = s;
-    std::stringstream res;
-    std::vector<std::any> vec;
+    StringStream res;
+    Vector<std::any> vec;
     using unpack = int[];
 
     (void) unpack { 0, (vec.push_back(args), 0)... };
@@ -400,17 +407,17 @@ namespace SSC {
 
     while (std::regex_search(copy, match, re) != 0) {
       if (match.str() == "$S") {
-        auto value = std::any_cast<std::string>(vec[index++]);
+        auto value = std::any_cast<String>(vec[index++]);
         copy = std::regex_replace(copy, re, value, first);
       } else if (match.str() == "$i") {
         auto value = std::any_cast<int>(vec[index++]);
         copy = std::regex_replace(copy, re, std::to_string(value), first);
       } else if (match.str() == "$C") {
         auto value = std::any_cast<char*>(vec[index++]);
-        copy = std::regex_replace(copy, re, std::string(value), first);
+        copy = std::regex_replace(copy, re, String(value), first);
       } else if (match.str() == "$c") {
         auto value = std::any_cast<char>(vec[index++]);
-        copy = std::regex_replace(copy, re, std::string(1, value), first);
+        copy = std::regex_replace(copy, re, String(1, value), first);
       } else {
         copy = std::regex_replace(copy, re, match.str(), first);
       }
@@ -419,23 +426,23 @@ namespace SSC {
     return copy;
   }
 
-  inline std::string replace (const std::string& src, const std::string& re, const std::string& val) {
+  inline String replace (const String& src, const String& re, const String& val) {
     return std::regex_replace(src, std::regex(re), val);
   }
 
-  inline std::string& replaceAll (std::string& src, std::string const& from, std::string const& to) {
+  inline String& replaceAll (String& src, String const& from, String const& to) {
     size_t start = 0;
     size_t index;
 
-    while ((index = src.find(from, start)) != std::string::npos) {
+    while ((index = src.find(from, start)) != String::npos) {
       src.replace(index, from.size(), to);
       start = index + to.size();
     }
     return src;
   }
 
-  inline std::string emitToRenderProcess (const std::string& event, const std::string& value) {
-    return std::string(
+  inline String emitToRenderProcess (const String& event, const String& value) {
+    return String(
       ";(() => {\n"
       "  const name = decodeURIComponent(`" + event + "`);\n"
       "  const value = `" + value + "`;\n"
@@ -445,8 +452,8 @@ namespace SSC {
     );
   }
 
-  inline std::string resolveMenuSelection (const std::string& seq, const std::string& title, const std::string& parent) {
-    return std::string(
+  inline String resolveMenuSelection (const String& seq, const String& title, const String& parent) {
+    return String(
       ";(() => {\n"
       "  const detail = {\n"
       "    title: decodeURIComponent(`" + title + "`),\n"
@@ -470,9 +477,9 @@ namespace SSC {
   //
   // Helper functions...
   //
-  inline const std::vector<std::string> split (const std::string& s, const char& c) {
-    std::string buff;
-    std::vector<std::string> vec;
+  inline const Vector<String> split (const String& s, const char& c) {
+    String buff;
+    Vector<String> vec;
 
     for (auto n : s) {
       if(n != c) {
@@ -488,17 +495,17 @@ namespace SSC {
     return vec;
   }
 
-  inline std::string trim (std::string str) {
+  inline String trim (String str) {
     str.erase(0, str.find_first_not_of(" \r\n\t"));
     str.erase(str.find_last_not_of(" \r\n\t") + 1);
     return str;
   }
 
-  inline std::string tmpl (const std::string s, Map pairs) {
-    std::string output = s;
+  inline String tmpl (const String s, Map pairs) {
+    String output = s;
 
     for (auto item : pairs) {
-      auto key = std::string("[{]+(" + item.first + ")[}]+");
+      auto key = String("[{]+(" + item.first + ")[}]+");
       auto value = item.second;
       output = std::regex_replace(output, std::regex(key), value);
     }
@@ -515,13 +522,13 @@ namespace SSC {
     return r;
   }
 
-  inline std::string getEnv(const char* variableName) {
+  inline String getEnv(const char* variableName) {
     #if _WIN32
       char* variableValue = nullptr;
       std::size_t valueSize = 0;
       auto query = _dupenv_s(&variableValue, &valueSize, variableName);
 
-      std::string result;
+      String result;
       if(query == 0 && variableValue != nullptr && valueSize > 0) {
         result.assign(variableValue, valueSize - 1);
         free(variableValue);
@@ -532,10 +539,10 @@ namespace SSC {
       auto v = getenv(variableName);
 
       if (v != nullptr) {
-        return std::string(v);
+        return String(v);
       }
 
-      return std::string("");
+      return String("");
     #endif
   }
 
@@ -548,9 +555,9 @@ namespace SSC {
     #endif
   }
 
-  inline void stdWrite(const std::string &str, bool isError) {
+  inline void stdWrite(const String &str, bool isError) {
     #ifdef _WIN32
-      std::stringstream ss;
+      StringStream ss;
       ss << str << std::endl;
       auto lineStr = ss.str();
 
@@ -572,13 +579,13 @@ namespace SSC {
       return content;
     }
 
-    inline void writeFile (fs::path path, std::string s) {
+    inline void writeFile (fs::path path, String s) {
       std::ofstream stream(path.string());
       stream << s;
       stream.close();
     }
 
-    inline void appendFile (fs::path path, std::string s) {
+    inline void appendFile (fs::path path, String s) {
       std::ofstream stream;
       stream.open(path.string(), std::ios_base::app);
       stream << s;
@@ -586,27 +593,7 @@ namespace SSC {
     }
   #endif
 
-  inline std::string prefixFile (std::string s) {
-    if (platform.mac || platform.linux) {
-      std::string local = getEnv("HOME");
-      return std::string(local + "/.config/socket-sdk/" + s + " ");
-    }
-
-    std::string local = getEnv ("LOCALAPPDATA");
-    return std::string(local + "\\Programs\\socketsupply\\" + s + " ");
-  }
-
-  inline std::string prefixFile () {
-    if (platform.mac || platform.linux) {
-      std::string local = getEnv("HOME");
-      return std::string(local + "/.config/socket-sdk/");
-    }
-
-    std::string local = getEnv ("LOCALAPPDATA");
-    return std::string(local + "\\Programs\\socketsupply");
-  }
-
-  inline Map parseConfig (std::string source) {
+  inline Map parseConfig (String source) {
     auto entries = split(source, '\n');
     Map settings;
 
@@ -631,13 +618,13 @@ namespace SSC {
   class Parse {
     Map args;
     public:
-      Parse(const std::string&);
+      Parse(const String&);
       int index = -1;
-      std::string value = "";
-      std::string name = "";
-      std::string uri = "";
-      std::string get(const std::string&) const;
-      std::string get(const std::string&, const std::string) const;
+      String value = "";
+      String name = "";
+      String uri = "";
+      String get(const String&) const;
+      String get(const String&, const String) const;
       const char * c_str () const {
         return this->uri.c_str();
       }
@@ -651,8 +638,8 @@ namespace SSC {
   //
   // cmd: `ipc://id?p1=v1&p2=v2&...\0`
   //
-  inline Parse::Parse (const std::string& s) {
-    std::string str = s;
+  inline Parse::Parse (const String& s) {
+    String str = s;
     uri = str;
 
     // bail if missing protocol prefix
@@ -662,8 +649,8 @@ namespace SSC {
     if (str.compare("ipc://") == 0) return;
     if (str.compare("ipc://?") == 0) return;
 
-    std::string query;
-    std::string path;
+    String query;
+    String path;
 
     auto raw = split(str, '?');
     path = raw[0];
@@ -691,11 +678,11 @@ namespace SSC {
     }
   }
 
-  inline std::string Parse::get(const std::string& s) const {
+  inline String Parse::get(const String& s) const {
     return args.count(s) ? args.at(s): "";
   }
 
-  inline std::string Parse::get(const std::string& s, const std::string fallback) const {
+  inline String Parse::get(const String& s, const String fallback) const {
     return args.count(s) ? args.at(s) : fallback;
   }
 
@@ -727,7 +714,7 @@ namespace SSC {
     /* F */ -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1
   };
 
-  inline std::string decodeURIComponent(const std::string& sSrc) {
+  inline String decodeURIComponent(const String& sSrc) {
 
     // Note from RFC1630:  "Sequences which start with a percent sign
     // but are not followed by two hexadecimal characters (0-9, A-F) are reserved
@@ -761,7 +748,7 @@ namespace SSC {
       *pEnd++ = *pSrc++;
     }
 
-    std::string sResult(pStart, pEnd);
+    String sResult(pStart, pEnd);
     delete [] pStart;
     return sResult;
   }
@@ -789,7 +776,7 @@ namespace SSC {
       /* F */ 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0
   };
 
-  inline std::string encodeURIComponent (const std::string& sSrc) {
+  inline String encodeURIComponent (const String& sSrc) {
     const char DEC2HEX[16 + 1] = "0123456789ABCDEF";
     const unsigned char* pSrc = (const unsigned char*) sSrc.c_str();
     const int SRC_LEN = (int) sSrc.length();
@@ -808,13 +795,13 @@ namespace SSC {
       }
     }
 
-    std::string sResult((char*) pStart, (char*) pEnd);
+    String sResult((char*) pStart, (char*) pEnd);
     delete [] pStart;
     return sResult;
   }
 
-  inline std::string resolveToRenderProcess (const std::string& seq, const std::string& state, const std::string& value) {
-    return std::string(
+  inline String resolveToRenderProcess (const String& seq, const String& state, const String& value) {
+    return String(
       "(() => {"
       "  const seq = String('" + seq + "');"
       "  const state = Number('" + state + "');"
@@ -824,8 +811,8 @@ namespace SSC {
     );
   }
 
-  inline std::string resolveToMainProcess (const std::string& seq, const std::string& state, const std::string& value) {
-    return std::string("ipc://resolve?seq=" + seq + "&state=" + state + "&value=" + value);
+  inline String resolveToMainProcess (const String& seq, const String& state, const String& value) {
+    return String("ipc://resolve?seq=" + seq + "&state=" + state + "&value=" + value);
   }
 }
 

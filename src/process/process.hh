@@ -1,15 +1,6 @@
 #ifndef SSC_PROCESS_PROCESS_H
 #define SSC_PROCESS_PROCESS_H
 
-#include <functional>
-#include <mutex>
-#include <thread>
-#include <vector>
-
-#ifndef _WIN32
-#include <sys/wait.h>
-#endif
-
 #ifndef WIFEXITED
 #define WIFEXITED(w) ((w) & 0x7f)
 #endif
@@ -21,15 +12,14 @@
 #include "../core/common.hh"
 
 namespace SSC {
-  using MessageCallback = std::function<void(std::string)>;
-  static MessageCallback exitCallback;
+  static SSC::MessageCallback exitCallback;
 
   struct ExecOutput {
-    std::string output;
+    SSC::String output;
     int exitCode = 0;
   };
 
-  inline ExecOutput exec(std::string command) {
+  inline ExecOutput exec (SSC::String command) {
     command = command + " 2>&1";
 
     ExecOutput eo;
@@ -114,16 +104,16 @@ namespace SSC {
   // the stdout, stderr and stdin are sent to the parent process instead.
   class Process {
   public:
-    std::string command;
-    std::string argv;
-    std::string path;
+    SSC::String command;
+    SSC::String argv;
+    SSC::String path;
 #ifdef _WIN32
     typedef unsigned long id_type; // Process id type
     typedef void *fd_type;         // File descriptor type
 #else
     typedef pid_t id_type;
     typedef int fd_type;
-    typedef std::string string_type;
+    typedef SSC::String string_type;
 #endif
 
   private:
@@ -139,9 +129,9 @@ namespace SSC {
 
   public:
     Process(
-      const std::string &command,
-      const std::string &argv,
-      const std::string &path = std::string(""),
+      const SSC::String &command,
+      const SSC::String &argv,
+      const SSC::String &path = SSC::String(""),
       MessageCallback read_stdout = nullptr,
       MessageCallback read_stderr = nullptr,
       MessageCallback on_exit = nullptr,
@@ -172,7 +162,7 @@ namespace SSC {
     // Write to stdin.
     bool write(const char *bytes, size_t n);
     // Write to stdin. Convenience function using write(const char *, size_t).
-    bool write(const std::string &str);
+    bool write(const SSC::String &str);
     // Close stdin. If the process takes parameters from stdin, use this to
     // notify that all parameters have been sent.
     void close_stdin() noexcept;
@@ -201,7 +191,7 @@ namespace SSC {
 
     std::unique_ptr<fd_type> stdout_fd, stderr_fd, stdin_fd;
 
-    id_type open(const std::string &command, const std::string &path) noexcept;
+    id_type open(const SSC::String &command, const SSC::String &path) noexcept;
 #ifndef _WIN32
     id_type open(const std::function<int()> &function) noexcept;
 #endif
@@ -209,7 +199,7 @@ namespace SSC {
     void close_fds() noexcept;
   };
 
-  inline bool Process::write(const std::string &s) {
+  inline bool Process::write(const SSC::String &s) {
     return Process::write(s.c_str(), s.size());
   };
 
@@ -221,12 +211,12 @@ namespace SSC {
   }
 
   inline Process::Process(
-    const std::string &command,
-    const std::string &argv,
-    const std::string &path,
-    MessageCallback read_stdout,
-    MessageCallback read_stderr,
-    MessageCallback on_exit,
+    const SSC::String &command,
+    const SSC::String &argv,
+    const SSC::String &path,
+    SSC::MessageCallback read_stdout,
+    SSC::MessageCallback read_stderr,
+    SSC::MessageCallback on_exit,
     bool open_stdin,
     const Config &config) noexcept
       : closed(true),

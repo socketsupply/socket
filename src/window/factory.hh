@@ -136,8 +136,8 @@ namespace SSC {
 
       WindowFactory (App &app) :
         app(app),
-        inits(SOCKET_MAX_WINDOWS),
-        windows(SOCKET_MAX_WINDOWS)
+        inits(SSC_MAX_WINDOWS),
+        windows(SSC_MAX_WINDOWS)
     {
 #if DEBUG
         lastDebugLogLine = std::chrono::system_clock::now();
@@ -275,7 +275,7 @@ namespace SSC {
       Window* createWindow (WindowOptions opts) {
         std::lock_guard<std::recursive_mutex> guard(this->mutex);
         if (destroyed) return nullptr;
-        Stringstream env;
+        StringStream env;
 
         if (inits[opts.index]) {
           return reinterpret_cast<Window*>(windows[opts.index]);

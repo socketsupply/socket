@@ -4,6 +4,10 @@
 #include "../app/app.hh"
 #include "options.hh"
 
+#ifndef SSC_MAX_WINDOWS
+#define SSC_MAX_WINDOWS 32
+#endif
+
 namespace SSC {
   class Window;
 

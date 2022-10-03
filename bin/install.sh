@@ -85,9 +85,9 @@ function _build {
   "$CXX" src/cli/cli.cc ${CXX_FLAGS} ${CXXFLAGS} \
     -o bin/cli \
     -std=c++2a \
-    -DBUILD_TIME="$(date '+%s')" \
-    -DVERSION_HASH=`git rev-parse --short HEAD` \
-    -DVERSION=`cat VERSION.txt`
+    -DSSC_BUILD_TIME="$(date '+%s')" \
+    -DSSC_VERSION_HASH=`git rev-parse --short HEAD` \
+    -DSSC_VERSION=`cat VERSION.txt`
 
   die $? "not ok - unable to build. See trouble shooting guide in the README.md file"
   echo "ok - built the cli for desktop"

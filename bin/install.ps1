@@ -1,6 +1,10 @@
 $OLD_CWD = (Get-Location).Path
 
+$ASSET_PATH = "$env:LOCALAPPDATA\Programs\socketsupply"
 $SRC_PATH = "$env:LOCALAPPDATA\Programs\socketsupply\src"
+$LIB_PATH = "$env:LOCALAPPDATA\Programs\socketsupply\lib"
+$BIN_PATH = "$env:LOCALAPPDATA\Programs\socketsupply\bin"
+$INCLUDE_PATH = "$env:LOCALAPPDATA\Programs\socketsupply\include"
 $WORKING_PATH = $OLD_CWD
 
 #
@@ -24,13 +28,10 @@ Function Build {
     cd "$WORKING_PATH"
     (cmake --build "$BUILD_PATH\lib" --config Release) > $null
     Write-Output "ok - built libuv"
-
-    Copy-Item -Path "$BUILD_PATH\include\*" -Destination $SRC_PATH -Recurse -Container
-    Copy-Item $BUILD_PATH\lib\Release\uv_a.lib -Destination $SRC_PATH\uv
   }
 
   Write-Output "# compiling the build tool..."
-  clang++ src\cli\cli.cc -o $WORKING_PATH\bin\ssc.exe -std=c++2a -DBUILD_TIME="$($BUILD_TIME)" -DVERSION_HASH="$($VERSION_HASH)" -DVERSION="$($VERSION)"
+  clang++ src\cli\cli.cc -o $WORKING_PATH\bin\ssc.exe -std=c++2a -DSSC_BUILD_TIME="$($BUILD_TIME)" -DSSC_VERSION_HASH="$($VERSION_HASH)" -DSSC_VERSION="$($VERSION)"
   # -I 'C:\Program Files (x86)\Windows Kits\10\Include\10.0.19041.0\shared' `
 
   if ($? -ne 1) {
@@ -38,13 +39,13 @@ Function Build {
     Exit 1
   }
 
-  if ($env:Path -notlike "*$SRC_PATH*") {
-    $NEW_PATH = "$SRC_PATH;$env:Path"
+  if ($env:Path -notlike "*$BIN_PATH*") {
+    $NEW_PATH = "$BIN_PATH;$env:Path"
     $env:Path = $NEW_PATH
     Write-Output "ok - command ssc has been added to the path for the current session."
     Write-Output ""
     Write-Output "# consider adding ssc to your path for other sessions:"
-    Write-Output " `$env:Path = ""$SRC_PATH;`$env:Path"""
+    Write-Output " `$env:Path = ""$BIN_PATH;`$env:Path"""
     Write-Output ""
 
     # Dangerous!
@@ -74,35 +75,60 @@ Function Build {
 # Install the files we will want to use for builds
 #
 Function Install-Files {
-  Copy-Item $WORKING_PATH\bin\ssc.exe -Destination $SRC_PATH
-  Copy-Item -Path "$WORKING_PATH\src\*" -Destination $SRC_PATH -Recurse -Force
-  Copy-Item -Path "$WORKING_PATH\src\core\win64\*" -Destination $SRC_PATH -Recurse -Force
-  Write-Output "ok - installed files to '$SRC_PATH'."
+  (New-Item -ItemType Directory -Force -Path "$BIN_PATH") > $null
+  (New-Item -ItemType Directory -Force -Path "$LIB_PATH") > $null
+  (New-Item -ItemType Directory -Force -Path "$SRC_PATH") > $null
+  (New-Item -ItemType Directory -Force -Path "$INCLUDE_PATH") > $null
+
+  # install `bin\`
+  Copy-Item $WORKING_PATH\bin\ssc.exe -Destination "$BIN_PATH"
+
+  # install `include\`
+  Copy-Item -Path "$BUILD_PATH\include\*" -Destination "$INCLUDE_PATH\include" -Recurse -Container
+
+  # install `src\`
+  Copy-Item -Path "$WORKING_PATH\src\*" -Destination "$SRC_PATH\src" -Recurse -Force
+
+  # install `lib\`
+  Copy-Item -Path "$WORKING_PATH\lib\*" -Destination "$LIB_PATH\lib" -Recurse -Force
+  Copy-Item $BUILD_PATH\lib\Release\uv_a.lib -Destination "$LIB_PATH\uv_a.lib"
+
+  Write-Output "ok - installed files to '$ASSET_PATH'."
 }
 
 #
 # Get and extract just the WebView2 files that we need
 #
 Function Install-WebView2 {
-  $TEMP_PATH = Join-Path $Env:Temp $(New-Guid)
-  (New-Item -Type Directory -Path $TEMP_PATH) > $null
+  Write-Output "# setting up WebView2"
 
-  $PACKAGE_VERSION = '1.0.1248-prerelease'
-  $base = "$TEMP_PATH\WebView2\build\native"
+  # see https://docs.microsoft.com/en-us/microsoft-edge/webview2/concepts/versioning
+  $webview2_version = '1.0.1248-prerelease'
+  $tmpdir = Join-Path $Env:Temp $(New-Guid)
+  $base = "$tmpdir\WebView2\build\native"
 
-  Write-Output "# updating WebView2 header files..."
-  #https://docs.microsoft.com/en-us/microsoft-edge/webview2/concepts/versioning
-  Invoke-WebRequest https://www.nuget.org/api/v2/package/Microsoft.Web.WebView2/$PACKAGE_VERSION -O $TEMP_PATH\webview2.zip
-  Expand-Archive -Path $TEMP_PATH\WebView2.zip -DestinationPath $TEMP_PATH\WebView2
-  Copy-Item -Path $base\include\WebView2.h $WORKING_PATH\src\core\win64
-  Copy-Item -Path $base\include\WebView2EnvironmentOptions.h $WORKING_PATH\src\core\win64
-  Copy-Item -Path $base\include\WebView2Experimental.h $WORKING_PATH\src\core\win64
-  Copy-Item -Path $base\x64\WebView2LoaderStatic.lib $WORKING_PATH\src\core\win64
+  # ensure paths
+  (New-Item -Type Directory -Path $tmpdir) > $null
+  (New-Item -ItemType Directory -Force -Path "$LIB_PATH") > $null
+  (New-Item -ItemType Directory -Force -Path "$INCLUDE_PATH") > $null
+
+  # download and extract
+  Write-Output "# downloading latest WebView2 header and library files..."
+  Invoke-WebRequest "https://www.nuget.org/api/v2/package/Microsoft.Web.WebView2/$webview2_version" -O "$tmpdir\webview2.zip"
+  Expand-Archive -Path $tmpdir\WebView2.zip -DestinationPath $tmpdir\WebView2
+
+  # install files
+  Write-Output "# installing latest WebView2 header and library files..."
+  Copy-Item -Path $base\include\WebView2.h "$INCLUDE_PATH"
+  Copy-Item -Path $base\include\WebView2Experimental.h "$INCLUDE_PATH"
+  Copy-Item -Path $base\include\WebView2EnvironmentOptions.h "$INCLUDE_PATH"
+  Copy-Item -Path $base\x64\WebView2LoaderStatic.lib "$LIB_PATH"
+
   Write-Output "ok - updated WebView2 header files..."
 }
 
+# download and install `choco.exe` if it isn't installed yet
 (Get-Command "choco.exe" -ErrorAction SilentlyContinue) > $null
-
 if ($? -ne 1) {
   $InstallDir='C:\ProgramData\chocoportable'
   $env:ChocolateyInstall="$InstallDir"
@@ -111,8 +137,8 @@ if ($? -ne 1) {
   iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
 }
 
+# setup `clang++.exe` from `llvm` if not installed yet
 (Get-Command "clang++.exe" -ErrorAction SilentlyContinue) > $null
-
 if ($? -ne 1) {
   choco install llvm --confirm --force
 
@@ -122,8 +148,8 @@ if ($? -ne 1) {
   }
 }
 
+# install `cmake.exe`
 (Get-Command "cmake.exe" -ErrorAction SilentlyContinue) > $null
-
 if ($? -ne 1) {
   choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System' --confirm --force
 
@@ -133,8 +159,8 @@ if ($? -ne 1) {
   }
 }
 
+# install `git.exe`
 (Get-Command "git.exe" -ErrorAction SilentlyContinue) > $null
-
 if ($? -ne 1) {
   choco install git
 
@@ -144,17 +170,16 @@ if ($? -ne 1) {
   }
 }
 
+# refresh enviroment after prereq setup
 refreshenv
-
-if (-not (Test-Path -Path $SRC_PATH)) {
-  (New-Item -ItemType Directory -Path $SRC_PATH) > $null
-  Write-Output "ok - created $SRC_PATH"
+if (-not (Test-Path -Path $ASSET_PATH)) {
+  (New-Item -ItemType Directory -Path $ASSET_PATH) > $null
+  Write-Output "ok - created $ASSET_PATH"
 }
 
 Write-Output "# working path set to $WORKING_PATH"
 cd $WORKING_PATH
 
-Write-Output "# fetching webview2 deps"
 Install-WebView2
 Build
 Install-Files

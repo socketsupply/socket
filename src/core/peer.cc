@@ -338,11 +338,11 @@ namespace SSC {
     return this->bind(info->address, info->port, this->options.udp.reuseAddr);
   }
 
-  int Peer::bind (std::string address, int port) {
+  int Peer::bind (SSC::String address, int port) {
     return this->bind(address, port, false);
   }
 
-  int Peer::bind (std::string address, int port, bool reuseAddr) {
+  int Peer::bind (SSC::String address, int port, bool reuseAddr) {
     std::lock_guard<std::recursive_mutex> guard(this->mutex);
     auto sockaddr = (struct sockaddr*) &this->addr;
     int flags = 0;
@@ -399,7 +399,7 @@ namespace SSC {
     return err;
   }
 
-  int Peer::connect (std::string address, int port) {
+  int Peer::connect (SSC::String address, int port) {
     std::lock_guard<std::recursive_mutex> guard(this->mutex);
     auto sockaddr = (struct sockaddr*) &this->addr;
     int err = 0;
@@ -438,7 +438,7 @@ namespace SSC {
     return err;
   }
 
-  void Peer::send (std::string seq, char *buf, int len, int port, String address, Callback cb) {
+  void Peer::send (SSC::String seq, char *buf, int len, int port, String address, Callback cb) {
     std::lock_guard<std::recursive_mutex> guard(this->mutex);
     auto ctx = new PeerRequestContext(seq, cb);
     int err = 0;
@@ -468,7 +468,7 @@ namespace SSC {
             "id": "$S",
             "message": "$S"
           }
-        })MSG", std::to_string(id), std::string(uv_strerror(err)));
+        })MSG", std::to_string(id), SSC::String(uv_strerror(err)));
 
         return ctx->end(msg);
       }
@@ -483,7 +483,7 @@ namespace SSC {
     err = uv_udp_send(req, (uv_udp_t *) &this->handle, &buffer, 1, sockaddr, [](uv_udp_send_t *req, int status) {
       auto ctx = reinterpret_cast<PeerRequestContext*>(req->data);
       auto peer = ctx->peer;
-      std::string msg = "";
+      SSC::String msg = "";
 
       if (status < 0) {
         msg = SSC::format(R"MSG({
@@ -494,7 +494,7 @@ namespace SSC {
           }
         })MSG",
         std::to_string(peer->id),
-        std::string(uv_strerror(status)));
+        SSC::String(uv_strerror(status)));
       } else {
         msg = SSC::format(R"MSG({
           "source": "udp.send",
@@ -525,7 +525,7 @@ namespace SSC {
         }
       })MSG",
       std::to_string(id),
-      std::string(uv_strerror(err)));
+      SSC::String(uv_strerror(err)));
 
       delete req;
 

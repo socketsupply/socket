@@ -1,7 +1,7 @@
 #include "../core/core.hh"
 #include "../window/options.hh"
 
-constexpr auto _settings = STR_VALUE(SETTINGS);
+constexpr auto _settings = STR_VALUE(SSC_SETTINGS);
 constexpr auto _debug = false;
 
 @interface AppDelegate : UIResponder <UIApplicationDelegate, WKScriptMessageHandler, UIScrollViewDelegate> {
@@ -114,7 +114,7 @@ void uncaughtExceptionHandler (NSException *exception) {
 }
 
 - (BOOL) application: (UIApplication*)app openURL: (NSURL*)url options: (NSDictionary<UIApplicationOpenURLOptionsKey, id>*)options {
-  auto str = std::string(url.absoluteString.UTF8String);
+  auto str = SSC::String(url.absoluteString.UTF8String);
 
   // TODO can this be escaped or is the url encoded property already?
   [bridge emit: "protocol" msg: SSC::format(R"JSON({
@@ -146,19 +146,19 @@ void uncaughtExceptionHandler (NSException *exception) {
 
   auto appData = parseConfig(decodeURIComponent(_settings));
 
-  std::stringstream env;
+  SSC::StringStream env;
 
   for (auto const &envKey : split(appData["env"], ',')) {
     auto cleanKey = trim(envKey);
     auto envValue = getEnv(cleanKey.c_str());
 
-    env << std::string(
+    env << SSC::String(
       cleanKey + "=" + encodeURIComponent(envValue) + "&"
     );
   }
 
-  env << std::string("width=" + std::to_string(appFrame.size.width) + "&");
-  env << std::string("height=" + std::to_string(appFrame.size.height) + "&");
+  env << SSC::String("width=" + std::to_string(appFrame.size.width) + "&");
+  env << SSC::String("height=" + std::to_string(appFrame.size.height) + "&");
 
   NSFileManager *fileManager = [NSFileManager defaultManager];
   NSString *currentDirectoryPath = [fileManager currentDirectoryPath];
@@ -171,12 +171,12 @@ void uncaughtExceptionHandler (NSException *exception) {
     .version = "v" + appData["version"],
     .preload = SSC::gPreloadMobile,
     .env = env.str(),
-    .cwd = std::string([cwd UTF8String])
+    .cwd = SSC::String([cwd UTF8String])
   };
 
   // Note: you won't see any logs in the preload script before the
   // Web Inspector is opened
-  std::string  preload = Str(
+  SSC::String  preload = ToString(
     "window.external = {\n"
     "  invoke: arg => window.webkit.messageHandlers.webview.postMessage(arg)\n"
     "};\n"

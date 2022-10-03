@@ -8,7 +8,7 @@ namespace SSC {
 
   struct CallbackContext {
     Callback cb;
-    std::string seq;
+    SSC::String seq;
     Window *window;
     void *data;
   };
@@ -25,8 +25,8 @@ namespace SSC {
       "ipc",
       [](WebKitURISchemeRequest *request, gpointer arg) {
         auto *app = static_cast<App*>(arg);
-        auto uri = std::string(webkit_uri_scheme_request_get_uri(request));
-        auto msg = std::string(uri);
+        auto uri = SSC::String(webkit_uri_scheme_request_get_uri(request));
+        auto msg = SSC::String(uri);
 
         Parse cmd(msg);
 
@@ -101,9 +101,9 @@ namespace SSC {
   void App::restart () {
   }
 
-  std::string App::getCwd(const std::string &s) {
+  SSC::String App::getCwd(const SSC::String &s) {
     auto canonical = fs::canonical("/proc/self/exe");
-    return std::string(fs::path(canonical).parent_path());
+    return SSC::String(fs::path(canonical).parent_path());
   }
 
   void App::dispatch(std::function<void()> f) {
@@ -232,7 +232,7 @@ namespace SSC {
             auto msg = SSC::format(
               R"MSG({"err": { "code": "$S", "message": "$S" } })MSG",
               std::to_string(error->code),
-              std::string(error->message)
+              SSC::String(error->message)
             );
 
             g_error_free(error);
@@ -254,16 +254,16 @@ namespace SSC {
               auto context = jsc_value_get_context(value);
               auto string = jsc_value_to_string(value);
               auto exception = jsc_context_get_exception(context);
-              std::string msg = "";
+              SSC::String msg = "";
 
               if (exception) {
                 auto message = jsc_exception_get_message(exception);
                 msg = SSC::format(
                   R"MSG({"err": { "message": "$S" } })MSG",
-                  std::string(message)
+                  SSC::String(message)
                 );
               } else if (string) {
-                msg = std::string(string);
+                msg = SSC::String(string);
               }
 
               ctx->cb(ctx->seq, msg, Post{});
@@ -319,7 +319,7 @@ namespace SSC {
       }
 
       auto bufferKey = std::to_string(cmd.index) + seq;
-      auto str = std::string();
+      auto str = SSC::String();
       str.assign(buf, bufsize);
       bufferQueue[bufferKey] = str;
       return true;
@@ -603,7 +603,7 @@ namespace SSC {
 
     if (cmd.name == "udpClose" || cmd.name == "udp.close") {
       uint64_t peerId = 0ll;
-      std::string err = "";
+      SSC::String err = "";
 
       if (cmd.get("id").size() == 0) {
         err = ".id is required";
@@ -666,7 +666,7 @@ namespace SSC {
 
     if (cmd.name == "udpConnect" || cmd.name == "udp.connect") {
       auto strId = cmd.get("id");
-      std::string err = "";
+      SSC::String err = "";
       uint64_t peerId = 0ll;
       int port = 0;
       auto strPort = cmd.get("port");
@@ -845,7 +845,7 @@ namespace SSC {
       int offset = 0;
       int port = 0;
       uint64_t peerId;
-      std::string err;
+      SSC::String err;
 
       auto ephemeral = cmd.get("ephemeral") == "true";
       auto strOffset = cmd.get("offset");
@@ -926,7 +926,7 @@ namespace SSC {
     return false;
   }
 
-  bool Bridge::route (std::string msg, char *buf, size_t bufsize) {
+  bool Bridge::route (SSC::String msg, char *buf, size_t bufsize) {
     Parse cmd(msg);
 
     return this->invoke(cmd, buf, bufsize, [cmd, this](auto seq, auto msg, auto post) {
@@ -934,7 +934,7 @@ namespace SSC {
     });
   }
 
-  void Bridge::send (Parse cmd, std::string seq, std::string msg, Post post) {
+  void Bridge::send (Parse cmd, SSC::String seq, SSC::String msg, Post post) {
     if (cmd.index == -1) {
       // @TODO(jwerle): print warning
       return;

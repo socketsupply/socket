@@ -31,7 +31,7 @@ NativeString::NativeString (JNIEnv *env, jstring ref)
   }
 }
 
-NativeString::NativeString (JNIEnv *env, std::string string)
+NativeString::NativeString (JNIEnv *env, SSC::String string)
   : NativeString(env)
 {
   if (string.size() > 0) {
@@ -51,7 +51,7 @@ NativeString::~NativeString () {
   this->Release();
 }
 
-void NativeString::Set (std::string string) {
+void NativeString::Set (SSC::String string) {
   this->Set(string.c_str());
 }
 
@@ -82,8 +82,8 @@ const char * NativeString::c_str () {
   return this->string;
 }
 
-const std::string NativeString::str () {
-  std::string value;
+const SSC::String NativeString::str () {
+  SSC::String value;
 
   if (this->string) {
     value.assign(this->string);
@@ -114,8 +114,8 @@ void NativeCoreRefs::Release () {
 NativeCallbackRef::NativeCallbackRef (
   NativeCore *core,
   NativeCallbackID id,
-  std::string name,
-  std::string signature
+  SSC::String name,
+  SSC::String signature
 ) {
   Lock lock(core->mutex);
   NativeCore::JNIEnvAttachment ctx(core);
@@ -195,7 +195,7 @@ jboolean NativeCore::ConfigureEnvironment () {
   using SSC::split;
   using SSC::trim;
 
-  std::stringstream stream;
+  SSC::StringStream stream;
 
   // `NativeCore::getRootDirectory()`
   this->rootDirectory.Set((jstring) CallNativeCoreMethodFromEnvironment(
@@ -209,7 +209,7 @@ jboolean NativeCore::ConfigureEnvironment () {
     return false;
   }
 
-  this->config = parseConfig(decodeURIComponent(STR_VALUE(SETTINGS)));
+  this->config = parseConfig(decodeURIComponent(STR_VALUE(SSC_SETTINGS)));
 
   if (DEBUG) {
     for (auto const &tuple : this->config) {
@@ -294,7 +294,7 @@ NativeRequestContext * NativeCore::CreateRequestContext (
   return context;
 }
 
-void NativeCore::EvaluateJavaScript (std::string js) {
+void NativeCore::EvaluateJavaScript (SSC::String js) {
   return this->EvaluateJavaScript(js.c_str());
 }
 
@@ -336,7 +336,7 @@ const NativeString & NativeCore::GetRootDirectory () const {
   return this->rootDirectory;
 }
 
-const std::string NativeCore::GetNetworkInterfaces() const {
+const SSC::String NativeCore::GetNetworkInterfaces() const {
   return this->getNetworkInterfaces();
 }
 
@@ -384,7 +384,7 @@ void NativeCore::BufferSize (
 
 void NativeCore::DNSLookup (
   NativeCoreSequence seq,
-  std::string hostname,
+  SSC::String hostname,
   int family,
   NativeCallbackID callback
 ) const {
@@ -405,7 +405,7 @@ NativeFileSystem::NativeFileSystem (JNIEnv *env, NativeCore *core) {
 
 void NativeFileSystem::Access (
   NativeCoreSequence seq,
-  std::string path,
+  SSC::String path,
   int mode,
   NativeCallbackID callback
 ) const {
@@ -419,7 +419,7 @@ void NativeFileSystem::Access (
 
 void NativeFileSystem::Chmod (
   NativeCoreSequence seq,
-  std::string path,
+  SSC::String path,
   int mode,
   NativeCallbackID callback
 ) const {
@@ -460,7 +460,7 @@ void NativeFileSystem::FStat (
 void NativeFileSystem::Open (
   NativeCoreSequence seq,
   NativeCoreID id,
-  std::string path,
+  SSC::String path,
   int flags,
   int mode,
   NativeCallbackID callback
@@ -490,7 +490,7 @@ void NativeFileSystem::Read (
 
 void NativeFileSystem::Stat (
   NativeCoreSequence seq,
-  std::string path,
+  SSC::String path,
   NativeCallbackID callback
 ) const {
   auto context = this->core->CreateRequestContext(seq, 0, callback);
@@ -511,7 +511,7 @@ void NativeFileSystem::Write (
 ) const {
   auto context = this->core->CreateRequestContext(seq, id, callback);
   auto core = reinterpret_cast<SSC::Core *>(context->core);
-  auto data = std::string();
+  auto data = SSC::String();
 
   data.assign(bytes, size);
 
@@ -528,7 +528,7 @@ NativeUDP::NativeUDP (JNIEnv *env, NativeCore *core) {
 }
 
 void NativeRequestContext::Send (
-  std::string data,
+  SSC::String data,
   SSC::Post post
 ) const {
   this->Send(this->seq, data, post);
@@ -536,7 +536,7 @@ void NativeRequestContext::Send (
 
 void NativeRequestContext::Send (
   NativeCoreSequence seq,
-  std::string data,
+  SSC::String data,
   SSC::Post post
 ) const {
   if (post.id != 0) {
@@ -559,7 +559,7 @@ void NativeRequestContext::Send (
 
 void NativeRequestContext::Finalize (
   NativeCoreSequence seq,
-  std::string data,
+  SSC::String data,
   SSC::Post post
 ) const {
   this->Send(seq, data, post);
@@ -567,7 +567,7 @@ void NativeRequestContext::Finalize (
 }
 
 void NativeRequestContext::Finalize (
-  std::string data,
+  SSC::String data,
   SSC::Post post
 ) const {
   this->Finalize(this->seq, data, post);
@@ -575,13 +575,13 @@ void NativeRequestContext::Finalize (
 
 void NativeRequestContext::Finalize (
   NativeCoreSequence seq,
-  std::string data
+  SSC::String data
 ) const {
   this->Finalize(seq, data, SSC::Post{});
 }
 
 void NativeRequestContext::Finalize (
-  std::string data
+  SSC::String data
 ) const {
   this->Finalize(this->seq, data, SSC::Post{});
 }
@@ -595,7 +595,7 @@ void NativeRequestContext::Finalize (
 void NativeUDP::Bind (
   NativeCoreSequence seq,
   NativeCoreID id,
-  std::string address,
+  SSC::String address,
   int port,
   bool reuseAddr,
   NativeCallbackID callback
@@ -624,7 +624,7 @@ void NativeUDP::Close (
 void NativeUDP::Connect (
   NativeCoreSequence seq,
   NativeCoreID id,
-  std::string ip,
+  SSC::String ip,
   int port,
   NativeCallbackID callback
 ) const {
@@ -719,7 +719,7 @@ void NativeUDP::Send (
   NativeCoreID id,
   char *data,
   int16_t size,
-  std::string address,
+  SSC::String address,
   int port,
   bool ephemeral,
   NativeCallbackID callback

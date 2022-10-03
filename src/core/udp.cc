@@ -26,7 +26,7 @@ namespace SSC {
             "id": "$S",
             "message": "$S"
           }
-        })MSG", std::to_string(peerId), std::string(uv_strerror(err)));
+        })MSG", std::to_string(peerId), SSC::String(uv_strerror(err)));
         cb(seq, msg, Post{});
         return;
       }
@@ -40,7 +40,7 @@ namespace SSC {
             "id": "$S",
             "message": "$S"
           }
-        })MSG", std::to_string(peerId), std::string(uv_strerror(info->err)));
+        })MSG", std::to_string(peerId), SSC::String(uv_strerror(info->err)));
         cb(seq, msg, Post{});
         return;
       }
@@ -72,7 +72,7 @@ namespace SSC {
             "id": "$S",
             "message": "$S"
           }
-        })MSG", std::to_string(peerId), std::string(uv_strerror(err)));
+        })MSG", std::to_string(peerId), SSC::String(uv_strerror(err)));
         cb(seq, msg, Post{});
         return;
       }
@@ -86,7 +86,7 @@ namespace SSC {
             "id": "$S",
             "message": "$S"
           }
-        })MSG", std::to_string(peerId), std::string(uv_strerror(info->err)));
+        })MSG", std::to_string(peerId), SSC::String(uv_strerror(info->err)));
         cb(seq, msg, Post{});
         return;
       }
@@ -129,7 +129,7 @@ namespace SSC {
             "id": "$S",
             "message": "$S"
           }
-        })MSG", std::to_string(peerId), std::string(uv_strerror(err)));
+        })MSG", std::to_string(peerId), SSC::String(uv_strerror(err)));
         cb(seq, msg, Post{});
         return;
       }
@@ -168,7 +168,7 @@ namespace SSC {
           "id": "$S",
           "message": "$S"
         }
-      })MSG", std::to_string(peerId), std::string(uv_strerror(info->err)));
+      })MSG", std::to_string(peerId), SSC::String(uv_strerror(info->err)));
       cb(seq, msg, Post{});
       return;
     }
@@ -209,7 +209,7 @@ namespace SSC {
           "id": "$S",
           "message": "$S"
         }
-      })MSG", std::to_string(peerId), std::string(uv_strerror(info->err)));
+      })MSG", std::to_string(peerId), SSC::String(uv_strerror(info->err)));
       cb(seq, msg, Post{});
       return;
     }
@@ -277,12 +277,12 @@ namespace SSC {
         }
       })MSG",
       std::to_string(peerId),
-      std::string(peer->isEphemeral() ? "true" : "false"),
-      std::string(peer->isBound() ? "true" : "false"),
-      std::string(peer->isActive() ? "true" : "false"),
-      std::string(peer->isClosing() ? "true" : "false"),
-      std::string(peer->isClosed() ? "true" : "false"),
-      std::string(peer->isConnected() ? "true" : "false")
+      SSC::String(peer->isEphemeral() ? "true" : "false"),
+      SSC::String(peer->isBound() ? "true" : "false"),
+      SSC::String(peer->isActive() ? "true" : "false"),
+      SSC::String(peer->isClosing() ? "true" : "false"),
+      SSC::String(peer->isClosed() ? "true" : "false"),
+      SSC::String(peer->isConnected() ? "true" : "false")
     );
 
     cb(seq, msg, Post{});
@@ -374,7 +374,7 @@ namespace SSC {
           }
         })MSG",
         std::to_string(peerId),
-        std::string(uv_strerror(err))
+        SSC::String(uv_strerror(err))
       );
 
       cb(seq, msg, Post{});
@@ -444,7 +444,7 @@ namespace SSC {
           }
         })MSG",
         std::to_string(peerId),
-        std::string(uv_strerror(err)));
+        SSC::String(uv_strerror(err)));
 
         cb(seq, msg, Post{});
         return;

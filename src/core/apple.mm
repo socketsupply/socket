@@ -11,8 +11,8 @@
     decidePolicyForNavigationAction: (WKNavigationAction*) navigationAction
     decisionHandler: (void (^)(WKNavigationActionPolicy)) decisionHandler {
 
-  std::string base = webview.URL.absoluteString.UTF8String;
-  std::string request = navigationAction.request.URL.absoluteString.UTF8String;
+  SSC::String base = webview.URL.absoluteString.UTF8String;
+  SSC::String request = navigationAction.request.URL.absoluteString.UTF8String;
 
   if (request.find("file://") == 0 && request.find("http://localhost") == 0) {
     decisionHandler(WKNavigationActionPolicyCancel);
@@ -25,11 +25,11 @@
 @implementation SSCIPCSchemeHandler
 - (void)webView: (SSCBridgedWebView*)webview stopURLSchemeTask:(id<WKURLSchemeTask>)urlSchemeTask {}
 - (void)webView: (SSCBridgedWebView*)webview startURLSchemeTask:(id<WKURLSchemeTask>)task {
-  auto url = std::string(task.request.URL.absoluteString.UTF8String);
+  auto url = SSC::String(task.request.URL.absoluteString.UTF8String);
 
   SSC::Parse cmd(url);
 
-  if (std::string(task.request.HTTPMethod.UTF8String) == "OPTIONS") {
+  if (SSC::String(task.request.HTTPMethod.UTF8String) == "OPTIONS") {
     NSMutableDictionary* httpHeaders = [NSMutableDictionary dictionary];
 
     httpHeaders[@"access-control-allow-origin"] = @"*";
@@ -175,8 +175,8 @@
 }
 
 - (void) peripheralManagerDidUpdateState:(CBPeripheralManager *)peripheral {
-  std::string state = "Unknown state";
-  std::string message = "Unknown state";
+  SSC::String state = "Unknown state";
+  SSC::String message = "Unknown state";
 
   switch (peripheral.state) {
     case CBManagerStatePoweredOff:
@@ -223,7 +223,7 @@
 - (void) peripheralManagerDidStartAdvertising: (CBPeripheralManager*)peripheral error: (NSError*)error {
   if (error) {
     DebugLog(@"CoreBluetooth: %@", error);
-    auto desc = std::string([error.debugDescription UTF8String]);
+    auto desc = SSC::String([error.debugDescription UTF8String]);
     std::replace(desc.begin(), desc.end(), '"', '\''); // Secure
 
     auto msg = SSC::format(R"MSG({
@@ -305,7 +305,7 @@
   [self startAdvertising];
 }
 
--(void) subscribeCharacteristic: (std::string)seq sid: (std::string)sid cid: (std::string)cid {
+-(void) subscribeCharacteristic: (SSC::String)seq sid: (SSC::String)sid cid: (SSC::String)cid {
   NSString* ssid = [NSString stringWithUTF8String: sid.c_str()];
   NSString* scid = [NSString stringWithUTF8String: cid.c_str()];
 
@@ -351,7 +351,7 @@
   [self.bridge send: seq msg: msg post: SSC::Post{}];
 }
 
-- (void) publishCharacteristic: (std::string)seq buf: (char*)buf len: (int)len sid: (std::string)sid cid: (std::string)cid {
+- (void) publishCharacteristic: (SSC::String)seq buf: (char*)buf len: (int)len sid: (SSC::String)sid cid: (SSC::String)cid {
   NSString* ssid = [NSString stringWithUTF8String: sid.c_str()];
   NSString* scid = [NSString stringWithUTF8String: cid.c_str()];
 
@@ -405,7 +405,7 @@
   DebugLog(@"CoreBluetooth: did write '%@' %@", data, characteristic);
 }
 
-- (void) startService: (std::string)seq sid: (std::string)sid { // start advertising and scanning for a new service
+- (void) startService: (SSC::String)seq sid: (SSC::String)sid { // start advertising and scanning for a new service
   [self startScanning];
 
   auto msg = SSC::format(R"MSG({
@@ -489,8 +489,8 @@
     [uuids addObject: [CBUUID UUIDWithString: key]];
   }
 
-  std::string uuid = std::string([peripheral.identifier.UUIDString UTF8String]);
-  std::string name = std::string([peripheral.name UTF8String]);
+  SSC::String uuid = SSC::String([peripheral.identifier.UUIDString UTF8String]);
+  SSC::String name = SSC::String([peripheral.name UTF8String]);
 
   if (uuid.size() == 0 || name.size() == 0) {
     DebugLog(@"device has no meta information");
@@ -564,8 +564,8 @@
 
   if (!characteristic.value || characteristic.value.length == 0) return;
 
-  std::string uuid = "";
-  std::string name = "";
+  SSC::String uuid = "";
+  SSC::String name = "";
 
   if (peripheral.identifier != nil) {
     uuid = [peripheral.identifier.UUIDString UTF8String];
@@ -576,8 +576,8 @@
     std::replace(name.begin(), name.end(), '\n', ' '); // Secure
   }
 
-  std::string characteristicId = [characteristic.UUID.UUIDString UTF8String];
-  std::string sid = "";
+  SSC::String characteristicId = [characteristic.UUID.UUIDString UTF8String];
+  SSC::String sid = "";
 
   for (NSString* ssid in [_serviceMap allKeys]) {
     if ([_serviceMap[ssid] containsObject: characteristic.UUID]) {
@@ -595,9 +595,9 @@
     content-length: $i
   )MSG", post.length);
 
-  std::string seq = "-1";
+  SSC::String seq = "-1";
 
-  std::string msg = SSC::format(R"MSG({
+  SSC::String msg = SSC::format(R"MSG({
     "data": {
       "event": "data",
       "source": "bluetooth",
@@ -692,8 +692,8 @@
   nw_path_monitor_set_update_handler(self.monitor, ^(nw_path_t path) {
     nw_path_status_t status = nw_path_get_status(path);
 
-    std::string name;
-    std::string message;
+    SSC::String name;
+    SSC::String message;
 
     switch (status) {
       case nw_path_status_invalid: {
@@ -736,13 +736,13 @@
   _core = core;
 }
 
-- (void) emit: (std::string)name msg: (std::string)msg {
+- (void) emit: (SSC::String)name msg: (SSC::String)msg {
   msg = SSC::emitToRenderProcess(name, SSC::encodeURIComponent(msg));
   NSString* script = [NSString stringWithUTF8String: msg.c_str()];
   [self.webview evaluateJavaScript: script completionHandler: nil];
 }
 
-- (void) send: (std::string)seq msg: (std::string)msg post: (SSC::Post)post {
+- (void) send: (SSC::String)seq msg: (SSC::String)msg post: (SSC::Post)post {
   if (seq != "-1" && [self hasTask: seq]) {
     auto task = [self getTask: seq];
     [self removeTask: seq];
@@ -812,7 +812,7 @@
 }
 
 // returns true if routable (regardless of success)
-- (bool) route: (std::string)msg buf: (char*)buf bufsize: (size_t)bufsize{
+- (bool) route: (SSC::String)msg buf: (char*)buf bufsize: (size_t)bufsize{
   using namespace SSC;
 
   if (msg.find("ipc://") != 0) return false;
@@ -932,19 +932,19 @@
   }
 
   if (cmd.name == "window.eval") {
-    std::string value = decodeURIComponent(cmd.get("value"));
+    SSC::String value = decodeURIComponent(cmd.get("value"));
     auto seq = cmd.get("seq");
 
     NSString* script = [NSString stringWithUTF8String: value.c_str()];
     dispatch_async(dispatch_get_main_queue(), ^{
       [self.webview evaluateJavaScript: script completionHandler: ^(id result, NSError *error) {
         if (result) {
-          auto msg = std::string([[NSString stringWithFormat:@"%@", result] UTF8String]);
+          auto msg = SSC::String([[NSString stringWithFormat:@"%@", result] UTF8String]);
           [self send: seq msg: msg post: Post{}];
         } else if (error) {
           auto exception = error.userInfo[@"WKJavaScriptExceptionMessage"];
           auto message = [[NSString stringWithFormat:@"%@", exception] UTF8String];
-          auto err = encodeURIComponent(std::string(message));
+          auto err = encodeURIComponent(SSC::String(message));
 
           if (err == "(null)") {
             [self send: seq msg: "null" post: Post{}];
@@ -1079,7 +1079,7 @@
   if (cmd.name == "fsWrite" || cmd.name == "fs.write") {
     auto id = std::stoull(cmd.get("id"));
     auto offset = std::stoull(cmd.get("offset"));
-    auto data = std::string(buf, bufsize);
+    auto data = SSC::String(buf, bufsize);
 
     dispatch_async(queue, ^{
       self.core->fsWrite(seq, id, data, offset, [=](auto seq, auto msg, auto post) {
@@ -1237,7 +1237,7 @@
       auto msg = SSC::format(R"JSON({
         "source": "process.cwd",
         "data": "$S"
-      })JSON", std::string([cwd UTF8String]));
+      })JSON", SSC::String([cwd UTF8String]));
       [self send: seq msg: msg post: Post{}];
     });
     return true;
@@ -1322,7 +1322,7 @@
 
   if (cmd.name == "udpConnect" || cmd.name == "udp.connect") {
     auto strId = cmd.get("id");
-    std::string err = "";
+    SSC::String err = "";
     uint64_t peerId = 0ll;
     int port = 0;
     auto strPort = cmd.get("port");
@@ -1487,7 +1487,7 @@
     int offset = 0;
     int port = 0;
     uint64_t peerId;
-    std::string err;
+    SSC::String err;
 
     auto ephemeral = cmd.get("ephemeral") == "true";
     auto strOffset = cmd.get("offset");
@@ -1547,7 +1547,7 @@
   if (cmd.name == "udpBind" || cmd.name == "udp.bind") {
     auto ip = cmd.get("address");
     auto reuseAddr = cmd.get("reuseAddr") == "true";
-    std::string err;
+    SSC::String err;
     int port;
     uint64_t peerId = 0ll;
 
@@ -1622,7 +1622,7 @@
 
   if (cmd.name == "dnsLookup" || cmd.name == "dns.lookup") {
     auto hostname = cmd.get("hostname");
-    std::string err = "";
+    SSC::String err = "";
 
     auto strFamily = cmd.get("family");
     int family = 0;

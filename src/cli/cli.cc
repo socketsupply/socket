@@ -38,16 +38,16 @@
 using namespace SSC;
 using namespace std::chrono;
 
-std::string _settings;
+String _settings;
 Map settings = {{}};
 
-auto start = std::chrono::system_clock::now();
+auto start = system_clock::now();
 
 bool flagDebugMode = true;
 bool flagQuietMode = false;
-Map defaultTemplateAttrs = {{ "ssc_version", SSC::full_version }};
+Map defaultTemplateAttrs = {{ "ssc_version", SSC::VERSION_FULL_STRING }};
 
-void log (const std::string s) {
+void log (const String s) {
   if (flagQuietMode) return;
   if (s.size() == 0) return;
 
@@ -62,7 +62,27 @@ void log (const std::string s) {
   start = std::chrono::system_clock::now();
 }
 
-int runApp (const fs::path& path, const std::string& args, bool headless) {
+inline String prefixFile (String s) {
+  if (platform.mac || platform.linux) {
+    String local = getEnv("HOME");
+    return String(local + "/.config/socket-sdk/" + s + " ");
+  }
+
+  String local = getEnv ("LOCALAPPDATA");
+  return String(local + "\\Programs\\socketsupply\\" + s + " ");
+}
+
+inline String prefixFile () {
+  if (platform.mac || platform.linux) {
+    String local = getEnv("HOME");
+    return String(local + "/.config/socket-sdk/");
+  }
+
+  String local = getEnv ("LOCALAPPDATA");
+  return String(local + "\\Programs\\socketsupply");
+}
+
+int runApp (const fs::path& path, const String& args, bool headless) {
   auto cmd = path.string();
   int status = 0;
 
@@ -71,13 +91,13 @@ int runApp (const fs::path& path, const std::string& args, bool headless) {
     return 1;
   }
 
-  auto runner = trim(std::string(STR_VALUE(CMD_RUNNER)));
-  auto prefix = runner.size() > 0 ? runner + std::string(" ") : runner;
+  auto runner = trim(String(STR_VALUE(CMD_RUNNER)));
+  auto prefix = runner.size() > 0 ? runner + String(" ") : runner;
 
   if (headless) {
     auto headlessRunner = settings["headless_runner"];
     auto headlessRunnerFlags = settings["headless_runner_flags"];
-    std::string headlessCommand = "";
+    String headlessCommand = "";
 
     if (headlessRunner.size() == 0) {
       headlessRunner = settings["headless_" + platform.os + "_runner"];
@@ -117,7 +137,7 @@ int runApp (const fs::path& path, const std::string& args, bool headless) {
   return WEXITSTATUS(status);
 }
 
-int runApp (const fs::path& path, const std::string& args) {
+int runApp (const fs::path& path, const String& args) {
   return runApp(path, args, false);
 }
 
@@ -126,8 +146,8 @@ void runIOSSimulator (const fs::path& path, Map& settings) {
     log("error: 'ios_simulator_device' option is empty");
     exit(1);
   }
-  std::string deviceType;
-  std::stringstream listDeviceTypesCommand;
+  String deviceType;
+  StringStream listDeviceTypesCommand;
   listDeviceTypesCommand
     << "xcrun"
     << " simctl"
@@ -161,7 +181,7 @@ void runIOSSimulator (const fs::path& path, Map& settings) {
     exit(rListDevices.exitCode);
   }
 
-  std::stringstream listDevicesCommand;
+  StringStream listDevicesCommand;
   listDevicesCommand
     << "xcrun"
     << " simctl"
@@ -179,12 +199,12 @@ void runIOSSimulator (const fs::path& path, Map& settings) {
   std::replace(iosSimulatorDeviceSuffix.begin(), iosSimulatorDeviceSuffix.end(), ' ', '_');
   std::regex reSocketSDKDevice("SocketSDKSimulator_" + iosSimulatorDeviceSuffix + "\\s\\((.+)\\)\\s\\((.+)\\)");
 
-  std::string uuid;
+  String uuid;
   bool booted = false;
 
   if (std::regex_search(rListDevices.output, match, reSocketSDKDevice)) {
     uuid = match.str(1);
-    booted = match.str(2).find("Booted") != std::string::npos;
+    booted = match.str(2).find("Booted") != String::npos;
 
     log("found SocketSDK simulator VM for " + settings["ios_simulator_device"] + " with uuid: " + uuid);
     if (booted) {
@@ -195,7 +215,7 @@ void runIOSSimulator (const fs::path& path, Map& settings) {
   } else {
     log("creating a new iOS simulator VM for " + settings["ios_simulator_device"]);
 
-    std::stringstream listRuntimesCommand;
+    StringStream listRuntimesCommand;
     listRuntimesCommand
       << "xcrun"
       << " simctl"
@@ -209,10 +229,10 @@ void runIOSSimulator (const fs::path& path, Map& settings) {
       exit(rListRuntimes.exitCode);
     }
     auto const runtimes = split(rListRuntimes.output, '\n');
-    std::string runtime;
+    String runtime;
     // TODO: improve iOS version detection
     for (auto it = runtimes.rbegin(); it != runtimes.rend(); ++it) {
-      if (it->find("iOS") != std::string::npos) {
+      if (it->find("iOS") != String::npos) {
         runtime = trim(*it);
         log("found runtime: " + runtime);
         break;
@@ -221,13 +241,13 @@ void runIOSSimulator (const fs::path& path, Map& settings) {
 
     std::regex reRuntime(R"(com.apple.CoreSimulator.SimRuntime.iOS(?:.*))");
     std::smatch matchRuntime;
-    std::string runtimeId;
+    String runtimeId;
 
     if (std::regex_search(runtime, matchRuntime, reRuntime)) {
       runtimeId = matchRuntime.str(0);
     }
 
-    std::stringstream createSimulatorCommand;
+    StringStream createSimulatorCommand;
     createSimulatorCommand
       << "xcrun simctl"
       << " create SocketSDKSimulator_" + iosSimulatorDeviceSuffix
@@ -247,7 +267,7 @@ void runIOSSimulator (const fs::path& path, Map& settings) {
 
   if (!booted) {
     log("booting VM " + uuid);
-    std::stringstream bootSimulatorCommand;
+    StringStream bootSimulatorCommand;
     bootSimulatorCommand
       << "xcrun"
       << " simctl boot " << uuid;
@@ -266,7 +286,7 @@ void runIOSSimulator (const fs::path& path, Map& settings) {
   auto pathToXCode = fs::path("/Applications") / "Xcode.app" / "Contents";
   auto pathToSimulator = pathToXCode / "Developer" / "Applications" / "Simulator.app";
 
-  std::stringstream simulatorCommand;
+  StringStream simulatorCommand;
   simulatorCommand
     << "open "
     << pathToSimulator.string()
@@ -281,7 +301,7 @@ void runIOSSimulator (const fs::path& path, Map& settings) {
     exit(rOpenSimulator.exitCode);
   }
 
-  std::stringstream installAppCommand;
+  StringStream installAppCommand;
 
   installAppCommand
     << "xcrun"
@@ -299,7 +319,7 @@ void runIOSSimulator (const fs::path& path, Map& settings) {
     exit(rInstallApp.exitCode);
   }
 
-  std::stringstream launchAppCommand;
+  StringStream launchAppCommand;
   launchAppCommand
     << "xcrun"
     << " simctl launch --console-pty booted"
@@ -318,12 +338,12 @@ void runIOSSimulator (const fs::path& path, Map& settings) {
   }
 };
 
-static std::string getCxxFlags() {
+static String getCxxFlags() {
   auto flags = getEnv("CXX_FLAGS");
   return flags.size() > 0 ? " " + flags : "";
 }
 
-void printHelp (const std::string& command) {
+void printHelp (const String& command) {
   if (command == "ssc") {
     std::cout << tmpl(gHelpText, defaultTemplateAttrs) << std::endl;
   } else if (command == "compile") {
@@ -341,7 +361,7 @@ void printHelp (const std::string& command) {
   }
 }
 
-inline std::string getCfgUtilPath() {
+inline String getCfgUtilPath() {
   const bool hasCfgUtilInPath = exec("command -v cfgutil").exitCode == 0;
   if (hasCfgUtilInPath) {
     return "cfgutil";
@@ -361,16 +381,16 @@ int main (const int argc, const char* argv[]) {
     exit(0);
   }
 
-  auto is = [](const std::string& s, const auto& p) -> bool {
+  auto is = [](const String& s, const auto& p) -> bool {
     return s.compare(p) == 0;
   };
 
-  auto optionValue = [](const std::string& s, const auto& p) -> std::string {
-    auto string = p + std::string("=");
-    if (std::string(s).find(string) == 0) {
+  auto optionValue = [](const String& s, const auto& p) -> String {
+    auto string = p + String("=");
+    if (String(s).find(string) == 0) {
       auto value = s.substr(string.size());
       if (value.size() == 0) {
-        log("missing value for option " + std::string(p));
+        log("missing value for option " + String(p));
         exit(1);
       }
       return value;
@@ -381,7 +401,7 @@ int main (const int argc, const char* argv[]) {
   auto const subcommand = argv[1];
 
   if (is(subcommand, "-v") || is(subcommand, "--version")) {
-    std::cout << SSC::full_version << std::endl;
+    std::cout << SSC::VERSION_FULL_STRING << std::endl;
     exit(0);
   }
 
@@ -391,7 +411,7 @@ int main (const int argc, const char* argv[]) {
   }
 
   if (subcommand[0] == '-') {
-    log("unknown option: " + std::string(subcommand));
+    log("unknown option: " + String(subcommand));
     printHelp("ssc");
     exit(0);
   }
@@ -417,9 +437,9 @@ int main (const int argc, const char* argv[]) {
     fs::path platformSpecificOutputPath;
   };
 
-  auto getPaths = [&](std::string platform) -> Paths {
+  auto getPaths = [&](String platform) -> Paths {
     Paths paths;
-    std::string platformPath = platform == "win32"
+    String platformPath = platform == "win32"
       ? "win"
       : platform;
     paths.platformSpecificOutputPath = {
@@ -483,8 +503,8 @@ int main (const int argc, const char* argv[]) {
   };
 
   auto createSubcommand = [&](
-    const std::string& subcommand,
-    const std::vector<std::string>& options,
+    const String& subcommand,
+    const std::vector<String>& options,
     const bool& needsConfig,
     std::function<void(std::span<const char *>)> subcommandHandler
   ) -> void {
@@ -503,7 +523,7 @@ int main (const int argc, const char* argv[]) {
           }
         }
         if (!isAcceptableOption) {
-          log("unrecognized option: " + std::string(arg));
+          log("unrecognized option: " + String(arg));
           printHelp(subcommand);
           exit(1);
         }
@@ -529,7 +549,7 @@ int main (const int argc, const char* argv[]) {
           }
         }
 
-        std::string suffix = "";
+        String suffix = "";
 
         if (flagDebugMode) {
           settings["apple_instruments"] = "true";
@@ -556,7 +576,7 @@ int main (const int argc, const char* argv[]) {
   });
 
   createSubcommand("list-devices", { "--platform", "--ecid", "--udid", "--only" }, false, [&](const std::span<const char *>& options) -> void {
-    std::string targetPlatform = "";
+    String targetPlatform = "";
     bool isUdid = false;
     bool isEcid = false;
     bool isOnly = false;
@@ -590,14 +610,14 @@ int main (const int argc, const char* argv[]) {
         printHelp("list-devices");
         exit(1);
       }
-      std::string cfgUtilPath = getCfgUtilPath();
-      std::string command = cfgUtilPath + " list-devices";
+      String cfgUtilPath = getCfgUtilPath();
+      String command = cfgUtilPath + " list-devices";
       auto r = exec(command);
 
       if (r.exitCode == 0) {
         std::regex re(R"(ECID:\s(\S*)\s*UDID:\s(\S*).*Name:\s(.*))");
         std::smatch matches;
-        std::string uuid;
+        String uuid;
 
         while (std::regex_search(r.output, matches, re)) {
           auto ecid = matches[1];
@@ -640,9 +660,9 @@ int main (const int argc, const char* argv[]) {
       log("install-app is only supported on macOS.");
       exit(0);
     } else {
-      const std::string cfgUtilPath = getCfgUtilPath();
-      std::string commandOptions = "";
-      std::string targetPlatform = "";
+      const String cfgUtilPath = getCfgUtilPath();
+      String commandOptions = "";
+      String targetPlatform = "";
       // we need to find platform first
       for (auto const option : options) {
         targetPlatform = optionValue(option, "--platform");
@@ -672,8 +692,8 @@ int main (const int argc, const char* argv[]) {
       auto ipaPath = (
         getPaths(targetPlatform).platformSpecificOutputPath /
         "build" /
-        std::string(settings["name"] + ".ipa") /
-        std::string(settings["name"] + ".ipa")
+        String(settings["name"] + ".ipa") /
+        String(settings["name"] + ".ipa")
       );
       if (!fs::exists(ipaPath)) {
         log("Could not find " + ipaPath.string());
@@ -722,10 +742,10 @@ int main (const int argc, const char* argv[]) {
     bool flagBuildForSimulator = false;
     bool flagBuildTest = false;
 
-    std::string argvForward = "";
-    std::string targetPlatform = "";
+    String argvForward = "";
+    String targetPlatform = "";
 
-    std::string devPort("0");
+    String devPort("0");
     auto cnt = 0;
 
     for (auto const arg : options) {
@@ -779,7 +799,7 @@ int main (const int argc, const char* argv[]) {
       auto testArg = optionValue(arg, "--test");
       if (testArg.size() > 0) {
         flagBuildTest = true;
-        argvForward += " " + std::string(arg);
+        argvForward += " " + String(arg);
       }
 
       if (is(arg, "--headless")) {
@@ -814,7 +834,7 @@ int main (const int argc, const char* argv[]) {
       }
     }
 
-    const std::vector<std::string> required = {
+    const std::vector<String> required = {
       "name",
       "title",
       "executable",
@@ -881,17 +901,17 @@ int main (const int argc, const char* argv[]) {
       auto p = fs::current_path() / fs::path(paths.platformSpecificOutputPath);
       try {
         fs::remove_all(p);
-        log(std::string("cleaned: " + p.string()));
+        log(String("cleaned: " + p.string()));
       } catch (fs::filesystem_error const& ex) {
         log("could not clean path (binary could be busy)");
-        log(std::string("ex: ") + ex.what());
-        log(std::string("ex code: ") + std::to_string(ex.code().value()));
+        log(String("ex: ") + ex.what());
+        log(String("ex code: ") + std::to_string(ex.code().value()));
         exit(1);
       }
     }
 
-    std::string flags;
-    std::string files;
+    String flags;
+    String files;
 
     fs::path pathResources;
     fs::path pathToArchive;
@@ -962,7 +982,7 @@ int main (const int argc, const char* argv[]) {
       auto pkg = src / "main" / "java" / bundle_path;
 
       if (settings["android_main_activity"].size() == 0) {
-        settings["android_main_activity"] = std::string(DEFAULT_ANDROID_ACTIVITY_NAME);
+        settings["android_main_activity"] = String(DEFAULT_ANDROID_ACTIVITY_NAME);
       }
 
       // clean and create output directories
@@ -986,7 +1006,7 @@ int main (const int argc, const char* argv[]) {
       // set current path to output directory
       fs::current_path(output);
 
-      std::stringstream gradleInitCommand;
+      StringStream gradleInitCommand;
       gradleInitCommand
         << "echo 1 |"
         << "gradle "
@@ -1030,7 +1050,7 @@ int main (const int argc, const char* argv[]) {
         fs::copy_options::overwrite_existing | fs::copy_options::recursive
       );
 
-      auto aaptNoCompressOptionsNormalized = std::vector<std::string>();
+      auto aaptNoCompressOptionsNormalized = std::vector<String>();
       auto aaptNoCompressDefaultOptions = split(R"OPTIONS("htm","html","txt","js","jsx","mjs","ts","css","xml")OPTIONS", ',');
       auto aaptNoCompressOptions = split(settings["android_aapt_no_compress"], ',');
 
@@ -1119,7 +1139,7 @@ int main (const int argc, const char* argv[]) {
         settings["android_manifest_permissions"] = replace(settings["android_manifest_permissions"], ",", " ");
         for (auto const &value: split(settings["android_manifest_permissions"], ' ')) {
           auto permission = replace(trim(value), "\"", "");
-          std::stringstream xml;
+          StringStream xml;
 
           std::transform(permission.begin(), permission.end(), permission.begin(), ::toupper);
 
@@ -1162,13 +1182,13 @@ int main (const int argc, const char* argv[]) {
         ? settings.count("debug_flags") ? settings["debug_flags"] : ""
         : settings.count("flags") ? settings["flags"] : "";
 
-      std::stringstream pp;
+      StringStream pp;
       pp
         << "-DDEBUG=" << (flagDebugMode ? 1 : 0) << " "
         << "-DANDROID=1" << " "
-        << "-DSETTINGS=\"" << encodeURIComponent(_settings) << "\" "
-        << "-DVERSION=" << SSC::version << " "
-        << "-DVERSION_HASH=" << SSC::version_hash << " ";
+        << "-DSSC_SETTINGS=\"" << encodeURIComponent(_settings) << "\" "
+        << "-DSSC_VERSION=" << SSC::VERSION_STRING << " "
+        << "-DSSC_VERSION_HASH=" << SSC::VERSION_HASH_STRING << " ";
 
       Map makefileContext;
 
@@ -1184,7 +1204,7 @@ int main (const int argc, const char* argv[]) {
       // custom native sources
       for (auto const &file : split(settings["android_native_sources"], ' ')) {
         auto filename = fs::path(file).filename();
-        // log(std::string("Android NDK source: " + std::string(target / file)).c_str());
+        // log(String("Android NDK source: " + String(target / file)).c_str());
         writeFile(
           jni / "src" / file,
           tmpl(std::regex_replace(
@@ -1224,7 +1244,7 @@ int main (const int argc, const char* argv[]) {
 
       // custom source files
       for (auto const &file : split(settings["android_sources"], ' ')) {
-        // log(std::string("Android source: " + std::string(target / file)).c_str());
+        // log(String("Android source: " + String(target / file)).c_str());
         writeFile(
           pkg / fs::path(file).filename(),
           tmpl(std::regex_replace(
@@ -1260,7 +1280,7 @@ int main (const int argc, const char* argv[]) {
               "ios_provisioning_profile field in your ssc.config");
           exit(1);
         }
-        std::string command = (
+        String command = (
           "security cms -D -i " + pathToProfile.string()
         );
 
@@ -1273,7 +1293,7 @@ int main (const int argc, const char* argv[]) {
           exit(1);
         }
 
-        std::string uuid = matchUuid.str(1);
+        String uuid = matchUuid.str(1);
 
         std::regex reProvSpec(R"(<key>Name<\/key>\n\s*<string>(.*)<\/string>)");
         std::smatch matchProvSpec;
@@ -1283,7 +1303,7 @@ int main (const int argc, const char* argv[]) {
           exit(1);
         }
 
-        std::string provSpec = matchProvSpec.str(1);
+        String provSpec = matchProvSpec.str(1);
 
         std::regex reTeamId(R"(<key>com\.apple\.developer\.team-identifier<\/key>\n\s*<string>(.*)<\/string>)");
         std::smatch matchTeamId;
@@ -1293,7 +1313,7 @@ int main (const int argc, const char* argv[]) {
           exit(1);
         }
 
-        std::string team = matchTeamId.str(1);
+        String team = matchTeamId.str(1);
 
         auto pathToInstalledProfile = fs::path(getEnv("HOME")) /
           "Library" /
@@ -1429,10 +1449,10 @@ int main (const int argc, const char* argv[]) {
 
       flags = " -std=c++2a"
         " -I" + prefix +
-        " -I" + prefix + "\\src\\win64"
-        " -I" + prefix + "\\src\\uv"
-        " -L" + prefix + "\\src\\win64"
-        " -L" + prefix + "\\src\\uv"
+        " -I" + prefix + "\\include"
+        " -I" + prefix + "\\src"
+        " -L" + prefix + "\\lib"
+        " -L" + prefix + "\\lib\\win64"
       ;
 
       files += prefixFile("src\\app\\win.cc");
@@ -1480,7 +1500,7 @@ int main (const int argc, const char* argv[]) {
       // pass it the platform specific directory where they
       // should send their build artifacts.
       //
-      std::stringstream buildCommand;
+      StringStream buildCommand;
       auto oldCwd = fs::current_path();
       fs::current_path(oldCwd / targetPath);
 
@@ -1581,18 +1601,18 @@ int main (const int argc, const char* argv[]) {
       // For iOS we're going to bail early and let XCode infrastructure handle
       // building, signing, bundling, archiving, noterizing, and uploading.
       //
-      std::stringstream archiveCommand;
-      std::string destination = flagBuildForSimulator
+      StringStream archiveCommand;
+      String destination = flagBuildForSimulator
         ? "platform=iOS Simulator,OS=latest,name=" + settings["ios_simulator_device"]
         : "generic/platform=iOS";
-      std::string deviceType;
+      String deviceType;
 
       if (settings["ios_codesign_identity"].size() == 0) {
         settings["ios_codesign_identity"] = "iPhone Distribution";
       }
 
-      auto sup = std::string("archive");
-      auto configuration = std::string(flagDebugMode ? "Debug" : "Release");
+      auto sup = String("archive");
+      auto configuration = String(flagDebugMode ? "Debug" : "Release");
 
       if (!flagShouldPackage) {
         sup = "CONFIGURATION_BUILD_DIR=" + pathToDist.string();
@@ -1630,13 +1650,13 @@ int main (const int argc, const char* argv[]) {
       log("created archive");
 
       if (flagBuildForSimulator && flagShouldRun) {
-        std::string app = (settings["name"] + ".app");
+        String app = (settings["name"] + ".app");
         auto pathToApp = paths.platformSpecificOutputPath / app;
         runIOSSimulator(pathToApp, settings);
       }
 
       if (flagShouldPackage) {
-        std::stringstream exportCommand;
+        StringStream exportCommand;
 
         exportCommand
           << "xcodebuild"
@@ -1665,7 +1685,7 @@ int main (const int argc, const char* argv[]) {
     if (flagBuildForAndroid) {
       // just build for CI
       if (getEnv("SSC_CI").size() > 0) {
-        std::stringstream gradlew;
+        StringStream gradlew;
         gradlew << "./gradlew build";
 
         if (std::system(gradlew.str().c_str()) != 0) {
@@ -1689,7 +1709,7 @@ int main (const int argc, const char* argv[]) {
 
       if (androidHome.size() == 0) {
         if (!platform.win) {
-          auto cmd = std::string(
+          auto cmd = String(
             "dirname $(dirname $(readlink $(which sdkmanager 2>/dev/null) 2>/dev/null) 2>/dev/null) 2>/dev/null"
           );
 
@@ -1713,7 +1733,7 @@ int main (const int argc, const char* argv[]) {
 
       if (androidHome.size() > 0) {
         #ifdef _WIN32
-        setEnv((std::string("ANDROID_HOME=") + androidHome).c_str());
+        setEnv((String("ANDROID_HOME=") + androidHome).c_str());
         #else
         setenv("ANDROID_HOME", androidHome.c_str(), 1);
         #endif
@@ -1721,9 +1741,9 @@ int main (const int argc, const char* argv[]) {
         log("warning: 'ANDROID_HOME' is set to '" + androidHome + "'");
       }
 
-      std::stringstream sdkmanager;
-      std::stringstream packages;
-      std::stringstream gradlew;
+      StringStream sdkmanager;
+      StringStream packages;
+      StringStream gradlew;
 
       if (platform.unix) {
         gradlew
@@ -1788,8 +1808,8 @@ int main (const int argc, const char* argv[]) {
       }
 
       if (flagBuildForAndroidEmulator) {
-        std::stringstream avdmanager;
-        std::string package = "'system-images;android-32;google_apis;x86_64' ";
+        StringStream avdmanager;
+        String package = "'system-images;android-32;google_apis;x86_64' ";
 
         if (!platform.win) {
           if (std::system("avdmanager list 2>&1 >/dev/null") != 0) {
@@ -1813,7 +1833,7 @@ int main (const int argc, const char* argv[]) {
 
       if (flagShouldRun) {
         // the emulator must be running on device SSCAVD for now
-        std::stringstream adb;
+        StringStream adb;
 
         if (!platform.win) {
           if (std::system("adb --version 2>&1 >/dev/null") != 0) {
@@ -1841,7 +1861,7 @@ int main (const int argc, const char* argv[]) {
     }
 
     if (flagRunUserBuildOnly == false) {
-      std::stringstream compileCommand;
+      StringStream compileCommand;
 
       auto extraFlags = flagDebugMode
         ? settings.count("debug_flags") ? settings["debug_flags"] : ""
@@ -1857,9 +1877,9 @@ int main (const int argc, const char* argv[]) {
         << " -DANDROID=" << (flagBuildForAndroid ? 1 : 0)
         << " -DDEBUG=" << (flagDebugMode ? 1 : 0)
         << " -DPORT=" << devPort
-        << " -DSETTINGS=\"" << encodeURIComponent(_settings) << "\""
-        << " -DVERSION=" << SSC::version
-        << " -DVERSION_HASH=" << SSC::version_hash
+        << " -DSSC_SETTINGS=\"" << encodeURIComponent(_settings) << "\""
+        << " -DSSC_VERSION=" << SSC::VERSION_STRING
+        << " -DSSC_VERSION_HASH=" << SSC::VERSION_HASH_STRING
       ;
 
       // log(compileCommand.str());
@@ -1899,7 +1919,7 @@ int main (const int argc, const char* argv[]) {
         pathSymLinks / settings["executable"]
       );
 
-      std::stringstream archiveCommand;
+      StringStream archiveCommand;
 
       archiveCommand
         << "dpkg-deb --build --root-owner-group "
@@ -1919,7 +1939,7 @@ int main (const int argc, const char* argv[]) {
     // MacOS Stripping
     //
     if (platform.mac) {
-      std::stringstream stripCommand;
+      StringStream stripCommand;
 
       stripCommand
         << "strip"
@@ -1943,8 +1963,8 @@ int main (const int argc, const char* argv[]) {
       // https://developer.apple.com/forums/thread/128166
       // https://wiki.lazarus.freepascal.org/Code_Signing_for_macOS
       //
-      std::stringstream signCommand;
-      std::string entitlements = "";
+      StringStream signCommand;
+      String entitlements = "";
 
       if (settings.count("entitlements") == 1) {
         // entitlements = " --entitlements " + (targetPath / settings["entitlements"]).string();
@@ -1955,7 +1975,7 @@ int main (const int argc, const char* argv[]) {
         exit(1);
       }
 
-      std::stringstream commonFlags;
+      StringStream commonFlags;
 
       commonFlags
         << " --force"
@@ -1970,7 +1990,7 @@ int main (const int argc, const char* argv[]) {
         auto paths = split(settings["mac_sign_paths"], ';');
 
         for (int i = 0; i < paths.size(); i++) {
-          std::string prefix = (i > 0) ? ";" : "";
+          String prefix = (i > 0) ? ";" : "";
 
           signCommand
             << prefix
@@ -2012,7 +2032,7 @@ int main (const int argc, const char* argv[]) {
     // ---
     //
     if (flagShouldPackage && platform.mac) {
-      std::stringstream zipCommand;
+      StringStream zipCommand;
       auto ext = ".zip";
       auto pathToBuild = paths.platformSpecificOutputPath / "build";
 
@@ -2044,9 +2064,9 @@ int main (const int argc, const char* argv[]) {
     // ---
     //
     if (flagShouldNotarize && platform.mac) {
-      std::stringstream notarizeCommand;
-      std::string username = getEnv("APPLE_ID");
-      std::string password = getEnv("APPLE_ID_PASSWORD");
+      StringStream notarizeCommand;
+      String username = getEnv("APPLE_ID");
+      String password = getEnv("APPLE_ID_PASSWORD");
 
       notarizeCommand
         << "xcrun"
@@ -2067,7 +2087,7 @@ int main (const int argc, const char* argv[]) {
 
       std::regex re(R"(\nRequestUUID = (.+?)\n)");
       std::smatch match;
-      std::string uuid;
+      String uuid;
 
       if (std::regex_search(r.output, match, re)) {
         uuid = match.str(1);
@@ -2084,7 +2104,7 @@ int main (const int argc, const char* argv[]) {
         }
 
         std::this_thread::sleep_for(std::chrono::milliseconds(1024 * 6));
-        std::stringstream notarizeStatusCommand;
+        StringStream notarizeStatusCommand;
 
         notarizeStatusCommand
           << "xcrun"
@@ -2097,7 +2117,7 @@ int main (const int argc, const char* argv[]) {
 
         std::regex re(R"(\n *Status: (.+?)\n)");
         std::smatch match;
-        std::string status;
+        String status;
 
         if (std::regex_search(r.output, match, re)) {
           status = match.str(1);
@@ -2115,7 +2135,7 @@ int main (const int argc, const char* argv[]) {
 
           log(lastStatus);
 
-          std::stringstream notarizeHistoryCommand;
+          StringStream notarizeHistoryCommand;
 
           notarizeHistoryCommand
             << "xcrun"
@@ -2226,7 +2246,7 @@ int main (const int argc, const char* argv[]) {
         return hr;
       };
 
-      std::wstring appx(StringToWString(paths.pathPackage.string()) + L".appx");
+      WString appx(SSC::StringToWString(paths.pathPackage.string()) + L".appx");
 
       HRESULT hr = CoInitializeEx(NULL, COINIT_MULTITHREADED);
 
@@ -2336,7 +2356,7 @@ int main (const int argc, const char* argv[]) {
       }
       else {
         _com_error err(hr);
-        std::string msg = std::string( err.ErrorMessage() );
+        String msg = String( err.ErrorMessage() );
         log("Unable to save package; " + msg);
 
         exit(1);
@@ -2376,8 +2396,8 @@ int main (const int argc, const char* argv[]) {
         pathToSignTool = "signtool.exe";
       }
 
-      std::stringstream signCommand;
-      std::string password = getEnv("CSC_KEY_PASSWORD");
+      StringStream signCommand;
+      String password = getEnv("CSC_KEY_PASSWORD");
 
       if (password.size() == 0) {
         log("ERROR! Environment variable 'CSC_KEY_PASSWORD' is empty!");
@@ -2418,17 +2438,17 @@ int main (const int argc, const char* argv[]) {
   });
 
   createSubcommand("run", { "--platform", "--prod", "--test",  "--headless" }, true, [&](const std::span<const char *>& options) -> void {
-    std::string argvForward = "";
+    String argvForward = "";
     bool isIosSimulator = false;
     bool flagHeadless = false;
-    std::string targetPlatform = "";
+    String targetPlatform = "";
     for (auto const& option : options) {
       if (is(option, "--test")) {
         argvForward += " --test";
       }
       auto testPath = optionValue(option, "--test");
       if (testPath.size() > 0) {
-        argvForward += " " + std::string(option);
+        argvForward += " " + String(option);
       }
 
       if (is(option, "--headless")) {
@@ -2453,7 +2473,7 @@ int main (const int argc, const char* argv[]) {
     Paths paths = getPaths(targetPlatform);
 
     if (isIosSimulator) {
-      std::string app = (settings["name"] + ".app");
+      String app = (settings["name"] + ".app");
       auto pathToApp = paths.platformSpecificOutputPath / app;
       runIOSSimulator(pathToApp, settings);
     } else {
@@ -2463,7 +2483,7 @@ int main (const int argc, const char* argv[]) {
     }
   });
 
-  log("subcommand 'ssc " + std::string(subcommand) + "' is not supported.");
+  log("subcommand 'ssc " + String(subcommand) + "' is not supported.");
   printHelp("ssc");
   exit(1);
 }

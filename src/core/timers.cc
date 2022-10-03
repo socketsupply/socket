@@ -6,7 +6,7 @@ namespace SSC {
     .invoke = [](uv_timer_t *handle) {
       auto core = reinterpret_cast<Core *>(handle->data);
       std::vector<uint64_t> ids;
-      std::string msg = "";
+      SSC::String msg = "";
 
       std::lock_guard<std::recursive_mutex> descriptorsGuard(core->descriptorsMutex);
       for (auto const &tuple : core->descriptors) {

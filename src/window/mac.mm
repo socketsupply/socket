@@ -13,7 +13,7 @@
 @end
 
 @implementation SSCBridgedWebView
-std::vector<std::string> draggablePayload;
+SSC::Vector<SSC::String> draggablePayload;
 
 int lastX = 0;
 int lastY = 0;
@@ -28,7 +28,7 @@ int lastY = 0;
   auto x = std::to_string(pos.x);
   auto y = std::to_string([self frame].size.height - pos.y);
 
-  std::string json = (
+  SSC::String json = (
     "{\"x\":" + x + ","
     "\"y\":" + y + "}"
   );
@@ -54,7 +54,7 @@ int lastY = 0;
     count = [info numberOfValidItemsForDrop];
   }
 
-  std::string json = (
+  SSC::String json = (
     "{\"count\":" + std::to_string(count) + ","
     "\"inbound\":" + (inbound ? "true" : "false") + ","
     "\"x\":" + x + ","
@@ -91,13 +91,13 @@ int lastY = 0;
     // NSWindow is (0,0) at bottom left, browser is (0,0) at top left
     // so we need to flip the y coordinate to convert to browser coordinates
 
-  std::stringstream ss;
+  SSC::StringStream ss;
   int len = [files count];
   ss << "[";
 
   for (int i = 0; i < len; i++) {
     NSURL *url = files[i];
-    std::string path = [[url path] UTF8String];
+    SSC::String path = [[url path] UTF8String];
     // path = SSC::replace(path, "\"", "'");
     // path = SSC::replace(path, "\\", "\\\\");
     ss << "\"" << path << "\"";
@@ -109,7 +109,7 @@ int lastY = 0;
 
   ss << "]";
 
-  std::string json = (
+  SSC::String json = (
     "{\"files\": " + ss.str() + ","
     "\"x\":" + std::to_string(pos.x) + ","
     "\"y\":" + std::to_string(y) + "}"
@@ -135,7 +135,7 @@ int lastY = 0;
     return;
   }
 
-  std::string json = (
+  SSC::String json = (
     "{\"count\":" + count + ","
     "\"x\":" + x + ","
     "\"y\":" + y + "}"
@@ -164,7 +164,7 @@ int lastY = 0;
     for (auto path : draggablePayload) {
       path = SSC::replace(path, "\"", "'");
 
-      std::string json = (
+      SSC::String json = (
         "{\"src\":\"" + path + "\","
         "\"x\":" + sx + ","
         "\"y\":" + sy + "}"
@@ -178,7 +178,7 @@ int lastY = 0;
     }
   }
 
-  std::string json = (
+  SSC::String json = (
     "{\"x\":" + sx + ","
     "\"y\":" + sy + "}"
   );
@@ -199,7 +199,7 @@ int lastY = 0;
   lastX = (int) location.x;
   lastY = (int) location.y;
 
-  std::string js(
+  SSC::String js(
     "(() => {"
     "  const el = document.elementFromPoint(" + x + "," + y + ");"
     "  if (!el) return;"
@@ -221,8 +221,8 @@ int lastY = 0;
       return;
     }
 
-    std::vector<std::string> files =
-      SSC::split(std::string([result UTF8String]), ';');
+    SSC::Vector<SSC::String> files =
+      SSC::split(SSC::String([result UTF8String]), ';');
 
     if (files.size() == 0) {
       [super mouseDown:event];
@@ -273,7 +273,7 @@ int lastY = 0;
     auto sy = std::to_string(y);
     auto count = std::to_string(draggablePayload.size());
 
-    std::string json = (
+    SSC::String json = (
       "{\"count\":" + count + ","
       "\"x\":" + sx + ","
       "\"y\":" + sy + "}"
@@ -350,18 +350,18 @@ int lastY = 0;
 - (void) filePromiseProvider:(NSFilePromiseProvider*)filePromiseProvider writePromiseToURL:(NSURL *)url
   completionHandler:(void (^)(NSError *errorOrNil))completionHandler
 {
-  std::string dest = [[url path] UTF8String];
-  std::string src([[filePromiseProvider userInfo] UTF8String]);
+  SSC::String dest = [[url path] UTF8String];
+  SSC::String src([[filePromiseProvider userInfo] UTF8String]);
 
   NSData *data = [@"" dataUsingEncoding:NSUTF8StringEncoding];
   [data writeToURL:url atomically:YES];
 
-  std::string json = (
+  SSC::String json = (
     "{\"src\":\"" + src + "\","
     "\"dest\":\"" + dest + "\"}"
   );
 
-  std::string js = SSC::emitToRenderProcess("dropout", json);
+  SSC::String js = SSC::emitToRenderProcess("dropout", json);
 
   [self
     evaluateJavaScript: [NSString stringWithUTF8String:js.c_str()]
@@ -372,7 +372,7 @@ int lastY = 0;
 }
 
 - (NSString*) filePromiseProvider: (NSFilePromiseProvider*)filePromiseProvider fileNameForType:(NSString *)fileType {
-  std::string file(std::to_string(SSC::rand64()) + ".download");
+  SSC::String file(std::to_string(SSC::rand64()) + ".download");
   return [NSString stringWithUTF8String:file.c_str()];
 }
 @end
@@ -464,7 +464,7 @@ namespace SSC {
     WKUserContentController* controller = [config userContentController];
 
     // Add preload script, normalizing the interface to be cross-platform.
-    std::string preload = Str(
+    SSC::String preload = ToString(
       "window.external = {\n"
       "  invoke: arg => window.webkit.messageHandlers.webview.postMessage(arg)\n"
       "};\n"
@@ -558,7 +558,7 @@ namespace SSC {
             if (![body isKindOfClass:[NSString class]]) {
               return;
             }
-            String msg = [body UTF8String];
+            SSC::String msg = [body UTF8String];
 
             if ([bridge route: msg buf: nullptr bufsize: 0]) return;
             w->onMessage(msg);
@@ -575,10 +575,10 @@ namespace SSC {
             if (w->onMessage == nullptr) return;
 
             id menuItem = (id) item;
-            String title = [[menuItem title] UTF8String];
-            String state = [menuItem state] == NSControlStateValueOn ? "true" : "false";
-            String parent = [[[menuItem menu] title] UTF8String];
-            String seq = std::to_string([menuItem tag]);
+            SSC::String title = [[menuItem title] UTF8String];
+            SSC::String state = [menuItem state] == NSControlStateValueOn ? "true" : "false";
+            SSC::String parent = [[[menuItem menu] title] UTF8String];
+            SSC::String seq = std::to_string([menuItem tag]);
 
             w->eval(resolveMenuSelection(seq, title, parent));
           }),
@@ -619,7 +619,7 @@ namespace SSC {
     };
   }
 
-  void Window::show (const std::string& seq) {
+  void Window::show (const SSC::String& seq) {
     if (this->opts.headless == true) {
       [NSApp activateIgnoringOtherApps: NO];
     } else {
@@ -645,7 +645,7 @@ namespace SSC {
     [window performClose:nil];
   }
 
-  void Window::hide (const std::string& seq) {
+  void Window::hide (const SSC::String& seq) {
     [window orderOut:window];
     this->eval(emitToRenderProcess("windowHide", "{}"));
 
@@ -655,7 +655,7 @@ namespace SSC {
     }
   }
 
-  void Window::eval(const std::string& js) {
+  void Window::eval(const SSC::String& js) {
     [webview evaluateJavaScript:
       [NSString stringWithUTF8String:js.c_str()]
       completionHandler:nil];
@@ -677,7 +677,7 @@ namespace SSC {
     [menuItem setAction: NULL];
   }
 
-  void Window::navigate (const std::string& seq, const std::string& value) {
+  void Window::navigate (const SSC::String& seq, const SSC::String& value) {
     [webview loadRequest:
       [NSURLRequest requestWithURL:
         [NSURL URLWithString:
@@ -689,7 +689,7 @@ namespace SSC {
     }
   }
 
-  void Window::setTitle(const std::string& seq, const std::string& value) {
+  void Window::setTitle (const SSC::String& seq, const SSC::String& value) {
     [window setTitle:[NSString stringWithUTF8String:value.c_str()]];
 
     if (seq.size() > 0) {
@@ -698,7 +698,7 @@ namespace SSC {
     }
   }
 
-  void Window::setSize(const std::string& seq, int width, int height, int hints) {
+  void Window::setSize (const SSC::String& seq, int width, int height, int hints) {
     [window setFrame:NSMakeRect(0.f, 0.f, (float) width, (float) height) display:YES animate:YES];
     [window center];
 
@@ -708,21 +708,21 @@ namespace SSC {
     }
   }
 
-  int Window::openExternal (const std::string& s) {
+  int Window::openExternal (const SSC::String& s) {
     NSString* nsu = [NSString stringWithUTF8String:s.c_str()];
     return [[NSWorkspace sharedWorkspace] openURL:[NSURL URLWithString: nsu]];
   }
 
-  std::string App::getCwd (const std::string& s) {
+  SSC::String App::getCwd (const SSC::String& s) {
     NSString *bundlePath = [[NSBundle mainBundle] resourcePath];
     return String([bundlePath UTF8String]);
   }
 
-  void Window::closeContextMenu() {
+  void Window::closeContextMenu () {
     // @TODO(jwerle)
   }
 
-  void Window::closeContextMenu(const std::string &seq) {
+  void Window::closeContextMenu (const SSC::String &seq) {
     // @TODO(jwerle)
   }
 
@@ -744,7 +744,7 @@ namespace SSC {
     ];
   }
 
-  void Window::setContextMenu (const std::string& seq, const std::string& value) {
+  void Window::setContextMenu (const SSC::String& seq, const SSC::String& value) {
     auto menuItems = split(value, '_');
     auto id = std::stoi(seq.substr(1)); // remove the 'R' prefix
 
@@ -790,8 +790,8 @@ namespace SSC {
         inView:nil];
   }
 
-  void Window::setSystemMenu (const std::string& seq, const std::string& value) {
-    std::string menu = std::string(value);
+  void Window::setSystemMenu (const SSC::String& seq, const SSC::String& value) {
+    SSC::String menu = SSC::String(value);
 
     NSMenu *mainMenu;
     NSString *title;
@@ -837,7 +837,7 @@ namespace SSC {
         auto parts = split(line, ':');
         auto title = parts[0];
         NSUInteger mask = 0;
-        std::string key = "";
+        SSC::String key = "";
 
         if (title.size() > 0 && title.find("!") == 0) {
           title = title.substr(1);
@@ -941,14 +941,14 @@ namespace SSC {
   }
 
   void Window::openDialog(
-    const std::string& seq,
+    const SSC::String& seq,
     bool isSave,
     bool allowDirs,
     bool allowFiles,
     bool allowMultiple,
-    const std::string& defaultPath = "",
-    const std::string& title = "",
-    const std::string& defaultName = "")
+    const SSC::String& defaultPath = "",
+    const SSC::String& title = "",
+    const SSC::String& defaultName = "")
   {
 
     NSURL *url;
@@ -1011,15 +1011,15 @@ namespace SSC {
 
     if (isSave) {
       if ([dialog_save runModal] == NSModalResponseOK) {
-        String url = (char*) [[[dialog_save URL] path] UTF8String];
-        auto wrapped = std::string("\"" + url + "\"");
+        SSC::String url = (char*) [[[dialog_save URL] path] UTF8String];
+        auto wrapped = SSC::String("\"" + url + "\"");
         this->resolvePromise(seq, "0", encodeURIComponent(wrapped));
       }
       return;
     }
 
-    String result = "";
-    std::vector<String> paths;
+    SSC::String result = "";
+    SSC::Vector<SSC::String> paths;
     NSArray* urls;
 
     if ([dialog_open runModal] == NSModalResponseOK) {
@@ -1027,7 +1027,7 @@ namespace SSC {
 
       for (NSURL* url in urls) {
         if ([url isFileURL]) {
-          paths.push_back(String((char*) [[url path] UTF8String]));
+          paths.push_back(SSC::String((char*) [[url path] UTF8String]));
         }
       }
     }
@@ -1039,7 +1039,7 @@ namespace SSC {
       result += paths[i];
     }
 
-    auto wrapped = std::string("\"" + result + "\"");
+    auto wrapped = SSC::String("\"" + result + "\"");
     this->resolvePromise(seq, "0", encodeURIComponent(wrapped));
   }
 }

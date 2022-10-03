@@ -93,7 +93,7 @@ namespace SSC {
   void Core::fsRetainOpenDescriptor (String seq, uint64_t id, Callback cb) {
     auto desc = getDescriptor(id);
     auto ctx = new DescriptorRequestContext(seq, cb);
-    std::string msg;
+    SSC::String msg;
 
     if (desc == nullptr) {
       msg = SSC::format(R"MSG({
@@ -126,7 +126,7 @@ namespace SSC {
 
       auto err = uv_fs_access(&this->eventLoop, &ctx->req, filename, mode, [](uv_fs_t* req) {
         auto ctx = (DescriptorRequestContext *) req->data;
-        std::string msg;
+        SSC::String msg;
 
         if (req->result < 0) {
           msg = SSC::format(R"MSG({
@@ -171,7 +171,7 @@ namespace SSC {
 
       auto err = uv_fs_chmod(&this->eventLoop, &ctx->req, filename, mode, [](uv_fs_t* req) {
         auto ctx = (DescriptorRequestContext *) req->data;
-        std::string msg;
+        SSC::String msg;
 
         if (req->result < 0) {
           msg = SSC::format(R"MSG({
@@ -218,7 +218,7 @@ namespace SSC {
       auto err = uv_fs_open(&this->eventLoop, &ctx->req, filename, flags, mode, [](uv_fs_t* req) {
         auto ctx = (DescriptorRequestContext *) req->data;
         auto desc = ctx->desc;
-        std::string msg;
+        SSC::String msg;
 
         if (req->result < 0) {
           msg = SSC::format(R"MSG({
@@ -281,7 +281,7 @@ namespace SSC {
       auto err = uv_fs_opendir(&this->eventLoop, &ctx->req, filename, [](uv_fs_t *req) {
         auto ctx = (DescriptorRequestContext *) req->data;
         auto desc = ctx->desc;
-        std::string msg;
+        SSC::String msg;
 
         if (req->result < 0) {
           msg = SSC::format(R"MSG({
@@ -375,7 +375,7 @@ namespace SSC {
       auto err = uv_fs_readdir(&this->eventLoop, &ctx->req, desc->dir, [](uv_fs_t *req) {
         auto ctx = (DescriptorRequestContext *) req->data;
         auto desc = ctx->desc;
-        std::string msg;
+        SSC::String msg;
 
         if (req->result < 0) {
           msg = SSC::format(R"MSG({
@@ -390,7 +390,7 @@ namespace SSC {
           std::to_string(req->result),
           String(uv_strerror(req->result)));
         } else {
-          Stringstream entries;
+          SSC::StringStream entries;
           entries << "[";
 
           for (int i = 0; i < req->result; ++i) {
@@ -461,7 +461,7 @@ namespace SSC {
       auto err = uv_fs_close(&this->eventLoop, &ctx->req, desc->fd, [](uv_fs_t* req) {
         auto ctx = (DescriptorRequestContext *) req->data;
         auto desc = ctx->desc;
-        std::string msg;
+        SSC::String msg;
 
         if (req->result < 0) {
           msg = SSC::format(R"MSG({
@@ -533,7 +533,7 @@ namespace SSC {
       auto err = uv_fs_closedir(&this->eventLoop, &ctx->req, desc->dir, [](uv_fs_t* req) {
         auto ctx = (DescriptorRequestContext *) req->data;
         auto desc = ctx->desc;
-        std::string msg;
+        SSC::String msg;
 
         if (req->result < 0) {
           msg = SSC::format(R"MSG({
@@ -613,7 +613,7 @@ namespace SSC {
     std::lock_guard<std::recursive_mutex> guard(descriptorsMutex);
 
     std::vector<uint64_t> ids;
-    std::string msg = "";
+    SSC::String msg = "";
     int pending = descriptors.size();
     int queued = 0;
 
@@ -682,7 +682,7 @@ namespace SSC {
       auto err = uv_fs_read(&this->eventLoop, &ctx->req, desc->fd, ctx->iov, 1, offset, [](uv_fs_t* req) {
         auto ctx = static_cast<DescriptorRequestContext*>(req->data);
         auto desc = ctx->desc;
-        std::string msg = "{}";
+        SSC::String msg = "{}";
         Post post = {0};
 
         if (req->result < 0) {
@@ -755,7 +755,7 @@ namespace SSC {
       auto err = uv_fs_write(&this->eventLoop, &ctx->req, desc->fd, ctx->iov, 1, offset, [](uv_fs_t* req) {
         auto ctx = static_cast<DescriptorRequestContext*>(req->data);
         auto desc = ctx->desc;
-        std::string msg;
+        SSC::String msg;
 
         if (req->result < 0) {
           msg = SSC::format(R"MSG({
@@ -816,7 +816,7 @@ namespace SSC {
 
       auto err = uv_fs_stat(&this->eventLoop, &ctx->req, filename, [](uv_fs_t *req) {
         auto ctx = (DescriptorRequestContext *) req->data;
-        std::string msg;
+        SSC::String msg;
 
         if (req->result < 0) {
           msg = SSC::format(R"MSG({
@@ -916,7 +916,7 @@ namespace SSC {
       auto err = uv_fs_fstat(&this->eventLoop, &ctx->req, desc->fd, [](uv_fs_t *req) {
         auto ctx = (DescriptorRequestContext *) req->data;
         auto desc = ctx->desc;
-        std::string msg;
+        SSC::String msg;
 
         if (req->result < 0) {
           msg = SSC::format(R"MSG({
@@ -1001,7 +1001,7 @@ namespace SSC {
   void Core::fsGetOpenDescriptors (String seq, Callback cb) {
     std::lock_guard<std::recursive_mutex> guard(descriptorsMutex);
     int pending = descriptors.size();
-    std::string msg = "{\n"
+    SSC::String msg = "{\n"
       "  \"source\": \"fs.getOpenDescriptors\",\n"
       "  \"data\": [";
 
@@ -1040,7 +1040,7 @@ namespace SSC {
 
       auto err = uv_fs_unlink(&this->eventLoop, &ctx->req, filename, [](uv_fs_t *req) {
         auto ctx = (DescriptorRequestContext *) req->data;
-        std::string msg;
+        SSC::String msg;
 
         if (req->result < 0) {
           msg = SSC::format(R"MSG({
@@ -1088,7 +1088,7 @@ namespace SSC {
 
       auto err = uv_fs_rename(&this->eventLoop, &ctx->req, src, dst, [](uv_fs_t *req) {
         auto ctx = (DescriptorRequestContext *) req->data;
-        std::string msg;
+        SSC::String msg;
 
         if (req->result < 0) {
           msg = SSC::format(R"MSG({
@@ -1136,7 +1136,7 @@ namespace SSC {
 
       auto err = uv_fs_copyfile(&this->eventLoop, &ctx->req, src, dst, flags, [](uv_fs_t *req) {
         auto ctx = (DescriptorRequestContext *) req->data;
-        std::string msg;
+        SSC::String msg;
 
         if (req->result < 0) {
           msg = SSC::format(R"MSG({
@@ -1183,7 +1183,7 @@ namespace SSC {
 
       auto err = uv_fs_rmdir(&this->eventLoop, &ctx->req, filename, [](uv_fs_t *req) {
         auto ctx = (DescriptorRequestContext *) req->data;
-        std::string msg;
+        SSC::String msg;
 
         if (req->result < 0) {
           msg = SSC::format(R"MSG({
@@ -1230,7 +1230,7 @@ namespace SSC {
 
       auto err = uv_fs_mkdir(&this->eventLoop, &ctx->req, filename, mode, [](uv_fs_t *req) {
         auto ctx = (DescriptorRequestContext *) req->data;
-        std::string msg;
+        SSC::String msg;
 
         if (req->result < 0) {
           msg = SSC::format(R"MSG({
@@ -1273,7 +1273,7 @@ namespace SSC {
   String Core::getFSConstants () {
     auto constants = Core::getFSConstantsMap();
     auto count = constants.size();
-    std::stringstream stream;
+    SSC::StringStream stream;
 
     stream << "{\"source\": \"fs.constants\",";
     stream << "\"data\": {";
@@ -1295,41 +1295,40 @@ namespace SSC {
     return stream.str();
   }
 
-  std::map<std::string, std::string> Core::getFSConstantsMap () {
-    std::map<std::string, std::string> constants;
-
 #define SET_CONSTANT(c) constants[#c] = std::to_string(c);
+  SSC::Map Core::getFSConstantsMap () {
+    SSC::Map constants;
 
 #ifdef UV_DIRENT_UNKNOWN
     SET_CONSTANT(UV_DIRENT_UNKNOWN)
 #endif
 
 #ifdef UV_DIRENT_FILE
-      SET_CONSTANT(UV_DIRENT_FILE)
+    SET_CONSTANT(UV_DIRENT_FILE)
 #endif
 
 #ifdef UV_DIRENT_DIR
-      SET_CONSTANT(UV_DIRENT_DIR)
+    SET_CONSTANT(UV_DIRENT_DIR)
 #endif
 
 #ifdef UV_DIRENT_LINK
-      SET_CONSTANT(UV_DIRENT_LINK)
+    SET_CONSTANT(UV_DIRENT_LINK)
 #endif
 
 #ifdef UV_DIRENT_FIFO
-      SET_CONSTANT(UV_DIRENT_FIFO)
+    SET_CONSTANT(UV_DIRENT_FIFO)
 #endif
 
 #ifdef UV_DIRENT_SOCKET
-      SET_CONSTANT(UV_DIRENT_SOCKET)
+    SET_CONSTANT(UV_DIRENT_SOCKET)
 #endif
 
 #ifdef UV_DIRENT_CHAR
-      SET_CONSTANT(UV_DIRENT_CHAR)
+    SET_CONSTANT(UV_DIRENT_CHAR)
 #endif
 
 #ifdef UV_DIRENT_BLOCK
-      SET_CONSTANT(UV_DIRENT_BLOCK)
+    SET_CONSTANT(UV_DIRENT_BLOCK)
 #endif
 
 #ifdef O_RDONLY
@@ -1512,8 +1511,7 @@ namespace SSC {
     SET_CONSTANT(X_OK);
 #endif
 
-#undef SET_CONSTANT
-
-    return constants;
   }
+    return constants;
+#undef SET_CONSTANT
 }
