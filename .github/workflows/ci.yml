@@ -159,8 +159,8 @@ jobs:
       run: |
         ./bin/install.ps1 dev
 
-        echo "::add-path::$env:LOCALAPPDATA\Programs\socketsupply\src"
-        echo "$env:LOCALAPPDATA\Programs\socketsupply\src" >> $env:GITHUB_PATH
+        echo "::add-path::$env:LOCALAPPDATA\Programs\socketsupply\bin"
+        echo "$env:LOCALAPPDATA\Programs\socketsupply\bin" >> $env:GITHUB_PATH
       env:
         ACTIONS_ALLOW_UNSECURE_COMMANDS: true
 
@@ -194,7 +194,7 @@ jobs:
 
     - name: Run example desktop tests
       run: |
-        ssc run --test=1 ./socket-sdk-examples/desktop-node-tonic-cjs/ 
+        ssc run --test=1 ./socket-sdk-examples/desktop-node-tonic-cjs/
       env:
         CI: true
 
