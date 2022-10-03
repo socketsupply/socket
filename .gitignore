@@ -26,5 +26,3 @@ gradlew.bat
 compile_flags.txt
 .classpath
 gradle.properties
-runtime-preload-source.hh
-src/core/runtime-preload-sources.hh
