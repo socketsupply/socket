@@ -1,11 +1,3 @@
-#import <Webkit/Webkit.h>
-#import <Network/Network.h>
-#import <CoreBluetooth/CoreBluetooth.h>
-#import <UserNotifications/UserNotifications.h>
-
-#include "../core/runtime-preload.hh"
-#include "../core/apple.hh"
-#include "../core/core.hh"
 #include "window.hh"
 
 @interface SSCWindowDelegate : NSObject <NSWindowDelegate, WKScriptMessageHandler>
@@ -387,7 +379,7 @@ int lastY = 0;
 
 namespace SSC {
   static bool isDelegateSet = false;
-  static BluetoothDelegate* bt;
+  static SSCBluetoothDelegate* bt;
   static SSC::Core* core;
 
   Window::Window (App& app, WindowOptions opts) : app(app), opts(opts) {
@@ -396,7 +388,7 @@ namespace SSC {
     Bridge* bridge = [Bridge new];
     this->bridge = (void*)bridge;
 
-    bt = [BluetoothDelegate new];
+    bt = [SSCBluetoothDelegate new];
     [bt setBridge: bridge];
 
     // Window style: titled, closable, minimizable

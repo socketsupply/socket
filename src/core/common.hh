@@ -1,35 +1,133 @@
 #ifndef SSC_CORE_COMMON_H
 #define SSC_CORE_COMMON_H
 
-#include <math.h>
 #include <errno.h>
+#include <ifaddrs.h>
+#include <math.h>
+#include <stdlib.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <unistd.h>
+
+// macOS/iOS
+#if defined(__APPLE__)
+#include <TargetConditionals.h>
+#if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
+#include <_types/_uint64_t.h>
+#include <netinet/in.h>
+#include <sys/un.h>
+#else
+#include <objc/objc-runtime.h>
+#endif
+
+#ifndef debug
+#define debug(format, ...) NSLog(@format, ##__VA_ARGS__)
+#endif
+#endif
+
+// Linux
+#if defined(__linux__) && !defined(__ANDROID__)
+#ifndef debug
+#define debug(format, ...) fprintf(stderr, format "\n", ##__VA_ARGS__)
+#endif
+#endif
+
+// Android (Linux)
+#if defined(__linux__) && defined(__ANDROID__)
+// Java Native Interface
+// @see https://docs.oracle.com/javase/7/docs/technotes/guides/jni/spec/jniTOC.html
+#include <jni.h>
+#include <android/asset_manager.h>
+#include <android/asset_manager_jni.h>
+#include <android/log.h>
+
+#ifndef debug
+#define debug(format, ...) \
+  __android_log_print(     \
+      ANDROID_LOG_DEBUG,   \
+      __FUNCTION__,        \
+      format,              \
+      ##__VA_ARGS__        \
+    );
+#endif
+#endif
+
+// Windows
+#if defined(_WIN32)
+#include <Windows.h>
+
+#include <arpa/inet.h>
+#include <dwmapi.h>
+#include <io.h>
+#include <tchar.h>
+#include <wingdi.h>
+#include <wrl.h>
+
+#include <future>
+#include <signal.h>
+#include <shlobj_core.h>
+#include <shobjidl.h>
+
+#define ISATTY _isatty
+#define FILENO _fileno
+
+#pragma comment(lib,"advapi32.lib")
+#pragma comment(lib,"shell32.lib")
+#pragma comment(lib,"version.lib")
+#pragma comment(lib,"user32.lib")
+#pragma comment(lib,"uv_a.lib")
+#pragma comment(lib,"Gdi32.lib")
+#else // !_WIN32
+#include <unistd.h>
+#include <sys/wait.h>
+#define ISATTY isatty
+#define FILENO fileno
+#endif
 
 #include <any>
 #include <array>
+#include <chrono>
+#include <cstdint>
 #include <iostream>
 #include <filesystem>
 #include <fstream>
 #include <functional>
 #include <map>
 #include <mutex>
+#include <queue>
 #include <regex>
+#include <semaphore>
 #include <span>
 #include <sstream>
 #include <string>
+#include <thread>
 #include <vector>
-
-#if defined(_WIN32)
-#include <Windows.h>
-#include <tchar.h>
-#include <wrl.h>
-#endif
 
 #ifndef DEBUG
 #define DEBUG 0
 #endif
 
+#ifndef SETTINGS
+#  define SETTINGS ""
+#endif
+
+#ifndef VERSION
+#  define VERSION ""
+#endif
+
+#ifndef VERSION_HASH
+#  define VERSION_HASH ""
+#endif
+
 #ifndef SOCKET_MAX_WINDOWS
 #define SOCKET_MAX_WINDOWS 32
+#endif
+
+#if !DEBUG
+#ifdef debug
+#undef debug
+#endif
+#define debug(format, ...)
 #endif
 
 #define TO_STR(arg) #arg
@@ -53,9 +151,9 @@ namespace SSC {
   constexpr auto version_hash = STR_VALUE(VERSION_HASH);
   constexpr auto version = STR_VALUE(VERSION);
 
-  static inline std::string encodeURIComponent (const std::string& sSrc);
-  static inline std::string decodeURIComponent (const std::string& sSrc);
-  static inline std::string trim (std::string str);
+  inline std::string encodeURIComponent (const std::string& sSrc);
+  inline std::string decodeURIComponent (const std::string& sSrc);
+  inline std::string trim (std::string str);
 
   //
   // Cross platform support for strings
@@ -67,13 +165,13 @@ namespace SSC {
     #define Str(s) L##s
     #define RegExp std::wregex
 
-    inline std::wstring StringToWString(const std::string& s) {
+    inline std::wstring StringToWString (const std::string& s) {
       std::wstring temp(s.length(), L' ');
       std::copy(s.begin(), s.end(), temp.begin());
       return temp;
     }
 
-    inline std::string WStringToString(const std::wstring& s) {
+    inline std::string WStringToString (const std::wstring& s) {
       std::string temp(s.length(), ' ');
       std::copy(s.begin(), s.end(), temp.begin());
       return temp;
@@ -109,8 +207,6 @@ namespace SSC {
       bool unix = false;
 
     #elif defined(__APPLE__)
-      #include <TargetConditionals.h>
-
       bool win = false;
       bool linux = false;
 
@@ -197,7 +293,7 @@ namespace SSC {
     return vec;
   }
 
-  static inline size_t decodeUTF8 (char *output, const char *input, size_t length) {
+  inline size_t decodeUTF8 (char *output, const char *input, size_t length) {
     unsigned char cp = 0; // code point
     unsigned char lower = 0x80;
     unsigned char upper = 0xBF;
@@ -324,11 +420,11 @@ namespace SSC {
     return copy;
   }
 
-  inline std::string replace(const std::string& src, const std::string& re, const std::string& val) {
+  inline std::string replace (const std::string& src, const std::string& re, const std::string& val) {
     return std::regex_replace(src, std::regex(re), val);
   }
 
-  inline std::string& replaceAll(std::string& src, std::string const& from, std::string const& to) {
+  inline std::string& replaceAll (std::string& src, std::string const& from, std::string const& to) {
     size_t start = 0;
     size_t index;
 
@@ -339,7 +435,7 @@ namespace SSC {
     return src;
   }
 
-  inline std::string emitToRenderProcess(const std::string& event, const std::string& value) {
+  inline std::string emitToRenderProcess (const std::string& event, const std::string& value) {
     return std::string(
       ";(() => {\n"
       "  const name = decodeURIComponent(`" + event + "`);\n"
@@ -350,7 +446,7 @@ namespace SSC {
     );
   }
 
-  inline std::string resolveMenuSelection(const std::string& seq, const std::string& title, const std::string& parent) {
+  inline std::string resolveMenuSelection (const std::string& seq, const std::string& title, const std::string& parent) {
     return std::string(
       ";(() => {\n"
       "  const detail = {\n"
@@ -375,7 +471,7 @@ namespace SSC {
   //
   // Helper functions...
   //
-  inline const std::vector<std::string> split(const std::string& s, const char& c) {
+  inline const std::vector<std::string> split (const std::string& s, const char& c) {
     std::string buff;
     std::vector<std::string> vec;
 
@@ -393,13 +489,13 @@ namespace SSC {
     return vec;
   }
 
-  inline std::string trim(std::string str) {
+  inline std::string trim (std::string str) {
     str.erase(0, str.find_first_not_of(" \r\n\t"));
     str.erase(str.find_last_not_of(" \r\n\t") + 1);
     return str;
   }
 
-  inline std::string tmpl(const std::string s, Map pairs) {
+  inline std::string tmpl (const std::string s, Map pairs) {
     std::string output = s;
 
     for (auto item : pairs) {
@@ -467,7 +563,7 @@ namespace SSC {
   }
 
   #if !TARGET_OS_IPHONE && !TARGET_OS_SIMULATOR
-    inline String readFile(fs::path path) {
+    inline String readFile (fs::path path) {
       std::ifstream stream(path.c_str());
       String content;
       auto buffer = std::istreambuf_iterator<char>(stream);
@@ -491,27 +587,27 @@ namespace SSC {
     }
   #endif
 
-  inline std::string prefixFile(std::string s) {
+  inline std::string prefixFile (std::string s) {
     if (platform.mac || platform.linux) {
       std::string local = getEnv("HOME");
       return std::string(local + "/.config/socket-sdk/" + s + " ");
     }
 
-    std::string local = getEnv("LOCALAPPDATA");
+    std::string local = getEnv ("LOCALAPPDATA");
     return std::string(local + "\\Programs\\socketsupply\\" + s + " ");
   }
 
-  inline std::string prefixFile() {
+  inline std::string prefixFile () {
     if (platform.mac || platform.linux) {
       std::string local = getEnv("HOME");
       return std::string(local + "/.config/socket-sdk/");
     }
 
-    std::string local = getEnv("LOCALAPPDATA");
+    std::string local = getEnv ("LOCALAPPDATA");
     return std::string(local + "\\Programs\\socketsupply");
   }
 
-  inline Map parseConfig(std::string source) {
+  inline Map parseConfig (std::string source) {
     auto entries = split(source, '\n');
     Map settings;
 
@@ -556,7 +652,7 @@ namespace SSC {
   //
   // cmd: `ipc://id?p1=v1&p2=v2&...\0`
   //
-  inline Parse::Parse(const std::string& s) {
+  inline Parse::Parse (const std::string& s) {
     std::string str = s;
     uri = str;
 
@@ -694,7 +790,7 @@ namespace SSC {
       /* F */ 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0
   };
 
-  static inline std::string encodeURIComponent(const std::string& sSrc) {
+  inline std::string encodeURIComponent (const std::string& sSrc) {
     const char DEC2HEX[16 + 1] = "0123456789ABCDEF";
     const unsigned char* pSrc = (const unsigned char*) sSrc.c_str();
     const int SRC_LEN = (int) sSrc.length();
@@ -718,7 +814,7 @@ namespace SSC {
     return sResult;
   }
 
-  static inline std::string resolveToRenderProcess(const std::string& seq, const std::string& state, const std::string& value) {
+  inline std::string resolveToRenderProcess (const std::string& seq, const std::string& state, const std::string& value) {
     return std::string(
       "(() => {"
       "  const seq = String('" + seq + "');"
@@ -729,7 +825,7 @@ namespace SSC {
     );
   }
 
-  static inline std::string resolveToMainProcess(const std::string& seq, const std::string& state, const std::string& value) {
+  inline std::string resolveToMainProcess (const std::string& seq, const std::string& state, const std::string& value) {
     return std::string("ipc://resolve?seq=" + seq + "&state=" + state + "&value=" + value);
   }
 }

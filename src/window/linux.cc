@@ -1,10 +1,3 @@
-#include <cstdint>
-#include <stdlib.h>
-#include <math.h>
-
-#include "../core/runtime-preload.hh"
-#include "../core/core.hh"
-#include "../app/app.hh"
 #include "window.hh"
 
 static GtkTargetEntry droppableTypes[] = {
@@ -38,7 +31,7 @@ namespace SSC {
       G_CALLBACK(+[](WebKitUserContentManager*, WebKitJavascriptResult* r, gpointer arg) {
         auto *window = static_cast<Window*>(arg);
         auto value = webkit_javascript_result_get_js_value(r);
-        auto str = std::string(jsc_value_to_string(value));
+        auto str = String(jsc_value_to_string(value));
 
         char *buf = nullptr;
         size_t bufsize = 0;
@@ -60,9 +53,9 @@ namespace SSC {
             buf = new char[size - offset]{0};
             bufsize = decodeUTF8(buf, data + offset, size - offset);
 
-            str = std::string("ipc://buffer.queue?")
-              + std::string("index=") + std::string(index)
-              + std::string("&seq=") + std::string(seq);
+            str = String("ipc://buffer.queue?")
+              + String("index=") + String(index)
+              + String("&seq=") + String(seq);
 
             delete [] index;
             delete [] seq;
@@ -102,7 +95,7 @@ namespace SSC {
         auto req = webkit_navigation_action_get_request(action);
         auto uri = webkit_uri_request_get_uri(req);
 
-        std::string s(uri);
+        String s(uri);
 
         if (s.find("file://") != 0 && s.find("http://localhost") != 0) {
           webkit_policy_decision_ignore(decision);
@@ -164,7 +157,7 @@ namespace SSC {
         gdk_device_get_window_at_position(device, &x, &y);
         gdk_device_get_position(device, 0, &wx, &wy);
 
-        std::string js(
+        String js(
           "(() => {"
           "  let el = null;"
           "  try { el = document.elementFromPoint(" + std::to_string(x) + "," + std::to_string(y) + "); }"
@@ -246,7 +239,7 @@ namespace SSC {
         for (auto& file : w->draggablePayload) {
           if (file[0] == '/') {
             // file system paths must be proper URIs
-            file = std::string("file://" + file);
+            file = String("file://" + file);
           }
           uris[i++] = strdup(file.c_str());
         }
@@ -286,7 +279,7 @@ namespace SSC {
         gtk_window_present(GTK_WINDOW(w->window));
         // gdk_window_focus(GDK_WINDOW(w->window), nullptr);
 
-        std::string json = (
+        String json = (
           "{\"count\":" + std::to_string(count) + ","
           "\"inbound\":" + (inbound ? "true" : "false") + ","
           "\"x\":" + std::to_string(x) + ","
@@ -366,7 +359,7 @@ namespace SSC {
         for(size_t n = 0; uris[n] != nullptr; n++) {
           gchar* src = g_filename_from_uri(uris[n], nullptr, nullptr);
           if (src) {
-            auto s = std::string(src);
+            auto s = String(src);
             if (std::find(v->begin(), v->end(), s) == v->end()) {
               v->push_back(s);
             }
@@ -390,7 +383,7 @@ namespace SSC {
       {
         auto* w = static_cast<Window*>(arg);
         auto count = w->draggablePayload.size();
-        std::stringstream files;
+        Stringstream files;
 
         for (int i = 0 ; i < count; ++i) {
           auto src = w->draggablePayload[i];
@@ -400,13 +393,13 @@ namespace SSC {
           }
         }
 
-        std::string json = ("{"
+        String json = ("{"
           "\"files\": [" + files.str() + "],"
           "\"x\":" + std::to_string(x) + ","
           "\"y\":" + std::to_string(y) +
         "}");
 
-        w->eval(std::string(
+        w->eval(String(
           "(() => {"
           "  try {"
           "    const target = document.elementFromPoint(" + std::to_string(x) + "," + std::to_string(y) + ");"
@@ -452,7 +445,7 @@ namespace SSC {
       this
     );
 
-    std::string preload = Str(
+    String preload = Str(
       "window.external = {\n"
       "  invoke: arg => window.webkit.messageHandlers.external.postMessage(arg)\n"
       "};\n"
@@ -520,12 +513,12 @@ namespace SSC {
     };
   }
 
-  void Window::eval(const std::string& source) {
+  void Window::eval(const String& source) {
     auto webview = this->webview;
     this->app.dispatch([=, this] {
       webkit_web_view_run_javascript(
         WEBKIT_WEB_VIEW(this->webview),
-        std::string(source).c_str(),
+        String(source).c_str(),
         nullptr,
         nullptr,
         nullptr
@@ -533,7 +526,7 @@ namespace SSC {
     });
   }
 
-  void Window::show(const std::string &seq) {
+  void Window::show(const String &seq) {
     gtk_widget_realize(this->window);
 
     if (this->opts.headless == false) {
@@ -547,7 +540,7 @@ namespace SSC {
     }
   }
 
-  void Window::hide(const std::string &seq) {
+  void Window::hide(const String &seq) {
     gtk_widget_realize(this->window);
     gtk_widget_hide(this->window);
     this->eval(emitToRenderProcess("windowHide", "{}"));
@@ -589,7 +582,7 @@ namespace SSC {
     }
   }
 
-  void Window::navigate(const std::string &seq, const std::string &s) {
+  void Window::navigate(const String &seq, const String &s) {
     webkit_web_view_load_uri(WEBKIT_WEB_VIEW(webview), s.c_str());
 
     if (seq.size() > 0) {
@@ -598,7 +591,7 @@ namespace SSC {
     }
   }
 
-  void Window::setTitle(const std::string &seq, const std::string &s) {
+  void Window::setTitle(const String &seq, const String &s) {
     gtk_widget_realize(window);
     gtk_window_set_title(GTK_WINDOW(window), s.c_str());
 
@@ -608,7 +601,7 @@ namespace SSC {
     }
   }
 
-  int Window::openExternal(const std::string& url) {
+  int Window::openExternal(const String& url) {
     gtk_widget_realize(window);
     return gtk_show_uri_on_window(GTK_WINDOW(window), url.c_str(), GDK_CURRENT_TIME, nullptr);
   }
@@ -620,7 +613,7 @@ namespace SSC {
     GtkWidget *body = gtk_dialog_get_content_area(GTK_DIALOG(GTK_WINDOW(dialog)));
     GtkContainer *content = GTK_CONTAINER(body);
 
-    std::string imgPath = "/usr/share/icons/hicolor/256x256/apps/" +
+    String imgPath = "/usr/share/icons/hicolor/256x256/apps/" +
       app.appData["executable"] +
       ".png";
 
@@ -638,8 +631,8 @@ namespace SSC {
 
     gtk_box_pack_start(GTK_BOX(content), img, false, false, 0);
 
-    std::string title_value(app.appData["title"] + " v" + app.appData["version"]);
-    std::string version_value("Built with ssc v" + std::string(SSC::full_version));
+    String title_value(app.appData["title"] + " v" + app.appData["version"]);
+    String version_value("Built with ssc v" + String(SSC::full_version));
 
     GtkWidget *label_title = gtk_label_new("");
     gtk_label_set_markup(GTK_LABEL(label_title), title_value.c_str());
@@ -667,7 +660,7 @@ namespace SSC {
     gtk_dialog_run(GTK_DIALOG(dialog));
   }
 
-  void Window::setSize(const std::string& seq, int width, int height, int hints) {
+  void Window::setSize(const String& seq, int width, int height, int hints) {
     gtk_widget_realize(window);
     gtk_window_set_resizable(GTK_WINDOW(window), hints != WINDOW_HINT_FIXED);
 
@@ -694,10 +687,10 @@ namespace SSC {
     }
   }
 
-  void Window::setSystemMenu(const std::string &seq, const std::string &value) {
+  void Window::setSystemMenu(const String &seq, const String &value) {
     if (value.empty()) return void(0);
 
-    auto menu = std::string(value);
+    auto menu = String(value);
 
     if (menubar == nullptr) {
       menubar = gtk_menu_bar_new();
@@ -730,7 +723,7 @@ namespace SSC {
         if (line.empty()) continue;
         auto parts = split(line, ':');
         auto title = parts[0];
-        std::string key = "";
+        String key = "";
 
         GtkWidget *item;
 
@@ -748,7 +741,7 @@ namespace SSC {
               key = trim(parts[1]) == "_" ? "" : trim(accelerator[0]);
 
               GdkModifierType mask = (GdkModifierType)(0);
-              bool isShift = std::string("ABCDEFGHIJKLMNOPQRSTUVWXYZ").find(key) != -1;
+              bool isShift = String("ABCDEFGHIJKLMNOPQRSTUVWXYZ").find(key) != -1;
 
               if (accelerator.size() > 1) {
                 if (accelerator[1].find("Meta") != -1) {
@@ -791,11 +784,11 @@ namespace SSC {
               auto title = gtk_menu_item_get_label(GTK_MENU_ITEM(t));
               auto parent = gtk_widget_get_name(t);
 
-              if (std::string(title).find("About") == 0) {
+              if (String(title).find("About") == 0) {
                 return w->about();
               }
 
-              if (std::string(title).find("Quit") == 0) {
+              if (String(title).find("Quit") == 0) {
                 return w->exit(0);
               }
 
@@ -835,7 +828,7 @@ namespace SSC {
     }
   }
 
-  void Window::closeContextMenu(const std::string &seq) {
+  void Window::closeContextMenu(const String &seq) {
     if (popup != nullptr) {
       auto ptr = popup;
       popup = nullptr;
@@ -843,7 +836,7 @@ namespace SSC {
     }
   }
 
-  void Window::closeContextMenu(GtkWidget *popupMenu, const std::string &seq) {
+  void Window::closeContextMenu(GtkWidget *popupMenu, const String &seq) {
     if (popupMenu != nullptr) {
       gtk_menu_popdown((GtkMenu *) popupMenu);
       gtk_widget_destroy(popupMenu);
@@ -851,7 +844,7 @@ namespace SSC {
     }
   }
 
-  void Window::setContextMenu(const std::string &seq, const std::string &value) {
+  void Window::setContextMenu(const String &seq, const String &value) {
     closeContextMenu();
 
     // members
@@ -879,7 +872,7 @@ namespace SSC {
       }
 
       auto pair = split(itemData, ':');
-      auto meta = std::string(seq + ";" + pair[0].c_str());
+      auto meta = String(seq + ";" + pair[0].c_str());
       auto *item = gtk_menu_item_new_with_label(pair[0].c_str());
 
       g_signal_connect(
@@ -888,7 +881,7 @@ namespace SSC {
         G_CALLBACK(+[](GtkWidget *t, gpointer arg) {
           auto window = static_cast<Window*>(arg);
           auto label = gtk_menu_item_get_label(GTK_MENU_ITEM(t));
-          auto title = std::string(label);
+          auto title = String(label);
           auto meta = gtk_widget_get_name(t);
           auto pair = split(meta, ';');
           auto seq = pair[0];
@@ -940,14 +933,14 @@ namespace SSC {
   }
 
   void Window::openDialog (
-    const std::string& seq,
+    const String& seq,
     bool isSave,
     bool allowDirs,
     bool allowFiles,
     bool allowMultiple,
-    const std::string& defaultPath,
-    const std::string& title,
-    const std::string& defaultName
+    const String& defaultPath,
+    const String& title,
+    const String& defaultName
   ) {
     const guint SELECT_RESPONSE = 0;
     GtkFileChooserAction action;
@@ -967,7 +960,7 @@ namespace SSC {
 
     gtk_init_check(nullptr, nullptr);
 
-    std::string dialogTitle = isSave ? "Save File" : "Open File";
+    String dialogTitle = isSave ? "Save File" : "Open File";
     if (title.size() > 0) {
       dialogTitle = title;
     }
@@ -1036,20 +1029,20 @@ namespace SSC {
       gtk_main_iteration();
     }
 
-    std::string result("");
+    String result("");
     GSList* filenames = gtk_file_chooser_get_filenames(chooser);
     int i = 0;
 
     for (int i = 0; filenames != nullptr; ++i) {
       gchar* file = (gchar*) filenames->data;
       result += (i ? "\\n" : "");
-      result += std::string(file);
+      result += String(file);
       filenames = filenames->next;
     }
 
     g_slist_free(filenames);
 
-    auto wrapped = std::string("\"" + std::string(result) + "\"");
+    auto wrapped = String("\"" + String(result) + "\"");
     this->resolvePromise(seq, "0", encodeURIComponent(wrapped));
     gtk_widget_destroy(dialog);
   }

@@ -3,22 +3,10 @@
   "repo": "socketsupply/socket-sdk",
   "version": "0.1.0",
   "description": "Build and package lean, fast, native desktop and mobile applications using the web technologies you already know.",
-  "install": "./bin/install.sh",
+  "install": "install.sh",
   "src": [
-    "src/win64/WebView2.h",
-    "src/win64/WebView2Experimental.h",
-    "src/win64/WebView2LoaderStatic.lib",
-    "src/win64/WebView2EnvironmentOptions.h",
-    "src/common.hh",
-    "src/core.hh",
-    "src/ios.mm",
-    "src/linux.hh",
-    "src/mac.hh",
-    "src/main.cc",
-    "src/preload.hh",
-    "src/process.hh",
-    "src/process_unix.cc",
-    "src/process_win.cc",
-    "src/win.hh"
+    "bin/install.sh",
+    "LICENSE.txt",
+    "README.md"
   ]
 }

@@ -1,15 +1,11 @@
-#include <signal.h>
-#include <future>
-#include <chrono>
-#include <shobjidl.h>
-#include <shlobj_core.h>
-
-#include "app.hh"
+#include "../core/win.hh"
 #include "../window/window.hh"
-#include "../core/core.hh"
+#include "../window/factory.hh"
+#include "app.hh"
 
 #include <uxtheme.h>
 #pragma comment(lib,"UxTheme.lib")
+#pragma comment(lib,"Dwmapi.lib")
 
 namespace SSC {
   inline void alert (const std::wstring &ws) {

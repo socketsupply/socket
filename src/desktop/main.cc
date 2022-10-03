@@ -1,19 +1,7 @@
 #include "../app/app.hh"
-#include "../core/core.hh"
 #include "../process/process.hh"
 #include "../window/window.hh"
 #include "../window/factory.hh"
-
-#if defined(_WIN32)
-  #include <io.h>
-  #define ISATTY _isatty
-  #define FILENO _fileno
-#else
-  #include <unistd.h>
-  #include <sys/wait.h>
-  #define ISATTY isatty
-  #define FILENO fileno
-#endif
 
 //
 // A cross platform MAIN macro that
@@ -23,7 +11,7 @@
 #define MAIN                       \
   int argc = __argc;               \
   char** argv = __argv;            \
-  int CALLBACK WinMain(            \
+  int CALLBACK WinMain (           \
     _In_ HINSTANCE instanceId,     \
     _In_ HINSTANCE hPrevInstance,  \
     _In_ LPSTR lpCmdLine,          \
@@ -40,7 +28,7 @@
 using namespace SSC;
 
 std::function<void(int)> shutdownHandler;
-void signalHandler(int signal) { shutdownHandler(signal); }
+void signalHandler (int signal) { shutdownHandler(signal); }
 
 //
 // the MAIN macro provides a cross-platform program entry point.

@@ -1,7 +1,6 @@
-#ifndef SSC_WINDOW_FACTORY
-#define SSC_WINDOW_FACTORY
+#ifndef SSC_WINDOW_FACTORY_H
+#define SSC_WINDOW_FACTORY_H
 
-#include "../core/runtime-preload.hh"
 #include "window.hh"
 
 namespace SSC {
@@ -10,10 +9,10 @@ namespace SSC {
     int defaultWidth = 0;
     bool headless = false;
     bool isTest;
-    std::string argv = "";
-    std::string cwd = "";
+    String argv = "";
+    String cwd = "";
     Map appData;
-    MessageCallback onMessage = [](const std::string) {};
+    MessageCallback onMessage = [](const String) {};
     ExitCallback onExit = nullptr;
   };
 
@@ -66,7 +65,7 @@ namespace SSC {
 
           ~WindowWithMetadata () {}
 
-          void show (const std::string &seq) {
+          void show (const String &seq) {
             auto index = std::to_string(this->opts.index);
             factory.log("Showing Window#" + index + " (seq=" + seq + ")");
             status = WindowStatus::WINDOW_SHOWING;
@@ -74,7 +73,7 @@ namespace SSC {
             status = WindowStatus::WINDOW_SHOWN;
           }
 
-          void hide (const std::string &seq) {
+          void hide (const String &seq) {
             if (
               status > WindowStatus::WINDOW_HIDDEN &&
               status < WindowStatus::WINDOW_EXITING
@@ -174,7 +173,7 @@ namespace SSC {
         this->options.cwd = configuration.cwd;
       }
 
-      void inline log (const std::string line) {
+      void inline log (const String line) {
         if (destroyed) return;
 #if DEBUG
         using namespace std::chrono;
@@ -276,7 +275,7 @@ namespace SSC {
       Window* createWindow (WindowOptions opts) {
         std::lock_guard<std::recursive_mutex> guard(this->mutex);
         if (destroyed) return nullptr;
-        std::stringstream env;
+        Stringstream env;
 
         if (inits[opts.index]) {
           return reinterpret_cast<Window*>(windows[opts.index]);
@@ -287,7 +286,7 @@ namespace SSC {
             auto cleanKey = trim(envKey);
             auto envValue = getEnv(cleanKey.c_str());
 
-            env << std::string(
+            env << String(
               cleanKey + "=" + encodeURIComponent(envValue) + "&"
             );
           }
@@ -296,7 +295,7 @@ namespace SSC {
             auto cleanKey = trim(envKey);
             auto envValue = getEnv(cleanKey.c_str());
 
-            env << std::string(
+            env << String(
               cleanKey + "=" + encodeURIComponent(envValue) + "&"
             );
           }

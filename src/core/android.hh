@@ -9,66 +9,9 @@
 #  define ANDROID 1
 #endif
 
-#ifndef DEBUG
-#  define DEBUG 0
-#endif
-
-#ifndef SETTINGS
-#  define SETTINGS ""
-#endif
-
-#ifndef VERSION
-#  define VERSION ""
-#endif
-
-#ifndef VERSION_HASH
-#  define VERSION_HASH ""
-#endif
-
-// defined before includes below
-#if DEBUG
-#define debug(format, ...)                                                     \
-  {                                                                            \
-    __android_log_print(                                                       \
-      ANDROID_LOG_DEBUG, __FUNCTION__, format, ##__VA_ARGS__                   \
-    );                                                                         \
-  }
-#else
-#define debug(format, ...)
-#endif
-
-/**
- * Java Native Interface
- * @see
- * https://docs.oracle.com/javase/7/docs/technotes/guides/jni/spec/jniTOC.html
- * @see
- * https://docs.oracle.com/javase/7/docs/technotes/guides/jni/spec/functions.html
- * @see
- * https://docs.oracle.com/javase/7/docs/technotes/guides/jni/spec/types.html#wp276
- */
-#include <jni.h>
-
-// libc
-#include <stdint.h>
-#include <stdio.h>
-#include <unistd.h>
-
-// c++
-#include <any>
-#include <map>
-#include <queue>
-#include <semaphore>
-#include <string>
-
-// android
-#include <android/asset_manager.h>
-#include <android/asset_manager_jni.h>
-#include <android/log.h>
-
 // SSC
 #include "../window/options.hh"
 #include "runtime-preload.hh"
-#include "common.hh"
 #include "core.hh"
 
 typedef std::string NativeCoreSequence;

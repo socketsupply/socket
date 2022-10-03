@@ -1,14 +1,6 @@
 #ifndef SSC_APP_APP_H
 #define SSC_APP_APP_H
 
-#ifdef __APPLE__
-#if !defined(TARGET_OS_IPHONE) && !defined(TARGET_IPHONE_SIMULATOR)
-#include <Cocoa/Cocoa.h>
-#include <objc/objc-runtime.h>
-#endif
-#elif defined(_WIN32)
-#endif
-
 #include "../core/core.hh"
 
 namespace SSC {
@@ -76,5 +68,23 @@ namespace SSC {
       void dispatch (std::function<void()> work);
       std::string getCwd (const std::string&);
   };
+
+#ifdef __linux__
+  class Bridge {
+    public:
+      App *app;
+      Core *core;
+
+      Bridge (App *app) {
+        this->core = new Core();
+        this->app = app;
+      }
+
+      bool route (std::string msg, char *buf, size_t bufsize);
+      void send (Parse cmd, std::string seq, std::string msg, Post post);
+      bool invoke (Parse cmd, char *buf, size_t bufsize, Callback cb);
+      bool invoke (Parse cmd, Callback cb);
+  };
+#endif
 }
 #endif

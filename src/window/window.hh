@@ -1,34 +1,6 @@
 #ifndef SSC_WINDOW_WINDOW_H
 #define SSC_WINDOW_WINDOW_H
 
-#ifdef __APPLE__
-#import <Webkit/Webkit.h>
-#import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
-#include "../core/apple.hh"
-
-#elif defined(__linux__) && !defined(__ANDROID__)
-#include <JavaScriptCore/JavaScript.h>
-#include <webkit2/webkit2.h>
-#include <gtk/gtk.h>
-#elif defined(_WIN32)
-#include "win64/WebView2.h"
-#include "win64/WebView2EnvironmentOptions.h"
-#include <shobjidl.h>
-#include <shlobj_core.h>
-
-#include <dwmapi.h>
-#include <wingdi.h>
-#pragma comment(lib,"advapi32.lib")
-#pragma comment(lib,"shell32.lib")
-#pragma comment(lib,"version.lib")
-#pragma comment(lib,"user32.lib")
-#pragma comment(lib,"WebView2LoaderStatic.lib")
-#pragma comment(lib,"uv_a.lib")
-#pragma comment(lib,"Dwmapi.lib")
-#pragma comment(lib,"Gdi32.lib")
-#endif
-
-#include "../core/core.hh"
 #include "../app/app.hh"
 #include "options.hh"
 
@@ -47,52 +19,40 @@ namespace SSC {
       int index = 0;
       void* bridge;
       WindowOptions opts;
-      MessageCallback onMessage = [](const std::string) {};
+      MessageCallback onMessage = [](const String) {};
       ExitCallback onExit = nullptr;
-      void resolvePromise (const std::string& seq, const std::string& state, const std::string& value);
+      virtual void resolvePromise (
+        const String& seq,
+        const String& state,
+        const String& value
+      ) = 0;
 
-      virtual void eval(const std::string&) = 0;
-      virtual void show(const std::string&) = 0;
-      virtual void hide(const std::string&) = 0;
-      virtual void close(int code) = 0;
-      virtual void exit(int code) = 0;
-      virtual void kill() = 0;
-      virtual void navigate(const std::string&, const std::string&) = 0;
-      virtual void setSize(const std::string&, int, int, int) = 0;
-      virtual void setTitle(const std::string&, const std::string&) = 0;
-      virtual void setContextMenu(const std::string&, const std::string&) = 0;
-      virtual void setSystemMenu(const std::string&, const std::string&) = 0;
-      virtual void setSystemMenuItemEnabled(bool enabled, int barPos, int menuPos) = 0;
-      virtual void openDialog(const std::string&, bool, bool, bool, bool, const std::string&, const std::string&, const std::string&) = 0;
-      virtual void setBackgroundColor(int r, int g, int b, float a) = 0;
-      virtual void showInspector() = 0;
-      virtual ScreenSize getScreenSize() = 0;
+      virtual void eval (const String&) = 0;
+      virtual void show (const String&) = 0;
+      virtual void hide (const String&) = 0;
+      virtual void close (int code) = 0;
+      virtual void exit (int code) = 0;
+      virtual void kill () = 0;
+      virtual void navigate (const String&, const String&) = 0;
+      virtual ScreenSize getScreenSize () = 0;
+      virtual void setSize (const String&, int, int, int) = 0;
+      virtual void setTitle (const String&, const String&) = 0;
+      virtual void setContextMenu (const String&, const String&) = 0;
+      virtual void setSystemMenu (const String&, const String&) = 0;
+      virtual void setSystemMenuItemEnabled (bool enabled, int barPos, int menuPos) = 0;
+      virtual void setBackgroundColor (int r, int g, int b, float a) = 0;
+      virtual void showInspector () = 0;
+      virtual void openDialog (
+        const String&,
+        bool,
+        bool,
+        bool,
+        bool,
+        const String&,
+        const String&,
+        const String&
+      ) = 0;
   };
-
-  inline void IWindow::resolvePromise (const std::string& seq, const std::string& state, const std::string& value) {
-    if (seq.find("R") == 0) {
-      this->eval(resolveToRenderProcess(seq, state, value));
-    }
-    this->onMessage(resolveToMainProcess(seq, state, value));
-  }
-
-#ifdef __linux__
-  class Bridge {
-    public:
-      App *app;
-      Core *core;
-
-      Bridge (App *app) {
-        this->core = new Core();
-        this->app = app;
-      }
-
-      bool route (std::string msg, char *buf, size_t bufsize);
-      void send (Parse cmd, std::string seq, std::string msg, Post post);
-      bool invoke (Parse cmd, char *buf, size_t bufsize, Callback cb);
-      bool invoke (Parse cmd, Callback cb);
-  };
-#endif
 
   class Window : public IWindow {
     public:
@@ -110,7 +70,7 @@ namespace SSC {
       GtkWidget *menubar = nullptr;
       GtkWidget *vbox = nullptr;
       GtkWidget *popup = nullptr;
-      std::vector<std::string> draggablePayload;
+      std::vector<String> draggablePayload;
       double dragLastX = 0;
       double dragLastY = 0;
       bool isDragInvokedInsideWindow;
@@ -131,37 +91,49 @@ namespace SSC {
       Window (App&, WindowOptions);
 
       void about ();
-      void eval (const std::string&);
-      void show (const std::string&);
-      void hide (const std::string&);
+      void eval (const String&);
+      void show (const String&);
+      void hide (const String&);
       void kill ();
       void exit (int code);
       void close (int code);
-      void navigate (const std::string&, const std::string&);
-      void setTitle (const std::string&, const std::string&);
-      void setSize (const std::string&, int, int, int);
-      void setContextMenu (const std::string&, const std::string&);
-      void closeContextMenu (const std::string&);
+      void navigate (const String&, const String&);
+      void setTitle (const String&, const String&);
+      void setSize (const String&, int, int, int);
+      void setContextMenu (const String&, const String&);
+      void closeContextMenu (const String&);
       void closeContextMenu ();
 #if defined(__linux__) && !defined(__ANDROID__)
-      void closeContextMenu (GtkWidget *, const std::string&);
+      void closeContextMenu (GtkWidget *, const String&);
 #endif
       void setBackgroundColor (int r, int g, int b, float a);
       void setSystemMenuItemEnabled (bool enabled, int barPos, int menuPos);
-      void setSystemMenu (const std::string& seq, const std::string& menu);
+      void setSystemMenu (const String& seq, const String& menu);
       ScreenSize getScreenSize ();
       void showInspector ();
-      int openExternal (const std::string& s);
+      int openExternal (const String& s);
       void openDialog ( // @TODO(jwerle): use `OpenDialogOptions` here instead
-        const std::string&,
+        const String&,
         bool,
         bool,
         bool,
         bool,
-        const std::string&,
-        const std::string&,
-        const std::string&
+        const String&,
+        const String&,
+        const String&
       );
+
+      void resolvePromise (
+        const String& seq,
+        const String& state,
+        const String& value
+      ) {
+        if (seq.find("R") == 0) {
+          this->eval(resolveToRenderProcess(seq, state, value));
+        }
+
+        this->onMessage(resolveToMainProcess(seq, state, value));
+      }
   };
 }
 #endif

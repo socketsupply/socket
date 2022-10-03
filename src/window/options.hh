@@ -17,16 +17,16 @@ namespace SSC {
     bool isTest = false;
     bool headless = false;
     bool forwardConsole = false;
-    std::string cwd = "";
-    std::string executable = "";
-    std::string title = "";
-    std::string url = "data:text/html,<html>";
-    std::string version = "";
-    std::string argv = "";
-    std::string preload = "";
-    std::string env;
+    String cwd = "";
+    String executable = "";
+    String title = "";
+    String url = "data:text/html,<html>";
+    String version = "";
+    String argv = "";
+    String preload = "";
+    String env;
     Map appData;
-    MessageCallback onMessage = [](const std::string) {};
+    MessageCallback onMessage = [](const String) {};
     ExitCallback onExit = nullptr;
   };
 }

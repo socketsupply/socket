@@ -1,5 +1,6 @@
+#include "../window/window.hh"
+#include "../window/factory.hh"
 #include "app.hh"
-#include "../core/core.hh"
 
 namespace SSC {
   App::App (int instanceId) {

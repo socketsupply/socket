@@ -3,12 +3,22 @@
 
 #import <Webkit/Webkit.h>
 #import <Network/Network.h>
+#import <Foundation/Foundation.h>
 #import <CoreBluetooth/CoreBluetooth.h>
 #import <UserNotifications/UserNotifications.h>
+#import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
 
-#include "core.hh"
+#if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
+#import <UIKit/UIKit.h>
+#else
+#import <Cocoa/Cocoa.h>
+#endif
+
+#include "common.hh"
 
 namespace SSC {
+  class Core;
+  struct Post;
   using Task = id<WKURLSchemeTask>;
   using Tasks = std::map<String, Task>;
 }
@@ -38,7 +48,7 @@ sourceOperationMaskForDraggingContext: (NSDraggingContext) context;
 #endif
 
 @interface SSCNavigationDelegate : NSObject<WKNavigationDelegate>
-- (void) webview: (SSCBridgedWebView*)webview
+- (void) webview: (SSCBridgedWebView*) webview
   decidePolicyForNavigationAction: (WKNavigationAction*) navigationAction
   decisionHandler: (void (^)(WKNavigationActionPolicy)) decisionHandler;
 @end
@@ -51,7 +61,7 @@ sourceOperationMaskForDraggingContext: (NSDraggingContext) context;
   stopURLSchemeTask: (id <WKURLSchemeTask>) urlSchemeTask;
 @end
 
-@interface BluetoothDelegate : NSObject<
+@interface SSCBluetoothDelegate : NSObject<
   CBCentralManagerDelegate,
   CBPeripheralManagerDelegate,
   CBPeripheralDelegate>
@@ -63,9 +73,16 @@ sourceOperationMaskForDraggingContext: (NSDraggingContext) context;
 @property (strong, nonatomic) NSMutableDictionary* services;
 @property (strong, nonatomic) NSMutableDictionary* characteristics;
 @property (strong, nonatomic) NSMutableDictionary* serviceMap;
-- (void) publishCharacteristic: (SSC::String)seq buf: (char*)buf len: (int)len sid: (SSC::String)sid cid: (SSC::String)cid;
-- (void) subscribeCharacteristic: (SSC::String)seq sid: (SSC::String)sid cid: (SSC::String)cid;
-- (void) startService: (SSC::String)seq sid: (SSC::String)sid;
+- (void) publishCharacteristic: (SSC::String) seq
+                           buf: (char*) buf
+                           len: (int) len
+                           sid: (SSC::String) sid
+                           cid: (SSC::String) cid;
+- (void) subscribeCharacteristic: (SSC::String)
+                         seq sid: (SSC::String)
+                         sid cid: (SSC::String) cid;
+- (void) startService: (SSC::String)
+              seq sid: (SSC::String) sid;
 - (void) startAdvertising;
 - (void) startScanning;
 - (void) initBluetooth;
@@ -75,22 +92,28 @@ sourceOperationMaskForDraggingContext: (NSDraggingContext) context;
   std::unique_ptr<SSC::Tasks> tasks;
   std::recursive_mutex tasksMutex;
 }
-@property (strong, nonatomic) BluetoothDelegate* bluetooth;
+@property (strong, nonatomic) SSCBluetoothDelegate* bluetooth;
 @property (strong, nonatomic) SSCBridgedWebView* webview;
 @property (nonatomic) SSC::Core* core;
 @property nw_path_monitor_t monitor;
 @property (strong, nonatomic) NSObject<OS_dispatch_queue>* monitorQueue;
-- (bool) route: (SSC::String)msg buf: (char*)buf bufsize: (size_t)bufsize;
-- (void) emit: (SSC::String)name msg: (SSC::String)msg;
-- (void) send: (SSC::String)seq msg: (SSC::String)msg post: (SSC::Post)post;
+- (bool) route: (SSC::String) msg
+           buf: (char*) buf
+       bufsize: (size_t) bufsize;
+- (void) emit: (SSC::String) name
+          msg: (SSC::String) msg;
+- (void) send: (SSC::String) seq
+          msg: (SSC::String) msg
+         post: (SSC::Post) post;
 - (void) initNetworkStatusObserver;
-- (void) setBluetooth: (BluetoothDelegate*)bd;
-- (void) setWebview: (SSCBridgedWebView*)bv;
+- (void) setBluetooth: (SSCBluetoothDelegate*) bd;
+- (void) setWebview: (SSCBridgedWebView*) bv;
 - (void) setCore: (SSC::Core*)core;
 - (SSC::Task) getTask: (SSC::String) id;
 - (bool) hasTask: (SSC::String) id;
 - (void) removeTask: (SSC::String) id;
-- (void) putTask: (SSC::String) id task: (SSC::Task) task;
+- (void) putTask: (SSC::String) id
+            task: (SSC::Task) task;
 @end
 
 #endif

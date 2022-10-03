@@ -1,41 +1,20 @@
 #ifndef SSC_CORE_CORE_H
 #define SSC_CORE_CORE_H
 
+#include <uv.h>
 #include "common.hh"
-#include "uv.h"
+#include "runtime-preload.hh"
 
-#ifndef _WIN32
-#include <ifaddrs.h>
-#include <sys/types.h>
-#include <arpa/inet.h>
+#if defined(__APPLE__)
+#include "apple.hh"
 #endif
 
 #if defined(__linux__) && !defined(__ANDROID__)
-#include <gtk/gtk.h>
+#include "linux.hh"
 #endif
 
-#include <chrono>
-#include <functional>
-#include <semaphore>
-#include <thread>
-#include <queue>
-
-#if defined(__APPLE__)
-#if !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR
-#include <objc/objc-runtime.h>
-#import <Cocoa/Cocoa.h>
-#else
-#import <Foundation/Foundation.h>
-#import <UIKit/UIKit.h>
-#endif
-
-#ifndef debug
-#define debug(format, ...) NSLog(@format, ##__VA_ARGS__)
-#endif
-#endif
-
-#ifndef debug
-#define debug(format, ...) fprintf(stderr, format "\n", ##__VA_ARGS__)
+#if defined(_WIN32)
+#include "win.hh"
 #endif
 
 namespace SSC {
@@ -59,7 +38,7 @@ namespace SSC {
     bool bodyNeedsFree = false;
   };
 
-  using Posts = std::map<uint64_t, Post>;
+  using Posts = std::map<ID, Post>;
   using Callback = std::function<void(String, String, Post)>;
 
   struct Descriptor {

@@ -1,5 +1,4 @@
 #include "core.hh"
-#include "apple.hh"
 
 #if DEBUG
 #define DebugLog(fmt, ...) NSLog((@"%s " fmt), __PRETTY_FUNCTION__, ##__VA_ARGS__)
@@ -161,7 +160,7 @@
 }
 @end
 
-@implementation BluetoothDelegate
+@implementation SSCBluetoothDelegate
 // - (void)disconnect {
 // }
 
@@ -672,7 +671,7 @@
   tasks->insert_or_assign(id, task);
 }
 
-- (void) setBluetooth: (BluetoothDelegate*)bd {
+- (void) setBluetooth: (SSCBluetoothDelegate*)bd {
   _bluetooth = bd;
   [_bluetooth initBluetooth];
   _bluetooth.bridge = self;

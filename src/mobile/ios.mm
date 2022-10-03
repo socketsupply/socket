@@ -1,22 +1,12 @@
-#import <Webkit/Webkit.h>
-
-#include <_types/_uint64_t.h>
-#include <netinet/in.h>
-#include <sys/socket.h>
-#include <sys/un.h>
-#include <map>
-
-#include "../core/runtime-preload.hh"
-#include "../window/options.hh"
-#include "../core/apple.hh"
 #include "../core/core.hh"
+#include "../window/options.hh"
 
 constexpr auto _settings = STR_VALUE(SETTINGS);
 constexpr auto _debug = false;
 
 @interface AppDelegate : UIResponder <UIApplicationDelegate, WKScriptMessageHandler, UIScrollViewDelegate> {
   Bridge* bridge;
-  BluetoothDelegate* bluetooth;
+  SSCBluetoothDelegate* bluetooth;
   SSC::Core* core;
 }
 @property (strong, nonatomic) UIWindow* window;
@@ -143,7 +133,7 @@ void uncaughtExceptionHandler (NSException *exception) {
   core = new SSC::Core;
   bridge = [Bridge new];
 
-  bluetooth = [BluetoothDelegate new];
+  bluetooth = [SSCBluetoothDelegate new];
   [bluetooth setBridge: bridge];
 
   auto appFrame = [[UIScreen mainScreen] bounds];
@@ -223,7 +213,7 @@ void uncaughtExceptionHandler (NSException *exception) {
   [ns addObserver: self selector: @selector(keyboardWillHide) name: UIKeyboardWillHideNotification object: nil];
   [ns addObserver: self selector: @selector(keyboardWillChange:) name: UIKeyboardWillChangeFrameNotification object: nil];
 
-  [bridge setBluetooth: [BluetoothDelegate new]];
+  [bridge setBluetooth: [SSCBluetoothDelegate new]];
   [bridge setWebview: self.webview];
   [bridge setCore: core];
 

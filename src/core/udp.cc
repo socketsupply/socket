@@ -1,4 +1,5 @@
 #include "core.hh"
+
 namespace SSC {
   void Core::udpBind (String seq, uint64_t peerId, String address, int port, bool reuseAddr, Callback cb) {
     if (hasPeer(peerId) && getPeer(peerId)->isBound()) {

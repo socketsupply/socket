@@ -1,4 +1,5 @@
 #include "core.hh"
+
 namespace SSC {
   static std::recursive_mutex instanceMutex;
   static Core *instance = nullptr;

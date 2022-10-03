@@ -1,7 +1,7 @@
-#include "app.hh"
-#include "../core/core.hh"
+#include "../core/linux.hh"
 #include "../window/window.hh"
 #include "../window/factory.hh"
+#include "app.hh"
 
 namespace SSC {
   static Map bufferQueue;

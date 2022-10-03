@@ -1,12 +1,4 @@
-#include <signal.h>
-#include <future>
-#include <chrono>
-#include <shobjidl.h>
-#include <shlobj_core.h>
-
 #include "window.hh"
-#include "../app/app.hh"
-#include "../core/core.hh"
 
 inline void alert (const std::wstring &ws) {
   MessageBoxA(nullptr, SSC::WStringToString(ws).c_str(), _TEXT("Alert"), MB_OK | MB_ICONSTOP);
