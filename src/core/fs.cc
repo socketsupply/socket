@@ -1510,8 +1510,7 @@ namespace SSC {
 #ifdef X_OK
     SET_CONSTANT(X_OK);
 #endif
-
-  }
     return constants;
+  }
 #undef SET_CONSTANT
 }
