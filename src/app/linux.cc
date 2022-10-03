@@ -1,4 +1,3 @@
-#include "../core/linux.hh"
 #include "../window/window.hh"
 #include "../window/factory.hh"
 #include "app.hh"

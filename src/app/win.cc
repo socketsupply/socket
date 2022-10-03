@@ -1,4 +1,3 @@
-#include "../core/win.hh"
 #include "../window/window.hh"
 #include "../window/factory.hh"
 #include "app.hh"
@@ -23,7 +22,7 @@ namespace SSC {
 
   std::atomic<bool> App::isReady {false};
 
-  App::App(void* h): hInstance((_In_ HINSTANCE) h) {
+  App::App (void* h): hInstance((_In_ HINSTANCE) h) {
     #if DEBUG == 1
       AllocConsole();
       freopen_s(&console, "CONOUT$", "w", stdout);

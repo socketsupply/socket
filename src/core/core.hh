@@ -7,13 +7,9 @@
 
 #if defined(__APPLE__)
 #include "apple.hh"
-#endif
-
-#if defined(__linux__) && !defined(__ANDROID__)
+#elif defined(__linux__) && !defined(__ANDROID__)
 #include "linux.hh"
-#endif
-
-#if defined(_WIN32)
+#elif defined(_WIN32)
 #include "win.hh"
 #endif
 

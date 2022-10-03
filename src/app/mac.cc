@@ -1,5 +1,4 @@
 #include "../window/window.hh"
-#include "../window/factory.hh"
 #include "app.hh"
 
 namespace SSC {
@@ -24,7 +23,7 @@ namespace SSC {
 
   // We need to dispatch any code that touches
   // a window back into the main thread.
-  void App::dispatch(std::function<void()> f) {
+  void App::dispatch (std::function<void()> f) {
     auto priority = DISPATCH_QUEUE_PRIORITY_DEFAULT;
     auto queue = dispatch_get_global_queue(priority, 0);
 
