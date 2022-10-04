@@ -220,7 +220,7 @@ function _compile_libuv {
 _prepare
 cd $BUILD_DIR
 
-if [ "$1" == "ios" ]; then
+if [[ "`uname -s`" == "Darwin" ]]; then
   quiet xcode-select -p
   die $? "not ok - xcode needs to be installed from the mac app store: https://apps.apple.com/us/app/xcode/id497799835"
 
