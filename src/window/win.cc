@@ -669,7 +669,7 @@ namespace SSC {
     auto options = Microsoft::WRL::Make<CoreWebView2EnvironmentOptions>();
     options->put_AdditionalBrowserArguments(L"--allow-file-access-from-files");
 
-    auto optionsExperimental = Microsoft::WRL::Make<ICoreWebView2ExperimentalEnvironmentOptions>();
+    auto optionsExperimental = Microsoft::WRL::Make<CoreWebView2ExperimentalEnvironmentOptions>();
     if (options.As(&optionsExperimental) == S_OK) {
       auto customSchemeRegistration = Microsoft::WRL::Make<CoreWebView2CustomSchemeRegistration>(L"ipc");
       // TODO(@heapwolf) add the custom reg from the user config IF it is defined.
