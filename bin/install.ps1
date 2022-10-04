@@ -148,7 +148,7 @@ Function Install-WebView2 {
 
   # see https://docs.microsoft.com/en-us/microsoft-edge/webview2/concepts/versioning
   #$webview2_version = '1.0.1248-prerelease'
-  $webview2_version = '1.0.1293.44'
+  $webview2_version = '1.0.1343.22'
   $tmpdir = Join-Path $Env:Temp $(New-Guid)
   $base = "$tmpdir\WebView2\build\native"
 
