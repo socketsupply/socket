@@ -10,7 +10,6 @@
 #elif defined(__linux__) && !defined(__ANDROID__)
 #include "linux.hh"
 #elif defined(_WIN32)
-#define WIN32_LEAN_AND_MEAN
 #include "win.hh"
 #endif
 
