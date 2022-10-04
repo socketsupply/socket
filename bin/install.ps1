@@ -157,19 +157,19 @@ Function Install-WebView2 {
   Copy-Item -Path $base\x64\WebView2LoaderStatic.lib "$WORKING_BUILD_PATH\lib\WebView2LoaderStatic.lib" -Force
 
   if (Test-Path -Path "$WORKING_BUILD_PATH\include\webview2.h" -PathType Leaf) {
-    Rename-Item -Path "$WORKING_BUILD_PATH\include\webview2.h" -NewPath "$WORKING_BUILD_PATH\include\WebView2.h" -Force
+    Rename-Item -Path "$WORKING_BUILD_PATH\include\webview2.h" -NewName "$WORKING_BUILD_PATH\include\WebView2.h" -Force
   }
 
   if (Test-Path -Path "$WORKING_BUILD_PATH\include\webview2experimental.h" -PathType Leaf) {
-    Rename-Item -Path "$WORKING_BUILD_PATH\include\webview2experimental.h" -NewPath "$WORKING_BUILD_PATH\include\WebView2Experimental.h" -Force
+    Rename-Item -Path "$WORKING_BUILD_PATH\include\webview2experimental.h" -NewName "$WORKING_BUILD_PATH\include\WebView2Experimental.h" -Force
   }
 
   if (Test-Path -Path "$WORKING_BUILD_PATH\include\webview2environmentoptions.h" -PathType Leaf) {
-    Rename-Item -Path "$WORKING_BUILD_PATH\include\webview2environmentoptions.h" -NewPath "$WORKING_BUILD_PATH\include\WebView2EnvironmentOptions.h" -Force
+    Rename-Item -Path "$WORKING_BUILD_PATH\include\webview2environmentoptions.h" -NewName "$WORKING_BUILD_PATH\include\WebView2EnvironmentOptions.h" -Force
   }
 
   if (Test-Path -Path "$WORKING_BUILD_PATH\lib\webview2loaderstatic.lib" -PathType Leaf) {
-    Rename-Item -Path "$WORKING_BUILD_PATH\lib\webview2loaderstatic.lib" -NewPath "$WORKING_BUILD_PATH\lib\WebView2LoaderStatic.lib" -Force
+    Rename-Item -Path "$WORKING_BUILD_PATH\lib\webview2loaderstatic.lib" -NewName "$WORKING_BUILD_PATH\lib\WebView2LoaderStatic.lib" -Force
   }
 
   Write-Output "ok - updated WebView2 header files..."
