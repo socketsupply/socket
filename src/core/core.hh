@@ -1,6 +1,13 @@
 #ifndef SSC_CORE_CORE_H
 #define SSC_CORE_CORE_H
 
+#if defined(_WIN32)
+#undef _WINSOCKAPI_
+#define _WINSOCKAPI_
+#endif
+
+#include <uv.h>
+
 #include "common.hh"
 #include "runtime-preload.hh"
 
@@ -11,8 +18,6 @@
 #elif defined(_WIN32)
 #include "win.hh"
 #endif
-
-#include <uv.h>
 
 namespace SSC {
   using EventLoopDispatchCallback = std::function<void()>;

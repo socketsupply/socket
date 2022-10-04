@@ -61,10 +61,10 @@
 
 // Windows
 #if defined(_WIN32)
-#undef _WINSOCKAPI_
-#define _WINSOCKAPI_
+#ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
-#include <winsock2.h>
+#endif
+
 #include <windows.h>
 
 #include <dwmapi.h>
