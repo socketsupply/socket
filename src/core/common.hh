@@ -67,7 +67,6 @@
 #include <io.h>
 #include <tchar.h>
 #include <wingdi.h>
-#include <wrl.h>
 
 #include <future>
 #include <signal.h>
@@ -139,10 +138,6 @@
 #define ToString(string) String(string)
 
 namespace SSC {
-#if defined(_WIN32)
-  using namespace Microsoft::WRL;
-#endif
-
   namespace fs = std::filesystem;
 
   using ID = uint64_t;

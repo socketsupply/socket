@@ -1,8 +1,11 @@
 #include "window.hh"
+#include <wrl.h>
 
 #ifndef CHECK_FAILURE
 #define CHECK_FAILURE(...)
 #endif
+
+using namespace Microsoft::WRL;
 
 namespace SSC {
   static inline void alert (const SSC::WString &ws) {
