@@ -1452,7 +1452,6 @@ int main (const int argc, const char* argv[]) {
         " -I" + prefix + "\\include"
         " -I" + prefix + "\\src"
         " -L" + prefix + "\\lib"
-        " -L" + prefix + "\\lib\\win64"
       ;
 
       files += prefixFile("src\\app\\win.cc");

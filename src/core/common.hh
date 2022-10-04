@@ -18,6 +18,7 @@
 // macOS/iOS
 #if defined(__APPLE__)
 #include <TargetConditionals.h>
+
 #if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
 #include <_types/_uint64_t.h>
 #include <netinet/in.h>
@@ -75,6 +76,10 @@
 
 #define isatty _isatty
 #define fileno _fileno
+
+#ifndef debug
+#define debug(format, ...) fprintf(stderr, format "\n", ##__VA_ARGS__)
+#endif
 #endif
 
 #include <any>

@@ -194,10 +194,10 @@ namespace SSC {
   using ShouldSystemUseDarkMode = BOOL(WINAPI*)();
   using AllowDarkModeForApp = BOOL(WINAPI*)(BOOL allow);
 
-  extern RefreshImmersiveColorPolicyState refreshImmersiveColorPolicyState = nullptr;
-  extern SetWindowCompositionAttribute setWindowCompositionAttribute = nullptr;
-  extern ShouldSystemUseDarkMode shouldSystemUseDarkMode = nullptr;
-  extern AllowDarkModeForApp allowDarkModeForApp = nullptr;
+  extern RefreshImmersiveColorPolicyState refreshImmersiveColorPolicyState;
+  extern SetWindowCompositionAttribute setWindowCompositionAttribute;
+  extern ShouldSystemUseDarkMode shouldSystemUseDarkMode;
+  extern AllowDarkModeForApp allowDarkModeForApp;
 
   auto bgBrush = CreateSolidBrush(RGB(0, 0, 0));
 #endif

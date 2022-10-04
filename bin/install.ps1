@@ -142,7 +142,7 @@ Function Install-WebView2 {
   # ensure paths
   (New-Item -Type Directory -Path $tmpdir) > $null
   (New-Item -ItemType Directory -Force -Path "$WORKING_BUILD_PATH\lib") > $null
-  (New-Item -ItemType Directory -Force -Path "$WORKING_BUILD_PATH\include\WebView2") > $null
+  (New-Item -ItemType Directory -Force -Path "$WORKING_BUILD_PATH\include") > $null
 
   # download and extract
   Write-Output "# downloading latest WebView2 header and library files..."
@@ -151,9 +151,9 @@ Function Install-WebView2 {
 
   # install files into project `lib\` dir
   Write-Output "# installing latest WebView2 header and library files..."
-  Copy-Item -Path $base\include\WebView2.h "$WORKING_BUILD_PATH\include\WebView2"
-  Copy-Item -Path $base\include\WebView2Experimental.h "$WORKING_BUILD_PATH\include\WebView2"
-  Copy-Item -Path $base\include\WebView2EnvironmentOptions.h "$WORKING_BUILD_PATH\include\WebView2"
+  Copy-Item -Path $base\include\WebView2.h "$WORKING_BUILD_PATH\include\WebView2.h"
+  Copy-Item -Path $base\include\WebView2Experimental.h "$WORKING_BUILD_PATH\include\WebView2Experimental.h"
+  Copy-Item -Path $base\include\WebView2EnvironmentOptions.h "$WORKING_BUILD_PATH\include\WebView2EnvironmentOptions.h"
   Copy-Item -Path $base\x64\WebView2LoaderStatic.lib "$WORKING_BUILD_PATH\lib"
 
   Write-Output "ok - updated WebView2 header files..."

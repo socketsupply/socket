@@ -186,18 +186,18 @@ namespace SSC {
       );
 
       if (addr->sin_family == AF_INET) {
-        v4 << "\"" << interface.name << "\":{";
+        v4 << "\"" << String(interface.name) << "\":{";
         v4 << "\"address\":\"" << SSC::addrToIPv4(addr) << "\",";
         v4 << "\"mac\":\"" << String(mac, 17) << "\",";
-        v4 << "\"internal\":" << (interface.is_internal == 0 ? "false" : "true") << "";
+        v4 << "\"internal\":" << String(interface.is_internal == 0 ? "false" : "true") << "";
         v4 << "},";
       }
 
       if (addr->sin_family == AF_INET6) {
-        v6 << "\"" << interface.name << "\":\{";
+        v6 << "\"" << String(interface.name) << "\":\{";
         v6 << "\"address\":\"" << SSC::addrToIPv6((struct sockaddr_in6*) addr) << "\",";
         v6 << "\"mac\":\"" << String(mac, 17) << "\",";
-        v6 << "\"internal\":" << (interface.is_internal == 0 ? "false" : "true") << "";
+        v6 << "\"internal\":" << String(interface.is_internal == 0 ? "false" : "true") << "";
         v6 << "},";
       }
     }

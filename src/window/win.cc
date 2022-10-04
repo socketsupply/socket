@@ -1,5 +1,9 @@
 #include "window.hh"
 
+#ifndef CHECK_FAILURE
+#define CHECK_FAILURE(...)
+#endif
+
 namespace SSC {
   static inline void alert (const SSC::WString &ws) {
     MessageBoxA(nullptr, SSC::WStringToString(ws).c_str(), _TEXT("Alert"), MB_OK | MB_ICONSTOP);
@@ -748,7 +752,7 @@ namespace SSC {
                   EventRegistrationToken tokenNavigation;
 
                   webview->add_NavigationStarting(
-                    Callback<ICoreWebView2NavigationStartingEventHandler>(
+                    Microsoft::WRL::Callback<ICoreWebView2NavigationStartingEventHandler>(
                       [&](ICoreWebView2*, ICoreWebView2NavigationStartingEventArgs *e) {
                         PWSTR uri;
                         e->get_Uri(&uri);
@@ -769,8 +773,8 @@ namespace SSC {
                   webview->AddWebResourceRequestedFilter(L"*", COREWEBVIEW2_WEB_RESOURCE_CONTEXT_XML_HTTP_REQUEST);
 
                   CHECK_FAILURE(webview->add_WebResourceRequested(
-                    Callback<ICoreWebView2WebResourceRequestedEventHandler>(
-                      [&](ICoreWebView2*, ICoreWebView2WebResourceRequestedEventArgs* e) {
+                    Microsoft::WRL::Callback<ICoreWebView2WebResourceRequestedEventHandler>(
+                      [&](ICoreWebView2*, ICoreWebView2WebResourceRequestedEventArgs* args) {
                         COREWEBVIEW2_WEB_RESOURCE_CONTEXT resourceContext;
                         CHECK_FAILURE(args->get_ResourceContext(&resourceContext));
                         // Override the response with the data.
@@ -801,7 +805,7 @@ namespace SSC {
                   EventRegistrationToken tokenNewWindow;
 
                   webview->add_NewWindowRequested(
-                    Callback<ICoreWebView2NewWindowRequestedEventHandler>(
+                    Microsoft::WRL::Callback<ICoreWebView2NewWindowRequestedEventHandler>(
                       [&](ICoreWebView2* wv, ICoreWebView2NewWindowRequestedEventArgs* e) {
                         // PWSTR uri;
                         // e->get_Uri(&uri);
@@ -815,7 +819,7 @@ namespace SSC {
 
                   webview->AddScriptToExecuteOnDocumentCreated(
                     SSC::StringToWString(preload).c_str(),
-                    Callback<ICoreWebView2AddScriptToExecuteOnDocumentCreatedCompletedHandler>(
+                    Microsoft::WRL::Callback<ICoreWebView2AddScriptToExecuteOnDocumentCreatedCompletedHandler>(
                       [&](HRESULT error, PCWSTR id) -> HRESULT {
                         return S_OK;
                       }
@@ -825,7 +829,7 @@ namespace SSC {
                   EventRegistrationToken tokenMessage;
 
                   webview->add_WebMessageReceived(
-                    Callback<IRecHandler>([&](ICoreWebView2* webview, IArgs* args) -> HRESULT {
+                    Microsoft::WRL::Callback<IRecHandler>([&](ICoreWebView2* webview, IArgs* args) -> HRESULT {
                       LPWSTR messageRaw;
                       args->TryGetWebMessageAsString(&messageRaw);
 
@@ -842,7 +846,7 @@ namespace SSC {
 
                   EventRegistrationToken tokenPermissionRequested;
                   webview->add_PermissionRequested(
-                    Callback<ICoreWebView2PermissionRequestedEventHandler>([&](
+                    Microsoft::WRL::Callback<ICoreWebView2PermissionRequestedEventHandler>([&](
                       ICoreWebView2 *webview,
                       ICoreWebView2PermissionRequestedEventArgs *args
                     ) -> HRESULT {
@@ -1077,7 +1081,7 @@ namespace SSC {
     app.dispatch([&, this, seq, value, index] {
       EventRegistrationToken token;
       this->webview->add_NavigationCompleted(
-        Callback<ICoreWebView2NavigationCompletedEventHandler>(
+        Microsoft::WRL::Callback<ICoreWebView2NavigationCompletedEventHandler>(
           [&, this, seq, index, token](ICoreWebView2* sender, ICoreWebView2NavigationCompletedEventArgs* args) -> HRESULT {
             SSC::String state = "1";
 
