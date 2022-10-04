@@ -8,6 +8,7 @@
 #include "apple.hh"
 #elif defined(__linux__) && !defined(__ANDROID__)
 #include "linux.hh"
+#elif defined(_WIN32)
 #include "win.hh"
 #endif
 
