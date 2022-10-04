@@ -3,7 +3,7 @@
 
 namespace SSC {
 //
-// THIS FILE WAS AUTO GENERATED ON: Tue Oct  4 18:28:38 +04 2022
+// THIS FILE WAS AUTO GENERATED ON: Tue Oct  4 18:24:16 UTC 2022
 //
 // This file contains JavaScipt that is injected into the webview before
 // any user code is executed.

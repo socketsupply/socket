@@ -6,7 +6,7 @@ declare output="$srcdir/core/runtime-preload-sources.hh"
 
 declare PRELOAD_GENERATION_DATE=""
 
-PRELOAD_GENERATION_DATE="$(date)"
+PRELOAD_GENERATION_DATE="$(date -u)"
 
 function emit () {
   local name="$1"
