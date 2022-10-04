@@ -781,7 +781,7 @@ namespace SSC {
                         // If put_Response is not called, the request will continue as normal.
                         auto response = Microsoft::WRL::Make<ICoreWebView2WebResourceResponse>();
                         auto environment = Microsoft::WRL::Make<ICoreWebView2Environment>();
-                        auto webview2 = Microsoft::WRL::Make<ICoreWebView2_2>();
+                        auto webview2 = Microsoft::WRL::Make<ICoreWebView2_15>();
 
                         CHECK_FAILURE(webview->QueryInterface(IID_PPV_ARGS(&webview2)));
                         CHECK_FAILURE(webview2->get_Environment(&environment));
