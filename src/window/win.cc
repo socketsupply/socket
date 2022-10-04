@@ -1,5 +1,6 @@
-#include "window.hh"
 #include <wrl.h>
+#include <shellapi.h>
+#include "window.hh"
 
 #ifndef CHECK_FAILURE
 #define CHECK_FAILURE(...)
