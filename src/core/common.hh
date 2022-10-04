@@ -439,39 +439,6 @@ namespace SSC {
     return src;
   }
 
-  inline String emitToRenderProcess (const String& event, const String& value) {
-    return String(
-      ";(() => {\n"
-      "  const name = decodeURIComponent(`" + event + "`);\n"
-      "  const value = `" + value + "`;\n"
-      "  window._ipc.emit(name, value);\n"
-      "})();\n"
-      "//# sourceURL=emit-to-render-process.js\n"
-    );
-  }
-
-  inline String resolveMenuSelection (const String& seq, const String& title, const String& parent) {
-    return String(
-      ";(() => {\n"
-      "  const detail = {\n"
-      "    title: decodeURIComponent(`" + title + "`),\n"
-      "    parent: decodeURIComponent(`" + parent + "`),\n"
-      "    state: '0'\n"
-      "  };\n"
-
-      "  if (" + seq + " > 0 && window._ipc['R" + seq + "']) {\n"
-      "    window._ipc['R" + seq + "'].resolve(detail);\n"
-      "    delete window._ipc['R" + seq + "'];\n"
-      "    return;\n"
-      "  }\n"
-
-      "  const event = new window.CustomEvent('menuItemSelected', { detail });\n"
-      "  window.dispatchEvent(event);\n"
-      "})();\n"
-      "//# sourceURL=resolve-menu-selection.js\n"
-    );
-  }
-
   //
   // Helper functions...
   //
@@ -511,7 +478,7 @@ namespace SSC {
     return output;
   }
 
-  inline uint64_t rand64(void) {
+  inline uint64_t rand64 (void) {
     uint64_t r = 0;
     for (int i = 0; i < 64; i += RAND_MAX_WIDTH) {
       r <<= RAND_MAX_WIDTH;
@@ -520,7 +487,7 @@ namespace SSC {
     return r;
   }
 
-  inline String getEnv(const char* variableName) {
+  inline String getEnv (const char* variableName) {
     #if _WIN32
       char* variableValue = nullptr;
       std::size_t valueSize = 0;
@@ -544,7 +511,7 @@ namespace SSC {
     #endif
   }
 
-  inline auto setEnv(const char* s) {
+  inline auto setEnv (const char* s) {
     #if _WIN32
       return _putenv(s);
     #else
@@ -553,7 +520,7 @@ namespace SSC {
     #endif
   }
 
-  inline void stdWrite(const String &str, bool isError) {
+  inline void stdWrite (const String &str, bool isError) {
     #ifdef _WIN32
       StringStream ss;
       ss << str << std::endl;
@@ -796,21 +763,6 @@ namespace SSC {
     String sResult((char*) pStart, (char*) pEnd);
     delete [] pStart;
     return sResult;
-  }
-
-  inline String resolveToRenderProcess (const String& seq, const String& state, const String& value) {
-    return String(
-      "(() => {"
-      "  const seq = String('" + seq + "');"
-      "  const state = Number('" + state + "');"
-      "  const value = '" + value + "';"
-      "  window._ipc.resolve(seq, state, value);"
-      "})()"
-    );
-  }
-
-  inline String resolveToMainProcess (const String& seq, const String& state, const String& value) {
-    return String("ipc://resolve?seq=" + seq + "&state=" + state + "&value=" + value);
   }
 }
 
