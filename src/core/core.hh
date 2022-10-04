@@ -1,6 +1,10 @@
 #ifndef SSC_CORE_CORE_H
 #define SSC_CORE_CORE_H
 
+#if defined(_WIN32) && !defined(WIN32_LEAN_AND_MEAN)
+#define WIN32_LEAN_AND_MEAN
+#endif
+
 #include <uv.h>
 #include "common.hh"
 #include "runtime-preload.hh"
