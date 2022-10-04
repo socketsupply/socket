@@ -941,17 +941,19 @@ int main (const int argc, const char* argv[]) {
       flags += " -luv";
       flags += " " + getCxxFlags();
 
-      files += prefixFile("src/desktop/main.cc");
-      files += prefixFile("src/core/core.cc");
-      files += prefixFile("src/core/udp.cc");
-      files += prefixFile("src/core/fs.cc");
-      files += prefixFile("src/core/apple.mm");
-      files += prefixFile("src/core/loop.cc");
-      files += prefixFile("src/core/timers.cc");
-      files += prefixFile("src/core/peer.cc");
       files += prefixFile("src/app/mac.cc");
-      files += prefixFile("src/window/mac.mm");
+      files += prefixFile("src/core/apple.mm");
+      files += prefixFile("src/core/core.cc");
+      files += prefixFile("src/core/fs.cc");
+      files += prefixFile("src/core/ipc.cc");
+      files += prefixFile("src/core/javascript.cc");
+      files += prefixFile("src/core/loop.cc");
+      files += prefixFile("src/core/peer.cc");
+      files += prefixFile("src/core/timers.cc");
+      files += prefixFile("src/core/udp.cc");
+      files += prefixFile("src/desktop/main.cc");
       files += prefixFile("src/process/unix.cc");
+      files += prefixFile("src/window/mac.mm");
 
       fs::path pathBase = "Contents";
       pathResources = { paths.pathPackage / pathBase / "Resources" };
@@ -1324,12 +1326,14 @@ int main (const int argc, const char* argv[]) {
           fs::copy(pathToProfile, pathToInstalledProfile);
         }
 
-        settings["ios_provisioning_profile"] = uuid;
         settings["ios_provisioning_specifier"] = provSpec;
+        settings["ios_provisioning_profile"] = uuid;
         settings["apple_team_id"] = team;
       }
       if (flagBuildForSimulator) {
         settings["ios_provisioning_specifier"] = "";
+        settings["ios_provisioning_profile"] = "";
+        settings["ios_codesign_identity"] = "";
         settings["apple_team_id"] = "";
       }
 
@@ -1377,8 +1381,8 @@ int main (const int argc, const char* argv[]) {
       files += prefixFile("src/core/timers.cc");
       files += prefixFile("src/core/udp.cc");
       files += prefixFile("src/desktop/main.cc");
-      files += prefixFile("src/window/linux.cc");
       files += prefixFile("src/process/unix.cc");
+      files += prefixFile("src/window/linux.cc");
 
       pathResources = paths.pathBin;
 
@@ -1452,6 +1456,7 @@ int main (const int argc, const char* argv[]) {
 
       flags = " -std=c++2a"
         " -DWIN32_LEAN_AND_MEAN"
+        " -Wno-nonportable-include-path"
         " -I" + prefix +
         " -I" + prefix + "\\include"
         " -I" + prefix + "\\src"
@@ -1577,21 +1582,23 @@ int main (const int argc, const char* argv[]) {
       //
       // Copy and or create the source files we need for the build.
       //
-      fs::copy(trim(prefixFile("src/mobile/ios.mm")), pathToDist / "mobile");
-      fs::copy(trim(prefixFile("src/window/options.hh")), pathToDist / "window");
       fs::copy(trim(prefixFile("src/app/app.hh")), pathToDist / "app");
-      fs::copy(trim(prefixFile("src/core/runtime-preload-sources.hh")), pathToDist / "core");
-      fs::copy(trim(prefixFile("src/core/runtime-preload.hh")), pathToDist / "core");
-      fs::copy(trim(prefixFile("src/core/common.hh")), pathToDist / "core");
-      fs::copy(trim(prefixFile("src/core/core.hh")), pathToDist / "core");
       fs::copy(trim(prefixFile("src/core/apple.hh")), pathToDist / "core");
       fs::copy(trim(prefixFile("src/core/apple.mm")), pathToDist / "core");
+      fs::copy(trim(prefixFile("src/core/common.hh")), pathToDist / "core");
       fs::copy(trim(prefixFile("src/core/core.cc")), pathToDist / "core");
-      fs::copy(trim(prefixFile("src/core/loop.cc")), pathToDist / "core");
-      fs::copy(trim(prefixFile("src/core/timers.cc")), pathToDist / "core");
-      fs::copy(trim(prefixFile("src/core/peer.cc")), pathToDist / "core");
-      fs::copy(trim(prefixFile("src/core/udp.cc")), pathToDist / "core");
+      fs::copy(trim(prefixFile("src/core/core.hh")), pathToDist / "core");
       fs::copy(trim(prefixFile("src/core/fs.cc")), pathToDist / "core");
+      fs::copy(trim(prefixFile("src/core/ipc.cc")), pathToDist / "core");
+      fs::copy(trim(prefixFile("src/core/javascript.cc")), pathToDist / "core");
+      fs::copy(trim(prefixFile("src/core/loop.cc")), pathToDist / "core");
+      fs::copy(trim(prefixFile("src/core/peer.cc")), pathToDist / "core");
+      fs::copy(trim(prefixFile("src/core/runtime-preload-sources.hh")), pathToDist / "core");
+      fs::copy(trim(prefixFile("src/core/runtime-preload.hh")), pathToDist / "core");
+      fs::copy(trim(prefixFile("src/core/timers.cc")), pathToDist / "core");
+      fs::copy(trim(prefixFile("src/core/udp.cc")), pathToDist / "core");
+      fs::copy(trim(prefixFile("src/mobile/ios.mm")), pathToDist / "mobile");
+      fs::copy(trim(prefixFile("src/window/options.hh")), pathToDist / "window");
 
       auto pathBase = pathToDist / "Base.lproj";
       fs::create_directories(pathBase);
