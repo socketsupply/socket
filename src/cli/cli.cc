@@ -2355,7 +2355,7 @@ int main (const int argc, const char* argv[]) {
       }
       else {
         _com_error err(hr);
-        String msg = String( err.ErrorMessage() );
+        String msg = WStringToString( err.ErrorMessage() );
         log("Unable to save package; " + msg);
 
         exit(1);
