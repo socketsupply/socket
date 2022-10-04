@@ -4,6 +4,6 @@
  __/ /__/ /__ /  \ /__   /
 ```
 
-[![Socket SDK CI](https://github.com/socketsupply/socket-sdk/actions/workflows/ci.yml/badge.svg?branch=dev)](https://github.com/socketsupply/socket-sdk/actions/workflows/ci.yml)
+> [![Socket SDK CI](https://github.com/socketsupply/socket/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/socketsupply/socket/actions/workflows/ci.yml)
 
 Read the [docs](https://sockets.sh)
