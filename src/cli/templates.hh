@@ -841,7 +841,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
         CODE_SIGN_IDENTITY = "{{ios_codesign_identity}}";
         CODE_SIGN_STYLE = Manual;
         CURRENT_PROJECT_VERSION = 1;
-        DEVELOPMENT_TEAM = {{apple_team_id}};
+        DEVELOPMENT_TEAM = "{{apple_team_id}}";
         ENABLE_BITCODE = NO;
         "EXCLUDED_ARCHS[sdk=iphonesimulator*]" = arm64;
         GENERATE_INFOPLIST_FILE = YES;
@@ -887,7 +887,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
         CODE_SIGN_IDENTITY = "iPhone Distribution";
         CODE_SIGN_STYLE = Manual;
         CURRENT_PROJECT_VERSION = 1;
-        DEVELOPMENT_TEAM = {{apple_team_id}};
+        DEVELOPMENT_TEAM = "{{apple_team_id}}";
         ENABLE_BITCODE = NO;
         "EXCLUDED_ARCHS[sdk=*]" = "";
         "EXCLUDED_ARCHS[sdk=iphonesimulator*]" = arm64;
