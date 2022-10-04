@@ -19,7 +19,6 @@
 #include <shlwapi.h>
 #include <strsafe.h>
 #include <tchar.h>
-#include <Windows.h>
 #include <wrl.h>
 #pragma comment(lib, "Shlwapi.lib")
 #pragma comment(lib, "Urlmon.lib")

@@ -1,5 +1,5 @@
-#include <wrl.h>
 #include "window.hh"
+#include <wrl.h>
 
 #ifndef CHECK_FAILURE
 #define CHECK_FAILURE(...)
