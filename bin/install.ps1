@@ -42,7 +42,7 @@ Function Build {
 
   if (-not (Test-Path -Path "$WORKING_BUILD_PATH\include\uv.h" -PathType Leaf)) {
     (New-Item -ItemType Directory -Force -Path "$WORKING_BUILD_PATH\include") > $null
-    Copy-Item -Path "$WORKING_BUILD_PATH\libuv\include\*" -Destination "$WORKING_BUILD_PATH\include" -Recurse -Force
+    Copy-Item -Path "$WORKING_BUILD_PATH\libuv\include\*" -Destination "$WORKING_BUILD_PATH\include" -Recurse -Force -Container
   }
 
   cd "$WORKING_PATH"
@@ -99,25 +99,25 @@ Function Install-Files {
 
   # install `.\include\*`
   if (Test-Path -Path "$WORKING_PATH\include" -PathType Container) {
-    Copy-Item -Path "$WORKING_PATH\include\*" -Destination "$INCLUDE_PATH" -Recurse -Force
+    Copy-Item -Path "$WORKING_PATH\include\*" -Destination "$INCLUDE_PATH" -Recurse -Force -Container
   }
 
   # install `.\lib\*`
   if (Test-Path -Path "$WORKING_PATH\lib" -PathType Container) {
-    Copy-Item -Path "$WORKING_PATH\lib\*" -Destination "$LIB_PATH" -Recurse -Force
+    Copy-Item -Path "$WORKING_PATH\lib\*" -Destination "$LIB_PATH" -Recurse -Force -Container
   }
 
   # install `.\src\*`
-  Copy-Item -Path "$WORKING_PATH\src\*" -Destination "$SRC_PATH" -Recurse -Force
+  Copy-Item -Path "$WORKING_PATH\src\*" -Destination "$SRC_PATH" -Recurse -Force -Container
 
   # install `.\build\include\*`
   if (Test-Path -Path "$WORKING_BUILD_PATH\include" -PathType Container) {
-    Copy-Item -Path "$WORKING_BUILD_PATH\include\*" -Destination "$INCLUDE_PATH" -Recurse -Force
+    Copy-Item -Path "$WORKING_BUILD_PATH\include\*" -Destination "$INCLUDE_PATH" -Recurse -Force -Container
   }
 
   # install `.\build\lib\*`
   if (Test-Path -Path "$WORKING_BUILD_PATH\lib" -PathType Container) {
-    Copy-Item -Path "$WORKING_BUILD_PATH\lib\*" -Destination "$LIB_PATH" -Recurse -Force
+    Copy-Item -Path "$WORKING_BUILD_PATH\lib\*" -Destination "$LIB_PATH" -Recurse -Force -Container
   }
 
   # install `.\build\bin\*`
@@ -151,10 +151,10 @@ Function Install-WebView2 {
 
   # install files into project `lib\` dir
   Write-Output "# installing latest WebView2 header and library files..."
-  Copy-Item -Path $base\include\WebView2.h "$WORKING_BUILD_PATH\include\WebView2.h"
-  Copy-Item -Path $base\include\WebView2Experimental.h "$WORKING_BUILD_PATH\include\WebView2Experimental.h"
-  Copy-Item -Path $base\include\WebView2EnvironmentOptions.h "$WORKING_BUILD_PATH\include\WebView2EnvironmentOptions.h"
-  Copy-Item -Path $base\x64\WebView2LoaderStatic.lib "$WORKING_BUILD_PATH\lib"
+  Copy-Item -Path $base\include\WebView2.h "$WORKING_BUILD_PATH\include\WebView2.h" -Force
+  Copy-Item -Path $base\include\WebView2Experimental.h "$WORKING_BUILD_PATH\include\WebView2Experimental.h" -Force
+  Copy-Item -Path $base\include\WebView2EnvironmentOptions.h "$WORKING_BUILD_PATH\include\WebView2EnvironmentOptions.h" -Force
+  Copy-Item -Path $base\x64\WebView2LoaderStatic.lib "$WORKING_BUILD_PATH\lib" -Force
 
   Write-Output "ok - updated WebView2 header files..."
 }
