@@ -416,7 +416,7 @@ MAIN {
       }
 
       if (cmd.name == "send") {
-        window->eval(emitToRenderProcess(
+        window->eval(getEmitToRenderProcessJavaScript(
           decodeURIComponent(cmd.get("event")),
           value
         ));
@@ -438,7 +438,7 @@ MAIN {
     onStdErr,
     [&](SSC::String const &code) {
       for (auto& window : windowFactory.windows) {
-        window->eval(emitToRenderProcess("main-exit", code));
+        window->eval(getEmitToRenderProcessJavaScript("main-exit", code));
       }
     }
   );

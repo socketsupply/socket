@@ -33,7 +33,7 @@ int lastY = 0;
     "\"y\":" + y + "}"
   );
 
-  auto payload = SSC::emitToRenderProcess("dragend", json);
+  auto payload = SSC::getEmitToRenderProcessJavaScript("dragend", json);
   draggablePayload.clear();
 
   [self evaluateJavaScript:
@@ -61,7 +61,7 @@ int lastY = 0;
     "\"y\":" + y + "}"
   );
 
-  auto payload = SSC::emitToRenderProcess("drag", json);
+  auto payload = SSC::getEmitToRenderProcessJavaScript("drag", json);
 
   [self evaluateJavaScript:
     [NSString stringWithUTF8String: payload.c_str()] completionHandler:nil];
@@ -71,7 +71,7 @@ int lastY = 0;
 - (NSDragOperation) draggingEntered: (id<NSDraggingInfo>)info {
   [self draggingUpdated: info];
 
-  auto payload = SSC::emitToRenderProcess("dragenter", "{}");
+  auto payload = SSC::getEmitToRenderProcessJavaScript("dragenter", "{}");
   [self evaluateJavaScript:
     [NSString stringWithUTF8String: payload.c_str()]
     completionHandler:nil];
@@ -115,7 +115,7 @@ int lastY = 0;
     "\"y\":" + std::to_string(y) + "}"
   );
 
-  auto payload = SSC::emitToRenderProcess("dropin", json);
+  auto payload = SSC::getEmitToRenderProcessJavaScript("dropin", json);
 
   [self evaluateJavaScript:
     [NSString stringWithUTF8String: payload.c_str()] completionHandler:nil];
@@ -141,7 +141,7 @@ int lastY = 0;
     "\"y\":" + y + "}"
   );
 
-  auto payload = SSC::emitToRenderProcess("drag", json);
+  auto payload = SSC::getEmitToRenderProcessJavaScript("drag", json);
 
   [self evaluateJavaScript:
     [NSString stringWithUTF8String: payload.c_str()] completionHandler:nil];
@@ -170,7 +170,7 @@ int lastY = 0;
         "\"y\":" + sy + "}"
       );
 
-      auto payload = SSC::emitToRenderProcess("drop", json);
+      auto payload = SSC::getEmitToRenderProcessJavaScript("drop", json);
 
       [self evaluateJavaScript:
         [NSString stringWithUTF8String: payload.c_str()]
@@ -183,7 +183,7 @@ int lastY = 0;
     "\"y\":" + sy + "}"
   );
 
-  auto payload = SSC::emitToRenderProcess("dragend", json);
+  auto payload = SSC::getEmitToRenderProcessJavaScript("dragend", json);
 
   [self evaluateJavaScript:
     [NSString stringWithUTF8String: payload.c_str()] completionHandler:nil];
@@ -255,7 +255,7 @@ int lastY = 0;
   [[self window] setFrameOrigin:newOrigin]; */
 
   if (!NSPointInRect(location, self.frame)) {
-    auto payload = SSC::emitToRenderProcess("dragexit", "{}");
+    auto payload = SSC::getEmitToRenderProcessJavaScript("dragexit", "{}");
     [self evaluateJavaScript:
       [NSString stringWithUTF8String: payload.c_str()] completionHandler:nil];
   }
@@ -279,7 +279,7 @@ int lastY = 0;
       "\"y\":" + sy + "}"
     );
 
-    auto payload = SSC::emitToRenderProcess("drag", json);
+    auto payload = SSC::getEmitToRenderProcessJavaScript("drag", json);
 
     [self evaluateJavaScript:
       [NSString stringWithUTF8String: payload.c_str()] completionHandler:nil];
@@ -361,7 +361,7 @@ int lastY = 0;
     "\"dest\":\"" + dest + "\"}"
   );
 
-  SSC::String js = SSC::emitToRenderProcess("dropout", json);
+  SSC::String js = SSC::getEmitToRenderProcessJavaScript("dropout", json);
 
   [self
     evaluateJavaScript: [NSString stringWithUTF8String:js.c_str()]
@@ -539,7 +539,7 @@ namespace SSC {
               return true;
             }
 
-            w->eval(emitToRenderProcess("windowHide", "{}"));
+            w->eval(getEmitToRenderProcessJavaScript("windowHide", "{}"));
             w->hide("");
             return false;
           }),
@@ -580,7 +580,7 @@ namespace SSC {
             SSC::String parent = [[[menuItem menu] title] UTF8String];
             SSC::String seq = std::to_string([menuItem tag]);
 
-            w->eval(resolveMenuSelection(seq, title, parent));
+            w->eval(getResolveMenuSelectionJavaScript(seq, title, parent));
           }),
         "v@:@:@:"
       );
@@ -647,7 +647,7 @@ namespace SSC {
 
   void Window::hide (const SSC::String& seq) {
     [window orderOut:window];
-    this->eval(emitToRenderProcess("windowHide", "{}"));
+    this->eval(getEmitToRenderProcessJavaScript("windowHide", "{}"));
 
     if (seq.size() > 0) {
       auto index = std::to_string(this->opts.index);

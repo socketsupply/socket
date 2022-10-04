@@ -423,7 +423,7 @@ extern "C" {
     jboolean shouldEncodeValue
   ) {
     using SSC::encodeURIComponent;
-    using SSC::resolveToRenderProcess;
+    using SSC::getResolveToRenderProcessJavaScript;
 
     auto core = GetNativeCoreFromEnvironment(env);
 
@@ -438,7 +438,7 @@ extern "C" {
       resolved = encodeURIComponent(resolved);
     }
 
-    auto javascript = resolveToRenderProcess(
+    auto javascript = getResolveToRenderProcessJavaScript(
       NativeString(env, seq).str(),
       NativeString(env, state).str(),
       resolved
@@ -458,7 +458,7 @@ extern "C" {
     jstring event,
     jstring value
   ) {
-    using SSC::emitToRenderProcess;
+    using SSC::getEmitToRenderProcessJavaScript;
 
     auto core = GetNativeCoreFromEnvironment(env);
 
@@ -467,7 +467,7 @@ extern "C" {
       return env->NewStringUTF("");
     }
 
-    auto javascript = emitToRenderProcess(
+    auto javascript = getEmitToRenderProcessJavaScript(
       NativeString(env, event).str(),
       NativeString(env, value).str()
     );
