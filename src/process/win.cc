@@ -1,4 +1,3 @@
-#include <Windows.h>
 #include <cstring>
 #include <iostream>
 #include <stdexcept>

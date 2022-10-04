@@ -1,7 +1,6 @@
 #ifndef SSC_CORE_CORE_H
 #define SSC_CORE_CORE_H
 
-#include <uv.h>
 #include "common.hh"
 #include "runtime-preload.hh"
 
@@ -9,9 +8,10 @@
 #include "apple.hh"
 #elif defined(__linux__) && !defined(__ANDROID__)
 #include "linux.hh"
-#elif defined(_WIN32)
 #include "win.hh"
 #endif
+
+#include <uv.h>
 
 namespace SSC {
   using EventLoopDispatchCallback = std::function<void()>;
