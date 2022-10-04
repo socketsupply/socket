@@ -1447,6 +1447,7 @@ int main (const int argc, const char* argv[]) {
       auto prefix = prefixFile();
 
       flags = " -std=c++2a"
+        " -DWIN32_LEAN_AND_MEAN"
         " -I" + prefix +
         " -I" + prefix + "\\include"
         " -I" + prefix + "\\src"

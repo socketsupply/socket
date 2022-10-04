@@ -61,6 +61,10 @@
 
 // Windows
 #if defined(_WIN32)
+#undef UNICODE
+#undef _WINSOCKAPI_
+#define UNICODE
+#define _WINSOCKAPI_
 #define WIN32_LEAN_AND_MEAN
 #include <winsock2.h>
 #include <windows.h>
