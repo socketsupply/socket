@@ -1328,6 +1328,11 @@ int main (const int argc, const char* argv[]) {
         settings["ios_provisioning_specifier"] = provSpec;
         settings["apple_team_id"] = team;
       }
+      if (flagBuildForSimulator) {
+        settings["ios_provisioning_profile"] = "\"\"";
+        settings["ios_provisioning_specifier"] = "";
+        settings["apple_team_id"] = "\"\"";
+      }
 
       fs::copy(
         fs::path(prefixFile()) / "lib",
