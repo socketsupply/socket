@@ -20,8 +20,6 @@
 #endif
 
 namespace SSC {
-  using EventLoopDispatchCallback = std::function<void()>;
-
   constexpr int EVENT_LOOP_POLL_TIMEOUT = 32; // in milliseconds
 
   // forward
@@ -40,6 +38,7 @@ namespace SSC {
 
   using Posts = std::map<ID, Post>;
   using Callback = std::function<void(String, String, Post)>;
+  using EventLoopDispatchCallback = std::function<void()>;
 
   struct Descriptor {
     Core *core;
@@ -413,5 +412,30 @@ namespace SSC {
       void sleepEventLoop (int64_t ms);
       void sleepEventLoop ();
   };
+
+  String createJavaScript (const String& name, const String& source);
+  String getEmitToRenderProcessJavaScript (
+    const String& event,
+    const String& value
+  );
+  String getResolveMenuSelectionJavaScript (
+    const String& seq,
+    const String& title,
+    const String& parent
+  );
+
+  String getResolveToRenderProcessJavaScript (
+    const String& seq,
+    const String& state,
+    const String& value
+  );
+
+  inline String getResolveToMainProcessMessage (
+    const String& seq,
+    const String& state,
+    const String& value
+  ) {
+    return String("ipc://resolve?seq=" + seq + "&state=" + state + "&value=" + value);
+  }
 } // SSC
 #endif
