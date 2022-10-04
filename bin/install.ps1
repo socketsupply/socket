@@ -129,10 +129,6 @@ Function Install-Files {
     Rename-Item -Path "$ASSET_PATH\include\webview2.h" -NewName "$ASSET_PATH\include\WebView2.h" -Force
   }
 
-  if (Test-Path -Path "$ASSET_PATH\include\webview2experimental.h" -PathType Leaf) {
-    Rename-Item -Path "$ASSET_PATH\include\webview2experimental.h" -NewName "$ASSET_PATH\include\WebView2Experimental.h" -Force
-  }
-
   if (Test-Path -Path "$ASSET_PATH\include\webview2environmentoptions.h" -PathType Leaf) {
     Rename-Item -Path "$ASSET_PATH\include\webview2environmentoptions.h" -NewName "$ASSET_PATH\include\WebView2EnvironmentOptions.h" -Force
   }
@@ -169,7 +165,6 @@ Function Install-WebView2 {
   # install files into project `lib\` dir
   Write-Output "# installing latest WebView2 header and library files..."
   Copy-Item -Path $base\include\WebView2.h "$WORKING_BUILD_PATH\include\WebView2.h" -Force
-  Copy-Item -Path $base\include\WebView2Experimental.h "$WORKING_BUILD_PATH\include\WebView2Experimental.h" -Force
   Copy-Item -Path $base\include\WebView2EnvironmentOptions.h "$WORKING_BUILD_PATH\include\WebView2EnvironmentOptions.h" -Force
   Copy-Item -Path $base\x64\WebView2LoaderStatic.lib "$WORKING_BUILD_PATH\lib\WebView2LoaderStatic.lib" -Force
 
