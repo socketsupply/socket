@@ -7,9 +7,14 @@
 #pragma comment(lib, "Dwmapi.lib")
 #pragma comment(lib, "Gdi32.lib")
 
-namespace SSC {
-  static FILE* console;
+#pragma comment(lib, "advapi32.lib")
+#pragma comment(lib, "shell32.lib")
+#pragma comment(lib, "version.lib")
+#pragma comment(lib, "user32.lib")
+#pragma comment(lib, "WebView2LoaderStatic.lib")
+#pragma comment(lib, "uv_a.lib")
 
+namespace SSC {
   inline void alert (const SSC::WString &ws) {
     MessageBoxA(nullptr, SSC::WStringToString(ws).c_str(), _TEXT("Alert"), MB_OK | MB_ICONSTOP);
   }

@@ -90,6 +90,7 @@ namespace SSC {
       POINT m_maxsz = POINT {0, 0};
       DragDrop* drop;
       HWND window;
+      std::map<int, std::string> menuMap;
       void resize (HWND window);
 #endif
 

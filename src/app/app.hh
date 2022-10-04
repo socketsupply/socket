@@ -86,5 +86,9 @@ namespace SSC {
       bool invoke (Parse cmd, Callback cb);
   };
 #endif
+
+#if defined(_WIN32)
+  extern FILE* console;
+#endif
 }
 #endif
