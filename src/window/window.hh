@@ -135,10 +135,10 @@ namespace SSC {
         const String& value
       ) {
         if (seq.find("R") == 0) {
-          this->eval(resolveToRenderProcess(seq, state, value));
+          this->eval(getResolveToRenderProcessJavaScript(seq, state, value));
         }
 
-        this->onMessage(resolveToMainProcess(seq, state, value));
+        this->onMessage(getResolveToMainProcessMessage(seq, state, value));
       }
   };
 

@@ -339,7 +339,7 @@ namespace SSC {
           "}"
         );
 
-        auto payload = SSC::emitToRenderProcess("drag", json);
+        auto payload = SSC::getEmitToRenderProcessJavaScript("drag", json);
         this->window->eval(payload);
       }
 
@@ -391,7 +391,7 @@ namespace SSC {
         "}"
       );
 
-      auto payload = SSC::emitToRenderProcess("drag", json);
+      auto payload = SSC::getEmitToRenderProcessJavaScript("drag", json);
       this->window->eval(payload);
 
       return S_OK;
@@ -578,7 +578,7 @@ namespace SSC {
               "}"
             );
 
-            this->window->eval(SSC::emitToRenderProcess("drop", json));
+            this->window->eval(SSC::getEmitToRenderProcessJavaScript("drop", json));
           }
 
           SSC::String json = (
@@ -588,7 +588,7 @@ namespace SSC {
             "}"
           );
 
-          this->window->eval(SSC::emitToRenderProcess("dragend", json));
+          this->window->eval(SSC::getEmitToRenderProcessJavaScript("dragend", json));
         }
       }
 
@@ -1048,7 +1048,7 @@ namespace SSC {
   void Window::hide (const SSC::String& seq) {
     ShowWindow(window, SW_HIDE);
     UpdateWindow(window);
-    this->eval(emitToRenderProcess("windowHide", "{}"));
+    this->eval(getEmitToRenderProcessJavaScript("windowHide", "{}"));
 
     if (seq.size() > 0) {
       auto index = std::to_string(this->opts.index);
@@ -1303,7 +1303,7 @@ namespace SSC {
 
     DestroyMenu(hPopupMenu);
     if (selection == 0) return;
-    this->eval(resolveMenuSelection(seq, lookup.at(selection), "contextMenu"));
+    this->eval(getResolveMenuSelectionJavaScript(seq, lookup.at(selection), "contextMenu"));
   }
 
   int Window::openExternal (const SSC::String& url) {
@@ -1635,7 +1635,7 @@ namespace SSC {
             break;
           }
 
-          w->eval(resolveMenuSelection("0", title, parent));
+          w->eval(getResolveMenuSelectionJavaScript("0", title, parent));
         }
 
         break;
