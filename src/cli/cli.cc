@@ -1329,9 +1329,8 @@ int main (const int argc, const char* argv[]) {
         settings["apple_team_id"] = team;
       }
       if (flagBuildForSimulator) {
-        settings["ios_provisioning_profile"] = "\"\"";
         settings["ios_provisioning_specifier"] = "";
-        settings["apple_team_id"] = "\"\"";
+        settings["apple_team_id"] = "";
       }
 
       fs::copy(
