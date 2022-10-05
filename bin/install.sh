@@ -220,6 +220,17 @@ function _compile_libuv {
   echo "ok - built for $target"
 }
 
+function _check_compiler_features {
+  echo "# checking compiler features"
+  $CXX -std=c++2a -c -x c++ - << EOF_CC >/dev/null 2>&1
+    #include <semaphore>
+    int main () {}
+EOF_CC
+
+  die $? "not ok - $CXX (`$CXX -dumpversion`) version is likely less than 12"
+}
+
+_check_compiler_features
 _prepare
 cd $BUILD_DIR
 
