@@ -166,7 +166,7 @@ namespace SSC {
     // Close stdin. If the process takes parameters from stdin, use this to
     // notify that all parameters have been sent.
     void close_stdin() noexcept;
-    void reload() noexcept;
+    void open() noexcept;
 
     // Kill a given process id. Use kill(bool force) instead if possible.
     // force=true is only supported on Unix-like systems.
@@ -203,10 +203,9 @@ namespace SSC {
     return Process::write(s.c_str(), s.size());
   };
 
-  inline void Process::reload () noexcept {
-    if (command.size() == 0) return;
-    close_stdin();
-    open(command + argv, path);
+  inline void Process::open () noexcept {
+    if (this->command.size() == 0) return;
+    open(this->command + this->argv, this->path);
     read();
   }
 
@@ -224,12 +223,9 @@ namespace SSC {
         read_stdout(std::move(read_stdout)),
         read_stderr(std::move(read_stderr)),
         on_exit(std::move(on_exit)) {
-    if (command.size() == 0) return;
     this->command = command;
     this->argv = argv;
     this->path = path;
-    open(command + argv, path);
-    read();
   }
 
 } // namespace SSC

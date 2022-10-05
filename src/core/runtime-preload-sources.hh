@@ -3,7 +3,7 @@
 
 namespace SSC {
 //
-// THIS FILE WAS AUTO GENERATED ON: Wed Oct  5 21:59:18 IST 2022
+// THIS FILE WAS AUTO GENERATED ON: Wed Oct  5 15:16:09 +04 2022
 //
 // This file contains JavaScipt that is injected into the webview before
 // any user code is executed.
@@ -270,8 +270,6 @@ window.parent.exit = o => window._ipc.send('exit', o)
 window.parent.setTitle = o => window._ipc.send('title', o)
 window.parent.inspect = o => window.external.invoke(`ipc://inspect`)
 
-window.parent.reload = o => window.external.invoke(`ipc://reload`)
-
 window.parent.show = (index = 0) => {
   return window._ipc.send('show', { index })
 }
@@ -373,6 +371,8 @@ if (window?.process?.port > 0) {
     window.location.reload()
   })
 }
+
+window._ipc.send('process.open')
 })();
 //# sourceURL=desktop.js
 )JS";
