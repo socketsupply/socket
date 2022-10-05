@@ -171,20 +171,35 @@ MAIN {
     cmd = absPath.string() + cmd.substr(index);
   }
 
+  static Process* process = nullptr;
+  static std::function<void()> createProcess;
+
+  auto createProcessTemplate = []<class... Args>(Args... args) {
+    return [=]() {
+      if (process != nullptr) {
+        auto pid = process->getPID();
+        process->kill(pid);
+        delete process;
+        process = nullptr;
+      }
+      process = new Process(args...);
+    };
+  };
+
   if (isCommandMode) {
     argvForward << " --op-current-directory=" << fs::current_path();
 
-    Process process(
+    createProcess = createProcessTemplate(
       cmd,
       argvForward.str(),
       cwd,
-      [&](SSC::String const &out) {
-        Parse cmd(out);
+      [&](String const &out) {
+        Parse message(out);
 
-        if (cmd.name != "exit") {
-          std::cout << decodeURIComponent(cmd.get("value")) << std::endl;
-        } else if (cmd.name == "exit") {
-          exitCode = stoi(cmd.get("value"));
+        if (message.name != "exit") {
+          std::cout << decodeURIComponent(message.get("value")) << std::endl;
+        } else if (message.name == "exit") {
+          exitCode = stoi(message.get("value"));
           exit(exitCode);
         }
       },
@@ -192,9 +207,18 @@ MAIN {
       [](SSC::String const &code){ exit(std::stoi(code)); }
     );
 
+    if (cmd.size() == 0) {
+      std::cerr << "No " << platform.os << "_cmd provided in ssc.config" << std::endl;
+      exit(1);
+    }
+
+    createProcess();
+
     shutdownHandler = [&](int signum) {
-      auto pid = process.getPID();
-      process.kill(pid);
+      if (process != nullptr) {
+        auto pid = process->getPID();
+        process->kill(pid);
+      }
       exit(signum);
     };
 
@@ -211,7 +235,12 @@ MAIN {
   int width = app.appData["width"].size() > 0 ? std::stoi(app.appData["width"]) : 0;
 
   auto onStdErr = [&](auto err) {
-    std::cerr << err << std::endl;
+    std::cerr << "Backend process exited with code: " << err << std::endl;
+    for (auto& window : windowFactory.windows) {
+      if (window != nullptr) {
+        window->eval(emitToRenderProcess("process-error", err));
+      }
+    }
   };
 
   //
@@ -226,54 +255,54 @@ MAIN {
     // just stdout and we can write the data to the pipe.
     //
     app.dispatch([&, out] {
-      Parse cmd(out);
+      Parse message(out);
 
-      auto value = cmd.get("value");
-      auto seq = cmd.get("seq");
+      auto value = message.get("value");
+      auto seq = message.get("seq");
 
-      if (cmd.name == "log" || cmd.name == "stdout") {
+      if (message.name == "log" || message.name == "stdout") {
         stdWrite(decodeURIComponent(value), false);
         return;
       }
 
-      if (cmd.name == "stderr") {
+      if (message.name == "stderr") {
         stdWrite(decodeURIComponent(value), true);
         return;
       }
 
-      if (cmd.index > 0 && cmd.name.size() == 0) {
+      if (message.index > 0 && message.name.size() == 0) {
         // @TODO: print warning
         return;
       }
 
-      if (cmd.index > SSC_MAX_WINDOWS) {
+      if (message.index > SSC_MAX_WINDOWS) {
         // @TODO: print warning
         return;
       }
 
-      if (cmd.name == "show") {
-        auto index = cmd.index < 0 ? 0 : cmd.index;
+      if (message.name == "show") {
+        auto index = message.index < 0 ? 0 : message.index;
         auto options = WindowOptions {};
         auto status = windowFactory.getWindowStatus(index);
         auto window = windowFactory.getWindow(index);
 
-        options.title = cmd.get("title");
-        options.url = cmd.get("url");
+        options.title = message.get("title");
+        options.url = message.get("url");
 
-        if (cmd.get("port").size() > 0) {
-          options.port = std::stoi(cmd.get("port"));
+        if (message.get("port").size() > 0) {
+          options.port = std::stoi(message.get("port"));
         }
 
-        if (cmd.get("width").size() > 0 && cmd.get("height").size() > 0) {
-          options.width = std::stoi(cmd.get("width"));
-          options.height = std::stoi(cmd.get("height"));
+        if (message.get("width").size() > 0 && message.get("height").size() > 0) {
+          options.width = std::stoi(message.get("width"));
+          options.height = std::stoi(message.get("height"));
         }
 
         if (!window || status == WindowFactory<Window, App>::WindowStatus::WINDOW_NONE) {
-          options.resizable = cmd.get("resizable") == "true" ? true : false;
-          options.frameless = cmd.get("frameless") == "true" ? true : false;
-          options.utility = cmd.get("utility") == "true" ? true : false;
-          options.debug = cmd.get("debug") == "true" ? true : false;
+          options.resizable = message.get("resizable") == "true" ? true : false;
+          options.frameless = message.get("frameless") == "true" ? true : false;
+          options.utility = message.get("utility") == "true" ? true : false;
+          options.debug = message.get("debug") == "true" ? true : false;
           options.index = index;
 
           window = windowFactory.createWindow(options);
@@ -299,7 +328,7 @@ MAIN {
         return;
       }
 
-      auto window = windowFactory.getOrCreateWindow(cmd.index);
+      auto window = windowFactory.getOrCreateWindow(message.index);
 
       if (!window) {
         auto defaultWindow = windowFactory.getWindow(0);
@@ -311,7 +340,7 @@ MAIN {
         // @TODO: print warning
       }
 
-      if (cmd.name == "heartbeat") {
+      if (message.name == "heartbeat") {
         if (seq.size() > 0) {
           window->resolvePromise(seq, OK_STATE, "\"heartbeat\"");
         }
@@ -319,34 +348,34 @@ MAIN {
         return;
       }
 
-      if (cmd.name == "title") {
+      if (message.name == "title") {
         window->setTitle(seq, decodeURIComponent(value));
         return;
       }
 
-      if (cmd.name == "restart") {
+      if (message.name == "restart") {
         app.restart();
         return;
       }
 
-      if (cmd.name == "hide") {
+      if (message.name == "hide") {
         window->hide(seq);
         return;
       }
 
-      if (cmd.name == "navigate") {
+      if (message.name == "navigate") {
         window->navigate(seq, decodeURIComponent(value));
         return;
       }
 
-      if (cmd.name == "size") {
-        int width = std::stoi(cmd.get("width"));
-        int height = std::stoi(cmd.get("height"));
+      if (message.name == "size") {
+        int width = std::stoi(message.get("width"));
+        int height = std::stoi(message.get("height"));
         window->setSize(seq, width, height, 0);
         return;
       }
 
-      if (cmd.name == "getScreenSize") {
+      if (message.name == "getScreenSize") {
         auto size = window->getScreenSize();
 
         SSC::String value(
@@ -365,19 +394,19 @@ MAIN {
         return;
       }
 
-      if (cmd.name == "menu") {
+      if (message.name == "menu") {
         window->setSystemMenu(seq, decodeURIComponent(value));
         return;
       }
 
-      if (cmd.name == "menuItemEnabled") {
-        const auto enabled = cmd.get("enabled").find("true") != -1;
+      if (message.name == "menuItemEnabled") {
+        const auto enabled = message.get("enabled").find("true") != -1;
         int indexMain = 0;
         int indexSub = 0;
 
         try {
-          indexMain = std::stoi(cmd.get("indexMain"));
-          indexSub = std::stoi(cmd.get("indexSub"));
+          indexMain = std::stoi(message.get("indexMain"));
+          indexSub = std::stoi(message.get("indexSub"));
         } catch (...) {
           window->resolvePromise(seq, OK_STATE, "");
           return;
@@ -388,7 +417,7 @@ MAIN {
         return;
       }
 
-      if (cmd.name == "external") {
+      if (message.name == "external") {
         window->openExternal(decodeURIComponent(value));
         if (seq.size() > 0) {
           window->resolvePromise(seq, OK_STATE, "null");
@@ -396,7 +425,7 @@ MAIN {
         return;
       }
 
-      if (cmd.name == "exit") {
+      if (message.name == "exit") {
         try {
           exitCode = std::stoi(value);
         } catch (...) {
@@ -410,27 +439,27 @@ MAIN {
         return;
       }
 
-      if (cmd.name == "resolve") {
-        window->resolvePromise(seq, cmd.get("state"), value);
+      if (message.name == "resolve") {
+        window->resolvePromise(seq, message.get("state"), value);
         return;
       }
 
-      if (cmd.name == "send") {
+      if (message.name == "send") {
         window->eval(getEmitToRenderProcessJavaScript(
-          decodeURIComponent(cmd.get("event")),
+          decodeURIComponent(message.get("event")),
           value
         ));
         return;
       }
 
-      if (cmd.name == "getConfig") {
+      if (message.name == "getConfig") {
         window->resolvePromise(seq, OK_STATE, _settings);
         return;
       }
     });
   };
 
-  Process process(
+  createProcess = createProcessTemplate(
     cmd,
     argvForward.str(),
     cwd,
@@ -443,6 +472,10 @@ MAIN {
     }
   );
 
+  if (cmd.size() > 0) {
+    createProcess();
+  }
+
   //
   // # Render -> Main
   // Send messages from the render processes to the main process.
@@ -452,14 +485,14 @@ MAIN {
   // main thread.
   //
   auto onMessage = [&](auto out) {
-    Parse cmd(out);
+    Parse message(out);
 
-    auto window = windowFactory.getWindow(cmd.index);
-    auto value = cmd.get("value");
+    auto window = windowFactory.getWindow(message.index);
+    auto value = message.get("value");
 
     // the window must exist
-    if (!window && cmd.index >= 0) {
-      const auto seq = cmd.get("seq");
+    if (!window && message.index >= 0) {
+      const auto seq = message.get("seq");
       auto defaultWindow = windowFactory.getWindow(0);
 
       if (defaultWindow) {
@@ -467,30 +500,33 @@ MAIN {
       }
     }
 
-    if (cmd.name == "reload") {
-      process.reload();
+    if (message.name == "process.open") {
+      if (cmd.size() > 0) {
+        createProcess();
+        process->open();
+      }
       return;
     }
 
-    if (cmd.name == "title") {
+    if (message.name == "title") {
       window->setTitle(
-        cmd.get("seq"),
+        message.get("seq"),
         decodeURIComponent(value)
       );
       return;
     }
 
-    if (cmd.name == "log" || cmd.name == "stdout") {
+    if (message.name == "log" || message.name == "stdout") {
       stdWrite(decodeURIComponent(value), false);
       return;
     }
 
-    if (cmd.name == "stderr") {
+    if (message.name == "stderr") {
       stdWrite(decodeURIComponent(value), true);
       return;
     }
 
-    if (cmd.name == "exit") {
+    if (message.name == "exit") {
       try {
         exitCode = std::stoi(decodeURIComponent(value));
       } catch (...) {
@@ -500,27 +536,27 @@ MAIN {
       return;
     }
 
-    if (cmd.name == "hide") {
+    if (message.name == "hide") {
       window->hide(EMPTY_SEQ);
       return;
     }
 
-    if (cmd.name == "inspect") {
+    if (message.name == "inspect") {
       window->showInspector();
       return;
     }
 
-    if (cmd.name == "background") {
+    if (message.name == "background") {
       int red = 0;
       int green = 0;
       int blue = 0;
       float alpha = 1;
 
       try {
-        red = std::stoi(cmd.get("red"));
-        green = std::stoi(cmd.get("green"));
-        blue = std::stoi(cmd.get("blue"));
-        alpha = std::stof(cmd.get("alpha"));
+        red = std::stoi(message.get("red"));
+        green = std::stoi(message.get("green"));
+        blue = std::stoi(message.get("blue"));
+        alpha = std::stof(message.get("alpha"));
       } catch (...) {
       }
 
@@ -528,33 +564,33 @@ MAIN {
       return;
     }
 
-    if (cmd.name == "size") {
-      int width = std::stoi(cmd.get("width"));
-      int height = std::stoi(cmd.get("height"));
+    if (message.name == "size") {
+      int width = std::stoi(message.get("width"));
+      int height = std::stoi(message.get("height"));
       window->setSize(EMPTY_SEQ, width, height, 0);
       return;
     }
 
-    if (cmd.name == "external") {
+    if (message.name == "external") {
       window->openExternal(decodeURIComponent(value));
       return;
     }
 
-    if (cmd.name == "menu") {
-      const auto seq = cmd.get("seq");
+    if (message.name == "menu") {
+      const auto seq = message.get("seq");
       window->setSystemMenu(seq, decodeURIComponent(value));
       return;
     }
 
-    if (cmd.name == "menuItemEnabled") {
-      const auto seq = cmd.get("seq");
-      const auto enabled = cmd.get("enabled").find("true") != -1;
+    if (message.name == "menuItemEnabled") {
+      const auto seq = message.get("seq");
+      const auto enabled = message.get("enabled").find("true") != -1;
       int indexMain = 0;
       int indexSub = 0;
 
       try {
-        indexMain = std::stoi(cmd.get("indexMain"));
-        indexSub = std::stoi(cmd.get("indexSub"));
+        indexMain = std::stoi(message.get("indexMain"));
+        indexSub = std::stoi(message.get("indexSub"));
       } catch (...) {
         window->resolvePromise(seq, OK_STATE, "");
         return;
@@ -565,28 +601,28 @@ MAIN {
       return;
     }
 
-    if (cmd.name == "dialog") {
-      bool bSave = cmd.get("type").compare("save") == 0;
-      bool bDirs = cmd.get("allowDirs").compare("true") == 0;
-      bool bFiles = cmd.get("allowFiles").compare("true") == 0;
-      bool bMulti = cmd.get("allowMultiple").compare("true") == 0;
-      SSC::String defaultName = decodeURIComponent(cmd.get("defaultName"));
-      SSC::String defaultPath = decodeURIComponent(cmd.get("defaultPath"));
-      SSC::String title = decodeURIComponent(cmd.get("title"));
+    if (message.name == "dialog") {
+      bool bSave = message.get("type").compare("save") == 0;
+      bool bDirs = message.get("allowDirs").compare("true") == 0;
+      bool bFiles = message.get("allowFiles").compare("true") == 0;
+      bool bMulti = message.get("allowMultiple").compare("true") == 0;
+      String defaultName = decodeURIComponent(message.get("defaultName"));
+      String defaultPath = decodeURIComponent(message.get("defaultPath"));
+      String title = decodeURIComponent(message.get("title"));
 
-      window->openDialog(cmd.get("seq"), bSave, bDirs, bFiles, bMulti, defaultPath, title, defaultName);
+      window->openDialog(message.get("seq"), bSave, bDirs, bFiles, bMulti, defaultPath, title, defaultName);
       return;
     }
 
-    if (cmd.name == "context") {
-      auto seq = cmd.get("seq");
+    if (message.name == "context") {
+      auto seq = message.get("seq");
       window->setContextMenu(seq, decodeURIComponent(value));
       return;
     }
 
-    if (cmd.name == "getConfig") {
-      const auto seq = cmd.get("seq");
-      auto wrapped = ("\"" + SSC::String(_settings) + "\"");
+    if (message.name == "getConfig") {
+      const auto seq = message.get("seq");
+      auto wrapped = ("\"" + String(_settings) + "\"");
       window->resolvePromise(seq, OK_STATE, encodeURIComponent(wrapped));
       return;
     }
@@ -595,7 +631,9 @@ MAIN {
     // Everything else can be forwarded to the main process.
     // The protocol requires messages must be terminated by a newline.
     //
-    process.write(out);
+    if (process != nullptr) {
+      process->write(out);
+    }
   };
 
   //
@@ -605,9 +643,10 @@ MAIN {
   // we clean up the windows and the main process.
   //
   shutdownHandler = [&](int code) {
-    auto pid = process.getPID();
-
-    process.kill(pid);
+    if (process != nullptr) {
+      auto pid = process->getPID();
+      process->kill(pid);
+    }
     windowFactory.destroy();
     app.kill();
 
@@ -633,21 +672,17 @@ MAIN {
   // windowFactory.getOrCreateWindow(0);
   windowFactory.getOrCreateWindow(1);
 
-  if (_port > 0 || cmd.size() == 0) {
-    defaultWindow->setSystemMenu(EMPTY_SEQ, SSC::String(
+  defaultWindow->show(EMPTY_SEQ);
+
+  if (_port > 0) {
+    defaultWindow->navigate(EMPTY_SEQ, "http://localhost:" + std::to_string(_port));
+    defaultWindow->setSystemMenu(EMPTY_SEQ, String(
       "Developer Mode: \n"
       "  Reload: r + CommandOrControl\n"
       "  Quit: q + CommandOrControl\n"
       ";"
     ));
-
-    defaultWindow->show(EMPTY_SEQ);
-    defaultWindow->setSize(EMPTY_SEQ, 1024, 720, 0);
-  }
-
-  if (_port > 0) {
-    defaultWindow->navigate(EMPTY_SEQ, "http://localhost:" + std::to_string(_port));
-  } else if (cmd.size() == 0) {
+  } else {
     defaultWindow->navigate(EMPTY_SEQ, "file://" + (fs::path(cwd) / "index.html").string());
   }
 

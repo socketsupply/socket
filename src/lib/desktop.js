@@ -15,8 +15,6 @@ window.parent.exit = o => window._ipc.send('exit', o)
 window.parent.setTitle = o => window._ipc.send('title', o)
 window.parent.inspect = o => window.external.invoke(`ipc://inspect`)
 
-window.parent.reload = o => window.external.invoke(`ipc://reload`)
-
 window.parent.show = (index = 0) => {
   return window._ipc.send('show', { index })
 }
@@ -118,3 +116,5 @@ if (window?.process?.port > 0) {
     window.location.reload()
   })
 }
+
+window._ipc.send('process.open')
