@@ -237,7 +237,7 @@ MAIN {
   auto onStdErr = [&](auto err) {
     for (auto& window : windowFactory.windows) {
       if (window != nullptr) {
-        window->eval(emitToRenderProcess("process-error", err));
+        window->eval(getEmitToRenderProcessJavaScript("process-error", err));
       }
     }
   };
