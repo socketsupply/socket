@@ -193,22 +193,22 @@ MAIN {
       cmd,
       argvForward.str(),
       cwd,
-      [&](String const &out) {
+      [&](SSC::String const &out) {
         Parse message(out);
 
         if (message.name != "exit") {
-          stdWrite(decodeURIComponent(message.get("value")));
+          stdWrite(decodeURIComponent(message.get("value")), false);
         } else if (message.name == "exit") {
           exitCode = stoi(message.get("value"));
           exit(exitCode);
         }
       },
-      [](SSC::String const &out) { std::cerr << out; },
+      [](SSC::String const &out) { stdWrite(out, true); },
       [](SSC::String const &code){ exit(std::stoi(code)); }
     );
 
     if (cmd.size() == 0) {
-      std::cerr << "No " << platform.os << "_cmd provided in ssc.config" << std::endl;
+      stdWrite("No " + platform.os + "_cmd provided in ssc.config", true);
       exit(1);
     }
 
@@ -605,9 +605,9 @@ MAIN {
       bool bDirs = message.get("allowDirs").compare("true") == 0;
       bool bFiles = message.get("allowFiles").compare("true") == 0;
       bool bMulti = message.get("allowMultiple").compare("true") == 0;
-      String defaultName = decodeURIComponent(message.get("defaultName"));
-      String defaultPath = decodeURIComponent(message.get("defaultPath"));
-      String title = decodeURIComponent(message.get("title"));
+      SSC::String defaultName = decodeURIComponent(message.get("defaultName"));
+      SSC::String defaultPath = decodeURIComponent(message.get("defaultPath"));
+      SSC::String title = decodeURIComponent(message.get("title"));
 
       window->openDialog(message.get("seq"), bSave, bDirs, bFiles, bMulti, defaultPath, title, defaultName);
       return;
