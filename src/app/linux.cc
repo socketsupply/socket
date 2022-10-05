@@ -964,7 +964,7 @@ namespace SSC {
     }
 
     if (seq != "-1" && seq.size() > 0) {
-      msg = SSC::resolveToRenderProcess(seq, "0", encodeURIComponent(msg));
+      msg = SSC::getResolveToRenderProcessJavaScript(seq, "0", encodeURIComponent(msg));
     }
 
     window->eval(msg);

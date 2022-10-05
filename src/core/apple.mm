@@ -737,7 +737,7 @@
 }
 
 - (void) emit: (SSC::String)name msg: (SSC::String)msg {
-  msg = SSC::emitToRenderProcess(name, SSC::encodeURIComponent(msg));
+  msg = SSC::getEmitToRenderProcessJavaScript(name, SSC::encodeURIComponent(msg));
   NSString* script = [NSString stringWithUTF8String: msg.c_str()];
   [self.webview evaluateJavaScript: script completionHandler: nil];
 }
@@ -796,7 +796,7 @@
   }
 
   if (seq != "-1" && seq.size() > 0) { // this had a sequence, we need to try to resolve it.
-    msg = SSC::resolveToRenderProcess(seq, "0", SSC::encodeURIComponent(msg));
+    msg = SSC::getResolveToRenderProcessJavaScript(seq, "0", SSC::encodeURIComponent(msg));
   }
 
   if (msg.size() > 0) {

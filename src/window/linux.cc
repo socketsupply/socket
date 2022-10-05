@@ -273,7 +273,7 @@ namespace SSC {
         int count = w->draggablePayload.size();
         bool inbound = !w->isDragInvokedInsideWindow;
 
-        // w->eval(SSC::emitToRenderProcess("dragend", "{}"));
+        // w->eval(SSC::getEmitToRenderProcessJavaScript("dragend", "{}"));
 
         // TODO wtf we get a toaster instead of actual focus
         gtk_window_present(GTK_WINDOW(w->window));
@@ -286,7 +286,7 @@ namespace SSC {
           "\"y\":" + std::to_string(y) + "}"
         );
 
-        w->eval(SSC::emitToRenderProcess("drag", json));
+        w->eval(SSC::getEmitToRenderProcessJavaScript("drag", json));
       }),
       this
     );
@@ -303,7 +303,7 @@ namespace SSC {
 
         w->isDragInvokedInsideWindow = false;
         w->draggablePayload.clear();
-        w->eval(SSC::emitToRenderProcess("dragend", "{}"));
+        w->eval(SSC::getEmitToRenderProcessJavaScript("dragend", "{}"));
       }),
       this
     );
@@ -328,7 +328,7 @@ namespace SSC {
          */
 
         // w->isDragInvokedInsideWindow = false;
-        // w->eval(SSC::emitToRenderProcess("dragend", "{}"));
+        // w->eval(SSC::getEmitToRenderProcessJavaScript("dragend", "{}"));
       }),
       this
     );
@@ -411,7 +411,7 @@ namespace SSC {
         ));
 
         w->draggablePayload.clear();
-        w->eval(SSC::emitToRenderProcess("dragend", "{}"));
+        w->eval(SSC::getEmitToRenderProcessJavaScript("dragend", "{}"));
         gtk_drag_finish(context, TRUE, TRUE, time);
         return TRUE;
       }),
@@ -435,7 +435,7 @@ namespace SSC {
         auto* w = static_cast<Window*>(arg);
 
         if (w->opts.canExit == false) {
-          w->eval(emitToRenderProcess("windowHide", "{}"));
+          w->eval(getEmitToRenderProcessJavaScript("windowHide", "{}"));
           return gtk_widget_hide_on_delete(widget);
         }
 
@@ -543,7 +543,7 @@ namespace SSC {
   void Window::hide (const SSC::String &seq) {
     gtk_widget_realize(this->window);
     gtk_widget_hide(this->window);
-    this->eval(emitToRenderProcess("windowHide", "{}"));
+    this->eval(getEmitToRenderProcessJavaScript("windowHide", "{}"));
 
     if (seq.size() > 0) {
       auto index = std::to_string(this->opts.index);
@@ -792,7 +792,7 @@ namespace SSC {
                 return w->exit(0);
               }
 
-              w->eval(resolveMenuSelection("0", title, parent));
+              w->eval(getResolveMenuSelectionJavaScript("0", title, parent));
             }),
             this
           );
@@ -843,7 +843,7 @@ namespace SSC {
     if (popupMenu != nullptr) {
       gtk_menu_popdown((GtkMenu *) popupMenu);
       gtk_widget_destroy(popupMenu);
-      this->eval(resolveMenuSelection(seq, "", "contextMenu"));
+      this->eval(getResolveMenuSelectionJavaScript(seq, "", "contextMenu"));
     }
   }
 
@@ -892,7 +892,7 @@ namespace SSC {
           auto pair = split(meta, ';');
           auto seq = pair[0];
 
-          window->eval(resolveMenuSelection(seq, title, "contextMenu"));
+          window->eval(getResolveMenuSelectionJavaScript(seq, title, "contextMenu"));
         }),
         this
       );
