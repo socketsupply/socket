@@ -197,7 +197,7 @@ MAIN {
         Parse message(out);
 
         if (message.name != "exit") {
-          std::cout << decodeURIComponent(message.get("value")) << std::endl;
+          stdWrite(decodeURIComponent(message.get("value")));
         } else if (message.name == "exit") {
           exitCode = stoi(message.get("value"));
           exit(exitCode);
@@ -235,7 +235,6 @@ MAIN {
   int width = app.appData["width"].size() > 0 ? std::stoi(app.appData["width"]) : 0;
 
   auto onStdErr = [&](auto err) {
-    std::cerr << "Backend process exited with code: " << err << std::endl;
     for (auto& window : windowFactory.windows) {
       if (window != nullptr) {
         window->eval(emitToRenderProcess("process-error", err));
