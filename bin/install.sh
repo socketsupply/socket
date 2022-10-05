@@ -208,7 +208,10 @@ function _compile_libuv {
 
   quiet ./configure --prefix=$STAGING_DIR/build --host=$hosttarget-apple-darwin
 
-  die $? "not ok - failed to configure"
+  if [ ! $? = 0 ]; then
+    echo "WARNING! - iOS will not be enabled. iPhone simulator not found, try \"sudo xcode-select --switch /Applications/Xcode.app\"."
+    return
+  fi
 
   quiet make -j8
   quiet make install
