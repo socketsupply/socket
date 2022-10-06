@@ -194,12 +194,12 @@ MAIN {
       argvForward.str(),
       cwd,
       [&](SSC::String const &out) {
-        Parse message(out);
+        Parse ipcMessage(out);
 
-        if (message.name != "exit") {
-          stdWrite(decodeURIComponent(message.get("value")), false);
-        } else if (message.name == "exit") {
-          exitCode = stoi(message.get("value"));
+        if (ipcMessage.name != "exit") {
+          stdWrite(decodeURIComponent(ipcMessage.get("value")), false);
+        } else if (ipcMessage.name == "exit") {
+          exitCode = stoi(ipcMessage.get("value"));
           exit(exitCode);
         }
       },
@@ -254,54 +254,54 @@ MAIN {
     // just stdout and we can write the data to the pipe.
     //
     app.dispatch([&, out] {
-      Parse message(out);
+      Parse ipcMessage(out);
 
-      auto value = message.get("value");
-      auto seq = message.get("seq");
+      auto value = ipcMessage.get("value");
+      auto seq = ipcMessage.get("seq");
 
-      if (message.name == "log" || message.name == "stdout") {
+      if (ipcMessage.name == "log" || ipcMessage.name == "stdout") {
         stdWrite(decodeURIComponent(value), false);
         return;
       }
 
-      if (message.name == "stderr") {
+      if (ipcMessage.name == "stderr") {
         stdWrite(decodeURIComponent(value), true);
         return;
       }
 
-      if (message.index > 0 && message.name.size() == 0) {
+      if (ipcMessage.index > 0 && ipcMessage.name.size() == 0) {
         // @TODO: print warning
         return;
       }
 
-      if (message.index > SSC_MAX_WINDOWS) {
+      if (ipcMessage.index > SSC_MAX_WINDOWS) {
         // @TODO: print warning
         return;
       }
 
-      if (message.name == "show") {
-        auto index = message.index < 0 ? 0 : message.index;
+      if (ipcMessage.name == "show") {
+        auto index = ipcMessage.index < 0 ? 0 : ipcMessage.index;
         auto options = WindowOptions {};
         auto status = windowFactory.getWindowStatus(index);
         auto window = windowFactory.getWindow(index);
 
-        options.title = message.get("title");
-        options.url = message.get("url");
+        options.title = ipcMessage.get("title");
+        options.url = ipcMessage.get("url");
 
-        if (message.get("port").size() > 0) {
-          options.port = std::stoi(message.get("port"));
+        if (ipcMessage.get("port").size() > 0) {
+          options.port = std::stoi(ipcMessage.get("port"));
         }
 
-        if (message.get("width").size() > 0 && message.get("height").size() > 0) {
-          options.width = std::stoi(message.get("width"));
-          options.height = std::stoi(message.get("height"));
+        if (ipcMessage.get("width").size() > 0 && ipcMessage.get("height").size() > 0) {
+          options.width = std::stoi(ipcMessage.get("width"));
+          options.height = std::stoi(ipcMessage.get("height"));
         }
 
         if (!window || status == WindowFactory<Window, App>::WindowStatus::WINDOW_NONE) {
-          options.resizable = message.get("resizable") == "true" ? true : false;
-          options.frameless = message.get("frameless") == "true" ? true : false;
-          options.utility = message.get("utility") == "true" ? true : false;
-          options.debug = message.get("debug") == "true" ? true : false;
+          options.resizable = ipcMessage.get("resizable") == "true" ? true : false;
+          options.frameless = ipcMessage.get("frameless") == "true" ? true : false;
+          options.utility = ipcMessage.get("utility") == "true" ? true : false;
+          options.debug = ipcMessage.get("debug") == "true" ? true : false;
           options.index = index;
 
           window = windowFactory.createWindow(options);
@@ -327,7 +327,7 @@ MAIN {
         return;
       }
 
-      auto window = windowFactory.getOrCreateWindow(message.index);
+      auto window = windowFactory.getOrCreateWindow(ipcMessage.index);
 
       if (!window) {
         auto defaultWindow = windowFactory.getWindow(0);
@@ -339,7 +339,7 @@ MAIN {
         // @TODO: print warning
       }
 
-      if (message.name == "heartbeat") {
+      if (ipcMessage.name == "heartbeat") {
         if (seq.size() > 0) {
           window->resolvePromise(seq, OK_STATE, "\"heartbeat\"");
         }
@@ -347,34 +347,34 @@ MAIN {
         return;
       }
 
-      if (message.name == "title") {
+      if (ipcMessage.name == "title") {
         window->setTitle(seq, decodeURIComponent(value));
         return;
       }
 
-      if (message.name == "restart") {
+      if (ipcMessage.name == "restart") {
         app.restart();
         return;
       }
 
-      if (message.name == "hide") {
+      if (ipcMessage.name == "hide") {
         window->hide(seq);
         return;
       }
 
-      if (message.name == "navigate") {
+      if (ipcMessage.name == "navigate") {
         window->navigate(seq, decodeURIComponent(value));
         return;
       }
 
-      if (message.name == "size") {
-        int width = std::stoi(message.get("width"));
-        int height = std::stoi(message.get("height"));
+      if (ipcMessage.name == "size") {
+        int width = std::stoi(ipcMessage.get("width"));
+        int height = std::stoi(ipcMessage.get("height"));
         window->setSize(seq, width, height, 0);
         return;
       }
 
-      if (message.name == "getScreenSize") {
+      if (ipcMessage.name == "getScreenSize") {
         auto size = window->getScreenSize();
 
         SSC::String value(
@@ -393,19 +393,19 @@ MAIN {
         return;
       }
 
-      if (message.name == "menu") {
+      if (ipcMessage.name == "menu") {
         window->setSystemMenu(seq, decodeURIComponent(value));
         return;
       }
 
-      if (message.name == "menuItemEnabled") {
-        const auto enabled = message.get("enabled").find("true") != -1;
+      if (ipcMessage.name == "menuItemEnabled") {
+        const auto enabled = ipcMessage.get("enabled").find("true") != -1;
         int indexMain = 0;
         int indexSub = 0;
 
         try {
-          indexMain = std::stoi(message.get("indexMain"));
-          indexSub = std::stoi(message.get("indexSub"));
+          indexMain = std::stoi(ipcMessage.get("indexMain"));
+          indexSub = std::stoi(ipcMessage.get("indexSub"));
         } catch (...) {
           window->resolvePromise(seq, OK_STATE, "");
           return;
@@ -416,7 +416,7 @@ MAIN {
         return;
       }
 
-      if (message.name == "external") {
+      if (ipcMessage.name == "external") {
         window->openExternal(decodeURIComponent(value));
         if (seq.size() > 0) {
           window->resolvePromise(seq, OK_STATE, "null");
@@ -424,7 +424,7 @@ MAIN {
         return;
       }
 
-      if (message.name == "exit") {
+      if (ipcMessage.name == "exit") {
         try {
           exitCode = std::stoi(value);
         } catch (...) {
@@ -438,20 +438,20 @@ MAIN {
         return;
       }
 
-      if (message.name == "resolve") {
-        window->resolvePromise(seq, message.get("state"), value);
+      if (ipcMessage.name == "resolve") {
+        window->resolvePromise(seq, ipcMessage.get("state"), value);
         return;
       }
 
-      if (message.name == "send") {
+      if (ipcMessage.name == "send") {
         window->eval(getEmitToRenderProcessJavaScript(
-          decodeURIComponent(message.get("event")),
+          decodeURIComponent(ipcMessage.get("event")),
           value
         ));
         return;
       }
 
-      if (message.name == "getConfig") {
+      if (ipcMessage.name == "getConfig") {
         window->resolvePromise(seq, OK_STATE, _settings);
         return;
       }
@@ -484,14 +484,14 @@ MAIN {
   // main thread.
   //
   auto onMessage = [&](auto out) {
-    Parse message(out);
+    Parse ipcMessage(out);
 
-    auto window = windowFactory.getWindow(message.index);
-    auto value = message.get("value");
+    auto window = windowFactory.getWindow(ipcMessage.index);
+    auto value = ipcMessage.get("value");
 
     // the window must exist
-    if (!window && message.index >= 0) {
-      const auto seq = message.get("seq");
+    if (!window && ipcMessage.index >= 0) {
+      const auto seq = ipcMessage.get("seq");
       auto defaultWindow = windowFactory.getWindow(0);
 
       if (defaultWindow) {
@@ -499,7 +499,7 @@ MAIN {
       }
     }
 
-    if (message.name == "process.open") {
+    if (ipcMessage.name == "process.open") {
       if (cmd.size() > 0) {
         createProcess();
         process->open();
@@ -507,25 +507,25 @@ MAIN {
       return;
     }
 
-    if (message.name == "title") {
+    if (ipcMessage.name == "title") {
       window->setTitle(
-        message.get("seq"),
+        ipcMessage.get("seq"),
         decodeURIComponent(value)
       );
       return;
     }
 
-    if (message.name == "log" || message.name == "stdout") {
+    if (ipcMessage.name == "log" || ipcMessage.name == "stdout") {
       stdWrite(decodeURIComponent(value), false);
       return;
     }
 
-    if (message.name == "stderr") {
+    if (ipcMessage.name == "stderr") {
       stdWrite(decodeURIComponent(value), true);
       return;
     }
 
-    if (message.name == "exit") {
+    if (ipcMessage.name == "exit") {
       try {
         exitCode = std::stoi(decodeURIComponent(value));
       } catch (...) {
@@ -535,27 +535,27 @@ MAIN {
       return;
     }
 
-    if (message.name == "hide") {
+    if (ipcMessage.name == "hide") {
       window->hide(EMPTY_SEQ);
       return;
     }
 
-    if (message.name == "inspect") {
+    if (ipcMessage.name == "inspect") {
       window->showInspector();
       return;
     }
 
-    if (message.name == "background") {
+    if (ipcMessage.name == "background") {
       int red = 0;
       int green = 0;
       int blue = 0;
       float alpha = 1;
 
       try {
-        red = std::stoi(message.get("red"));
-        green = std::stoi(message.get("green"));
-        blue = std::stoi(message.get("blue"));
-        alpha = std::stof(message.get("alpha"));
+        red = std::stoi(ipcMessage.get("red"));
+        green = std::stoi(ipcMessage.get("green"));
+        blue = std::stoi(ipcMessage.get("blue"));
+        alpha = std::stof(ipcMessage.get("alpha"));
       } catch (...) {
       }
 
@@ -563,33 +563,33 @@ MAIN {
       return;
     }
 
-    if (message.name == "size") {
-      int width = std::stoi(message.get("width"));
-      int height = std::stoi(message.get("height"));
+    if (ipcMessage.name == "size") {
+      int width = std::stoi(ipcMessage.get("width"));
+      int height = std::stoi(ipcMessage.get("height"));
       window->setSize(EMPTY_SEQ, width, height, 0);
       return;
     }
 
-    if (message.name == "external") {
+    if (ipcMessage.name == "external") {
       window->openExternal(decodeURIComponent(value));
       return;
     }
 
-    if (message.name == "menu") {
-      const auto seq = message.get("seq");
+    if (ipcMessage.name == "menu") {
+      const auto seq = ipcMessage.get("seq");
       window->setSystemMenu(seq, decodeURIComponent(value));
       return;
     }
 
-    if (message.name == "menuItemEnabled") {
-      const auto seq = message.get("seq");
-      const auto enabled = message.get("enabled").find("true") != -1;
+    if (ipcMessage.name == "menuItemEnabled") {
+      const auto seq = ipcMessage.get("seq");
+      const auto enabled = ipcMessage.get("enabled").find("true") != -1;
       int indexMain = 0;
       int indexSub = 0;
 
       try {
-        indexMain = std::stoi(message.get("indexMain"));
-        indexSub = std::stoi(message.get("indexSub"));
+        indexMain = std::stoi(ipcMessage.get("indexMain"));
+        indexSub = std::stoi(ipcMessage.get("indexSub"));
       } catch (...) {
         window->resolvePromise(seq, OK_STATE, "");
         return;
@@ -600,27 +600,27 @@ MAIN {
       return;
     }
 
-    if (message.name == "dialog") {
-      bool bSave = message.get("type").compare("save") == 0;
-      bool bDirs = message.get("allowDirs").compare("true") == 0;
-      bool bFiles = message.get("allowFiles").compare("true") == 0;
-      bool bMulti = message.get("allowMultiple").compare("true") == 0;
-      SSC::String defaultName = decodeURIComponent(message.get("defaultName"));
-      SSC::String defaultPath = decodeURIComponent(message.get("defaultPath"));
-      SSC::String title = decodeURIComponent(message.get("title"));
+    if (ipcMessage.name == "dialog") {
+      bool bSave = ipcMessage.get("type").compare("save") == 0;
+      bool bDirs = ipcMessage.get("allowDirs").compare("true") == 0;
+      bool bFiles = ipcMessage.get("allowFiles").compare("true") == 0;
+      bool bMulti = ipcMessage.get("allowMultiple").compare("true") == 0;
+      SSC::String defaultName = decodeURIComponent(ipcMessage.get("defaultName"));
+      SSC::String defaultPath = decodeURIComponent(ipcMessage.get("defaultPath"));
+      SSC::String title = decodeURIComponent(ipcMessage.get("title"));
 
-      window->openDialog(message.get("seq"), bSave, bDirs, bFiles, bMulti, defaultPath, title, defaultName);
+      window->openDialog(ipcMessage.get("seq"), bSave, bDirs, bFiles, bMulti, defaultPath, title, defaultName);
       return;
     }
 
-    if (message.name == "context") {
-      auto seq = message.get("seq");
+    if (ipcMessage.name == "context") {
+      auto seq = ipcMessage.get("seq");
       window->setContextMenu(seq, decodeURIComponent(value));
       return;
     }
 
-    if (message.name == "getConfig") {
-      const auto seq = message.get("seq");
+    if (ipcMessage.name == "getConfig") {
+      const auto seq = ipcMessage.get("seq");
       auto wrapped = ("\"" + String(_settings) + "\"");
       window->resolvePromise(seq, OK_STATE, encodeURIComponent(wrapped));
       return;
