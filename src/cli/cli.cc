@@ -1561,7 +1561,8 @@ int main (const int argc, const char* argv[]) {
         : targetPath / "src";
       fs::copy(
         pathInput,
-        pathResourcesRelativeToUserBuild
+        pathResourcesRelativeToUserBuild,
+        fs::copy_options::update_existing | fs::copy_options::recursive
       );
     }
 
