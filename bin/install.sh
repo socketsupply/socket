@@ -59,12 +59,11 @@ function advice {
 }
 
 quiet command -v make
-die $? "not ok - missing build tools, try \"$(advice "automake")\""
-
-quiet command -v autoconf
-die $? "not ok - missing build tools, try \"$(advice "automake")\""
+die $? "not ok - missing build tools, try \"$(advice "make")\""
 
 if [ "$(uname)" == "Darwin" ]; then
+  quiet command -v automake
+  die $? "not ok - missing build tools, try \"$(advice "automake")\""
   quiet command -v glibtoolize
   die $? "not ok - missing build tools, try 'brew install libtool'"
   quiet command -v libtool
@@ -72,6 +71,8 @@ if [ "$(uname)" == "Darwin" ]; then
 fi
 
 if [ "$(uname)" == "Linux" ]; then
+  quiet command -v autoconf
+  die $? "not ok - missing build tools, try \"$(advice "autoconf")\""
   quiet command -v pkg-config
   die $? "not ok - missing pkg-config tool, \"$(advice 'pkg-config')\""
 fi
