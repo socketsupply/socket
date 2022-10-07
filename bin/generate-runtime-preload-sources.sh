@@ -25,19 +25,20 @@ function emit () {
 function generate-runtime-preload-sources () {
   rm -f "$output"
 
+  # TODO(jwerle): include the comment in source code when we are no
+  # longer tracking the `runtime-preload-sources.hh` file in git
+  # // THIS FILE WAS AUTO GENERATED ON: $PRELOAD_GENERATION_DATE
   {
     cat << PRE
 #ifndef RUNTIME_PRELOAD_SOURCES_HH
 #define RUNTIME_PRELOAD_SOURCES_HH
 
-namespace SSC {
-//
-// THIS FILE WAS AUTO GENERATED ON: $PRELOAD_GENERATION_DATE
 //
 // This file contains JavaScipt that is injected into the webview before
 // any user code is executed.
 //
 
+namespace SSC {
 PRE
 
     emit "gPreload" "$srcdir/lib/runtime.js"

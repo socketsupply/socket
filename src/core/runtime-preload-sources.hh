@@ -1,14 +1,12 @@
 #ifndef RUNTIME_PRELOAD_SOURCES_HH
 #define RUNTIME_PRELOAD_SOURCES_HH
 
-namespace SSC {
-//
-// THIS FILE WAS AUTO GENERATED ON: Fri Oct  7 14:23:04 UTC 2022
 //
 // This file contains JavaScipt that is injected into the webview before
 // any user code is executed.
 //
 
+namespace SSC {
 // file= runtime.js
 constexpr auto gPreload = R"JS(
 ;(() => {
