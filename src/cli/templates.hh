@@ -9,7 +9,7 @@ usage:
   ssc [SUBCOMMAND] -h
 
 subcommands:
-  compile             compile project
+  build               build project
   list-devices        get list of connected devices
   init                create new project (in current directory)
   install-app         install app to device
@@ -21,11 +21,11 @@ general options:
   -v  version
 )TEXT";
 
-constexpr auto gHelpTextCompile = R"TEXT(
+constexpr auto gHelpTextBuild = R"TEXT(
 ssc v{{ssc_version}}
 
 usage:
-  ssc compile [options] [<project-dir>]
+  ssc build [options] [<project-dir>]
 
 general options:
   --platform     cross-compilation target. Can be: ios, ios-simulator, android-emulator
