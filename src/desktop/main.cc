@@ -187,7 +187,7 @@ MAIN {
   };
 
   if (isCommandMode) {
-    argvForward << " --op-current-directory=" << fs::current_path();
+    argvForward << " --cwd=" << fs::current_path();
 
     createProcess = createProcessTemplate(
       cmd,
