@@ -223,7 +223,7 @@ function _compile_libuv {
 
 function _check_compiler_features {
   echo "# checking compiler features"
-  $CXX -std=c++2a -c -x c++ - << EOF_CC >/dev/null 2>&1
+  $CXX -std=c++2a -x c++ -o /dev/null - << EOF_CC >/dev/null 2>&1
     #include <semaphore>
     int main () {}
 EOF_CC
