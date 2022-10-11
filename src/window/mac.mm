@@ -380,16 +380,27 @@ int lastY = 0;
 namespace SSC {
   static bool isDelegateSet = false;
   static SSCBluetoothDelegate* bt;
-  static SSC::Core* core;
 
   Window::Window (App& app, WindowOptions opts) : app(app), opts(opts) {
-    core = new SSC::Core;
+    SSCIPCBridge* bridge = [SSCIPCBridge new];
+    bridge.router = new SSC::IPC::Router(app.core);
+    bridge.router->setImplementation((SSC::IPC::Router::Implementation) {
+      .dispatch = [bridge] (auto callback) {
+        [bridge dispatch: ^{
+          callback();
+        }];
+      },
 
-    Bridge* bridge = [Bridge new];
-    this->bridge = (void*)bridge;
+      .evaluateJavaScript = [this](const String js) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+          this->eval(js);
+        });
+      }
+    });
+
+    this->bridge = (void*) bridge;
 
     bt = [SSCBluetoothDelegate new];
-    [bt setBridge: bridge];
 
     // Window style: titled, closable, minimizable
     uint style = NSWindowStyleMaskTitled;
@@ -450,7 +461,7 @@ namespace SSC {
     // https://developer.apple.com/documentation/webkit/wkwebviewconfiguration/3585117-limitsnavigationstoappbounddomai
     // config.limitsNavigationsToAppBoundDomains = YES;
 
-    SSCIPCSchemeHandler* handler = [SSCIPCSchemeHandler new];
+    SSCIPCBridgeSchemeHandler* handler = [SSCIPCBridgeSchemeHandler new];
     [handler setBridge: bridge];
     [config setURLSchemeHandler: handler forURLScheme:@"ipc"];
 
@@ -519,7 +530,7 @@ namespace SSC {
 
     [bridge setBluetooth: bt];
     [bridge setWebview: webview];
-    [bridge setCore: core];
+    [bridge setCore: app.core];
 
     if (!isDelegateSet) {
       isDelegateSet = true;
@@ -655,7 +666,7 @@ namespace SSC {
     }
   }
 
-  void Window::eval(const SSC::String& js) {
+  void Window::eval (const SSC::String& js) {
     [webview evaluateJavaScript:
       [NSString stringWithUTF8String:js.c_str()]
       completionHandler:nil];
@@ -711,11 +722,6 @@ namespace SSC {
   int Window::openExternal (const SSC::String& s) {
     NSString* nsu = [NSString stringWithUTF8String:s.c_str()];
     return [[NSWorkspace sharedWorkspace] openURL:[NSURL URLWithString: nsu]];
-  }
-
-  SSC::String App::getCwd (const SSC::String& s) {
-    NSString *bundlePath = [[NSBundle mainBundle] resourcePath];
-    return String([bundlePath UTF8String]);
   }
 
   void Window::closeContextMenu () {
@@ -940,7 +946,7 @@ namespace SSC {
     }
   }
 
-  void Window::openDialog(
+  void Window::openDialog (
     const SSC::String& seq,
     bool isSave,
     bool allowDirs,

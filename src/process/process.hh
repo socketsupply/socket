@@ -9,7 +9,7 @@
 #define WEXITSTATUS(w) (((w) & 0xff00) >> 8)
 #endif
 
-#include "../core/common.hh"
+#include "../common.hh"
 
 namespace SSC {
   static SSC::MessageCallback exitCallback;

@@ -1267,12 +1267,13 @@ LOCAL_SRC_FILES =    \
   core/android.cc    \
   core/core.cc       \
   core/fs.cc         \
-  core/ipc.cc        \
   core/javascript.cc \
   core/loop.cc       \
   core/peer.cc       \
   core/timers.cc     \
   core/udp.cc        \
+  ipc/bridge.cc      \
+  ipc/ipc.cc         \
   mobile/android.cc
 
 LOCAL_SRC_FILES += $(wildcard $(LOCAL_PATH)/ext/*.cc)

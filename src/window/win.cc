@@ -887,7 +887,7 @@ namespace SSC {
 
   int App::run () {
     // @TODO(jwerle)
-    // auto cwd = getCwd("");
+    // auto cwd = getCwd();
     // uv_chdir(cwd.c_str());
 
     MSG msg;
@@ -950,13 +950,6 @@ namespace SSC {
     });
 
     future.get();
-  }
-
-  SSC::String App::getCwd (const SSC::String& _) {
-    wchar_t filename[MAX_PATH];
-    GetModuleFileNameW(NULL, filename, MAX_PATH);
-    auto path = fs::path { filename }.remove_filename();
-    return path.string();
   }
 
   ScreenSize Window::getScreenSize () {

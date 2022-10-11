@@ -1,5 +1,6 @@
 #include "../window/window.hh"
 #include "../window/factory.hh"
+#include "../ipc/ipc.hh"
 #include "app.hh"
 
 namespace SSC {
@@ -14,7 +15,10 @@ namespace SSC {
 
   std::atomic<bool> App::isReady {false};
 
-  App::App (int instanceId)  {
+  App::App (int) : App() {
+  }
+
+  App::App ()  {
     this->bridge =  new Bridge(this);
     auto webkitContext = webkit_web_context_get_default();
     gtk_init_check(0, nullptr);
@@ -27,7 +31,7 @@ namespace SSC {
         auto uri = SSC::String(webkit_uri_scheme_request_get_uri(request));
         auto msg = SSC::String(uri);
 
-        Parse cmd(msg);
+        IPC::Message cmd(msg);
 
         auto invoked = app->bridge->invoke(cmd, [=](auto seq, auto result, auto post) {
           auto size = post.body != nullptr ? post.length : result.size();
@@ -86,7 +90,7 @@ namespace SSC {
   }
 
   int App::run () {
-    auto cwd = getCwd("");
+    auto cwd = getCwd();
     uv_chdir(cwd.c_str());
     gtk_main();
     return shouldExit ? 1 : 0;
@@ -100,12 +104,12 @@ namespace SSC {
   void App::restart () {
   }
 
-  SSC::String App::getCwd(const SSC::String &s) {
+  SSC::String App::getCwd () {
     auto canonical = fs::canonical("/proc/self/exe");
     return SSC::String(fs::path(canonical).parent_path());
   }
 
-  void App::dispatch(std::function<void()> f) {
+  void App::dispatch (std::function<void()> f) {
     g_idle_add_full(
       G_PRIORITY_HIGH_IDLE,
       (GSourceFunc)([](void* f) -> int {
@@ -119,11 +123,11 @@ namespace SSC {
     );
   }
 
-  bool Bridge::invoke (Parse cmd, Callback cb) {
+  bool Bridge::invoke (IPC::Message cmd, Callback cb) {
     return this->invoke(cmd, nullptr, 0, cb);
   }
 
-  bool Bridge::invoke (Parse cmd, char *buf, size_t bufsize, Callback cb) {
+  bool Bridge::invoke (IPC::Message cmd, char *buf, size_t bufsize, Callback cb) {
     auto seq = cmd.get("seq");
 
     if (cmd.name == "post" || cmd.name == "data") {
@@ -926,14 +930,14 @@ namespace SSC {
   }
 
   bool Bridge::route (SSC::String msg, char *buf, size_t bufsize) {
-    Parse cmd(msg);
+    IPC::Message cmd(msg);
 
     return this->invoke(cmd, buf, bufsize, [cmd, this](auto seq, auto msg, auto post) {
       this->send(cmd, seq, msg, post);
     });
   }
 
-  void Bridge::send (Parse cmd, SSC::String seq, SSC::String msg, Post post) {
+  void Bridge::send (IPC::Message cmd, SSC::String seq, SSC::String msg, Post post) {
     if (cmd.index == -1) {
       // @TODO(jwerle): print warning
       return;
