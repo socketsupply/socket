@@ -1,35 +1,42 @@
 #include "../window/window.hh"
 #include "app.hh"
 
+static dispatch_queue_attr_t qos = dispatch_queue_attr_make_with_qos_class(
+  DISPATCH_QUEUE_CONCURRENT,
+  QOS_CLASS_USER_INITIATED,
+  -1
+);
+
+static dispatch_queue_t queue = dispatch_queue_create("co.socketsupply.queue.app", qos);
+
 namespace SSC {
-  App::App (int instanceId) {
-    // TODO enforce single instance is set
+  App::App (int) : App() {
+  }
+
+  App::App () {
+    this->core = new Core();
+    this->bridge.core = this->core;
+  }
+
+  String App::getCwd () {
+    NSString *bundlePath = [[NSBundle mainBundle] resourcePath];
+    return String([bundlePath UTF8String]);
   }
 
   int App::run () {
-    /* NSEvent* event = [NSApp nextEventMatchingMask:NSEventMaskAny
-                                        untilDate:[NSDate distantFuture]
-                                           inMode:NSDefaultRunLoopMode
-                                          dequeue:true];
-    if (event) {
-        [NSApp sendEvent:event];
-    } */
-
-    auto cwd = getCwd("");
+    auto cwd = getCwd();
     uv_chdir(cwd.c_str());
     [NSApp run];
     return shouldExit;
   }
 
-  // We need to dispatch any code that touches
-  // a window back into the main thread.
-  void App::dispatch (std::function<void()> f) {
+  void App::dispatch (std::function<void()> callback) {
     auto priority = DISPATCH_QUEUE_PRIORITY_DEFAULT;
     auto queue = dispatch_get_global_queue(priority, 0);
 
     dispatch_async(queue, ^{
       dispatch_sync(dispatch_get_main_queue(), ^{
-        f();
+        callback();
       });
     });
   }
@@ -37,7 +44,7 @@ namespace SSC {
   void App::kill () {
     // Distinguish window closing with app exiting
     shouldExit = true;
-    // if we were not launched from the cli, just use `terminate()`
+    // if not launched from the cli, just use `terminate()`
     // exit code status will not be captured
     if (!fromSSC) {
       [NSApp terminate:nil];

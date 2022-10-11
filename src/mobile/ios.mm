@@ -1,11 +1,20 @@
 #include "../core/core.hh"
+#include "../ipc/ipc.hh"
 #include "../window/options.hh"
 
 constexpr auto _settings = STR_VALUE(SSC_SETTINGS);
 constexpr auto _debug = false;
 
+static dispatch_queue_attr_t qos = dispatch_queue_attr_make_with_qos_class(
+  DISPATCH_QUEUE_CONCURRENT,
+  QOS_CLASS_USER_INITIATED,
+  -1
+);
+
+static dispatch_queue_t queue = dispatch_queue_create("co.socketsupply.queue.app", qos);
+
 @interface AppDelegate : UIResponder <UIApplicationDelegate, WKScriptMessageHandler, UIScrollViewDelegate> {
-  Bridge* bridge;
+  IPCSSCBridge* bridge;
   SSCBluetoothDelegate* bluetooth;
   SSC::Core* core;
 }
@@ -131,7 +140,8 @@ void uncaughtExceptionHandler (NSException *exception) {
   platform.os = "ios";
 
   core = new SSC::Core;
-  bridge = [Bridge new];
+  bridge = [SSCIPCBridge new];
+  bridge.impl = new SSC::IPC::Bridge(core);
 
   bluetooth = [SSCBluetoothDelegate new];
   [bluetooth setBridge: bridge];
@@ -191,7 +201,7 @@ void uncaughtExceptionHandler (NSException *exception) {
 
   WKWebViewConfiguration *config = [[WKWebViewConfiguration alloc] init];
 
-  SSCIPCSchemeHandler* handler = [SSCIPCSchemeHandler new];
+  SSCIPCBridgeSchemeHandler* handler = [SSCIPCBridgeSchemeHandler new];
   [handler setBridge: bridge];
   [config setURLSchemeHandler: handler forURLScheme:@"ipc"];
 

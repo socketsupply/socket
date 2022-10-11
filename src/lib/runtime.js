@@ -2,18 +2,6 @@ window.parent = new class Parent {}
 window.process = new class Process {
   arch = null
   argv = []
-  config = new class ProcessConfig {
-    get size () {
-      return Object.keys(this).length
-    }
-
-    get (key) {
-      if (typeof key !== 'string') throw new TypeError('Expecting key to be a string.')
-      key = key.toLowerCase()
-      return key in this ? this[key] : null
-    }
-  }
-
   debug = false
   env = {}
   executable = null
@@ -22,6 +10,22 @@ window.process = new class Process {
   title = null
   version = null
 
+  config = new class ProcessConfig {
+    get size () {
+      return Object.keys(this).length
+    }
+
+    get (key) {
+      if (typeof key !== 'string') {
+        throw new TypeError('Expecting key to be a string.')
+      }
+
+      key = key.toLowerCase()
+      return key in this ? this[key] : null
+    }
+  }
+
+  // overloaded in process
   cwd () {
     return null
   }
@@ -31,9 +35,10 @@ document.addEventListener('DOMContentLoaded', () => {
   queueMicrotask(async () => {
     try {
       const index = window.process?.index || 0
-      const result = window.external.invoke(`ipc://event?value=domcontentloaded&index=${index}`)
-      if (result.catch) result.catch(console.error)
-    } catch (err) { console.error(err) }
+      const result = await window.external.invoke(`ipc://event?value=domcontentloaded&index=${index}`)
+    } catch (err) {
+      console.error(err)
+    }
   })
 })
 

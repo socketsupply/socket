@@ -1,4 +1,4 @@
-#include "../core/common.hh"
+#include "../common.hh"
 #include "../process/process.hh"
 #include "templates.hh"
 
@@ -30,8 +30,8 @@
 #define CMD_RUNNER
 #endif
 
-#ifndef BUILD_TIME
-#define BUILD_TIME 0
+#ifndef SSC_BUILD_TIME
+#define SSC_BUILD_TIME 0
 #endif
 
 using namespace SSC;
@@ -881,7 +881,7 @@ int main (const int argc, const char* argv[]) {
     } else {
       struct stat stats;
       if (stat(WStringToString(binaryPath).c_str(), &stats) == 0) {
-        if (BUILD_TIME > stats.st_mtime) {
+        if (SSC_BUILD_TIME > stats.st_mtime) {
           flagRunUserBuildOnly = false;
         }
       }
@@ -949,13 +949,16 @@ int main (const int argc, const char* argv[]) {
       files += prefixFile("src/core/apple.mm");
       files += prefixFile("src/core/core.cc");
       files += prefixFile("src/core/fs.cc");
-      files += prefixFile("src/core/ipc.cc");
       files += prefixFile("src/core/javascript.cc");
       files += prefixFile("src/core/loop.cc");
       files += prefixFile("src/core/peer.cc");
       files += prefixFile("src/core/timers.cc");
       files += prefixFile("src/core/udp.cc");
       files += prefixFile("src/desktop/main.cc");
+      files += prefixFile("src/ipc/bridge.cc");
+      files += prefixFile("src/ipc/bridge.mm");
+      files += prefixFile("src/ipc/ipc.cc");
+      files += prefixFile("src/ipc/json.cc");
       files += prefixFile("src/process/unix.cc");
       files += prefixFile("src/window/mac.mm");
 
@@ -1030,16 +1033,15 @@ int main (const int argc, const char* argv[]) {
       //writeFile();
 
       // Core
+      fs::copy(trim(prefixFile("src/common.hh")), jni, fs::copy_options::overwrite_existing);
       fs::copy(trim(prefixFile("src/mobile/android.cc")), jni / "mobile", fs::copy_options::overwrite_existing);
       fs::copy(trim(prefixFile("src/mobile/android.kt")), jni / "mobile", fs::copy_options::overwrite_existing);
       fs::copy(trim(prefixFile("src/window/window.hh")), jni / "window", fs::copy_options::overwrite_existing);
       fs::copy(trim(prefixFile("src/window/options.hh")), jni / "window", fs::copy_options::overwrite_existing);
       fs::copy(trim(prefixFile("src/core/android.cc")), jni / "core", fs::copy_options::overwrite_existing);
-      fs::copy(trim(prefixFile("src/core/common.hh")), jni / "core", fs::copy_options::overwrite_existing);
       fs::copy(trim(prefixFile("src/core/core.cc")), jni / "core", fs::copy_options::overwrite_existing);
       fs::copy(trim(prefixFile("src/core/core.hh")), jni / "core", fs::copy_options::overwrite_existing);
       fs::copy(trim(prefixFile("src/core/fs.cc")), jni / "core", fs::copy_options::overwrite_existing);
-      fs::copy(trim(prefixFile("src/core/ipc.cc")), jni / "core", fs::copy_options::overwrite_existing);
       fs::copy(trim(prefixFile("src/core/javascript.cc")), jni / "core", fs::copy_options::overwrite_existing);
       fs::copy(trim(prefixFile("src/core/loop.cc")), jni / "core", fs::copy_options::overwrite_existing);
       fs::copy(trim(prefixFile("src/core/peer.cc")), jni / "core", fs::copy_options::overwrite_existing);
@@ -1047,6 +1049,9 @@ int main (const int argc, const char* argv[]) {
       fs::copy(trim(prefixFile("src/core/runtime-preload-sources.hh")), jni / "core", fs::copy_options::overwrite_existing);
       fs::copy(trim(prefixFile("src/core/timers.cc")), jni / "core", fs::copy_options::overwrite_existing);
       fs::copy(trim(prefixFile("src/core/udp.cc")), jni / "core", fs::copy_options::overwrite_existing);
+      fs::copy(trim(prefixFile("src/ipc/bridge.cc")), jni / "ipc", fs::copy_options::overwrite_existing);
+      fs::copy(trim(prefixFile("src/ipc/ipc.cc")), jni / "ipc", fs::copy_options::overwrite_existing);
+      fs::copy(trim(prefixFile("src/ipc/ipc.hh")), jni / "ipc", fs::copy_options::overwrite_existing);
 
       // libuv
       fs::copy(
@@ -1378,13 +1383,14 @@ int main (const int argc, const char* argv[]) {
       files += prefixFile("src/app/linux.cc");
       files += prefixFile("src/core/core.cc");
       files += prefixFile("src/core/fs.cc");
-      files += prefixFile("src/core/ipc.cc");
       files += prefixFile("src/core/javascript.cc");
       files += prefixFile("src/core/loop.cc");
       files += prefixFile("src/core/peer.cc");
       files += prefixFile("src/core/timers.cc");
       files += prefixFile("src/core/udp.cc");
       files += prefixFile("src/desktop/main.cc");
+      files += prefixFile("src/ipc/bridge.cc");
+      files += prefixFile("src/ipc/ipc.cc");
       files += prefixFile("src/process/unix.cc");
       files += prefixFile("src/window/linux.cc");
 
@@ -1470,13 +1476,14 @@ int main (const int argc, const char* argv[]) {
       files += prefixFile("src\\app\\win.cc");
       files += prefixFile("src\\core\\core.cc");
       files += prefixFile("src\\core\\fs.cc");
-      files += prefixFile("src\\core\\ipc.cc");
       files += prefixFile("src\\core\\javascript.cc");
       files += prefixFile("src\\core\\loop.cc");
       files += prefixFile("src\\core\\peer.cc");
       files += prefixFile("src\\core\\timers.cc");
       files += prefixFile("src\\core\\udp.cc");
       files += prefixFile("src\\desktop\\main.cc");
+      files += prefixFile("src\\ipc\\bridge.cc");
+      files += prefixFile("src\\ipc\\ipc.cc");
       files += prefixFile("src\\window\\win.cc");
       files += prefixFile("src\\process\\win.cc");
 
@@ -1578,23 +1585,23 @@ int main (const int argc, const char* argv[]) {
       auto pathToDist = oldCwd / paths.platformSpecificOutputPath;
 
       fs::create_directories(pathToDist);
-      fs::create_directories(pathToDist / "window");
-      fs::create_directories(pathToDist / "mobile");
-      fs::create_directories(pathToDist / "core");
       fs::create_directories(pathToDist / "app");
+      fs::create_directories(pathToDist / "core");
+      fs::create_directories(pathToDist / "ipc");
+      fs::create_directories(pathToDist / "mobile");
+      fs::create_directories(pathToDist / "window");
       fs::current_path(pathToDist);
 
       //
       // Copy and or create the source files we need for the build.
       //
+      fs::copy(trim(prefixFile("src/common.hh")), pathToDist);
       fs::copy(trim(prefixFile("src/app/app.hh")), pathToDist / "app");
       fs::copy(trim(prefixFile("src/core/apple.hh")), pathToDist / "core");
       fs::copy(trim(prefixFile("src/core/apple.mm")), pathToDist / "core");
-      fs::copy(trim(prefixFile("src/core/common.hh")), pathToDist / "core");
       fs::copy(trim(prefixFile("src/core/core.cc")), pathToDist / "core");
       fs::copy(trim(prefixFile("src/core/core.hh")), pathToDist / "core");
       fs::copy(trim(prefixFile("src/core/fs.cc")), pathToDist / "core");
-      fs::copy(trim(prefixFile("src/core/ipc.cc")), pathToDist / "core");
       fs::copy(trim(prefixFile("src/core/javascript.cc")), pathToDist / "core");
       fs::copy(trim(prefixFile("src/core/loop.cc")), pathToDist / "core");
       fs::copy(trim(prefixFile("src/core/peer.cc")), pathToDist / "core");
@@ -1602,6 +1609,9 @@ int main (const int argc, const char* argv[]) {
       fs::copy(trim(prefixFile("src/core/runtime-preload.hh")), pathToDist / "core");
       fs::copy(trim(prefixFile("src/core/timers.cc")), pathToDist / "core");
       fs::copy(trim(prefixFile("src/core/udp.cc")), pathToDist / "core");
+      fs::copy(trim(prefixFile("src/ipc/bridge.cc")), pathToDist / "ipc");
+      fs::copy(trim(prefixFile("src/ipc/ipc.cc")), pathToDist / "ipc");
+      fs::copy(trim(prefixFile("src/ipc/ipc.hh")), pathToDist / "ipc");
       fs::copy(trim(prefixFile("src/mobile/ios.mm")), pathToDist / "mobile");
       fs::copy(trim(prefixFile("src/window/options.hh")), pathToDist / "window");
 
