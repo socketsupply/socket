@@ -150,17 +150,17 @@ namespace SSC {
   using WString = std::wstring;
   using WStringStream = std::wstringstream;
 
-  template <int K> using Semaphore = std::counting_semaphore<K>;
   template <typename T> using Queue = std::queue<T>;
+  template <int K> using Semaphore = std::counting_semaphore<K>;
   template <typename T> using Vector = std::vector<T>;
 
+  using BinarySemaphore = Semaphore<1>; // aka `Semaphore<1>`
+  using ExitCallback = std::function<void(int code)>;
   using Map = std::map<String, String>;
   using Mutex = std::recursive_mutex;
-  using Thread = std::thread;
   using Lock = std::lock_guard<Mutex>;
-  using ExitCallback = std::function<void(int code)>;
   using MessageCallback = std::function<void(const String)>;
-  using BinarySemaphore = Semaphore<1>; // aka `Semaphore<1>`
+  using Thread = std::thread;
 
   inline const auto VERSION_FULL_STRING = ToString(STR_VALUE(SSC_VERSION) " (" STR_VALUE(SSC_VERSION_HASH) ")");
   inline const auto VERSION_HASH_STRING = ToString(STR_VALUE(SSC_VERSION_HASH));

@@ -1,12 +1,13 @@
 #include "core.hh"
+#include "../ipc/json.hh"
 
 namespace SSC {
-  static std::recursive_mutex instanceMutex;
+  static Mutex instanceMutex;
   static Core *instance = nullptr;
 
   Core::Core () {
-    std::lock_guard<std::recursive_mutex> lock(instanceMutex);
-    this->posts = std::unique_ptr<Posts>(new Posts());
+    Lock lock(instanceMutex);
+    this->posts = std::shared_ptr<Posts>(new Posts());
 
     if (instance == nullptr) {
       instance = this;
@@ -16,7 +17,7 @@ namespace SSC {
   }
 
   Core::~Core () {
-    std::lock_guard<std::recursive_mutex> lock(instanceMutex);
+    Lock lock(instanceMutex);
     if (instance == this) {
       instance = nullptr;
     }
@@ -25,12 +26,12 @@ namespace SSC {
   void Core::handleEvent (String seq, String event, String data, Callback cb) {
     // init page
     if (event == "domcontentloaded") {
-      std::lock_guard<std::recursive_mutex> guard(descriptorsMutex);
+      Lock lock(descriptorsMutex);
 
       for (auto const &tuple : descriptors) {
         auto desc = tuple.second;
         if (desc != nullptr) {
-          std::lock_guard<std::recursive_mutex> descriptorLock(desc->mutex);
+          Lock descriptorLock(desc->mutex);
           desc->stale = true;
         } else {
           descriptors.erase(tuple.first);
@@ -44,18 +45,18 @@ namespace SSC {
   }
 
   Post Core::getPost (uint64_t id) {
-    std::lock_guard<std::recursive_mutex> guard(postsMutex);
+    Lock lock(postsMutex);
     if (posts->find(id) == posts->end()) return Post{};
     return posts->at(id);
   }
 
   bool Core::hasPost (uint64_t id) {
-    std::lock_guard<std::recursive_mutex> guard(postsMutex);
+    Lock lock(postsMutex);
     return posts->find(id) != posts->end();
   }
 
   void Core::expirePosts () {
-    std::lock_guard<std::recursive_mutex> guard(postsMutex);
+    Lock lock(postsMutex);
     std::vector<uint64_t> ids;
     auto now = std::chrono::system_clock::now()
       .time_since_epoch()
@@ -76,7 +77,7 @@ namespace SSC {
   }
 
   void Core::putPost (uint64_t id, Post p) {
-    std::lock_guard<std::recursive_mutex> guard(postsMutex);
+    Lock lock(postsMutex);
     p.ttl = std::chrono::time_point_cast<std::chrono::milliseconds>(
       std::chrono::system_clock::now() +
       std::chrono::milliseconds(32 * 1024)
@@ -87,7 +88,7 @@ namespace SSC {
   }
 
   void Core::removePost (uint64_t id) {
-    std::lock_guard<std::recursive_mutex> guard(postsMutex);
+    Lock lock(postsMutex);
     if (posts->find(id) == posts->end()) return;
     auto post = getPost(id);
 
@@ -101,7 +102,7 @@ namespace SSC {
   }
 
   String Core::createPost (String seq, String params, Post post) {
-    std::lock_guard<std::recursive_mutex> guard(postsMutex);
+    Lock lock(postsMutex);
 
     if (post.id == 0) {
       post.id = SSC::rand64();
@@ -142,7 +143,7 @@ namespace SSC {
   }
 
   void Core::removeAllPosts () {
-    std::lock_guard<std::recursive_mutex> guard(postsMutex);
+    Lock lock(postsMutex);
     std::vector<uint64_t> ids;
 
     for (auto const &tuple : *posts) {
@@ -163,12 +164,21 @@ namespace SSC {
     int count = 0;
 
     int rc = uv_interface_addresses(&infos, &count);
-    debug("rc=%d: %s", rc, uv_strerror(rc));
+
     if (rc != 0) {
-      return "{\"err\": {\"message\":\"unable to get interfaces\"}}";
+      auto result = IPC::JSON::Object(IPC::JSON::Object::Entries {
+        {"source", "os.networkInterfaces"},
+        {"err", IPC::JSON::Object::Entries {
+          {"type", "InternalError"},
+          {"message",
+            String("Unable to get network interfaces: ") + String(uv_strerror(rc))
+          }
+        }}
+      });
+
+      return result.str();
     }
 
-    debug("count=%lu", count);
     v4 << "\"ipv4\":{";
     v6 << "\"ipv6\":{";
 
@@ -237,19 +247,15 @@ namespace SSC {
         auto ctx = (PeerRequestContext*) resolver->data;
 
         if (status < 0) {
-          auto msg = SSC::format(
-            R"MSG({
-              "source": "dns.lookup",
-              "err": {
-                "code": $S,
-                "message": "$S"
-              }
-            })MSG",
-            std::to_string(status),
-            String(uv_strerror(status))
-          );
+          auto result = IPC::JSON::Object(IPC::JSON::Object::Entries {
+            {"source", "dns.lookup"},
+            {"err", IPC::JSON::Object::Entries {
+              {"code", std::to_string(status)},
+              {"message", String(uv_strerror(status))}
+            }}
+          });
 
-          ctx->end(msg);
+          ctx->end(result.str());
           return;
         }
 
@@ -273,37 +279,29 @@ namespace SSC {
             ? 6
             : 0;
 
-        auto msg = SSC::format(
-          R"MSG({
-            "source": "dns.lookup",
-            "data": {
-              "address": "$S",
-              "family": $i
-            }
-          })MSG",
-          address,
-          family
-        );
+        auto result = IPC::JSON::Object(IPC::JSON::Object::Entries {
+          {"source", "dns.lookup"},
+          {"data", IPC::JSON::Object::Entries {
+            {"address", address},
+            {"family", family}
+          }}
+        });
 
         uv_freeaddrinfo(res);
-        ctx->end(msg);
+        ctx->end(result.str());
 
       }, hostname.c_str(), nullptr, &hints);
 
       if (err < 0) {
-        auto msg = SSC::format(
-          R"MSG({
-            "source": "dns.lookup",
-            "err": {
-              "code": $S,
-              "message": "$S"
-            }
-          })MSG",
-          std::to_string(err),
-          SSC::String(uv_strerror(err))
-        );
+        auto result = IPC::JSON::Object(IPC::JSON::Object::Entries {
+          {"source", "dns.lookup"},
+          {"err", IPC::JSON::Object::Entries {
+            {"code", std::to_string(err)},
+            {"message", String(uv_strerror(err))}
+          }}
+        });
 
-        ctx->end(msg);
+        ctx->end(result.str());
       }
     });
   }
@@ -335,7 +333,7 @@ namespace SSC {
         return;
       }
 
-      std::lock_guard<std::recursive_mutex> guard(peer->mutex);
+      Lock lock(peer->mutex);
       auto handle = (uv_handle_t*) &peer->handle;
       auto err = buffer == RECV_BUFFER
        ? uv_recv_buffer_size(handle, (int *) &size)

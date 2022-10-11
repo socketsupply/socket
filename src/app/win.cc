@@ -22,6 +22,9 @@ namespace SSC {
 
   std::atomic<bool> App::isReady {false};
 
+  App::App () : App(nullptr) {
+  }
+
   App::App (void* h): hInstance((_In_ HINSTANCE) h) {
     #if DEBUG == 1
       AllocConsole();
@@ -52,7 +55,7 @@ namespace SSC {
     // this fixes bad default quality DPI.
     SetProcessDPIAware();
 
-    auto iconPath = fs::path { getCwd("") / fs::path { "index.ico" } };
+    auto iconPath = fs::path { getCwd() / fs::path { "index.ico" } };
 
     HICON icon = (HICON) LoadImageA(
       NULL,
@@ -84,4 +87,11 @@ namespace SSC {
       alert("Application could not launch, possible missing resources.");
     }
   };
+
+  SSC::String App::getCwd () {
+    wchar_t filename[MAX_PATH];
+    GetModuleFileNameW(NULL, filename, MAX_PATH);
+    auto path = fs::path { filename }.remove_filename();
+    return path.string();
+  }
 }

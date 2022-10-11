@@ -8,7 +8,7 @@
 
 #include <uv.h>
 
-#include "common.hh"
+#include "../common.hh"
 #include "runtime-preload.hh"
 
 #if defined(__APPLE__)
@@ -292,7 +292,7 @@ namespace SSC {
 
   class Core {
     public:
-      std::unique_ptr<Posts> posts;
+      std::shared_ptr<Posts> posts;
       std::map<uint64_t, Descriptor*> descriptors;
       std::map<uint64_t, Peer*> peers;
 
@@ -320,7 +320,7 @@ namespace SSC {
       );
 
       dispatch_queue_t eventLoopQueue = dispatch_queue_create(
-        "co.socketsupply.queue.event-loop",
+        "co.socketsupply.queue.loop",
         eventLoopQueueAttrs
       );
 #else
