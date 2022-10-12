@@ -5,10 +5,6 @@
 #include "../ipc/ipc.hh"
 
 namespace SSC {
-#ifdef __linux__
-  class Bridge;
-#endif
-
   //
   // Interfaces make sure all operating systems implement the same stuff
   //
@@ -20,8 +16,8 @@ namespace SSC {
       bool shouldExit = false;
       bool fromSSC = false;
       ExitCallback onExit = nullptr;
-      void exit(int code);
-      void setWindowFactory(void *windowFactory) {
+      void exit (int code);
+      void setWindowFactory (void *windowFactory) {
         this->windowFactory = windowFactory;
       }
 
@@ -42,17 +38,13 @@ namespace SSC {
 
   class App : public IApp {
     public:
-#ifdef __APPLE__
-#if !defined(TARGET_OS_IPHONE) && !defined(TARGET_IPHONE_SIMULATOR)
+#if defined(__APPLE__) && !defined(TARGET_OS_IPHONE) && !defined(TARGET_IPHONE_SIMULATOR)
       NSAutoreleasePool* pool = [NSAutoreleasePool new];
-#endif
 #elif defined(_WIN32)
       MSG msg;
       WNDCLASSEX wcex;
       _In_ HINSTANCE hInstance;
       DWORD mainThread = GetCurrentThreadId();
-#elif defined(__linux__)
-      Bridge *bridge;
 #endif
 
       static std::atomic<bool> isReady;
@@ -74,24 +66,6 @@ namespace SSC {
       void dispatch (std::function<void()> work);
       SSC::String getCwd ();
   };
-
-#ifdef __linux__
-  class Bridge {
-    public:
-      App *app;
-      Core *core;
-
-      Bridge (App *app) {
-        this->core = new Core();
-        this->app = app;
-      }
-
-      bool route (String msg, char *buf, size_t bufsize);
-      void send (IPC::Message message, String seq, String msg, Post post);
-      bool invoke (IPC::Message message, char *buf, size_t bufsize, Callback cb);
-      bool invoke (IPC::Message message, Callback cb);
-  };
-#endif
 
 #if defined(_WIN32)
   extern FILE* console;

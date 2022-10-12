@@ -16,6 +16,16 @@ namespace SSC::IPC::JSON {
     this->type = any.type;
   }
 
+  Any::Any (const Null null) {
+    this->pointer = std::shared_ptr<void>(new Null());
+    this->type = Type::Null;
+  }
+
+  Any::Any(std::nullptr_t null) {
+    this->pointer = std::shared_ptr<void>(new Null());
+    this->type = Type::Null;
+  }
+
   Any::Any (const char *string) {
     this->pointer = std::shared_ptr<void>(new String(string));
     this->type = Type::String;
@@ -42,22 +52,32 @@ namespace SSC::IPC::JSON {
   }
 
   Any::Any (int32_t number) {
-    this->pointer = std::shared_ptr<void>(new Number(number));
+    this->pointer = std::shared_ptr<void>(new Number((float) number));
     this->type = Type::Number;
   }
 
   Any::Any (uint32_t number) {
-    this->pointer = std::shared_ptr<void>(new Number((int32_t) number));
+    this->pointer = std::shared_ptr<void>(new Number((float) number));
     this->type = Type::Number;
   }
 
   Any::Any (int64_t number) {
-    this->pointer = std::shared_ptr<void>(new Number((int32_t) number));
+    this->pointer = std::shared_ptr<void>(new Number((float) number));
     this->type = Type::Number;
   }
 
   Any::Any (uint64_t number) {
-    this->pointer = std::shared_ptr<void>(new Number((int32_t) number));
+    this->pointer = std::shared_ptr<void>(new Number((float) number));
+    this->type = Type::Number;
+  }
+
+  Any::Any (double number) {
+    this->pointer = std::shared_ptr<void>(new Number((float) number));
+    this->type = Type::Number;
+  }
+
+  Any::Any (float number) {
+    this->pointer = std::shared_ptr<void>(new Number(number));
     this->type = Type::Number;
   }
 
@@ -88,6 +108,7 @@ namespace SSC::IPC::JSON {
 
   SSC::String Any::str () const {
     auto ptr = this->pointer.get();
+
     switch (this->type) {
       case Type::Null: return Null().str();
       case Type::Object: return reinterpret_cast<Object *>(ptr)->str();
@@ -100,20 +121,16 @@ namespace SSC::IPC::JSON {
     return "";
   }
 
-  Object::Object (const Object& input) {
-    this->data = input.value();
-  }
-
-  Object::Object (const Object::Entries input) {
-    for (auto const tuple : input) {
+  Object::Object (const Object::Entries entries) {
+    for (auto const tuple : entries) {
       auto key = tuple.first;
       auto value = tuple.second;
       this->data.insert_or_assign(key, value);
     }
   }
 
-  Object::Object (const SSC::Map input) {
-    for (auto const tuple : input) {
+  Object::Object (const SSC::Map map) {
+    for (auto const tuple : map) {
       auto key = tuple.first;
       auto value = Any(tuple.second);
       this->data.insert_or_assign(key, value);
@@ -141,12 +158,8 @@ namespace SSC::IPC::JSON {
     return stream.str();
   }
 
-  Array::Array (const Array& data) {
-    this->data = data.value();
-  }
-
-  Array::Array (const Array::Entries data) {
-    for (auto const &value : data) {
+  Array::Array (const Array::Entries entries) {
+    for (auto const &value : entries) {
       this->data.push_back(value);
     }
   }

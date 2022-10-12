@@ -64,4 +64,25 @@ namespace SSC::IPC {
   String Message::get (const String& key, const String &fallback) const {
     return args.count(key) ? decodeURIComponent(args.at(key)) : fallback;
   }
+
+  Result::Result () {
+    this->data = JSON::Any(nullptr);
+    this->err = JSON::Any(nullptr);
+  }
+
+  Result::Result (const Message& message, const String& source)
+    : Result() {
+    this->message = message;
+    this->source = source;
+  }
+
+  String Result::str () const {
+    auto entries = JSON::Object::Entries {
+      {"source", this->source},
+      {"data", this->data},
+      {"err", this->err}
+    };
+
+    return JSON::Object(entries).str();
+  }
 }

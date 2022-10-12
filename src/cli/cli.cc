@@ -1391,6 +1391,7 @@ int main (const int argc, const char* argv[]) {
       files += prefixFile("src/desktop/main.cc");
       files += prefixFile("src/ipc/bridge.cc");
       files += prefixFile("src/ipc/ipc.cc");
+      files += prefixFile("src/ipc/json.cc");
       files += prefixFile("src/process/unix.cc");
       files += prefixFile("src/window/linux.cc");
 

@@ -19,7 +19,6 @@ namespace SSC {
   }
 
   App::App ()  {
-    this->bridge =  new Bridge(this);
     auto webkitContext = webkit_web_context_get_default();
     gtk_init_check(0, nullptr);
     // TODO enforce single instance is set
@@ -33,13 +32,14 @@ namespace SSC {
 
         IPC::Message cmd(msg);
 
-        auto invoked = app->bridge->invoke(cmd, [=](auto seq, auto result, auto post) {
-          auto size = post.body != nullptr ? post.length : result.size();
-          auto body = post.body != nullptr ? post.body : result.c_str();
+        auto invoked = app->bridge.router.invoke(cmd, [=](auto result) {
+          auto json = result.str();
+          auto size = result.post.body != nullptr ? result.post.length : json.size();
+          auto body = result.post.body != nullptr ? result.post.body : json.c_str();
 
           // `post.body` is free'd with `freeFunction`
-          post.bodyNeedsFree = false;
-          auto freeFunction = post.body != nullptr ? free : nullptr;
+          result.post.bodyNeedsFree = false;
+          auto freeFunction = result.post.body != nullptr ? free : nullptr;
           auto stream = g_memory_input_stream_new_from_data(body, size, freeFunction);
           auto response = webkit_uri_scheme_response_new(stream, size);
 
@@ -123,11 +123,8 @@ namespace SSC {
     );
   }
 
-  bool Bridge::invoke (IPC::Message cmd, Callback cb) {
-    return this->invoke(cmd, nullptr, 0, cb);
-  }
-
-  bool Bridge::invoke (IPC::Message cmd, char *buf, size_t bufsize, Callback cb) {
+  /*
+  static bool XXX (IPC::Message cmd, char *buf, size_t bufsize, Callback cb) {
     auto seq = cmd.get("seq");
 
     if (cmd.name == "post" || cmd.name == "data") {
@@ -928,49 +925,5 @@ namespace SSC {
 
     return false;
   }
-
-  bool Bridge::route (SSC::String msg, char *buf, size_t bufsize) {
-    IPC::Message cmd(msg);
-
-    return this->invoke(cmd, buf, bufsize, [cmd, this](auto seq, auto msg, auto post) {
-      this->send(cmd, seq, msg, post);
-    });
-  }
-
-  void Bridge::send (IPC::Message cmd, SSC::String seq, SSC::String msg, Post post) {
-    if (cmd.index == -1) {
-      // @TODO(jwerle): print warning
-      return;
-    }
-
-    if (app == nullptr) {
-      // @TODO(jwerle): print warning
-      return;
-    }
-
-    auto windowFactory = reinterpret_cast<WindowFactory<Window, App> *>(app->getWindowFactory());
-    if (windowFactory == nullptr) {
-      // @TODO(jwerle): print warning
-      return;
-    }
-
-    auto window = windowFactory->getWindow(cmd.index);
-
-    if (window == nullptr) {
-      // @TODO(jwerle): print warning
-      return;
-    }
-
-    if (post.body || seq == "-1") {
-      auto script = this->core->createPost(seq, msg, post);
-      window->eval(script);
-      return;
-    }
-
-    if (seq != "-1" && seq.size() > 0) {
-      msg = SSC::getResolveToRenderProcessJavaScript(seq, "0", encodeURIComponent(msg));
-    }
-
-    window->eval(msg);
-  }
+*/
 }
