@@ -41,12 +41,16 @@ namespace SSC::IPC::JSON {
       Any ();
       ~Any ();
       Any (const Any&);
+      Any (std::nullptr_t);
+      Any (const Null);
       Any (bool);
       Any (const Boolean);
       Any (int64_t);
       Any (uint64_t);
       Any (uint32_t);
       Any (int32_t);
+      Any (float);
+      Any (double);
       Any (const Number);
       Any (const char *);
       Any (const SSC::String);
@@ -69,9 +73,9 @@ namespace SSC::IPC::JSON {
     public:
       using Entries = ObjectEntries;
       Object () = default;
-      Object (const Object& data);
-      Object (const Object::Entries data);
-      Object (const SSC::Map data);
+      Object (const Object& object) { this->data = object.value(); }
+      Object (const Object::Entries entries);
+      Object (const SSC::Map map);
       SSC::String str () const;
       const Object::Entries value () const { return this->data; }
   };
@@ -80,8 +84,8 @@ namespace SSC::IPC::JSON {
     public:
       using Entries = ArrayEntries;
       Array () = default;
-      Array (const Array& data);
-      Array (const Array::Entries data);
+      Array (const Array& array) { this->data = array.value(); }
+      Array (const Array::Entries entries);
       SSC::String str () const;
       Array::Entries value () const { return this->data; }
   };
@@ -89,18 +93,22 @@ namespace SSC::IPC::JSON {
   class Boolean : Value<bool, Type::Boolean> {
     public:
       Boolean () = default;
-      Boolean (bool data) { this->data = data; }
+      Boolean (const Boolean& boolean) { this->data = boolean.value(); }
+      Boolean (bool boolean) { this->data = boolean; }
       Boolean (int64_t data) { this->data = data != 0; }
+      Boolean (double data) { this->data = data != 0; }
       Boolean (void *data) { this->data = data != nullptr; }
       bool value () const { return this->data; }
       SSC::String str () const { return this->data ? "true" : "false"; }
   };
 
-  class Number : Value<int32_t, Type::Number> {
+  class Number : Value<float, Type::Number> {
     public:
       Number () = default;
-      Number (int32_t data) { this->data = data; }
-      int32_t value () const { return this->data; }
+      Number (const Number& number) { this->data = number.value(); }
+      Number (float number) { this->data = number; }
+      Number (int64_t number) { this->data = (float) number; }
+      float value () const { return this->data; }
       SSC::String str () const {
         return SSC::format("$S", std::to_string(this->data));
       }

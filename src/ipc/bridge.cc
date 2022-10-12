@@ -1,5 +1,6 @@
 #include "../core/core.hh"
 #include "ipc.hh"
+#include "json.hh"
 
 namespace SSC::IPC {
   Bridge::Bridge (Core *core) : router(core) {
@@ -8,21 +9,20 @@ namespace SSC::IPC {
 
   Router::Router (Core *core) {
     this->core = core;
-    this->bind("ping", [](auto message, auto router) {
-      auto result = JSON::Object(JSON::Object::Entries {
-        {"source", "ping"},
-        {"data", JSON::Object::Entries {
-          {"value", JSON::Array::Entries {"pong", "pong", "pong"}}
-        }}
-      });
+    this->bind("ping", [](auto message, auto router, auto reply) {
+      auto result = Result { message, "ping" };
+      result.data = JSON::Object::Entries {
+        {"value", JSON::Array::Entries {"pong", true, 123.456}}
+      };
 
-      router->reply(message, result);
+      reply(result);
     });
 
-    this->bind("event", [](auto message, auto router) {
+    this->bind("event", [](auto message, auto router, auto reply) {
       auto value = message.value;
       auto data = message.get("data");
       auto seq = message.seq;
+      fprintf(stderr, "IN EVENT\n");
       router->core->handleEvent(seq, value, data, [=](auto seq, auto result, auto post) {
         router->reply(message, result, post);
       });
@@ -42,15 +42,22 @@ namespace SSC::IPC {
     }
   }
 
-  bool Router::invoke (
-    const String& name,
-    const Message& message
-  ) {
-    auto callback = table.at(name);
+  bool Router::invoke (const Message& message) {
+    return this->invoke(message, [this](auto result) {
+      this->reply(result);
+    });
+  }
 
-    if (callback != nullptr) {
-      return this->dispatch([this, callback, message] {
-        callback(message, this);
+  bool Router::invoke (const Message& message, ResultCallback callback) {
+    if (this->table.find(message.name) == this->table.end()) {
+      return false;
+    }
+
+    auto fn = this->table.at(message.name);
+
+    if (fn!= nullptr) {
+      return this->dispatch([this, fn, message, callback] {
+        fn(message, this, callback);
       });
     }
 
@@ -68,10 +75,17 @@ namespace SSC::IPC {
   }
 
   bool Router::route (const Message& message) {
+    return this->route(message, [this](auto result) {
+      this->reply(result);
+    });
+  }
+
+  bool Router::route (const Message& message, ResultCallback callback) {
+    fprintf(stderr, "route=%s", message.uri.c_str());
     for (auto const &tuple : table) {
       auto name = tuple.first;
 
-      if (name == message.name && invoke(name, message)) {
+      if (name == message.name && this->invoke(message, callback)) {
         return true;
       }
     }
@@ -109,6 +123,10 @@ namespace SSC::IPC {
 
   bool Router::reply (const Message& message, const String& data) {
     return this->reply(message, data, Post{});
+  }
+
+  bool Router::reply (const Result& result) {
+    return this->reply(result.message, result.str(), result.post);
   }
 
   bool Router::reply (
