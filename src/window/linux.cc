@@ -62,7 +62,7 @@ namespace SSC {
           }
         }
 
-        if (!window->app.bridge->route(str, buf, bufsize)) {
+        if (!window->app.bridge.router.route(str, buf, bufsize)) {
           if (window->onMessage != nullptr) {
             window->onMessage(str);
           }

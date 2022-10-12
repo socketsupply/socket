@@ -29,20 +29,38 @@ namespace SSC::IPC {
       String uri = "";
       int index = -1;
 
+      Message () = default;
       Message (const String& source);
       Message (const String& source, char *bytes, size_t size);
       String get (const String& key) const;
       String get (const String& key, const String& fallback) const;
-      inline const char * c_str () const {
-        return this->uri.c_str();
-      }
+      String str () const { return this->uri; }
+      const char * c_str () const { return this->uri.c_str(); }
+  };
+
+  class Result {
+    public:
+      using Data = JSON::Any;
+      using Err = JSON::Any;
+
+      Message message;
+      String source;
+      Post post;
+      Data data;
+      Err err;
+
+      Result ();
+      Result (const Message& message, const String& source);
+      String str () const;
   };
 
   class Router {
     public:
       using EvaluateJavaScriptCallback = std::function<void(const String)>;
       using DispatchCallback = std::function<void()>;
-      using MessageCallback = std::function<void(const Message, Router* router)>;
+      using ReplyCallback = std::function<void(const Result&)>;
+      using ResultCallback = std::function<void(Result)>;
+      using MessageCallback = std::function<void(const Message, Router*, ReplyCallback)>;
       using Table = std::map<String, MessageCallback>;
 
       struct Implementation {
@@ -58,10 +76,12 @@ namespace SSC::IPC {
       Router (Core *core);
 
       void bind (const String& name, MessageCallback callback);
+      void unbind (const String& name);
       bool dispatch (DispatchCallback callback);
       bool emit (const String &name, const String& data);
       bool evaluateJavaScript (const String javaScript);
-      bool invoke (const String& name, const Message& message);
+      bool invoke (const Message& message, ResultCallback callback);
+      bool invoke (const Message& message);
       bool push (const JSON::Any data);
       bool push (const String& data);
       bool push (const Post &post);
@@ -74,12 +94,13 @@ namespace SSC::IPC {
       bool route (const String msg);
       bool route (const String msg, char *bytes, size_t size);
       bool route (const Message& message);
+      bool route (const Message& message, ResultCallback);
+      bool reply (const Result& result);
       bool send (const Message::Seq& seq, const JSON::Any data);
       bool send (const Message::Seq& seq, const JSON::Any data, const Post& post);
       bool send (const Message::Seq& seq, const String& data);
       bool send (const Message::Seq& seq, const String& data, const Post& post);
       void setImplementation (Implementation implementation);
-      void unbind (const String& name);
   };
 
   class Bridge {
