@@ -1,13 +1,13 @@
 # Socket Runtime
 
-Socket is a client-side runtime for creating native cross-platform apps for
+Socket is a client-side runtime for creating native cross-platform software on
 mobile and desktop using HTML, CSS, and JavaScript. It also exposes primitives
 needed for building peer-to-peer and local-first applications, such as Bluetooth,
 UDP and File I/O.
 
-> [![Socket SDK CI](https://github.com/socketsupply/socket/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/socketsupply/socket/actions/workflows/ci.yml)
+<!-- [![Socket SDK CI](https://github.com/socketsupply/socket/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/socketsupply/socket/actions/workflows/ci.yml) -->
 
-Read the [docs](https://sockets.sh)
+Please read (and contribute to) the documentation [here](https://sockets.sh).
 
 ```mermaid
 gantt
