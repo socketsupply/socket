@@ -1,5 +1,4 @@
-window.parent = new class Parent {}
-window.process = new class Process {
+window.parent = new class Parent {
   arch = null
   argv = []
   debug = false
@@ -34,7 +33,7 @@ window.process = new class Process {
 document.addEventListener('DOMContentLoaded', () => {
   queueMicrotask(async () => {
     try {
-      const index = window.process?.index || 0
+      const index = window.parent?.index || 0
       const result = await window.external.invoke(`ipc://event?value=domcontentloaded&index=${index}`)
     } catch (err) {
       console.error(err)
@@ -89,7 +88,7 @@ window._ipc = new class IPC {
 
   send (name, value) {
     const seq = 'R' + this.nextSeq++
-    const index = window.process.index
+    const index = window.parent.index
     let serialized = ''
 
     const promise = new Promise((resolve, reject) => {
@@ -150,7 +149,7 @@ window._ipc = new class IPC {
   }
 }
 
-if (process.platform !== 'linux') {
+if (window.parent.platform !== 'linux') {
   const clog = console.log
   const cerr = console.error
 
@@ -183,7 +182,7 @@ void (() => {
 
     async send (body) {
       const { method, seq, url } = this
-      const index = window.process.index
+      const index = window.parent.index
 
       if (url?.protocol === 'ipc:') {
         if (
@@ -191,12 +190,12 @@ void (() => {
           typeof body !== 'undefined' &&
           typeof seq !== 'undefined'
         ) {
-          if (/android/i.test(window.process?.platform)) {
+          if (/android/i.test(window.parent?.platform)) {
             await window.external.invoke(`ipc://buffer.queue?seq=${seq}`, body)
             body = null
           }
 
-          if (/linux/i.test(window.process?.platform)) {
+          if (/linux/i.test(window.parent?.platform)) {
             if (body?.buffer instanceof ArrayBuffer) {
               const header = new Uint8Array(24)
               const buffer = new Uint8Array(

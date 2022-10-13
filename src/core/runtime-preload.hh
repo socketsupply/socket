@@ -12,7 +12,7 @@ namespace SSC {
 
     auto preload =SSC::String(gPreload) + SSC::String(
       "\n;(() => {                                                    \n"
-      "Object.assign(window.process, {                                \n"
+      "Object.assign(window.parent, {                                 \n"
       "  arch: '" + platform.arch + "',                               \n"
       "  cwd: () => '" + cleanCwd + "',                               \n"
       "  debug: " + std::to_string(opts.debug) + ",                   \n"
@@ -24,17 +24,17 @@ namespace SSC {
       "  version: '" + opts.version + "',                             \n"
       "});                                                            \n"
       "Object.assign(                                                 \n"
-      "  window.process.env,                                          \n"
+      "  window.parent.env,                                           \n"
       "  Object.fromEntries(new URLSearchParams('" +  opts.env + "')) \n"
       ");                                                             \n"
-      "window.process.argv = [" + opts.argv + "];                     \n"
+      "window.parent.argv = [" + opts.argv + "];                      \n"
       "" + opts.preload
     );
 
     if (opts.headless) {
       preload += "                                                      \n"
         "console.log = (...args) => {                                   \n"
-        "  const { index } = window.process;                            \n"
+        "  const { index } = window.parent;                             \n"
         "  const value = args                                           \n"
         "    .map((v) => typeof v === 'string' ? v : JSON.stringify(v)) \n"
         "    .map(encodeURIComponent)                                   \n"
@@ -58,22 +58,22 @@ namespace SSC {
       preload += "    const key = decodeURIComponent('" + encodeURIComponent(key) + "').toLowerCase()\n";
 
       if (value == "true" || value == "false") {
-        preload += "    window.process.config[key] = " + value + "\n";
+        preload += "    window.parent.config[key] = " + value + "\n";
       } else {
         preload += "    const value = '" + encodeURIComponent(value) + "'\n";
         preload += "    if (!Number.isNaN(parseFloat(value))) {\n";
-        preload += "      window.process.config[key] = parseFloat(value);\n";
+        preload += "      window.parent.config[key] = parseFloat(value);\n";
         preload += "    } else { \n";
         preload += "      let val = decodeURIComponent(value);\n";
         preload += "      try { val = JSON.parse(val) } catch (err) {}\n";
-        preload += "      window.process.config[key] = val;\n";
+        preload += "      window.parent.config[key] = val;\n";
         preload += "    }\n";
       }
 
       preload += "  })();\n";
     }
 
-    preload += "  Object.seal(Object.freeze(window.process.config));\n";
+    preload += "  Object.seal(Object.freeze(window.parent.config));\n";
 
     // depreceate usage of 'window.system' in favor of 'window.parent'
     preload += SSC::String(

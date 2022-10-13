@@ -24,13 +24,13 @@ window.parent.hide = (index = 0) => {
 }
 
 window.resizeTo = (width, height) => {
-  const index = window.process.index
+  const index = window.parent.index
   const o = new URLSearchParams({ width, height, index }).toString()
   window.external.invoke(`ipc://size?${o}`)
 }
 
 window.parent.setBackgroundColor = opts => {
-  opts.index = window.process.index
+  opts.index = window.parent.index
   const o = new URLSearchParams(opts).toString()
   window.external.invoke(`ipc://background?${o}`)
 }
@@ -40,9 +40,9 @@ window.parent.setSystemMenuItemEnabled = value => {
 }
 
 Object.defineProperty(window.document, 'title', {
-  get () { return window.process.title },
+  get () { return window.parent.title },
   set (value) {
-    const index = window.process.index
+    const index = window.parent.index
     const o = new URLSearchParams({ value, index }).toString()
     window.external.invoke(`ipc://title?${o}`)
   }
@@ -111,7 +111,7 @@ window.parent.setMenu = o => {
   return window._ipc.send('menu', o)
 }
 
-if (window?.process?.port > 0) {
+if (window?.parent?.port > 0) {
   window.addEventListener('menuItemSelected', e => {
     window.location.reload()
   })

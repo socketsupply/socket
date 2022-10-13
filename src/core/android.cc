@@ -167,7 +167,7 @@ NativeCore::NativeCore (JNIEnv *env, jobject core)
   , config()
   , rootDirectory(env)
   , environmentVariables()
-  , javaScriptPreloadSource("")
+  , jsPreloadSource("")
 {
   this->env = env;
   this->env->GetJavaVM(&this->jvm);
@@ -242,7 +242,7 @@ jboolean NativeCore::ConfigureEnvironment () {
   windowOptions.env = stream.str();
   windowOptions.cwd = this->rootDirectory.str();
 
-  this->javaScriptPreloadSource.assign(
+  this->jsPreloadSource.assign(
     "window.addEventListener('unhandledrejection', e => {        \n"
     "  console.log(e.reason || e.message || e);                  \n"
     "});                                                         \n"
@@ -361,11 +361,11 @@ const int NativeCore::GetJNIVersion () const {
 }
 
 const char * NativeCore::GetJavaScriptPreloadSource () const {
-  if (this->javaScriptPreloadSource.size() == 0) {
+  if (this->jsPreloadSource.size() == 0) {
     return nullptr;
   }
 
-  return this->javaScriptPreloadSource.c_str();
+  return this->jsPreloadSource.c_str();
 }
 
 void NativeCore::BufferSize (
