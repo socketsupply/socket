@@ -459,7 +459,7 @@ class NativeCore : public SSC::Core {
   NativeString rootDirectory;
 
   // webkti webview
-  SSC::String javaScriptPreloadSource;
+  SSC::String jsPreloadSource;
 
   public:
   // thread
