@@ -10,8 +10,7 @@ namespace SSC {
 // file= runtime.js
 constexpr auto gPreload = R"JS(
 ;(() => {
-window.parent = new class Parent {}
-window.process = new class Process {
+window.parent = new class Parent {
   arch = null
   argv = []
   debug = false
@@ -46,7 +45,7 @@ window.process = new class Process {
 document.addEventListener('DOMContentLoaded', () => {
   queueMicrotask(async () => {
     try {
-      const index = window.process?.index || 0
+      const index = window.parent?.index || 0
       const result = await window.external.invoke(`ipc://event?value=domcontentloaded&index=${index}`)
     } catch (err) {
       console.error(err)
@@ -101,7 +100,7 @@ window._ipc = new class IPC {
 
   send (name, value) {
     const seq = 'R' + this.nextSeq++
-    const index = window.process.index
+    const index = window.parent.index
     let serialized = ''
 
     const promise = new Promise((resolve, reject) => {
@@ -162,7 +161,7 @@ window._ipc = new class IPC {
   }
 }
 
-if (process.platform !== 'linux') {
+if (window.parent.platform !== 'linux') {
   const clog = console.log
   const cerr = console.error
 
@@ -195,7 +194,7 @@ void (() => {
 
     async send (body) {
       const { method, seq, url } = this
-      const index = window.process.index
+      const index = window.parent.index
 
       if (url?.protocol === 'ipc:') {
         if (
@@ -203,12 +202,12 @@ void (() => {
           typeof body !== 'undefined' &&
           typeof seq !== 'undefined'
         ) {
-          if (/android/i.test(window.process?.platform)) {
+          if (/android/i.test(window.parent?.platform)) {
             await window.external.invoke(`ipc://buffer.queue?seq=${seq}`, body)
             body = null
           }
 
-          if (/linux/i.test(window.process?.platform)) {
+          if (/linux/i.test(window.parent?.platform)) {
             if (body?.buffer instanceof ArrayBuffer) {
               const header = new Uint8Array(24)
               const buffer = new Uint8Array(
@@ -282,13 +281,13 @@ window.parent.hide = (index = 0) => {
 }
 
 window.resizeTo = (width, height) => {
-  const index = window.process.index
+  const index = window.parent.index
   const o = new URLSearchParams({ width, height, index }).toString()
   window.external.invoke(`ipc://size?${o}`)
 }
 
 window.parent.setBackgroundColor = opts => {
-  opts.index = window.process.index
+  opts.index = window.parent.index
   const o = new URLSearchParams(opts).toString()
   window.external.invoke(`ipc://background?${o}`)
 }
@@ -298,9 +297,9 @@ window.parent.setSystemMenuItemEnabled = value => {
 }
 
 Object.defineProperty(window.document, 'title', {
-  get () { return window.process.title },
+  get () { return window.parent.title },
   set (value) {
-    const index = window.process.index
+    const index = window.parent.index
     const o = new URLSearchParams({ value, index }).toString()
     window.external.invoke(`ipc://title?${o}`)
   }
@@ -369,7 +368,7 @@ window.parent.setMenu = o => {
   return window._ipc.send('menu', o)
 }
 
-if (window?.process?.port > 0) {
+if (window?.parent?.port > 0) {
   window.addEventListener('menuItemSelected', e => {
     window.location.reload()
   })
@@ -381,10 +380,7 @@ if (window?.process?.port > 0) {
 // file= mobile.js
 constexpr auto gPreloadMobile = R"JS(
 ;(() => {
-window.parent.openExternal = o => {
-  window.external.invoke(`ipc://external?value=${encodeURIComponent(o)}`)
-}
-
+window.parent.openExternal = o => window.external.invoke(`ipc://external?value=${encodeURIComponent(o)}`)
 window.parent.exit = o => window._ipc.send('exit', o)
 window.parent.setTitle = o => window._ipc.send('title', o)
 })();
