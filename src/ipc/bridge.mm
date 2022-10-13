@@ -346,14 +346,14 @@ namespace SSC::IPC {
   /// ipc bluetooth-start
   /// @param serviceId String
   ///
-  if (cmd.name == "bluetooth-start" || cmd.name == "bluetooth.start") {
+  if (cmd.name == "bluetooth.start") {
     dispatch_async(queue, ^{
       [self.bluetooth startService: seq sid: cmd.get("serviceId")];
     });
     return true;
   }
 
-  if (cmd.name == "bluetooth-subscribe" || cmd.name == "bluetooth.subscribe") {
+  if (cmd.name == "bluetooth.subscribe") {
     auto cid = cmd.get("characteristicId");
     auto sid = cmd.get("serviceId");
     auto seq = cmd.get("seq");
@@ -364,7 +364,7 @@ namespace SSC::IPC {
     return true;
   }
 
-  if (cmd.name == "bluetooth-publish" || cmd.name == "bluetooth.publish") {
+  if (cmd.name == "bluetooth.publish") {
     auto sid = cmd.get("serviceId");
     auto cid = cmd.get("characteristicId");
     auto seq = cmd.get("seq");
@@ -481,7 +481,7 @@ namespace SSC::IPC {
     return true;
   }
 
-  if (cmd.name == "getFSConstants" || cmd.name == "fs.constants") {
+  if (cmd.name == "fs.constants") {
     dispatch_async(queue, ^{
       auto constants = self.core->getFSConstants();
       [self send: seq msg: constants post: Post{}];
@@ -489,7 +489,7 @@ namespace SSC::IPC {
     return true;
   }
 
-  if (cmd.name == "fsGetOpenDescriptors" || cmd.name == "fs.getOpenDescriptors") {
+  if (cmd.name == "fs.getOpenDescriptors") {
     dispatch_async(queue, ^{
       self.core->fsGetOpenDescriptors(seq, [=](auto seq, auto msg, auto post) {
         [self send: seq msg: msg post: post];
@@ -498,7 +498,7 @@ namespace SSC::IPC {
     return true;
   }
 
-  if (cmd.name == "fsRetainOpenDescriptor" || cmd.name == "fs.retainOpenDescriptor") {
+  if (cmd.name == "fs.retainOpenDescriptor") {
     auto id = std::stoull(cmd.get("id"));
 
     dispatch_async(queue, ^{
@@ -509,7 +509,7 @@ namespace SSC::IPC {
     return true;
   }
 
-  if (cmd.name == "fsRmdir" || cmd.name == "fs.rmdir") {
+  if (cmd.name == "fs.rmdir") {
     auto path = decodeURIComponent(cmd.get("path"));
 
     dispatch_async(queue, ^{
@@ -520,7 +520,7 @@ namespace SSC::IPC {
     return true;
   }
 
-  if (cmd.name == "fsAccess" || cmd.name == "fs.access") {
+  if (cmd.name == "fs.access") {
     auto path = decodeURIComponent(cmd.get("path"));
     auto mode = std::stoi(cmd.get("mode"));
 
@@ -532,7 +532,7 @@ namespace SSC::IPC {
     return true;
   }
 
-  if (cmd.name == "fsOpen" || cmd.name == "fs.open") {
+  if (cmd.name == "fs.open") {
     auto cid = std::stoull(cmd.get("id"));
     auto path = decodeURIComponent(cmd.get("path"));
     auto flags = std::stoi(cmd.get("flags"));
@@ -546,7 +546,7 @@ namespace SSC::IPC {
     return true;
   }
 
-  if (cmd.name == "fsClose" || cmd.name == "fs.close") {
+  if (cmd.name == "fs.close") {
     auto id = std::stoull(cmd.get("id"));
 
     dispatch_async(queue, ^{
@@ -557,7 +557,7 @@ namespace SSC::IPC {
     return true;
   }
 
-  if (cmd.name == "fsCloseOpenDescriptor" || cmd.name == "fs.closeOpenDescriptor") {
+  if (cmd.name == "fs.closeOpenDescriptor") {
     auto id = std::stoull(cmd.get("id"));
 
     dispatch_async(queue, ^{
@@ -568,7 +568,7 @@ namespace SSC::IPC {
     return true;
   }
 
-  if (cmd.name == "fsCloseOpenDescriptors" || cmd.name == "fs.closeOpenDescriptors") {
+  if (cmd.name == "fs.closeOpenDescriptors") {
     auto preserveRetained = cmd.get("retain") != "false";
     dispatch_async(queue, ^{
       self.core->fsCloseOpenDescriptors(seq, preserveRetained, [=](auto seq, auto msg, auto post) {
@@ -578,7 +578,7 @@ namespace SSC::IPC {
     return true;
   }
 
-  if (cmd.name == "fsRead" || cmd.name == "fs.read") {
+  if (cmd.name == "fs.read") {
     auto id = std::stoull(cmd.get("id"));
     auto size = std::stoi(cmd.get("size"));
     auto offset = std::stoi(cmd.get("offset"));
@@ -591,7 +591,7 @@ namespace SSC::IPC {
     return true;
   }
 
-  if (cmd.name == "fsWrite" || cmd.name == "fs.write") {
+  if (cmd.name == "fs.write") {
     auto id = std::stoull(cmd.get("id"));
     auto offset = std::stoull(cmd.get("offset"));
     auto data = SSC::String(buf, bufsize);
@@ -604,7 +604,7 @@ namespace SSC::IPC {
     return true;
   }
 
-  if (cmd.name == "fsStat" || cmd.name == "fs.stat") {
+  if (cmd.name == "fs.stat") {
     auto path = decodeURIComponent(cmd.get("path"));
 
     dispatch_async(queue, ^{
@@ -615,7 +615,7 @@ namespace SSC::IPC {
     return true;
   }
 
-  if (cmd.name == "fsFStat" || cmd.name == "fs.fstat") {
+  if (cmd.name == "fs.fstat") {
     auto id = std::stoull(cmd.get("id"));
 
     dispatch_async(queue, ^{
@@ -626,7 +626,7 @@ namespace SSC::IPC {
     return true;
   }
 
-  if (cmd.name == "fsUnlink" || cmd.name == "fs.unlink") {
+  if (cmd.name == "fs.unlink") {
     auto path = decodeURIComponent(cmd.get("path"));
 
     dispatch_async(queue, ^{
@@ -637,7 +637,7 @@ namespace SSC::IPC {
     return true;
   }
 
-  if (cmd.name == "fsRename" || cmd.name == "fs.rename") {
+  if (cmd.name == "fs.rename") {
     auto src = decodeURIComponent(cmd.get("src"));
     auto dst = decodeURIComponent(cmd.get("dst"));
 
@@ -649,7 +649,7 @@ namespace SSC::IPC {
     return true;
   }
 
-  if (cmd.name == "fsCopyFile" || cmd.name == "fs.copyFile") {
+  if (cmd.name == "fs.copyFile") {
     auto flags = std::stoi(cmd.get("flags", "0"));
     auto src = decodeURIComponent(cmd.get("src"));
     auto dst = decodeURIComponent(cmd.get("dst"));
@@ -662,7 +662,7 @@ namespace SSC::IPC {
     return true;
   }
 
-  if (cmd.name == "fsMkdir" || cmd.name == "fs.mkdir") {
+  if (cmd.name == "fs.mkdir") {
     auto path = decodeURIComponent(cmd.get("path"));
     auto mode = std::stoi(cmd.get("mode"));
 
@@ -674,7 +674,7 @@ namespace SSC::IPC {
     return true;
   }
 
-  if (cmd.name == "fsOpendir" || cmd.name == "fs.opendir") {
+  if (cmd.name == "fs.opendir") {
     auto id = std::stoull(cmd.get("id"));
     auto path = decodeURIComponent(cmd.get("path"));
 
@@ -686,7 +686,7 @@ namespace SSC::IPC {
     return true;
   }
 
-  if (cmd.name == "fsReaddir" || cmd.name == "fs.readdir") {
+  if (cmd.name == "fs.readdir") {
     auto id = std::stoull(cmd.get("id"));
     auto entries = std::stoi(cmd.get("entries", "256"));
 
@@ -698,7 +698,7 @@ namespace SSC::IPC {
     return true;
   }
 
-  if (cmd.name == "fsClosedir" || cmd.name == "fs.closedir") {
+  if (cmd.name == "fs.closedir") {
     auto id = std::stoull(cmd.get("id"));
 
     dispatch_async(queue, ^{
@@ -732,7 +732,7 @@ namespace SSC::IPC {
     return true;
   }
 
-  if (cmd.name == "getNetworkInterfaces" || cmd.name == "os.networkInterfaces") {
+  if (cmd.name == "os.networkInterfaces") {
     dispatch_async(queue, ^{
       auto msg = self.core->getNetworkInterfaces();
       [self send: seq msg: msg post: Post{}];
@@ -758,7 +758,7 @@ namespace SSC::IPC {
     return true;
   }
 
-  if (cmd.name == "getPlatformOS" || cmd.name == "os.platform") {
+  if (cmd.name == "os.platform") {
     dispatch_async(queue, ^{
       auto msg = SSC::format(R"JSON({
         "source": "os.platform",
@@ -770,7 +770,7 @@ namespace SSC::IPC {
     return true;
   }
 
-  if (cmd.name == "getPlatformType" || cmd.name == "os.type") {
+  if (cmd.name == "os.type") {
     dispatch_async(queue, ^{
       auto msg = SSC::format(R"JSON({
         "source": "os.type",
@@ -782,7 +782,7 @@ namespace SSC::IPC {
     return true;
   }
 
-  if (cmd.name == "getPlatformArch" || cmd.name == "os.arch") {
+  if (cmd.name == "os.arch") {
     dispatch_async(queue, ^{
       auto msg = SSC::format(R"JSON({
         "source": "os.arch",
@@ -824,7 +824,7 @@ namespace SSC::IPC {
     return true;
   }
 
-  if (cmd.name == "udpClose" || cmd.name == "udp.close" || cmd.name == "close") {
+  if (cmd.name == "udp.close" || cmd.name == "close") {
     auto peerId = std::stoull(cmd.get("id"));
 
     dispatch_async(queue, ^{
@@ -835,7 +835,7 @@ namespace SSC::IPC {
     return true;
   }
 
-  if (cmd.name == "udpConnect" || cmd.name == "udp.connect") {
+  if (cmd.name == "udp.connect") {
     auto strId = cmd.get("id");
     SSC::String err = "";
     uint64_t peerId = 0ll;
@@ -890,7 +890,7 @@ namespace SSC::IPC {
     return true;
   }
 
-  if (cmd.name == "udpDisconnect" || cmd.name == "udp.disconnect") {
+  if (cmd.name == "udp.disconnect") {
     auto strId = cmd.get("id");
 
     if (strId.size() == 0) {
@@ -917,7 +917,7 @@ namespace SSC::IPC {
     return true;
   }
 
-  if (cmd.name == "udpGetPeerName" || cmd.name == "udp.getPeerName") {
+  if (cmd.name == "udp.getPeerName") {
     auto strId = cmd.get("id");
 
     if (strId.size() == 0) {
@@ -944,7 +944,7 @@ namespace SSC::IPC {
     return true;
   }
 
-  if (cmd.name == "udpGetSockName" || cmd.name == "udp.getSockName") {
+  if (cmd.name == "udp.getSockName") {
     auto strId = cmd.get("id");
 
     if (strId.size() == 0) {
@@ -971,7 +971,7 @@ namespace SSC::IPC {
     return true;
   }
 
-  if (cmd.name == "udpGetState" || cmd.name == "udp.getState") {
+  if (cmd.name == "udp.getState") {
     auto strId = cmd.get("id");
 
     if (strId.size() == 0) {
@@ -998,7 +998,7 @@ namespace SSC::IPC {
     return true;
   }
 
-  if (cmd.name == "udpSend" || cmd.name == "udp.send") {
+  if (cmd.name == "udp.send") {
     int offset = 0;
     int port = 0;
     uint64_t peerId;
@@ -1059,7 +1059,7 @@ namespace SSC::IPC {
     return true;
   }
 
-  if (cmd.name == "udpBind" || cmd.name == "udp.bind") {
+  if (cmd.name == "udp.bind") {
     auto ip = cmd.get("address");
     auto reuseAddr = cmd.get("reuseAddr") == "true";
     SSC::String err;
@@ -1095,7 +1095,7 @@ namespace SSC::IPC {
     return true;
   }
 
-  if (cmd.name == "udpReadStart" || cmd.name == "udp.readStart") {
+  if (cmd.name == "udp.readStart") {
     uint64_t peerId;
 
     try {
@@ -1115,7 +1115,7 @@ namespace SSC::IPC {
     return true;
   }
 
-  if (cmd.name == "udpReadStop" || cmd.name == "udp.readStop") {
+  if (cmd.name == "udp.readStop") {
     uint64_t peerId;
 
     try {
@@ -1135,7 +1135,7 @@ namespace SSC::IPC {
     return true;
   }
 
-  if (cmd.name == "dnsLookup" || cmd.name == "dns.lookup") {
+  if (cmd.name == "dns.lookup") {
     auto hostname = cmd.get("hostname");
     SSC::String err = "";
 
