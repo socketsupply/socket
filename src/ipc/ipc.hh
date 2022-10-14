@@ -75,8 +75,8 @@ namespace SSC::IPC {
       Router ();
       Router (Core *core);
 
-      void defineFunction (const String& name, MessageCallback callback);
-      void removeFunction (const String& name);
+      void map (const String& name, MessageCallback callback);
+      void unmap (const String& name);
       bool dispatch (DispatchCallback callback);
       bool emit (const String &name, const String& data);
       bool evaluateJavaScript (const String javaScript);

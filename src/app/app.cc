@@ -176,19 +176,20 @@ namespace SSC {
 }
 
 #if defined(_WIN32)
-static inline void alert (const SSC::WString &ws) {
-  MessageBoxA(nullptr, SSC::WStringToString(ws).c_str(), _TEXT("Alert"), MB_OK | MB_ICONSTOP);
-}
-
-static inline void alert (const SSC::String &s) {
-  MessageBoxA(nullptr, s.c_str(), _TEXT("Alert"), MB_OK | MB_ICONSTOP);
-}
-
-static inline void alert (const char* s) {
-  MessageBoxA(nullptr, s, _TEXT("Alert"), MB_OK | MB_ICONSTOP);
-}
 
 namespace SSC {
+  static inline void alert (const SSC::WString &ws) {
+    MessageBoxA(nullptr, SSC::WStringToString(ws).c_str(), _TEXT("Alert"), MB_OK | MB_ICONSTOP);
+  }
+
+  static inline void alert (const SSC::String &s) {
+    MessageBoxA(nullptr, s.c_str(), _TEXT("Alert"), MB_OK | MB_ICONSTOP);
+  }
+
+  static inline void alert (const char* s) {
+    MessageBoxA(nullptr, s, _TEXT("Alert"), MB_OK | MB_ICONSTOP);
+  }
+
   App::App (void* h) : App(), hInstance((_In_ HINSTANCE) h) {
     #if DEBUG == 1
       AllocConsole();
