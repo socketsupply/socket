@@ -56,13 +56,13 @@ static void registerSchemeHandler (Router *router) {
 }
 
 void initFunctionsTable (Router *router) {
-  router->defineFunction("ping", [](auto message, auto router, auto reply) {
+  router->map("ping", [](auto message, auto router, auto reply) {
     auto result = Result { message.seq, message };
     result.data = "pong";
     reply(result);
   });
 
-  router->defineFunction("event", [](auto message, auto router, auto reply) {
+  router->map("event", [](auto message, auto router, auto reply) {
     auto value = message.value;
     auto data = message.get("data");
     auto seq = message.seq;
@@ -71,7 +71,7 @@ void initFunctionsTable (Router *router) {
     });
   });
 
-  router->defineFunction("bufferSize", [](auto message, auto router, auto reply) {
+  router->map("bufferSize", [](auto message, auto router, auto reply) {
     if (message.get("id").size() == 0) {
       auto result = Result { message.seq, message };
       result.err = JSON::Object::Entries {
@@ -92,30 +92,30 @@ void initFunctionsTable (Router *router) {
     });
   });
 
-  router->defineFunction("os.platform", [](auto message, auto router, auto reply) {
+  router->map("os.platform", [](auto message, auto router, auto reply) {
     auto result = Result { message.seq, message };
     result.data = SSC::platform.os;
     reply(result);
   });
 
-  router->defineFunction("os.type", [](auto message, auto router, auto reply) {
+  router->map("os.type", [](auto message, auto router, auto reply) {
     auto result = Result { message.seq, message };
     result.data = SSC::platform.os;
   });
 
-  router->defineFunction("os.arch", [](auto message, auto router, auto reply) {
+  router->map("os.arch", [](auto message, auto router, auto reply) {
     auto result = Result { message.seq, message };
     result.data = SSC::platform.arch;
     reply(result);
   });
 
-  router->defineFunction("os.networkInterfaces", [](auto message, auto router, auto reply) {
+  router->map("os.networkInterfaces", [](auto message, auto router, auto reply) {
     auto result = Result { message.seq, message };
     result.json = router->core->getNetworkInterfaces();
     reply(result);
   });
 
-  router->defineFunction("dns.lookup", [](auto message, auto router, auto reply) {
+  router->map("dns.lookup", [](auto message, auto router, auto reply) {
     auto hostname = message.get("hostname");
     auto family = std::stoi(message.get("family", "0"));
     auto seq = message.seq;
@@ -129,7 +129,7 @@ void initFunctionsTable (Router *router) {
     });
   });
 
-  router->defineFunction("fs.constants", [](auto message, auto router, auto reply) {
+  router->map("fs.constants", [](auto message, auto router, auto reply) {
     auto result = Result { message.seq, message };
     result.json = router->core->getFSConstants();
     reply(result);
@@ -155,13 +155,13 @@ namespace SSC::IPC {
     this->core = core;
   }
 
-  void Router::defineFunction (const String& name, MessageCallback callback) {
+  void Router::map (const String& name, MessageCallback callback) {
     if (callback != nullptr) {
       table.insert_or_assign(name, callback);
     }
   }
 
-  void Router::removeFunction (const String& name) {
+  void Router::unmap (const String& name) {
     if (table.find(name) != table.end()) {
       table.erase(name);
     }
