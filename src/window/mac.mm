@@ -383,22 +383,15 @@ namespace SSC {
 
   Window::Window (App& app, WindowOptions opts) : app(app), opts(opts) {
     SSCIPCBridge* bridge = [SSCIPCBridge new];
+
     bridge.router = new SSC::IPC::Router(app.core);
-    bridge.router->setImplementation((SSC::IPC::Router::Implementation) {
-      .dispatch = [bridge] (auto callback) {
-        [bridge dispatch: ^{
-          callback();
-        }];
-      },
+    bridge.router.dispatchFunction = [bridge] (auto callback) {
+      [bridge dispatch: ^{ callback(); }];
+    };
 
-      .evaluateJavaScript = [this](const String js) {
-        dispatch_async(dispatch_get_main_queue(), ^{
-          this->eval(js);
-        });
-      }
-    });
-
-    this->bridge = (void*) bridge;
+    bridge.router.evaluateJavaScriptFunction = [this](auto js) {
+      dispatch_async(dispatch_get_main_queue(), ^{ this->eval(js); });
+    };
 
     bt = [SSCBluetoothDelegate new];
 
@@ -435,22 +428,18 @@ namespace SSC {
       nil
 		];
 
-    [window registerForDraggedTypes:draggableTypes];
-
+    // Position window in center of screen
+    [window center];
+    [window setOpaque: YES];
     // Minimum window size
-    [window setContentMinSize:NSMakeSize(opts.width, opts.height)];
-
-    // [window setAppearance:[NSAppearance appearanceNamed:NSAppearanceNameVibrantDark]];
+    [window setContentMinSize: NSMakeSize(opts.width, opts.height)];
     [window setBackgroundColor: [NSColor controlBackgroundColor]];
-
-    [window setOpaque:YES];
+    [window registerForDraggedTypes: draggableTypes];
+    // [window setAppearance:[NSAppearance appearanceNamed:NSAppearanceNameVibrantDark]];
 
     if (opts.frameless) {
       [window setTitlebarAppearsTransparent: true];
     }
-
-    // Position window in center of screen
-    [window center];
 
     // window.movableByWindowBackground = true;
     window.titlebarAppearsTransparent = true;
@@ -490,8 +479,7 @@ namespace SSC {
       injectionTime: WKUserScriptInjectionTimeAtDocumentStart
       forMainFrameOnly: NO];
 
-    [controller
-      addUserScript: userScript];
+    [controller addUserScript: userScript];
 
     webview = [[SSCBridgedWebView alloc]
       initWithFrame: NSZeroRect
@@ -500,8 +488,6 @@ namespace SSC {
     [webview.configuration.preferences
       setValue:@YES
       forKey:@"allowFileAccessFromFileURLs"];
-
-    // window.titlebarAppearsTransparent = true;
 
     /* [webview
       setValue: [NSNumber numberWithBool: YES]

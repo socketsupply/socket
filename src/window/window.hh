@@ -2,6 +2,7 @@
 #define SSC_WINDOW_WINDOW_H
 
 #include "../app/app.hh"
+#include "../ipc/ipc.hh"
 #include "options.hh"
 
 #ifndef SSC_MAX_WINDOWS
@@ -9,7 +10,6 @@
 #endif
 
 namespace SSC {
-  class Window;
   class DragDrop;
 
   enum {
@@ -19,50 +19,15 @@ namespace SSC {
     WINDOW_HINT_FIXED = 3  // Window size can not be changed by a user
   };
 
-  class IWindow {
+  class Window {
     public:
-      int index = 0;
-      void* bridge;
+      App& app;
       WindowOptions opts;
+
       MessageCallback onMessage = [](const String) {};
       ExitCallback onExit = nullptr;
-      virtual void resolvePromise (
-        const String& seq,
-        const String& state,
-        const String& value
-      ) = 0;
-
-      virtual void eval (const String&) = 0;
-      virtual void show (const String&) = 0;
-      virtual void hide (const String&) = 0;
-      virtual void close (int code) = 0;
-      virtual void exit (int code) = 0;
-      virtual void kill () = 0;
-      virtual void navigate (const String&, const String&) = 0;
-      virtual ScreenSize getScreenSize () = 0;
-      virtual void setSize (const String&, int, int, int) = 0;
-      virtual void setTitle (const String&, const String&) = 0;
-      virtual void setContextMenu (const String&, const String&) = 0;
-      virtual void setSystemMenu (const String&, const String&) = 0;
-      virtual void setSystemMenuItemEnabled (bool enabled, int barPos, int menuPos) = 0;
-      virtual void setBackgroundColor (int r, int g, int b, float a) = 0;
-      virtual void showInspector () = 0;
-      virtual void openDialog (
-        const String&,
-        bool,
-        bool,
-        bool,
-        bool,
-        const String&,
-        const String&,
-        const String&
-      ) = 0;
-  };
-
-  class Window : public IWindow {
-    public:
-      App app;
-      WindowOptions opts;
+      IPC::Bridge *bridge = nullptr;
+      int index = 0;
 
 #if defined(__APPLE__) && !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR
       NSWindow* window;
