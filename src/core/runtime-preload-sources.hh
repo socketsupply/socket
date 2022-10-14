@@ -111,7 +111,7 @@ window._ipc = new class IPC {
     })
 
     try {
-      if (({}).toString.call(value) !== '[object Object]') {
+      if (value !== undefined && ({}).toString.call(value) !== '[object Object]') {
         value = { value }
       }
 

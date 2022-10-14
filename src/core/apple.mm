@@ -131,8 +131,8 @@
   NSArray* keys = [_serviceMap allKeys];
   if ([keys count] == 0) return;
 
-  NSMutableArray* uuids = [[NSMutableArray alloc] init];
 
+  NSMutableArray* uuids = [[NSMutableArray alloc] init];
   for (NSString* key in keys) {
     [uuids addObject: [CBUUID UUIDWithString: key]];
   }

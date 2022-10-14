@@ -30,7 +30,7 @@ namespace SSC::IPC {
 - (void) webView: (SSCBridgedWebView*) webview startURLSchemeTask: (SSC::IPC::Task) task {
   auto url = SSC::String(task.request.URL.absoluteString.UTF8String);
 
-  SSC::IPC::Message cmd(url);
+  SSC::IPC::Message message(url);
 
   if (SSC::String(task.request.HTTPMethod.UTF8String) == "OPTIONS") {
     NSMutableDictionary* httpHeaders = [NSMutableDictionary dictionary];
@@ -54,9 +54,9 @@ namespace SSC::IPC {
     return;
   }
 
-  if (cmd.name == "post" || cmd.name == "data") {
+  if (message.name == "post" || message.name == "data") {
     NSMutableDictionary* httpHeaders = [NSMutableDictionary dictionary];
-    uint64_t postId = std::stoull(cmd.get("id"));
+    uint64_t postId = std::stoull(message.get("id"));
     auto post = self.bridge.core->getPost(postId);
 
     httpHeaders[@"access-control-allow-origin"] = @"*";
@@ -111,7 +111,7 @@ namespace SSC::IPC {
 
   size_t bufsize = 0;
   char *body = NULL;
-  auto seq = cmd.get("seq");
+  auto seq = message.get("seq");
 
   if (seq.size() > 0 && seq != "-1") {
     #if !__has_feature(objc_arc)
@@ -328,35 +328,39 @@ namespace SSC::IPC {
 }
 
 // returns true if routable (regardless of success)
-- (bool) route: (SSC::String)msg buf: (char*)buf bufsize: (size_t)bufsize{
+- (bool) route: (SSC::String) msg buf: (char*) buf bufsize: (size_t) bufsize {
   using namespace SSC;
 
   if (msg.find("ipc://") != 0) return false;
 
-  if (self.router->route(msg, buf, bufsize)) {
+  auto invoked = self.router->invoke(msg, buf, bufsize, [=](auto result) {
+    [self send: seq msg: msg post: post];
+  });
+
+  if (invoked)
     return true;
   }
 
-  IPC::Message cmd(msg);
-  auto seq = cmd.get("seq");
-  // NSLog(@"Route<%s> - [%s:%i]", cmd.name.c_str(), buf, (int)bufsize);
+  IPC::Message message(msg);
+  auto seq = message.get("seq");
+  // NSLog(@"Route<%s> - [%s:%i]", message.name.c_str(), buf, (int)bufsize);
 
   uint64_t peerId = 0;
 
   /// ipc bluetooth-start
   /// @param serviceId String
   ///
-  if (cmd.name == "bluetooth.start") {
+  if (message.name == "bluetooth.start") {
     dispatch_async(queue, ^{
-      [self.bluetooth startService: seq sid: cmd.get("serviceId")];
+      [self.bluetooth startService: seq sid: message.get("serviceId")];
     });
     return true;
   }
 
-  if (cmd.name == "bluetooth.subscribe") {
-    auto cid = cmd.get("characteristicId");
-    auto sid = cmd.get("serviceId");
-    auto seq = cmd.get("seq");
+  if (message.name == "bluetooth.subscribe") {
+    auto cid = message.get("characteristicId");
+    auto sid = message.get("serviceId");
+    auto seq = message.get("seq");
 
     dispatch_async(queue, ^{
       [self.bluetooth subscribeCharacteristic: seq sid: sid cid: cid];
@@ -364,10 +368,10 @@ namespace SSC::IPC {
     return true;
   }
 
-  if (cmd.name == "bluetooth.publish") {
-    auto sid = cmd.get("serviceId");
-    auto cid = cmd.get("characteristicId");
-    auto seq = cmd.get("seq");
+  if (message.name == "bluetooth.publish") {
+    auto sid = message.get("serviceId");
+    auto cid = message.get("characteristicId");
+    auto seq = message.get("seq");
 
     if (sid.size() != 36) {
       auto msg = SSC::format(R"MSG({ "err": { "message": "invalid serviceId" } })MSG");
@@ -390,21 +394,21 @@ namespace SSC::IPC {
     int len;
 
     if (buf != nullptr) {
-      len = std::stoi(cmd.get("length"));
+      len = std::stoi(message.get("length"));
       value = buf;
     } else {
-      value = cmd.get("value").data();
-      len = (int) cmd.get("value").size();
+      value = message.get("value").data();
+      len = (int) message.get("value").size();
     }
 
     [self.bluetooth publishCharacteristic: seq buf: value len: len sid: sid cid: cid];
     return true;
   }
 
-  if (cmd.name == "notify") {
+  if (message.name == "notify") {
     UNMutableNotificationContent* content = [[UNMutableNotificationContent alloc] init];
-    content.body = [NSString stringWithUTF8String: cmd.get("body").c_str()];
-    content.title = [NSString stringWithUTF8String: cmd.get("title").c_str()];
+    content.body = [NSString stringWithUTF8String: message.get("body").c_str()];
+    content.title = [NSString stringWithUTF8String: message.get("title").c_str()];
     content.sound = [UNNotificationSound defaultSound];
 
     UNTimeIntervalNotificationTrigger* trigger = [
@@ -427,28 +431,14 @@ namespace SSC::IPC {
     return true;
   }
 
-  if (cmd.name == "log") {
-    auto value = decodeURIComponent(cmd.get("value"));
-    NSLog(@"%s\n", value.c_str());
+  if (message.name == "log") {
+    NSLog(@"%s\n", message.value.c_str());
     return true;
   }
 
-  if (cmd.name == "event") {
-    auto event = decodeURIComponent(cmd.get("value"));
-    auto data = decodeURIComponent(cmd.get("data"));
-    auto seq = cmd.get("seq");
-
-    dispatch_async(queue, ^{
-      self.core->handleEvent(seq, event, data, [=](auto seq, auto msg, auto post) {
-        [self send: seq msg: msg post: Post{}];
-      });
-    });
-    return true;
-  }
-
-  if (cmd.name == "window.eval") {
-    SSC::String value = decodeURIComponent(cmd.get("value"));
-    auto seq = cmd.get("seq");
+  if (message.name == "window.eval") {
+    SSC::String value = decodeURIComponent(message.get("value"));
+    auto seq = message.get("seq");
 
     NSString* script = [NSString stringWithUTF8String: value.c_str()];
     dispatch_async(dispatch_get_main_queue(), ^{
@@ -481,7 +471,7 @@ namespace SSC::IPC {
     return true;
   }
 
-  if (cmd.name == "fs.constants") {
+  if (message.name == "fs.constants") {
     dispatch_async(queue, ^{
       auto constants = self.core->getFSConstants();
       [self send: seq msg: constants post: Post{}];
@@ -489,7 +479,7 @@ namespace SSC::IPC {
     return true;
   }
 
-  if (cmd.name == "fs.getOpenDescriptors") {
+  if (message.name == "fs.getOpenDescriptors") {
     dispatch_async(queue, ^{
       self.core->fsGetOpenDescriptors(seq, [=](auto seq, auto msg, auto post) {
         [self send: seq msg: msg post: post];
@@ -498,8 +488,8 @@ namespace SSC::IPC {
     return true;
   }
 
-  if (cmd.name == "fs.retainOpenDescriptor") {
-    auto id = std::stoull(cmd.get("id"));
+  if (message.name == "fs.retainOpenDescriptor") {
+    auto id = std::stoull(message.get("id"));
 
     dispatch_async(queue, ^{
       self.core->fsRetainOpenDescriptor(seq, id, [=](auto seq, auto msg, auto post) {
@@ -509,8 +499,8 @@ namespace SSC::IPC {
     return true;
   }
 
-  if (cmd.name == "fs.rmdir") {
-    auto path = decodeURIComponent(cmd.get("path"));
+  if (message.name == "fs.rmdir") {
+    auto path = decodeURIComponent(message.get("path"));
 
     dispatch_async(queue, ^{
       self.core->fsRmdir(seq, path, [=](auto seq, auto msg, auto post) {
@@ -520,9 +510,9 @@ namespace SSC::IPC {
     return true;
   }
 
-  if (cmd.name == "fs.access") {
-    auto path = decodeURIComponent(cmd.get("path"));
-    auto mode = std::stoi(cmd.get("mode"));
+  if (message.name == "fs.access") {
+    auto path = decodeURIComponent(message.get("path"));
+    auto mode = std::stoi(message.get("mode"));
 
     dispatch_async(queue, ^{
       self.core->fsAccess(seq, path, mode, [=](auto seq, auto msg, auto post) {
@@ -532,11 +522,11 @@ namespace SSC::IPC {
     return true;
   }
 
-  if (cmd.name == "fs.open") {
-    auto cid = std::stoull(cmd.get("id"));
-    auto path = decodeURIComponent(cmd.get("path"));
-    auto flags = std::stoi(cmd.get("flags"));
-    auto mode = std::stoi(cmd.get("mode"));
+  if (message.name == "fs.open") {
+    auto cid = std::stoull(message.get("id"));
+    auto path = decodeURIComponent(message.get("path"));
+    auto flags = std::stoi(message.get("flags"));
+    auto mode = std::stoi(message.get("mode"));
 
     dispatch_async(queue, ^{
       self.core->fsOpen(seq, cid, path, flags, mode, [=](auto seq, auto msg, auto post) {
@@ -546,8 +536,8 @@ namespace SSC::IPC {
     return true;
   }
 
-  if (cmd.name == "fs.close") {
-    auto id = std::stoull(cmd.get("id"));
+  if (message.name == "fs.close") {
+    auto id = std::stoull(message.get("id"));
 
     dispatch_async(queue, ^{
       self.core->fsClose(seq, id, [=](auto seq, auto msg, auto post) {
@@ -557,8 +547,8 @@ namespace SSC::IPC {
     return true;
   }
 
-  if (cmd.name == "fs.closeOpenDescriptor") {
-    auto id = std::stoull(cmd.get("id"));
+  if (message.name == "fs.closeOpenDescriptor") {
+    auto id = std::stoull(message.get("id"));
 
     dispatch_async(queue, ^{
       self.core->fsCloseOpenDescriptor(seq, id, [=](auto seq, auto msg, auto post) {
@@ -568,8 +558,8 @@ namespace SSC::IPC {
     return true;
   }
 
-  if (cmd.name == "fs.closeOpenDescriptors") {
-    auto preserveRetained = cmd.get("retain") != "false";
+  if (message.name == "fs.closeOpenDescriptors") {
+    auto preserveRetained = message.get("retain") != "false";
     dispatch_async(queue, ^{
       self.core->fsCloseOpenDescriptors(seq, preserveRetained, [=](auto seq, auto msg, auto post) {
         [self send: seq msg: msg post: post];
@@ -578,10 +568,10 @@ namespace SSC::IPC {
     return true;
   }
 
-  if (cmd.name == "fs.read") {
-    auto id = std::stoull(cmd.get("id"));
-    auto size = std::stoi(cmd.get("size"));
-    auto offset = std::stoi(cmd.get("offset"));
+  if (message.name == "fs.read") {
+    auto id = std::stoull(message.get("id"));
+    auto size = std::stoi(message.get("size"));
+    auto offset = std::stoi(message.get("offset"));
 
     dispatch_async(queue, ^{
       self.core->fsRead(seq, id, size, offset, [=](auto seq, auto msg, auto post) {
@@ -591,9 +581,9 @@ namespace SSC::IPC {
     return true;
   }
 
-  if (cmd.name == "fs.write") {
-    auto id = std::stoull(cmd.get("id"));
-    auto offset = std::stoull(cmd.get("offset"));
+  if (message.name == "fs.write") {
+    auto id = std::stoull(message.get("id"));
+    auto offset = std::stoull(message.get("offset"));
     auto data = SSC::String(buf, bufsize);
 
     dispatch_async(queue, ^{
@@ -604,8 +594,8 @@ namespace SSC::IPC {
     return true;
   }
 
-  if (cmd.name == "fs.stat") {
-    auto path = decodeURIComponent(cmd.get("path"));
+  if (message.name == "fs.stat") {
+    auto path = decodeURIComponent(message.get("path"));
 
     dispatch_async(queue, ^{
       self.core->fsStat(seq, path, [=](auto seq, auto msg, auto post) {
@@ -615,8 +605,8 @@ namespace SSC::IPC {
     return true;
   }
 
-  if (cmd.name == "fs.fstat") {
-    auto id = std::stoull(cmd.get("id"));
+  if (message.name == "fs.fstat") {
+    auto id = std::stoull(message.get("id"));
 
     dispatch_async(queue, ^{
       self.core->fsFStat(seq, id, [=](auto seq, auto msg, auto post) {
@@ -626,8 +616,8 @@ namespace SSC::IPC {
     return true;
   }
 
-  if (cmd.name == "fs.unlink") {
-    auto path = decodeURIComponent(cmd.get("path"));
+  if (message.name == "fs.unlink") {
+    auto path = decodeURIComponent(message.get("path"));
 
     dispatch_async(queue, ^{
       self.core->fsUnlink(seq, path, [=](auto seq, auto msg, auto post) {
@@ -637,9 +627,9 @@ namespace SSC::IPC {
     return true;
   }
 
-  if (cmd.name == "fs.rename") {
-    auto src = decodeURIComponent(cmd.get("src"));
-    auto dst = decodeURIComponent(cmd.get("dst"));
+  if (message.name == "fs.rename") {
+    auto src = decodeURIComponent(message.get("src"));
+    auto dst = decodeURIComponent(message.get("dst"));
 
     dispatch_async(queue, ^{
       self.core->fsRename(seq, src, dst, [=](auto seq, auto msg, auto post) {
@@ -649,10 +639,10 @@ namespace SSC::IPC {
     return true;
   }
 
-  if (cmd.name == "fs.copyFile") {
-    auto flags = std::stoi(cmd.get("flags", "0"));
-    auto src = decodeURIComponent(cmd.get("src"));
-    auto dst = decodeURIComponent(cmd.get("dst"));
+  if (message.name == "fs.copyFile") {
+    auto flags = std::stoi(message.get("flags", "0"));
+    auto src = decodeURIComponent(message.get("src"));
+    auto dst = decodeURIComponent(message.get("dst"));
 
     dispatch_async(queue, ^{
       self.core->fsCopyFile(seq, src, dst, flags, [=](auto seq, auto msg, auto post) {
@@ -662,9 +652,9 @@ namespace SSC::IPC {
     return true;
   }
 
-  if (cmd.name == "fs.mkdir") {
-    auto path = decodeURIComponent(cmd.get("path"));
-    auto mode = std::stoi(cmd.get("mode"));
+  if (message.name == "fs.mkdir") {
+    auto path = decodeURIComponent(message.get("path"));
+    auto mode = std::stoi(message.get("mode"));
 
     dispatch_async(queue, ^{
       self.core->fsMkdir(seq, path, mode, [=](auto seq, auto msg, auto post) {
@@ -674,9 +664,9 @@ namespace SSC::IPC {
     return true;
   }
 
-  if (cmd.name == "fs.opendir") {
-    auto id = std::stoull(cmd.get("id"));
-    auto path = decodeURIComponent(cmd.get("path"));
+  if (message.name == "fs.opendir") {
+    auto id = std::stoull(message.get("id"));
+    auto path = decodeURIComponent(message.get("path"));
 
     dispatch_async(queue, ^{
       self.core->fsOpendir(seq, id, path, [=](auto seq, auto msg, auto post) {
@@ -686,9 +676,9 @@ namespace SSC::IPC {
     return true;
   }
 
-  if (cmd.name == "fs.readdir") {
-    auto id = std::stoull(cmd.get("id"));
-    auto entries = std::stoi(cmd.get("entries", "256"));
+  if (message.name == "fs.readdir") {
+    auto id = std::stoull(message.get("id"));
+    auto entries = std::stoi(message.get("entries", "256"));
 
     dispatch_async(queue, ^{
       self.core->fsReaddir(seq, id, entries, [=](auto seq, auto msg, auto post) {
@@ -698,8 +688,8 @@ namespace SSC::IPC {
     return true;
   }
 
-  if (cmd.name == "fs.closedir") {
-    auto id = std::stoull(cmd.get("id"));
+  if (message.name == "fs.closedir") {
+    auto id = std::stoull(message.get("id"));
 
     dispatch_async(queue, ^{
       self.core->fsClosedir(seq, id, [=](auto seq, auto msg, auto post) {
@@ -710,9 +700,9 @@ namespace SSC::IPC {
   }
 
   // TODO this is a generalization that doesnt work
-  if (cmd.get("id").size() != 0) {
+  if (message.get("id").size() != 0) {
     try {
-      peerId = std::stoull(cmd.get("id"));
+      peerId = std::stoull(message.get("id"));
     } catch (...) {
       auto msg = SSC::format(R"MSG({
         "err": { "message": "invalid peerId" }
@@ -722,8 +712,8 @@ namespace SSC::IPC {
     }
   }
 
-  if (cmd.name == "external" || cmd.name == "open.external") {
-    NSString *url = [NSString stringWithUTF8String:SSC::decodeURIComponent(cmd.get("value")).c_str()];
+  if (message.name == "external" || message.name == "open.external") {
+    NSString *url = [NSString stringWithUTF8String:SSC::decodeURIComponent(message.get("value")).c_str()];
     #if MACOS == 1
       [[NSWorkspace sharedWorkspace] openURL:[NSURL URLWithString: url]];
     #else
@@ -732,7 +722,7 @@ namespace SSC::IPC {
     return true;
   }
 
-  if (cmd.name == "os.networkInterfaces") {
+  if (message.name == "os.networkInterfaces") {
     dispatch_async(queue, ^{
       auto msg = self.core->getNetworkInterfaces();
       [self send: seq msg: msg post: Post{}];
@@ -740,7 +730,7 @@ namespace SSC::IPC {
     return true;
   }
 
-  if (cmd.name == "cwd" || cmd.name == "process.cwd") {
+  if (message.name == "cwd" || message.name == "process.cwd") {
     NSFileManager *fileManager;
     NSString *currentDirectoryPath;
 
@@ -758,7 +748,7 @@ namespace SSC::IPC {
     return true;
   }
 
-  if (cmd.name == "os.platform") {
+  if (message.name == "os.platform") {
     dispatch_async(queue, ^{
       auto msg = SSC::format(R"JSON({
         "source": "os.platform",
@@ -770,7 +760,7 @@ namespace SSC::IPC {
     return true;
   }
 
-  if (cmd.name == "os.type") {
+  if (message.name == "os.type") {
     dispatch_async(queue, ^{
       auto msg = SSC::format(R"JSON({
         "source": "os.type",
@@ -782,7 +772,7 @@ namespace SSC::IPC {
     return true;
   }
 
-  if (cmd.name == "os.arch") {
+  if (message.name == "os.arch") {
     dispatch_async(queue, ^{
       auto msg = SSC::format(R"JSON({
         "source": "os.arch",
@@ -794,13 +784,13 @@ namespace SSC::IPC {
     return true;
   }
 
-  if (cmd.name == "bufferSize") {
-    auto buffer = std::stoi(cmd.get("buffer", "0"));
-    auto size = std::stoi(cmd.get("size", "0"));
+  if (message.name == "bufferSize") {
+    auto buffer = std::stoi(message.get("buffer", "0"));
+    auto size = std::stoi(message.get("size", "0"));
     uint64_t id = 0ll;
 
     try {
-      id = std::stoull(cmd.get("id"));
+      id = std::stoull(message.get("id"));
     } catch (...) {
       dispatch_async(queue, ^{
         auto err = SSC::format(R"MSG({
@@ -824,8 +814,8 @@ namespace SSC::IPC {
     return true;
   }
 
-  if (cmd.name == "udp.close" || cmd.name == "close") {
-    auto peerId = std::stoull(cmd.get("id"));
+  if (message.name == "udp.close" || message.name == "close") {
+    auto peerId = std::stoull(message.get("id"));
 
     dispatch_async(queue, ^{
       self.core->close(seq, peerId, [=](auto seq, auto msg, auto post) {
@@ -835,19 +825,19 @@ namespace SSC::IPC {
     return true;
   }
 
-  if (cmd.name == "udp.connect") {
-    auto strId = cmd.get("id");
+  if (message.name == "udp.connect") {
+    auto strId = message.get("id");
     SSC::String err = "";
     uint64_t peerId = 0ll;
     int port = 0;
-    auto strPort = cmd.get("port");
-    auto ip = cmd.get("address");
+    auto strPort = message.get("port");
+    auto ip = message.get("address");
 
     if (strId.size() == 0) {
       err = "invalid peerId";
     } else {
       try {
-        peerId = std::stoull(cmd.get("id"));
+        peerId = std::stoull(message.get("id"));
       } catch (...) {
         err = "invalid peerId";
       }
@@ -890,8 +880,8 @@ namespace SSC::IPC {
     return true;
   }
 
-  if (cmd.name == "udp.disconnect") {
-    auto strId = cmd.get("id");
+  if (message.name == "udp.disconnect") {
+    auto strId = message.get("id");
 
     if (strId.size() == 0) {
       auto msg = SSC::format(R"MSG({
@@ -917,8 +907,8 @@ namespace SSC::IPC {
     return true;
   }
 
-  if (cmd.name == "udp.getPeerName") {
-    auto strId = cmd.get("id");
+  if (message.name == "udp.getPeerName") {
+    auto strId = message.get("id");
 
     if (strId.size() == 0) {
       auto msg = SSC::format(R"MSG({
@@ -944,8 +934,8 @@ namespace SSC::IPC {
     return true;
   }
 
-  if (cmd.name == "udp.getSockName") {
-    auto strId = cmd.get("id");
+  if (message.name == "udp.getSockName") {
+    auto strId = message.get("id");
 
     if (strId.size() == 0) {
       auto msg = SSC::format(R"MSG({
@@ -971,8 +961,8 @@ namespace SSC::IPC {
     return true;
   }
 
-  if (cmd.name == "udp.getState") {
-    auto strId = cmd.get("id");
+  if (message.name == "udp.getState") {
+    auto strId = message.get("id");
 
     if (strId.size() == 0) {
       auto msg = SSC::format(R"MSG({
@@ -998,16 +988,16 @@ namespace SSC::IPC {
     return true;
   }
 
-  if (cmd.name == "udp.send") {
+  if (message.name == "udp.send") {
     int offset = 0;
     int port = 0;
     uint64_t peerId;
     SSC::String err;
 
-    auto ephemeral = cmd.get("ephemeral") == "true";
-    auto strOffset = cmd.get("offset");
-    auto strPort = cmd.get("port");
-    auto ip = cmd.get("address");
+    auto ephemeral = message.get("ephemeral") == "true";
+    auto strOffset = message.get("offset");
+    auto strPort = message.get("port");
+    auto ip = message.get("address");
 
     if (strOffset.size() > 0) {
       try {
@@ -1028,7 +1018,7 @@ namespace SSC::IPC {
     }
 
     try {
-      peerId = std::stoull(cmd.get("id"));
+      peerId = std::stoull(message.get("id"));
     } catch (...) {
       err = "invalid peerId";
     }
@@ -1059,9 +1049,9 @@ namespace SSC::IPC {
     return true;
   }
 
-  if (cmd.name == "udp.bind") {
-    auto ip = cmd.get("address");
-    auto reuseAddr = cmd.get("reuseAddr") == "true";
+  if (message.name == "udp.bind") {
+    auto ip = message.get("address");
+    auto reuseAddr = message.get("reuseAddr") == "true";
     SSC::String err;
     int port;
     uint64_t peerId = 0ll;
@@ -1071,7 +1061,7 @@ namespace SSC::IPC {
     }
 
     try {
-      peerId = std::stoull(cmd.get("id"));
+      peerId = std::stoull(message.get("id"));
     } catch (...) {
       auto msg = SSC::format(R"({ "err": { "message": "property 'peerId' required" } })");
       [self send: seq msg: msg post: Post{}];
@@ -1079,7 +1069,7 @@ namespace SSC::IPC {
     }
 
     try {
-      port = std::stoi(cmd.get("port"));
+      port = std::stoi(message.get("port"));
     } catch (...) {
       auto msg = SSC::format(R"({ "err": { "message": "property 'port' required" } })");
       [self send: seq msg: msg post: Post{}];
@@ -1095,11 +1085,11 @@ namespace SSC::IPC {
     return true;
   }
 
-  if (cmd.name == "udp.readStart") {
+  if (message.name == "udp.readStart") {
     uint64_t peerId;
 
     try {
-      peerId = std::stoull(cmd.get("id"));
+      peerId = std::stoull(message.get("id"));
     } catch (...) {
       auto msg = SSC::format(R"({ "err": { "message": "property 'peerId' required" } })");
       [self send: seq msg: msg post: Post{}];
@@ -1115,11 +1105,11 @@ namespace SSC::IPC {
     return true;
   }
 
-  if (cmd.name == "udp.readStop") {
+  if (message.name == "udp.readStop") {
     uint64_t peerId;
 
     try {
-      peerId = std::stoull(cmd.get("id"));
+      peerId = std::stoull(message.get("id"));
     } catch (...) {
       auto msg = SSC::format(R"({ "err": { "message": "property 'peerId' required" } })");
       [self send: seq msg: msg post: Post{}];
@@ -1135,11 +1125,11 @@ namespace SSC::IPC {
     return true;
   }
 
-  if (cmd.name == "dns.lookup") {
-    auto hostname = cmd.get("hostname");
+  if (message.name == "dns.lookup") {
+    auto hostname = message.get("hostname");
     SSC::String err = "";
 
-    auto strFamily = cmd.get("family");
+    auto strFamily = message.get("family");
     int family = 0;
 
     if (strFamily.size() > 0) {
@@ -1150,10 +1140,10 @@ namespace SSC::IPC {
     }
 
     // TODO: support these options
-    // auto family = std::stoi(cmd.get("family"));
-    // auto hints = std::stoi(cmd.get("hints"));
-    // auto all = bool(std::stoi(cmd.get("all")));
-    // auto verbatim = bool(std::stoi(cmd.get("verbatim")));
+    // auto family = std::stoi(message.get("family"));
+    // auto hints = std::stoi(message.get("hints"));
+    // auto all = bool(std::stoi(message.get("all")));
+    // auto verbatim = bool(std::stoi(message.get("verbatim")));
 
     dispatch_async(queue, ^{
       self.core->dnsLookup(seq, hostname, family, [=](auto seq, auto msg, auto post) {

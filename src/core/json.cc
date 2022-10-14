@@ -1,6 +1,6 @@
 #include "json.hh"
 
-namespace SSC::IPC::JSON {
+namespace SSC::JSON {
   Any::Any () {
     this->pointer = nullptr;
     this->type = Type::Null;

@@ -1,5 +1,4 @@
 #include "core.hh"
-#include "../ipc/json.hh"
 
 namespace SSC {
   static Mutex instanceMutex;
@@ -156,7 +155,7 @@ namespace SSC {
     }
   }
 
-  String Core::getNetworkInterfaces () const {
+  JSON::Object Core::getNetworkInterfaces () const {
     uv_interface_address_t *infos = nullptr;
     StringStream value;
     StringStream v4;
@@ -166,21 +165,20 @@ namespace SSC {
     int rc = uv_interface_addresses(&infos, &count);
 
     if (rc != 0) {
-      auto result = IPC::JSON::Object(IPC::JSON::Object::Entries {
+      return JSON::Object(JSON::Object::Entries {
         {"source", "os.networkInterfaces"},
-        {"err", IPC::JSON::Object::Entries {
+        {"err", JSON::Object::Entries {
           {"type", "InternalError"},
           {"message",
             String("Unable to get network interfaces: ") + String(uv_strerror(rc))
           }
         }}
       });
-
-      return result.str();
     }
 
-    v4 << "\"ipv4\":{";
-    v6 << "\"ipv6\":{";
+    JSON::Object::Entries ipv4;
+    JSON::Object::Entries ipv6;
+    JSON::Object::Entries data;
 
     for (int i = 0; i < count; ++i) {
       uv_interface_address_t info = infos[i];
@@ -196,36 +194,41 @@ namespace SSC {
       );
 
       if (addr->sin_family == AF_INET) {
-        v4 << "\"" << String(info.name) << "\":{";
-        v4 << "\"address\":\"" << SSC::addrToIPv4(addr) << "\",";
-        v4 << "\"mac\":\"" << String(mac, 17) << "\",";
-        v4 << "\"internal\":" << String(info.is_internal == 0 ? "false" : "true") << "";
-        v4 << "},";
+        JSON::Object::Entries entries;
+        entries["internal"] = info.is_internal == 0 ? "false" : "true";
+        entries["address"] = addrToIPv4(addr);
+        entries["mac"] = String(mac, 17);
+        ipv4[String(info.name)] = entries;
       }
 
       if (addr->sin_family == AF_INET6) {
-        v6 << "\"" << String(info.name) << "\":\{";
-        v6 << "\"address\":\"" << SSC::addrToIPv6((struct sockaddr_in6*) addr) << "\",";
-        v6 << "\"mac\":\"" << String(mac, 17) << "\",";
-        v6 << "\"internal\":" << String(info.is_internal == 0 ? "false" : "true") << "";
-        v6 << "},";
+        JSON::Object::Entries entries;
+        entries["internal"] = info.is_internal == 0 ? "false" : "true";
+        entries["address"] = addrToIPv6((struct sockaddr_in6*) addr);
+        entries["mac"] = String(mac, 17);
+        ipv6[String(info.name)] = entries;
       }
     }
 
     uv_free_interface_addresses(infos, count);
 
-    v4 << "\"local\":\"0.0.0.0\"}";
-    v6 << "\"local\":\"::1\"}";
+    data["ipv4"] = ipv4;
+    data["ipv6"] = ipv6;
 
-    value << "{\"data\":{" << v4.str() << "," << v6.str() << "}}";
-
-    return value.str();
+    return JSON::Object(JSON::Object::Entries {{ "data", data }});
   }
 
-  void Core::dnsLookup (String seq, String hostname, int family, Callback cb) {
+  struct DNSLookupRequestContext {
+    String seq;
+    std::function<void(String, JSON::Any, Post)> cb;
+  };
+
+  void Core::dnsLookup (String seq, String hostname, int family, std::function<void(String, JSON::Any, Post)> cb) {
     dispatchEventLoop([=, this]() {
-      auto ctx = new PeerRequestContext(seq, cb);
+      auto ctx = new DNSLookupRequestContext;
       auto loop = getEventLoop();
+      ctx->seq = seq;
+      ctx->cb = cb;
 
       struct addrinfo hints = {0};
 
@@ -244,18 +247,19 @@ namespace SSC {
       resolver->data = ctx;
 
       auto err = uv_getaddrinfo(loop, resolver, [](uv_getaddrinfo_t *resolver, int status, struct addrinfo *res) {
-        auto ctx = (PeerRequestContext*) resolver->data;
+        auto ctx = (DNSLookupRequestContext*) resolver->data;
 
         if (status < 0) {
-          auto result = IPC::JSON::Object(IPC::JSON::Object::Entries {
+          auto result = JSON::Object::Entries {
             {"source", "dns.lookup"},
-            {"err", IPC::JSON::Object::Entries {
+            {"err", JSON::Object::Entries {
               {"code", std::to_string(status)},
               {"message", String(uv_strerror(status))}
             }}
-          });
+          };
 
-          ctx->end(result.str());
+          ctx->cb(ctx->seq, result, Post{});
+          delete ctx;
           return;
         }
 
@@ -279,29 +283,31 @@ namespace SSC {
             ? 6
             : 0;
 
-        auto result = IPC::JSON::Object(IPC::JSON::Object::Entries {
+        auto result = JSON::Object::Entries {
           {"source", "dns.lookup"},
-          {"data", IPC::JSON::Object::Entries {
+          {"data", JSON::Object::Entries {
             {"address", address},
             {"family", family}
           }}
-        });
+        };
 
         uv_freeaddrinfo(res);
-        ctx->end(result.str());
+        ctx->cb(ctx->seq, result, Post{});
+        delete ctx;
 
       }, hostname.c_str(), nullptr, &hints);
 
       if (err < 0) {
-        auto result = IPC::JSON::Object(IPC::JSON::Object::Entries {
+        auto result = JSON::Object::Entries {
           {"source", "dns.lookup"},
-          {"err", IPC::JSON::Object::Entries {
+          {"err", JSON::Object::Entries {
             {"code", std::to_string(err)},
             {"message", String(uv_strerror(err))}
           }}
-        });
+        };
 
-        ctx->end(result.str());
+        ctx->cb(seq, result, Post{});
+        delete ctx;
       }
     });
   }

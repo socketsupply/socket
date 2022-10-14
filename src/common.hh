@@ -120,13 +120,14 @@
 #define SSC_VERSION_HASH ""
 #endif
 
+      /*
 #if !DEBUG
 #ifdef debug
 #undef debug
 #endif
 #define debug(format, ...)
 #endif
-
+*/
 #define TO_STR(arg) #arg
 #define STR_VALUE(arg) TO_STR(arg)
 
@@ -154,7 +155,7 @@ namespace SSC {
   template <int K> using Semaphore = std::counting_semaphore<K>;
   template <typename T> using Vector = std::vector<T>;
 
-  using BinarySemaphore = Semaphore<1>; // aka `Semaphore<1>`
+  using BinarySemaphore = std::binary_semaphore; // aka `Semaphore<1>`
   using ExitCallback = std::function<void(int code)>;
   using Map = std::map<String, String>;
   using Mutex = std::recursive_mutex;

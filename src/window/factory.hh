@@ -16,20 +16,7 @@ namespace SSC {
     ExitCallback onExit = nullptr;
   };
 
-  template <class Window> class IWindowFactory {
-    public:
-      WindowFactoryOptions options;
-
-      virtual void destroy () = 0;
-      virtual void configure (WindowFactoryOptions) = 0;
-      virtual Window* getWindow (int) = 0;
-      virtual void destroyWindow (int) = 0;
-      virtual void destroyWindow (Window*) = 0;
-      virtual Window* createWindow (WindowOptions) = 0;
-      virtual Window* createDefaultWindow (WindowOptions) = 0;
-  };
-
-  template <class Window, class App> class WindowFactory : public IWindowFactory<Window> {
+  class WindowFactory  {
     public:
       enum WindowStatus {
         WINDOW_ERROR = -1,
@@ -51,7 +38,7 @@ namespace SSC {
       class WindowWithMetadata : public Window {
         public:
           WindowStatus status;
-          WindowFactory<Window, App> &factory;
+          WindowFactory &factory;
 
           WindowWithMetadata (
             WindowFactory &factory,
@@ -133,6 +120,7 @@ namespace SSC {
       std::vector<bool> inits;
       std::vector<WindowWithMetadata*> windows;
       std::recursive_mutex mutex;
+      WindowFactoryOptions options;
 
       WindowFactory (App &app) :
         app(app),

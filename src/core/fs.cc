@@ -1270,34 +1270,26 @@ namespace SSC {
     });
   }
 
-  String Core::getFSConstants () {
+  JSON::Object Core::getFSConstants () {
     auto constants = Core::getFSConstantsMap();
     auto count = constants.size();
-    SSC::StringStream stream;
-
-    stream << "{\"source\": \"fs.constants\",";
-    stream << "\"data\": {";
+    JSON::Object::Entries data;
 
     for (auto const &tuple : constants) {
       auto key = tuple.first;
       auto value = tuple.second;
-
-      stream << "\"" << key << "\":" << value;
-
-      if (--count > 0) {
-        stream << ",";
-      }
+      data[key] = value;
     }
 
-    stream << "}";
-    stream << "}";
-
-    return stream.str();
+    return JSON::Object::Entries {
+      {"source", "fs.constants"},
+      {"data", data}
+    };
   }
 
-#define SET_CONSTANT(c) constants[#c] = std::to_string(c);
-  SSC::Map Core::getFSConstantsMap () {
-    SSC::Map constants;
+#define SET_CONSTANT(c) constants[#c] = (c);
+  std::map<String, int32_t> Core::getFSConstantsMap () {
+    std::map<String, int32_t> constants;
 
 #ifdef UV_DIRENT_UNKNOWN
     SET_CONSTANT(UV_DIRENT_UNKNOWN)

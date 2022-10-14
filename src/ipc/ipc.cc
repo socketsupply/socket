@@ -2,6 +2,17 @@
 #include "ipc.hh"
 
 namespace SSC::IPC {
+  Message::Message (const Message& message) {
+    this->body.bytes = message.body.bytes;
+    this->body.size = message.body.size;
+    this->value = message.value;
+    this->index = message.index;
+    this->name = message.name;
+    this->seq = message.seq;
+    this->uri = message.uri;
+    this->args = message.args;
+  }
+
   Message::Message (const String& source, char *bytes, size_t size)
     : Message(source)
   {
@@ -66,17 +77,32 @@ namespace SSC::IPC {
   }
 
   Result::Result () {
-    this->data = JSON::Any(nullptr);
-    this->err = JSON::Any(nullptr);
   }
 
-  Result::Result (const Message& message, const String& source)
-    : Result() {
+  Result::Result (Message::Seq seq, const Message& message) {
     this->message = message;
-    this->source = source;
+    this->source = message.name;
+    this->seq = seq;
+  }
+
+  Result::Result (Message::Seq seq, const Message& message, JSON::Any json)
+    : Result(seq, message, json, Post{}) { }
+
+  Result::Result (Message::Seq seq, const Message& message, JSON::Any json, Post post)
+    : Result(seq, message)
+  {
+    this->post = post;
+
+    if (json.type != JSON::Type::Any) {
+      this->json = json;
+    }
   }
 
   String Result::str () const {
+    if (this->json.type != JSON::Type::Null) {
+      return this->json.str();
+    }
+
     auto entries = JSON::Object::Entries {
       {"source", this->source},
       {"data", this->data},

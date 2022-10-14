@@ -1268,6 +1268,7 @@ LOCAL_SRC_FILES =    \
   core/core.cc       \
   core/fs.cc         \
   core/javascript.cc \
+  core/json.cc       \
   core/loop.cc       \
   core/peer.cc       \
   core/timers.cc     \
