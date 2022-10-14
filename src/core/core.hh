@@ -9,6 +9,7 @@
 #include <uv.h>
 
 #include "../common.hh"
+#include "json.hh"
 #include "runtime-preload.hh"
 
 #if defined(__APPLE__)
@@ -331,8 +332,8 @@ namespace SSC {
       ~Core ();
 
       // fs
-      static std::map<String, String> getFSConstantsMap ();
-      String getFSConstants ();
+      static std::map<String, int32_t> getFSConstantsMap ();
+      JSON::Object getFSConstants ();
       void fsAccess (String seq, String path, int mode, Callback cb);
       void fsChmod (String seq, String path, int mode, Callback cb);
       void fsCopyFile (String seq, String src, String dst, int mode, Callback cb);
@@ -381,10 +382,10 @@ namespace SSC {
       Peer* createPeer (peer_type_t type, uint64_t id, bool isEphemeral);
 
       // core
-      String getNetworkInterfaces () const;
+      JSON::Object getNetworkInterfaces () const;
       void bufferSize (String seq, uint64_t peerId, int size, int buffer, Callback cb);
       void close (String seq, uint64_t peerId, Callback cb);
-      void dnsLookup (String seq, String hostname, int family, Callback cb);
+      void dnsLookup (String seq, String hostname, int family, std::function<void(String, JSON::Any, Post)> cb);
       void handleEvent (String seq, String event, String data, Callback cb);
 
       Post getPost (uint64_t id);

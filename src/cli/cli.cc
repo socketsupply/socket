@@ -945,11 +945,12 @@ int main (const int argc, const char* argv[]) {
       flags += " -luv";
       flags += " " + getCxxFlags();
 
-      files += prefixFile("src/app/mac.cc");
+      files += prefixFile("src/app/app.cc");
       files += prefixFile("src/core/apple.mm");
       files += prefixFile("src/core/core.cc");
       files += prefixFile("src/core/fs.cc");
       files += prefixFile("src/core/javascript.cc");
+      files += prefixFile("src/core/json.cc");
       files += prefixFile("src/core/loop.cc");
       files += prefixFile("src/core/peer.cc");
       files += prefixFile("src/core/timers.cc");
@@ -958,7 +959,6 @@ int main (const int argc, const char* argv[]) {
       files += prefixFile("src/ipc/bridge.cc");
       files += prefixFile("src/ipc/bridge.mm");
       files += prefixFile("src/ipc/ipc.cc");
-      files += prefixFile("src/ipc/json.cc");
       files += prefixFile("src/process/unix.cc");
       files += prefixFile("src/window/mac.mm");
 
@@ -1380,10 +1380,11 @@ int main (const int argc, const char* argv[]) {
       flags += " -L" + prefixFile("lib");
       flags += " -luv";
 
-      files += prefixFile("src/app/linux.cc");
+      files += prefixFile("src/app/app.cc");
       files += prefixFile("src/core/core.cc");
       files += prefixFile("src/core/fs.cc");
       files += prefixFile("src/core/javascript.cc");
+      files += prefixFile("src/core/json.cc");
       files += prefixFile("src/core/loop.cc");
       files += prefixFile("src/core/peer.cc");
       files += prefixFile("src/core/timers.cc");
@@ -1391,7 +1392,6 @@ int main (const int argc, const char* argv[]) {
       files += prefixFile("src/desktop/main.cc");
       files += prefixFile("src/ipc/bridge.cc");
       files += prefixFile("src/ipc/ipc.cc");
-      files += prefixFile("src/ipc/json.cc");
       files += prefixFile("src/process/unix.cc");
       files += prefixFile("src/window/linux.cc");
 
@@ -1474,7 +1474,7 @@ int main (const int argc, const char* argv[]) {
         " -L" + prefix + "\\lib"
       ;
 
-      files += prefixFile("src\\app\\win.cc");
+      files += prefixFile("src\\app\\app.cc");
       files += prefixFile("src\\core\\core.cc");
       files += prefixFile("src\\core\\fs.cc");
       files += prefixFile("src\\core\\javascript.cc");

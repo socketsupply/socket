@@ -1,9 +1,9 @@
-#ifndef SSC_IPC_JSON_H
-#define SSC_IPC_JSON_H
+#ifndef SSC_CORE_JSON_H
+#define SSC_CORE_JSON_H
 
 #include "../common.hh"
 
-namespace SSC::IPC::JSON {
+namespace SSC::JSON {
   enum class Type {
     Any,
     Null,
@@ -34,7 +34,7 @@ namespace SSC::IPC::JSON {
       D data;
   };
 
-  class Any : Value<void *, Type::Any> {
+  class Any : public Value<void *, Type::Any> {
     public:
       std::shared_ptr<void> pointer;
 
@@ -65,7 +65,7 @@ namespace SSC::IPC::JSON {
   class Null : Value<std::nullptr_t, Type::Null> {
     public:
       Null () = default;
-      nullptr_t value () const { return nullptr; }
+      std::nullptr_t value () const { return nullptr; }
       SSC::String str () const { return "null"; }
   };
 
@@ -123,5 +123,5 @@ namespace SSC::IPC::JSON {
       SSC::String str ()  const { return SSC::format("\"$S\"", this->data); }
       SSC::String value () const { return this->data; }
   };
-} // SSC::IPC::JSON
+} // SSC::JSON
 #endif

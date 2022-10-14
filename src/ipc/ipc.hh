@@ -2,7 +2,6 @@
 #define SSC_IPC_H
 
 #include "../core/core.hh"
-#include "json.hh"
 
 namespace SSC::IPC {
   class Bridge;
@@ -14,7 +13,6 @@ namespace SSC::IPC {
   * @TODO possibly harden data validation
   */
   class Message {
-    Map args;
     public:
       using Seq = String;
       struct MessageBody {
@@ -28,8 +26,10 @@ namespace SSC::IPC {
       String seq = "";
       String uri = "";
       int index = -1;
+      Map args;
 
       Message () = default;
+      Message (const Message& message);
       Message (const String& source);
       Message (const String& source, char *bytes, size_t size);
       String get (const String& key) const;
@@ -44,13 +44,17 @@ namespace SSC::IPC {
       using Err = JSON::Any;
 
       Message message;
-      String source;
+      Message::Seq seq;
+      String source = "";
+      JSON::Any json = nullptr;
       Post post;
-      Data data;
-      Err err;
+      Data data = nullptr;
+      Err err = nullptr;
 
       Result ();
-      Result (const Message& message, const String& source);
+      Result (Message::Seq, const Message&);
+      Result (Message::Seq, const Message&, JSON::Any);
+      Result (Message::Seq, const Message&, JSON::Any, Post);
       String str () const;
   };
 
@@ -63,44 +67,25 @@ namespace SSC::IPC {
       using MessageCallback = std::function<void(const Message, Router*, ReplyCallback)>;
       using Table = std::map<String, MessageCallback>;
 
-      struct Implementation {
-        EvaluateJavaScriptCallback evaluateJavaScript = nullptr;
-        std::function<void(DispatchCallback)> dispatch = nullptr;
-      };
-
-      Implementation implementation;
+      EvaluateJavaScriptCallback evaluateJavaScriptFunction = nullptr;
+      std::function<void(DispatchCallback)> dispatchFunction = nullptr;
       Table table;
       Core *core = nullptr;
 
-      Router () {}
+      Router ();
       Router (Core *core);
 
-      void bind (const String& name, MessageCallback callback);
-      void unbind (const String& name);
+      void defineFunction (const String& name, MessageCallback callback);
+      void removeFunction (const String& name);
       bool dispatch (DispatchCallback callback);
       bool emit (const String &name, const String& data);
       bool evaluateJavaScript (const String javaScript);
-      bool invoke (const Message& message, ResultCallback callback);
       bool invoke (const Message& message);
-      bool push (const JSON::Any data);
-      bool push (const String& data);
-      bool push (const Post &post);
-      bool push (const JSON::Any data, const Post &post);
-      bool push (const String& data, const Post &post);
-      bool reply (const Message& message, const JSON::Any data, const Post &post);
-      bool reply (const Message& message, const JSON::Any data);
-      bool reply (const Message& message, const String& data);
-      bool reply (const Message& message, const String& data, const Post &post);
-      bool route (const String msg);
-      bool route (const String msg, char *bytes, size_t size);
-      bool route (const Message& message);
-      bool route (const Message& message, ResultCallback);
-      bool reply (const Result& result);
-      bool send (const Message::Seq& seq, const JSON::Any data);
-      bool send (const Message::Seq& seq, const JSON::Any data, const Post& post);
+      bool invoke (const Message& message, ResultCallback callback);
+      bool invoke (const String msg, char *bytes, size_t size);
+      bool invoke (const String msg, char *bytes, size_t size, ResultCallback callback);
       bool send (const Message::Seq& seq, const String& data);
       bool send (const Message::Seq& seq, const String& data, const Post& post);
-      void setImplementation (Implementation implementation);
   };
 
   class Bridge {
@@ -110,6 +95,7 @@ namespace SSC::IPC {
 
       Bridge () {}
       Bridge (Core *core);
+      bool route (const String msg, char *bytes, size_t size);
   };
 } // SSC::IPC
 
@@ -122,7 +108,7 @@ namespace SSC::IPC {
 @property (strong, nonatomic) SSCBridgedWebView* webview;
 @property (strong, nonatomic) SSCBluetoothDelegate* bluetooth;
 @property (nonatomic) SSC::Core* core;
-@property (nonatomic) SSC::IPC::Router* router; // internal
+@property (nonatomic) SSC::IPC::Router* router;
 @property (assign) nw_path_monitor_t monitor;
 - (bool) route: (SSC::String) msg
            buf: (char*) buf

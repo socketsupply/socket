@@ -7,10 +7,19 @@ static GtkTargetEntry droppableTypes[] = {
 namespace SSC {
   Window::Window (App& app, WindowOptions opts) : app(app) , opts(opts) {
     setenv("GTK_OVERLAY_SCROLLING", "1", 1);
-    accelGroup = gtk_accel_group_new();
-    popupId = 0;
-    window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-    popup = nullptr;
+    this->accelGroup = gtk_accel_group_new();
+    this->popupId = 0;
+    this->window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+    this->popup = nullptr;
+
+    this->bridge = new IPC::Bridge(app.core);
+    this->bridge->router.dispatchFunction = [&app] (auto callback) {
+      app.dispatch([callback] { callback(); });
+    };
+
+    this->bridge->router.evaluateJavaScriptFunction = [this] (auto js) {
+      this->eval(js);
+    };
 
     if (opts.resizable) {
       gtk_window_set_default_size(GTK_WINDOW(window), opts.width, opts.height);
@@ -28,17 +37,21 @@ namespace SSC {
     g_signal_connect(
       cm,
       "script-message-received::external",
-      G_CALLBACK(+[](WebKitUserContentManager*, WebKitJavascriptResult* r, gpointer arg) {
-        auto *window = static_cast<Window*>(arg);
-        auto value = webkit_javascript_result_get_js_value(r);
-        auto str = SSC::String(jsc_value_to_string(value));
+      G_CALLBACK(+[](
+        WebKitUserContentManager* cm,
+        WebKitJavascriptResult* result,
+        gpointer ptr
+      ) {
+        auto window = static_cast<Window*>(ptr);
+        auto value = webkit_javascript_result_get_js_value(result);
+        auto str = String(jsc_value_to_string(value));
 
         char *buf = nullptr;
         size_t bufsize = 0;
 
         // 'b5' for 'buffer'
         if (str.size() >= 2 && str.at(0) == 'b' && str.at(1) == '5') {
-          gsize size = 0;
+          size_t size = 0;
           auto bytes = jsc_value_to_string_as_bytes(value);
           auto data = (char *) g_bytes_get_data(bytes, &size);
 
@@ -53,16 +66,16 @@ namespace SSC {
             buf = new char[size - offset]{0};
             bufsize = decodeUTF8(buf, data + offset, size - offset);
 
-            str = SSC::String("ipc://buffer.queue?")
-              + SSC::String("index=") + SSC::String(index)
-              + SSC::String("&seq=") + SSC::String(seq);
+            str = String("ipc://buffer.queue?")
+              + String("index=") + String(index)
+              + String("&seq=") + String(seq);
 
             delete [] index;
             delete [] seq;
           }
         }
 
-        if (!window->app.bridge.router.route(str, buf, bufsize)) {
+        if (!window->bridge->route(str, buf, bufsize)) {
           if (window->onMessage != nullptr) {
             window->onMessage(str);
           }
@@ -81,12 +94,12 @@ namespace SSC {
       G_OBJECT(webview),
       "decide-policy",
       G_CALLBACK(+[](
-        WebKitWebView           *web_view,
-        WebKitPolicyDecision    *decision,
-        WebKitPolicyDecisionType decision_type,
-        gpointer                 user_data
+        WebKitWebView* webview,
+        WebKitPolicyDecision* decision,
+        WebKitPolicyDecisionType decisionType,
+        gpointer userData
       ) {
-        if (decision_type != WEBKIT_POLICY_DECISION_TYPE_NAVIGATION_ACTION) {
+        if (decisionType != WEBKIT_POLICY_DECISION_TYPE_NAVIGATION_ACTION) {
           return true;
         }
 

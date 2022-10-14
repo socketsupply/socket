@@ -141,7 +141,17 @@ void uncaughtExceptionHandler (NSException *exception) {
 
   core = new SSC::Core;
   bridge = [SSCIPCBridge new];
-  bridge.impl = new SSC::IPC::Bridge(core);
+  bridge.router = new SSC::IPC::Router(app.core);
+  bridge.router.dispatchFunction = [bridge] (auto callback) {
+    [bridge dispatch: ^{ callback(); }];
+  };
+
+  bridge.router.evaluateJavaScriptFunction = [this](auto js) {
+    dispatch_async(dispatch_get_main_queue(), ^{
+      auto script = [NSString stringWithUTF8String: js.c_str()];
+      [self.webview evaluateJavaScript: script completionHandler: nil];
+    });
+  };
 
   bluetooth = [SSCBluetoothDelegate new];
   [bluetooth setBridge: bridge];

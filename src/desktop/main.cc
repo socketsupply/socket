@@ -9,27 +9,35 @@
 // magically gives us argc and argv.
 //
 #if defined(_WIN32)
-#define MAIN                       \
-  int argc = __argc;               \
-  char** argv = __argv;            \
-  int CALLBACK WinMain (           \
-    _In_ HINSTANCE instanceId,     \
-    _In_ HINSTANCE hPrevInstance,  \
-    _In_ LPSTR lpCmdLine,          \
+#define MAIN                         \
+  static const int argc = __argc;    \
+  static const char** argv = __argv; \
+  int CALLBACK WinMain (             \
+    _In_ HINSTANCE instanceId,       \
+    _In_ HINSTANCE hPrevInstance,    \
+    _In_ LPSTR lpCmdLine,            \
     _In_ int nCmdShow)
 #else
-#define MAIN                       \
-  int instanceId = 0;              \
-  int main (int argc, char** argv)
+#define MAIN                                   \
+  const int instanceId = 0;                    \
+  int main (const int argc, const char** argv)
 #endif
 
 #define InvalidWindowIndexError(index) \
   SSC::String("Invalid index given for window: ") + std::to_string(index)
 
+#ifndef PORT
+#define PORT 0
+#endif
+
 using namespace SSC;
 
 std::function<void(int)> shutdownHandler;
-void signalHandler (int signal) { shutdownHandler(signal); }
+void signalHandler (int signal) {
+  if (shutdownHandler != nullptr) {
+    shutdownHandler(signal);
+  }
+}
 
 //
 // the MAIN macro provides a cross-platform program entry point.
@@ -38,7 +46,7 @@ void signalHandler (int signal) { shutdownHandler(signal); }
 //
 MAIN {
   App app(instanceId);
-  WindowFactory<Window, App> windowFactory(app);
+  WindowFactory windowFactory(app);
 
   app.setWindowFactory(&windowFactory);
 
@@ -298,7 +306,7 @@ MAIN {
           options.height = std::stoi(message.get("height"));
         }
 
-        if (!window || status == WindowFactory<Window, App>::WindowStatus::WINDOW_NONE) {
+        if (!window || status == WindowFactory::WindowStatus::WINDOW_NONE) {
           options.resizable = message.get("resizable") == "true" ? true : false;
           options.frameless = message.get("frameless") == "true" ? true : false;
           options.utility = message.get("utility") == "true" ? true : false;
