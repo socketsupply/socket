@@ -2,13 +2,14 @@
 
 @interface SSCWindowDelegate : NSObject <NSWindowDelegate, WKScriptMessageHandler>
 - (void) userContentController: (WKUserContentController*) userContentController
-      didReceiveScriptMessage: (WKScriptMessage*) scriptMessage;
+       didReceiveScriptMessage: (WKScriptMessage*) scriptMessage;
 @end
 
 @implementation SSCWindowDelegate
-- (void)userContentController: (WKUserContentController*) userContentController
-      didReceiveScriptMessage: (WKScriptMessage*) scriptMessage {
-        // To be overridden
+- (void) userContentController: (WKUserContentController*) userContentController
+       didReceiveScriptMessage: (WKScriptMessage*) scriptMessage
+{
+  // overloaded with `class_replaceMethod()`
 }
 @end
 

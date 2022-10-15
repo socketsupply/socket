@@ -512,7 +512,7 @@ open class Bridge(activity: WebViewActivity) {
       }
 
       when (message.command) {
-        "buffer.queue" -> {
+        "buffer.map" -> {
           if (bytes != null) {
             this.buffers[message.seq] = bytes
           }

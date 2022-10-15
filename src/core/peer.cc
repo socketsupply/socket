@@ -81,28 +81,6 @@ namespace SSC {
     return peer;
   }
 
-  void PeerRequestContext::end (String seq, String msg, Post post) {
-    auto cb = this->cb;
-
-    if (cb != nullptr) {
-      cb(seq, msg, post);
-    }
-
-    delete this;
-  }
-
-  void PeerRequestContext::end (String seq, String msg) {
-    this->end(seq, msg, Post{});
-  }
-
-  void PeerRequestContext::end (String msg, Post post) {
-    this->end(this->seq, msg, post);
-  }
-
-  void PeerRequestContext::end (String msg) {
-    this->end(this->seq, msg, Post{});
-  }
-
   int LocalPeerInfo::getsockname (uv_udp_t *socket, struct sockaddr *addr) {
     int namelen = sizeof(struct sockaddr_storage);
     return uv_udp_getsockname(socket, addr, &namelen);
@@ -438,119 +416,71 @@ namespace SSC {
     return err;
   }
 
-  void Peer::send (SSC::String seq, char *buf, int len, int port, String address, Callback cb) {
-    std::lock_guard<std::recursive_mutex> guard(this->mutex);
-    auto ctx = new PeerRequestContext(seq, cb);
+  void Peer::send (char *buf, int len, int port, String address, Peer::RequestContext::Callback cb) {
+    Lock lock(this->mutex);
     int err = 0;
 
     struct sockaddr *sockaddr = nullptr;
-
-    if (!this->isUDP()) {
-      auto msg = SSC::format(R"MSG({
-        "source": "udp.send",
-        "err": {
-          "id": "$S",
-          "message": "Invalid UDP state"
-        }
-      })MSG", std::to_string(this->id));
-
-      return ctx->end(msg);
-    }
 
     if (!this->isConnected()) {
       sockaddr = (struct sockaddr *) &this->addr;
       err = uv_ip4_addr((char *) address.c_str(), port, &this->addr);
 
       if (err) {
-        auto msg = SSC::format(R"MSG({
-          "source": "udp.send",
-          "err": {
-            "id": "$S",
-            "message": "$S"
-          }
-        })MSG", std::to_string(id), SSC::String(uv_strerror(err)));
-
-        return ctx->end(msg);
+        return cb(err, Post{});
       }
     }
 
     auto buffer = uv_buf_init(buf, len);
+    auto ctx = new Peer::RequestContext(cb);
     auto req = new uv_udp_send_t;
 
     req->data = (void *) ctx;
     ctx->peer = this;
 
     err = uv_udp_send(req, (uv_udp_t *) &this->handle, &buffer, 1, sockaddr, [](uv_udp_send_t *req, int status) {
-      auto ctx = reinterpret_cast<PeerRequestContext*>(req->data);
+      auto ctx = reinterpret_cast<Peer::RequestContext*>(req->data);
       auto peer = ctx->peer;
-      SSC::String msg = "";
 
-      if (status < 0) {
-        msg = SSC::format(R"MSG({
-          "source": "udp.send",
-          "err": {
-            "id": "$S",
-            "message": "$S"
-          }
-        })MSG",
-        std::to_string(peer->id),
-        SSC::String(uv_strerror(status)));
-      } else {
-        msg = SSC::format(R"MSG({
-          "source": "udp.send",
-          "data": {
-            "id": "$S",
-            "status": "$i"
-          }
-        })MSG",
-         std::to_string(peer->id),
-         status);
-      }
-
-      delete req;
+      ctx->cb(status, Post{});
 
       if (peer->isEphemeral()) {
         peer->close();
       }
 
-      ctx->end(msg);
+      delete ctx;
+      delete req;
     });
 
     if (err < 0) {
-      auto msg = SSC::format(R"MSG({
-        "source": "udp.send",
-        "err": {
-          "id": "$S",
-          "message": "Write error: $S"
-        }
-      })MSG",
-      std::to_string(id),
-      SSC::String(uv_strerror(err)));
+      ctx->cb(err, Post{});
 
-      delete req;
-
-      if (isEphemeral()) {
+      if (this->isEphemeral()) {
         this->close();
       }
 
-      ctx->end(msg);
+      delete ctx;
+      delete req;
     }
   }
 
   int Peer::recvstart () {
-    if (this->recv != nullptr) {
-      return this->recvstart(this->recv);
+    if (this->receiveCallback != nullptr) {
+      return this->recvstart(this->receiveCallback);
     }
 
     return UV_EINVAL;
   }
 
-  int Peer::recvstart (Callback onrecv) {
+  int Peer::recvstart (Peer::UDPReceiveCallback receiveCallback) {
+    Lock lock(this->mutex);
+
     if (this->hasState(PEER_STATE_UDP_RECV_STARTED)) {
       return UV_EALREADY;
     }
 
     this->addState(PEER_STATE_UDP_RECV_STARTED);
+    this->receiveCallback = receiveCallback;
 
     auto allocate = [](uv_handle_t *handle, size_t size, uv_buf_t *buf) {
       if (size > 0) {
@@ -580,55 +510,9 @@ namespace SSC {
         return;
       }
 
-      if (nread == UV_EOF) {
-        auto msg = SSC::format(R"MSG({
-          "source": "udp.readStart",
-          "data": {
-            "id": "$S",
-            "EOF": true
-          }
-        })MSG", std::to_string(peer->id));
-
-        peer->recv("-1", msg, Post{});
-      } else if (nread > 0) {
-        int port;
-        char addressbuf[17];
-        parseAddress((struct sockaddr *) addr, &port, addressbuf);
-        String address(addressbuf);
-
-        auto headers = SSC::format(R"MSG(
-          content-type: application/octet-stream
-          content-length: $i
-        )MSG", (int) nread);
-
-        Post post = {0};
-        post.id = SSC::rand64();
-        post.body = buf->base;
-        post.length = (int) nread;
-        post.headers = headers;
-        post.bodyNeedsFree = true;
-
-        auto msg = SSC::format(R"MSG({
-          "source": "udp.readStart",
-          "data": {
-            "id": "$S",
-            "bytes": $S,
-            "port": $i,
-            "address": "$S"
-          }
-        })MSG",
-        std::to_string(peer->id),
-        std::to_string(post.length),
-        port,
-        address);
-
-        peer->recv("-1", msg, post);
-      }
+      peer->receiveCallback(nread, buf, addr);
     };
 
-    std::lock_guard<std::recursive_mutex> guard(this->mutex);
-    this->recv = onrecv;
-    std::lock_guard<std::recursive_mutex> lock(this->core->loopMutex);
     return uv_udp_recv_start((uv_udp_t *) &this->handle, allocate, receive);
   }
 

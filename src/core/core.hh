@@ -15,9 +15,21 @@
 #if defined(__APPLE__)
 #include "apple.hh"
 #elif defined(__linux__) && !defined(__ANDROID__)
-#include "linux.hh"
+#include <JavaScriptCore/JavaScript.h>
+#include <webkit2/webkit2.h>
+#include <gtk/gtk.h>
 #elif defined(_WIN32)
-#include "win.hh"
+#include <WebView2.h>
+#include <WebView2Experimental.h>
+#include <WebView2EnvironmentOptions.h>
+#include <WebView2ExperimentalEnvironmentOptions.h>
+
+#pragma comment(lib, "advapi32.lib")
+#pragma comment(lib, "shell32.lib")
+#pragma comment(lib, "version.lib")
+#pragma comment(lib, "user32.lib")
+#pragma comment(lib, "WebView2LoaderStatic.lib")
+#pragma comment(lib, "uv_a.lib")
 #endif
 
 namespace SSC {
@@ -37,7 +49,7 @@ namespace SSC {
     bool bodyNeedsFree = false;
   };
 
-  using Posts = std::map<ID, Post>;
+  using Posts = std::map<uint64_t, Post>;
   using Callback = std::function<void(String, String, Post)>;
   using EventLoopDispatchCallback = std::function<void()>;
 
@@ -137,39 +149,6 @@ namespace SSC {
     PEER_STATE_MAX = 1 << 0xF
   } peer_state_t;
 
-  struct PeerRequestContext {
-    uint64_t id;
-    String seq;
-    Callback cb;
-    Peer* peer;
-    char *buf;
-    int bufsize;
-    String address;
-    int port;
-
-    PeerRequestContext () {
-      this->id = SSC::rand64();
-    }
-
-    PeerRequestContext (String s, Callback c)
-      : PeerRequestContext(s, c, nullptr)
-    {
-      // noop
-    }
-
-    PeerRequestContext (String s, Callback c, Peer *p) {
-      this->id = SSC::rand64();
-      this->cb = c;
-      this->seq = s;
-      this->peer = p;
-    }
-
-    void end (String seq, String msg, Post post);
-    void end (String seq, String msg);
-    void end (String msg, Post post);
-    void end (String msg);
-  };
-
   struct LocalPeerInfo {
     struct sockaddr_storage addr;
     String address = "";
@@ -201,77 +180,91 @@ namespace SSC {
   /**
    * A generic structure for a bound or connected peer.
    */
-  struct Peer {
-    // uv handles
-    union {
-      uv_udp_t udp;
-      uv_tcp_t tcp; // XXX: FIXME
-    } handle;
+  class Peer {
+    public:
+      struct RequestContext {
+        using Callback = std::function<void(int, Post)>;
+        Callback cb;
+        Peer *peer = nullptr;
+        RequestContext (Callback cb) { this->cb = cb; }
+      };
 
-    // sockaddr
-    struct sockaddr_in addr;
+      using UDPReceiveCallback = std::function<void(
+        ssize_t,
+        const uv_buf_t*,
+        const struct sockaddr*
+      )>;
 
-    // callbacks
-    Callback recv;
-    std::vector<std::function<void()>> onclose;
+      // uv handles
+      union {
+        uv_udp_t udp;
+        uv_tcp_t tcp; // XXX: FIXME
+      } handle;
 
-    // instance state
-    uint64_t id = 0;
-    std::recursive_mutex mutex;
-    Core *core;
+      // sockaddr
+      struct sockaddr_in addr;
 
-    struct {
+      // callbacks
+      UDPReceiveCallback receiveCallback;
+      std::vector<std::function<void()>> onclose;
+
+      // instance state
+      uint64_t id = 0;
+      std::recursive_mutex mutex;
+      Core *core;
+
       struct {
-        bool reuseAddr = false;
-        bool ipv6Only = false; // @TODO
-      } udp;
-    } options;
+        struct {
+          bool reuseAddr = false;
+          bool ipv6Only = false; // @TODO
+        } udp;
+      } options;
 
-    // peer state
-    LocalPeerInfo local;
-    RemotePeerInfo remote;
-    peer_type_t type = PEER_TYPE_NONE;
-    peer_flag_t flags = PEER_FLAG_NONE;
-    peer_state_t state = PEER_STATE_NONE;
+      // peer state
+      LocalPeerInfo local;
+      RemotePeerInfo remote;
+      peer_type_t type = PEER_TYPE_NONE;
+      peer_flag_t flags = PEER_FLAG_NONE;
+      peer_state_t state = PEER_STATE_NONE;
 
-    /**
-     * Private `Peer` class constructor
-     */
-    Peer (Core *core, peer_type_t peerType, uint64_t peerId, bool isEphemeral);
-    ~Peer ();
+      /**
+      * Private `Peer` class constructor
+      */
+      Peer (Core *core, peer_type_t peerType, uint64_t peerId, bool isEphemeral);
+      ~Peer ();
 
-    int init ();
-    int initRemotePeerInfo ();
-    int initLocalPeerInfo ();
-    void addState (peer_state_t value);
-    void removeState (peer_state_t value);
-    bool hasState (peer_state_t value);
-    const RemotePeerInfo* getRemotePeerInfo ();
-    const LocalPeerInfo* getLocalPeerInfo ();
-    bool isUDP ();
-    bool isTCP ();
-    bool isEphemeral ();
-    bool isBound ();
-    bool isActive ();
-    bool isClosing ();
-    bool isClosed ();
-    bool isConnected ();
-    bool isPaused ();
-    int bind ();
-    int bind (String address, int port);
-    int bind (String address, int port, bool reuseAddr);
-    int rebind ();
-    int connect (String address, int port);
-    int disconnect ();
-    void send (String seq, char *buf, int len, int port, String address, Callback cb);
-    int recvstart ();
-    int recvstart (Callback onrecv);
-    int recvstop ();
-    int resume ();
-    int pause ();
-    void close ();
-    void close (std::function<void()> onclose);
-  };
+      int init ();
+      int initRemotePeerInfo ();
+      int initLocalPeerInfo ();
+      void addState (peer_state_t value);
+      void removeState (peer_state_t value);
+      bool hasState (peer_state_t value);
+      const RemotePeerInfo* getRemotePeerInfo ();
+      const LocalPeerInfo* getLocalPeerInfo ();
+      bool isUDP ();
+      bool isTCP ();
+      bool isEphemeral ();
+      bool isBound ();
+      bool isActive ();
+      bool isClosing ();
+      bool isClosed ();
+      bool isConnected ();
+      bool isPaused ();
+      int bind ();
+      int bind (String address, int port);
+      int bind (String address, int port, bool reuseAddr);
+      int rebind ();
+      int connect (String address, int port);
+      int disconnect ();
+      void send (char *buf, int len, int port, String address, Peer::RequestContext::Callback cb);
+      int recvstart ();
+      int recvstart (UDPReceiveCallback onrecv);
+      int recvstop ();
+      int resume ();
+      int pause ();
+      void close ();
+      void close (std::function<void()> onclose);
+    };
 
   static inline String addrToIPv4 (struct sockaddr_in* sin) {
     char buf[INET_ADDRSTRLEN];
@@ -293,6 +286,105 @@ namespace SSC {
 
   class Core {
     public:
+      class Module {
+        public:
+          using Callback = std::function<void(String, JSON::Any, Post)>;
+          struct RequestContext {
+            String seq;
+            Module::Callback cb;
+            RequestContext (String seq, Module::Callback cb) {
+              this->seq = seq;
+              this->cb = cb;
+            }
+          };
+
+          String name;
+          Core *core = nullptr;
+          Module (Core* core, const String& name) {
+            this->core = core;
+            this->name = name;
+          }
+      };
+
+      class DNS : Module {
+        public:
+          DNS (Core* core) : Module(core, "dns") {}
+          void lookup (String seq, String hostname, int family, Module::Callback cb);
+      };
+
+      class FS : Module {
+        public:
+          std::map<uint64_t, Descriptor*> descriptors;
+          Mutex mutex;
+
+          FS (Core* core): Module(core, "fs") {}
+          void constants (String seq, Module::Callback cb);
+          void access (String seq, String path, int mode, Callback cb);
+          void chmod (String seq, String path, int mode, Callback cb);
+          void copyFile (String seq, String src, String dst, int mode, Callback cb);
+          void close (String seq, uint64_t id, Callback cb);
+          void closedir (String seq, uint64_t id, Callback cb);
+          void closeOpenDescriptor (String seq, uint64_t id, Callback cb);
+          void closeOpenDescriptors (String seq, Callback cb);
+          void closeOpenDescriptors (String seq, bool preserveRetained, Callback cb);
+          void fStat (String seq, uint64_t id, Callback cb);
+          void getOpenDescriptors (String seq, Callback cb);
+          void mkdir (String seq, String path, int mode, Callback cb);
+          void open (String seq, uint64_t id, String path, int flags, int mode, Callback cb);
+          void opendir (String seq, uint64_t id, String path, Callback cb);
+          void read (String seq, uint64_t id, int len, int offset, Callback cb);
+          void readdir (String seq, uint64_t id, size_t entries, Callback cb);
+          void retainOpenDescriptor (String seq, uint64_t id, Callback cb);
+          void rename (String seq, String pathA, String pathB, Callback cb);
+          void rmdir (String seq, String path, Callback cb);
+          void stat (String seq, String path, Callback cb);
+          void unlink (String seq, String path, Callback cb);
+          void write (String seq, uint64_t id, String data, int64_t offset, Callback cb);
+      };
+
+      class OS : Module {
+        public:
+          OS (Core* core): Module(core, "os") {}
+          void bufferSize (String seq, uint64_t peerId, int size, int buffer, Module::Callback cb);
+      };
+
+      class Platform : Module {
+        public:
+          Platform (Core* core): Module(core, "platform") {}
+          void event (String seq, String event, String data, Module::Callback cb);
+      };
+
+      class UDP : Module {
+        public:
+          UDP (Core* core): Module(core, "udp") {}
+          struct BindOptions { String address; int port; bool reuseAddr = false; };
+          struct ConnectOptions { String address; int port; };
+          struct SendOptions {
+            String address = "";
+            int port = 0;
+            char *bytes = nullptr;
+            int size = 0;
+            bool ephemeral = false;
+          };
+
+          void bind (String seq, uint64_t id, BindOptions, Module::Callback cb);
+          void close (String seq, uint64_t id, Module::Callback cb);
+          void connect (String seq, uint64_t id, ConnectOptions options, Module::Callback cb);
+          void disconnect (String seq, uint64_t id, Module::Callback cb);
+          void getPeerName (String seq, uint64_t id, Module::Callback cb);
+          void getSockName (String seq, uint64_t id, Module::Callback cb);
+          void getState (String seq, uint64_t id,  Module::Callback cb);
+          void readStart (String seq, uint64_t id, Module::Callback cb, Peer::UDPReceiveCallback receive);
+          void readStop (String seq, uint64_t id, Module::Callback cb);
+          void send (String seq, uint64_t id, SendOptions options, Module::Callback cb);
+      };
+
+      DNS dns;
+      FS fs;
+      OS os;
+      Platform platform;
+      UDP udp;
+
       std::shared_ptr<Posts> posts;
       std::map<uint64_t, Descriptor*> descriptors;
       std::map<uint64_t, Peer*> peers;
@@ -360,18 +452,6 @@ namespace SSC {
       void removeDescriptor (uint64_t id);
       bool hasDescriptor (uint64_t id);
 
-      // udp
-      void udpBind (String seq, uint64_t peerId, String address, int port, bool reuseAddr, Callback cb);
-      void udpConnect (String seq, uint64_t peerId, String address, int port, Callback cb);
-      void udpDisconnect (String seq, uint64_t peerId, Callback cb);
-      void udpGetPeerName (String seq, uint64_t peerId, Callback cb);
-      void udpGetSockName (String seq, uint64_t peerId, Callback cb);
-      void udpGetState (String seq, uint64_t peerId,  Callback cb);
-      void udpReadStart (String seq, uint64_t peerId, Callback cb);
-      void udpReadStop (String seq, uint64_t peerId, Callback cb);
-      void udpClose (String seq, uint64_t peerId, Callback cb);
-      void udpSend (String seq, uint64_t peerId, char* buf, int len, int port, String address, bool ephemeral, Callback cb);
-
       void resumeAllPeers ();
       void pauseAllPeers ();
       bool hasPeer (uint64_t id);
@@ -383,10 +463,6 @@ namespace SSC {
 
       // core
       JSON::Object getNetworkInterfaces () const;
-      void bufferSize (String seq, uint64_t peerId, int size, int buffer, Callback cb);
-      void close (String seq, uint64_t peerId, Callback cb);
-      void dnsLookup (String seq, String hostname, int family, std::function<void(String, JSON::Any, Post)> cb);
-      void handleEvent (String seq, String event, String data, Callback cb);
 
       Post getPost (uint64_t id);
       bool hasPost (uint64_t id);
