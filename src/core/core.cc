@@ -4,7 +4,9 @@ namespace SSC {
   static Mutex instanceMutex;
   static Core *instance = nullptr;
 
-  Core::Core () {
+  Core::Core ()
+    : dns(this), fs(this), os(this), platform(this), udp(this)
+  {
     Lock lock(instanceMutex);
     this->posts = std::shared_ptr<Posts>(new Posts());
 
@@ -20,27 +22,6 @@ namespace SSC {
     if (instance == this) {
       instance = nullptr;
     }
-  }
-
-  void Core::handleEvent (String seq, String event, String data, Callback cb) {
-    // init page
-    if (event == "domcontentloaded") {
-      Lock lock(descriptorsMutex);
-
-      for (auto const &tuple : descriptors) {
-        auto desc = tuple.second;
-        if (desc != nullptr) {
-          Lock descriptorLock(desc->mutex);
-          desc->stale = true;
-        } else {
-          descriptors.erase(tuple.first);
-        }
-      }
-    }
-
-    cb(seq, "{}", Post{});
-
-    runEventLoop();
   }
 
   Post Core::getPost (uint64_t id) {
@@ -218,17 +199,98 @@ namespace SSC {
     return JSON::Object(JSON::Object::Entries {{ "data", data }});
   }
 
-  struct DNSLookupRequestContext {
-    String seq;
-    std::function<void(String, JSON::Any, Post)> cb;
-  };
+  void Core::OS::bufferSize (String seq, uint64_t peerId, int size, int buffer, Module::Callback cb) {
+    static int RECV_BUFFER = 1;
+    static int SEND_BUFFER = 0;
 
-  void Core::dnsLookup (String seq, String hostname, int family, std::function<void(String, JSON::Any, Post)> cb) {
-    dispatchEventLoop([=, this]() {
-      auto ctx = new DNSLookupRequestContext;
-      auto loop = getEventLoop();
-      ctx->seq = seq;
-      ctx->cb = cb;
+    if (buffer < 0) {
+      buffer = 0;
+    } else if (buffer > 1) {
+      buffer = 1;
+    }
+
+    this->core->dispatchEventLoop([=, this]() {
+      auto peer = this->core->getPeer(peerId);
+
+      if (peer == nullptr) {
+        auto json = JSON::Object::Entries {
+          {"source", "bufferSize"},
+          {"err", JSON::Object::Entries {
+            {"id", std::to_string(peerId)},
+            {"code", "NOT_FOUND_ERR"},
+            {"type", "NotFoundError"},
+            {"message", "No peer with specified id"}
+          }}
+        };
+
+        cb(seq, json, Post{});
+        return;
+      }
+
+      Lock lock(peer->mutex);
+      auto handle = (uv_handle_t*) &peer->handle;
+      auto err = buffer == RECV_BUFFER
+       ? uv_recv_buffer_size(handle, (int *) &size)
+       : uv_send_buffer_size(handle, (int *) &size);
+
+      if (err < 0) {
+        auto json = JSON::Object::Entries {
+          {"source", "bufferSize"},
+          {"err", JSON::Object::Entries {
+            {"id", std::to_string(peerId)},
+            {"code", "NOT_FOUND_ERR"},
+            {"type", "NotFoundError"},
+            {"message", String(uv_strerror(err))}
+          }}
+        };
+
+        cb(seq, json, Post{});
+        return;
+      }
+
+      auto json = JSON::Object::Entries {
+        {"source", "bufferSize"},
+        {"data", JSON::Object::Entries {
+          {"id", std::to_string(peerId)},
+          {"size", size}
+        }}
+      };
+
+      cb(seq, json, Post{});
+    });
+  }
+
+  void Core::Platform::event (String seq, String event, String data, Module::Callback cb) {
+    this->core->dispatchEventLoop([=, this]() {
+      // init page
+      if (event == "domcontentloaded") {
+        Lock lock(this->core->descriptorsMutex);
+
+        for (auto const &tuple : this->core->descriptors) {
+          auto desc = tuple.second;
+          if (desc != nullptr) {
+            Lock descriptorLock(desc->mutex);
+            desc->stale = true;
+          } else {
+            this->core->descriptors.erase(tuple.first);
+          }
+        }
+      }
+
+      auto json = JSON::Object::Entries {
+        {"source", "event"},
+        {"data", JSON::Object::Entries{}}
+      };
+
+      cb(seq, json, Post{});
+    });
+  }
+
+
+  void Core::DNS::lookup (String seq, String hostname, int family, Core::Module::Callback cb) {
+    this->core->dispatchEventLoop([=, this]() {
+      auto ctx = new Core::Module::RequestContext(seq, cb);
+      auto loop = this->core->getEventLoop();
 
       struct addrinfo hints = {0};
 
@@ -247,7 +309,7 @@ namespace SSC {
       resolver->data = ctx;
 
       auto err = uv_getaddrinfo(loop, resolver, [](uv_getaddrinfo_t *resolver, int status, struct addrinfo *res) {
-        auto ctx = (DNSLookupRequestContext*) resolver->data;
+        auto ctx = (Core::DNS::RequestContext*) resolver->data;
 
         if (status < 0) {
           auto result = JSON::Object::Entries {
@@ -291,8 +353,8 @@ namespace SSC {
           }}
         };
 
-        uv_freeaddrinfo(res);
         ctx->cb(ctx->seq, result, Post{});
+        uv_freeaddrinfo(res);
         delete ctx;
 
       }, hostname.c_str(), nullptr, &hints);
@@ -309,109 +371,6 @@ namespace SSC {
         ctx->cb(seq, result, Post{});
         delete ctx;
       }
-    });
-  }
-
-  void Core::bufferSize (String seq, uint64_t peerId, int size, int buffer, Callback cb) {
-    static int RECV_BUFFER = 1;
-    static int SEND_BUFFER = 0;
-
-    if (buffer < 0) {
-      buffer = 0;
-    } else if (buffer > 1) {
-      buffer = 1;
-    }
-
-    dispatchEventLoop([=, this]() {
-      auto peer = getPeer(peerId);
-
-      if (peer == nullptr) {
-        auto msg = SSC::format(R"MSG({
-          "source": "bufferSize",
-          "err": {
-            "id": "$S",
-            "code": "NOT_FOUND_ERR",
-            "type": "NotFoundError",
-            "message": "No peer with specified id"
-          }
-        })MSG", std::to_string(peerId));
-        cb(seq, msg, Post{});
-        return;
-      }
-
-      Lock lock(peer->mutex);
-      auto handle = (uv_handle_t*) &peer->handle;
-      auto err = buffer == RECV_BUFFER
-       ? uv_recv_buffer_size(handle, (int *) &size)
-       : uv_send_buffer_size(handle, (int *) &size);
-
-      if (err < 0) {
-        auto msg = SSC::format(R"MSG({
-          "source": "bufferSize",
-          "err": {
-            "id": "$S",
-            "message": "$S"
-          }
-        })MSG",
-        std::to_string(peerId),
-        SSC::String(uv_strerror(err)));
-        cb(seq, msg, Post{});
-        return;
-      }
-
-      auto msg = SSC::format(R"MSG({
-        "source": "bufferSize",
-        "data": {
-          "id": "$S",
-          "size": $i
-        }
-      })MSG", std::to_string(peerId), size);
-
-      cb(seq, msg, Post{});
-    });
-  }
-
-  void Core::close (String seq, uint64_t peerId, Callback cb) {
-    dispatchEventLoop([=, this]() {
-      if (!hasPeer(peerId)) {
-        auto msg = SSC::format(R"MSG({
-          "source": "close",
-          "err": {
-            "id": "$S",
-            "code": "NOT_FOUND_ERR",
-            "type": "NotFoundError",
-            "message": "No peer with specified id"
-          }
-        })MSG", std::to_string(peerId));
-        cb(seq, msg, Post{});
-        return;
-      }
-
-      auto peer = getPeer(peerId);
-
-      if (peer->isClosed() || peer->isClosing()) {
-        auto msg = SSC::format(R"MSG({
-          "source": "close",
-          "err": {
-            "id": "$S",
-            "code": "ERR_SOCKET_DGRAM_NOT_RUNNING",
-            "type": "InternalError",
-            "message": "The socket has already been closed"
-          }
-        })MSG", std::to_string(peerId));
-        cb(seq, msg, Post{});
-        return;
-      }
-
-      peer->close([=, this]() {
-        auto msg = SSC::format(R"MSG({
-          "source": "close",
-          "data": {
-            "id": "$S"
-          }
-        })MSG", std::to_string(peerId));
-        cb(seq, msg, Post{});
-      });
     });
   }
 }

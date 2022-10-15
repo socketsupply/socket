@@ -68,6 +68,10 @@ namespace SSC::IPC {
     }
   }
 
+  bool Message::has (const String& key) const {
+    return this->args.find(key) != this->args.end();
+  }
+
   String Message::get (const String& key) const {
     return this->get(key, "");
   }
@@ -85,22 +89,30 @@ namespace SSC::IPC {
     this->seq = seq;
   }
 
-  Result::Result (Message::Seq seq, const Message& message, JSON::Any json)
-    : Result(seq, message, json, Post{}) { }
+  Result::Result (Message::Seq seq, const Message& message, JSON::Any value)
+    : Result(seq, message, value, Post{}) { }
 
-  Result::Result (Message::Seq seq, const Message& message, JSON::Any json, Post post)
+  Result::Result (Message::Seq seq, const Message& message, JSON::Any value, Post post)
     : Result(seq, message)
   {
     this->post = post;
 
-    if (json.type != JSON::Type::Any) {
-      this->json = json;
+    if (value.type != JSON::Type::Any) {
+      this->value = value;
     }
   }
 
+  Result::Result (const Err error) {
+    this->err = error.value;
+  }
+
+  Result::Result (const Data data) {
+    this->data = data.value;
+  }
+
   String Result::str () const {
-    if (this->json.type != JSON::Type::Null) {
-      return this->json.str();
+    if (this->value.type != JSON::Type::Null) {
+      return this->value.str();
     }
 
     auto entries = JSON::Object::Entries {
@@ -110,5 +122,27 @@ namespace SSC::IPC {
     };
 
     return JSON::Object(entries).str();
+  }
+
+  Result::Err::Err (
+    Message::Seq seq,
+    const Message& message,
+    JSON::Any value
+  ) {
+    this->seq = seq;
+    this->message = message;
+    this->value = value;
+  }
+
+  Result::Data::Data (
+    Message::Seq seq,
+    const Message& message,
+    JSON::Any value,
+    Post post
+  ) {
+    this->seq = seq;
+    this->message = message;
+    this->value = value;
+    this->post = post;
   }
 }

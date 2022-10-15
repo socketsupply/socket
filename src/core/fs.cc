@@ -1287,6 +1287,27 @@ namespace SSC {
     };
   }
 
+  void Core::FS::constants (String seq, Module::Callback cb) {
+    static auto constants = Core::getFSConstantsMap();
+    this->core->dispatchEventLoop([=] {
+      auto count = constants.size();
+      JSON::Object::Entries data;
+
+      for (auto const &tuple : constants) {
+        auto key = tuple.first;
+        auto value = tuple.second;
+        data[key] = value;
+      }
+
+      auto json = JSON::Object::Entries {
+        {"source", "fs.constants"},
+        {"data", data}
+      };
+
+      cb(seq, json, Post{});
+    });
+  }
+
 #define SET_CONSTANT(c) constants[#c] = (c);
   std::map<String, int32_t> Core::getFSConstantsMap () {
     std::map<String, int32_t> constants;
@@ -1324,7 +1345,7 @@ namespace SSC {
 #endif
 
 #ifdef O_RDONLY
-      SET_CONSTANT(O_RDONLY);
+    SET_CONSTANT(O_RDONLY);
 #endif
 
 #ifdef O_WRONLY

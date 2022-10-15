@@ -66,9 +66,7 @@ namespace SSC {
             buf = new char[size - offset]{0};
             bufsize = decodeUTF8(buf, data + offset, size - offset);
 
-            str = String("ipc://buffer.queue?")
-              + String("index=") + String(index)
-              + String("&seq=") + String(seq);
+            str = String("ipc://buffer.map?index=") + index + "&seq=" + seq;
 
             delete [] index;
             delete [] seq;
@@ -79,10 +77,6 @@ namespace SSC {
           if (window->onMessage != nullptr) {
             window->onMessage(str);
           }
-        }
-
-        if (buf != nullptr) {
-          delete [] buf;
         }
       }),
       this
@@ -106,11 +100,9 @@ namespace SSC {
         auto nav = WEBKIT_NAVIGATION_POLICY_DECISION (decision);
         auto action = webkit_navigation_policy_decision_get_navigation_action(nav);
         auto req = webkit_navigation_action_get_request(action);
-        auto uri = webkit_uri_request_get_uri(req);
+        auto uri = String(webkit_uri_request_get_uri(req));
 
-        SSC::String s(uri);
-
-        if (s.find("file://") != 0 && s.find("http://localhost") != 0) {
+        if (uri.find("file://") != 0 && uri.find("http://localhost") != 0) {
           webkit_policy_decision_ignore(decision);
           return false;
         }

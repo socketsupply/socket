@@ -29,8 +29,10 @@ namespace SSC {
       IPC::Bridge *bridge = nullptr;
       int index = 0;
 
-#if defined(__APPLE__) && !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR
+#if defined(__APPLE__)
+#if !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR
       NSWindow* window;
+#endif
       SSCBridgedWebView* webview;
 #elif defined(__linux__) && !defined(__ANDROID__)
       GtkSelectionData *selectionData = nullptr;

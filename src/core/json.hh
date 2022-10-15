@@ -73,8 +73,8 @@ namespace SSC::JSON {
     public:
       using Entries = ObjectEntries;
       Object () = default;
-      Object (const Object& object) { this->data = object.value(); }
       Object (const Object::Entries entries);
+      Object (const Object& object) { this->data = object.value(); }
       Object (const SSC::Map map);
       SSC::String str () const;
       const Object::Entries value () const { return this->data; }

@@ -145,7 +145,6 @@
 namespace SSC {
   namespace fs = std::filesystem;
 
-  using ID = uint64_t;
   using String = std::string;
   using StringStream = std::stringstream;
   using WString = std::wstring;

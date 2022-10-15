@@ -1,505 +1,531 @@
 #include "core.hh"
 
 namespace SSC {
-  void Core::udpBind (String seq, uint64_t peerId, String address, int port, bool reuseAddr, Callback cb) {
-    if (hasPeer(peerId) && getPeer(peerId)->isBound()) {
-      auto msg = SSC::format(R"MSG({
-        "source": "udp.bind",
-        "err": {
-          "id": "$S",
-          "code": "ERR_SOCKET_ALREADY_BOUND",
-          "message": "Socket is already bound"
-        }
-      })MSG", std::to_string(peerId));
-      cb(seq, msg, Post{});
+  static JSON::Object::Entries ERR_SOCKET_ALREADY_BOUND (uint64_t id) {
+    return JSON::Object::Entries {
+      {"source", "udp.bind"},
+      {"err", JSON::Object::Entries {
+        {"id", std::to_string(id)},
+        {"type", "InternalError"},
+        {"code", "ERR_SOCKET_ALREADY_BOUND"},
+        {"message", "Socket is already bound"}
+      }}
+    };
+  }
+
+  static JSON::Object::Entries ERR_SOCKET_DGRAM_IS_CONNECTED (uint64_t id) {
+    return JSON::Object::Entries {
+      {"source", "udp.connect"},
+      {"err", JSON::Object::Entries {
+        {"id", std::to_string(id)},
+        {"type", "InternalError"},
+        {"code", "ERR_SOCKET_DGRAM_IS_CONNECTED"},
+        {"message", "Already connected"}
+      }}
+    };
+  }
+
+  static JSON::Object::Entries ERR_SOCKET_DGRAM_NOT_CONNECTED (String source, uint64_t id) {
+    return JSON::Object::Entries {
+      {"source", source},
+      {"err", JSON::Object::Entries {
+        {"id", std::to_string(id)},
+        {"type", "InternalError"},
+        {"code", "ERR_SOCKET_DGRAM_NOT_CONNECTED"},
+        {"message", "Not connected"}
+      }}
+    };
+  }
+
+  static JSON::Object::Entries ERR_SOCKET_DGRAM_CLOSED (String source, uint64_t id) {
+    return JSON::Object::Entries {
+      {"source", source},
+      {"err", JSON::Object::Entries {
+        {"id", std::to_string(id)},
+        {"type", "NotFoundError"},
+        {"code", "ERR_SOCKET_DGRAM_NOT_RUNNING"},
+        {"message", "Socket is closed"}
+      }}
+    };
+  }
+
+  static JSON::Object::Entries ERR_SOCKET_DGRAM_NOT_RUNNING (String source, uint64_t id) {
+    return JSON::Object::Entries {
+      {"source", source},
+      {"err", JSON::Object::Entries {
+        {"id", std::to_string(id)},
+        {"type", "NotFoundError"},
+        {"code", "ERR_SOCKET_DGRAM_NOT_RUNNING"},
+        {"message", "Not running"}
+      }}
+    };
+  }
+
+  void Core::UDP::bind (
+    String seq,
+    uint64_t peerId,
+    BindOptions options,
+    Module::Callback cb
+  ) {
+    auto address = options.address;
+    auto port = options.port;
+    auto reuseAddr = options.reuseAddr;
+
+    if (this->core->hasPeer(peerId) && this->core->getPeer(peerId)->isBound()) {
+      auto json = ERR_SOCKET_ALREADY_BOUND(peerId);
+      cb(seq, json, Post{});
       return;
     }
 
-    dispatchEventLoop([=, this]() {
-      auto peer = createPeer(PEER_TYPE_UDP, peerId);
+    this->core->dispatchEventLoop([=, this]() {
+      auto peer = this->core->createPeer(PEER_TYPE_UDP, peerId);
       auto err = peer->bind(address, port, reuseAddr);
 
       if (err < 0) {
-        auto msg = SSC::format(R"MSG({
-          "source": "udp.bind",
-          "err": {
-            "id": "$S",
-            "message": "$S"
-          }
-        })MSG", std::to_string(peerId), SSC::String(uv_strerror(err)));
-        cb(seq, msg, Post{});
+        auto json = JSON::Object::Entries {
+          {"source", "udp.bind"},
+          {"err", JSON::Object::Entries {
+            {"id", std::to_string(peerId)},
+            {"message", String(uv_strerror(err))}
+          }}
+        };
+
+        cb(seq, json, Post{});
         return;
       }
 
       auto info = peer->getLocalPeerInfo();
 
       if (info->err < 0) {
-        auto msg = SSC::format(R"MSG({
-          "source": "udp.bind",
-          "err": {
-            "id": "$S",
-            "message": "$S"
-          }
-        })MSG", std::to_string(peerId), SSC::String(uv_strerror(info->err)));
-        cb(seq, msg, Post{});
+        auto json = JSON::Object::Entries {
+          {"source", "udp.bind"},
+          {"err", JSON::Object::Entries {
+            {"id", std::to_string(peerId)},
+            {"message", String(uv_strerror(info->err))}
+          }}
+        };
+
+        cb(seq, json, Post{});
         return;
       }
 
-      auto msg = SSC::format(R"MSG({
-        "source": "udp.bind",
-        "data": {
-          "event": "listening",
-          "id": "$S",
-          "address": "$S",
-          "port": $i,
-          "family": "$S"
-        }
-      })MSG", std::to_string(peerId), info->address, info->port, info->family);
+      auto json = JSON::Object::Entries {
+        {"source", "udp.bind"},
+        {"data", JSON::Object::Entries {
+          {"event" , "listening" },
+          {"address", info->address},
+          {"family", info->family},
+          {"port", info->port},
+          {"id", std::to_string(peerId)}
+        }}
+      };
 
-      cb(seq, msg, Post{});
+      cb(seq, json, Post{});
     });
   }
 
-  void Core::udpConnect (String seq, uint64_t peerId, String address, int port, Callback cb) {
-    dispatchEventLoop([=, this]() {
-      auto peer = createPeer(PEER_TYPE_UDP, peerId);
+  void Core::UDP::connect (
+    String seq,
+    uint64_t peerId,
+    ConnectOptions options,
+    Module::Callback cb
+  ) {
+    auto address = options.address;
+    auto port = options.port;
+    this->core->dispatchEventLoop([=, this]() {
+      auto peer = this->core->createPeer(PEER_TYPE_UDP, peerId);
       auto err = peer->connect(address, port);
 
       if (err < 0) {
-        auto msg = SSC::format(R"MSG({
-          "source": "udp.connect",
-          "err": {
-            "id": "$S",
-            "message": "$S"
-          }
-        })MSG", std::to_string(peerId), SSC::String(uv_strerror(err)));
-        cb(seq, msg, Post{});
+        auto json = JSON::Object::Entries {
+          {"source", "udp.connect"},
+          {"err", JSON::Object::Entries {
+            {"id", std::to_string(peerId)},
+            {"message", String(uv_strerror(err))}
+          }}
+        };
+
+        cb(seq, json, Post{});
         return;
       }
 
       auto info = peer->getRemotePeerInfo();
 
       if (info->err < 0) {
-        auto msg = SSC::format(R"MSG({
-          "source": "udp.getPeerName",
-          "err": {
-            "id": "$S",
-            "message": "$S"
-          }
-        })MSG", std::to_string(peerId), SSC::String(uv_strerror(info->err)));
-        cb(seq, msg, Post{});
+        auto json = JSON::Object::Entries {
+          {"source", "udp.connect"},
+          {"err", JSON::Object::Entries {
+            {"id", std::to_string(peerId)},
+            {"message", String(uv_strerror(info->err))}
+          }}
+        };
+
+        cb(seq, json, Post{});
         return;
       }
 
-      auto msg = SSC::format(R"MSG({
-        "source": "udp.connect",
-        "data": {
-          "id": "$S",
-          "address": "$S",
-          "port": $i,
-          "family": "$S"
-        }
-      })MSG", std::to_string(peerId), info->address, info->port, info->family);
+      auto json = JSON::Object::Entries {
+        {"source", "udp.connect"},
+        {"data", JSON::Object::Entries {
+          {"address", info->address},
+          {"family", info->family},
+          {"port", info->port},
+          {"id", std::to_string(peerId)}
+        }}
+      };
 
-      cb(seq, msg, Post{});
+      cb(seq, json, Post{});
     });
   }
 
-  void Core::udpDisconnect (String seq, uint64_t peerId, Callback cb) {
-    dispatchEventLoop([=, this]() {
-      if (!hasPeer(peerId)) {
-        auto msg = SSC::format(R"MSG({
-          "source": "udp.disconnect",
-          "err": {
-            "id": "$S",
-            "message": "No such peer"
-          }
-        })MSG", std::to_string(peerId));
-        cb(seq, msg, Post{});
+  void Core::UDP::disconnect (String seq, uint64_t peerId, Module::Callback cb) {
+    this->core->dispatchEventLoop([=, this]() {
+      if (!this->core->hasPeer(peerId)) {
+        auto json = ERR_SOCKET_DGRAM_NOT_CONNECTED("udp.disconnect", peerId);
+        cb(seq, json, Post{});
         return;
       }
 
-      auto peer = getPeer(peerId);
+      auto peer = this->core->getPeer(peerId);
       auto err = peer->disconnect();
 
       if (err < 0) {
-        auto msg = SSC::format(R"MSG({
-          "source": "udp.disconnect",
-          "err": {
-            "id": "$S",
-            "message": "$S"
-          }
-        })MSG", std::to_string(peerId), SSC::String(uv_strerror(err)));
-        cb(seq, msg, Post{});
+        auto json = JSON::Object::Entries {
+          {"source", "udp.disconnect"},
+          {"err", JSON::Object::Entries {
+            {"id", std::to_string(peerId)},
+            {"message", String(uv_strerror(err))}
+          }}
+        };
+
+        cb(seq, json, Post{});
         return;
       }
 
-      auto msg = SSC::format(R"MSG({
-        "source": "udp.disconnect",
-        "data": {
-          "id": "$S"
-        }
-      })MSG", std::to_string(peerId));
+      auto json = JSON::Object::Entries {
+        {"source", "udp.disconnect"},
+        {"data", JSON::Object::Entries {
+          {"id", std::to_string(peerId)}
+        }}
+      };
 
-      cb(seq, msg, Post{});
+      cb(seq, json, Post{});
     });
   }
 
-  void Core::udpGetPeerName (String seq, uint64_t peerId, Callback cb) {
-    if (!hasPeer(peerId)) {
-      auto msg = SSC::format(R"MSG({
-        "source": "udp.getPeerName",
-        "err": {
-          "id": "$S",
-          "message": "No such peer"
-        }
-      })MSG", std::to_string(peerId));
-      cb(seq, msg, Post{});
+  void Core::UDP::getPeerName (String seq, uint64_t peerId, Module::Callback cb) {
+    if (!this->core->hasPeer(peerId)) {
+      auto json = ERR_SOCKET_DGRAM_NOT_CONNECTED("udp.getPeerName", peerId);
+      cb(seq, json, Post{});
       return;
     }
 
-    auto peer = getPeer(peerId);
+    auto peer = this->core->getPeer(peerId);
     auto info = peer->getRemotePeerInfo();
 
     if (info->err < 0) {
-      auto msg = SSC::format(R"MSG({
-        "source": "udp.getPeerName",
-        "err": {
-          "id": "$S",
-          "message": "$S"
-        }
-      })MSG", std::to_string(peerId), SSC::String(uv_strerror(info->err)));
-      cb(seq, msg, Post{});
+      auto json = JSON::Object::Entries {
+        {"source", "udp.getPeerName"},
+        {"err", JSON::Object::Entries {
+          {"id", std::to_string(peerId)},
+          {"message", String(uv_strerror(info->err))}
+        }}
+      };
+
+      cb(seq, json, Post{});
       return;
     }
 
-    auto msg = SSC::format(R"MSG({
-      "source": "udp.getPeerName",
-      "data": {
-        "id": "$S",
-        "address": "$S",
-        "port": $i,
-        "family": "$S"
-      }
-    })MSG", std::to_string(peerId), info->address, info->port, info->family);
+    auto json = JSON::Object::Entries {
+      {"source", "udp.getPeerName"},
+      {"data", JSON::Object::Entries {
+        {"address", info->address},
+        {"family", info->family},
+        {"port", info->port},
+        {"id", std::to_string(peerId)}
+      }}
+    };
 
-    cb(seq, msg, Post{});
+    cb(seq, json, Post{});
   }
 
-  void Core::udpGetSockName (String seq, uint64_t peerId, Callback cb) {
-    if (!hasPeer(peerId)) {
-      auto msg = SSC::format(R"MSG({
-        "source": "udp.getSockName",
-        "err": {
-          "id": "$S",
-          "message": "No such peer"
-        }
-      })MSG", std::to_string(peerId));
-      cb(seq, msg, Post{});
+  void Core::UDP::getSockName (String seq, uint64_t peerId, Callback cb) {
+    if (!this->core->hasPeer(peerId)) {
+      auto json = ERR_SOCKET_DGRAM_NOT_RUNNING("udp.getSockName", peerId);
+      cb(seq, json, Post{});
       return;
     }
 
-    auto peer = getPeer(peerId);
+    auto peer = this->core->getPeer(peerId);
     auto info = peer->getLocalPeerInfo();
 
     if (info->err < 0) {
-      auto msg = SSC::format(R"MSG({
-        "source": "udp.getSockName",
-        "err": {
-          "id": "$S",
-          "message": "$S"
-        }
-      })MSG", std::to_string(peerId), SSC::String(uv_strerror(info->err)));
-      cb(seq, msg, Post{});
+      auto json = JSON::Object::Entries {
+        {"source", "udp.getSockName"},
+        {"err", JSON::Object::Entries {
+          {"id", std::to_string(peerId)},
+          {"message", String(uv_strerror(info->err))}
+        }}
+      };
+
+      cb(seq, json, Post{});
       return;
     }
 
-    auto msg = SSC::format(
-      R"MSG({
-        "source": "udp.getSockName",
-        "data": {
-          "id": "$S",
-          "address": "$S",
-          "port": $i,
-          "family": "$S"
-        }
-      })MSG",
-      std::to_string(peerId),
-      info->address,
-      info->port,
-      info->family
-    );
+    auto json = JSON::Object::Entries {
+      {"source", "udp.getSockName"},
+      {"data", JSON::Object::Entries {
+        {"address", info->address},
+        {"family", info->family},
+        {"port", info->port},
+        {"id", std::to_string(peerId)}
+      }}
+    };
 
-    cb(seq, msg, Post{});
+    cb(seq, json, Post{});
   }
 
-  void Core::udpGetState (String seq, uint64_t peerId,  Callback cb) {
-    if (!hasPeer(peerId)) {
-      auto msg = SSC::format(R"MSG({
-        "source": "udp.getState",
-        "err": {
-          "id": "$S",
-          "code": "NOT_FOUND_ERR",
-          "message": "No such peer"
-        }
-      })MSG", std::to_string(peerId));
-      cb(seq, msg, Post{});
+  void Core::UDP::getState (String seq, uint64_t peerId,  Callback cb) {
+    if (!this->core->hasPeer(peerId)) {
+      auto json = ERR_SOCKET_DGRAM_NOT_RUNNING("udp.getState", peerId);
+      cb(seq, json, Post{});
       return;
     }
 
-    auto peer = getPeer(peerId);
+    auto peer = this->core->getPeer(peerId);
 
     if (!peer->isUDP()) {
-      auto msg = SSC::format(R"MSG({
-        "source": "udp.getState",
-        "err": {
-          "id": "$S",
-          "code": "NOT_FOUND_ERR",
-          "message": "No such peer"
-        }
-      })MSG", std::to_string(peerId));
-      cb(seq, msg, Post{});
+      auto json = ERR_SOCKET_DGRAM_NOT_RUNNING("udp.getState", peerId);
+      cb(seq, json, Post{});
       return;
     }
 
-    auto msg = SSC::format(
-      R"MSG({
-        "source": "udp.getState",
-        "data": {
-          "id": "$S",
-          "type": "udp",
-          "ephemeral": $S,
-          "bound": $S,
-          "active": $S,
-          "closing": $S,
-          "closed": $S,
-          "connected": $S
-        }
-      })MSG",
-      std::to_string(peerId),
-      SSC::String(peer->isEphemeral() ? "true" : "false"),
-      SSC::String(peer->isBound() ? "true" : "false"),
-      SSC::String(peer->isActive() ? "true" : "false"),
-      SSC::String(peer->isClosing() ? "true" : "false"),
-      SSC::String(peer->isClosed() ? "true" : "false"),
-      SSC::String(peer->isConnected() ? "true" : "false")
-    );
+    auto json = JSON::Object::Entries {
+      {"source", "udp.getState"},
+      {"data", JSON::Object::Entries {
+        {"type", "udp"},
+        {"ephemeral", peer->isEphemeral()},
+        {"connected", peer->isConnected()},
+        {"closing", peer->isClosing()},
+        {"closed", peer->isClosed()},
+        {"active", peer->isActive()},
+        {"bound", peer->isBound()},
+        {"id", std::to_string(peerId)}
+      }}
+    };
 
-    cb(seq, msg, Post{});
+    cb(seq, json, Post{});
   }
 
-  void Core::udpSend (String seq, uint64_t peerId, char* buf, int len, int port, String address, bool ephemeral, Callback cb) {
-    auto buffer = new char[len > 0 ? len : 1]{0};
-    auto peer = createPeer(PEER_TYPE_UDP, peerId, ephemeral);
-    auto ctx = new PeerRequestContext(seq, cb);
+  void Core::UDP::send (
+    String seq,
+    uint64_t peerId,
+    SendOptions options,
+    Module::Callback cb
+  ) {
+    auto size = options.size;
+    auto port = options.port;
+    auto peer = this->core->createPeer(PEER_TYPE_UDP, peerId, options.ephemeral);
+    auto buffer = new char[size > 0 ? size : 1]{0};
+    auto address = options.address;
 
-    memcpy(buffer, buf, len);
-    ctx->bufsize = len;
-    ctx->buf = buffer;
-    ctx->port = port;
-    ctx->address = address;
-    ctx->peer = peer;
+    memcpy(buffer, options.bytes, size);
 
-    dispatchEventLoop([=, this]() {
-      ctx->peer->send(ctx->seq, ctx->buf, ctx->bufsize, ctx->port, ctx->address, [ctx](auto seq, auto msg, auto post) {
-        ctx->cb(seq, msg, post);
-        delete [] ctx->buf;
+    this->core->dispatchEventLoop([=, this]() {
+      peer->send(buffer, size, port, address, [=](auto status, auto post) {
+        delete [] buffer;
+
+        if (status < 0) {
+          auto json = JSON::Object::Entries {
+            {"source", "udp.send"},
+            {"err", JSON::Object::Entries {
+              {"id", std::to_string(peerId)},
+              {"message", String(uv_strerror(status))}
+            }}
+          };
+
+          cb(seq, json, Post{});
+          return;
+        }
+
+        auto json = JSON::Object::Entries {
+          {"source", "udp.send"},
+          {"data", JSON::Object::Entries {
+            {"id", std::to_string(peerId)},
+            {"status", status}
+          }}
+        };
+
+        cb(seq, json, Post{});
       });
     });
   }
 
-  void Core::udpReadStart (String seq, uint64_t peerId, Callback cb) {
-    if (!hasPeer(peerId)) {
-      auto msg = SSC::format(R"MSG({
-        "source": "udp.readStart",
-        "err": {
-          "id": "$S",
-          "message": "No such peer"
-        }
-      })MSG", std::to_string(peerId));
-
-      cb(seq, msg, Post{});
+  void Core::UDP::readStart (String seq, uint64_t peerId, Module::Callback cb, Peer::UDPReceiveCallback receive) {
+    if (!this->core->hasPeer(peerId)) {
+      auto json = ERR_SOCKET_DGRAM_NOT_RUNNING("udp.readStart", peerId);
+      cb(seq, json, Post{});
       return;
     }
 
-    auto peer = getPeer(peerId);
+    auto peer = this->core->getPeer(peerId);
 
     if (peer->isActive()) {
-      auto msg = SSC::format(R"MSG({
-        "source": "udp.readStart",
-        "data": {
-          "id": "$S"
-        }
-      })MSG", std::to_string(peerId));
-      cb(seq, msg, Post{});
+      auto json = JSON::Object::Entries {
+        {"source", "udp.readStart"},
+        {"data", JSON::Object::Entries {
+          {"id", std::to_string(peerId)}
+        }}
+      };
+      cb(seq, json, Post{});
       return;
     }
 
     if (peer->isClosing()) {
-      auto msg = SSC::format(R"MSG({
-        "source": "udp.readStart",
-        "err": {
-          "id": "$S",
-          "message": "Peer is closing"
-        }
-      })MSG", std::to_string(peerId));
+      auto json = JSON::Object::Entries {
+        {"source", "udp.readStart"},
+        {"err", JSON::Object::Entries {
+          {"id", std::to_string(peerId)},
+          {"message", "Peer is closing"}
+        }}
+      };
 
-      cb(seq, msg, Post{});
+      cb(seq, json, Post{});
       return;
     }
 
     if (peer->hasState(PEER_STATE_UDP_RECV_STARTED)) {
-      auto msg = SSC::format(R"MSG({
-       "source": "udp.readStart",
-        "err": {
-          "id": "$S",
-          "message": "Peer is already receiving"
-        }
-      })MSG", std::to_string(peerId));
+      auto json = JSON::Object::Entries {
+        {"source", "udp.readStart"},
+        {"err", JSON::Object::Entries {
+          {"id", std::to_string(peerId)},
+          {"message", "Peer is already receiving"}
+        }}
+      };
 
-      cb(seq, msg, Post{});
+      cb(seq, json, Post{});
       return;
     }
 
-    auto err = peer->recvstart(cb);
+    auto err = peer->recvstart(receive);
 
     // `UV_EALREADY || UV_EBUSY` means there is active IO on the underlying handle
     if (err < 0 && err != UV_EALREADY && err != UV_EBUSY) {
-      auto msg = SSC::format(
-        R"MSG({
-          "source": "udp.readStart",
-          "err": {
-            "id": "$S",
-            "message": "$S"
-          }
-        })MSG",
-        std::to_string(peerId),
-        SSC::String(uv_strerror(err))
-      );
+      auto json = JSON::Object::Entries {
+        {"source", "udp.readStart"},
+        {"err", JSON::Object::Entries {
+          {"id", std::to_string(peerId)},
+          {"message", String(uv_strerror(err))}
+        }}
+      };
 
-      cb(seq, msg, Post{});
+      cb(seq, json, Post{});
       return;
     }
 
-    auto msg = SSC::format(R"MSG({
-      "source": "udp.readStart",
-      "data": {
-        "id": "$S"
-      }
-    })MSG", std::to_string(peerId));
-    cb(seq, msg, Post{});
+    auto json = JSON::Object::Entries {
+      {"source", "udp.readStart"},
+      {"data", JSON::Object::Entries {
+        {"id", std::to_string(peerId)}
+      }}
+    };
+
+    cb(seq, json, Post {});
   }
 
-  void Core::udpReadStop (String seq, uint64_t peerId, Callback cb) {
-    dispatchEventLoop([=, this] {
-      if (!hasPeer(peerId)) {
-        auto msg = SSC::format(R"MSG({
-          "source": "udp.readStop",
-          "err": {
-            "id": "$S",
-            "message": "No such peer"
-          }
-        })MSG", std::to_string(peerId));
-
-        cb(seq, msg, Post{});
+  void Core::UDP::readStop (String seq, uint64_t peerId, Callback cb) {
+    this->core->dispatchEventLoop([=, this] {
+      if (!this->core->hasPeer(peerId)) {
+        auto json = ERR_SOCKET_DGRAM_NOT_RUNNING("udp.readStart", peerId);
+        cb(seq, json, Post{});
         return;
       }
 
-      auto peer = getPeer(peerId);
+      auto peer = this->core->getPeer(peerId);
 
       if (peer->isClosing()) {
-        auto msg = SSC::format(R"MSG({
-          "source": "udp.readStop",
-          "err": {
-            "id": "$S",
-            "message": "Peer is closing"
-          }
-        })MSG", std::to_string(peerId));
+        auto json = JSON::Object::Entries {
+          {"source", "udp.readStart"},
+          {"err", JSON::Object::Entries {
+            {"id", std::to_string(peerId)},
+            {"message", "Peer is closing"}
+          }}
+        };
 
-        cb(seq, msg, Post{});
+        cb(seq, json, Post{});
         return;
       }
 
       if (!peer->hasState(PEER_STATE_UDP_RECV_STARTED)) {
-        auto msg = SSC::format(R"MSG({
-         "source": "udp.readStop",
-          "err": {
-            "id": "$S",
-            "message": "Peer is not receiving"
-          }
-        })MSG", std::to_string(peerId));
+        auto json = JSON::Object::Entries {
+          {"source", "udp.readStart"},
+          {"err", JSON::Object::Entries {
+            {"id", std::to_string(peerId)},
+            {"message", "Peer is not receiving"}
+          }}
+        };
 
-        cb(seq, msg, Post{});
+        cb(seq, json, Post{});
         return;
       }
 
       auto err = peer->recvstop();
 
       if (err < 0) {
-        auto msg = SSC::format(R"MSG({
-          "source": "udp.readStop",
-          "err": {
-            "id": "$S",
-            "message": "$S"
-          }
-        })MSG",
-        std::to_string(peerId),
-        SSC::String(uv_strerror(err)));
+        auto json = JSON::Object::Entries {
+          {"source", "udp.readStop"},
+          {"err", JSON::Object::Entries {
+            {"id", std::to_string(peerId)},
+            {"message", String(uv_strerror(err))}
+          }}
+        };
 
-        cb(seq, msg, Post{});
+        cb(seq, json, Post{});
         return;
       }
 
-      auto msg = SSC::format(R"MSG({
-        "source": "udp.readStop",
-        "data": {
-          "id": "$S"
-        }
-      })MSG", std::to_string(peerId));
-      cb(seq, msg, Post{});
+      auto json = JSON::Object::Entries {
+        {"source", "udp.readStop"},
+        {"data", JSON::Object::Entries {
+          {"id", std::to_string(peerId)}
+        }}
+      };
+
+      cb(seq, json, Post {});
     });
   }
 
-  void Core::udpClose (String seq, uint64_t peerId, Callback cb) {
-    dispatchEventLoop([=, this]() {
-      if (!hasPeer(peerId)) {
-        auto msg = SSC::format(R"MSG({
-          "source": "udp.close",
-          "err": {
-            "id": "$S",
-            "code": "NOT_FOUND_ERR",
-            "type": "NotFoundError",
-            "message": "No peer with specified id"
-          }
-        })MSG", std::to_string(peerId));
-        cb(seq, msg, Post{});
+  void Core::UDP::close (String seq, uint64_t peerId, Module::Callback cb) {
+    this->core->dispatchEventLoop([=, this]() {
+      if (!this->core->hasPeer(peerId)) {
+        auto json = ERR_SOCKET_DGRAM_NOT_RUNNING("udp.close", peerId);
+        cb(seq, json, Post{});
         return;
       }
 
-      auto peer = getPeer(peerId);
+      auto peer = this->core->getPeer(peerId);
 
-      if (peer->isClosed() || peer->isClosing() || !peer->isUDP()) {
-        auto msg = SSC::format(R"MSG({
-          "source": "udp.close",
-          "err": {
-            "id": "$S",
-            "code": "ERR_SOCKET_DGRAM_NOT_RUNNING",
-            "type": "InternalError",
-            "message": "The socket has already been closed"
-          }
-        })MSG", std::to_string(peerId));
-        cb(seq, msg, Post{});
+      if (!peer->isUDP()) {
+        auto json = ERR_SOCKET_DGRAM_NOT_RUNNING("udp.close", peerId);
+        cb(seq, json, Post{});
+        return;
+      }
+
+      if (peer->isClosed() || peer->isClosing()) {
+        auto json = ERR_SOCKET_DGRAM_CLOSED("udp.close", peerId);
+        cb(seq, json, Post{});
         return;
       }
 
       peer->close([=, this]() {
-        auto msg = SSC::format(R"MSG({
-          "source": "close",
-          "data": {
-            "id": "$S"
-          }
-        })MSG", std::to_string(peerId));
-        cb(seq, msg, Post{});
+        auto json = JSON::Object::Entries {
+          {"source", "udp.close"},
+          {"data", {
+            {"id", std::to_string(peerId)}
+          }}
+        };
+
+        cb(seq, json, Post{});
       });
     });
   }

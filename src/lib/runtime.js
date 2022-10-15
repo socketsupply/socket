@@ -34,9 +34,9 @@ document.addEventListener('DOMContentLoaded', () => {
   queueMicrotask(async () => {
     try {
       const index = window.parent?.index || 0
-      const result = await window.external.invoke(`ipc://event?value=domcontentloaded&index=${index}`)
+      const result = await window._ipc.send('platform.event', 'domcontentloaded')
     } catch (err) {
-      console.error(err)
+      console.error('ERR:', err)
     }
   })
 })
@@ -191,7 +191,7 @@ void (() => {
           typeof seq !== 'undefined'
         ) {
           if (/android/i.test(window.parent?.platform)) {
-            await window.external.invoke(`ipc://buffer.queue?seq=${seq}`, body)
+            await window.external.invoke(`ipc://buffer.map?seq=${seq}`, body)
             body = null
           }
 
