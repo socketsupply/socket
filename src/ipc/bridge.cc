@@ -56,22 +56,46 @@ static void registerSchemeHandler (Router *router) {
 }
 
 void initFunctionsTable (Router *router) {
-  router->map("ping", [](auto message, auto router, auto reply) {
-    auto result = Result { message.seq, message };
-    result.data = "pong";
-    reply(result);
+  router->map("buffer.map", [](auto message, auto router, auto reply) {
+    if (!message.has("seq")) {
+      return reply(Result::Err { message.seq, message, JSON::Object::Entries {
+        {"message", "Expecting 'seq' in parameters"}
+      }});
+    }
+
+    if (message.body.bytes != nullptr) {
+      auto key = std::to_string(message.index) + message.seq;
+      auto str = String();
+      str.assign(message.body.bytes, message.body.size);
+      router->buffers[key] = str;
+      delete message.body.bytes;
+      message.body.bytes = str.data();
+    }
   });
 
-  router->map("event", [](auto message, auto router, auto reply) {
-    auto value = message.value;
-    auto data = message.get("data");
+  router->map("dns.lookup", [](auto message, auto router, auto reply) {
+    auto hostname = message.get("hostname");
+    auto family = std::stoi(message.get("family", "0"));
     auto seq = message.seq;
-    router->core->handleEvent(seq, value, data, [=](auto seq, auto json, auto post) {
+
+    // TODO: support these options
+    // auto hints = std::stoi(message.get("hints"));
+    // auto all = bool(std::stoi(message.get("all")));
+    // auto verbatim = bool(std::stoi(message.get("verbatim")));
+    router->core->dns.lookup(seq, hostname, family, [=](auto seq, auto json, auto post) {
       reply(Result { seq, message, json, post });
     });
   });
 
-  router->map("bufferSize", [](auto message, auto router, auto reply) {
+  router->map("fs.constants", [](auto message, auto router, auto reply) {
+    router->core->fs.constants(message.seq, [=](auto seq, auto json, auto post) {
+      auto result = Result { message.seq, message };
+      result.value = json;
+      reply(result);
+    });
+  });
+
+  router->map("os.bufferSize", [](auto message, auto router, auto reply) {
     if (message.get("id").size() == 0) {
       auto result = Result { message.seq, message };
       result.err = JSON::Object::Entries {
@@ -86,9 +110,8 @@ void initFunctionsTable (Router *router) {
     auto size = std::stoi(message.get("size", "0"));
     auto id  = std::stoull(message.get("id"));
 
-    router->core->bufferSize(message.seq, id, size, buffer, [=](auto seq, auto json, auto post) {
-      auto result = Result { message.seq, message };
-      reply(result)
+    router->core->os.bufferSize(message.seq, id, size, buffer, [=](auto seq, auto json, auto post) {
+      reply(Result { seq, message, json , post});
     });
   });
 
@@ -101,6 +124,7 @@ void initFunctionsTable (Router *router) {
   router->map("os.type", [](auto message, auto router, auto reply) {
     auto result = Result { message.seq, message };
     result.data = SSC::platform.os;
+    reply(result);
   });
 
   router->map("os.arch", [](auto message, auto router, auto reply) {
@@ -111,28 +135,349 @@ void initFunctionsTable (Router *router) {
 
   router->map("os.networkInterfaces", [](auto message, auto router, auto reply) {
     auto result = Result { message.seq, message };
-    result.json = router->core->getNetworkInterfaces();
+    result.value = router->core->getNetworkInterfaces();
     reply(result);
   });
 
-  router->map("dns.lookup", [](auto message, auto router, auto reply) {
-    auto hostname = message.get("hostname");
-    auto family = std::stoi(message.get("family", "0"));
-    auto seq = message.seq;
+  router->map("ping", [](auto message, auto router, auto reply) {
+    auto result = Result { message.seq, message };
+    result.data = "pong";
+    reply(result);
+  });
 
-    // TODO: support these options
-    // auto hints = std::stoi(message.get("hints"));
-    // auto all = bool(std::stoi(message.get("all")));
-    // auto verbatim = bool(std::stoi(message.get("verbatim")));
-    router->core->dnsLookup(seq, hostname, family, [=](auto seq, auto json, auto post) {
+  router->map("platform.event", [](auto message, auto router, auto reply) {
+    auto value = message.value;
+    auto data = message.get("data");
+    auto seq = message.seq;
+    router->core->platform.event(seq, value, data, [=](auto seq, auto json, auto post) {
       reply(Result { seq, message, json, post });
     });
   });
 
-  router->map("fs.constants", [](auto message, auto router, auto reply) {
+  router->map("post", [](auto message, auto router, auto reply) {
     auto result = Result { message.seq, message };
-    result.json = router->core->getFSConstants();
+    uint64_t id;
+
+    if (!message.has("id")) {
+      return reply(Result::Err { message.seq, message, JSON::Object::Entries {
+        {"message", "Expecting 'id' in parameters"}
+      }});
+    }
+
+    try { id = std::stoull(message.get("id")); } catch (...) {
+      return reply(Result::Err { message.seq, message, JSON::Object::Entries {
+        {"message", "Invalid 'id' given in parameters"}
+      }});
+    }
+
+    if (!router->core->hasPost(id)) {
+      return reply(Result::Err { message.seq, message, JSON::Object::Entries {
+        {"id", std::to_string(id)},
+        {"message", "Invalid 'id' for post"}
+      }});
+    }
+
+    result.post = router->core->getPost(id);
     reply(result);
+    //router->core->removePost(id);
+  });
+
+  router->map("udp.bind", [](auto message, auto router, auto reply) {
+    Core::UDP::BindOptions options;
+    uint64_t id;
+
+    if (!message.has("id")) {
+      return reply(Result::Err { message.seq, message, JSON::Object::Entries {
+        {"message", "Expecting 'id' in parameters"}
+      }});
+    }
+
+    if (!message.has("port")) {
+      return reply(Result::Err { message.seq, message, JSON::Object::Entries {
+        {"message", "Expecting 'port' in parameters"}
+      }});
+    }
+
+    try { id = std::stoull(message.get("id")); } catch (...) {
+      return reply(Result::Err { message.seq, message, JSON::Object::Entries {
+        {"message", "Invalid 'id' given in parameters"}
+      }});
+    }
+
+    try { options.port = std::stoi(message.get("port")); } catch (...) {
+      return reply(Result::Err { message.seq, message, JSON::Object::Entries {
+        {"message", "Invalid 'port' given in parameters"}
+      }});
+    }
+
+    options.reuseAddr = message.get("reuseAddr") == "true";
+    options.address = message.get("address", "0.0.0.0");
+
+    router->core->udp.bind(message.seq, id, options, [=](auto seq, auto json, auto post) {
+      reply(Result { seq, message, json });
+    });
+  });
+
+  router->map("udp.close", [](auto message, auto router, auto reply) {
+    uint64_t id;
+
+    if (!message.has("id")) {
+      return reply(Result::Err { message.seq, message, JSON::Object::Entries {
+        {"message", "Expecting 'id' in parameters"}
+      }});
+    }
+
+    try { id = std::stoull(message.get("id")); } catch (...) {
+      return reply(Result::Err { message.seq, message, JSON::Object::Entries {
+        {"message", "Invalid 'id' given in parameters"}
+      }});
+    }
+
+    router->core->udp.close(message.seq, id, [=](auto seq, auto json, auto post) {
+      reply(Result { seq, message, json });
+    });
+  });
+
+  router->map("udp.connect", [](auto message, auto router, auto reply) {
+    Core::UDP::ConnectOptions options;
+    uint64_t id;
+
+    if (!message.has("id")) {
+      return reply(Result::Err { message.seq, message, JSON::Object::Entries {
+        {"message", "Expecting 'id' in parameters"}
+      }});
+    }
+
+    if (!message.has("port")) {
+      return reply(Result::Err { message.seq, message, JSON::Object::Entries {
+        {"message", "Expecting 'port' in parameters"}
+      }});
+    }
+
+    try { id = std::stoull(message.get("id")); } catch (...) {
+      return reply(Result::Err { message.seq, message, JSON::Object::Entries {
+        {"message", "Invalid 'id' given in parameters"}
+      }});
+    }
+
+    try { options.port = std::stoi(message.get("port")); } catch (...) {
+      return reply(Result::Err { message.seq, message, JSON::Object::Entries {
+        {"message", "Invalid 'port' given in parameters"}
+      }});
+    }
+
+    options.address = message.get("address", "0.0.0.0");
+
+    router->core->udp.connect(message.seq, id, options, [=](auto seq, auto json, auto post) {
+      reply(Result { seq, message, json });
+    });
+  });
+
+  router->map("udp.disconnect", [](auto message, auto router, auto reply) {
+    uint64_t id;
+
+    if (!message.has("id")) {
+      return reply(Result::Err { message.seq, message, JSON::Object::Entries {
+        {"message", "Expecting 'id' in parameters"}
+      }});
+    }
+
+    try { id = std::stoull(message.get("id")); } catch (...) {
+      return reply(Result::Err { message.seq, message, JSON::Object::Entries {
+        {"message", "Invalid 'id' given in parameters"}
+      }});
+    }
+
+    router->core->udp.disconnect(message.seq, id, [=](auto seq, auto json, auto post) {
+      reply(Result { seq, message, json });
+    });
+  });
+
+  router->map("udp.getPeerName", [](auto message, auto router, auto reply) {
+    uint64_t id;
+
+    if (!message.has("id")) {
+      return reply(Result::Err { message.seq, message, JSON::Object::Entries {
+        {"message", "Expecting 'id' in parameters"}
+      }});
+    }
+
+    try { id = std::stoull(message.get("id")); } catch (...) {
+      return reply(Result::Err { message.seq, message, JSON::Object::Entries {
+        {"message", "Invalid 'id' given in parameters"}
+      }});
+    }
+
+    router->core->udp.getPeerName(message.seq, id, [=](auto seq, auto json, auto post) {
+      reply(Result { seq, message, json });
+    });
+  });
+
+  router->map("udp.getSockName", [](auto message, auto router, auto reply) {
+    uint64_t id;
+
+    if (!message.has("id")) {
+      return reply(Result::Err { message.seq, message, JSON::Object::Entries {
+        {"message", "Expecting 'id' in parameters"}
+      }});
+    }
+
+    try { id = std::stoull(message.get("id")); } catch (...) {
+      return reply(Result::Err { message.seq, message, JSON::Object::Entries {
+        {"message", "Invalid 'id' given in parameters"}
+      }});
+    }
+
+    router->core->udp.getSockName(message.seq, id, [=](auto seq, auto json, auto post) {
+      reply(Result { seq, message, json });
+    });
+  });
+
+  router->map("udp.getState", [](auto message, auto router, auto reply) {
+    uint64_t id;
+
+    if (!message.has("id")) {
+      return reply(Result::Err { message.seq, message, JSON::Object::Entries {
+        {"message", "Expecting 'id' in parameters"}
+      }});
+    }
+
+    try { id = std::stoull(message.get("id")); } catch (...) {
+      return reply(Result::Err { message.seq, message, JSON::Object::Entries {
+        {"message", "Invalid 'id' given in parameters"}
+      }});
+    }
+
+    router->core->udp.getState(message.seq, id, [=](auto seq, auto json, auto post) {
+      reply(Result { seq, message, json });
+    });
+  });
+
+  router->map("udp.readStart", [](auto message, auto router, auto reply) {
+    uint64_t id;
+
+    if (!message.has("id")) {
+      return reply(Result::Err { message.seq, message, JSON::Object::Entries {
+        {"message", "Expecting 'id' in parameters"}
+      }});
+    }
+
+    try { id = std::stoull(message.get("id")); } catch (...) {
+      return reply(Result::Err { message.seq, message, JSON::Object::Entries {
+        {"message", "Invalid 'id' given in parameters"}
+      }});
+    }
+
+    router->core->udp.readStart(message.seq, id,
+      [=](auto seq, auto json, auto post) {
+        reply(Result { seq, message, json, post });
+      },
+      [=](auto nread, auto buf, auto addr) {
+        if (nread == UV_EOF) {
+          auto json = JSON::Object::Entries {
+            {"source", "udp.receive"},
+            {"data", JSON::Object::Entries {
+              {"id", std::to_string(id)},
+              {"EOF", true}
+            }}
+          };
+
+          reply(Result { "-1", message, json });
+        } else if (nread > 0) {
+          int port;
+          char addressbuf[17];
+          parseAddress((struct sockaddr *) addr, &port, addressbuf);
+          String address(addressbuf);
+
+          auto headers = SSC::format(R"MSG(
+            content-type: application/octet-stream
+            content-length: $i
+          )MSG", (int) nread);
+
+          auto result = Result { "-1", message };
+          result.post.id = rand64();
+          result.post.body = buf->base;
+          result.post.length = (int) nread;
+          result.post.headers = headers;
+          result.post.bodyNeedsFree = true;
+
+          result.value = JSON::Object::Entries {
+            {"source", "udp.receive"},
+            {"data", JSON::Object::Entries {
+              {"id", std::to_string(id)},
+              {"port", port},
+              {"bytes", std::to_string(result.post.length)},
+              {"address", address}
+            }}
+          };
+
+          reply(result);
+        }
+      }
+    );
+  });
+
+  router->map("udp.readStop", [](auto message, auto router, auto reply) {
+    uint64_t id;
+
+    if (!message.has("id")) {
+      return reply(Result::Err { message.seq, message, JSON::Object::Entries {
+        {"message", "Expecting 'id' in parameters"}
+      }});
+    }
+
+    try { id = std::stoull(message.get("id")); } catch (...) {
+      return reply(Result::Err { message.seq, message, JSON::Object::Entries {
+        {"message", "Invalid 'id' given in parameters"}
+      }});
+    }
+
+    router->core->udp.readStop(message.seq, id, [=](auto seq, auto json, auto post) {
+      reply(Result { seq, message, json });
+    });
+  });
+
+  router->map("udp.send", [](auto message, auto router, auto reply) {
+    Core::UDP::SendOptions options;
+    uint64_t id;
+
+    if (!message.has("id")) {
+      return reply(Result::Err { message.seq, message, JSON::Object::Entries {
+        {"message", "Expecting 'id' in parameters"}
+      }});
+    }
+
+    if (!message.has("port")) {
+      return reply(Result::Err { message.seq, message, JSON::Object::Entries {
+        {"message", "Expecting 'port' in parameters"}
+      }});
+    }
+
+    try { id = std::stoull(message.get("id")); } catch (...) {
+      return reply(Result::Err { message.seq, message, JSON::Object::Entries {
+        {"message", "Invalid 'id' given in parameters"}
+      }});
+    }
+
+    try { options.port = std::stoi(message.get("port")); } catch (...) {
+      return reply(Result::Err { message.seq, message, JSON::Object::Entries {
+        {"message", "Invalid 'port' given in parameters"}
+      }});
+    }
+
+    auto bufferKey = std::to_string(message.index) + message.seq;
+    auto buffer = router->buffers[bufferKey];
+
+    options.size = buffer.size();
+    options.bytes = buffer.data();
+    options.address = message.get("address", "0.0.0.0");
+    options.ephemeral = message.get("ephemeral") == "true";
+
+    router->buffers.erase(router->buffers.find(bufferKey));
+
+    router->core->udp.send(message.seq, id, options, [=](auto seq, auto json, auto post) {
+      reply(Result { seq, message, json });
+    });
   });
 }
 
@@ -141,14 +486,13 @@ namespace SSC::IPC {
     this->core = core;
   }
 
-  bool Bridge::route (const String msg, char *bytes, size_t size) {
+  bool Bridge::route (const String& msg, char *bytes, size_t size) {
     return this->router.invoke(msg, bytes, size);
   }
 
   Router::Router () {
     initFunctionsTable(this);
     registerSchemeHandler(this);
-    fprintf(stderr, "INIT ROUTER\n");
   }
 
   Router::Router (Core *core) : Router() {
@@ -167,23 +511,23 @@ namespace SSC::IPC {
     }
   }
 
-  bool Router::invoke (const String name, char *bytes, size_t size) {
+  bool Router::invoke (const String& name, char *bytes, size_t size) {
     auto message = Message { name, bytes, size };
     return this->invoke(message);
   }
 
-  bool Router::invoke (const String name, char *bytes, size_t size, ResultCallback callback) {
+  bool Router::invoke (const String& name, char *bytes, size_t size, ResultCallback callback) {
     auto message = Message { name, bytes, size };
     return this->invoke(message);
   }
 
-  bool Router::invoke (const Message& message) {
-    return this->invoke(message, [this, message](auto result) {
-      this->send(message.seq, result.str(), result.post);
+  bool Router::invoke (const Message message) {
+    return this->invoke(message, [this](auto result) {
+      this->send(result.seq, result.str(), result.post);
     });
   }
 
-  bool Router::invoke (const Message& message, ResultCallback callback) {
+  bool Router::invoke (const Message message, ResultCallback callback) {
     if (this->table.find(message.name) == this->table.end()) {
       return false;
     }
@@ -191,9 +535,8 @@ namespace SSC::IPC {
     auto fn = this->table.at(message.name);
 
     if (fn!= nullptr) {
-      auto router = this;
-      return this->dispatch([=] {
-        fn(message, router, callback);
+      return this->dispatch([=, this] {
+        fn(message, this, callback);
       });
     }
 
@@ -207,25 +550,22 @@ namespace SSC::IPC {
   bool Router::send (
     const Message::Seq& seq,
     const String& data,
-    const Post& post
+    const Post post
   ) {
     if (post.body || seq == "-1") {
       auto script = this->core->createPost(seq, data, post);
-      this->evaluateJavaScript(script);
-      return true;
+      return this->evaluateJavaScript(script);
     }
 
     // this had a sequence, we need to try to resolve it.
     if (seq != "-1" && seq.size() > 0) {
       auto value = SSC::encodeURIComponent(data);
       auto script = SSC::getResolveToRenderProcessJavaScript(seq, "0", value);
-      this->evaluateJavaScript(script);
-      return true;
+      return this->evaluateJavaScript(script);
     }
 
     if (data.size() > 0) {
-      this->evaluateJavaScript(data);
-      return true;
+      return this->evaluateJavaScript(data);
     }
 
     return false;
@@ -260,8 +600,6 @@ namespace SSC::IPC {
 }
 
   /*
-  static Map bufferQueue;
-
   struct CallbackContext {
     Callback cb;
     SSC::String seq;
@@ -270,43 +608,6 @@ namespace SSC::IPC {
   };
   static bool XXX (IPC::Message cmd, char *buf, size_t bufsize, Callback cb) {
     auto seq = cmd.get("seq");
-
-    if (cmd.name == "post" || cmd.name == "data") {
-      auto id = cmd.get("id");
-
-      if (id.size() == 0) {
-        auto err = SSC::format(R"MSG({
-          "err": {
-            "id", "$S",
-            "type": "InternalError",
-            "message": "'id' is required"
-          }
-        })MSG", id);
-
-        cb(seq, err, Post{});
-        return true;
-      }
-
-      auto pid = std::stoull(id);
-
-      if (!this->core->hasPost(pid)) {
-        auto err = SSC::format(R"MSG({
-          "err": {
-            "id", "$S",
-            "type": "InternalError",
-            "message": "Invalid 'id' for post"
-          }
-        })MSG", id);
-
-        cb(seq, err, Post{});
-        return true;
-      }
-
-      auto post = this->core->getPost(pid);
-      cb(seq, "{}", post);
-      this->core->removePost(pid);
-      return true;
-    }
 
     if (cmd.name == "window.eval" && cmd.index >= 0) {
       auto windowFactory = reinterpret_cast<WindowFactory<Window, App> *>(app->getWindowFactory());
@@ -393,26 +694,6 @@ namespace SSC::IPC {
         ctx
       );
 
-      return true;
-    }
-
-    if (cmd.name == "buffer.queue" && buf != nullptr) {
-      if (seq.size() == 0) {
-        auto err = SSC::format(R"MSG({
-          "err": {
-            "type": "InternalError",
-            "message": "Missing 'seq' for buffer.queue"
-          }
-        })MSG");
-
-        cb(seq, err, Post{});
-        return true;
-      }
-
-      auto bufferKey = std::to_string(cmd.index) + seq;
-      auto str = SSC::String();
-      str.assign(buf, bufsize);
-      bufferQueue[bufferKey] = str;
       return true;
     }
 
@@ -675,302 +956,4 @@ namespace SSC::IPC {
 
       return true;
     }
-
-    if (cmd.name == "udpClose" || cmd.name == "udp.close") {
-      uint64_t peerId = 0ll;
-      SSC::String err = "";
-
-      if (cmd.get("id").size() == 0) {
-        err = ".id is required";
-      } else {
-        try {
-          peerId = std::stoull(cmd.get("id"));
-        } catch (...) {
-          err = "property .id is invalid";
-        }
-      }
-
-      this->app->dispatch([=, this] {
-        this->core->close(seq, peerId, cb);
-      });
-      return true;
-    }
-
-    if (cmd.name == "udpBind" || cmd.name == "udp.bind") {
-      if (cmd.get("id").size() == 0) {
-        auto err = SSC::format(R"MSG({
-          "err": {
-            "type": "InternalError",
-            "message": ".id is required"
-          }
-        })MSG");
-
-        cb(seq, err, Post{});
-        return true;
-      }
-
-      if (cmd.get("port").size() == 0) {
-        auto err = SSC::format(R"MSG({
-          "err": {
-            "type": "InternalError",
-            "message": "'port' is required"
-          }
-        })MSG");
-
-        cb(seq, err, Post{});
-        return true;
-      }
-
-      this->app->dispatch([=, this] {
-        auto ip = cmd.get("address");
-        auto reuseAddr = cmd.get("reuseAddr") == "true";
-        int port;
-        uint64_t peerId;
-
-        if (ip.size() == 0) {
-          ip = "0.0.0.0";
-        }
-
-        port = std::stoi(cmd.get("port"));
-        peerId = std::stoull(cmd.get("id"));
-
-        this->core->udpBind(seq, peerId, ip, port, reuseAddr, cb);
-      });
-      return true;
-    }
-
-    if (cmd.name == "udpConnect" || cmd.name == "udp.connect") {
-      auto strId = cmd.get("id");
-      SSC::String err = "";
-      uint64_t peerId = 0ll;
-      int port = 0;
-      auto strPort = cmd.get("port");
-      auto ip = cmd.get("address");
-
-      if (strId.size() == 0) {
-        err = "invalid peerId";
-      } else {
-        try {
-          peerId = std::stoull(cmd.get("id"));
-        } catch (...) {
-          err = "invalid peerId";
-        }
-      }
-
-      if (strPort.size() == 0) {
-        err = "invalid port";
-      } else {
-        try {
-          port = std::stoi(strPort);
-        } catch (...) {
-          err = "invalid port";
-        }
-      }
-
-      if (port == 0) {
-        err = "Can not bind to port 0";
-      }
-
-      if (err.size() > 0) {
-        auto msg = SSC::format(R"MSG({
-          "err": {
-            "message": "$S"
-          }
-        })MSG", err);
-        cb(seq, msg, Post{});
-        return true;
-      }
-
-      if (ip.size() == 0) {
-        ip = "0.0.0.0";
-      }
-
-      this->app->dispatch([=, this] {
-        this->core->udpConnect(seq, peerId, ip, port, cb);
-      });
-
-      return true;
-    }
-
-    if (cmd.name == "udpDisconnect" || cmd.name == "udp.disconnect") {
-      auto strId = cmd.get("id");
-
-      if (strId.size() == 0) {
-        auto msg = SSC::format(R"MSG({
-          "err": {
-            "message": "expected .peerId"
-          }
-        })MSG");
-        cb(seq, msg, Post{});
-        return true;
-      }
-
-      auto peerId = std::stoull(strId);
-
-      this->app->dispatch([=, this] {
-        this->core->udpDisconnect(seq, peerId, cb);
-      });
-      return true;
-    }
-
-    if (cmd.name == "udpGetPeerName" || cmd.name == "udp.getPeerName") {
-      auto strId = cmd.get("id");
-
-      if (strId.size() == 0) {
-        auto msg = SSC::format(R"MSG({
-          "err": {
-            "message": "expected .peerId"
-          }
-        })MSG");
-        cb(seq, msg, Post{});
-        return true;
-      }
-
-      auto peerId = std::stoull(strId);
-
-      this->app->dispatch([=, this] {
-        this->core->udpGetPeerName(seq, peerId, cb);
-      });
-      return true;
-    }
-
-    if (cmd.name == "udpGetSockName" || cmd.name == "udp.getSockName") {
-      auto strId = cmd.get("id");
-
-      if (strId.size() == 0) {
-        auto msg = SSC::format(R"MSG({
-          "err": {
-            "message": "expected .peerId"
-          }
-        })MSG");
-        cb(seq, msg, Post{});
-        return true;
-      }
-
-      auto peerId = std::stoull(strId);
-
-      this->app->dispatch([=, this] {
-        this->core->udpGetSockName(seq, peerId, cb);
-      });
-      return true;
-    }
-
-    if (cmd.name == "udpGetState" || cmd.name == "udp.getState") {
-      auto strId = cmd.get("id");
-
-      if (strId.size() == 0) {
-        auto msg = SSC::format(R"MSG({
-          "err": {
-            "message": "expected .peerId"
-          }
-        })MSG");
-        cb(seq, msg, Post{});
-        return true;
-      }
-
-      auto peerId = std::stoull(strId);
-
-      this->app->dispatch([=, this] {
-        this->core->udpGetState(seq, peerId, cb);
-      });
-      return true;
-    }
-
-    if (cmd.name == "udpReadStart" || cmd.name == "udp.readStart") {
-      if (cmd.get("id").size() == 0) {
-        auto err = SSC::format(R"MSG({
-          "err": {
-            "type": "InternalError",
-            "message": ".id is required"
-          }
-        })MSG");
-
-        cb(seq, err, Post{});
-        return true;
-      }
-
-      auto peerId = std::stoull(cmd.get("id"));
-      this->app->dispatch([=, this] {
-        this->core->udpReadStart(seq, peerId, cb);
-      });
-      return true;
-    }
-
-    if (cmd.name == "udpReadStop" || cmd.name == "udp.readStop") {
-      if (cmd.get("id").size() == 0) {
-        auto err = SSC::format(R"MSG({
-          "err": {
-            "type": "InternalError",
-            "message": ".id is required"
-          }
-        })MSG");
-
-        cb(seq, err, Post{});
-        return true;
-      }
-
-      auto peerId = std::stoull(cmd.get("id"));
-      this->app->dispatch([=, this] {
-        this->core->udpReadStop(seq, peerId, cb);
-      });
-      return true;
-    }
-
-    if (cmd.name == "udpSend" || cmd.name == "udp.send") {
-      int offset = 0;
-      int port = 0;
-      uint64_t peerId;
-      SSC::String err;
-
-      auto ephemeral = cmd.get("ephemeral") == "true";
-      auto strOffset = cmd.get("offset");
-      auto strPort = cmd.get("port");
-      auto ip = cmd.get("address");
-
-      if (strOffset.size() > 0) {
-        try {
-          offset = std::stoi(strOffset);
-        } catch (...) {
-          err = "invalid offset";
-        }
-      }
-
-      try {
-        port = std::stoi(strPort);
-      } catch (...) {
-        err = "invalid port";
-      }
-
-      if (ip.size() == 0) {
-        ip = "0.0.0.0";
-      }
-
-      try {
-        peerId = std::stoull(cmd.get("id"));
-      } catch (...) {
-        err = "invalid id";
-      }
-
-      if (err.size() > 0) {
-        auto msg = SSC::format(R"MSG({
-          "err": {
-            "message": "$S"
-          }
-        })MSG", err);
-        cb(seq, err, Post{});
-        return true;
-      }
-
-      this->app->dispatch([=, this] {
-        auto bufferKey = std::to_string(cmd.index) + seq;
-        auto buffer = bufferQueue[bufferKey];
-        auto data = buffer.data();
-        auto size = buffer.size();
-
-        bufferQueue.erase(bufferQueue.find(bufferKey));
-        this->core->udpSend(seq, peerId, data, size, port, ip, ephemeral, cb);
-      });
-      return true;
-    }
-
 */

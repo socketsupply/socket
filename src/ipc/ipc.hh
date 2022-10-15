@@ -32,6 +32,7 @@ namespace SSC::IPC {
       Message (const Message& message);
       Message (const String& source);
       Message (const String& source, char *bytes, size_t size);
+      bool has (const String& key) const;
       String get (const String& key) const;
       String get (const String& key, const String& fallback) const;
       String str () const { return this->uri; }
@@ -40,35 +41,57 @@ namespace SSC::IPC {
 
   class Result {
     public:
-      using Data = JSON::Any;
-      using Err = JSON::Any;
+      class Err {
+        public:
+          Message message;
+          Message::Seq seq;
+          JSON::Any value;
+          Err () = default;
+          Err (Message::Seq, const Message&, JSON::Any);
+      };
+
+      class Data {
+        public:
+          Message message;
+          Message::Seq seq;
+          JSON::Any value;
+          Post post;
+
+          Data () = default;
+          Data (Message::Seq, const Message&, JSON::Any);
+          Data (Message::Seq, const Message&, JSON::Any, Post);
+      };
 
       Message message;
       Message::Seq seq;
       String source = "";
-      JSON::Any json = nullptr;
+      JSON::Any value = nullptr;
+      JSON::Any data = nullptr;
+      JSON::Any err = nullptr;
       Post post;
-      Data data = nullptr;
-      Err err = nullptr;
 
       Result ();
+      Result (const Err error);
+      Result (const Data data);
       Result (Message::Seq, const Message&);
       Result (Message::Seq, const Message&, JSON::Any);
       Result (Message::Seq, const Message&, JSON::Any, Post);
       String str () const;
+      JSON::Any json () const;
   };
 
   class Router {
     public:
       using EvaluateJavaScriptCallback = std::function<void(const String)>;
       using DispatchCallback = std::function<void()>;
-      using ReplyCallback = std::function<void(const Result&)>;
+      using ReplyCallback = std::function<void(const Result)>;
       using ResultCallback = std::function<void(Result)>;
       using MessageCallback = std::function<void(const Message, Router*, ReplyCallback)>;
       using Table = std::map<String, MessageCallback>;
 
       EvaluateJavaScriptCallback evaluateJavaScriptFunction = nullptr;
       std::function<void(DispatchCallback)> dispatchFunction = nullptr;
+      Map buffers;
       Table table;
       Core *core = nullptr;
 
@@ -78,14 +101,14 @@ namespace SSC::IPC {
       void map (const String& name, MessageCallback callback);
       void unmap (const String& name);
       bool dispatch (DispatchCallback callback);
-      bool emit (const String &name, const String& data);
+      bool emit (const String& name, const String& data);
       bool evaluateJavaScript (const String javaScript);
-      bool invoke (const Message& message);
-      bool invoke (const Message& message, ResultCallback callback);
-      bool invoke (const String msg, char *bytes, size_t size);
-      bool invoke (const String msg, char *bytes, size_t size, ResultCallback callback);
+      bool invoke (const Message message);
+      bool invoke (const Message message, ResultCallback callback);
+      bool invoke (const String& msg, char *bytes, size_t size);
+      bool invoke (const String& msg, char *bytes, size_t size, ResultCallback callback);
       bool send (const Message::Seq& seq, const String& data);
-      bool send (const Message::Seq& seq, const String& data, const Post& post);
+      bool send (const Message::Seq& seq, const String& data, const Post post);
   };
 
   class Bridge {
@@ -95,7 +118,7 @@ namespace SSC::IPC {
 
       Bridge () {}
       Bridge (Core *core);
-      bool route (const String msg, char *bytes, size_t size);
+      bool route (const String& msg, char *bytes, size_t size);
   };
 } // SSC::IPC
 

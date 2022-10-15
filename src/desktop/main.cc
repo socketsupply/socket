@@ -20,7 +20,7 @@
 #else
 #define MAIN                                   \
   const int instanceId = 0;                    \
-  int main (const int argc, const char** argv)
+  int main (int argc, char** argv)
 #endif
 
 #define InvalidWindowIndexError(index) \

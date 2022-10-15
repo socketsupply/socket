@@ -110,6 +110,7 @@ namespace SSC::JSON {
     auto ptr = this->pointer.get();
 
     switch (this->type) {
+      case Type::Any: return "";
       case Type::Null: return Null().str();
       case Type::Object: return reinterpret_cast<Object *>(ptr)->str();
       case Type::Array: return reinterpret_cast<Array *>(ptr)->str();
