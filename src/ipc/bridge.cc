@@ -52,8 +52,8 @@ static void registerSchemeHandler (Router *router) {
       auto size = result.post.body != nullptr ? result.post.length : json.size();
       auto body = result.post.body != nullptr ? result.post.body : json.c_str();
 
-      auto freeFunction = result.post.body != nullptr ? free : nullptr;
-      auto stream = g_memory_input_stream_new_from_data(body, size, freeFunction);
+      auto freeFn = result.post.body != nullptr ? free : nullptr;
+      auto stream = g_memory_input_stream_new_from_data(body, size, freeFn);
       auto response = webkit_uri_scheme_response_new(stream, size);
 
       webkit_uri_scheme_response_set_content_type(response, IPC_CONTENT_TYPE);
@@ -72,7 +72,9 @@ static void registerSchemeHandler (Router *router) {
       };
 
       auto msg = JSON::Object(err).str();
-      auto stream = g_memory_input_stream_new_from_data(msg.c_str(), msg.size(), 0);
+      auto size = msg.size();
+      auto bytes = msg.c_str();
+      auto stream = g_memory_input_stream_new_from_data(bytes, size, 0);
       auto response = webkit_uri_scheme_response_new(stream, msg.size());
 
       webkit_uri_scheme_response_set_status(response, 404, "Not found");
@@ -125,11 +127,8 @@ void initFunctionsTable (Router *router) {
       getMessageParam(family, "family", std::stoi);
     }
 
-    // TODO: support these options
-    // auto hints = std::stoi(message.get("hints"));
-    // auto all = bool(std::stoi(message.get("all")));
-    // auto verbatim = bool(std::stoi(message.get("verbatim")));
-    router->core->dns.lookup(seq, hostname, family, resultCallback(message, reply));
+    auto options = Core::DNS::LookupOptions { hostname, family };
+    router->core->dns.lookup(seq, options, resultCallback(message, reply));
   });
 
   /**
