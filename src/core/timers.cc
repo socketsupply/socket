@@ -5,20 +5,20 @@ namespace SSC {
     .timeout = 256, // in milliseconds
     .invoke = [](uv_timer_t *handle) {
       auto core = reinterpret_cast<Core *>(handle->data);
-      std::vector<uint64_t> ids;
-      SSC::String msg = "";
+      Vector<uint64_t> ids;
+      String msg = "";
 
-      std::lock_guard<std::recursive_mutex> descriptorsGuard(core->descriptorsMutex);
-      for (auto const &tuple : core->descriptors) {
+      Lock lock(core->fs.mutex);
+      for (auto const &tuple : core->fs.descriptors) {
         ids.push_back(tuple.first);
       }
 
       for (auto const id : ids) {
-        std::lock_guard<std::recursive_mutex> descriptorsGuard(core->descriptorsMutex);
-        auto desc = core->descriptors.at(id);
+        Lock lock(core->fs.mutex);
+        auto desc = core->fs.descriptors.at(id);
 
         if (desc == nullptr) {
-          core->descriptors.erase(id);
+          core->fs.descriptors.erase(id);
           continue;
         }
 
@@ -27,12 +27,12 @@ namespace SSC {
         }
 
         if (desc->isDirectory()) {
-          core->fsClosedir("", id, [](auto seq, auto msg, auto post) {});
+          core->fs.closedir("", id, [](auto seq, auto msg, auto post) {});
         } else if (desc->isFile()) {
-          core->fsClose("", id, [](auto seq, auto msg, auto post) {});
+          core->fs.close("", id, [](auto seq, auto msg, auto post) {});
         } else {
           // free
-          core->descriptors.erase(id);
+          core->fs.descriptors.erase(id);
           delete desc;
         }
       }
@@ -44,7 +44,7 @@ namespace SSC {
       return;
     }
 
-    std::lock_guard<std::recursive_mutex> guard(timersMutex);
+    Lock lock(timersMutex);
 
     auto loop = getEventLoop();
 
@@ -61,7 +61,7 @@ namespace SSC {
   }
 
   void Core::startTimers () {
-    std::lock_guard<std::recursive_mutex> guard(timersMutex);
+    Lock lock(timersMutex);
 
     std::vector<Timer *> timersToStart = {
       &releaseWeakDescriptors
@@ -92,7 +92,7 @@ namespace SSC {
       return;
     }
 
-    std::lock_guard<std::recursive_mutex> guard(timersMutex);
+    Lock lock(timersMutex);
 
     std::vector<Timer *> timersToStop = {
       &releaseWeakDescriptors

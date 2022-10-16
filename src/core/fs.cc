@@ -1,1315 +1,8 @@
 #include "core.hh"
 
 namespace SSC {
-  void DescriptorRequestContext::setBuffer (int index, int len, char *base) {
-    this->iov[index].base = base;
-    this->iov[index].len = len;
-  }
-
-  void DescriptorRequestContext::freeBuffer (int index) {
-    if (this->iov[index].base != nullptr) {
-      delete [] (char *) this->iov[index].base;
-      this->iov[index].base = nullptr;
-    }
-
-    this->iov[index].len = 0;
-  }
-
-  char* DescriptorRequestContext::getBuffer (int index) {
-    return this->iov[index].base;
-  }
-
-  size_t DescriptorRequestContext::getBufferSize (int index) {
-    return this->iov[index].len;
-  }
-
-  void DescriptorRequestContext::end (String seq, String msg, Post post) {
-    auto cb = this->cb;
-
-    if (cb != nullptr) {
-      cb(seq, msg, post);
-    }
-
-    delete this;
-  }
-
-  void DescriptorRequestContext::end (String seq, String msg) {
-    this->end(seq, msg, Post{});
-  }
-
-  void DescriptorRequestContext::end (String msg, Post post) {
-    this->end(this->seq, msg, post);
-  }
-
-  void DescriptorRequestContext::end (String msg) {
-    this->end(this->seq, msg, Post{});
-  }
-
-  Descriptor::Descriptor (Core *core, uint64_t id) {
-    this->core = core;
-    this->id = id;
-  }
-
-  bool Descriptor::isDirectory () {
-    std::lock_guard<std::recursive_mutex> guard(this->mutex);
-    return this->dir != nullptr;
-  }
-
-  bool Descriptor::isFile () {
-    std::lock_guard<std::recursive_mutex> guard(this->mutex);
-    return this->fd > 0 && this->dir == nullptr;
-  }
-
-  bool Descriptor::isRetained () {
-    std::lock_guard<std::recursive_mutex> guard(this->mutex);
-    return this->retained;
-  }
-
-  bool Descriptor::isStale () {
-    std::lock_guard<std::recursive_mutex> guard(this->mutex);
-    return this->stale;
-  }
-
-  Descriptor * Core::getDescriptor (uint64_t id) {
-    std::lock_guard<std::recursive_mutex> guard(descriptorsMutex);
-    if (descriptors.find(id) != descriptors.end()) {
-      return descriptors.at(id);
-    }
-    return nullptr;
-  }
-
-  void Core::removeDescriptor (uint64_t id) {
-    std::lock_guard<std::recursive_mutex> guard(descriptorsMutex);
-    if (descriptors.find(id) != descriptors.end()) {
-      descriptors.erase(id);
-    }
-  }
-
-  bool Core::hasDescriptor (uint64_t id) {
-    std::lock_guard<std::recursive_mutex> guard(descriptorsMutex);
-    return descriptors.find(id) != descriptors.end();
-  }
-
-  void Core::fsRetainOpenDescriptor (String seq, uint64_t id, Callback cb) {
-    auto desc = getDescriptor(id);
-    auto ctx = new DescriptorRequestContext(seq, cb);
-    SSC::String msg;
-
-    if (desc == nullptr) {
-      msg = SSC::format(R"MSG({
-        "source": "fs.retainOpenDescriptor",
-        "err": {
-          "id": "$S",
-          "code": "ENOTOPEN",
-          "type": "NotFoundError",
-          "message": "No file descriptor found with that id"
-        }
-      })MSG", std::to_string(id));
-    } else {
-      std::lock_guard<std::recursive_mutex> descriptorLock(desc->mutex);
-      desc->retained = true;
-      auto msg = SSC::format(R"MSG({
-        "source": "fs.retainOpenDescriptor",
-        "data": {
-          "id": "$S"
-        }
-      })MSG", std::to_string(desc->id));
-    }
-
-    ctx->end(msg);
-  }
-
-  void Core::fsAccess (String seq, String path, int mode, Callback cb) {
-    dispatchEventLoop([=, this]() {
-      auto filename = path.c_str();
-      auto ctx = new DescriptorRequestContext(seq, cb);
-
-      auto err = uv_fs_access(&this->eventLoop, &ctx->req, filename, mode, [](uv_fs_t* req) {
-        auto ctx = (DescriptorRequestContext *) req->data;
-        SSC::String msg;
-
-        if (req->result < 0) {
-          msg = SSC::format(R"MSG({
-            "source": "fs.access",
-            "err": {
-              "code": $S,
-              "message": "$S"
-            }
-          })MSG",
-          std::to_string(req->result),
-          String(uv_strerror(req->result)));
-        } else {
-          msg = SSC::format(R"MSG({
-            "source": "fs.access",
-            "data": {
-              "mode": $S
-            }
-          })MSG", std::to_string(req->flags));
-        }
-
-        ctx->end(msg);
-      });
-
-      if (err < 0) {
-        auto msg = SSC::format(R"MSG({
-          "source": "fs.access",
-          "err": {
-            "code": $S,
-            "message": "$S"
-          }
-        })MSG", std::to_string(err), String(uv_strerror(err)));
-
-        ctx->end(msg);
-      }
-    });
-  }
-
-  void Core::fsChmod (String seq, String path, int mode, Callback cb) {
-    dispatchEventLoop([=, this]() {
-      auto filename = path.c_str();
-      auto ctx = new DescriptorRequestContext(seq, cb);
-
-      auto err = uv_fs_chmod(&this->eventLoop, &ctx->req, filename, mode, [](uv_fs_t* req) {
-        auto ctx = (DescriptorRequestContext *) req->data;
-        SSC::String msg;
-
-        if (req->result < 0) {
-          msg = SSC::format(R"MSG({
-            "source": "fs.chmod",
-            "err": {
-              "code": $S,
-              "message": "$S"
-            }
-          })MSG",
-          std::to_string(req->result),
-          String(uv_strerror(req->result)));
-        } else {
-          msg = SSC::format(R"MSG({
-            "source": "fs.chmod",
-            "data": {
-              "mode": "$S"
-            }
-          })MSG", std::to_string(req->flags));
-        }
-
-        ctx->end(msg);
-      });
-
-      if (err < 0) {
-        auto msg = SSC::format(R"MSG({
-          "source": "fs.chmod",
-          "err": {
-            "code": $S,
-            "message": "$S"
-          }
-        })MSG", std::to_string(err), String(uv_strerror(err)));
-
-        ctx->end(msg);
-      }
-    });
-  }
-
-  void Core::fsOpen (String seq, uint64_t id, String path, int flags, int mode, Callback cb) {
-    dispatchEventLoop([=, this]() {
-      auto filename = path.c_str();
-      auto desc = new Descriptor(this, id);
-      auto ctx = new DescriptorRequestContext(desc, seq, cb);
-
-      auto err = uv_fs_open(&this->eventLoop, &ctx->req, filename, flags, mode, [](uv_fs_t* req) {
-        auto ctx = (DescriptorRequestContext *) req->data;
-        auto desc = ctx->desc;
-        SSC::String msg;
-
-        if (req->result < 0) {
-          msg = SSC::format(R"MSG({
-            "source": "fs.open",
-            "err": {
-              "id": "$S",
-              "code": $S,
-              "message": "$S"
-            }
-          })MSG",
-          std::to_string(desc->id),
-          std::to_string(req->result),
-          String(uv_strerror(req->result)));
-
-          delete desc;
-        } else {
-          msg = SSC::format(R"MSG({
-            "source": "fs.open",
-            "data": {
-              "id": "$S",
-              "fd": $S
-            }
-          })MSG",
-          std::to_string(desc->id),
-          std::to_string(req->result));
-
-          desc->fd = (int) req->result;
-          // insert into `descriptors` map
-          std::lock_guard<std::recursive_mutex> guard(desc->core->descriptorsMutex);
-          desc->core->descriptors.insert_or_assign(desc->id, desc);
-        }
-
-        ctx->end(msg);
-      });
-
-      if (err < 0) {
-        auto msg = SSC::format(R"MSG({
-          "source": "fs.open",
-          "err": {
-            "id": "$S",
-            "code": $S,
-            "message": "$S"
-          }
-        })MSG",
-        std::to_string(id),
-        std::to_string(err),
-        String(uv_strerror(err)));
-
-        delete desc;
-        ctx->end(msg);
-      }
-    });
-  }
-
-  void Core::fsOpendir(String seq, uint64_t id, String path, Callback cb) {
-    dispatchEventLoop([=, this]() {
-      auto filename = path.c_str();
-      auto desc =  new Descriptor(this, id);
-      auto ctx = new DescriptorRequestContext(desc, seq, cb);
-      auto err = uv_fs_opendir(&this->eventLoop, &ctx->req, filename, [](uv_fs_t *req) {
-        auto ctx = (DescriptorRequestContext *) req->data;
-        auto desc = ctx->desc;
-        SSC::String msg;
-
-        if (req->result < 0) {
-          msg = SSC::format(R"MSG({
-            "source": "fs.opendir",
-            "err": {
-              "id": "$S",
-              "code": $S,
-              "message": "$S"
-            }
-          })MSG",
-          std::to_string(desc->id),
-          std::to_string(req->result),
-          String(uv_strerror(req->result)));
-
-          delete desc;
-        } else {
-          msg = SSC::format(R"MSG({
-            "source": "fs.opendir",
-            "data": {
-              "id": "$S"
-            }
-          })MSG",
-          std::to_string(desc->id));
-
-          desc->dir = (uv_dir_t *) req->ptr;
-          // insert into `descriptors` map
-          std::lock_guard<std::recursive_mutex> guard(desc->core->descriptorsMutex);
-          desc->core->descriptors.insert_or_assign(desc->id, desc);
-        }
-
-        ctx->end(msg);
-      });
-
-      if (err < 0) {
-        auto msg = SSC::format(R"MSG({
-          "source": "fs.opendir",
-          "err": {
-            "id": "$S",
-            "code": $S,
-            "message": "$S"
-          }
-        })MSG",
-        std::to_string(desc->id),
-        std::to_string(err),
-        String(uv_strerror(err)));
-
-        delete desc;
-        ctx->end(msg);
-      }
-    });
-  }
-
-  void Core::fsReaddir (String seq, uint64_t id, size_t nentries, Callback cb) {
-    auto desc = getDescriptor(id);
-    auto ctx = new DescriptorRequestContext(desc, seq, cb);
-
-    if (desc == nullptr) {
-      auto msg = SSC::format(R"MSG({
-        "source": "fs.readdir",
-        "err": {
-          "id": "$S",
-          "code": "ENOTOPEN",
-          "type": "NotFoundError",
-          "message": "No directory descriptor found with that id"
-        }
-      })MSG", std::to_string(id));
-
-      ctx->end(msg);
-      return;
-    }
-
-    if (!desc->isDirectory()) {
-      auto msg = SSC::format(R"MSG({
-        "source": "fs.readdir",
-        "err": {
-          "id": "$S",
-          "code": "ENOTOPEN",
-          "message": "Directory descriptor with that id is not open"
-        }
-      })MSG", std::to_string(id));
-
-      ctx->end(msg);
-      return;
-    }
-
-    dispatchEventLoop([=, this]() {
-      std::lock_guard<std::recursive_mutex> descriptorLock(desc->mutex);
-      desc->dir->dirents = ctx->dirents;
-      desc->dir->nentries = nentries;
-
-      auto err = uv_fs_readdir(&this->eventLoop, &ctx->req, desc->dir, [](uv_fs_t *req) {
-        auto ctx = (DescriptorRequestContext *) req->data;
-        auto desc = ctx->desc;
-        SSC::String msg;
-
-        if (req->result < 0) {
-          msg = SSC::format(R"MSG({
-            "source": "fs.readdir",
-            "err": {
-              "id": "$S",
-              "code": $S,
-              "message": "$S"
-            }
-          })MSG",
-          std::to_string(desc->id),
-          std::to_string(req->result),
-          String(uv_strerror(req->result)));
-        } else {
-          SSC::StringStream entries;
-          entries << "[";
-
-          for (int i = 0; i < req->result; ++i) {
-            entries << "{";
-            entries << "\"type\":" << std::to_string(desc->dir->dirents[i].type) << ",";
-            entries << "\"name\":" << "\"" << desc->dir->dirents[i].name << "\"";
-            entries << "}";
-
-            if (i + 1 < req->result) {
-              entries << ", ";
-            }
-          }
-
-          entries << "]";
-
-          msg = SSC::format(R"MSG({
-            "source": "fs.readdir",
-            "data": {
-              "id": "$S",
-              "entries": $S
-            }
-          })MSG",
-          std::to_string(desc->id),
-          entries.str());
-        }
-
-        ctx->end(msg);
-      });
-
-      if (err < 0) {
-        auto msg = SSC::format(R"MSG({
-          "source": "fs.readdir",
-          "err": {
-            "id": "$S",
-            "code": $S,
-            "message": "$S"
-          }
-        })MSG",
-        std::to_string(id),
-        std::to_string(err),
-        String(uv_strerror(err)));
-
-        ctx->end(msg);
-      }
-    });
-  }
-
-  void Core::fsClose (String seq, uint64_t id, Callback cb) {
-    auto desc = getDescriptor(id);
-    auto ctx = new DescriptorRequestContext(desc, seq, cb);
-
-    if (desc == nullptr) {
-      auto msg = SSC::format(R"MSG({
-        "source": "fs.close",
-        "err": {
-          "id": "$S",
-          "code": "ENOTOPEN",
-          "type": "NotFoundError",
-          "message": "No file descriptor found with that id"
-        }
-      })MSG", std::to_string(id));
-
-      ctx->end(msg);
-      return;
-    }
-
-    dispatchEventLoop([ctx, desc, this]() {
-      auto err = uv_fs_close(&this->eventLoop, &ctx->req, desc->fd, [](uv_fs_t* req) {
-        auto ctx = (DescriptorRequestContext *) req->data;
-        auto desc = ctx->desc;
-        SSC::String msg;
-
-        if (req->result < 0) {
-          msg = SSC::format(R"MSG({
-            "source": "fs.close",
-            "err": {
-              "id": "$S",
-              "code": $S,
-              "message": "$S"
-            }
-          })MSG",
-          std::to_string(desc->id),
-          std::to_string(req->result),
-          String(uv_strerror(req->result)));
-        } else {
-          msg = SSC::format(R"MSG({
-            "source": "fs.close",
-            "data": {
-              "id": "$S",
-              "fd": $S
-            }
-          })MSG",
-          std::to_string(desc->id),
-          std::to_string(desc->fd));
-
-          desc->core->removeDescriptor(desc->id);
-          delete desc;
-        }
-
-        ctx->end(msg);
-      });
-
-      if (err < 0) {
-        auto msg = SSC::format(R"MSG({
-          "source": "fs.close",
-          "err": {
-            "id": "$S",
-            "code": $S,
-            "message": "$S"
-          }
-        })MSG",
-        std::to_string(desc->id),
-        std::to_string(err),
-        String(uv_strerror(err)));
-
-        ctx->end(msg);
-      }
-    });
-  }
-
-  void Core::fsClosedir (String seq, uint64_t id, Callback cb) {
-    auto desc = getDescriptor(id);
-    auto ctx = new DescriptorRequestContext(desc, seq, cb);
-    if (desc == nullptr) {
-      auto msg = SSC::format(R"MSG({
-        "source": "fs.closedir",
-        "err": {
-          "id": "$S",
-          "code": "ENOTOPEN",
-          "type": "NotFoundError",
-          "message": "No directory descriptor found with that id"
-        }
-      })MSG", std::to_string(id));
-
-      ctx->end(msg);
-      return;
-    }
-
-    dispatchEventLoop([=, this]() {
-      auto err = uv_fs_closedir(&this->eventLoop, &ctx->req, desc->dir, [](uv_fs_t* req) {
-        auto ctx = (DescriptorRequestContext *) req->data;
-        auto desc = ctx->desc;
-        SSC::String msg;
-
-        if (req->result < 0) {
-          msg = SSC::format(R"MSG({
-            "source": "fs.closedir",
-            "err": {
-              "id": "$S",
-              "code": $S,
-              "message": "$S"
-            }
-          })MSG",
-          std::to_string(desc->id),
-          std::to_string(req->result),
-          String(uv_strerror(req->result)));
-        } else {
-          msg = SSC::format(R"MSG({
-            "source": "fs.closedir",
-            "data": {
-              "id": "$S"
-            }
-          })MSG", std::to_string(desc->id));
-
-          desc->core->removeDescriptor(desc->id);
-          delete desc;
-        }
-
-        ctx->end(msg);
-      });
-
-      if (err < 0) {
-        auto msg = SSC::format(R"MSG({
-          "source": "fs.closedir",
-          "err": {
-            "id": "$S",
-            "code": $S,
-            "message": "$S"
-          }
-        })MSG",
-        std::to_string(id),
-        std::to_string(err),
-        String(uv_strerror(err)));
-
-        ctx->end(msg);
-      }
-    });
-  }
-
-  void Core::fsCloseOpenDescriptor (String seq, uint64_t id, Callback cb) {
-    auto desc = getDescriptor(id);
-
-    if (desc == nullptr) {
-      auto msg = SSC::format(R"MSG({
-        "source": "fs.closeOpenDescriptor",
-        "err": {
-          "id": "$S",
-          "code": "ENOTOPEN",
-          "type": "NotFoundError",
-          "message": "No descriptor found with that id"
-        }
-      })MSG", std::to_string(id));
-
-      cb(seq, msg, Post{});
-      return;
-    }
-
-    if (desc->isDirectory()) {
-      this->fsClosedir(seq, id, cb);
-    } else if (desc->isFile()) {
-      this->fsClose(seq, id, cb);
-    }
-  }
-
-  void Core::fsCloseOpenDescriptors (String seq, Callback cb) {
-    return this->fsCloseOpenDescriptors(seq, false, cb);
-  }
-
-  void Core::fsCloseOpenDescriptors (String seq, bool preserveRetained, Callback cb) {
-    std::lock_guard<std::recursive_mutex> guard(descriptorsMutex);
-
-    std::vector<uint64_t> ids;
-    SSC::String msg = "";
-    int pending = descriptors.size();
-    int queued = 0;
-
-    for (auto const &tuple : descriptors) {
-      ids.push_back(tuple.first);
-    }
-
-    for (auto const id : ids) {
-      auto desc = descriptors[id];
-      pending--;
-
-      if (desc == nullptr) {
-        descriptors.erase(id);
-        continue;
-      }
-
-      if (preserveRetained && desc->isRetained()) {
-        continue;
-      }
-
-      if (desc->isDirectory()) {
-        queued++;
-        this->fsClosedir(seq, id, [pending, cb](auto seq, auto msg, auto post) {
-          if (pending == 0) {
-            cb(seq, msg, post);
-          }
-        });
-      } else if (desc->isFile()) {
-        queued++;
-        this->fsClose(seq, id, [pending, cb](auto seq, auto msg, auto post) {
-          if (pending == 0) {
-            cb(seq, msg, post);
-          }
-        });
-      }
-    }
-
-    if (queued == 0) {
-      cb(seq, msg, Post{});
-    }
-  }
-
-  void Core::fsRead (String seq, uint64_t id, int len, int offset, Callback cb) {
-    auto desc = getDescriptor(id);
-    auto ctx = new DescriptorRequestContext(desc, seq, cb);
-
-    if (desc == nullptr) {
-      auto msg = SSC::format(R"MSG({
-        "source": "fs.read",
-        "err": {
-          "id": "$S",
-          "code": "ENOTOPEN",
-          "type": "NotFoundError",
-          "message": "No file descriptor found with that id"
-        }
-      })MSG", std::to_string(id));
-
-      ctx->end(msg);
-      return;
-    }
-
-    dispatchEventLoop([=, this]() {
-      auto buf = new char[len]{0};
-      ctx->setBuffer(0, len, buf);
-
-      auto err = uv_fs_read(&this->eventLoop, &ctx->req, desc->fd, ctx->iov, 1, offset, [](uv_fs_t* req) {
-        auto ctx = static_cast<DescriptorRequestContext*>(req->data);
-        auto desc = ctx->desc;
-        SSC::String msg = "{}";
-        Post post = {0};
-
-        if (req->result < 0) {
-          msg = SSC::format(R"MSG({
-            "source": "fs.read",
-            "err": {
-              "id": "$S",
-              "code": $S,
-              "message": "$S"
-            }
-          })MSG",
-          std::to_string(desc->id),
-          std::to_string(req->result),
-          String(uv_strerror(req->result)));
-
-          auto buf = ctx->getBuffer(0);
-          if (buf != nullptr) {
-            delete [] buf;
-          }
-        } else {
-          post.id = SSC::rand64();
-          post.body = ctx->getBuffer(0);
-          post.length = (int) req->result;
-          post.bodyNeedsFree = true;
-        }
-
-        ctx->end(msg, post);
-      });
-
-      if (err < 0) {
-        auto msg = SSC::format(R"MSG({
-          "source": "fs.read",
-          "err": {
-            "id": "$S",
-            "message": "$S"
-          }
-        })MSG", std::to_string(id), String(uv_strerror(err)));
-
-        delete [] buf;
-        ctx->end(msg);
-      }
-    });
-  }
-
-  void Core::fsWrite (String seq, uint64_t id, String data, int64_t offset, Callback cb) {
-    auto desc = getDescriptor(id);
-    auto ctx = new DescriptorRequestContext(desc, seq, cb);
-
-    if (desc == nullptr) {
-      auto msg = SSC::format(R"MSG({
-        "source": "fs.write",
-        "err": {
-          "id": "$S",
-          "code": "ENOTOPEN",
-          "type": "NotFoundError",
-          "message": "No file descriptor found with that id"
-        }
-      })MSG", std::to_string(id));
-
-      ctx->end(msg);
-      return;
-    }
-
-    auto size = data.size();
-    auto bytes = new char[size > 0 ? size : 1]{0};
-    memcpy(bytes, data.data(), size);
-
-    ctx->setBuffer(0, size, bytes);
-    dispatchEventLoop([=, this]() {
-      auto err = uv_fs_write(&this->eventLoop, &ctx->req, desc->fd, ctx->iov, 1, offset, [](uv_fs_t* req) {
-        auto ctx = static_cast<DescriptorRequestContext*>(req->data);
-        auto desc = ctx->desc;
-        SSC::String msg;
-
-        if (req->result < 0) {
-          msg = SSC::format(R"MSG({
-            "source": "fs.write",
-            "err": {
-              "id": "$S",
-              "code": $S,
-              "message": "$S"
-            }
-          })MSG",
-          std::to_string(desc->id),
-          std::to_string(req->result),
-          String(uv_strerror(req->result)));
-        } else {
-          msg = SSC::format(R"MSG({
-            "source": "fs.write",
-            "data": {
-              "id": "$S",
-              "result": "$S"
-            }
-          })MSG",
-          std::to_string(desc->id),
-          std::to_string(req->result));
-        }
-
-        auto bytes = ctx->getBuffer(0);
-        if (bytes != nullptr) {
-          delete [] bytes;
-        }
-
-        ctx->end(msg);
-
-      });
-
-      if (err < 0) {
-        auto msg = SSC::format(R"MSG({
-          "source": "fs.write",
-          "err": {
-            "id": "$S",
-            "code": $S,
-            "message": "$S"
-          }
-        })MSG",
-        std::to_string(id),
-        std::to_string(err),
-        String(uv_strerror(err)));
-
-        delete [] bytes;
-        ctx->end(msg);
-      }
-    });
-  }
-
-  void Core::fsStat (String seq, String path, Callback cb) {
-    dispatchEventLoop([=, this]() {
-      auto filename = path.c_str();
-      auto ctx = new DescriptorRequestContext(seq, cb);
-
-      auto err = uv_fs_stat(&this->eventLoop, &ctx->req, filename, [](uv_fs_t *req) {
-        auto ctx = (DescriptorRequestContext *) req->data;
-        SSC::String msg;
-
-        if (req->result < 0) {
-          msg = SSC::format(R"MSG({
-            "source": "fs.stat",
-            "err": {
-              "code": $S,
-              "message": "$S"
-            }
-          })MSG",
-          std::to_string(req->result),
-          String(uv_strerror(req->result)));
-        } else {
-            auto stats = uv_fs_get_statbuf(req);
-            msg = SSC::format(R"MSG({
-              "source": "fs.stat",
-              "data": {
-                "st_dev": "$S",
-                "st_mode": "$S",
-                "st_nlink": "$S",
-                "st_uid": "$S",
-                "st_gid": "$S",
-                "st_rdev": "$S",
-                "st_ino": "$S",
-                "st_size": "$S",
-                "st_blksize": "$S",
-                "st_blocks": "$S",
-                "st_flags": "$S",
-                "st_gen": "$S",
-                "st_atim": { "tv_sec": "$S", "tv_nsec": "$S" },
-                "st_mtim": { "tv_sec": "$S", "tv_nsec": "$S" },
-                "st_ctim": { "tv_sec": "$S", "tv_nsec": "$S" },
-                "st_birthtim": { "tv_sec": "$S", "tv_nsec": "$S" }
-              }
-            })MSG",
-            std::to_string(stats->st_dev),
-            std::to_string(stats->st_mode),
-            std::to_string(stats->st_nlink),
-            std::to_string(stats->st_uid),
-            std::to_string(stats->st_gid),
-            std::to_string(stats->st_rdev),
-            std::to_string(stats->st_ino),
-            std::to_string(stats->st_size),
-            std::to_string(stats->st_blksize),
-            std::to_string(stats->st_blocks),
-            std::to_string(stats->st_flags),
-            std::to_string(stats->st_gen),
-            std::to_string(stats->st_atim.tv_sec),
-            std::to_string(stats->st_atim.tv_nsec),
-            std::to_string(stats->st_mtim.tv_sec),
-            std::to_string(stats->st_mtim.tv_nsec),
-            std::to_string(stats->st_ctim.tv_sec),
-            std::to_string(stats->st_ctim.tv_nsec),
-            std::to_string(stats->st_birthtim.tv_sec),
-            std::to_string(stats->st_birthtim.tv_nsec)
-          );
-        }
-
-        ctx->end(msg);
-      });
-
-      if (err < 0) {
-        auto msg = SSC::format(R"MSG({
-          "source": "fs.stat",
-          "err": {
-            "code": $S,
-            "message": "$S"
-          }
-        })MSG",
-        std::to_string(err),
-        String(uv_strerror(err)));
-
-        ctx->end(msg);
-      }
-    });
-  }
-
-  void Core::fsFStat (String seq, uint64_t id, Callback cb) {
-    auto desc = getDescriptor(id);
-    auto ctx = new DescriptorRequestContext(desc, seq, cb);
-
-    if (desc == nullptr) {
-      auto msg = SSC::format(R"MSG({
-        "err": {
-        "source": "fs.read",
-          "id": "$S",
-          "code": "ENOTOPEN",
-          "type": "NotFoundError",
-          "message": "No file descriptor found with that id"
-        }
-      })MSG", std::to_string(id));
-
-      ctx->end(msg);
-      return;
-    }
-
-    dispatchEventLoop([=, this]() {
-      auto err = uv_fs_fstat(&this->eventLoop, &ctx->req, desc->fd, [](uv_fs_t *req) {
-        auto ctx = (DescriptorRequestContext *) req->data;
-        auto desc = ctx->desc;
-        SSC::String msg;
-
-        if (req->result < 0) {
-          msg = SSC::format(R"MSG({
-            "source": "fs.fstat",
-            "err": {
-              "id": "$S",
-              "code": $S,
-              "message": "$S"
-            }
-          })MSG",
-          std::to_string(desc->id),
-          std::to_string(req->result),
-          String(uv_strerror(req->result)));
-        } else {
-          auto stats = uv_fs_get_statbuf(req);
-          msg = SSC::trim(SSC::format(R"MSG({
-            "source": "fs.fstat",
-            "data": {
-              "id": "$S",
-              "st_dev": "$S",
-              "st_mode": "$S",
-              "st_nlink": "$S",
-              "st_uid": "$S",
-              "st_gid": "$S",
-              "st_rdev": "$S",
-              "st_ino": "$S",
-              "st_size": "$S",
-              "st_blksize": "$S",
-              "st_blocks": "$S",
-              "st_flags": "$S",
-              "st_gen": "$S",
-              "st_atim": { "tv_sec": "$S", "tv_nsec": "$S" },
-              "st_mtim": { "tv_sec": "$S", "tv_nsec": "$S" },
-              "st_ctim": { "tv_sec": "$S", "tv_nsec": "$S" },
-              "st_birthtim": { "tv_sec": "$S", "tv_nsec": "$S" }
-            }
-          })MSG",
-          std::to_string(desc->id),
-          std::to_string(stats->st_dev),
-          std::to_string(stats->st_mode),
-          std::to_string(stats->st_nlink),
-          std::to_string(stats->st_uid),
-          std::to_string(stats->st_gid),
-          std::to_string(stats->st_rdev),
-          std::to_string(stats->st_ino),
-          std::to_string(stats->st_size),
-          std::to_string(stats->st_blksize),
-          std::to_string(stats->st_blocks),
-          std::to_string(stats->st_flags),
-          std::to_string(stats->st_gen),
-          std::to_string(stats->st_atim.tv_sec),
-          std::to_string(stats->st_atim.tv_nsec),
-          std::to_string(stats->st_mtim.tv_sec),
-          std::to_string(stats->st_mtim.tv_nsec),
-          std::to_string(stats->st_ctim.tv_sec),
-          std::to_string(stats->st_ctim.tv_nsec),
-          std::to_string(stats->st_birthtim.tv_sec),
-          std::to_string(stats->st_birthtim.tv_nsec)));
-        }
-
-        ctx->end(msg);
-      });
-
-      if (err < 0) {
-        auto msg = SSC::format(R"MSG({
-          "source": "fs.fstat",
-          "err": {
-            "id": "$S",
-            "code": $S,
-            "message": "$S"
-          }
-        })MSG",
-        std::to_string(id),
-        std::to_string(err),
-        String(uv_strerror(err)));
-
-        ctx->end(msg);
-      }
-    });
-  }
-
-  void Core::fsGetOpenDescriptors (String seq, Callback cb) {
-    std::lock_guard<std::recursive_mutex> guard(descriptorsMutex);
-    int pending = descriptors.size();
-    SSC::String msg = "{\n"
-      "  \"source\": \"fs.getOpenDescriptors\",\n"
-      "  \"data\": [";
-
-    for (auto const &tuple : descriptors) {
-      auto desc = tuple.second;
-      if (!desc) {
-        continue;
-      }
-
-      if (desc->isStale() && !desc->isRetained()) {
-        continue;
-      }
-
-      msg += SSC::format(R"MSG({
-        "id": "$S",
-        "fd": "$S",
-        "type": "$S"
-      })MSG",
-      std::to_string(desc->id),
-      std::to_string(desc->isDirectory() ? desc->id : desc->fd),
-      desc->dir ? "directory" : "file");
-
-      if (--pending > 0) {
-        msg += ",\n";
-      }
-    }
-    msg += "]\n}";
-
-    cb(seq, msg, Post{});
-  }
-
-  void Core::fsUnlink (String seq, String path, Callback cb) {
-    dispatchEventLoop([=, this]() {
-      auto filename = path.c_str();
-      auto ctx = new DescriptorRequestContext(seq, cb);
-
-      auto err = uv_fs_unlink(&this->eventLoop, &ctx->req, filename, [](uv_fs_t *req) {
-        auto ctx = (DescriptorRequestContext *) req->data;
-        SSC::String msg;
-
-        if (req->result < 0) {
-          msg = SSC::format(R"MSG({
-            "source": "fs.unlink",
-            "err": {
-              "code": $S,
-              "message": "$S"
-            }
-          })MSG",
-          std::to_string(req->result),
-          String(uv_strerror(req->result)));
-        } else {
-          msg = SSC::format(R"MSG({
-            "source": "fs.unlink",
-            "data": {
-              "result": "$S"
-            }
-          })MSG", std::to_string(req->result));
-        }
-
-        ctx->end(msg);
-      });
-
-      if (err < 0) {
-        auto msg = SSC::format(R"MSG({
-          "source": "fs.unlink",
-          "err": {
-            "code": $S,
-            "message": "$S"
-          }
-        })MSG",
-        std::to_string(err),
-        String(uv_strerror(err)));
-
-        ctx->end(msg);
-      }
-    });
-  }
-
-  void Core::fsRename (String seq, String pathA, String pathB, Callback cb) {
-    dispatchEventLoop([=, this]() {
-      auto ctx = new DescriptorRequestContext(seq, cb);
-      auto src = pathA.c_str();
-      auto dst = pathB.c_str();
-
-      auto err = uv_fs_rename(&this->eventLoop, &ctx->req, src, dst, [](uv_fs_t *req) {
-        auto ctx = (DescriptorRequestContext *) req->data;
-        SSC::String msg;
-
-        if (req->result < 0) {
-          msg = SSC::format(R"MSG({
-            "source": "fs.rename",
-            "err": {
-              "code": $S,
-              "message": "$S"
-            }
-          })MSG",
-          std::to_string(req->result),
-          String(uv_strerror((int)req->result)));
-        } else {
-          msg = SSC::format(R"MSG({
-            "source": "fs.rename",
-            "data": {
-              "result": "$S"
-            }
-          })MSG", std::to_string(req->result));
-        }
-
-        ctx->end(msg);
-      });
-
-      if (err < 0) {
-        auto msg = SSC::format(R"MSG({
-          "source": "fs.rename",
-          "err": {
-            "code": $S,
-            "message": "$S"
-          }
-        })MSG",
-        std::to_string(err),
-        String(uv_strerror(err)));
-
-        ctx->end(msg);
-      }
-    });
-  }
-
-  void Core::fsCopyFile (String seq, String pathA, String pathB, int flags, Callback cb) {
-    dispatchEventLoop([=, this]() {
-      auto ctx = new DescriptorRequestContext(seq, cb);
-      auto src = pathA.c_str();
-      auto dst = pathB.c_str();
-
-      auto err = uv_fs_copyfile(&this->eventLoop, &ctx->req, src, dst, flags, [](uv_fs_t *req) {
-        auto ctx = (DescriptorRequestContext *) req->data;
-        SSC::String msg;
-
-        if (req->result < 0) {
-          msg = SSC::format(R"MSG({
-            "source": "fs.copyFile",
-            "err": {
-              "code": $S,
-              "message": "$S"
-            }
-          })MSG",
-          std::to_string(req->result),
-          String(uv_strerror((int)req->result)));
-        } else {
-          msg = SSC::format(R"MSG({
-            "source": "fs.copyFile",
-            "data": {
-              "result": "$S"
-            }
-          })MSG", std::to_string(req->result));
-        }
-
-        ctx->end(msg);
-      });
-
-      if (err < 0) {
-        auto msg = SSC::format(R"MSG({
-          "source": "fs.copyFile",
-          "err": {
-            "code": $S,
-            "message": "$S"
-          }
-        })MSG",
-        std::to_string(err),
-        String(uv_strerror(err)));
-
-        ctx->end(msg);
-      }
-    });
-  }
-
-  void Core::fsRmdir (String seq, String path, Callback cb) {
-    dispatchEventLoop([=, this]() {
-      auto filename = path.c_str();
-      auto ctx = new DescriptorRequestContext(seq, cb);
-
-      auto err = uv_fs_rmdir(&this->eventLoop, &ctx->req, filename, [](uv_fs_t *req) {
-        auto ctx = (DescriptorRequestContext *) req->data;
-        SSC::String msg;
-
-        if (req->result < 0) {
-          msg = SSC::format(R"MSG({
-            "source": "fs.rmdir",
-            "err": {
-              "code": $S,
-              "message": "$S"
-            }
-          })MSG",
-          std::to_string(req->result),
-          String(uv_strerror(req->result)));
-        } else {
-          msg = SSC::format(R"MSG({
-            "source": "fs.rmdir",
-            "data": {
-              "result": "$S"
-            }
-          })MSG", std::to_string(req->result));
-        }
-
-        ctx->end(msg);
-      });
-
-      if (err < 0) {
-        auto msg = SSC::format(R"MSG({
-          "source": "fs.rmdir",
-          "err": {
-            "code": $S,
-            "message": "$S"
-          }
-        })MSG",
-        std::to_string(err),
-        String(uv_strerror(err)));
-
-        ctx->end(msg);
-      }
-    });
-  }
-
-  void Core::fsMkdir (String seq, String path, int mode, Callback cb) {
-    dispatchEventLoop([=, this]() {
-      auto filename = path.c_str();
-      auto ctx = new DescriptorRequestContext(seq, cb);
-
-      auto err = uv_fs_mkdir(&this->eventLoop, &ctx->req, filename, mode, [](uv_fs_t *req) {
-        auto ctx = (DescriptorRequestContext *) req->data;
-        SSC::String msg;
-
-        if (req->result < 0) {
-          msg = SSC::format(R"MSG({
-            "source": "fs.mkdir",
-            "err": {
-              "code": $S,
-              "message": "$S"
-            }
-          })MSG",
-          std::to_string(req->result),
-          String(uv_strerror(req->result)));
-        } else {
-          msg = SSC::format(R"MSG({
-            "source": "fs.mkdir",
-            "data": {
-              "result": "$S"
-            }
-          })MSG", std::to_string(req->result));
-        }
-
-        ctx->end(msg);
-      });
-
-      if (err < 0) {
-        auto msg = SSC::format(R"MSG({
-          "source": "fs.mkdir",
-          "err": {
-            "code": $S,
-            "message": "$S"
-          }
-        })MSG",
-        std::to_string(err),
-        String(uv_strerror(err)));
-
-        ctx->end(msg);
-      }
-    });
-  }
-
-  JSON::Object Core::getFSConstants () {
-    auto constants = Core::getFSConstantsMap();
-    auto count = constants.size();
-    JSON::Object::Entries data;
-
-    for (auto const &tuple : constants) {
-      auto key = tuple.first;
-      auto value = tuple.second;
-      data[key] = value;
-    }
-
-    return JSON::Object::Entries {
-      {"source", "fs.constants"},
-      {"data", data}
-    };
-  }
-
-  void Core::FS::constants (String seq, Module::Callback cb) {
-    static auto constants = Core::getFSConstantsMap();
-    this->core->dispatchEventLoop([=] {
-      auto count = constants.size();
-      JSON::Object::Entries data;
-
-      for (auto const &tuple : constants) {
-        auto key = tuple.first;
-        auto value = tuple.second;
-        data[key] = value;
-      }
-
-      auto json = JSON::Object::Entries {
-        {"source", "fs.constants"},
-        {"data", data}
-      };
-
-      cb(seq, json, Post{});
-    });
-  }
-
 #define SET_CONSTANT(c) constants[#c] = (c);
-  std::map<String, int32_t> Core::getFSConstantsMap () {
+  static std::map<String, int32_t> getFSConstantsMap () {
     std::map<String, int32_t> constants;
 
 #ifdef UV_DIRENT_UNKNOWN
@@ -1526,4 +219,1316 @@ namespace SSC {
     return constants;
   }
 #undef SET_CONSTANT
+
+  JSON::Object getStatsJSON (const String& source, uv_stat_t* stats) {
+    return JSON::Object::Entries {
+      {"source", source},
+      {"data", JSON::Object::Entries {
+        {"st_dev", std::to_string(stats->st_dev)},
+        {"st_mode", std::to_string(stats->st_mode)},
+        {"st_nlink", std::to_string(stats->st_nlink)},
+        {"st_uid", std::to_string(stats->st_uid)},
+        {"st_gid", std::to_string(stats->st_gid)},
+        {"st_rdev", std::to_string(stats->st_rdev)},
+        {"st_ino", std::to_string(stats->st_ino)},
+        {"st_size", std::to_string(stats->st_size)},
+        {"st_blksize", std::to_string(stats->st_blksize)},
+        {"st_blocks", std::to_string(stats->st_blocks)},
+        {"st_flags", std::to_string(stats->st_flags)},
+        {"st_gen", std::to_string(stats->st_gen)},
+        {"st_atim", JSON::Object::Entries {
+          {"tv_sec", std::to_string(stats->st_atim.tv_sec)},
+          {"tv_nsec", std::to_string(stats->st_atim.tv_nsec)},
+        }},
+        {"st_mtim", JSON::Object::Entries {
+          {"tv_sec", std::to_string(stats->st_mtim.tv_sec)},
+          {"tv_nsec", std::to_string(stats->st_mtim.tv_nsec)}
+        }},
+        {"st_ctim", JSON::Object::Entries {
+          {"tv_sec", std::to_string(stats->st_ctim.tv_sec)},
+          {"tv_nsec", std::to_string(stats->st_ctim.tv_nsec)}
+        }},
+        {"st_birthtim", JSON::Object::Entries {
+          {"tv_sec", std::to_string(stats->st_birthtim.tv_sec)},
+          {"tv_nsec", std::to_string(stats->st_birthtim.tv_nsec)}
+        }}
+      }}
+    };
+  }
+
+  void Core::FS::RequestContext::setBuffer (int index, int len, char *base) {
+    this->iov[index].base = base;
+    this->iov[index].len = len;
+  }
+
+  void Core::FS::RequestContext::freeBuffer (int index) {
+    if (this->iov[index].base != nullptr) {
+      delete [] (char *) this->iov[index].base;
+      this->iov[index].base = nullptr;
+    }
+
+    this->iov[index].len = 0;
+  }
+
+  char* Core::FS::RequestContext::getBuffer (int index) {
+    return this->iov[index].base;
+  }
+
+  size_t Core::FS::RequestContext::getBufferSize (int index) {
+    return this->iov[index].len;
+  }
+
+  Core::FS::Descriptor::Descriptor (Core *core, uint64_t id) {
+    this->core = core;
+    this->id = id;
+  }
+
+  bool Core::FS::Descriptor::isDirectory () {
+    Lock lock(this->mutex);
+    return this->dir != nullptr;
+  }
+
+  bool Core::FS::Descriptor::isFile () {
+    Lock lock(this->mutex);
+    return this->fd > 0 && this->dir == nullptr;
+  }
+
+  bool Core::FS::Descriptor::isRetained () {
+    Lock lock(this->mutex);
+    return this->retained;
+  }
+
+  bool Core::FS::Descriptor::isStale () {
+    Lock lock(this->mutex);
+    return this->stale;
+  }
+
+  Core::FS::Descriptor * Core::FS::getDescriptor (uint64_t id) {
+    Lock lock(this->mutex);
+    if (descriptors.find(id) != descriptors.end()) {
+      return descriptors.at(id);
+    }
+    return nullptr;
+  }
+
+  void Core::FS::removeDescriptor (uint64_t id) {
+    Lock lock(this->mutex);
+    if (descriptors.find(id) != descriptors.end()) {
+      descriptors.erase(id);
+    }
+  }
+
+  bool Core::FS::hasDescriptor (uint64_t id) {
+    Lock lock(this->mutex);
+    return descriptors.find(id) != descriptors.end();
+  }
+
+  void Core::FS::retainOpenDescriptor (
+    const String seq,
+    uint64_t id,
+    Module::Callback cb
+  ) {
+    auto desc = getDescriptor(id);
+
+    if (desc == nullptr) {
+      auto json = JSON::Object::Entries {
+        {"source", "fs.retainOpenDescriptor"},
+        {"err", JSON::Object::Entries {
+          {"id", std::to_string(id)},
+          {"code", "ENOTOPEN"},
+          {"type", "NotFoundError"},
+          {"message", "No file descriptor found with that id"}
+        }}
+      };
+
+      return cb(seq, json, Post{});
+    }
+
+    Lock lock(desc->mutex);
+    desc->retained = true;
+    auto json = JSON::Object::Entries {
+      {"source", "fs.retainOpenDescriptor"},
+      {"data", JSON::Object::Entries {
+        {"id", std::to_string(desc->id)}
+      }}
+    };
+
+    cb(seq, json, Post{});
+  }
+
+  void Core::FS::access (
+    const String seq,
+    const String path,
+    int mode,
+    Module::Callback cb
+  ) {
+    this->core->dispatchEventLoop([=, this]() {
+      auto filename = path.c_str();
+      auto loop = &this->core->eventLoop;
+      auto ctx = new RequestContext(seq, cb);
+      auto req = &ctx->req;
+      auto err = uv_fs_access(loop, req, filename, mode, [](uv_fs_t* req) {
+        auto ctx = (RequestContext *) req->data;
+        auto json = JSON::Object {};
+
+        if (req->result < 0) {
+          json = JSON::Object::Entries {
+            {"source", "fs.access"},
+            {"err", JSON::Object::Entries {
+              {"code", req->result},
+              {"message", String(uv_strerror(req->result))}
+            }}
+          };
+        } else {
+          json = JSON::Object::Entries {
+            {"source", "fs.access"},
+            {"data", JSON::Object::Entries {
+              {"mode", req->flags},
+            }}
+          };
+        }
+
+        ctx->cb(ctx->seq, json, Post {});
+        delete ctx;
+      });
+
+      if (err < 0) {
+        auto json = JSON::Object::Entries {
+          {"source", "fs.access"},
+          {"err", JSON::Object::Entries {
+            {"code", err},
+            {"message", String(uv_strerror(err))}
+          }}
+        };
+
+        ctx->cb(ctx->seq, json, Post{});
+        delete ctx;
+      }
+    });
+  }
+
+  void Core::FS::chmod (
+    const String seq,
+    const String path,
+    int mode,
+    Module::Callback cb
+  ) {
+    this->core->dispatchEventLoop([=, this]() {
+      auto filename = path.c_str();
+      auto loop = &this->core->eventLoop;
+      auto ctx = new RequestContext(seq, cb);
+      auto req = &ctx->req;
+      auto err = uv_fs_chmod(loop, req, filename, mode, [](uv_fs_t* req) {
+        auto ctx = (RequestContext *) req->data;
+        auto json = JSON::Object {};
+
+        if (req->result < 0) {
+          json = JSON::Object::Entries {
+            {"source", "fs.chmod"},
+            {"err", JSON::Object::Entries {
+              {"code", req->result},
+              {"message", String(uv_strerror(req->result))}
+            }}
+          };
+        } else {
+          json = JSON::Object::Entries {
+            {"source", "fs.chmod"},
+            {"data", JSON::Object::Entries {
+              {"mode", req->flags},
+            }}
+          };
+        }
+
+        ctx->cb(ctx->seq, json, Post {});
+        delete ctx;
+      });
+
+      if (err < 0) {
+        auto json = JSON::Object::Entries {
+          {"source", "fs.chmod"},
+          {"err", JSON::Object::Entries {
+            {"code", err},
+            {"message", String(uv_strerror(err))}
+          }}
+        };
+
+        ctx->cb(ctx->seq, json, Post{});
+        delete ctx;
+      }
+    });
+  }
+
+  void Core::FS::close (
+    const String seq,
+    uint64_t id,
+    Module::Callback cb
+  ) {
+    this->core->dispatchEventLoop([=, this]() {
+      auto desc = getDescriptor(id);
+
+      if (desc == nullptr) {
+        auto json = JSON::Object::Entries {
+          {"source", "fs.close"},
+          {"err", JSON::Object::Entries {
+            {"id", std::to_string(id)},
+            {"code", "ENOTOPEN"},
+            {"type", "NotFoundError"},
+            {"message", "No file descriptor found with that id"}
+          }}
+        };
+
+        return cb(seq, json, Post{});
+      }
+
+      auto loop = &this->core->eventLoop;
+      auto ctx = new RequestContext(desc, seq, cb);
+      auto req = &ctx->req;
+      auto err = uv_fs_close(loop, req, desc->fd, [](uv_fs_t* req) {
+        auto ctx = (RequestContext *) req->data;
+        auto desc = ctx->desc;
+        auto json = JSON::Object {};
+
+        if (req->result < 0) {
+          json = JSON::Object::Entries {
+            {"source", "fs.close"},
+            {"err", JSON::Object::Entries {
+              {"id", std::to_string(desc->id)},
+              {"code", req->result},
+              {"message", String(uv_strerror(req->result))}
+            }}
+          };
+        } else {
+          json = JSON::Object::Entries {
+            {"source", "fs.close"},
+            {"data", JSON::Object::Entries {
+              {"id", std::to_string(desc->id)},
+              {"fd", desc->fd}
+            }}
+          };
+
+          desc->core->fs.removeDescriptor(desc->id);
+          delete desc;
+        }
+
+        ctx->cb(ctx->seq, json, Post{});
+        delete ctx;
+      });
+
+      if (err < 0) {
+        auto json = JSON::Object::Entries {
+          {"source", "fs.close"},
+          {"err", JSON::Object::Entries {
+            {"id", std::to_string(desc->id)},
+            {"code", err},
+            {"message", String(uv_strerror(err))}
+          }}
+        };
+
+        ctx->cb(ctx->seq, json, Post{});
+        delete ctx;
+      }
+    });
+  }
+
+  void Core::FS::open (
+    const String seq,
+    uint64_t id,
+    const String path,
+    int flags,
+    int mode,
+    Module::Callback cb
+  ) {
+    this->core->dispatchEventLoop([=, this]() {
+      auto filename = path.c_str();
+      auto desc = new Descriptor(this->core, id);
+      auto loop = &this->core->eventLoop;
+      auto ctx = new RequestContext(desc, seq, cb);
+      auto req = &ctx->req;
+      auto err = uv_fs_open(loop, req, filename, flags, mode, [](uv_fs_t* req) {
+        auto ctx = (RequestContext *) req->data;
+        auto desc = ctx->desc;
+        auto json = JSON::Object {};
+
+        if (req->result < 0) {
+          json = JSON::Object::Entries {
+            {"source", "fs.open"},
+            {"err", JSON::Object::Entries {
+              {"id", std::to_string(desc->id)},
+              {"code", req->result},
+              {"message", String(uv_strerror(req->result))}
+            }}
+          };
+
+          delete desc;
+        } else {
+          json = JSON::Object::Entries {
+            {"source", "fs.open"},
+            {"data", JSON::Object::Entries {
+              {"id", std::to_string(desc->id)},
+              {"fd", (int) req->result}
+            }}
+          };
+
+          desc->fd = (int) req->result;
+          // insert into `descriptors` map
+          Lock lock(desc->core->fs.mutex);
+          desc->core->fs.descriptors.insert_or_assign(desc->id, desc);
+        }
+
+        ctx->cb(ctx->seq, json, Post{});
+        delete ctx;
+      });
+
+      if (err < 0) {
+        auto json = JSON::Object::Entries {
+          {"source", "fs.open"},
+          {"err", JSON::Object::Entries {
+            {"id", std::to_string(desc->id)},
+            {"code", err},
+            {"message", String(uv_strerror(err))}
+          }}
+        };
+
+        ctx->cb(ctx->seq, json, Post{});
+        delete ctx;
+      }
+    });
+  }
+
+  void Core::FS::opendir (
+    const String seq,
+    uint64_t id,
+    const String path,
+    Module::Callback cb
+  ) {
+    this->core->dispatchEventLoop([=, this]() {
+      auto filename = path.c_str();
+      auto desc =  new Descriptor(this->core, id);
+      auto loop = &this->core->eventLoop;
+      auto ctx = new RequestContext(desc, seq, cb);
+      auto req = &ctx->req;
+      auto err = uv_fs_opendir(loop, req, filename, [](uv_fs_t *req) {
+        auto ctx = (RequestContext *) req->data;
+        auto desc = ctx->desc;
+        auto json = JSON::Object {};
+
+        if (req->result < 0) {
+          json = JSON::Object::Entries {
+            {"source", "fs.opendir"},
+            {"err", JSON::Object::Entries {
+              {"id", std::to_string(desc->id)},
+              {"code", req->result},
+              {"message", String(uv_strerror(req->result))}
+            }}
+          };
+
+          delete desc;
+        } else {
+          json = JSON::Object::Entries {
+            {"source", "fs.opendir"},
+            {"data", JSON::Object::Entries {
+              {"id", std::to_string(desc->id)}
+            }}
+          };
+
+          desc->dir = (uv_dir_t *) req->ptr;
+          // insert into `descriptors` map
+          Lock lock(desc->core->fs.mutex);
+          desc->core->fs.descriptors.insert_or_assign(desc->id, desc);
+        }
+
+        ctx->cb(ctx->seq, json, Post{});
+        delete ctx;
+      });
+
+      if (err < 0) {
+        auto json = JSON::Object::Entries {
+          {"source", "fs.opendir"},
+          {"err", JSON::Object::Entries {
+            {"id", std::to_string(desc->id)},
+            {"code", err},
+            {"message", String(uv_strerror(err))}
+          }}
+        };
+
+        ctx->cb(ctx->seq, json, Post{});
+        delete ctx;
+      }
+    });
+  }
+
+  void Core::FS::readdir (
+    const String seq,
+    uint64_t id,
+    size_t nentries,
+    Module::Callback cb
+  ) {
+    this->core->dispatchEventLoop([=, this]() {
+      auto desc = getDescriptor(id);
+
+      if (desc == nullptr) {
+        auto json = JSON::Object::Entries {
+          {"source", "fs.close"},
+          {"err", JSON::Object::Entries {
+            {"id", std::to_string(id)},
+            {"code", "ENOTOPEN"},
+            {"type", "NotFoundError"},
+            {"message", "No directory descriptor found with that id"}
+          }}
+        };
+
+        return cb(seq, json, Post{});
+      }
+
+      if (!desc->isDirectory()) {
+        auto json = JSON::Object::Entries {
+          {"source", "fs.close"},
+          {"err", JSON::Object::Entries {
+            {"id", std::to_string(id)},
+            {"code", "ENOTOPEN"},
+            {"message", "No directory descriptor found with that id"}
+          }}
+        };
+
+        return cb(seq, json, Post{});
+      }
+
+      Lock lock(desc->mutex);
+      auto loop = &this->core->eventLoop;
+      auto ctx = new RequestContext(desc, seq, cb);
+      auto req = &ctx->req;
+
+      desc->dir->dirents = ctx->dirents;
+      desc->dir->nentries = nentries;
+
+      auto err = uv_fs_readdir(loop, req, desc->dir, [](uv_fs_t *req) {
+        auto ctx = (RequestContext *) req->data;
+        auto desc = ctx->desc;
+        auto json = JSON::Object {};
+
+        if (req->result < 0) {
+          json = JSON::Object::Entries {
+            {"source", "fs.readdir"},
+            {"err", JSON::Object::Entries {
+              {"id", std::to_string(desc->id)},
+              {"code", req->result},
+              {"message", String(uv_strerror(req->result))}
+            }}
+          };
+        } else {
+          Vector<JSON::Any> entries;
+
+          for (int i = 0; i < req->result; ++i) {
+            auto entry = JSON::Object::Entries {
+              {"type", desc->dir->dirents[i].type},
+              {"name", desc->dir->dirents[i].name}
+            };
+
+            entries.push_back(entry);
+          }
+
+          json = JSON::Object::Entries {
+            {"source", "fs.readdir"},
+            {"data", entries}
+          };
+        }
+
+        ctx->cb(ctx->seq, json, Post{});
+        delete ctx;
+      });
+
+      if (err < 0) {
+        auto json = JSON::Object::Entries {
+          {"source", "fs.readdir"},
+          {"err", JSON::Object::Entries {
+            {"id", std::to_string(desc->id)},
+            {"code", err},
+            {"message", String(uv_strerror(err))}
+          }}
+        };
+
+        ctx->cb(ctx->seq, json, Post{});
+        delete ctx;
+      }
+    });
+  }
+
+  void Core::FS::closedir (
+    const String seq,
+    uint64_t id,
+    Module::Callback cb
+  ) {
+    this->core->dispatchEventLoop([=, this]() {
+      auto desc = getDescriptor(id);
+
+      if (desc == nullptr) {
+        auto json = JSON::Object::Entries {
+          {"source", "fs.closedir"},
+          {"err", JSON::Object::Entries {
+            {"id", std::to_string(id)},
+            {"code", "ENOTOPEN"},
+            {"type", "NotFoundError"},
+            {"message", "No directory descriptor found with that id"}
+          }}
+        };
+
+        return cb(seq, json, Post{});
+      }
+
+      if (!desc->isDirectory()) {
+        auto json = JSON::Object::Entries {
+          {"source", "fs.close"},
+          {"err", JSON::Object::Entries {
+            {"id", std::to_string(id)},
+            {"code", "ENOTOPEN"},
+            {"message", "No directory descriptor found with that id"}
+          }}
+        };
+
+        return cb(seq, json, Post{});
+      }
+
+      auto loop = &this->core->eventLoop;
+      auto ctx = new RequestContext(desc, seq, cb);
+      auto req = &ctx->req;
+      auto err = uv_fs_closedir(loop, req, desc->dir, [](uv_fs_t* req) {
+        auto ctx = (RequestContext *) req->data;
+        auto desc = ctx->desc;
+        auto json = JSON::Object {};
+
+        if (req->result < 0) {
+          json = JSON::Object::Entries {
+            {"source", "fs.closedir"},
+            {"err", JSON::Object::Entries {
+              {"id", std::to_string(desc->id)},
+              {"code", req->result},
+              {"message", String(uv_strerror(req->result))}
+            }}
+          };
+        } else {
+          json = JSON::Object::Entries {
+            {"source", "fs.closedir"},
+            {"data", JSON::Object::Entries {
+              {"id", std::to_string(desc->id)},
+              {"fd", desc->fd}
+            }}
+          };
+
+          desc->core->fs.removeDescriptor(desc->id);
+          delete desc;
+        }
+
+        ctx->cb(ctx->seq, json, Post{});
+        delete ctx;
+      });
+
+      if (err < 0) {
+        auto json = JSON::Object::Entries {
+          {"source", "fs.closedir"},
+          {"err", JSON::Object::Entries {
+            {"id", std::to_string(desc->id)},
+            {"code", err},
+            {"message", String(uv_strerror(err))}
+          }}
+        };
+
+        ctx->cb(ctx->seq, json, Post{});
+        delete ctx;
+      }
+    });
+  }
+
+  void Core::FS::closeOpenDescriptor (
+    const String seq,
+    uint64_t id,
+    Module::Callback cb
+  ) {
+    auto desc = getDescriptor(id);
+
+    if (desc == nullptr) {
+      auto json = JSON::Object::Entries {
+        {"source", "fs.closeOpenDescriptor"},
+        {"err", JSON::Object::Entries {
+          {"id", std::to_string(id)},
+          {"code", "ENOTOPEN"},
+          {"type", "NotFoundError"},
+          {"message", "No descriptor found with that id"}
+        }}
+      };
+
+      return cb(seq, json, Post{});
+    }
+
+    if (desc->isDirectory()) {
+      this->closedir(seq, id, cb);
+    } else if (desc->isFile()) {
+      this->close(seq, id, cb);
+    }
+  }
+
+  void Core::FS::closeOpenDescriptors (const String seq, Module::Callback cb) {
+    return this->closeOpenDescriptors(seq, false, cb);
+  }
+
+  void Core::FS::closeOpenDescriptors (
+    const String seq,
+    bool preserveRetained,
+    Module::Callback cb
+  ) {
+    Lock lock(this->mutex);
+
+    auto pending = descriptors.size();
+    int queued = 0;
+    auto json = JSON::Object {};
+    auto ids = Vector<uint64_t> {};
+
+    for (auto const &tuple : descriptors) {
+      ids.push_back(tuple.first);
+    }
+
+    for (auto const id : ids) {
+      auto desc = descriptors[id];
+      pending--;
+
+      if (desc == nullptr) {
+        descriptors.erase(id);
+        continue;
+      }
+
+      if (preserveRetained && desc->isRetained()) {
+        continue;
+      }
+
+      if (desc->isDirectory()) {
+        queued++;
+        this->closedir(seq, id, [pending, cb](auto seq, auto json, auto post) {
+          if (pending == 0) {
+            cb(seq, json, post);
+          }
+        });
+      } else if (desc->isFile()) {
+        queued++;
+        this->close(seq, id, [pending, cb](auto seq, auto json, auto post) {
+          if (pending == 0) {
+            cb(seq, json, post);
+          }
+        });
+      }
+    }
+
+    if (queued == 0) {
+      cb(seq, json, Post{});
+    }
+  }
+
+  void Core::FS::read (String seq, uint64_t id, int len, int offset, Callback cb) {
+    this->core->dispatchEventLoop([=, this]() {
+      auto desc = getDescriptor(id);
+
+      if (desc == nullptr) {
+        auto json = JSON::Object::Entries {
+          {"source", "fs.read"},
+          {"err", JSON::Object::Entries {
+            {"id", std::to_string(id)},
+            {"code", "ENOTOPEN"},
+            {"type", "NotFoundError"},
+            {"message", "No file descriptor found with that id"}
+          }}
+        };
+
+        return cb(seq, json, Post{});
+      }
+
+      auto loop = &this->core->eventLoop;
+      auto ctx = new RequestContext(desc, seq, cb);
+      auto req = &ctx->req;
+      auto buf = new char[len]{0};
+
+      ctx->setBuffer(0, len, buf);
+
+      auto err = uv_fs_read(loop, req, desc->fd, ctx->iov, 1, offset, [](uv_fs_t* req) {
+        auto ctx = static_cast<RequestContext*>(req->data);
+        auto desc = ctx->desc;
+        auto json = JSON::Object {};
+        Post post = {0};
+
+        if (req->result < 0) {
+          json = JSON::Object::Entries {
+            {"source", "fs.read"},
+            {"err", JSON::Object::Entries {
+              {"id", std::to_string(desc->id)},
+              {"code", req->result},
+              {"message", String(uv_strerror(req->result))}
+            }}
+          };
+
+          auto buf = ctx->getBuffer(0);
+          if (buf != nullptr) {
+            delete [] buf;
+          }
+        } else {
+          auto headers = Headers {{
+            {"content-type" ,"application/octet-stream"},
+            {"content-length", req->result}
+          }};
+
+          post.id = SSC::rand64();
+          post.body = ctx->getBuffer(0);
+          post.length = (int) req->result;
+          post.headers = headers.str();
+          post.bodyNeedsFree = true;
+        }
+
+        ctx->cb(ctx->seq, json, post);
+        delete ctx;
+      });
+
+      if (err < 0) {
+        auto json = JSON::Object::Entries {
+          {"source", "fs.read"},
+          {"err", JSON::Object::Entries {
+            {"id", std::to_string(desc->id)},
+            {"code", err},
+            {"message", String(uv_strerror(err))}
+          }}
+        };
+
+        ctx->cb(ctx->seq, json, Post{});
+        delete ctx;
+      }
+    });
+  }
+
+  void Core::FS::write (
+    const String seq,
+    uint64_t id,
+    char *bytes,
+    size_t size,
+    size_t offset,
+    Module::Callback cb
+  ) {
+    this->core->dispatchEventLoop([=, this]() {
+      auto desc = getDescriptor(id);
+
+      if (desc == nullptr) {
+        auto json = JSON::Object::Entries {
+          {"source", "fs.write"},
+          {"err", JSON::Object::Entries {
+            {"id", std::to_string(id)},
+            {"code", "ENOTOPEN"},
+            {"type", "NotFoundError"},
+            {"message", "No file descriptor found with that id"}
+          }}
+        };
+
+        return cb(seq, json, Post{});
+      }
+
+      auto loop = &this->core->eventLoop;
+      auto ctx = new RequestContext(desc, seq, cb);
+      auto req = &ctx->req;
+
+      ctx->setBuffer(0, size, bytes);
+      auto err = uv_fs_write(loop, req, desc->fd, ctx->iov, 1, offset, [](uv_fs_t* req) {
+        auto ctx = static_cast<RequestContext*>(req->data);
+        auto desc = ctx->desc;
+        auto json = JSON::Object {};
+
+        if (req->result < 0) {
+          json = JSON::Object::Entries {
+            {"source", "fs.write"},
+            {"err", JSON::Object::Entries {
+              {"id", std::to_string(desc->id)},
+              {"code", req->result},
+              {"message", String(uv_strerror(req->result))}
+            }}
+          };
+        } else {
+          json = JSON::Object::Entries {
+            {"source", "fs.write"},
+            {"data", JSON::Object::Entries {
+              {"id", std::to_string(desc->id)},
+              {"result", req->result}
+            }}
+          };
+        }
+
+        ctx->cb(ctx->seq, json, Post{});
+        delete ctx;
+      });
+
+      if (err < 0) {
+        auto json = JSON::Object::Entries {
+          {"source", "fs.write"},
+          {"err", JSON::Object::Entries {
+            {"id", std::to_string(desc->id)},
+            {"code", err},
+            {"message", String(uv_strerror(err))}
+          }}
+        };
+
+        ctx->cb(ctx->seq, json, Post{});
+        delete ctx;
+      }
+    });
+  }
+
+  void Core::FS::stat (
+    const String seq,
+    const String path,
+    Module::Callback cb
+  ) {
+    this->core->dispatchEventLoop([=, this]() {
+      auto filename = path.c_str();
+      auto loop = &this->core->eventLoop;
+      auto ctx = new RequestContext(seq, cb);
+      auto req = &ctx->req;
+      auto err = uv_fs_stat(loop, req, filename, [](uv_fs_t *req) {
+        auto ctx = (RequestContext *) req->data;
+        auto json = JSON::Object {};
+
+        if (req->result < 0) {
+          json = JSON::Object::Entries {
+            {"source", "fs.stat"},
+            {"err", JSON::Object::Entries {
+              {"code", req->result},
+              {"message", String(uv_strerror(req->result))}
+            }}
+          };
+        } else {
+          json = getStatsJSON("fs.stat", uv_fs_get_statbuf(req));
+        }
+
+        ctx->cb(ctx->seq, json, Post{});
+        delete ctx;
+      });
+
+      if (err < 0) {
+        auto json = JSON::Object::Entries {
+          {"source", "fs.stat"},
+          {"err", JSON::Object::Entries {
+            {"code", err},
+            {"message", String(uv_strerror(err))}
+          }}
+        };
+
+        ctx->cb(ctx->seq, json, Post{});
+        delete ctx;
+      }
+    });
+  }
+
+  void Core::FS::fstat (
+    const String seq,
+    uint64_t id,
+    Module::Callback cb
+  ) {
+    this->core->dispatchEventLoop([=, this]() {
+      auto desc = getDescriptor(id);
+
+      if (desc == nullptr) {
+        auto json = JSON::Object::Entries {
+          {"source", "fs.fstat"},
+          {"err", JSON::Object::Entries {
+            {"id", std::to_string(id)},
+            {"code", "ENOTOPEN"},
+            {"type", "NotFoundError"},
+            {"message", "No file descriptor found with that id"}
+          }}
+        };
+
+        return cb(seq, json, Post{});
+      }
+
+      auto loop = &this->core->eventLoop;
+      auto ctx = new RequestContext(desc, seq, cb);
+      auto req = &ctx->req;
+      auto err = uv_fs_fstat(loop, req, desc->fd, [](uv_fs_t *req) {
+        auto ctx = (RequestContext *) req->data;
+        auto desc = ctx->desc;
+        auto json = JSON::Object {};
+
+        if (req->result < 0) {
+          json = JSON::Object::Entries {
+            {"source", "fs.fstat"},
+            {"err", JSON::Object::Entries {
+              {"id", std::to_string(desc->id)},
+              {"code", req->result},
+              {"message", String(uv_strerror(req->result))}
+            }}
+          };
+        } else {
+          json = getStatsJSON("fs.fstat", uv_fs_get_statbuf(req));
+        }
+
+        ctx->cb(ctx->seq, json, Post{});
+        delete ctx;
+      });
+
+      if (err < 0) {
+        auto json = JSON::Object::Entries {
+          {"source", "fs.fstat"},
+          {"err", JSON::Object::Entries {
+            {"id", std::to_string(id)},
+            {"code", err},
+            {"message", String(uv_strerror(err))}
+          }}
+        };
+
+        ctx->cb(ctx->seq, json, Post{});
+        delete ctx;
+      }
+    });
+  }
+
+  void Core::FS::getOpenDescriptors (
+    const String seq,
+    Module::Callback cb
+  ) {
+    Lock lock(this->mutex);
+    auto pending = descriptors.size();
+    auto entries = Vector<JSON::Any> {};
+
+    for (auto const &tuple : descriptors) {
+      auto desc = tuple.second;
+
+      if (!desc || (desc->isStale() && !desc->isRetained())) {
+        continue;
+      }
+
+      auto entry = JSON::Object::Entries {
+        {"id",  std::to_string(desc->id)},
+        {"fd", std::to_string(desc->isDirectory() ? desc->id : desc->fd)},
+        {"type", desc->dir ? "directory" : "file"}
+      };
+
+      entries.push_back(entry);
+    }
+
+    auto json = JSON::Object::Entries {
+      {"source", "fs.getOpenDescriptors"},
+      {"data", entries}
+    };
+
+    cb(seq, json, Post{});
+  }
+
+  void Core::FS::lstat (const String seq, const String path, Module::Callback cb) {
+    this->core->dispatchEventLoop([=, this]() {
+      auto filename = path.c_str();
+      auto loop = &this->core->eventLoop;
+      auto ctx = new RequestContext(seq, cb);
+      auto req = &ctx->req;
+      auto err = uv_fs_lstat(loop, req, filename, [](uv_fs_t *req) {
+        auto ctx = (RequestContext *) req->data;
+        auto json = JSON::Object {};
+
+        if (req->result < 0) {
+          json = JSON::Object::Entries {
+            {"source", "fs.stat"},
+            {"err", JSON::Object::Entries {
+              {"code", req->result},
+              {"message", String(uv_strerror(req->result))}
+            }}
+          };
+        } else {
+          json = getStatsJSON("fs.lstat", uv_fs_get_statbuf(req));
+        }
+
+        ctx->cb(ctx->seq, json, Post{});
+        delete ctx;
+      });
+
+      if (err < 0) {
+        auto json = JSON::Object::Entries {
+          {"source", "fs.stat"},
+          {"err", JSON::Object::Entries {
+            {"code", err},
+            {"message", String(uv_strerror(err))}
+          }}
+        };
+
+        ctx->cb(ctx->seq, json, Post{});
+        delete ctx;
+      }
+    });
+  }
+
+  void Core::FS::unlink (
+    const String seq,
+    const String path,
+    Module::Callback cb
+  ) {
+    this->core->dispatchEventLoop([=, this]() {
+      auto filename = path.c_str();
+      auto loop = &this->core->eventLoop;
+      auto ctx = new RequestContext(seq, cb);
+      auto req = &ctx->req;
+      auto err = uv_fs_unlink(loop, req, filename, [](uv_fs_t *req) {
+        auto ctx = (RequestContext *) req->data;
+        auto json = JSON::Object {};
+
+        if (req->result < 0) {
+          json = JSON::Object::Entries {
+            {"source", "fs.unlink"},
+            {"err", JSON::Object::Entries {
+              {"code", req->result},
+              {"message", String(uv_strerror(req->result))}
+            }}
+          };
+        } else {
+          json = JSON::Object::Entries {
+            {"source", "fs.unlink"},
+            {"data", JSON::Object::Entries {
+              {"result", req->result},
+            }}
+          };
+        }
+
+        ctx->cb(ctx->seq, json, Post{});
+        delete ctx;
+      });
+
+      if (err < 0) {
+        auto json = JSON::Object::Entries {
+          {"source", "fs.unlink"},
+          {"err", JSON::Object::Entries {
+            {"code", err},
+            {"message", String(uv_strerror(err))}
+          }}
+        };
+
+        ctx->cb(ctx->seq, json, Post{});
+        delete ctx;
+      }
+    });
+  }
+
+  void Core::FS::rename (
+    const String seq,
+    const String pathA,
+    const String pathB,
+    const Module::Callback cb
+  ) {
+    this->core->dispatchEventLoop([=, this]() {
+      auto loop = &this->core->eventLoop;
+      auto ctx = new RequestContext(seq, cb);
+      auto req = &ctx->req;
+      auto src = pathA.c_str();
+      auto dst = pathB.c_str();
+      auto err = uv_fs_rename(loop, req, src, dst, [](uv_fs_t *req) {
+        auto ctx = (RequestContext *) req->data;
+        auto json = JSON::Object {};
+
+        if (req->result < 0) {
+          json = JSON::Object::Entries {
+            {"source", "fs.rename"},
+            {"err", JSON::Object::Entries {
+              {"code", req->result},
+              {"message", String(uv_strerror(req->result))}
+            }}
+          };
+        } else {
+          json = JSON::Object::Entries {
+            {"source", "fs.rename"},
+            {"data", JSON::Object::Entries {
+              {"result", req->result},
+            }}
+          };
+        }
+
+        ctx->cb(ctx->seq, json, Post{});
+        delete ctx;
+      });
+
+      if (err < 0) {
+        auto json = JSON::Object::Entries {
+          {"source", "fs.rename"},
+          {"err", JSON::Object::Entries {
+            {"code", err},
+            {"message", String(uv_strerror(err))}
+          }}
+        };
+
+        ctx->cb(ctx->seq, json, Post{});
+        delete ctx;
+      }
+    });
+  }
+
+  void Core::FS::copyFile (
+    const String seq,
+    const String pathA,
+    const String pathB,
+    int flags,
+    Module::Callback cb
+  ) {
+    this->core->dispatchEventLoop([=, this]() {
+      auto loop = &this->core->eventLoop;
+      auto ctx = new RequestContext(seq, cb);
+      auto req = &ctx->req;
+      auto src = pathA.c_str();
+      auto dst = pathB.c_str();
+      auto err = uv_fs_copyfile(loop, req, src, dst, flags, [](uv_fs_t *req) {
+        auto ctx = (RequestContext *) req->data;
+        auto json = JSON::Object {};
+
+        if (req->result < 0) {
+          json = JSON::Object::Entries {
+            {"source", "fs.copyFile"},
+            {"err", JSON::Object::Entries {
+              {"code", req->result},
+              {"message", String(uv_strerror(req->result))}
+            }}
+          };
+        } else {
+          json = JSON::Object::Entries {
+            {"source", "fs.copyFile"},
+            {"data", JSON::Object::Entries {
+              {"result", req->result},
+            }}
+          };
+        }
+
+        ctx->cb(ctx->seq, json, Post{});
+        delete ctx;
+      });
+
+      if (err < 0) {
+        auto json = JSON::Object::Entries {
+          {"source", "fs.copyFile"},
+          {"err", JSON::Object::Entries {
+            {"code", err},
+            {"message", String(uv_strerror(err))}
+          }}
+        };
+
+        ctx->cb(ctx->seq, json, Post{});
+        delete ctx;
+      }
+    });
+  }
+
+  void Core::FS::rmdir (
+    const String seq,
+    const String path,
+    Module::Callback cb
+  ) {
+    this->core->dispatchEventLoop([=, this]() {
+      auto filename = path.c_str();
+      auto loop = &this->core->eventLoop;
+      auto ctx = new RequestContext(seq, cb);
+      auto req = &ctx->req;
+      auto err = uv_fs_rmdir(loop, req, filename, [](uv_fs_t *req) {
+        auto ctx = (RequestContext *) req->data;
+        auto json = JSON::Object {};
+
+        if (req->result < 0) {
+          json = JSON::Object::Entries {
+            {"source", "fs.rmdir"},
+            {"err", JSON::Object::Entries {
+              {"code", req->result},
+              {"message", String(uv_strerror(req->result))}
+            }}
+          };
+        } else {
+          json = JSON::Object::Entries {
+            {"source", "fs.rmdir"},
+            {"data", JSON::Object::Entries {
+              {"result", req->result},
+            }}
+          };
+        }
+
+        ctx->cb(ctx->seq, json, Post{});
+        delete ctx;
+      });
+
+      if (err < 0) {
+        auto json = JSON::Object::Entries {
+          {"source", "fs.rmdir"},
+          {"err", JSON::Object::Entries {
+            {"code", err},
+            {"message", String(uv_strerror(err))}
+          }}
+        };
+
+        ctx->cb(ctx->seq, json, Post{});
+        delete ctx;
+      }
+    });
+  }
+
+  void Core::FS::mkdir (
+    const String seq,
+    const String path,
+    int mode,
+    Module::Callback cb
+  ) {
+    this->core->dispatchEventLoop([=, this]() {
+      auto filename = path.c_str();
+      auto loop = &this->core->eventLoop;
+      auto ctx = new RequestContext(seq, cb);
+      auto req = &ctx->req;
+      auto err = uv_fs_mkdir(loop, req, filename, mode, [](uv_fs_t *req) {
+        auto ctx = (RequestContext *) req->data;
+        auto json = JSON::Object {};
+
+        if (req->result < 0) {
+          json = JSON::Object::Entries {
+            {"source", "fs.mkdir"},
+            {"err", JSON::Object::Entries {
+              {"code", req->result},
+              {"message", String(uv_strerror(req->result))}
+            }}
+          };
+        } else {
+          json = JSON::Object::Entries {
+            {"source", "fs.mkdir"},
+            {"data", JSON::Object::Entries {
+              {"result", req->result},
+            }}
+          };
+        }
+
+        ctx->cb(ctx->seq, json, Post{});
+        delete ctx;
+      });
+
+      if (err < 0) {
+        auto json = JSON::Object::Entries {
+          {"source", "fs.mkdir"},
+          {"err", JSON::Object::Entries {
+            {"code", err},
+            {"message", String(uv_strerror(err))}
+          }}
+        };
+
+        ctx->cb(ctx->seq, json, Post{});
+        delete ctx;
+      }
+    });
+  }
+
+  void Core::FS::constants (const String seq, Module::Callback cb) {
+    static auto constants = getFSConstantsMap();
+
+    this->core->dispatchEventLoop([=] {
+      auto count = constants.size();
+      JSON::Object::Entries data;
+
+      for (auto const &tuple : constants) {
+        auto key = tuple.first;
+        auto value = tuple.second;
+        data[key] = value;
+      }
+
+      auto json = JSON::Object::Entries {
+        {"source", "fs.constants"},
+        {"data", data}
+      };
+
+      cb(seq, json, Post{});
+    });
+  }
 }
