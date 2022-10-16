@@ -951,7 +951,6 @@ int main (const int argc, const char* argv[]) {
       files += prefixFile("src/core/fs.cc");
       files += prefixFile("src/core/javascript.cc");
       files += prefixFile("src/core/json.cc");
-      files += prefixFile("src/core/loop.cc");
       files += prefixFile("src/core/peer.cc");
       files += prefixFile("src/core/timers.cc");
       files += prefixFile("src/core/udp.cc");
@@ -1043,7 +1042,6 @@ int main (const int argc, const char* argv[]) {
       fs::copy(trim(prefixFile("src/core/core.hh")), jni / "core", fs::copy_options::overwrite_existing);
       fs::copy(trim(prefixFile("src/core/fs.cc")), jni / "core", fs::copy_options::overwrite_existing);
       fs::copy(trim(prefixFile("src/core/javascript.cc")), jni / "core", fs::copy_options::overwrite_existing);
-      fs::copy(trim(prefixFile("src/core/loop.cc")), jni / "core", fs::copy_options::overwrite_existing);
       fs::copy(trim(prefixFile("src/core/peer.cc")), jni / "core", fs::copy_options::overwrite_existing);
       fs::copy(trim(prefixFile("src/core/runtime-preload.hh")), jni / "core", fs::copy_options::overwrite_existing);
       fs::copy(trim(prefixFile("src/core/runtime-preload-sources.hh")), jni / "core", fs::copy_options::overwrite_existing);
@@ -1385,7 +1383,6 @@ int main (const int argc, const char* argv[]) {
       files += prefixFile("src/core/fs.cc");
       files += prefixFile("src/core/javascript.cc");
       files += prefixFile("src/core/json.cc");
-      files += prefixFile("src/core/loop.cc");
       files += prefixFile("src/core/peer.cc");
       files += prefixFile("src/core/timers.cc");
       files += prefixFile("src/core/udp.cc");
@@ -1478,7 +1475,6 @@ int main (const int argc, const char* argv[]) {
       files += prefixFile("src\\core\\core.cc");
       files += prefixFile("src\\core\\fs.cc");
       files += prefixFile("src\\core\\javascript.cc");
-      files += prefixFile("src\\core\\loop.cc");
       files += prefixFile("src\\core\\peer.cc");
       files += prefixFile("src\\core\\timers.cc");
       files += prefixFile("src\\core\\udp.cc");
@@ -1604,7 +1600,6 @@ int main (const int argc, const char* argv[]) {
       fs::copy(trim(prefixFile("src/core/core.hh")), pathToDist / "core");
       fs::copy(trim(prefixFile("src/core/fs.cc")), pathToDist / "core");
       fs::copy(trim(prefixFile("src/core/javascript.cc")), pathToDist / "core");
-      fs::copy(trim(prefixFile("src/core/loop.cc")), pathToDist / "core");
       fs::copy(trim(prefixFile("src/core/peer.cc")), pathToDist / "core");
       fs::copy(trim(prefixFile("src/core/runtime-preload-sources.hh")), pathToDist / "core");
       fs::copy(trim(prefixFile("src/core/runtime-preload.hh")), pathToDist / "core");
