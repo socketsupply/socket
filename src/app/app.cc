@@ -1,5 +1,4 @@
 #include "../window/window.hh"
-#include "../window/factory.hh"
 #include "../ipc/ipc.hh"
 #include "app.hh"
 
@@ -164,7 +163,7 @@ namespace SSC {
     this->windowFactory = windowFactory;
   }
 
-  void * App::getWindowFactory () {
+  void * App::getWindowFactory () const {
     return this->windowFactory;
   }
 
@@ -204,14 +203,9 @@ namespace SSC {
     );
 
     if (hUxtheme) {
-      SSC::refreshImmersiveColorPolicyState =
-        (SSC::RefreshImmersiveColorPolicyState) GetProcAddress(hUxtheme, MAKEINTRESOURCEA(104));
-
-      SSC::shouldSystemUseDarkMode =
-        (SSC::ShouldSystemUseDarkMode) GetProcAddress(hUxtheme, MAKEINTRESOURCEA(138));
-
-      SSC::allowDarkModeForApp =
-        (SSC::AllowDarkModeForApp) GetProcAddress(hUxtheme, MAKEINTRESOURCEA(135));
+      refreshImmersiveColorPolicyState = GetProcAddress(hUxtheme, MAKEINTRESOURCEA(104));
+      shouldSystemUseDarkMode = GetProcAddress(hUxtheme, MAKEINTRESOURCEA(138));
+      allowDarkModeForApp = GetProcAddress(hUxtheme, MAKEINTRESOURCEA(135));
     }
 
     allowDarkModeForApp(shouldSystemUseDarkMode());
