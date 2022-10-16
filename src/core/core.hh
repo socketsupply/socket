@@ -8,12 +8,19 @@
 
 #include <uv.h>
 
-#include "../common.hh"
-#include "json.hh"
-#include "runtime-preload.hh"
-
 #if defined(__APPLE__)
-#include "apple.hh"
+#import <Webkit/Webkit.h>
+#import <Network/Network.h>
+#import <Foundation/Foundation.h>
+#import <CoreBluetooth/CoreBluetooth.h>
+#import <UserNotifications/UserNotifications.h>
+#import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
+
+#if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
+#import <UIKit/UIKit.h>
+#else
+#import <Cocoa/Cocoa.h>
+#endif
 #elif defined(__linux__) && !defined(__ANDROID__)
 #include <JavaScriptCore/JavaScript.h>
 #include <webkit2/webkit2.h>
@@ -31,6 +38,10 @@
 #pragma comment(lib, "WebView2LoaderStatic.lib")
 #pragma comment(lib, "uv_a.lib")
 #endif
+
+#include "../common.hh"
+#include "json.hh"
+#include "runtime-preload.hh"
 
 namespace SSC {
   constexpr int EVENT_LOOP_POLL_TIMEOUT = 32; // in milliseconds
@@ -277,22 +288,34 @@ namespace SSC {
             }
           };
 
-          String name;
           Core *core = nullptr;
-          Module (Core* core, const String& name) {
+          Module (Core* core) {
             this->core = core;
-            this->name = name;
           }
       };
 
-      class DNS : Module {
+      class DNS : public Module {
         public:
-          DNS (Core* core) : Module(core, "dns") {}
-          void lookup (String seq, String hostname, int family, Module::Callback cb);
+          DNS (auto core) : Module(core) {}
+          struct LookupOptions {
+            String hostname;
+            int family;
+            // TODO: support these options
+            // - hints
+            // - all
+            // -verbatim
+          };
+          void lookup (
+            const String seq,
+            LookupOptions options,
+            Module::Callback cb
+          );
       };
 
-      class FS : Module {
+      class FS : public Module {
         public:
+          FS (auto core) : Module(core) {}
+
           struct Descriptor {
             uint64_t id;
             std::atomic<bool> retained = false;
@@ -345,7 +368,6 @@ namespace SSC {
           std::map<uint64_t, Descriptor*> descriptors;
           Mutex mutex;
 
-          FS (Core* core): Module(core, "fs") {}
           Descriptor * getDescriptor (uint64_t id);
           void removeDescriptor (uint64_t id);
           bool hasDescriptor (uint64_t id);
@@ -455,9 +477,9 @@ namespace SSC {
           );
       };
 
-      class OS : Module {
+      class OS : public Module {
         public:
-          OS (Core* core): Module(core, "os") {}
+          OS (auto core) : Module(core) {}
           void bufferSize (
             const String seq,
             uint64_t peerId,
@@ -468,15 +490,21 @@ namespace SSC {
           void networkInterfaces (const String seq, Module::Callback cb) const;
       };
 
-      class Platform : Module {
+      class Platform : public Module {
         public:
-          Platform (Core* core): Module(core, "platform") {}
-          void event (String seq, String event, String data, Module::Callback cb);
+          Platform (auto core) : Module(core) {}
+          void event (
+            const String seq,
+            const String event,
+            const String data,
+            Module::Callback cb
+          );
       };
 
-      class UDP : Module {
+      class UDP : public Module {
         public:
-          UDP (Core* core): Module(core, "udp") {}
+          UDP (auto core) : Module(core) {}
+
           struct BindOptions {
             String address;
             int port;
@@ -625,4 +653,36 @@ namespace SSC {
     const String& value
   );
 } // SSC
+
+#if defined(__APPLE__)
+@class SSCIPCBridge;
+
+@interface SSCBluetoothDelegate : NSObject<
+  CBCentralManagerDelegate,
+  CBPeripheralManagerDelegate,
+  CBPeripheralDelegate>
+@property (strong, nonatomic) SSCIPCBridge* bridge;
+@property (strong, nonatomic) CBCentralManager* centralManager;
+@property (strong, nonatomic) CBPeripheralManager* peripheralManager;
+@property (strong, nonatomic) CBPeripheral* bluetoothPeripheral;
+@property (strong, nonatomic) NSMutableArray* peripherals;
+@property (strong, nonatomic) NSMutableDictionary* services;
+@property (strong, nonatomic) NSMutableDictionary* characteristics;
+@property (strong, nonatomic) NSMutableDictionary* serviceMap;
+- (void) publishCharacteristic: (SSC::String) seq
+                           buf: (char*) buf
+                           len: (int) len
+                           sid: (SSC::String) sid
+                           cid: (SSC::String) cid;
+- (void) subscribeCharacteristic: (SSC::String)
+                         seq sid: (SSC::String)
+                         sid cid: (SSC::String) cid;
+- (void) startService: (SSC::String)
+              seq sid: (SSC::String) sid;
+- (void) startAdvertising;
+- (void) startScanning;
+- (void) initBluetooth;
+@end
 #endif
+
+#endif // SSC_CORE_CORE_H

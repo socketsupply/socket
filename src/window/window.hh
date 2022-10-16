@@ -9,6 +9,28 @@
 #define SSC_MAX_WINDOWS 32
 #endif
 
+#if defined(__APPLE__)
+#if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
+@interface SSCBridgedWebView : WKWebView
+@end
+#else
+@interface SSCBridgedWebView : WKWebView<
+  WKUIDelegate,
+  NSDraggingDestination,
+  NSFilePromiseProviderDelegate,
+  NSDraggingSource>
+- (NSDragOperation) draggingSession: (NSDraggingSession *) session
+sourceOperationMaskForDraggingContext: (NSDraggingContext) context;
+@end
+#endif
+
+@interface SSCNavigationDelegate : NSObject<WKNavigationDelegate>
+- (void) webview: (SSCBridgedWebView*) webview
+  decidePolicyForNavigationAction: (WKNavigationAction*) navigationAction
+  decisionHandler: (void (^)(WKNavigationActionPolicy)) decisionHandler;
+@end
+#endif
+
 namespace SSC {
   class DragDrop;
 
