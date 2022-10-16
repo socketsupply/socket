@@ -39,7 +39,7 @@ namespace SSC {
       void dispatch (std::function<void()>);
       SSC::String getCwd ();
       void setWindowFactory (void *);
-      void * getWindowFactory ();
+      void * getWindowFactory () const;
   };
 
 #if defined(_WIN32)
