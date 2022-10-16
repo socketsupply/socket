@@ -5,6 +5,12 @@ static GtkTargetEntry droppableTypes[] = {
 };
 
 namespace SSC {
+  struct WebViewJavaScriptAsyncContext {
+    IPC::Router::ReplyCallback reply;
+    IPC::Message message;
+    Window *window;
+  };
+
   Window::Window (App& app, WindowOptions opts) : app(app) , opts(opts) {
     setenv("GTK_OVERLAY_SCROLLING", "1", 1);
     this->accelGroup = gtk_accel_group_new();
@@ -20,6 +26,86 @@ namespace SSC {
     this->bridge->router.evaluateJavaScriptFunction = [this] (auto js) {
       this->eval(js);
     };
+
+    this->bridge->router.map("window.eval", [=](auto message, auto router, auto reply) {
+      auto windowFactory = reinterpret_cast<WindowFactory *>(app.getWindowFactory());
+      if (windowFactory == nullptr) {
+        // @TODO(jwerle): print warning
+        return;
+      }
+
+      auto window = windowFactory->getWindow(message.index);
+
+      if (window == nullptr) {
+        return reply(IPC::Result::Err { message, JSON::Object::Entries {
+          {"message", "Invalid window index given"}
+        }});
+      }
+
+      auto value = message.get("value");
+      auto ctx = new WebViewJavaScriptAsyncContext { reply, message, window };
+
+      webkit_web_view_run_javascript(
+        WEBKIT_WEB_VIEW(window->webview),
+        value.c_str(),
+        nullptr,
+        [](GObject *object, GAsyncResult *res, gpointer data) {
+          GError *error = nullptr;
+          auto ctx = reinterpret_cast<WebViewJavaScriptAsyncContext*>(data);
+          auto result = webkit_web_view_run_javascript_finish(
+            WEBKIT_WEB_VIEW(ctx->window->webview),
+            res,
+            &error
+          );
+
+          if (!result) {
+            g_error_free(error);
+            return ctx->reply(IPC::Result::Err { ctx->message, JSON::Object::Entries {
+              {"code", std::to_string(error->code)},
+              {"message", String(error->message)}
+            }});
+          } else {
+            auto value = webkit_javascript_result_get_js_value(result);
+
+            if (
+              jsc_value_is_null(value) ||
+              jsc_value_is_array(value) ||
+              jsc_value_is_object(value) ||
+              jsc_value_is_number(value) ||
+              jsc_value_is_string(value) ||
+              jsc_value_is_function(value) ||
+              jsc_value_is_undefined(value) ||
+              jsc_value_is_constructor(value)
+            ) {
+              auto context = jsc_value_get_context(value);
+              auto string = jsc_value_to_string(value);
+              auto exception = jsc_context_get_exception(context);
+              auto json = JSON::Any {};
+
+              if (exception) {
+                auto message = jsc_exception_get_message(exception);
+                ctx->reply(IPC::Result::Err { ctx->message, JSON::Object::Entries {
+                  {"message", String(message)}
+                }});
+              } else if (string) {
+                ctx->reply(IPC::Result { ctx->message.seq, ctx->message, String(string) });
+              }
+
+              if (string) {
+                g_free(string);
+              }
+            } else {
+              ctx->reply(IPC::Result::Err { ctx->message, JSON::Object::Entries {
+                {"message", "Error: An unknown JavaScript evaluation error has occurred"}
+              }});
+            }
+          }
+
+          webkit_javascript_result_unref(result);
+        },
+        ctx
+      );
+    });
 
     if (opts.resizable) {
       gtk_window_set_default_size(GTK_WINDOW(window), opts.width, opts.height);
