@@ -34,60 +34,6 @@ static JSON::Any validateMessageParameters (
     }});                                                                       \
   }
 
-static void registerSchemeHandler (Router *router) {
-#if defined(__linux__)
-  // prevent this function from registering the `ipc://`
-  // URI scheme handler twice
-  static std::atomic<bool> registered = false;
-  if (registered) return;
-  registered = true;
-
-  auto ctx = webkit_web_context_get_default();
-  webkit_web_context_register_uri_scheme(ctx, "ipc", [](auto request, auto ptr){
-    auto uri = String(webkit_uri_scheme_request_get_uri(request));
-    auto router = reinterpret_cast<Router *>(ptr);
-    auto message = Message { uri };
-    auto invoked = router->invoke(message, [=](auto result) {
-      auto json = result.str();
-      auto size = result.post.body != nullptr ? result.post.length : json.size();
-      auto body = result.post.body != nullptr ? result.post.body : json.c_str();
-
-      auto freeFn = result.post.body != nullptr ? free : nullptr;
-      auto stream = g_memory_input_stream_new_from_data(body, size, freeFn);
-      auto response = webkit_uri_scheme_response_new(stream, size);
-
-      webkit_uri_scheme_response_set_content_type(response, IPC_CONTENT_TYPE);
-      webkit_uri_scheme_request_finish_with_response(request, response);
-      g_object_unref(stream);
-    });
-
-    if (!invoked) {
-      auto err = JSON::Object::Entries {
-        {"source", uri},
-        {"err", JSON::Object::Entries {
-          {"message", "Not found"},
-          {"type", "NotFoundError"},
-          {"url", uri}
-        }}
-      };
-
-      auto msg = JSON::Object(err).str();
-      auto size = msg.size();
-      auto bytes = msg.c_str();
-      auto stream = g_memory_input_stream_new_from_data(bytes, size, 0);
-      auto response = webkit_uri_scheme_response_new(stream, msg.size());
-
-      webkit_uri_scheme_response_set_status(response, 404, "Not found");
-      webkit_uri_scheme_response_set_content_type(response, IPC_CONTENT_TYPE);
-      webkit_uri_scheme_request_finish_with_response(request, response);
-      g_object_unref(stream);
-    }
-  },
-  router,
-  0);
-#endif
-}
-
 void initFunctionsTable (Router *router) {
 
   /**
@@ -1015,6 +961,60 @@ void initFunctionsTable (Router *router) {
   });
 }
 
+static void registerSchemeHandler (Router *router) {
+#if defined(__linux__)
+  // prevent this function from registering the `ipc://`
+  // URI scheme handler twice
+  static std::atomic<bool> registered = false;
+  if (registered) return;
+  registered = true;
+
+  auto ctx = webkit_web_context_get_default();
+  webkit_web_context_register_uri_scheme(ctx, "ipc", [](auto request, auto ptr){
+    auto uri = String(webkit_uri_scheme_request_get_uri(request));
+    auto router = reinterpret_cast<Router *>(ptr);
+    auto message = Message { uri };
+    auto invoked = router->invoke(message, [=](auto result) {
+      auto json = result.str();
+      auto size = result.post.body != nullptr ? result.post.length : json.size();
+      auto body = result.post.body != nullptr ? result.post.body : json.c_str();
+
+      auto freeFn = result.post.body != nullptr ? free : nullptr;
+      auto stream = g_memory_input_stream_new_from_data(body, size, freeFn);
+      auto response = webkit_uri_scheme_response_new(stream, size);
+
+      webkit_uri_scheme_response_set_content_type(response, IPC_CONTENT_TYPE);
+      webkit_uri_scheme_request_finish_with_response(request, response);
+      g_object_unref(stream);
+    });
+
+    if (!invoked) {
+      auto err = JSON::Object::Entries {
+        {"source", uri},
+        {"err", JSON::Object::Entries {
+          {"message", "Not found"},
+          {"type", "NotFoundError"},
+          {"url", uri}
+        }}
+      };
+
+      auto msg = JSON::Object(err).str();
+      auto size = msg.size();
+      auto bytes = msg.c_str();
+      auto stream = g_memory_input_stream_new_from_data(bytes, size, 0);
+      auto response = webkit_uri_scheme_response_new(stream, msg.size());
+
+      webkit_uri_scheme_response_set_status(response, 404, "Not found");
+      webkit_uri_scheme_response_set_content_type(response, IPC_CONTENT_TYPE);
+      webkit_uri_scheme_request_finish_with_response(request, response);
+      g_object_unref(stream);
+    }
+  },
+  router,
+  0);
+#endif
+}
+
 namespace SSC::IPC {
   Bridge::Bridge (Core *core) : router(core) {
     this->core = core;
@@ -1090,9 +1090,14 @@ namespace SSC::IPC {
     return this->invoke(message);
   }
 
-  bool Router::invoke (const String& name, char *bytes, size_t size, ResultCallback callback) {
+  bool Router::invoke (
+    const String& name,
+    char *bytes,
+    size_t size,
+    ResultCallback callback
+  ) {
     auto message = Message { name, bytes, size };
-    return this->invoke(message);
+    return this->invoke(message, callback);
   }
 
   bool Router::invoke (const Message& message) {

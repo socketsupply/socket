@@ -1,6 +1,8 @@
 #include "../core/core.hh"
 #include "../ipc/ipc.hh"
-#include "../window/options.hh"
+#include "../window/window.hh"
+
+using namespace SSC;
 
 constexpr auto _settings = STR_VALUE(SSC_SETTINGS);
 constexpr auto _debug = false;
@@ -14,9 +16,9 @@ static dispatch_queue_attr_t qos = dispatch_queue_attr_make_with_qos_class(
 static dispatch_queue_t queue = dispatch_queue_create("co.socketsupply.queue.app", qos);
 
 @interface AppDelegate : UIResponder <UIApplicationDelegate, WKScriptMessageHandler, UIScrollViewDelegate> {
-  IPCSSCBridge* bridge;
+  SSCIPCBridge* bridge;
   SSCBluetoothDelegate* bluetooth;
-  SSC::Core* core;
+  Core* core;
 }
 @property (strong, nonatomic) UIWindow* window;
 @property (strong, nonatomic) SSCNavigationDelegate* navDelegate;
@@ -36,27 +38,27 @@ void uncaughtExceptionHandler (NSException *exception) {
 // JavaScript environment so it can be used by the web app and the wasm layer.
 //
 @implementation AppDelegate
-- (void) applicationDidEnterBackground: (UIApplication*)application {
+- (void) applicationDidEnterBackground: (UIApplication*) application {
   [self.webview evaluateJavaScript: @"window.blur()" completionHandler:nil];
 }
 
-- (void) applicationWillEnterForeground: (UIApplication*)application {
+- (void) applicationWillEnterForeground: (UIApplication*) application {
   [self.webview evaluateJavaScript: @"window.focus()" completionHandler:nil];
   [[bridge bluetooth] startScanning];
 }
 
-- (void) applicationWillTerminate: (UIApplication*)application {
+- (void) applicationWillTerminate: (UIApplication*) application {
   // @TODO(jwerle): what should we do here?
 }
 
-- (void) applicationDidBecomeActive: (UIApplication*)application {
+- (void) applicationDidBecomeActive: (UIApplication*) application {
   dispatch_async(queue, ^{
     core->resumeAllPeers();
     core->runEventLoop();
   });
 }
 
-- (void) applicationWillResignActive: (UIApplication*)application {
+- (void) applicationWillResignActive: (UIApplication*) application {
   dispatch_async(queue, ^{
     core->stopEventLoop();
     core->pauseAllPeers();
@@ -67,7 +69,9 @@ void uncaughtExceptionHandler (NSException *exception) {
 // When a message is received try to route it.
 // Messages may also be received and routed via the custom scheme handler.
 //
-- (void) userContentController: (WKUserContentController*) userContentController didReceiveScriptMessage: (WKScriptMessage*)scriptMessage {
+- (void) userContentController: (WKUserContentController*) userContentController
+       didReceiveScriptMessage: (WKScriptMessage*) scriptMessage
+{
   id body = [scriptMessage body];
 
   if (![body isKindOfClass:[NSString class]]) {
@@ -78,72 +82,95 @@ void uncaughtExceptionHandler (NSException *exception) {
 }
 
 - (void) keyboardWillHide {
+  auto json = JSON::Object::Entries {
+    {"value", JSON::Object::Entries {
+      {"event", "will-hide"}
+    }}
+  };
+
   self.webview.scrollView.scrollEnabled = YES;
-  [bridge emit: "keyboard" msg: SSC::format(R"JSON({
-    "value": { "data": { "event": "will-hide" } }
-  })JSON")];
+  bridge.router->emit("keyboard", JSON::Object(json).str());
 }
 
 - (void) keyboardDidHide {
-  [bridge emit: "keyboard" msg: SSC::format(R"JSON({
-    "value": { "data": { "event": "did-hide" } }
-  })JSON")];
+  auto json = JSON::Object::Entries {
+    {"value", JSON::Object::Entries {
+      {"event", "did-hide"}
+    }}
+  };
+
+  bridge.router->emit("keyboard", JSON::Object(json).str());
 }
 
 - (void) keyboardWillShow {
+  auto json = JSON::Object::Entries {
+    {"value", JSON::Object::Entries {
+      {"event", "will-show"}
+    }}
+  };
+
   self.webview.scrollView.scrollEnabled = NO;
-  [bridge emit: "keyboard" msg: SSC::format(R"JSON({
-    "value": { "data": { "event": "will-show" } }
-  })JSON")];
+  bridge.router->emit("keyboard", JSON::Object(json).str());
 }
 
 - (void) keyboardDidShow {
-  [bridge emit: "keyboard" msg: SSC::format(R"JSON({
-    "value": { "data": { "event": "did-show" } }
-  })JSON")];
+  auto json = JSON::Object::Entries {
+    {"value", JSON::Object::Entries {
+      {"event", "did-show"}
+    }}
+  };
+
+  bridge.router->emit("keyboard", JSON::Object(json).str());
 }
 
-- (void) keyboardWillChange: (NSNotification*)notification {
+- (void) keyboardWillChange: (NSNotification*) notification {
   NSDictionary* keyboardInfo = [notification userInfo];
   NSValue* keyboardFrameBegin = [keyboardInfo valueForKey: UIKeyboardFrameEndUserInfoKey];
   CGRect rect = [keyboardFrameBegin CGRectValue];
   CGFloat width = rect.size.width;
   CGFloat height = rect.size.height;
 
-  [bridge emit: "keyboard" msg: SSC::format(R"JSON({
-    "value": { "data": { "event": "will-change", "width": "$S", "height": "$S" } }
-  })JSON", std::to_string((float)width), std::to_string((float)height))];
+  auto json = JSON::Object::Entries {
+    {"value", JSON::Object::Entries {
+      {"event", "will-change"},
+      {"width", std::to_string((float) width)},
+      {"height", std::to_string((float) height)},
+    }}
+  };
+
+  bridge.router->emit("keyboard", JSON::Object(json).str());
 }
 
-- (void) scrollViewDidScroll: (UIScrollView*)scrollView {
+- (void) scrollViewDidScroll: (UIScrollView*) scrollView {
   scrollView.bounds = self.webview.bounds;
 }
 
-- (BOOL) application: (UIApplication*)app openURL: (NSURL*)url options: (NSDictionary<UIApplicationOpenURLOptionsKey, id>*)options {
-  auto str = SSC::String(url.absoluteString.UTF8String);
-
+- (BOOL) application: (UIApplication*) app
+             openURL: (NSURL*) url
+             options: (NSDictionary<UIApplicationOpenURLOptionsKey, id>*) options
+{
   // TODO can this be escaped or is the url encoded property already?
-  [bridge emit: "protocol" msg: SSC::format(R"JSON({
-    "url": "$S",
-  })JSON", str)];
-
+  auto json = JSON::Object::Entries {{"url", url}};
+  bridge.router->emit("protocol", JSON::Object(json).str());
   return YES;
 }
 
-- (BOOL) application: (UIApplication*)application didFinishLaunchingWithOptions: (NSDictionary*)launchOptions {
+-           (BOOL) application: (UIApplication*) application
+ didFinishLaunchingWithOptions: (NSDictionary*) launchOptions
+{
   using namespace SSC;
 
   NSSetUncaughtExceptionHandler(&uncaughtExceptionHandler);
   platform.os = "ios";
 
-  core = new SSC::Core;
+  core = new Core;
   bridge = [SSCIPCBridge new];
-  bridge.router = new SSC::IPC::Router(app.core);
-  bridge.router.dispatchFunction = [bridge] (auto callback) {
+  bridge.router = new IPC::Router(core);
+  bridge.router->dispatchFunction = [=] (auto callback) {
     [bridge dispatch: ^{ callback(); }];
   };
 
-  bridge.router.evaluateJavaScriptFunction = [this](auto js) {
+  bridge.router->evaluateJavaScriptFunction = [=](auto js) {
     dispatch_async(dispatch_get_main_queue(), ^{
       auto script = [NSString stringWithUTF8String: js.c_str()];
       [self.webview evaluateJavaScript: script completionHandler: nil];
@@ -163,19 +190,19 @@ void uncaughtExceptionHandler (NSException *exception) {
 
   auto appData = parseConfig(decodeURIComponent(_settings));
 
-  SSC::StringStream env;
+  StringStream env;
 
   for (auto const &envKey : split(appData["env"], ',')) {
     auto cleanKey = trim(envKey);
     auto envValue = getEnv(cleanKey.c_str());
 
-    env << SSC::String(
+    env << String(
       cleanKey + "=" + encodeURIComponent(envValue) + "&"
     );
   }
 
-  env << SSC::String("width=" + std::to_string(appFrame.size.width) + "&");
-  env << SSC::String("height=" + std::to_string(appFrame.size.height) + "&");
+  env << String("width=" + std::to_string(appFrame.size.width) + "&");
+  env << String("height=" + std::to_string(appFrame.size.height) + "&");
 
   NSFileManager *fileManager = [NSFileManager defaultManager];
   NSString *currentDirectoryPath = [fileManager currentDirectoryPath];
@@ -186,19 +213,18 @@ void uncaughtExceptionHandler (NSException *exception) {
     .executable = appData["executable"],
     .title = appData["title"],
     .version = "v" + appData["version"],
-    .preload = SSC::gPreloadMobile,
+    .preload = gPreloadMobile,
     .env = env.str(),
-    .cwd = SSC::String([cwd UTF8String])
+    .cwd = String([cwd UTF8String])
   };
 
   // Note: you won't see any logs in the preload script before the
   // Web Inspector is opened
-  SSC::String  preload = ToString(
+  String  preload = ToString(
     "window.external = {\n"
     "  invoke: arg => window.webkit.messageHandlers.webview.postMessage(arg)\n"
     "};\n"
-
-    "" + SSC::createPreload(opts) + "\n"
+    "" + createPreload(opts) + "\n"
   );
 
   WKUserScript* initScript = [[WKUserScript alloc]

@@ -8,31 +8,33 @@ static dispatch_queue_attr_t qos = dispatch_queue_attr_make_with_qos_class(
 
 static dispatch_queue_t queue = dispatch_queue_create("co.socketsupply.queue.bridge", qos);
 
+using namespace SSC;
+
 namespace SSC::IPC {
   using Task = id<WKURLSchemeTask>;
   using Tasks = std::map<String, Task>;
 }
 
 @interface SSCIPCBridge () {
-  std::unique_ptr<SSC::IPC::Tasks> tasks;
+  std::unique_ptr<IPC::Tasks> tasks;
   std::recursive_mutex tasksMutex;
 }
 
-- (SSC::IPC::Task) getTask: (SSC::String) id;
-- (void) removeTask: (SSC::String) id;
-- (bool) hasTask: (SSC::String) id;
-- (void) putTask: (SSC::String) id
-            task: (SSC::IPC::Task) task;
+- (IPC::Task) getTask: (String) id;
+- (void) removeTask: (String) id;
+- (bool) hasTask: (String) id;
+- (void) putTask: (String) id
+            task: (IPC::Task) task;
 @end
 
 @implementation SSCIPCBridgeSchemeHandler
-- (void) webView: (SSCBridgedWebView*) webview stopURLSchemeTask: (SSC::IPC::Task) task {}
-- (void) webView: (SSCBridgedWebView*) webview startURLSchemeTask: (SSC::IPC::Task) task {
-  auto url = SSC::String(task.request.URL.absoluteString.UTF8String);
+- (void) webView: (SSCBridgedWebView*) webview stopURLSchemeTask: (IPC::Task) task {}
+- (void) webView: (SSCBridgedWebView*) webview startURLSchemeTask: (IPC::Task) task {
+  auto url = String(task.request.URL.absoluteString.UTF8String);
 
-  SSC::IPC::Message message(url);
+  IPC::Message message(url);
 
-  if (SSC::String(task.request.HTTPMethod.UTF8String) == "OPTIONS") {
+  if (String(task.request.HTTPMethod.UTF8String) == "OPTIONS") {
     NSMutableDictionary* httpHeaders = [NSMutableDictionary dictionary];
 
     httpHeaders[@"access-control-allow-origin"] = @"*";
@@ -127,7 +129,8 @@ namespace SSC::IPC {
   if (rawBody) {
     const void* data = [rawBody bytes];
     bufsize = [rawBody length];
-    body = (char*)data;
+    body = new char[bufsize]{0};
+    memcpy(body, data, bufsize);
   }
 
   if (![self.bridge route: url buf: body bufsize: bufsize]) {
@@ -166,29 +169,29 @@ namespace SSC::IPC {
 @implementation SSCIPCBridge
 - (id) init {
   self = [super init];
-  tasks = std::unique_ptr<SSC::IPC::Tasks>(new SSC::IPC::Tasks());
+  tasks = std::unique_ptr<IPC::Tasks>(new SSC::IPC::Tasks());
   return self;
 }
 
-- (SSC::IPC::Task) getTask: (SSC::String) id {
+- (IPC::Task) getTask: (String) id {
   std::lock_guard<std::recursive_mutex> guard(tasksMutex);
-  if (tasks->find(id) == tasks->end()) return SSC::IPC::Task{};
+  if (tasks->find(id) == tasks->end()) return IPC::Task{};
   return tasks->at(id);
 }
 
-- (bool) hasTask: (SSC::String) id {
+- (bool) hasTask: (String) id {
   std::lock_guard<std::recursive_mutex> guard(tasksMutex);
   if (id.size() == 0) return false;
   return tasks->find(id) != tasks->end();
 }
 
-- (void) removeTask: (SSC::String) id {
+- (void) removeTask: (String) id {
   std::lock_guard<std::recursive_mutex> guard(tasksMutex);
   if (tasks->find(id) == tasks->end()) return;
   tasks->erase(id);
 }
 
-- (void) putTask: (SSC::String) id task: (SSC::IPC::Task) task {
+- (void) putTask: (String) id task: (IPC::Task) task {
   std::lock_guard<std::recursive_mutex> guard(tasksMutex);
   tasks->insert_or_assign(id, task);
 }
@@ -220,8 +223,8 @@ namespace SSC::IPC {
   nw_path_monitor_set_update_handler(self.monitor, ^(nw_path_t path) {
     nw_path_status_t status = nw_path_get_status(path);
 
-    SSC::String name;
-    SSC::String message;
+    String name;
+    String message;
 
     switch (status) {
       case nw_path_status_invalid: {
@@ -264,15 +267,9 @@ namespace SSC::IPC {
   _core = core;
 }
 
-- (void) emit: (SSC::String) name
-          msg: (SSC::String) msg
-{
-  self.router->emit(name, msg);
-}
-
-- (void) send: (SSC::IPC::Message::Seq) seq
-          msg: (SSC::String) msg
-         post: (SSC::Post) post
+- (void) send: (IPC::Message::Seq) seq
+          msg: (String) msg
+         post: (Post) post
 {
   if (seq != "-1" && [self hasTask: seq]) {
     auto task = [self getTask: seq];
@@ -328,16 +325,16 @@ namespace SSC::IPC {
 }
 
 // returns true if routable (regardless of success)
-- (bool) route: (SSC::String) msg buf: (char*) buf bufsize: (size_t) bufsize {
+- (bool) route: (String) msg buf: (char*) buf bufsize: (size_t) bufsize {
   using namespace SSC;
 
   if (msg.find("ipc://") != 0) return false;
 
   auto invoked = self.router->invoke(msg, buf, bufsize, [=](auto result) {
-    [self send: seq msg: msg post: post];
+    [self send: result.seq msg: result.str() post: result.post];
   });
 
-  if (invoked)
+  if (invoked) {
     return true;
   }
 
@@ -437,19 +434,19 @@ namespace SSC::IPC {
   }
 
   if (message.name == "window.eval") {
-    SSC::String value = decodeURIComponent(message.get("value"));
+    String value = decodeURIComponent(message.get("value"));
     auto seq = message.get("seq");
 
     NSString* script = [NSString stringWithUTF8String: value.c_str()];
     dispatch_async(dispatch_get_main_queue(), ^{
       [self.webview evaluateJavaScript: script completionHandler: ^(id result, NSError *error) {
         if (result) {
-          auto msg = SSC::String([[NSString stringWithFormat:@"%@", result] UTF8String]);
+          auto msg = String([[NSString stringWithFormat:@"%@", result] UTF8String]);
           [self send: seq msg: msg post: Post{}];
         } else if (error) {
           auto exception = error.userInfo[@"WKJavaScriptExceptionMessage"];
           auto message = [[NSString stringWithFormat:@"%@", exception] UTF8String];
-          auto err = encodeURIComponent(SSC::String(message));
+          auto err = encodeURIComponent(String(message));
 
           if (err == "(null)") {
             [self send: seq msg: "null" post: Post{}];
@@ -473,10 +470,10 @@ namespace SSC::IPC {
 
   if (message.name == "external" || message.name == "open.external") {
     NSString *url = [NSString stringWithUTF8String:SSC::decodeURIComponent(message.get("value")).c_str()];
-    #if MACOS == 1
-      [[NSWorkspace sharedWorkspace] openURL:[NSURL URLWithString: url]];
-    #else
+    #if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
       [[UIApplication sharedApplication] openURL: [NSURL URLWithString:url] options: @{} completionHandler: nil];
+    #else
+      [[NSWorkspace sharedWorkspace] openURL:[NSURL URLWithString: url]];
     #endif
     return true;
   }
@@ -493,7 +490,7 @@ namespace SSC::IPC {
       auto msg = SSC::format(R"JSON({
         "source": "process.cwd",
         "data": "$S"
-      })JSON", SSC::String([cwd UTF8String]));
+      })JSON", String([cwd UTF8String]));
       [self send: seq msg: msg post: Post{}];
     });
     return true;

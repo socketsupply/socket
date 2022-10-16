@@ -138,7 +138,7 @@ namespace SSC {
         {"source", "udp.bind"},
         {"data", JSON::Object::Entries {
           {"id", std::to_string(peerId)},
-          {"port", info->port},
+          {"port", (int) info->port},
           {"event" , "listening"},
           {"family", info->family},
           {"address", info->address}
@@ -196,7 +196,7 @@ namespace SSC {
         {"data", JSON::Object::Entries {
           {"address", info->address},
           {"family", info->family},
-          {"port", info->port},
+          {"port", (int) info->port},
           {"id", std::to_string(peerId)}
         }}
       };
@@ -268,7 +268,7 @@ namespace SSC {
       {"data", JSON::Object::Entries {
         {"address", info->address},
         {"family", info->family},
-        {"port", info->port},
+        {"port", (int) info->port},
         {"id", std::to_string(peerId)}
       }}
     };
@@ -302,7 +302,7 @@ namespace SSC {
       {"data", JSON::Object::Entries {
         {"address", info->address},
         {"family", info->family},
-        {"port", info->port},
+        {"port", (int) info->port},
         {"id", std::to_string(peerId)}
       }}
     };

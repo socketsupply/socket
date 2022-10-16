@@ -76,6 +76,11 @@ namespace SSC::JSON {
     this->type = Type::Number;
   }
 
+  Any::Any (ssize_t  number) {
+    this->pointer = std::shared_ptr<void>(new Number((float) number));
+    this->type = Type::Number;
+  }
+
   Any::Any (float number) {
     this->pointer = std::shared_ptr<void>(new Number(number));
     this->type = Type::Number;

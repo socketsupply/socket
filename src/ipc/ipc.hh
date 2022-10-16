@@ -166,9 +166,6 @@ namespace SSC::IPC {
            buf: (char*) buf
        bufsize: (size_t) bufsize;
 
-- (void) emit: (SSC::String) name
-          msg: (SSC::String) msg;
-
 - (void) send: (SSC::IPC::Message::Seq) seq
           msg: (SSC::String) msg
          post: (SSC::Post) post;
