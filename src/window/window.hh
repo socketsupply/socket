@@ -1,12 +1,15 @@
 #ifndef SSC_WINDOW_WINDOW_H
 #define SSC_WINDOW_WINDOW_H
 
-#include "../app/app.hh"
 #include "../ipc/ipc.hh"
 #include "options.hh"
 
 #ifndef SSC_MAX_WINDOWS
 #define SSC_MAX_WINDOWS 32
+#endif
+
+#if !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR && !defined(__ANDROID__)
+#include "../app/app.hh"
 #endif
 
 #if defined(__APPLE__)

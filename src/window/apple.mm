@@ -406,11 +406,11 @@ namespace SSC {
     SSCIPCBridge* bridge = [SSCIPCBridge new];
 
     bridge.router = new SSC::IPC::Router(app.core);
-    bridge.router.dispatchFunction = [bridge] (auto callback) {
+    bridge.router->dispatchFunction = [bridge] (auto callback) {
       [bridge dispatch: ^{ callback(); }];
     };
 
-    bridge.router.evaluateJavaScriptFunction = [this](auto js) {
+    bridge.router->evaluateJavaScriptFunction = [this](auto js) {
       dispatch_async(dispatch_get_main_queue(), ^{ this->eval(js); });
     };
 
