@@ -4,23 +4,20 @@
 #include "../core/core.hh"
 
 namespace SSC::IPC {
-  class Bridge;
-  class Router;
+  struct MessageBuffer {
+    std::shared_ptr<char[]> bytes = nullptr;
+    size_t size = 0;
+    MessageBuffer () = default;
+    MessageBuffer (auto bytes, auto size) {
+      this->bytes = bytes;
+      this->size = size;
+    }
+  };
 
- /**
-  * IPC message parser.
-  * Parses URIs like: `ipc://id?p1=v1&p2=v2&...\0`
-  * @TODO possibly harden data validation
-  */
   class Message {
     public:
       using Seq = String;
-      struct MessageBody {
-        char *bytes = nullptr;
-        unsigned int size = 0;
-      };
-
-      MessageBody body;
+      MessageBuffer buffer;
       String value = "";
       String name = "";
       String seq = "";
@@ -47,7 +44,7 @@ namespace SSC::IPC {
           Message::Seq seq;
           JSON::Any value;
           Err () = default;
-          Err (Message::Seq, const Message&, JSON::Any);
+          Err (const Message&, JSON::Any);
       };
 
       class Data {
@@ -58,8 +55,8 @@ namespace SSC::IPC {
           Post post;
 
           Data () = default;
-          Data (Message::Seq, const Message&, JSON::Any);
-          Data (Message::Seq, const Message&, JSON::Any, Post);
+          Data (const Message&, JSON::Any);
+          Data (const Message&, JSON::Any, Post);
       };
 
       Message message;
@@ -82,32 +79,56 @@ namespace SSC::IPC {
 
   class Router {
     public:
+
       using EvaluateJavaScriptCallback = std::function<void(const String)>;
       using DispatchCallback = std::function<void()>;
-      using ReplyCallback = std::function<void(const Result)>;
+      using ReplyCallback = std::function<void(const Result&)>;
       using ResultCallback = std::function<void(Result)>;
       using MessageCallback = std::function<void(const Message, Router*, ReplyCallback)>;
-      using Table = std::map<String, MessageCallback>;
+      using BufferMap = std::map<String, MessageBuffer>;
+
+      struct MessageCallbackContext {
+        bool async = true;
+        MessageCallback callback;
+      };
+
+      using Table = std::map<String, MessageCallbackContext>;
 
       EvaluateJavaScriptCallback evaluateJavaScriptFunction = nullptr;
       std::function<void(DispatchCallback)> dispatchFunction = nullptr;
-      Map buffers;
+      BufferMap buffers;
+      Mutex mutex;
       Table table;
       Core *core = nullptr;
 
       Router ();
       Router (Core *core);
 
+      MessageBuffer getMappedBuffer (int index, const Message::Seq seq);
+      bool hasMappedBuffer (int index, const Message::Seq seq);
+      void removeMappedBuffer (int index, const Message::Seq seq);
+      void setMappedBuffer (
+        int index,
+        const Message::Seq seq,
+        std::shared_ptr<char[]> bytes,
+        size_t size
+      );
+
       void map (const String& name, MessageCallback callback);
+      void map (const String& name, bool async, MessageCallback callback);
       void unmap (const String& name);
       bool dispatch (DispatchCallback callback);
       bool emit (const String& name, const String& data);
       bool evaluateJavaScript (const String javaScript);
-      bool invoke (const Message message);
-      bool invoke (const Message message, ResultCallback callback);
+      bool invoke (const Message& message);
+      bool invoke (const Message& message, ResultCallback callback);
       bool invoke (const String& msg, char *bytes, size_t size);
-      bool invoke (const String& msg, char *bytes, size_t size, ResultCallback callback);
-      bool send (const Message::Seq& seq, const String& data);
+      bool invoke (
+        const String& msg,
+        char *bytes,
+        size_t size,
+        ResultCallback callback
+      );
       bool send (const Message::Seq& seq, const String& data, const Post post);
   };
 
@@ -120,6 +141,14 @@ namespace SSC::IPC {
       Bridge (Core *core);
       bool route (const String& msg, char *bytes, size_t size);
   };
+
+  inline String getResolveToMainProcessMessage (
+    const String& seq,
+    const String& state,
+    const String& value
+  ) {
+    return String("ipc://resolve?seq=" + seq + "&state=" + state + "&value=" + value);
+  }
 } // SSC::IPC
 
 #if defined(__APPLE__)

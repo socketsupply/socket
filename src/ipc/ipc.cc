@@ -3,8 +3,8 @@
 
 namespace SSC::IPC {
   Message::Message (const Message& message) {
-    this->body.bytes = message.body.bytes;
-    this->body.size = message.body.size;
+    this->buffer.bytes = message.buffer.bytes;
+    this->buffer.size = message.buffer.size;
     this->value = message.value;
     this->index = message.index;
     this->name = message.name;
@@ -16,8 +16,8 @@ namespace SSC::IPC {
   Message::Message (const String& source, char *bytes, size_t size)
     : Message(source)
   {
-    this->body.bytes = bytes;
-    this->body.size = size;
+    this->buffer.bytes.reset(bytes);
+    this->buffer.size = size;
   }
 
   Message::Message (const String& source) {
@@ -125,22 +125,26 @@ namespace SSC::IPC {
   }
 
   Result::Err::Err (
-    Message::Seq seq,
     const Message& message,
     JSON::Any value
   ) {
-    this->seq = seq;
+    this->seq = message.seq;
     this->message = message;
     this->value = value;
   }
 
   Result::Data::Data (
-    Message::Seq seq,
+    const Message& message,
+    JSON::Any value
+  ) : Data(message, value, Post{}) {
+  }
+
+  Result::Data::Data (
     const Message& message,
     JSON::Any value,
     Post post
   ) {
-    this->seq = seq;
+    this->seq = message.seq;
     this->message = message;
     this->value = value;
     this->post = post;
