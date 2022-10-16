@@ -3,7 +3,7 @@
 namespace SSC {
   void Core::resumeAllPeers () {
     dispatchEventLoop([=, this]() {
-      std::lock_guard<std::recursive_mutex> guard(this->peersMutex);
+      Lock lock(this->peersMutex);
       for (auto const &tuple : this->peers) {
         auto peer = tuple.second;
         if (peer != nullptr && (peer->isBound() || peer->isConnected())) {
@@ -15,7 +15,7 @@ namespace SSC {
 
   void Core::pauseAllPeers () {
     dispatchEventLoop([=, this]() {
-      std::lock_guard<std::recursive_mutex> guard(this->peersMutex);
+      Lock lock(this->peersMutex);
       for (auto const &tuple : this->peers) {
         auto peer = tuple.second;
         if (peer != nullptr && (peer->isBound() || peer->isConnected())) {
@@ -26,7 +26,7 @@ namespace SSC {
   }
 
   bool Core::hasPeer (uint64_t peerId) {
-    std::lock_guard<std::recursive_mutex> guard(this->peersMutex);
+    Lock lock(this->peersMutex);
     return this->peers.find(peerId) != this->peers.end();
   }
 
@@ -43,14 +43,14 @@ namespace SSC {
         }
       }
 
-      std::lock_guard<std::recursive_mutex> guard(this->peersMutex);
+      Lock lock(this->peersMutex);
       this->peers.erase(peerId);
     }
   }
 
   Peer* Core::getPeer (uint64_t peerId) {
     if (!this->hasPeer(peerId)) return nullptr;
-    std::lock_guard<std::recursive_mutex> guard(this->peersMutex);
+    Lock lock(this->peersMutex);
     return this->peers.at(peerId);
   }
 
@@ -67,7 +67,7 @@ namespace SSC {
       auto peer = this->getPeer(peerId);
       if (peer != nullptr) {
         if (isEphemeral) {
-          std::lock_guard<std::recursive_mutex> guard(peer->mutex);
+          Lock lock(peer->mutex);
           peer->flags = (peer_flag_t) (peer->flags | PEER_FLAG_EPHEMERAL);
         }
       }
@@ -76,7 +76,7 @@ namespace SSC {
     }
 
     auto peer = new Peer(this, peerType, peerId, isEphemeral);
-    std::lock_guard<std::recursive_mutex> guard(this->peersMutex);
+    Lock lock(this->peersMutex);
     this->peers[peer->id] = peer;
     return peer;
   }
@@ -190,7 +190,7 @@ namespace SSC {
   }
 
   int Peer::init () {
-    std::lock_guard<std::recursive_mutex> guard(this->mutex);
+    Lock lock(this->mutex);
     auto loop = this->core->getEventLoop();
     int err = 0;
 
@@ -212,7 +212,7 @@ namespace SSC {
   }
 
   int Peer::initRemotePeerInfo () {
-    std::lock_guard<std::recursive_mutex> guard(this->mutex);
+    Lock lock(this->mutex);
     if (this->type == PEER_TYPE_UDP) {
       this->remote.init((uv_udp_t *) &this->handle);
     } else if (this->type == PEER_TYPE_TCP) {
@@ -222,7 +222,7 @@ namespace SSC {
   }
 
   int Peer::initLocalPeerInfo () {
-    std::lock_guard<std::recursive_mutex> guard(this->mutex);
+    Lock lock(this->mutex);
     if (this->type == PEER_TYPE_UDP) {
       this->local.init((uv_udp_t *) &this->handle);
     } else if (this->type == PEER_TYPE_TCP) {
@@ -232,42 +232,42 @@ namespace SSC {
   }
 
   void Peer::addState (peer_state_t value) {
-    std::lock_guard<std::recursive_mutex> guard(this->mutex);
+    Lock lock(this->mutex);
     this->state = (peer_state_t) (this->state | value);
   }
 
   void Peer::removeState (peer_state_t value) {
-    std::lock_guard<std::recursive_mutex> guard(this->mutex);
+    Lock lock(this->mutex);
     this->state = (peer_state_t) (this->state & ~value);
   }
 
   bool Peer::hasState (peer_state_t value) {
-    std::lock_guard<std::recursive_mutex> guard(this->mutex);
+    Lock lock(this->mutex);
     return (value & this->state) == value;
   }
 
   const RemotePeerInfo* Peer::getRemotePeerInfo () {
-    std::lock_guard<std::recursive_mutex> guard(this->mutex);
+    Lock lock(this->mutex);
     return &this->remote;
   }
 
   const LocalPeerInfo* Peer::getLocalPeerInfo () {
-    std::lock_guard<std::recursive_mutex> guard(this->mutex);
+    Lock lock(this->mutex);
     return &this->local;
   }
 
   bool Peer::isUDP () {
-    std::lock_guard<std::recursive_mutex> guard(this->mutex);
+    Lock lock(this->mutex);
     return this->type == PEER_TYPE_UDP;
   }
 
   bool Peer::isTCP () {
-    std::lock_guard<std::recursive_mutex> guard(this->mutex);
+    Lock lock(this->mutex);
     return this->type == PEER_TYPE_TCP;
   }
 
   bool Peer::isEphemeral () {
-    std::lock_guard<std::recursive_mutex> guard(this->mutex);
+    Lock lock(this->mutex);
     return (PEER_FLAG_EPHEMERAL & this->flags) == PEER_FLAG_EPHEMERAL;
   }
 
@@ -279,12 +279,12 @@ namespace SSC {
   }
 
   bool Peer::isActive () {
-    std::lock_guard<std::recursive_mutex> guard(this->mutex);
+    Lock lock(this->mutex);
     return uv_is_active((const uv_handle_t *) &this->handle);
   }
 
   bool Peer::isClosing () {
-    std::lock_guard<std::recursive_mutex> guard(this->mutex);
+    Lock lock(this->mutex);
     return uv_is_closing((const uv_handle_t *) &this->handle);
   }
 
@@ -321,7 +321,7 @@ namespace SSC {
   }
 
   int Peer::bind (SSC::String address, int port, bool reuseAddr) {
-    std::lock_guard<std::recursive_mutex> guard(this->mutex);
+    Lock lock(this->mutex);
     auto sockaddr = (struct sockaddr*) &this->addr;
     int flags = 0;
     int err = 0;
@@ -361,7 +361,7 @@ namespace SSC {
       }
     }
 
-    std::lock_guard<std::recursive_mutex> guard(this->mutex);
+    Lock lock(this->mutex);
     memset((void *) &this->addr, 0, sizeof(struct sockaddr_in));
 
     if ((err = this->bind())) {
@@ -378,7 +378,7 @@ namespace SSC {
   }
 
   int Peer::connect (SSC::String address, int port) {
-    std::lock_guard<std::recursive_mutex> guard(this->mutex);
+    Lock lock(this->mutex);
     auto sockaddr = (struct sockaddr*) &this->addr;
     int err = 0;
 
@@ -404,7 +404,7 @@ namespace SSC {
       if (this->isConnected()) {
         // calling `uv_udp_connect()` with `nullptr` for `addr`
         // should disconnect the connected socket
-        std::lock_guard<std::recursive_mutex> guard(this->mutex);
+        Lock lock(this->mutex);
         if ((err = uv_udp_connect((uv_udp_t *) &this->handle, nullptr))) {
           return err;
         }
@@ -416,7 +416,13 @@ namespace SSC {
     return err;
   }
 
-  void Peer::send (char *buf, int len, int port, String address, Peer::RequestContext::Callback cb) {
+  void Peer::send (
+    char *buf,
+    int len,
+    int port,
+    const String address,
+    Peer::RequestContext::Callback cb
+  ) {
     Lock lock(this->mutex);
     int err = 0;
 
@@ -521,7 +527,7 @@ namespace SSC {
 
     if (this->hasState(PEER_STATE_UDP_RECV_STARTED)) {
       this->removeState(PEER_STATE_UDP_RECV_STARTED);
-      std::lock_guard<std::recursive_mutex> lock(this->core->loopMutex);
+      Lock lock(this->core->loopMutex);
       err = uv_udp_recv_stop((uv_udp_t *) &this->handle);
     }
 
@@ -560,7 +566,7 @@ namespace SSC {
     if (!this->isPaused() && !this->isClosing()) {
       this->addState(PEER_STATE_UDP_PAUSED);
       if (this->isBound()) {
-        std::lock_guard<std::recursive_mutex> guard(this->mutex);
+        Lock lock(this->mutex);
         uv_close((uv_handle_t *) &this->handle, nullptr);
       } else if (this->isConnected()) {
         // TODO
@@ -582,7 +588,7 @@ namespace SSC {
     }
 
     if (onclose != nullptr) {
-      std::lock_guard<std::recursive_mutex> guard(this->mutex);
+      Lock lock(this->mutex);
       this->onclose.push_back(onclose);
     }
 
@@ -591,7 +597,7 @@ namespace SSC {
     }
 
     if (this->type == PEER_TYPE_UDP) {
-      std::lock_guard<std::recursive_mutex> guard(this->mutex);
+      Lock lock(this->mutex);
       // reset state and set to CLOSED
       uv_close((uv_handle_t*) &this->handle, [](uv_handle_t *handle) {
         auto peer = (Peer *) handle->data;

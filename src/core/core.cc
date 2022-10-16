@@ -1,27 +1,48 @@
 #include "core.hh"
 
 namespace SSC {
-  static Mutex instanceMutex;
-  static Core *instance = nullptr;
-
-  Core::Core ()
-    : dns(this), fs(this), os(this), platform(this), udp(this)
-  {
-    Lock lock(instanceMutex);
-    this->posts = std::shared_ptr<Posts>(new Posts());
-
-    if (instance == nullptr) {
-      instance = this;
-    }
-
-    initEventLoop();
+  Headers::Header::Header (const Header& header) {
+    this->key = header.key;
+    this->value = header.value;
   }
 
-  Core::~Core () {
-    Lock lock(instanceMutex);
-    if (instance == this) {
-      instance = nullptr;
+  Headers::Header::Header (const String& key, const Value& value) {
+    this->key = key;
+    this->value = value;
+  }
+
+  Headers::Headers (const Headers& headers) {
+    this->entries = headers.entries;
+  }
+
+  Headers::Headers (const Vector<std::map<String, Value>>& entries) {
+    for (const auto& entry : entries) {
+      for (const auto& pair : entry) {
+        this->entries.push_back(Header { pair.first, pair.second });
+      }
     }
+  }
+
+  Headers::Headers (const Entries& entries) {
+    for (const auto& entry : entries) {
+      this->entries.push_back(entry);
+    }
+  }
+
+  size_t Headers::size () const {
+    return this->entries.size();
+  }
+
+  String Headers::str () const {
+    StringStream headers;
+    auto count = this->size();
+    for (const auto& entry : this->entries) {
+      headers << entry.key << ": " << entry.value.str();;
+      if (--count > 0) {
+        headers << "\n";
+      }
+    }
+    return headers.str();
   }
 
   Post Core::getPost (uint64_t id) {
@@ -136,7 +157,10 @@ namespace SSC {
     }
   }
 
-  JSON::Object Core::getNetworkInterfaces () const {
+  void Core::OS::networkInterfaces (
+    const String seq,
+    Module::Callback cb
+  ) const {
     uv_interface_address_t *infos = nullptr;
     StringStream value;
     StringStream v4;
@@ -146,7 +170,7 @@ namespace SSC {
     int rc = uv_interface_addresses(&infos, &count);
 
     if (rc != 0) {
-      return JSON::Object(JSON::Object::Entries {
+      auto json = JSON::Object(JSON::Object::Entries {
         {"source", "os.networkInterfaces"},
         {"err", JSON::Object::Entries {
           {"type", "InternalError"},
@@ -155,6 +179,8 @@ namespace SSC {
           }
         }}
       });
+
+      return cb(seq, json, Post{});
     }
 
     JSON::Object::Entries ipv4;
@@ -196,7 +222,12 @@ namespace SSC {
     data["ipv4"] = ipv4;
     data["ipv6"] = ipv6;
 
-    return JSON::Object(JSON::Object::Entries {{ "data", data }});
+    auto json = JSON::Object::Entries {
+      {"source", "os.networkInterfaces"},
+      {"data", data}
+    };
+
+    cb(seq, json, Post{});
   }
 
   void Core::OS::bufferSize (String seq, uint64_t peerId, int size, int buffer, Module::Callback cb) {
@@ -264,15 +295,15 @@ namespace SSC {
     this->core->dispatchEventLoop([=, this]() {
       // init page
       if (event == "domcontentloaded") {
-        Lock lock(this->core->descriptorsMutex);
+        Lock lock(this->core->fs.mutex);
 
-        for (auto const &tuple : this->core->descriptors) {
+        for (auto const &tuple : this->core->fs.descriptors) {
           auto desc = tuple.second;
           if (desc != nullptr) {
-            Lock descriptorLock(desc->mutex);
+            Lock lock(desc->mutex);
             desc->stale = true;
           } else {
-            this->core->descriptors.erase(tuple.first);
+            this->core->fs.descriptors.erase(tuple.first);
           }
         }
       }
@@ -372,5 +403,175 @@ namespace SSC {
         delete ctx;
       }
     });
+  }
+
+#if defined(__linux__) && !defined(__ANDROID__)
+  struct UVSource {
+    GSource base; // should ALWAYS be first member
+    gpointer tag;
+    Core *core;
+  };
+
+    // @see https://api.gtkd.org/glib.c.types.GSourceFuncs.html
+  static GSourceFuncs loopSourceFunctions = {
+    .prepare = [](GSource *source, gint *timeout) -> gboolean {
+      auto core = reinterpret_cast<UVSource *>(source)->core;
+      if (!core->isLoopAlive() || !core->isLoopRunning) {
+        return false;
+      }
+
+      *timeout = core->getEventLoopTimeout();
+      return 0 == *timeout;
+    },
+
+    .dispatch = [](
+      GSource *source,
+      GSourceFunc callback,
+      gpointer user_data
+    ) -> gboolean {
+      auto core = reinterpret_cast<UVSource *>(source)->core;
+      Lock lock(core->loopMutex);
+      auto loop = core->getEventLoop();
+      uv_run(loop, UV_RUN_NOWAIT);
+      return G_SOURCE_CONTINUE;
+    }
+  };
+#endif
+
+  void Core::initEventLoop () {
+    if (didLoopInit) {
+      return;
+    }
+
+    didLoopInit = true;
+    Lock lock(loopMutex);
+    uv_loop_init(&eventLoop);
+    eventLoopAsync.data = (void *) this;
+    uv_async_init(&eventLoop, &eventLoopAsync, [](uv_async_t *handle) {
+      auto core = reinterpret_cast<SSC::Core  *>(handle->data);
+      while (true) {
+        Lock lock(core->loopMutex);
+        if (core->eventLoopDispatchQueue.size() == 0) break;
+        auto dispatch = core->eventLoopDispatchQueue.front();
+        if (dispatch != nullptr) dispatch();
+        core->eventLoopDispatchQueue.pop();
+      }
+    });
+
+#if defined(__linux__) && !defined(__ANDROID__)
+    GSource *source = g_source_new(&loopSourceFunctions, sizeof(UVSource));
+    UVSource *uvSource = (UVSource *) source;
+    uvSource->core = this;
+    uvSource->tag = g_source_add_unix_fd(
+      source,
+      uv_backend_fd(&eventLoop),
+      (GIOCondition) (G_IO_IN | G_IO_OUT | G_IO_ERR)
+    );
+
+    g_source_attach(source, nullptr);
+#endif
+  }
+
+  uv_loop_t* Core::getEventLoop () {
+    initEventLoop();
+    return &eventLoop;
+  }
+
+  int Core::getEventLoopTimeout () {
+    auto loop = getEventLoop();
+    uv_update_time(loop);
+    return uv_backend_timeout(loop);
+  }
+
+  bool Core::isLoopAlive () {
+    return uv_loop_alive(getEventLoop());
+  }
+
+  void Core::stopEventLoop() {
+    isLoopRunning = false;
+    uv_stop(&eventLoop);
+#if defined(__APPLE__)
+    // noop
+#elif defined(__ANDROID__) || !defined(__linux__)
+    Lock lock(loopMutex);
+    if (eventLoopThread != nullptr) {
+      if (eventLoopThread->joinable()) {
+        eventLoopThread->join();
+      }
+
+      delete eventLoopThread;
+      eventLoopThread = nullptr;
+    }
+#endif
+  }
+
+  void Core::sleepEventLoop (int64_t ms) {
+    if (ms > 0) {
+      auto timeout = getEventLoopTimeout();
+      ms = timeout > ms ? timeout : ms;
+      std::this_thread::sleep_for(std::chrono::milliseconds(ms));
+    }
+  }
+
+  void Core::sleepEventLoop () {
+    sleepEventLoop(getEventLoopTimeout());
+  }
+
+  void Core::signalDispatchEventLoop () {
+    initEventLoop();
+    runEventLoop();
+    uv_async_send(&eventLoopAsync);
+  }
+
+  void Core::dispatchEventLoop (EventLoopDispatchCallback callback) {
+    Lock lock(loopMutex);
+    eventLoopDispatchQueue.push(callback);
+    signalDispatchEventLoop();
+  }
+
+  void pollEventLoop (Core *core) {
+    auto loop = core->getEventLoop();
+
+    while (core->isLoopRunning) {
+      core->sleepEventLoop(EVENT_LOOP_POLL_TIMEOUT);
+
+      do {
+        uv_run(loop, UV_RUN_DEFAULT);
+      } while (core->isLoopRunning && core->isLoopAlive());
+    }
+
+    core->isLoopRunning = false;
+  }
+
+  void Core::runEventLoop () {
+    if (isLoopRunning) {
+      return;
+    }
+
+    isLoopRunning = true;
+
+    initEventLoop();
+    dispatchEventLoop([=, this]() {
+      initTimers();
+      startTimers();
+    });
+
+#if defined(__APPLE__)
+    Lock lock(loopMutex);
+    dispatch_async(eventLoopQueue, ^{ pollEventLoop(this); });
+#elif defined(__ANDROID__) || !defined(__linux__)
+    Lock lock(loopMutex);
+    // clean up old thread if still running
+    if (eventLoopThread != nullptr) {
+      if (eventLoopThread->joinable()) {
+        eventLoopThread->join();
+      }
+
+      delete eventLoopThread;
+      eventLoopThread = nullptr;
+    }
+
+    eventLoopThread = new std::thread(&pollEventLoop, this);
+#endif
   }
 }
