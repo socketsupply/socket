@@ -24,9 +24,6 @@ static dispatch_queue_t queue = dispatch_queue_create("co.socketsupply.queue.app
 @property (strong, nonatomic) WKUserContentController* content;
 @end
 
-@implementation SSCBridgedWebView
-@end
-
 void uncaughtExceptionHandler (NSException *exception) {
   NSLog(@"%@", exception.name);
   NSLog(@"%@", exception.reason);

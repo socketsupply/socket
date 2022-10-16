@@ -946,20 +946,19 @@ int main (const int argc, const char* argv[]) {
       flags += " " + getCxxFlags();
 
       files += prefixFile("src/app/app.cc");
-      files += prefixFile("src/core/apple.mm");
+      files += prefixFile("src/core/bluetooth.mm");
       files += prefixFile("src/core/core.cc");
       files += prefixFile("src/core/fs.cc");
       files += prefixFile("src/core/javascript.cc");
       files += prefixFile("src/core/json.cc");
       files += prefixFile("src/core/peer.cc");
-      files += prefixFile("src/core/timers.cc");
       files += prefixFile("src/core/udp.cc");
       files += prefixFile("src/desktop/main.cc");
       files += prefixFile("src/ipc/bridge.cc");
       files += prefixFile("src/ipc/bridge.mm");
       files += prefixFile("src/ipc/ipc.cc");
       files += prefixFile("src/process/unix.cc");
-      files += prefixFile("src/window/mac.mm");
+      files += prefixFile("src/window/apple.mm");
 
       fs::path pathBase = "Contents";
       pathResources = { paths.pathPackage / pathBase / "Resources" };
@@ -1033,23 +1032,24 @@ int main (const int argc, const char* argv[]) {
 
       // Core
       fs::copy(trim(prefixFile("src/common.hh")), jni, fs::copy_options::overwrite_existing);
-      fs::copy(trim(prefixFile("src/mobile/android.cc")), jni / "mobile", fs::copy_options::overwrite_existing);
-      fs::copy(trim(prefixFile("src/mobile/android.kt")), jni / "mobile", fs::copy_options::overwrite_existing);
-      fs::copy(trim(prefixFile("src/window/window.hh")), jni / "window", fs::copy_options::overwrite_existing);
-      fs::copy(trim(prefixFile("src/window/options.hh")), jni / "window", fs::copy_options::overwrite_existing);
       fs::copy(trim(prefixFile("src/core/android.cc")), jni / "core", fs::copy_options::overwrite_existing);
       fs::copy(trim(prefixFile("src/core/core.cc")), jni / "core", fs::copy_options::overwrite_existing);
       fs::copy(trim(prefixFile("src/core/core.hh")), jni / "core", fs::copy_options::overwrite_existing);
       fs::copy(trim(prefixFile("src/core/fs.cc")), jni / "core", fs::copy_options::overwrite_existing);
       fs::copy(trim(prefixFile("src/core/javascript.cc")), jni / "core", fs::copy_options::overwrite_existing);
+      fs::copy(trim(prefixFile("src/core/json.cc")), jni / "core", fs::copy_options::overwrite_existing);
+      fs::copy(trim(prefixFile("src/core/json.hh")), jni / "core", fs::copy_options::overwrite_existing);
       fs::copy(trim(prefixFile("src/core/peer.cc")), jni / "core", fs::copy_options::overwrite_existing);
       fs::copy(trim(prefixFile("src/core/runtime-preload.hh")), jni / "core", fs::copy_options::overwrite_existing);
       fs::copy(trim(prefixFile("src/core/runtime-preload-sources.hh")), jni / "core", fs::copy_options::overwrite_existing);
-      fs::copy(trim(prefixFile("src/core/timers.cc")), jni / "core", fs::copy_options::overwrite_existing);
       fs::copy(trim(prefixFile("src/core/udp.cc")), jni / "core", fs::copy_options::overwrite_existing);
       fs::copy(trim(prefixFile("src/ipc/bridge.cc")), jni / "ipc", fs::copy_options::overwrite_existing);
       fs::copy(trim(prefixFile("src/ipc/ipc.cc")), jni / "ipc", fs::copy_options::overwrite_existing);
       fs::copy(trim(prefixFile("src/ipc/ipc.hh")), jni / "ipc", fs::copy_options::overwrite_existing);
+      fs::copy(trim(prefixFile("src/mobile/android.cc")), jni / "mobile", fs::copy_options::overwrite_existing);
+      fs::copy(trim(prefixFile("src/mobile/android.kt")), jni / "mobile", fs::copy_options::overwrite_existing);
+      fs::copy(trim(prefixFile("src/window/options.hh")), jni / "window", fs::copy_options::overwrite_existing);
+      fs::copy(trim(prefixFile("src/window/window.hh")), jni / "window", fs::copy_options::overwrite_existing);
 
       // libuv
       fs::copy(
@@ -1384,7 +1384,6 @@ int main (const int argc, const char* argv[]) {
       files += prefixFile("src/core/javascript.cc");
       files += prefixFile("src/core/json.cc");
       files += prefixFile("src/core/peer.cc");
-      files += prefixFile("src/core/timers.cc");
       files += prefixFile("src/core/udp.cc");
       files += prefixFile("src/desktop/main.cc");
       files += prefixFile("src/ipc/bridge.cc");
@@ -1475,8 +1474,8 @@ int main (const int argc, const char* argv[]) {
       files += prefixFile("src\\core\\core.cc");
       files += prefixFile("src\\core\\fs.cc");
       files += prefixFile("src\\core\\javascript.cc");
+      files += prefixFile("src\\core\\json.cc");
       files += prefixFile("src\\core\\peer.cc");
-      files += prefixFile("src\\core\\timers.cc");
       files += prefixFile("src\\core\\udp.cc");
       files += prefixFile("src\\desktop\\main.cc");
       files += prefixFile("src\\ipc\\bridge.cc");
@@ -1594,22 +1593,23 @@ int main (const int argc, const char* argv[]) {
       //
       fs::copy(trim(prefixFile("src/common.hh")), pathToDist);
       fs::copy(trim(prefixFile("src/app/app.hh")), pathToDist / "app");
-      fs::copy(trim(prefixFile("src/core/apple.hh")), pathToDist / "core");
-      fs::copy(trim(prefixFile("src/core/apple.mm")), pathToDist / "core");
+      fs::copy(trim(prefixFile("src/core/bluetooth.mm")), pathToDist / "core");
       fs::copy(trim(prefixFile("src/core/core.cc")), pathToDist / "core");
       fs::copy(trim(prefixFile("src/core/core.hh")), pathToDist / "core");
       fs::copy(trim(prefixFile("src/core/fs.cc")), pathToDist / "core");
       fs::copy(trim(prefixFile("src/core/javascript.cc")), pathToDist / "core");
+      fs::copy(trim(prefixFile("src/core/json.cc")), pathToDist / "core");
+      fs::copy(trim(prefixFile("src/core/json.hh")), pathToDist / "core");
       fs::copy(trim(prefixFile("src/core/peer.cc")), pathToDist / "core");
       fs::copy(trim(prefixFile("src/core/runtime-preload-sources.hh")), pathToDist / "core");
       fs::copy(trim(prefixFile("src/core/runtime-preload.hh")), pathToDist / "core");
-      fs::copy(trim(prefixFile("src/core/timers.cc")), pathToDist / "core");
       fs::copy(trim(prefixFile("src/core/udp.cc")), pathToDist / "core");
       fs::copy(trim(prefixFile("src/ipc/bridge.cc")), pathToDist / "ipc");
       fs::copy(trim(prefixFile("src/ipc/ipc.cc")), pathToDist / "ipc");
       fs::copy(trim(prefixFile("src/ipc/ipc.hh")), pathToDist / "ipc");
       fs::copy(trim(prefixFile("src/mobile/ios.mm")), pathToDist / "mobile");
       fs::copy(trim(prefixFile("src/window/options.hh")), pathToDist / "window");
+      fs::copy(trim(prefixFile("src/window/apple.mm")), pathToDist / "window");
 
       auto pathBase = pathToDist / "Base.lproj";
       fs::create_directories(pathBase);

@@ -1,5 +1,25 @@
 #include "window.hh"
 
+@implementation SSCNavigationDelegate
+- (void) webview: (SSCBridgedWebView*) webview
+    decidePolicyForNavigationAction: (WKNavigationAction*) navigationAction
+    decisionHandler: (void (^)(WKNavigationActionPolicy)) decisionHandler {
+
+  SSC::String base = webview.URL.absoluteString.UTF8String;
+  SSC::String request = navigationAction.request.URL.absoluteString.UTF8String;
+
+  if (request.find("file://") == 0 && request.find("http://localhost") == 0) {
+    decisionHandler(WKNavigationActionPolicyCancel);
+  } else {
+    decisionHandler(WKNavigationActionPolicyAllow);
+  }
+}
+@end
+
+#if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
+@implementation SSCBridgedWebView
+@end
+#else
 @interface SSCWindowDelegate : NSObject <NSWindowDelegate, WKScriptMessageHandler>
 - (void) userContentController: (WKUserContentController*) userContentController
        didReceiveScriptMessage: (WKScriptMessage*) scriptMessage;
@@ -1036,3 +1056,4 @@ namespace SSC {
     this->resolvePromise(seq, "0", encodeURIComponent(wrapped));
   }
 }
+#endif

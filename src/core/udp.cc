@@ -422,7 +422,7 @@ namespace SSC {
     auto err = peer->recvstart([=](auto nread, auto buf, auto addr) {
       if (nread == UV_EOF) {
         auto json = JSON::Object::Entries {
-          {"source", "udp.receive"},
+          {"source", "udp.readStart"},
           {"data", JSON::Object::Entries {
             {"id", std::to_string(peerId)},
             {"EOF", true}
@@ -444,7 +444,6 @@ namespace SSC {
           {"content-length", nread}
         }};
 
-
         post.id = rand64();
         post.body = buf->base;
         post.length = (int) nread;
@@ -452,7 +451,7 @@ namespace SSC {
         post.bodyNeedsFree = true;
 
         auto json = JSON::Object::Entries {
-          {"source", "udp.receive"},
+          {"source", "udp.readStart"},
           {"data", JSON::Object::Entries {
             {"id", std::to_string(peerId)},
             {"port", port},
