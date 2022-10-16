@@ -1,7 +1,6 @@
 #include "../app/app.hh"
 #include "../process/process.hh"
 #include "../window/window.hh"
-#include "../window/factory.hh"
 #include "../ipc/ipc.hh"
 
 //
