@@ -37,8 +37,40 @@ namespace SSC {
 
   // forward
   class Core;
-  struct Peer;
-  struct Descriptor;
+
+  class Headers {
+    public:
+      class Value {
+        public:
+          String string;
+          Value () = default;
+          Value (String value) { this->string = value; }
+          Value (const char* value) { this->string = value; }
+          Value (const Value& value) { this->string = value.string; }
+          Value (bool value) { this->string = value ? "true" : "false"; }
+          Value (int64_t value) { this->string = std::to_string(value); }
+          Value (uint64_t value) { this->string = std::to_string(value); }
+          Value (double_t value) { this->string = std::to_string(value); }
+          String str () const { return this->string; }
+      };
+
+      class Header {
+        public:
+          String key;
+          Value value;
+          Header (const Header& header);
+          Header (const String& key, const Value& value);
+      };
+
+      using Entries = Vector<Header>;
+      Entries entries;
+      Headers () = default;
+      Headers (const Headers& headers);
+      Headers (const Vector<std::map<String, Value>>& entries);
+      Headers (const Entries& entries);
+      size_t size () const;
+      String str () const;
+  };
 
   struct Post {
     uint64_t id = 0;
@@ -50,67 +82,7 @@ namespace SSC {
   };
 
   using Posts = std::map<uint64_t, Post>;
-  using Callback = std::function<void(String, String, Post)>;
   using EventLoopDispatchCallback = std::function<void()>;
-
-  struct Descriptor {
-    Core *core;
-    uv_file fd = 0;
-    uv_dir_t *dir = nullptr;
-    String seq;
-    Callback cb;
-    uint64_t id;
-    std::atomic<bool> retained = false;
-    std::atomic<bool> stale = false;
-    std::recursive_mutex mutex;
-    void *data;
-
-    Descriptor (Core *core, uint64_t id);
-
-    bool isDirectory ();
-    bool isFile ();
-    bool isRetained ();
-    bool isStale ();
-  };
-
-  struct DescriptorRequestContext {
-    uint64_t id;
-    String seq = "";
-    Descriptor *desc = nullptr;
-    uv_fs_t req;
-    uv_buf_t iov[16];
-    // 256 which corresponds to DirectoryHandle.MAX_BUFFER_SIZE
-    uv_dirent_t dirents[256];
-    int offset = 0;
-    int result = 0;
-    Callback cb;
-
-    DescriptorRequestContext () {}
-    DescriptorRequestContext (Descriptor *desc)
-      : DescriptorRequestContext(desc, "", nullptr) {}
-    DescriptorRequestContext (String seq, Callback cb)
-      : DescriptorRequestContext(nullptr, seq, cb) {}
-    DescriptorRequestContext (Descriptor *desc, String seq, Callback cb) {
-      this->id = SSC::rand64();
-      this->cb = cb;
-      this->seq = seq;
-      this->desc = desc;
-      this->req.data = (void *) this;
-    }
-
-    ~DescriptorRequestContext () {
-      uv_fs_req_cleanup(&this->req);
-    }
-
-    void setBuffer (int index, int len, char *base);
-    void freeBuffer (int index);
-    char* getBuffer (int index);
-    size_t getBufferSize (int index);
-    void end (String seq, String msg, Post post);
-    void end (String seq, String msg);
-    void end (String msg, Post post);
-    void end (String msg);
-  };
 
   struct Timer {
     uv_timer_t handle;
@@ -256,7 +228,13 @@ namespace SSC {
       int rebind ();
       int connect (String address, int port);
       int disconnect ();
-      void send (char *buf, int len, int port, String address, Peer::RequestContext::Callback cb);
+      void send (
+        char *buf,
+        int len,
+        int port,
+        const String address,
+        Peer::RequestContext::Callback cb
+      );
       int recvstart ();
       int recvstart (UDPReceiveCallback onrecv);
       int recvstop ();
@@ -264,7 +242,7 @@ namespace SSC {
       int pause ();
       void close ();
       void close (std::function<void()> onclose);
-    };
+  };
 
   static inline String addrToIPv4 (struct sockaddr_in* sin) {
     char buf[INET_ADDRSTRLEN];
@@ -292,6 +270,7 @@ namespace SSC {
           struct RequestContext {
             String seq;
             Module::Callback cb;
+            RequestContext () = default;
             RequestContext (String seq, Module::Callback cb) {
               this->seq = seq;
               this->cb = cb;
@@ -314,38 +293,179 @@ namespace SSC {
 
       class FS : Module {
         public:
+          struct Descriptor {
+            uint64_t id;
+            std::atomic<bool> retained = false;
+            std::atomic<bool> stale = false;
+            Mutex mutex;
+            uv_dir_t *dir = nullptr;
+            uv_file fd = 0;
+            Core *core;
+
+            Descriptor (Core *core, uint64_t id);
+            bool isDirectory ();
+            bool isFile ();
+            bool isRetained ();
+            bool isStale ();
+          };
+
+          struct RequestContext : Module::RequestContext {
+            uint64_t id;
+            Descriptor *desc = nullptr;
+            uv_fs_t req;
+            uv_buf_t iov[16];
+            // 256 which corresponds to DirectoryHandle.MAX_BUFFER_SIZE
+            uv_dirent_t dirents[256];
+            int offset = 0;
+            int result = 0;
+
+            RequestContext () = default;
+            RequestContext (Descriptor *desc)
+              : RequestContext(desc, "", nullptr) {}
+            RequestContext (String seq, Callback cb)
+              : RequestContext(nullptr, seq, cb) {}
+            RequestContext (Descriptor *desc, String seq, Callback cb) {
+              this->id = SSC::rand64();
+              this->cb = cb;
+              this->seq = seq;
+              this->desc = desc;
+              this->req.data = (void *) this;
+            }
+
+            ~RequestContext () {
+              uv_fs_req_cleanup(&this->req);
+            }
+
+            void setBuffer (int index, int len, char *base);
+            void freeBuffer (int index);
+            char* getBuffer (int index);
+            size_t getBufferSize (int index);
+          };
+
           std::map<uint64_t, Descriptor*> descriptors;
           Mutex mutex;
 
           FS (Core* core): Module(core, "fs") {}
-          void constants (String seq, Module::Callback cb);
-          void access (String seq, String path, int mode, Callback cb);
-          void chmod (String seq, String path, int mode, Callback cb);
-          void copyFile (String seq, String src, String dst, int mode, Callback cb);
-          void close (String seq, uint64_t id, Callback cb);
-          void closedir (String seq, uint64_t id, Callback cb);
-          void closeOpenDescriptor (String seq, uint64_t id, Callback cb);
-          void closeOpenDescriptors (String seq, Callback cb);
-          void closeOpenDescriptors (String seq, bool preserveRetained, Callback cb);
-          void fStat (String seq, uint64_t id, Callback cb);
-          void getOpenDescriptors (String seq, Callback cb);
-          void mkdir (String seq, String path, int mode, Callback cb);
-          void open (String seq, uint64_t id, String path, int flags, int mode, Callback cb);
-          void opendir (String seq, uint64_t id, String path, Callback cb);
-          void read (String seq, uint64_t id, int len, int offset, Callback cb);
-          void readdir (String seq, uint64_t id, size_t entries, Callback cb);
-          void retainOpenDescriptor (String seq, uint64_t id, Callback cb);
-          void rename (String seq, String pathA, String pathB, Callback cb);
-          void rmdir (String seq, String path, Callback cb);
-          void stat (String seq, String path, Callback cb);
-          void unlink (String seq, String path, Callback cb);
-          void write (String seq, uint64_t id, String data, int64_t offset, Callback cb);
+          Descriptor * getDescriptor (uint64_t id);
+          void removeDescriptor (uint64_t id);
+          bool hasDescriptor (uint64_t id);
+
+          void constants (const String seq, Module::Callback cb);
+          void access (
+            const String seq,
+            const String path,
+            int mode,
+            Module::Callback cb
+          );
+          void chmod (
+            const String seq,
+            const String path,
+            int mode,
+            Module::Callback cb
+          );
+          void close (const String seq, uint64_t id, Module::Callback cb);
+          void copyFile (
+            const String seq,
+            const String src,
+            const String dst,
+            int mode,
+            Module::Callback cb
+          );
+          void closedir (const String seq, uint64_t id, Module::Callback cb);
+          void closeOpenDescriptor (
+            const String seq,
+            uint64_t id,
+            Module::Callback cb
+          );
+          void closeOpenDescriptors (const String seq, Module::Callback cb);
+          void closeOpenDescriptors (
+            const String seq,
+            bool preserveRetained,
+            Module::Callback cb
+          );
+          void fstat (const String seq, uint64_t id, Module::Callback cb);
+          void getOpenDescriptors (const String seq, Module::Callback cb);
+          void lstat (const String seq, const String path, Module::Callback cb);
+          void mkdir (
+            const String seq,
+            const String path,
+            int mode,
+            Module::Callback cb
+          );
+          void open (
+            const String seq,
+            uint64_t id,
+            const String path,
+            int flags,
+            int mode,
+            Module::Callback cb
+          );
+          void opendir (
+            const String seq,
+            uint64_t id,
+            const String path,
+            Module::Callback cb
+          );
+          void read (
+            const String seq,
+            uint64_t id,
+            int len,
+            int offset,
+            Module::Callback cb
+          );
+          void readdir (
+            const String seq,
+            uint64_t id,
+            size_t entries,
+            Module::Callback cb
+          );
+          void retainOpenDescriptor (
+            const String seq,
+            uint64_t id,
+            Module::Callback cb
+          );
+          void rename (
+            const String seq,
+            const String src,
+            const String dst,
+            Module::Callback cb
+          );
+          void rmdir (
+            const String seq,
+            const String path,
+            Module::Callback cb
+          );
+          void stat (
+            const String seq,
+            const String path,
+            Module::Callback cb
+          );
+          void unlink (
+            const String seq,
+            const String path,
+            Module::Callback cb
+          );
+          void write (
+            const String seq,
+            uint64_t id,
+            char *bytes,
+            size_t size,
+            size_t offset,
+            Module::Callback cb
+          );
       };
 
       class OS : Module {
         public:
           OS (Core* core): Module(core, "os") {}
-          void bufferSize (String seq, uint64_t peerId, int size, int buffer, Module::Callback cb);
+          void bufferSize (
+            const String seq,
+            uint64_t peerId,
+            int size,
+            int buffer,
+            Module::Callback cb
+          );
+          void networkInterfaces (const String seq, Module::Callback cb) const;
       };
 
       class Platform : Module {
@@ -357,8 +477,17 @@ namespace SSC {
       class UDP : Module {
         public:
           UDP (Core* core): Module(core, "udp") {}
-          struct BindOptions { String address; int port; bool reuseAddr = false; };
-          struct ConnectOptions { String address; int port; };
+          struct BindOptions {
+            String address;
+            int port;
+            bool reuseAddr = false;
+          };
+
+          struct ConnectOptions {
+            String address;
+            int port;
+          };
+
           struct SendOptions {
             String address = "";
             int port = 0;
@@ -367,16 +496,31 @@ namespace SSC {
             bool ephemeral = false;
           };
 
-          void bind (String seq, uint64_t id, BindOptions, Module::Callback cb);
-          void close (String seq, uint64_t id, Module::Callback cb);
-          void connect (String seq, uint64_t id, ConnectOptions options, Module::Callback cb);
-          void disconnect (String seq, uint64_t id, Module::Callback cb);
-          void getPeerName (String seq, uint64_t id, Module::Callback cb);
-          void getSockName (String seq, uint64_t id, Module::Callback cb);
-          void getState (String seq, uint64_t id,  Module::Callback cb);
-          void readStart (String seq, uint64_t id, Module::Callback cb, Peer::UDPReceiveCallback receive);
-          void readStop (String seq, uint64_t id, Module::Callback cb);
-          void send (String seq, uint64_t id, SendOptions options, Module::Callback cb);
+          void bind (
+            const String seq,
+            uint64_t id,
+            BindOptions options,
+            Module::Callback cb
+          );
+          void close (const String seq, uint64_t id, Module::Callback cb);
+          void connect (
+            const String seq,
+            uint64_t id,
+            ConnectOptions options,
+            Module::Callback cb
+          );
+          void disconnect (const String seq, uint64_t id, Module::Callback cb);
+          void getPeerName (const String seq, uint64_t id, Module::Callback cb);
+          void getSockName (const String seq, uint64_t id, Module::Callback cb);
+          void getState (const String seq, uint64_t id,  Module::Callback cb);
+          void readStart (const String seq, uint64_t id, Module::Callback cb);
+          void readStop (const String seq, uint64_t id, Module::Callback cb);
+          void send (
+            const String seq,
+            uint64_t id,
+            SendOptions options,
+            Module::Callback cb
+          );
       };
 
       DNS dns;
@@ -386,10 +530,8 @@ namespace SSC {
       UDP udp;
 
       std::shared_ptr<Posts> posts;
-      std::map<uint64_t, Descriptor*> descriptors;
       std::map<uint64_t, Peer*> peers;
 
-      std::recursive_mutex descriptorsMutex;
       std::recursive_mutex loopMutex;
       std::recursive_mutex peersMutex;
       std::recursive_mutex postsMutex;
@@ -420,37 +562,16 @@ namespace SSC {
       std::thread *eventLoopThread = nullptr;
 #endif
 
-      Core ();
-      ~Core ();
-
-      // fs
-      static std::map<String, int32_t> getFSConstantsMap ();
-      JSON::Object getFSConstants ();
-      void fsAccess (String seq, String path, int mode, Callback cb);
-      void fsChmod (String seq, String path, int mode, Callback cb);
-      void fsCopyFile (String seq, String src, String dst, int mode, Callback cb);
-      void fsClose (String seq, uint64_t id, Callback cb);
-      void fsClosedir (String seq, uint64_t id, Callback cb);
-      void fsCloseOpenDescriptor (String seq, uint64_t id, Callback cb);
-      void fsCloseOpenDescriptors (String seq, Callback cb);
-      void fsCloseOpenDescriptors (String seq, bool preserveRetained, Callback cb);
-      void fsFStat (String seq, uint64_t id, Callback cb);
-      void fsGetOpenDescriptors (String seq, Callback cb);
-      void fsMkdir (String seq, String path, int mode, Callback cb);
-      void fsOpen (String seq, uint64_t id, String path, int flags, int mode, Callback cb);
-      void fsOpendir (String seq, uint64_t id, String path, Callback cb);
-      void fsRead (String seq, uint64_t id, int len, int offset, Callback cb);
-      void fsReaddir (String seq, uint64_t id, size_t entries, Callback cb);
-      void fsRetainOpenDescriptor (String seq, uint64_t id, Callback cb);
-      void fsRename (String seq, String pathA, String pathB, Callback cb);
-      void fsRmdir (String seq, String path, Callback cb);
-      void fsStat (String seq, String path, Callback cb);
-      void fsUnlink (String seq, String path, Callback cb);
-      void fsWrite (String seq, uint64_t id, String data, int64_t offset, Callback cb);
-
-      Descriptor * getDescriptor (uint64_t id);
-      void removeDescriptor (uint64_t id);
-      bool hasDescriptor (uint64_t id);
+      Core () :
+        dns(this),
+        fs(this),
+        os(this),
+        platform(this),
+        udp(this)
+      {
+        this->posts = std::shared_ptr<Posts>(new Posts());
+        initEventLoop();
+      }
 
       void resumeAllPeers ();
       void pauseAllPeers ();
@@ -460,9 +581,6 @@ namespace SSC {
       Peer* getPeer (uint64_t id);
       Peer* createPeer (peer_type_t type, uint64_t id);
       Peer* createPeer (peer_type_t type, uint64_t id, bool isEphemeral);
-
-      // core
-      JSON::Object getNetworkInterfaces () const;
 
       Post getPost (uint64_t id);
       bool hasPost (uint64_t id);
@@ -506,13 +624,5 @@ namespace SSC {
     const String& state,
     const String& value
   );
-
-  inline String getResolveToMainProcessMessage (
-    const String& seq,
-    const String& state,
-    const String& value
-  ) {
-    return String("ipc://resolve?seq=" + seq + "&state=" + state + "&value=" + value);
-  }
 } // SSC
 #endif
