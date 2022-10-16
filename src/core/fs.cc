@@ -367,7 +367,7 @@ namespace SSC {
       auto loop = &this->core->eventLoop;
       auto ctx = new RequestContext(seq, cb);
       auto req = &ctx->req;
-      auto err = uv_fs_access(loop, req, filename, mode, [](auto req) {
+      auto err = uv_fs_access(loop, req, filename, mode, [](uv_fs_t* req) {
         auto ctx = (RequestContext *) req->data;
         auto json = JSON::Object {};
 
@@ -418,7 +418,7 @@ namespace SSC {
       auto loop = &this->core->eventLoop;
       auto ctx = new RequestContext(seq, cb);
       auto req = &ctx->req;
-      auto err = uv_fs_chmod(loop, req, filename, mode, [](auto req) {
+      auto err = uv_fs_chmod(loop, req, filename, mode, [](uv_fs_t* req) {
         auto ctx = (RequestContext *) req->data;
         auto json = JSON::Object {};
 
@@ -483,7 +483,7 @@ namespace SSC {
       auto loop = &this->core->eventLoop;
       auto ctx = new RequestContext(desc, seq, cb);
       auto req = &ctx->req;
-      auto err = uv_fs_close(loop, req, desc->fd, [](auto req) {
+      auto err = uv_fs_close(loop, req, desc->fd, [](uv_fs_t* req) {
         auto ctx = (RequestContext *) req->data;
         auto desc = ctx->desc;
         auto json = JSON::Object {};
@@ -544,7 +544,7 @@ namespace SSC {
       auto loop = &this->core->eventLoop;
       auto ctx = new RequestContext(desc, seq, cb);
       auto req = &ctx->req;
-      auto err = uv_fs_open(loop, req, filename, flags, mode, [](auto req) {
+      auto err = uv_fs_open(loop, req, filename, flags, mode, [](uv_fs_t* req) {
         auto ctx = (RequestContext *) req->data;
         auto desc = ctx->desc;
         auto json = JSON::Object {};
@@ -791,7 +791,7 @@ namespace SSC {
       auto loop = &this->core->eventLoop;
       auto ctx = new RequestContext(desc, seq, cb);
       auto req = &ctx->req;
-      auto err = uv_fs_closedir(loop, req, desc->dir, [](auto req) {
+      auto err = uv_fs_closedir(loop, req, desc->dir, [](uv_fs_t* req) {
         auto ctx = (RequestContext *) req->data;
         auto desc = ctx->desc;
         auto json = JSON::Object {};
@@ -946,7 +946,7 @@ namespace SSC {
 
       ctx->setBuffer(0, len, buf);
 
-      auto err = uv_fs_read(loop, req, desc->fd, ctx->iov, 1, offset, [](auto req) {
+      auto err = uv_fs_read(loop, req, desc->fd, ctx->iov, 1, offset, [](uv_fs_t* req) {
         auto ctx = static_cast<RequestContext*>(req->data);
         auto desc = ctx->desc;
         auto json = JSON::Object {};
@@ -1029,7 +1029,7 @@ namespace SSC {
       auto req = &ctx->req;
 
       ctx->setBuffer(0, size, bytes);
-      auto err = uv_fs_write(loop, req, desc->fd, ctx->iov, 1, offset, [](auto req) {
+      auto err = uv_fs_write(loop, req, desc->fd, ctx->iov, 1, offset, [](uv_fs_t* req) {
         auto ctx = static_cast<RequestContext*>(req->data);
         auto desc = ctx->desc;
         auto json = JSON::Object {};
@@ -1219,7 +1219,7 @@ namespace SSC {
       auto loop = &this->core->eventLoop;
       auto ctx = new RequestContext(seq, cb);
       auto req = &ctx->req;
-      auto err = uv_fs_lstat(loop, req, filename, [](auto req) {
+      auto err = uv_fs_lstat(loop, req, filename, [](uv_fs_t* req) {
         auto ctx = (RequestContext *) req->data;
         auto json = JSON::Object {};
 
@@ -1264,7 +1264,7 @@ namespace SSC {
       auto loop = &this->core->eventLoop;
       auto ctx = new RequestContext(seq, cb);
       auto req = &ctx->req;
-      auto err = uv_fs_unlink(loop, req, filename, [](auto req) {
+      auto err = uv_fs_unlink(loop, req, filename, [](uv_fs_t* req) {
         auto ctx = (RequestContext *) req->data;
         auto json = JSON::Object {};
 
@@ -1316,7 +1316,7 @@ namespace SSC {
       auto req = &ctx->req;
       auto src = pathA.c_str();
       auto dst = pathB.c_str();
-      auto err = uv_fs_rename(loop, req, src, dst, [](auto req) {
+      auto err = uv_fs_rename(loop, req, src, dst, [](uv_fs_t* req) {
         auto ctx = (RequestContext *) req->data;
         auto json = JSON::Object {};
 
@@ -1369,7 +1369,7 @@ namespace SSC {
       auto req = &ctx->req;
       auto src = pathA.c_str();
       auto dst = pathB.c_str();
-      auto err = uv_fs_copyfile(loop, req, src, dst, flags, [](auto req) {
+      auto err = uv_fs_copyfile(loop, req, src, dst, flags, [](uv_fs_t* req) {
         auto ctx = (RequestContext *) req->data;
         auto json = JSON::Object {};
 
@@ -1419,7 +1419,7 @@ namespace SSC {
       auto loop = &this->core->eventLoop;
       auto ctx = new RequestContext(seq, cb);
       auto req = &ctx->req;
-      auto err = uv_fs_rmdir(loop, req, filename, [](auto req) {
+      auto err = uv_fs_rmdir(loop, req, filename, [](uv_fs_t* req) {
         auto ctx = (RequestContext *) req->data;
         auto json = JSON::Object {};
 
@@ -1470,7 +1470,7 @@ namespace SSC {
       auto loop = &this->core->eventLoop;
       auto ctx = new RequestContext(seq, cb);
       auto req = &ctx->req;
-      auto err = uv_fs_mkdir(loop, req, filename, mode, [](auto req) {
+      auto err = uv_fs_mkdir(loop, req, filename, mode, [](uv_fs_t* req) {
         auto ctx = (RequestContext *) req->data;
         auto json = JSON::Object {};
 

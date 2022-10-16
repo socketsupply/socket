@@ -51,6 +51,7 @@ namespace SSC::JSON {
       Any (int32_t);
       Any (float);
       Any (double);
+      Any (ssize_t);
       Any (const Number);
       Any (const char *);
       Any (const SSC::String);
@@ -110,7 +111,12 @@ namespace SSC::JSON {
       Number (int64_t number) { this->data = (float) number; }
       float value () const { return this->data; }
       SSC::String str () const {
-        return SSC::format("$S", std::to_string(this->data));
+        auto remainer = this->data - (int32_t) this->data;
+        if (remainer > 0) {
+          return SSC::format("$S", std::to_string(this->data));
+        } else {
+          return SSC::format("$S", std::to_string((int32_t) this->data));
+        }
       }
   };
 

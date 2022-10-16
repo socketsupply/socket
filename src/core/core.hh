@@ -59,9 +59,12 @@ namespace SSC {
           Value (const char* value) { this->string = value; }
           Value (const Value& value) { this->string = value.string; }
           Value (bool value) { this->string = value ? "true" : "false"; }
+          Value (int value) { this->string = std::to_string(value); }
+          Value (float value) { this->string = std::to_string(value); }
           Value (int64_t value) { this->string = std::to_string(value); }
           Value (uint64_t value) { this->string = std::to_string(value); }
           Value (double_t value) { this->string = std::to_string(value); }
+          Value (ssize_t value) { this->string = std::to_string(value); }
           String str () const { return this->string; }
       };
 

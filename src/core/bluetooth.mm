@@ -4,10 +4,10 @@
 using namespace SSC;
 
 @implementation SSCBluetoothDelegate
-// - (void)disconnect {
+// - (void) disconnect {
 // }
 
-// - (void)updateRssi {
+// - (void) updateRssi {
 //  debug("CoreBluetooth: updateRssi");
 // }
 
@@ -53,30 +53,32 @@ using namespace SSC;
       break;
   }
 
-  auto msg = SSC::format(R"MSG({
-    "data": {
-      "event": "state",
-      "state": "$S"
-    }
-  })MSG", message, state);
+  auto json = JSON::Object::Entries {
+    {"data", JSON::Object::Entries {
+      {"event", "state"},
+      {"state", message}
+    }}
+  };
 
-  [self.bridge emit: "bluetooth" msg: msg];
+  self.bridge.router->emit("bluetooth", JSON::Object(json).str());
 }
 
-- (void) peripheralManagerDidStartAdvertising: (CBPeripheralManager*) peripheral error: (NSError*) error {
+- (void) peripheralManagerDidStartAdvertising: (CBPeripheralManager*) peripheral
+                                        error: (NSError*) error
+{
   if (error) {
     debug("CoreBluetooth: %@", error);
     auto desc = String([error.debugDescription UTF8String]);
     std::replace(desc.begin(), desc.end(), '"', '\''); // Secure
 
-    auto msg = SSC::format(R"MSG({
-      "err": {
-        "event": "peripheralManagerDidStartAdvertising",
-        "message": "$S"
-      }
-    })MSG", desc);
+    auto json = JSON::Object::Entries {
+      {"err", JSON::Object::Entries {
+        {"event", "peripheralManagerDidStartAdvertising"},
+        {"message", desc}
+      }}
+    };
 
-    [self.bridge emit: "bluetooth" msg: msg];
+    self.bridge.router->emit("bluetooth", JSON::Object(json).str());
     return;
   }
 
@@ -153,7 +155,10 @@ didSubscribeToCharacteristic: (CBCharacteristic*) characteristic {
   [self startAdvertising];
 }
 
--(void) subscribeCharacteristic: (String) seq sid: (String) sid cid: (String) cid {
+-(void) subscribeCharacteristic: (String) seq
+                            sid: (String) sid
+                            cid: (String) cid
+{
   NSString* ssid = [NSString stringWithUTF8String: sid.c_str()];
   NSString* scid = [NSString stringWithUTF8String: cid.c_str()];
 
@@ -188,15 +193,15 @@ didSubscribeToCharacteristic: (CBCharacteristic*) characteristic {
     [_peripheralManager addService: service];
   }
 
-  auto msg = SSC::format(R"MSG({
-    "data": {
-      "serviceId": "$S",
-      "characteristicId": "$S",
-      "message": "Started"
-    }
-  })MSG", sid, cid);
+  auto json = JSON::Object::Entries {
+    {"data", JSON::Object::Entries {
+      {"serviceId", sid},
+      {"characteristicId", cid},
+      {"message", "Started"}
+    }}
+  };
 
-  [self.bridge send: seq msg: msg post: SSC::Post{}];
+  self.bridge.router->send(seq, JSON::Object(json).str(), Post{});
 }
 
 - (void) publishCharacteristic: (String) seq
@@ -212,14 +217,14 @@ didSubscribeToCharacteristic: (CBCharacteristic*) characteristic {
   auto cUUID = [CBUUID UUIDWithString: scid];
 
   if (!_serviceMap[ssid]) {
-    auto msg = SSC::format(R"MSG({ "err": { "message": "invalid serviceId" } })MSG");
-    [self.bridge send: seq msg: msg post: SSC::Post{}];
+    auto msg = format(R"MSG({ "err": { "message": "invalid serviceId" } })MSG");
+    [self.bridge send: seq msg: msg post: Post{}];
     return;
   }
 
   if (![_serviceMap[ssid] containsObject: cUUID]) {
-    auto msg = SSC::format(R"MSG({ "err": { "message": "invalid characteristicId" } })MSG");
-    [self.bridge send: seq msg: msg post: SSC::Post{}];
+    auto msg = format(R"MSG({ "err": { "message": "invalid characteristicId" } })MSG");
+    [self.bridge send: seq msg: msg post: Post{}];
     return;
   }
 
@@ -258,20 +263,23 @@ didSubscribeToCharacteristic: (CBCharacteristic*) characteristic {
   debug("CoreBluetooth: did write '%@' %@", data, characteristic);
 }
 
-- (void) startService: (String)seq sid: (String)sid { // start advertising and scanning for a new service
+// start advertising and scanning for a new service
+- (void) startService: (String) seq sid: (String) sid {
   [self startScanning];
 
-  auto msg = SSC::format(R"MSG({
-    "data": {
-      "serviceId": "$S",
-      "message": "Started"
-    }
-  })MSG", sid);
+  auto json = JSON::Object::Entries {
+    {"data", JSON::Object::Entries {
+      {"serviceId", sid},
+      {"message", "Started"}
+    }}
+  };
 
-  [self.bridge send:seq msg: msg post:SSC::Post{}];
+  self.bridge.router->send(seq, JSON::Object(json).str(), Post{});
 }
 
-- (void) peripheralManager: (CBPeripheralManager*)peripheral didReceiveReadRequest: (CBATTRequest*)request {
+- (void) peripheralManager: (CBPeripheralManager*) peripheral
+     didReceiveReadRequest: (CBATTRequest*) request
+{
   CBMutableCharacteristic* ch;
 
   for (NSString* key in _services) {
@@ -296,7 +304,11 @@ didSubscribeToCharacteristic: (CBCharacteristic*) characteristic {
   [self startScanning];
 }
 
-- (void) centralManager: (CBCentralManager*)central didDiscoverPeripheral: (CBPeripheral*)peripheral advertisementData: (NSDictionary*)advertisementData RSSI: (NSNumber*)RSSI {
+- (void) centralManager: (CBCentralManager*) central
+  didDiscoverPeripheral: (CBPeripheral*) peripheral
+      advertisementData: (NSDictionary*) advertisementData
+                   RSSI: (NSNumber*) RSSI
+{
   if (peripheral.identifier == nil || peripheral.name == nil) {
     [self.peripherals addObject: peripheral];
 
@@ -331,7 +343,9 @@ didSubscribeToCharacteristic: (CBCharacteristic*) characteristic {
   }
 }
 
-- (void) centralManager: (CBCentralManager*)central didConnectPeripheral: (CBPeripheral*)peripheral {
+- (void) centralManager: (CBCentralManager*) central
+   didConnectPeripheral: (CBPeripheral*) peripheral
+{
   debug("CoreBluetooth: didConnectPeripheral");
   peripheral.delegate = self;
 
@@ -350,20 +364,21 @@ didSubscribeToCharacteristic: (CBCharacteristic*) characteristic {
     return;
   }
 
-  auto msg = SSC::format(R"MSG({
-    "data" : {
-      "event": "connect",
-      "name": "$S",
-      "uuid": "$S"
-    }
-  })MSG", name, uuid);
+  auto json = JSON::Object::Entries {
+    {"data" , JSON::Object::Entries {
+      {"event", "connect"},
+      {"name", name},
+      {"uuid", uuid}
+    }}
+  };
 
-  [self.bridge emit: "bluetooth" msg: msg];
+  self.bridge.router->emit("bluetooth", JSON::Object(json).str());
 
   [peripheral discoverServices: uuids];
 }
 
-- (void) peripheral: (CBPeripheral*)peripheral didDiscoverServices: (NSError*)error {
+-  (void) peripheral: (CBPeripheral*) peripheral
+ didDiscoverServices: (NSError*) error {
   if (error) {
     debug("CoreBluetooth: peripheral:didDiscoverService:error: %@", error);
     return;
@@ -378,7 +393,10 @@ didSubscribeToCharacteristic: (CBCharacteristic*) characteristic {
   }
 }
 
-- (void) peripheral: (CBPeripheral*)peripheral didDiscoverCharacteristicsForService: (CBService*)service error: (NSError*)error {
+-                   (void) peripheral: (CBPeripheral*) peripheral
+ didDiscoverCharacteristicsForService: (CBService*) service
+                                error: (NSError*) error
+{
   if (error) {
     debug("CoreBluetooth: peripheral:didDiscoverCharacteristicsForService:error: %@", error);
     return;
@@ -397,19 +415,22 @@ didSubscribeToCharacteristic: (CBCharacteristic*) characteristic {
   }
 }
 
-- (void) peripheralManagerIsReadyToUpdateSubscribers: (CBPeripheralManager*)peripheral {
-  auto msg = SSC::format(R"MSG({
-    "data": {
-      "source": "bluetooth",
-      "message": "peripheralManagerIsReadyToUpdateSubscribers",
-      "event": "status"
-    }
-  })MSG");
+- (void) peripheralManagerIsReadyToUpdateSubscribers: (CBPeripheralManager*) peripheral {
+  auto json = JSON::Object::Entries {
+    {"data", JSON::Object::Entries {
+      {"source", "bluetooth"},
+      {"message", "peripheralManagerIsReadyToUpdateSubscribers"},
+      {"event", "status"}
+    }}
+  };
 
-  [self.bridge emit: "bluetooth" msg: msg];
+  self.bridge.router->emit("bluetooth", JSON::Object(json).str());
 }
 
-- (void) peripheral: (CBPeripheral*)peripheral didUpdateValueForCharacteristic: (CBCharacteristic*)characteristic error:(NSError*)error {
+-              (void) peripheral: (CBPeripheral*) peripheral
+ didUpdateValueForCharacteristic: (CBCharacteristic*) characteristic
+                           error: (NSError*) error
+{
   if (error) {
     debug("ERROR didUpdateValueForCharacteristic: %@", error);
     return;
@@ -438,36 +459,44 @@ didSubscribeToCharacteristic: (CBCharacteristic*) characteristic {
     }
   }
 
-  SSC::Post post;
-  post.id = SSC::rand64();
-  post.body = (char*)characteristic.value.bytes;
-  post.length = (int)characteristic.value.length;
+  auto bytes = (char*) characteristic.value.bytes;
+  auto length = (int) characteristic.value.length;
+  auto headers = Headers {{
+    {"content-type", "application/octet-stream"},
+    {"content-length", length}
+  }};
 
-  post.headers = SSC::format(R"MSG(
-    content-type: application/octet-stream
-    content-length: $i
-  )MSG", post.length);
+  Post post = {0};
+  post.id = rand64();
+  post.body = bytes;
+  post.length = length;
+  post.headers = headers.str();
 
-  String seq = "-1";
+  auto json = JSON::Object::Entries {
+    {"data", JSON::Object::Entries {
+      {"event", "data"},
+      {"source", "bluetooth"},
+      {"characteristicId", characteristicId},
+      {"serviceId", sid},
+      {"name", name},
+      {"uuid", uuid}
+    }}
+  };
 
-  String msg = SSC::format(R"MSG({
-    "data": {
-      "event": "data",
-      "source": "bluetooth",
-      "characteristicId": "$S",
-      "serviceId": "$S",
-      "name": "$S",
-      "uuid": "$S"
-    }
-  })MSG", characteristicId, sid, name, uuid);
-
-  [self.bridge send: seq msg: msg post: post];
+  self.bridge.router->send("-1", JSON::Object(json).str(), post);
 }
 
-- (void) peripheral: (CBPeripheral*)peripheral didUpdateNotificationStateForCharacteristic: (CBCharacteristic*)characteristic error: (NSError*)error {
+-                          (void) peripheral: (CBPeripheral*) peripheral
+ didUpdateNotificationStateForCharacteristic: (CBCharacteristic*) characteristic
+                                       error: (NSError*) error
+{
+  // TODO
 }
 
-- (void) centralManager: (CBCentralManager*)central didFailToConnectPeripheral: (CBPeripheral*)peripheral error: (NSError*)error {
+-     (void) centralManager: (CBCentralManager*) central
+ didFailToConnectPeripheral: (CBPeripheral*) peripheral
+                      error: (NSError*) error
+{
   // if (error != nil) {
   //  debug("CoreBluetooth: failed to connect %@", error.debugDescription);
   //  return;
@@ -484,9 +513,11 @@ didSubscribeToCharacteristic: (CBCharacteristic*) characteristic {
   }];
 }
 
-- (void) centralManager: (CBCentralManager*)central didDisconnectPeripheral: (CBPeripheral*)peripheral error: (NSError*)error {
+-  (void) centralManager: (CBCentralManager*) central
+ didDisconnectPeripheral: (CBPeripheral*) peripheral
+                   error: (NSError*) error
+{
   [_centralManager connectPeripheral: peripheral options: nil];
-
   if (error != nil) {
     debug("CoreBluetooth: device did disconnect %@", error.debugDescription);
     return;
