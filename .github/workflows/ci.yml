@@ -1,4 +1,4 @@
-name: Socket SDK CI
+name: Socket CI
 
 on:
   push:
@@ -25,9 +25,9 @@ jobs:
         registry-url: https://npm.pkg.github.com/
         scope: '@socketsupply'
 
-    - name: Install Socket SDK deps
+    - name: Install Socket Runtime deps
       run: |
-        sudo apt install software-properties-common
+        sudo apt install software-properties-common at-spi2-core
         sudo add-apt-repository ppa:ubuntu-toolchain-r/test
         sudo apt install gcc-12 g++-12 libwebkit2gtk-4.1-dev
 
@@ -37,30 +37,22 @@ jobs:
       env:
         CXX: g++-12
 
-    - name: Check if Socket SDK has a correct version
+    - name: Check if Socket Runtime has a correct version
       run: |
         ./bin/ci_version_check.sh
 
-    - name: install an example app
+    - name: install an io example app
       run: |
         git config --global user.email "devops@optool.co"
         git config --global user.name "Optool Github Actions"
-        git clone --depth 1 git@github.com:socketsupply/socket-examples.git
-        cd socket-examples/desktop-node-tonic-cjs/ && npm install
+        git clone -b ipc-cleanup --depth 1 git@github.com:socketsupply/io.git
       env:
         CI: true
         NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
 
-    - name: compile example desktop
-      run: |
-        ssc build ./socket-examples/desktop-node-tonic-cjs/
-      env:
-        CI: true
-        CXX: g++-12
-
     - name: Run example desktop tests
       run: |
-        xvfb-run --server-args="-screen 0 1920x1080x24" ssc run --test=1 ./socket-examples/desktop-node-tonic-cjs/
+        cd io && npm install && npm test
       env:
         CI: true
         CXX: g++-12
@@ -93,11 +85,11 @@ jobs:
         registry-url: https://npm.pkg.github.com/
         scope: '@socketsupply'
 
-    - name: Install Socket SDK deps
+    - name: Install Socket Runtime deps
       run: |
-        sudo apt install software-properties-common
+        sudo apt install software-properties-common at-spi2-core
         sudo add-apt-repository ppa:ubuntu-toolchain-r/test
-        sudo apt install -y gcc-12 g++-12 libpthread-stubs0-dev
+        sudo apt install -y gcc-12 g++-12 libpthread-stubs0-dev libwebkit2gtk-4.1-dev
 
     - name: install ssc
       run: |
@@ -105,23 +97,22 @@ jobs:
       env:
         CXX: g++-12
 
-    - name: Check if Socket SDK has a correct version
+    - name: Check if Socket has a correct version
       run: |
         ./bin/ci_version_check.sh
 
-    - name: install an example app
+    - name: install an io example app
       run: |
         git config --global user.email "devops@optool.co"
         git config --global user.name "Optool Github Actions"
-        git clone --depth 1 git@github.com:socketsupply/socket-examples.git
-        cd socket-examples/android-tonic && npm install
+        git clone -b ipc-cleanup --depth 1 git@github.com:socketsupply/io.git
       env:
         CI: true
         NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
 
-    - name: compile example android app
+    - name: Run Android tests
       run: |
-        ssc build --platform=android ./socket-examples/android-tonic
+        cd io && npm install && npm run test:android-emulator
       env:
         CI: true
         SSC_CI: true
@@ -157,7 +148,7 @@ jobs:
 
     - name: install ssc
       run: |
-        ./bin/install.ps1 dev
+        ./bin/install.ps1
 
         echo "::add-path::$env:LOCALAPPDATA\Programs\socketsupply\bin"
         echo "$env:LOCALAPPDATA\Programs\socketsupply\bin" >> $env:GITHUB_PATH
@@ -172,6 +163,7 @@ jobs:
       run: |
         ssc
 
+    # TODO: run io tests instead
     - name: install an example app
       run: |
         git config --global core.sshCommand "'C:\Windows\System32\OpenSSH\ssh.exe'"
@@ -200,7 +192,7 @@ jobs:
 
   build_for_mac:
     runs-on: macOS-12
-    timeout-minutes: 5
+    timeout-minutes: 10
 
     steps:
     - uses: actions/checkout@v3
@@ -210,8 +202,9 @@ jobs:
       with:
         ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
-    - name: install automake
-      run: brew install automake
+    - name: install Socket Runtime deps
+      run: |
+        brew install automake
 
     - name: Use Node.js
       uses: actions/setup-node@v3
@@ -228,25 +221,18 @@ jobs:
       run: |
         ./bin/ci_version_check.sh
 
-    - name: install an example app
+    - name: install an io example app
       run: |
         git config --global user.email "devops@optool.co"
         git config --global user.name "Optool Github Actions"
-        git clone --depth 1 git@github.com:socketsupply/socket-examples.git
-        cd socket-examples/desktop-node-tonic-cjs/ && npm install
+        git clone -b ipc-cleanup --depth 1 git@github.com:socketsupply/io.git
       env:
         CI: true
         NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
 
-    - name: compile example desktop
+    - name: Run example io tests
       run: |
-        ssc build ./socket-examples/desktop-node-tonic-cjs/
-      env:
-        CI: true
-
-    - name: Run example desktop tests
-      run: |
-        ssc run --test=1 ./socket-examples/desktop-node-tonic-cjs/
+        cd io && npm install && npm test
       env:
         CI: true
 
@@ -262,8 +248,9 @@ jobs:
       with:
         ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
-    - name: install automake
-      run: brew install automake
+    - name: install Socket Runtime deps
+      run: |
+        brew install automake
 
     - name: Use Node.js
       uses: actions/setup-node@v3
@@ -272,26 +259,25 @@ jobs:
         registry-url: https://npm.pkg.github.com/
         scope: '@socketsupply'
 
-    - name: cross-compile
+    - name: install ssc
       run: |
-        ./bin/install.sh ios
+        ./bin/install.sh
 
     - name: Check if ssc has a correct version
       run: |
         ./bin/ci_version_check.sh
 
-    - name: install an example app
+    - name: install an io example app
       run: |
         git config --global user.email "devops@optool.co"
         git config --global user.name "ssc Github Actions"
-        git clone --depth 1 https://github.com/socketsupply/socket-examples.git
-        cd socket-examples/ios-tonic/ && npm install
+        git clone -b ipc-cleanup --depth 1 https://github.com/socketsupply/io.git
       env:
         CI: true
         NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
 
-    - name: compile example ios
+    - name: Run io iOS tests
       run: |
-        ssc build --platform=ios-simulator ./socket-examples/ios-tonic/
+        cd io && npm install && npm run test:ios-simulator
       env:
         CI: true
