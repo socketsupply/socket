@@ -64,7 +64,9 @@ namespace SSC {
           Value (int64_t value) { this->string = std::to_string(value); }
           Value (uint64_t value) { this->string = std::to_string(value); }
           Value (double_t value) { this->string = std::to_string(value); }
+#if defined(__APPLE__)
           Value (ssize_t value) { this->string = std::to_string(value); }
+#endif
           String str () const { return this->string; }
       };
 

@@ -590,6 +590,7 @@ namespace SSC {
         };
 
         ctx->cb(ctx->seq, json, Post{});
+        delete desc;
         delete ctx;
       }
     });
@@ -652,6 +653,7 @@ namespace SSC {
         };
 
         ctx->cb(ctx->seq, json, Post{});
+        delete desc;
         delete ctx;
       }
     });

@@ -999,6 +999,7 @@ int main (const int argc, const char* argv[]) {
       fs::create_directories(jni);
       fs::create_directories(jni / "app");
       fs::create_directories(jni / "core");
+      fs::create_directories(jni / "ipc");
       fs::create_directories(jni / "mobile");
       fs::create_directories(jni / "window");
       fs::create_directories(jni / "src");
@@ -1032,6 +1033,7 @@ int main (const int argc, const char* argv[]) {
 
       // Core
       fs::copy(trim(prefixFile("src/common.hh")), jni, fs::copy_options::overwrite_existing);
+      fs::copy(trim(prefixFile("src/app/app.hh")), jni / "app", fs::copy_options::overwrite_existing);
       fs::copy(trim(prefixFile("src/core/android.cc")), jni / "core", fs::copy_options::overwrite_existing);
       fs::copy(trim(prefixFile("src/core/core.cc")), jni / "core", fs::copy_options::overwrite_existing);
       fs::copy(trim(prefixFile("src/core/core.hh")), jni / "core", fs::copy_options::overwrite_existing);
