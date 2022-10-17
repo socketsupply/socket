@@ -188,11 +188,7 @@ void initFunctionsTable (Router *router) {
       return reply(Result::Err { message, err });
     }
 
-    try { id = std::stoull(message.get("id")); } catch (...) {
-      return reply(Result::Err { message, JSON::Object::Entries {
-        {"message", "Invalid 'id' given in parameters"}
-      }});
-    }
+    getMessageParam(id, "id", std::stoull);
 
     router->core->fs.closeOpenDescriptor(seq, id, resultCallback(message, reply));
   });
@@ -229,11 +225,7 @@ void initFunctionsTable (Router *router) {
     auto dest = message.get("dest");
     int flags = 0;
 
-    try { flags = std::stoi(message.get("flags")); } catch (...) {
-      return reply(Result::Err { message, JSON::Object::Entries {
-        {"message", "Invalid 'flags' given in parameters"}
-      }});
-    }
+    getMessageParam(flags, "flags", std::stoi);
 
     router->core->fs.copyFile(seq, src, dest, flags, resultCallback(message, reply));
   });
@@ -253,11 +245,7 @@ void initFunctionsTable (Router *router) {
       return reply(Result::Err { message, err });
     }
 
-    try { id = std::stoull(message.get("id")); } catch (...) {
-      return reply(Result::Err { message, JSON::Object::Entries {
-        {"message", "Invalid 'id' given in parameters"}
-      }});
-    }
+    getMessageParam(id, "id", std::stoull);
 
     router->core->fs.fstat(seq, id, resultCallback(message, reply));
   });
@@ -306,11 +294,7 @@ void initFunctionsTable (Router *router) {
     auto path = message.get("path");
     int mode = 0;
 
-    try { mode = std::stoi(message.get("mode")); } catch (...) {
-      return reply(Result::Err { message, JSON::Object::Entries {
-        {"message", "Invalid 'mode' given in parameters"}
-      }});
-    }
+    getMessageParam(mode, "mode", std::stoi);
 
     router->core->fs.mkdir(seq, path, mode, resultCallback(message, reply));
   });
@@ -347,12 +331,9 @@ void initFunctionsTable (Router *router) {
       }});
     }
 
-    try { mode = std::stoi(message.get("mode")); } catch (...) {
-      return reply(Result::Err { message, JSON::Object::Entries {
-        {"id", std::to_string(id)},
-        {"message", "Invalid 'mode' given in parameters"}
-      }});
-    }
+    getMessageParam(id, "id", std::stoull);
+    getMessageParam(mode, "mode", std::stoi);
+    getMessageParam(flags, "flags", std::stoi);
 
     auto path = message.get("path");
     auto seq = message.seq;
@@ -377,11 +358,7 @@ void initFunctionsTable (Router *router) {
     auto path = message.get("path");
     auto seq = message.seq;
 
-    try { id = std::stoull(message.get("id")); } catch (...) {
-      return reply(Result::Err { message, JSON::Object::Entries {
-        {"message", "Invalid 'id' given in parameters"}
-      }});
-    }
+    getMessageParam(id, "id", std::stoull);
 
     router->core->fs.opendir(seq, id, path, resultCallback(message, reply));
   });
@@ -404,25 +381,9 @@ void initFunctionsTable (Router *router) {
     int offset = 0;
     int size = 0;
 
-    try { id = std::stoull(message.get("id")); } catch (...) {
-      return reply(Result::Err { message, JSON::Object::Entries {
-        {"message", "Invalid 'id' given in parameters"}
-      }});
-    }
-
-    try { size = std::stoi(message.get("size")); } catch (...) {
-      return reply(Result::Err { message, JSON::Object::Entries {
-        {"id", std::to_string(id)},
-        {"message", "Invalid 'size' given in parameters"}
-      }});
-    }
-
-    try { offset = std::stoi(message.get("offset")); } catch (...) {
-      return reply(Result::Err { message, JSON::Object::Entries {
-        {"id", std::to_string(id)},
-        {"message", "Invalid 'offset' given in parameters"}
-      }});
-    }
+    getMessageParam(id, "id", std::stoull);
+    getMessageParam(size, "size", std::stoi);
+    getMessageParam(offset, "offset", std::stoi);
 
     auto seq = message.seq;
 
@@ -444,18 +405,8 @@ void initFunctionsTable (Router *router) {
     uint64_t id;
     int entries = 0;
 
-    try { id = std::stoull(message.get("id")); } catch (...) {
-      return reply(Result::Err { message, JSON::Object::Entries {
-        {"message", "Invalid 'id' given in parameters"}
-      }});
-    }
-
-    try { entries = std::stoi(message.get("entries", "256")); } catch (...) {
-      return reply(Result::Err { message, JSON::Object::Entries {
-        {"id", std::to_string(id)},
-        {"message", "Invalid 'entries' given in parameters"}
-      }});
-    }
+    getMessageParam(id, "id", std::stoull);
+    getMessageParam(entries, "entries", std::stoi);
 
     auto path = message.get("path");
     auto seq = message.seq;
@@ -476,11 +427,7 @@ void initFunctionsTable (Router *router) {
       return reply(Result::Err { message, err });
     }
 
-    try { id = std::stoull(message.get("id")); } catch (...) {
-      return reply(Result::Err { message, JSON::Object::Entries {
-        {"message", "Invalid 'id' given in parameters"}
-      }});
-    }
+    getMessageParam(id, "id", std::stoull);
 
     router->core->fs.retainOpenDescriptor(seq, id, resultCallback(message, reply));
   });
@@ -581,18 +528,8 @@ void initFunctionsTable (Router *router) {
     uint64_t id;
     int offset = 0;
 
-    try { id = std::stoull(message.get("id")); } catch (...) {
-      return reply(Result::Err { message, JSON::Object::Entries {
-        {"message", "Invalid 'id' given in parameters"}
-      }});
-    }
-
-    try { offset = std::stoi(message.get("offset")); } catch (...) {
-      return reply(Result::Err { message, JSON::Object::Entries {
-        {"id", std::to_string(id)},
-        {"message", "Invalid 'offset' given in parameters"}
-      }});
-    }
+    getMessageParam(id, "id", std::stoull);
+    getMessageParam(offset, "offset", std::stoi);
 
     auto bytes = message.buffer.bytes;
     auto size = message.buffer.size;
@@ -712,16 +649,12 @@ void initFunctionsTable (Router *router) {
       return reply(Result::Err { message, err });
     }
 
-    try { id = std::stoull(message.get("id")); } catch (...) {
-      return reply(Result::Err { message, JSON::Object::Entries {
-        {"message", "Invalid 'id' given in parameters"}
-      }});
-    }
+    getMessageParam(id, "id", std::stoull);
 
     if (!router->core->hasPost(id)) {
       return reply(Result::Err { message, JSON::Object::Entries {
         {"id", std::to_string(id)},
-        {"message", "Invalid 'id' for post"}
+        {"message", "Post now found for given 'id'"}
       }});
     }
 
@@ -771,18 +704,8 @@ void initFunctionsTable (Router *router) {
       return reply(Result::Err { message, err });
     }
 
-    try { id = std::stoull(message.get("id")); } catch (...) {
-      return reply(Result::Err { message, JSON::Object::Entries {
-        {"message", "Invalid 'id' given in parameters"}
-      }});
-    }
-
-    try { options.port = std::stoi(message.get("port")); } catch (...) {
-      return reply(Result::Err { message, JSON::Object::Entries {
-        {"id", std::to_string(id)},
-        {"message", "Invalid 'port' given in parameters"}
-      }});
-    }
+    getMessageParam(id, "id", std::stoull);
+    getMessageParam(options.port, "port", std::stoi);
 
     options.reuseAddr = message.get("reuseAddr") == "true";
     options.address = message.get("address", "0.0.0.0");
@@ -803,11 +726,7 @@ void initFunctionsTable (Router *router) {
       return reply(Result::Err { message, err });
     }
 
-    try { id = std::stoull(message.get("id")); } catch (...) {
-      return reply(Result::Err { message, JSON::Object::Entries {
-        {"message", "Invalid 'id' given in parameters"}
-      }});
-    }
+    getMessageParam(id, "id", std::stoull);
 
     router->core->udp.close(seq, id, resultCallback(message, reply));
   });
@@ -829,18 +748,8 @@ void initFunctionsTable (Router *router) {
       return reply(Result::Err { message, err });
     }
 
-    try { id = std::stoull(message.get("id")); } catch (...) {
-      return reply(Result::Err { message, JSON::Object::Entries {
-        {"message", "Invalid 'id' given in parameters"}
-      }});
-    }
-
-    try { options.port = std::stoi(message.get("port")); } catch (...) {
-      return reply(Result::Err { message, JSON::Object::Entries {
-        {"id", std::to_string(id)},
-        {"message", "Invalid 'port' given in parameters"}
-      }});
-    }
+    getMessageParam(id, "id", std::stoull);
+    getMessageParam(options.port, "port", std::stoi);
 
     options.address = message.get("address", "0.0.0.0");
 
@@ -860,11 +769,7 @@ void initFunctionsTable (Router *router) {
       return reply(Result::Err { message, err });
     }
 
-    try { id = std::stoull(message.get("id")); } catch (...) {
-      return reply(Result::Err { message, JSON::Object::Entries {
-        {"message", "Invalid 'id' given in parameters"}
-      }});
-    }
+    getMessageParam(id, "id", std::stoull);
 
     router->core->udp.disconnect(seq, id, resultCallback(message, reply));
   });
@@ -882,11 +787,7 @@ void initFunctionsTable (Router *router) {
       return reply(Result::Err { message, err });
     }
 
-    try { id = std::stoull(message.get("id")); } catch (...) {
-      return reply(Result::Err { message, JSON::Object::Entries {
-        {"message", "Invalid 'id' given in parameters"}
-      }});
-    }
+    getMessageParam(id, "id", std::stoull);
 
     router->core->udp.getPeerName(seq, id, resultCallback(message, reply));
   });
@@ -904,11 +805,7 @@ void initFunctionsTable (Router *router) {
       return reply(Result::Err { message, err });
     }
 
-    try { id = std::stoull(message.get("id")); } catch (...) {
-      return reply(Result::Err { message, JSON::Object::Entries {
-        {"message", "Invalid 'id' given in parameters"}
-      }});
-    }
+    getMessageParam(id, "id", std::stoull);
 
     router->core->udp.getSockName(seq, id, resultCallback(message, reply));
   });
@@ -926,11 +823,7 @@ void initFunctionsTable (Router *router) {
       return reply(Result::Err { message, err });
     }
 
-    try { id = std::stoull(message.get("id")); } catch (...) {
-      return reply(Result::Err { message, JSON::Object::Entries {
-        {"message", "Invalid 'id' given in parameters"}
-      }});
-    }
+    getMessageParam(id, "id", std::stoull);
 
     router->core->udp.getState(seq, id, resultCallback(message, reply));
   });
@@ -949,11 +842,7 @@ void initFunctionsTable (Router *router) {
       return reply(Result::Err { message, err });
     }
 
-    try { id = std::stoull(message.get("id")); } catch (...) {
-      return reply(Result::Err { message, JSON::Object::Entries {
-        {"message", "Invalid 'id' given in parameters"}
-      }});
-    }
+    getMessageParam(id, "id", std::stoull);
 
     router->core->udp.readStart(seq, id, resultCallback(message, reply));
   });
@@ -972,11 +861,7 @@ void initFunctionsTable (Router *router) {
       return reply(Result::Err { message, err });
     }
 
-    try { id = std::stoull(message.get("id")); } catch (...) {
-      return reply(Result::Err { message, JSON::Object::Entries {
-        {"message", "Invalid 'id' given in parameters"}
-      }});
-    }
+    getMessageParam(id, "id", std::stoull);
 
     router->core->udp.readStop(seq, id, resultCallback(message, reply));
   });
@@ -1003,18 +888,8 @@ void initFunctionsTable (Router *router) {
       return reply(Result::Err { message, err });
     }
 
-    try { id = std::stoull(message.get("id")); } catch (...) {
-      return reply(Result::Err { message, JSON::Object::Entries {
-        {"message", "Invalid 'id' given in parameters"}
-      }});
-    }
-
-    try { options.port = std::stoi(message.get("port")); } catch (...) {
-      return reply(Result::Err { message, JSON::Object::Entries {
-        {"id", std::to_string(id)},
-        {"message", "Invalid 'port' given in parameters"}
-      }});
-    }
+    getMessageParam(id, "id", std::stoull);
+    getMessageParam(options.port, "port", std::stoi);
 
     options.size = message.buffer.size;
     options.bytes = message.buffer.bytes.get();
