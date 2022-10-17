@@ -414,6 +414,40 @@ namespace SSC {
       dispatch_async(dispatch_get_main_queue(), ^{ this->eval(js); });
     };
 
+    bridge.router->map("window.eval", [=](auto message, auto router, auto reply) {
+      auto value = message.value;
+      auto seq = message.seq;
+      auto  script = [NSString stringWithUTF8String: value.c_str()];
+
+      dispatch_async(dispatch_get_main_queue(), ^{
+        [webview evaluateJavaScript: script completionHandler: ^(id result, NSError *error) {
+          if (result) {
+            auto msg = String([[NSString stringWithFormat:@"%@", result] UTF8String]);
+            bridge.router->send(seq, msg, Post{});
+          } else if (error) {
+            auto exception = (NSString *) error.userInfo[@"WKJavaScriptExceptionMessage"];
+            auto message = [[NSString stringWithFormat:@"%@", exception] UTF8String];
+            auto err = encodeURIComponent(String(message));
+
+            if (err == "(null)") {
+              bridge.router->send(seq, "null", Post{});
+              return;
+            }
+
+            auto json = JSON::Object::Entries {
+              {"err", JSON::Object::Entries {
+                {"message", String("Error: ") + err}
+              }}
+            };
+
+            bridge.router->send(seq, JSON::Object(json).str(), Post{});
+          } else {
+            bridge.router->send(seq, "undefined", Post{});
+          }
+        }];
+      });
+    });
+
     bt = [SSCBluetoothDelegate new];
 
     // Window style: titled, closable, minimizable

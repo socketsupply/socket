@@ -58,6 +58,7 @@ void initFunctionsTable (Router *router) {
    * Look up an IP address by `hostname`.
    * @param hostname Host name to lookup
    * @param family IP address family to resolve [default = 0 (AF_UNSPEC)]
+   * @see getaddrinfo(3)
    */
   router->map("dns.lookup", [=](auto message, auto router, auto reply) {
     auto hostname = message.get("hostname");
@@ -78,8 +79,10 @@ void initFunctionsTable (Router *router) {
   });
 
   /**
+   * Checks if current user can access file at `path` with `mode`.
    * @param path
    * @param mode
+   * @see access(2)
    */
   router->map("fs.access", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"path", "mode"});
@@ -104,8 +107,10 @@ void initFunctionsTable (Router *router) {
   });
 
   /**
+   * Changes `mode` of file at `path`.
    * @param path
    * @param mode
+   * @see chmod(2)
    */
   router->map("fs.chmod", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"path", "mode"});
@@ -123,12 +128,17 @@ void initFunctionsTable (Router *router) {
   });
 
   /**
+   * @TODO
+   * @see chown(2)
    */
   router->map("fs.chown", [=](auto message, auto router, auto reply) {
+    // TODO
   });
 
   /**
+   * Closes underlying file descriptor handle.
    * @param id
+   * @see close(2)
    */
   router->map("fs.close", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id"});
@@ -145,7 +155,9 @@ void initFunctionsTable (Router *router) {
   });
 
   /**
+   * Closes underlying directory descriptor handle.
    * @param id
+   * @see closedir(3)
    */
   router->map("fs.closedir", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id"});
@@ -162,7 +174,10 @@ void initFunctionsTable (Router *router) {
   });
 
   /**
+   * Closes an open file or directory descriptor handle.
    * @param id
+   * @see close(2)
+   * @see closedir(3)
    */
   router->map("fs.closeOpenDescriptor", [=](auto message, auto router, auto reply) {
     uint64_t id;
@@ -183,7 +198,11 @@ void initFunctionsTable (Router *router) {
   });
 
   /**
+   * Closes all open file and directory descriptors, optionally preserving
+   * explicitly retrained descriptors.
    * @param preserveRetained (default: true)
+   * @see close(2)
+   * @see closedir(3)
    */
   router->map("fs.closeOpenDescriptors", [=](auto message, auto router, auto reply) {
     auto preserveRetained = message.get("retain") != "false";
@@ -192,8 +211,11 @@ void initFunctionsTable (Router *router) {
   });
 
   /**
+   * Copy file at path `src` to path `dest`.
    * @param src
    * @param dest
+   * @param flags
+   * @see copyfile(3)
    */
   router->map("fs.copyFile", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"src", "dest"});
@@ -205,19 +227,22 @@ void initFunctionsTable (Router *router) {
 
     auto src = message.get("src");
     auto dest = message.get("dest");
-    int mode = 0;
+    int flags = 0;
 
-    try { mode = std::stoi(message.get("mode")); } catch (...) {
+    try { flags = std::stoi(message.get("flags")); } catch (...) {
       return reply(Result::Err { message, JSON::Object::Entries {
-        {"message", "Invalid 'mode' given in parameters"}
+        {"message", "Invalid 'flags' given in parameters"}
       }});
     }
 
-    router->core->fs.copyFile(seq, src, dest, mode, resultCallback(message, reply));
+    router->core->fs.copyFile(seq, src, dest, flags, resultCallback(message, reply));
   });
 
   /**
+   * Computes stats for an open file descriptor.
    * @param id
+   * @see stat(2)
+   * @see fstat(2)
    */
   router->map("fs.fstat", [=](auto message, auto router, auto reply) {
     uint64_t id;
@@ -238,6 +263,7 @@ void initFunctionsTable (Router *router) {
   });
 
   /**
+   * Returns all open file or directory descriptors.
    */
   router->map("fs.getOpenDescriptors", [=](auto message, auto router, auto reply) {
     auto seq = message.seq;
@@ -245,7 +271,10 @@ void initFunctionsTable (Router *router) {
   });
 
   /**
+   * Computes stats for a symbolic link at `path`.
    * @param path
+   * @see stat(2)
+   * @see lstat(2)
    */
   router->map("fs.lstat", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"path"});
@@ -261,7 +290,10 @@ void initFunctionsTable (Router *router) {
   });
 
   /**
+   * Creates a directory at `path` with an optional mode.
    * @param path
+   * @param mode
+   * @see mkdir(2)
    */
   router->map("fs.mkdir", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"path", "mode"});
@@ -284,10 +316,12 @@ void initFunctionsTable (Router *router) {
   });
 
   /**
+   * Opens a file descriptor at `path` for `id` with `flags` and `mode`
    * @param id
    * @param path
    * @param flags
    * @param mode
+   * @see open(2)
    */
   router->map("fs.open", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id", "path", "flags", "mode"});
@@ -327,8 +361,10 @@ void initFunctionsTable (Router *router) {
   });
 
   /**
+   * Opens a directory descriptor at `path` for `id` with `flags` and `mode`
    * @param id
    * @param path
+   * @see opendir(3)
    */
   router->map("fs.opendir", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id", "path"});
@@ -351,9 +387,11 @@ void initFunctionsTable (Router *router) {
   });
 
   /**
+   * Reads `size` bytes at `offset` from the underlying file descriptor.
    * @param id
    * @param size
    * @param offset
+   * @see read(2)
    */
   router->map("fs.read", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id", "size", "offset"});
@@ -392,6 +430,7 @@ void initFunctionsTable (Router *router) {
   });
 
   /**
+   * Reads next `entries` of from the underlying directory descriptor.
    * @param id
    * @param entries (default: 256)
    */
@@ -425,6 +464,7 @@ void initFunctionsTable (Router *router) {
   });
 
   /**
+   * Marks a file or directory descriptor as retained.
    * @param id
    */
   router->map("fs.retainOpenDescriptor", [=](auto message, auto router, auto reply) {
@@ -446,8 +486,10 @@ void initFunctionsTable (Router *router) {
   });
 
   /**
+   * Renames file at path `src` to path `dest`.
    * @param src
    * @param dest
+   * @see rename(2)
    */
   router->map("fs.rename", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"src", "dest"});
@@ -464,7 +506,9 @@ void initFunctionsTable (Router *router) {
   });
 
   /**
+   * Removes file at `path`.
    * @param path
+   * @see rmdir(2)
    */
   router->map("fs.rmdir", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"path"});
@@ -480,7 +524,9 @@ void initFunctionsTable (Router *router) {
   });
 
   /**
+   * Computes stats for a file at `path`.
    * @param path
+   * @see stat(2)
    */
   router->map("fs.stat", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"path"});
@@ -496,7 +542,9 @@ void initFunctionsTable (Router *router) {
   });
 
   /**
+   * Removes a file or empty directory at `path`.
    * @param path
+   * @see unlink(2)
    */
   router->map("fs.unlink", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"path"});
@@ -516,6 +564,7 @@ void initFunctionsTable (Router *router) {
    * at `offset` for an opened file handle.
    * @param id Handle ID for an open file descriptor
    * @param offset The offset to start writing at
+   * @see write(2)
    */
   router->map("fs.write", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id", "offset"});
@@ -550,6 +599,21 @@ void initFunctionsTable (Router *router) {
     auto seq = message.seq;
 
     router->core->fs.write(seq, id, bytes.get(), size, offset, resultCallback(message, reply));
+  });
+
+  /**
+   * Log `value to stdout` with platform dependent logger.
+   * @param value
+   */
+  router->map("log", [=](auto message, auto router, auto reply) {
+    auto value = message.value.c_str();
+#if defined(__APPLE__)
+    NSLog(@"%s\n", value);
+#elif defined(__ANDROID__)
+    __android_log_print(ANDROID_LOG_DEBUG, "", "%s", value);
+#else
+    // TODO
+#endif
   });
 
   /**

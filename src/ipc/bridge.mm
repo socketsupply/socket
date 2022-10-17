@@ -428,46 +428,6 @@ namespace SSC::IPC {
     return true;
   }
 
-  if (message.name == "log") {
-    NSLog(@"%s\n", message.value.c_str());
-    return true;
-  }
-
-  if (message.name == "window.eval") {
-    String value = decodeURIComponent(message.get("value"));
-    auto seq = message.get("seq");
-
-    NSString* script = [NSString stringWithUTF8String: value.c_str()];
-    dispatch_async(dispatch_get_main_queue(), ^{
-      [self.webview evaluateJavaScript: script completionHandler: ^(id result, NSError *error) {
-        if (result) {
-          auto msg = String([[NSString stringWithFormat:@"%@", result] UTF8String]);
-          [self send: seq msg: msg post: Post{}];
-        } else if (error) {
-          auto exception = error.userInfo[@"WKJavaScriptExceptionMessage"];
-          auto message = [[NSString stringWithFormat:@"%@", exception] UTF8String];
-          auto err = encodeURIComponent(String(message));
-
-          if (err == "(null)") {
-            [self send: seq msg: "null" post: Post{}];
-            return;
-          }
-
-          auto msg = SSC::format(
-            R"MSG({"err": { "message": "Error: $S" } })MSG",
-            err
-          );
-
-          [self send: seq msg: msg post: Post{}];
-        } else {
-          [self send: seq msg: "undefined" post: Post{}];
-        }
-      }];
-    });
-
-    return true;
-  }
-
   if (message.name == "external" || message.name == "open.external") {
     NSString *url = [NSString stringWithUTF8String:SSC::decodeURIComponent(message.get("value")).c_str()];
     #if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
