@@ -420,19 +420,21 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 
 /* Begin PBXBuildFile section */
 		17C230BA28E9398700301440 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 17C230B928E9398700301440 /* Foundation.framework */; };
-		17DA350B28ECA38D00ED23A7 /* timers.cc in Sources */ = {isa = PBXBuildFile; fileRef = 17DA34E028ECA38C00ED23A7 /* timers.cc */; };
 		17DA350C28ECA38D00ED23A7 /* javascript.cc in Sources */ = {isa = PBXBuildFile; fileRef = 17DA34E128ECA38C00ED23A7 /* javascript.cc */; };
-		17DA350D28ECA38D00ED23A7 /* apple.mm in Sources */ = {isa = PBXBuildFile; fileRef = 17DA34E428ECA38C00ED23A7 /* apple.mm */; };
 		17DA350E28ECA38D00ED23A7 /* udp.cc in Sources */ = {isa = PBXBuildFile; fileRef = 17DA34E528ECA38C00ED23A7 /* udp.cc */; };
 		17DA350F28ECA38D00ED23A7 /* peer.cc in Sources */ = {isa = PBXBuildFile; fileRef = 17DA34E628ECA38C00ED23A7 /* peer.cc */; };
-		17DA351028ECA38D00ED23A7 /* loop.cc in Sources */ = {isa = PBXBuildFile; fileRef = 17DA34E828ECA38C00ED23A7 /* loop.cc */; };
 		17DA351128ECA38D00ED23A7 /* fs.cc in Sources */ = {isa = PBXBuildFile; fileRef = 17DA34E928ECA38C00ED23A7 /* fs.cc */; };
-		17DA351228ECA38D00ED23A7 /* ipc.cc in Sources */ = {isa = PBXBuildFile; fileRef = 17DA34EB28ECA38C00ED23A7 /* ipc.cc */; };
 		17DA351328ECA38D00ED23A7 /* core.cc in Sources */ = {isa = PBXBuildFile; fileRef = 17DA34EC28ECA38C00ED23A7 /* core.cc */; };
 		17DA351428ECA38D00ED23A7 /* ios.mm in Sources */ = {isa = PBXBuildFile; fileRef = 17DA34EF28ECA38C00ED23A7 /* ios.mm */; };
+		17E73FD828FCC90A0087604F /* json.cc in Sources */ = {isa = PBXBuildFile; fileRef = 17E73FD528FCC90A0087604F /* json.cc */; };
+		17E73FD928FCC90A0087604F /* bluetooth.mm in Sources */ = {isa = PBXBuildFile; fileRef = 17E73FD728FCC90A0087604F /* bluetooth.mm */; };
+		17E73FDD28FCC98A0087604F /* apple.mm in Sources */ = {isa = PBXBuildFile; fileRef = 17E73FDB28FCC98A0087604F /* apple.mm */; };
+		17E73FEB28FCC9C80087604F /* ipc.cc in Sources */ = {isa = PBXBuildFile; fileRef = 17E73FE728FCC9C80087604F /* ipc.cc */; };
+		17E73FEC28FCC9C80087604F /* bridge.cc in Sources */ = {isa = PBXBuildFile; fileRef = 17E73FE828FCC9C80087604F /* bridge.cc */; };
+		17E73FED28FCC9C80087604F /* bridge.mm in Sources */ = {isa = PBXBuildFile; fileRef = 17E73FE928FCC9C80087604F /* bridge.mm */; };
+		17E73FEF28FCD3360087604F /* libuv-ios.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 17E73FEE28FCD3360087604F /* libuv-ios.a */; };
 		290F7EBF2768C49000486988 /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 294A3C792763E9C6007B5B9A /* UIKit.framework */; };
 		290F7F87276BC2B000486988 /* lib in Resources */ = {isa = PBXBuildFile; fileRef = 290F7F86276BC2B000486988 /* lib */; };
-		290F7F88276BC2EE00486988 /* libuv-ios.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 290F7F82276BBE9C00486988 /* libuv-ios.a */; };
 		29124C5D2761336B001832A0 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 29124C5B2761336B001832A0 /* LaunchScreen.storyboard */; };
 		294A3C852764EAB7007B5B9A /* ui in Resources */ = {isa = PBXBuildFile; fileRef = 294A3C842764EAB7007B5B9A /* ui */; };
 		294A3CA02768C429007B5B9A /* WebKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 294A3C7B2763EA7F007B5B9A /* WebKit.framework */; };
@@ -443,38 +445,28 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 
 /* Begin PBXFileReference section */
 		17C230B928E9398700301440 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
-		17DA34E028ECA38C00ED23A7 /* timers.cc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = timers.cc; sourceTree = "<group>"; };
 		17DA34E128ECA38C00ED23A7 /* javascript.cc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = javascript.cc; sourceTree = "<group>"; };
-		17DA34E228ECA38C00ED23A7 /* common.hh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = common.hh; sourceTree = "<group>"; };
 		17DA34E328ECA38C00ED23A7 /* runtime-preload.hh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = "runtime-preload.hh"; sourceTree = "<group>"; };
-		17DA34E428ECA38C00ED23A7 /* apple.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = apple.mm; sourceTree = "<group>"; };
 		17DA34E528ECA38C00ED23A7 /* udp.cc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = udp.cc; sourceTree = "<group>"; };
 		17DA34E628ECA38C00ED23A7 /* peer.cc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = peer.cc; sourceTree = "<group>"; };
-		17DA34E728ECA38C00ED23A7 /* apple.hh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = apple.hh; sourceTree = "<group>"; };
-		17DA34E828ECA38C00ED23A7 /* loop.cc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = loop.cc; sourceTree = "<group>"; };
 		17DA34E928ECA38C00ED23A7 /* fs.cc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = fs.cc; sourceTree = "<group>"; };
 		17DA34EA28ECA38C00ED23A7 /* runtime-preload-sources.hh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = "runtime-preload-sources.hh"; sourceTree = "<group>"; };
-		17DA34EB28ECA38C00ED23A7 /* ipc.cc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = ipc.cc; sourceTree = "<group>"; };
 		17DA34EC28ECA38C00ED23A7 /* core.cc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = core.cc; sourceTree = "<group>"; };
 		17DA34ED28ECA38C00ED23A7 /* core.hh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = core.hh; sourceTree = "<group>"; };
 		17DA34EF28ECA38C00ED23A7 /* ios.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = ios.mm; sourceTree = "<group>"; };
 		17DA34F828ECA38C00ED23A7 /* app.hh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = app.hh; sourceTree = "<group>"; };
 		17DA34FA28ECA38C00ED23A7 /* options.hh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = options.hh; sourceTree = "<group>"; };
-		17DA34FC28ECA38C00ED23A7 /* uv.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = uv.h; sourceTree = "<group>"; };
-		17DA34FE28ECA38C00ED23A7 /* version.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = version.h; sourceTree = "<group>"; };
-		17DA34FF28ECA38C00ED23A7 /* bsd.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = bsd.h; sourceTree = "<group>"; };
-		17DA350028ECA38C00ED23A7 /* threadpool.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = threadpool.h; sourceTree = "<group>"; };
-		17DA350128ECA38C00ED23A7 /* linux.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = linux.h; sourceTree = "<group>"; };
-		17DA350228ECA38C00ED23A7 /* tree.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = tree.h; sourceTree = "<group>"; };
-		17DA350328ECA38C00ED23A7 /* posix.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = posix.h; sourceTree = "<group>"; };
-		17DA350428ECA38C00ED23A7 /* errno.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = errno.h; sourceTree = "<group>"; };
-		17DA350528ECA38C00ED23A7 /* darwin.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = darwin.h; sourceTree = "<group>"; };
-		17DA350628ECA38C00ED23A7 /* os390.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = os390.h; sourceTree = "<group>"; };
-		17DA350728ECA38C00ED23A7 /* aix.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = aix.h; sourceTree = "<group>"; };
-		17DA350828ECA38C00ED23A7 /* sunos.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = sunos.h; sourceTree = "<group>"; };
-		17DA350928ECA38C00ED23A7 /* win.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = win.h; sourceTree = "<group>"; };
-		17DA350A28ECA38C00ED23A7 /* unix.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = unix.h; sourceTree = "<group>"; };
-		290F7F82276BBE9C00486988 /* libuv-ios.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = "libuv-ios.a"; path = "lib/libuv-ios.a"; sourceTree = "<group>"; };
+		17E73FD528FCC90A0087604F /* json.cc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = json.cc; sourceTree = "<group>"; };
+		17E73FD628FCC90A0087604F /* json.hh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = json.hh; sourceTree = "<group>"; };
+		17E73FD728FCC90A0087604F /* bluetooth.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = bluetooth.mm; sourceTree = "<group>"; };
+		17E73FDA28FCC9320087604F /* common.hh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = common.hh; sourceTree = "<group>"; };
+		17E73FDB28FCC98A0087604F /* apple.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = apple.mm; sourceTree = "<group>"; };
+		17E73FDC28FCC98A0087604F /* window.hh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = window.hh; sourceTree = "<group>"; };
+		17E73FE728FCC9C80087604F /* ipc.cc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = ipc.cc; sourceTree = "<group>"; };
+		17E73FE828FCC9C80087604F /* bridge.cc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = bridge.cc; sourceTree = "<group>"; };
+		17E73FE928FCC9C80087604F /* bridge.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = bridge.mm; sourceTree = "<group>"; };
+		17E73FEA28FCC9C80087604F /* ipc.hh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = ipc.hh; sourceTree = "<group>"; };
+		17E73FEE28FCD3360087604F /* libuv-ios.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = "libuv-ios.a"; path = "lib/libuv-ios.a"; sourceTree = "<group>"; };
 		290F7F86276BC2B000486988 /* lib */ = {isa = PBXFileReference; lastKnownFileType = folder; path = lib; sourceTree = "<group>"; };
 		29124C4A27613369001832A0 /* {{name}}.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "{{name}}.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		29124C5C2761336B001832A0 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
@@ -493,11 +485,11 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				17E73FEF28FCD3360087604F /* libuv-ios.a in Frameworks */,
 				17C230BA28E9398700301440 /* Foundation.framework in Frameworks */,
 				2996EDB22770BC1F00C672A2 /* Network.framework in Frameworks */,
 				2996EDB22770BC1F00C672A3 /* CoreBluetooth.framework in Frameworks */,
 				2996EDB22770BC1F00C672A4 /* UserNotifications.framework in Frameworks */,
-				290F7F88276BC2EE00486988 /* libuv-ios.a in Frameworks */,
 				294A3CA02768C429007B5B9A /* WebKit.framework in Frameworks */,
 				290F7EBF2768C49000486988 /* UIKit.framework in Frameworks */,
 			);
@@ -506,31 +498,20 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		17DA34DE28ECA35200ED23A7 /* Recovered References */ = {
-			isa = PBXGroup;
-			children = (
-				290F7F82276BBE9C00486988 /* libuv-ios.a */,
-			);
-			name = "Recovered References";
-			sourceTree = "<group>";
-		};
 		17DA34DF28ECA38C00ED23A7 /* core */ = {
 			isa = PBXGroup;
 			children = (
-				17DA34E028ECA38C00ED23A7 /* timers.cc */,
-				17DA34E128ECA38C00ED23A7 /* javascript.cc */,
-				17DA34E228ECA38C00ED23A7 /* common.hh */,
-				17DA34E328ECA38C00ED23A7 /* runtime-preload.hh */,
-				17DA34E428ECA38C00ED23A7 /* apple.mm */,
-				17DA34E528ECA38C00ED23A7 /* udp.cc */,
-				17DA34E628ECA38C00ED23A7 /* peer.cc */,
-				17DA34E728ECA38C00ED23A7 /* apple.hh */,
-				17DA34E828ECA38C00ED23A7 /* loop.cc */,
-				17DA34E928ECA38C00ED23A7 /* fs.cc */,
-				17DA34EA28ECA38C00ED23A7 /* runtime-preload-sources.hh */,
-				17DA34EB28ECA38C00ED23A7 /* ipc.cc */,
 				17DA34EC28ECA38C00ED23A7 /* core.cc */,
 				17DA34ED28ECA38C00ED23A7 /* core.hh */,
+				17E73FD728FCC90A0087604F /* bluetooth.mm */,
+				17DA34E928ECA38C00ED23A7 /* fs.cc */,
+				17DA34E128ECA38C00ED23A7 /* javascript.cc */,
+				17E73FD528FCC90A0087604F /* json.cc */,
+				17E73FD628FCC90A0087604F /* json.hh */,
+				17DA34E628ECA38C00ED23A7 /* peer.cc */,
+				17DA34EA28ECA38C00ED23A7 /* runtime-preload-sources.hh */,
+				17DA34E328ECA38C00ED23A7 /* runtime-preload.hh */,
+				17DA34E528ECA38C00ED23A7 /* udp.cc */,
 			);
 			path = core;
 			sourceTree = "<group>";
@@ -554,7 +535,9 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 		17DA34F928ECA38C00ED23A7 /* window */ = {
 			isa = PBXGroup;
 			children = (
+				17E73FDB28FCC98A0087604F /* apple.mm */,
 				17DA34FA28ECA38C00ED23A7 /* options.hh */,
+				17E73FDC28FCC98A0087604F /* window.hh */,
 			);
 			path = window;
 			sourceTree = "<group>";
@@ -562,7 +545,6 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 		17DA34FB28ECA38C00ED23A7 /* include */ = {
 			isa = PBXGroup;
 			children = (
-				17DA34FC28ECA38C00ED23A7 /* uv.h */,
 				17DA34FD28ECA38C00ED23A7 /* uv */,
 			);
 			path = include;
@@ -571,29 +553,29 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 		17DA34FD28ECA38C00ED23A7 /* uv */ = {
 			isa = PBXGroup;
 			children = (
-				17DA34FE28ECA38C00ED23A7 /* version.h */,
-				17DA34FF28ECA38C00ED23A7 /* bsd.h */,
-				17DA350028ECA38C00ED23A7 /* threadpool.h */,
-				17DA350128ECA38C00ED23A7 /* linux.h */,
-				17DA350228ECA38C00ED23A7 /* tree.h */,
-				17DA350328ECA38C00ED23A7 /* posix.h */,
-				17DA350428ECA38C00ED23A7 /* errno.h */,
-				17DA350528ECA38C00ED23A7 /* darwin.h */,
-				17DA350628ECA38C00ED23A7 /* os390.h */,
-				17DA350728ECA38C00ED23A7 /* aix.h */,
-				17DA350828ECA38C00ED23A7 /* sunos.h */,
-				17DA350928ECA38C00ED23A7 /* win.h */,
-				17DA350A28ECA38C00ED23A7 /* unix.h */,
 			);
 			path = uv;
+			sourceTree = "<group>";
+		};
+		17E73FE628FCC9C80087604F /* ipc */ = {
+			isa = PBXGroup;
+			children = (
+				17E73FE728FCC9C80087604F /* ipc.cc */,
+				17E73FE828FCC9C80087604F /* bridge.cc */,
+				17E73FE928FCC9C80087604F /* bridge.mm */,
+				17E73FEA28FCC9C80087604F /* ipc.hh */,
+			);
+			path = ipc;
 			sourceTree = "<group>";
 		};
 		29124C4127613369001832A0 = {
 			isa = PBXGroup;
 			children = (
+				17E73FDA28FCC9320087604F /* common.hh */,
 				17DA34F728ECA38C00ED23A7 /* app */,
 				17DA34DF28ECA38C00ED23A7 /* core */,
 				17DA34FB28ECA38C00ED23A7 /* include */,
+				17E73FE628FCC9C80087604F /* ipc */,
 				17DA34EE28ECA38C00ED23A7 /* mobile */,
 				17DA34F928ECA38C00ED23A7 /* window */,
 				290F7F86276BC2B000486988 /* lib */,
@@ -603,7 +585,6 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 				29124C5E2761336B001832A0 /* Info.plist */,
 				29124C4B27613369001832A0 /* Products */,
 				294A3C782763E9C6007B5B9A /* Frameworks */,
-				17DA34DE28ECA35200ED23A7 /* Recovered References */,
 			);
 			sourceTree = "<group>";
 		};
@@ -618,6 +599,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 		294A3C782763E9C6007B5B9A /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				17E73FEE28FCD3360087604F /* libuv-ios.a */,
 				17C230B928E9398700301440 /* Foundation.framework */,
 				2996EDB12770BC1F00C672A2 /* Network.framework */,
 				2996EDB12770BC1F00C672A3 /* CoreBluetooth.framework */,
@@ -698,16 +680,18 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				17E73FEB28FCC9C80087604F /* ipc.cc in Sources */,
 				17DA350C28ECA38D00ED23A7 /* javascript.cc in Sources */,
+				17E73FED28FCC9C80087604F /* bridge.mm in Sources */,
+				17E73FEC28FCC9C80087604F /* bridge.cc in Sources */,
 				17DA350F28ECA38D00ED23A7 /* peer.cc in Sources */,
-				17DA350B28ECA38D00ED23A7 /* timers.cc in Sources */,
-				17DA351028ECA38D00ED23A7 /* loop.cc in Sources */,
+				17E73FD928FCC90A0087604F /* bluetooth.mm in Sources */,
 				17DA351128ECA38D00ED23A7 /* fs.cc in Sources */,
 				17DA351428ECA38D00ED23A7 /* ios.mm in Sources */,
-				17DA350D28ECA38D00ED23A7 /* apple.mm in Sources */,
+				17E73FDD28FCC98A0087604F /* apple.mm in Sources */,
 				17DA351328ECA38D00ED23A7 /* core.cc in Sources */,
-				17DA351228ECA38D00ED23A7 /* ipc.cc in Sources */,
 				17DA350E28ECA38D00ED23A7 /* udp.cc in Sources */,
+				17E73FD828FCC90A0087604F /* json.cc in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1269,9 +1253,7 @@ LOCAL_SRC_FILES =    \
   core/fs.cc         \
   core/javascript.cc \
   core/json.cc       \
-  core/loop.cc       \
   core/peer.cc       \
-  core/timers.cc     \
   core/udp.cc        \
   ipc/bridge.cc      \
   ipc/ipc.cc         \

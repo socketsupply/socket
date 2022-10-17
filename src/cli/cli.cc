@@ -1605,11 +1605,13 @@ int main (const int argc, const char* argv[]) {
       fs::copy(trim(prefixFile("src/core/runtime-preload.hh")), pathToDist / "core");
       fs::copy(trim(prefixFile("src/core/udp.cc")), pathToDist / "core");
       fs::copy(trim(prefixFile("src/ipc/bridge.cc")), pathToDist / "ipc");
+      fs::copy(trim(prefixFile("src/ipc/bridge.mm")), pathToDist / "ipc");
       fs::copy(trim(prefixFile("src/ipc/ipc.cc")), pathToDist / "ipc");
       fs::copy(trim(prefixFile("src/ipc/ipc.hh")), pathToDist / "ipc");
       fs::copy(trim(prefixFile("src/mobile/ios.mm")), pathToDist / "mobile");
-      fs::copy(trim(prefixFile("src/window/options.hh")), pathToDist / "window");
       fs::copy(trim(prefixFile("src/window/apple.mm")), pathToDist / "window");
+      fs::copy(trim(prefixFile("src/window/options.hh")), pathToDist / "window");
+      fs::copy(trim(prefixFile("src/window/window.hh")), pathToDist / "window");
 
       auto pathBase = pathToDist / "Base.lproj";
       fs::create_directories(pathBase);
