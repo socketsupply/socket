@@ -51,7 +51,9 @@ namespace SSC::JSON {
       Any (int32_t);
       Any (float);
       Any (double);
+#if defined(__APPLE__)
       Any (ssize_t);
+#endif
       Any (const Number);
       Any (const char *);
       Any (const SSC::String);
