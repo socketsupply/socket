@@ -60,7 +60,7 @@ jobs:
 
     - name: Run example desktop tests
       run: |
-        xvfb-run --server-args="-screen 0 1920x1080x24" ssc run --test=1 ./socket-sdk-examples/desktop-node-tonic-cjs/
+        ssc run --test=1 --headless ./socket-sdk-examples/desktop-node-tonic-cjs/
       env:
         CI: true
         CXX: g++-12
