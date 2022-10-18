@@ -30,18 +30,7 @@ window.parent = new class Parent {
   }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-  queueMicrotask(async () => {
-    try {
-      const index = window.parent?.index || 0
-      const result = await window._ipc.send('platform.event', 'domcontentloaded')
-    } catch (err) {
-      console.error('ERR:', err)
-    }
-  })
-})
-
-window._ipc = new class IPC {
+const ipc = window._ipc = new class IPC {
   nextSeq = 1
   streams = {}
 
@@ -148,6 +137,17 @@ window._ipc = new class IPC {
     }
   }
 }
+
+document.addEventListener('DOMContentLoaded', () => {
+  queueMicrotask(async () => {
+    try {
+      const index = window.parent?.index || 0
+      const result = await ipc.send('platform.event', 'domcontentloaded')
+    } catch (err) {
+      console.error('ERR:', err)
+    }
+  })
+})
 
 if (window.parent.platform !== 'linux') {
   const clog = console.log

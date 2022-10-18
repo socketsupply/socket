@@ -37,7 +37,7 @@ namespace SSC::IPC {
 @interface SSCIPCNetworkStatusObserver : NSObject
 @property (strong, nonatomic) NSObject<OS_dispatch_queue>* monitorQueue;
 @property (nonatomic) SSC::IPC::Router* router;
-@property (assign) nw_path_monitor_t monitor;
+@property (retain) nw_path_monitor_t monitor;
 - (id) init;
 @end
 #endif

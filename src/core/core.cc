@@ -230,14 +230,17 @@ namespace SSC {
     cb(seq, json, Post{});
   }
 
-  void Core::OS::bufferSize (String seq, uint64_t peerId, int size, int buffer, Module::Callback cb) {
-    static int RECV_BUFFER = 1;
-    static int SEND_BUFFER = 0;
-
+  void Core::OS::bufferSize (
+    const String seq,
+    uint64_t peerId,
+    size_t size,
+    int buffer,
+    Module::Callback cb
+  ) {
     if (buffer < 0) {
-      buffer = 0;
+      buffer = Core::OS::SEND_BUFFER;
     } else if (buffer > 1) {
-      buffer = 1;
+      buffer = Core::OS::RECV_BUFFER;
     }
 
     this->core->dispatchEventLoop([=, this]() {
@@ -283,7 +286,7 @@ namespace SSC {
         {"source", "bufferSize"},
         {"data", JSON::Object::Entries {
           {"id", std::to_string(peerId)},
-          {"size", size}
+          {"size", (int) size}
         }}
       };
 
