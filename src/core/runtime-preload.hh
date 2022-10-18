@@ -75,7 +75,7 @@ namespace SSC {
 
     preload += "  Object.seal(Object.freeze(window.parent.config));\n";
 
-    // depreceate usage of 'window.system' in favor of 'window.parent'
+    // deprecate usage of 'window.system' in favor of 'window.parent'
     preload += SSC::String(
       "  Object.defineProperty(window, 'system', {          \n"
       "    configurable: false,                             \n"
@@ -84,7 +84,25 @@ namespace SSC {
       "    value: new Proxy(window.parent, {                \n"
       "      get (target, prop, receiver) {                 \n"
       "        console.warn(                                \n"
-      "          `window.system.${prop} is depreceated. ` + \n"
+      "          `window.system.${prop} is deprecated. ` + \n"
+      "          `Use window.parent.${prop} instead.`       \n"
+      "         );                                          \n"
+      "        return Reflect.get(...arguments);            \n"
+      "      }                                              \n"
+      "    })                                               \n"
+      "  });                                                \n"
+    );
+
+    // deprecate usage of 'window.process' in favor of 'window.parent'
+    preload += SSC::String(
+      "  Object.defineProperty(window, 'process', {         \n"
+      "    configurable: false,                             \n"
+      "    enumerable: false,                               \n"
+      "    writable: false,                                 \n"
+      "    value: new Proxy(window.parent, {                \n"
+      "      get (target, prop, receiver) {                 \n"
+      "        console.warn(                                \n"
+      "          `window.process.${prop} is deprecated. ` +\n"
       "          `Use window.parent.${prop} instead.`       \n"
       "         );                                          \n"
       "        return Reflect.get(...arguments);            \n"

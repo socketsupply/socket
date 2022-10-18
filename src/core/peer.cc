@@ -173,7 +173,12 @@ namespace SSC {
     }
   }
 
-  Peer::Peer (Core *core, peer_type_t peerType, uint64_t peerId, bool isEphemeral) {
+  Peer::Peer (
+    Core *core,
+    peer_type_t peerType,
+    uint64_t peerId,
+    bool isEphemeral
+  ) {
     this->id = peerId;
     this->type = peerType;
     this->core = core;
@@ -316,11 +321,11 @@ namespace SSC {
     return this->bind(info->address, info->port, this->options.udp.reuseAddr);
   }
 
-  int Peer::bind (SSC::String address, int port) {
+  int Peer::bind (const String address, int port) {
     return this->bind(address, port, false);
   }
 
-  int Peer::bind (SSC::String address, int port, bool reuseAddr) {
+  int Peer::bind (const String address, int port, bool reuseAddr) {
     Lock lock(this->mutex);
     auto sockaddr = (struct sockaddr*) &this->addr;
     int flags = 0;
@@ -377,7 +382,7 @@ namespace SSC {
     return err;
   }
 
-  int Peer::connect (SSC::String address, int port) {
+  int Peer::connect (const String address, int port) {
     Lock lock(this->mutex);
     auto sockaddr = (struct sockaddr*) &this->addr;
     int err = 0;
@@ -418,7 +423,7 @@ namespace SSC {
 
   void Peer::send (
     char *buf,
-    int len,
+    size_t size,
     int port,
     const String address,
     Peer::RequestContext::Callback cb
@@ -437,7 +442,7 @@ namespace SSC {
       }
     }
 
-    auto buffer = uv_buf_init(buf, len);
+    auto buffer = uv_buf_init(buf, (int) size);
     auto ctx = new Peer::RequestContext(cb);
     auto req = new uv_udp_send_t;
 

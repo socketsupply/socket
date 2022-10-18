@@ -1608,13 +1608,13 @@ namespace SSC::IPC {
     DISPATCH_QUEUE_PRIORITY_DEFAULT
   );
 
-  self.monitorQueue = dispatch_queue_create(
+  _monitorQueue = dispatch_queue_create(
     "co.socketsupply.queue.ipc.network-status-observer",
     attrs
   );
 
   // self.monitor = nw_path_monitor_create_with_type(nw_interface_type_wifi);
-  self.monitor = nw_path_monitor_create();
+  _monitor = nw_path_monitor_create();
   nw_path_monitor_set_queue(self.monitor, self.monitorQueue);
   nw_path_monitor_set_update_handler(self.monitor, ^(nw_path_t path) {
     nw_path_status_t status = nw_path_get_status(path);

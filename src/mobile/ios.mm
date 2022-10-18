@@ -13,9 +13,16 @@ static dispatch_queue_attr_t qos = dispatch_queue_attr_make_with_qos_class(
   -1
 );
 
-static dispatch_queue_t queue = dispatch_queue_create("co.socketsupply.queue.app", qos);
+static dispatch_queue_t queue = dispatch_queue_create(
+  "co.socketsupply.queue.app",
+  qos
+);
 
-@interface AppDelegate : UIResponder <UIApplicationDelegate, WKScriptMessageHandler, UIScrollViewDelegate> {
+@interface AppDelegate : UIResponder <
+  UIApplicationDelegate,
+  WKScriptMessageHandler,
+  UIScrollViewDelegate
+> {
   SSC::IPC::Bridge* bridge;
   Core* core;
 }
@@ -38,11 +45,11 @@ void uncaughtExceptionHandler (NSException *exception) {
 //
 @implementation AppDelegate
 - (void) applicationDidEnterBackground: (UIApplication*) application {
-  [self.webview evaluateJavaScript: @"window.blur()" completionHandler:nil];
+  [self.webview evaluateJavaScript: @"window.blur()" completionHandler: nil];
 }
 
 - (void) applicationWillEnterForeground: (UIApplication*) application {
-  [self.webview evaluateJavaScript: @"window.focus()" completionHandler:nil];
+  [self.webview evaluateJavaScript: @"window.focus()" completionHandler: nil];
   bridge->bluetooth.startScanning();
 }
 
@@ -132,8 +139,8 @@ void uncaughtExceptionHandler (NSException *exception) {
   auto json = JSON::Object::Entries {
     {"value", JSON::Object::Entries {
       {"event", "will-change"},
-      {"width", std::to_string((float) width)},
-      {"height", std::to_string((float) height)},
+      {"width", width},
+      {"height", height},
     }}
   };
 
@@ -149,7 +156,7 @@ void uncaughtExceptionHandler (NSException *exception) {
              options: (NSDictionary<UIApplicationOpenURLOptionsKey, id>*) options
 {
   // TODO can this be escaped or is the url encoded property already?
-  auto json = JSON::Object::Entries {{"url", url}};
+  auto json = JSON::Object::Entries {{"url", [url.absoluteString UTF8String]}};
   bridge->router.emit("protocol", JSON::Object(json).str());
   return YES;
 }
