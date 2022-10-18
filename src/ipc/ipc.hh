@@ -4,8 +4,48 @@
 #include "../core/core.hh"
 
 namespace SSC::IPC {
+  class Router;
+  class Bridge;
+}
+
+#if defined(__APPLE__)
+namespace SSC::IPC {
+  using Task = id<WKURLSchemeTask>;
+  using Tasks = std::map<String, Task>;
+}
+
+@class SSCBridgedWebView;
+@interface SSCIPCSchemeHandler : NSObject<WKURLSchemeHandler>
+@property (nonatomic) SSC::IPC::Router* router;
+-     (void) webView: (SSCBridgedWebView*) webview
+  startURLSchemeTask: (SSC::IPC::Task) task;
+-    (void) webView: (SSCBridgedWebView*) webview
+  stopURLSchemeTask: (SSC::IPC::Task) task;
+@end
+
+@interface SSCIPCSchemeTasks : NSObject {
+  std::unique_ptr<SSC::IPC::Tasks> tasks;
+  SSC::Mutex mutex;
+}
+- (SSC::IPC::Task) get: (SSC::String) id;
+- (void) remove: (SSC::String) id;
+- (bool) has: (SSC::String) id;
+- (void) put: (SSC::String) id task: (SSC::IPC::Task) task;
+@end
+
+#if defined(__APPLE__)
+@interface SSCIPCNetworkStatusObserver : NSObject
+@property (strong, nonatomic) NSObject<OS_dispatch_queue>* monitorQueue;
+@property (nonatomic) SSC::IPC::Router* router;
+@property (assign) nw_path_monitor_t monitor;
+- (id) init;
+@end
+#endif
+#endif
+
+namespace SSC::IPC {
   struct MessageBuffer {
-    std::shared_ptr<char[]> bytes = nullptr;
+    char *bytes = nullptr;
     size_t size = 0;
     MessageBuffer () = default;
     MessageBuffer (auto bytes, auto size) {
@@ -70,16 +110,15 @@ namespace SSC::IPC {
       Result ();
       Result (const Err error);
       Result (const Data data);
-      Result (Message::Seq, const Message&);
-      Result (Message::Seq, const Message&, JSON::Any);
-      Result (Message::Seq, const Message&, JSON::Any, Post);
+      Result (const Message::Seq&, const Message&);
+      Result (const Message::Seq&, const Message&, JSON::Any);
+      Result (const Message::Seq&, const Message&, JSON::Any, Post);
       String str () const;
       JSON::Any json () const;
   };
 
   class Router {
     public:
-
       using EvaluateJavaScriptCallback = std::function<void(const String)>;
       using DispatchCallback = std::function<void()>;
       using ReplyCallback = std::function<void(const Result&)>;
@@ -100,9 +139,16 @@ namespace SSC::IPC {
       Mutex mutex;
       Table table;
       Core *core = nullptr;
+      Bridge *bridge = nullptr;
+#if defined(__APPLE__)
+      SSCIPCNetworkStatusObserver* networkStatusObserver = nullptr;
+      SSCIPCSchemeHandler* schemeHandler = nullptr;
+      SSCIPCSchemeTasks* schemeTasks = nullptr;
+#endif
 
       Router ();
-      Router (Core *core);
+      Router (const Router &) = delete;
+      ~Router ();
 
       MessageBuffer getMappedBuffer (int index, const Message::Seq seq);
       bool hasMappedBuffer (int index, const Message::Seq seq);
@@ -110,7 +156,7 @@ namespace SSC::IPC {
       void setMappedBuffer (
         int index,
         const Message::Seq seq,
-        std::shared_ptr<char[]> bytes,
+        char* bytes,
         size_t size
       );
 
@@ -135,9 +181,9 @@ namespace SSC::IPC {
   class Bridge {
     public:
       Router router;
+      Bluetooth bluetooth;
       Core *core = nullptr;
 
-      Bridge () {}
       Bridge (Core *core);
       bool route (const String& msg, char *bytes, size_t size);
   };
@@ -150,40 +196,4 @@ namespace SSC::IPC {
     return String("ipc://resolve?seq=" + seq + "&state=" + state + "&value=" + value);
   }
 } // SSC::IPC
-
-#if defined(__APPLE__)
-@class SSCBridgedWebView;
-@class SSCBluetoothDelegate;
-
-@interface SSCIPCBridge : NSObject
-@property (strong, nonatomic) NSObject<OS_dispatch_queue>* monitorQueue;
-@property (strong, nonatomic) SSCBridgedWebView* webview;
-@property (strong, nonatomic) SSCBluetoothDelegate* bluetooth;
-@property (nonatomic) SSC::Core* core;
-@property (nonatomic) SSC::IPC::Router* router;
-@property (assign) nw_path_monitor_t monitor;
-- (bool) route: (SSC::String) msg
-           buf: (char*) buf
-       bufsize: (size_t) bufsize;
-
-- (void) send: (SSC::IPC::Message::Seq) seq
-          msg: (SSC::String) msg
-         post: (SSC::Post) post;
-
-- (void) initNetworkStatusObserver;
-- (void) setWebview: (SSCBridgedWebView*) webview;
-- (void) setCore: (SSC::Core*) core;
-- (void) dispatch: (void (^)(void)) callback;
-@end
-
-@interface SSCIPCBridgeSchemeHandler : NSObject<WKURLSchemeHandler>
-@property (strong, nonatomic) SSCIPCBridge* bridge;
-- (void) webView: (SSCBridgedWebView*) webview
-  startURLSchemeTask: (id <WKURLSchemeTask>) task;
-
-- (void) webView: (SSCBridgedWebView*) webview
-  stopURLSchemeTask: (id <WKURLSchemeTask>) task;
-@end
-#endif
-
 #endif

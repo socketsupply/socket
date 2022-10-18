@@ -427,11 +427,10 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 		17DA351328ECA38D00ED23A7 /* core.cc in Sources */ = {isa = PBXBuildFile; fileRef = 17DA34EC28ECA38C00ED23A7 /* core.cc */; };
 		17DA351428ECA38D00ED23A7 /* ios.mm in Sources */ = {isa = PBXBuildFile; fileRef = 17DA34EF28ECA38C00ED23A7 /* ios.mm */; };
 		17E73FD828FCC90A0087604F /* json.cc in Sources */ = {isa = PBXBuildFile; fileRef = 17E73FD528FCC90A0087604F /* json.cc */; };
-		17E73FD928FCC90A0087604F /* bluetooth.mm in Sources */ = {isa = PBXBuildFile; fileRef = 17E73FD728FCC90A0087604F /* bluetooth.mm */; };
+		17E73FD928FCC90A0087604F /* bluetooth.cc in Sources */ = {isa = PBXBuildFile; fileRef = 17E73FD728FCC90A0087604F /* bluetooth.cc */; };
 		17E73FDD28FCC98A0087604F /* apple.mm in Sources */ = {isa = PBXBuildFile; fileRef = 17E73FDB28FCC98A0087604F /* apple.mm */; };
 		17E73FEB28FCC9C80087604F /* ipc.cc in Sources */ = {isa = PBXBuildFile; fileRef = 17E73FE728FCC9C80087604F /* ipc.cc */; };
 		17E73FEC28FCC9C80087604F /* bridge.cc in Sources */ = {isa = PBXBuildFile; fileRef = 17E73FE828FCC9C80087604F /* bridge.cc */; };
-		17E73FED28FCC9C80087604F /* bridge.mm in Sources */ = {isa = PBXBuildFile; fileRef = 17E73FE928FCC9C80087604F /* bridge.mm */; };
 		17E73FEF28FCD3360087604F /* libuv-ios.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 17E73FEE28FCD3360087604F /* libuv-ios.a */; };
 		290F7EBF2768C49000486988 /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 294A3C792763E9C6007B5B9A /* UIKit.framework */; };
 		290F7F87276BC2B000486988 /* lib in Resources */ = {isa = PBXBuildFile; fileRef = 290F7F86276BC2B000486988 /* lib */; };
@@ -458,13 +457,12 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 		17DA34FA28ECA38C00ED23A7 /* options.hh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = options.hh; sourceTree = "<group>"; };
 		17E73FD528FCC90A0087604F /* json.cc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = json.cc; sourceTree = "<group>"; };
 		17E73FD628FCC90A0087604F /* json.hh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = json.hh; sourceTree = "<group>"; };
-		17E73FD728FCC90A0087604F /* bluetooth.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = bluetooth.mm; sourceTree = "<group>"; };
+		17E73FD728FCC90A0087604F /* bluetooth.cc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = bluetooth.cc; sourceTree = "<group>"; };
 		17E73FDA28FCC9320087604F /* common.hh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = common.hh; sourceTree = "<group>"; };
 		17E73FDB28FCC98A0087604F /* apple.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = apple.mm; sourceTree = "<group>"; };
 		17E73FDC28FCC98A0087604F /* window.hh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = window.hh; sourceTree = "<group>"; };
 		17E73FE728FCC9C80087604F /* ipc.cc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = ipc.cc; sourceTree = "<group>"; };
 		17E73FE828FCC9C80087604F /* bridge.cc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = bridge.cc; sourceTree = "<group>"; };
-		17E73FE928FCC9C80087604F /* bridge.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = bridge.mm; sourceTree = "<group>"; };
 		17E73FEA28FCC9C80087604F /* ipc.hh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = ipc.hh; sourceTree = "<group>"; };
 		17E73FEE28FCD3360087604F /* libuv-ios.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = "libuv-ios.a"; path = "lib/libuv-ios.a"; sourceTree = "<group>"; };
 		290F7F86276BC2B000486988 /* lib */ = {isa = PBXFileReference; lastKnownFileType = folder; path = lib; sourceTree = "<group>"; };
@@ -503,7 +501,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 			children = (
 				17DA34EC28ECA38C00ED23A7 /* core.cc */,
 				17DA34ED28ECA38C00ED23A7 /* core.hh */,
-				17E73FD728FCC90A0087604F /* bluetooth.mm */,
+				17E73FD728FCC90A0087604F /* bluetooth.cc */,
 				17DA34E928ECA38C00ED23A7 /* fs.cc */,
 				17DA34E128ECA38C00ED23A7 /* javascript.cc */,
 				17E73FD528FCC90A0087604F /* json.cc */,
@@ -562,7 +560,6 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 			children = (
 				17E73FE728FCC9C80087604F /* ipc.cc */,
 				17E73FE828FCC9C80087604F /* bridge.cc */,
-				17E73FE928FCC9C80087604F /* bridge.mm */,
 				17E73FEA28FCC9C80087604F /* ipc.hh */,
 			);
 			path = ipc;
@@ -682,10 +679,9 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 			files = (
 				17E73FEB28FCC9C80087604F /* ipc.cc in Sources */,
 				17DA350C28ECA38D00ED23A7 /* javascript.cc in Sources */,
-				17E73FED28FCC9C80087604F /* bridge.mm in Sources */,
 				17E73FEC28FCC9C80087604F /* bridge.cc in Sources */,
 				17DA350F28ECA38D00ED23A7 /* peer.cc in Sources */,
-				17E73FD928FCC90A0087604F /* bluetooth.mm in Sources */,
+				17E73FD928FCC90A0087604F /* bluetooth.cc in Sources */,
 				17DA351128ECA38D00ED23A7 /* fs.cc in Sources */,
 				17DA351428ECA38D00ED23A7 /* ios.mm in Sources */,
 				17E73FDD28FCC98A0087604F /* apple.mm in Sources */,

@@ -5,6 +5,19 @@
 using namespace SSC;
 using namespace SSC::IPC;
 
+#if defined(__APPLE__)
+static dispatch_queue_attr_t qos = dispatch_queue_attr_make_with_qos_class(
+  DISPATCH_QUEUE_CONCURRENT,
+  QOS_CLASS_USER_INITIATED,
+  -1
+);
+
+static dispatch_queue_t queue = dispatch_queue_create(
+  "co.socketsupply.queue.ipc.bridge",
+  qos
+);
+#endif
+
 static JSON::Any validateMessageParameters (
   const Message& message,
   const Vector<String> names
@@ -35,6 +48,76 @@ static JSON::Any validateMessageParameters (
   }
 
 void initFunctionsTable (Router *router) {
+  /**
+   * Starts a bluetooth service
+   * @param serviceId
+   */
+  router->map("bluetooth.start", [](auto message, auto router, auto reply) {
+    auto err = validateMessageParameters(message, {"serviceId"});
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result::Err { message, err });
+    }
+
+    router->bridge->bluetooth.startService(
+      message.seq,
+      message.get("serviceId")
+    );
+  });
+
+  /**
+   * Subscribes to a characteristic for a service.
+   * @param serviceId
+   * @param characteristicId
+   */
+  router->map("bluetooth.subscribe", [](auto message, auto router, auto reply) {
+    auto err = validateMessageParameters(message, {
+      "characteristicId",
+      "serviceId"
+    });
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result::Err { message, err });
+    }
+
+    router->bridge->bluetooth.subscribeCharacteristic(
+      message.seq,
+      message.get("serviceId"),
+      message.get("characteristicId")
+    );
+  });
+
+  /**
+   * Publishes data to a characteristic for a service.
+   * @param serviceId
+   * @param characteristicId
+   */
+  router->map("bluetooth.publish", [](auto message, auto router, auto reply) {
+    auto err = validateMessageParameters(message, {
+      "characteristicId",
+      "serviceId"
+    });
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result::Err { message, err });
+    }
+
+    auto bytes = message.buffer.bytes;
+    auto size = message.buffer.size;
+
+    if (bytes == nullptr) {
+      bytes = message.value.data();
+      size = message.value.size();
+    }
+
+    router->bridge->bluetooth.publishCharacteristic(
+      message.seq,
+      bytes,
+      size,
+      message.get("serviceId"),
+      message.get("characteristicId")
+    );
+  });
 
   /**
    * Maps a message buffer bytes to an index + sequence.
@@ -61,21 +144,20 @@ void initFunctionsTable (Router *router) {
    * @see getaddrinfo(3)
    */
   router->map("dns.lookup", [=](auto message, auto router, auto reply) {
-    auto hostname = message.get("hostname");
     auto err = validateMessageParameters(message, {"hostname"});
-    auto seq = message.seq;
-    int family = 0;
 
     if (err.type != JSON::Type::Null) {
       return reply(Result::Err { message, err });
     }
 
-    if (message.has("family")) {
-      getMessageParam(family, "family", std::stoi);
-    }
+    int family = 0;
+    getMessageParam(family, "family", std::stoi, "0");
 
-    auto options = Core::DNS::LookupOptions { hostname, family };
-    router->core->dns.lookup(seq, options, resultCallback(message, reply));
+    router->core->dns.lookup(
+      message.seq,
+      Core::DNS::LookupOptions { message.get("hostname"), family },
+      resultCallback(message, reply)
+    );
   });
 
   /**
@@ -86,17 +168,20 @@ void initFunctionsTable (Router *router) {
    */
   router->map("fs.access", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"path", "mode"});
-    auto seq = message.seq;
-    auto path = message.get("path");
-    int mode = 0;
 
     if (err.type != JSON::Type::Null) {
       return reply(Result::Err { message, err });
     }
 
+    int mode = 0;
     getMessageParam(mode, "mode", std::stoi);
 
-    router->core->fs.access(seq, path, mode, resultCallback(message, reply));
+    router->core->fs.access(
+      message.seq,
+      message.get("path"),
+      mode,
+      resultCallback(message, reply)
+    );
   });
 
   /**
@@ -114,17 +199,20 @@ void initFunctionsTable (Router *router) {
    */
   router->map("fs.chmod", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"path", "mode"});
-    auto seq = message.seq;
-    auto path = message.get("path");
-    int mode = 0;
 
     if (err.type != JSON::Type::Null) {
       return reply(Result::Err { message, err });
     }
 
+    int mode = 0;
     getMessageParam(mode, "mode", std::stoi);
 
-    router->core->fs.chmod(seq, path, mode, resultCallback(message, reply));
+    router->core->fs.chmod(
+      message.seq,
+      message.get("path"),
+      mode,
+      resultCallback(message, reply)
+    );
   });
 
   /**
@@ -142,16 +230,15 @@ void initFunctionsTable (Router *router) {
    */
   router->map("fs.close", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id"});
-    auto seq = message.seq;
-    uint64_t id;
 
     if (err.type != JSON::Type::Null) {
       return reply(Result::Err { message, err });
     }
 
+    uint64_t id;
     getMessageParam(id, "id", std::stoull);
 
-    router->core->fs.close(seq, id, resultCallback(message, reply));
+    router->core->fs.close(message.seq, id, resultCallback(message, reply));
   });
 
   /**
@@ -161,16 +248,15 @@ void initFunctionsTable (Router *router) {
    */
   router->map("fs.closedir", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id"});
-    auto seq = message.seq;
-    uint64_t id;
 
     if (err.type != JSON::Type::Null) {
       return reply(Result::Err { message, err });
     }
 
+    uint64_t id;
     getMessageParam(id, "id", std::stoull);
 
-    router->core->fs.closedir(seq, id, resultCallback(message, reply));
+    router->core->fs.closedir(message.seq, id, resultCallback(message, reply));
   });
 
   /**
@@ -180,17 +266,20 @@ void initFunctionsTable (Router *router) {
    * @see closedir(3)
    */
   router->map("fs.closeOpenDescriptor", [=](auto message, auto router, auto reply) {
-    uint64_t id;
     auto err = validateMessageParameters(message, {"id"});
-    auto seq = message.seq;
 
     if (err.type != JSON::Type::Null) {
       return reply(Result::Err { message, err });
     }
 
+    uint64_t id;
     getMessageParam(id, "id", std::stoull);
 
-    router->core->fs.closeOpenDescriptor(seq, id, resultCallback(message, reply));
+    router->core->fs.closeOpenDescriptor(
+      message.seq,
+      id,
+      resultCallback(message, reply)
+    );
   });
 
   /**
@@ -201,9 +290,11 @@ void initFunctionsTable (Router *router) {
    * @see closedir(3)
    */
   router->map("fs.closeOpenDescriptors", [=](auto message, auto router, auto reply) {
-    auto preserveRetained = message.get("retain") != "false";
-    auto seq = message.seq;
-    router->core->fs.closeOpenDescriptor(seq, preserveRetained, resultCallback(message, reply));
+    router->core->fs.closeOpenDescriptor(
+      message.seq,
+      message.get("preserveRetained") != "false",
+      resultCallback(message, reply)
+    );
   });
 
   /**
@@ -215,19 +306,21 @@ void initFunctionsTable (Router *router) {
    */
   router->map("fs.copyFile", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"src", "dest"});
-    auto seq = message.seq;
 
     if (err.type != JSON::Type::Null) {
       return reply(Result::Err { message, err });
     }
 
-    auto src = message.get("src");
-    auto dest = message.get("dest");
     int flags = 0;
-
     getMessageParam(flags, "flags", std::stoi);
 
-    router->core->fs.copyFile(seq, src, dest, flags, resultCallback(message, reply));
+    router->core->fs.copyFile(
+      message.seq,
+      message.get("src"),
+      message.get("dest"),
+      flags,
+      resultCallback(message, reply)
+    );
   });
 
   /**
@@ -237,25 +330,26 @@ void initFunctionsTable (Router *router) {
    * @see fstat(2)
    */
   router->map("fs.fstat", [=](auto message, auto router, auto reply) {
-    uint64_t id;
     auto err = validateMessageParameters(message, {"id"});
-    auto seq = message.seq;
 
     if (err.type != JSON::Type::Null) {
       return reply(Result::Err { message, err });
     }
 
+    uint64_t id;
     getMessageParam(id, "id", std::stoull);
 
-    router->core->fs.fstat(seq, id, resultCallback(message, reply));
+    router->core->fs.fstat(message.seq, id, resultCallback(message, reply));
   });
 
   /**
    * Returns all open file or directory descriptors.
    */
   router->map("fs.getOpenDescriptors", [=](auto message, auto router, auto reply) {
-    auto seq = message.seq;
-    router->core->fs.getOpenDescriptors(seq, resultCallback(message, reply));
+    router->core->fs.getOpenDescriptors(
+      message.seq,
+      resultCallback(message, reply)
+    );
   });
 
   /**
@@ -266,15 +360,16 @@ void initFunctionsTable (Router *router) {
    */
   router->map("fs.lstat", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"path"});
-    auto seq = message.seq;
 
     if (err.type != JSON::Type::Null) {
       return reply(Result::Err { message, err });
     }
 
-    auto path = message.get("path");
-
-    router->core->fs.lstat(seq, path, resultCallback(message, reply));
+    router->core->fs.lstat(
+      message.seq,
+      message.get("path"),
+      resultCallback(message, reply)
+    );
   });
 
   /**
@@ -285,18 +380,20 @@ void initFunctionsTable (Router *router) {
    */
   router->map("fs.mkdir", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"path", "mode"});
-    auto seq = message.seq;
 
     if (err.type != JSON::Type::Null) {
       return reply(Result::Err { message, err });
     }
 
-    auto path = message.get("path");
     int mode = 0;
-
     getMessageParam(mode, "mode", std::stoi);
 
-    router->core->fs.mkdir(seq, path, mode, resultCallback(message, reply));
+    router->core->fs.mkdir(
+      message.seq,
+      message.get("path"),
+      mode,
+      resultCallback(message, reply)
+    );
   });
 
   /**
@@ -308,37 +405,32 @@ void initFunctionsTable (Router *router) {
    * @see open(2)
    */
   router->map("fs.open", [](auto message, auto router, auto reply) {
-    auto err = validateMessageParameters(message, {"id", "path", "flags", "mode"});
+    auto err = validateMessageParameters(message, {
+      "id",
+      "path",
+      "flags",
+      "mode"
+    });
 
     if (err.type != JSON::Type::Null) {
       return reply(Result::Err { message, err });
     }
 
     uint64_t id;
-    int flags = 0;
-    int mode = 0;
-
-    try { id = std::stoull(message.get("id")); } catch (...) {
-      return reply(Result::Err { message, JSON::Object::Entries {
-        {"message", "Invalid 'id' given in parameters"}
-      }});
-    }
-
-    try { flags = std::stoi(message.get("flags")); } catch (...) {
-      return reply(Result::Err { message, JSON::Object::Entries {
-        {"id", std::to_string(id)},
-        {"message", "Invalid 'flags' given in parameters"}
-      }});
-    }
-
     getMessageParam(id, "id", std::stoull);
+    int mode = 0;
     getMessageParam(mode, "mode", std::stoi);
+    int flags = 0;
     getMessageParam(flags, "flags", std::stoi);
 
-    auto path = message.get("path");
-    auto seq = message.seq;
-
-    router->core->fs.open(seq, id, path, flags, mode, resultCallback(message, reply));
+    router->core->fs.open(
+      message.seq,
+      id,
+      message.get("path"),
+      flags,
+      mode,
+      resultCallback(message, reply)
+    );
   });
 
   /**
@@ -355,12 +447,14 @@ void initFunctionsTable (Router *router) {
     }
 
     uint64_t id;
-    auto path = message.get("path");
-    auto seq = message.seq;
-
     getMessageParam(id, "id", std::stoull);
 
-    router->core->fs.opendir(seq, id, path, resultCallback(message, reply));
+    router->core->fs.opendir(
+      message.seq,
+      id,
+      message.get("path"),
+      resultCallback(message, reply)
+    );
   });
 
   /**
@@ -378,16 +472,19 @@ void initFunctionsTable (Router *router) {
     }
 
     uint64_t id;
-    int offset = 0;
-    int size = 0;
-
     getMessageParam(id, "id", std::stoull);
+    int size = 0;
     getMessageParam(size, "size", std::stoi);
+    int offset = 0;
     getMessageParam(offset, "offset", std::stoi);
 
-    auto seq = message.seq;
-
-    router->core->fs.read(seq, id, size, offset, resultCallback(message, reply));
+    router->core->fs.read(
+      message.seq,
+      id,
+      size,
+      offset,
+      resultCallback(message, reply)
+    );
   });
 
   /**
@@ -403,15 +500,16 @@ void initFunctionsTable (Router *router) {
     }
 
     uint64_t id;
-    int entries = 0;
-
     getMessageParam(id, "id", std::stoull);
+    int entries = 0;
     getMessageParam(entries, "entries", std::stoi);
 
-    auto path = message.get("path");
-    auto seq = message.seq;
-
-    router->core->fs.readdir(seq, id, entries, resultCallback(message, reply));
+    router->core->fs.readdir(
+      message.seq,
+      id,
+      entries,
+      resultCallback(message, reply)
+    );
   });
 
   /**
@@ -419,17 +517,20 @@ void initFunctionsTable (Router *router) {
    * @param id
    */
   router->map("fs.retainOpenDescriptor", [=](auto message, auto router, auto reply) {
-    uint64_t id;
     auto err = validateMessageParameters(message, {"id"});
-    auto seq = message.seq;
 
     if (err.type != JSON::Type::Null) {
       return reply(Result::Err { message, err });
     }
 
+    uint64_t id;
     getMessageParam(id, "id", std::stoull);
 
-    router->core->fs.retainOpenDescriptor(seq, id, resultCallback(message, reply));
+    router->core->fs.retainOpenDescriptor(
+      message.seq,
+      id,
+      resultCallback(message, reply)
+    );
   });
 
   /**
@@ -445,11 +546,12 @@ void initFunctionsTable (Router *router) {
       return reply(Result::Err { message, err });
     }
 
-    auto seq = message.seq;
-    auto src = message.get("src");
-    auto dest = message.get("dest");
-
-    router->core->fs.rename(seq, src, dest, resultCallback(message, reply));
+    router->core->fs.rename(
+      message.seq,
+      message.get("src"),
+      message.get("dest"),
+      resultCallback(message, reply)
+    );
   });
 
   /**
@@ -464,10 +566,11 @@ void initFunctionsTable (Router *router) {
       return reply(Result::Err { message, err });
     }
 
-    auto seq = message.seq;
-    auto path = message.get("path");
-
-    router->core->fs.rmdir(seq, path, resultCallback(message, reply));
+    router->core->fs.rmdir(
+      message.seq,
+      message.get("path"),
+      resultCallback(message, reply)
+    );
   });
 
   /**
@@ -482,10 +585,11 @@ void initFunctionsTable (Router *router) {
       return reply(Result::Err { message, err });
     }
 
-    auto seq = message.seq;
-    auto path = message.get("path");
-
-    router->core->fs.stat(seq, path, resultCallback(message, reply));
+    router->core->fs.stat(
+      message.seq,
+      message.get("path"),
+      resultCallback(message, reply)
+    );
   });
 
   /**
@@ -500,10 +604,11 @@ void initFunctionsTable (Router *router) {
       return reply(Result::Err { message, err });
     }
 
-    auto seq = message.seq;
-    auto path = message.get("path");
-
-    router->core->fs.unlink(seq, path, resultCallback(message, reply));
+    router->core->fs.unlink(
+      message.seq,
+      message.get("path"),
+      resultCallback(message, reply)
+    );
   });
 
   /**
@@ -525,17 +630,20 @@ void initFunctionsTable (Router *router) {
       return reply(Result::Err { message, err });
     }
 
-    uint64_t id;
-    int offset = 0;
 
+    uint64_t id;
     getMessageParam(id, "id", std::stoull);
+    int offset = 0;
     getMessageParam(offset, "offset", std::stoi);
 
-    auto bytes = message.buffer.bytes;
-    auto size = message.buffer.size;
-    auto seq = message.seq;
-
-    router->core->fs.write(seq, id, bytes.get(), size, offset, resultCallback(message, reply));
+    router->core->fs.write(
+      message.seq,
+      id,
+      message.buffer.bytes,
+      message.buffer.size,
+      offset,
+      resultCallback(message, reply)
+    );
   });
 
   /**
@@ -566,12 +674,20 @@ void initFunctionsTable (Router *router) {
       return reply(Result::Err { message, err });
     }
 
-    auto buffer = std::stoi(message.get("buffer", "0"));
-    auto size = std::stoi(message.get("size", "0"));
-    auto seq = message.seq;
-    auto id  = std::stoull(message.get("id"));
+    uint64_t id;
+    getMessageParam(id, "id", std::stoull);
+    int buffer = 0;
+    getMessageParam(buffer, "buffer", std::stoi, "0");
+    int size = 0;
+    getMessageParam(size, "size", std::stoi, "0");
 
-    router->core->os.bufferSize(seq, id, size, buffer, resultCallback(message, reply));
+    router->core->os.bufferSize(
+      message.seq,
+      id,
+      size,
+      buffer,
+      resultCallback(message, reply)
+    );
   });
 
   /**
@@ -629,11 +745,88 @@ void initFunctionsTable (Router *router) {
       return reply(Result { message.seq, message, err });
     }
 
-    auto value = message.value;
-    auto data = message.get("data");
-    auto seq = message.seq;
+    router->core->platform.event(
+      message.seq,
+      message.value,
+      message.get("data"),
+      resultCallback(message, reply)
+    );
+  });
 
-    router->core->platform.event(seq, value, data, resultCallback(message, reply));
+  /**
+   * Requests a notification with `title` and `body` to be shown.
+   * @param title
+   * @param body
+   */
+  router->map("platform.notify", [=](auto message, auto router, auto reply) {
+    auto err = validateMessageParameters(message, {"body", "title"});
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result { message.seq, message, err });
+    }
+
+    router->core->platform.notify(
+      message.seq,
+      message.get("title"),
+      message.get("body"),
+      resultCallback(message, reply)
+    );
+  });
+
+  /**
+   * Requests a URL to be opened externally.
+   * @param value
+   */
+  router->map("platform.openExternal", [=](auto message, auto router, auto reply) {
+    auto err = validateMessageParameters(message, {"value"});
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result { message.seq, message, err });
+    }
+
+    router->core->platform.openExternal(
+      message.seq,
+      message.value,
+      resultCallback(message, reply)
+    );
+  });
+
+  /**
+   * Returns computed current working directory path.
+   */
+  router->map("process.cwd", [=](auto message, auto router, auto reply) {
+    String cwd = "";
+    JSON::Object json;
+#if defined(__linux__)
+    auto canonical = fs::canonical("/proc/self/exe");
+    cwd = fs::path(canonical).parent_path().string();
+#elif defined(__APPLE__)
+    auto fileManager = [NSFileManager defaultManager];
+    auto currentDirectoryPath = [fileManager currentDirectoryPath];
+    auto currentDirectory = [NSHomeDirectory() stringByAppendingPathComponent: currentDirectoryPath];
+    cwd = String([currentDirectory UTF8String]);
+#elif defined(_WIN32)
+    wchar_t filename[MAX_PATH];
+    GetModuleFileNameW(NULL, filename, MAX_PATH);
+    auto path = fs::path { filename }.remove_filename();
+    cwd = path.string();
+#endif
+
+    if (cwd.size() == 0) {
+      json = JSON::Object::Entries {
+        {"source", "process.cwd"},
+        {"err", JSON::Object::Entries {
+          {"message", "Could not determine current working directory"}
+        }}
+      };
+    } else {
+      json = JSON::Object::Entries {
+        {"source", "process.cwd"},
+        {"data", cwd}
+      };
+    }
+
+    reply(Result { message.seq, message, json });
   });
 
   /**
@@ -696,21 +889,25 @@ void initFunctionsTable (Router *router) {
    */
   router->map("udp.bind", [=](auto message, auto router, auto reply) {
     Core::UDP::BindOptions options;
-    uint64_t id;
     auto err = validateMessageParameters(message, {"id", "port"});
-    auto seq = message.seq;
 
     if (err.type != JSON::Type::Null) {
       return reply(Result::Err { message, err });
     }
 
+    uint64_t id;
     getMessageParam(id, "id", std::stoull);
     getMessageParam(options.port, "port", std::stoi);
 
     options.reuseAddr = message.get("reuseAddr") == "true";
     options.address = message.get("address", "0.0.0.0");
 
-    router->core->udp.bind(seq, id, options, resultCallback(message, reply));
+    router->core->udp.bind(
+      message.seq,
+      id,
+      options,
+      resultCallback(message, reply)
+    );
   });
 
   /**
@@ -718,17 +915,16 @@ void initFunctionsTable (Router *router) {
    * @param id Handle ID of underlying socket
    */
   router->map("udp.close", [=](auto message, auto router, auto reply) {
-    uint64_t id;
     auto err = validateMessageParameters(message, {"id"});
-    auto seq = message.seq;
 
     if (err.type != JSON::Type::Null) {
       return reply(Result::Err { message, err });
     }
 
+    uint64_t id;
     getMessageParam(id, "id", std::stoull);
 
-    router->core->udp.close(seq, id, resultCallback(message, reply));
+    router->core->udp.close(message.seq, id, resultCallback(message, reply));
   });
 
   /**
@@ -739,21 +935,25 @@ void initFunctionsTable (Router *router) {
    * @param address The address to connect the UDP socket to (default: 0.0.0.0)
    */
   router->map("udp.connect", [=](auto message, auto router, auto reply) {
-    Core::UDP::ConnectOptions options;
-    uint64_t id;
     auto err = validateMessageParameters(message, {"id", "port"});
-    auto seq = message.seq;
 
     if (err.type != JSON::Type::Null) {
       return reply(Result::Err { message, err });
     }
 
+    Core::UDP::ConnectOptions options;
+    uint64_t id;
     getMessageParam(id, "id", std::stoull);
     getMessageParam(options.port, "port", std::stoi);
 
     options.address = message.get("address", "0.0.0.0");
 
-    router->core->udp.connect(seq, id, options, resultCallback(message, reply));
+    router->core->udp.connect(
+      message.seq,
+      id,
+      options,
+      resultCallback(message, reply)
+    );
   });
 
   /**
@@ -761,17 +961,20 @@ void initFunctionsTable (Router *router) {
    * @param id Handle ID of underlying socket
    */
   router->map("udp.disconnect", [=](auto message, auto router, auto reply) {
-    uint64_t id;
     auto err = validateMessageParameters(message, {"id"});
-    auto seq = message.seq;
 
     if (err.type != JSON::Type::Null) {
       return reply(Result::Err { message, err });
     }
 
+    uint64_t id;
     getMessageParam(id, "id", std::stoull);
 
-    router->core->udp.disconnect(seq, id, resultCallback(message, reply));
+    router->core->udp.disconnect(
+      message.seq,
+      id,
+      resultCallback(message, reply)
+    );
   });
 
   /**
@@ -779,17 +982,20 @@ void initFunctionsTable (Router *router) {
    * @param id Handle ID of underlying socket
    */
   router->map("udp.getPeerName", [=](auto message, auto router, auto reply) {
-    uint64_t id;
     auto err = validateMessageParameters(message, {"id"});
-    auto seq = message.seq;
 
     if (err.type != JSON::Type::Null) {
       return reply(Result::Err { message, err });
     }
 
+    uint64_t id;
     getMessageParam(id, "id", std::stoull);
 
-    router->core->udp.getPeerName(seq, id, resultCallback(message, reply));
+    router->core->udp.getPeerName(
+      message.seq,
+      id,
+      resultCallback(message, reply)
+    );
   });
 
   /**
@@ -797,17 +1003,20 @@ void initFunctionsTable (Router *router) {
    * @param id Handle ID of underlying socket
    */
   router->map("udp.getSockName", [=](auto message, auto router, auto reply) {
-    uint64_t id;
     auto err = validateMessageParameters(message, {"id"});
-    auto seq = message.seq;
 
     if (err.type != JSON::Type::Null) {
       return reply(Result::Err { message, err });
     }
 
+    uint64_t id;
     getMessageParam(id, "id", std::stoull);
 
-    router->core->udp.getSockName(seq, id, resultCallback(message, reply));
+    router->core->udp.getSockName(
+      message.seq,
+      id,
+      resultCallback(message, reply)
+    );
   });
 
   /**
@@ -815,17 +1024,20 @@ void initFunctionsTable (Router *router) {
    * @param id Handle ID of underlying socket
    */
   router->map("udp.getState", [=](auto message, auto router, auto reply) {
-    uint64_t id;
     auto err = validateMessageParameters(message, {"id"});
-    auto seq = message.seq;
 
     if (err.type != JSON::Type::Null) {
       return reply(Result::Err { message, err });
     }
 
+    uint64_t id;
     getMessageParam(id, "id", std::stoull);
 
-    router->core->udp.getState(seq, id, resultCallback(message, reply));
+    router->core->udp.getState(
+      message.seq,
+      id,
+      resultCallback(message, reply)
+    );
   });
 
   /**
@@ -834,17 +1046,20 @@ void initFunctionsTable (Router *router) {
    * @param id Handle ID of underlying socket
    */
   router->map("udp.readStart", [=](auto message, auto router, auto reply) {
-    uint64_t id;
     auto err = validateMessageParameters(message, {"id"});
-    auto seq = message.seq;
 
     if (err.type != JSON::Type::Null) {
       return reply(Result::Err { message, err });
     }
 
+    uint64_t id;
     getMessageParam(id, "id", std::stoull);
 
-    router->core->udp.readStart(seq, id, resultCallback(message, reply));
+    router->core->udp.readStart(
+      message.seq,
+      id,
+      resultCallback(message, reply)
+    );
   });
 
   /**
@@ -853,17 +1068,20 @@ void initFunctionsTable (Router *router) {
    * @param id Handle ID of underlying socket
    */
   router->map("udp.readStop", [=](auto message, auto router, auto reply) {
-    uint64_t id;
     auto err = validateMessageParameters(message, {"id"});
-    auto seq = message.seq;
 
     if (err.type != JSON::Type::Null) {
       return reply(Result::Err { message, err });
     }
 
+    uint64_t id;
     getMessageParam(id, "id", std::stoull);
 
-    router->core->udp.readStop(seq, id, resultCallback(message, reply));
+    router->core->udp.readStop(
+      message.seq,
+      id,
+      resultCallback(message, reply)
+    );
   });
 
   /**
@@ -879,24 +1097,28 @@ void initFunctionsTable (Router *router) {
    * @param ephemeral Indicates that the socket handle, if created is ephemeral and should eventually be destroyed
    */
   router->map("udp.send", [=](auto message, auto router, auto reply) {
-    Core::UDP::SendOptions options;
-    uint64_t id;
     auto err = validateMessageParameters(message, {"id", "port"});
-    auto seq = message.seq;
 
     if (err.type != JSON::Type::Null) {
       return reply(Result::Err { message, err });
     }
 
+    Core::UDP::SendOptions options;
+    uint64_t id;
     getMessageParam(id, "id", std::stoull);
     getMessageParam(options.port, "port", std::stoi);
 
     options.size = message.buffer.size;
-    options.bytes = message.buffer.bytes.get();
+    options.bytes = message.buffer.bytes;
     options.address = message.get("address", "0.0.0.0");
     options.ephemeral = message.get("ephemeral") == "true";
 
-    router->core->udp.send(seq, id, options, resultCallback(message, reply));
+    router->core->udp.send(
+      message.seq,
+      id,
+      options,
+      resultCallback(message, reply)
+    );
   });
 }
 
@@ -954,9 +1176,151 @@ static void registerSchemeHandler (Router *router) {
 #endif
 }
 
+#if defined(__APPLE__)
+@implementation SSCIPCSchemeHandler
+- (void) webView: (SSCBridgedWebView*) webview stopURLSchemeTask: (Task) task {}
+- (void) webView: (SSCBridgedWebView*) webview startURLSchemeTask: (Task) task {
+  auto url = String(task.request.URL.absoluteString.UTF8String);
+  auto message = Message {url};
+  auto seq = message.seq;
+
+  if (String(task.request.HTTPMethod.UTF8String) == "OPTIONS") {
+    auto headers = [NSMutableDictionary dictionary];
+
+    headers[@"access-control-allow-origin"] = @"*";
+    headers[@"access-control-allow-methods"] = @"*";
+
+    auto response = [[NSHTTPURLResponse alloc]
+      initWithURL: task.request.URL
+       statusCode: 200
+      HTTPVersion: @"HTTP/1.1"
+     headerFields: headers
+    ];
+
+    [task didReceiveResponse: response];
+    [task didFinish];
+    #if !__has_feature(objc_arc)
+    [response release];
+    #endif
+
+    return;
+  }
+
+  if (message.name == "post") {
+    auto headers = [NSMutableDictionary dictionary];
+    auto id = std::stoull(message.get("id"));
+    auto post = self.router->core->getPost(id);
+
+    headers[@"access-control-allow-origin"] = @"*";
+    headers[@"content-length"] = [@(post.length) stringValue];
+
+    if (post.headers.size() > 0) {
+      auto lines = SSC::split(SSC::trim(post.headers), '\n');
+
+      for (auto& line : lines) {
+        auto pair = split(trim(line), ':');
+        auto key = [NSString stringWithUTF8String: trim(pair[0]).c_str()];
+        auto value = [NSString stringWithUTF8String: trim(pair[1]).c_str()];
+        headers[key] = value;
+      }
+    }
+
+    NSHTTPURLResponse *response = [[NSHTTPURLResponse alloc]
+       initWithURL: task.request.URL
+        statusCode: 200
+       HTTPVersion: @"HTTP/1.1"
+      headerFields: headers
+    ];
+
+    [task didReceiveResponse: response];
+
+    if (post.body) {
+      auto data = [NSData dataWithBytes: post.body length: post.length];
+      [task didReceiveData: data];
+    } else {
+      auto string = [NSString stringWithUTF8String: ""];
+      auto data = [string dataUsingEncoding: NSUTF8StringEncoding];
+      [task didReceiveData: data];
+    }
+
+    [task didFinish];
+    #if !__has_feature(objc_arc)
+    [response release];
+    #endif
+
+    // 16ms timeout before removing post and potentially freeing `post.body`
+    NSTimeInterval timeout = 0.16;
+    auto block = ^(NSTimer* timer) {
+      dispatch_async(dispatch_get_main_queue(), ^{
+        self.router->core->removePost(id);
+      });
+    };
+
+    [NSTimer timerWithTimeInterval: timeout repeats: NO block: block ];
+
+    return;
+  }
+
+  size_t bufsize = 0;
+  char *body = NULL;
+
+  if (seq.size() > 0 && seq != "-1") {
+    #if !__has_feature(objc_arc)
+    [task retain];
+    #endif
+
+    [self.router->schemeTasks put: seq task: task];
+  }
+
+  // if there is a body on the reuqest, pass it into the method router.
+  auto rawBody = task.request.HTTPBody;
+
+  if (rawBody) {
+    const void* data = [rawBody bytes];
+    bufsize = [rawBody length];
+    body = (char *) data;
+  }
+
+  if (!self.router->invoke(url, body, bufsize)) {
+    NSMutableDictionary* headers = [NSMutableDictionary dictionary];
+    auto json = JSON::Object::Entries {
+      {"err", JSON::Object::Entries {
+        {"message", "Not found"},
+        {"type", "NotFoundError"},
+        {"url", url}
+      }}
+    };
+
+    auto msg = JSON::Object(json).str();
+    auto str = [NSString stringWithUTF8String: msg.c_str()];
+    auto data = [str dataUsingEncoding: NSUTF8StringEncoding];
+
+    headers[@"access-control-allow-origin"] = @"*";
+    headers[@"content-length"] = [@(msg.size()) stringValue];
+
+    NSHTTPURLResponse *response = [[NSHTTPURLResponse alloc]
+       initWithURL: task.request.URL
+        statusCode: 404
+       HTTPVersion: @"HTTP/1.1"
+      headerFields: headers
+    ];
+
+    [task didReceiveResponse: response];
+    [task didReceiveData: data];
+    [task didFinish];
+    #if !__has_feature(objc_arc)
+    [response release];
+    #endif
+  }
+}
+@end
+#endif
+
 namespace SSC::IPC {
-  Bridge::Bridge (Core *core) : router(core) {
+  Bridge::Bridge (Core *core) {
     this->core = core;
+    this->router.core = core;
+    this->router.bridge = this;
   }
 
   bool Router::hasMappedBuffer (int index, const Message::Seq seq) {
@@ -978,7 +1342,7 @@ namespace SSC::IPC {
   void Router::setMappedBuffer (
     int index,
     const Message::Seq seq,
-    std::shared_ptr<char []> bytes,
+    char* bytes,
     size_t size
   ) {
     Lock lock(this->mutex);
@@ -1002,10 +1366,40 @@ namespace SSC::IPC {
   Router::Router () {
     initFunctionsTable(this);
     registerSchemeHandler(this);
+#if defined(__APPLE__)
+    this->networkStatusObserver = [SSCIPCNetworkStatusObserver new];
+    this->schemeHandler = [SSCIPCSchemeHandler new];
+    this->schemeTasks = [SSCIPCSchemeTasks new];
+
+    [this->schemeHandler setRouter: this];
+    [this->networkStatusObserver setRouter: this];
+#endif
   }
 
-  Router::Router (Core *core) : Router() {
-    this->core = core;
+  Router::~Router () {
+#if defined(__APPLE__)
+    if (this->networkStatusObserver != nullptr) {
+      #if !__has_feature(objc_arc)
+      [this->networkStatusObserver release];
+      #endif
+    }
+
+    if (this->schemeHandler != nullptr) {
+      #if !__has_feature(objc_arc)
+      [this->schemeHandler release];
+      #endif
+    }
+
+    if (this->schemeTasks != nullptr) {
+      #if !__has_feature(objc_arc)
+      [this->schemeTasks release];
+      #endif
+    }
+
+    this->networkStatusObserver = nullptr;
+    this->schemeHandler = nullptr;
+    this->schemeTasks = nullptr;
+#endif
   }
 
   void Router::map (const String& name, MessageCallback callback) {
@@ -1079,6 +1473,53 @@ namespace SSC::IPC {
     const String& data,
     const Post post
   ) {
+#if defined(__APPLE__)
+  if (seq != "-1" && [this->schemeTasks has: seq]) {
+    auto task = [this->schemeTasks get: seq];
+    auto msg = data;
+    [this->schemeTasks remove: seq];
+
+    #if !__has_feature(objc_arc)
+    [task retain];
+    #endif
+
+    dispatch_async(dispatch_get_main_queue(), ^{
+      auto headers = [[NSMutableDictionary alloc] init];
+      auto length = post.body ? post.length : msg.size();
+
+      headers[@"access-control-allow-origin"] = @"*";
+      headers[@"access-control-allow-methods"] = @"*";
+      headers[@"content-length"] = [@(length) stringValue];
+
+      NSHTTPURLResponse *response = [[NSHTTPURLResponse alloc]
+         initWithURL: task.request.URL
+          statusCode: 200
+         HTTPVersion: @"HTTP/1.1"
+        headerFields: headers
+      ];
+
+      [task didReceiveResponse: response];
+
+      if (post.body) {
+        auto data = [NSData dataWithBytes: post.body length: post.length];
+        [task didReceiveData: data];
+      } else if (msg.size() > 0) {
+        auto string = [NSString stringWithUTF8String: msg.c_str()];
+        auto data = [string dataUsingEncoding: NSUTF8StringEncoding];
+        [task didReceiveData: data];
+      }
+
+      [task didFinish];
+      #if !__has_feature(objc_arc)
+      [headers release];
+      [response release];
+      #endif
+    });
+
+    return true;
+  }
+
+#endif
     if (post.body || seq == "-1") {
       auto script = this->core->createPost(seq, data, post);
       return this->evaluateJavaScript(script);
@@ -1125,3 +1566,104 @@ namespace SSC::IPC {
     return false;
   }
 }
+
+#if defined(__APPLE__)
+@implementation SSCIPCSchemeTasks
+- (id) init {
+  self = [super init];
+  tasks  = std::unique_ptr<IPC::Tasks>(new SSC::IPC::Tasks());
+  return self;
+}
+
+- (IPC::Task) get: (String) id {
+  Lock lock(mutex);
+  if (tasks->find(id) == tasks->end()) return IPC::Task{};
+  return tasks->at(id);
+}
+
+- (bool) has: (String) id {
+  Lock lock(mutex);
+  if (id.size() == 0) return false;
+  return tasks->find(id) != tasks->end();
+}
+
+- (void) remove: (String) id {
+  Lock lock(mutex);
+  if (tasks->find(id) == tasks->end()) return;
+  tasks->erase(id);
+}
+
+- (void) put: (String) id task: (IPC::Task) task {
+  Lock lock(mutex);
+  tasks->insert_or_assign(id, task);
+}
+@end
+
+@implementation SSCIPCNetworkStatusObserver
+- (id) init {
+  self = [super init];
+  dispatch_queue_attr_t attrs = dispatch_queue_attr_make_with_qos_class(
+    DISPATCH_QUEUE_SERIAL,
+    QOS_CLASS_UTILITY,
+    DISPATCH_QUEUE_PRIORITY_DEFAULT
+  );
+
+  self.monitorQueue = dispatch_queue_create(
+    "co.socketsupply.queue.ipc.network-status-observer",
+    attrs
+  );
+
+  // self.monitor = nw_path_monitor_create_with_type(nw_interface_type_wifi);
+  self.monitor = nw_path_monitor_create();
+  nw_path_monitor_set_queue(self.monitor, self.monitorQueue);
+  nw_path_monitor_set_update_handler(self.monitor, ^(nw_path_t path) {
+    nw_path_status_t status = nw_path_get_status(path);
+
+    String name;
+    String message;
+
+    switch (status) {
+      case nw_path_status_invalid: {
+        name = "offline";
+        message = "Network path is invalid";
+        break;
+      }
+      case nw_path_status_satisfied: {
+        name = "online";
+        message = "Network is usable";
+        break;
+      }
+      case nw_path_status_satisfiable: {
+        name = "online";
+        message = "Network may be usable";
+        break;
+      }
+      case nw_path_status_unsatisfied: {
+        name = "offline";
+        message = "Network is not usable";
+        break;
+      }
+    }
+
+    dispatch_async(dispatch_get_main_queue(), ^{
+      auto json = JSON::Object::Entries {
+        {"message", message}
+      };
+
+      self.router->emit(name, JSON::Object(json).str());
+    });
+  });
+
+  nw_path_monitor_start(self.monitor);
+
+  return self;
+}
+
+- (void) userNotificationCenter: (UNUserNotificationCenter *) center
+        willPresentNotification: (UNNotification *) notification
+          withCompletionHandler: (void (^)(UNNotificationPresentationOptions options)) completionHandler
+{
+  completionHandler(UNNotificationPresentationOptionList | UNNotificationPresentationOptionBanner);
+}
+@end
+#endif

@@ -310,7 +310,11 @@ namespace SSC {
     cb(seq, json, Post{});
   }
 
-  void Core::UDP::getState (String seq, uint64_t peerId,  Callback cb) {
+  void Core::UDP::getState (
+    const String seq,
+    uint64_t peerId,
+    Module::Callback cb
+  ) {
     if (!this->core->hasPeer(peerId)) {
       auto json = ERR_SOCKET_DGRAM_NOT_RUNNING("udp.getState", peerId);
       return cb(seq, json, Post{});
