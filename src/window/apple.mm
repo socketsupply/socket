@@ -400,21 +400,19 @@ int lastY = 0;
 
 namespace SSC {
   static bool isDelegateSet = false;
-  static SSCBluetoothDelegate* bt;
 
   Window::Window (App& app, WindowOptions opts) : app(app), opts(opts) {
-    SSCIPCBridge* bridge = [SSCIPCBridge new];
+    this->bridge = new IPC::Bridge(app.core);
 
-    bridge.router = new SSC::IPC::Router(app.core);
-    bridge.router->dispatchFunction = [bridge] (auto callback) {
-      [bridge dispatch: ^{ callback(); }];
+    this->bridge->router.dispatchFunction = [this] (auto callback) {
+      this->app.dispatch(callback);
     };
 
-    bridge.router->evaluateJavaScriptFunction = [this](auto js) {
+    this->bridge->router.evaluateJavaScriptFunction = [this](auto js) {
       dispatch_async(dispatch_get_main_queue(), ^{ this->eval(js); });
     };
 
-    bridge.router->map("window.eval", [=](auto message, auto router, auto reply) {
+    this->bridge->router.map("window.eval", [=](auto message, auto router, auto reply) {
       auto value = message.value;
       auto seq = message.seq;
       auto  script = [NSString stringWithUTF8String: value.c_str()];
@@ -423,14 +421,14 @@ namespace SSC {
         [webview evaluateJavaScript: script completionHandler: ^(id result, NSError *error) {
           if (result) {
             auto msg = String([[NSString stringWithFormat:@"%@", result] UTF8String]);
-            bridge.router->send(seq, msg, Post{});
+            this->bridge->router.send(seq, msg, Post{});
           } else if (error) {
             auto exception = (NSString *) error.userInfo[@"WKJavaScriptExceptionMessage"];
             auto message = [[NSString stringWithFormat:@"%@", exception] UTF8String];
             auto err = encodeURIComponent(String(message));
 
             if (err == "(null)") {
-              bridge.router->send(seq, "null", Post{});
+              this->bridge->router.send(seq, "null", Post{});
               return;
             }
 
@@ -440,15 +438,13 @@ namespace SSC {
               }}
             };
 
-            bridge.router->send(seq, JSON::Object(json).str(), Post{});
+            this->bridge->router.send(seq, JSON::Object(json).str(), Post{});
           } else {
-            bridge.router->send(seq, "undefined", Post{});
+            this->bridge->router.send(seq, "undefined", Post{});
           }
         }];
       });
     });
-
-    bt = [SSCBluetoothDelegate new];
 
     // Window style: titled, closable, minimizable
     uint style = NSWindowStyleMaskTitled;
@@ -505,9 +501,8 @@ namespace SSC {
     // https://developer.apple.com/documentation/webkit/wkwebviewconfiguration/3585117-limitsnavigationstoappbounddomai
     // config.limitsNavigationsToAppBoundDomains = YES;
 
-    SSCIPCBridgeSchemeHandler* handler = [SSCIPCBridgeSchemeHandler new];
-    [handler setBridge: bridge];
-    [config setURLSchemeHandler: handler forURLScheme:@"ipc"];
+    [config setURLSchemeHandler: bridge->router.schemeHandler
+                   forURLScheme: @"ipc"];
 
     WKPreferences* prefs = [config preferences];
     [prefs setJavaScriptCanOpenWindowsAutomatically:NO];
@@ -569,10 +564,6 @@ namespace SSC {
     SSCNavigationDelegate *navDelegate = [[SSCNavigationDelegate alloc] init];
     [webview setNavigationDelegate: navDelegate];
 
-    [bridge setBluetooth: bt];
-    [bridge setWebview: webview];
-    [bridge setCore: app.core];
-
     if (!isDelegateSet) {
       isDelegateSet = true;
 
@@ -612,7 +603,7 @@ namespace SSC {
             }
             SSC::String msg = [body UTF8String];
 
-            if ([bridge route: msg buf: nullptr bufsize: 0]) return;
+            if (bridge->route(msg, nullptr, 0)) return;
             w->onMessage(msg);
           }),
         "v@:@"

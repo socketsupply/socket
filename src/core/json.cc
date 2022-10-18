@@ -130,7 +130,7 @@ namespace SSC::JSON {
   }
 
   Object::Object (const Object::Entries entries) {
-    for (auto const tuple : entries) {
+    for (const auto& tuple : entries) {
       auto key = tuple.first;
       auto value = tuple.second;
       this->data.insert_or_assign(key, value);
@@ -138,7 +138,7 @@ namespace SSC::JSON {
   }
 
   Object::Object (const SSC::Map map) {
-    for (auto const tuple : map) {
+    for (const auto& tuple : map) {
       auto key = tuple.first;
       auto value = Any(tuple.second);
       this->data.insert_or_assign(key, value);
@@ -150,7 +150,7 @@ namespace SSC::JSON {
     auto count = this->data.size();
     stream << "{";
 
-    for (auto const &tuple : this->data) {
+    for (const auto& tuple : this->data) {
       auto key = tuple.first;
       auto value = tuple.second.str();
 
@@ -167,7 +167,7 @@ namespace SSC::JSON {
   }
 
   Array::Array (const Array::Entries entries) {
-    for (auto const &value : entries) {
+    for (const auto& value : entries) {
       this->data.push_back(value);
     }
   }
@@ -177,7 +177,7 @@ namespace SSC::JSON {
     auto count = this->data.size();
     stream << "[";
 
-    for (auto const &value : this->data) {
+    for (const auto& value : this->data) {
       stream << value.str();
 
       if (--count > 0) {

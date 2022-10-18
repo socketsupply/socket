@@ -376,7 +376,7 @@ namespace SSC {
             {"source", "fs.access"},
             {"err", JSON::Object::Entries {
               {"code", req->result},
-              {"message", String(uv_strerror(req->result))}
+              {"message", String(uv_strerror((int) req->result))}
             }}
           };
         } else {
@@ -427,7 +427,7 @@ namespace SSC {
             {"source", "fs.chmod"},
             {"err", JSON::Object::Entries {
               {"code", req->result},
-              {"message", String(uv_strerror(req->result))}
+              {"message", String(uv_strerror((int) req->result))}
             }}
           };
         } else {
@@ -494,7 +494,7 @@ namespace SSC {
             {"err", JSON::Object::Entries {
               {"id", std::to_string(desc->id)},
               {"code", req->result},
-              {"message", String(uv_strerror(req->result))}
+              {"message", String(uv_strerror((int) req->result))}
             }}
           };
         } else {
@@ -555,7 +555,7 @@ namespace SSC {
             {"err", JSON::Object::Entries {
               {"id", std::to_string(desc->id)},
               {"code", req->result},
-              {"message", String(uv_strerror(req->result))}
+              {"message", String(uv_strerror((int) req->result))}
             }}
           };
 
@@ -619,7 +619,7 @@ namespace SSC {
             {"err", JSON::Object::Entries {
               {"id", std::to_string(desc->id)},
               {"code", req->result},
-              {"message", String(uv_strerror(req->result))}
+              {"message", String(uv_strerror((int) req->result))}
             }}
           };
 
@@ -714,7 +714,7 @@ namespace SSC {
             {"err", JSON::Object::Entries {
               {"id", std::to_string(desc->id)},
               {"code", req->result},
-              {"message", String(uv_strerror(req->result))}
+              {"message", String(uv_strerror((int) req->result))}
             }}
           };
         } else {
@@ -804,7 +804,7 @@ namespace SSC {
             {"err", JSON::Object::Entries {
               {"id", std::to_string(desc->id)},
               {"code", req->result},
-              {"message", String(uv_strerror(req->result))}
+              {"message", String(uv_strerror((int) req->result))}
             }}
           };
         } else {
@@ -960,7 +960,7 @@ namespace SSC {
             {"err", JSON::Object::Entries {
               {"id", std::to_string(desc->id)},
               {"code", req->result},
-              {"message", String(uv_strerror(req->result))}
+              {"message", String(uv_strerror((int) req->result))}
             }}
           };
 
@@ -1030,7 +1030,7 @@ namespace SSC {
       auto ctx = new RequestContext(desc, seq, cb);
       auto req = &ctx->req;
 
-      ctx->setBuffer(0, size, bytes);
+      ctx->setBuffer(0, (int) size, bytes);
       auto err = uv_fs_write(loop, req, desc->fd, ctx->iov, 1, offset, [](uv_fs_t* req) {
         auto ctx = static_cast<RequestContext*>(req->data);
         auto desc = ctx->desc;
@@ -1042,7 +1042,7 @@ namespace SSC {
             {"err", JSON::Object::Entries {
               {"id", std::to_string(desc->id)},
               {"code", req->result},
-              {"message", String(uv_strerror(req->result))}
+              {"message", String(uv_strerror((int) req->result))}
             }}
           };
         } else {
@@ -1094,7 +1094,7 @@ namespace SSC {
             {"source", "fs.stat"},
             {"err", JSON::Object::Entries {
               {"code", req->result},
-              {"message", String(uv_strerror(req->result))}
+              {"message", String(uv_strerror((int) req->result))}
             }}
           };
         } else {
@@ -1156,7 +1156,7 @@ namespace SSC {
             {"err", JSON::Object::Entries {
               {"id", std::to_string(desc->id)},
               {"code", req->result},
-              {"message", String(uv_strerror(req->result))}
+              {"message", String(uv_strerror((int) req->result))}
             }}
           };
         } else {
@@ -1188,7 +1188,6 @@ namespace SSC {
     Module::Callback cb
   ) {
     Lock lock(this->mutex);
-    auto pending = descriptors.size();
     auto entries = Vector<JSON::Any> {};
 
     for (auto const &tuple : descriptors) {
@@ -1230,7 +1229,7 @@ namespace SSC {
             {"source", "fs.stat"},
             {"err", JSON::Object::Entries {
               {"code", req->result},
-              {"message", String(uv_strerror(req->result))}
+              {"message", String(uv_strerror((int) req->result))}
             }}
           };
         } else {
@@ -1275,7 +1274,7 @@ namespace SSC {
             {"source", "fs.unlink"},
             {"err", JSON::Object::Entries {
               {"code", req->result},
-              {"message", String(uv_strerror(req->result))}
+              {"message", String(uv_strerror((int) req->result))}
             }}
           };
         } else {
@@ -1327,7 +1326,7 @@ namespace SSC {
             {"source", "fs.rename"},
             {"err", JSON::Object::Entries {
               {"code", req->result},
-              {"message", String(uv_strerror(req->result))}
+              {"message", String(uv_strerror((int) req->result))}
             }}
           };
         } else {
@@ -1380,7 +1379,7 @@ namespace SSC {
             {"source", "fs.copyFile"},
             {"err", JSON::Object::Entries {
               {"code", req->result},
-              {"message", String(uv_strerror(req->result))}
+              {"message", String(uv_strerror((int) req->result))}
             }}
           };
         } else {
@@ -1430,7 +1429,7 @@ namespace SSC {
             {"source", "fs.rmdir"},
             {"err", JSON::Object::Entries {
               {"code", req->result},
-              {"message", String(uv_strerror(req->result))}
+              {"message", String(uv_strerror((int) req->result))}
             }}
           };
         } else {
@@ -1481,7 +1480,7 @@ namespace SSC {
             {"source", "fs.mkdir"},
             {"err", JSON::Object::Entries {
               {"code", req->result},
-              {"message", String(uv_strerror(req->result))}
+              {"message", String(uv_strerror((int) req->result))}
             }}
           };
         } else {
@@ -1516,7 +1515,6 @@ namespace SSC {
     static auto constants = getFSConstantsMap();
 
     this->core->dispatchEventLoop([=] {
-      auto count = constants.size();
       JSON::Object::Entries data;
 
       for (auto const &tuple : constants) {
