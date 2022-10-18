@@ -447,7 +447,7 @@ MAIN {
       }
 
       if (message.name == "resolve") {
-        window->resolvePromise(seq, message.get("state"), value);
+        window->resolvePromise(seq, message.get("state"), encodeURIComponent(value));
         return;
       }
 

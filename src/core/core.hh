@@ -111,7 +111,7 @@ namespace SSC {
     uint64_t id = 0;
     uint64_t ttl = 0;
     char* body = nullptr;
-    int length = 0;
+    size_t length = 0;
     String headers = "";
     bool bodyNeedsFree = false;
   };
@@ -265,7 +265,7 @@ namespace SSC {
       int disconnect ();
       void send (
         char *buf,
-        int len,
+        size_t size,
         int port,
         const String address,
         Peer::RequestContext::Callback cb
@@ -420,7 +420,7 @@ namespace SSC {
               uv_fs_req_cleanup(&this->req);
             }
 
-            void setBuffer (int index, int len, char *base);
+            void setBuffer (int index, size_t len, char *base);
             void freeBuffer (int index);
             char* getBuffer (int index);
             size_t getBufferSize (int index);
@@ -492,8 +492,8 @@ namespace SSC {
           void read (
             const String seq,
             uint64_t id,
-            int len,
-            int offset,
+            size_t len,
+            size_t offset,
             Module::Callback cb
           );
           void readdir (
@@ -540,11 +540,14 @@ namespace SSC {
 
       class OS : public Module {
         public:
+          static const int RECV_BUFFER = 1;
+          static const int SEND_BUFFER = 0;
+
           OS (auto core) : Module(core) {}
           void bufferSize (
             const String seq,
             uint64_t peerId,
-            int size,
+            size_t size,
             int buffer,
             Module::Callback cb
           );
@@ -592,7 +595,7 @@ namespace SSC {
             String address = "";
             int port = 0;
             char *bytes = nullptr;
-            int size = 0;
+            size_t size = 0;
             bool ephemeral = false;
           };
 

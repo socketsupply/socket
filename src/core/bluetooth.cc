@@ -513,7 +513,6 @@ namespace SSC {
     auto peripheralManager = [this->controller peripheralManager];
     auto characteristics = [this->controller characteristics];
     auto serviceMap = [this->controller serviceMap];
-    auto sUUID = [CBUUID UUIDWithString: ssid];
     auto cUUID = [CBUUID UUIDWithString: scid];
 
     if (!serviceMap[ssid]) {
