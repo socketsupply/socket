@@ -42,8 +42,6 @@ window.parent = new class Parent {
   }
 }
 
-window.process = parent
-
 document.addEventListener('DOMContentLoaded', () => {
   queueMicrotask(async () => {
     try {

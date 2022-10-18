@@ -1380,6 +1380,7 @@ int main (const int argc, const char* argv[]) {
       flags += " -luv";
 
       files += prefixFile("src/app/app.cc");
+      files += prefixFile("src/core/bluetooth.cc");
       files += prefixFile("src/core/core.cc");
       files += prefixFile("src/core/fs.cc");
       files += prefixFile("src/core/javascript.cc");

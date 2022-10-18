@@ -3,6 +3,7 @@
 
 using namespace SSC;
 
+#if defined(__APPLE__)
 @interface SSCBluetoothController ()
 @property (nonatomic) Bluetooth* bluetooth;
 @end
@@ -420,23 +421,24 @@ using namespace SSC;
   }
 }
 @end
+#endif
 
 namespace SSC {
   Bluetooth::Bluetooth () {
-#if defined(__APPLE__)
+    #if defined(__APPLE__)
     this->controller = [SSCBluetoothController new];
     [this->controller setBluetooth: this];
-#endif
+    #endif
   }
 
   Bluetooth::~Bluetooth () {
-#if defined(__APPLE__)
+    #if defined(__APPLE__)
     if (this->controller != nullptr) {
       #if !__has_feature(objc_arc)
       [this->controller release];
       #endif
     }
-#endif
+    #endif
   }
 
   bool Bluetooth::send (const String& seq, JSON::Any json, Post post) {
@@ -460,11 +462,11 @@ namespace SSC {
   }
 
   void Bluetooth::startScanning () {
-#if defined(__APPLE__)
+    #if defined(__APPLE__)
     if (this->controller != nullptr) {
       [this->controller startScanning];
     }
-#endif
+    #endif
   }
 
   void Bluetooth::publishCharacteristic (
@@ -474,7 +476,7 @@ namespace SSC {
     const String &serviceId,
     const String &characteristicId
   ) {
-#if defined(__APPLE__)
+    #if defined(__APPLE__)
     if (serviceId.size() != 36) {
       this->send(seq, JSON::Object::Entries {
         {"source", "bluetooth.publish"},
@@ -569,7 +571,15 @@ namespace SSC {
     }
 
     debug("CoreBluetooth: did write '%@' %@", data, characteristic);
-#endif
+    #else
+    this->send(seq, JSON::Object::Entries {
+      {"source", "bluetooth.publish"},
+      {"err", JSON::Object::Entries {
+        {"type", "NotSupportedError"},
+        {"message", "Not supported"}
+      }}
+    });
+    #endif
   }
 
   void Bluetooth::subscribeCharacteristic (
@@ -577,6 +587,14 @@ namespace SSC {
     const String &serviceId,
     const String &characteristicId
   ) {
+    auto json = JSON::Object::Entries {
+      {"err", JSON::Object::Entries {
+        {"serviceId", serviceId},
+        {"message", "Failed to subscribe to characteristic"}
+      }}
+    };
+
+    #if defined(__APPLE__)
     auto ssid = [NSString stringWithUTF8String: serviceId.c_str()];
     auto scid = [NSString stringWithUTF8String: characteristicId.c_str()];
 
@@ -616,15 +634,16 @@ namespace SSC {
       [peripheralManager addService: service];
     }
 
-    auto json = JSON::Object::Entries {
+    json = JSON::Object::Entries {
       {"data", JSON::Object::Entries {
         {"serviceId", serviceId},
         {"characteristicId", characteristicId},
-        {"message", "Started"}
+        {"message", "Subscribed to characteristic"}
       }}
     };
+    #endif
 
-    this->send(seq, JSON::Object(json).str());
+    this->send(seq, json);
   }
 
   void Bluetooth::startService (
@@ -638,7 +657,7 @@ namespace SSC {
       }}
     };
 
-#if defined(__APPLE__)
+    #if defined(__APPLE__)
     if (this->controller != nullptr) {
       [this->controller startScanning];
       json = JSON::Object::Entries {
@@ -648,7 +667,7 @@ namespace SSC {
         }}
       };
     }
-#endif
+    #endif
 
     this->send(seq, json);
   }
