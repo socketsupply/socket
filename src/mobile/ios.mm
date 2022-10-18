@@ -16,8 +16,7 @@ static dispatch_queue_attr_t qos = dispatch_queue_attr_make_with_qos_class(
 static dispatch_queue_t queue = dispatch_queue_create("co.socketsupply.queue.app", qos);
 
 @interface AppDelegate : UIResponder <UIApplicationDelegate, WKScriptMessageHandler, UIScrollViewDelegate> {
-  SSCIPCBridge* bridge;
-  SSCBluetoothDelegate* bluetooth;
+  SSC::IPC::Bridge* bridge;
   Core* core;
 }
 @property (strong, nonatomic) UIWindow* window;
@@ -44,7 +43,7 @@ void uncaughtExceptionHandler (NSException *exception) {
 
 - (void) applicationWillEnterForeground: (UIApplication*) application {
   [self.webview evaluateJavaScript: @"window.focus()" completionHandler:nil];
-  [[bridge bluetooth] startScanning];
+  bridge->bluetooth.startScanning();
 }
 
 - (void) applicationWillTerminate: (UIApplication*) application {
@@ -53,15 +52,15 @@ void uncaughtExceptionHandler (NSException *exception) {
 
 - (void) applicationDidBecomeActive: (UIApplication*) application {
   dispatch_async(queue, ^{
-    core->resumeAllPeers();
-    core->runEventLoop();
+    self->core->resumeAllPeers();
+    self->core->runEventLoop();
   });
 }
 
 - (void) applicationWillResignActive: (UIApplication*) application {
   dispatch_async(queue, ^{
-    core->stopEventLoop();
-    core->pauseAllPeers();
+    self->core->stopEventLoop();
+    self->core->pauseAllPeers();
   });
 }
 
@@ -78,7 +77,7 @@ void uncaughtExceptionHandler (NSException *exception) {
     return;
   }
 
-  [bridge route: [body UTF8String] buf: NULL bufsize: 0];
+  bridge->route([body UTF8String], nullptr, 0);
 }
 
 - (void) keyboardWillHide {
@@ -89,7 +88,7 @@ void uncaughtExceptionHandler (NSException *exception) {
   };
 
   self.webview.scrollView.scrollEnabled = YES;
-  bridge.router->emit("keyboard", JSON::Object(json).str());
+  bridge->router.emit("keyboard", JSON::Object(json).str());
 }
 
 - (void) keyboardDidHide {
@@ -99,7 +98,7 @@ void uncaughtExceptionHandler (NSException *exception) {
     }}
   };
 
-  bridge.router->emit("keyboard", JSON::Object(json).str());
+  bridge->router.emit("keyboard", JSON::Object(json).str());
 }
 
 - (void) keyboardWillShow {
@@ -110,7 +109,7 @@ void uncaughtExceptionHandler (NSException *exception) {
   };
 
   self.webview.scrollView.scrollEnabled = NO;
-  bridge.router->emit("keyboard", JSON::Object(json).str());
+  bridge->router.emit("keyboard", JSON::Object(json).str());
 }
 
 - (void) keyboardDidShow {
@@ -120,7 +119,7 @@ void uncaughtExceptionHandler (NSException *exception) {
     }}
   };
 
-  bridge.router->emit("keyboard", JSON::Object(json).str());
+  bridge->router.emit("keyboard", JSON::Object(json).str());
 }
 
 - (void) keyboardWillChange: (NSNotification*) notification {
@@ -138,7 +137,7 @@ void uncaughtExceptionHandler (NSException *exception) {
     }}
   };
 
-  bridge.router->emit("keyboard", JSON::Object(json).str());
+  bridge->router.emit("keyboard", JSON::Object(json).str());
 }
 
 - (void) scrollViewDidScroll: (UIScrollView*) scrollView {
@@ -151,7 +150,7 @@ void uncaughtExceptionHandler (NSException *exception) {
 {
   // TODO can this be escaped or is the url encoded property already?
   auto json = JSON::Object::Entries {{"url", url}};
-  bridge.router->emit("protocol", JSON::Object(json).str());
+  bridge->router.emit("protocol", JSON::Object(json).str());
   return YES;
 }
 
@@ -164,21 +163,17 @@ void uncaughtExceptionHandler (NSException *exception) {
   platform.os = "ios";
 
   core = new Core;
-  bridge = [SSCIPCBridge new];
-  bridge.router = new IPC::Router(core);
-  bridge.router->dispatchFunction = [=] (auto callback) {
-    [bridge dispatch: ^{ callback(); }];
+  bridge = new IPC::Bridge(core);
+  bridge->router.dispatchFunction = [=] (auto callback) {
+    dispatch_async(queue, ^{ callback(); });
   };
 
-  bridge.router->evaluateJavaScriptFunction = [=](auto js) {
+  bridge->router.evaluateJavaScriptFunction = [=](auto js) {
     dispatch_async(dispatch_get_main_queue(), ^{
       auto script = [NSString stringWithUTF8String: js.c_str()];
       [self.webview evaluateJavaScript: script completionHandler: nil];
     });
   };
-
-  bluetooth = [SSCBluetoothDelegate new];
-  [bluetooth setBridge: bridge];
 
   auto appFrame = [[UIScreen mainScreen] bounds];
 
@@ -234,9 +229,8 @@ void uncaughtExceptionHandler (NSException *exception) {
 
   WKWebViewConfiguration *config = [[WKWebViewConfiguration alloc] init];
 
-  SSCIPCBridgeSchemeHandler* handler = [SSCIPCBridgeSchemeHandler new];
-  [handler setBridge: bridge];
-  [config setURLSchemeHandler: handler forURLScheme:@"ipc"];
+  [config setURLSchemeHandler: bridge->router.schemeHandler
+                 forURLScheme: @"ipc"];
 
   self.content = [config userContentController];
 
@@ -256,10 +250,6 @@ void uncaughtExceptionHandler (NSException *exception) {
   [ns addObserver: self selector: @selector(keyboardWillHide) name: UIKeyboardWillHideNotification object: nil];
   [ns addObserver: self selector: @selector(keyboardWillChange:) name: UIKeyboardWillChangeFrameNotification object: nil];
 
-  [bridge setBluetooth: [SSCBluetoothDelegate new]];
-  [bridge setWebview: self.webview];
-  [bridge setCore: core];
-
   self.navDelegate = [[SSCNavigationDelegate alloc] init];
   [self.webview setNavigationDelegate: self.navDelegate];
 
@@ -274,9 +264,7 @@ void uncaughtExceptionHandler (NSException *exception) {
   ];
 
   self.webview.scrollView.delegate = self;
-
   [self.window makeKeyAndVisible];
-  [bridge initNetworkStatusObserver];
 
   return YES;
 }

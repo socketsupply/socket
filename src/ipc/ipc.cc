@@ -16,7 +16,7 @@ namespace SSC::IPC {
   Message::Message (const String& source, char *bytes, size_t size)
     : Message(source)
   {
-    this->buffer.bytes.reset(bytes);
+    this->buffer.bytes = bytes;
     this->buffer.size = size;
   }
 
@@ -83,18 +83,28 @@ namespace SSC::IPC {
   Result::Result () {
   }
 
-  Result::Result (Message::Seq seq, const Message& message) {
+  Result::Result (
+    const Message::Seq& seq,
+    const Message& message
+  ) {
     this->message = message;
     this->source = message.name;
     this->seq = seq;
   }
 
-  Result::Result (Message::Seq seq, const Message& message, JSON::Any value)
-    : Result(seq, message, value, Post{}) { }
+  Result::Result (
+    const Message::Seq& seq,
+    const Message& message,
+    JSON::Any value
+  ) : Result(seq, message, value, Post{}) {
+  }
 
-  Result::Result (Message::Seq seq, const Message& message, JSON::Any value, Post post)
-    : Result(seq, message)
-  {
+  Result::Result (
+    const Message::Seq& seq,
+    const Message& message,
+    JSON::Any value,
+    Post post
+  ) : Result(seq, message) {
     this->post = post;
 
     if (value.type != JSON::Type::Any) {

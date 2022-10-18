@@ -946,7 +946,7 @@ int main (const int argc, const char* argv[]) {
       flags += " " + getCxxFlags();
 
       files += prefixFile("src/app/app.cc");
-      files += prefixFile("src/core/bluetooth.mm");
+      files += prefixFile("src/core/bluetooth.cc");
       files += prefixFile("src/core/core.cc");
       files += prefixFile("src/core/fs.cc");
       files += prefixFile("src/core/javascript.cc");
@@ -955,7 +955,6 @@ int main (const int argc, const char* argv[]) {
       files += prefixFile("src/core/udp.cc");
       files += prefixFile("src/desktop/main.cc");
       files += prefixFile("src/ipc/bridge.cc");
-      files += prefixFile("src/ipc/bridge.mm");
       files += prefixFile("src/ipc/ipc.cc");
       files += prefixFile("src/process/unix.cc");
       files += prefixFile("src/window/apple.mm");
@@ -1595,7 +1594,7 @@ int main (const int argc, const char* argv[]) {
       //
       fs::copy(trim(prefixFile("src/common.hh")), pathToDist);
       fs::copy(trim(prefixFile("src/app/app.hh")), pathToDist / "app");
-      fs::copy(trim(prefixFile("src/core/bluetooth.mm")), pathToDist / "core");
+      fs::copy(trim(prefixFile("src/core/bluetooth.cc")), pathToDist / "core");
       fs::copy(trim(prefixFile("src/core/core.cc")), pathToDist / "core");
       fs::copy(trim(prefixFile("src/core/core.hh")), pathToDist / "core");
       fs::copy(trim(prefixFile("src/core/fs.cc")), pathToDist / "core");
@@ -1607,7 +1606,6 @@ int main (const int argc, const char* argv[]) {
       fs::copy(trim(prefixFile("src/core/runtime-preload.hh")), pathToDist / "core");
       fs::copy(trim(prefixFile("src/core/udp.cc")), pathToDist / "core");
       fs::copy(trim(prefixFile("src/ipc/bridge.cc")), pathToDist / "ipc");
-      fs::copy(trim(prefixFile("src/ipc/bridge.mm")), pathToDist / "ipc");
       fs::copy(trim(prefixFile("src/ipc/ipc.cc")), pathToDist / "ipc");
       fs::copy(trim(prefixFile("src/ipc/ipc.hh")), pathToDist / "ipc");
       fs::copy(trim(prefixFile("src/mobile/ios.mm")), pathToDist / "mobile");

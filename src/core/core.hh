@@ -43,6 +43,25 @@
 #include "json.hh"
 #include "runtime-preload.hh"
 
+#if defined(__APPLE__)
+@interface SSCBluetoothController : NSObject<
+  CBCentralManagerDelegate,
+  CBPeripheralManagerDelegate,
+  CBPeripheralDelegate
+>
+@property (strong, nonatomic) CBCentralManager* centralManager;
+@property (strong, nonatomic) CBPeripheralManager* peripheralManager;
+@property (strong, nonatomic) CBPeripheral* bluetoothPeripheral;
+@property (strong, nonatomic) NSMutableArray* peripherals;
+@property (strong, nonatomic) NSMutableDictionary* services;
+@property (strong, nonatomic) NSMutableDictionary* characteristics;
+@property (strong, nonatomic) NSMutableDictionary* serviceMap;
+- (void) startAdvertising;
+- (void) startScanning;
+- (id) init;
+@end
+#endif
+
 namespace SSC {
   constexpr int EVENT_LOOP_POLL_TIMEOUT = 32; // in milliseconds
 
@@ -278,6 +297,43 @@ namespace SSC {
     uv_ip4_name(name_in, address, 17);
   }
 
+  class Bluetooth {
+    public:
+      using SendFunction = std::function<void(const String, JSON::Any, Post)>;
+      using EmitFunction = std::function<void(const String, JSON::Any)>;
+
+      Core *core = nullptr;
+      #if defined(__APPLE__)
+      SSCBluetoothController* controller= nullptr;
+      #endif
+
+      SendFunction sendFunction;
+      EmitFunction emitFunction;
+
+      Bluetooth ();
+      ~Bluetooth ();
+      bool send (const String& seq, JSON::Any json, Post post);
+      bool send (const String& seq, JSON::Any json);
+      bool emit (const String& seq, JSON::Any json);
+      void startScanning ();
+      void publishCharacteristic (
+        const String& seq,
+        char* bytes,
+        size_t size,
+        const String& serviceId,
+        const String& characteristicId
+      );
+      void subscribeCharacteristic (
+        const String& seq,
+        const String& serviceId,
+        const String& characteristicId
+      );
+      void startService (
+        const String& seq,
+        const String& serviceId
+      );
+  };
+
   class Core {
     public:
       class Module {
@@ -504,6 +560,17 @@ namespace SSC {
             const String data,
             Module::Callback cb
           );
+          void notify (
+            const String seq,
+            const String title,
+            const String body,
+            Module::Callback cb
+          );
+          void openExternal (
+            const String seq,
+            const String value,
+            Module::Callback cb
+          );
       };
 
       class UDP : public Module {
@@ -658,36 +725,5 @@ namespace SSC {
     const String& value
   );
 } // SSC
-
-#if defined(__APPLE__)
-@class SSCIPCBridge;
-
-@interface SSCBluetoothDelegate : NSObject<
-  CBCentralManagerDelegate,
-  CBPeripheralManagerDelegate,
-  CBPeripheralDelegate>
-@property (strong, nonatomic) SSCIPCBridge* bridge;
-@property (strong, nonatomic) CBCentralManager* centralManager;
-@property (strong, nonatomic) CBPeripheralManager* peripheralManager;
-@property (strong, nonatomic) CBPeripheral* bluetoothPeripheral;
-@property (strong, nonatomic) NSMutableArray* peripherals;
-@property (strong, nonatomic) NSMutableDictionary* services;
-@property (strong, nonatomic) NSMutableDictionary* characteristics;
-@property (strong, nonatomic) NSMutableDictionary* serviceMap;
-- (void) publishCharacteristic: (SSC::String) seq
-                           buf: (char*) buf
-                           len: (int) len
-                           sid: (SSC::String) sid
-                           cid: (SSC::String) cid;
-- (void) subscribeCharacteristic: (SSC::String)
-                         seq sid: (SSC::String)
-                         sid cid: (SSC::String) cid;
-- (void) startService: (SSC::String)
-              seq sid: (SSC::String) sid;
-- (void) startAdvertising;
-- (void) startScanning;
-- (void) initBluetooth;
-@end
-#endif
 
 #endif // SSC_CORE_CORE_H

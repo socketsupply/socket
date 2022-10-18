@@ -18,21 +18,24 @@
   WKUIDelegate,
   NSDraggingDestination,
   NSFilePromiseProviderDelegate,
-  NSDraggingSource>
-- (NSDragOperation) draggingSession: (NSDraggingSession *) session
+  NSDraggingSource
+>
+-   (NSDragOperation) draggingSession: (NSDraggingSession *) session
 sourceOperationMaskForDraggingContext: (NSDraggingContext) context;
 @end
 #endif
 
 @interface SSCNavigationDelegate : NSObject<WKNavigationDelegate>
-- (void) webview: (SSCBridgedWebView*) webview
+-                  (void) webview: (SSCBridgedWebView*) webview
   decidePolicyForNavigationAction: (WKNavigationAction*) navigationAction
-  decisionHandler: (void (^)(WKNavigationActionPolicy)) decisionHandler;
+                  decisionHandler: (void (^)(WKNavigationActionPolicy)) decisionHandler;
 @end
 #endif
 
 namespace SSC {
+#if defined(_WIN32)
   class DragDrop;
+#endif
 
   enum {
     WINDOW_HINT_NONE = 0,  // Width and height are default size
@@ -171,11 +174,7 @@ namespace SSC {
             WindowFactory &factory,
             App &app,
             WindowOptions opts
-          ) : Window(app, opts)
-            , factory(factory)
-          {
-            // noop
-          }
+          ) : Window(app, opts) , factory(factory) { }
 
           ~WindowWithMetadata () {}
 
