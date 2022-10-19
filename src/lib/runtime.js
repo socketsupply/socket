@@ -1,4 +1,4 @@
-window.parent = new class Parent {
+window.process = window.parent = new class Parent {
   arch = null
   argv = []
   debug = false
