@@ -10,7 +10,7 @@ namespace SSC {
 // file= runtime.js
 constexpr auto gPreload = R"JS(
 ;(() => {
-window.parent = new class Parent {
+window.process = window.parent = new class Parent {
   arch = null
   argv = []
   debug = false
