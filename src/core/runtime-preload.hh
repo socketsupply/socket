@@ -35,7 +35,11 @@ namespace SSC {
         "    window.location.reload();                                  \n"
         "  });                                                          \n"
         "}                                                              \n"
-        "window._ipc.send('process.open')                               \n";
+        "const uri = `ipc://process.open`;                              \n"
+        "const postMessage =                                            \n"
+        "  window?.webkit?.messageHandlers?.external?.postMessage ??    \n"
+        "  window?.chrome?.webview?.postMessage;                        \n"
+        "postMessage(uri);                                              \n";
     }
 
     if (opts.headless) {
@@ -48,8 +52,8 @@ namespace SSC {
         "    .join('');                                                 \n"
         "  const uri = `ipc://stdout?index=${index}&value=${value}`;    \n"
         "  const postMessage =                                          \n"
-        "    ? window.webkit.messageHandlers.external.postMessage       \n"
-        "    : window.chrome.webview.postMessage;                       \n"
+        "    window?.webkit?.messageHandlers?.external?.postMessage ??  \n"
+        "    window?.chrome?.webview?.postMessage;                      \n"
         "  postMessage(uri);                                            \n"
         "};                                                             \n"
         "console.warn = console.error = console.log;                    \n";
