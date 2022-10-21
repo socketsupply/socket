@@ -510,6 +510,9 @@ namespace SSC {
     [config setURLSchemeHandler: bridge->router.schemeHandler
                    forURLScheme: @"ipc"];
 
+    [config setURLSchemeHandler: bridge->router.schemeHandler
+                   forURLScheme: @"ssc"];
+
     WKPreferences* prefs = [config preferences];
     [prefs setJavaScriptCanOpenWindowsAutomatically:NO];
 
