@@ -106,37 +106,45 @@ namespace SSC {
     Lock lock(postsMutex);
 
     if (post.id == 0) {
-      post.id = SSC::rand64();
+      post.id = rand64();
     }
 
-    String sid = std::to_string(post.id);
-
-    String js(
-      ";(() => {\n"
-      "  const xhr = new XMLHttpRequest();\n"
-      "  xhr.responseType = 'arraybuffer';\n"
-      "  xhr.onload = e => {\n"
-      "    let o = `" + params + "`;\n"
-      "    let headers = `" + SSC::trim(post.headers) + "`\n"
-      "      .trim().split(/[\\r\\n]+/).filter(Boolean);\n"
-      "    try { o = JSON.parse(o) } catch (err) {\n"
-      "      console.error(err.stack || err, o)\n"
-      "    };\n"
-      "    o.seq = `" + seq + "`;\n"
-      "    const detail = {\n"
-      "      data: xhr.response,\n"
-      "      sid: '" + sid + "',\n"
-      "      headers: Object.fromEntries(\n"
-      "        headers.map(l => l.split(/\\s*:\\s*/))\n"
-      "      ),\n"
-      "      params: o\n"
-      "    };\n"
-      "    queueMicrotask(() => window._ipc.emit('data', detail));\n"
-      "  };\n"
-      "  xhr.open('GET', 'ipc://post?id=" + sid + "');\n"
-      "  xhr.send();\n"
-      "})();\n"
-      "//# sourceURL=post.js"
+    auto sid = std::to_string(post.id);
+    auto js = createJavaScript("post-data.js",
+      "const xhr = new XMLHttpRequest();                             \n"
+      "xhr.responseType = 'arraybuffer';                             \n"
+      "xhr.onload = e => {                                           \n"
+      "  let params = `" + params + "`;                              \n"
+      "  params.seq = `" + seq + "`;                                 \n"
+      "                                                              \n"
+      "  try {                                                       \n"
+      "    params = JSON.parse(params);                              \n"
+      "  } catch (err) {                                             \n"
+      "    console.error(err.stack || err, params);                  \n"
+      "  };                                                          \n"
+      "                                                              \n"
+      "  const headers = `" + trim(post.headers) + "`                \n"
+      "    .trim()                                                   \n"
+      "    .split(/[\\r\\n]+/)                                       \n"
+      "    .filter(Boolean);                                         \n"
+      "                                                              \n"
+      "  const detail = {                                            \n"
+      "    data: xhr.response,                                       \n"
+      "    sid: '" + sid + "',                                       \n"
+      "    headers: Object.fromEntries(                              \n"
+      "      headers.map(l => l.split(/\\s*:\\s*/))                  \n"
+      "    ),                                                        \n"
+      "    params: params                                            \n"
+      "  };                                                          \n"
+      "                                                              \n"
+      "  queueMicrotask(() => {                                      \n"
+      "    const event = new window.CustomEvent('data', { detail }); \n"
+      "    window.dispatchEvent(event);                              \n"
+      "  });                                                         \n"
+      "};                                                            \n"
+      "                                                              \n"
+      "xhr.open('GET', 'ipc://post?id=" + sid + "');                 \n"
+      "xhr.send();                                                   \n"
     );
 
     putPost(post.id, post);

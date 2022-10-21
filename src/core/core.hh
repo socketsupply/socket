@@ -712,10 +712,19 @@ namespace SSC {
   };
 
   String createJavaScript (const String& name, const String& source);
+
+  String getEmitToRenderProcessJavaScript (
+    const String& event,
+    const String& value,
+    const String& target,
+    const JSON::Object& options
+  );
+
   String getEmitToRenderProcessJavaScript (
     const String& event,
     const String& value
   );
+
   String getResolveMenuSelectionJavaScript (
     const String& seq,
     const String& title,

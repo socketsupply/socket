@@ -14,8 +14,10 @@ namespace SSC {
       "  arch: '" + platform.arch + "',                               \n"
       "  cwd: () => '" + cleanCwd + "',                               \n"
       "  debug: " + std::to_string(opts.debug) + ",                   \n"
+      "  env: {},                                                     \n"
       "  executable: '" + opts.executable + "',                       \n"
       "  index: Number('" + std::to_string(opts.index) + "'),         \n"
+      "  os: '" + platform.os + "',                                   \n"
       "  platform: '" + platform.os + "',                             \n"
       "  port: Number('" + std::to_string(opts.port) + "'),           \n"
       "  title: '" + opts.title + "',                                 \n"
@@ -28,7 +30,7 @@ namespace SSC {
       "window.__args.argv = [" + opts.argv + "];                      \n"
     );
 
-    if (platform.os == "mac" || platform.os == "linux" || platform.os == "win") {
+    if (platform.mac || platform.linux || platform.win) {
       preload += "                                                      \n"
         "if (window?.parent?.port > 0) {                                \n"
         "  window.addEventListener('menuItemSelected', e => {           \n"
@@ -36,27 +38,11 @@ namespace SSC {
         "  });                                                          \n"
         "}                                                              \n"
         "const uri = `ipc://process.open`;                              \n"
-        "const postMessage =                                            \n"
-        "  window?.webkit?.messageHandlers?.external?.postMessage ??    \n"
-        "  window?.chrome?.webview?.postMessage;                        \n"
-        "postMessage(uri);                                              \n";
-    }
-
-    if (opts.headless) {
-      preload += "                                                      \n"
-        "console.log = (...args) => {                                   \n"
-        "  const { index } = window.__args;                             \n"
-        "  const value = args                                           \n"
-        "    .map((v) => typeof v === 'string' ? v : JSON.stringify(v)) \n"
-        "    .map(encodeURIComponent)                                   \n"
-        "    .join('');                                                 \n"
-        "  const uri = `ipc://stdout?index=${index}&value=${value}`;    \n"
-        "  const postMessage =                                          \n"
-        "    window?.webkit?.messageHandlers?.external?.postMessage ??  \n"
-        "    window?.chrome?.webview?.postMessage;                      \n"
-        "  postMessage(uri);                                            \n"
-        "};                                                             \n"
-        "console.warn = console.error = console.log;                    \n";
+        "if (window?.webkit?.messageHandlers?.external?.postMessage) {  \n"
+        "  window.webkit.messageHandlers.external.postMessage(uri);     \n"
+        "} else if (window?.chrome?.webview?.postMessage) {             \n"
+        "  window.chrome.webview.postMessage(uri);                      \n"
+        "}                                                              \n";
     }
 
     for (auto const &tuple : opts.appData) {
