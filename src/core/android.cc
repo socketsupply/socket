@@ -236,7 +236,6 @@ jboolean NativeCore::ConfigureEnvironment () {
   windowOptions.executable = this->config["executable"];
   windowOptions.headless = this->config["headless"] == "true";
   windowOptions.version = "v" + this->config["version"];
-  windowOptions.preload = SSC::gPreloadMobile;
   windowOptions.title = this->config["title"];
   windowOptions.debug = DEBUG ? true : false;
   windowOptions.env = stream.str();
