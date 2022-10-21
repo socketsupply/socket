@@ -536,12 +536,7 @@ namespace SSC {
       this
     );
 
-    String preload = ToString(
-      "window.external = {\n"
-      "  invoke: arg => window.webkit.messageHandlers.external.postMessage(arg)\n"
-      "};\n"
-      "" + createPreload(opts) + "\n"
-    );
+    String preload = ToString(createPreload(opts));
 
     WebKitUserContentManager *manager =
       webkit_web_view_get_user_content_manager(WEBKIT_WEB_VIEW(webview));

@@ -1,5 +1,11 @@
 #include "window.hh"
 
+void inline uncaughtExceptionHandler (NSException *exception) {
+  NSLog(@">>> %@", exception.name);
+  NSLog(@">>> %@", exception.reason);
+  NSLog(@">>> %@", exception.callStackSymbols);
+}
+
 @implementation SSCNavigationDelegate
 - (void) webview: (SSCBridgedWebView*) webview
     decidePolicyForNavigationAction: (WKNavigationAction*) navigationAction
@@ -514,13 +520,7 @@ namespace SSC {
     WKUserContentController* controller = [config userContentController];
 
     // Add preload script, normalizing the interface to be cross-platform.
-    SSC::String preload = ToString(
-      "window.external = {\n"
-      "  invoke: arg => window.webkit.messageHandlers.webview.postMessage(arg)\n"
-      "};\n"
-
-      "" + createPreload(opts) + "\n"
-    );
+    SSC::String preload = ToString(createPreload(opts));
 
     WKUserScript* userScript = [WKUserScript alloc];
 

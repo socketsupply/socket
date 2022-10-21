@@ -657,12 +657,7 @@ namespace SSC {
     ShowWindow(window, SW_SHOW);
     SetWindowLongPtr(window, GWLP_USERDATA, (LONG_PTR) this);
 
-    SSC::String preload(
-      "window.external = {\n"
-      "  invoke: arg => window.chrome.webview.postMessage(arg)\n"
-      "};\n"
-      "" + createPreload(opts) + "\n"
-    );
+    SSC::String preload = createPreload(opts);
 
     wchar_t modulefile[MAX_PATH];
     GetModuleFileNameW(NULL, modulefile, MAX_PATH);

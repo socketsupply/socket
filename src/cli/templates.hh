@@ -33,7 +33,8 @@ general options:
   -o             only run user build step
   -r             run after building
   --headless     run headlessly
-  --test[=value] indicate test mode
+  --stdin        read from stdin (emitted in window 0)
+  --test=path    indicate test mode
 
 packaging options:
   --prod  disable debugging info, inspector, etc.
@@ -106,7 +107,7 @@ usage:
 options:
   --platform     iossimulator; if not specified, runs on current platfrom
   --prod         run production build
-  --test[=value] indicate test mode
+  --test=path    indicate test mode
 )TEXT";
 
 constexpr auto gHelloWorld = R"HTML(
@@ -231,7 +232,7 @@ constexpr auto gCredits = R"HTML(
   </p>
 )HTML";
 
-constexpr auto DEFAULT_ANDROID_ACTIVITY_NAME = ".MainWebViewActivity";
+constexpr auto DEFAULT_ANDROID_ACTIVITY_NAME = ".MainActivity";
 
 //
 // Android Manifest
@@ -240,7 +241,6 @@ constexpr auto gAndroidManifest = R"XML(
 <?xml version="1.0" encoding="utf-8"?>
 <manifest
   xmlns:android="http://schemas.android.com/apk/res/android"
-  package="{{bundle_identifier}}"
 >
   <uses-permission android:name="android.permission.INTERNET" />
   <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
@@ -257,6 +257,7 @@ constexpr auto gAndroidManifest = R"XML(
     android:label="{{title}}"
     android:theme="@style/Theme.AppCompat.Light"
     android:supportsRtl="true"
+    {{android_allow_cleartext}}
   >
     <activity
       android:name="{{android_main_activity}}"
@@ -419,19 +420,11 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
   objects = {
 
 /* Begin PBXBuildFile section */
+		17A7F8F229358D220051D146 /* init.cc in Sources */ = {isa = PBXBuildFile; fileRef = 17A7F8EE29358D180051D146 /* init.cc */; };
+		17A7F8F529358D430051D146 /* libsocket-runtime.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 17A7F8F329358D430051D146 /* libsocket-runtime.a */; };
+		17A7F8F629358D430051D146 /* libuv.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 17A7F8F429358D430051D146 /* libuv.a */; };
+		17A7F8F729358D4D0051D146 /* ios.o in Frameworks */ = {isa = PBXBuildFile; fileRef = 17A7F8F129358D180051D146 /* ios.o */; };
 		17C230BA28E9398700301440 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 17C230B928E9398700301440 /* Foundation.framework */; };
-		17DA350C28ECA38D00ED23A7 /* javascript.cc in Sources */ = {isa = PBXBuildFile; fileRef = 17DA34E128ECA38C00ED23A7 /* javascript.cc */; };
-		17DA350E28ECA38D00ED23A7 /* udp.cc in Sources */ = {isa = PBXBuildFile; fileRef = 17DA34E528ECA38C00ED23A7 /* udp.cc */; };
-		17DA350F28ECA38D00ED23A7 /* peer.cc in Sources */ = {isa = PBXBuildFile; fileRef = 17DA34E628ECA38C00ED23A7 /* peer.cc */; };
-		17DA351128ECA38D00ED23A7 /* fs.cc in Sources */ = {isa = PBXBuildFile; fileRef = 17DA34E928ECA38C00ED23A7 /* fs.cc */; };
-		17DA351328ECA38D00ED23A7 /* core.cc in Sources */ = {isa = PBXBuildFile; fileRef = 17DA34EC28ECA38C00ED23A7 /* core.cc */; };
-		17DA351428ECA38D00ED23A7 /* ios.mm in Sources */ = {isa = PBXBuildFile; fileRef = 17DA34EF28ECA38C00ED23A7 /* ios.mm */; };
-		17E73FD828FCC90A0087604F /* json.cc in Sources */ = {isa = PBXBuildFile; fileRef = 17E73FD528FCC90A0087604F /* json.cc */; };
-		17E73FD928FCC90A0087604F /* bluetooth.cc in Sources */ = {isa = PBXBuildFile; fileRef = 17E73FD728FCC90A0087604F /* bluetooth.cc */; };
-		17E73FDD28FCC98A0087604F /* apple.mm in Sources */ = {isa = PBXBuildFile; fileRef = 17E73FDB28FCC98A0087604F /* apple.mm */; };
-		17E73FEB28FCC9C80087604F /* ipc.cc in Sources */ = {isa = PBXBuildFile; fileRef = 17E73FE728FCC9C80087604F /* ipc.cc */; };
-		17E73FEC28FCC9C80087604F /* bridge.cc in Sources */ = {isa = PBXBuildFile; fileRef = 17E73FE828FCC9C80087604F /* bridge.cc */; };
-		17E73FEF28FCD3360087604F /* libuv-ios.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 17E73FEE28FCD3360087604F /* libuv-ios.a */; };
 		290F7EBF2768C49000486988 /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 294A3C792763E9C6007B5B9A /* UIKit.framework */; };
 		290F7F87276BC2B000486988 /* lib in Resources */ = {isa = PBXBuildFile; fileRef = 290F7F86276BC2B000486988 /* lib */; };
 		29124C5D2761336B001832A0 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 29124C5B2761336B001832A0 /* LaunchScreen.storyboard */; };
@@ -443,27 +436,12 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		17A7F8EE29358D180051D146 /* init.cc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = init.cc; sourceTree = "<group>"; };
+		17A7F8F129358D180051D146 /* ios.o */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.objfile"; path = ios.o; sourceTree = "<group>"; };
+		17A7F8F329358D430051D146 /* libsocket-runtime.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = "libsocket-runtime.a"; path = "lib/libsocket-runtime.a"; sourceTree = "<group>"; };
+		17A7F8F429358D430051D146 /* libuv.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libuv.a; path = lib/libuv.a; sourceTree = "<group>"; };
 		17C230B928E9398700301440 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
-		17DA34E128ECA38C00ED23A7 /* javascript.cc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = javascript.cc; sourceTree = "<group>"; };
-		17DA34E328ECA38C00ED23A7 /* runtime-preload.hh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = "runtime-preload.hh"; sourceTree = "<group>"; };
-		17DA34E528ECA38C00ED23A7 /* udp.cc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = udp.cc; sourceTree = "<group>"; };
-		17DA34E628ECA38C00ED23A7 /* peer.cc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = peer.cc; sourceTree = "<group>"; };
-		17DA34E928ECA38C00ED23A7 /* fs.cc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = fs.cc; sourceTree = "<group>"; };
-		17DA34EA28ECA38C00ED23A7 /* runtime-preload-sources.hh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = "runtime-preload-sources.hh"; sourceTree = "<group>"; };
-		17DA34EC28ECA38C00ED23A7 /* core.cc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = core.cc; sourceTree = "<group>"; };
-		17DA34ED28ECA38C00ED23A7 /* core.hh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = core.hh; sourceTree = "<group>"; };
-		17DA34EF28ECA38C00ED23A7 /* ios.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = ios.mm; sourceTree = "<group>"; };
-		17DA34F828ECA38C00ED23A7 /* app.hh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = app.hh; sourceTree = "<group>"; };
-		17DA34FA28ECA38C00ED23A7 /* options.hh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = options.hh; sourceTree = "<group>"; };
-		17E73FD528FCC90A0087604F /* json.cc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = json.cc; sourceTree = "<group>"; };
-		17E73FD628FCC90A0087604F /* json.hh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = json.hh; sourceTree = "<group>"; };
-		17E73FD728FCC90A0087604F /* bluetooth.cc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = bluetooth.cc; sourceTree = "<group>"; };
 		17E73FDA28FCC9320087604F /* common.hh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = common.hh; sourceTree = "<group>"; };
-		17E73FDB28FCC98A0087604F /* apple.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = apple.mm; sourceTree = "<group>"; };
-		17E73FDC28FCC98A0087604F /* window.hh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = window.hh; sourceTree = "<group>"; };
-		17E73FE728FCC9C80087604F /* ipc.cc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = ipc.cc; sourceTree = "<group>"; };
-		17E73FE828FCC9C80087604F /* bridge.cc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = bridge.cc; sourceTree = "<group>"; };
-		17E73FEA28FCC9C80087604F /* ipc.hh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = ipc.hh; sourceTree = "<group>"; };
 		17E73FEE28FCD3360087604F /* libuv-ios.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = "libuv-ios.a"; path = "lib/libuv-ios.a"; sourceTree = "<group>"; };
 		290F7F86276BC2B000486988 /* lib */ = {isa = PBXFileReference; lastKnownFileType = folder; path = lib; sourceTree = "<group>"; };
 		29124C4A27613369001832A0 /* {{name}}.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "{{name}}.app"; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -483,7 +461,9 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				17E73FEF28FCD3360087604F /* libuv-ios.a in Frameworks */,
+				17A7F8F529358D430051D146 /* libsocket-runtime.a in Frameworks */,
+				17A7F8F629358D430051D146 /* libuv.a in Frameworks */,
+				17A7F8F729358D4D0051D146 /* ios.o in Frameworks */,
 				17C230BA28E9398700301440 /* Foundation.framework in Frameworks */,
 				2996EDB22770BC1F00C672A2 /* Network.framework in Frameworks */,
 				2996EDB22770BC1F00C672A3 /* CoreBluetooth.framework in Frameworks */,
@@ -496,85 +476,28 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		17DA34DF28ECA38C00ED23A7 /* core */ = {
+		17A7F8EF29358D180051D146 /* objects */ = {
 			isa = PBXGroup;
 			children = (
-				17DA34EC28ECA38C00ED23A7 /* core.cc */,
-				17DA34ED28ECA38C00ED23A7 /* core.hh */,
-				17E73FD728FCC90A0087604F /* bluetooth.cc */,
-				17DA34E928ECA38C00ED23A7 /* fs.cc */,
-				17DA34E128ECA38C00ED23A7 /* javascript.cc */,
-				17E73FD528FCC90A0087604F /* json.cc */,
-				17E73FD628FCC90A0087604F /* json.hh */,
-				17DA34E628ECA38C00ED23A7 /* peer.cc */,
-				17DA34EA28ECA38C00ED23A7 /* runtime-preload-sources.hh */,
-				17DA34E328ECA38C00ED23A7 /* runtime-preload.hh */,
-				17DA34E528ECA38C00ED23A7 /* udp.cc */,
+				17A7F8F029358D180051D146 /* mobile */,
 			);
-			path = core;
+			path = objects;
 			sourceTree = "<group>";
 		};
-		17DA34EE28ECA38C00ED23A7 /* mobile */ = {
+		17A7F8F029358D180051D146 /* mobile */ = {
 			isa = PBXGroup;
 			children = (
-				17DA34EF28ECA38C00ED23A7 /* ios.mm */,
+				17A7F8F129358D180051D146 /* ios.o */,
 			);
 			path = mobile;
-			sourceTree = "<group>";
-		};
-		17DA34F728ECA38C00ED23A7 /* app */ = {
-			isa = PBXGroup;
-			children = (
-				17DA34F828ECA38C00ED23A7 /* app.hh */,
-			);
-			path = app;
-			sourceTree = "<group>";
-		};
-		17DA34F928ECA38C00ED23A7 /* window */ = {
-			isa = PBXGroup;
-			children = (
-				17E73FDB28FCC98A0087604F /* apple.mm */,
-				17DA34FA28ECA38C00ED23A7 /* options.hh */,
-				17E73FDC28FCC98A0087604F /* window.hh */,
-			);
-			path = window;
-			sourceTree = "<group>";
-		};
-		17DA34FB28ECA38C00ED23A7 /* include */ = {
-			isa = PBXGroup;
-			children = (
-				17DA34FD28ECA38C00ED23A7 /* uv */,
-			);
-			path = include;
-			sourceTree = "<group>";
-		};
-		17DA34FD28ECA38C00ED23A7 /* uv */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = uv;
-			sourceTree = "<group>";
-		};
-		17E73FE628FCC9C80087604F /* ipc */ = {
-			isa = PBXGroup;
-			children = (
-				17E73FE728FCC9C80087604F /* ipc.cc */,
-				17E73FE828FCC9C80087604F /* bridge.cc */,
-				17E73FEA28FCC9C80087604F /* ipc.hh */,
-			);
-			path = ipc;
 			sourceTree = "<group>";
 		};
 		29124C4127613369001832A0 = {
 			isa = PBXGroup;
 			children = (
+				17A7F8EE29358D180051D146 /* init.cc */,
+				17A7F8EF29358D180051D146 /* objects */,
 				17E73FDA28FCC9320087604F /* common.hh */,
-				17DA34F728ECA38C00ED23A7 /* app */,
-				17DA34DF28ECA38C00ED23A7 /* core */,
-				17DA34FB28ECA38C00ED23A7 /* include */,
-				17E73FE628FCC9C80087604F /* ipc */,
-				17DA34EE28ECA38C00ED23A7 /* mobile */,
-				17DA34F928ECA38C00ED23A7 /* window */,
 				290F7F86276BC2B000486988 /* lib */,
 				294A3C9027677424007B5B9A /* socket.entitlements */,
 				294A3C842764EAB7007B5B9A /* ui */,
@@ -596,6 +519,8 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 		294A3C782763E9C6007B5B9A /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				17A7F8F329358D430051D146 /* libsocket-runtime.a */,
+				17A7F8F429358D430051D146 /* libuv.a */,
 				17E73FEE28FCD3360087604F /* libuv-ios.a */,
 				17C230B928E9398700301440 /* Foundation.framework */,
 				2996EDB12770BC1F00C672A2 /* Network.framework */,
@@ -677,17 +602,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				17E73FEB28FCC9C80087604F /* ipc.cc in Sources */,
-				17DA350C28ECA38D00ED23A7 /* javascript.cc in Sources */,
-				17E73FEC28FCC9C80087604F /* bridge.cc in Sources */,
-				17DA350F28ECA38D00ED23A7 /* peer.cc in Sources */,
-				17E73FD928FCC90A0087604F /* bluetooth.cc in Sources */,
-				17DA351128ECA38D00ED23A7 /* fs.cc in Sources */,
-				17DA351428ECA38D00ED23A7 /* ios.mm in Sources */,
-				17E73FDD28FCC98A0087604F /* apple.mm in Sources */,
-				17DA351328ECA38D00ED23A7 /* core.cc in Sources */,
-				17DA350E28ECA38D00ED23A7 /* udp.cc in Sources */,
-				17E73FD828FCC90A0087604F /* json.cc in Sources */,
+				17A7F8F229358D220051D146 /* init.cc in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -855,6 +770,10 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
         );
         LIBRARY_SEARCH_PATHS = "$(PROJECT_DIR)/lib";
         MARKETING_VERSION = 1.0;
+        OTHER_CFLAGS = (
+          "-DHOST={{host}}",
+          "-DPORT={{port}}",
+        );
         PRODUCT_BUNDLE_IDENTIFIER = "{{bundle_identifier}}";
         PRODUCT_NAME = "$(TARGET_NAME)";
         PROVISIONING_PROFILE_SPECIFIER = "{{ios_provisioning_specifier}}";
@@ -1049,7 +968,6 @@ buildscript {
 
   dependencies {
     classpath 'com.android.tools.build:gradle:7.2.1'
-
     classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
   }
 }
@@ -1074,14 +992,15 @@ apply plugin: 'com.android.application'
 apply plugin: 'kotlin-android'
 
 android {
-  compileSdkVersion 32
+  compileSdkVersion 33
   ndkVersion "25.0.8775105"
   flavorDimensions "default"
+  namespace '{{bundle_identifier}}'
 
   defaultConfig {
     applicationId "{{bundle_identifier}}"
     minSdkVersion 26
-    targetSdkVersion 32
+    targetSdkVersion 33
     versionCode {{revision}}
     versionName "{{version}}"
 
@@ -1176,13 +1095,11 @@ LOCAL_MODULE := uv
 
 UV_UNIX_SOURCE +=       \
   async.c               \
-  atomic-ops.h          \
   core.c                \
   dl.c                  \
   fs.c                  \
   getaddrinfo.c         \
   getnameinfo.c         \
-  internal.h            \
   linux.c               \
   loop.c                \
   loop-watcher.c        \
@@ -1202,60 +1119,65 @@ UV_UNIX_SOURCE +=       \
   udp.c
 
 LOCAL_CFLAGS :=              \
+  -std=gnu89                 \
+  -g                         \
+  -pedantic                  \
+  -I$(LOCAL_PATH)/include    \
+  -I$(LOCAL_PATH)/uv/src     \
+  -D_FILE_OFFSET_BITS=64     \
   -D_GNU_SOURCE              \
   -D_LARGEFILE_SOURCE        \
-  -D_FILE_OFFSET_BITS=64     \
-  -I$(LOCAL_PATH)/uv/include \
-  -I$(LOCAL_PATH)/uv/src     \
   -landroid                  \
-  -g                         \
-  --std=gnu89                \
-  -pedantic                  \
   -Wall                      \
   -Wextra                    \
-  -Wno-unused-parameter      \
   -Wno-pedantic              \
   -Wno-sign-compare          \
+  -Wno-unused-parameter      \
   -Wno-implicit-function-declaration
 
 LOCAL_SRC_FILES +=                     \
   $(wildcard $(LOCAL_PATH)/uv/src/*.c) \
   $(foreach file, $(UV_UNIX_SOURCE), $(LOCAL_PATH)/uv/src/unix/$(file))
 
-LOCAL_EXPORT_C_INCLUDES := $(LOCAL_PATH)/uv $(LOCAL_PATH)/uv/include
+LOCAL_EXPORT_C_INCLUDES := $(LOCAL_PATH)/include
 include $(BUILD_STATIC_LIBRARY)
 
-## libssc-core.so
+## libsocket-runtime.so
 include $(CLEAR_VARS)
-LOCAL_MODULE := ssc-core
+LOCAL_MODULE := socket-runtime
 
-LOCAL_CFLAGS += \
-  -Iuv          \
-  -fPIC         \
-  -pthreads     \
-  -fsigned-char \
-  -fexceptions  \
-  -frtti        \
-  -std=c++2a    \
-  -g            \
+LOCAL_CFLAGS +=              \
+  -std=c++2a                 \
+  -g                         \
+  -I$(LOCAL_PATH)/include    \
+  -I$(LOCAL_PATH)            \
+  -pthreads                  \
+  -fexceptions               \
+  -fPIC                      \
+  -frtti                     \
+  -fsigned-char              \
   -O0
 
 LOCAL_CFLAGS += {{cflags}}
 
 LOCAL_LDLIBS := -landroid -llog
-LOCAL_SRC_FILES =    \
-  core/android.cc    \
-  core/core.cc       \
-  core/fs.cc         \
-  core/javascript.cc \
-  core/json.cc       \
-  core/peer.cc       \
-  core/udp.cc        \
-  ipc/bridge.cc      \
-  ipc/ipc.cc         \
-  mobile/android.cc
+LOCAL_SRC_FILES =         \
+  android/bridge.cc       \
+  android/runtime.cc      \
+  android/string_wrap.cc  \
+  android/window.cc       \
+  core/bluetooth.cc       \
+  core/core.cc            \
+  core/fs.cc              \
+  core/javascript.cc      \
+  core/json.cc            \
+  core/peer.cc            \
+  core/udp.cc             \
+  ipc/bridge.cc           \
+  ipc/ipc.cc              \
+  init.cc
 
-LOCAL_SRC_FILES += $(wildcard $(LOCAL_PATH)/ext/*.cc)
+LOCAL_SRC_FILES += $(wildcard $(LOCAL_PATH)/src/*.cc)
 
 LOCAL_STATIC_LIBRARIES := uv
 include $(BUILD_SHARED_LIBRARY)
@@ -1429,154 +1351,167 @@ constexpr auto gStoryboardLaunchScreen = R"XML(<?xml version="1.0" encoding="UTF
 </document>
 )XML";
 
-constexpr auto gDefaultConfig = R"CONFIG(
-#
-# Default configuration file for ssc v{{ssc_version}}. Delete what you don't need.
-#
+constexpr auto gDefaultConfig = R"INI(
+;  ___  __   ___      __ ____
+; /__  /  / /   /_/  /_   /
+; __/ /__/ /__ /  \ /__  /
+;
+; Socket ⚡︎ Runtime · A modern runtime for Web Apps · v{{ssc_version}}
+;
 
-# Shell command to build an application.
-# build: bash build.sh
+; The shell command to execute when building an application. This is the most
+; important command in this file. This will do all the heavy lifting and should
+; handle 99.9% of your use cases for moving files into place or tweaking
+; platform-specific build artifacts.
+build = "node build-script.js"
 
-# A unique ID that identifies the bundle (used by all app stores).
-bundle_identifier: com.beepboop
+; A unique ID that identifies the bundle (used by all app stores).
+bundle_identifier = "com.beepboop"
 
-# A string that gets used in the about dialog and package meta info.
-copyright: (c) Beep Boop Corp. 1985
+; A string that gets used in the about dialog and package meta info.
+copyright = "(c) Beep Boop Corp. 1985"
 
-# Advanced Compiler Settings for debug purposes (ie C++ compiler -g, etc).
-debug_flags: -g
+; A short description of the app.
+description = "A UI for the beep boop network"
 
-# A short description of the app.
-description: A UI for the beep boop network
+; An list of environment variables, separated by commas.
+env = USER, TMPDIR, PWD
 
-# An array of environment variables, separated by commas.
-# env: USER, TMPDIR, PWD
+; The name of the file to be output.
+executable = "boop"
 
-# The name of the file to be output.
-executable: boop
+; If false, the window will never be displayed.
+headless = false
 
-# Advanced Compiler Settings (ie C++ compiler -02, -03, etc).
-flags: -O3
+; Advanced Compiler Settings (ie C++ compiler -02, -03, etc).
+flags = -O3
 
-# Set the limit of files that can be opened by your process.
-file_limit: 1024
+; Set the limit of files that can be opened by your process.
+file_limit = 1024,
 
-# The initial height of the first window.
-height: 750
+; A directory is where your application's code is located.
+input = "src"
 
-# A directory is where your application's code is located.
-# input: src
+; Localization
+lang = "en-us"
 
-# Localization
-# lang: en-us
+; A String used in the about dialog and meta info.
+maintainer = "Beep Boop Corp."
 
-# A String used in the about dialog and meta info.
-# maintainer: Beep Boop Corp.
+; The name of the program
+name = "beepboop"
 
-# The name of the program
-name: beepboop
+; The binary output path. It's recommended to add this path to .gitignore.
+output = "dist"
 
-# The binary output path. It's recommended to add this path to .gitignore.
-output: dist
+; TODO: maybe the user doesn't need to know about this? 
+revision = 123
 
-# TODO: maybe the user doesn't need to know about this?
-# revision: 123
+; A string that indicates the version of the application. It should be a semver triple like 1.0.0
+version = 0.0.1
 
-# The initial title of the window (can have spaces and symbols etc).
-title: Beep Boop
+[debug]
 
-# A string that indicates the version of the application. It should be a semver triple like 1.0.0
-version: 0.0.1
+; Advanced Compiler Settings for debug purposes (ie C++ compiler -g, etc).
+flags = "-g"
 
-# The initial width of the first window.
-width: 1024
 
-#
-# Windows
-# ---
-#
+[android]
 
-# The command to execute to spawn the “back-end” process.
-# win_cmd: beepboop.exe
+; TODO description needed
+main_activity = ""
 
-# The icon to use for identifying your app on Windows.
-# win_icon:
 
-# The icon to use for identifying your app on Windows.
-# win_logo: src/icons/icon.png
+[ios]
 
-# A relative path to the pfx file used for signing.
-# win_pfx: certs/cert.pfx
+; signing guide: https://sockets.sh/guides/#ios-1
+codesign_identity = ""
 
-# The signing information needed by the appx api.
-# win_publisher: CN=Beep Boop Corp., O=Beep Boop Corp., L=San Francisco, S=California, C=US
+; Describes how Xcode should export the archive. Available options: app-store, package, ad-hoc, enterprise, development, and developer-id.
+distribution_method = "ad-hoc"
 
-#
-# Linux
-# ---
-#
+; A path to the provisioning profile used for signing iOS app.
+provisioning_profile = ""
 
-# Helps to make your app searchable in Linux desktop environments.
-# linux_categories: Developer Tools
+; which device to target when building for the simulator
+simulator_device = "iPhone 14"
 
-# The command to execute to spawn the "back-end" process.
-# linux_cmd: beepboop
 
-# The icon to use for identifying your app in Linux desktop environments.
-# linux_icon: src/icon.png
+[linux]
+; Helps to make your app searchable in Linux desktop environments.
+categories = "Developer Tools"
 
-#
-# MacOS
-# ---
-#
+; The command to execute to spawn the "back-end" process.
+cmd = "beepboop"
 
-# macOS code signing guide: https://sockets.sh/guides/#macos-1
+; The icon to use for identifying your app in Linux desktop environments.
+icon = "src/icon.png"
 
-# Mac App Store icon
-# mac_appstore_icon: src/icons/icon.png
 
-# A category in the App Store
-# mac_category:
+[mac]
 
-# The command to execute to spawn the "back-end" process.
-# mac_cmd:
+; Mac App Store icon
+appstore_icon = "src/icons/icon.png"
 
-# The icon to use for identifying your app on MacOS.
-# mac_icon:
+; A category in the App Store
+category = ""
 
-# TODO description & value
-# mac_sign:
+; The command to execute to spawn the "back-end" process.
+cmd = ""
 
-# TODO description & value
-# mac_codesign_identity:
+; The icon to use for identifying your app on MacOS.
+icon = ""
 
-# TODO description & value
-# mac_sign_paths:
+; TODO description & value (signing guide: https://sockets.sh/guides/#macos-1)
+sign = ""
 
-#
-# iOS
-# ---
-#
+; TODO description & value
+codesign_identity = ""
 
-# iOS code signing guide: https://sockets.sh/guides/#ios-1
+; TODO description & value
+sign_paths = ""
 
-# TODO description & value
-# ios_codesign_identity:
 
-# Describes how Xcode should export the archive. Available options: app-store, package, ad-hoc, enterprise, development, and developer-id.
-# ios_distribution_method: ad-hoc
+[native]
 
-# A path to the provisioning profile used for signing iOS app.
-# ios_provisioning_profile:
+; Files that should be added to the compile step.
+files = native-module1.cc native-module2.cc
 
-# which device to target when building for the simulator
-# ios_simulator_device: iPhone 13
-)CONFIG";
+; Extra Headers
+headers = native-module1.hh
+
+
+[win]
+
+; The command to execute to spawn the “back-end” process.
+cmd = "beepboop.exe"
+
+; The icon to use for identifying your app on Windows.
+icon = ""
+
+; The icon to use for identifying your app on Windows.
+logo = "src/icons/icon.png"
+
+; A relative path to the pfx file used for signing.
+pfx = "certs/cert.pfx"
+
+; The signing information needed by the appx api.
+publisher = "CN=Beep Boop Corp., O=Beep Boop Corp., L=San Francisco, S=California, C=US"
+
+[window]
+
+; The initial height of the first window.
+height = 80%
+
+; The initial width of the first window.
+width = 80%
+)INI";
 
 constexpr auto gDefaultGitignore = R"GITIGNORE(
 # Logs
 logs
 *.log
+*.dat
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
