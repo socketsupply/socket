@@ -21,6 +21,7 @@ namespace SSC {
       "  platform: '" + platform.os + "',                             \n"
       "  port: Number('" + std::to_string(opts.port) + "'),           \n"
       "  title: '" + opts.title + "',                                 \n"
+      "  env: {},                                                     \n"
       "  version: '" + opts.version + "',                             \n"
       "};                                                             \n"
       "Object.assign(                                                 \n"
