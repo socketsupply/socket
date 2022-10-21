@@ -1,4 +1,4 @@
-name: Socket SDK CI
+name: Socket CI
 
 on:
   push:
@@ -25,7 +25,7 @@ jobs:
         registry-url: https://npm.pkg.github.com/
         scope: '@socketsupply'
 
-    - name: Install Socket SDK deps
+    - name: Install Socket Runtime deps
       run: |
         sudo apt install software-properties-common at-spi2-core
         sudo add-apt-repository ppa:ubuntu-toolchain-r/test
@@ -37,7 +37,7 @@ jobs:
       env:
         CXX: g++-12
 
-    - name: Check if Socket SDK has a correct version
+    - name: Check if Socket Runtime has a correct version
       run: |
         ./bin/ci_version_check.sh
 
@@ -93,7 +93,7 @@ jobs:
         registry-url: https://npm.pkg.github.com/
         scope: '@socketsupply'
 
-    - name: Install Socket SDK deps
+    - name: Install Socket Runtime deps
       run: |
         sudo apt install software-properties-common
         sudo add-apt-repository ppa:ubuntu-toolchain-r/test
@@ -105,7 +105,7 @@ jobs:
       env:
         CXX: g++-12
 
-    - name: Check if Socket SDK has a correct version
+    - name: Check if Socket has a correct version
       run: |
         ./bin/ci_version_check.sh
 

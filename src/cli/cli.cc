@@ -196,7 +196,7 @@ void runIOSSimulator (const fs::path& path, Map& settings) {
 
   auto iosSimulatorDeviceSuffix = settings["ios_simulator_device"];
   std::replace(iosSimulatorDeviceSuffix.begin(), iosSimulatorDeviceSuffix.end(), ' ', '_');
-  std::regex reSocketSDKDevice("SocketSDKSimulator_" + iosSimulatorDeviceSuffix + "\\s\\((.+)\\)\\s\\((.+)\\)");
+  std::regex reSocketSDKDevice("SocketSimulator_" + iosSimulatorDeviceSuffix + "\\s\\((.+)\\)\\s\\((.+)\\)");
 
   String uuid;
   bool booted = false;
@@ -205,11 +205,11 @@ void runIOSSimulator (const fs::path& path, Map& settings) {
     uuid = match.str(1);
     booted = match.str(2).find("Booted") != String::npos;
 
-    log("found SocketSDK simulator VM for " + settings["ios_simulator_device"] + " with uuid: " + uuid);
+    log("found Socket simulator VM for " + settings["ios_simulator_device"] + " with uuid: " + uuid);
     if (booted) {
-      log("SocketSDK simulator VM is booted");
+      log("Socket simulator VM is booted");
     } else {
-      log("SocketSDK simulator VM is not booted");
+      log("Socket simulator VM is not booted");
     }
   } else {
     log("creating a new iOS simulator VM for " + settings["ios_simulator_device"]);
@@ -249,7 +249,7 @@ void runIOSSimulator (const fs::path& path, Map& settings) {
     StringStream createSimulatorCommand;
     createSimulatorCommand
       << "xcrun simctl"
-      << " create SocketSDKSimulator_" + iosSimulatorDeviceSuffix
+      << " create SocketSimulator_" + iosSimulatorDeviceSuffix
       << " " << deviceType
       << " " << runtimeId;
 

@@ -226,7 +226,7 @@ namespace SSC {
     );
 
     auto *szWindowClass = L"DesktopApp";
-    auto *szTitle = L"Socket SDK";
+    auto *szTitle = L"Socket";
 
     wcex.cbSize = sizeof(WNDCLASSEX);
     wcex.style = CS_HREDRAW | CS_VREDRAW;

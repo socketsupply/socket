@@ -605,7 +605,7 @@ namespace SSC {
     app.isReady = false;
 
     window = CreateWindow(
-      TEXT("DesktopApp"), TEXT("Socket SDK"),
+      TEXT("DesktopApp"), TEXT("Socket"),
       WS_OVERLAPPEDWINDOW,
       100000,
       100000,
