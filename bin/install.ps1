@@ -1,3 +1,5 @@
+param([Switch]$debug, [Switch]$skipwebview, $webview = "1.0.1369-prerelease", $uv = "v1.44.2")
+
 $OLD_CWD = (Get-Location).Path
 
 $ASSET_PATH = "$env:LOCALAPPDATA\Programs\socketsupply"
@@ -7,6 +9,16 @@ $BIN_PATH = "$env:LOCALAPPDATA\Programs\socketsupply\bin"
 $INCLUDE_PATH = "$env:LOCALAPPDATA\Programs\socketsupply\include"
 $WORKING_PATH = $OLD_CWD
 $WORKING_BUILD_PATH = "$WORKING_PATH\build"
+$LIBUV_BUILD_TYPE = "Release"
+$LIBUV_TAG = $uv
+# see https://docs.microsoft.com/en-us/microsoft-edge/webview2/concepts/versioning
+$WEBVIEW2_VERSION = "$webview"
+$SSC_BUILD_OPTIONS = "-O2"
+
+if ($debug -eq $true) {
+  $LIBUV_BUILD_TYPE = "Debug"
+  $SSC_BUILD_OPTIONS = "-g", "-O0"
+}
 
 #
 # Compile with the current git revision of the repository
@@ -18,38 +30,34 @@ Function Build {
 
   if (-not (Test-Path -Path "$WORKING_BUILD_PATH\libuv" -PathType Container)) {
     (New-Item -ItemType Directory -Force -Path "$WORKING_BUILD_PATH") > $null
-    Write-Output "# cloning libuv from github..."
-    (git clone -q --depth=1 https://github.com/libuv/libuv.git $WORKING_BUILD_PATH\libuv) > $null
+    Write-Output "# cloning libuv at $LIBUV_TAG from github..."
+    (git clone --branch=$LIBUV_TAG -q --depth=1 https://github.com/libuv/libuv.git $WORKING_BUILD_PATH\libuv) > $null 2> $null
     Write-Output "ok - cloned libuv into $WORKING_BUILD_PATH\libuv"
   }
 
-  if (-not (Test-Path -Path "$WORKING_BUILD_PATH\libuv\build\Release\uv_a.lib" -PathType Leaf)) {
-    (New-Item -ItemType Directory -Force -Path "$WORKING_BUILD_PATH\libuv\build") > $null
+  (New-Item -ItemType Directory -Force -Path "$WORKING_BUILD_PATH\libuv\build") > $null
 
-    Write-Output "# bulding libuv..."
-    cd "$WORKING_BUILD_PATH\libuv\build"
-    (cmake ..) > $null
+  Write-Output "# building libuv..."
+  cd "$WORKING_BUILD_PATH\libuv\build"
+  (cmake .. -DBUILD_TESTING=OFF) > $null
 
-    cd "$WORKING_BUILD_PATH\libuv"
-    (cmake --build "$WORKING_BUILD_PATH\libuv\build" --config Release) > $null
-    Write-Output "ok - built libuv"
+  cd "$WORKING_BUILD_PATH\libuv"
+  (cmake --build "$WORKING_BUILD_PATH\libuv\build" --config $LIBUV_BUILD_TYPE) > $null
+  Write-Output "ok - built libuv"
+
+  (New-Item -ItemType Directory -Force -Path "$WORKING_BUILD_PATH\lib") > $null
+  Copy-Item "$WORKING_BUILD_PATH\libuv\build\$LIBUV_BUILD_TYPE\uv_a.lib" -Destination "$WORKING_BUILD_PATH\lib\uv_a.lib"
+  if ($debug -eq $true) {
+    Copy-Item "$WORKING_BUILD_PATH\libuv\build\$LIBUV_BUILD_TYPE\uv_a.pdb" -Destination "$WORKING_BUILD_PATH\lib\uv_a.pdb"
   }
 
-  if (-not (Test-Path -Path "$WORKING_BUILD_PATH\lib\uv_a.lib" -PathType Leaf)) {
-    (New-Item -ItemType Directory -Force -Path "$WORKING_BUILD_PATH\lib") > $null
-    Copy-Item $WORKING_BUILD_PATH\libuv\build\Release\uv_a.lib -Destination "$WORKING_BUILD_PATH\lib\uv_a.lib"
-  }
-
-  if (-not (Test-Path -Path "$WORKING_BUILD_PATH\include\uv.h" -PathType Leaf)) {
-    (New-Item -ItemType Directory -Force -Path "$WORKING_BUILD_PATH\include") > $null
-    Copy-Item -Path "$WORKING_BUILD_PATH\libuv\include\*" -Destination "$WORKING_BUILD_PATH\include" -Recurse -Force -Container
-  }
+  (New-Item -ItemType Directory -Force -Path "$WORKING_BUILD_PATH\include") > $null
+  Copy-Item -Path "$WORKING_BUILD_PATH\libuv\include\*" -Destination "$WORKING_BUILD_PATH\include" -Recurse -Force -Container
 
   cd "$WORKING_PATH"
   (New-Item -ItemType Directory -Force -Path "$WORKING_BUILD_PATH\bin") > $null
   Write-Output "# compiling the build tool..."
-  clang++ src\cli\cli.cc -o $WORKING_BUILD_PATH\bin\ssc.exe -std=c++2a -DSSC_BUILD_TIME="$($BUILD_TIME)" -DSSC_VERSION_HASH="$($VERSION_HASH)" -DSSC_VERSION="$($VERSION)"
-  # -I 'C:\Program Files (x86)\Windows Kits\10\Include\10.0.19041.0\shared' `
+  clang++ $SSC_BUILD_OPTIONS -Xlinker /NODEFAULTLIB:libcmt -I"$WORKING_BUILD_PATH\include" -L"$WORKING_BUILD_PATH\lib" src\process\win.cc src\cli\cli.cc -o $WORKING_BUILD_PATH\bin\ssc.exe -std=c++2a -DSSC_BUILD_TIME="$($BUILD_TIME)" -DSSC_VERSION_HASH="$($VERSION_HASH)" -DSSC_VERSION="$($VERSION)"
 
   if ($? -ne 1) {
     Write-Output "not ok - the build tool failed to compile. Here's what you can do..."
@@ -64,27 +72,6 @@ Function Build {
     Write-Output "# consider adding ssc to your path for other sessions:"
     Write-Output " `$env:Path = ""$BIN_PATH;`$env:Path"""
     Write-Output ""
-
-    # Dangerous!
-    # $REGISTRY = "Registry::HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Session Manager\Environment"
-    # $OLD_PATH = (Get-ItemProperty -Path "$REGISTRY" -Name PATH).Path
-    # $NEW_PATH= $SRC_PATH + ";" + $OLD_PATH
-    # # This only works if ran as administrator
-    # Set-ItemProperty -Path "$REGISTRY" -Name path -Value $NEW_PATH -ErrorAction SilentlyContinue
-
-    # if ($?) {
-    #   # This command creates duplicates for me
-    #   # $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
-    #   Write-Output "- ssc has been added to the path. Close you terminal to apply the changes."
-    # } else {
-    #   Write-Output "- Command ssc has been added to the path for the current session."
-    #   Write-Output ""
-    #   Write-Output "Consider adding ssc to your path for other sessions temporarily:"
-    #   Write-Output " `$env:Path = ""$SRC_PATH;`$env:Path"""
-    #   Write-Output "or add it to the registry to make it available globally (needs administrator rights):"
-    #   Write-Output " Set-ItemProperty -Path ""$REGISTRY"" -Name path -Value ""$NEW_PATH"""
-    #   Write-Output ""
-    # }
   }
 }
 
@@ -97,33 +84,22 @@ Function Install-Files {
   (New-Item -ItemType Directory -Force -Path "$SRC_PATH") > $null
   (New-Item -ItemType Directory -Force -Path "$INCLUDE_PATH") > $null
 
-  # install `.\include\*`
-  if (Test-Path -Path "$WORKING_PATH\include" -PathType Container) {
-    Copy-Item -Path "$WORKING_PATH\include\*" -Destination "$INCLUDE_PATH" -Recurse -Force -Container
-  }
-
-  # install `.\lib\*`
-  if (Test-Path -Path "$WORKING_PATH\lib" -PathType Container) {
-    Copy-Item -Path "$WORKING_PATH\lib\*" -Destination "$LIB_PATH" -Recurse -Force -Container
-  }
-
   # install `.\src\*`
   Copy-Item -Path "$WORKING_PATH\src\*" -Destination "$SRC_PATH" -Recurse -Force -Container
 
   # install `.\build\include\*`
-  if (Test-Path -Path "$WORKING_BUILD_PATH\include" -PathType Container) {
-    Copy-Item -Path "$WORKING_BUILD_PATH\include\*" -Destination "$INCLUDE_PATH" -Recurse -Force -Container
-  }
+  Copy-Item -Path "$WORKING_BUILD_PATH\include\*" -Destination "$INCLUDE_PATH" -Recurse -Force -Container
 
   # install `.\build\lib\*`
-  if (Test-Path -Path "$WORKING_BUILD_PATH\lib" -PathType Container) {
-    Copy-Item -Path "$WORKING_BUILD_PATH\lib\*" -Destination "$LIB_PATH" -Recurse -Force -Container
+  Copy-Item -Path "$WORKING_BUILD_PATH\lib\*" -Destination "$LIB_PATH" -Recurse -Force -Container
+
+  # Remove .pdb file if not debug build.
+  if (($debug -ne $true) -and  (Test-Path -Path "$LIB_PATH\uv_a.pdb" -PathType Leaf)) {
+    Remove-Item -Path "$LIB_PATH\uv_a.pdb"
   }
 
   # install `.\build\bin\*`
-  if (Test-Path -Path "$WORKING_BUILD_PATH\bin" -PathType Container) {
-    Copy-Item -Path "$WORKING_BUILD_PATH\bin\*" -Destination "$BIN_PATH"
-  }
+  Copy-Item -Path "$WORKING_BUILD_PATH\bin\*" -Destination "$BIN_PATH"
 
   Write-Output "ok - installed files to '$ASSET_PATH'."
 }
@@ -134,9 +110,6 @@ Function Install-Files {
 Function Install-WebView2 {
   Write-Output "# setting up WebView2"
 
-  # see https://docs.microsoft.com/en-us/microsoft-edge/webview2/concepts/versioning
-  #$webview2_version = '1.0.1248-prerelease'
-  $webview2_version = '1.0.1369-prerelease'
   $tmpdir = Join-Path $Env:Temp $(New-Guid)
   $base = "$tmpdir\WebView2\build\native"
 
@@ -146,8 +119,8 @@ Function Install-WebView2 {
   (New-Item -ItemType Directory -Force -Path "$WORKING_BUILD_PATH\include") > $null
 
   # download and extract
-  Write-Output "# downloading latest WebView2 header and library files..."
-  Invoke-WebRequest "https://www.nuget.org/api/v2/package/Microsoft.Web.WebView2/$webview2_version" -O "$tmpdir\webview2.zip"
+  Write-Output "# downloading WebView2 ${WEBVIEW2_VERSION} header and library files..."
+  Invoke-WebRequest "https://www.nuget.org/api/v2/package/Microsoft.Web.WebView2/1.0.1369-prerelease" -O "$tmpdir\webview2.zip"
   Expand-Archive -Path $tmpdir\WebView2.zip -DestinationPath $tmpdir\WebView2
 
   # install files into project `lib\` dir
@@ -215,7 +188,9 @@ if (-not (Test-Path -Path $ASSET_PATH)) {
 Write-Output "# working path set to $WORKING_PATH"
 cd $WORKING_PATH
 
-Install-WebView2
+if ($skipwebview -eq $false) {
+  Install-WebView2
+}
 Build
 Install-Files
 

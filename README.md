@@ -13,6 +13,15 @@ UDP and File I/O.
 
 Please read (and contribute to) the documentation [here](https://sockets.sh).
 
+### Testing
+
+See the [`io`][0] library for the unit and integration test suite.
+
+### Development
+
+If you want to contribute to the Socket Runtime project itself, please connect
+with any current project contributor.
+
 ### Roadmap
 
 ```mermaid
@@ -46,3 +55,5 @@ gantt
     Finish Bluetooth: W2, after L2, 10d
 ```
 
+
+[0]:https://github.com/socketsupply/io

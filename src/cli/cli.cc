@@ -22,6 +22,23 @@
 #include <wrl.h>
 #pragma comment(lib, "Shlwapi.lib")
 #pragma comment(lib, "Urlmon.lib")
+#pragma comment(lib, "advapi32.lib")
+#pragma comment(lib, "comdlg32.lib")
+#pragma comment(lib, "gdi32.lib")
+#pragma comment(lib, "iphlpapi.lib")
+#pragma comment(lib, "kernel32.lib")
+#pragma comment(lib, "msvcrt.lib")
+#pragma comment(lib, "ole32.lib")
+#pragma comment(lib, "oleaut32.lib")
+#pragma comment(lib, "psapi.lib")
+#pragma comment(lib, "shell32.lib")
+#pragma comment(lib, "user32.lib")
+#pragma comment(lib, "userenv.lib")
+#pragma comment(lib, "uuid.lib")
+#pragma comment(lib, "uv_a.lib")
+#pragma comment(lib, "winspool.lib")
+#pragma comment(lib, "ws2_32.lib")
+
 #else
 #include <unistd.h>
 #endif
@@ -57,14 +74,18 @@ void log (const String s) {
 
   auto now = system_clock::now();
   auto delta = duration_cast<milliseconds>(now - start).count();
+  #ifdef _WIN32
+  std::cout << "• " << s << " " << delta << "ms" << std::endl;
+  #else
   std::cout << "• " << s << " \033[0;32m+" << delta << "ms\033[0m" << std::endl;
+  #endif
   start = std::chrono::system_clock::now();
 }
 
 inline String prefixFile (String s) {
   if (platform.mac || platform.linux) {
     String local = getEnv("HOME");
-    return String(local + "/.config/socket-sdk/" + s + " ");
+    return String(local + "/.config/socket/" + s + " ");
   }
 
   String local = getEnv ("LOCALAPPDATA");
@@ -74,7 +95,7 @@ inline String prefixFile (String s) {
 inline String prefixFile () {
   if (platform.mac || platform.linux) {
     String local = getEnv("HOME");
-    return String(local + "/.config/socket-sdk/");
+    return String(local + "/.config/socket/");
   }
 
   String local = getEnv ("LOCALAPPDATA");
@@ -129,6 +150,11 @@ int runApp (const fs::path& path, const String& args, bool headless) {
     }
 
     status = std::system((headlessCommand + prefix + cmd + " " + args + " --from-ssc").c_str());
+  // TODO: this branch exits the CLI process
+  // } else if (platform.mac) {
+  //   auto s = prefix + cmd;
+  //   auto part = s.substr(0, s.find(".app/") + 4);
+  //   status = std::system(("open -n " + part + " --args " + args + " --from-ssc").c_str());
   } else {
     status = std::system((prefix + cmd + " " + args + " --from-ssc").c_str());
   }
@@ -141,6 +167,7 @@ int runApp (const fs::path& path, const String& args) {
 }
 
 void runIOSSimulator (const fs::path& path, Map& settings) {
+  #ifndef _WIN32
   if (settings["ios_simulator_device"].size() == 0) {
     log("error: 'ios_simulator_device' option is empty");
     exit(1);
@@ -196,7 +223,7 @@ void runIOSSimulator (const fs::path& path, Map& settings) {
 
   auto iosSimulatorDeviceSuffix = settings["ios_simulator_device"];
   std::replace(iosSimulatorDeviceSuffix.begin(), iosSimulatorDeviceSuffix.end(), ' ', '_');
-  std::regex reSocketSDKDevice("SocketSDKSimulator_" + iosSimulatorDeviceSuffix + "\\s\\((.+)\\)\\s\\((.+)\\)");
+  std::regex reSocketSDKDevice("SocketSimulator_" + iosSimulatorDeviceSuffix + "\\s\\((.+)\\)\\s\\((.+)\\)");
 
   String uuid;
   bool booted = false;
@@ -205,11 +232,11 @@ void runIOSSimulator (const fs::path& path, Map& settings) {
     uuid = match.str(1);
     booted = match.str(2).find("Booted") != String::npos;
 
-    log("found SocketSDK simulator VM for " + settings["ios_simulator_device"] + " with uuid: " + uuid);
+    log("found Socket simulator VM for " + settings["ios_simulator_device"] + " with uuid: " + uuid);
     if (booted) {
-      log("SocketSDK simulator VM is booted");
+      log("Socket simulator VM is booted");
     } else {
-      log("SocketSDK simulator VM is not booted");
+      log("Socket simulator VM is not booted");
     }
   } else {
     log("creating a new iOS simulator VM for " + settings["ios_simulator_device"]);
@@ -249,7 +276,7 @@ void runIOSSimulator (const fs::path& path, Map& settings) {
     StringStream createSimulatorCommand;
     createSimulatorCommand
       << "xcrun simctl"
-      << " create SocketSDKSimulator_" + iosSimulatorDeviceSuffix
+      << " create SocketSimulator_" + iosSimulatorDeviceSuffix
       << " " << deviceType
       << " " << runtimeId;
 
@@ -335,10 +362,11 @@ void runIOSSimulator (const fs::path& path, Map& settings) {
     }
     exit(rlaunchApp.exitCode);
   }
+  #endif
 };
 
 static String getCxxFlags() {
-  auto flags = getEnv("CXX_FLAGS");
+  auto flags = getEnv("CXXFLAGS");
   return flags.size() > 0 ? " " + flags : "";
 }
 
@@ -422,9 +450,9 @@ int main (const int argc, const char* argv[]) {
   // if no path provided, use current directory
   if (argc == 2 || lastOption[0] == '-') {
     numberOfOptions = argc - 2;
-    targetPath = fs::absolute(".");
+    targetPath = fs::current_path();
   } else if (lastOption[0] == '.') {
-    targetPath = fs::absolute(lastOption);
+    targetPath = fs::absolute(lastOption).lexically_normal();
   } else {
     targetPath = fs::path(lastOption);
   }
@@ -507,10 +535,6 @@ int main (const int argc, const char* argv[]) {
     const bool& needsConfig,
     std::function<void(std::span<const char *>)> subcommandHandler
   ) -> void {
-    // TODO: remove the deprecated command when all apps have been updated
-    if (subcommand == "compile") {
-      log("'ssc compile' is deprecated, use 'ssc build' instead");
-    }
     if (argv[1] == subcommand) {
       if (argc > 2 && (is(argv[2], "-h") || is(argv[2], "--help"))) {
         printHelp(subcommand);
@@ -533,13 +557,56 @@ int main (const int argc, const char* argv[]) {
       }
 
       if (needsConfig) {
-        auto configPath = targetPath / "ssc.config";
+        auto configPath = targetPath / "socket.ini";
+
         if (!fs::exists(configPath) && !is(subcommand, "init")) {
-          log("ssc.config not found in " + targetPath.string());
+          log("socket.ini not found in " + targetPath.string());
           exit(1);
         }
-        _settings = WStringToString(readFile(configPath));
-        settings = parseConfig(_settings);
+
+        auto ini = readFile(configPath);
+        auto hex = stringToHex(ini);
+        auto bytes = StringStream();
+        auto length = hex.size() - 1;
+        int size = 0;
+
+        for (int i = 0; i < length; i += 2) {
+          size++;
+
+          if (i != 0 && (i & 3) == 0) {
+            bytes << "\n";
+          }
+
+          bytes << "  ";
+          if (i + 2 < length) {
+            bytes << "0x" << hex.substr(i, 2) << ",";
+          } else if (i + 1 < length) {
+            bytes << "0x0" << hex.substr(i, 1);
+          } else {
+            bytes << "0x" << hex.substr(i, 2);
+          }
+        }
+
+        std::string code(
+          "constexpr unsigned char __ssc_config_bytes["+ std::to_string(size) +"] = {\n" + bytes.str() + "\n};"
+        );
+
+        settings = parseConfig(ini);
+
+        settings["ini_code"] = code;
+
+        const std::vector<String> required = {
+          "name",
+          "executable",
+          "version"
+        };
+
+        for (const auto &str : required) {
+          if (settings.count(str) == 0) {
+            log("'" + str + "' value is required in socket.ini");
+            exit(1);
+          }
+        }
 
         // default values
         settings["output"] = settings["output"].size() > 0 ? settings["output"] : "dist";
@@ -563,7 +630,6 @@ int main (const int argc, const char* argv[]) {
 
         std::replace(settings["name"].begin(), settings["name"].end(), ' ', '_');
         settings["name"] += suffix;
-        settings["title"] += suffix;
         settings["executable"] += suffix;
       }
       subcommandHandler(commandlineOptions);
@@ -573,7 +639,7 @@ int main (const int argc, const char* argv[]) {
   createSubcommand("init", {}, false, [&](const std::span<const char *>& options) -> void {
     fs::create_directories(targetPath / "src");
     SSC::writeFile(targetPath / "src" / "index.html", gHelloWorld);
-    SSC::writeFile(targetPath / "ssc.config", tmpl(gDefaultConfig, defaultTemplateAttrs));
+    SSC::writeFile(targetPath / "socket.ini", tmpl(gDefaultConfig, defaultTemplateAttrs));
     SSC::writeFile(targetPath / ".gitignore", gDefaultGitignore);
     exit(0);
   });
@@ -730,7 +796,7 @@ int main (const int argc, const char* argv[]) {
     exit(0);
   });
 
-  auto buildCallback = [&](const std::span<const char *>& options) -> void {
+  createSubcommand("build", { "--platform", "--port", "--quiet", "-o", "-r", "--prod", "-p", "-c", "-s", "-e", "-n", "--test", "--headless" }, true, [&](const std::span<const char *>& options) -> void {
     bool flagRunUserBuildOnly = false;
     bool flagAppStore = false;
     bool flagCodeSign = false;
@@ -747,7 +813,9 @@ int main (const int argc, const char* argv[]) {
 
     String argvForward = "";
     String targetPlatform = "";
+    String testFile = "";
 
+    String devHost("localhost");
     String devPort("0");
     auto cnt = 0;
 
@@ -796,11 +864,11 @@ int main (const int argc, const char* argv[]) {
 
       if (is(arg, "--test")) {
         flagBuildTest = true;
-        argvForward += " --test";
       }
 
-      auto testArg = optionValue(arg, "--test");
-      if (testArg.size() > 0) {
+      const auto testFileTmp = optionValue(arg, "--test");
+      if (testFileTmp.size() > 0) {
+        testFile = testFileTmp;
         flagBuildTest = true;
         argvForward += " " + String(arg);
       }
@@ -831,24 +899,27 @@ int main (const int argc, const char* argv[]) {
         }
       }
 
+      auto host = optionValue(arg, "--host");
+      if (host.size() > 0) {
+        devHost = host;
+      } else {
+        if (flagBuildForIOS || flagBuildForAndroid) {
+          auto r = exec("ifconfig | grep -w 'inet' | awk '!match($2, \"^127.\") {print $2; exit}' | tr -d '\n'");
+          if (r.exitCode == 0) {
+            devHost = r.output;
+          }
+        }
+      }
+
       auto port = optionValue(arg, "--port");
       if (port.size() > 0) {
         devPort = port;
       }
     }
 
-    const std::vector<String> required = {
-      "name",
-      "title",
-      "executable",
-      "version"
-    };
-
-    for (const auto &str : required) {
-      if (settings.count(str) == 0) {
-        log("'" + str + "' value is required in ssc.config");
-        exit(1);
-      }
+    if (flagBuildTest && testFile.size() == 0) {
+      log("error: --test value is required.");
+      exit(1);
     }
 
     if (settings.count("file_limit") == 0) {
@@ -865,7 +936,7 @@ int main (const int argc, const char* argv[]) {
       if (platform.win) {
         setEnv("CXX=clang++");
       } else {
-        setEnv("CXX=/usr/bin/g++");
+        setEnv("CXX=/usr/bin/clang++");
       }
     }
 
@@ -874,7 +945,7 @@ int main (const int argc, const char* argv[]) {
 
     auto executable = fs::path(settings["executable"] + (platform.win ? ".exe" : ""));
     auto binaryPath = paths.pathBin / executable;
-    auto configPath = targetPath / "ssc.config";
+    auto configPath = targetPath / "socket.ini";
 
     if (!fs::exists(binaryPath)) {
       flagRunUserBuildOnly = false;
@@ -924,6 +995,11 @@ int main (const int argc, const char* argv[]) {
       exit(1);
     }
 
+    if (!flagBuildForAndroid && !flagBuildForIOS) {
+      fs::create_directories(paths.platformSpecificOutputPath / "include");
+      writeFile(paths.platformSpecificOutputPath / "include" / "user-config-bytes.hh", settings["ini_code"]);
+    }
+
     //
     // Darwin Package Prep
     // ---
@@ -931,7 +1007,7 @@ int main (const int argc, const char* argv[]) {
     if (platform.mac && !flagBuildForIOS && !flagBuildForAndroid) {
       log("preparing build for mac");
 
-      flags = "-std=c++2a -ObjC++";
+      flags = "-std=c++2a -ObjC++ -v";
       flags += " -framework UniformTypeIdentifiers";
       flags += " -framework CoreBluetooth";
       flags += " -framework Network";
@@ -941,23 +1017,13 @@ int main (const int argc, const char* argv[]) {
       flags += " -DMACOS=1";
       flags += " -I" + prefixFile();
       flags += " -I" + prefixFile("include");
-      flags += " -L" + prefixFile("lib");
+      flags += " -L" + prefixFile("lib/" + platform.arch + "-desktop");
+      flags += " -lsocket-runtime";
       flags += " -luv";
+      flags += " -I" + fs::path(paths.platformSpecificOutputPath / "include").string();
+      files += prefixFile("objects/" + platform.arch + "-desktop/desktop/main.o");
+      files += prefixFile("src/init.cc");
       flags += " " + getCxxFlags();
-
-      files += prefixFile("src/app/app.cc");
-      files += prefixFile("src/core/bluetooth.cc");
-      files += prefixFile("src/core/core.cc");
-      files += prefixFile("src/core/fs.cc");
-      files += prefixFile("src/core/javascript.cc");
-      files += prefixFile("src/core/json.cc");
-      files += prefixFile("src/core/peer.cc");
-      files += prefixFile("src/core/udp.cc");
-      files += prefixFile("src/desktop/main.cc");
-      files += prefixFile("src/ipc/bridge.cc");
-      files += prefixFile("src/ipc/ipc.cc");
-      files += prefixFile("src/process/unix.cc");
-      files += prefixFile("src/window/apple.mm");
 
       fs::path pathBase = "Contents";
       pathResources = { paths.pathPackage / pathBase / "Resources" };
@@ -996,12 +1062,13 @@ int main (const int argc, const char* argv[]) {
       fs::create_directories(src);
       fs::create_directories(pkg);
       fs::create_directories(jni);
+      fs::create_directories(jni / "android");
       fs::create_directories(jni / "app");
       fs::create_directories(jni / "core");
+      fs::create_directories(jni / "include");
       fs::create_directories(jni / "ipc");
-      fs::create_directories(jni / "mobile");
-      fs::create_directories(jni / "window");
       fs::create_directories(jni / "src");
+      fs::create_directories(jni / "window");
 
       fs::create_directories(res);
       fs::create_directories(res / "layout");
@@ -1032,8 +1099,13 @@ int main (const int argc, const char* argv[]) {
 
       // Core
       fs::copy(trim(prefixFile("src/common.hh")), jni, fs::copy_options::overwrite_existing);
+      fs::copy(trim(prefixFile("src/init.cc")), jni, fs::copy_options::overwrite_existing);
+      fs::copy(trim(prefixFile("src/android/bridge.cc")), jni / "android", fs::copy_options::overwrite_existing);
+      fs::copy(trim(prefixFile("src/android/runtime.cc")), jni / "android", fs::copy_options::overwrite_existing);
+      fs::copy(trim(prefixFile("src/android/string_wrap.cc")), jni / "android", fs::copy_options::overwrite_existing);
+      fs::copy(trim(prefixFile("src/android/window.cc")), jni / "android", fs::copy_options::overwrite_existing);
       fs::copy(trim(prefixFile("src/app/app.hh")), jni / "app", fs::copy_options::overwrite_existing);
-      fs::copy(trim(prefixFile("src/core/android.cc")), jni / "core", fs::copy_options::overwrite_existing);
+      fs::copy(trim(prefixFile("src/core/bluetooth.cc")), jni / "core", fs::copy_options::overwrite_existing);
       fs::copy(trim(prefixFile("src/core/core.cc")), jni / "core", fs::copy_options::overwrite_existing);
       fs::copy(trim(prefixFile("src/core/core.hh")), jni / "core", fs::copy_options::overwrite_existing);
       fs::copy(trim(prefixFile("src/core/fs.cc")), jni / "core", fs::copy_options::overwrite_existing);
@@ -1042,13 +1114,10 @@ int main (const int argc, const char* argv[]) {
       fs::copy(trim(prefixFile("src/core/json.hh")), jni / "core", fs::copy_options::overwrite_existing);
       fs::copy(trim(prefixFile("src/core/peer.cc")), jni / "core", fs::copy_options::overwrite_existing);
       fs::copy(trim(prefixFile("src/core/runtime-preload.hh")), jni / "core", fs::copy_options::overwrite_existing);
-      fs::copy(trim(prefixFile("src/core/runtime-preload-sources.hh")), jni / "core", fs::copy_options::overwrite_existing);
       fs::copy(trim(prefixFile("src/core/udp.cc")), jni / "core", fs::copy_options::overwrite_existing);
       fs::copy(trim(prefixFile("src/ipc/bridge.cc")), jni / "ipc", fs::copy_options::overwrite_existing);
       fs::copy(trim(prefixFile("src/ipc/ipc.cc")), jni / "ipc", fs::copy_options::overwrite_existing);
       fs::copy(trim(prefixFile("src/ipc/ipc.hh")), jni / "ipc", fs::copy_options::overwrite_existing);
-      fs::copy(trim(prefixFile("src/mobile/android.cc")), jni / "mobile", fs::copy_options::overwrite_existing);
-      fs::copy(trim(prefixFile("src/mobile/android.kt")), jni / "mobile", fs::copy_options::overwrite_existing);
       fs::copy(trim(prefixFile("src/window/options.hh")), jni / "window", fs::copy_options::overwrite_existing);
       fs::copy(trim(prefixFile("src/window/window.hh")), jni / "window", fs::copy_options::overwrite_existing);
 
@@ -1058,6 +1127,14 @@ int main (const int argc, const char* argv[]) {
         jni / "uv",
         fs::copy_options::overwrite_existing | fs::copy_options::recursive
       );
+
+      fs::copy(
+        trim(prefixFile("include")),
+        jni / "include",
+        fs::copy_options::overwrite_existing | fs::copy_options::recursive
+      );
+
+      writeFile(jni / "user-config-bytes.hh", settings["ini_code"]);
 
       auto aaptNoCompressOptionsNormalized = std::vector<String>();
       auto aaptNoCompressDefaultOptions = split(R"OPTIONS("htm","html","txt","js","jsx","mjs","ts","css","xml")OPTIONS", ',');
@@ -1161,6 +1238,15 @@ int main (const int argc, const char* argv[]) {
         }
       }
 
+      if (settings["android_allow_cleartext"].size() == 0) {
+        if (flagDebugMode)
+        {
+          settings["android_allow_cleartext"] = "android:usesCleartextTraffic=\"true\"\n";
+        } else {
+          settings["android_allow_cleartext"] = "";
+        }
+      }
+      
       // Android Project
       writeFile(
         src / "main" / "AndroidManifest.xml",
@@ -1177,15 +1263,6 @@ int main (const int argc, const char* argv[]) {
       writeFile(res / "layout" / "web_view_activity.xml", trim(tmpl(gAndroidLayoutWebviewActivity, settings)));
       writeFile(res / "values" / "strings.xml", trim(tmpl(gAndroidValuesStrings, settings)));
       writeFile(src / "main" / "assets" / "__ssc_vital_check_ok_file__.txt", "OK");
-
-      writeFile(
-        jni / "core" / "android.hh",
-        std::regex_replace(
-          WStringToString(readFile(trim(prefixFile("src/core/android.hh")))),
-          std::regex("__BUNDLE_IDENTIFIER__"),
-          bundle_path_underscored
-        )
-      );
 
       auto cflags = flagDebugMode
         ? settings.count("debug_flags") ? settings["debug_flags"] : ""
@@ -1211,11 +1288,13 @@ int main (const int argc, const char* argv[]) {
       }
 
       // custom native sources
-      for (auto const &file : split(settings["android_native_sources"], ' ')) {
+      for (
+        auto const &file :
+        split(settings["android_native_sources"], ' ')
+      ) {
         auto filename = fs::path(file).filename();
-        // log(String("Android NDK source: " + String(target / file)).c_str());
         writeFile(
-          jni / "src" / file,
+          jni / "src" / filename,
           tmpl(std::regex_replace(
             WStringToString(readFile(targetPath / file )),
             std::regex("__BUNDLE_IDENTIFIER__"),
@@ -1243,9 +1322,54 @@ int main (const int argc, const char* argv[]) {
 
       // Android Source
       writeFile(
+        jni  / "android" / "internal.hh",
+        std::regex_replace(
+          WStringToString(readFile(trim(prefixFile("src/android/internal.hh")))),
+          std::regex("__BUNDLE_IDENTIFIER__"),
+          bundle_path_underscored
+        )
+      );
+
+      writeFile(
+        pkg / "bridge.kt",
+        std::regex_replace(
+          WStringToString(readFile(trim(prefixFile("src/android/bridge.kt")))),
+          std::regex("__BUNDLE_IDENTIFIER__"),
+          bundle_identifier
+        )
+      );
+
+      writeFile(
         pkg / "main.kt",
         std::regex_replace(
-          WStringToString(readFile(trim(prefixFile("src/mobile/android.kt")))),
+          WStringToString(readFile(trim(prefixFile("src/android/main.kt")))),
+          std::regex("__BUNDLE_IDENTIFIER__"),
+          bundle_identifier
+        )
+      );
+
+      writeFile(
+        pkg / "runtime.kt",
+        std::regex_replace(
+          WStringToString(readFile(trim(prefixFile("src/android/runtime.kt")))),
+          std::regex("__BUNDLE_IDENTIFIER__"),
+          bundle_identifier
+        )
+      );
+
+      writeFile(
+        pkg / "window.kt",
+        std::regex_replace(
+          WStringToString(readFile(trim(prefixFile("src/android/window.kt")))),
+          std::regex("__BUNDLE_IDENTIFIER__"),
+          bundle_identifier
+        )
+      );
+
+      writeFile(
+        pkg / "webview.kt",
+        std::regex_replace(
+          WStringToString(readFile(trim(prefixFile("src/android/webview.kt")))),
           std::regex("__BUNDLE_IDENTIFIER__"),
           bundle_identifier
         )
@@ -1283,10 +1407,10 @@ int main (const int argc, const char* argv[]) {
       fs::create_directories(pathToScheme);
 
       if (!flagBuildForSimulator) {
-        if (!fs::exists(pathToProject)) {
+        if (!fs::exists(pathToProfile)) {
           log("provisioning profile not found: " + pathToProfile.string() + ". " +
               "Please specify a valid provisioning profile in the " +
-              "ios_provisioning_profile field in your ssc.config");
+              "ios_provisioning_profile field in your socket.ini");
           exit(1);
         }
         String command = (
@@ -1345,17 +1469,45 @@ int main (const int argc, const char* argv[]) {
         settings["apple_team_id"] = "";
       }
 
-      fs::copy(
-        fs::path(prefixFile()) / "lib",
-        paths.platformSpecificOutputPath / "lib",
-        fs::copy_options::overwrite_existing | fs::copy_options::recursive
-      );
+      if (flagBuildForSimulator) {
+        fs::copy(
+          fs::path(prefixFile()) / "lib" / "x86_64-iPhoneSimulator",
+          paths.platformSpecificOutputPath / "lib",
+          fs::copy_options::overwrite_existing | fs::copy_options::recursive
+        );
+
+        fs::copy(
+          fs::path(prefixFile()) / "objects" / "x86_64-iPhoneSimulator",
+          paths.platformSpecificOutputPath / "objects",
+          fs::copy_options::overwrite_existing | fs::copy_options::recursive
+        );
+      } else {
+        fs::copy(
+          fs::path(prefixFile()) / "lib" / "arm64-iPhoneOS",
+          paths.platformSpecificOutputPath / "lib",
+          fs::copy_options::overwrite_existing | fs::copy_options::recursive
+        );
+
+        fs::copy(
+          fs::path(prefixFile()) / "objects" / "arm64-iPhoneOS",
+          paths.platformSpecificOutputPath / "objects",
+          fs::copy_options::overwrite_existing | fs::copy_options::recursive
+        );
+      }
 
       fs::copy(
         fs::path(prefixFile()) / "include",
         paths.platformSpecificOutputPath / "include",
         fs::copy_options::overwrite_existing | fs::copy_options::recursive
       );
+
+      writeFile(
+        paths.platformSpecificOutputPath / "include" / "user-config-bytes.hh",
+        settings["ini_code"]
+      );
+
+      settings.insert(std::make_pair("host", devHost));
+      settings.insert(std::make_pair("port", devPort));
 
       writeFile(paths.platformSpecificOutputPath / "exportOptions.plist", tmpl(gXCodeExportOptions, settings));
       writeFile(paths.platformSpecificOutputPath / "Info.plist", tmpl(gXCodePlist, settings));
@@ -1374,24 +1526,15 @@ int main (const int argc, const char* argv[]) {
       log("preparing build for linux");
       flags = " -std=c++2a `pkg-config --cflags --libs gtk+-3.0 webkit2gtk-4.1`";
       flags += " " + getCxxFlags();
+      flags += " -I" + fs::path(paths.platformSpecificOutputPath / "include").string();
       flags += " -I" + prefixFile();
       flags += " -I" + prefixFile("include");
-      flags += " -L" + prefixFile("lib");
-      flags += " -luv";
+      flags += " -L" + prefixFile("lib/" + platform.arch + "-desktop");
 
-      files += prefixFile("src/app/app.cc");
-      files += prefixFile("src/core/bluetooth.cc");
-      files += prefixFile("src/core/core.cc");
-      files += prefixFile("src/core/fs.cc");
-      files += prefixFile("src/core/javascript.cc");
-      files += prefixFile("src/core/json.cc");
-      files += prefixFile("src/core/peer.cc");
-      files += prefixFile("src/core/udp.cc");
-      files += prefixFile("src/desktop/main.cc");
-      files += prefixFile("src/ipc/bridge.cc");
-      files += prefixFile("src/ipc/ipc.cc");
-      files += prefixFile("src/process/unix.cc");
-      files += prefixFile("src/window/linux.cc");
+      files += prefixFile("objects/" + platform.arch + "-desktop/desktop/main.o");
+      files += prefixFile("src/init.cc");
+      files += prefixFile("lib/" + platform.arch + "-desktop/libsocket-runtime.a");
+      files += prefixFile("lib/" + platform.arch + "-desktop/libuv.a");
 
       pathResources = paths.pathBin;
 
@@ -1464,26 +1607,33 @@ int main (const int argc, const char* argv[]) {
       auto prefix = prefixFile();
 
       flags = " -std=c++2a"
+        " -D_MT"
+        " -D_DLL"
+        " -DWIN32"
         " -DWIN32_LEAN_AND_MEAN"
+        " -Xlinker /NODEFAULTLIB:libcmt"
         " -Wno-nonportable-include-path"
-        " -I" + prefix +
-        " -I" + prefix + "\\include"
-        " -I" + prefix + "\\src"
-        " -L" + prefix + "\\lib"
+        " -I\"" + fs::path(paths.platformSpecificOutputPath / "include").string() + "\""
+        " -I\"" + prefix + "\""
+        " -I\"" + prefix + "\\include\""
+        " -I\"" + prefix + "\\src\""
+        " -L\"" + prefix + "\\lib\""
       ;
 
-      files += prefixFile("src\\app\\app.cc");
-      files += prefixFile("src\\core\\core.cc");
-      files += prefixFile("src\\core\\fs.cc");
-      files += prefixFile("src\\core\\javascript.cc");
-      files += prefixFile("src\\core\\json.cc");
-      files += prefixFile("src\\core\\peer.cc");
-      files += prefixFile("src\\core\\udp.cc");
-      files += prefixFile("src\\desktop\\main.cc");
-      files += prefixFile("src\\ipc\\bridge.cc");
-      files += prefixFile("src\\ipc\\ipc.cc");
-      files += prefixFile("src\\window\\win.cc");
-      files += prefixFile("src\\process\\win.cc");
+      files += "\"" + prefixFile("src\\init.cc\"");
+      files += "\"" + prefixFile("src\\app\\app.cc\"");
+      files += "\"" + prefixFile("src\\core\\bluetooth.cc\"");
+      files += "\"" + prefixFile("src\\core\\core.cc\"");
+      files += "\"" + prefixFile("src\\core\\fs.cc\"");
+      files += "\"" + prefixFile("src\\core\\javascript.cc\"");
+      files += "\"" + prefixFile("src\\core\\json.cc\"");
+      files += "\"" + prefixFile("src\\core\\peer.cc\"");
+      files += "\"" + prefixFile("src\\core\\udp.cc\"");
+      files += "\"" + prefixFile("src\\desktop\\main.cc\"");
+      files += "\"" + prefixFile("src\\ipc\\bridge.cc\"");
+      files += "\"" + prefixFile("src\\ipc\\ipc.cc\"");
+      files += "\"" + prefixFile("src\\window\\win.cc\"");
+      files += "\"" + prefixFile("src\\process\\win.cc\"");
 
       fs::create_directories(paths.pathPackage);
 
@@ -1530,7 +1680,9 @@ int main (const int argc, const char* argv[]) {
 
         // @TODO(jwerle): use `setEnv()` if #148 is closed
         #if _WIN32
-          setEnv("PREFIX=prefix");
+          std::string prefix_ = "PREFIX=";
+          prefix_ += prefix;
+          setEnv(prefix_.c_str());
         #else
           setenv("PREFIX", prefix, 1);
         #endif
@@ -1553,7 +1705,13 @@ int main (const int argc, const char* argv[]) {
         fs::current_path().string(),
         [](SSC::String const &out) { stdWrite(out, false); },
         [](SSC::String const &out) { stdWrite(out, true); },
-        [](SSC::String const &code) { exit(std::stoi(code)); }
+        [](SSC::String const &code) {
+          if (std::stoi(code) != 0) {
+            log("build failed, exiting with code " + code);
+            // TODO(trevnorris): Force non-windows to exit the process.
+            exit(std::stoi(code));
+          }
+        }
       );
       process->open();
 
@@ -1583,36 +1741,13 @@ int main (const int argc, const char* argv[]) {
       auto pathToDist = oldCwd / paths.platformSpecificOutputPath;
 
       fs::create_directories(pathToDist);
-      fs::create_directories(pathToDist / "app");
-      fs::create_directories(pathToDist / "core");
-      fs::create_directories(pathToDist / "ipc");
-      fs::create_directories(pathToDist / "mobile");
-      fs::create_directories(pathToDist / "window");
       fs::current_path(pathToDist);
 
       //
       // Copy and or create the source files we need for the build.
       //
       fs::copy(trim(prefixFile("src/common.hh")), pathToDist);
-      fs::copy(trim(prefixFile("src/app/app.hh")), pathToDist / "app");
-      fs::copy(trim(prefixFile("src/core/bluetooth.cc")), pathToDist / "core");
-      fs::copy(trim(prefixFile("src/core/core.cc")), pathToDist / "core");
-      fs::copy(trim(prefixFile("src/core/core.hh")), pathToDist / "core");
-      fs::copy(trim(prefixFile("src/core/fs.cc")), pathToDist / "core");
-      fs::copy(trim(prefixFile("src/core/javascript.cc")), pathToDist / "core");
-      fs::copy(trim(prefixFile("src/core/json.cc")), pathToDist / "core");
-      fs::copy(trim(prefixFile("src/core/json.hh")), pathToDist / "core");
-      fs::copy(trim(prefixFile("src/core/peer.cc")), pathToDist / "core");
-      fs::copy(trim(prefixFile("src/core/runtime-preload-sources.hh")), pathToDist / "core");
-      fs::copy(trim(prefixFile("src/core/runtime-preload.hh")), pathToDist / "core");
-      fs::copy(trim(prefixFile("src/core/udp.cc")), pathToDist / "core");
-      fs::copy(trim(prefixFile("src/ipc/bridge.cc")), pathToDist / "ipc");
-      fs::copy(trim(prefixFile("src/ipc/ipc.cc")), pathToDist / "ipc");
-      fs::copy(trim(prefixFile("src/ipc/ipc.hh")), pathToDist / "ipc");
-      fs::copy(trim(prefixFile("src/mobile/ios.mm")), pathToDist / "mobile");
-      fs::copy(trim(prefixFile("src/window/apple.mm")), pathToDist / "window");
-      fs::copy(trim(prefixFile("src/window/options.hh")), pathToDist / "window");
-      fs::copy(trim(prefixFile("src/window/window.hh")), pathToDist / "window");
+      fs::copy(trim(prefixFile("src/init.cc")), pathToDist);
 
       auto pathBase = pathToDist / "Base.lproj";
       fs::create_directories(pathBase);
@@ -1665,6 +1800,14 @@ int main (const int argc, const char* argv[]) {
       auto rArchive = exec(archiveCommand.str().c_str());
 
       if (rArchive.exitCode != 0) {
+        auto const noDevice = rArchive.output.find("The requested device could not be found because no available devices matched the request.");
+        if (noDevice != std::string::npos) {
+          log("error: ios_simulator_device " + settings["ios_simulator_device"] + " from your socket.ini was not found");
+          auto const rDevices = exec("xcrun simctl list devices available | grep -e \"  \"");
+          log("available devices:\n" + rDevices.output);
+          log("please update your socket.ini with a valid device or install Simulator runtime (https://developer.apple.com/documentation/xcode/installing-additional-simulator-runtimes)");
+          exit(1);
+        }
         log("error: failed to archive project");
         log(rArchive.output);
         fs::current_path(oldCwd);
@@ -1782,11 +1925,11 @@ int main (const int argc, const char* argv[]) {
       packages
         << "'ndk;25.0.8775105' "
         << "'platform-tools' "
-        << "'platforms;android-32' "
+        << "'platforms;android-33' "
         << "'emulator' "
         << "'patcher;v4' "
-        << "'system-images;android-32;google_apis;x86_64' "
-        << "'system-images;android-32;google_apis;arm64-v8a' ";
+        << "'system-images;android-33;google_apis;x86_64' "
+        << "'system-images;android-33;google_apis;arm64-v8a' ";
 
       if (!platform.win) {
         if (std::system("sdkmanager --version 2>&1 >/dev/null") != 0) {
@@ -1833,7 +1976,7 @@ int main (const int argc, const char* argv[]) {
 
       if (flagBuildForAndroidEmulator) {
         StringStream avdmanager;
-        String package = "'system-images;android-32;google_apis;x86_64' ";
+        String package = "'system-images;android-33;google_apis;x86_64' ";
 
         if (!platform.win) {
           if (std::system("avdmanager list 2>&1 >/dev/null") != 0) {
@@ -1900,12 +2043,14 @@ int main (const int argc, const char* argv[]) {
         << " -DIOS=" << (flagBuildForIOS ? 1 : 0)
         << " -DANDROID=" << (flagBuildForAndroid ? 1 : 0)
         << " -DDEBUG=" << (flagDebugMode ? 1 : 0)
+        << " -DHOST=" << devHost
         << " -DPORT=" << devPort
         << " -DSSC_SETTINGS=\"" << encodeURIComponent(_settings) << "\""
         << " -DSSC_VERSION=" << SSC::VERSION_STRING
         << " -DSSC_VERSION_HASH=" << SSC::VERSION_HASH_STRING
       ;
 
+      // TODO(trevnorris): Output build string on debug builds.
       // log(compileCommand.str());
 
       auto r = exec(compileCommand.str());
@@ -2459,22 +2604,24 @@ int main (const int argc, const char* argv[]) {
     }
 
     exit(exitCode);
-  };
-
-  createSubcommand("build", { "--platform", "--port", "--quiet", "-o", "-r", "--prod", "-p", "-c", "-s", "-e", "-n", "--test", "--headless" }, true, buildCallback);
-  createSubcommand("compile", { "--platform", "--port", "--quiet", "-o", "-r", "--prod", "-p", "-c", "-s", "-e", "-n", "--test", "--headless" }, true, buildCallback);
+  });
 
   createSubcommand("run", { "--platform", "--prod", "--test",  "--headless" }, true, [&](const std::span<const char *>& options) -> void {
     String argvForward = "";
     bool isIosSimulator = false;
     bool flagHeadless = false;
+    bool flagTest = false;
     String targetPlatform = "";
+    String testFile = "";
+
     for (auto const& option : options) {
       if (is(option, "--test")) {
-        argvForward += " --test";
+        flagTest = true;
       }
-      auto testPath = optionValue(option, "--test");
-      if (testPath.size() > 0) {
+      const auto testFileTmp = optionValue(option, "--test");
+      if (testFileTmp.size() > 0) {
+        flagTest = true;
+        testFile = testFileTmp;
         argvForward += " " + String(option);
       }
 
@@ -2494,6 +2641,11 @@ int main (const int argc, const char* argv[]) {
           }
         }
       }
+    }
+
+    if (flagTest && testFile.size() == 0) {
+      log("error: --test value is required.");
+      exit(1);
     }
 
     targetPlatform = targetPlatform.size() > 0 ? targetPlatform : platform.os;
