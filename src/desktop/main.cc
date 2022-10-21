@@ -499,7 +499,6 @@ MAIN {
 
     // the window must exist
     if (!window && message.index >= 0) {
-      const auto seq = message.get("seq");
       auto defaultWindow = windowFactory.getWindow(0);
 
       if (defaultWindow) {
@@ -517,7 +516,7 @@ MAIN {
 
     if (message.name == "title") {
       window->setTitle(
-        message.get("seq"),
+        message.seq,
         decodeURIComponent(value)
       );
       return;
