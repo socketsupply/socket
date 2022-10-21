@@ -28,7 +28,7 @@ namespace SSC {
       "window.__args.argv = [" + opts.argv + "];                      \n"
     );
 
-    if (platform.os == "mac" || platform.os == "linux" || platform == "win") {
+    if (platform.os == "mac" || platform.os == "linux" || platform.os == "win") {
       preload += "                                                      \n"
         "if (window?.parent?.port > 0) {                                \n"
         "  window.addEventListener('menuItemSelected', e => {           \n"
