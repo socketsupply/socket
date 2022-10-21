@@ -484,22 +484,18 @@ namespace SSC {
           }
         }
 
-        String json = ("{"
-          "\"files\": [" + files.str() + "],"
-          "\"x\":" + std::to_string(x) + ","
-          "\"y\":" + std::to_string(y) +
-        "}");
+        auto json = JSON::Object::Entries {
+          {"files", JSON::Array::Entries { w->draggablePayload }},
+          {"x", x},
+          {"y", y}
+        };
 
-        w->eval(String(
-          "(() => {"
-          "  try {"
-          "    const target = document.elementFromPoint(" + std::to_string(x) + "," + std::to_string(y) + ");"
-          "    window._ipc.emit('dropin', '" + json + "', target, { bubbles: true });"
-          "  } catch (err) { "
-          "    console.error(err.stack || err.message || err);"
-          "  }"
-          "})()"
-        ));
+        w->eval(getEmitToRenderProcessJavaScript(
+          "dropin",
+          JSON::Object(json).str(),
+          "document.elementFromPoint(" + std::to_string(x) + "," + std::to_string(y) + ")"
+          JSON::Object::Entries { {"bubbles", true} }
+        )));
 
         w->draggablePayload.clear();
         w->eval(getEmitToRenderProcessJavaScript("dragend", "{}"));

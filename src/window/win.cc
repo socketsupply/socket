@@ -552,14 +552,16 @@ namespace SSC {
         }
 
         this->window->eval(
-          "(() => {"
-          "  const value = {"
-          "    \"files\": [" + filesStringArray.str() + "],"
-          "    \"x\": " + std::to_string(point.x) + " / window.devicePixelRatio,"
-          "    \"y\": " + std::to_string(point.y) + " / window.devicePixelRatio"
-          "  };"
-          "  window._ipc.emit('dropin', JSON.stringify(value));"
-          "})()"
+          "(() => {                                                          \n"
+          "  const value = {                                                 \n"
+          "    files: [" + filesStringArray.str() + "],                      \n"
+          "    x: " + std::to_string(point.x) + " / window.devicePixelRatio, \n"
+          "    y: " + std::to_string(point.y) + " / window.devicePixelRatio  \n"
+          "  };                                                              \n"
+          "                                                                  \n"
+          "  const dtail = JSON.stringify(value);                            \n"
+          "  const event = new window.CustomEvent('data', { detail });       \n"
+          "})();"
         );
 
       } else {

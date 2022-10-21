@@ -1474,7 +1474,7 @@ namespace SSC::IPC {
     const Post post
   ) {
 #if defined(__APPLE__)
-  if (seq != "-1" && [this->schemeTasks has: seq]) {
+  if (seq.size() > 0 && seq != "-1" && [this->schemeTasks has: seq]) {
     auto task = [this->schemeTasks get: seq];
     auto msg = data;
     [this->schemeTasks remove: seq];
