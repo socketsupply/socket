@@ -10,7 +10,7 @@ namespace SSC {
 
     auto preload = SSC::String(
       "\n;(() => {                                                    \n"
-      "Object.assign(window.__args, {                                 \n"
+      "window.__args = {                                              \n"
       "  arch: '" + platform.arch + "',                               \n"
       "  cwd: () => '" + cleanCwd + "',                               \n"
       "  debug: " + std::to_string(opts.debug) + ",                   \n"
@@ -20,7 +20,7 @@ namespace SSC {
       "  port: Number('" + std::to_string(opts.port) + "'),           \n"
       "  title: '" + opts.title + "',                                 \n"
       "  version: '" + opts.version + "',                             \n"
-      "});                                                            \n"
+      "};                                                             \n"
       "Object.assign(                                                 \n"
       "  window.__args.env,                                           \n"
       "  Object.fromEntries(new URLSearchParams('" +  opts.env + "')) \n"
