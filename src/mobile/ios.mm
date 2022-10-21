@@ -23,6 +23,7 @@ static dispatch_queue_t queue = dispatch_queue_create(
   WKScriptMessageHandler,
   UIScrollViewDelegate
 > {
+  NSSetUncaughtExceptionHandler(&uncaughtExceptionHandler);
   SSC::IPC::Bridge* bridge;
   Core* core;
 }
@@ -31,12 +32,6 @@ static dispatch_queue_t queue = dispatch_queue_create(
 @property (strong, nonatomic) SSCBridgedWebView* webview;
 @property (strong, nonatomic) WKUserContentController* content;
 @end
-
-void uncaughtExceptionHandler (NSException *exception) {
-  NSLog(@"%@", exception.name);
-  NSLog(@"%@", exception.reason);
-  NSLog(@"%@", exception.callStackSymbols);
-}
 
 //
 // iOS has no "window". There is no navigation, just a single webview. It also
@@ -166,7 +161,6 @@ void uncaughtExceptionHandler (NSException *exception) {
 {
   using namespace SSC;
 
-  NSSetUncaughtExceptionHandler(&uncaughtExceptionHandler);
   platform.os = "ios";
 
   core = new Core;
@@ -215,19 +209,13 @@ void uncaughtExceptionHandler (NSException *exception) {
     .executable = appData["executable"],
     .title = appData["title"],
     .version = "v" + appData["version"],
-    .preload = gPreloadMobile,
     .env = env.str(),
     .cwd = String([cwd UTF8String])
   };
 
   // Note: you won't see any logs in the preload script before the
   // Web Inspector is opened
-  String  preload = ToString(
-    "window.external = {\n"
-    "  invoke: arg => window.webkit.messageHandlers.webview.postMessage(arg)\n"
-    "};\n"
-    "" + createPreload(opts) + "\n"
-  );
+  String  preload = ToString(createPreload(opts));
 
   WKUserScript* initScript = [[WKUserScript alloc]
     initWithSource: [NSString stringWithUTF8String: preload.c_str()]

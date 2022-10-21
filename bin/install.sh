@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 
 declare dirname="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$dirname/generate-runtime-preload-sources.sh"
 
 LIPO=""
 WORK_DIR=`pwd`
@@ -78,10 +77,6 @@ if [ "$(uname)" == "Linux" ]; then
 fi
 
 function _build {
-  echo "# building preload JavaScript"
-  generate-runtime-preload-sources
-  die $? "not ok - unable to build. See trouble shooting guide in the README.md file"
-
   echo "# building cli for desktop (`uname -m`)..."
   "$CXX" src/cli/cli.cc ${CXX_FLAGS} ${CXXFLAGS} \
     -o bin/cli \
@@ -98,7 +93,7 @@ function _prepare {
   if [ ! -z "$LOCALAPPDATA" ]; then
     ASSETS_DIR="$LOCALAPPDATA/Programs/socketsupply"
   else
-    ASSETS_DIR="$PREFIX/.config/socket-sdk"
+    ASSETS_DIR="$PREFIX/.config/socket"
   fi
 
   echo "# preparing directories..."

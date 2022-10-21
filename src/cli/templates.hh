@@ -449,7 +449,6 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 		17DA34E528ECA38C00ED23A7 /* udp.cc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = udp.cc; sourceTree = "<group>"; };
 		17DA34E628ECA38C00ED23A7 /* peer.cc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = peer.cc; sourceTree = "<group>"; };
 		17DA34E928ECA38C00ED23A7 /* fs.cc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = fs.cc; sourceTree = "<group>"; };
-		17DA34EA28ECA38C00ED23A7 /* runtime-preload-sources.hh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = "runtime-preload-sources.hh"; sourceTree = "<group>"; };
 		17DA34EC28ECA38C00ED23A7 /* core.cc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = core.cc; sourceTree = "<group>"; };
 		17DA34ED28ECA38C00ED23A7 /* core.hh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = core.hh; sourceTree = "<group>"; };
 		17DA34EF28ECA38C00ED23A7 /* ios.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = ios.mm; sourceTree = "<group>"; };
@@ -507,7 +506,6 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 				17E73FD528FCC90A0087604F /* json.cc */,
 				17E73FD628FCC90A0087604F /* json.hh */,
 				17DA34E628ECA38C00ED23A7 /* peer.cc */,
-				17DA34EA28ECA38C00ED23A7 /* runtime-preload-sources.hh */,
 				17DA34E328ECA38C00ED23A7 /* runtime-preload.hh */,
 				17DA34E528ECA38C00ED23A7 /* udp.cc */,
 			);

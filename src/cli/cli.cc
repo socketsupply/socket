@@ -64,7 +64,7 @@ void log (const String s) {
 inline String prefixFile (String s) {
   if (platform.mac || platform.linux) {
     String local = getEnv("HOME");
-    return String(local + "/.config/socket-sdk/" + s + " ");
+    return String(local + "/.config/socket/" + s + " ");
   }
 
   String local = getEnv ("LOCALAPPDATA");
@@ -74,7 +74,7 @@ inline String prefixFile (String s) {
 inline String prefixFile () {
   if (platform.mac || platform.linux) {
     String local = getEnv("HOME");
-    return String(local + "/.config/socket-sdk/");
+    return String(local + "/.config/socket/");
   }
 
   String local = getEnv ("LOCALAPPDATA");
@@ -1042,7 +1042,6 @@ int main (const int argc, const char* argv[]) {
       fs::copy(trim(prefixFile("src/core/json.hh")), jni / "core", fs::copy_options::overwrite_existing);
       fs::copy(trim(prefixFile("src/core/peer.cc")), jni / "core", fs::copy_options::overwrite_existing);
       fs::copy(trim(prefixFile("src/core/runtime-preload.hh")), jni / "core", fs::copy_options::overwrite_existing);
-      fs::copy(trim(prefixFile("src/core/runtime-preload-sources.hh")), jni / "core", fs::copy_options::overwrite_existing);
       fs::copy(trim(prefixFile("src/core/udp.cc")), jni / "core", fs::copy_options::overwrite_existing);
       fs::copy(trim(prefixFile("src/ipc/bridge.cc")), jni / "ipc", fs::copy_options::overwrite_existing);
       fs::copy(trim(prefixFile("src/ipc/ipc.cc")), jni / "ipc", fs::copy_options::overwrite_existing);
@@ -1603,7 +1602,6 @@ int main (const int argc, const char* argv[]) {
       fs::copy(trim(prefixFile("src/core/json.cc")), pathToDist / "core");
       fs::copy(trim(prefixFile("src/core/json.hh")), pathToDist / "core");
       fs::copy(trim(prefixFile("src/core/peer.cc")), pathToDist / "core");
-      fs::copy(trim(prefixFile("src/core/runtime-preload-sources.hh")), pathToDist / "core");
       fs::copy(trim(prefixFile("src/core/runtime-preload.hh")), pathToDist / "core");
       fs::copy(trim(prefixFile("src/core/udp.cc")), pathToDist / "core");
       fs::copy(trim(prefixFile("src/ipc/bridge.cc")), pathToDist / "ipc");
