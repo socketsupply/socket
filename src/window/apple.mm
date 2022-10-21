@@ -559,7 +559,7 @@ namespace SSC {
     bool exiting = false;
 
     SSCWindowDelegate* delegate = [SSCWindowDelegate alloc];
-    [controller addScriptMessageHandler: delegate name: @"webview"];
+    [controller addScriptMessageHandler: delegate name: @"external"];
 
     // Set delegate to window
     [window setDelegate:delegate];

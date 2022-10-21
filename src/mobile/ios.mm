@@ -229,7 +229,7 @@ static dispatch_queue_t queue = dispatch_queue_create(
 
   self.content = [config userContentController];
 
-  [self.content addScriptMessageHandler:self name: @"webview"];
+  [self.content addScriptMessageHandler:self name: @"external"];
   [self.content addUserScript: initScript];
 
   self.webview = [[SSCBridgedWebView alloc] initWithFrame: appFrame configuration: config];
