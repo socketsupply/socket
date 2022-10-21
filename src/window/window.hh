@@ -442,7 +442,7 @@ namespace SSC {
           .url = opts.url.size() > 0 ? opts.url : "data:text/html,<html>",
           .version = "v" + opts.appData["version"],
           .argv = this->options.argv,
-          .preload = opts.preload.size() > 0 ? opts.preload : gPreloadDesktop,
+          .preload = opts.preload.size() > 0 ? opts.preload : "",
           .env = env.str(),
           .appData = opts.appData.size() > 0 ? opts.appData : this->options.appData
         };
