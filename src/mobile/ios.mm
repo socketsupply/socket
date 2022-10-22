@@ -23,7 +23,6 @@ static dispatch_queue_t queue = dispatch_queue_create(
   WKScriptMessageHandler,
   UIScrollViewDelegate
 > {
-  NSSetUncaughtExceptionHandler(&uncaughtExceptionHandler);
   SSC::IPC::Bridge* bridge;
   Core* core;
 }
