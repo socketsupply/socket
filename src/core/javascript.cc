@@ -43,7 +43,6 @@ namespace SSC {
       "                                                                    \n"
       "const event = new window.CustomEvent(name, { detail, ...options }); \n"
       "target.dispatchEvent(event);                                        \n"
-    "}                                                                     \n"
     );
   }
 
