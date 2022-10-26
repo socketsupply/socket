@@ -369,8 +369,6 @@ if (window?.process?.port > 0) {
     window.location.reload()
   })
 }
-
-window._ipc.send('process.open')
 })();
 //# sourceURL=desktop.js
 )JS";
