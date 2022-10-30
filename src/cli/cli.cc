@@ -129,6 +129,10 @@ int runApp (const fs::path& path, const String& args, bool headless) {
     }
 
     status = std::system((headlessCommand + prefix + cmd + " " + args + " --from-ssc").c_str());
+  } else if (platform.mac) {
+    auto s = prefix + cmd;
+    auto part = s.substr(0, s.find(".app/") + 4);
+    status = std::system(("open -n " + part + " --args " + args + " --from-ssc").c_str());
   } else {
     status = std::system((prefix + cmd + " " + args + " --from-ssc").c_str());
   }
