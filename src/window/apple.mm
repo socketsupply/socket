@@ -464,11 +464,16 @@ namespace SSC {
       style |= NSWindowStyleMaskMiniaturizable;
     }
 
+    NSRect screenSize = [[NSScreen mainScreen] frame];
+    auto height = opts.isHeightInPercent ? screenSize.size.height * opts.height / 100 : opts.height;
+    auto width = opts.isWidthInPercent ? screenSize.size.width * opts.width / 100 : opts.width;
+
     window = [[NSWindow alloc]
-        initWithContentRect: NSMakeRect(0, 0, opts.width, opts.height)
+        initWithContentRect: NSMakeRect(0, 0, width, height)
                   styleMask: style
                     backing: NSBackingStoreBuffered
                       defer: NO];
+    window.title = [NSString stringWithUTF8String: opts.title.c_str()];
 
     NSArray* draggableTypes = [NSArray arrayWithObjects:
       NSPasteboardTypeURL,

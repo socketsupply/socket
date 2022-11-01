@@ -245,8 +245,20 @@ MAIN {
     return exitCode;
   }
 
-  int height = app.appData["height"].size() > 0 ? std::stoi(app.appData["height"]) : 0;
-  int width = app.appData["width"].size() > 0 ? std::stoi(app.appData["width"]) : 0;
+  String initialHeight = app.appData["height"];
+  String initialWidth = app.appData["width"];
+
+  bool isHeightInPercent = initialHeight.back() == '%';
+  bool isWidthInPercent = initialWidth.back() == '%';
+
+  if (isHeightInPercent) initialHeight.pop_back();
+  if (isWidthInPercent) initialWidth.pop_back();
+
+  auto height = std::stof(initialHeight);
+  auto width = std::stof(initialWidth);
+
+  if (height < 0) height = 0;
+  if (width < 0) width = 0;
 
   auto onStdErr = [&](auto err) {
     for (auto& window : windowFactory.windows) {
@@ -700,6 +712,8 @@ MAIN {
   windowFactory.configure(WindowFactoryOptions {
     .defaultHeight = height,
     .defaultWidth = width,
+    .isHeightInPercent = isHeightInPercent,
+    .isWidthInPercent = isWidthInPercent,
     .headless = isHeadless,
     .isTest = isTest,
     .argv = argvArray.str(),
