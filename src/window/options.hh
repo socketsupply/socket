@@ -9,8 +9,10 @@ namespace SSC {
     bool frameless = false;
     bool utility = false;
     bool canExit = false;
-    int height = 0;
-    int width = 0;
+    float height = 0;
+    float width = 0;
+    bool isHeightInPercent = false;
+    bool isWidthInPercent = false;
     int index = 0;
     int debug = 0;
     int port = 0;
