@@ -237,6 +237,7 @@ function _compile_ios {
 
   quiet xcrun -f iphoneos --show-sdk-version
   if [ $? != 0 ]; then
+    echo "⚠️ Unable to find iphone sdk. Skipping for now, you can try installing a simulator"
     return
   fi
 
