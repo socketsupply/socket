@@ -135,8 +135,10 @@ namespace SSC {
   };
 
   struct WindowFactoryOptions {
-    int defaultHeight = 0;
-    int defaultWidth = 0;
+    float defaultHeight = 0;
+    float defaultWidth = 0;
+    bool isHeightInPercent = false;
+    bool isWidthInPercent = false;
     bool headless = false;
     bool isTest;
     String argv = "";
@@ -278,6 +280,8 @@ namespace SSC {
         if (destroyed) return;
         this->options.defaultHeight = configuration.defaultHeight;
         this->options.defaultWidth = configuration.defaultWidth;
+        this->options.isHeightInPercent = configuration.isHeightInPercent;
+        this->options.isWidthInPercent = configuration.isWidthInPercent;
         this->options.onMessage = configuration.onMessage;
         this->options.appData = configuration.appData;
         this->options.onExit = configuration.onExit;
@@ -417,6 +421,8 @@ namespace SSC {
 
         auto height = opts.height > 0 ? opts.height : this->options.defaultHeight;
         auto width = opts.width > 0 ? opts.width : this->options.defaultWidth;
+        auto isHeightInPercent = opts.height > 0 ? false : this->options.isHeightInPercent;
+        auto isWidthInPercent = opts.width > 0 ? false : this->options.isWidthInPercent;
 
         WindowOptions windowOptions = {
           .resizable = opts.resizable,
@@ -425,6 +431,8 @@ namespace SSC {
           .canExit = opts.canExit,
           .height = height,
           .width = width,
+          .isHeightInPercent = isHeightInPercent,
+          .isWidthInPercent = isWidthInPercent,
           .index = opts.index,
 #if DEBUG
           .debug = DEBUG || opts.debug,
@@ -438,7 +446,7 @@ namespace SSC {
 
           .cwd = this->options.cwd,
           .executable = opts.appData["executable"],
-          .title = opts.title.size() > 0 ? opts.title : opts.appData["title"],
+          .title = opts.title.size() > 0 ? opts.title : this->options.appData["title"],
           .url = opts.url.size() > 0 ? opts.url : "data:text/html,<html>",
           .version = "v" + opts.appData["version"],
           .argv = this->options.argv,
