@@ -53,7 +53,7 @@ jobs:
 
     - name: compile example desktop
       run: |
-        ssc compile ./socket-sdk-examples/desktop-node-tonic-cjs/
+        ssc build ./socket-sdk-examples/desktop-node-tonic-cjs/
       env:
         CI: true
         CXX: g++-12
@@ -121,7 +121,7 @@ jobs:
 
     - name: compile example android app
       run: |
-        ssc compile --platform=android ./socket-sdk-examples/android-tonic
+        ssc build --platform=android ./socket-sdk-examples/android-tonic
       env:
         CI: true
         SSC_CI: true
@@ -188,7 +188,7 @@ jobs:
 
     - name: compile example desktop
       run: |
-        ssc compile ./socket-sdk-examples/desktop-node-tonic-cjs/
+        ssc build ./socket-sdk-examples/desktop-node-tonic-cjs/
       env:
         CI: true
 
@@ -240,7 +240,7 @@ jobs:
 
     - name: compile example desktop
       run: |
-        ssc compile ./socket-sdk-examples/desktop-node-tonic-cjs/
+        ssc build ./socket-sdk-examples/desktop-node-tonic-cjs/
       env:
         CI: true
 
@@ -292,6 +292,6 @@ jobs:
 
     - name: compile example ios
       run: |
-        ssc compile --platform=ios-simulator ./socket-sdk-examples/ios-tonic/
+        ssc build --platform=ios-simulator ./socket-sdk-examples/ios-tonic/
       env:
         CI: true
