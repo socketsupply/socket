@@ -99,7 +99,7 @@ function _prepare {
 
   echo "# preparing directories..."
   rm -rf "$ASSETS_DIR"
-  mkdir -p "$ASSETS_DIR/{lib,src,include}"
+  mkdir -p "$ASSETS_DIR"/{lib,src,include}
   mkdir -p "$LIB_DIR"
 
   if [ ! -d "$BUILD_DIR/input" ]; then
@@ -120,14 +120,14 @@ function _install {
   if [ -d "$(pwd)/lib" ]; then
     echo "# copying libraries to $ASSETS_DIR/lib"
     mkdir -p "$ASSETS_DIR/lib"
-    cp -r "$(pwd)/lib/*" "$ASSETS_DIR/lib"
+    cp -r "$(pwd)"/lib/* "$ASSETS_DIR/lib"
   fi
 
   if [ -z "$TEST" ]; then
     local binDest="/usr/local/bin/ssc"
     echo "# moving binary to $binDest (prompting to copy file into directory)"
     sudo mkdir -p /usr/local/bin
-    sudo mv "$(pwd)/bin/cli" $binDest
+    sudo mv "$(pwd)"/bin/cli $binDest
   fi
 
   die $? "not ok - unable to move binary into place"
@@ -283,11 +283,11 @@ cp "$STAGING_DIR/build/lib/libuv.a" "$LIB_DIR"
 die $? "not ok - unable to build libuv"
 echo "ok - built libuv for $platform ($target)"
 
-mkdir -p  "$ASSETS_DIR/uv/{src/unix,include}"
-cp -fr "$BUILD_DIR/input/src/*.{c,h}" "$ASSETS_DIR/uv/src"
-cp -fr "$BUILD_DIR/input/src/unix/*.{c,h}" "$ASSETS_DIR/uv/src/unix"
-cp -r "$BUILD_DIR/input/include/*" "$ASSETS_DIR/uv/include"
-cp -r "$BUILD_DIR/input/include/*" "$ASSETS_DIR/include"
+mkdir -p "$ASSETS_DIR"/uv/{src/unix,include}
+cp -fr $BUILD_DIR/input/src/*.{c,h} "$ASSETS_DIR/uv/src"
+cp -fr $BUILD_DIR/input/src/unix/*.{c,h} "$ASSETS_DIR/uv/src/unix"
+cp -r $BUILD_DIR/input/include/* "$ASSETS_DIR/uv/include"
+cp -r $BUILD_DIR/input/include/* "$ASSETS_DIR/include"
 die $? "not ok - could not copy headers"
 echo "ok - copied headers"
 cd "$WORK_DIR"
