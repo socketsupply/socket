@@ -129,6 +129,10 @@ int runApp (const fs::path& path, const String& args, bool headless) {
     }
 
     status = std::system((headlessCommand + prefix + cmd + " " + args + " --from-ssc").c_str());
+  } else if (platform.mac) {
+    auto s = prefix + cmd;
+    auto part = s.substr(0, s.find(".app/") + 4);
+    status = std::system(("open -n " + part + " --args " + args + " --from-ssc").c_str());
   } else {
     status = std::system((prefix + cmd + " " + args + " --from-ssc").c_str());
   }
@@ -507,10 +511,6 @@ int main (const int argc, const char* argv[]) {
     const bool& needsConfig,
     std::function<void(std::span<const char *>)> subcommandHandler
   ) -> void {
-    // TODO: remove the deprecated command when all apps have been updated
-    if (subcommand == "compile") {
-      log("'ssc compile' is deprecated, use 'ssc build' instead");
-    }
     if (argv[1] == subcommand) {
       if (argc > 2 && (is(argv[2], "-h") || is(argv[2], "--help"))) {
         printHelp(subcommand);
@@ -730,7 +730,7 @@ int main (const int argc, const char* argv[]) {
     exit(0);
   });
 
-  auto buildCallback = [&](const std::span<const char *>& options) -> void {
+  createSubcommand("build", { "--platform", "--port", "--quiet", "-o", "-r", "--prod", "-p", "-c", "-s", "-e", "-n", "--test", "--headless" }, true, [&](const std::span<const char *>& options) -> void {
     bool flagRunUserBuildOnly = false;
     bool flagAppStore = false;
     bool flagCodeSign = false;
@@ -2457,10 +2457,7 @@ int main (const int argc, const char* argv[]) {
     }
 
     exit(exitCode);
-  };
-
-  createSubcommand("build", { "--platform", "--port", "--quiet", "-o", "-r", "--prod", "-p", "-c", "-s", "-e", "-n", "--test", "--headless" }, true, buildCallback);
-  createSubcommand("compile", { "--platform", "--port", "--quiet", "-o", "-r", "--prod", "-p", "-c", "-s", "-e", "-n", "--test", "--headless" }, true, buildCallback);
+  });
 
   createSubcommand("run", { "--platform", "--prod", "--test",  "--headless" }, true, [&](const std::span<const char *>& options) -> void {
     String argvForward = "";
