@@ -245,8 +245,8 @@ MAIN {
     return exitCode;
   }
 
-  String initialHeight = app.appData["height"];
-  String initialWidth = app.appData["width"];
+  String initialHeight = app.appData["height"].size() > 0 ? app.appData["height"] : "100%";
+  String initialWidth = app.appData["width"].size() > 0 ? app.appData["width"] : "100%";
 
   bool isHeightInPercent = initialHeight.back() == '%';
   bool isWidthInPercent = initialWidth.back() == '%';
