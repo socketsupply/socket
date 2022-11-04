@@ -547,6 +547,12 @@ MAIN {
       return;
     }
 
+    if (message.name == "navigate") {
+      const auto seq = message.get("seq");
+      window->navigate(seq, decodeURIComponent(value));
+      return;
+    }
+
     if (message.name == "inspect") {
       window->showInspector();
       return;
