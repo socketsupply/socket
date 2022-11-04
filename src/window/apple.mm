@@ -473,7 +473,6 @@ namespace SSC {
                   styleMask: style
                     backing: NSBackingStoreBuffered
                       defer: NO];
-    window.title = [NSString stringWithUTF8String: opts.title.c_str()];
 
     NSArray* draggableTypes = [NSArray arrayWithObjects:
       NSPasteboardTypeURL,
