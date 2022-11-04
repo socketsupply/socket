@@ -446,7 +446,7 @@ namespace SSC {
 
           .cwd = this->options.cwd,
           .executable = opts.appData["executable"],
-          .title = opts.title.size() > 0 ? opts.title : this->options.appData["title"],
+          .title = opts.title.size() > 0 ? opts.title : opts.appData["title"],
           .url = opts.url.size() > 0 ? opts.url : "data:text/html,<html>",
           .version = "v" + opts.appData["version"],
           .argv = this->options.argv,
