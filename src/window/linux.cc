@@ -107,11 +107,15 @@ namespace SSC {
       );
     });
 
+    ScreenSize screen = this->getScreenSize();
+    auto height = opts.isHeightInPercent ? screen.height * opts.height / 100 : opts.height;
+    auto width = opts.isWidthInPercent ? screen.width * opts.width / 100 : opts.width;
+
     if (opts.resizable) {
-      gtk_window_set_default_size(GTK_WINDOW(window), opts.width, opts.height);
+      gtk_window_set_default_size(GTK_WINDOW(window), width, height);
       gtk_window_set_position(GTK_WINDOW(window), GTK_WIN_POS_CENTER);
     } else {
-      gtk_widget_set_size_request(window, opts.width, opts.height);
+      gtk_widget_set_size_request(window, width, height);
     }
 
     gtk_window_set_resizable(GTK_WINDOW(window), opts.resizable);
