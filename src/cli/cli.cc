@@ -563,7 +563,6 @@ int main (const int argc, const char* argv[]) {
 
         std::replace(settings["name"].begin(), settings["name"].end(), ' ', '_');
         settings["name"] += suffix;
-        settings["title"] += suffix;
         settings["executable"] += suffix;
       }
       subcommandHandler(commandlineOptions);
@@ -839,7 +838,6 @@ int main (const int argc, const char* argv[]) {
 
     const std::vector<String> required = {
       "name",
-      "title",
       "executable",
       "version"
     };
