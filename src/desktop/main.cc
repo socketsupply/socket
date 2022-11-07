@@ -180,11 +180,12 @@ MAIN {
   }
 
   static Process* process = nullptr;
-  static std::function<void()> createProcess;
+  static std::function<void(bool)> createProcess;
 
   auto createProcessTemplate = []<class... Args>(Args... args) {
-    return [=]() {
+    return [=](bool force) {
       if (process != nullptr) {
+        if (!force) return;
         auto pid = process->getPID();
         process->kill(pid);
         delete process;
@@ -220,7 +221,7 @@ MAIN {
       exit(1);
     }
 
-    createProcess();
+    createProcess(true);
 
     shutdownHandler = [&](int signum) {
       if (process != nullptr) {
@@ -480,7 +481,7 @@ MAIN {
   );
 
   if (cmd.size() > 0) {
-    createProcess();
+    createProcess(true);
   }
 
   //
@@ -508,7 +509,8 @@ MAIN {
 
     if (message.name == "process.open") {
       if (cmd.size() > 0) {
-        createProcess();
+        auto force = message.get("force") == "true" ? true : false;
+        createProcess(force);
         process->open();
       }
       return;
