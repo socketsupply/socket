@@ -548,6 +548,22 @@ MAIN {
     }
 
     if (message.name == "navigate") {
+      if (!value.starts_with("file://")) {
+        debug("Navigation error: only file:// protocol is allowed. Got path %s", value.c_str());
+        return;
+      }
+      if (!value.substr(7).starts_with(cwd)) {
+        debug("Navigation error: only files in the current directory are allowed. Got path %s", value.c_str());
+        return;
+      }
+      if (!value.ends_with(".html")) {
+        debug("Navigation error: only .html files are allowed. Got path %s", value.c_str());
+        return;
+      }
+      if (value.find("/../") != std::string::npos) {
+        debug("Navigation error: relative paths are not allowed. Got path %s", value.c_str());
+        return;
+      }
       const auto seq = message.get("seq");
       window->navigate(seq, decodeURIComponent(value));
       return;
