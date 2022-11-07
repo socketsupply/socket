@@ -37,12 +37,6 @@ namespace SSC {
         "  window.addEventListener('menuItemSelected', e => {           \n"
         "    window.location.reload();                                  \n"
         "  });                                                          \n"
-        "}                                                              \n"
-        "const uri = `ipc://process.open`;                              \n"
-        "if (window?.webkit?.messageHandlers?.external?.postMessage) {  \n"
-        "  window.webkit.messageHandlers.external.postMessage(uri);     \n"
-        "} else if (window?.chrome?.webview?.postMessage) {             \n"
-        "  window.chrome.webview.postMessage(uri);                      \n"
         "}                                                              \n";
     }
 
