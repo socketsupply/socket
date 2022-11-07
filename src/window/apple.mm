@@ -464,9 +464,9 @@ namespace SSC {
       style |= NSWindowStyleMaskMiniaturizable;
     }
 
-    NSRect screenSize = [[NSScreen mainScreen] frame];
-    auto height = opts.isHeightInPercent ? screenSize.size.height * opts.height / 100 : opts.height;
-    auto width = opts.isWidthInPercent ? screenSize.size.width * opts.width / 100 : opts.width;
+    ScreenSize screenSize = this->getScreenSize();
+    auto height = opts.isHeightInPercent ? screenSize.height * opts.height / 100 : opts.height;
+    auto width = opts.isWidthInPercent ? screenSize.width * opts.width / 100 : opts.width;
 
     window = [[NSWindow alloc]
         initWithContentRect: NSMakeRect(0, 0, width, height)
