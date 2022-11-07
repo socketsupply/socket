@@ -182,14 +182,19 @@ MAIN {
   static Process* process = nullptr;
   static std::function<void(bool)> createProcess;
 
-  auto createProcessTemplate = []<class... Args>(Args... args) {
-    return [=](bool force) {
-      if (process != nullptr) {
-        if (!force) return;
+  auto killProcess = [&](Process* process) {
+    if (process != nullptr) {
         auto pid = process->getPID();
         process->kill(pid);
         delete process;
         process = nullptr;
+    }
+  };
+
+  auto createProcessTemplate = [&]<class... Args>(Args... args) {
+    return [=](bool force) {
+      if (process != nullptr) {
+        killProcess(process);
       }
       process = new Process(args...);
     };
@@ -512,6 +517,13 @@ MAIN {
         auto force = message.get("force") == "true" ? true : false;
         createProcess(force);
         process->open();
+      }
+      return;
+    }
+
+    if (message.name == "process.kill") {
+      if (cmd.size() > 0 && process != nullptr) {
+        killProcess(process);
       }
       return;
     }
