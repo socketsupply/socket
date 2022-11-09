@@ -38,6 +38,27 @@ void signalHandler (int signal) {
   }
 }
 
+void navigate (Window* window, const String &cwd, const String &seq, const String &value) {
+  if (!value.starts_with("file://")) {
+    debug("Navigation error: only file:// protocol is allowed. Got path %s", value.c_str());
+    return;
+  }
+  if (!value.substr(7).starts_with(cwd)) {
+    debug("Navigation error: only files in the current directory are allowed. Got path %s", value.c_str());
+    return;
+  }
+  if (!value.ends_with(".html")) {
+    debug("Navigation error: only .html files are allowed. Got path %s", value.c_str());
+    return;
+  }
+  if (value.find("/../") != std::string::npos) {
+    debug("Navigation error: relative paths are not allowed. Got path %s", value.c_str());
+    return;
+  }
+  window->navigate(seq, value);
+  return;
+}
+
 //
 // the MAIN macro provides a cross-platform program entry point.
 // it makes argc and argv uniformly available. It provides "instanceId"
@@ -510,6 +531,8 @@ MAIN {
   // main thread.
   //
   auto onMessage = [&](auto out) {
+    debug("onMessage %s", out.c_str());
+
     IPC::Message message(out);
 
     auto window = windowFactory.getWindow(message.index);
@@ -568,30 +591,64 @@ MAIN {
       return;
     }
 
+    if (message.name == "show") {
+      auto index = message.index < 0 ? 0 : message.index;
+      auto options = WindowOptions {};
+      auto status = windowFactory.getWindowStatus(index);
+      auto window = windowFactory.getWindow(index);
+
+      debug("show %i %i", message.index, status);
+
+      options.title = message.get("title");
+      options.url = message.get("url");
+
+      if (message.get("port").size() > 0) {
+        options.port = std::stoi(message.get("port"));
+      }
+
+      if (message.get("width").size() > 0 && message.get("height").size() > 0) {
+        options.width = std::stoi(message.get("width"));
+        options.height = std::stoi(message.get("height"));
+      }
+
+      const auto seq = message.get("seq");
+      if (!window || status == WindowFactory::WindowStatus::WINDOW_NONE) {
+        options.resizable = message.get("resizable") == "true" ? true : false;
+        options.frameless = message.get("frameless") == "true" ? true : false;
+        options.utility = message.get("utility") == "true" ? true : false;
+        options.debug = message.get("debug") == "true" ? true : false;
+        options.index = index;
+
+        window = windowFactory.createWindow(options);
+        window->show(seq);
+      } else {
+        window->show(seq);
+      }
+
+      if (window) {
+        if (options.width > 0 && options.height > 0) {
+          window->setSize(EMPTY_SEQ, options.width, options.height, 0);
+        }
+
+        if (options.title.size() > 0) {
+          window->setTitle(EMPTY_SEQ, options.title);
+        }
+
+        if (options.url.size() > 0) {
+          navigate(window, cwd, EMPTY_SEQ, options.url);
+        }
+      }
+
+      return;
+    }
+
     if (message.name == "hide") {
-      window->hide(EMPTY_SEQ);
+      window->hide(message.get("seq"));
       return;
     }
 
     if (message.name == "navigate") {
-      if (!value.starts_with("file://")) {
-        debug("Navigation error: only file:// protocol is allowed. Got path %s", value.c_str());
-        return;
-      }
-      if (!value.substr(7).starts_with(cwd)) {
-        debug("Navigation error: only files in the current directory are allowed. Got path %s", value.c_str());
-        return;
-      }
-      if (!value.ends_with(".html")) {
-        debug("Navigation error: only .html files are allowed. Got path %s", value.c_str());
-        return;
-      }
-      if (value.find("/../") != std::string::npos) {
-        debug("Navigation error: relative paths are not allowed. Got path %s", value.c_str());
-        return;
-      }
-      const auto seq = message.get("seq");
-      window->navigate(seq, decodeURIComponent(value));
+      navigate(window, cwd, message.get("seq"), decodeURIComponent(value));
       return;
     }
 
