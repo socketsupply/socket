@@ -282,8 +282,9 @@ MAIN {
   if (width < 0) width = 0;
 
   auto onStdErr = [&](auto err) {
-    for (auto& window : windowFactory.windows) {
-      if (window != nullptr) {
+    for (auto w : windowFactory.windows) {
+      if (w != nullptr) {
+        auto window = windowFactory.getWindow(w->opts.index);
         window->eval(getEmitToRenderProcessJavaScript("process-error", err));
       }
     }
@@ -371,6 +372,29 @@ MAIN {
           }
         }
 
+        return;
+      }
+
+      if (message.name == "send") {
+        if (message.index >= 0) {
+          auto window = windowFactory.getWindow(message.index);
+          if (window) {
+            window->eval(getEmitToRenderProcessJavaScript(
+              decodeURIComponent(message.get("event")),
+              value
+            ));
+          }
+        } else {
+          for (auto w : windowFactory.windows) {
+            if (w != nullptr) {
+              auto window = windowFactory.getWindow(w->opts.index);
+              window->eval(getEmitToRenderProcessJavaScript(
+                decodeURIComponent(message.get("event")),
+                value
+              ));
+            }
+          }
+        }
         return;
       }
 
@@ -490,14 +514,6 @@ MAIN {
         return;
       }
 
-      if (message.name == "send") {
-        window->eval(getEmitToRenderProcessJavaScript(
-          decodeURIComponent(message.get("event")),
-          value
-        ));
-        return;
-      }
-
       if (message.name == "getConfig") {
         window->resolvePromise(seq, OK_STATE, _settings);
         return;
@@ -512,8 +528,11 @@ MAIN {
     onStdOut,
     onStdErr,
     [&](SSC::String const &code) {
-      for (auto& window : windowFactory.windows) {
-        window->eval(getEmitToRenderProcessJavaScript("main-exit", code));
+      for (auto w : windowFactory.windows) {
+        if (w != nullptr) {
+          auto window = windowFactory.getWindow(w->opts.index);
+          window->eval(getEmitToRenderProcessJavaScript("main-exit", code));
+        }
       }
     }
   );
@@ -531,8 +550,6 @@ MAIN {
   // main thread.
   //
   auto onMessage = [&](auto out) {
-    debug("onMessage %s", out.c_str());
-
     IPC::Message message(out);
 
     auto window = windowFactory.getWindow(message.index);
@@ -596,8 +613,6 @@ MAIN {
       auto options = WindowOptions {};
       auto status = windowFactory.getWindowStatus(index);
       auto window = windowFactory.getWindow(index);
-
-      debug("show %i %i", message.index, status);
 
       options.title = message.get("title");
       options.url = message.get("url");
