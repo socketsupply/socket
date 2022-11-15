@@ -550,6 +550,7 @@ MAIN {
   // main thread.
   //
   auto onMessage = [&](auto out) {
+    // debug("onMessage %s", out.c_str());
     IPC::Message message(out);
 
     auto window = windowFactory.getWindow(message.index);
@@ -565,18 +566,24 @@ MAIN {
     }
 
     if (message.name == "process.open") {
+      auto seq = message.get("seq");
       if (cmd.size() > 0) {
         auto force = message.get("force") == "true" ? true : false;
         createProcess(force);
         process->open();
+        window->resolvePromise(seq, OK_STATE, "1");
+        return;
       }
+      window->resolvePromise(seq, ERROR_STATE, "0");
       return;
     }
 
     if (message.name == "process.kill") {
+      auto seq = message.get("seq");
       if (cmd.size() > 0 && process != nullptr) {
         killProcess(process);
       }
+      window->resolvePromise(seq, OK_STATE, "1");
       return;
     }
 
@@ -658,6 +665,8 @@ MAIN {
     }
 
     if (message.name == "hide") {
+      auto index = message.index < 0 ? 0 : message.index;
+      auto window = windowFactory.getWindow(index);
       window->hide(message.get("seq"));
       return;
     }
@@ -743,13 +752,6 @@ MAIN {
     if (message.name == "context") {
       auto seq = message.get("seq");
       window->setContextMenu(seq, decodeURIComponent(value));
-      return;
-    }
-
-    if (message.name == "getConfig") {
-      const auto seq = message.get("seq");
-      auto wrapped = ("\"" + String(_settings) + "\"");
-      window->resolvePromise(seq, OK_STATE, encodeURIComponent(wrapped));
       return;
     }
 
