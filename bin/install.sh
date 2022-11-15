@@ -78,7 +78,7 @@ fi
 
 function _build {
   echo "# building cli for desktop (`uname -m`)..."
-  "$CXX" src/cli/cli.cc ${CXX_FLAGS} ${CXXFLAGS} \
+  "$CXX" src/cli/cli.cc src/process/unix.cc ${CXX_FLAGS} ${CXXFLAGS} \
     -o bin/cli \
     -std=c++2a \
     -DSSC_BUILD_TIME="$(date '+%s')" \

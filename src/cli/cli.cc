@@ -1535,8 +1535,8 @@ int main (const int argc, const char* argv[]) {
         #endif
       }
 
-      buildCommand
-        << settings["build"]
+      StringStream argvForward;
+      argvForward
         << " "
         << pathResourcesRelativeToUserBuild.string()
         << " --debug="
@@ -1546,14 +1546,15 @@ int main (const int argc, const char* argv[]) {
         buildCommand << " --test=true";
       }
 
-      // log(buildCommand.str());
-      auto r = exec(buildCommand.str().c_str());
-
-      if (r.exitCode != 0) {
-        log("Unable to run user build command");
-        log(r.output);
-        exit(r.exitCode);
-      }
+      auto process = new SSC::Process(
+        settings["build"],
+        argvForward.str(),
+        fs::current_path().string(),
+        [](SSC::String const &out) { stdWrite(out, false); },
+        [](SSC::String const &out) { stdWrite(out, true); },
+        [](SSC::String const &code) { exit(std::stoi(code)); }
+      );
+      process->open();
 
       log("ran user build command");
 
