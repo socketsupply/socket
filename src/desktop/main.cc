@@ -583,6 +583,7 @@ MAIN {
       if (cmd.size() > 0 && process != nullptr) {
         killProcess(process);
       }
+      // TODO: crashes the app with a segfault `libc++abi: terminating with uncaught exception of type std::__1::system_error: mutex lock failed: Invalid argumen`
       window->resolvePromise(seq, OK_STATE, "1");
       return;
     }
