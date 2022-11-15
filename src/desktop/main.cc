@@ -550,7 +550,7 @@ MAIN {
   // main thread.
   //
   auto onMessage = [&](auto out) {
-    // debug("onMessage %s", out.c_str());
+    debug("onMessage %s", out.c_str());
     IPC::Message message(out);
 
     auto window = windowFactory.getWindow(message.index);
@@ -571,10 +571,10 @@ MAIN {
         auto force = message.get("force") == "true" ? true : false;
         createProcess(force);
         process->open();
-        window->resolvePromise(seq, OK_STATE, "1");
+        window->resolvePromise(seq, OK_STATE, "null");
         return;
       }
-      window->resolvePromise(seq, ERROR_STATE, "0");
+      window->resolvePromise(seq, ERROR_STATE, "null");
       return;
     }
 
@@ -583,8 +583,8 @@ MAIN {
       if (cmd.size() > 0 && process != nullptr) {
         killProcess(process);
       }
-      // TODO: crashes the app with a segfault `libc++abi: terminating with uncaught exception of type std::__1::system_error: mutex lock failed: Invalid argumen`
-      window->resolvePromise(seq, OK_STATE, "1");
+      // TODO: crashes the app with a segfault `libc++abi: terminating with uncaught exception of type std::__1::system_error: mutex lock failed: Invalid argument`
+      window->resolvePromise(seq, OK_STATE, "null");
       return;
     }
 
@@ -617,10 +617,12 @@ MAIN {
     }
 
     if (message.name == "show") {
+      auto windowIndexToShow = std::stoi(message.get("window"));
+      windowIndexToShow = windowIndexToShow < 0 ? 0 : windowIndexToShow;
       auto index = message.index < 0 ? 0 : message.index;
       auto options = WindowOptions {};
-      auto status = windowFactory.getWindowStatus(index);
-      auto window = windowFactory.getWindow(index);
+      auto status = windowFactory.getWindowStatus(windowIndexToShow);
+      auto window = windowFactory.getWindow(windowIndexToShow);
 
       options.title = message.get("title");
       options.url = message.get("url");
@@ -640,12 +642,12 @@ MAIN {
         options.frameless = message.get("frameless") == "true" ? true : false;
         options.utility = message.get("utility") == "true" ? true : false;
         options.debug = message.get("debug") == "true" ? true : false;
-        options.index = index;
+        options.index = windowIndexToShow;
 
         window = windowFactory.createWindow(options);
-        window->show(seq);
+        window->show(EMPTY_SEQ);
       } else {
-        window->show(seq);
+        window->show(EMPTY_SEQ);
       }
 
       if (window) {
@@ -658,22 +660,43 @@ MAIN {
         }
 
         if (options.url.size() > 0) {
-          navigate(window, cwd, EMPTY_SEQ, options.url);
+          navigate(window, cwd, EMPTY_SEQ, decodeURIComponent(options.url));
         }
       }
 
+      auto resolveWindow = windowFactory.getWindow(index);
+      if (resolveWindow) {
+        resolveWindow->resolvePromise(seq, OK_STATE, std::to_string(index));
+      }
       return;
     }
 
     if (message.name == "hide") {
+      auto windowIndexToShow = std::stoi(message.get("window"));
+      windowIndexToShow = windowIndexToShow < 0 ? 0 : windowIndexToShow;
       auto index = message.index < 0 ? 0 : message.index;
-      auto window = windowFactory.getWindow(index);
-      window->hide(message.get("seq"));
+      auto window = windowFactory.getWindow(windowIndexToShow);
+      window->hide(EMPTY_SEQ);
+
+      auto resolveWindow = windowFactory.getWindow(index);
+      if (resolveWindow) {
+        resolveWindow->resolvePromise(message.get("seq"), OK_STATE, std::to_string(index));
+      }
       return;
     }
 
     if (message.name == "navigate") {
-      navigate(window, cwd, message.get("seq"), decodeURIComponent(value));
+      auto windowIndexToShow = std::stoi(message.get("window"));
+      windowIndexToShow = windowIndexToShow < 0 ? 0 : windowIndexToShow;
+      auto index = message.index < 0 ? 0 : message.index;
+      auto window = windowFactory.getWindow(windowIndexToShow);
+      auto url = message.get("url");
+      navigate(window, cwd, EMPTY_SEQ, decodeURIComponent(url));
+
+      auto resolveWindow = windowFactory.getWindow(index);
+      if (resolveWindow) {
+        resolveWindow->resolvePromise(message.get("seq"), OK_STATE, std::to_string(index));
+      }
       return;
     }
 
