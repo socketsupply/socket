@@ -671,7 +671,6 @@ namespace SSC {
       [NSApp activateIgnoringOtherApps: YES];
     }
 
-
     if (seq.size() > 0) {
       auto index = std::to_string(this->opts.index);
       this->resolvePromise(seq, "0", index);
