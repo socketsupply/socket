@@ -291,13 +291,13 @@ MAIN {
   };
 
   //
-  // # Main -> Render
-  // Launch the main process and connect callbacks to the stdio and stderr pipes.
+  // # Backend -> Render
+  // Launch the backend process and connect callbacks to the stdio and stderr pipes.
   //
   auto onStdOut = [&](SSC::String const &out) {
     //
     // ## Dispatch
-    // Messages from the main process may be sent to the render process. If they
+    // Messages from the backend process may be sent to the render process. If they
     // are parsable commands, try to do something with them, otherwise they are
     // just stdout and we can write the data to the pipe.
     //
@@ -531,7 +531,7 @@ MAIN {
       for (auto w : windowFactory.windows) {
         if (w != nullptr) {
           auto window = windowFactory.getWindow(w->opts.index);
-          window->eval(getEmitToRenderProcessJavaScript("main-exit", code));
+          window->eval(getEmitToRenderProcessJavaScript("backend-exit", code));
         }
       }
     }
@@ -542,10 +542,10 @@ MAIN {
   }
 
   //
-  // # Render -> Main
-  // Send messages from the render processes to the main process.
+  // # Render -> Backend
+  // Send messages from the render processes to the backend process.
   // These may be similar to how we route the messages from the
-  // main process but different enough that duplication is ok. This
+  // backend process but different enough that duplication is ok. This
   // callback doesnt need to dispatch because it's already in the
   // main thread.
   //
@@ -780,7 +780,12 @@ MAIN {
     }
 
     //
-    // Everything else can be forwarded to the main process.
+    // No need to send resolve message to the backend process
+    //
+    if (message.name == "resolve") return;
+
+    //
+    // Everything else can be forwarded to the backend process.
     // The protocol requires messages must be terminated by a newline.
     //
     if (process != nullptr) {
@@ -792,7 +797,7 @@ MAIN {
   // # Exiting
   //
   // When a window or the app wants to exit,
-  // we clean up the windows and the main process.
+  // we clean up the windows and the backend process.
   //
   shutdownHandler = [&](int code) {
     if (process != nullptr) {
