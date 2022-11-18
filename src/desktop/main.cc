@@ -478,12 +478,12 @@ MAIN {
           indexMain = std::stoi(message.get("indexMain"));
           indexSub = std::stoi(message.get("indexSub"));
         } catch (...) {
-          window->resolvePromise(seq, OK_STATE, "");
+          window->resolvePromise(seq, OK_STATE, "null");
           return;
         }
 
         window->setSystemMenuItemEnabled(enabled, indexMain, indexSub);
-        window->resolvePromise(seq, OK_STATE, "");
+        window->resolvePromise(seq, OK_STATE, "null");
         return;
       }
 
@@ -751,12 +751,12 @@ MAIN {
         indexMain = std::stoi(message.get("indexMain"));
         indexSub = std::stoi(message.get("indexSub"));
       } catch (...) {
-        window->resolvePromise(seq, OK_STATE, "");
+        window->resolvePromise(seq, OK_STATE, "null");
         return;
       }
 
       window->setSystemMenuItemEnabled(enabled, indexMain, indexSub);
-      window->resolvePromise(seq, OK_STATE, "");
+      window->resolvePromise(seq, OK_STATE, "null");
       return;
     }
 
