@@ -452,7 +452,7 @@ namespace SSC {
           .argv = this->options.argv,
           .preload = opts.preload.size() > 0 ? opts.preload : "",
           .env = env.str(),
-          .appData = opts.appData.size() > 0 ? opts.appData : this->options.appData
+          .appData = this->options.appData
         };
 
 #if DEBUG
