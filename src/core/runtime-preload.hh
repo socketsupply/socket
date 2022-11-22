@@ -29,6 +29,7 @@ namespace SSC {
       "  Object.fromEntries(new URLSearchParams('" +  opts.env + "')) \n"
       ");                                                             \n"
       "window.__args.argv = [" + opts.argv + "];                      \n"
+      "window.__args.config = {}                                      \n"
     );
 
     if (platform.mac || platform.linux || platform.win) {
