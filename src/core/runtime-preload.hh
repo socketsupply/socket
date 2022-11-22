@@ -68,9 +68,10 @@ namespace SSC {
       preload += "  })();\n";
     }
 
-    preload += "  Object.seal(Object.freeze(window.__args.config));\n";
+    preload += "  Object.freeze(window.__args.config);\n";
 
     // deprecate usage of 'window.system' in favor of 'window.__args'
+    // TODO: deprecate `window.parent` as well? Or just remove deprecation message?
     preload += SSC::String(
       "  Object.defineProperty(window, 'system', {         \n"
       "    configurable: false,                            \n"
@@ -80,7 +81,7 @@ namespace SSC {
       "      get (target, prop, receiver) {                \n"
       "        console.warn(                               \n"
       "          `window.system.${prop} is deprecated. ` + \n"
-      "          `Use window.__args.${prop} instead.`      \n"
+      "          `Use window.__args instead.`              \n"
       "         );                                         \n"
       "        return Reflect.get(...arguments);           \n"
       "      }                                             \n"
