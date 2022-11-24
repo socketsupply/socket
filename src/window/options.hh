@@ -20,10 +20,8 @@ namespace SSC {
     bool headless = false;
     bool forwardConsole = false;
     String cwd = "";
-    String executable = "";
     String title = "";
     String url = "data:text/html,<html>";
-    String version = "";
     String argv = "";
     String preload = "";
     String env;

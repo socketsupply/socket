@@ -895,7 +895,7 @@ namespace SSC {
 
   void Window::about () {
     auto text = SSC::String(
-      app.appData["title"] + " " +
+      app.appData["name"] + " " +
       "v" + app.appData["version"] + "\n" +
       "Built with ssc v" + SSC::VERSION_FULL_STRING + "\n" +
       app.appData["copyright"]
@@ -906,7 +906,7 @@ namespace SSC {
     mbp.hwndOwner = window;
     mbp.hInstance = app.hInstance;
     mbp.lpszText = text.c_str();
-    mbp.lpszCaption = app.appData["title"].c_str();
+    mbp.lpszCaption = app.appData["name"].c_str();
     mbp.dwStyle = MB_USERICON;
     mbp.dwLanguageId = MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT);
     mbp.lpfnMsgBoxCallback = NULL;

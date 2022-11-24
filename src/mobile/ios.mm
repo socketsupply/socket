@@ -205,9 +205,6 @@ static dispatch_queue_t queue = dispatch_queue_create(
 
   WindowOptions opts {
     .debug = _debug,
-    .executable = appData["executable"],
-    .title = appData["title"],
-    .version = "v" + appData["version"],
     .env = env.str(),
     .cwd = String([cwd UTF8String])
   };
