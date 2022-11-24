@@ -36,10 +36,6 @@ namespace SSC {
       "    value: Number('" + std::to_string(opts.index) + "'),                  \n"
       "    enumerable: true                                                      \n"
       "  },                                                                      \n"
-      "  title: {                                                                \n"
-      "    value: '" + opts.title + "',                                          \n"
-      "    enumerable: true                                                      \n"
-      "  },                                                                      \n"
       "  argv: {                                                                 \n"
       "    value: [" + opts.argv + "],                                           \n"
       "    enumerable: true                                                      \n"
@@ -64,6 +60,7 @@ namespace SSC {
         "}                                                              \n";
     }
 
+    // fill in the config
     for (auto const &tuple : opts.appData) {
       auto key = trim(tuple.first);
       auto value = trim(tuple.second);
