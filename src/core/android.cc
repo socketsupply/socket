@@ -233,10 +233,7 @@ jboolean NativeCore::ConfigureEnvironment () {
     }
   }
 
-  windowOptions.executable = this->config["executable"];
   windowOptions.headless = this->config["headless"] == "true";
-  windowOptions.version = "v" + this->config["version"];
-  windowOptions.title = this->config["title"];
   windowOptions.debug = DEBUG ? true : false;
   windowOptions.env = stream.str();
   windowOptions.cwd = this->rootDirectory.str();
