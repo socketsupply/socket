@@ -784,6 +784,7 @@ MAIN {
     //
     if (message.name == "resolve") return;
 
+    // window->resolvePromise(message.get("seq"), ERROR_STATE, "null");
     //
     // Everything else can be forwarded to the backend process.
     // The protocol requires messages must be terminated by a newline.
