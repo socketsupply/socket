@@ -439,7 +439,6 @@ namespace SSC {
 #else
           .debug = opts.debug,
 #endif
-          .port = opts.port,
           .isTest = this->options.isTest,
           .headless = this->options.headless || opts.headless || opts.appData["headless"] == "true",
           .forwardConsole = opts.appData["linux_forward_console_to_stdout"] == "true",
