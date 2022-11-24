@@ -163,11 +163,9 @@ MAIN {
 
   #if DEBUG == 1
     app.appData["name"] += "-dev";
-    app.appData["title"] += "-dev";
   #endif
 
   app.appData["name"] += suffix;
-  app.appData["title"] += suffix;
 
   argvForward << " --version=v" << app.appData["version"];
   argvForward << " --name=" << app.appData["name"];
