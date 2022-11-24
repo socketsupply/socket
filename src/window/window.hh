@@ -445,10 +445,8 @@ namespace SSC {
           .forwardConsole = opts.appData["linux_forward_console_to_stdout"] == "true",
 
           .cwd = this->options.cwd,
-          .executable = opts.appData["executable"],
-          .title = opts.title.size() > 0 ? opts.title : opts.appData["title"],
+          .title = opts.title.size() > 0 ? opts.title : "",
           .url = opts.url.size() > 0 ? opts.url : "data:text/html,<html>",
-          .version = "v" + opts.appData["version"],
           .argv = this->options.argv,
           .preload = opts.preload.size() > 0 ? opts.preload : "",
           .env = env.str(),
