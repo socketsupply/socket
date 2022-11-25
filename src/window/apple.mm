@@ -743,7 +743,7 @@ namespace SSC {
   }
 
   void Window::setSize (const SSC::String& seq, int width, int height, int hints) {
-    [window setFrame:NSMakeRect(0.f, 0.f, (float) width, (float) height) display:YES animate:YES];
+    [window setFrame:NSMakeRect(0.f, 0.f, (float) width, (float) height) display:YES animate:NO];
     [window center];
 
     if (seq.size() > 0) {
