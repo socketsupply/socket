@@ -289,7 +289,7 @@ MAIN {
   };
 
   //
-  // # Backend -> Render
+  // # Backend -> Main
   // Launch the backend process and connect callbacks to the stdio and stderr pipes.
   //
   auto onStdOut = [&](SSC::String const &out) {
@@ -540,15 +540,15 @@ MAIN {
   }
 
   //
-  // # Render -> Backend
-  // Send messages from the render processes to the backend process.
+  // # Render -> Main
+  // Send messages from the render processes to the main process.
   // These may be similar to how we route the messages from the
   // backend process but different enough that duplication is ok. This
   // callback doesnt need to dispatch because it's already in the
   // main thread.
   //
   auto onMessage = [&](auto out) {
-    // debug("onMessage %s", out.c_str());
+    debug("onMessage %s", out.c_str());
     IPC::Message message(out);
 
     auto window = windowFactory.getWindow(message.index);
