@@ -39,7 +39,7 @@ namespace SSC {
 
 #if defined(__linux__)
     gtk_main();
-#elif defined(__APPLE__)
+#elif defined(__APPLE__) && !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR
     [NSApp run];
 #elif defined(_WIN32)
     MSG msg;
@@ -74,7 +74,7 @@ namespace SSC {
     shouldExit = true;
 #if defined(__linux__)
     gtk_main_quit();
-#elif defined(__APPLE__)
+#elif defined(__APPLE__) && !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR
     // if not launched from the cli, just use `terminate()`
     // exit code status will not be captured
     if (!fromSSC) {
@@ -146,7 +146,7 @@ namespace SSC {
 #if defined(__linux__)
     auto canonical = fs::canonical("/proc/self/exe");
     cwd = fs::path(canonical).parent_path().string();
-#elif defined(__APPLE__)
+#elif defined(__APPLE__) && !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR
     NSString *bundlePath = [[NSBundle mainBundle] resourcePath];
     cwd = [bundlePath UTF8String];
 #elif defined(_WIN32)

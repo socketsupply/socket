@@ -73,7 +73,7 @@ MAIN {
   //
   // SSC_SETTINGS and DEBUG are compile time variables provided by the compiler.
   //
-  constexpr auto _settings = STR_VALUE(SSC_SETTINGS);
+  const auto _settings = SSC::getSettingsSource();
   constexpr auto _debug = DEBUG;
   constexpr auto _port = PORT;
 
