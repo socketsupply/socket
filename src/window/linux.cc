@@ -478,28 +478,26 @@ namespace SSC {
       {
         auto* w = static_cast<Window*>(arg);
         auto count = w->draggablePayload.size();
-        StringStream files;
+        JSON::Array files;
 
         for (int i = 0 ; i < count; ++i) {
-          auto src = w->draggablePayload[i];
-          files << '"' << src << '"';
-          if (i < count - 1) {
-            files << ",";
-          }
+          files[i] = w->draggablePayload[i];
         }
 
-        auto json = JSON::Object::Entries {
-          {"files", JSON::Array::Entries { w->draggablePayload }},
-          {"x", x},
-          {"y", y}
-        };
+        JSON::Object json;
+        json["files"] = files;
+        json["x"] = x;
+        json["y"] = y;
+
+        JSON::Object options;
+        options["bubbles"] = true;
 
         w->eval(getEmitToRenderProcessJavaScript(
           "dropin",
-          JSON::Object(json).str(),
-          "document.elementFromPoint(" + std::to_string(x) + "," + std::to_string(y) + ")"
-          JSON::Object::Entries { {"bubbles", true} }
-        )));
+          json.str(),
+          "document.elementFromPoint(" + std::to_string(x) + "," + std::to_string(y) + ")",
+          options
+        ));
 
         w->draggablePayload.clear();
         w->eval(getEmitToRenderProcessJavaScript("dragend", "{}"));
