@@ -1986,8 +1986,8 @@ int main (const int argc, const char* argv[]) {
         // entitlements = " --entitlements " + (targetPath / settings["entitlements"]).string();
       }
 
-      if (settings.count("mac_sign") == 0) {
-        log("'mac_sign' key/value is required");
+      if (settings.count("mac_codesign_identity") == 0) {
+        log("'mac_codesign_identity' key/value is required");
         exit(1);
       }
 
@@ -1998,7 +1998,7 @@ int main (const int argc, const char* argv[]) {
         << " --options runtime"
         << " --timestamp"
         << entitlements
-        << " --sign '" + settings["mac_sign"] + "'"
+        << " --sign '" + settings["mac_codesign_identity"] + "'"
         << " "
       ;
 
