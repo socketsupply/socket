@@ -1,19 +1,8 @@
 #include "json.hh"
 
 namespace SSC::JSON {
-  Any::Any () {
-    this->pointer = nullptr;
-    this->type = Type::Null;
-  }
-
-  Any::~Any () {
-    this->pointer = nullptr;
-    this->type = Type::Any;
-  }
-
-  Any::Any (const Any &any) {
-    this->pointer = any.pointer;
-    this->type = any.type;
+  Number::Number (const String& string) {
+    this->data = std::stod(string.str());
   }
 
   Any::Any (const Null null) {
@@ -21,7 +10,7 @@ namespace SSC::JSON {
     this->type = Type::Null;
   }
 
-  Any::Any(std::nullptr_t null) {
+  Any::Any (std::nullptr_t) {
     this->pointer = std::shared_ptr<void>(new Null());
     this->type = Type::Null;
   }
@@ -31,7 +20,12 @@ namespace SSC::JSON {
     this->type = Type::String;
   }
 
-  Any::Any (const SSC::String string) {
+  Any::Any (const char string) {
+    this->pointer = std::shared_ptr<void>(new String(string));
+    this->type = Type::String;
+  }
+
+  Any::Any (const std::string string) {
     this->pointer = std::shared_ptr<void>(new String(string));
     this->type = Type::String;
   }
@@ -52,41 +46,36 @@ namespace SSC::JSON {
   }
 
   Any::Any (int32_t number) {
-    this->pointer = std::shared_ptr<void>(new Number((float) number));
+    this->pointer = std::shared_ptr<void>(new Number((double) number));
     this->type = Type::Number;
   }
 
   Any::Any (uint32_t number) {
-    this->pointer = std::shared_ptr<void>(new Number((float) number));
+    this->pointer = std::shared_ptr<void>(new Number((double) number));
     this->type = Type::Number;
   }
 
   Any::Any (int64_t number) {
-    this->pointer = std::shared_ptr<void>(new Number((float) number));
+    this->pointer = std::shared_ptr<void>(new Number((double) number));
     this->type = Type::Number;
   }
 
   Any::Any (uint64_t number) {
-    this->pointer = std::shared_ptr<void>(new Number((float) number));
+    this->pointer = std::shared_ptr<void>(new Number((double) number));
     this->type = Type::Number;
   }
 
   Any::Any (double number) {
-    this->pointer = std::shared_ptr<void>(new Number((float) number));
+    this->pointer = std::shared_ptr<void>(new Number((double) number));
     this->type = Type::Number;
   }
 
-#if defined(__APPLE__)
+  #if defined(__APPLE__)
   Any::Any (ssize_t  number) {
-    this->pointer = std::shared_ptr<void>(new Number((float) number));
+    this->pointer = std::shared_ptr<void>(new Number((double) number));
     this->type = Type::Number;
   }
-#endif
-
-  Any::Any (float number) {
-    this->pointer = std::shared_ptr<void>(new Number(number));
-    this->type = Type::Number;
-  }
+  #endif
 
   Any::Any (const Number number) {
     this->pointer = std::shared_ptr<void>(new Number(number));
@@ -113,7 +102,7 @@ namespace SSC::JSON {
     this->type = Type::Array;
   }
 
-  SSC::String Any::str () const {
+  std::string Any::str () const {
     auto ptr = this->pointer.get();
 
     switch (this->type) {
@@ -127,65 +116,5 @@ namespace SSC::JSON {
     }
 
     return "";
-  }
-
-  Object::Object (const Object::Entries entries) {
-    for (const auto& tuple : entries) {
-      auto key = tuple.first;
-      auto value = tuple.second;
-      this->data.insert_or_assign(key, value);
-    }
-  }
-
-  Object::Object (const SSC::Map map) {
-    for (const auto& tuple : map) {
-      auto key = tuple.first;
-      auto value = Any(tuple.second);
-      this->data.insert_or_assign(key, value);
-    }
-  }
-
-  SSC::String Object::str () const {
-    StringStream stream;
-    auto count = this->data.size();
-    stream << "{";
-
-    for (const auto& tuple : this->data) {
-      auto key = tuple.first;
-      auto value = tuple.second.str();
-
-      stream << "\"" << key << "\":";
-      stream << value;
-
-      if (--count > 0) {
-        stream << ",";
-      }
-    }
-
-    stream << "}";
-    return stream.str();
-  }
-
-  Array::Array (const Array::Entries entries) {
-    for (const auto& value : entries) {
-      this->data.push_back(value);
-    }
-  }
-
-  SSC::String Array::str () const {
-    SSC::StringStream stream;
-    auto count = this->data.size();
-    stream << "[";
-
-    for (const auto& value : this->data) {
-      stream << value.str();
-
-      if (--count > 0) {
-        stream << ",";
-      }
-    }
-
-    stream << "]";
-    return stream.str();
   }
 }

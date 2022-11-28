@@ -90,6 +90,7 @@
 #include <chrono>
 #include <cstdint>
 #include <iostream>
+#include <exception>
 #include <filesystem>
 #include <fstream>
 #include <functional>
