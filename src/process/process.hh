@@ -12,61 +12,10 @@
 #include "../common.hh"
 
 namespace SSC {
-  static SSC::MessageCallback exitCallback;
-
   struct ExecOutput {
     SSC::String output;
     int exitCode = 0;
   };
-
-  inline ExecOutput exec (SSC::String command) {
-    command = command + " 2>&1";
-
-    ExecOutput eo;
-    FILE* pipe;
-    size_t count;
-    int exitCode = 0;
-    const int bufsize = 128;
-    std::array<char, 128> buffer;
-
-    #ifdef _WIN32
-      //
-      // https://docs.microsoft.com/en-us/cpp/c-runtime-library/reference/popen-wpopen?view=msvc-160
-      // _popen works fine in a console application... ok fine that's all we need it for... thanks.
-      //
-      pipe = _popen((const char*) command.c_str(), "rt");
-    #else
-      pipe = popen((const char*) command.c_str(), "r");
-    #endif
-
-    if (pipe == NULL) {
-      std::cout << "error: unable to open the command" << std::endl;
-      exit(1);
-    }
-
-    do {
-      if ((count = fread(buffer.data(), 1, bufsize, pipe)) > 0) {
-        eo.output.insert(eo.output.end(), std::begin(buffer), std::next(std::begin(buffer), count));
-      }
-    } while (count > 0);
-
-    #ifdef _WIN32
-    exitCode = _pclose(pipe);
-    #else
-    exitCode = pclose(pipe);
-    #endif
-
-    if (!WIFEXITED(exitCode) || exitCode != 0) {
-      auto status = WEXITSTATUS(exitCode);
-      if (status && exitCode) {
-        exitCode = status;
-      }
-    }
-
-    eo.exitCode = exitCode;
-
-    return eo;
-  }
 
   // Additional parameters to Process constructors.
   struct Config {
@@ -97,6 +46,8 @@ namespace SSC {
     // On Windows only: controls how the window is shown.
     ShowWindow show_window{ShowWindow::show_default};
   };
+
+  ExecOutput exec (SSC::String command);
 
   // Platform independent class for creating processes.
   // Note on Windows: it seems not possible to specify which pipes to redirect.
@@ -198,35 +149,6 @@ namespace SSC {
     void read() noexcept;
     void close_fds() noexcept;
   };
-
-  inline bool Process::write(const SSC::String &s) {
-    return Process::write(s.c_str(), s.size());
-  };
-
-  inline void Process::open () noexcept {
-    if (this->command.size() == 0) return;
-    open(this->command + this->argv, this->path);
-    read();
-  }
-
-  inline Process::Process(
-    const SSC::String &command,
-    const SSC::String &argv,
-    const SSC::String &path,
-    SSC::MessageCallback read_stdout,
-    SSC::MessageCallback read_stderr,
-    SSC::MessageCallback on_exit,
-    bool open_stdin,
-    const Config &config) noexcept
-      : closed(true),
-        open_stdin(true),
-        read_stdout(std::move(read_stdout)),
-        read_stderr(std::move(read_stderr)),
-        on_exit(std::move(on_exit)) {
-    this->command = command;
-    this->argv = argv;
-    this->path = path;
-  }
 
 } // namespace SSC
 
