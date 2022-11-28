@@ -610,6 +610,37 @@ MAIN {
       return;
     }
 
+    if (message.name == "window") {
+      const auto index = message.index;
+      auto window = windowFactory.getWindow(index);
+      if (window) {
+        const auto size = window->getScreenSize();
+        const auto options = window->opts;
+        const auto title = window->getTitle();
+        SSC::String value(
+          "{"
+            "\"index\":" + std::to_string(index) + ","
+            "\"title\":\"" + title + "\","
+            "\"width\":" + std::to_string(size.width) + ","
+            "\"height\":" + std::to_string(size.height) + ""
+          "}"
+        );
+        const auto seq = message.get("seq");
+        window->resolvePromise(
+          seq,
+          OK_STATE,
+          encodeURIComponent(value)
+        );
+      } else {
+        window->resolvePromise(
+          message.get("seq"),
+          OK_STATE,
+          "null"
+        );
+      }
+      return;
+    }
+
     if (message.name == "show") {
       auto windowIndexToShow = std::stoi(message.get("window"));
       windowIndexToShow = windowIndexToShow < 0 ? 0 : windowIndexToShow;
