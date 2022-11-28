@@ -96,6 +96,7 @@ namespace SSC {
       void exit (int code);
       void close (int code);
       void navigate (const String&, const String&);
+      String getTitle ();
       void setTitle (const String&, const String&);
       void setSize (const String&, int, int, int);
       void setContextMenu (const String&, const String&);
