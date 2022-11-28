@@ -1353,38 +1353,32 @@ constexpr auto gDefaultConfig = R"CONFIG(
 # Default configuration file for ssc v{{ssc_version}}. Delete what you don't need.
 #
 
-# Shell command to build an application.
-# build: bash build.sh
+# The name of the program. This is required field.
+name: beepboop
 
-# A unique ID that identifies the bundle (used by all app stores).
-bundle_identifier: com.beepboop
-
-# A string that gets used in the about dialog and package meta info.
-copyright: (c) Beep Boop Corp. 1985
-
-# Advanced Compiler Settings for debug purposes (ie C++ compiler -g, etc).
-debug_flags: -g
-
-# A short description of the app.
-description: A UI for the beep boop network
-
-# An array of environment variables, separated by commas.
-# env: USER, TMPDIR, PWD
-
-# The name of the file to be output.
+# The name of the file to be output. This is required field.
 executable: boop
 
-# Advanced Compiler Settings (ie C++ compiler -02, -03, etc).
-flags: -O3
+# A string that indicates the version of the application. It should be a semver triple like 1.0.0. This is required field.
+version: 0.0.1
 
-# Set the limit of files that can be opened by your process.
-file_limit: 1024
+# A string that indicates the revision of the application.
+# revision: 123
+
+# A directory is where your application's code is located. Default value is 'src'
+# input: src
+
+# The binary output path. Default value is 'dist', It's recommended to add this path to .gitignore.
+output: dist
+
+# Shell command to build an application. If not present, ssc will copy the source files from the directory specified by the 'input' option to the directory specified by the 'output' option.
+# build: bash build.sh
+
+# The initial width of the first window.
+width: 1024
 
 # The initial height of the first window.
 height: 750
-
-# A directory is where your application's code is located.
-# input: src
 
 # Localization
 # lang: en-us
@@ -1392,23 +1386,26 @@ height: 750
 # A String used in the about dialog and meta info.
 # maintainer: Beep Boop Corp.
 
-# The name of the program
-name: beepboop
+# A unique ID that identifies the bundle (used by all app stores).
+bundle_identifier: com.beepboop
 
-# The binary output path. It's recommended to add this path to .gitignore.
-output: dist
+# A string that gets used in the about dialog and package meta info.
+copyright: (c) Beep Boop Corp. 1985
 
-# TODO: maybe the user doesn't need to know about this?
-# revision: 123
+# A short description of the app.
+description: A UI for the beep boop network
 
-# The initial title of the window (can have spaces and symbols etc).
-title: Beep Boop
+# Advanced Compiler Settings (ie C++ compiler -02, -03, etc).
+flags: -O3
 
-# A string that indicates the version of the application. It should be a semver triple like 1.0.0
-version: 0.0.1
+# Advanced Compiler Settings for debug purposes (ie C++ compiler -g, etc).
+debug_flags: -g
 
-# The initial width of the first window.
-width: 1024
+# Set the limit of files that can be opened by your process.
+file_limit: 1024
+
+# An array of environment variables, separated by commas.
+# env: USER, TMPDIR, PWD
 
 #
 # Windows
@@ -1463,13 +1460,10 @@ width: 1024
 # The icon to use for identifying your app on MacOS.
 # mac_icon:
 
-# TODO description & value
+# macOS codesign certificate name.
 # mac_sign:
 
-# TODO description & value
-# mac_codesign_identity:
-
-# TODO description & value
+# Paths to the files that should be included in the app bundle.
 # mac_sign_paths:
 
 #
@@ -1479,7 +1473,7 @@ width: 1024
 
 # iOS code signing guide: https://sockets.sh/guides/#ios-1
 
-# TODO description & value
+# iOS codesign certificate name.
 # ios_codesign_identity:
 
 # Describes how Xcode should export the archive. Available options: app-store, package, ad-hoc, enterprise, development, and developer-id.
@@ -1506,7 +1500,7 @@ lerna-debug.log*
 node_modules/
 
 # Default output directory
-build/
+dist/
 
 # Provisioning profile
 *.mobileprovision
