@@ -864,7 +864,7 @@ int main (const int argc, const char* argv[]) {
       if (platform.win) {
         setEnv("CXX=clang++");
       } else {
-        setEnv("CXX=/usr/bin/g++");
+        setEnv("CXX=/usr/bin/clang++");
       }
     }
 
@@ -940,23 +940,12 @@ int main (const int argc, const char* argv[]) {
       flags += " -DMACOS=1";
       flags += " -I" + prefixFile();
       flags += " -I" + prefixFile("include");
-      flags += " -L" + prefixFile("lib");
+      flags += " -L" + prefixFile("lib/" + platform.arch + "-desktop");
+      flags += " -lsocket-runtime";
       flags += " -luv";
+      files += prefixFile("objects/" + platform.arch + "-desktop/desktop/main.o");
+      files += prefixFile("src/desktop/init.cc");
       flags += " " + getCxxFlags();
-
-      files += prefixFile("src/app/app.cc");
-      files += prefixFile("src/core/bluetooth.cc");
-      files += prefixFile("src/core/core.cc");
-      files += prefixFile("src/core/fs.cc");
-      files += prefixFile("src/core/javascript.cc");
-      files += prefixFile("src/core/json.cc");
-      files += prefixFile("src/core/peer.cc");
-      files += prefixFile("src/core/udp.cc");
-      files += prefixFile("src/desktop/main.cc");
-      files += prefixFile("src/ipc/bridge.cc");
-      files += prefixFile("src/ipc/ipc.cc");
-      files += prefixFile("src/process/unix.cc");
-      files += prefixFile("src/window/apple.mm");
 
       fs::path pathBase = "Contents";
       pathResources = { paths.pathPackage / pathBase / "Resources" };
@@ -1370,26 +1359,16 @@ int main (const int argc, const char* argv[]) {
     //
     if (platform.linux && !flagBuildForAndroid && !flagBuildForIOS) {
       log("preparing build for linux");
-      flags = " -std=c++2a `pkg-config --cflags --libs gtk+-3.0 webkit2gtk-4.1`";
+      flags = " -std=c++2a -stdlib=libc++ `pkg-config --cflags --libs gtk+-3.0 webkit2gtk-4.1`";
       flags += " " + getCxxFlags();
       flags += " -I" + prefixFile();
       flags += " -I" + prefixFile("include");
-      flags += " -L" + prefixFile("lib");
+      flags += " -L" + prefixFile("lib/" + platform.arch + "-desktop");
+      flags += " -lsocket-runtime";
       flags += " -luv";
 
-      files += prefixFile("src/app/app.cc");
-      files += prefixFile("src/core/bluetooth.cc");
-      files += prefixFile("src/core/core.cc");
-      files += prefixFile("src/core/fs.cc");
-      files += prefixFile("src/core/javascript.cc");
-      files += prefixFile("src/core/json.cc");
-      files += prefixFile("src/core/peer.cc");
-      files += prefixFile("src/core/udp.cc");
-      files += prefixFile("src/desktop/main.cc");
-      files += prefixFile("src/ipc/bridge.cc");
-      files += prefixFile("src/ipc/ipc.cc");
-      files += prefixFile("src/process/unix.cc");
-      files += prefixFile("src/window/linux.cc");
+      files += prefixFile("objects/" + platform.arch + "-desktop/desktop/main.o");
+      files += prefixFile("src/desktop/init.cc");
 
       pathResources = paths.pathBin;
 

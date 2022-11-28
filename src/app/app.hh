@@ -11,7 +11,7 @@ namespace SSC {
     public:
       static inline std::atomic<bool> isReady = false;
 
-#if defined(__APPLE__) && !defined(TARGET_OS_IPHONE) && !defined(TARGET_IPHONE_SIMULATOR)
+#if defined(__APPLE__) && !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR
       NSAutoreleasePool* pool = [NSAutoreleasePool new];
 #elif defined(_WIN32)
       MSG msg;
