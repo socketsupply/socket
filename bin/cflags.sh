@@ -5,11 +5,16 @@ declare root="$(dirname "$(dirname "$(realpath "${BASH_SOURCE[0]}")")")"
 declare IPHONEOS_VERSION_MIN="${IPHONEOS_VERSION_MIN:-14.0}"
 declare IOS_SIMULATOR_VERSION_MIN="${IOS_SIMULATOR_VERSION_MIN:-$IPHONEOS_VERSION_MIN}"
 
-declare cflags=("-stdlib=libc++")
+declare cflags=()
 declare arch="$(uname -m)"
 declare platform="desktop"
 
 declare ios_sdk_path=""
+
+if [[ "$(basename "$CXX")" =~ clang ]]; then
+  cflags+=("-stdlib=libc++")
+  cflags+=("-Wno-unused-command-line-argument")
+fi
 
 if (( TARGET_OS_IPHONE )) || (( TARGET_IPHONE_SIMULATOR )); then
   if (( TARGET_OS_IPHONE )); then
@@ -41,7 +46,6 @@ cflags+=(
   -DSSC_BUILD_TIME="$(date '+%s')"
   -DSSC_VERSION_HASH=`git rev-parse --short HEAD`
   -DSSC_VERSION=`cat "$root/VERSION.txt"`
-  -Wno-unused-command-line-argument
 )
 
 if [[ "$(uname -s)" = "Darwin" ]]; then

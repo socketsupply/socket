@@ -21,6 +21,8 @@ if [ ! "$CXX" ]; then
   fi
 fi
 
+export CXX
+
 function quiet () {
   if [ -n "$VERBOSE" ]; then
     "$@"
@@ -123,7 +125,6 @@ function _build_cli {
 
 function _build_runtime_library {
   echo "# building runtime library"
-  export CXX
   "$root/bin/build-runtime-library.sh" --arch "$(uname -m)" --platform desktop & pids+=($!)
   if [[ "$(uname -s)" = "Darwin" ]]; then
     "$root/bin/build-runtime-library.sh" --arch "$(uname -m)" --platform ios & pids+=($!)
@@ -394,8 +395,9 @@ function _compile_libuv {
 
 function _check_compiler_features {
   echo "# checking compiler features"
-  $CXX -x c++ -std=c++20 -stdlib=libc++ -o /dev/null - >/dev/null << EOF_CC
-    #include <semaphore>
+  local cflags=($("$root/bin/cflags.sh" -Os))
+  $CXX -x c++ "${cflags[@]}" -o /dev/null - >/dev/null << EOF_CC
+    #include "src/common.hh"
     int main () { return 0; }
 EOF_CC
 
