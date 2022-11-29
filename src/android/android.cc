@@ -211,7 +211,7 @@ jboolean NativeCore::ConfigureEnvironment () {
 
   this->config = parseConfig(decodeURIComponent(STR_VALUE(SSC_SETTINGS)));
 
-  if (DEBUG) {
+  if (isDebugEnabled()) {
     for (auto const &tuple : this->config) {
       auto key = tuple.first;
       auto value = tuple.second;
@@ -227,14 +227,14 @@ jboolean NativeCore::ConfigureEnvironment () {
     if (value.size() > 0) {
       stream << key << "=" << encodeURIComponent(value) << "&";
       environmentVariables[key] = value;
-      if (DEBUG) {
+      if (isDebugEnabled()) {
         debug("EnvironmentVariable: %s=%s", key.c_str(), value.c_str());
       }
     }
   }
 
   windowOptions.headless = this->config["headless"] == "true";
-  windowOptions.debug = DEBUG ? true : false;
+  windowOptions.debug = isDebugEnabled() ? true : false;
   windowOptions.env = stream.str();
   windowOptions.cwd = this->rootDirectory.str();
 

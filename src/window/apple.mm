@@ -514,9 +514,9 @@ namespace SSC {
     WKPreferences* prefs = [config preferences];
     [prefs setJavaScriptCanOpenWindowsAutomatically:NO];
 
-    #if DEBUG == 1 // Adds "Inspect" option to context menus
+    if (SSC::isDebugEnabled()) {
       [prefs setValue:@YES forKey:@"developerExtrasEnabled"];
-    #endif
+    }
 
     WKUserContentController* controller = [config userContentController];
 

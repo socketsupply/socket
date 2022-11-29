@@ -190,10 +190,12 @@ namespace SSC {
   }
 
   App::App (void* h) : App(), hInstance((_In_ HINSTANCE) h) {
-    #if DEBUG == 1
-      AllocConsole();
-      freopen_s(&console, "CONOUT$", "w", stdout);
-    #endif
+    if (isDebugEnabled()) {
+      #if DEBUG == 1
+        AllocConsole();
+        freopen_s(&console, "CONOUT$", "w", stdout);
+      #endif
+    }
 
     HMODULE hUxtheme = LoadLibraryExW(L"uxtheme.dll", nullptr, LOAD_LIBRARY_SEARCH_SYSTEM32);
 

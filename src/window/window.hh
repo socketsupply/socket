@@ -239,9 +239,7 @@ namespace SSC {
           }
       };
 
-#if DEBUG
       std::chrono::system_clock::time_point lastDebugLogLine;
-#endif
 
       App &app;
       bool destroyed = false;
@@ -255,10 +253,10 @@ namespace SSC {
         inits(SSC_MAX_WINDOWS),
         windows(SSC_MAX_WINDOWS)
     {
-#if DEBUG
+      if (isDebugEnabled()) {
         lastDebugLogLine = std::chrono::system_clock::now();
-#endif
       }
+    }
 
       ~WindowFactory () {
         destroy();
@@ -292,14 +290,8 @@ namespace SSC {
       }
 
       void inline log (const String line) {
-        if (destroyed) return;
-#if DEBUG
+        if (destroyed || !isDebugEnabled()) return;
         using namespace std::chrono;
-
-#ifdef _WIN32 // unicode console support
-        // SetConsoleOutputCP(CP_UTF8);
-        // setvbuf(stdout, nullptr, _IOFBF, 1000);
-#endif
 
         auto now = system_clock::now();
         auto delta = duration_cast<milliseconds>(now - lastDebugLogLine).count();
@@ -309,7 +301,6 @@ namespace SSC {
         std::cout << std::endl;
 
         lastDebugLogLine = now;
-#endif
       }
 
       Window* getWindow (int index, WindowStatus status) {
@@ -434,11 +425,7 @@ namespace SSC {
           .isHeightInPercent = isHeightInPercent,
           .isWidthInPercent = isWidthInPercent,
           .index = opts.index,
-#if DEBUG
-          .debug = DEBUG || opts.debug,
-#else
-          .debug = opts.debug,
-#endif
+          .debug = isDebugEnabled() || opts.debug,
           .isTest = this->options.isTest,
           .headless = this->options.headless || opts.headless || opts.appData["headless"] == "true",
           .forwardConsole = opts.appData["linux_forward_console_to_stdout"] == "true",
@@ -452,9 +439,10 @@ namespace SSC {
           .appData = this->options.appData
         };
 
-#if DEBUG
-        this->log("Creating Window#" + std::to_string(opts.index));
-#endif
+        if (isDebugEnabled()) {
+          this->log("Creating Window#" + std::to_string(opts.index));
+        }
+
         auto window = new WindowWithMetadata(*this, app, windowOptions);
 
         window->status = WindowStatus::WINDOW_CREATED;
