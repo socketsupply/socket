@@ -419,19 +419,11 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
   objects = {
 
 /* Begin PBXBuildFile section */
+		17A7F8F229358D220051D146 /* init.cc in Sources */ = {isa = PBXBuildFile; fileRef = 17A7F8EE29358D180051D146 /* init.cc */; };
+		17A7F8F529358D430051D146 /* libsocket-runtime.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 17A7F8F329358D430051D146 /* libsocket-runtime.a */; };
+		17A7F8F629358D430051D146 /* libuv.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 17A7F8F429358D430051D146 /* libuv.a */; };
+		17A7F8F729358D4D0051D146 /* ios.o in Frameworks */ = {isa = PBXBuildFile; fileRef = 17A7F8F129358D180051D146 /* ios.o */; };
 		17C230BA28E9398700301440 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 17C230B928E9398700301440 /* Foundation.framework */; };
-		17DA350C28ECA38D00ED23A7 /* javascript.cc in Sources */ = {isa = PBXBuildFile; fileRef = 17DA34E128ECA38C00ED23A7 /* javascript.cc */; };
-		17DA350E28ECA38D00ED23A7 /* udp.cc in Sources */ = {isa = PBXBuildFile; fileRef = 17DA34E528ECA38C00ED23A7 /* udp.cc */; };
-		17DA350F28ECA38D00ED23A7 /* peer.cc in Sources */ = {isa = PBXBuildFile; fileRef = 17DA34E628ECA38C00ED23A7 /* peer.cc */; };
-		17DA351128ECA38D00ED23A7 /* fs.cc in Sources */ = {isa = PBXBuildFile; fileRef = 17DA34E928ECA38C00ED23A7 /* fs.cc */; };
-		17DA351328ECA38D00ED23A7 /* core.cc in Sources */ = {isa = PBXBuildFile; fileRef = 17DA34EC28ECA38C00ED23A7 /* core.cc */; };
-		17DA351428ECA38D00ED23A7 /* ios.mm in Sources */ = {isa = PBXBuildFile; fileRef = 17DA34EF28ECA38C00ED23A7 /* ios.mm */; };
-		17E73FD828FCC90A0087604F /* json.cc in Sources */ = {isa = PBXBuildFile; fileRef = 17E73FD528FCC90A0087604F /* json.cc */; };
-		17E73FD928FCC90A0087604F /* bluetooth.cc in Sources */ = {isa = PBXBuildFile; fileRef = 17E73FD728FCC90A0087604F /* bluetooth.cc */; };
-		17E73FDD28FCC98A0087604F /* apple.mm in Sources */ = {isa = PBXBuildFile; fileRef = 17E73FDB28FCC98A0087604F /* apple.mm */; };
-		17E73FEB28FCC9C80087604F /* ipc.cc in Sources */ = {isa = PBXBuildFile; fileRef = 17E73FE728FCC9C80087604F /* ipc.cc */; };
-		17E73FEC28FCC9C80087604F /* bridge.cc in Sources */ = {isa = PBXBuildFile; fileRef = 17E73FE828FCC9C80087604F /* bridge.cc */; };
-		17E73FEF28FCD3360087604F /* libuv-ios.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 17E73FEE28FCD3360087604F /* libuv-ios.a */; };
 		290F7EBF2768C49000486988 /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 294A3C792763E9C6007B5B9A /* UIKit.framework */; };
 		290F7F87276BC2B000486988 /* lib in Resources */ = {isa = PBXBuildFile; fileRef = 290F7F86276BC2B000486988 /* lib */; };
 		29124C5D2761336B001832A0 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 29124C5B2761336B001832A0 /* LaunchScreen.storyboard */; };
@@ -443,29 +435,15 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		17A7F8EE29358D180051D146 /* init.cc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = init.cc; sourceTree = "<group>"; };
+		17A7F8F129358D180051D146 /* ios.o */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.objfile"; path = ios.o; sourceTree = "<group>"; };
+		17A7F8F329358D430051D146 /* libsocket-runtime.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = "libsocket-runtime.a"; path = "lib/libsocket-runtime.a"; sourceTree = "<group>"; };
+		17A7F8F429358D430051D146 /* libuv.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libuv.a; path = lib/libuv.a; sourceTree = "<group>"; };
 		17C230B928E9398700301440 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
-		17DA34E128ECA38C00ED23A7 /* javascript.cc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = javascript.cc; sourceTree = "<group>"; };
-		17DA34E328ECA38C00ED23A7 /* runtime-preload.hh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = "runtime-preload.hh"; sourceTree = "<group>"; };
-		17DA34E528ECA38C00ED23A7 /* udp.cc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = udp.cc; sourceTree = "<group>"; };
-		17DA34E628ECA38C00ED23A7 /* peer.cc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = peer.cc; sourceTree = "<group>"; };
-		17DA34E928ECA38C00ED23A7 /* fs.cc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = fs.cc; sourceTree = "<group>"; };
-		17DA34EC28ECA38C00ED23A7 /* core.cc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = core.cc; sourceTree = "<group>"; };
-		17DA34ED28ECA38C00ED23A7 /* core.hh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = core.hh; sourceTree = "<group>"; };
-		17DA34EF28ECA38C00ED23A7 /* ios.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = ios.mm; sourceTree = "<group>"; };
-		17DA34F828ECA38C00ED23A7 /* app.hh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = app.hh; sourceTree = "<group>"; };
-		17DA34FA28ECA38C00ED23A7 /* options.hh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = options.hh; sourceTree = "<group>"; };
-		17E73FD528FCC90A0087604F /* json.cc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = json.cc; sourceTree = "<group>"; };
-		17E73FD628FCC90A0087604F /* json.hh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = json.hh; sourceTree = "<group>"; };
-		17E73FD728FCC90A0087604F /* bluetooth.cc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = bluetooth.cc; sourceTree = "<group>"; };
 		17E73FDA28FCC9320087604F /* common.hh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = common.hh; sourceTree = "<group>"; };
-		17E73FDB28FCC98A0087604F /* apple.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = apple.mm; sourceTree = "<group>"; };
-		17E73FDC28FCC98A0087604F /* window.hh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = window.hh; sourceTree = "<group>"; };
-		17E73FE728FCC9C80087604F /* ipc.cc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = ipc.cc; sourceTree = "<group>"; };
-		17E73FE828FCC9C80087604F /* bridge.cc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = bridge.cc; sourceTree = "<group>"; };
-		17E73FEA28FCC9C80087604F /* ipc.hh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = ipc.hh; sourceTree = "<group>"; };
 		17E73FEE28FCD3360087604F /* libuv-ios.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = "libuv-ios.a"; path = "lib/libuv-ios.a"; sourceTree = "<group>"; };
 		290F7F86276BC2B000486988 /* lib */ = {isa = PBXFileReference; lastKnownFileType = folder; path = lib; sourceTree = "<group>"; };
-		29124C4A27613369001832A0 /* {{name}}.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "{{name}}.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		29124C4A27613369001832A0 /* dogfood-dev.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "dogfood-dev.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		29124C5C2761336B001832A0 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		29124C5E2761336B001832A0 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		294A3C792763E9C6007B5B9A /* UIKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UIKit.framework; path = System/Library/Frameworks/UIKit.framework; sourceTree = SDKROOT; };
@@ -482,7 +460,9 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				17E73FEF28FCD3360087604F /* libuv-ios.a in Frameworks */,
+				17A7F8F529358D430051D146 /* libsocket-runtime.a in Frameworks */,
+				17A7F8F629358D430051D146 /* libuv.a in Frameworks */,
+				17A7F8F729358D4D0051D146 /* ios.o in Frameworks */,
 				17C230BA28E9398700301440 /* Foundation.framework in Frameworks */,
 				2996EDB22770BC1F00C672A2 /* Network.framework in Frameworks */,
 				2996EDB22770BC1F00C672A3 /* CoreBluetooth.framework in Frameworks */,
@@ -495,84 +475,28 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		17DA34DF28ECA38C00ED23A7 /* core */ = {
+		17A7F8EF29358D180051D146 /* objects */ = {
 			isa = PBXGroup;
 			children = (
-				17DA34EC28ECA38C00ED23A7 /* core.cc */,
-				17DA34ED28ECA38C00ED23A7 /* core.hh */,
-				17E73FD728FCC90A0087604F /* bluetooth.cc */,
-				17DA34E928ECA38C00ED23A7 /* fs.cc */,
-				17DA34E128ECA38C00ED23A7 /* javascript.cc */,
-				17E73FD528FCC90A0087604F /* json.cc */,
-				17E73FD628FCC90A0087604F /* json.hh */,
-				17DA34E628ECA38C00ED23A7 /* peer.cc */,
-				17DA34E328ECA38C00ED23A7 /* runtime-preload.hh */,
-				17DA34E528ECA38C00ED23A7 /* udp.cc */,
+				17A7F8F029358D180051D146 /* mobile */,
 			);
-			path = core;
+			path = objects;
 			sourceTree = "<group>";
 		};
-		17DA34EE28ECA38C00ED23A7 /* mobile */ = {
+		17A7F8F029358D180051D146 /* mobile */ = {
 			isa = PBXGroup;
 			children = (
-				17DA34EF28ECA38C00ED23A7 /* ios.mm */,
+				17A7F8F129358D180051D146 /* ios.o */,
 			);
 			path = mobile;
-			sourceTree = "<group>";
-		};
-		17DA34F728ECA38C00ED23A7 /* app */ = {
-			isa = PBXGroup;
-			children = (
-				17DA34F828ECA38C00ED23A7 /* app.hh */,
-			);
-			path = app;
-			sourceTree = "<group>";
-		};
-		17DA34F928ECA38C00ED23A7 /* window */ = {
-			isa = PBXGroup;
-			children = (
-				17E73FDB28FCC98A0087604F /* apple.mm */,
-				17DA34FA28ECA38C00ED23A7 /* options.hh */,
-				17E73FDC28FCC98A0087604F /* window.hh */,
-			);
-			path = window;
-			sourceTree = "<group>";
-		};
-		17DA34FB28ECA38C00ED23A7 /* include */ = {
-			isa = PBXGroup;
-			children = (
-				17DA34FD28ECA38C00ED23A7 /* uv */,
-			);
-			path = include;
-			sourceTree = "<group>";
-		};
-		17DA34FD28ECA38C00ED23A7 /* uv */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = uv;
-			sourceTree = "<group>";
-		};
-		17E73FE628FCC9C80087604F /* ipc */ = {
-			isa = PBXGroup;
-			children = (
-				17E73FE728FCC9C80087604F /* ipc.cc */,
-				17E73FE828FCC9C80087604F /* bridge.cc */,
-				17E73FEA28FCC9C80087604F /* ipc.hh */,
-			);
-			path = ipc;
 			sourceTree = "<group>";
 		};
 		29124C4127613369001832A0 = {
 			isa = PBXGroup;
 			children = (
+				17A7F8EE29358D180051D146 /* init.cc */,
+				17A7F8EF29358D180051D146 /* objects */,
 				17E73FDA28FCC9320087604F /* common.hh */,
-				17DA34F728ECA38C00ED23A7 /* app */,
-				17DA34DF28ECA38C00ED23A7 /* core */,
-				17DA34FB28ECA38C00ED23A7 /* include */,
-				17E73FE628FCC9C80087604F /* ipc */,
-				17DA34EE28ECA38C00ED23A7 /* mobile */,
-				17DA34F928ECA38C00ED23A7 /* window */,
 				290F7F86276BC2B000486988 /* lib */,
 				294A3C9027677424007B5B9A /* socket.entitlements */,
 				294A3C842764EAB7007B5B9A /* ui */,
@@ -586,7 +510,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 		29124C4B27613369001832A0 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				29124C4A27613369001832A0 /* {{name}}.app */,
+				29124C4A27613369001832A0 /* dogfood-dev.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -594,6 +518,8 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 		294A3C782763E9C6007B5B9A /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				17A7F8F329358D430051D146 /* libsocket-runtime.a */,
+				17A7F8F429358D430051D146 /* libuv.a */,
 				17E73FEE28FCD3360087604F /* libuv-ios.a */,
 				17C230B928E9398700301440 /* Foundation.framework */,
 				2996EDB12770BC1F00C672A2 /* Network.framework */,
@@ -608,9 +534,9 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		29124C4927613369001832A0 /* {{name}} */ = {
+		29124C4927613369001832A0 /* dogfood-dev */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 29124C792761336B001832A0 /* Build configuration list for PBXNativeTarget "{{name}}" */;
+			buildConfigurationList = 29124C792761336B001832A0 /* Build configuration list for PBXNativeTarget "dogfood-dev" */;
 			buildPhases = (
 				29124C4627613369001832A0 /* Sources */,
 				29124C4727613369001832A0 /* Frameworks */,
@@ -620,9 +546,9 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 			);
 			dependencies = (
 			);
-			name = "{{name}}";
-			productName = "{{name}}";
-			productReference = 29124C4A27613369001832A0 /* {{name}}.app */;
+			name = "dogfood-dev";
+			productName = "dogfood-dev";
+			productReference = 29124C4A27613369001832A0 /* dogfood-dev.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -639,7 +565,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 					};
 				};
 			};
-			buildConfigurationList = 29124C4527613369001832A0 /* Build configuration list for PBXProject "{{name}}" */;
+			buildConfigurationList = 29124C4527613369001832A0 /* Build configuration list for PBXProject "dogfood-dev" */;
 			compatibilityVersion = "Xcode 13.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -652,7 +578,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				29124C4927613369001832A0 /* {{name}} */,
+				29124C4927613369001832A0 /* dogfood-dev */,
 			);
 		};
 /* End PBXProject section */
@@ -675,17 +601,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				17E73FEB28FCC9C80087604F /* ipc.cc in Sources */,
-				17DA350C28ECA38D00ED23A7 /* javascript.cc in Sources */,
-				17E73FEC28FCC9C80087604F /* bridge.cc in Sources */,
-				17DA350F28ECA38D00ED23A7 /* peer.cc in Sources */,
-				17E73FD928FCC90A0087604F /* bluetooth.cc in Sources */,
-				17DA351128ECA38D00ED23A7 /* fs.cc in Sources */,
-				17DA351428ECA38D00ED23A7 /* ios.mm in Sources */,
-				17E73FDD28FCC98A0087604F /* apple.mm in Sources */,
-				17DA351328ECA38D00ED23A7 /* core.cc in Sources */,
-				17DA350E28ECA38D00ED23A7 /* udp.cc in Sources */,
-				17E73FD828FCC90A0087604F /* json.cc in Sources */,
+				17A7F8F229358D220051D146 /* init.cc in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

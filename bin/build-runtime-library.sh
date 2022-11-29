@@ -57,12 +57,12 @@ done
 
 if [[ "$(uname -s)" = "Darwin" ]]; then
   cflags+=("-ObjC++")
+  sources+=("$root/src/window/apple.mm")
   if (( TARGET_OS_IPHONE)); then
     clang="xcrun -sdk iphoneos $clang"
   elif (( TARGET_IPHONE_SIMULATOR )); then
     clang="xcrun -sdk iphonesimulator $clang"
   else
-    sources+=("$root/src/window/apple.mm")
     sources+=("$root/src/process/unix.cc")
   fi
 elif [[ "$(uname -s)" = "Linux" ]]; then

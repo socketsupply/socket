@@ -944,7 +944,7 @@ int main (const int argc, const char* argv[]) {
       flags += " -lsocket-runtime";
       flags += " -luv";
       files += prefixFile("objects/" + platform.arch + "-desktop/desktop/main.o");
-      files += prefixFile("src/desktop/init.cc");
+      files += prefixFile("src/init.cc");
       flags += " " + getCxxFlags();
 
       fs::path pathBase = "Contents";
@@ -1332,11 +1332,31 @@ int main (const int argc, const char* argv[]) {
         settings["apple_team_id"] = "";
       }
 
-      fs::copy(
-        fs::path(prefixFile()) / "lib",
-        paths.platformSpecificOutputPath / "lib",
-        fs::copy_options::overwrite_existing | fs::copy_options::recursive
-      );
+      if (flagBuildForSimulator) {
+        fs::copy(
+          fs::path(prefixFile()) / "lib" / "x86_64-iPhoneSimulator",
+          paths.platformSpecificOutputPath / "lib",
+          fs::copy_options::overwrite_existing | fs::copy_options::recursive
+        );
+
+        fs::copy(
+          fs::path(prefixFile()) / "objects" / "x86_64-iPhoneSimulator",
+          paths.platformSpecificOutputPath / "objects",
+          fs::copy_options::overwrite_existing | fs::copy_options::recursive
+        );
+      } else {
+        fs::copy(
+          fs::path(prefixFile()) / "lib" / "arm64-iPhoneOS",
+          paths.platformSpecificOutputPath / "lib",
+          fs::copy_options::overwrite_existing | fs::copy_options::recursive
+        );
+
+        fs::copy(
+          fs::path(prefixFile()) / "objects" / "arm64-iPhoneOS",
+          paths.platformSpecificOutputPath / "objects",
+          fs::copy_options::overwrite_existing | fs::copy_options::recursive
+        );
+      }
 
       fs::copy(
         fs::path(prefixFile()) / "include",
@@ -1368,7 +1388,7 @@ int main (const int argc, const char* argv[]) {
       flags += " -luv";
 
       files += prefixFile("objects/" + platform.arch + "-desktop/desktop/main.o");
-      files += prefixFile("src/desktop/init.cc");
+      files += prefixFile("src/init.cc");
 
       pathResources = paths.pathBin;
 
@@ -1449,6 +1469,7 @@ int main (const int argc, const char* argv[]) {
         " -L" + prefix + "\\lib"
       ;
 
+      files += prefixFile("src\\init.cc");
       files += prefixFile("src\\app\\app.cc");
       files += prefixFile("src\\core\\core.cc");
       files += prefixFile("src\\core\\fs.cc");
@@ -1560,35 +1581,13 @@ int main (const int argc, const char* argv[]) {
       auto pathToDist = oldCwd / paths.platformSpecificOutputPath;
 
       fs::create_directories(pathToDist);
-      fs::create_directories(pathToDist / "app");
-      fs::create_directories(pathToDist / "core");
-      fs::create_directories(pathToDist / "ipc");
-      fs::create_directories(pathToDist / "mobile");
-      fs::create_directories(pathToDist / "window");
       fs::current_path(pathToDist);
 
       //
       // Copy and or create the source files we need for the build.
       //
       fs::copy(trim(prefixFile("src/common.hh")), pathToDist);
-      fs::copy(trim(prefixFile("src/app/app.hh")), pathToDist / "app");
-      fs::copy(trim(prefixFile("src/core/bluetooth.cc")), pathToDist / "core");
-      fs::copy(trim(prefixFile("src/core/core.cc")), pathToDist / "core");
-      fs::copy(trim(prefixFile("src/core/core.hh")), pathToDist / "core");
-      fs::copy(trim(prefixFile("src/core/fs.cc")), pathToDist / "core");
-      fs::copy(trim(prefixFile("src/core/javascript.cc")), pathToDist / "core");
-      fs::copy(trim(prefixFile("src/core/json.cc")), pathToDist / "core");
-      fs::copy(trim(prefixFile("src/core/json.hh")), pathToDist / "core");
-      fs::copy(trim(prefixFile("src/core/peer.cc")), pathToDist / "core");
-      fs::copy(trim(prefixFile("src/core/runtime-preload.hh")), pathToDist / "core");
-      fs::copy(trim(prefixFile("src/core/udp.cc")), pathToDist / "core");
-      fs::copy(trim(prefixFile("src/ipc/bridge.cc")), pathToDist / "ipc");
-      fs::copy(trim(prefixFile("src/ipc/ipc.cc")), pathToDist / "ipc");
-      fs::copy(trim(prefixFile("src/ipc/ipc.hh")), pathToDist / "ipc");
-      fs::copy(trim(prefixFile("src/mobile/ios.mm")), pathToDist / "mobile");
-      fs::copy(trim(prefixFile("src/window/apple.mm")), pathToDist / "window");
-      fs::copy(trim(prefixFile("src/window/options.hh")), pathToDist / "window");
-      fs::copy(trim(prefixFile("src/window/window.hh")), pathToDist / "window");
+      fs::copy(trim(prefixFile("src/init.cc")), pathToDist);
 
       auto pathBase = pathToDist / "Base.lproj";
       fs::create_directories(pathBase);

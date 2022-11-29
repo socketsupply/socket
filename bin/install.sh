@@ -111,12 +111,9 @@ function _build_cli {
     die $? "not ok - unable to build. See trouble shooting guide in the README.md file"
   done
 
-  echo "$CXX" "${cflags[@]}" "${ldflags[@]}"  \
-    "$BUILD_DIR/$arch-$platform"/cli/*.o       \
-    -o "$BUILD_DIR/$arch-$platform/bin/ssc"
-
   quiet "$CXX"                                 \
     "$BUILD_DIR/$arch-$platform"/cli/*.o       \
+    "$root/src/init.cc"                        \
     "${cflags[@]}" "${ldflags[@]}"             \
     -o "$BUILD_DIR/$arch-$platform/bin/ssc"
 
@@ -179,7 +176,7 @@ function _prebuild_ios_main () {
 
   local clang="$(xcrun -sdk iphoneos -find clang++)"
   local cflags=($(TARGET_OS_IPHONE=1 "$root/bin/cflags.sh" -Os))
-  local sources=($(find "$src"/ios/*.{cc,mm} 2>/dev/null))
+  local sources=($(find "$src"/mobile/ios.mm 2>/dev/null))
   local outputs=()
 
   for source in "${sources[@]}"; do
@@ -286,7 +283,7 @@ function _install {
 
   rm -rf "$ASSETS_DIR/include"
   mkdir -p "$ASSETS_DIR/include"
-  cp -rf "$WORK_DIR"/include/* $ASSETS_DIR/include
+  #cp -rf "$WORK_DIR"/include/* $ASSETS_DIR/include
   cp -rf "$BUILD_DIR"/uv/include/* $ASSETS_DIR/include
 }
 
@@ -297,7 +294,8 @@ function _install_cli {
     local binDest="/usr/local/bin/ssc"
     echo "# moving binary to $binDest (prompting to copy file into directory)"
     sudo mkdir -p /usr/local/bin
-    sudo cp -f "$BUILD_DIR/$arch-$platform"/bin/ssc $binDest
+    sudo rm -f "$binDest"
+    sudo cp "$BUILD_DIR/$arch-$platform"/bin/ssc $binDest
   fi
 
   die $? "not ok - unable to move binary into place"

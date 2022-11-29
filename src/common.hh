@@ -168,6 +168,7 @@ namespace SSC {
   inline const auto VERSION_STRING = ToString(STR_VALUE(SSC_VERSION));
 
   const char* getSettingsSource ();
+  bool isDebugEnabled ();
 
   inline String encodeURIComponent (const String& sSrc);
   inline String decodeURIComponent (const String& sSrc);
