@@ -70,11 +70,7 @@ MAIN {
 
   app.setWindowFactory(&windowFactory);
 
-  //
-  // SSC_SETTINGS and DEBUG are compile time variables provided by the compiler.
-  //
   const auto _settings = SSC::getSettingsSource();
-  constexpr auto _debug = DEBUG;
   constexpr auto _port = PORT;
 
   const SSC::String OK_STATE = "0";
@@ -161,18 +157,18 @@ MAIN {
     }
   }
 
-  #if DEBUG == 1
+  if (isDebugEnabled()) {
     app.appData["name"] += "-dev";
-  #endif
+  }
 
   app.appData["name"] += suffix;
 
   argvForward << " --version=v" << app.appData["version"];
   argvForward << " --name=" << app.appData["name"];
 
-  #if DEBUG == 1
+  if (isDebugEnabled()) {
     argvForward << " --debug=1";
-  #endif
+  }
 
   SSC::StringStream env;
   for (auto const &envKey : split(app.appData["env"], ',')) {
