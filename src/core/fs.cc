@@ -243,12 +243,10 @@ namespace SSC {
   }
 
   bool Core::FS::Descriptor::isRetained () {
-    Lock lock(this->mutex);
     return this->retained;
   }
 
   bool Core::FS::Descriptor::isStale () {
-    Lock lock(this->mutex);
     return this->stale;
   }
 
@@ -293,7 +291,6 @@ namespace SSC {
       return cb(seq, json, Post{});
     }
 
-    Lock lock(desc->mutex);
     desc->retained = true;
     auto json = JSON::Object::Entries {
       {"source", "fs.retainOpenDescriptor"},

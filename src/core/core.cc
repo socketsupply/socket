@@ -316,7 +316,6 @@ namespace SSC {
         for (auto const &tuple : this->core->fs.descriptors) {
           auto desc = tuple.second;
           if (desc != nullptr) {
-            Lock lock(desc->mutex);
             desc->stale = true;
           } else {
             this->core->fs.descriptors.erase(tuple.first);
