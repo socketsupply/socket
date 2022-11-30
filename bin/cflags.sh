@@ -11,9 +11,11 @@ declare platform="desktop"
 
 declare ios_sdk_path=""
 
-if [[ "$(basename "$CXX")" =~ clang ]]; then
-  cflags+=("-stdlib=libc++")
+if [[ "$(uname)" = "Linux" ]] && [[ "$(basename "$CXX")" =~ clang ]]; then
   cflags+=("-Wno-unused-command-line-argument")
+  if [[ "$(uname)" = "Linux" ]]; then
+    cflags+=("-stdlib=libstdc++")
+  fi
 fi
 
 if (( TARGET_OS_IPHONE )) || (( TARGET_IPHONE_SIMULATOR )); then
