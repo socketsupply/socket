@@ -615,7 +615,6 @@ MAIN {
       auto window = windowFactory.getWindow(index);
       if (window) {
         const auto size = window->getSize();
-        const auto options = window->opts;
         const auto title = window->getTitle();
         SSC::String value(
           "{"
