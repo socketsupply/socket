@@ -610,6 +610,29 @@ MAIN {
       return;
     }
 
+    if (message.name == "windows") {
+      const auto index = message.index;
+      auto window = windowFactory.getWindow(index);
+      StringStream ss;
+      bool first = true;
+      ss << "[";
+      for (auto w : windowFactory.windows) {
+        if (w != nullptr) {
+          if (!first) {
+            ss << ",";
+          } else {
+            first = false;
+          }
+          ss << w->opts.index;
+        }
+      }
+      ss << "]";
+
+      auto result = ss.str();
+      window->resolvePromise(message.get("seq"), OK_STATE, result);
+      return;
+    }
+
     if (message.name == "window") {
       const auto index = message.index;
       auto window = windowFactory.getWindow(index);
