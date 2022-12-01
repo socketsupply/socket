@@ -1036,6 +1036,10 @@ namespace SSC {
     });
   }
 
+  SSC::string Window::getTitle () {
+    // TODO: implement.
+  }
+
   void Window::setTitle (const SSC::String& seq, const SSC::String& title) {
     SetWindowText(window, title.c_str());
 
@@ -1045,6 +1049,10 @@ namespace SSC {
 
       this->resolvePromise(seq, state, index);
     }
+  }
+
+  ScreenSize Window::getSize () {
+    // TODO: implement.
   }
 
   void Window::setSize (const SSC::String& seq, int width, int height, int hints) {

@@ -675,6 +675,10 @@ namespace SSC {
     }
   }
 
+  SSC::String Window::getTitle () {
+    // TODO: implement
+  }
+
   void Window::setTitle (const String &seq, const String &s) {
     gtk_widget_realize(window);
     gtk_window_set_title(GTK_WINDOW(window), s.c_str());
@@ -742,6 +746,10 @@ namespace SSC {
     gtk_window_set_title(GTK_WINDOW(dialog), "About");
 
     gtk_dialog_run(GTK_DIALOG(dialog));
+  }
+
+  ScreenSize Window::getSize () {
+    // TODO: implement
   }
 
   void Window::setSize (const String& seq, int width, int height, int hints) {
