@@ -745,6 +745,15 @@ namespace SSC {
     }
   }
 
+  ScreenSize Window::getSize () {
+    NSRect e = this->window.frame;
+
+    return ScreenSize {
+      .height = (int) e.size.height,
+      .width = (int) e.size.width
+    };
+  }
+
   void Window::setSize (const SSC::String& seq, int width, int height, int hints) {
     [window setFrame:NSMakeRect(0.f, 0.f, (float) width, (float) height) display:YES animate:NO];
     [window center];
