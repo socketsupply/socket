@@ -733,8 +733,7 @@ namespace SSC {
   }
 
   SSC::String Window::getTitle () {
-    NSWindow *w = [[UIApplication sharedApplication] windows[this->opts.index]];
-    return [NSString stringWithUTF8String: w.title.c_str()];
+    return SSC::String([this->window.title UTF8String]);
   }
 
   void Window::setTitle (const SSC::String& seq, const SSC::String& value) {
