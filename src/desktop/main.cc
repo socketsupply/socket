@@ -615,11 +615,11 @@ MAIN {
       const auto showTitle = message.get("title") == "true" ? true : false;
       const auto showSize = message.get("size") == "true" ? true : false;
       const auto showStatus = message.get("status") == "true" ? true : false;
-      const auto window = windowFactory.getWindow(index);
+      const auto window = windowManager.getWindow(index);
       StringStream ss;
       bool first = true;
       ss << "[";
-      for (auto windowWithMetadata : windowFactory.windows) {
+      for (auto windowWithMetadata : windowManager.windows) {
         if (windowWithMetadata != nullptr) {
           if (!first) {
             ss << ",";
@@ -629,7 +629,7 @@ MAIN {
           if (!showTitle && !showSize && !showStatus) {
             ss << windowWithMetadata->opts.index;
           } else {
-            const auto w = windowFactory.getWindow(windowWithMetadata->opts.index);
+            const auto w = windowManager.getWindow(windowWithMetadata->opts.index);
             ss << "{";
             if (showTitle) {
               const auto title = w->getTitle();
@@ -658,7 +658,7 @@ MAIN {
 
     if (message.name == "window") {
       const auto index = message.index;
-      auto window = windowFactory.getWindow(index);
+      auto window = windowManager.getWindow(index);
       if (window) {
         const auto size = window->getSize();
         const auto title = window->getTitle();
