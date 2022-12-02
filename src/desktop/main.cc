@@ -583,6 +583,9 @@ MAIN {
     }
 
     if (message.name == "window.setTitle") {
+      const auto currentIndex = message.index;
+      const auto index = message.get("window").size() > 0 ? std::stoi(message.get("window")) : currentIndex;
+      const auto window = windowManager.getWindow(index);
       window->setTitle(
         message.seq,
         decodeURIComponent(value)
@@ -869,6 +872,10 @@ MAIN {
       } catch (...) {
       }
 
+      const auto currentIndex = message.index;
+      const auto index = message.get("window").size() > 0 ? std::stoi(message.get("window")) : currentIndex;
+      const auto window = windowManager.getWindow(index);
+
       window->setBackgroundColor(red, green, blue, alpha);
       return;
     }
@@ -876,6 +883,10 @@ MAIN {
     if (message.name == "window.setSize") {
       int width = std::stoi(message.get("width"));
       int height = std::stoi(message.get("height"));
+
+      const auto currentIndex = message.index;
+      const auto index = message.get("window").size() > 0 ? std::stoi(message.get("window")) : currentIndex;
+      const auto window = windowManager.getWindow(index);
       window->setSize(EMPTY_SEQ, width, height, 0);
       return;
     }
