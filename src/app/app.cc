@@ -159,12 +159,12 @@ namespace SSC {
     return cwd;
   }
 
-  void App::setWindowFactory (void *windowFactory) {
-    this->windowFactory = windowFactory;
+  void App::setWindowManager (void *windowManager) {
+    this->windowManager = windowManager;
   }
 
-  void * App::getWindowFactory () const {
-    return this->windowFactory;
+  void * App::getWindowManager () const {
+    return this->windowManager;
   }
 
   void App::exit (int code) {
@@ -189,7 +189,9 @@ namespace SSC {
     MessageBoxA(nullptr, s, _TEXT("Alert"), MB_OK | MB_ICONSTOP);
   }
 
-  App::App (void* h) : App(), hInstance((_In_ HINSTANCE) h) {
+  App::App (void* h) : App() {
+    this->hInstance = (HINSTANCE) h;
+
     if (isDebugEnabled()) {
       #if DEBUG == 1
         AllocConsole();

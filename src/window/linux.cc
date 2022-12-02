@@ -28,13 +28,13 @@ namespace SSC {
     };
 
     this->bridge->router.map("window.eval", [=](auto message, auto router, auto reply) {
-      auto windowFactory = reinterpret_cast<WindowFactory *>(app.getWindowFactory());
-      if (windowFactory == nullptr) {
+      auto windowManager = reinterpret_cast<WindowManager *>(app.getWindowManager());
+      if (windowManager == nullptr) {
         // @TODO(jwerle): print warning
         return;
       }
 
-      auto window = windowFactory->getWindow(message.index);
+      auto window = windowManager->getWindow(message.index);
 
       if (window == nullptr) {
         return reply(IPC::Result::Err { message, JSON::Object::Entries {
