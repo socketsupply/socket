@@ -544,7 +544,7 @@ MAIN {
   // main thread.
   //
   auto onMessage = [&](auto out) {
-    debug("onMessage %s", out.c_str());
+    // debug("onMessage %s", out.c_str());
     IPC::Message message(out);
 
     auto window = windowManager.getWindow(message.index);
@@ -658,35 +658,6 @@ MAIN {
       window->resolvePromise(message.get("seq"), OK_STATE, encodeURIComponent(result));
       return;
     }
-
-    // if (message.name == "window") {
-    //   const auto index = message.index;
-    //   auto window = windowManager.getWindow(index);
-    //   if (window) {
-    //     const auto size = window->getSize();
-    //     const auto title = window->getTitle();
-    //     JSON::Object value = JSON::Object::Entries {
-    //       {"index", index},
-    //       {"title", title},
-    //       {"width", size.width},
-    //       {"height", size.height},
-    //       {"status", window->status},
-    //     };
-    //     const auto seq = message.get("seq");
-    //     window->resolvePromise(
-    //       seq,
-    //       OK_STATE,
-    //       JSON::Object(value).str()
-    //     );
-    //   } else {
-    //     window->resolvePromise(
-    //       message.get("seq"),
-    //       OK_STATE,
-    //       "null"
-    //     );
-    //   }
-    //   return;
-    // }
 
     if (message.name == "window.getStatus") {
       const auto index = message.index;
