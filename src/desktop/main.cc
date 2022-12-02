@@ -321,7 +321,7 @@ MAIN {
         return;
       }
 
-      if (message.name == "show") {
+      if (message.name == "window.show") {
         auto index = message.index < 0 ? 0 : message.index;
         auto options = WindowOptions {};
         auto status = windowManager.getWindowStatus(index);
@@ -412,7 +412,7 @@ MAIN {
         return;
       }
 
-      if (message.name == "title") {
+      if (message.name == "window.setTitle") {
         window->setTitle(seq, decodeURIComponent(value));
         return;
       }
@@ -422,17 +422,17 @@ MAIN {
         return;
       }
 
-      if (message.name == "hide") {
+      if (message.name == "window.hide") {
         window->hide(seq);
         return;
       }
 
-      if (message.name == "navigate") {
+      if (message.name == "window.navigate") {
         window->navigate(seq, decodeURIComponent(value));
         return;
       }
 
-      if (message.name == "size") {
+      if (message.name == "window.setSize") {
         int width = std::stoi(message.get("width"));
         int height = std::stoi(message.get("height"));
         window->setSize(seq, width, height, 0);
@@ -582,7 +582,7 @@ MAIN {
       return;
     }
 
-    if (message.name == "title") {
+    if (message.name == "window.setTitle") {
       window->setTitle(
         message.seq,
         decodeURIComponent(value)
@@ -610,7 +610,7 @@ MAIN {
       return;
     }
 
-    if (message.name == "windows") {
+    if (message.name == "getWindows") {
       const auto index = message.index;
       auto window = windowFactory.getWindow(index);
       StringStream ss;
@@ -663,7 +663,7 @@ MAIN {
       return;
     }
 
-    if (message.name == "show") {
+    if (message.name == "window.show") {
       auto windowIndexToShow = std::stoi(message.get("window"));
       windowIndexToShow = windowIndexToShow < 0 ? 0 : windowIndexToShow;
       auto index = message.index < 0 ? 0 : message.index;
@@ -718,7 +718,7 @@ MAIN {
       return;
     }
 
-    if (message.name == "hide") {
+    if (message.name == "window.hide") {
       auto windowIndexToShow = std::stoi(message.get("window"));
       windowIndexToShow = windowIndexToShow < 0 ? 0 : windowIndexToShow;
       auto index = message.index < 0 ? 0 : message.index;
@@ -732,7 +732,7 @@ MAIN {
       return;
     }
 
-    if (message.name == "navigate") {
+    if (message.name == "window.navigate") {
       auto windowIndexToShow = std::stoi(message.get("window"));
       windowIndexToShow = windowIndexToShow < 0 ? 0 : windowIndexToShow;
       auto index = message.index < 0 ? 0 : message.index;
@@ -752,7 +752,7 @@ MAIN {
       return;
     }
 
-    if (message.name == "background") {
+    if (message.name == "window.setBackground") {
       int red = 0;
       int green = 0;
       int blue = 0;
@@ -770,7 +770,7 @@ MAIN {
       return;
     }
 
-    if (message.name == "size") {
+    if (message.name == "window.setSize") {
       int width = std::stoi(message.get("width"));
       int height = std::stoi(message.get("height"));
       window->setSize(EMPTY_SEQ, width, height, 0);

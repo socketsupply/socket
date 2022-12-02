@@ -16,7 +16,7 @@ namespace SSC {
       "    value: '" + platform.arch + "',                                       \n"
       "    enumerable: true                                                      \n"
       "  },                                                                      \n"
-      "  os: {                                                             \n"
+      "  os: {                                                                   \n"
       "    value: '" + platform.os + "',                                         \n"
       "    enumerable: true                                                      \n"
       "  },                                                                      \n"
