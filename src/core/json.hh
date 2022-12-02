@@ -407,16 +407,20 @@ namespace SSC::JSON {
         auto value = this->data;
         auto output = std::to_string(value);
 
-        // trim trailing zeros
-        auto  i = output.size() - 1;
-        for (; i >= 0; --i) {
-          auto ch = output[i];
-          if (ch != '0' && ch != '.') {
-            break;
+        if (value - ((int64_t) value) != 0) {
+          // trim trailing zeros
+          auto  i = output.size() - 1;
+          for (; i >= 0; --i) {
+            auto ch = output[i];
+            if (ch != '0' && ch != '.') {
+              break;
+            }
           }
+
+          return output.substr(0, i + 1);
         }
 
-        return output.substr(0, i + 1);
+        return output;
       }
   };
 
