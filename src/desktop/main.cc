@@ -661,12 +661,12 @@ MAIN {
 
     if (message.name == "window.getStatus") {
       const auto index = message.index;
-      const auto windowIndexToShow = message.get("window").size() > 0 ? std::stoi(message.get("window")) : index;
+      const auto targetWindowIndex = message.get("window").size() > 0 ? std::stoi(message.get("window")) : index;
       const auto window = windowManager.getWindow(index);
-      const auto windowToShow = windowManager.getWindow(windowIndexToShow);
+      const auto windowToShow = windowManager.getWindow(targetWindowIndex);
       if (windowToShow) {
         JSON::Object value = JSON::Object::Entries {
-          {"index", index},
+          {"index", targetWindowIndex},
           {"status", windowToShow->status}
         };
         const auto seq = message.get("seq");
@@ -687,13 +687,13 @@ MAIN {
 
     if (message.name == "window.getSize") {
       const auto index = message.index;
-      const auto windowIndexToShow = message.get("window").size() > 0 ? std::stoi(message.get("window")) : index;
+      const auto targetWindowIndex = message.get("window").size() > 0 ? std::stoi(message.get("window")) : index;
       const auto window = windowManager.getWindow(index);
-      const auto windowToShow = windowManager.getWindow(windowIndexToShow);
+      const auto windowToShow = windowManager.getWindow(targetWindowIndex);
       if (window) {
         const auto size = windowToShow->getSize();
         JSON::Object value = JSON::Object::Entries {
-          {"index", index},
+          {"index", targetWindowIndex},
           {"width", size.width},
           {"height", size.height}
         };
@@ -715,13 +715,13 @@ MAIN {
 
     if (message.name == "window.getTitle") {
       const auto index = message.index;
-      const auto windowIndexToShow = message.get("window").size() > 0 ? std::stoi(message.get("window")) : index;
+      const auto targetWindowIndex = message.get("window").size() > 0 ? std::stoi(message.get("window")) : index;
       const auto window = windowManager.getWindow(index);
-      const auto windowToShow = windowManager.getWindow(windowIndexToShow);
+      const auto windowToShow = windowManager.getWindow(targetWindowIndex);
       if (window) {
         const auto title = windowToShow->getTitle();
         JSON::Object value = JSON::Object::Entries {
-          {"index", index},
+          {"index", targetWindowIndex},
           {"title", title}
         };
         const auto seq = message.get("seq");
@@ -741,12 +741,12 @@ MAIN {
     }
 
     if (message.name == "window.show") {
-      auto windowIndexToShow = std::stoi(message.get("window"));
-      windowIndexToShow = windowIndexToShow < 0 ? 0 : windowIndexToShow;
+      auto targetWindowIndex = std::stoi(message.get("window"));
+      targetWindowIndex = targetWindowIndex < 0 ? 0 : targetWindowIndex;
       auto index = message.index < 0 ? 0 : message.index;
       auto options = WindowOptions {};
-      auto status = windowManager.getWindowStatus(windowIndexToShow);
-      auto window = windowManager.getWindow(windowIndexToShow);
+      auto status = windowManager.getWindowStatus(targetWindowIndex);
+      auto window = windowManager.getWindow(targetWindowIndex);
 
       options.title = message.get("title");
       options.url = message.get("url");
@@ -766,7 +766,7 @@ MAIN {
         options.frameless = message.get("frameless") == "true" ? true : false;
         options.utility = message.get("utility") == "true" ? true : false;
         options.debug = message.get("debug") == "true" ? true : false;
-        options.index = windowIndexToShow;
+        options.index = targetWindowIndex;
 
         window = windowManager.createWindow(options);
         window->show(EMPTY_SEQ);
@@ -796,10 +796,10 @@ MAIN {
     }
 
     if (message.name == "window.hide") {
-      auto windowIndexToShow = std::stoi(message.get("window"));
-      windowIndexToShow = windowIndexToShow < 0 ? 0 : windowIndexToShow;
+      auto targetWindowIndex = std::stoi(message.get("window"));
+      targetWindowIndex = targetWindowIndex < 0 ? 0 : targetWindowIndex;
       auto index = message.index < 0 ? 0 : message.index;
-      auto window = windowManager.getWindow(windowIndexToShow);
+      auto window = windowManager.getWindow(targetWindowIndex);
       window->hide(EMPTY_SEQ);
 
       auto resolveWindow = windowManager.getWindow(index);
@@ -810,10 +810,10 @@ MAIN {
     }
 
     if (message.name == "window.navigate") {
-      auto windowIndexToShow = std::stoi(message.get("window"));
-      windowIndexToShow = windowIndexToShow < 0 ? 0 : windowIndexToShow;
+      auto targetWindowIndex = std::stoi(message.get("window"));
+      targetWindowIndex = targetWindowIndex < 0 ? 0 : targetWindowIndex;
       auto index = message.index < 0 ? 0 : message.index;
-      auto window = windowManager.getWindow(windowIndexToShow);
+      auto window = windowManager.getWindow(targetWindowIndex);
       auto url = message.get("url");
       navigate(window, cwd, EMPTY_SEQ, decodeURIComponent(url));
 
