@@ -612,24 +612,47 @@ MAIN {
 
     if (message.name == "getWindows") {
       const auto index = message.index;
-      auto window = windowFactory.getWindow(index);
+      const auto showTitle = message.get("title") == "true" ? true : false;
+      const auto showSize = message.get("size") == "true" ? true : false;
+      const auto showStatus = message.get("status") == "true" ? true : false;
+      const auto window = windowFactory.getWindow(index);
       StringStream ss;
       bool first = true;
       ss << "[";
-      for (auto w : windowFactory.windows) {
-        if (w != nullptr) {
+      for (auto windowWithMetadata : windowFactory.windows) {
+        if (windowWithMetadata != nullptr) {
           if (!first) {
             ss << ",";
           } else {
             first = false;
           }
-          ss << w->opts.index;
+          if (!showTitle && !showSize && !showStatus) {
+            ss << windowWithMetadata->opts.index;
+          } else {
+            const auto w = windowFactory.getWindow(windowWithMetadata->opts.index);
+            ss << "{";
+            if (showTitle) {
+              const auto title = w->getTitle();
+              ss << "\"title\":\"" << title << "\",";
+            }
+            if (showSize) {
+              const auto size = w->getSize();
+              ss << "\"width\":" << size.width << ",";
+              ss << "\"height\":" << size.height << ",";
+            }
+            if (showStatus) {
+              const auto status = windowWithMetadata->status;
+              ss << "\"status\":" << status << ",";
+            }
+            ss << "\"index\":" << windowWithMetadata->opts.index;
+            ss << "}";
+          }
         }
       }
       ss << "]";
 
       auto result = ss.str();
-      window->resolvePromise(message.get("seq"), OK_STATE, result);
+      window->resolvePromise(message.get("seq"), OK_STATE, encodeURIComponent(result));
       return;
     }
 
