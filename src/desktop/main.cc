@@ -66,9 +66,9 @@ void navigate (Window* window, const String &cwd, const String &seq, const Strin
 //
 MAIN {
   App app(instanceId);
-  WindowFactory windowFactory(app);
+  WindowManager windowManager(app);
 
-  app.setWindowFactory(&windowFactory);
+  app.setWindowManager(&windowManager);
 
   const auto _settings = SSC::getSettingsSource();
   constexpr auto _port = PORT;
@@ -276,9 +276,9 @@ MAIN {
   if (width < 0) width = 0;
 
   auto onStdErr = [&](auto err) {
-    for (auto w : windowFactory.windows) {
+    for (auto w : windowManager.windows) {
       if (w != nullptr) {
-        auto window = windowFactory.getWindow(w->opts.index);
+        auto window = windowManager.getWindow(w->opts.index);
         window->eval(getEmitToRenderProcessJavaScript("process-error", err));
       }
     }
@@ -324,8 +324,8 @@ MAIN {
       if (message.name == "show") {
         auto index = message.index < 0 ? 0 : message.index;
         auto options = WindowOptions {};
-        auto status = windowFactory.getWindowStatus(index);
-        auto window = windowFactory.getWindow(index);
+        auto status = windowManager.getWindowStatus(index);
+        auto window = windowManager.getWindow(index);
 
         options.title = message.get("title");
         options.url = message.get("url");
@@ -339,14 +339,14 @@ MAIN {
           options.height = std::stoi(message.get("height"));
         }
 
-        if (!window || status == WindowFactory::WindowStatus::WINDOW_NONE) {
+        if (!window || status == WindowManager::WindowStatus::WINDOW_NONE) {
           options.resizable = message.get("resizable") == "true" ? true : false;
           options.frameless = message.get("frameless") == "true" ? true : false;
           options.utility = message.get("utility") == "true" ? true : false;
           options.debug = message.get("debug") == "true" ? true : false;
           options.index = index;
 
-          window = windowFactory.createWindow(options);
+          window = windowManager.createWindow(options);
           window->show(seq);
         } else {
           window->show(seq);
@@ -371,7 +371,7 @@ MAIN {
 
       if (message.name == "send") {
         if (message.index >= 0) {
-          auto window = windowFactory.getWindow(message.index);
+          auto window = windowManager.getWindow(message.index);
           if (window) {
             window->eval(getEmitToRenderProcessJavaScript(
               decodeURIComponent(message.get("event")),
@@ -379,9 +379,9 @@ MAIN {
             ));
           }
         } else {
-          for (auto w : windowFactory.windows) {
+          for (auto w : windowManager.windows) {
             if (w != nullptr) {
-              auto window = windowFactory.getWindow(w->opts.index);
+              auto window = windowManager.getWindow(w->opts.index);
               window->eval(getEmitToRenderProcessJavaScript(
                 decodeURIComponent(message.get("event")),
                 value
@@ -392,10 +392,10 @@ MAIN {
         return;
       }
 
-      auto window = windowFactory.getOrCreateWindow(message.index);
+      auto window = windowManager.getOrCreateWindow(message.index);
 
       if (!window) {
-        auto defaultWindow = windowFactory.getWindow(0);
+        auto defaultWindow = windowManager.getWindow(0);
 
         if (defaultWindow) {
           window = defaultWindow;
@@ -522,9 +522,9 @@ MAIN {
     onStdOut,
     onStdErr,
     [&](SSC::String const &code) {
-      for (auto w : windowFactory.windows) {
+      for (auto w : windowManager.windows) {
         if (w != nullptr) {
-          auto window = windowFactory.getWindow(w->opts.index);
+          auto window = windowManager.getWindow(w->opts.index);
           window->eval(getEmitToRenderProcessJavaScript("backend-exit", code));
         }
       }
@@ -547,12 +547,12 @@ MAIN {
     // debug("onMessage %s", out.c_str());
     IPC::Message message(out);
 
-    auto window = windowFactory.getWindow(message.index);
+    auto window = windowManager.getWindow(message.index);
     auto value = message.get("value");
 
     // the window must exist
     if (!window && message.index >= 0) {
-      auto defaultWindow = windowFactory.getWindow(0);
+      auto defaultWindow = windowManager.getWindow(0);
 
       if (defaultWindow) {
         window = defaultWindow;
@@ -615,8 +615,8 @@ MAIN {
       windowIndexToShow = windowIndexToShow < 0 ? 0 : windowIndexToShow;
       auto index = message.index < 0 ? 0 : message.index;
       auto options = WindowOptions {};
-      auto status = windowFactory.getWindowStatus(windowIndexToShow);
-      auto window = windowFactory.getWindow(windowIndexToShow);
+      auto status = windowManager.getWindowStatus(windowIndexToShow);
+      auto window = windowManager.getWindow(windowIndexToShow);
 
       options.title = message.get("title");
       options.url = message.get("url");
@@ -631,14 +631,14 @@ MAIN {
       }
 
       const auto seq = message.get("seq");
-      if (!window || status == WindowFactory::WindowStatus::WINDOW_NONE) {
+      if (!window || status == WindowManager::WindowStatus::WINDOW_NONE) {
         options.resizable = message.get("resizable") == "true" ? true : false;
         options.frameless = message.get("frameless") == "true" ? true : false;
         options.utility = message.get("utility") == "true" ? true : false;
         options.debug = message.get("debug") == "true" ? true : false;
         options.index = windowIndexToShow;
 
-        window = windowFactory.createWindow(options);
+        window = windowManager.createWindow(options);
         window->show(EMPTY_SEQ);
       } else {
         window->show(EMPTY_SEQ);
@@ -658,7 +658,7 @@ MAIN {
         }
       }
 
-      auto resolveWindow = windowFactory.getWindow(index);
+      auto resolveWindow = windowManager.getWindow(index);
       if (resolveWindow) {
         resolveWindow->resolvePromise(seq, OK_STATE, std::to_string(index));
       }
@@ -669,10 +669,10 @@ MAIN {
       auto windowIndexToShow = std::stoi(message.get("window"));
       windowIndexToShow = windowIndexToShow < 0 ? 0 : windowIndexToShow;
       auto index = message.index < 0 ? 0 : message.index;
-      auto window = windowFactory.getWindow(windowIndexToShow);
+      auto window = windowManager.getWindow(windowIndexToShow);
       window->hide(EMPTY_SEQ);
 
-      auto resolveWindow = windowFactory.getWindow(index);
+      auto resolveWindow = windowManager.getWindow(index);
       if (resolveWindow) {
         resolveWindow->resolvePromise(message.get("seq"), OK_STATE, std::to_string(index));
       }
@@ -683,11 +683,11 @@ MAIN {
       auto windowIndexToShow = std::stoi(message.get("window"));
       windowIndexToShow = windowIndexToShow < 0 ? 0 : windowIndexToShow;
       auto index = message.index < 0 ? 0 : message.index;
-      auto window = windowFactory.getWindow(windowIndexToShow);
+      auto window = windowManager.getWindow(windowIndexToShow);
       auto url = message.get("url");
       navigate(window, cwd, EMPTY_SEQ, decodeURIComponent(url));
 
-      auto resolveWindow = windowFactory.getWindow(index);
+      auto resolveWindow = windowManager.getWindow(index);
       if (resolveWindow) {
         resolveWindow->resolvePromise(message.get("seq"), OK_STATE, std::to_string(index));
       }
@@ -799,7 +799,7 @@ MAIN {
       auto pid = process->getPID();
       process->kill(pid);
     }
-    windowFactory.destroy();
+    windowManager.destroy();
     app.kill();
 
     exit(code);
@@ -807,7 +807,7 @@ MAIN {
 
   app.onExit = shutdownHandler;
 
-  windowFactory.configure(WindowFactoryOptions {
+  windowManager.configure(WindowManagerOptions {
     .defaultHeight = height,
     .defaultWidth = width,
     .isHeightInPercent = isHeightInPercent,
@@ -821,10 +821,10 @@ MAIN {
     .onExit = shutdownHandler
   });
 
-  Window* defaultWindow = windowFactory.createDefaultWindow(WindowOptions { });
+  auto defaultWindow = windowManager.createDefaultWindow(WindowOptions { });
 
-  // windowFactory.getOrCreateWindow(0);
-  windowFactory.getOrCreateWindow(1);
+  // windowManager.getOrCreateWindow(0);
+  windowManager.getOrCreateWindow(1);
 
   defaultWindow->show(EMPTY_SEQ);
 
