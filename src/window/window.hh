@@ -134,7 +134,7 @@ namespace SSC {
       }
   };
 
-  struct WindowFactoryOptions {
+  struct WindowManagerOptions {
     float defaultHeight = 0;
     float defaultWidth = 0;
     bool isHeightInPercent = false;
@@ -148,7 +148,7 @@ namespace SSC {
     ExitCallback onExit = nullptr;
   };
 
-  class WindowFactory  {
+  class WindowManager  {
     public:
       enum WindowStatus {
         WINDOW_ERROR = -1,
@@ -167,22 +167,22 @@ namespace SSC {
         WINDOW_KILLED
       };
 
-      class WindowWithMetadata : public Window {
+      class ManagedWindow : public Window {
         public:
           WindowStatus status;
-          WindowFactory &factory;
+          WindowManager &manager;
 
-          WindowWithMetadata (
-            WindowFactory &factory,
+          ManagedWindow (
+            WindowManager &manager,
             App &app,
             WindowOptions opts
-          ) : Window(app, opts) , factory(factory) { }
+          ) : Window(app, opts) , manager(manager) { }
 
-          ~WindowWithMetadata () {}
+          ~ManagedWindow () {}
 
           void show (const String &seq) {
             auto index = std::to_string(this->opts.index);
-            factory.log("Showing Window#" + index + " (seq=" + seq + ")");
+            manager.log("Showing Window#" + index + " (seq=" + seq + ")");
             status = WindowStatus::WINDOW_SHOWING;
             Window::show(seq);
             status = WindowStatus::WINDOW_SHOWN;
@@ -194,7 +194,7 @@ namespace SSC {
               status < WindowStatus::WINDOW_EXITING
             ) {
               auto index = std::to_string(this->opts.index);
-              factory.log("Hiding Window#" + index + " (seq=" + seq + ")");
+              manager.log("Hiding Window#" + index + " (seq=" + seq + ")");
               status = WindowStatus::WINDOW_HIDING;
               Window::hide(seq);
               status = WindowStatus::WINDOW_HIDDEN;
@@ -204,7 +204,7 @@ namespace SSC {
           void close (int code) {
             if (status < WindowStatus::WINDOW_CLOSING) {
               auto index = std::to_string(this->opts.index);
-              factory.log("Closing Window#" + index + " (code=" + std::to_string(code) + ")");
+              manager.log("Closing Window#" + index + " (code=" + std::to_string(code) + ")");
               status = WindowStatus::WINDOW_CLOSING;
               Window::close(code);
               status = WindowStatus::WINDOW_CLOSED;
@@ -215,7 +215,7 @@ namespace SSC {
           void exit (int code) {
             if (status < WindowStatus::WINDOW_EXITING) {
               auto index = std::to_string(this->opts.index);
-              factory.log("Exiting Window#" + index + " (code=" + std::to_string(code) + ")");
+              manager.log("Exiting Window#" + index + " (code=" + std::to_string(code) + ")");
               status = WindowStatus::WINDOW_EXITING;
               Window::exit(code);
               status = WindowStatus::WINDOW_EXITED;
@@ -226,7 +226,7 @@ namespace SSC {
           void kill () {
             if (status < WindowStatus::WINDOW_KILLING) {
               auto index = std::to_string(this->opts.index);
-              factory.log("Killing Window#" + index);
+              manager.log("Killing Window#" + index);
               status = WindowStatus::WINDOW_KILLING;
               Window::kill();
               status = WindowStatus::WINDOW_KILLED;
@@ -235,7 +235,7 @@ namespace SSC {
           }
 
           void gc () {
-            factory.destroyWindow(reinterpret_cast<Window*>(this));
+            manager.destroyWindow(reinterpret_cast<Window*>(this));
           }
       };
 
@@ -244,11 +244,11 @@ namespace SSC {
       App &app;
       bool destroyed = false;
       std::vector<bool> inits;
-      std::vector<WindowWithMetadata*> windows;
+      std::vector<ManagedWindow*> windows;
       std::recursive_mutex mutex;
-      WindowFactoryOptions options;
+      WindowManagerOptions options;
 
-      WindowFactory (App &app) :
+      WindowManager (App &app) :
         app(app),
         inits(SSC_MAX_WINDOWS),
         windows(SSC_MAX_WINDOWS)
@@ -258,7 +258,7 @@ namespace SSC {
       }
     }
 
-      ~WindowFactory () {
+      ~WindowManager () {
         destroy();
       }
 
@@ -274,7 +274,7 @@ namespace SSC {
         inits.clear();
       }
 
-      void configure (WindowFactoryOptions configuration) {
+      void configure (WindowManagerOptions configuration) {
         if (destroyed) return;
         this->options.defaultHeight = configuration.defaultHeight;
         this->options.defaultWidth = configuration.defaultWidth;
@@ -303,28 +303,28 @@ namespace SSC {
         lastDebugLogLine = now;
       }
 
-      Window* getWindow (int index, WindowStatus status) {
+      ManagedWindow* getWindow (int index, WindowStatus status) {
         std::lock_guard<std::recursive_mutex> guard(this->mutex);
         if (this->destroyed) return nullptr;
         if (
           getWindowStatus(index) > WindowStatus::WINDOW_NONE &&
           getWindowStatus(index) < status
         ) {
-          return reinterpret_cast<Window*>(windows[index]);
+          return windows[index];
         }
 
         return nullptr;
       }
 
-      Window* getWindow (int index) {
+      ManagedWindow* getWindow (int index) {
         return getWindow(index, WindowStatus::WINDOW_EXITING);
       }
 
-      Window* getOrCreateWindow (int index) {
+      ManagedWindow* getOrCreateWindow (int index) {
         return getOrCreateWindow(index, WindowOptions {});
       }
 
-      Window* getOrCreateWindow (int index, WindowOptions opts) {
+      ManagedWindow* getOrCreateWindow (int index, WindowOptions opts) {
         if (this->destroyed) return nullptr;
         if (index < 0) return nullptr;
         if (getWindowStatus(index) == WindowStatus::WINDOW_NONE) {
@@ -353,7 +353,7 @@ namespace SSC {
         }
       }
 
-      void destroyWindow (WindowWithMetadata* window) {
+      void destroyWindow (ManagedWindow* window) {
         if (destroyed) return;
         if (window != nullptr) {
           return destroyWindow(reinterpret_cast<Window*>(window));
@@ -364,7 +364,7 @@ namespace SSC {
         std::lock_guard<std::recursive_mutex> guard(this->mutex);
         if (destroyed) return;
         if (window != nullptr && windows[window->index] != nullptr) {
-          auto metadata = reinterpret_cast<WindowWithMetadata*>(window);
+          auto metadata = reinterpret_cast<ManagedWindow*>(window);
 
           inits[window->index] = false;
           windows[window->index] = nullptr;
@@ -381,13 +381,13 @@ namespace SSC {
         }
       }
 
-      Window* createWindow (WindowOptions opts) {
+      ManagedWindow* createWindow (WindowOptions opts) {
         std::lock_guard<std::recursive_mutex> guard(this->mutex);
         if (destroyed) return nullptr;
         StringStream env;
 
-        if (inits[opts.index]) {
-          return reinterpret_cast<Window*>(windows[opts.index]);
+        if (inits[opts.index] && windows[opts.index] != nullptr) {
+          return windows[opts.index];
         }
 
         if (opts.appData.size() > 0) {
@@ -443,7 +443,7 @@ namespace SSC {
           this->log("Creating Window#" + std::to_string(opts.index));
         }
 
-        auto window = new WindowWithMetadata(*this, app, windowOptions);
+        auto window = new ManagedWindow(*this, app, windowOptions);
 
         window->status = WindowStatus::WINDOW_CREATED;
         window->onExit = this->options.onExit;
@@ -452,10 +452,10 @@ namespace SSC {
         windows[opts.index] = window;
         inits[opts.index] = true;
 
-        return reinterpret_cast<Window*>(window);
+        return window;
       }
 
-      Window* createDefaultWindow (WindowOptions opts) {
+      ManagedWindow* createDefaultWindow (WindowOptions opts) {
         return createWindow(WindowOptions {
           .resizable = true,
           .frameless = false,

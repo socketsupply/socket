@@ -6,8 +6,8 @@
 
 namespace SSC {
   class App {
-    // an opaque pointer to the configured `WindowFactory<Window, App>`
-    void *windowFactory = nullptr;
+    // an opaque pointer to the configured `WindowManager<Window, App>`
+    void *windowManager = nullptr;
     public:
       static inline std::atomic<bool> isReady = false;
 
@@ -38,8 +38,8 @@ namespace SSC {
       void restart ();
       void dispatch (std::function<void()>);
       SSC::String getCwd ();
-      void setWindowFactory (void *);
-      void * getWindowFactory () const;
+      void setWindowManager (void *);
+      void * getWindowManager () const;
   };
 
 #if defined(_WIN32)
