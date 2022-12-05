@@ -75,7 +75,7 @@ namespace SSC::JSON {
       auto isArray () const { return this->type == Type::Array; }
       auto isBoolean () const { return this->type == Type::Boolean; }
       auto isNumber () const { return this->type == Type::Number; }
-      auto isNuLl () const { return this->type == Type::Null; }
+      auto isNull () const { return this->type == Type::Null; }
       auto isObject () const { return this->type == Type::Object; }
       auto isString () const { return this->type == Type::String; }
       auto isEmpty () const {
