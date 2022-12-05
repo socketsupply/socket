@@ -239,6 +239,26 @@ namespace SSC {
           void gc () {
             manager.destroyWindow(reinterpret_cast<Window*>(this));
           }
+
+          JSON::Object json (bool showTitle, bool showSize, bool showStatus) {
+            auto index = this->opts.index;
+            auto window = JSON::Object::Entries {
+              { "index", index }
+            };
+            if (showTitle) {
+              window["title"] = this->getTitle();
+            }
+            if (showSize) {
+              const auto size = this->getSize();
+              window["width"] = size.width;
+              window["height"] = size.height;
+            }
+            if (showStatus) {
+              const auto status = this->status;
+              window["status"] = status;
+            }
+            return JSON::Object(window);
+          }
       };
 
       std::chrono::system_clock::time_point lastDebugLogLine;
