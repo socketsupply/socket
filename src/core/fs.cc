@@ -1470,9 +1470,11 @@ namespace SSC {
 
   void Core::FS::constants (const String seq, Module::Callback cb) {
     static auto constants = getFSConstantsMap();
+    debug("in constants");
 
     this->core->dispatchEventLoop([=] {
       JSON::Object::Entries data;
+    debug("in constants callback");
 
       for (auto const &tuple : constants) {
         auto key = tuple.first;

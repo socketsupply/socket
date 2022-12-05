@@ -407,7 +407,7 @@ namespace SSC::JSON {
         auto value = this->data;
         auto output = std::to_string(value);
 
-        if (value - ((int64_t) value) != 0) {
+        if (output.find(".") >= 0) {
           // trim trailing zeros
           auto  i = output.size() - 1;
           for (; i >= 0; --i) {

@@ -2,19 +2,35 @@
 
 using namespace SSC::android;
 
+namespace SSC::android {
+  Runtime::Runtime (JNIEnv* env, jobject self, String rootDirectory)
+    : SSC::Core()
+  {
+    this->env = env;
+    this->self = env->NewGlobalRef(self);
+    this->pointer = reinterpret_cast<jlong>(this);
+    this->rootDirectory = rootDirectory;
+  }
+
+  Runtime::~Runtime () {
+    this->env->DeleteGlobalRef(this->self);
+  }
+}
+
 extern "C" {
   jlong external(Runtime, alloc)(
     JNIEnv *env,
-    jobject self
+    jobject self,
+    jstring rootDirectory
   ) {
-    auto runtime = new Runtime(env, self);
+    auto runtime = new Runtime(env, self, StringWrap(env, rootDirectory).str());
 
     if (runtime == nullptr) {
       Throw(env, RuntimeNotInitializedException);
       return 0;
     }
 
-    return reinterpret_cast<jlong>(runtime);
+    return runtime->pointer;
   }
 
   jboolean external(Runtime, dealloc)(
