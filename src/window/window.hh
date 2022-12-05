@@ -150,6 +150,12 @@ namespace SSC {
     ExitCallback onExit = nullptr;
   };
 
+  struct WindowPropertiesFlags {
+    bool showTitle = false;
+    bool showSize = false;
+    bool showStatus = false;
+  };
+
   class WindowManager  {
     public:
       enum WindowStatus {
@@ -240,20 +246,20 @@ namespace SSC {
             manager.destroyWindow(reinterpret_cast<Window*>(this));
           }
 
-          JSON::Object json (bool showTitle, bool showSize, bool showStatus) {
+          JSON::Object json (WindowPropertiesFlags flags) {
             auto index = this->opts.index;
             auto window = JSON::Object::Entries {
               { "index", index }
             };
-            if (showTitle) {
+            if (flags.showTitle) {
               window["title"] = this->getTitle();
             }
-            if (showSize) {
+            if (flags.showSize) {
               const auto size = this->getSize();
               window["width"] = size.width;
               window["height"] = size.height;
             }
-            if (showStatus) {
+            if (flags.showStatus) {
               const auto status = this->status;
               window["status"] = status;
             }
@@ -492,16 +498,16 @@ namespace SSC {
         });
       }
 
-      JSON::Array json (bool showTitle = false, bool showSize = false, bool showStatus = false) {
+      JSON::Array json (WindowPropertiesFlags flags) {
         auto i = 0;
         JSON::Array windows;
         for (auto window : this->windows) {
           if (window != nullptr) {
-            if (!showTitle && !showSize && !showStatus) {
+            if (!flags.showTitle && !flags.showSize && !flags.showStatus) {
               windows[i] = window->opts.index;
             } else {
               const auto w = this->getWindow(window->opts.index);
-              windows[i] = w->json(showTitle, showSize, showStatus);
+              windows[i] = w->json(flags);
             }
           }
           i++;
