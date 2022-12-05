@@ -2,23 +2,21 @@
 package __BUNDLE_IDENTIFIER__
 import java.lang.ref.WeakReference
 
-open class Window (runtime: Runtime, activity: RuntimeActivity) {
-  val runtime = WeakReference(runtime)
-  val activity = WeakReference(activity)
-  val bridge = Bridge(runtime, BridgeConfiguration(
+open class Window (runtime: Runtime, activity: MainActivity) {
+  public val bridge = Bridge(runtime, BridgeConfiguration(
     evaluateJavascript = { source ->
       this.activity.get()?.webview?.evaluateJavascript(source, null)
     }
   ))
 
-  val pointer = alloc(bridge.getPointer())
+  public val userMessageHandlerBridge = UserMessageHandlerBridge(bridge)
 
-  fun getPointer (): Long {
-    return pointer
-  }
+  public val activity = WeakReference(activity)
+  public val runtime = WeakReference(runtime)
+  public val pointer = alloc(bridge.pointer)
 
-  fun getRootDirectory (): String? {
-    return activity.get()?.getRootDirectory()
+  fun getRootDirectory (): String {
+    return activity.get()?.getRootDirectory() ?: ""
   }
 
   fun load () {
@@ -37,6 +35,7 @@ open class Window (runtime: Runtime, activity: RuntimeActivity) {
         webViewClient = client
       }
 
+      addJavascriptInterface(userMessageHandlerBridge, "external")
       loadUrl("https://appassets.androidplatform.net/assets/$filename")
     }
   }
@@ -48,8 +47,8 @@ open class Window (runtime: Runtime, activity: RuntimeActivity) {
   external fun dealloc (): Boolean;
 
   @Throws(java.lang.Exception::class)
-  external fun getPathToFileToLoad (): Boolean;
+  external fun getPathToFileToLoad (): String;
 
   @Throws(java.lang.Exception::class)
-  external fun getJavaScriptPreloadSource (): Boolean;
+  external fun getJavaScriptPreloadSource (): String;
 }

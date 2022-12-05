@@ -1056,8 +1056,8 @@ int main (const int argc, const char* argv[]) {
       fs::copy(trim(prefixFile("src/common.hh")), jni, fs::copy_options::overwrite_existing);
       fs::copy(trim(prefixFile("src/init.cc")), jni, fs::copy_options::overwrite_existing);
       fs::copy(trim(prefixFile("src/android/bridge.cc")), jni / "android", fs::copy_options::overwrite_existing);
-      fs::copy(trim(prefixFile("src/android/native.cc")), jni / "android", fs::copy_options::overwrite_existing);
       fs::copy(trim(prefixFile("src/android/runtime.cc")), jni / "android", fs::copy_options::overwrite_existing);
+      fs::copy(trim(prefixFile("src/android/string_wrap.cc")), jni / "android", fs::copy_options::overwrite_existing);
       fs::copy(trim(prefixFile("src/android/window.cc")), jni / "android", fs::copy_options::overwrite_existing);
       fs::copy(trim(prefixFile("src/app/app.hh")), jni / "app", fs::copy_options::overwrite_existing);
       fs::copy(trim(prefixFile("src/core/bluetooth.cc")), jni / "core", fs::copy_options::overwrite_existing);
@@ -1264,13 +1264,14 @@ int main (const int argc, const char* argv[]) {
 
       // Android Source
       writeFile(
-        jni  / "android" / "native.hh",
+        jni  / "android" / "internal.hh",
         std::regex_replace(
-          WStringToString(readFile(trim(prefixFile("src/android/native.hh")))),
+          WStringToString(readFile(trim(prefixFile("src/android/internal.hh")))),
           std::regex("__BUNDLE_IDENTIFIER__"),
           bundle_path_underscored
         )
       );
+
       writeFile(
         pkg / "bridge.kt",
         std::regex_replace(
@@ -1293,6 +1294,15 @@ int main (const int argc, const char* argv[]) {
         pkg / "runtime.kt",
         std::regex_replace(
           WStringToString(readFile(trim(prefixFile("src/android/runtime.kt")))),
+          std::regex("__BUNDLE_IDENTIFIER__"),
+          bundle_identifier
+        )
+      );
+
+      writeFile(
+        pkg / "window.kt",
+        std::regex_replace(
+          WStringToString(readFile(trim(prefixFile("src/android/window.kt")))),
           std::regex("__BUNDLE_IDENTIFIER__"),
           bundle_identifier
         )

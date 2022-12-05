@@ -1159,20 +1159,20 @@ LOCAL_CFLAGS +=              \
 LOCAL_CFLAGS += {{cflags}}
 
 LOCAL_LDLIBS := -landroid -llog
-LOCAL_SRC_FILES =    \
-  android/bridge.cc  \
-  android/native.cc  \
-  android/runtime.cc \
-  android/window.cc  \
-  core/bluetooth.cc  \
-  core/core.cc       \
-  core/fs.cc         \
-  core/javascript.cc \
-  core/json.cc       \
-  core/peer.cc       \
-  core/udp.cc        \
-  ipc/bridge.cc      \
-  ipc/ipc.cc         \
+LOCAL_SRC_FILES =         \
+  android/bridge.cc       \
+  android/runtime.cc      \
+  android/string_wrap.cc  \
+  android/window.cc       \
+  core/bluetooth.cc       \
+  core/core.cc            \
+  core/fs.cc              \
+  core/javascript.cc      \
+  core/json.cc            \
+  core/peer.cc            \
+  core/udp.cc             \
+  ipc/bridge.cc           \
+  ipc/ipc.cc              \
   init.cc
 
 LOCAL_SRC_FILES += $(wildcard $(LOCAL_PATH)/ext/*.cc)
