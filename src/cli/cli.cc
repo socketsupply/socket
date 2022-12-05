@@ -997,12 +997,13 @@ int main (const int argc, const char* argv[]) {
       fs::create_directories(src);
       fs::create_directories(pkg);
       fs::create_directories(jni);
+      fs::create_directories(jni / "android");
       fs::create_directories(jni / "app");
       fs::create_directories(jni / "core");
+      fs::create_directories(jni / "include");
       fs::create_directories(jni / "ipc");
-      fs::create_directories(jni / "mobile");
-      fs::create_directories(jni / "window");
       fs::create_directories(jni / "src");
+      fs::create_directories(jni / "window");
 
       fs::create_directories(res);
       fs::create_directories(res / "layout");
@@ -1033,8 +1034,13 @@ int main (const int argc, const char* argv[]) {
 
       // Core
       fs::copy(trim(prefixFile("src/common.hh")), jni, fs::copy_options::overwrite_existing);
+      fs::copy(trim(prefixFile("src/init.cc")), jni, fs::copy_options::overwrite_existing);
+      fs::copy(trim(prefixFile("src/android/bridge.cc")), jni / "android", fs::copy_options::overwrite_existing);
+      fs::copy(trim(prefixFile("src/android/native.cc")), jni / "android", fs::copy_options::overwrite_existing);
+      fs::copy(trim(prefixFile("src/android/runtime.cc")), jni / "android", fs::copy_options::overwrite_existing);
+      fs::copy(trim(prefixFile("src/android/window.cc")), jni / "android", fs::copy_options::overwrite_existing);
       fs::copy(trim(prefixFile("src/app/app.hh")), jni / "app", fs::copy_options::overwrite_existing);
-      fs::copy(trim(prefixFile("src/core/android.cc")), jni / "core", fs::copy_options::overwrite_existing);
+      fs::copy(trim(prefixFile("src/core/bluetooth.cc")), jni / "core", fs::copy_options::overwrite_existing);
       fs::copy(trim(prefixFile("src/core/core.cc")), jni / "core", fs::copy_options::overwrite_existing);
       fs::copy(trim(prefixFile("src/core/core.hh")), jni / "core", fs::copy_options::overwrite_existing);
       fs::copy(trim(prefixFile("src/core/fs.cc")), jni / "core", fs::copy_options::overwrite_existing);
@@ -1047,8 +1053,6 @@ int main (const int argc, const char* argv[]) {
       fs::copy(trim(prefixFile("src/ipc/bridge.cc")), jni / "ipc", fs::copy_options::overwrite_existing);
       fs::copy(trim(prefixFile("src/ipc/ipc.cc")), jni / "ipc", fs::copy_options::overwrite_existing);
       fs::copy(trim(prefixFile("src/ipc/ipc.hh")), jni / "ipc", fs::copy_options::overwrite_existing);
-      fs::copy(trim(prefixFile("src/mobile/android.cc")), jni / "mobile", fs::copy_options::overwrite_existing);
-      fs::copy(trim(prefixFile("src/mobile/android.kt")), jni / "mobile", fs::copy_options::overwrite_existing);
       fs::copy(trim(prefixFile("src/window/options.hh")), jni / "window", fs::copy_options::overwrite_existing);
       fs::copy(trim(prefixFile("src/window/window.hh")), jni / "window", fs::copy_options::overwrite_existing);
 
@@ -1056,6 +1060,12 @@ int main (const int argc, const char* argv[]) {
       fs::copy(
         trim(prefixFile("uv")),
         jni / "uv",
+        fs::copy_options::overwrite_existing | fs::copy_options::recursive
+      );
+
+      fs::copy(
+        trim(prefixFile("include")),
+        jni / "include",
         fs::copy_options::overwrite_existing | fs::copy_options::recursive
       );
 
@@ -1178,15 +1188,6 @@ int main (const int argc, const char* argv[]) {
       writeFile(res / "values" / "strings.xml", trim(tmpl(gAndroidValuesStrings, settings)));
       writeFile(src / "main" / "assets" / "__ssc_vital_check_ok_file__.txt", "OK");
 
-      writeFile(
-        jni / "core" / "android.hh",
-        std::regex_replace(
-          WStringToString(readFile(trim(prefixFile("src/core/android.hh")))),
-          std::regex("__BUNDLE_IDENTIFIER__"),
-          bundle_path_underscored
-        )
-      );
-
       auto cflags = flagDebugMode
         ? settings.count("debug_flags") ? settings["debug_flags"] : ""
         : settings.count("flags") ? settings["flags"] : "";
@@ -1243,9 +1244,44 @@ int main (const int argc, const char* argv[]) {
 
       // Android Source
       writeFile(
+        jni  / "android" / "native.hh",
+        std::regex_replace(
+          WStringToString(readFile(trim(prefixFile("src/android/native.hh")))),
+          std::regex("__BUNDLE_IDENTIFIER__"),
+          bundle_path_underscored
+        )
+      );
+      writeFile(
+        pkg / "bridge.kt",
+        std::regex_replace(
+          WStringToString(readFile(trim(prefixFile("src/android/bridge.kt")))),
+          std::regex("__BUNDLE_IDENTIFIER__"),
+          bundle_identifier
+        )
+      );
+
+      writeFile(
         pkg / "main.kt",
         std::regex_replace(
-          WStringToString(readFile(trim(prefixFile("src/mobile/android.kt")))),
+          WStringToString(readFile(trim(prefixFile("src/android/main.kt")))),
+          std::regex("__BUNDLE_IDENTIFIER__"),
+          bundle_identifier
+        )
+      );
+
+      writeFile(
+        pkg / "runtime.kt",
+        std::regex_replace(
+          WStringToString(readFile(trim(prefixFile("src/android/runtime.kt")))),
+          std::regex("__BUNDLE_IDENTIFIER__"),
+          bundle_identifier
+        )
+      );
+
+      writeFile(
+        pkg / "webview.kt",
+        std::regex_replace(
+          WStringToString(readFile(trim(prefixFile("src/android/webview.kt")))),
           std::regex("__BUNDLE_IDENTIFIER__"),
           bundle_identifier
         )
@@ -1773,11 +1809,11 @@ int main (const int argc, const char* argv[]) {
       packages
         << "'ndk;25.0.8775105' "
         << "'platform-tools' "
-        << "'platforms;android-32' "
+        << "'platforms;android-33' "
         << "'emulator' "
         << "'patcher;v4' "
-        << "'system-images;android-32;google_apis;x86_64' "
-        << "'system-images;android-32;google_apis;arm64-v8a' ";
+        << "'system-images;android-33;google_apis;x86_64' "
+        << "'system-images;android-33;google_apis;arm64-v8a' ";
 
       if (!platform.win) {
         if (std::system("sdkmanager --version 2>&1 >/dev/null") != 0) {
@@ -1824,7 +1860,7 @@ int main (const int argc, const char* argv[]) {
 
       if (flagBuildForAndroidEmulator) {
         StringStream avdmanager;
-        String package = "'system-images;android-32;google_apis;x86_64' ";
+        String package = "'system-images;android-33;google_apis;x86_64' ";
 
         if (!platform.win) {
           if (std::system("avdmanager list 2>&1 >/dev/null") != 0) {

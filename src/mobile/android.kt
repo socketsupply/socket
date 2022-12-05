@@ -1,5 +1,5 @@
 // vim: set sw=2:
-package __BUNDLE_IDENTIFIER__
+package __BUNDLE_IDENTIFIER__.old
 
 fun decodeURIComponent(string: String): String {
   val normalized = string.replace("+", "%2B")
@@ -494,6 +494,7 @@ open class Bridge(activity: WebViewActivity) {
       return null
     })
 
+    /*
     this.registerInterface("buffer", fun (
       message: IPCMessage,
       value: String,
@@ -528,7 +529,9 @@ open class Bridge(activity: WebViewActivity) {
 
       return null
     })
+    */
 
+    /*
     this.registerInterface("dns", fun(
       message: IPCMessage,
       value: String,
@@ -562,6 +565,7 @@ open class Bridge(activity: WebViewActivity) {
       return null
     })
 
+    /*
     this.registerInterface("fs", fun(
       message: IPCMessage,
       value: String,
@@ -796,7 +800,9 @@ open class Bridge(activity: WebViewActivity) {
 
       return null
     })
+    */
 
+    /*
     this.registerInterface("bufferSize", fun (
       message: IPCMessage,
       value: String,
@@ -832,7 +838,9 @@ open class Bridge(activity: WebViewActivity) {
 
       return null
     })
+    */
 
+    /*
     this.registerInterface("os", fun(
       message: IPCMessage,
       value: String,
@@ -885,7 +893,9 @@ open class Bridge(activity: WebViewActivity) {
 
       return null
     })
+    */
 
+    /*
     this.registerInterface("process", fun(
       message: IPCMessage,
       value: String,
@@ -907,7 +917,9 @@ open class Bridge(activity: WebViewActivity) {
 
       return null
     })
+    */
 
+    /*
     this.registerInterface("udp", fun(
       message: IPCMessage,
       value: String,
@@ -1089,6 +1101,7 @@ open class Bridge(activity: WebViewActivity) {
 
       return null
     })
+    */
   }
 }
 

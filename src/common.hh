@@ -1,20 +1,6 @@
 #ifndef SSC_CORE_COMMON_H
 #define SSC_CORE_COMMON_H
 
-#include <errno.h>
-#include <math.h>
-#include <stdlib.h>
-#include <stdio.h>
-
-#if !defined(_WIN32)
-#include <arpa/inet.h>
-#include <ifaddrs.h>
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <sys/wait.h>
-#include <unistd.h>
-#endif
-
 // macOS/iOS
 #if defined(__APPLE__)
 #include <TargetConditionals.h>
@@ -83,6 +69,20 @@
 #ifndef debug
 #define debug(format, ...) fprintf(stderr, format "\n", ##__VA_ARGS__)
 #endif
+#endif
+
+#include <errno.h>
+#include <math.h>
+#include <stdlib.h>
+#include <stdio.h>
+
+#if !defined(_WIN32)
+#include <arpa/inet.h>
+#include <ifaddrs.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <unistd.h>
 #endif
 
 #include <any>
