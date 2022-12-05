@@ -1,22 +1,6 @@
-#include "../core/core.hh"
-#include "native.hh"
+#include "internal.hh"
 
-using namespace SSC;
-
-class Runtime : public SSC::Core {
-  public:
-    JNIEnv *env = nullptr;
-    jobject self = nullptr;
-
-    Runtime (JNIEnv* env, jobject self) : SSC::Core() {
-      this->env = env;
-      this->self = env->NewGlobalRef(self);
-    }
-
-    ~Runtime () {
-      this->env->DeleteGlobalRef(this->self);
-    }
-};
+using namespace SSC::android;
 
 extern "C" {
   jlong external(Runtime, alloc)(
@@ -37,8 +21,7 @@ extern "C" {
     JNIEnv *env,
     jobject self
   ) {
-    auto pointer = GetObjectClassField(env, Long, "pointer", "J");
-    auto runtime = reinterpret_cast<Runtime*>(pointer);
+    auto runtime = Runtime::from(env, self);
 
     if (runtime == nullptr) {
       Throw(env, RuntimeNotInitializedException);

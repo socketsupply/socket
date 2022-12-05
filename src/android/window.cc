@@ -1,72 +1,61 @@
 #include "../core/core.hh"
 #include "../ipc/ipc.hh"
-#include "native.hh"
+#include "internal.hh"
 
-class Window {
-  public:
-    JNIEnv* env = nullptr;
-    jobject self = nullptr;
-    SSC::IPC::Bridge* bridge = nullptr;
-    SSC::Map config;
-    SSC::String preloadSource;
-    SSC::WindowOptions options;
-    SSC::Map envvars;
+using namespace SSC::android;
 
-    Window (
-      JNIEnv* env,
-      jobject self,
-      SSC::IPC::Bridge* bridge,
-      SSC::WindowOptions options
-    ) : options(options) {
-      this->env = env;
-      this->self = env->NewGlobalRef(self);
-      this->bridge = bridge;
-      this->config = SSC::parseConfig(SSC::decodeURIComponent(SSC::getSettingsSource()));
+namespace SSC::android {
+  Window::Window (
+    JNIEnv* env,
+    jobject self,
+    SSC::IPC::Bridge* bridge,
+    SSC::WindowOptions options
+  ) : options(options) {
+    this->env = env;
+    this->self = env->NewGlobalRef(self);
+    this->bridge = bridge;
+    this->config = SSC::parseConfig(SSC::decodeURIComponent(SSC::getSettingsSource()));
 
-      SSC::StringStream stream;
+    SSC::StringStream stream;
 
-      for (auto const &var : SSC::split(this->config["env"], ',')) {
-        auto key = SSC::trim(var);
-        auto value = SSC::getEnv(key.c_str());
+    for (auto const &var : SSC::split(this->config["env"], ',')) {
+      auto key = SSC::trim(var);
+      auto value = SSC::getEnv(key.c_str());
 
-        if (value.size() > 0) {
-          stream << key << "=" << SSC::encodeURIComponent(value) << "&";
-          envvars[key] = value;
-        }
+      if (value.size() > 0) {
+        stream << key << "=" << SSC::encodeURIComponent(value) << "&";
+        envvars[key] = value;
       }
-
-      NativeString rootDirectory(env, (jstring) CallObjectClassMethod(
-        env,
-        self,
-        "getRootDirectory",
-        "()Ljava/lang/String;"
-      ));
-
-      options.headless = this->config["headless"] == "true";
-      options.debug = SSC::isDebugEnabled() ? true : false;
-      options.env = stream.str();
-      options.cwd = rootDirectory.str();
-
-      preloadSource.assign(
-        "window.addEventListener('unhandledrejection', e => {        \n"
-        "  console.log(e.reason || e.message || e);                  \n"
-        "});                                                         \n"
-        "                                                            \n"
-        "window.addEventListener('error', e => {                     \n"
-        "  const message = e.reason || e.message || e;               \n"
-        "  if (!/debug-evaluate/.test(message)) {                    \n"
-        "    console.log(message);                                   \n"
-        "  }                                                         \n"
-        "});                                                         \n"
-        "                                                            \n"
-        + createPreload(options)
-      );
     }
 
-    ~Window () {
-      this->env->DeleteGlobalRef(this->self);
-    }
-};
+    StringWrap rootDirectory(env, (jstring) CallObjectClassMethodFromEnvironment(
+      env,
+      self,
+      "getRootDirectory",
+      "()Ljava/lang/String;"
+    ));
+
+    options.headless = this->config["headless"] == "true";
+    options.debug = SSC::isDebugEnabled() ? true : false;
+    options.env = stream.str();
+    options.cwd = rootDirectory.str();
+
+    preloadSource.assign(
+      "window.addEventListener('unhandledrejection', e => {        \n"
+      "  console.log(e.reason || e.message || e);                  \n"
+      "});                                                         \n"
+      "                                                            \n"
+      "window.addEventListener('error', e => {                     \n"
+      "  const message = e.reason || e.message || e;               \n"
+      "  if (!/debug-evaluate/.test(message)) {                    \n"
+      "    console.log(message);                                   \n"
+      "  }                                                         \n"
+      "});                                                         \n"
+      "                                                            \n"
+      + createPreload(options)
+    );
+  }
+}
 
 extern "C" {
   jlong external(Window, alloc)(
@@ -96,8 +85,7 @@ extern "C" {
     JNIEnv *env,
     jobject self
   ) {
-    auto pointer = GetObjectClassField(env, Long, "pointer", "J");
-    auto window = reinterpret_cast<Window*>(pointer);
+    auto window = Window::from(env, self);
 
     if (window == nullptr) {
       Throw(env, WindowNotInitializedException);
@@ -112,8 +100,7 @@ extern "C" {
     JNIEnv *env,
     jobject self
   ) {
-    auto pointer = GetObjectClassField(env, Long, "pointer", "J");
-    auto window = reinterpret_cast<Window*>(pointer);
+    auto window = Window::from(env, self);
 
     if (window == nullptr) {
       Throw(env, WindowNotInitializedException);
@@ -133,8 +120,7 @@ extern "C" {
     JNIEnv *env,
     jobject self
   ) {
-    auto pointer = GetObjectClassField(env, Long, "pointer", "J");
-    auto window = reinterpret_cast<Window*>(pointer);
+    auto window = Window::from(env, self);
 
     if (window == nullptr) {
       Throw(env, WindowNotInitializedException);

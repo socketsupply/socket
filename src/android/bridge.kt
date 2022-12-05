@@ -11,9 +11,9 @@ data class BridgeConfiguration(
 ) : IBridgeConfiguration
 
 open class Bridge(runtime: Runtime, configuration: IBridgeConfiguration) {
-  var pointer = alloc(runtime.getPointer())
-  var runtime = WeakReference(runtime)
-  val configuration = configuration
+  public var pointer = alloc(runtime.pointer)
+  public var runtime = WeakReference(runtime)
+  public val configuration = configuration
 
   fun finalize () {
     if (this.pointer > 0) {
@@ -23,12 +23,8 @@ open class Bridge(runtime: Runtime, configuration: IBridgeConfiguration) {
     this.pointer = 0
   }
 
-  fun getPointer (): Long {
-    return this.pointer
-  }
-
   @Throws(java.lang.Exception::class)
-  external fun alloc (corePointer: Long): Long;
+  external fun alloc (runtimePointer: Long): Long;
 
   @Throws(java.lang.Exception::class)
   external fun dealloc (): Boolean;
@@ -37,16 +33,15 @@ open class Bridge(runtime: Runtime, configuration: IBridgeConfiguration) {
   external fun route (msg: String, bytes: ByteArray, size: Int): Boolean;
 }
 
-
 /**
  * External JavaScript interface attached to the webview at
  * `window.external`
  */
-open class ExternalJavaScriptInterfaceBridge (bridge: Bridge) {
-  val TAG = "ExternalJavaScriptInterface"
+open class UserMessageHandlerBridge (bridge: Bridge) {
+  val TAG = "UserMessageHandlerBridge"
 
   val runtime = bridge.runtime
-  val activity = runtime?.activity
+  val activity = runtime.get()?.activity?.get()
 
   fun evaluateJavascript (
     source: String,
@@ -63,15 +58,15 @@ open class ExternalJavaScriptInterfaceBridge (bridge: Bridge) {
   }
 
   @android.webkit.JavascriptInterface
-  final fun invoke (value: String): String? {
-    return this.invoke(value, null)
+  final fun postMessage (value: String): String? {
+    return this.postMessage(value, null)
   }
 
   /**
    * Low level external message handler
    */
   @android.webkit.JavascriptInterface
-  final fun invoke (value: String, bytes: ByteArray?): String? {
+  final fun postMessage (value: String, bytes: ByteArray?): String? {
     // @TODO
     return null
   }

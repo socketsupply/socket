@@ -1,5 +1,6 @@
 // vim: set sw=2:
 package __BUNDLE_IDENTIFIER__
+import java.lang.ref.WeakReference
 
 fun decodeURIComponent (string: String): String {
   val normalized = string.replace("+", "%2B")
@@ -33,7 +34,7 @@ open class WebView (context: android.content.Context) : android.webkit.WebView(c
  * @see https://developer.android.com/reference/kotlin/android/webkit/WebViewClient
  */
 open class WebViewClient (activity: WebViewActivity) : android.webkit.WebViewClient() {
-  protected val activity = activity
+  protected val activity = WeakReference(activity)
   open protected val TAG = "WebViewClient"
   open protected var assetLoader: androidx.webkit.WebViewAssetLoader? = null
 
@@ -60,9 +61,14 @@ open class WebViewClient (activity: WebViewActivity) : android.webkit.WebViewCli
     }
 
     val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, url)
+    val activity = this.activity.get()
+
+    if (activity == null) {
+      return false
+    }
 
     try {
-      this.activity.startActivity(intent)
+      activity.startActivity(intent)
     } catch (err: Error) {
       // @TODO(jwelre): handle this error gracefully
       android.util.Log.e(TAG, err.toString())
@@ -143,7 +149,7 @@ open class WebViewClient (activity: WebViewActivity) : android.webkit.WebViewCli
     url: String,
     bitmap: android.graphics.Bitmap?
   ) {
-    android.util.Log.d(TAG, "WebViewClient is loading: $url")
+    this.activity.get()?.onPageStarted(view, url, bitmap)
   }
 }
 
@@ -209,5 +215,13 @@ open class WebViewActivity : androidx.appcompat.app.AppCompatActivity() {
 
     val core = this.core
     */
+  }
+
+  open fun onPageStarted (
+    view: android.webkit.WebView,
+    url: String,
+    bitmap: android.graphics.Bitmap?
+  ) {
+    android.util.Log.d(TAG, "WebViewActivity is loading: $url")
   }
 }
