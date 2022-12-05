@@ -257,7 +257,7 @@ namespace SSC {
               const auto status = this->status;
               window["status"] = status;
             }
-            return JSON::Object(window);
+            return window;
           }
       };
 
@@ -506,7 +506,7 @@ namespace SSC {
           }
           i++;
         }
-        return JSON::Array(windows);
+        return windows;
       }
   };
 
