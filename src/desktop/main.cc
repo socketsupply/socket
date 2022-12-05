@@ -619,42 +619,37 @@ MAIN {
       const auto showSize = message.get("size") == "true" ? true : false;
       const auto showStatus = message.get("status") == "true" ? true : false;
       const auto window = windowManager.getWindow(index);
-      StringStream ss;
-      bool first = true;
-      ss << "[";
+      auto i = 0;
+      JSON::Array windows;
       for (auto windowWithMetadata : windowManager.windows) {
         if (windowWithMetadata != nullptr) {
-          if (!first) {
-            ss << ",";
-          } else {
-            first = false;
-          }
+          auto index = windowWithMetadata->opts.index;
           if (!showTitle && !showSize && !showStatus) {
-            ss << windowWithMetadata->opts.index;
+            windows[i] = index;
           } else {
+            auto window = JSON::Object::Entries {
+              { "index", index }
+            };
             const auto w = windowManager.getWindow(windowWithMetadata->opts.index);
-            ss << "{";
             if (showTitle) {
-              const auto title = w->getTitle();
-              ss << "\"title\":\"" << title << "\",";
+              window["title"] = w->getTitle();
             }
             if (showSize) {
               const auto size = w->getSize();
-              ss << "\"width\":" << size.width << ",";
-              ss << "\"height\":" << size.height << ",";
+              window["width"] = size.width;
+              window["height"] = size.height;
             }
             if (showStatus) {
               const auto status = windowWithMetadata->status;
-              ss << "\"status\":" << status << ",";
+              window["status"] = status;
             }
-            ss << "\"index\":" << windowWithMetadata->opts.index;
-            ss << "}";
+            windows[i] = window;
           }
         }
+        i++;
       }
-      ss << "]";
 
-      auto result = ss.str();
+      auto result = JSON::Array(windows).str();
       window->resolvePromise(message.get("seq"), OK_STATE, encodeURIComponent(result));
       return;
     }
