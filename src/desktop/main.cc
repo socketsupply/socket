@@ -545,7 +545,7 @@ MAIN {
   // main thread.
   //
   auto onMessage = [&](auto out) {
-    // debug("onMessage %s", out.c_str());
+    debug("onMessage %s", out.c_str());
     IPC::Message message(out);
 
     auto window = windowManager.getWindow(message.index);
@@ -579,6 +579,28 @@ MAIN {
         killProcess(process);
       }
       // TODO: crashes the app with a segfault `libc++abi: terminating with uncaught exception of type std::__1::system_error: mutex lock failed: Invalid argument`
+      window->resolvePromise(seq, OK_STATE, "null");
+      return;
+    }
+
+    if (message.name == "send") {
+      const auto event = decodeURIComponent(message.get("event"));
+      const auto value = decodeURIComponent(message.get("value"));
+      const auto targetWindowIndex = std::stoi(message.get("window"));
+      if (targetWindowIndex >= 0) {
+        const auto targetWindow = windowManager.getWindow(targetWindowIndex);
+        if (targetWindow) {
+          targetWindow->eval(getEmitToRenderProcessJavaScript(event, value));
+        }
+      } else {
+        for (auto w : windowManager.windows) {
+          if (w != nullptr) {
+            const auto targetWindow = windowManager.getWindow(w->opts.index);
+            targetWindow->eval(getEmitToRenderProcessJavaScript(event, value));
+          }
+        }
+      }
+      const auto seq = message.get("seq");
       window->resolvePromise(seq, OK_STATE, "null");
       return;
     }
