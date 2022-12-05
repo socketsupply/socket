@@ -8,22 +8,23 @@ namespace SSC::android {
   Window::Window (
     JNIEnv* env,
     jobject self,
-    SSC::IPC::Bridge* bridge,
-    SSC::WindowOptions options
+    Bridge* bridge,
+    WindowOptions options
   ) : options(options) {
     this->env = env;
     this->self = env->NewGlobalRef(self);
     this->bridge = bridge;
-    this->config = SSC::parseConfig(SSC::decodeURIComponent(SSC::getSettingsSource()));
+    this->config = parseConfig(decodeURIComponent(getSettingsSource()));
+    this->pointer = reinterpret_cast<jlong>(this);
 
-    SSC::StringStream stream;
+    StringStream stream;
 
-    for (auto const &var : SSC::split(this->config["env"], ',')) {
-      auto key = SSC::trim(var);
-      auto value = SSC::getEnv(key.c_str());
+    for (auto const &var : split(this->config["env"], ',')) {
+      auto key = trim(var);
+      auto value = getEnv(key.c_str());
 
       if (value.size() > 0) {
-        stream << key << "=" << SSC::encodeURIComponent(value) << "&";
+        stream << key << "=" << encodeURIComponent(value) << "&";
         envvars[key] = value;
       }
     }
@@ -36,7 +37,7 @@ namespace SSC::android {
     ));
 
     options.headless = this->config["headless"] == "true";
-    options.debug = SSC::isDebugEnabled() ? true : false;
+    options.debug = isDebugEnabled() ? true : false;
     options.env = stream.str();
     options.cwd = rootDirectory.str();
 
@@ -55,6 +56,21 @@ namespace SSC::android {
       + createPreload(options)
     );
   }
+
+  Window::~Window () {
+    this->env->DeleteGlobalRef(this->self);
+  }
+
+  void evaluateJavaScript (Window* window, String source, JVMEnvironment& jvm) {
+    auto attachment = JNIEnvironmentAttachment { jvm.get(), jvm.version() };
+    CallObjectClassMethodFromEnvironment(
+      attachment.env,
+      window->self,
+      "evaluateJavaScript",
+      "(Ljava/lang/String;)V",
+      attachment.env->NewStringUTF(source.c_str())
+    );
+  }
 }
 
 extern "C" {
@@ -63,7 +79,7 @@ extern "C" {
     jobject self,
     jlong bridgePointer
   ) {
-    auto bridge = reinterpret_cast<SSC::IPC::Bridge*>(bridgePointer);
+    auto bridge = Bridge::from(bridgePointer);
 
     if (bridge == nullptr) {
       Throw(env, BridgeNotInitializedException);
@@ -78,7 +94,13 @@ extern "C" {
       return 0;
     }
 
-    return reinterpret_cast<jlong>(window);
+    auto jvm = JVMEnvironment(env);
+
+    bridge->router.evaluateJavaScriptFunction = [window, jvm](auto source) mutable {
+      evaluateJavaScript(window, source, jvm);
+    };
+
+    return window->pointer;
   }
 
   jboolean external(Window, dealloc)(
@@ -130,5 +152,29 @@ extern "C" {
     auto source = window->preloadSource.c_str();
 
     return env->NewStringUTF(source);
+  }
+
+  jstring external(Window, getResolveToRenderProcessJavaScript)(
+    JNIEnv *env,
+    jobject self,
+    jstring seq,
+    jstring state,
+    jstring value
+  ) {
+    auto window = Window::from(env, self);
+
+    if (window == nullptr) {
+      Throw(env, WindowNotInitializedException);
+      return nullptr;
+    }
+
+    auto resolved = SSC::encodeURIComponent(StringWrap(env, value).str());
+    auto source = SSC::getResolveToRenderProcessJavaScript(
+      StringWrap(env, seq).str(),
+      StringWrap(env, state).str(),
+      resolved
+    );
+
+    return env->NewStringUTF(source.c_str());
   }
 }

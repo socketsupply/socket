@@ -10,8 +10,8 @@ package __BUNDLE_IDENTIFIER__
  */
 open class MainActivity : WebViewActivity() {
   override open protected val TAG = "Mainctivity"
-  open public lateinit var window: Window
   open public lateinit var runtime: Runtime
+  open public lateinit var window: Window
   open protected val timer = java.util.Timer()
 
   companion object {
@@ -26,8 +26,8 @@ open class MainActivity : WebViewActivity() {
   }
 
   override fun onCreate (state: android.os.Bundle?) {
-    android.util.Log.d(TAG, "onCreate")
     super.onCreate(state)
+
     this.runtime = Runtime(this, RuntimeConfiguration(
       rootDirectory = getRootDirectory(),
       assetManager = applicationContext.resources.assets,
@@ -36,7 +36,6 @@ open class MainActivity : WebViewActivity() {
       }
     ))
 
-    android.webkit.WebView.setWebContentsDebuggingEnabled(this.runtime.isDebugEnabled())
     this.window = Window(this.runtime, this)
     this.window.load()
 
@@ -50,6 +49,14 @@ open class MainActivity : WebViewActivity() {
       30L * 1024L, // delay
       30L * 1024L //period
     )
+  }
+
+  override fun onSchemeRequest (
+    request: android.webkit.WebResourceRequest,
+    response:  android.webkit.WebResourceResponse,
+    stream: java.io.PipedOutputStream
+  ): Boolean {
+    return this.window.onSchemeRequest(request, response, stream)
   }
 
   override fun onDestroy () {
@@ -98,8 +105,6 @@ open class MainActivity : WebViewActivity() {
   ) {
     super.onPageStarted(view, url, bitmap)
     val source = this.window.getJavaScriptPreloadSource()
-    val webview = this.webview
-
-    webview?.evaluateJavascript(source, null)
+    this.webview?.evaluateJavascript(source, null)
   }
 }

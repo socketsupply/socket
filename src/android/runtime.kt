@@ -15,10 +15,10 @@ data class RuntimeConfiguration (
 ) : IRuntimeConfiguration
 
 open class Runtime (
-  activity: MainActivity? = null,
+  activity: MainActivity,
   configuration: RuntimeConfiguration
 ) {
-  public var pointer = alloc()
+  public var pointer = alloc(activity.getRootDirectory())
   public var activity = WeakReference(activity)
   public val configuration = configuration;
 
@@ -31,7 +31,7 @@ open class Runtime (
   }
 
   @Throws(java.lang.Exception::class)
-  external fun alloc (): Long;
+  external fun alloc (rootDirectory: String): Long;
 
   @Throws(java.lang.Exception::class)
   external fun dealloc (): Boolean;
