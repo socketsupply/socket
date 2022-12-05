@@ -619,22 +619,7 @@ MAIN {
       const auto showSize = message.get("size") == "true" ? true : false;
       const auto showStatus = message.get("status") == "true" ? true : false;
       const auto window = windowManager.getWindow(index);
-      auto i = 0;
-      JSON::Array windows;
-      for (auto windowWithMetadata : windowManager.windows) {
-        if (windowWithMetadata != nullptr) {
-          auto index = windowWithMetadata->opts.index;
-          if (!showTitle && !showSize && !showStatus) {
-            windows[i] = index;
-          } else {
-            const auto w = windowManager.getWindow(windowWithMetadata->opts.index);
-            windows[i] = w->json(showTitle, showSize, showStatus);
-          }
-        }
-        i++;
-      }
-
-      auto result = JSON::Array(windows).str();
+      const auto result = windowManager.json(showTitle, showSize, showStatus).str();
       window->resolvePromise(message.get("seq"), OK_STATE, encodeURIComponent(result));
       return;
     }
@@ -645,7 +630,7 @@ MAIN {
       const auto window = windowManager.getWindow(index);
       const auto targetWindow = windowManager.getWindow(targetWindowIndex);
       if (targetWindow) {
-        auto const value = (targetWindow->json(false, false, true)).str();
+        const auto value = (targetWindow->json(false, false, true)).str();
         const auto seq = message.get("seq");
         window->resolvePromise(
           seq,
