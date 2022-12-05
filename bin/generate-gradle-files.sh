@@ -18,7 +18,6 @@ buildscript {
 
   dependencies {
     classpath 'com.android.tools.build:gradle:7.2.1'
-
     classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:\$kotlin_version"
   }
 }
@@ -34,13 +33,14 @@ apply plugin: 'com.android.application'
 apply plugin: 'kotlin-android'
 
 android {
-  compileSdkVersion 32
+  compileSdkVersion 33
+  ndkVersion "25.0.8775105"
   flavorDimensions "default"
 
   defaultConfig {
     applicationId "__BUNDLE_IDENTIFIER__"
     minSdkVersion 24
-    targetSdkVersion 30
+    targetSdkVersion 33
     versionCode 1
     versionName "0.0.1"
   }
@@ -48,7 +48,9 @@ android {
 
 dependencies {
   implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:\$kotlin_version"
-  implementation 'androidx.appcompat:appcompat:1.4.2'
+  implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.4'
+  implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4'
+  implementation 'androidx.appcompat:appcompat:1.5.0'
   implementation 'androidx.webkit:webkit:1.4.0'
 }
 GRADLE
