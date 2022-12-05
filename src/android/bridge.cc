@@ -1,24 +1,6 @@
-#include "../core/core.hh"
-#include "../ipc/ipc.hh"
-#include "native.hh"
+#include "internal.hh"
 
-class Bridge : public SSC::IPC::Bridge {
-  public:
-    JNIEnv *env = nullptr;
-    jobject self = nullptr;
-
-    Bridge (JNIEnv* env, jobject self, SSC::Core* core)
-      : SSC::IPC::Bridge(core)
-    {
-      this->env = env;
-      this->self = env->NewGlobalRef(self);
-    }
-
-    ~Bridge () {
-      this->env->DeleteGlobalRef(this->self);
-      SSC::IPC::Bridge::~Bridge();
-    }
-};
+using namespace SSC::android;
 
 extern "C" {
   jlong external(Bridge, alloc)(
@@ -47,8 +29,7 @@ extern "C" {
     JNIEnv *env,
     jobject self
   ) {
-    auto pointer = GetObjectClassField(env, Long, "pointer", "J");
-    auto bridge = reinterpret_cast<SSC::IPC::Bridge*>(pointer);
+    auto bridge = Bridge::from(env, self);
 
     if (bridge == nullptr) {
       Throw(env, BridgeNotInitializedException);
