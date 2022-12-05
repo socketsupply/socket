@@ -491,6 +491,23 @@ namespace SSC {
           .appData = opts.appData
         });
       }
+
+      JSON::Array json (bool showTitle = false, bool showSize = false, bool showStatus = false) {
+        auto i = 0;
+        JSON::Array windows;
+        for (auto window : this->windows) {
+          if (window != nullptr) {
+            if (!showTitle && !showSize && !showStatus) {
+              windows[i] = window->opts.index;
+            } else {
+              const auto w = this->getWindow(window->opts.index);
+              windows[i] = w->json(showTitle, showSize, showStatus);
+            }
+          }
+          i++;
+        }
+        return JSON::Array(windows);
+      }
   };
 
 #if defined(_WIN32)
