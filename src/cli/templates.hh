@@ -232,7 +232,7 @@ constexpr auto gCredits = R"HTML(
   </p>
 )HTML";
 
-constexpr auto DEFAULT_ANDROID_ACTIVITY_NAME = ".MainWebViewActivity";
+constexpr auto DEFAULT_ANDROID_ACTIVITY_NAME = ".MainActivity";
 
 //
 // Android Manifest
@@ -241,7 +241,6 @@ constexpr auto gAndroidManifest = R"XML(
 <?xml version="1.0" encoding="utf-8"?>
 <manifest
   xmlns:android="http://schemas.android.com/apk/res/android"
-  package="{{bundle_identifier}}"
 >
   <uses-permission android:name="android.permission.INTERNET" />
   <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
@@ -968,7 +967,6 @@ buildscript {
 
   dependencies {
     classpath 'com.android.tools.build:gradle:7.2.1'
-
     classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
   }
 }
@@ -993,14 +991,15 @@ apply plugin: 'com.android.application'
 apply plugin: 'kotlin-android'
 
 android {
-  compileSdkVersion 32
+  compileSdkVersion 33
   ndkVersion "25.0.8775105"
   flavorDimensions "default"
+  namespace '{{bundle_identifier}}'
 
   defaultConfig {
     applicationId "{{bundle_identifier}}"
     minSdkVersion 26
-    targetSdkVersion 32
+    targetSdkVersion 33
     versionCode {{revision}}
     versionName "{{version}}"
 
@@ -1095,13 +1094,11 @@ LOCAL_MODULE := uv
 
 UV_UNIX_SOURCE +=       \
   async.c               \
-  atomic-ops.h          \
   core.c                \
   dl.c                  \
   fs.c                  \
   getaddrinfo.c         \
   getnameinfo.c         \
-  internal.h            \
   linux.c               \
   loop.c                \
   loop-watcher.c        \
@@ -1121,49 +1118,53 @@ UV_UNIX_SOURCE +=       \
   udp.c
 
 LOCAL_CFLAGS :=              \
+  -std=gnu89                 \
+  -g                         \
+  -pedantic                  \
+  -I$(LOCAL_PATH)/include    \
+  -I$(LOCAL_PATH)/uv/src     \
+  -D_FILE_OFFSET_BITS=64     \
   -D_GNU_SOURCE              \
   -D_LARGEFILE_SOURCE        \
-  -D_FILE_OFFSET_BITS=64     \
-  -I$(LOCAL_PATH)/uv/include \
-  -I$(LOCAL_PATH)/uv/src     \
   -landroid                  \
-  -g                         \
-  --std=gnu89                \
-  -pedantic                  \
   -Wall                      \
   -Wextra                    \
-  -Wno-unused-parameter      \
   -Wno-pedantic              \
   -Wno-sign-compare          \
+  -Wno-unused-parameter      \
   -Wno-implicit-function-declaration
 
 LOCAL_SRC_FILES +=                     \
   $(wildcard $(LOCAL_PATH)/uv/src/*.c) \
   $(foreach file, $(UV_UNIX_SOURCE), $(LOCAL_PATH)/uv/src/unix/$(file))
 
-LOCAL_EXPORT_C_INCLUDES := $(LOCAL_PATH)/uv $(LOCAL_PATH)/uv/include
+LOCAL_EXPORT_C_INCLUDES := $(LOCAL_PATH)/include
 include $(BUILD_STATIC_LIBRARY)
 
-## libssc-core.so
+## libsocket-runtime.so
 include $(CLEAR_VARS)
-LOCAL_MODULE := ssc-core
+LOCAL_MODULE := socket-runtime
 
-LOCAL_CFLAGS += \
-  -Iuv          \
-  -fPIC         \
-  -pthreads     \
-  -fsigned-char \
-  -fexceptions  \
-  -frtti        \
-  -std=c++2a    \
-  -g            \
+LOCAL_CFLAGS +=              \
+  -std=c++2a                 \
+  -g                         \
+  -I$(LOCAL_PATH)/include    \
+  -pthreads                  \
+  -fexceptions               \
+  -fPIC                      \
+  -frtti                     \
+  -fsigned-char              \
   -O0
 
 LOCAL_CFLAGS += {{cflags}}
 
 LOCAL_LDLIBS := -landroid -llog
 LOCAL_SRC_FILES =    \
-  core/android.cc    \
+  android/bridge.cc  \
+  android/native.cc  \
+  android/runtime.cc \
+  android/window.cc  \
+  core/bluetooth.cc  \
   core/core.cc       \
   core/fs.cc         \
   core/javascript.cc \
@@ -1172,7 +1173,7 @@ LOCAL_SRC_FILES =    \
   core/udp.cc        \
   ipc/bridge.cc      \
   ipc/ipc.cc         \
-  mobile/android.cc
+  init.cc
 
 LOCAL_SRC_FILES += $(wildcard $(LOCAL_PATH)/ext/*.cc)
 
