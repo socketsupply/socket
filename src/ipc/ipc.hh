@@ -187,6 +187,7 @@ namespace SSC::IPC {
 
       Bridge (Core *core);
       bool route (const String& msg, char *bytes, size_t size);
+      bool route (const String& msg, char *bytes, size_t size, Router::ResultCallback);
   };
 
   inline String getResolveToMainProcessMessage (

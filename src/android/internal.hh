@@ -48,14 +48,11 @@
     env->CallObjectMethod(object, ID, ##__VA_ARGS__);                          \
   })
 
-/**
- * Calls `callback(id, data)` method on `Core` instance in environment.
- */
-#define CallVoidMethodFromEnvironment(env, object, method, signature, ...)     \
+#define CallVoidClassMethodFromEnvironment(env, object, method, sig, ...)    \
   ({                                                                           \
     auto Class = env->GetObjectClass(object);                                  \
-    auto ID = env->GetMethodID(Class, method, signature);                      \
-    env->CallVoidMethod(object, ID, ##__VA_ARGS__);                            \
+    auto ID = env->GetMethodID(Class, method, sig);                            \
+    env->CallVoidMethod(object, ID, ##__VA_ARGS__);                          \
   })
 
 /**
@@ -97,6 +94,81 @@
 #define WindowNotInitializedException "Window is not initialized"
 
 namespace SSC::android {
+  struct JVMEnvironment {
+    JavaVM* jvm = nullptr;
+    int jniVersion = 0;
+
+    JVMEnvironment (JNIEnv* env) {
+      this->jniVersion = env->GetVersion();
+      env->GetJavaVM(&jvm);
+    }
+
+    int version () {
+      return this->jniVersion;
+    }
+
+    JavaVM* get () {
+      return this->jvm;
+    }
+  };
+
+  struct JNIEnvironmentAttachment {
+    JNIEnv *env = nullptr;
+    JavaVM *jvm = nullptr;
+    int status = 0;
+    int version = 0;
+    bool attached = false;
+
+    JNIEnvironmentAttachment () = default;
+    JNIEnvironmentAttachment (JavaVM *jvm, int version) {
+      this->attach(jvm, version);
+    }
+
+    ~JNIEnvironmentAttachment () {
+      this->detach();
+    }
+
+    void attach (JavaVM *jvm, int version) {
+      this->jvm = jvm;
+      this->version = version;
+
+      if (jvm != nullptr) {
+        this->status = this->jvm->GetEnv((void **) &this->env, this->version);
+
+        if (this->status == JNI_EDETACHED) {
+          this->attached = this->jvm->AttachCurrentThread(&this->env, 0);
+        }
+      }
+    }
+
+    void detach () {
+      auto jvm = this->jvm;
+      auto attached = this->attached;
+
+      if (this->hasException()) {
+        this->printException();
+      }
+
+      this->env = nullptr;
+      this->jvm = nullptr;
+      this->status = 0;
+      this->attached = false;
+
+      if (attached && jvm != nullptr) {
+        jvm->DetachCurrentThread();
+      }
+    }
+
+    inline bool hasException () {
+      return this->env != nullptr && this->env->ExceptionCheck();
+    }
+
+    inline void printException () {
+      if (this->env != nullptr) {
+        this->env->ExceptionDescribe();
+      }
+    }
+  };
 
   /**
    * A container for a JNI string (jstring).
@@ -112,16 +184,16 @@ namespace SSC::android {
       StringWrap (JNIEnv *env);
       StringWrap (const StringWrap &copy);
       StringWrap (JNIEnv *env, jstring ref);
-      StringWrap (JNIEnv *env, SSC::String string);
+      StringWrap (JNIEnv *env, String string);
       StringWrap (JNIEnv *env, const char *string);
       ~StringWrap ();
 
-      void set (SSC::String string);
+      void set (String string);
       void set (const char *string);
       void set (jstring ref);
       void release ();
 
-      const SSC::String str ();
+      const String str ();
       const jstring j_str ();
       const char * c_str ();
       const size_t size ();
@@ -134,48 +206,44 @@ namespace SSC::android {
       }
   };
 
-  class Bridge : public SSC::IPC::Bridge {
-    public:
-      static auto from (JNIEnv* env, jobject self) {
-        auto pointer = GetObjectClassFieldFromEnvironment(env, self, Long, "pointer", "J");
-        return reinterpret_cast<Bridge*>(pointer);
-      }
-
-      JNIEnv *env = nullptr;
-      jobject self = nullptr;
-
-      Bridge (JNIEnv* env, jobject self, SSC::Core* core)
-        : SSC::IPC::Bridge(core)
-      {
-        this->env = env;
-        this->self = env->NewGlobalRef(self);
-      }
-
-      ~Bridge () {
-        this->env->DeleteGlobalRef(this->self);
-        SSC::IPC::Bridge::~Bridge();
-      }
-  };
-
-
-  class Runtime : public SSC::Core {
+  class Runtime : public Core {
     public:
       static auto from (JNIEnv* env, jobject self) {
         auto pointer = GetObjectClassFieldFromEnvironment(env, self, Long, "pointer", "J");
         return reinterpret_cast<Runtime*>(pointer);
       }
 
+      static auto from (jlong pointer) {
+        return reinterpret_cast<Runtime*>(pointer);
+      }
+
       JNIEnv *env = nullptr;
       jobject self = nullptr;
+      jlong pointer = 0;
+      String rootDirectory = "";
 
-      Runtime (JNIEnv* env, jobject self) : SSC::Core() {
-        this->env = env;
-        this->self = env->NewGlobalRef(self);
+      Runtime (JNIEnv* env, jobject self, String rootDirectory);
+      ~Runtime ();
+  };
+
+  class Bridge : public IPC::Bridge {
+    public:
+      static auto from (JNIEnv* env, jobject self) {
+        auto pointer = GetObjectClassFieldFromEnvironment(env, self, Long, "pointer", "J");
+        return reinterpret_cast<Bridge*>(pointer);
       }
 
-      ~Runtime () {
-        this->env->DeleteGlobalRef(this->self);
+      static auto from (jlong pointer) {
+        return reinterpret_cast<Bridge*>(pointer);
       }
+
+      JNIEnv *env = nullptr;
+      jobject self = nullptr;
+      jlong pointer = 0;
+      Runtime* runtime = nullptr;
+
+      Bridge (JNIEnv* env, jobject self, Runtime* runtime);
+      ~Bridge ();
   };
 
   class Window {
@@ -185,24 +253,27 @@ namespace SSC::android {
         return reinterpret_cast<Window*>(pointer);
       }
 
+      static auto from (jlong pointer) {
+        return reinterpret_cast<Window*>(pointer);
+      }
+
       JNIEnv* env = nullptr;
       jobject self = nullptr;
-      SSC::IPC::Bridge* bridge = nullptr;
-      SSC::Map config;
-      SSC::String preloadSource;
-      SSC::WindowOptions options;
-      SSC::Map envvars;
+      jlong pointer = 0;
+      Bridge* bridge = nullptr;
+      Map config;
+      String preloadSource;
+      WindowOptions options;
+      Map envvars;
 
       Window (
         JNIEnv* env,
         jobject self,
-        SSC::IPC::Bridge* bridge,
-        SSC::WindowOptions options
+        Bridge* bridge,
+        WindowOptions options
       );
 
-      ~Window () {
-        this->env->DeleteGlobalRef(this->self);
-      }
+      ~Window ();
   };
 }
 
