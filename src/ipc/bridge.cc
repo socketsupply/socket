@@ -1125,7 +1125,7 @@ void initFunctionsTable (Router *router) {
 }
 
 static void registerSchemeHandler (Router *router) {
-#if defined(__linux__)
+#if defined(__linux__) && !defined(__ANDROID__)
   // prevent this function from registering the `ipc://`
   // URI scheme handler twice
   static std::atomic<bool> registered = false;
