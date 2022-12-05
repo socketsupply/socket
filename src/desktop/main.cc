@@ -615,11 +615,13 @@ MAIN {
 
     if (message.name == "getWindows") {
       const auto index = message.index;
-      const auto showTitle = message.get("title") == "true" ? true : false;
-      const auto showSize = message.get("size") == "true" ? true : false;
-      const auto showStatus = message.get("status") == "true" ? true : false;
+      const auto props = WindowPropertiesFlags {
+        .showTitle = message.get("title") == "true" ? true : false,
+        .showSize = message.get("size") == "true" ? true : false,
+        .showStatus = message.get("status") == "true" ? true : false,
+      };
       const auto window = windowManager.getWindow(index);
-      const auto result = windowManager.json(showTitle, showSize, showStatus).str();
+      const auto result = windowManager.json(props).str();
       window->resolvePromise(message.get("seq"), OK_STATE, encodeURIComponent(result));
       return;
     }
@@ -630,7 +632,8 @@ MAIN {
       const auto window = windowManager.getWindow(index);
       const auto targetWindow = windowManager.getWindow(targetWindowIndex);
       if (targetWindow) {
-        const auto value = (targetWindow->json(false, false, true)).str();
+        const auto props = WindowPropertiesFlags { .showStatus = true };
+        const auto value = (targetWindow->json(props)).str();
         const auto seq = message.get("seq");
         window->resolvePromise(
           seq,
@@ -653,7 +656,8 @@ MAIN {
       const auto window = windowManager.getWindow(index);
       const auto targetWindow = windowManager.getWindow(targetWindowIndex);
       if (window) {
-        const auto value = (targetWindow->json(false, true, false)).str();
+        const auto props = WindowPropertiesFlags { .showSize = true };
+        const auto value = (targetWindow->json(props)).str();
         const auto seq = message.get("seq");
         window->resolvePromise(
           seq,
@@ -676,7 +680,8 @@ MAIN {
       const auto window = windowManager.getWindow(index);
       const auto targetWindow = windowManager.getWindow(targetWindowIndex);
       if (window) {
-        const auto value = (targetWindow->json(true, false, false)).str();
+        const auto props = WindowPropertiesFlags { .showTitle = true };
+        const auto value = (targetWindow->json(props)).str();
         const auto seq = message.get("seq");
         window->resolvePromise(
           seq,
