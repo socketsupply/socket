@@ -1319,7 +1319,7 @@ static void registerSchemeHandler (Router *router) {
 #endif
 
 namespace SSC::IPC {
-  Bridge::Bridge (Core *core) {
+  Bridge::Bridge (Core *core) : router() {
     this->core = core;
     this->router.core = core;
     this->router.bridge = this;
@@ -1361,8 +1361,16 @@ namespace SSC::IPC {
   }
 
   bool Bridge::route (const String& msg, char *bytes, size_t size) {
+    return this->route(msg, bytes, size, nullptr);
+  }
+
+  bool Bridge::route (const String& msg, char *bytes, size_t size, Router::ResultCallback callback) {
     auto message = Message { msg, bytes, size };
-    return this->router.invoke(message);
+    if (callback != nullptr) {
+      return this->router.invoke(message, callback);
+    } else {
+      return this->router.invoke(message);
+    }
   }
 
   Router::Router () {
@@ -1442,6 +1450,7 @@ namespace SSC::IPC {
   }
 
   bool Router::invoke (const Message& message, ResultCallback callback) {
+    debug("invoke: %s", message.name.c_str());
     if (this->table.find(message.name) == this->table.end()) {
       return false;
     }
@@ -1449,6 +1458,7 @@ namespace SSC::IPC {
     auto ctx = this->table.at(message.name);
 
     if (ctx.callback != nullptr) {
+    debug("before dispatch");
       Message msg(message);
       // decorate message with buffer if buffer was previously
       // mapped with `ipc://buffer.map`, which we do on Linux

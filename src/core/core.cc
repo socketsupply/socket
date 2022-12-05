@@ -663,7 +663,7 @@ namespace SSC {
     uv_stop(&eventLoop);
 #if defined(__APPLE__)
     // noop
-#elif defined(__ANDROID__) || !defined(__linux__)
+#else
     Lock lock(loopMutex);
     if (eventLoopThread != nullptr) {
       if (eventLoopThread->joinable()) {
@@ -722,15 +722,11 @@ namespace SSC {
     isLoopRunning = true;
 
     initEventLoop();
-    dispatchEventLoop([=, this]() {
-      initTimers();
-      startTimers();
-    });
 
 #if defined(__APPLE__)
     Lock lock(loopMutex);
     dispatch_async(eventLoopQueue, ^{ pollEventLoop(this); });
-#elif defined(__ANDROID__) || !defined(__linux__)
+#else
     Lock lock(loopMutex);
     // clean up old thread if still running
     if (eventLoopThread != nullptr) {
@@ -744,6 +740,11 @@ namespace SSC {
 
     eventLoopThread = new std::thread(&pollEventLoop, this);
 #endif
+
+    dispatchEventLoop([=, this]() {
+      initTimers();
+      startTimers();
+    });
   }
 
   static Timer releaseWeakDescriptors = {

@@ -36,16 +36,12 @@ open class WebView (context: android.content.Context) : android.webkit.WebView(c
 open class WebViewClient (activity: WebViewActivity) : android.webkit.WebViewClient() {
   protected val activity = WeakReference(activity)
   open protected val TAG = "WebViewClient"
-  open protected var assetLoader: androidx.webkit.WebViewAssetLoader? = null
-
-  init {
-    this.assetLoader = androidx.webkit.WebViewAssetLoader.Builder()
-      .addPathHandler(
-        "/assets/",
-        androidx.webkit.WebViewAssetLoader.AssetsPathHandler(activity)
-      )
-      .build()
-  }
+  open protected var assetLoader: androidx.webkit.WebViewAssetLoader = androidx.webkit.WebViewAssetLoader.Builder()
+    .addPathHandler(
+      "/assets/",
+      androidx.webkit.WebViewAssetLoader.AssetsPathHandler(activity)
+    )
+    .build()
 
   /**
    * Handles URL loading overrides for "file://" based URI schemes.
@@ -83,7 +79,7 @@ open class WebViewClient (activity: WebViewActivity) : android.webkit.WebViewCli
     request: android.webkit.WebResourceRequest
   ): android.webkit.WebResourceResponse? {
     val url = request.url
-    val assetLoaderRequest = this.assetLoader?.shouldInterceptRequest(url)
+    val assetLoaderRequest = this.assetLoader.shouldInterceptRequest(url)
 
     // android.util.Log.d(TAG, "${url.scheme} ${request.method}")
 
@@ -136,6 +132,18 @@ open class WebViewClient (activity: WebViewActivity) : android.webkit.WebViewCli
           "utf-8",
           java.io.PipedInputStream(stream)
         )
+
+        response.responseHeaders = mapOf(
+          "Access-Control-Allow-Origin" to "*",
+          "Access-Control-Allow-Headers" to "*",
+          "Access-Control-Allow-Methods" to "*"
+        )
+
+
+        if (activity.get()?.onSchemeRequest(request, response, stream) == true) {
+          return response
+        }
+
         response.setStatusCodeAndReasonPhrase(404, "Not found")
         stream.close()
 
@@ -161,60 +169,20 @@ open class WebViewClient (activity: WebViewActivity) : android.webkit.WebViewCli
 open class WebViewActivity : androidx.appcompat.app.AppCompatActivity() {
   open protected val TAG = "WebViewActivity"
 
-  open public var client: WebViewClient? = null
+  open public lateinit var client: WebViewClient
   open public var webview: android.webkit.WebView? = null
 
   /**
    * Called when the `WebViewActivity` is first created
    * @see https://developer.android.com/reference/kotlin/android/app/Activity#onCreate(android.os.Bundle)
    */
-  override fun onCreate(state: android.os.Bundle?) {
+  override fun onCreate (state: android.os.Bundle?) {
     super.onCreate(state)
 
     setContentView(R.layout.web_view_activity)
 
-    val client = WebViewClient(this)
-    val webview = findViewById(R.id.webview) as android.webkit.WebView?
-    //val externalInterface = ExternalWebViewInterface(this)
-
-    this.client = client
-    this.webview = webview
-
-
-    /*
-    this.externalInterface = externalInterface
-    this.bridge = Bridge(this)
-    this.view = findViewById(R.id.webview)
-    this.core = NativeCore(this).apply {
-      configure(
-        GenericNativeCoreConfiguration(
-          rootDirectory = getExternalFilesDir(null)?.absolutePath ?: "/sdcard/Android/data/__BUNDLE_IDENTIFIER__/files",
-          assetManager = applicationContext.resources.assets
-        )
-      )
-
-      if (check()) {
-        val index = getPathToIndexHTML()
-
-        android.webkit.WebView.setWebContentsDebuggingEnabled(isDebugEnabled)
-
-        view?.apply {
-          settings.javaScriptEnabled = true
-
-          // allow list
-          settings.allowFileAccess = true
-          settings.allowContentAccess = true
-          settings.allowFileAccessFromFileURLs = true
-
-          webViewClient = client
-          addJavascriptInterface(externalInterface, "external")
-          loadUrl("https://appassets.androidplatform.net/assets/$index")
-        }
-      }
-    }
-
-    val core = this.core
-    */
+    this.client = WebViewClient(this)
+    this.webview = findViewById(R.id.webview) as android.webkit.WebView?
   }
 
   open fun onPageStarted (
@@ -223,5 +191,13 @@ open class WebViewActivity : androidx.appcompat.app.AppCompatActivity() {
     bitmap: android.graphics.Bitmap?
   ) {
     android.util.Log.d(TAG, "WebViewActivity is loading: $url")
+  }
+
+  open fun onSchemeRequest (
+    request: android.webkit.WebResourceRequest,
+    response:  android.webkit.WebResourceResponse,
+    stream: java.io.PipedOutputStream
+  ): Boolean {
+    return false
   }
 }
