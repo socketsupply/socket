@@ -180,6 +180,8 @@ function _prebuild_ios_main () {
   local sources=($(find "$src"/mobile/ios.mm 2>/dev/null))
   local outputs=()
 
+  mkdir -p "$objects"
+
   for source in "${sources[@]}"; do
     local output="${source/$src/$objects}"
     output="${output/.cc/.o}"
@@ -208,8 +210,10 @@ function _prebuild_ios_simulator_main () {
 
   local clang="$(xcrun -sdk iphonesimulator -find clang++)"
   local cflags=($(TARGET_IPHONE_SIMULATOR=1 "$root/bin/cflags.sh" -Os))
-  local sources=($(find "$src"/ios/*.{cc,mm} 2>/dev/null))
+  local sources=($(find "$src"/mobile/ios.mm 2>/dev/null))
   local outputs=()
+
+  mkdir -p "$objects"
 
   for source in "${sources[@]}"; do
     local output="${source/$src/$objects}"
@@ -219,7 +223,6 @@ function _prebuild_ios_simulator_main () {
   done
 
   for (( i = 0; i < ${#sources[@]}; i++ )); do
-    # echo "$CXX" ${cflags[@]} -c "${sources[$i]}" -o "${outputs[$i]}"
     mkdir -p "$(dirname "${outputs[$i]}")"
     quiet "$clang" "${cflags[@]}" \
       -c "${sources[$i]}"         \
