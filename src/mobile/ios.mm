@@ -6,6 +6,7 @@ using namespace SSC;
 
 constexpr auto _settings = STR_VALUE(SSC_SETTINGS);
 constexpr auto _debug = false;
+constexpr auto _port = PORT;
 
 static dispatch_queue_attr_t qos = dispatch_queue_attr_make_with_qos_class(
   DISPATCH_QUEUE_CONCURRENT,
@@ -247,12 +248,18 @@ static dispatch_queue_t queue = dispatch_queue_create(
   [viewController.view addSubview: self.webview];
 
   NSString* allowed = [[NSBundle mainBundle] resourcePath];
-  NSString* url = [allowed stringByAppendingPathComponent:@"ui/index.html"];
+  NSString* url = [NSURL fileURLWithPath:[allowed stringByAppendingPathComponent:@"ui/index.html"]];
 
-  [self.webview
-		loadFileURL: [NSURL fileURLWithPath: url]
-    allowingReadAccessToURL: [NSURL fileURLWithPath: allowed]
-  ];
+#if DEBUG
+  url = [NSURL URLWithString:[NSString stringWithFormat:@"http://localhost:%ld",
+                                                        (long)_port]];
+  NSURLRequest *request = [NSURLRequest requestWithURL:url];
+  [self.webview loadFileRequest:request
+      allowingReadAccessToURL:[NSURL fileURLWithPath:allowed]];
+#else
+  [self.webview loadFileURL:url
+      allowingReadAccessToURL:[NSURL fileURLWithPath:allowed]];
+#endif
 
   self.webview.scrollView.delegate = self;
   [self.window makeKeyAndVisible];
