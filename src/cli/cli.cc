@@ -748,6 +748,7 @@ int main (const int argc, const char* argv[]) {
     String argvForward = "";
     String targetPlatform = "";
 
+    String devHost("localhost");
     String devPort("0");
     auto cnt = 0;
 
@@ -827,6 +828,18 @@ int main (const int argc, const char* argv[]) {
           } else if (targetPlatform == "ios-simulator") {
             flagBuildForIOS = true;
             flagBuildForSimulator = true;
+          }
+        }
+      }
+
+      auto host = optionValue(arg, "--host");
+      if (host.size() > 0) {
+        devHost = host;
+      } else {
+        if (flagBuildForIOS || flagBuildForAndroid) {
+          auto r = exec("ifconfig | grep -w 'inet' | awk '!match($2, \"^127.\") {print $2; exit}'");
+          if (r.exitCode == 0) {
+            devHost = r.output;
           }
         }
       }
@@ -1875,6 +1888,7 @@ int main (const int argc, const char* argv[]) {
         << " -DIOS=" << (flagBuildForIOS ? 1 : 0)
         << " -DANDROID=" << (flagBuildForAndroid ? 1 : 0)
         << " -DDEBUG=" << (flagDebugMode ? 1 : 0)
+        << " -DHOST=" << devHost
         << " -DPORT=" << devPort
         << " -DSSC_SETTINGS=\"" << encodeURIComponent(_settings) << "\""
         << " -DSSC_VERSION=" << SSC::VERSION_STRING
