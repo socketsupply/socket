@@ -86,6 +86,7 @@ MAIN {
   SSC::StringStream argvForward;
 
   bool isCommandMode = false;
+  bool isReadingStdin = false;
   bool isHeadless = false;
   bool isTest = false;
 
@@ -119,6 +120,10 @@ MAIN {
       (s.find("-v") == 0) ||
       (s.find("-V") == 0)
     );
+
+    if (s.find("--stdin")) {
+      isReadingStdin = true;
+    }
 
     if (helpRequested) {
       wantsHelp = true;
@@ -944,6 +949,20 @@ MAIN {
   #endif
 
   signal(SIGINT, signalHandler);
+
+  if (isReadingStdin) {
+    std::thread t([&]() {
+      std::string value;
+      std::getline(std::cin, value);
+
+      auto defaultWindow = windowManager.getWindow(0);
+      if (defaultWindow) {
+        defaultWindow->eval(getEmitToRenderProcessJavaScript("process.stdin", value));
+      }
+    });
+
+    t.detach();
+  }
 
   //
   // # Event Loop
