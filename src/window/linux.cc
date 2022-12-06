@@ -676,7 +676,7 @@ namespace SSC {
   }
 
   SSC::String Window::getTitle () {
-    // TODO: implement
+    return String(gtk_window_get_title(GTK_WINDOW(window)));
   }
 
   void Window::setTitle (const String &seq, const String &s) {
@@ -749,7 +749,9 @@ namespace SSC {
   }
 
   ScreenSize Window::getSize () {
-    // TODO: implement
+    ScreenSize size = {0};
+    gtk_window_get_size(GTK_WINDOW(window), &size.width, &size.height);
+    return size;
   }
 
   void Window::setSize (const String& seq, int width, int height, int hints) {
