@@ -248,7 +248,7 @@ static dispatch_queue_t queue = dispatch_queue_create(
   [viewController.view addSubview: self.webview];
 
   NSString* allowed = [[NSBundle mainBundle] resourcePath];
-  NSString* url = [NSURL fileURLWithPath:[allowed stringByAppendingPathComponent:@"ui/index.html"]];
+  NSURL* url = [NSURL fileURLWithPath:[allowed stringByAppendingPathComponent:@"ui/index.html"]];
 
 #if DEBUG
   url = [NSURL URLWithString:[NSString stringWithFormat:@"http://localhost:%ld",
