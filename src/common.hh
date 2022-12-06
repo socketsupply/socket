@@ -121,6 +121,14 @@
 #define SSC_VERSION_HASH ""
 #endif
 
+#ifndef HOST
+#define HOST "localhost"
+#endif
+
+#ifndef PORT
+#define PORT 0
+#endif
+
       /*
 #if !DEBUG
 #ifdef debug
