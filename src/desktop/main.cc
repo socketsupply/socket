@@ -594,7 +594,7 @@ MAIN {
         }
       } else {
         for (auto w : windowManager.windows) {
-          if (w != nullptr) {
+          if (w != nullptr && w->opts.index != message.index) {
             const auto targetWindow = windowManager.getWindow(w->opts.index);
             targetWindow->eval(getEmitToRenderProcessJavaScript(event, value));
           }
