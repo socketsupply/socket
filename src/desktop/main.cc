@@ -586,7 +586,7 @@ MAIN {
     if (message.name == "send") {
       const auto event = decodeURIComponent(message.get("event"));
       const auto value = decodeURIComponent(message.get("value"));
-      const auto targetWindowIndex = std::stoi(message.get("window"));
+      const auto targetWindowIndex = message.get("window").size() >= 0 ? std::stoi(message.get("window")) : -1;
       if (targetWindowIndex >= 0) {
         const auto targetWindow = windowManager.getWindow(targetWindowIndex);
         if (targetWindow) {
