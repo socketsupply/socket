@@ -443,7 +443,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 		17E73FDA28FCC9320087604F /* common.hh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = common.hh; sourceTree = "<group>"; };
 		17E73FEE28FCD3360087604F /* libuv-ios.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = "libuv-ios.a"; path = "lib/libuv-ios.a"; sourceTree = "<group>"; };
 		290F7F86276BC2B000486988 /* lib */ = {isa = PBXFileReference; lastKnownFileType = folder; path = lib; sourceTree = "<group>"; };
-		29124C4A27613369001832A0 /* dogfood-dev.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "dogfood-dev.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		29124C4A27613369001832A0 /* {{name}}.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "{{name}}.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		29124C5C2761336B001832A0 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		29124C5E2761336B001832A0 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		294A3C792763E9C6007B5B9A /* UIKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UIKit.framework; path = System/Library/Frameworks/UIKit.framework; sourceTree = SDKROOT; };
@@ -510,7 +510,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 		29124C4B27613369001832A0 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				29124C4A27613369001832A0 /* dogfood-dev.app */,
+				29124C4A27613369001832A0 /* {{name}}.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -534,9 +534,9 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		29124C4927613369001832A0 /* dogfood-dev */ = {
+		29124C4927613369001832A0 /* {{name}} */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 29124C792761336B001832A0 /* Build configuration list for PBXNativeTarget "dogfood-dev" */;
+			buildConfigurationList = 29124C792761336B001832A0 /* Build configuration list for PBXNativeTarget "{{name}}" */;
 			buildPhases = (
 				29124C4627613369001832A0 /* Sources */,
 				29124C4727613369001832A0 /* Frameworks */,
@@ -546,9 +546,9 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 			);
 			dependencies = (
 			);
-			name = "dogfood-dev";
-			productName = "dogfood-dev";
-			productReference = 29124C4A27613369001832A0 /* dogfood-dev.app */;
+			name = "{{name}}";
+			productName = "{{name}}";
+			productReference = 29124C4A27613369001832A0 /* {{name}}.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -565,7 +565,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 					};
 				};
 			};
-			buildConfigurationList = 29124C4527613369001832A0 /* Build configuration list for PBXProject "dogfood-dev" */;
+			buildConfigurationList = 29124C4527613369001832A0 /* Build configuration list for PBXProject "{{name}}" */;
 			compatibilityVersion = "Xcode 13.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -578,7 +578,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				29124C4927613369001832A0 /* dogfood-dev */,
+				29124C4927613369001832A0 /* {{name}} */,
 			);
 		};
 /* End PBXProject section */
