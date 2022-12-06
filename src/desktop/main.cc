@@ -787,7 +787,7 @@ MAIN {
       return;
     }
 
-    if (message.name == "window.setBackground") {
+    if (message.name == "window.setBackgroundColor") {
       int red = 0;
       int green = 0;
       int blue = 0;
