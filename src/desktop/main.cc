@@ -25,14 +25,6 @@
 #define InvalidWindowIndexError(index) \
   SSC::String("Invalid index given for window: ") + std::to_string(index)
 
-#ifndef HOST
-#define HOST "localhost"
-#endif
-
-#ifndef PORT
-#define PORT 0
-#endif
-
 using namespace SSC;
 
 std::function<void(int)> shutdownHandler;
