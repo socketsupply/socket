@@ -745,6 +745,8 @@ void initFunctionsTable (Router *router) {
       return reply(Result { message.seq, message, err });
     }
 
+    if (!router->isReady) router->isReady = true;
+
     router->core->platform.event(
       message.seq,
       message.value,
