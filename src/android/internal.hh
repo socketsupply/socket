@@ -274,6 +274,8 @@ namespace SSC::android {
       );
 
       ~Window ();
+
+    void evaluateJavaScript (String source, JVMEnvironment& jvm);
   };
 }
 

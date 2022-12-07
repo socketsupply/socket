@@ -863,22 +863,14 @@ void initFunctionsTable (Router *router) {
    * Prints incoming message value to stdout.
    */
   router->map("stdout", [](auto message, auto router, auto reply) {
-#if defined(__ANDROID__)
-  // @TODO(jwerle): implement this
-#else
-      stdWrite(message.value, false);
-#endif
+    stdWrite(message.value, false);
   });
 
   /**
    * Prints incoming message value to stderr.
    */
   router->map("stderr", [](auto message, auto router, auto reply) {
-#if defined(__ANDROID__)
-  // @TODO(jwerle): implement this
-#else
-      stdWrite(message.value, true);
-#endif
+    stdWrite(message.value, true);
   });
 
   /**

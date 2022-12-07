@@ -67,7 +67,7 @@ open class WebViewClient (activity: WebViewActivity) : android.webkit.WebViewCli
       activity.startActivity(intent)
     } catch (err: Error) {
       // @TODO(jwelre): handle this error gracefully
-      android.util.Log.e(TAG, err.toString())
+      console.error(err.toString())
       return false
     }
 
@@ -80,8 +80,6 @@ open class WebViewClient (activity: WebViewActivity) : android.webkit.WebViewCli
   ): android.webkit.WebResourceResponse? {
     val url = request.url
     val assetLoaderRequest = this.assetLoader.shouldInterceptRequest(url)
-
-    // android.util.Log.d(TAG, "${url.scheme} ${request.method}")
 
     if (assetLoaderRequest != null) {
       return assetLoaderRequest
@@ -169,8 +167,17 @@ open class WebViewClient (activity: WebViewActivity) : android.webkit.WebViewCli
 open class WebViewActivity : androidx.appcompat.app.AppCompatActivity() {
   open protected val TAG = "WebViewActivity"
 
-  open public lateinit var client: WebViewClient
-  open public var webview: android.webkit.WebView? = null
+  open lateinit var client: WebViewClient
+  open var webview: android.webkit.WebView? = null
+
+  fun evaluateJavaScript (
+    source: String,
+    callback: android.webkit.ValueCallback<String?>? = null
+  ) {
+    runOnUiThread {
+      webview?.evaluateJavascript(source, callback)
+    }
+  }
 
   /**
    * Called when the `WebViewActivity` is first created

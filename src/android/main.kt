@@ -25,9 +25,9 @@ object console {
  */
 open class MainActivity : WebViewActivity() {
   override open protected val TAG = "Mainctivity"
-  open public lateinit var runtime: Runtime
-  open public lateinit var window: Window
-  open protected val timer = java.util.Timer()
+  open lateinit var runtime: Runtime
+  open lateinit var window: Window
+  open val timer = java.util.Timer()
 
   companion object {
     init {
@@ -41,6 +41,14 @@ open class MainActivity : WebViewActivity() {
   }
 
   override fun onCreate (state: android.os.Bundle?) {
+    // called before `super.onCreate()`
+    this.supportActionBar?.hide()
+    this.getWindow()?.statusBarColor = android.graphics.Color.TRANSPARENT
+    this.getWindow()?.decorView?.systemUiVisibility = (
+      android.view.View.SYSTEM_UI_FLAG_LAYOUT_STABLE or
+      android.view.View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+    )
+
     super.onCreate(state)
 
     this.runtime = Runtime(this, RuntimeConfiguration(
@@ -50,10 +58,6 @@ open class MainActivity : WebViewActivity() {
       exit = { code ->
         console.log("__EXIT_SIGNAL__=${code}")
         this.finishAndRemoveTask()
-      },
-
-      evaluateJavascript = { source ->
-        this.webview?.evaluateJavascript(source, null)
       },
 
       openExternal = { value ->
@@ -75,15 +79,31 @@ open class MainActivity : WebViewActivity() {
     )
 
     this.window.load()
-    //this.runtime.start()
+    this.runtime.start()
   }
 
-  override fun onSchemeRequest (
-    request: android.webkit.WebResourceRequest,
-    response:  android.webkit.WebResourceResponse,
-    stream: java.io.PipedOutputStream
-  ): Boolean {
-    return this.window.onSchemeRequest(request, response, stream)
+  override fun onStart () {
+    console.log("start")
+    this.runtime.start()
+    return super.onStart()
+  }
+
+  override fun onResume () {
+    console.log("resume")
+    this.runtime.resume()
+    return super.onResume()
+  }
+
+  override fun onPause () {
+    console.log("pause")
+    this.runtime.pause()
+    return super.onPause()
+  }
+
+  override fun onStop () {
+    console.log("stop")
+    this.runtime.stop()
+    return super.onStop()
   }
 
   override fun onDestroy () {
@@ -96,16 +116,6 @@ open class MainActivity : WebViewActivity() {
     return super.onDestroy()
   }
 
-  override fun onPause () {
-    this.runtime.pause()
-    return super.onPause()
-  }
-
-  override fun onResume () {
-    this.runtime.resume()
-    return super.onResume()
-  }
-
   override fun onPageStarted (
     view: android.webkit.WebView,
     url: String,
@@ -114,5 +124,13 @@ open class MainActivity : WebViewActivity() {
     val source = this.window.getJavaScriptPreloadSource()
     this.webview?.evaluateJavascript(source, null)
     return super.onPageStarted(view, url, bitmap)
+  }
+
+  override fun onSchemeRequest (
+    request: android.webkit.WebResourceRequest,
+    response:  android.webkit.WebResourceResponse,
+    stream: java.io.PipedOutputStream
+  ): Boolean {
+    return this.window.onSchemeRequest(request, response, stream)
   }
 }
