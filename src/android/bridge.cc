@@ -2,6 +2,9 @@
 
 using namespace SSC::android;
 
+static auto onInternalRouteResponseSignature =
+  "(JLjava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;[B)V";
+
 namespace SSC::android {
   Bridge::Bridge (JNIEnv* env, jobject self, Runtime* runtime)
     : IPC::Bridge(runtime)
@@ -79,7 +82,8 @@ extern "C" {
     auto jniVersion = env->GetVersion();
     env->GetJavaVM(&jvm);
 
-    auto msg = StringWrap(env, messageString);
+    auto messageStringWrap = StringWrap(env, messageString);
+    auto msg = messageStringWrap.str();
     auto size = byteArray != nullptr ? env->GetArrayLength(byteArray) : 0;
     auto bytes = size > 0 ? new char[size]{0} : nullptr;
 
@@ -87,19 +91,35 @@ extern "C" {
       env->GetByteArrayRegion(byteArray, 0, size, (jbyte*) bytes);
     }
 
-    return bridge->route(msg.str(), bytes, size, [=](auto result) mutable {
+    return bridge->route(msg, bytes, size, [=](auto result) mutable {
+      if (result.seq == "-1") {
+        bridge->router.send(result.seq, result.str(), result.post);
+        return;
+      }
+
       auto attachment = JNIEnvironmentAttachment { jvm, jniVersion };
       auto self = bridge->self;
       auto env = attachment.env;
 
       if (!attachment.hasException()) {
-        auto bytes = env->NewByteArray(result.post.length);
-        env->SetByteArrayRegion(bytes, 0, result.post.length, (jbyte *) result.post.body);
+        auto bytes = result.post.body != nullptr
+         ? env->NewByteArray(result.post.length)
+         : nullptr;
+
+        if (bytes != nullptr) {
+          env->SetByteArrayRegion(
+            bytes,
+            0,
+            result.post.length,
+            (jbyte *) result.post.body
+          );
+        }
+
         CallVoidClassMethodFromEnvironment(
           env,
           self,
           "onInternalRouteResponse",
-          "(JLjava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;[B)V",
+          onInternalRouteResponseSignature,
           requestId,
           env->NewStringUTF(result.seq.c_str()),
           env->NewStringUTF(result.source.c_str()),

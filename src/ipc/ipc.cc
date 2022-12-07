@@ -80,9 +80,6 @@ namespace SSC::IPC {
     return args.count(key) ? decodeURIComponent(args.at(key)) : fallback;
   }
 
-  Result::Result () {
-  }
-
   Result::Result (
     const Message::Seq& seq,
     const Message& message
@@ -120,18 +117,33 @@ namespace SSC::IPC {
     this->data = data.value;
   }
 
-  String Result::str () const {
-    if (this->value.type != JSON::Type::Null) {
-      return this->value.str();
+  JSON::Any Result::json () const {
+    if (!this->value.isNull()) {
+      if (this->value.isObject()) {
+        auto object = this->value.as<JSON::Object>();
+        object["source"] = this->source;
+        return object;
+      }
+
+      return this->value;
     }
 
     auto entries = JSON::Object::Entries {
-      {"source", this->source},
-      {"data", this->data},
-      {"err", this->err}
+      {"source", this->source}
     };
 
-    return JSON::Object(entries).str();
+    if (!this->err.isNull()) {
+      entries["err"] = this->err;
+    } else {
+      entries["data"] = this->data;
+    }
+
+    return JSON::Object(entries);
+  }
+
+  String Result::str () const {
+    auto json = this->json();
+    return json.str();
   }
 
   Result::Err::Err (
