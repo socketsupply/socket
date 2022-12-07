@@ -1377,12 +1377,12 @@ int main (const int argc, const char* argv[]) {
         fs::copy_options::overwrite_existing | fs::copy_options::recursive
       );
 
+      settings.insert(std::make_pair("host", devHost));
+      settings.insert(std::make_pair("port", devPort));
+
       writeFile(paths.platformSpecificOutputPath / "exportOptions.plist", tmpl(gXCodeExportOptions, settings));
       writeFile(paths.platformSpecificOutputPath / "Info.plist", tmpl(gXCodePlist, settings));
       writeFile(pathToProject / "project.pbxproj", tmpl(gXCodeProject, settings));
-
-      settings.insert(std::make_pair("host", devHost));
-      settings.insert(std::make_pair("port", devPort));
       writeFile(pathToScheme / schemeName, tmpl(gXCodeScheme, settings));
 
       pathResources = paths.platformSpecificOutputPath / "ui";
