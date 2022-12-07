@@ -190,28 +190,7 @@ namespace SSC::JSON {
         }
       }
 
-      std::string str () const {
-        std::stringstream stream;
-        auto count = this->data.size();
-        stream << std::string("{");
-
-        for (const auto& tuple : this->data) {
-          auto key = replace(tuple.first, "\"","\\\"");
-          auto value = tuple.second.str();
-
-          stream << std::string("\"");
-          stream << key;
-          stream << std::string("\":");
-          stream << value;
-
-          if (--count > 0) {
-            stream << std::string(",");
-          }
-        }
-
-        stream << std::string("}");
-        return stream.str();
-      }
+      std::string str () const;
 
       const Object::Entries value () const {
         return this->data;
@@ -264,22 +243,7 @@ namespace SSC::JSON {
         }
       }
 
-      std::string str () const {
-        std::stringstream stream;
-        auto count = this->data.size();
-        stream << std::string("[");
-
-        for (const auto value : this->data) {
-          stream << value.str();
-
-          if (--count > 0) {
-            stream << std::string(",");
-          }
-        }
-
-        stream << std::string("]");
-        return stream.str();
-      }
+      std::string str () const;
 
       Array::Entries value () const {
         return this->data;
@@ -395,33 +359,7 @@ namespace SSC::JSON {
         return this->data;
       }
 
-      std::string str () const {
-        return this->str(7);
-      }
-
-      std::string str (int precision) const {
-        if (this->data == 0) {
-          return "0";
-        }
-
-        auto value = this->data;
-        auto output = std::to_string(value);
-
-        if (output.find(".") >= 0) {
-          // trim trailing zeros
-          auto  i = output.size() - 1;
-          for (; i >= 0; --i) {
-            auto ch = output[i];
-            if (ch != '0' && ch != '.') {
-              break;
-            }
-          }
-
-          return output.substr(0, i + 1);
-        }
-
-        return output;
-      }
+      std::string str () const;
   };
 
   class String : Value<std::string, Type::Number> {
@@ -447,9 +385,7 @@ namespace SSC::JSON {
         this->data = any.str();
       }
 
-      String (const Number& number) {
-        this->data = number.str();
-      }
+      String (const Number& number);
 
       String (const Boolean& boolean) {
         this->data = boolean.str();
