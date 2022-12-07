@@ -87,17 +87,12 @@ extern "C" {
       env->GetByteArrayRegion(byteArray, 0, size, (jbyte*) bytes);
     }
 
-    debug("rootDirectory= %s", bridge->runtime->rootDirectory.c_str());
-    uv_chdir(bridge->runtime->rootDirectory.c_str());
-    debug("route: %s", msg.c_str());
     return bridge->route(msg.str(), bytes, size, [=](auto result) mutable {
       auto attachment = JNIEnvironmentAttachment { jvm, jniVersion };
       auto self = bridge->self;
       auto env = attachment.env;
 
-        debug("in callback");
       if (!attachment.hasException()) {
-        debug("here");
         auto bytes = env->NewByteArray(result.post.length);
         env->SetByteArrayRegion(bytes, 0, result.post.length, (jbyte *) result.post.body);
         CallVoidClassMethodFromEnvironment(
