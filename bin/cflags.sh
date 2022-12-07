@@ -34,9 +34,6 @@ if (( TARGET_OS_IPHONE )) || (( TARGET_IPHONE_SIMULATOR )); then
   cflags+=("-isysroot $ios_sdk_path/")
   cflags+=("-F $ios_sdk_path/System/Library/Frameworks/")
   cflags+=("-fembed-bitcode")
-
-  test -d "$ios_sdk_path/lib/system" && cflags+=("-L $ios_sdk_path/lib/system")
-  test -d "$ios_sdk_path/usr/lib" && cflags+=("-L $ios_sdk_path/usr/lib")
 fi
 
 cflags+=(
