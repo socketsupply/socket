@@ -121,7 +121,7 @@ MAIN {
       (s.find("-V") == 0)
     );
 
-    if (s.find("--stdin")) {
+    if (s.find("--stdin") == 0) {
       isReadingStdin = true;
     }
 
