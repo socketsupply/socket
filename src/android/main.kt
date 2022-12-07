@@ -27,7 +27,6 @@ open class MainActivity : WebViewActivity() {
   override open protected val TAG = "Mainctivity"
   open lateinit var runtime: Runtime
   open lateinit var window: Window
-  open val timer = java.util.Timer()
 
   companion object {
     init {
@@ -44,10 +43,6 @@ open class MainActivity : WebViewActivity() {
     // called before `super.onCreate()`
     this.supportActionBar?.hide()
     this.getWindow()?.statusBarColor = android.graphics.Color.TRANSPARENT
-    this.getWindow()?.decorView?.systemUiVisibility = (
-      android.view.View.SYSTEM_UI_FLAG_LAYOUT_STABLE or
-      android.view.View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-    )
 
     super.onCreate(state)
 
@@ -70,48 +65,31 @@ open class MainActivity : WebViewActivity() {
 
     this.window = Window(this.runtime, this)
 
-    this.timer.schedule(
-      kotlin.concurrent.timerTask {
-        // TODO
-      },
-      30L * 1024L, // delay
-      30L * 1024L //period
-    )
-
     this.window.load()
     this.runtime.start()
   }
 
   override fun onStart () {
-    console.log("start")
     this.runtime.start()
     return super.onStart()
   }
 
   override fun onResume () {
-    console.log("resume")
     this.runtime.resume()
     return super.onResume()
   }
 
   override fun onPause () {
-    console.log("pause")
     this.runtime.pause()
     return super.onPause()
   }
 
   override fun onStop () {
-    console.log("stop")
     this.runtime.stop()
     return super.onStop()
   }
 
   override fun onDestroy () {
-    this.timer.apply {
-      cancel()
-      purge()
-    }
-
     this.runtime.destroy()
     return super.onDestroy()
   }

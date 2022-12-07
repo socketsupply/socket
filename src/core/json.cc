@@ -5,6 +5,72 @@ namespace SSC::JSON {
     this->data = std::stod(string.str());
   }
 
+  std::string Number::str () const {
+    if (this->data == 0) {
+      return "0";
+    }
+
+    auto value = this->data;
+    auto output = std::to_string(value);
+    auto decimal = output.find(".");
+
+    // trim trailing zeros
+    if (decimal >= 0) {
+      auto i = output.size() - 1;
+      while (output[i] != '0') {
+        i--;
+      }
+
+      return output.substr(0, i + 1);
+    }
+
+    return output;
+  }
+
+  std::string Object::str () const {
+    std::stringstream stream;
+    auto count = this->data.size();
+    stream << std::string("{");
+
+    for (const auto& tuple : this->data) {
+      auto key = replace(tuple.first, "\"","\\\"");
+      auto value = tuple.second.str();
+
+      stream << std::string("\"");
+      stream << key;
+      stream << std::string("\":");
+      stream << value;
+
+      if (--count > 0) {
+        stream << std::string(",");
+      }
+    }
+
+    stream << std::string("}");
+    return stream.str();
+  }
+
+  std::string Array::str () const {
+    std::stringstream stream;
+    auto count = this->data.size();
+    stream << std::string("[");
+
+    for (const auto value : this->data) {
+      stream << value.str();
+
+      if (--count > 0) {
+        stream << std::string(",");
+      }
+    }
+
+    stream << std::string("]");
+    return stream.str();
+  }
+
+  String::String (const Number& number) {
+    this->data = number.str();
+  }
+
   Any::Any (const Null null) {
     this->pointer = std::shared_ptr<void>(new Null());
     this->type = Type::Null;
