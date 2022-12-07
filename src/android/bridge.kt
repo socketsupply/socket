@@ -3,12 +3,10 @@ package __BUNDLE_IDENTIFIER__
 import java.lang.ref.WeakReference
 
 interface IBridgeConfiguration {
-  val evaluateJavascript: (String) -> Unit
   val getRootDirectory: () -> String
 }
 
 data class BridgeConfiguration (
-  override val evaluateJavascript: (String) -> Unit,
   override val getRootDirectory: () -> String
 ) : IBridgeConfiguration
 
@@ -17,7 +15,7 @@ data class Result (
   val seq: String,
   val source: String,
   val value: String,
-  val bytes: ByteArray = ByteArray(0),
+  val bytes: ByteArray? = null,
   val headers: Map<String, String> = emptyMap()
 )
 
@@ -77,7 +75,6 @@ class Message (message: String? = null) {
 
   fun set (key: String, value: String): Boolean {
     uri = uri?.buildUpon()?.appendQueryParameter(key, value)?.build()
-
     return uri == null
   }
 
@@ -104,20 +101,17 @@ class Message (message: String? = null) {
   }
 
   override fun toString(): String {
-    if (uri == null) {
-      return ""
-    }
-
-    return uri.toString()
+    return uri?.toString() ?: ""
   }
 }
 
 open class Bridge (runtime: Runtime, configuration: IBridgeConfiguration) {
   open protected val TAG = "Bridge"
-  public var pointer = alloc(runtime.pointer)
-  public var runtime = WeakReference(runtime)
-  public val requests = mutableMapOf<Long, RouteRequest>()
-  public val configuration = configuration
+  var pointer = alloc(runtime.pointer)
+  var runtime = WeakReference(runtime)
+  val requests = mutableMapOf<Long, RouteRequest>()
+  val configuration = configuration
+  val buffers = mutableMapOf<String, ByteArray>()
 
   protected var nextRequestId = 0L
 
@@ -131,13 +125,25 @@ open class Bridge (runtime: Runtime, configuration: IBridgeConfiguration) {
 
   fun route (
     value: String,
-    bytes: ByteArray?,
+    bytes: ByteArray? = null,
     callback: RouteCallback
   ): Boolean {
     val message = Message(value)
-    console.log(message.domain)
-    console.log(message.command)
+    message.bytes = bytes
+
+    if (buffers.contains(message.seq)) {
+      message.bytes = buffers[message.seq]
+      buffers.remove(message.seq)
+    }
+
     when (message.command) {
+      "buffer.map" -> {
+        if (bytes != null) {
+          buffers[message.seq] = bytes
+        }
+        return true
+      }
+
       "log", "stdout" -> {
         console.log(message.value)
         return true
@@ -187,12 +193,10 @@ open class Bridge (runtime: Runtime, configuration: IBridgeConfiguration) {
       }
     }
 
-    console.log(message.toString())
-
     val request = RouteRequest(this.nextRequestId++, callback)
     this.requests[request.id] = request
 
-    return this.route(message.toString(), bytes, request.id)
+    return this.route(message.toString(), message.bytes, request.id)
   }
 
   fun onInternalRouteResponse (
@@ -201,7 +205,7 @@ open class Bridge (runtime: Runtime, configuration: IBridgeConfiguration) {
     source: String,
     value: String,
     headersString: String,
-    bytes: ByteArray
+    bytes: ByteArray? = null
   ) {
     val headers = try {
       headersString

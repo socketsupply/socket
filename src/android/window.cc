@@ -61,15 +61,18 @@ namespace SSC::android {
     this->env->DeleteGlobalRef(this->self);
   }
 
-  void evaluateJavaScript (Window* window, String source, JVMEnvironment& jvm) {
+  void Window::evaluateJavaScript (String source, JVMEnvironment& jvm) {
     auto attachment = JNIEnvironmentAttachment { jvm.get(), jvm.version() };
-    CallObjectClassMethodFromEnvironment(
-      attachment.env,
-      window->self,
-      "evaluateJavaScript",
-      "(Ljava/lang/String;)V",
-      attachment.env->NewStringUTF(source.c_str())
-    );
+    auto env = attachment.env;
+    if (!attachment.hasException()) {
+      CallVoidClassMethodFromEnvironment(
+        env,
+        self,
+        "evaluateJavaScript",
+        "(Ljava/lang/String;)V",
+        env->NewStringUTF(source.c_str())
+      );
+    }
   }
 }
 
@@ -88,16 +91,15 @@ extern "C" {
 
     auto options = SSC::WindowOptions {};
     auto window = new Window(env, self, bridge, options);
+    auto jvm = JVMEnvironment(env);
 
     if (window == nullptr) {
       Throw(env, WindowNotInitializedException);
       return 0;
     }
 
-    auto jvm = JVMEnvironment(env);
-
     bridge->router.evaluateJavaScriptFunction = [window, jvm](auto source) mutable {
-      evaluateJavaScript(window, source, jvm);
+      window->evaluateJavaScript(source, jvm);
     };
 
     return window->pointer;

@@ -107,7 +107,7 @@ namespace SSC::IPC {
       JSON::Any err = nullptr;
       Post post;
 
-      Result ();
+      Result () = default;
       Result (const Err error);
       Result (const Data data);
       Result (const Message::Seq&, const Message&);
