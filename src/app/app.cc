@@ -72,7 +72,7 @@ namespace SSC {
   void App::kill () {
     // Distinguish window closing with app exiting
     shouldExit = true;
-#if defined(__linux__)
+#if defined(__linux__) && !defined(__ANDROID__)
     gtk_main_quit();
 #elif defined(__APPLE__) && !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR
     // if not launched from the cli, just use `terminate()`

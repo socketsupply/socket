@@ -490,6 +490,7 @@ namespace SSC {
       auto loop = &this->core->eventLoop;
       auto ctx = new RequestContext(desc, seq, cb);
       auto req = &ctx->req;
+      debug("open %s", filename);
       auto err = uv_fs_open(loop, req, filename, flags, mode, [](uv_fs_t* req) {
         auto ctx = (RequestContext *) req->data;
         auto desc = ctx->desc;
@@ -1470,11 +1471,9 @@ namespace SSC {
 
   void Core::FS::constants (const String seq, Module::Callback cb) {
     static auto constants = getFSConstantsMap();
-    debug("in constants");
 
     this->core->dispatchEventLoop([=] {
       JSON::Object::Entries data;
-    debug("in constants callback");
 
       for (auto const &tuple : constants) {
         auto key = tuple.first;
