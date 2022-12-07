@@ -837,7 +837,7 @@ int main (const int argc, const char* argv[]) {
         devHost = host;
       } else {
         if (flagBuildForIOS || flagBuildForAndroid) {
-          auto r = exec("ifconfig | grep -w 'inet' | awk '!match($2, \"^127.\") {print $2; exit}'");
+          auto r = exec("ifconfig | grep -w 'inet' | awk '!match($2, \"^127.\") {print $2; exit}' | tr -d '\n'");
           if (r.exitCode == 0) {
             devHost = r.output;
           }
