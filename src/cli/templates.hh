@@ -769,6 +769,10 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
         );
         LIBRARY_SEARCH_PATHS = "$(PROJECT_DIR)/lib";
         MARKETING_VERSION = 1.0;
+        OTHER_CFLAGS = (
+          "-DHOST={{host}}",
+          "-DPORT={{port}}",
+        );
         PRODUCT_BUNDLE_IDENTIFIER = "{{bundle_identifier}}";
         PRODUCT_NAME = "$(TARGET_NAME)";
         PROVISIONING_PROFILE_SPECIFIER = "{{ios_provisioning_specifier}}";
@@ -1288,16 +1292,6 @@ constexpr auto gXCodeScheme = R"XML(<?xml version="1.0" encoding="UTF-8"?>
             ReferencedContainer = "container:{{name}}.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
-      <EnvironmentVariables>
-         <EnvironmentVariable
-            key = "HOST"
-            value = "{{host}}">
-         </EnvironmentVariable>
-         <EnvironmentVariable
-            key = "PORT"
-            value = "{{port}}">
-         </EnvironmentVariable>
-      </EnvironmentVariables>
    </LaunchAction>
    <ProfileAction
       buildConfiguration = "Release"
