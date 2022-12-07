@@ -5,23 +5,19 @@ import java.lang.ref.WeakReference
 open class Window (runtime: Runtime, activity: MainActivity) {
   open protected val TAG = "Window"
 
-  public val bridge = Bridge(runtime, BridgeConfiguration(
-    evaluateJavascript = { source ->
-      this.evaluateJavascript(source)
-    },
-
+  val bridge = Bridge(runtime, BridgeConfiguration(
     getRootDirectory = { ->
       this.getRootDirectory()
     }
   ))
 
-  public val userMessageHandler = UserMessageHandler(this)
-  public val activity = WeakReference(activity)
-  public val runtime = WeakReference(runtime)
-  public val pointer = alloc(bridge.pointer)
+  val userMessageHandler = UserMessageHandler(this)
+  val activity = WeakReference(activity)
+  val runtime = WeakReference(runtime)
+  val pointer = alloc(bridge.pointer)
 
-  open fun evaluateJavascript (source: String) {
-    this.activity.get()?.webview?.evaluateJavascript(source, null)
+  fun evaluateJavaScript (source: String) {
+    this.activity.get()?.evaluateJavaScript(source)
   }
 
   fun getRootDirectory (): String {
@@ -59,7 +55,7 @@ open class Window (runtime: Runtime, activity: MainActivity) {
       var bytes = result.value.toByteArray()
       var contentType = "application/json"
 
-      if (result.bytes.size > 0) {
+      if (result.bytes != null) {
         bytes = result.bytes
         contentType = "application/octet-stream"
       }
@@ -70,8 +66,12 @@ open class Window (runtime: Runtime, activity: MainActivity) {
         "Content-Length" to bytes.size.toString()
       )
 
-      stream.write(bytes, 0, bytes.size)
-      stream.close()
+      try {
+        stream.write(bytes, 0, bytes.size)
+        stream.close()
+      } catch (err: Exception) {
+        console.error("onSchemeRequest: ${err.toString()}")
+      }
     })
   }
 
@@ -102,19 +102,10 @@ open class Window (runtime: Runtime, activity: MainActivity) {
 open class UserMessageHandler (window: Window) {
   val TAG = "UserMessageHandler"
 
-  public val namespace = "external"
-  public val activity = window.bridge.runtime.get()?.activity
-  public val runtime = window.bridge.runtime
-  public val window = WeakReference(window)
-
-  fun evaluateJavascript (
-    source: String,
-    callback: android.webkit.ValueCallback<String?>? = null
-  ) {
-    activity?.get()?.runOnUiThread {
-      activity.get()?.webview?.evaluateJavascript(source, callback)
-    }
-  }
+  val namespace = "external"
+  val activity = window.bridge.runtime.get()?.activity
+  val runtime = window.bridge.runtime
+  val window = WeakReference(window)
 
   @android.webkit.JavascriptInterface
   open fun postMessage (value: String): Boolean {
@@ -125,13 +116,13 @@ open class UserMessageHandler (window: Window) {
    * Low level external message handler
    */
   @android.webkit.JavascriptInterface
-  open fun postMessage (value: String, bytes: ByteArray?): Boolean {
+  open fun postMessage (value: String, bytes: ByteArray? = null): Boolean {
     val bridge = this.window.get()?.bridge ?: return false
 
     return bridge.route(value, bytes, fun (result: Result) {
       val window = this.window.get() ?: return
       val javascript = window.getResolveToRenderProcessJavaScript(result.seq, "1", result.value)
-      evaluateJavascript(javascript, null)
+      this.window.get()?.evaluateJavaScript(javascript)
     })
   }
 }
