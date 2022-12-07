@@ -177,6 +177,8 @@ namespace SSC {
 
   const char* getSettingsSource ();
   bool isDebugEnabled ();
+  const char* getDevHost ();
+  int getDevPort ();
 
   inline String encodeURIComponent (const String& sSrc);
   inline String decodeURIComponent (const String& sSrc);
