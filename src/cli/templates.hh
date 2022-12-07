@@ -1296,16 +1296,6 @@ constexpr auto gXCodeScheme = R"XML(<?xml version="1.0" encoding="UTF-8"?>
             ReferencedContainer = "container:{{name}}.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
-      <EnvironmentVariables>
-         <EnvironmentVariable
-            key = "HOST"
-            value = "{{host}}">
-         </EnvironmentVariable>
-         <EnvironmentVariable
-            key = "PORT"
-            value = "{{port}}">
-         </EnvironmentVariable>
-      </EnvironmentVariables>
    </LaunchAction>
    <ProfileAction
       buildConfiguration = "Release"
