@@ -95,6 +95,14 @@ function onsignal () {
   exit $status
 }
 
+function stat_mtime () {
+  if [[ "$(uname -s)" = "Darwin" ]]; then
+    stat -f %m "$1"
+  else
+    stat -c %Y "$1"
+  fi
+}
+
 function main () {
   trap onsignal INT TERM
   let local i=0
@@ -112,7 +120,7 @@ function main () {
       declare src_directory="$root/src"
       declare object="${source/.cc/.o}"
       declare object="${object/$src_directory/$output_directory}"
-      if (( force )) || ! test -f "$object" || (( $(stat "$source" -c %Y) > $(stat "$object" -c %Y) )); then
+      if (( force )) || ! test -f "$object" || (( $(stat_mtime "$source") > $(stat_mtime "$object") )); then
         mkdir -p "$(dirname "$object")"
         echo "# compiling object ($arch-$platform) $(basename "$source")"
         # echo $clang "${cflags[@]}" "${ldflags[@]}" -c "$source" -o "$object"
