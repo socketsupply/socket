@@ -249,17 +249,17 @@ static dispatch_queue_t queue = dispatch_queue_create(
   [viewController.view addSubview: self.webview];
 
   NSString* allowed = [[NSBundle mainBundle] resourcePath];
-  NSURL* url = [NSURL fileURLWithPath:[allowed stringByAppendingPathComponent:@"ui/index.html"]];
 
-#if DEBUG
-  url = [NSURL URLWithString: [NSString stringWithFormat:@"http://%@:%@/", _host, _port]];
-  NSURLRequest *request = [NSURLRequest requestWithURL:url];
-  [self.webview loadFileRequest:request
-      allowingReadAccessToURL:[NSURL fileURLWithPath:allowed]];
-#else
-  [self.webview loadFileURL:url
-      allowingReadAccessToURL:[NSURL fileURLWithPath:allowed]];
-#endif
+  NSURL* url;
+  if (isDebugEnabled()) {
+    url = [NSURL URLWithString:[NSString stringWithFormat:@"http://%@:%d/", @(_host), _port]];
+    [self.webview loadFileRequest:[NSURLRequest requestWithURL:url]
+        allowingReadAccessToURL:[NSURL fileURLWithPath:allowed]];
+  } else {
+    url = [NSURL fileURLWithPath:[allowed stringByAppendingPathComponent:@"ui/index.html"]];
+    [self.webview loadFileURL:url
+        allowingReadAccessToURL:[NSURL fileURLWithPath:allowed]];
+  }
 
   self.webview.scrollView.delegate = self;
   [self.window makeKeyAndVisible];
