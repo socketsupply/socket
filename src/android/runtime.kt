@@ -5,7 +5,6 @@ import java.lang.ref.WeakReference
 interface IRuntimeConfiguration {
   val rootDirectory: String
   val assetManager: android.content.res.AssetManager
-  val evaluateJavascript: (String) -> Unit
   val exit: (Int) -> Unit
   val openExternal: (String) -> Unit
 }
@@ -13,7 +12,6 @@ interface IRuntimeConfiguration {
 data class RuntimeConfiguration (
   override val rootDirectory: String,
   override val assetManager: android.content.res.AssetManager,
-  override val evaluateJavascript: (String) -> Unit,
   override val exit: (Int) -> Unit,
   override val openExternal: (String) -> Unit
 ) : IRuntimeConfiguration
@@ -22,9 +20,9 @@ open class Runtime (
   activity: MainActivity,
   configuration: RuntimeConfiguration
 ) {
-  public var pointer = alloc(activity.getRootDirectory())
-  public var activity = WeakReference(activity)
-  public val configuration = configuration;
+  var pointer = alloc(activity.getRootDirectory())
+  var activity = WeakReference(activity)
+  val configuration = configuration;
 
   fun finalize () {
     if (this.pointer > 0) {
@@ -34,27 +32,23 @@ open class Runtime (
     this.pointer = 0
   }
 
-  public fun evaluateJavascript (source: String) {
-    this.configuration.evaluateJavascript(source)
-  }
-
-  public fun exit (code: Int) {
+  fun exit (code: Int) {
     this.configuration.exit(code)
   }
 
-  public fun openExternal (value: String) {
+  fun openExternal (value: String) {
     this.configuration.openExternal(value)
   }
 
-  public fun start () {
+  fun start () {
     this.resume()
   }
 
-  public fun stop () {
+  fun stop () {
     this.pause()
   }
 
-  public fun destroy () {
+  fun destroy () {
     this.stop()
     this.finalize()
   }

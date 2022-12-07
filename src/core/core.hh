@@ -690,7 +690,7 @@ namespace SSC {
       void removePost (uint64_t id);
       void removeAllPosts ();
       void expirePosts ();
-      void putPost (uint64_t id, Post p);
+      void putPost (uint64_t id, Post& p);
       String createPost (String seq, String params, Post post);
 
       // timers
