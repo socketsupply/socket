@@ -322,54 +322,6 @@ MAIN {
         return;
       }
 
-      if (message.name == "window.show") {
-        auto index = message.index < 0 ? 0 : message.index;
-        auto options = WindowOptions {};
-        auto status = windowManager.getWindowStatus(index);
-        auto window = windowManager.getWindow(index);
-
-        options.title = message.get("title");
-        options.url = message.get("url");
-
-        if (message.get("port").size() > 0) {
-          options.port = std::stoi(message.get("port"));
-        }
-
-        if (message.get("width").size() > 0 && message.get("height").size() > 0) {
-          options.width = std::stoi(message.get("width"));
-          options.height = std::stoi(message.get("height"));
-        }
-
-        if (!window || status == WindowManager::WindowStatus::WINDOW_NONE) {
-          options.resizable = message.get("resizable") == "true" ? true : false;
-          options.frameless = message.get("frameless") == "true" ? true : false;
-          options.utility = message.get("utility") == "true" ? true : false;
-          options.debug = message.get("debug") == "true" ? true : false;
-          options.index = index;
-
-          window = windowManager.createWindow(options);
-          window->show(seq);
-        } else {
-          window->show(seq);
-        }
-
-        if (window) {
-          if (options.width > 0 && options.height > 0) {
-            window->setSize(EMPTY_SEQ, options.width, options.height, 0);
-          }
-
-          if (options.title.size() > 0) {
-            window->setTitle(EMPTY_SEQ, options.title);
-          }
-
-          if (options.url.size() > 0) {
-            window->openExternal(options.url);
-          }
-        }
-
-        return;
-      }
-
       if (message.name == "send") {
         if (message.index >= 0) {
           auto window = windowManager.getWindow(message.index);
@@ -410,97 +362,6 @@ MAIN {
           window->resolvePromise(seq, OK_STATE, "\"heartbeat\"");
         }
 
-        return;
-      }
-
-      if (message.name == "window.setTitle") {
-        window->setTitle(seq, decodeURIComponent(value));
-        return;
-      }
-
-      if (message.name == "restart") {
-        app.restart();
-        return;
-      }
-
-      if (message.name == "window.hide") {
-        window->hide(seq);
-        return;
-      }
-
-      if (message.name == "window.navigate") {
-        window->navigate(seq, decodeURIComponent(value));
-        return;
-      }
-
-      if (message.name == "window.setSize") {
-        int width = std::stoi(message.get("width"));
-        int height = std::stoi(message.get("height"));
-        window->setSize(seq, width, height, 0);
-        return;
-      }
-
-      if (message.name == "getScreenSize") {
-        auto size = window->getScreenSize();
-
-        SSC::String value(
-          "{"
-            "\"width\":" + std::to_string(size.width) + ","
-            "\"height\":" + std::to_string(size.height) + ""
-          "}"
-        );
-
-        window->resolvePromise(
-          seq,
-          OK_STATE,
-          encodeURIComponent(value)
-        );
-
-        return;
-      }
-
-      if (message.name == "menu") {
-        window->setSystemMenu(seq, decodeURIComponent(value));
-        return;
-      }
-
-      if (message.name == "menuItemEnabled") {
-        const auto enabled = message.get("enabled").find("true") != -1;
-        int indexMain = 0;
-        int indexSub = 0;
-
-        try {
-          indexMain = std::stoi(message.get("indexMain"));
-          indexSub = std::stoi(message.get("indexSub"));
-        } catch (...) {
-          window->resolvePromise(seq, OK_STATE, "null");
-          return;
-        }
-
-        window->setSystemMenuItemEnabled(enabled, indexMain, indexSub);
-        window->resolvePromise(seq, OK_STATE, "null");
-        return;
-      }
-
-      if (message.name == "external") {
-        window->openExternal(decodeURIComponent(value));
-        if (seq.size() > 0) {
-          window->resolvePromise(seq, OK_STATE, "null");
-        }
-        return;
-      }
-
-      if (message.name == "exit") {
-        try {
-          exitCode = std::stoi(value);
-        } catch (...) {
-        }
-
-        window->exit(exitCode);
-
-        if (seq.size() > 0) {
-          window->resolvePromise(seq, OK_STATE, "null");
-        }
         return;
       }
 
@@ -545,7 +406,7 @@ MAIN {
   // main thread.
   //
   auto onMessage = [&](auto out) {
-    // debug("onMessage %s", out.c_str());
+    debug("onMessage %s", out.c_str());
     IPC::Message message(out);
 
     auto window = windowManager.getWindow(message.index);
@@ -892,19 +753,7 @@ MAIN {
       return;
     }
 
-    //
-    // No need to send resolve message to the backend process
-    //
-    if (message.name == "resolve") return;
-
-    // window->resolvePromise(message.get("seq"), ERROR_STATE, "null");
-    //
-    // Everything else can be forwarded to the backend process.
-    // The protocol requires messages must be terminated by a newline.
-    //
-    if (process != nullptr) {
-      process->write(out);
-    }
+    window->resolvePromise(message.get("seq"), ERROR_STATE, "unsupported IPC message: " + message.name);
   };
 
   //
