@@ -126,6 +126,24 @@ open class Bridge (runtime: Runtime, configuration: IBridgeConfiguration) {
     this.pointer = 0
   }
 
+  fun call (command: String, callback: RouteCallback? = null): Boolean {
+    return this.call(command, emptyMap(), callback)
+  }
+
+  fun call (command: String, options: Map<String, String> = emptyMap(), callback: RouteCallback? = null): Boolean {
+    val message = Message("ipc://$command")
+
+    for (entry in options.entries.iterator()) {
+      message.set(entry.key, entry.value)
+    }
+
+    if (callback != null) {
+      return this.route(message.toString(), null, callback)
+    }
+
+    return this.route(message.toString(), null, {})
+  }
+
   fun route (
     value: String,
     bytes: ByteArray? = null,
@@ -144,27 +162,32 @@ open class Bridge (runtime: Runtime, configuration: IBridgeConfiguration) {
         if (bytes != null) {
           buffers[message.seq] = bytes
         }
+        callback(Result(0, message.seq, message.command, "{}"))
         return true
       }
 
       "log", "stdout" -> {
         console.log(message.value)
+        callback(Result(0, message.seq, message.command, "{}"))
         return true
       }
 
       "stderr" -> {
         console.error(message.value)
+        callback(Result(0, message.seq, message.command, "{}"))
         return true
       }
 
       "exit" -> {
         val code = message.get("value", "0").toInt()
         this.runtime.get()?.exit(code)
+        callback(Result(0, message.seq, message.command, "{}"))
         return true
       }
 
       "openExternal" -> {
         this.runtime.get()?.openExternal(message.value)
+        callback(Result(0, message.seq, message.command, "{}"))
         return true
       }
 
@@ -173,7 +196,7 @@ open class Bridge (runtime: Runtime, configuration: IBridgeConfiguration) {
           "source": "process.cwd",
           "data": "${configuration.getRootDirectory()}"
         }""".trim()
-        callback(Result(9, message.seq, message.command, json))
+        callback(Result(0, message.seq, message.command, json))
         return true
       }
     }
