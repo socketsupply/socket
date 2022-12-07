@@ -48,18 +48,12 @@
     env->CallObjectMethod(object, ID, ##__VA_ARGS__);                          \
   })
 
-#define CallVoidClassMethodFromEnvironment(env, object, method, sig, ...)    \
+#define CallVoidClassMethodFromEnvironment(env, object, method, sig, ...)      \
   ({                                                                           \
     auto Class = env->GetObjectClass(object);                                  \
     auto ID = env->GetMethodID(Class, method, sig);                            \
-    env->CallVoidMethod(object, ID, ##__VA_ARGS__);                          \
+    env->CallVoidMethod(object, ID, ##__VA_ARGS__);                            \
   })
-
-/**
- * Converts a `jstring` to an ID type
- */
-#define StringToRuntimeID(env, string)                                         \
-  std::stoull(StringWrap(env, string).str())
 
 /**
  * Generic `Exception` throw helper
