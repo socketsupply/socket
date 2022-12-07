@@ -753,7 +753,18 @@ MAIN {
       return;
     }
 
-    window->resolvePromise(message.get("seq"), ERROR_STATE, "unsupported IPC message: " + message.name);
+    if (message.name == "resolve") {
+      // TODO: pass it to the backend process
+      // if (process != nullptr) {
+      //   process->write(out);
+      // }
+      return;
+    };
+
+    const JSON::Object error = JSON::Object::Entries {
+      {"err", "unsupported IPC message: " + message.name}
+    };
+    window->resolvePromise(message.get("seq"), ERROR_STATE, encodeURIComponent(error.str()));
   };
 
   //
