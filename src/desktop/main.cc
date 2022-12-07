@@ -87,7 +87,6 @@ MAIN {
 
   bool isCommandMode = false;
   bool isReadingStdin = false;
-  bool isReadingTTY = false;
   bool isHeadless = false;
   bool isTest = false;
 
@@ -124,10 +123,6 @@ MAIN {
 
     if (s.find("--stdin")) {
       isReadingStdin = true;
-    }
-
-    if (s.find("--tty")) {
-      isReadingTTY = true;
     }
 
     if (helpRequested) {
@@ -955,23 +950,22 @@ MAIN {
 
   signal(SIGINT, signalHandler);
 
-  if (isReadingStdin || isReadingTTY) {
+  if (isReadingStdin) {
     std::string value;
     std::thread t([&]() {
       do {
         if (value.size() == 0) {
-          std::getline(std::cin, value);
+          std::cin >> value;
         }
 
-        if (value.size() > 0) {
-          std::this_thread::sleep_for(std::chrono::milliseconds(256));
+        if (value.size() > 0 && defaultWindow->bridge->router.isReady) {
           defaultWindow->eval(getEmitToRenderProcessJavaScript("process.stdin", value));
           value.clear();
         }
       } while (true);
     });
 
-    if (!isReadingTTY) std::cin >> value;
+    std::cin >> value;
     t.detach();
   }
 
