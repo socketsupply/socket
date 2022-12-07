@@ -33,6 +33,7 @@ general options:
   -o             only run user build step
   -r             run after building
   --headless     run headlessly
+  --stdin        read from stdin (emitted in window 0)
   --test[=value] indicate test mode
 
 packaging options:
