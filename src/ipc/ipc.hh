@@ -136,6 +136,7 @@ namespace SSC::IPC {
       EvaluateJavaScriptCallback evaluateJavaScriptFunction = nullptr;
       std::function<void(DispatchCallback)> dispatchFunction = nullptr;
       BufferMap buffers;
+      bool isReady = false;
       Mutex mutex;
       Table table;
       Core *core = nullptr;

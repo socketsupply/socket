@@ -86,6 +86,7 @@ MAIN {
   SSC::StringStream argvForward;
 
   bool isCommandMode = false;
+  bool isReadingStdin = false;
   bool isHeadless = false;
   bool isTest = false;
 
@@ -119,6 +120,10 @@ MAIN {
       (s.find("-v") == 0) ||
       (s.find("-V") == 0)
     );
+
+    if (s.find("--stdin")) {
+      isReadingStdin = true;
+    }
 
     if (helpRequested) {
       wantsHelp = true;
@@ -944,6 +949,25 @@ MAIN {
   #endif
 
   signal(SIGINT, signalHandler);
+
+  if (isReadingStdin) {
+    std::string value;
+    std::thread t([&]() {
+      do {
+        if (value.size() == 0) {
+          std::cin >> value;
+        }
+
+        if (value.size() > 0 && defaultWindow->bridge->router.isReady) {
+          defaultWindow->eval(getEmitToRenderProcessJavaScript("process.stdin", value));
+          value.clear();
+        }
+      } while (true);
+    });
+
+    std::cin >> value;
+    t.detach();
+  }
 
   //
   // # Event Loop
