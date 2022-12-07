@@ -799,7 +799,7 @@ void initFunctionsTable (Router *router) {
   router->map("process.cwd", [=](auto message, auto router, auto reply) {
     String cwd = "";
     JSON::Object json;
-#if defined(__linux__)
+#if defined(__linux__) && !defined(__ANDROID__)
     auto canonical = fs::canonical("/proc/self/exe");
     cwd = fs::path(canonical).parent_path().string();
 #elif defined(__APPLE__)
@@ -1450,7 +1450,6 @@ namespace SSC::IPC {
   }
 
   bool Router::invoke (const Message& message, ResultCallback callback) {
-    debug("invoke: %s", message.name.c_str());
     if (this->table.find(message.name) == this->table.end()) {
       return false;
     }
@@ -1458,7 +1457,6 @@ namespace SSC::IPC {
     auto ctx = this->table.at(message.name);
 
     if (ctx.callback != nullptr) {
-    debug("before dispatch");
       Message msg(message);
       // decorate message with buffer if buffer was previously
       // mapped with `ipc://buffer.map`, which we do on Linux

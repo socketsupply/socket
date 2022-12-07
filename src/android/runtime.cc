@@ -54,4 +54,99 @@ extern "C" {
   ) {
     return SSC::isDebugEnabled();
   }
+
+  jboolean external(Runtime, startEventLoop)(
+    JNIEnv *env,
+    jobject self
+  ) {
+    auto runtime = Runtime::from(env, self);
+
+    if (runtime == nullptr) {
+      Throw(env, RuntimeNotInitializedException);
+      return false;
+    }
+
+    runtime->runEventLoop();
+    return true;
+  }
+
+  jboolean external(Runtime, stopEventLoop)(
+    JNIEnv *env,
+    jobject self
+  ) {
+    auto runtime = Runtime::from(env, self);
+
+    if (runtime == nullptr) {
+      Throw(env, RuntimeNotInitializedException);
+      return false;
+    }
+
+    runtime->stopEventLoop();
+    return true;
+  }
+
+  jboolean external(Runtime, startTimers)(
+    JNIEnv *env,
+    jobject self
+  ) {
+    auto runtime = Runtime::from(env, self);
+
+    if (runtime == nullptr) {
+      Throw(env, RuntimeNotInitializedException);
+      return false;
+    }
+
+    runtime->startTimers();
+    return true;
+  }
+
+  jboolean external(Runtime, stopTimers)(
+    JNIEnv *env,
+    jobject self
+  ) {
+    auto runtime = Runtime::from(env, self);
+
+    if (runtime == nullptr) {
+      Throw(env, RuntimeNotInitializedException);
+      return false;
+    }
+
+    runtime->stopTimers();
+    return true;
+  }
+
+  jboolean external(Runtime, pause)(
+    JNIEnv *env,
+    jobject self
+  ) {
+    auto runtime = Runtime::from(env, self);
+
+    if (runtime == nullptr) {
+      Throw(env, RuntimeNotInitializedException);
+      return false;
+    }
+
+    runtime->pauseAllPeers();
+    runtime->stopTimers();
+    runtime->stopEventLoop();
+
+    return true;
+  }
+
+  jboolean external(Runtime, resume)(
+    JNIEnv *env,
+    jobject self
+  ) {
+    auto runtime = Runtime::from(env, self);
+
+    if (runtime == nullptr) {
+      Throw(env, RuntimeNotInitializedException);
+      return false;
+    }
+
+    runtime->runEventLoop();
+    runtime->resumeAllPeers();
+
+    return true;
+  }
 }

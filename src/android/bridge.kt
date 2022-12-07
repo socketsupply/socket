@@ -4,10 +4,12 @@ import java.lang.ref.WeakReference
 
 interface IBridgeConfiguration {
   val evaluateJavascript: (String) -> Unit
+  val getRootDirectory: () -> String
 }
 
 data class BridgeConfiguration (
-  override val evaluateJavascript: (String) -> Unit
+  override val evaluateJavascript: (String) -> Unit,
+  override val getRootDirectory: () -> String
 ) : IBridgeConfiguration
 
 data class Result (
@@ -15,8 +17,8 @@ data class Result (
   val seq: String,
   val source: String,
   val value: String,
-  val bytes: ByteArray,
-  val headers: Map<String, String>
+  val bytes: ByteArray = ByteArray(0),
+  val headers: Map<String, String> = emptyMap()
 )
 
 typealias RouteCallback = (Result) -> Unit
@@ -25,6 +27,90 @@ data class RouteRequest (
   val id: Long,
   val callback: RouteCallback
 )
+
+// container for a parseable IPC message (ipc://...)
+class Message (message: String? = null) {
+  var uri: android.net.Uri? =
+    if (message != null) {
+      android.net.Uri.parse(message)
+    } else {
+      android.net.Uri.parse("ipc://")
+    }
+
+  var command: String
+    get () = uri?.host ?: ""
+    set (command) {
+      uri = uri?.buildUpon()?.authority(command)?.build()
+    }
+
+  var domain: String
+    get () = command.split(".")[0]
+    set (_) {}
+
+  var value: String
+    get () = get("value")
+    set (value) {
+      set("value", value)
+    }
+
+  var seq: String
+    get () = get("seq")
+    set (seq) {
+      set("seq", seq)
+    }
+
+  var bytes: ByteArray? = null
+
+  fun get (key: String, defaultValue: String = ""): String {
+    val value = uri?.getQueryParameter(key)
+
+    if (value != null && value.isNotEmpty()) {
+      return value
+    }
+
+    return defaultValue
+  }
+
+  fun has (key: String): Boolean {
+    return get(key).isNotEmpty()
+  }
+
+  fun set (key: String, value: String): Boolean {
+    uri = uri?.buildUpon()?.appendQueryParameter(key, value)?.build()
+
+    return uri == null
+  }
+
+  fun delete (key: String): Boolean {
+    if (uri?.getQueryParameter(key) == null) {
+      return false
+    }
+
+    val params = uri?.queryParameterNames
+    val tmp = uri?.buildUpon()?.clearQuery()
+
+    if (params != null) {
+      for (param: String in params) {
+        if (!param.equals(key)) {
+          val value = uri?.getQueryParameter(param)
+          tmp?.appendQueryParameter(param, value)
+        }
+      }
+    }
+
+    uri = tmp?.build()
+
+    return true
+  }
+
+  override fun toString(): String {
+    if (uri == null) {
+      return ""
+    }
+
+    return uri.toString()
+  }
+}
 
 open class Bridge (runtime: Runtime, configuration: IBridgeConfiguration) {
   open protected val TAG = "Bridge"
@@ -44,14 +130,69 @@ open class Bridge (runtime: Runtime, configuration: IBridgeConfiguration) {
   }
 
   fun route (
-    msg: String,
+    value: String,
     bytes: ByteArray?,
     callback: RouteCallback
   ): Boolean {
-    val id = this.nextRequestId++
-    val request = RouteRequest(id, callback)
-    this.requests[id] = request
-    return this.route(msg, bytes, id)
+    val message = Message(value)
+    console.log(message.domain)
+    console.log(message.command)
+    when (message.command) {
+      "log", "stdout" -> {
+        console.log(message.value)
+        return true
+      }
+
+      "stderr" -> {
+        console.error(message.value)
+        return true
+      }
+
+      "exit" -> {
+        val code = message.get("value", "0").toInt()
+        this.runtime.get()?.exit(code)
+        return true
+      }
+
+      "openExternal" -> {
+        this.runtime.get()?.openExternal(message.value)
+        return true
+      }
+
+      "process.cwd" -> {
+        val json = """{
+          "source": "process.cwd",
+          "data": "${configuration.getRootDirectory()}"
+        }""".trim()
+        callback(Result(9, message.seq, message.command, json))
+        return true
+      }
+    }
+
+    if (message.domain == "fs") {
+      val root = java.nio.file.Paths.get(configuration.getRootDirectory())
+      if (message.has("path")) {
+        var path = message.get("path")
+        message.set("path", root.resolve(java.nio.file.Paths.get(path)).toString())
+      }
+
+      if (message.has("src")) {
+        var src = message.get("src")
+        message.set("src", root.resolve(java.nio.file.Paths.get(src)).toString())
+      }
+
+      if (message.has("dest")) {
+        var dest = message.get("dest")
+        message.set("dest", root.resolve(java.nio.file.Paths.get(dest)).toString())
+      }
+    }
+
+    console.log(message.toString())
+
+    val request = RouteRequest(this.nextRequestId++, callback)
+    this.requests[request.id] = request
+
+    return this.route(message.toString(), bytes, request.id)
   }
 
   fun onInternalRouteResponse (
@@ -72,7 +213,6 @@ open class Bridge (runtime: Runtime, configuration: IBridgeConfiguration) {
         emptyMap<String, String>()
       }
 
-    android.util.Log.d(TAG, "onInternalRouteResponse: $id $seq $source $value")
     this.onResult(Result(id, seq, source, value, bytes, headers))
   }
 

@@ -8,6 +8,10 @@ open class Window (runtime: Runtime, activity: MainActivity) {
   public val bridge = Bridge(runtime, BridgeConfiguration(
     evaluateJavascript = { source ->
       this.evaluateJavascript(source)
+    },
+
+    getRootDirectory = { ->
+      this.getRootDirectory()
     }
   ))
 
@@ -18,33 +22,6 @@ open class Window (runtime: Runtime, activity: MainActivity) {
 
   open fun evaluateJavascript (source: String) {
     this.activity.get()?.webview?.evaluateJavascript(source, null)
-  }
-
-  open fun onSchemeRequest (
-    request: android.webkit.WebResourceRequest,
-    response:  android.webkit.WebResourceResponse,
-    stream: java.io.PipedOutputStream
-  ): Boolean {
-    android.util.Log.d(TAG, request.url.toString())
-    return bridge.route(request.url.toString(), null, fun (result: Result) {
-      response.setStatusCodeAndReasonPhrase(200, "OK")
-
-      var bytes = result.value.toByteArray()
-      var contentType = "application/json"
-
-      if (result.bytes.size > 0) {
-        bytes = result.bytes
-        contentType = "application/octet-stream"
-      }
-
-      response.responseHeaders = response.responseHeaders + result.headers + mapOf(
-        "Content-Type" to contentType.toString(),
-        "Content-Length" to bytes.size.toString()
-      )
-
-      stream.write(bytes, 0, bytes.size)
-      stream.close()
-    })
   }
 
   fun getRootDirectory (): String {
@@ -59,14 +36,6 @@ open class Window (runtime: Runtime, activity: MainActivity) {
     // enable/disable debug module in webview
     android.webkit.WebView.setWebContentsDebuggingEnabled(isDebugEnabled)
 
-    if (activity == null) {
-      android.util.Log.d(TAG, "activity is null")
-    }
-
-    if (activity?.webview == null) {
-      android.util.Log.d(TAG, "webview is null")
-    }
-
     activity?.webview?.apply {
       settings.javaScriptEnabled = true
       // allow list
@@ -76,10 +45,34 @@ open class Window (runtime: Runtime, activity: MainActivity) {
 
       webViewClient = activity.client
 
-      android.util.Log.d(TAG, "https://appassets.androidplatform.net/assets/$filename")
       addJavascriptInterface(userMessageHandler, "external")
       loadUrl("https://appassets.androidplatform.net/assets/$filename")
     }
+  }
+
+  open fun onSchemeRequest (
+    request: android.webkit.WebResourceRequest,
+    response:  android.webkit.WebResourceResponse,
+    stream: java.io.PipedOutputStream
+  ): Boolean {
+    return bridge.route(request.url.toString(), null, fun (result: Result) {
+      var bytes = result.value.toByteArray()
+      var contentType = "application/json"
+
+      if (result.bytes.size > 0) {
+        bytes = result.bytes
+        contentType = "application/octet-stream"
+      }
+
+      response.setStatusCodeAndReasonPhrase(200, "OK")
+      response.responseHeaders = response.responseHeaders + result.headers + mapOf(
+        "Content-Type" to contentType.toString(),
+        "Content-Length" to bytes.size.toString()
+      )
+
+      stream.write(bytes, 0, bytes.size)
+      stream.close()
+    })
   }
 
   @Throws(java.lang.Exception::class)
