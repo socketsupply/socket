@@ -6,8 +6,6 @@ using namespace SSC;
 
 constexpr auto _settings = STR_VALUE(SSC_SETTINGS);
 constexpr auto _debug = false;
-constexpr auto _host = HOST;
-constexpr auto _port = PORT;
 
 static dispatch_queue_attr_t qos = dispatch_queue_attr_make_with_qos_class(
   DISPATCH_QUEUE_CONCURRENT,
@@ -252,9 +250,12 @@ static dispatch_queue_t queue = dispatch_queue_create(
 
   NSURL* url;
   if (isDebugEnabled()) {
-    url = [NSURL URLWithString:[NSString stringWithFormat:@"http://%@:%d/", @(_host), _port]];
+    NSString* host = [NSString stringWithUTF8String:getDevHost()];
+    int port = getDevPort();
+    url = [NSURL
+        URLWithString:[NSString stringWithFormat:@"http://%@:%d/", host, port]];
     [self.webview loadFileRequest:[NSURLRequest requestWithURL:url]
-        allowingReadAccessToURL:[NSURL fileURLWithPath:allowed]];
+          allowingReadAccessToURL:[NSURL fileURLWithPath:allowed]];
   } else {
     url = [NSURL fileURLWithPath:[allowed stringByAppendingPathComponent:@"ui/index.html"]];
     [self.webview loadFileURL:url
