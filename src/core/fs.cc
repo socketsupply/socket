@@ -490,7 +490,6 @@ namespace SSC {
       auto loop = &this->core->eventLoop;
       auto ctx = new RequestContext(desc, seq, cb);
       auto req = &ctx->req;
-      debug("open %s", filename);
       auto err = uv_fs_open(loop, req, filename, flags, mode, [](uv_fs_t* req) {
         auto ctx = (RequestContext *) req->data;
         auto desc = ctx->desc;
