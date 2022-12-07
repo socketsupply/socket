@@ -91,7 +91,7 @@ function _build_cli {
   local output_directory="$BUILD_DIR/$arch-$platform"
 
   local ldflags=($("$root/bin/ldflags.sh" --arch "$arch" --platform "$platform" -l{uv,socket-runtime}))
-  local cflags=($("$root/bin/cflags.sh" -Os))
+  local cflags=($("$root/bin/cflags.sh"))
 
   local sources=($(find "$src"/cli/*.cc 2>/dev/null))
   local outputs=()
@@ -142,7 +142,7 @@ function _prebuild_desktop_main () {
   local src="$root/src"
   local objects="$BUILD_DIR/$arch-$platform/objects"
 
-  local cflags=($("$root/bin/cflags.sh" -Os))
+  local cflags=($("$root/bin/cflags.sh"))
   local sources=($(find "$src"/desktop/*.{cc,mm} 2>/dev/null))
   local outputs=()
 
@@ -176,7 +176,7 @@ function _prebuild_ios_main () {
   local objects="$BUILD_DIR/$arch-$platform/objects"
 
   local clang="$(xcrun -sdk iphoneos -find clang++)"
-  local cflags=($(TARGET_OS_IPHONE=1 "$root/bin/cflags.sh" -Os))
+  local cflags=($(TARGET_OS_IPHONE=1 "$root/bin/cflags.sh"))
   local sources=($(find "$src"/mobile/ios.mm 2>/dev/null))
   local outputs=()
 
@@ -209,7 +209,7 @@ function _prebuild_ios_simulator_main () {
   local objects="$BUILD_DIR/$arch-$platform/objects"
 
   local clang="$(xcrun -sdk iphonesimulator -find clang++)"
-  local cflags=($(TARGET_IPHONE_SIMULATOR=1 "$root/bin/cflags.sh" -Os))
+  local cflags=($(TARGET_IPHONE_SIMULATOR=1 "$root/bin/cflags.sh"))
   local sources=($(find "$src"/mobile/ios.mm 2>/dev/null))
   local outputs=()
 
@@ -398,8 +398,12 @@ function _compile_libuv {
 
 function _check_compiler_features {
   echo "# checking compiler features"
-  local cflags=($("$root/bin/cflags.sh" -Os))
-  $CXX -x c++ "${cflags[@]}" -o /dev/null - >/dev/null << EOF_CC
+  local cflags=($("$root/bin/cflags.sh"))
+  if [[ -z "$DEBUG" ]]; then
+    cflags+=(-o /dev/null)
+  fi
+
+  $CXX -x c++ "${cflags[@]}" - >/dev/null << EOF_CC
     #include "src/common.hh"
     int main () { return 0; }
 EOF_CC
