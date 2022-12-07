@@ -42,7 +42,10 @@ class Message (message: String? = null) {
     }
 
   var domain: String
-    get () = command.split(".")[0]
+    get () {
+      val parts = command.split(".")
+      return parts.slice(0..(parts.size - 2)).joinToString(".")
+    }
     set (_) {}
 
   var value: String
