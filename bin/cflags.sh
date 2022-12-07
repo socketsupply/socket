@@ -58,4 +58,11 @@ while (( $# > 0 )); do
   shift
 done
 
+if [[ ! -z "$DEBUG" ]]; then
+  cflags+=("-g")
+  cflags+=("-O0")
+else
+  cflags+=("-Os")
+fi
+
 echo "${cflags[@]}"
