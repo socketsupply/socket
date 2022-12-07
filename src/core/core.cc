@@ -625,14 +625,10 @@ namespace SSC {
           Lock lock(core->loopMutex);
           if (core->eventLoopDispatchQueue.size() == 0) break;
           dispatch = core->eventLoopDispatchQueue.front();
+          core->eventLoopDispatchQueue.pop();
         }
 
         if (dispatch != nullptr) dispatch();
-
-        {
-          Lock lock(core->loopMutex);
-          core->eventLoopDispatchQueue.pop();
-        }
       }
     });
 
@@ -670,8 +666,8 @@ namespace SSC {
       return;
     }
 
-    isLoopRunning = false;
     uv_stop(&eventLoop);
+    isLoopRunning = false;
 #if !defined(__APPLE__)
     if (eventLoopThread != nullptr) {
       if (eventLoopThread->joinable()) {
@@ -733,6 +729,10 @@ namespace SSC {
     isLoopRunning = true;
 
     initEventLoop();
+    dispatchEventLoop([=, this]() {
+      initTimers();
+      startTimers();
+    });
 
 #if defined(__APPLE__)
     dispatch_async(eventLoopQueue, ^{ pollEventLoop(this); });
@@ -749,11 +749,6 @@ namespace SSC {
 
     eventLoopThread = new std::thread(&pollEventLoop, this);
 #endif
-
-    dispatchEventLoop([=, this]() {
-      initTimers();
-      startTimers();
-    });
   }
 
   static Timer releaseWeakDescriptors = {
@@ -763,9 +758,11 @@ namespace SSC {
       Vector<uint64_t> ids;
       String msg = "";
 
-      Lock lock(core->fs.mutex);
-      for (auto const &tuple : core->fs.descriptors) {
-        ids.push_back(tuple.first);
+      {
+        Lock lock(core->fs.mutex);
+        for (auto const &tuple : core->fs.descriptors) {
+          ids.push_back(tuple.first);
+        }
       }
 
       for (auto const id : ids) {
@@ -847,7 +844,7 @@ namespace SSC {
       return;
     }
 
-    Lock lock(timersMutex);
+    didTimersStart = false;
 
     std::vector<Timer *> timersToStop = {
       &releaseWeakDescriptors
@@ -858,7 +855,5 @@ namespace SSC {
         uv_timer_stop(&timer->handle);
       }
     }
-
-    didTimersStart = false;
   }
 }
