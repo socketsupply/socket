@@ -1,5 +1,20 @@
 package __BUNDLE_IDENTIFIER__
 
+object console {
+  val TAG = "Console"
+  fun log (string: String) {
+    android.util.Log.i(TAG, string)
+  }
+
+  fun debug (string: String) {
+    android.util.Log.d(TAG, string)
+  }
+
+  fun error (string: String) {
+    android.util.Log.e(TAG, string)
+  }
+}
+
 /**
  * An entry point for the main activity specified in
  * `AndroidManifest.xml` and which can be overloaded in `ssc.config` for
@@ -29,26 +44,38 @@ open class MainActivity : WebViewActivity() {
     super.onCreate(state)
 
     this.runtime = Runtime(this, RuntimeConfiguration(
-      rootDirectory = getRootDirectory(),
-      assetManager = applicationContext.resources.assets,
+      assetManager = this.applicationContext.resources.assets,
+      rootDirectory = this.getRootDirectory(),
+
+      exit = { code ->
+        console.log("__EXIT_SIGNAL__=${code}")
+        this.finishAndRemoveTask()
+      },
+
       evaluateJavascript = { source ->
-        webview?.evaluateJavascript(source, null)
+        this.webview?.evaluateJavascript(source, null)
+      },
+
+      openExternal = { value ->
+        val uri = android.net.Uri.parse(value)
+        val action = android.content.Intent.ACTION_VIEW
+        val intent = android.content.Intent(action, uri)
+        this.startActivity(intent)
       }
     ))
 
     this.window = Window(this.runtime, this)
-    this.window.load()
 
     this.timer.schedule(
       kotlin.concurrent.timerTask {
-        //core?.apply {
-          //android.util.Log.d(TAG, "Expiring old post data")
-          //expirePostData()
-        //}
+        // TODO
       },
       30L * 1024L, // delay
       30L * 1024L //period
     )
+
+    this.window.load()
+    //this.runtime.start()
   }
 
   override fun onSchemeRequest (
@@ -65,37 +92,18 @@ open class MainActivity : WebViewActivity() {
       purge()
     }
 
-    this.runtime.finalize()
-    /*
-    this.core?.apply {
-      freeAllPostData()
-      stopEventLoop()
-    }
-    */
-
-    super.onDestroy()
+    this.runtime.destroy()
+    return super.onDestroy()
   }
 
   override fun onPause () {
-    /*
-    this.core?.apply {
-      stopEventLoop()
-      pauseAllPeers()
-    }
-    */
-
-    super.onPause()
+    this.runtime.pause()
+    return super.onPause()
   }
 
   override fun onResume () {
-    /*
-    this.core?.apply {
-      runEventLoop()
-      resumeAllPeers()
-    }
-    */
-
-    super.onResume()
+    this.runtime.resume()
+    return super.onResume()
   }
 
   override fun onPageStarted (
@@ -103,8 +111,8 @@ open class MainActivity : WebViewActivity() {
     url: String,
     bitmap: android.graphics.Bitmap?
   ) {
-    super.onPageStarted(view, url, bitmap)
     val source = this.window.getJavaScriptPreloadSource()
     this.webview?.evaluateJavascript(source, null)
+    return super.onPageStarted(view, url, bitmap)
   }
 }
