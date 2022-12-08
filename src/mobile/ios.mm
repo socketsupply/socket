@@ -1,3 +1,5 @@
+#include <objc/runtime.h>
+#include <objc/message.h>
 #include "../core/core.hh"
 #include "../ipc/ipc.hh"
 #include "../window/window.hh"
@@ -31,6 +33,19 @@ static dispatch_queue_t queue = dispatch_queue_create(
 @property (strong, nonatomic) SSCBridgedWebView* webview;
 @property (strong, nonatomic) WKUserContentController* content;
 @end
+
+void SSCSwapInstanceMethodWithBlock(Class cls, SEL original, id replacementBlock, SEL replacementSelector)
+{
+  Method originalMethod = class_getInstanceMethod(cls, original);
+  if (!originalMethod) {
+    return;
+  }
+
+  IMP implementation = imp_implementationWithBlock(replacementBlock);
+  class_addMethod(cls, replacementSelector, implementation, method_getTypeEncoding(originalMethod));
+  Method newMethod = class_getInstanceMethod(cls, replacementSelector);
+  method_exchangeImplementations(originalMethod, newMethod);
+}
 
 //
 // iOS has no "window". There is no navigation, just a single webview. It also
@@ -183,6 +198,28 @@ static dispatch_queue_t queue = dispatch_queue_create(
   viewController.view.frame = appFrame;
   self.window.rootViewController = viewController;
 
+  NSNotificationCenter* ns = [NSNotificationCenter defaultCenter];
+  [ns addObserver: self selector: @selector(keyboardDidShow) name: UIKeyboardDidShowNotification object: nil];
+  [ns addObserver: self selector: @selector(keyboardDidHide) name: UIKeyboardDidHideNotification object: nil];
+  [ns addObserver: self selector: @selector(keyboardWillShow) name: UIKeyboardWillShowNotification object: nil];
+  [ns addObserver: self selector: @selector(keyboardWillHide) name: UIKeyboardWillHideNotification object: nil];
+  [ns addObserver: self selector: @selector(keyboardWillChange:) name: UIKeyboardWillChangeFrameNotification object: nil];
+
+  [self listenForKeyDown];
+  [self setUpWebView];
+  [self.window makeKeyAndVisible];
+
+  return YES;
+}
+
+- (void)setUpWebView
+{
+  [self.content removeAllUserScripts];
+  self.webview.navigationDelegate = nil;
+  self.webview.scrollView.delegate = nil;
+  [self.webview stopLoading];
+  [self.webview removeFromSuperview];
+
   auto appData = parseConfig(decodeURIComponent(_settings));
 
   StringStream env;
@@ -196,6 +233,7 @@ static dispatch_queue_t queue = dispatch_queue_create(
     );
   }
 
+  CGRect appFrame = self.window.frame;
   env << String("width=" + std::to_string(appFrame.size.width) + "&");
   env << String("height=" + std::to_string(appFrame.size.height) + "&");
 
@@ -228,22 +266,18 @@ static dispatch_queue_t queue = dispatch_queue_create(
   [self.content addScriptMessageHandler:self name: @"external"];
   [self.content addUserScript: initScript];
 
-  self.webview = [[SSCBridgedWebView alloc] initWithFrame: appFrame configuration: config];
-  self.webview.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+  self.webview = [[SSCBridgedWebView alloc] initWithFrame:appFrame configuration: config];
+  self.webview.autoresizingMask = UIViewAutoresizingNone;
+  self.webview.translatesAutoresizingMaskIntoConstraints = YES;
+  self.webview.scrollView.delegate = self;
 
   [self.webview.configuration.preferences setValue: @YES forKey: @"allowFileAccessFromFileURLs"];
   [self.webview.configuration.preferences setValue: @YES forKey: @"javaScriptEnabled"];
 
-  NSNotificationCenter* ns = [NSNotificationCenter defaultCenter];
-  [ns addObserver: self selector: @selector(keyboardDidShow) name: UIKeyboardDidShowNotification object: nil];
-  [ns addObserver: self selector: @selector(keyboardDidHide) name: UIKeyboardDidHideNotification object: nil];
-  [ns addObserver: self selector: @selector(keyboardWillShow) name: UIKeyboardWillShowNotification object: nil];
-  [ns addObserver: self selector: @selector(keyboardWillHide) name: UIKeyboardWillHideNotification object: nil];
-  [ns addObserver: self selector: @selector(keyboardWillChange:) name: UIKeyboardWillChangeFrameNotification object: nil];
-
   self.navDelegate = [[SSCNavigationDelegate alloc] init];
   [self.webview setNavigationDelegate: self.navDelegate];
 
+  UIViewController* viewController = self.window.rootViewController;
   [viewController.view addSubview: self.webview];
 
   NSString* allowed = [[NSBundle mainBundle] resourcePath];
@@ -260,12 +294,47 @@ static dispatch_queue_t queue = dispatch_queue_create(
     [self.webview loadFileURL:url
         allowingReadAccessToURL:[NSURL fileURLWithPath:allowed]];
   }
-
-  self.webview.scrollView.delegate = self;
-  [self.window makeKeyAndVisible];
-
-  return YES;
 }
+
+- (void)listenForKeyDown
+{
+  SEL originalKeyEventSelector = NSSelectorFromString(@"handleKeyUIEvent:");
+  SEL swizzledKeyEventSelector = NSSelectorFromString(
+      [NSString stringWithFormat:@"_ssc_swizzle_%x_%@", arc4random(), NSStringFromSelector(originalKeyEventSelector)]);
+
+  SSCSwapInstanceMethodWithBlock([UIApplication class], originalKeyEventSelector, ^BOOL (UIApplication* app, UIEvent* event) {
+      NSString *modifiedInput = nil;
+      UIKeyModifierFlags modifierFlags = 0;
+      BOOL isKeyDown = NO;
+
+      if ([event respondsToSelector:@selector(_modifiedInput)]) {
+        modifiedInput = (NSString *)[event _modifiedInput];
+      }
+
+      if ([event respondsToSelector:@selector(_modifierFlags)]) {
+        modifierFlags = (UIKeyModifierFlags)[event _modifierFlags];
+      }
+
+      if ([event respondsToSelector:@selector(_isKeyDown)]) {
+        isKeyDown = (BOOL)[event _isKeyDown];
+      }
+
+      if (isKeyDown && modifiedInput.length > 0) {
+        if (modifierFlags == UIKeyModifierCommand && [modifiedInput isEqualToString:@"r"]) {
+          [self setUpWebView];
+        } else {
+          // Ignore key commands (except escape) when there's an active responder
+          UIResponder *firstResponder = [self.window valueForKey:@"firstResponder"];
+          if (!firstResponder) {
+            // TODO: native key handlers
+          }
+        }
+      }
+
+      return ((BOOL (*)(id, SEL, id))objc_msgSend)(app, swizzledKeyEventSelector, event);
+  }, swizzledKeyEventSelector);
+}
+
 @end
 
 int main (int argc, char *argv[]) {
