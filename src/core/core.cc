@@ -661,10 +661,7 @@ namespace SSC {
   void Core::stopEventLoop() {
     isLoopRunning = false;
     uv_stop(&eventLoop);
-#if defined(__APPLE__)
-    // noop
-#elif defined(__ANDROID__) || !defined(__linux__)
-    Lock lock(loopMutex);
+  #if defined(__ANDROID__) || defined(_WIN32)
     if (eventLoopThread != nullptr) {
       if (eventLoopThread->joinable()) {
         eventLoopThread->join();
@@ -673,7 +670,7 @@ namespace SSC {
       delete eventLoopThread;
       eventLoopThread = nullptr;
     }
-#endif
+  #endif
   }
 
   void Core::sleepEventLoop (int64_t ms) {
@@ -695,8 +692,11 @@ namespace SSC {
   }
 
   void Core::dispatchEventLoop (EventLoopDispatchCallback callback) {
-    Lock lock(loopMutex);
-    eventLoopDispatchQueue.push(callback);
+    {
+      Lock lock(loopMutex);
+      eventLoopDispatchQueue.push(callback);
+    }
+
     signalDispatchEventLoop();
   }
 
