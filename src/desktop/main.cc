@@ -393,10 +393,6 @@ MAIN {
     }
   );
 
-  if (cmd.size() > 0) {
-    createProcess(true);
-  }
-
   //
   // # Render -> Main
   // Send messages from the render processes to the main process.
@@ -423,10 +419,12 @@ MAIN {
 
     if (message.name == "process.open") {
       auto seq = message.get("seq");
+      auto force = message.get("force") == "true" ? true : false;
       if (cmd.size() > 0) {
-        auto force = message.get("force") == "true" ? true : false;
-        createProcess(force);
-        process->open();
+        if (process == nullptr || force) {
+          createProcess(force);
+          process->open();
+        }
         const JSON::Object json = JSON::Object::Entries {
           { "cmd", cmd },
           { "argv", process->argv },
