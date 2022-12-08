@@ -406,7 +406,7 @@ MAIN {
   // main thread.
   //
   auto onMessage = [&](auto out) {
-    debug("onMessage %s", out.c_str());
+    // debug("onMessage %s", out.c_str());
     IPC::Message message(out);
 
     auto window = windowManager.getWindow(message.index);
@@ -427,7 +427,12 @@ MAIN {
         auto force = message.get("force") == "true" ? true : false;
         createProcess(force);
         process->open();
-        window->resolvePromise(seq, OK_STATE, "null");
+        const JSON::Object json = JSON::Object::Entries {
+          { "cmd", cmd },
+          { "argv", process->argv },
+          { "path", process->path }
+        };
+        window->resolvePromise(seq, OK_STATE, encodeURIComponent(json.str()));
         return;
       }
       window->resolvePromise(seq, ERROR_STATE, "null");
