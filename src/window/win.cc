@@ -1034,7 +1034,7 @@ namespace SSC {
     });
   }
 
-  SSC::string Window::getTitle () {
+  SSC::String Window::getTitle () {
     // TODO: implement.
   }
 
