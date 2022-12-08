@@ -77,7 +77,7 @@ namespace SSC {
     }
   }
 
-  void Core::putPost (uint64_t id, Post& p) {
+  void Core::putPost (uint64_t id, Post p) {
     Lock lock(postsMutex);
     p.ttl = std::chrono::time_point_cast<std::chrono::milliseconds>(
       std::chrono::system_clock::now() +
@@ -615,20 +615,17 @@ namespace SSC {
     }
 
     didLoopInit = true;
+    Lock lock(loopMutex);
     uv_loop_init(&eventLoop);
     eventLoopAsync.data = (void *) this;
     uv_async_init(&eventLoop, &eventLoopAsync, [](uv_async_t *handle) {
       auto core = reinterpret_cast<SSC::Core  *>(handle->data);
       while (true) {
-        EventLoopDispatchCallback dispatch = nullptr;
-        {
-          Lock lock(core->loopMutex);
-          if (core->eventLoopDispatchQueue.size() == 0) break;
-          dispatch = core->eventLoopDispatchQueue.front();
-          core->eventLoopDispatchQueue.pop();
-        }
-
+        Lock lock(core->loopMutex);
+        if (core->eventLoopDispatchQueue.size() == 0) break;
+        auto dispatch = core->eventLoopDispatchQueue.front();
         if (dispatch != nullptr) dispatch();
+        core->eventLoopDispatchQueue.pop();
       }
     });
 
@@ -662,13 +659,12 @@ namespace SSC {
   }
 
   void Core::stopEventLoop() {
-    if (!isLoopRunning) {
-      return;
-    }
-
-    uv_stop(&eventLoop);
     isLoopRunning = false;
-#if !defined(__APPLE__)
+    uv_stop(&eventLoop);
+#if defined(__APPLE__)
+    // noop
+#elif defined(__ANDROID__) || !defined(__linux__)
+    Lock lock(loopMutex);
     if (eventLoopThread != nullptr) {
       if (eventLoopThread->joinable()) {
         eventLoopThread->join();
@@ -699,11 +695,8 @@ namespace SSC {
   }
 
   void Core::dispatchEventLoop (EventLoopDispatchCallback callback) {
-    {
-      Lock lock(loopMutex);
-      eventLoopDispatchQueue.push(callback);
-    }
-
+    Lock lock(loopMutex);
+    eventLoopDispatchQueue.push(callback);
     signalDispatchEventLoop();
   }
 
@@ -735,8 +728,10 @@ namespace SSC {
     });
 
 #if defined(__APPLE__)
+    Lock lock(loopMutex);
     dispatch_async(eventLoopQueue, ^{ pollEventLoop(this); });
-#else
+#elif defined(__ANDROID__) || !defined(__linux__)
+    Lock lock(loopMutex);
     // clean up old thread if still running
     if (eventLoopThread != nullptr) {
       if (eventLoopThread->joinable()) {
@@ -758,11 +753,9 @@ namespace SSC {
       Vector<uint64_t> ids;
       String msg = "";
 
-      {
-        Lock lock(core->fs.mutex);
-        for (auto const &tuple : core->fs.descriptors) {
-          ids.push_back(tuple.first);
-        }
+      Lock lock(core->fs.mutex);
+      for (auto const &tuple : core->fs.descriptors) {
+        ids.push_back(tuple.first);
       }
 
       for (auto const id : ids) {
@@ -844,7 +837,7 @@ namespace SSC {
       return;
     }
 
-    didTimersStart = false;
+    Lock lock(timersMutex);
 
     std::vector<Timer *> timersToStop = {
       &releaseWeakDescriptors
@@ -855,5 +848,7 @@ namespace SSC {
         uv_timer_stop(&timer->handle);
       }
     }
+
+    didTimersStart = false;
   }
 }
