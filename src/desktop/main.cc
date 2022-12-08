@@ -209,7 +209,7 @@ MAIN {
 
   auto createProcessTemplate = [&]<class... Args>(Args... args) {
     return [=](bool force) {
-      if (process != nullptr) {
+      if (process != nullptr && force) {
         killProcess(process);
       }
       process = new Process(args...);
