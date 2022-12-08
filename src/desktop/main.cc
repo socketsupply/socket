@@ -447,6 +447,15 @@ MAIN {
       return;
     }
 
+    if (message.name == "process.write") {
+      auto seq = message.get("seq");
+      if (cmd.size() > 0 && process != nullptr) {
+        process->write(out);
+      }
+      window->resolvePromise(seq, OK_STATE, "null");
+      return;
+    }
+
     if (message.name == "send") {
       const auto event = decodeURIComponent(message.get("event"));
       const auto value = decodeURIComponent(message.get("value"));
