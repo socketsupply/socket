@@ -427,9 +427,9 @@ int main (const int argc, const char* argv[]) {
   // if no path provided, use current directory
   if (argc == 2 || lastOption[0] == '-') {
     numberOfOptions = argc - 2;
-    targetPath = fs::absolute(".");
+    targetPath = fs::current_path();
   } else if (lastOption[0] == '.') {
-    targetPath = fs::absolute(lastOption);
+    targetPath = fs::absolute(lastOption).lexically_normal();
   } else {
     targetPath = fs::path(lastOption);
   }
