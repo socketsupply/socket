@@ -1283,7 +1283,7 @@ int main (const int argc, const char* argv[]) {
       fs::create_directories(pathToScheme);
 
       if (!flagBuildForSimulator) {
-        if (!fs::exists(pathToProject)) {
+        if (!fs::exists(pathToProfile)) {
           log("provisioning profile not found: " + pathToProfile.string() + ". " +
               "Please specify a valid provisioning profile in the " +
               "ios_provisioning_profile field in your ssc.config");
