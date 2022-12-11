@@ -61,7 +61,10 @@ void initFunctionsTable (Router *router) {
 
     router->bridge->bluetooth.startService(
       message.seq,
-      message.get("serviceId")
+      message.get("serviceId"),
+      [=](auto seq, auto json) {
+        reply(Result { seq, message, json });
+      }
     );
   });
 
@@ -83,7 +86,10 @@ void initFunctionsTable (Router *router) {
     router->bridge->bluetooth.subscribeCharacteristic(
       message.seq,
       message.get("serviceId"),
-      message.get("characteristicId")
+      message.get("characteristicId"),
+      [=](auto seq, auto json) {
+        reply(Result { seq, message, json });
+      }
     );
   });
 
@@ -115,7 +121,10 @@ void initFunctionsTable (Router *router) {
       bytes,
       size,
       message.get("serviceId"),
-      message.get("characteristicId")
+      message.get("characteristicId"),
+      [=](auto seq, auto json) {
+        reply(Result { seq, message, json });
+      }
     );
   });
 
@@ -135,6 +144,8 @@ void initFunctionsTable (Router *router) {
       message.buffer.bytes,
       message.buffer.size
     );
+
+    reply(Result { message.seq, message });
   });
 
   /**

@@ -300,6 +300,7 @@ namespace SSC {
     public:
       using SendFunction = std::function<void(const String, JSON::Any, Post)>;
       using EmitFunction = std::function<void(const String, JSON::Any)>;
+      using Callback = std::function<void(String, JSON::Any)>;
 
       Core *core = nullptr;
       #if defined(__APPLE__)
@@ -320,16 +321,19 @@ namespace SSC {
         char* bytes,
         size_t size,
         const String& serviceId,
-        const String& characteristicId
+        const String& characteristicId,
+        Callback callback
       );
       void subscribeCharacteristic (
         const String& seq,
         const String& serviceId,
-        const String& characteristicId
+        const String& characteristicId,
+        Callback callback
       );
       void startService (
         const String& seq,
-        const String& serviceId
+        const String& serviceId,
+        Callback callback
       );
   };
 
