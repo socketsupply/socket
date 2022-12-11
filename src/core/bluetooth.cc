@@ -474,11 +474,12 @@ namespace SSC {
     char *bytes,
     size_t size,
     const String &serviceId,
-    const String &characteristicId
+    const String &characteristicId,
+    Callback callback
   ) {
     #if defined(__APPLE__)
     if (serviceId.size() != 36) {
-      this->send(seq, JSON::Object::Entries {
+      callback(seq, JSON::Object::Entries {
         {"source", "bluetooth.publish"},
         {"err", JSON::Object::Entries {
           {"message", "Invalid service id"}
@@ -488,7 +489,7 @@ namespace SSC {
     }
 
     if (characteristicId.size() != 36) {
-      this->send(seq, JSON::Object::Entries {
+      callback(seq, JSON::Object::Entries {
         {"source", "bluetooth.publish"},
         {"err", JSON::Object::Entries {
           {"message", "Invalid characteristic id"}
@@ -498,7 +499,7 @@ namespace SSC {
     }
 
     if (bytes == nullptr || size <= 0) {
-      this->send(seq, JSON::Object::Entries {
+      callback(seq, JSON::Object::Entries {
         {"source", "bluetooth.publish"},
         {"err", JSON::Object::Entries {
           {"message", "Missing bytes in publish"}
@@ -523,7 +524,7 @@ namespace SSC {
         }}
       };
 
-      this->send(seq, json);
+      callback(seq, json);
       return;
     }
 
@@ -535,7 +536,7 @@ namespace SSC {
         }}
       };
 
-      this->send(seq, json);
+      callback(seq, json);
       return;
     }
 
@@ -570,8 +571,15 @@ namespace SSC {
     }
 
     debug("CoreBluetooth: did write '%@' %@", data, characteristic);
+    callback(seq, JSON::Object::Entries {
+      {"data", JSON::Object::Entries {
+        {"serviceId", serviceId},
+        {"characteristicId", characteristicId},
+        {"message", "Published to characteristic"}
+      }}
+    });
     #else
-    this->send(seq, JSON::Object::Entries {
+    callback(seq, JSON::Object::Entries {
       {"source", "bluetooth.publish"},
       {"err", JSON::Object::Entries {
         {"type", "NotSupportedError"},
@@ -584,7 +592,8 @@ namespace SSC {
   void Bluetooth::subscribeCharacteristic (
     const String &seq,
     const String &serviceId,
-    const String &characteristicId
+    const String &characteristicId,
+    Callback callback
   ) {
     auto json = JSON::Object::Entries {
       {"err", JSON::Object::Entries {
@@ -642,12 +651,13 @@ namespace SSC {
     };
     #endif
 
-    this->send(seq, json);
+    callback(seq, json);
   }
 
   void Bluetooth::startService (
     const String &seq,
-    const String &serviceId
+    const String &serviceId,
+    Callback callback
   ) {
     auto json = JSON::Object::Entries {
       {"err", JSON::Object::Entries {
@@ -668,6 +678,6 @@ namespace SSC {
     }
     #endif
 
-    this->send(seq, json);
+    callback(seq, json);
   }
 }
