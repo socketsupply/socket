@@ -1369,16 +1369,16 @@ version: 0.0.1
 # input: src
 
 # The binary output path. Default value is 'dist', It's recommended to add this path to .gitignore.
-output: dist
+# output: dist
 
 # Shell command to build an application. If not present, ssc will copy the source files from the directory specified by the 'input' option to the directory specified by the 'output' option.
 # build: bash build.sh
 
-# The initial width of the first window.
-width: 1024
+# The initial width of the first window. Could be in percentage or in pixels.
+# width: 100%
 
-# The initial height of the first window.
-height: 750
+# The initial height of the first window. Could be in percentage or in pixels.
+height: 100%
 
 # Localization
 # lang: en-us
@@ -1404,7 +1404,7 @@ debug_flags: -g
 # Set the limit of files that can be opened by your process.
 file_limit: 1024
 
-# An array of environment variables, separated by commas.
+# A list of environment variables that will be observed when your binary is run, separated by commas.
 # env: USER, TMPDIR, PWD
 
 #
