@@ -1395,16 +1395,16 @@ int main (const int argc, const char* argv[]) {
     //
     if (platform.linux && !flagBuildForAndroid && !flagBuildForIOS) {
       log("preparing build for linux");
-      flags = " -std=c++2a -stdlib=libstdc++ `pkg-config --cflags --libs gtk+-3.0 webkit2gtk-4.1`";
+      flags = " -std=c++2a `pkg-config --cflags --libs gtk+-3.0 webkit2gtk-4.1`";
       flags += " " + getCxxFlags();
       flags += " -I" + prefixFile();
       flags += " -I" + prefixFile("include");
       flags += " -L" + prefixFile("lib/" + platform.arch + "-desktop");
-      flags += " -lsocket-runtime";
-      flags += " -luv";
 
       files += prefixFile("objects/" + platform.arch + "-desktop/desktop/main.o");
       files += prefixFile("src/init.cc");
+      files += prefixFile("lib/" + platform.arch + "-desktop/libsocket-runtime.a");
+      files += prefixFile("lib/" + platform.arch + "-desktop/libuv.a");
 
       pathResources = paths.pathBin;
 
