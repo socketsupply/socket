@@ -45,7 +45,7 @@ jobs:
       run: |
         git config --global user.email "devops@optool.co"
         git config --global user.name "Optool Github Actions"
-        git clone --depth 1 git@github.com:socketsupply/io.git
+        git clone -b ipc-cleanup --depth 1 git@github.com:socketsupply/io.git
         cd io && npm install
       env:
         CI: true
@@ -106,7 +106,7 @@ jobs:
       run: |
         git config --global user.email "devops@optool.co"
         git config --global user.name "Optool Github Actions"
-        git clone --depth 1 git@github.com:socketsupply/io.git
+        git clone -b ipc-cleanup --depth 1 git@github.com:socketsupply/io.git
         cd io && npm install
       env:
         CI: true
@@ -226,7 +226,7 @@ jobs:
       run: |
         git config --global user.email "devops@optool.co"
         git config --global user.name "Optool Github Actions"
-        git clone --depth 1 git@github.com:socketsupply/io.git
+        git clone -b ipc-cleanup --depth 1 git@github.com:socketsupply/io.git
         cd io && npm install
       env:
         CI: true
@@ -272,7 +272,7 @@ jobs:
       run: |
         git config --global user.email "devops@optool.co"
         git config --global user.name "ssc Github Actions"
-        git clone --depth 1 https://github.com/socketsupply/io.git
+        git clone -b ipc-cleanup --depth 1 https://github.com/socketsupply/io.git
         cd io && npm install
       env:
         CI: true
