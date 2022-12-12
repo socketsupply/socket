@@ -46,14 +46,14 @@ jobs:
         git config --global user.email "devops@optool.co"
         git config --global user.name "Optool Github Actions"
         git clone --depth 1 git@github.com:socketsupply/io.git
-        cd io/test && npm install
+        cd io && npm install
       env:
         CI: true
         NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
 
     - name: Run example desktop tests
       run: |
-        cd io/test && npm start
+        cd io/test && npm install  && npm start
       env:
         CI: true
         CXX: g++-12
@@ -107,14 +107,14 @@ jobs:
         git config --global user.email "devops@optool.co"
         git config --global user.name "Optool Github Actions"
         git clone --depth 1 git@github.com:socketsupply/io.git
-        cd io/test && npm install
+        cd io && npm install
       env:
         CI: true
         NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
 
     - name: Run Android tests
       run: |
-        cd io/test && npm run test:android-emulator
+        cd io/test && npm install && npm run test:android-emulator
       env:
         CI: true
         SSC_CI: true
@@ -227,14 +227,14 @@ jobs:
         git config --global user.email "devops@optool.co"
         git config --global user.name "Optool Github Actions"
         git clone --depth 1 git@github.com:socketsupply/io.git
-        cd io/test && npm install
+        cd io && npm install
       env:
         CI: true
         NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
 
     - name: Run example io tests
       run: |
-        cd io/test && npm start
+        cd io/test && npm install && npm start
       env:
         CI: true
 
@@ -273,13 +273,13 @@ jobs:
         git config --global user.email "devops@optool.co"
         git config --global user.name "ssc Github Actions"
         git clone --depth 1 https://github.com/socketsupply/io.git
-        cd io/test && npm install
+        cd io && npm install
       env:
         CI: true
         NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
 
     - name: Run io iOS tests
       run: |
-        cd io/test && npm run test:ios-simulator
+        cd io/test && npm install && npm run test:ios-simulator
       env:
         CI: true
