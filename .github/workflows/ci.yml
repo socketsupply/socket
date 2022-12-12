@@ -46,7 +46,6 @@ jobs:
         git config --global user.email "devops@optool.co"
         git config --global user.name "Optool Github Actions"
         git clone -b ipc-cleanup --depth 1 git@github.com:socketsupply/io.git
-        cd io && npm install
       env:
         CI: true
         NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
@@ -107,7 +106,6 @@ jobs:
         git config --global user.email "devops@optool.co"
         git config --global user.name "Optool Github Actions"
         git clone -b ipc-cleanup --depth 1 git@github.com:socketsupply/io.git
-        cd io && npm install
       env:
         CI: true
         NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
@@ -222,12 +220,11 @@ jobs:
       run: |
         ./bin/ci_version_check.sh
 
-    - name: install an example app
+    - name: install an io example app
       run: |
         git config --global user.email "devops@optool.co"
         git config --global user.name "Optool Github Actions"
         git clone -b ipc-cleanup --depth 1 git@github.com:socketsupply/io.git
-        cd io && npm install
       env:
         CI: true
         NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
@@ -260,9 +257,9 @@ jobs:
         registry-url: https://npm.pkg.github.com/
         scope: '@socketsupply'
 
-    - name: cross-compile
+    - name: install ssc
       run: |
-        ./bin/install.sh ios
+        ./bin/install.sh
 
     - name: Check if ssc has a correct version
       run: |
@@ -273,7 +270,6 @@ jobs:
         git config --global user.email "devops@optool.co"
         git config --global user.name "ssc Github Actions"
         git clone -b ipc-cleanup --depth 1 https://github.com/socketsupply/io.git
-        cd io && npm install
       env:
         CI: true
         NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
