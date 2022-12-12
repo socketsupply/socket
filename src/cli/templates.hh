@@ -1463,7 +1463,7 @@ file_limit: 1024
 # macOS codesign certificate name.
 # mac_codesign_identity:
 
-# Paths to the files that should be included in the app bundle.
+# Paths to the files that should be signed in the app bundle.
 # mac_sign_paths:
 
 #
