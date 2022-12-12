@@ -52,7 +52,7 @@ jobs:
 
     - name: Run example desktop tests
       run: |
-        cd io/test && npm install  && npm start
+        cd io && npm install && npm test
       env:
         CI: true
         CXX: g++-12
@@ -112,7 +112,7 @@ jobs:
 
     - name: Run Android tests
       run: |
-        cd io/test && npm install && npm run test:android-emulator
+        cd io && npm install && npm run test:android-emulator
       env:
         CI: true
         SSC_CI: true
@@ -233,7 +233,7 @@ jobs:
 
     - name: Run example io tests
       run: |
-        cd io/test && npm install && npm start
+        cd io && npm install && npm test
       env:
         CI: true
 
@@ -280,6 +280,6 @@ jobs:
 
     - name: Run io iOS tests
       run: |
-        cd io/test && npm install && npm run test:ios-simulator
+        cd io && npm install && npm run test:ios-simulator
       env:
         CI: true
