@@ -41,26 +41,19 @@ jobs:
       run: |
         ./bin/ci_version_check.sh
 
-    - name: install an example app
+    - name: install an io example app
       run: |
         git config --global user.email "devops@optool.co"
         git config --global user.name "Optool Github Actions"
-        git clone --depth 1 git@github.com:socketsupply/socket-examples.git
-        cd socket-examples/desktop-node-tonic-cjs/ && npm install
+        git clone --depth 1 git@github.com:socketsupply/io.git
+        cd io/test && npm install
       env:
         CI: true
         NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
 
-    - name: compile example desktop
-      run: |
-        ssc build ./socket-examples/desktop-node-tonic-cjs/
-      env:
-        CI: true
-        CXX: g++-12
-
     - name: Run example desktop tests
       run: |
-        ssc run --test=1 --headless ./socket-examples/desktop-node-tonic-cjs/
+        npm start
       env:
         CI: true
         CXX: g++-12
@@ -109,19 +102,19 @@ jobs:
       run: |
         ./bin/ci_version_check.sh
 
-    - name: install an example app
+    - name: install an io example app
       run: |
         git config --global user.email "devops@optool.co"
         git config --global user.name "Optool Github Actions"
-        git clone --depth 1 git@github.com:socketsupply/socket-examples.git
-        cd socket-examples/android-tonic && npm install
+        git clone --depth 1 git@github.com:socketsupply/io.git
+        cd io/test && npm install
       env:
         CI: true
         NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
 
-    - name: compile example android app
+    - name: Run Android tests
       run: |
-        ssc build --platform=android ./socket-examples/android-tonic
+        npm run test:android-emulator
       env:
         CI: true
         SSC_CI: true
@@ -172,6 +165,7 @@ jobs:
       run: |
         ssc
 
+    # TODO: run io tests instead
     - name: install an example app
       run: |
         git config --global core.sshCommand "'C:\Windows\System32\OpenSSH\ssh.exe'"
@@ -232,21 +226,15 @@ jobs:
       run: |
         git config --global user.email "devops@optool.co"
         git config --global user.name "Optool Github Actions"
-        git clone --depth 1 git@github.com:socketsupply/socket-examples.git
-        cd socket-examples/desktop-node-tonic-cjs/ && npm install
+        git clone --depth 1 git@github.com:socketsupply/io.git
+        cd io/test && npm install
       env:
         CI: true
         NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
 
-    - name: compile example desktop
+    - name: Run example io tests
       run: |
-        ssc build ./socket-examples/desktop-node-tonic-cjs/
-      env:
-        CI: true
-
-    - name: Run example desktop tests
-      run: |
-        ssc run --test=1 ./socket-examples/desktop-node-tonic-cjs/
+        npm start
       env:
         CI: true
 
@@ -280,18 +268,18 @@ jobs:
       run: |
         ./bin/ci_version_check.sh
 
-    - name: install an example app
+    - name: install an io example app
       run: |
         git config --global user.email "devops@optool.co"
         git config --global user.name "ssc Github Actions"
-        git clone --depth 1 https://github.com/socketsupply/socket-examples.git
-        cd socket-examples/ios-tonic/ && npm install
+        git clone --depth 1 https://github.com/socketsupply/io.git
+        cd io/test && npm install
       env:
         CI: true
         NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
 
-    - name: compile example ios
+    - name: Run io iOS tests
       run: |
-        ssc build --platform=ios-simulator ./socket-examples/ios-tonic/
+        npm run test:ios-simulator
       env:
         CI: true
