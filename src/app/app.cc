@@ -4,6 +4,7 @@
 
 #if defined(_WIN32)
 #include <uxtheme.h>
+#include <thread>
 #pragma comment(lib, "UxTheme.lib")
 #pragma comment(lib, "Dwmapi.lib")
 #pragma comment(lib, "Gdi32.lib")
@@ -126,17 +127,18 @@ namespace SSC {
     });
 #elif defined(_WIN32)
     static auto mainThread = GetCurrentThreadId();
-    auto future = std::async(std::launch::async, [&] {
-      auto threadCallback = (LPARAM) new std::function<void()>(callback);
+    auto threadCallback = (LPARAM) new std::function<void()>(callback);
+    std::thread t([&, threadCallback] {
 
+      // TODO(trevnorris): Need to also check a shouldExit so this doesn't run forever in case
+      // the rest of the application needs to exit before isReady is set.
       while (!this->isReady) {
         std::this_thread::sleep_for(std::chrono::milliseconds(16));
       }
 
       PostThreadMessage(mainThread, WM_APP, 0, threadCallback);
     });
-
-    future.get();
+    t.detach();
 #endif
   }
 
