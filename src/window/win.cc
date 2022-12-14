@@ -620,34 +620,6 @@ namespace SSC {
       app.hInstance, NULL
     );
 
-    /*
-
-    // TODO(@heapwolf) its not clear why but some native components don't take on the dark mode
-    // attributes. This could be windows 10/11 bugs but there may be a different way to handle changes.
-
-    BOOL mode = FALSE;
-
-    if (shouldSystemUseDarkMode()) {
-      allowDarkModeForApp(true);
-      refreshImmersiveColorPolicyState();
-      mode = TRUE;
-      // SetWindowTheme(window, L"DarkMode_Explorer", NULL);
-    }
-
-		WINDOWCOMPOSITIONATTRIBDATA data = {
-      WCA_USEDARKMODECOLORS,
-      &mode,
-      sizeof(mode)
-    };
-
-		setWindowCompositionAttribute(window, &data);
-    SetPropW(window, L"UseImmersiveDarkModeColors", (HANDLE)(LONG_PTR) mode);
-    // SetPropW(window, L"UseImmersiveDarkModeColors", reinterpret_cast<HANDLE>(static_cast<INT_PTR>(mode)));
-
-    // SetWindowTheme(window, L"Explorer", nullptr);
-    // DwmSetWindowAttribute(window, 19, &mode, sizeof(long));
-    */
-
     HRESULT initResult = OleInitialize(NULL);
 
     this->drop = new DragDrop(this);
@@ -673,20 +645,6 @@ namespace SSC {
 
     auto options = Microsoft::WRL::Make<CoreWebView2EnvironmentOptions>();
     options->put_AdditionalBrowserArguments(L"--allow-file-access-from-files");
-
-    auto optionsExperimental = Microsoft::WRL::Make<CoreWebView2ExperimentalEnvironmentOptions>();
-    if (options.As(&optionsExperimental) == S_OK) {
-      auto customSchemeRegistration = Microsoft::WRL::Make<CoreWebView2CustomSchemeRegistration>(L"ipc");
-      // TODO(@heapwolf) add the custom reg from the user config IF it is defined.
-      ICoreWebView2ExperimentalCustomSchemeRegistration* registrations[1] = {
-        customSchemeRegistration.Get()
-      };
-
-      optionsExperimental->SetCustomSchemeRegistrations(
-        1,
-        static_cast<ICoreWebView2ExperimentalCustomSchemeRegistration**>(registrations)
-      );
-    }
 
     auto init = [&]() -> HRESULT {
       return CreateCoreWebView2EnvironmentWithOptions(
@@ -810,9 +768,6 @@ namespace SSC {
                   webview->add_NewWindowRequested(
                     Microsoft::WRL::Callback<ICoreWebView2NewWindowRequestedEventHandler>(
                       [&](ICoreWebView2* wv, ICoreWebView2NewWindowRequestedEventArgs* e) {
-                        // PWSTR uri;
-                        // e->get_Uri(&uri);
-                        // String url(WStringToString(uri));
                         e->put_Handled(true);
                         return S_OK;
                       }
@@ -879,6 +834,7 @@ namespace SSC {
     auto res = init();
 
     if (!SUCCEEDED(res)) {
+      // TODO(trevnorris):
       // 1. power-shell-out to download and run webview installer
       // 2. restart app
     }
@@ -1165,7 +1121,7 @@ namespace SSC {
     MENUINFO Info;
     Info.cbSize = sizeof(Info);
     Info.fMask = MIM_BACKGROUND | MFT_OWNERDRAW;
-    Info.hbrBack = bgBrush;
+    Info.hbrBack = CreateSolidBrush(RGB(0, 0, 0));
     SetMenuInfo(hMenubar, &Info);
 
     RECT rc;
@@ -1248,9 +1204,6 @@ namespace SSC {
   void Window::setBackgroundColor(int r, int g, int b, float a) {
     SetBkColor(GetDC(window), RGB(r, g, b));
     app.wcex.hbrBackground = CreateSolidBrush(RGB(r, g, b));
-
-    // this->window->SetBkColor(RGB(r, g, b));
-    // SetTextColor( RGB( 220,220,220 ));
   }
 
   void Window::openDialog (
@@ -1293,7 +1246,6 @@ namespace SSC {
         CLSID_FileSaveDialog,
         NULL,
         CLSCTX_ALL,
-        //CLSCTX_INPROC_SERVER,
         IID_PPV_ARGS(&dialog.save)
       );
 
@@ -1527,6 +1479,8 @@ namespace SSC {
     CoUninitialize();
   }
 
+  // message is defined in WinUser.h
+  // https://raw.githubusercontent.com/tpn/winsdk-10/master/Include/10.0.10240.0/um/WinUser.h
   LRESULT CALLBACK Window::WndProc(
       HWND hWnd,
       UINT message,
@@ -1574,160 +1528,22 @@ namespace SSC {
         break;
       }
 
-      /* case WM_THEMECHANGED: {
-        // alert("theme changed");
-        if (::IsThemeActive())
-          SetWindowLong(hWnd, GWL_EXSTYLE, GetWindowLong(hWnd, GWL_EXSTYLE) & ~WS_EX_CLIENTEDGE);
-        else
-          SetWindowLong(hWnd, GWL_EXSTYLE, GetWindowLong(hWnd, GWL_EXSTYLE) | WS_EX_CLIENTEDGE);
-        return 0;
-      } */
-
-      /* case WM_CTLCOLORDLG:
-      case WM_CTLCOLORSTATIC: {
-        if (shouldSystemUseDarkMode()) {
-          // HDC hdc = reinterpret_cast<HDC>(wParam);
-          // SetTextColor(hdc, darkTextColor);
-          // static auto testBrush = CreateSolidBrush(RGB(0, 0, 0));
-          // SetBkColor(hdc, RGB(0, 0, 0));
-
-          // if (!hbrBkgnd) {
-          // hbrBkgnd = CreateSolidBrush(RGB(0, 0, 0));
-          // }
-
-          // return reinterpret_cast<INT_PTR>(bgBrush);
-        }
-
-        // static auto testBrush = CreateSolidBrush(RGB(0, 0, 0));
-        // return (INT_PTR)(testBrush);
-        break;
-      } */
-
-      // case WM_ERASEBKGND: {
-      //  return 1;
-      // }
-
       case WM_SETTINGCHANGE: {
-        char* s = (char *) lParam;
-        String name(s);
-
-        if (name.find("ImmersiveColorSet") != -1) {
-          BOOL darkMode = shouldSystemUseDarkMode();
-
-          allowDarkModeForApp(darkMode);
-
-          if (darkMode) {
-            SetWindowTheme(hWnd, L"DarkMode_Explorer", NULL);
-
-            int aElements[4] = { COLOR_WINDOW, COLOR_ACTIVECAPTION, COLOR_MENUBAR, COLOR_MENU };
-            DWORD aNewColors[4] = { RGB(32, 32, 32), RGB(32, 32, 32), RGB(32, 32, 32), RGB(32, 32, 32) };
-            SetSysColors(4, aElements, aNewColors);
-          } else {
-            SetWindowTheme(hWnd, L"Explorer", nullptr);
-            int aElements[4] = { COLOR_WINDOW, COLOR_ACTIVECAPTION, COLOR_MENUBAR, COLOR_MENU };
-            DWORD aNewColors[4] = { RGB(255, 255, 255), RGB(255, 255, 255), RGB(255, 255, 255), RGB(255, 255, 255) };
-            SetSysColors(4, aElements, aNewColors);
-          }
-
-          refreshImmersiveColorPolicyState();
-
-          //SetPropW(hWnd, L"UseImmersiveDarkModeColors", reinterpret_cast<HANDLE>(static_cast<INT_PTR>(mode)));
-          /* SetPropW(hWnd, L"UseImmersiveDarkModeColors", (HANDLE)(LONG_PTR)mode);
-
-          WINDOWCOMPOSITIONATTRIBDATA data = {
-            WCA_USEDARKMODECOLORS,
-            &mode,
-            sizeof(mode)
-          };
-
-          setWindowCompositionAttribute(hWnd, &data);
-
-          // DwmSetWindowAttribute(hWnd, 19, &mode, sizeof(long));
-          // UpdateWindow(hWnd);
-
-          BOOL mode = FALSE;
-
-          if (shouldSystemUseDarkMode && shouldSystemUseDarkMode()) {
-            // if (allowDarkModeForApp) allowDarkModeForApp(true);
-            //if (refreshImmersiveColorPolicyState) refreshImmersiveColorPolicyState();
-            // SetWindowTheme(hWnd, L"DarkMode_Explorer", NULL);
-            mode = TRUE;
-
-            // int aElements[4] = { COLOR_WINDOW, COLOR_ACTIVECAPTION, COLOR_MENUBAR, COLOR_MENU };
-            // DWORD aNewColors[4] = { RGB(32, 32, 32), RGB(255, 255, 255), RGB(32, 32, 32), RGB(32, 32, 32) };
-            // SetSysColors(4, aElements, aNewColors);
-          } else {
-            // int aElements[4] = { COLOR_WINDOW, COLOR_ACTIVECAPTION, COLOR_MENUBAR, COLOR_MENU };
-            // DWORD aNewColors[4] = { RGB(255, 255, 255), RGB(0, 0, 0), RGB(255, 255, 255), RGB(255, 255, 255) };
-            // SetSysColors(4, aElements, aNewColors);
-          }
-
-          // SetWindowTheme(hWnd, L"Explorer", NULL);
-
-          // SetPropW(hWnd, L"UseImmersiveDarkModeColors", reinterpret_cast<HANDLE>(static_cast<INT_PTR>(mode)));
-          // DwmSetWindowAttribute(hWnd, 20, &mode, sizeof(long));
-          // WINDOWCOMPOSITIONATTRIBDATA data = { WCA_USEDARKMODECOLORS, &mode, sizeof(mode) };
-          // setWindowCompositionAttribute(hWnd, &data);
-          // UpdateWindow(hWnd);
-
-          // DrawMenuBar(hWnd);
-          //
-          // HMENU hMenubar = GetMenu(hWnd);
-          // SetMenu(hWnd, hMenubar);
-          */
-        }
+        // TODO(trevnorris): Dark mode
         break;
       }
 
       case WM_CREATE: {
-        if (shouldSystemUseDarkMode()) {
-          SetWindowTheme(hWnd, L"DarkMode_Explorer", NULL);
-        } else {
-          SetWindowTheme(hWnd, L"Explorer", NULL);
-          // int aElements[4] = { COLOR_WINDOW, COLOR_ACTIVECAPTION, COLOR_MENUBAR, COLOR_MENU };
-          // DWORD aNewColors[4] = { RGB(32, 32, 32), RGB(255, 255, 255), RGB(32, 32, 32), RGB(32, 32, 32) };
-          // SetSysColors(4, aElements, aNewColors);
-          // allowDarkModeForApp(true);
-          // refreshImmersiveColorPolicyState();
-          // mode = TRUE;
-          // SetWindowTheme(window, L"DarkMode_Explorer", NULL);
-        }
-
+        // TODO(trevnorris): Dark mode
+        SetWindowTheme(hWnd, L"Explorer", NULL);
         HMENU hMenubar = CreateMenu();
-        // MENUINFO Info;
-        // Info.cbSize = sizeof(Info);
-        // Info.fMask = MIM_BACKGROUND; // | MFT_OWNERDRAW;
-        // Info.hbrBack = bgBrush; // (HBRUSH) bgBrush;
-        // SetMenuInfo(hMenubar, &Info);
-
-        /* auto brush = (HBRUSH) CreateSolidBrush(RGB(0, 0, 0));
-
-        MENUINFO MenuInfo = {0};
-        MenuInfo.cbSize = sizeof(MenuInfo);
-        MenuInfo.hbrBack = brush; // Brush you want to draw
-        MenuInfo.fMask = MIM_BACKGROUND;
-        MenuInfo.dwStyle = MNS_AUTODISMISS; */
-
         SetMenu(hWnd, hMenubar);
         break;
       }
 
       case WM_CLOSE: {
-        if (isDebugEnabled()) {
-          if (w->opts.canExit) {
-            fclose(console);
-            FreeConsole();
-          }
-        }
-
         w->close(0);
-
         break;
-
-        // if (hbrBkgnd) {
-        //  DeleteObject(hbrBkgnd);
-        //  hbrBkgnd = nullptr;
-        // }
       }
 
       default:

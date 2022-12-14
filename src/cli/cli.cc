@@ -1909,6 +1909,7 @@ int main (const int argc, const char* argv[]) {
         << " -DSSC_VERSION_HASH=" << SSC::VERSION_HASH_STRING
       ;
 
+      // TODO(trevnorris): Output build string on debug builds.
       // log(compileCommand.str());
 
       auto r = exec(compileCommand.str());
