@@ -205,22 +205,6 @@ namespace SSC {
       #endif
     }
 
-    HMODULE hUxtheme = LoadLibraryExW(L"uxtheme.dll", nullptr, LOAD_LIBRARY_SEARCH_SYSTEM32);
-
-    SSC::setWindowCompositionAttribute = reinterpret_cast<SSC::SetWindowCompositionAttribute>(GetProcAddress(
-      GetModuleHandleW(L"user32.dll"),
-      "SetWindowCompositionAttribute")
-    );
-
-    if (hUxtheme) {
-      refreshImmersiveColorPolicyState = GetProcAddress(hUxtheme, MAKEINTRESOURCEA(104));
-      shouldSystemUseDarkMode = GetProcAddress(hUxtheme, MAKEINTRESOURCEA(138));
-      allowDarkModeForApp = GetProcAddress(hUxtheme, MAKEINTRESOURCEA(135));
-    }
-
-    allowDarkModeForApp(shouldSystemUseDarkMode());
-    refreshImmersiveColorPolicyState();
-
     // this fixes bad default quality DPI.
     SetProcessDPIAware();
 
@@ -245,7 +229,7 @@ namespace SSC {
     wcex.hInstance = hInstance;
     wcex.hIcon = LoadIcon(hInstance, IDI_APPLICATION);
     wcex.hCursor = LoadCursor(NULL, IDC_ARROW);
-    wcex.hbrBackground = bgBrush;
+    wcex.hbrBackground = CreateSolidBrush(RGB(0, 0, 0));
     wcex.lpszMenuName = NULL;
     wcex.lpszClassName = TEXT("DesktopApp");
     wcex.hIconSm = icon; // ico doesn't auto scale, needs 16x16 icon lol fuck you bill
