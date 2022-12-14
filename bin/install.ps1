@@ -37,7 +37,7 @@ Function Build {
 
   if (-not (Test-Path -Path "$WORKING_BUILD_PATH\lib\uv_a.lib" -PathType Leaf)) {
     (New-Item -ItemType Directory -Force -Path "$WORKING_BUILD_PATH\lib") > $null
-    Copy-Item $WORKING_BUILD_PATH\libuv\build\Release\uv_a.lib -Destination "$WORKING_BUILD_PATH\lib\uv_a.lib"
+    Copy-Item "$WORKING_BUILD_PATH\libuv\build\Release\uv_a.lib" -Destination "$WORKING_BUILD_PATH\lib\uv_a.lib"
   }
 
   if (-not (Test-Path -Path "$WORKING_BUILD_PATH\include\uv.h" -PathType Leaf)) {

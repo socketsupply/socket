@@ -85,7 +85,7 @@ inline String prefixFile (String s) {
   }
 
   String local = getEnv ("LOCALAPPDATA");
-  return String(local + "\\Programs\\socketsupply\\" + s + " ");
+  return String("\"" + local + "\\Programs\\socketsupply\\" + s + "\" ");
 }
 
 inline String prefixFile () {
@@ -1497,10 +1497,10 @@ int main (const int argc, const char* argv[]) {
         " -DWIN32_LEAN_AND_MEAN"
         " -Xlinker /NODEFAULTLIB:libcmt"
         " -Wno-nonportable-include-path"
-        " -I" + prefix +
-        " -I" + prefix + "\\include"
-        " -I" + prefix + "\\src"
-        " -L" + prefix + "\\lib"
+        " -I\"" + prefix + "\""
+        " -I\"" + prefix + "\\include\""
+        " -I\"" + prefix + "\\src\""
+        " -L\"" + prefix + "\\lib\""
       ;
 
       files += prefixFile("src\\init.cc");
@@ -1562,7 +1562,9 @@ int main (const int argc, const char* argv[]) {
 
         // @TODO(jwerle): use `setEnv()` if #148 is closed
         #if _WIN32
-          setEnv("PREFIX=prefix");
+          std::string prefix_ = "PREFIX=";
+          prefix_ += prefix;
+          setEnv(prefix_.c_str());
         #else
           setenv("PREFIX", prefix, 1);
         #endif
