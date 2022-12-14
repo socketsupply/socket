@@ -28,7 +28,7 @@ Function Build {
 
     Write-Output "# building libuv..."
     cd "$WORKING_BUILD_PATH\libuv\build"
-    (cmake ..) > $null
+    (cmake .. -DBUILD_TESTING=OFF) > $null
 
     cd "$WORKING_BUILD_PATH\libuv"
     (cmake --build "$WORKING_BUILD_PATH\libuv\build" --config Release) > $null
@@ -48,8 +48,8 @@ Function Build {
   cd "$WORKING_PATH"
   (New-Item -ItemType Directory -Force -Path "$WORKING_BUILD_PATH\bin") > $null
   Write-Output "# compiling the build tool..."
-  clang++ src\cli\cli.cc -o $WORKING_BUILD_PATH\bin\ssc.exe -std=c++2a -DSSC_BUILD_TIME="$($BUILD_TIME)" -DSSC_VERSION_HASH="$($VERSION_HASH)" -DSSC_VERSION="$($VERSION)"
-  # -I 'C:\Program Files (x86)\Windows Kits\10\Include\10.0.19041.0\shared' `
+  clang++ -Xlinker /NODEFAULTLIB:libcmt -I"$WORKING_BUILD_PATH\include" -L"$WORKING_BUILD_PATH\lib" src\process\win.cc src\cli\cli.cc -o $WORKING_BUILD_PATH\bin\ssc.exe -std=c++2a -DSSC_BUILD_TIME="$($BUILD_TIME)" -DSSC_VERSION_HASH="$($VERSION_HASH)" -DSSC_VERSION="$($VERSION)"
+  ## -I 'C:\Program Files (x86)\Windows Kits\10\Include\10.0.19041.0\shared' `
 
   if ($? -ne 1) {
     Write-Output "not ok - the build tool failed to compile. Here's what you can do..."
@@ -96,16 +96,6 @@ Function Install-Files {
   (New-Item -ItemType Directory -Force -Path "$LIB_PATH") > $null
   (New-Item -ItemType Directory -Force -Path "$SRC_PATH") > $null
   (New-Item -ItemType Directory -Force -Path "$INCLUDE_PATH") > $null
-
-  # install `.\include\*`
-  if (Test-Path -Path "$WORKING_PATH\include" -PathType Container) {
-    Copy-Item -Path "$WORKING_PATH\include\*" -Destination "$INCLUDE_PATH" -Recurse -Force -Container
-  }
-
-  # install `.\lib\*`
-  if (Test-Path -Path "$WORKING_PATH\lib" -PathType Container) {
-    Copy-Item -Path "$WORKING_PATH\lib\*" -Destination "$LIB_PATH" -Recurse -Force -Container
-  }
 
   # install `.\src\*`
   Copy-Item -Path "$WORKING_PATH\src\*" -Destination "$SRC_PATH" -Recurse -Force -Container

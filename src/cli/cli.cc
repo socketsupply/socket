@@ -22,6 +22,23 @@
 #include <wrl.h>
 #pragma comment(lib, "Shlwapi.lib")
 #pragma comment(lib, "Urlmon.lib")
+#pragma comment(lib, "advapi32.lib")
+#pragma comment(lib, "comdlg32.lib")
+#pragma comment(lib, "gdi32.lib")
+#pragma comment(lib, "iphlpapi.lib")
+#pragma comment(lib, "kernel32.lib")
+#pragma comment(lib, "msvcrt.lib")
+#pragma comment(lib, "ole32.lib")
+#pragma comment(lib, "oleaut32.lib")
+#pragma comment(lib, "psapi.lib")
+#pragma comment(lib, "shell32.lib")
+#pragma comment(lib, "user32.lib")
+#pragma comment(lib, "userenv.lib")
+#pragma comment(lib, "uuid.lib")
+#pragma comment(lib, "uv_a.lib")
+#pragma comment(lib, "winspool.lib")
+#pragma comment(lib, "ws2_32.lib")
+
 #else
 #include <unistd.h>
 #endif
@@ -1474,7 +1491,11 @@ int main (const int argc, const char* argv[]) {
       auto prefix = prefixFile();
 
       flags = " -std=c++2a"
+        " -D_MT"
+        " -D_DLL"
+        " -DWIN32"
         " -DWIN32_LEAN_AND_MEAN"
+        " -Xlinker /NODEFAULTLIB:libcmt"
         " -Wno-nonportable-include-path"
         " -I" + prefix +
         " -I" + prefix + "\\include"
