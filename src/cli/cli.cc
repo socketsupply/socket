@@ -1658,7 +1658,7 @@ int main (const int argc, const char* argv[]) {
       if (rArchive.exitCode != 0) {
         auto const noDevice = rArchive.output.find("The requested device could not be found because no available devices matched the request.");
         if (noDevice != std::string::npos) {
-          log("error: ios_simulator_device from your ssc.config was not found");
+          log("error: ios_simulator_device " + settings["ios_simulator_device"] + " from your ssc.config was not found");
           auto const rDevices = exec("xcrun simctl list devices available | grep -e \"  \"");
           log("available devices:\n" + rDevices.output);
           log("please update your ssc.config with a valid device or install Simulator runtime (https://developer.apple.com/documentation/xcode/installing-additional-simulator-runtimes)");
