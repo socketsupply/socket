@@ -1,11 +1,7 @@
 #ifndef SSC_CORE_CORE_H
 #define SSC_CORE_CORE_H
 
-#if defined(_WIN32)
-#undef _WINSOCKAPI_
-#define _WINSOCKAPI_
-#endif
-
+#include "../common.hh"
 #include <uv.h>
 
 #if defined(__APPLE__)
@@ -36,10 +32,13 @@
 #pragma comment(lib, "version.lib")
 #pragma comment(lib, "user32.lib")
 #pragma comment(lib, "WebView2LoaderStatic.lib")
+#pragma comment(lib, "Ws2_32.lib")
+#pragma comment(lib, "iphlpapi.lib")
+#pragma comment(lib, "psapi.lib")
+#pragma comment(lib, "userenv.lib")
 #pragma comment(lib, "uv_a.lib")
 #endif
 
-#include "../common.hh"
 #include "json.hh"
 #include "runtime-preload.hh"
 

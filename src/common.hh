@@ -65,6 +65,11 @@
 #define WIN32_LEAN_AND_MEAN
 #endif
 
+
+#undef _WINSOCKAPI_
+#define _WINSOCKAPI_
+
+#include <WinSock2.h>
 #include <windows.h>
 
 #include <dwmapi.h>
