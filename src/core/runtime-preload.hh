@@ -51,6 +51,24 @@ namespace SSC {
       "Object.freeze(window.__args.env)                                          \n"
     );
 
+    const auto start = opts.argv.find("--test=");
+    if (start != std::string::npos) {
+      auto end = opts.argv.find("'", start);
+      if (end == std::string::npos) {
+        end = opts.argv.size();
+      }
+      const auto file = opts.argv.substr(start + 7, end - start - 7);
+      if (file.size() > 0) {
+        preload += "                                                      \n"
+          "document.addEventListener('DOMContentLoaded', () => {          \n"
+          "  const script = document.createElement('script')              \n"
+          "  script.setAttribute('type', 'text/javascript')               \n"
+          "  script.setAttribute('src', '" + file + "')                   \n"
+          "  document.body.appendChild(script)                            \n"
+          "});                                                            \n";
+      }
+    }
+
     if (platform.mac || platform.linux || platform.win) {
       preload += "                                                      \n"
         "if (window?.parent?.port > 0) {                                \n"
