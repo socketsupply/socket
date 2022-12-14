@@ -128,6 +128,10 @@ namespace SSC {
 #elif defined(_WIN32)
     static auto mainThread = GetCurrentThreadId();
     auto threadCallback = (LPARAM) new std::function<void()>(callback);
+    if (this->isReady) {
+      PostThreadMessage(mainThread, WM_APP, 0, threadCallback);
+      return;
+    }
     std::thread t([&, threadCallback] {
 
       // TODO(trevnorris): Need to also check a shouldExit so this doesn't run forever in case
