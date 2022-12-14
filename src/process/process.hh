@@ -47,7 +47,54 @@ namespace SSC {
     ShowWindow show_window{ShowWindow::show_default};
   };
 
-  ExecOutput exec (SSC::String command);
+  inline ExecOutput exec (SSC::String command) {
+    command = command + " 2>&1";
+
+    ExecOutput eo;
+    FILE* pipe;
+    size_t count;
+    int exitCode = 0;
+    const int bufsize = 128;
+    std::array<char, 128> buffer;
+
+    #ifdef _WIN32
+      //
+      // https://docs.microsoft.com/en-us/cpp/c-runtime-library/reference/popen-wpopen?view=msvc-160
+      // _popen works fine in a console application... ok fine that's all we need it for... thanks.
+      //
+      pipe = _popen((const char*) command.c_str(), "rt");
+    #else
+      pipe = popen((const char*) command.c_str(), "r");
+    #endif
+
+    if (pipe == NULL) {
+      std::cout << "error: unable to open the command" << std::endl;
+      exit(1);
+    }
+
+    do {
+      if ((count = fread(buffer.data(), 1, bufsize, pipe)) > 0) {
+        eo.output.insert(eo.output.end(), std::begin(buffer), std::next(std::begin(buffer), count));
+      }
+    } while (count > 0);
+
+    #ifdef _WIN32
+      exitCode = _pclose(pipe);
+    #else
+      exitCode = pclose(pipe);
+    #endif
+
+    if (!WIFEXITED(exitCode) || exitCode != 0) {
+      auto status = WEXITSTATUS(exitCode);
+      if (status && exitCode) {
+        exitCode = status;
+      }
+    }
+
+    eo.exitCode = exitCode;
+
+    return eo;
+  }
 
   // Platform independent class for creating processes.
   // Note on Windows: it seems not possible to specify which pipes to redirect.
@@ -87,7 +134,16 @@ namespace SSC {
       MessageCallback read_stderr = nullptr,
       MessageCallback on_exit = nullptr,
       bool open_stdin = true,
-      const Config &config = {}) noexcept;
+      const Config &config = {}) noexcept
+      : closed(true),
+        open_stdin(true),
+        read_stdout(std::move(read_stdout)),
+        read_stderr(std::move(read_stderr)),
+        on_exit(std::move(on_exit)) {
+      this->command = command;
+      this->argv = argv;
+      this->path = path;
+    }
 
 #ifndef _WIN32
     // Starts a process with the environment of the calling process.
@@ -113,11 +169,17 @@ namespace SSC {
     // Write to stdin.
     bool write(const char *bytes, size_t n);
     // Write to stdin. Convenience function using write(const char *, size_t).
-    bool write(const SSC::String &str);
+    bool write(const SSC::String &s) {
+      return write(s.c_str(), s.size());
+    }
     // Close stdin. If the process takes parameters from stdin, use this to
     // notify that all parameters have been sent.
     void close_stdin() noexcept;
-    void open() noexcept;
+    void open() noexcept {
+      if (this->command.size() == 0) return;
+      open(this->command + this->argv, this->path);
+      read();
+    }
 
     // Kill a given process id. Use kill(bool force) instead if possible.
     // force=true is only supported on Unix-like systems.
