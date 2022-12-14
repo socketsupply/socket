@@ -86,6 +86,10 @@ namespace SSC {
       [NSApp terminate:nil];
     }
 #elif defined(_WIN32)
+    if (isDebugEnabled()) {
+      fclose(console);
+      FreeConsole();
+    }
     PostQuitMessage(0);
 #endif
   }
@@ -203,10 +207,8 @@ namespace SSC {
     this->hInstance = (HINSTANCE) h;
 
     if (isDebugEnabled()) {
-      #if DEBUG == 1
-        AllocConsole();
-        freopen_s(&console, "CONOUT$", "w", stdout);
-      #endif
+      AllocConsole();
+      freopen_s(&console, "CONOUT$", "w", stdout);
     }
 
     // this fixes bad default quality DPI.
