@@ -542,6 +542,19 @@ int main (const int argc, const char* argv[]) {
         _settings = WStringToString(readFile(configPath));
         settings = parseConfig(_settings);
 
+        const std::vector<String> required = {
+          "name",
+          "executable",
+          "version"
+        };
+
+        for (const auto &str : required) {
+          if (settings.count(str) == 0) {
+            log("'" + str + "' value is required in ssc.config");
+            exit(1);
+          }
+        }
+
         // default values
         settings["output"] = settings["output"].size() > 0 ? settings["output"] : "dist";
         settings["lang"] = settings["lang"].size() > 0 ? settings["lang"] : "en-us";
@@ -795,15 +808,12 @@ int main (const int argc, const char* argv[]) {
         flagAppStore = true;
       }
 
-      if (is(arg, "--test")) {
-        flagBuildTest = true;
-        argvForward += " --test";
-      }
-
       auto testArg = optionValue(arg, "--test");
+      flagBuildTest = true;
       if (testArg.size() > 0) {
-        flagBuildTest = true;
         argvForward += " " + String(arg);
+      } else {
+        argvForward += " --test";
       }
 
       if (is(arg, "--headless")) {
@@ -847,19 +857,6 @@ int main (const int argc, const char* argv[]) {
       auto port = optionValue(arg, "--port");
       if (port.size() > 0) {
         devPort = port;
-      }
-    }
-
-    const std::vector<String> required = {
-      "name",
-      "executable",
-      "version"
-    };
-
-    for (const auto &str : required) {
-      if (settings.count(str) == 0) {
-        log("'" + str + "' value is required in ssc.config");
-        exit(1);
       }
     }
 
