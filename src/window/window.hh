@@ -216,7 +216,6 @@ namespace SSC {
               status = WindowStatus::WINDOW_CLOSING;
               Window::close(code);
               status = WindowStatus::WINDOW_CLOSED;
-              // gc();
             }
           }
 
@@ -523,10 +522,6 @@ namespace SSC {
   using IRecHandler = ICoreWebView2WebMessageReceivedEventHandler;
   using IArgs = ICoreWebView2WebMessageReceivedEventArgs;
 
-	// constexpr COLORREF darkBkColor = 0x383838;
-	// constexpr COLORREF darkTextColor = 0xFFFFFF;
-	// static HBRUSH hbrBkgnd = nullptr;
-
   enum WINDOWCOMPOSITIONATTRIB {
     WCA_UNDEFINED = 0,
     WCA_NCRENDERING_ENABLED = 1,
@@ -563,18 +558,6 @@ namespace SSC {
     PVOID pvData;
     SIZE_T cbData;
   };
-
-  using RefreshImmersiveColorPolicyState = VOID(WINAPI*)();
-  using SetWindowCompositionAttribute = BOOL(WINAPI *)(HWND hWnd, WINDOWCOMPOSITIONATTRIBDATA*);
-  using ShouldSystemUseDarkMode = BOOL(WINAPI*)();
-  using AllowDarkModeForApp = BOOL(WINAPI*)(BOOL allow);
-
-  extern RefreshImmersiveColorPolicyState refreshImmersiveColorPolicyState;
-  extern SetWindowCompositionAttribute setWindowCompositionAttribute;
-  extern ShouldSystemUseDarkMode shouldSystemUseDarkMode;
-  extern AllowDarkModeForApp allowDarkModeForApp;
-
-  auto bgBrush = CreateSolidBrush(RGB(0, 0, 0));
 #endif
 }
 #endif
