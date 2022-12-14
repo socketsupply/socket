@@ -74,7 +74,11 @@ void log (const String s) {
 
   auto now = system_clock::now();
   auto delta = duration_cast<milliseconds>(now - start).count();
+  #ifdef _WIN32
+  std::cout << "• " << s << " " << delta << "ms" << std::endl;
+  #else
   std::cout << "• " << s << " \033[0;32m+" << delta << "ms\033[0m" << std::endl;
+  #endif
   start = std::chrono::system_clock::now();
 }
 
