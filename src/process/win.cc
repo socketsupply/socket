@@ -1,9 +1,9 @@
+#include "process.hh"
+
 #include <cstring>
 #include <iostream>
 #include <stdexcept>
 #include <tlhelp32.h>
-
-#include "process.hh"
 
 namespace SSC {
 
