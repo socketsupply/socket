@@ -31,7 +31,7 @@ gantt
     axisFormat  %Y-%m
 
     section APIs
-    Notifications API Polyfil: API0, 2d
+    Notifications API Polyfill: API0, 2d
     TypeScript definitions: API1
 
     section All
