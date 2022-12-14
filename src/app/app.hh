@@ -42,8 +42,5 @@ namespace SSC {
       void * getWindowManager () const;
   };
 
-#if defined(_WIN32)
-  extern FILE* console;
-#endif
 }
 #endif

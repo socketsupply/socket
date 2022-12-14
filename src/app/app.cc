@@ -24,6 +24,10 @@ static dispatch_queue_t queue = dispatch_queue_create(
 #endif
 
 namespace SSC {
+#if defined(_WIN32)
+  FILE* console;
+#endif
+
   App::App () {
     this->core = new Core();
   }
