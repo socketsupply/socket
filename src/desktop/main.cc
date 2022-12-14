@@ -814,9 +814,6 @@ MAIN {
 
   auto defaultWindow = windowManager.createDefaultWindow(WindowOptions { });
 
-  // windowManager.getOrCreateWindow(0);
-  windowManager.getOrCreateWindow(1);
-
   defaultWindow->show(EMPTY_SEQ);
 
   if (_port > 0) {
