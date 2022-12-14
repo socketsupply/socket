@@ -1564,7 +1564,13 @@ int main (const int argc, const char* argv[]) {
         fs::current_path().string(),
         [](SSC::String const &out) { stdWrite(out, false); },
         [](SSC::String const &out) { stdWrite(out, true); },
-        [](SSC::String const &code) { exit(std::stoi(code)); }
+        [](SSC::String const &code) {
+          if (std::stoi(code) != 0) {
+            log("build failed, exiting with code " + code);
+            // TODO(trevnorris): Force non-windows to exit the process.
+            exit(std::stoi(code));
+          }
+        }
       );
       process->open();
 
