@@ -10,7 +10,7 @@
 #if defined(_WIN32)
 #define MAIN                         \
   static const int argc = __argc;    \
-  static const char** argv = __argv; \
+  static char** argv = __argv;       \
   int CALLBACK WinMain (             \
     _In_ HINSTANCE instanceId,       \
     _In_ HINSTANCE hPrevInstance,    \
