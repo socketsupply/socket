@@ -26,7 +26,7 @@ Function Build {
   if (-not (Test-Path -Path "$WORKING_BUILD_PATH\libuv\build\Release\uv_a.lib" -PathType Leaf)) {
     (New-Item -ItemType Directory -Force -Path "$WORKING_BUILD_PATH\libuv\build") > $null
 
-    Write-Output "# bulding libuv..."
+    Write-Output "# building libuv..."
     cd "$WORKING_BUILD_PATH\libuv\build"
     (cmake ..) > $null
 
