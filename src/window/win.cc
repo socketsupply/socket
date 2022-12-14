@@ -699,8 +699,6 @@ namespace SSC {
               window,
               Microsoft::WRL::Callback<IConHandler>(
                 [&, preload](HRESULT result, ICoreWebView2Controller* c) -> HRESULT {
-                  hide("");
-
                   if (c != nullptr) {
                     controller = c;
                     controller->get_CoreWebView2(&webview);
