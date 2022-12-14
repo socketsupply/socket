@@ -7,13 +7,6 @@ namespace SSC {
     return source;
   }
 
-  bool isDebugEnabled () {
-  #if defined(DEBUG) && DEBUG
-    return true;
-  #endif
-    return false;
-  }
-
   const char* getDevHost () {
     static const char* host = STR_VALUE(HOST);
     return host;
