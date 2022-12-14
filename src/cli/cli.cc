@@ -163,6 +163,7 @@ int runApp (const fs::path& path, const String& args) {
 }
 
 void runIOSSimulator (const fs::path& path, Map& settings) {
+  #ifndef _WIN32
   if (settings["ios_simulator_device"].size() == 0) {
     log("error: 'ios_simulator_device' option is empty");
     exit(1);
@@ -357,6 +358,7 @@ void runIOSSimulator (const fs::path& path, Map& settings) {
     }
     exit(rlaunchApp.exitCode);
   }
+  #endif
 };
 
 static String getCxxFlags() {
