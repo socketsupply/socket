@@ -366,7 +366,7 @@ void runIOSSimulator (const fs::path& path, Map& settings) {
 };
 
 static String getCxxFlags() {
-  auto flags = getEnv("CXX_FLAGS");
+  auto flags = getEnv("CXXFLAGS");
   return flags.size() > 0 ? " " + flags : "";
 }
 
