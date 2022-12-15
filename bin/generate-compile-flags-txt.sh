@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 
-declare root="$(dirname "$(dirname "$(realpath "${BASH_SOURCE[0]}")")")"
-
+declare root="$(cd $(dirname $(dirname "${BASH_SOURCE[0]}")); pwd)"
 declare arch="$(uname -m)"
 declare platform="desktop"
 declare force=0
