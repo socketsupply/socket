@@ -813,6 +813,7 @@ int main (const int argc, const char* argv[]) {
 
     String argvForward = "";
     String targetPlatform = "";
+    String testFile = "";
 
     String devHost("localhost");
     String devPort("0");
@@ -861,12 +862,15 @@ int main (const int argc, const char* argv[]) {
         flagAppStore = true;
       }
 
-      auto testArg = optionValue(arg, "--test");
-      flagBuildTest = true;
-      if (testArg.size() > 0) {
+      if (is(arg, "--test")) {
+        flagBuildTest = true;
+      }
+
+      const auto testFileTmp = optionValue(arg, "--test");
+      if (testFileTmp.size() > 0) {
+        testFile = testFileTmp;
+        flagBuildTest = true;
         argvForward += " " + String(arg);
-      } else {
-        argvForward += " --test";
       }
 
       if (is(arg, "--headless")) {
@@ -911,6 +915,11 @@ int main (const int argc, const char* argv[]) {
       if (port.size() > 0) {
         devPort = port;
       }
+    }
+
+    if (flagBuildTest && testFile.size() == 0) {
+      log("error: --test value is required.");
+      exit(1);
     }
 
     if (settings.count("file_limit") == 0) {
@@ -2601,13 +2610,18 @@ int main (const int argc, const char* argv[]) {
     String argvForward = "";
     bool isIosSimulator = false;
     bool flagHeadless = false;
+    bool flagTest = false;
     String targetPlatform = "";
+    String testFile = "";
+
     for (auto const& option : options) {
       if (is(option, "--test")) {
-        argvForward += " --test";
+        flagTest = true;
       }
-      auto testPath = optionValue(option, "--test");
-      if (testPath.size() > 0) {
+      const auto testFileTmp = optionValue(option, "--test");
+      if (testFileTmp.size() > 0) {
+        flagTest = true;
+        testFile = testFileTmp;
         argvForward += " " + String(option);
       }
 
@@ -2627,6 +2641,11 @@ int main (const int argc, const char* argv[]) {
           }
         }
       }
+    }
+
+    if (flagTest && testFile.size() == 0) {
+      log("error: --test value is required.");
+      exit(1);
     }
 
     targetPlatform = targetPlatform.size() > 0 ? targetPlatform : platform.os;
