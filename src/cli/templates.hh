@@ -1149,6 +1149,7 @@ LOCAL_CFLAGS +=              \
   -std=c++2a                 \
   -g                         \
   -I$(LOCAL_PATH)/include    \
+  -I$(LOCAL_PATH)            \
   -pthreads                  \
   -fexceptions               \
   -fPIC                      \
@@ -1175,7 +1176,7 @@ LOCAL_SRC_FILES =         \
   ipc/ipc.cc              \
   init.cc
 
-LOCAL_SRC_FILES += $(wildcard $(LOCAL_PATH)/ext/*.cc)
+LOCAL_SRC_FILES += $(wildcard $(LOCAL_PATH)/src/*.cc)
 
 LOCAL_STATIC_LIBRARIES := uv
 include $(BUILD_SHARED_LIBRARY)

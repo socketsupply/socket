@@ -1232,11 +1232,14 @@ int main (const int argc, const char* argv[]) {
       }
 
       // custom native sources
-      for (auto const &file : split(settings["android_native_sources"], ' ')) {
+      for (
+        auto const &file :
+        split(settings["android_native_sources"], ' ')
+      ) {
         auto filename = fs::path(file).filename();
-        // log(String("Android NDK source: " + String(target / file)).c_str());
+        log(String("Android NDK source: " + String(targetPath / file)).c_str());
         writeFile(
-          jni / "src" / file,
+          jni / "src" / filename,
           tmpl(std::regex_replace(
             WStringToString(readFile(targetPath / file )),
             std::regex("__BUNDLE_IDENTIFIER__"),
