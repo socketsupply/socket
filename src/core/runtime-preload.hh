@@ -62,7 +62,7 @@ namespace SSC {
         preload += "                                                      \n"
           "document.addEventListener('DOMContentLoaded', () => {          \n"
           "  const script = document.createElement('script')              \n"
-          "  script.setAttribute('type', 'text/javascript')               \n"
+          "  script.setAttribute('type', 'module')                        \n"
           "  script.setAttribute('src', '" + file + "')                   \n"
           "  document.body.appendChild(script)                            \n"
           "});                                                            \n";
