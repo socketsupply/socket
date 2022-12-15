@@ -64,7 +64,7 @@ namespace SSC {
           "  const script = document.createElement('script')              \n"
           "  script.setAttribute('type', 'module')                        \n"
           "  script.setAttribute('src', '" + file + "')                   \n"
-          "  document.body.appendChild(script)                            \n"
+          "  document.head.appendChild(script)                            \n"
           "});                                                            \n";
       }
     }
