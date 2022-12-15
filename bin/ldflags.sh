@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-declare root="$(cd $(dirname $(dirname "${BASH_SOURCE[0]}")); pwd)"
+declare root="$(cd "$(dirname "$(dirname "${BASH_SOURCE[0]}")")" && pwd)"
 
 declare ldflags=()
 

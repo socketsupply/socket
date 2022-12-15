@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # vim: set syntax=bash:
 
-declare root="$(dirname "$(dirname "${BASH_SOURCE[0]}")")"
+declare root="$(cd "$(dirname "$(dirname "${BASH_SOURCE[0]}")")" && pwd)"
 
 cd "$root" || exit $?
 
