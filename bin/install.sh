@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-declare root="$(dirname "$(dirname "$(realpath "${BASH_SOURCE[0]}")")")"
+declare root="$(cd $(dirname $(dirname "${BASH_SOURCE[0]}")); pwd)"
 declare pids=()
 
 LIPO=""
