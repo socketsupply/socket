@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-declare root="$(cd $(dirname $(dirname "${BASH_SOURCE[0]}")); pwd)"
+declare root="$(cd "$(dirname "$(dirname "${BASH_SOURCE[0]}")")" && pwd)"
 declare clang="${CXX:-${CLANG:-"$(which clang++)"}}"
 declare cache_path="$root/build/cache"
 
@@ -97,9 +97,13 @@ function onsignal () {
 
 function stat_mtime () {
   if [[ "$(uname -s)" = "Darwin" ]]; then
-    stat -f %m "$1"
+    if stat --help 2>/dev/null | grep GNU >/dev/null; then
+      stat -c %Y "$1" 2>/dev/null
+    else
+      stat -f %m "$1" 2>/dev/null
+    fi
   else
-    stat -c %Y "$1"
+    stat -c %Y "$1" 2>/dev/null
   fi
 }
 
