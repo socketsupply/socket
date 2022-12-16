@@ -87,9 +87,9 @@ jobs:
 
     - name: Install Socket Runtime deps
       run: |
-        sudo apt install software-properties-common
+        sudo apt install software-properties-common at-spi2-core
         sudo add-apt-repository ppa:ubuntu-toolchain-r/test
-        sudo apt install -y gcc-12 g++-12 libpthread-stubs0-dev
+        sudo apt install -y gcc-12 g++-12 libpthread-stubs0-dev libwebkit2gtk-4.1-dev
 
     - name: install ssc
       run: |
