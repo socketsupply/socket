@@ -13,6 +13,8 @@ UDP and File I/O.
 
 Please read (and contribute to) the documentation [here](https://sockets.sh).
 
+* [ssc.config](https://sockets.sh/config/)
+
 ### Roadmap
 
 ```mermaid
