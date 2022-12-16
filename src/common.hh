@@ -1,8 +1,6 @@
 #ifndef SSC_CORE_COMMON_H
 #define SSC_CORE_COMMON_H
 
-#include "config.hh"
-
 // macOS/iOS
 #if defined(__APPLE__)
 #include <TargetConditionals.h>
@@ -305,54 +303,6 @@ namespace SSC {
     #endif
   } platform;
 
-  inline Map configToMap (Config& config) {
-    Map map; // flatten values so they can be accessed in the templates
-    map["win_cmd"] = std::string(config.win.cmd);
-    map["win_icon"] = std::string(config.win.icon);
-    map["win_logo"] = std::string(config.win.logo);
-    map["win_pfx"] = std::string(config.win.pfx);
-    map["win_publisher"] = std::string(config.win.publisher);
-
-    map["linux_categories"] = std::string(config.linux.categories);
-    map["linux_cmd"] = std::string(config.linux.cmd);
-    map["linux_icon"] = std::string(config.linux.icon);
-
-    map["ios_icon"] = std::string(config.ios.icon);
-    map["ios_codesign_identity"] = std::string(config.ios.codesign_identity);
-    map["ios_distribution_method"] = std::string(config.ios.distribution_method);
-    map["ios_provisioning_profile"] = std::string(config.ios.provisioning_profile);
-    map["ios_simulator_device"] = std::string(config.ios.simulator_device);
-
-    map["mac_cmd"] = std::string(config.mac.cmd);
-    map["mac_icon"] = std::string(config.mac.icon);
-    map["mac_appstore_icon"] = std::string(config.mac.appstore_icon);
-    map["mac_appstore_category"] = std::string(config.mac.appstore_category);
-    map["mac_codesign_identity"] = std::string(config.mac.codesign_identity);
-    map["mac_sign"] = std::string(config.mac.sign);
-    map["mac_sign_paths"] = std::string(config.mac.sign_paths);
-
-    map["bundle_identifier"] = std::string(config.bundle_identifier);
-    map["version"] = std::string(config.version);
-    map["revision"] = std::string(config.revision);
-    map["copyright"] = std::string(config.copyright);
-    map["description"] = std::string(config.description);
-    map["name"] = std::string(config.name);
-    map["maintainer"] = std::string(config.maintainer);
-    map["lang"] = std::string(config.lang);
-    map["env"] = std::string(config.env);
-
-    map["build"] = std::string(config.build);
-    map["input"] = std::string(config.input);
-    map["output"] = std::string(config.output);
-    map["executable"] = std::string(config.executable);
-    map["flags"] = std::string(config.flags);
-    map["file_limit"] = std::to_string(config.file_limit);
-    map["debug_flags"] = std::string(config.debug.flags);
-    map["window_height"] = std::string(config.window.height);
-    map["window_width"] = std::string(config.window.width);
-    return map;
-  }
-
   inline const Vector<String> splitc (const String& s, const char& c) {
     String buff;
     Vector<String> vec;
@@ -635,15 +585,32 @@ namespace SSC {
   inline Map parseConfig (String source) {
     auto entries = split(source, '\n');
     Map settings;
+    std::string prefix = "";
 
     for (auto entry : entries) {
-      auto index = entry.find_first_of(':');
+      entry = trim(entry);
+
+      if (entry[0] == ';') continue;
+
+      if (entry[0] == '[' && entry[entry.length() - 1] == ']') {
+        prefix = entry.substr(1, entry.length() - 2) + "_";
+        continue;
+      }
+
+      auto index = entry.find_first_of('=');
 
       if (index >= 0 && index <= entry.size()) {
-        auto key = entry.substr(0, index);
+        auto key = prefix + entry.substr(0, index);
         auto value = entry.substr(index + 1);
 
-        settings[trim(key)] = trim(value);
+        value = trim(value);
+
+        // trim quotes from quoted strings
+        if (value[0] == '"' && value[value.length() - 1] == '"') {
+          value = value.substr(1, value.length() - 2);
+        }
+
+        settings[trim(key)] = value;
       }
     }
 
@@ -753,7 +720,36 @@ namespace SSC {
     /* F */ -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1
   };
 
-  inline String decodeURIComponent(const String& sSrc) {
+  inline std::string stringToHex (const std::string& input) {
+    static const char set[] = "0123456789ABCDEF";
+
+    std::string output;
+    output.reserve(input.length() * 2);
+
+    for (unsigned char c : input) {
+      output.push_back(set[c >> 4]);
+      output.push_back(set[c & 15]);
+    }
+
+    return output;
+  }
+
+  inline std::string hexToString (const std::string& input) {
+    const auto len = input.length();
+
+    std::string output;
+    output.reserve(len / 2);
+
+    for (auto it = input.begin(); it != input.end();) {
+      int hi = HEX2DEC[(unsigned char) *it++];
+      int lo = HEX2DEC[(unsigned char) *it++];
+      output.push_back(hi << 4 | lo);
+    }
+
+    return output;
+  }
+
+  inline String decodeURIComponent (const String& sSrc) {
 
     // Note from RFC1630:  "Sequences which start with a percent sign
     // but are not followed by two hexadecimal characters (0-9, A-F) are reserved

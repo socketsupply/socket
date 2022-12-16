@@ -370,71 +370,6 @@ static String getCxxFlags() {
   return flags.size() > 0 ? " " + flags : "";
 }
 
-static Map getConfig (fs::path p) {
-  std::stringstream compileConfigCommand;
-
-  if (getEnv("CXX").size() == 0) {
-    log("warning! $CXX env var not set, assuming defaults");
-
-    if (platform.win) {
-      setEnv("CXX=clang++");
-    } else {
-      setEnv("CXX=/usr/bin/clang++");
-    }
-  }
-
-  compileConfigCommand
-    << getEnv("CXX")
-    << " -std=c++2a"
-    << " -I" << prefixFile()
-    << " -I" << prefixFile("src")
-    << " -I" << p
-    << " -I" << fs::current_path()
-    << " " << prefixFile("src/config.cc")
-    << " -o " << prefixFile("bin/ssc-conf")
-  ;
-
-  auto r = exec(compileConfigCommand.str());
-
-  if (r.exitCode != 0) {
-    log("Unable to compile the config file");
-    log(r.output);
-    exit(r.exitCode);
-  }
-
-  // serialize and write the config to p
-  auto base = p.remove_filename().string();
-  auto cmd = prefixFile("bin/ssc-conf") + " " + base;
-  r = exec(cmd);
-
-  if (r.exitCode != 0) {
-    log("Unable to serialize and write the config file to disk");
-    log(r.output);
-    exit(r.exitCode);
-  }
-
-  auto file = fs::path { p / ".ssc.dat" };
-  std::ifstream rs(file, std::ios::out | std::ios::binary);
-
-  if (!rs) {
-    log("unable to open .ssc.dat");
-    exit(1);
-  }
-
-  Config config;
-  rs.read((char*) &config, sizeof(Config));
-  rs.close();
-
-  if (!rs.good()) {
-    log("Unable to read .ssc.dat");
-    exit(1);
-  }
-
-  fs::remove(file);
-
-  return configToMap(config);
-}
-
 void printHelp (const String& command) {
   if (command == "ssc") {
     std::cout << tmpl(gHelpText, defaultTemplateAttrs) << std::endl;
@@ -622,14 +557,19 @@ int main (const int argc, const char* argv[]) {
       }
 
       if (needsConfig) {
-        auto configPath = targetPath / "ssc.conf";
+        auto configPath = targetPath / "socket.ini";
 
         if (!fs::exists(configPath) && !is(subcommand, "init")) {
-          log("ssc.conf not found in " + targetPath.string());
+          log("socket.ini not found in " + targetPath.string());
           exit(1);
         }
 
-        settings = getConfig(configPath);
+        auto ini = readFile(configPath);
+        std::string code("constexpr auto ini = \"" + stringToHex(ini) + "\";");
+
+        settings = parseConfig(ini);
+
+        settings["ini_code"] = code;
 
         const std::vector<String> required = {
           "name",
@@ -639,7 +579,7 @@ int main (const int argc, const char* argv[]) {
 
         for (const auto &str : required) {
           if (settings.count(str) == 0) {
-            log("'" + str + "' value is required in ssc.conf");
+            log("'" + str + "' value is required in socket.ini");
             exit(1);
           }
         }
@@ -675,7 +615,7 @@ int main (const int argc, const char* argv[]) {
   createSubcommand("init", {}, false, [&](const std::span<const char *>& options) -> void {
     fs::create_directories(targetPath / "src");
     SSC::writeFile(targetPath / "src" / "index.html", gHelloWorld);
-    SSC::writeFile(targetPath / "ssc.conf", tmpl(gDefaultConfig, defaultTemplateAttrs));
+    SSC::writeFile(targetPath / "socket.ini", tmpl(gDefaultConfig, defaultTemplateAttrs));
     SSC::writeFile(targetPath / ".gitignore", gDefaultGitignore);
     exit(0);
   });
@@ -972,7 +912,7 @@ int main (const int argc, const char* argv[]) {
 
     auto executable = fs::path(settings["executable"] + (platform.win ? ".exe" : ""));
     auto binaryPath = paths.pathBin / executable;
-    auto configPath = targetPath / "ssc.conf";
+    auto configPath = targetPath / "socket.ini";
 
     if (!fs::exists(binaryPath)) {
       flagRunUserBuildOnly = false;
@@ -1022,6 +962,7 @@ int main (const int argc, const char* argv[]) {
       exit(1);
     }
 
+    writeFile(fs::path(trim(prefixFile("include/ini.hh"))), settings["ini_code"]);
     //
     // Darwin Package Prep
     // ---
@@ -1029,7 +970,7 @@ int main (const int argc, const char* argv[]) {
     if (platform.mac && !flagBuildForIOS && !flagBuildForAndroid) {
       log("preparing build for mac");
 
-      flags = "-std=c++2a -ObjC++";
+      flags = "-std=c++2a -ObjC++ -v";
       flags += " -framework UniformTypeIdentifiers";
       flags += " -framework CoreBluetooth";
       flags += " -framework Network";
@@ -1038,7 +979,6 @@ int main (const int argc, const char* argv[]) {
       flags += " -framework Cocoa";
       flags += " -DMACOS=1";
       flags += " -I" + prefixFile();
-      flags += " -I" + fs::current_path().string();
       flags += " -I" + prefixFile("include");
       flags += " -L" + prefixFile("lib/" + platform.arch + "-desktop");
       flags += " -lsocket-runtime";
@@ -1421,7 +1361,7 @@ int main (const int argc, const char* argv[]) {
         if (!fs::exists(pathToProfile)) {
           log("provisioning profile not found: " + pathToProfile.string() + ". " +
               "Please specify a valid provisioning profile in the " +
-              "ios_provisioning_profile field in your ssc.conf");
+              "ios_provisioning_profile field in your socket.ini");
           exit(1);
         }
         String command = (
@@ -1533,7 +1473,6 @@ int main (const int argc, const char* argv[]) {
       flags = " -std=c++2a `pkg-config --cflags --libs gtk+-3.0 webkit2gtk-4.1`";
       flags += " " + getCxxFlags();
       flags += " -I" + prefixFile();
-      flags += " -I" + fs::current_path().string();
       flags += " -I" + prefixFile("include");
       flags += " -L" + prefixFile("lib/" + platform.arch + "-desktop");
 
@@ -1620,7 +1559,6 @@ int main (const int argc, const char* argv[]) {
         " -Xlinker /NODEFAULTLIB:libcmt"
         " -Wno-nonportable-include-path"
         " -I\"" + prefix + "\""
-        " -I\"" + fs::current_path().string() + "\""
         " -I\"" + prefix + "\\include\""
         " -I\"" + prefix + "\\src\""
         " -L\"" + prefix + "\\lib\""
@@ -1808,10 +1746,10 @@ int main (const int argc, const char* argv[]) {
       if (rArchive.exitCode != 0) {
         auto const noDevice = rArchive.output.find("The requested device could not be found because no available devices matched the request.");
         if (noDevice != std::string::npos) {
-          log("error: ios_simulator_device " + settings["ios_simulator_device"] + " from your ssc.conf was not found");
+          log("error: ios_simulator_device " + settings["ios_simulator_device"] + " from your socket.ini was not found");
           auto const rDevices = exec("xcrun simctl list devices available | grep -e \"  \"");
           log("available devices:\n" + rDevices.output);
-          log("please update your ssc.conf with a valid device or install Simulator runtime (https://developer.apple.com/documentation/xcode/installing-additional-simulator-runtimes)");
+          log("please update your socket.ini with a valid device or install Simulator runtime (https://developer.apple.com/documentation/xcode/installing-additional-simulator-runtimes)");
           exit(1);
         }
         log("error: failed to archive project");

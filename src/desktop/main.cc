@@ -236,7 +236,7 @@ MAIN {
     );
 
     if (cmd.size() == 0) {
-      stdWrite("No '.cmd' is provided for '." + platform.os + "' in ssc.conf", true);
+      stdWrite("No 'cmd' is provided for '" + platform.os + "' in socket.ini", true);
       exit(1);
     }
 
