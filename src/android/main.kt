@@ -17,7 +17,7 @@ object console {
 
 /**
  * An entry point for the main activity specified in
- * `AndroidManifest.xml` and which can be overloaded in `ssc.conf` for
+ * `AndroidManifest.xml` and which can be overloaded in `socket.ini` for
  * advanced usage.
 
  * Main `android.app.Activity` class for the `WebViewClient`.
