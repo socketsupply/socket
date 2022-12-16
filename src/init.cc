@@ -4,7 +4,7 @@
 namespace SSC {
   const Map getSettingsSource () {
     #include "ini.hh" // NOLINT
-    return parseConfig(ini);
+    return parseConfig(hexToString(ini));
   }
 
   const char* getDevHost () {
