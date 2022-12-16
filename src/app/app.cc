@@ -173,11 +173,11 @@ namespace SSC {
     return cwd;
   }
 
-  void App::setWindowManager (void *windowManager) {
+  void App::setWindowManager (WindowManager* windowManager) {
     this->windowManager = windowManager;
   }
 
-  void * App::getWindowManager () const {
+  WindowManager* App::getWindowManager () const {
     return this->windowManager;
   }
 
