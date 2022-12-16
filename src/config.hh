@@ -23,7 +23,7 @@ namespace SSC {
     struct {
       ConfigString icon;
       ConfigString codesign_identity;
-      ConfigString distribution_method = "ad-hoc";
+      ConfigString distribution_method;
       ConfigString provisioning_profile;
       ConfigString simulator_device;
     } ios;
@@ -45,26 +45,25 @@ namespace SSC {
     ConfigString description;
     ConfigString name;
     ConfigString maintainer;
-    ConfigString lang = "en-us";
+    ConfigString lang;
     ConfigString env;
 
     ConfigString build;
     ConfigString input;
     ConfigString output;
     ConfigString executable;
+    ConfigBool headless;
     ConfigString flags;
 
-    ConfigInt file_limit = 1024;
+    ConfigInt file_limit;
 
     struct {
       ConfigString flags;
     } debug;
 
     struct {
-      ConfigString height = "80%";
-      ConfigString width = "80%";
+      ConfigString height;
+      ConfigString width;
     } window;
-
-    ConfigBool readFromDisk = false;
   };
 }

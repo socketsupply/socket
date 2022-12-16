@@ -28,7 +28,7 @@ quiet ../../bin/cli init
 quiet stat src/index.html
 die $? "the index.html file exists"
 
-quiet stat ssc.config
+quiet stat ssc.conf
 die $? "the config file exists"
 
 quiet ../../bin/cli compile .
