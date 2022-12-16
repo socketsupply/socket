@@ -205,7 +205,6 @@ jobs:
     - name: install Socket Runtime deps
       run: |
         brew install automake
-        brew install coreutils
 
     - name: Use Node.js
       uses: actions/setup-node@v3
@@ -252,7 +251,6 @@ jobs:
     - name: install Socket Runtime deps
       run: |
         brew install automake
-        brew install coreutils
 
     - name: Use Node.js
       uses: actions/setup-node@v3
