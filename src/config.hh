@@ -61,9 +61,8 @@ namespace SSC {
     } debug;
 
     struct {
-      ConfigInt height = 750;
-      ConfigInt width = 1024;
-      ConfigString title;
+      ConfigString height = "80%";
+      ConfigString width = "80%";
     } window;
 
     ConfigBool readFromDisk = false;

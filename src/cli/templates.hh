@@ -1357,7 +1357,7 @@ constexpr auto gDefaultConfig = R"CONFIG(
 // Default configuration file for ssc v{{ssc_version}}.
 //
 
-Config config {
+config = {
   // The shell command to execute when building an application. This is the most
   // important command in this file. This will do all the heavy lifting and should
   // handle 99.9% of your use cases for moving files into place or tweaking

@@ -385,9 +385,9 @@ static Map getConfig (fs::path p) {
 
   compileConfigCommand
     << getEnv("CXX")
-    << " -std=c++2a -v"
+    << " -std=c++2a"
     << " -I" << prefixFile()
-    << " -I" << prefixFile("src/config.hh")
+    << " -I" << prefixFile("src")
     << " -I" << p
     << " -I" << fs::current_path()
     << " " << prefixFile("src/config.cc")

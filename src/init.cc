@@ -3,6 +3,7 @@
 // These rely on project-specific, compile-time variables.
 namespace SSC {
   const Map getSettingsSource () {
+    Config config;
     #include "ssc.conf" // NOLINT
     return configToMap(config);
   }

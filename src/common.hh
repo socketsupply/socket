@@ -1,6 +1,8 @@
 #ifndef SSC_CORE_COMMON_H
 #define SSC_CORE_COMMON_H
 
+#include "config.hh"
+
 // macOS/iOS
 #if defined(__APPLE__)
 #include <TargetConditionals.h>
@@ -346,8 +348,8 @@ namespace SSC {
     map["flags"] = std::string(config.flags);
     map["file_limit"] = std::to_string(config.file_limit);
     map["debug_flags"] = std::string(config.debug.flags);
-    map["window_height"] = std::to_string(config.window.height);
-    map["window_width"] = std::to_string(config.window.width);
+    map["window_height"] = std::string(config.window.height);
+    map["window_width"] = std::string(config.window.width);
     return map;
   }
 

@@ -12,6 +12,7 @@ int main (const int argc, const char* argv[]) {
 
   using namespace SSC;
 
+  Config config;
   #include "ssc.conf" // NOLINT
 
   ws.write((char*) &config, sizeof(Config));
