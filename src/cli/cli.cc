@@ -370,6 +370,71 @@ static String getCxxFlags() {
   return flags.size() > 0 ? " " + flags : "";
 }
 
+static Map getConfig (fs::path p) {
+  std::stringstream compileConfigCommand;
+
+  if (getEnv("CXX").size() == 0) {
+    log("warning! $CXX env var not set, assuming defaults");
+
+    if (platform.win) {
+      setEnv("CXX=clang++");
+    } else {
+      setEnv("CXX=/usr/bin/clang++");
+    }
+  }
+
+  compileConfigCommand
+    << getEnv("CXX")
+    << " -std=c++2a -v"
+    << " -I" << prefixFile()
+    << " -I" << prefixFile("src/config.hh")
+    << " -I" << p
+    << " -I" << fs::current_path()
+    << " " << prefixFile("src/config.cc")
+    << " -o " << prefixFile("bin/ssc-config")
+  ;
+
+  auto r = exec(compileConfigCommand.str());
+
+  if (r.exitCode != 0) {
+    log("Unable to compile the config file");
+    log(r.output);
+    exit(r.exitCode);
+  }
+
+  // serialize and write the config to p
+  auto base = p.remove_filename().string();
+  auto cmd = prefixFile("bin/ssc-config") + " " + base;
+  r = exec(cmd);
+
+  if (r.exitCode != 0) {
+    log("Unable to serialize and write the config file to disk");
+    log(r.output);
+    exit(r.exitCode);
+  }
+
+  auto file = fs::path { p / ".ssc.dat" };
+  std::ifstream rs(file, std::ios::out | std::ios::binary);
+
+  if (!rs) {
+    log("unable to open .ssc.dat");
+    exit(1);
+  }
+
+  Config config;
+  rs.read((char*) &config, sizeof(Config));
+  rs.close();
+
+  if (!rs.good()) {
+    log("Unable to read .ssc.dat");
+    exit(1);
+  }
+
+  fs::remove(file);
+
+  return configToMap(config);
+}
+
 void printHelp (const String& command) {
   if (command == "ssc") {
     std::cout << tmpl(gHelpText, defaultTemplateAttrs) << std::endl;
@@ -557,13 +622,14 @@ int main (const int argc, const char* argv[]) {
       }
 
       if (needsConfig) {
-        auto configPath = targetPath / "ssc.config";
+        auto configPath = targetPath / "ssc.conf";
+
         if (!fs::exists(configPath) && !is(subcommand, "init")) {
-          log("ssc.config not found in " + targetPath.string());
+          log("ssc.conf not found in " + targetPath.string());
           exit(1);
         }
-        _settings = WStringToString(readFile(configPath));
-        settings = parseConfig(_settings);
+
+        settings = getConfig(configPath);
 
         const std::vector<String> required = {
           "name",
@@ -972,6 +1038,7 @@ int main (const int argc, const char* argv[]) {
       flags += " -framework Cocoa";
       flags += " -DMACOS=1";
       flags += " -I" + prefixFile();
+      flags += " -I" + fs::current_path().string();
       flags += " -I" + prefixFile("include");
       flags += " -L" + prefixFile("lib/" + platform.arch + "-desktop");
       flags += " -lsocket-runtime";
@@ -1467,6 +1534,7 @@ int main (const int argc, const char* argv[]) {
       flags = " -std=c++2a `pkg-config --cflags --libs gtk+-3.0 webkit2gtk-4.1`";
       flags += " " + getCxxFlags();
       flags += " -I" + prefixFile();
+      flags += " -I" + fs::current_path().string();
       flags += " -I" + prefixFile("include");
       flags += " -L" + prefixFile("lib/" + platform.arch + "-desktop");
 
@@ -1553,6 +1621,7 @@ int main (const int argc, const char* argv[]) {
         " -Xlinker /NODEFAULTLIB:libcmt"
         " -Wno-nonportable-include-path"
         " -I\"" + prefix + "\""
+        " -I\"" + fs::current_path().string() + "\""
         " -I\"" + prefix + "\\include\""
         " -I\"" + prefix + "\\src\""
         " -L\"" + prefix + "\\lib\""

@@ -65,8 +65,6 @@ MAIN {
   WindowManager windowManager(app);
 
   app.setWindowManager(&windowManager);
-
-  const auto _settings = SSC::getSettingsSource();
   constexpr auto _port = PORT;
 
   const SSC::String OK_STATE = "0";
@@ -74,7 +72,7 @@ MAIN {
   const SSC::String EMPTY_SEQ = SSC::String("");
 
   auto cwd = app.getCwd();
-  app.appData = parseConfig(decodeURIComponent(_settings));
+  app.appData = SSC::getSettingsSource();
 
   SSC::String suffix = "";
 
@@ -261,8 +259,8 @@ MAIN {
     return exitCode;
   }
 
-  String initialHeight = app.appData["height"].size() > 0 ? app.appData["height"] : "100%";
-  String initialWidth = app.appData["width"].size() > 0 ? app.appData["width"] : "100%";
+  String initialHeight = app.appData["window_height"].size() > 0 ? app.appData["window_height"] : "100%";
+  String initialWidth = app.appData["window_width"].size() > 0 ? app.appData["window_width"] : "100%";
 
   bool isHeightInPercent = initialHeight.back() == '%';
   bool isWidthInPercent = initialWidth.back() == '%';
@@ -370,8 +368,9 @@ MAIN {
         return;
       }
 
-      if (message.name == "getConfig") {
-        window->resolvePromise(seq, OK_STATE, _settings);
+      if (message.name == "config") {
+        auto key = message.get("key");
+        window->resolvePromise(seq, OK_STATE, app.appData[key]);
         return;
       }
     });

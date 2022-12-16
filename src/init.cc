@@ -2,9 +2,9 @@
 
 // These rely on project-specific, compile-time variables.
 namespace SSC {
-  const char* getSettingsSource () {
-    static const char* source = STR_VALUE(SSC_SETTINGS);
-    return source;
+  const Map getSettingsSource () {
+    #include "ssc.conf" // NOLINT
+    return configToMap(config);
   }
 
   const char* getDevHost () {

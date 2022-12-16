@@ -18,7 +18,7 @@ namespace SSC {
   };
 
   // Additional parameters to Process constructors.
-  struct Config {
+  struct ProcessConfig {
     // Buffer size for reading stdout and stderr. Default is 131072 (128 kB).
     std::size_t buffer_size = 131072;
     // Set to true to inherit file descriptors from parent process. Default is false.
@@ -134,7 +134,7 @@ namespace SSC {
       MessageCallback read_stderr = nullptr,
       MessageCallback on_exit = nullptr,
       bool open_stdin = true,
-      const Config &config = {}) noexcept
+      const ProcessConfig &config = {}) noexcept
       : closed(true),
         open_stdin(true),
         read_stdout(std::move(read_stdout)),
@@ -154,7 +154,7 @@ namespace SSC {
       MessageCallback read_stderr = nullptr,
       MessageCallback on_exit = nullptr,
       bool open_stdin = true,
-      const Config &config = {}) noexcept;
+      const ProcessConfig &config = {}) noexcept;
 #endif
 
     ~Process() noexcept {
@@ -200,7 +200,7 @@ namespace SSC {
     bool open_stdin;
     std::mutex stdin_mutex;
 
-    Config config;
+    ProcessConfig config;
 
     std::unique_ptr<fd_type> stdout_fd, stderr_fd, stdin_fd;
 

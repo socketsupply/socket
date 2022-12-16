@@ -115,7 +115,6 @@ function _build_cli {
 
   quiet "$CXX"                                 \
     "$BUILD_DIR/$arch-$platform"/cli/*.o       \
-    "$root/src/init.cc"                        \
     "${cflags[@]}" "${ldflags[@]}"             \
     -o "$BUILD_DIR/$arch-$platform/bin/ssc"
 
@@ -242,7 +241,7 @@ function _prepare {
   echo "# preparing directories..."
   rm -rf "$ASSETS_DIR"
 
-  mkdir -p "$ASSETS_DIR"/{lib,src,include,objects}
+  mkdir -p "$ASSETS_DIR"/{lib,src,bin,include,objects}
   mkdir -p "$ASSETS_DIR"/{lib,objects}/"$(uname -m)-desktop"
 
   if [[ "$(uname -s)" = "Darwin" ]]; then
