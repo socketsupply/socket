@@ -4,10 +4,13 @@
 #include "../core/core.hh"
 #include "../ipc/ipc.hh"
 
+
 namespace SSC {
+  class WindowManager;
+
   class App {
     // an opaque pointer to the configured `WindowManager<Window, App>`
-    void *windowManager = nullptr;
+    WindowManager *windowManager = nullptr;
     public:
       static inline std::atomic<bool> isReady = false;
 
@@ -38,8 +41,8 @@ namespace SSC {
       void restart ();
       void dispatch (std::function<void()>);
       SSC::String getCwd ();
-      void setWindowManager (void *);
-      void * getWindowManager () const;
+      void setWindowManager (WindowManager*);
+      WindowManager* getWindowManager () const;
   };
 
 }

@@ -28,7 +28,7 @@ namespace SSC {
     };
 
     this->bridge->router.map("window.eval", [=](auto message, auto router, auto reply) {
-      auto windowManager = reinterpret_cast<WindowManager *>(app.getWindowManager());
+      WindowManager* windowManager = app.getWindowManager();
       if (windowManager == nullptr) {
         // @TODO(jwerle): print warning
         return;
