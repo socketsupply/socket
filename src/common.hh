@@ -1,6 +1,8 @@
 #ifndef SSC_CORE_COMMON_H
 #define SSC_CORE_COMMON_H
 
+#include "config.hh"
+
 // macOS/iOS
 #if defined(__APPLE__)
 #include <TargetConditionals.h>
@@ -180,7 +182,7 @@ namespace SSC {
   inline const auto VERSION_HASH_STRING = ToString(STR_VALUE(SSC_VERSION_HASH));
   inline const auto VERSION_STRING = ToString(STR_VALUE(SSC_VERSION));
 
-  const char* getSettingsSource ();
+  const Map getSettingsSource ();
   inline constexpr bool isDebugEnabled () {
     #if defined(DEBUG) && DEBUG
       return true;
@@ -303,8 +305,55 @@ namespace SSC {
     #endif
   } platform;
 
-  inline const Vector<String>
-  splitc (const String& s, const char& c) {
+  inline Map configToMap (Config& config) {
+    Map map; // flatten values so they can be accessed in the templates
+    map["win_cmd"] = std::string(config.win.cmd);
+    map["win_icon"] = std::string(config.win.icon);
+    map["win_logo"] = std::string(config.win.logo);
+    map["win_pfx"] = std::string(config.win.pfx);
+    map["win_publisher"] = std::string(config.win.publisher);
+
+    map["linux_categories"] = std::string(config.linux.categories);
+    map["linux_cmd"] = std::string(config.linux.cmd);
+    map["linux_icon"] = std::string(config.linux.icon);
+
+    map["ios_icon"] = std::string(config.ios.icon);
+    map["ios_codesign_identity"] = std::string(config.ios.codesign_identity);
+    map["ios_distribution_method"] = std::string(config.ios.distribution_method);
+    map["ios_provisioning_profile"] = std::string(config.ios.provisioning_profile);
+    map["ios_simulator_device"] = std::string(config.ios.simulator_device);
+
+    map["mac_cmd"] = std::string(config.mac.cmd);
+    map["mac_icon"] = std::string(config.mac.icon);
+    map["mac_appstore_icon"] = std::string(config.mac.appstore_icon);
+    map["mac_appstore_category"] = std::string(config.mac.appstore_category);
+    map["mac_codesign_identity"] = std::string(config.mac.codesign_identity);
+    map["mac_sign"] = std::string(config.mac.sign);
+    map["mac_sign_paths"] = std::string(config.mac.sign_paths);
+
+    map["bundle_identifier"] = std::string(config.bundle_identifier);
+    map["version"] = std::string(config.version);
+    map["revision"] = std::string(config.revision);
+    map["copyright"] = std::string(config.copyright);
+    map["description"] = std::string(config.description);
+    map["name"] = std::string(config.name);
+    map["maintainer"] = std::string(config.maintainer);
+    map["lang"] = std::string(config.lang);
+    map["env"] = std::string(config.env);
+
+    map["build"] = std::string(config.build);
+    map["input"] = std::string(config.input);
+    map["output"] = std::string(config.output);
+    map["executable"] = std::string(config.executable);
+    map["flags"] = std::string(config.flags);
+    map["file_limit"] = std::to_string(config.file_limit);
+    map["debug_flags"] = std::string(config.debug.flags);
+    map["window_height"] = std::string(config.window.height);
+    map["window_width"] = std::string(config.window.width);
+    return map;
+  }
+
+  inline const Vector<String> splitc (const String& s, const char& c) {
     String buff;
     Vector<String> vec;
 

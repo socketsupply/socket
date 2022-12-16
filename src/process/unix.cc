@@ -25,7 +25,7 @@ Process::Process(
   MessageCallback read_stdout,
   MessageCallback read_stderr,
   MessageCallback on_exit,
-  bool open_stdin, const Config &config
+  bool open_stdin, const ProcessConfig &config
 ) noexcept:
   closed(true),
   read_stdout(std::move(read_stdout)),

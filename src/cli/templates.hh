@@ -1351,153 +1351,146 @@ constexpr auto gStoryboardLaunchScreen = R"XML(<?xml version="1.0" encoding="UTF
 )XML";
 
 constexpr auto gDefaultConfig = R"CONFIG(
-#
-# Default configuration file for ssc v{{ssc_version}}. Delete what you don't need.
-#
+// vim: set syntax=c:
 
-# Shell command to build an application.
-# build: bash build.sh
+//
+// Default configuration file for ssc v{{ssc_version}}.
+//
 
-# A unique ID that identifies the bundle (used by all app stores).
-bundle_identifier: com.beepboop
+config = {
+  // The shell command to execute when building an application. This is the most
+  // important command in this file. This will do all the heavy lifting and should
+  // handle 99.9% of your use cases for moving files into place or tweaking
+  // platform-specific artifacts.
 
-# A string that gets used in the about dialog and package meta info.
-copyright: (c) Beep Boop Corp. 1985
+  .build = "bash build.sh",
 
-# Advanced Compiler Settings for debug purposes (ie C++ compiler -g, etc).
-debug_flags: -g
+  // A unique ID that identifies the bundle (used by all app stores).
+  .bundle_identifier = "com.beepboop",
 
-# A short description of the app.
-description: A UI for the beep boop network
+  // A string that gets used in the about dialog and package meta info.
+  .copyright = "(c) Beep Boop Corp. 1985",
 
-# An array of environment variables, separated by commas.
-# env: USER, TMPDIR, PWD
+  // Advanced Compiler Settings for debug purposes (ie C++ compiler -g, etc).
+  debug = {
+    .flags = "-g"
+  },
 
-# The name of the file to be output.
-executable: boop
+  // A short description of the app.
+  .description = "A UI for the beep boop network",
 
-# Advanced Compiler Settings (ie C++ compiler -02, -03, etc).
-flags: -O3
+  // An list of environment variables, separated by commas.
+  .env = "USER, TMPDIR, PWD",
 
-# Set the limit of files that can be opened by your process.
-file_limit: 1024
+  // The name of the file to be output.
+  .executable = "boop",
 
-# The initial height of the first window.
-height: 750
+  // Advanced Compiler Settings (ie C++ compiler -02, -03, etc).
+  .flags = "-O3",
 
-# A directory is where your application's code is located.
-# input: src
+  // Set the limit of files that can be opened by your process.
+  .file_limit = 1024,
 
-# Localization
-# lang: en-us
+  .window = {
+    // The initial height of the first window.
+    .height = 750,
 
-# A String used in the about dialog and meta info.
-# maintainer: Beep Boop Corp.
+    // The initial width of the first window.
+    .width = 1024
+  },
 
-# The name of the program
-name: beepboop
+  // A directory is where your application's code is located.
+  .input = "src",
 
-# The binary output path. It's recommended to add this path to .gitignore.
-output: dist
+  // Localization
+  .lang = "en-us",
 
-# TODO: maybe the user doesn't need to know about this?
-# revision: 123
+  // A String used in the about dialog and meta info.
+  .maintainer = "Beep Boop Corp.",
 
-# The initial title of the window (can have spaces and symbols etc).
-title: Beep Boop
+  // The name of the program
+  .name = "beepboop",
 
-# A string that indicates the version of the application. It should be a semver triple like 1.0.0
-version: 0.0.1
+  // The binary output path. It's recommended to add this path to .gitignore.
+  .output = "dist",
 
-# The initial width of the first window.
-width: 1024
+  // TODO: maybe the user doesn't need to know about this? 
+  .revision = 123,
 
-#
-# Windows
-# ---
-#
+  // A string that indicates the version of the application. It should be a semver triple like 1.0.0
+  .version = "0.0.1",
 
-# The command to execute to spawn the “back-end” process.
-# win_cmd: beepboop.exe
+  // Files that should be added to the compile step.
+  .files = "native-module1.cc native-module2.cc",
 
-# The icon to use for identifying your app on Windows.
-# win_icon:
+  .win = {
+    // The command to execute to spawn the “back-end” process.
+    .cmd = "beepboop.exe",
 
-# The icon to use for identifying your app on Windows.
-# win_logo: src/icons/icon.png
+    // The icon to use for identifying your app on Windows.
+    .icon = "",
 
-# A relative path to the pfx file used for signing.
-# win_pfx: certs/cert.pfx
+    // The icon to use for identifying your app on Windows.
+    .logo = "src/icons/icon.png",
 
-# The signing information needed by the appx api.
-# win_publisher: CN=Beep Boop Corp., O=Beep Boop Corp., L=San Francisco, S=California, C=US
+    // A relative path to the pfx file used for signing.
+    .pfx = "certs/cert.pfx",
 
-#
-# Linux
-# ---
-#
+    // The signing information needed by the appx api.
+    .publisher = "CN=Beep Boop Corp., O=Beep Boop Corp., L=San Francisco, S=California, C=US"
+  },
 
-# Helps to make your app searchable in Linux desktop environments.
-# linux_categories: Developer Tools
+  .linux = {
+    // Helps to make your app searchable in Linux desktop environments.
+    .categories = "Developer Tools",
 
-# The command to execute to spawn the "back-end" process.
-# linux_cmd: beepboop
+    // The command to execute to spawn the "back-end" process.
+    .cmd = "beepboop",
 
-# The icon to use for identifying your app in Linux desktop environments.
-# linux_icon: src/icon.png
+    // The icon to use for identifying your app in Linux desktop environments.
+    .icon = "src/icon.png"
+  },
 
-#
-# MacOS
-# ---
-#
+  .mac = {
+    // Mac App Store icon
+    .appstore_icon = "src/icons/icon.png",
 
-# macOS code signing guide: https://sockets.sh/guides/#macos-1
+    // A category in the App Store
+    .category = "",
 
-# Mac App Store icon
-# mac_appstore_icon: src/icons/icon.png
+    // The command to execute to spawn the "back-end" process.
+    .cmd = "",
 
-# A category in the App Store
-# mac_category:
+    // The icon to use for identifying your app on MacOS.
+    .icon = "",
 
-# The command to execute to spawn the "back-end" process.
-# mac_cmd:
+    // TODO description & value (signing guide: https://sockets.sh/guides/#macos-1)
+    .sign = "",
 
-# The icon to use for identifying your app on MacOS.
-# mac_icon:
+    // TODO description & value
+    .codesign_identity = "",
 
-# TODO description & value
-# mac_sign:
+    // TODO description & value
+    .sign_paths = ""
+  },
 
-# TODO description & value
-# mac_codesign_identity:
-
-# TODO description & value
-# mac_sign_paths:
-
-#
-# iOS
-# ---
-#
-
-# iOS code signing guide: https://sockets.sh/guides/#ios-1
-
-# TODO description & value
-# ios_codesign_identity:
-
-# Describes how Xcode should export the archive. Available options: app-store, package, ad-hoc, enterprise, development, and developer-id.
-# ios_distribution_method: ad-hoc
-
-# A path to the provisioning profile used for signing iOS app.
-# ios_provisioning_profile:
-
-# which device to target when building for the simulator
-# ios_simulator_device: iPhone 13
-)CONFIG";
+  .ios = {
+    // signing guide: https://sockets.sh/guides/#ios-1
+    .codesign_identity = "",
+    // Describes how Xcode should export the archive. Available options: app-store, package, ad-hoc, enterprise, development, and developer-id.
+    .distribution_method = "ad-hoc",
+    // A path to the provisioning profile used for signing iOS app.
+    .provisioning_profile = "",
+    // which device to target when building for the simulator
+    .simulator_device = "iPhone 14"
+  }
+};)CONFIG";
 
 constexpr auto gDefaultGitignore = R"GITIGNORE(
 # Logs
 logs
 *.log
+*.dat
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
