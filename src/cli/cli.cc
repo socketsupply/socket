@@ -391,7 +391,7 @@ static Map getConfig (fs::path p) {
     << " -I" << p
     << " -I" << fs::current_path()
     << " " << prefixFile("src/config.cc")
-    << " -o " << prefixFile("bin/ssc-config")
+    << " -o " << prefixFile("bin/ssc-conf")
   ;
 
   auto r = exec(compileConfigCommand.str());
@@ -404,7 +404,7 @@ static Map getConfig (fs::path p) {
 
   // serialize and write the config to p
   auto base = p.remove_filename().string();
-  auto cmd = prefixFile("bin/ssc-config") + " " + base;
+  auto cmd = prefixFile("bin/ssc-conf") + " " + base;
   r = exec(cmd);
 
   if (r.exitCode != 0) {
@@ -639,7 +639,7 @@ int main (const int argc, const char* argv[]) {
 
         for (const auto &str : required) {
           if (settings.count(str) == 0) {
-            log("'" + str + "' value is required in ssc.config");
+            log("'" + str + "' value is required in ssc.conf");
             exit(1);
           }
         }
@@ -675,7 +675,7 @@ int main (const int argc, const char* argv[]) {
   createSubcommand("init", {}, false, [&](const std::span<const char *>& options) -> void {
     fs::create_directories(targetPath / "src");
     SSC::writeFile(targetPath / "src" / "index.html", gHelloWorld);
-    SSC::writeFile(targetPath / "ssc.config", tmpl(gDefaultConfig, defaultTemplateAttrs));
+    SSC::writeFile(targetPath / "ssc.conf", tmpl(gDefaultConfig, defaultTemplateAttrs));
     SSC::writeFile(targetPath / ".gitignore", gDefaultGitignore);
     exit(0);
   });
@@ -972,7 +972,7 @@ int main (const int argc, const char* argv[]) {
 
     auto executable = fs::path(settings["executable"] + (platform.win ? ".exe" : ""));
     auto binaryPath = paths.pathBin / executable;
-    auto configPath = targetPath / "ssc.config";
+    auto configPath = targetPath / "ssc.conf";
 
     if (!fs::exists(binaryPath)) {
       flagRunUserBuildOnly = false;
@@ -1421,7 +1421,7 @@ int main (const int argc, const char* argv[]) {
         if (!fs::exists(pathToProfile)) {
           log("provisioning profile not found: " + pathToProfile.string() + ". " +
               "Please specify a valid provisioning profile in the " +
-              "ios_provisioning_profile field in your ssc.config");
+              "ios_provisioning_profile field in your ssc.conf");
           exit(1);
         }
         String command = (
@@ -1808,10 +1808,10 @@ int main (const int argc, const char* argv[]) {
       if (rArchive.exitCode != 0) {
         auto const noDevice = rArchive.output.find("The requested device could not be found because no available devices matched the request.");
         if (noDevice != std::string::npos) {
-          log("error: ios_simulator_device " + settings["ios_simulator_device"] + " from your ssc.config was not found");
+          log("error: ios_simulator_device " + settings["ios_simulator_device"] + " from your ssc.conf was not found");
           auto const rDevices = exec("xcrun simctl list devices available | grep -e \"  \"");
           log("available devices:\n" + rDevices.output);
-          log("please update your ssc.config with a valid device or install Simulator runtime (https://developer.apple.com/documentation/xcode/installing-additional-simulator-runtimes)");
+          log("please update your ssc.conf with a valid device or install Simulator runtime (https://developer.apple.com/documentation/xcode/installing-additional-simulator-runtimes)");
           exit(1);
         }
         log("error: failed to archive project");

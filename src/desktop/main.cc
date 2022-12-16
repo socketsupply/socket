@@ -236,7 +236,7 @@ MAIN {
     );
 
     if (cmd.size() == 0) {
-      stdWrite("No " + platform.os + "_cmd provided in ssc.config", true);
+      stdWrite("No '.cmd' is provided for '." + platform.os + "' in ssc.conf", true);
       exit(1);
     }
 

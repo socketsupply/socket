@@ -1385,6 +1385,9 @@ config = {
   // The name of the file to be output.
   .executable = "boop",
 
+  // If false, the window will never be displayed.
+  .headless = false,
+
   // Advanced Compiler Settings (ie C++ compiler -02, -03, etc).
   .flags = "-O3",
 
@@ -1393,10 +1396,10 @@ config = {
 
   .window = {
     // The initial height of the first window.
-    .height = 750,
+    .height = "80%",
 
     // The initial width of the first window.
-    .width = 1024
+    .width = "80%"
   },
 
   // A directory is where your application's code is located.
@@ -1477,10 +1480,13 @@ config = {
   .ios = {
     // signing guide: https://sockets.sh/guides/#ios-1
     .codesign_identity = "",
+
     // Describes how Xcode should export the archive. Available options: app-store, package, ad-hoc, enterprise, development, and developer-id.
     .distribution_method = "ad-hoc",
+
     // A path to the provisioning profile used for signing iOS app.
     .provisioning_profile = "",
+
     // which device to target when building for the simulator
     .simulator_device = "iPhone 14"
   }
