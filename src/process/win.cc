@@ -105,7 +105,7 @@ Process::id_type Process::open(const SSC::String &command, const SSC::String &pa
   if (stdin_fd || stdout_fd || stderr_fd)
     startup_info.dwFlags |= STARTF_USESTDHANDLES;
 
-  if (config.show_window != Config::ShowWindow::show_default) {
+  if (config.show_window != ProcessConfig::ShowWindow::show_default) {
     startup_info.dwFlags |= STARTF_USESHOWWINDOW;
     startup_info.wShowWindow = static_cast<WORD>(config.show_window);
   }
