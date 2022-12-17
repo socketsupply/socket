@@ -61,8 +61,17 @@ void navigate (Window* window, const String &cwd, const String &seq, const Strin
 // which on windows is hInstance, on mac and linux this is just an int.
 //
 MAIN {
-  App app(instanceId);
-  WindowManager windowManager(app);
+  // Singletons should be static to remove some possible race conditions in
+  // their instantiation and destruction.
+  static App app(instanceId);
+  static WindowManager windowManager(app);
+
+  // TODO(trevnorris): Since App is a singleton, follow the CppCoreGuidelines
+  // better in how it's handled in the future.
+  // For now make a pointer reference since there is some member variable name
+  // collision in the call to shutdownHandler when it's being called from the
+  // windowManager instance.
+  static App* app_ptr = &app;
 
   app.setWindowManager(&windowManager);
   constexpr auto _port = PORT;
@@ -790,7 +799,7 @@ MAIN {
       process->kill(pid);
     }
     windowManager.destroy();
-    app.kill();
+    app_ptr->kill();
 
     exit(code);
   };
