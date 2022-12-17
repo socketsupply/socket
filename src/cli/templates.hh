@@ -257,6 +257,7 @@ constexpr auto gAndroidManifest = R"XML(
     android:label="{{title}}"
     android:theme="@style/Theme.AppCompat.Light"
     android:supportsRtl="true"
+    {{android_allow_cleartext}}
   >
     <activity
       android:name="{{android_main_activity}}"

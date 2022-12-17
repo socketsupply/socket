@@ -1198,6 +1198,16 @@ int main (const int argc, const char* argv[]) {
         }
       }
 
+      if (settings["android_allow_cleartext"].size() == 0)
+      {
+        if (flagDebugMode)
+        {
+          settings["android_allow_cleartext"] = "android:usesCleartextTraffic=\"true\"\n";
+        } else {
+          settings["android_allow_cleartext"] = "";
+        }
+      }
+      
       // Android Project
       writeFile(
         src / "main" / "AndroidManifest.xml",
@@ -1244,6 +1254,7 @@ int main (const int argc, const char* argv[]) {
         split(settings["android_native_sources"], ' ')
       ) {
         auto filename = fs::path(file).filename();
+        log(String("Android NDK source: " + String(targetPath / file)).c_str());
         writeFile(
           jni / "src" / filename,
           tmpl(std::regex_replace(
