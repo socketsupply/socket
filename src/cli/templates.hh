@@ -1350,16 +1350,19 @@ constexpr auto gStoryboardLaunchScreen = R"XML(<?xml version="1.0" encoding="UTF
 </document>
 )XML";
 
-constexpr auto gDefaultConfig = R"CONFIG(
+constexpr auto gDefaultConfig = R"INI(
+;  ___  __   ___      __ ____
+; /__  /  / /   /_/  /_   /
+; __/ /__/ /__ /  \ /__  /
 ;
-; Default configuration file for ssc v{{ssc_version}}.
+; Socket ⚡︎ Runtime · A modern runtime for Web Apps · v{{ssc_version}}
 ;
 
 ; The shell command to execute when building an application. This is the most
 ; important command in this file. This will do all the heavy lifting and should
 ; handle 99.9% of your use cases for moving files into place or tweaking
-; platform-specific artifacts.
-build = "bash build.sh"
+; platform-specific build artifacts.
+build = "node build-script.js"
 
 ; A unique ID that identifies the bundle (used by all app stores).
 bundle_identifier = "com.beepboop"
@@ -1406,45 +1409,31 @@ revision = 123
 ; A string that indicates the version of the application. It should be a semver triple like 1.0.0
 version = 0.0.1
 
-
-[native]
-
-; Files that should be added to the compile step.
-files = native-module1.cc native-module2.cc
-
-; Extra Headers
-headers = native-module1.hh
-
-[window]
-; The initial height of the first window.
-height = 80%
-
-; The initial width of the first window.
-width = 80%
-
-
 [debug]
 
 ; Advanced Compiler Settings for debug purposes (ie C++ compiler -g, etc).
 flags = "-g"
 
 
-[win]
+[android]
 
-; The command to execute to spawn the “back-end” process.
-cmd = "beepboop.exe"
+; TODO description needed
+main_activity = ""
 
-; The icon to use for identifying your app on Windows.
-icon = ""
 
-; The icon to use for identifying your app on Windows.
-logo = "src/icons/icon.png"
+[ios]
 
-; A relative path to the pfx file used for signing.
-pfx = "certs/cert.pfx"
+; signing guide: https://sockets.sh/guides/#ios-1
+codesign_identity = ""
 
-; The signing information needed by the appx api.
-publisher = "CN=Beep Boop Corp., O=Beep Boop Corp., L=San Francisco, S=California, C=US"
+; Describes how Xcode should export the archive. Available options: app-store, package, ad-hoc, enterprise, development, and developer-id.
+distribution_method = "ad-hoc"
+
+; A path to the provisioning profile used for signing iOS app.
+provisioning_profile = ""
+
+; which device to target when building for the simulator
+simulator_device = "iPhone 14"
 
 
 [linux]
@@ -1482,20 +1471,40 @@ codesign_identity = ""
 sign_paths = ""
 
 
-[ios]
+[native]
 
-; signing guide: https://sockets.sh/guides/#ios-1
-codesign_identity = ""
+; Files that should be added to the compile step.
+files = native-module1.cc native-module2.cc
 
-; Describes how Xcode should export the archive. Available options: app-store, package, ad-hoc, enterprise, development, and developer-id.
-distribution_method = "ad-hoc"
+; Extra Headers
+headers = native-module1.hh
 
-; A path to the provisioning profile used for signing iOS app.
-provisioning_profile = ""
 
-; which device to target when building for the simulator
-simulator_device = "iPhone 14"
-)CONFIG";
+[win]
+
+; The command to execute to spawn the “back-end” process.
+cmd = "beepboop.exe"
+
+; The icon to use for identifying your app on Windows.
+icon = ""
+
+; The icon to use for identifying your app on Windows.
+logo = "src/icons/icon.png"
+
+; A relative path to the pfx file used for signing.
+pfx = "certs/cert.pfx"
+
+; The signing information needed by the appx api.
+publisher = "CN=Beep Boop Corp., O=Beep Boop Corp., L=San Francisco, S=California, C=US"
+
+[window]
+
+; The initial height of the first window.
+height = 80%
+
+; The initial width of the first window.
+width = 80%
+)INI";
 
 constexpr auto gDefaultGitignore = R"GITIGNORE(
 # Logs
