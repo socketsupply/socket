@@ -455,7 +455,6 @@ namespace SSC {
           .debug = isDebugEnabled() || opts.debug,
           .isTest = this->options.isTest,
           .headless = this->options.headless || opts.headless || opts.appData["headless"] == "true",
-          .forwardConsole = opts.appData["linux_forward_console_to_stdout"] == "true",
 
           .cwd = this->options.cwd,
           .title = opts.title.size() > 0 ? opts.title : "",
