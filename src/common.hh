@@ -181,13 +181,15 @@ namespace SSC {
   inline const auto VERSION_STRING = ToString(STR_VALUE(SSC_VERSION));
 
   const Map getSettingsSource ();
-  inline constexpr bool isDebugEnabled () {
-    #if defined(DEBUG) && DEBUG
-      return true;
-    #else
-      return false;
-    #endif
-  }
+
+  bool isDebugEnabled ();
+
+  #if defined(CLI)
+    bool isDebugEnabled () {
+      return DEBUG == 1;
+    }
+  #endif
+
   const char* getDevHost ();
   int getDevPort ();
 
