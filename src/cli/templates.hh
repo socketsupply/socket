@@ -1383,7 +1383,7 @@ headless = false
 flags = -O3
 
 ; Set the limit of files that can be opened by your process.
-.file_limit = 1024,
+file_limit = 1024,
 
 ; A directory is where your application's code is located.
 input = "src"
