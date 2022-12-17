@@ -66,7 +66,7 @@ namespace SSC {
       auto value = trim(tuple.second);
 
       // skip empty key/value and comments
-      if (key.size() == 0 || value.size() == 0 || key.rfind("#", 0) == 0) {
+      if (key.size() == 0 || value.size() == 0 || key.rfind(";", 0) == 0) {
         continue;
       }
 
@@ -77,7 +77,7 @@ namespace SSC {
         preload += "    window.__args.config[key] = " + value + "\n";
       } else {
         preload += "    const value = '" + encodeURIComponent(value) + "'\n";
-        preload += "    if (!Number.isNaN(parseFloat(value))) {\n";
+        preload += "    if (!isNaN(value) && !Number.isNaN(parseFloat(value))) {\n";
         preload += "      window.__args.config[key] = parseFloat(value);\n";
         preload += "    } else { \n";
         preload += "      let val = decodeURIComponent(value);\n";
