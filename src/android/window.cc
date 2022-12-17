@@ -14,7 +14,7 @@ namespace SSC::android {
     this->env = env;
     this->self = env->NewGlobalRef(self);
     this->bridge = bridge;
-    this->config = parseConfig(decodeURIComponent(getSettingsSource()));
+    this->config = SSC::getSettingsSource();
     this->pointer = reinterpret_cast<jlong>(this);
 
     StringStream stream;
