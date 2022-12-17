@@ -52,6 +52,10 @@ open class WebViewClient (activity: WebViewActivity) : android.webkit.WebViewCli
   ): Boolean {
     val url = request.url
 
+    if (url.scheme == "http") {
+      return false
+    }
+
     if (url.scheme == "ipc" || url.scheme == "file" || isAssetUri(url)) {
       return true
     }

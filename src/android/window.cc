@@ -40,6 +40,7 @@ namespace SSC::android {
     options.debug = isDebugEnabled() ? true : false;
     options.env = stream.str();
     options.cwd = rootDirectory.str();
+    options.appData = this->config;
 
     preloadSource.assign(
       "window.addEventListener('unhandledrejection', e => {        \n"
