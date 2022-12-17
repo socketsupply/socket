@@ -52,7 +52,7 @@ open class WebViewClient (activity: WebViewActivity) : android.webkit.WebViewCli
   ): Boolean {
     val url = request.url
 
-    if (url.scheme == "http") {
+    if (url.scheme == "http" || url.scheme == "https") {
       return false
     }
 
