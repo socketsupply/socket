@@ -91,7 +91,7 @@ function _build_cli {
   local output_directory="$BUILD_DIR/$arch-$platform"
 
   local ldflags=($("$root/bin/ldflags.sh" --arch "$arch" --platform "$platform" -l{uv,socket-runtime}))
-  local cflags=($("$root/bin/cflags.sh"))
+  local cflags=(-DCLI $("$root/bin/cflags.sh"))
 
   local sources=($(find "$src"/cli/*.cc 2>/dev/null))
   local outputs=()
