@@ -565,7 +565,31 @@ int main (const int argc, const char* argv[]) {
         }
 
         auto ini = readFile(configPath);
-        std::string code("constexpr auto ini = \"" + stringToHex(ini) + "\";");
+        auto hex = stringToHex(ini);
+        auto bytes = StringStream();
+        auto length = hex.size() - 1;
+        int size = 0;
+
+        for (int i = 0; i < length; i += 2) {
+          size++;
+
+          if (i != 0 && (i & 3) == 0) {
+            bytes << "\n";
+          }
+
+          bytes << "  ";
+          if (i + 2 < length) {
+            bytes << "0x" << hex.substr(i, 2) << ",";
+          } else if (i + 1 < length) {
+            bytes << "0x0" << hex.substr(i, 1);
+          } else {
+            bytes << "0x" << hex.substr(i, 2);
+          }
+        }
+
+        std::string code(
+          "constexpr unsigned char __ssc_config_bytes["+ std::to_string(size) +"] = {\n" + bytes.str() + "\n};"
+        );
 
         settings = parseConfig(ini);
 
@@ -962,7 +986,8 @@ int main (const int argc, const char* argv[]) {
       exit(1);
     }
 
-    writeFile(fs::path(trim(prefixFile("include/ini.hh"))), settings["ini_code"]);
+    fs::create_directories(paths.platformSpecificOutputPath / "include");
+    writeFile(paths.platformSpecificOutputPath / "include" / "user-config-bytes.hh", settings["ini_code"]);
     //
     // Darwin Package Prep
     // ---
@@ -983,6 +1008,7 @@ int main (const int argc, const char* argv[]) {
       flags += " -L" + prefixFile("lib/" + platform.arch + "-desktop");
       flags += " -lsocket-runtime";
       flags += " -luv";
+      flags += " -I" + fs::path(paths.platformSpecificOutputPath / "include").string();
       files += prefixFile("objects/" + platform.arch + "-desktop/desktop/main.o");
       files += prefixFile("src/init.cc");
       flags += " " + getCxxFlags();
@@ -1481,6 +1507,7 @@ int main (const int argc, const char* argv[]) {
       log("preparing build for linux");
       flags = " -std=c++2a `pkg-config --cflags --libs gtk+-3.0 webkit2gtk-4.1`";
       flags += " " + getCxxFlags();
+      flags += " -I" + fs::path(paths.platformSpecificOutputPath / "include").string();
       flags += " -I" + prefixFile();
       flags += " -I" + prefixFile("include");
       flags += " -L" + prefixFile("lib/" + platform.arch + "-desktop");
@@ -1567,6 +1594,7 @@ int main (const int argc, const char* argv[]) {
         " -DWIN32_LEAN_AND_MEAN"
         " -Xlinker /NODEFAULTLIB:libcmt"
         " -Wno-nonportable-include-path"
+        " -I\"" + fs::path(paths.platformSpecificOutputPath / "include").string() + "\""
         " -I\"" + prefix + "\""
         " -I\"" + prefix + "\\include\""
         " -I\"" + prefix + "\\src\""

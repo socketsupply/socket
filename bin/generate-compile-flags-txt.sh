@@ -58,7 +58,7 @@ while (( $# > 0 )); do
 done
 
 function generate () {
-  local cflags=($("$root/bin/cflags.sh" "${args[@]}") -ferror-limit=0)
+  local cflags=($("$root/bin/cflags.sh" "${args[@]}") -ferror-limit=0 -I"$root/src")
 
   for flag in "${cflags[@]}"; do
     echo "$flag"
