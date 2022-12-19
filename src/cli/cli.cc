@@ -89,7 +89,7 @@ inline String prefixFile (String s) {
   }
 
   String local = getEnv ("LOCALAPPDATA");
-  return String("\"" + local + "\\Programs\\socketsupply\\" + s + "\" ");
+  return String(local + "\\Programs\\socketsupply\\" + s + " ");
 }
 
 inline String prefixFile () {
@@ -1611,20 +1611,20 @@ int main (const int argc, const char* argv[]) {
         " -L\"" + prefix + "\\lib\""
       ;
 
-      files += prefixFile("src\\init.cc");
-      files += prefixFile("src\\app\\app.cc");
-      files += prefixFile("src\\core\\bluetooth.cc");
-      files += prefixFile("src\\core\\core.cc");
-      files += prefixFile("src\\core\\fs.cc");
-      files += prefixFile("src\\core\\javascript.cc");
-      files += prefixFile("src\\core\\json.cc");
-      files += prefixFile("src\\core\\peer.cc");
-      files += prefixFile("src\\core\\udp.cc");
-      files += prefixFile("src\\desktop\\main.cc");
-      files += prefixFile("src\\ipc\\bridge.cc");
-      files += prefixFile("src\\ipc\\ipc.cc");
-      files += prefixFile("src\\window\\win.cc");
-      files += prefixFile("src\\process\\win.cc");
+      files += "\"" + prefixFile("src\\init.cc\"");
+      files += "\"" + prefixFile("src\\app\\app.cc\"");
+      files += "\"" + prefixFile("src\\core\\bluetooth.cc\"");
+      files += "\"" + prefixFile("src\\core\\core.cc\"");
+      files += "\"" + prefixFile("src\\core\\fs.cc\"");
+      files += "\"" + prefixFile("src\\core\\javascript.cc\"");
+      files += "\"" + prefixFile("src\\core\\json.cc\"");
+      files += "\"" + prefixFile("src\\core\\peer.cc\"");
+      files += "\"" + prefixFile("src\\core\\udp.cc\"");
+      files += "\"" + prefixFile("src\\desktop\\main.cc\"");
+      files += "\"" + prefixFile("src\\ipc\\bridge.cc\"");
+      files += "\"" + prefixFile("src\\ipc\\ipc.cc\"");
+      files += "\"" + prefixFile("src\\window\\win.cc\"");
+      files += "\"" + prefixFile("src\\process\\win.cc\"");
 
       fs::create_directories(paths.pathPackage);
 
