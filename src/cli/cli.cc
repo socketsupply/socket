@@ -986,8 +986,11 @@ int main (const int argc, const char* argv[]) {
       exit(1);
     }
 
-    fs::create_directories(paths.platformSpecificOutputPath / "include");
-    writeFile(paths.platformSpecificOutputPath / "include" / "user-config-bytes.hh", settings["ini_code"]);
+    if (!flagBuildForAndroid && !flagBuildForIOS) {
+      fs::create_directories(paths.platformSpecificOutputPath / "include");
+      writeFile(paths.platformSpecificOutputPath / "include" / "user-config-bytes.hh", settings["ini_code"]);
+    }
+
     //
     // Darwin Package Prep
     // ---
@@ -1121,6 +1124,8 @@ int main (const int argc, const char* argv[]) {
         jni / "include",
         fs::copy_options::overwrite_existing | fs::copy_options::recursive
       );
+
+      writeFile(jni / "user-config-bytes.hh", settings["ini_code"]);
 
       auto aaptNoCompressOptionsNormalized = std::vector<String>();
       auto aaptNoCompressDefaultOptions = split(R"OPTIONS("htm","html","txt","js","jsx","mjs","ts","css","xml")OPTIONS", ',');
@@ -1485,6 +1490,11 @@ int main (const int argc, const char* argv[]) {
         fs::path(prefixFile()) / "include",
         paths.platformSpecificOutputPath / "include",
         fs::copy_options::overwrite_existing | fs::copy_options::recursive
+      );
+
+      writeFile(
+        paths.platformSpecificOutputPath / "include" / "user-config-bytes.hh",
+        settings["ini_code"]
       );
 
       settings.insert(std::make_pair("host", devHost));
