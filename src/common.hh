@@ -595,7 +595,10 @@ namespace SSC {
       if (entry[0] == ';') continue;
 
       if (entry[0] == '[' && entry[entry.length() - 1] == ']') {
-        prefix = entry.substr(1, entry.length() - 2) + "_";
+        prefix = entry.substr(1, entry.length() - 2);
+        if (prefix.size() > 0) {
+          prefix += "_";
+        }
         continue;
       }
 
