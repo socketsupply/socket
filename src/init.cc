@@ -7,8 +7,11 @@ namespace SSC {
   }
 
   const Map getSettingsSource () {
-    #include "ini.hh" // NOLINT
-    return parseConfig(hexToString(ini));
+    #include "user-config-bytes.hh" // NOLINT
+    return parseConfig(std::string(
+      (const char*) __ssc_config_bytes,
+      sizeof(__ssc_config_bytes)
+    ));
   }
 
   const char* getDevHost () {
