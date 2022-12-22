@@ -796,7 +796,7 @@ int main (const int argc, const char* argv[]) {
     exit(0);
   });
 
-  createSubcommand("build", { "--platform", "--port", "--quiet", "-o", "-r", "--prod", "-p", "-c", "-s", "-e", "-n", "--test", "--headless" }, true, [&](const std::span<const char *>& options) -> void {
+  createSubcommand("build", { "--platform", "--host", "--port", "--quiet", "-o", "-r", "--prod", "-p", "-c", "-s", "-e", "-n", "--test", "--headless" }, true, [&](const std::span<const char *>& options) -> void {
     bool flagRunUserBuildOnly = false;
     bool flagAppStore = false;
     bool flagCodeSign = false;
@@ -814,9 +814,14 @@ int main (const int argc, const char* argv[]) {
     String argvForward = "";
     String targetPlatform = "";
 
+    String hostArg = "";
+    String portArg = "";
     String devHost("localhost");
     String devPort("0");
     auto cnt = 0;
+
+    String localDirPrefix = !platform.win ? "./" : "";
+    String quote = !platform.win ? "'" : "\"";
 
     for (auto const arg : options) {
       if (is(arg, "-h") || is(arg, "--help")) {
@@ -895,21 +900,28 @@ int main (const int argc, const char* argv[]) {
         }
       }
 
-      auto host = optionValue(arg, "--host");
-      if (host.size() > 0) {
-        devHost = host;
-      } else {
-        if (flagBuildForIOS || flagBuildForAndroid) {
-          auto r = exec("ifconfig | grep -w 'inet' | awk '!match($2, \"^127.\") {print $2; exit}' | tr -d '\n'");
-          if (r.exitCode == 0) {
-            devHost = r.output;
+      if (hostArg.size() == 0) {
+        hostArg = optionValue(arg, "--host");
+        if (hostArg.size() > 0) {
+          devHost = hostArg;
+        } else {
+          if (flagBuildForIOS || flagBuildForAndroid) {
+            auto r = exec((!platform.win) ? 
+              "ifconfig | grep -w 'inet' | awk '!match($2, \"^127.\") {print $2; exit}' | tr -d '\n'" : 
+              "PowerShell -Command ((Get-NetIPAddress -AddressFamily IPV4).IPAddress ^| Select-Object -first 1)"
+              );
+            if (r.exitCode == 0) {
+              devHost = r.output;
+            }
           }
         }
       }
 
-      auto port = optionValue(arg, "--port");
-      if (port.size() > 0) {
-        devPort = port;
+      if (portArg.size() == 0) {
+        portArg = optionValue(arg, "--port");
+        if (portArg.size() > 0) {
+          devPort = portArg;
+        }
       }
     }
 
@@ -1593,7 +1605,7 @@ int main (const int argc, const char* argv[]) {
     // Windows Package Prep
     // ---
     //
-    if (platform.win) {
+    if (platform.win && !flagBuildForAndroid && !flagBuildForIOS) {
       log("preparing build for win");
       auto prefix = prefixFile();
 
@@ -1903,6 +1915,10 @@ int main (const int argc, const char* argv[]) {
       StringStream packages;
       StringStream gradlew;
 
+      if (settings["android_accept_sdk_licenses"].size() > 0) {
+        sdkmanager << "echo " << settings["android_accept_sdk_licenses"] << "|";
+      }
+
       if (platform.unix) {
         gradlew
           << "ANDROID_HOME=" << androidHome << " ";
@@ -1914,17 +1930,19 @@ int main (const int argc, const char* argv[]) {
       }
 
       packages
-        << "'ndk;25.0.8775105' "
-        << "'platform-tools' "
-        << "'platforms;android-33' "
-        << "'emulator' "
-        << "'patcher;v4' "
-        << "'system-images;android-33;google_apis;x86_64' "
-        << "'system-images;android-33;google_apis;arm64-v8a' ";
+        << quote << "ndk;25.0.8775105" << quote << " "
+        << quote << "platform-tools" << quote << " "
+        << quote << "platforms;android-33" << quote << " "
+        << quote << "emulator" << quote << " "
+        << quote << "patcher;v4" << quote << " "
+        << quote << "system-images;android-33;google_apis;x86_64" << quote << " "
+        << quote << "system-images;android-33;google_apis;arm64-v8a" << quote << " ";
 
-      if (!platform.win) {
-        if (std::system("sdkmanager --version 2>&1 >/dev/null") != 0) {
+      if (std::system("sdkmanager --version 2>&1 >/dev/null") != 0) {
+        if (!platform.win) {
           sdkmanager << androidHome << "/cmdline-tools/latest/bin/";
+        } else {
+          sdkmanager << androidHome << "\\cmdline-tools\\latest\\bin\\";
         }
       }
 
@@ -1934,12 +1952,14 @@ int main (const int argc, const char* argv[]) {
 
       if (std::system(sdkmanager.str().c_str()) != 0) {
         log("error: failed to initialize Android SDK (sdkmanager)");
+        log("You may need to add accept_sdk_licenses = \"y\" to the [android] section of socket.ini.");
         exit(1);
       }
 
       if (flagDebugMode) {
         gradlew
-          << "./gradlew :app:bundleDebug "
+          << localDirPrefix
+          << "gradlew :app:bundleDebug "
           << "--warning-mode all ";
 
         if (std::system(gradlew.str().c_str()) != 0) {
@@ -1948,7 +1968,8 @@ int main (const int argc, const char* argv[]) {
         }
       } else {
         gradlew
-          << "./gradlew :app:bundle";
+          << localDirPrefix
+          << "gradlew :app:bundle";
 
         if (std::system(gradlew.str().c_str()) != 0) {
           log("error: failed to invoke `gradlew :app:bundle` command");
@@ -1958,7 +1979,9 @@ int main (const int argc, const char* argv[]) {
 
       // clear stream
       gradlew.str("");
-      gradlew << "./gradlew assemble";
+      gradlew 
+        << localDirPrefix
+        << "gradlew assemble";
 
       if (std::system(gradlew.str().c_str()) != 0) {
         log("error: failed to invoke `gradlew assemble` command");
@@ -1973,7 +1996,8 @@ int main (const int argc, const char* argv[]) {
           if (std::system("avdmanager list 2>&1 >/dev/null") != 0) {
             avdmanager << androidHome << "/cmdline-tools/latest/bin/";
           }
-        }
+        } else
+          avdmanager << androidHome << "\\cmdline-tools\\latest\\bin\\";
 
         avdmanager
           << "avdmanager create avd "
@@ -1997,7 +2021,8 @@ int main (const int argc, const char* argv[]) {
           if (std::system("adb --version 2>&1 >/dev/null") != 0) {
             adb << androidHome << "/platform-tools/";
           }
-        }
+        } else
+          adb << androidHome << "\\platform-tools\\";
 
         adb
           << "adb "
