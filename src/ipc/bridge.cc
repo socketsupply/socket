@@ -1420,14 +1420,22 @@ namespace SSC::IPC {
   }
 
   void Router::map (const String& name, bool async, MessageCallback callback) {
+    String data = name;
+    // URI hostnames are not case sensitive. Convert to lowercase.
+    std::transform(data.begin(), data.end(), data.begin(),
+      [](unsigned char c) { return std::tolower(c); });
     if (callback != nullptr) {
-      table.insert_or_assign(name, MessageCallbackContext { async, callback });
+      table.insert_or_assign(data, MessageCallbackContext { async, callback });
     }
   }
 
   void Router::unmap (const String& name) {
-    if (table.find(name) != table.end()) {
-      table.erase(name);
+    String data = name;
+    // URI hostnames are not case sensitive. Convert to lowercase.
+    std::transform(data.begin(), data.end(), data.begin(),
+      [](unsigned char c) { return std::tolower(c); });
+    if (table.find(data) != table.end()) {
+      table.erase(data);
     }
   }
 
@@ -1453,11 +1461,16 @@ namespace SSC::IPC {
   }
 
   bool Router::invoke (const Message& message, ResultCallback callback) {
-    if (this->table.find(message.name) == this->table.end()) {
+    String data = message.name;
+    // URI hostnames are not case sensitive. Convert to lowercase.
+    std::transform(data.begin(), data.end(), data.begin(),
+      [](unsigned char c) { return std::tolower(c); });
+
+    if (this->table.find(data) == this->table.end()) {
       return false;
     }
 
-    auto ctx = this->table.at(message.name);
+    auto ctx = this->table.at(data);
 
     if (ctx.callback != nullptr) {
       Message msg(message);
