@@ -12,7 +12,7 @@ $WORKING_BUILD_PATH = "$WORKING_PATH\build"
 $LIBUV_BUILD_TYPE = "Release"
 $LIBUV_TAG = $uv
 # see https://docs.microsoft.com/en-us/microsoft-edge/webview2/concepts/versioning
-$WEBVIEW2_VERSION = $webview
+$WEBVIEW2_VERSION = "$webview"
 $SSC_BUILD_OPTIONS = "-O2"
 
 if ($debug -eq $true) {
@@ -119,8 +119,8 @@ Function Install-WebView2 {
   (New-Item -ItemType Directory -Force -Path "$WORKING_BUILD_PATH\include") > $null
 
   # download and extract
-  Write-Output "# downloading latest WebView2 header and library files..."
-  Invoke-WebRequest "https://www.nuget.org/api/v2/package/Microsoft.Web.WebView2/$WEBVIEW2_VERSION" -O "$tmpdir\webview2.zip"
+  Write-Output "# downloading WebView2 ${WEBVIEW2_VERSION} header and library files..."
+  Invoke-WebRequest "https://www.nuget.org/api/v2/package/Microsoft.Web.WebView2/1.0.1369-prerelease" -O "$tmpdir\webview2.zip"
   Expand-Archive -Path $tmpdir\WebView2.zip -DestinationPath $tmpdir\WebView2
 
   # install files into project `lib\` dir
