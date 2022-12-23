@@ -172,21 +172,14 @@ jobs:
 
         git config --global user.email "devops@optool.co"
         git config --global user.name "Optool Github Actions"
-        git clone --depth 1 git@github.com:socketsupply/socket-examples.git
-        cd socket-examples/desktop-node-tonic-cjs/ && npm install
+        git clone -b ipc-cleanup --depth 1 git@github.com:socketsupply/io.git
       env:
         CI: true
         NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
 
-    - name: compile example desktop
+    - name: Run example io tests
       run: |
-        ssc build ./socket-examples/desktop-node-tonic-cjs/
-      env:
-        CI: true
-
-    - name: Run example desktop tests
-      run: |
-        ssc run --test=1 ./socket-examples/desktop-node-tonic-cjs/
+        cd io && npm install && cd test && ssc build --headless --prod -r -o .
       env:
         CI: true
 
