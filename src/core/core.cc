@@ -143,7 +143,9 @@ namespace SSC {
       "  });                                                         \n"
       "};                                                            \n"
       "                                                              \n"
-      "xhr.open('GET', 'ipc://post?id=" + sid + "');                 \n"
+      "const protocol = __args.os === 'win32' ? 'http:' : 'ipc:';    \n"
+      "xhr.open('GET', `${protocol}//post?id=" + sid + "`);          \n"
+      "xhr.setRequestHeader('x-ipc-request', 'post');                \n"
       "xhr.send();                                                   \n"
     );
 
