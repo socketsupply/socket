@@ -1120,7 +1120,11 @@ namespace SSC {
   }
 
   SSC::String Window::getTitle () {
-    // TODO: implement.
+    LPWSTR title;
+    webview->get_DocumentTitle(&title);
+    String title_s = WStringToString(title);
+    CoTaskMemFree(title);
+    return title_s;
   }
 
   void Window::setTitle (const SSC::String& seq, const SSC::String& title) {
