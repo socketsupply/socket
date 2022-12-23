@@ -34,7 +34,7 @@ general options:
   -r             run after building
   --headless     run headlessly
   --stdin        read from stdin (emitted in window 0)
-  --test[=value] indicate test mode
+  --test=path    indicate test mode
 
 packaging options:
   --prod  disable debugging info, inspector, etc.
@@ -107,7 +107,7 @@ usage:
 options:
   --platform     iossimulator; if not specified, runs on current platfrom
   --prod         run production build
-  --test[=value] indicate test mode
+  --test=path    indicate test mode
 )TEXT";
 
 constexpr auto gHelloWorld = R"HTML(

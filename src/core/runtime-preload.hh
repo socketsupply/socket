@@ -47,9 +47,44 @@ namespace SSC {
       "    configurable: true                                                    \n"
       "  }                                                                       \n"
       "})                                                                        \n"
+      "window.__ipc = {}                                                         \n"
+      "Object.defineProperties(window.__ipc, {                                   \n"
+      "  postMessage: {                                                          \n"
+      "    value: (...args) => {                                                 \n"
+      "      if (window?.webkit?.messageHandlers?.external?.postMessage) {       \n"
+      "        return window.webkit.messageHandlers.external.postMessage(...args)\n"
+      "      }                                                                   \n"
+      "      if (window?.chrome?.webview?.postMessage) {                         \n"
+      "        return window.chrome.webview.postMessage(...args)                 \n"
+      "      }                                                                   \n"
+      "      throw new TypeError(                                                \n"
+      "        'Could not determine UserMessageHandler.postMessage in Window'    \n"
+      "      )                                                                   \n"
+      "    },                                                                    \n"
+      "    enumerable: true                                                      \n"
+      "  }                                                                       \n"
+      "})                                                                        \n"
       "Object.freeze(window.__args.argv)                                         \n"
       "Object.freeze(window.__args.env)                                          \n"
     );
+
+    const auto start = opts.argv.find("--test=");
+    if (start != std::string::npos) {
+      auto end = opts.argv.find("'", start);
+      if (end == std::string::npos) {
+        end = opts.argv.size();
+      }
+      const auto file = opts.argv.substr(start + 7, end - start - 7);
+      if (file.size() > 0) {
+        preload += "                                                      \n"
+          "document.addEventListener('DOMContentLoaded', () => {          \n"
+          "  const script = document.createElement('script')              \n"
+          "  script.setAttribute('type', 'module')                        \n"
+          "  script.setAttribute('src', '" + file + "')                   \n"
+          "  document.head.appendChild(script)                            \n"
+          "});                                                            \n";
+      }
+    }
 
     if (platform.mac || platform.linux || platform.win) {
       preload += "                                                      \n"
