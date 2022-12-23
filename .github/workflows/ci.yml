@@ -120,7 +120,7 @@ jobs:
 
   build_for_win:
     runs-on: windows-2022
-    timeout-minutes: 10
+    timeout-minutes: 15
 
     steps:
     - uses: actions/checkout@v3
