@@ -1,6 +1,10 @@
+#include <Shlwapi.h>
+#include <objidl.h>
 #include <wrl.h>
 #include <shellapi.h>
 #include "window.hh"
+
+#pragma comment(lib, "Shlwapi.lib")
 
 #ifndef CHECK_FAILURE
 #define CHECK_FAILURE(...)
@@ -624,6 +628,14 @@ namespace SSC {
 
     this->drop = new DragDrop(this);
 
+    this->bridge = new IPC::Bridge(app.core);
+    this->bridge->router.dispatchFunction = [&app] (auto callback) {
+      app.dispatch([callback] { callback(); });
+    };
+    this->bridge->router.evaluateJavaScriptFunction = [this] (auto js) {
+      this->eval(js);
+    };
+
     //
     // In theory these allow you to do drop files in elevated mode
     //
@@ -732,35 +744,145 @@ namespace SSC {
 
                   EventRegistrationToken tokenSchemaFilter;
                   webview->AddWebResourceRequestedFilter(L"*", COREWEBVIEW2_WEB_RESOURCE_CONTEXT_XML_HTTP_REQUEST);
-
-                  CHECK_FAILURE(webview->add_WebResourceRequested(
+                  webview->add_WebResourceRequested(
                     Microsoft::WRL::Callback<ICoreWebView2WebResourceRequestedEventHandler>(
                       [&](ICoreWebView2*, ICoreWebView2WebResourceRequestedEventArgs* args) {
-                        COREWEBVIEW2_WEB_RESOURCE_CONTEXT resourceContext;
-                        CHECK_FAILURE(args->get_ResourceContext(&resourceContext));
-                        // Override the response with the data.
-                        // If put_Response is not called, the request will continue as normal.
-                        auto response = Microsoft::WRL::Make<ICoreWebView2WebResourceResponse>();
-                        auto environment = Microsoft::WRL::Make<ICoreWebView2Environment>();
-                        auto webview2 = Microsoft::WRL::Make<ICoreWebView2_15>();
+                        Window* w = reinterpret_cast<Window*>(GetWindowLongPtr((HWND)window, GWLP_USERDATA));
+                        ICoreWebView2_2* webview2 = nullptr;
+                        ICoreWebView2Environment* env = nullptr;
+                        ICoreWebView2WebResourceResponse* res = nullptr;
+                        ICoreWebView2WebResourceRequest* req = nullptr;
+                        ICoreWebView2HttpRequestHeaders* headers = nullptr;
+                        String method_s;
+                        LPWSTR req_uri;
+                        LPWSTR method;
+                        BOOL is_ipc = FALSE;
 
-                        CHECK_FAILURE(webview->QueryInterface(IID_PPV_ARGS(&webview2)));
-                        CHECK_FAILURE(webview2->get_Environment(&environment));
+                        webview->QueryInterface(IID_PPV_ARGS(&webview2));
+                        webview2->get_Environment(&env);
 
-                        CHECK_FAILURE(environment->CreateWebResourceResponse(
-                          nullptr,
-                          200,
-                          L"xxx",
-                          L"Content-Type: application/octet-stream",
-                          &response)
-                        );
+                        args->get_Request(&req);
+                        req->get_Method(&method);
+                        method_s = WStringToString(method);
 
-                        CHECK_FAILURE(args->put_Response(response.get()));
+                        if (method_s.compare("OPTIONS") == 0) {
+                          env->CreateWebResourceResponse(
+                            nullptr,
+                            204,
+                            L"OK",
+                            L"Connection: keep-alive\n"
+                            L"Access-Control-Allow-Headers: *\n"
+                            L"Access-Control-Allow-Origin: *\n"
+                            L"Access-Control-Allow-Methods: PUT, POST, GET\n",
+                            &res
+                          );
+                          args->put_Response(res);
+
+                          CoTaskMemFree(method);
+                          return S_OK;
+                        }
+
+                        req->get_Headers(&headers);
+                        req->get_Uri(&req_uri);
+                        headers->Contains(L"x-ipc-request", &is_ipc);
+
+                        // Not a request we need to handle. Return early.
+                        if (!is_ipc) {
+                          return S_OK;
+                        }
+
+                        String uri = SSC::replace(WStringToString(req_uri), "http://", "ipc://");
+                        uri = SSC::replace(uri, "/\\?", "?");
+
+                        ICoreWebView2Deferral* deferral;
+                        HRESULT hr = args->GetDeferral(&deferral);
+
+                        char data[32768];
+                        char* body_ptr = nullptr;
+                        size_t body_length = 0;
+
+                        if (method_s.compare("POST") == 0) {
+                          IStream* body_data;
+                          DWORD actual;
+                          HRESULT r;
+
+                          req->get_Content(&body_data);
+                          // TODO(trevnorris): This assumes the amount of data sent is always less
+                          // than 32KB. A check should be added to make sure the amount of data
+                          // read is under that. How should it be handled if that's the case?
+                          r = body_data->Read(data, 32768, &actual);
+                          if (r == S_OK || r == S_FALSE) {
+                            body_ptr = data;
+                            body_length = actual;
+                          }
+                        } else if (!method_s.compare("GET") != 0) {
+                          // UNREACHABLE
+                        }
+
+                        auto r = w->bridge->route(uri, body_ptr, body_length, [&, args, deferral, env](auto result) {
+                          String headers;
+                          char* body;
+                          size_t length;
+
+                          if (result.post.body != nullptr) {
+                            length = result.post.length;
+                            body = new char[length];
+                            memcpy(body, result.post.body, length);
+                            headers = "Content-Type: application/octet-stream\n";
+                          } else {
+                            length = result.str().size();
+                            body = new char[length];
+                            memcpy(body, result.str().c_str(), length);
+                            headers = "Content-Type: application/json\n";
+                          }
+
+                          headers += "Connection: keep-alive\n";
+                          headers += "Access-Control-Allow-Headers: *\n";
+                          headers += "Access-Control-Allow-Origin: *\n";
+                          headers += "Content-Length: ";
+                          headers += std::to_string(length);
+                          headers += "\n";
+
+                          // Completing the response in the call to dispatch because the
+                          // put_Response() must be called from the same thread that made
+                          // the request. This assumes that the request was made from the
+                          // main thread, since that's where dispatch() will call its cb.
+                          app.dispatch([&, body, length, headers, args, deferral, env] {
+                            ICoreWebView2WebResourceResponse* res = nullptr;
+                            IStream* bytes = SHCreateMemStream((const BYTE*)body, length);
+                            env->CreateWebResourceResponse(
+                              bytes,
+                              200,
+                              L"OK",
+                              StringToWString(headers).c_str(),
+                              &res
+                            );
+                            args->put_Response(res);
+                            deferral->Complete();
+                            delete[] body;
+                          });
+                        });
+
+                        if (!r) {
+                          ICoreWebView2WebResourceResponse* res = nullptr;
+                          env->CreateWebResourceResponse(
+                            nullptr,
+                            404,
+                            L"Not Found",
+                            L"",
+                            &res
+                          );
+                          args->put_Response(res);
+                          deferral->Complete();
+                        }
+
+                        CoTaskMemFree(req_uri);
+                        CoTaskMemFree(method);
+
                         return S_OK;
                       }
                     ).Get(),
                     &tokenSchemaFilter
-                    )
                   );
 
                   EventRegistrationToken tokenNewWindow;
@@ -768,6 +890,10 @@ namespace SSC {
                   webview->add_NewWindowRequested(
                     Microsoft::WRL::Callback<ICoreWebView2NewWindowRequestedEventHandler>(
                       [&](ICoreWebView2* wv, ICoreWebView2NewWindowRequestedEventArgs* e) {
+                        // TODO(trevnorris): Called when window.open() is called in JS, but the new
+                        // window won't have all the setup and request interception. This setup should
+                        // be moved to another location where it can be run for any new window. Right
+                        // now ipc won't work for any new window.
                         e->put_Handled(true);
                         return S_OK;
                       }
@@ -790,10 +916,13 @@ namespace SSC {
                     Microsoft::WRL::Callback<IRecHandler>([&](ICoreWebView2* webview, IArgs* args) -> HRESULT {
                       LPWSTR messageRaw;
                       args->TryGetWebMessageAsString(&messageRaw);
-
                       if (onMessage != nullptr) {
-                      SSC::WString message(messageRaw);
-                        onMessage(SSC::WStringToString(message));
+                        SSC::WString message_w(messageRaw);
+                        SSC::String message = SSC::WStringToString(messageRaw);
+                        Window* w = reinterpret_cast<Window*>(GetWindowLongPtr((HWND)window, GWLP_USERDATA));
+                        if (!w->bridge->route(message, nullptr, 0)) {
+                          onMessage(message);
+                        }
                       }
 
                       CoTaskMemFree(messageRaw);
