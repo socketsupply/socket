@@ -1120,7 +1120,12 @@ namespace SSC {
   }
 
   SSC::String Window::getTitle () {
-    // TODO: implement.
+    int len = GetWindowTextLength(window) + 1;
+    LPTSTR title = new TCHAR[len];
+    GetWindowText(window, title, len);
+    String title_s = WStringToString(title);
+    delete[] title;
+    return title_s;
   }
 
   void Window::setTitle (const SSC::String& seq, const SSC::String& title) {
