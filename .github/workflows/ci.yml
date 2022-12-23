@@ -148,7 +148,7 @@ jobs:
 
     - name: install ssc
       run: |
-        ./bin/install.ps1 dev
+        ./bin/install.ps1
 
         echo "::add-path::$env:LOCALAPPDATA\Programs\socketsupply\bin"
         echo "$env:LOCALAPPDATA\Programs\socketsupply\bin" >> $env:GITHUB_PATH
