@@ -1317,7 +1317,7 @@ int main (const int argc, const char* argv[]) {
       }
 
       if (android_enable_standard_ndk_build) {
-        settings["default_config_external_native_build"].assign(
+        settings["android_default_config_external_native_build"].assign(
           "    externalNativeBuild {\n"
           "      ndkBuild {\n"
           "        arguments \"NDK_APPLICATION_MK:=src/main/jni/Application.mk\"\n"
@@ -1333,7 +1333,7 @@ int main (const int argc, const char* argv[]) {
           "  }"
         );
       } else {
-        settings["default_config_external_native_build"].assign("    // externalNativeBuild called manually for -j parallel support. Disable with [android]...enable_standard_ndk_build = true in socket.ini\n");
+        settings["android_default_config_external_native_build"].assign("    // externalNativeBuild called manually for -j parallel support. Disable with [android]...enable_standard_ndk_build = true in socket.ini\n");
         settings["android_external_native_build"].assign("  // externalNativeBuild called manually for -j parallel support. Disable with [android]...enable_standard_ndk_build = true in socket.ini\n");
       }
       
