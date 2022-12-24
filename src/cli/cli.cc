@@ -1053,6 +1053,10 @@ int main (const int argc, const char* argv[]) {
       writeFile(paths.pathResourcesRelativeToUserBuild / "Credits.html", credits);
     }
 
+
+    // used in multiple if blocks, need to declare here
+    auto android_enable_standard_ndk_build = settings["android_enable_standard_ndk_build"] == "true";
+
     if (flagBuildForAndroid) {
       auto bundle_identifier = settings["bundle_identifier"];
       auto bundle_path = fs::path(replace(bundle_identifier, "\\.", "/")).make_preferred();
@@ -1258,6 +1262,27 @@ int main (const int argc, const char* argv[]) {
         } else {
           settings["android_allow_cleartext"] = "";
         }
+      }
+
+      if (android_enable_standard_ndk_build) {
+        settings["android_defaultConfig_externalNativeBuild"].assign(
+          "    externalNativeBuild {\n"
+          "      ndkBuild {\n"
+          "        arguments \"NDK_APPLICATION_MK:=src/main/jni/Application.mk\"\n"
+          "      }\n"
+          "    }"
+        );
+
+        settings["android_android_externalNativeBuild"].assign(
+          "  externalNativeBuild {\n"
+          "    ndkBuild {\n"
+          "      path \"src/main/jni/Android.mk\"\n"
+          "    }\n"
+          "  }"
+        );
+      } else {
+        settings["android_defaultConfig_externalNativeBuild"].assign("    // externalNativeBuild called manually for -j parallel support. Disable with [android]...enable_standard_ndk_build = true in socket.ini\n");
+        settings["android_android_externalNativeBuild"].assign("  // externalNativeBuild called manually for -j parallel support. Disable with [android]...enable_standard_ndk_build = true in socket.ini\n");
       }
       
       // Android Project
@@ -1955,60 +1980,62 @@ int main (const int argc, const char* argv[]) {
         exit(1);
       }
 
-      StringStream ndkBuild;
-      StringStream ndkBuildArgs;
-      StringStream ndkTest;
-      
-      ndkBuild << "ndk-build" << (platform.win ? ".cmd" : "");
-      ndkTest << ndkBuild.str() << " --version 2>&1 >" << (!platform.win ? "/dev/null" : "NUL");
+      if (!android_enable_standard_ndk_build)
+      {
+        StringStream ndkBuild;
+        StringStream ndkBuildArgs;
+        StringStream ndkTest;
+        
+        ndkBuild << "ndk-build" << (platform.win ? ".cmd" : "");
+        ndkTest << ndkBuild.str() << " --version 2>&1 >" << (!platform.win ? "/dev/null" : "NUL");
 
-      if (std::system(ndkTest.str().c_str()) != 0) {
-          ndkBuild.str("");
-          ndkBuild << androidHome << slash << "ndk" << slash <<  ndkVersion << slash << "ndk-build" << (platform.win ? ".cmd" : "");
+        if (std::system(ndkTest.str().c_str()) != 0) {
+            ndkBuild.str("");
+            ndkBuild << androidHome << slash << "ndk" << slash <<  ndkVersion << slash << "ndk-build" << (platform.win ? ".cmd" : "");
 
-          
-          ndkTest.str("");
-          ndkTest
-            << ndkBuild.str() << " --version 2>&1 >" << (!platform.win ? "/dev/null" : "NUL");
+            
+            ndkTest.str("");
+            ndkTest
+              << ndkBuild.str() << " --version 2>&1 >" << (!platform.win ? "/dev/null" : "NUL");
 
-          if (std::system(ndkTest.str().c_str()) != 0) {
-            StringStream ndkError;
-            ndkError 
-              << "ndk not in path or ANDROID_HOME at "
-              << ndkBuild.str();
-            log(ndkError.str());
-            exit(1);
-          }
+            if (std::system(ndkTest.str().c_str()) != 0) {
+              StringStream ndkError;
+              ndkError 
+                << "ndk not in path or ANDROID_HOME at "
+                << ndkBuild.str();
+              log(ndkError.str());
+              exit(1);
+            }
+        }
+
+        // TODO(mribbons): Cache binaries, hash based on source contents. Copy if cache matches rather than building.
+        // TODO(mribbons): Expand cache system to other target platforms
+
+        auto output = paths.platformSpecificOutputPath;
+        // auto app = output / "app";
+        auto src = app / "src";
+        auto _main = src / "main";
+        auto app_mk = _main / "jni" / "Application.mk";
+        auto jniLibs = _main / "jniLibs";
+
+        ndkBuildArgs 
+          << ndkBuild.str()
+          << " -j"
+          << " NDK_PROJECT_PATH=" << _main
+          << " NDK_APPLICATION_MK=" << app_mk
+          << (flagDebugMode ? " NDK_DEBUG=1" : "")
+          << " APP_PLATFORM=" << androidPlatform
+          << " NDK_LIBS_OUT=" << jniLibs
+          << "2>&1 >" << (!platform.win ? "/dev/null" : "NUL")
+          ;
+
+        if (std::system(ndkBuildArgs.str().c_str()) != 0)
+        {        
+          log(ndkBuildArgs.str());
+          log("ndk build failed.");
+          exit(1);
+        }
       }
-
-      // TODO(mribbons): Cache binaries, hash based on source contents. Copy if cache matches rather than building.
-      // TODO(mribbons): Expand cache system to other target platforms
-
-      auto output = paths.platformSpecificOutputPath;
-      // auto app = output / "app";
-      auto src = app / "src";
-      auto _main = src / "main";
-      auto app_mk = _main / "jni" / "Application.mk";
-      auto jniLibs = _main / "jniLibs";
-
-      ndkBuildArgs 
-        << ndkBuild.str()
-        << " -j"
-        << " NDK_PROJECT_PATH=" << _main
-        << " NDK_APPLICATION_MK=" << app_mk
-        << (flagDebugMode ? " NDK_DEBUG=1" : "")
-        << " APP_PLATFORM=" << androidPlatform
-        << " NDK_LIBS_OUT=" << jniLibs
-        << "2>&1 >" << (!platform.win ? "/dev/null" : "NUL")
-        ;
-
-      if (std::system(ndkBuildArgs.str().c_str()) != 0)
-      {        
-        log(ndkBuildArgs.str());
-        log("ndk build failed.");
-        exit(1);
-      }
-
 
       // just build for CI
       if (getEnv("SSC_CI").size() > 0) {
