@@ -1008,7 +1008,7 @@ android {
       abiFilters {{android_ndk_abi_filters}}
     }
 
-{{default_config_external_native_build}}
+{{android_default_config_external_native_build}}
   }
 
   aaptOptions {
