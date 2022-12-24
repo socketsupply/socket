@@ -21,6 +21,7 @@ open class Runtime (
   configuration: RuntimeConfiguration
 ) {
   var pointer = alloc(activity.getRootDirectory())
+  val handler = android.os.Handler(android.os.Looper.getMainLooper())
   var activity = WeakReference(activity)
   val configuration = configuration;
 

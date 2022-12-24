@@ -4,10 +4,12 @@ import java.lang.ref.WeakReference
 
 interface IBridgeConfiguration {
   val getRootDirectory: () -> String
+  val bluetooth: Bluetooth
 }
 
 data class BridgeConfiguration (
-  override val getRootDirectory: () -> String
+  override val getRootDirectory: () -> String,
+  override val bluetooth: Bluetooth
 ) : IBridgeConfiguration
 
 data class Result (
@@ -110,11 +112,13 @@ class Message (message: String? = null) {
 
 open class Bridge (runtime: Runtime, configuration: IBridgeConfiguration) {
   open protected val TAG = "Bridge"
+
   var pointer = alloc(runtime.pointer)
-  var runtime = WeakReference(runtime)
-  val requests = mutableMapOf<Long, RouteRequest>()
-  val configuration = configuration
+  val runtime = WeakReference(runtime)
   val buffers = mutableMapOf<String, ByteArray>()
+  val requests = mutableMapOf<Long, RouteRequest>()
+  val bluetooth = WeakReference(configuration.bluetooth)
+  val getRootDirectory = configuration.getRootDirectory
 
   protected var nextRequestId = 0L
 
@@ -150,6 +154,7 @@ open class Bridge (runtime: Runtime, configuration: IBridgeConfiguration) {
     callback: RouteCallback
   ): Boolean {
     val message = Message(value)
+    val bluetooth = this.bluetooth.get()
     message.bytes = bytes
 
     if (buffers.contains(message.seq)) {
@@ -157,12 +162,169 @@ open class Bridge (runtime: Runtime, configuration: IBridgeConfiguration) {
       buffers.remove(message.seq)
     }
 
+    if (message.domain == "bluetooth") {
+      if (bluetooth == null) {
+        callback(Result(0, message.seq, message.command, """{
+          "source": "${message.command}",
+          "err": {
+            "message": "Bluetooth is not initialized"
+          }
+        }"""))
+        return true
+      }
+
+      if (!bluetooth.isSupported()) {
+        callback(Result(0, message.seq, message.command, """{
+          "source": "${message.command}",
+          "err": {
+            "message": "Bluetooth is not supported on this platform"
+          }
+        }"""))
+        return true
+      }
+
+      if (!bluetooth.isEnabled()) {
+        callback(Result(0, message.seq, message.command, """{
+          "source": "${message.command}",
+          "err": {
+            "message": "Bluetooth is not enabled on this platform"
+          }
+        }"""))
+        return true
+      }
+    }
+
     when (message.command) {
+      "bluetooth.start" -> {
+        if (!message.has("serviceId")) {
+          callback(Result(0, message.seq, message.command, """{
+            "source": "${message.command}",
+            "err": {
+              "message": "Missing 'serviceId' in message"
+            }
+          }"""))
+          return true
+        }
+
+        val serviceId = message.get("serviceId")
+
+        if (bluetooth?.startService(serviceId) == true) {
+          callback(Result(0, message.seq, message.command, """{
+            "source": "${message.command}",
+            "data": {
+              "serviceId": "$serviceId",
+              "message": "Service started"
+            }
+          }"""))
+        } else {
+          callback(Result(0, message.seq, message.command, """{
+            "source": "${message.command}",
+            "err": {
+              "message": "Failed to start service"
+            }
+          }"""))
+        }
+
+        return true
+      }
+
+      "bluetooth.subscribe" -> {
+        if (!message.has("serviceId")) {
+          callback(Result(0, message.seq, message.command, """{
+            "source": "${message.command}",
+            "err": {
+              "message": "Missing 'serviceId' in message"
+            }
+          }"""))
+          return true
+        }
+
+        if (!message.has("characteristicId")) {
+          callback(Result(0, message.seq, message.command, """{
+            "source": "${message.command}",
+            "err": {
+              "message": "Missing 'characteristicId' in message"
+            }
+          }"""))
+          return true
+        }
+
+        val serviceId = message.get("serviceId")
+        val characteristicId = message.get("characteristicId")
+
+        if (bluetooth?.subscribe(serviceId, characteristicId) == true) {
+          callback(Result(0, message.seq, message.command, """{
+            "source": "${message.command}",
+            "data": {
+              "serviceId": "$serviceId",
+              "characteristicId": "$characteristicId",
+              "message": "Subscribed to characteristic"
+            }
+          }"""))
+        } else {
+          callback(Result(0, message.seq, message.command, """{
+            "source": "${message.command}",
+            "err": {
+              "message": "Failed to subscribe to service characteristic"
+            }
+          }"""))
+        }
+        return true
+      }
+
+      "bluetooth.publish" -> {
+        if (!message.has("serviceId")) {
+          callback(Result(0, message.seq, message.command, """{
+            "source": "${message.command}",
+            "err": {
+              "message": "Missing 'serviceId' in message"
+            }
+          }"""))
+          return true
+        }
+
+        if (!message.has("characteristicId")) {
+          callback(Result(0, message.seq, message.command, """{
+            "source": "${message.command}",
+            "err": {
+              "message": "Missing 'characteristicId' in message"
+            }
+          }"""))
+          return true
+        }
+
+        val serviceId = message.get("serviceId")
+        val characteristicId = message.get("characteristicId")
+
+        if (bluetooth?.publish(serviceId, characteristicId, message.bytes) == true) {
+          callback(Result(0, message.seq, message.command, """{
+            "source": "${message.command}",
+            "data": {
+              "serviceId": "$serviceId",
+              "characteristicId": "$characteristicId",
+              "message": "Published to characteristic"
+            }
+          }"""))
+        } else {
+          callback(Result(0, message.seq, message.command, """{
+            "source": "${message.command}",
+            "err": {
+              "message": "Failed to publish to service characteristic"
+            }
+          }"""))
+        }
+        return true
+      }
+
       "buffer.map" -> {
         if (bytes != null) {
           buffers[message.seq] = bytes
         }
-        callback(Result(0, message.seq, message.command, "{}"))
+
+        callback(Result(0, message.seq, message.command, """{
+          "source": "${message.command}",
+          "data": {}
+        }"""))
         return true
       }
 
@@ -187,13 +349,18 @@ open class Bridge (runtime: Runtime, configuration: IBridgeConfiguration) {
 
       "openExternal" -> {
         this.runtime.get()?.openExternal(message.value)
-        callback(Result(0, message.seq, message.command, "{}"))
+        callback(Result(0, message.seq, message.command, """{
+          "source": "${message.command}",
+          "data": {
+            "value": "${message.value}"
+          }
+        }"""))
         return true
       }
     }
 
     if (message.domain == "fs") {
-      val root = java.nio.file.Paths.get(configuration.getRootDirectory())
+      val root = java.nio.file.Paths.get(getRootDirectory())
       if (message.has("path")) {
         var path = message.get("path")
         message.set("path", root.resolve(java.nio.file.Paths.get(path)).toString())
@@ -255,4 +422,19 @@ open class Bridge (runtime: Runtime, configuration: IBridgeConfiguration) {
 
   @Throws(java.lang.Exception::class)
   external fun route (msg: String, bytes: ByteArray?, requestId: Long): Boolean;
+
+  @Throws(java.lang.Exception::class)
+  external fun sendBluetoothByteArray (
+    serviceId: String,
+    characteristicId: String,
+    name: String,
+    uuid: String,
+    bytes: ByteArray?
+  ): Boolean;
+
+  @Throws(java.lang.Exception::class)
+  external fun emitBluetoothEventData (
+    data: String = "",
+    err: String = ""
+  ): Boolean;
 }

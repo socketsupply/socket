@@ -1439,6 +1439,13 @@ namespace SSC::IPC {
     this->core = core;
     this->router.core = core;
     this->router.bridge = this;
+    this->bluetooth.emitFunction = [&] (auto seq, auto json) {
+      this->router.emit(seq, json.str());
+    };
+
+    this->bluetooth.sendFunction = [&](auto seq, auto json, auto post) {
+      this->router.send(seq, json.str(), post);
+    };
   }
 
   bool Router::hasMappedBuffer (int index, const Message::Seq seq) {
@@ -1530,22 +1537,14 @@ namespace SSC::IPC {
   }
 
   void Router::map (const String& name, bool async, MessageCallback callback) {
-    String data = name;
-    // URI hostnames are not case sensitive. Convert to lowercase.
-    std::transform(data.begin(), data.end(), data.begin(),
-      [](unsigned char c) { return std::tolower(c); });
     if (callback != nullptr) {
-      table.insert_or_assign(data, MessageCallbackContext { async, callback });
+      table.insert_or_assign(name, MessageCallbackContext { async, callback });
     }
   }
 
   void Router::unmap (const String& name) {
-    String data = name;
-    // URI hostnames are not case sensitive. Convert to lowercase.
-    std::transform(data.begin(), data.end(), data.begin(),
-      [](unsigned char c) { return std::tolower(c); });
-    if (table.find(data) != table.end()) {
-      table.erase(data);
+    if (table.find(name) != table.end()) {
+      table.erase(name);
     }
   }
 
@@ -1571,16 +1570,11 @@ namespace SSC::IPC {
   }
 
   bool Router::invoke (const Message& message, ResultCallback callback) {
-    String data = message.name;
-    // URI hostnames are not case sensitive. Convert to lowercase.
-    std::transform(data.begin(), data.end(), data.begin(),
-      [](unsigned char c) { return std::tolower(c); });
-
-    if (this->table.find(data) == this->table.end()) {
+    if (this->table.find(message.name) == this->table.end()) {
       return false;
     }
 
-    auto ctx = this->table.at(data);
+    auto ctx = this->table.at(message.name);
 
     if (ctx.callback != nullptr) {
       Message msg(message);
@@ -1626,6 +1620,12 @@ namespace SSC::IPC {
       headers[@"access-control-allow-origin"] = @"*";
       headers[@"access-control-allow-methods"] = @"*";
       headers[@"content-length"] = [@(length) stringValue];
+
+      if (post.body) {
+        headers[@"content-type"] = @"application/octet-stream";
+      } else {
+        headers[@"content-type"] = @"application/json";
+      }
 
       NSHTTPURLResponse *response = [[NSHTTPURLResponse alloc]
          initWithURL: task.request.URL

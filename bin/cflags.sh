@@ -72,6 +72,7 @@ elif (( TARGET_OS_ANDROID )) || (( TARGET_ANDROID_EMULATOR )); then
     cflags+=("--sysroot=$ANDROID_HOME/ndk-bundle/toolchains/llvm/prebuilt/darwin-x86_64/sysroot")
   elif [[ "$host" = "Linux" ]]; then
     cflags+=("--sysroot=$ANDROID_HOME/ndk-bundle/toolchains/llvm/prebuilt/linux-x86_64/sysroot")
+    cflags+=("-stdlib=libstdc++")
   fi
 fi
 

@@ -39,6 +39,7 @@ using namespace SSC;
 // }
 
 - (void) startAdvertising {
+  debug("startAdvertising");
   if (_peripheralManager.isAdvertising) return;
 
   NSArray* keys = [_serviceMap allKeys];
@@ -47,6 +48,7 @@ using namespace SSC;
 
   NSMutableArray* uuids = [[NSMutableArray alloc] init];
   for (NSString* key in keys) {
+    debug("ADVERTISE %@", [CBUUID UUIDWithString: key]);
     [uuids addObject: [CBUUID UUIDWithString: key]];
   }
 
@@ -69,7 +71,7 @@ using namespace SSC;
     [uuids addObject: [CBUUID UUIDWithString: key]];
   }
 
-  debug("CoreBluetooth: startScanning %@", uuids);
+  // debug("CoreBluetooth: startScanning %@", uuids);
 
   [_centralManager
     scanForPeripheralsWithServices: [uuids copy]
@@ -150,6 +152,7 @@ using namespace SSC;
  didSubscribeToCharacteristic: (CBCharacteristic*) characteristic
 {
   debug("CoreBluetooth: didSubscribeToCharacteristic");
+  [characteristic.service.peripheral readValueForCharacteristic: characteristic];
 }
 
 - (void) centralManagerDidUpdateState: (CBCentralManager*) central {
@@ -171,12 +174,15 @@ using namespace SSC;
              didAddService: (CBService*) service
                      error: (NSError *) error
 {
+  debug("didAddService");
+  [self stopAdvertising];
   [self startAdvertising];
 }
 
 - (void) peripheralManager: (CBPeripheralManager*) peripheral
      didReceiveReadRequest: (CBATTRequest*) request
 {
+  debug("didReceiveReadRequest");
   CBMutableCharacteristic* ch;
 
   for (NSString* key in _services) {
@@ -206,7 +212,7 @@ using namespace SSC;
       advertisementData: (NSDictionary*) advertisementData
                    RSSI: (NSNumber*) RSSI
 {
-  if (peripheral.identifier == nil || peripheral.name == nil) {
+  if (peripheral.identifier == nil && peripheral.name == nil) {
     [self.peripherals addObject: peripheral];
 
     NSTimeInterval _scanTimeout = 0.5;
@@ -219,6 +225,17 @@ using namespace SSC;
 
   auto isConnected = peripheral.state != CBPeripheralStateDisconnected;
   auto isKnown = [_peripherals containsObject: peripheral];
+
+  if (isConnected) {
+    NSArray* keys = [_serviceMap allKeys];
+    NSMutableArray* uuids = [[NSMutableArray alloc] init];
+
+    for (NSString* key in keys) {
+      [uuids addObject: [CBUUID UUIDWithString: key]];
+    }
+
+    [peripheral discoverServices: uuids];
+  }
 
   if (isKnown && isConnected) {
     return;
@@ -233,8 +250,10 @@ using namespace SSC;
 
   for (CBService *service in peripheral.services) {
     NSString* key = service.UUID.UUIDString;
+    debug("peripheral service uuid= %@", key);
     NSArray* characteristics = [_characteristics[key] allObjects];
     for (CBCharacteristic* ch in characteristics) {
+      debug("peripheral service characteristic uuid= %@", ch.UUID.UUIDString);
       [peripheral readValueForCharacteristic: ch];
     }
   }
@@ -253,8 +272,16 @@ using namespace SSC;
     [uuids addObject: [CBUUID UUIDWithString: key]];
   }
 
-  String uuid = String([peripheral.identifier.UUIDString UTF8String]);
-  String name = String([peripheral.name UTF8String]);
+  String uuid = "";
+  String name = "";
+
+  if (peripheral.identifier != nil) {
+    uuid = String([peripheral.identifier.UUIDString UTF8String]);
+  }
+
+  if (peripheral.name != nil) {
+    name = String([peripheral.name UTF8String]);
+  }
 
   if (uuid.size() == 0 || name.size() == 0) {
     debug("device has no meta information");
@@ -285,7 +312,6 @@ using namespace SSC;
     NSString* key = service.UUID.UUIDString;
     NSArray* uuids = [_serviceMap[key] allObjects];
 
-    debug("CoreBluetooth: peripheral:didDiscoverServices withChracteristics: %@", uuids);
     [peripheral discoverCharacteristics: [uuids copy] forService: service];
   }
 }
@@ -302,7 +328,9 @@ using namespace SSC;
   NSString* key = service.UUID.UUIDString;
   NSArray* uuids = [[_serviceMap[key] allObjects] copy];
 
+  debug("characteristics %@", service.characteristics);
   for (CBCharacteristic* characteristic in service.characteristics) {
+    debug("characteristic uuid %s", [characteristic.UUID.UUIDString UTF8String]);
     for (CBUUID* cUUID in uuids) {
       if ([characteristic.UUID isEqual: cUUID]) {
         [peripheral setNotifyValue: YES forCharacteristic: characteristic];
@@ -328,13 +356,18 @@ using namespace SSC;
  didUpdateValueForCharacteristic: (CBCharacteristic*) characteristic
                            error: (NSError*) error
 {
+  debug("didUpdateValueForCharacteristic");
   if (error) {
     debug("ERROR didUpdateValueForCharacteristic: %@", error);
     return;
   }
 
-  if (!characteristic.value || characteristic.value.length == 0) return;
+  if (!characteristic.value || characteristic.value.length == 0) {
+    debug("empty characteristic");
+    return;
+  }
 
+  debug("characteristic id %s", [characteristic.UUID.UUIDString UTF8String]);
   String uuid = "";
   String name = "";
 
@@ -415,6 +448,27 @@ using namespace SSC;
                    error: (NSError*) error
 {
   [_centralManager connectPeripheral: peripheral options: nil];
+  String uuid = "";
+  String name = "";
+
+  if (peripheral.identifier != nil) {
+    uuid = String([peripheral.identifier.UUIDString UTF8String]);
+  }
+
+  if (peripheral.name != nil) {
+    name = String([peripheral.name UTF8String]);
+  }
+
+  auto json = JSON::Object::Entries {
+    {"data" , JSON::Object::Entries {
+      {"event", "disconnect"},
+      {"name", name},
+      {"uuid", uuid}
+    }}
+  };
+
+  self.bluetooth->emit("bluetooth", JSON::Object(json).str());
+
   if (error != nil) {
     debug("CoreBluetooth: device did disconnect %@", error.debugDescription);
     return;
@@ -461,12 +515,15 @@ namespace SSC {
     return false;
   }
 
-  void Bluetooth::startScanning () {
-    #if defined(__APPLE__)
+  bool Bluetooth::startScanning () {
+  #if defined(__APPLE__)
     if (this->controller != nullptr) {
       [this->controller startScanning];
+      return true;
     }
-    #endif
+  #endif
+
+    return false;
   }
 
   void Bluetooth::publishCharacteristic (
@@ -477,39 +534,36 @@ namespace SSC {
     const String &characteristicId,
     Callback callback
   ) {
-    #if defined(__APPLE__)
+  #if defined(__APPLE__)
     if (serviceId.size() != 36) {
-      callback(seq, JSON::Object::Entries {
+      return callback(seq, JSON::Object::Entries {
         {"source", "bluetooth.publish"},
         {"err", JSON::Object::Entries {
           {"message", "Invalid service id"}
         }}
       });
-      return;
     }
 
     if (characteristicId.size() != 36) {
-      callback(seq, JSON::Object::Entries {
+      return callback(seq, JSON::Object::Entries {
         {"source", "bluetooth.publish"},
         {"err", JSON::Object::Entries {
           {"message", "Invalid characteristic id"}
         }}
       });
-      return;
     }
 
     if (bytes == nullptr || size <= 0) {
-      callback(seq, JSON::Object::Entries {
+      return callback(seq, JSON::Object::Entries {
         {"source", "bluetooth.publish"},
         {"err", JSON::Object::Entries {
           {"message", "Missing bytes in publish"}
         }}
       });
-      return;
     }
 
-    auto ssid = [NSString stringWithUTF8String: serviceId.c_str()];
-    auto scid = [NSString stringWithUTF8String: characteristicId.c_str()];
+    auto ssid = [[CBUUID UUIDWithString: [NSString stringWithUTF8String: serviceId.c_str()]] UUIDString];
+    auto scid = [[CBUUID UUIDWithString: [NSString stringWithUTF8String: characteristicId.c_str()]] UUIDString];
 
     auto peripheralManager = [this->controller peripheralManager];
     auto characteristics = [this->controller characteristics];
@@ -517,34 +571,35 @@ namespace SSC {
     auto cUUID = [CBUUID UUIDWithString: scid];
 
     if (!serviceMap[ssid]) {
-      auto json = JSON::Object::Entries {
+      return callback(seq, JSON::Object::Entries {
         {"source", "bluetooth.publish"},
         {"err", JSON::Object::Entries {
           {"message", "Invalid service id"}
         }}
-      };
-
-      callback(seq, json);
-      return;
+      });
     }
 
     if (![serviceMap[ssid] containsObject: cUUID]) {
-      auto json = JSON::Object::Entries {
+      return callback(seq, JSON::Object::Entries {
         {"source", "bluetooth.publish"},
         {"err", JSON::Object::Entries {
           {"message", "Invalid characteristic id"}
         }}
-      };
-
-      callback(seq, json);
-      return;
+      });
     }
 
-    [this->controller startScanning]; // noop if already scanning.
+    this->startScanning();
 
     if (size == 0) {
       debug("CoreBluetooth: characteristic added");
-      return;
+      return callback(seq, JSON::Object::Entries {
+        {"source", "bluetooth.publish"},
+        {"data", JSON::Object::Entries {
+          {"serviceId", serviceId},
+          {"characteristicId", characteristicId},
+          {"message", "Characteristic was added, but not published with empty value"}
+        }}
+      });
     }
 
     // TODO (@heapwolf) enforce max message legth and split into multiple writes.
@@ -562,31 +617,37 @@ namespace SSC {
     auto didWrite = [peripheralManager
                updateValue: data
          forCharacteristic: characteristic
-      onSubscribedCentrals: nil
+      onSubscribedCentrals: [this->controller peripherals]
     ];
 
     if (!didWrite) {
       debug("CoreBluetooth: did not write");
-      return;
+      return callback(seq, JSON::Object::Entries {
+        {"source", "bluetooth.publish"},
+        {"err", JSON::Object::Entries {
+          {"message", "Failed to publish characteristic"}
+        }}
+      });
     }
 
     debug("CoreBluetooth: did write '%@' %@", data, characteristic);
-    callback(seq, JSON::Object::Entries {
+    return callback(seq, JSON::Object::Entries {
+      {"source", "bluetooth.publish"},
       {"data", JSON::Object::Entries {
         {"serviceId", serviceId},
         {"characteristicId", characteristicId},
         {"message", "Published to characteristic"}
       }}
     });
-    #else
-    callback(seq, JSON::Object::Entries {
+  #else
+    return callback(seq, JSON::Object::Entries {
       {"source", "bluetooth.publish"},
       {"err", JSON::Object::Entries {
         {"type", "NotSupportedError"},
-        {"message", "Not supported"}
+        {"message", "Bluetooth is not supported"}
       }}
     });
-    #endif
+  #endif
   }
 
   void Bluetooth::subscribeCharacteristic (
@@ -595,25 +656,22 @@ namespace SSC {
     const String &characteristicId,
     Callback callback
   ) {
-    auto json = JSON::Object::Entries {
-      {"err", JSON::Object::Entries {
-        {"serviceId", serviceId},
-        {"message", "Failed to subscribe to characteristic"}
-      }}
-    };
-
-    #if defined(__APPLE__)
-    auto ssid = [NSString stringWithUTF8String: serviceId.c_str()];
-    auto scid = [NSString stringWithUTF8String: characteristicId.c_str()];
+  #if defined(__APPLE__)
+    auto ssid = [[CBUUID UUIDWithString: [NSString stringWithUTF8String: serviceId.c_str()]] UUIDString];
+    auto scid = [[CBUUID UUIDWithString: [NSString stringWithUTF8String: characteristicId.c_str()]] UUIDString];
 
     auto peripheralManager = [this->controller peripheralManager];
     auto characteristics = [this->controller characteristics];
     auto serviceMap = [this->controller serviceMap];
     auto services = [this->controller services];
 
-    auto  ch = [[CBMutableCharacteristic alloc]
+    auto ch = [[CBMutableCharacteristic alloc]
       initWithType: [CBUUID UUIDWithString: scid]
-        properties: (CBCharacteristicPropertyNotify | CBCharacteristicPropertyRead | CBCharacteristicPropertyWrite)
+        properties: (
+            CBCharacteristicPropertyNotify |
+            CBCharacteristicPropertyWrite |
+            CBCharacteristicPropertyRead
+        )
              value: nil
        permissions: (CBAttributePermissionsReadable | CBAttributePermissionsWriteable)
     ];
@@ -642,16 +700,23 @@ namespace SSC {
       [peripheralManager addService: service];
     }
 
-    json = JSON::Object::Entries {
+    return callback(seq, JSON::Object::Entries {
+      {"source", "bluetooth.subscribe"},
       {"data", JSON::Object::Entries {
         {"serviceId", serviceId},
         {"characteristicId", characteristicId},
         {"message", "Subscribed to characteristic"}
       }}
-    };
-    #endif
-
-    callback(seq, json);
+    });
+  #else
+    return callback(seq, JSON::Object::Entries {
+      {"source", "bluetooth.subscribe"},
+      {"err", JSON::Object::Entries {
+        {"type", "NotSupportedError"},
+        {"message", "Bluetooth is not supported"}
+      }}
+    });
+  #endif
   }
 
   void Bluetooth::startService (
@@ -659,25 +724,22 @@ namespace SSC {
     const String &serviceId,
     Callback callback
   ) {
-    auto json = JSON::Object::Entries {
-      {"err", JSON::Object::Entries {
-        {"serviceId", serviceId},
-        {"message", "Failed to start service"}
-      }}
-    };
-
-    #if defined(__APPLE__)
-    if (this->controller != nullptr) {
-      [this->controller startScanning];
-      json = JSON::Object::Entries {
+    if (this->startScanning()) {
+      return callback(seq, JSON::Object::Entries {
+      {"source", "bluetooth.start"},
         {"data", JSON::Object::Entries {
           {"serviceId", serviceId},
           {"message", "Service started"}
         }}
-      };
+      });
     }
-    #endif
 
-    callback(seq, json);
+    return callback(seq, JSON::Object::Entries {
+      {"source", "bluetooth.start"},
+      {"err", JSON::Object::Entries {
+        {"type", "NotSupportedError"},
+        {"message", "Bluetooth is not supported"}
+      }}
+    });
   }
 }

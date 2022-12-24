@@ -592,7 +592,7 @@ namespace SSC {
     for (auto entry : entries) {
       entry = trim(entry);
 
-      if (entry[0] == ';') continue;
+      if (entry[0] == ';' || entry[0] == '#') continue;
 
       if (entry[0] == '[' && entry[entry.length() - 1] == ']') {
         prefix = entry.substr(1, entry.length() - 2);

@@ -33,6 +33,7 @@ namespace SSC {
       "  try {                                                             \n"
       "    detail = decodeURIComponent(value);                             \n"
       "    detail = JSON.parse(detail);                                    \n"
+      "    detail = JSON.parse(detail);                                    \n"
       "  } catch (err) {                                                   \n"
       "    if (!detail) {                                                  \n"
       "      console.error(`${err.message} (${value})`);                   \n"

@@ -128,6 +128,54 @@ inline String prefixFile () {
   return socketHome;
 }
 
+inline String getAndroidHome () {
+  static String androidHome = getEnv("ANDROID_HOME");
+
+  if (androidHome.size() == 0) {
+    androidHome = settings["android_" + platform.os + "_home"];
+  }
+
+  if (androidHome.size() == 0) {
+    androidHome = settings["android_home"];
+  }
+
+  if (androidHome.size() == 0) {
+    if (!platform.win) {
+      auto cmd = String(
+        "dirname $(dirname $(readlink $(which sdkmanager 2>/dev/null) 2>/dev/null) 2>/dev/null) 2>/dev/null"
+      );
+
+      auto r = exec(cmd);
+
+      if (r.exitCode == 0) {
+        androidHome = trim(r.output);
+      }
+    }
+  }
+
+  if (androidHome.size() == 0) {
+    if (platform.mac) {
+      androidHome = getEnv("HOME") + "/Library/Android/sdk";
+    } else if (platform.unix) {
+      androidHome = getEnv("HOME") + "/android";
+    } else if (platform.win) {
+      // TODO
+    }
+  }
+
+  if (androidHome.size() > 0) {
+  #ifdef _WIN32
+    setEnv((String("ANDROID_HOME=") + androidHome).c_str());
+  #else
+    setenv("ANDROID_HOME", androidHome.c_str(), 1);
+  #endif
+
+    log("warning: 'ANDROID_HOME' is set to '" + androidHome + "'");
+  }
+
+  return androidHome;
+}
+
 int runApp (const fs::path& path, const String& args, bool headless) {
   auto cmd = path.string();
   int status = 0;
@@ -765,30 +813,26 @@ int main (const int argc, const char* argv[]) {
   });
 
   createSubcommand("install-app", { "--platform", "--device" }, true, [&](const std::span<const char *>& options) -> void {
-    if (platform.os != "mac") {
-      log("install-app is only supported on macOS.");
-      exit(0);
-    } else {
-      const String cfgUtilPath = getCfgUtilPath();
-      String commandOptions = "";
-      String targetPlatform = "";
-      // we need to find the platform first
-      for (auto const option : options) {
-        targetPlatform = optionValue(option, "--platform");
-        if (targetPlatform.size() > 0) {
-          // TODO: add Android support
-          if (targetPlatform != "ios") {
-            std::cout << "Unsupported platform: " << targetPlatform << std::endl;
-            exit(1);
-          }
-        }
-      }
+    String commandOptions = "";
+    String targetPlatform = "";
+    // we need to find platform first
+    for (auto const option : options) {
+      targetPlatform = optionValue(option, "--platform");
+      if (targetPlatform == "android") break;
+      if (platform.os == "mac" && targetPlatform == "ios") break;
+
       if (targetPlatform.size() == 0) {
         log("--platform option is required.");
         printHelp("install-app");
         exit(1);
+      } else {
+        std::cout << "Unsupported platform: " << targetPlatform << std::endl;
+        exit(1);
       }
-      // then we need to find the device
+    }
+
+    if (platform.os == "mac") {
+      // then we need to find device
       for (auto const option : options) {
         auto device = optionValue(option, "--device");
         if (device.size() > 0) {
@@ -797,26 +841,64 @@ int main (const int argc, const char* argv[]) {
           }
         }
       }
+    } else {
+      log("install-app is not supported on " + platform.os);
+      exit(1);
+    }
 
-      auto ipaPath = (
+    if (targetPlatform == "ios") {
+      const auto cfgUtilPath = getCfgUtilPath();
+      const auto ipaPath = (
         getPaths(targetPlatform).platformSpecificOutputPath /
         "build" /
         String(settings["build_name"] + ".ipa") /
         String(settings["build_name"] + ".ipa")
       );
+
       if (!fs::exists(ipaPath)) {
         log("Could not find " + ipaPath.string());
         exit(1);
       }
-      // this command will install the app to the first connected device which was
+
+      // this command will install the app to first connected device which were
       // added to the provisioning profile if no --device is provided.
       auto command = cfgUtilPath + " " + commandOptions + "install-app " + ipaPath.string();
       auto r = exec(command);
+
       if (r.exitCode != 0) {
         log("failed to install the app. Is the device plugged in?");
         exit(1);
       }
       log("successfully installed the app on your device(s).");
+      exit(0);
+    }
+
+    if (targetPlatform == "android") {
+      auto androidHome = getAndroidHome();
+      auto paths = getPaths(targetPlatform);
+      auto output = paths.platformSpecificOutputPath;
+      auto app = output / "app";
+      StringStream adb;
+
+      if (!platform.win) {
+        if (std::system("adb --version 2>&1 >/dev/null") != 0) {
+          adb << androidHome << "/platform-tools/";
+        }
+      }
+
+      adb << "adb install ";
+
+      if (flagDebugMode) {
+        adb << (app / "build" / "outputs" / "apk" / "dev" / "debug" / "app-dev-debug.apk").string();
+      } else {
+        adb << (app / "build" / "outputs" / "apk" / "dev" / "release" / "app-dev-release-unsigned.apk").string();
+      }
+
+      if (std::system(adb.str().c_str()) != 0) {
+        log("error: failed to install APK to Android device (adb)");
+        exit(1);
+      }
+
       exit(0);
     }
   });
@@ -969,14 +1051,8 @@ int main (const int argc, const char* argv[]) {
       }
     }
 
-    if (flagBuildTest && testFile.size() == 0) {
-      log("error: --test value is required.");
-      exit(1);
-    }
-
-    if (flagBuildTest && fs::exists(testFile) == false) {
-      log("error: file " + testFile + " does not exist.");
-      exit(1);
+    if (settings.count("file_limit") == 0) {
+      settings["file_limit"] = "4096";
     }
 
     if (settings.count("meta_file_limit") == 0) {
@@ -1003,25 +1079,27 @@ int main (const int argc, const char* argv[]) {
     auto binaryPath = paths.pathBin / executable;
     auto configPath = targetPath / "socket.ini";
 
-    if (!fs::exists(binaryPath)) {
-      flagRunUserBuildOnly = false;
-    } else {
-      struct stat stats;
-      if (stat(WStringToString(binaryPath).c_str(), &stats) == 0) {
-        if (SSC_BUILD_TIME > stats.st_mtime) {
-          flagRunUserBuildOnly = false;
+    if (!flagBuildForAndroid) {
+      if (!fs::exists(binaryPath)) {
+        flagRunUserBuildOnly = false;
+      } else {
+        struct stat stats;
+        if (stat(WStringToString(binaryPath).c_str(), &stats) == 0) {
+          if (SSC_BUILD_TIME > stats.st_mtime) {
+            flagRunUserBuildOnly = false;
+          }
         }
       }
-    }
 
-    if (flagRunUserBuildOnly) {
-      struct stat binaryPathStats;
-      struct stat configPathStats;
+      if (flagRunUserBuildOnly) {
+        struct stat binaryPathStats;
+        struct stat configPathStats;
 
-      if (stat(WStringToString(binaryPath).c_str(), &binaryPathStats) == 0) {
-        if (stat(WStringToString(configPath).c_str(), &configPathStats) == 0) {
-          if (configPathStats.st_mtime > binaryPathStats.st_mtime) {
-            flagRunUserBuildOnly = false;
+        if (stat(WStringToString(binaryPath).c_str(), &binaryPathStats) == 0) {
+          if (stat(WStringToString(configPath).c_str(), &configPathStats) == 0) {
+            if (configPathStats.st_mtime > binaryPathStats.st_mtime) {
+              flagRunUserBuildOnly = false;
+            }
           }
         }
       }
@@ -1135,9 +1213,12 @@ int main (const int argc, const char* argv[]) {
       // set current path to output directory
       fs::current_path(output);
 
+      auto androidHome = getAndroidHome();
+
       StringStream gradleInitCommand;
       gradleInitCommand
-        << "echo 1 |"
+        << "echo 1 | "
+        << "ANDROID_HOME=" << androidHome << " "
         << "gradle "
         << "--no-configuration-cache "
         << "--no-build-cache "
@@ -1286,6 +1367,7 @@ int main (const int argc, const char* argv[]) {
           std::transform(permission.begin(), permission.end(), permission.begin(), ::toupper);
 
           xml
+            << "  "
             << "<uses-permission android:name="
             << "\"android.permission." << permission << "\""
             << " />";
@@ -1302,7 +1384,28 @@ int main (const int argc, const char* argv[]) {
           settings["android_allow_cleartext"] = "";
         }
       }
-      
+
+      manifestContext["android_manifest_xml_features"] = "";
+
+      if (settings["android_manifest_features"].size() > 0) {
+        settings["android_manifest_features"] = replace(settings["android_manifest_features"], ",", " ");
+        for (auto const &value: split(settings["android_manifest_features"], ' ')) {
+          auto feature = replace(trim(value), "\"", "");
+          StringStream xml;
+
+          std::transform(feature.begin(), feature.end(), feature.begin(), ::toupper);
+
+          xml
+            << "  "
+            << "<uses-feature android:name="
+            << "\"" << feature << "\"  "
+            << "android:required=\"false\""
+            << " />";
+
+          manifestContext["android_manifest_xml_features"] += xml.str() + "\n";
+        }
+      }
+
       // Android Project
       writeFile(
         src / "main" / "AndroidManifest.xml",
@@ -1383,6 +1486,15 @@ int main (const int argc, const char* argv[]) {
           WStringToString(readFile(trim(prefixFile("src/android/internal.hh")))),
           std::regex("__BUNDLE_IDENTIFIER__"),
           bundle_path_underscored
+        )
+      );
+
+      writeFile(
+        pkg / "bluetooth.kt",
+        std::regex_replace(
+          WStringToString(readFile(trim(prefixFile("src/android/bluetooth.kt")))),
+          std::regex("__BUNDLE_IDENTIFIER__"),
+          bundle_identifier
         )
       );
 
@@ -1675,20 +1787,20 @@ int main (const int argc, const char* argv[]) {
         " -L\"" + prefix + "lib\""
       ;
 
-      files += "\"" + prefixFile("src\\init.cc\"");
-      files += "\"" + prefixFile("src\\app\\app.cc\"");
-      files += "\"" + prefixFile("src\\core\\bluetooth.cc\"");
-      files += "\"" + prefixFile("src\\core\\core.cc\"");
-      files += "\"" + prefixFile("src\\core\\fs.cc\"");
-      files += "\"" + prefixFile("src\\core\\javascript.cc\"");
-      files += "\"" + prefixFile("src\\core\\json.cc\"");
-      files += "\"" + prefixFile("src\\core\\peer.cc\"");
-      files += "\"" + prefixFile("src\\core\\udp.cc\"");
-      files += "\"" + prefixFile("src\\desktop\\main.cc\"");
-      files += "\"" + prefixFile("src\\ipc\\bridge.cc\"");
-      files += "\"" + prefixFile("src\\ipc\\ipc.cc\"");
-      files += "\"" + prefixFile("src\\window\\win.cc\"");
-      files += "\"" + prefixFile("src\\process\\win.cc\"");
+      files += prefixFile("src\\init.cc");
+      files += prefixFile("src\\app\\app.cc");
+      files += prefixFile("src\\core\\bluetooth.cc");
+      files += prefixFile("src\\core\\core.cc");
+      files += prefixFile("src\\core\\fs.cc");
+      files += prefixFile("src\\core\\javascript.cc");
+      files += prefixFile("src\\core\\json.cc");
+      files += prefixFile("src\\core\\peer.cc");
+      files += prefixFile("src\\core\\udp.cc");
+      files += prefixFile("src\\desktop\\main.cc");
+      files += prefixFile("src\\ipc\\bridge.cc");
+      files += prefixFile("src\\ipc\\ipc.cc");
+      files += prefixFile("src\\window\\win.cc");
+      files += prefixFile("src\\process\\win.cc");
 
       fs::create_directories(paths.pathPackage);
 
@@ -1937,50 +2049,8 @@ int main (const int argc, const char* argv[]) {
         exit(0);
       }
 
+      auto androidHome = getAndroidHome();
       auto app = paths.platformSpecificOutputPath / "app";
-      auto androidHome = getEnv("ANDROID_HOME");
-
-      if (androidHome.size() == 0) {
-        androidHome = settings["android_" + platform.os + "_home"];
-      }
-
-      if (androidHome.size() == 0) {
-        androidHome = settings["android_home"];
-      }
-
-      if (androidHome.size() == 0) {
-        if (!platform.win) {
-          auto cmd = String(
-            "dirname $(dirname $(readlink $(which sdkmanager 2>/dev/null) 2>/dev/null) 2>/dev/null) 2>/dev/null"
-          );
-
-          auto r = exec(cmd);
-
-          if (r.exitCode == 0) {
-            androidHome = trim(r.output);
-          }
-        }
-      }
-
-      if (androidHome.size() == 0) {
-        if (platform.mac) {
-          androidHome = getEnv("HOME") + "/Library/Android/sdk";
-        } else if (platform.unix) {
-          androidHome = getEnv("HOME") + "/android";
-        } else if (platform.win) {
-          // TODO
-        }
-      }
-
-      if (androidHome.size() > 0) {
-        #ifdef _WIN32
-        setEnv((String("ANDROID_HOME=") + androidHome).c_str());
-        #else
-        setenv("ANDROID_HOME", androidHome.c_str(), 1);
-        #endif
-
-        log("warning: 'ANDROID_HOME' is set to '" + androidHome + "'");
-      }
 
       StringStream sdkmanager;
       StringStream packages;
@@ -1993,11 +2063,6 @@ int main (const int argc, const char* argv[]) {
       if (platform.unix) {
         gradlew
           << "ANDROID_HOME=" << androidHome << " ";
-      }
-
-      if (platform.mac && platform.arch == "arm64") {
-        log("warning: 'arm64' may be an unsupported architecture for the Android NDK which may cause the build to fail.");
-        log("         Please see https://stackoverflow.com/a/69555276 to work around this.");
       }
 
       packages
@@ -2697,18 +2762,13 @@ int main (const int argc, const char* argv[]) {
     String argvForward = "";
     bool isIosSimulator = false;
     bool flagHeadless = false;
-    bool flagTest = false;
     String targetPlatform = "";
-    String testFile = "";
-
     for (auto const& option : options) {
       if (is(option, "--test")) {
-        flagTest = true;
+        argvForward += " --test";
       }
-      const auto testFileTmp = optionValue(option, "--test");
-      if (testFileTmp.size() > 0) {
-        flagTest = true;
-        testFile = testFileTmp;
+      auto testPath = optionValue(option, "--test");
+      if (testPath.size() > 0) {
         argvForward += " " + String(option);
       }
 
@@ -2728,11 +2788,6 @@ int main (const int argc, const char* argv[]) {
           }
         }
       }
-    }
-
-    if (flagTest && testFile.size() == 0) {
-      log("error: --test value is required.");
-      exit(1);
     }
 
     targetPlatform = targetPlatform.size() > 0 ? targetPlatform : platform.os;

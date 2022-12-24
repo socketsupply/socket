@@ -67,10 +67,6 @@ namespace SSC::JSON {
     return stream.str();
   }
 
-  String::String (const Number& number) {
-    this->data = number.str();
-  }
-
   Any::Any (const Null null) {
     this->pointer = std::shared_ptr<void>(new Null());
     this->type = Type::Null;
@@ -168,6 +164,11 @@ namespace SSC::JSON {
     this->type = Type::Array;
   }
 
+  Any::Any (const Inline inlined) {
+    this->pointer = std::shared_ptr<void>(new Inline(inlined));
+    this->type = Type::Inline;
+  }
+
   std::string Any::str () const {
     auto ptr = this->pointer.get();
 
@@ -179,6 +180,7 @@ namespace SSC::JSON {
       case Type::Boolean: return reinterpret_cast<Boolean *>(ptr)->str();
       case Type::Number: return reinterpret_cast<Number *>(ptr)->str();
       case Type::String: return reinterpret_cast<String *>(ptr)->str();
+      case Type::Inline: return reinterpret_cast<Inline *>(ptr)->value();
     }
 
     return "";

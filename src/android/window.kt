@@ -5,16 +5,17 @@ import java.lang.ref.WeakReference
 open class Window (runtime: Runtime, activity: MainActivity) {
   open protected val TAG = "Window"
 
+  val activity = WeakReference(activity)
+  val runtime = WeakReference(runtime)
   val bridge = Bridge(runtime, BridgeConfiguration(
+    bluetooth = activity.bluetooth,
     getRootDirectory = { ->
       this.getRootDirectory()
     }
   ))
 
-  val userMessageHandler = UserMessageHandler(this)
-  val activity = WeakReference(activity)
-  val runtime = WeakReference(runtime)
   val pointer = alloc(bridge.pointer)
+  val userMessageHandler = UserMessageHandler(this)
 
   fun evaluateJavaScript (source: String) {
     this.activity.get()?.evaluateJavaScript(source)

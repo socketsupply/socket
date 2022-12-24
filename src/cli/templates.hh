@@ -34,7 +34,7 @@ general options:
   -r             run after building
   --headless     run headlessly
   --stdin        read from stdin (emitted in window 0)
-  --test=path    indicate test mode
+  --test[=value] indicate test mode
 
 packaging options:
   --prod  disable debugging info, inspector, etc.
@@ -107,7 +107,7 @@ usage:
 options:
   --platform     ios-simulator; if not specified, runs on the current platform
   --prod         run production build
-  --test=path    indicate test mode
+  --test[=value] indicate test mode
 )TEXT";
 
 constexpr auto gHelloWorld = R"HTML(
@@ -239,14 +239,13 @@ constexpr auto DEFAULT_ANDROID_ACTIVITY_NAME = ".MainActivity";
 //
 constexpr auto gAndroidManifest = R"XML(
 <?xml version="1.0" encoding="utf-8"?>
-<manifest
-  xmlns:android="http://schemas.android.com/apk/res/android"
->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
   <uses-permission android:name="android.permission.INTERNET" />
   <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
   <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
 
-  {{android_manifest_xml_permissions}}
+{{android_manifest_xml_permissions}}
+{{android_manifest_xml_features}}
 
     <!-- @TODO(jwerle)
     android:roundIcon="@mipmap/ic_launcher_round"
@@ -793,7 +792,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
         ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
         CODE_SIGN_ENTITLEMENTS = socket.entitlements;
-        CODE_SIGN_IDENTITY = "iPhone Distribution";
+        CODE_SIGN_IDENTITY = "{{ios_codesign_identity}}";
         CODE_SIGN_STYLE = Manual;
         CURRENT_PROJECT_VERSION = 1;
         DEVELOPMENT_TEAM = "{{apple_team_id}}";
@@ -1054,11 +1053,15 @@ android {
 }
 
 dependencies {
+  def androidx_core_version = "1.9.0"
+
   implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
   implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.4'
   implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4'
   implementation 'androidx.appcompat:appcompat:1.5.0'
   implementation 'androidx.webkit:webkit:1.4.0'
+  implementation "androidx.core:core:$androidx_core_version"
+  implementation "androidx.core:core-ktx:$androidx_core_version"
 }
 )GROOVY";
 
