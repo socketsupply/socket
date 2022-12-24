@@ -114,14 +114,17 @@ namespace SSC {
       "const xhr = new XMLHttpRequest();                             \n"
       "xhr.responseType = 'arraybuffer';                             \n"
       "xhr.onload = e => {                                           \n"
-      "  let params = `" + params + "`;                              \n"
-      "  params.seq = `" + seq + "`;                                 \n"
+      "  let params = " + params + ";                                \n"
       "                                                              \n"
-      "  try {                                                       \n"
-      "    params = JSON.parse(params);                              \n"
-      "  } catch (err) {                                             \n"
-      "    console.error(err.stack || err, params);                  \n"
-      "  };                                                          \n"
+      "  if (typeof params === 'string') {                           \n"
+      "    try {                                                     \n"
+      "      params = JSON.parse(params);                            \n"
+      "    } catch (err) {                                           \n"
+      "      console.error(err.stack || err, params);                \n"
+      "    }                                                         \n"
+      " }                                                            \n"
+      "                                                              \n"
+      "  params.seq = `" + seq + "`;                                 \n"
       "                                                              \n"
       "  const headers = `" + trim(post.headers) + "`                \n"
       "    .trim()                                                   \n"
@@ -143,9 +146,7 @@ namespace SSC {
       "  });                                                         \n"
       "};                                                            \n"
       "                                                              \n"
-      "const protocol = __args.os === 'win32' ? 'http:' : 'ipc:';    \n"
-      "xhr.open('GET', `${protocol}//post?id=" + sid + "`);          \n"
-      "xhr.setRequestHeader('x-ipc-request', 'post');                \n"
+      "xhr.open('GET', 'ipc://post?id=" + sid + "');                 \n"
       "xhr.send();                                                   \n"
     );
 
@@ -661,16 +662,22 @@ namespace SSC {
   }
 
   void Core::stopEventLoop() {
+    if (!isLoopRunning) {
+      return;
+    }
+
     isLoopRunning = false;
     uv_stop(&eventLoop);
   #if defined(__ANDROID__) || defined(_WIN32)
     if (eventLoopThread != nullptr) {
-      if (eventLoopThread->joinable()) {
-        eventLoopThread->join();
+      auto t = eventLoopThread;
+      eventLoopThread = nullptr;
+
+      if (t->joinable()) {
+        t->join();
       }
 
-      delete eventLoopThread;
-      eventLoopThread = nullptr;
+      delete t;
     }
   #endif
   }
