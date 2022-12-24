@@ -1140,7 +1140,19 @@ namespace SSC {
   }
 
   ScreenSize Window::getSize () {
-    // TODO: implement.
+    // 100 are the min width/height that can be returned. Keep defaults in case
+    // the function call fail.
+    UINT32 height = 100;
+    UINT32 width = 100;
+    RECT rect;
+
+    // Make sure controller exists, and the call to get window bounds succeeds.
+    if (controller != nullptr && controller->get_Bounds(&rect) >= 0) {
+      height = rect.bottom - rect.top;
+      width = rect.right - rect.left;
+    }
+
+    return { static_cast<int>(height), static_cast<int>(width) };
   }
 
   void Window::setSize (const SSC::String& seq, int width, int height, int hints) {
