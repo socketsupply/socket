@@ -76,6 +76,7 @@ namespace SSC {
       static LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
       ICoreWebView2Controller *controller = nullptr;
       ICoreWebView2 *webview = nullptr;
+      ICoreWebView2NewWindowRequestedEventArgs* requested_event_args = nullptr;
       HMENU systemMenu;
       DWORD mainThread = GetCurrentThreadId();
       POINT m_minsz = POINT {0, 0};

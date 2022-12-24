@@ -890,6 +890,11 @@ namespace SSC {
                   webview->add_NewWindowRequested(
                     Microsoft::WRL::Callback<ICoreWebView2NewWindowRequestedEventHandler>(
                       [&](ICoreWebView2* wv, ICoreWebView2NewWindowRequestedEventArgs* e) {
+                        Window* w = reinterpret_cast<Window*>(GetWindowLongPtr((HWND)window, GWLP_USERDATA));
+                        if (w->requested_event_args == nullptr) {
+                          abort();
+                        }
+                        w->requested_event_args = e;
                         // TODO(trevnorris): Called when window.open() is called in JS, but the new
                         // window won't have all the setup and request interception. This setup should
                         // be moved to another location where it can be run for any new window. Right
@@ -1139,7 +1144,18 @@ namespace SSC {
   }
 
   ScreenSize Window::getSize () {
-    // TODO: implement.
+    ICoreWebView2WindowFeatures* wf;
+    // 100 are the min width/height that can be returned.
+    UINT32 height = 100;
+    UINT32 width = 100;
+
+    if (requested_event_args != nullptr) {
+      requested_event_args->get_WindowFeatures(&wf);
+      wf->get_Height(&height);
+      wf->get_Width(&width);
+    }
+
+    return { static_cast<int>(height), static_cast<int>(width) };
   }
 
   void Window::setSize (const SSC::String& seq, int width, int height, int hints) {
