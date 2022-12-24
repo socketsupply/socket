@@ -1008,7 +1008,7 @@ android {
       abiFilters {{android_ndk_abi_filters}}
     }
 
-    // externalNativeBuild called manually for -j parallel support
+{{android_defaultConfig_externalNativeBuild}}
   }
 
   aaptOptions {
@@ -1016,7 +1016,7 @@ android {
     noCompress {{android_aapt_no_compress}}
   }
 
-  // externalNativeBuild called manually for -j parallel support
+{{android_android_externalNativeBuild}}
 
   productFlavors {
     dev {
