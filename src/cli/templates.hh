@@ -1011,7 +1011,7 @@ android {
       abiFilters {{android_ndk_abi_filters}}
     }
 
-{{android_defaultConfig_externalNativeBuild}}
+{{default_config_external_native_build}}
   }
 
   aaptOptions {
@@ -1019,7 +1019,7 @@ android {
     noCompress {{android_aapt_no_compress}}
   }
 
-{{android_android_externalNativeBuild}}
+{{android_external_native_build}}
 
   productFlavors {
     dev {
