@@ -1199,6 +1199,7 @@ int main (const int argc, const char* argv[]) {
 
     String localDirPrefix = !platform.win ? "./" : "";
     String quote = !platform.win ? "'" : "\"";
+    String slash = !platform.win ? "/" : "\\";
 
     for (auto const arg : options) {
       if (is(arg, "-h") || is(arg, "--help")) {
@@ -2308,19 +2309,6 @@ int main (const int argc, const char* argv[]) {
     }
 
     if (flagBuildForAndroid) {
-      // just build for CI
-      if (getEnv("SSC_CI").size() > 0) {
-        StringStream gradlew;
-        gradlew << "./gradlew build";
-
-        if (std::system(gradlew.str().c_str()) != 0) {
-          log("error: failed to invoke `gradlew build` command");
-          exit(1);
-        }
-
-        exit(0);
-      }
-
       auto app = paths.platformSpecificOutputPath / "app";
       auto androidHome = getEnv("ANDROID_HOME");
 
@@ -2368,7 +2356,9 @@ int main (const int argc, const char* argv[]) {
 
       StringStream sdkmanager;
       StringStream packages;
-      StringStream gradlew;
+      StringStream gradlew;      
+      String ndkVersion = "25.0.8775105";
+      String androidPlatform = "android-33";
 
       if (settings["android_accept_sdk_licenses"].size() > 0) {
         sdkmanager << "echo " << settings["android_accept_sdk_licenses"] << "|";
@@ -2380,13 +2370,13 @@ int main (const int argc, const char* argv[]) {
       }
 
       packages
-        << quote << "ndk;25.0.8775105" << quote << " "
+        << quote << "ndk;" << ndkVersion << quote << " "
         << quote << "platform-tools" << quote << " "
-        << quote << "platforms;android-33" << quote << " "
+        << quote << "platforms;" << androidPlatform << quote << " "
         << quote << "emulator" << quote << " "
         << quote << "patcher;v4" << quote << " "
-        << quote << "system-images;android-33;google_apis;x86_64" << quote << " "
-        << quote << "system-images;android-33;google_apis;arm64-v8a" << quote << " ";
+        << quote << "system-images;" << androidPlatform << ";google_apis;x86_64" << quote << " "
+        << quote << "system-images;" << androidPlatform << ";google_apis;arm64-v8a" << quote << " ";
 
       if (std::system("sdkmanager --version 2>&1 >/dev/null") != 0) {
         if (!platform.win) {
@@ -2404,6 +2394,74 @@ int main (const int argc, const char* argv[]) {
         log("error: failed to initialize Android SDK (sdkmanager)");
         log("You may need to add accept_sdk_licenses = \"y\" to the [android] section of socket.ini.");
         exit(1);
+      }
+
+      StringStream ndkBuild;
+      StringStream ndkBuildArgs;
+      StringStream ndkTest;
+      
+      ndkBuild << "ndk-build" << (platform.win ? ".cmd" : "");
+      ndkTest << ndkBuild.str() << " --version 2>&1 >" << (!platform.win ? "/dev/null" : "NUL");
+
+      if (std::system(ndkTest.str().c_str()) != 0) {
+          ndkBuild.str("");
+          ndkBuild << androidHome << slash << "ndk" << slash <<  ndkVersion << slash << "ndk-build" << (platform.win ? ".cmd" : "");
+
+          
+          ndkTest.str("");
+          ndkTest
+            << ndkBuild.str() << " --version 2>&1 >" << (!platform.win ? "/dev/null" : "NUL");
+
+          if (std::system(ndkTest.str().c_str()) != 0) {
+            StringStream ndkError;
+            ndkError 
+              << "ndk not in path or ANDROID_HOME at "
+              << ndkBuild.str();
+            log(ndkError.str());
+            exit(1);
+          }
+      }
+
+      // TODO(mribbons): Cache binaries, hash based on source contents. Copy if cache matches rather than building.
+      // TODO(mribbons): Expand cache system to other target platforms
+
+      auto output = paths.platformSpecificOutputPath;
+      // auto app = output / "app";
+      auto src = app / "src";
+      auto _main = src / "main";
+      auto app_mk = _main / "jni" / "Application.mk";
+      auto jniLibs = _main / "jniLibs";
+
+      ndkBuildArgs 
+        << ndkBuild.str()
+        << " -j"
+        << " NDK_PROJECT_PATH=" << _main
+        << " NDK_APPLICATION_MK=" << app_mk
+        << (flagDebugMode ? " NDK_DEBUG=1" : "")
+        << " APP_PLATFORM=" << androidPlatform
+        << " NDK_LIBS_OUT=" << jniLibs
+        << "2>&1 >" << (!platform.win ? "/dev/null" : "NUL")
+        ;
+
+      if (std::system(ndkBuildArgs.str().c_str()) != 0)
+      {        
+        log(ndkBuildArgs.str());
+        log("ndk build failed.");
+        exit(1);
+      }
+
+
+      // just build for CI
+      if (getEnv("SSC_CI").size() > 0) {
+        StringStream gradlew;
+        gradlew << "./gradlew build";
+
+        if (std::system(gradlew.str().c_str()) != 0) {
+          log("error: failed to invoke `gradlew build` command");
+          exit(1);
+        }
+
+        exit(0);
       }
 
       if (flagDebugMode) {
@@ -2440,7 +2498,7 @@ int main (const int argc, const char* argv[]) {
 
       if (flagBuildForAndroidEmulator) {
         StringStream avdmanager;
-        String package = "'system-images;android-33;google_apis;x86_64' ";
+        String package = "'system-images;" + androidPlatform + ";google_apis;x86_64' ";
 
         if (!platform.win) {
           if (std::system("avdmanager list 2>&1 >/dev/null") != 0) {
