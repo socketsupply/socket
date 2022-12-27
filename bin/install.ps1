@@ -57,7 +57,8 @@ Function Build {
   cd "$WORKING_PATH"
   (New-Item -ItemType Directory -Force -Path "$WORKING_BUILD_PATH\bin") > $null
   Write-Output "# compiling the build tool..."
-  clang++ $SSC_BUILD_OPTIONS -Xlinker /NODEFAULTLIB:libcmt -I"$WORKING_BUILD_PATH\include" -L"$WORKING_BUILD_PATH\lib" src\process\win.cc src\cli\cli.cc -o $WORKING_BUILD_PATH\bin\ssc.exe -std=c++2a -DSSC_BUILD_TIME="$($BUILD_TIME)" -DSSC_VERSION_HASH="$($VERSION_HASH)" -DSSC_VERSION="$($VERSION)"
+  # Write-Output "clang++ $SSC_BUILD_OPTIONS -Xlinker /NODEFAULTLIB:libcmt -I""$WORKING_BUILD_PATH\include"" -L""$WORKING_BUILD_PATH\lib"" src\process\win.cc src\cli\asset_cache.cc src\cli\cli.cc  -o $WORKING_BUILD_PATH\bin\ssc.exe -std=c++2a -DSSC_BUILD_TIME=""$($BUILD_TIME)"" -DSSC_VERSION_HASH=""$($VERSION_HASH)"" -DSSC_VERSION=""$($VERSION)"""
+  clang++ $SSC_BUILD_OPTIONS -Xlinker /NODEFAULTLIB:libcmt -I"$WORKING_BUILD_PATH\include" -L"$WORKING_BUILD_PATH\lib" src\process\win.cc src\cli\asset_cache.cc src\cli\cli.cc  -o $WORKING_BUILD_PATH\bin\ssc.exe -std=c++2a -DSSC_BUILD_TIME="$($BUILD_TIME)" -DSSC_VERSION_HASH="$($VERSION_HASH)" -DSSC_VERSION="$($VERSION)"
 
   if ($? -ne 1) {
     Write-Output "not ok - the build tool failed to compile. Here's what you can do..."
