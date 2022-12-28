@@ -1,3 +1,8 @@
+#ifdef _WIN32
+#include <stdio.h>
+#else
+#include <stdlib.h>
+#endif
 #include <thread>
 #include "asset_cache.hh"
 
@@ -13,10 +18,10 @@ namespace SSC {
     hashCommand = "%SystemRoot%\\system32\\certutil -hashfile {{file}} MD5 | find /i /v \"md5\" | %SystemRoot%\\system32\\find /i /v \"certutil\"";
 #endif
 #ifdef __linux__
-    hashCommand = "md5sum {{file}} | awk '{ print $1 }'"
+    hashCommand = "md5sum {{file}} | awk '{ print $1 }'";
 #endif
 #ifdef __APPLE__
-    hashCommand = "md5sum {{file}} | awk '{ print $1 }'"
+    hashCommand = "md5 -q {{file}}";
 #endif
     }
 
@@ -27,7 +32,7 @@ namespace SSC {
     if (hashCommand.find("{{file}}") == -1)
       printf("Warning, hash command doesn't contain {{file}} argument placeholder\n");
 
-    this->cacheRoot.assign(_cacheRoot.length() > 0 ? _cacheRoot : (fs::path(_sscHome) / "BuildCache")); // SSC_CACHE_ROOT
+    this->cacheRoot = (_cacheRoot.length() > 0 ? fs::path(_cacheRoot) : (fs::path(_sscHome) / "BuildCache")); // SSC_CACHE_ROOT
 
     printf("cache root: %s\n", cacheRoot.string().c_str());
 
@@ -68,16 +73,17 @@ namespace SSC {
     for (int t = 0; t < thread_count; t++) {
       _contents.push_back(new StringStream());
       threads.push_back(new std::thread([&](int _t) {
-        for (int f = fpt * _t; f < fpt * (_t + 1); f++) {
-          if (f < files.size() && fs::exists(files[f]))
-          {
+        for (int f = fpt * _t; f < fpt * (_t + 1) && f < files.size(); f++) {
+          if (fs::exists(files[f])) {
             try {
               (*_contents[_t]) << HashFile(files[f]);
             }
             catch (std::exception e) {
-              std::cout << "Error hashing " << files[f].string().c_str() << "HashFiles: Error joining thread: " << e.what() << std::endl;
+              std::cout << "Error hashing " << files[f].string().c_str() << e.what() << std::endl;
               throw e;
             }
+          } else {
+            std::cout << "Hash: file doesn't exist: " << files[f] << std::endl;
           }
         }
       }, (t)));
@@ -106,20 +112,37 @@ namespace SSC {
   }
 
   String AssetCache::HashTemp(String data) {
-    // TODO(mribbons): Use a proper temp file
-    writeFile("file.temp", data);
-    auto hash = HashFile("file.temp");
-    fs::remove("file.temp");
+#ifdef _WIN32
+    char tempname[256];
+    tmpnam_s(tempname, 256);
+#else
+    char tempname[] = "/tmp/ssc_XXXXXX";
+    auto r = mkstemp(tempname);
+#endif  
+    writeFile(tempname, data);
+    auto hash = HashFile(tempname);
+    fs::remove(tempname);
     return hash;
   }
 
-  String AssetCache::HashMakeFileInput(fs::path makeFile, String makeCommand) {
-    String contents = readFile(makeFile);
-    std::regex re(R"(.*(\.cpp|\.cc|\.c))");
+  void AssetCache::GetCFileHeaders(fs::path sourcePath, std::map<fs::path, bool> &unique_headers) {
+    // doesn't account for #ifdef includes, might not be a problem
+    // remove parent from path when checking uniqueness, or make it absolute
+    const std::regex re(R"(.*#include \"(.*)\")");
     std::smatch matches;
-    std::vector<fs::path> source_files;
 
-    StringStream pathStream;
+
+    auto realAppRoot = appRoot.parent_path().parent_path();
+    // TODO(mribbons): Read include dirs from makefile
+    std::vector<fs::path> include_dirs = {
+      "",
+      realAppRoot,
+      realAppRoot / "include",
+      sourcePath.parent_path(),
+      sourcePath.parent_path() / "include",
+    };
+
+    String contents = readFile(sourcePath);
     String token;
 
     while (token != contents) {
@@ -127,13 +150,72 @@ namespace SSC {
 
       contents = contents.substr(contents.find_first_of("\n") + 1);
       if (std::regex_search(token, matches, re) != 0) {
-        String path; path.append(matches[0].str());
-        auto f = path.find_first_of("*");
+        String path; path.append(matches[1].str());
+        fs::path includePath = fs::path(trim(path));
 
-        if (f == -1)
-          source_files.push_back(makeFile.parent_path() / fs::path(trim(path)));
+        for (int d = 0; d < include_dirs.size(); d++) {
+          if (fs::exists(include_dirs[d] / includePath))
+            {
+              includePath = include_dirs[d] / includePath;
+              GetCFileHeaders(includePath, unique_headers);
+              break;
+            }
+        }
+          
+        // std::cout << "Include " << includePath.string() << std::endl;
+        unique_headers[includePath] = true;
       }
     }
+  }
+
+  String AssetCache::HashMakeFileInput(fs::path makeFile, String makeCommand) {
+    String contents = readFile(makeFile);
+    const std::regex re(R"(.*(\.cpp|\.cc|\.c))");
+    const std::regex reLocalPath(R"(\$\(LOCAL_PATH\))");
+    std::smatch matches;
+    std::vector<fs::path> source_files;
+    source_files.push_back(makeFile);
+
+    String token;
+
+    auto realAppRoot = appRoot.parent_path().parent_path();
+
+    std::map<fs::path, bool> unique_headers;
+
+    while (token != contents) {
+      token = contents.substr(0,contents.find_first_of("\n"));
+
+      contents = contents.substr(contents.find_first_of("\n") + 1);
+      if (std::regex_search(token, matches, re) != 0) {
+        String path; path.append(replace(matches[0].str(), "#hint", ""));
+        auto f = path.find_first_of("*");
+
+        if (f == -1) {
+          fs::path source = fs::path(trim(
+#ifdef _WIN32
+          replace(
+#endif
+            path
+#ifdef _WIN32
+            , "/", "\\")
+#endif
+            
+            ));
+
+          // fs::
+          if (fs::exists(realAppRoot / source)) {
+            source = realAppRoot / source;
+          } else {
+            source = makeFile.parent_path() / source;
+          }
+          this->GetCFileHeaders(source, unique_headers);
+          source_files.push_back(source);
+        }
+      }
+    }
+
+    for(std::map<fs::path, bool>::iterator header = unique_headers.begin(); header != unique_headers.end(); ++header)
+      source_files.push_back(header->first);
 
     return HashFiles(source_files, { makeCommand });
   }

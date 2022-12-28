@@ -1240,6 +1240,8 @@ LOCAL_SRC_FILES +=                     \
   $(foreach file, $(UV_UNIX_SOURCE), $(LOCAL_PATH)/uv/src/unix/$(file))
 
 LOCAL_EXPORT_C_INCLUDES := $(LOCAL_PATH)/include
+# TODO(mribbons): See if libuv can be a shared library
+# linking to other individual libs may caused apk size increase
 include $(BUILD_STATIC_LIBRARY)
 
 ## Custom userspace Android NDK
@@ -1420,9 +1422,12 @@ LOCAL_CFLAGS +=              \
 LOCAL_CFLAGS += -g -DDEBUG=1 -DANDROID=1 -DSSC_SETTINGS="" -DSSC_VERSION=0.1.0 -DSSC_VERSION_HASH=13543ad  
 
 LOCAL_LDLIBS := -landroid -llog
-# TODO(mribbons) temp hack
+# TODO(mribbons): wildcard expansion below not implemented
+# TODO(mribbons): Get src/custom.cc to work with AssetCache, possibly inject approot path as -D var
+#hint src/custom.cc 
+
 LOCAL_SRC_FILES =         \
-#  custom.cc
+ ../../../../../../../src/custom.cc
 
 LOCAL_SRC_FILES += $(wildcard ../../../../../../../src/*.cc)
 

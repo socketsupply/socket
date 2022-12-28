@@ -1455,13 +1455,27 @@ int main (const int argc, const char* argv[]) {
         )
       );
 
-      writeFile(
-        pkg / "main.kt",
-        std::regex_replace(
+      auto main_kt = std::regex_replace(
           WStringToString(readFile(trim(prefixFile("src/android/main.kt")))),
           std::regex("__BUNDLE_IDENTIFIER__"),
           bundle_identifier
-        )
+        );
+
+      if (!android_enable_standard_ndk_build)
+        main_kt = std::regex_replace(
+          main_kt,
+          std::regex("System.loadLibrary\\(\"socket-runtime\"\\)\\n"),
+          String(
+            "System.loadLibrary(\"socket-runtime-core\")\n"
+            "      System.loadLibrary(\"socket-runtime-ipc\")\n"
+            "      System.loadLibrary(\"socket-runtime-android\")\n"
+            "      System.loadLibrary(\"custom\")\n"
+          )
+        ); 
+
+      writeFile(
+        pkg / "main.kt",
+        main_kt
       );
 
       writeFile(

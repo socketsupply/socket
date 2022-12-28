@@ -30,10 +30,7 @@ open class MainActivity : WebViewActivity() {
 
   companion object {
     init {
-      System.loadLibrary("socket-runtime-core")
-      System.loadLibrary("socket-runtime-ipc")
-      System.loadLibrary("socket-runtime-android")
-      System.loadLibrary("custom")
+      System.loadLibrary("socket-runtime")
     }
   }
 
