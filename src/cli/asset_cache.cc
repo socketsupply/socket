@@ -5,6 +5,7 @@
 #endif
 #include <thread>
 #include "asset_cache.hh"
+#include <math.h>
 
 namespace SSC {
   AssetCache::AssetCache(String _hashCommandEnv, fs::path _appRoot, String _cacheRoot, String _sscHome) {
@@ -59,7 +60,21 @@ namespace SSC {
   String AssetCache::HashFile(fs::path file) {
     auto command = BuildHashCommand(file);
     auto r = exec(command);
-    return replace(r.output, "\n", "");
+    for (auto x = 0; x < 4; ++x) {
+      if (r.exitCode != 0) {
+        // this fix doesn't work, if md5 -q <file> fails once it won't come good on that file
+        // std::cout << command << std::endl;
+        // std::cout << "Hash " << file.string() << " failed: " << r.output << " with code " << r.exitCode << ". Retrying " << (3-x) << " times, sleep: " << (int)pow(10, x)*5 << std::endl;
+        // std::this_thread::sleep_for(std::chrono::milliseconds((int)pow(10, x)*5));
+        // Sometimes md5 just won't read the file (code 127), copy contents to a temp file and read from there
+        // suspect problem is that fs::copy isn't letting go of files fast enough and md5 opens without share mode
+        std::cout << "Hash " << file.string() << " failed with code " << r.exitCode << ", attempting to hash temp file... " << std::endl;
+        return HashTemp(readFile(file.string()));
+      } else 
+        return replace(r.output, "\n", "");
+    }
+
+    return "<BadHash>";
   }
 
   String AssetCache::HashFiles(std::vector<fs::path> files, std::vector<String> tempStrings) {
@@ -82,9 +97,9 @@ namespace SSC {
               std::cout << "Error hashing " << files[f].string().c_str() << e.what() << std::endl;
               throw e;
             }
-          } else {
-            std::cout << "Hash: file doesn't exist: " << files[f] << std::endl;
-          }
+          }// else {
+          //   std::cout << "Hash: file doesn't exist: " << files[f] << std::endl;
+          // }
         }
       }, (t)));
     }
@@ -182,6 +197,10 @@ namespace SSC {
 
     std::map<fs::path, bool> unique_headers;
 
+    std::vector<std::thread*> source_threads;
+
+    int active_threads = 0;
+
     while (token != contents) {
       token = contents.substr(0,contents.find_first_of("\n"));
 
@@ -208,11 +227,46 @@ namespace SSC {
           } else {
             source = makeFile.parent_path() / source;
           }
-          this->GetCFileHeaders(source, unique_headers);
+
+          if (active_threads >= 1) {
+            for (auto& th : source_threads)
+              if (th->joinable())
+              {
+                try {
+                  th->join();
+                }
+                catch (std::exception e) {
+                  std::cout << "HashFiles: Error joining thread: " << e.what() << std::endl;
+                  throw e;
+                }
+                active_threads--;
+                break;
+              }
+          }
+
+          source_threads.push_back(new std::thread([&](fs::path _source) {
+            this->GetCFileHeaders(_source, unique_headers);
+          }, (source)));
+
+          active_threads++;
+
           source_files.push_back(source);
         }
       }
     }
+
+    for (auto& th : source_threads)
+      if (th->joinable())
+      {
+        try {
+          th->join();
+        }
+        catch (std::exception e) {
+          std::cout << "HashFiles: Error joining thread: " << e.what() << std::endl;
+          throw e;
+        }
+        active_threads--;
+      }
 
     for(std::map<fs::path, bool>::iterator header = unique_headers.begin(); header != unique_headers.end(); ++header)
       source_files.push_back(header->first);
