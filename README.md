@@ -29,30 +29,30 @@ gantt
     title Project Roadmap
     dateFormat  YYYY-MM-DD
     axisFormat  %Y-%m
-
-    section APIs
-    Notifications API Polyfill: API0, 2d
-    TypeScript definitions: API1
+    todayMarker off
 
     section All
-    Cross Compiling: X0, 2022-10, 20d
-    Consolidate Routing: X1, 2022-10-8, 6d
+    Cross Compiling: X0, 2023-03, 20d
 
     section Android
-    Finish Bluetooth: A1, after X1, 14d
+    Optize Build Steps: A1, 14d
 
     section iOS
-    Security Crash Messaging: I0, 2022-12, 2d
+    Security Crash Messaging: I0, 2023-01, 2d
 
     section MacOS
-    Security Crash Messaging: M0, 2022-12, 2d
+    Security Crash Messaging: M0, 2023-01, 2d
 
     section Linux
     Finish Bluetooth: L2, after A1, 14d
 
     section Windows
-    Core Integration: W0, after B1, 20d
+    Core Integration: W0, 15d
     Finish Bluetooth: W2, after L2, 10d
+
+    section API
+    Notifications API Polyfill: API0, 2023-02, 4d
+    TypeScript definitions: API1, after API0, 2d
 ```
 
 
