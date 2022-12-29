@@ -955,8 +955,13 @@ int main (const int argc, const char* argv[]) {
     }
 
     targetPlatform = targetPlatform.size() > 0 ? targetPlatform : platform.os;
-    Paths paths = getPaths(targetPlatform);    
-    AssetCache *ac = new AssetCache(getEnv("SSC_HASH_COMMAND"), paths.platformSpecificOutputPath, getEnv("SSC_CACHE_ROOT"), prefixFile());
+    Paths paths = getPaths(targetPlatform);
+    AssetCache *ac = new AssetCache(
+      getEnv("SSC_HASH_COMMAND"), 
+      paths.platformSpecificOutputPath, 
+      getEnv("SSC_CACHE_ROOT").length() > 0 ? getEnv("SSC_CACHE_ROOT") : getEnv("SSC_CACHE_ROOT"), 
+      prefixFile(), 
+      log);
 
     auto executable = fs::path(settings["executable"] + (platform.win ? ".exe" : ""));
     auto binaryPath = paths.pathBin / executable;
@@ -1066,6 +1071,8 @@ int main (const int argc, const char* argv[]) {
     std::vector<String> jniLibs;
     std::vector<String> jniMakeFiles;
 
+    auto init_gradle = false;
+
     if (flagBuildForAndroid) {
       auto bundle_identifier = settings["bundle_identifier"];
       auto bundle_path = fs::path(replace(bundle_identifier, "\\.", "/")).make_preferred();
@@ -1111,20 +1118,7 @@ int main (const int argc, const char* argv[]) {
           : [=]() -> std::vector<String> { return { gAndroidMakefile };}()
       ;
 
-      for(std::vector<String>::iterator jniLib = jniLibs.begin(); jniLib != jniLibs.end(); ++jniLib) {
-        auto jniSubPath = jniLib->length() > 0 ? (jni.parent_path() / *jniLib / "jni") : jni;
-        // for now create every sub folder for every lib
-        // need a clean way to define which source files are in which lib
-        // can read makefiles, but need to put headers in the right place
-        // TODO(mribbons): Update makefiles to reference headers from other lib folders
-        fs::create_directories(jniSubPath / "android");
-        fs::create_directories(jniSubPath / "app");
-        fs::create_directories(jniSubPath / "core");
-        fs::create_directories(jniSubPath / "include");
-        fs::create_directories(jniSubPath / "ipc");
-        fs::create_directories(jniSubPath / "src");
-        fs::create_directories(jniSubPath / "window");
-      }
+      // only create directories for main app, lib directories will be created as needed by AssetCache
 
       fs::create_directories(res);
       fs::create_directories(res / "layout");
@@ -1135,20 +1129,26 @@ int main (const int argc, const char* argv[]) {
       // set current path to output directory
       fs::current_path(output);
 
-      StringStream gradleInitCommand;
-      gradleInitCommand
-        << "echo 1 |"
-        << "gradle "
-        << "--no-configuration-cache "
-        << "--no-build-cache "
-        << "--no-scan "
-        << "--offline "
-        << "--quiet "
-        << "init";
+      init_gradle = !fs::exists("build.gradle") || !fs::exists("settings.gradle");
 
-      if (std::system(gradleInitCommand.str().c_str()) != 0) {
-        log("error: failed to invoke `gradle init` command");
-        exit(1);
+      if (init_gradle) {
+        StringStream gradleInitCommand;
+        gradleInitCommand
+          << "echo 1 |"
+          << "gradle "
+          << "--no-configuration-cache "
+          << "--no-build-cache "
+          << "--no-scan "
+          << "--offline "
+          << "--quiet "
+          << "init";
+
+          if (std::system(gradleInitCommand.str().c_str()) != 0) {
+            log("error: failed to invoke `gradle init` command");
+            exit(1);
+          }
+      } else {        
+        log("skipping gradle init, build.gradle and settings.gradle found.");
       }
 
       // Core
@@ -1169,21 +1169,17 @@ int main (const int argc, const char* argv[]) {
 
         auto jniSubPath = jniLib->length() > 0 ? jni.parent_path() / *jniLib / "jni" : jni;
 
-        // TODO(mribbons): Clean up all libs being copied to all folders
-        fs::copy(trim(prefixFile("src/common.hh")), jniSubPath, fs::copy_options::overwrite_existing);
+        // headers will be copied by in by AssetCache based on .cc file requirements
         if (n1Lib || libAndroid) {
+          fs::create_directories(jniSubPath / "android");
           fs::copy(trim(prefixFile("src/android/bridge.cc")), jniSubPath / "android", fs::copy_options::overwrite_existing);
           fs::copy(trim(prefixFile("src/android/runtime.cc")), jniSubPath / "android", fs::copy_options::overwrite_existing);
           fs::copy(trim(prefixFile("src/android/string_wrap.cc")), jniSubPath / "android", fs::copy_options::overwrite_existing);
           fs::copy(trim(prefixFile("src/android/window.cc")), jniSubPath / "android", fs::copy_options::overwrite_existing);
         }
 
-        fs::copy(trim(prefixFile("src/app/app.hh")), jniSubPath / "app", fs::copy_options::overwrite_existing);
-        fs::copy(trim(prefixFile("src/core/json.hh")), jniSubPath / "core", fs::copy_options::overwrite_existing);
-        fs::copy(trim(prefixFile("src/core/runtime-preload.hh")), jniSubPath / "core", fs::copy_options::overwrite_existing);
-        fs::copy(trim(prefixFile("src/core/core.hh")), jniSubPath / "core", fs::copy_options::overwrite_existing);
-
         if (n1Lib || libCore) {
+          fs::create_directories(jniSubPath / "core");
           fs::copy(trim(prefixFile("src/init.cc")), jniSubPath, fs::copy_options::overwrite_existing);
           fs::copy(trim(prefixFile("src/core/bluetooth.cc")), jniSubPath / "core", fs::copy_options::overwrite_existing);
           fs::copy(trim(prefixFile("src/core/core.cc")), jniSubPath / "core", fs::copy_options::overwrite_existing);
@@ -1195,16 +1191,14 @@ int main (const int argc, const char* argv[]) {
         }
 
         if (n1Lib || libIPC) {
+          fs::create_directories(jniSubPath / "ipc");
           fs::copy(trim(prefixFile("src/ipc/bridge.cc")), jniSubPath / "ipc", fs::copy_options::overwrite_existing);
           fs::copy(trim(prefixFile("src/ipc/ipc.cc")), jniSubPath / "ipc", fs::copy_options::overwrite_existing);
         }
 
-        fs::copy(trim(prefixFile("src/ipc/ipc.hh")), jniSubPath / "ipc", fs::copy_options::overwrite_existing);
-        fs::copy(trim(prefixFile("src/window/options.hh")), jniSubPath / "window", fs::copy_options::overwrite_existing);
-        fs::copy(trim(prefixFile("src/window/window.hh")), jniSubPath / "window", fs::copy_options::overwrite_existing);
-
         // libuv
         if (n1Lib || libUv) {
+          fs::create_directories(jniSubPath / "uv");
           fs::copy(
             trim(prefixFile("uv")),
             jniSubPath / "uv",
@@ -1212,6 +1206,7 @@ int main (const int argc, const char* argv[]) {
           );
         }
 
+        fs::create_directories(jniSubPath / "include");
         fs::copy(
           trim(prefixFile("include")),
           jniSubPath / "include",
@@ -1219,10 +1214,29 @@ int main (const int argc, const char* argv[]) {
         );
 
         writeFile(jniSubPath / "user-config-bytes.hh", settings["ini_code"]);
+
+        if (n1Lib || libcustom) {    
+          // custom native sources
+          fs::create_directories(jniSubPath / "src");
+          for (
+            auto const &file :
+            split(settings["android_native_sources"], ' ')
+          ) {
+            auto filename = fs::path(file).filename();
+            log("write custom 2 " + (jniSubPath / "src" / filename).string() + " <- " + (targetPath / file ).string());
+            writeFile(
+              jniSubPath / "src" / filename,
+              tmpl(std::regex_replace(
+                WStringToString(readFile(targetPath / file )),
+                std::regex("__BUNDLE_IDENTIFIER__"),
+                settings["bundle_identifier"]
+              ), settings)
+            );
+          }
+        }
       }
 
       log("done copying files");
-      // exit(1);
 
       auto aaptNoCompressOptionsNormalized = std::vector<String>();
       auto aaptNoCompressDefaultOptions = split(R"OPTIONS("htm","html","txt","js","jsx","mjs","ts","css","xml")OPTIONS", ',');
@@ -1396,22 +1410,6 @@ int main (const int argc, const char* argv[]) {
         makefileContext["android_native_abis"] = "all";
       }
 
-      // custom native sources
-      for (
-        auto const &file :
-        split(settings["android_native_sources"], ' ')
-      ) {
-        auto filename = fs::path(file).filename();
-        writeFile(
-          jni / "src" / filename,
-          tmpl(std::regex_replace(
-            WStringToString(readFile(targetPath / file )),
-            std::regex("__BUNDLE_IDENTIFIER__"),
-            bundle_identifier
-          ), settings)
-        );
-      }
-
       if (settings["android_native_makefile"].size() > 0) {
         makefileContext["android_native_make_context"] =
           trim(tmpl(tmpl(WStringToString(readFile(targetPath / settings["android_native_makefile"])), settings), makefileContext));
@@ -1435,6 +1433,9 @@ int main (const int argc, const char* argv[]) {
         );
 
         if (jniLib != "libuv") {
+          // TODO(mribbons): Changing bundle id causes all libs to recompile, work out if BUNDLE_IDENTIFIER should be moved, possibly only required by custom.cc
+          fs::create_directories(jniSubPath / "android");
+          log("Write " + (jniSubPath / "android" / "internal.hh").string());
           writeFile(
           jniSubPath / "android" / "internal.hh",
           std::regex_replace(
@@ -2067,101 +2068,144 @@ int main (const int argc, const char* argv[]) {
         << "sdkmanager "
         << packages.str();
 
-      if (std::system(sdkmanager.str().c_str()) != 0) {
+      if (init_gradle && std::system(sdkmanager.str().c_str()) != 0) {
         log("error: failed to initialize Android SDK (sdkmanager)");
         log("You may need to add accept_sdk_licenses = \"y\" to the [android] section of socket.ini.");
         exit(1);
       }
 
-      for(std::vector<String>::size_type j = 0; j != jniLibs.size() && !android_enable_standard_ndk_build; j++) {
-        auto jniLib = jniLibs[j];
-        auto jniMakeFile = jniMakeFiles[j];
-        auto output = paths.platformSpecificOutputPath;
-        log(output.string().c_str());
-        // auto app = output / "app";
-        auto src = app / "src";
-        auto _main = src / "main";
+      StringStream ndkBuild;
+      StringStream ndkTest;
+      
+      ndkBuild << "ndk-build" << (platform.win ? ".cmd" : "");
+      ndkTest << ndkBuild.str() << " --version 2>&1 >" << (!platform.win ? "/dev/null" : "NUL");
 
-        auto jni = _main / "jni";
-        auto jniSubPath = jniLib.length() > 0 ? (jni.parent_path() / jniLib / "jni") : jni;
+      if (exec(ndkTest.str().c_str()).exitCode != 0) {
+          ndkBuild.str("");
+          ndkBuild << androidHome << slash << "ndk" << slash <<  ndkVersion << slash << "ndk-build" << (platform.win ? ".cmd" : "");
 
-        auto app_mk = jniSubPath / "Application.mk";
-        auto and_mk = jniSubPath / "Android.mk";
-
-        // this is intentional, output libs to top level app
-        auto jniLibsMain = _main / "jniLibs";
-        auto jniLibsOut = jniSubPath / "bin" / jniLib;
-        auto jniLibsRestore = jniLibsMain;
-
-        if (jniLib == "libuv")
-        {
-          jniLibsOut = _main / jniLib / "obj";
-          jniLibsRestore = jniLibsOut;
-        } else if (jniLib == "" && !disable_split_runtime_libs )
-        {
-          jniLibsOut = jniSubPath / "jniLibs";
-          jniLibsRestore = jniLibsOut;
-        }
-
-        StringStream ndkBuild;
-        StringStream ndkBuildArgs;
-        StringStream ndkTest;
-        
-        ndkBuild << "ndk-build" << (platform.win ? ".cmd" : "");
-        ndkTest << ndkBuild.str() << " --version 2>&1 >" << (!platform.win ? "/dev/null" : "NUL");
-
-        if (exec(ndkTest.str().c_str()).exitCode != 0) {
-            ndkBuild.str("");
-            ndkBuild << androidHome << slash << "ndk" << slash <<  ndkVersion << slash << "ndk-build" << (platform.win ? ".cmd" : "");
-
-            
-            ndkTest.str("");
-            ndkTest
-              << ndkBuild.str() << " --version 2>&1 >" << (!platform.win ? "/dev/null" : "NUL");
-
-            if (exec(ndkTest.str().c_str()).exitCode != 0) {
-              StringStream ndkError;
-              ndkError 
-                << "ndk not in path or ANDROID_HOME at "
-                << ndkBuild.str();
-              log(ndkError.str());
-              exit(1);
-            }
-        }
-
-        ndkBuildArgs.str("");
-        ndkBuildArgs 
-          << ndkBuild.str()
-          << " -j"
-          << " NDK_PROJECT_PATH=" << jniSubPath.parent_path()
-          << " NDK_APPLICATION_MK=" << app_mk
-          << (flagDebugMode ? " NDK_DEBUG=1" : "")
-          << " APP_PLATFORM=" << androidPlatform
-          << " NDK_LIBS_OUT=" << jniLibsOut
-          ;
           
-        // TODO(mribbons): Expand cache system to other target platforms
-        auto inputHash = ac->HashMakeFileInput(and_mk, ndkBuildArgs.str());
+          ndkTest.str("");
+          ndkTest
+            << ndkBuild.str() << " --version 2>&1 >" << (!platform.win ? "/dev/null" : "NUL");
 
-        if (!ac->RestoreCache(inputHash, jniLib, jniLibsRestore))
-        {
-          auto r = exec(ndkBuildArgs.str().c_str());
-          if (r.exitCode != 0)
-          {
-            log(r.output);
-            log("ndk build failed.");
-            log(ndkBuildArgs.str());
+          if (exec(ndkTest.str().c_str()).exitCode != 0) {
+            StringStream ndkError;
+            ndkError 
+              << "ndk not in path or ANDROID_HOME at "
+              << ndkBuild.str();
+            log(ndkError.str());
             exit(1);
-          } else {
-            log(ndkBuildArgs.str());
-            ac->UpdateCache(inputHash, jniLib, jniLibsOut);
-          // copy binaries into place for gradle, libuv.a already in correct location
-          // Other .so files don't get their own obj folder, so they need to be stored separately
-          if (jniLib != "libuv")
-            ac->RestoreCache(inputHash, jniLib, jniLibsRestore);
           }
-        }
       }
+
+      ac->LoadHeaderPrefixes();
+
+      std::vector<std::thread*> and_mk_threads;
+      std::map<int, bool> and_mk_done;
+      auto and_mk_fail = false;
+
+      for(std::vector<String>::size_type j = 0; j != jniLibs.size() && !android_enable_standard_ndk_build; j++) {
+        and_mk_done[j] = false;
+        and_mk_threads.push_back(new std::thread([&](int _j) {
+          auto jniLib = jniLibs[_j];
+          auto jniMakeFile = jniMakeFiles[_j];
+          auto output = paths.platformSpecificOutputPath;
+          auto src = app / "src";
+          auto _main = src / "main";
+
+          auto jni = _main / "jni";
+          auto jniSubPath = jniLib.length() > 0 ? (jni.parent_path() / jniLib / "jni") : jni;
+
+          auto app_mk = jniSubPath / "Application.mk";
+          auto and_mk = jniSubPath / "Android.mk";
+
+          // this is intentional, output libs to top level app
+          auto jniLibsMain = _main / "jniLibs";
+          auto jniLibsOut = jniSubPath / "bin" / jniLib;
+          auto jniLibsRestore = jniLibsMain;
+
+          if (jniLib == "libuv")
+          {
+            jniLibsOut = _main / jniLib / "obj";
+            jniLibsRestore = jniLibsOut;
+          } else if (jniLib == "" && !disable_split_runtime_libs )
+          {
+            jniLibsOut = jniSubPath / "jniLibs";
+            jniLibsRestore = jniLibsOut;
+          }
+
+          StringStream ndkBuildArgs;
+
+          ndkBuildArgs.str("");
+          ndkBuildArgs 
+            << ndkBuild.str()
+            << " -j"
+            << " NDK_PROJECT_PATH=" << jniSubPath.parent_path()
+            << " NDK_APPLICATION_MK=" << app_mk
+            << (flagDebugMode ? " NDK_DEBUG=1" : "")
+            << " APP_PLATFORM=" << androidPlatform
+            << " NDK_LIBS_OUT=" << jniLibsOut
+            // would be good to do this here, but relative paths in headers don't allow it
+            // << " -I " << prefixFile()
+            ;
+            
+          // TODO(mribbons): Expand cache system to other target platforms
+          auto inputHash = ac->HashMakeFileInput(and_mk, ndkBuildArgs.str(), true);
+
+          if (!ac->RestoreCache(inputHash, jniLib, jniLibsRestore))
+          {            
+            // libs are defined in order of dependency, wait for previous lib to complete before proceeding
+            // TODO(mribbons): Read lib deps from makefiles
+            // wait for previous thread before attempting to build
+            while (_j > 0 && !and_mk_done[_j-1])
+            {
+              std::this_thread::sleep_for(100ms);
+            }
+
+            auto r = exec(ndkBuildArgs.str().c_str());
+            if (r.exitCode != 0)
+            {
+              log(r.output);
+              log("ndk build failed.");
+              log(ndkBuildArgs.str());
+              and_mk_fail = true;
+            } else {
+              log(ndkBuildArgs.str());
+              ac->UpdateCache(inputHash, jniLib, jniLibsOut);
+              // copy binaries into place for gradle, libuv.a already in correct location
+              // Other .so files don't get their own obj folder, so they need to be stored separately
+              if (jniLib != "libuv")
+                ac->RestoreCache(inputHash, jniLib, jniLibsRestore);
+            }
+          }
+
+          // mark this thread as done, but not until previous thread is done
+          // have to wait again because previous thread may not have had to build, but prev prev thread may have, do don't mark us as done until previous has
+          while (_j > 0 && !and_mk_done[_j-1])
+          {
+            std::this_thread::sleep_for(100ms);
+          }
+
+          and_mk_done[_j] = true;
+          
+          log(and_mk.string().c_str());
+        }, (j)));
+      }
+
+      for (auto& th : and_mk_threads)
+        if (th->joinable())
+          try {
+            th->join();
+          }
+          catch (std::exception e) {
+            std::cout << "Error joining android ndk make thread: " << e.what() << std::endl;
+            and_mk_fail = true;
+          }
+
+      
+
+      if (and_mk_fail) exit(2);
 
       // just build for CI
       if (getEnv("SSC_CI").size() > 0) {

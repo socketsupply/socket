@@ -1279,8 +1279,6 @@ LOCAL_SRC_FILES =         \
   core/udp.cc             \
   init.cc
 
-LOCAL_SRC_FILES += $(wildcard $(LOCAL_PATH)/src/*.cc)
-
 LOCAL_STATIC_LIBRARIES := uv
 LOCAL_SHARED_LIBRARIES := socket-runtime-core
 include $(BUILD_SHARED_LIBRARY)
@@ -1319,8 +1317,6 @@ LOCAL_LDLIBS := -landroid -llog
 LOCAL_SRC_FILES =         \
   ipc/bridge.cc           \
   ipc/ipc.cc              
-
-LOCAL_SRC_FILES += $(wildcard $(LOCAL_PATH)/src/*.cc)
 
 LOCAL_STATIC_LIBRARIES := uv
 LOCAL_SHARED_LIBRARIES := socket-runtime-core
@@ -1371,8 +1367,6 @@ LOCAL_SRC_FILES =         \
   android/string_wrap.cc  \
   android/window.cc       
 
-LOCAL_SRC_FILES += $(wildcard $(LOCAL_PATH)/src/*.cc)
-
 LOCAL_STATIC_LIBRARIES := uv
 LOCAL_SHARED_LIBRARIES := socket-runtime-core socket-runtime-ipc
 include $(BUILD_SHARED_LIBRARY)
@@ -1422,14 +1416,9 @@ LOCAL_CFLAGS +=              \
 LOCAL_CFLAGS += -g -DDEBUG=1 -DANDROID=1 -DSSC_SETTINGS="" -DSSC_VERSION=0.1.0 -DSSC_VERSION_HASH=13543ad  
 
 LOCAL_LDLIBS := -landroid -llog
-# TODO(mribbons): wildcard expansion below not implemented
-# TODO(mribbons): Get src/custom.cc to work with AssetCache, possibly inject approot path as -D var
-#hint src/custom.cc 
 
-LOCAL_SRC_FILES =         \
- ../../../../../../../src/custom.cc
-
-LOCAL_SRC_FILES += $(wildcard ../../../../../../../src/*.cc)
+LOCAL_SRC_FILES := \
+  $(wildcard $(LOCAL_PATH)/src/*.cc)
 
 LOCAL_STATIC_LIBRARIES := uv
 LOCAL_SHARED_LIBRARIES := socket-runtime-core socket-runtime-ipc
