@@ -1062,6 +1062,7 @@ int main (const int argc, const char* argv[]) {
 
     // used in multiple if blocks, need to declare here
     auto android_enable_standard_ndk_build = settings["android_enable_standard_ndk_build"] == "true";
+    auto disable_split_runtime_libs = settings["android_disable_split_runtime_libs"] == "true";
     std::vector<String> jniLibs;
     std::vector<String> jniMakeFiles;
 
@@ -1089,7 +1090,7 @@ int main (const int argc, const char* argv[]) {
 
       // if we're using external ndk build (not gradle), define our libs
       jniLibs =
-        !android_enable_standard_ndk_build ? [=]() -> std::vector<String> { 
+        !android_enable_standard_ndk_build && !disable_split_runtime_libs ? [=]() -> std::vector<String> { 
           return { "libuv",
           "libsocket-runtime-core",
           "libsocket-runtime-ipc",
@@ -1101,7 +1102,7 @@ int main (const int argc, const char* argv[]) {
 
       // define makefiles for each lib
       jniMakeFiles = 
-        !android_enable_standard_ndk_build ? [=]() -> std::vector<String> { 
+        !android_enable_standard_ndk_build && !disable_split_runtime_libs ? [=]() -> std::vector<String> { 
           return { glibuvMakefile,
           glibSocketCoreMakefile,
           glibSocketIPCMakefile,
@@ -1461,7 +1462,7 @@ int main (const int argc, const char* argv[]) {
           bundle_identifier
         );
 
-      if (!android_enable_standard_ndk_build)
+      if (!android_enable_standard_ndk_build && !disable_split_runtime_libs)
         main_kt = std::regex_replace(
           main_kt,
           std::regex("System.loadLibrary\\(\"socket-runtime\"\\)\\n"),
@@ -2096,7 +2097,7 @@ int main (const int argc, const char* argv[]) {
         {
           jniLibsOut = _main / jniLib / "obj";
           jniLibsRestore = jniLibsOut;
-        } else if (jniLib == "")
+        } else if (jniLib == "" && !disable_split_runtime_libs )
         {
           jniLibsOut = jniSubPath / "jniLibs";
           jniLibsRestore = jniLibsOut;
@@ -2152,6 +2153,7 @@ int main (const int argc, const char* argv[]) {
             log(ndkBuildArgs.str());
             exit(1);
           } else {
+            log(ndkBuildArgs.str());
             ac->UpdateCache(inputHash, jniLib, jniLibsOut);
           // copy binaries into place for gradle, libuv.a already in correct location
           // Other .so files don't get their own obj folder, so they need to be stored separately
