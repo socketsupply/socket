@@ -4,7 +4,7 @@ on: [push]
 
 jobs:
   io-tests:
-    uses: socketsupply/socket-io-tests-workflow/.github/workflows/tests.yml@win_ci
+    uses: socketsupply/socket-io-tests-workflow/.github/workflows/tests.yml@win
     secrets:
       SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
       PACKAGE_PAT: ${{ secrets.PACKAGE_PAT }}
