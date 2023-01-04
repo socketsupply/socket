@@ -151,7 +151,8 @@ using namespace SSC;
                       central: (CBCentral*) central
  didSubscribeToCharacteristic: (CBCharacteristic*) characteristic
 {
-  debug("CoreBluetooth: didSubscribeToCharacteristic");
+  debug("CoreBluetooth: didSubscribeToCharacteristic: (%@)", characteristic.UUID.UUIDString);
+  [characteristic.service.peripheral setNotifyValue: YES forCharacteristic: characteristic];
   [characteristic.service.peripheral readValueForCharacteristic: characteristic];
 }
 
@@ -312,6 +313,7 @@ using namespace SSC;
     NSString* key = service.UUID.UUIDString;
     NSArray* uuids = [_serviceMap[key] allObjects];
 
+    debug("discovering characteristics (%@) for service %@", uuids, service.UUID.UUIDString);
     [peripheral discoverCharacteristics: [uuids copy] forService: service];
   }
 }
@@ -320,6 +322,7 @@ using namespace SSC;
  didDiscoverCharacteristicsForService: (CBService*) service
                                 error: (NSError*) error
 {
+  debug("didDiscoverCharacteristicsForService");
   if (error) {
     debug("CoreBluetooth: peripheral:didDiscoverCharacteristicsForService:error: %@", error);
     return;
@@ -328,7 +331,10 @@ using namespace SSC;
   NSString* key = service.UUID.UUIDString;
   NSArray* uuids = [[_serviceMap[key] allObjects] copy];
 
-  debug("characteristics %@", service.characteristics);
+  if (service.characteristics.count > 0) {
+    debug("characteristics %@", service.characteristics);
+  }
+
   for (CBCharacteristic* characteristic in service.characteristics) {
     debug("characteristic uuid %s", [characteristic.UUID.UUIDString UTF8String]);
     for (CBUUID* cUUID in uuids) {
@@ -420,7 +426,14 @@ using namespace SSC;
  didUpdateNotificationStateForCharacteristic: (CBCharacteristic*) characteristic
                                        error: (NSError*) error
 {
-  // TODO
+  debug(
+    "didUpdateNotificationStateForCharacteristic: %s",
+    characteristic.isNotifying ? "true" : "false"
+  );
+
+  if (error) {
+    debug("error: %@", error);
+  }
 }
 
 -     (void) centralManager: (CBCentralManager*) central

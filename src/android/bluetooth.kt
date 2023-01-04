@@ -6,9 +6,11 @@ import java.util.concurrent.Executor
 import java.util.concurrent.Executors
 import java.util.concurrent.Semaphore
 
+typealias BluetoothCommandFunction = (BluetoothGatt) -> Int
+typealias BluetoothDescriptor = android.bluetooth.BluetoothGattDescriptor
 typealias BluetoothGattServer = android.bluetooth.BluetoothGattServer
-typealias BluetoothGatt = android.bluetooth.BluetoothGatt
 typealias BluetoothDevice = android.bluetooth.BluetoothDevice
+typealias BluetoothGatt = android.bluetooth.BluetoothGatt
 typealias UUID = java.util.UUID
 
 interface IBluetoothConfiguration {
@@ -19,8 +21,7 @@ interface IBluetoothConfiguration {
 }
 
 const val BLUETOOTH_CHARACTERISTIC_PROPERTIES = (
-  android.bluetooth.BluetoothGattCharacteristic.PROPERTY_BROADCAST or
-  android.bluetooth.BluetoothGattCharacteristic.PROPERTY_INDICATE or
+  android.bluetooth.BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE or
   android.bluetooth.BluetoothGattCharacteristic.PROPERTY_NOTIFY or
   android.bluetooth.BluetoothGattCharacteristic.PROPERTY_WRITE or
   android.bluetooth.BluetoothGattCharacteristic.PROPERTY_READ
@@ -53,7 +54,6 @@ data class BluetoothConfiguration (
   override val pin: String? = Bluetooth.PIN_DEFAULT_VALUE
 ) : IBluetoothConfiguration
 
-typealias BluetoothCommandFunction = (BluetoothGatt) -> Int
 open class BluetoothCommand (
   queue: BluetoothCommandQueue,
   bluetooth: Bluetooth,
@@ -68,6 +68,7 @@ open class BluetoothCommand (
 
   val bluetooth = bluetooth
   val function = function
+  var retries = 4
   var status = STATUS_PENDING
   val queue = queue
   val ts = System.currentTimeMillis() / 1000
@@ -95,62 +96,81 @@ open class BluetoothCommandQueue (
   val executor = Executors.newFixedThreadPool(1)
   val gatt = WeakReference(gatt)
 
+  var current: BluetoothCommand? = null
+
   open fun push (function: BluetoothCommandFunction) {
     commands.add(BluetoothCommand(this, bluetooth, function))
   }
 
   open fun shift (): BluetoothCommand? {
     if (commands.size == 0) return null
-    val index = 0
-    val command = commands.elementAt(index)
-    commands.removeAt(index)
+    val command = commands.elementAt(0)
+    commands.removeAt(0)
     return command
   }
 
   open fun peek (): BluetoothCommand? {
     if (commands.size == 0) return null
-    val index = 0
-    val command = commands.elementAt(index)
-    return command
+    return commands.elementAt(0)
   }
 
-  open fun dequeue (): Boolean {
+  open fun dequeue (retries: Int = 4): Boolean {
     synchronized(commands) {
       val semaphore = this.semaphore
       val command = peek() ?: return false
       val gatt = this.gatt.get() ?: return false
 
-      executor.execute({
-        console.log("before lock")
-        semaphore.acquireUninterruptibly()
-        console.log("after lock")
-        val status = command(gatt)
-        console.log("after command")
+      semaphore.acquireUninterruptibly()
 
-        if (status == BluetoothCommand.STATUS_CONTINUE) {
-          console.log("continue")
-          this.bluetooth.handler.postDelayed({ this.next() }, 0)
-        }
+      this.current = command
+      this.bluetooth.dispatch {
+        executor.execute({
+          var status = command(gatt)
 
-        console.log("after exec")
-      })
+          // handle retry at command execution
+          if (status > BluetoothCommand.STATUS_SUCCESS && retries > 0) {
+            this.bluetooth.dispatch {
+              this.dequeue(retries - 1)
+            }
+          } else if (status == BluetoothCommand.STATUS_CONTINUE) {
+            this.bluetooth.dispatch {
+              this.next()
+            }
+          }
+        })
+      }
 
       return true
     }
   }
 
-  open fun next (): Boolean {
+  open fun next (status: Int = 0): Boolean {
+    val current = this.current
+    var retried = false
+    var result = false
+
+    // handle retry from callback of command
+    if (current != null && status > 0) {
+      retried = true
+      synchronized(commands) {
+        this.commands.add(0, current)
+      }
+    }
+
     semaphore.release()
-    console.log("release")
 
     if (this.dequeue()) {
       synchronized(commands) {
         val command = shift()
-        return command != null
+        result = command != null
       }
     }
 
-    return false
+    if (retried && result) {
+      return this.next()
+    }
+
+    return result
   }
 }
 
@@ -210,6 +230,7 @@ open class BluetoothGattServerClientCallback (
   bluetooth: Bluetooth
 ) : android.bluetooth.BluetoothGattCallback() {
   val bluetooth = bluetooth
+  var requestedMtuChange = false
 
   override fun onCharacteristicRead (
     gatt: android.bluetooth.BluetoothGatt,
@@ -219,7 +240,7 @@ open class BluetoothGattServerClientCallback (
   ) {
     console.log("onCharacteristicRead($status): ${String(value)}")
     super.onCharacteristicRead(gatt, characteristic, value, status)
-    this.bluetooth.getDeviceQueue(gatt.device.address)?.next()
+    this.bluetooth.getDeviceQueue(gatt.device.address)?.next(status)
   }
 
   override fun onCharacteristicWrite (
@@ -229,7 +250,7 @@ open class BluetoothGattServerClientCallback (
   ) {
     console.log("onCharacteristicWrite($status)")
     super.onCharacteristicWrite(gatt, characteristic, status)
-    this.bluetooth.getDeviceQueue(gatt.device.address)?.next()
+    this.bluetooth.getDeviceQueue(gatt.device.address)?.next(status)
   }
 
   override fun onCharacteristicChanged (
@@ -239,7 +260,14 @@ open class BluetoothGattServerClientCallback (
   ) {
     console.log("onCharacteristicChanged: ${value.toString()}")
     super.onCharacteristicChanged(gatt, characteristic, value)
-    this.bluetooth.getDeviceQueue(gatt.device.address)?.next()
+    val service = characteristic.service
+    this.bluetooth.send(
+      service.uuid.toString(),
+      characteristic.uuid.toString(),
+      gatt.device?.name ?: gatt.device?.address ?: "",
+      "",
+      value
+    )
   }
 
   override fun onConnectionStateChange (
@@ -304,7 +332,7 @@ open class BluetoothGattServerClientCallback (
   ) {
     console.log("onDescriptorRead($status)")
     super.onDescriptorRead(gatt, descriptor, status, value)
-    this.bluetooth.getDeviceQueue(gatt.device.address)?.next()
+    this.bluetooth.getDeviceQueue(gatt.device.address)?.next(status)
   }
 
   override fun onDescriptorWrite (
@@ -314,7 +342,46 @@ open class BluetoothGattServerClientCallback (
   ) {
     console.log("onDescriptorWrite($status)")
     super.onDescriptorWrite(gatt, descriptor, status)
-    this.bluetooth.getDeviceQueue(gatt.device.address)?.next()
+    this.bluetooth.getDeviceQueue(gatt.device.address)?.next(status)
+  }
+
+  override fun onMtuChanged (gatt: BluetoothGatt, mtu: Int, status: Int) {
+    console.log("onMtuChanged($mtu)")
+    super.onMtuChanged(gatt, mtu, status)
+    if (requestedMtuChange) {
+      val queue = this.bluetooth.getDeviceQueue(gatt.device.address)
+      requestedMtuChange = false
+      queue?.next()
+    }
+  }
+
+  override fun onPhyRead (
+    gatt: BluetoothGatt,
+    txPhy: Int,
+    rxPhy: Int,
+    status: Int
+  ) {
+    super.onPhyRead(gatt, txPhy, rxPhy, status)
+    this.bluetooth.getDeviceQueue(gatt.device.address)?.next(status)
+  }
+
+  override fun onPhyUpdate (
+    gatt: BluetoothGatt,
+    txPhy: Int,
+    rxPhy: Int,
+    status: Int
+  ) {
+    super.onPhyUpdate(gatt, txPhy, rxPhy, status)
+    this.bluetooth.getDeviceQueue(gatt.device.address)?.next(status)
+  }
+
+  override fun onReadRemoteRssi (
+    gatt: BluetoothGatt,
+    rssi: Int,
+    status: Int
+  ) {
+    super.onReadRemoteRssi(gatt, rssi, status)
+    this.bluetooth.getDeviceQueue(gatt.device.address)?.next(status)
   }
 
   override fun onReliableWriteCompleted (
@@ -322,6 +389,7 @@ open class BluetoothGattServerClientCallback (
     status: Int
   ) {
     super.onReliableWriteCompleted(gatt, status)
+    this.bluetooth.getDeviceQueue(gatt.device.address)?.next(status)
   }
 
   override fun onServiceChanged (
@@ -341,23 +409,42 @@ open class BluetoothGattServerClientCallback (
     super.onServicesDiscovered(gatt, status)
     val queue = this.bluetooth.getDeviceQueue(gatt.device.address)
 
+    queue?.push({ _ ->
+      requestedMtuChange = false
+      if (gatt.requestMtu(185)) {
+        BluetoothCommand.STATUS_SUCCESS
+      } else {
+        BluetoothCommand.STATUS_FAILURE
+      }
+    })
+
+    gatt.requestConnectionPriority(1)
+    queue?.push({ _ ->
+      gatt.setPreferredPhy(
+        BluetoothDevice.PHY_LE_2M_MASK,
+        BluetoothDevice.PHY_LE_2M_MASK,
+        BluetoothDevice.PHY_OPTION_S2
+      )
+
+      BluetoothCommand.STATUS_SUCCESS
+    })
+
+    queue?.next(status)
+
     for (service in gatt.services) {
-      if (this.bluetooth.server?.getService(service.uuid) != null) {
+      val localService = this.bluetooth.server?.getService(service.uuid)
+      if (localService != null) {
         console.log("service: ${service.uuid.toString()}")
         for (characteristic in service.characteristics) {
-          console.log("characteristic: ${characteristic.uuid.toString()}")
-          queue?.push({ g ->
-            if (g.readCharacteristic(characteristic)) {
-              BluetoothCommand.STATUS_SUCCESS
-            } else {
-              BluetoothCommand.STATUS_FAILURE
-            }
-          })
+          val localCharacteristic = service.getCharacteristic(characteristic.uuid)
+          if (localCharacteristic != null) {
+            console.log("characteristic: ${characteristic.uuid.toString()}")
+            gatt.setCharacteristicNotification(characteristic, true)
+            this.bluetooth.configureNotifications(characteristic as BluetoothCharacteristic)
+          }
         }
       }
     }
-
-    queue?.next()
   }
 }
 
@@ -449,6 +536,7 @@ open class BluetoothGattServerServerCallback (
     requestId: Int,
     execute: Boolean
   ) {
+    console.log("onExecuteWrite")
     super.onExecuteWrite(device, requestId, execute)
   }
 
@@ -464,11 +552,13 @@ open class BluetoothGattServerServerCallback (
     status: Int,
     service: android.bluetooth.BluetoothGattService
   ) {
+    console.log("onServiceAdded")
     super.onServiceAdded(status, service)
     this.bluetooth.startScanning()
     this.bluetooth.handler.postDelayed({
+      this.bluetooth.stopAdvertising()
       this.bluetooth.startAdvertising()
-    }, 1000L)
+    }, 100L)
   }
 }
 
@@ -505,6 +595,7 @@ open class Bluetooth (
   var pin = configuration.pin // TODO(jwerle): make this configurable from `socket.ini`
   val handler = runtime.handler
   var server: BluetoothGattServer? = null
+  val subscriptions = mutableListOf<Pair<UUID, UUID>>()
 
   // peripherals
   val gatts = mutableMapOf<String, BluetoothGatt>()
@@ -569,6 +660,10 @@ open class Bluetooth (
     this.getDeviceQueue(device.address)
   }
 
+  open fun dispatch (function: () -> Unit) {
+    this.handler.postDelayed(function, 0)
+  }
+
   fun addToDeviceQueue (address: String, function: BluetoothCommandFunction): BluetoothCommandQueue? {
     val queue = this.getDeviceQueue(address) ?: return null
     queue.push(function)
@@ -619,7 +714,14 @@ open class Bluetooth (
 
     if (service.getCharacteristic(uuid) == null) {
       val characteristic = BluetoothCharacteristic(uuid)
+      val descriptor = BluetoothDescriptor(
+        UUID.fromString("00002902-0000-1000-8000-00805F9B34FB"),
+        BluetoothDescriptor.PERMISSION_READ or
+        BluetoothDescriptor.PERMISSION_WRITE
+      )
       console.log("addCharacteristic")
+      descriptor.value = android.bluetooth.BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
+      characteristic.addDescriptor(descriptor)
       service.addCharacteristic(characteristic)
       return characteristic
     }
@@ -641,13 +743,13 @@ open class Bluetooth (
     val scanner = adapter.bluetoothLeScanner ?: return false
     val filters = mutableListOf<android.bluetooth.le.ScanFilter>()
 
-    for (service in server.services) {
-      console.log("start scanning for ${service.uuid.toString()}")
+    for ((serviceUUID, ) in this.subscriptions) {
+      console.log("start scanning for ${serviceUUID.toString()}")
       filters.add(
         // https://developer.android.com/reference/android/bluetooth/le/ScanFilter.Builder
         android.bluetooth.le.ScanFilter.Builder()
         .apply {
-          setServiceUuid(android.os.ParcelUuid(service.uuid))
+          setServiceUuid(android.os.ParcelUuid(serviceUUID))
         }
         .build()
       )
@@ -709,8 +811,8 @@ open class Bluetooth (
     var data = android.bluetooth.le.AdvertiseData.Builder()
       .setIncludeDeviceName(true)
 
-    for (service in server.services) {
-      val uuid = android.os.ParcelUuid(service.uuid)
+    for ((serviceUUID, ) in this.subscriptions) {
+      val uuid = android.os.ParcelUuid(serviceUUID)
       data.addServiceUuid(uuid)
     }
 
@@ -754,66 +856,39 @@ open class Bluetooth (
     val serviceUUID = UUID.fromString(serviceId)
     val server = this.server ?: return false
 
-    this.addService(serviceUUID.toString())
-    this.addCharacteristic(
+    val localCharacteristic = this.addCharacteristic(
       serviceUUID.toString(),
       characteristicUUID.toString()
     )
 
     if (bytes == null) {
-      return true
+      return false
     }
 
-    val localService = server.getService(serviceUUID)
-    val localCharacteristics = localService?.characteristics
-
-    if (localService != null && localCharacteristics != null) {
-      console.log("not null locally")
-    }
+    localCharacteristic.value = bytes
 
     for (entry in this.gatts) {
       val queue = this.getDeviceQueue(entry.value.device.address) ?: continue
       val service = entry.value.getService(serviceUUID) ?: continue
       var characteristic = service.getCharacteristic(characteristicUUID) ?:  continue
 
-      console.log("preparing write op queue")
-
       queue.push({ gatt ->
-        console.log("writeCharacteristic(${characteristic.uuid.toString()}, ${String(bytes)})")
         val status = gatt.writeCharacteristic(
           characteristic,
           bytes,
-          android.bluetooth.BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE
+          android.bluetooth.BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
         )
-
+        console.log("writeCharacteristic(${characteristic.uuid.toString()}, ${String(bytes)}) = $status")
         status
       })
 
       queue.push({ gatt ->
-        console.log("setCharacteristicNotification(${characteristic.uuid.toString()}")
-        gatt.setCharacteristicNotification(characteristic, true)
-        BluetoothCommand.STATUS_SUCCESS
-      })
-
-      queue.push({ gatt ->
-        console.log("notifyCharacteristicChanged(${gatt.device.address}, ${characteristic.uuid.toString()}, ${bytes.toString()})")
         if (0 == server.notifyCharacteristicChanged(gatt.device, characteristic, false, bytes)) {
-          console.log("notifyCharacteristicChanged: STATUS_CONTINUE")
           BluetoothCommand.STATUS_CONTINUE
         } else {
-          console.log("notifyCharacteristicChanged: STATUS_FAILURE")
           BluetoothCommand.STATUS_FAILURE
         }
       })
-
-      for (descriptor in characteristic.descriptors) {
-        queue.push({ gatt ->
-          gatt.writeDescriptor(
-            descriptor,
-            android.bluetooth.BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
-          )
-        })
-      }
 
       queue.next()
     }
@@ -825,17 +900,50 @@ open class Bluetooth (
     val characteristicUUID = UUID.fromString(characteristicId)
     val serviceUUID = UUID.fromString(serviceId)
 
-    this.addService(serviceUUID.toString())
-    this.addCharacteristic(
-      serviceUUID.toString(),
-      characteristicUUID.toString()
-    )
+    var exists = false
+    for (sub in this.subscriptions) {
+      if (sub.first == serviceUUID && sub.second == characteristicUUID) {
+        exists = true
+        break
+      }
+    }
 
-    for (entry in this.gatts) {
-      val queue = this.getDeviceQueue(entry.value.device.address) ?: return false
-      queue.push({ gatt ->
-        if (gatt.discoverServices()) {
-          BluetoothCommand.STATUS_SUCCESS
+    if (!exists) {
+      this.subscriptions.add(Pair(serviceUUID, characteristicUUID))
+    }
+
+    return this.startScanning()
+  }
+
+  fun configureNotifications (
+    characteristic: BluetoothCharacteristic,
+    enabled: Boolean = true
+  ) {
+    val configUUID = UUID.fromString("00002902-0000-1000-8000-00805F9B34FB")
+
+    for (gatt in this.gatts.values) {
+      if (gatt.getService(characteristic.service.uuid)?.getCharacteristic(characteristic.uuid) == null) {
+        continue
+      }
+
+      val queue = this.getDeviceQueue(gatt.device.address) ?: continue
+      val descriptor = characteristic.getDescriptor(configUUID) ?: continue
+      val properties = characteristic.properties
+      var value: ByteArray? = null
+
+      if ((properties and android.bluetooth.BluetoothGattCharacteristic.PROPERTY_NOTIFY) != 0) {
+        value = android.bluetooth.BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
+      } else if ((properties and android.bluetooth.BluetoothGattCharacteristic.PROPERTY_INDICATE) != 0) {
+        value = android.bluetooth.BluetoothGattDescriptor.ENABLE_INDICATION_VALUE
+      }
+
+      queue.push({ _->
+        if (gatt.setCharacteristicNotification(characteristic, enabled)) {
+          if (value == null) {
+            BluetoothCommand.STATUS_CONTINUE
+          } else {
+            gatt.writeDescriptor(descriptor, value)
+          }
         } else {
           BluetoothCommand.STATUS_FAILURE
         }
@@ -843,7 +951,5 @@ open class Bluetooth (
 
       queue.next()
     }
-
-    return this.startScanning()
   }
 }
