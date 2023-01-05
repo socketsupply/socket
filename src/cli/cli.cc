@@ -1223,7 +1223,6 @@ int main (const int argc, const char* argv[]) {
             split(settings["android_native_sources"], ' ')
           ) {
             auto filename = fs::path(file).filename();
-            log("write custom 2 " + (jniSubPath / "src" / filename).string() + " <- " + (targetPath / file ).string());
             writeFile(
               jniSubPath / "src" / filename,
               tmpl(std::regex_replace(
@@ -1435,7 +1434,6 @@ int main (const int argc, const char* argv[]) {
         if (jniLib != "libuv") {
           // TODO(mribbons): Changing bundle id causes all libs to recompile, work out if BUNDLE_IDENTIFIER should be moved, possibly only required by custom.cc
           fs::create_directories(jniSubPath / "android");
-          log("Write " + (jniSubPath / "android" / "internal.hh").string());
           writeFile(
           jniSubPath / "android" / "internal.hh",
           std::regex_replace(
@@ -2159,18 +2157,24 @@ int main (const int argc, const char* argv[]) {
               std::this_thread::sleep_for(100ms);
             }
 
-            auto r = exec(ndkBuildArgs.str().c_str());
-            if (r.exitCode != 0)
-            {
-              log(r.output);
-              log("ndk build failed.");
-              log(ndkBuildArgs.str());
-              and_mk_fail = true;
+            
+            
+            if (and_mk_fail) {
+              // previous dependency has failed, skip build
             } else {
-              log(ndkBuildArgs.str());
-              ac->UpdateCache(inputHash, jniLib, jniLibsOut);
-              // copy binaries into place for gradle              
-              ac->RestoreCache(inputHash, jniLib, jniLibsRestore);
+              auto r = exec(ndkBuildArgs.str().c_str());
+              if (r.exitCode != 0)
+              {
+                log(r.output);
+                log("ndk build failed.");
+                log(ndkBuildArgs.str());
+                and_mk_fail = true;
+              } else {
+                log(ndkBuildArgs.str());
+                ac->UpdateCache(inputHash, jniLib, jniLibsOut);
+                // copy binaries into place for gradle
+                ac->RestoreCache(inputHash, jniLib, jniLibsRestore);
+              }
             }
           }
 
@@ -2182,8 +2186,6 @@ int main (const int argc, const char* argv[]) {
           }
 
           and_mk_done[_j] = true;
-          
-          log(and_mk.string().c_str());
         }, (j)));
       }
 
