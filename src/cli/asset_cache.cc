@@ -580,10 +580,11 @@ namespace SSC {
     const std::regex dot(R"(\.)");
     const std::regex asterix(R"(\*)");
     const std::regex backslash(R"(\\)");
+    const std::regex SSC_(R"(-D((SSC_)(\w+)=(\s*)([\w|.]*)))");
     std::smatch matches;
     std::smatch m2;
+    std::smatch m3;
     std::vector<fs::path> source_files;
-    source_files.push_back(make_file);
 
     String token;
     auto realAppRoot = appRoot.parent_path().parent_path();
@@ -599,10 +600,32 @@ namespace SSC {
     int joined = 0;
     int errored = 0;
 
+    StringStream sansVersionMake;
+
     while (token != contents) {
       token = contents.substr(0,contents.find_first_of("\n"));
-
       contents = contents.substr(contents.find_first_of("\n") + 1);
+      
+      try {        
+        String tempInput = token;
+        while (std::regex_search(tempInput, m3, SSC_) != 0)
+        {
+          if (m3[3].str().find("VERSION") == std::string::npos)
+          {
+            // not a version or hash, remove SSC_ so it won't match again, but keep rest of settings as changing it should change hash
+            tempInput = tempInput.substr(0, m3.position(2)) + tempInput.substr(m3.position(2) + m3.length(2));
+          } else {
+            // remove entire -D option, we don't want values that change
+            tempInput = tempInput.substr(0, m3.position(0)) + tempInput.substr(m3.position(0) + m3.length(0));
+          }
+        }
+
+        sansVersionMake << tempInput << std::endl;
+      } catch (std::exception &e) {
+        std::cerr << "SSC_Match error: " << e.what() << std::endl;
+        throw;
+      }
+
       if (token.length() == 0 || token[0] == '#')
         ; // ignore
       else if (token == "include $(BUILD_SHARED_LIBRARY)")
@@ -720,7 +743,7 @@ namespace SSC {
 
     GetUniqueHeaders(unique_headers, source_files);
 
-    auto hash = HashFiles(source_files, { makeCommand });
+    auto hash = HashFiles(source_files, { sansVersionMake.str(), makeCommand });
     // log(report + hash);
     return hash;
   }

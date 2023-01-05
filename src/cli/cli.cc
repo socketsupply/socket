@@ -2125,11 +2125,7 @@ int main (const int argc, const char* argv[]) {
           auto jniLibsOut = jniSubPath / "bin" / jniLib;
           auto jniLibsRestore = jniLibsMain;
 
-          if (jniLib == "libuv")
-          {
-            jniLibsOut = _main / jniLib / "obj";
-            jniLibsRestore = jniLibsOut;
-          } else if (jniLib == "" && !disable_split_runtime_libs )
+          if (jniLib == "" && !disable_split_runtime_libs )
           {
             jniLibsOut = jniSubPath / "jniLibs";
             jniLibsRestore = jniLibsOut;
@@ -2173,10 +2169,8 @@ int main (const int argc, const char* argv[]) {
             } else {
               log(ndkBuildArgs.str());
               ac->UpdateCache(inputHash, jniLib, jniLibsOut);
-              // copy binaries into place for gradle, libuv.a already in correct location
-              // Other .so files don't get their own obj folder, so they need to be stored separately
-              if (jniLib != "libuv")
-                ac->RestoreCache(inputHash, jniLib, jniLibsRestore);
+              // copy binaries into place for gradle              
+              ac->RestoreCache(inputHash, jniLib, jniLibsRestore);
             }
           }
 

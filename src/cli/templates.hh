@@ -1147,8 +1147,7 @@ LOCAL_CFLAGS +=              \
   -fexceptions               \
   -fPIC                      \
   -frtti                     \
-  -fsigned-char              \
-  -O0
+  -fsigned-char              
 
 LOCAL_CFLAGS += {{cflags}}
 
@@ -1189,11 +1188,11 @@ APP_STL := c++_static
 constexpr auto glibuvMakefile = R"MAKE(
 LOCAL_PATH := $(call my-dir)
 
-## libuv.a
+## libuv.so
 include $(CLEAR_VARS)
 LOCAL_MODULE := uv
 
-UV_UNIX_SOURCE +=       \
+UV_UNIX_SOURCE :=       \
   async.c               \
   core.c                \
   dl.c                  \
@@ -1235,14 +1234,14 @@ LOCAL_CFLAGS :=              \
   -Wno-unused-parameter      \
   -Wno-implicit-function-declaration
 
-LOCAL_SRC_FILES +=                     \
+LOCAL_CFLAGS += {{cflags}}
+
+LOCAL_SRC_FILES :=                     \
   $(wildcard $(LOCAL_PATH)/uv/src/*.c) \
   $(foreach file, $(UV_UNIX_SOURCE), $(LOCAL_PATH)/uv/src/unix/$(file))
 
 LOCAL_EXPORT_C_INCLUDES := $(LOCAL_PATH)/include
-# TODO(mribbons): See if libuv can be a shared library
-# linking to other individual libs may caused apk size increase
-include $(BUILD_STATIC_LIBRARY)
+include $(BUILD_SHARED_LIBRARY)
 
 ## Custom userspace Android NDK
 )MAKE";
@@ -1263,10 +1262,9 @@ LOCAL_CFLAGS +=              \
   -fexceptions               \
   -fPIC                      \
   -frtti                     \
-  -fsigned-char              \
-  -O0
+  -fsigned-char
 
-LOCAL_CFLAGS += -g -DDEBUG=1 -DANDROID=1 -DSSC_SETTINGS="" -DSSC_VERSION=0.1.0 -DSSC_VERSION_HASH=13543ad  
+LOCAL_CFLAGS += {{cflags}}
 
 LOCAL_LDLIBS := -landroid -llog
 LOCAL_SRC_FILES =         \
@@ -1279,15 +1277,15 @@ LOCAL_SRC_FILES =         \
   core/udp.cc             \
   init.cc
 
-LOCAL_STATIC_LIBRARIES := uv
-LOCAL_SHARED_LIBRARIES := socket-runtime-core
+# LOCAL_STATIC_LIBRARIES := uv
+LOCAL_SHARED_LIBRARIES := uv socket-runtime-core
 include $(BUILD_SHARED_LIBRARY)
 
 include $(CLEAR_VARS)
-LOCAL_MODULE := uv
-LOCAL_SRC_FILES := ../../../main/libuv/obj/local/$(TARGET_ARCH_ABI)/libuv.a
-LOCAL_STATIC_LIBRARIES := uv
-include $(PREBUILT_STATIC_LIBRARY)
+LOCAL_MODULE := libuv
+LOCAL_SRC_FILES := ../../../main/jniLibs/$(TARGET_ARCH_ABI)/libuv.so
+LOCAL_SHARED_LIBRARIES := uv
+include $(PREBUILT_SHARED_LIBRARY)
 
 ## Custom userspace Android NDK
 )MAKE";
@@ -1308,25 +1306,24 @@ LOCAL_CFLAGS +=              \
   -fexceptions               \
   -fPIC                      \
   -frtti                     \
-  -fsigned-char              \
-  -O0
+  -fsigned-char              
 
-LOCAL_CFLAGS += -g -DDEBUG=1 -DANDROID=1 -DSSC_SETTINGS="" -DSSC_VERSION=0.1.0 -DSSC_VERSION_HASH=13543ad  
+LOCAL_CFLAGS += {{cflags}}
 
 LOCAL_LDLIBS := -landroid -llog
 LOCAL_SRC_FILES =         \
   ipc/bridge.cc           \
   ipc/ipc.cc              
 
-LOCAL_STATIC_LIBRARIES := uv
-LOCAL_SHARED_LIBRARIES := socket-runtime-core
+# LOCAL_STATIC_LIBRARIES := uv
+LOCAL_SHARED_LIBRARIES := uv socket-runtime-core
 include $(BUILD_SHARED_LIBRARY)
 
 include $(CLEAR_VARS)
-LOCAL_MODULE := uv
-LOCAL_SRC_FILES := ../../../main/libuv/obj/local/$(TARGET_ARCH_ABI)/libuv.a
-LOCAL_STATIC_LIBRARIES := uv
-include $(PREBUILT_STATIC_LIBRARY)
+LOCAL_MODULE := libuv
+LOCAL_SRC_FILES := ../../../main/jniLibs/$(TARGET_ARCH_ABI)/libuv.so
+LOCAL_SHARED_LIBRARIES := uv
+include $(PREBUILT_SHARED_LIBRARY)
 
 
 include $(CLEAR_VARS)
@@ -1355,10 +1352,9 @@ LOCAL_CFLAGS +=              \
   -fexceptions               \
   -fPIC                      \
   -frtti                     \
-  -fsigned-char              \
-  -O0
+  -fsigned-char              
 
-LOCAL_CFLAGS += -g -DDEBUG=1 -DANDROID=1 -DSSC_SETTINGS="" -DSSC_VERSION=0.1.0 -DSSC_VERSION_HASH=13543ad  
+LOCAL_CFLAGS += {{cflags}}
 
 LOCAL_LDLIBS := -landroid -llog
 LOCAL_SRC_FILES =         \
@@ -1367,16 +1363,15 @@ LOCAL_SRC_FILES =         \
   android/string_wrap.cc  \
   android/window.cc       
 
-LOCAL_STATIC_LIBRARIES := uv
-LOCAL_SHARED_LIBRARIES := socket-runtime-core socket-runtime-ipc
+# LOCAL_STATIC_LIBRARIES := uv
+LOCAL_SHARED_LIBRARIES := uv socket-runtime-core socket-runtime-ipc
 include $(BUILD_SHARED_LIBRARY)
 
 include $(CLEAR_VARS)
-LOCAL_MODULE := uv
-LOCAL_SRC_FILES := ../../../main/libuv/obj/local/$(TARGET_ARCH_ABI)/libuv.a
-LOCAL_STATIC_LIBRARIES := uv
-include $(PREBUILT_STATIC_LIBRARY)
-
+LOCAL_MODULE := libuv
+LOCAL_SRC_FILES := ../../../main/jniLibs/$(TARGET_ARCH_ABI)/libuv.so
+LOCAL_SHARED_LIBRARIES := uv
+include $(PREBUILT_SHARED_LIBRARY)
 
 include $(CLEAR_VARS)
 LOCAL_MODULE := socket-runtime-core
@@ -1410,26 +1405,24 @@ LOCAL_CFLAGS +=              \
   -fexceptions               \
   -fPIC                      \
   -frtti                     \
-  -fsigned-char              \
-  -O0
+  -fsigned-char              
 
-LOCAL_CFLAGS += -g -DDEBUG=1 -DANDROID=1 -DSSC_SETTINGS="" -DSSC_VERSION=0.1.0 -DSSC_VERSION_HASH=13543ad  
+LOCAL_CFLAGS += {{cflags}}
 
 LOCAL_LDLIBS := -landroid -llog
 
 LOCAL_SRC_FILES := \
   $(wildcard $(LOCAL_PATH)/src/*.cc)
 
-LOCAL_STATIC_LIBRARIES := uv
-LOCAL_SHARED_LIBRARIES := socket-runtime-core socket-runtime-ipc
+# LOCAL_STATIC_LIBRARIES := uv
+LOCAL_SHARED_LIBRARIES := uv socket-runtime-core socket-runtime-ipc 
 include $(BUILD_SHARED_LIBRARY)
 
 include $(CLEAR_VARS)
-LOCAL_MODULE := uv
-LOCAL_SRC_FILES := ../../../main/libuv/obj/local/$(TARGET_ARCH_ABI)/libuv.a
-LOCAL_STATIC_LIBRARIES := uv
-include $(PREBUILT_STATIC_LIBRARY)
-
+LOCAL_MODULE := libuv
+LOCAL_SRC_FILES := ../../../main/jniLibs/$(TARGET_ARCH_ABI)/libuv.so
+LOCAL_SHARED_LIBRARIES := uv
+include $(PREBUILT_SHARED_LIBRARY)
 
 include $(CLEAR_VARS)
 LOCAL_MODULE := socket-runtime-core
