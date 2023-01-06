@@ -15,7 +15,7 @@ Please read (and contribute to) the documentation [here](https://sockets.sh).
 
 ### Testing
 
-See the [`io`][0] library for the unit and integration test suite.
+See the [`Socket API`][0] library for the unit and integration test suite.
 
 ### Development
 
@@ -56,4 +56,4 @@ gantt
 ```
 
 
-[0]:https://github.com/socketsupply/io
+[0]:https://github.com/socketsupply/socket-api
