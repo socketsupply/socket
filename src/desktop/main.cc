@@ -233,11 +233,11 @@ MAIN {
       [&](SSC::String const &out) {
         IPC::Message message(out);
 
-        if (message.name != "exit") {
-          stdWrite(decodeURIComponent(message.get("value")), false);
-        } else if (message.name == "exit") {
+        if (message.name == "exit") {
           exitCode = stoi(message.get("value"));
           exit(exitCode);
+        } else {
+          stdWrite(decodeURIComponent(message.get("value")), false);
         }
       },
       [](SSC::String const &out) { stdWrite(out, true); },
@@ -800,7 +800,6 @@ MAIN {
     }
     windowManager.destroy();
     app_ptr->kill();
-
     exit(code);
   };
 
