@@ -1,4 +1,4 @@
-param([Switch]$debug, [Switch]$skipwebview, $webview = "1.0.1369-prerelease", $uv = "v1.44.2")
+param([Switch]$debug, [Switch]$skipwebview, $webview = "1.0.1369-prerelease", $uv = "v1.44.2", $toolchain = "vsbuild")
 
 $OLD_CWD = (Get-Location).Path
 
@@ -20,6 +20,10 @@ $cmake = "cmake.exe"
 if ($debug -eq $true) {
   $LIBUV_BUILD_TYPE = "Debug"
   $SSC_BUILD_OPTIONS = "-g", "-O0"
+}
+
+if ( -not (("vsbuild" -eq $toolchain) -or ("llvm" -eq $toolchain)) ) {
+  Write-Output "Unsupported -toolchain $toolchain. Supported options are vsbuild or llvm (external nmake required)"
 }
 
 Function Found-Command {
@@ -200,85 +204,101 @@ if (-not (Found-Command("$choco"))) {
 # Can't use llvm clang, doesn't come with nmake, required to build libuv
 # Can use llvm clang to build app and cli, performance is slightly better
 
-$bin = "bin"
-if ((Test-Path "bin" -PathType Container) -eq $false) {
-  . .\Get-VCVars.ps1
-  . .\Get-ProcEnvs.ps1
-  $bin = ""
-} else {
-  . .\bin\Get-VCVars.ps1
-  . .\bin\Get-ProcEnvs.ps1
-}
-
-$vc_exists, $vc_vars = $(Get-VCVars)
-$report_vc_vars_reqd = $false
-$install_vc_build = $true
-
-if ($(Found-Command("clang++.exe")) -and $(Found-Command("nmake.exe"))) {
-  Write-Output("Found clang and nmake")
-  $install_vc_build = $false
-} else {
-  if ($vc_exists) {
-    Write-Output "Calling vcvars64.bat"
-    $(Get-ProcEnvs($vc_vars))
-    if ($(Found-Command("clang++.exe")) -and $(Found-Command("nmake.exe"))) {
-      $report_vc_vars_reqd = $true
-      $install_vc_build = $false
-    } else {
-      Write-Output("# $vc_vars didn't enable both clang++ and nmake, downloading vs_build.exe")
-    }
+if ("vsbuild" -eq $toolchain)
+{
+  $bin = "bin"
+  if ((Test-Path "bin" -PathType Container) -eq $false) {
+    . .\Get-VCVars.ps1
+    . .\Get-ProcEnvs.ps1
+    $bin = ""
   } else {
-    Write-Output("# Visual Studio Build Tools not detected, please install all selected items.")
-  }
-}
-
-if ($install_vc_build) {
-  $report_vc_vars_reqd = $true
-  $tmpdir = Join-Path $Env:Temp $(New-Guid)
-  (New-Item -Type Directory -Path $tmpdir) > $null
-  if ($null -ne ($env:VSFROMLAYOUT)) {
-    Write-Output "# Installing Visual Studio Build Tools from pre downloaded layout folder $($env:VSFROMLAYOUT)"
-    cd $($env:VSFROMLAYOUT)
-    Start-Process "vs_setup.exe" -verb runas -wait -ArgumentList "-P" > $null
-    cd $OLD_CWD
-  } else {
-    Invoke-WebRequest "https://aka.ms/vs/17/release/vs_buildtools.exe" -O "$tmpdir\vs_buildtools.exe"
-    Start-Process "$tmpdir\vs_buildtools.exe" -verb runas -wait -ArgumentList "--config","$OLD_CWD\$bin\.vsconfig" > $null
+    . .\bin\Get-VCVars.ps1
+    . .\bin\Get-ProcEnvs.ps1
   }
 
   $vc_exists, $vc_vars = $(Get-VCVars)
-  if ($vc_exists) {
-    Write-Output "Calling vcvars64.bat"
-    $(Get-ProcEnvs($vc_vars))
+  $report_vc_vars_reqd = $false
+  $install_vc_build = $true
+
+  if ($(Found-Command("clang++.exe")) -and $(Found-Command("nmake.exe"))) {
+    Write-Output("Found clang and nmake")
+    $install_vc_build = $false
   } else {
-    Write-Output "vcvars64.bat still not present, something went wrong."
-    Exit 1
+    if ($vc_exists) {
+      Write-Output "Calling vcvars64.bat"
+      $(Get-ProcEnvs($vc_vars))
+      if ($(Found-Command("clang++.exe")) -and $(Found-Command("nmake.exe"))) {
+        $report_vc_vars_reqd = $true
+        $install_vc_build = $false
+      } else {
+        Write-Output("# $vc_vars didn't enable both clang++ and nmake, downloading vs_build.exe")
+      }
+    } else {
+      Write-Output("# Visual Studio Build Tools not detected, please install all selected items.")
+    }
   }
-}
 
-if ($report_vc_vars_reqd) {
-  Write-Output "vcvars64.bat found and enabled clang++. Note that you will need to call it manually if running this script from cmd.exe under a separate powershell request:"
-  Write-Output $vc_vars
-}
-
-
-
-
-if ($(Found-Command("clang++.exe")) -and $(Found-Command("nmake.exe"))) {
   if ($install_vc_build) {
-    Write-Output("# Visual Studio Build Tools setup successful.")
+    $report_vc_vars_reqd = $true
+    $tmpdir = Join-Path $Env:Temp $(New-Guid)
+    (New-Item -Type Directory -Path $tmpdir) > $null
+    if ($null -ne ($env:VSFROMLAYOUT)) {
+      Write-Output "# Installing Visual Studio Build Tools from pre downloaded layout folder $($env:VSFROMLAYOUT)"
+      cd $($env:VSFROMLAYOUT)
+      Start-Process "vs_setup.exe" -verb runas -wait -ArgumentList "-P" > $null
+      cd $OLD_CWD
+    } else {
+      Invoke-WebRequest "https://aka.ms/vs/17/release/vs_buildtools.exe" -O "$tmpdir\vs_buildtools.exe"
+      Start-Process "$tmpdir\vs_buildtools.exe" -verb runas -wait -ArgumentList "--config","$OLD_CWD\$bin\.vsconfig" > $null
+    }
+
+    $vc_exists, $vc_vars = $(Get-VCVars)
+    if ($vc_exists) {
+      Write-Output "Calling vcvars64.bat"
+      $(Get-ProcEnvs($vc_vars))
+    } else {
+      Write-Output "vcvars64.bat still not present, something went wrong."
+      Exit 1
+    }
   }
-} else {
-  Write-Output("Visual Studio Build Tools setup incomplete.")
-  Exit 1
+
+  if ($report_vc_vars_reqd) {
+    Write-Output "vcvars64.bat found and enabled clang++. Note that you will need to call it manually if running this script from cmd.exe under a separate powershell request:"
+    Write-Output $vc_vars
+  }
 }
 
-$gitPath = "$env:ProgramFiles\Git\bin"
 
-# Look for git in path
-if (-not (Found-Command($git))) {
-  # Look for git in default location, in case it was installed in a previous session
-  $git = "$gitPath\$git"
+if ("llvm" -eq $toolchain)
+{
+  $clang = "clang++"
+  $clangPath = "$env:ProgramFiles\LLVM\bin"
+
+  if (-not (Found-Command($clang))) {
+    $clang = "$clangPath\$clang"
+  }
+
+  if (-not (Found-Command($clang))) {
+
+    # Note that this installs git with LFS
+    Start-Process $choco -verb runas -wait -ArgumentList "install","llvm","--confirm","--force" > $null
+    $env:PATH="$clangPath;$env:PATH"
+
+    if (-not (Found-Command($clang))) {
+      Write-Output "not ok - unable to install clang++."
+      Exit 1
+    }
+  } else {
+    Write-Output("Found clang++.exe")
+  }
+
+  $gitPath = "$env:ProgramFiles\Git\bin"
+
+  # Look for git in path
+  if (-not (Found-Command($git))) {
+    # Look for git in default location, in case it was installed in a previous session
+    $git = "$gitPath\$git"
+  }
 }
 
 if (-not (Found-Command($git))) {
