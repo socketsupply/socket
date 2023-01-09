@@ -22,9 +22,20 @@ if ($debug -eq $true) {
   $SSC_BUILD_OPTIONS = "-g", "-O0"
 }
 
-if ( -not (("vsbuild" -eq $toolchain) -or ("llvm" -eq $toolchain)) ) {
-  Write-Output "Unsupported -toolchain $toolchain. Supported options are vsbuild or llvm (external nmake required)"
+$path_advice = @()
+$vsconfig = "nmake.vsconfig"
+
+if ( -not (("llvm+vsbuild" -eq $toolchain) -or ("vsbuild" -eq $toolchain) -or ("llvm" -eq $toolchain)) ) {
+  Write-Output "Unsupported -toolchain $toolchain. Supported options are vsbuild, llvm+vsbuild or llvm (external nmake required)"
+  Write-Output "-toolchain llvm+vsbuild will check for and install llvm clang and vsbuild nmake."
+  Exit 1
 }
+
+if ("vsbuild" -eq $toolchain) {
+  $vsconfig = ".vsconfig"
+}
+
+Write-Output "Using toolchain: $toolchain"
 
 Function Found-Command {
     param($command_string)
@@ -191,10 +202,32 @@ if (-not (Found-Command("$choco"))) {
   Write-Output "# chocolatey is installed"
 }
 
-# Can't use llvm clang, doesn't come with nmake, required to build libuv
-# Can use llvm clang to build app and cli, performance is slightly better
+if (("llvm+vsbuild" -eq $toolchain) -or ("llvm" -eq $toolchain))
+{
+  $clang = "clang++"
+  $clangPath = "$env:ProgramFiles\LLVM\bin"
 
-if ("vsbuild" -eq $toolchain)
+  if (-not (Found-Command($clang))) {
+    $clang = "$clangPath\$clang"
+    $path_advice += $clangPath
+  }
+
+  if (-not (Found-Command($clang))) {
+
+    # Note that this installs git with LFS
+    Start-Process $choco -verb runas -wait -ArgumentList "install","llvm","--confirm","--force" > $null
+    $env:PATH="$clangPath;$env:PATH"
+
+    if (-not (Found-Command($clang))) {
+      Write-Output "not ok - unable to install clang++."
+      Exit 1
+    }
+  } else {
+    Write-Output("Found clang++.exe")
+  }
+}
+
+if (("llvm+vsbuild" -eq $toolchain) -or ("vsbuild" -eq $toolchain))
 {
   $bin = "bin"
   if ((Test-Path "bin" -PathType Container) -eq $false) {
@@ -239,7 +272,7 @@ if ("vsbuild" -eq $toolchain)
       cd $OLD_CWD
     } else {
       Invoke-WebRequest "https://aka.ms/vs/17/release/vs_buildtools.exe" -O "$tmpdir\vs_buildtools.exe"
-      Start-Process "$tmpdir\vs_buildtools.exe" -verb runas -wait -ArgumentList "--config","$OLD_CWD\$bin\.vsconfig" > $null
+      Start-Process "$tmpdir\vs_buildtools.exe" -verb runas -wait -ArgumentList "--config","$OLD_CWD\$bin\$vsconfig" > $null
     }
 
     $vc_exists, $vc_vars = $(Get-VCVars)
@@ -254,41 +287,18 @@ if ("vsbuild" -eq $toolchain)
 
   if ($report_vc_vars_reqd) {
     Write-Output "vcvars64.bat found and enabled clang++. Note that you will need to call it manually if running this script from cmd.exe under a separate powershell request:"
+    $path_advice += $vc_vars
     Write-Output $vc_vars
   }
 }
 
+$gitPath = "$env:ProgramFiles\Git\bin"
 
-if ("llvm" -eq $toolchain)
-{
-  $clang = "clang++"
-  $clangPath = "$env:ProgramFiles\LLVM\bin"
-
-  if (-not (Found-Command($clang))) {
-    $clang = "$clangPath\$clang"
-  }
-
-  if (-not (Found-Command($clang))) {
-
-    # Note that this installs git with LFS
-    Start-Process $choco -verb runas -wait -ArgumentList "install","llvm","--confirm","--force" > $null
-    $env:PATH="$clangPath;$env:PATH"
-
-    if (-not (Found-Command($clang))) {
-      Write-Output "not ok - unable to install clang++."
-      Exit 1
-    }
-  } else {
-    Write-Output("Found clang++.exe")
-  }
-
-  $gitPath = "$env:ProgramFiles\Git\bin"
-
-  # Look for git in path
-  if (-not (Found-Command($git))) {
-    # Look for git in default location, in case it was installed in a previous session
-    $git = "$gitPath\$git"
-  }
+# Look for git in path
+if (-not (Found-Command($git))) {
+  # Look for git in default location, in case it was installed in a previous session
+  $git = "$gitPath\$git"
+  $path_advice += $gitPath
 }
 
 if (-not (Found-Command($git))) {
@@ -309,6 +319,7 @@ if (-not (Found-Command($git))) {
 $cmakePath = "$env:ProgramFiles\CMake\bin"
 if (-not (Found-Command($cmake))) {
   $cmake = "$cmakePath\$cmake"
+  $path_advice += $cmakePath
 }
 
 if (-not (Found-Command($cmake))) {
@@ -322,7 +333,10 @@ if (-not (Found-Command($cmake))) {
 
 
 # refresh enviroment after prereq setup
-refreshenv
+if ($(Found-Command("refreshenv"))) {
+  refreshenv
+}
+
 if (-not (Test-Path -Path $ASSET_PATH)) {
   (New-Item -ItemType Directory -Path $ASSET_PATH) > $null
   Write-Output "ok - created $ASSET_PATH"
@@ -334,7 +348,15 @@ cd $WORKING_PATH
 if ($skipwebview -eq $false) {
   Install-WebView2
 }
+
 Build
 Install-Files
+
+if ($path_advice.Count -gt 0) {
+  Write-Output "Please add the following to PATH or run for this and future dev sessions: "
+  foreach ($p in $path_advice) {
+    Write-Output $p
+  }
+}
 
 cd $OLD_CWD
