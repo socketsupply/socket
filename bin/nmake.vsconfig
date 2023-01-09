@@ -1,0 +1,7 @@
+{
+    "version": "1.0",
+    "components": [
+        "Microsoft.VisualStudio.Component.VC.Tools.x86.x64",
+        "Microsoft.VisualStudio.Component.Windows10SDK.20348"
+    ]
+}
