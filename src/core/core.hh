@@ -315,7 +315,7 @@ namespace SSC {
       bool send (const String& seq, JSON::Any json, Post post);
       bool send (const String& seq, JSON::Any json);
       bool emit (const String& seq, JSON::Any json);
-      void startScanning ();
+      bool startScanning ();
       void publishCharacteristic (
         const String& seq,
         char* bytes,

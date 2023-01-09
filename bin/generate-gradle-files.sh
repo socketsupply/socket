@@ -39,7 +39,7 @@ android {
 
   defaultConfig {
     applicationId "__BUNDLE_IDENTIFIER__"
-    minSdkVersion 24
+    minSdkVersion 33
     targetSdkVersion 33
     versionCode 1
     versionName "0.0.1"

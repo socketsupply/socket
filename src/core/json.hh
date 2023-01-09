@@ -12,6 +12,7 @@ namespace SSC::JSON {
   class Boolean;
   class Number;
   class String;
+  class Inline;
 
   using ObjectEntries = std::map<std::string, Any>;
   using ArrayEntries = std::vector<Any>;
@@ -51,7 +52,8 @@ namespace SSC::JSON {
     Array,
     Boolean,
     Number,
-    String
+    String,
+    Inline
   };
 
   template <typename D, Type t> class Value {
@@ -63,6 +65,7 @@ namespace SSC::JSON {
       auto typeof () const {
         switch (this->type) {
           case Type::Any: return std::string("any");
+          case Type::Inline: return std::string("any");
           case Type::Array: return std::string("array");
           case Type::Boolean: return std::string("boolean");
           case Type::Number: return std::string("number");
@@ -72,6 +75,7 @@ namespace SSC::JSON {
         }
       }
 
+      auto isInline () const { return this->type == Type::Inline; }
       auto isArray () const { return this->type == Type::Array; }
       auto isBoolean () const { return this->type == Type::Boolean; }
       auto isNumber () const { return this->type == Type::Number; }
@@ -139,6 +143,7 @@ namespace SSC::JSON {
       #if defined(__APPLE__)
       Any (ssize_t);
       #endif
+      Any (const Inline);
       Any (const Number);
       Any (const char);
       Any (const char *);
@@ -362,7 +367,7 @@ namespace SSC::JSON {
       std::string str () const;
   };
 
-  class String : Value<std::string, Type::Number> {
+  class String : Value<std::string, Type::String> {
     public:
       String () = default;
       String (const String& data) {
@@ -385,7 +390,9 @@ namespace SSC::JSON {
         this->data = any.str();
       }
 
-      String (const Number& number);
+      String (const Number& number) {
+        this->data = number.str();
+      }
 
       String (const Boolean& boolean) {
         this->data = boolean.str();
@@ -398,6 +405,46 @@ namespace SSC::JSON {
 
       std::string value () const {
         return this->data;
+      }
+
+      auto size () const {
+        return this->data.size();
+      }
+  };
+
+  class Inline : Value<std::string, Type::Inline> {
+    public:
+      Inline () = default;
+      Inline (const Inline& data) {
+        this->data = std::string(data.value());
+      }
+
+      Inline (const String data) {
+        this->data = data.value();
+      }
+
+      Inline (const std::string data) {
+        this->data = data;
+      }
+
+      Inline (const char data) {
+        this->data = std::string(1, data);
+      }
+
+      Inline (const char *data) {
+        this->data = std::string(data);
+      }
+
+      Inline (const Any& any) {
+        this->data = any.str();
+      }
+
+      std::string value () const {
+        return this->data;
+      }
+
+      std::string str () const {
+        return this->value();
       }
 
       auto size () const {

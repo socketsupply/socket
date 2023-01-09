@@ -7,7 +7,7 @@ static auto onInternalRouteResponseSignature =
 
 namespace SSC::android {
   Bridge::Bridge (JNIEnv* env, jobject self, Runtime* runtime)
-    : IPC::Bridge(runtime)
+    : IPC::Bridge(reinterpret_cast<Core*>(runtime))
   {
     this->env = env;
     this->self = env->NewGlobalRef(self);
@@ -129,5 +129,85 @@ extern "C" {
         );
       }
     });
+  }
+
+  jboolean external(Bridge, sendBluetoothByteArray)(
+    JNIEnv *env,
+    jobject self,
+    jstring serviceId,
+    jstring characteristicId,
+    jstring name,
+    jstring uuid,
+    jbyteArray byteArray
+  ) {
+    auto bridge = Bridge::from(env, self);
+
+    if (bridge == nullptr) {
+      Throw(env, BridgeNotInitializedException);
+      return false;
+    }
+
+    auto size = byteArray != nullptr ? env->GetArrayLength(byteArray) : 0;
+    auto bytes = size > 0 ? new char[size]{0} : nullptr;
+
+    if (size > 0 && bytes != nullptr) {
+      env->GetByteArrayRegion(byteArray, 0, size, (jbyte*) bytes);
+    }
+
+    auto headers = SSC::Headers {{
+      {"content-type", "application/octet-stream"},
+      {"content-length", size}
+    }};
+
+    auto post = SSC::Post {0};
+    post.id = SSC::rand64();
+    post.body = bytes;
+    post.length = size;
+    post.headers = headers.str();
+
+    auto json = SSC::JSON::Object::Entries {
+      {"source", "bluetooth"},
+      {"data", SSC::JSON::Object::Entries {
+        {"event", "data"},
+        {"characteristicId", characteristicId},
+        {"serviceId", StringWrap(env, serviceId).str()},
+        {"name", StringWrap(env, name).str()},
+        {"uuid", StringWrap(env, uuid).str()}
+      }}
+    };
+
+    bridge->bluetooth.send("-1", SSC::JSON::Object(json).str(), post);
+
+    return true;
+  }
+
+  jboolean external(Bridge, emitBluetoothEventData)(
+    JNIEnv *env,
+    jobject self,
+    jstring data,
+    jstring err
+  ) {
+    auto bridge = Bridge::from(env, self);
+
+    if (bridge == nullptr) {
+      Throw(env, BridgeNotInitializedException);
+      return false;
+    }
+
+    auto dataString = StringWrap(env, data);
+    auto errString = StringWrap(env, err);
+    auto json = SSC::JSON::Object::Entries {};
+
+    if (dataString.size() > 0) {
+      json["data"] = SSC::JSON::Inline(dataString.str());
+    } else if (errString.size() > 0) {
+      json["err"] = SSC::JSON::Inline(dataString.str());
+    }
+
+    json["source"] = "bluetooth";
+
+    bridge->bluetooth.emit("bluetooth", SSC::JSON::Object(json).str());
+
+    return true;
   }
 }
