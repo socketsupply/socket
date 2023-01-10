@@ -205,12 +205,16 @@ MAIN {
   static Process* process = nullptr;
   static std::function<void(bool)> createProcess;
 
-  auto killProcess = [&](Process* process) {
-    if (process != nullptr) {
-        auto pid = process->getPID();
-        process->kill(pid);
-        delete process;
+  auto killProcess = [&](Process* processToKill) {
+    if (processToKill != nullptr) {
+      auto pid = processToKill->getPID();
+      processToKill->kill(pid);
+
+      if (processToKill == process) {
         process = nullptr;
+      }
+
+      delete processToKill;
     }
   };
 
@@ -447,10 +451,11 @@ MAIN {
 
     if (message.name == "process.kill") {
       auto seq = message.get("seq");
+
       if (cmd.size() > 0 && process != nullptr) {
         killProcess(process);
       }
-      // TODO: crashes the app with a segfault `libc++abi: terminating with uncaught exception of type std::__1::system_error: mutex lock failed: Invalid argument`
+
       window->resolvePromise(seq, OK_STATE, "null");
       return;
     }
