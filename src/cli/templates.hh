@@ -1363,7 +1363,7 @@ constexpr auto gDefaultConfig = R"INI(
 ; important command in this file. This will do all the heavy lifting and should
 ; handle 99.9% of your use cases for moving files into place or tweaking
 ; platform-specific build artifacts.
-build = "node build-script.js"
+; build = "node build-script.js"
 
 ; A unique ID that identifies the bundle (used by all app stores).
 bundle_identifier = "com.beepboop"
