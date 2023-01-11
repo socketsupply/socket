@@ -1,0 +1,13 @@
+{
+    "version": "1.0",
+    "components": [
+        "Microsoft.Component.MSBuild",
+        "Microsoft.VisualStudio.Workload.VCTools",
+        "Microsoft.VisualStudio.Component.VC.Tools.x86.x64",
+        "Microsoft.VisualStudio.Component.VC.CMake.Project",
+        "Microsoft.VisualStudio.Component.VC.Llvm.ClangToolset",
+        "Microsoft.VisualStudio.Component.VC.Llvm.Clang",
+        "Microsoft.VisualStudio.ComponentGroup.NativeDesktop.Llvm.Clang",
+        "Microsoft.VisualStudio.Component.Windows10SDK.20348"
+    ]
+}

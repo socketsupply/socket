@@ -1,4 +1,4 @@
-param([Switch]$debug, [Switch]$skipwebview, $webview = "1.0.1369-prerelease", $uv = "v1.44.2")
+param([Switch]$debug, [Switch]$skipwebview, $webview = "1.0.1369-prerelease", $uv = "v1.44.2", $toolchain = "llvm+vsbuild")
 
 $OLD_CWD = (Get-Location).Path
 
@@ -14,41 +14,99 @@ $LIBUV_TAG = $uv
 # see https://docs.microsoft.com/en-us/microsoft-edge/webview2/concepts/versioning
 $WEBVIEW2_VERSION = "$webview"
 $SSC_BUILD_OPTIONS = "-O2"
+$global:git = "git.exe"
+$global:cmake = "cmake.exe"
 
 if ($debug -eq $true) {
   $LIBUV_BUILD_TYPE = "Debug"
   $SSC_BUILD_OPTIONS = "-g", "-O0"
 }
 
+$global:path_advice = @()
+$vsconfig = "nmake.vsconfig"
+
+if ( -not (("llvm+vsbuild" -eq $toolchain) -or ("vsbuild" -eq $toolchain) -or ("llvm" -eq $toolchain)) ) {
+  Write-Output "Unsupported -toolchain $toolchain. Supported options are vsbuild, llvm+vsbuild or llvm (external nmake required)"
+  Write-Output "-toolchain llvm+vsbuild will check for and install llvm clang and vsbuild nmake."
+  Exit 1
+}
+
+if ("vsbuild" -eq $toolchain) {
+  $vsconfig = ".vsconfig"
+}
+
+Write-Output "Using toolchain: $toolchain"
+
+Function Found-Command {
+    param($command_string)
+    (Get-Command $command_string -ErrorAction SilentlyContinue -ErrorVariable F) > $null
+    # Write-Output ">$command_string< : $($F.length), $F"
+    # $r = $($error.length -eq 0)
+    $r = $($null -eq $F.length)
+    # Write-Output "Return $($F.length), $r"
+    Write-Output $r
+}
+
 #
 # Compile with the current git revision of the repository
 #
 Function Build {
-  $VERSION_HASH = $(git rev-parse --short HEAD) 2>&1 | % ToString
+  $VERSION_HASH = $(iex "& ""$global:git"" rev-parse --short HEAD") 2>&1 | % ToString
   $VERSION = $(type VERSION.txt) 2>&1 | % ToString
   $BUILD_TIME = [int] (New-TimeSpan -Start (Get-Date "01/01/1970") -End (Get-Date)).TotalSeconds
 
   if (-not (Test-Path -Path "$WORKING_BUILD_PATH\libuv" -PathType Container)) {
     (New-Item -ItemType Directory -Force -Path "$WORKING_BUILD_PATH") > $null
     Write-Output "# cloning libuv at $LIBUV_TAG from github..."
-    (git clone --branch=$LIBUV_TAG -q --depth=1 https://github.com/libuv/libuv.git $WORKING_BUILD_PATH\libuv) > $null 2> $null
-    Write-Output "ok - cloned libuv into $WORKING_BUILD_PATH\libuv"
+    # Use iex "& " syntax so we can use $global:git variable, send output to variable so it doesn't display on screen
+    $s = iex "& ""$global:git"" clone --branch=$LIBUV_TAG -q --depth=1 https://github.com/libuv/libuv.git $WORKING_BUILD_PATH\libuv 2>&1"
+    # ( """$global:git"" clone --branch=$LIBUV_TAG -q --depth=1 https://github.com/libuv/libuv.git $WORKING_BUILD_PATH\libuv") > $null 2> $null
+    if (-not (Test-Path -Path "$WORKING_BUILD_PATH\libuv\.git" -PathType Container)) {
+      Write-Output "Failed to clone libuv"
+      Exit 1
+    } else {
+      Write-Output "ok - cloned libuv into $WORKING_BUILD_PATH\libuv"
+    }
   }
 
   (New-Item -ItemType Directory -Force -Path "$WORKING_BUILD_PATH\libuv\build") > $null
 
   Write-Output "# building libuv..."
   cd "$WORKING_BUILD_PATH\libuv\build"
-  (cmake .. -DBUILD_TESTING=OFF) > $null
+  (iex "& ""$global:cmake"" .. -DBUILD_TESTING=OFF") > $null
 
   cd "$WORKING_BUILD_PATH\libuv"
-  (cmake --build "$WORKING_BUILD_PATH\libuv\build" --config $LIBUV_BUILD_TYPE) > $null
+  (iex "& ""$global:cmake"" --build ""$WORKING_BUILD_PATH\libuv\build"" --config $LIBUV_BUILD_TYPE") > $null
   Write-Output "ok - built libuv"
 
   (New-Item -ItemType Directory -Force -Path "$WORKING_BUILD_PATH\lib") > $null
-  Copy-Item "$WORKING_BUILD_PATH\libuv\build\$LIBUV_BUILD_TYPE\uv_a.lib" -Destination "$WORKING_BUILD_PATH\lib\uv_a.lib"
   if ($debug -eq $true) {
-    Copy-Item "$WORKING_BUILD_PATH\libuv\build\$LIBUV_BUILD_TYPE\uv_a.pdb" -Destination "$WORKING_BUILD_PATH\lib\uv_a.pdb"
+    # Support Debug path created by some setups
+    if ((Test-Path -Path "$WORKING_BUILD_PATH\libuv\build\uv_a.pdb" -PathType Leaf)) {
+      Copy-Item "$WORKING_BUILD_PATH\libuv\build\uv_a.pdb" -Destination "$WORKING_BUILD_PATH\lib\uv_a.pdb"
+    } elseif ((Test-Path -Path "$WORKING_BUILD_PATH\libuv\build\Debug\uv_a.pdb" -PathType Leaf)) {
+      Copy-Item "$WORKING_BUILD_PATH\libuv\build\Debug\uv_a.pdb" -Destination "$WORKING_BUILD_PATH\lib\uv_a.pdb"
+    } else {
+      Write-Output "Warning: uv_a.pdb not found"
+    }
+
+    if ((Test-Path -Path "$WORKING_BUILD_PATH\libuv\build\uv_a.lib" -PathType Leaf)) {
+      Copy-Item "$WORKING_BUILD_PATH\libuv\build\uv_a.lib" -Destination "$WORKING_BUILD_PATH\lib\uv_a.lib"
+    } elseif ((Test-Path -Path "$WORKING_BUILD_PATH\libuv\build\Debug\uv_a.lib" -PathType Leaf)) {
+      Copy-Item "$WORKING_BUILD_PATH\libuv\build\Debug\uv_a.lib" -Destination "$WORKING_BUILD_PATH\lib\uv_a.lib"
+    } else {
+      Write-Output "Stop: uv_a.lib not found"
+      Exit 1
+    }
+  } else {
+    if ((Test-Path -Path "$WORKING_BUILD_PATH\libuv\build\uv_a.lib" -PathType Leaf)) {
+      Copy-Item "$WORKING_BUILD_PATH\libuv\build\uv_a.lib" -Destination "$WORKING_BUILD_PATH\lib\uv_a.lib"
+    } elseif ((Test-Path -Path "$WORKING_BUILD_PATH\libuv\build\Release\uv_a.lib" -PathType Leaf)) {
+      Copy-Item "$WORKING_BUILD_PATH\libuv\build\Release\uv_a.lib" -Destination "$WORKING_BUILD_PATH\lib\uv_a.lib"
+    } else {
+      Write-Output "Stop: uv_a.pdb not found"
+      Exit 1
+    }
   }
 
   (New-Item -ItemType Directory -Force -Path "$WORKING_BUILD_PATH\include") > $null
@@ -135,51 +193,245 @@ Function Install-WebView2 {
   Write-Output "ok - updated WebView2 header files..."
 }
 
-# download and install `choco.exe` if it isn't installed yet
-(Get-Command "choco.exe" -ErrorAction SilentlyContinue) > $null
-if ($? -ne 1) {
-  $InstallDir='C:\ProgramData\chocoportable'
-  $env:ChocolateyInstall="$InstallDir"
-
-  Set-ExecutionPolicy Bypass -Scope Process -Force;
-  iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
+$bin = "bin"
+if ((Test-Path "bin" -PathType Container) -eq $false) {
+  . .\Get-VCVars.ps1
+  . .\Get-ProcEnvs.ps1
+  $bin = ""
+} else {
+  . .\bin\Get-VCVars.ps1
+  . .\bin\Get-ProcEnvs.ps1
 }
 
-# setup `clang++.exe` from `llvm` if not installed yet
-(Get-Command "clang++.exe" -ErrorAction SilentlyContinue) > $null
-if ($? -ne 1) {
-  choco install llvm --confirm --force
+Function Install-Requirements {
 
-  if ($? -ne 1) {
-    Write-Output "not ok - unable to install llvm"
+  $install_tasks = @()
+  $found_choco = $false
+  $need_choco = $false
+  $approve_choco = $false
+
+  # download and install `choco.exe` if it isn't installed yet
+  $ChocoDir=$env:ChocolateyInstall
+  $choco = "$ChocoDir\bin\choco.exe"
+  if (-not (Found-Command("$choco"))) {
+    # Look for choco in standard location just in case, otherwise set up var $env
+    $ChocoDir="$($env:ProgramData)\chocolatey"
+    $choco = "$ChocoDir\bin\choco.exe"
+  }
+
+  $need_choco = $false
+  if (-not (Found-Command("$choco"))) {
+  } else {
+    $found_choco = $true
+    Write-Output "# chocolatey is installed"
+  }
+
+  $gitPath = "$env:ProgramFiles\Git\bin"
+
+  # Look for git in path
+  if (-not (Found-Command($global:git))) {
+    # Look for git in default location, in case it was installed in a previous session
+    $global:git = "$gitPath\$global:git"
+    $global:path_advice += $gitPath
+  } else {
+    Write-Output ("Git found at, changing path to: $global:git")
+  }
+
+  if (-not (Found-Command($global:git))) {
+
+    $confirmation = Read-Host "git is a requirement, proceed with install from chocolately repo? y/[n]?"
+    if ($confirmation -eq 'y') {
+      $need_choco = $true
+      $approve_choco = $true
+      $t = [string]{
+        # Note that this installs git with LFS
+        Write-Output ("Installing git")
+        iex "& $choco install -y git"
+        # Start-Process $choco -verb runas -wait -ArgumentList "install","-y","git" > $null
+      }      
+      $t = $t.replace("`$choco", $choco).replace("""", "\""")
+      $install_tasks += $t
+    }
+  } else {
+    Write-Output("# Found git.exe")
+  }
+
+  # install `cmake.exe`
+  $cmakePath = "$env:ProgramFiles\CMake\bin"
+  if (-not (Found-Command($global:cmake))) {
+    $global:cmake = "$cmakePath\$global:cmake"
+    $global:path_advice += $cmakePath
+  }
+
+  if (-not (Found-Command($global:cmake))) {
+
+    $confirmation = Read-Host "CMake is a requirement, proceed with install from chocolately repo? y/[n]?"
+    if ($confirmation -eq 'y') {
+      $need_choco = $true
+      $t = [string]{
+        Write-Output ("Installing CMake")
+        iex "& $choco install -y cmake"
+        # Start-Process $choco -verb runas -wait -ArgumentList "install","-y","cmake" > $null
+      }
+    }
+    $t = $t.replace("`$choco", $choco).replace("""", "\""")
+    $install_tasks += $t
+  }
+
+  if ($need_choco) {
+    $confirmation = Read-Host "chocolatey is required to install some dependencies, proceed? y/[n]?"
+    if ($confirmation -eq 'y') {
+      $t = [string]{
+        Write-Output ("Installing choco")
+        $env:ChocolateyInstall="$ChocoDir"
+        Set-ExecutionPolicy Bypass -Scope Process -Force;
+        iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
+      }
+      $t = $t.replace("`$ChocoDir", $ChocoDir).replace("""", "\""")
+      # insert chocolately at the start
+      $install_tasks = @($t) + @($install_tasks[0..($install_tasks.Count-1)])
+
+      $env:ChocolateyInstall="$ChocoDir"
+    }
+  }  
+
+  if (("llvm+vsbuild" -eq $toolchain) -or ("llvm" -eq $toolchain))
+  {
+    $clang = "clang++"
+    $clangPath = "$env:ProgramFiles\LLVM\bin"
+
+    if (-not (Found-Command($clang))) {
+      $clang = "$clangPath\$clang"
+      $global:path_advice += $clangPath
+    }
+
+    if (-not (Found-Command($clang))) {
+
+      $confirmation = Read-Host "LLVM will be downloaded for clang++, proceed? y/[n]?"
+      if ($confirmation -eq 'y') {
+        $need_choco = $true
+        $t = [string]{
+          Write-Output ("Installing LLVM tools")
+          iex "& $choco install llvm --confirm --force" 
+          # Start-Process $choco -verb runas -wait -ArgumentList "install","llvm","--confirm","--force" > $null
+        }
+        $t = $t.replace("`$choco", $choco).replace("""", "\""")
+        $install_tasks += $t
+      }
+
+      $env:PATH="$clangPath;$env:PATH"
+    } else {
+      Write-Output("# Found clang++.exe")
+    }
+  }
+
+  if (("llvm+vsbuild" -eq $toolchain) -or ("vsbuild" -eq $toolchain))
+  {
+    $vc_exists, $vc_vars = $(Get-VCVars)
+    $report_vc_vars_reqd = $false
+    $install_vc_build = $true
+
+    if ($(Found-Command("clang++.exe")) -and $(Found-Command("nmake.exe"))) {
+      Write-Output("# Found clang and nmake")
+      $install_vc_build = $false
+    } else {
+      if ($vc_exists) {
+        Write-Output "Calling vcvars64.bat"
+        $(Get-ProcEnvs($vc_vars))
+        if ($(Found-Command("clang++.exe")) -and $(Found-Command("nmake.exe"))) {
+          $report_vc_vars_reqd = $true
+          $install_vc_build = $false
+        } else {
+          Write-Output("# $vc_vars didn't enable both clang++ and nmake, downloading vs_build.exe")
+        }
+      } else {
+        Write-Output("# Visual Studio Build Tools not detected, please install all selected items.")
+      }
+    }
+
+    if ($install_vc_build) {
+      $report_vc_vars_reqd = $true
+      $confirmation = Read-Host "Visual Studio NMake + Windows SDK are required. Download from Microsoft? y/[n]?"
+      if ($confirmation -eq 'y') {
+        $t = [string]{
+          $tmpdir = Join-Path $Env:Temp $(New-Guid)
+          (New-Item -Type Directory -Path $tmpdir) > $null
+          if ($null -ne ($env:VSFROMLAYOUT)) {
+            Write-Output "# Installing Visual Studio Build Tools from pre downloaded layout folder $($env:VSFROMLAYOUT)"
+            cd $($env:VSFROMLAYOUT)
+            # Start-Process "vs_setup.exe" -verb runas -wait -ArgumentList "-P" > $null
+            iex "& vs_setup.exe --passive -P"
+            cd $OLD_CWD
+          } else {
+            Invoke-WebRequest "https://aka.ms/vs/17/release/vs_buildtools.exe" -O "$tmpdir\vs_buildtools.exe"
+            # Start-Process "$tmpdir\vs_buildtools.exe" -verb runas -wait -ArgumentList "--config","$OLD_CWD\$bin\$vsconfig" > $null
+            iex "& $tmpdir\vs_buildtools.exe --passive --config $OLD_CWD\$bin\$vsconfig"
+          }
+        }
+        $t = $t.replace("`$OLD_CWD", $OLD_CWD).replace("`$bin", $bin).replace("`$vsconfig", $vsconfig).replace("""", "\""")
+        $install_tasks += $t
+      }
+    }
+  }
+
+  if ($install_tasks.Count -gt 0) {
+    Write-Output "Installing build dependencies..."
+    $script = ""
+    # concatinate all script blocks so a single UAC request is raised
+    foreach ($task in $install_tasks) {
+      $script = "$($script)Invoke-Command {$($task)}`r`n"
+    }
+
+    try {
+      Start-Process powershell -verb runas -wait -ArgumentList "$script"
+    } catch [InvalidOperationException] {
+      Write-Output "UAC declined, nothing installed."
+      Exit 1
+    }
+  }
+
+  if (-not (Found-Command($clang))) {
+    Write-Output "not ok - unable to install clang++."
     Exit 1
   }
-}
 
-# install `cmake.exe`
-(Get-Command "cmake.exe" -ErrorAction SilentlyContinue) > $null
-if ($? -ne 1) {
-  choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System' --confirm --force
+  $vc_exists, $vc_vars = $(Get-VCVars)
+  if ($vc_exists) {
+    Write-Output "Calling vcvars64.bat"
+    $(Get-ProcEnvs($vc_vars))
+  } else {
+    Write-Output "vcvars64.bat still not present, something went wrong."
+    Exit 1
+  }
 
-  if ($? -ne 1) {
+  if (-not (Found-Command($global:git))) {
+    Write-Output "not ok - unable to install git."
+    Exit 1
+  }
+
+  if (-not (Found-Command($global:cmake))) {
     Write-Output "not ok - unable to install cmake"
     Exit 1
   }
-}
 
-# install `git.exe`
-(Get-Command "git.exe" -ErrorAction SilentlyContinue) > $null
-if ($? -ne 1) {
-  choco install git
+  if ($report_vc_vars_reqd) {
+    Write-Output "vcvars64.bat found and enabled. Note that you will need to call it manually if running this script from cmd.exe under a separate powershell request:"
+    Write-Output $vc_vars
+    $global:path_advice += $vc_vars
+  }
+  
+  if (($need_choco -eq $true) -and ($approve_choco -eq $false)) {
+    $global:path_advice += "# Chocolately is required to install some dependencies, but you have elected not to install it, things probably didn't go well."
+  }
 
-  if ($? -ne 1) {
-    Write-Output "not ok - unable to install git"
-    Exit 1
+  # refresh enviroment after prereq setup
+  if ($(Found-Command("refreshenv"))) {
+    refreshenv
   }
 }
 
-# refresh enviroment after prereq setup
-refreshenv
+Install-Requirements
+
 if (-not (Test-Path -Path $ASSET_PATH)) {
   (New-Item -ItemType Directory -Path $ASSET_PATH) > $null
   Write-Output "ok - created $ASSET_PATH"
@@ -191,7 +443,15 @@ cd $WORKING_PATH
 if ($skipwebview -eq $false) {
   Install-WebView2
 }
+
 Build
 Install-Files
+
+if ($global:path_advice.Count -gt 0) {
+  Write-Output "Please add the following to PATH or run for this and future dev sessions: "
+  foreach ($p in $global:path_advice) {
+    Write-Output $p
+  }
+}
 
 cd $OLD_CWD
