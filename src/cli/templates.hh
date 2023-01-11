@@ -1008,11 +1008,7 @@ android {
       abiFilters {{android_ndk_abi_filters}}
     }
 
-    externalNativeBuild {
-      ndkBuild {
-        arguments "NDK_APPLICATION_MK:=src/main/jni/Application.mk"
-      }
-    }
+{{android_default_config_external_native_build}}
   }
 
   aaptOptions {
@@ -1020,11 +1016,7 @@ android {
     noCompress {{android_aapt_no_compress}}
   }
 
-  externalNativeBuild {
-    ndkBuild {
-      path "src/main/jni/Android.mk"
-    }
-  }
+{{android_external_native_build}}
 
   productFlavors {
     dev {

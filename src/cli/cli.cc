@@ -796,7 +796,7 @@ int main (const int argc, const char* argv[]) {
     exit(0);
   });
 
-  createSubcommand("build", { "--platform", "--port", "--quiet", "-o", "-r", "--prod", "-p", "-c", "-s", "-e", "-n", "--test", "--headless" }, true, [&](const std::span<const char *>& options) -> void {
+  createSubcommand("build", { "--platform", "--host", "--port", "--quiet", "-o", "-r", "--prod", "-p", "-c", "-s", "-e", "-n", "--test", "--headless" }, true, [&](const std::span<const char *>& options) -> void {
     bool flagRunUserBuildOnly = false;
     bool flagAppStore = false;
     bool flagCodeSign = false;
@@ -815,9 +815,15 @@ int main (const int argc, const char* argv[]) {
     String targetPlatform = "";
     String testFile = "";
 
+    String hostArg = "";
+    String portArg = "";
     String devHost("localhost");
     String devPort("0");
     auto cnt = 0;
+
+    String localDirPrefix = !platform.win ? "./" : "";
+    String quote = !platform.win ? "'" : "\"";
+    String slash = !platform.win ? "/" : "\\";
 
     for (auto const arg : options) {
       if (is(arg, "-h") || is(arg, "--help")) {
@@ -899,21 +905,28 @@ int main (const int argc, const char* argv[]) {
         }
       }
 
-      auto host = optionValue(arg, "--host");
-      if (host.size() > 0) {
-        devHost = host;
-      } else {
-        if (flagBuildForIOS || flagBuildForAndroid) {
-          auto r = exec("ifconfig | grep -w 'inet' | awk '!match($2, \"^127.\") {print $2; exit}' | tr -d '\n'");
-          if (r.exitCode == 0) {
-            devHost = r.output;
+      if (hostArg.size() == 0) {
+        hostArg = optionValue(arg, "--host");
+        if (hostArg.size() > 0) {
+          devHost = hostArg;
+        } else {
+          if (flagBuildForIOS || flagBuildForAndroid) {
+            auto r = exec((!platform.win) ? 
+              "ifconfig | grep -w 'inet' | awk '!match($2, \"^127.\") {print $2; exit}' | tr -d '\n'" : 
+              "PowerShell -Command ((Get-NetIPAddress -AddressFamily IPV4).IPAddress ^| Select-Object -first 1)"
+              );
+            if (r.exitCode == 0) {
+              devHost = r.output;
+            }
           }
         }
       }
 
-      auto port = optionValue(arg, "--port");
-      if (port.size() > 0) {
-        devPort = port;
+      if (portArg.size() == 0) {
+        portArg = optionValue(arg, "--port");
+        if (portArg.size() > 0) {
+          devPort = portArg;
+        }
       }
     }
 
@@ -1039,6 +1052,10 @@ int main (const int argc, const char* argv[]) {
 
       writeFile(paths.pathResourcesRelativeToUserBuild / "Credits.html", credits);
     }
+
+
+    // used in multiple if blocks, need to declare here
+    auto android_enable_standard_ndk_build = settings["android_enable_standard_ndk_build"] == "true";
 
     if (flagBuildForAndroid) {
       auto bundle_identifier = settings["bundle_identifier"];
@@ -1245,6 +1262,27 @@ int main (const int argc, const char* argv[]) {
         } else {
           settings["android_allow_cleartext"] = "";
         }
+      }
+
+      if (android_enable_standard_ndk_build) {
+        settings["android_default_config_external_native_build"].assign(
+          "    externalNativeBuild {\n"
+          "      ndkBuild {\n"
+          "        arguments \"NDK_APPLICATION_MK:=src/main/jni/Application.mk\"\n"
+          "      }\n"
+          "    }"
+        );
+
+        settings["android_external_native_build"].assign(
+          "  externalNativeBuild {\n"
+          "    ndkBuild {\n"
+          "      path \"src/main/jni/Android.mk\"\n"
+          "    }\n"
+          "  }"
+        );
+      } else {
+        settings["android_default_config_external_native_build"].assign("    // externalNativeBuild called manually for -j parallel support. Disable with [android]...enable_standard_ndk_build = true in socket.ini\n");
+        settings["android_external_native_build"].assign("  // externalNativeBuild called manually for -j parallel support. Disable with [android]...enable_standard_ndk_build = true in socket.ini\n");
       }
       
       // Android Project
@@ -1602,7 +1640,7 @@ int main (const int argc, const char* argv[]) {
     // Windows Package Prep
     // ---
     //
-    if (platform.win) {
+    if (platform.win && !flagBuildForAndroid && !flagBuildForIOS) {
       log("preparing build for win");
       auto prefix = prefixFile();
 
@@ -1850,19 +1888,6 @@ int main (const int argc, const char* argv[]) {
     }
 
     if (flagBuildForAndroid) {
-      // just build for CI
-      if (getEnv("SSC_CI").size() > 0) {
-        StringStream gradlew;
-        gradlew << "./gradlew build";
-
-        if (std::system(gradlew.str().c_str()) != 0) {
-          log("error: failed to invoke `gradlew build` command");
-          exit(1);
-        }
-
-        exit(0);
-      }
-
       auto app = paths.platformSpecificOutputPath / "app";
       auto androidHome = getEnv("ANDROID_HOME");
 
@@ -1910,7 +1935,13 @@ int main (const int argc, const char* argv[]) {
 
       StringStream sdkmanager;
       StringStream packages;
-      StringStream gradlew;
+      StringStream gradlew;      
+      String ndkVersion = "25.0.8775105";
+      String androidPlatform = "android-33";
+
+      if (settings["android_accept_sdk_licenses"].size() > 0) {
+        sdkmanager << "echo " << settings["android_accept_sdk_licenses"] << "|";
+      }
 
       if (platform.unix) {
         gradlew
@@ -1923,17 +1954,19 @@ int main (const int argc, const char* argv[]) {
       }
 
       packages
-        << "'ndk;25.0.8775105' "
-        << "'platform-tools' "
-        << "'platforms;android-33' "
-        << "'emulator' "
-        << "'patcher;v4' "
-        << "'system-images;android-33;google_apis;x86_64' "
-        << "'system-images;android-33;google_apis;arm64-v8a' ";
+        << quote << "ndk;" << ndkVersion << quote << " "
+        << quote << "platform-tools" << quote << " "
+        << quote << "platforms;" << androidPlatform << quote << " "
+        << quote << "emulator" << quote << " "
+        << quote << "patcher;v4" << quote << " "
+        << quote << "system-images;" << androidPlatform << ";google_apis;x86_64" << quote << " "
+        << quote << "system-images;" << androidPlatform << ";google_apis;arm64-v8a" << quote << " ";
 
-      if (!platform.win) {
-        if (std::system("sdkmanager --version 2>&1 >/dev/null") != 0) {
+      if (std::system("sdkmanager --version 2>&1 >/dev/null") != 0) {
+        if (!platform.win) {
           sdkmanager << androidHome << "/cmdline-tools/latest/bin/";
+        } else {
+          sdkmanager << androidHome << "\\cmdline-tools\\latest\\bin\\";
         }
       }
 
@@ -1943,12 +1976,84 @@ int main (const int argc, const char* argv[]) {
 
       if (std::system(sdkmanager.str().c_str()) != 0) {
         log("error: failed to initialize Android SDK (sdkmanager)");
+        log("You may need to add accept_sdk_licenses = \"y\" to the [android] section of socket.ini.");
         exit(1);
+      }
+
+      if (!android_enable_standard_ndk_build)
+      {
+        StringStream ndkBuild;
+        StringStream ndkBuildArgs;
+        StringStream ndkTest;
+        
+        ndkBuild << "ndk-build" << (platform.win ? ".cmd" : "");
+        ndkTest << ndkBuild.str() << " --version 2>&1 >" << (!platform.win ? "/dev/null" : "NUL");
+
+        if (std::system(ndkTest.str().c_str()) != 0) {
+            ndkBuild.str("");
+            ndkBuild << androidHome << slash << "ndk" << slash <<  ndkVersion << slash << "ndk-build" << (platform.win ? ".cmd" : "");
+
+            
+            ndkTest.str("");
+            ndkTest
+              << ndkBuild.str() << " --version 2>&1 >" << (!platform.win ? "/dev/null" : "NUL");
+
+            if (std::system(ndkTest.str().c_str()) != 0) {
+              StringStream ndkError;
+              ndkError 
+                << "ndk not in path or ANDROID_HOME at "
+                << ndkBuild.str();
+              log(ndkError.str());
+              exit(1);
+            }
+        }
+
+        // TODO(mribbons): Cache binaries, hash based on source contents. Copy if cache matches rather than building.
+        // TODO(mribbons): Expand cache system to other target platforms
+
+        auto output = paths.platformSpecificOutputPath;
+        // auto app = output / "app";
+        auto src = app / "src";
+        auto _main = src / "main";
+        auto app_mk = _main / "jni" / "Application.mk";
+        auto jniLibs = _main / "jniLibs";
+
+        ndkBuildArgs 
+          << ndkBuild.str()
+          << " -j"
+          << " NDK_PROJECT_PATH=" << _main
+          << " NDK_APPLICATION_MK=" << app_mk
+          << (flagDebugMode ? " NDK_DEBUG=1" : "")
+          << " APP_PLATFORM=" << androidPlatform
+          << " NDK_LIBS_OUT=" << jniLibs
+          << "2>&1 >" << (!platform.win ? "/dev/null" : "NUL")
+          ;
+
+        if (std::system(ndkBuildArgs.str().c_str()) != 0)
+        {        
+          log(ndkBuildArgs.str());
+          log("ndk build failed.");
+          exit(1);
+        }
+      }
+
+      // just build for CI
+      if (getEnv("SSC_CI").size() > 0) {
+        StringStream gradlew;
+        gradlew << "./gradlew build";
+
+        if (std::system(gradlew.str().c_str()) != 0) {
+          log("error: failed to invoke `gradlew build` command");
+          exit(1);
+        }
+
+        exit(0);
       }
 
       if (flagDebugMode) {
         gradlew
-          << "./gradlew :app:bundleDebug "
+          << localDirPrefix
+          << "gradlew :app:bundleDebug "
           << "--warning-mode all ";
 
         if (std::system(gradlew.str().c_str()) != 0) {
@@ -1957,7 +2062,8 @@ int main (const int argc, const char* argv[]) {
         }
       } else {
         gradlew
-          << "./gradlew :app:bundle";
+          << localDirPrefix
+          << "gradlew :app:bundle";
 
         if (std::system(gradlew.str().c_str()) != 0) {
           log("error: failed to invoke `gradlew :app:bundle` command");
@@ -1967,7 +2073,9 @@ int main (const int argc, const char* argv[]) {
 
       // clear stream
       gradlew.str("");
-      gradlew << "./gradlew assemble";
+      gradlew 
+        << localDirPrefix
+        << "gradlew assemble";
 
       if (std::system(gradlew.str().c_str()) != 0) {
         log("error: failed to invoke `gradlew assemble` command");
@@ -1976,13 +2084,14 @@ int main (const int argc, const char* argv[]) {
 
       if (flagBuildForAndroidEmulator) {
         StringStream avdmanager;
-        String package = "'system-images;android-33;google_apis;x86_64' ";
+        String package = "'system-images;" + androidPlatform + ";google_apis;x86_64' ";
 
         if (!platform.win) {
           if (std::system("avdmanager list 2>&1 >/dev/null") != 0) {
             avdmanager << androidHome << "/cmdline-tools/latest/bin/";
           }
-        }
+        } else
+          avdmanager << androidHome << "\\cmdline-tools\\latest\\bin\\";
 
         avdmanager
           << "avdmanager create avd "
@@ -2006,7 +2115,8 @@ int main (const int argc, const char* argv[]) {
           if (std::system("adb --version 2>&1 >/dev/null") != 0) {
             adb << androidHome << "/platform-tools/";
           }
-        }
+        } else
+          adb << androidHome << "\\platform-tools\\";
 
         adb
           << "adb "
