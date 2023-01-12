@@ -182,13 +182,18 @@ namespace SSC {
 
   const Map getSettingsSource ();
 
+#if defined(CLI)
+  inline bool isDebugEnabled ();
+#else
   bool isDebugEnabled ();
+#endif
 
-  #if defined(CLI)
-    bool isDebugEnabled () {
-      return DEBUG == 1;
-    }
-  #endif
+  
+#if defined(CLI)
+      inline bool isDebugEnabled () {
+        return DEBUG == 1;
+      }
+#endif  
 
   const char* getDevHost ();
   int getDevPort ();

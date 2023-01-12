@@ -46,9 +46,9 @@ Function Build {
   Write-Output "ok - built libuv"
 
   (New-Item -ItemType Directory -Force -Path "$WORKING_BUILD_PATH\lib") > $null
-  Copy-Item "$WORKING_BUILD_PATH\libuv\build\$LIBUV_BUILD_TYPE\uv_a.lib" -Destination "$WORKING_BUILD_PATH\lib\uv_a.lib"
+  Copy-Item "$WORKING_BUILD_PATH\libuv\build\uv_a.lib" -Destination "$WORKING_BUILD_PATH\lib\uv_a.lib"
   if ($debug -eq $true) {
-    Copy-Item "$WORKING_BUILD_PATH\libuv\build\$LIBUV_BUILD_TYPE\uv_a.pdb" -Destination "$WORKING_BUILD_PATH\lib\uv_a.pdb"
+    Copy-Item "$WORKING_BUILD_PATH\libuv\build\uv_a.pdb" -Destination "$WORKING_BUILD_PATH\lib\uv_a.pdb"
   }
 
   (New-Item -ItemType Directory -Force -Path "$WORKING_BUILD_PATH\include") > $null
@@ -57,7 +57,8 @@ Function Build {
   cd "$WORKING_PATH"
   (New-Item -ItemType Directory -Force -Path "$WORKING_BUILD_PATH\bin") > $null
   Write-Output "# compiling the build tool..."
-  clang++ $SSC_BUILD_OPTIONS -Xlinker /NODEFAULTLIB:libcmt -I"$WORKING_BUILD_PATH\include" -L"$WORKING_BUILD_PATH\lib" src\process\win.cc src\cli\cli.cc -o $WORKING_BUILD_PATH\bin\ssc.exe -std=c++2a -DSSC_BUILD_TIME="$($BUILD_TIME)" -DSSC_VERSION_HASH="$($VERSION_HASH)" -DSSC_VERSION="$($VERSION)"
+  # Write-Output "clang++ $SSC_BUILD_OPTIONS -Xlinker /NODEFAULTLIB:libcmt -I""$WORKING_BUILD_PATH\include"" -L""$WORKING_BUILD_PATH\lib"" src\process\win.cc src\cli\asset_cache.cc src\cli\cli.cc  -o $WORKING_BUILD_PATH\bin\ssc.exe -std=c++2a -DSSC_BUILD_TIME=""$($BUILD_TIME)"" -DSSC_VERSION_HASH=""$($VERSION_HASH)"" -DSSC_VERSION=""$($VERSION)"""
+  clang++ $SSC_BUILD_OPTIONS -Xlinker /NODEFAULTLIB:libcmt -I"$WORKING_BUILD_PATH\include" -L"$WORKING_BUILD_PATH\lib" src\process\win.cc src\cli\asset_cache.cc src\cli\cli.cc  -o $WORKING_BUILD_PATH\bin\ssc.exe -std=c++2a -DSSC_BUILD_TIME="$($BUILD_TIME)" -DSSC_VERSION_HASH="$($VERSION_HASH)" -DSSC_VERSION="$($VERSION)"
 
   if ($? -ne 1) {
     Write-Output "not ok - the build tool failed to compile. Here's what you can do..."
@@ -83,6 +84,9 @@ Function Install-Files {
   (New-Item -ItemType Directory -Force -Path "$LIB_PATH") > $null
   (New-Item -ItemType Directory -Force -Path "$SRC_PATH") > $null
   (New-Item -ItemType Directory -Force -Path "$INCLUDE_PATH") > $null
+
+  # install `.\build\uv\src`
+  Copy-Item -Path "$WORKING_BUILD_PATH\libuv\src" -Destination "$ASSET_PATH\uv\src" -Recurse -Force
 
   # install `.\src\*`
   Copy-Item -Path "$WORKING_PATH\src\*" -Destination "$SRC_PATH" -Recurse -Force -Container

@@ -22,6 +22,7 @@ gradlew.bat
 .settings/
 .clang-format
 .vimrc
+.vscode
 *.gradle*
 compile_flags.txt
 .classpath

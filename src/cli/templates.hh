@@ -1008,11 +1008,7 @@ android {
       abiFilters {{android_ndk_abi_filters}}
     }
 
-    externalNativeBuild {
-      ndkBuild {
-        arguments "NDK_APPLICATION_MK:=src/main/jni/Application.mk"
-      }
-    }
+{{android_default_config_external_native_build}}
   }
 
   aaptOptions {
@@ -1020,11 +1016,7 @@ android {
     noCompress {{android_aapt_no_compress}}
   }
 
-  externalNativeBuild {
-    ndkBuild {
-      path "src/main/jni/Android.mk"
-    }
-  }
+{{android_external_native_build}}
 
   productFlavors {
     dev {
@@ -1155,8 +1147,7 @@ LOCAL_CFLAGS +=              \
   -fexceptions               \
   -fPIC                      \
   -frtti                     \
-  -fsigned-char              \
-  -O0
+  -fsigned-char              
 
 LOCAL_CFLAGS += {{cflags}}
 
@@ -1193,6 +1184,262 @@ constexpr auto gAndroidApplicationMakefile = R"MAKE(
 APP_ABI := {{android_native_abis}}
 APP_STL := c++_static
 )MAKE";
+
+constexpr auto glibuvMakefile = R"MAKE(
+LOCAL_PATH := $(call my-dir)
+
+## libuv.so
+include $(CLEAR_VARS)
+LOCAL_MODULE := uv
+
+UV_UNIX_SOURCE :=       \
+  async.c               \
+  core.c                \
+  dl.c                  \
+  fs.c                  \
+  getaddrinfo.c         \
+  getnameinfo.c         \
+  linux.c               \
+  loop.c                \
+  loop-watcher.c        \
+  pipe.c                \
+  poll.c                \
+  process.c             \
+  proctitle.c           \
+  random-devurandom.c   \
+  random-getentropy.c   \
+  random-getrandom.c    \
+  random-sysctl-linux.c \
+  signal.c              \
+  stream.c              \
+  tcp.c                 \
+  thread.c              \
+  tty.c                 \
+  udp.c
+
+LOCAL_CFLAGS :=              \
+  -std=gnu89                 \
+  -g                         \
+  -pedantic                  \
+  -I$(LOCAL_PATH)/include    \
+  -I$(LOCAL_PATH)/uv/src     \
+  -D_FILE_OFFSET_BITS=64     \
+  -D_GNU_SOURCE              \
+  -D_LARGEFILE_SOURCE        \
+  -landroid                  \
+  -Wall                      \
+  -Wextra                    \
+  -Wno-pedantic              \
+  -Wno-sign-compare          \
+  -Wno-unused-parameter      \
+  -Wno-implicit-function-declaration
+
+LOCAL_CFLAGS += {{cflags}}
+
+LOCAL_SRC_FILES :=                     \
+  $(wildcard $(LOCAL_PATH)/uv/src/*.c) \
+  $(foreach file, $(UV_UNIX_SOURCE), $(LOCAL_PATH)/uv/src/unix/$(file))
+
+LOCAL_EXPORT_C_INCLUDES := $(LOCAL_PATH)/include
+include $(BUILD_SHARED_LIBRARY)
+
+## Custom userspace Android NDK
+)MAKE";
+
+constexpr auto glibSocketCoreMakefile = R"MAKE(
+LOCAL_PATH := $(call my-dir)
+
+## libsocket-runtime-core.so
+include $(CLEAR_VARS)
+LOCAL_MODULE := socket-runtime-core
+
+LOCAL_CFLAGS +=              \
+  -std=c++2a                 \
+  -g                         \
+  -I$(LOCAL_PATH)/include    \
+  -I$(LOCAL_PATH)            \
+  -pthreads                  \
+  -fexceptions               \
+  -fPIC                      \
+  -frtti                     \
+  -fsigned-char
+
+LOCAL_CFLAGS += {{cflags}}
+
+LOCAL_LDLIBS := -landroid -llog
+LOCAL_SRC_FILES =         \
+  core/bluetooth.cc       \
+  core/core.cc            \
+  core/fs.cc              \
+  core/javascript.cc      \
+  core/json.cc            \
+  core/peer.cc            \
+  core/udp.cc             \
+  init.cc
+
+# LOCAL_STATIC_LIBRARIES := uv
+LOCAL_SHARED_LIBRARIES := uv socket-runtime-core
+include $(BUILD_SHARED_LIBRARY)
+
+include $(CLEAR_VARS)
+LOCAL_MODULE := libuv
+LOCAL_SRC_FILES := ../../../main/jniLibs/$(TARGET_ARCH_ABI)/libuv.so
+LOCAL_SHARED_LIBRARIES := uv
+include $(PREBUILT_SHARED_LIBRARY)
+
+## Custom userspace Android NDK
+)MAKE";
+
+constexpr auto glibSocketIPCMakefile = R"MAKE(
+LOCAL_PATH := $(call my-dir)
+
+## libsocket-runtime-ipc.so
+include $(CLEAR_VARS)
+LOCAL_MODULE := socket-runtime-ipc
+
+LOCAL_CFLAGS +=              \
+  -std=c++2a                 \
+  -g                         \
+  -I$(LOCAL_PATH)/include    \
+  -I$(LOCAL_PATH)            \
+  -pthreads                  \
+  -fexceptions               \
+  -fPIC                      \
+  -frtti                     \
+  -fsigned-char              
+
+LOCAL_CFLAGS += {{cflags}}
+
+LOCAL_LDLIBS := -landroid -llog
+LOCAL_SRC_FILES =         \
+  ipc/bridge.cc           \
+  ipc/ipc.cc              
+
+# LOCAL_STATIC_LIBRARIES := uv
+LOCAL_SHARED_LIBRARIES := uv socket-runtime-core
+include $(BUILD_SHARED_LIBRARY)
+
+include $(CLEAR_VARS)
+LOCAL_MODULE := libuv
+LOCAL_SRC_FILES := ../../../main/jniLibs/$(TARGET_ARCH_ABI)/libuv.so
+LOCAL_SHARED_LIBRARIES := uv
+include $(PREBUILT_SHARED_LIBRARY)
+
+
+include $(CLEAR_VARS)
+LOCAL_MODULE := socket-runtime-core
+LOCAL_SRC_FILES := ../../../main/jniLibs/$(TARGET_ARCH_ABI)/libsocket-runtime-core.so
+LOCAL_SHARED_LIBRARIES := socket-runtime-core
+include $(PREBUILT_SHARED_LIBRARY)
+
+
+## Custom userspace Android NDK
+)MAKE";
+
+constexpr auto glibSocketAndroidMakefile = R"MAKE(
+LOCAL_PATH := $(call my-dir)
+
+## libsocket-runtime-android.so
+include $(CLEAR_VARS)
+LOCAL_MODULE := socket-runtime-android
+
+LOCAL_CFLAGS +=              \
+  -std=c++2a                 \
+  -g                         \
+  -I$(LOCAL_PATH)/include    \
+  -I$(LOCAL_PATH)            \
+  -pthreads                  \
+  -fexceptions               \
+  -fPIC                      \
+  -frtti                     \
+  -fsigned-char              
+
+LOCAL_CFLAGS += {{cflags}}
+
+LOCAL_LDLIBS := -landroid -llog
+LOCAL_SRC_FILES =         \
+  android/bridge.cc       \
+  android/runtime.cc      \
+  android/string_wrap.cc  \
+  android/window.cc       
+
+# LOCAL_STATIC_LIBRARIES := uv
+LOCAL_SHARED_LIBRARIES := uv socket-runtime-core socket-runtime-ipc
+include $(BUILD_SHARED_LIBRARY)
+
+include $(CLEAR_VARS)
+LOCAL_MODULE := libuv
+LOCAL_SRC_FILES := ../../../main/jniLibs/$(TARGET_ARCH_ABI)/libuv.so
+LOCAL_SHARED_LIBRARIES := uv
+include $(PREBUILT_SHARED_LIBRARY)
+
+include $(CLEAR_VARS)
+LOCAL_MODULE := socket-runtime-core
+LOCAL_SRC_FILES := ../../../main/jniLibs/$(TARGET_ARCH_ABI)/libsocket-runtime-core.so
+LOCAL_SHARED_LIBRARIES := socket-runtime-core
+include $(PREBUILT_SHARED_LIBRARY)
+
+include $(CLEAR_VARS)
+LOCAL_MODULE := socket-runtime-ipc
+LOCAL_SRC_FILES := ../../../main/jniLibs/$(TARGET_ARCH_ABI)/libsocket-runtime-ipc.so
+LOCAL_SHARED_LIBRARIES := socket-runtime-ipc
+include $(PREBUILT_SHARED_LIBRARY)
+
+
+## Custom userspace Android NDK
+)MAKE";
+
+constexpr auto glibSocketCustomMakefile = R"MAKE(
+LOCAL_PATH := $(call my-dir)
+
+## libcustom.so
+include $(CLEAR_VARS)
+LOCAL_MODULE := custom
+
+LOCAL_CFLAGS +=              \
+  -std=c++2a                 \
+  -g                         \
+  -I$(LOCAL_PATH)/include    \
+  -I$(LOCAL_PATH)            \
+  -pthreads                  \
+  -fexceptions               \
+  -fPIC                      \
+  -frtti                     \
+  -fsigned-char              
+
+LOCAL_CFLAGS += {{cflags}}
+
+LOCAL_LDLIBS := -landroid -llog
+
+LOCAL_SRC_FILES := \
+  $(wildcard $(LOCAL_PATH)/src/*.cc)
+
+# LOCAL_STATIC_LIBRARIES := uv
+LOCAL_SHARED_LIBRARIES := uv socket-runtime-core socket-runtime-ipc 
+include $(BUILD_SHARED_LIBRARY)
+
+include $(CLEAR_VARS)
+LOCAL_MODULE := libuv
+LOCAL_SRC_FILES := ../../../main/jniLibs/$(TARGET_ARCH_ABI)/libuv.so
+LOCAL_SHARED_LIBRARIES := uv
+include $(PREBUILT_SHARED_LIBRARY)
+
+include $(CLEAR_VARS)
+LOCAL_MODULE := socket-runtime-core
+LOCAL_SRC_FILES := ../../../main/jniLibs/$(TARGET_ARCH_ABI)/libsocket-runtime-core.so
+LOCAL_SHARED_LIBRARIES := socket-runtime-core
+include $(PREBUILT_SHARED_LIBRARY)
+
+include $(CLEAR_VARS)
+LOCAL_MODULE := socket-runtime-ipc
+LOCAL_SRC_FILES := ../../../main/jniLibs/$(TARGET_ARCH_ABI)/libsocket-runtime-ipc.so
+LOCAL_SHARED_LIBRARIES := socket-runtime-ipc
+include $(PREBUILT_SHARED_LIBRARY)
+
+
+## Custom userspace Android NDK
+)MAKE";
+
 
 //
 // Android `proguard-rules.pro` file
