@@ -1359,10 +1359,12 @@ constexpr auto gDefaultConfig = R"INI(
 ; Socket ⚡︎ Runtime · A modern runtime for Web Apps · v{{ssc_version}}
 ;
 
-; The shell command to execute when building an application. This is the most
-; important command in this file. This will do all the heavy lifting and should
-; handle 99.9% of your use cases for moving files into place or tweaking
-; platform-specific build artifacts.
+; The value of the "build" property will be interpreted as a shell command when
+; you run "ssc build". This is the most important command in this file. It will
+; do all the heavy lifting and should handle 99.9% of your use cases for moving
+; files into place or tweaking platform-specific build artifacts. If you don't
+; specify it, ssc will just copy everything in your project to the build target.
+
 ; build = "node build-script.js"
 
 ; A unique ID that identifies the bundle (used by all app stores).
