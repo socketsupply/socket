@@ -1501,10 +1501,10 @@ publisher = "CN=Beep Boop Corp., O=Beep Boop Corp., L=San Francisco, S=Californi
 [window]
 
 ; The initial height of the first window.
-height = 80%
+height = 50%
 
 ; The initial width of the first window.
-width = 80%
+width = 50%
 )INI";
 
 constexpr auto gDefaultGitignore = R"GITIGNORE(
