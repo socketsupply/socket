@@ -7,10 +7,10 @@ LIPO=""
 declare CWD=`pwd`
 declare PREFIX="${PREFIX:-"/usr/local"}"
 declare BUILD_DIR="$CWD/build"
-declare SOCKET_DIR="${SOCKET_DIR:-"${XDG_DATA_HOME:-"$HOME/.local/share"}/socket"}"
+declare SOCKET_HOME="${SOCKET_HOME:-"${XDG_DATA_HOME:-"$HOME/.local/share"}/socket"}"
 
 if [ -n "$LOCALAPPDATA" ]; then
-  SOCKET_DIR="$LOCALAPPDATA/Programs/socketsupply"
+  SOCKET_HOME="$LOCALAPPDATA/Programs/socketsupply"
 fi
 
 if [ ! "$CXX" ]; then
@@ -238,13 +238,13 @@ function _prebuild_ios_simulator_main () {
 
 function _prepare {
   echo "# preparing directories..."
-  rm -rf "$SOCKET_DIR"
+  rm -rf "$SOCKET_HOME"
 
-  mkdir -p "$SOCKET_DIR"/{lib,src,bin,include,objects}
-  mkdir -p "$SOCKET_DIR"/{lib,objects}/"$(uname -m)-desktop"
+  mkdir -p "$SOCKET_HOME"/{lib,src,bin,include,objects}
+  mkdir -p "$SOCKET_HOME"/{lib,objects}/"$(uname -m)-desktop"
 
   if [[ "$(uname -s)" = "Darwin" ]]; then
-    mkdir -p "$SOCKET_DIR"/{lib,objects}/{arm64-iPhoneOS,x86_64-iPhoneSimulator}
+    mkdir -p "$SOCKET_HOME"/{lib,objects}/{arm64-iPhoneOS,x86_64-iPhoneSimulator}
   fi
 
   if [ ! -d "$BUILD_DIR/uv" ]; then
@@ -260,50 +260,50 @@ function _prepare {
 function _install {
   declare arch="$1"
   declare platform="$2"
-  echo "# copying sources to $SOCKET_DIR/src"
-  cp -r "$CWD"/src/* "$SOCKET_DIR/src"
+  echo "# copying sources to $SOCKET_HOME/src"
+  cp -r "$CWD"/src/* "$SOCKET_HOME/src"
 
   if test -d "$BUILD_DIR/$arch-$platform/objects"; then
-    echo "# copying objects to $SOCKET_DIR/objects/$arch-$platform"
-    rm -rf "$SOCKET_DIR/objects/$arch-$platform"
-    mkdir -p "$SOCKET_DIR/objects/$arch-$platform"
-    cp -r "$BUILD_DIR/$arch-$platform/objects"/* "$SOCKET_DIR/objects/$arch-$platform"
+    echo "# copying objects to $SOCKET_HOME/objects/$arch-$platform"
+    rm -rf "$SOCKET_HOME/objects/$arch-$platform"
+    mkdir -p "$SOCKET_HOME/objects/$arch-$platform"
+    cp -r "$BUILD_DIR/$arch-$platform/objects"/* "$SOCKET_HOME/objects/$arch-$platform"
   fi
 
   if test -d "$BUILD_DIR"/lib; then
-    echo "# copying libraries to $SOCKET_DIR/lib"
-    mkdir -p "$SOCKET_DIR/lib"
-    cp -fr "$BUILD_DIR"/lib/*.a "$SOCKET_DIR/lib/"
+    echo "# copying libraries to $SOCKET_HOME/lib"
+    mkdir -p "$SOCKET_HOME/lib"
+    cp -fr "$BUILD_DIR"/lib/*.a "$SOCKET_HOME/lib/"
   fi
 
   if test -d "$BUILD_DIR/$arch-$platform"/lib; then
-    echo "# copying libraries to $SOCKET_DIR/lib/$arch-$platform"
-    rm -rf "$SOCKET_DIR/lib/$arch-$platform"
-    mkdir -p "$SOCKET_DIR/lib/$arch-$platform"
-    cp -fr "$BUILD_DIR/$arch-$platform"/lib/*.a "$SOCKET_DIR/lib/$arch-$platform"
+    echo "# copying libraries to $SOCKET_HOME/lib/$arch-$platform"
+    rm -rf "$SOCKET_HOME/lib/$arch-$platform"
+    mkdir -p "$SOCKET_HOME/lib/$arch-$platform"
+    cp -fr "$BUILD_DIR/$arch-$platform"/lib/*.a "$SOCKET_HOME/lib/$arch-$platform"
   fi
 
-  rm -rf "$SOCKET_DIR/include"
-  mkdir -p "$SOCKET_DIR/include"
-  #cp -rf "$CWD"/include/* $SOCKET_DIR/include
-  cp -rf "$BUILD_DIR"/uv/include/* $SOCKET_DIR/include
+  rm -rf "$SOCKET_HOME/include"
+  mkdir -p "$SOCKET_HOME/include"
+  #cp -rf "$CWD"/include/* $SOCKET_HOME/include
+  cp -rf "$BUILD_DIR"/uv/include/* $SOCKET_HOME/include
 }
 
 function _install_cli {
   local arch="$(uname -m)"
 
   if [ -z "$TEST" ] && [ -z "$NO_INSTALL" ]; then
-    echo "# moving binary to '$SOCKET_DIR/bin' (prompting to copy file into directory)"
+    echo "# moving binary to '$SOCKET_HOME/bin' (prompting to copy file into directory)"
 
-    cp -f "$BUILD_DIR/$arch-desktop"/bin/* "$SOCKET_DIR/bin"
-    die $? "not ok - unable to move binary into '$SOCKET_DIR'"
+    cp -f "$BUILD_DIR/$arch-desktop"/bin/* "$SOCKET_HOME/bin"
+    die $? "not ok - unable to move binary into '$SOCKET_HOME'"
 
-    local status="$(ln -sf "$SOCKET_DIR/bin"/* "$PREFIX/bin" 2>&1)"
+    local status="$(ln -sf "$SOCKET_HOME/bin"/* "$PREFIX/bin" 2>&1)"
     local rc=$?
 
     if [[ " $status " =~ " Permission denied " ]]; then
       echo "warn - Failed to link binrary to '$PREFIX/bin': Trying 'sudo'"
-      sudo ln -sf "$SOCKET_DIR/bin"/* "$PREFIX/bin"
+      sudo ln -sf "$SOCKET_HOME/bin"/* "$PREFIX/bin"
       die $? "not ok - unable to link binary into '$PREFIX/bin'"
     fi
 
@@ -467,9 +467,9 @@ fi
 _compile_libuv
 echo "ok - built libuv for $platform ($target)"
 
-mkdir -p  $SOCKET_DIR/uv/{src/unix,include}
-cp -fr $BUILD_DIR/uv/src/*.{c,h} $SOCKET_DIR/uv/src
-cp -fr $BUILD_DIR/uv/src/unix/*.{c,h} $SOCKET_DIR/uv/src/unix
+mkdir -p  $SOCKET_HOME/uv/{src/unix,include}
+cp -fr $BUILD_DIR/uv/src/*.{c,h} $SOCKET_HOME/uv/src
+cp -fr $BUILD_DIR/uv/src/unix/*.{c,h} $SOCKET_HOME/uv/src/unix
 die $? "not ok - could not copy headers"
 echo "ok - copied headers"
 cd $CWD
