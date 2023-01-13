@@ -4,9 +4,14 @@ declare root="$(cd "$(dirname "$(dirname "${BASH_SOURCE[0]}")")" && pwd)"
 declare pids=()
 
 LIPO=""
-WORK_DIR=`pwd`
-PREFIX="${PREFIX:-$HOME}"
-BUILD_DIR=$WORK_DIR/build
+declare CWD=`pwd`
+declare PREFIX="${PREFIX:-"/usr/local"}"
+declare BUILD_DIR="$CWD/build"
+declare SOCKET_DIR="${SOCKET_DIR:-"${XDG_DATA_HOME:-"$HOME/.local/share"}/socket"}"
+
+if [ -n "$LOCALAPPDATA" ]; then
+  SOCKET_DIR="$LOCALAPPDATA/Programs/socketsupply"
+fi
 
 if [ ! "$CXX" ]; then
   if command -v clang++ >/dev/null 2>&1; then
@@ -232,20 +237,14 @@ function _prebuild_ios_simulator_main () {
 }
 
 function _prepare {
-  if [ ! -z "$LOCALAPPDATA" ]; then
-    ASSETS_DIR="$LOCALAPPDATA/Programs/socketsupply"
-  else
-    ASSETS_DIR="$PREFIX/.config/socket"
-  fi
-
   echo "# preparing directories..."
-  rm -rf "$ASSETS_DIR"
+  rm -rf "$SOCKET_DIR"
 
-  mkdir -p "$ASSETS_DIR"/{lib,src,bin,include,objects}
-  mkdir -p "$ASSETS_DIR"/{lib,objects}/"$(uname -m)-desktop"
+  mkdir -p "$SOCKET_DIR"/{lib,src,bin,include,objects}
+  mkdir -p "$SOCKET_DIR"/{lib,objects}/"$(uname -m)-desktop"
 
   if [[ "$(uname -s)" = "Darwin" ]]; then
-    mkdir -p "$ASSETS_DIR"/{lib,objects}/{arm64-iPhoneOS,x86_64-iPhoneSimulator}
+    mkdir -p "$SOCKET_DIR"/{lib,objects}/{arm64-iPhoneOS,x86_64-iPhoneSimulator}
   fi
 
   if [ ! -d "$BUILD_DIR/uv" ]; then
@@ -261,48 +260,59 @@ function _prepare {
 function _install {
   declare arch="$1"
   declare platform="$2"
-  echo "# copying sources to $ASSETS_DIR/src"
-  cp -r "$WORK_DIR"/src/* "$ASSETS_DIR/src"
+  echo "# copying sources to $SOCKET_DIR/src"
+  cp -r "$CWD"/src/* "$SOCKET_DIR/src"
 
   if test -d "$BUILD_DIR/$arch-$platform/objects"; then
-    echo "# copying objects to $ASSETS_DIR/objects/$arch-$platform"
-    rm -rf "$ASSETS_DIR/objects/$arch-$platform"
-    mkdir -p "$ASSETS_DIR/objects/$arch-$platform"
-    cp -r "$BUILD_DIR/$arch-$platform/objects"/* "$ASSETS_DIR/objects/$arch-$platform"
+    echo "# copying objects to $SOCKET_DIR/objects/$arch-$platform"
+    rm -rf "$SOCKET_DIR/objects/$arch-$platform"
+    mkdir -p "$SOCKET_DIR/objects/$arch-$platform"
+    cp -r "$BUILD_DIR/$arch-$platform/objects"/* "$SOCKET_DIR/objects/$arch-$platform"
   fi
 
   if test -d "$BUILD_DIR"/lib; then
-    echo "# copying libraries to $ASSETS_DIR/lib"
-    mkdir -p "$ASSETS_DIR/lib"
-    cp -fr "$BUILD_DIR"/lib/*.a "$ASSETS_DIR/lib/"
+    echo "# copying libraries to $SOCKET_DIR/lib"
+    mkdir -p "$SOCKET_DIR/lib"
+    cp -fr "$BUILD_DIR"/lib/*.a "$SOCKET_DIR/lib/"
   fi
 
   if test -d "$BUILD_DIR/$arch-$platform"/lib; then
-    echo "# copying libraries to $ASSETS_DIR/lib/$arch-$platform"
-    rm -rf "$ASSETS_DIR/lib/$arch-$platform"
-    mkdir -p "$ASSETS_DIR/lib/$arch-$platform"
-    cp -fr "$BUILD_DIR/$arch-$platform"/lib/*.a "$ASSETS_DIR/lib/$arch-$platform"
+    echo "# copying libraries to $SOCKET_DIR/lib/$arch-$platform"
+    rm -rf "$SOCKET_DIR/lib/$arch-$platform"
+    mkdir -p "$SOCKET_DIR/lib/$arch-$platform"
+    cp -fr "$BUILD_DIR/$arch-$platform"/lib/*.a "$SOCKET_DIR/lib/$arch-$platform"
   fi
 
-  rm -rf "$ASSETS_DIR/include"
-  mkdir -p "$ASSETS_DIR/include"
-  #cp -rf "$WORK_DIR"/include/* $ASSETS_DIR/include
-  cp -rf "$BUILD_DIR"/uv/include/* $ASSETS_DIR/include
+  rm -rf "$SOCKET_DIR/include"
+  mkdir -p "$SOCKET_DIR/include"
+  #cp -rf "$CWD"/include/* $SOCKET_DIR/include
+  cp -rf "$BUILD_DIR"/uv/include/* $SOCKET_DIR/include
 }
 
 function _install_cli {
   local arch="$(uname -m)"
-  local platform="desktop"
-  if [ -z "$TEST" ]; then
-    local binDest="/usr/local/bin/ssc"
-    echo "# moving binary to $binDest (prompting to copy file into directory)"
-    sudo mkdir -p /usr/local/bin
-    sudo rm -f "$binDest"
-    sudo cp "$BUILD_DIR/$arch-$platform"/bin/ssc $binDest
-  fi
 
-  die $? "not ok - unable to move binary into place"
-  echo "ok - done. type 'ssc -h' for help"
+  if [ -z "$TEST" ] && [ -z "$NO_INSTALL" ]; then
+    echo "# moving binary to '$SOCKET_DIR/bin' (prompting to copy file into directory)"
+
+    cp -f "$BUILD_DIR/$arch-desktop"/bin/* "$SOCKET_DIR/bin"
+    die $? "not ok - unable to move binary into '$SOCKET_DIR'"
+
+    local status="$(ln -sf "$SOCKET_DIR/bin"/* "$PREFIX/bin" 2>&1)"
+    local rc=$?
+
+    if [[ " $status " =~ " Permission denied " ]]; then
+      echo "warn - Failed to link binrary to '$PREFIX/bin': Trying 'sudo'"
+      sudo ln -sf "$SOCKET_DIR/bin"/* "$PREFIX/bin"
+      die $? "not ok - unable to link binary into '$PREFIX/bin'"
+    fi
+
+    die $rc "not ok - unable to link binary into '$PREFIX/bin'"
+
+    echo "ok - done. type 'ssc -h' for help"
+  else
+    echo "ok - done."
+  fi
 }
 
 function _setSDKVersion {
@@ -351,7 +361,6 @@ function _compile_libuv {
   mkdir -p "$STAGING_DIR/build/"
 
   if [ $platform == "desktop" ]; then
-    mkdir -p $PREFIX
     if ! test -f Makefile; then
       quiet ./configure --prefix=$BUILD_DIR/$target-$platform
       die $? "not ok - desktop configure"
@@ -359,8 +368,9 @@ function _compile_libuv {
       quiet make clean
       quiet make -j8
       quiet make install
-      rm -f "$root/build/$(uname -s)-desktop/lib/"/libuv.{so,la}*
     fi
+
+    rm -f "$root/build/$(uname -m)-desktop/lib"/*.{so,la,dylib}*
     return
   fi
 
@@ -457,12 +467,12 @@ fi
 _compile_libuv
 echo "ok - built libuv for $platform ($target)"
 
-mkdir -p  $ASSETS_DIR/uv/{src/unix,include}
-cp -fr $BUILD_DIR/uv/src/*.{c,h} $ASSETS_DIR/uv/src
-cp -fr $BUILD_DIR/uv/src/unix/*.{c,h} $ASSETS_DIR/uv/src/unix
+mkdir -p  $SOCKET_DIR/uv/{src/unix,include}
+cp -fr $BUILD_DIR/uv/src/*.{c,h} $SOCKET_DIR/uv/src
+cp -fr $BUILD_DIR/uv/src/unix/*.{c,h} $SOCKET_DIR/uv/src/unix
 die $? "not ok - could not copy headers"
 echo "ok - copied headers"
-cd $WORK_DIR
+cd $CWD
 
 cd "$BUILD_DIR"
 
