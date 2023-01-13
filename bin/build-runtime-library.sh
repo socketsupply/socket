@@ -16,7 +16,14 @@ declare sources=(
 )
 
 declare arch="$(uname -m)"
+declare host="$(uname -s)"
 declare platform="desktop"
+
+if [[ "$host" = "Linux" ]]; then
+  if [ -n "$WSL_DISTRO_NAME" ] || uname -r | grep 'Microsoft'; then
+    HOST="Win32"
+  fi
+fi
 
 if (( TARGET_OS_IPHONE )); then
   arch="arm64"
@@ -55,7 +62,7 @@ while (( $# > 0 )); do
   args+=("$arg")
 done
 
-if [[ "$(uname -s)" = "Darwin" ]]; then
+if [[ "$host" = "Darwin" ]]; then
   cflags+=("-ObjC++")
   sources+=("$root/src/window/apple.mm")
   if (( TARGET_OS_IPHONE)); then
@@ -65,9 +72,12 @@ if [[ "$(uname -s)" = "Darwin" ]]; then
   else
     sources+=("$root/src/process/unix.cc")
   fi
-elif [[ "$(uname -s)" = "Linux" ]]; then
+elif [[ "$host" = "Linux" ]]; then
   sources+=("$root/src/window/linux.cc")
   sources+=("$root/src/process/unix.cc")
+elif [[ "$host" = "Win32" ]]; then
+  sources+=("$root/src/window/win.cc")
+  sources+=("$root/src/process/win.cc")
 fi
 
 declare cflags=($("$root/bin/cflags.sh"))

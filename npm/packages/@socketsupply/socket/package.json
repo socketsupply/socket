@@ -1,0 +1,48 @@
+{
+  "name": "@socketsupply/socket",
+  "version": "0.0.1",
+  "description": "A Cross-Platform, Native Runtime for Desktop and Mobile Apps — Create apps using HTML, CSS, and JavaScript. Written from the ground up to be small and maintainable.",
+  "type": "module",
+  "main": "index.js",
+  "preferGlobal": true,
+  "bin": {
+    "ssc": "bin/ssc.js"
+  },
+  "os": [
+    "linux",
+    "darwin",
+    "win32"
+  ],
+  "cpu": [
+    "arm64",
+    "x64"
+  ],
+  "scripts": {
+    "test": ":"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/socketsupply/socket.git"
+  },
+  "keywords": [
+    "socket",
+    "runtime",
+    "webview",
+    "javascript",
+    "desktop",
+    "mobile"
+  ],
+  "author": "Socket Supply, Co <info@socketsupply.co>",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/socketsupply/socket/issues"
+  },
+  "homepage": "https://github.com/socketsupply/socket#readme",
+  "optionalDependencies": {
+    "@socketsupply/socket-darwin-arm64": "~0.0.x",
+    "@socketsupply/socket-darwin-x64": "~0.0.x",
+    "@socketsupply/socket-linux-arm64": "~0.0.x",
+    "@socketsupply/socket-linux-x64": "~0.0.x",
+    "@socketsupply/socket-win32-x64": "~0.0.x"
+  }
+}

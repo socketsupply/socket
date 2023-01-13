@@ -53,6 +53,7 @@ if [ -n "$arch" ] || [ -n "$platform" ]; then
     "$root/build/$arch-$platform"/tests          \
     "$root/build/$arch-$platform"/*.o            \
     "$root/build/$arch-$platform"/**/*.o         \
+    "$root/build/npm/$platform"
   2>/dev/null))
 else
   targets+=($(find                 \
@@ -69,6 +70,7 @@ else
     "$root"/build/*/tests          \
     "$root"/build/*/*.o            \
     "$root"/build/*/**/*.o         \
+    "$root"/build/npm              \
   2>/dev/null))
 fi
 
