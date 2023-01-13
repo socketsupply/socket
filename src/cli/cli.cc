@@ -82,14 +82,41 @@ void log (const String s) {
   start = std::chrono::system_clock::now();
 }
 
-inline String prefixFile (String s) {
-  if (platform.mac || platform.linux) {
-    String local = getEnv("HOME");
-    return String(local + "/.config/socket/" + s + " ");
+String getSocketDirectory () {
+  static String SOCKET_DIR = getEnv("SOCKET_DIR");
+  static String socketDir = "";
+  static String sep = platform.win ? "\\" : "/";
+
+  if (socketDir.size() == 0) {
+    if (SOCKET_DIR.size() > 0) {
+      if (SOCKET_DIR.back() != sep[0]) {
+        socketDir = SOCKET_DIR + sep;
+      } else {
+        socketDir = SOCKET_DIR;
+      }
+    } else if (platform.mac || platform.linux) {
+      String dataHome = getEnv("XDG_DATA_HOME");
+      String local = getEnv("HOME");
+
+      if (dataHome.size() == 0) {
+        dataHome = local + "/.local/share";
+      }
+
+      socketDir = dataHome + "/socket";
+    } else if (platform.win) {
+      String local = getEnv("LOCALAPPDATA");
+      socketDir = local + "\\Programs\\socketsupply\\";
+    }
+
+    log("using '" + socketDir + "' as build source");
   }
 
-  String local = getEnv ("LOCALAPPDATA");
-  return String(local + "\\Programs\\socketsupply\\" + s + " ");
+  return socketDir;
+}
+
+inline String prefixFile (String s) {
+  static String socketDir = getSocketDirectory();
+  return socketDir + s + " ";
 }
 
 inline String prefixFile () {
