@@ -83,16 +83,16 @@ void log (const String s) {
 }
 
 String getSocketDirectory () {
-  static String SOCKET_DIR = getEnv("SOCKET_DIR");
-  static String socketDir = "";
+  static String SOCKET_HOME = getEnv("SOCKET_HOME");
+  static String socketHome = "";
   static String sep = platform.win ? "\\" : "/";
 
-  if (socketDir.size() == 0) {
-    if (SOCKET_DIR.size() > 0) {
-      if (SOCKET_DIR.back() != sep[0]) {
-        socketDir = SOCKET_DIR + sep;
+  if (socketHome.size() == 0) {
+    if (SOCKET_HOME.size() > 0) {
+      if (SOCKET_HOME.back() != sep[0]) {
+        socketHome = SOCKET_HOME + sep;
       } else {
-        socketDir = SOCKET_DIR;
+        socketHome = SOCKET_HOME;
       }
     } else if (platform.mac || platform.linux) {
       String dataHome = getEnv("XDG_DATA_HOME");
@@ -102,21 +102,21 @@ String getSocketDirectory () {
         dataHome = local + "/.local/share";
       }
 
-      socketDir = dataHome + "/socket";
+      socketHome = dataHome + "/socket";
     } else if (platform.win) {
       String local = getEnv("LOCALAPPDATA");
-      socketDir = local + "\\Programs\\socketsupply\\";
+      socketHome = local + "\\Programs\\socketsupply\\";
     }
 
-    log("using '" + socketDir + "' as build source");
+    log("using '" + socketHome + "' as 'SOCKET_HOME'");
   }
 
-  return socketDir;
+  return socketHome;
 }
 
 inline String prefixFile (String s) {
-  static String socketDir = getSocketDirectory();
-  return socketDir + s + " ";
+  static String socketHome = getSocketDirectory();
+  return socketHome + s + " ";
 }
 
 inline String prefixFile () {
