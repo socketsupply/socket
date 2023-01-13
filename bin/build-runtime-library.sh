@@ -78,7 +78,7 @@ mkdir -p "$output_directory"
 
 cd "$(dirname "$output_directory")"
 
-echo "# building runtime static libary"
+echo "# building runtime static libary ($arch-$platform)"
 for source in "${sources[@]}"; do
   declare src_directory="$root/src"
   declare object="${source/.cc/.o}"
