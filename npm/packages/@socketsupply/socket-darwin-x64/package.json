@@ -1,0 +1,41 @@
+{
+  "name": "@socketsupply/socket-darwin-x64",
+  "version": "0.0.1",
+  "description": "A Cross-Platform, Native Runtime for Desktop and Mobile Apps — Create apps using HTML, CSS, and JavaScript. Written from the ground up to be small and maintainable.",
+  "type": "module",
+  "main": "src/index.js",
+  "preferGlobal": true,
+  "os": [
+    "darwin"
+  ],
+  "cpu": [
+    "x64"
+  ],
+  "bin": {
+    "ssc": "bin/ssc-platform.js"
+  },
+  "scripts": {
+    "test": ":",
+    "install": "bin/verify-platform.js darwin x64"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/socketsupply/socket.git"
+  },
+  "keywords": [
+    "socket",
+    "runtime",
+    "webview",
+    "javascript",
+    "desktop",
+    "mobile",
+    "darwin",
+    "arm64"
+  ],
+  "author": "Socket Supply, Co <info@socketsupply.co>",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/socketsupply/socket/issues"
+  },
+  "homepage": "https://github.com/socketsupply/socket#readme"
+}

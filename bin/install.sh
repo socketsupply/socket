@@ -8,6 +8,13 @@ declare CWD=`pwd`
 declare PREFIX="${PREFIX:-"/usr/local"}"
 declare BUILD_DIR="$CWD/build"
 declare SOCKET_HOME="${SOCKET_HOME:-"${XDG_DATA_HOME:-"$HOME/.local/share"}/socket"}"
+declare HOST=""
+
+if [[ "$HOST" = "Linux" ]]; then
+  if [ -n "$WSL_DISTRO_NAME" ] || uname -r | grep 'Microsoft'; then
+    HOST="Win32"
+  fi
+fi
 
 if [ -n "$LOCALAPPDATA" ]; then
   SOCKET_HOME="$LOCALAPPDATA/Programs/socketsupply"
@@ -71,7 +78,7 @@ function advice {
 quiet command -v make
 die $? "not ok - missing build tools, try \"$(advice "make")\""
 
-if [ "$(uname)" == "Darwin" ]; then
+if [ "$HOST" == "Darwin" ]; then
   quiet command -v automake
   die $? "not ok - missing build tools, try \"$(advice "automake")\""
   quiet command -v glibtoolize
@@ -80,7 +87,7 @@ if [ "$(uname)" == "Darwin" ]; then
   die $? "not ok - missing build tools, try 'brew install libtool'"
 fi
 
-if [ "$(uname)" == "Linux" ]; then
+if [ "$HOST" == "Linux" ]; then
   quiet command -v autoconf
   die $? "not ok - missing build tools, try \"$(advice "autoconf")\""
   quiet command -v pkg-config
@@ -130,7 +137,7 @@ function _build_cli {
 function _build_runtime_library {
   echo "# building runtime library"
   "$root/bin/build-runtime-library.sh" --arch "$(uname -m)" --platform desktop & pids+=($!)
-  if [[ "$(uname -s)" = "Darwin" ]]; then
+  if [[ "$HOST" = "Darwin" ]]; then
     "$root/bin/build-runtime-library.sh" --arch "$(uname -m)" --platform ios & pids+=($!)
     "$root/bin/build-runtime-library.sh" --arch x86_64 --platform ios-simulator & pids+=($!)
   fi
@@ -243,7 +250,7 @@ function _prepare {
   mkdir -p "$SOCKET_HOME"/{lib,src,bin,include,objects}
   mkdir -p "$SOCKET_HOME"/{lib,objects}/"$(uname -m)-desktop"
 
-  if [[ "$(uname -s)" = "Darwin" ]]; then
+  if [[ "$HOST" = "Darwin" ]]; then
     mkdir -p "$SOCKET_HOME"/{lib,objects}/{arm64-iPhoneOS,x86_64-iPhoneSimulator}
   fi
 
@@ -298,16 +305,19 @@ function _install_cli {
     cp -f "$BUILD_DIR/$arch-desktop"/bin/* "$SOCKET_HOME/bin"
     die $? "not ok - unable to move binary into '$SOCKET_HOME'"
 
-    local status="$(ln -sf "$SOCKET_HOME/bin"/* "$PREFIX/bin" 2>&1)"
-    local rc=$?
+    if [[ "$SOCKET_HOME" != "$PREFIX" ]]; then
+      local status="$(ln -sf "$SOCKET_HOME/bin/ssc" "$PREFIX/bin/ssc" 2>&1)"
+      local rc=$?
 
-    if [[ " $status " =~ " Permission denied " ]]; then
-      echo "warn - Failed to link binrary to '$PREFIX/bin': Trying 'sudo'"
-      sudo ln -sf "$SOCKET_HOME/bin"/* "$PREFIX/bin"
-      die $? "not ok - unable to link binary into '$PREFIX/bin'"
+      if [[ " $status " =~ " Permission denied " ]]; then
+        echo "warn - Failed to link binrary to '$PREFIX/bin': Trying 'sudo'"
+        sudo rm -f "$PREFIX/bin/ssc"
+        sudo ln -sf "$SOCKET_HOME/bin/ssc" "$PREFIX/bin/ssc"
+        die $? "not ok - unable to link binary into '$PREFIX/bin'"
+      fi
+
+      die $rc "not ok - unable to link binary into '$PREFIX/bin'"
     fi
-
-    die $rc "not ok - unable to link binary into '$PREFIX/bin'"
 
     echo "ok - done. type 'ssc -h' for help"
   else
@@ -402,6 +412,7 @@ function _compile_libuv {
   quiet make install
 
   cd $BUILD_DIR
+  rm -f "$root/build/$target-$platform/lib"/*.{so,la,dylib}*
   echo "ok - built for $target"
 }
 
@@ -481,7 +492,7 @@ _build_cli & pids+=($!)
 
 _prebuild_desktop_main & pids+=($!)
 
-if [[ "$(uname -s)" = "Darwin" ]]; then
+if [[ "$HOST" = "Darwin" ]]; then
   if test -d "$(xcrun -sdk iphoneos -show-sdk-path 2>/dev/null)"; then
     _prebuild_ios_main & pids+=($!)
     _prebuild_ios_simulator_main & pids+=($!)
@@ -495,7 +506,7 @@ done
 
 _install "$(uname -m)" desktop
 
-if [[ "$(uname -s)" = "Darwin" ]]; then
+if [[ "$HOST" = "Darwin" ]]; then
   _install arm64 iPhoneOS
   _install x86_64 iPhoneSimulator
 fi
