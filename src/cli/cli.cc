@@ -82,8 +82,12 @@ void log (const String s) {
   start = std::chrono::system_clock::now();
 }
 
-String getSocketDirectory () {
+String getSocketHome () {
+  static String XDG_DATA_HOME = getEnv("XDG_DATA_HOME");
+  static String LOCALAPPDATA = getEnv("LOCALAPPDATA");
   static String SOCKET_HOME = getEnv("SOCKET_HOME");
+  static String HOME = getEnv("HOME");
+
   static String socketHome = "";
   static String sep = platform.win ? "\\" : "/";
 
@@ -95,17 +99,17 @@ String getSocketDirectory () {
         socketHome = SOCKET_HOME;
       }
     } else if (platform.mac || platform.linux) {
-      String dataHome = getEnv("XDG_DATA_HOME");
-      String local = getEnv("HOME");
-
-      if (dataHome.size() == 0) {
-        dataHome = local + "/.local/share";
+      if (XDG_DATA_HOME.size() == 0) {
+        socketHome = HOME + "/.local/share/socket/";
+      } else {
+        if (XDG_DATA_HOME.back() != sep[0]) {
+          socketHome = XDG_DATA_HOME + "/socket/";
+        } else {
+          socketHome = XDG_DATA_HOME + "socket/";
+        }
       }
-
-      socketHome = dataHome + "/socket";
     } else if (platform.win) {
-      String local = getEnv("LOCALAPPDATA");
-      socketHome = local + "\\Programs\\socketsupply\\";
+      socketHome = LOCALAPPDATA + "\\Programs\\socketsupply\\";
     }
 
     log("using '" + socketHome + "' as 'SOCKET_HOME'");
@@ -115,7 +119,7 @@ String getSocketDirectory () {
 }
 
 inline String prefixFile (String s) {
-  static String socketHome = getSocketDirectory();
+  static String socketHome = getSocketHome();
   return socketHome + s + " ";
 }
 
