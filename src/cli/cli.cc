@@ -518,6 +518,10 @@ int main (const int argc, const char* argv[]) {
       };
       return paths;
     } else if (platform == "linux") {
+      if (settings.count("revision") == 0) {
+        settings["revision"] = "1";
+      }
+
       // this follows the .deb file naming convention
       fs::path packageName = (
         settings["executable"] + "_" +
