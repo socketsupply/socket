@@ -1744,7 +1744,9 @@ int main (const int argc, const char* argv[]) {
           }
         }
       );
+
       process->open();
+      process->wait();
 
       log("ran user build command");
 
