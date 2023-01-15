@@ -18,23 +18,6 @@ namespace SSC {
 
 static StringStream initial;
 
-static void registerExitCallback (Process* process, MessageCallback callback) {
-  process->waitThread = new std::thread([process, callback] {
-    int code = 0;
-    waitpid(process->id, &code, 0);
-    int status = WEXITSTATUS(code);
-
-    if (process != nullptr) {
-      process->status = status;
-      process->closed = true;
-    }
-
-    if (callback != nullptr) {
-      callback(std::to_string(status));
-    }
-  });
-}
-
 Process::Data::Data() noexcept : id(-1) {}
 Process::Process(
   const String &command,
@@ -141,7 +124,19 @@ Process::id_type Process::open(const std::function<int()> &function) noexcept {
   id = pid;
 
   if (pid > 0) {
-    registerExitCallback(this, on_exit);
+    auto thread = std::thread([this] {
+      int code = 0;
+      waitpid(this->id, &code, 0);
+
+      this->status = WEXITSTATUS(code);
+      this->closed = true;
+
+      if (this->on_exit != nullptr) {
+        this->on_exit(std::to_string(status));
+      }
+    });
+
+    thread.detach();
   } else if (pid == 0) {
     if (stdin_fd) {
       dup2(stdin_p[0], 0);
