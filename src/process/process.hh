@@ -102,26 +102,36 @@ namespace SSC {
   // the stdout, stderr and stdin are sent to the parent process instead.
   class Process {
   public:
-    SSC::String command;
-    SSC::String argv;
-    SSC::String path;
-#ifdef _WIN32
+
+  #ifdef _WIN32
     typedef unsigned long id_type; // Process id type
     typedef void *fd_type;         // File descriptor type
-#else
+  #else
     typedef pid_t id_type;
     typedef int fd_type;
     typedef SSC::String string_type;
-#endif
+  #endif
+
+    SSC::String command;
+    SSC::String argv;
+    SSC::String path;
+    std::atomic<bool> closed = true;
+    std::atomic<int> status = -1;
+    id_type id = 0;
+
+  #ifndef _WIN32
+    std::thread* waitThread = nullptr;
+  #endif
 
   private:
+
     class Data {
     public:
       Data() noexcept;
       id_type id;
-#ifdef _WIN32
+  #ifdef _WIN32
       void *handle{nullptr};
-#endif
+  #endif
       int exit_status{-1};
     };
 
@@ -134,16 +144,7 @@ namespace SSC {
       MessageCallback read_stderr = nullptr,
       MessageCallback on_exit = nullptr,
       bool open_stdin = true,
-      const ProcessConfig &config = {}) noexcept
-      : closed(true),
-        open_stdin(true),
-        read_stdout(std::move(read_stdout)),
-        read_stderr(std::move(read_stderr)),
-        on_exit(std::move(on_exit)) {
-      this->command = command;
-      this->argv = argv;
-      this->path = path;
-    }
+      const ProcessConfig &config = {}) noexcept;
 
 #ifndef _WIN32
     // Starts a process with the environment of the calling process.
@@ -158,6 +159,19 @@ namespace SSC {
 #endif
 
     ~Process() noexcept {
+    #ifndef _WIN32
+      auto waitThread = this->waitThread;
+      this->waitThread = nullptr;
+
+      if (waitThread != nullptr) {
+        if (waitThread->joinable()) {
+          waitThread->join();
+        }
+
+        delete waitThread;
+      }
+    #endif
+
       close_fds();
     };
 
@@ -185,9 +199,14 @@ namespace SSC {
     // force=true is only supported on Unix-like systems.
     void kill(id_type id) noexcept;
 
+    void wait () {
+      do {
+        std::this_thread::yield();
+      } while (this->closed == false);
+    }
+
   private:
     Data data;
-    bool closed;
     std::mutex close_mutex;
     MessageCallback read_stdout;
     MessageCallback read_stderr;
