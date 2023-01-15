@@ -59,11 +59,13 @@ namespace SSC {
           );
 
           if (!result) {
-            g_error_free(error);
-            return ctx->reply(IPC::Result::Err { ctx->message, JSON::Object::Entries {
-              {"code", std::to_string(error->code)},
+            ctx->reply(IPC::Result::Err { ctx->message, JSON::Object::Entries {
+              {"code", error->code},
               {"message", String(error->message)}
             }});
+
+            g_error_free(error);
+            return;
           } else {
             auto value = webkit_javascript_result_get_js_value(result);
 
@@ -84,6 +86,11 @@ namespace SSC {
 
               if (exception) {
                 auto message = jsc_exception_get_message(exception);
+
+                if (message == nullptr) {
+                  message = "An unknown error occured";
+                }
+
                 ctx->reply(IPC::Result::Err { ctx->message, JSON::Object::Entries {
                   {"message", String(message)}
                 }});
