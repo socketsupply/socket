@@ -11,6 +11,26 @@ const static SSC::StringStream initial;
 
 Process::Data::Data() noexcept : id(0) {}
 
+Process::Process(
+  const String &command,
+  const String &argv,
+  const String &path,
+  MessageCallback read_stdout,
+  MessageCallback read_stderr,
+  MessageCallback on_exit,
+  bool open_stdin,
+  const ProcessConfig &config
+) noexcept :
+  open_stdin(true),
+  read_stdout(std::move(read_stdout)),
+  read_stderr(std::move(read_stderr)),
+  on_exit(std::move(on_exit))
+{
+  this->command = command;
+  this->argv = argv;
+  this->path = path;
+}
+
 // Simple HANDLE wrapper to close it automatically from the destructor.
 class Handle {
   public:
@@ -163,12 +183,16 @@ Process::id_type Process::open(const SSC::String &command, const SSC::String &pa
     WaitForSingleObject(process_info.hProcess, INFINITE);
     DWORD exitCode;
     GetExitCodeProcess(process_info.hProcess, &exitCode);
+    this->status = (int) exitCode;
+    this->closed = true;
     on_exit(std::to_string(exitCode));
   });
 
   t.detach();
 
   closed = false;
+  id = process_info.dwProcessId;
+
   data.id = process_info.dwProcessId;
   data.handle = process_info.hProcess;
 
@@ -340,5 +364,4 @@ void Process::kill(id_type id) noexcept {
     TerminateProcess(process_handle, 2);
   }
 }
-
 } // namespace SSC
