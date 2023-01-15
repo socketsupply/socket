@@ -119,10 +119,6 @@ namespace SSC {
     std::atomic<int> status = -1;
     id_type id = 0;
 
-  #ifndef _WIN32
-    std::thread* waitThread = nullptr;
-  #endif
-
   private:
 
     class Data {
@@ -159,19 +155,6 @@ namespace SSC {
 #endif
 
     ~Process() noexcept {
-    #ifndef _WIN32
-      auto waitThread = this->waitThread;
-      this->waitThread = nullptr;
-
-      if (waitThread != nullptr) {
-        if (waitThread->joinable()) {
-          waitThread->join();
-        }
-
-        delete waitThread;
-      }
-    #endif
-
       close_fds();
     };
 
