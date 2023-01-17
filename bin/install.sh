@@ -8,7 +8,7 @@ declare CWD=`pwd`
 declare PREFIX="${PREFIX:-"/usr/local"}"
 declare BUILD_DIR="$CWD/build"
 declare SOCKET_HOME="${SOCKET_HOME:-"${XDG_DATA_HOME:-"$HOME/.local/share"}/socket"}"
-declare HOST=""
+declare HOST="$(uname -s)"
 
 if [[ "$HOST" = "Linux" ]]; then
   if [ -n "$WSL_DISTRO_NAME" ] || uname -r | grep 'Microsoft'; then
