@@ -77,7 +77,10 @@ if (( ${#targets[@]} > 0 )); then
   for target in "${targets[@]}"; do
     if test "$target"; then
       rm -rf "$target"
-      echo "ok - cleaned ${target/$root\//}"
+      if [ -n "$VERBOSE" ]; then
+        echo "ok - cleaned ${target/$root\//}"
+      fi
+      echo "ok - cleaned"
     fi
   done
 fi
