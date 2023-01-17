@@ -124,13 +124,8 @@ inline String prefixFile (String s) {
 }
 
 inline String prefixFile () {
-  if (platform.mac || platform.linux) {
-    String local = getEnv("HOME");
-    return String(local + "/.config/socket/");
-  }
-
-  String local = getEnv ("LOCALAPPDATA");
-  return String(local + "\\Programs\\socketsupply");
+  static String socketHome = getSocketHome();
+  return socketHome;
 }
 
 int runApp (const fs::path& path, const String& args, bool headless) {
