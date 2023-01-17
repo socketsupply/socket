@@ -96,7 +96,7 @@ if (( !only_top_level )); then
     echo "# in directory: '$SOCKET_HOME/packages/$package'"
 
     if (( !dry_run )) ; then
-      npm publish "$@"
+      npm publish "${args[@]}" || exit $?
     else
       echo "# npm publish "$@""
     fi
@@ -108,7 +108,7 @@ if (( !only_platforms || only_top_level )); then
   echo "# in directory: '$SOCKET_HOME/packages/@socketsupply/socket'"
 
   if (( !dry_run )); then
-    npm publish "$@" || exit $?
+    npm publish "${args[@]}" || exit $?
   else
     echo "# npm publish "$@""
   fi
