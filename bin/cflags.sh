@@ -44,6 +44,7 @@ if (( TARGET_OS_IPHONE )) || (( TARGET_IPHONE_SIMULATOR )); then
     ios_sdk_path="$(xcrun -sdk iphoneos -show-sdk-path)"
     cflags+=("-arch arm64")
     cflags+=("-target arm64-apple-ios")
+    cflags+=("-Wno-unguarded-availability-new")
     cflags+=("-miphoneos-version-min=$IPHONEOS_VERSION_MIN")
   elif (( TARGET_IPHONE_SIMULATOR )); then
     ios_sdk_path="$(xcrun -sdk iphonesimulator -show-sdk-path)"
