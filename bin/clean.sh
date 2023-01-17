@@ -3,6 +3,7 @@
 declare root="$(cd "$(dirname "$(dirname "${BASH_SOURCE[0]}")")" && pwd)"
 declare arch=""
 declare platform=""
+declare do_full_clean=0
 
 if (( TARGET_OS_IPHONE )); then
   arch="arm64"
@@ -16,6 +17,11 @@ while (( $# > 0 )); do
   declare arg="$1"; shift
   if [[ "$arg" = "--arch" ]]; then
     arch="$1"; shift
+    continue
+  fi
+
+  if [[ "$arg" = "--full" ]]; then
+    do_full_clean=1
     continue
   fi
 
@@ -37,6 +43,11 @@ done
 declare targets=()
 
 if [ -n "$arch" ] || [ -n "$platform" ]; then
+  if (( do_full_clean )); then
+    echo "error: cannot mix '--full' and '--arch/--platform'" >&2
+    exit 1
+  fi
+
   arch="${arch:-$(uname -m)}"
   platform="${platform:-desktop}"
   targets+=($(find                               \
@@ -55,6 +66,11 @@ if [ -n "$arch" ] || [ -n "$platform" ]; then
     "$root/build/$arch-$platform"/**/*.o         \
     "$root/build/npm/$platform"
   2>/dev/null))
+elif (( do_full_clean )); then
+  if test -f "$root/build"; then
+    rm -rf "$root/build" || exit $?
+    echo "ok - cleaned (full)"
+  fi
 else
   targets+=($(find                 \
     "$root"/build/*/app            \
