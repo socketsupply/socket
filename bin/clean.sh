@@ -80,7 +80,7 @@ if (( ${#targets[@]} > 0 )); then
       if [ -n "$VERBOSE" ]; then
         echo "ok - cleaned ${target/$root\//}"
       fi
-      echo "ok - cleaned"
     fi
   done
+  echo "ok - cleaned"
 fi
