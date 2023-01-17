@@ -40,8 +40,8 @@ cflags+=(
   -I"$root/include"
   -I"$root/build/uv/include"
   -DSSC_BUILD_TIME="$(date '+%s')"
-  -DSSC_VERSION_HASH=`git rev-parse --short HEAD`
-  -DSSC_VERSION=`cat "$root/VERSION.txt"`
+  -DSSC_VERSION_HASH=$(git rev-parse --short HEAD)
+  -DSSC_VERSION=$(cat "$root/VERSION.txt")
 )
 
 if (( TARGET_OS_IPHONE )) || (( TARGET_IPHONE_SIMULATOR )); then

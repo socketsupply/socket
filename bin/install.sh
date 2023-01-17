@@ -4,7 +4,7 @@ declare root="$(cd "$(dirname "$(dirname "${BASH_SOURCE[0]}")")" && pwd)"
 declare pids=()
 
 LIPO=""
-declare CWD=`pwd`
+declare CWD=$(pwd)
 declare PREFIX="${PREFIX:-"/usr/local"}"
 declare BUILD_DIR="$CWD/build"
 declare SOCKET_HOME="${SOCKET_HOME:-"${XDG_DATA_HOME:-"$HOME/.local/share"}/socket"}"
@@ -66,11 +66,11 @@ function die {
 }
 
 function advice {
-  if [[ "`uname -s`" == "Darwin" ]]; then
+  if [[ "$(uname -s)" == "Darwin" ]]; then
     echo "brew install $1"
-  elif [[ "`uname -r`" == *"ARCH"* ]]; then
+  elif [[ "$(uname -r)" == *"ARCH"* ]]; then
     echo "sudo pacman -S $1"
-  elif [[ "`uname -s`" == *"Linux"* ]]; then
+  elif [[ "$(uname -s)" == *"Linux"* ]]; then
     echo "apt-get install $1"
   fi
 }
@@ -95,7 +95,7 @@ if [ "$HOST" == "Linux" ]; then
 fi
 
 function _build_cli {
-  echo "# building cli for desktop (`uname -m`)..."
+  echo "# building cli for desktop ($(uname -m))..."
   local arch="$(uname -m)"
   local platform="desktop"
 
@@ -326,7 +326,7 @@ function _install_cli {
 }
 
 function _setSDKVersion {
-  sdks=`ls $PLATFORMPATH/$1.platform/Developer/SDKs`
+  sdks=$(ls "$PLATFORMPATH"/"$1".platform/Developer/SDKs)
   arr=()
   for sdk in $sdks
   do
@@ -339,7 +339,7 @@ function _setSDKVersion {
 
   if [ $count -gt 0 ]; then
     sdk=${arr[$count-1]:${#1}}
-    num=`expr ${#sdk}-4`
+    num=$(expr ${#sdk}-4)
     SDKVERSION=${sdk:0:$num}
   else
     SDKVERSION="8.0"
@@ -352,7 +352,7 @@ function _compile_libuv {
   platform=$2
 
   if [ -z "$target" ]; then
-    target=`uname -m`
+    target=$(uname -m)
     platform="desktop"
   fi
 
@@ -428,7 +428,7 @@ function _check_compiler_features {
     int main () { return 0; }
 EOF_CC
 
-  die $? "not ok - $CXX (`$CXX -dumpversion`) failed in feature check required for building Socket Rutime"
+  die $? "not ok - $CXX ($($CXX -dumpversion)) failed in feature check required for building Socket Rutime"
 }
 
 function onsignal () {
@@ -447,7 +447,7 @@ cd $BUILD_DIR
 
 trap onsignal INT TERM
 
-if [[ "`uname -s`" == "Darwin" ]]; then
+if [[ "$(uname -s)" == "Darwin" ]]; then
   quiet xcode-select -p
   die $? "not ok - xcode needs to be installed from the mac app store: https://apps.apple.com/us/app/xcode/id497799835"
 
