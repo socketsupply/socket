@@ -428,7 +428,7 @@ function _check_compiler_features {
     int main () { return 0; }
 EOF_CC
 
-  die $? "not ok - $CXX (`$CXX -dumpversion`) clang >= 11 is required for building socket"
+  die $? "not ok - $CXX (`$CXX -dumpversion`) failed in feature check required for building Socket Rutime"
 }
 
 function onsignal () {
