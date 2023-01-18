@@ -36,18 +36,13 @@ fi
 cflags+=(
   $CFLAG
   $CXXFLAGS
+  -std=c++2a
   -I"$root/include"
   -I"$root/build/uv/include"
   -DSSC_BUILD_TIME="$(date '+%s')"
   -DSSC_VERSION_HASH=`git rev-parse --short HEAD`
   -DSSC_VERSION=`cat "$root/VERSION.txt"`
 )
-
-if [[ "$host" = "Win32" ]]; then
-  cflags+=(-std=c++2a)
-else
-  cflags+=(-std=c++20)
-fi
 
 if (( TARGET_OS_IPHONE )) || (( TARGET_IPHONE_SIMULATOR )); then
   if (( TARGET_OS_IPHONE )); then
