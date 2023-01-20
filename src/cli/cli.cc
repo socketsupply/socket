@@ -903,16 +903,6 @@ int main (const int argc, const char* argv[]) {
         argvForward += " " + String(arg);
       }
 
-      if (flagBuildTest && testFile.size() == 0) {
-        log("error: --test value is required.");
-        exit(1);
-      }
-
-      if (flagBuildTest && fs::exists(testFile) == false) {
-        log("error: file " + testFile + " does not exist.");
-        exit(1);
-      }
-
       if (is(arg, "--headless")) {
         argvForward += " --headless";
         flagHeadless = true;
@@ -955,6 +945,11 @@ int main (const int argc, const char* argv[]) {
       if (port.size() > 0) {
         devPort = port;
       }
+    }
+
+    if (flagBuildTest && testFile.size() == 0) {
+      log("error: --test value is required.");
+      exit(1);
     }
 
     if (settings.count("file_limit") == 0) {
@@ -2660,16 +2655,6 @@ int main (const int argc, const char* argv[]) {
         flagTest = true;
         testFile = testFileTmp;
         argvForward += " " + String(option);
-      }
-
-      if (flagTest && testFile.size() == 0) {
-        log("error: --test value is required.");
-        exit(1);
-      }
-
-      if (flagTest && fs::exists(testFile) == false) {
-        log("error: file " + testFile + " does not exist.");
-        exit(1);
       }
 
       if (is(option, "--headless")) {
