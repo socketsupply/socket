@@ -1644,10 +1644,9 @@ int main (const int argc, const char* argv[]) {
         " -Xlinker /NODEFAULTLIB:libcmt"
         " -Wno-nonportable-include-path"
         " -I\"" + fs::path(paths.platformSpecificOutputPath / "include").string() + "\""
-        " -I\"" + prefix + "\""
-        " -I\"" + prefix + "\\include\""
-        " -I\"" + prefix + "\\src\""
-        " -L\"" + prefix + "\\lib\""
+        " -I\"" + prefix + "include\""
+        " -I\"" + prefix + "src\""
+        " -L\"" + prefix + "lib\""
       ;
 
       files += "\"" + prefixFile("src\\init.cc\"");
