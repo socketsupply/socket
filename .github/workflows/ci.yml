@@ -34,7 +34,7 @@ jobs:
 
     - name: test a socket api example app
       run: |
-        cd api && npm install && npm test
+        npm install && npm test
       env:
         CI: true
         NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
@@ -68,7 +68,7 @@ jobs:
 
     - name: test a socket api example app
       run: |
-        cd api && npm install && npm test
+        npm install && npm test
       env:
         CI: true
         NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
@@ -102,7 +102,7 @@ jobs:
 
     - name: test a socket api example app
       run: |
-        cd api && npm install && npm run test:ios-simulator
+        npm install && npm run test:ios-simulator
       env:
         CI: true
         NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
@@ -175,7 +175,7 @@ jobs:
         profile: pixel_5
         ndk: 25.0.8775105
         script: |
-          cd api && npm install && npm run test:android
+          npm install && npm run test:android
       env:
         CI: true
         CXX: g++-12
@@ -256,7 +256,7 @@ jobs:
         profile: pixel_5
         ndk: 25.0.8775105
         script: |
-          cd api && npm install && npm run test:android
+          npm install && npm run test:android
       env:
         CI: true
         CXX: g++-12
@@ -305,7 +305,7 @@ jobs:
 
     - name: install an example app
       run: |
-        cd api && npm install && cd test && ssc build -r --headless
+        npm install && cd test && npm install && ssc build -r --headless
       env:
         CI: true
         NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
