@@ -1,5 +1,7 @@
 .github/
 test/
+npm/
+
 .eslintrc
 .gitignore
 .vimrc

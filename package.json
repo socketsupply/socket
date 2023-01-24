@@ -1,29 +1,29 @@
 {
-  "name": "@socketsupply/socket-api",
+  "name": "@socketsupply/socket",
   "version": "0.2.29",
-  "main": "index.js",
+  "main": "api/index.js",
   "type": "module",
   "scripts": {
-    "pretest": "standard ./api",
+    "pretest": "standard .",
     "readme": "node ./bin/generate-docs.js",
     "test": "cd test && npm install --silent --no-audit && npm test",
     "test:node": "node ./test/node/index.js",
     "test:ios-simulator": "cd test && npm install --silent --no-audit && npm run test:ios-simulator",
     "test:android": "cd test && npm install --silent --no-audit && npm run test:android",
     "test:android-emulator": "cd test && npm install --silent --no-audit && npm run test:android-emulator",
-    "test:clean": "cd test && rm -rf dist",
-    "postpublish": "npm publish --registry https://npm.pkg.github.com"
+    "test:clean": "cd test && rm -rf dist"
   },
+  "private": true,
   "author": "",
   "license": "ISC",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/socketsupply/socket-api.git"
+    "url": "git+https://github.com/socketsupply/socket.git"
   },
   "bugs": {
-    "url": "https://github.com/socketsupply/socket-api/issues"
+    "url": "https://github.com/socketsupply/socket/issues"
   },
-  "homepage": "https://github.com/socketsupply/socket-api#readme",
+  "homepage": "https://github.com/socketsupply/socket#readme",
   "description": "Socket Runtime JavaScript interface",
   "devDependencies": {
     "acorn": "8.8.0",
