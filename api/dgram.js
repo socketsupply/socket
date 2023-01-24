@@ -622,7 +622,6 @@ function getSockName (socket, callback) {
  * @param {string=} options.type - The family of socket. Must be either 'udp4' or 'udp6'. Required.
  * @param {boolean=} [options.reuseAddr=false] - When true socket.bind() will reuse the address, even if another process has already bound a socket on it. Default: false.
  * @param {boolean=} [options.ipv6Only=false] - Setting ipv6Only to true will disable dual-stack support, i.e., binding to address :: won't make 0.0.0.0 be bound. Default: false.
-    if ()
  * @param {number=} options.recvBufferSize - Sets the SO_RCVBUF socket value.
  * @param {number=} options.sendBufferSize - Sets the SO_SNDBUF socket value.
  * @param {AbortSignal=} options.signal - An AbortSignal that may be used to close a socket.
