@@ -4,7 +4,7 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "pretest": "standard .",
+    "pretest": "standard ./api",
     "readme": "node ./bin/generate-docs.js",
     "test": "cd test && npm install --silent --no-audit && npm test",
     "test:node": "node ./test/node/index.js",
