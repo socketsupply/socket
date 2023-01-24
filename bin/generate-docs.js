@@ -4,13 +4,15 @@ import * as walk from 'acorn-walk'
 import fs from 'node:fs'
 import path from 'node:path'
 
+const JS_INTERFACE_DIR = 'api'
+
 try {
-  fs.unlinkSync('README.md')
+  fs.unlinkSync(`${JS_INTERFACE_DIR}/README.md`)
 } catch {}
 
 export function transform (filename) {
-  const srcFile = path.relative(process.cwd(), filename)
-  const destFile = path.relative(process.cwd(), 'README.md')
+  const srcFile = path.relative(process.cwd(), `${JS_INTERFACE_DIR}/${filename}`)
+  const destFile = path.relative(process.cwd(), `${JS_INTERFACE_DIR}/README.md`)
 
   let accumulateComments = []
   const comments = {}
@@ -233,7 +235,7 @@ export function transform (filename) {
     return (table + '\n')
   }
 
-  const base = 'https://github.com/socketsupply/socket-api/blob/master'
+  const base = 'https://github.com/socketsupply/socket/blob/master'
 
   for (const doc of docs) {
     let h = doc.export ? '##' : '###'
@@ -255,8 +257,9 @@ export function transform (filename) {
 }
 
 [
+  'backend.js',
   'bluetooth.js',
-  'buffer.js',
+  'bootstrap.js',
   'crypto.js',
   'dgram.js',
   'dns/index.js',
