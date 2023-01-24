@@ -1,4 +1,4 @@
-import backend from '../../backend.js'
+import backend from '../../api/backend.js'
 import { test } from '@socketsupply/tapzero'
 
 if (window.__args.os !== 'android' && window.__args.os !== 'ios') {

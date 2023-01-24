@@ -1,7 +1,7 @@
 import { GLOBAL_TEST_RUNNER } from '@socketsupply/tapzero'
-import console from '../../console.js'
-import process from '../../process.js'
-import '../../runtime.js'
+import console from '../../api/console.js'
+import process from '../../api/process.js'
+import '../../api/runtime.js'
 
 // uncomment below to get IPC debug output in stdout
 // import ipc from '../../ipc.js'

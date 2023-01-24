@@ -1,5 +1,5 @@
-import crypto from '../../crypto.js'
-import Buffer from '../../buffer.js'
+import crypto from '../../api/crypto.js'
+import Buffer from '../../api/buffer.js'
 import { test } from '@socketsupply/tapzero'
 
 test('crypto', async (t) => {

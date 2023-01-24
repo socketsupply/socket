@@ -1,6 +1,6 @@
-import path from '../../path.js'
-import process from '../../process.js'
-import os from '../../os.js'
+import path from '../../api/path.js'
+import process from '../../api/process.js'
+import os from '../../api/os.js'
 
 import { test } from '@socketsupply/tapzero'
 

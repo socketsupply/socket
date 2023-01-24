@@ -1,11 +1,11 @@
-import fs from '../../../fs/promises.js'
-import os from '../../../os.js'
-import path from '../../../path.js'
-import Buffer from '../../../buffer.js'
+import fs from '../../../api/fs/promises.js'
+import os from '../../../api/os.js'
+import path from '../../../api/path.js'
+import Buffer from '../../../api/buffer.js'
 
 import { test } from '@socketsupply/tapzero'
-import { FileHandle } from '../../../fs/handle.js'
-import { Dir } from '../../../fs/dir.js'
+import { FileHandle } from '../../../api/fs/handle.js'
+import { Dir } from '../../../api/fs/dir.js'
 
 const TMPDIR = `${os.tmpdir()}${path.sep}`
 const FIXTURES = /android/i.test(os.platform())

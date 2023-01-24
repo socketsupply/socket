@@ -1,5 +1,5 @@
-import util, { hasOwnProperty } from '../../util.js'
-import Buffer from '../../buffer.js'
+import util, { hasOwnProperty } from '../../api/util.js'
+import Buffer from '../../api/buffer.js'
 import { test } from '@socketsupply/tapzero'
 
 test('util.hasOwnProperty', (t) => {
