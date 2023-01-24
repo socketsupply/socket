@@ -1,0 +1,6 @@
+.github/
+test/
+.eslintrc
+.gitignore
+.vimrc
+README.md
