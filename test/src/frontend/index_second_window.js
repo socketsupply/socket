@@ -1,4 +1,4 @@
-import runtime from '../../../runtime.js'
+import runtime from '../../../api/runtime.js'
 
 runtime.send({ event: `secondary window ${runtime.currentWindow} loaded`, window: 0 })
 

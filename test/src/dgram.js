@@ -1,9 +1,9 @@
-import { EventEmitter } from '../../events.js'
-import console from '../../console.js'
-import crypto from '../../crypto.js'
-import Buffer from '../../buffer.js'
-import dgram from '../../dgram.js'
-import util from '../../util.js'
+import { EventEmitter } from '../../api/events.js'
+import console from '../../api/console.js'
+import crypto from '../../api/crypto.js'
+import Buffer from '../../api/buffer.js'
+import dgram from '../../api/dgram.js'
+import util from '../../api/util.js'
 
 import { test } from '@socketsupply/tapzero'
 
