@@ -35,8 +35,8 @@ void signalHandler (int signal) {
 }
 
 void navigate (Window* window, const String &cwd, const String &seq, const String &value) {
-  if (!value.starts_with("file://")) {
-    debug("Navigation error: only file:// protocol is allowed. Got path %s", value.c_str());
+  if (!value.starts_with("file://") && !value.starts_with("socket://")) {
+    debug("Navigation error: only file:// or socket:// protocol is allowed. Got path %s", value.c_str());
     return;
   }
   if (!value.substr(7).starts_with(cwd)) {
