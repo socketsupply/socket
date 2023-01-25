@@ -12,15 +12,6 @@
   },
   "private": true,
   "license": "ISC",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/socketsupply/socket.git"
-  },
-  "bugs": {
-    "url": "https://github.com/socketsupply/socket/issues"
-  },
-  "homepage": "https://github.com/socketsupply/socket#readme",
-  "description": "Socket Runtime JavaScript interface",
   "devDependencies": {
     "acorn": "8.8.0",
     "acorn-walk": "8.2.0",
