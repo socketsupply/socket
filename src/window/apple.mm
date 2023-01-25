@@ -509,7 +509,7 @@ namespace SSC {
                    forURLScheme: @"ipc"];
 
     [config setURLSchemeHandler: bridge->router.schemeHandler
-                   forURLScheme: @"ssc"];
+                   forURLScheme: @"socket"];
 
     WKPreferences* prefs = [config preferences];
     [prefs setJavaScriptCanOpenWindowsAutomatically:NO];
@@ -528,17 +528,25 @@ namespace SSC {
     [userScript
       initWithSource: [NSString stringWithUTF8String:preload.c_str()]
       injectionTime: WKUserScriptInjectionTimeAtDocumentStart
-      forMainFrameOnly: NO];
+      forMainFrameOnly: NO
+    ];
 
     [controller addUserScript: userScript];
 
     webview = [[SSCBridgedWebView alloc]
       initWithFrame: NSZeroRect
-      configuration: config];
+      configuration: config
+    ];
+
+    [webview.configuration
+      setValue: @YES
+        forKey: @"allowUniversalAccessFromFileURLs"
+    ];
 
     [webview.configuration.preferences
-      setValue:@YES
-      forKey:@"allowFileAccessFromFileURLs"];
+      setValue: @YES
+        forKey: @"allowFileAccessFromFileURLs"
+    ];
 
     /* [webview
       setValue: [NSNumber numberWithBool: YES]
@@ -721,14 +729,16 @@ namespace SSC {
   }
 
   void Window::navigate (const SSC::String& seq, const SSC::String& value) {
-    [webview loadRequest:
-      [NSURLRequest requestWithURL:
-        [NSURL URLWithString:
-          [NSString stringWithUTF8String: value.c_str()]]]];
+    auto url = [NSURL URLWithString: [NSString stringWithUTF8String: value.c_str()]];
 
-    if (seq.size() > 0) {
-      auto index = std::to_string(this->opts.index);
-      this->resolvePromise(seq, "0", index);
+    if (url != nullptr) {
+      auto request = [NSMutableURLRequest requestWithURL: url];
+      auto navigation = [webview loadRequest: request];
+
+      if (seq.size() > 0) {
+        auto index = std::to_string(this->opts.index);
+        this->resolvePromise(seq, "0", index);
+      }
     }
   }
 
