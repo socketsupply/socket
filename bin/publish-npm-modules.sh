@@ -56,7 +56,8 @@ if (( !only_platforms || only_top_level )); then
   mkdir -p "$SOCKET_HOME/packages/$package/bin"
   cp -rf "$root/npm/bin/ssc.js" "$SOCKET_HOME/packages/$package/bin/ssc.js"
   cp -f "$root/LICENSE.txt" "$SOCKET_HOME/packages/$package"
-  cp -f "$root/README.md" "$SOCKET_HOME/packages/$package"
+  cp -f "$root/README.md" "$SOCKET_HOME/packages/$package/README-RUNTIME.md"
+  cp -rf "$root/api"/* "$SOCKET_HOME/packages/$package"
 fi
 
 if (( !only_top_level )); then
