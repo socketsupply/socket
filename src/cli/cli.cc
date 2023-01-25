@@ -952,6 +952,11 @@ int main (const int argc, const char* argv[]) {
       exit(1);
     }
 
+    if (flagBuildTest && fs::exists(testFile) == false) {
+      log("error: file " + testFile + " does not exist.");
+      exit(1);
+    }
+
     if (settings.count("file_limit") == 0) {
       settings["file_limit"] = "4096";
     }
