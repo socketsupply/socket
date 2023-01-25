@@ -223,6 +223,9 @@ static dispatch_queue_t queue = dispatch_queue_create(
   [config setURLSchemeHandler: bridge->router.schemeHandler
                  forURLScheme: @"ipc"];
 
+  [config setURLSchemeHandler: bridge->router.schemeHandler
+                 forURLScheme: @"socket"];
+
   self.content = [config userContentController];
 
   [self.content addScriptMessageHandler:self name: @"external"];
