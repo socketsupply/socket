@@ -11,7 +11,6 @@
     "test:clean": "cd test && rm -rf dist"
   },
   "private": true,
-  "license": "ISC",
   "devDependencies": {
     "acorn": "8.8.0",
     "acorn-walk": "8.2.0",
