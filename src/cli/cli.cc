@@ -1671,6 +1671,8 @@ int main (const int argc, const char* argv[]) {
 
       fs::create_directories(paths.pathPackage);
 
+      pathResources = paths.pathResourcesRelativeToUserBuild;
+
       auto p = fs::path {
         paths.pathResourcesRelativeToUserBuild /
         "AppxManifest.xml"
@@ -1691,6 +1693,12 @@ int main (const int argc, const char* argv[]) {
 
       // TODO Copy the files into place
     }
+
+    fs::copy(
+      trim(prefixFile("api")),
+      pathResources / "socket",
+      fs::copy_options::update_existing | fs::copy_options::recursive
+    );
 
     log("package prepared");
 
