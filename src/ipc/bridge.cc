@@ -6,6 +6,12 @@ using namespace SSC;
 using namespace SSC::IPC;
 
 #if defined(__APPLE__)
+#if __has_feature(objc_arc)
+# define __maybe_bridge_transfer  __bridge_transfer
+#else
+# define __maybe_bridge_transfer
+#endif
+
 static dispatch_queue_attr_t qos = dispatch_queue_attr_make_with_qos_class(
   DISPATCH_QUEUE_CONCURRENT,
   QOS_CLASS_USER_INITIATED,
@@ -16,6 +22,21 @@ static dispatch_queue_t queue = dispatch_queue_create(
   "co.socketsupply.queue.ipc.bridge",
   qos
 );
+
+static String getMIMEType (String path) {
+  auto url = [NSURL
+    fileURLWithPath: [NSString stringWithUTF8String: path.c_str()]
+  ];
+
+  auto extension = [url pathExtension];
+  auto utt = [UTType typeWithFilenameExtension: extension];
+
+  if (utt.preferredMIMEType.UTF8String != nullptr) {
+    return String(utt.preferredMIMEType.UTF8String);
+  }
+
+  return "";
+}
 #endif
 
 static JSON::Any validateMessageParameters (
@@ -1185,18 +1206,19 @@ static void registerSchemeHandler (Router *router) {
 @implementation SSCIPCSchemeHandler
 - (void) webView: (SSCBridgedWebView*) webview stopURLSchemeTask: (Task) task {}
 - (void) webView: (SSCBridgedWebView*) webview startURLSchemeTask: (Task) task {
-  auto url = String(task.request.URL.absoluteString.UTF8String);
+  auto request = task.request;
+  auto url = String(request.URL.absoluteString.UTF8String);
   auto message = Message {url};
   auto seq = message.seq;
 
-  if (String(task.request.HTTPMethod.UTF8String) == "OPTIONS") {
+  if (String(request.HTTPMethod.UTF8String) == "OPTIONS") {
     auto headers = [NSMutableDictionary dictionary];
 
     headers[@"access-control-allow-origin"] = @"*";
     headers[@"access-control-allow-methods"] = @"*";
 
     auto response = [[NSHTTPURLResponse alloc]
-      initWithURL: task.request.URL
+      initWithURL: request.URL
        statusCode: 200
       HTTPVersion: @"HTTP/1.1"
      headerFields: headers
@@ -1208,6 +1230,88 @@ static void registerSchemeHandler (Router *router) {
     [response release];
     #endif
 
+    return;
+  }
+
+  if (String(request.URL.scheme.UTF8String) == "socket") {
+    auto path = request.URL.path;
+    auto headers = [NSMutableDictionary dictionary];
+    auto mimeType = getMIMEType(url);
+    auto components = [NSURLComponents
+            componentsWithURL: request.URL
+      resolvingAgainstBaseURL: YES
+    ];
+
+    NSData* data = nullptr;
+
+    headers[@"content-type"] = [NSString
+      stringWithUTF8String: mimeType.c_str()
+    ];
+
+    // XXX(@jwerle): socket://index.html
+    if (
+      request.URL.host.UTF8String != nullptr &&
+      String(request.URL.host.UTF8String) == "index.html"
+    ) {
+      if (request.URL.path.length == 0) {
+        headers[@"content-type"] = @"text/html";
+        headers[@"cross-origin-resource-policy"] = @"cross-origin";
+        headers[@"cross-origin-embedder-policy"] = @"require-corp";
+        headers[@"cross-origin-opener-policy"] = @"same-origin";
+
+        components.scheme = @"file";
+        components.host = @"";
+        components.path = [[[NSBundle mainBundle] resourcePath]
+          stringByAppendingPathComponent: @"/index.html"
+        ];
+      } else {
+        components.scheme = @"file";
+        components.host = @"";
+        components.path = [[[NSBundle mainBundle] resourcePath]
+          stringByAppendingPathComponent: [NSString
+            stringWithFormat: @"/%@", components.path
+          ]
+        ];
+      }
+
+      data = [NSData dataWithContentsOfURL: components.URL];
+      components.scheme = @"https";
+      components.host = @"app.socket.runtime";
+      components.path = path;
+    } else { // support `import module from 'socket:module'` ESM
+      headers[@"content-type"] = @"text/javascript";
+      components.scheme = @"file";
+      components.host = @"";
+      components.path = [[[NSBundle mainBundle] resourcePath]
+        stringByAppendingPathComponent: [NSString
+          stringWithFormat: @"/socket/%@.js", components.path
+        ]
+      ];
+
+      data = [NSData dataWithContentsOfURL: components.URL];
+    }
+
+    headers[@"access-control-allow-origin"] = @"*";
+    headers[@"access-control-allow-methods"] = @"*";
+    headers[@"access-control-allow-headers"] = @"*";
+
+    headers[@"content-length"] = [@(data.length) stringValue];
+
+    auto response = [[NSHTTPURLResponse alloc]
+      initWithURL: components.URL
+       statusCode: data.length > 0 ? 200 : 404
+      HTTPVersion: @"HTTP/1.1"
+     headerFields: headers
+    ];
+
+    [task didReceiveResponse: response];
+    if (data != nullptr) {
+      [task didReceiveData: data];
+    }
+    [task didFinish];
+    #if !__has_feature(objc_arc)
+    [response release];
+    #endif
     return;
   }
 
@@ -1231,7 +1335,7 @@ static void registerSchemeHandler (Router *router) {
     }
 
     NSHTTPURLResponse *response = [[NSHTTPURLResponse alloc]
-       initWithURL: task.request.URL
+       initWithURL: request.URL
         statusCode: 200
        HTTPVersion: @"HTTP/1.1"
       headerFields: headers
@@ -1278,7 +1382,7 @@ static void registerSchemeHandler (Router *router) {
   }
 
   // if there is a body on the reuqest, pass it into the method router.
-  auto rawBody = task.request.HTTPBody;
+  auto rawBody = request.HTTPBody;
 
   if (rawBody) {
     const void* data = [rawBody bytes];
@@ -1304,7 +1408,7 @@ static void registerSchemeHandler (Router *router) {
     headers[@"content-length"] = [@(msg.size()) stringValue];
 
     NSHTTPURLResponse *response = [[NSHTTPURLResponse alloc]
-       initWithURL: task.request.URL
+       initWithURL: request.URL
         statusCode: 404
        HTTPVersion: @"HTTP/1.1"
       headerFields: headers
