@@ -1157,7 +1157,7 @@ static void registerSchemeHandler (Router *router) {
   registered = true;
 
   auto ctx = webkit_web_context_get_default();
-  webkit_web_context_register_uri_scheme(ctx, "ipc", [](auto request, auto ptr){
+  webkit_web_context_register_uri_scheme(ctx, "ipc", [](auto request, auto ptr) {
     auto uri = String(webkit_uri_scheme_request_get_uri(request));
     auto router = reinterpret_cast<Router *>(ptr);
     auto message = Message { uri };
@@ -1196,6 +1196,15 @@ static void registerSchemeHandler (Router *router) {
       webkit_uri_scheme_request_finish_with_response(request, response);
       g_object_unref(stream);
     }
+  },
+  router,
+  0);
+
+  webkit_web_context_register_uri_scheme(ctx, "socket", [](auto request, auto ptr) {
+    auto uri = String(webkit_uri_scheme_request_get_uri(request));
+    auto canonical = fs::canonical("/proc/self/exe");
+    auto cwd = fs::path(canonical).parent_path().string();
+    //webkit_uri_scheme_response_set_http_headers()
   },
   router,
   0);
