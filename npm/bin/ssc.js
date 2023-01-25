@@ -5,7 +5,7 @@ import { load } from '../index.js'
 
 async function main () {
   const installation = await load()
-  const child = fork(installation.bin['ssc-platform'], process.argv.slice(2), {
+  fork(installation.bin['ssc-platform'], process.argv.slice(2), {
     env: { ...installation.env, ...process.env },
     stdio: 'inherit',
     windowsHide: true
