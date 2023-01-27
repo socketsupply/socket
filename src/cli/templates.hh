@@ -123,7 +123,7 @@ constexpr auto gPListInfo = R"XML(<?xml version="1.0" encoding="UTF-8"?>
 <plist version="1.0">
 <dict>
   <key>CFBundleName</key>
-  <string>{{name}}</string>
+  <string>app_name</string>
   <key>DTSDKName</key>
   <string>macosx10.13</string>
   <key>DTXcode</key>
@@ -193,7 +193,7 @@ constexpr auto gPListInfo = R"XML(<?xml version="1.0" encoding="UTF-8"?>
   <key>CFBundleInfoDictionaryVersion</key>
   <string>6.0</string>
   <key>CFBundleExecutable</key>
-  <string>{{executable}}</string>
+  <string>{{app_name}}</string>
   <key>DTCompiler</key>
   <string>com.apple.compilers.llvm.clang.1_0</string>
   <key>NSPrincipalClass</key>
@@ -209,7 +209,7 @@ constexpr auto gPListInfo = R"XML(<?xml version="1.0" encoding="UTF-8"?>
   <key>LSMinimumSystemVersion</key>
   <string>10.10.0</string>
   <key>CFBundleDisplayName</key>
-  <string>{{name}}</string>
+  <string>app_name</string>
   <key>NSSupportsAutomaticGraphicsSwitching</key>
   <true/>
   <key>SoftResourceLimits</key>
@@ -254,7 +254,7 @@ constexpr auto gAndroidManifest = R"XML(
     -->
   <application
     android:allowBackup="true"
-    android:label="{{title}}"
+    android:label="{{app_title}}"
     android:theme="@style/Theme.AppCompat.Light"
     android:supportsRtl="true"
     {{android_allow_cleartext}}
@@ -278,12 +278,12 @@ constexpr auto gDestkopManifest = R"INI(
 [Desktop Entry]
 Encoding=UTF-8
 Version=v{{version}}
-Name={{name}}
+Name=app_name
 Terminal=false
 Type=Application
 Exec={{linux_executable_path}}
 Icon={{linux_icon_path}}
-StartupWMClass={{executable}}
+StartupWMClass={{app_name}}
 Comment={{description}}
 Categories={{linux_categories}};
 )INI";
@@ -292,7 +292,7 @@ constexpr auto gDebianManifest = R"DEB(Package: {{deb_name}}
 Version: {{version}}
 Architecture: amd64
 Maintainer: {{maintainer}}
-Description: {{title}}
+Description: {{app_title}}
  {{description}}
 )DEB";
 
@@ -313,11 +313,11 @@ constexpr auto gWindowsAppManifest = R"XML(<?xml version="1.0" encoding="utf-8"?
     ProcessorArchitecture="neutral"
     Publisher="{{win_publisher}}"
     Version="{{win_version}}"
-    ResourceId="{{executable}}"
+    ResourceId="{{app_name}}"
   />
 
   <Properties>
-    <DisplayName>{{title}}</DisplayName>
+    <DisplayName>{{app_title}}</DisplayName>
     <Description>{{description}}</Description>
     <Logo>{{win_logo}}</Logo>
     <PublisherDisplayName>{{maintainer}}</PublisherDisplayName>
@@ -340,11 +340,11 @@ constexpr auto gWindowsAppManifest = R"XML(<?xml version="1.0" encoding="utf-8"?
   </Capabilities>
   <Applications>
     <Application
-      Id="{{executable}}"
+      Id="{{app_name}}"
       EntryPoint="Windows.FullTrustApplication"
       Executable="{{exe}}"
     >
-      <uap:VisualElements DisplayName="{{title}}"
+      <uap:VisualElements DisplayName="{{app_title}}"
         Square150x150Logo="{{win_logo}}"
         Square44x44Logo="{{win_logo}}"
         Description="{{description}}"
@@ -444,7 +444,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 		17E73FDA28FCC9320087604F /* common.hh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = common.hh; sourceTree = "<group>"; };
 		17E73FEE28FCD3360087604F /* libuv-ios.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = "libuv-ios.a"; path = "lib/libuv-ios.a"; sourceTree = "<group>"; };
 		290F7F86276BC2B000486988 /* lib */ = {isa = PBXFileReference; lastKnownFileType = folder; path = lib; sourceTree = "<group>"; };
-		29124C4A27613369001832A0 /* {{name}}.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "{{name}}.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		29124C4A27613369001832A0 /* app_name.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "app_name.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		29124C5C2761336B001832A0 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		29124C5E2761336B001832A0 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		294A3C792763E9C6007B5B9A /* UIKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UIKit.framework; path = System/Library/Frameworks/UIKit.framework; sourceTree = SDKROOT; };
@@ -511,7 +511,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 		29124C4B27613369001832A0 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				29124C4A27613369001832A0 /* {{name}}.app */,
+				29124C4A27613369001832A0 /* app_name.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -535,9 +535,9 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		29124C4927613369001832A0 /* {{name}} */ = {
+		29124C4927613369001832A0 /* app_name */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 29124C792761336B001832A0 /* Build configuration list for PBXNativeTarget "{{name}}" */;
+			buildConfigurationList = 29124C792761336B001832A0 /* Build configuration list for PBXNativeTarget "app_name" */;
 			buildPhases = (
 				29124C4627613369001832A0 /* Sources */,
 				29124C4727613369001832A0 /* Frameworks */,
@@ -547,9 +547,9 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 			);
 			dependencies = (
 			);
-			name = "{{name}}";
-			productName = "{{name}}";
-			productReference = 29124C4A27613369001832A0 /* {{name}}.app */;
+			name = "app_name";
+			productName = "app_name";
+			productReference = 29124C4A27613369001832A0 /* app_name.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -566,7 +566,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 					};
 				};
 			};
-			buildConfigurationList = 29124C4527613369001832A0 /* Build configuration list for PBXProject "{{name}}" */;
+			buildConfigurationList = 29124C4527613369001832A0 /* Build configuration list for PBXProject "app_name" */;
 			compatibilityVersion = "Xcode 13.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -579,7 +579,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				29124C4927613369001832A0 /* {{name}} */,
+				29124C4927613369001832A0 /* app_name */,
 			);
 		};
 /* End PBXProject section */
@@ -752,7 +752,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
         GENERATE_INFOPLIST_FILE = YES;
         HEADER_SEARCH_PATHS = "$(PROJECT_DIR)/include";
         INFOPLIST_FILE = Info.plist;
-        INFOPLIST_KEY_CFBundleDisplayName = "{{name}}";
+        INFOPLIST_KEY_CFBundleDisplayName = "app_name";
         INFOPLIST_KEY_LSApplicationCategoryType = Developer;
         INFOPLIST_KEY_NSCameraUsageDescription = "This app needs access to the camera";
         INFOPLIST_KEY_NSHumanReadableCopyright = "{{copyright}}";
@@ -803,7 +803,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
         GENERATE_INFOPLIST_FILE = YES;
         HEADER_SEARCH_PATHS = "$(PROJECT_DIR)/include";
         INFOPLIST_FILE = Info.plist;
-        INFOPLIST_KEY_CFBundleDisplayName = "{{name}}";
+        INFOPLIST_KEY_CFBundleDisplayName = "app_name";
         INFOPLIST_KEY_LSApplicationCategoryType = Developer;
         INFOPLIST_KEY_NSCameraUsageDescription = "This app needs access to the camera";
         INFOPLIST_KEY_NSHumanReadableCopyright = "{{copyright}}";
@@ -837,7 +837,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-    29124C4527613369001832A0 /* Build configuration list for PBXProject "{{name}}" */ = {
+    29124C4527613369001832A0 /* Build configuration list for PBXProject "app_name" */ = {
       isa = XCConfigurationList;
       buildConfigurations = (
         29124C772761336B001832A0 /* Debug */,
@@ -846,7 +846,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
       defaultConfigurationIsVisible = 0;
       defaultConfigurationName = Release;
     };
-    29124C792761336B001832A0 /* Build configuration list for PBXNativeTarget "{{name}}" */ = {
+    29124C792761336B001832A0 /* Build configuration list for PBXNativeTarget "app_name" */ = {
       isa = XCConfigurationList;
       buildConfigurations = (
         29124C7A2761336B001832A0 /* Debug */,
@@ -1066,7 +1066,7 @@ dependencies {
 // Android top level `settings.gradle` in Groovy Syntax
 //
 constexpr auto gGradleSettings = R"GROOVY(
-rootProject.name = "{{name}}"
+rootProject.name = "app_name"
 include ':app'
 )GROOVY";
 
@@ -1237,7 +1237,7 @@ constexpr auto gAndroidLayoutWebviewActivity = R"XML(
 
 constexpr auto gAndroidValuesStrings = R"XML(
 <resources>
-  <string name="app_name">{{name}}</string>
+  <string name="app_name">app_name</string>
 </resources>
 )XML";
 
@@ -1261,9 +1261,9 @@ constexpr auto gXCodeScheme = R"XML(<?xml version="1.0" encoding="UTF-8"?>
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "29124C4927613369001832A0"
-               BuildableName = "{{name}}.app"
-               BlueprintName = "{{name}}"
-               ReferencedContainer = "container:{{name}}.xcodeproj">
+               BuildableName = "app_name.app"
+               BlueprintName = "app_name"
+               ReferencedContainer = "container:app_name.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -1291,9 +1291,9 @@ constexpr auto gXCodeScheme = R"XML(<?xml version="1.0" encoding="UTF-8"?>
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "29124C4927613369001832A0"
-            BuildableName = "{{name}}.app"
-            BlueprintName = "{{name}}"
-            ReferencedContainer = "container:{{name}}.xcodeproj">
+            BuildableName = "app_name.app"
+            BlueprintName = "app_name"
+            ReferencedContainer = "container:app_name.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </LaunchAction>
@@ -1308,9 +1308,9 @@ constexpr auto gXCodeScheme = R"XML(<?xml version="1.0" encoding="UTF-8"?>
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "29124C4927613369001832A0"
-            BuildableName = "{{name}}.app"
-            BlueprintName = "{{name}}"
-            ReferencedContainer = "container:{{name}}.xcodeproj">
+            BuildableName = "app_name.app"
+            BlueprintName = "app_name"
+            ReferencedContainer = "container:app_name.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>
@@ -1319,7 +1319,7 @@ constexpr auto gXCodeScheme = R"XML(<?xml version="1.0" encoding="UTF-8"?>
    </AnalyzeAction>
    <ArchiveAction
       buildConfiguration = "Release"
-      customArchiveName = "{{name}}"
+      customArchiveName = "app_name"
       revealArchiveInOrganizer = "YES">
    </ArchiveAction>
 </Scheme>)XML";
@@ -1364,6 +1364,13 @@ constexpr auto gDefaultConfig = R"INI(
 ; do all the heavy lifting and should handle 99.9% of your use cases for moving
 ; files into place or tweaking platform-specific build artifacts. If you don't
 ; specify it, ssc will just copy everything in your project to the build target.
+; Only app_name 
+
+; The name of the program and executable to be output. Can't contain spaces or special characters. Required field.
+app_name = "beepboop"
+
+; The title of the app, which will be displayed in the title bar. Can contain spaces and special characters. Defaults to app_name.
+app_title = "Beep Boop"
 
 ; build = "node build-script.js"
 
@@ -1378,9 +1385,6 @@ description = "A UI for the beep boop network"
 
 ; An list of environment variables, separated by commas.
 env = USER, TMPDIR, PWD
-
-; The name of the file to be output.
-executable = "boop"
 
 ; If false, the window will never be displayed.
 headless = false
@@ -1400,17 +1404,14 @@ lang = "en-us"
 ; A String used in the about dialog and meta info.
 maintainer = "Beep Boop Corp."
 
-; The name of the program
-name = "beepboop"
-
 ; The binary output path. It's recommended to add this path to .gitignore.
 output = "dist"
 
 ; TODO: maybe the user doesn't need to know about this? 
 revision = 123
 
-; A string that indicates the version of the application. It should be a semver triple like 1.0.0
-version = 0.0.1
+; A string that indicates the version of the application. It should be a semver triple like 1.2.3. Defaults to 1.0.0.
+version = 1.0.0
 
 [debug]
 

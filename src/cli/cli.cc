@@ -502,7 +502,7 @@ int main (const int argc, const char* argv[]) {
     };
     if (platform == "mac") {
       fs::path pathBase = "Contents";
-      fs::path packageName = fs::path(settings["name"] + ".app");
+      fs::path packageName = fs::path(settings["app_name"] + ".app");
       paths.pathPackage = { paths.platformSpecificOutputPath  / packageName };
       paths.pathBin = { paths.pathPackage / pathBase / "MacOS" };
       paths.pathResourcesRelativeToUserBuild = {
@@ -528,7 +528,7 @@ int main (const int argc, const char* argv[]) {
       paths.pathBin = {
         paths.pathPackage /
         "opt" /
-        settings["name"]
+        settings["app_name"]
       };
       paths.pathResourcesRelativeToUserBuild = paths.pathBin;
       return paths;
@@ -543,7 +543,7 @@ int main (const int argc, const char* argv[]) {
       return paths;
     } else if (platform == "ios" || platform == "ios-simulator") {
       fs::path pathBase = "Contents";
-      fs::path packageName = settings["name"] + ".app";
+      fs::path packageName = settings["app_name"] + ".app";
       paths.pathPackage = { paths.platformSpecificOutputPath  / packageName };
       paths.pathBin = { paths.platformSpecificOutputPath / pathBase / "MacOS" };
       paths.pathResourcesRelativeToUserBuild = paths.platformSpecificOutputPath / "ui";
@@ -625,22 +625,25 @@ int main (const int argc, const char* argv[]) {
 
         settings["ini_code"] = code;
 
-        const std::vector<String> required = {
-          "name",
-          "executable",
-          "version"
-        };
+        // Check if app_name is set
+        if (settings.count("app_name") == 0) {
+          log("error: 'app_name' value is required in socket.ini");
+          exit(1);
+        }
 
-        for (const auto &str : required) {
-          if (settings.count(str) == 0) {
-            log("'" + str + "' value is required in socket.ini");
-            exit(1);
-          }
+        // Define regular expression to match spaces, special characters except dash and underscore
+        std::regex name_pattern("[^a-zA-Z0-9_\\-]");
+        // Check if app_name matches the pattern
+        if (std::regex_search(settings["app_name"], name_pattern)) {
+          log("error: 'app_name' in socket.ini can only contain alphanumeric characters, dashes and underscores");
+          exit(1);
         }
 
         // default values
         settings["output"] = settings["output"].size() > 0 ? settings["output"] : "dist";
         settings["lang"] = settings["lang"].size() > 0 ? settings["lang"] : "en-us";
+        settings["version"] = settings["version"].size() > 0 ? settings["version"] : "1.0.0";
+        settings["app_title"] = settings["app_title"].size() > 0 ? settings["app_title"] : settings["app_name"];
 
         for (auto const arg : std::span(argv, argc).subspan(2, numberOfOptions)) {
           if (is(arg, "--prod")) {
@@ -658,8 +661,8 @@ int main (const int argc, const char* argv[]) {
           settings["apple_instruments"] = "false";
         }
 
-        std::replace(settings["name"].begin(), settings["name"].end(), ' ', '_');
-        settings["name"] += suffix;
+        std::replace(settings["app_name"].begin(), settings["app_name"].end(), ' ', '_');
+        settings["app_name"] += suffix;
         settings["executable"] += suffix;
       }
       subcommandHandler(commandlineOptions);
@@ -791,8 +794,8 @@ int main (const int argc, const char* argv[]) {
       auto ipaPath = (
         getPaths(targetPlatform).platformSpecificOutputPath /
         "build" /
-        String(settings["name"] + ".ipa") /
-        String(settings["name"] + ".ipa")
+        String(settings["app_name"] + ".ipa") /
+        String(settings["app_name"] + ".ipa")
       );
       if (!fs::exists(ipaPath)) {
         log("Could not find " + ipaPath.string());
@@ -1432,8 +1435,8 @@ int main (const int argc, const char* argv[]) {
     if (platform.mac && flagBuildForIOS) {
       fs::remove_all(paths.platformSpecificOutputPath);
 
-      auto projectName = (settings["name"] + ".xcodeproj");
-      auto schemeName = (settings["name"] + ".xcscheme");
+      auto projectName = (settings["app_name"] + ".xcodeproj");
+      auto schemeName = (settings["app_name"] + ".xcscheme");
       auto pathToProject = paths.platformSpecificOutputPath / projectName;
       auto pathToScheme = pathToProject / "xcshareddata" / "xcschemes";
       auto pathToProfile = targetPath / settings["ios_provisioning_profile"];
@@ -1603,7 +1606,7 @@ int main (const int argc, const char* argv[]) {
 
       auto linuxExecPath =
         fs::path("/opt") /
-        settings["name"] /
+        settings["app_name"] /
         settings["executable"];
 
       settings["linux_executable_path"] = linuxExecPath.string();
@@ -1617,10 +1620,10 @@ int main (const int argc, const char* argv[]) {
         (settings["executable"] + ".png")
       ).string();
 
-      writeFile(pathManifestFile / (settings["name"] + ".desktop"), tmpl(gDestkopManifest, settings));
+      writeFile(pathManifestFile / (settings["app_name"] + ".desktop"), tmpl(gDestkopManifest, settings));
 
       if (settings.count("deb_name") == 0) {
-        settings["deb_name"] = settings["name"];
+        settings["deb_name"] = settings["app_name"];
       }
 
       writeFile(pathControlFile / "control", tmpl(gDebianManifest, settings));
@@ -1834,11 +1837,11 @@ int main (const int argc, const char* argv[]) {
         << "xcodebuild"
         << " build " << sup
         << " -configuration " << configuration
-        << " -scheme " << settings["name"]
+        << " -scheme " << settings["app_name"]
         << " -destination '" << destination << "'";
 
       if (flagShouldPackage) {
-        archiveCommand << " -archivePath build/" << settings["name"];
+        archiveCommand << " -archivePath build/" << settings["app_name"];
       }
 
       if (!flagCodeSign) {
@@ -1870,7 +1873,7 @@ int main (const int argc, const char* argv[]) {
       log("created archive");
 
       if (flagBuildForSimulator && flagShouldRun) {
-        String app = (settings["name"] + ".app");
+        String app = (settings["app_name"] + ".app");
         auto pathToApp = paths.platformSpecificOutputPath / app;
         runIOSSimulator(pathToApp, settings);
       }
@@ -1881,8 +1884,8 @@ int main (const int argc, const char* argv[]) {
         exportCommand
           << "xcodebuild"
           << " -exportArchive"
-          << " -archivePath build/" << settings["name"] << ".xcarchive"
-          << " -exportPath build/" << settings["name"] << ".ipa"
+          << " -archivePath build/" << settings["app_name"] << ".xcarchive"
+          << " -exportPath build/" << settings["app_name"] << ".ipa"
           << " -exportOptionsPlist " << (pathToDist / "exportOptions.plist").string();
 
         // log(exportCommand.str());
@@ -2131,7 +2134,7 @@ int main (const int argc, const char* argv[]) {
 
       auto linuxExecPath = fs::path {
         fs::path("/opt") /
-        settings["name"] /
+        settings["app_name"] /
         settings["executable"]
       };
 
@@ -2705,7 +2708,7 @@ int main (const int argc, const char* argv[]) {
     Paths paths = getPaths(targetPlatform);
 
     if (isIosSimulator) {
-      String app = (settings["name"] + ".app");
+      String app = (settings["app_name"] + ".app");
       auto pathToApp = paths.platformSpecificOutputPath / app;
       runIOSSimulator(pathToApp, settings);
     } else {

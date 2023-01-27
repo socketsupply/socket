@@ -166,13 +166,13 @@ MAIN {
   }
 
   if (isDebugEnabled()) {
-    app.appData["name"] += "-dev";
+    app.appData["app_name"] += "-dev";
   }
 
-  app.appData["name"] += suffix;
+  app.appData["app_name"] += suffix;
 
   argvForward << " --version=v" << app.appData["version"];
-  argvForward << " --name=" << app.appData["name"];
+  argvForward << " --name=" << app.appData["app_name"];
 
   if (isDebugEnabled()) {
     argvForward << " --debug=1";
