@@ -1700,6 +1700,24 @@ int main (const int argc, const char* argv[]) {
       fs::copy_options::update_existing | fs::copy_options::recursive
     );
 
+    auto extensionsTargetPathName = platform.arch + "-" + (
+      targetPlatform == "ios"
+        ? "iPhoneOS"
+        : targetPlatform == "ios-simulator"
+          ? "iPhoneSimulator"
+          : targetPlatform == "android"
+            ? "Android"
+            : targetPlatform == "android-emulator"
+              ? "AndroidEmulator"
+              : "desktop"
+    );
+
+    fs::copy(
+      fs::path(trim(prefixFile("extensions"))) / extensionsTargetPathName,
+      pathResources / "extensions",
+      fs::copy_options::update_existing | fs::copy_options::recursive
+    );
+
     log("package prepared");
 
     auto pathResourcesRelativeToUserBuild = paths.pathResourcesRelativeToUserBuild;
