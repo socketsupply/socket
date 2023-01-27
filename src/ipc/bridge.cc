@@ -1157,6 +1157,8 @@ static void registerSchemeHandler (Router *router) {
   registered = true;
 
   auto ctx = webkit_web_context_get_default();
+  auto security = webkit_web_context_get_security_manager(ctx);
+
   webkit_web_context_register_uri_scheme(ctx, "ipc", [](auto request, auto ptr) {
     auto uri = String(webkit_uri_scheme_request_get_uri(request));
     auto router = reinterpret_cast<Router *>(ptr);
@@ -1200,14 +1202,15 @@ static void registerSchemeHandler (Router *router) {
   router,
   0);
 
-  webkit_web_context_register_uri_scheme(ctx, "socket", [](auto request, auto ptr) {
-    auto uri = String(webkit_uri_scheme_request_get_uri(request));
-    auto canonical = fs::canonical("/proc/self/exe");
-    auto cwd = fs::path(canonical).parent_path().string();
-    //webkit_uri_scheme_response_set_http_headers()
-  },
-  router,
-  0);
+  webkit_security_manager_register_uri_scheme_as_display_isolated(security, "ipc");
+  webkit_security_manager_register_uri_scheme_as_cors_enabled(security, "ipc");
+  webkit_security_manager_register_uri_scheme_as_secure(security, "ipc");
+  webkit_security_manager_register_uri_scheme_as_local(security, "ipc");
+
+  webkit_security_manager_register_uri_scheme_as_display_isolated(security, "socket");
+  webkit_security_manager_register_uri_scheme_as_cors_enabled(security, "socket");
+  webkit_security_manager_register_uri_scheme_as_secure(security, "socket");
+  webkit_security_manager_register_uri_scheme_as_local(security, "socket");
 #endif
 }
 
