@@ -247,7 +247,7 @@ function _prepare {
   echo "# preparing directories..."
   rm -rf "$SOCKET_HOME"
 
-  mkdir -p "$SOCKET_HOME"/{lib,src,bin,include,objects,api}
+  mkdir -p "$SOCKET_HOME"/{lib,src,bin,include,objects,api,extensions}
   mkdir -p "$SOCKET_HOME"/{lib,objects}/"$(uname -m)-desktop"
 
   if [[ "$HOST" = "Darwin" ]]; then
@@ -288,6 +288,13 @@ function _install {
     rm -rf "$SOCKET_HOME/lib/$arch-$platform"
     mkdir -p "$SOCKET_HOME/lib/$arch-$platform"
     cp -fr "$BUILD_DIR/$arch-$platform"/lib/*.a "$SOCKET_HOME/lib/$arch-$platform"
+  fi
+
+  if test -d "$BUILD_DIR/$arch-$platform"/extensions; then
+    echo "# copying extensions to $SOCKET_HOME/extensions/$arch-$platform"
+    rm -rf "$SOCKET_HOME/extensions/$arch-$platform"
+    mkdir -p "$SOCKET_HOME/extensions/$arch-$platform"
+    cp -fr "$BUILD_DIR/$arch-$platform"/extensions/* "$SOCKET_HOME/extensions/$arch-$platform"
   fi
 
   echo "# copying js api to $SOCKET_HOME/api"
