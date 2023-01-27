@@ -179,6 +179,23 @@ namespace SSC {
       this
     );
 
+    auto ctx = webkit_web_context_get_default();
+
+    g_signal_connect(
+      ctx,
+      "initialize-web-extensions",
+      G_CALLBACK(+[](WebKitWebContext* ctx, gpointer userData) {
+        static auto exe = fs::canonical("/proc/self/exe");
+        static auto cwd = fs::path(exe).parent_path();
+        static auto path = cwd / "extensions";
+        static auto extensionVariant = g_variant_new_string(cwd.c_str());
+
+        webkit_web_context_set_web_extensions_directory(ctx, path.c_str());
+        webkit_web_context_set_web_extensions_initialization_user_data(ctx, extensionVariant);
+      }),
+      nullptr
+    );
+
     webview = webkit_web_view_new_with_user_content_manager(cm);
 
     g_signal_connect(
@@ -191,6 +208,7 @@ namespace SSC {
         gpointer userData
       ) {
         if (decisionType != WEBKIT_POLICY_DECISION_TYPE_NAVIGATION_ACTION) {
+          webkit_policy_decision_use(decision);
           return true;
         }
 
@@ -199,7 +217,7 @@ namespace SSC {
         auto req = webkit_navigation_action_get_request(action);
         auto uri = String(webkit_uri_request_get_uri(req));
 
-        if (uri.find("file://") != 0 && uri.find("http://localhost") != 0) {
+        if (uri.find("file://") != 0 && uri.find("http://localhost") != 0 && uri.find("socket:") != 0) {
           webkit_policy_decision_ignore(decision);
           return false;
         }
@@ -570,11 +588,7 @@ namespace SSC {
     }
 
     webkit_settings_set_allow_universal_access_from_file_urls(settings, true);
-
-    if (this->opts.isTest) {
-      // webkit_settings_set_allow_universal_access_from_file_urls(settings, true);
-      webkit_settings_set_allow_file_access_from_file_urls(settings, true);
-    }
+    webkit_settings_set_allow_file_access_from_file_urls(settings, true);
 
     // webkit_settings_set_allow_top_navigation_to_data_urls(settings, true);
 
