@@ -1369,7 +1369,7 @@ constexpr auto gDefaultConfig = R"INI(
 ; The name of the program and executable to be output. Can't contain spaces or special characters. Required field.
 app_name = "beepboop"
 
-; The title of the app, which will be displayed in the title bar. Can contain spaces and special characters. Defaults to app_name.
+; The title of the app used in metadata files. This is NOT a window title. Can contain spaces and special characters. Defaults to app_name.
 app_title = "Beep Boop"
 
 ; build = "node build-script.js"
