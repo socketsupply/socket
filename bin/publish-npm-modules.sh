@@ -71,6 +71,7 @@ if (( !only_top_level )); then
     mkdir -p "$SOCKET_HOME/packages/$package/include"
     mkdir -p "$SOCKET_HOME/packages/$package/lib"
     mkdir -p "$SOCKET_HOME/packages/$package/objects"
+    mkdir -p "$SOCKET_HOME/packages/$package/extensions"
 
     cp -rf "$root/npm/bin"/* "$SOCKET_HOME/packages/$package/bin"
     cp -rf "$root/npm/src"/* "$SOCKET_HOME/packages/$package/src"
@@ -84,6 +85,7 @@ if (( !only_top_level )); then
 
     cp -rf "$SOCKET_HOME/lib/"$arch-* "$SOCKET_HOME/packages/$package/lib"
     cp -rf "$SOCKET_HOME/objects/"$arch-* "$SOCKET_HOME/packages/$package/objects"
+    cp -rf "$SOCKET_HOME/extensions/"$arch-* "$SOCKET_HOME/packages/$package/extensions"
 
     ## Install x86_64-iPhoneSimulator files for arm64 too
     if [ "$platform" = "darwin" ]; then
