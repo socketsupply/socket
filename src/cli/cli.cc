@@ -639,6 +639,16 @@ int main (const int argc, const char* argv[]) {
           exit(1);
         }
 
+        // Define regular expression to match semver format
+        // The semver specification is available at https://semver.org/
+        // The pre-release and build metadata are not supported
+        std::regex semver_pattern("^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)$");
+        // Check if version matches the pattern
+        if (!std::regex_match(settings["version"], semver_pattern)) {
+          log("error: 'version' in socket.ini must be in semver format");
+          exit(1);
+        }
+
         // default values
         settings["output"] = settings["output"].size() > 0 ? settings["output"] : "dist";
         settings["lang"] = settings["lang"].size() > 0 ? settings["lang"] : "en-us";
