@@ -6,7 +6,7 @@
 
 using namespace SSC;
 
-static gboolean onWebPageSendRequest  (
+static gboolean onWebPageSendRequest (
   WebKitWebPage* page,
   WebKitURIRequest* request,
   WebKitURIResponse* response,
