@@ -1,4 +1,4 @@
-import { Buffer } from 'socket:buffer.js'
+import { Buffer } from 'socket:buffer'
 
 const TYPE_BYTES = 1
 const POSTAGE_BYTES = 1
