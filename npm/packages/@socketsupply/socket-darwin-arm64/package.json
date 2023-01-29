@@ -1,19 +1,15 @@
 {
   "name": "@socketsupply/socket-darwin-arm64",
-  "version": "0.0.3",
+  "version": "0.0.11",
   "description": "A Cross-Platform, Native Runtime for Desktop and Mobile Apps — Create apps using HTML, CSS, and JavaScript. Written from the ground up to be small and maintainable.",
   "type": "module",
   "main": "src/index.js",
-  "preferGlobal": true,
   "os": [
     "darwin"
   ],
   "cpu": [
     "arm64"
   ],
-  "bin": {
-    "ssc": "bin/ssc-platform.js"
-  },
   "scripts": {
     "test": ":",
     "install": "bin/verify-platform.js darwin arm64"
