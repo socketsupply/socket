@@ -1,8 +1,21 @@
 // import Debug from 'debug'
 import { Buffer } from 'socket:buffer'
+
+import {
+  Packet,
+  PacketPing,
+  PacketPong,
+  PacketIntro,
+  PacketQuery,
+  PacketAnswer,
+  PacketPublish,
+  PacketSubscribe,
+  applyTax,
+  sha256
+} from './packets.js'
+
 import { getRandomPort, getNRandom } from './util.js'
 import { Cache } from './cache.js'
-import { Packet, PacketPing, PacketPong, PacketIntro, PacketQuery, PacketAnswer, PacketPublish, PacketSubscribe, applyTax, sha256 } from './packets.js'
 
 export { sha256, Cache }
 export const PING_RETRY = 500
