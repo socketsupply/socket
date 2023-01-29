@@ -48,11 +48,10 @@ class Cache {
     // sort by index, concat and then hash, the original should match
     bufs.sort((a, b) => a.index - b.index)
 
-    bufs = bufs.map(c => Buffer.from(c.message.toString()))
+    bufs = bufs.map(packet => Buffer.from(packet.message))
     const message = Buffer.concat(bufs, packet.message.size)
 
     if (await sha256(message) !== packet.message.hash) return null
-
     return { ...packet, message, isComposed: true, meta: packet.message.meta }
   }
 

@@ -1,21 +1,8 @@
 // import Debug from 'debug'
 import { Buffer } from 'socket:buffer'
-
-import {
-  Packet,
-  PacketPing,
-  PacketPong,
-  PacketIntro,
-  PacketQuery,
-  PacketAnswer,
-  PacketPublish,
-  PacketSubscribe,
-  applyTax,
-  sha256
-} from './packets.js'
-
 import { getRandomPort, getNRandom } from './util.js'
 import { Cache } from './cache.js'
+import { Packet, PacketPing, PacketPong, PacketIntro, PacketQuery, PacketAnswer, PacketPublish, PacketSubscribe, applyTax, sha256 } from './packets.js'
 
 export { sha256, Cache }
 export const PING_RETRY = 500
@@ -34,6 +21,7 @@ export class RemotePeer {
   introducer = false
   writes = 0
   lastUpdate = 0
+  lastRequest = 0
   constructor (o) {
     if (o.introducer) this.natType = 'static'
 
@@ -281,6 +269,7 @@ export const createPeer = udp => {
         const p = this.peers.find(p => p.peerId === peer.peerId)
         if (p && p.pingId === packet.message.pingId) return false
         this.send(data, peer.port, peer.address)
+        if (p) p.lastRequest = Date.now()
       }
 
       retry()
@@ -728,13 +717,20 @@ export const createPeer = udp => {
       const peer = this.setPeer(packet, port, address)
 
       this.negotiateCache(peer, packet, port, address)
-
       let peers
+
       // first only get peers who subscribe to this topic.
       peers = this.peers.filter(p => p.topics.includes(packet.topicId))
+
       // if our peer is hard, filter out any other hard peers.
       if (this.natType === 'hard') peers = peers.filter(p => p.natType !== 'hard')
-      // if we still don't have 3 peers, take anyone
+
+      // sort by fastest responders and take the best 16
+      peers = peers.sort((a, b) => {
+        return (a.lastUpdate - a.lastRequest) - (b.lastUpdate - b.lastRequest)
+      }).slice(0, 16)
+
+      // unlikely, or it's a tet, take anyone
       if (peers.length < 3) peers = this.peers
 
       for (const peer of getN(3, peers)) { // getN will sort {easy,static}

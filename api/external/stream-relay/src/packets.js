@@ -153,7 +153,7 @@ export class Packet {
 
     const isBuffer = p.message.constructor.name === 'Buffer'
 
-    if (p.index <= 0 && typeof p.message === 'object' && !isBuffer) {
+    if (p.index <= 0 && typeof p.message !== 'string' && !isBuffer) {
       p.message = JSON.stringify(p.message)
     }
 
