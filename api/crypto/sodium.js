@@ -5,7 +5,9 @@ import * as exports from './sodium.js'
 export default exports
 
 // wait for libsodium to loaded, initialized, and ready
-await libsodium.ready
+if (typeof globalThis?.window === 'object') {
+  await libsodium.ready
+}
 export { libsodium }
 
 // public APIs
