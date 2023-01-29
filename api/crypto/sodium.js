@@ -10,6 +10,8 @@ if (typeof globalThis?.window === 'object') {
 }
 export { libsodium }
 
+/* eslint-disable camelcase */
+
 // public APIs
 const {
   // library constants
@@ -191,7 +193,7 @@ const {
   randombytes_uniform,
 
   // `sodium_*` APIs
-  sodium_version_string,
+  sodium_version_string
 } = libsodium
 
 export {

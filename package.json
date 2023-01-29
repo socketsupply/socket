@@ -19,5 +19,10 @@
   },
   "optionalDependencies": {
     "@socketsupply/stream-relay": "^1.0.22"
+  },
+  "standard": {
+    "ignore": [
+      "/api/external/"
+    ]
   }
 }
