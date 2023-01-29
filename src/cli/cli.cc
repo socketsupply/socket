@@ -1689,29 +1689,45 @@ int main (const int argc, const char* argv[]) {
       // TODO Copy the files into place
     }
 
-    fs::copy(
-      trim(prefixFile("api")),
-      pathResources / "socket",
-      fs::copy_options::update_existing | fs::copy_options::recursive
-    );
+    auto SOCKET_HOME_API = getEnv("SOCKET_HOME_API");
 
-    auto extensionsTargetPathName = platform.arch + "-" + (
-      targetPlatform == "ios"
-        ? "iPhoneOS"
-        : targetPlatform == "ios-simulator"
-          ? "iPhoneSimulator"
-          : targetPlatform == "android"
-            ? "Android"
-            : targetPlatform == "android-emulator"
-              ? "AndroidEmulator"
-              : "desktop"
-    );
+    if (SOCKET_HOME_API.size() == 0) {
+      SOCKET_HOME_API = trim(prefixFile("api"));
+    }
 
-    fs::copy(
-      fs::path(trim(prefixFile("extensions"))) / extensionsTargetPathName,
-      pathResources / "extensions",
-      fs::copy_options::update_existing | fs::copy_options::recursive
-    );
+    if (fs::exists(fs::status(SOCKET_HOME_API))) {
+      fs::copy(
+        SOCKET_HOME_API,
+        pathResources / "socket",
+        fs::copy_options::update_existing | fs::copy_options::recursive
+      );
+    }
+
+    auto SOCKET_HOME_EXTENSIONS = getEnv("SOCKET_HOME_EXTENSIONS");
+
+    if (SOCKET_HOME_EXTENSIONS.size() == 0) {
+      auto extensionsTargetPathName = platform.arch + "-" + (
+        targetPlatform == "ios"
+          ? "iPhoneOS"
+          : targetPlatform == "ios-simulator"
+            ? "iPhoneSimulator"
+            : targetPlatform == "android"
+              ? "Android"
+              : targetPlatform == "android-emulator"
+                ? "AndroidEmulator"
+                : "desktop"
+      );
+
+      SOCKET_HOME_EXTENSIONS = (fs::path(trim(prefixFile("extensions"))) / extensionsTargetPathName).string();
+    }
+
+    if (fs::exists(fs::status(SOCKET_HOME_EXTENSIONS))) {
+      fs::copy(
+        SOCKET_HOME_EXTENSIONS,
+        pathResources / "extensions",
+        fs::copy_options::update_existing | fs::copy_options::recursive
+      );
+    }
 
     log("package prepared");
 
