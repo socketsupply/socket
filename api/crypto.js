@@ -7,8 +7,16 @@
 
 import { Buffer } from './buffer.js'
 import console from './console.js'
+import sodium from './crypto/sodium.js'
 
 import * as exports from './crypto.js'
+
+/**
+ * libsodium API
+ * @see {https://doc.libsodium.org/}
+ * @see {https://github.com/jedisct1/libsodium.js}
+ */
+export { sodium }
 
 /**
  * WebCrypto API
