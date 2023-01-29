@@ -1701,6 +1701,7 @@ int main (const int argc, const char* argv[]) {
     }
 
     if (fs::exists(fs::status(SOCKET_HOME_API))) {
+      fs::create_directories(pathResources);
       fs::copy(
         SOCKET_HOME_API,
         pathResources / "socket",
@@ -1727,6 +1728,7 @@ int main (const int argc, const char* argv[]) {
     }
 
     if (fs::exists(fs::status(SOCKET_HOME_EXTENSIONS))) {
+      fs::create_directories(pathResources);
       fs::copy(
         SOCKET_HOME_EXTENSIONS,
         pathResources / "extensions",
