@@ -31,6 +31,7 @@ async function main () {
     keepNames: true,
     platform: 'browser',
     sourcemap: 'inline',
+    external: ['socket:*', 'node:*'],
     outdir: path.resolve(process.argv[2])
   }
 
