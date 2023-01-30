@@ -39,6 +39,14 @@ export function getRandomValues (...args) {
   return null
 }
 
+// so this is re-used instead of creating new one each rand64() call
+const tmp = new Uint32Array(2)
+
+export function rand64 () {
+  getRandomValues(tmp)
+  return (BigInt(tmp[0]) << 32n) | BigInt(tmp[1])
+}
+
 /**
  * Maximum total size of random bytes per page
  */

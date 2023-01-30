@@ -10,7 +10,7 @@ import * as ipc from '../ipc.js'
  * applications on the same system do, use dns.lookup().
  */
 
-import { rand64 } from '../util.js'
+import { rand64 } from '../crypto.js'
 
 /**
  * @async

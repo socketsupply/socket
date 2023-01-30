@@ -10,8 +10,9 @@ import * as ipc from '../ipc.js'
  * applications on the same system do, use dns.lookup().
  */
 
-import { rand64, isFunction } from '../util.js'
+import { isFunction } from '../util.js'
 import * as promises from './promises.js'
+import { rand64 } from '../crypto.js'
 
 import * as exports from './index.js'
 

@@ -11,8 +11,6 @@
 
 /* eslint-disable no-proto */
 
-import console from './console.js'
-
 const base64 = {
   toByteArray,
   fromByteArray
