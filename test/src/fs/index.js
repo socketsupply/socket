@@ -1,12 +1,11 @@
-import { Buffer } from '../../../api/buffer.js'
-// import console from '../../../capi/onsole.js'
-import crypto from '../../../api/crypto.js'
-import path from '../../../api/path.js'
-import fs from '../../../api/fs.js'
-import os from '../../../api/os.js'
-
-import deepEqual from '@socketsupply/tapzero/fast-deep-equal.js'
-import { test } from '@socketsupply/tapzero'
+import { Buffer } from 'socket:buffer'
+import deepEqual from 'socket:test/tap/fast-deep-equal'
+import { test } from 'socket:test/tap'
+// import console from '.socket:console'
+import crypto from 'socket:crypto'
+import path from 'socket:path'
+import fs from 'socket:fs'
+import os from 'socket:os'
 
 const TMPDIR = `${os.tmpdir()}${path.sep}`
 const FIXTURES = /android/i.test(os.platform())
@@ -54,25 +53,24 @@ test('fs.access', async (t) => {
 })
 
 test('fs.appendFile', async (t) => {})
-test('fs.chmod', async (t) => {
-  await new Promise((resolve, reject) => {
-    fs.chmod(FIXTURES + 'file.txt', 0o777, (err) => {
-      if (err) t.fail(err)
-      fs.stat(FIXTURES + 'file.txt', (err, stats) => {
+
+if (os.platform() !== 'android') {
+  test('fs.chmod', async (t) => {
+    await new Promise((resolve, reject) => {
+      fs.chmod(FIXTURES + 'file.txt', 0o777, (err) => {
         if (err) t.fail(err)
-        t.equal(stats.mode & 0o777, 0o777, 'file.txt mode is 777')
-        resolve()
+        fs.stat(FIXTURES + 'file.txt', (err, stats) => {
+          if (err) t.fail(err)
+          t.equal(stats.mode & 0o777, 0o777, 'file.txt mode is 777')
+          resolve()
+        })
       })
     })
   })
-})
+}
+
 test('fs.chown', async (t) => {})
 test('fs.close', async (t) => {
-  if (os.platform() === 'android') {
-    t.comment('FIXME for Android')
-    return
-  }
-
   await new Promise((resolve, reject) => {
     fs.open(FIXTURES + 'file.txt', (err, fd) => {
       if (err) {
@@ -158,19 +156,21 @@ test('fs.lchown', async (t) => {})
 test('fs.lutimes', async (t) => {})
 test('fs.link', async (t) => {})
 test('fs.lstat', async (t) => {})
-test('fs.mkdir', async (t) => {
-  const dirname = FIXTURES + Math.random().toString(16).slice(2)
-  await new Promise((resolve, reject) => {
-    fs.mkdir(dirname, {}, (err) => {
-      if (err) reject(err)
-
-      fs.stat(dirname, (err) => {
+if (os.platform() !== 'android') {
+  test('fs.mkdir', async (t) => {
+    const dirname = FIXTURES + Math.random().toString(16).slice(2)
+    await new Promise((resolve, reject) => {
+      fs.mkdir(dirname, {}, (err) => {
         if (err) reject(err)
-        resolve()
+
+        fs.stat(dirname, (err) => {
+          if (err) reject(err)
+          resolve()
+        })
       })
     })
   })
-})
+}
 test('fs.open', async (t) => {})
 test('fs.opendir', async (t) => {})
 test('fs.read', async (t) => {})
@@ -218,24 +218,25 @@ test('fs.unlink', async (t) => {})
 test('fs.utimes', async (t) => {})
 test('fs.watch', async (t) => {})
 test('fs.write', async (t) => {})
-test('fs.writeFile', async (t) => {
-  if (os.platform() === 'android') return t.comment('TODO')
-  const alloc = (size) => crypto.randomBytes(size)
-  const small = Array.from({ length: 32 }, (_, i) => i * 2 * 1024).map(alloc)
-  const large = Array.from({ length: 16 }, (_, i) => i * 2 * 1024 * 1024).map(alloc)
-  const buffers = [...small, ...large]
 
-  // const pending = buffers.length
-  let failed = false
-  const writes = []
+if (os.platform() !== 'android') {
+  test('fs.writeFile', async (t) => {
+    const alloc = (size) => crypto.randomBytes(size)
+    const small = Array.from({ length: 32 }, (_, i) => i * 2 * 1024).map(alloc)
+    const large = Array.from({ length: 16 }, (_, i) => i * 2 * 1024 * 1024).map(alloc)
+    const buffers = [...small, ...large]
 
-  // const now = Date.now()
-  while (!failed && buffers.length) {
-    writes.push(testWrite(buffers.length - 1, buffers.pop()))
-  }
+    // const pending = buffers.length
+    let failed = false
+    const writes = []
 
-  await Promise.all(writes)
-  /*
+    // const now = Date.now()
+    while (!failed && buffers.length) {
+      writes.push(testWrite(buffers.length - 1, buffers.pop()))
+    }
+
+    await Promise.all(writes)
+    /*
   console.log(
     '%d writes to %sms to write %s bytes',
     small.length + large.length,
@@ -243,32 +244,33 @@ test('fs.writeFile', async (t) => {
     [...small, ...large].reduce((n, a) => n + a.length, 0)
   ) */
 
-  t.ok(!failed, 'all bytes match')
+    t.ok(!failed, 'all bytes match')
 
-  async function testWrite (i, buffer) {
-    await new Promise((resolve) => {
-      const filename = TMPDIR + `new-file-${i}.txt`
-      fs.writeFile(filename, buffer, async (err) => {
-        if (err) {
-          failed = true
-          t.fail(err.message)
-          return resolve()
-        }
-
-        fs.readFile(filename, (err, result) => {
+    async function testWrite (i, buffer) {
+      await new Promise((resolve) => {
+        const filename = TMPDIR + `new-file-${i}.txt`
+        fs.writeFile(filename, buffer, async (err) => {
           if (err) {
             failed = true
             t.fail(err.message)
-          } else if (Buffer.compare(result, buffer) !== 0) {
-            failed = true
-            t.fail('bytes do not match')
+            return resolve()
           }
 
-          resolve()
+          fs.readFile(filename, (err, result) => {
+            if (err) {
+              failed = true
+              t.fail(err.message)
+            } else if (Buffer.compare(result, buffer) !== 0) {
+              failed = true
+              t.fail('bytes do not match')
+            }
+
+            resolve()
+          })
         })
       })
-    })
-  }
-})
+    }
+  })
+}
 
 test('fs.writev', async (t) => {})

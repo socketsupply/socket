@@ -1,5 +1,5 @@
-import { test } from '@socketsupply/tapzero'
-import dns from '../../api/dns.js'
+import { test } from 'socket:test/tap'
+import dns from 'socket:dns'
 
 // node compat
 // import dns from 'node:dns'

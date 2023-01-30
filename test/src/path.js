@@ -1,8 +1,7 @@
-import path from '../../api/path.js'
-import process from '../../api/process.js'
-import os from '../../api/os.js'
-
-import { test } from '@socketsupply/tapzero'
+import { test } from 'socket:test/tap'
+import process from 'socket:process'
+import path from 'socket:path'
+import os from 'socket:os'
 
 test('path', (t) => {
   const isUnix = os.platform() !== 'win32'

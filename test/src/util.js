@@ -1,6 +1,6 @@
-import util, { hasOwnProperty } from '../../api/util.js'
-import Buffer from '../../api/buffer.js'
-import { test } from '@socketsupply/tapzero'
+import util, { hasOwnProperty } from 'socket:util'
+import { test } from 'socket:test/tap'
+import Buffer from 'socket:buffer'
 
 test('util.hasOwnProperty', (t) => {
   const obj = { foo: 'bar' }

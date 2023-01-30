@@ -1,6 +1,6 @@
-import crypto from '../../api/crypto.js'
-import Buffer from '../../api/buffer.js'
-import { test } from '@socketsupply/tapzero'
+import { test } from 'socket:test/tap'
+import crypto from 'socket:crypto'
+import Buffer from 'socket:buffer'
 
 test('crypto', async (t) => {
   t.equal(crypto.webcrypto, window.crypto, 'crypto.webcrypto is window.crypto')

@@ -1,19 +1,19 @@
-import { EventEmitter } from '../../api/events.js'
-import console from '../../api/console.js'
-import crypto from '../../api/crypto.js'
-import Buffer from '../../api/buffer.js'
-import dgram from '../../api/dgram.js'
-import util from '../../api/util.js'
-
-import { test } from '@socketsupply/tapzero'
+import { EventEmitter } from 'socket:events'
+import { test } from 'socket:test/tap'
+import console from 'socket:console'
+import crypto from 'socket:crypto'
+import Buffer from 'socket:buffer'
+import dgram from 'socket:dgram'
+import util from 'socket:util'
 
 // node compat
 /*
 import { EventEmitter } from 'node:events'
-import crypto from 'node:crypto'
 import { Buffer } from 'node:buffer'
+import crypto from 'node:crypto'
 import dgram from 'node:dgram'
 import util from 'node:util'
+import { test } from '../../api/test/tap'
 */
 
 const MTU = 1518

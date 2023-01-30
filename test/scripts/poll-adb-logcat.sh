@@ -17,11 +17,11 @@ done
 
 ## Process logs from 'adb logcat'
 while read -r line; do
-  if grep 'Console' < <(echo "$line") >/dev/null; then
-    line="$(echo "$line" | sed 's/.*Console:\s*//g')"
+  if grep 'Console :' < <(echo "$line") >/dev/null; then
+    line="$(echo "$line" | sed 's/.*I Console :\s*//g')"
 
     if [[ "$line" =~ __EXIT_SIGNAL__ ]]; then
-      status="${line//__EXIT_SIGNAL__=/}"
+      status="${line/__EXIT_SIGNAL__=/}"
       exit "$status"
     fi
 

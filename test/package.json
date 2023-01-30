@@ -14,7 +14,6 @@
   },
   "devDependencies": {
     "esbuild": "^0.16.4",
-    "path-browserify": "^1.0.1",
-    "@socketsupply/tapzero": "^0.7.0"
+    "path-browserify": "^1.0.1"
   }
 }

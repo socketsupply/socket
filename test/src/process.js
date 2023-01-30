@@ -1,6 +1,6 @@
-import { test } from '@socketsupply/tapzero'
+import { test } from 'socket:test/tap'
+import process from 'socket:process'
 import path from 'path-browserify'
-import process from '../../api/process.js'
 
 test('process', (t) => {
   t.ok(typeof process.addListener === 'function', 'process is an EventEmitter')
