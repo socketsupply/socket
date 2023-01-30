@@ -1,7 +1,7 @@
-import { test } from '@socketsupply/tapzero'
-import runtime from '../../api/runtime.js'
-import { readFile } from '../../api/fs/promises.js'
-import ipc from '../../api/ipc.js'
+import { readFile } from 'socket:fs/promises'
+import { test } from 'socket:test/tap'
+import runtime from 'socket:runtime'
+import ipc from 'socket:ipc'
 
 // Desktop-only runtime functions
 if (window.__args.os !== 'android' && window.__args.os !== 'ios') {

@@ -1,5 +1,5 @@
-import * as os from '../../api/os.js'
-import { test } from '@socketsupply/tapzero'
+import { test } from 'socket:test/tap'
+import * as os from 'socket:os'
 
 const archs = ['arm64', 'ia32', 'x64', 'unknown']
 const platforms = ['android', 'cygwin', 'freebsd', 'linux', 'darwin', 'ios', 'openbsd', 'win32', 'unknown']

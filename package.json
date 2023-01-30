@@ -22,7 +22,8 @@
   },
   "standard": {
     "ignore": [
-      "/api/external/"
+      "/api/external/",
+      "/api/test/tap"
     ]
   }
 }

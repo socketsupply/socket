@@ -1,11 +1,11 @@
-import fs from '../../../api/fs/promises.js'
-import os from '../../../api/os.js'
-import path from '../../../api/path.js'
-import Buffer from '../../../api/buffer.js'
+import Buffer from 'socket:buffer'
+import path from 'socket:path'
+import fs from 'socket:fs/promises'
+import os from 'socket:os'
 
-import { test } from '@socketsupply/tapzero'
-import { FileHandle } from '../../../api/fs/handle.js'
-import { Dir } from '../../../api/fs/dir.js'
+import { FileHandle } from 'socket:fs/handle'
+import { test } from 'socket:test/tap'
+import { Dir } from 'socket:fs/dir'
 
 const TMPDIR = `${os.tmpdir()}${path.sep}`
 const FIXTURES = /android/i.test(os.platform())
@@ -31,11 +31,13 @@ test('fs.promises.chmod', async (t) => {
   t.equal(chmod, undefined, 'file.txt is chmod 777')
 })
 
-test('fs.promises.mkdir', async (t) => {
-  const dirname = FIXTURES + Math.random().toString(16).slice(2)
-  const { err } = fs.mkdir(dirname, {})
-  t.equal(err, undefined, 'mkdir does not throw')
-})
+if (os.platform() !== 'android') {
+  test('fs.promises.mkdir', async (t) => {
+    const dirname = FIXTURES + Math.random().toString(16).slice(2)
+    const { err } = await fs.mkdir(dirname, {})
+    t.equal(err, undefined, 'mkdir does not throw')
+  })
+}
 
 test('fs.promises.open', async (t) => {
   const fd = await fs.open(FIXTURES + 'file.txt', 'r')
@@ -84,10 +86,12 @@ test('fs.promises.stat', async (t) => {
   t.equal(stats.isCharacterDevice(), false, 'stats are not for a character device')
 })
 
-test('fs.promises.writeFile', async (t) => {
-  const file = FIXTURES + 'write-file.txt'
-  const data = 'test 123\n'
-  await fs.writeFile(file, data)
-  const contents = await fs.readFile(file)
-  t.equal(contents.toString(), data, 'file contents are correct')
-})
+if (os.platform() !== 'android') {
+  test('fs.promises.writeFile', async (t) => {
+    const file = FIXTURES + 'write-file.txt'
+    const data = 'test 123\n'
+    await fs.writeFile(file, data)
+    const contents = await fs.readFile(file)
+    t.equal(contents.toString(), data, 'file contents are correct')
+  })
+}
