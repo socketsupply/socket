@@ -11,7 +11,7 @@
 
 import { EventEmitter } from './events.js'
 import { Duplex } from './stream.js'
-import { rand64 } from './util.js'
+import { rand64 } from './crypto.js'
 import console from './console.js'
 
 const assertType = (name, expected, actual, code) => {

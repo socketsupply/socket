@@ -4,9 +4,10 @@ import {
   isTypedArray,
   isEmptyObject,
   splitBuffer,
-  rand64,
   clamp
 } from '../util.js'
+
+import { rand64 } from '../crypto.js'
 
 import { ReadStream, WriteStream } from './stream.js'
 import { normalizeFlags } from './flags.js'

@@ -5,10 +5,11 @@
  * not (yet) provide any of the multicast methods or properties.
  */
 
-import { isArrayBufferView, isFunction, rand64, noop } from './util.js'
+import { isArrayBufferView, isFunction, noop } from './util.js'
 import { InternalError } from './errors.js'
 import { EventEmitter } from './events.js'
 import { Buffer } from './buffer.js'
+import { rand64 } from './crypto.js'
 import { isIPv4 } from './net.js'
 import * as ipc from './ipc.js'
 import console from './console.js'
