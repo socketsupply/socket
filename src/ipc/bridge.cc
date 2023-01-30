@@ -5,6 +5,8 @@
 using namespace SSC;
 using namespace SSC::IPC;
 
+#if defined(__APPLE__)
+
 static dispatch_queue_attr_t qos = dispatch_queue_attr_make_with_qos_class(
   DISPATCH_QUEUE_CONCURRENT,
   QOS_CLASS_USER_INITIATED,
@@ -1239,68 +1241,44 @@ static void registerSchemeHandler (Router *router) {
   }
 
   if (String(request.URL.scheme.UTF8String) == "socket") {
-    auto path = request.URL.path;
     auto headers = [NSMutableDictionary dictionary];
-    auto mimeType = getMIMEType(url);
     auto components = [NSURLComponents
             componentsWithURL: request.URL
       resolvingAgainstBaseURL: YES
     ];
 
-    NSData* data = nullptr;
-
-    headers[@"content-type"] = [NSString
-      stringWithUTF8String: mimeType.c_str()
+    components.scheme = @"file";
+    components.host = @"";
+    components.path = [[[NSBundle mainBundle] resourcePath]
+      stringByAppendingPathComponent: [NSString
+        stringWithFormat: @"/socket/%@.js", components.path
+      ]
     ];
 
-    // XXX(@jwerle): socket://index.html
-    if (
-      request.URL.host.UTF8String != nullptr &&
-      String(request.URL.host.UTF8String) == "index.html"
-    ) {
-      if (request.URL.path.length == 0) {
-        headers[@"content-type"] = @"text/html";
-        headers[@"cross-origin-resource-policy"] = @"cross-origin";
-        headers[@"cross-origin-embedder-policy"] = @"require-corp";
-        headers[@"cross-origin-opener-policy"] = @"same-origin";
+    auto data = [NSData dataWithContentsOfURL: components.URL];
 
-        components.scheme = @"file";
-        components.host = @"";
-        components.path = [[[NSBundle mainBundle] resourcePath]
-          stringByAppendingPathComponent: @"/index.html"
-        ];
-      } else {
-        components.scheme = @"file";
-        components.host = @"";
-        components.path = [[[NSBundle mainBundle] resourcePath]
-          stringByAppendingPathComponent: [NSString
-            stringWithFormat: @"/%@", components.path
-          ]
-        ];
-      }
+    // create a proxy module so imports of the module of concern are imported
+    // exactly once at the canonical URL (file:///...) in contrast to module
+    // URLs (socket:...)
+    auto moduleTemplate =
+R"S(
+export * from '{{url}}'
+const exports = await import('{{url}}');
+export default exports.default ?? undefined
+)S";
 
-      data = [NSData dataWithContentsOfURL: components.URL];
-      components.scheme = @"https";
-      components.host = @"app.socket.runtime";
-      components.path = path;
-    } else { // support `import module from 'socket:module'` ESM
-      headers[@"content-type"] = @"text/javascript";
-      components.scheme = @"file";
-      components.host = @"";
-      components.path = [[[NSBundle mainBundle] resourcePath]
-        stringByAppendingPathComponent: [NSString
-          stringWithFormat: @"/socket/%@.js", components.path
-        ]
-      ];
-
-      data = [NSData dataWithContentsOfURL: components.URL];
-    }
+    auto moduleSource = trim(tmpl(
+      moduleTemplate,
+      Map { {"url", String(components.URL.absoluteString.UTF8String)} }
+    ));
 
     headers[@"access-control-allow-origin"] = @"*";
     headers[@"access-control-allow-methods"] = @"*";
     headers[@"access-control-allow-headers"] = @"*";
 
-    headers[@"content-length"] = [@(data.length) stringValue];
+    headers[@"content-location"] = components.URL.absoluteString;
+    headers[@"content-length"] = [@(moduleSource.size()) stringValue];
+    headers[@"content-type"] = @"text/javascript";
 
     auto response = [[NSHTTPURLResponse alloc]
       initWithURL: components.URL
@@ -1310,9 +1288,14 @@ static void registerSchemeHandler (Router *router) {
     ];
 
     [task didReceiveResponse: response];
+
     if (data != nullptr) {
-      [task didReceiveData: data];
+      [task didReceiveData: [NSData
+        dataWithBytes: moduleSource.data()
+               length: moduleSource.size()
+      ]];
     }
+
     [task didFinish];
     #if !__has_feature(objc_arc)
     [response release];
