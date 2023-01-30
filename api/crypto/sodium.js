@@ -8,6 +8,7 @@ export default exports
 if (typeof globalThis?.window === 'object') {
   await libsodium.ready
 }
+
 export { libsodium }
 
 /* eslint-disable camelcase */
