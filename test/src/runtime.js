@@ -65,7 +65,7 @@ if (window.__args.os !== 'android' && window.__args.os !== 'ios') {
     t.throws(
       () => { runtime.config.build_headless = 0 },
       // eslint-disable-next-line prefer-regex-literals
-      RegExp('Attempting to define property on object that is not extensible.'),
+      RegExp('Attempted to assign to readonly property.'),
       'runtime.config.build_headless is read-only'
     )
     t.ok(runtime.config.build_name.startsWith(config.find(([key]) => key === 'build_name')[1]), 'runtime.config.build_name is correct')
