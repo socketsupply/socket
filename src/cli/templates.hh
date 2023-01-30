@@ -1367,9 +1367,6 @@ constexpr auto gDefaultConfig = R"INI(
 
 [build]
 
-; Advanced Compiler Settings for debug purposes (ie C++ compiler -g, etc).
-debug_flags = "-g"
-
 ; An list of environment variables, separated by commas.
 env = USER, TMPDIR, PWD
 
@@ -1390,6 +1387,11 @@ output = "dist"
 
 ; The build script
 ; script = "node build-script.js"
+
+
+[debug]
+; Advanced Compiler Settings for debug purposes (ie C++ compiler -g, etc).
+debug_flags = "-g"
 
 
 [meta]
