@@ -518,7 +518,7 @@ int main (const int argc, const char* argv[]) {
       // this follows the .deb file naming convention
       fs::path packageName = (
         settings["build_name"] + "_" +
-        "v" + settings["version"] + "-" +
+        "v" + settings["meta_version"] + "-" +
         settings["meta_revision"] + "_" +
         "amd64"
       );
@@ -533,7 +533,7 @@ int main (const int argc, const char* argv[]) {
     } else if (platform == "win32") {
       paths.pathPackage = {
         paths.platformSpecificOutputPath  /
-        fs::path(settings["build_name"] + "-v" + settings["version"])
+        fs::path(settings["build_name"] + "-v" + settings["meta_version"])
       };
 
       paths.pathBin = paths.pathPackage;
@@ -642,7 +642,7 @@ int main (const int argc, const char* argv[]) {
         // The pre-release and build metadata are not supported
         std::regex semver_pattern("^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)$");
         // Check if version matches the pattern
-        if (!std::regex_match(settings["version"], semver_pattern)) {
+        if (!std::regex_match(settings["meta_version"], semver_pattern)) {
           log("error: 'version' in socket.ini must be in semver format");
           exit(1);
         }
@@ -650,7 +650,7 @@ int main (const int argc, const char* argv[]) {
         // default values
         settings["build_output"] = settings["build_output"].size() > 0 ? settings["build_output"] : "dist";
         settings["meta_lang"] = settings["meta_lang"].size() > 0 ? settings["meta_lang"] : "en-us";
-        settings["version"] = settings["version"].size() > 0 ? settings["version"] : "1.0.0";
+        settings["meta_version"] = settings["meta_version"].size() > 0 ? settings["meta_version"] : "1.0.0";
         settings["app_title"] = settings["app_title"].size() > 0 ? settings["app_title"] : settings["build_name"];
 
         for (auto const arg : std::span(argv, argc).subspan(2, numberOfOptions)) {
@@ -1687,8 +1687,8 @@ int main (const int argc, const char* argv[]) {
         "AppxManifest.xml"
       };
 
-      if (settings["version"].size() > 0) {
-        auto version = settings["version"];
+      if (settings["meta_version"].size() > 0) {
+        auto version = settings["meta_version"];
         auto winversion = split(version, '-')[0];
 
         settings["win_version"] = winversion + ".0";
