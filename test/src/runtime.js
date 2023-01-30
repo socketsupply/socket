@@ -52,7 +52,7 @@ if (window.__args.os !== 'android' && window.__args.os !== 'ios') {
       value = value.trim().replace(/"/g, '')
       config.push([prefix.length === 0 ? key : prefix + '_' + key, value])
     }
-    config.filter(([key]) => key !== 'headless' && key !== 'app_name').forEach(([key, value]) => {
+    config.filter(([key]) => key !== 'headless' && key !== 'build_name').forEach(([key, value]) => {
       t.equal(runtime.config[key], value, `runtime.config.${key} is correct`)
       t.throws(
         () => { runtime.config[key] = 0 },
@@ -68,12 +68,12 @@ if (window.__args.os !== 'android' && window.__args.os !== 'ios') {
       RegExp('Attempting to define property on object that is not extensible.'),
       'runtime.config.headless is read-only'
     )
-    t.ok(runtime.config.app_name.startsWith(config.find(([key]) => key === 'app_name')[1]), 'runtime.config.app_name is correct')
+    t.ok(runtime.config.build_name.startsWith(config.find(([key]) => key === 'build_name')[1]), 'runtime.config.build_name is correct')
     t.throws(
-      () => { runtime.config.app_name = 0 },
+      () => { runtime.config.build_name = 0 },
       // eslint-disable-next-line prefer-regex-literals
       RegExp('Attempted to assign to readonly property.'),
-      'runtime.config.app_name is read-only'
+      'runtime.config.build_name is read-only'
     )
   })
 

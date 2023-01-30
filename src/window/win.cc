@@ -978,10 +978,10 @@ namespace SSC {
 
   void Window::about () {
     auto text = SSC::String(
-      app.appData["app_name"] + " " +
+      app.appData["build_name"] + " " +
       "v" + app.appData["version"] + "\n" +
       "Built with ssc v" + SSC::VERSION_FULL_STRING + "\n" +
-      app.appData["copyright"]
+      app.appData["meta_copyright"]
     );
 
     MSGBOXPARAMS mbp;
@@ -989,7 +989,7 @@ namespace SSC {
     mbp.hwndOwner = window;
     mbp.hInstance = app.hInstance;
     mbp.lpszText = text.c_str();
-    mbp.lpszCaption = app.appData["app_name"].c_str();
+    mbp.lpszCaption = app.appData["build_name"].c_str();
     mbp.dwStyle = MB_USERICON;
     mbp.dwLanguageId = MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT);
     mbp.lpfnMsgBoxCallback = NULL;

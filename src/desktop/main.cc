@@ -166,20 +166,20 @@ MAIN {
   }
 
   if (isDebugEnabled()) {
-    app.appData["app_name"] += "-dev";
+    app.appData["build_name"] += "-dev";
   }
 
-  app.appData["app_name"] += suffix;
+  app.appData["build_name"] += suffix;
 
   argvForward << " --version=v" << app.appData["version"];
-  argvForward << " --name=" << app.appData["app_name"];
+  argvForward << " --name=" << app.appData["build_name"];
 
   if (isDebugEnabled()) {
     argvForward << " --debug=1";
   }
 
   SSC::StringStream env;
-  for (auto const &envKey : split(app.appData["env"], ',')) {
+  for (auto const &envKey : split(app.appData["build_env"], ',')) {
     auto cleanKey = trim(envKey);
     auto envValue = getEnv(cleanKey.c_str());
 
