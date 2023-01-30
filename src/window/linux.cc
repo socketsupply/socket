@@ -723,7 +723,7 @@ namespace SSC {
 
     gtk_box_pack_start(GTK_BOX(content), img, false, false, 0);
 
-    String title_value(app.appData["build_name"] + " v" + app.appData["version"]);
+    String title_value(app.appData["build_name"] + " v" + app.appData["meta_version"]);
     String version_value("Built with ssc v" + SSC::VERSION_FULL_STRING);
 
     GtkWidget *label_title = gtk_label_new("");

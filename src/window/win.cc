@@ -979,7 +979,7 @@ namespace SSC {
   void Window::about () {
     auto text = SSC::String(
       app.appData["build_name"] + " " +
-      "v" + app.appData["version"] + "\n" +
+      "v" + app.appData["meta_version"] + "\n" +
       "Built with ssc v" + SSC::VERSION_FULL_STRING + "\n" +
       app.appData["meta_copyright"]
     );

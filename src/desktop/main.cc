@@ -171,7 +171,7 @@ MAIN {
 
   app.appData["build_name"] += suffix;
 
-  argvForward << " --version=v" << app.appData["version"];
+  argvForward << " --version=v" << app.appData["meta_version"];
   argvForward << " --name=" << app.appData["build_name"];
 
   if (isDebugEnabled()) {
