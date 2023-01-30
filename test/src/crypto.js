@@ -22,3 +22,9 @@ test('crypto', async (t) => {
   t.ok(digest instanceof Buffer, 'crypto.createDigest returns a buffer')
   t.equal(digest.length, 32, 'crypto.createDigest returns a buffer of the correct length')
 })
+
+test('crypto.rand64', (t) => {
+  const randoms = Array.from({ length: 10 }, _ => crypto.rand64())
+  t.ok(randoms.every(b => typeof b === 'bigint'), 'crypto.rand64 returns a bigint')
+  t.ok(randoms.some(b => b !== randoms[9]), 'crypto.rand64 returns a different bigint each time')
+})
