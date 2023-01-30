@@ -64,7 +64,7 @@ if [ -n "$arch" ] || [ -n "$platform" ]; then
     "$root/build/$arch-$platform"/tests          \
     "$root/build/$arch-$platform"/*.o            \
     "$root/build/$arch-$platform"/**/*.o         \
-    "$root/build/npm/$platform"
+    "$root/build/npm/$platform"                  \
   2>/dev/null))
 elif (( do_full_clean )); then
   if test -f "$root/build"; then
