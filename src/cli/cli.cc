@@ -651,7 +651,7 @@ int main (const int argc, const char* argv[]) {
         settings["build_output"] = settings["build_output"].size() > 0 ? settings["build_output"] : "dist";
         settings["meta_lang"] = settings["meta_lang"].size() > 0 ? settings["meta_lang"] : "en-us";
         settings["meta_version"] = settings["meta_version"].size() > 0 ? settings["meta_version"] : "1.0.0";
-        settings["app_title"] = settings["app_title"].size() > 0 ? settings["app_title"] : settings["build_name"];
+        settings["meta_title"] = settings["meta_title"].size() > 0 ? settings["meta_title"] : settings["build_name"];
 
         for (auto const arg : std::span(argv, argc).subspan(2, numberOfOptions)) {
           if (is(arg, "--prod")) {
