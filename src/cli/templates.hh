@@ -1391,7 +1391,7 @@ output = "dist"
 
 [debug]
 ; Advanced Compiler Settings for debug purposes (ie C++ compiler -g, etc).
-debug_flags = "-g"
+flags = "-g"
 
 
 [meta]
