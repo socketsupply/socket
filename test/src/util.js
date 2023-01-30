@@ -133,12 +133,6 @@ test('util.toProperCase', (t) => {
   t.equal(util.toProperCase('foo bar-baz'), 'Foo bar-baz', 'util.toProperCase returns a string with the first letter capitalized')
 })
 
-test('util.rand64', (t) => {
-  const randoms = Array.from({ length: 10 }, _ => util.rand64())
-  t.ok(randoms.every(b => typeof b === 'bigint'), 'util.rand64 returns a bigint')
-  t.ok(randoms.some(b => b !== randoms[9]), 'util.rand64 returns a different bigint each time')
-})
-
 test('util.splitBuffer', (t) => {
   const buf = Buffer.from('foobar')
   const [a, b, c] = util.splitBuffer(buf, 2)
