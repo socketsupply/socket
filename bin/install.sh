@@ -294,12 +294,14 @@ function _install {
     echo "# copying extensions to $SOCKET_HOME/extensions/$arch-$platform"
     rm -rf "$SOCKET_HOME/extensions/$arch-$platform"
     mkdir -p "$SOCKET_HOME/extensions/$arch-$platform"
-    cp -fr "$BUILD_DIR/$arch-$platform"/extensions/* "$SOCKET_HOME/extensions/$arch-$platform"
+    cp -fr "$BUILD_DIR/$arch-$platform"/extensions/* "$SOCKET_HOME/extensions/$arch-$platform" 2>/dev/null
   fi
 
   echo "# copying js api to $SOCKET_HOME/api"
   mkdir -p "$SOCKET_HOME/api"
   cp -fr "$root"/api/* "$SOCKET_HOME/api"
+  rm -f "$SOCKET_HOME/api/importmap.json"
+  "$root/bin/generate-api-import-map.sh" > "$SOCKET_HOME/api/importmap.json"
 
   rm -rf "$SOCKET_HOME/include"
   mkdir -p "$SOCKET_HOME/include"
