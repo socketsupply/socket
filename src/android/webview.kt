@@ -44,7 +44,7 @@ open class WebViewClient (activity: WebViewActivity) : android.webkit.WebViewCli
     .build()
 
   /**
-   * Handles URL loading overrides for "file://" based URI schemes.
+   * Handles URL loading overrides for various URI schemes.
    */
   override fun shouldOverrideUrlLoading (
     view: android.webkit.WebView,
@@ -56,7 +56,7 @@ open class WebViewClient (activity: WebViewActivity) : android.webkit.WebViewCli
       return false
     }
 
-    if (url.scheme == "ipc" || url.scheme == "file" || isAssetUri(url)) {
+    if (url.scheme == "ipc" || url.scheme == "file" || url.scheme == "socket" || isAssetUri(url)) {
       return true
     }
 
@@ -82,11 +82,33 @@ open class WebViewClient (activity: WebViewActivity) : android.webkit.WebViewCli
     view: android.webkit.WebView,
     request: android.webkit.WebResourceRequest
   ): android.webkit.WebResourceResponse? {
-    val url = request.url
-    val assetLoaderRequest = this.assetLoader.shouldInterceptRequest(url)
+    var url = request.url
 
-    if (assetLoaderRequest != null) {
-      return assetLoaderRequest
+    if (url.scheme == "socket") {
+      var path = url.toString().replace("socket:", "")
+
+      if (!path.endsWith(".js")) {
+        path += ".js"
+      }
+
+      url = android.net.Uri.Builder()
+        .scheme("https")
+        .authority("appassets.androidplatform.net")
+        .path("/assets/socket/${path}")
+        .build()
+    }
+
+    val assetLoaderResponse = this.assetLoader.shouldInterceptRequest(url)
+
+    if (assetLoaderResponse != null) {
+      assetLoaderResponse.responseHeaders = mapOf(
+        "Content-Location" to url.toString(),
+        "Access-Control-Allow-Origin" to "*",
+        "Access-Control-Allow-Headers" to "*",
+        "Access-Control-Allow-Methods" to "*"
+      )
+
+      return assetLoaderResponse
     }
 
     if (url.scheme != "ipc") {
