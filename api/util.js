@@ -1,5 +1,7 @@
 import { Buffer } from './buffer.js'
 
+import * as exports from './util.js'
+
 const ObjectPrototype = Object.prototype
 const Uint8ArrayPrototype = Uint8Array.prototype
 const TypedArrayPrototype = Object.getPrototypeOf(Uint8ArrayPrototype)
@@ -687,5 +689,4 @@ export function parseJSON (string) {
 
 export function noop () {}
 
-import * as exports from './util.js'
 export default exports

@@ -512,6 +512,8 @@ export function test (name, fn) {
 test.only = only
 test.skip = skip
 
+export default test
+
 /**
  * @param {Error} err
  * @returns {void}
