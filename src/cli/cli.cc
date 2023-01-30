@@ -1309,7 +1309,7 @@ int main (const int argc, const char* argv[]) {
       writeFile(src / "main" / "assets" / "__ssc_vital_check_ok_file__.txt", "OK");
 
       auto cflags = flagDebugMode
-        ? settings.count("build_debug_flags") ? settings["build_debug_flags"] : ""
+        ? settings.count("debug_flags") ? settings["debug_flags"] : ""
         : settings.count("build_flags") ? settings["build_flags"] : "";
 
       StringStream pp;
@@ -2093,7 +2093,7 @@ int main (const int argc, const char* argv[]) {
       StringStream compileCommand;
 
       auto extraFlags = flagDebugMode
-        ? settings.count("build_debug_flags") ? settings["build_debug_flags"] : ""
+        ? settings.count("debug_flags") ? settings["debug_flags"] : ""
         : settings.count("build_flags") ? settings["build_flags"] : "";
 
       compileCommand
