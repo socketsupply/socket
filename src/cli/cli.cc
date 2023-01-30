@@ -643,7 +643,7 @@ int main (const int argc, const char* argv[]) {
         std::regex semver_pattern("^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)$");
         // Check if version matches the pattern
         if (!std::regex_match(settings["meta_version"], semver_pattern)) {
-          log("error: 'version' in socket.ini must be in semver format");
+          log("error: 'version' in [meta] section of socket.ini must be in semver format");
           exit(1);
         }
 
@@ -1454,7 +1454,7 @@ int main (const int argc, const char* argv[]) {
         if (!fs::exists(pathToProfile)) {
           log("provisioning profile not found: " + pathToProfile.string() + ". " +
               "Please specify a valid provisioning profile in the " +
-              "ios_provisioning_profile field in your socket.ini");
+              "provisioning_profile field in the [ios] section of your socket.ini");
           exit(1);
         }
         String command = (
@@ -1864,7 +1864,7 @@ int main (const int argc, const char* argv[]) {
       if (rArchive.exitCode != 0) {
         auto const noDevice = rArchive.output.find("The requested device could not be found because no available devices matched the request.");
         if (noDevice != std::string::npos) {
-          log("error: ios_simulator_device " + settings["ios_simulator_device"] + " from your socket.ini was not found");
+          log("error: simulator_device " + settings["ios_simulator_device"] + " from your socket.ini was not found");
           auto const rDevices = exec("xcrun simctl list devices available | grep -e \"  \"");
           log("available devices:\n" + rDevices.output);
           log("please update your socket.ini with a valid device or install Simulator runtime (https://developer.apple.com/documentation/xcode/installing-additional-simulator-runtimes)");
