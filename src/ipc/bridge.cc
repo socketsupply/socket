@@ -5,13 +5,6 @@
 using namespace SSC;
 using namespace SSC::IPC;
 
-#if defined(__APPLE__)
-#if __has_feature(objc_arc)
-# define __maybe_bridge_transfer  __bridge_transfer
-#else
-# define __maybe_bridge_transfer
-#endif
-
 static dispatch_queue_attr_t qos = dispatch_queue_attr_make_with_qos_class(
   DISPATCH_QUEUE_CONCURRENT,
   QOS_CLASS_USER_INITIATED,
