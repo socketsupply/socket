@@ -52,7 +52,7 @@ if (window.__args.os !== 'android' && window.__args.os !== 'ios') {
       value = value.trim().replace(/"/g, '')
       config.push([prefix.length === 0 ? key : prefix + '_' + key, value])
     }
-    config.filter(([key]) => key !== 'headless' && key !== 'build_name').forEach(([key, value]) => {
+    config.filter(([key]) => key !== 'build_headless' && key !== 'build_name').forEach(([key, value]) => {
       t.equal(runtime.config[key], value, `runtime.config.${key} is correct`)
       t.throws(
         () => { runtime.config[key] = 0 },
@@ -61,12 +61,12 @@ if (window.__args.os !== 'android' && window.__args.os !== 'ios') {
         `runtime.config.${key} is read-only`
       )
     })
-    t.equal(runtime.config.headless, true, 'runtime.config.headless is correct')
+    t.equal(runtime.config.build_headless, true, 'runtime.config.build_headless is correct')
     t.throws(
-      () => { runtime.config.hedless = 0 },
+      () => { runtime.config.build_headless = 0 },
       // eslint-disable-next-line prefer-regex-literals
       RegExp('Attempting to define property on object that is not extensible.'),
-      'runtime.config.headless is read-only'
+      'runtime.config.build_headless is read-only'
     )
     t.ok(runtime.config.build_name.startsWith(config.find(([key]) => key === 'build_name')[1]), 'runtime.config.build_name is correct')
     t.throws(
