@@ -4,7 +4,7 @@ import process from 'socket:process'
 import 'socket:runtime'
 
 // uncomment below to get IPC debug output in stdout
-// import ipc from '../../api/ipc.js'
+// import ipc from 'socket:ipc'
 // ipc.debug.enabled = true
 // ipc.debug.log = (...args) => console.log(...args)
 

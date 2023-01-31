@@ -8,12 +8,13 @@ import util from 'socket:util'
 
 // node compat
 /*
-import { EventEmitter } from 'node:events'
-import { Buffer } from 'node:buffer'
-import crypto from 'node:crypto'
-import dgram from 'node:dgram'
-import util from 'node:util'
-import { test } from '../../api/test/tap'
+import { EventEmitter } from 'socket:events'
+import { test } from 'socket:test/tap'
+import console from 'socket:console'
+import crypto from 'socket:crypto'
+import Buffer from 'socket:buffer'
+import dgram from 'socket:dgram'
+import util from 'socket:util'
 */
 
 const MTU = 1518
