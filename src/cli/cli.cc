@@ -1709,33 +1709,6 @@ int main (const int argc, const char* argv[]) {
       );
     }
 
-    auto SOCKET_HOME_EXTENSIONS = getEnv("SOCKET_HOME_EXTENSIONS");
-
-    if (SOCKET_HOME_EXTENSIONS.size() == 0) {
-      auto extensionsTargetPathName = platform.arch + "-" + (
-        targetPlatform == "ios"
-          ? "iPhoneOS"
-          : targetPlatform == "ios-simulator"
-            ? "iPhoneSimulator"
-            : targetPlatform == "android"
-              ? "Android"
-              : targetPlatform == "android-emulator"
-                ? "AndroidEmulator"
-                : "desktop"
-      );
-
-      SOCKET_HOME_EXTENSIONS = (fs::path(trim(prefixFile("extensions"))) / extensionsTargetPathName).string();
-    }
-
-    if (fs::exists(fs::status(SOCKET_HOME_EXTENSIONS))) {
-      fs::create_directories(pathResources);
-      fs::copy(
-        SOCKET_HOME_EXTENSIONS,
-        pathResources / "extensions",
-        fs::copy_options::update_existing | fs::copy_options::recursive
-      );
-    }
-
     log("package prepared");
 
     auto pathResourcesRelativeToUserBuild = paths.pathResourcesRelativeToUserBuild;
