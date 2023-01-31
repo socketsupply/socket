@@ -98,7 +98,6 @@ MAIN {
 
   bool wantsVersion = false;
   bool wantsHelp = false;
-  bool fromSSC = false; // launched from the `ssc` cli
 
   // TODO right now we forward a json parsable string as the args but this
   // isn't the most robust way of doing this. possible a URI-encoded query
@@ -140,10 +139,8 @@ MAIN {
       isHeadless = true;
     }
 
-    if (s.find("--from-ssc") == 0) {
-      fromSSC = true;
-      app.fromSSC = true;
-    }
+    // launched from the `ssc` cli
+    app.fromSSC = s.find("--from-ssc") == 0 ? true : false;
 
     if (s.find("--test") == 0) {
       suffix = "-test";
