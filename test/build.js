@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import path from 'node:path'
 import fs from 'node:fs/promises'
+import os from 'node:os'
 
 import esbuild from 'esbuild'
 
@@ -32,7 +33,22 @@ async function main () {
     platform: 'browser',
     sourcemap: 'inline',
     external: ['socket:*', 'node:*'],
-    outdir: path.resolve(process.argv[2])
+    outdir: path.resolve(process.argv[2]),
+    plugins: []
+  }
+
+  if (os.platform() === 'win32') {
+    params.plugins.push({
+      name: 'socket-runtime-import-path',
+      setup (build) {
+        build.onResolve({ filter: /^socket:.*$/ }, (args) => {
+          return {
+            external: true,
+            path: args.path.replace('socket:', './socket/').replace(/.js$/, '') + '.js'
+          }
+        })
+      }
+    })
   }
 
   await Promise.all([
