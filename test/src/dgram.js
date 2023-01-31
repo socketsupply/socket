@@ -1,5 +1,5 @@
 import { EventEmitter } from 'socket:events'
-import { test } from 'socket:test/tap'
+import { test } from 'socket:test'
 import console from 'socket:console'
 import crypto from 'socket:crypto'
 import Buffer from 'socket:buffer'
@@ -9,7 +9,7 @@ import util from 'socket:util'
 // node compat
 /*
 import { EventEmitter } from 'socket:events'
-import { test } from 'socket:test/tap'
+import { test } from 'socket:test'
 import console from 'socket:console'
 import crypto from 'socket:crypto'
 import Buffer from 'socket:buffer'

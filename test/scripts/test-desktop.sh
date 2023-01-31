@@ -7,6 +7,8 @@ root="$(dirname "$(dirname "${BASH_SOURCE[0]}")")"
 rm -rf "$TMPDIR/ssc-socket-test-fixtures"
 cp -rf "$root/fixtures/" "$TMPDIR/ssc-socket-test-fixtures"
 
+export SOCKET_HOME_API="$root/../api"
+
 if [ -z "$DEBUG" ]; then
   ssc build --headless --prod -r -o .
 else

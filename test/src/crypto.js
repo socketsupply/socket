@@ -1,4 +1,4 @@
-import { test } from 'socket:test/tap'
+import { test } from 'socket:test'
 import crypto from 'socket:crypto'
 import Buffer from 'socket:buffer'
 

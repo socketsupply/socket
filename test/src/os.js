@@ -1,4 +1,4 @@
-import { test } from 'socket:test/tap'
+import { test } from 'socket:test'
 import * as os from 'socket:os'
 
 const archs = ['arm64', 'ia32', 'x64', 'unknown']

@@ -1,5 +1,5 @@
 import { readFile } from 'socket:fs/promises'
-import { test } from 'socket:test/tap'
+import { test } from 'socket:test'
 import runtime from 'socket:runtime'
 import ipc from 'socket:ipc'
 
