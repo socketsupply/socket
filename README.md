@@ -22,4 +22,4 @@ See the [`Socket API`][0] library for the unit and integration test suite.
 If you want to contribute to the Socket Runtime project itself, please connect
 with any current project contributor.
 
-[0]:https://github.com/socketsupply/socket-api
+[0]:https://github.com/socketsupply/socket
