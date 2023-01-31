@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import fs from 'node:fs/promises'
 import os from 'node:os'
@@ -48,7 +47,7 @@ async function main () {
       setup (build) {
         build.onResolve({ filter: /^socket:.*$/ }, (args) => {
           const basename = args.path.replace('socket:', '').replace(/.js$/, '') + '.js'
-          const filename = path.resolve(path.dirname(dirname), 'api', filename)
+          const filename = path.resolve(path.dirname(dirname), 'api', basename)
           return { path: filename }
         })
       }
