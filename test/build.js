@@ -5,7 +5,7 @@ import os from 'node:os'
 
 import esbuild from 'esbuild'
 
-const dirname = path.dirname(import.meta.url.replace('file://', ''))
+const dirname = path.resolve(path.dirname(import.meta.url.replace('file://', '').replace('C:/', '')))
 
 const cp = async (a, b) => fs.cp(
   path.resolve(a),

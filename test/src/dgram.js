@@ -94,12 +94,12 @@ test('dgram createSocket, address, bind, close', async (t) => {
       // FIXME:
       // t.throws(
       //   () => server.bind(41233),
-      //   RegExp('bind EADDRINUSE 0.0.0.0:41233'),
+      //   RegExp('bind EADDRINUSE 127.0.0.1:41233'),
       //   'server.bind throws an error if the socket is already bound'
       // )
       t.deepEqual(
         server.address(),
-        { address: '0.0.0.0', port: 41233, family: 'IPv4' },
+        { address: '127.0.0.1', port: 41233, family: 'IPv4' },
         'server.address() returns the bound address'
       )
       t.equal(server.close(), server, 'server.close() returns instance')
@@ -137,7 +137,7 @@ test('udp bind, send, remoteAddress', async (t) => {
 
   server.on('listening', () => {
     t.ok(true, 'listening')
-    client.send(Buffer.from(payload), 41234, '0.0.0.0')
+    client.send(Buffer.from(payload), 41234, '127.0.0.1')
   })
 
   server.bind(41234)
@@ -167,11 +167,11 @@ test('udp socket message and bind callbacks', async (t) => {
   const client = dgram.createSocket('udp4')
 
   server.on('listening', () => {
-    client.send('payload', 41235, '0.0.0.0')
+    client.send('payload', 41235, '127.0.0.1')
   })
 
   const listeningCbResult = new Promise(resolve => {
-    server.bind(41235, '0.0.0.0', resolve)
+    server.bind(41235, '127.0.0.1', resolve)
   })
 
   const [{ msg, rinfo }] = await Promise.all([msgCbResult, listeningCbResult])
@@ -203,7 +203,7 @@ test('udp bind, connect, send', async (t) => {
   )
 
   server.on('listening', () => {
-    client.connect(41236, '0.0.0.0', (err) => {
+    client.connect(41236, '127.0.0.1', (err) => {
       if (err) return t.fail(err.message)
       t.deepEqual(
         client.remoteAddress(),
@@ -231,7 +231,7 @@ test('udp send callback', async (t) => {
   const message = Buffer.from('Some bytes')
   const client = dgram.createSocket('udp4')
   const result = await new Promise(resolve => {
-    client.send(message, 41237, '0.0.0.0', (err) => {
+    client.send(message, 41237, '127.0.0.1', (err) => {
       client.close()
       if (err) return t.fail(err.message)
       resolve(true)
@@ -269,7 +269,7 @@ test('client ~> server (~512 messages)', async (t) => {
   const buffers = Array.from(Array(512), () => crypto.randomBytes(1024))
   const server = dgram.createSocket('udp4')
   const client = dgram.createSocket('udp4')
-  const addr = '0.0.0.0'
+  const addr = '127.0.0.1'
   const port = 3000
 
   await new Promise((resolve) => {
