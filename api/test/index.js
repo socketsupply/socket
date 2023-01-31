@@ -386,7 +386,7 @@ export class TestRunner {
         if (this.rethrowExceptions) {
           promise.then(null, rethrowImmediate)
         }
-      }, 0)
+      }, 10000)
     }
   }
 

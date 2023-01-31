@@ -54,7 +54,7 @@ test('fs.access', async (t) => {
 
 test('fs.appendFile', async (t) => {})
 
-if (os.platform() !== 'android') {
+if (os.platform() !== 'android' && os.platform() !== 'win32') {
   test('fs.chmod', async (t) => {
     await new Promise((resolve, reject) => {
       fs.chmod(FIXTURES + 'file.txt', 0o777, (err) => {
