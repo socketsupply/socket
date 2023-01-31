@@ -1,4 +1,4 @@
-import { test } from 'socket:test/tap'
+import { test } from 'socket:test'
 import backend from 'socket:backend'
 
 if (window.__args.os !== 'android' && window.__args.os !== 'ios') {

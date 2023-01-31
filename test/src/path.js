@@ -1,4 +1,4 @@
-import { test } from 'socket:test/tap'
+import { test } from 'socket:test'
 import process from 'socket:process'
 import path from 'socket:path'
 import os from 'socket:os'

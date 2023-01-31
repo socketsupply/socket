@@ -1,4 +1,4 @@
-import { test } from 'socket:test/tap'
+import { test } from 'socket:test'
 import dns from 'socket:dns'
 
 // node compat

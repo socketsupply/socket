@@ -1,4 +1,4 @@
-import { GLOBAL_TEST_RUNNER } from 'socket:test/tap'
+import { GLOBAL_TEST_RUNNER } from 'socket:test'
 import console from 'socket:console'
 import process from 'socket:process'
 import 'socket:runtime'

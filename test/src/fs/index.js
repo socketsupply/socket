@@ -1,6 +1,6 @@
 import { Buffer } from 'socket:buffer'
-import deepEqual from 'socket:test/tap/fast-deep-equal'
-import { test } from 'socket:test/tap'
+import deepEqual from 'socket:test/fast-deep-equal'
+import { test } from 'socket:test'
 // import console from '.socket:console'
 import crypto from 'socket:crypto'
 import path from 'socket:path'

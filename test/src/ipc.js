@@ -1,5 +1,5 @@
 import { Buffer } from 'socket:buffer'
-import { test } from 'socket:test/tap'
+import { test } from 'socket:test'
 import * as ipc from 'socket:ipc'
 
 // node compat

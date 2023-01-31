@@ -23,7 +23,7 @@
   "standard": {
     "ignore": [
       "/api/external/",
-      "/api/test/tap"
+      "/api/test/"
     ]
   }
 }

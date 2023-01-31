@@ -1,5 +1,5 @@
 import { normalizeFlags } from 'socket:fs/flags'
-import { test } from 'socket:test/tap'
+import { test } from 'socket:test'
 import * as fs from 'socket:fs'
 
 test('flags', (t) => {
