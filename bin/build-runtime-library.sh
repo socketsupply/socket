@@ -119,10 +119,8 @@ function stat_mtime () {
 
 function main () {
   trap onsignal INT TERM
-  let local i=0
-  let local max_concurrency=8
-  local host="$(uname | tr '[:upper:]' '[:lower:]')"
-  local extensions=($(find "$root/src/extensions/$host"/*.cc 2>/dev/null))
+  local i=0
+  local max_concurrency=8
 
   for source in "${sources[@]}"; do
     if (( i++ > max_concurrency )); then
@@ -156,17 +154,6 @@ function main () {
   # echo ar crs "$static_library" "${objects[@]}"
   ar crs "$static_library" "${objects[@]}"
   echo "ok - built static library ($arch-$platform): $(basename "$static_library")"
-
-  mkdir -p "$output_directory/extensions"
-  for extension in "${extensions[@]}"; do
-    case "$(basename "$extension")" in
-      "webkit.cc")
-        if [ "$(uname -s)" = "Linux" ]; then
-          $clang "${cflags[@]}" -fPIC -shared "$extension" -o "$output_directory/extensions/libwebkit-extension.so" || onsignal $?
-        fi
-        ;;
-    esac
-  done
 }
 
 main "${args[@]}"

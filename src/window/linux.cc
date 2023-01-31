@@ -179,23 +179,6 @@ namespace SSC {
       this
     );
 
-    auto ctx = webkit_web_context_get_default();
-
-    g_signal_connect(
-      ctx,
-      "initialize-web-extensions",
-      G_CALLBACK(+[](WebKitWebContext* ctx, gpointer userData) {
-        static auto exe = fs::canonical("/proc/self/exe");
-        static auto cwd = fs::path(exe).parent_path();
-        static auto path = cwd / "extensions";
-        static auto extensionVariant = g_variant_new_string(cwd.c_str());
-
-        webkit_web_context_set_web_extensions_directory(ctx, path.c_str());
-        webkit_web_context_set_web_extensions_initialization_user_data(ctx, extensionVariant);
-      }),
-      nullptr
-    );
-
     webview = webkit_web_view_new_with_user_content_manager(cm);
 
     g_signal_connect(

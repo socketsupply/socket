@@ -49,6 +49,26 @@ static JSON::Any validateMessageParameters (
   return nullptr;
 }
 
+static String getcwd () {
+  String cwd = "";
+#if defined(__linux__) && !defined(__ANDROID__)
+  auto canonical = fs::canonical("/proc/self/exe");
+  cwd = fs::path(canonical).parent_path().string();
+#elif defined(__APPLE__)
+  auto fileManager = [NSFileManager defaultManager];
+  auto currentDirectoryPath = [fileManager currentDirectoryPath];
+  auto currentDirectory = [NSHomeDirectory() stringByAppendingPathComponent: currentDirectoryPath];
+  cwd = String([currentDirectory UTF8String]);
+#elif defined(_WIN32)
+  wchar_t filename[MAX_PATH];
+  GetModuleFileNameW(NULL, filename, MAX_PATH);
+  auto path = fs::path { filename }.remove_filename();
+    cwd = path.string();
+#endif
+
+  return cwd;
+}
+
 #define resultCallback(message, reply)                                         \
   [=](auto seq, auto json, auto post) {                                        \
     reply(Result { seq, message, json, post });                                \
@@ -824,22 +844,8 @@ void initFunctionsTable (Router *router) {
    * Returns computed current working directory path.
    */
   router->map("process.cwd", [=](auto message, auto router, auto reply) {
-    String cwd = "";
     JSON::Object json;
-#if defined(__linux__) && !defined(__ANDROID__)
-    auto canonical = fs::canonical("/proc/self/exe");
-    cwd = fs::path(canonical).parent_path().string();
-#elif defined(__APPLE__)
-    auto fileManager = [NSFileManager defaultManager];
-    auto currentDirectoryPath = [fileManager currentDirectoryPath];
-    auto currentDirectory = [NSHomeDirectory() stringByAppendingPathComponent: currentDirectoryPath];
-    cwd = String([currentDirectory UTF8String]);
-#elif defined(_WIN32)
-    wchar_t filename[MAX_PATH];
-    GetModuleFileNameW(NULL, filename, MAX_PATH);
-    auto path = fs::path { filename }.remove_filename();
-    cwd = path.string();
-#endif
+    auto cwd = getcwd();
 
     if (cwd.size() == 0) {
       json = JSON::Object::Entries {
@@ -1193,6 +1199,53 @@ static void registerSchemeHandler (Router *router) {
       webkit_uri_scheme_request_finish_with_response(request, response);
       g_object_unref(stream);
     }
+  },
+  router,
+  0);
+
+  webkit_web_context_register_uri_scheme(ctx, "socket", [](auto request, auto ptr) {
+    auto uri = String(webkit_uri_scheme_request_get_uri(request));
+    auto cwd = getcwd();
+
+    if (uri.starts_with("socket:///")) {
+      uri = uri.substr(10);
+    } else if (uri.starts_with("socket://")) {
+      uri = uri.substr(9);
+    } else if (uri.starts_with("socket:")) {
+      uri = uri.substr(7);
+    }
+
+    auto path = fs::path(cwd) / uri;
+
+    if (!fs::exists(fs::status(path))) {
+      auto ext = uri.ends_with(".js") ? "" : ".js";
+      path = fs::path(cwd) / "socket" / (uri + ext);
+    }
+
+    uri = "file://" + path.string();
+    // create a proxy module so imports of the module of concern are imported
+    // exactly once at the canonical URL (file:///...) in contrast to module
+    // URLs (socket:...)
+    auto moduleTemplate =
+R"S(
+export * from '{{url}}'
+const exports = await import('{{url}}');
+export default exports.default ?? undefined
+)S";
+
+    auto moduleSource = trim(tmpl(
+      moduleTemplate,
+      Map { {"url", String(uri)} }
+    ));
+
+    auto size = moduleSource.size();
+    auto bytes = moduleSource.data();
+    auto stream = g_memory_input_stream_new_from_data(bytes, size, 0);
+    auto response = webkit_uri_scheme_response_new(stream, size);
+
+    webkit_uri_scheme_response_set_content_type(response, "text/javascript");
+    webkit_uri_scheme_request_finish_with_response(request, response);
+    g_object_unref(stream);
   },
   router,
   0);
