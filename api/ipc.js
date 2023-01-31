@@ -24,7 +24,7 @@
  * ```
  */
 
-/* global window */
+/* global webkit, chrome, external */
 import {
   AbortError,
   InternalError,
@@ -48,7 +48,18 @@ let nextSeq = 1
  * @ignore
  */
 export async function postMessage (...args) {
-  return await window?.__ipc?.postMessage(...args)
+  if (window?.webkit?.messageHandlers?.external?.postMessage) {
+    return webkit.messageHandlers.external.postMessage(...args)
+  }
+  if (window?.chrome?.webview?.postMessage) {
+    return chrome.webview.postMessage(...args)
+  }
+  if (window?.external?.postMessage) {
+    return external.postMessage(...args)
+  }
+  throw new TypeError(
+    'Could not determine UserMessageHandler.postMessage in Window'
+  )
 }
 
 function initializeXHRIntercept () {

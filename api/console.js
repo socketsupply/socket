@@ -1,8 +1,5 @@
 import { format, isObject } from './util.js'
-
-async function postMessage (...args) {
-  return await globalThis?.window?.__ipc?.postMessage?.(...args)
-}
+import { postMessage } from './ipc.js'
 
 function isPatched (console) {
   return console?.[Symbol.for('socket.console.patched')] === true
