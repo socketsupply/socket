@@ -160,7 +160,7 @@ function getDefaultAddress (socket, local) {
     if (socket.type === 'udp4') return '127.0.0.1'
     if (socket.type === 'udp6') return '::1'
   } else {
-    if (socket.type === 'udp4') return '127.0.0.1'
+    if (socket.type === 'udp4') return '0.0.0.0'
     if (socket.type === 'udp6') return '::'
   }
 
