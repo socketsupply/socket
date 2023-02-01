@@ -65,6 +65,8 @@ MAIN {
   // their instantiation and destruction.
   static App app(instanceId);
   static WindowManager windowManager(app);
+  static Mutex mutexStdout;
+  static Mutex mutexStdin;
 
   // TODO(trevnorris): Since App is a singleton, follow the CppCoreGuidelines
   // better in how it's handled in the future.
@@ -301,6 +303,8 @@ MAIN {
   // Launch the backend process and connect callbacks to the stdio and stderr pipes.
   //
   auto onStdOut = [&](SSC::String const &out) {
+    Lock lock(mutexStdout);
+
     //
     // ## Dispatch
     // Messages from the backend process may be sent to the render process. If they
@@ -414,6 +418,8 @@ MAIN {
   // main thread.
   //
   auto onMessage = [&](auto out) {
+    Lock lock(mutexStdin);
+
     // debug("onMessage %s", out.c_str());
     IPC::Message message(out);
 

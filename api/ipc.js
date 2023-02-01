@@ -1,27 +1,21 @@
 /**
  * @module IPC
  *
- * This is a low level API which you don't need unless you are implementing
- * a library on top of Socket SDK. A Socket SDK app has two or three processes.
+ * The `Frontend` process is the UI where the HTML, CSS and JS runs. In
+ * Socket, there is native File IO, UDP, and Bluetooth, so there is less
+ * need to run a backend.
  *
- * - The `Render` process, the UI where the HTML, CSS and JS is run.
- * - The `Bridge` process, the thin layer of code that managers everything.
- * - The `Main` processs, for apps that need to run heavier compute jobs. And
- *   unlike electron it's optional.
+ * The `Backend processs is more for apps that need to run computationally
+ * expensive code. Unlike electron, Socket's "backend" is entirely optional.
  *
- * The Bridge process manages the Render and Main process, it may also broker
- * data between them.
+ * When you launch a backend process, it get's piped to the frontend process.
  *
- * The Binding process uses standard input and output as a way to communicate.
- * Data written to the write-end of the pipe is buffered by the OS until it is
- * read from the read-end of the pipe.
+ * All stdout from the backend is piped to the frontend as a "data" event.
+ * You can also write to stdin of the backend from the frontend.
  *
- * The IPC protocol uses a simple URI-like scheme. Data is passed as
- * ArrayBuffers.
+ * The IPC API in Socket is symmetrical, and you can async/await calls in either
+ * direction.
  *
- * ```
- * ipc://command?key1=value1&key2=value2...
- * ```
  */
 
 /* global window */
@@ -40,6 +34,7 @@ import {
 
 import * as errors from './errors.js'
 import { Buffer } from './buffer.js'
+import { EventEmitter } from './events.js'
 import console from './console.js'
 
 let nextSeq = 1
@@ -1194,10 +1189,159 @@ export function createBinding (domain, ctx) {
   return domain
 }
 
+let IPC
+
+class IPCRequest {
+  index = 0,
+  seq = 0
+
+  constructor ({ index, seq }) {
+    this.index = index
+    this.seq = seq
+  }
+}
+
+class IPCHandler extends EventEmitter  {
+  #handleEvent (detail) {
+    const name = `ipc-${detail.index}-${detail.seq}`
+
+    //
+    // we're listening for a response to this event,
+    // when emitted, the awaited promise will resolve.
+    //
+    if (this.eventNames().includes(name)) {
+      return this.emit(eventName, detail.value)
+    }
+
+    //
+    // we have been asked to respond to this event
+    // the user will call respond() with the request.
+    //
+    const req = new IPCRequest(detail)
+    this.emit('request', req, detail.value)
+  }
+
+  respond ({ req, value }) {
+    return this.request({ window: req.index, seq: req.seq, value })
+  }
+
+  send ({ window, value }) {
+    return this.request({ window, seq: '-1', value })
+  }
+}
+
+if (typeof gloablThis.window === 'undefined') {
+  IPC = class IPCBackend extends IPCHandler {
+    #buf = ''
+
+    constructor () {
+      super()
+
+      process.stdin.on('data', data) => this.#onData(null, data))
+      process.stdin.setEncoding('utf8')
+      process.stdin.resume()
+    }
+
+    #parse (data) {
+      let o
+
+      try {
+        o = JSON.parse(data)
+      } catch (err) {
+        this.emit('warn', err)
+        return
+      }
+
+      this.#handleEvent(o)
+    }
+
+    #onData (detail, data) => {
+      const messages = data.split('\n')
+
+      if (messages.length === 1) {
+        this.#buf += data
+        return
+      }
+
+      this.#parse(detail, this.#buf + messages[0])
+
+      for (let i = 1; i < messages.length - 1; i++) {
+        this.#parse(detail, messages[i])
+      }
+
+      this.#buf = messages[messages.length - 1]
+    }
+
+    request ({ window, value, seq }) {
+      return new Promise((resolve, reject) => {
+        const opts = {
+          seq: seq || nextSeq++,
+          index: window,
+          event: 'ipc',
+          value: JSON.stringify(value)
+        }
+
+        if (seq !== '-1') {
+          const name = `ipc-${opts.index}-${opts.seq}`
+          this.once(name, resolve)
+        }
+
+        try {
+          const s = new URLSearchParams(opts)
+            .toString()
+            .replace(/\+/g, '%20')
+          process.stdout.write(`ipc://send?${s}\n`)
+        } catch (err) {
+          reject(err)
+        }
+      })
+    }
+
+    send ({ window, value }) {
+      // the backend might want to send other internal IPC commands...
+      if (data.constructor.name === 'Message') {
+        if (window) value.index = window
+        const str = value.toString()
+        return new Promise(resolve => process.stdout.write(str, resolve))
+      }
+
+      super.send({ window, value })
+    }
+  }
+} else {
+  IPC = class IPCFrontend extends IPCHandler {
+    constructor () {
+      super()
+
+      window.addEventListener('data', ({ detail }) => {
+        if (detail.event !== 'ipc') return
+        this.#handleEvent(detail)
+      })
+    }
+
+    request ({ window, value, seq }) {
+      const opts = { seq, value }
+      if (window) opts.index = window
+
+      if (seq === '-1') {
+        return ipc.send('process.write', opts)
+      }
+
+      return new Promise(resolve => {
+        const eventName = `ipc-${opts.index}-${opts.seq}`
+        this.once(eventName, resolve)
+        return ipc.send('send', opts)
+      })
+    }
+  }
+}
+
 export default {
   OK,
   ERROR,
   TIMEOUT,
+
+  IPC,
 
   createBinding,
   debug,
