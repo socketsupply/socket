@@ -1344,7 +1344,7 @@ Opens a native context menu.
 This is a `FunctionDeclaration` named `setSystemMenuItemEnabled` in `api/runtime.js`, it's exported but undocumented.
 
 
-## [`setSystemMenu(options)`](https://github.com/socketsupply/socket/blob/master/api/runtime.js#L217)
+## [`setSystemMenu(options)`](https://github.com/socketsupply/socket/blob/master/api/runtime.js#L221)
 
 Set the native menu for the app.
 
@@ -1383,11 +1383,12 @@ Set the native menu for the app.
  `)
  ```
 
- #### Separators
+ Separators
 
  To create a separator, use three dashes `---`.
+ 
 
- #### Accelerator Modifiers
+ Accelerator Modifiers
 
  Accelerator modifiers are used as visual indicators but don't have a
  material impact as the actual key binding is done in the event listener.
@@ -1399,18 +1400,21 @@ Set the native menu for the app.
 
  On MacOS `Meta` is the same as `Command`.
 
- #### Disabled Items
+ 
+ Disabled Items
 
  If you want to disable a menu item just prefix the item with the `!` character.
  This will cause the item to appear disabled when the system menu renders.
 
- #### Submenus
+ 
+ Submenus
 
  We feel like nested menus are an anti-pattern. We don't use them. If you have a
  strong argument for them and a very simple pull request that makes them work we
  may consider them.
 
- #### Event Handling
+ 
+ Event Handling
 
  When a menu item is activated, it raises the `menuItemSelected` event in
  the front end code, you can then communicate with your backend code if you
@@ -1437,7 +1441,7 @@ Set the native menu for the app.
 | Not specified | Promise<Any> |  |
 
 
-## [`reload()`](https://github.com/socketsupply/socket/blob/master/api/runtime.js#L266)
+## [`reload()`](https://github.com/socketsupply/socket/blob/master/api/runtime.js#L270)
 
 This is a `FunctionDeclaration` named `reload` in `api/runtime.js`, it's exported but undocumented.
 
