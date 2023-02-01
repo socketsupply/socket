@@ -174,7 +174,7 @@ export async function setSystemMenuItemEnabled (value) {
  * Separators
  *
  * To create a separator, use three dashes `---`.
- * 
+ *
  *
  * Accelerator Modifiers
  *
@@ -188,20 +188,20 @@ export async function setSystemMenuItemEnabled (value) {
  *
  * On MacOS `Meta` is the same as `Command`.
  *
- * 
+ *
  * Disabled Items
  *
  * If you want to disable a menu item just prefix the item with the `!` character.
  * This will cause the item to appear disabled when the system menu renders.
  *
- * 
+ *
  * Submenus
  *
  * We feel like nested menus are an anti-pattern. We don't use them. If you have a
  * strong argument for them and a very simple pull request that makes them work we
  * may consider them.
  *
- * 
+ *
  * Event Handling
  *
  * When a menu item is activated, it raises the `menuItemSelected` event in
