@@ -1,6 +1,12 @@
 // @ts-check
 
 import deepEqual from './fast-deep-equal.js'
+import process from '../process.js'
+import os from '../os.js'
+
+const {
+  SOCKET_TEST_RUNNER_TIMEOUT = getDefaultTestRunnerTimeout()
+} = process.env
 
 const NEW_LINE_REGEX = /\n/g
 const OBJ_TO_STRING = Object.prototype.toString
@@ -15,6 +21,14 @@ const AT_REGEX = new RegExp(
 
 /** @type {string} */
 let CACHED_FILE
+
+export function getDefaultTestRunnerTimeout () {
+  if (os.platform() === 'win32') {
+    return 2 * 1024
+  } else {
+    return 500
+  }
+}
 
 /**
  * @typedef {(t: Test) => (void | Promise<void>)} TestFn
@@ -386,7 +400,7 @@ export class TestRunner {
         if (this.rethrowExceptions) {
           promise.then(null, rethrowImmediate)
         }
-      }, 10000)
+      }, SOCKET_TEST_RUNNER_TIMEOUT)
     }
   }
 
