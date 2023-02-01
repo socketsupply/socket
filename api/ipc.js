@@ -44,6 +44,9 @@ import console from './console.js'
 
 let nextSeq = 1
 
+/**
+ * @ignore
+ */
 export async function postMessage (...args) {
   return await window?.__ipc?.postMessage(...args)
 }
@@ -314,21 +317,25 @@ function createUri (protocol, command) {
 
 /**
  * Represents an OK IPC status.
+ * @ignore
  */
 export const OK = 0
 
 /**
  * Represents an ERROR IPC status.
+ * @ignore
  */
 export const ERROR = 1
 
 /**
  * Timeout in milliseconds for IPC requests.
+ * @ignore
  */
 export const TIMEOUT = 32 * 1000
 
 /**
  * Symbol for the `ipc.debug.enabled` property
+ * @ignore
  */
 export const kDebugEnabled = Symbol.for('ipc.debug.enabled')
 
@@ -337,6 +344,7 @@ export const kDebugEnabled = Symbol.for('ipc.debug.enabled')
  * @param {string|number} seq
  * @param {object=} [options]
  * @param {boolean} [options.bigint = false]
+ * @ignore
  */
 export function parseSeq (seq, options) {
   const value = String(seq).replace(/^R/i, '').replace(/n$/, '')
@@ -347,6 +355,7 @@ export function parseSeq (seq, options) {
  * If `debug.enabled === true`, then debug output will be printed to console.
  * @param {(boolean)} [enable]
  * @return {boolean}
+ * @ignore
  */
 export function debug (enable) {
   if (enable === true) {
@@ -379,10 +388,12 @@ Object.defineProperty(debug, 'enabled', {
 
 /**
  * A container for a IPC message based on a `ipc://` URI scheme.
+ * @ignore
  */
 export class Message extends URL {
   /**
    * The expected protocol for an IPC message.
+   * @ignore
    */
   static get PROTOCOL () {
     return 'ipc:'
@@ -393,6 +404,7 @@ export class Message extends URL {
    * @param {string|URL|Message|Buffer|object} input
    * @param {(object|string|URLSearchParams)=} [params]
    * @return {Message}
+   * @ignore
    */
   static from (input, params, bytes) {
     const protocol = this.PROTOCOL
@@ -446,6 +458,7 @@ export class Message extends URL {
    * a new `Message` instance.
    * @param {string|URL|Message|Buffer|object} input
    * @return {boolean}
+   * @ignore
    */
   static isValidInput (input) {
     const protocol = this.PROTOCOL
@@ -461,6 +474,7 @@ export class Message extends URL {
    * `Message` class constructor.
    * @protected
    * @param {string|URL} input
+   * @ignore
    */
   constructor (input, bytes) {
     super(input)
@@ -487,6 +501,7 @@ export class Message extends URL {
 
   /**
    * Computed IPC message name.
+   * @ignore
    */
   get command () {
     // TODO(jwerle): issue deprecation notice
@@ -495,6 +510,7 @@ export class Message extends URL {
 
   /**
    * Computed IPC message name.
+   * @ignore
    */
   get name () {
     return this.hostname || this.host || this.pathname.slice(2)
@@ -502,6 +518,7 @@ export class Message extends URL {
 
   /**
    * Computed `id` value for the command.
+   * @ignore
    */
   get id () {
     return this.has('id') ? this.get('id') : null
@@ -509,6 +526,7 @@ export class Message extends URL {
 
   /**
    * Computed `seq` (sequence) value for the command.
+   * @ignore
    */
   get seq () {
     return this.has('seq') ? this.get('seq') : null
@@ -517,6 +535,7 @@ export class Message extends URL {
   /**
    * Computed message value potentially given in message parameters.
    * This value is automatically decoded, but not treated as JSON.
+   * @ignore
    */
   get value () {
     return this.get('value') ?? null
@@ -526,6 +545,7 @@ export class Message extends URL {
    * Computed `index` value for the command potentially referring to
    * the window index the command is scoped to or originating from. If not
    * specified in the message parameters, then this value defaults to `-1`.
+   * @ignore
    */
   get index () {
     const index = this.get('index')
@@ -543,6 +563,7 @@ export class Message extends URL {
   /**
    * Computed value parsed as JSON. This value is `null` if the value is not present
    * or it is invalid JSON.
+   * @ignore
    */
   get json () {
     return parseJSON(this.value)
@@ -550,6 +571,7 @@ export class Message extends URL {
 
   /**
    * Computed readonly object of message parameters.
+   * @ignore
    */
   get params () {
     return Object.fromEntries(this.entries())
@@ -558,6 +580,7 @@ export class Message extends URL {
   /**
    * Returns computed parameters as entries
    * @return {Array<Array<string,mixed>>}
+   * @ignore
    */
   entries () {
     return Array.from(this.searchParams.entries()).map(([key, value]) => {
@@ -569,6 +592,7 @@ export class Message extends URL {
    * Set a parameter `value` by `key`.
    * @param {string} key
    * @param {mixed} value
+   * @ignore
    */
   set (key, value) {
     if (value && typeof value === 'object') {
@@ -583,6 +607,7 @@ export class Message extends URL {
    * @param {string} key
    * @param {mixed} defaultValue
    * @return {mixed}
+   * @ignore
    */
   get (key, defaultValue) {
     if (!this.has(key)) {
@@ -603,6 +628,7 @@ export class Message extends URL {
    * Delete a parameter by `key`.
    * @param {string} key
    * @return {boolean}
+   * @ignore
    */
   delete (key) {
     if (this.has(key)) {
@@ -615,6 +641,7 @@ export class Message extends URL {
   /**
    * Computed parameter keys.
    * @return {Array<string>}
+   * @ignore
    */
   keys () {
     return Array.from(this.searchParams.keys())
@@ -623,6 +650,7 @@ export class Message extends URL {
   /**
    * Computed parameter values.
    * @return {Array<mixed>}
+   * @ignore
    */
   values () {
     return Array.from(this.searchParams.values()).map(parseJSON)
@@ -632,6 +660,7 @@ export class Message extends URL {
    * Predicate to determine if parameter `key` is present in parameters.
    * @param {string} key
    * @return {boolean}
+   * @ignore
    */
   has (key) {
     return this.searchParams.has(key)
@@ -639,6 +668,7 @@ export class Message extends URL {
 
   /**
    * Converts a `Message` instance into a plain JSON object.
+   * @ignore
    */
   toJSON () {
     const { protocol, command, params } = this
@@ -651,6 +681,7 @@ export class Message extends URL {
  * IPC result values from the native layer that are in the form
  * of `{ err?, data? }`. The `data` and `err` properties on this
  * type of object are in tuple form and be accessed at `[data?,err?]`
+ * @ignore
  */
 export class Result {
   /**
@@ -660,6 +691,7 @@ export class Result {
    * @param {Error=} [maybeError]
    * @param {string=} [maybeSource]
    * @return {Result}
+   * @ignore
    */
   static from (result, maybeError, maybeSource, ...args) {
     if (result instanceof Result) {
@@ -698,6 +730,7 @@ export class Result {
    * @param {Error=} [err = null]
    * @param {object=} [data = null]
    * @param {string=} [source = undefined]
+   * @ignore
    */
   constructor (err, data, source) {
     this.err = typeof err !== 'undefined' ? err : null
@@ -727,6 +760,7 @@ export class Result {
 
   /**
    * Computed result length.
+   * @ignore
    */
   get length () {
     return [...this].filter((v) => v !== undefined).length
@@ -852,6 +886,7 @@ export async function emit (name, value, target, options) {
  * Resolves a request by `seq` with possible value.
  * @param {string} seq
  * @param {Mixed} value
+ * @ignore
  */
 export async function resolve (seq, value) {
   await ready()
@@ -922,6 +957,7 @@ export async function send (command, value) {
  * @param {object=} params
  * @param {(Buffer|TypeArray|ArrayBuffer|string|Array)=} buffer
  * @param {object=} options
+ * @ignore
  */
 export async function write (command, params, buffer, options) {
   if (typeof window === 'undefined') {
@@ -1019,6 +1055,7 @@ export async function write (command, params, buffer, options) {
  * @param {string} command
  * @param {object=} params
  * @param {object=} options
+ * @ignore
  */
 export async function request (command, params, options) {
   await ready()
@@ -1112,6 +1149,7 @@ export async function request (command, params, options) {
  * @param {(function|object)=} ctx
  * @param {string=} [ctx.default]
  * @return {Proxy}
+ * @ignore
  */
 export function createBinding (domain, ctx) {
   const dispatchable = {
