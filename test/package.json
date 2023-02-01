@@ -3,10 +3,10 @@
   "private": true,
   "scripts": {
     "test": "npm run test:desktop",
-    "test:desktop": "./scripts/test-desktop.sh",
-    "test:android": "./scripts/test-android.sh",
-    "test:ios-simulator": "./scripts/test-ios-simulator.sh",
-    "test:android-emulator": "./scripts/test-android-emulator.sh",
+    "test:desktop": "sh ./scripts/test-desktop.sh",
+    "test:android": "sh ./scripts/test-android.sh",
+    "test:ios-simulator": "sh ./scripts/test-ios-simulator.sh",
+    "test:android-emulator": "sh ./scripts/test-android-emulator.sh",
     "start": "npm test"
   },
   "dependencies": {
