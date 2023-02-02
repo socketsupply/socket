@@ -9,9 +9,6 @@
     "test:android-emulator": "./scripts/test-android-emulator.sh",
     "start": "npm test"
   },
-  "dependencies": {
-    "@socketsupply/ssc-node": "github:socketsupply/ssc-node"
-  },
   "devDependencies": {
     "esbuild": "^0.16.4",
     "path-browserify": "^1.0.1"

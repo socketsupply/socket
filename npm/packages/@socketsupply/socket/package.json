@@ -3,7 +3,10 @@
   "version": "0.0.27",
   "description": "A Cross-Platform, Native Runtime for Desktop and Mobile Apps — Create apps using HTML, CSS, and JavaScript. Written from the ground up to be small and maintainable.",
   "type": "module",
-  "main": "index.js",
+  "exports": {
+    "import": "./node/index.js",
+    "require": "./node/index.cjs"
+  },
   "bin": {
     "ssc": "bin/ssc.js"
   },
@@ -17,7 +20,7 @@
     "x64"
   ],
   "scripts": {
-    "test": ":"
+    "build": "esbuild ./node/index.js --outfile=./node/index.cjs --platform=node --format=cjs"
   },
   "repository": {
     "type": "git",

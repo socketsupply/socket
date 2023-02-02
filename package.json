@@ -25,5 +25,8 @@
       "/api/external/",
       "/api/test/"
     ]
-  }
+  },
+  "workspaces": [
+    "npm/packages/@socketsupply/socket"
+  ]
 }

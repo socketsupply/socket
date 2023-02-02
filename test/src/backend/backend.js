@@ -1,4 +1,4 @@
-import system from '@socketsupply/ssc-node'
+import system from '@socketsupply/socket'
 
 system.receive = async (command, value) => {
   if (command === 'process.write') {

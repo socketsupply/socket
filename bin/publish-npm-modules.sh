@@ -58,6 +58,7 @@ if (( !only_platforms || only_top_level )); then
   cp -f "$root/LICENSE.txt" "$SOCKET_HOME/packages/$package"
   cp -f "$root/README.md" "$SOCKET_HOME/packages/$package/README-RUNTIME.md"
   cp -rf "$root/api"/* "$SOCKET_HOME/packages/$package"
+  npm run --prefix "$SOCKET_HOME/packages/$package" build || exit $?
 fi
 
 if (( !only_top_level )); then
