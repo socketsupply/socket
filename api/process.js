@@ -4,7 +4,10 @@
 import { EventEmitter } from './events.js'
 import { send, sendSync } from './ipc.js'
 
+const UNKNOWN = 'unknown'
 const cwd = sendSync('process.cwd')?.data ?? ''
+const osPlatform = sendSync('os.platform')?.data ?? UNKNOWN
+const platform = osPlatform === 'mac' ? 'darwin' : osPlatform
 
 let didEmitExitEvent = false
 
@@ -17,7 +20,7 @@ class Process extends EventEmitter {
   env = globalThis.__args?.env ?? {}
   exit = exit
   homedir = homedir
-  platform = globalThis.__args?.os ?? ''
+  platform = platform
   version = globalThis.__args?.version ?? ''
 }
 

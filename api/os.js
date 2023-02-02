@@ -13,8 +13,7 @@ const UNKNOWN = 'unknown'
 
 const cache = {
   arch: UNKNOWN,
-  type: UNKNOWN,
-  platform: UNKNOWN
+  type: UNKNOWN
 }
 
 export function arch () {
@@ -133,31 +132,7 @@ export function networkInterfaces () {
 }
 
 export function platform () {
-  let value = UNKNOWN
-
-  if (cache.platform !== UNKNOWN) {
-    return cache.platform
-  }
-
-  if (typeof window !== 'object') {
-    if (typeof process?.platform === 'string') {
-      return process.platform.toLowerCase()
-    }
-  }
-
-  if (typeof window === 'object') {
-    value = (
-      ipc.sendSync('os.platform')?.data ||
-      platform?.platform ||
-      UNKNOWN
-    )
-  }
-
-  cache.platform = value
-    .replace(/^mac/i, 'darwin')
-    .toLowerCase()
-
-  return cache.platform
+  return process.platform
 }
 
 export function type () {
@@ -167,7 +142,7 @@ export function type () {
     return cache.type
   }
 
-  if (typeof window !== 'object') {
+  if (globalThis !== window) {
     switch (platform()) {
       case 'android': return 'Linux'
       case 'cygwin': return 'CYGWIN_NT'
@@ -180,12 +155,8 @@ export function type () {
     }
   }
 
-  if (typeof window === 'object') {
-    value = (
-      platform?.platform ||
-      ipc.sendSync('os.type')?.data ||
-      UNKNOWN
-    )
+  if (globalThis === window) {
+    value = ipc.sendSync('os.type')?.data ?? UNKNOWN
   }
 
   value = value.replace(/android/i, 'Linux')
