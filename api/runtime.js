@@ -6,6 +6,7 @@
 
 import { applyPolyfills } from './polyfills.js'
 import ipc from './ipc.js'
+import process from './process.js'
 
 export const currentWindow = globalThis?.window?.__args?.index ?? 0
 // eslint-disable-next-line
@@ -14,7 +15,7 @@ export const debug = globalThis?.window?.__args?.debug ?? false
 export const config = Object.freeze(globalThis?.window?.__args?.config ?? {})
 
 function formatFileUrl (url) {
-  return `file://${globalThis?.window?.__args?.cwd()}/${url}`
+  return `file://${process.cwd()}/${url}`
 }
 
 if (globalThis.window) {

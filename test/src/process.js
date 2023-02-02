@@ -15,7 +15,7 @@ test('process.exit()', (t) => {
 })
 
 test('process.cwd', async (t) => {
-  t.ok(typeof process.cwd() === 'string', 'process.cwd() returns a string')
+  t.equal(typeof process.cwd(), 'string', 'process.cwd() returns a string')
   if (process.platform === 'mac') {
     t.equal(process.cwd(), path.resolve(process.argv0, '../../Resources'), 'process.cwd() returns a correct value')
   } else if (process.platform === 'linux') {
@@ -40,7 +40,6 @@ test('process.platform', (t) => {
   t.ok(typeof process.platform === 'string', 'process.platform returns an string')
   t.ok(['mac', 'linux', 'android', 'ios', 'win32'].includes(process.platform), 'process.platform is correct')
   t.equal(process.platform, window.__args.os, 'process.platform equals window.__args.platform')
-  t.equal(process.platform, process.os, 'process.platform returns the same value as process.os')
 })
 
 test('process.env', (t) => {

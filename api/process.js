@@ -2,22 +2,29 @@
  * @module Process
  */
 import { EventEmitter } from './events.js'
-import { send } from './ipc.js'
+import { send, sendSync } from './ipc.js'
+
+const cwd = sendSync('process.cwd')?.data ?? ''
 
 let didEmitExitEvent = false
+
+class Process extends EventEmitter {
+  arch = globalThis.__args?.arch ?? ''
+  argv = globalThis.__args?.argv ?? []
+  argv0 = globalThis.__args?.argv?.[0] ?? null
+  config = globalThis.__args?.config ?? {}
+  cwd = () => cwd
+  env = globalThis.__args?.env ?? {}
+  exit = exit
+  homedir = homedir
+  platform = globalThis.__args?.os ?? ''
+  version = globalThis.__args?.version ?? ''
+}
 
 const isNode = Boolean(globalThis.process?.versions?.node)
 const process = isNode
   ? globalThis.process
-  : Object.create(globalThis.__args, Object.getOwnPropertyDescriptors({
-    ...EventEmitter.prototype,
-    homedir,
-    argv0: globalThis.__args?.argv?.[0] ?? null,
-    exit,
-    env: {},
-    platform: globalThis?.__args?.os ?? '',
-    ...globalThis.__args
-  }))
+  : new Process()
 
 if (!isNode) {
   EventEmitter.call(process)
