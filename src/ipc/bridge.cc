@@ -56,14 +56,24 @@ static String getcwd () {
   cwd = fs::path(canonical).parent_path().string();
 #elif defined(__APPLE__)
   auto fileManager = [NSFileManager defaultManager];
-  auto currentDirectoryPath = [fileManager currentDirectoryPath];
-  auto currentDirectory = [NSHomeDirectory() stringByAppendingPathComponent: currentDirectoryPath];
+  auto currentDirectory = [fileManager currentDirectoryPath];
   cwd = String([currentDirectory UTF8String]);
 #elif defined(_WIN32)
   wchar_t filename[MAX_PATH];
   GetModuleFileNameW(NULL, filename, MAX_PATH);
   auto path = fs::path { filename }.remove_filename();
-    cwd = path.string();
+  cwd = path.string();
+  last_pos = 0;
+  while ((last_pos = cwd.find('\\', last_pos)) != std::string::npos) {
+    cwd.replace(last_pos, 1, "\\\\");
+    last_pos += 2;
+  }
+#endif
+
+#ifndef _WIN32
+    std::replace(cwd.begin(), cwd.end(), '\\', '/');
+#else
+
 #endif
 
   return cwd;

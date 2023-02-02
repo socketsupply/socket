@@ -147,7 +147,6 @@ export function platform () {
 
   if (typeof window === 'object') {
     value = (
-      process.os ||
       ipc.sendSync('os.platform')?.data ||
       platform?.platform ||
       UNKNOWN
