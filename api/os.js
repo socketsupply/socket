@@ -12,41 +12,11 @@ import ipc from './ipc.js'
 const UNKNOWN = 'unknown'
 
 const cache = {
-  arch: UNKNOWN,
   type: UNKNOWN
 }
 
 export function arch () {
-  let value = UNKNOWN
-
-  if (cache.arch !== UNKNOWN) {
-    return cache.arch
-  }
-
-  if (typeof window !== 'object') {
-    if (typeof process?.arch === 'string') {
-      return process.arch
-    }
-  }
-
-  if (typeof window === 'object') {
-    value = (
-      process.arch ||
-      ipc.sendSync('os.arch')?.data ||
-      UNKNOWN
-    )
-  }
-
-  if (value === 'arm64') {
-    return value
-  }
-
-  cache.arch = value
-    .replace('x86_64', 'x64')
-    .replace('x86', 'ia32')
-    .replace(/arm.*/, 'arm')
-
-  return cache.arch
+  return process.arch
 }
 
 export function networkInterfaces () {

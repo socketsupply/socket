@@ -8,11 +8,15 @@ const UNKNOWN = 'unknown'
 const cwd = sendSync('process.cwd')?.data ?? ''
 const osPlatform = sendSync('os.platform')?.data ?? UNKNOWN
 const platform = osPlatform === 'mac' ? 'darwin' : osPlatform
+const osArch = sendSync('os.arch')?.data ?? UNKNOWN
+const arch = osArch === 'arm64'
+  ? osArch
+  : osArch.replace('x86_64', 'x64').replace('x86', 'ia32').replace(/arm.*/, 'arm')
 
 let didEmitExitEvent = false
 
 class Process extends EventEmitter {
-  arch = globalThis.__args?.arch ?? ''
+  arch = arch
   argv = globalThis.__args?.argv ?? []
   argv0 = globalThis.__args?.argv?.[0] ?? null
   config = globalThis.__args?.config ?? {}
