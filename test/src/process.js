@@ -16,7 +16,7 @@ test('process.exit()', (t) => {
 
 test('process.cwd', async (t) => {
   t.equal(typeof process.cwd(), 'string', 'process.cwd() returns a string')
-  if (process.platform === 'mac') {
+  if (process.platform === 'darwin' || process.platform === 'ios') {
     t.equal(process.cwd(), path.resolve(process.argv0, '../../Resources'), 'process.cwd() returns a correct value')
   } else if (process.platform === 'linux') {
     t.equal(process.cwd(), path.resolve(process.argv0, '../../socket-runtime-javascript-tests'), 'process.cwd() returns a correct value')
@@ -38,8 +38,8 @@ test('process.arch', (t) => {
 
 test('process.platform', (t) => {
   t.ok(typeof process.platform === 'string', 'process.platform returns an string')
-  t.ok(['mac', 'linux', 'android', 'ios', 'win32'].includes(process.platform), 'process.platform is correct')
-  t.equal(process.platform, window.__args.os, 'process.platform equals window.__args.platform')
+  t.ok(['darwin', 'freebsd', 'linux', 'openbsd', 'sunos', 'win32', 'android', 'ios'].includes(process.platform), 'process.platform is correct')
+  t.equal(process.platform, process.platform, 'process.platform equals window.__args.platform')
 })
 
 test('process.env', (t) => {
