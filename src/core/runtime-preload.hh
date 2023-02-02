@@ -73,16 +73,6 @@ namespace SSC {
       }
     }
 
-    if (platform.mac || platform.linux || platform.win) {
-      preload += "                                                           \n"
-        "if (window?.parent?.port > 0) {                                     \n"
-        "  window.addEventListener('menuItemSelected', e => {                \n"
-        "    window.location.reload();                                       \n"
-        "  });                                                               \n"
-        "}                                                                   \n"
-        ;
-    }
-
     // fill in the config
     for (auto const &tuple : opts.appData) {
       auto key = trim(tuple.first);
