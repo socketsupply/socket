@@ -25,6 +25,10 @@ if [[ "$host" = "Linux" ]]; then
   fi
 fi
 
+if [[ "$host" == *"MINGW64_NT"* ]]; then
+  host="Win32"
+fi
+
 if (( TARGET_OS_IPHONE )); then
   arch="arm64"
   platform="iPhoneOS"
@@ -138,7 +142,7 @@ function main () {
         mkdir -p "$(dirname "$object")"
         echo "# compiling object ($arch-$platform) $(basename "$source")"
         # echo $clang "${cflags[@]}" "${ldflags[@]}" -c "$source" -o "$object"
-        $clang "${cflags[@]}" -c "$source" -o "$object" || onsignal
+        "$clang" "${cflags[@]}" -c "$source" -o "$object" || onsignal
         echo "ok - built ${source/$src_directory\//} -> ${object/$output_directory\//} ($arch-$platform)"
       fi
     } & pids+=($!)
@@ -151,9 +155,23 @@ function main () {
   declare static_library="$root/build/$arch-$platform/lib/libsocket-runtime.a"
   mkdir -p "$(dirname "$static_library")"
   rm -rf "$static_library"
-  # echo ar crs "$static_library" "${objects[@]}"
-  ar crs "$static_library" "${objects[@]}"
-  echo "ok - built static library ($arch-$platform): $(basename "$static_library")"
+  declare ar="ar"
+
+  echo "Host: $host"
+
+  if [[ "$host" = "Win32" ]]; then
+    echo "using llvm-ar on $host"
+    ar="llvm-ar"
+  fi
+
+  echo $ar crs "$static_library" "${objects[@]}"
+  $ar crs "$static_library" "${objects[@]}"
+
+  if [ -f $static_library ]; then
+    echo "ok - built static library ($arch-$platform): $(basename "$static_library")"
+  else
+    echo "failed to build $static_library"
+  fi
 }
 
 main "${args[@]}"
