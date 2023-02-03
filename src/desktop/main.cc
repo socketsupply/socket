@@ -495,17 +495,6 @@ MAIN {
       return;
     }
 
-    if (message.name == "window.setTitle") {
-      const auto currentIndex = message.index;
-      const auto index = message.get("window").size() > 0 ? std::stoi(message.get("window")) : currentIndex;
-      const auto window = windowManager.getWindow(index);
-      window->setTitle(
-        message.seq,
-        decodeURIComponent(value)
-      );
-      return;
-    }
-
     if (message.name == "log" || message.name == "stdout") {
       stdWrite(decodeURIComponent(value), false);
       return;
@@ -526,6 +515,11 @@ MAIN {
       return;
     }
 
+    if (message.name == "inspect") {
+      window->showInspector();
+      return;
+    }
+
     if (message.name == "getWindows") {
       const auto index = message.index;
       const auto props = WindowPropertiesFlags {
@@ -536,6 +530,17 @@ MAIN {
       const auto window = windowManager.getWindow(index);
       const auto result = windowManager.json(props).str();
       window->resolvePromise(message.get("seq"), OK_STATE, encodeURIComponent(result));
+      return;
+    }
+
+    if (message.name == "window.setTitle") {
+      const auto currentIndex = message.index;
+      const auto index = message.get("window").size() > 0 ? std::stoi(message.get("window")) : currentIndex;
+      const auto window = windowManager.getWindow(index);
+      window->setTitle(
+        message.seq,
+        decodeURIComponent(value)
+      );
       return;
     }
 
@@ -692,11 +697,6 @@ MAIN {
       if (resolveWindow) {
         resolveWindow->resolvePromise(message.get("seq"), OK_STATE, std::to_string(index));
       }
-      return;
-    }
-
-    if (message.name == "inspect") {
-      window->showInspector();
       return;
     }
 
