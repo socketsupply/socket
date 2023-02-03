@@ -1,7 +1,7 @@
 /**
  * @module Path
  */
-import process from '../process.js'
+import { pCwd } from '../ipc.js'
 import os from '../os.js'
 
 const isWin32 = os.platform() === 'win32'
@@ -14,11 +14,11 @@ export class Path {
    */
   static cwd (opts) {
     if (isWin32 && opts?.posix === true) {
-      const cwd = process.cwd().replace(/\\/g, '/')
+      const cwd = pCwd.replace(/\\/g, '/')
       return cwd.slice(cwd.indexOf('/'))
     }
 
-    return process.cwd()
+    return pCwd
   }
 
   static from (input) {

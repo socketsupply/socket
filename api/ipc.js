@@ -1229,6 +1229,18 @@ export function createBinding (domain, ctx) {
   return domain
 }
 
+// We need to set primordials here because we are using the
+// `sendSync` method. This is a hack to get around the fact
+// that we can't use cyclic imports with a cyclic sync call.
+const UNKNOWN = 'unknown'
+export const pCwd = sendSync('process.cwd')?.data ?? ''
+const osPlatform = sendSync('os.platform')?.data ?? UNKNOWN
+export const pPlatform = osPlatform === 'mac' ? 'darwin' : osPlatform
+const osArch = sendSync('os.arch')?.data ?? UNKNOWN
+export const pArch = osArch === 'arm64'
+  ? osArch
+  : osArch.replace('x86_64', 'x64').replace('x86', 'ia32').replace(/arm.*/, 'arm')
+
 export default {
   OK,
   ERROR,
@@ -1244,5 +1256,10 @@ export default {
   request,
   send,
   sendSync,
-  write
+  write,
+
+  // Primordials
+  pCwd,
+  pPlatform,
+  pArch
 }
