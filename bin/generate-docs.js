@@ -259,7 +259,7 @@ export function transform (filename) {
 [
   'backend.js',
   'bluetooth.js',
-  'bootstrap.js',
+  // 'bootstrap.js', // don't document this module yet
   'crypto.js',
   'dgram.js',
   'dns/index.js',

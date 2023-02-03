@@ -1,3 +1,12 @@
+/**
+ * @module Bootstrap
+ *
+ * This module is responsible for downloading the bootstrap file and writing it to disk.
+ * It also provides a function to check the hash of the file on disk. This is used to
+ * determine if the file needs to be downloaded again. The bootstrap file is used to
+ * bootstrap the backend.
+ */
+
 import { readFile } from './fs/promises.js'
 import { createWriteStream } from './fs/index.js'
 import { PassThrough } from './stream.js'

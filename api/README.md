@@ -105,72 +105,6 @@ Start advertising a new value for a well-known UUID
 | Not specified | Promise<void> |  |
 
 
-### [`undefined(buf, hashAlgorithm)`](https://github.com/socketsupply/socket/blob/master/api/bootstrap.js#L25)
-
-
-
-| Argument | Type | Default | Optional | Description |
-| :---     | :--- | :---:   | :---:    | :---        |
-| buf | Buffer \| String |  | false |  |
-| hashAlgorithm | string |  | false |  |
-
-
-| Return Value | Type | Description |
-| :---         | :--- | :---        |
-| Not specified | Promise<string> |  |
-
-
-## [`checkHash(dest, hash, hashAlgorithm)`](https://github.com/socketsupply/socket/blob/master/api/bootstrap.js#L36)
-
-
-
-| Argument | Type | Default | Optional | Description |
-| :---     | :--- | :---:   | :---:    | :---        |
-| dest | string |  | false | file path |
-| hash | string |  | false | hash string |
-| hashAlgorithm | string |  | false | hash algorithm |
-
-
-| Return Value | Type | Description |
-| :---         | :--- | :---        |
-| Not specified | Promise<boolean> |  |
-
-
-### [`write(options)`](https://github.com/socketsupply/socket/blob/master/api/bootstrap.js#L74)
-
-
-
-| Argument | Type | Default | Optional | Description |
-| :---     | :--- | :---:   | :---:    | :---        |
-| options | object |  | false |  |
-| options.fileBuffer | Uint8Array |  | false |  |
-| options.dest | string |  | false |  |
-
-
-| Return Value | Type | Description |
-| :---         | :--- | :---        |
-| Not specified | Promise<void> |  |
-
-
-### [`download(url)`](https://github.com/socketsupply/socket/blob/master/api/bootstrap.js#L104)
-
-
-
-| Argument | Type | Default | Optional | Description |
-| :---     | :--- | :---:   | :---:    | :---        |
-| url | string |  | false | url to download |
-
-
-| Return Value | Type | Description |
-| :---         | :--- | :---        |
-| Not specified | Promise<Uint8Array> |  |
-
-
-## [`bootstrap()`](https://github.com/socketsupply/socket/blob/master/api/bootstrap.js#L131)
-
-This is a `FunctionDeclaration` named `bootstrap` in `api/bootstrap.js`, it's exported but undocumented.
-
-
 # [Crypto](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L8)
 
 
@@ -1301,7 +1235,7 @@ Set the native menu for the app.
  Separators
 
  To create a separator, use three dashes `---`.
- 
+
 
  Accelerator Modifiers
 
@@ -1315,20 +1249,20 @@ Set the native menu for the app.
 
  On MacOS `Meta` is the same as `Command`.
 
- 
+
  Disabled Items
 
  If you want to disable a menu item just prefix the item with the `!` character.
  This will cause the item to appear disabled when the system menu renders.
 
- 
+
  Submenus
 
  We feel like nested menus are an anti-pattern. We don't use them. If you have a
  strong argument for them and a very simple pull request that makes them work we
  may consider them.
 
- 
+
  Event Handling
 
  When a menu item is activated, it raises the `menuItemSelected` event in
@@ -1359,8 +1293,4 @@ Set the native menu for the app.
 ## [`reload()`](https://github.com/socketsupply/socket/blob/master/api/runtime.js#L270)
 
 This is a `FunctionDeclaration` named `reload` in `api/runtime.js`, it's exported but undocumented.
-
-
-# [Stream](https://github.com/socketsupply/socket/blob/master/api/stream.js#L5)
-
 
