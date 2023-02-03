@@ -8,13 +8,6 @@ declare args=()
 declare pids=()
 declare force=0
 
-declare objects=()
-declare sources=(
-  $(find "$root"/src/app/*.cc)
-  $(find "$root"/src/core/*.cc)
-  $(find "$root"/src/ipc/*.cc)
-)
-
 declare arch="$(uname -m)"
 declare host="$(uname -s)"
 declare platform="desktop"
@@ -23,11 +16,29 @@ if [[ "$host" = "Linux" ]]; then
   if [ -n "$WSL_DISTRO_NAME" ] || uname -r | grep 'Microsoft'; then
     HOST="Win32"
   fi
-fi
-
-if [[ "$host" == *"MINGW64_NT"* ]]; then
+elif [[ "$host" == *"MINGW64_NT"* ]]; then
+  host="Win32"
+elif [[ "$host" == *"MSYS_NT"* ]]; then
+  # Have not confirmed this works as a build host, no gnu find in author's dev
   host="Win32"
 fi
+
+if [[ "$host" == "Win32" ]]; then
+  declare find_test="$(sh -c 'find --version')"
+  if [[ $find_test != *"GNU findutils"* ]]; then
+    echo "GNU find not detected. Consider adding %ProgramFiles%\Git\bin\ to PATH."
+    echo "NOTE: %ProgramFiles%\Git\usr\bin\ WILL NOT work."
+    echo "uname -m: $(uname -s)"
+    exit 1
+  fi
+fi
+
+declare objects=()
+declare sources=(
+  $(find "$root"/src/app/*.cc)
+  $(find "$root"/src/core/*.cc)
+  $(find "$root"/src/ipc/*.cc)
+)
 
 if (( TARGET_OS_IPHONE )); then
   arch="arm64"
