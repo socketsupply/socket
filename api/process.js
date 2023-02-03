@@ -1,30 +1,21 @@
 /**
  * @module Process
  */
+import { pArch, pPlatform, pCwd, send } from './ipc.js'
 import { EventEmitter } from './events.js'
-import { send, sendSync } from './ipc.js'
-
-const UNKNOWN = 'unknown'
-const cwd = sendSync('process.cwd')?.data ?? ''
-const osPlatform = sendSync('os.platform')?.data ?? UNKNOWN
-const platform = osPlatform === 'mac' ? 'darwin' : osPlatform
-const osArch = sendSync('os.arch')?.data ?? UNKNOWN
-const arch = osArch === 'arm64'
-  ? osArch
-  : osArch.replace('x86_64', 'x64').replace('x86', 'ia32').replace(/arm.*/, 'arm')
 
 let didEmitExitEvent = false
 
 class Process extends EventEmitter {
-  arch = arch
+  arch = pArch
   argv = globalThis.__args?.argv ?? []
   argv0 = globalThis.__args?.argv?.[0] ?? null
   config = globalThis.__args?.config ?? {}
-  cwd = () => cwd
+  cwd = () => pCwd
   env = globalThis.__args?.env ?? {}
   exit = exit
   homedir = homedir
-  platform = platform
+  platform = pPlatform
   version = globalThis.__args?.version ?? ''
 }
 
@@ -53,6 +44,6 @@ export function exit (code) {
   if (!didEmitExitEvent) {
     didEmitExitEvent = true
     queueMicrotask(() => process.emit('exit', code))
-    send('exit', { value: code || 0 })
+    send('exit', { value: code ?? 0 })
   }
 }

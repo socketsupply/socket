@@ -5,8 +5,7 @@
  */
 
 import { applyPolyfills } from './polyfills.js'
-import ipc from './ipc.js'
-import process from './process.js'
+import ipc, { pCwd } from './ipc.js'
 
 export const currentWindow = globalThis?.window?.__args?.index ?? 0
 // eslint-disable-next-line
@@ -15,7 +14,7 @@ export const debug = globalThis?.window?.__args?.debug ?? false
 export const config = Object.freeze(globalThis?.window?.__args?.config ?? {})
 
 function formatFileUrl (url) {
-  return `file://${process.cwd()}/${url}`
+  return `file://${pCwd}/${url}`
 }
 
 if (globalThis.window) {

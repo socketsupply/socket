@@ -6,8 +6,7 @@
  */
 
 import { toProperCase } from './util.js'
-import process from './process.js'
-import ipc from './ipc.js'
+import ipc, { pArch, pPlatform, pCwd } from './ipc.js'
 
 const UNKNOWN = 'unknown'
 
@@ -16,7 +15,7 @@ const cache = {
 }
 
 export function arch () {
-  return process.arch
+  return pArch
 }
 
 export function networkInterfaces () {
@@ -102,7 +101,7 @@ export function networkInterfaces () {
 }
 
 export function platform () {
-  return process.platform
+  return pPlatform
 }
 
 export function type () {
@@ -178,7 +177,7 @@ export function tmpdir () {
     if (!path) {
       if (platform() === 'ios') {
         // @TODO(jwerle): use a path module
-        path = [process.cwd(), 'tmp'].join('/')
+        path = [pCwd, 'tmp'].join('/')
       } else if (platform() === 'android') {
         path = '/data/local/tmp'
       } else {
