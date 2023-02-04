@@ -1686,21 +1686,37 @@ int main (const int argc, const char* argv[]) {
         " -I\"" + prefix + "src\""
         " -L\"" + prefix + "lib\""
       ;
+      
+      flags += " -I" + prefixFile("include");
+      flags += " -L" + prefixFile("lib/" + platform.arch + "-desktop");
 
-      files += "\"" + prefixFile("src\\init.cc\"");
-      files += "\"" + prefixFile("src\\app\\app.cc\"");
-      files += "\"" + prefixFile("src\\core\\bluetooth.cc\"");
-      files += "\"" + prefixFile("src\\core\\core.cc\"");
-      files += "\"" + prefixFile("src\\core\\fs.cc\"");
-      files += "\"" + prefixFile("src\\core\\javascript.cc\"");
-      files += "\"" + prefixFile("src\\core\\json.cc\"");
-      files += "\"" + prefixFile("src\\core\\peer.cc\"");
-      files += "\"" + prefixFile("src\\core\\udp.cc\"");
-      files += "\"" + prefixFile("src\\desktop\\main.cc\"");
-      files += "\"" + prefixFile("src\\ipc\\bridge.cc\"");
-      files += "\"" + prefixFile("src\\ipc\\ipc.cc\"");
-      files += "\"" + prefixFile("src\\window\\win.cc\"");
-      files += "\"" + prefixFile("src\\process\\win.cc\"");
+      // TODO(@mribbons): This should be prebuild in install.ps1
+      // files += prefixFile("objects/" + platform.arch + "-desktop/desktop/main.o");
+      files += prefixFile("src/init.cc");
+      // TODO(@mribbons): This should be copied to SSC_HOME in install.ps1
+      // files += prefixFile("lib/" + platform.arch + "-desktop/libsocket-runtime.a");
+      // TODO(@mribbons): This hack assumes we're running from socket repo folder or socket/test
+      auto current_search = fs::current_path();
+      fs::path runtime_path;
+      while (true)
+      {
+        runtime_path = current_search / "build" / (platform.arch + "-desktop/lib/libsocket-runtime.a");
+        if (fs::exists(runtime_path)) {
+          break;
+        }
+
+        std::cout << "lib not found at " << runtime_path << std::endl;
+        if (current_search == current_search.parent_path()) break;
+        current_search = current_search.parent_path();
+      }
+      files += " " + runtime_path.string();
+
+
+      // TODO(@mribbons): install.ps1 does not build to arch path
+      // files += prefixFile("lib/" + platform.arch + "-desktop/libuv.a");
+
+      // TODO(@mribbons): This should be prebuild in install.ps1
+      files += " \"" + prefixFile("src\\desktop\\main.cc\"");
 
       fs::create_directories(paths.pathPackage);
 
