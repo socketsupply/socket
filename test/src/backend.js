@@ -1,7 +1,8 @@
 import { test } from 'socket:test'
 import backend from 'socket:backend'
+import process from 'socket:process'
 
-if (window.__args.os !== 'android' && window.__args.os !== 'ios') {
+if (!['android', 'ios'].includes(process.platform)) {
   test('backend.open()', async (t) => {
     const openResult = await backend.open()
     t.deepEqual(Object.keys(openResult.data).sort(), ['argv', 'cmd', 'path'], 'returns a result with the correct keys')

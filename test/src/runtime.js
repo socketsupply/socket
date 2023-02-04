@@ -2,9 +2,10 @@ import { readFile } from 'socket:fs/promises'
 import { test } from 'socket:test'
 import runtime from 'socket:runtime'
 import ipc from 'socket:ipc'
+import process from 'socket:process'
 
 // Desktop-only runtime functions
-if (window.__args.os !== 'android' && window.__args.os !== 'ios' && window.__args.os !== 'win32') {
+if (!['android', 'ios'].includes(process.platform)) {
   // Polyfills
   test('window.resizeTo', async (t) => {
     t.equal(typeof window.resizeTo, 'function', 'window.resizeTo is a function')
