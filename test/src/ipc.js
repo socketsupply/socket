@@ -1,6 +1,7 @@
 import { Buffer } from 'socket:buffer'
 import { test } from 'socket:test'
 import * as ipc from 'socket:ipc'
+import process from 'socket:process'
 
 // node compat
 // import { Buffer } from 'node:buffer'
@@ -77,7 +78,7 @@ test('ipc.Message', (t) => {
   t.ok(!ipc.Message.isValidInput('foo://test'), 'is valid input')
 })
 
-if (window.__args.os !== 'ios' && window.__args.os !== 'android') {
+if (!['ios', 'android'].includes(process.platform)) {
   test('ipc.sendSync not found', (t) => {
     const response = ipc.sendSync('test', { foo: 'bar' })
     t.ok(response instanceof ipc.Result)
