@@ -1,6 +1,12 @@
 name: Socket CI
 
-on: [push]
+on:
+  push:
+  pull_request:
+    branches:
+      - main
+      - master
+    types: [synchronize]
 
 jobs:
   linux:
