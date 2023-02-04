@@ -1,21 +1,21 @@
 /**
  * @module Process
  */
-import { pArch, pPlatform, pCwd, send } from './ipc.js'
+import { primordials, send } from './ipc.js'
 import { EventEmitter } from './events.js'
 
 let didEmitExitEvent = false
 
 class Process extends EventEmitter {
-  arch = pArch
+  arch = primordials.arch
   argv = globalThis.__args?.argv ?? []
   argv0 = globalThis.__args?.argv?.[0] ?? null
   config = globalThis.__args?.config ?? {}
-  cwd = () => pCwd
+  cwd = () => primordials.cwd
   env = globalThis.__args?.env ?? {}
   exit = exit
   homedir = homedir
-  platform = pPlatform
+  platform = primordials.platform
   version = globalThis.__args?.version ?? ''
 }
 
