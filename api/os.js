@@ -6,7 +6,7 @@
  */
 
 import { toProperCase } from './util.js'
-import ipc, { pArch, pPlatform, pCwd } from './ipc.js'
+import ipc, { primordials } from './ipc.js'
 
 const UNKNOWN = 'unknown'
 
@@ -15,7 +15,7 @@ const cache = {
 }
 
 export function arch () {
-  return pArch
+  return primordials.arch
 }
 
 export function networkInterfaces () {
@@ -101,7 +101,7 @@ export function networkInterfaces () {
 }
 
 export function platform () {
-  return pPlatform
+  return primordials.platform
 }
 
 export function type () {
@@ -177,7 +177,7 @@ export function tmpdir () {
     if (!path) {
       if (platform() === 'ios') {
         // @TODO(jwerle): use a path module
-        path = [pCwd, 'tmp'].join('/')
+        path = [primordials.cwd, 'tmp'].join('/')
       } else if (platform() === 'android') {
         path = '/data/local/tmp'
       } else {
