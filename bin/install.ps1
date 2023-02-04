@@ -46,9 +46,20 @@ Function Build {
   Write-Output "ok - built libuv"
 
   (New-Item -ItemType Directory -Force -Path "$WORKING_BUILD_PATH\lib") > $null
-  Copy-Item "$WORKING_BUILD_PATH\libuv\build\uv_a.lib" -Destination "$WORKING_BUILD_PATH\lib\uv_a.lib"
-  if ($debug -eq $true) {
-    Copy-Item "$WORKING_BUILD_PATH\libuv\build\uv_a.pdb" -Destination "$WORKING_BUILD_PATH\lib\uv_a.pdb"
+  if ((Test-Path -Path "$WORKING_BUILD_PATH\libuv\build\$LIBUV_BUILD_TYPE\uv_a.lib" -PathType Leaf)) {
+    Copy-Item "$WORKING_BUILD_PATH\libuv\build\$LIBUV_BUILD_TYPE\uv_a.lib" -Destination "$WORKING_BUILD_PATH\lib\uv_a.lib"
+    if ($debug -eq $true) {
+      Copy-Item "$WORKING_BUILD_PATH\libuv\build\$LIBUV_BUILD_TYPE\uv_a.pdb" -Destination "$WORKING_BUILD_PATH\lib\uv_a.pdb"
+    }
+  } elseif ((Test-Path -Path "$WORKING_BUILD_PATH\libuv\build\uv_a.lib" -PathType Leaf)) {
+    # Support older versions of cmake that don't build to --config type path on multibuild systems
+    Copy-Item "$WORKING_BUILD_PATH\libuv\build\uv_a.lib" -Destination "$WORKING_BUILD_PATH\lib\uv_a.lib"
+    if ($debug -eq $true) {
+      Copy-Item "$WORKING_BUILD_PATH\libuv\build\uv_a.pdb" -Destination "$WORKING_BUILD_PATH\lib\uv_a.pdb"
+    }
+  } else {
+    Write-Output "Stop: uv_a.lib not found"
+    Exit 1
   }
 
   (New-Item -ItemType Directory -Force -Path "$WORKING_BUILD_PATH\include") > $null
