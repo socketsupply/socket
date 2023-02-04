@@ -4,7 +4,9 @@ import deepEqual from './fast-deep-equal.js'
 import process from '../process.js'
 import os from '../os.js'
 
-const SOCKET_TEST_RUNNER_TIMEOUT = getDefaultTestRunnerTimeout()
+const {
+  SOCKET_TEST_RUNNER_TIMEOUT = getDefaultTestRunnerTimeout()
+} = process.env
 
 const NEW_LINE_REGEX = /\n/g
 const OBJ_TO_STRING = Object.prototype.toString
