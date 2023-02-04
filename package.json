@@ -23,7 +23,7 @@
   "standard": {
     "ignore": [
       "/api/external/",
-      "/api/test/"
+      "/api/test/fast-deep-equal.js"
     ]
   }
 }

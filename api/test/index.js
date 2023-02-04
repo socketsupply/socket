@@ -4,9 +4,7 @@ import deepEqual from './fast-deep-equal.js'
 import process from '../process.js'
 import os from '../os.js'
 
-const {
-  SOCKET_TEST_RUNNER_TIMEOUT = getDefaultTestRunnerTimeout()
-} = process.env
+const SOCKET_TEST_RUNNER_TIMEOUT = getDefaultTestRunnerTimeout()
 
 const NEW_LINE_REGEX = /\n/g
 const OBJ_TO_STRING = Object.prototype.toString
@@ -188,7 +186,6 @@ export class Test {
     try {
       fn()
     } catch (err) {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       caught = /** @type {Error} */ (err)
     }
 

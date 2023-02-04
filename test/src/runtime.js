@@ -4,7 +4,7 @@ import runtime from 'socket:runtime'
 import ipc from 'socket:ipc'
 
 // Desktop-only runtime functions
-if (window.__args.os !== 'android' && window.__args.os !== 'ios') {
+if (window.__args.os !== 'android' && window.__args.os !== 'ios' && window.__args.os !== 'win32') {
   // Polyfills
   test('window.resizeTo', async (t) => {
     t.equal(typeof window.resizeTo, 'function', 'window.resizeTo is a function')
