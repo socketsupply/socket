@@ -1233,13 +1233,20 @@ export function createBinding (domain, ctx) {
 // `sendSync` method. This is a hack to get around the fact
 // that we can't use cyclic imports with a sync call.
 const UNKNOWN = 'unknown'
+const version = sendSync('platform.version')?.data
 export const primordials = {
   cwd: sendSync('process.cwd')?.data ?? '',
   platform: (sendSync('os.platform')?.data ?? UNKNOWN).replace(/^mac$/i, 'darwin'),
   arch: (sendSync('os.arch')?.data ?? UNKNOWN)
     .replace('x86_64', 'x64')
     .replace('x86', 'ia32')
-    .replace(/arm(?!64).*/, 'arm')
+    .replace(/arm(?!64).*/, 'arm'),
+  version: {
+    full: UNKNOWN,
+    short: UNKNOWN,
+    hash: UNKNOWN,
+    ...version
+  }
 }
 
 export default {

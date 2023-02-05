@@ -845,6 +845,21 @@ void initFunctionsTable (Router *router) {
   });
 
   /**
+   * Return Socket Runtime version.
+   */
+  router->map("platform.version", [=](auto message, auto router, auto reply) {
+    auto json = JSON::Object::Entries {
+      {"source", "platform.version"},
+      {"data", JSON::Object::Entries {
+        {"full", SSC::VERSION_FULL_STRING},
+        {"short", SSC::VERSION_STRING},
+        {"hash", SSC::VERSION_HASH_STRING}
+      }}
+    };
+    reply(Result { message.seq, message, json });
+  });
+
+  /**
    * Returns computed current working directory path.
    */
   router->map("process.cwd", [=](auto message, auto router, auto reply) {
