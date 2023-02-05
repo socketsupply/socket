@@ -7,6 +7,8 @@
 import { applyPolyfills } from './polyfills.js'
 import ipc, { primordials } from './ipc.js'
 
+export const version = primordials.version
+
 export const currentWindow = globalThis?.window?.__args?.index ?? 0
 // eslint-disable-next-line
 export const debug = globalThis?.window?.__args?.debug ?? false

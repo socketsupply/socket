@@ -275,3 +275,85 @@ if (process.platform !== 'win32') {
 
   // We don't need to test runtime.exit. It works if the app exits after the tests.
 }
+
+// Common runtime functions
+test('version', (t) => {
+  t.ok(/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(runtime.version.short), 'short version is correct')
+  t.ok(/^[0-9A-Fa-f]{8}$/.test(runtime.version.hash), 'version hash is correct')
+  t.ok(/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)\s\([0-9A-Fa-f]{8}\)$/.test(runtime.version.full), 'full version is correct')
+})
+
+test('debug', (t) => {
+  t.equal(runtime.debug, window.__args.debug, 'debug is correct')
+  t.throws(() => { runtime.debug = 1 }, 'debug is immutable')
+})
+
+test('config', async (t) => {
+  const rawConfig = await readFile('socket.ini', 'utf8')
+  let prefix = ''
+  const lines = rawConfig.split('\n')
+  const config = []
+  for (let line of lines) {
+    line = line.trim()
+    if (line.length === 0 || line.startsWith(';')) continue
+    if (line.startsWith('[') && line.endsWith(']')) {
+      prefix = line.slice(1, -1)
+      continue
+    }
+    let [key, value] = line.split('=')
+    key = key.trim()
+    value = value.trim().replace(/"/g, '')
+    config.push([prefix.length === 0 ? key : prefix + '_' + key, value])
+  }
+  config.filter(([key]) => key !== 'build_headless' && key !== 'build_name').forEach(([key, value]) => {
+    t.equal(runtime.config[key], value, `runtime.config.${key} is correct`)
+    t.throws(
+      () => { runtime.config[key] = 0 },
+      // eslint-disable-next-line prefer-regex-literals
+      RegExp('Attempted to assign to readonly property.'),
+      `runtime.config.${key} is read-only`
+    )
+  })
+  t.equal(runtime.config.build_headless, true, 'runtime.config.build_headless is correct')
+  t.throws(
+    () => { runtime.config.build_headless = 0 },
+    // eslint-disable-next-line prefer-regex-literals
+    RegExp('Attempted to assign to readonly property.'),
+    'runtime.config.build_headless is read-only'
+  )
+  t.ok(runtime.config.build_name.startsWith(config.find(([key]) => key === 'build_name')[1]), 'runtime.config.build_name is correct')
+  t.throws(
+    () => { runtime.config.build_name = 0 },
+    // eslint-disable-next-line prefer-regex-literals
+    RegExp('Attempted to assign to readonly property.'),
+    'runtime.config.build_name is read-only'
+  )
+})
+
+test('openExternal', async (t) => {
+  t.equal(typeof runtime.openExternal, 'function', 'openExternal is a function')
+  // can't test results without browser
+  // t.equal(await runtime.openExternal('https://sockets.sh'), null, 'succesfully completes')
+})
+
+test('window.showOpenFilePicker', async (t) => {
+  t.equal(typeof window.showOpenFilePicker, 'function', 'window.showOpenFilePicker is a function')
+  t.ok(window.showOpenFilePicker())
+})
+
+test('window.showSaveFilePicker', (t) => {
+  t.equal(typeof window.showSaveFilePicker, 'function', 'window.showSaveFilePicker is a function')
+  t.ok(window.showSaveFilePicker())
+})
+
+test('window.showDirectoryFilePicker', (t) => {
+  t.equal(typeof window.showDirectoryFilePicker, 'function', 'window.showDirectoryFilePicker is a function')
+  t.ok(window.showDirectoryFilePicker())
+})
+
+// TODO: can we improve this test?
+test('reload', (t) => {
+  t.equal(typeof runtime.reload, 'function', 'reload is a function')
+})
+
+// We don't need to test runtime.exit. It works if the app exits after the tests.

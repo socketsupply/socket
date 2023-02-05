@@ -1,7 +1,6 @@
 import { Buffer } from 'socket:buffer'
 import { test } from 'socket:test'
 import * as ipc from 'socket:ipc'
-import process from 'socket:process'
 
 // node compat
 // import { Buffer } from 'node:buffer'
