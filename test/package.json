@@ -4,7 +4,7 @@
   "scripts": {
     "test": "npm run test:desktop",
     "test:desktop": "node ./scripts/test-desktop.js",
-    "test:android": "node ./scripts/test-android.sh",
+    "test:android": "node ./scripts/test-android.js",
     "test:ios-simulator": "node ./scripts/test-ios-simulator.js",
     "test:android-emulator": "sh ./scripts/test-android-emulator.sh",
     "start": "npm test"
