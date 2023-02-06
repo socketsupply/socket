@@ -1,7 +1,7 @@
 /**
  * @module Crypto
  *
- * Some high level methods around the `crypto.subtle` api for getting
+ * Some high-level methods around the `crypto.subtle`API for getting
  * random bytes and hashing.
  */
 
@@ -25,7 +25,7 @@ export { sodium }
 export const webcrypto = globalThis.crypto?.webcrypto ?? globalThis.crypto
 
 /**
- * Generate cryptographically strong random values into `buffer`
+ * Generate cryptographically strong random values into the `buffer`
  * @param {TypedArray} buffer
  * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/Crypto/getRandomValues}
  * @return {TypedArray}

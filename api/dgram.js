@@ -690,14 +690,19 @@ export class Socket extends EventEmitter {
 
   /**
    * Listen for datagram messages on a named port and optional address
-   * If address is not specified, the operating system will attempt to
-   * listen on all addresses. Once binding is complete, a 'listening'
+   * If the address is not specified, the operating system will attempt to
+   * listen on all addresses. Once the binding is complete, a 'listening'
    * event is emitted and the optional callback function is called.
    *
    * If binding fails, an 'error' event is emitted.
    *
+<<<<<<< HEAD
    * @param {number} port - The port to to listen for messages on
    * @param {string} address - The address to bind to (127.0.0.1)
+=======
+   * @param {number} port - The port to listen for messages on
+   * @param {string} address - The address to bind to (0.0.0.0)
+>>>>>>> b9adc890 (fixed all the typos)
    * @param {function} callback - With no parameters. Called when binding is complete.
    * @see {@link https://nodejs.org/api/dgram.html#socketbindport-address-callback}
    */
@@ -743,7 +748,7 @@ export class Socket extends EventEmitter {
    * by this handle is automatically sent to that destination. Also, the socket
    * will only receive messages from that remote peer. Trying to call connect()
    * on an already connected socket will result in an ERR_SOCKET_DGRAM_IS_CONNECTED
-   * exception. If address is not provided, '127.0.0.1' (for udp4 sockets) or '::1'
+   * exception. If the address is not provided, '127.0.0.1' (for udp4 sockets) or '::1'
    * (for udp6 sockets) will be used by default. Once the connection is complete,
    * a 'connect' event is emitted and the optional callback function is called.
    * In case of failure, the callback is called or, failing this, an 'error' event
@@ -808,17 +813,17 @@ export class Socket extends EventEmitter {
    * address arguments must not be set.
    *
    * > The msg argument contains the message to be sent. Depending on its type,
-   * different behavior can apply. If msg is a Buffer, any TypedArray or a
+   * different behavior can apply. If msg is a Buffer, any TypedArray, or a
    * DataView, the offset and length specify the offset within the Buffer where
    * the message begins and the number of bytes in the message, respectively.
    * If msg is a String, then it is automatically converted to a Buffer with
-   * 'utf8' encoding. With messages that contain multi-byte characters, offset
+   * 'utf8' encoding. With messages that contain multi-byte characters, offset,
    * and length will be calculated with respect to byte length and not the
    * character position. If msg is an array, offset and length must not be
    * specified.
    *
-   * > The address argument is a string. If the value of address is a host name,
-   * DNS will be used to resolve the address of the host. If address is not
+   * > The address argument is a string. If the value of the address is a hostname,
+   * DNS will be used to resolve the address of the host. If the address is not
    * provided or otherwise nullish, '127.0.0.1' (for udp4 sockets) or '::1'
    * (for udp6 sockets) will be used by default.
    *
@@ -826,7 +831,7 @@ export class Socket extends EventEmitter {
    * is assigned a random port number and is bound to the "all interfaces"
    * address ('127.0.0.1' for udp4 sockets, '::1' for udp6 sockets.)
    *
-   * > An optional callback function may be specified to as a way of reporting DNS
+   * > An optional callback function may be specified as a way of reporting DNS
    * errors or for determining when it is safe to reuse the buf object. DNS
    * lookups delay the time to send for at least one tick of the Node.js event
    * loop.
@@ -836,7 +841,7 @@ export class Socket extends EventEmitter {
    * passed as the first argument to the callback. If a callback is not given,
    * the error is emitted as an 'error' event on the socket object.
    *
-   * > Offset and length are optional but both must be set if either are used.
+   * > Offset and length are optional but both must be set if either is used.
    * They are supported only when the first argument is a Buffer, a TypedArray,
    * or a DataView.
    *

@@ -11,7 +11,7 @@
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
 | opts | object |  | false | an options object |
-| opts.force | boolean | false | false | whether to force existing process to close |
+| opts.force | boolean | false | false | whether to force the existing process to close |
 
 
 | Return Value | Type | Description |
@@ -40,7 +40,7 @@
 # [Bluetooth](https://github.com/socketsupply/socket/blob/master/api/bluetooth.js#L7)
 
 
- A high level, cross-platform API for Bluetooth Pub-Sub
+ A high-level, cross-platform API for Bluetooth Pub-Sub
 
 ## [`Bluetooth` (extends `EventEmitter`)](https://github.com/socketsupply/socket/blob/master/api/bluetooth.js#L15)
 
@@ -58,7 +58,7 @@ constructor is an example property that is set to `true`
 
 ### [`start()`](https://github.com/socketsupply/socket/blob/master/api/bluetooth.js#L60)
 
-Start the bluetooth service.
+Start the Bluetooth service.
 
 | Return Value | Type | Description |
 | :---         | :--- | :---        |
@@ -108,7 +108,7 @@ Start advertising a new value for a well-known UUID
 # [Crypto](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L8)
 
 
- Some high level methods around the `crypto.subtle` api for getting
+ Some high-level methods around the `crypto.subtle` API for getting
  random bytes and hashing.
 
 ## [webcrypto](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L25)
@@ -146,7 +146,7 @@ Maximum total size for random bytes.
 
 ## [MAX_RANDOM_BYTES_PAGES](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L63)
 
-Maximum total amount of allocated per page of bytes (max/quota)
+Maximum total amount allocated per page of bytes (max/quota)
 
 ## [`randomBytes(size)`](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L71)
 
@@ -238,8 +238,8 @@ New instances of dgram.Socket are created using dgram.createSocket().
 External docs: https://nodejs.org/api/dgram.html#socketbindport-address-callback
 
 Listen for datagram messages on a named port and optional address
- If address is not specified, the operating system will attempt to
- listen on all addresses. Once binding is complete, a 'listening'
+ If the address is not specified, the operating system will attempt to
+ listen on all addresses. Once the binding is complete, a 'listening'
  event is emitted and the optional callback function is called.
 
  If binding fails, an 'error' event is emitted.
@@ -247,8 +247,13 @@ Listen for datagram messages on a named port and optional address
 
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
+<<<<<<< HEAD
 | port | number |  | false | The port to to listen for messages on |
 | address | string |  | false | The address to bind to (127.0.0.1) |
+=======
+| port | number |  | false | The port to listen for messages on |
+| address | string |  | false | The address to bind to (0.0.0.0) |
+>>>>>>> b9adc890 (fixed all the typos)
 | callback | function |  | false | With no parameters. Called when binding is complete. |
 
 
@@ -260,7 +265,7 @@ Associates the dgram.Socket to a remote address and port. Every message sent
  by this handle is automatically sent to that destination. Also, the socket
  will only receive messages from that remote peer. Trying to call connect()
  on an already connected socket will result in an ERR_SOCKET_DGRAM_IS_CONNECTED
- exception. If address is not provided, '127.0.0.1' (for udp4 sockets) or '::1'
+ exception. If the address is not provided, '127.0.0.1' (for udp4 sockets) or '::1'
  (for udp6 sockets) will be used by default. Once the connection is complete,
  a 'connect' event is emitted and the optional callback function is called.
  In case of failure, the callback is called or, failing this, an 'error' event
@@ -297,13 +302,13 @@ Broadcasts a datagram on the socket. For connectionless sockets, the
  DataView, the offset and length specify the offset within the Buffer where
  the message begins and the number of bytes in the message, respectively.
  If msg is a String, then it is automatically converted to a Buffer with
- 'utf8' encoding. With messages that contain multi-byte characters, offset
+ 'utf8' encoding. With messages that contain multi-byte characters, offset,
  and length will be calculated with respect to byte length and not the
  character position. If msg is an array, offset and length must not be
  specified.
 
- > The address argument is a string. If the value of address is a host name,
- DNS will be used to resolve the address of the host. If address is not
+ > The address argument is a string. If the value of the address is a hostname,
+ DNS will be used to resolve the address of the host. If the address is not
  provided or otherwise nullish, '127.0.0.1' (for udp4 sockets) or '::1'
  (for udp6 sockets) will be used by default.
 
@@ -311,7 +316,7 @@ Broadcasts a datagram on the socket. For connectionless sockets, the
  is assigned a random port number and is bound to the "all interfaces"
  address ('127.0.0.1' for udp4 sockets, '::1' for udp6 sockets.)
 
- > An optional callback function may be specified to as a way of reporting DNS
+ > An optional callback function may be specified as a way of reporting DNS
  errors or for determining when it is safe to reuse the buf object. DNS
  lookups delay the time to send for at least one tick of the Node.js event
  loop.
@@ -321,7 +326,7 @@ Broadcasts a datagram on the socket. For connectionless sockets, the
  passed as the first argument to the callback. If a callback is not given,
  the error is emitted as an 'error' event on the socket object.
 
- > Offset and length are optional but both must be set if either are used.
+ > Offset and length are optional but both must be set if either is used.
  They are supported only when the first argument is a Buffer, a TypedArray,
  or a DataView.
 
@@ -442,19 +447,19 @@ External docs: https://nodejs.org/api/dgram.html#socketgetsendbuffersize
 
 External docs: https://nodejs.org/api/dns.html#dns_dns_lookup_hostname_options_callback
 
-Resolves a host name (e.g. `example.org`) into the first found A (IPv4) or
+Resolves a hostname (e.g. `example.org`) into the first found A (IPv4) or
  AAAA (IPv6) record. All option properties are optional. If options is an
- integer, then it must be 4 or 6 – if options is 0 or not provided, then IPv4
+ integer, then they must be 4 or 6 – if options are 0 or not provided, then IPv4
  and IPv6 addresses are both returned if found.
 
  From the node.js website...
 
- > With the all option set to true, the arguments for callback change to (err,
+ > With all option set to true, the arguments for callback change to (err,
  addresses), with addresses being an array of objects with the properties
  address and family.
 
  > On error, err is an Error object, where err.code is the error code. Keep in
- mind that err.code will be set to 'ENOTFOUND' not only when the host name does
+ mind that err.code will be set to 'ENOTFOUND' not only when the hostname does
  not exist but also when the lookup fails in other ways such as no available
  file descriptors. dns.lookup() does not necessarily have anything to do with
  the DNS protocol. The implementation uses an operating system facility that
@@ -466,7 +471,7 @@ Resolves a host name (e.g. `example.org`) into the first found A (IPv4) or
 
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
-| hostname | string |  | false | The host name to resolve. |
+| hostname | string |  | false | The hostname to resolve. |
 | opts | Object |  | true | An options object. |
 | opts.family | number \| string | 0 | false | The record family. Must be 4, 6, or 0. For backward compatibility reasons,'IPv4' and 'IPv6' are interpreted as 4 and 6 respectively. The value 0 indicates that IPv4 and IPv6 addresses are both returned. Default: 0. |
 | cb | function |  | false | The function to call after the method is complete. |
@@ -476,7 +481,7 @@ Resolves a host name (e.g. `example.org`) into the first found A (IPv4) or
 
 
  This module enables name resolution. For example, use it to look up IP
- addresses of host names. Although named for the Domain Name System (DNS),
+ addresses of hostnames. Although named for the Domain Name System (DNS),
  it does not always use the DNS protocol for lookups. dns.lookup() uses the
  operating system facilities to perform name resolution. It may not need to
  perform any network communication. To perform name resolution the way other
@@ -492,7 +497,7 @@ External docs: https://nodejs.org/api/dns.html#dnspromiseslookuphostname-options
 | :---     | :--- | :---:   | :---:    | :---        |
 | hostname | string |  | false | The host name to resolve. |
 | opts | Object |  | true | An options object. |
-| opts.family | number \| string | 0 | false | The record family. Must be 4, 6, or 0. For backward compatibility reasons,'IPv4' and 'IPv6' are interpreted as 4 and 6 respectively. The value 0 indicates that IPv4 and IPv6 addresses are both returned. Default: 0. |
+| opts.family | number \| string | 0 | false | The record family. Must be 4, 6, or 0. For backward compatibility reasons, 'IPv4' and 'IPv6' are interpreted as 4 and 6 respectively. The value 0 indicates that IPv4 and IPv6 addresses are both returned. Default: 0. |
 
 
 | Return Value | Type | Description |
@@ -503,7 +508,7 @@ External docs: https://nodejs.org/api/dns.html#dnspromiseslookuphostname-options
 # [File System](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L24)
 
 
- This module enables interacting with the file system in a way modeled on
+ This module enables interaction with the file system in a way modeled on
  standard POSIX functions.
 
  The Application Sandbox restricts access to the file system.
@@ -526,7 +531,7 @@ External docs: https://nodejs.org/api/dns.html#dnspromiseslookuphostname-options
 
 External docs: https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fsopenpath-flags-mode-callback
 
-Asynchronously check access a file for a given mode calling `callback`
+Asynchronously check access to a file for a given mode calling `callback`
  upon success or error.
 
 | Argument | Type | Default | Optional | Description |
@@ -652,7 +657,7 @@ Asynchronously read from an open file descriptor.
 | buffer | object \| Buffer \| TypedArray |  | false | The buffer that the data will be written to. |
 | offset | number |  | false | The position in buffer to write the data to. |
 | length | number |  | false | The number of bytes to read. |
-| position | number \| BigInt \| null |  | false | Specifies where to begin reading from in the file. If position is null or -1 , data will be read from the current file position, and the file position will be updated. If position is an integer, the file position will be unchanged. |
+| position | number \| BigInt \| null |  | false | Specifies where to begin reading from in the file. If position is null or -1 , data will be read from the current file position, and the file position will be updated. If the position is an integer, the file position will be unchanged. |
 | callback | function(err, bytesRead, buffer) |  | false |  |
 
 
@@ -760,7 +765,7 @@ Asynchronously creates a directory.
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
 | path | String |  | false | The path to create |
-| options | Object |  | false | The optional options argument can be an integer specifying mode (permission and sticky bits), or an object with a mode property and a recursive property indicating whether parent directories should be created. Calling fs.mkdir() when path is a directory that exists results in an error only when recursive is false. |
+| options | Object |  | false | The optional options argument can be an integer specifying mode (permission and sticky bits), or an object with a mode property and a recursive property indicating whether parent directories should be created. Calling fs.mkdir() when the path is a directory that exists results in an error only when recursive is false. |
 
 
 | Return Value | Type | Description |
@@ -883,12 +888,12 @@ External docs: https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fspromisesw
 # [IPC](https://github.com/socketsupply/socket/blob/master/api/ipc.js#L28)
 
 
- This is a low level API which you don't need unless you are implementing
+ This is a low-level API that you don't need unless you are implementing
  a library on top of Socket SDK. A Socket SDK app has two or three processes.
 
- - The `Render` process, the UI where the HTML, CSS and JS is run.
- - The `Bridge` process, the thin layer of code that managers everything.
- - The `Main` processs, for apps that need to run heavier compute jobs. And
+ - The `Render` process, is the UI where the HTML, CSS, and JS are run.
+ - The `Bridge` process, is the thin layer of code that manages everything.
+ - The `Main` processs, is for apps that need to run heavier compute jobs. And
    unlike electron it's optional.
 
  The Bridge process manages the Render and Main process, it may also broker
@@ -984,7 +989,7 @@ This is a `ClassDeclaration` named `Path` in `api/path/path.js`, it's exported b
 
 ### [`cwd(opts)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L15)
 
-Computes current working directory for a path
+Computes the current working directory for a path
 
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
@@ -1178,15 +1183,15 @@ Set the native menu for the app.
 
 
  Socket Runtime provides a minimalist DSL that makes it easy to create
- cross platform native system and context menus.
+ cross-platform native system and context menus.
 
  Menus are created at run time. They can be created from either the Main or
- Render process. The can be recreated instantly by calling the `setSystemMenu` method.
+ Render process. They can be recreated instantly by calling the `setSystemMenu` method.
 
- The method takes a string. Here's an example of a menu. The semi colon is
- significant indicates the end of the menu. Use an underscore when there is no
- accelerator key. Modifiers are optional. And well known OS menu options like
- the edit menu will automatically get accelerators you dont need to specify them.
+ The method takes a string. Here's an example of a menu. The semi-colon is
+ significant and indicates the end of the menu. Use an underscore when there is no
+ accelerator key. Modifiers are optional. And well-known OS menu options like
+ the edit menu will automatically get accelerators you don't need to specify them.
 
 
  ```js

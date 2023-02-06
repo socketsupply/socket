@@ -8,7 +8,7 @@ import ipc from './ipc.js'
 
 /**
  * @param {object} opts - an options object
- * @param {boolean} [opts.force = false] - whether to force existing process to close
+ * @param {boolean} [opts.force = false] - whether to force the existing process to close
  * @return {Promise<ipc.Result>}
  */
 export async function open (opts = {}) {
