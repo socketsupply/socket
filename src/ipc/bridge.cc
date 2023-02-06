@@ -1151,7 +1151,12 @@ static void registerSchemeHandler (Router *router) {
       auto stream = g_memory_input_stream_new_from_data(body, size, freeFn);
       auto response = webkit_uri_scheme_response_new(stream, size);
 
-      webkit_uri_scheme_response_set_content_type(response, IPC_CONTENT_TYPE);
+      if (result.post.body) {
+        webkit_uri_scheme_response_set_content_type(response, IPC_CONTENT_TYPE);
+      } else {
+        webkit_uri_scheme_response_set_content_type(response, "text/json");
+      }
+
       webkit_uri_scheme_request_finish_with_response(request, response);
       g_object_unref(stream);
     });
@@ -1173,7 +1178,7 @@ static void registerSchemeHandler (Router *router) {
       auto response = webkit_uri_scheme_response_new(stream, msg.size());
 
       webkit_uri_scheme_response_set_status(response, 404, "Not found");
-      webkit_uri_scheme_response_set_content_type(response, IPC_CONTENT_TYPE);
+      webkit_uri_scheme_response_set_content_type(response, "text/json");
       webkit_uri_scheme_request_finish_with_response(request, response);
       g_object_unref(stream);
     }
