@@ -10,13 +10,12 @@ class Process extends EventEmitter {
   arch = primordials.arch
   argv = globalThis.__args?.argv ?? []
   argv0 = globalThis.__args?.argv?.[0] ?? null
-  config = globalThis.__args?.config ?? {}
   cwd = () => primordials.cwd
   env = globalThis.__args?.env ?? {}
   exit = exit
   homedir = homedir
   platform = primordials.platform
-  version = globalThis.__args?.version ?? ''
+  version = primordials.version
 }
 
 const isNode = Boolean(globalThis.process?.versions?.node)
