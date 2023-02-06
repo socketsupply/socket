@@ -1690,33 +1690,9 @@ int main (const int argc, const char* argv[]) {
       flags += " -I" + prefixFile("include");
       flags += " -L" + prefixFile("lib/" + platform.arch + "-desktop");
 
-      // TODO(@mribbons): This should be prebuild in install.ps1
-      // files += prefixFile("objects/" + platform.arch + "-desktop/desktop/main.o");
+      files += prefixFile("objects/" + platform.arch + "-desktop/desktop/main.o");
       files += prefixFile("src/init.cc");
-      // TODO(@mribbons): This should be copied to SSC_HOME in install.ps1
-      // files += prefixFile("lib/" + platform.arch + "-desktop/libsocket-runtime.a");
-      // TODO(@mribbons): This hack assumes we're running from socket repo folder or socket/test
-      auto current_search = fs::current_path();
-      fs::path runtime_path;
-      while (true)
-      {
-        runtime_path = current_search / "build" / (platform.arch + "-desktop/lib/libsocket-runtime.a");
-        if (fs::exists(runtime_path)) {
-          break;
-        }
-
-        std::cout << "lib not found at " << runtime_path << std::endl;
-        if (current_search == current_search.parent_path()) break;
-        current_search = current_search.parent_path();
-      }
-      files += " " + runtime_path.string();
-
-
-      // TODO(@mribbons): install.ps1 does not build to arch path
-      // files += prefixFile("lib/" + platform.arch + "-desktop/libuv.a");
-
-      // TODO(@mribbons): This should be prebuild in install.ps1
-      files += " \"" + prefixFile("src\\desktop\\main.cc\"");
+      files += prefixFile("lib/" + platform.arch + "-desktop/libsocket-runtime.a");
 
       fs::create_directories(paths.pathPackage);
 
@@ -2164,8 +2140,8 @@ int main (const int argc, const char* argv[]) {
         << " -DSSC_VERSION_HASH=" << SSC::VERSION_HASH_STRING
       ;
 
-      // TODO(trevnorris): Output build string on debug builds.
-      // log(compileCommand.str());
+      if (getEnv("DEBUG") == "1")
+        log(compileCommand.str());
 
       auto r = exec(compileCommand.str());
 
