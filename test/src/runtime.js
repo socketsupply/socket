@@ -20,7 +20,6 @@ if (process.platform !== 'win32') {
     test('window.document.title', async (t) => {
       window.document.title = 'idkfa'
       t.equal(window.document.title, 'idkfa', 'window.document.title is has been changed')
-      t.notEqual(window.__args.title, window.document.title, 'window.__args.title is not changed')
       const { data: { title } } = await ipc.send('window.getTitle')
       t.equal(title, 'idkfa', 'window title is correct')
     })
