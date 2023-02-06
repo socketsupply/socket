@@ -3,7 +3,7 @@
 VERSION_SSC=$(ssc -v)
 
 VERSION_TXT=$(cat VERSION.txt)
-VERSION_GIT=$(git rev-parse --short HEAD)
+VERSION_GIT=$(git rev-parse --short=8 HEAD)
 VERSION_EXPECTED="$VERSION_TXT ($VERSION_GIT)"
 
 if [ "$VERSION_SSC" = "$VERSION_EXPECTED" ]; then

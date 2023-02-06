@@ -24,7 +24,7 @@ if ($debug -eq $true) {
 # Compile with the current git revision of the repository
 #
 Function Build {
-  $VERSION_HASH = $(git rev-parse --short HEAD) 2>&1 | % ToString
+  $VERSION_HASH = $(git rev-parse --short=8 HEAD) 2>&1 | % ToString
   $VERSION = $(type VERSION.txt) 2>&1 | % ToString
   $BUILD_TIME = [int] (New-TimeSpan -Start (Get-Date "01/01/1970") -End (Get-Date)).TotalSeconds
 

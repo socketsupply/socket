@@ -40,7 +40,7 @@ cflags+=(
   -I"$root/include"
   -I"$root/build/uv/include"
   -DSSC_BUILD_TIME="$(date '+%s')"
-  -DSSC_VERSION_HASH=$(git rev-parse --short HEAD)
+  -DSSC_VERSION_HASH=$(git rev-parse --short=8 HEAD)
   -DSSC_VERSION=$(cat "$root/VERSION.txt")
 )
 
