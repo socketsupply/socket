@@ -99,7 +99,7 @@ function initializeXHRIntercept () {
             body = null
           }
 
-          if (/win32/i.test(window.__args.os) && body) {
+          if (/win32/i.test(primordials.platfrom) && body) {
             // 1. send `ipc://buffer.create`
             //   - The native side should create a shared buffer for `index` and `seq` pair of `size` bytes
             //   - `index` is the target window
@@ -170,20 +170,6 @@ function initializeXHRIntercept () {
 
       return send.call(this, body)
     }
-  })
-}
-
-if (typeof window !== 'undefined') {
-  initializeXHRIntercept()
-
-  document.addEventListener('DOMContentLoaded', () => {
-    queueMicrotask(async () => {
-      try {
-        await send('platform.event', 'domcontentloaded')
-      } catch (err) {
-        console.error('ERR:', err)
-      }
-    })
   })
 }
 
@@ -1233,6 +1219,20 @@ export function createBinding (domain, ctx) {
 // `sendSync` method. This is a hack to get around the fact
 // that we can't use cyclic imports with a sync call.
 export const primordials = sendSync('platform.primordials')?.data
+
+if (typeof window !== 'undefined') {
+  initializeXHRIntercept()
+
+  document.addEventListener('DOMContentLoaded', () => {
+    queueMicrotask(async () => {
+      try {
+        await send('platform.event', 'domcontentloaded')
+      } catch (err) {
+        console.error('ERR:', err)
+      }
+    })
+  })
+}
 
 // eslint-disable-next-line
 import * as exports from './ipc.js'
