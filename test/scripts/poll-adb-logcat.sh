@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
-declare id=""
-declare pid=""
+id=""
+pid=""
 
 id="co.socketsupply.socket.tests"
 

@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 
-declare id=""
-declare root=""
+id=""
+root=""
 
 id="co.socketsupply.socket.tests"
-root="$(dirname "$(dirname "${BASH_SOURCE[0]}")")"
+root="$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)"
 
-"$root/scripts/bootstrap-android-emulator.sh" &
+${SHELL:-sh} "$root/scripts/bootstrap-android-emulator.sh" &
 
 echo "info: Waiting for Android Emulator to boot"
 while ! adb shell getprop sys.boot_completed >/dev/null 2>&1 ; do
@@ -27,7 +27,7 @@ ssc build --headless --platform=android -r -o . >/dev/null || {
 adb shell rm -rf "/data/local/tmp/ssc-socket-test-fixtures"
 adb push "$root/fixtures/" "/data/local/tmp/ssc-socket-test-fixtures"
 
-"$root/scripts/poll-adb-logcat.sh"
+${SHELL:-sh} "$root/scripts/poll-adb-logcat.sh"
 
 echo "info: Shutting Android Emulator"
 adb devices | grep emulator | cut -f1 | while read -r line; do
