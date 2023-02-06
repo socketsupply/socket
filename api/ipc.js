@@ -41,7 +41,6 @@ import {
 import * as errors from './errors.js'
 import { Buffer } from './buffer.js'
 import console from './console.js'
-import { primordials } from './ipc.js'
 
 let nextSeq = 1
 
