@@ -821,8 +821,8 @@ void initFunctionsTable (Router *router) {
    * Return Socket Runtime primordials.
    */
   router->map("platform.primordials", [=](auto message, auto router, auto reply) {
-    std::regex platfrom_pattern("^mac$", std::regex_constants::icase);
-    auto platformRes = std::regex_replace(platform.os, platfrom_pattern, "darwin");
+    std::regex platform_pattern("^mac$", std::regex_constants::icase);
+    auto platformRes = std::regex_replace(platform.os, platform_pattern, "darwin");
     auto arch = std::regex_replace(platform.arch, std::regex("x86_64"), "x64");
     arch = std::regex_replace(arch, std::regex("x86"), "ia32");
     arch = std::regex_replace(arch, std::regex("arm(?!64).*"), "arm64");
