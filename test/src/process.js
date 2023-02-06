@@ -1,5 +1,6 @@
 import { test } from 'socket:test'
 import process from 'socket:process'
+import { primordials } from 'socket:ipc'
 import path from 'path-browserify'
 
 test('process', (t) => {
@@ -38,7 +39,7 @@ test('process.arch', (t) => {
 test('process.platform', (t) => {
   t.ok(typeof process.platform === 'string', 'process.platform returns an string')
   t.ok(['darwin', 'freebsd', 'linux', 'openbsd', 'sunos', 'win32', 'android', 'ios'].includes(process.platform), 'process.platform is correct')
-  t.equal(process.platform, process.platform, 'process.platform equals window.__args.platform')
+  t.equal(process.platform, primordials.platform, 'process.platform equals primordials.platform')
 })
 
 test('process.env', (t) => {

@@ -125,7 +125,7 @@ export function type () {
   }
 
   if (globalThis === window) {
-    value = ipc.sendSync('os.type')?.data ?? UNKNOWN
+    value = primordials.platform
   }
 
   value = value.replace(/android/i, 'Linux')
@@ -140,6 +140,7 @@ export function type () {
   return cache.type
 }
 
+// TODO: non-standard function. Do we need it?
 export function isWindows () {
   if ('isWindows' in cache) {
     return cache.isWindows
@@ -154,11 +155,11 @@ export function tmpdir () {
 
   if (isWindows()) {
     path = (
-      process?.env?.TEMPDIR ||
-      process?.env?.TMPDIR ||
-      process?.env?.TEMP ||
-      process?.env?.TMP ||
-      (process?.env?.SystemRoot || process?.env?.windir || '') + '\\temp'
+      window.__args.env.TEMPDIR ??
+      window.__args.env.TMPDIR ??
+      window.__args.env.TEMP ??
+      window.__args.env.TMP ??
+      (window.__args.env.SystemRoot ?? window.__args.env.windir ?? '') + '\\temp'
     )
 
     if (path.length > 1 && path.endsWith('\\') && !path.endsWith(':\\')) {
@@ -166,10 +167,10 @@ export function tmpdir () {
     }
   } else {
     path = (
-      process?.env?.TEMPDIR ||
-      process?.env?.TMPDIR ||
-      process?.env?.TEMP ||
-      process?.env?.TMP ||
+      window.__args.env.TEMPDIR ??
+      window.__args.env.TMPDIR ??
+      window.__args.env.TEMP ??
+      window.__args.env.TMP ??
       ''
     )
 

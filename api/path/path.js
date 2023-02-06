@@ -2,9 +2,8 @@
  * @module Path
  */
 import { primordials } from '../ipc.js'
-import os from '../os.js'
 
-const isWin32 = os.platform() === 'win32'
+const isWin32 = primordials.platform === 'win32'
 
 export class Path {
   /**

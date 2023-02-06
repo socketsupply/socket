@@ -34,7 +34,7 @@ export default process
  * @returns {string} The home directory of the current user.
  */
 export function homedir () {
-  return process.env.HOME ?? ''
+  return window.__args.env.HOME ?? ''
 }
 
 /**

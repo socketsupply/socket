@@ -1,6 +1,6 @@
 import { Buffer } from 'socket:buffer'
 import { test } from 'socket:test'
-import * as ipc from 'socket:ipc'
+import ipc, { primordials } from 'socket:ipc'
 
 // node compat
 // import { Buffer } from 'node:buffer'
@@ -34,6 +34,16 @@ test('ipc exports', async (t) => {
   } catch (err) {
     t.fail(err)
   }
+})
+
+test('primordials', (t) => {
+  t.equal(typeof primordials.arch, 'string', 'primordials.arch is a string')
+  t.equal(typeof primordials.cwd, 'string', 'primordials.cwd is a string')
+  t.equal(typeof primordials.platform, 'string', 'primordials.platform is a string')
+  t.equal(typeof primordials.version, 'object', 'primordials.version is an object')
+  t.ok(/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(primordials.version.short), 'primordials.version.short is correct')
+  t.ok(/^[0-9A-Fa-f]{8}$/.test(primordials.version.hash), 'primordials.version.hash is correct')
+  t.ok(/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)\s\([0-9A-Fa-f]{8}\)$/.test(primordials.version.full), 'primordials.version.full version is correct')
 })
 
 test('ipc constants', (t) => {
@@ -99,10 +109,15 @@ if (window.__args.os !== 'ios' && window.__args.os !== 'android') {
 }
 
 test('ipc.sendSync success', (t) => {
-  const response = ipc.sendSync('os.arch')
-  t.ok(response instanceof ipc.Result)
+  const response = ipc.sendSync('platform.primordials')
+  t.ok(response instanceof ipc.Result, 'response is an ipc.Result')
   const { data } = response
-  t.ok(['x86_64', 'arm64'].includes(data))
+  t.deepEqual(Object.keys(data).sort(), [
+    'arch',
+    'cwd',
+    'platform',
+    'version'
+  ].sort(), 'data keys match')
 })
 
 //
@@ -118,8 +133,13 @@ test('ipc.send not found', async (t) => {
 })
 
 test('ipc.send success', async (t) => {
-  const response = await ipc.send('os.arch')
+  const response = await ipc.send('platform.primordials')
   t.ok(response instanceof ipc.Result)
   const { data } = response
-  t.ok(['x86_64', 'arm64'].includes(data))
+  t.deepEqual(Object.keys(data).sort(), [
+    'arch',
+    'cwd',
+    'platform',
+    'version'
+  ].sort(), 'data keys match')
 })
