@@ -1,12 +1,12 @@
 /**
  * @module IPC
  *
- * This is a low level API which you don't need unless you are implementing
+ * This is a low-level API that you don't need unless you are implementing
  * a library on top of Socket SDK. A Socket SDK app has two or three processes.
  *
- * - The `Render` process, the UI where the HTML, CSS and JS is run.
- * - The `Bridge` process, the thin layer of code that managers everything.
- * - The `Main` processs, for apps that need to run heavier compute jobs. And
+ * - The `Render` process, is the UI where the HTML, CSS, and JS are run.
+ * - The `Bridge` process, is the thin layer of code that manages everything.
+ * - The `Main` process, is for apps that need to run heavier compute jobs. And
  *   unlike electron it's optional.
  *
  * The Bridge process manages the Render and Main process, it may also broker
