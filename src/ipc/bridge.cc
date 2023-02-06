@@ -742,33 +742,6 @@ void initFunctionsTable (Router *router) {
   });
 
   /**
-   * Returns the platform OS.
-   */
-  router->map("os.platform", [](auto message, auto router, auto reply) {
-    auto result = Result { message.seq, message };
-    result.data = platform.os;
-    reply(result);
-  });
-
-  /**
-   * Returns the platform type.
-   */
-  router->map("os.type", [](auto message, auto router, auto reply) {
-    auto result = Result { message.seq, message };
-    result.data = platform.os;
-    reply(result);
-  });
-
-  /**
-   * Returns the platform architecture.
-   */
-  router->map("os.arch", [](auto message, auto router, auto reply) {
-    auto result = Result { message.seq, message };
-    result.data = platform.arch;
-    reply(result);
-  });
-
-  /**
    * Returns a mapping of network interfaces.
    */
   router->map("os.networkInterfaces", [=](auto message, auto router, auto reply) {
@@ -845,41 +818,27 @@ void initFunctionsTable (Router *router) {
   });
 
   /**
-   * Return Socket Runtime version.
+   * Return Socket Runtime primordials.
    */
-  router->map("platform.version", [=](auto message, auto router, auto reply) {
+  router->map("platform.primordials", [=](auto message, auto router, auto reply) {
+    std::regex platfrom_pattern("^mac$", std::regex_constants::icase);
+    auto platformRes = std::regex_replace(platform.os, platfrom_pattern, "darwin");
+    auto arch = std::regex_replace(platform.arch, std::regex("x86_64"), "x64");
+    arch = std::regex_replace(arch, std::regex("x86"), "ia32");
+    arch = std::regex_replace(arch, std::regex("arm(?!64).*"), "arm64");
     auto json = JSON::Object::Entries {
-      {"source", "platform.version"},
+      {"source", "platform.primordials"},
       {"data", JSON::Object::Entries {
-        {"full", SSC::VERSION_FULL_STRING},
-        {"short", SSC::VERSION_STRING},
-        {"hash", SSC::VERSION_HASH_STRING}
+        {"arch", arch},
+        {"cwd", getcwd()},
+        {"platform", platformRes},
+        {"version", JSON::Object::Entries {
+          {"full", SSC::VERSION_FULL_STRING},
+          {"short", SSC::VERSION_STRING},
+          {"hash", SSC::VERSION_HASH_STRING}}
+        }
       }}
     };
-    reply(Result { message.seq, message, json });
-  });
-
-  /**
-   * Returns computed current working directory path.
-   */
-  router->map("process.cwd", [=](auto message, auto router, auto reply) {
-    JSON::Object json;
-    auto cwd = getcwd();
-
-    if (cwd.size() == 0) {
-      json = JSON::Object::Entries {
-        {"source", "process.cwd"},
-        {"err", JSON::Object::Entries {
-          {"message", "Could not determine current working directory"}
-        }}
-      };
-    } else {
-      json = JSON::Object::Entries {
-        {"source", "process.cwd"},
-        {"data", cwd}
-      };
-    }
-
     reply(Result { message.seq, message, json });
   });
 
