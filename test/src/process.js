@@ -17,6 +17,7 @@ test('process.exit()', (t) => {
 
 test('process.cwd', async (t) => {
   t.equal(typeof process.cwd(), 'string', 'process.cwd() returns a string')
+  t.equal(process.cwd(), primordials.cwd, 'process.cwd() equals primordials.cwd')
   if (process.platform === 'darwin' || process.platform === 'ios') {
     t.equal(process.cwd(), path.resolve(process.argv0, '../../Resources'), 'process.cwd() returns a correct value')
   } else if (process.platform === 'linux') {
@@ -34,6 +35,7 @@ test('process.cwd', async (t) => {
 
 test('process.arch', (t) => {
   t.ok(['x64', 'arm64'].includes(process.arch), 'process.arch is correct')
+  t.equal(process.arch, primordials.arch, 'process.arch equals primordials.arch')
 })
 
 test('process.platform', (t) => {

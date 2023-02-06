@@ -12,6 +12,7 @@ test('os.arch()', (t) => {
 
 test('os.platform()', (t) => {
   t.ok(platforms.includes(os.platform()), 'os.platform() value is valid')
+  t.equal(os.platform(), primordials.platform, 'os.platform() equals primordials.platform')
 })
 
 test('os.type()', (t) => {
