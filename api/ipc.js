@@ -41,6 +41,7 @@ import {
 import * as errors from './errors.js'
 import { Buffer } from './buffer.js'
 import console from './console.js'
+import { primordials } from './ipc.js'
 
 let nextSeq = 1
 
@@ -94,7 +95,7 @@ function initializeXHRIntercept () {
             body = encoder.encode(body)
           }
 
-          if (/android/i.test(window.__args.os)) {
+          if (/android/i.test(primordials.platfrom)) {
             await postMessage(`ipc://buffer.map?seq=${seq}`, body)
             body = null
           }
@@ -131,7 +132,7 @@ function initializeXHRIntercept () {
             })
           }
 
-          if (/linux/i.test(window.__args.os)) {
+          if (/linux/i.test(primordials.platfrom)) {
             if (body?.buffer instanceof ArrayBuffer) {
               const header = new Uint8Array(24)
               const buffer = new Uint8Array(
