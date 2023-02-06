@@ -37,6 +37,12 @@ test('ipc exports', async (t) => {
 })
 
 test('primordials', (t) => {
+  t.deepEqual(Object.keys(primordials).sort(), [
+    'arch',
+    'cwd',
+    'platform',
+    'version'
+  ].sort(), 'primordials keys match')
   t.equal(typeof primordials.arch, 'string', 'primordials.arch is a string')
   t.equal(typeof primordials.cwd, 'string', 'primordials.cwd is a string')
   t.equal(typeof primordials.platform, 'string', 'primordials.platform is a string')
@@ -112,12 +118,7 @@ test('ipc.sendSync success', (t) => {
   const response = ipc.sendSync('platform.primordials')
   t.ok(response instanceof ipc.Result, 'response is an ipc.Result')
   const { data } = response
-  t.deepEqual(Object.keys(data).sort(), [
-    'arch',
-    'cwd',
-    'platform',
-    'version'
-  ].sort(), 'data keys match')
+  t.ok(typeof data === 'object', 'sendSync works')
 })
 
 //
@@ -136,10 +137,5 @@ test('ipc.send success', async (t) => {
   const response = await ipc.send('platform.primordials')
   t.ok(response instanceof ipc.Result)
   const { data } = response
-  t.deepEqual(Object.keys(data).sort(), [
-    'arch',
-    'cwd',
-    'platform',
-    'version'
-  ].sort(), 'data keys match')
+  t.ok(typeof data === 'object', 'sendSync works')
 })
