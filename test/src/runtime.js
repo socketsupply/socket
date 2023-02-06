@@ -257,20 +257,20 @@ if (process.platform !== 'win32') {
     // t.equal(await runtime.openExternal('https://sockets.sh'), null, 'succesfully completes')
   })
 
-  // test('window.showOpenFilePicker', async (t) => {
-  //   t.equal(typeof window.showOpenFilePicker, 'function', 'window.showOpenFilePicker is a function')
-  //   t.ok(window.showOpenFilePicker())
-  // })
+  test('window.showOpenFilePicker', async (t) => {
+    t.equal(typeof window.showOpenFilePicker, 'function', 'window.showOpenFilePicker is a function')
+    t.ok(window.showOpenFilePicker())
+  })
 
-  // test('window.showSaveFilePicker', (t) => {
-  //   t.equal(typeof window.showSaveFilePicker, 'function', 'window.showSaveFilePicker is a function')
-  //   t.ok(window.showSaveFilePicker())
-  // })
+  test('window.showSaveFilePicker', (t) => {
+    t.equal(typeof window.showSaveFilePicker, 'function', 'window.showSaveFilePicker is a function')
+    t.ok(window.showSaveFilePicker())
+  })
 
-  // test('window.showDirectoryFilePicker', (t) => {
-  //   t.equal(typeof window.showDirectoryFilePicker, 'function', 'window.showDirectoryFilePicker is a function')
-  //   t.ok(window.showDirectoryFilePicker())
-  // })
+  test('window.showDirectoryFilePicker', (t) => {
+    t.equal(typeof window.showDirectoryFilePicker, 'function', 'window.showDirectoryFilePicker is a function')
+    t.ok(window.showDirectoryFilePicker())
+  })
 
   // TODO: can we improve this test?
   test('reload', (t) => {
