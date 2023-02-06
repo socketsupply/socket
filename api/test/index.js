@@ -442,22 +442,7 @@ export class TestRunner {
     if (this._onFinishCallback) {
       this._onFinishCallback({ total, success, fail })
     } else {
-      if (typeof process !== 'undefined' &&
-        typeof process.exit === 'function' &&
-        typeof process.on === 'function' &&
-        Reflect.get(process, 'browser') !== true
-      ) {
-        process.on('exit', function (code) {
-          // let the process exit cleanly.
-          if (typeof code === 'number' && code !== 0) {
-            return
-          }
-
-          if (fail) {
-            process.exit(1)
-          }
-        })
-      }
+      if (fail) process.exit(1)
     }
   }
 
