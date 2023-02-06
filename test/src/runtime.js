@@ -1,7 +1,7 @@
 import { readFile } from 'socket:fs/promises'
 import { test } from 'socket:test'
 import runtime from 'socket:runtime'
-import ipc from 'socket:ipc'
+import ipc, { primordials } from 'socket:ipc'
 import process from 'socket:process'
 
 // TODO(@jwerle): FIXME
@@ -26,9 +26,9 @@ if (process.platform !== 'win32') {
 
     // Other runtime tests
     test('version', (t) => {
-      t.ok(/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(runtime.version.short), 'short version is correct')
-      t.ok(/^[0-9A-Fa-f]{8}$/.test(runtime.version.hash), 'version hash is correct')
-      t.ok(/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)\s\([0-9A-Fa-f]{8}\)$/.test(runtime.version.full), 'full version is correct')
+      t.equal(runtime.version.short, primordials.version.short, 'short version is correct')
+      t.ok(runtime.version.hash, primordials.version.hash, 'version hash is correct')
+      t.ok(runtime.version.full, primordials.version.full, 'full version is correct')
     })
 
     test('debug', (t) => {

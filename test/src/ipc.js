@@ -47,9 +47,9 @@ test('primordials', (t) => {
   t.equal(typeof primordials.cwd, 'string', 'primordials.cwd is a string')
   t.equal(typeof primordials.platform, 'string', 'primordials.platform is a string')
   t.equal(typeof primordials.version, 'object', 'primordials.version is an object')
-  t.ok(/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(primordials.version.short), 'primordials.version.short is correct')
-  t.ok(/^[0-9A-Fa-f]{8}$/.test(primordials.version.hash), 'primordials.version.hash is correct')
-  t.ok(/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)\s\([0-9A-Fa-f]{8}\)$/.test(primordials.version.full), 'primordials.version.full version is correct')
+  t.ok(/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(primordials.version.short), `primordials.version.short is correct (${primordials.version.short})`)
+  t.ok(/^[0-9A-Fa-f]{8}$/.test(primordials.version.hash), `primordials.version.hash is correct (${primordials.version.hash})`)
+  t.ok(/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)\s\([0-9A-Fa-f]{8}\)$/.test(primordials.version.full), `primordials.version.full version is correct (${primordials.version.full})`)
 })
 
 test('ipc constants', (t) => {
