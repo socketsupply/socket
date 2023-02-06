@@ -1,4 +1,4 @@
-param([Switch]$debug, [Switch]$skipwebview, $webview = "1.0.1619-prerelease", $uv = "v1.44.2")
+param([Switch]$debug, [Switch]$skipwebview, [Switch]$ps1build, $webview = "1.0.1619-prerelease", $uv = "v1.44.2")
 
 $OLD_CWD = (Get-Location).Path
 
@@ -18,6 +18,13 @@ $SSC_BUILD_OPTIONS = "-O2"
 if ($debug -eq $true) {
   $LIBUV_BUILD_TYPE = "Debug"
   $SSC_BUILD_OPTIONS = "-g", "-O0"
+}
+
+Function Found-Command {
+    param($command_string)
+    (Get-Command $command_string -ErrorAction SilentlyContinue -ErrorVariable F) > $null
+    $r = $($null -eq $F.length)
+    Write-Output $r
 }
 
 #
@@ -192,20 +199,54 @@ if ($? -ne 1) {
   }
 }
 
-# refresh enviroment after prereq setup
-refreshenv
-if (-not (Test-Path -Path $ASSET_PATH)) {
-  (New-Item -ItemType Directory -Path $ASSET_PATH) > $null
-  Write-Output "ok - created $ASSET_PATH"
-}
+if ($ps1build) {
+  # original build process
+  # refresh enviroment after prereq setup
+  refreshenv
+  if (-not (Test-Path -Path $ASSET_PATH)) {
+    (New-Item -ItemType Directory -Path $ASSET_PATH) > $null
+    Write-Output "ok - created $ASSET_PATH"
+  }
 
-Write-Output "# working path set to $WORKING_PATH"
-cd $WORKING_PATH
+  Write-Output "# working path set to $WORKING_PATH"
+  cd $WORKING_PATH
 
-if ($skipwebview -eq $false) {
-  Install-WebView2
+  if ($skipwebview -eq $false) {
+    Install-WebView2
+  }
+  Build
+  Install-Files
+} else {
+  # locate git's sh. We should look for mingw sh.
+  $gitPath = "$env:ProgramFiles\Git\bin"
+  $sh = "$gitPath\sh.exe"
+
+  # Look for sh in path
+  if (-not (Found-Command($sh))) {
+    $sh = "$gitPath\sh.exe"
+  }
+
+  if (-not (Found-Command($sh))) {
+    Write-Output "sh.exe not in path, aborting."
+    Write-Output "We currently require git's sh.exe in path."
+    Exit 1
+  }
+
+  $mingw = $false
+  $sh_version_check = iex "& ""$sh"" -c 'uname -s'" | Out-String
+
+  $contains = ( $sh_version_check -like "*MINGW*")
+  Write-Output "Contains: $contains"
+
+  if (-not ($sh_version_check -like "*MINGW*")) {
+    Write-Output "sh.exe is not MINGW: '$sh_version_check'"
+    Write-Output "We currently require git's sh.exe in path."
+    Exit 1
+  }
+
+  cd $OLD_CWD
+  Write-Output "Calling bin\install.sh"
+  iex "& ""$sh"" bin\install.sh"
 }
-Build
-Install-Files
 
 cd $OLD_CWD

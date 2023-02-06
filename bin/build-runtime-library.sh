@@ -14,7 +14,7 @@ declare platform="desktop"
 
 if [[ "$host" = "Linux" ]]; then
   if [ -n "$WSL_DISTRO_NAME" ] || uname -r | grep 'Microsoft'; then
-    HOST="Win32"
+    host="Win32"
   fi
 elif [[ "$host" == *"MINGW64_NT"* ]]; then
   host="Win32"
@@ -171,11 +171,10 @@ function main () {
   echo "Host: $host"
 
   if [[ "$host" = "Win32" ]]; then
-    echo "using llvm-ar on $host"
     ar="llvm-ar"
   fi
 
-  echo $ar crs "$static_library" "${objects[@]}"
+  # echo $ar crs "$static_library" "${objects[@]}"
   $ar crs "$static_library" "${objects[@]}"
 
   if [ -f $static_library ]; then

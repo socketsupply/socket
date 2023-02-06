@@ -1678,33 +1678,9 @@ int main (const int argc, const char* argv[]) {
       flags += " -I" + prefixFile("include");
       flags += " -L" + prefixFile("lib/" + platform.arch + "-desktop");
 
-      // TODO(@mribbons): This should be prebuild in install.ps1
-      // files += prefixFile("objects/" + platform.arch + "-desktop/desktop/main.o");
+      files += prefixFile("objects/" + platform.arch + "-desktop/desktop/main.o");
       files += prefixFile("src/init.cc");
-      // TODO(@mribbons): This should be copied to SSC_HOME in install.ps1
-      // files += prefixFile("lib/" + platform.arch + "-desktop/libsocket-runtime.a");
-      // TODO(@mribbons): This hack assumes we're running from socket repo folder or socket/test
-      auto current_search = fs::current_path();
-      fs::path runtime_path;
-      while (true)
-      {
-        runtime_path = current_search / "build" / (platform.arch + "-desktop/lib/libsocket-runtime.a");
-        if (fs::exists(runtime_path)) {
-          break;
-        }
-
-        std::cout << "lib not found at " << runtime_path << std::endl;
-        if (current_search == current_search.parent_path()) break;
-        current_search = current_search.parent_path();
-      }
-      files += " " + runtime_path.string();
-
-
-      // TODO(@mribbons): install.ps1 does not build to arch path
-      // files += prefixFile("lib/" + platform.arch + "-desktop/libuv.a");
-
-      // TODO(@mribbons): This should be prebuild in install.ps1
-      files += " \"" + prefixFile("src\\desktop\\main.cc\"");
+      files += prefixFile("lib/" + platform.arch + "-desktop/libsocket-runtime.a");
 
       fs::create_directories(paths.pathPackage);
 
@@ -1787,23 +1763,15 @@ int main (const int argc, const char* argv[]) {
         buildArgs << " --test=true";
       }
 
-      auto process = new SSC::Process(
-        settings["build_script"],
-        buildArgs.str(),
-        fs::current_path().string(),
-        [](SSC::String const &out) { stdWrite(out, false); },
-        [](SSC::String const &out) { stdWrite(out, true); },
-        [](SSC::String const &code) {
-          if (std::stoi(code) != 0) {
-            log("build failed, exiting with code " + code);
-            // TODO(trevnorris): Force non-windows to exit the process.
-            exit(std::stoi(code));
-          }
-        }
-      );
-
-      process->open();
-      process->wait();
+      // Removed new SSC::Process() style code, caused random crashes
+      auto build_script_exec = exec(settings["build_script"] + buildArgs.str());
+      if (build_script_exec.exitCode != 0) {
+        std::cout << "Build " << settings["build_script"] << " " << buildArgs.str() << std::endl;
+        log(build_script_exec.output);
+        log("User build failed (" + std::to_string(build_script_exec.exitCode) + ")");
+        // TODO(trevnorris): Force non-windows to exit the process.
+        exit(build_script_exec.exitCode);
+      }
 
       log("ran user build command");
 
@@ -2153,8 +2121,8 @@ int main (const int argc, const char* argv[]) {
         << " -DSSC_VERSION_HASH=" << SSC::VERSION_HASH_STRING
       ;
 
-      // TODO(trevnorris): Output build string on debug builds.
-      // log(compileCommand.str());
+      if (getEnv("DEBUG") == "1")
+        log(compileCommand.str());
 
       auto r = exec(compileCommand.str());
 

@@ -8,12 +8,18 @@ declare CWD=$(pwd)
 declare PREFIX="${PREFIX:-"/usr/local"}"
 declare BUILD_DIR="$CWD/build"
 declare SOCKET_HOME="${SOCKET_HOME:-"${XDG_DATA_HOME:-"$HOME/.local/share"}/socket"}"
-declare HOST="$(uname -s)"
+declare host="$(uname -s)"
 
-if [[ "$HOST" = "Linux" ]]; then
+if [[ "$host" = "Linux" ]]; then
   if [ -n "$WSL_DISTRO_NAME" ] || uname -r | grep 'Microsoft'; then
-    HOST="Win32"
+  echo "WSL is not supported."
+  exit 1
   fi
+elif [[ "$host" == *"MINGW64_NT"* ]]; then
+  host="Win32"
+elif [[ "$host" == *"MSYS_NT"* ]]; then
+  echo "MSYS is not supported."
+  exit 1
 fi
 
 if [ -n "$LOCALAPPDATA" ]; then
@@ -72,13 +78,17 @@ function advice {
     echo "sudo pacman -S $1"
   elif [[ "$(uname -s)" == *"Linux"* ]]; then
     echo "apt-get install $1"
+  elif [[ "$(uname -s)" == *"_NT"* ]]; then
+    echo "choco install $1 ?"
   fi
 }
 
-quiet command -v make
-die $? "not ok - missing build tools, try \"$(advice "make")\""
+if [[ "$(uname -s)" != *"_NT"* ]]; then
+  quiet command -v make
+  die $? "not ok - missing build tools, try \"$(advice "make")\""
+fi
 
-if [ "$HOST" == "Darwin" ]; then
+if [ "$host" == "Darwin" ]; then
   quiet command -v automake
   die $? "not ok - missing build tools, try \"$(advice "automake")\""
   quiet command -v glibtoolize
@@ -87,7 +97,7 @@ if [ "$HOST" == "Darwin" ]; then
   die $? "not ok - missing build tools, try 'brew install libtool'"
 fi
 
-if [ "$HOST" == "Linux" ]; then
+if [ "$host" == "Linux" ]; then
   quiet command -v autoconf
   die $? "not ok - missing build tools, try \"$(advice "autoconf")\""
   quiet command -v pkg-config
@@ -102,7 +112,17 @@ function _build_cli {
   local src="$root/src"
   local output_directory="$BUILD_DIR/$arch-$platform"
 
-  local ldflags=($("$root/bin/ldflags.sh" --arch "$arch" --platform "$platform" -l{uv,socket-runtime}))
+  # Expansion won't work under _NT
+  # uv found by -L
+  # referenced directly below
+  # local libs=($("echo" -l{socket-runtime}))
+  local libs=""
+
+  if [[ "$(uname -s)" != *"_NT"* ]]; then
+    libs=($("echo" -l{uv,socket-runtime}))
+  fi
+
+  local ldflags=($("$root/bin/ldflags.sh" --arch "$arch" --platform "$platform" ${libs[@]}))
   local cflags=(-DCLI $("$root/bin/cflags.sh"))
 
   local sources=($(find "$src"/cli/*.cc 2>/dev/null))
@@ -122,27 +142,76 @@ function _build_cli {
     quiet "$CXX" "${cflags[@]}"  \
       -c "${sources[$i]}"        \
       -o "${outputs[$i]}"
-    die $? "not ok - unable to build. See trouble shooting guide in the README.md file"
+    die $? "not ok - unable to build. See trouble shooting guide in the README.md file:\n$CXX ${cflags[@]} -c \"${sources[$i]}\" -o \"${outputs[$i]}\""
   done
 
+  local exe=""
+  local libsocket_win=""
+  if [[ "$(uname -s)" == *"_NT"* ]]; then
+    exe=".exe"
+    libsocket_win="$BUILD_DIR/$arch-$platform/lib/libsocket-runtime.a"
+  fi
+
+  # echo "$CXX"                                  \
+    # "$BUILD_DIR/$arch-$platform"/cli/*.o       \
+    # "${cflags[@]}" "${ldflags[@]}"             \
+    # "$libsocket_win"                           \
+    # -o "$BUILD_DIR/$arch-$platform/bin/ssc$exe"
   quiet "$CXX"                                 \
     "$BUILD_DIR/$arch-$platform"/cli/*.o       \
     "${cflags[@]}" "${ldflags[@]}"             \
-    -o "$BUILD_DIR/$arch-$platform/bin/ssc"
+    "$libsocket_win"                           \
+    -o "$BUILD_DIR/$arch-$platform/bin/ssc$exe"
 
-  die $? "not ok - unable to build. See trouble shooting guide in the README.md file"
+  die $? "not ok - unable to build. See trouble shooting guide in the README.md file:\n$CXX ${cflags[@]} \"${ldflags[@]}\" -o \"$BUILD_DIR/$arch-$platform/bin/ssc\""
   echo "ok - built the cli for desktop"
 }
 
 function _build_runtime_library {
   echo "# building runtime library"
+  echo "$root/bin/build-runtime-library.sh" --arch "$(uname -m)" --platform desktop
   "$root/bin/build-runtime-library.sh" --arch "$(uname -m)" --platform desktop & pids+=($!)
-  if [[ "$HOST" = "Darwin" ]]; then
+  if [[ "$host" = "Darwin" ]]; then
     "$root/bin/build-runtime-library.sh" --arch "$(uname -m)" --platform ios & pids+=($!)
     "$root/bin/build-runtime-library.sh" --arch x86_64 --platform ios-simulator & pids+=($!)
   fi
 
   wait
+}
+
+function _get_web_view2() {
+  if [[ "$(uname -s)" != *"_NT"* ]]; then
+    return
+  fi
+  
+  local arch="$(uname -m)"
+  local platform="desktop"
+
+  if test -f "$BUILD_DIR/$arch-$platform/lib/WebView2LoaderStatic.lib"; then
+    echo "$BUILD_DIR/lib/$arch-$platform/WebView2LoaderStatic.lib exists."
+    return
+  fi
+
+  local tmp=$(mktemp -d)
+  local pwd=$(pwd)
+
+  echo "# Downloading Webview2"
+
+  curl https://globalcdn.nuget.org/packages/microsoft.web.webview2.1.0.1369-prerelease.nupkg --output $tmp/webview2.zip
+  cd $tmp
+  unzip -q $tmp/webview2.zip
+  mkdir -p "$BUILD_DIR/include"
+  mkdir -p "$BUILD_DIR/$arch-$platform/lib"/
+
+  cp -pf build/native/include/WebView2.h "$BUILD_DIR/include/WebView2.h" 
+  cp -pf build/native/include/WebView2Experimental.h "$BUILD_DIR/include/WebView2Experimental.h" 
+  cp -pf build/native/include/WebView2EnvironmentOptions.h "$BUILD_DIR/include/WebView2EnvironmentOptions.h" 
+  cp -pf build/native/include/WebView2ExperimentalEnvironmentOptions.h "$BUILD_DIR/include/WebView2ExperimentalEnvironmentOptions.h" 
+  cp -pf build/native/x64/WebView2LoaderStatic.lib "$BUILD_DIR/$arch-$platform/lib/WebView2LoaderStatic.lib" 
+
+  cd $pwd
+
+  rm -rf $tmp
 }
 
 function _prebuild_desktop_main () {
@@ -172,7 +241,7 @@ function _prebuild_desktop_main () {
     quiet "$CXX" "${cflags[@]}" \
       -c "${sources[$i]}"       \
       -o "${outputs[$i]}"
-    die $? "not ok - unable to build. See trouble shooting guide in the README.md file"
+    die $? "not ok - unable to build. See trouble shooting guide in the README.md file:\n$CXX ${cflags[@]} -c ${sources[$i]} -o ${outputs[$i]}"
   done
 
   echo "ok - precompiled main program for desktop"
@@ -206,7 +275,7 @@ function _prebuild_ios_main () {
     "$clang" "${cflags[@]}" \
       -c "${sources[$i]}"   \
       -o "${outputs[$i]}"
-    die $? "not ok - unable to build. See trouble shooting guide in the README.md file"
+    die $? "not ok - unable to build. See trouble shooting guide in the README.md file:\n$CXX ${cflags[@]} -c ${sources[$i]} -o ${outputs[$i]}"
   done
   echo "ok - precompiled main program for iOS"
 }
@@ -238,7 +307,7 @@ function _prebuild_ios_simulator_main () {
     quiet "$clang" "${cflags[@]}" \
       -c "${sources[$i]}"         \
       -o "${outputs[$i]}"
-    die $? "not ok - unable to build. See trouble shooting guide in the README.md file"
+    die $? "not ok - unable to build. See trouble shooting guide in the README.md file:\n$clang ${cflags[@]} -c \"${sources[$i]}\" -o \"${outputs[$i]}\""
   done
   echo "ok - precompiled main program for iOS Simulator"
 }
@@ -250,7 +319,7 @@ function _prepare {
   mkdir -p "$SOCKET_HOME"/{lib,src,bin,include,objects,api}
   mkdir -p "$SOCKET_HOME"/{lib,objects}/"$(uname -m)-desktop"
 
-  if [[ "$HOST" = "Darwin" ]]; then
+  if [[ "$host" = "Darwin" ]]; then
     mkdir -p "$SOCKET_HOME"/{lib,objects}/{arm64-iPhoneOS,x86_64-iPhoneSimulator}
   fi
 
@@ -288,6 +357,7 @@ function _install {
     rm -rf "$SOCKET_HOME/lib/$arch-$platform"
     mkdir -p "$SOCKET_HOME/lib/$arch-$platform"
     cp -fr "$BUILD_DIR/$arch-$platform"/lib/*.a "$SOCKET_HOME/lib/$arch-$platform"
+    cp -fr "$BUILD_DIR/$arch-$platform"/lib/*.lib "$SOCKET_HOME/lib/$arch-$platform"
   fi
 
   echo "# copying js api to $SOCKET_HOME/api"
@@ -359,17 +429,31 @@ function _compile_libuv {
 
   if [ -z "$target" ]; then
     target=$(uname -m)
+    host=$(uname -s)
     platform="desktop"
+
+    if [[ "$host" = "Linux" ]]; then
+      if [ -n "$WSL_DISTRO_NAME" ] || uname -r | grep 'Microsoft'; then
+        host="Win32"
+      fi
+    elif [[ "$host" == *"MINGW64_NT"* ]]; then
+      host="Win32"
+    elif [[ "$host" == *"MSYS_NT"* ]]; then
+      die $? "MSYS not supported."
+    fi
   fi
 
-  echo "# building libuv for $platform ($target)..."
+  echo "# building libuv for $platform ($target) on $host..."
   STAGING_DIR=$BUILD_DIR/$target-$platform/uv
 
   if [ ! -d "$STAGING_DIR" ]; then
     mkdir -p "$STAGING_DIR"
     cp -r $BUILD_DIR/uv/* $STAGING_DIR
     cd $STAGING_DIR
- 	  quiet sh autogen.sh
+    # Doesn't work in mingw
+    if [[ "$host" != "Win32" ]]; then
+ 	    quiet sh autogen.sh
+    fi;
   else
     cd $STAGING_DIR
   fi
@@ -377,13 +461,30 @@ function _compile_libuv {
   mkdir -p "$STAGING_DIR/build/"
 
   if [ $platform == "desktop" ]; then
-    if ! test -f Makefile; then
-      quiet ./configure --prefix=$BUILD_DIR/$target-$platform
-      die $? "not ok - desktop configure"
+    if [[ "$host" != "Win32" ]]; then
+      if ! test -f Makefile; then
+        quiet ./configure --prefix=$BUILD_DIR/$target-$platform
+        die $? "not ok - desktop configure"
 
-      quiet make clean
-      quiet make -j8
-      quiet make install
+        quiet make clean
+        quiet make -j8
+        quiet make install
+      fi
+    else
+      local config="Release"
+      if [[ ! -z "$DEBUG" ]]; then
+        config="Debug"
+      fi
+      cd "$STAGING_DIR/build/"
+      cmake .. -DBUILD_TESTING=OFF
+      cd $STAGING_DIR
+      cmake --build $STAGING_DIR/build/ --config $config
+      mkdir -p $BUILD_DIR/$target-$platform/lib
+      echo "cp -up $STAGING_DIR/build/config/*.lib $BUILD_DIR/$target-$platform/lib"
+      cp -up $STAGING_DIR/build/$config/*.lib $BUILD_DIR/$target-$platform/lib
+      if [ $config == "Debug" ]; then
+        cp -up $STAGING_DIR/build/$config/*.pdb $BUILD_DIR/$target-$platform/lib
+      fi
     fi
 
     rm -f "$root/build/$(uname -m)-desktop/lib"/*.{so,la,dylib}*
@@ -423,6 +524,12 @@ function _compile_libuv {
 }
 
 function _check_compiler_features {
+  if [[ $host=="Win32" ]]; then
+    # TODO(@mribbons) - https://github.com/socketsupply/socket/issues/150
+    # Compiler test not working on windows, 9 unresolved externals
+    return;
+  fi
+
   echo "# checking compiler features"
   local cflags=($("$root/bin/cflags.sh"))
   if [[ -z "$DEBUG" ]]; then
@@ -434,7 +541,7 @@ function _check_compiler_features {
     int main () { return 0; }
 EOF_CC
 
-  die $? "not ok - $CXX ($($CXX -dumpversion)) failed in feature check required for building Socket Rutime"
+  die $? "not ok - $CXX ($(\"$CXX\" -dumpversion)) failed in feature check required for building Socket Rutime"
 }
 
 function onsignal () {
@@ -493,12 +600,14 @@ cd $CWD
 
 cd "$BUILD_DIR"
 
+_get_web_view2 & pids+=($!)
+
 _build_runtime_library
 _build_cli & pids+=($!)
 
 _prebuild_desktop_main & pids+=($!)
 
-if [[ "$HOST" = "Darwin" ]]; then
+if [[ "$host" = "Darwin" ]]; then
   if test -d "$(xcrun -sdk iphoneos -show-sdk-path 2>/dev/null)"; then
     _prebuild_ios_main & pids+=($!)
     _prebuild_ios_simulator_main & pids+=($!)
@@ -512,7 +621,7 @@ done
 
 _install "$(uname -m)" desktop
 
-if [[ "$HOST" = "Darwin" ]]; then
+if [[ "$host" = "Darwin" ]]; then
   _install arm64 iPhoneOS
   _install x86_64 iPhoneSimulator
 fi
