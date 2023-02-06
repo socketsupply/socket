@@ -3,9 +3,9 @@
   "private": true,
   "scripts": {
     "test": "npm run test:desktop",
-    "test:desktop": "sh ./scripts/test-desktop.sh",
-    "test:android": "sh ./scripts/test-android.sh",
-    "test:ios-simulator": "sh ./scripts/test-ios-simulator.sh",
+    "test:desktop": "node ./scripts/test-desktop.js",
+    "test:android": "node ./scripts/test-android.sh",
+    "test:ios-simulator": "node ./scripts/test-ios-simulator.js",
     "test:android-emulator": "sh ./scripts/test-android-emulator.sh",
     "start": "npm test"
   },
