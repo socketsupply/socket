@@ -705,7 +705,7 @@ int main (const int argc, const char* argv[]) {
       }
     }
     if (targetPlatform.size() == 0) {
-      log("error: --platfrom option is required");
+      log("error: --platform option is required");
       exit(1);
     }
     if (targetPlatform == "ios" && platform.mac) {

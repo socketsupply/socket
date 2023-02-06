@@ -105,7 +105,7 @@ usage:
   ssc run [options] [<project-dir>]
 
 options:
-  --platform     ios simulator; if not specified, runs on the current platform
+  --platform     ios-simulator; if not specified, runs on the current platform
   --prod         run production build
   --test=path    indicate test mode
 )TEXT";
