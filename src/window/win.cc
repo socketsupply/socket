@@ -658,6 +658,32 @@ namespace SSC {
     auto options = Microsoft::WRL::Make<CoreWebView2EnvironmentOptions>();
     options->put_AdditionalBrowserArguments(L"--allow-file-access-from-files");
 
+    Microsoft::WRL::ComPtr<ICoreWebView2EnvironmentOptions4> optionsExperimental;
+    HRESULT oeResult = options.As(&optionsExperimental);
+    if (oeResult != S_OK) {
+      // UNREACHABLE - cannot continue
+    }
+    auto ipcSchemeRegistration = Microsoft::WRL::Make<CoreWebView2CustomSchemeRegistration>(L"ipc");
+    oeResult = ipcSchemeRegistration->put_TreatAsSecure(TRUE);
+    if (oeResult != S_OK) {
+      // UNREACHABLE - cannot continue
+    }
+    oeResult = ipcSchemeRegistration->put_HasAuthorityComponent(TRUE);
+    if (oeResult != S_OK) {
+      // UNREACHABLE - cannot continue
+    }
+    const WCHAR* allowedIPCOrigin[3] = { L"http://*", L"https://*", L"file://*" };
+    oeResult = ipcSchemeRegistration->SetAllowedOrigins(3, allowedIPCOrigin);
+    if (oeResult != S_OK) {
+      // UNREACHABLE - cannot continue
+    }
+    ICoreWebView2CustomSchemeRegistration* schemeReg[1] = { ipcSchemeRegistration.Get() };
+    oeResult = optionsExperimental->SetCustomSchemeRegistrations(
+      1, static_cast<ICoreWebView2CustomSchemeRegistration**>(schemeReg));
+    if (oeResult != S_OK) {
+      // UNREACHABLE - cannot continue
+    }
+
     auto init = [&]() -> HRESULT {
       return CreateCoreWebView2EnvironmentWithOptions(
         nullptr,
@@ -752,19 +778,26 @@ namespace SSC {
                         ICoreWebView2Environment* env = nullptr;
                         ICoreWebView2WebResourceResponse* res = nullptr;
                         ICoreWebView2WebResourceRequest* req = nullptr;
-                        ICoreWebView2HttpRequestHeaders* headers = nullptr;
                         String method_s;
+                        String uri_s;
                         LPWSTR req_uri;
                         LPWSTR method;
-                        BOOL is_ipc = FALSE;
 
                         webview->QueryInterface(IID_PPV_ARGS(&webview2));
                         webview2->get_Environment(&env);
-
                         args->get_Request(&req);
+                        req->get_Uri(&req_uri);
+                        uri_s = WStringToString(req_uri);
+
+                        // Only handle ipc: requests.
+                        if (uri_s.compare(0, 4, "ipc:") != 0) {
+                          return S_OK;
+                        }
+
                         req->get_Method(&method);
                         method_s = WStringToString(method);
 
+                        // Handle CORS preflight request.
                         if (method_s.compare("OPTIONS") == 0) {
                           env->CreateWebResourceResponse(
                             nullptr,
@@ -773,7 +806,7 @@ namespace SSC {
                             L"Connection: keep-alive\n"
                             L"Access-Control-Allow-Headers: *\n"
                             L"Access-Control-Allow-Origin: *\n"
-                            L"Access-Control-Allow-Methods: PUT, POST, GET\n",
+                            L"Access-Control-Allow-Methods: GET, POST, PUT\n",
                             &res
                           );
                           args->put_Response(res);
@@ -782,44 +815,41 @@ namespace SSC {
                           return S_OK;
                         }
 
-                        req->get_Headers(&headers);
-                        req->get_Uri(&req_uri);
-                        headers->Contains(L"x-ipc-request", &is_ipc);
-
-                        // Not a request we need to handle. Return early.
-                        if (!is_ipc) {
-                          return S_OK;
-                        }
-
-                        String uri = SSC::replace(WStringToString(req_uri), "http://", "ipc://");
-                        uri = SSC::replace(uri, "/\\?", "?");
+                        // WebView2 doesn't handle the trailing slash well. Remove it.
+                        uri_s = SSC::replace(uri_s, "/\\?", "?");
 
                         ICoreWebView2Deferral* deferral;
                         HRESULT hr = args->GetDeferral(&deferral);
 
-                        char data[32768];
+                        constexpr size_t DATA_SIZE = 16384;
+                        char data[DATA_SIZE];
                         char* body_ptr = nullptr;
                         size_t body_length = 0;
 
-                        if (method_s.compare("POST") == 0) {
+                        if (method_s.compare("POST") == 0 || method_s.compare("PUT") == 0) {
                           IStream* body_data;
                           DWORD actual;
                           HRESULT r;
-
-                          req->get_Content(&body_data);
-                          // TODO(trevnorris): This assumes the amount of data sent is always less
-                          // than 32KB. A check should be added to make sure the amount of data
-                          // read is under that. How should it be handled if that's the case?
-                          r = body_data->Read(data, 32768, &actual);
-                          if (r == S_OK || r == S_FALSE) {
-                            body_ptr = data;
-                            body_length = actual;
+                          auto msg = IPC::Message{uri_s};
+                          // TODO(trevnorris): Make sure index and seq are set.
+                          if (w->bridge->router.hasMappedBuffer(msg.index, msg.seq)) {
+                            IPC::MessageBuffer buf = w->bridge->router.getMappedBuffer(msg.index, msg.seq);
+                            ICoreWebView2ExperimentalSharedBuffer* shared_buf = buf.shared_buf;
+                            size_t size = buf.size;
+                            w->bridge->router.removeMappedBuffer(msg.index, msg.seq);
+                            shared_buf->OpenStream(&body_data);
+                            r = body_data->Read(data, DATA_SIZE, &actual);
+                            if (r == S_OK || r == S_FALSE) {
+                              body_ptr = data;
+                              body_length = actual;
+                            }
+                            shared_buf->Close();
                           }
-                        } else if (!method_s.compare("GET") != 0) {
+                        } else if (method_s.compare("GET") != 0) {
                           // UNREACHABLE
                         }
 
-                        auto r = w->bridge->route(uri, body_ptr, body_length, [&, args, deferral, env](auto result) {
+                        auto r = w->bridge->route(uri_s, body_ptr, body_length, [&, args, deferral, env](auto result) {
                           String headers;
                           char* body;
                           size_t length;
@@ -869,7 +899,7 @@ namespace SSC {
                             nullptr,
                             404,
                             L"Not Found",
-                            L"",
+                            L"Access-Control-Allow-Origin: *",
                             &res
                           );
                           args->put_Response(res);
@@ -919,7 +949,45 @@ namespace SSC {
                       if (onMessage != nullptr) {
                         SSC::WString message_w(messageRaw);
                         SSC::String message = SSC::WStringToString(messageRaw);
+                        auto msg = IPC::Message{message};
                         Window* w = reinterpret_cast<Window*>(GetWindowLongPtr((HWND)window, GWLP_USERDATA));
+                        ICoreWebView2_2* webview2 = nullptr;
+                        ICoreWebView2Environment* env = nullptr;
+                        ICoreWebView2Experimental18* webView18 = nullptr;
+                        ICoreWebView2ExperimentalEnvironment10* environment = nullptr;
+
+                        webview->QueryInterface(IID_PPV_ARGS(&webview2));
+                        webview2->get_Environment(&env);
+                        env->QueryInterface(IID_PPV_ARGS(&environment));
+
+                        webview->QueryInterface(IID_PPV_ARGS(&webView18));
+
+                        // this should only come from `postMessage()`
+                        if (msg.name == "buffer.create") {
+                          auto seq = msg.seq;
+                          auto size = std::stoull(msg.get("size", "0"));
+                          auto index = msg.index;
+                          ICoreWebView2ExperimentalSharedBuffer* sharedBuffer = nullptr;
+                          // TODO(trevnorris): What to do if creation fails, or size == 0?
+                          HRESULT cshr = environment->CreateSharedBuffer(size, &sharedBuffer);
+                          String additionalData = "{\"seq\":\"";
+                          additionalData += seq;
+                          additionalData += "\",\"index\":";
+                          additionalData += std::to_string(index);
+                          additionalData += "}";
+                          cshr = webView18->PostSharedBufferToScript(
+                            sharedBuffer,
+                            COREWEBVIEW2_SHARED_BUFFER_ACCESS_READ_WRITE,
+                            StringToWString(additionalData).c_str()
+                          );
+                          IPC::MessageBuffer msg_buf(sharedBuffer, size);
+                          // TODO(trevnorris): This will leak memory if the buffer is created and
+                          // placed on the map then never removed. Since there's no Window cleanup
+                          // that will remove unused buffers when the window is closed.
+                          w->bridge->router.setMappedBuffer(index, seq, msg_buf);
+                          return S_OK;
+                        }
+
                         if (!w->bridge->route(message, nullptr, 0)) {
                           onMessage(message);
                         }
