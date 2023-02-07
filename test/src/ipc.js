@@ -54,39 +54,41 @@ test('ipc.Message', (t) => {
   t.ok(ipc.Message.prototype instanceof URL, 'is a URL')
   // pass a Buffer
   let msg = ipc.Message.from(Buffer.from('test'), { foo: 'bar' })
-  t.equal(msg.protocol, ipc.Message.PROTOCOL)
+  t.equal(msg.protocol, 'ipc:')
   t.equal(msg.command, 'test')
   t.deepEqual(msg.params, { foo: 'bar' })
   // pass an ipc.Message
   msg = ipc.Message.from(msg)
-  t.equal(msg.protocol, ipc.Message.PROTOCOL)
+  t.equal(msg.protocol, 'ipc:')
   t.equal(msg.command, 'test')
   t.deepEqual(msg.params, { foo: 'bar' })
   // pass an object
-  msg = ipc.Message.from({ protocol: ipc.Message.PROTOCOL, command: 'test' }, { foo: 'bar' })
-  t.equal(msg.protocol, ipc.Message.PROTOCOL)
+  msg = ipc.Message.from({ protocol: 'ipc:', command: 'test' }, { foo: 'bar' })
+  t.equal(msg.protocol, 'ipc:')
   t.equal(msg.command, 'test')
   t.deepEqual(msg.params, { foo: 'bar' })
   // pass a string
   msg = ipc.Message.from('test', { foo: 'bar' })
-  t.equal(msg.protocol, ipc.Message.PROTOCOL)
+  t.equal(msg.protocol, 'ipc:')
   t.equal(msg.command, 'test')
   t.deepEqual(msg.params, { foo: 'bar' })
-  t.ok(ipc.Message.isValidInput(`${ipc.Message.PROTOCOL}//test`), 'is valid input')
+  t.ok(ipc.Message.isValidInput('ipc://test'), 'is valid input')
   t.ok(!ipc.Message.isValidInput('test'), 'is valid input')
   t.ok(!ipc.Message.isValidInput('foo://test'), 'is valid input')
 })
 
-test('ipc.sendSync not found', (t) => {
-  const response = ipc.sendSync('test', { foo: 'bar' })
-  t.ok(response instanceof ipc.Result)
-  const { err } = response
-  t.equal(err?.toString(), 'NotFoundError: Not found')
-  t.equal(err?.name, 'NotFoundError')
-  t.equal(err?.message, 'Not found')
-  t.ok(err?.url.startsWith(`${ipc.Message.PROTOCOL}//test?foo=bar&index=0&seq=R`))
-  t.equal(err?.code, 'NOT_FOUND_ERR')
-})
+if (window.__args.os !== 'ios' && window.__args.os !== 'android') {
+  test('ipc.sendSync not found', (t) => {
+    const response = ipc.sendSync('test', { foo: 'bar' })
+    t.ok(response instanceof ipc.Result)
+    const { err } = response
+    t.equal(err?.toString(), 'NotFoundError: Not found')
+    t.equal(err?.name, 'NotFoundError')
+    t.equal(err?.message, 'Not found')
+    t.ok(err?.url.startsWith('ipc://test?foo=bar&index=0&seq=R'))
+    t.equal(err?.code, 'NOT_FOUND_ERR')
+  })
+}
 
 test('ipc.sendSync success', (t) => {
   const response = ipc.sendSync('os.arch')

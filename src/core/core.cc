@@ -143,9 +143,8 @@ namespace SSC {
       "  });                                                         \n"
       "};                                                            \n"
       "                                                              \n"
-      "const protocol = __args.os === 'win32' ? 'http:' : 'ipc:';    \n"
-      "xhr.open('GET', `${protocol}//post?id=" + sid + "`);          \n"
-      "xhr.setRequestHeader('x-ipc-request', 'post');                \n"
+      "xhr.open('GET', `ipc://post?id=" + sid + "`);                 \n"
+      "xhr.setRequestHeader('Access-Control-Allow-Origin', '*');     \n"
       "xhr.send();                                                   \n"
     );
 
