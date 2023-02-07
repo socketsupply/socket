@@ -780,9 +780,9 @@ export class Result {
 /**
  * Waits for the native IPC layer to be ready and exposed on the
  * global window object.
- * 
+ * @ignore
  */
-async function ready () {
+export async function ready () {
   return await new Promise((resolve, reject) => {
     if (typeof window === 'undefined') {
       return reject(new TypeError('Global window object is not defined.'))
