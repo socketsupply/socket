@@ -48,7 +48,7 @@ async function main () {
         build.onResolve({ filter: /^socket:.*$/ }, (args) => {
           const basename = args.path.replace('socket:', '').replace(/.js$/, '') + '.js'
           const filename = path.resolve(path.dirname(dirname), 'api', basename)
-          return { path: filename }
+          return { path: filename, external: true }
         })
       }
     })
