@@ -1,8 +1,5 @@
 #!/usr/bin/env bash
 
-id=""
-pid=""
-
 id="co.socketsupply.socket.tests"
 
 ## Start application
