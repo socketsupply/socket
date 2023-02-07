@@ -1,16 +1,13 @@
 #!/usr/bin/env bash
 
-id=""
-root=""
-
 id="co.socketsupply.socket.tests"
-root="$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)"
+root="$(CDPATH='' cd -- "$(dirname "$(dirname -- "$0")")" && pwd)"
 
 ${SHELL:-sh} "$root/scripts/bootstrap-android-emulator.sh" &
 
 echo "info: Waiting for Android Emulator to boot"
 while ! adb shell getprop sys.boot_completed >/dev/null 2>&1 ; do
-  sleep 0.5s
+  sleep 0.5
 done
 echo "info: Android Emulator booted"
 
