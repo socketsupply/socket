@@ -11,6 +11,7 @@ import { EventEmitter } from './events.js'
 import { Buffer } from './buffer.js'
 import { rand64 } from './crypto.js'
 import { isIPv4 } from './net.js'
+import process from './process.js'
 import * as ipc from './ipc.js'
 import console from './console.js'
 import dns from './dns.js'
@@ -160,7 +161,8 @@ function getDefaultAddress (socket, local) {
     if (socket.type === 'udp4') return '127.0.0.1'
     if (socket.type === 'udp6') return '::1'
   } else {
-    if (socket.type === 'udp4') return '0.0.0.0'
+    const IP = process.platform === 'win32' ? '127.0.0.1' : '0.0.0.0'
+    if (socket.type === 'udp4') return IP
     if (socket.type === 'udp6') return '::'
   }
 
