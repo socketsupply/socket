@@ -905,28 +905,12 @@ External docs: https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fspromisesw
  ipc://command?key1=value1&key2=value2...
  ```
 
-## [`ready()`](https://github.com/socketsupply/socket/blob/master/api/ipc.js#L784)
+### [undefined](https://github.com/socketsupply/socket/blob/master/api/ipc.js#L785)
 
 Waits for the native IPC layer to be ready and exposed on the
  global window object.
 
-## [`sendSync(command, params)`](https://github.com/socketsupply/socket/blob/master/api/ipc.js#L809)
-
-Sends a synchronous IPC command over XHR returning a `Result`
- upon success or error.
-
-| Argument | Type | Default | Optional | Description |
-| :---     | :--- | :---:   | :---:    | :---        |
-| command | string |  | false |  |
-| params | object \| string |  | true |  |
-
-
-| Return Value | Type | Description |
-| :---         | :--- | :---        |
-| Not specified | Result |  |
-
-
-## [`emit(name, value, target , options)`](https://github.com/socketsupply/socket/blob/master/api/ipc.js#L854)
+## [`emit(name, value, target , options)`](https://github.com/socketsupply/socket/blob/master/api/ipc.js#L856)
 
 Emit event to be dispatched on `window` object.
 
@@ -938,7 +922,7 @@ Emit event to be dispatched on `window` object.
 | options | Object |  | true |  |
 
 
-## [`send(command, value)`](https://github.com/socketsupply/socket/blob/master/api/ipc.js#L910)
+## [`send(command, value)`](https://github.com/socketsupply/socket/blob/master/api/ipc.js#L912)
 
 Sends an async IPC command request with parameters.
 
