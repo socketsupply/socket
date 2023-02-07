@@ -1,4 +1,4 @@
-param([Switch]$debug, [Switch]$skipwebview, $webview = "1.0.1369-prerelease", $uv = "v1.44.2")
+param([Switch]$debug, [Switch]$skipwebview, $webview = "1.0.1619-prerelease", $uv = "v1.44.2")
 
 $OLD_CWD = (Get-Location).Path
 
@@ -134,7 +134,7 @@ Function Install-WebView2 {
 
   # download and extract
   Write-Output "# downloading WebView2 ${WEBVIEW2_VERSION} header and library files..."
-  Invoke-WebRequest "https://www.nuget.org/api/v2/package/Microsoft.Web.WebView2/1.0.1369-prerelease" -O "$tmpdir\webview2.zip"
+  Invoke-WebRequest "https://www.nuget.org/api/v2/package/Microsoft.Web.WebView2/${WEBVIEW2_VERSION}" -O "$tmpdir\webview2.zip"
   Expand-Archive -Path $tmpdir\WebView2.zip -DestinationPath $tmpdir\WebView2
 
   # install files into project `lib\` dir
