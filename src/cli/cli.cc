@@ -832,7 +832,7 @@ int main (const int argc, const char* argv[]) {
       }
     }
     // if no --platform option provided, print current platform build path
-    std::cout << getPaths(platform.os).pathResourcesRelativeToUserBuild << std::endl;
+    std::cout << getPaths(platform.os).pathResourcesRelativeToUserBuild.string() << std::endl;
     exit(0);
   });
 
