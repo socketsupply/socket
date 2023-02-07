@@ -45,13 +45,22 @@ namespace SSC::IPC {
 
 namespace SSC::IPC {
   struct MessageBuffer {
-    char *bytes = nullptr;
     size_t size = 0;
-    MessageBuffer () = default;
-    MessageBuffer (auto bytes, auto size) {
-      this->bytes = bytes;
-      this->size = size;
+    char* bytes = nullptr;
+    MessageBuffer(char* bytes, size_t size)
+        : size(size), bytes(bytes) { }
+#ifdef _WIN32
+    ICoreWebView2ExperimentalSharedBuffer* shared_buf = nullptr;
+    MessageBuffer(ICoreWebView2ExperimentalSharedBuffer* buf, size_t size)
+        : size(size), shared_buf(buf) {
+      BYTE* b = reinterpret_cast<BYTE*>(bytes);
+      HRESULT r = buf->get_Buffer(&b);
+      if (r != S_OK) {
+        // TODO(trevnorris): Handle this
+      }
     }
+#endif
+    MessageBuffer() = default;
   };
 
   class Message {
@@ -154,12 +163,7 @@ namespace SSC::IPC {
       MessageBuffer getMappedBuffer (int index, const Message::Seq seq);
       bool hasMappedBuffer (int index, const Message::Seq seq);
       void removeMappedBuffer (int index, const Message::Seq seq);
-      void setMappedBuffer (
-        int index,
-        const Message::Seq seq,
-        char* bytes,
-        size_t size
-      );
+      void setMappedBuffer(int index, const Message::Seq seq, MessageBuffer msg_buf);
 
       void map (const String& name, MessageCallback callback);
       void map (const String& name, bool async, MessageCallback callback);

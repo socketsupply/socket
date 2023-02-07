@@ -174,13 +174,7 @@ void initFunctionsTable (Router *router) {
    * `message.buffer` with already an mapped buffer.
    */
   router->map("buffer.map", false, [](auto message, auto router, auto reply) {
-    router->setMappedBuffer(
-      message.index,
-      message.seq,
-      message.buffer.bytes,
-      message.buffer.size
-    );
-
+    router->setMappedBuffer(message.index, message.seq, message.buffer);
     reply(Result { message.seq, message });
   });
 
@@ -1489,15 +1483,12 @@ namespace SSC::IPC {
     return MessageBuffer {};
   }
 
-  void Router::setMappedBuffer (
-    int index,
-    const Message::Seq seq,
-    char* bytes,
-    size_t size
-  ) {
+  void Router::setMappedBuffer(int index,
+                               const Message::Seq seq,
+                               MessageBuffer msg_buf) {
     Lock lock(this->mutex);
     auto key = std::to_string(index) + seq;
-    this->buffers.insert_or_assign(key, MessageBuffer { bytes, size });
+    this->buffers.insert_or_assign(key, msg_buf);
   }
 
   void Router::removeMappedBuffer (int index, const Message::Seq seq) {
