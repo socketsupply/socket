@@ -16,7 +16,7 @@ if (typeof globalThis?.addEventListener === 'function') {
 GLOBAL_TEST_RUNNER.onFinish(({ fail }) => {
   setTimeout(() => {
     process.exit(fail > 0 ? 1 : 0)
-  }, 10)
+  }, 1024) // give app time to print TAP output
 })
 
 function onerror (err) {
