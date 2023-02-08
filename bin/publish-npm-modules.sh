@@ -48,7 +48,6 @@ mkdir -p "$SOCKET_HOME"
 
 export SOCKET_HOME
 export PREFIX
-export SOCKET_NPM_PUBLISH=1 # Prevent install.sh from changing SOCKET_HOME because $LOCALAPPDATA exists
 
 if (( !only_top_level )); then
   "$root/bin/install.sh" || exit $?
