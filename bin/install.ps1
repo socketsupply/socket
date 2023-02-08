@@ -217,11 +217,19 @@ if ($ps1build) {
   Build
   Install-Files
 } else {
-  $sh="sh.exe"
-  if (-not (Found-Command($sh))) {
-    # locate git's sh
-    $gitPath = "$env:ProgramFiles\Git\bin"
-    $sh = "$gitPath\sh.exe"
+  # $sh="sh.exe"
+  # if (-not (Found-Command($sh))) {
+  #   # locate git's sh
+  #   $gitPath = "$env:ProgramFiles\Git\bin"
+  #   $sh = "$gitPath\sh.exe"
+  # }
+
+  $gitPath = "$env:ProgramFiles\Git\bin"
+  $sh = "$gitPath\sh.exe"
+
+  if ($env:VERBOSE -eq "1") {
+    Write-Output "Using shell $sh"
+    iex "& ""$sh"" -c 'uname -s'"
   }
 
   # Look for sh in path
