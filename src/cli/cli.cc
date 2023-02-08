@@ -629,11 +629,11 @@ int main (const int argc, const char* argv[]) {
           exit(1);
         }
 
-        // Define regular expression to match spaces, special characters except dash and underscore
+        // Define regular expression to match spaces, and special characters except dash and underscore
         std::regex name_pattern("[^a-zA-Z0-9_\\-]");
-        // Check if name matches the pattern
+        // Check if the name matches the pattern
         if (std::regex_search(settings["build_name"], name_pattern)) {
-          log("error: 'name' in socket.ini [build] section can only contain alphanumeric characters, dashes and underscores");
+          log("error: 'name' in socket.ini [build] section can only contain alphanumeric characters, dashes, and underscores");
           exit(1);
         }
 
@@ -641,7 +641,7 @@ int main (const int argc, const char* argv[]) {
         // The semver specification is available at https://semver.org/
         // The pre-release and build metadata are not supported
         std::regex semver_pattern("^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)$");
-        // Check if version matches the pattern
+        // Check if the version matches the pattern
         if (!std::regex_match(settings["meta_version"], semver_pattern)) {
           log("error: 'version' in [meta] section of socket.ini must be in semver format");
           exit(1);
@@ -772,7 +772,7 @@ int main (const int argc, const char* argv[]) {
       const String cfgUtilPath = getCfgUtilPath();
       String commandOptions = "";
       String targetPlatform = "";
-      // we need to find platform first
+      // we need to find the platform first
       for (auto const option : options) {
         targetPlatform = optionValue(option, "--platform");
         if (targetPlatform.size() > 0) {
@@ -788,7 +788,7 @@ int main (const int argc, const char* argv[]) {
         printHelp("install-app");
         exit(1);
       }
-      // then we need to find device
+      // then we need to find the device
       for (auto const option : options) {
         auto device = optionValue(option, "--device");
         if (device.size() > 0) {
@@ -808,7 +808,7 @@ int main (const int argc, const char* argv[]) {
         log("Could not find " + ipaPath.string());
         exit(1);
       }
-      // this command will install the app to first connected device which were
+      // this command will install the app to the first connected device which was
       // added to the provisioning profile if no --device is provided.
       auto command = cfgUtilPath + " " + commandOptions + "install-app " + ipaPath.string();
       auto r = exec(command);
@@ -831,7 +831,7 @@ int main (const int argc, const char* argv[]) {
         exit(0);
       }
     }
-    // if no --platform option provided, print current platform build path
+    // if no --platform option is provided, print the current platform build path
     std::cout << getPaths(platform.os).pathResourcesRelativeToUserBuild.string() << std::endl;
     exit(0);
   });
@@ -1736,7 +1736,7 @@ int main (const int argc, const char* argv[]) {
     if (settings.count("build_script") != 0) {
       //
       // cd into the targetPath and run the user's build command,
-      // pass it the platform specific directory where they
+      // pass it to the platform-specific directory where they
       // should send their build artifacts.
       //
       auto oldCwd = fs::current_path();
@@ -1996,7 +1996,7 @@ int main (const int argc, const char* argv[]) {
       }
 
       if (platform.mac && platform.arch == "arm64") {
-        log("warning: 'arm64' may be an unsupported archicture for the Android NDK which may cause the build to fail.");
+        log("warning: 'arm64' may be an unsupported architecture for the Android NDK which may cause the build to fail.");
         log("         Please see https://stackoverflow.com/a/69555276 to work around this.");
       }
 
@@ -2316,7 +2316,7 @@ int main (const int argc, const char* argv[]) {
     }
 
     //
-    // MacOS Notorization
+    // MacOS Notarization
     // ---
     //
     if (flagShouldNotarize && platform.mac) {
@@ -2633,7 +2633,7 @@ int main (const int argc, const char* argv[]) {
       auto pathToSignTool = getEnv("SIGNTOOL");
 
       if (pathToSignTool.size() == 0) {
-        // TODO assumes last dir that contains dot. posix doesnt guarantee
+        // TODO assumes the last dir that contains dot. posix doesnt guarantee
         // order, maybe windows does, but this should probably be smarter.
         for (const auto& entry : fs::directory_iterator(sdkRoot)) {
           auto p = entry.path().string();
