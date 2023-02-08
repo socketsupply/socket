@@ -190,15 +190,6 @@ open class Bridge (runtime: Runtime, configuration: IBridgeConfiguration) {
         callback(Result(0, message.seq, message.command, "{}"))
         return true
       }
-
-      "process.cwd" -> {
-        val json = """{
-          "source": "process.cwd",
-          "data": "${configuration.getRootDirectory()}"
-        }""".trim()
-        callback(Result(0, message.seq, message.command, json))
-        return true
-      }
     }
 
     if (message.domain == "fs") {
