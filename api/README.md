@@ -207,7 +207,7 @@ Thrown when a bad socket type is used in an argument.
 
 Thrown when a bad port is given.
 
-## [`createSocket(options, callback)`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L632)
+## [`createSocket(options, callback)`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L627)
 
 Creates a `Socket` instance.
 
@@ -216,7 +216,7 @@ Creates a `Socket` instance.
 | options | string \| Object |  | false | either a string ('udp4' or 'udp6') or an options object |
 | options.type | string |  | true | The family of socket. Must be either 'udp4' or 'udp6'. Required. |
 | options.reuseAddr | boolean | false | true | When true socket.bind() will reuse the address, even if another process has already bound a socket on it. Default: false. |
-| options.ipv6Only | boolean | false | true | Setting ipv6Only to true will disable dual-stack support, i.e., binding to address :: won't make 0.0.0.0 be bound. Default: false. |
+| options.ipv6Only | boolean | false | true | Default: false. |
 | options.recvBufferSize | number |  | true | Sets the SO_RCVBUF socket value. |
 | options.sendBufferSize | number |  | true | Sets the SO_SNDBUF socket value. |
 | options.signal | AbortSignal |  | true | An AbortSignal that may be used to close a socket. |
@@ -228,12 +228,12 @@ Creates a `Socket` instance.
 | Not specified | Socket |  |
 
 
-## [`Socket` (extends `EventEmitter`)](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L638)
+## [`Socket` (extends `EventEmitter`)](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L633)
 
 New instances of dgram.Socket are created using dgram.createSocket().
  The new keyword is not to be used to create dgram.Socket instances.
 
-### [`bind(port, address, callback)`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L709)
+### [`bind(port, address, callback)`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L704)
 
 External docs: https://nodejs.org/api/dgram.html#socketbindport-address-callback
 
@@ -248,11 +248,11 @@ Listen for datagram messages on a named port and optional address
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
 | port | number |  | false | The port to to listen for messages on |
-| address | string |  | false | The address to bind to (0.0.0.0) |
+| address | string |  | false | The address to bind to (127.0.0.1) |
 | callback | function |  | false | With no parameters. Called when binding is complete. |
 
 
-### [`connect(port, host, connectListener)`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L762)
+### [`connect(port, host, connectListener)`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L757)
 
 External docs: https://nodejs.org/api/dgram.html#socketconnectport-address-callback
 
@@ -274,7 +274,7 @@ Associates the dgram.Socket to a remote address and port. Every message sent
 | connectListener | function |  | true | Common parameter of socket.connect() methods. Will be added as a listener for the 'connect' event once. |
 
 
-### [`disconnect()`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L797)
+### [`disconnect()`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L792)
 
 External docs: https://nodejs.org/api/dgram.html#socketdisconnect
 
@@ -283,7 +283,7 @@ A synchronous function that disassociates a connected dgram.Socket from
  disconnected socket will result in an ERR_SOCKET_DGRAM_NOT_CONNECTED exception.
 
 
-### [`send(msg, offset, length, port, address, callback)`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L856)
+### [`send(msg, offset, length, port, address, callback)`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L851)
 
 External docs: https://nodejs.org/api/dgram.html#socketsendmsg-offset-length-port-address-callback
 
@@ -309,7 +309,7 @@ Broadcasts a datagram on the socket. For connectionless sockets, the
 
  > If the socket has not been previously bound with a call to bind, the socket
  is assigned a random port number and is bound to the "all interfaces"
- address ('0.0.0.0' for udp4 sockets, '::0' for udp6 sockets.)
+ address ('127.0.0.1' for udp4 sockets, '::1' for udp6 sockets.)
 
  > An optional callback function may be specified to as a way of reporting DNS
  errors or for determining when it is safe to reuse the buf object. DNS
@@ -336,7 +336,7 @@ Broadcasts a datagram on the socket. For connectionless sockets, the
 | callback | Function |  | true | Called when the message has been sent. |
 
 
-### [`close(callback)`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L936)
+### [`close(callback)`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L931)
 
 External docs: https://nodejs.org/api/dgram.html#socketclosecallback
 
@@ -350,7 +350,7 @@ Close the underlying socket and stop listening for data on it. If a
 | callback | function |  | true | Called when the connection is completed or on error. |
 
 
-### [`address()`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L994)
+### [`address()`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L989)
 
 External docs: https://nodejs.org/api/dgram.html#socketaddress
 
@@ -368,7 +368,7 @@ Returns an object containing the address information for a socket. For
 | socketInfo.family | string | The IP family of the socket |
 
 
-### [`remoteAddress()`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1029)
+### [`remoteAddress()`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1024)
 
 External docs: https://nodejs.org/api/dgram.html#socketremoteaddress
 
@@ -385,7 +385,7 @@ Returns an object containing the address, family, and port of the remote
 | socketInfo.family | string | The IP family of the socket |
 
 
-### [`setRecvBufferSize(size)`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1060)
+### [`setRecvBufferSize(size)`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1055)
 
 External docs: https://nodejs.org/api/dgram.html#socketsetrecvbuffersizesize
 
@@ -398,7 +398,7 @@ Sets the SO_RCVBUF socket option. Sets the maximum socket receive buffer in
 | size | number |  | false | The size of the new receive buffer |
 
 
-### [`setSendBufferSize(size)`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1077)
+### [`setSendBufferSize(size)`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1072)
 
 External docs: https://nodejs.org/api/dgram.html#socketsetsendbuffersizesize
 
@@ -411,13 +411,13 @@ Sets the SO_SNDBUF socket option. Sets the maximum socket send buffer in
 | size | number |  | false | The size of the new send buffer |
 
 
-### [`getRecvBufferSize()`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1090)
+### [`getRecvBufferSize()`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1085)
 
 External docs: https://nodejs.org/api/dgram.html#socketgetrecvbuffersize
 
 
 
-### [`getSendBufferSize()`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1098)
+### [`getSendBufferSize()`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1093)
 
 External docs: https://nodejs.org/api/dgram.html#socketgetsendbuffersize
 
@@ -905,7 +905,7 @@ External docs: https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fspromisesw
  ipc://command?key1=value1&key2=value2...
  ```
 
-## [`emit(name, value, target , options)`](https://github.com/socketsupply/socket/blob/master/api/ipc.js#L856)
+## [`emit(name, value, target , options)`](https://github.com/socketsupply/socket/blob/master/api/ipc.js#L882)
 
 Emit event to be dispatched on `window` object.
 
@@ -917,7 +917,7 @@ Emit event to be dispatched on `window` object.
 | options | Object |  | true |  |
 
 
-## [`send(command, value)`](https://github.com/socketsupply/socket/blob/master/api/ipc.js#L912)
+## [`send(command, value)`](https://github.com/socketsupply/socket/blob/master/api/ipc.js#L938)
 
 Sends an async IPC command request with parameters.
 
@@ -948,27 +948,27 @@ This is a `FunctionDeclaration` named `arch` in `api/os.js`, it's exported but u
 This is a `FunctionDeclaration` named `networkInterfaces` in `api/os.js`, it's exported but undocumented.
 
 
-## [`platform()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L141)
+## [`platform()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L135)
 
 This is a `FunctionDeclaration` named `platform` in `api/os.js`, it's exported but undocumented.
 
 
-## [`type()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L170)
+## [`type()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L164)
 
 This is a `FunctionDeclaration` named `type` in `api/os.js`, it's exported but undocumented.
 
 
-## [`isWindows()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L210)
+## [`isWindows()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L204)
 
 This is a `FunctionDeclaration` named `isWindows` in `api/os.js`, it's exported but undocumented.
 
 
-## [`tmpdir()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L219)
+## [`tmpdir()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L213)
 
 This is a `FunctionDeclaration` named `tmpdir` in `api/os.js`, it's exported but undocumented.
 
 
-## [EOL](https://github.com/socketsupply/socket/blob/master/api/os.js#L263)
+## [EOL](https://github.com/socketsupply/socket/blob/master/api/os.js#L257)
 
 This is a `VariableDeclaration` named `EOL` in `api/os.js`, it's exported but undocumented.
 
