@@ -62,6 +62,9 @@ export class FileHandle extends EventEmitter {
     return new this({ fd, id })
   }
 
+  // TODO(trevnorris): The way the comment says to use mode doesn't match
+  // how it's currently being used in tests. Instead we're passing values
+  // from fs.constants.
   /**
    * Determines if access to `path` for `mode` is possible.
    * @param {string} path
@@ -85,7 +88,8 @@ export class FileHandle extends EventEmitter {
       throw result.err
     }
 
-    return result.data?.mode === mode
+    // F_OK means access in any way
+    return mode === F_OK ? true : (result.data?.mode && mode) > 0
   }
 
   /**
