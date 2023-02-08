@@ -18,8 +18,7 @@ if [[ "$host" = "Linux" ]]; then
 elif [[ "$host" == *"MINGW64_NT"* ]]; then
   host="Win32"
 elif [[ "$host" == *"MSYS_NT"* ]]; then
-  echo "MSYS is not supported."
-  exit 1
+  host="Win32"
 fi
 
 if [ -n "$LOCALAPPDATA" ]; then
