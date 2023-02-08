@@ -94,12 +94,12 @@ function initializeXHRIntercept () {
             body = encoder.encode(body)
           }
 
-          if (/android/i.test(primordials.platfrom)) {
+          if (/android/i.test(primordials.platform)) {
             await postMessage(`ipc://buffer.map?seq=${seq}`, body)
             body = null
           }
 
-          if (/win32/i.test(primordials.platfrom) && body) {
+          if (/win32/i.test(primordials.platform) && body) {
             // 1. send `ipc://buffer.create`
             //   - The native side should create a shared buffer for `index` and `seq` pair of `size` bytes
             //   - `index` is the target window
@@ -131,7 +131,7 @@ function initializeXHRIntercept () {
             })
           }
 
-          if (/linux/i.test(primordials.platfrom)) {
+          if (/linux/i.test(primordials.platform)) {
             if (body?.buffer instanceof ArrayBuffer) {
               const header = new Uint8Array(24)
               const buffer = new Uint8Array(
