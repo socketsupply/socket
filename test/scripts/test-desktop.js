@@ -3,7 +3,7 @@ import { execSync as exec } from 'node:child_process'
 import path from 'node:path'
 import os from 'node:os'
 
-const dirname = path.dirname(import.meta.url.replace('file://', ''))
+const dirname = path.dirname(import.meta.url.replace('file://', '').replace(/^\/[A-Za-z]:/, ''))
 const root = path.dirname(dirname)
 
 const SOCKET_HOME_API = path.join(root, '..', 'api')
