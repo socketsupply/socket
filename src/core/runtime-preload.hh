@@ -6,7 +6,22 @@
 namespace SSC {
   inline SSC::String createPreload (WindowOptions opts) {
     SSC::String cleanCwd = SSC::String(opts.cwd);
+
+#ifndef _WIN32
     std::replace(cleanCwd.begin(), cleanCwd.end(), '\\', '/');
+#else
+    // Escape backslashes in paths.
+    size_t last_pos = 0;
+    while ((last_pos = opts.argv.find('\\', last_pos)) != std::string::npos) {
+      opts.argv.replace(last_pos, 1, "\\\\");
+      last_pos += 2;
+    }
+    last_pos = 0;
+    while ((last_pos = cleanCwd.find('\\', last_pos)) != std::string::npos) {
+      cleanCwd.replace(last_pos, 1, "\\\\");
+      last_pos += 2;
+    }
+#endif
 
     auto preload = SSC::String(
       "\n;(() => {                                                           \n"

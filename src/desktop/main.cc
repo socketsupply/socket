@@ -437,6 +437,13 @@ MAIN {
           createProcess(force);
           process->open();
         }
+#ifdef _WIN32
+        size_t last_pos = 0;
+        while ((last_pos = process->path.find('\\', last_pos)) != std::string::npos) {
+          process->path.replace(last_pos, 1, "\\\\\\\\");
+          last_pos += 4;
+        }
+#endif
         const JSON::Object json = JSON::Object::Entries {
           { "cmd", cmd },
           { "argv", process->argv },
