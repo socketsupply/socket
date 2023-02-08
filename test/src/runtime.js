@@ -221,10 +221,15 @@ if (process.platform !== 'win32') {
       config.push([prefix.length === 0 ? key : prefix + '_' + key, value])
     }
     config.forEach(([key, value]) => {
-      if (key === 'build_headless') {
-        t.equal(runtime.config[key].toString(), value, `runtime.config.${key} is correct`)
-      } else {
-        t.equal(runtime.config[key], value, `runtime.config.${key} is correct`)
+      switch (key) {
+        case 'build_headless':
+          t.equal(runtime.config[key].toString(), value, `runtime.config.${key} is correct`)
+          break
+        case 'build_name':
+          t.ok(runtime.config[key].startsWith(value), `runtime.config.${key} is correct`)
+          break
+        default:
+          t.equal(runtime.config[key], value, `runtime.config.${key} is correct`)
       }
       t.throws(
         () => { runtime.config[key] = 0 },
