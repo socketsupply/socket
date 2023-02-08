@@ -57,7 +57,7 @@ usage:
   ssc list-devices --platform=ios [--ecid | --udid] [--only]
 
 options:
-  --platform  any of: ios, android
+  --platform  any : ios, android
   --ecid      show device ECID
   --udid      show device UDID
   --only      only show ECID or UDID of the first device
@@ -94,7 +94,7 @@ usage:
   ssc print-build-dir [--platform=<platform>] [--prod] [<project-dir>]
 
 options:
-  --platform  ios; if not specified, runs on current platform
+  --platform  ios; if not specified, runs on the current platform
   --prod      use a production build directory
 )TEXT";
 
