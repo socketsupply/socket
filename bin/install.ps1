@@ -455,9 +455,6 @@ if ($ps1build) {
   $mingw = $false
   $sh_version_check = iex "& ""$sh"" -c 'uname -s'" | Out-String
 
-  $contains = ( $sh_version_check -like "*MINGW*")
-  Write-Output "Contains: $contains"
-
   if (-not ($sh_version_check -like "*MINGW*")) {
     Write-Output "sh.exe is not MINGW: '$sh_version_check'"
     Write-Output "We currently require git's sh.exe in path."

@@ -43,6 +43,7 @@ export CXX
 
 function quiet () {
   if [ -n "$VERBOSE" ]; then
+    echo "$@"
     "$@"
   else
     "$@" > /dev/null 2>&1
@@ -137,7 +138,6 @@ function _build_cli {
   done
 
   for (( i = 0; i < ${#sources[@]}; i++ )); do
-    # echo "$CXX" ${cflags[@]} -c "${sources[$i]}" -o "${outputs[$i]}"
     mkdir -p "$(dirname "${outputs[$i]}")"
     quiet "$CXX" "${cflags[@]}"  \
       -c "${sources[$i]}"        \
@@ -152,11 +152,6 @@ function _build_cli {
     libsocket_win="$BUILD_DIR/$arch-$platform/lib/libsocket-runtime.a"
   fi
 
-  # echo "$CXX"                                  \
-    # "$BUILD_DIR/$arch-$platform"/cli/*.o       \
-    # "${cflags[@]}" "${ldflags[@]}"             \
-    # "$libsocket_win"                           \
-    # -o "$BUILD_DIR/$arch-$platform/bin/ssc$exe"
   quiet "$CXX"                                 \
     "$BUILD_DIR/$arch-$platform"/cli/*.o       \
     "${cflags[@]}" "${ldflags[@]}"             \
@@ -236,7 +231,6 @@ function _prebuild_desktop_main () {
   done
 
   for (( i = 0; i < ${#sources[@]}; i++ )); do
-    # echo "$CXX" ${cflags[@]} -c "${sources[$i]}" -o "${outputs[$i]}"
     mkdir -p "$(dirname "${outputs[$i]}")"
     quiet "$CXX" "${cflags[@]}" \
       -c "${sources[$i]}"       \
@@ -270,7 +264,6 @@ function _prebuild_ios_main () {
   done
 
   for (( i = 0; i < ${#sources[@]}; i++ )); do
-    # echo "$CXX" ${cflags[@]} -c "${sources[$i]}" -o "${outputs[$i]}"
     mkdir -p "$(dirname "${outputs[$i]}")"
     "$clang" "${cflags[@]}" \
       -c "${sources[$i]}"   \
