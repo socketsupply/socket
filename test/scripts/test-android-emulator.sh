@@ -12,7 +12,7 @@ done
 echo "info: Android Emulator booted"
 
 adb uninstall "$id"
-ssc build --headless --platform=android -r -o . >/dev/null || {
+ssc build --headless --platform=android -r -o || {
   rc=$?
   echo "info: Shutting Android Emulator"
   adb devices | grep emulator | cut -f1 | while read -r line; do
