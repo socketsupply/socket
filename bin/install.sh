@@ -7,8 +7,14 @@ LIPO=""
 declare CWD=$(pwd)
 declare PREFIX="${PREFIX:-"/usr/local"}"
 declare BUILD_DIR="$CWD/build"
-declare SOCKET_HOME="${SOCKET_HOME:-"${XDG_DATA_HOME:-"$HOME/.local/share"}/socket"}"
-declare host="$(uname -s)"
+
+if [ -n "$LOCALAPPDATA" ] && [ -z "$SOCKET_HOME" ]; then
+  SOCKET_HOME="$LOCALAPPDATA/Programs/socketsupply"
+else
+  SOCKET_HOME="${SOCKET_HOME:-"${XDG_DATA_HOME:-"$HOME/.local/share"}/socket"}"
+fi
+
+echo "SOCKET_HOME: $SOCKET_HOME"
 
 if [[ "$host" = "Linux" ]]; then
   if [ -n "$WSL_DISTRO_NAME" ] || uname -r | grep 'Microsoft'; then
