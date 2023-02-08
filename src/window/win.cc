@@ -821,8 +821,6 @@ namespace SSC {
                         ICoreWebView2Deferral* deferral;
                         HRESULT hr = args->GetDeferral(&deferral);
 
-                        constexpr size_t DATA_SIZE = 16384;
-                        char data[DATA_SIZE];
                         char* body_ptr = nullptr;
                         size_t body_length = 0;
 
@@ -836,12 +834,15 @@ namespace SSC {
                             IPC::MessageBuffer buf = w->bridge->router.getMappedBuffer(msg.index, msg.seq);
                             ICoreWebView2ExperimentalSharedBuffer* shared_buf = buf.shared_buf;
                             size_t size = buf.size;
+                            char* data = new char[size];
                             w->bridge->router.removeMappedBuffer(msg.index, msg.seq);
                             shared_buf->OpenStream(&body_data);
-                            r = body_data->Read(data, DATA_SIZE, &actual);
+                            r = body_data->Read(data, size, &actual);
                             if (r == S_OK || r == S_FALSE) {
                               body_ptr = data;
                               body_length = actual;
+                            } else {
+                              delete[] data;
                             }
                             shared_buf->Close();
                           }
@@ -849,10 +850,14 @@ namespace SSC {
                           // UNREACHABLE
                         }
 
-                        auto r = w->bridge->route(uri_s, body_ptr, body_length, [&, args, deferral, env](auto result) {
+                        auto r = w->bridge->route(uri_s, body_ptr, body_length, [&, args, deferral, env, body_ptr](auto result) {
                           String headers;
                           char* body;
                           size_t length;
+
+                          if (body_ptr != nullptr) {
+                            delete[] body_ptr;
+                          }
 
                           if (result.post.body != nullptr) {
                             length = result.post.length;
