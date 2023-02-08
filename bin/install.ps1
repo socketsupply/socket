@@ -437,27 +437,24 @@ if ($ps1build) {
   Build
   Install-Files
 } else {
-  # locate git's sh. We should look for mingw sh.
-  $gitPath = "$env:ProgramFiles\Git\bin"
-  $sh = "$gitPath\sh.exe"
+  $sh="sh.exe"
+  if (-not (Found-Command($sh))) {
+    # locate git's sh
+    $gitPath = "$env:ProgramFiles\Git\bin"
+    $sh = "$gitPath\sh.exe"
+  }
 
   # Look for sh in path
   if (-not (Found-Command($sh))) {
     $sh = "$gitPath\sh.exe"
-  }
-
-  if (-not (Found-Command($sh))) {
-    Write-Output "sh.exe not in path, aborting."
-    Write-Output "We currently require git's sh.exe in path."
+    Write-Output "sh.exe not in PATH or default Git\bin"
     Exit 1
   }
 
-  $mingw = $false
-  $sh_version_check = iex "& ""$sh"" -c 'uname -s'" | Out-String
+  $find_check = iex "& ""$sh"" -c 'find --version'" | Out-String
 
-  if (-not ($sh_version_check -like "*MINGW*")) {
-    Write-Output "sh.exe is not MINGW: '$sh_version_check'"
-    Write-Output "We currently require git's sh.exe in path."
+  if (-not ($find_check -like "*find (GNU findutils)*")) {
+    Write-Output "find is not GNU findutils: '$find_check'"
     Exit 1
   }
 
