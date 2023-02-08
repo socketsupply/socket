@@ -21,8 +21,8 @@ elif [[ "$host" == *"MSYS_NT"* ]]; then
   host="Win32"
 fi
 
-if [ -n "$LOCALAPPDATA" ]; then
-  if [ -z "$SOCKET_NPM_PUBLISH" ]; then
+if [ -z "$SOCKET_HOME" ]; then
+  if [ -n "$LOCALAPPDATA" ]; then
     SOCKET_HOME="$LOCALAPPDATA/Programs/socketsupply"
   fi
 fi
@@ -594,7 +594,7 @@ cd $CWD
 
 cd "$BUILD_DIR"
 
-_get_web_view2 & pids+=($!)
+_get_web_view2
 
 _build_runtime_library
 _build_cli & pids+=($!)
