@@ -3,7 +3,7 @@ import * as os from 'socket:os'
 
 const archs = ['arm64', 'ia32', 'x64', 'unknown']
 const platforms = ['android', 'cygwin', 'freebsd', 'linux', 'darwin', 'ios', 'openbsd', 'win32', 'unknown']
-const types = ['CYGWIN_NT', 'Mac', 'Darwin', 'FreeBSD', 'Linux', 'OpenBSD', 'Windows_NT', 'Unknown']
+const types = ['CYGWIN_NT', 'Mac', 'Darwin', 'FreeBSD', 'Linux', 'OpenBSD', 'Windows_NT', 'Win32', 'Unknown']
 
 test('os.arch()', (t) => {
   t.ok(archs.includes(os.arch()), 'os.arch() value is valid')
@@ -23,7 +23,8 @@ test('os.networkInterfaces()', (t) => {
   }
 
   const networkInterfaces = os.networkInterfaces()
-  t.ok(Array.isArray(networkInterfaces.lo) || Array.isArray(networkInterfaces.lo0), 'iterface is "lo"')
+  const lo = os.platform() === 'win32' ? 'Loopback Pseudo-Interface 1' : 'lo'
+  t.ok(Array.isArray(networkInterfaces[lo]) || Array.isArray(networkInterfaces.lo0), 'iterface is "lo"')
   const interfaces = Object.values(networkInterfaces)
   t.ok(interfaces.length >= 2, 'network interfaces has at least two keys, loopback + wifi, was:' + interfaces.length)
   t.ok(interfaces.every(addresses => Array.isArray(addresses)), 'network interface is an array')
@@ -34,7 +35,7 @@ test('os.networkInterfaces()', (t) => {
 })
 
 test('os.EOL', (t) => {
-  if (/windows/i.test(os.type())) {
+  if (os.platform() === 'win32') {
     t.equal(os.EOL, '\r\n')
   } else {
     t.equal(os.EOL, '\n')

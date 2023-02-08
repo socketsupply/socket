@@ -82,10 +82,17 @@ if (window.__args.os !== 'ios' && window.__args.os !== 'android') {
     const response = ipc.sendSync('test', { foo: 'bar' })
     t.ok(response instanceof ipc.Result)
     const { err } = response
-    t.equal(err?.toString(), 'NotFoundError: Not found')
+    // Make lower case to adjust for implementation differences.
+    t.equal(err?.toString().toLowerCase(), 'notfounderror: not found')
     t.equal(err?.name, 'NotFoundError')
-    t.equal(err?.message, 'Not found')
-    t.ok(err?.url.startsWith('ipc://test?foo=bar&index=0&seq=R'))
+    // Make lower case to adjust for implementation differences.
+    t.equal(err?.message.toLowerCase(), 'not found')
+    // win32 adds on the trailing slash in the URL.
+    if (window.__args.os === 'win32') {
+      t.ok(err?.url.startsWith('ipc://test/?foo=bar&index=0&seq=R'))
+    } else {
+      t.ok(err?.url.startsWith('ipc://test?foo=bar&index=0&seq=R'))
+    }
     t.equal(err?.code, 'NOT_FOUND_ERR')
   })
 }
