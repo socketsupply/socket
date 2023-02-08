@@ -479,17 +479,17 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 		17A7F8EF29358D180051D146 /* objects */ = {
 			isa = PBXGroup;
 			children = (
-				17A7F8F029358D180051D146 /* mobile */,
+				17A7F8F029358D180051D146 /* ios */,
 			);
 			path = objects;
 			sourceTree = "<group>";
 		};
-		17A7F8F029358D180051D146 /* mobile */ = {
+		17A7F8F029358D180051D146 /* ios */ = {
 			isa = PBXGroup;
 			children = (
 				17A7F8F129358D180051D146 /* ios.o */,
 			);
-			path = mobile;
+			path = ios;
 			sourceTree = "<group>";
 		};
 		29124C4127613369001832A0 = {
