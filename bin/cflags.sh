@@ -7,23 +7,28 @@ declare IOS_SIMULATOR_VERSION_MIN="${IOS_SIMULATOR_VERSION_MIN:-$IPHONEOS_VERSIO
 
 declare cflags=()
 declare arch="$(uname -m)"
+declare host="$(uname -s)"
 declare platform="desktop"
 
 declare ios_sdk_path=""
 
-declare ANDROID_HOME=""
+if [[ "$host" = "Linux" ]]; then
+  if [ -n "$WSL_DISTRO_NAME" ] || uname -r | grep 'Microsoft'; then
+    host="Win32"
+  fi
+fi
 
 if [ -z "$ANDROID_HOME" ]; then
-  if [[ "$(uname)" = "Darwin" ]]; then
+  if [[ "$host" = "Darwin" ]]; then
     ANDROID_HOME="$HOME/Library/Android/sdk"
-  elif [[ "$(uname)" = "Linux" ]]; then
+  elif [[ "$host" = "Linux" ]]; then
     ANDROID_HOME="$HOME/android"
   fi
 fi
 
-if [[ "$(uname)" = "Linux" ]] && [[ "$(basename "$CXX")" =~ clang ]]; then
-  cflags+=("-Wno-unused-command-line-argument")
-  if [[ "$(uname)" = "Linux" ]]; then
+if [[ "$(basename "$CXX")" =~ clang ]]; then
+  if [[ "$host" = "Linux" ]] || [[ "$host" = "Win32" ]]; then
+    cflags+=("-Wno-unused-command-line-argument")
     cflags+=("-stdlib=libstdc++")
   fi
 fi
@@ -31,12 +36,12 @@ fi
 cflags+=(
   $CFLAG
   $CXXFLAGS
-  -std=c++20
+  -std=c++2a
   -I"$root/include"
   -I"$root/build/uv/include"
   -DSSC_BUILD_TIME="$(date '+%s')"
-  -DSSC_VERSION_HASH=`git rev-parse --short HEAD`
-  -DSSC_VERSION=`cat "$root/VERSION.txt"`
+  -DSSC_VERSION_HASH=$(git rev-parse --short HEAD)
+  -DSSC_VERSION=$(cat "$root/VERSION.txt")
 )
 
 if (( TARGET_OS_IPHONE )) || (( TARGET_IPHONE_SIMULATOR )); then
@@ -44,6 +49,7 @@ if (( TARGET_OS_IPHONE )) || (( TARGET_IPHONE_SIMULATOR )); then
     ios_sdk_path="$(xcrun -sdk iphoneos -show-sdk-path)"
     cflags+=("-arch arm64")
     cflags+=("-target arm64-apple-ios")
+    cflags+=("-Wno-unguarded-availability-new")
     cflags+=("-miphoneos-version-min=$IPHONEOS_VERSION_MIN")
   elif (( TARGET_IPHONE_SIMULATOR )); then
     ios_sdk_path="$(xcrun -sdk iphonesimulator -show-sdk-path)"
@@ -62,18 +68,27 @@ elif (( TARGET_OS_ANDROID )) || (( TARGET_ANDROID_EMULATOR )); then
     cflags+=("-target x86_64-linux-android")
   fi
 
-  if [[ "$(uname)" = "Darwin" ]]; then
+  if [[ "$host" = "Darwin" ]]; then
     cflags+=("--sysroot=$ANDROID_HOME/ndk-bundle/toolchains/llvm/prebuilt/darwin-x86_64/sysroot")
-  elif [[ "$(uname)" = "Linux" ]]; then
+  elif [[ "$host" = "Linux" ]]; then
     cflags+=("--sysroot=$ANDROID_HOME/ndk-bundle/toolchains/llvm/prebuilt/linux-x86_64/sysroot")
   fi
 fi
 
 if (( !TARGET_OS_ANDROID && !TARGET_ANDROID_EMULATOR )); then
-  if [[ "$(uname -s)" = "Darwin" ]]; then
+  if [[ "$host" = "Darwin" ]]; then
     cflags+=("-ObjC++")
-  elif [[ "$(uname -s)" = "Linux" ]]; then
+  elif [[ "$host" = "Linux" ]]; then
     cflags+=($(pkg-config --cflags --static gtk+-3.0 webkit2gtk-4.1))
+  elif [[ "$host" = "Win32" ]]; then
+    cflags+=(
+      -D_MT
+      -D_DLL
+      -DWIN32
+      -DWIN32_LEAN_AND_MEAN
+      -Xlinker /NODEFAULTLIB:libcmt
+      -Wno-nonportable-include-path
+    )
   fi
 fi
 

@@ -3,22 +3,41 @@
 #include <cstdlib>
 #include <cstring>
 #include <fcntl.h>
+#include <iostream>
 #include <poll.h>
 #include <set>
-#include <stdexcept>
-#include <unistd.h>
-#include <iostream>
-#include <sstream>
 #include <signal.h>
+#include <sstream>
+#include <stdexcept>
+#include <sys/wait.h>
+#include <unistd.h>
 
 #include "process.hh"
 
 namespace SSC {
 
-static SSC::MessageCallback exitCallback;
-static SSC::StringStream initial;
+static StringStream initial;
 
 Process::Data::Data() noexcept : id(-1) {}
+Process::Process(
+  const String &command,
+  const String &argv,
+  const String &path,
+  MessageCallback read_stdout,
+  MessageCallback read_stderr,
+  MessageCallback on_exit,
+  bool open_stdin,
+  const ProcessConfig &config
+) noexcept :
+  open_stdin(true),
+  read_stdout(std::move(read_stdout)),
+  read_stderr(std::move(read_stderr)),
+  on_exit(std::move(on_exit))
+{
+  this->command = command;
+  this->argv = argv;
+  this->path = path;
+}
 
 Process::Process(
   const std::function<int()> &function,
@@ -27,21 +46,14 @@ Process::Process(
   MessageCallback on_exit,
   bool open_stdin, const ProcessConfig &config
 ) noexcept:
-  closed(true),
   read_stdout(std::move(read_stdout)),
   read_stderr(std::move(read_stderr)),
   on_exit(std::move(on_exit)),
   open_stdin(open_stdin),
-  config(config) {
-
+  config(config)
+{
   open(function);
   read();
-
-  exitCallback = on_exit;
-
-  signal(SIGCHLD, [](int code) {
-    exitCallback(std::to_string(code));
-  });
 }
 
 Process::id_type Process::open(const std::function<int()> &function) noexcept {
@@ -78,10 +90,12 @@ Process::id_type Process::open(const std::function<int()> &function) noexcept {
       close(stdin_p[0]);
       close(stdin_p[1]);
     }
+
     if (stdout_fd) {
       close(stdout_p[0]);
       close(stdout_p[1]);
     }
+
     return -1;
   }
 
@@ -92,15 +106,37 @@ Process::id_type Process::open(const std::function<int()> &function) noexcept {
       close(stdin_p[0]);
       close(stdin_p[1]);
     }
+
     if (stdout_fd) {
       close(stdout_p[0]);
       close(stdout_p[1]);
     }
+
     if (stderr_fd) {
       close(stderr_p[0]);
       close(stderr_p[1]);
     }
+
     return pid;
+  }
+
+  closed = false;
+  id = pid;
+
+  if (pid > 0) {
+    auto thread = std::thread([this] {
+      int code = 0;
+      waitpid(this->id, &code, 0);
+
+      this->status = WEXITSTATUS(code);
+      this->closed = true;
+
+      if (this->on_exit != nullptr) {
+        this->on_exit(std::to_string(status));
+      }
+    });
+
+    thread.detach();
   } else if (pid == 0) {
     if (stdin_fd) {
       dup2(stdin_p[0], 0);
@@ -162,7 +198,6 @@ Process::id_type Process::open(const std::function<int()> &function) noexcept {
     *stderr_fd = stderr_p[0];
   }
 
-  closed = false;
   data.id = pid;
   return pid;
 }

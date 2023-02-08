@@ -4,9 +4,21 @@ declare root="$(cd "$(dirname "$(dirname "${BASH_SOURCE[0]}")")" && pwd)"
 declare pids=()
 
 LIPO=""
-WORK_DIR=`pwd`
-PREFIX="${PREFIX:-$HOME}"
-BUILD_DIR=$WORK_DIR/build
+declare CWD=$(pwd)
+declare PREFIX="${PREFIX:-"/usr/local"}"
+declare BUILD_DIR="$CWD/build"
+declare SOCKET_HOME="${SOCKET_HOME:-"${XDG_DATA_HOME:-"$HOME/.local/share"}/socket"}"
+declare HOST="$(uname -s)"
+
+if [[ "$HOST" = "Linux" ]]; then
+  if [ -n "$WSL_DISTRO_NAME" ] || uname -r | grep 'Microsoft'; then
+    HOST="Win32"
+  fi
+fi
+
+if [ -n "$LOCALAPPDATA" ]; then
+  SOCKET_HOME="$LOCALAPPDATA/Programs/socketsupply"
+fi
 
 if [ ! "$CXX" ]; then
   if command -v clang++ >/dev/null 2>&1; then
@@ -54,11 +66,11 @@ function die {
 }
 
 function advice {
-  if [[ "`uname -s`" == "Darwin" ]]; then
+  if [[ "$(uname -s)" == "Darwin" ]]; then
     echo "brew install $1"
-  elif [[ "`uname -r`" == *"ARCH"* ]]; then
+  elif [[ "$(uname -r)" == *"ARCH"* ]]; then
     echo "sudo pacman -S $1"
-  elif [[ "`uname -s`" == *"Linux"* ]]; then
+  elif [[ "$(uname -s)" == *"Linux"* ]]; then
     echo "apt-get install $1"
   fi
 }
@@ -66,7 +78,7 @@ function advice {
 quiet command -v make
 die $? "not ok - missing build tools, try \"$(advice "make")\""
 
-if [ "$(uname)" == "Darwin" ]; then
+if [ "$HOST" == "Darwin" ]; then
   quiet command -v automake
   die $? "not ok - missing build tools, try \"$(advice "automake")\""
   quiet command -v glibtoolize
@@ -75,7 +87,7 @@ if [ "$(uname)" == "Darwin" ]; then
   die $? "not ok - missing build tools, try 'brew install libtool'"
 fi
 
-if [ "$(uname)" == "Linux" ]; then
+if [ "$HOST" == "Linux" ]; then
   quiet command -v autoconf
   die $? "not ok - missing build tools, try \"$(advice "autoconf")\""
   quiet command -v pkg-config
@@ -83,7 +95,7 @@ if [ "$(uname)" == "Linux" ]; then
 fi
 
 function _build_cli {
-  echo "# building cli for desktop (`uname -m`)..."
+  echo "# building cli for desktop ($(uname -m))..."
   local arch="$(uname -m)"
   local platform="desktop"
 
@@ -125,7 +137,7 @@ function _build_cli {
 function _build_runtime_library {
   echo "# building runtime library"
   "$root/bin/build-runtime-library.sh" --arch "$(uname -m)" --platform desktop & pids+=($!)
-  if [[ "$(uname -s)" = "Darwin" ]]; then
+  if [[ "$HOST" = "Darwin" ]]; then
     "$root/bin/build-runtime-library.sh" --arch "$(uname -m)" --platform ios & pids+=($!)
     "$root/bin/build-runtime-library.sh" --arch x86_64 --platform ios-simulator & pids+=($!)
   fi
@@ -232,20 +244,14 @@ function _prebuild_ios_simulator_main () {
 }
 
 function _prepare {
-  if [ ! -z "$LOCALAPPDATA" ]; then
-    ASSETS_DIR="$LOCALAPPDATA/Programs/socketsupply"
-  else
-    ASSETS_DIR="$PREFIX/.config/socket"
-  fi
-
   echo "# preparing directories..."
-  rm -rf "$ASSETS_DIR"
+  rm -rf "$SOCKET_HOME"
 
-  mkdir -p "$ASSETS_DIR"/{lib,src,bin,include,objects}
-  mkdir -p "$ASSETS_DIR"/{lib,objects}/"$(uname -m)-desktop"
+  mkdir -p "$SOCKET_HOME"/{lib,src,bin,include,objects,api}
+  mkdir -p "$SOCKET_HOME"/{lib,objects}/"$(uname -m)-desktop"
 
-  if [[ "$(uname -s)" = "Darwin" ]]; then
-    mkdir -p "$ASSETS_DIR"/{lib,objects}/{arm64-iPhoneOS,x86_64-iPhoneSimulator}
+  if [[ "$HOST" = "Darwin" ]]; then
+    mkdir -p "$SOCKET_HOME"/{lib,objects}/{arm64-iPhoneOS,x86_64-iPhoneSimulator}
   fi
 
   if [ ! -d "$BUILD_DIR/uv" ]; then
@@ -261,52 +267,72 @@ function _prepare {
 function _install {
   declare arch="$1"
   declare platform="$2"
-  echo "# copying sources to $ASSETS_DIR/src"
-  cp -r "$WORK_DIR"/src/* "$ASSETS_DIR/src"
+  echo "# copying sources to $SOCKET_HOME/src"
+  cp -r "$CWD"/src/* "$SOCKET_HOME/src"
 
   if test -d "$BUILD_DIR/$arch-$platform/objects"; then
-    echo "# copying objects to $ASSETS_DIR/objects/$arch-$platform"
-    rm -rf "$ASSETS_DIR/objects/$arch-$platform"
-    mkdir -p "$ASSETS_DIR/objects/$arch-$platform"
-    cp -r "$BUILD_DIR/$arch-$platform/objects"/* "$ASSETS_DIR/objects/$arch-$platform"
+    echo "# copying objects to $SOCKET_HOME/objects/$arch-$platform"
+    rm -rf "$SOCKET_HOME/objects/$arch-$platform"
+    mkdir -p "$SOCKET_HOME/objects/$arch-$platform"
+    cp -r "$BUILD_DIR/$arch-$platform/objects"/* "$SOCKET_HOME/objects/$arch-$platform"
   fi
 
   if test -d "$BUILD_DIR"/lib; then
-    echo "# copying libraries to $ASSETS_DIR/lib"
-    mkdir -p "$ASSETS_DIR/lib"
-    cp -fr "$BUILD_DIR"/lib/*.a "$ASSETS_DIR/lib/"
+    echo "# copying libraries to $SOCKET_HOME/lib"
+    mkdir -p "$SOCKET_HOME/lib"
+    cp -fr "$BUILD_DIR"/lib/*.a "$SOCKET_HOME/lib/"
   fi
 
   if test -d "$BUILD_DIR/$arch-$platform"/lib; then
-    echo "# copying libraries to $ASSETS_DIR/lib/$arch-$platform"
-    rm -rf "$ASSETS_DIR/lib/$arch-$platform"
-    mkdir -p "$ASSETS_DIR/lib/$arch-$platform"
-    cp -fr "$BUILD_DIR/$arch-$platform"/lib/*.a "$ASSETS_DIR/lib/$arch-$platform"
+    echo "# copying libraries to $SOCKET_HOME/lib/$arch-$platform"
+    rm -rf "$SOCKET_HOME/lib/$arch-$platform"
+    mkdir -p "$SOCKET_HOME/lib/$arch-$platform"
+    cp -fr "$BUILD_DIR/$arch-$platform"/lib/*.a "$SOCKET_HOME/lib/$arch-$platform"
   fi
 
-  rm -rf "$ASSETS_DIR/include"
-  mkdir -p "$ASSETS_DIR/include"
-  #cp -rf "$WORK_DIR"/include/* $ASSETS_DIR/include
-  cp -rf "$BUILD_DIR"/uv/include/* $ASSETS_DIR/include
+  echo "# copying js api to $SOCKET_HOME/api"
+  mkdir -p "$SOCKET_HOME/api"
+  cp -fr "$root"/api/* "$SOCKET_HOME/api"
+  rm -f "$SOCKET_HOME/api/importmap.json"
+  "$root/bin/generate-api-import-map.sh" > "$SOCKET_HOME/api/importmap.json"
+
+  rm -rf "$SOCKET_HOME/include"
+  mkdir -p "$SOCKET_HOME/include"
+  #cp -rf "$CWD"/include/* $SOCKET_HOME/include
+  cp -rf "$BUILD_DIR"/uv/include/* $SOCKET_HOME/include
 }
 
 function _install_cli {
   local arch="$(uname -m)"
-  local platform="desktop"
-  if [ -z "$TEST" ]; then
-    local binDest="/usr/local/bin/ssc"
-    echo "# moving binary to $binDest (prompting to copy file into directory)"
-    sudo mkdir -p /usr/local/bin
-    sudo rm -f "$binDest"
-    sudo cp "$BUILD_DIR/$arch-$platform"/bin/ssc $binDest
-  fi
 
-  die $? "not ok - unable to move binary into place"
-  echo "ok - done. type 'ssc -h' for help"
+  if [ -z "$TEST" ] && [ -z "$NO_INSTALL" ]; then
+    echo "# moving binary to '$SOCKET_HOME/bin' (prompting to copy file into directory)"
+
+    cp -f "$BUILD_DIR/$arch-desktop"/bin/* "$SOCKET_HOME/bin"
+    die $? "not ok - unable to move binary into '$SOCKET_HOME'"
+
+    if [[ "$SOCKET_HOME" != "$PREFIX" ]]; then
+      local status="$(ln -sf "$SOCKET_HOME/bin/ssc" "$PREFIX/bin/ssc" 2>&1)"
+      local rc=$?
+
+      if [[ " $status " =~ " Permission denied " ]]; then
+        echo "warn - Failed to link binrary to '$PREFIX/bin': Trying 'sudo'"
+        sudo rm -f "$PREFIX/bin/ssc"
+        sudo ln -sf "$SOCKET_HOME/bin/ssc" "$PREFIX/bin/ssc"
+        die $? "not ok - unable to link binary into '$PREFIX/bin'"
+      fi
+
+      die $rc "not ok - unable to link binary into '$PREFIX/bin'"
+    fi
+
+    echo "ok - done. type 'ssc -h' for help"
+  else
+    echo "ok - done."
+  fi
 }
 
 function _setSDKVersion {
-  sdks=`ls $PLATFORMPATH/$1.platform/Developer/SDKs`
+  sdks=$(ls "$PLATFORMPATH"/"$1".platform/Developer/SDKs)
   arr=()
   for sdk in $sdks
   do
@@ -319,7 +345,7 @@ function _setSDKVersion {
 
   if [ $count -gt 0 ]; then
     sdk=${arr[$count-1]:${#1}}
-    num=`expr ${#sdk}-4`
+    num=$(expr ${#sdk}-4)
     SDKVERSION=${sdk:0:$num}
   else
     SDKVERSION="8.0"
@@ -332,7 +358,7 @@ function _compile_libuv {
   platform=$2
 
   if [ -z "$target" ]; then
-    target=`uname -m`
+    target=$(uname -m)
     platform="desktop"
   fi
 
@@ -351,7 +377,6 @@ function _compile_libuv {
   mkdir -p "$STAGING_DIR/build/"
 
   if [ $platform == "desktop" ]; then
-    mkdir -p $PREFIX
     if ! test -f Makefile; then
       quiet ./configure --prefix=$BUILD_DIR/$target-$platform
       die $? "not ok - desktop configure"
@@ -359,8 +384,9 @@ function _compile_libuv {
       quiet make clean
       quiet make -j8
       quiet make install
-      rm -f "$root/build/$(uname -s)-desktop/lib/"/libuv.{so,la}*
     fi
+
+    rm -f "$root/build/$(uname -m)-desktop/lib"/*.{so,la,dylib}*
     return
   fi
 
@@ -392,6 +418,7 @@ function _compile_libuv {
   quiet make install
 
   cd $BUILD_DIR
+  rm -f "$root/build/$target-$platform/lib"/*.{so,la,dylib}*
   echo "ok - built for $target"
 }
 
@@ -407,7 +434,7 @@ function _check_compiler_features {
     int main () { return 0; }
 EOF_CC
 
-  die $? "not ok - $CXX (`$CXX -dumpversion`) clang >= 11 is required for building socket"
+  die $? "not ok - $CXX ($($CXX -dumpversion)) failed in feature check required for building Socket Rutime"
 }
 
 function onsignal () {
@@ -426,7 +453,7 @@ cd $BUILD_DIR
 
 trap onsignal INT TERM
 
-if [[ "`uname -s`" == "Darwin" ]]; then
+if [[ "$(uname -s)" == "Darwin" ]]; then
   quiet xcode-select -p
   die $? "not ok - xcode needs to be installed from the mac app store: https://apps.apple.com/us/app/xcode/id497799835"
 
@@ -457,12 +484,12 @@ fi
 _compile_libuv
 echo "ok - built libuv for $platform ($target)"
 
-mkdir -p  $ASSETS_DIR/uv/{src/unix,include}
-cp -fr $BUILD_DIR/uv/src/*.{c,h} $ASSETS_DIR/uv/src
-cp -fr $BUILD_DIR/uv/src/unix/*.{c,h} $ASSETS_DIR/uv/src/unix
+mkdir -p  $SOCKET_HOME/uv/{src/unix,include}
+cp -fr $BUILD_DIR/uv/src/*.{c,h} $SOCKET_HOME/uv/src
+cp -fr $BUILD_DIR/uv/src/unix/*.{c,h} $SOCKET_HOME/uv/src/unix
 die $? "not ok - could not copy headers"
 echo "ok - copied headers"
-cd $WORK_DIR
+cd $CWD
 
 cd "$BUILD_DIR"
 
@@ -471,7 +498,7 @@ _build_cli & pids+=($!)
 
 _prebuild_desktop_main & pids+=($!)
 
-if [[ "$(uname -s)" = "Darwin" ]]; then
+if [[ "$HOST" = "Darwin" ]]; then
   if test -d "$(xcrun -sdk iphoneos -show-sdk-path 2>/dev/null)"; then
     _prebuild_ios_main & pids+=($!)
     _prebuild_ios_simulator_main & pids+=($!)
@@ -485,7 +512,7 @@ done
 
 _install "$(uname -m)" desktop
 
-if [[ "$(uname -s)" = "Darwin" ]]; then
+if [[ "$HOST" = "Darwin" ]]; then
   _install arm64 iPhoneOS
   _install x86_64 iPhoneSimulator
 fi

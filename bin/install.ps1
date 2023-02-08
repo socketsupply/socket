@@ -1,4 +1,4 @@
-param([Switch]$debug, [Switch]$skipwebview, $webview = "1.0.1369-prerelease", $uv = "v1.44.2", $toolchain = "llvm+vsbuild")
+param([Switch]$debug, [Switch]$skipwebview, $webview = "1.0.1619-prerelease", $uv = "v1.44.2", $toolchain = "llvm+vsbuild")
 
 $OLD_CWD = (Get-Location).Path
 
@@ -80,33 +80,20 @@ Function Build {
   Write-Output "ok - built libuv"
 
   (New-Item -ItemType Directory -Force -Path "$WORKING_BUILD_PATH\lib") > $null
-  if ($debug -eq $true) {
-    # Support Debug path created by some setups
-    if ((Test-Path -Path "$WORKING_BUILD_PATH\libuv\build\uv_a.pdb" -PathType Leaf)) {
-      Copy-Item "$WORKING_BUILD_PATH\libuv\build\uv_a.pdb" -Destination "$WORKING_BUILD_PATH\lib\uv_a.pdb"
-    } elseif ((Test-Path -Path "$WORKING_BUILD_PATH\libuv\build\Debug\uv_a.pdb" -PathType Leaf)) {
-      Copy-Item "$WORKING_BUILD_PATH\libuv\build\Debug\uv_a.pdb" -Destination "$WORKING_BUILD_PATH\lib\uv_a.pdb"
-    } else {
-      Write-Output "Warning: uv_a.pdb not found"
+  if ((Test-Path -Path "$WORKING_BUILD_PATH\libuv\build\$LIBUV_BUILD_TYPE\uv_a.lib" -PathType Leaf)) {
+    Copy-Item "$WORKING_BUILD_PATH\libuv\build\$LIBUV_BUILD_TYPE\uv_a.lib" -Destination "$WORKING_BUILD_PATH\lib\uv_a.lib"
+    if ($debug -eq $true) {
+      Copy-Item "$WORKING_BUILD_PATH\libuv\build\$LIBUV_BUILD_TYPE\uv_a.pdb" -Destination "$WORKING_BUILD_PATH\lib\uv_a.pdb"
     }
-
-    if ((Test-Path -Path "$WORKING_BUILD_PATH\libuv\build\uv_a.lib" -PathType Leaf)) {
-      Copy-Item "$WORKING_BUILD_PATH\libuv\build\uv_a.lib" -Destination "$WORKING_BUILD_PATH\lib\uv_a.lib"
-    } elseif ((Test-Path -Path "$WORKING_BUILD_PATH\libuv\build\Debug\uv_a.lib" -PathType Leaf)) {
-      Copy-Item "$WORKING_BUILD_PATH\libuv\build\Debug\uv_a.lib" -Destination "$WORKING_BUILD_PATH\lib\uv_a.lib"
-    } else {
-      Write-Output "Stop: uv_a.lib not found"
-      Exit 1
+  } elseif ((Test-Path -Path "$WORKING_BUILD_PATH\libuv\build\uv_a.lib" -PathType Leaf)) {
+    # Support older versions of cmake that don't build to --config type path on multibuild systems
+    Copy-Item "$WORKING_BUILD_PATH\libuv\build\uv_a.lib" -Destination "$WORKING_BUILD_PATH\lib\uv_a.lib"
+    if ($debug -eq $true) {
+      Copy-Item "$WORKING_BUILD_PATH\libuv\build\uv_a.pdb" -Destination "$WORKING_BUILD_PATH\lib\uv_a.pdb"
     }
   } else {
-    if ((Test-Path -Path "$WORKING_BUILD_PATH\libuv\build\uv_a.lib" -PathType Leaf)) {
-      Copy-Item "$WORKING_BUILD_PATH\libuv\build\uv_a.lib" -Destination "$WORKING_BUILD_PATH\lib\uv_a.lib"
-    } elseif ((Test-Path -Path "$WORKING_BUILD_PATH\libuv\build\Release\uv_a.lib" -PathType Leaf)) {
-      Copy-Item "$WORKING_BUILD_PATH\libuv\build\Release\uv_a.lib" -Destination "$WORKING_BUILD_PATH\lib\uv_a.lib"
-    } else {
-      Write-Output "Stop: uv_a.pdb not found"
-      Exit 1
-    }
+    Write-Output "Stop: uv_a.lib not found"
+    Exit 1
   }
 
   (New-Item -ItemType Directory -Force -Path "$WORKING_BUILD_PATH\include") > $null
@@ -141,6 +128,9 @@ Function Install-Files {
   (New-Item -ItemType Directory -Force -Path "$LIB_PATH") > $null
   (New-Item -ItemType Directory -Force -Path "$SRC_PATH") > $null
   (New-Item -ItemType Directory -Force -Path "$INCLUDE_PATH") > $null
+
+  # install `.\build\uv\src`
+  Copy-Item -Path "$WORKING_BUILD_PATH\libuv\src" -Destination "$ASSET_PATH\uv\src" -Recurse -Force
 
   # install `.\src\*`
   Copy-Item -Path "$WORKING_PATH\src\*" -Destination "$SRC_PATH" -Recurse -Force -Container
@@ -178,7 +168,7 @@ Function Install-WebView2 {
 
   # download and extract
   Write-Output "# downloading WebView2 ${WEBVIEW2_VERSION} header and library files..."
-  Invoke-WebRequest "https://www.nuget.org/api/v2/package/Microsoft.Web.WebView2/1.0.1369-prerelease" -O "$tmpdir\webview2.zip"
+  Invoke-WebRequest "https://www.nuget.org/api/v2/package/Microsoft.Web.WebView2/${WEBVIEW2_VERSION}" -O "$tmpdir\webview2.zip"
   Expand-Archive -Path $tmpdir\WebView2.zip -DestinationPath $tmpdir\WebView2
 
   # install files into project `lib\` dir

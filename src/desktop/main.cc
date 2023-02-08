@@ -35,8 +35,8 @@ void signalHandler (int signal) {
 }
 
 void navigate (Window* window, const String &cwd, const String &seq, const String &value) {
-  if (!value.starts_with("file://")) {
-    debug("Navigation error: only file:// protocol is allowed. Got path %s", value.c_str());
+  if (!value.starts_with("file://") && !value.starts_with("socket://")) {
+    debug("Navigation error: only file:// or socket:// protocol is allowed. Got path %s", value.c_str());
     return;
   }
   if (!value.substr(7).starts_with(cwd)) {
@@ -166,20 +166,20 @@ MAIN {
   }
 
   if (isDebugEnabled()) {
-    app.appData["name"] += "-dev";
+    app.appData["build_name"] += "-dev";
   }
 
-  app.appData["name"] += suffix;
+  app.appData["build_name"] += suffix;
 
-  argvForward << " --version=v" << app.appData["version"];
-  argvForward << " --name=" << app.appData["name"];
+  argvForward << " --version=v" << app.appData["meta_version"];
+  argvForward << " --name=" << app.appData["build_name"];
 
   if (isDebugEnabled()) {
     argvForward << " --debug=1";
   }
 
   SSC::StringStream env;
-  for (auto const &envKey : split(app.appData["env"], ',')) {
+  for (auto const &envKey : split(app.appData["build_env"], ',')) {
     auto cleanKey = trim(envKey);
     auto envValue = getEnv(cleanKey.c_str());
 
@@ -205,12 +205,16 @@ MAIN {
   static Process* process = nullptr;
   static std::function<void(bool)> createProcess;
 
-  auto killProcess = [&](Process* process) {
-    if (process != nullptr) {
-        auto pid = process->getPID();
-        process->kill(pid);
-        delete process;
+  auto killProcess = [&](Process* processToKill) {
+    if (processToKill != nullptr) {
+      auto pid = processToKill->getPID();
+      processToKill->kill(pid);
+
+      if (processToKill == process) {
         process = nullptr;
+      }
+
+      delete processToKill;
     }
   };
 
@@ -233,11 +237,11 @@ MAIN {
       [&](SSC::String const &out) {
         IPC::Message message(out);
 
-        if (message.name != "exit") {
-          stdWrite(decodeURIComponent(message.get("value")), false);
-        } else if (message.name == "exit") {
+        if (message.name == "exit") {
           exitCode = stoi(message.get("value"));
           exit(exitCode);
+        } else {
+          stdWrite(decodeURIComponent(message.get("value")), false);
         }
       },
       [](SSC::String const &out) { stdWrite(out, true); },
@@ -447,10 +451,11 @@ MAIN {
 
     if (message.name == "process.kill") {
       auto seq = message.get("seq");
+
       if (cmd.size() > 0 && process != nullptr) {
         killProcess(process);
       }
-      // TODO: crashes the app with a segfault `libc++abi: terminating with uncaught exception of type std::__1::system_error: mutex lock failed: Invalid argument`
+
       window->resolvePromise(seq, OK_STATE, "null");
       return;
     }
@@ -800,7 +805,6 @@ MAIN {
     }
     windowManager.destroy();
     app_ptr->kill();
-
     exit(code);
   };
 

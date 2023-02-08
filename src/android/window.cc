@@ -19,7 +19,7 @@ namespace SSC::android {
 
     StringStream stream;
 
-    for (auto const &var : split(this->config["env"], ',')) {
+    for (auto const &var : split(this->config["build_env"], ',')) {
       auto key = trim(var);
       auto value = getEnv(key.c_str());
 
@@ -36,7 +36,7 @@ namespace SSC::android {
       "()Ljava/lang/String;"
     ));
 
-    options.headless = this->config["headless"] == "true";
+    options.headless = this->config["build_headless"] == "true";
     options.debug = isDebugEnabled() ? true : false;
     options.env = stream.str();
     options.cwd = rootDirectory.str();

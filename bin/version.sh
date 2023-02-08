@@ -1,9 +1,9 @@
 #!/bin/bash
 
-LATEST_HASH=`git log --pretty=format:'%h' -n 1`
+LATEST_HASH=$(git log --pretty=format:'%h' -n 1)
 
-BASE_STRING=`cat VERSION.txt`
-BASE_LIST=(`echo $BASE_STRING | tr '.' ' '`)
+BASE_STRING=$(cat VERSION.txt)
+BASE_LIST=($(echo $BASE_STRING | tr '.' ' '))
 V_MAJOR=${BASE_LIST[0]}
 V_MINOR=${BASE_LIST[1]}
 V_PATCH=${BASE_LIST[2]}

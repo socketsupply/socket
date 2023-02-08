@@ -6,6 +6,7 @@ using namespace SSC;
 using namespace SSC::IPC;
 
 #if defined(__APPLE__)
+
 static dispatch_queue_attr_t qos = dispatch_queue_attr_make_with_qos_class(
   DISPATCH_QUEUE_CONCURRENT,
   QOS_CLASS_USER_INITIATED,
@@ -16,6 +17,21 @@ static dispatch_queue_t queue = dispatch_queue_create(
   "co.socketsupply.queue.ipc.bridge",
   qos
 );
+
+static String getMIMEType (String path) {
+  auto url = [NSURL
+    fileURLWithPath: [NSString stringWithUTF8String: path.c_str()]
+  ];
+
+  auto extension = [url pathExtension];
+  auto utt = [UTType typeWithFilenameExtension: extension];
+
+  if (utt.preferredMIMEType.UTF8String != nullptr) {
+    return String(utt.preferredMIMEType.UTF8String);
+  }
+
+  return "";
+}
 #endif
 
 static JSON::Any validateMessageParameters (
@@ -31,6 +47,26 @@ static JSON::Any validateMessageParameters (
   }
 
   return nullptr;
+}
+
+static String getcwd () {
+  String cwd = "";
+#if defined(__linux__) && !defined(__ANDROID__)
+  auto canonical = fs::canonical("/proc/self/exe");
+  cwd = fs::path(canonical).parent_path().string();
+#elif defined(__APPLE__)
+  auto fileManager = [NSFileManager defaultManager];
+  auto currentDirectoryPath = [fileManager currentDirectoryPath];
+  auto currentDirectory = [NSHomeDirectory() stringByAppendingPathComponent: currentDirectoryPath];
+  cwd = String([currentDirectory UTF8String]);
+#elif defined(_WIN32)
+  wchar_t filename[MAX_PATH];
+  GetModuleFileNameW(NULL, filename, MAX_PATH);
+  auto path = fs::path { filename }.remove_filename();
+    cwd = path.string();
+#endif
+
+  return cwd;
 }
 
 #define resultCallback(message, reply)                                         \
@@ -138,13 +174,7 @@ void initFunctionsTable (Router *router) {
    * `message.buffer` with already an mapped buffer.
    */
   router->map("buffer.map", false, [](auto message, auto router, auto reply) {
-    router->setMappedBuffer(
-      message.index,
-      message.seq,
-      message.buffer.bytes,
-      message.buffer.size
-    );
-
+    router->setMappedBuffer(message.index, message.seq, message.buffer);
     reply(Result { message.seq, message });
   });
 
@@ -808,22 +838,8 @@ void initFunctionsTable (Router *router) {
    * Returns computed current working directory path.
    */
   router->map("process.cwd", [=](auto message, auto router, auto reply) {
-    String cwd = "";
     JSON::Object json;
-#if defined(__linux__) && !defined(__ANDROID__)
-    auto canonical = fs::canonical("/proc/self/exe");
-    cwd = fs::path(canonical).parent_path().string();
-#elif defined(__APPLE__)
-    auto fileManager = [NSFileManager defaultManager];
-    auto currentDirectoryPath = [fileManager currentDirectoryPath];
-    auto currentDirectory = [NSHomeDirectory() stringByAppendingPathComponent: currentDirectoryPath];
-    cwd = String([currentDirectory UTF8String]);
-#elif defined(_WIN32)
-    wchar_t filename[MAX_PATH];
-    GetModuleFileNameW(NULL, filename, MAX_PATH);
-    auto path = fs::path { filename }.remove_filename();
-    cwd = path.string();
-#endif
+    auto cwd = getcwd();
 
     if (cwd.size() == 0) {
       json = JSON::Object::Entries {
@@ -1136,7 +1152,9 @@ static void registerSchemeHandler (Router *router) {
   registered = true;
 
   auto ctx = webkit_web_context_get_default();
-  webkit_web_context_register_uri_scheme(ctx, "ipc", [](auto request, auto ptr){
+  auto security = webkit_web_context_get_security_manager(ctx);
+
+  webkit_web_context_register_uri_scheme(ctx, "ipc", [](auto request, auto ptr) {
     auto uri = String(webkit_uri_scheme_request_get_uri(request));
     auto router = reinterpret_cast<Router *>(ptr);
     auto message = Message { uri };
@@ -1178,6 +1196,63 @@ static void registerSchemeHandler (Router *router) {
   },
   router,
   0);
+
+  webkit_web_context_register_uri_scheme(ctx, "socket", [](auto request, auto ptr) {
+    auto uri = String(webkit_uri_scheme_request_get_uri(request));
+    auto cwd = getcwd();
+
+    if (uri.starts_with("socket:///")) {
+      uri = uri.substr(10);
+    } else if (uri.starts_with("socket://")) {
+      uri = uri.substr(9);
+    } else if (uri.starts_with("socket:")) {
+      uri = uri.substr(7);
+    }
+
+    auto path = fs::path(cwd) / uri;
+
+    if (!fs::exists(fs::status(path))) {
+      auto ext = uri.ends_with(".js") ? "" : ".js";
+      path = fs::path(cwd) / "socket" / (uri + ext);
+    }
+
+    uri = "file://" + path.string();
+    // create a proxy module so imports of the module of concern are imported
+    // exactly once at the canonical URL (file:///...) in contrast to module
+    // URLs (socket:...)
+    auto moduleTemplate =
+R"S(
+export * from '{{url}}'
+const exports = await import('{{url}}');
+export default exports.default ?? undefined
+)S";
+
+    auto moduleSource = trim(tmpl(
+      moduleTemplate,
+      Map { {"url", String(uri)} }
+    ));
+
+    auto size = moduleSource.size();
+    auto bytes = moduleSource.data();
+    auto stream = g_memory_input_stream_new_from_data(bytes, size, 0);
+    auto response = webkit_uri_scheme_response_new(stream, size);
+
+    webkit_uri_scheme_response_set_content_type(response, "text/javascript");
+    webkit_uri_scheme_request_finish_with_response(request, response);
+    g_object_unref(stream);
+  },
+  router,
+  0);
+
+  webkit_security_manager_register_uri_scheme_as_display_isolated(security, "ipc");
+  webkit_security_manager_register_uri_scheme_as_cors_enabled(security, "ipc");
+  webkit_security_manager_register_uri_scheme_as_secure(security, "ipc");
+  webkit_security_manager_register_uri_scheme_as_local(security, "ipc");
+
+  webkit_security_manager_register_uri_scheme_as_display_isolated(security, "socket");
+  webkit_security_manager_register_uri_scheme_as_cors_enabled(security, "socket");
+  webkit_security_manager_register_uri_scheme_as_secure(security, "socket");
+  webkit_security_manager_register_uri_scheme_as_local(security, "socket");
 #endif
 }
 
@@ -1185,18 +1260,19 @@ static void registerSchemeHandler (Router *router) {
 @implementation SSCIPCSchemeHandler
 - (void) webView: (SSCBridgedWebView*) webview stopURLSchemeTask: (Task) task {}
 - (void) webView: (SSCBridgedWebView*) webview startURLSchemeTask: (Task) task {
-  auto url = String(task.request.URL.absoluteString.UTF8String);
+  auto request = task.request;
+  auto url = String(request.URL.absoluteString.UTF8String);
   auto message = Message {url};
   auto seq = message.seq;
 
-  if (String(task.request.HTTPMethod.UTF8String) == "OPTIONS") {
+  if (String(request.HTTPMethod.UTF8String) == "OPTIONS") {
     auto headers = [NSMutableDictionary dictionary];
 
     headers[@"access-control-allow-origin"] = @"*";
     headers[@"access-control-allow-methods"] = @"*";
 
     auto response = [[NSHTTPURLResponse alloc]
-      initWithURL: task.request.URL
+      initWithURL: request.URL
        statusCode: 200
       HTTPVersion: @"HTTP/1.1"
      headerFields: headers
@@ -1208,6 +1284,69 @@ static void registerSchemeHandler (Router *router) {
     [response release];
     #endif
 
+    return;
+  }
+
+  if (String(request.URL.scheme.UTF8String) == "socket") {
+    auto headers = [NSMutableDictionary dictionary];
+    auto components = [NSURLComponents
+            componentsWithURL: request.URL
+      resolvingAgainstBaseURL: YES
+    ];
+
+    components.scheme = @"file";
+    components.host = @"";
+    components.path = [[[NSBundle mainBundle] resourcePath]
+      stringByAppendingPathComponent: [NSString
+        stringWithFormat: @"/socket/%@.js", components.path
+      ]
+    ];
+
+    auto data = [NSData dataWithContentsOfURL: components.URL];
+
+    // create a proxy module so imports of the module of concern are imported
+    // exactly once at the canonical URL (file:///...) in contrast to module
+    // URLs (socket:...)
+    auto moduleTemplate =
+R"S(
+export * from '{{url}}'
+const exports = await import('{{url}}');
+export default exports.default ?? undefined
+)S";
+
+    auto moduleSource = trim(tmpl(
+      moduleTemplate,
+      Map { {"url", String(components.URL.absoluteString.UTF8String)} }
+    ));
+
+    headers[@"access-control-allow-origin"] = @"*";
+    headers[@"access-control-allow-methods"] = @"*";
+    headers[@"access-control-allow-headers"] = @"*";
+
+    headers[@"content-location"] = components.URL.absoluteString;
+    headers[@"content-length"] = [@(moduleSource.size()) stringValue];
+    headers[@"content-type"] = @"text/javascript";
+
+    auto response = [[NSHTTPURLResponse alloc]
+      initWithURL: components.URL
+       statusCode: data.length > 0 ? 200 : 404
+      HTTPVersion: @"HTTP/1.1"
+     headerFields: headers
+    ];
+
+    [task didReceiveResponse: response];
+
+    if (data != nullptr) {
+      [task didReceiveData: [NSData
+        dataWithBytes: moduleSource.data()
+               length: moduleSource.size()
+      ]];
+    }
+
+    [task didFinish];
+    #if !__has_feature(objc_arc)
+    [response release];
+    #endif
     return;
   }
 
@@ -1231,7 +1370,7 @@ static void registerSchemeHandler (Router *router) {
     }
 
     NSHTTPURLResponse *response = [[NSHTTPURLResponse alloc]
-       initWithURL: task.request.URL
+       initWithURL: request.URL
         statusCode: 200
        HTTPVersion: @"HTTP/1.1"
       headerFields: headers
@@ -1278,7 +1417,7 @@ static void registerSchemeHandler (Router *router) {
   }
 
   // if there is a body on the reuqest, pass it into the method router.
-  auto rawBody = task.request.HTTPBody;
+  auto rawBody = request.HTTPBody;
 
   if (rawBody) {
     const void* data = [rawBody bytes];
@@ -1304,7 +1443,7 @@ static void registerSchemeHandler (Router *router) {
     headers[@"content-length"] = [@(msg.size()) stringValue];
 
     NSHTTPURLResponse *response = [[NSHTTPURLResponse alloc]
-       initWithURL: task.request.URL
+       initWithURL: request.URL
         statusCode: 404
        HTTPVersion: @"HTTP/1.1"
       headerFields: headers
@@ -1344,15 +1483,12 @@ namespace SSC::IPC {
     return MessageBuffer {};
   }
 
-  void Router::setMappedBuffer (
-    int index,
-    const Message::Seq seq,
-    char* bytes,
-    size_t size
-  ) {
+  void Router::setMappedBuffer(int index,
+                               const Message::Seq seq,
+                               MessageBuffer msg_buf) {
     Lock lock(this->mutex);
     auto key = std::to_string(index) + seq;
-    this->buffers.insert_or_assign(key, MessageBuffer { bytes, size });
+    this->buffers.insert_or_assign(key, msg_buf);
   }
 
   void Router::removeMappedBuffer (int index, const Message::Seq seq) {

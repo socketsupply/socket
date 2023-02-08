@@ -27,12 +27,13 @@ open class Window (runtime: Runtime, activity: MainActivity) {
   fun load () {
     val isDebugEnabled = this.runtime.get()?.isDebugEnabled() ?: false
     val filename = this.getPathToFileToLoad()
-    val activity = this.activity.get()
+    val activity = this.activity.get() ?: return
+    val runtime = this.runtime.get() ?: return
 
     // enable/disable debug module in webview
     android.webkit.WebView.setWebContentsDebuggingEnabled(isDebugEnabled)
 
-    activity?.webview?.apply {
+    activity.webview?.apply {
       settings.javaScriptEnabled = true
       // allow list
       settings.allowFileAccess = true
@@ -42,7 +43,29 @@ open class Window (runtime: Runtime, activity: MainActivity) {
       webViewClient = activity.client
 
       addJavascriptInterface(userMessageHandler, "external")
-      loadUrl("https://appassets.androidplatform.net/assets/$filename")
+      val assetManager = runtime.configuration.assetManager
+      val indexFile = assetManager.open(filename)
+      val indexBytes = indexFile.readAllBytes()
+      val importMapFile = assetManager.open("socket/importmap.json")
+      val importMapBytes = importMapFile.readAllBytes()
+
+      var html = String(indexBytes).replace("<head>","""
+        <head>
+          <script type="importmap">
+            ${String(importMapBytes)}
+          </script>
+      """)
+
+      indexFile.close()
+      importMapFile.close()
+
+      loadDataWithBaseURL(
+        "https://appassets.androidplatform.net/assets/",
+        html,
+        "text/html",
+        null,
+        null
+      )
     }
   }
 

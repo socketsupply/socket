@@ -6,8 +6,16 @@ declare ldflags=()
 
 declare args=()
 declare arch="$(uname -m)"
+declare host="$(uname -s)"
 declare platform="desktop"
+
 declare ios_sdk_path=""
+
+if [[ "$host" = "Linux" ]]; then
+  if [ -n "$WSL_DISTRO_NAME" ] || uname -r | grep 'Microsoft'; then
+    HOST="Win32"
+  fi
+fi
 
 if (( TARGET_OS_IPHONE )); then
   arch="arm64"
@@ -60,7 +68,7 @@ while (( $# > 0 )); do
   args+=("$arg")
 done
 
-if [[ "$(uname -s)" = "Darwin" ]]; then
+if [[ "$host" = "Darwin" ]]; then
   if (( !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR )); then
     ldflags+=("-framework" "Cocoa")
   fi
@@ -88,7 +96,7 @@ if [[ "$(uname -s)" = "Darwin" ]]; then
   ldflags+=("-framework" "UniformTypeIdentifiers")
   ldflags+=("-framework" "WebKit")
   ldflags+=("-framework" "UserNotifications")
-elif [[ "$(uname -s)" = "Linux" ]]; then
+elif [[ "$host" = "Linux" ]]; then
   ldflags+=($(pkg-config --libs gtk+-3.0 webkit2gtk-4.1))
 fi
 

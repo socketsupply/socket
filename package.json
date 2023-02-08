@@ -1,0 +1,29 @@
+{
+  "type": "module",
+  "scripts": {
+    "pretest": "npx standard .",
+    "readme": "node ./bin/generate-docs.js",
+    "test": "cd test && npm install --silent --no-audit && npm test",
+    "test:node": "node ./test/node/index.js",
+    "test:ios-simulator": "cd test && npm install --silent --no-audit && npm run test:ios-simulator",
+    "test:android": "cd test && npm install --silent --no-audit && npm run test:android",
+    "test:android-emulator": "cd test && npm install --silent --no-audit && npm run test:android-emulator",
+    "test:clean": "cd test && rm -rf dist"
+  },
+  "private": true,
+  "devDependencies": {
+    "acorn": "8.8.0",
+    "acorn-walk": "8.2.0",
+    "esbuild": "^0.16.16",
+    "standard": "^17.0.0"
+  },
+  "optionalDependencies": {
+    "@socketsupply/stream-relay": "^1.0.22"
+  },
+  "standard": {
+    "ignore": [
+      "/api/external/",
+      "/api/test/fast-deep-equal.js"
+    ]
+  }
+}

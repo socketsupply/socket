@@ -1,0 +1,19 @@
+{
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "test": "npm run test:desktop",
+    "test:desktop": "node ./scripts/test-desktop.js",
+    "test:android": "node ./scripts/test-android.sh",
+    "test:ios-simulator": "node ./scripts/test-ios-simulator.js",
+    "test:android-emulator": "sh ./scripts/test-android-emulator.sh",
+    "start": "npm test"
+  },
+  "dependencies": {
+    "@socketsupply/ssc-node": "github:socketsupply/ssc-node"
+  },
+  "devDependencies": {
+    "esbuild": "^0.16.4",
+    "path-browserify": "^1.0.1"
+  }
+}

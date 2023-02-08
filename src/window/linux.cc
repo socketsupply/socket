@@ -59,11 +59,13 @@ namespace SSC {
           );
 
           if (!result) {
-            g_error_free(error);
-            return ctx->reply(IPC::Result::Err { ctx->message, JSON::Object::Entries {
-              {"code", std::to_string(error->code)},
+            ctx->reply(IPC::Result::Err { ctx->message, JSON::Object::Entries {
+              {"code", error->code},
               {"message", String(error->message)}
             }});
+
+            g_error_free(error);
+            return;
           } else {
             auto value = webkit_javascript_result_get_js_value(result);
 
@@ -84,6 +86,11 @@ namespace SSC {
 
               if (exception) {
                 auto message = jsc_exception_get_message(exception);
+
+                if (message == nullptr) {
+                  message = "An unknown error occured";
+                }
+
                 ctx->reply(IPC::Result::Err { ctx->message, JSON::Object::Entries {
                   {"message", String(message)}
                 }});
@@ -184,6 +191,7 @@ namespace SSC {
         gpointer userData
       ) {
         if (decisionType != WEBKIT_POLICY_DECISION_TYPE_NAVIGATION_ACTION) {
+          webkit_policy_decision_use(decision);
           return true;
         }
 
@@ -192,7 +200,7 @@ namespace SSC {
         auto req = webkit_navigation_action_get_request(action);
         auto uri = String(webkit_uri_request_get_uri(req));
 
-        if (uri.find("file://") != 0 && uri.find("http://localhost") != 0) {
+        if (uri.find("file://") != 0 && uri.find("http://localhost") != 0 && uri.find("socket:") != 0) {
           webkit_policy_decision_ignore(decision);
           return false;
         }
@@ -563,11 +571,7 @@ namespace SSC {
     }
 
     webkit_settings_set_allow_universal_access_from_file_urls(settings, true);
-
-    if (this->opts.isTest) {
-      // webkit_settings_set_allow_universal_access_from_file_urls(settings, true);
-      webkit_settings_set_allow_file_access_from_file_urls(settings, true);
-    }
+    webkit_settings_set_allow_file_access_from_file_urls(settings, true);
 
     // webkit_settings_set_allow_top_navigation_to_data_urls(settings, true);
 
@@ -702,7 +706,7 @@ namespace SSC {
     GtkContainer *content = GTK_CONTAINER(body);
 
     String imgPath = "/usr/share/icons/hicolor/256x256/apps/" +
-      app.appData["executable"] +
+      app.appData["build_name"] +
       ".png";
 
     GdkPixbuf *pixbuf = gdk_pixbuf_new_from_file_at_scale(
@@ -719,7 +723,7 @@ namespace SSC {
 
     gtk_box_pack_start(GTK_BOX(content), img, false, false, 0);
 
-    String title_value(app.appData["name"] + " v" + app.appData["version"]);
+    String title_value(app.appData["build_name"] + " v" + app.appData["meta_version"]);
     String version_value("Built with ssc v" + SSC::VERSION_FULL_STRING);
 
     GtkWidget *label_title = gtk_label_new("");
@@ -731,7 +735,7 @@ namespace SSC {
     gtk_container_add(content, label_op_version);
 
     GtkWidget *label_copyright = gtk_label_new("");
-    gtk_label_set_markup(GTK_LABEL(label_copyright), app.appData["copyright"].c_str());
+    gtk_label_set_markup(GTK_LABEL(label_copyright), app.appData["meta_copyright"].c_str());
     gtk_container_add(content, label_copyright);
 
     g_signal_connect(
