@@ -220,8 +220,12 @@ if (process.platform !== 'win32') {
       value = value.trim().replace(/"/g, '')
       config.push([prefix.length === 0 ? key : prefix + '_' + key, value])
     }
-    config.filter(([key]) => key !== 'build_headless' && key !== 'build_name').forEach(([key, value]) => {
-      t.equal(runtime.config[key], value, `runtime.config.${key} is correct`)
+    config.forEach(([key, value]) => {
+      if (key === 'build_headless') {
+        t.equal(runtime.config[key].toString(), value, `runtime.config.${key} is correct`)
+      } else {
+        t.equal(runtime.config[key], value, `runtime.config.${key} is correct`)
+      }
       t.throws(
         () => { runtime.config[key] = 0 },
         // eslint-disable-next-line prefer-regex-literals
@@ -229,20 +233,6 @@ if (process.platform !== 'win32') {
         `runtime.config.${key} is read-only`
       )
     })
-    t.equal(runtime.config.build_headless, true, 'runtime.config.build_headless is correct')
-    t.throws(
-      () => { runtime.config.build_headless = 0 },
-      // eslint-disable-next-line prefer-regex-literals
-      RegExp('Attempted to assign to readonly property.'),
-      'runtime.config.build_headless is read-only'
-    )
-    t.ok(runtime.config.build_name.startsWith(config.find(([key]) => key === 'build_name')[1]), 'runtime.config.build_name is correct')
-    t.throws(
-      () => { runtime.config.build_name = 0 },
-      // eslint-disable-next-line prefer-regex-literals
-      RegExp('Attempted to assign to readonly property.'),
-      'runtime.config.build_name is read-only'
-    )
   })
 
   test('currentWindow', (t) => {
