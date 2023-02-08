@@ -193,7 +193,7 @@ function _get_web_view2() {
 
   echo "# Downloading Webview2"
 
-  curl https://globalcdn.nuget.org/packages/microsoft.web.webview2.1.0.1369-prerelease.nupkg --output $tmp/webview2.zip
+  curl https://globalcdn.nuget.org/packages/microsoft.web.webview2.1.0.1619-prerelease.nupkg --output $tmp/webview2.zip
   cd $tmp
   unzip -q $tmp/webview2.zip
   mkdir -p "$BUILD_DIR/include"
