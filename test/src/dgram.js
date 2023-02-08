@@ -5,7 +5,6 @@ import crypto from 'socket:crypto'
 import Buffer from 'socket:buffer'
 import dgram from 'socket:dgram'
 import util from 'socket:util'
-import process from 'socket:process'
 
 // node compat
 /*
@@ -19,7 +18,6 @@ import util from 'socket:util'
 */
 
 const MTU = 1518
-const LOCAL_ADDRESS = process.platform === 'win32' ? '127.0.0.1' : '0.0.0.0'
 
 function makePayload () {
   const r = Math.random() * MTU
@@ -96,12 +94,12 @@ test('dgram createSocket, address, bind, close', async (t) => {
       // FIXME:
       // t.throws(
       //   () => server.bind(41233),
-      //   RegExp(`bind EADDRINUSE ${LOCAL_ADDRESS}:41233`),
+      //   RegExp(`bind EADDRINUSE 127.0.0.1:41233`),
       //   'server.bind throws an error if the socket is already bound'
       // )
       t.deepEqual(
         server.address(),
-        { address: LOCAL_ADDRESS, port: 41233, family: 'IPv4' },
+        { address: '127.0.0.1', port: 41233, family: 'IPv4' },
         'server.address() returns the bound address'
       )
       t.equal(server.close(), server, 'server.close() returns instance')
@@ -128,7 +126,7 @@ test('udp bind, send, remoteAddress', async (t) => {
   const msg = new Promise((resolve, reject) => {
     server.on('message', (data, addr) => {
       t.equal('number', typeof addr.port, 'port is a number')
-      t.equal(addr.address, LOCAL_ADDRESS)
+      t.equal(addr.address, '127.0.0.1')
       resolve(data)
     })
     server.on('error', reject)
@@ -139,7 +137,7 @@ test('udp bind, send, remoteAddress', async (t) => {
 
   server.on('listening', () => {
     t.ok(true, 'listening')
-    client.send(Buffer.from(payload), 41234, LOCAL_ADDRESS)
+    client.send(Buffer.from(payload), 41234, '127.0.0.1')
   })
 
   server.bind(41234)
@@ -169,17 +167,17 @@ test('udp socket message and bind callbacks', async (t) => {
   const client = dgram.createSocket('udp4')
 
   server.on('listening', () => {
-    client.send('payload', 41235, LOCAL_ADDRESS)
+    client.send('payload', 41235, '127.0.0.1')
   })
 
   const listeningCbResult = new Promise(resolve => {
-    server.bind(41235, LOCAL_ADDRESS, resolve)
+    server.bind(41235, '127.0.0.1', resolve)
   })
 
   const [{ msg, rinfo }] = await Promise.all([msgCbResult, listeningCbResult])
   t.ok(true, 'listening callback called')
   t.equal(Buffer.from(msg).toString(), 'payload', 'message matches')
-  t.equal(rinfo.address, LOCAL_ADDRESS, 'rinfo.address is correct')
+  t.equal(rinfo.address, '127.0.0.1', 'rinfo.address is correct')
   t.ok(Number.isInteger(rinfo.port), 'rinfo.port is correct')
   t.equal(rinfo.family, 'IPv4', 'rinfo.family is correct')
 
@@ -205,11 +203,11 @@ test('udp bind, connect, send', async (t) => {
   )
 
   server.on('listening', () => {
-    client.connect(41236, LOCAL_ADDRESS, (err) => {
+    client.connect(41236, '127.0.0.1', (err) => {
       if (err) return t.fail(err.message)
       t.deepEqual(
         client.remoteAddress(),
-        { address: LOCAL_ADDRESS, port: 41236, family: 'IPv4' },
+        { address: '127.0.0.1', port: 41236, family: 'IPv4' },
         'client.remoteAddress() returns the remote address'
       )
       client.send(Buffer.from(payload))
@@ -233,7 +231,7 @@ test('udp send callback', async (t) => {
   const message = Buffer.from('Some bytes')
   const client = dgram.createSocket('udp4')
   const result = await new Promise(resolve => {
-    client.send(message, 41237, LOCAL_ADDRESS, (err) => {
+    client.send(message, 41237, '127.0.0.1', (err) => {
       client.close()
       if (err) return t.fail(err.message)
       resolve(true)
@@ -271,7 +269,7 @@ test('client ~> server (~512 messages)', async (t) => {
   const buffers = Array.from(Array(512), () => crypto.randomBytes(1024))
   const server = dgram.createSocket('udp4')
   const client = dgram.createSocket('udp4')
-  const addr = LOCAL_ADDRESS
+  const addr = '127.0.0.1'
   const port = 3000
 
   await new Promise((resolve) => {

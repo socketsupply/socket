@@ -77,17 +77,11 @@ export function networkInterfaces () {
     let cidr = `${address}/24`
     let mac = info.mac || null
 
-    if (address === '127.0.0.1' || address === '0.0.0.0') {
+    if (address === '127.0.0.1') {
       internal = true
       mac = '00:00:00:00:00:00'
-
-      if (address === '127.0.0.1') {
-        cidr = '127.0.0.1/8'
-        netmask = '255.0.0.0'
-      } else {
-        cidr = '0.0.0.0/0'
-        netmask = '0.0.0.0'
-      }
+      cidr = '127.0.0.1/8'
+      netmask = '255.0.0.0'
     }
 
     interfaces[type] = interfaces[type] || []

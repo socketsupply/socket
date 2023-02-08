@@ -11,7 +11,6 @@ import { EventEmitter } from './events.js'
 import { Buffer } from './buffer.js'
 import { rand64 } from './crypto.js'
 import { isIPv4 } from './net.js'
-import process from './process.js'
 import * as ipc from './ipc.js'
 import console from './console.js'
 import dns from './dns.js'
@@ -156,15 +155,9 @@ function fromBufferList (list) {
   return newlist
 }
 
-function getDefaultAddress (socket, local) {
-  if (local) {
-    if (socket.type === 'udp4') return '127.0.0.1'
-    if (socket.type === 'udp6') return '::1'
-  } else {
-    const IP = process.platform === 'win32' ? '127.0.0.1' : '0.0.0.0'
-    if (socket.type === 'udp4') return IP
-    if (socket.type === 'udp6') return '::'
-  }
+function getDefaultAddress (socket) {
+  if (socket.type === 'udp4') return '127.0.0.1'
+  if (socket.type === 'udp6') return '::1'
 
   return null
 }
@@ -624,7 +617,7 @@ function getSockName (socket, callback) {
  * @param {string|Object} options - either a string ('udp4' or 'udp6') or an options object
  * @param {string=} options.type - The family of socket. Must be either 'udp4' or 'udp6'. Required.
  * @param {boolean=} [options.reuseAddr=false] - When true socket.bind() will reuse the address, even if another process has already bound a socket on it. Default: false.
- * @param {boolean=} [options.ipv6Only=false] - Setting ipv6Only to true will disable dual-stack support, i.e., binding to address :: won't make 0.0.0.0 be bound. Default: false.
+ * @param {boolean=} [options.ipv6Only=false] - Default: false.
  * @param {number=} options.recvBufferSize - Sets the SO_RCVBUF socket value.
  * @param {number=} options.sendBufferSize - Sets the SO_SNDBUF socket value.
  * @param {AbortSignal=} options.signal - An AbortSignal that may be used to close a socket.
@@ -704,7 +697,7 @@ export class Socket extends EventEmitter {
    * If binding fails, an 'error' event is emitted.
    *
    * @param {number} port - The port to to listen for messages on
-   * @param {string} address - The address to bind to (0.0.0.0)
+   * @param {string} address - The address to bind to (127.0.0.1)
    * @param {function} callback - With no parameters. Called when binding is complete.
    * @see {@link https://nodejs.org/api/dgram.html#socketbindport-address-callback}
    */
@@ -831,7 +824,7 @@ export class Socket extends EventEmitter {
    *
    * > If the socket has not been previously bound with a call to bind, the socket
    * is assigned a random port number and is bound to the "all interfaces"
-   * address ('0.0.0.0' for udp4 sockets, '::0' for udp6 sockets.)
+   * address ('127.0.0.1' for udp4 sockets, '::1' for udp6 sockets.)
    *
    * > An optional callback function may be specified to as a way of reporting DNS
    * errors or for determining when it is safe to reuse the buf object. DNS
