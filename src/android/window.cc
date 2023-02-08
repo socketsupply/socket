@@ -42,20 +42,7 @@ namespace SSC::android {
     options.cwd = rootDirectory.str();
     options.appData = this->config;
 
-    preloadSource.assign(
-      "window.addEventListener('unhandledrejection', e => {        \n"
-      "  console.log(e.reason || e.message || e);                  \n"
-      "});                                                         \n"
-      "                                                            \n"
-      "window.addEventListener('error', e => {                     \n"
-      "  const message = e.reason || e.message || e;               \n"
-      "  if (!/debug-evaluate/.test(message)) {                    \n"
-      "    console.log(message);                                   \n"
-      "  }                                                         \n"
-      "});                                                         \n"
-      "                                                            \n"
-      + createPreload(options)
-    );
+    preloadSource = createPreload(options);
   }
 
   Window::~Window () {
