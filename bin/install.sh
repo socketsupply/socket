@@ -23,7 +23,9 @@ elif [[ "$host" == *"MSYS_NT"* ]]; then
 fi
 
 if [ -n "$LOCALAPPDATA" ]; then
-  SOCKET_HOME="$LOCALAPPDATA/Programs/socketsupply"
+  if [ -z "$SOCKET_NPM_PUBLISH" ]; then
+    SOCKET_HOME="$LOCALAPPDATA/Programs/socketsupply"
+  fi
 fi
 
 if [ ! "$CXX" ]; then

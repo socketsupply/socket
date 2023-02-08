@@ -168,8 +168,6 @@ function main () {
   rm -rf "$static_library"
   declare ar="ar"
 
-  echo "Host: $host"
-
   if [[ "$host" = "Win32" ]]; then
     ar="llvm-ar"
   fi
