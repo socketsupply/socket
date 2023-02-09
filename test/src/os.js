@@ -1,6 +1,6 @@
+import { primordials } from 'socket:ipc'
 import { test } from 'socket:test'
 import * as os from 'socket:os'
-import { primordials } from 'socket:ipc'
 
 const archs = ['arm64', 'ia32', 'x64', 'unknown']
 const platforms = ['android', 'cygwin', 'freebsd', 'linux', 'darwin', 'ios', 'openbsd', 'win32', 'unknown']
