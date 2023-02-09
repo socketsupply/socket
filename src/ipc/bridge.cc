@@ -825,7 +825,7 @@ void initFunctionsTable (Router *router) {
     auto platformRes = std::regex_replace(platform.os, platform_pattern, "darwin");
     auto arch = std::regex_replace(platform.arch, std::regex("x86_64"), "x64");
     arch = std::regex_replace(arch, std::regex("x86"), "ia32");
-    arch = std::regex_replace(arch, std::regex("arm(?!64).*"), "arm64");
+    arch = std::regex_replace(arch, std::regex("arm(?!64).*"), "arm");
     auto json = JSON::Object::Entries {
       {"source", "platform.primordials"},
       {"data", JSON::Object::Entries {
