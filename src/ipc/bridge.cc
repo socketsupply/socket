@@ -1206,9 +1206,9 @@ static void registerSchemeHandler (Router *router) {
     // URLs (socket:...)
     auto moduleTemplate =
 R"S(
+import module from '{{url}}'
 export * from '{{url}}'
-const exports = await import('{{url}}');
-export default exports.default ?? undefined
+export default module
 )S";
 
     auto moduleSource = trim(tmpl(
@@ -1293,9 +1293,9 @@ export default exports.default ?? undefined
     // URLs (socket:...)
     auto moduleTemplate =
 R"S(
+import module from '{{url}}'
 export * from '{{url}}'
-const exports = await import('{{url}}');
-export default exports.default ?? undefined
+export default module
 )S";
 
     auto moduleSource = trim(tmpl(
