@@ -5,6 +5,8 @@ import { Readable, Writable } from '../stream.js'
 import { AbortError } from '../errors.js'
 import { Buffer } from '../buffer.js'
 
+import * as exports from './stream.js'
+
 export const DEFAULT_STREAM_HIGH_WATER_MARK = 64 * 1024
 
 /**
@@ -324,3 +326,5 @@ WriteStream.highWaterMark = DEFAULT_STREAM_HIGH_WATER_MARK
 
 export const FileReadStream = ReadStream
 export const FileWriteStream = WriteStream
+
+export default exports

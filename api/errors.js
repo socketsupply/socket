@@ -1,3 +1,7 @@
+import * as exports from './errors.js'
+
+export default exports
+
 export const ABORT_ERR = 20
 export const ENCODING_ERR = 32
 export const INVALID_ACCESS_ERR = 15

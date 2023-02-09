@@ -1,4 +1,6 @@
 import * as ipc from '../ipc.js'
+import * as exports from './promises.js'
+
 /**
  * @module DNS.promises
  *
@@ -52,3 +54,5 @@ export async function lookup (hostname, opts) {
 
   return data
 }
+
+export default exports

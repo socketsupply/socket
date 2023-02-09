@@ -2,6 +2,8 @@
 import console from './console.js'
 import ipc from './ipc.js'
 
+import * as exports from './polyfills.js'
+
 export function applyPolyfills (window) {
   Object.defineProperties(window, Object.getOwnPropertyDescriptors({
     resizeTo (width, height) {
@@ -63,3 +65,5 @@ export function applyPolyfills (window) {
     observer.observe(titleElement, { childList: true })
   }
 }
+
+export default exports

@@ -1,4 +1,5 @@
 import * as ipc from '../ipc.js'
+
 /**
  * @module DNS
  *
@@ -88,6 +89,7 @@ export function lookup (hostname, opts, cb) {
 export {
   promises
 }
+
 export default exports
 
 for (const key in exports) {

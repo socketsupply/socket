@@ -1,4 +1,5 @@
 import { sendSync } from '../ipc.js'
+import * as exports from './constants.js'
 
 const constants = sendSync('fs.constants')?.data || {}
 
@@ -76,3 +77,5 @@ export const F_OK = constants.F_OK || 0
 export const R_OK = constants.R_OK || 0
 export const W_OK = constants.W_OK || 0
 export const X_OK = constants.X_OK || 0
+
+export default exports

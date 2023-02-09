@@ -691,6 +691,7 @@ export {
   Stats,
   WriteStream
 }
+
 export default exports
 
 for (const key in exports) {

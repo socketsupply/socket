@@ -9,6 +9,8 @@ import {
   O_SYNC
 } from './constants.js'
 
+import * as exports from './flags.js'
+
 export function normalizeFlags (flags) {
   if (typeof flags === 'number') {
     return flags
@@ -66,3 +68,5 @@ export function normalizeFlags (flags) {
 
   return O_RDONLY
 }
+
+export default exports
