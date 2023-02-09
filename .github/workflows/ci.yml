@@ -42,7 +42,7 @@ jobs:
   mac:
     name: macOS
     runs-on: macOS-12
-    timeout-minutes: 8
+    timeout-minutes: 9
 
     steps:
     - uses: actions/checkout@v3
