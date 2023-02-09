@@ -1164,6 +1164,7 @@ static void registerSchemeHandler (Router *router) {
       webkit_uri_scheme_response_set_content_type(response, IPC_CONTENT_TYPE);
       webkit_uri_scheme_request_finish_with_response(request, response);
       g_object_unref(stream);
+      g_object_unref(response);
     });
 
     if (!invoked) {
@@ -1186,6 +1187,7 @@ static void registerSchemeHandler (Router *router) {
       webkit_uri_scheme_response_set_content_type(response, IPC_CONTENT_TYPE);
       webkit_uri_scheme_request_finish_with_response(request, response);
       g_object_unref(stream);
+      g_object_unref(response);
     }
   },
   router,
