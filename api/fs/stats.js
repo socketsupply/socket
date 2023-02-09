@@ -1,5 +1,7 @@
-import * as constants from './constants.js'
-import * as os from '../os.js'
+import constants from './constants.js'
+import os from '../os.js'
+
+import * as exports from './stats.js'
 
 const isWindows = /win/i.test(os.type())
 
@@ -131,3 +133,5 @@ export class Stats {
     return checkMode(this.mode, constants.S_IFSOCK)
   }
 }
+
+export default exports

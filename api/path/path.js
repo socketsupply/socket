@@ -2,6 +2,7 @@
  * @module Path
  */
 import { primordials } from '../ipc.js'
+import * as exports from './path.js'
 
 const isWin32 = primordials.platform === 'win32'
 
@@ -65,3 +66,5 @@ export class Path {
   static normalize (path) {
   }
 }
+
+export default exports

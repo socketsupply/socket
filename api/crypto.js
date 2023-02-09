@@ -98,4 +98,5 @@ export function randomBytes (size) {
 export async function createDigest (algorithm, buf) {
   return Buffer.from(await webcrypto.subtle.digest(algorithm, buf))
 }
+
 export default exports

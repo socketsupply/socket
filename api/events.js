@@ -20,6 +20,7 @@
 // USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import console from './console.js'
+import * as exports from './events.js'
 
 const R = typeof Reflect === 'object' ? Reflect : null
 const ReflectApply = R && typeof R.apply === 'function'
@@ -472,3 +473,5 @@ export {
   EventEmitter,
   once
 }
+
+export default exports

@@ -11,6 +11,8 @@ import {
   UV_DIRENT_BLOCK
 } from './constants.js'
 
+import * as exports from './dir.js'
+
 export const kType = Symbol.for('fs.Dirent.type')
 
 function checkDirentType (dirent, property) {
@@ -268,3 +270,5 @@ export class Dirent {
     return checkDirentType(this, Dirent.SOCKET)
   }
 }
+
+export default exports

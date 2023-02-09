@@ -21,6 +21,8 @@ import fds from './fds.js'
 import ipc from '../ipc.js'
 import gc from '../gc.js'
 
+import * as exports from './handle.js'
+
 export const kOpening = Symbol.for('fs.FileHandle.opening')
 export const kClosing = Symbol.for('fs.FileHandle.closing')
 export const kClosed = Symbol.for('fs.FileHandle.closed')
@@ -1002,3 +1004,5 @@ export class DirectoryHandle extends EventEmitter {
     return result.data
   }
 }
+
+export default exports

@@ -1,13 +1,39 @@
 /**
- * @module Stream
+ * The MIT License (MIT)
  *
+ * Copyright (c) 2019 Mathias Buus
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ **/
+
+/**
+ * @module Stream
  */
 import { EventEmitter } from './events.js'
+import * as exports from './stream.js'
+
+export default exports
 
 const STREAM_DESTROYED = new Error('Stream was destroyed')
 const PREMATURE_CLOSE = new Error('Premature close')
 
-class FixedFIFO {
+export class FixedFIFO {
   constructor (hwm) {
     if (!(hwm > 0) || ((hwm - 1) & hwm) !== 0) throw new Error('Max size for a FixedFIFO should be a power of two')
     this.buffer = new Array(hwm)
@@ -37,7 +63,7 @@ class FixedFIFO {
   }
 }
 
-class FastFIFO {
+export class FastFIFO {
   constructor (hwm) {
     this.hwm = hwm || 16
     this.head = new FixedFIFO(this.hwm)
@@ -163,7 +189,7 @@ const WRITE_BACKPRESSURE_STATUS = WRITE_UNDRAINED | DESTROY_STATUS | WRITE_FINIS
 
 const asyncIterator = Symbol.asyncIterator || Symbol.for('asyncIterator')
 
-class WritableState {
+export class WritableState {
   constructor (stream, { highWaterMark = 16384, map = null, mapWritable, byteLength, byteLengthWritable } = {}) {
     this.stream = stream
     this.queue = new FIFO()
@@ -268,7 +294,7 @@ class WritableState {
   }
 }
 
-class ReadableState {
+export class ReadableState {
   constructor (stream, { highWaterMark = 16384, map = null, mapReadable, byteLength, byteLengthReadable } = {}) {
     this.stream = stream
     this.queue = new FIFO()
@@ -428,7 +454,7 @@ class ReadableState {
   }
 }
 
-class TransformState {
+export class TransformState {
   constructor (stream) {
     this.data = null
     this.afterTransform = afterTransform.bind(stream)
@@ -436,7 +462,7 @@ class TransformState {
   }
 }
 
-class Pipeline {
+export class Pipeline {
   constructor (src, dst, cb) {
     this.from = src
     this.to = dst
@@ -573,7 +599,7 @@ function afterTransform (err, data) {
   this._writableState.afterWrite(err)
 }
 
-class Stream extends EventEmitter {
+export class Stream extends EventEmitter {
   constructor (opts) {
     super()
 
@@ -658,7 +684,7 @@ class Stream extends EventEmitter {
   }
 }
 
-class Readable extends Stream {
+export class Readable extends Stream {
   constructor (opts) {
     super(opts)
 
@@ -815,7 +841,7 @@ class Readable extends Stream {
   }
 }
 
-class Writable extends Stream {
+export class Writable extends Stream {
   constructor (opts) {
     super(opts)
 
@@ -857,7 +883,7 @@ class Writable extends Stream {
   }
 }
 
-class Duplex extends Readable { // and Writable
+export class Duplex extends Readable { // and Writable
   constructor (opts) {
     super(opts)
 
@@ -895,7 +921,7 @@ class Duplex extends Readable { // and Writable
   }
 }
 
-class Transform extends Duplex {
+export class Transform extends Duplex {
   constructor (opts) {
     super(opts)
     this._transformState = new TransformState(this)
@@ -939,7 +965,7 @@ class Transform extends Duplex {
   }
 }
 
-class PassThrough extends Transform {}
+export class PassThrough extends Transform {}
 
 function transformAfterFlush (err, data) {
   const cb = this._transformState.afterFinal
@@ -949,7 +975,7 @@ function transformAfterFlush (err, data) {
   cb(null)
 }
 
-function pipelinePromise (...streams) {
+export function pipelinePromise (...streams) {
   return new Promise((resolve, reject) => {
     return pipeline(...streams, (err) => {
       if (err) return reject(err)
@@ -958,7 +984,7 @@ function pipelinePromise (...streams) {
   })
 }
 
-function pipeline (stream, ...streams) {
+export function pipeline (stream, ...streams) {
   const all = Array.isArray(stream) ? [...stream, ...streams] : [stream, ...streams]
   const done = (all.length && typeof all[all.length - 1] === 'function') ? all.pop() : null
 
@@ -1011,15 +1037,15 @@ function pipeline (stream, ...streams) {
   }
 }
 
-function isStream (stream) {
+export function isStream (stream) {
   return !!stream._readableState || !!stream._writableState
 }
 
-function isStreamx (stream) {
+export function isStreamx (stream) {
   return typeof stream._duplexState === 'number' && isStream(stream)
 }
 
-function isReadStreamx (stream) {
+export function isReadStreamx (stream) {
   return isStreamx(stream) && stream.readable
 }
 
@@ -1035,17 +1061,4 @@ function noop () {}
 
 function abort () {
   this.destroy(new Error('Stream aborted.'))
-}
-
-export {
-  pipeline,
-  pipelinePromise,
-  isStream,
-  isStreamx,
-  Stream,
-  PassThrough,
-  Writable,
-  Readable,
-  Duplex,
-  Transform
 }

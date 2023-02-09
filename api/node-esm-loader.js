@@ -10,3 +10,5 @@ export async function resolve (specifier, ctx, next) {
 
   return next(specifier)
 }
+
+export default resolve

@@ -1,4 +1,6 @@
 // @ts-check
+import * as exports from './harness.js'
+export default exports
 
 /**
  * @typedef {import('./index').Test} Test

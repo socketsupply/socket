@@ -1154,4 +1154,5 @@ export class Socket extends EventEmitter {
     return this
   }
 }
+
 export default exports
