@@ -63,7 +63,7 @@ static String getcwd () {
   GetModuleFileNameW(NULL, filename, MAX_PATH);
   auto path = fs::path { filename }.remove_filename();
   cwd = path.string();
-  last_pos = 0;
+  size_t last_pos = 0;
   while ((last_pos = cwd.find('\\', last_pos)) != std::string::npos) {
     cwd.replace(last_pos, 1, "\\\\");
     last_pos += 2;
@@ -1152,7 +1152,6 @@ static void registerSchemeHandler (Router *router) {
       auto response = webkit_uri_scheme_response_new(stream, size);
 
       webkit_uri_scheme_response_set_content_type(response, IPC_CONTENT_TYPE);
-
       webkit_uri_scheme_request_finish_with_response(request, response);
       g_object_unref(stream);
     });
