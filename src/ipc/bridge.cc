@@ -5,8 +5,18 @@
 using namespace SSC;
 using namespace SSC::IPC;
 
-#if defined(__APPLE__)
+// create a proxy module so imports of the module of concern are imported
+// exactly once at the canonical URL (file:///...) in contrast to module
+// URLs (socket:...)
 
+static constexpr auto moduleTemplate =
+R"S(
+import module from '{{url}}'
+export * from '{{url}}'
+export default module
+)S";
+
+#if defined(__APPLE__)
 static dispatch_queue_attr_t qos = dispatch_queue_attr_make_with_qos_class(
   DISPATCH_QUEUE_CONCURRENT,
   QOS_CLASS_USER_INITIATED,
@@ -1201,16 +1211,6 @@ static void registerSchemeHandler (Router *router) {
     }
 
     uri = "file://" + path.string();
-    // create a proxy module so imports of the module of concern are imported
-    // exactly once at the canonical URL (file:///...) in contrast to module
-    // URLs (socket:...)
-    auto moduleTemplate =
-R"S(
-import module from '{{url}}'
-export * from '{{url}}'
-export default module
-)S";
-
     auto moduleSource = trim(tmpl(
       moduleTemplate,
       Map { {"url", String(uri)} }
@@ -1287,16 +1287,6 @@ export default module
     ];
 
     auto data = [NSData dataWithContentsOfURL: components.URL];
-
-    // create a proxy module so imports of the module of concern are imported
-    // exactly once at the canonical URL (file:///...) in contrast to module
-    // URLs (socket:...)
-    auto moduleTemplate =
-R"S(
-import module from '{{url}}'
-export * from '{{url}}'
-export default module
-)S";
 
     auto moduleSource = trim(tmpl(
       moduleTemplate,
