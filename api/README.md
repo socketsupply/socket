@@ -1078,12 +1078,21 @@ This is a `VariableDeclaration` named `config` in `api/runtime.js`, it's exporte
 | options.value | string \| object |  | true | the value to send |
 
 
-## [`getWindows()`](https://github.com/socketsupply/socket/blob/master/api/runtime.js#L50)
+## [`getScreenSize()`](https://github.com/socketsupply/socket/blob/master/api/runtime.js#L54)
+
+Returns the current screen size.
+
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| Not specified | Promise<ipc.Result> |  |
+
+
+## [`getWindows()`](https://github.com/socketsupply/socket/blob/master/api/runtime.js#L58)
 
 This is a `FunctionDeclaration` named `getWindows` in `api/runtime.js`, it's exported but undocumented.
 
 
-## [`openExternal(options)`](https://github.com/socketsupply/socket/blob/master/api/runtime.js#L59)
+## [`openExternal(options)`](https://github.com/socketsupply/socket/blob/master/api/runtime.js#L67)
 
 
 
@@ -1097,7 +1106,7 @@ This is a `FunctionDeclaration` named `getWindows` in `api/runtime.js`, it's exp
 | Not specified | Promise<ipc.Result> |  |
 
 
-## [`exit(options)`](https://github.com/socketsupply/socket/blob/master/api/runtime.js#L68)
+## [`exit(options)`](https://github.com/socketsupply/socket/blob/master/api/runtime.js#L76)
 
 Quits the backend process and then quits the render process, the exit code used is the final exit code to the OS.
 
@@ -1111,7 +1120,7 @@ Quits the backend process and then quits the render process, the exit code used 
 | Not specified | Promise<Any> |  |
 
 
-## [`setTitle(title)`](https://github.com/socketsupply/socket/blob/master/api/runtime.js#L77)
+## [`setTitle(title)`](https://github.com/socketsupply/socket/blob/master/api/runtime.js#L85)
 
 Sets the title of the window (if applicable).
 
@@ -1125,12 +1134,12 @@ Sets the title of the window (if applicable).
 | Not specified | Promise<ipc.Result> |  |
 
 
-## [`inspect()`](https://github.com/socketsupply/socket/blob/master/api/runtime.js#L81)
+## [`inspect()`](https://github.com/socketsupply/socket/blob/master/api/runtime.js#L89)
 
 This is a `FunctionDeclaration` named `inspect` in `api/runtime.js`, it's exported but undocumented.
 
 
-## [`show(opts)`](https://github.com/socketsupply/socket/blob/master/api/runtime.js#L95)
+## [`show(opts)`](https://github.com/socketsupply/socket/blob/master/api/runtime.js#L103)
 
 
 
@@ -1148,7 +1157,7 @@ This is a `FunctionDeclaration` named `inspect` in `api/runtime.js`, it's export
 | Not specified | Promise<ipc.Result> |  |
 
 
-## [`hide(opts)`](https://github.com/socketsupply/socket/blob/master/api/runtime.js#L108)
+## [`hide(opts)`](https://github.com/socketsupply/socket/blob/master/api/runtime.js#L116)
 
 
 
@@ -1162,7 +1171,7 @@ This is a `FunctionDeclaration` named `inspect` in `api/runtime.js`, it's export
 | Not specified | Promise<ipc.Result> |  |
 
 
-## [`navigate(opts)`](https://github.com/socketsupply/socket/blob/master/api/runtime.js#L119)
+## [`navigate(opts)`](https://github.com/socketsupply/socket/blob/master/api/runtime.js#L127)
 
 
 
@@ -1178,12 +1187,12 @@ This is a `FunctionDeclaration` named `inspect` in `api/runtime.js`, it's export
 | Not specified | Promise<ipc.Result> |  |
 
 
-## [`setWindowBackgroundColor()`](https://github.com/socketsupply/socket/blob/master/api/runtime.js#L128)
+## [`setWindowBackgroundColor()`](https://github.com/socketsupply/socket/blob/master/api/runtime.js#L136)
 
 This is a `FunctionDeclaration` named `setWindowBackgroundColor` in `api/runtime.js`, it's exported but undocumented.
 
 
-## [`setContextMenu(options)`](https://github.com/socketsupply/socket/blob/master/api/runtime.js#L139)
+## [`setContextMenu(options)`](https://github.com/socketsupply/socket/blob/master/api/runtime.js#L147)
 
 Opens a native context menu.
 
@@ -1197,12 +1206,12 @@ Opens a native context menu.
 | Not specified | Promise<Any> |  |
 
 
-## [`setSystemMenuItemEnabled()`](https://github.com/socketsupply/socket/blob/master/api/runtime.js#L147)
+## [`setSystemMenuItemEnabled()`](https://github.com/socketsupply/socket/blob/master/api/runtime.js#L155)
 
 This is a `FunctionDeclaration` named `setSystemMenuItemEnabled` in `api/runtime.js`, it's exported but undocumented.
 
 
-## [`setSystemMenu(options)`](https://github.com/socketsupply/socket/blob/master/api/runtime.js#L240)
+## [`setSystemMenu(options)`](https://github.com/socketsupply/socket/blob/master/api/runtime.js#L248)
 
 Set the native menu for the app.
 
@@ -1299,7 +1308,7 @@ Set the native menu for the app.
 | Not specified | Promise<Any> |  |
 
 
-## [`reload()`](https://github.com/socketsupply/socket/blob/master/api/runtime.js#L289)
+## [`reload()`](https://github.com/socketsupply/socket/blob/master/api/runtime.js#L297)
 
 This is a `FunctionDeclaration` named `reload` in `api/runtime.js`, it's exported but undocumented.
 
