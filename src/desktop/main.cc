@@ -520,6 +520,19 @@ MAIN {
       return;
     }
 
+    if (message.name == "getScreenSize") {
+      const auto seq = message.get("seq");
+      const auto index = message.index;
+      const auto window = windowManager.getWindow(index);
+      const auto screenSize = window->getScreenSize();
+      const JSON::Object json = JSON::Object::Entries {
+        { "width", screenSize.width },
+        { "height", screenSize.height }
+      };
+      window->resolvePromise(seq, OK_STATE, json.str());
+      return;
+    }
+
     if (message.name == "getWindows") {
       const auto index = message.index;
       const auto props = WindowPropertiesFlags {

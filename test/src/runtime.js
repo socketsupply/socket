@@ -81,6 +81,14 @@ if (process.platform !== 'win32') {
       t.deepEqual(pong, value, 'send back from window 1 succeeds')
     })
 
+    test('getScreenSize', async (t) => {
+      const { data: { width, height } } = await runtime.getScreenSize()
+      t.ok(Number.isInteger(width), 'width is an integer')
+      t.ok(Number.isInteger(height), 'height is an integer')
+      t.equal(width, window.screen.width, 'width is correct')
+      t.equal(height, window.screen.height, 'height is correct')
+    })
+
     test('getWindows', async (t) => {
       const { data: windows } = await runtime.getWindows()
       t.ok(Array.isArray(windows), 'windows is an array')

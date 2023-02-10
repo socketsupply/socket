@@ -47,6 +47,14 @@ export async function send (options) {
   })
 }
 
+/**
+ * Returns the current screen size.
+ * @returns {Promise<ipc.Result>}
+ */
+export async function getScreenSize () {
+  return await ipc.send('getScreenSize', {})
+}
+
 export async function getWindows (options = {}) {
   return await ipc.send('getWindows', options)
 }
