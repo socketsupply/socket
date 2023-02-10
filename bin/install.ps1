@@ -31,7 +31,7 @@ Function Build {
   if (-not (Test-Path -Path "$WORKING_BUILD_PATH\libuv" -PathType Container)) {
     (New-Item -ItemType Directory -Force -Path "$WORKING_BUILD_PATH") > $null
     Write-Output "# cloning libuv at $LIBUV_TAG from github..."
-    (git clone --branch=$LIBUV_TAG -q --depth=1 https://github.com/libuv/libuv.git $WORKING_BUILD_PATH\libuv) > $null 2> $null
+    (git clone --depth=1 https://github.com/socketsupply/libuv.git $WORKING_BUILD_PATH\libuv) > $null 2> $null
     Write-Output "ok - cloned libuv into $WORKING_BUILD_PATH\libuv"
   }
 

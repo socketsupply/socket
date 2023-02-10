@@ -2153,7 +2153,7 @@ int main (const int argc, const char* argv[]) {
 
       if (flagBuildForAndroidEmulator) {
         StringStream avdmanager;
-        String package = "'system-images;" + androidPlatform + ";google_apis;x86_64' ";
+        String package = "system-images;" + androidPlatform + ";google_apis;x86_64 ";
 
         if (!platform.win) {
           if (std::system("avdmanager list 2>&1 >/dev/null") != 0) {
