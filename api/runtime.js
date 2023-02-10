@@ -23,19 +23,27 @@ if (globalThis.window) {
   applyPolyfills(globalThis.window)
 }
 
-export async function send (o) {
-  o.index = currentWindow
-  o.window ??= -1
+/**
+ *
+ * @param {object} options - an options object
+ * @param {number=} [options.window=currentWindow] - the window to send the message to
+ * @param {string} options.event - the event to send
+ * @param {(string|object)=} options.value - the value to send
+ * @returns
+ */
+export async function send (options) {
+  options.index = currentWindow
+  options.window ??= -1
 
-  if (typeof o.value !== 'string') {
-    o.value = JSON.stringify(o.value)
+  if (typeof options.value !== 'string') {
+    options.value = JSON.stringify(options.value)
   }
 
   return await ipc.send('send', {
-    index: o.index,
-    window: o.window,
-    event: encodeURIComponent(o.event),
-    value: encodeURIComponent(o.value)
+    index: options.index,
+    window: options.window,
+    event: encodeURIComponent(options.event),
+    value: encodeURIComponent(options.value)
   })
 }
 
@@ -43,6 +51,11 @@ export async function getWindows (options = {}) {
   return await ipc.send('getWindows', options)
 }
 
+/**
+ *
+ * @param {object} options
+ * @returns {Promise<ipc.Result>}
+ */
 export async function openExternal (options) {
   return await ipc.postMessage(`ipc://external?value=${encodeURIComponent(options)}`)
 }
@@ -58,11 +71,11 @@ export async function exit (o) {
 
 /**
  * Sets the title of the window (if applicable).
- * @param {obnject} options - an options object
+ * @param {title} title - the title of the window
  * @return {Promise<ipc.Result>}
  */
-export async function setTitle (o) {
-  return await ipc.send('window.setTitle', o)
+export async function setTitle (title) {
+  return await ipc.send('window.setTitle', title)
 }
 
 export async function inspect (o) {
@@ -73,6 +86,10 @@ inspect[Symbol.for('socket.util.inspect.ignore')] = true
 
 /**
  * @param {object} opts - an options object
+ * @param {number=} [opts.window = currentWindow] - the index of the window
+ * @param {string=} opts.url - the path to the HTML file to load into the window
+ * @param {number=} opts.width - the width of the window
+ * @param {number=} opts.height - the height of the window
  * @return {Promise<ipc.Result>}
  */
 export async function show (opts = {}) {

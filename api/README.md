@@ -111,11 +111,11 @@ Start advertising a new value for a well-known UUID
  Some high-level methods around the `crypto.subtle`API for getting
  random bytes and hashing.
 
-## [webcrypto](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L25)
+## [webcrypto](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L32)
 
 WebCrypto API
 
-## [`getRandomValues(buffer)`](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L33)
+## [`getRandomValues(buffer)`](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L40)
 
 External docs: https://developer.mozilla.org/en-US/docs/Web/API/Crypto/getRandomValues
 
@@ -131,24 +131,24 @@ Generate cryptographically strong random values into the `buffer`
 | Not specified | TypedArray |  |
 
 
-## [`rand64()`](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L45)
+## [`rand64()`](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L52)
 
 This is a `FunctionDeclaration` named `rand64` in `api/crypto.js`, it's exported but undocumented.
 
 
-## [RANDOM_BYTES_QUOTA](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L53)
+## [RANDOM_BYTES_QUOTA](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L60)
 
 Maximum total size of random bytes per page
 
-## [MAX_RANDOM_BYTES](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L58)
+## [MAX_RANDOM_BYTES](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L65)
 
 Maximum total size for random bytes.
 
-## [MAX_RANDOM_BYTES_PAGES](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L63)
+## [MAX_RANDOM_BYTES_PAGES](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L70)
 
 Maximum total amount of allocated per page of bytes (max/quota)
 
-## [`randomBytes(size)`](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L71)
+## [`randomBytes(size)`](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L78)
 
 Generate `size` random bytes.
 
@@ -162,7 +162,7 @@ Generate `size` random bytes.
 | Not specified | Buffer | A promise that resolves with an instance of socket.Buffer with random bytes. |
 
 
-## [`createDigest(algorithm, message)`](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L98)
+## [`createDigest(algorithm, message)`](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L105)
 
 
 
@@ -433,7 +433,7 @@ External docs: https://nodejs.org/api/dgram.html#socketgetsendbuffersize
 | Not specified | number | the SO_SNDBUF socket send buffer size in bytes. |
 
 
-# [DNS](https://github.com/socketsupply/socket/blob/master/api/dns/index.js#L13)
+# [DNS](https://github.com/socketsupply/socket/blob/master/api/dns/index.js#L14)
 
 
  This module enables name resolution. For example, use it to look up IP
@@ -443,7 +443,7 @@ External docs: https://nodejs.org/api/dgram.html#socketgetsendbuffersize
  perform any network communication. To perform name resolution the way other
  applications on the same system do, use dns.lookup().
 
-## [`lookup(hostname, opts, cb)`](https://github.com/socketsupply/socket/blob/master/api/dns/index.js#L48)
+## [`lookup(hostname, opts, cb)`](https://github.com/socketsupply/socket/blob/master/api/dns/index.js#L49)
 
 External docs: https://nodejs.org/api/dns.html#dns_dns_lookup_hostname_options_callback
 
@@ -477,7 +477,7 @@ Resolves a host name (e.g. `example.org`) into the first found A (IPv4) or
 | cb | function |  | false | The function to call after the method is complete. |
 
 
-# [DNS.promises](https://github.com/socketsupply/socket/blob/master/api/dns/promises.js#L13)
+# [DNS.promises](https://github.com/socketsupply/socket/blob/master/api/dns/promises.js#L15)
 
 
  This module enables name resolution. For example, use it to look up IP
@@ -487,7 +487,7 @@ Resolves a host name (e.g. `example.org`) into the first found A (IPv4) or
  perform any network communication. To perform name resolution the way other
  applications on the same system do, use dns.lookup().
 
-## [`lookup(hostname, opts)`](https://github.com/socketsupply/socket/blob/master/api/dns/promises.js#L23)
+## [`lookup(hostname, opts)`](https://github.com/socketsupply/socket/blob/master/api/dns/promises.js#L25)
 
 External docs: https://nodejs.org/api/dns.html#dnspromiseslookuphostname-options
 
@@ -910,7 +910,7 @@ External docs: https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fspromisesw
  ipc://command?key1=value1&key2=value2...
  ```
 
-## [`emit(name, value, target , options)`](https://github.com/socketsupply/socket/blob/master/api/ipc.js#L882)
+## [`emit(name, value, target , options)`](https://github.com/socketsupply/socket/blob/master/api/ipc.js#L879)
 
 Emit event to be dispatched on `window` object.
 
@@ -922,7 +922,7 @@ Emit event to be dispatched on `window` object.
 | options | Object |  | true |  |
 
 
-## [`send(command, value)`](https://github.com/socketsupply/socket/blob/master/api/ipc.js#L938)
+## [`send(command, value)`](https://github.com/socketsupply/socket/blob/master/api/ipc.js#L935)
 
 Sends an async IPC command request with parameters.
 
@@ -943,37 +943,37 @@ Sends an async IPC command request with parameters.
  This module provides normalized system information from all the major
  operating systems.
 
-## [`arch()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L20)
+## [`arch()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L17)
 
 This is a `FunctionDeclaration` named `arch` in `api/os.js`, it's exported but undocumented.
 
 
-## [`networkInterfaces()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L53)
+## [`networkInterfaces()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L21)
 
 This is a `FunctionDeclaration` named `networkInterfaces` in `api/os.js`, it's exported but undocumented.
 
 
-## [`platform()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L135)
+## [`platform()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L103)
 
 This is a `FunctionDeclaration` named `platform` in `api/os.js`, it's exported but undocumented.
 
 
-## [`type()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L164)
+## [`type()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L107)
 
 This is a `FunctionDeclaration` named `type` in `api/os.js`, it's exported but undocumented.
 
 
-## [`isWindows()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L204)
+## [`isWindows()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L144)
 
 This is a `FunctionDeclaration` named `isWindows` in `api/os.js`, it's exported but undocumented.
 
 
-## [`tmpdir()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L213)
+## [`tmpdir()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L153)
 
 This is a `FunctionDeclaration` named `tmpdir` in `api/os.js`, it's exported but undocumented.
 
 
-## [EOL](https://github.com/socketsupply/socket/blob/master/api/os.js#L257)
+## [EOL](https://github.com/socketsupply/socket/blob/master/api/os.js#L197)
 
 This is a `VariableDeclaration` named `EOL` in `api/os.js`, it's exported but undocumented.
 
@@ -1023,7 +1023,7 @@ Computes current working directory for a path
 
 
 
-## [`homedir()`](https://github.com/socketsupply/socket/blob/master/api/process.js#L31)
+## [`homedir()`](https://github.com/socketsupply/socket/blob/master/api/process.js#L35)
 
 
 
@@ -1032,7 +1032,7 @@ Computes current working directory for a path
 | Not specified | string | The home directory of the current user. |
 
 
-## [`exit(code)`](https://github.com/socketsupply/socket/blob/master/api/process.js#L38)
+## [`exit(code)`](https://github.com/socketsupply/socket/blob/master/api/process.js#L42)
 
 
 
@@ -1046,37 +1046,58 @@ Computes current working directory for a path
 
  Provides runtime-specific methods
 
-## [currentWindow](https://github.com/socketsupply/socket/blob/master/api/runtime.js#L10)
+## [version](https://github.com/socketsupply/socket/blob/master/api/runtime.js#L10)
+
+This is a `VariableDeclaration` named `version` in `api/runtime.js`, it's exported but undocumented.
+
+
+## [currentWindow](https://github.com/socketsupply/socket/blob/master/api/runtime.js#L12)
 
 This is a `VariableDeclaration` named `currentWindow` in `api/runtime.js`, it's exported but undocumented.
 
 
-## [debug](https://github.com/socketsupply/socket/blob/master/api/runtime.js#L12)
+## [debug](https://github.com/socketsupply/socket/blob/master/api/runtime.js#L14)
 
 This is a `VariableDeclaration` named `debug` in `api/runtime.js`, it's exported but undocumented.
 
 
-## [config](https://github.com/socketsupply/socket/blob/master/api/runtime.js#L14)
+## [config](https://github.com/socketsupply/socket/blob/master/api/runtime.js#L16)
 
 This is a `VariableDeclaration` named `config` in `api/runtime.js`, it's exported but undocumented.
 
 
-## [`send()`](https://github.com/socketsupply/socket/blob/master/api/runtime.js#L24)
-
-This is a `FunctionDeclaration` named `send` in `api/runtime.js`, it's exported but undocumented.
+## [`send(options)`](https://github.com/socketsupply/socket/blob/master/api/runtime.js#L34)
 
 
-## [`getWindows()`](https://github.com/socketsupply/socket/blob/master/api/runtime.js#L40)
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| options | object |  | false | an options object |
+| options.window | number | currentWindow | true | the window to send the message to |
+| options.event | string |  | false | the event to send |
+| options.value | string \| object |  | true | the value to send |
+
+
+## [`getWindows()`](https://github.com/socketsupply/socket/blob/master/api/runtime.js#L50)
 
 This is a `FunctionDeclaration` named `getWindows` in `api/runtime.js`, it's exported but undocumented.
 
 
-## [`openExternal()`](https://github.com/socketsupply/socket/blob/master/api/runtime.js#L44)
-
-This is a `FunctionDeclaration` named `openExternal` in `api/runtime.js`, it's exported but undocumented.
+## [`openExternal(options)`](https://github.com/socketsupply/socket/blob/master/api/runtime.js#L59)
 
 
-## [`exit(options)`](https://github.com/socketsupply/socket/blob/master/api/runtime.js#L53)
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| options | object |  | false |  |
+
+
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| Not specified | Promise<ipc.Result> |  |
+
+
+## [`exit(options)`](https://github.com/socketsupply/socket/blob/master/api/runtime.js#L68)
 
 Quits the backend process and then quits the render process, the exit code used is the final exit code to the OS.
 
@@ -1090,13 +1111,13 @@ Quits the backend process and then quits the render process, the exit code used 
 | Not specified | Promise<Any> |  |
 
 
-## [`setTitle(options)`](https://github.com/socketsupply/socket/blob/master/api/runtime.js#L62)
+## [`setTitle(title)`](https://github.com/socketsupply/socket/blob/master/api/runtime.js#L77)
 
 Sets the title of the window (if applicable).
 
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
-| options | obnject |  | false | an options object |
+| title | title |  | false | the title of the window |
 
 
 | Return Value | Type | Description |
@@ -1104,12 +1125,30 @@ Sets the title of the window (if applicable).
 | Not specified | Promise<ipc.Result> |  |
 
 
-## [`inspect()`](https://github.com/socketsupply/socket/blob/master/api/runtime.js#L66)
+## [`inspect()`](https://github.com/socketsupply/socket/blob/master/api/runtime.js#L81)
 
 This is a `FunctionDeclaration` named `inspect` in `api/runtime.js`, it's exported but undocumented.
 
 
-## [`show(opts)`](https://github.com/socketsupply/socket/blob/master/api/runtime.js#L76)
+## [`show(opts)`](https://github.com/socketsupply/socket/blob/master/api/runtime.js#L95)
+
+
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| opts | object |  | false | an options object |
+| opts.window | number | currentWindow | true | the index of the window |
+| opts.url | string |  | true | the path to the HTML file to load into the window |
+| opts.width | number |  | true | the width of the window |
+| opts.height | number |  | true | the height of the window |
+
+
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| Not specified | Promise<ipc.Result> |  |
+
+
+## [`hide(opts)`](https://github.com/socketsupply/socket/blob/master/api/runtime.js#L108)
 
 
 
@@ -1123,21 +1162,7 @@ This is a `FunctionDeclaration` named `inspect` in `api/runtime.js`, it's export
 | Not specified | Promise<ipc.Result> |  |
 
 
-## [`hide(opts)`](https://github.com/socketsupply/socket/blob/master/api/runtime.js#L89)
-
-
-
-| Argument | Type | Default | Optional | Description |
-| :---     | :--- | :---:   | :---:    | :---        |
-| opts | object |  | false | an options object |
-
-
-| Return Value | Type | Description |
-| :---         | :--- | :---        |
-| Not specified | Promise<ipc.Result> |  |
-
-
-## [`navigate(opts)`](https://github.com/socketsupply/socket/blob/master/api/runtime.js#L100)
+## [`navigate(opts)`](https://github.com/socketsupply/socket/blob/master/api/runtime.js#L119)
 
 
 
@@ -1153,12 +1178,12 @@ This is a `FunctionDeclaration` named `inspect` in `api/runtime.js`, it's export
 | Not specified | Promise<ipc.Result> |  |
 
 
-## [`setWindowBackgroundColor()`](https://github.com/socketsupply/socket/blob/master/api/runtime.js#L109)
+## [`setWindowBackgroundColor()`](https://github.com/socketsupply/socket/blob/master/api/runtime.js#L128)
 
 This is a `FunctionDeclaration` named `setWindowBackgroundColor` in `api/runtime.js`, it's exported but undocumented.
 
 
-## [`setContextMenu(options)`](https://github.com/socketsupply/socket/blob/master/api/runtime.js#L120)
+## [`setContextMenu(options)`](https://github.com/socketsupply/socket/blob/master/api/runtime.js#L139)
 
 Opens a native context menu.
 
@@ -1172,12 +1197,12 @@ Opens a native context menu.
 | Not specified | Promise<Any> |  |
 
 
-## [`setSystemMenuItemEnabled()`](https://github.com/socketsupply/socket/blob/master/api/runtime.js#L128)
+## [`setSystemMenuItemEnabled()`](https://github.com/socketsupply/socket/blob/master/api/runtime.js#L147)
 
 This is a `FunctionDeclaration` named `setSystemMenuItemEnabled` in `api/runtime.js`, it's exported but undocumented.
 
 
-## [`setSystemMenu(options)`](https://github.com/socketsupply/socket/blob/master/api/runtime.js#L221)
+## [`setSystemMenu(options)`](https://github.com/socketsupply/socket/blob/master/api/runtime.js#L240)
 
 Set the native menu for the app.
 
@@ -1274,7 +1299,7 @@ Set the native menu for the app.
 | Not specified | Promise<Any> |  |
 
 
-## [`reload()`](https://github.com/socketsupply/socket/blob/master/api/runtime.js#L270)
+## [`reload()`](https://github.com/socketsupply/socket/blob/master/api/runtime.js#L289)
 
 This is a `FunctionDeclaration` named `reload` in `api/runtime.js`, it's exported but undocumented.
 

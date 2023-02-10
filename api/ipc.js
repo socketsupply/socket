@@ -1218,6 +1218,9 @@ export function createBinding (domain, ctx) {
 // We need to set primordials here because we are using the
 // `sendSync` method. This is a hack to get around the fact
 // that we can't use cyclic imports with a sync call.
+/**
+ * @ignore
+ */
 export const primordials = sendSync('platform.primordials')?.data
 
 if (typeof window !== 'undefined') {
