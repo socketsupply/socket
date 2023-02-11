@@ -1,7 +1,7 @@
 import path from 'node:path'
 import os from 'node:os'
 
-const dirname = path.dirname(import.meta.url.replace('file://', ''))
+const dirname = path.dirname(import.meta.url).replace(`file://${os.platform() === 'win32' ? '/' : ''}`, '')
 
 export const SOCKET_HOME = path.dirname(dirname)
 export const PREFIX = SOCKET_HOME

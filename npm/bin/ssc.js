@@ -4,7 +4,7 @@ import { fork } from 'node:child_process'
 import path from 'node:path'
 import os from 'node:os'
 
-const dirname = path.dirname(import.meta.url).replace('file://', '')
+const dirname = path.dirname(import.meta.url).replace(`file://${os.platform() === 'win32' ? '/' : ''}`, '')
 
 export async function load () {
   const platform = os.platform()
