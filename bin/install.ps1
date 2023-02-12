@@ -1,4 +1,4 @@
-param([Switch]$debug, [Switch]$ps1build, [Switch]$skipwebview, [Switch]$ps1build, $webview = "1.0.1619-prerelease", $uv = "v1.44.2")
+param([Switch]$debug, [Switch]$skipwebview, [Switch]$shbuild=$true, [Switch]$ps1build, $webview = "1.0.1619-prerelease", $uv = "v1.44.2", $toolchain = "vsbuild")
 
 $OLD_CWD = (Get-Location).Path
 
@@ -20,6 +20,11 @@ $global:cmake = "cmake.exe"
 if ($debug -eq $true) {
   $LIBUV_BUILD_TYPE = "Debug"
   $SSC_BUILD_OPTIONS = "-g", "-O0"
+}
+
+if (($shbuild) -and ($ps1build)) {
+  Write-Output "Using shbuild and ps1build together doesn't make sense."
+  Exit 1
 }
 
 $global:path_advice = @()
@@ -436,7 +441,9 @@ if ($ps1build) {
   }
   Build
   Install-Files
-} else {
+} 
+
+if ($shbuild) {
   # $sh="sh.exe"
   # if (-not (Found-Command($sh))) {
   #   # locate git's sh

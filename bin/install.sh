@@ -370,6 +370,15 @@ function _install {
   mkdir -p "$SOCKET_HOME/include"
   #cp -rf "$CWD"/include/* $SOCKET_HOME/include
   cp -rf "$BUILD_DIR"/uv/include/* $SOCKET_HOME/include
+
+  if [[ "$(uname -s)" == *"_NT"* ]]; then
+    if [ $platform == "desktop" ]; then
+      mkdir -p "$SOCKET_HOME/ps1"
+      cp -ap $root/bin/*.ps1 $SOCKET_HOME/ps1
+      cp -ap $root/bin/.vs* $SOCKET_HOME/ps1
+    fi
+  fi
+
 }
 
 function _install_cli {
