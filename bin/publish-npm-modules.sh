@@ -98,6 +98,10 @@ if (( !only_top_level )); then
       fi
     fi
 
+    if [ "$platform" = "Win32" ]; then
+      cp -rap $SOCKET_HOME/ps1 $SOCKET_HOME/packages/$package
+    fi
+
     cd "$SOCKET_HOME/packages/$package" || exit $?
     echo "# in directory: '$SOCKET_HOME/packages/$package'"
 
