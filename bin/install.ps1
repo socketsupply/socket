@@ -1,4 +1,4 @@
-param([Switch]$debug, [Switch]$skipwebview, $webview = "1.0.1619-prerelease", $uv = "v1.44.2", $toolchain = "llvm+vsbuild")
+param([Switch]$debug, [Switch]$skipwebview, $webview = "1.0.1619-prerelease", $uv = "v1.44.2", $toolchain = "vsbuild")
 
 $OLD_CWD = (Get-Location).Path
 
@@ -283,11 +283,12 @@ Function Install-Requirements {
 
       $env:ChocolateyInstall="$ChocoDir"
     }
-  }  
+  }
+
+  $clang = "clang++"  
 
   if (("llvm+vsbuild" -eq $toolchain) -or ("llvm" -eq $toolchain))
   {
-    $clang = "clang++"
     $clangPath = "$env:ProgramFiles\LLVM\bin"
 
     if (-not (Found-Command($clang))) {
