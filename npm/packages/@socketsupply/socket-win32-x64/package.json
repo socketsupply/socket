@@ -12,7 +12,7 @@
   ],
   "scripts": {
     "test": ":",
-    "preinstall": "node ./bin/install-pre-reqs.js && echo Pre requisite checks complete.",
+    "preinstall": "node ./bin/install-pre-reqs.js && echo Pre requisite checks complete.\nUse\n> install-pre-reqs\nto run this again.",
     "install": "cd bin && node verify-platform.js win32 x64 -"
   },
   "bin": {

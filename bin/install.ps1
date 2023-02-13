@@ -16,6 +16,7 @@ $WEBVIEW2_VERSION = "$webview"
 $SSC_BUILD_OPTIONS = "-O2"
 $global:git = "git.exe"
 $global:cmake = "cmake.exe"
+$global:useCurl = $true
 
 if ($debug -eq $true) {
   $LIBUV_BUILD_TYPE = "Debug"
@@ -37,8 +38,14 @@ if ( -not (("llvm+vsbuild" -eq $toolchain) -or ("vsbuild" -eq $toolchain) -or ("
 }
 
 if ("vsbuild" -eq $toolchain) {
-  $vsconfig = ".vsconfig"
+  if ($shbuild) {
+    $vsconfig = ".vsconfig"
+  } else {
+    # Use smaller footprint if we're not doing an install.sh
+    $vsconfig = ".vsconfig-csa"
+  }
 }
+
 
 Write-Output "Using toolchain: $toolchain"
 
@@ -195,27 +202,44 @@ if ((Test-Path "bin" -PathType Container) -eq $false) {
   . .\bin\Get-ProcEnvs.ps1
 }
 
+Function Get-UrlCall {
+  param($url, $dest)
+  # curl is way faster than iwr
+  # need .exe because curl is an alias for iwr, go figure...  
+  if ($global:useCurl) {
+    return "iex ""& curl.exe -L """"$url"""" --output """"$dest"""""""
+  } else {
+    return "iwr $url -O $dest"
+  }
+}
+
 Function Install-Requirements {
 
-  $install_tasks = @()
-  $found_choco = $false
-  $need_choco = $false
-  $approve_choco = $false
-
-  # download and install `choco.exe` if it isn't installed yet
-  $ChocoDir=$env:ChocolateyInstall
-  $choco = "$ChocoDir\bin\choco.exe"
-  if (-not (Found-Command("$choco"))) {
-    # Look for choco in standard location just in case, otherwise set up var $env
-    $ChocoDir="$($env:ProgramData)\chocolatey"
-    $choco = "$ChocoDir\bin\choco.exe"
+  if (-not (Found-Command("curl"))) {
+    $global:useCurl = $false
   }
 
-  $need_choco = $false
-  if (-not (Found-Command("$choco"))) {
+  $install_tasks = @()
+  
+  $vc_runtime_test_path = "$env:SYSTEMROOT\System32\vcruntime140_1.dll"
+  if ((Test-Path "$vc_runtime_test_path" -PathType Leaf) -eq $false) {
+    
+    $installer = "vc_redist.x64.exe"
+    $url = "https://aka.ms/vs/17/release/$installer"
+    $confirmation = Read-Host "$installer is a requirement, proceed with install from Microsoft? y/[n]?" 
+    
+    if ($confirmation -eq 'y') {
+      $t = [string]{
+        Write-Output "Downloading $url"
+        -geturl-
+        Write-Output "Installing $env:TEMP\$installer"
+        iex "& $env:TEMP\$installer /quiet"
+      }
+      $t = $t.replace("`$installer", $installer).replace("`$env:TEMP", $env:TEMP).replace("`$url", $url).replace("-geturl-", (Get-UrlCall "$url" "$env:TEMP\$installer")).replace("""", "\""")
+      $install_tasks += $t
+    }
   } else {
-    $found_choco = $true
-    Write-Output "# chocolatey is installed"
+    Write-Output "# $vc_runtime_test_path found."
   }
 
   $gitPath = "$env:ProgramFiles\Git\bin"
@@ -224,24 +248,30 @@ Function Install-Requirements {
   if (-not (Found-Command($global:git))) {
     # Look for git in default location, in case it was installed in a previous session
     $global:git = "$gitPath\$global:git"
-    $global:path_advice += $gitPath
+    $global:path_advice += "SET PATH=""$gitPath"";%PATH%"
   } else {
     Write-Output ("Git found at, changing path to: $global:git")
   }
 
   if (-not (Found-Command($global:git))) {
 
-    $confirmation = Read-Host "git is a requirement, proceed with install from chocolately repo? y/[n]?"
+    $confirmation = Read-Host "git is a requirement, proceed with install from github.com/git-for-windows? y/[n]?"
+    $installer = "Git-2.39.1-64-bit.exe"
+    $installer_tmp = "Git-2.39.1-64-bit.tmp"
+    $url = "https://github.com/git-for-windows/git/releases/download/v2.39.1.windows.1/$installer"
+
     if ($confirmation -eq 'y') {
-      $need_choco = $true
-      $approve_choco = $true
       $t = [string]{
-        # Note that this installs git with LFS
-        Write-Output ("Installing git")
-        iex "& $choco install -y git"
-        # Start-Process $choco -verb runas -wait -ArgumentList "install","-y","git" > $null
+        Write-Output "Downloading $url"
+        -geturl-
+        Write-Output "Installing $env:TEMP\$installer"
+        iex "& $env:TEMP\$installer /SILENT"
+        sleep 1
+        $proc=Get-Process $installer_tmp
+        Write-Output "Waiting for $installer_tmp..."
+        Wait-Process -InputObject $proc
       }      
-      $t = $t.replace("`$choco", $choco).replace("""", "\""")
+      $t = $t.replace("`$installer_tmp", $installer_tmp).replace("`$installer", $installer).replace("`$env:TEMP", $env:TEMP).replace("`$url", $url).replace("-geturl-", (Get-UrlCall "$url" "$env:TEMP\$installer")).replace("""", "\""")
       $install_tasks += $t
     }
   } else {
@@ -249,43 +279,34 @@ Function Install-Requirements {
   }
 
   # install `cmake.exe`
-  $cmakePath = "$env:ProgramFiles\CMake\bin"
-  if (-not (Found-Command($global:cmake))) {
-    $global:cmake = "$cmakePath\$global:cmake"
-    $global:path_advice += $cmakePath
-  }
+  if ($shbuild) {
+    $cmakePath = "$env:ProgramFiles\CMake\bin"
+    if (-not (Found-Command($global:cmake))) {
+      $global:cmake = "$cmakePath\$global:cmake"
+      $global:path_advice += "SET PATH=""$cmakePath"";%PATH%"
+    }
 
-  if (-not (Found-Command($global:cmake))) {
+    if (-not (Found-Command($global:cmake))) {
 
-    $confirmation = Read-Host "CMake is a requirement, proceed with install from chocolately repo? y/[n]?"
-    if ($confirmation -eq 'y') {
-      $need_choco = $true
-      $t = [string]{
-        Write-Output ("Installing CMake")
-        iex "& $choco install -y cmake"
-        # Start-Process $choco -verb runas -wait -ArgumentList "install","-y","cmake" > $null
+      $confirmation = Read-Host "CMake is a requirement, proceed with install from cmake.org? y/[n]?"
+      $installer = "cmake-3.26.0-rc2-windows-x86_64.msi"
+      $url = "https://github.com/Kitware/CMake/releases/download/v3.26.0-rc2/$installer"
+
+      if ($confirmation -eq 'y') {
+        $t = [string]{
+          Write-Output "Downloading $url"
+          -geturl-
+          Write-Output "Installing $env:TEMP\$installer"
+          sleep 2
+          $proc=Get-Process msiexec
+          Write-Output "Waiting for msiexec..."
+          iex "& $env:TEMP\$installer /quiet"
+        }
+        $t = $t.replace("`$installer", $installer).replace("`$env:TEMP", $env:TEMP).replace("`$url", $url).replace("-geturl-", (Get-UrlCall "$url" "$env:TEMP\$installer")).replace("""", "\""")
+        $install_tasks += $t
       }
     }
-    $t = $t.replace("`$choco", $choco).replace("""", "\""")
-    $install_tasks += $t
   }
-
-  if ($need_choco) {
-    $confirmation = Read-Host "chocolatey is required to install some dependencies, proceed? y/[n]?"
-    if ($confirmation -eq 'y') {
-      $t = [string]{
-        Write-Output ("Installing choco")
-        $env:ChocolateyInstall="$ChocoDir"
-        Set-ExecutionPolicy Bypass -Scope Process -Force;
-        iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
-      }
-      $t = $t.replace("`$ChocoDir", $ChocoDir).replace("""", "\""")
-      # insert chocolately at the start
-      $install_tasks = @($t) + @($install_tasks[0..($install_tasks.Count-1)])
-
-      $env:ChocolateyInstall="$ChocoDir"
-    }
-  }  
 
   if (("llvm+vsbuild" -eq $toolchain) -or ("llvm" -eq $toolchain))
   {
@@ -295,20 +316,29 @@ Function Install-Requirements {
     if (-not (Found-Command($clang))) {
       $clang = "$clangPath\$clang"
       $global:path_advice += $clangPath
+      $global:path_advice += "SET PATH=""$clangPath"";%PATH%"
     }
 
     if (-not (Found-Command($clang))) {
 
       $confirmation = Read-Host "LLVM will be downloaded for clang++, proceed? y/[n]?"
       if ($confirmation -eq 'y') {
-        $need_choco = $true
-        $t = [string]{
-          Write-Output ("Installing LLVM tools")
-          iex "& $choco install llvm --confirm --force" 
-          # Start-Process $choco -verb runas -wait -ArgumentList "install","llvm","--confirm","--force" > $null
+        $installer = "LLVM-15.0.7-win64.exe"
+        $url = "https://github.com/llvm/llvm-project/releases/download/llvmorg-15.0.7/$installer"
+
+        if ($confirmation -eq 'y') {
+          $t = [string]{
+            Write-Output "Downloading $url"
+            -geturl-
+            Write-Output "Installing $env:TEMP\$installer"
+            iex "& $env:TEMP\$installer /S"
+            sleep 1
+            $proc=Get-Process $installer
+            Write-Output "Waiting for $installer..."
+          }
+          $t = $t.replace("`$installer", $installer).replace("`$env:TEMP", $env:TEMP).replace("`$url", $url).replace("-geturl-", (Get-UrlCall "$url" "$env:TEMP\$installer")).replace("""", "\""")
+          $install_tasks += $t
         }
-        $t = $t.replace("`$choco", $choco).replace("""", "\""")
-        $install_tasks += $t
       }
 
       $env:PATH="$clangPath;$env:PATH"
@@ -317,50 +347,54 @@ Function Install-Requirements {
     }
   }
 
+  $and_nmake = ""
+  if ($shbuild) {
+    $and_nmake = " and nmake"
+  }
+
   if (("llvm+vsbuild" -eq $toolchain) -or ("vsbuild" -eq $toolchain))
   {
     $vc_exists, $vc_vars = $(Get-VCVars)
     $report_vc_vars_reqd = $false
     $install_vc_build = $true
 
-    if ($(Found-Command("clang++.exe")) -and $(Found-Command("nmake.exe"))) {
-      Write-Output("# Found clang and nmake")
+    if ($shbuild -and $(Found-Command("clang++.exe")) -and $(Found-Command("nmake.exe"))) {
+      Write-Output("# Found clang$and_nmake")
+      $install_vc_build = $false
+    } elseif ($(Found-Command("clang++.exe"))) {
+      Write-Output("# Found clang")
       $install_vc_build = $false
     } else {
       if ($vc_exists) {
         Write-Output "Calling vcvars64.bat"
         $(Get-ProcEnvs($vc_vars))
-        if ($(Found-Command("clang++.exe")) -and $(Found-Command("nmake.exe"))) {
+        if ($shbuild -and $(Found-Command("clang++.exe")) -and $(Found-Command("nmake.exe"))) {
+          $report_vc_vars_reqd = $true
+          $install_vc_build = $false
+        } elseif ($(Found-Command("clang++.exe"))) {
           $report_vc_vars_reqd = $true
           $install_vc_build = $false
         } else {
-          Write-Output("# $vc_vars didn't enable both clang++ and nmake, downloading vs_build.exe")
+          Write-Output("# $vc_vars didn't enable both clang++$and_nmake, downloading vs_build.exe")
         }
-      } else {
-        Write-Output("# Visual Studio Build Tools not detected, please install all selected items.")
       }
     }
 
     if ($install_vc_build) {
       $report_vc_vars_reqd = $true
-      $confirmation = Read-Host "Visual Studio NMake + Windows SDK are required. Download from Microsoft? y/[n]?"
+      $confirmation = Read-Host "Visual Studio Clang, Windows SDK$and_nmake are required, proceed with install from Microsoft? y/[n]?"
+      $installer = "vs_buildtools.exe"
+      $url = "https://aka.ms/vs/17/release/$installer"
+
       if ($confirmation -eq 'y') {
         $t = [string]{
-          $tmpdir = Join-Path $Env:Temp $(New-Guid)
-          (New-Item -Type Directory -Path $tmpdir) > $null
-          if ($null -ne ($env:VSFROMLAYOUT)) {
-            Write-Output "# Installing Visual Studio Build Tools from pre downloaded layout folder $($env:VSFROMLAYOUT)"
-            cd $($env:VSFROMLAYOUT)
-            # Start-Process "vs_setup.exe" -verb runas -wait -ArgumentList "-P" > $null
-            iex "& vs_setup.exe --passive -P"
-            cd $OLD_CWD
-          } else {
-            Invoke-WebRequest "https://aka.ms/vs/17/release/vs_buildtools.exe" -O "$tmpdir\vs_buildtools.exe"
-            # Start-Process "$tmpdir\vs_buildtools.exe" -verb runas -wait -ArgumentList "--config","$OLD_CWD\$bin\$vsconfig" > $null
-            iex "& $tmpdir\vs_buildtools.exe --passive --config $OLD_CWD\$bin\$vsconfig"
-          }
+          Write-Output "Downloading $url"
+          -geturl-
+          Write-Output "Installing $env:TEMP\$installer"
+          iex "& $env:TEMP\$installer --passive --config $OLD_CWD\$bin\$vsconfig"
         }
-        $t = $t.replace("`$OLD_CWD", $OLD_CWD).replace("`$bin", $bin).replace("`$vsconfig", $vsconfig).replace("""", "\""")
+        $t = $t.replace("`$OLD_CWD", $OLD_CWD).replace("`$bin", $bin).replace("`$vsconfig", $vsconfig)
+        $t = $t.replace("`$installer", $installer).replace("`$env:TEMP", $env:TEMP).replace("`$url", $url).replace("-geturl-", (Get-UrlCall "$url" "$env:TEMP\$installer")).replace("""", "\""")
         $install_tasks += $t
       }
     }
@@ -387,9 +421,13 @@ Function Install-Requirements {
     Exit 1
   }
 
+  if ((Test-Path "$vc_runtime_test_path" -PathType Leaf) -eq $false) {
+    Write-Output "$vc_runtime_test_path still not present, something went wrong."
+    Exit 1
+  }
+
   $vc_exists, $vc_vars = $(Get-VCVars)
   if ($vc_exists) {
-    Write-Output "Calling vcvars64.bat"
     $(Get-ProcEnvs($vc_vars))
   } else {
     Write-Output "vcvars64.bat still not present, something went wrong."
@@ -401,19 +439,15 @@ Function Install-Requirements {
     Exit 1
   }
 
-  if (-not (Found-Command($global:cmake))) {
-    Write-Output "not ok - unable to install cmake"
-    Exit 1
+  if ($shbuild) {
+    if (-not (Found-Command($global:cmake))) {
+      Write-Output "not ok - unable to install cmake"
+      Exit 1
+    }
   }
 
   if ($report_vc_vars_reqd) {
-    Write-Output "vcvars64.bat found and enabled. Note that you will need to call it manually if running this script from cmd.exe under a separate powershell request:"
-    Write-Output $vc_vars
-    $global:path_advice += $vc_vars
-  }
-  
-  if (($need_choco -eq $true) -and ($approve_choco -eq $false)) {
-    $global:path_advice += "# Chocolately is required to install some dependencies, but you have elected not to install it, things probably didn't go well."
+    $global:path_advice += """$vc_vars"""
   }
 
   # refresh enviroment after prereq setup
@@ -444,13 +478,6 @@ if ($ps1build) {
 } 
 
 if ($shbuild) {
-  # $sh="sh.exe"
-  # if (-not (Found-Command($sh))) {
-  #   # locate git's sh
-  #   $gitPath = "$env:ProgramFiles\Git\bin"
-  #   $sh = "$gitPath\sh.exe"
-  # }
-
   $gitPath = "$env:ProgramFiles\Git\bin"
   $sh = "$gitPath\sh.exe"
 
@@ -479,7 +506,7 @@ if ($shbuild) {
 }
 
 if ($global:path_advice.Count -gt 0) {
-  Write-Output "Please add the following to PATH or run for this and future dev sessions: "
+  Write-Output "Please add the following to PATH or run in future dev sessions: "
   foreach ($p in $global:path_advice) {
     Write-Output $p
   }
