@@ -426,14 +426,6 @@ Function Install-Requirements {
     Exit 1
   }
 
-  $vc_exists, $vc_vars = $(Get-VCVars)
-  if ($vc_exists) {
-    $(Get-ProcEnvs($vc_vars))
-  } else {
-    Write-Output "vcvars64.bat still not present, something went wrong."
-    Exit 1
-  }
-
   if (-not (Found-Command($global:git))) {
     Write-Output "not ok - unable to install git."
     Exit 1
