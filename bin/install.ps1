@@ -42,7 +42,7 @@ if ("vsbuild" -eq $toolchain) {
     $vsconfig = ".vsconfig"
   } else {
     # Use smaller footprint if we're not doing an install.sh
-    $vsconfig = ".vsconfig-csa"
+    $vsconfig = ".vsconfig-app-build"
   }
 }
 
