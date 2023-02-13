@@ -696,13 +696,8 @@ export class Socket extends EventEmitter {
    *
    * If binding fails, an 'error' event is emitted.
    *
-<<<<<<< HEAD
-   * @param {number} port - The port to to listen for messages on
-   * @param {string} address - The address to bind to (127.0.0.1)
-=======
    * @param {number} port - The port to listen for messages on
-   * @param {string} address - The address to bind to (0.0.0.0)
->>>>>>> b9adc890 (fixed all the typos)
+   * @param {string} address - The address to bind to (127.0.0.1)
    * @param {function} callback - With no parameters. Called when binding is complete.
    * @see {@link https://nodejs.org/api/dgram.html#socketbindport-address-callback}
    */
