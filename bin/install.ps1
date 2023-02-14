@@ -416,6 +416,16 @@ Function Install-Requirements {
     }
   }
 
+  if ($install_vc_build) {
+    $vc_exists, $vc_vars = $(Get-VCVars)
+    if ($vc_exists) {
+      $(Get-ProcEnvs($vc_vars))
+    } else {
+      Write-Output "vcvars64.bat still not present, something went wrong."
+      Exit 1
+    }
+  }
+
   if (-not (Found-Command($clang))) {
     Write-Output "not ok - unable to install clang++."
     Exit 1
