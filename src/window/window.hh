@@ -245,24 +245,16 @@ namespace SSC {
             manager.destroyWindow(reinterpret_cast<Window*>(this));
           }
 
-          JSON::Object json (WindowPropertiesFlags flags) {
+          JSON::Object json () {
             auto index = this->opts.index;
-            auto window = JSON::Object::Entries {
-              { "index", index }
+            auto size = this->getSize();
+            return JSON::Object::Entries {
+              { "index", index },
+              { "title", this->getTitle() },
+              { "width", size.width },
+              { "height", size.height },
+              { "status", this->status }
             };
-            if (flags.showTitle) {
-              window["title"] = this->getTitle();
-            }
-            if (flags.showSize) {
-              const auto size = this->getSize();
-              window["width"] = size.width;
-              window["height"] = size.height;
-            }
-            if (flags.showStatus) {
-              const auto status = this->status;
-              window["status"] = status;
-            }
-            return window;
           }
       };
 
@@ -496,21 +488,16 @@ namespace SSC {
         });
       }
 
-      JSON::Array json (WindowPropertiesFlags flags) {
+      JSON::Array json (std::vector<int> indices) {
         auto i = 0;
-        JSON::Array windows;
-        for (auto window : this->windows) {
-          if (window != nullptr) {
-            if (!flags.showTitle && !flags.showSize && !flags.showStatus) {
-              windows[i] = window->opts.index;
-            } else {
-              const auto w = this->getWindow(window->opts.index);
-              windows[i] = w->json(flags);
-            }
+        JSON::Array result;
+        for (auto index : indices) {
+          if (index >= 0 && inits[index] && windows[index] != nullptr) {
+            result[i] = windows[index]->json();
           }
           i++;
         }
-        return windows;
+        return result;
       }
   };
 
