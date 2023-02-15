@@ -294,11 +294,59 @@ void initFunctionsTable (Router *router) {
   });
 
   /**
-   * @TODO
+   * Changes uid and gid of file at `path`.
+   * @param path
+   * @param uid
+   * @param gid
    * @see chown(2)
    */
   router->map("fs.chown", [=](auto message, auto router, auto reply) {
-    // TODO
+    auto err = validateMessageParameters(message, {"path", "uid", "gid"});
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result::Err { message, err });
+    }
+
+    int uid = 0;
+    int gid = 0;
+    REQUIRE_AND_GET_MESSAGE_VALUE(uid, "uid", std::stoi);
+    REQUIRE_AND_GET_MESSAGE_VALUE(gid, "gid", std::stoi);
+
+    router->core->fs.chown(
+      message.seq,
+      message.get("path"),
+      static_cast<uv_uid_t>(uid),
+      static_cast<uv_gid_t>(gid),
+      RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
+    );
+  });
+
+  /**
+   * Changes uid and gid of symbolic link at `path`.
+   * @param path
+   * @param uid
+   * @param gid
+   * @see lchown(2)
+   */
+  router->map("fs.lchown", [=](auto message, auto router, auto reply) {
+    auto err = validateMessageParameters(message, {"path", "uid", "gid"});
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result::Err { message, err });
+    }
+
+    int uid = 0;
+    int gid = 0;
+    REQUIRE_AND_GET_MESSAGE_VALUE(uid, "uid", std::stoi);
+    REQUIRE_AND_GET_MESSAGE_VALUE(gid, "gid", std::stoi);
+
+    router->core->fs.lchown(
+      message.seq,
+      message.get("path"),
+      static_cast<uv_uid_t>(uid),
+      static_cast<uv_gid_t>(gid),
+      RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
+    );
   });
 
   /**
@@ -383,7 +431,7 @@ void initFunctionsTable (Router *router) {
    * @see copyfile(3)
    */
   router->map("fs.copyFile", [=](auto message, auto router, auto reply) {
-    auto err = validateMessageParameters(message, {"src", "dest"});
+    auto err = validateMessageParameters(message, {"src", "dest", "flags"});
 
     if (err.type != JSON::Type::Null) {
       return reply(Result::Err { message, err });
@@ -446,6 +494,53 @@ void initFunctionsTable (Router *router) {
     router->core->fs.lstat(
       message.seq,
       message.get("path"),
+      RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
+    );
+  });
+
+  /**
+   * Creates a link at `dest`
+   * @param src
+   * @param dest
+   * @see link(2)
+   */
+  router->map("fs.link", [=](auto message, auto router, auto reply) {
+    auto err = validateMessageParameters(message, {"src", "dest"});
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result::Err { message, err });
+    }
+
+    router->core->fs.link(
+      message.seq,
+      message.get("src"),
+      message.get("dest"),
+      RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
+    );
+  });
+
+  /**
+   * Creates a symlink at `dest`
+   * @param src
+   * @param dest
+   * @param flags
+   * @see symlink(2)
+   */
+  router->map("fs.symlink", [=](auto message, auto router, auto reply) {
+    auto err = validateMessageParameters(message, {"src", "dest", "flags"});
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result::Err { message, err });
+    }
+
+    int flags = 0;
+    REQUIRE_AND_GET_MESSAGE_VALUE(flags, "flags", std::stoi);
+
+    router->core->fs.symlink(
+      message.seq,
+      message.get("src"),
+      message.get("dest"),
+      flags,
       RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
     );
   });
@@ -683,6 +778,44 @@ void initFunctionsTable (Router *router) {
     }
 
     router->core->fs.unlink(
+      message.seq,
+      message.get("path"),
+      RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
+    );
+  });
+
+  /**
+   * Read value of a symbolic link at 'path'
+   * @param path
+   * @see unlink(2)
+   */
+  router->map("fs.readlink", [=](auto message, auto router, auto reply) {
+    auto err = validateMessageParameters(message, {"path"});
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result::Err { message, err });
+    }
+
+    router->core->fs.readlink(
+      message.seq,
+      message.get("path"),
+      RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
+    );
+  });
+
+  /**
+   * Get the realpath at 'path'
+   * @param path
+   * @see realpath(2)
+   */
+  router->map("fs.realpath", [=](auto message, auto router, auto reply) {
+    auto err = validateMessageParameters(message, {"path"});
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result::Err { message, err });
+    }
+
+    router->core->fs.realpath(
       message.seq,
       message.get("path"),
       RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)

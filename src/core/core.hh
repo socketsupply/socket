@@ -455,12 +455,26 @@ namespace SSC {
             int mode,
             Module::Callback cb
           );
+          void chown(
+            const String seq,
+            const String path,
+            uv_uid_t uid,
+            uv_gid_t gid,
+            Module::Callback cb
+          );
+          void lchown(
+            const String seq,
+            const String path,
+            uv_uid_t uid,
+            uv_gid_t gid,
+            Module::Callback cb
+          );
           void close (const String seq, uint64_t id, Module::Callback cb);
           void copyFile (
             const String seq,
             const String src,
             const String dst,
-            int mode,
+            int flags,
             Module::Callback cb
           );
           void closedir (const String seq, uint64_t id, Module::Callback cb);
@@ -478,6 +492,19 @@ namespace SSC {
           void fstat (const String seq, uint64_t id, Module::Callback cb);
           void getOpenDescriptors (const String seq, Module::Callback cb);
           void lstat (const String seq, const String path, Module::Callback cb);
+          void link (
+            const String seq,
+            const String src,
+            const String dest,
+            Module::Callback cb
+          );
+          void symlink (
+            const String seq,
+            const String src,
+            const String dest,
+            int flags,
+            Module::Callback cb
+          );
           void mkdir (
             const String seq,
             const String path,
@@ -514,6 +541,16 @@ namespace SSC {
           void retainOpenDescriptor (
             const String seq,
             uint64_t id,
+            Module::Callback cb
+          );
+          void readlink (
+            const String seq,
+            const String path,
+            Module::Callback cb
+          );
+          void realpath (
+            const String seq,
+            const String path,
             Module::Callback cb
           );
           void rename (
