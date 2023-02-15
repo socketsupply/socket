@@ -210,7 +210,7 @@ Process::id_type Process::open(const SSC::String &command, const SSC::String &pa
       exitCode = -1;
     }
 
-    this->status = (int) exitCode;
+    this->status = WEXITSTATUS(exitCode);
     this->closed = true;
     on_exit(std::to_string(exitCode));
   });
