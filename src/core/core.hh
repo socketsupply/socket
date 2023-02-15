@@ -404,7 +404,7 @@ namespace SSC {
             uint64_t id;
             Descriptor *desc = nullptr;
             uv_fs_t req;
-            uv_buf_t iov[16];
+            uv_buf_t buf;
             // 256 which corresponds to DirectoryHandle.MAX_BUFFER_SIZE
             uv_dirent_t dirents[256];
             int offset = 0;
@@ -424,13 +424,15 @@ namespace SSC {
             }
 
             ~RequestContext () {
-              uv_fs_req_cleanup(&this->req);
+              uv_fs_req_cleanup(&req);
+              // TODO(trevnorris): Should we verify that buf.data == nullptr?
             }
 
-            void setBuffer (int index, size_t len, char *base);
-            void freeBuffer (int index);
-            char* getBuffer (int index);
-            size_t getBufferSize (int index);
+            // len must be uint32_t since uv_buf_t.len on Windows is a ULONG.
+            void setBuffer(char* base, uint32_t len);
+            void freeBuffer();
+            char* getBuffer();
+            uint32_t getBufferSize();
           };
 
           std::map<uint64_t, Descriptor*> descriptors;

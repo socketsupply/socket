@@ -205,26 +205,23 @@ namespace SSC {
     };
   }
 
-  void Core::FS::RequestContext::setBuffer (int index, size_t len, char *base) {
-    this->iov[index].base = base;
-    this->iov[index].len = len;
+  void Core::FS::RequestContext::setBuffer(char* base, uint32_t len) {
+    buf.base = base;
+    buf.len = len;
   }
 
-  void Core::FS::RequestContext::freeBuffer (int index) {
-    if (this->iov[index].base != nullptr) {
-      delete [] (char *) this->iov[index].base;
-      this->iov[index].base = nullptr;
-    }
-
-    this->iov[index].len = 0;
+  void Core::FS::RequestContext::freeBuffer() {
+    delete[] static_cast<char*>(buf.base);
+    buf.base = nullptr;
+    buf.len = 0;
   }
 
-  char* Core::FS::RequestContext::getBuffer (int index) {
-    return this->iov[index].base;
+  char* Core::FS::RequestContext::getBuffer() {
+    return buf.base;
   }
 
-  size_t Core::FS::RequestContext::getBufferSize (int index) {
-    return this->iov[index].len;
+  uint32_t Core::FS::RequestContext::getBufferSize() {
+    return buf.len;
   }
 
   Core::FS::Descriptor::Descriptor (Core *core, uint64_t id) {
@@ -898,9 +895,9 @@ namespace SSC {
       auto req = &ctx->req;
       auto bytes = new char[size]{0};
 
-      ctx->setBuffer(0, size, bytes);
+      ctx->setBuffer(bytes, size);
 
-      auto err = uv_fs_read(loop, req, desc->fd, ctx->iov, 1, offset, [](uv_fs_t* req) {
+      auto err = uv_fs_read(loop, req, desc->fd, &ctx->buf, 1, offset, [](uv_fs_t* req) {
         auto ctx = static_cast<RequestContext*>(req->data);
         auto desc = ctx->desc;
         auto json = JSON::Object {};
@@ -916,10 +913,7 @@ namespace SSC {
             }}
           };
 
-          auto bytes = ctx->getBuffer(0);
-          if (bytes != nullptr) {
-            delete [] bytes;
-          }
+          ctx->freeBuffer();
         } else {
           auto headers = Headers {{
             {"content-type" ,"application/octet-stream"},
@@ -927,7 +921,7 @@ namespace SSC {
           }};
 
           post.id = SSC::rand64();
-          post.body = ctx->getBuffer(0);
+          post.body = ctx->getBuffer();
           post.length = uv_fs_get_result(req);
           post.headers = headers.str();
         }
@@ -947,7 +941,6 @@ namespace SSC {
         };
 
         ctx->cb(ctx->seq, json, Post{});
-        delete [] bytes;
         delete ctx;
       }
     });
@@ -982,8 +975,8 @@ namespace SSC {
       auto ctx = new RequestContext(desc, seq, cb);
       auto req = &ctx->req;
 
-      ctx->setBuffer(0, (int) size, bytes);
-      auto err = uv_fs_write(loop, req, desc->fd, ctx->iov, 1, offset, [](uv_fs_t* req) {
+      ctx->setBuffer(bytes, size);
+      auto err = uv_fs_write(loop, req, desc->fd, &ctx->buf, 1, offset, [](uv_fs_t* req) {
         auto ctx = static_cast<RequestContext*>(req->data);
         auto desc = ctx->desc;
         auto json = JSON::Object {};
