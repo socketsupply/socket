@@ -182,10 +182,12 @@ namespace SSC {
     // force=true is only supported on Unix-like systems.
     void kill(id_type id) noexcept;
 
-    void wait () {
+    int wait () {
       do {
         std::this_thread::yield();
       } while (this->closed == false);
+
+      return this->status;
     }
 
   private:

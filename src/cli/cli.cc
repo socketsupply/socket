@@ -1776,18 +1776,17 @@ int main (const int argc, const char* argv[]) {
         buildArgs.str(),
         fs::current_path().string(),
         [](SSC::String const &out) { stdWrite(out, false); },
-        [](SSC::String const &out) { stdWrite(out, true); },
-        [](SSC::String const &code) {
-          if (std::stoul(code) != 0) {
-            log("build failed, exiting with code " + code);
-            // TODO(trevnorris): Force non-windows to exit the process.
-            exit(std::stoul(code));
-          }
-        }
+        [](SSC::String const &out) { stdWrite(out, true); }
       );
 
       process->open();
       process->wait();
+      if (process->status != 0)
+      {
+        // TODO(trevnorris): Force non-windows to exit the process.
+        log("build failed, exiting with code " + std::to_string(process->status));
+        exit(process->status);
+      }
 
       log("ran user build command");
 
