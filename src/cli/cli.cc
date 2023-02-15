@@ -1778,10 +1778,10 @@ int main (const int argc, const char* argv[]) {
         [](SSC::String const &out) { stdWrite(out, false); },
         [](SSC::String const &out) { stdWrite(out, true); },
         [](SSC::String const &code) {
-          if (std::stoi(code) != 0) {
+          if (std::stoul(code) != 0) {
             log("build failed, exiting with code " + code);
             // TODO(trevnorris): Force non-windows to exit the process.
-            exit(std::stoi(code));
+            exit(std::stoul(code));
           }
         }
       );
