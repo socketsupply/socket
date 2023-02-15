@@ -490,6 +490,16 @@ namespace SSC {
     return vec;
   }
 
+  inline const Vector<int> splitToInts (const String& s, const char& c) {
+    std::vector<int> result;
+    std::istringstream ss(s);
+    std::string token;
+    while (std::getline(ss, token, c)) {
+      result.push_back(std::stoi(token));
+    }
+    return result;
+  }
+
   inline String trim (String str) {
     str.erase(0, str.find_first_not_of(" \r\n\t"));
     str.erase(str.find_last_not_of(" \r\n\t") + 1);
