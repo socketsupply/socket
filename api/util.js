@@ -736,4 +736,10 @@ export class IllegalConstructor {
   }
 }
 
+const percentageRegex = /^(100(\.0+)?|[1-9]?\d(\.\d+)?)%$/
+
+export function isValidPercentageValue (input) {
+  return percentageRegex.test(input)
+}
+
 export default exports

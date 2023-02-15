@@ -40,7 +40,7 @@ if (process.platform !== 'win32') {
       t.equal(typeof runtime.show, 'function', 'show is a function')
       await runtime.show({
         window: 1,
-        url: 'index_second_window.html',
+        url: 'index_send_event.html',
         title: 'Hello World',
         width: 400,
         height: 400
@@ -60,7 +60,7 @@ if (process.platform !== 'win32') {
     test('send', async (t) => {
       await runtime.show({
         window: 2,
-        url: 'index_second_window.html',
+        url: 'index_send_event.html',
         title: 'Hello World',
         width: 400,
         height: 400
@@ -129,7 +129,7 @@ if (process.platform !== 'win32') {
 
     test('navigate', async (t) => {
       t.equal(typeof runtime.navigate, 'function', 'navigate is a function')
-      const result = await runtime.navigate({ window: 1, url: 'index_second_window2.html' })
+      const result = await runtime.navigate({ window: 1, url: 'index_no_js.html' })
       t.equal(result.err, null, 'navigate succeeds')
     })
 
