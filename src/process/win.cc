@@ -7,8 +7,7 @@
 
 namespace SSC {
 
-SSC::String FormatError(DWORD error, SSC::String source)
-{
+SSC::String FormatError(DWORD error, SSC::String source) {
   SSC::StringStream message;
   LPVOID lpMsgBuf;
   LPVOID lpDisplayBuf;
