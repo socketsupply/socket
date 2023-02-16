@@ -429,7 +429,7 @@ function _check_compiler_features {
     cflags+=(-o /dev/null)
   fi
 
-  $CXX -x c++ "${cflags[@]}" - >/dev/null << EOF_CC
+  $CXX -x c++ "${cflags[@]}" - -o /dev/null >/dev/null << EOF_CC
     #include "src/common.hh"
     int main () { return 0; }
 EOF_CC
