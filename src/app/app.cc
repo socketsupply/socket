@@ -87,8 +87,10 @@ namespace SSC {
     }
 #elif defined(_WIN32)
     if (isDebugEnabled()) {
-      fclose(console);
-      FreeConsole();
+      std::cout << "PostQuitMessage(0)" << std::endl;
+      if (w32ShowConsole) {
+        HideConsole();
+      }
     }
     PostQuitMessage(0);
 #endif
@@ -203,13 +205,21 @@ namespace SSC {
     MessageBoxA(nullptr, s, _TEXT("Alert"), MB_OK | MB_ICONSTOP);
   }
 
-  App::App (void* h) : App() {
-    this->hInstance = (HINSTANCE) h;
+  
+  void App::ShowConsole() {
+    std::cout << "Showing console" << std::endl;
+    AllocConsole();
+    freopen_s(&console, "CONOUT$", "w", stdout);
+  }
 
-    if (isDebugEnabled()) {
-      AllocConsole();
-      freopen_s(&console, "CONOUT$", "w", stdout);
-    }
+  void App::HideConsole() {
+    std::cout << "Hiding console" << std::endl;
+    fclose(console);
+    FreeConsole();
+  }
+
+  App::App (void* h) : App() {
+    this->hInstance = (HINSTANCE) h;  
 
     // this fixes bad default quality DPI.
     SetProcessDPIAware();

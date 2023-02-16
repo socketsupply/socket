@@ -142,6 +142,13 @@ MAIN {
     // launched from the `ssc` cli
     app.fromSSC = s.find("--from-ssc") == 0 ? true : false;
 
+    if (!app.w32ShowConsole) {
+      app.w32ShowConsole = s.find("--w32-console") == 0 ? true : false;
+      if (app.w32ShowConsole) {
+        app.ShowConsole();
+      }
+    }
+
     if (s.find("--test") == 0) {
       suffix = "-test";
       isTest = true;
