@@ -583,16 +583,16 @@ namespace SSC {
           [&](id self, SEL cmd, id notification) {
             if (exiting) return true;
 
-            auto* w = (Window*) objc_getAssociatedObject(self, "webview");
+            auto window = (Window*) objc_getAssociatedObject(self, "window");
 
-            if (w->opts.canExit) {
+            if (window->opts.canExit) {
               exiting = true;
-              w->exit(0);
+              window->exit(0);
               return true;
             }
 
-            w->eval(getEmitToRenderProcessJavaScript("windowHide", "{}"));
-            w->hide("");
+            window->eval(getEmitToRenderProcessJavaScript("windowHide", "{}"));
+            window->hide("");
             return false;
           }),
         "v@:@"
@@ -603,17 +603,20 @@ namespace SSC {
         @selector(userContentController:didReceiveScriptMessage:),
         imp_implementationWithBlock(
           [=](id self, SEL cmd, WKScriptMessage* scriptMessage) {
-            auto* w = (Window*) objc_getAssociatedObject(self, "webview");
-            if (w->onMessage == nullptr) return;
+            auto window = (Window*) objc_getAssociatedObject(self, "window");
 
             id body = [scriptMessage body];
             if (![body isKindOfClass:[NSString class]]) {
               return;
             }
-            SSC::String msg = [body UTF8String];
 
-            if (bridge->route(msg)) return;
-            w->onMessage(msg);
+            String uri = [body UTF8String];
+
+            if (!bridge->route(uri, nullptr, 0)) {
+              if (window != nullptr && window->onMessage != nullptr) {
+                window->onMessage(uri);
+              }
+            }
           }),
         "v@:@"
       );
@@ -623,8 +626,7 @@ namespace SSC {
         @selector(menuItemSelected:),
         imp_implementationWithBlock(
           [=](id self, SEL _cmd, id item) {
-            auto* w = (Window*) objc_getAssociatedObject(self, "webview");
-            if (w->onMessage == nullptr) return;
+            auto window = (Window*) objc_getAssociatedObject(self, "window");
 
             id menuItem = (id) item;
             SSC::String title = [[menuItem title] UTF8String];
@@ -632,7 +634,7 @@ namespace SSC {
             SSC::String parent = [[[menuItem menu] title] UTF8String];
             SSC::String seq = std::to_string([menuItem tag]);
 
-            w->eval(getResolveMenuSelectionJavaScript(seq, title, parent));
+            window->eval(getResolveMenuSelectionJavaScript(seq, title, parent));
           }),
         "v@:@:@:"
       );
@@ -640,7 +642,7 @@ namespace SSC {
 
     objc_setAssociatedObject(
       delegate,
-      "webview",
+      "window",
       (id) this,
       OBJC_ASSOCIATION_ASSIGN
     );
