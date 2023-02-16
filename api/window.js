@@ -24,6 +24,16 @@ export class ApplicationWindow {
     this.#options = options
   }
 
+  #updateOptions (response) {
+    const { data, err } = response
+    if (err) {
+      throw new Error(err)
+    }
+    const { index, ...options } = data
+    this.#options = options
+    return data
+  }
+
   get index () {
     return this.#index
   }
@@ -68,7 +78,8 @@ export class ApplicationWindow {
   async exit (code) {
     const { data, err } = await ipc.send('window.exit', {
       index: globalThis.__args.index,
-      targetWindowIndex: this.#index
+      targetWindowIndex: this.#index,
+      code
     })
     if (err) {
       throw new Error(err)
@@ -80,43 +91,28 @@ export class ApplicationWindow {
    * @return {Promise<ipc.Result>}
    */
   async show () {
-    const { data, err } = await ipc.send('window.show', { index: this.#index, window: this.#index })
-    if (err) {
-      throw new Error(err)
-    }
-    const { index, ...options } = data
-    this.#options = options
-    return data
+    const response = await ipc.send('window.show', { index: this.#index, targetWindowIndex: this.#index })
+    return this.#updateOptions(response)
   }
 
   /**
    * @return {Promise<ipc.Result>}
    */
   async hide () {
-    const { data, err } = await ipc.send('window.hide', { index: this.#index, window: this.#index })
-    if (err) {
-      throw new Error(err)
-    }
-    const { index, ...options } = data
-    this.#options = options
-    return data
+    const response = await ipc.send('window.hide', { index: this.#index, targetWindowIndex: this.#index })
+    return this.#updateOptions(response)
   }
 
   async setTitle (title) {
-    const { data, err } = await ipc.send('window.setTitle', { index: this.#index, targetWindowIndex: this.#index, value: title })
-    if (err) {
-      throw new Error(err)
-    }
-    const { index, ...options } = data
-    this.#options = options
-    return data
+    const response = await ipc.send('window.setTitle', { index: this.#index, targetWindowIndex: this.#index, value: title })
+    return this.#updateOptions(response)
   }
 
   /**
-   * @param {object} url - file path
+   * @param {object} path - file path
    * @return {Promise<ipc.Result>}
    */
-  async navigate (url) {
+  async navigate (path) {
     // TODO(@chicoxyzzy): rename url to path in the onMessage handler
     return await ipc.send('window.navigate', { window: this.#index, url: formatFileUrl(url) })
   }

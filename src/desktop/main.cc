@@ -625,7 +625,7 @@ MAIN {
       if (targetWindow) {
         targetWindow->close(0);
         JSON::Object json = JSON::Object::Entries {
-          { "data", targetWindowStatus},
+          { "data", targetWindow->json()},
         };
         window->resolvePromise(message.seq, OK_STATE, json.str());
       }
@@ -645,19 +645,20 @@ MAIN {
           { "err", targetWindowStatus }
         };
         resolveWindow->resolvePromise(message.get("seq"), ERROR_STATE, json.str());
+        return;
       }
 
-      window->show(EMPTY_SEQ);
+      targetWindow->show(EMPTY_SEQ);
 
       JSON::Object json = JSON::Object::Entries {
-        { "data", windowManager.getWindowStatus(targetWindowIndex) },
+        { "data", targetWindow->json() }
       };
-      resolveWindow->resolvePromise(message.get("seq"), OK_STATE, std::to_string(index));
+      resolveWindow->resolvePromise(message.get("seq"), OK_STATE, json.str());
       return;
     }
 
     if (message.name == "window.hide") {
-      auto targetWindowIndex = std::stoi(message.get("window"));
+      auto targetWindowIndex = std::stoi(message.get("targetWindowIndex"));
       targetWindowIndex = targetWindowIndex < 0 ? 0 : targetWindowIndex;
       auto index = message.index < 0 ? 0 : message.index;
       auto targetWindow = windowManager.getWindow(targetWindowIndex);
@@ -669,12 +670,13 @@ MAIN {
           { "err", targetWindowStatus }
         };
         resolveWindow->resolvePromise(message.get("seq"), ERROR_STATE, json.str());
+        return;
       }
 
       targetWindow->hide(EMPTY_SEQ);
 
       JSON::Object json = JSON::Object::Entries {
-        { "data", windowManager.getWindowStatus(targetWindowIndex) },
+        { "data", targetWindow->json() }
       };
       resolveWindow->resolvePromise(message.get("seq"), OK_STATE, json.str());
       return;

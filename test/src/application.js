@@ -301,4 +301,15 @@ test('setTitle', async (t) => {
   t.equal(mainWindow.getTitle(), '👋', 'window options are updated')
 })
 
+test('hide / show', async (t) => {
+  const mainWindow = await application.getCurrentWindow()
+  const { status: statusHidden } = await mainWindow.hide()
+  t.equal(statusHidden, ApplicationWindow.constants.WINDOW_HIDDEN, 'correct status is returned on hide')
+  t.equal(mainWindow.getStatus(), ApplicationWindow.constants.WINDOW_HIDDEN, 'window options are updated on hide')
+  const { status: statusShown } = await mainWindow.show()
+  await new Promise((resolve) => setTimeout(resolve, 3000))
+  t.equal(statusShown, ApplicationWindow.constants.WINDOW_SHOWN, 'correct status is returned on show')
+  t.equal(mainWindow.getStatus(),  ApplicationWindow.constants.WINDOW_SHOWN, 'window options are updated on show')
+})
+
 // await new Promise((resolve) => {})

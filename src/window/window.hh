@@ -90,8 +90,8 @@ namespace SSC {
 
       void about ();
       void eval (const String&);
-      void show (const String&);
-      void hide (const String&);
+      void show ();
+      void hide ();
       void kill ();
       void exit (int code);
       void close (int code);
@@ -192,7 +192,7 @@ namespace SSC {
             auto index = std::to_string(this->opts.index);
             manager.log("Showing Window#" + index + " (seq=" + seq + ")");
             status = WindowStatus::WINDOW_SHOWING;
-            Window::show(seq);
+            Window::show();
             status = WindowStatus::WINDOW_SHOWN;
           }
 
@@ -204,7 +204,7 @@ namespace SSC {
               auto index = std::to_string(this->opts.index);
               manager.log("Hiding Window#" + index + " (seq=" + seq + ")");
               status = WindowStatus::WINDOW_HIDING;
-              Window::hide(seq);
+              Window::hide();
               status = WindowStatus::WINDOW_HIDDEN;
             }
           }
