@@ -21,8 +21,8 @@ if (globalThis.window) {
  * @param {number=} [opts.index] - the index of the window
  * @param {string} opts.path - the path to the HTML file to load into the window
  * @param {string=} opts.title - the title of the window
- * @param {(number|string)=} [opts.width = '100%'] - the width of the window
- * @param {(number|string)=} [opts.height = '100%'] - the height of the window
+ * @param {(number|string)=} opts.width - the width of the window. If undefined, the window will have the main window width.
+ * @param {(number|string)=} opts.height - the height of the window. If undefined, the window will have the main window height.
  * @param {boolean=} [opts.resizable=true] - whether the window is resizable
  * @param {boolean=} [opts.frameless=false] - whether the window is frameless
  * @param {boolean=} [opts.utility=false] - whether the window is utility (macOS only)
@@ -133,7 +133,7 @@ export async function getWindow (index) {
  * @return {Promise<ApplicationWindow>}
  */
 export async function getCurrentWindow () {
-  return getWindow({ index: globalThis.__args.index })
+  return getWindow(globalThis.__args.index)
 }
 
 /**

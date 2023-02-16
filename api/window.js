@@ -15,8 +15,7 @@ export function formatFileUrl (url) {
 export class ApplicationWindow {
   #index
   #options
-  #parent
-  #children = new Set()
+  // TODO(@chicoxyzzy): add parent and children? (needs native process support)
 
   static constants = statuses
 
@@ -40,20 +39,37 @@ export class ApplicationWindow {
     return this.#options.status
   }
 
-  async open () {
-  }
-
   async close () {
-    const { data: { status } } = await ipc.send('window.close', { index: globalThis.__args.index, targetWindowIndex: this.#index })
-    return status
+    const { data, err } = await ipc.send('window.close', {
+      index: globalThis.__args.index,
+      targetWindowIndex: this.#index
+    })
+    if (err) {
+      throw err
+    }
+    return data
   }
 
   async kill () {
-    const { data: { status } } = await ipc.send('window.kill', { index: globalThis.__args.index, targetWindowIndex: this.#index })
-    return status
+    const { data, err } = await ipc.send('window.kill', {
+      index: globalThis.__args.index,
+      targetWindowIndex: this.#index
+    })
+    if (err) {
+      throw err
+    }
+    return data
   }
 
-  async exit () {
+  async exit (code) {
+    const { data, err } = await ipc.send('window.exit', {
+      index: globalThis.__args.index,
+      targetWindowIndex: this.#index
+    })
+    if (err) {
+      throw err
+    }
+    return data
   }
 
   /**
@@ -68,24 +84,6 @@ export class ApplicationWindow {
    */
   async hide () {
     return await ipc.send('window.hide', { window: this.#index })
-  }
-
-  /**
-   * @param {object} opts - an options object
-   * @param {number=} [opts.window = currentWindow] - the index of the window
-   * @param {string=} opts.url - the path to the HTML file to load into the window
-   * @param {number=} opts.width - the width of the window
-   * @param {number=} opts.height - the height of the window
-   * @return {Promise<ipc.Result>}
-   */
-  async update (opts = {}) {
-    // TODO(@chicoxyzzy): refactor; ex-show
-    opts.index = this.#index
-    opts.window ??= this.#index
-    if (opts.url) {
-      opts.url = formatFileUrl(opts.url)
-    }
-    return await ipc.send('window.show', opts)
   }
 
   async setTitile (title) {
