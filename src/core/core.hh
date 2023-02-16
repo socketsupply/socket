@@ -112,7 +112,6 @@ namespace SSC {
     char* body = nullptr;
     size_t length = 0;
     String headers = "";
-    bool bodyNeedsFree = false;
   };
 
   using Posts = std::map<uint64_t, Post>;

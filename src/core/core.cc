@@ -93,10 +93,8 @@ namespace SSC {
     if (posts->find(id) == posts->end()) return;
     auto post = getPost(id);
 
-    if (post.body && post.bodyNeedsFree) {
+    if (post.body) {
       delete [] post.body;
-      post.bodyNeedsFree = false;
-      post.body = nullptr;
     }
 
     posts->erase(id);
@@ -508,11 +506,12 @@ namespace SSC {
       hints.ai_socktype = 0; // `0` for any
       hints.ai_protocol = 0; // `0` for any
 
-      uv_getaddrinfo_t* resolver = new uv_getaddrinfo_t;
+      auto resolver = new uv_getaddrinfo_t;
       resolver->data = ctx;
 
       auto err = uv_getaddrinfo(loop, resolver, [](uv_getaddrinfo_t *resolver, int status, struct addrinfo *res) {
         auto ctx = (Core::DNS::RequestContext*) resolver->data;
+        delete resolver;
 
         if (status < 0) {
           auto result = JSON::Object::Entries {

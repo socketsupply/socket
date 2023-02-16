@@ -930,7 +930,6 @@ namespace SSC {
           post.body = ctx->getBuffer(0);
           post.length = (int) req->result;
           post.headers = headers.str();
-          post.bodyNeedsFree = true;
         }
 
         ctx->cb(ctx->seq, json, post);
