@@ -2,11 +2,12 @@ import { GLOBAL_TEST_RUNNER } from 'socket:test'
 import console from 'socket:console'
 import process from 'socket:process'
 import 'socket:runtime'
+import ipc from 'socket:ipc'
 
-// uncomment below to get IPC debug output in stdout
-// import ipc from 'socket:ipc'
-// ipc.debug.enabled = true
-// ipc.debug.log = (...args) => console.log(...args)
+if (process.env.DEBUG || process.env.DEBUG_IPC) {
+  ipc.debug.enabled = true
+  ipc.debug.log = (...args) => console.log(...args)
+}
 
 if (typeof globalThis?.addEventListener === 'function') {
   globalThis.addEventListener('error', onerror)
