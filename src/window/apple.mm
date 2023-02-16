@@ -612,7 +612,7 @@ namespace SSC {
             }
             SSC::String msg = [body UTF8String];
 
-            if (bridge->route(msg, nullptr, 0)) return;
+            if (bridge->route(msg)) return;
             w->onMessage(msg);
           }),
         "v@:@"
