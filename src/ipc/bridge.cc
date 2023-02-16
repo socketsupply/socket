@@ -1418,14 +1418,6 @@ static void registerSchemeHandler (Router *router) {
   size_t bufsize = 0;
   char *body = NULL;
 
-  if (seq.size() > 0 && seq != "-1") {
-    #if !__has_feature(objc_arc)
-    [task retain];
-    #endif
-
-    [self.router->schemeTasks put: seq task: task];
-  }
-
   // if there is a body on the reuqest, pass it into the method router.
   auto rawBody = request.HTTPBody;
 
@@ -1435,7 +1427,40 @@ static void registerSchemeHandler (Router *router) {
     body = (char *) data;
   }
 
-  if (!self.router->invoke(url, body, bufsize)) {
+  auto invoked = self.router->invoke(url, body, bufsize, [=](auto result) {
+    auto json = result.str();
+    auto size = result.post.body != nullptr ? result.post.length : json.size();
+    auto body = result.post.body != nullptr ? result.post.body : json.c_str();
+    char* data = nullptr;
+
+    if (size > 0) {
+      data = new char[size]{0};
+      memcpy(data, body, size);
+    }
+
+    auto headers = [[NSMutableDictionary alloc] init];
+    headers[@"access-control-allow-origin"] = @"*";
+    headers[@"access-control-allow-methods"] = @"*";
+    headers[@"content-length"] = [@(size) stringValue];
+
+    auto response = [[NSHTTPURLResponse alloc]
+      initWithURL: task.request.URL
+       statusCode: 200
+      HTTPVersion: @"HTTP/1.1"
+     headerFields: headers
+    ];
+
+    [task didReceiveResponse: response];
+    [task didReceiveData: [NSData dataWithBytes: data length: size]];
+    [task didFinish];
+
+  #if !__has_feature(objc_arc)
+    [headers release];
+    [response release];
+  #endif
+  });
+
+  if (!invoked) {
     NSMutableDictionary* headers = [NSMutableDictionary dictionary];
     auto json = JSON::Object::Entries {
       {"err", JSON::Object::Entries {
@@ -1534,7 +1559,6 @@ namespace SSC::IPC {
 #if defined(__APPLE__)
     this->networkStatusObserver = [SSCIPCNetworkStatusObserver new];
     this->schemeHandler = [SSCIPCSchemeHandler new];
-    this->schemeTasks = [SSCIPCSchemeTasks new];
 
     [this->schemeHandler setRouter: this];
     [this->networkStatusObserver setRouter: this];
@@ -1555,15 +1579,8 @@ namespace SSC::IPC {
       #endif
     }
 
-    if (this->schemeTasks != nullptr) {
-      #if !__has_feature(objc_arc)
-      [this->schemeTasks release];
-      #endif
-    }
-
     this->networkStatusObserver = nullptr;
     this->schemeHandler = nullptr;
-    this->schemeTasks = nullptr;
 #endif
   }
 
@@ -1667,53 +1684,6 @@ namespace SSC::IPC {
     const String& data,
     const Post post
   ) {
-#if defined(__APPLE__)
-  if (seq.size() > 0 && seq != "-1" && [this->schemeTasks has: seq]) {
-    auto task = [this->schemeTasks get: seq];
-    auto msg = data;
-    [this->schemeTasks remove: seq];
-
-    #if !__has_feature(objc_arc)
-    [task retain];
-    #endif
-
-    dispatch_async(dispatch_get_main_queue(), ^{
-      auto headers = [[NSMutableDictionary alloc] init];
-      auto length = post.body ? post.length : msg.size();
-
-      headers[@"access-control-allow-origin"] = @"*";
-      headers[@"access-control-allow-methods"] = @"*";
-      headers[@"content-length"] = [@(length) stringValue];
-
-      NSHTTPURLResponse *response = [[NSHTTPURLResponse alloc]
-         initWithURL: task.request.URL
-          statusCode: 200
-         HTTPVersion: @"HTTP/1.1"
-        headerFields: headers
-      ];
-
-      [task didReceiveResponse: response];
-
-      if (post.body) {
-        auto data = [NSData dataWithBytes: post.body length: post.length];
-        [task didReceiveData: data];
-      } else if (msg.size() > 0) {
-        auto string = [NSString stringWithUTF8String: msg.c_str()];
-        auto data = [string dataUsingEncoding: NSUTF8StringEncoding];
-        [task didReceiveData: data];
-      }
-
-      [task didFinish];
-      #if !__has_feature(objc_arc)
-      [headers release];
-      [response release];
-      #endif
-    });
-
-    return true;
-  }
-
-#endif
     if (post.body || seq == "-1") {
       auto script = this->core->createPost(seq, data, post);
       return this->evaluateJavaScript(script);
@@ -1762,37 +1732,6 @@ namespace SSC::IPC {
 }
 
 #if defined(__APPLE__)
-@implementation SSCIPCSchemeTasks
-- (id) init {
-  self = [super init];
-  tasks  = std::unique_ptr<IPC::Tasks>(new SSC::IPC::Tasks());
-  return self;
-}
-
-- (IPC::Task) get: (String) id {
-  Lock lock(mutex);
-  if (tasks->find(id) == tasks->end()) return IPC::Task{};
-  return tasks->at(id);
-}
-
-- (bool) has: (String) id {
-  Lock lock(mutex);
-  if (id.size() == 0) return false;
-  return tasks->find(id) != tasks->end();
-}
-
-- (void) remove: (String) id {
-  Lock lock(mutex);
-  if (tasks->find(id) == tasks->end()) return;
-  tasks->erase(id);
-}
-
-- (void) put: (String) id task: (IPC::Task) task {
-  Lock lock(mutex);
-  tasks->insert_or_assign(id, task);
-}
-@end
-
 @implementation SSCIPCNetworkStatusObserver
 - (id) init {
   self = [super init];
