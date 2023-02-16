@@ -1199,7 +1199,6 @@ static void registerSchemeHandler (Router *router) {
         auto stream = (GInputStream*) object;
         auto data = (const char*) userData;
         auto poll = std::thread([=] {
-          //do std::this_thread::yield();
           do std::this_thread::sleep_for(std::chrono::milliseconds(16));
           while (g_input_stream_has_pending(stream));
           g_input_stream_close_finish(stream, res, nullptr);
