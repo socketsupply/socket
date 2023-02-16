@@ -206,29 +206,44 @@ test('getWindows with valid index', async (t) => {
   t.ok(Object.values(windows).every((window) => window instanceof ApplicationWindow), 'values are all ApplicationWindow instances')
 })
 
+// TODO(@chicoxyzzy): test other windows
+test('getCurrentWindow', async (t) => {
+  const mainWindow = await application.getCurrentWindow()
+  t.ok(mainWindow instanceof ApplicationWindow, 'returns an ApplicationWindow instance')
+  t.equal(mainWindow.index, 0, 'window index is correct')
+})
+
+// TODO(@chicoxyzzy): neither kill nor exit work so I use the counter workaround
+let counter = 1
+
 test('new window inherts the size of the main window when sizes are not provided', async (t) => {
   const mainWindow = await application.getWindow(0)
-  const newWindow = await application.createWindow({ index: 1, path: 'index_no_js.html' })
+  const newWindow = await application.createWindow({ index: counter, path: 'index_no_js.html' })
   t.equal(mainWindow.index, 0, 'main window index is 0')
-  t.equal(newWindow.index, 1, 'new window index is 1')
+  t.equal(newWindow.index, counter, 'new window index is correct')
   const mainWindowSize = mainWindow.getSize()
   const newWindowSize = newWindow.getSize()
   t.equal(mainWindowSize.width, newWindowSize.width, 'width is inherited from the main window')
   t.equal(mainWindowSize.height, newWindowSize.height, 'height is inherited from the main window')
+  // TODO(@chicoxyzzy): await newWindow.kill()
   await newWindow.close()
+  counter++
 })
 
-test.only('new window inherts the size of the main window with sizes provided', async (t) => {
+test('new window have the correct size when sizes are provided', async (t) => {
   const newWindow = await application.createWindow({
-    index: 1,
+    index: counter,
     path: 'index_no_js.html',
     width: 800,
     height: 600
   })
-  t.equal(newWindow.index, 1, 'new window index is 1')
+  t.equal(newWindow.index, counter, 'new window index is correct')
   const newWindowSize = newWindow.getSize()
   t.equal(newWindowSize.width, 800, 'width is inherited from the main window')
   t.equal(newWindowSize.height, 600, 'height is inherited from the main window')
+  // TODO(@chicoxyzzy): await newWindow.kill()
+  await newWindow.close()
+  counter++
 })
 
 // await new Promise((resolve) => {})
