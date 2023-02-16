@@ -79,7 +79,7 @@ test('createWindow with existing index', async (t) => {
 })
 
 test('createWindow with invalid dimensions', async (t) => {
- // passing Symbol() will throw on encodeURIComponent
+  // passing Symbol() will throw on encodeURIComponent
   const sizes = [-1, '42', '-1%', '1.5px', '100.5%', 1n, {}, [], () => {}, true, false]
   const dimensions = ['width', 'height']
   for (const size of sizes) {
