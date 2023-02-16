@@ -87,7 +87,6 @@ namespace SSC {
     }
 #elif defined(_WIN32)
     if (isDebugEnabled()) {
-      std::cout << "PostQuitMessage(0)" << std::endl;
       if (w32ShowConsole) {
         HideConsole();
       }
@@ -207,13 +206,17 @@ namespace SSC {
 
   
   void App::ShowConsole() {
-    std::cout << "Showing console" << std::endl;
+    if (consoleVisible)
+      return;
+    consoleVisible = true;
     AllocConsole();
     freopen_s(&console, "CONOUT$", "w", stdout);
   }
 
   void App::HideConsole() {
-    std::cout << "Hiding console" << std::endl;
+    if (!consoleVisible)
+      return;
+    consoleVisible = false;
     fclose(console);
     FreeConsole();
   }
