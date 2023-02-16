@@ -88,7 +88,11 @@ export async function createWindow (opts) {
  * @returns {Promise<ipc.Result>}
  */
 export async function getScreenSize () {
-  return await ipc.send('getScreenSize', {})
+  const { data, err } = await ipc.send('getScreenSize', { index: globalThis.__args.index })
+  if (err) {
+    throw new Error(err)
+  }
+  return data
 }
 
 function throwOnInvalidIndex (index) {

@@ -3,13 +3,9 @@ import { primordials } from 'socket:ipc'
 import application from 'socket:application'
 import { ApplicationWindow } from 'socket:window'
 
-test('version', (t) => {
-  t.equal(application.version.short, primordials.version.short, 'short version is correct')
-  t.equal(application.version.hash, primordials.version.hash, 'version hash is correct')
-  t.equal(application.version.full, primordials.version.full, 'full version is correct')
-})
-
+//
 // Polyfills
+//
 test('window.resizeTo', async (t) => {
   t.equal(typeof window.resizeTo, 'function', 'window.resizeTo is a function')
   window.resizeTo(420, 200)
@@ -35,7 +31,21 @@ test('window.document.title', async (t) => {
   const mainWindow = await application.getCurrentWindow()
   t.equal(mainWindow.getTitle(), 'idkfa', 'window title is correct')
 })
+//
 // End of polyfills
+//
+
+test('version', (t) => {
+  t.equal(application.version.short, primordials.version.short, 'short version is correct')
+  t.equal(application.version.hash, primordials.version.hash, 'version hash is correct')
+  t.equal(application.version.full, primordials.version.full, 'full version is correct')
+})
+
+test('getScreenSize', async (t) => {
+  const { width, height } = await application.getScreenSize()
+  t.equal(width, window.screen.width, 'width is correct')
+  t.equal(height, window.screen.height, 'height is correct')
+})
 
 test('createWindow without path', async (t) => {
   let err
@@ -307,9 +317,8 @@ test('hide / show', async (t) => {
   t.equal(statusHidden, ApplicationWindow.constants.WINDOW_HIDDEN, 'correct status is returned on hide')
   t.equal(mainWindow.getStatus(), ApplicationWindow.constants.WINDOW_HIDDEN, 'window options are updated on hide')
   const { status: statusShown } = await mainWindow.show()
-  await new Promise((resolve) => setTimeout(resolve, 3000))
   t.equal(statusShown, ApplicationWindow.constants.WINDOW_SHOWN, 'correct status is returned on show')
-  t.equal(mainWindow.getStatus(),  ApplicationWindow.constants.WINDOW_SHOWN, 'window options are updated on show')
+  t.equal(mainWindow.getStatus(), ApplicationWindow.constants.WINDOW_SHOWN, 'window options are updated on show')
 })
 
 // await new Promise((resolve) => {})
