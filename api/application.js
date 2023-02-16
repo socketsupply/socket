@@ -34,10 +34,17 @@ export async function createWindow (opts) {
     throw new Error('Window path must be provided')
   }
 
-  let width = Number(window.__args.config.width)
-  let height = Number(window.__args.config.height)
-  let isWidthInPercent = Boolean(window.__args.config.isWidthInPercent)
-  let isHeightInPercent = Boolean(window.__args.config.isHeightInPercent)
+  // default values
+  const options = {
+    targetWindowIndex: opts.index,
+    path: formatFileUrl(opts.path),
+    index: globalThis.__args.index,
+    title: opts.title ?? '',
+    resizable: opts.resizable ?? true,
+    frameless: opts.frameless ?? false,
+    utility: opts.utility ?? false,
+    canExit: opts.canExit ?? false
+  }
 
   if ((opts.width != null && typeof opts.width !== 'number' && typeof opts.width !== 'string') ||
     (typeof opts.width === 'string' && !isValidPercentageValue(opts.width)) ||
@@ -45,33 +52,29 @@ export async function createWindow (opts) {
     throw new Error(`Window width must be an integer number or a string with a valid percentage value from 0 to 100 ending with %. Got ${opts.width} instead.`)
   }
   if (typeof opts.width === 'string' && isValidPercentageValue(opts.width)) {
-    width = Number(opts.width.slice(0, -1))
-    isWidthInPercent = true
+    options.width = Number(opts.width.slice(0, -1))
+    options.isWidthInPercent = true
   }
+  if (typeof opts.width === 'number') {
+    options.width = opts.width
+    options.isWidthInPercent = false
+  }
+
   if ((opts.height != null && typeof opts.height !== 'number' && typeof opts.height !== 'string') ||
     (typeof opts.height === 'string' && !isValidPercentageValue(opts.height)) ||
     (typeof opts.height === 'number' && !(Number.isInteger(opts.height) && opts.height > 0))) {
     throw new Error(`Window height must be an integer number or a string with a valid percentage value from 0 to 100 ending with %. Got ${opts.height} instead.`)
   }
   if (typeof opts.height === 'string' && isValidPercentageValue(opts.height)) {
-    height = Number(opts.height.slice(0, -1))
-    isHeightInPercent = true
+    options.height = Number(opts.height.slice(0, -1))
+    options.isHeightInPercent = true
+  }
+  if (typeof opts.height === 'number') {
+    options.height = opts.height
+    options.isHeightInPercent = false
   }
 
-  const { data, err } = await ipc.send('window.create', {
-    targetWindowIndex: opts.index,
-    path: formatFileUrl(opts.path),
-    index: globalThis.__args.index,
-    title: opts.title ?? '',
-    width: width,
-    height: height,
-    isWidthInPercent: isWidthInPercent,
-    isHeightInPercent: isHeightInPercent,
-    resizable: opts.resizable ?? true,
-    frameless: opts.frameless ?? false,
-    utility: opts.utility ?? false,
-    canExit: opts.canExit ?? false
-  })
+  const { data, err } = await ipc.send('window.create', options)
 
   if (err) {
     throw new Error(err)

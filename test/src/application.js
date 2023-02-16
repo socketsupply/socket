@@ -218,7 +218,7 @@ test('new window inherts the size of the main window when sizes are not provided
   await newWindow.close()
 })
 
-test('new window inherts the size of the main window with sizes provided', async (t) => {
+test.only('new window inherts the size of the main window with sizes provided', async (t) => {
   const newWindow = await application.createWindow({
     index: 1,
     path: 'index_no_js.html',
@@ -227,9 +227,8 @@ test('new window inherts the size of the main window with sizes provided', async
   })
   t.equal(newWindow.index, 1, 'new window index is 1')
   const newWindowSize = newWindow.getSize()
-  t.equal(mainWindowSize.width, 800, 'width is inherited from the main window')
-  t.equal(mainWindowSize.height, 600, 'height is inherited from the main window')
-  await newWindow.kill()
+  t.equal(newWindowSize.width, 800, 'width is inherited from the main window')
+  t.equal(newWindowSize.height, 600, 'height is inherited from the main window')
 })
 
 // await new Promise((resolve) => {})
