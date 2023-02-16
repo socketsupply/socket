@@ -744,13 +744,8 @@ namespace SSC {
     return SSC::String([this->window.title UTF8String]);
   }
 
-  void Window::setTitle (const SSC::String& seq, const SSC::String& value) {
+  void Window::setTitle (const SSC::String& value) {
     [window setTitle:[NSString stringWithUTF8String:value.c_str()]];
-
-    if (seq.size() > 0) {
-      auto index = std::to_string(this->opts.index);
-      this->resolvePromise(seq, "0", index);
-    }
   }
 
   ScreenSize Window::getSize () {

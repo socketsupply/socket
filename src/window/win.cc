@@ -1204,15 +1204,8 @@ namespace SSC {
     return title_s;
   }
 
-  void Window::setTitle (const SSC::String& seq, const SSC::String& title) {
+  void Window::setTitle (const SSC::String& title) {
     SetWindowText(window, title.c_str());
-
-    if (onMessage != nullptr) {
-      SSC::String state = "0"; // can this call actually fail?
-      auto index = std::to_string(this->opts.index);
-
-      this->resolvePromise(seq, state, index);
-    }
   }
 
   ScreenSize Window::getSize () {

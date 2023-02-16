@@ -294,10 +294,11 @@ test.skip('new window have the correct size when sizes are provided in percent',
   counter++
 })
 
-test.skip('setTitle', async (t) => {
+test('setTitle', async (t) => {
   const mainWindow = await application.getCurrentWindow()
-  const { data: { title } } = await mainWindow.setTitle('👋')
-  t.equal(title, '👋', 'title is correct')
+  const { title } = await mainWindow.setTitle('👋')
+  t.equal(title, '👋', 'correct title is returned')
+  t.equal(mainWindow.getTitle(), '👋', 'window options are updated')
 })
 
 // await new Promise((resolve) => {})
