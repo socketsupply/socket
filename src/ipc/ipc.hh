@@ -171,16 +171,15 @@ namespace SSC::IPC {
       bool dispatch (DispatchCallback callback);
       bool emit (const String& name, const String& data);
       bool evaluateJavaScript (const String javaScript);
-      bool invoke (const Message& message);
-      bool invoke (const Message& message, ResultCallback callback);
-      bool invoke (const String& msg, char *bytes, size_t size);
+      bool send (const Message::Seq& seq, const String& data, const Post post);
+      bool invoke (const String& msg, ResultCallback callback);
+      bool invoke (const String& msg, const char *bytes, size_t size);
       bool invoke (
         const String& msg,
-        char *bytes,
+        const char *bytes,
         size_t size,
         ResultCallback callback
       );
-      bool send (const Message::Seq& seq, const String& data, const Post post);
   };
 
   class Bridge {
@@ -190,8 +189,13 @@ namespace SSC::IPC {
       Core *core = nullptr;
 
       Bridge (Core *core);
-      bool route (const String& msg, char *bytes, size_t size);
-      bool route (const String& msg, char *bytes, size_t size, Router::ResultCallback);
+      bool route (const String& msg, const char *bytes, size_t size);
+      bool route (
+        const String& msg,
+        const char *bytes,
+        size_t size,
+        Router::ResultCallback
+      );
   };
 
   inline String getResolveToMainProcessMessage (

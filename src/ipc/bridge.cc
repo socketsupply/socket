@@ -1,6 +1,8 @@
 #include "ipc.hh"
 
-#define IPC_CONTENT_TYPE "application/octet-stream"
+#define SOCKET_MODULE_CONTENT_TYPE "text/javascript"
+#define IPC_BINARY_CONTENT_TYPE "application/octet-stream"
+#define IPC_JSON_CONTENT_TYPE "text/json"
 
 using namespace SSC;
 using namespace SSC::IPC;
@@ -89,12 +91,12 @@ static String getcwd () {
   return cwd;
 }
 
-#define resultCallback(message, reply)                                         \
+#define RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)                     \
   [=](auto seq, auto json, auto post) {                                        \
     reply(Result { seq, message, json, post });                                \
   }
 
-#define getMessageParam(var, name, parse, ...)                                 \
+#define REQUIRE_AND_GET_MESSAGE_VALUE(var, name, parse, ...)                   \
   try {                                                                        \
     var = parse(message.get(name, ##__VA_ARGS__));                             \
   } catch (...) {                                                              \
@@ -102,6 +104,21 @@ static String getcwd () {
       {"message", "Invalid '" name "' given in parameters"}                    \
     }});                                                                       \
   }
+
+#define CLEANUP_AFTER_INVOKE_CALLBACK(router, message, result) {               \
+  if (!router->hasMappedBuffer(message.index, message.seq)) {                  \
+    if (message.buffer.bytes != nullptr) {                                     \
+      delete [] message.buffer.bytes;                                          \
+      message.buffer.bytes = nullptr;                                          \
+    }                                                                          \
+  }                                                                            \
+                                                                               \
+  if (!router->core->hasPost(result.post.id)) {                                \
+    if (result.post.body != nullptr && result.post.length > 0) {               \
+      delete [] result.post.body;                                              \
+    }                                                                          \
+  }                                                                            \
+}
 
 void initFunctionsTable (Router *router) {
   /**
@@ -212,12 +229,12 @@ void initFunctionsTable (Router *router) {
     }
 
     int family = 0;
-    getMessageParam(family, "family", std::stoi, "0");
+    REQUIRE_AND_GET_MESSAGE_VALUE(family, "family", std::stoi, "0");
 
     router->core->dns.lookup(
       message.seq,
       Core::DNS::LookupOptions { message.get("hostname"), family },
-      resultCallback(message, reply)
+      RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
     );
   });
 
@@ -235,13 +252,13 @@ void initFunctionsTable (Router *router) {
     }
 
     int mode = 0;
-    getMessageParam(mode, "mode", std::stoi);
+    REQUIRE_AND_GET_MESSAGE_VALUE(mode, "mode", std::stoi);
 
     router->core->fs.access(
       message.seq,
       message.get("path"),
       mode,
-      resultCallback(message, reply)
+      RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
     );
   });
 
@@ -249,7 +266,7 @@ void initFunctionsTable (Router *router) {
    * Returns a mapping of file system constants.
    */
   router->map("fs.constants", [=](auto message, auto router, auto reply) {
-    router->core->fs.constants(message.seq, resultCallback(message, reply));
+    router->core->fs.constants(message.seq, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
   });
 
   /**
@@ -266,13 +283,13 @@ void initFunctionsTable (Router *router) {
     }
 
     int mode = 0;
-    getMessageParam(mode, "mode", std::stoi);
+    REQUIRE_AND_GET_MESSAGE_VALUE(mode, "mode", std::stoi);
 
     router->core->fs.chmod(
       message.seq,
       message.get("path"),
       mode,
-      resultCallback(message, reply)
+      RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
     );
   });
 
@@ -297,9 +314,9 @@ void initFunctionsTable (Router *router) {
     }
 
     uint64_t id;
-    getMessageParam(id, "id", std::stoull);
+    REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
 
-    router->core->fs.close(message.seq, id, resultCallback(message, reply));
+    router->core->fs.close(message.seq, id, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
   });
 
   /**
@@ -315,9 +332,9 @@ void initFunctionsTable (Router *router) {
     }
 
     uint64_t id;
-    getMessageParam(id, "id", std::stoull);
+    REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
 
-    router->core->fs.closedir(message.seq, id, resultCallback(message, reply));
+    router->core->fs.closedir(message.seq, id, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
   });
 
   /**
@@ -334,12 +351,12 @@ void initFunctionsTable (Router *router) {
     }
 
     uint64_t id;
-    getMessageParam(id, "id", std::stoull);
+    REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
 
     router->core->fs.closeOpenDescriptor(
       message.seq,
       id,
-      resultCallback(message, reply)
+      RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
     );
   });
 
@@ -354,7 +371,7 @@ void initFunctionsTable (Router *router) {
     router->core->fs.closeOpenDescriptor(
       message.seq,
       message.get("preserveRetained") != "false",
-      resultCallback(message, reply)
+      RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
     );
   });
 
@@ -373,14 +390,14 @@ void initFunctionsTable (Router *router) {
     }
 
     int flags = 0;
-    getMessageParam(flags, "flags", std::stoi);
+    REQUIRE_AND_GET_MESSAGE_VALUE(flags, "flags", std::stoi);
 
     router->core->fs.copyFile(
       message.seq,
       message.get("src"),
       message.get("dest"),
       flags,
-      resultCallback(message, reply)
+      RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
     );
   });
 
@@ -398,9 +415,9 @@ void initFunctionsTable (Router *router) {
     }
 
     uint64_t id;
-    getMessageParam(id, "id", std::stoull);
+    REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
 
-    router->core->fs.fstat(message.seq, id, resultCallback(message, reply));
+    router->core->fs.fstat(message.seq, id, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
   });
 
   /**
@@ -409,7 +426,7 @@ void initFunctionsTable (Router *router) {
   router->map("fs.getOpenDescriptors", [=](auto message, auto router, auto reply) {
     router->core->fs.getOpenDescriptors(
       message.seq,
-      resultCallback(message, reply)
+      RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
     );
   });
 
@@ -429,7 +446,7 @@ void initFunctionsTable (Router *router) {
     router->core->fs.lstat(
       message.seq,
       message.get("path"),
-      resultCallback(message, reply)
+      RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
     );
   });
 
@@ -447,13 +464,13 @@ void initFunctionsTable (Router *router) {
     }
 
     int mode = 0;
-    getMessageParam(mode, "mode", std::stoi);
+    REQUIRE_AND_GET_MESSAGE_VALUE(mode, "mode", std::stoi);
 
     router->core->fs.mkdir(
       message.seq,
       message.get("path"),
       mode,
-      resultCallback(message, reply)
+      RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
     );
   });
 
@@ -478,11 +495,11 @@ void initFunctionsTable (Router *router) {
     }
 
     uint64_t id;
-    getMessageParam(id, "id", std::stoull);
     int mode = 0;
-    getMessageParam(mode, "mode", std::stoi);
     int flags = 0;
-    getMessageParam(flags, "flags", std::stoi);
+    REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
+    REQUIRE_AND_GET_MESSAGE_VALUE(mode, "mode", std::stoi);
+    REQUIRE_AND_GET_MESSAGE_VALUE(flags, "flags", std::stoi);
 
     router->core->fs.open(
       message.seq,
@@ -490,7 +507,7 @@ void initFunctionsTable (Router *router) {
       message.get("path"),
       flags,
       mode,
-      resultCallback(message, reply)
+      RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
     );
   });
 
@@ -508,13 +525,13 @@ void initFunctionsTable (Router *router) {
     }
 
     uint64_t id;
-    getMessageParam(id, "id", std::stoull);
+    REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
 
     router->core->fs.opendir(
       message.seq,
       id,
       message.get("path"),
-      resultCallback(message, reply)
+      RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
     );
   });
 
@@ -533,18 +550,18 @@ void initFunctionsTable (Router *router) {
     }
 
     uint64_t id;
-    getMessageParam(id, "id", std::stoull);
     int size = 0;
-    getMessageParam(size, "size", std::stoi);
     int offset = 0;
-    getMessageParam(offset, "offset", std::stoi);
+    REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
+    REQUIRE_AND_GET_MESSAGE_VALUE(size, "size", std::stoi);
+    REQUIRE_AND_GET_MESSAGE_VALUE(offset, "offset", std::stoi);
 
     router->core->fs.read(
       message.seq,
       id,
       size,
       offset,
-      resultCallback(message, reply)
+      RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
     );
   });
 
@@ -561,15 +578,15 @@ void initFunctionsTable (Router *router) {
     }
 
     uint64_t id;
-    getMessageParam(id, "id", std::stoull);
     int entries = 0;
-    getMessageParam(entries, "entries", std::stoi);
+    REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
+    REQUIRE_AND_GET_MESSAGE_VALUE(entries, "entries", std::stoi);
 
     router->core->fs.readdir(
       message.seq,
       id,
       entries,
-      resultCallback(message, reply)
+      RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
     );
   });
 
@@ -585,12 +602,12 @@ void initFunctionsTable (Router *router) {
     }
 
     uint64_t id;
-    getMessageParam(id, "id", std::stoull);
+    REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
 
     router->core->fs.retainOpenDescriptor(
       message.seq,
       id,
-      resultCallback(message, reply)
+      RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
     );
   });
 
@@ -611,7 +628,7 @@ void initFunctionsTable (Router *router) {
       message.seq,
       message.get("src"),
       message.get("dest"),
-      resultCallback(message, reply)
+      RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
     );
   });
 
@@ -630,7 +647,7 @@ void initFunctionsTable (Router *router) {
     router->core->fs.rmdir(
       message.seq,
       message.get("path"),
-      resultCallback(message, reply)
+      RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
     );
   });
 
@@ -649,7 +666,7 @@ void initFunctionsTable (Router *router) {
     router->core->fs.stat(
       message.seq,
       message.get("path"),
-      resultCallback(message, reply)
+      RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
     );
   });
 
@@ -668,7 +685,7 @@ void initFunctionsTable (Router *router) {
     router->core->fs.unlink(
       message.seq,
       message.get("path"),
-      resultCallback(message, reply)
+      RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
     );
   });
 
@@ -693,9 +710,9 @@ void initFunctionsTable (Router *router) {
 
 
     uint64_t id;
-    getMessageParam(id, "id", std::stoull);
     int offset = 0;
-    getMessageParam(offset, "offset", std::stoi);
+    REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
+    REQUIRE_AND_GET_MESSAGE_VALUE(offset, "offset", std::stoi);
 
     router->core->fs.write(
       message.seq,
@@ -703,7 +720,7 @@ void initFunctionsTable (Router *router) {
       message.buffer.bytes,
       message.buffer.size,
       offset,
-      resultCallback(message, reply)
+      RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
     );
   });
 
@@ -713,13 +730,13 @@ void initFunctionsTable (Router *router) {
    */
   router->map("log", [=](auto message, auto router, auto reply) {
     auto value = message.value.c_str();
-#if defined(__APPLE__)
+  #if defined(__APPLE__)
     NSLog(@"%s\n", value);
-#elif defined(__ANDROID__)
+  #elif defined(__ANDROID__)
     __android_log_print(ANDROID_LOG_DEBUG, "", "%s", value);
-#else
+  #else
     // TODO
-#endif
+  #endif
   });
 
   /**
@@ -736,18 +753,18 @@ void initFunctionsTable (Router *router) {
     }
 
     uint64_t id;
-    getMessageParam(id, "id", std::stoull);
     int buffer = 0;
-    getMessageParam(buffer, "buffer", std::stoi, "0");
     int size = 0;
-    getMessageParam(size, "size", std::stoi, "0");
+    REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
+    REQUIRE_AND_GET_MESSAGE_VALUE(buffer, "buffer", std::stoi, "0");
+    REQUIRE_AND_GET_MESSAGE_VALUE(size, "size", std::stoi, "0");
 
     router->core->os.bufferSize(
       message.seq,
       id,
       size,
       buffer,
-      resultCallback(message, reply)
+      RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
     );
   });
 
@@ -755,7 +772,7 @@ void initFunctionsTable (Router *router) {
    * Returns a mapping of network interfaces.
    */
   router->map("os.networkInterfaces", [=](auto message, auto router, auto reply) {
-    router->core->os.networkInterfaces(message.seq, resultCallback(message, reply));
+    router->core->os.networkInterfaces(message.seq, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
   });
 
   /**
@@ -785,7 +802,7 @@ void initFunctionsTable (Router *router) {
       message.seq,
       message.value,
       message.get("data"),
-      resultCallback(message, reply)
+      RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
     );
   });
 
@@ -805,7 +822,7 @@ void initFunctionsTable (Router *router) {
       message.seq,
       message.get("title"),
       message.get("body"),
-      resultCallback(message, reply)
+      RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
     );
   });
 
@@ -823,7 +840,7 @@ void initFunctionsTable (Router *router) {
     router->core->platform.openExternal(
       message.seq,
       message.value,
-      resultCallback(message, reply)
+      RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
     );
   });
 
@@ -858,19 +875,19 @@ void initFunctionsTable (Router *router) {
    * @param id The id of the post data.
    */
   router->map("post", [](auto message, auto router, auto reply) {
-    uint64_t id;
     auto err = validateMessageParameters(message, {"id"});
 
     if (err.type != JSON::Type::Null) {
       return reply(Result::Err { message, err });
     }
 
-    getMessageParam(id, "id", std::stoull);
+    uint64_t id;
+    REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
 
     if (!router->core->hasPost(id)) {
       return reply(Result::Err { message, JSON::Object::Entries {
         {"id", std::to_string(id)},
-        {"message", "Post now found for given 'id'"}
+        {"message", "Post not found for given 'id'"}
       }});
     }
 
@@ -911,8 +928,8 @@ void initFunctionsTable (Router *router) {
     }
 
     uint64_t id;
-    getMessageParam(id, "id", std::stoull);
-    getMessageParam(options.port, "port", std::stoi);
+    REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
+    REQUIRE_AND_GET_MESSAGE_VALUE(options.port, "port", std::stoi);
 
     options.reuseAddr = message.get("reuseAddr") == "true";
     options.address = message.get("address", "0.0.0.0");
@@ -921,7 +938,7 @@ void initFunctionsTable (Router *router) {
       message.seq,
       id,
       options,
-      resultCallback(message, reply)
+      RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
     );
   });
 
@@ -937,9 +954,9 @@ void initFunctionsTable (Router *router) {
     }
 
     uint64_t id;
-    getMessageParam(id, "id", std::stoull);
+    REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
 
-    router->core->udp.close(message.seq, id, resultCallback(message, reply));
+    router->core->udp.close(message.seq, id, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
   });
 
   /**
@@ -958,8 +975,8 @@ void initFunctionsTable (Router *router) {
 
     Core::UDP::ConnectOptions options;
     uint64_t id;
-    getMessageParam(id, "id", std::stoull);
-    getMessageParam(options.port, "port", std::stoi);
+    REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
+    REQUIRE_AND_GET_MESSAGE_VALUE(options.port, "port", std::stoi);
 
     options.address = message.get("address", "0.0.0.0");
 
@@ -967,7 +984,7 @@ void initFunctionsTable (Router *router) {
       message.seq,
       id,
       options,
-      resultCallback(message, reply)
+      RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
     );
   });
 
@@ -983,12 +1000,12 @@ void initFunctionsTable (Router *router) {
     }
 
     uint64_t id;
-    getMessageParam(id, "id", std::stoull);
+    REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
 
     router->core->udp.disconnect(
       message.seq,
       id,
-      resultCallback(message, reply)
+      RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
     );
   });
 
@@ -1004,12 +1021,12 @@ void initFunctionsTable (Router *router) {
     }
 
     uint64_t id;
-    getMessageParam(id, "id", std::stoull);
+    REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
 
     router->core->udp.getPeerName(
       message.seq,
       id,
-      resultCallback(message, reply)
+      RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
     );
   });
 
@@ -1025,12 +1042,12 @@ void initFunctionsTable (Router *router) {
     }
 
     uint64_t id;
-    getMessageParam(id, "id", std::stoull);
+    REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
 
     router->core->udp.getSockName(
       message.seq,
       id,
-      resultCallback(message, reply)
+      RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
     );
   });
 
@@ -1046,12 +1063,12 @@ void initFunctionsTable (Router *router) {
     }
 
     uint64_t id;
-    getMessageParam(id, "id", std::stoull);
+    REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
 
     router->core->udp.getState(
       message.seq,
       id,
-      resultCallback(message, reply)
+      RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
     );
   });
 
@@ -1068,12 +1085,12 @@ void initFunctionsTable (Router *router) {
     }
 
     uint64_t id;
-    getMessageParam(id, "id", std::stoull);
+    REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
 
     router->core->udp.readStart(
       message.seq,
       id,
-      resultCallback(message, reply)
+      RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
     );
   });
 
@@ -1090,12 +1107,12 @@ void initFunctionsTable (Router *router) {
     }
 
     uint64_t id;
-    getMessageParam(id, "id", std::stoull);
+    REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
 
     router->core->udp.readStop(
       message.seq,
       id,
-      resultCallback(message, reply)
+      RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
     );
   });
 
@@ -1120,8 +1137,8 @@ void initFunctionsTable (Router *router) {
 
     Core::UDP::SendOptions options;
     uint64_t id;
-    getMessageParam(id, "id", std::stoull);
-    getMessageParam(options.port, "port", std::stoi);
+    REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
+    REQUIRE_AND_GET_MESSAGE_VALUE(options.port, "port", std::stoi);
 
     options.size = message.buffer.size;
     options.bytes = message.buffer.bytes;
@@ -1132,7 +1149,7 @@ void initFunctionsTable (Router *router) {
       message.seq,
       id,
       options,
-      resultCallback(message, reply)
+      RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
     );
   });
 }
@@ -1151,20 +1168,49 @@ static void registerSchemeHandler (Router *router) {
   webkit_web_context_register_uri_scheme(ctx, "ipc", [](auto request, auto ptr) {
     auto uri = String(webkit_uri_scheme_request_get_uri(request));
     auto router = reinterpret_cast<Router *>(ptr);
-    auto message = Message { uri };
-    auto invoked = router->invoke(message, [=](auto result) {
+    auto invoked = router->invoke(uri, [=](auto result) {
       auto json = result.str();
       auto size = result.post.body != nullptr ? result.post.length : json.size();
       auto body = result.post.body != nullptr ? result.post.body : json.c_str();
 
-      auto freeFn = result.post.body != nullptr ? free : nullptr;
-      auto stream = g_memory_input_stream_new_from_data(body, size, freeFn);
+      char* data = nullptr;
+
+      if (size > 0) {
+        data = new char[size]{0};
+        memcpy(data, body, size);
+      }
+
+      auto stream = g_memory_input_stream_new_from_data(data, size, g_free);
       auto response = webkit_uri_scheme_response_new(stream, size);
 
-      webkit_uri_scheme_response_set_content_type(response, IPC_CONTENT_TYPE);
+      if (result.post.body) {
+        webkit_uri_scheme_response_set_content_type(response, IPC_BINARY_CONTENT_TYPE);
+      } else {
+        webkit_uri_scheme_response_set_content_type(response, IPC_JSON_CONTENT_TYPE);
+      }
+
       webkit_uri_scheme_request_finish_with_response(request, response);
+      g_input_stream_close_async(stream, 0, nullptr, +[](
+        GObject* object,
+        GAsyncResult* res,
+        gpointer userData
+      ) {
+        g_object_ref(res);
+        auto stream = (GInputStream*) object;
+        auto data = (const char*) userData;
+        auto poll = std::thread([=] {
+          //do std::this_thread::yield();
+          do std::this_thread::sleep_for(std::chrono::milliseconds(16));
+          while (g_input_stream_has_pending(stream));
+          g_input_stream_close_finish(stream, res, nullptr);
+          delete [] data;
+          g_object_unref(res);
+        });
+
+        poll.detach();
+      }, data);
+
       g_object_unref(stream);
-      g_object_unref(response);
     });
 
     if (!invoked) {
@@ -1184,10 +1230,9 @@ static void registerSchemeHandler (Router *router) {
       auto response = webkit_uri_scheme_response_new(stream, msg.size());
 
       webkit_uri_scheme_response_set_status(response, 404, "Not found");
-      webkit_uri_scheme_response_set_content_type(response, IPC_CONTENT_TYPE);
+      webkit_uri_scheme_response_set_content_type(response, IPC_JSON_CONTENT_TYPE);
       webkit_uri_scheme_request_finish_with_response(request, response);
       g_object_unref(stream);
-      g_object_unref(response);
     }
   },
   router,
@@ -1223,10 +1268,9 @@ static void registerSchemeHandler (Router *router) {
     auto stream = g_memory_input_stream_new_from_data(bytes, size, 0);
     auto response = webkit_uri_scheme_response_new(stream, size);
 
-    webkit_uri_scheme_response_set_content_type(response, "text/javascript");
+    webkit_uri_scheme_response_set_content_type(response, SOCKET_MODULE_CONTENT_TYPE);
     webkit_uri_scheme_request_finish_with_response(request, response);
     g_object_unref(stream);
-    g_object_unref(response);
   },
   router,
   0);
@@ -1369,16 +1413,6 @@ static void registerSchemeHandler (Router *router) {
     [response release];
     #endif
 
-    // 16ms timeout before removing post and potentially freeing `post.body`
-    NSTimeInterval timeout = 0.16;
-    auto block = ^(NSTimer* timer) {
-      dispatch_async(dispatch_get_main_queue(), ^{
-        self.router->core->removePost(id);
-      });
-    };
-
-    [NSTimer timerWithTimeInterval: timeout repeats: NO block: block ];
-
     return;
   }
 
@@ -1457,15 +1491,17 @@ namespace SSC::IPC {
       return this->buffers.at(key);
     }
 
-    return MessageBuffer {};
+    return MessageBuffer(nullptr, 0);
   }
 
-  void Router::setMappedBuffer(int index,
-                               const Message::Seq seq,
-                               MessageBuffer msg_buf) {
+  void Router::setMappedBuffer (
+    int index,
+    const Message::Seq seq,
+    MessageBuffer buffer
+  ) {
     Lock lock(this->mutex);
     auto key = std::to_string(index) + seq;
-    this->buffers.insert_or_assign(key, msg_buf);
+    this->buffers.insert_or_assign(key, buffer);
   }
 
   void Router::removeMappedBuffer (int index, const Message::Seq seq) {
@@ -1476,16 +1512,20 @@ namespace SSC::IPC {
     }
   }
 
-  bool Bridge::route (const String& msg, char *bytes, size_t size) {
-    return this->route(msg, bytes, size, nullptr);
+  bool Bridge::route (const String& uri, const char *bytes, size_t size) {
+    return this->route(uri, bytes, size, nullptr);
   }
 
-  bool Bridge::route (const String& msg, char *bytes, size_t size, Router::ResultCallback callback) {
-    auto message = Message { msg, bytes, size };
+  bool Bridge::route (
+    const String& uri,
+    const char* bytes,
+    size_t size,
+    Router::ResultCallback callback
+  ) {
     if (callback != nullptr) {
-      return this->router.invoke(message, callback);
+      return this->router.invoke(uri, bytes, size, callback);
     } else {
-      return this->router.invoke(message);
+      return this->router.invoke(uri, bytes, size);
     }
   }
 
@@ -1552,38 +1592,36 @@ namespace SSC::IPC {
     }
   }
 
-  bool Router::invoke (const String& name, char *bytes, size_t size) {
-    auto message = Message { name, bytes, size };
-    return this->invoke(message);
-  }
-
-  bool Router::invoke (
-    const String& name,
-    char *bytes,
-    size_t size,
-    ResultCallback callback
-  ) {
-    auto message = Message { name, bytes, size };
-    return this->invoke(message, callback);
-  }
-
-  bool Router::invoke (const Message& message) {
-    return this->invoke(message, [this](auto result) {
+  bool Router::invoke (const String& uri, const char *bytes, size_t size) {
+    return this->invoke(uri, bytes, size, [this](auto result) {
       this->send(result.seq, result.str(), result.post);
     });
   }
 
-  bool Router::invoke (const Message& message, ResultCallback callback) {
-    String data = message.name;
-    // URI hostnames are not case sensitive. Convert to lowercase.
-    std::transform(data.begin(), data.end(), data.begin(),
-      [](unsigned char c) { return std::tolower(c); });
+  bool Router::invoke (const String& uri, ResultCallback callback) {
+    return this->invoke(uri, nullptr, 0, callback);
+  }
 
-    if (this->table.find(data) == this->table.end()) {
+  bool Router::invoke (
+    const String& uri,
+    const char *bytes,
+    size_t size,
+    ResultCallback callback
+  ) {
+    auto message = Message { uri };
+    auto name = message.name;
+
+    // URI hostnames are not case sensitive. Convert to lowercase.
+    std::transform(name.begin(), name.end(), name.begin(), [](unsigned char c) {
+      return std::tolower(c);
+    });
+
+    // lookup router function in table, return early if it doesn't exist
+    if (this->table.find(name) == this->table.end()) {
       return false;
     }
 
-    auto ctx = this->table.at(data);
+    auto ctx = this->table.at(name);
 
     if (ctx.callback != nullptr) {
       Message msg(message);
@@ -1592,14 +1630,32 @@ namespace SSC::IPC {
       if (this->hasMappedBuffer(msg.index, msg.seq)) {
         msg.buffer = this->getMappedBuffer(msg.index, msg.seq);
         this->removeMappedBuffer(msg.index, msg.seq);
+      } else if (bytes != nullptr && size > 0) {
+        // alloc and copy `bytes` into `data` - caller owns `bytes`
+        msg.buffer.bytes = new char[size]{0};
+        msg.buffer.size = size;
+        memcpy(msg.buffer.bytes, bytes, size);
       }
 
       if (ctx.async) {
-        return this->dispatch([ctx, msg, callback, this] {
-          ctx.callback(msg, this, callback);
+        auto dispatched = this->dispatch([ctx, msg, callback, this] {
+          ctx.callback(msg, this, [msg, callback, this](const auto result) mutable {
+            callback(result);
+            CLEANUP_AFTER_INVOKE_CALLBACK(this, msg, result);
+          });
         });
+
+        if (!dispatched) {
+          CLEANUP_AFTER_INVOKE_CALLBACK(this, msg, Result{});
+        }
+
+        return dispatched;
       } else {
-        ctx.callback(msg, this, callback);
+        ctx.callback(msg, this, [msg, callback, this](const auto result) mutable {
+          callback(result);
+          CLEANUP_AFTER_INVOKE_CALLBACK(this, msg, result);
+        });
+
         return true;
       }
     }

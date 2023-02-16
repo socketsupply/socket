@@ -111,10 +111,12 @@ namespace SSC::IPC {
 
   Result::Result (const Err error) {
     this->err = error.value;
+    this->source = error.message.name;
   }
 
   Result::Result (const Data data) {
     this->data = data.value;
+    this->source = data.message.name;
   }
 
   JSON::Any Result::json () const {
