@@ -573,18 +573,30 @@ MAIN {
         options.port = std::stoi(message.get("port"));
       }
 
+      auto screen = currentWindow->getScreenSize();
       if (message.get("width").size() > 0) {
-        options.width = std::stof(message.get("width"));
+        options.widthUncalculated = std::stof(message.get("width"));
       }
-      if (message.get("isWidthInPercent").size() > 0) {
-        options.isWidthInPercent = message.get("isWidthInPercent") == "true" ? true : false;
-      }
+      options.isWidthInPercent = message.get("isWidthInPercent") == "true";
+      options.width = options.widthUncalculated && options.isWidthInPercent
+        ? screen.width * options.widthUncalculated / 100
+        : options.widthUncalculated;
+
       if (message.get("height").size() > 0) {
-        options.height = std::stof(message.get("height"));
+        options.heightUncalculated = std::stof(message.get("height"));
       }
-      if (message.get("isHeightInPercent").size() > 0) {
-        options.isHeightInPercent = message.get("isHeightInPercent") == "true" ? true : false;
-      }
+      options.isHeightInPercent = message.get("isHeightInPercent") == "true";
+      options.height = options.heightUncalculated && options.isHeightInPercent
+        ? screen.height * options.heightUncalculated / 100
+        : options.heightUncalculated;
+
+      // debug("size");
+      // debug("  width %f", options.width);
+      // debug("  widthUncalculated: %f", options.widthUncalculated);
+      // debug("  isWidthInPercent: %s", options.isWidthInPercent ? "true" : "false");
+      // debug("  height %f", options.height);
+      // debug("  heightUncalculated: %f", options.heightUncalculated);
+      // debug("  isHeightInPercent: %s", options.isHeightInPercent ? "true" : "false");
 
       options.resizable = message.get("resizable") == "true" ? true : false;
       options.frameless = message.get("frameless") == "true" ? true : false;
@@ -738,21 +750,26 @@ MAIN {
 
     if (message.name == "window.setSize") {
       const auto seq = message.seq;
-
-      auto width = message.get("width").size() > 0 ? std::stof(message.get("width")) : 0;
-      auto isWidthInPercent = message.get("isWidthInPercent") == "true" ? true : false;
-      auto height = message.get("height").size() > 0 ? std::stof(message.get("height")) : 0;
-      auto isHeightInPercent = message.get("isHeightInPercent") == "true" ? true : false;
-
       const auto currentIndex = message.index;
       const auto currentWindow = windowManager.getWindow(currentIndex);
       const auto targetWindowIndex = message.get("targetWindowIndex").size() > 0 ? std::stoi(message.get("targetWindowIndex")) : currentIndex;
       const auto targetWindow = windowManager.getWindow(targetWindowIndex);
+
+      auto widthUncalculated = message.get("width").size() > 0 ? std::stof(message.get("width")) : 0;
+      auto isWidthInPercent = message.get("isWidthInPercent") == "true" ? true : false;
+      auto heightUncalculated = message.get("height").size() > 0 ? std::stof(message.get("height")) : 0;
+      auto isHeightInPercent = message.get("isHeightInPercent") == "true" ? true : false;
+
+      auto screen = currentWindow->getScreenSize();
+      auto height = isHeightInPercent ? screen.height * heightUncalculated / 100 : heightUncalculated;
+      auto width = isWidthInPercent ? screen.width * widthUncalculated / 100 : widthUncalculated;
+
       targetWindow->setSize(EMPTY_SEQ, width, height, 0);
 
       JSON::Object json = JSON::Object::Entries {
         { "data", targetWindow->json() },
       };
+
       currentWindow->resolvePromise(seq, OK_STATE, json.str());
       return;
     }

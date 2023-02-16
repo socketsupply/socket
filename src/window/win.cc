@@ -610,16 +610,12 @@ namespace SSC {
   Window::Window (App& app, WindowOptions opts) : app(app), opts(opts) {
     app.isReady = false;
 
-    ScreenSize screen = this->getScreenSize();
-    auto height = opts.isHeightInPercent ? screen.height * opts.height / 100 : opts.height;
-    auto width = opts.isWidthInPercent ? screen.width * opts.width / 100 : opts.width;
-
     window = CreateWindow(
       TEXT("DesktopApp"), TEXT("Socket"),
       WS_OVERLAPPEDWINDOW,
       100000,
       100000,
-      width, height,
+      opts.width, opts.height,
       NULL, NULL,
       app.hInstance, NULL
     );
