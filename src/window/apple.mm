@@ -586,9 +586,8 @@ namespace SSC {
               window->exit(0);
               return true;
             }
-
             window->eval(getEmitToRenderProcessJavaScript("windowHide", "{}"));
-            window->hide("");
+            window->hide();
             return false;
           }),
         "v@:@"
@@ -669,17 +668,12 @@ namespace SSC {
     };
   }
 
-  void Window::show (const SSC::String& seq) {
+  void Window::show () {
     if (this->opts.headless == true) {
       [NSApp activateIgnoringOtherApps: NO];
     } else {
       [window makeKeyAndOrderFront: nil];
       [NSApp activateIgnoringOtherApps: YES];
-    }
-
-    if (seq.size() > 0) {
-      auto index = std::to_string(this->opts.index);
-      this->resolvePromise(seq, "0", index);
     }
   }
 
@@ -694,14 +688,9 @@ namespace SSC {
     [window performClose:nil];
   }
 
-  void Window::hide (const SSC::String& seq) {
+  void Window::hide () {
     [window orderOut:window];
     this->eval(getEmitToRenderProcessJavaScript("windowHide", "{}"));
-
-    if (seq.size() > 0) {
-      auto index = std::to_string(this->opts.index);
-      this->resolvePromise(seq, "0", index);
-    }
   }
 
   void Window::eval (const SSC::String& js) {

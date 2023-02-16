@@ -618,29 +618,19 @@ namespace SSC {
     });
   }
 
-  void Window::show (const String &seq) {
+  void Window::show () {
     gtk_widget_realize(this->window);
 
     if (this->opts.headless == false) {
       gtk_widget_show_all(this->window);
       gtk_window_present(GTK_WINDOW(this->window));
     }
-
-    if (seq.size() > 0) {
-      auto index = std::to_string(this->opts.index);
-      this->resolvePromise(seq, "0", index);
-    }
   }
 
-  void Window::hide (const String &seq) {
+  void Window::hide () {
     gtk_widget_realize(this->window);
     gtk_widget_hide(this->window);
     this->eval(getEmitToRenderProcessJavaScript("windowHide", "{}"));
-
-    if (seq.size() > 0) {
-      auto index = std::to_string(this->opts.index);
-      this->resolvePromise(seq, "0", index);
-    }
   }
 
   void Window::setBackgroundColor (int r, int g, int b, float a) {

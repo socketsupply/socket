@@ -1096,7 +1096,7 @@ namespace SSC {
     }
   }
 
-  void Window::show (const SSC::String& seq) {
+  void Window::show () {
     if (this->opts.headless == false) {
       ShowWindow(window, SW_SHOWNORMAL);
       UpdateWindow(window);
@@ -1124,22 +1124,12 @@ namespace SSC {
       DrawMenuBar(this->window);
       RedrawWindow(this->window, NULL, NULL, RDW_INVALIDATE | RDW_ERASE);
     }
-
-    if (seq.size() > 0) {
-      auto index = std::to_string(this->opts.index);
-      this->resolvePromise(seq, "0", index);
-    }
   }
 
-  void Window::hide (const SSC::String& seq) {
+  void Window::hide () {
     ShowWindow(window, SW_HIDE);
     UpdateWindow(window);
     this->eval(getEmitToRenderProcessJavaScript("windowHide", "{}"));
-
-    if (seq.size() > 0) {
-      auto index = std::to_string(this->opts.index);
-      this->resolvePromise(seq, "0", index);
-    }
   }
 
   void Window::resize (HWND window) {
