@@ -433,7 +433,7 @@ namespace SSC {
           }}
         };
 
-        return cb("-1", json, Post{});
+        cb("-1", json, Post{});
       }
 
       if (nread > 0) {
@@ -449,10 +449,11 @@ namespace SSC {
         }};
 
         post.id = rand64();
-        post.body = buf->base;
+        post.body = new char[nread]{0};
         post.length = (int) nread;
         post.headers = headers.str();
-        post.bodyNeedsFree = true;
+
+        memcpy(post.body, buf->base, nread);
 
         auto json = JSON::Object::Entries {
           {"source", "udp.readStart"},
@@ -464,7 +465,11 @@ namespace SSC {
           }}
         };
 
-        return cb("-1", json, post);
+        cb("-1", json, post);
+      }
+
+      if (buf->base != nullptr) {
+        delete buf->base;
       }
     });
 

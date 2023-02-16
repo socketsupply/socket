@@ -510,12 +510,6 @@ namespace SSC {
     ) {
       auto peer = (Peer *) handle->data;
 
-      if (nread <= 0) {
-        if (buf && buf->base) {
-          free(buf->base);
-        }
-      }
-
       if (nread == UV_ENOTCONN) {
         peer->recvstop();
         return;
