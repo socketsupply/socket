@@ -686,10 +686,7 @@ MAIN {
       const auto currentWindow = windowManager.getWindow(currentIndex);
       const auto targetWindowIndex = message.get("targetWindowIndex").size() > 0 ? std::stoi(message.get("targetWindowIndex")) : currentIndex;
       const auto targetWindow = windowManager.getWindow(targetWindowIndex);
-      targetWindow->setTitle(
-        message.seq,
-        decodeURIComponent(value)
-      );
+      targetWindow->setTitle(value);
       JSON::Object json = JSON::Object::Entries {
         { "data", targetWindow->json() },
       };
