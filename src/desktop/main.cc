@@ -573,12 +573,18 @@ MAIN {
         options.port = std::stoi(message.get("port"));
       }
 
-      if (message.get("width").size() > 0 ) {
+      if (message.get("width").size() > 0) {
         options.width = std::stof(message.get("width"));
       }
-      if (message.get("height").size() > 0 ) {
+      if (message.get("isWidthInPercent").size() > 0) {
+        options.isWidthInPercent = message.get("isWidthInPercent") == "true" ? true : false;
+      }
+      if (message.get("height").size() > 0) {
         options.height = std::stof(message.get("height"));
-      } 
+      }
+      if (message.get("isHeightInPercent").size() > 0) {
+        options.isHeightInPercent = message.get("isHeightInPercent") == "true" ? true : false;
+      }
 
       options.resizable = message.get("resizable") == "true" ? true : false;
       options.frameless = message.get("frameless") == "true" ? true : false;
