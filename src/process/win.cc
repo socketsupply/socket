@@ -201,18 +201,26 @@ Process::id_type Process::open(const SSC::String &command, const SSC::String &pa
   }
 
   auto processHandle = process_info.hProcess;
-  auto t = std::thread([this, processHandle]() {
+  auto t = std::thread([&](HANDLE _processHandle) {
     DWORD exitCode = 0;
-    WaitForSingleObject(processHandle, INFINITE);
-    if (GetExitCodeProcess(processHandle, &exitCode) == 0) {
-      std::cerr << FormatError(GetLastError(), "SSC::Process::open() GetExitCodeProcess()") << std::endl;
-      exitCode = -1;
-    }
 
-    this->status = WEXITSTATUS(exitCode);
-    this->closed = true;
-    on_exit(std::to_string(exitCode));
-  });
+    try {
+      WaitForSingleObject(_processHandle, INFINITE);
+
+      if (GetExitCodeProcess(_processHandle, &exitCode) == 0) {
+        std::cerr << FormatError(GetLastError(), "SSC::Process::open() GetExitCodeProcess()") << std::endl;
+        exitCode = -1;
+      }
+
+      this->status = WEXITSTATUS(exitCode);
+      this->closed = true;
+      if (this->on_exit != nullptr)
+        this->on_exit(std::to_string(this->status));
+    } catch (std::exception e) {
+      std::cerr << "SSC::Process thread exception: " << e.what() << std::endl;
+      this->closed = true;
+    }
+  }, (processHandle));
 
   t.detach();
 
