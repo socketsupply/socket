@@ -91,7 +91,7 @@ extern "C" {
       env->GetByteArrayRegion(byteArray, 0, size, (jbyte*) bytes);
     }
 
-    return bridge->route(msg, bytes, size, [=](auto result) mutable {
+    auto routed = bridge->route(msg, bytes, size, [=](auto result) mutable {
       if (result.seq == "-1") {
         bridge->router.send(result.seq, result.str(), result.post);
         return;
@@ -129,5 +129,8 @@ extern "C" {
         );
       }
     });
+
+    delete [] bytes;
+    return routed;
   }
 }
