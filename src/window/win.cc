@@ -993,14 +993,6 @@ namespace SSC {
                           return S_OK;
                         }
 
-                        if (msg.name == "stdout") {
-                          std::cout << decodeURIComponent(msg.get("value")) << std::endl;
-                        }
-
-                        if (msg.name == "stderr") {
-                          std::cerr << decodeURIComponent(msg.get("value")) << std::endl;
-                        }
-
                         if (!w->bridge->route(message, nullptr, 0)) {
                           onMessage(message);
                         }

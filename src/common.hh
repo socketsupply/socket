@@ -547,16 +547,7 @@ namespace SSC {
   }
 
   inline void stdWrite (const String &str, bool isError) {
-    #ifdef _WIN32
-      StringStream ss;
-      ss << str << std::endl;
-      auto lineStr = ss.str();
-
-      auto handle = isError ? STD_ERROR_HANDLE : STD_OUTPUT_HANDLE;
-      WriteConsoleA(GetStdHandle(handle), lineStr.c_str(), lineStr.size(), NULL, NULL);
-    #else
-      (isError ? std::cerr : std::cout) << str << std::endl;
-    #endif
+    (isError ? std::cerr : std::cout) << str << std::endl;
   }
 
   #if !TARGET_OS_IPHONE && !TARGET_OS_SIMULATOR

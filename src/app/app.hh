@@ -33,6 +33,7 @@ namespace SSC {
       App (void *);
       void ShowConsole();
       void HideConsole();
+      bool consoleVisible = false;
 #endif
 
       App (int);
