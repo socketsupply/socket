@@ -49,18 +49,18 @@ if ("vsbuild" -eq $toolchain) {
 
 Write-Output "Using toolchain: $toolchain"
 
-
 Function Found-Command {
     param($command_string)
     (Get-Command $command_string -ErrorAction SilentlyContinue -ErrorVariable F) > $null
     $r = $($null -eq $F.length)
+    Write-Output $r
 }
 
 #
 # Compile with the current git revision of the repository
 #
 Function Build {
-  $VERSION_HASH = $(iex "& ""$global:git"" rev-parse --short HEAD") 2>&1 | % ToString
+  $VERSION_HASH = $(iex "& ""$global:git"" rev-parse --short=8 HEAD") 2>&1 | % ToString
   $VERSION = $(type VERSION.txt) 2>&1 | % ToString
   $BUILD_TIME = [int] (New-TimeSpan -Start (Get-Date "01/01/1970") -End (Get-Date)).TotalSeconds
 
@@ -308,9 +308,9 @@ Function Install-Requirements {
     }
   }
 
+  $clang = "clang++"
   if (("llvm+vsbuild" -eq $toolchain) -or ("llvm" -eq $toolchain))
   {
-    $clang = "clang++"
     $clangPath = "$env:ProgramFiles\LLVM\bin"
 
     if (-not (Found-Command($clang))) {
