@@ -49,7 +49,7 @@ export class ApplicationWindow {
       targetWindowIndex: this.#index
     })
     if (err) {
-      throw err
+      throw new Error(err)
     }
     return data
   }
@@ -60,7 +60,7 @@ export class ApplicationWindow {
       targetWindowIndex: this.#index
     })
     if (err) {
-      throw err
+      throw new Error(err)
     }
     return data
   }
@@ -71,7 +71,7 @@ export class ApplicationWindow {
       targetWindowIndex: this.#index
     })
     if (err) {
-      throw err
+      throw new Error(err)
     }
     return data
   }
@@ -80,24 +80,36 @@ export class ApplicationWindow {
    * @return {Promise<ipc.Result>}
    */
   async show () {
-    return await ipc.send('window.show', { window: this.#index })
+    const { data, err } = await ipc.send('window.show', { index: this.#index, window: this.#index })
+    if (err) {
+      throw new Error(err)
+    }
+    const { index, ...options } = data
+    this.#options = options
+    return data
   }
 
   /**
    * @return {Promise<ipc.Result>}
    */
   async hide () {
-    return await ipc.send('window.hide', { window: this.#index })
+    const { data, err } = await ipc.send('window.hide', { index: this.#index, window: this.#index })
+    if (err) {
+      throw new Error(err)
+    }
+    const { index, ...options } = data
+    this.#options = options
+    return data
   }
 
-  async setTitile (title) {
-    // TODO(@chicoxyzzy): rrefactor to send title AND window index
-    return await ipc.send('window.setTitle', title)
-  }
-
-  async setTitile (title) {
-    // TODO(@chicoxyzzy): rrefactor to send title AND window index
-    return await ipc.send('window.setTitle', title)
+  async setTitle (title) {
+    const { data, err } = await ipc.send('window.setTitle', { index: this.#index, targetWindowIndex: this.#index, value: title })
+    if (err) {
+      throw new Error(err)
+    }
+    const { index, ...options } = data
+    this.#options = options
+    return data
   }
 
   /**

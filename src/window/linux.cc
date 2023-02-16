@@ -687,14 +687,9 @@ namespace SSC {
     return String(gtk_window_get_title(GTK_WINDOW(window)));
   }
 
-  void Window::setTitle (const String &seq, const String &s) {
+  void Window::setTitle (const String &s) {
     gtk_widget_realize(window);
     gtk_window_set_title(GTK_WINDOW(window), s.c_str());
-
-    if (seq.size() > 0) {
-      auto index = std::to_string(this->opts.index);
-      this->resolvePromise(seq, "0", index);
-    }
   }
 
   int Window::openExternal (const String& url) {
