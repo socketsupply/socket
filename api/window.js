@@ -35,6 +35,10 @@ export class ApplicationWindow {
     }
   }
 
+  getTitle () {
+    return this.#options.title
+  }
+
   getStatus () {
     return this.#options.status
   }
@@ -84,6 +88,11 @@ export class ApplicationWindow {
    */
   async hide () {
     return await ipc.send('window.hide', { window: this.#index })
+  }
+
+  async setTitile (title) {
+    // TODO(@chicoxyzzy): rrefactor to send title AND window index
+    return await ipc.send('window.setTitle', title)
   }
 
   async setTitile (title) {

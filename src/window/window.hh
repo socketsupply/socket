@@ -248,11 +248,24 @@ namespace SSC {
           JSON::Object json () {
             auto index = this->opts.index;
             auto size = this->getSize();
+
+            // debug("json");
+            // debug("  width: %d", size.width);
+            // debug("  height: %d", size.height);
+            // debug("  widthUncalculated: %f", this->opts.widthUncalculated);
+            // debug("  heightUncalculated: %f", this->opts.heightUncalculated);
+            // debug("  isWidthInPercent: %d", this->opts.isWidthInPercent);
+            // debug("  isHeightInPercent: %d", this->opts.isHeightInPercent);
+
             return JSON::Object::Entries {
               { "index", index },
               { "title", this->getTitle() },
               { "width", size.width },
               { "height", size.height },
+              { "widthUncalculated", this->opts.widthUncalculated },
+              { "heightUncalculated", this->opts.heightUncalculated },
+              { "isWidthInPercent", this->opts.isWidthInPercent },
+              { "isHeightInPercent", this->opts.isHeightInPercent },
               { "status", this->status }
             };
           }

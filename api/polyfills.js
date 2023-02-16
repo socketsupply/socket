@@ -6,10 +6,15 @@ import * as exports from './polyfills.js'
 
 export function applyPolyfills (window) {
   Object.defineProperties(window, Object.getOwnPropertyDescriptors({
-    resizeTo (width, height) {
+    resizeTo (w, h) {
       const index = window.__args.index
-      const o = new URLSearchParams({ index, width, height }).toString()
-      return ipc.postMessage(`ipc://window.setSize?${o}`)
+      const targetWindow = window.__args.index
+      const isWidthInPercent = typeof w === 'string' && w.endsWith('%')
+      const isHeightInPercent = typeof h === 'string' && h.endsWith('%')
+      const width = isWidthInPercent ? Number(w.slice(0, -1)) : w
+      const height = isHeightInPercent ? Number(h.slice(0, -1)) : h
+      const o = new URLSearchParams({ index, targetWindow, width, height, isWidthInPercent, isHeightInPercent }).toString()
+      ipc.postMessage(`ipc://window.setSize?${o}`)
     },
 
     // TODO(@heapwolf) the properties do not yet conform to the MDN spec
