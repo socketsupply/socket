@@ -104,7 +104,7 @@ function throwOnInvalidIndex (index) {
  * @throws {Error} - if indices is not an array of integer numbers
  */
 export async function getWindows (indices) {
-  let resultIndices = indices ?? []
+  const resultIndices = indices ?? []
   if (!Array.isArray(indices)) {
     throw new Error('Indices list must be an array of integer numbers')
   }
