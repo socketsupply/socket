@@ -25,11 +25,14 @@ namespace SSC {
       ExitCallback onExit = nullptr;
       bool shouldExit = false;
       bool fromSSC = false;
+      bool w32ShowConsole = false;
       Map appData;
       Core *core;
 
 #ifdef _WIN32
       App (void *);
+      void ShowConsole();
+      void HideConsole();
 #endif
 
       App (int);
