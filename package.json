@@ -1,5 +1,6 @@
 {
   "type": "module",
+  "directories": ["api"],
   "scripts": {
     "pretest": "standard .",
     "readme": "node ./bin/generate-docs.js",

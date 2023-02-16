@@ -1515,7 +1515,7 @@ namespace SSC::IPC {
       return this->buffers.at(key);
     }
 
-    return MessageBuffer(nullptr, 0);
+    return MessageBuffer {};
   }
 
   void Router::setMappedBuffer (
