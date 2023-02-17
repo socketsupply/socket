@@ -12,9 +12,11 @@
 
 ### Description
 
-`Socket Runtime`. provides a range of tools and software utilities to help developers build powerful application experiences using standard web technologies `(HTML, CSS, and JS)`. These applications are compiled by Socket's tools into hybrid-native applications -- meaning a combination of web code running in a platform's "WebView" (embedded browser) along with platform-native code: Java on Android, Swift/Objective-C on iOS, C++ on Windows or Linux, etc.
+`Socket Runtime`. provides a range of tools and software utilities to help developers build powerful application experiences using standard web technologies `(HTML, CSS, and JS)`.You can also connect your users, and let them communicate directly, without the cloud or any servers!  
+These applications are compiled by Socket's tools into hybrid-native applications -- meaning a combination of web code running in a platform's "WebView" (embedded browser) along with platform-native code: Java on Android, Swift/Objective-C on iOS, C++ on Windows or Linux, etc.
 
-These compiled applications can be distributed through major application stores, such as Google Play (Android, ChromeOS), App Store (iOS, MacOS), and Microsoft Store (Windows). These apps can thus be distributed and run on all major consumer computing platforms: Windows, MacOS, Linux, iOS, and Android.
+These compiled applications can be distributed through major application stores, such as Google Play (Android, ChromeOS), App Store (iOS, MacOS), and Microsoft Store (Windows).  
+These apps can thus be distributed and run on all major consumer computing platforms: Windows, MacOS, Linux, iOS, and Android.
 
 ### 💡 Features
 
