@@ -481,7 +481,8 @@ export class FileHandle extends EventEmitter {
 
     if (length > buffer.byteLength - offset) {
       throw new RangeError(
-        `Expecting length to be less than or equal to ${buffer.byteLength - offset}: Got ${length}`
+        `Expecting length to be less than or equal to ${buffer.byteLength - offset}: ` +
+        `Got ${length}`
       )
     }
 
@@ -495,11 +496,11 @@ export class FileHandle extends EventEmitter {
       throw result.err
     }
 
-    const contentType = result.headers.get('content-type')?.toLowerCase?.()
+    const contentType = result.headers.get('content-type')
 
     if (contentType && contentType !== 'application/octet-stream') {
       throw new TypeError(
-        'Invalid response content type from `fs.read`. Got:' + contentType
+        `Invalid response content type from 'fs.read'. Received: ${contentType}`
       )
     }
 
@@ -511,7 +512,7 @@ export class FileHandle extends EventEmitter {
       bytesRead = 0
     } else {
       throw new TypeError(
-        'Invalid response buffer from `fs.read`. Got:' + typeof result.data
+        `Invalid response buffer from 'fs.read' Received: ${typeof result.data}`
       )
     }
 
