@@ -113,8 +113,8 @@ export class ApplicationWindow {
    * @return {Promise<ipc.Result>}
    */
   async navigate (path) {
-    // TODO(@chicoxyzzy): rename url to path in the onMessage handler
-    return await ipc.send('window.navigate', { index: this.#index, targetWindowIndex: this.#index, url: formatFileUrl(path) })
+    const response = await ipc.send('window.navigate', { index: this.#index, targetWindowIndex: this.#index, url: formatFileUrl(path) })
+    return this.#updateOptions(response)
   }
 
   /**

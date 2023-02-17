@@ -746,14 +746,9 @@ namespace SSC {
     };
   }
 
-  void Window::setSize (const SSC::String& seq, int width, int height, int hints) {
+  void Window::setSize (int width, int height, int hints) {
     [window setFrame:NSMakeRect(0.f, 0.f, (float) width, (float) height) display:YES animate:NO];
     [window center];
-
-    if (seq.size() > 0) {
-      auto index = std::to_string(this->opts.index);
-      this->resolvePromise(seq, "0", index);
-    }
   }
 
   int Window::openExternal (const SSC::String& s) {

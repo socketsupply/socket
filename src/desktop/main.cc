@@ -36,23 +36,23 @@ void signalHandler (int signal) {
 
 SSC::String getNavigationError (const String &cwd, const String &value) {
   if (!value.starts_with("file://")) {
-    return SSC::String("only file:// protocol is allowed for the file navigation. Got path ") + value;
+    return SSC::String("only file:// protocol is allowed for the file navigation. Got url ") + value;
   }
-  auto path = value.substr(7);
-  if (path.empty()) {
-    return SSC::String("empty path");
+  auto url = value.substr(7);
+  if (url.empty()) {
+    return SSC::String("empty url");
   }
-  if (!path.starts_with(cwd)) {
-    return SSC::String("only files in the current working directory and its subfolders are allowed. Got path ") + value;
+  if (!url.starts_with(cwd)) {
+    return SSC::String("only files in the current working directory and its subfolders are allowed. Got url ") + value;
   }
-  if (!path.ends_with(".html")) {
-    return SSC::String("only .html files are allowed. Got path ") + value;
+  if (!url.ends_with(".html")) {
+    return SSC::String("only .html files are allowed. Got url ") + value;
   }
-  if (path.find("/../") != std::string::npos) {
-    return SSC::String("relative paths are not allowed. Got path ") + value;
+  if (url.find("/../") != std::string::npos) {
+    return SSC::String("relative urls are not allowed. Got url ") + value;
   }
-  if (!fs::exists(path)) {
-    return SSC::String("file does not exist. Got path ") + value;
+  if (!fs::exists(url)) {
+    return SSC::String("file does not exist. Got url ") + value;
   }
   return SSC::String("");
 }
@@ -531,7 +531,14 @@ MAIN {
     if (message.name == "window.getWindows") {
       const auto index = message.index;
       const auto window = windowManager.getWindow(index);
-      const auto indices = SSC::splitToInts(value, ',');
+      auto indices = SSC::splitToInts(value, ',');
+      if (indices.size() == 0) {
+        for (auto w : windowManager.windows) {
+          if (w != nullptr) {
+            indices.push_back(w->opts.index);
+          }
+        }
+      }
       const auto result = windowManager.json(indices).str();
       window->resolvePromise(message.get("seq"), OK_STATE, result);
       return;
@@ -556,7 +563,7 @@ MAIN {
         return;
       }
 
-      SSC::String error = getNavigationError(cwd, decodeURIComponent(message.get("path")));
+      SSC::String error = getNavigationError(cwd, decodeURIComponent(message.get("url")));
       if (error.size() > 0) {
         const JSON::Object json = JSON::Object::Entries {{ "err", error }};
         currentWindow->resolvePromise(seq, ERROR_STATE, json.str());
@@ -567,7 +574,7 @@ MAIN {
       auto options = WindowOptions {};
 
       options.title = message.get("title");
-      options.url = message.get("path");
+      options.url = message.get("url");
 
       if (message.get("port").size() > 0) {
         options.port = std::stoi(message.get("port"));
@@ -688,7 +695,9 @@ MAIN {
       const auto currentWindow = windowManager.getWindow(currentIndex);
       const auto targetWindowIndex = message.get("targetWindowIndex").size() > 0 ? std::stoi(message.get("targetWindowIndex")) : currentIndex;
       const auto targetWindow = windowManager.getWindow(targetWindowIndex);
+
       targetWindow->setTitle(value);
+
       JSON::Object json = JSON::Object::Entries {
         { "data", targetWindow->json() },
       };
@@ -697,24 +706,29 @@ MAIN {
     }
 
     if (message.name == "window.navigate") {
-      auto targetWindowIndex = std::stoi(message.get("targetWindowIndex"));
-      targetWindowIndex = targetWindowIndex < 0 ? 0 : targetWindowIndex;
-      auto index = message.index < 0 ? 0 : message.index;
-      auto targetWindow = windowManager.getWindow(targetWindowIndex);
-      auto url = message.get("url");
-      auto resolveWindow = windowManager.getWindow(index);
-      auto error = getNavigationError(cwd, decodeURIComponent(url));
+      const auto seq = message.seq;
+      const auto currentIndex = message.index;
+      const auto currentWindow = windowManager.getWindow(currentIndex);
+      const auto targetWindowIndex = message.get("targetWindowIndex").size() > 0 ? std::stoi(message.get("targetWindowIndex")) : currentIndex;
+      const auto targetWindow = windowManager.getWindow(targetWindowIndex);
+      const auto url = message.get("url");
+      const auto error = getNavigationError(cwd, decodeURIComponent(url));
+
       if (error.size() > 0) {
         JSON::Object json = JSON::Object::Entries {
           { "err", error }
         };
-        resolveWindow->resolvePromise(message.get("seq"), ERROR_STATE, json.str());
+        currentWindow->resolvePromise(seq, ERROR_STATE, json.str());
         return;
       }
+
+      targetWindow->navigate(seq, url);
+
       JSON::Object json = JSON::Object::Entries {
         { "data", targetWindow->json() },
       };
-      resolveWindow->resolvePromise(message.get("seq"), OK_STATE, json.str());
+
+      currentWindow->resolvePromise(seq, OK_STATE, json.str());
       return;
     }
 
@@ -763,7 +777,7 @@ MAIN {
       auto height = isHeightInPercent ? screen.height * heightUncalculated / 100 : heightUncalculated;
       auto width = isWidthInPercent ? screen.width * widthUncalculated / 100 : widthUncalculated;
 
-      targetWindow->setSize(EMPTY_SEQ, width, height, 0);
+      targetWindow->setSize(width, height, 0);
 
       JSON::Object json = JSON::Object::Entries {
         { "data", targetWindow->json() },
