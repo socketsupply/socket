@@ -1,9 +1,10 @@
-import runtime from 'socket:runtime'
+import application from 'socket:application'
 
-runtime.send({ event: `secondary window ${runtime.currentWindow} loaded`, window: 0 })
+const currentWindow = await application.getCurrentWindow()
+currentWindow.send({ event: 'secondary window loaded', window: 0 })
 
-document.querySelector('body > h1').textContent += ` ${runtime.currentWindow}`
+document.querySelector('body > h1').textContent += ` ${currentWindow.index}`
 
 window.addEventListener('character', e => {
-  runtime.send({ event: `message from secondary window ${runtime.currentWindow}`, value: e.detail, window: 0 })
+  currentWindow.send({ event: 'message from secondary window', value: e.detail, window: 0 })
 })

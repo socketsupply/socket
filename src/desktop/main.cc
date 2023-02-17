@@ -244,7 +244,7 @@ MAIN {
       [&](SSC::String const &out) {
         IPC::Message message(out);
 
-        if (message.name == "application.exit") {
+        if (message.name == "exit") {
           exitCode = stoi(message.get("value"));
           exit(exitCode);
         } else {
@@ -468,25 +468,17 @@ MAIN {
       return;
     }
 
-    if (message.name == "send") {
-      const auto event = decodeURIComponent(message.get("event"));
+    if (message.name == "window.send") {
+      const auto event = message.get("event");
       const auto value = decodeURIComponent(message.get("value"));
-      const auto targetWindowIndex = message.get("window").size() >= 0 ? std::stoi(message.get("window")) : -1;
-      if (targetWindowIndex >= 0) {
-        const auto targetWindow = windowManager.getWindow(targetWindowIndex);
-        if (targetWindow) {
-          targetWindow->eval(getEmitToRenderProcessJavaScript(event, value));
-        }
-      } else {
-        for (auto w : windowManager.windows) {
-          if (w != nullptr && w->opts.index != message.index) {
-            const auto targetWindow = windowManager.getWindow(w->opts.index);
-            targetWindow->eval(getEmitToRenderProcessJavaScript(event, value));
-          }
-        }
+      const auto targetWindowIndex = message.get("targetWindowIndex").size() >= 0 ? std::stoi(message.get("targetWindowIndex")) : -1;
+      const auto targetWindow = windowManager.getWindow(targetWindowIndex);
+      const auto currentWindow = windowManager.getWindow(message.index);
+      if (targetWindow) {
+        targetWindow->eval(getEmitToRenderProcessJavaScript(event, value));
       }
       const auto seq = message.get("seq");
-      window->resolvePromise(seq, OK_STATE, "null");
+      currentWindow->resolvePromise(seq, OK_STATE, "null");
       return;
     }
 

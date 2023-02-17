@@ -272,5 +272,6 @@ export function transform (filename) {
   'p2p.js',
   'path/path.js',
   'process.js',
-  'runtime.js'
+  'application.js',
+  'window.js'
 ].forEach(transform)
