@@ -42,5 +42,6 @@ Test all the things! See the [`test/`](test/) for the unit and integration test 
 
 ### Contributing
 
-Please stop by [Discord](https://discord.com/invite/YPV32gKCsH) and ask the team about your issue and if someone is already working on it.
+Please stop by [Discord](https://discord.com/invite/YPV32gKCsH) and ask the team about your issue and if someone is already working on it.  
+
 Thanks for your interest in reporting/fixing issues and contributing directly to the code base!
