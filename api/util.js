@@ -692,10 +692,15 @@ export function parseJSON (string) {
 }
 
 export function parseHeaders (headers) {
+  if (typeof headers !== 'string') {
+    return []
+  }
+
   return headers
     .split('\n')
-    .map((l) => l.trim().split(':').map((p) => p.trim()).filter(Boolean))
-    .filter((entry) => entry.length)
+    .map((l) => l.trim().split(':'))
+    .filter((e) => e.length === 2)
+    .map((e) => [e[0].trim().toLowerCase(), e[1].trim().toLowerCase()])
 }
 
 export function noop () {}
