@@ -18,6 +18,7 @@ async function copy (target) {
     cp('src/frontend/index.html', target),
     cp('src/frontend/index_send_event.html', target),
     cp('src/frontend/index_no_js.html', target),
+    cp('src/frontend/index_no_js2.html', target),
     cp('fixtures', target),
     // for testing purposes
     cp('socket.ini', target),

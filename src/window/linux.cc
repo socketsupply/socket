@@ -747,7 +747,7 @@ namespace SSC {
     return size;
   }
 
-  void Window::setSize (const String& seq, int width, int height, int hints) {
+  void Window::setSize (int width, int height, int hints) {
     gtk_widget_realize(window);
     gtk_window_set_resizable(GTK_WINDOW(window), hints != WINDOW_HINT_FIXED);
 

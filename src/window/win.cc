@@ -1214,7 +1214,7 @@ namespace SSC {
     return { static_cast<int>(height), static_cast<int>(width) };
   }
 
-  void Window::setSize (const SSC::String& seq, int width, int height, int hints) {
+  void Window::setSize (int width, int height, int hints) {
     auto style = GetWindowLong(window, GWL_STYLE);
 
     if (hints == WINDOW_HINT_FIXED) {
@@ -1247,11 +1247,6 @@ namespace SSC {
       );
 
       resize(window);
-    }
-
-    if (seq.size() > 0) {
-      auto index = std::to_string(this->opts.index);
-      this->resolvePromise(seq, "0", index);
     }
   }
 

@@ -31,13 +31,13 @@ if (globalThis.window) {
  */
 export async function createWindow (opts) {
   if (opts.path === undefined) {
-    throw new Error('Window path must be provided')
+    throw new Error('Path must be provided')
   }
 
   // default values
   const options = {
     targetWindowIndex: opts.index,
-    path: formatFileUrl(opts.path),
+    url: formatFileUrl(opts.path),
     index: globalThis.__args.index,
     title: opts.title ?? '',
     resizable: opts.resizable ?? true,
@@ -103,16 +103,16 @@ function throwOnInvalidIndex (index) {
 
 /**
  * Returns the ApplicationWindow instances for the given indices or all windows if no indices are provided.
- * @param {number[]} indices - the indices of the windows
+ * @param {number[]|undefined} indices - the indices of the windows
  * @return {Promise<ipc.Result>}
  * @throws {Error} - if indices is not an array of integer numbers
  */
 export async function getWindows (indices) {
   const resultIndices = indices ?? []
-  if (!Array.isArray(indices)) {
+  if (!Array.isArray(resultIndices)) {
     throw new Error('Indices list must be an array of integer numbers')
   }
-  for (const index of indices) {
+  for (const index of resultIndices) {
     throwOnInvalidIndex(index)
   }
   const { data: windows } = await ipc.send('window.getWindows', resultIndices)

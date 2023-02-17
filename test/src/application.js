@@ -7,7 +7,6 @@ import { ApplicationWindow } from 'socket:window'
 // Polyfills
 //
 test('window.resizeTo', async (t) => {
-  t.equal(typeof window.resizeTo, 'function', 'window.resizeTo is a function')
   window.resizeTo(420, 200)
   const mainWindow = await application.getCurrentWindow()
   const { width, height } = mainWindow.getSize()
@@ -17,7 +16,6 @@ test('window.resizeTo', async (t) => {
 
 // this one is not in the spec
 test('window.resizeTo percentage', async (t) => {
-  t.equal(typeof window.resizeTo, 'function', 'window.resizeTo is a function')
   window.resizeTo('20%', '20%')
   const mainWindow = await application.getCurrentWindow()
   const { width, height } = mainWindow.getSize()
@@ -56,7 +54,7 @@ test('createWindow without path', async (t) => {
     err = e
   }
   t.ok(err instanceof Error, 'throws error when path is not specified')
-  t.equal(err.message, 'Window path must be provided', 'error message is correct')
+  t.equal(err.message, 'Path must be provided', 'error message is correct')
   t.ok(!(dummyWindow instanceof ApplicationWindow), 'does not return an ApplicationWindow instance')
 })
 
@@ -69,7 +67,7 @@ test('createWindow with invalid path', async (t) => {
     err = e
   }
   t.ok(err instanceof Error, 'throws error when path is invalid')
-  t.ok(err.message.startsWith('Error: only .html files are allowed. Got path file://'), 'error message is correct')
+  t.ok(err.message.startsWith('Error: only .html files are allowed. Got url file://'), 'error message is correct')
   t.ok(err.message.endsWith('invalid.path'), 'error shows correct path')
   t.ok(!(dummyWindow instanceof ApplicationWindow), 'does not return an ApplicationWindow instance')
 })
@@ -83,7 +81,7 @@ test('createWindow with non-existent path', async (t) => {
     err = e
   }
   t.ok(err instanceof Error, 'throws error when file does not exist')
-  t.ok(err.message.startsWith('Error: file does not exist. Got path file://'), 'error message is correct')
+  t.ok(err.message.startsWith('Error: file does not exist. Got url file://'), 'error message is correct')
   t.ok(err.message.endsWith('invalid.html'), 'error shows correct path')
   t.ok(!(dummyWindow instanceof ApplicationWindow), 'does not return an ApplicationWindow instance')
 })
@@ -97,7 +95,7 @@ test('createWindow with relative path', async (t) => {
     err = e
   }
   t.ok(err instanceof Error, 'throws error when file does not exist')
-  t.ok(err.message.startsWith('Error: relative paths are not allowed. Got path file://'), 'error message is correct')
+  t.ok(err.message.startsWith('Error: relative urls are not allowed. Got url file://'), 'error message is correct')
   t.ok(err.message.endsWith('invalid.html'), 'error shows correct path')
   t.ok(!(dummyWindow instanceof ApplicationWindow), 'does not return an ApplicationWindow instance')
 })
@@ -180,9 +178,9 @@ test('getWindows with wrong options', async (t) => {
   const options = [-1, 3.14, NaN, Infinity, -Infinity, 'IDDQD', 1n, {}, [], () => {}, true, false]
   for (const option of options) {
     let err
-    let dummyWindow
+    let windows
     try {
-      dummyWindow = await application.getWindows([option])
+      windows = await application.getWindows([option])
     } catch (e) {
       err = e
     }
@@ -199,7 +197,7 @@ test('getWindows with wrong options', async (t) => {
     }
     t.ok(err instanceof Error, `throws error when type ${printValue} is being passed`)
     t.equal(err.message, `Invalid window index: ${option} (must be a positive integer number)`, `error message is correct for ${printValue}`)
-    t.ok(!(dummyWindow instanceof ApplicationWindow), 'does not return an ApplicationWindow instance')
+    t.equal(windows, undefined, 'does not return an ApplicationWindow instance')
   }
 })
 
@@ -208,9 +206,9 @@ test('getWindows with non-array', async (t) => {
   const options = [-1, 3.14, NaN, Infinity, -Infinity, 'IDDQD', 1n, {}, () => {}, true, false]
   for (const option of options) {
     let err
-    let dummyWindow
+    let windows
     try {
-      dummyWindow = await application.getWindows(option)
+      windows = await application.getWindows(option)
     } catch (e) {
       err = e
     }
@@ -227,9 +225,10 @@ test('getWindows with non-array', async (t) => {
     }
     t.ok(err instanceof Error, `throws error when type ${printValue} is being passed`)
     t.equal(err.message, 'Indices list must be an array of integer numbers', `error message is correct for ${printValue}`)
-    t.ok(!(dummyWindow instanceof ApplicationWindow), 'does not return an ApplicationWindow instance')
+    t.equal(windows, undefined, 'does not return an ApplicationWindow instance')
   }
 })
+
 
 test('getWindow with valid index', async (t) => {
   const mainWindow = await application.getWindow(0)
@@ -304,6 +303,14 @@ test.skip('new window have the correct size when sizes are provided in percent',
   counter++
 })
 
+test('getWindows all windows', async (t) => {
+  const windows = await application.getWindows()
+  t.ok(windows instanceof Object, 'returns an object')
+  t.equal(Object.keys(windows).length, counter, 'returns all windows')
+  t.ok(Object.keys(windows).every(index => Number.isInteger(Number(index))), 'keys are all integers')
+  t.ok(Object.values(windows).every((window) => window instanceof ApplicationWindow), 'values are all ApplicationWindow instances')
+})
+
 test('setTitle', async (t) => {
   const mainWindow = await application.getCurrentWindow()
   const { title } = await mainWindow.setTitle('👋')
@@ -319,6 +326,15 @@ test('hide / show', async (t) => {
   const { status: statusShown } = await mainWindow.show()
   t.equal(statusShown, ApplicationWindow.constants.WINDOW_SHOWN, 'correct status is returned on show')
   t.equal(mainWindow.getStatus(), ApplicationWindow.constants.WINDOW_SHOWN, 'window options are updated on show')
+})
+
+// TODO(@chicoxyzzy): should navigation of main window throw? should navigation of current window throw? should we even allow navigation?
+test.only('navigate window', async (t) => {
+  const newWindow = await application.createWindow({ index: counter, path: 'index_no_js.html' })
+  const { index, status } = await newWindow.navigate('index_no_js2.html')
+  t.equal(index, newWindow.index, 'correct index is returned')
+  t.equal(status, ApplicationWindow.constants.WINDOW_NAVIGATED, 'correct status is returned')
+  counter++
 })
 
 // await new Promise((resolve) => {})
