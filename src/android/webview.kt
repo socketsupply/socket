@@ -152,7 +152,7 @@ open class WebViewClient (activity: WebViewActivity) : android.webkit.WebViewCli
 
         val stream = java.io.PipedOutputStream()
         val response = android.webkit.WebResourceResponse(
-          "text/plain",
+          "application/octet-stream",
           "utf-8",
           java.io.PipedInputStream(stream)
         )
@@ -162,7 +162,6 @@ open class WebViewClient (activity: WebViewActivity) : android.webkit.WebViewCli
           "Access-Control-Allow-Headers" to "*",
           "Access-Control-Allow-Methods" to "*"
         )
-
 
         if (activity.get()?.onSchemeRequest(request, response, stream) == true) {
           return response
@@ -228,7 +227,7 @@ open class WebViewActivity : androidx.appcompat.app.AppCompatActivity() {
 
   open fun onSchemeRequest (
     request: android.webkit.WebResourceRequest,
-    response:  android.webkit.WebResourceResponse,
+    response: android.webkit.WebResourceResponse,
     stream: java.io.PipedOutputStream
   ): Boolean {
     return false

@@ -29,6 +29,7 @@ open class Window (runtime: Runtime, activity: MainActivity) {
     val filename = this.getPathToFileToLoad()
     val activity = this.activity.get() ?: return
     val runtime = this.runtime.get() ?: return
+    val source = this.getJavaScriptPreloadSource()
 
     // enable/disable debug module in webview
     android.webkit.WebView.setWebContentsDebuggingEnabled(isDebugEnabled)
@@ -49,7 +50,6 @@ open class Window (runtime: Runtime, activity: MainActivity) {
       val importMapFile = assetManager.open("socket/importmap.json")
       val importMapBytes = importMapFile.readAllBytes()
 
-      val source = this.getJavaScriptPreloadSource()
       var html = String(indexBytes).replace("<head>","""
         <head>
           <script type="importmap">
@@ -87,11 +87,13 @@ open class Window (runtime: Runtime, activity: MainActivity) {
         contentType = "application/octet-stream"
       }
 
-      response.setStatusCodeAndReasonPhrase(200, "OK")
-      response.responseHeaders = response.responseHeaders + result.headers + mapOf(
-        "Content-Type" to contentType.toString(),
-        "Content-Length" to bytes.size.toString()
-      )
+      response.apply {
+        setStatusCodeAndReasonPhrase(200, "OK")
+        setResponseHeaders(responseHeaders + result.headers + mapOf(
+          "content-type" to contentType
+        ))
+        setMimeType(contentType)
+      }
 
       try {
         stream.write(bytes, 0, bytes.size)
