@@ -165,18 +165,20 @@ export class ApplicationWindow {
    * @returns
    */
   async send (options) {
-    options.index = this.#index
-    options.window ??= -1
-
+    if (!Number.isInteger(options.window)) {
+      throw new Error('window should be an integer')
+    }
     if (typeof options.value !== 'string') {
       options.value = JSON.stringify(options.value)
     }
 
-    return await ipc.send('send', {
-      index: options.index,
-      window: options.window,
-      event: encodeURIComponent(options.event),
-      value: encodeURIComponent(options.value)
+    const value = typeof options.value === 'string' ? options.value : JSON.stringify(options.value)
+
+    return await ipc.send('window.send', {
+      index: this.#index,
+      targetWindowIndex: options.window,
+      event: options.event,
+      value: encodeURIComponent(value)
     })
   }
 

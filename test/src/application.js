@@ -301,6 +301,7 @@ test('window.close', async (t) => {
   const newWindow = await application.createWindow({ index: counter, path: 'index_no_js.html' })
   const { status } = await newWindow.close()
   t.equal(status, ApplicationWindow.constants.WINDOW_CLOSED, 'window is closed')
+  counter++
 })
 
 // TODO(@chicoxyzzy): fix incorrect sizes
@@ -455,6 +456,29 @@ test('window.showSaveFilePicker', async (t) => {
 test('window.showDirectoryFilePicker', async (t) => {
   const mainWindow = await application.getCurrentWindow()
   t.ok(mainWindow.showDirectoryFilePicker())
+})
+
+test('window.send', async (t) => {
+  const newWindow = await application.createWindow({ index: counter, path: 'index_send_event.html' })
+  const currentWindow = await application.getCurrentWindow()
+  t.equal(newWindow.index, counter, 'correct index is returned')
+  // wait for window to load
+  const e = await new Promise(resolve => window.addEventListener('secondary window loaded', resolve, { once: true }))
+  t.ok(e instanceof Event, 'secondary window loaded event is fired')
+  const value = { firstname: 'Rick', secondname: 'Sanchez' }
+  currentWindow.send({ event: 'character', value, window: counter })
+  const result = await new Promise(resolve => window.addEventListener('message from secondary window', resolve, { once: true }))
+  t.ok(result instanceof Event, 'secondary window response event is fired')
+  t.deepEqual(result.detail, value, 'send succeeds')
+  newWindow.close()
+  counter++
+})
+
+test('openExternal', async (t) => {
+  const currentWindow = await application.getCurrentWindow()
+  t.equal(typeof currentWindow.openExternal, 'function', 'openExternal is a function')
+  // can't test results without browser
+  t.equal(await currentWindow.openExternal('https://sockets.sh'), null, 'succesfully completes')
 })
 
 test('apllication.exit', async (t) => {
