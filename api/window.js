@@ -64,30 +64,8 @@ export class ApplicationWindow {
     return data
   }
 
-  async kill () {
-    const { data, err } = await ipc.send('window.kill', {
-      index: globalThis.__args.index,
-      targetWindowIndex: this.#index
-    })
-    if (err) {
-      throw new Error(err)
-    }
-    return data
-  }
-
-  async exit (code) {
-    const { data, err } = await ipc.send('window.exit', {
-      index: globalThis.__args.index,
-      targetWindowIndex: this.#index,
-      code
-    })
-    if (err) {
-      throw new Error(err)
-    }
-    return data
-  }
-
   /**
+   * Shows the window
    * @return {Promise<ipc.Result>}
    */
   async show () {
@@ -96,6 +74,7 @@ export class ApplicationWindow {
   }
 
   /**
+   * Hides the window
    * @return {Promise<ipc.Result>}
    */
   async hide () {
@@ -103,6 +82,11 @@ export class ApplicationWindow {
     return this.#updateOptions(response)
   }
 
+  /**
+   * Sets the title of the window
+   * @param {title} title - the title of the window
+   * @return {Promise<ipc.Result>}
+   */
   async setTitle (title) {
     const response = await ipc.send('window.setTitle', { index: this.#index, targetWindowIndex: this.#index, value: title })
     return this.#updateOptions(response)

@@ -1304,6 +1304,7 @@ export function createBinding (domain, ctx) {
   return domain
 }
 
+// TODO(@chicoxyzzy): generate the primordials file during the build
 // We need to set primordials here because we are using the
 // `sendSync` method. This is a hack to get around the fact
 // that we can't use cyclic imports with a sync call.

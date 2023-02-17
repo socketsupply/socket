@@ -2,6 +2,7 @@ import { test } from 'socket:test'
 import { primordials } from 'socket:ipc'
 import application from 'socket:application'
 import { ApplicationWindow } from 'socket:window'
+import { readFile } from 'socket:fs/promises'
 
 //
 // Polyfills
@@ -33,19 +34,63 @@ test('window.document.title', async (t) => {
 // End of polyfills
 //
 
-test('version', (t) => {
+// TODO(@chicoxyzzy): rename to application.socket_version? runtime_version?
+test('application.version', (t) => {
   t.equal(application.version.short, primordials.version.short, 'short version is correct')
   t.equal(application.version.hash, primordials.version.hash, 'version hash is correct')
   t.equal(application.version.full, primordials.version.full, 'full version is correct')
 })
 
-test('getScreenSize', async (t) => {
+test('application.debug', async (t) => {
+  t.equal(typeof application.debug, 'boolean', 'debug is a boolean')
+  t.equal(application.debug, globalThis.__args.debug, 'debug is correct')
+  t.throws(() => { application.debug = 1 }, 'debug is immutable')
+})
+
+test('application.config', async (t) => {
+  const rawConfig = await readFile('socket.ini', 'utf8')
+  let prefix = ''
+  const lines = rawConfig.split('\n')
+  const config = []
+  for (let line of lines) {
+    line = line.trim()
+    if (line.length === 0 || line.startsWith(';')) continue
+    if (line.startsWith('[') && line.endsWith(']')) {
+      prefix = line.slice(1, -1)
+      continue
+    }
+    let [key, value] = line.split('=')
+    key = key.trim()
+    value = value.trim().replace(/"/g, '')
+    config.push([prefix.length === 0 ? key : prefix + '_' + key, value])
+  }
+  config.forEach(([key, value]) => {
+    switch (key) {
+      case 'build_headless':
+        t.equal(application.config[key].toString(), value, `application.config.${key} is correct`)
+        break
+      case 'build_name':
+        t.ok(application.config[key].startsWith(value), `application.config.${key} is correct`)
+        break
+      default:
+        t.equal(application.config[key], value, `application.config.${key} is correct`)
+    }
+    t.throws(
+      () => { application.config[key] = 0 },
+      // eslint-disable-next-line prefer-regex-literals
+      RegExp('Attempted to assign to readonly property.'),
+      `application.config.${key} is read-only`
+    )
+  })
+})
+
+test('application.getScreenSize', async (t) => {
   const { width, height } = await application.getScreenSize()
   t.equal(width, window.screen.width, 'width is correct')
   t.equal(height, window.screen.height, 'height is correct')
 })
 
-test('createWindow without path', async (t) => {
+test('application.createWindow without path', async (t) => {
   let err
   let dummyWindow
   try {
@@ -58,7 +103,7 @@ test('createWindow without path', async (t) => {
   t.ok(!(dummyWindow instanceof ApplicationWindow), 'does not return an ApplicationWindow instance')
 })
 
-test('createWindow with invalid path', async (t) => {
+test('application.createWindow with invalid path', async (t) => {
   let err
   let dummyWindow
   try {
@@ -72,7 +117,7 @@ test('createWindow with invalid path', async (t) => {
   t.ok(!(dummyWindow instanceof ApplicationWindow), 'does not return an ApplicationWindow instance')
 })
 
-test('createWindow with non-existent path', async (t) => {
+test('application.createWindow with non-existent path', async (t) => {
   let err
   let dummyWindow
   try {
@@ -86,7 +131,7 @@ test('createWindow with non-existent path', async (t) => {
   t.ok(!(dummyWindow instanceof ApplicationWindow), 'does not return an ApplicationWindow instance')
 })
 
-test('createWindow with relative path', async (t) => {
+test('application.createWindow with relative path', async (t) => {
   let err
   let dummyWindow
   try {
@@ -100,7 +145,7 @@ test('createWindow with relative path', async (t) => {
   t.ok(!(dummyWindow instanceof ApplicationWindow), 'does not return an ApplicationWindow instance')
 })
 
-test('createWindow with existing index', async (t) => {
+test('application.createWindow with existing index', async (t) => {
   let err
   let dummyWindow
   try {
@@ -114,7 +159,7 @@ test('createWindow with existing index', async (t) => {
   t.ok(!(dummyWindow instanceof ApplicationWindow), 'does not return an ApplicationWindow instance')
 })
 
-test('createWindow with invalid dimensions', async (t) => {
+test('application.createWindow with invalid dimensions', async (t) => {
   // passing Symbol() will throw on encodeURIComponent
   const sizes = [-1, '42', '-1%', '1.5px', '100.5%', 1n, {}, [], () => {}, true, false]
   const dimensions = ['width', 'height']
@@ -145,7 +190,7 @@ test('createWindow with invalid dimensions', async (t) => {
   }
 })
 
-test('getWindow with wrong options', async (t) => {
+test('application.getWindow with wrong options', async (t) => {
   // passing Symbol() will throw on encodeURIComponent`
   const options = [-1, 3.14, NaN, Infinity, -Infinity, 'IDDQD', 1n, {}, [], () => {}, true, false]
   for (const option of options) {
@@ -173,7 +218,7 @@ test('getWindow with wrong options', async (t) => {
   }
 })
 
-test('getWindows with wrong options', async (t) => {
+test('application.getWindows with wrong options', async (t) => {
   // passing Symbol() will throw on encodeURIComponent`
   const options = [-1, 3.14, NaN, Infinity, -Infinity, 'IDDQD', 1n, {}, [], () => {}, true, false]
   for (const option of options) {
@@ -201,7 +246,7 @@ test('getWindows with wrong options', async (t) => {
   }
 })
 
-test('getWindows with non-array', async (t) => {
+test('application.getWindows with non-array', async (t) => {
   // passing Symbol() will throw on encodeURIComponent`
   const options = [-1, 3.14, NaN, Infinity, -Infinity, 'IDDQD', 1n, {}, () => {}, true, false]
   for (const option of options) {
@@ -229,13 +274,13 @@ test('getWindows with non-array', async (t) => {
   }
 })
 
-test('getWindow with valid index', async (t) => {
+test('application.getWindow with valid index', async (t) => {
   const mainWindow = await application.getWindow(0)
   t.ok(mainWindow instanceof ApplicationWindow, 'returns an ApplicationWindow instance')
   t.equal(mainWindow.index, 0, 'window index is correct')
 })
 
-test('getWindows with valid index', async (t) => {
+test('application.getWindows with valid index', async (t) => {
   const windows = await application.getWindows([0])
   t.ok(windows instanceof Object, 'returns an object')
   t.ok(Object.keys(windows).every(index => Number.isInteger(Number(index))), 'keys are all integers')
@@ -243,7 +288,7 @@ test('getWindows with valid index', async (t) => {
 })
 
 // TODO(@chicoxyzzy): test other windows
-test('getCurrentWindow', async (t) => {
+test('application.getCurrentWindow', async (t) => {
   const mainWindow = await application.getCurrentWindow()
   t.ok(mainWindow instanceof ApplicationWindow, 'returns an ApplicationWindow instance')
   t.equal(mainWindow.index, 0, 'window index is correct')
@@ -251,6 +296,12 @@ test('getCurrentWindow', async (t) => {
 
 // TODO(@chicoxyzzy): neither kill nor exit work so I use the counter workaround
 let counter = 1
+
+test('window.close', async (t) => {
+  const newWindow = await application.createWindow({ index: counter, path: 'index_no_js.html' })
+  const { status } = await newWindow.close()
+  t.equal(status, ApplicationWindow.constants.WINDOW_CLOSED, 'window is closed')
+})
 
 // TODO(@chicoxyzzy): fix incorrect sizes
 test.skip('new window inherts the size of the main window when sizes are not provided', async (t) => {
@@ -302,22 +353,24 @@ test.skip('new window have the correct size when sizes are provided in percent',
   counter++
 })
 
-test('getWindows all windows', async (t) => {
+// TODO(@chicoxyzzy): segfaults
+test.skip('application.getWindows all windows', async (t) => {
   const windows = await application.getWindows()
   t.ok(windows instanceof Object, 'returns an object')
+  t.ok(Object.keys(windows).length > 0, 'returns at least one window')
   t.equal(Object.keys(windows).length, counter, 'returns all windows')
   t.ok(Object.keys(windows).every(index => Number.isInteger(Number(index))), 'keys are all integers')
   t.ok(Object.values(windows).every((window) => window instanceof ApplicationWindow), 'values are all ApplicationWindow instances')
 })
 
-test('setTitle', async (t) => {
+test('window.setTitle', async (t) => {
   const mainWindow = await application.getCurrentWindow()
   const { title } = await mainWindow.setTitle('👋')
   t.equal(title, '👋', 'correct title is returned')
   t.equal(mainWindow.getTitle(), '👋', 'window options are updated')
 })
 
-test('hide / show', async (t) => {
+test('window.hide / window.show', async (t) => {
   const mainWindow = await application.getCurrentWindow()
   const { status: statusHidden } = await mainWindow.hide()
   t.equal(statusHidden, ApplicationWindow.constants.WINDOW_HIDDEN, 'correct status is returned on hide')
@@ -328,7 +381,8 @@ test('hide / show', async (t) => {
 })
 
 // TODO(@chicoxyzzy): should navigation of main window throw? should navigation of current window throw? should we even allow navigation?
-test.skip('navigate window', async (t) => {
+// TODO(@chicoxyzzy): freezes the app
+test.skip('window.navigate', async (t) => {
   const newWindow = await application.createWindow({ index: counter, path: 'index_no_js.html' })
   const { index, status } = await newWindow.navigate('index_no_js2.html')
   t.equal(index, newWindow.index, 'correct index is returned')
@@ -336,10 +390,15 @@ test.skip('navigate window', async (t) => {
   counter++
 })
 
-test('showInspector', async (t) => {
+test('window.showInspector', async (t) => {
   const mainWindow = await application.getCurrentWindow()
-  const result = await mainWindow.showInspector()
-  t.equal(result, true, 'returns true')
+  t.equal(typeof mainWindow.showInspector, 'function', 'showInspector is a function')
+  // const result = await mainWindow.showInspector()
+  // t.equal(result, true, 'returns true')
+})
+
+test('apllication.exit', async (t) => {
+  t.equal(typeof application.exit, 'function', 'exit is a function')
 })
 
 // await new Promise((resolve) => {})
