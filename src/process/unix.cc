@@ -263,6 +263,7 @@ void Process::read() noexcept {
 
           if (n > 0) {
             if (fd_is_stdout[i]) {
+              std::lock_guard<std::mutex> lock(stdout_mutex);
               auto b = SSC::String(buffer.get());
               auto parts = splitc(b, '\n');
 
@@ -282,6 +283,7 @@ void Process::read() noexcept {
                 ss << b;
               }
             } else {
+              std::lock_guard<std::mutex> lock(stderr_mutex);
               read_stderr(SSC::String(buffer.get()));
             }
           } else if (n < 0 && errno != EINTR && errno != EAGAIN && errno != EWOULDBLOCK) {
