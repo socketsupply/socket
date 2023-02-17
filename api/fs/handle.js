@@ -496,7 +496,7 @@ export class FileHandle extends EventEmitter {
       throw result.err
     }
 
-    const contentType = result.headers.get('content-type')
+    const contentType = result.headers?.get('content-type')
 
     if (contentType && contentType !== 'application/octet-stream') {
       throw new TypeError(
