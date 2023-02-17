@@ -63,8 +63,12 @@ export function isPlainObject (object) {
   )
 }
 
+export function isArrayBuffer (object) {
+  return object !== null && object instanceof ArrayBuffer
+}
+
 export function isBufferLike (object) {
-  return isTypedArray(object) || Buffer.isBuffer(object)
+  return isArrayBuffer(object) || isTypedArray(object) || Buffer.isBuffer(object)
 }
 
 export function isFunction (value) {
@@ -685,6 +689,13 @@ export function parseJSON (string) {
   }
 
   return null
+}
+
+export function parseHeaders (headers) {
+  return headers
+    .split('\n')
+    .map((l) => l.trim().split(':').map((p) => p.trim()).filter(Boolean))
+    .filter((entry) => entry.length)
 }
 
 export function noop () {}

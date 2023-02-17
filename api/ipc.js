@@ -32,9 +32,11 @@ import {
 } from './errors.js'
 
 import {
+  isArrayLike,
   isBufferLike,
   isPlainObject,
   format,
+  parseHeaders,
   parseJSON
 } from './util.js'
 
@@ -43,6 +45,11 @@ import { Buffer } from './buffer.js'
 import console from './console.js'
 
 let nextSeq = 1
+
+/**
+ * @ignore
+ */
+export const Headers = globalThis.Headers
 
 /**
  * @ignore
@@ -193,10 +200,15 @@ function getRequestResponseText (request) {
   return null
 }
 
-function getRequestResponse (request) {
+function getRequestResponse (request, options) {
   if (!request) return null
   const { responseType } = request
+  const expectedResponseType = options?.responseType ?? responseType
   let response = null
+
+  if (expectedResponseType && responseType !== expectedResponseType) {
+    return null
+  }
 
   if (!responseType || responseType === 'text') {
     // `responseText` could be an accessor which could throw an
@@ -715,10 +727,11 @@ export class Result {
    * @param {(object|Error|mixed)=} result
    * @param {Error=} [maybeError]
    * @param {string=} [maybeSource]
+   * @param {object=|string=|Headers=} [maybeHeaders]
    * @return {Result}
    * @ignore
    */
-  static from (result, maybeError, maybeSource, ...args) {
+  static from (result, maybeError, maybeSource, maybeHeaders, ...args) {
     if (result instanceof Result) {
       if (!result.source && maybeSource) {
         result.source = maybeSource
@@ -726,6 +739,10 @@ export class Result {
 
       if (!result.err && maybeError) {
         result.err = maybeError
+      }
+
+      if (!result.headers && maybeHeaders) {
+        result.headers = maybeHeaders
       }
 
       return result
@@ -744,9 +761,11 @@ export class Result {
     const data = !err && result?.data !== null && result?.data !== undefined
       ? result.data
       : (!err ? result : null)
-    const source = result?.source || maybeSource || null
 
-    return new this(err, data, source, ...args)
+    const source = result?.source || maybeSource || null
+    const headers = result?.headers || maybeHeaders || null
+
+    return new this(err, data, source, headers, ...args)
   }
 
   /**
@@ -755,14 +774,25 @@ export class Result {
    * @param {Error=} [err = null]
    * @param {object=} [data = null]
    * @param {string=} [source = undefined]
+   * @param {object=|string=|Headers=} [headers = null]
    * @ignore
    */
-  constructor (err, data, source) {
+  constructor (err = null, data = null, source = null, headers = null) {
     this.err = typeof err !== 'undefined' ? err : null
     this.data = typeof data !== 'undefined' ? data : null
     this.source = typeof source === 'string' && source.length
       ? source
       : undefined
+
+    this.headers = undefined
+
+    if (headers instanceof Headers) {
+      this.headers = Headers
+    } else if (isPlainObject(headers) || isArrayLike(headers)) {
+      this.headers = new Headers(headers)
+    } else if (typeof headers === 'string') {
+      this.headers = new Headers(parseHeaders(headers))
+    }
 
     Object.defineProperty(this, 0, {
       get: () => this.err,
@@ -781,6 +811,12 @@ export class Result {
       enumerable: false,
       configurable: false
     })
+
+    Object.defineProperty(this, 3, {
+      get: () => this.headers,
+      enumerable: false,
+      configurable: false
+    })
   }
 
   /**
@@ -788,7 +824,7 @@ export class Result {
    * @ignore
    */
   get length () {
-    return [...this].filter((v) => v !== undefined).length
+    return Array.from(this).length
   }
 
   /**
@@ -796,9 +832,22 @@ export class Result {
    * @ignore
    */
   * [Symbol.iterator] () {
-    yield this.err
-    yield this.data
-    yield this.source
+    if (this.err !== undefined) yield this.err
+    if (this.data !== undefined) yield this.data
+    if (this.source !== undefined) yield this.source
+    if (this.headers !== undefined) yield this.headers
+  }
+
+  /**
+   * @ignore
+   */
+  toJSON () {
+    return {
+      err: this.err ?? null,
+      data: this.data ?? null,
+      source: this.source ?? null,
+      headers: this.headers ?? null
+    }
   }
 }
 
@@ -833,7 +882,7 @@ export async function ready () {
  * @return {Result}
  * @ignore
  */
-export function sendSync (command, params) {
+export function sendSync (command, params, options) {
   if (typeof window === 'undefined') {
     if (debug.enabled) {
       debug.log('Global window object is not defined')
@@ -857,10 +906,13 @@ export function sendSync (command, params) {
     debug.log('ipc.sendSync: %s', uri + query)
   }
 
+  request.responseType = options?.responseType ?? ''
   request.open('GET', uri + query, false)
   request.send()
 
-  const result = Result.from(getRequestResponse(request), null, command)
+  const response = getRequestResponse(request, options)
+  const headers = request.getAllResponseHeaders()
+  const result = Result.from(response, null, command, headers)
 
   if (debug.enabled) {
     debug.log('ipc.sendSync: (resolved)', command, result)
@@ -1021,6 +1073,7 @@ export async function write (command, params, buffer, options) {
 
   const query = `?${params}`
 
+  request.responseType = options?.responseType ?? ''
   request.open('POST', uri + query, true)
   await request.send(buffer || null)
 
@@ -1053,7 +1106,9 @@ export async function write (command, params, buffer, options) {
         resolved = true
         clearTimeout(timeout)
 
-        const result = Result.from(getRequestResponse(request), null, command)
+        const response = getRequestResponse(request, options)
+        const headers = request.getAllResponseHeaders()
+        const result = Result.from(response, null, command, headers)
 
         if (debug.enabled) {
           debug.log('ipc.write: (resolved)', command, result)
@@ -1064,10 +1119,11 @@ export async function write (command, params, buffer, options) {
     }
 
     request.onerror = () => {
+      const headers = request.getAllResponseHeaders()
       const err = new Error(getRequestResponseText(request) || '')
       resolved = true
       clearTimeout(timeout)
-      resolve(Result.from(null, err, command))
+      resolve(Result.from(null, err, command, headers))
     }
   })
 }
@@ -1145,7 +1201,9 @@ export async function request (command, params, options) {
         resolved = true
         clearTimeout(timeout)
 
-        const result = Result.from(getRequestResponse(request), null, command)
+        const response = getRequestResponse(request, options)
+        const headers = request.getAllResponseHeaders()
+        const result = Result.from(response, null, command, headers)
 
         if (debug.enabled) {
           debug.log('ipc.request: (resolved)', command, result)
@@ -1156,10 +1214,11 @@ export async function request (command, params, options) {
     }
 
     request.onerror = () => {
+      const headers = request.getAllResponseHeaders()
       const err = new Error(getRequestResponseText(request))
       resolved = true
       clearTimeout(timeout)
-      resolve(Result.from(null, err, command))
+      resolve(Result.from(null, err, command, headers))
     }
   })
 }
