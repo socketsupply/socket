@@ -804,13 +804,13 @@ MAIN {
       return;
     }
 
-    if (message.name == "menu") {
+    if (message.name == "application.setSystemMenu") {
       const auto seq = message.get("seq");
       window->setSystemMenu(seq, decodeURIComponent(value));
       return;
     }
 
-    if (message.name == "menuItemEnabled") {
+    if (message.name == "application.setSystemMenuItemEnabled") {
       const auto seq = message.get("seq");
       const auto enabled = message.get("enabled").find("true") != -1;
       int indexMain = 0;
@@ -842,7 +842,7 @@ MAIN {
       return;
     }
 
-    if (message.name == "context") {
+    if (message.name == "application.setContextMenu") {
       auto seq = message.get("seq");
       window->setContextMenu(seq, decodeURIComponent(value));
       return;

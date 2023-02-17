@@ -154,6 +154,19 @@ export async function exit (code) {
 }
 
 /**
+ * Opens a native context menu.
+ * @param {object} options - an options object
+ * @return {Promise<Any>}
+ */
+export async function setContextMenu (o) {
+  o = Object
+    .entries(o)
+    .flatMap(a => a.join(':'))
+    .join('_')
+  return await ipc.send('application.setContextMenu', o)
+}
+
+/**
  * Set the native menu for the app.
  *
  * @param {object} options - an options object
@@ -288,11 +301,11 @@ export async function setSystemMenu (o) {
     }
   }
 
-  return await ipc.send('menu', o)
+  return await ipc.send('application.setSystemMenu', o)
 }
 
 export async function setSystemMenuItemEnabled (value) {
-  return await ipc.send('menuItemEnabled', value)
+  return await ipc.send('application.setSystemMenuItemEnabled', value)
 }
 
 export const version = primordials.version
