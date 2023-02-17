@@ -1092,7 +1092,7 @@ namespace SSC {
       this->exit(0);
       DestroyWindow(window);
     } else {
-      this->hide("");
+      this->hide();
     }
   }
 
