@@ -510,11 +510,6 @@ MAIN {
       return;
     }
 
-    if (message.name == "inspect") {
-      window->showInspector();
-      return;
-    }
-
     if (message.name == "getScreenSize") {
       const auto seq = message.get("seq");
       const auto index = message.index;
@@ -728,6 +723,23 @@ MAIN {
         { "data", targetWindow->json() },
       };
 
+      currentWindow->resolvePromise(seq, OK_STATE, json.str());
+      return;
+    }
+
+    if (message.name == "window.showInspector") {
+      const auto seq = message.seq;
+      const auto currentIndex = message.index;
+      const auto currentWindow = windowManager.getWindow(currentIndex);
+      const auto targetWindowIndex = message.get("targetWindowIndex").size() > 0 ? std::stoi(message.get("targetWindowIndex")) : currentIndex;
+      const auto targetWindow = windowManager.getWindow(targetWindowIndex);
+      
+      targetWindow->showInspector();
+
+      JSON::Object json = JSON::Object::Entries {
+        { "data", true },
+      };
+      
       currentWindow->resolvePromise(seq, OK_STATE, json.str());
       return;
     }
