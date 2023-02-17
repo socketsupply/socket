@@ -16,7 +16,7 @@
 These applications are compiled by Socket's tools into hybrid-native applications -- meaning a combination of web code running in a platform's "WebView" (embedded browser) along with platform-native code: Java on Android, Swift/Objective-C on iOS, C++ on Windows or Linux, etc.
 
 These compiled applications can be distributed through major application stores, such as Google Play (Android, ChromeOS), App Store (iOS, MacOS), and Microsoft Store (Windows).  
-These apps can thus be distributed and run on all major consumer computing platforms: Windows, MacOS, Linux, iOS, and Android.
+These apps can thus be distributed and run on all major consumer computing platforms: `Windows`, `MacOS`,` Linux`, `iOS`, and `Android`.
 
 ### 💡 Features
 
