@@ -40,10 +40,6 @@ export async function openExternal (options) {
   return await ipc.postMessage(`ipc://external?value=${encodeURIComponent(options)}`)
 }
 
-export function reload () {
-  ipc.postMessage('ipc://reload')
-}
-
 // eslint-disable-next-line
 import * as exports from './runtime.js'
 export default exports

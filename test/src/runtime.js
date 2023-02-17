@@ -145,10 +145,5 @@ if (process.platform !== 'win32') {
     // t.equal(await runtime.openExternal('https://sockets.sh'), null, 'succesfully completes')
   })
 
-  // TODO: can we improve this test?
-  test('reload', (t) => {
-    t.equal(typeof runtime.reload, 'function', 'reload is a function')
-  })
-
   // We don't need to test runtime.exit. It works if the app exits after the tests.
 }
