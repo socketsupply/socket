@@ -229,7 +229,6 @@ test('getWindows with non-array', async (t) => {
   }
 })
 
-
 test('getWindow with valid index', async (t) => {
   const mainWindow = await application.getWindow(0)
   t.ok(mainWindow instanceof ApplicationWindow, 'returns an ApplicationWindow instance')

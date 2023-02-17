@@ -767,11 +767,6 @@ namespace SSC {
 
       gtk_window_set_geometry_hints(GTK_WINDOW(window), nullptr, &g, h);
     }
-
-    if (seq.size() > 0) {
-      auto index = std::to_string(this->opts.index);
-      this->resolvePromise(seq, "0", index);
-    }
   }
 
   void Window::setSystemMenu (const String &seq, const String &value) {
