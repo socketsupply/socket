@@ -437,7 +437,7 @@ namespace SSC {
       }
 
       if (nread > 0) {
-        char address[17];
+        char address[17] = {0};
         Post post;
         int port;
 
@@ -449,7 +449,7 @@ namespace SSC {
         }};
 
         post.id = rand64();
-        post.body = new char[nread]{0};
+        post.body = buf->base;
         post.length = (int) nread;
         post.headers = headers.str();
 
@@ -466,10 +466,6 @@ namespace SSC {
         };
 
         cb("-1", json, post);
-      }
-
-      if (buf->base != nullptr) {
-        delete buf->base;
       }
     });
 
