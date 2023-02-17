@@ -110,7 +110,7 @@ extern "C" {
         auto body = result.post.body;
         auto bytes = body && size? env->NewByteArray(size) : nullptr;
 
-        if (bytes != nullptr ) {
+        if (bytes != nullptr) {
           env->SetByteArrayRegion(bytes, 0, size, (jbyte *) body);
         }
 
