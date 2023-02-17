@@ -20,7 +20,7 @@ These compiled applications can be distributed through major application stores,
 
 ### FAQ
 
-Check the [Website]((https://sockets.sh/) to learn more.
+Check the [Website](https://sockets.sh/) to learn more.
  <!--we can Kyle's FAQ here, I read it yesterday and it's perfect  -->
 
  
