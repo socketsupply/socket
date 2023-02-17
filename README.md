@@ -35,7 +35,8 @@ Check the [Website](https://sockets.sh/) to learn more.
  
 ### 🧱 Building your first Socket app !
 
-If you are interested in making a `Socket` app, please check [create-socket-app Repo](https://github.com/socketsupply/create-socket-app).  
+This is similar to React's `Create React App`, we provides a few basic boilerplates and some strong opinions so you can get coding on a production-quality app as quickly as possible.  
+Please check [create-socket-app Repo](https://github.com/socketsupply/create-socket-app) to get started and to learn more.  
 You can also check our `Examples` in the [Examples Repo](https://github.com/socketsupply/socket-examples).  
 
 
