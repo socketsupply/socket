@@ -497,7 +497,6 @@ namespace SSC {
       if (size > 0) {
         buf->base = (char *) new char[size]{0};
         buf->len = size;
-        memset(buf->base, 0, buf->len);
       }
     };
 
