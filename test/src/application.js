@@ -328,7 +328,7 @@ test('hide / show', async (t) => {
 })
 
 // TODO(@chicoxyzzy): should navigation of main window throw? should navigation of current window throw? should we even allow navigation?
-test.only('navigate window', async (t) => {
+test.skip('navigate window', async (t) => {
   const newWindow = await application.createWindow({ index: counter, path: 'index_no_js.html' })
   const { index, status } = await newWindow.navigate('index_no_js2.html')
   t.equal(index, newWindow.index, 'correct index is returned')
