@@ -387,7 +387,52 @@ test.skip('window.navigate', async (t) => {
   const { index, status } = await newWindow.navigate('index_no_js2.html')
   t.equal(index, newWindow.index, 'correct index is returned')
   t.equal(status, ApplicationWindow.constants.WINDOW_NAVIGATED, 'correct status is returned')
+  newWindow.close()
   counter++
+})
+
+// TODO(@chicoxyzzy): freezes the app
+test.skip('window.setBackgroundColor', async (t) => {
+  const newWindow = await application.createWindow({ index: counter, path: 'index_no_js.html' })
+  const { index } = await newWindow.setBackgroundColor({ red: 0, green: 0, blue: 0, alpha: 0 })
+  // await new Promise((resolve) => {})
+  t.equal(index, newWindow.index, 'correct index is returned')
+  newWindow.close()
+  counter++
+})
+
+// FIXME: freezes the app
+test('application.setContextMenu', async (t) => {
+  // const result = await application.setContextMenu({ 'Foo': '', 'Bar': '' })
+  // t.equal(result, null, 'setContextMenu succeeds')
+})
+
+test('application.setSystemMenuItemEnabled', async (t) => {
+  const result = await application.setSystemMenuItemEnabled({ indexMain: 0, indexSub: 0, enabled: true })
+  t.equal(result.err, null, 'setSystemMenuItemEnabled succeeds')
+})
+
+test('application.setSystemMenu', async (t) => {
+  const result = await application.setSystemMenu({
+    index: 0, value: `
+    App:
+      Foo: f;
+      Edit:
+      Cut: x
+      Copy: c
+      Paste: v
+      Delete: _
+      Select All: a;
+      Other:
+      Apple: _
+      Another Test: T
+      !Im Disabled: I
+      Some Thing: S + Meta
+      ---
+      Bazz: s + Meta, Control, Alt;
+  `
+  })
+  t.equal(result.err, null, 'setSystemMenuItemVisible succeeds')
 })
 
 test('window.showInspector', async (t) => {

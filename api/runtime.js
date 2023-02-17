@@ -40,25 +40,6 @@ export async function openExternal (options) {
   return await ipc.postMessage(`ipc://external?value=${encodeURIComponent(options)}`)
 }
 
-export async function setWindowBackgroundColor (opts) {
-  opts.index = currentWindow
-  const o = new URLSearchParams(opts).toString()
-  await ipc.postMessage(`ipc://window.setBackgroundColor?${o}`)
-}
-
-/**
- * Opens a native context menu.
- * @param {object} options - an options object
- * @return {Promise<Any>}
- */
-export async function setContextMenu (o) {
-  o = Object
-    .entries(o)
-    .flatMap(a => a.join(':'))
-    .join('_')
-  return await ipc.send('context', o)
-}
-
 export async function setSystemMenuItemEnabled (value) {
   return await ipc.send('menuItemEnabled', value)
 }

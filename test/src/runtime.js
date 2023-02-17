@@ -29,6 +29,7 @@ if (process.platform !== 'win32') {
       t.deepEqual(result, value, 'send succeeds')
       t.deepEqual(pong, value, 'send back from window 1 succeeds')
     })
+<<<<<<< HEAD
 
     test('setWindowBackgroundColor', async (t) => {
       t.equal(typeof runtime.setWindowBackgroundColor, 'function', 'setWindowBackgroundColor is a function')
@@ -113,6 +114,8 @@ if (process.platform !== 'win32') {
         )
       })
     })
+=======
+>>>>>>> b656f079 (add system menus)
   }
 
 <<<<<<< HEAD
