@@ -166,7 +166,7 @@ int runApp (const fs::path& path, const String& args, bool headless) {
       if (headlessRunnerFlags.size() == 0) {
         // use sane defaults if 'xvfb-run' is used
         if (headlessRunner == "xvfb-run") {
-          headlessRunnerFlags = "--server-args='-screen 0 1920x1080x24'";
+          headlessRunnerFlags = " --server-args='-screen 0 1920x1080x24' ";
         }
       }
     }
@@ -181,9 +181,9 @@ int runApp (const fs::path& path, const String& args, bool headless) {
   //   auto part = s.substr(0, s.find(".app/") + 4);
   //   status = std::system(("open -n " + part + " --args " + args + " --from-ssc").c_str());
   }
-  std::cout << "Running app: " << prefix << cmd << args + " --from-ssc --w32" << std::endl;
+  std::cout << "Running app: " << headlessCommand << prefix << cmd << args + " --from-ssc" << std::endl;
   auto process = new SSC::Process(
-    headlessCommand + prefix + cmd,
+     headlessCommand + prefix + cmd,
     args + " --from-ssc",
     fs::current_path().string(),
     [](SSC::String const &out) { std::cout << out << std::endl; },
@@ -193,7 +193,11 @@ int runApp (const fs::path& path, const String& args, bool headless) {
   process->open();
   process->wait();
 
-  return WEXITSTATUS(process->status);
+  log("runApp result: " + std::to_string(process->status));
+  // status = std::system((headlessCommand + prefix + cmd + " " + args + " --from-ssc").c_str());
+  // log("runApp result: " + std::to_string(status));
+
+  return process->status;
 }
 
 int runApp (const fs::path& path, const String& args) {
