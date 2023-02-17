@@ -810,10 +810,20 @@ MAIN {
       return;
     };
 
-    const JSON::Object error = JSON::Object::Entries {
-      {"err", "unsupported IPC message: " + message.name}
+    auto err = JSON::Object::Entries {
+      {"source", message.name},
+      {"err", JSON::Object::Entries {
+        {"message", "Not found"},
+        {"type", "NotFoundError"},
+        {"url", out}
+      }}
     };
-    window->resolvePromise(message.get("seq"), ERROR_STATE, encodeURIComponent(error.str()));
+
+    window->resolvePromise(
+      message.get("seq"),
+      ERROR_STATE,
+      encodeURIComponent(JSON::Object(err).str())
+    );
   };
 
   //
