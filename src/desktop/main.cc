@@ -142,10 +142,12 @@ MAIN {
     // launched from the `ssc` cli
     app.fromSSC = s.find("--from-ssc") == 0 ? true : false;
 
+    #ifdef _WIN32
     if (!app.w32ShowConsole && s.find("--w32-console") == 0) {
       app.w32ShowConsole = true;
       app.ShowConsole();
     }
+    #endif
 
     if (s.find("--test") == 0) {
       suffix = "-test";
