@@ -27,7 +27,8 @@ test('ipc exports', async (t) => {
     'resolve',
     'send',
     'sendSync',
-    'write'
+    'write',
+    'Headers'
   ].sort())
 
   try {
@@ -129,9 +130,9 @@ test('ipc.send not found', async (t) => {
   const response = await ipc.send('test', { foo: 'bar' })
   t.ok(response instanceof ipc.Result, 'response is an ipc.Result')
   t.ok(response.err instanceof Error, 'response.err is an Error')
-  t.equal(response.err.toString(), 'Error: unsupported IPC message: test')
-  t.equal(response.err.name, 'Error')
-  t.equal(response.err.message, 'unsupported IPC message: test')
+  t.equal(response.err.toString(), 'NotFoundError: Not found')
+  t.equal(response.err.name, 'NotFoundError')
+  t.equal(response.err.message, 'Not found')
 })
 
 test('ipc.send success', async (t) => {
