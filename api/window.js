@@ -110,6 +110,7 @@ export class ApplicationWindow {
   }
 
   /**
+   * Sets the background color of the window
    * @param {object} opts - an options object
    * @param {number} opts.red - the red value
    * @param {number} opts.green - the green value
@@ -117,10 +118,9 @@ export class ApplicationWindow {
    * @param {number} opts.alpha - the alpha value
    * @return {Promise<ipc.Result>}
    */
-  async setBackgrounColor (opts) {
-    opts.index = this.#index
-    const o = new URLSearchParams(opts).toString()
-    await ipc.postMessage(`ipc://window.setBackgroundColor?${o}`)
+  async setBackgroundColor (opts) {
+    const response = await ipc.send('window.setBackgroundColor', { index: this.#index, targetWindowIndex: this.#index })
+    return this.#updateOptions(response)
   }
 
   /**
