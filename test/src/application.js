@@ -19,8 +19,8 @@ test('window.resizeTo percentage', async (t) => {
   window.resizeTo('20%', '20%')
   const mainWindow = await application.getCurrentWindow()
   const { width, height } = mainWindow.getSize()
-  t.equal(width, Math.ceil(window.screen.width * 0.2), 'width is 420')
-  t.equal(height, Math.ceil(window.screen.height * 0.2), 'height is 200')
+  t.equal(width, Math.round(window.screen.width * 0.2), 'width is 420')
+  t.equal(height, Math.round(window.screen.height * 0.2), 'height is 200')
 })
 
 test('window.document.title', async (t) => {
