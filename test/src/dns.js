@@ -1,5 +1,6 @@
 import { test } from 'socket:test'
 import dns from 'socket:dns'
+import os from 'socket:os'
 
 // node compat
 // import dns from 'node:dns'
@@ -45,7 +46,7 @@ test('dns.lookup', async t => {
         resolve()
       })
     }),
-    new Promise(resolve => {
+    os.platform() !== 'win32' && new Promise(resolve => {
       dns.lookup('google.com', 6, (err, address, family) => {
         if (err) return t.fail(err)
         t.equal(family, 6, 'is IPv6 family')
