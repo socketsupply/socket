@@ -419,12 +419,12 @@ export class FileHandle extends EventEmitter {
     let signal = options?.signal || null
 
     if (typeof buffer === 'object' && !isBufferLike(buffer)) {
-      offset = buffer.offset
-      length = buffer.length
-      position = buffer.position
-      signal = buffer.signal || signal
-      timeout = buffer.timeout || timeout
-      buffer = buffer.buffer
+      offset = buffer.offset ?? 0
+      length = buffer.length ?? buffer.byteLength ?? 0
+      position = buffer.position ?? 0
+      signal = buffer.signal ?? signal
+      timeout = buffer.timeout ?? timeout
+      buffer = buffer.buffer ?? buffer
     }
 
     if (signal?.aborted) {
@@ -497,7 +497,7 @@ export class FileHandle extends EventEmitter {
 
     if (isTypedArray(result.data) || result.data instanceof ArrayBuffer) {
       bytesRead = result.data.byteLength
-      Buffer.from(result.data).copy(buffer, 0, offset)
+      Buffer.from(result.data).copy(Buffer.from(buffer), 0, offset)
     } else if (isEmptyObject(result.data)) {
       // an empty response from mac returns an empty object sometimes
       bytesRead = 0
