@@ -136,6 +136,27 @@ export class ApplicationWindow {
     return await ipc.send('context', o)
   }
 
+  // TODO(@heapwolf) the properties do not yet conform to the MDN spec
+  async showOpenFilePicker (o) {
+    console.warn('window.showOpenFilePicker may not conform to the standard')
+    const { data } = await ipc.send('dialog', { type: 'open', ...o })
+    return typeof data === 'string' ? data.split('\n') : []
+  }
+
+  // TODO(@heapwolf) the properties do not yet conform to the MDN spec
+  async showSaveFilePicker (o) {
+    console.warn('window.showSaveFilePicker may not conform to the standard')
+    const { data } = await ipc.send('dialog', { type: 'save', ...o })
+    return typeof data === 'string' ? data.split('\n') : []
+  }
+
+  // TODO(@heapwolf) the properties do not yet conform to the MDN spec
+  async showDirectoryFilePicker (o) {
+    console.warn('window.showDirectoryFilePicker may not conform to the standard')
+    const { data } = await ipc.send('dialog', { allowDirs: true, ...o })
+    return typeof data === 'string' ? data.split('\n') : []
+  }
+
   async reload () {
     // TODO(@chicoxyzzy): which window to reload?
     ipc.postMessage('ipc://reload')
