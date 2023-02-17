@@ -495,6 +495,14 @@ export class FileHandle extends EventEmitter {
       throw result.err
     }
 
+    const contentType = result.headers.get('content-type')?.toLowerCase?.()
+
+    if (contentType && contentType !== 'application/octet-stream') {
+      throw new TypeError(
+        'Invalid response content type from `fs.read`. Got:' + contentType
+      )
+    }
+
     if (isTypedArray(result.data) || result.data instanceof ArrayBuffer) {
       bytesRead = result.data.byteLength
       Buffer.from(result.data).copy(Buffer.from(buffer), 0, offset)

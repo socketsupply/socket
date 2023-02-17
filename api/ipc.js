@@ -815,9 +815,9 @@ export class Result {
     this.data = typeof data !== 'undefined' ? data : null
     this.source = typeof source === 'string' && source.length
       ? source
-      : undefined
+      : null
 
-    this.headers = headers ? Headers.from(headers) : undefined
+    this.headers = headers ? Headers.from(headers) : null
 
     Object.defineProperty(this, 0, {
       get: () => this.err,
