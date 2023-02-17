@@ -11,10 +11,11 @@ import { EventEmitter } from './events.js'
 import { Buffer } from './buffer.js'
 import { rand64 } from './crypto.js'
 import { isIPv4 } from './net.js'
-import ipc from './ipc.js'
 import console from './console.js'
+import ipc from './ipc.js'
 import dns from './dns.js'
 import gc from './gc.js'
+import os from './os.js'
 
 import * as exports from './dgram.js'
 
@@ -156,8 +157,10 @@ function fromBufferList (list) {
 }
 
 function getDefaultAddress (socket) {
-  if (socket.type === 'udp4') return '127.0.0.1'
   if (socket.type === 'udp6') return '::1'
+  if (socket.type === 'udp4') {
+    return os.platform() === 'win32' ? '127.0.0.1' : '0.0.0.0'
+  }
 
   return null
 }
@@ -697,7 +700,7 @@ export class Socket extends EventEmitter {
    * If binding fails, an 'error' event is emitted.
    *
    * @param {number} port - The port to listen for messages on
-   * @param {string} address - The address to bind to (127.0.0.1)
+   * @param {string} address - The address to bind to (0.0.0.0)
    * @param {function} callback - With no parameters. Called when binding is complete.
    * @see {@link https://nodejs.org/api/dgram.html#socketbindport-address-callback}
    */
@@ -743,7 +746,7 @@ export class Socket extends EventEmitter {
    * by this handle is automatically sent to that destination. Also, the socket
    * will only receive messages from that remote peer. Trying to call connect()
    * on an already connected socket will result in an ERR_SOCKET_DGRAM_IS_CONNECTED
-   * exception. If the address is not provided, '127.0.0.1' (for udp4 sockets) or '::1'
+   * exception. If the address is not provided, '0.0.0.0' (for udp4 sockets) or '::1'
    * (for udp6 sockets) will be used by default. Once the connection is complete,
    * a 'connect' event is emitted and the optional callback function is called.
    * In case of failure, the callback is called or, failing this, an 'error' event
@@ -819,12 +822,12 @@ export class Socket extends EventEmitter {
    *
    * > The address argument is a string. If the value of the address is a hostname,
    * DNS will be used to resolve the address of the host. If the address is not
-   * provided or otherwise nullish, '127.0.0.1' (for udp4 sockets) or '::1'
+   * provided or otherwise nullish, '0.0.0.0' (for udp4 sockets) or '::1'
    * (for udp6 sockets) will be used by default.
    *
    * > If the socket has not been previously bound with a call to bind, the socket
    * is assigned a random port number and is bound to the "all interfaces"
-   * address ('127.0.0.1' for udp4 sockets, '::1' for udp6 sockets.)
+   * address ('0.0.0.0' for udp4 sockets, '::1' for udp6 sockets.)
    *
    * > An optional callback function may be specified as a way of reporting DNS
    * errors or for determining when it is safe to reuse the buf object. DNS
