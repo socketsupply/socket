@@ -49,10 +49,14 @@ open class Window (runtime: Runtime, activity: MainActivity) {
       val importMapFile = assetManager.open("socket/importmap.json")
       val importMapBytes = importMapFile.readAllBytes()
 
+      val source = this.getJavaScriptPreloadSource()
       var html = String(indexBytes).replace("<head>","""
         <head>
           <script type="importmap">
             ${String(importMapBytes)}
+          </script>
+          <script type="module">
+            ${source}
           </script>
       """)
 
@@ -71,7 +75,7 @@ open class Window (runtime: Runtime, activity: MainActivity) {
 
   open fun onSchemeRequest (
     request: android.webkit.WebResourceRequest,
-    response:  android.webkit.WebResourceResponse,
+    response: android.webkit.WebResourceResponse,
     stream: java.io.PipedOutputStream
   ): Boolean {
     return bridge.route(request.url.toString(), null, fun (result: Result) {
