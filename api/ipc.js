@@ -49,7 +49,40 @@ let nextSeq = 1
 /**
  * @ignore
  */
-export const Headers = globalThis.Headers
+export class Headers extends globalThis.Headers {
+  /**
+   * @ignore
+   */
+  static from (input) {
+    if (input?.headers) return this.from(input.headers)
+
+    if (typeof input?.entries === 'function') {
+      return new this(input.entries())
+    } else if (isPlainObject(input) || isArrayLike(input)) {
+      return new this(input)
+    } else if (typeof input?.getAllResponseHeaders === 'function') {
+      input = input.getAllResponseHeaders()
+    } else if (typeof input?.headers?.entries === 'function') {
+      return new this(input.headers.entries())
+    }
+
+    return new this(parseHeaders(String(input)))
+  }
+
+  /**
+   * @ignore
+   */
+  get length () {
+    return Array.from(this.entries()).length
+  }
+
+  /**
+   * @ignore
+   */
+  toJSON () {
+    return Object.fromEntries(this.entries())
+  }
+}
 
 /**
  * @ignore
@@ -57,13 +90,12 @@ export const Headers = globalThis.Headers
 export async function postMessage (...args) {
   if (window?.webkit?.messageHandlers?.external?.postMessage) {
     return webkit.messageHandlers.external.postMessage(...args)
-  }
-  if (window?.chrome?.webview?.postMessage) {
+  } else if (window?.chrome?.webview?.postMessage) {
     return chrome.webview.postMessage(...args)
-  }
-  if (window?.external?.postMessage) {
+  } else if (window?.external?.postMessage) {
     return external.postMessage(...args)
   }
+
   throw new TypeError(
     'Could not determine UserMessageHandler.postMessage in Window'
   )
@@ -204,6 +236,7 @@ function getRequestResponse (request, options) {
   if (!request) return null
   const { responseType } = request
   const expectedResponseType = options?.responseType ?? responseType
+  const headers = Headers.from(request)
   let response = null
 
   if (expectedResponseType && responseType !== expectedResponseType) {
@@ -211,10 +244,10 @@ function getRequestResponse (request, options) {
   }
 
   if (!responseType || responseType === 'text') {
-    // `responseText` could be an accessor which could throw an
-    // `InvalidStateError` error when accessed when `responseType` is anything
-    // but empty or `'text'`
-    // @see {@link https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest/responseText#exceptions}
+    // The `responseText` could be an accessor which could throw an
+    // `InvalidStateError` error when accessed when `responseType` is not empty
+    // empty or 'text'
+    // - see https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest/responseText#exceptions
     const responseText = getRequestResponseText(request)
     if (responseText) {
       response = responseText
@@ -784,15 +817,7 @@ export class Result {
       ? source
       : undefined
 
-    this.headers = undefined
-
-    if (headers instanceof Headers) {
-      this.headers = Headers
-    } else if (isPlainObject(headers) || isArrayLike(headers)) {
-      this.headers = new Headers(headers)
-    } else if (typeof headers === 'string') {
-      this.headers = new Headers(parseHeaders(headers))
-    }
+    this.headers = headers ? Headers.from(headers) : undefined
 
     Object.defineProperty(this, 0, {
       get: () => this.err,
