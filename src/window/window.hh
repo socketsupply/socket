@@ -99,7 +99,7 @@ namespace SSC {
       String getTitle ();
       void setTitle (const String&);
       ScreenSize getSize ();
-      void setSize (const String&, int, int, int);
+      void setSize (int, int, int);
       void setContextMenu (const String&, const String&);
       void closeContextMenu (const String&);
       void closeContextMenu ();
