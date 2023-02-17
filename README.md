@@ -1,6 +1,6 @@
 # Socket Runtime
                                              
-⚡__Write once, run anywhere, connect everyone__ ⚡
+__Write once, run anywhere, connect everyone__ 
 
 
 ### Description
@@ -9,7 +9,7 @@
 
 These compiled applications can be distributed through major application stores, such as Google Play (Android, ChromeOS), App Store (iOS, MacOS), and Microsoft Store (Windows). These apps can thus be distributed and run on all major consumer computing platforms: Windows, MacOS, Linux, iOS, and Android.
 
-🔥### Features
+### Features
 
 * Local First, a full featured File system API & Bluetooth.
 * P2P & Cloud, built to support a new generation of apps that can connect directly to each other by providing a high performance UDP API.
@@ -18,29 +18,29 @@ These compiled applications can be distributed through major application stores,
 * Maintainable, zero dependencies and a smaller code base than any other competing project.
 * Lean & Fast, uses a smaller memory footprint and creates smaller binaries than any other competing project.
 
-🗊### FAQ
+### FAQ
 
 Check the [Website](https://sockets.sh/) to learn more.
  <!--we can Kyle's FAQ here, I read it yesterday and it's perfect  -->
 
  
-🧱### Building your first Socket app !
+### Building your first Socket app !
 
 If you are interested in making an `Socket` app, please check [Create Socket App Repo](https://github.com/socketsupply/create-socket-app).  
 `Examples` can be found in the [Examples Repo](https://github.com/socketsupply/socket-examples).  
 
 
-📚### Documentation
+### Documentation
 
 The full documentation for `Socket Runtime` can be found on our [Website](https://sockets.sh/)  
 The `Socket Runtime` documentation discusses API, examples , multiple guides (Apple,Desktop and Windows), P2P section and more.
 
 
-🧪### Testing
+### Testing
 
 Test all the things! See the [`test/`](test/) for the unit and integration test suite.
 
-🙏### Contributing
+### Contributing
 
 Please stop by [Discord](https://discord.com/invite/YPV32gKCsH) and ask the team about your issue and if someone is already working on it.  
 
