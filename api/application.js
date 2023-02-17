@@ -88,7 +88,7 @@ export async function createWindow (opts) {
  * @returns {Promise<ipc.Result>}
  */
 export async function getScreenSize () {
-  const { data, err } = await ipc.send('getScreenSize', { index: globalThis.__args.index })
+  const { data, err } = await ipc.send('application.getScreenSize', { index: globalThis.__args.index })
   if (err) {
     throw new Error(err)
   }
@@ -115,7 +115,7 @@ export async function getWindows (indices) {
   for (const index of resultIndices) {
     throwOnInvalidIndex(index)
   }
-  const { data: windows } = await ipc.send('window.getWindows', resultIndices)
+  const { data: windows } = await ipc.send('application.getWindows', resultIndices)
   return Object.fromEntries(windows.map(window => [Number(window.index), new ApplicationWindow(window)]))
 }
 
@@ -145,8 +145,12 @@ export async function getCurrentWindow () {
  * @param {object} options - an options object
  * @return {Promise<Any>}
  */
-export async function exit (o) {
-  return await ipc.send('exit', o)
+export async function exit (code) {
+  const { data, err } = await ipc.send('application.exit', code)
+  if (err) {
+    throw new Error(err)
+  }
+  return data
 }
 
 /**
@@ -170,7 +174,7 @@ export async function exit (o) {
  *
  *
  * ```js
- * socket.runtime.setSystemMenu({ index: 0, value: `
+ * socket.application.setSystemMenu({ index: 0, value: `
  *   App:
  *     Foo: f;
  *
@@ -292,5 +296,7 @@ export async function setSystemMenuItemEnabled (value) {
 }
 
 export const version = primordials.version
+export const debug = !!globalThis.__args.debug
+export const config = globalThis.__args.config
 
 export default exports

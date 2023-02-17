@@ -244,7 +244,7 @@ MAIN {
       [&](SSC::String const &out) {
         IPC::Message message(out);
 
-        if (message.name == "exit") {
+        if (message.name == "application.exit") {
           exitCode = stoi(message.get("value"));
           exit(exitCode);
         } else {
@@ -500,7 +500,7 @@ MAIN {
       return;
     }
 
-    if (message.name == "exit") {
+    if (message.name == "application.exit") {
       try {
         exitCode = std::stoi(decodeURIComponent(value));
       } catch (...) {
@@ -510,7 +510,7 @@ MAIN {
       return;
     }
 
-    if (message.name == "getScreenSize") {
+    if (message.name == "application.getScreenSize") {
       const auto seq = message.get("seq");
       const auto index = message.index;
       const auto window = windowManager.getWindow(index);
@@ -523,7 +523,7 @@ MAIN {
       return;
     }
 
-    if (message.name == "window.getWindows") {
+    if (message.name == "application.getWindows") {
       const auto index = message.index;
       const auto window = windowManager.getWindow(index);
       auto indices = SSC::splitToInts(value, ',');

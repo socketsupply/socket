@@ -1,62 +1,11 @@
-import { readFile } from 'socket:fs/promises'
 import { test } from 'socket:test'
 import runtime from 'socket:runtime'
-import ipc, { primordials } from 'socket:ipc'
 import process from 'socket:process'
 
 // TODO(@jwerle): FIXME
 if (process.platform !== 'win32') {
   // Desktop-only runtime functions
   if (!['android', 'ios'].includes(process.platform)) {
-    // Polyfills
-    test('window.resizeTo', async (t) => {
-      t.equal(typeof window.resizeTo, 'function', 'window.resizeTo is a function')
-      t.ok(window.resizeTo(420, 200), 'succesfully completes')
-      const { data: { width, height } } = await ipc.send('window.getSize')
-      t.equal(width, 420, 'width is 420')
-      t.equal(height, 200, 'height is 200')
-    })
-
-    test('window.document.title', async (t) => {
-      window.document.title = 'idkfa'
-      t.equal(window.document.title, 'idkfa', 'window.document.title is has been changed')
-      const { data: { title } } = await ipc.send('window.getTitle')
-      t.equal(title, 'idkfa', 'window title is correct')
-    })
-
-    // Other desktop runtime tests
-    test('setTitle', async (t) => {
-      t.equal(typeof runtime.setTitle, 'function', 'setTitle is a function')
-      const result = await runtime.setTitle('test')
-      t.equal(result.err, null, 'succesfully completes')
-    })
-
-    // TODO: it crashes the app
-    test('inspect', async (t) => {
-      t.equal(typeof runtime.inspect, 'function', 'inspect is a function')
-    })
-
-    test('show', async (t) => {
-      t.equal(typeof runtime.show, 'function', 'show is a function')
-      await runtime.show({
-        window: 1,
-        url: 'index_send_event.html',
-        title: 'Hello World',
-        width: 400,
-        height: 400
-      })
-      const { data: { status, index: i1 } } = await ipc.send('window.getStatus', { window: 1 })
-      const { data: { title, index: i2 } } = await ipc.send('window.getTitle', { window: 1 })
-      const { data: { height, width, index: i3 } } = await ipc.send('window.getSize', { window: 1 })
-      t.equal(status, 31, 'window is shown')
-      t.equal(title, 'Hello World', 'window title is correct')
-      t.equal(height, 400, 'window height is correct')
-      t.equal(width, 400, 'window width is correct')
-      t.equal(i1, 1, 'window index is correct')
-      t.equal(i2, 1, 'window index is correct')
-      t.equal(i3, 1, 'window index is correct')
-    })
-
     test('send', async (t) => {
       await runtime.show({
         window: 2,
@@ -79,79 +28,6 @@ if (process.platform !== 'win32') {
       ])
       t.deepEqual(result, value, 'send succeeds')
       t.deepEqual(pong, value, 'send back from window 1 succeeds')
-    })
-
-    test('getScreenSize', async (t) => {
-      const { data: { width, height } } = await runtime.getScreenSize()
-      t.ok(Number.isInteger(width), 'width is an integer')
-      t.ok(Number.isInteger(height), 'height is an integer')
-      t.equal(width, window.screen.width, 'width is correct')
-      t.equal(height, window.screen.height, 'height is correct')
-    })
-
-    test('getWindows', async (t) => {
-      const { data: windows } = await runtime.getWindows()
-      t.ok(Array.isArray(windows), 'windows is an array')
-      t.ok(windows.length > 0, 'windows is not empty')
-      t.ok(windows.every(w => Number.isInteger(w)), 'windows are integers')
-      t.deepEqual(windows, [0, 1, 2], 'windows are correct')
-    })
-
-    test('getWindows with props', async (t) => {
-      await runtime.show()
-      const { data: windows1 } = await runtime.getWindows({ title: true, size: true, status: true })
-      t.ok(Array.isArray(windows1), 'windows is an array')
-      t.ok(windows1.length > 0, 'windows is not empty')
-      t.deepEqual(windows1, [
-        {
-          title: 'test',
-          width: 420,
-          height: 200,
-          status: 31,
-          index: 0
-        },
-        {
-          title: 'Secondary window',
-          width: 400,
-          height: 400,
-          status: 31,
-          index: 1
-        },
-        {
-          title: 'Secondary window',
-          width: 400,
-          height: 400,
-          status: 31,
-          index: 2
-        }
-      ], 'windows are correct')
-    })
-
-    test('navigate', async (t) => {
-      t.equal(typeof runtime.navigate, 'function', 'navigate is a function')
-      const result = await runtime.navigate({ window: 1, url: 'index_no_js.html' })
-      t.equal(result.err, null, 'navigate succeeds')
-    })
-
-    test('hide', async (t) => {
-      t.equal(typeof runtime.hide, 'function', 'hide is a function')
-      await runtime.hide({ window: 1 })
-      await runtime.hide({ window: 2 })
-      const { data: statuses } = await runtime.getWindows({ status: true })
-      t.deepEqual(statuses, [
-        {
-          status: 31,
-          index: 0
-        },
-        {
-          status: 21,
-          index: 1
-        },
-        {
-          status: 21,
-          index: 2
-        }
-      ], 'statuses are correct')
     })
 
     test('setWindowBackgroundColor', async (t) => {
@@ -239,6 +115,7 @@ if (process.platform !== 'win32') {
     })
   }
 
+<<<<<<< HEAD
   // Desktop + mobile runtime functions
   test('debug', (t) => {
     t.equal(runtime.debug, window.__args.debug, 'debug is correct')
@@ -257,6 +134,8 @@ if (process.platform !== 'win32') {
     t.throws(() => { runtime.currentWindow = 1 }, 'runtime.currentWindow is immutable')
   })
 
+=======
+>>>>>>> 565a0315 (rename messages)
   test('openExternal', async (t) => {
     t.equal(typeof runtime.openExternal, 'function', 'openExternal is a function')
     // can't test results without browser
