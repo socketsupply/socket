@@ -117,6 +117,14 @@ export class ApplicationWindow {
     return this.#updateOptions(response)
   }
 
+  async showInspector (params) {
+    const { data, err } = await ipc.send('window.showInspector', { index: this.#index, targetWindowIndex: this.#index })
+    if (err) {
+      throw new Error(err)
+    }
+    return data
+  }
+
   /**
    * @param {object} opts - an options object
    * @param {number} opts.red - the red value

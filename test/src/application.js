@@ -336,4 +336,10 @@ test.skip('navigate window', async (t) => {
   counter++
 })
 
+test('showInspector', async (t) => {
+  const mainWindow = await application.getCurrentWindow()
+  const result = await mainWindow.showInspector()
+  t.equal(result, true, 'returns true')
+})
+
 // await new Promise((resolve) => {})
