@@ -271,7 +271,11 @@ function getRequestResponse (request, options) {
       typeof request.response === 'string' ||
       isBufferLike(request.response)
     ) {
+      const contentLength = parseInt(headers.get('content-length'))
       response = Buffer.from(request.response)
+      if (contentLength) {
+        response = response.slice(0, contentLength)
+      }
     }
 
     // maybe json in buffered response
