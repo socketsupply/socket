@@ -1,5 +1,4 @@
 /* global MutationObserver */
-import console from './console.js'
 import ipc from './ipc.js'
 
 import * as exports from './polyfills.js'
@@ -15,27 +14,6 @@ export function applyPolyfills (window) {
       const height = isHeightInPercent ? Number(h.slice(0, -1)) : h
       const o = new URLSearchParams({ index, targetWindow, width, height, isWidthInPercent, isHeightInPercent }).toString()
       ipc.postMessage(`ipc://window.setSize?${o}`)
-    },
-
-    // TODO(@heapwolf) the properties do not yet conform to the MDN spec
-    async showOpenFilePicker (o) {
-      console.warn('window.showOpenFilePicker may not conform to the standard')
-      const { data } = await ipc.send('dialog', { type: 'open', ...o })
-      return typeof data === 'string' ? data.split('\n') : []
-    },
-
-    // TODO(@heapwolf) the properties do not yet conform to the MDN spec
-    async showSaveFilePicker (o) {
-      console.warn('window.showSaveFilePicker may not conform to the standard')
-      const { data } = await ipc.send('dialog', { type: 'save', ...o })
-      return typeof data === 'string' ? data.split('\n') : []
-    },
-
-    // TODO(@heapwolf) the properties do not yet conform to the MDN spec
-    async showDirectoryFilePicker (o) {
-      console.warn('window.showDirectoryFilePicker may not conform to the standard')
-      const { data } = await ipc.send('dialog', { allowDirs: true, ...o })
-      return typeof data === 'string' ? data.split('\n') : []
     }
   }))
 

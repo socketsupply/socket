@@ -442,6 +442,21 @@ test('window.showInspector', async (t) => {
   // t.equal(result, true, 'returns true')
 })
 
+test('window.showOpenFilePicker', async (t) => {
+  const mainWindow = await application.getCurrentWindow()
+  t.ok(mainWindow.showOpenFilePicker())
+})
+
+test('window.showSaveFilePicker', async (t) => {
+  const mainWindow = await application.getCurrentWindow()
+  t.ok(mainWindow.showSaveFilePicker())
+})
+
+test('window.showDirectoryFilePicker', async (t) => {
+  const mainWindow = await application.getCurrentWindow()
+  t.ok(mainWindow.showDirectoryFilePicker())
+})
+
 test('apllication.exit', async (t) => {
   t.equal(typeof application.exit, 'function', 'exit is a function')
 })
