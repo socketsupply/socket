@@ -157,11 +157,6 @@ export class ApplicationWindow {
     return typeof data === 'string' ? data.split('\n') : []
   }
 
-  async reload () {
-    // TODO(@chicoxyzzy): which window to reload?
-    ipc.postMessage('ipc://reload')
-  }
-
   /**
    * @param {object} options - an options object
    * @param {number=} [options.window=currentWindow] - the window to send the message to
