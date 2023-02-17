@@ -197,6 +197,46 @@ if (process.platform !== 'win32') {
       })
       t.equal(result.err, null, 'setSystemMenuItemVisible succeeds')
     })
+
+    test('config', async (t) => {
+      const rawConfig = await readFile('socket.ini', 'utf8')
+      const config = []
+      const lines = rawConfig.split('\n')
+      let prefix = ''
+
+      for (let line of lines) {
+        line = line.trim()
+        if (line.length === 0 || line.startsWith(';')) continue
+        if (line.startsWith('[') && line.endsWith(']')) {
+          prefix = line.slice(1, -1)
+          continue
+        }
+        let [key, value] = line.split('=')
+        key = key.trim()
+        value = value.trim().replace(/"/g, '')
+        config.push([prefix.length === 0 ? key : prefix + '_' + key, value])
+      }
+
+      config.forEach(([key, value]) => {
+        switch (key) {
+          case 'build_headless':
+            t.equal(runtime.config[key].toString(), value, `runtime.config.${key} is correct`)
+            break
+          case 'build_name':
+            t.ok(runtime.config[key].startsWith(value), `runtime.config.${key} is correct`)
+            break
+          default:
+            t.equal(runtime.config[key], value, `runtime.config.${key} is correct`)
+        }
+
+        t.throws(
+          () => { runtime.config[key] = 0 },
+          // eslint-disable-next-line prefer-regex-literals
+          RegExp('Attempted to assign to readonly property.'),
+          `runtime.config.${key} is read-only`
+        )
+      })
+    })
   }
 
   // Desktop + mobile runtime functions
@@ -209,43 +249,6 @@ if (process.platform !== 'win32') {
     t.equal(runtime.version.short, primordials.version.short, 'short version is correct')
     t.equal(runtime.version.hash, primordials.version.hash, 'version hash is correct')
     t.equal(runtime.version.full, primordials.version.full, 'full version is correct')
-  })
-
-  test('config', async (t) => {
-    const rawConfig = await readFile('socket.ini', 'utf8')
-    let prefix = ''
-    const lines = rawConfig.split('\n')
-    const config = []
-    for (let line of lines) {
-      line = line.trim()
-      if (line.length === 0 || line.startsWith(';')) continue
-      if (line.startsWith('[') && line.endsWith(']')) {
-        prefix = line.slice(1, -1)
-        continue
-      }
-      let [key, value] = line.split('=')
-      key = key.trim()
-      value = value.trim().replace(/"/g, '')
-      config.push([prefix.length === 0 ? key : prefix + '_' + key, value])
-    }
-    config.forEach(([key, value]) => {
-      switch (key) {
-        case 'build_headless':
-          t.equal(runtime.config[key].toString(), value, `runtime.config.${key} is correct`)
-          break
-        case 'build_name':
-          t.ok(runtime.config[key].startsWith(value), `runtime.config.${key} is correct`)
-          break
-        default:
-          t.equal(runtime.config[key], value, `runtime.config.${key} is correct`)
-      }
-      t.throws(
-        () => { runtime.config[key] = 0 },
-        // eslint-disable-next-line prefer-regex-literals
-        RegExp('Attempted to assign to readonly property.'),
-        `runtime.config.${key} is read-only`
-      )
-    })
   })
 
   test('currentWindow', (t) => {

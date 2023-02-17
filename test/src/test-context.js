@@ -4,7 +4,7 @@ import process from 'socket:process'
 import 'socket:runtime'
 import ipc from 'socket:ipc'
 
-if (process.env.DEBUG || process.env.DEBUG_IPC) {
+if (process.env.SOCKET_DEBUG_IPC) {
   ipc.debug.enabled = true
   ipc.debug.log = (...args) => console.log(...args)
 }
