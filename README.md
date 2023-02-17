@@ -20,8 +20,8 @@ These compiled applications can be distributed through major application stores,
 
 * Local First, a full featured File system API & Bluetooth.
 * P2P & Cloud, built to support a new generation of apps that can connect directly to each other by providing a high performance UDP API.
-* Use any backend.
-* Use any frontend.
+* Use any backend, business logic can be written in any language, Python, Rust, Node.js, etc. The backend is even completely optional.
+* Use any frontend, you can use your favorite front end framework to create your UIs, React, Svelte, Vue.
 * Maintainable, zero dependencies and a smaller code base than any other competing project.
 * Lean & Fast, uses a smaller memory footprint and creates smaller binaries than any other competing project.
 
@@ -33,8 +33,8 @@ Check the [Website](https://sockets.sh/) to learn more.
  
 ### 🧱 Building your first Socket app !
 
-If you are interested in making an `Socket` app, please check [Create Socket App Repo](https://github.com/socketsupply/create-socket-app).  
-`Examples` can be found in the [Examples Repo](https://github.com/socketsupply/socket-examples).  
+If you are interested in making a `Socket` app, please check [create-socket-app Repo](https://github.com/socketsupply/create-socket-app).  
+You can also check our `Examples` in the [Examples Repo](https://github.com/socketsupply/socket-examples).  
 
 
 ### 📚 Documentation
