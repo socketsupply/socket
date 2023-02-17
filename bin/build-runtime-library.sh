@@ -23,7 +23,22 @@ elif [[ "$host" == *"MSYS_NT"* ]]; then
   host="Win32"
 fi
 
+
 if [[ "$host" == "Win32" ]]; then
+  if command -v $clang >/dev/null 2>&1; then
+    echo > /dev/null
+  else
+    # POSIX doesn't handle quoted commands
+    # Quotes inside variables don't escape spaces, quotes only help on the line we are executing
+    # Make a temp link
+    clang_tmp=$(mktemp)
+    rm $clang_tmp
+    ln -s "$clang" $clang_tmp
+    clang=$clang_tmp
+  fi
+
+  echo Using $clang as clang
+
   declare find_test="$(sh -c 'find --version')"
   if [[ $find_test != *"GNU findutils"* ]]; then
     echo "GNU find not detected. Consider adding %ProgramFiles%\Git\bin\ to PATH."
@@ -76,6 +91,9 @@ while (( $# > 0 )); do
 
   args+=("$arg")
 done
+
+# echo "Platform: $platform, clang: $clang"
+# exit 0
 
 if [[ "$host" = "Darwin" ]]; then
   cflags+=("-ObjC++")
@@ -153,7 +171,7 @@ function main () {
         mkdir -p "$(dirname "$object")"
         echo "# compiling object ($arch-$platform) $(basename "$source")"
         # echo $clang "${cflags[@]}" "${ldflags[@]}" -c "$source" -o "$object"
-        "$clang" "${cflags[@]}" -c "$source" -o "$object" || onsignal
+        $clang "${cflags[@]}" -c "$source" -o "$object" || onsignal
         echo "ok - built ${source/$src_directory\//} -> ${object/$output_directory\//} ($arch-$platform)"
       fi
     } & pids+=($!)

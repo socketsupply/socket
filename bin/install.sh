@@ -15,6 +15,7 @@ else
 fi
 
 echo "SOCKET_HOME: $SOCKET_HOME"
+declare host="$(uname -s)"
 
 if [[ "$host" = "Linux" ]]; then
   if [ -n "$WSL_DISTRO_NAME" ] || uname -r | grep 'Microsoft'; then
@@ -39,6 +40,22 @@ if [ ! "$CXX" ]; then
   elif command -v g++ >/dev/null 2>&1; then
     CXX="$(command -v g++)"
   fi
+
+  if [ "$host" = "Win32" ]; then
+    if command -v $CXX >/dev/null 2>&1; then
+      echo > /dev/null
+    else
+      # POSIX doesn't handle quoted commands
+      # Quotes inside variables don't escape spaces, quotes only help on the line we are executing
+      # Make a temp link
+      CXX_TMP=$(mktemp)
+      rm $CXX_TMP
+      ln -s "$CXX" $CXX_TMP
+      CXX=$CXX_TMP
+    fi
+  fi
+
+  echo Using $CXX as CXX
 
   if [ ! "$CXX" ]; then
     echo "not ok - could not determine \$CXX environment variable"
@@ -146,7 +163,7 @@ function _build_cli {
 
   for (( i = 0; i < ${#sources[@]}; i++ )); do
     mkdir -p "$(dirname "${outputs[$i]}")"
-    quiet "$CXX" "${cflags[@]}"  \
+    quiet $CXX "${cflags[@]}"  \
       -c "${sources[$i]}"        \
       -o "${outputs[$i]}"
     die $? "not ok - unable to build. See trouble shooting guide in the README.md file:\n$CXX ${cflags[@]} -c \"${sources[$i]}\" -o \"${outputs[$i]}\""
@@ -159,7 +176,7 @@ function _build_cli {
     libsocket_win="$BUILD_DIR/$arch-$platform/lib/libsocket-runtime.a"
   fi
 
-  quiet "$CXX"                                 \
+  quiet $CXX                                 \
     "$BUILD_DIR/$arch-$platform"/cli/*.o       \
     "${cflags[@]}" "${ldflags[@]}"             \
     "$libsocket_win"                           \
@@ -239,7 +256,7 @@ function _prebuild_desktop_main () {
 
   for (( i = 0; i < ${#sources[@]}; i++ )); do
     mkdir -p "$(dirname "${outputs[$i]}")"
-    quiet "$CXX" "${cflags[@]}" \
+    quiet $CXX "${cflags[@]}" \
       -c "${sources[$i]}"       \
       -o "${outputs[$i]}"
     die $? "not ok - unable to build. See trouble shooting guide in the README.md file:\n$CXX ${cflags[@]} -c ${sources[$i]} -o ${outputs[$i]}"
