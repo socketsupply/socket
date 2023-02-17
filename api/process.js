@@ -39,10 +39,10 @@ export function homedir () {
 /**
  * @param {number=} [code=0] - The exit code. Default: 0.
  */
-export function exit (code) {
+export async function exit (code) {
   if (!didEmitExitEvent) {
     didEmitExitEvent = true
     queueMicrotask(() => process.emit('exit', code))
-    send('exit', { value: code ?? 0 })
+    await send('application.exit', { value: code ?? 0 })
   }
 }

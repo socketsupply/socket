@@ -4,24 +4,9 @@
  * Provides runtime-specific methods
  */
 
-import { applyPolyfills } from './polyfills.js'
-import ipc, { primordials } from './ipc.js'
-
-export const version = primordials.version
+import ipc from './ipc.js'
 
 export const currentWindow = globalThis?.window?.__args?.index ?? 0
-// eslint-disable-next-line
-export const debug = globalThis?.window?.__args?.debug ?? false
-
-export const config = Object.freeze(globalThis?.window?.__args?.config ?? {})
-
-function formatFileUrl (url) {
-  return `file://${primordials.cwd}/${url}`
-}
-
-if (globalThis.window) {
-  applyPolyfills(globalThis.window)
-}
 
 /**
  *
@@ -48,89 +33,11 @@ export async function send (options) {
 }
 
 /**
- * Returns the current screen size.
- * @returns {Promise<ipc.Result>}
- */
-export async function getScreenSize () {
-  return await ipc.send('getScreenSize', {})
-}
-
-export async function getWindows (options = {}) {
-  return await ipc.send('getWindows', options)
-}
-
-/**
- *
  * @param {object} options
  * @returns {Promise<ipc.Result>}
  */
 export async function openExternal (options) {
   return await ipc.postMessage(`ipc://external?value=${encodeURIComponent(options)}`)
-}
-
-/**
- * Quits the backend process and then quits the render process, the exit code used is the final exit code to the OS.
- * @param {object} options - an options object
- * @return {Promise<Any>}
- */
-export async function exit (o) {
-  return await ipc.send('exit', o)
-}
-
-/**
- * Sets the title of the window (if applicable).
- * @param {title} title - the title of the window
- * @return {Promise<ipc.Result>}
- */
-export async function setTitle (title) {
-  return await ipc.send('window.setTitle', title)
-}
-
-export async function inspect (o) {
-  return await ipc.postMessage('ipc://inspect')
-}
-
-inspect[Symbol.for('socket.util.inspect.ignore')] = true
-
-/**
- * @param {object} opts - an options object
- * @param {number=} [opts.window = currentWindow] - the index of the window
- * @param {string=} opts.url - the path to the HTML file to load into the window
- * @param {number=} opts.width - the width of the window
- * @param {number=} opts.height - the height of the window
- * @return {Promise<ipc.Result>}
- */
-export async function show (opts = {}) {
-  opts.index = currentWindow
-  opts.window ??= currentWindow
-  if (opts.url) {
-    opts.url = formatFileUrl(opts.url)
-  }
-  return await ipc.send('window.show', opts)
-}
-
-/**
- * @param {object} opts - an options object
- * @return {Promise<ipc.Result>}
- */
-export async function hide (opts = {}) {
-  opts.index = currentWindow
-  return await ipc.send('window.hide', opts)
-}
-
-/**
- * @param {object} opts - an options object
- * @param {number} [opts.window = currentWindow] - the index of the window
- * @param {number} opts.url - the path to the HTML file to load into the window
- * @return {Promise<ipc.Result>}
- */
-export async function navigate (opts = {}) {
-  opts.index = currentWindow
-  opts.window ??= currentWindow
-  if (opts.url) {
-    opts.url = formatFileUrl(opts.url)
-  }
-  return await ipc.send('window.navigate', opts)
 }
 
 export async function setWindowBackgroundColor (opts) {
@@ -177,7 +84,7 @@ export async function setSystemMenuItemEnabled (value) {
  *
  *
  * ```js
- * socket.runtime.setSystemMenu({ index: 0, value: `
+ * socket.application.setSystemMenu({ index: 0, value: `
  *   App:
  *     Foo: f;
  *
