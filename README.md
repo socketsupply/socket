@@ -1,7 +1,7 @@
 
 <h1 align="center">Socket Runtime</h1>
                                              
-<h1 align="center">⚡Write once, run anywhere, connect everyone⚡</h1>  
+<h2 align="center">⚡Write once, run anywhere, connect everyone⚡</h2>  
 
 
   
