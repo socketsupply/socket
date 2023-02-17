@@ -1,7 +1,7 @@
 import { GLOBAL_TEST_RUNNER } from 'socket:test'
 import console from 'socket:console'
 import process from 'socket:process'
-import 'socket:runtime'
+import 'socket:application'
 import ipc from 'socket:ipc'
 
 if (process.env.SOCKET_DEBUG_IPC) {
