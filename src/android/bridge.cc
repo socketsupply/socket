@@ -67,7 +67,7 @@ extern "C" {
   jboolean external(Bridge, route)(
     JNIEnv *env,
     jobject self,
-    jstring messageString,
+    jstring uriString,
     jbyteArray byteArray,
     jlong requestId
   ) {
@@ -81,39 +81,43 @@ extern "C" {
     JavaVM* jvm = nullptr;
     auto jniVersion = env->GetVersion();
     env->GetJavaVM(&jvm);
+    auto attachment = JNIEnvironmentAttachment { jvm, jniVersion };
 
-    auto messageStringWrap = StringWrap(env, messageString);
-    auto msg = messageStringWrap.str();
-    auto size = byteArray != nullptr ? env->GetArrayLength(byteArray) : 0;
-    auto bytes = size > 0 ? new char[size]{0} : nullptr;
-
-    if (size > 0 && bytes != nullptr) {
-      env->GetByteArrayRegion(byteArray, 0, size, (jbyte*) bytes);
+    if (attachment.hasException()) {
+      return false;
     }
 
-    auto routed = bridge->route(msg, bytes, size, [=](auto result) mutable {
-      if (result.seq == "-1") {
-        bridge->router.send(result.seq, result.str(), result.post);
-        return;
-      }
+    auto uri = StringWrap(env, uriString);
+    auto size = byteArray != nullptr ? env->GetArrayLength(byteArray) : 0;
+    auto input = size > 0 ? new char[size]{0} : nullptr;
 
+    if (size > 0 && input != nullptr) {
+      env->GetByteArrayRegion(byteArray, 0, size, (jbyte*) input);
+    }
+
+    auto routed = bridge->route(uri.str(), input, size, [=](auto result) mutable {
       auto attachment = JNIEnvironmentAttachment { jvm, jniVersion };
       auto self = bridge->self;
       auto env = attachment.env;
 
       if (!attachment.hasException()) {
-        auto bytes = result.post.body != nullptr
-         ? env->NewByteArray(result.post.length)
-         : nullptr;
-
-        if (bytes != nullptr) {
-          env->SetByteArrayRegion(
-            bytes,
-            0,
-            result.post.length,
-            (jbyte *) result.post.body
-          );
+        if (result.seq == "-1") {
+          bridge->router.send(result.seq, result.str(), result.post);
+          return;
         }
+
+        auto size = result.post.length;
+        auto body = result.post.body;
+        auto bytes = body && size? env->NewByteArray(size) : nullptr;
+
+        if (bytes != nullptr ) {
+          env->SetByteArrayRegion(bytes, 0, size, (jbyte *) body);
+        }
+
+        auto seq = env->NewStringUTF(result.seq.c_str());
+        auto source = env->NewStringUTF(result.source.c_str());
+        auto value = env->NewStringUTF(result.str().c_str());
+        auto headers = env->NewStringUTF(result.post.headers.c_str());
 
         CallVoidClassMethodFromEnvironment(
           env,
@@ -121,16 +125,66 @@ extern "C" {
           "onInternalRouteResponse",
           onInternalRouteResponseSignature,
           requestId,
-          env->NewStringUTF(result.seq.c_str()),
-          env->NewStringUTF(result.source.c_str()),
-          env->NewStringUTF(result.str().c_str()),
-          env->NewStringUTF(result.post.headers.c_str()),
+          seq,
+          source,
+          value,
+          headers,
           bytes
         );
+
+        env->DeleteLocalRef(seq);
+        env->DeleteLocalRef(source);
+        env->DeleteLocalRef(value);
+        env->DeleteLocalRef(headers);
+
+        if (bytes != nullptr) {
+          env->DeleteLocalRef(bytes);
+        }
       }
     });
 
-    delete [] bytes;
+    delete [] input;
+
+    if (!routed) {
+      auto attachment = JNIEnvironmentAttachment { jvm, jniVersion };
+      auto env = attachment.env;
+
+      if (!attachment.hasException()) {
+        auto msg = SSC::IPC::Message{uri.str()};
+        auto err = SSC::JSON::Object::Entries {
+          {"source", uri.str()},
+          {"err", SSC::JSON::Object::Entries {
+            {"message", "Not found"},
+            {"type", "NotFoundError"},
+            {"url", uri.str()}
+          }}
+        };
+
+        auto seq = env->NewStringUTF(msg.seq.c_str());
+        auto source =env->NewStringUTF(msg.name.c_str());
+        auto value = env->NewStringUTF(SSC::JSON::Object(err).str().c_str());
+        auto headers = env->NewStringUTF("");
+
+        CallVoidClassMethodFromEnvironment(
+          env,
+          self,
+          "onInternalRouteResponse",
+          onInternalRouteResponseSignature,
+          requestId,
+          seq,
+          source,
+          value,
+          headers,
+          nullptr
+        );
+
+        env->DeleteLocalRef(seq);
+        env->DeleteLocalRef(source);
+        env->DeleteLocalRef(value);
+        env->DeleteLocalRef(headers);
+      }
+    }
+
     return routed;
   }
 }
