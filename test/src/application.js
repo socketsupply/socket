@@ -280,11 +280,17 @@ test('application.getWindow with valid index', async (t) => {
   t.equal(mainWindow.index, 0, 'window index is correct')
 })
 
-test('application.getWindows with valid index', async (t) => {
-  const windows = await application.getWindows([0])
+test.only('application.getWindows with valid indexes', async (t) => {
+  const newWindow = await application.createWindow({ index: counter, path: 'index_no_js.html' })
+  const windows = await application.getWindows([0, newWindow.index])
   t.ok(windows instanceof Object, 'returns an object')
+  t.equal(Object.keys(windows).length, 2, 'object has 2 keys')
   t.ok(Object.keys(windows).every(index => Number.isInteger(Number(index))), 'keys are all integers')
   t.ok(Object.values(windows).every((window) => window instanceof ApplicationWindow), 'values are all ApplicationWindow instances')
+  t.equal(windows[0].index, 0, 'window index is correct')
+  t.equal(windows[newWindow.index].index, newWindow.index, 'window index is correct')
+  newWindow.close()
+  counter++
 })
 
 // TODO(@chicoxyzzy): test other windows
