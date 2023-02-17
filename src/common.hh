@@ -25,6 +25,10 @@
 #endif
 #endif
 
+#if defined(_WIN32) && defined(DEBUG)
+#define _WIN32_DEBUG 1
+#endif
+
 // Android (Linux)
 #if defined(__linux__) && defined(__ANDROID__)
 // Java Native Interface
@@ -547,7 +551,17 @@ namespace SSC {
   }
 
   inline void stdWrite (const String &str, bool isError) {
-    (isError ? std::cerr : std::cout) << str << std::endl;
+    #ifdef _WIN32
+        StringStream ss;
+        ss << str << std::endl;
+        auto lineStr = ss.str();
+
+        auto handle = isError ? STD_ERROR_HANDLE : STD_OUTPUT_HANDLE;
+        (isError ? std::cerr : std::cout) << str << std::endl;
+        WriteConsoleA(GetStdHandle(handle), lineStr.c_str(), lineStr.size(), NULL, NULL);
+    #else
+      (isError ? std::cerr : std::cout) << str << std::endl;
+    #endif
   }
 
   #if !TARGET_OS_IPHONE && !TARGET_OS_SIMULATOR
