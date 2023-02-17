@@ -511,7 +511,6 @@ namespace SSC {
 
       auto err = uv_getaddrinfo(loop, resolver, [](uv_getaddrinfo_t *resolver, int status, struct addrinfo *res) {
         auto ctx = (Core::DNS::RequestContext*) resolver->data;
-        delete resolver;
 
         if (status < 0) {
           auto result = JSON::Object::Entries {
@@ -523,6 +522,8 @@ namespace SSC {
           };
 
           ctx->cb(ctx->seq, result, Post{});
+          uv_freeaddrinfo(res);
+          delete resolver;
           delete ctx;
           return;
         }
@@ -557,8 +558,8 @@ namespace SSC {
 
         ctx->cb(ctx->seq, result, Post{});
         uv_freeaddrinfo(res);
+        delete resolver;
         delete ctx;
-
       }, options.hostname.c_str(), nullptr, &hints);
 
       if (err < 0) {
