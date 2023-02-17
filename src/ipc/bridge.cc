@@ -114,7 +114,7 @@ static String getcwd () {
   }                                                                            \
                                                                                \
   if (!router->core->hasPost(result.post.id)) {                                \
-    if (result.post.body != nullptr && result.post.length > 0) {               \
+    if (result.post.body != nullptr) {                                         \
       delete [] result.post.body;                                              \
     }                                                                          \
   }                                                                            \
