@@ -203,6 +203,8 @@ namespace SSC {
 #endif
     bool open_stdin;
     std::mutex stdin_mutex;
+    std::mutex stdout_mutex;
+    std::mutex stderr_mutex;
 
     ProcessConfig config;
 

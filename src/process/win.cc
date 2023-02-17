@@ -257,6 +257,8 @@ void Process::read() noexcept {
         auto parts = splitc(b, '\n');
 
         if (parts.size() > 1) {
+          std::lock_guard<std::mutex> lock(stdout_mutex);
+
           for (int i = 0; i < parts.size() - 1; i++) {
             ss << parts[i];
             SSC::String s(ss.str());
@@ -281,6 +283,7 @@ void Process::read() noexcept {
       for (;;) {
         BOOL bSuccess = ReadFile(*stderr_fd, static_cast<CHAR *>(buffer.get()), static_cast<DWORD>(config.buffer_size), &n, nullptr);
         if (!bSuccess || n == 0) break;
+        std::lock_guard<std::mutex> lock(stderr_mutex);
         read_stderr(SSC::String(buffer.get()));
       }
     });
