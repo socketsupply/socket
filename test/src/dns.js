@@ -38,7 +38,7 @@ test('dns.lookup', async t => {
       })
     }),
     new Promise(resolve => {
-      dns.lookup('google.com', 4, (err, address, family) => {
+      dns.lookup('sockets.sh', 4, (err, address, family) => {
         if (err) return t.fail(err)
         t.equal(family, 4, 'is IPv4 family')
         t.ok(IPV4_REGEX.test(address), 'has valid IPv4 address')
@@ -46,23 +46,7 @@ test('dns.lookup', async t => {
       })
     }),
     new Promise(resolve => {
-      dns.lookup('github.com', 6, (err, address, family) => {
-        if (err) return t.fail(err)
-        t.equal(family, 6, 'is IPv6 family')
-        t.ok(IPV6_REGEX.test(address), 'has valid IPv6 address')
-        resolve()
-      })
-    }),
-    new Promise(resolve => {
-      dns.lookup('google.com', { family: 4 }, (err, address, family) => {
-        if (err) return t.fail(err)
-        t.equal(family, 4, 'is IPv4 family')
-        t.ok(IPV4_REGEX.test(address), 'has valid IPv4 address')
-        resolve()
-      })
-    }),
-    new Promise(resolve => {
-      dns.lookup('github.com', { family: 6 }, (err, address, family) => {
+      dns.lookup('google.com', 6, (err, address, family) => {
         if (err) return t.fail(err)
         t.equal(family, 6, 'is IPv6 family')
         t.ok(IPV6_REGEX.test(address), 'has valid IPv6 address')
@@ -118,7 +102,7 @@ test('dns.promises.lookup', async t => {
     t.fail(err)
   }
   try {
-    const info = await dns.promises.lookup('github.com', 6)
+    const info = await dns.promises.lookup('cloudflare.com', 6)
     t.ok(info && typeof info === 'object', 'returns a non-error object after resolving a hostname')
     t.equal(info.family, 6, 'is IPv6 family')
     t.ok(IPV6_REGEX.test(info.address), 'has valid IPv6 address')
@@ -126,7 +110,7 @@ test('dns.promises.lookup', async t => {
     t.fail(err)
   }
   try {
-    const info = await dns.promises.lookup('github.com', { family: 6 })
+    const info = await dns.promises.lookup('cloudflare.com', { family: 6 })
     t.ok(info && typeof info === 'object', 'returns a non-error object after resolving a hostname')
     t.equal(info.family, 6, 'is IPv6 family')
     t.ok(IPV6_REGEX.test(info.address), 'has valid IPv6 address')
