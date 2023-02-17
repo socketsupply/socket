@@ -220,21 +220,25 @@ open class Bridge (runtime: Runtime, configuration: IBridgeConfiguration) {
     id: Long,
     seq: String,
     source: String,
-    value: String,
-    headersString: String,
+    value: String? = null,
+    headersString: String? = null,
     bytes: ByteArray? = null
   ) {
     val headers = try {
       headersString
-        .split("\n")
-        .map { it.split(":", limit=2) }
-        .map { it.elementAt(0) to it.elementAt(1) }
-        .toMap()
+        ?.split("\n")
+        ?.map { it.split(":", limit=2) }
+        ?.map { it.elementAt(0) to it.elementAt(1) }
+        ?.toMap()
       } catch (err: Exception) {
-        emptyMap<String, String>()
+        null
       }
 
-    this.onResult(Result(id, seq, source, value, bytes, headers))
+    val result = Result(id, seq, source, value ?: "", bytes, headers ?: emptyMap<String, String>())
+
+    runtime.get()?.activity?.get()?.runOnUiThread {
+      this.onResult(result)
+    }
   }
 
   open fun onResult (result: Result) {

@@ -53,13 +53,16 @@ namespace SSC::android {
     auto attachment = JNIEnvironmentAttachment { jvm.get(), jvm.version() };
     auto env = attachment.env;
     if (!attachment.hasException()) {
+      auto sourceString = env->NewStringUTF(source.c_str());
       CallVoidClassMethodFromEnvironment(
         env,
         self,
         "evaluateJavaScript",
         "(Ljava/lang/String;)V",
-        env->NewStringUTF(source.c_str())
+        sourceString
       );
+
+      env->DeleteLocalRef(sourceString);
     }
   }
 }
