@@ -309,8 +309,7 @@ Function Install-Requirements {
   }
 
   $clang = "clang++"
-  if (("llvm+vsbuild" -eq $toolchain) -or ("llvm" -eq $toolchain))
-  {
+  if (("llvm+vsbuild" -eq $toolchain) -or ("llvm" -eq $toolchain)) {
     $clangPath = "$env:ProgramFiles\LLVM\bin"
 
     if (-not (Found-Command($clang))) {
@@ -352,8 +351,7 @@ Function Install-Requirements {
     $and_nmake = " and nmake"
   }
 
-  if (("llvm+vsbuild" -eq $toolchain) -or ("vsbuild" -eq $toolchain))
-  {
+  if (("llvm+vsbuild" -eq $toolchain) -or ("vsbuild" -eq $toolchain)) {
     $vc_exists, $vc_vars = $(Get-VCVars)
     $report_vc_vars_reqd = $false
     $install_vc_build = $true
