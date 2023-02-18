@@ -194,8 +194,6 @@ int runApp (const fs::path& path, const String& args, bool headless) {
   process->wait();
 
   log("runApp result: " + std::to_string(process->status));
-  // status = std::system((headlessCommand + prefix + cmd + " " + args + " --from-ssc").c_str());
-  // log("runApp result: " + std::to_string(status));
 
   return process->status;
 }
