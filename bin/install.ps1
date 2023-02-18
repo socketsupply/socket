@@ -1,7 +1,8 @@
-param([Switch]$debug, [Switch]$shbuild=$true, $toolchain = "vsbuild")
+param([Switch]$debug, [Switch]$verbose, [Switch]$shbuild=$true, $toolchain = "vsbuild")
 
 # -shbuild:$false - Don't run bin\install.sh (Builds runtime lib)
 # -debug          - Enable debug builds (DEBUG=1)
+# -verbose        - Enable verbose build output
 
 $OLD_CWD = (Get-Location).Path
 
@@ -26,6 +27,10 @@ if ($debug -eq $true) {
   
   $SSC_BUILD_OPTIONS = "-g", "-O0"
   [Environment]::SetEnvironmentVariable("DEBUG", "1")
+}
+
+if ($verbose -eq $true) {
+  [Environment]::SetEnvironmentVariable("VERBOSE", "1")
 }
 
 $global:path_advice = @()
