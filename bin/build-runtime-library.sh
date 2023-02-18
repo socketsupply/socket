@@ -35,6 +35,9 @@ if [[ "$host" == "Win32" ]]; then
     rm $clang_tmp
     ln -s "$clang" $clang_tmp
     clang=$clang_tmp
+    # Make tmp.etc look like clang++.etc, makes clang output look correct
+    clang=$(echo $clang|sed 's/tmp\./clang++\./')
+    mv $clang_tmp $clang
   fi
 
   echo Using $clang as clang
