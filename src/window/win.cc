@@ -1081,7 +1081,14 @@ namespace SSC {
   }
 
   void Window::exit (int code) {
-    if (this->onExit != nullptr) this->onExit(code);
+    if (this->onExit != nullptr) 
+    {
+      std::cerr << "WARNING: Window#" << index << " exiting with code " << code << std::endl;
+      this->onExit(code);
+    }
+    else {
+      std::cerr << "WARNING: Window#" << index << " window->onExit is null in Window::exit()" << std::endl;
+    }
   }
 
   void Window::close (int code) {
