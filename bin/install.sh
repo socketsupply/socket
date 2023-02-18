@@ -52,9 +52,13 @@ if [ ! "$CXX" ]; then
       rm $CXX_TMP
       ln -s "$CXX" $CXX_TMP
       CXX=$CXX_TMP
+      # Make tmp.etc look like clang++.etc, makes clang output look correct
+      CXX=$(echo $CXX|sed 's/tmp\./clang++\./')
+      mv $CXX_TMP $CXX
+
     fi
   fi
-
+  
   echo Using $CXX as CXX
 
   if [ ! "$CXX" ]; then
