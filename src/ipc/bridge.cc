@@ -1326,11 +1326,20 @@ static void registerSchemeHandler (Router *router) {
 
     components.scheme = @"file";
     components.host = @"";
+
+  #if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
+    components.path = [[[NSBundle mainBundle] resourcePath]
+      stringByAppendingPathComponent: [NSString
+        stringWithFormat: @"/ui/socket/%@.js", components.path
+      ]
+    ];
+  #else
     components.path = [[[NSBundle mainBundle] resourcePath]
       stringByAppendingPathComponent: [NSString
         stringWithFormat: @"/socket/%@.js", components.path
       ]
     ];
+  #endif
 
     auto data = [NSData dataWithContentsOfURL: components.URL];
 
