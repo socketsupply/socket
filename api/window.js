@@ -108,10 +108,10 @@ export class ApplicationWindow {
     // default values
     const options = {
       targetWindowIndex: this.#index,
-      index: this.#senderWindowIndex,
+      index: this.#senderWindowIndex
     }
 
-    if (( opts.width != null && typeof opts.width !== 'number' && typeof opts.width !== 'string') ||
+    if ((opts.width != null && typeof opts.width !== 'number' && typeof opts.width !== 'string') ||
       (typeof opts.width === 'string' && !isValidPercentageValue(opts.width)) ||
       (typeof opts.width === 'number' && !(Number.isInteger(opts.width) && opts.width > 0))) {
       throw new Error(`Window width must be an integer number or a string with a valid percentage value from 0 to 100 ending with %. Got ${opts.width} instead.`)
@@ -169,7 +169,7 @@ export class ApplicationWindow {
    * @return {Promise<ipc.Result>}
    */
   async setBackgroundColor (opts) {
-    const response = await ipc.send('window.setBackgroundColor', { index: this.#senderWindowIndex, targetWindowIndex: this.#index, ...opts})
+    const response = await ipc.send('window.setBackgroundColor', { index: this.#senderWindowIndex, targetWindowIndex: this.#index, ...opts })
     return this.#updateOptions(response)
   }
 

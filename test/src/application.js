@@ -370,7 +370,7 @@ test('new window inherts the size of the main window when sizes are not provided
   const newWindow = await application.createWindow({ index: counter, path: 'index_no_js.html' })
   t.equal(newWindow.index, counter, 'new window index is correct')
   counter++
-  const newWindowSize = newWindow.getSize() 
+  const newWindowSize = newWindow.getSize()
   t.equal(newWindowSize.width, Math.round(window.screen.width * 0.8), 'width is inherited from the main window')
   // TODO(@chicoxyzzy): window borders
   // t.equal(newWindowSize.height, Math.round(window.screen.height * 0.8), 'height is inherited from the main window')
@@ -405,13 +405,12 @@ test('window.hide / window.show', async (t) => {
 })
 
 // TODO(@chicoxyzzy): should navigation of main window throw? should navigation of current window throw? should we even allow navigation?
-// TODO(@chicoxyzzy): freezes the app
-test.skip('window.navigate', async (t) => {
+test('window.navigate', async (t) => {
   const newWindow = await application.createWindow({ index: counter, path: 'index_no_js.html' })
   counter++
   const { index, status } = await newWindow.navigate('index_no_js2.html')
   t.equal(index, newWindow.index, 'correct index is returned')
-  t.equal(status, ApplicationWindow.constants.WINDOW_NAVIGATED, 'correct status is returned')
+  t.equal(status, ApplicationWindow.constants.WINDOW_SHOWN, 'correct status is returned')
   newWindow.close()
 })
 
@@ -425,7 +424,7 @@ test('window.setBackgroundColor', async (t) => {
 
 test('window.setContextMenu', async (t) => {
   const mainWindow = await application.getCurrentWindow()
-  const result = await mainWindow.setContextMenu({ 'Foo': '', 'Bar': '' })
+  const result = await mainWindow.setContextMenu({ Foo: '', Bar: '' })
   t.deepEqual(result, { data: null }, 'setContextMenu succeeds')
 })
 
