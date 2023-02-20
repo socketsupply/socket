@@ -60,19 +60,18 @@ elif [[ "$host" == *"MSYS_NT"* ]]; then
   host="Win32"
 fi
 
-if [[ "$host" == "Win32" ]]; then
-  cmd_suffix=".cmd"
-  exe=".exe"
+if [[ "$host" == "Win32" ]] && [[ ! -z "$SOCKET_HOME" ]] ; then
   # ndk build doesn't like wrong slashes, even tough it generates them...
   SOCKET_HOME_X=$SOCKET_HOME
   # Android requires SOCKET_HOME that contains all source files, that won't be the case by the time this script runs 
   SOCKET_HOME=$(cygpath -w $(dirname $(dirname $(which ssc))))
+
+  if [[ ! -d $SOCKET_HOME_X ]]; then
+    echo "SOCKET_HOME not found at $SOCKET_HOME_X"
+    DEPS_ERROR=1
+  fi
 fi
 
-if [[ ! -d $SOCKET_HOME_X ]]; then
-  echo "SOCKET_HOME not found at $SOCKET_HOME_X"
-  DEPS_ERROR=1
-fi
 
 if ! quiet command -v "ssc"; then
   echo "ssc not found."

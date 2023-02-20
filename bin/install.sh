@@ -539,7 +539,7 @@ function _install_cli {
       local rc=$?
 
       if [[ " $status " =~ " Permission denied " ]]; then
-        echo "warn - Failed to link binrary to '$PREFIX/bin': Trying 'sudo'"
+        echo "warn - Failed to link binary to '$PREFIX/bin': Trying 'sudo'"
         sudo rm -f "$PREFIX/bin/ssc"
         sudo ln -sf "$SOCKET_HOME/bin/ssc" "$PREFIX/bin/ssc"
         die $? "not ok - unable to link binary into '$PREFIX/bin'"
