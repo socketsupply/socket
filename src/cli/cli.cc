@@ -1349,6 +1349,11 @@ int main (const int argc, const char* argv[]) {
         log("could not clean path (binary could be busy)");
         log(String("ex: ") + ex.what());
         log(String("ex code: ") + std::to_string(ex.code().value()));
+
+        if (flagBuildForAndroid) {
+          log("check for gradle processes.");
+        }
+
         exit(1);
       }
     }
@@ -1413,6 +1418,7 @@ int main (const int argc, const char* argv[]) {
 
     // used in multiple if blocks, need to declare here
     auto android_enable_standard_ndk_build = settings["android_enable_standard_ndk_build"] == "true";
+    auto android_skip_gradle = settings["android_skip_gradle"] == "true";
 
     if (flagBuildForAndroid) {
       auto bundle_identifier = settings["meta_bundle_identifier"];
@@ -2391,7 +2397,7 @@ int main (const int argc, const char* argv[]) {
         StringStream ndkTest;
         
         ndkBuild << "ndk-build" << (platform.win ? ".cmd" : "");
-        ndkTest << ndkBuild.str() << " --version 2>&1 >" << (!platform.win ? "/dev/null" : "NUL");
+        ndkTest << ndkBuild.str() << " --version >" << (!platform.win ? "/dev/null" : "NUL") << " 2>&1";
 
         if (std::system(ndkTest.str().c_str()) != 0) {
             ndkBuild.str("");
@@ -2400,7 +2406,7 @@ int main (const int argc, const char* argv[]) {
             
             ndkTest.str("");
             ndkTest
-              << ndkBuild.str() << " --version 2>&1 >" << (!platform.win ? "/dev/null" : "NUL");
+              << ndkBuild.str() << " --version >" << (!platform.win ? "/dev/null" : "NUL") << " 2>&1";
 
             if (std::system(ndkTest.str().c_str()) != 0) {
               StringStream ndkError;
@@ -2430,7 +2436,7 @@ int main (const int argc, const char* argv[]) {
           << (flagDebugMode ? " NDK_DEBUG=1" : "")
           << " APP_PLATFORM=" << androidPlatform
           << " NDK_LIBS_OUT=" << jniLibs
-          << "2>&1 >" << (!platform.win ? "/dev/null" : "NUL")
+          << " >" << (!platform.win ? "/dev/null" : "NUL") << " 2>&1";
           ;
 
         if (std::system(ndkBuildArgs.str().c_str()) != 0)
@@ -2454,41 +2460,31 @@ int main (const int argc, const char* argv[]) {
         exit(0);
       }
 
-      if (flagDebugMode) {
-        gradlew
-          << localDirPrefix
-          << "gradlew :app:bundleDebug "
-          << "--warning-mode all ";
+      if (!android_skip_gradle) {
+        String bundle = flagDebugMode ?
+          "gradlew :app:bundleDebug --warning-mode all" :
+          "gradlew :app:bundle";
 
-        if (std::system(gradlew.str().c_str()) != 0) {
-          log("error: failed to invoke `gradlew :app:bundleDebug` command");
+        if (std::system(bundle.c_str()) != 0) {
+          log("error: failed to invoke " + bundle + " command.");
           exit(1);
         }
-      } else {
-        gradlew
+        
+        // clear stream
+        gradlew.str("");
+        gradlew 
           << localDirPrefix
-          << "gradlew :app:bundle";
+          << "gradlew assemble";
 
         if (std::system(gradlew.str().c_str()) != 0) {
-          log("error: failed to invoke `gradlew :app:bundle` command");
+          log("error: failed to invoke `gradlew assemble` command");
           exit(1);
         }
-      }
-
-      // clear stream
-      gradlew.str("");
-      gradlew
-        << localDirPrefix
-        << "gradlew assemble";
-
-      if (std::system(gradlew.str().c_str()) != 0) {
-        log("error: failed to invoke `gradlew assemble` command");
-        exit(1);
       }
 
       if (flagBuildForAndroidEmulator) {
         StringStream avdmanager;
-        String package = "'system-images;" + androidPlatform + ";google_apis;x86_64' ";
+        String package = "system-images;" + androidPlatform + ";google_apis;x86_64 ";
 
         if (!platform.win) {
           if (std::system("avdmanager list 2>&1 >/dev/null") != 0) {
@@ -2516,11 +2512,16 @@ int main (const int argc, const char* argv[]) {
         StringStream adb;
 
         if (!platform.win) {
-          if (std::system("adb --version 2>&1 >/dev/null") != 0) {
-            adb << androidHome << "/platform-tools/";
-          }
+          adb << androidHome << "/platform-tools/";
         } else
           adb << androidHome << "\\platform-tools\\";
+
+        
+        if (!std::system((adb.str() + (" --version > ") + SSC::String((!platform.win) ? "/dev/null" : "NUL") + (" 2>&1")).c_str())) {
+          log("Warn: Failed to locate adb at " + adb.str());
+        } else {
+          log("got adb at " + adb.str());
+        }
 
         adb
           << "adb "
