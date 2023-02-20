@@ -11,6 +11,15 @@ declare only_top_level=0
 declare remove_socket_home=1
 declare do_global_link=0
 
+function _publish () {
+  if (( !dry_run )) ; then
+    npm publish "${args[@]}" || exit $?
+  elif (( !do_global_link )); then
+    # echo "# npm publish ${args[@]}"
+    npm pack "${args[@]}" || exit $?
+  fi
+}
+
 if [[ "$platform" = "linux" ]]; then
   if [ -n "$WSL_DISTRO_NAME" ] || uname -r | grep 'Microsoft'; then
     platform="Win32"
@@ -63,12 +72,7 @@ mkdir -p "$SOCKET_HOME"
 export SOCKET_HOME
 export PREFIX
 
-if (( do_global_link && !dry_run )); then
-  echo >&2 "warning: '--link' implies '--dry-run' too"
-  dry_run=1
-fi
-
-if (( !only_top_level )); then
+if (( !only_top_level ))  && (( !no_rebuild )) ; then
   "$root/bin/install.sh" || exit $?
 fi
 
@@ -106,6 +110,11 @@ if (( !only_top_level )); then
     cp -rf "$SOCKET_HOME/src"/* "$SOCKET_HOME/packages/$package/src"
     cp -rf "$SOCKET_HOME/include"/* "$SOCKET_HOME/packages/$package/include"
 
+    # don't copy debug files, too large
+    rm -rf $SOCKET_HOME/lib/*-android/objs-debug 
+    cp -rf $SOCKET_HOME/lib/*-android "$SOCKET_HOME/packages/$package/lib"
+    # cp -f $SOCKET_HOME/lib/*-android/*.a "$SOCKET_HOME/packages/$package/lib"
+
     cp -rf "$SOCKET_HOME/lib/"$arch-* "$SOCKET_HOME/packages/$package/lib"
     cp -rf "$SOCKET_HOME/objects/"$arch-* "$SOCKET_HOME/packages/$package/objects"
 
@@ -124,12 +133,7 @@ if (( !only_top_level )); then
     cd "$SOCKET_HOME/packages/$package" || exit $?
     echo "# in directory: '$SOCKET_HOME/packages/$package'"
 
-    if (( !dry_run )) ; then
-      npm publish "${args[@]}" || exit $?
-    elif (( !do_global_link )); then
-      # echo "# npm publish ${args[@]}"
-      npm pack "${args[@]}" || exit $?
-    fi
+    _publish
 
     if (( do_global_link )); then
       npm link
@@ -141,12 +145,7 @@ if (( !only_platforms || only_top_level )); then
   cd "$SOCKET_HOME/packages/@socketsupply/socket" || exit $?
   echo "# in directory: '$SOCKET_HOME/packages/@socketsupply/socket'"
 
-  if (( !dry_run )); then
-    npm publish "${args[@]}" || exit $?
-  elif (( !do_global_link )); then
-    # echo "# npm publish ${args[@]}"
-    npm pack "${args[@]}" || exit $?
-  fi
+  _publish
 
   if (( do_global_link )); then
     for arch in "${archs[@]}"; do

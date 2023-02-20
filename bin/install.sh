@@ -291,6 +291,16 @@ function _build_runtime_library {
     "$root/bin/build-runtime-library.sh" --arch x86_64 --platform ios-simulator $pass_force & pids+=($!)
   fi
 
+  if [[ -z "$ANDROID_HOME" ]]; then
+    echo "ANDROID_HOME not set, won't attempt to build android."
+  else
+    if ! command -v ssc; then
+      echo "Deferring Android build until SSC build completed."
+    else
+     "$root/bin/build-runtime-library.sh" --platform android & pids+=($!)
+    fi
+  fi
+
   wait
 }
 
@@ -759,6 +769,8 @@ if [[ "$host" = "Darwin" ]]; then
     _prebuild_ios_main & pids+=($!)
     _prebuild_ios_simulator_main & pids+=($!)
   fi
+
+  # Not building android due to potential platform conflicts
 fi
 
 for pid in "${pids[@]}"; do
