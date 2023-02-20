@@ -100,6 +100,11 @@ while (( $# > 0 )); do
   args+=("$arg")
 done
 
+if [[ "$platform" = "android" ]]; then
+  $root/bin/build-android-runtime-libraries.sh
+  exit $?
+fi
+
 if [[ "$host" = "Darwin" ]]; then
   cflags+=("-ObjC++")
   sources+=("$root/src/window/apple.mm")
