@@ -4,6 +4,7 @@
 #include <iostream>
 #include <stdexcept>
 #include <tlhelp32.h>
+#include <limits.h>
 
 namespace SSC {
 
@@ -203,7 +204,6 @@ Process::id_type Process::open(const SSC::String &command, const SSC::String &pa
   auto processHandle = process_info.hProcess;
   auto t = std::thread([&](HANDLE _processHandle) {
     DWORD exitCode = 0;
-
     try {
       WaitForSingleObject(_processHandle, INFINITE);
 
@@ -212,7 +212,13 @@ Process::id_type Process::open(const SSC::String &command, const SSC::String &pa
         exitCode = -1;
       }
 
-      this->status = WEXITSTATUS(exitCode);
+      if (this->closed)
+      {
+        std::cout << "Process killed. " << exitCode << std::endl;
+        return;
+      }
+
+      this->status = (exitCode <= UINT_MAX ? exitCode : WEXITSTATUS(exitCode));
       this->closed = true;
       if (this->on_exit != nullptr)
         this->on_exit(std::to_string(this->status));
@@ -220,7 +226,7 @@ Process::id_type Process::open(const SSC::String &command, const SSC::String &pa
       std::cerr << "SSC::Process thread exception: " << e.what() << std::endl;
       this->closed = true;
     }
-  }, (processHandle));
+  }, processHandle);
 
   t.detach();
 
@@ -371,6 +377,8 @@ void Process::kill(id_type id) noexcept {
   if (id == 0) {
     return;
   }
+
+  this->closed = true;
 
   HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
 

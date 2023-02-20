@@ -213,6 +213,7 @@ MAIN {
     if (processToKill != nullptr) {
       auto pid = processToKill->getPID();
       processToKill->kill(pid);
+      processToKill->wait();
 
       if (processToKill == process) {
         process = nullptr;

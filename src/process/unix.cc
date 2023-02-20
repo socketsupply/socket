@@ -368,6 +368,7 @@ void Process::kill(id_type id) noexcept {
     return;
   }
 
+  this->closed = true;
   auto r = ::kill(-id, SIGINT);
 
   if (r != 0) {
