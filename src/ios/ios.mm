@@ -162,6 +162,8 @@ static dispatch_queue_t queue = dispatch_queue_create(
 
   platform.os = "ios";
 
+  NSLog(@"JS output: %s", "test");
+
   core = new Core;
   bridge = new IPC::Bridge(core);
   bridge->router.dispatchFunction = [=] (auto callback) {

@@ -183,7 +183,7 @@ int runApp (const fs::path& path, const String& args, bool headless) {
   }
   std::cout << "Running app: " << headlessCommand << prefix << cmd << args + " --from-ssc" << std::endl;
   auto process = new SSC::Process(
-     headlessCommand + prefix + cmd,
+    headlessCommand + prefix + cmd,
     args + " --from-ssc",
     fs::current_path().string(),
     [](SSC::String const &out) { std::cout << out << std::endl; },
@@ -382,6 +382,18 @@ void runIOSSimulator (const fs::path& path, Map& settings) {
     }
     exit(rInstallApp.exitCode);
   }
+
+  log("launching the child logger process");
+
+  auto process = new SSC::Process(
+    "log stream",
+    " --style compact --predicate 'process contains \"" + settings["meta_bundle_identifier"] + "\" AND message contains \"JS output: \"'",
+    fs::current_path().string(),
+    [](SSC::String const &out) { stdWrite(out, false); },
+    [](SSC::String const &out) { stdWrite(out, true); }
+  );
+
+  process->open();
 
   StringStream launchAppCommand;
   launchAppCommand

@@ -731,7 +731,7 @@ void initFunctionsTable (Router *router) {
   router->map("log", [=](auto message, auto router, auto reply) {
     auto value = message.value.c_str();
   #if defined(__APPLE__)
-    NSLog(@"%s\n", value);
+    debug("%s\n", value);
   #elif defined(__ANDROID__)
     __android_log_print(ANDROID_LOG_DEBUG, "", "%s", value);
   #else

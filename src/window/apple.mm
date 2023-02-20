@@ -232,7 +232,7 @@ int lastY = 0;
     evaluateJavaScript: [NSString stringWithUTF8String:js.c_str()]
      completionHandler: ^(id result, NSError *error) {
     if (error) {
-      NSLog(@"%@", error);
+      debug("%@", error);
       [super mouseDown:event];
       return;
     }
