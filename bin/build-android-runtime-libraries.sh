@@ -1,15 +1,23 @@
 declare root="$(cd "$(dirname "$(dirname "${BASH_SOURCE[0]}")")" && pwd)"
 
+# TODO(@mribbons): Test on darwin
+# TODO(@mribbons): Test lib paths when building from create-socket-app
+
 declare args=()
 declare pids=()
 declare force=0
 
 declare CWD=$(pwd)
-declare BUILD_DIR="$CWD/build"
+declare BUILD_DIR="$root/build"
+declare LIB_DIR="$root/build"
 
 declare arch="$(uname -m)"
 declare host="$(uname -s)"
 declare platform="desktop"
+
+if [ -d "$SOCKET_HOME" ]; then
+  LIB_DIR=$SOCKET_HOME/lib
+fi
 
 if [ -n "$LOCALAPPDATA" ] && [ -z "$SOCKET_HOME" ]; then
   SOCKET_HOME="$LOCALAPPDATA/Programs/socketsupply"
@@ -55,12 +63,14 @@ fi
 if [[ "$host" == "Win32" ]]; then
   cmd_suffix=".cmd"
   exe=".exe"
+  # ndk build doesn't like wrong slashes, even tough it generates them...
+  SOCKET_HOME_X=$SOCKET_HOME
+  # Android requires SOCKET_HOME that contains all source files, that won't be the case by the time this script runs 
+  SOCKET_HOME=$(cygpath -w $(dirname $(dirname $(which ssc))))
 fi
 
-declare DEPS_ERROR=0
-
-if [[ ! -d $SOCKET_HOME ]]; then
-  echo "SOCKET_HOME not found at $SOCKET_HOME"
+if [[ ! -d $SOCKET_HOME_X ]]; then
+  echo "SOCKET_HOME not found at $SOCKET_HOME_X"
   DEPS_ERROR=1
 fi
 
@@ -79,28 +89,37 @@ if [[ -z $JAVA_HOME ]]; then
   DEPS_ERROR=1
 fi
 
-if [[ ! "$DEPS_ERROR"=="0" ]]; then
-  echo "Dependencies not satisfied: $DEPS_ERROR"
+if [[ ! -z $DEPS_ERROR ]]; then
+  echo "Dependencies not satisfied."
   exit 1
 fi
 
 app_dir=$BUILD_DIR/android
-quiet mkdir -p $app_dir
-cd $app_dir
-echo "Building Android App"
-quiet ssc init
-temp=$(mktemp)
-quiet sed '/android/s/.*/&\
-skip_gradle = true/' $app_dir/socket.ini > $temp
-quiet mv $temp $app_dir/socket.ini
-if ! quiet ssc build -o --platform=android; then
-  echo "NDK build failed."
-  exit 1
+if [[ ! -d $app_dir ]]; then
+  quiet mkdir -p $app_dir
+  cd $app_dir
+  echo "Building Android App"
+  rm socket.ini
+  quiet ssc init
+  temp=$(mktemp)
+  quiet sed '/\[android\]/s/.*/&\
+  build_remove_path = dist\/android\/app\/src\//' $app_dir/socket.ini > $temp
+  quiet mv $temp $app_dir/socket.ini
+  quiet sed '/\[android\]/s/.*/&\
+  skip_gradle = true/' $app_dir/socket.ini > $temp
+  quiet mv $temp $app_dir/socket.ini
+  echo "starting ssc from $(pwd)"
+  if ! quiet ssc build -o --platform=android; then
+    echo "NDK build failed."
+    exit 1
+  fi
+else
+  echo "# Not rebuilding $app_dir"
 fi
 
 for abi in $(ls $app_dir/dist/android/app/src/main/obj/local)
 do
-  echo "copying $abi to $BUILD_DIR/$abi-android"
-  quiet mkdir -p $BUILD_DIR/$abi-android
-  quiet cp -rf $app_dir/dist/android/app/src/main/obj/local/$abi $BUILD_DIR/$abi-android
+  echo "copying $abi to $LIB_DIR/$abi-android"
+  quiet mkdir -p $LIB_DIR/$abi-android
+  quiet cp -rf $app_dir/dist/android/app/src/main/obj/local/$abi/* $LIB_DIR/$abi-android
 done
