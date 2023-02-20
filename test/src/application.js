@@ -305,7 +305,7 @@ test('application.getWindows without params', async (t) => {
   counter++
   const windows = await application.getWindows()
   t.ok(windows instanceof Object, 'returns an object')
-  t.ok(Object.keys(windows).length >= 2, 'object has at least 2 windows')
+  t.ok(Object.keys(windows).length === counter, `object has ${counter} windows`)
   t.ok(Object.keys(windows).every(index => Number.isInteger(Number(index))), 'keys are all integers')
   t.ok(Object.values(windows).every((window) => window instanceof ApplicationWindow), 'values are all ApplicationWindow instances')
   t.equal(windows[0].index, 0, 'window index is correct')
