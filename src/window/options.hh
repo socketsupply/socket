@@ -11,8 +11,6 @@ namespace SSC {
     bool canExit = false;
     float height = 0;
     float width = 0;
-    float heightUncalculated = 0;
-    float widthUncalculated = 0;
     bool isHeightInPercent = false;
     bool isWidthInPercent = false;
     int index = 0;

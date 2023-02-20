@@ -18,7 +18,7 @@ if (globalThis.window) {
 /**
  * Creates a new window and returns an instance of ApplicationWindow.
  * @param {object} opts - an options object
- * @param {number=} [opts.index] - the index of the window
+ * @param {number} opts.index - the index of the window
  * @param {string} opts.path - the path to the HTML file to load into the window
  * @param {string=} opts.title - the title of the window
  * @param {(number|string)=} opts.width - the width of the window. If undefined, the window will have the main window width.
@@ -30,8 +30,8 @@ if (globalThis.window) {
  * @return {Promise<ipc.Result>}
  */
 export async function createWindow (opts) {
-  if (opts.path === undefined) {
-    throw new Error('Path must be provided')
+  if (opts?.path == null || opts?.index == null) {
+    throw new Error('Path and index are required options')
   }
 
   // default values
@@ -151,19 +151,6 @@ export async function exit (code) {
     throw new Error(err)
   }
   return data
-}
-
-/**
- * Opens a native context menu.
- * @param {object} options - an options object
- * @return {Promise<Any>}
- */
-export async function setContextMenu (o) {
-  o = Object
-    .entries(o)
-    .flatMap(a => a.join(':'))
-    .join('_')
-  return await ipc.send('application.setContextMenu', o)
 }
 
 /**

@@ -249,21 +249,11 @@ namespace SSC {
             auto index = this->opts.index;
             auto size = this->getSize();
 
-            // debug("json");
-            // debug("  width: %d", size.width);
-            // debug("  height: %d", size.height);
-            // debug("  widthUncalculated: %f", this->opts.widthUncalculated);
-            // debug("  heightUncalculated: %f", this->opts.heightUncalculated);
-            // debug("  isWidthInPercent: %d", this->opts.isWidthInPercent);
-            // debug("  isHeightInPercent: %d", this->opts.isHeightInPercent);
-
             return JSON::Object::Entries {
               { "index", index },
               { "title", this->getTitle() },
               { "width", size.width },
               { "height", size.height },
-              { "widthUncalculated", this->opts.widthUncalculated },
-              { "heightUncalculated", this->opts.heightUncalculated },
               { "isWidthInPercent", this->opts.isWidthInPercent },
               { "isHeightInPercent", this->opts.isHeightInPercent },
               { "status", this->status }
@@ -442,10 +432,30 @@ namespace SSC {
           }
         }
 
-        auto height = opts.height > 0 ? opts.height : this->options.defaultHeight;
+        auto screen = (this->getWindow(opts.index))->getScreenSize();
+
+        auto isWidthInPercent = opts.isWidthInPercent || (opts.height <= 0 && this->options.isWidthInPercent);
+        auto isHeightInPercent = opts.isHeightInPercent || (opts.width <= 0 && this->options.isHeightInPercent);
+
         auto width = opts.width > 0 ? opts.width : this->options.defaultWidth;
-        auto isHeightInPercent = opts.height > 0 ? false : this->options.isHeightInPercent;
-        auto isWidthInPercent = opts.width > 0 ? false : this->options.isWidthInPercent;
+        auto height = opts.height > 0 ? opts.height : this->options.defaultHeight;
+
+        if (isWidthInPercent) {
+          width = screen.width * (width / 100);
+        }
+        if (isHeightInPercent) {
+          height = screen.height * (height / 100);
+        }
+
+        // debug("Creating window %i with options:", opts.index);
+        // debug("  - opts.height: %f", opts.height);
+        // debug("  - opts.width: %f", opts.width);
+        // debug("  - opts.isHeightInPercent %s", opts.isHeightInPercent ? "true" : "false");
+        // debug("  - opts.isWidthInPercent %s", opts.isWidthInPercent ? "true" : "false");
+        // debug("  - height: %f", height);
+        // debug("  - width: %f", width);
+        // debug("  - isHeightInPercent: %s", isHeightInPercent ? "true" : "false");
+        // debug("  - isWidthInPercent: %s", isWidthInPercent ? "true" : "false");
 
         WindowOptions windowOptions = {
           .resizable = opts.resizable,
