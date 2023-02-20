@@ -567,29 +567,16 @@ MAIN {
         options.port = std::stoi(message.get("port"));
       }
 
-      auto screen = currentWindow->getScreenSize();
-      if (message.get("width").size() > 0) {
-        options.widthUncalculated = std::stof(message.get("width"));
-      }
-      options.isWidthInPercent = message.get("isWidthInPercent") == "true";
-      options.width = options.widthUncalculated && options.isWidthInPercent
-        ? screen.width * options.widthUncalculated / 100
-        : options.widthUncalculated;
+      options.isWidthInPercent = message.get("isWidthInPercent") == "true" ? true : false;
+      options.isHeightInPercent = message.get("isHeightInPercent") == "true" ? true : false;
 
-      if (message.get("height").size() > 0) {
-        options.heightUncalculated = std::stof(message.get("height"));
-      }
-      options.isHeightInPercent = message.get("isHeightInPercent") == "true";
-      options.height = options.heightUncalculated && options.isHeightInPercent
-        ? screen.height * options.heightUncalculated / 100
-        : options.heightUncalculated;
+      options.width = message.get("width").size() ? std::stof(message.get("width")) : 0;
+      options.height = message.get("height").size() ? std::stof(message.get("height")) : 0;
 
       // debug("size");
       // debug("  width %f", options.width);
-      // debug("  widthUncalculated: %f", options.widthUncalculated);
       // debug("  isWidthInPercent: %s", options.isWidthInPercent ? "true" : "false");
       // debug("  height %f", options.height);
-      // debug("  heightUncalculated: %f", options.heightUncalculated);
       // debug("  isHeightInPercent: %s", options.isHeightInPercent ? "true" : "false");
 
       options.resizable = message.get("resizable") == "true" ? true : false;
@@ -834,9 +821,10 @@ MAIN {
       return;
     }
 
-    if (message.name == "application.setContextMenu") {
+    if (message.name == "window.setContextMenu") {
       auto seq = message.get("seq");
       window->setContextMenu(seq, decodeURIComponent(value));
+      window->resolvePromise(seq, OK_STATE, "null");
       return;
     }
 

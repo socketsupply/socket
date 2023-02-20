@@ -6,6 +6,7 @@
 
 import * as statuses from './window/constants.js'
 import ipc, { primordials } from './ipc.js'
+import { isValidPercentageValue } from './util.js'
 
 export function formatFileUrl (url) {
   return `file://${primordials.cwd}/${url}`
@@ -15,6 +16,7 @@ export function formatFileUrl (url) {
 export class ApplicationWindow {
   #index
   #options
+  #senderWindowIndex = globalThis.__args.index
   // TODO(@chicoxyzzy): add parent and children? (needs native process support)
 
   static constants = statuses
@@ -69,7 +71,7 @@ export class ApplicationWindow {
    * @return {Promise<ipc.Result>}
    */
   async show () {
-    const response = await ipc.send('window.show', { index: this.#index, targetWindowIndex: this.#index })
+    const response = await ipc.send('window.show', { index: this.#senderWindowIndex, targetWindowIndex: this.#index })
     return this.#updateOptions(response)
   }
 
@@ -78,7 +80,7 @@ export class ApplicationWindow {
    * @return {Promise<ipc.Result>}
    */
   async hide () {
-    const response = await ipc.send('window.hide', { index: this.#index, targetWindowIndex: this.#index })
+    const response = await ipc.send('window.hide', { index: this.#senderWindowIndex, targetWindowIndex: this.#index })
     return this.#updateOptions(response)
   }
 
@@ -88,7 +90,55 @@ export class ApplicationWindow {
    * @return {Promise<ipc.Result>}
    */
   async setTitle (title) {
-    const response = await ipc.send('window.setTitle', { index: this.#index, targetWindowIndex: this.#index, value: title })
+    const response = await ipc.send('window.setTitle', { index: this.#senderWindowIndex, targetWindowIndex: this.#index, value: title })
+    return this.#updateOptions(response)
+  }
+
+  /**
+   * Sets the size of the window
+   * @param {object} opts - an options object
+   * @param {number|string} [opts.width] - the width of the window
+   * @param {number|string} [opts.height] - the height of the window
+   * @param {boolean} [opts.isWidthInPercent = false] - whether the width is in percent
+   * @param {boolean} [opts.isHeightInPercent = false] - whether the height is in percent
+   * @return {Promise<ipc.Result>}
+   * @throws {Error} - if the width or height is invalid
+   */
+  async setSize (opts) {
+    // default values
+    const options = {
+      targetWindowIndex: this.#index,
+      index: this.#senderWindowIndex,
+    }
+
+    if (( opts.width != null && typeof opts.width !== 'number' && typeof opts.width !== 'string') ||
+      (typeof opts.width === 'string' && !isValidPercentageValue(opts.width)) ||
+      (typeof opts.width === 'number' && !(Number.isInteger(opts.width) && opts.width > 0))) {
+      throw new Error(`Window width must be an integer number or a string with a valid percentage value from 0 to 100 ending with %. Got ${opts.width} instead.`)
+    }
+    if (typeof opts.width === 'string' && isValidPercentageValue(opts.width)) {
+      options.width = Number(opts.width.slice(0, -1))
+      options.isWidthInPercent = true
+    }
+    if (typeof opts.width === 'number') {
+      options.width = opts.width
+      options.isWidthInPercent = false
+    }
+
+    if ((opts.height != null && typeof opts.height !== 'number' && typeof opts.height !== 'string') ||
+      (typeof opts.height === 'string' && !isValidPercentageValue(opts.height)) ||
+      (typeof opts.height === 'number' && !(Number.isInteger(opts.height) && opts.height > 0))) {
+      throw new Error(`Window height must be an integer number or a string with a valid percentage value from 0 to 100 ending with %. Got ${opts.height} instead.`)
+    }
+    if (typeof opts.height === 'string' && isValidPercentageValue(opts.height)) {
+      options.height = Number(opts.height.slice(0, -1))
+      options.isHeightInPercent = true
+    }
+    if (typeof opts.height === 'number') {
+      options.height = opts.height
+      options.isHeightInPercent = false
+    }
+    const response = await ipc.send('window.setSize', options)
     return this.#updateOptions(response)
   }
 
@@ -97,12 +147,12 @@ export class ApplicationWindow {
    * @return {Promise<ipc.Result>}
    */
   async navigate (path) {
-    const response = await ipc.send('window.navigate', { index: this.#index, targetWindowIndex: this.#index, url: formatFileUrl(path) })
+    const response = await ipc.send('window.navigate', { index: this.#senderWindowIndex, targetWindowIndex: this.#index, url: formatFileUrl(path) })
     return this.#updateOptions(response)
   }
 
   async showInspector (params) {
-    const { data, err } = await ipc.send('window.showInspector', { index: this.#index, targetWindowIndex: this.#index })
+    const { data, err } = await ipc.send('window.showInspector', { index: this.#senderWindowIndex, targetWindowIndex: this.#index })
     if (err) {
       throw new Error(err)
     }
@@ -119,7 +169,7 @@ export class ApplicationWindow {
    * @return {Promise<ipc.Result>}
    */
   async setBackgroundColor (opts) {
-    const response = await ipc.send('window.setBackgroundColor', { index: this.#index, targetWindowIndex: this.#index })
+    const response = await ipc.send('window.setBackgroundColor', { index: this.#senderWindowIndex, targetWindowIndex: this.#index, ...opts})
     return this.#updateOptions(response)
   }
 
@@ -133,7 +183,11 @@ export class ApplicationWindow {
       .entries(o)
       .flatMap(a => a.join(':'))
       .join('_')
-    return await ipc.send('context', o)
+    const { data, err } = await ipc.send('window.setContextMenu', o)
+    if (err) {
+      throw new Error(err)
+    }
+    return data
   }
 
   // TODO(@heapwolf) the properties do not yet conform to the MDN spec
@@ -175,7 +229,7 @@ export class ApplicationWindow {
     const value = typeof options.value === 'string' ? options.value : JSON.stringify(options.value)
 
     return await ipc.send('window.send', {
-      index: this.#index,
+      index: this.#senderWindowIndex,
       targetWindowIndex: options.window,
       event: options.event,
       value: encodeURIComponent(value)
