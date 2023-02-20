@@ -1364,8 +1364,12 @@ int main (const int argc, const char* argv[]) {
       }
     }
 
-    if (flagRunUserBuildOnly == false && fs::exists(paths.platformSpecificOutputPath)) {
-      auto p = fs::current_path() / fs::path(paths.platformSpecificOutputPath);
+    auto removePath = paths.platformSpecificOutputPath;
+      if (settings[targetPlatform + "_build_remove_path"].size() > 0)
+        removePath = targetPath / settings[targetPlatform + "_build_remove_path"];
+
+    if (flagRunUserBuildOnly == false && fs::exists(removePath)) {
+      auto p = fs::current_path() / fs::path(removePath);
       try {
         fs::remove_all(p);
         log(String("cleaned: " + p.string()));
