@@ -98,7 +98,6 @@ if [[ ! -d $app_dir ]]; then
   quiet mkdir -p $app_dir
   cd $app_dir
   echo "Building Android App"
-  rm socket.ini
   quiet ssc init
   temp=$(mktemp)
   quiet sed '/\[android\]/s/.*/&\
