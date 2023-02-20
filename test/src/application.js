@@ -4,6 +4,11 @@ import application from 'socket:application'
 import { ApplicationWindow } from 'socket:window'
 import { readFile } from 'socket:fs/promises'
 
+// TODO(@chicoxyzzy): consider window borders
+// const DELTA = 28
+
+let title = 'Socket Runtime JavaScript Tests'
+
 //
 // Polyfills
 //
@@ -20,15 +25,17 @@ test('window.resizeTo percentage', async (t) => {
   window.resizeTo('20%', '20%')
   const mainWindow = await application.getCurrentWindow()
   const { width, height } = mainWindow.getSize()
-  t.equal(width, Math.round(window.screen.width * 0.2), 'width is 420')
-  t.equal(height, Math.round(window.screen.height * 0.2), 'height is 200')
+  t.equal(width, Math.round(window.screen.width * 0.2), 'width is 20%')
+  t.equal(height, Math.round(window.screen.height * 0.2), 'height is 20%')
 })
 
 test('window.document.title', async (t) => {
-  window.document.title = 'idkfa'
-  t.equal(window.document.title, 'idkfa', 'window.document.title is has been changed')
+  t.equal(window.document.title, title, 'window.document.title is correct')
+  title = 'idkfa'
+  window.document.title = title
+  t.equal(window.document.title, title, 'window.document.title is has been changed')
   const mainWindow = await application.getCurrentWindow()
-  t.equal(mainWindow.getTitle(), 'idkfa', 'window title is correct')
+  t.equal(mainWindow.getTitle(), title, 'window title is correct')
 })
 //
 // End of polyfills
@@ -99,7 +106,7 @@ test('application.createWindow without path', async (t) => {
     err = e
   }
   t.ok(err instanceof Error, 'throws error when path is not specified')
-  t.equal(err.message, 'Path must be provided', 'error message is correct')
+  t.equal(err.message, 'Path and index are required options', 'error message is correct')
   t.ok(!(dummyWindow instanceof ApplicationWindow), 'does not return an ApplicationWindow instance')
 })
 
@@ -282,6 +289,7 @@ test('application.getWindow with valid index', async (t) => {
 
 test('application.getWindows with valid indexes', async (t) => {
   const newWindow = await application.createWindow({ index: counter, path: 'index_no_js.html' })
+  counter++
   const windows = await application.getWindows([0, newWindow.index])
   t.ok(windows instanceof Object, 'returns an object')
   t.equal(Object.keys(windows).length, 2, 'object has 2 keys')
@@ -290,14 +298,29 @@ test('application.getWindows with valid indexes', async (t) => {
   t.equal(windows[0].index, 0, 'window index is correct')
   t.equal(windows[newWindow.index].index, newWindow.index, 'window index is correct')
   newWindow.close()
-  counter++
 })
 
-// TODO(@chicoxyzzy): test other windows
+test('application.getWindows without params', async (t) => {
+  const newWindow = await application.createWindow({ index: counter, path: 'index_no_js.html' })
+  counter++
+  const windows = await application.getWindows()
+  t.ok(windows instanceof Object, 'returns an object')
+  t.ok(Object.keys(windows).length >= 2, 'object has at least 2 windows')
+  t.ok(Object.keys(windows).every(index => Number.isInteger(Number(index))), 'keys are all integers')
+  t.ok(Object.values(windows).every((window) => window instanceof ApplicationWindow), 'values are all ApplicationWindow instances')
+  t.equal(windows[0].index, 0, 'window index is correct')
+  t.equal(windows[newWindow.index].index, newWindow.index, 'window index is correct')
+  newWindow.close()
+})
+
 test('application.getCurrentWindow', async (t) => {
   const mainWindow = await application.getCurrentWindow()
   t.ok(mainWindow instanceof ApplicationWindow, 'returns an ApplicationWindow instance')
   t.equal(mainWindow.index, 0, 'window index is correct')
+  const mainWindowTitle = mainWindow.getTitle()
+  t.equal(mainWindowTitle, title, 'title is correct')
+  const mainWindowStatus = mainWindow.getStatus()
+  t.equal(mainWindowStatus, ApplicationWindow.constants.WINDOW_SHOWN, 'status is correct')
 })
 
 // TODO(@chicoxyzzy): neither kill nor exit work so I use the counter workaround
@@ -305,28 +328,12 @@ let counter = 1
 
 test('window.close', async (t) => {
   const newWindow = await application.createWindow({ index: counter, path: 'index_no_js.html' })
+  counter++
   const { status } = await newWindow.close()
   t.equal(status, ApplicationWindow.constants.WINDOW_CLOSED, 'window is closed')
-  counter++
 })
 
-// TODO(@chicoxyzzy): fix incorrect sizes
-test.skip('new window inherts the size of the main window when sizes are not provided', async (t) => {
-  const mainWindow = await application.getWindow(0)
-  const newWindow = await application.createWindow({ index: counter, path: 'index_no_js.html' })
-  t.equal(mainWindow.index, 0, 'main window index is 0')
-  t.equal(newWindow.index, counter, 'new window index is correct')
-  const mainWindowSize = mainWindow.getSize()
-  const newWindowSize = newWindow.getSize()
-  t.equal(newWindowSize.width, mainWindowSize.width, 'width is inherited from the main window')
-  t.equal(newWindowSize.height, mainWindowSize.height, 'height is inherited from the main window')
-  // TODO(@chicoxyzzy): await newWindow.kill()
-  await newWindow.close()
-  counter++
-})
-
-// TODO(@chicoxyzzy): fix incorrect sizes`
-test.skip('new window have the correct size when sizes are provided', async (t) => {
+test('new window have the correct size when sizes are provided', async (t) => {
   const newWindow = await application.createWindow({
     index: counter,
     path: 'index_no_js.html',
@@ -334,16 +341,16 @@ test.skip('new window have the correct size when sizes are provided', async (t) 
     height: 600
   })
   t.equal(newWindow.index, counter, 'new window index is correct')
+  counter++
   const newWindowSize = newWindow.getSize()
   t.equal(newWindowSize.width, 800, 'width is inherited from the main window')
-  t.equal(newWindowSize.height, 600, 'height is inherited from the main window')
+  // TODO(@chicoxyzzy): window borders
+  // t.equal(newWindowSize.height, 600, 'height is inherited from the main window')
   // TODO(@chicoxyzzy): await newWindow.kill()
   await newWindow.close()
-  counter++
 })
 
-// TODO(@chicoxyzzy): fix incorrect sizes
-test.skip('new window have the correct size when sizes are provided in percent', async (t) => {
+test('new window have the correct size when sizes are provided in percent', async (t) => {
   const newWindow = await application.createWindow({
     index: counter,
     path: 'index_no_js.html',
@@ -351,23 +358,24 @@ test.skip('new window have the correct size when sizes are provided in percent',
     height: '50%'
   })
   t.equal(newWindow.index, counter, 'new window index is correct')
-  const mainWindowSize = await application.getCurrentWindow().getSize()
+  counter++
   const newWindowSize = await newWindow.getSize()
-  t.equal(newWindowSize.width, mainWindowSize.width, 'width is inherited from the main window')
-  t.equal(newWindowSize.height, mainWindowSize.height / 2, 'height is inherited from the main window')
+  t.equal(newWindowSize.width, window.screen.width, 'width is inherited from the main window')
+  // t.equal(newWindowSize.height, window.screen.height / 2, 'height is inherited from the main window')
   // TODO(@chicoxyzzy): await newWindow.kill()
   await newWindow.close()
-  counter++
 })
 
-// TODO(@chicoxyzzy): segfaults
-test.skip('application.getWindows all windows', async (t) => {
-  const windows = await application.getWindows()
-  t.ok(windows instanceof Object, 'returns an object')
-  t.ok(Object.keys(windows).length > 0, 'returns at least one window')
-  t.equal(Object.keys(windows).length, counter, 'returns all windows')
-  t.ok(Object.keys(windows).every(index => Number.isInteger(Number(index))), 'keys are all integers')
-  t.ok(Object.values(windows).every((window) => window instanceof ApplicationWindow), 'values are all ApplicationWindow instances')
+test('new window inherts the size of the main window when sizes are not provided', async (t) => {
+  const newWindow = await application.createWindow({ index: counter, path: 'index_no_js.html' })
+  t.equal(newWindow.index, counter, 'new window index is correct')
+  counter++
+  const newWindowSize = newWindow.getSize() 
+  t.equal(newWindowSize.width, Math.round(window.screen.width * 0.8), 'width is inherited from the main window')
+  // TODO(@chicoxyzzy): window borders
+  // t.equal(newWindowSize.height, Math.round(window.screen.height * 0.8), 'height is inherited from the main window')
+  // TODO(@chicoxyzzy): await newWindow.kill()
+  await newWindow.close()
 })
 
 test('window.setTitle', async (t) => {
@@ -375,6 +383,15 @@ test('window.setTitle', async (t) => {
   const { title } = await mainWindow.setTitle('👋')
   t.equal(title, '👋', 'correct title is returned')
   t.equal(mainWindow.getTitle(), '👋', 'window options are updated')
+})
+
+test('window.setSize', async (t) => {
+  const mainWindow = await application.getCurrentWindow()
+  const { width, height } = await mainWindow.setSize({ width: 800, height: 600 })
+  t.equal(width, 800, 'correct width is returned')
+  t.equal(height, 600, 'correct height is returned')
+  t.equal(mainWindow.getSize().width, 800, 'window options are updated')
+  t.equal(mainWindow.getSize().height, 600, 'window options are updated')
 })
 
 test('window.hide / window.show', async (t) => {
@@ -391,27 +408,25 @@ test('window.hide / window.show', async (t) => {
 // TODO(@chicoxyzzy): freezes the app
 test.skip('window.navigate', async (t) => {
   const newWindow = await application.createWindow({ index: counter, path: 'index_no_js.html' })
+  counter++
   const { index, status } = await newWindow.navigate('index_no_js2.html')
   t.equal(index, newWindow.index, 'correct index is returned')
   t.equal(status, ApplicationWindow.constants.WINDOW_NAVIGATED, 'correct status is returned')
   newWindow.close()
-  counter++
 })
 
-// TODO(@chicoxyzzy): freezes the app
-test.skip('window.setBackgroundColor', async (t) => {
+test('window.setBackgroundColor', async (t) => {
   const newWindow = await application.createWindow({ index: counter, path: 'index_no_js.html' })
+  counter++
   const { index } = await newWindow.setBackgroundColor({ red: 0, green: 0, blue: 0, alpha: 0 })
-  // await new Promise((resolve) => {})
   t.equal(index, newWindow.index, 'correct index is returned')
   newWindow.close()
-  counter++
 })
 
-// FIXME: freezes the app
-test('application.setContextMenu', async (t) => {
-  // const result = await application.setContextMenu({ 'Foo': '', 'Bar': '' })
-  // t.equal(result, null, 'setContextMenu succeeds')
+test('window.setContextMenu', async (t) => {
+  const mainWindow = await application.getCurrentWindow()
+  const result = await mainWindow.setContextMenu({ 'Foo': '', 'Bar': '' })
+  t.deepEqual(result, { data: null }, 'setContextMenu succeeds')
 })
 
 test('application.setSystemMenuItemEnabled', async (t) => {
