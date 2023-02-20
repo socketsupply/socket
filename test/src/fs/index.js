@@ -23,7 +23,7 @@ test('fs.access', async (t) => {
 
   await new Promise((resolve, reject) => {
     fs.access(FIXTURES, F_OK, (err, access) => {
-      if (err) t.fail(err, '(F_OK) fixtures/ is not accessible')
+      if (err) t.fail(`(F_OK) ${FIXTURES} is not accessible`)
       else t.ok(access, '(F_OK) fixtures/ directory is accessible')
       resolve()
     })
@@ -31,7 +31,7 @@ test('fs.access', async (t) => {
 
   await new Promise((resolve, reject) => {
     fs.access(FIXTURES, R_OK, (err, access) => {
-      if (err) t.fail(err, '(R_OK) fixtures/ directory is not readable')
+      if (err) t.fail(`(R_OK) ${FIXTURES} is not readable`)
       else t.ok(access, '(R_OK) fixtures/ directory is readable')
       resolve()
     })
@@ -39,7 +39,7 @@ test('fs.access', async (t) => {
 
   await new Promise((resolve, reject) => {
     fs.access('.', W_OK, (err, access) => {
-      if (err) t.fail(err, '(W_OK) ./ directory is not writable')
+      if (err) t.fail(`(W_OK) ${FIXTURES} is not writable`)
       else t.ok(access, '(W_OK) ./ directory is writable')
       resolve()
     })
@@ -47,7 +47,7 @@ test('fs.access', async (t) => {
 
   await new Promise((resolve, reject) => {
     fs.access(FIXTURES, X_OK, (err, access) => {
-      if (err) t.fail(err, '(X_OK) fixtures/ directory is not "executable" - cannot list items')
+      if (err) t.fail(`(X_OK) ${FIXTURES} directory is not "executable" - cannot list items`)
       else t.ok(access, '(X_OK) fixtures/ directory is "executable" - can list items')
       resolve()
     })
