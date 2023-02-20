@@ -43,7 +43,7 @@ You can also check our `Examples` in the [Examples Repo](https://github.com/sock
 ### 📚 Documentation
 
 The full documentation for `Socket Runtime` can be found on our [Website](https://sockets.sh/)  
-The `Socket Runtime` documentation discusses API, examples , multiple guides (Apple,Desktop and Windows), P2P section and more.
+The `Socket Runtime` documentation discusses API, examples , multiple guides (`Apple`,`Desktop`, and `Mobile`), `P2P` documentation and more.
 
 
 ### 🧪 Testing
@@ -53,5 +53,6 @@ Test all the things! See the [`test/`](test/) for the unit and integration test 
 ### 🙏 Contributing
 
 Please stop by [Discord](https://discord.com/invite/YPV32gKCsH) and ask the team about your issue and if someone is already working on it.  
+Please connect with any current project contributor, if you want to contribute to the `Socket Runtime` project itself,  
 
-Thanks for your interest in reporting/fixing issues and contributing directly to the code base!
+Thank you for your interest in reporting/fixing issues and contributing to `Socket Supply`!
