@@ -25,6 +25,7 @@ test('os.isWindows()', (t) => {
 
 test('os.tmpdir()', (t) => {
   t.equal(typeof os.tmpdir(), 'string', 'os.type() value is a string')
+  t.ok(os.tmpdir().length > 0, 'tmpdir length > 0')
 })
 
 test('os.networkInterfaces()', (t) => {

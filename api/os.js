@@ -155,10 +155,10 @@ export function tmpdir () {
 
   if (isWindows()) {
     path = (
-      window.__args.env.TEMPDIR ??
-      window.__args.env.TMPDIR ??
-      window.__args.env.TEMP ??
-      window.__args.env.TMP ??
+      window.__args.env.TEMPDIR ||
+      window.__args.env.TMPDIR ||
+      window.__args.env.TEMP ||
+      window.__args.env.TMP ||
       (window.__args.env.SystemRoot ?? window.__args.env.windir ?? '') + '\\temp'
     )
 
@@ -167,10 +167,10 @@ export function tmpdir () {
     }
   } else {
     path = (
-      window.__args.env.TEMPDIR ??
-      window.__args.env.TMPDIR ??
-      window.__args.env.TEMP ??
-      window.__args.env.TMP ??
+      window.__args.env.TEMPDIR ||
+      window.__args.env.TMPDIR ||
+      window.__args.env.TEMP ||
+      window.__args.env.TMP ||
       ''
     )
 
