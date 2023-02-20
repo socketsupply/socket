@@ -378,7 +378,12 @@ function _install {
     rm -rf "$SOCKET_HOME/lib/$arch-$platform"
     mkdir -p "$SOCKET_HOME/lib/$arch-$platform"
     cp -fr "$BUILD_DIR/$arch-$platform"/lib/*.a "$SOCKET_HOME/lib/$arch-$platform"
-    cp -fr "$BUILD_DIR/$arch-$platform"/lib/*.lib "$SOCKET_HOME/lib/$arch-$platform"
+    if [[ $host=="Win32" ]]; then
+      cp -fr "$BUILD_DIR/$arch-$platform"/lib/*.lib "$SOCKET_HOME/lib/$arch-$platform"
+      if [[ -z "$DEBUG" ]]; then
+        cp -fr "$BUILD_DIR/$arch-$platform"/lib/*.pdb "$SOCKET_HOME/lib/$arch-$platform"
+      fi
+    fi
   fi
 
   echo "# copying js api to $SOCKET_HOME/api"
