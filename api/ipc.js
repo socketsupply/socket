@@ -1218,6 +1218,7 @@ export async function request (command, params, options) {
       if (options?.timeout) {
         clearTimeout(timeout)
       }
+
       resolve(Result.from(null, new AbortError(signal), command))
     }
 

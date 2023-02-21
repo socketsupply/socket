@@ -1,3 +1,4 @@
+import { IllegalConstructorError } from './errors.js'
 import { Buffer } from './buffer.js'
 
 import * as exports from './util.js'
@@ -9,7 +10,8 @@ const TypedArrayPrototype = Object.getPrototypeOf(Uint8ArrayPrototype)
 const AsyncFunction = (async () => {}).constructor
 const TypedArray = TypedArrayPrototype.constructor
 
-const kCustomInspect = inspect.custom = Symbol.for('nodejs.util.inspect.custom')
+const kSocketCustomInspect = inspect.custom = Symbol.for('socket.util.inspect.custom')
+const kNodeCustomInspect = inspect.custom = Symbol.for('nodejs.util.inspect.custom')
 const kIgnoreInspect = inspect.ignore = Symbol.for('socket.util.inspect.ignore')
 
 export function hasOwnProperty (object, property) {
@@ -284,10 +286,21 @@ export function inspect (value, options) {
 
         return formatted
       } else if (
-        isFunction(value?.[kCustomInspect]) &&
-        value?.[kCustomInspect] !== inspect
+        (
+          isFunction(value?.[kNodeCustomInspect]) &&
+          value?.[kNodeCustomInspect] !== inspect
+        ) ||
+        (
+          isFunction(value?.[kSocketCustomInspect]) &&
+          value?.[kSocketCustomInspect] !== inspect
+        )
       ) {
-        const formatted = value[kCustomInspect](depth, ctx, ctx.options, inspect)
+        const formatted = (value[kNodeCustomInspect] || value[kSocketCustomInspect])(
+          depth,
+          ctx,
+          ctx.options,
+          inspect
+        )
 
         if (typeof formatted !== 'string') {
           return formatValue(ctx, formatted, depth)
@@ -400,7 +413,13 @@ export function inspect (value, options) {
         typeof value?.constructor === 'function' &&
         (value.constructor !== Object && value.constructor !== Array)
       ) {
-        braces[0] = `${value.constructor.name} ${braces[0]}`
+        let tag = value?.[Symbol.toStringTag] || value?.toString
+
+        if (typeof tag === 'function') {
+          tag = tag.call(value)
+        }
+
+        braces[0] = `${tag || value.constructor.name} ${braces[0]}`
       }
 
       if (keys.size === 0 && !(value instanceof Error)) {
@@ -518,7 +537,13 @@ export function inspect (value, options) {
     const length = output.reduce((p, c) => (p + c.length + 1), 0)
 
     if (Object.getPrototypeOf(value) === null) {
-      braces[0] = `[Object: null prototype] ${braces[0]}`
+      let tag = value?.[Symbol.toStringTag] || value?.toString
+
+      if (typeof tag === 'function') {
+        tag = tag.call(value)
+      }
+
+      braces[0] = `${tag || '[Object: null prototype]'} ${braces[0]}`
     }
 
     if (length > 80) {
@@ -704,5 +729,11 @@ export function parseHeaders (headers) {
 }
 
 export function noop () {}
+
+export class IllegalConstructor {
+  constructor () {
+    throw new IllegalConstructorError()
+  }
+}
 
 export default exports

@@ -29,6 +29,26 @@ if (!isNode) {
 
 export default process
 
+export function nextTick (callback) {
+  if (typeof process.nextTick === 'function' && process.nextTick !== nextTick) {
+    process.nextTick(callback)
+  } else if (typeof globalThis.setImmediate === 'function') {
+    globalThis.setImmediate(callback)
+  } else if (typeof globalThis.queueMicrotask === 'function') {
+    globalThis.queueMicrotask(callback)
+  } else if (typeof globalThis.setTimeout === 'function') {
+    globalThis.setTimeout(callback)
+  } else if (typeof globalThis.requestAnimationFrame === 'function') {
+    globalThis.requestAnimationFrame(callback)
+  } else {
+    throw new TypeError('\'process.nextTick\' is not supported in environment.')
+  }
+}
+
+if (typeof process.nextTick !== 'function') {
+  process.nextTick = nextTick
+}
+
 /**
  * @returns {string} The home directory of the current user.
  */

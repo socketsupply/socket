@@ -1,5 +1,12 @@
+import diagnostics from '../diagnostics.js'
 import console from '../console.js'
 import ipc from '../ipc.js'
+
+const dc = diagnostics.channels.group('fs', [
+  'fd',
+  'fd.retain',
+  'fd.release'
+])
 
 /**
  * Static contsiner to map file descriptors to internal
@@ -45,10 +52,14 @@ export default new class FileDescriptorsMap {
       type = id === fd ? 'directory' : 'file'
     }
 
-    this.fds.set(id, fd)
-    this.ids.set(fd, id)
-    this.types.set(id, type)
-    this.types.set(fd, type)
+    if (!this.has(id)) {
+      dc.channel('fd').publish({ fd })
+
+      this.fds.set(id, fd)
+      this.ids.set(fd, id)
+      this.types.set(id, type)
+      this.types.set(fd, type)
+    }
   }
 
   has (id) {
@@ -92,6 +103,10 @@ export default new class FileDescriptorsMap {
 
     const fd = this.fds.get(id)
 
+    if (fd) {
+      dc.channel('fd.release').publish({ fd })
+    }
+
     this.fds.delete(id)
     this.fds.delete(fd)
 
@@ -112,9 +127,14 @@ export default new class FileDescriptorsMap {
 
   async retain (id) {
     const result = await ipc.send('fs.retainOpenDescriptor', { id })
+    const fd = this.fd(id)
 
     if (result.err) {
       throw result.err
+    }
+
+    if (fd) {
+      dc.channel('fd.retain').publish({ fd })
     }
 
     return result.data

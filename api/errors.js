@@ -150,6 +150,38 @@ export class FinalizationRegistryCallbackError extends Error {
 }
 
 /**
+ * An `IllegalConstructorError` is an error type thrown when a constructor is
+ * called for a class constructor when it shouldn't be.
+ */
+export class IllegalConstructorError extends TypeError {
+  /**
+   * The default code given to an `IllegalConstructorError`
+   */
+  static get code () { return 0 }
+
+  /**
+   * `IllegalConstructorError` class constructor.
+   * @param {string} message
+   * @param {number} [code]
+   */
+  constructor (message, ...args) {
+    super(message, ...args)
+
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, IllegalConstructorError)
+    }
+  }
+
+  get name () {
+    return 'IllegalConstructorError'
+  }
+
+  get code () {
+    return 'ILLEGAL_CONSTRUCTOR_ERR'
+  }
+}
+
+/**
  * An `IndexSizeError` is an error type thrown when an internal exception
  * has occurred, such as in the native IPC layer.
  */
