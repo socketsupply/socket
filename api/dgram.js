@@ -8,6 +8,7 @@
 import { isArrayBufferView, isFunction, noop } from './util.js'
 import { InternalError } from './errors.js'
 import { EventEmitter } from './events.js'
+import diagnostics from './diagnostics.js'
 import { Buffer } from './buffer.js'
 import { rand64 } from './crypto.js'
 import { isIPv4 } from './net.js'
@@ -30,6 +31,16 @@ const CONNECT_STATE_CONNECTED = 2
 const MAX_PORT = 64 * 1024
 const RECV_BUFFER = 1
 const SEND_BUFFER = 0
+
+const dc = diagnostics.channels.group('udp', [
+  'send.start',
+  'send.end',
+  'message',
+  'connect',
+  'socket',
+  'close',
+  'bind'
+])
 
 /**
  * Generic error class for an error occurring on a `Socket` instance.
@@ -117,12 +128,14 @@ function createDataListener (socket) {
     if (!data || BigInt(data.id) !== socket.id) return
 
     if (source === 'udp.readStart') {
+      const message = Buffer.from(buffer)
       const info = {
         ...data,
         family: getAddressFamily(data.address)
       }
 
-      socket.emit('message', Buffer.from(buffer), info)
+      socket.emit('message', message, info)
+      dc.channel('message').publish({ socket, buffer: message, info })
     }
 
     if (data.EOF) {
@@ -335,6 +348,14 @@ async function bind (socket, options, callback) {
     return { err }
   }
 
+  dc.channel('bind').publish({
+    socket,
+    port: options.port || 0,
+    address: options.address,
+    ipv6Only: !!options.ipv6Only,
+    reuseAddr: !!options.reuseAddr
+  })
+
   return result
 }
 
@@ -411,6 +432,12 @@ async function connect (socket, options, callback) {
     return { err }
   }
 
+  dc.channel('connect').publish({
+    socket,
+    port: options?.port ?? 0,
+    address: options?.address
+  })
+
   return result
 }
 
@@ -421,18 +448,22 @@ function disconnect (socket, callback) {
     callback = noop
   }
 
-  try {
-    result = ipc.sendSync('udp.disconnect', {
-      id: socket.id
-    })
+  if (socket.state.connectState === CONNECT_STATE_CONNECTED) {
+    try {
+      result = ipc.sendSync('udp.disconnect', {
+        id: socket.id
+      })
 
-    delete socket.state.remoteAddress
-    socket.state.connectState = CONNECT_STATE_DISCONNECTED
+      delete socket.state.remoteAddress
+      socket.state.connectState = CONNECT_STATE_DISCONNECTED
 
-    callback(result.err, result.data)
-  } catch (err) {
-    callback(err)
-    return { err }
+      callback(result.err, result.data)
+    } catch (err) {
+      callback(err)
+      return { err }
+    }
+
+    dc.channel('disconnect').publish({ socket })
   }
 
   return result
@@ -523,6 +554,13 @@ async function send (socket, options, callback) {
   }
 
   try {
+    dc.channel('send.start').publish({
+      socket,
+      port: options.port,
+      buffer: options.buffer,
+      address: options.address
+    })
+
     result = await ipc.write('udp.send', {
       id: socket.id,
       port: options.port,
@@ -533,6 +571,13 @@ async function send (socket, options, callback) {
   } catch (err) {
     callback(err)
     return { err }
+  } finally {
+    dc.channel('send.end').publish({
+      socket,
+      port: options.port,
+      buffer: options.buffer,
+      address: options.address
+    })
   }
 
   return result
@@ -566,6 +611,7 @@ async function close (socket, callback) {
     return { err }
   }
 
+  dc.channel('close').publish({ socket })
   return result
 }
 
@@ -674,6 +720,7 @@ export class Socket extends EventEmitter {
     })
 
     gc.ref(this, options)
+    dc.channel('socket').publish({ socket: this })
   }
 
   /**
@@ -920,7 +967,7 @@ export class Socket extends EventEmitter {
 
     buffer = buffer.slice(0, length)
 
-    send(this, { id, port, address, buffer }, cb)
+    return send(this, { id, port, address, buffer }, cb)
   }
 
   /**

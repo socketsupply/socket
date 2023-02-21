@@ -7,11 +7,22 @@
  * bootstrap the backend.
  */
 
-import { readFile } from './fs/promises.js'
 import { createWriteStream } from './fs/index.js'
-import { PassThrough } from './stream.js'
 import { createDigest } from './crypto.js'
 import { EventEmitter } from './events.js'
+import { PassThrough } from './stream.js'
+import { readFile } from './fs/promises.js'
+import diagnostics from './diagnostics.js'
+
+const dc = diagnostics.channels.group('bootstrap', [
+  'handle',
+  'run.start',
+  'run.end',
+  'write.start',
+  'write.end',
+  'download.start',
+  'download.end'
+])
 
 async function * streamAsyncIterable (stream) {
   const reader = stream.getReader()
@@ -55,20 +66,27 @@ export async function checkHash (dest, hash, hashAlgorithm) {
 
 class Bootstrap extends EventEmitter {
   constructor (options) {
-    super()
     if (!options.url || !options.dest) {
       throw new Error('.url and .dest are required string properties on the object provided to the constructor at the first argument position')
     }
+
+    super()
     this.options = options
+    dc.channel('handle').publish({ bootstrap: this })
   }
 
   async run () {
     try {
+      dc.channel('run.start').publish({ bootstrap: this })
       const fileBuffer = await this.download(this.options.url)
       await this.write({ fileBuffer, dest: this.options.dest })
+      dc.channel('run.end').publish({ bootstrap: this })
     } catch (err) {
-      this.emit('error', err)
-      throw err
+      if (this.listenerCount('error')) {
+        this.emit('error', err)
+      } else {
+        throw err
+      }
     } finally {
       this.cleanup()
     }
@@ -82,22 +100,29 @@ class Bootstrap extends EventEmitter {
    */
   async write ({ fileBuffer, dest }) {
     this.emit('write-file', { status: 'started' })
+    dc.channel('write.start').publish({ bootstrap: this, dest })
+
     const passThroughStream = new PassThrough()
     const writeStream = createWriteStream(dest, { mode: 0o755 })
+    let bytesWritten = 0
+
     passThroughStream.pipe(writeStream)
-    let written = 0
     passThroughStream.on('data', data => {
-      written += data.length
-      const progress = written / fileBuffer.byteLength
+      bytesWritten += data.length
+      const progress = bytesWritten / fileBuffer.byteLength
       this.emit('write-file-progress', progress)
     })
+
     passThroughStream.write(fileBuffer)
     passThroughStream.end()
+
     return new Promise((resolve, reject) => {
       writeStream.on('finish', () => {
         this.emit('write-file', { status: 'finished' })
+        dc.channel('write.end').publish({ bootstrap: this, dest, bytesWritten })
         resolve()
       })
+
       writeStream.on('error', err => {
         this.emit('error', err)
         reject(err)
@@ -111,24 +136,37 @@ class Bootstrap extends EventEmitter {
    * @throws {Error} - if status code is not 200
    */
   async download (url) {
+    dc.channel('download.start').publish({ bootstrap: this, url })
     const response = await fetch(url, { mode: 'cors' })
+
     if (!response.ok) {
       throw new Error(`Bootstrap request failed: ${response.status} ${response.statusText}`)
     }
-    const contentLength = +response.headers.get('Content-Length')
-    let receivedLength = 0
-    let prevProgress = 0
+
+    const contentLength = parseInt(response.headers.get('Content-Length'))
     const fileData = new Uint8Array(contentLength)
 
+    let currentProgress = 0
+    let bytesRead = 0
+
     for await (const chunk of streamAsyncIterable(response.body)) {
-      fileData.set(chunk, receivedLength)
-      receivedLength += chunk.length
-      const progress = (receivedLength / contentLength * 100) | 0
-      if (progress !== prevProgress) {
+      fileData.set(chunk, bytesRead)
+      bytesRead += chunk.length
+      const progress = (bytesRead / contentLength * 100) | 0
+
+      if (progress !== currentProgress) {
         this.emit('download-progress', progress)
-        prevProgress = progress
+        currentProgress = progress
       }
     }
+
+    dc.channel('download.end').publish({
+      bootstrap: this,
+      url,
+      bytesRead,
+      bytesTotal: contentLength
+    })
+
     return fileData
   }
 

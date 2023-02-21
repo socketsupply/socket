@@ -4,10 +4,22 @@
  * A high-level, cross-platform API for Bluetooth Pub-Sub
  */
 
-import * as ipc from './ipc.js'
 import { EventEmitter } from './events.js'
+import diagnostics from './diagnostics.js'
+import ipc from './ipc.js'
 
 import * as exports from './bluetooth.js'
+
+export default exports
+
+const dc = diagnostics.channels.group('bluetooth', [
+  'data',
+  'event',
+  'start',
+  'handle',
+  'publish',
+  'subscribe'
+])
 
 /**
  * Create an instance of a Bluetooth service.
@@ -37,6 +49,12 @@ export class Bluetooth extends EventEmitter {
 
       if (data?.serviceId === this.serviceId) {
         this.emit(data.characteristicId, data, e.detail.data)
+        dc.channel('data').publish({
+          bluetooth: this,
+          serviceId,
+          characteristicId: data.characteristicId,
+          data: e.detail.data
+        })
       }
     })
 
@@ -49,7 +67,14 @@ export class Bluetooth extends EventEmitter {
       }
 
       this.emit(data.event, data)
+      dc.channel('event').publish({
+        ...data,
+        bluetooth: this,
+        event: data.event
+      })
     })
+
+    dc.channel('handle').publish({ bluetooth: this })
   }
 
   /**
@@ -57,8 +82,17 @@ export class Bluetooth extends EventEmitter {
    * @return {Promise<ipc.Result>}
    *
    */
-  start () {
-    return ipc.send('bluetooth.start', { serviceId: this.serviceId })
+  async start () {
+    const result = await ipc.send('bluetooth.start', { serviceId: this.serviceId })
+
+    if (result.err) {
+      throw result.err
+    }
+
+    dc.channel('start').publish({
+      bluetooth: this,
+      serviceId: this.serviceId
+    })
   }
 
   /**
@@ -77,10 +111,20 @@ export class Bluetooth extends EventEmitter {
    * @param {string} [id = ''] - A well-known UUID
    * @return {Promise<ipc.Result>}
    */
-  subscribe (id = '') {
-    return ipc.send('bluetooth.subscribe', {
+  async subscribe (id = '') {
+    const result = await ipc.send('bluetooth.subscribe', {
       characteristicId: id,
       serviceId: this.serviceId
+    })
+
+    if (result.err) {
+      throw result.err
+    }
+
+    dc.channel('subscribe').publish({
+      bluetooth: this,
+      serviceId: this.serviceId,
+      characteristicId: id
     })
   }
 
@@ -110,11 +154,17 @@ export class Bluetooth extends EventEmitter {
       params.length = enc.length
     }
 
-    const res = await ipc.write('bluetooth.publish', params, value)
+    const result = await ipc.write('bluetooth.publish', params, value)
 
-    if (res.err) {
-      throw new Error(res.err.message)
+    if (result.err) {
+      throw result.err
     }
+
+    dc.channel('publish').publish({
+      bluetooth: this,
+      serviceId: this.serviceId,
+      characteristicId: id,
+      data: value
+    })
   }
 }
-export default exports
