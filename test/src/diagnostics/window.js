@@ -52,12 +52,6 @@ test('diagnostics - window - metrics', async (t) => {
     const method = 'GET'
 
     pending.push(new Promise((resolve) => {
-      diagnostics.window.metrics.subscribe('XMLHttpRequest', (message) => {
-        resolve()
-      })
-    }))
-
-    pending.push(new Promise((resolve) => {
       diagnostics.window.metrics.subscribe('XMLHttpRequest.open', (message) => {
         resolve()
       })
@@ -75,4 +69,6 @@ test('diagnostics - window - metrics', async (t) => {
 
     Promise.all(pending).then(resolve)
   })
+
+  diagnostics.window.metrics.destroy()
 })
