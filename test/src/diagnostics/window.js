@@ -14,7 +14,7 @@ test('diagnostics - window - metrics', async (t) => {
     let iterations = 0
     diagnostics.window.metrics.subscribe('requestAnimationFrame', (message) => {
       if (message.rate > 0 && iterations === 30) {
-        t.equal(typeof message.fps, 'number', 'message.fps is number')
+        t.equal(typeof message.rate, 'number', 'message.rate is number')
         t.equal(typeof message.samples, 'number', 'message.samples is number')
       }
 
@@ -30,9 +30,10 @@ test('diagnostics - window - metrics', async (t) => {
   */
 
   await new Promise((resolve) => {
-    const uri = 'ipc://platform.primordials'
     const options = { method: 'GET' }
+    const uri = window.location.href
     let diagnosticsReceived = false
+
     diagnostics.window.metrics.subscribe('fetch', (message) => {
       t.equal(message.resource, uri, 'message.resource === uri')
       t.equal(message.options, options, 'message.options === options')
@@ -40,25 +41,28 @@ test('diagnostics - window - metrics', async (t) => {
     })
 
     fetch(uri, options)
-      .then((response) => response.json())
-      .then((json) => t.ok(json?.data, 'response json.data'))
+      .then((response) => response.text())
+      .then((text) => t.ok(typeof text === 'string', 'response.text()'))
       .then(() => t.ok(diagnosticsReceived, 'fetch diagnostics received'))
+      .catch((err) => t.ifError(err))
       .then(resolve)
   })
 
   await new Promise((resolve) => {
     const pending = []
-    const uri = 'ipc://platform.primordials'
     const method = 'GET'
+    const uri = window.location.href
 
     pending.push(new Promise((resolve) => {
       diagnostics.window.metrics.subscribe('XMLHttpRequest.open', (message) => {
+        t.ok(message, 'window.XMLHttpRequest.open')
         resolve()
       })
     }))
 
     pending.push(new Promise((resolve) => {
       diagnostics.window.metrics.subscribe('XMLHttpRequest.send', (message) => {
+        t.ok(message, 'window.XMLHttpRequest.send')
         resolve()
       })
     }))

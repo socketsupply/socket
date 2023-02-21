@@ -2,6 +2,14 @@
 <html>
   <head>
     <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="
+        connect-src http://* https://* ipc://* file://*;
+        child-src 'none';
+        img-src https: data: file:;
+      "
+    >
     <title>Socket Runtime JavaScript Tests</title>
     <script charset="utf-8" src="index.js" type="module"></script>
   </head>
