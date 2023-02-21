@@ -1,4 +1,4 @@
-import { format } from '../util.js'
+import { isArrayLike, format } from '../util.js'
 
 export class Metric {
   init () {}

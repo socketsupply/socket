@@ -1,4 +1,4 @@
-import { isArrayLike, IllegalConstructor } from '../util.js'
+import { IllegalConstructor } from '../util.js'
 import { Metric } from './metric.js'
 import registry from './channels.js'
 import process from '../process.js'
@@ -188,7 +188,7 @@ export const metrics = new class Metrics {
     return dc.unsubscribe(...args)
   }
 
-  init (which) {
+  start (which) {
     if (Array.isArray(which)) {
       for (const key of which) {
         if (typeof this[key]?.init === 'function') {
@@ -204,7 +204,7 @@ export const metrics = new class Metrics {
     }
   }
 
-  destroy (which) {
+  stop (which) {
     if (Array.isArray(which)) {
       for (const key of which) {
         if (typeof this[key]?.destroy === 'function') {
