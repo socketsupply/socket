@@ -1,9 +1,9 @@
-import { format, isArrayLike, IllegalConstructor } from '../util.js'
+import { isArrayLike, IllegalConstructor } from '../util.js'
+import { Metric } from './metric.js'
 import registry from './channels.js'
 import process from '../process.js'
 
 const dc = registry.group('window', [
-  'XMLHttpRequest',
   'XMLHttpRequest.open',
   'XMLHttpRequest.send',
   'worker',
@@ -13,42 +13,16 @@ const dc = registry.group('window', [
   'requestAnimationFrame'
 ])
 
-export class Metric {
-  init () {}
-  update () {}
-  destroy () {}
-
-  toJSON () {
-    return {}
-  }
-
-  toString () {
-    return format(this)
-  }
-
-  [Symbol.iterator] () {
-    if (isArrayLike(this)) {
-      return Array.from(this)
-    }
-
-    return [this]
-  }
-
-  [Symbol.toStringTag] () {
-    const name = this.constructor.name.replace('Metric', '')
-    return `DiagnosticMetric(${name})`
-  }
-}
-
-export class AnimationFrameMetric extends Metric {
+export class RequestAnimationFrameMetric extends Metric {
   constructor (options) {
     super()
     this.originalRequestAnimationFrame = null
     this.requestAnimationFrame = this.requestAnimationFrame.bind(this)
     this.sampleSize = options?.sampleSize || 60
+    this.sampleTick = 0 // max(0, sampleSize)
     this.channel = dc.channel('requestAnimationFrame')
     this.frame = null
-    this.tick = 0 // max(0, sampleSize)
+    this.value = null
     this.now = 0
   }
 
@@ -81,15 +55,18 @@ export class AnimationFrameMetric extends Metric {
       const sample = Math.floor(computed)
 
       if (this.samples) {
-        this.samples[this.tick] = sample
+        this.samples[this.sampleTick] = sample
       }
 
-      this.tick = (this.tick + 1) % this.sampleSize
+      this.sampleTick = (this.sampleTick + 1) % this.sampleSize
 
-      const sum = this.samples?.slice(0, this.tick).reduce((a, b) => a + b, 0)
-      const average = sum / (this.tick)
+      const tick = this.sampleTick
+      const sum = this.samples?.slice(0, tick).reduce((a, b) => a + b, 0)
+      const average = sum / tick
       const rate = Math.round(average)
-      const metric = { rate, samples: this.tick - 1 }
+      const metric = { rate, samples: tick - 1 }
+
+      this.value = metric
 
       this.channel?.publish(metric)
     }
@@ -108,6 +85,17 @@ export class AnimationFrameMetric extends Metric {
     this.samples = null
     this.channel = null
     this.frame = null
+    this.value = null
+  }
+
+  toJSON () {
+    return {
+      sampleSize: this.sampleSize,
+      sampleTick: this.sampleTick,
+      samples: Array.from(this.samples),
+      rate: this.value?.rate ?? 0,
+      now: this.now
+    }
   }
 }
 
@@ -149,46 +137,44 @@ export class FetchMetric extends Metric {
 export class XMLHttpRequestMetric extends Metric {
   constructor (options) {
     super()
-    const self = this
-    this.channel = dc.channel('xmlhttprequest')
-    this.OrigialXMLHttpRequest = null
-
-    this.XMLHttpRequest = class XMLHttpRequest extends globalThis.XMLHttpRequest {
-      constructor () {
-        super()
-        self.channel.publish({ request: this })
-      }
-
-      send (body = null, ...args) {
-        self.channel.channel('send').publish({ request: this, body })
-        return self.OrigialXMLHttpRequest.prototype.send.call(this, body, ...args)
-      }
-
-      open (method, url, async, ...args) {
-        self.channel.channel('open').publish({ request: this, method, url, async })
-        return self.OrigialXMLHttpRequest.prototype.open.call(this, method, url, ...args)
-      }
-    }
+    this.channel = dc.channel('XMLHttpRequest')
+    this.patched = null
   }
 
   init () {
-    if (!this.OrigialXMLHttpRequest) {
-      this.OrigialXMLHttpRequest = globalThis.XMLHttpRequest
-      globalThis.XMLHttpRequest = this.XMLHttpRequest
+    const { channel } = this
+
+    if (!this.patched) {
+      const { open, send } = globalThis.XMLHttpRequest.prototype
+      this.patched = { open, send }
+
+      Object.assign(globalThis.XMLHttpRequest.prototype, {
+        open (...args) {
+          const [method, url, async] = args
+          channel.channel('open').publish({ request: this, method, url, async })
+          return open.call(this, ...args)
+        },
+
+        send (...args) {
+          const [body] = args
+          channel.channel('send').publish({ request: this, body })
+          return send.call(this, ...args)
+        }
+      })
     }
   }
 
   destroy () {
-    if (typeof this.OrigialXMLHttpRequest === 'function') {
-      globalThis.XMLHttpRequest = this.OrigialXMLHttpRequest
-      this.OrigialXMLHttpRequest = null
+    if (this.patched) {
+      Object.assign(globalThis.XMLHttpRequest.prototype, this.patched)
+      this.patched = null
     }
   }
 }
 
 // eslint-disable-next-line new-parens
 export const metrics = new class Metrics {
-  animationFrame = new AnimationFrameMetric()
+  requestAnimationFrame = new RequestAnimationFrameMetric()
   XMLHttpRequest = new XMLHttpRequestMetric()
   fetch = new FetchMetric()
 
@@ -210,9 +196,27 @@ export const metrics = new class Metrics {
         }
       }
     } else {
-      this.animationFrame.init()
-      this.XMLHttpRequest.init()
-      this.fetch.init()
+      for (const value of Object.values(this)) {
+        if (typeof value?.init === 'function') {
+          value.init()
+        }
+      }
+    }
+  }
+
+  destroy (which) {
+    if (Array.isArray(which)) {
+      for (const key of which) {
+        if (typeof this[key]?.destroy === 'function') {
+          this[key].destroy()
+        }
+      }
+    } else {
+      for (const value of Object.values(this)) {
+        if (typeof value?.destroy === 'function') {
+          value.destroy()
+        }
+      }
     }
   }
 }
