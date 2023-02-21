@@ -2,7 +2,7 @@ import diagnostics from 'socket:diagnostics'
 import test from 'socket:test'
 
 test('diagnostics - window - metrics', async (t) => {
-  diagnostics.window.metrics.init()
+  diagnostics.window.metrics.start()
 
   /**
    * This test requires the browser window to be focused as
@@ -70,5 +70,5 @@ test('diagnostics - window - metrics', async (t) => {
     Promise.all(pending).then(resolve)
   })
 
-  diagnostics.window.metrics.destroy()
+  diagnostics.window.metrics.stop()
 })
