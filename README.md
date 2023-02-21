@@ -23,4 +23,8 @@ See the [`test/`](test/) for the unit and integration test suite.
 ### Development
 
 If you want to contribute to the Socket Runtime project itself, please connect
-with any current project contributor.
+with either [@heapwolf][0], [@jwerle][1], or [@chicoxyzzy][2].
+
+[0]:https://github.com/heapwolf
+[1]:https://github.com/jwerle
+[2]:https://github.com/chicoxyzzy
