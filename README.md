@@ -2,10 +2,13 @@
 
 ### Description
 
-Socket is a client-side runtime for creating native cross-platform software on
-mobile and desktop using HTML, CSS, and JavaScript. It also exposes primitives
-needed for building peer-to-peer and local-first applications, such as Bluetooth,
-UDP and File I/O.
+Web Developers use Socket Runtime to create apps for any OS, desktop or mobile.
+
+You can use plain old HTML, CSS, and JavaScript, as well as your favorite
+front-end libraries for example React, Svelt, and Vue.
+
+Socket Runtime exposes primitives needed for building peer-to-peer and
+local-first applications, such as Bluetooth, UDP, and robust file system access.
 
 ### Documentation
 
