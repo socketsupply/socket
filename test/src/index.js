@@ -4,6 +4,7 @@ import './test-context.js' // this should be first
 // expect the total pass count
 
 import './webview.js'
+import './diagnostics.js'
 import './ipc.js'
 import './os.js'
 import './process.js'
