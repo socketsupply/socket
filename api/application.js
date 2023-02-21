@@ -108,6 +108,7 @@ function throwOnInvalidIndex (index) {
  * @throws {Error} - if indices is not an array of integer numbers
  */
 export async function getWindows (indices) {
+  // TODO: create a local registry and return from it when possible
   const resultIndices = indices ?? []
   if (!Array.isArray(resultIndices)) {
     throw new Error('Indices list must be an array of integer numbers')
