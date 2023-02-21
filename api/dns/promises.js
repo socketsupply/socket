@@ -17,7 +17,8 @@ import * as exports from './promises.js'
 
 const dc = diagnostics.channels.group('dns', [
   'lookup.start',
-  'lookup.end'
+  'lookup.end',
+  'lookup'
 ])
 
 /**
@@ -49,7 +50,6 @@ export async function lookup (hostname, opts) {
 
   dc.channel('lookup.start').publish({ hostname, family: opts.family })
   const { err, data } = await ipc.send('dns.lookup', { ...opts, id: rand64(), hostname })
-  dc.channel('lookup.end').publish({ hostname, family: opts.family })
 
   if (err) {
     const e = new Error(`getaddrinfo EAI_AGAIN ${hostname}`)
@@ -60,6 +60,9 @@ export async function lookup (hostname, opts) {
     // e.errno = -3008, // lib_uv constant?
     throw e
   }
+
+  dc.channel('lookup.end').publish({ hostname, family: opts.family })
+  dc.channel('lookup').publish({ hostname, family: opts.family })
 
   return data
 }

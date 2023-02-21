@@ -19,7 +19,8 @@ import * as exports from './index.js'
 
 const dc = diagnostics.channels.group('dns', [
   'lookup.start',
-  'lookup.end'
+  'lookup.end',
+  'lookup'
 ])
 
 /**
@@ -78,7 +79,6 @@ export function lookup (hostname, opts, cb) {
 
   dc.channel('lookup.start').publish({ hostname, family: opts.family, sync: true })
   const { err, data } = ipc.sendSync('dns.lookup', { ...opts, id: rand64(), hostname })
-  dc.channel('lookup.end').publish({ hostname, family: opts.family, sync: true })
 
   if (err) {
     const e = new Error(`getaddrinfo EAI_AGAIN ${hostname}`)
@@ -91,6 +91,8 @@ export function lookup (hostname, opts, cb) {
     return
   }
 
+  dc.channel('lookup.end').publish({ hostname, family: opts.family, sync: true })
+  dc.channel('lookup').publish({ hostname, family: opts.family, sync: true })
   cb(null, data?.address ?? null, data?.family ?? null)
 }
 
