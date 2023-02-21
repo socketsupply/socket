@@ -1,6 +1,6 @@
 
 <p align="center">
-  <img src="https://user-images.githubusercontent.com/79177582/219756869-afe51bf1-e047-4fab-9e4f-654c5bfd5393.jpeg" width="10%" height="10%"/>
+  <a href="https://github.com/socketsupply/socket"><img src="https://user-images.githubusercontent.com/79177582/219756869-afe51bf1-e047-4fab-9e4f-654c5bfd5393.jpeg" width="10%" height="10%"/>
 </p>
 <h1 align="center">Socket Runtime</h1>
                                              
