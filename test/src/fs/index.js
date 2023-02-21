@@ -39,7 +39,7 @@ test('fs.access', async (t) => {
 
   await new Promise((resolve, reject) => {
     fs.access('.', W_OK, (err, access) => {
-      if (err) t.fail(`(W_OK) ./ is not writable`)
+      if (err) t.fail('(W_OK) ./ is not writable')
       else t.ok(access, '(W_OK) ./ directory is writable')
       resolve()
     })
