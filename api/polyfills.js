@@ -14,6 +14,7 @@ export function applyPolyfills (window) {
       const height = isHeightInPercent ? Number(h.slice(0, -1)) : h
       const o = new URLSearchParams({ index, targetWindow, width, height, isWidthInPercent, isHeightInPercent }).toString()
       ipc.postMessage(`ipc://window.setSize?${o}`)
+      // TODO: update the window with index window.__args.index
     }
   }))
 
