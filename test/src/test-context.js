@@ -14,13 +14,23 @@ if (typeof globalThis?.addEventListener === 'function') {
   globalThis.addEventListener('unhandledrejection', onerror)
 }
 
+let finishing = false
 GLOBAL_TEST_RUNNER.onFinish(({ fail }) => {
-  setTimeout(() => {
-    process.exit(fail > 0 ? 1 : 0)
-  }, 1024) // give app time to print TAP output
+  if (!finishing) {
+    finishing = true
+    if (!process.env.DEBUG) {
+      setTimeout(() => {
+        process.exit(fail > 0 ? 1 : 0)
+      }, 1024) // give app time to print TAP output
+    }
+  }
 })
 
 function onerror (err) {
   console.error(err.stack || err.reason || err.message || err)
-  process.exit(1)
+  if (!finishing && !process.env.DEBUG) {
+    process.nextTick(() => {
+      process.exit(1)
+    })
+  }
 }
