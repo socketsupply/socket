@@ -33,6 +33,7 @@ const RECV_BUFFER = 1
 const SEND_BUFFER = 0
 
 const dc = diagnostics.channels.group('udp', [
+  'send',
   'send.start',
   'send.end',
   'message',
@@ -571,14 +572,21 @@ async function send (socket, options, callback) {
   } catch (err) {
     callback(err)
     return { err }
-  } finally {
-    dc.channel('send.end').publish({
-      socket,
-      port: options.port,
-      buffer: options.buffer,
-      address: options.address
-    })
   }
+
+  dc.channel('send.end').publish({
+    socket,
+    port: options.port,
+    buffer: options.buffer,
+    address: options.address
+  })
+
+  dc.channel('send').publish({
+    socket,
+    port: options.port,
+    buffer: options.buffer,
+    address: options.address
+  })
 
   return result
 }
