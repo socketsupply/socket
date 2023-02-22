@@ -765,8 +765,8 @@ MAIN {
       auto isHeightInPercent = message.get("isHeightInPercent") == "true" ? true : false;
 
       auto screen = currentWindow->getScreenSize();
-      auto height = isHeightInPercent ? screen.height * heightUncalculated / 100 : heightUncalculated;
-      auto width = isWidthInPercent ? screen.width * widthUncalculated / 100 : widthUncalculated;
+      auto height = static_cast<int>(isHeightInPercent ? screen.height * heightUncalculated / 100 : heightUncalculated);
+      auto width = static_cast<int>(isWidthInPercent ? screen.width * widthUncalculated / 100 : widthUncalculated);
 
       targetWindow->setSize(width, height, 0);
 
