@@ -173,7 +173,9 @@ function main () {
       if (( force )) || ! test -f "$object" || (( $(stat_mtime "$source") > $(stat_mtime "$object") )); then
         mkdir -p "$(dirname "$object")"
         echo "# compiling object ($arch-$platform) $(basename "$source")"
-        # echo $clang "${cflags[@]}" "${ldflags[@]}" -c "$source" -o "$object"
+        if [[ ! -z "$VERBOSE " ]]; then
+          echo $clang "${cflags[@]}" "${ldflags[@]}" -c "$source" -o "$object"
+        fi
         $clang "${cflags[@]}" -c "$source" -o "$object" || onsignal
         echo "ok - built ${source/$src_directory\//} -> ${object/$output_directory\//} ($arch-$platform)"
       fi
@@ -186,20 +188,35 @@ function main () {
 
   declare static_library="$root/build/$arch-$platform/lib/libsocket-runtime.a"
   mkdir -p "$(dirname "$static_library")"
-  rm -rf "$static_library"
   declare ar="ar"
 
   if [[ "$host" = "Win32" ]]; then
     ar="llvm-ar"
   fi
 
-  # echo $ar crs "$static_library" "${objects[@]}"
-  $ar crs "$static_library" "${objects[@]}"
+  local build_static=0
+  for source in "${objects[@]}"; do
+    if (( force )) || ! test -f "$static_library" || (( $(stat_mtime "$source") > $(stat_mtime "$static_library") )); then
+      build_static=1
+      break
+    fi
+  done
 
-  if [ -f $static_library ]; then
-    echo "ok - built static library ($arch-$platform): $(basename "$static_library")"
+  # echo $ar crs "$static_library" "${objects[@]}"
+  if (( build_static )); then
+    $ar crs "$static_library" "${objects[@]}"
+
+    if [ -f $static_library ]; then
+      echo "ok - built static library ($arch-$platform): $(basename "$static_library")"
+    else
+      echo "failed to build $static_library"
+    fi
   else
-    echo "failed to build $static_library"
+    if [ -f $static_library ]; then
+      echo "ok - using cached static library ($arch-$platform): $(basename "$static_library")"
+    else
+      echo "static library doesn't exist after cache check passed: ($arch-$platform): $(basename "$static_library")"
+    fi
   fi
 }
 

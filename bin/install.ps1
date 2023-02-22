@@ -1,4 +1,4 @@
-param([Switch]$debug, [Switch]$verbose, [Switch]$shbuild=$true, $toolchain = "vsbuild")
+param([Switch]$debug, [Switch]$verbose, [Switch]$force, [Switch]$shbuild=$true, $toolchain = "vsbuild")
 
 # -shbuild:$false - Don't run bin\install.sh (Builds runtime lib)
 # -debug          - Enable debug builds (DEBUG=1)
@@ -31,6 +31,10 @@ if ($debug -eq $true) {
 
 if ($verbose -eq $true) {
   [Environment]::SetEnvironmentVariable("VERBOSE", "1")
+}
+
+if ($force -eq $true) {
+  $global:forceArg = "--force"
 }
 
 $global:path_advice = @()
@@ -383,8 +387,8 @@ if ($shbuild) {
   }
 
   cd $OLD_CWD
-  Write-Output "Calling bin\install.sh"
-  iex "& ""$sh"" bin\install.sh"
+  Write-Output "Calling bin\install.sh $forceArg"
+  iex "& ""$sh"" bin\install.sh $forceArg"
 }
 
 if ($global:path_advice.Count -gt 0) {
