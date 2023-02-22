@@ -212,6 +212,28 @@ export const EOL = (() => {
   return '\n'
 })()
 
+export function rusage () {
+  const { err, data } = ipc.sendSync('os.rusage')
+  if (err) throw err
+  return data
+}
+
+export function uptime () {
+  const { err, data } = ipc.sendSync('os.uptime')
+  if (err) throw err
+  return data
+}
+
+export function uname () {
+  if (!cache.uname) {
+    const { err, data } = ipc.sendSync('os.uname')
+    if (err) throw err
+    cache.uname = data
+  }
+
+  return cache.uname
+}
+
 // eslint-disable-next-line
 import * as exports from './os.js'
 export default exports
