@@ -1248,6 +1248,9 @@ namespace SSC {
 
       resize(window);
     }
+
+    this->width = width;
+    this->height = height;
   }
 
   void Window::setSystemMenu (const SSC::String& seq, const SSC::String& value) {

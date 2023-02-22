@@ -53,6 +53,8 @@ namespace SSC {
       ExitCallback onExit = nullptr;
       IPC::Bridge *bridge = nullptr;
       int index = 0;
+      int width = 0;
+      int height = 0;
 
 #if defined(__APPLE__)
 #if !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR
@@ -88,6 +90,8 @@ namespace SSC {
 
       Window (App&, WindowOptions);
 
+      static ScreenSize getScreenSize ();
+
       void about ();
       void eval (const String&);
       void show ();
@@ -109,7 +113,6 @@ namespace SSC {
       void setBackgroundColor (int r, int g, int b, float a);
       void setSystemMenuItemEnabled (bool enabled, int barPos, int menuPos);
       void setSystemMenu (const String& seq, const String& menu);
-      ScreenSize getScreenSize ();
       void showInspector ();
       int openExternal (const String& s);
       void openDialog ( // @TODO(jwerle): use `OpenDialogOptions` here instead
@@ -432,7 +435,7 @@ namespace SSC {
           }
         }
 
-        auto screen = (this->getWindow(opts.index))->getScreenSize();
+        auto screen = Window::getScreenSize();
 
         auto isWidthInPercent = opts.isWidthInPercent || (opts.height <= 0 && this->options.isWidthInPercent);
         auto isHeightInPercent = opts.isHeightInPercent || (opts.width <= 0 && this->options.isHeightInPercent);
@@ -504,9 +507,9 @@ namespace SSC {
           .height = opts.height,
           .width = opts.width,
           .index = 0,
-#ifdef PORT
+      #ifdef PORT
           .port = PORT,
-#endif
+      #endif
           .appData = opts.appData
         });
       }
@@ -515,10 +518,10 @@ namespace SSC {
         auto i = 0;
         JSON::Array result;
         for (auto index : indices) {
-          if (index >= 0 && inits[index] && windows[index] != nullptr) {
-            result[i] = windows[index]->json();
+          auto window = getWindow(index);
+          if (window != nullptr) {
+            result[i++] = window->json();
           }
-          i++;
         }
         return result;
       }

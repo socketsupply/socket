@@ -546,6 +546,16 @@ namespace SSC {
       this
     );
 
+    g_signal_connect(
+      G_OBJECT(window),
+      "size-allocate", // https://docs.gtk.org/gtk3/method.Window.get_size.html
+      G_CALLBACK(+[](GtkWidget* widget,GtkAllocation *allocation, gpointer arg) {
+        auto* w = static_cast<Window*>(arg);
+        gtk_window_get_size(GTK_WINDOW(widget), &w->width, &w->height);
+      }),
+      this
+    );
+
     String preload = ToString(createPreload(opts));
 
     WebKitUserContentManager *manager =
@@ -590,19 +600,38 @@ namespace SSC {
   }
 
   ScreenSize Window::getScreenSize () {
-    gtk_widget_realize(window);
+    auto list = gtk_window_list_toplevels();
+    int width = 0;
+    int height = 0;
 
-    auto* display = gdk_display_get_default();
-    auto* win = gtk_widget_get_window(window);
-    auto* mon = gdk_display_get_monitor_at_window(display, win);
+    if (list != nullptr) {
+      for (auto entry = list; entry != nullptr; entry = entry->next) {
+        auto widget = (GtkWidget*) entry->data;
+        auto window = GTK_WINDOW(widget);
 
-    GdkRectangle workarea = {0};
-    gdk_monitor_get_geometry(mon, &workarea);
+        if (window != nullptr) {
+          auto geometry = GdkRectangle {};
+          auto display = gtk_widget_get_display(widget);
+          auto monitor = gdk_display_get_monitor_at_window(
+            display,
+            gtk_widget_get_window(widget)
+          );
 
-    return ScreenSize {
-      .height = (int) workarea.height,
-      .width = (int) workarea.width
-    };
+          gdk_monitor_get_geometry(monitor, &geometry);
+
+          width = (int) geometry.width;
+          height = (int) geometry.height;
+
+          debug("height=%d width=%d", height, width);
+
+          break;
+        }
+      }
+
+      g_list_free(list);
+    }
+
+    return ScreenSize { height, width };
   }
 
   void Window::eval (const String& source) {
@@ -674,7 +703,8 @@ namespace SSC {
   }
 
   SSC::String Window::getTitle () {
-    return String(gtk_window_get_title(GTK_WINDOW(window)));
+    auto title = gtk_window_get_title(GTK_WINDOW(window));
+    return String(title != nullptr ? title : "");
   }
 
   void Window::setTitle (const String &s) {
@@ -742,9 +772,7 @@ namespace SSC {
   }
 
   ScreenSize Window::getSize () {
-    ScreenSize size = {0};
-    gtk_window_get_size(GTK_WINDOW(window), &size.width, &size.height);
-    return size;
+    return ScreenSize { this->height, this->width };
   }
 
   void Window::setSize (int width, int height, int hints) {
@@ -767,6 +795,9 @@ namespace SSC {
 
       gtk_window_set_geometry_hints(GTK_WINDOW(window), nullptr, &g, h);
     }
+
+    this->width = width;
+    this->height = height;
   }
 
   void Window::setSystemMenu (const String &seq, const String &value) {
