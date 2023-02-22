@@ -41,7 +41,7 @@ namespace SSC {
       "  }                                                                 \n"
       "}                                                                   \n"
       "                                                                    \n"
-      "const event = new window.CustomEvent(name, { detail, ...options }); \n"
+      "const event = new globalThis.CustomEvent(name, { detail, ...options }); \n"
       "target.dispatchEvent(event);                                        \n"
     );
   }
@@ -58,17 +58,17 @@ namespace SSC {
       "  state: '0'                                               \n"
       "};                                                         \n"
       "                                                           \n"
-      " if (" + seq + " > 0 && window._ipc['R" + seq + "']) {     \n"
-      "   window._ipc['R" + seq + "'].resolve(detail);            \n"
-      "   delete window._ipc['R" + seq + "'];                     \n"
+      " if (" + seq + " > 0 && globalThis._ipc['R" + seq + "']) {     \n"
+      "   globalThis._ipc['R" + seq + "'].resolve(detail);            \n"
+      "   delete globalThis._ipc['R" + seq + "'];                     \n"
       "   return;                                                 \n"
       " }                                                         \n"
       "                                                           \n"
-      "const event = new window.CustomEvent('menuItemSelected', { \n"
+      "const event = new globalThis.CustomEvent('menuItemSelected', { \n"
       "  detail                                                   \n"
       "});                                                        \n"
       "                                                           \n"
-      "window.dispatchEvent(event);                               \n"
+      "globalThis.dispatchEvent(event);                               \n"
     );
   }
 
@@ -80,7 +80,7 @@ namespace SSC {
     return createJavaScript("resolve-to-render-process.js",
       "const seq = String('" + seq + "');                    \n"
       "const value = '" + value + "';                        \n"
-      "const index = window.__args.index;                    \n"
+      "const index = globalThis.__args.index;                    \n"
       "const state = Number('" + state + "');                \n"
       "const eventName = `resolve-${index}-${seq}`;          \n"
       "let detail = value;                                   \n"
@@ -111,7 +111,7 @@ namespace SSC {
       "}                                                     \n"
       "                                                      \n"
       "const event = new CustomEvent(eventName, { detail }); \n"
-      "window.dispatchEvent(event);                          \n"
+      "globalThis.dispatchEvent(event);                          \n"
     );
   }
 }

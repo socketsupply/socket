@@ -587,14 +587,14 @@ namespace SSC {
 
       if (!success) {
         json = JSON::Object::Entries {
-          {"source", "platform.notify"},
+          {"source", "platform.openExternal"},
           {"err", JSON::Object::Entries {
             {"message", "Failed to open external URL"}
           }}
         };
       } else {
         json = JSON::Object::Entries {
-          {"source", "platform.notify"},
+          {"source", "platform.openExternal"},
           {"data", JSON::Object::Entries {}}
         };
       }
@@ -628,6 +628,63 @@ namespace SSC {
       [configuration release];
     }];
     #endif
+#elif defined(__linux__) && !defined(__ANDROID__)
+    auto list = gtk_window_list_toplevels();
+    auto json = JSON::Object {};
+
+    // initial state is a failure
+    json = JSON::Object::Entries {
+      {"source", "platform.openExternal"},
+      {"err", JSON::Object::Entries {
+        {"message", "Failed to open external URL"}
+      }}
+    };
+
+    if (list != nullptr) {
+      for (auto entry = list; entry != nullptr; entry = entry->next) {
+        auto window = GTK_WINDOW(entry->data);
+
+        if (window != nullptr && gtk_window_is_active(window)) {
+          auto err = (GError*) nullptr;
+          auto uri = value.c_str();
+          auto ts = GDK_CURRENT_TIME;
+
+          /**
+           * GTK may print a error in the terminal that looks like:
+           *
+           *   libva error: vaGetDriverNameByIndex() failed with unknown libva error, driver_name = (null)
+           *
+           * It doesn't prevent the URI from being opened.
+           * See https://github.com/intel/media-driver/issues/1349 for more info
+           */
+          auto success = gtk_show_uri_on_window(window, uri, ts, &err);
+
+          if (success) {
+            json = JSON::Object::Entries {
+              {"source", "platform.openExternal"},
+              {"data", JSON::Object::Entries {}}
+            };
+          } else if (err != nullptr) {
+            json = JSON::Object::Entries {
+              {"source", "platform.openExternal"},
+              {"err", JSON::Object::Entries {
+                {"message", err->message}
+              }}
+            };
+          }
+
+          break;
+        }
+      }
+
+      g_list_free(list);
+    }
+
+    cb(seq, json, Post{});
+#elif defined(_WIN32)
+    auto uri = value.c_str();
+    ShellExecute(nullptr, "Open", uri, nullptr, nullptr, SW_SHOWNORMAL);
+    // TODO how to detect success here. do we care?
 #endif
   }
 

@@ -16,9 +16,9 @@ namespace SSC {
 
     auto preload = SSC::String(
       "\n;(() => {                                                           \n"
-      "  window.__args = {}                                                  \n"
+      "  globalThis.__args = {}                                                  \n"
       "  const env = '" + opts.env + "';                                     \n"
-      "  Object.defineProperties(window.__args, {                            \n"
+      "  Object.defineProperties(globalThis.__args, {                            \n"
       "  argv: {                                                             \n"
       "    value: [" + opts.argv + "],                                       \n"
       "    enumerable: true                                                  \n"
@@ -42,8 +42,8 @@ namespace SSC {
       "    enumerable: true                                                  \n"
       "  }                                                                   \n"
       "})                                                                    \n"
-      "Object.freeze(window.__args.argv)                                     \n"
-      "Object.freeze(window.__args.env)                                      \n"
+      "Object.freeze(globalThis.__args.argv)                                     \n"
+      "Object.freeze(globalThis.__args.env)                                      \n"
     );
 
     const auto start = opts.argv.find("--test=");
@@ -79,22 +79,22 @@ namespace SSC {
       preload += "    const key = decodeURIComponent('" + encodeURIComponent(key) + "').toLowerCase()\n";
 
       if (value == "true" || value == "false") {
-        preload += "    window.__args.config[key] = " + value + "\n";
+        preload += "    globalThis.__args.config[key] = " + value + "\n";
       } else {
         preload += "    const value = '" + encodeURIComponent(value) + "'\n";
         preload += "    if (!isNaN(value) && !Number.isNaN(parseFloat(value))) {\n";
-        preload += "      window.__args.config[key] = parseFloat(value);\n";
+        preload += "      globalThis.__args.config[key] = parseFloat(value);\n";
         preload += "    } else { \n";
         preload += "      let val = decodeURIComponent(value);\n";
         preload += "      try { val = JSON.parse(val) } catch (err) {}\n";
-        preload += "      window.__args.config[key] = val;\n";
+        preload += "      globalThis.__args.config[key] = val;\n";
         preload += "    }\n";
       }
 
       preload += "  })();\n";
     }
 
-    preload += "  Object.freeze(window.__args.config);\n";
+    preload += "  Object.freeze(globalThis.__args.config);\n";
     preload += "})();\n";
     return preload;
   }
