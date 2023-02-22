@@ -1,12 +1,30 @@
 #!/usr/bin/env bash
 
 declare root="$(cd "$(dirname "$(dirname "${BASH_SOURCE[0]}")")" && pwd)"
+
+declare args=()
 declare pids=()
+declare force=0
+declare pass_force=""
 
 LIPO=""
 declare CWD=$(pwd)
 declare PREFIX="${PREFIX:-"/usr/local"}"
 declare BUILD_DIR="$CWD/build"
+
+while (( $# > 0 )); do
+  declare arg="$1"; shift
+  if [[ "$arg" = "--arch" ]]; then
+    arch="$1"; shift; continue
+  fi
+
+  if [[ "$arg" = "--force" ]] || [[ "$arg" = "-f" ]]; then
+    pass_force="$arg"
+    force=1; continue   
+  fi
+
+  args+=("$arg")
+done
 
 if [ -n "$LOCALAPPDATA" ] && [ -z "$SOCKET_HOME" ]; then
   SOCKET_HOME="$LOCALAPPDATA/Programs/socketsupply"
@@ -68,6 +86,18 @@ if [ ! "$CXX" ]; then
 fi
 
 export CXX
+
+function stat_mtime () {
+  if [[ "$(uname -s)" = "Darwin" ]]; then
+    if stat --help 2>/dev/null | grep GNU >/dev/null; then
+      stat -c %Y "$1" 2>/dev/null
+    else
+      stat -f %m "$1" 2>/dev/null
+    fi
+  else
+    stat -c %Y "$1" 2>/dev/null
+  fi
+}
 
 function quiet () {
   if [ -n "$VERBOSE" ]; then
@@ -151,18 +181,26 @@ function _build_cli {
     libs=($("echo" -l{uv,socket-runtime}))
   fi
 
+  if [[ ! -z "$VERBOSE" ]]; then
+    echo "cli libs: $libs, $(uname -s)"
+  fi
+
   local ldflags=($("$root/bin/ldflags.sh" --arch "$arch" --platform "$platform" ${libs[@]}))
   local cflags=(-DCLI $("$root/bin/cflags.sh"))
 
-  local sources=($(find "$src"/cli/*.cc 2>/dev/null))
+  local test_sources=($(find "$src"/cli/*.cc 2>/dev/null))
+  local sources=()
   local outputs=()
 
   mkdir -p "$BUILD_DIR/$arch-$platform/bin"
 
-  for source in "${sources[@]}"; do
+  for source in "${test_sources[@]}"; do
     local output="${source/$src/$output_directory}"
     output="${output/.cc/.o}"
-    outputs+=("$output")
+    if (( force )) || ! test -f "$output" || (( $(stat_mtime "$source") > $(stat_mtime "$output") )); then
+      sources+=("$source")
+      outputs+=("$output")
+    fi
   done
 
   for (( i = 0; i < ${#sources[@]}; i++ )); do
@@ -175,28 +213,45 @@ function _build_cli {
 
   local exe=""
   local libsocket_win=""
+  local test_sources=($(find "$BUILD_DIR/$arch-$platform"/cli/*.o 2>/dev/null))
   if [[ "$(uname -s)" == *"_NT"* ]]; then
     exe=".exe"
     libsocket_win="$BUILD_DIR/$arch-$platform/lib/libsocket-runtime.a"
+    test_sources+=("$libsocket_win")
   fi
 
-  quiet $CXX                                 \
-    "$BUILD_DIR/$arch-$platform"/cli/*.o       \
-    "${cflags[@]}" "${ldflags[@]}"             \
-    "$libsocket_win"                           \
-    -o "$BUILD_DIR/$arch-$platform/bin/ssc$exe"
+  libs=($(find "$root/build/$arch-$platform/lib/*" 2>/dev/null))
+  test_sources+=(${libs[@]})
+  local build_ssc=0
+  local ssc_output="$BUILD_DIR/$arch-$platform/bin/ssc$exe"
 
-  die $? "not ok - unable to build. See trouble shooting guide in the README.md file:\n$CXX ${cflags[@]} \"${ldflags[@]}\" -o \"$BUILD_DIR/$arch-$platform/bin/ssc\""
-  echo "ok - built the cli for desktop"
+  for source in "${test_sources[@]}"; do
+    if (( force )) || ! test -f "$ssc_output" || (( $(stat_mtime "$source") > $(stat_mtime "$ssc_output") )); then
+      build_ssc=1
+      # break
+    fi
+  done
+
+
+  if (( build_ssc )); then
+    quiet $CXX                                 \
+      "$BUILD_DIR/$arch-$platform"/cli/*.o       \
+      "${cflags[@]}" "${ldflags[@]}"             \
+      "$libsocket_win"                           \
+      -o "$ssc_output"
+
+    die $? "not ok - unable to build. See trouble shooting guide in the README.md file:\n$CXX ${cflags[@]} \"${ldflags[@]}\" -o \"$BUILD_DIR/$arch-$platform/bin/ssc\""
+    echo "ok - built the cli for desktop"
+  fi
 }
 
 function _build_runtime_library {
   echo "# building runtime library"
-  echo "$root/bin/build-runtime-library.sh" --arch "$(uname -m)" --platform desktop
-  "$root/bin/build-runtime-library.sh" --arch "$(uname -m)" --platform desktop & pids+=($!)
+  echo "$root/bin/build-runtime-library.sh" --arch "$(uname -m)" --platform desktop $pass_force
+  "$root/bin/build-runtime-library.sh" --arch "$(uname -m)" --platform desktop $pass_force & pids+=($!)
   if [[ "$host" = "Darwin" ]]; then
-    "$root/bin/build-runtime-library.sh" --arch "$(uname -m)" --platform ios & pids+=($!)
-    "$root/bin/build-runtime-library.sh" --arch x86_64 --platform ios-simulator & pids+=($!)
+    "$root/bin/build-runtime-library.sh" --arch "$(uname -m)" --platform ios $pass_force & pids+=($!)
+    "$root/bin/build-runtime-library.sh" --arch x86_64 --platform ios-simulator $pass_force & pids+=($!)
   fi
 
   wait
@@ -246,16 +301,20 @@ function _prebuild_desktop_main () {
   local objects="$BUILD_DIR/$arch-$platform/objects"
 
   local cflags=($("$root/bin/cflags.sh"))
-  local sources=($(find "$src"/desktop/*.{cc,mm} 2>/dev/null))
+  local test_sources=($(find "$src"/desktop/*.{cc,mm} 2>/dev/null))
+  local sources=()
   local outputs=()
 
   mkdir -p "$(dirname "$output")"
 
-  for source in "${sources[@]}"; do
+  for source in "${test_sources[@]}"; do
     local output="${source/$src/$objects}"
     output="${output/.cc/.o}"
     output="${output/.mm/.o}"
-    outputs+=("$output")
+    if (( force )) || ! test -f "$output" || (( $(stat_mtime "$source") > $(stat_mtime "$output") )); then
+      sources+=("$source")
+      outputs+=("$output")
+    fi
   done
 
   for (( i = 0; i < ${#sources[@]}; i++ )); do
@@ -279,16 +338,20 @@ function _prebuild_ios_main () {
 
   local clang="$(xcrun -sdk iphoneos -find clang++)"
   local cflags=($(TARGET_OS_IPHONE=1 "$root/bin/cflags.sh"))
-  local sources=($(find "$src"/ios/ios.mm 2>/dev/null))
+  local test_sources=($(find "$src"/ios/ios.mm 2>/dev/null))
+  local sources=()
   local outputs=()
 
   mkdir -p "$objects"
 
-  for source in "${sources[@]}"; do
+  for source in "${test_sources[@]}"; do
     local output="${source/$src/$objects}"
     output="${output/.cc/.o}"
     output="${output/.mm/.o}"
-    outputs+=("$output")
+    if (( force )) || ! test -f "$output" || (( $(stat_mtime "$source") > $(stat_mtime "$output") )); then
+      sources+=("$source")
+      outputs+=("$output")
+    fi
   done
 
   for (( i = 0; i < ${#sources[@]}; i++ )); do
@@ -311,16 +374,20 @@ function _prebuild_ios_simulator_main () {
 
   local clang="$(xcrun -sdk iphonesimulator -find clang++)"
   local cflags=($(TARGET_IPHONE_SIMULATOR=1 "$root/bin/cflags.sh"))
-  local sources=($(find "$src"/ios/ios.mm 2>/dev/null))
+  local test_sources=($(find "$src"/ios/ios.mm 2>/dev/null))
+  local sources=()
   local outputs=()
 
   mkdir -p "$objects"
 
-  for source in "${sources[@]}"; do
+  for source in "${test_sources[@]}"; do
     local output="${source/$src/$objects}"
     output="${output/.cc/.o}"
     output="${output/.mm/.o}"
-    outputs+=("$output")
+    if (( force )) || ! test -f "$output" || (( $(stat_mtime "$source") > $(stat_mtime "$output") )); then
+      sources+=("$source")
+      outputs+=("$output")
+    fi
   done
 
   for (( i = 0; i < ${#sources[@]}; i++ )); do
