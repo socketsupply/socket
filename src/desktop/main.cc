@@ -506,12 +506,17 @@ MAIN {
       const auto seq = message.get("seq");
       const auto index = message.index;
       const auto window = windowManager.getWindow(index);
-      const auto screenSize = window->getScreenSize();
-      const JSON::Object json = JSON::Object::Entries {
-        { "width", screenSize.width },
-        { "height", screenSize.height }
-      };
-      window->resolvePromise(seq, OK_STATE, json.str());
+      if (window != nullptr) {
+        const auto screenSize = window->getScreenSize();
+        const JSON::Object json = JSON::Object::Entries {
+          { "width", screenSize.width },
+          { "height", screenSize.height }
+        };
+        window->resolvePromise(seq, OK_STATE, json.str());
+      } else {
+        const JSON::Object json = JSON::Object::Entries {};
+        window->resolvePromise(seq, OK_STATE, json.str());
+      }
       return;
     }
 
@@ -588,6 +593,10 @@ MAIN {
       targetWindow = windowManager.createWindow(options);
 
       targetWindow->show(EMPTY_SEQ);
+
+      if (options.url.size() > 0) {
+        targetWindow->navigate(seq, options.url);
+      }
 
       JSON::Object json = JSON::Object::Entries {
         { "data", targetWindow->json() },
@@ -775,11 +784,6 @@ MAIN {
       };
 
       currentWindow->resolvePromise(seq, OK_STATE, json.str());
-      return;
-    }
-
-    if (message.name == "external") {
-      window->openExternal(decodeURIComponent(value));
       return;
     }
 
