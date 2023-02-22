@@ -496,6 +496,24 @@ test('window.send', async (t) => {
   counter++
 })
 
+test('window.send from another window', async (t) => {
+  const newWindow = await application.createWindow({ index: counter, path: 'index_no_js.html' })
+  const currentWindow = await application.getCurrentWindow()
+  t.equal(newWindow.index, counter, 'correct index is returned')
+  t.notEqual(currentWindow.index, newWindow.index, 'window indexes are different')
+  const value = { firstname: 'Morty', secondname: 'Sanchez' }
+  let err
+  try {
+    await newWindow.send({ event: 'character', value, window: currentWindow.index })
+  } catch (e) {
+    err = e
+  }
+  t.ok(err instanceof Error, 'send from a new window throws')
+  t.equal(err.message, 'window.send can only be used from the current window', 'send from a non-current window throws')
+  newWindow.close()
+  counter++
+})
+
 test('openExternal', async (t) => {
   const currentWindow = await application.getCurrentWindow()
   t.equal(typeof currentWindow.openExternal, 'function', 'openExternal is a function')
