@@ -186,6 +186,8 @@ namespace SSC {
 
   const Map getSettingsSource ();
 
+  ScreenSize getScreenSize ();
+
   bool isDebugEnabled ();
 
   #if defined(CLI)
