@@ -487,10 +487,10 @@ int main (const int argc, const char* argv[]) {
   if (argc == 2 || lastOption[0] == '-') {
     numberOfOptions = argc - 2;
     targetPath = fs::current_path();
-  } else if (lastOption[0] == '.') {
-    targetPath = fs::absolute(lastOption).lexically_normal();
   } else {
-    targetPath = fs::path(lastOption);
+    targetPath = fs::absolute(lastOption).lexically_normal();
+  // } else {
+    // targetPath = fs::absolute(lastOption);
   }
 
   struct Paths {
