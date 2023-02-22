@@ -36,12 +36,12 @@ namespace SSC {
 #if defined(__linux__)
     gtk_init_check(0, nullptr);
 #endif
+
+    auto cwd = getCwd();
+    uv_chdir(cwd.c_str());
   }
 
   int App::run () {
-    auto cwd = getCwd();
-    uv_chdir(cwd.c_str());
-
 #if defined(__linux__)
     gtk_main();
 #elif defined(__APPLE__) && !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR
