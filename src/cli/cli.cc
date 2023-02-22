@@ -489,8 +489,6 @@ int main (const int argc, const char* argv[]) {
     targetPath = fs::current_path();
   } else {
     targetPath = fs::absolute(lastOption).lexically_normal();
-  // } else {
-    // targetPath = fs::absolute(lastOption);
   }
 
   struct Paths {
