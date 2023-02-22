@@ -15,6 +15,20 @@ declare arch="$(uname -m)"
 declare host="$(uname -s)"
 declare platform="desktop"
 
+while (( $# > 0 )); do
+  declare arg="$1"; shift
+  if [[ "$arg" = "--arch" ]]; then
+    arch="$1"; shift; continue
+  fi
+
+  if [[ "$arg" = "--force" ]] || [[ "$arg" = "-f" ]]; then
+    pass_force="$arg"
+    force=1; continue   
+  fi
+
+  args+=("$arg")
+done
+
 if [ -d "$SOCKET_HOME" ]; then
   LIB_DIR=$SOCKET_HOME/lib
 fi
@@ -25,11 +39,19 @@ else
   SOCKET_HOME="${SOCKET_HOME:-"${XDG_DATA_HOME:-"$HOME/.local/share"}/socket"}"
 fi
 
+for sig in ABRT HUP INT PIPE QUIT TERM; do
+  trap "echo command $@ failed $sig;
+    [ $sig != EXIT ] && trap - $sig EXIT && kill -s $sig $$
+  " $sig
+done
+
 function quiet () {
   if [ -n "$VERBOSE" ]; then
     echo "$@"
     "$@"
   else
+    # echo "$@"
+    # "$@"
     "$@" > /dev/null 2>&1
   fi
 
@@ -73,7 +95,7 @@ if [[ "$host" == "Win32" ]] && [[ ! -z "$SOCKET_HOME" ]] ; then
 fi
 
 
-if ! quiet command -v "ssc"; then
+if ! quiet command -v ssc; then
   echo "ssc not found."
   DEPS_ERROR=1
 fi;
@@ -93,7 +115,12 @@ if [[ ! -z $DEPS_ERROR ]]; then
   exit 1
 fi
 
+
 app_dir=$BUILD_DIR/android
+if [[ -d $app_dir ]] && (( $force )); then
+  quiet rm -rf $app_dir
+fi
+
 if [[ ! -d $app_dir ]]; then
   quiet mkdir -p $app_dir
   cd $app_dir
@@ -107,7 +134,8 @@ if [[ ! -d $app_dir ]]; then
   skip_gradle = true/' $app_dir/socket.ini > $temp
   quiet mv $temp $app_dir/socket.ini
   echo "starting ssc from $(pwd)"
-  if ! quiet ssc build -o --platform=android; then
+  if ! quiet ssc build -o --platform=android > build.log 2>&1; then
+    cat build.log
     echo "NDK build failed."
     exit 1
   fi
