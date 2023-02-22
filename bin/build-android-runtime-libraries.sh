@@ -41,7 +41,7 @@ fi
 
 for sig in ABRT HUP INT PIPE QUIT TERM; do
   trap "echo command $@ failed $sig;
-    [ $sig != EXIT ] && trap - $sig EXIT && kill -s $sig $$
+    trap - $sig EXIT && kill -s $sig $$
   " $sig
 done
 
@@ -50,8 +50,6 @@ function quiet () {
     echo "$@"
     "$@"
   else
-    # echo "$@"
-    # "$@"
     "$@" > /dev/null 2>&1
   fi
 
@@ -145,7 +143,7 @@ fi
 
 for abi in $(ls $app_dir/dist/android/app/src/main/obj/local)
 do
-  echo "copying $abi to $LIB_DIR/$abi-android"
-  quiet mkdir -p $LIB_DIR/$abi-android
-  quiet cp -rf $app_dir/dist/android/app/src/main/obj/local/$abi/* $LIB_DIR/$abi-android
+  [ ! -z $VERBOSE ] && echo "copying $abi to $LIB_DIR/$abi-android"
+  quiet mkdir -p $LIB_DIR/$abi-android/lib
+  quiet cp -rf $app_dir/dist/android/app/src/main/jniLibs/$abi/* $LIB_DIR/$abi-android/lib
 done

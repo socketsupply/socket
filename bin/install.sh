@@ -217,7 +217,7 @@ function _build_cli {
   fi
 
   local ldflags=($("$root/bin/ldflags.sh" --arch "$arch" --platform "$platform" ${libs[@]}))
-  local cflags=(-DSSC_CLI $("$root/bin/cflags.sh"))
+  local cflags=(-DCLI $("$root/bin/cflags.sh"))
 
   local test_sources=($(find "$src"/cli/*.cc 2>/dev/null))
   local sources=()
@@ -227,9 +227,7 @@ function _build_cli {
 
   for source in "${test_sources[@]}"; do
     local output="${source/$src/$output_directory}"
-    # For some reason cli causes issues when debug and release are in the same folder
-    output="${output/.cc/$d.o}"
-    output="${output/cli/cli$d}"
+    output="${output/.cc/.o}"
     if (( force )) || ! test -f "$output" || (( $(stat_mtime "$source") > $(stat_mtime "$output") )); then
       sources+=("$source")
       outputs+=("$output")
@@ -246,18 +244,18 @@ function _build_cli {
 
   local exe=""
   local libsocket_win=""
-  local test_sources=($(find "$BUILD_DIR/$arch-$platform"/cli$d/*$d.o 2>/dev/null))
+  local test_sources=($(find "$BUILD_DIR/$arch-$platform"/cli/*.o 2>/dev/null))
   if [[ "$(uname -s)" == *"_NT"* ]]; then
     declare d=""
     if [[ ! -z "$DEBUG" ]]; then
       d="d"
     fi
     exe=".exe"
-    libsocket_win="$BUILD_DIR/$arch-$platform/lib$d/libsocket-runtime$d.a"
+    libsocket_win="$BUILD_DIR/$arch-$platform/lib/libsocket-runtime.a"
     test_sources+=("$libsocket_win")
   fi
 
-  libs=($(find "$root/build/$arch-$platform/lib$d/*" 2>/dev/null))
+  libs=($(find "$root/build/$arch-$platform/lib/*" 2>/dev/null))
   test_sources+=(${libs[@]})
   local build_ssc=0
   local ssc_output="$BUILD_DIR/$arch-$platform/bin/ssc$exe"
@@ -271,10 +269,10 @@ function _build_cli {
 
 
   if (( build_ssc )); then
-    quiet $CXX                                   \
-      "$BUILD_DIR/$arch-$platform"/cli$d/*$d.o   \
+    quiet $CXX                                 \
+      "$BUILD_DIR/$arch-$platform"/cli/*.o       \
       "${cflags[@]}" "${ldflags[@]}"             \
-      "$libsocket_win" "$libwebview_win"         \
+      "$libsocket_win"                           \
       -o "$ssc_output"
 
     die $? "not ok - unable to build. See trouble shooting guide in the README.md file:\n$CXX ${cflags[@]} \"${ldflags[@]}\" -o \"$BUILD_DIR/$arch-$platform/bin/ssc\""
@@ -356,8 +354,8 @@ function _prebuild_desktop_main () {
 
   for source in "${test_sources[@]}"; do
     local output="${source/$src/$objects}"
-    output="${output/.cc/$d.o}"
-    output="${output/.mm/$d.o}"
+    output="${output/.cc/.o}"
+    output="${output/.mm/.o}"
     if (( force )) || ! test -f "$output" || (( $(stat_mtime "$source") > $(stat_mtime "$output") )); then
       sources+=("$source")
       outputs+=("$output")
@@ -393,8 +391,8 @@ function _prebuild_ios_main () {
 
   for source in "${test_sources[@]}"; do
     local output="${source/$src/$objects}"
-    output="${output/.cc/$d.o}"
-    output="${output/.mm/$d.o}"
+    output="${output/.cc/.o}"
+    output="${output/.mm/.o}"
     if (( force )) || ! test -f "$output" || (( $(stat_mtime "$source") > $(stat_mtime "$output") )); then
       sources+=("$source")
       outputs+=("$output")
@@ -429,8 +427,8 @@ function _prebuild_ios_simulator_main () {
 
   for source in "${test_sources[@]}"; do
     local output="${source/$src/$objects}"
-    output="${output/.cc/$d.o}"
-    output="${output/.mm/$d.o}"
+    output="${output/.cc/.o}"
+    output="${output/.mm/.o}"
     if (( force )) || ! test -f "$output" || (( $(stat_mtime "$source") > $(stat_mtime "$output") )); then
       sources+=("$source")
       outputs+=("$output")
@@ -478,8 +476,13 @@ function _prepare {
 function _install {
   declare arch="$1"
   declare platform="$2"
-  echo "# copying sources to $SOCKET_HOME/src"
-  cp -r "$CWD"/src/* "$SOCKET_HOME/src"
+
+  if [ $platform == "desktop" ]; then
+    echo "# copying sources to $SOCKET_HOME/src"
+    cp -r "$CWD"/src/* "$SOCKET_HOME/src"
+  fi
+
+  # TODO(@mribbons): Set lib types based on platform, after mobile CI is working
 
   if test -d "$BUILD_DIR/$arch-$platform/objects"; then
     echo "# copying objects to $SOCKET_HOME/objects/$arch-$platform"
@@ -502,13 +505,23 @@ function _install {
     if [[ $host=="Win32" ]]; then
       cp -rfp "$BUILD_DIR/$arch-$platform"/lib$d/*.lib "$SOCKET_HOME/lib$d/$arch-$platform"
     fi
+
+    if [[ $platform == "android" ]]; then
+      cp -fr "$BUILD_DIR/$arch-$platform"/lib/*.so "$SOCKET_HOME/lib/$arch-$platform"
+    else
+      cp -fr "$BUILD_DIR/$arch-$platform"/lib/*.a "$SOCKET_HOME/lib/$arch-$platform"
+    fi
+  else 
+    echo "no $BUILD_DIR/$arch-$platform/lib"
   fi
 
-  echo "# copying js api to $SOCKET_HOME/api"
-  mkdir -p "$SOCKET_HOME/api"
-  cp -rfp "$root"/api/* "$SOCKET_HOME/api"
-  rm -f "$SOCKET_HOME/api/importmap.json"
-  "$root/bin/generate-api-import-map.sh" > "$SOCKET_HOME/api/importmap.json"
+  if [ $platform == "desktop" ]; then
+    echo "# copying js api to $SOCKET_HOME/api"
+    mkdir -p "$SOCKET_HOME/api"
+    cp -frp "$root"/api/* "$SOCKET_HOME/api"
+    rm -f "$SOCKET_HOME/api/importmap.json"
+    "$root/bin/generate-api-import-map.sh" > "$SOCKET_HOME/api/importmap.json"
+  fi
 
   rm -rf "$SOCKET_HOME/include"
   mkdir -p "$SOCKET_HOME/include"
@@ -786,3 +799,9 @@ if [[ "$host" = "Darwin" ]]; then
 fi
 
 _install_cli
+
+"$root/bin/build-runtime-library.sh" --platform android
+_install arm64-v8a android
+_install armeabi-v7a android
+_install x86 android
+_install x86_64 android
