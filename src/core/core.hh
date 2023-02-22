@@ -357,6 +357,11 @@ namespace SSC {
           }
       };
 
+      class Diagnostics : public Module {
+        public:
+          Diagnostics (auto core) : Module(core) {}
+      };
+
       class DNS : public Module {
         public:
           DNS (auto core) : Module(core) {}
@@ -553,6 +558,10 @@ namespace SSC {
             int buffer,
             Module::Callback cb
           );
+          void cpus  (
+            const String seq,
+            Module::Callback cb
+          );
           void networkInterfaces (const String seq, Module::Callback cb) const;
       };
 
@@ -628,6 +637,7 @@ namespace SSC {
           );
       };
 
+      Diagnostics diagnostics;
       DNS dns;
       FS fs;
       OS os;
@@ -668,6 +678,7 @@ namespace SSC {
 #endif
 
       Core () :
+        diagnostics(this),
         dns(this),
         fs(this),
         os(this),
