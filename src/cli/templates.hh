@@ -1079,6 +1079,7 @@ android.suppressUnsupportedCompileSdk=33
 android.experimental.legacyTransform.forceNonIncremental=true
 
 kotlin.code.style=official
+android.experimental.legacyTransform.forceNonIncremental=true
 )GRADLE";
 
 //
