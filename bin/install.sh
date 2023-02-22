@@ -808,3 +808,5 @@ _install x86 android & pids+=($!)
 _install x86_64 android & pids+=($!)
 
 wait
+
+exit $?
