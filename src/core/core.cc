@@ -624,8 +624,6 @@ namespace SSC {
        }
 
       cb(seq, json, Post{});
-
-      [configuration release];
     }];
     #endif
 #elif defined(__linux__) && !defined(__ANDROID__)
