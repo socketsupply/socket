@@ -782,6 +782,18 @@ void initFunctionsTable (Router *router) {
     router->core->os.cpus(message.seq, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
   });
 
+  router->map("os.rusage", [=](auto message, auto router, auto reply) {
+    router->core->os.rusage(message.seq, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
+  });
+
+  router->map("os.uptime", [=](auto message, auto router, auto reply) {
+    router->core->os.uptime(message.seq, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
+  });
+
+  router->map("os.uname", [=](auto message, auto router, auto reply) {
+    router->core->os.uname(message.seq, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
+  });
+
   /**
    * Simply returns `pong`.
    */
