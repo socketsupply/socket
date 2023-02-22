@@ -431,7 +431,7 @@ namespace SSC {
           }
         }
 
-        auto screen = (this->getWindow(opts.index))->getScreenSize();
+        auto screen = SSC::getScreenSize();
 
         auto isWidthInPercent = opts.isWidthInPercent || (opts.height <= 0 && this->options.isWidthInPercent);
         auto isHeightInPercent = opts.isHeightInPercent || (opts.width <= 0 && this->options.isHeightInPercent);
