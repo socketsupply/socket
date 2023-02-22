@@ -517,8 +517,9 @@ test('window.send from another window', async (t) => {
 test('openExternal', async (t) => {
   const currentWindow = await application.getCurrentWindow()
   t.equal(typeof currentWindow.openExternal, 'function', 'openExternal is a function')
+  const result = await currentWindow.openExternal('https://sockets.sh')
   // can't test results without browser
-  t.equal(await currentWindow.openExternal('https://sockets.sh'), null, 'succesfully completes')
+  t.ok(result?.data, 'succesfully completes')
 })
 
 test('apllication.exit', async (t) => {
