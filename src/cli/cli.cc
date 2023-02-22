@@ -1447,6 +1447,7 @@ int main (const int argc, const char* argv[]) {
     // used in multiple if blocks, need to declare here
     auto android_enable_standard_ndk_build = settings["android_enable_standard_ndk_build"] == "true";
     auto android_skip_gradle = settings["android_skip_gradle"] == "true";
+    auto android_build_socket_runtime = settings["android_build_socket_runtime"] == "true";
 
     if (flagBuildForAndroid) {
       auto bundle_identifier = settings["meta_bundle_identifier"];
@@ -2469,22 +2470,40 @@ int main (const int argc, const char* argv[]) {
         auto app_mk = _main / "jni" / "Application.mk";
         auto jniLibs = _main / "jniLibs";
 
-        ndkBuildArgs 
-          << ndkBuild.str()
-          << " -j"
-          << " NDK_PROJECT_PATH=" << _main
-          << " NDK_APPLICATION_MK=" << app_mk
-          << (flagDebugMode ? " NDK_DEBUG=1" : "")
-          << " APP_PLATFORM=" << androidPlatform
-          << " NDK_LIBS_OUT=" << jniLibs
-          << " >" << (!platform.win ? "/dev/null" : "NUL") << " 2>&1";
-          ;
+        if (android_build_socket_runtime) {
+          ndkBuildArgs 
+            << ndkBuild.str()
+            << " -j"
+            << " NDK_PROJECT_PATH=" << _main
+            << " NDK_APPLICATION_MK=" << app_mk
+            << (flagDebugMode ? " NDK_DEBUG=1" : "")
+            << " APP_PLATFORM=" << androidPlatform
+            << " NDK_LIBS_OUT=" << jniLibs
+            << " >" << (!platform.win ? "/dev/null" : "NUL") << " 2>&1";
+            ;
 
-        if (std::system(ndkBuildArgs.str().c_str()) != 0)
-        {        
-          log(ndkBuildArgs.str());
-          log("ndk build failed.");
-          exit(1);
+          if (std::system(ndkBuildArgs.str().c_str()) != 0)
+          {        
+            log(ndkBuildArgs.str());
+            log("ndk build failed.");
+            exit(1);
+          }
+        } else {
+          // TODO(mribbons) - Copy specific abis
+          fs::create_directories(jniLibs);
+          for (auto const& dir_entry : fs::directory_iterator(prefixFile() + "lib")) {
+            if (dir_entry.is_directory() && dir_entry.path().stem().string().find("-android") != String::npos) {
+              auto dest = jniLibs / replace(dir_entry.path().stem().string(), "-android", "");
+              try {
+                if (getEnv("DEBUG") == "1")
+                  log("copy android lib: "+ dir_entry.path().string() + " => " + dest.string());
+                fs::copy(dir_entry.path(), dest, fs::copy_options::overwrite_existing | fs::copy_options::recursive);
+              } catch (fs::filesystem_error &e) {
+                std::cerr << "Unable to copy android lib: " << fs::exists(dest) << ": " << e.what() << std::endl;
+                throw;
+              }
+            }
+          }
         }
       }
 
