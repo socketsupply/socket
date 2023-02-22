@@ -2473,7 +2473,7 @@ int main (const int argc, const char* argv[]) {
       // just build for CI
       if (getEnv("SSC_CI").size() > 0) {
         StringStream gradlew;
-        gradlew << "./gradlew build";
+        gradlew << localDirPrefix << "gradlew build";
 
         if (std::system(gradlew.str().c_str()) != 0) {
           log("error: failed to invoke `gradlew build` command");
@@ -2485,8 +2485,8 @@ int main (const int argc, const char* argv[]) {
 
       if (!android_skip_gradle) {
         String bundle = flagDebugMode ?
-          "gradlew :app:bundleDebug --warning-mode all" :
-          "gradlew :app:bundle";
+          localDirPrefix + "gradlew :app:bundleDebug --warning-mode all" :
+          localDirPrefix + "gradlew :app:bundle";
 
         if (std::system(bundle.c_str()) != 0) {
           log("error: failed to invoke " + bundle + " command.");

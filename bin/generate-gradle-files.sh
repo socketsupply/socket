@@ -17,7 +17,7 @@ buildscript {
   }
 
   dependencies {
-    classpath 'com.android.tools.build:gradle:7.2.1'
+    classpath 'com.android.tools.build:gradle:7.3.0'
     classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:\$kotlin_version"
   }
 }
@@ -62,6 +62,7 @@ org.gradle.parallel=true
 
 android.useAndroidX=true
 android.enableJetifier=true
+android.experimental.legacyTransform.forceNonIncremental=true
 
 kotlin.code.style=official
 GRADLE
