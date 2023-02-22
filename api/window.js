@@ -245,7 +245,7 @@ export class ApplicationWindow {
    * @returns {Promise<ipc.Result>}
    */
   async openExternal (options) {
-    return await ipc.postMessage(`ipc://external?value=${encodeURIComponent(options)}`)
+    return await ipc.send('platform.openExternal', options)
   }
 
   // TODO(@chicoxyzzy): implement on method
