@@ -164,6 +164,40 @@ namespace SSC {
     }
   }
 
+  void Core::OS::cpus  (
+    const String seq,
+    Module::Callback cb
+  ) {
+    this->core->dispatchEventLoop([=, this]() {
+      uv_cpu_info_t* infos = nullptr;
+      int count = 0;
+      uv_cpu_info(&infos, &count);
+      JSON::Array::Entries entries(count);
+      for (int i = 0; i < count; ++i) {
+        auto info = infos[i];
+        entries[i] = JSON::Object::Entries {
+          {"model", info.model},
+          {"speed", info.speed},
+          {"times", JSON::Object::Entries {
+            {"user", info.cpu_times.user},
+            {"nice", info.cpu_times.nice},
+            {"sys", info.cpu_times.sys},
+            {"idle", info.cpu_times.idle},
+            {"irq", info.cpu_times.irq}
+          }}
+        };
+      }
+
+      auto json = JSON::Object::Entries {
+        {"source", "os.cpus"},
+        {"data", entries}
+      };
+
+      uv_free_cpu_info(infos, count);
+      cb(seq, json, Post{});
+    });
+  }
+
   void Core::OS::networkInterfaces (
     const String seq,
     Module::Callback cb
@@ -323,7 +357,7 @@ namespace SSC {
       }
 
       auto json = JSON::Object::Entries {
-        {"source", "event"},
+        {"source", "platform.event"},
         {"data", JSON::Object::Entries{}}
       };
 
