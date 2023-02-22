@@ -78,7 +78,8 @@ while (( $# > 0 )); do
   fi
 
   if [[ "$arg" = "--force" ]] || [[ "$arg" = "-f" ]]; then
-   force=1; continue
+    pass_force="$arg"
+    force=1; continue
   fi
 
   if [[ "$arg" = "--platform" ]]; then
@@ -101,7 +102,7 @@ while (( $# > 0 )); do
 done
 
 if [[ "$platform" = "android" ]]; then
-  $root/bin/build-android-runtime-libraries.sh
+  $root/bin/build-android-runtime-libraries.sh $pass_force
   exit $?
 fi
 
@@ -210,13 +211,8 @@ function main () {
   fi
 
   local build_static=0
-  local static_library_mtime=$(stat_mtime "$static_library")
   for source in "${objects[@]}"; do
-    if ! test -f $source; then
-      echo "$source not built.."
-      exit 1
-    fi
-    if (( force )) || ! test -f "$static_library" || (( $(stat_mtime "$source") > $static_library_mtime )); then
+    if (( force )) || ! test -f "$static_library" || (( $(stat_mtime "$source") > $(stat_mtime "$static_library") )); then
       build_static=1
       break
     fi
