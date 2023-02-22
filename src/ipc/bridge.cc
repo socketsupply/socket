@@ -776,6 +776,13 @@ void initFunctionsTable (Router *router) {
   });
 
   /**
+   * Returns an array of CPUs available to the process.
+   */
+  router->map("os.cpus", [=](auto message, auto router, auto reply) {
+    router->core->os.cpus(message.seq, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
+  });
+
+  /**
    * Simply returns `pong`.
    */
   router->map("ping", [](auto message, auto router, auto reply) {
