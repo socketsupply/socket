@@ -165,11 +165,11 @@ export function tmpdir () {
 
   if (isWindows()) {
     path = (
-      window.__args.env.TEMPDIR ||
-      window.__args.env.TMPDIR ||
-      window.__args.env.TEMP ||
-      window.__args.env.TMP ||
-      (window.__args.env.SystemRoot ?? window.__args.env.windir ?? '') + '\\temp'
+      globalThis.__args.env.TEMPDIR ||
+      globalThis.__args.env.TMPDIR ||
+      globalThis.__args.env.TEMP ||
+      globalThis.__args.env.TMP ||
+      (globalThis.__args.env.SystemRoot ?? globalThis.__args.env.windir ?? '') + '\\temp'
     )
 
     if (path.length > 1 && path.endsWith('\\') && !path.endsWith(':\\')) {
@@ -177,10 +177,10 @@ export function tmpdir () {
     }
   } else {
     path = (
-      window.__args.env.TEMPDIR ||
-      window.__args.env.TMPDIR ||
-      window.__args.env.TEMP ||
-      window.__args.env.TMP ||
+      globalThis.__args.env.TEMPDIR ||
+      globalThis.__args.env.TMPDIR ||
+      globalThis.__args.env.TEMP ||
+      globalThis.__args.env.TMP ||
       ''
     )
 

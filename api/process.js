@@ -53,7 +53,7 @@ if (typeof process.nextTick !== 'function') {
  * @returns {string} The home directory of the current user.
  */
 export function homedir () {
-  return window.__args.env.HOME ?? ''
+  return globalThis.__args.env.HOME ?? ''
 }
 
 /**

@@ -103,14 +103,14 @@ export async function postMessage (...args) {
 
 function initializeXHRIntercept () {
   if (typeof window === 'undefined') return
-  const { send, open } = window.XMLHttpRequest.prototype
+  const { send, open } = globalThis.XMLHttpRequest.prototype
 
   const B5_PREFIX_BUFFER = new Uint8Array([0x62, 0x35]) // literally, 'b5'
   const encoder = new TextEncoder()
-  Object.assign(window.XMLHttpRequest.prototype, {
+  Object.assign(globalThis.XMLHttpRequest.prototype, {
     open (method, url, ...args) {
       try {
-        this.readyState = window.XMLHttpRequest.OPENED
+        this.readyState = globalThis.XMLHttpRequest.OPENED
       } catch (_) {}
       this.method = method
       this.url = new URL(url)
@@ -121,7 +121,7 @@ function initializeXHRIntercept () {
 
     async send (body) {
       const { method, seq, url } = this
-      const index = window.__args.index
+      const index = globalThis.__args.index
 
       if (url?.protocol === 'ipc:') {
         if (
@@ -158,12 +158,12 @@ function initializeXHRIntercept () {
             // size here assumes latin1 encoding.
             await postMessage(`ipc://buffer.create?index=${index}&seq=${seq}&size=${body.length}`)
             await new Promise((resolve) => {
-              window.chrome.webview.addEventListener('sharedbufferreceived', function onSharedBufferReceived (event) {
+              globalThis.chrome.webview.addEventListener('sharedbufferreceived', function onSharedBufferReceived (event) {
                 const { additionalData } = event
                 if (additionalData.index === index && additionalData.seq === seq) {
                   const buffer = new Uint8Array(event.getBuffer())
                   buffer.set(body)
-                  window.chrome.webview.removeEventListener('sharedbufferreceived', onSharedBufferReceived)
+                  globalThis.chrome.webview.removeEventListener('sharedbufferreceived', onSharedBufferReceived)
                   resolve()
                 }
               })
@@ -894,7 +894,7 @@ export async function ready () {
     return loop()
 
     function loop () {
-      if (window.__args) {
+      if (globalThis.__args) {
         queueMicrotask(resolve)
       } else {
         queueMicrotask(loop)
@@ -920,8 +920,8 @@ export function sendSync (command, params, options) {
     return {}
   }
 
-  const request = new window.XMLHttpRequest()
-  const index = window.__args.index ?? 0
+  const request = new globalThis.XMLHttpRequest()
+  const index = globalThis.__args.index ?? 0
   const seq = nextSeq++
   const uri = `ipc://${command}`
 
@@ -980,11 +980,11 @@ export async function emit (name, value, target, options) {
     }
   }
 
-  const event = new window.CustomEvent(name, { detail, ...options })
+  const event = new globalThis.CustomEvent(name, { detail, ...options })
   if (target) {
     target.dispatchEvent(event)
   } else {
-    window.dispatchEvent(event)
+    globalThis.dispatchEvent(event)
   }
 }
 
@@ -1001,10 +1001,10 @@ export async function resolve (seq, value) {
     debug.log('ipc.resolve:', seq, value)
   }
 
-  const index = window.__args.index
+  const index = globalThis.__args.index
   const eventName = `resolve-${index}-${seq}`
-  const event = new window.CustomEvent(eventName, { detail: value })
-  window.dispatchEvent(event)
+  const event = new globalThis.CustomEvent(eventName, { detail: value })
+  globalThis.dispatchEvent(event)
 }
 
 /**
@@ -1021,7 +1021,7 @@ export async function send (command, value) {
   }
 
   const seq = 'R' + nextSeq++
-  const index = value?.index ?? window.__args.index
+  const index = value?.index ?? globalThis.__args.index
   let serialized = ''
 
   try {
@@ -1045,7 +1045,7 @@ export async function send (command, value) {
 
   return await new Promise((resolve) => {
     const event = `resolve-${index}-${seq}`
-    window.addEventListener(event, onresolve, { once: true })
+    globalThis.addEventListener(event, onresolve, { once: true })
     function onresolve (event) {
       const result = Result.from(event.detail, null, command)
       if (debug.enabled) {
@@ -1074,7 +1074,7 @@ export async function write (command, params, buffer, options) {
   await ready()
 
   const signal = options?.signal
-  const request = new window.XMLHttpRequest()
+  const request = new globalThis.XMLHttpRequest()
   const index = window?.__args?.index ?? 0
   const seq = nextSeq++
   const uri = `ipc://${command}`
@@ -1131,7 +1131,7 @@ export async function write (command, params, buffer, options) {
         return
       }
 
-      if (request.readyState === window.XMLHttpRequest.DONE) {
+      if (request.readyState === globalThis.XMLHttpRequest.DONE) {
         resolved = true
         clearTimeout(timeout)
 
@@ -1168,7 +1168,7 @@ export async function write (command, params, buffer, options) {
 export async function request (command, params, options) {
   await ready()
 
-  const request = new window.XMLHttpRequest()
+  const request = new globalThis.XMLHttpRequest()
   const signal = options?.signal
   const index = window?.__args?.index ?? 0
   const seq = nextSeq++
@@ -1227,7 +1227,7 @@ export async function request (command, params, options) {
         return
       }
 
-      if (request.readyState === window.XMLHttpRequest.DONE) {
+      if (request.readyState === globalThis.XMLHttpRequest.DONE) {
         resolved = true
         clearTimeout(timeout)
 
