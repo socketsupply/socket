@@ -164,14 +164,39 @@ namespace SSC {
     }
   }
 
-  void Core::OS::cpus  (
+  void Core::OS::cpus (
     const String seq,
     Module::Callback cb
   ) {
     this->core->dispatchEventLoop([=, this]() {
+    #if defined(__ANDROID__)
+      {
+        auto json = JSON::Object::Entries {
+          {"source", "os.cpus"},
+          {"data", JSON::Array::Entries {}}
+        };
+
+        cb(seq, json, Post{});
+        return;
+      }
+    #endif
+
       uv_cpu_info_t* infos = nullptr;
       int count = 0;
-      uv_cpu_info(&infos, &count);
+      int status = uv_cpu_info(&infos, &count);
+
+      if (status != 0) {
+        auto json = JSON::Object::Entries {
+          {"source", "os.cpus"},
+          {"err", JSON::Object::Entries {
+            {"message", uv_strerror(status)}
+          }}
+        };
+
+        cb(seq, json, Post{});
+        return;
+      }
+
       JSON::Array::Entries entries(count);
       for (int i = 0; i < count; ++i) {
         auto info = infos[i];
@@ -208,15 +233,15 @@ namespace SSC {
     StringStream v6;
     int count = 0;
 
-    int rc = uv_interface_addresses(&infos, &count);
+    int status = uv_interface_addresses(&infos, &count);
 
-    if (rc != 0) {
+    if (status != 0) {
       auto json = JSON::Object(JSON::Object::Entries {
         {"source", "os.networkInterfaces"},
         {"err", JSON::Object::Entries {
           {"type", "InternalError"},
           {"message",
-            String("Unable to get network interfaces: ") + String(uv_strerror(rc))
+            String("Unable to get network interfaces: ") + String(uv_strerror(status))
           }
         }}
       });
@@ -266,6 +291,94 @@ namespace SSC {
     auto json = JSON::Object::Entries {
       {"source", "os.networkInterfaces"},
       {"data", data}
+    };
+
+    cb(seq, json, Post{});
+  }
+
+  void Core::OS::rusage (
+    const String seq,
+    Module::Callback cb
+  ) {
+    uv_rusage_t usage;
+    auto status = uv_getrusage(&usage);
+
+    if (status != 0) {
+      auto json = JSON::Object::Entries {
+        {"source", "os.rusage"},
+        {"err", JSON::Object::Entries {
+          {"message", uv_strerror(status)}
+        }}
+      };
+
+      cb(seq, json, Post{});
+      return;
+    }
+
+    auto json = JSON::Object::Entries {
+      {"source", "os.rusage"},
+      {"data", JSON::Object::Entries {
+        {"ru_maxrss", usage.ru_maxrss}
+      }}
+    };
+
+    cb(seq, json, Post{});
+  }
+
+  void Core::OS::uname (
+    const String seq,
+    Module::Callback cb
+  ) {
+    uv_utsname_t uname;
+    auto status = uv_os_uname(&uname);
+
+    if (status != 0) {
+      auto json = JSON::Object::Entries {
+        {"source", "os.uname"},
+        {"err", JSON::Object::Entries {
+          {"message", uv_strerror(status)}
+        }}
+      };
+
+      cb(seq, json, Post{});
+      return;
+    }
+
+    auto json = JSON::Object::Entries {
+      {"source", "os.uname"},
+      {"data", JSON::Object::Entries {
+        {"sysname", uname.sysname},
+        {"release", uname.release},
+        {"version", uname.version},
+        {"machine", uname.machine}
+      }}
+    };
+
+    cb(seq, json, Post{});
+  }
+
+  void Core::OS::uptime (
+    const String seq,
+    Module::Callback cb
+  ) {
+    double uptime;
+    auto status = uv_uptime(&uptime);
+
+    if (status != 0) {
+      auto json = JSON::Object::Entries {
+        {"source", "os.uptime"},
+        {"err", JSON::Object::Entries {
+          {"message", uv_strerror(status)}
+        }}
+      };
+
+      cb(seq, json, Post{});
+      return;
+    }
+
+    auto json = JSON::Object::Entries {
+      {"source", "os.uptime"},
+      {"data", uptime * 1000} // in milliseconds
     };
 
     cb(seq, json, Post{});

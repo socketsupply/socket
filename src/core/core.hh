@@ -563,6 +563,18 @@ namespace SSC {
             Module::Callback cb
           );
           void networkInterfaces (const String seq, Module::Callback cb) const;
+          void rusage (
+            const String seq,
+            Module::Callback cb
+          );
+          void uname (
+            const String seq,
+            Module::Callback cb
+          );
+          void uptime (
+            const String seq,
+            Module::Callback cb
+          );
       };
 
       class Platform : public Module {
