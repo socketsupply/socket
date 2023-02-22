@@ -513,6 +513,7 @@ function _install {
     fi
   else 
     echo "no $BUILD_DIR/$arch-$platform/lib"
+    exit 1
   fi
 
   if [ $platform == "desktop" ]; then
@@ -800,8 +801,10 @@ fi
 
 _install_cli
 
-"$root/bin/build-runtime-library.sh" --platform android
-_install arm64-v8a android
-_install armeabi-v7a android
-_install x86 android
-_install x86_64 android
+quiet "$root/bin/build-runtime-library.sh" --platform android
+_install arm64-v8a android & pids+=($!)
+_install armeabi-v7a android & pids+=($!)
+_install x86 android & pids+=($!)
+_install x86_64 android & pids+=($!)
+
+wait

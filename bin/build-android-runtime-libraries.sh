@@ -126,10 +126,9 @@ if [[ ! -d $app_dir ]]; then
   quiet ssc init
   temp=$(mktemp)
   quiet sed '/\[android\]/s/.*/&\
-  build_remove_path = dist\/android\/app\/src\//' $app_dir/socket.ini > $temp
-  quiet mv $temp $app_dir/socket.ini
-  quiet sed '/\[android\]/s/.*/&\
-  skip_gradle = true/' $app_dir/socket.ini > $temp
+build_remove_path = dist\/android\/app\/src\/\
+build_socket_runtime = true\
+skip_gradle = true/' $app_dir/socket.ini > $temp
   quiet mv $temp $app_dir/socket.ini
   echo "starting ssc from $(pwd)"
   if ! quiet ssc build -o --platform=android > build.log 2>&1; then
