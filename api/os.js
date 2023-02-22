@@ -18,6 +18,16 @@ export function arch () {
   return primordials.arch
 }
 
+export function cpus () {
+  if (!cache.cpus) {
+    const { err, data } = ipc.sendSync('os.cpus')
+    if (err) throw err
+    cache.cpus = data
+  }
+
+  return cache.cpus
+}
+
 export function networkInterfaces () {
   const now = Date.now()
 
