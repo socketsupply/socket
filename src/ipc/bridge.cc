@@ -1199,7 +1199,7 @@ static void registerSchemeHandler (Router *router) {
         memcpy(data, body, size);
       }
 
-      auto stream = g_memory_input_stream_new_from_data(data, size, g_free);
+      auto stream = g_memory_input_stream_new_from_data(data, size, nullptr);
       auto response = webkit_uri_scheme_response_new(stream, size);
 
       if (result.post.body) {
@@ -1211,24 +1211,23 @@ static void registerSchemeHandler (Router *router) {
       webkit_uri_scheme_request_finish_with_response(request, response);
       g_input_stream_close_async(stream, 0, nullptr, +[](
         GObject* object,
-        GAsyncResult* res,
+        GAsyncResult* asyncResult,
         gpointer userData
       ) {
-        g_object_ref(res);
         auto stream = (GInputStream*) object;
-        auto data = (const char*) userData;
-        auto poll = std::thread([=] {
-          do std::this_thread::sleep_for(std::chrono::milliseconds(16));
-          while (g_input_stream_has_pending(stream));
-          g_input_stream_close_finish(stream, res, nullptr);
-          delete [] data;
-          g_object_unref(res);
-        });
-
-        poll.detach();
+        g_input_stream_close_finish(stream, asyncResult, nullptr);
+        g_object_unref(stream);
+        g_idle_add_full(
+          G_PRIORITY_DEFAULT_IDLE,
+          (GSourceFunc) [](gpointer userData) {
+            return G_SOURCE_REMOVE;
+          },
+          userData,
+           [](gpointer userData) {
+            delete [] static_cast<const char *>(userData);
+          }
+        );
       }, data);
-
-      g_object_unref(stream);
     });
 
     if (!invoked) {

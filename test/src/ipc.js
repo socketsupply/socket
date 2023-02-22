@@ -107,7 +107,7 @@ if (process.platform !== 'ios' && process.platform !== 'android') {
     // Make lower case to adjust for implementation differences.
     t.equal(err?.message.toLowerCase(), 'not found')
     // win32 adds on the trailing slash in the URL.
-    if (window.__args.os === 'win32') {
+    if (globalThis.__args.os === 'win32') {
       t.ok(err?.url.startsWith('ipc://test/?foo=bar&index=0&seq=R'))
     } else {
       t.ok(err?.url.startsWith('ipc://test?foo=bar&index=0&seq=R'))
