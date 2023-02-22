@@ -219,6 +219,9 @@ export class ApplicationWindow {
    * @returns
    */
   async send (options) {
+    if (this.#index !== globalThis.__args.index) {
+      throw new Error('window.send can only be used from the current window')
+    }
     if (!Number.isInteger(options.window)) {
       throw new Error('window should be an integer')
     }
