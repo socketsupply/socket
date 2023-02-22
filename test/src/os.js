@@ -10,6 +10,20 @@ test('os.arch()', (t) => {
   t.ok(archs.includes(os.arch()), 'os.arch() value is valid')
 })
 
+test('os.cpus()', (t) => {
+  const cpus = os.cpus()
+  t.ok(Array.isArray(cpus), 'Array.isArray(cpus)')
+  t.ok(cpus.length > 0, 'cpus.length > 0')
+  t.equal(typeof cpus[0].model, 'string', 'cpus[0].model is string')
+  t.equal(typeof cpus[0].speed, 'number', 'cpus[0].numberl is number')
+  t.equal(cpus[0].times !== null && typeof cpus[0].times, 'object', 'cpus[0].times is object')
+  t.equal(typeof cpus[0].times.user, 'number', 'cpus[0].times.user is number')
+  t.equal(typeof cpus[0].times.nice, 'number', 'cpus[0].times.nice is number')
+  t.equal(typeof cpus[0].times.sys, 'number', 'cpus[0].times.sys is number')
+  t.equal(typeof cpus[0].times.idle, 'number', 'cpus[0].times.idle is number')
+  t.equal(typeof cpus[0].times.irq, 'number', 'cpus[0].times.irq is number')
+})
+
 test('os.platform()', (t) => {
   t.ok(platforms.includes(os.platform()), 'os.platform() value is valid')
   t.equal(os.platform(), primordials.platform, 'os.platform() equals primordials.platform')
