@@ -26,6 +26,7 @@
 #include <WebView2Experimental.h>
 #include <WebView2EnvironmentOptions.h>
 #include <WebView2ExperimentalEnvironmentOptions.h>
+#include <shellapi.h>
 
 #pragma comment(lib, "advapi32.lib")
 #pragma comment(lib, "shell32.lib")
