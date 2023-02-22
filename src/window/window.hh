@@ -109,7 +109,6 @@ namespace SSC {
       void setBackgroundColor (int r, int g, int b, float a);
       void setSystemMenuItemEnabled (bool enabled, int barPos, int menuPos);
       void setSystemMenu (const String& seq, const String& menu);
-      ScreenSize getScreenSize ();
       void showInspector ();
       int openExternal (const String& s);
       void openDialog ( // @TODO(jwerle): use `OpenDialogOptions` here instead

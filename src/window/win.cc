@@ -13,6 +13,13 @@
 using namespace Microsoft::WRL;
 
 namespace SSC {
+  ScreenSize getScreenSize () {
+    return ScreenSize {
+      .height = GetSystemMetrics(SM_CYFULLSCREEN),
+      .width = GetSystemMetrics(SM_CXFULLSCREEN)
+    };
+  }
+
   static inline void alert (const SSC::WString &ws) {
     MessageBoxA(nullptr, SSC::WStringToString(ws).c_str(), _TEXT("Alert"), MB_OK | MB_ICONSTOP);
   }
@@ -1036,13 +1043,6 @@ namespace SSC {
       // 1. power-shell-out to download and run webview installer
       // 2. restart app
     }
-  }
-
-  ScreenSize Window::getScreenSize () {
-    return ScreenSize {
-      .height = GetSystemMetrics(SM_CYFULLSCREEN),
-      .width = GetSystemMetrics(SM_CXFULLSCREEN)
-    };
   }
 
   void Window::about () {

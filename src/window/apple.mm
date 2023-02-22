@@ -399,6 +399,15 @@ int lastY = 0;
 @end
 
 namespace SSC {
+  ScreenSize getScreenSize () {
+    NSRect e = [[NSScreen mainScreen] frame];
+
+    return ScreenSize {
+      .height = (int) e.size.height,
+      .width = (int) e.size.width
+    };
+  }
+
   static bool isDelegateSet = false;
 
   Window::Window (App& app, WindowOptions opts) : app(app), opts(opts) {
@@ -657,15 +666,6 @@ namespace SSC {
     [window setContentView: webview];
 
     navigate("0", opts.url);
-  }
-
-  ScreenSize Window::getScreenSize () {
-    NSRect e = [[NSScreen mainScreen] frame];
-
-    return ScreenSize {
-      .height = (int) e.size.height,
-      .width = (int) e.size.width
-    };
   }
 
   void Window::show () {
