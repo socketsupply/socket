@@ -892,8 +892,8 @@ MAIN {
   windowManager.configure(WindowManagerOptions {
     .defaultHeight = height,
     .defaultWidth = width,
-    .isHeightInPercent = isHeightInPercent,
-    .isWidthInPercent = isWidthInPercent,
+    .isDefaultHeightInPercent = isHeightInPercent,
+    .isDefaultWidthInPercent = isWidthInPercent,
     .headless = isHeadless,
     .isTest = isTest,
     .argv = argvArray.str(),

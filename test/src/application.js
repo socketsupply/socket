@@ -73,7 +73,15 @@ test('application.config', async (t) => {
   }
   config.forEach(([key, value]) => {
     switch (key) {
+      // boolean values
       case 'build_headless':
+      case 'window_max_width':
+      case 'window_max_height':
+      case 'window_min_width':
+      case 'window_min_height':
+      case 'window_resizable':
+      case 'window_frameless':
+      case 'window_utility':
         t.equal(application.config[key].toString(), value, `application.config.${key} is correct`)
         break
       case 'build_name':
