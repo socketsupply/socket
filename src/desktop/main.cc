@@ -572,10 +572,32 @@ MAIN {
         options.port = std::stoi(message.get("port"));
       }
 
-      options.isWidthInPercent = message.get("isWidthInPercent") == "true" ? true : false;
-      options.isHeightInPercent = message.get("isHeightInPercent") == "true" ? true : false;
-      options.width = message.get("width").size() ? std::stof(message.get("width")) : 0;
-      options.height = message.get("height").size() ? std::stof(message.get("height")) : 0;
+      auto screen = currentWindow->getScreenSize();
+
+      float width = 0;
+      if (message.get("width").size()) {
+        bool isWidthInPercent = message.get("width").back() == '%';
+        if (isWidthInPercent) {
+          message.get("width").pop_back();
+          width = screen.width * std::stof(message.get("width")) / 100;
+        } else {
+          width = std::stof(message.get("width"));
+        }
+      }
+      options.width = width;
+
+      float height = 0;
+      if (message.get("height").size()) {
+        bool isHeightInPercent = message.get("height").back() == '%';
+        if (isHeightInPercent) {
+          message.get("height").pop_back();
+          height = screen.height * std::stof(message.get("height")) / 100;
+        } else {
+          height = std::stof(message.get("height"));
+        }
+      }
+      options.height = height;
+
       options.resizable = message.get("resizable") == "true" ? true : false;
       options.frameless = message.get("frameless") == "true" ? true : false;
       options.utility = message.get("utility") == "true" ? true : false;
@@ -760,14 +782,29 @@ MAIN {
       const auto targetWindowIndex = message.get("targetWindowIndex").size() > 0 ? std::stoi(message.get("targetWindowIndex")) : currentIndex;
       const auto targetWindow = windowManager.getWindow(targetWindowIndex);
 
-      auto widthUncalculated = message.get("width").size() > 0 ? std::stof(message.get("width")) : 0;
-      auto isWidthInPercent = message.get("isWidthInPercent") == "true" ? true : false;
-      auto heightUncalculated = message.get("height").size() > 0 ? std::stof(message.get("height")) : 0;
-      auto isHeightInPercent = message.get("isHeightInPercent") == "true" ? true : false;
-
       auto screen = currentWindow->getScreenSize();
-      auto height = static_cast<int>(isHeightInPercent ? screen.height * heightUncalculated / 100 : heightUncalculated);
-      auto width = static_cast<int>(isWidthInPercent ? screen.width * widthUncalculated / 100 : widthUncalculated);
+
+      float width = 0;
+      if (message.get("width").size()) {
+        bool isWidthInPercent = message.get("width").back() == '%';
+        if (isWidthInPercent) {
+          message.get("width").pop_back();
+          width = screen.width * std::stof(message.get("width")) / 100;
+        } else {
+          width = std::stof(message.get("width"));
+        }
+      }
+
+      float height = 0;
+      if (message.get("height").size()) {
+        bool isHeightInPercent = message.get("height").back() == '%';
+        if (isHeightInPercent) {
+          message.get("height").pop_back();
+          height = screen.height * std::stof(message.get("height")) / 100;
+        } else {
+          height = std::stof(message.get("height"));
+        }
+      }
 
       targetWindow->setSize(width, height, 0);
 
@@ -866,26 +903,12 @@ MAIN {
 
   app.onExit = shutdownHandler;
 
-  String initialHeight = app.appData["window_height"].size() > 0 ? app.appData["window_height"] : "100%";
-  String initialWidth = app.appData["window_width"].size() > 0 ? app.appData["window_width"] : "100%";
-
-  bool isHeightInPercent = initialHeight.back() == '%';
-  bool isWidthInPercent = initialWidth.back() == '%';
-
-  if (isHeightInPercent) initialHeight.pop_back();
-  if (isWidthInPercent) initialWidth.pop_back();
-
-  auto height = std::stof(initialHeight);
-  auto width = std::stof(initialWidth);
-
-  if (height < 0) height = 0;
-  if (width < 0) width = 0;
+  String defaultWidth = app.appData["window_width"].size() > 0 ? app.appData["window_width"] : "100%";
+  String defaultHeight = app.appData["window_height"].size() > 0 ? app.appData["window_height"] : "100%";
 
   windowManager.configure(WindowManagerOptions {
-    .defaultHeight = height,
-    .defaultWidth = width,
-    .isDefaultHeightInPercent = isHeightInPercent,
-    .isDefaultWidthInPercent = isWidthInPercent,
+    .defaultWidth = defaultWidth,
+    .defaultHeight =  defaultHeight,
     .headless = isHeadless,
     .isTest = isTest,
     .argv = argvArray.str(),
