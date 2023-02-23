@@ -169,7 +169,7 @@ function advice {
   elif [[ "$(uname -s)" == *"Linux"* ]]; then
     echo "apt-get install $1"
   elif [[ "$(uname -s)" == *"_NT"* ]]; then
-    echo "choco install $1 ?"
+    echo "Use install.ps1 to install $1."
   fi
 }
 
@@ -526,7 +526,6 @@ function _install {
 
   rm -rf "$SOCKET_HOME/include"
   mkdir -p "$SOCKET_HOME/include"
-  #cp -rf "$CWD"/include/* $SOCKET_HOME/include
   cp -rfp "$BUILD_DIR"/uv/include/* $SOCKET_HOME/include
 
   if [[ "$(uname -s)" == *"_NT"* ]]; then
@@ -801,12 +800,16 @@ fi
 
 _install_cli
 
-quiet "$root/bin/build-runtime-library.sh" --platform android
-_install arm64-v8a android & pids+=($!)
-_install armeabi-v7a android & pids+=($!)
-_install x86 android & pids+=($!)
-_install x86_64 android & pids+=($!)
+[ ! -z "$VERBOSE" ] && echo "CI flags: CI: $CI, SSC_ANDROID_CI: $SSC_ANDROID_CI"
 
-wait
+if [[ ! -n $CI ]] || [[ -n $SSC_ANDROID_CI ]]; then
+  quiet "$root/bin/build-runtime-library.sh" --platform android
+  _install arm64-v8a android & pids+=($!)
+  _install armeabi-v7a android & pids+=($!)
+  _install x86 android & pids+=($!)
+  _install x86_64 android & pids+=($!)
+  wait
+fi
+
 
 exit $?
