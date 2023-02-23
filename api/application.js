@@ -21,8 +21,8 @@ if (globalThis.window) {
  * @param {number} opts.index - the index of the window
  * @param {string} opts.path - the path to the HTML file to load into the window
  * @param {string=} opts.title - the title of the window
- * @param {(number|string)=} opts.width - the width of the window. If undefined, the window will have the main window width.
- * @param {(number|string)=} opts.height - the height of the window. If undefined, the window will have the main window height.
+ * @param {string=} opts.width - the width of the window. If undefined, the window will have the main window width.
+ * @param {string=} opts.height - the height of the window. If undefined, the window will have the main window height.
  * @param {boolean=} [opts.resizable=true] - whether the window is resizable
  * @param {boolean=} [opts.frameless=false] - whether the window is frameless
  * @param {boolean=} [opts.utility=false] - whether the window is utility (macOS only)
@@ -52,12 +52,10 @@ export async function createWindow (opts) {
     throw new Error(`Window width must be an integer number or a string with a valid percentage value from 0 to 100 ending with %. Got ${opts.width} instead.`)
   }
   if (typeof opts.width === 'string' && isValidPercentageValue(opts.width)) {
-    options.width = Number(opts.width.slice(0, -1))
-    options.isWidthInPercent = true
+    options.width = opts.width
   }
   if (typeof opts.width === 'number') {
-    options.width = opts.width
-    options.isWidthInPercent = false
+    options.width = opts.width.toString()
   }
 
   if ((opts.height != null && typeof opts.height !== 'number' && typeof opts.height !== 'string') ||
@@ -66,12 +64,10 @@ export async function createWindow (opts) {
     throw new Error(`Window height must be an integer number or a string with a valid percentage value from 0 to 100 ending with %. Got ${opts.height} instead.`)
   }
   if (typeof opts.height === 'string' && isValidPercentageValue(opts.height)) {
-    options.height = Number(opts.height.slice(0, -1))
-    options.isHeightInPercent = true
+    options.height = opts.height
   }
   if (typeof opts.height === 'number') {
-    options.height = opts.height
-    options.isHeightInPercent = false
+    options.height = opts.height.toString()
   }
 
   const { data, err } = await ipc.send('window.create', options)

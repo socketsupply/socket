@@ -97,10 +97,8 @@ export class ApplicationWindow {
   /**
    * Sets the size of the window
    * @param {object} opts - an options object
-   * @param {number|string} [opts.width] - the width of the window
-   * @param {number|string} [opts.height] - the height of the window
-   * @param {boolean} [opts.isWidthInPercent = false] - whether the width is in percent
-   * @param {boolean} [opts.isHeightInPercent = false] - whether the height is in percent
+   * @param {string=} [opts.width] - the width of the window
+   * @param {string=} [opts.height] - the height of the window
    * @return {Promise<ipc.Result>}
    * @throws {Error} - if the width or height is invalid
    */
@@ -117,12 +115,10 @@ export class ApplicationWindow {
       throw new Error(`Window width must be an integer number or a string with a valid percentage value from 0 to 100 ending with %. Got ${opts.width} instead.`)
     }
     if (typeof opts.width === 'string' && isValidPercentageValue(opts.width)) {
-      options.width = Number(opts.width.slice(0, -1))
-      options.isWidthInPercent = true
+      options.width = opts.width
     }
     if (typeof opts.width === 'number') {
-      options.width = opts.width
-      options.isWidthInPercent = false
+      options.width = opts.width.toString()
     }
 
     if ((opts.height != null && typeof opts.height !== 'number' && typeof opts.height !== 'string') ||
@@ -131,13 +127,12 @@ export class ApplicationWindow {
       throw new Error(`Window height must be an integer number or a string with a valid percentage value from 0 to 100 ending with %. Got ${opts.height} instead.`)
     }
     if (typeof opts.height === 'string' && isValidPercentageValue(opts.height)) {
-      options.height = Number(opts.height.slice(0, -1))
-      options.isHeightInPercent = true
+      options.height = opts.height
     }
     if (typeof opts.height === 'number') {
-      options.height = opts.height
-      options.isHeightInPercent = false
+      options.height = opts.height.toString()
     }
+
     const response = await ipc.send('window.setSize', options)
     return this.#updateOptions(response)
   }

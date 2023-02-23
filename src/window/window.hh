@@ -140,10 +140,8 @@ namespace SSC {
   };
 
   struct WindowManagerOptions {
-    float defaultHeight = 0;
-    float defaultWidth = 0;
-    bool isDefaultHeightInPercent = false;
-    bool isDefaultWidthInPercent = false;
+    String defaultHeight = "0";
+    String defaultWidth = "0";
     bool headless = false;
     bool isTest;
     String argv = "";
@@ -257,8 +255,6 @@ namespace SSC {
               { "title", this->getTitle() },
               { "width", size.width },
               { "height", size.height },
-              { "isWidthInPercent", this->opts.isWidthInPercent },
-              { "isHeightInPercent", this->opts.isHeightInPercent },
               { "status", this->status }
             };
           }
@@ -303,8 +299,6 @@ namespace SSC {
         if (destroyed) return;
         this->options.defaultHeight = configuration.defaultHeight;
         this->options.defaultWidth = configuration.defaultWidth;
-        this->options.isDefaultHeightInPercent = configuration.isDefaultHeightInPercent;
-        this->options.isDefaultWidthInPercent = configuration.isDefaultWidthInPercent;
         this->options.onMessage = configuration.onMessage;
         this->options.appData = configuration.appData;
         this->options.onExit = configuration.onExit;
@@ -437,27 +431,28 @@ namespace SSC {
 
         auto screen = Window::getScreenSize();
 
-        auto isWidthInPercent = opts.isWidthInPercent || (opts.height <= 0 && this->options.isDefaultWidthInPercent);
-        auto isHeightInPercent = opts.isHeightInPercent || (opts.width <= 0 && this->options.isDefaultHeightInPercent);
-
-        auto width = opts.width > 0 ? opts.width : this->options.defaultWidth;
-        auto height = opts.height > 0 ? opts.height : this->options.defaultHeight;
-
-        if (isWidthInPercent) {
-          width = screen.width * (width / 100);
+        float width = opts.width;
+        if (opts.width <= 0) {
+          auto defaultWidth = this->options.defaultWidth;
+          bool isWidthInPercent = defaultWidth.back() == '%';
+          if (isWidthInPercent) {
+            defaultWidth.pop_back();
+            width = screen.width * std::stof(defaultWidth) / 100;
+          } else {
+            width = std::stof(defaultWidth);
+          }
         }
-        if (isHeightInPercent) {
-          height = screen.height * (height / 100);
+        float height = opts.height;
+        if (opts.height <= 0) {
+          auto defaultHeight = this->options.defaultHeight;
+          bool isHeightInPercent = defaultHeight.back() == '%';
+          if (isHeightInPercent) {
+            defaultHeight.pop_back();
+            height = screen.height * std::stof(defaultHeight) / 100;
+          } else {
+            height = std::stof(defaultHeight);
+          }
         }
-
-        // debug("Creating window %i with options:", opts.index);
-        // debug("  - opts.resizable: %s", opts.resizable ? "true" : "false");
-        // debug("  - opts.frameless: %s", opts.frameless ? "true" : "false");
-        // debug("  - opts.utility: %s", opts.utility ? "true" : "false");
-        // debug("  - height: %f", height);
-        // debug("  - width: %f", width);
-        // debug("  - isHeightInPercent: %s", isHeightInPercent ? "true" : "false");
-        // debug("  - isWidthInPercent: %s", isWidthInPercent ? "true" : "false");
 
         WindowOptions windowOptions = {
           .resizable = opts.resizable,
@@ -466,8 +461,6 @@ namespace SSC {
           .canExit = opts.canExit,
           .height = height,
           .width = width,
-          .isHeightInPercent = isHeightInPercent,
-          .isWidthInPercent = isWidthInPercent,
           .index = opts.index,
           .debug = isDebugEnabled() || opts.debug,
           .isTest = this->options.isTest,
