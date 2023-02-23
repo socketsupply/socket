@@ -6,7 +6,7 @@ namespace SSC {
     return DEBUG == 1;
   }
 
-  const Map getSettingsSource () {
+  const Map getUserConfig () {
     #include "user-config-bytes.hh" // NOLINT
     return parseConfig(std::string(
       (const char*) __ssc_config_bytes,
