@@ -8,6 +8,11 @@
 #include <cstring>
 #endif
 
+#if defined(__APPLE__)
+#include <Foundation/Foundation.h>
+#include <Cocoa/Cocoa.h>
+#endif
+
 #include <sys/stat.h>
 #include <sys/types.h>
 
@@ -62,6 +67,14 @@ auto start = system_clock::now();
 bool flagDebugMode = true;
 bool flagQuietMode = false;
 Map defaultTemplateAttrs = {{ "ssc_version", SSC::VERSION_FULL_STRING }};
+
+const Map SSC::getUserConfig () {
+  return settings;
+}
+
+bool SSC::isDebugEnabled () {
+  return DEBUG == 1;
+}
 
 void log (const String s) {
   if (flagQuietMode) return;
@@ -174,14 +187,157 @@ int runApp (const fs::path& path, const String& args, bool headless) {
     if (headlessRunner != "false") {
       headlessCommand = headlessRunner + headlessRunnerFlags;
     }
-    
-  // TODO: this branch exits the CLI process
-  // } else if (platform.mac) {
-  //   auto s = prefix + cmd;
-  //   auto part = s.substr(0, s.find(".app/") + 4);
-  //   status = std::system(("open -n " + part + " --args " + args + " --from-ssc").c_str());
   }
-  std::cout << "Running app: " << headlessCommand << prefix << cmd << args + " --from-ssc" << std::endl;
+
+  if (platform.mac) {
+    static std::atomic<bool> terminated = false;
+    static std::atomic<int> status = 0;
+
+    auto sharedWorkspace = [NSWorkspace sharedWorkspace];
+    auto configuration = [NSWorkspaceOpenConfiguration configuration];
+    auto string = path.string();
+    auto slice = string.substr(0, string.find(".app") + 4);
+    auto url = [NSURL
+      fileURLWithPath: [NSString stringWithUTF8String: slice.c_str()]
+    ];
+
+    auto bundle = [NSBundle bundleWithURL: url];
+    auto env = [[NSMutableDictionary alloc] init];
+
+    for (auto const &envKey : split(settings["build_env"], ',')) {
+      auto cleanKey = trim(envKey);
+      auto envValue = getEnv(cleanKey.c_str());
+      auto key = [NSString stringWithUTF8String: cleanKey.c_str()];
+      auto value = [NSString stringWithUTF8String: envValue.c_str()];
+
+      env[key] = value;
+    }
+
+    auto splitArgs = split(args, ' ');
+    auto arguments = [[NSMutableArray alloc] init];
+
+    for (auto arg : splitArgs) {
+      [arguments addObject: [NSString stringWithUTF8String: arg.c_str()]];
+    }
+
+    [arguments addObject: @"--from-ssc"];
+
+    configuration.createsNewApplicationInstance = YES;
+    configuration.promptsUserIfNeeded = YES;
+    configuration.environment = env;
+    configuration.arguments = arguments;
+    configuration.activates = headless ? NO : YES;
+
+
+    terminated = false;
+    [sharedWorkspace
+      openApplicationAtURL: bundle.bundleURL
+             configuration: configuration
+         completionHandler: ^(NSRunningApplication* app, NSError* error)
+    {
+      if (error) {
+        debug("error: NSWorkspace: %@", error.localizedDescription);
+        terminated = true;
+        status = 1;
+        return;
+      }
+
+      auto now = app.launchDate;
+      auto offset = [now dateByAddingTimeInterval: -1];
+      NSDate* latest = nil;
+
+      // It appears there is a bug with `:predicateWithFormat:` as the
+      // following does not appear to work:
+      //
+      // [NSPredicate
+      //   predicateWithFormat: @"processIdentifier == %d AND subsystem == '%s'",
+      //   app.processIdentifier,
+      //   bundle.bundleIdentifier // or even a literal string "co.socketsupply.socket.tests"
+      // ];
+      //
+      // We can build the predicate query string manually, instead.
+      auto queryStream = StringStream {};
+      queryStream << "processIdentifier == ";
+      queryStream << std::to_string(app.processIdentifier);
+      queryStream << "AND ";
+      queryStream << "subsystem == '";
+      queryStream << bundle.bundleIdentifier.UTF8String << "'";
+
+      // log store query and predicate for filtering logs based on the currently
+      // running application that was just launched and those of a subsystem
+      // directly related to the application's bundle identifier which allows us
+      // to just get logs that came from the application (not foundation/cocoa/webkit)
+      auto query = [NSString stringWithUTF8String: queryStream.str().c_str()];
+      auto predicate = [NSPredicate predicateWithFormat: query];
+
+      do {
+        // We need to const a new `OSLogStore` in each so we can keep
+        // enumeratoring the logs until the application terminates
+        auto logs = [OSLogStore localStoreAndReturnError: &error];
+
+        if (error) {
+          debug("error: OSLogStore: %@", error.localizedDescription);
+          terminated = true;
+          status = 1;
+          return;
+        }
+
+        // We start at `offset` which is just 1 second before when the
+        // application was launched. This improves the enumerator's ability
+        // to get logs quicker
+        auto position = [logs positionWithDate: offset];
+        auto enumerator = [logs
+          entriesEnumeratorWithOptions: 0
+                              position: position
+                             predicate: predicate
+                                 error: &error
+        ];
+
+        if (error) {
+          debug("error: OSLogStore: %@", error.localizedDescription);
+          terminated = true;
+          status = 1;
+          return;
+        }
+
+        // Enumerate all the logs in this loop and print unredacted and most
+        // recently log etries to stdout
+        for (OSLogEntryLog* entry in enumerator) {
+          if (
+            entry.composedMessage &&
+            entry.processIdentifier == app.processIdentifier
+          ) {
+            // visit latest log
+            if (!latest || [latest compare: entry.date] == NSOrderedAscending) {
+              auto message = entry.composedMessage.UTF8String;
+
+              // the OSLogStore may redact log messages the user does not
+              // have access to, filter them out
+              if (String(message) != "<private>") {
+                printf("%s\n", message);
+              }
+
+              latest = entry.date;
+            }
+          }
+        }
+
+        std::this_thread::yield();
+      } while (kill(app.processIdentifier, 0) == 0);
+
+      terminated = true;
+    }];
+
+    // wait for `NSRunningApplication` to terminate
+    while (!terminated) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(2));
+    }
+
+    return status.load();
+  }
+
+  log(String("Running app: " + headlessCommand + prefix + cmd +  args + " --from-ssc"));
+
   auto process = new SSC::Process(
      headlessCommand + prefix + cmd,
     args + " --from-ssc",
@@ -1078,6 +1234,7 @@ int main (const int argc, const char* argv[]) {
       flags += " -framework UserNotifications";
       flags += " -framework WebKit";
       flags += " -framework Cocoa";
+      flags += " -framework OSLog";
       flags += " -DMACOS=1";
       flags += " -I" + prefixFile();
       flags += " -I" + prefixFile("include");
