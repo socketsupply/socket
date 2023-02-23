@@ -451,10 +451,9 @@ namespace SSC {
         }
 
         // debug("Creating window %i with options:", opts.index);
-        // debug("  - opts.height: %f", opts.height);
-        // debug("  - opts.width: %f", opts.width);
-        // debug("  - opts.isHeightInPercent %s", opts.isHeightInPercent ? "true" : "false");
-        // debug("  - opts.isWidthInPercent %s", opts.isWidthInPercent ? "true" : "false");
+        // debug("  - opts.resizable: %s", opts.resizable ? "true" : "false");
+        // debug("  - opts.frameless: %s", opts.frameless ? "true" : "false");
+        // debug("  - opts.utility: %s", opts.utility ? "true" : "false");
         // debug("  - height: %f", height);
         // debug("  - width: %f", width);
         // debug("  - isHeightInPercent: %s", isHeightInPercent ? "true" : "false");
@@ -501,8 +500,9 @@ namespace SSC {
 
       ManagedWindow* createDefaultWindow (WindowOptions opts) {
         return createWindow(WindowOptions {
-          .resizable = true,
-          .frameless = false,
+          .resizable = opts.resizable,
+          .frameless = opts.frameless,
+          .utility = opts.utility,
           .canExit = true,
           .height = opts.height,
           .width = opts.width,
