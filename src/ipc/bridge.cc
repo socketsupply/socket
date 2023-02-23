@@ -4,6 +4,8 @@
 #define IPC_BINARY_CONTENT_TYPE "application/octet-stream"
 #define IPC_JSON_CONTENT_TYPE "text/json"
 
+extern const SSC::Map SSC::getUserConfig ();
+
 using namespace SSC;
 using namespace SSC::IPC;
 
@@ -121,6 +123,11 @@ static String getcwd () {
 }
 
 void initFunctionsTable (Router *router) {
+#if defined(__APPLE__)
+  static auto userConfig = SSC::getUserConfig();
+  static auto bundleIdentifier = userConfig["meta_bundle_identifier"];
+  static auto SSC_OS_LOG_BUNDLE = os_log_create(bundleIdentifier.c_str(), "socket-runtime");
+#endif
   /**
    * Starts a bluetooth service
    * @param serviceId
@@ -731,11 +738,12 @@ void initFunctionsTable (Router *router) {
   router->map("log", [=](auto message, auto router, auto reply) {
     auto value = message.value.c_str();
   #if defined(__APPLE__)
-    NSLog(@"%s\n", value);
+    NSLog(@"%s", value);
+    os_log(SSC_OS_LOG_BUNDLE, "%{public}s", value);
   #elif defined(__ANDROID__)
     __android_log_print(ANDROID_LOG_DEBUG, "", "%s", value);
   #else
-    // TODO
+    printf("%s\n", value);
   #endif
   });
 
@@ -919,15 +927,21 @@ void initFunctionsTable (Router *router) {
   /**
    * Prints incoming message value to stdout.
    */
-  router->map("stdout", [](auto message, auto router, auto reply) {
+  router->map("stdout", [=](auto message, auto router, auto reply) {
     stdWrite(message.value, false);
+  #if defined(__APPLE__)
+    os_log(SSC_OS_LOG_BUNDLE, "%{public}s", message.value.c_str());
+  #endif
   });
 
   /**
    * Prints incoming message value to stderr.
    */
-  router->map("stderr", [](auto message, auto router, auto reply) {
+  router->map("stderr", [=](auto message, auto router, auto reply) {
     stdWrite(message.value, true);
+  #if defined(__APPLE__)
+    os_log(SSC_OS_LOG_BUNDLE, "%{public}s", message.value.c_str());
+  #endif
   });
 
   /**
