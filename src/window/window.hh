@@ -137,6 +137,20 @@ namespace SSC {
 
         this->onMessage(IPC::getResolveToMainProcessMessage(seq, state, value));
       }
+
+      static float  getSizeInPixels (String sizeInPercent, int screenSize) {
+        float size = 0;
+        if (sizeInPercent.size()) {
+          bool isSizeInPercent = sizeInPercent.back() == '%';
+          if (isSizeInPercent) {
+            sizeInPercent.pop_back();
+            size = screenSize * std::stof(sizeInPercent) / 100;
+          } else {
+            size = std::stof(sizeInPercent);
+          }
+        }
+        return size;
+      }
   };
 
   struct WindowManagerOptions {
@@ -432,26 +446,12 @@ namespace SSC {
         auto screen = Window::getScreenSize();
 
         float width = opts.width;
-        if (opts.width <= 0) {
-          auto defaultWidth = this->options.defaultWidth;
-          bool isWidthInPercent = defaultWidth.back() == '%';
-          if (isWidthInPercent) {
-            defaultWidth.pop_back();
-            width = screen.width * std::stof(defaultWidth) / 100;
-          } else {
-            width = std::stof(defaultWidth);
-          }
+        if (width <= 0) {
+          width = Window::getSizeInPixels(this->options.defaultWidth, screen.width);
         }
         float height = opts.height;
-        if (opts.height <= 0) {
-          auto defaultHeight = this->options.defaultHeight;
-          bool isHeightInPercent = defaultHeight.back() == '%';
-          if (isHeightInPercent) {
-            defaultHeight.pop_back();
-            height = screen.height * std::stof(defaultHeight) / 100;
-          } else {
-            height = std::stof(defaultHeight);
-          }
+        if (height <= 0) {
+          height = Window::getSizeInPixels(this->options.defaultHeight, screen.height);
         }
 
         WindowOptions windowOptions = {
