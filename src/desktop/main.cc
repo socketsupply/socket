@@ -573,30 +573,9 @@ MAIN {
       }
 
       auto screen = currentWindow->getScreenSize();
-
-      float width = 0;
-      if (message.get("width").size()) {
-        bool isWidthInPercent = message.get("width").back() == '%';
-        if (isWidthInPercent) {
-          message.get("width").pop_back();
-          width = screen.width * std::stof(message.get("width")) / 100;
-        } else {
-          width = std::stof(message.get("width"));
-        }
-      }
-      options.width = width;
-
-      float height = 0;
-      if (message.get("height").size()) {
-        bool isHeightInPercent = message.get("height").back() == '%';
-        if (isHeightInPercent) {
-          message.get("height").pop_back();
-          height = screen.height * std::stof(message.get("height")) / 100;
-        } else {
-          height = std::stof(message.get("height"));
-        }
-      }
-      options.height = height;
+      
+      options.width = message.get("width").size() ? currentWindow->getSizeInPixels(message.get("width"), screen.width) : 0;
+      options.height = message.get("height").size() ? currentWindow->getSizeInPixels(message.get("height"), screen.height) : 0;
 
       options.resizable = message.get("resizable") == "true" ? true : false;
       options.frameless = message.get("frameless") == "true" ? true : false;
@@ -784,27 +763,8 @@ MAIN {
 
       auto screen = currentWindow->getScreenSize();
 
-      float width = 0;
-      if (message.get("width").size()) {
-        bool isWidthInPercent = message.get("width").back() == '%';
-        if (isWidthInPercent) {
-          message.get("width").pop_back();
-          width = screen.width * std::stof(message.get("width")) / 100;
-        } else {
-          width = std::stof(message.get("width"));
-        }
-      }
-
-      float height = 0;
-      if (message.get("height").size()) {
-        bool isHeightInPercent = message.get("height").back() == '%';
-        if (isHeightInPercent) {
-          message.get("height").pop_back();
-          height = screen.height * std::stof(message.get("height")) / 100;
-        } else {
-          height = std::stof(message.get("height"));
-        }
-      }
+      float width = currentWindow->getSizeInPixels(message.get("width"), screen.width);
+      float height = currentWindow->getSizeInPixels(message.get("height"), screen.height);
 
       targetWindow->setSize(width, height, 0);
 
