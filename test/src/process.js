@@ -3,6 +3,9 @@ import process from 'socket:process'
 import { primordials } from 'socket:ipc'
 import path from 'path-browserify'
 
+// make `path-browserify` happy
+globalThis.process = process
+
 test('process', (t) => {
   t.ok(typeof process.addListener === 'function', 'process is an EventEmitter')
 })
