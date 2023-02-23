@@ -1,3 +1,5 @@
+import process from '../../process.js'
+
 const modules = {}
 
 async function define (name, exports) {
