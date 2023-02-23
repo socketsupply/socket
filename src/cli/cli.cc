@@ -189,6 +189,7 @@ int runApp (const fs::path& path, const String& args, bool headless) {
     }
   }
 
+#if defined(__APPLE__)
   if (platform.mac) {
     static std::atomic<bool> terminated = false;
     static std::atomic<int> status = 0;
@@ -335,6 +336,7 @@ int runApp (const fs::path& path, const String& args, bool headless) {
 
     return status.load();
   }
+#endif
 
   log(String("Running app: " + headlessCommand + prefix + cmd +  args + " --from-ssc"));
 
