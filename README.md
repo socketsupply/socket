@@ -14,28 +14,28 @@
 
 Web Developers use `Socket Runtime` to create apps for any OS, desktop, or mobile. You can use plain old HTML, CSS, and JavaScript, as well as your favorite front-end libraries for example React, Svelt, and Vue.
 
-`Socket Runtime` exposes primitives needed for building peer-to-peer and local-first applications, such as Bluetooth, UDP, and robust file system access. Our P2P component can help you connect your app's users, and let them communicate directly, without the cloud or any servers at all.
+`Socket Runtime` exposes primitives needed for building peer-to-peer and local-first applications, such as Bluetooth, UDP, and robust file system access. Our P2P component can help you connect your app's users, and let them communicate directly, without the cloud or any servers at all.  
 
-The Socket's CLI compiles applications into hybrid-native applications &mbasp; meaning, a combination of web code running in a platform's "WebView" along with platform-native code: Java on Android, Swift/Objective-C on iOS, C++ on Windows or Linux, etc.
+The Socket's CLI compiles applications into hybrid-native applications &mbasp; meaning, a combination of web code running in a platform's "WebView" along with platform-native code: Kotlin/Java on Android, Swift/Objective-C on iOS, C++ on Windows or Linux, etc.
 
 ### 💡 Features
 
 * Local First, a full featured File system API & Bluetooth.
 * P2P & Cloud, built to support a new generation of apps that can connect directly to each other by providing a high performance UDP API.
 * Use any backend, business logic can be written in any language, Python, Rust, Node.js, etc. The backend is even completely optional.
-* Use any frontend, you can use your favorite front end framework to create your UIs, React, Svelte, Vue.
+* Use any frontend, you can use your favorite front end framework to create your UIs: React, Svelte, Vue and more.
 * Maintainable, zero dependencies and a smaller code base than any other competing project.
 * Lean & Fast, uses a smaller memory footprint and creates smaller binaries than any other competing project.
 
 ### 🔑 FAQ
 
-Check the [Website](https://sockets.sh/) to learn more.
- <!--we can Kyle's FAQ here, I read it yesterday and it's perfect  -->
+Check the FAQ's in our [Website](https://sockets.sh/) to learn more.
+ <!--we can  add Kyle's FAQ here later, I read it yesterday and it's perfect  -->
 
  
 ### 🧱 Building your first Socket app !
 
-This is similar to React's `Create React App`, we provides a few basic boilerplates and some strong opinions so you can get coding on a production-quality app as quickly as possible.  
+`Create Socket App` is similar to React's `Create React App`, we provides a few basic boilerplates and some strong opinions so you can get coding on a production-quality app as quickly as possible.  
 Please check [create-socket-app Repo](https://github.com/socketsupply/create-socket-app) to get started and to learn more.  
 You can also check our `Examples` in the [Examples Repo](https://github.com/socketsupply/socket-examples).  
 
@@ -43,12 +43,13 @@ You can also check our `Examples` in the [Examples Repo](https://github.com/sock
 ### 📚 Documentation
 
 The full documentation for `Socket Runtime` can be found on our [Website](https://sockets.sh/)  
-The `Socket Runtime` documentation discusses API, examples , multiple guides(`Apple`,`Desktop`, and `Mobile`),`P2P` documentation and more.
+The `Socket Runtime` documentation covers Socket APIs, includes examples, multiple guides (`Apple`,`Desktop`, and `Mobile`), `P2P` documentation and more.
 
 
 ### 🧪 Testing
 
-Test all the things! See the [`test/`](test/) for the unit and integration test suite.
+`Socket` provides a built-in `test runner` similar to `node:test` which outputs the test results in [TAP](https://testanything.org/) format.
+ You can also check : [`test/`](test/) for the unit and integration test suite.
 
 ### 🙏 Contributing
 
