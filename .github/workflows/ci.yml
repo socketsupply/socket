@@ -230,6 +230,7 @@ jobs:
           npm install && npm run test:android
       env:
         CI: true
+        SSC_ANDROID_CI: true
         CXX: g++-12
         NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
 
@@ -313,6 +314,7 @@ jobs:
           npm install && npm run test:android
       env:
         CI: true
+        SSC_ANDROID_CI: true
         CXX: g++-12
         NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
 
