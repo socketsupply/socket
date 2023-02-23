@@ -4,6 +4,7 @@
 // macOS/iOS
 #if defined(__APPLE__)
 #include <TargetConditionals.h>
+#include <OSLog/OSLog.h>
 
 #if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
 #include <_types/_uint64_t.h>
@@ -14,7 +15,21 @@
 #endif
 
 #ifndef debug
-#define debug(format, ...) NSLog(@format, ##__VA_ARGS__)
+static auto SSC_OS_LOG_DEBUG = os_log_create("debug", "socket-runtime");
+#if !defined(SSC_CLI)
+// wrap `os_log*` functions for global debugger
+#define osdebug(format, fmt, ...) ({                                           \
+  auto string = [NSString stringWithFormat: @fmt, ##__VA_ARGS__];              \
+  os_log_with_type(SSC_OS_LOG_DEBUG, OS_LOG_TYPE_DEBUG, format, string);       \
+})
+#else
+#define osdebug(...)
+#endif
+
+#define debug(format, ...) ({                                                  \
+  NSLog(@format, ##__VA_ARGS__);                                               \
+  osdebug("%{public}@", format, ##__VA_ARGS__);                                \
+})
 #endif
 #endif
 
@@ -184,15 +199,9 @@ namespace SSC {
   inline const auto VERSION_HASH_STRING = ToString(STR_VALUE(SSC_VERSION_HASH));
   inline const auto VERSION_STRING = ToString(STR_VALUE(SSC_VERSION));
 
-  const Map getSettingsSource ();
+  const Map getUserConfig ();
 
   bool isDebugEnabled ();
-
-  #if defined(CLI)
-    bool isDebugEnabled () {
-      return DEBUG == 1;
-    }
-  #endif
 
   const char* getDevHost ();
   int getDevPort ();
