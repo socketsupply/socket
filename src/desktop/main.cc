@@ -83,7 +83,7 @@ MAIN {
   const SSC::String EMPTY_SEQ = SSC::String("");
 
   auto cwd = app.getCwd();
-  app.appData = SSC::getSettingsSource();
+  app.appData = SSC::getUserConfig();
 
   SSC::String suffix = "";
 
