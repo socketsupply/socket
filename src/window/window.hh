@@ -142,8 +142,8 @@ namespace SSC {
   struct WindowManagerOptions {
     float defaultHeight = 0;
     float defaultWidth = 0;
-    bool isHeightInPercent = false;
-    bool isWidthInPercent = false;
+    bool isDefaultHeightInPercent = false;
+    bool isDefaultWidthInPercent = false;
     bool headless = false;
     bool isTest;
     String argv = "";
@@ -303,8 +303,8 @@ namespace SSC {
         if (destroyed) return;
         this->options.defaultHeight = configuration.defaultHeight;
         this->options.defaultWidth = configuration.defaultWidth;
-        this->options.isHeightInPercent = configuration.isHeightInPercent;
-        this->options.isWidthInPercent = configuration.isWidthInPercent;
+        this->options.isDefaultHeightInPercent = configuration.isDefaultHeightInPercent;
+        this->options.isDefaultWidthInPercent = configuration.isDefaultWidthInPercent;
         this->options.onMessage = configuration.onMessage;
         this->options.appData = configuration.appData;
         this->options.onExit = configuration.onExit;
@@ -437,8 +437,8 @@ namespace SSC {
 
         auto screen = Window::getScreenSize();
 
-        auto isWidthInPercent = opts.isWidthInPercent || (opts.height <= 0 && this->options.isWidthInPercent);
-        auto isHeightInPercent = opts.isHeightInPercent || (opts.width <= 0 && this->options.isHeightInPercent);
+        auto isWidthInPercent = opts.isWidthInPercent || (opts.height <= 0 && this->options.isDefaultWidthInPercent);
+        auto isHeightInPercent = opts.isHeightInPercent || (opts.width <= 0 && this->options.isDefaultHeightInPercent);
 
         auto width = opts.width > 0 ? opts.width : this->options.defaultWidth;
         auto height = opts.height > 0 ? opts.height : this->options.defaultHeight;
