@@ -393,4 +393,8 @@ if ($global:path_advice.Count -gt 0) {
   }
 }
 
+if (-not $shbuild) {
+  Write-Output "Please close this terminal to continue setting up your socket app."
+}
+
 cd $OLD_CWD
