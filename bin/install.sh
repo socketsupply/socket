@@ -186,7 +186,7 @@ function _build_cli {
   fi
 
   local ldflags=($("$root/bin/ldflags.sh" --arch "$arch" --platform "$platform" ${libs[@]}))
-  local cflags=(-DCLI $("$root/bin/cflags.sh"))
+  local cflags=(-DSSC_CLI $("$root/bin/cflags.sh"))
 
   local test_sources=($(find "$src"/cli/*.cc 2>/dev/null))
   local sources=()
