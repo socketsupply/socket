@@ -574,16 +574,8 @@ MAIN {
 
       options.isWidthInPercent = message.get("isWidthInPercent") == "true" ? true : false;
       options.isHeightInPercent = message.get("isHeightInPercent") == "true" ? true : false;
-
       options.width = message.get("width").size() ? std::stof(message.get("width")) : 0;
       options.height = message.get("height").size() ? std::stof(message.get("height")) : 0;
-
-      // debug("size");
-      // debug("  width %f", options.width);
-      // debug("  isWidthInPercent: %s", options.isWidthInPercent ? "true" : "false");
-      // debug("  height %f", options.height);
-      // debug("  isHeightInPercent: %s", options.isHeightInPercent ? "true" : "false");
-
       options.resizable = message.get("resizable") == "true" ? true : false;
       options.frameless = message.get("frameless") == "true" ? true : false;
       options.utility = message.get("utility") == "true" ? true : false;
@@ -903,7 +895,11 @@ MAIN {
     .onExit = shutdownHandler
   });
 
-  auto defaultWindow = windowManager.createDefaultWindow(WindowOptions { });
+  auto defaultWindow = windowManager.createDefaultWindow(WindowOptions {
+    .resizable = app.appData["window_resizable"] == "false" ? false : true,
+    .frameless = app.appData["window_frameless"] == "true" ? true : false,
+    .utility = app.appData["window_utility"] == "true" ? true : false
+  });
 
   defaultWindow->show(EMPTY_SEQ);
 
