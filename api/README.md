@@ -42,11 +42,11 @@
 
  A high-level, cross-platform API for Bluetooth Pub-Sub
 
-## [`Bluetooth` (extends `EventEmitter`)](https://github.com/socketsupply/socket/blob/master/api/bluetooth.js#L15)
+## [`Bluetooth` (extends `EventEmitter`)](https://github.com/socketsupply/socket/blob/master/api/bluetooth.js#L27)
 
 Create an instance of a Bluetooth service.
 
-### [`constructor(serviceId)`](https://github.com/socketsupply/socket/blob/master/api/bluetooth.js#L23)
+### [`constructor(serviceId)`](https://github.com/socketsupply/socket/blob/master/api/bluetooth.js#L35)
 
 constructor is an example property that is set to `true`
  Creates a new service with key-value pairs
@@ -56,7 +56,7 @@ constructor is an example property that is set to `true`
 | serviceId | string |  | false | Given a default value to determine the type |
 
 
-### [`start()`](https://github.com/socketsupply/socket/blob/master/api/bluetooth.js#L60)
+### [`start()`](https://github.com/socketsupply/socket/blob/master/api/bluetooth.js#L85)
 
 Start the Bluetooth service.
 
@@ -65,7 +65,7 @@ Start the Bluetooth service.
 | Not specified | Promise<ipc.Result> |  |
 
 
-### [`subscribe(id )`](https://github.com/socketsupply/socket/blob/master/api/bluetooth.js#L80)
+### [`subscribe(id )`](https://github.com/socketsupply/socket/blob/master/api/bluetooth.js#L114)
 
 Start scanning for published values that correspond to a well-known UUID.
  Once subscribed to a UUID, events that correspond to that UUID will be
@@ -90,7 +90,7 @@ Start scanning for published values that correspond to a well-known UUID.
 | Not specified | Promise<ipc.Result> |  |
 
 
-### [`publish(id, value)`](https://github.com/socketsupply/socket/blob/master/api/bluetooth.js#L93)
+### [`publish(id, value)`](https://github.com/socketsupply/socket/blob/master/api/bluetooth.js#L137)
 
 Start advertising a new value for a well-known UUID
 
@@ -183,31 +183,31 @@ Generate `size` random bytes.
  This module provides an implementation of UDP datagram sockets. It does
  not (yet) provide any of the multicast methods or properties.
 
-## [`ERR_SOCKET_ALREADY_BOUND` (extends `SocketError`)](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L44)
+## [`ERR_SOCKET_ALREADY_BOUND` (extends `SocketError`)](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L57)
 
 Thrown when a socket is already bound.
 
-## [`ERR_SOCKET_DGRAM_IS_CONNECTED` (extends `SocketError`)](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L61)
+## [`ERR_SOCKET_DGRAM_IS_CONNECTED` (extends `SocketError`)](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L74)
 
 Thrown when the socket is already connected.
 
-## [`ERR_SOCKET_DGRAM_NOT_CONNECTED` (extends `SocketError`)](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L68)
+## [`ERR_SOCKET_DGRAM_NOT_CONNECTED` (extends `SocketError`)](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L81)
 
 Thrown when the socket is not connected.
 
-## [`ERR_SOCKET_DGRAM_NOT_RUNNING` (extends `SocketError`)](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L76)
+## [`ERR_SOCKET_DGRAM_NOT_RUNNING` (extends `SocketError`)](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L89)
 
 Thrown when the socket is not running (not bound or connected).
 
-## [`ERR_SOCKET_BAD_TYPE` (extends `TypeError`)](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L83)
+## [`ERR_SOCKET_BAD_TYPE` (extends `TypeError`)](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L96)
 
 Thrown when a bad socket type is used in an argument.
 
-## [`ERR_SOCKET_BAD_PORT` (extends `RangeError`)](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L93)
+## [`ERR_SOCKET_BAD_PORT` (extends `RangeError`)](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L106)
 
 Thrown when a bad port is given.
 
-## [`createSocket(options, callback)`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L627)
+## [`createSocket(options, callback)`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L684)
 
 Creates a `Socket` instance.
 
@@ -228,12 +228,12 @@ Creates a `Socket` instance.
 | Not specified | Socket |  |
 
 
-## [`Socket` (extends `EventEmitter`)](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L633)
+## [`Socket` (extends `EventEmitter`)](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L690)
 
 New instances of dgram.Socket are created using dgram.createSocket().
  The new keyword is not to be used to create dgram.Socket instances.
 
-### [`bind(port, address, callback)`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L704)
+### [`bind(port, address, callback)`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L762)
 
 External docs: https://nodejs.org/api/dgram.html#socketbindport-address-callback
 
@@ -248,11 +248,11 @@ Listen for datagram messages on a named port and optional address
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
 | port | number |  | false | The port to listen for messages on |
-| address | string |  | false | The address to bind to (127.0.0.1) |
+| address | string |  | false | The address to bind to (0.0.0.0) |
 | callback | function |  | false | With no parameters. Called when binding is complete. |
 
 
-### [`connect(port, host, connectListener)`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L757)
+### [`connect(port, host, connectListener)`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L815)
 
 External docs: https://nodejs.org/api/dgram.html#socketconnectport-address-callback
 
@@ -260,7 +260,7 @@ Associates the dgram.Socket to a remote address and port. Every message sent
  by this handle is automatically sent to that destination. Also, the socket
  will only receive messages from that remote peer. Trying to call connect()
  on an already connected socket will result in an ERR_SOCKET_DGRAM_IS_CONNECTED
- exception. If the address is not provided, '127.0.0.1' (for udp4 sockets) or '::1'
+ exception. If the address is not provided, '0.0.0.0' (for udp4 sockets) or '::1'
  (for udp6 sockets) will be used by default. Once the connection is complete,
  a 'connect' event is emitted and the optional callback function is called.
  In case of failure, the callback is called or, failing this, an 'error' event
@@ -274,7 +274,7 @@ Associates the dgram.Socket to a remote address and port. Every message sent
 | connectListener | function |  | true | Common parameter of socket.connect() methods. Will be added as a listener for the 'connect' event once. |
 
 
-### [`disconnect()`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L792)
+### [`disconnect()`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L850)
 
 External docs: https://nodejs.org/api/dgram.html#socketdisconnect
 
@@ -283,7 +283,7 @@ A synchronous function that disassociates a connected dgram.Socket from
  disconnected socket will result in an ERR_SOCKET_DGRAM_NOT_CONNECTED exception.
 
 
-### [`send(msg, offset, length, port, address, callback)`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L851)
+### [`send(msg, offset, length, port, address, callback)`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L909)
 
 External docs: https://nodejs.org/api/dgram.html#socketsendmsg-offset-length-port-address-callback
 
@@ -304,12 +304,12 @@ Broadcasts a datagram on the socket. For connectionless sockets, the
 
  > The address argument is a string. If the value of the address is a hostname,
  DNS will be used to resolve the address of the host. If the address is not
- provided or otherwise nullish, '127.0.0.1' (for udp4 sockets) or '::1'
+ provided or otherwise nullish, '0.0.0.0' (for udp4 sockets) or '::1'
  (for udp6 sockets) will be used by default.
 
  > If the socket has not been previously bound with a call to bind, the socket
  is assigned a random port number and is bound to the "all interfaces"
- address ('127.0.0.1' for udp4 sockets, '::1' for udp6 sockets.)
+ address ('0.0.0.0' for udp4 sockets, '::1' for udp6 sockets.)
 
  > An optional callback function may be specified as a way of reporting DNS
  errors or for determining when it is safe to reuse the buf object. DNS
@@ -336,7 +336,7 @@ Broadcasts a datagram on the socket. For connectionless sockets, the
 | callback | Function |  | true | Called when the message has been sent. |
 
 
-### [`close(callback)`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L931)
+### [`close(callback)`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L989)
 
 External docs: https://nodejs.org/api/dgram.html#socketclosecallback
 
@@ -350,7 +350,7 @@ Close the underlying socket and stop listening for data on it. If a
 | callback | function |  | true | Called when the connection is completed or on error. |
 
 
-### [`address()`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L989)
+### [`address()`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1047)
 
 External docs: https://nodejs.org/api/dgram.html#socketaddress
 
@@ -368,7 +368,7 @@ Returns an object containing the address information for a socket. For
 | socketInfo.family | string | The IP family of the socket |
 
 
-### [`remoteAddress()`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1024)
+### [`remoteAddress()`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1082)
 
 External docs: https://nodejs.org/api/dgram.html#socketremoteaddress
 
@@ -385,7 +385,7 @@ Returns an object containing the address, family, and port of the remote
 | socketInfo.family | string | The IP family of the socket |
 
 
-### [`setRecvBufferSize(size)`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1055)
+### [`setRecvBufferSize(size)`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1113)
 
 External docs: https://nodejs.org/api/dgram.html#socketsetrecvbuffersizesize
 
@@ -398,7 +398,7 @@ Sets the SO_RCVBUF socket option. Sets the maximum socket receive buffer in
 | size | number |  | false | The size of the new receive buffer |
 
 
-### [`setSendBufferSize(size)`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1072)
+### [`setSendBufferSize(size)`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1130)
 
 External docs: https://nodejs.org/api/dgram.html#socketsetsendbuffersizesize
 
@@ -411,13 +411,13 @@ Sets the SO_SNDBUF socket option. Sets the maximum socket send buffer in
 | size | number |  | false | The size of the new send buffer |
 
 
-### [`getRecvBufferSize()`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1085)
+### [`getRecvBufferSize()`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1143)
 
 External docs: https://nodejs.org/api/dgram.html#socketgetrecvbuffersize
 
 
 
-### [`getSendBufferSize()`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1093)
+### [`getSendBufferSize()`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1151)
 
 External docs: https://nodejs.org/api/dgram.html#socketgetsendbuffersize
 
@@ -428,7 +428,7 @@ External docs: https://nodejs.org/api/dgram.html#socketgetsendbuffersize
 | Not specified | number | the SO_SNDBUF socket send buffer size in bytes. |
 
 
-# [DNS](https://github.com/socketsupply/socket/blob/master/api/dns/index.js#L14)
+# [DNS](https://github.com/socketsupply/socket/blob/master/api/dns/index.js#L12)
 
 
  This module enables name resolution. For example, use it to look up IP
@@ -438,7 +438,7 @@ External docs: https://nodejs.org/api/dgram.html#socketgetsendbuffersize
  perform any network communication. To perform name resolution the way other
  applications on the same system do, use dns.lookup().
 
-## [`lookup(hostname, opts, cb)`](https://github.com/socketsupply/socket/blob/master/api/dns/index.js#L49)
+## [`lookup(hostname, opts, cb)`](https://github.com/socketsupply/socket/blob/master/api/dns/index.js#L55)
 
 External docs: https://nodejs.org/api/dns.html#dns_dns_lookup_hostname_options_callback
 
@@ -472,7 +472,7 @@ Resolves a host name (e.g. `example.org`) into the first found A (IPv4) or
 | cb | function |  | false | The function to call after the method is complete. |
 
 
-# [DNS.promises](https://github.com/socketsupply/socket/blob/master/api/dns/promises.js#L15)
+# [DNS.promises](https://github.com/socketsupply/socket/blob/master/api/dns/promises.js#L12)
 
 
  This module enables name resolution. For example, use it to look up IP
@@ -482,7 +482,7 @@ Resolves a host name (e.g. `example.org`) into the first found A (IPv4) or
  perform any network communication. To perform name resolution the way other
  applications on the same system do, use dns.lookup().
 
-## [`lookup(hostname, opts)`](https://github.com/socketsupply/socket/blob/master/api/dns/promises.js#L25)
+## [`lookup(hostname, opts)`](https://github.com/socketsupply/socket/blob/master/api/dns/promises.js#L32)
 
 External docs: https://nodejs.org/api/dns.html#dnspromiseslookuphostname-options
 
@@ -905,7 +905,7 @@ External docs: https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fspromisesw
  ipc://command?key1=value1&key2=value2...
  ```
 
-## [`emit(name, value, target , options)`](https://github.com/socketsupply/socket/blob/master/api/ipc.js#L879)
+## [`emit(name, value, target , options)`](https://github.com/socketsupply/socket/blob/master/api/ipc.js#L960)
 
 Emit event to be dispatched on `window` object.
 
@@ -917,7 +917,7 @@ Emit event to be dispatched on `window` object.
 | options | Object |  | true |  |
 
 
-## [`send(command, value)`](https://github.com/socketsupply/socket/blob/master/api/ipc.js#L935)
+## [`send(command, value)`](https://github.com/socketsupply/socket/blob/master/api/ipc.js#L1016)
 
 Sends an async IPC command request with parameters.
 
@@ -943,34 +943,54 @@ Sends an async IPC command request with parameters.
 This is a `FunctionDeclaration` named `arch` in `api/os.js`, it's exported but undocumented.
 
 
-## [`networkInterfaces()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L21)
+## [`cpus()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L21)
+
+This is a `FunctionDeclaration` named `cpus` in `api/os.js`, it's exported but undocumented.
+
+
+## [`networkInterfaces()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L31)
 
 This is a `FunctionDeclaration` named `networkInterfaces` in `api/os.js`, it's exported but undocumented.
 
 
-## [`platform()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L103)
+## [`platform()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L113)
 
 This is a `FunctionDeclaration` named `platform` in `api/os.js`, it's exported but undocumented.
 
 
-## [`type()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L107)
+## [`type()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L117)
 
 This is a `FunctionDeclaration` named `type` in `api/os.js`, it's exported but undocumented.
 
 
-## [`isWindows()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L144)
+## [`isWindows()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L154)
 
 This is a `FunctionDeclaration` named `isWindows` in `api/os.js`, it's exported but undocumented.
 
 
-## [`tmpdir()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L153)
+## [`tmpdir()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L163)
 
 This is a `FunctionDeclaration` named `tmpdir` in `api/os.js`, it's exported but undocumented.
 
 
-## [EOL](https://github.com/socketsupply/socket/blob/master/api/os.js#L197)
+## [EOL](https://github.com/socketsupply/socket/blob/master/api/os.js#L207)
 
 This is a `VariableDeclaration` named `EOL` in `api/os.js`, it's exported but undocumented.
+
+
+## [`rusage()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L215)
+
+This is a `FunctionDeclaration` named `rusage` in `api/os.js`, it's exported but undocumented.
+
+
+## [`uptime()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L221)
+
+This is a `FunctionDeclaration` named `uptime` in `api/os.js`, it's exported but undocumented.
+
+
+## [`uname()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L227)
+
+This is a `FunctionDeclaration` named `uname` in `api/os.js`, it's exported but undocumented.
 
 
 # [Path](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L4)
@@ -1018,7 +1038,12 @@ Computes current working directory for a path
 
 
 
-## [`homedir()`](https://github.com/socketsupply/socket/blob/master/api/process.js#L35)
+## [`nextTick()`](https://github.com/socketsupply/socket/blob/master/api/process.js#L32)
+
+This is a `FunctionDeclaration` named `nextTick` in `api/process.js`, it's exported but undocumented.
+
+
+## [`homedir()`](https://github.com/socketsupply/socket/blob/master/api/process.js#L55)
 
 
 
@@ -1027,7 +1052,7 @@ Computes current working directory for a path
 | Not specified | string | The home directory of the current user. |
 
 
-## [`exit(code)`](https://github.com/socketsupply/socket/blob/master/api/process.js#L42)
+## [`exit(code)`](https://github.com/socketsupply/socket/blob/master/api/process.js#L62)
 
 
 
@@ -1036,44 +1061,39 @@ Computes current working directory for a path
 | code | number | 0 | true | The exit code. Default: 0. |
 
 
-# [Runtime](https://github.com/socketsupply/socket/blob/master/api/runtime.js#L7)
+# [Application](https://github.com/socketsupply/socket/blob/master/api/application.js#L7)
 
 
- Provides runtime-specific methods
+ Provides Application level methods
 
-## [version](https://github.com/socketsupply/socket/blob/master/api/runtime.js#L10)
+## [`createWindow(opts)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L36)
 
-This is a `VariableDeclaration` named `version` in `api/runtime.js`, it's exported but undocumented.
-
-
-## [currentWindow](https://github.com/socketsupply/socket/blob/master/api/runtime.js#L12)
-
-This is a `VariableDeclaration` named `currentWindow` in `api/runtime.js`, it's exported but undocumented.
-
-
-## [debug](https://github.com/socketsupply/socket/blob/master/api/runtime.js#L14)
-
-This is a `VariableDeclaration` named `debug` in `api/runtime.js`, it's exported but undocumented.
-
-
-## [config](https://github.com/socketsupply/socket/blob/master/api/runtime.js#L16)
-
-This is a `VariableDeclaration` named `config` in `api/runtime.js`, it's exported but undocumented.
-
-
-## [`send(options)`](https://github.com/socketsupply/socket/blob/master/api/runtime.js#L34)
-
-
+Creates a new window and returns an instance of ApplicationWindow.
 
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
-| options | object |  | false | an options object |
-| options.window | number | currentWindow | true | the window to send the message to |
-| options.event | string |  | false | the event to send |
-| options.value | string \| object |  | true | the value to send |
+| opts | object |  | false | an options object |
+| opts.index | number |  | false | the index of the window |
+| opts.path | string |  | false | the path to the HTML file to load into the window |
+| opts.title | string |  | true | the title of the window |
+| opts.width | number \| string |  | true | the width of the window. If undefined, the window will have the main window width. |
+| opts.height | number \| string |  | true | the height of the window. If undefined, the window will have the main window height. |
+| opts.minWidth | number \| string | 0 | true | the minimum width of the window |
+| opts.minHeight | number \| string | 0 | true | the minimum height of the window |
+| opts.maxWidth | number \| string | 100% | true | the maximum width of the window |
+| opts.maxHeight | number \| string | 100% | true | the maximum height of the window |
+| opts.resizable | boolean | true | true | whether the window is resizable |
+| opts.frameless | boolean | false | true | whether the window is frameless |
+| opts.utility | boolean | false | true | whether the window is utility (macOS only) |
+| opts.canExit | boolean | false | true | whether the window can exit the app |
 
 
-## [`getScreenSize()`](https://github.com/socketsupply/socket/blob/master/api/runtime.js#L54)
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| Not specified | Promise<ipc.Result> |  |
+
+
+## [`getScreenSize()`](https://github.com/socketsupply/socket/blob/master/api/application.js#L94)
 
 Returns the current screen size.
 
@@ -1082,18 +1102,13 @@ Returns the current screen size.
 | Not specified | Promise<ipc.Result> |  |
 
 
-## [`getWindows()`](https://github.com/socketsupply/socket/blob/master/api/runtime.js#L58)
+## [`getWindows(indices)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L114)
 
-This is a `FunctionDeclaration` named `getWindows` in `api/runtime.js`, it's exported but undocumented.
-
-
-## [`openExternal(options)`](https://github.com/socketsupply/socket/blob/master/api/runtime.js#L67)
-
-
+Returns the ApplicationWindow instances for the given indices or all windows if no indices are provided.
 
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
-| options | object |  | false |  |
+| indices | number \| undefined |  | false | the indices of the windows |
 
 
 | Return Value | Type | Description |
@@ -1101,7 +1116,31 @@ This is a `FunctionDeclaration` named `getWindows` in `api/runtime.js`, it's exp
 | Not specified | Promise<ipc.Result> |  |
 
 
-## [`exit(options)`](https://github.com/socketsupply/socket/blob/master/api/runtime.js#L76)
+## [`getWindow(index)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L134)
+
+Returns the ApplicationWindow instance for the given index
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| index | number |  | false | the index of the window |
+
+
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| Not specified | Promise<ipc.Result> |  |
+| Not specified | Promise<ApplicationWindow | null> | the ApplicationWindow instance or null if the window does not exist |
+
+
+## [`getCurrentWindow()`](https://github.com/socketsupply/socket/blob/master/api/application.js#L144)
+
+Returns the ApplicationWindow instance for the current window.
+
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| Not specified | Promise<ApplicationWindow> |  |
+
+
+## [`exit(options)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L153)
 
 Quits the backend process and then quits the render process, the exit code used is the final exit code to the OS.
 
@@ -1115,98 +1154,7 @@ Quits the backend process and then quits the render process, the exit code used 
 | Not specified | Promise<Any> |  |
 
 
-## [`setTitle(title)`](https://github.com/socketsupply/socket/blob/master/api/runtime.js#L85)
-
-Sets the title of the window (if applicable).
-
-| Argument | Type | Default | Optional | Description |
-| :---     | :--- | :---:   | :---:    | :---        |
-| title | title |  | false | the title of the window |
-
-
-| Return Value | Type | Description |
-| :---         | :--- | :---        |
-| Not specified | Promise<ipc.Result> |  |
-
-
-## [`inspect()`](https://github.com/socketsupply/socket/blob/master/api/runtime.js#L89)
-
-This is a `FunctionDeclaration` named `inspect` in `api/runtime.js`, it's exported but undocumented.
-
-
-## [`show(opts)`](https://github.com/socketsupply/socket/blob/master/api/runtime.js#L103)
-
-
-
-| Argument | Type | Default | Optional | Description |
-| :---     | :--- | :---:   | :---:    | :---        |
-| opts | object |  | false | an options object |
-| opts.window | number | currentWindow | true | the index of the window |
-| opts.url | string |  | true | the path to the HTML file to load into the window |
-| opts.width | number |  | true | the width of the window |
-| opts.height | number |  | true | the height of the window |
-
-
-| Return Value | Type | Description |
-| :---         | :--- | :---        |
-| Not specified | Promise<ipc.Result> |  |
-
-
-## [`hide(opts)`](https://github.com/socketsupply/socket/blob/master/api/runtime.js#L116)
-
-
-
-| Argument | Type | Default | Optional | Description |
-| :---     | :--- | :---:   | :---:    | :---        |
-| opts | object |  | false | an options object |
-
-
-| Return Value | Type | Description |
-| :---         | :--- | :---        |
-| Not specified | Promise<ipc.Result> |  |
-
-
-## [`navigate(opts)`](https://github.com/socketsupply/socket/blob/master/api/runtime.js#L127)
-
-
-
-| Argument | Type | Default | Optional | Description |
-| :---     | :--- | :---:   | :---:    | :---        |
-| opts | object |  | false | an options object |
-| opts.window | number | currentWindow | false | the index of the window |
-| opts.url | number |  | false | the path to the HTML file to load into the window |
-
-
-| Return Value | Type | Description |
-| :---         | :--- | :---        |
-| Not specified | Promise<ipc.Result> |  |
-
-
-## [`setWindowBackgroundColor()`](https://github.com/socketsupply/socket/blob/master/api/runtime.js#L136)
-
-This is a `FunctionDeclaration` named `setWindowBackgroundColor` in `api/runtime.js`, it's exported but undocumented.
-
-
-## [`setContextMenu(options)`](https://github.com/socketsupply/socket/blob/master/api/runtime.js#L147)
-
-Opens a native context menu.
-
-| Argument | Type | Default | Optional | Description |
-| :---     | :--- | :---:   | :---:    | :---        |
-| options | object |  | false | an options object |
-
-
-| Return Value | Type | Description |
-| :---         | :--- | :---        |
-| Not specified | Promise<Any> |  |
-
-
-## [`setSystemMenuItemEnabled()`](https://github.com/socketsupply/socket/blob/master/api/runtime.js#L155)
-
-This is a `FunctionDeclaration` named `setSystemMenuItemEnabled` in `api/runtime.js`, it's exported but undocumented.
-
-
-## [`setSystemMenu(options)`](https://github.com/socketsupply/socket/blob/master/api/runtime.js#L248)
+## [`setSystemMenu(options)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L250)
 
 Set the native menu for the app.
 
@@ -1224,7 +1172,7 @@ Set the native menu for the app.
 
 
  ```js
- socket.runtime.setSystemMenu({ index: 0, value: `
+ socket.application.setSystemMenu({ index: 0, value: `
    App:
      Foo: f;
 
@@ -1303,7 +1251,162 @@ Set the native menu for the app.
 | Not specified | Promise<Any> |  |
 
 
-## [`reload()`](https://github.com/socketsupply/socket/blob/master/api/runtime.js#L297)
+## [`setSystemMenuItemEnabled()`](https://github.com/socketsupply/socket/blob/master/api/application.js#L299)
 
-This is a `FunctionDeclaration` named `reload` in `api/runtime.js`, it's exported but undocumented.
+This is a `FunctionDeclaration` named `setSystemMenuItemEnabled` in `api/application.js`, it's exported but undocumented.
+
+
+## [version](https://github.com/socketsupply/socket/blob/master/api/application.js#L303)
+
+This is a `VariableDeclaration` named `version` in `api/application.js`, it's exported but undocumented.
+
+
+## [debug](https://github.com/socketsupply/socket/blob/master/api/application.js#L304)
+
+This is a `VariableDeclaration` named `debug` in `api/application.js`, it's exported but undocumented.
+
+
+## [config](https://github.com/socketsupply/socket/blob/master/api/application.js#L305)
+
+This is a `VariableDeclaration` named `config` in `api/application.js`, it's exported but undocumented.
+
+
+# [Window](https://github.com/socketsupply/socket/blob/master/api/window.js#L7)
+
+
+ Provides Window class and methods
+
+## [`formatFileUrl()`](https://github.com/socketsupply/socket/blob/master/api/window.js#L11)
+
+This is a `FunctionDeclaration` named `formatFileUrl` in `api/window.js`, it's exported but undocumented.
+
+
+## [ApplicationWindow](https://github.com/socketsupply/socket/blob/master/api/window.js#L16)
+
+This is a `ClassDeclaration` named `ApplicationWindow` in `api/window.js`, it's exported but undocumented.
+
+
+### [`show()`](https://github.com/socketsupply/socket/blob/master/api/window.js#L73)
+
+Shows the window
+
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| Not specified | Promise<ipc.Result> |  |
+
+
+### [`hide()`](https://github.com/socketsupply/socket/blob/master/api/window.js#L82)
+
+Hides the window
+
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| Not specified | Promise<ipc.Result> |  |
+
+
+### [`setTitle(title)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L92)
+
+Sets the title of the window
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| title | title |  | false | the title of the window |
+
+
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| Not specified | Promise<ipc.Result> |  |
+
+
+### [`setSize(opts)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L105)
+
+Sets the size of the window
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| opts | object |  | false | an options object |
+| opts.width | number \| string |  | true | the width of the window |
+| opts.height | number \| string |  | true | the height of the window |
+
+
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| Not specified | Promise<ipc.Result> |  |
+
+
+### [`navigate(path)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L144)
+
+
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| path | object |  | false | file path |
+
+
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| Not specified | Promise<ipc.Result> |  |
+
+
+### [`setBackgroundColor(opts)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L166)
+
+Sets the background color of the window
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| opts | object |  | false | an options object |
+| opts.red | number |  | false | the red value |
+| opts.green | number |  | false | the green value |
+| opts.blue | number |  | false | the blue value |
+| opts.alpha | number |  | false | the alpha value |
+
+
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| Not specified | Promise<ipc.Result> |  |
+
+
+### [`setContextMenu(options)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L176)
+
+Opens a native context menu.
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| options | object |  | false | an options object |
+
+
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| Not specified | Promise<Any> |  |
+
+
+### [`send(options)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L216)
+
+
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| options | object |  | false | an options object |
+| options.window | number | currentWindow | true | the window to send the message to |
+| options.event | string |  | false | the event to send |
+| options.value | string \| object |  | true | the value to send |
+
+
+### [`openExternal(options)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L242)
+
+
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| options | object |  | false |  |
+
+
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| Not specified | Promise<ipc.Result> |  |
+
+
+## [constants](https://github.com/socketsupply/socket/blob/master/api/window.js#L250)
+
+This is a `VariableDeclaration` named `constants` in `api/window.js`, it's exported but undocumented.
 
