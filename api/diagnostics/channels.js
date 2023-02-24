@@ -1,6 +1,11 @@
 import { toString, IllegalConstructor } from '../util.js'
 import process from '../process.js'
 
+/**
+ * Used to preallocate a minimum sized array of subscribers for
+ * a channel.
+ * @ignore
+ */
 export const MIN_CHANNEL_SUBSCRIBER_SIZE = 64
 
 /**
@@ -31,8 +36,7 @@ export function normalizeName (group, name) {
 }
 
 /**
- * TODO(@jwerle): documentation
- * @ignore
+ * A general interface for diagnostic channels that can be subscribed to.
  */
 export class Channel {
   subscribers = new Array(MIN_CHANNEL_SUBSCRIBER_SIZE)
@@ -43,16 +47,42 @@ export class Channel {
     this.group = null
   }
 
+  /**
+   * Accessor for determining if channel has subscribers. This
+   * is always `false` for `Channel instances and `true` for `ActiveChannel`
+   * instances.
+   */
   get hasSubscribers () {
     return false
   }
 
+  /**
+   * Computed number of subscribers for this channel.
+   */
   get length () {
     return this.#subscribed || 0
   }
 
+  /**
+   * Iterator interface
+   * @ignore
+   */
   get [Symbol.iterator] () {
     return this.subscribers
+  }
+
+  /**
+   * Resets channel state.
+   * @param {(boolean)} [shouldOrphan = false]
+   */
+  reset (shouldOrphan= false) {
+    this.#subscribed = 0
+    this.subscribers.length = MIN_CHANNEL_SUBSCRIBER_SIZE
+    this.subscribers.fill(undefined)
+
+    if (shouldOrphan === true) {
+      this.group = null
+    }
   }
 
   channel (name) {
@@ -140,13 +170,16 @@ export class Channel {
   }
 
   /**
+   * The `Channel` string tag.
    * @ignore
    */
   [Symbol.toStringTag] () {
-    return 'DiagnosticChannel'
+    const { name } = this.constructor
+    return `Diagnostic${name}`
   }
 
   /**
+   * Returns a string representation of the `ChannelRegistry`.
    * @ignore
    */
   toString () {
@@ -155,8 +188,9 @@ export class Channel {
 }
 
 /**
- * TODO(@jwerle): documentation
- * @ignore
+ * An `ActiveChannel` is a prototype implementation for a `Channel`
+ * that provides an interface what is considered an "active" channel. The
+ * `hasSubscribers` accessor always returns `true` for this class.
  */
 export class ActiveChannel extends Channel {
   get hasSubscribers () {
@@ -195,8 +229,8 @@ export class ActiveChannel extends Channel {
 }
 
 /**
- * TODO(@jwerle): documentation
- * @ignore
+ * A container for a grouping of channels that are named and owned
+ * by this group. A `ChannelGroup` can also be a regular channel.
  */
 export class ChannelGroup extends Channel {
   /**
@@ -237,6 +271,7 @@ export class ChannelGroup extends Channel {
   }
 
   /**
+   * Iterator iterface.
    * @ignore
    */
   get [Symbol.iterator] () {
@@ -244,8 +279,19 @@ export class ChannelGroup extends Channel {
   }
 
   /**
-   * TODO
-   * @ignore
+   * Resets all channels in this group.
+   * @param {(boolean)} shouldOrphanChannels
+   */
+  reset (shouldOrphanChannels = false) {
+    for (const channel of this.channels) {
+      channel.reset(shouldOrphanChannels)
+    }
+  }
+
+  /**
+   * Subscribe to a channel or selection of channels in this group.
+   * @param {string} name
+   * @return {boolean}
    */
   subscribe (name, onMessage) {
     if (typeof name === 'function') {
@@ -265,8 +311,9 @@ export class ChannelGroup extends Channel {
   }
 
   /**
-   * TODO
-   * @ignore
+   * Unsubscribe from a channel or selection of channels in this group.
+   * @param {string} name
+   * @return {boolean}
    */
   unsubscribe (name, onMessage) {
     const selection = this.select(name)
@@ -306,18 +353,26 @@ export class ChannelGroup extends Channel {
   }
 
   /**
-   * TODO
-   * @ignore
+   * Select a test of channels from this group.
+   * The following syntax is supported:
+   *   - One Channel: `group.channel`
+   *   - All Channels: `*`
+   *   - Many Channel: `group.*`
+   *   - Collections: `['group.a', 'group.b', 'group.c'] or `group.a,group.b,group.c`
+   * @param {string|Array<string>} keys
+   * @param {(boolean)} [hasSubscribers = false] - Enforce subscribers in selection
+   * @return {Array<{name: string, channel: Channel}>}
    */
   select (keys, hasSubscribers = false) {
     const selection = []
+    const seen = new Set()
 
     if (!keys || !keys.length) {
       return selection
     }
 
     if (typeof keys === 'string') {
-      keys = [keys]
+      keys = keys.split(',').filter(Boolean)
     }
 
     for (const key of keys) {
@@ -337,7 +392,12 @@ export class ChannelGroup extends Channel {
         regex.lastIndex = 0 // `RegExp` instances are stateful
 
         if (channel.name === name || regex.test(channel.name)) {
-          return !hasSubscribers || channel.hasSubscribers
+          if (!hasSubscribers || channel.hasSubscribers) {
+            if (!seen.has(channel.name)) {
+              seen.add(channel.name)
+              return true
+            }
+          }
         }
 
         return false
@@ -490,6 +550,7 @@ export const registry = new class ChannelRegistry {
   }
 
   /**
+   * The `ChannelRegistry` string tag.
    * @ignore
    */
   [Symbol.toStringTag] () {
@@ -497,6 +558,7 @@ export const registry = new class ChannelRegistry {
   }
 
   /**
+   * Returns a string representation of the `ChannelRegistry`.
    * @ignore
    */
   toString () {
@@ -504,7 +566,8 @@ export const registry = new class ChannelRegistry {
   }
 
   /**
-   * @ignore
+   * Returns a JSON representation of the `ChannelRegistry`.
+   * @return {object}
    */
   toJSON () {
     const json = {}
