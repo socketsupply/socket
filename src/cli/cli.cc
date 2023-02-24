@@ -229,6 +229,7 @@ int runApp (const fs::path& path, const String& args, bool headless) {
     configuration.arguments = arguments;
     configuration.activates = headless ? NO : YES;
 
+    log(String("Running App: " + String(bundle.bundlePath.UTF8String)));
 
     terminated = false;
     [sharedWorkspace
@@ -237,15 +238,16 @@ int runApp (const fs::path& path, const String& args, bool headless) {
          completionHandler: ^(NSRunningApplication* app, NSError* error)
     {
       if (error) {
-        debug("error: NSWorkspace: %@", error.localizedDescription);
         terminated = true;
         status = 1;
+        debug(
+          "error: NSWorkspace: (code=%lu, domain=%@) %@",
+          error.code,
+          error.domain,
+          error.localizedDescription
+        );
         return;
       }
-
-      auto now = app.launchDate;
-      auto offset = [now dateByAddingTimeInterval: -1];
-      NSDate* latest = nil;
 
       // It appears there is a bug with `:predicateWithFormat:` as the
       // following does not appear to work:
@@ -263,82 +265,113 @@ int runApp (const fs::path& path, const String& args, bool headless) {
       queryStream << "AND ";
       queryStream << "subsystem == '";
       queryStream << bundle.bundleIdentifier.UTF8String << "'";
-
       // log store query and predicate for filtering logs based on the currently
       // running application that was just launched and those of a subsystem
       // directly related to the application's bundle identifier which allows us
       // to just get logs that came from the application (not foundation/cocoa/webkit)
-      auto query = [NSString stringWithUTF8String: queryStream.str().c_str()];
-      auto predicate = [NSPredicate predicateWithFormat: query];
+      const auto query = [NSString stringWithUTF8String: queryStream.str().c_str()];
+      const auto predicate = [NSPredicate predicateWithFormat: query];
 
-      do {
-        // We need to const a new `OSLogStore` in each so we can keep
-        // enumeratoring the logs until the application terminates
-        auto logs = [OSLogStore localStoreAndReturnError: &error];
+      // use the launch date as the initial marker
+      const auto now = app.launchDate;
+      // and offset it by 1 second in the past as the initial position in the eumeration
+      auto offset = [now dateByAddingTimeInterval: -1];
 
-        if (error) {
-          debug("error: OSLogStore: %@", error.localizedDescription);
-          terminated = true;
-          status = 1;
-          return;
-        }
+      // tracks the latest log entry date so we ignore older ones in case
+      // they show up, which they shouldn't (:
+      NSDate* latest = nil;
 
-        // We start at `offset` which is just 1 second before when the
-        // application was launched. This improves the enumerator's ability
-        // to get logs quicker
-        auto position = [logs positionWithDate: offset];
-        auto enumerator = [logs
-          entriesEnumeratorWithOptions: 0
-                              position: position
-                             predicate: predicate
-                                 error: &error
-        ];
+      bool killed = false;
 
-        if (error) {
-          debug("error: OSLogStore: %@", error.localizedDescription);
-          terminated = true;
-          status = 1;
-          return;
-        }
+      while (kill(app.processIdentifier, 0) == 0) {
+        @autoreleasepool {
+          // We need  a new `OSLogStore` in each so we can keep
+          // enumeratoring the logs until the application terminates
+          auto logs = [OSLogStore localStoreAndReturnError: &error];
 
-        // Enumerate all the logs in this loop and print unredacted and most
-        // recently log etries to stdout
-        for (OSLogEntryLog* entry in enumerator) {
-          if (
-            entry.composedMessage &&
-            entry.processIdentifier == app.processIdentifier
-          ) {
-            // visit latest log
-            if (!latest || [latest compare: entry.date] == NSOrderedAscending) {
-              auto message = entry.composedMessage.UTF8String;
+          if (error) {
+            terminated = true;
+            status = 1;
+            debug(
+              "error: OSLogStore: (code=%lu, domain=%@) %@",
+              error.code,
+              error.domain,
+              error.localizedDescription
+            );
+            return;
+          }
 
-              // the OSLogStore may redact log messages the user does not
-              // have access to, filter them out
-              if (String(message) != "<private>") {
-                printf("%s\n", message);
+          auto position = [logs positionWithDate: offset];
+          auto enumerator = [logs
+            entriesEnumeratorWithOptions: 0
+                                position: position
+                               predicate: predicate
+                                   error: &error
+          ];
+
+          if (error) {
+            terminated = true;
+            status = 1;
+            debug(
+              "error: OSLogEnumerator: (code=%lu, domain=%@) %@",
+              error.code,
+              error.domain,
+              error.localizedDescription
+            );
+            return;
+          }
+
+          // Enumerate all the logs in this loop and print unredacted and most
+          // recently log entries to stdout
+          for (OSLogEntryLog* entry in enumerator) {
+            if (
+              entry.composedMessage &&
+              entry.processIdentifier == app.processIdentifier
+            ) {
+              // visit latest log
+              if (!latest || [latest compare: entry.date] == NSOrderedAscending) {
+                auto message = entry.composedMessage.UTF8String;
+
+                // the OSLogStore may redact log messages the user does not
+                // have access to, filter them out
+                if (String(message) != "<private>") {
+                  if (
+                    entry.level == OSLogEntryLogLevelDebug ||
+                    entry.level == OSLogEntryLogLevelError ||
+                    entry.level == OSLogEntryLogLevelFault
+                  ) {
+                    std::cerr << message << std::endl;
+                  } else {
+                    std::cout << message << std::endl;
+                  }
+                }
+
+                latest = entry.date;
+                offset = [latest addTimeInterval: -1];
               }
-
-              latest = entry.date;
             }
           }
-        }
 
-        std::this_thread::yield();
-      } while (kill(app.processIdentifier, 0) == 0);
+          std::this_thread::sleep_for(std::chrono::milliseconds(32));
+          std::this_thread::yield();
+        }
+      }
 
       terminated = true;
     }];
 
     // wait for `NSRunningApplication` to terminate
     while (!terminated) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(2));
+      std::this_thread::sleep_for(std::chrono::milliseconds(32));
+      std::this_thread::yield();
     }
 
+    log("App result: " + std::to_string(status.load()));
     return status.load();
   }
 #endif
 
-  log(String("Running app: " + headlessCommand + prefix + cmd +  args + " --from-ssc"));
+  log(String("Running App: " + headlessCommand + prefix + cmd +  args + " --from-ssc"));
 
   auto process = new SSC::Process(
      headlessCommand + prefix + cmd,
@@ -351,7 +384,7 @@ int runApp (const fs::path& path, const String& args, bool headless) {
   process->open();
   process->wait();
 
-  log("runApp result: " + std::to_string(process->status));
+  log("App result: " + std::to_string(process->status));
 
   return process->status;
 }
