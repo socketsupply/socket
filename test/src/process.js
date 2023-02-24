@@ -3,9 +3,6 @@ import process from 'socket:process'
 import { primordials } from 'socket:ipc'
 import path from 'path-browserify'
 
-// make `path-browserify` happy
-globalThis.process = process
-
 test('process', (t) => {
   t.ok(typeof process.addListener === 'function', 'process is an EventEmitter')
 })
@@ -19,6 +16,9 @@ test('process.exit()', (t) => {
 })
 
 test('process.cwd', async (t) => {
+  // make `path-browserify` happy
+  globalThis.process = process
+
   t.equal(typeof process.cwd(), 'string', 'process.cwd() returns a string')
   t.equal(process.cwd(), primordials.cwd, 'process.cwd() equals primordials.cwd')
   if (process.platform === 'darwin' || process.platform === 'ios') {
@@ -34,6 +34,9 @@ test('process.cwd', async (t) => {
     // TODO: iOS
     t.fail(`FIXME: not implemented for platform ${process.platform}`)
   }
+
+  // make us happy
+  delete globalThis.process
 })
 
 test('process.arch', (t) => {
