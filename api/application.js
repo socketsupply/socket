@@ -24,9 +24,9 @@ if (globalThis.window) {
  * @param {(number|string)=} opts.width - the width of the window. If undefined, the window will have the main window width.
  * @param {(number|string)=} opts.height - the height of the window. If undefined, the window will have the main window height.
  * @param {(number|string)=} [opts.minWidth = 0] - the minimum width of the window
- * @param {(number|string)=} opts.minHeight = 0] - the minimum height of the window
- * @param {(number|string)=} opts.maxWidth = '100%'] - the maximum width of the window
- * @param {(number|string)=} opts.maxHeight = '100%'] - the maximum height of the window
+ * @param {(number|string)=} [opts.minHeight = 0] - the minimum height of the window
+ * @param {(number|string)=} [opts.maxWidth = '100%'] - the maximum width of the window
+ * @param {(number|string)=} [opts.maxHeight = '100%'] - the maximum height of the window
  * @param {boolean=} [opts.resizable=true] - whether the window is resizable
  * @param {boolean=} [opts.frameless=false] - whether the window is frameless
  * @param {boolean=} [opts.utility=false] - whether the window is utility (macOS only)
