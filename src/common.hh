@@ -15,7 +15,7 @@
 #endif
 
 #ifndef debug
-static auto SSC_OS_LOG_DEBUG = os_log_create("debug", "socket-runtime");
+static auto SSC_OS_LOG_DEBUG = os_log_create("debug", "socket.runtime");
 #if !defined(SSC_CLI)
 // wrap `os_log*` functions for global debugger
 #define osdebug(format, fmt, ...) ({                                           \
