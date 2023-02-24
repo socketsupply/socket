@@ -739,7 +739,7 @@ void initFunctionsTable (Router *router) {
     auto value = message.value.c_str();
   #if defined(__APPLE__)
     NSLog(@"%s", value);
-    os_log(SSC_OS_LOG_BUNDLE, "%{public}s", value);
+    os_log_with_type(SSC_OS_LOG_BUNDLE, OS_LOG_TYPE_INFO, "%{public}s", value);
   #elif defined(__ANDROID__)
     __android_log_print(ANDROID_LOG_DEBUG, "", "%s", value);
   #else
@@ -930,7 +930,7 @@ void initFunctionsTable (Router *router) {
   router->map("stdout", [=](auto message, auto router, auto reply) {
     stdWrite(message.value, false);
   #if defined(__APPLE__)
-    os_log(SSC_OS_LOG_BUNDLE, "%{public}s", message.value.c_str());
+    os_log_with_type(SSC_OS_LOG_BUNDLE, OS_LOG_TYPE_INFO, "%{public}s", message.value.c_str());
   #endif
   });
 
@@ -940,7 +940,7 @@ void initFunctionsTable (Router *router) {
   router->map("stderr", [=](auto message, auto router, auto reply) {
     stdWrite(message.value, true);
   #if defined(__APPLE__)
-    os_log(SSC_OS_LOG_BUNDLE, "%{public}s", message.value.c_str());
+    os_log_with_type(SSC_OS_LOG_BUNDLE, OS_LOG_TYPE_ERROR, "%{public}s", message.value.c_str());
   #endif
   });
 
