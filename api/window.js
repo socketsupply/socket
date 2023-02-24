@@ -97,8 +97,8 @@ export class ApplicationWindow {
   /**
    * Sets the size of the window
    * @param {object} opts - an options object
-   * @param {string=} [opts.width] - the width of the window
-   * @param {string=} [opts.height] - the height of the window
+   * @param {(number|string)=} opts.width - the width of the window
+   * @param {(number|string)=} opts.height - the height of the window
    * @return {Promise<ipc.Result>}
    * @throws {Error} - if the width or height is invalid
    */
