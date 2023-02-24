@@ -386,9 +386,9 @@ test('window.setSize in percent', async (t) => {
   const mainWindow = await application.getCurrentWindow()
   const { width, height } = await mainWindow.setSize({ width: '50%', height: '50%' })
   t.equal(width, window.screen.width / 2, 'correct width is returned')
-  t.equal(height, window.screen.height / 2, 'correct height is returned')
+  t.equal(height, Math.floor(window.screen.height / 2), 'correct height is returned')
   t.equal(mainWindow.getSize().width, window.screen.width / 2, 'window options are updated')
-  t.equal(mainWindow.getSize().height, window.screen.height / 2, 'window options are updated')
+  t.equal(mainWindow.getSize().height, Math.floor(window.screen.height / 2), 'window options are updated')
 })
 
 test('window.hide / window.show', async (t) => {
