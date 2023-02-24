@@ -1,4 +1,4 @@
-param([Switch]$debug, [Switch]$verbose, [Switch]$force, [Switch]$shbuild=$true, $toolchain = "vsbuild")
+param([Switch]$debug, [Switch]$verbose, [Switch]$force, [Switch]$shbuild=$true, [Switch]$package_setup, $toolchain = "vsbuild")
 
 # -shbuild:$false - Don't run bin\install.sh (Builds runtime lib)
 # -debug          - Enable debug builds (DEBUG=1)
@@ -21,6 +21,17 @@ $SSC_BUILD_OPTIONS = "-O2"
 $global:git = "git.exe"
 $global:cmake = "cmake.exe"
 $global:useCurl = $true
+
+Function Get-CommandPath {
+  param($command_string)
+    $c = (Get-Command "$command_string" -ErrorAction SilentlyContinue -ErrorVariable F).Source
+    $r = $($null -eq $F.length)
+    if ($r -eq $true) {
+      Write-Output $c
+      return
+    }
+    Write-Output $r
+}
 
 if ($debug -eq $true) {
   $LIBUV_BUILD_TYPE = "Debug"
@@ -400,6 +411,13 @@ if ($global:path_advice.Count -gt 0) {
 
 if (-not $shbuild) {
   Write-Output "Please close this terminal to continue setting up your socket app."
+}
+
+if ($package_setup -eq $true) {
+  $paths = @{}
+  $fso = New-Object -ComObject Scripting.FileSystemObject 
+  $paths["CXX"] = $fso.GetFile($(Get-CommandPath "clang++.exe")).ShortPath
+  ConvertTo-Json $paths > env.json
 }
 
 cd $OLD_CWD
