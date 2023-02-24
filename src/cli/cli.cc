@@ -352,8 +352,7 @@ int runApp (const fs::path& path, const String& args, bool headless) {
             }
           }
 
-          std::this_thread::sleep_for(std::chrono::milliseconds(32));
-          std::this_thread::yield();
+          std::this_thread::sleep_for(std::chrono::milliseconds(256));
         }
       }
 
@@ -362,8 +361,7 @@ int runApp (const fs::path& path, const String& args, bool headless) {
 
     // wait for `NSRunningApplication` to terminate
     while (!terminated) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(32));
-      std::this_thread::yield();
+      std::this_thread::sleep_for(std::chrono::milliseconds(256));
     }
 
     log("App result: " + std::to_string(status.load()));
