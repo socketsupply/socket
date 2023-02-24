@@ -30,9 +30,7 @@ The Socket's CLI compiles applications into hybrid-native applications &mbasp; m
 ### 🔑 FAQ
 
 Check the FAQ's in our [Website](https://sockets.sh/) to learn more.
- <!--we can  add Kyle's FAQ here later, I read it yesterday and it's perfect  -->
 
- 
 ### 🧱 Building your first Socket app !
 
 `Create Socket App` is similar to React's `Create React App`, we provides a few basic boilerplates and some strong opinions so you can get coding on a production-quality app as quickly as possible.  
