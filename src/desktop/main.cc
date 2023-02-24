@@ -577,6 +577,11 @@ MAIN {
       options.width = message.get("width").size() ? currentWindow->getSizeInPixels(message.get("width"), screen.width) : 0;
       options.height = message.get("height").size() ? currentWindow->getSizeInPixels(message.get("height"), screen.height) : 0;
 
+      options.minWidth = message.get("minWidth").size() ? currentWindow->getSizeInPixels(message.get("minWidth"), screen.width) : 0;
+      options.minHeight = message.get("minHeight").size() ? currentWindow->getSizeInPixels(message.get("minHeight"), screen.height) : 0;
+      options.maxWidth = message.get("maxWidth").size() ? currentWindow->getSizeInPixels(message.get("maxWidth"), screen.width) : screen.width;
+      options.maxHeight = message.get("maxHeight").size() ? currentWindow->getSizeInPixels(message.get("maxHeight"), screen.height) : screen.height;
+
       options.resizable = message.get("resizable") == "true" ? true : false;
       options.frameless = message.get("frameless") == "true" ? true : false;
       options.utility = message.get("utility") == "true" ? true : false;
@@ -865,10 +870,18 @@ MAIN {
 
   String defaultWidth = app.appData["window_width"].size() > 0 ? app.appData["window_width"] : "100%";
   String defaultHeight = app.appData["window_height"].size() > 0 ? app.appData["window_height"] : "100%";
+  String defaultMinWidth = app.appData["window_min_width"].size() > 0 ? app.appData["window_min_width"] : "0";
+  String defaultMinHeight = app.appData["window_min_height"].size() > 0 ? app.appData["window_min_height"] : "0";
+  String defaultMaxWidth = app.appData["window_max_width"].size() > 0 ? app.appData["window_max_width"] : "100%";
+  String defaultMaxHeight = app.appData["window_max_height"].size() > 0 ? app.appData["window_max_height"] : "100%";
 
   windowManager.configure(WindowManagerOptions {
     .defaultWidth = defaultWidth,
     .defaultHeight =  defaultHeight,
+    .defaultMinWidth = defaultMinWidth,
+    .defaultMinHeight = defaultMinHeight,
+    .defaultMaxWidth = defaultMaxWidth,
+    .defaultMaxHeight = defaultMaxHeight,
     .headless = isHeadless,
     .isTest = isTest,
     .argv = argvArray.str(),

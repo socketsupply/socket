@@ -156,6 +156,10 @@ namespace SSC {
   struct WindowManagerOptions {
     String defaultHeight = "0";
     String defaultWidth = "0";
+    String defaultMinWidth = "0";
+    String defaultMinHeight = "0";
+    String defaultMaxWidth = "100%";
+    String defaultMaxHeight = "100%";
     bool headless = false;
     bool isTest;
     String argv = "";
@@ -313,6 +317,10 @@ namespace SSC {
         if (destroyed) return;
         this->options.defaultHeight = configuration.defaultHeight;
         this->options.defaultWidth = configuration.defaultWidth;
+        this->options.defaultMinWidth = configuration.defaultMinWidth;
+        this->options.defaultMinHeight = configuration.defaultMinHeight;
+        this->options.defaultMaxWidth = configuration.defaultMaxWidth;
+        this->options.defaultMaxHeight = configuration.defaultMaxHeight;
         this->options.onMessage = configuration.onMessage;
         this->options.appData = configuration.appData;
         this->options.onExit = configuration.onExit;
@@ -453,14 +461,42 @@ namespace SSC {
         if (height <= 0) {
           height = Window::getSizeInPixels(this->options.defaultHeight, screen.height);
         }
+        float minWidth = opts.minWidth;
+        if (minWidth <= 0) {
+          minWidth = Window::getSizeInPixels(this->options.defaultMinWidth, screen.width);
+        }
+        float minHeight = opts.minHeight;
+        if (minHeight <= 0) {
+          minHeight = Window::getSizeInPixels(this->options.defaultMinHeight, screen.height);
+        }
+        float maxWidth = opts.maxWidth;
+        if (maxWidth <= 0) {
+          maxWidth = Window::getSizeInPixels(this->options.defaultMaxWidth, screen.width);
+        }
+        float maxHeight = opts.maxHeight;
+        if (maxHeight <= 0) {
+          maxHeight = Window::getSizeInPixels(this->options.defaultMaxHeight, screen.height);
+        }
+
+        debug("Creating window %i with options:", opts.index);
+        debug("  - width: %f", width);
+        debug("  - height: %f", height);
+        debug("  - minWidth: %f", minWidth);
+        debug("  - minHeight: %f", minHeight);
+        debug("  - maxWidth: %f", maxWidth);
+        debug("  - maxHeight: %f", maxHeight);
 
         WindowOptions windowOptions = {
           .resizable = opts.resizable,
           .frameless = opts.frameless,
           .utility = opts.utility,
           .canExit = opts.canExit,
-          .height = height,
           .width = width,
+          .height = height,
+          .minWidth = minWidth,
+          .minHeight = minHeight,
+          .maxWidth = maxWidth,
+          .maxHeight = maxHeight,
           .index = opts.index,
           .debug = isDebugEnabled() || opts.debug,
           .isTest = this->options.isTest,
