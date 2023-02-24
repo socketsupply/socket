@@ -127,9 +127,9 @@ void initFunctionsTable (Router *router) {
   static auto userConfig = SSC::getUserConfig();
   static auto bundleIdentifier = userConfig["meta_bundle_identifier"];
   #if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
-    static auto SSC_OS_LOG_BUNDLE = os_log_create(bundleIdentifier.c_str(), "socket-runtime-desktop");
-  #else
     static auto SSC_OS_LOG_BUNDLE = os_log_create(bundleIdentifier.c_str(), "socket-runtime-mobile");
+  #else
+    static auto SSC_OS_LOG_BUNDLE = os_log_create(bundleIdentifier.c_str(), "socket-runtime-desktop");
   #endif
 #endif
   /**
