@@ -1,6 +1,7 @@
 #include "../common.hh"
 #include "../process/process.hh"
 #include "templates.hh"
+#include "../core/core.hh"
 
 #include <filesystem>
 
@@ -277,8 +278,7 @@ int runApp (const fs::path& path, const String& args, bool headless) {
       // and offset it by 1 second in the past as the initial position in the eumeration
       auto offset = [now dateByAddingTimeInterval: -1];
 
-      // tracks the latest log entry date so we ignore older ones in case
-      // they show up, which they shouldn't (:
+      // tracks the latest log entry date so we ignore older ones
       NSDate* latest = nil;
 
       bool killed = false;
