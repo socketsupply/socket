@@ -122,7 +122,6 @@ static auto SSC_OS_LOG_DEBUG = os_log_create("debug", "socket.runtime");
 #include <mutex>
 #include <queue>
 #include <regex>
-#include <semaphore>
 #include <span>
 #include <sstream>
 #include <string>
@@ -184,10 +183,8 @@ namespace SSC {
   using WStringStream = std::wstringstream;
 
   template <typename T> using Queue = std::queue<T>;
-  template <int K> using Semaphore = std::counting_semaphore<K>;
   template <typename T> using Vector = std::vector<T>;
 
-  using BinarySemaphore = std::binary_semaphore; // aka `Semaphore<1>`
   using ExitCallback = std::function<void(int code)>;
   using Map = std::map<String, String>;
   using Mutex = std::recursive_mutex;
