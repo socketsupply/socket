@@ -192,7 +192,7 @@ int runApp (const fs::path& path, const String& args, bool headless) {
 
 #if defined(__APPLE__)
   if (platform.mac) {
-    static std::atomic<bool> terminated = false;
+    static std::mutex mutex;
     static std::atomic<int> status = 0;
 
     auto sharedWorkspace = [NSWorkspace sharedWorkspace];
@@ -232,14 +232,16 @@ int runApp (const fs::path& path, const String& args, bool headless) {
 
     log(String("Running App: " + String(bundle.bundlePath.UTF8String)));
 
-    terminated = false;
+    mutex.lock();
+    status = 0;
+
     [sharedWorkspace
       openApplicationAtURL: bundle.bundleURL
              configuration: configuration
          completionHandler: ^(NSRunningApplication* app, NSError* error)
     {
       if (error) {
-        terminated = true;
+        mutex.unlock();
         status = 1;
         debug(
           "error: NSWorkspace: (code=%lu, domain=%@) %@",
@@ -282,8 +284,6 @@ int runApp (const fs::path& path, const String& args, bool headless) {
       // tracks the latest log entry date so we ignore older ones
       NSDate* latest = nil;
 
-      bool killed = false;
-
       while (kill(app.processIdentifier, 0) == 0) {
         @autoreleasepool {
           // We need  a new `OSLogStore` in each so we can keep
@@ -291,7 +291,6 @@ int runApp (const fs::path& path, const String& args, bool headless) {
           auto logs = [OSLogStore localStoreAndReturnError: &error];
 
           if (error) {
-            terminated = true;
             status = 1;
             debug(
               "error: OSLogStore: (code=%lu, domain=%@) %@",
@@ -299,7 +298,7 @@ int runApp (const fs::path& path, const String& args, bool headless) {
               error.domain,
               error.localizedDescription
             );
-            return;
+            break;
           }
 
           auto position = [logs positionWithDate: offset];
@@ -311,7 +310,6 @@ int runApp (const fs::path& path, const String& args, bool headless) {
           ];
 
           if (error) {
-            terminated = true;
             status = 1;
             debug(
               "error: OSLogEnumerator: (code=%lu, domain=%@) %@",
@@ -319,12 +317,15 @@ int runApp (const fs::path& path, const String& args, bool headless) {
               error.domain,
               error.localizedDescription
             );
-            return;
+
+            break;
           }
 
           // Enumerate all the logs in this loop and print unredacted and most
           // recently log entries to stdout
           for (OSLogEntryLog* entry in enumerator) {
+            std::this_thread::yield();
+
             if (
               entry.composedMessage &&
               entry.processIdentifier == app.processIdentifier
@@ -348,7 +349,7 @@ int runApp (const fs::path& path, const String& args, bool headless) {
                 }
 
                 latest = entry.date;
-                offset = [latest addTimeInterval: -1];
+                offset = offset;
               }
             }
           }
@@ -357,13 +358,12 @@ int runApp (const fs::path& path, const String& args, bool headless) {
         }
       }
 
-      terminated = true;
+      std::this_thread::sleep_for(std::chrono::milliseconds(128));
+      mutex.unlock();
     }];
 
     // wait for `NSRunningApplication` to terminate
-    while (!terminated) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(256));
-    }
+    std::lock_guard<std::mutex> lock(mutex);
 
     log("App result: " + std::to_string(status.load()));
     return status.load();
