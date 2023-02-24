@@ -453,38 +453,24 @@ namespace SSC {
 
         auto screen = Window::getScreenSize();
 
-        float width = opts.width;
-        if (width <= 0) {
-          width = Window::getSizeInPixels(this->options.defaultWidth, screen.width);
-        }
-        float height = opts.height;
-        if (height <= 0) {
-          height = Window::getSizeInPixels(this->options.defaultHeight, screen.height);
-        }
-        float minWidth = opts.minWidth;
-        if (minWidth <= 0) {
-          minWidth = Window::getSizeInPixels(this->options.defaultMinWidth, screen.width);
-        }
-        float minHeight = opts.minHeight;
-        if (minHeight <= 0) {
-          minHeight = Window::getSizeInPixels(this->options.defaultMinHeight, screen.height);
-        }
-        float maxWidth = opts.maxWidth;
-        if (maxWidth <= 0) {
-          maxWidth = Window::getSizeInPixels(this->options.defaultMaxWidth, screen.width);
-        }
-        float maxHeight = opts.maxHeight;
-        if (maxHeight <= 0) {
-          maxHeight = Window::getSizeInPixels(this->options.defaultMaxHeight, screen.height);
-        }
-
-        debug("Creating window %i with options:", opts.index);
-        debug("  - width: %f", width);
-        debug("  - height: %f", height);
-        debug("  - minWidth: %f", minWidth);
-        debug("  - minHeight: %f", minHeight);
-        debug("  - maxWidth: %f", maxWidth);
-        debug("  - maxHeight: %f", maxHeight);
+        float width = opts.width <= 0
+          ? Window::getSizeInPixels(this->options.defaultWidth, screen.width)
+          : opts.width;
+        float height = opts.height <= 0
+          ? Window::getSizeInPixels(this->options.defaultHeight, screen.height)
+          : opts.height;
+        float minWidth = opts.minWidth <= 0
+          ? Window::getSizeInPixels(this->options.defaultMinWidth, screen.width)
+          : opts.minWidth;
+        float minHeight = opts.minHeight <= 0
+          ? Window::getSizeInPixels(this->options.defaultMinHeight, screen.height)
+          : opts.minHeight;
+        float maxWidth = opts.maxWidth <= 0
+          ? Window::getSizeInPixels(this->options.defaultMaxWidth, screen.width)
+          : opts.maxWidth;
+        float maxHeight = opts.maxHeight <= 0
+          ? Window::getSizeInPixels(this->options.defaultMaxHeight, screen.height)
+          : opts.maxHeight;
 
         WindowOptions windowOptions = {
           .resizable = opts.resizable,
