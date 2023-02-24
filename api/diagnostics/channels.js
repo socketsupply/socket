@@ -75,7 +75,7 @@ export class Channel {
    * Resets channel state.
    * @param {(boolean)} [shouldOrphan = false]
    */
-  reset (shouldOrphan= false) {
+  reset (shouldOrphan = false) {
     this.#subscribed = 0
     this.subscribers.length = MIN_CHANNEL_SUBSCRIBER_SIZE
     this.subscribers.fill(undefined)
