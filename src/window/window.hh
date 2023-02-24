@@ -138,18 +138,15 @@ namespace SSC {
         this->onMessage(IPC::getResolveToMainProcessMessage(seq, state, value));
       }
 
-      static float  getSizeInPixels (String sizeInPercent, int screenSize) {
-        float size = 0;
-        if (sizeInPercent.size()) {
-          bool isSizeInPercent = sizeInPercent.back() == '%';
-          if (isSizeInPercent) {
+      static float getSizeInPixels (String sizeInPercent, int screenSize) {
+        if (sizeInPercent.size() > 0) {
+          if (sizeInPercent.back() == '%') {
             sizeInPercent.pop_back();
-            size = screenSize * std::stof(sizeInPercent) / 100;
-          } else {
-            size = std::stof(sizeInPercent);
+            return screenSize * std::stof(sizeInPercent) / 100;
           }
+          return std::stof(sizeInPercent);
         }
-        return size;
+        return 0;
       }
   };
 
