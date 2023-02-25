@@ -37,7 +37,7 @@ async function insert_env_vars() {
   fs.writeFileSync(ssc_cmd_path, envs + fs.readFileSync(ssc_cmd_path), "utf-8");
 }
 
-async function main() {
+async function preinstall() {
   let pscmd = '"cd ps1 && powershell .\\install.ps1 -shbuild:$false -package_setup:$true "';
   let npm_cmd = `%comspec% /k ${pscmd}`;
   process.stdout.write(npm_cmd + '\n');
@@ -52,11 +52,19 @@ async function main() {
     c.on('close', resolve);
     process.stdout.write("npm completed");
   });
-
-  await insert_env_vars();
 }
 
-main().catch((err) => {
+async function main(argv) {
+  if (argv.length == 0)
+    return;
+
+  if (argv[0] == 'preinstall')
+    await preinstall();
+  if (argv[0] == 'postinstall')
+    await insert_env_vars();
+}
+
+main(process.argv.slice(2)).catch((err) => {
   console.error(err)
   process.exit(1)
 })
