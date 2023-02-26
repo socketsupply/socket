@@ -148,11 +148,11 @@ static std::atomic<int> appStatus = 0;
 static std::mutex appMutex;
 
 void signalHandler (int signal) {
+  appStatus = signal;
+
   if (appProcess != nullptr) {
     auto pid = appProcess->getPID();
     appProcess->kill(pid);
-    delete appProcess;
-    appProcess = nullptr;
   } else if (appPid > 0) {
     kill(appPid, signal);
     appPid = 0;
@@ -399,10 +399,17 @@ int runApp (const fs::path& path, const String& args, bool headless) {
 
   appPid = appProcess->open();
   appProcess->wait();
+  auto status = appProcess->status.load();
 
-  log("App result: " + std::to_string(appProcess->status));
+  if (status > -1) {
+    appStatus = status;
+  }
 
-  return appProcess->status;
+  delete appProcess;
+  appProcess = nullptr;
+
+  log("App result: " + std::to_string(appStatus));
+  return appStatus;
 }
 
 int runApp (const fs::path& path, const String& args) {
