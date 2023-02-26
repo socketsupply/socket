@@ -144,6 +144,8 @@ inline String prefixFile () {
 
 static Process::id_type appPid = 0;
 static Process* appProcess = nullptr;
+static std::atomic<int> appStatus = 0;
+static std::mutex appMutex;
 
 void signalHandler (int signal) {
   if (appProcess != nullptr) {
@@ -152,16 +154,15 @@ void signalHandler (int signal) {
     delete appProcess;
     appProcess = nullptr;
   } else if (appPid > 0) {
-    std::this_thread::sleep_for(std::chrono::milliseconds(32));
     kill(appPid, signal);
+    appPid = 0;
+  } else {
+    exit(signal);
   }
-
-  exit(signal);
 }
 
 int runApp (const fs::path& path, const String& args, bool headless) {
   auto cmd = path.string();
-  int status = 0;
 
   if (!fs::exists(path)) {
     log("executable not found: " + cmd);
@@ -188,7 +189,7 @@ int runApp (const fs::path& path, const String& args, bool headless) {
       // use xvfb for linux as a default
       if (headlessRunner.size() == 0) {
         headlessRunner = "xvfb-run";
-        status = std::system((headlessRunner + " --help >/dev/null").c_str());
+        int status = std::system((headlessRunner + " --help >/dev/null").c_str());
         if (WEXITSTATUS(status) != 0) {
           headlessRunner = "";
         }
@@ -209,9 +210,6 @@ int runApp (const fs::path& path, const String& args, bool headless) {
 
 #if defined(__APPLE__)
   if (platform.mac) {
-    static std::mutex mutex;
-    static std::atomic<int> status = 0;
-
     auto sharedWorkspace = [NSWorkspace sharedWorkspace];
     auto configuration = [NSWorkspaceOpenConfiguration configuration];
     auto string = path.string();
@@ -249,8 +247,8 @@ int runApp (const fs::path& path, const String& args, bool headless) {
 
     log(String("Running App: " + String(bundle.bundlePath.UTF8String)));
 
-    mutex.lock();
-    status = 0;
+    appMutex.lock();
+    appStatus = 0;
 
     [sharedWorkspace
       openApplicationAtURL: bundle.bundleURL
@@ -258,8 +256,8 @@ int runApp (const fs::path& path, const String& args, bool headless) {
          completionHandler: ^(NSRunningApplication* app, NSError* error)
     {
       if (error) {
-        mutex.unlock();
-        status = 1;
+        appMutex.unlock();
+        appStatus = 1;
         debug(
           "error: NSWorkspace: (code=%lu, domain=%@) %@",
           error.code,
@@ -310,7 +308,7 @@ int runApp (const fs::path& path, const String& args, bool headless) {
           auto logs = [OSLogStore localStoreAndReturnError: &error];
 
           if (error) {
-            status = 1;
+            appStatus = 1;
             debug(
               "error: OSLogStore: (code=%lu, domain=%@) %@",
               error.code,
@@ -329,7 +327,7 @@ int runApp (const fs::path& path, const String& args, bool headless) {
           ];
 
           if (error) {
-            status = 1;
+            appStatus = 1;
             debug(
               "error: OSLogEnumerator: (code=%lu, domain=%@) %@",
               error.code,
@@ -377,15 +375,15 @@ int runApp (const fs::path& path, const String& args, bool headless) {
         }
       }
 
-      std::this_thread::sleep_for(std::chrono::milliseconds(128));
-      mutex.unlock();
+      appMutex.unlock();
     }];
 
     // wait for `NSRunningApplication` to terminate
-    std::lock_guard<std::mutex> lock(mutex);
+    std::lock_guard<std::mutex> lock(appMutex);
 
-    log("App result: " + std::to_string(status.load()));
-    return status.load();
+    log("App result: " + std::to_string(appStatus.load()));
+    std::this_thread::sleep_for(std::chrono::milliseconds(32));
+    return appStatus.load();
   }
 #endif
 
