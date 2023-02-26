@@ -142,6 +142,15 @@ inline String prefixFile () {
   return socketHome;
 }
 
+static Process::id_type appPid = 0;
+void signalHandler (int signal) {
+  if (appPid > 0) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(32));
+    kill(appPid, signal);
+  }
+}
+
+
 int runApp (const fs::path& path, const String& args, bool headless) {
   auto cmd = path.string();
   int status = 0;
@@ -251,6 +260,8 @@ int runApp (const fs::path& path, const String& args, bool headless) {
         );
         return;
       }
+
+      appPid = app.processIdentifier;
 
       // It appears there is a bug with `:predicateWithFormat:` as the
       // following does not appear to work:
@@ -380,7 +391,7 @@ int runApp (const fs::path& path, const String& args, bool headless) {
     [](SSC::String const &out) { std::cerr << out << std::endl; }
   );
 
-  process->open();
+  appPid = process->open();
   process->wait();
 
   log("App result: " + std::to_string(process->status));
@@ -652,6 +663,13 @@ int main (const int argc, const char* argv[]) {
   };
 
   auto const subcommand = argv[1];
+
+#ifndef _WIN32
+  signal(SIGHUP, signalHandler);
+#endif
+
+  signal(SIGINT, signalHandler);
+  signal(SIGTERM, signalHandler);
 
   if (is(subcommand, "-v") || is(subcommand, "--version")) {
     std::cout << SSC::VERSION_FULL_STRING << std::endl;
