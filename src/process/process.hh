@@ -172,10 +172,11 @@ namespace SSC {
     // Close stdin. If the process takes parameters from stdin, use this to
     // notify that all parameters have been sent.
     void close_stdin() noexcept;
-    void open() noexcept {
-      if (this->command.size() == 0) return;
-      open(this->command + this->argv, this->path);
+    id_type open() noexcept {
+      if (this->command.size() == 0) return 0;
+      auto pid = open(this->command + this->argv, this->path);
       read();
+      return pid;
     }
 
     // Kill a given process id. Use kill(bool force) instead if possible.
