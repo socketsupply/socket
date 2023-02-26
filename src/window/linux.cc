@@ -631,6 +631,16 @@ namespace SSC {
       g_list_free(list);
     }
 
+    if (!height || !width) {
+      auto geometry = GdkRectangle {};
+      auto display = gdk_display_get_default();
+      auto monitor = gdk_display_get_primary_monitor(display);
+
+      gdk_monitor_get_workarea(monitor, &geometry);
+      width = (int) geometry.width;
+      height = (int) geometry.height;
+    }
+
     return ScreenSize { height, width };
   }
 
