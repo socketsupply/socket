@@ -143,13 +143,21 @@ inline String prefixFile () {
 }
 
 static Process::id_type appPid = 0;
+static Process* appProcess = nullptr;
+
 void signalHandler (int signal) {
-  if (appPid > 0) {
+  if (appProcess != nullptr) {
+    auto pid = appProcess->getPID();
+    appProcess->kill(pid);
+    delete appProcess;
+    appProcess = nullptr;
+  } else if (appPid > 0) {
     std::this_thread::sleep_for(std::chrono::milliseconds(32));
     kill(appPid, signal);
   }
-}
 
+  exit(signal);
+}
 
 int runApp (const fs::path& path, const String& args, bool headless) {
   auto cmd = path.string();
@@ -383,7 +391,7 @@ int runApp (const fs::path& path, const String& args, bool headless) {
 
   log(String("Running App: " + headlessCommand + prefix + cmd +  args + " --from-ssc"));
 
-  auto process = new SSC::Process(
+  appProcess = new SSC::Process(
      headlessCommand + prefix + cmd,
     args + " --from-ssc",
     fs::current_path().string(),
@@ -391,12 +399,12 @@ int runApp (const fs::path& path, const String& args, bool headless) {
     [](SSC::String const &out) { std::cerr << out << std::endl; }
   );
 
-  appPid = process->open();
-  process->wait();
+  appPid = appProcess->open();
+  appProcess->wait();
 
-  log("App result: " + std::to_string(process->status));
+  log("App result: " + std::to_string(appProcess->status));
 
-  return process->status;
+  return appProcess->status;
 }
 
 int runApp (const fs::path& path, const String& args) {
