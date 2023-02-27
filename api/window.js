@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @module Window
  *
@@ -8,6 +9,11 @@ import * as statuses from './window/constants.js'
 import ipc, { primordials } from './ipc.js'
 import { isValidPercentageValue } from './util.js'
 
+/**
+ * @param {string} url
+ * @return {string}
+ * @ignore
+ */
 export function formatFileUrl (url) {
   return `file://${primordials.cwd}/${url}`
 }
@@ -57,11 +63,11 @@ export class ApplicationWindow {
 
   async close () {
     const { data, err } = await ipc.send('window.close', {
-      index: globalThis.__args.index,
+      index: this.#senderWindowIndex,
       targetWindowIndex: this.#index
     })
     if (err) {
-      throw new Error(err)
+      throw err
     }
     return data
   }
@@ -86,7 +92,7 @@ export class ApplicationWindow {
 
   /**
    * Sets the title of the window
-   * @param {title} title - the title of the window
+   * @param {string} title - the title of the window
    * @return {Promise<ipc.Result>}
    */
   async setTitle (title) {
@@ -146,10 +152,10 @@ export class ApplicationWindow {
     return this.#updateOptions(response)
   }
 
-  async showInspector (params) {
+  async showInspector () {
     const { data, err } = await ipc.send('window.showInspector', { index: this.#senderWindowIndex, targetWindowIndex: this.#index })
     if (err) {
-      throw new Error(err)
+      throw err
     }
     return data
   }
@@ -171,16 +177,16 @@ export class ApplicationWindow {
   /**
    * Opens a native context menu.
    * @param {object} options - an options object
-   * @return {Promise<Any>}
+   * @return {Promise}
    */
-  async setContextMenu (o) {
-    o = Object
-      .entries(o)
+  async setContextMenu (options) {
+    const o = Object
+      .entries(options)
       .flatMap(a => a.join(':'))
       .join('_')
     const { data, err } = await ipc.send('window.setContextMenu', o)
     if (err) {
-      throw new Error(err)
+      throw err
     }
     return data
   }
@@ -208,23 +214,31 @@ export class ApplicationWindow {
 
   /**
    * @param {object} options - an options object
-   * @param {number=} [options.window=currentWindow] - the window to send the message to
+   * @param {number=} options.window - the window to send the message to
+   * @param {boolean=} [options.backend = false] - whether to send the message to the backend
    * @param {string} options.event - the event to send
    * @param {(string|object)=} options.value - the value to send
    * @returns
    */
   async send (options) {
-    if (this.#index !== globalThis.__args.index) {
+    if (this.#index !== this.#senderWindowIndex) {
       throw new Error('window.send can only be used from the current window')
     }
-    if (!Number.isInteger(options.window)) {
+    if (!Number.isInteger(options.window) && options.backend !== true) {
       throw new Error('window should be an integer')
+    }
+    if (options.backend === true && options.window != null) {
+      throw new Error('backend option cannot be used together with window option')
     }
     if (typeof options.value !== 'string') {
       options.value = JSON.stringify(options.value)
     }
 
     const value = typeof options.value === 'string' ? options.value : JSON.stringify(options.value)
+
+    if (options.backend === true) {
+      return await ipc.send('process.write', options.value)
+    }
 
     return await ipc.send('window.send', {
       index: this.#senderWindowIndex,

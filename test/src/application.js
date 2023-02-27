@@ -477,6 +477,34 @@ test('window.showDirectoryFilePicker', async (t) => {
   t.ok(mainWindow.showDirectoryFilePicker())
 })
 
+test('window.send wrong window', async (t) => {
+  const mainWindow = await application.getCurrentWindow()
+  // passing Symbol() will throw on encodeURIComponent`
+  const indices = [-1, 3.14, NaN, Infinity, -Infinity, 'IDDQD', 1n, {}, [], () => {}, true, false]
+  for (const index of indices) {
+    let err
+    try {
+      await mainWindow.send({ index, event: 'Knights who say Ni!' })
+    } catch (e) {
+      // they are now now Knights who say Ekke Ekke Ekke Ekke Ptang Zoo Boing!
+      err = e
+    }
+    let printValue
+    switch (typeof index) {
+      case 'bigint':
+        printValue = `${index}n`
+        break
+      case 'function':
+        printValue = '() => {}'
+        break
+      default:
+        printValue = JSON.stringify(index)
+    }
+    t.ok(err instanceof Error, `throws error when type ${printValue} is being passed`)
+    t.equal(err.message, 'window should be an integer', `error message is correct for ${printValue}`)
+  }
+})
+
 test('window.send', async (t) => {
   const newWindow = await application.createWindow({ index: counter, path: 'index_send_event.html' })
   const currentWindow = await application.getCurrentWindow()
@@ -508,6 +536,19 @@ test('window.send from another window', async (t) => {
   t.ok(err instanceof Error, 'send from a new window throws')
   t.equal(err.message, 'window.send can only be used from the current window', 'send from a non-current window throws')
   newWindow.close()
+  counter++
+})
+
+test('window.send to both window and backend', async (t) => {
+  const currentWindow = await application.getCurrentWindow()
+  const value = { firstname: 'Morty', secondname: 'Sanchez' }
+  let err
+  try {
+    await currentWindow.send({ event: 'character', value, window: 999, backend: true })
+  } catch (e) {
+    err = e
+  }
+  t.equal(err.message, 'backend option cannot be used together with window option', 'send to both window and backend throws')
   counter++
 })
 

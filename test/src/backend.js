@@ -1,6 +1,7 @@
 import { test } from 'socket:test'
 import backend from 'socket:backend'
 import process from 'socket:process'
+import application from 'socket:application'
 
 if (!['android', 'ios'].includes(process.platform)) {
   test('backend.open()', async (t) => {
@@ -21,7 +22,7 @@ if (!['android', 'ios'].includes(process.platform)) {
     const [successOpen, backendReady, backendSendData] = await Promise.all([successOpenPromise, backendReadyPromise, backenSendDataPromise])
     t.ok(successOpen, 'does not emit a process-error event')
     t.ok(backendReady, 'can send events to window 0')
-    t.deepEqual(backendSendData, { character: { firstname: 'Morty', secondname: 'Smith' } }, 'can send events with data')
+    t.deepEqual(backendSendData, { firstname: 'Morty', secondname: 'Smith' }, 'can send events with data')
   })
 
   test('backend.open() again', async (t) => {
@@ -44,12 +45,12 @@ if (!['android', 'ios'].includes(process.platform)) {
     t.ok(doesRestart, 'emits a backend:ready event')
   })
 
-  test('backend.sendToProcess()', async (t) => {
-    const sendResult = await backend.sendToProcess({ firstname: 'Morty', secondname: 'Smith' })
-    // TODO: what is the correct result?
-    t.ok(sendResult.err == null, 'returns correct result')
-    const character = await new Promise(resolve => window.addEventListener('character.backend', ({ detail }) => resolve(detail), { once: true }))
-    t.deepEqual(character, { character: { firstname: 'Summer', secondname: 'Smith' } }, 'send data to process')
+  test('window.send to backend', async (t) => {
+    const currentWindow = await application.getCurrentWindow()
+    const value = { firstname: 'Rick', secondname: 'Sanchez' }
+    await currentWindow.send({ event: 'character', value, backend: true })
+    const result = await new Promise(resolve => window.addEventListener('character.backend', ({ detail }) => resolve(detail), { once: true }))
+    t.deepEqual(result, value, 'send to backend and back succeeds')
   })
 
   test('backend.close()', async (t) => {
