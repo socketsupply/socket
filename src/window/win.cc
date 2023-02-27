@@ -784,6 +784,7 @@ namespace SSC {
                         args->get_Request(&req);
                         req->get_Uri(&req_uri);
                         uri_s = WStringToString(req_uri);
+                        CoTaskMemFree(req_uri);
 
                         // Only handle ipc: requests.
                         if (uri_s.compare(0, 4, "ipc:") != 0) {
@@ -791,7 +792,8 @@ namespace SSC {
                         }
 
                         req->get_Method(&method);
-                        method_s = WStringToString(method);
+                        method_s = WStringToString(method);                        
+                        CoTaskMemFree(method);
 
                         // Handle CORS preflight request.
                         if (method_s.compare("OPTIONS") == 0) {
@@ -807,7 +809,6 @@ namespace SSC {
                           );
                           args->put_Response(res);
 
-                          CoTaskMemFree(method);
                           return S_OK;
                         }
 
@@ -907,9 +908,6 @@ namespace SSC {
                           deferral->Complete();
                         }
 
-                        CoTaskMemFree(req_uri);
-                        CoTaskMemFree(method);
-
                         return S_OK;
                       }
                     ).Get(),
@@ -946,10 +944,11 @@ namespace SSC {
                   webview->add_WebMessageReceived(
                     Microsoft::WRL::Callback<IRecHandler>([&](ICoreWebView2* webview, IArgs* args) -> HRESULT {
                       LPWSTR messageRaw;
-                      args->TryGetWebMessageAsString(&messageRaw);
+                      args->TryGetWebMessageAsString(&messageRaw);                      
+                      SSC::WString message_w(messageRaw);
+                      CoTaskMemFree(messageRaw);
                       if (onMessage != nullptr) {
-                        SSC::WString message_w(messageRaw);
-                        SSC::String message = SSC::WStringToString(messageRaw);
+                        SSC::String message = SSC::WStringToString(message_w);
                         auto msg = IPC::Message{message};
                         Window* w = reinterpret_cast<Window*>(GetWindowLongPtr((HWND)window, GWLP_USERDATA));
                         ICoreWebView2_2* webview2 = nullptr;
@@ -994,7 +993,6 @@ namespace SSC {
                         }
                       }
 
-                      CoTaskMemFree(messageRaw);
                       return S_OK;
                     }).Get(),
                     &tokenMessage
