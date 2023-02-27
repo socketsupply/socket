@@ -97,14 +97,16 @@ export function toString (object) {
   return Object.prototype.toString(object)
 }
 
-export function toBuffer (object) {
+export function toBuffer (object, encoding) {
   if (Buffer.isBuffer(object)) {
     return object
   } else if (isTypedArray(object)) {
     return Buffer.from(object.buffer)
+  } else if (typeof object?.toBuffer === 'function') {
+    return toBuffer(object.toBuffer(), encoding)
   }
 
-  return Buffer.from(object)
+  return Buffer.from(object, encoding)
 }
 
 export function toProperCase (string) {
@@ -295,7 +297,8 @@ export function inspect (value, options) {
           value?.[kSocketCustomInspect] !== inspect
         )
       ) {
-        const formatted = (value[kNodeCustomInspect] || value[kSocketCustomInspect])(
+        const formatted = (value[kNodeCustomInspect] || value[kSocketCustomInspect]).call(
+          value,
           depth,
           ctx,
           ctx.options,
@@ -740,6 +743,10 @@ const percentageRegex = /^(100(\.0+)?|[1-9]?\d(\.\d+)?)%$/
 
 export function isValidPercentageValue (input) {
   return percentageRegex.test(input)
+}
+
+export function compareBuffers (a, b) {
+  return toBuffer(a).compare(toBuffer(b))
 }
 
 export default exports
