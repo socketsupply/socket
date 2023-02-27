@@ -5,6 +5,7 @@
  * random bytes and hashing.
  */
 
+import { toBuffer } from './util.js'
 import { Buffer } from './buffer.js'
 import console from './console.js'
 
@@ -13,7 +14,8 @@ import * as exports from './crypto.js'
 const sodium = {
   ready: new Promise((resolve) => {
     import('./crypto/sodium.js').then((module) => {
-      Object.assign(sodium, module.default)
+      Object.assign(sodium, module.default.libsodium)
+      resolve()
     })
   })
 }
@@ -37,9 +39,16 @@ export const webcrypto = globalThis.crypto?.webcrypto ?? globalThis.crypto
  * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/Crypto/getRandomValues}
  * @return {TypedArray}
  */
-export function getRandomValues (...args) {
+export function getRandomValues (buffer, ...args) {
   if (typeof webcrypto?.getRandomValues === 'function') {
-    return webcrypto?.getRandomValues(...args)
+    return webcrypto?.getRandomValues(buffer, ...args)
+  }
+
+  if (sodium.libsodium.randombytes_buf) {
+    const input = toBuffer(sodium.libsodium.randombytes_buf(buffer.byteLength))
+    const output = toBuffer(buffer)
+    input.copy(output)
+    return buffer
   }
 
   console.warn('Missing implementation for window.crypto.getRandomValues()')
@@ -89,7 +98,10 @@ export function randomBytes (size) {
 
   do {
     const length = size > RANDOM_BYTES_QUOTA ? RANDOM_BYTES_QUOTA : size
-    const bytes = getRandomValues(new Int8Array(length))
+    let bytes = getRandomValues(new Int8Array(length))
+    if (!bytes) {
+      bytes = sodium.libsodium.randombytes_buf(length)
+    }
     buffers.push(Buffer.from(bytes))
     size = Math.max(0, size - RANDOM_BYTES_QUOTA)
   } while (size > 0)
