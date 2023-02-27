@@ -154,7 +154,9 @@ void signalHandler (int signal) {
     auto pid = appProcess->getPID();
     appProcess->kill(pid);
   } else if (appPid > 0) {
+  #if !defined(_WIN32)
     kill(appPid, signal);
+  #endif
     appPid = 0;
   } else {
     exit(signal);
