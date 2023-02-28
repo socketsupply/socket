@@ -407,7 +407,7 @@ MAIN {
   // main thread.
   //
   auto onMessage = [&](auto out) {
-    // debug("onMessage %s", out.c_str());
+    debug("onMessage %s", out.c_str());
     IPC::Message message(out);
 
     auto window = windowManager.getWindow(message.index);
