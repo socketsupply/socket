@@ -113,6 +113,8 @@ jobs:
     name: Android (macOS)
     runs-on: macos-latest
     timeout-minutes: 60
+    # remove this line if you want to test the Android build on macOS
+    if: ${{ false }}
 
     steps:
     - uses: actions/checkout@v3
@@ -187,12 +189,14 @@ jobs:
     name: Android (Linux)
     runs-on: ubuntu-22.04
     timeout-minutes: 60
+    # remove this line if you want to test the Android build on Linux
+    if: ${{ false }}
 
     steps:
     - uses: actions/checkout@v3
 
     - name: Set up JDK 18
-      uses: actions/setup-java@v3
+      uses: actions/setup-java@v3.9.0
       with:
         distribution: 'zulu'
         java-version: 18
