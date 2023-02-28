@@ -573,19 +573,23 @@ function _compile_libuv {
         quiet make install
       fi
     else
-      local config="Release"
-      if [[ ! -z "$DEBUG" ]]; then
-        config="Debug"
-      fi
-      cd "$STAGING_DIR/build/"
-      cmake .. -DBUILD_TESTING=OFF
-      cd $STAGING_DIR
-      cmake --build $STAGING_DIR/build/ --config $config
-      mkdir -p $BUILD_DIR/$target-$platform/lib
-      echo "cp -up $STAGING_DIR/build/config/*.lib $BUILD_DIR/$target-$platform/lib"
-      cp -up $STAGING_DIR/build/$config/*.lib $BUILD_DIR/$target-$platform/lib
-      if [ $config == "Debug" ]; then
-        cp -up $STAGING_DIR/build/$config/*.pdb $BUILD_DIR/$target-$platform/lib
+      if test -f "$BUILD_DIR/$target-$platform/lib/uv_a.lib"; then
+        return
+      else
+        local config="Release"
+        if [[ ! -z "$DEBUG" ]]; then
+          config="Debug"
+        fi
+        cd "$STAGING_DIR/build/"
+        cmake .. -DBUILD_TESTING=OFF
+        cd $STAGING_DIR
+        cmake --build $STAGING_DIR/build/ --config $config
+        mkdir -p $BUILD_DIR/$target-$platform/lib
+        echo "cp -up $STAGING_DIR/build/config/*.lib $BUILD_DIR/$target-$platform/lib"
+        cp -up $STAGING_DIR/build/$config/*.lib $BUILD_DIR/$target-$platform/lib
+        if [ $config == "Debug" ]; then
+          cp -up $STAGING_DIR/build/$config/*.pdb $BUILD_DIR/$target-$platform/lib
+        fi
       fi
     fi
 

@@ -195,8 +195,13 @@ function main () {
   fi
 
   local build_static=0
+  local static_library_mtime=$(stat_mtime "$static_library")
   for source in "${objects[@]}"; do
-    if (( force )) || ! test -f "$static_library" || (( $(stat_mtime "$source") > $(stat_mtime "$static_library") )); then
+    if ! test -f $source; then
+      echo "$source not built.."
+      exit 1
+    fi
+    if (( force )) || ! test -f "$static_library" || (( $(stat_mtime "$source") > $static_library_mtime )); then
       build_static=1
       break
     fi
