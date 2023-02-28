@@ -15,5 +15,4 @@ import './test-context.js' // this should be first
 // import './util.js'
 // import './fs.js'
 // import './window.js'
-// import './application.js'
-import './backend.js'
+import './application.js'
