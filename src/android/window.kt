@@ -52,9 +52,6 @@ open class Window (runtime: Runtime, activity: MainActivity) {
 
       var html = String(indexBytes).replace("<head>","""
         <head>
-          <script type="importmap">
-            ${String(importMapBytes)}
-          </script>
           <script type="module">
             ${source}
           </script>
