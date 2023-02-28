@@ -15,12 +15,26 @@
 #endif
 
 #ifndef debug
-static auto SSC_OS_LOG_DEBUG = os_log_create("debug", "socket.runtime");
 #if !defined(SSC_CLI)
+static os_log_t SSC_OS_LOG_DEBUG_BUNDLE = nullptr;
 // wrap `os_log*` functions for global debugger
 #define osdebug(format, fmt, ...) ({                                           \
+  if (!SSC_OS_LOG_DEBUG_BUNDLE) {                                              \
+    static auto userConfig = SSC::getUserConfig();                             \
+    static auto bundleIdentifier = userConfig["meta_bundle_identifier"];       \
+    SSC_OS_LOG_DEBUG_BUNDLE = os_log_create(                                   \
+      bundleIdentifier.c_str(),                                                \
+      "socket.runtime.debug"                                                   \
+    );                                                                         \
+  }                                                                            \
+                                                                               \
   auto string = [NSString stringWithFormat: @fmt, ##__VA_ARGS__];              \
-  os_log_with_type(SSC_OS_LOG_DEBUG, OS_LOG_TYPE_DEBUG, format, string);       \
+  os_log_with_type(                                                            \
+    SSC_OS_LOG_DEBUG_BUNDLE,                                                   \
+    OS_LOG_TYPE_ERROR,                                                         \
+    "%{public}s",                                                              \
+    string.UTF8String                                                          \
+  );                                                                           \
 })
 #else
 #define osdebug(...)
