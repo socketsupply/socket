@@ -96,6 +96,30 @@ open class WebViewClient (activity: WebViewActivity) : android.webkit.WebViewCli
         .authority("appassets.androidplatform.net")
         .path("/assets/socket/${path}")
         .build()
+
+      val moduleTemplate = """
+import module from '$url'
+export * from '$url'
+export default module
+      """
+
+      val stream = java.io.PipedOutputStream()
+      val response = android.webkit.WebResourceResponse(
+        "text/javascript",
+        "utf-8",
+        java.io.PipedInputStream(stream)
+      )
+
+      response.responseHeaders = mapOf(
+        "Access-Control-Allow-Origin" to "*",
+        "Access-Control-Allow-Headers" to "*",
+        "Access-Control-Allow-Methods" to "*"
+      )
+
+      val bytes = moduleTemplate.toByteArray()
+      stream.write(bytes, 0, bytes.size)
+      stream.close()
+      return response
     }
 
     val assetLoaderResponse = this.assetLoader.shouldInterceptRequest(url)
