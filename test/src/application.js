@@ -568,6 +568,32 @@ if (!['android', 'ios'].includes(process.platform)) {
     counter++
   })
 
+  test('window.send with empty event', async (t) => {
+    const currentWindow = await application.getCurrentWindow()
+    const value = { firstname: 'Morty', secondname: 'Sanchez' }
+    let err
+    try {
+      await currentWindow.send({ window: 0, value })
+    } catch (e) {
+      err = e
+    }
+    t.equal(err.message, 'event should be a non-empty string', 'send with empty event throws')
+    counter++
+  })
+
+  test('window.send to backend with empty event', async (t) => {
+    const currentWindow = await application.getCurrentWindow()
+    const value = { firstname: 'Morty', secondname: 'Sanchez' }
+    let err
+    try {
+      await currentWindow.send({ backend: true, value })
+    } catch (e) {
+      err = e
+    }
+    t.equal(err.message, 'event should be a non-empty string', 'send with empty event throws')
+    counter++
+  })
+
   //
   // Backend tests
   //

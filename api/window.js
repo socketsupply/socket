@@ -230,6 +230,9 @@ export class ApplicationWindow {
     if (options.backend === true && options.window != null) {
       throw new Error('backend option cannot be used together with window option')
     }
+    if (typeof options.event !== 'string' || options.event.length === 0) {
+      throw new Error('event should be a non-empty string')
+    }
     if (typeof options.value !== 'string') {
       options.value = JSON.stringify(options.value)
     }
@@ -237,7 +240,15 @@ export class ApplicationWindow {
     const value = typeof options.value === 'string' ? options.value : JSON.stringify(options.value)
 
     if (options.backend === true) {
-      return await ipc.send('process.write', options.value)
+      return await ipc.send('process.write', {
+        ...options,
+        index: this.#senderWindowIndex
+      })
+      // return await ipc.send('process.write', {
+      //   index: this.#senderWindowIndex,
+      //   event: options.event,
+      //   value: options.value
+      // })
     }
 
     return await ipc.send('window.send', {
