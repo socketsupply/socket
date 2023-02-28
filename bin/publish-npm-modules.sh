@@ -81,7 +81,7 @@ if (( !only_platforms || only_top_level )); then
   cp -rf "$root/npm/bin/ssc.js" "$SOCKET_HOME/packages/$package/bin/ssc.js"
   cp -f "$root/LICENSE.txt" "$SOCKET_HOME/packages/$package"
   cp -f "$root/README.md" "$SOCKET_HOME/packages/$package/README-RUNTIME.md"
-  cp -rf "$root/api"/* "$SOCKET_HOME/packages/$package"
+  cp -rf "$SOCKET_HOME/api"/* "$SOCKET_HOME/packages/$package"
 fi
 
 if (( !only_top_level )); then
@@ -126,7 +126,7 @@ if (( !only_top_level )); then
 
     if (( !dry_run )) ; then
       npm publish "${args[@]}" || exit $?
-    else
+    elif (( !do_global_link )); then
       # echo "# npm publish ${args[@]}"
       npm pack "${args[@]}" || exit $?
     fi
@@ -143,7 +143,7 @@ if (( !only_platforms || only_top_level )); then
 
   if (( !dry_run )); then
     npm publish "${args[@]}" || exit $?
-  else
+  elif (( !do_global_link )); then
     # echo "# npm publish ${args[@]}"
     npm pack "${args[@]}" || exit $?
   fi
