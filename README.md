@@ -20,20 +20,20 @@ Web Developers use `Socket Runtime` to create apps for any OS, desktop, or mobil
 
 ### 💡 Features
 
-* Local First, a full featured File system API & Bluetooth.
-* P2P & Cloud, built to support a new generation of apps that can connect directly to each other by providing a high performance UDP API.
+* Local First, a full-featured File system API & Bluetooth.
+* P2P & Cloud, built to support a new generation of apps that can connect directly to each other by providing a high-performance UDP API.
 * Use any backend, business logic can be written in any language, Python, Rust, Node.js, etc. The backend is even completely optional.
-* Use any frontend, you can use your favorite front end framework to create your UIs: React, Svelte, Vue and more.
-* Maintainable, zero dependencies and a smaller code base than any other competing project.
+* Use any frontend, you can use your favorite frontend framework to create your UIs: React, Svelte, Vue and more.
+* Maintainable, zero dependencies, and a smaller code base than any other competing project.
 * Lean & Fast, uses a smaller memory footprint and creates smaller binaries than any other competing project.
 
 ### 🔑 FAQ
 
-Check the FAQ's in our [Website](https://sockets.sh/) to learn more.
+Check the FAQs on our [Website](https://sockets.sh/) to learn more.
 
 ### 🧱 Building your first Socket app !
 
-`Create Socket App` is similar to React's `Create React App`, we provides a few basic boilerplates and some strong opinions so you can get coding on a production-quality app as quickly as possible.  
+`Create Socket App` is similar to React's `Create React App`, we provide a few basic boilerplates and some strong opinions so you can get coding on a production-quality app as quickly as possible.  
 Please check [create-socket-app Repo](https://github.com/socketsupply/create-socket-app) to get started and to learn more.  
 You can also check our `Examples` in the [Examples Repo](https://github.com/socketsupply/socket-examples).  
 
@@ -41,18 +41,18 @@ You can also check our `Examples` in the [Examples Repo](https://github.com/sock
 ### 📚 Documentation
 
 The full documentation for `Socket Runtime` can be found on our [Website](https://sockets.sh/)  
-The `Socket Runtime` documentation covers Socket APIs, includes examples, multiple guides (`Apple`,`Desktop`, and `Mobile`), `P2P` documentation and more.
+The `Socket Runtime` documentation covers Socket APIs, includes examples, multiple guides (`Apple`, `Desktop`, and `Mobile`), `P2P` documentation, and more.
 
 
 ### 🧪 Testing
 
 `Socket` provides a built-in `test runner` similar to `node:test` which outputs the test results in [TAP](https://testanything.org/) format.
- You can also check : [`test/`](test/) for the unit and integration test suite.
+ You can also check: [`test/`](test/) for the unit and integration test suite.
 
 ### 🙏 Contributing
 
 Please stop by [Discord](https://discord.com/invite/YPV32gKCsH) and ask the team about your issue and if someone is already working on it.  
-Please connect with any current project contributors : [@heapwolf][0], [@jwerle][1], or [@chicoxyzzy][2] if you want to contribute to the `Socket Runtime` project itself.
+Please connect with any current project contributors: [@heapwolf][0], [@jwerle][1], or [@chicoxyzzy][2] if you want to contribute to the `Socket Runtime` project itself.
 
 
 
