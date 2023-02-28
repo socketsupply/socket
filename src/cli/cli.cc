@@ -282,12 +282,15 @@ int runApp (const fs::path& path, const String& args, bool headless) {
       //
       // We can build the predicate query string manually, instead.
       auto queryStream = StringStream {};
-      queryStream << "category == 'socket.runtime.desktop' AND ";
-      queryStream << "processIdentifier == ";
-      queryStream << std::to_string(app.processIdentifier);
-      queryStream << " AND ";
-      queryStream << "subsystem == '";
-      queryStream << bundle.bundleIdentifier.UTF8String << "'";
+      auto pid = std::to_string(app.processIdentifier);
+      auto bid = bundle.bundleIdentifier.UTF8String;
+      queryStream
+        << "("
+        << "  category == 'socket.runtime.desktop' OR "
+        << "  category == 'socket.runtime.debug'"
+        << ") AND "
+        << "processIdentifier == " << pid << " AND "
+        << "subsystem == '" << bid << "'";
       // log store query and predicate for filtering logs based on the currently
       // running application that was just launched and those of a subsystem
       // directly related to the application's bundle identifier which allows us
