@@ -304,4 +304,23 @@ export const version = primordials.version
 export const debug = !!globalThis.__args.debug
 export const config = globalThis.__args.config
 
+export const backend = {
+  /**
+   * @param {object} opts - an options object
+   * @param {boolean} [opts.force = false] - whether to force the existing process to close
+   * @return {Promise<ipc.Result>}
+   */
+  async open (opts = {}) {
+    opts.force ??= false
+    return await ipc.send('process.open', opts)
+  },
+
+  /**
+   * @return {Promise<ipc.Result>}
+   */
+  async close () {
+    return await ipc.send('process.kill')
+  }
+}
+
 export default exports
