@@ -1363,16 +1363,23 @@ static void registerSchemeHandler (Router *router) {
     components.scheme = @"file";
     components.host = @"";
 
+    auto path = String(components.path.UTF8String);
+    auto ext = String(
+      path.ends_with(".js")
+        ? ""
+        : ".js"
+    );
+
   #if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
     components.path = [[[NSBundle mainBundle] resourcePath]
       stringByAppendingPathComponent: [NSString
-        stringWithFormat: @"/ui/socket/%@.js", components.path
+        stringWithFormat: @"/ui/socket/%s%s", path.c_str(), ext.c_str()
       ]
     ];
   #else
     components.path = [[[NSBundle mainBundle] resourcePath]
       stringByAppendingPathComponent: [NSString
-        stringWithFormat: @"/socket/%@.js", components.path
+        stringWithFormat: @"/socket/%s%s", path.c_str(), ext.c_str()
       ]
     ];
   #endif
