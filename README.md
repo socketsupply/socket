@@ -5,7 +5,11 @@
 <h1 align="center">Socket Runtime</h1>
                                              
 <h2 align="center">⚡Write once, run anywhere, connect everyone⚡</h2>  
-
+<p align="center">
+<a href="https://socketsupply.co/"><img src="https://img.shields.io/badge/Socket%20Supply-Website-red?style=plastic&logo=Website"></a>
+<a href="https://www.linkedin.com/company/socketsupply/mycompany/"><img src="https://img.shields.io/badge/LinkedIn-blue?style=flat&logo=linkedin&labelColor=blue"></a>
+<a href="https://twitter.com/socketsupply"><img alt="Twitter Follow" src="https://img.shields.io/twitter/follow/socketsupply?style=social"></a>
+</p>
 
   
   
