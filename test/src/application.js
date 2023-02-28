@@ -111,7 +111,7 @@ if (!['android', 'ios'].includes(process.platform)) {
     t.equal(err.message, 'Path and index are required options', 'error message is correct')
     t.ok(!(dummyWindow instanceof ApplicationWindow), 'does not return an ApplicationWindow instance')
   })
-  
+
   test('application.createWindow with invalid path', async (t) => {
     let err
     let dummyWindow
@@ -125,7 +125,7 @@ if (!['android', 'ios'].includes(process.platform)) {
     t.ok(err.message.endsWith('invalid.path'), 'error shows correct path')
     t.ok(!(dummyWindow instanceof ApplicationWindow), 'does not return an ApplicationWindow instance')
   })
-  
+
   test('application.createWindow with non-existent path', async (t) => {
     let err
     let dummyWindow
@@ -139,7 +139,7 @@ if (!['android', 'ios'].includes(process.platform)) {
     t.ok(err.message.endsWith('invalid.html'), 'error shows correct path')
     t.ok(!(dummyWindow instanceof ApplicationWindow), 'does not return an ApplicationWindow instance')
   })
-  
+
   test('application.createWindow with relative path', async (t) => {
     let err
     let dummyWindow
@@ -153,7 +153,7 @@ if (!['android', 'ios'].includes(process.platform)) {
     t.ok(err.message.endsWith('invalid.html'), 'error shows correct path')
     t.ok(!(dummyWindow instanceof ApplicationWindow), 'does not return an ApplicationWindow instance')
   })
-  
+
   test('application.createWindow with existing index', async (t) => {
     let err
     let dummyWindow
@@ -162,12 +162,12 @@ if (!['android', 'ios'].includes(process.platform)) {
     } catch (e) {
       err = e
     }
-  
+
     t.ok(err instanceof Error, 'throws error when index is already used')
     t.equal(err.message, 'Error: Window with index 0 already exists', 'error message is correct')
     t.ok(!(dummyWindow instanceof ApplicationWindow), 'does not return an ApplicationWindow instance')
   })
-  
+
   test('application.createWindow with invalid dimensions', async (t) => {
     // passing Symbol() will throw on encodeURIComponent
     const sizes = [-1, '42', '-1%', '1.5px', '100.5%', 1n, {}, [], () => {}, true, false]
@@ -198,7 +198,7 @@ if (!['android', 'ios'].includes(process.platform)) {
       }
     }
   })
-  
+
   test('application.getWindow with wrong options', async (t) => {
     // passing Symbol() will throw on encodeURIComponent`
     const options = [-1, 3.14, NaN, Infinity, -Infinity, 'IDDQD', 1n, {}, [], () => {}, true, false]
@@ -226,7 +226,7 @@ if (!['android', 'ios'].includes(process.platform)) {
       t.ok(!(dummyWindow instanceof ApplicationWindow), 'does not return an ApplicationWindow instance')
     }
   })
-  
+
   test('application.getWindows with wrong options', async (t) => {
     // passing Symbol() will throw on encodeURIComponent`
     const options = [-1, 3.14, NaN, Infinity, -Infinity, 'IDDQD', 1n, {}, [], () => {}, true, false]
@@ -254,7 +254,7 @@ if (!['android', 'ios'].includes(process.platform)) {
       t.equal(windows, undefined, 'does not return an ApplicationWindow instance')
     }
   })
-  
+
   test('application.getWindows with non-array', async (t) => {
     // passing Symbol() will throw on encodeURIComponent`
     const options = [-1, 3.14, NaN, Infinity, -Infinity, 'IDDQD', 1n, {}, () => {}, true, false]
@@ -282,13 +282,13 @@ if (!['android', 'ios'].includes(process.platform)) {
       t.equal(windows, undefined, 'does not return an ApplicationWindow instance')
     }
   })
-  
+
   test('application.getWindow with valid index', async (t) => {
     const mainWindow = await application.getWindow(0)
     t.ok(mainWindow instanceof ApplicationWindow, 'returns an ApplicationWindow instance')
     t.equal(mainWindow.index, 0, 'window index is correct')
   })
-  
+
   test('application.getWindows with valid indexes', async (t) => {
     const newWindow = await application.createWindow({ index: counter, path: 'index_no_js.html' })
     counter++
@@ -301,7 +301,7 @@ if (!['android', 'ios'].includes(process.platform)) {
     t.equal(windows[newWindow.index].index, newWindow.index, 'window index is correct')
     newWindow.close()
   })
-  
+
   test('application.getWindows without params', async (t) => {
     const newWindow = await application.createWindow({ index: counter, path: 'index_no_js.html' })
     counter++
@@ -314,7 +314,7 @@ if (!['android', 'ios'].includes(process.platform)) {
     t.equal(windows[newWindow.index].index, newWindow.index, 'window index is correct')
     newWindow.close()
   })
-  
+
   test('application.getCurrentWindow', async (t) => {
     const mainWindow = await application.getCurrentWindow()
     t.ok(mainWindow instanceof ApplicationWindow, 'returns an ApplicationWindow instance')
@@ -324,17 +324,17 @@ if (!['android', 'ios'].includes(process.platform)) {
     const mainWindowStatus = mainWindow.getStatus()
     t.equal(mainWindowStatus, ApplicationWindow.constants.WINDOW_SHOWN, 'status is correct')
   })
-  
+
   // TODO(@chicoxyzzy): neither kill nor exit work so I use the counter workaround
   let counter = 1
-  
+
   test('window.close', async (t) => {
     const newWindow = await application.createWindow({ index: counter, path: 'index_no_js.html' })
     counter++
     const { status } = await newWindow.close()
     t.equal(status, ApplicationWindow.constants.WINDOW_CLOSED, 'window is closed')
   })
-  
+
   test('new window have the correct size when sizes are provided', async (t) => {
     const newWindow = await application.createWindow({
       index: counter,
@@ -351,7 +351,7 @@ if (!['android', 'ios'].includes(process.platform)) {
     // TODO(@chicoxyzzy): await newWindow.kill()
     await newWindow.close()
   })
-  
+
   test('new window have the correct size when sizes are provided in percent', async (t) => {
     const newWindow = await application.createWindow({
       index: counter,
@@ -367,7 +367,7 @@ if (!['android', 'ios'].includes(process.platform)) {
     // TODO(@chicoxyzzy): await newWindow.kill()
     await newWindow.close()
   })
-  
+
   test('new window inherts the size of the main window when sizes are not provided', async (t) => {
     const newWindow = await application.createWindow({ index: counter, path: 'index_no_js.html' })
     t.equal(newWindow.index, counter, 'new window index is correct')
@@ -379,14 +379,14 @@ if (!['android', 'ios'].includes(process.platform)) {
     // TODO(@chicoxyzzy): await newWindow.kill()
     await newWindow.close()
   })
-  
+
   test('window.setTitle', async (t) => {
     const mainWindow = await application.getCurrentWindow()
     const { title } = await mainWindow.setTitle('👋')
     t.equal(title, '👋', 'correct title is returned')
     t.equal(mainWindow.getTitle(), '👋', 'window options are updated')
   })
-  
+
   test('window.setSize in pixels', async (t) => {
     const mainWindow = await application.getCurrentWindow()
     const { width, height } = await mainWindow.setSize({ width: 800, height: 600 })
@@ -395,7 +395,7 @@ if (!['android', 'ios'].includes(process.platform)) {
     t.equal(mainWindow.getSize().width, 800, 'window options are updated')
     t.equal(mainWindow.getSize().height, 600, 'window options are updated')
   })
-  
+
   test('window.setSize in percent', async (t) => {
     const mainWindow = await application.getCurrentWindow()
     const { width, height } = await mainWindow.setSize({ width: '50%', height: '50%' })
@@ -404,7 +404,7 @@ if (!['android', 'ios'].includes(process.platform)) {
     t.equal(mainWindow.getSize().width, window.screen.width / 2, 'window options are updated')
     t.equal(mainWindow.getSize().height, Math.floor(window.screen.height / 2), 'window options are updated')
   })
-  
+
   test('window.hide / window.show', async (t) => {
     const mainWindow = await application.getCurrentWindow()
     const { status: statusHidden } = await mainWindow.hide()
@@ -414,7 +414,7 @@ if (!['android', 'ios'].includes(process.platform)) {
     t.equal(statusShown, ApplicationWindow.constants.WINDOW_SHOWN, 'correct status is returned on show')
     t.equal(mainWindow.getStatus(), ApplicationWindow.constants.WINDOW_SHOWN, 'window options are updated on show')
   })
-  
+
   // TODO(@chicoxyzzy): should navigation of main window throw? should navigation of current window throw? should we even allow navigation?
   test('window.navigate', async (t) => {
     const newWindow = await application.createWindow({ index: counter, path: 'index_no_js.html' })
@@ -424,7 +424,7 @@ if (!['android', 'ios'].includes(process.platform)) {
     t.equal(status, ApplicationWindow.constants.WINDOW_SHOWN, 'correct status is returned')
     newWindow.close()
   })
-  
+
   test('window.setBackgroundColor', async (t) => {
     const newWindow = await application.createWindow({ index: counter, path: 'index_no_js.html' })
     counter++
@@ -432,7 +432,7 @@ if (!['android', 'ios'].includes(process.platform)) {
     t.equal(index, newWindow.index, 'correct index is returned')
     newWindow.close()
   })
-  
+
   test('window.setContextMenu', async (t) => {
     const mainWindow = await application.getCurrentWindow()
     t.equal(typeof mainWindow.setContextMenu, 'function', 'setContextMenu is a function')
@@ -440,12 +440,12 @@ if (!['android', 'ios'].includes(process.platform)) {
     // const result = await mainWindow.setContextMenu({ Foo: '', Bar: '' })
     // t.deepEqual(result, { data: null }, 'setContextMenu succeeds')
   })
-  
+
   test('application.setSystemMenuItemEnabled', async (t) => {
     const result = await application.setSystemMenuItemEnabled({ indexMain: 0, indexSub: 0, enabled: true })
     t.equal(result.err, null, 'setSystemMenuItemEnabled succeeds')
   })
-  
+
   test('application.setSystemMenu', async (t) => {
     const result = await application.setSystemMenu({
       index: 0, value: `
@@ -468,29 +468,29 @@ if (!['android', 'ios'].includes(process.platform)) {
     })
     t.equal(result.err, null, 'setSystemMenuItemVisible succeeds')
   })
-  
+
   test('window.showInspector', async (t) => {
     const mainWindow = await application.getCurrentWindow()
     t.equal(typeof mainWindow.showInspector, 'function', 'showInspector is a function')
     // const result = await mainWindow.showInspector()
     // t.equal(result, true, 'returns true')
   })
-  
+
   test('window.showOpenFilePicker', async (t) => {
     const mainWindow = await application.getCurrentWindow()
     t.ok(mainWindow.showOpenFilePicker())
   })
-  
+
   test('window.showSaveFilePicker', async (t) => {
     const mainWindow = await application.getCurrentWindow()
     t.ok(mainWindow.showSaveFilePicker())
   })
-  
+
   test('window.showDirectoryFilePicker', async (t) => {
     const mainWindow = await application.getCurrentWindow()
     t.ok(mainWindow.showDirectoryFilePicker())
   })
-  
+
   test('window.send wrong window', async (t) => {
     const mainWindow = await application.getCurrentWindow()
     // passing Symbol() will throw on encodeURIComponent`
@@ -518,7 +518,7 @@ if (!['android', 'ios'].includes(process.platform)) {
       t.equal(err.message, 'window should be an integer', `error message is correct for ${printValue}`)
     }
   })
-  
+
   test('window.send', async (t) => {
     const newWindow = await application.createWindow({ index: counter, path: 'index_send_event.html' })
     const currentWindow = await application.getCurrentWindow()
@@ -534,7 +534,7 @@ if (!['android', 'ios'].includes(process.platform)) {
     newWindow.close()
     counter++
   })
-  
+
   test('window.send from another window', async (t) => {
     const newWindow = await application.createWindow({ index: counter, path: 'index_no_js.html' })
     const currentWindow = await application.getCurrentWindow()
@@ -552,7 +552,7 @@ if (!['android', 'ios'].includes(process.platform)) {
     newWindow.close()
     counter++
   })
-  
+
   test('window.send to both window and backend', async (t) => {
     const currentWindow = await application.getCurrentWindow()
     const value = { firstname: 'Morty', secondname: 'Sanchez' }
