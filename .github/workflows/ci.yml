@@ -73,6 +73,54 @@ jobs:
         CI: true
         NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
 
+  windows:
+    name: Windows
+    runs-on: windows-2022
+    timeout-minutes: 10
+
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        ref: ${{ github.event.inputs.tag }}
+    # The webfactory/ssh-agent module does not work on Windows anymore
+    # I do not recommend touching this SSH stuff, i spend two days
+    # tweaking it just to get it to work on windows -.-
+
+    - name: Configure SSH
+      run: Set-Service ssh-agent -StartupType Manual
+
+    - name: Start SSH
+      run: Start-Service ssh-agent
+
+    - name: Add SSH key
+      run: echo $env:SSH_PRIVATE_KEY | ssh-add -
+      env:
+        SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+
+    - name: Add github.com to known_hosts
+      run: |
+        mkdir ~/.ssh
+        ssh-keyscan github.com >> ~/.ssh/known_hosts
+
+    - name: build Socket Runtime
+      run: |
+        ./bin/install.ps1
+        echo "::add-path::$env:LOCALAPPDATA\Programs\socketsupply\bin"
+        echo "$env:LOCALAPPDATA\Programs\socketsupply\bin" >> $env:GITHUB_PATH
+      env:
+        ACTIONS_ALLOW_UNSECURE_COMMANDS: true
+
+    - name: Check if ssc has a correct version
+      run: |
+        ./bin/ci_version_check.ps1
+
+    - name: install an example app
+      run: |
+        npm install && cd test && npm install && ssc build -r --headless
+      env:
+        CI: true
+        NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
+
   ios:
     name: iOS (macOS)
     runs-on: macOS-12
@@ -267,52 +315,3 @@ jobs:
         CI: true
         CXX: g++-12
         NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
-
-  windows:
-    name: Windows
-    runs-on: windows-2022
-    timeout-minutes: 10
-
-    steps:
-    - uses: actions/checkout@v3
-      with:
-        ref: ${{ github.event.inputs.tag }}
-    # The webfactory/ssh-agent module does not work on Windows anymore
-    # I do not recommend touching this SSH stuff, i spend two days
-    # tweaking it just to get it to work on windows -.-
-
-    - name: Configure SSH
-      run: Set-Service ssh-agent -StartupType Manual
-
-    - name: Start SSH
-      run: Start-Service ssh-agent
-
-    - name: Add SSH key
-      run: echo $env:SSH_PRIVATE_KEY | ssh-add -
-      env:
-        SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-
-    - name: Add github.com to known_hosts
-      run: |
-        mkdir ~/.ssh
-        ssh-keyscan github.com >> ~/.ssh/known_hosts
-
-    - name: build Socket Runtime
-      run: |
-        ./bin/install.ps1
-        echo "::add-path::$env:LOCALAPPDATA\Programs\socketsupply\bin"
-        echo "$env:LOCALAPPDATA\Programs\socketsupply\bin" >> $env:GITHUB_PATH
-      env:
-        ACTIONS_ALLOW_UNSECURE_COMMANDS: true
-
-    - name: Check if ssc has a correct version
-      run: |
-        ./bin/ci_version_check.ps1
-
-    - name: install an example app
-      run: |
-        npm install && cd test && npm install && ssc build -r --headless
-      env:
-        CI: true
-        NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
-
