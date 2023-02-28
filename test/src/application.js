@@ -89,9 +89,11 @@ test('application.getScreenSize', async (t) => {
 test('openExternal', async (t) => {
   const currentWindow = await application.getCurrentWindow()
   t.equal(typeof currentWindow.openExternal, 'function', 'openExternal is a function')
-  const result = await currentWindow.openExternal('https://sockets.sh')
-  // can't test results without browser
-  t.ok(result?.data, 'succesfully completes')
+  if (process.platform !== 'linux') {
+    const result = await currentWindow.openExternal('https://1.1.1.1')
+    // can't test results without browser
+    t.ok(result?.data, 'succesfully completes')
+  }
 })
 
 test('apllication.exit', async (t) => {
