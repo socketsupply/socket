@@ -659,25 +659,31 @@ namespace SSC {
     if (oeResult != S_OK) {
       // UNREACHABLE - cannot continue
     }
-    auto ipcSchemeRegistration = Microsoft::WRL::Make<CoreWebView2CustomSchemeRegistration>(L"ipc");
-    oeResult = ipcSchemeRegistration->put_TreatAsSecure(TRUE);
-    if (oeResult != S_OK) {
-      // UNREACHABLE - cannot continue
-    }
-    oeResult = ipcSchemeRegistration->put_HasAuthorityComponent(TRUE);
-    if (oeResult != S_OK) {
-      // UNREACHABLE - cannot continue
-    }
+
+    const WCHAR* customSchemes[2] = { L"ipc", L"socket" };    
     const WCHAR* allowedIPCOrigin[3] = { L"http://*", L"https://*", L"file://*" };
-    oeResult = ipcSchemeRegistration->SetAllowedOrigins(3, allowedIPCOrigin);
-    if (oeResult != S_OK) {
-      // UNREACHABLE - cannot continue
-    }
-    ICoreWebView2CustomSchemeRegistration* schemeReg[1] = { ipcSchemeRegistration.Get() };
-    oeResult = optionsExperimental->SetCustomSchemeRegistrations(
-      1, static_cast<ICoreWebView2CustomSchemeRegistration**>(schemeReg));
-    if (oeResult != S_OK) {
-      // UNREACHABLE - cannot continue
+    for (int s = 0; s < 2; ++s)
+    {
+      std::wcout << "Registering " << customSchemes[s] << std::endl;
+      auto ipcSchemeRegistration = Microsoft::WRL::Make<CoreWebView2CustomSchemeRegistration>(customSchemes[s]);
+      oeResult = ipcSchemeRegistration->put_TreatAsSecure(TRUE);
+      if (oeResult != S_OK) {
+        // UNREACHABLE - cannot continue
+      }
+      oeResult = ipcSchemeRegistration->put_HasAuthorityComponent(TRUE);
+      if (oeResult != S_OK) {
+        // UNREACHABLE - cannot continue
+      }
+      oeResult = ipcSchemeRegistration->SetAllowedOrigins(3, allowedIPCOrigin);
+      if (oeResult != S_OK) {
+        // UNREACHABLE - cannot continue
+      }
+      ICoreWebView2CustomSchemeRegistration* schemeReg[1] = { ipcSchemeRegistration.Get() };
+      oeResult = optionsExperimental->SetCustomSchemeRegistrations(
+        1, static_cast<ICoreWebView2CustomSchemeRegistration**>(schemeReg));
+      if (oeResult != S_OK) {
+        // UNREACHABLE - cannot continue
+      }
     }
 
     auto init = [&]() -> HRESULT {
@@ -786,8 +792,18 @@ namespace SSC {
                         uri_s = WStringToString(req_uri);
                         CoTaskMemFree(req_uri);
 
+                        bool ipc_scheme = false;
+                        bool socket_scheme = false;
+                        bool handled = false;
+
+                        std::cout << "handle uri: " << uri_s << std::endl;
+
                         // Only handle ipc: requests.
-                        if (uri_s.compare(0, 4, "ipc:") != 0) {
+                        if (uri_s.compare(0, 4, "ipc:") == 0) {
+                          ipc_scheme = true;
+                        } else if (uri_s.compare(0, 7, "socket:") == 0) {
+                          socket_scheme = true;
+                        } else {
                           return S_OK;
                         }
 
@@ -821,81 +837,137 @@ namespace SSC {
                         char* body_ptr = nullptr;
                         size_t body_length = 0;
 
-                        if (method_s.compare("POST") == 0 || method_s.compare("PUT") == 0) {
-                          IStream* body_data;
-                          DWORD actual;
-                          HRESULT r;
-                          auto msg = IPC::Message{uri_s};
-                          // TODO(trevnorris): Make sure index and seq are set.
-                          if (w->bridge->router.hasMappedBuffer(msg.index, msg.seq)) {
-                            IPC::MessageBuffer buf = w->bridge->router.getMappedBuffer(msg.index, msg.seq);
-                            ICoreWebView2ExperimentalSharedBuffer* shared_buf = buf.shared_buf;
-                            size_t size = buf.size;
-                            char* data = new char[size];
-                            w->bridge->router.removeMappedBuffer(msg.index, msg.seq);
-                            shared_buf->OpenStream(&body_data);
-                            r = body_data->Read(data, size, &actual);
-                            if (r == S_OK || r == S_FALSE) {
-                              body_ptr = data;
-                              body_length = actual;
-                            } else {
-                              delete[] data;
+                        if (ipc_scheme) {
+                          if (method_s.compare("POST") == 0 || method_s.compare("PUT") == 0) {
+                            IStream* body_data;
+                            DWORD actual;
+                            HRESULT r;
+                            auto msg = IPC::Message{uri_s};
+                            // TODO(trevnorris): Make sure index and seq are set.
+                            if (w->bridge->router.hasMappedBuffer(msg.index, msg.seq)) {
+                              IPC::MessageBuffer buf = w->bridge->router.getMappedBuffer(msg.index, msg.seq);
+                              ICoreWebView2ExperimentalSharedBuffer* shared_buf = buf.shared_buf;
+                              size_t size = buf.size;
+                              char* data = new char[size];
+                              w->bridge->router.removeMappedBuffer(msg.index, msg.seq);
+                              shared_buf->OpenStream(&body_data);
+                              r = body_data->Read(data, size, &actual);
+                              if (r == S_OK || r == S_FALSE) {
+                                body_ptr = data;
+                                body_length = actual;
+                              } else {
+                                delete[] data;
+                              }
+                              shared_buf->Close();
                             }
-                            shared_buf->Close();
+                          } else if (method_s.compare("GET") != 0) {
+                            // UNREACHABLE
                           }
-                        } else if (method_s.compare("GET") != 0) {
-                          // UNREACHABLE
+
+                          handled = w->bridge->route(uri_s, body_ptr, body_length, [&, args, deferral, env, body_ptr](auto result) {
+                            String headers;
+                            char* body;
+                            size_t length;
+
+                            if (body_ptr != nullptr) {
+                              delete[] body_ptr;
+                            }
+
+                            if (result.post.body != nullptr) {
+                              length = result.post.length;
+                              body = new char[length];
+                              memcpy(body, result.post.body, length);
+                              headers = "Content-Type: application/octet-stream\n";
+                            } else {
+                              length = result.str().size();
+                              body = new char[length];
+                              memcpy(body, result.str().c_str(), length);
+                              headers = "Content-Type: application/json\n";
+                            }
+
+                            headers += "Connection: keep-alive\n";
+                            headers += "Access-Control-Allow-Headers: *\n";
+                            headers += "Access-Control-Allow-Origin: *\n";
+                            headers += "Content-Length: ";
+                            headers += std::to_string(length);
+                            headers += "\n";
+
+                            // Completing the response in the call to dispatch because the
+                            // put_Response() must be called from the same thread that made
+                            // the request. This assumes that the request was made from the
+                            // main thread, since that's where dispatch() will call its cb.
+                            app.dispatch([&, body, length, headers, args, deferral, env] {
+                              ICoreWebView2WebResourceResponse* res = nullptr;
+                              IStream* bytes = SHCreateMemStream((const BYTE*)body, length);
+                              env->CreateWebResourceResponse(
+                                bytes,
+                                200,
+                                L"OK",
+                                StringToWString(headers).c_str(),
+                                &res
+                              );
+                              args->put_Response(res);
+                              deferral->Complete();
+                              delete[] body;
+                            });
+                          });
                         }
 
-                        auto r = w->bridge->route(uri_s, body_ptr, body_length, [&, args, deferral, env, body_ptr](auto result) {
-                          String headers;
-                          char* body;
-                          size_t length;
+                        if (socket_scheme) {
+                          if (method_s.compare("GET")) {
 
-                          if (body_ptr != nullptr) {
-                            delete[] body_ptr;
+                            if (uri_s.starts_with("socket:///")) {
+                              uri_s = uri_s.substr(10);
+                            } else if (uri_s.starts_with("socket://")) {
+                              uri_s = uri_s.substr(9);
+                            } else if (uri_s.starts_with("socket:")) {
+                              uri_s = uri_s.substr(7);
+                            }
+
+                            auto path = fs::path(fs::current_path()) / uri_s;
+
+                            if (!fs::exists(fs::status(path))) {
+                              auto ext = uri_s.ends_with(".js") ? "" : ".js";
+                              path = fs::path(fs::current_path()) / "socket" / (uri_s + ext);
+                            }
+
+                            if (fs::exists(fs::status(path))) {
+                              String headers;
+                              char* body;
+                              size_t length;
+
+                              String module = readFile(path);
+                              length = module.size();
+                              body = new char[length];
+                              memcpy(body, module.c_str(), length);
+                              headers = "Content-Type: application/json\n";
+                              headers += "Connection: keep-alive\n";
+                              headers += "Access-Control-Allow-Headers: *\n";
+                              headers += "Access-Control-Allow-Origin: *\n";
+                              headers += "Content-Length: ";
+                              headers += std::to_string(length);
+                              headers += "\n";
+
+                              app.dispatch([&, body, length, headers, args, deferral, env] {
+                                ICoreWebView2WebResourceResponse* res = nullptr;
+                                IStream* bytes = SHCreateMemStream((const BYTE*)body, length);
+                                env->CreateWebResourceResponse(
+                                  bytes,
+                                  200,
+                                  L"OK",
+                                  StringToWString(headers).c_str(),
+                                  &res
+                                );
+                                args->put_Response(res);
+                                deferral->Complete();
+                                delete[] body;
+                              });
+                              handled = true;
+                            }
                           }
+                        }
 
-                          if (result.post.body != nullptr) {
-                            length = result.post.length;
-                            body = new char[length];
-                            memcpy(body, result.post.body, length);
-                            headers = "Content-Type: application/octet-stream\n";
-                          } else {
-                            length = result.str().size();
-                            body = new char[length];
-                            memcpy(body, result.str().c_str(), length);
-                            headers = "Content-Type: application/json\n";
-                          }
-
-                          headers += "Connection: keep-alive\n";
-                          headers += "Access-Control-Allow-Headers: *\n";
-                          headers += "Access-Control-Allow-Origin: *\n";
-                          headers += "Content-Length: ";
-                          headers += std::to_string(length);
-                          headers += "\n";
-
-                          // Completing the response in the call to dispatch because the
-                          // put_Response() must be called from the same thread that made
-                          // the request. This assumes that the request was made from the
-                          // main thread, since that's where dispatch() will call its cb.
-                          app.dispatch([&, body, length, headers, args, deferral, env] {
-                            ICoreWebView2WebResourceResponse* res = nullptr;
-                            IStream* bytes = SHCreateMemStream((const BYTE*)body, length);
-                            env->CreateWebResourceResponse(
-                              bytes,
-                              200,
-                              L"OK",
-                              StringToWString(headers).c_str(),
-                              &res
-                            );
-                            args->put_Response(res);
-                            deferral->Complete();
-                            delete[] body;
-                          });
-                        });
-
-                        if (!r) {
+                        if (!handled) {
                           ICoreWebView2WebResourceResponse* res = nullptr;
                           env->CreateWebResourceResponse(
                             nullptr,
