@@ -116,7 +116,7 @@ jobs:
 
     - name: install an example app
       run: |
-        npm install && cd test && npm install && ssc build -r --headless
+        npm install && npm test
       env:
         CI: true
         NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
