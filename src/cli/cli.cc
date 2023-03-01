@@ -1910,8 +1910,11 @@ int main (const int argc, const char* argv[]) {
         " -L\"" + prefix + "lib\""
       ;
 
+
+      // See install.sh for more info on windows debug builds and d suffix
       auto missing_assets = false;
-      if (flagDebugMode) {
+      auto debugBuild = getEnv("DEBUG").size() > 0;
+      if (debugBuild) {
         for (String libString : split(getEnv("WIN_DEBUG_LIBS"), ',')) {
           if (libString.size() > 0) {
             if (libString[0] == '\"' && libString[libString.size()-2] == '\"')
@@ -1929,11 +1932,11 @@ int main (const int argc, const char* argv[]) {
         }
       }
 
-      if (flagDebugMode) {
+      if (debugBuild) {
         flags += " -D_DEBUG";
       }
 
-      auto d = String(flagDebugMode ? "d" : "" );
+      auto d = String(debugBuild ? "d" : "" );
 
       flags += " -I" + prefixFile("include");
       flags += " -L" + prefixFile("lib" + d + "/" + platform.arch + "-desktop");
