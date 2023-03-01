@@ -8,12 +8,11 @@ const MAX_MESSAGE_KB = 512 * 1024
 //
 // Exported API
 //
-class API extends EventEmitter {
+class API {
   #buf = ''
+  #emitter = new EventEmitter()
 
   constructor () {
-    super()
-
     process.stdin.resume()
     process.stdin.setEncoding('utf8')
 
@@ -70,7 +69,7 @@ class API extends EventEmitter {
       throw new Error(`Unable to parse stdin message ${err.code} ${err.message.slice(0, 20)}`)
     }
   
-    this.emit(event, value)
+    this.#emitter.emit(event, value)
   }
 
   #handleMessage (data) {
@@ -140,6 +139,10 @@ class API extends EventEmitter {
 
   async heartbeat () {
     return await this.#write('ipc://heartbeat')
+  }
+
+  on (event, cb) {
+    this.#emitter.on(event, cb)
   }
 }
 
