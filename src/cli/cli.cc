@@ -1940,7 +1940,13 @@ int main (const int argc, const char* argv[]) {
 
       flags += " -I" + prefixFile("include");
       flags += " -L" + prefixFile("lib" + d + "/" + platform.arch + "-desktop");
-      files += prefixFile("objects/" + platform.arch + "-desktop/desktop/main" + d + ".o");
+      auto main_o = prefixFile("objects/" + platform.arch + "-desktop/desktop/main" + d + ".o");
+      if (!fs::exists(main_o)) {
+        log("Can't find main obj, unable to build: " + main_o);
+        missing_assets = true;        
+      } else {
+        files += main_o;
+      }
       files += prefixFile("src/init.cc");
       auto static_runtime = prefixFile("lib" + d + "/" + platform.arch + "-desktop/libsocket-runtime" + d + ".a");
       if (!fs::exists(static_runtime)) {
