@@ -446,7 +446,7 @@ function _install {
     echo "# copying objects to $SOCKET_HOME/objects/$arch-$platform"
     rm -rf "$SOCKET_HOME/objects/$arch-$platform"
     mkdir -p "$SOCKET_HOME/objects/$arch-$platform"
-    cp -rup "$BUILD_DIR/$arch-$platform/objects"/* "$SOCKET_HOME/objects/$arch-$platform"
+    cp -rfp "$BUILD_DIR/$arch-$platform/objects"/* "$SOCKET_HOME/objects/$arch-$platform"
   fi
 
   if test -d "$BUILD_DIR/lib$d"; then
