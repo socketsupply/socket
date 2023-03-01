@@ -206,7 +206,7 @@ function _build_cli {
     local output="${source/$src/$output_directory}"
     # For some reason cli causes issues when debug and release are in the same folder
     output="${output/.cc/$d.o}"
-    output="${output/\/cli\//\/cli$d\/}"
+    output="${output/cli/cli$d}"
     if (( force )) || ! test -f "$output" || (( $(stat_mtime "$source") > $(stat_mtime "$output") )); then
       sources+=("$source")
       outputs+=("$output")
