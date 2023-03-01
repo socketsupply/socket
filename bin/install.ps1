@@ -86,11 +86,6 @@ Function Install-Files {
   # install `.\build\lib\*`
   Copy-Item -Path "$WORKING_BUILD_PATH\lib\*" -Destination "$LIB_PATH" -Recurse -Force -Container
 
-  # Remove .pdb file if not debug build.
-  if (($debug -ne $true) -and  (Test-Path -Path "$LIB_PATH\uv_a.pdb" -PathType Leaf)) {
-    Remove-Item -Path "$LIB_PATH\uv_a.pdb"
-  }
-
   # install `.\build\bin\*`
   Copy-Item -Path "$WORKING_BUILD_PATH\bin\*" -Destination "$BIN_PATH"
 
