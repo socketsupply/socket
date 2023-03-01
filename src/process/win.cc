@@ -4,8 +4,30 @@
 #include <iostream>
 #include <stdexcept>
 #include <tlhelp32.h>
+#include <limits.h>
 
 namespace SSC {
+
+SSC::String FormatError(DWORD error, SSC::String source) {
+  SSC::StringStream message;
+  LPVOID lpMsgBuf;
+  LPVOID lpDisplayBuf;
+  FormatMessage(
+  FORMAT_MESSAGE_ALLOCATE_BUFFER | 
+  FORMAT_MESSAGE_FROM_SYSTEM |
+  FORMAT_MESSAGE_IGNORE_INSERTS,
+  NULL,
+  error,
+  MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+  (LPTSTR) &lpMsgBuf,
+  0, NULL );
+
+  message << "Error " << error << " in " << source << ": " <<  (LPTSTR)lpMsgBuf;
+  LocalFree(lpMsgBuf);
+  LocalFree(lpDisplayBuf);
+
+  return message.str();
+}
 
 const static SSC::StringStream initial;
 
@@ -179,14 +201,32 @@ Process::id_type Process::open(const SSC::String &command, const SSC::String &pa
     *stderr_fd = stderr_rd_p.detach();
   }
 
-  auto t = std::thread([this, &process_info]() {
-    WaitForSingleObject(process_info.hProcess, INFINITE);
-    DWORD exitCode;
-    GetExitCodeProcess(process_info.hProcess, &exitCode);
-    this->status = (int) exitCode;
-    this->closed = true;
-    on_exit(std::to_string(exitCode));
-  });
+  auto processHandle = process_info.hProcess;
+  auto t = std::thread([&](HANDLE _processHandle) {
+    DWORD exitCode = 0;
+    try {
+      WaitForSingleObject(_processHandle, INFINITE);
+
+      if (GetExitCodeProcess(_processHandle, &exitCode) == 0) {
+        std::cerr << FormatError(GetLastError(), "SSC::Process::open() GetExitCodeProcess()") << std::endl;
+        exitCode = -1;
+      }
+
+      if (this->closed)
+      {
+        std::cout << "Process killed. " << exitCode << std::endl;
+        return;
+      }
+
+      this->status = (exitCode <= UINT_MAX ? exitCode : WEXITSTATUS(exitCode));
+      this->closed = true;
+      if (this->on_exit != nullptr)
+        this->on_exit(std::to_string(this->status));
+    } catch (std::exception e) {
+      std::cerr << "SSC::Process thread exception: " << e.what() << std::endl;
+      this->closed = true;
+    }
+  }, processHandle);
 
   t.detach();
 
@@ -223,6 +263,8 @@ void Process::read() noexcept {
         auto parts = splitc(b, '\n');
 
         if (parts.size() > 1) {
+          std::lock_guard<std::mutex> lock(stdout_mutex);
+
           for (int i = 0; i < parts.size() - 1; i++) {
             ss << parts[i];
             SSC::String s(ss.str());
@@ -247,6 +289,7 @@ void Process::read() noexcept {
       for (;;) {
         BOOL bSuccess = ReadFile(*stderr_fd, static_cast<CHAR *>(buffer.get()), static_cast<DWORD>(config.buffer_size), &n, nullptr);
         if (!bSuccess || n == 0) break;
+        std::lock_guard<std::mutex> lock(stderr_mutex);
         read_stderr(SSC::String(buffer.get()));
       }
     });
@@ -334,6 +377,8 @@ void Process::kill(id_type id) noexcept {
   if (id == 0) {
     return;
   }
+
+  this->closed = true;
 
   HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
 

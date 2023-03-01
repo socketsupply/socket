@@ -610,16 +610,12 @@ namespace SSC {
   Window::Window (App& app, WindowOptions opts) : app(app), opts(opts) {
     app.isReady = false;
 
-    ScreenSize screen = this->getScreenSize();
-    auto height = opts.isHeightInPercent ? screen.height * opts.height / 100 : opts.height;
-    auto width = opts.isWidthInPercent ? screen.width * opts.width / 100 : opts.width;
-
     window = CreateWindow(
       TEXT("DesktopApp"), TEXT("Socket"),
       WS_OVERLAPPEDWINDOW,
       100000,
       100000,
-      width, height,
+      opts.width, opts.height,
       NULL, NULL,
       app.hInstance, NULL
     );
@@ -788,6 +784,7 @@ namespace SSC {
                         args->get_Request(&req);
                         req->get_Uri(&req_uri);
                         uri_s = WStringToString(req_uri);
+                        CoTaskMemFree(req_uri);
 
                         // Only handle ipc: requests.
                         if (uri_s.compare(0, 4, "ipc:") != 0) {
@@ -795,7 +792,8 @@ namespace SSC {
                         }
 
                         req->get_Method(&method);
-                        method_s = WStringToString(method);
+                        method_s = WStringToString(method);                        
+                        CoTaskMemFree(method);
 
                         // Handle CORS preflight request.
                         if (method_s.compare("OPTIONS") == 0) {
@@ -811,7 +809,6 @@ namespace SSC {
                           );
                           args->put_Response(res);
 
-                          CoTaskMemFree(method);
                           return S_OK;
                         }
 
@@ -821,8 +818,6 @@ namespace SSC {
                         ICoreWebView2Deferral* deferral;
                         HRESULT hr = args->GetDeferral(&deferral);
 
-                        constexpr size_t DATA_SIZE = 16384;
-                        char data[DATA_SIZE];
                         char* body_ptr = nullptr;
                         size_t body_length = 0;
 
@@ -836,12 +831,15 @@ namespace SSC {
                             IPC::MessageBuffer buf = w->bridge->router.getMappedBuffer(msg.index, msg.seq);
                             ICoreWebView2ExperimentalSharedBuffer* shared_buf = buf.shared_buf;
                             size_t size = buf.size;
+                            char* data = new char[size];
                             w->bridge->router.removeMappedBuffer(msg.index, msg.seq);
                             shared_buf->OpenStream(&body_data);
-                            r = body_data->Read(data, DATA_SIZE, &actual);
+                            r = body_data->Read(data, size, &actual);
                             if (r == S_OK || r == S_FALSE) {
                               body_ptr = data;
                               body_length = actual;
+                            } else {
+                              delete[] data;
                             }
                             shared_buf->Close();
                           }
@@ -849,10 +847,14 @@ namespace SSC {
                           // UNREACHABLE
                         }
 
-                        auto r = w->bridge->route(uri_s, body_ptr, body_length, [&, args, deferral, env](auto result) {
+                        auto r = w->bridge->route(uri_s, body_ptr, body_length, [&, args, deferral, env, body_ptr](auto result) {
                           String headers;
                           char* body;
                           size_t length;
+
+                          if (body_ptr != nullptr) {
+                            delete[] body_ptr;
+                          }
 
                           if (result.post.body != nullptr) {
                             length = result.post.length;
@@ -906,9 +908,6 @@ namespace SSC {
                           deferral->Complete();
                         }
 
-                        CoTaskMemFree(req_uri);
-                        CoTaskMemFree(method);
-
                         return S_OK;
                       }
                     ).Get(),
@@ -945,10 +944,11 @@ namespace SSC {
                   webview->add_WebMessageReceived(
                     Microsoft::WRL::Callback<IRecHandler>([&](ICoreWebView2* webview, IArgs* args) -> HRESULT {
                       LPWSTR messageRaw;
-                      args->TryGetWebMessageAsString(&messageRaw);
+                      args->TryGetWebMessageAsString(&messageRaw);                      
+                      SSC::WString message_w(messageRaw);
+                      CoTaskMemFree(messageRaw);
                       if (onMessage != nullptr) {
-                        SSC::WString message_w(messageRaw);
-                        SSC::String message = SSC::WStringToString(messageRaw);
+                        SSC::String message = SSC::WStringToString(message_w);
                         auto msg = IPC::Message{message};
                         Window* w = reinterpret_cast<Window*>(GetWindowLongPtr((HWND)window, GWLP_USERDATA));
                         ICoreWebView2_2* webview2 = nullptr;
@@ -993,7 +993,6 @@ namespace SSC {
                         }
                       }
 
-                      CoTaskMemFree(messageRaw);
                       return S_OK;
                     }).Get(),
                     &tokenMessage
@@ -1076,7 +1075,14 @@ namespace SSC {
   }
 
   void Window::exit (int code) {
-    if (this->onExit != nullptr) this->onExit(code);
+    if (this->onExit != nullptr) 
+    {
+      std::cerr << "WARNING: Window#" << index << " exiting with code " << code << std::endl;
+      this->onExit(code);
+    }
+    else {
+      std::cerr << "WARNING: Window#" << index << " window->onExit is null in Window::exit()" << std::endl;
+    }
   }
 
   void Window::close (int code) {
@@ -1084,11 +1090,11 @@ namespace SSC {
       this->exit(0);
       DestroyWindow(window);
     } else {
-      this->hide("");
+      this->hide();
     }
   }
 
-  void Window::show (const SSC::String& seq) {
+  void Window::show () {
     if (this->opts.headless == false) {
       ShowWindow(window, SW_SHOWNORMAL);
       UpdateWindow(window);
@@ -1116,22 +1122,12 @@ namespace SSC {
       DrawMenuBar(this->window);
       RedrawWindow(this->window, NULL, NULL, RDW_INVALIDATE | RDW_ERASE);
     }
-
-    if (seq.size() > 0) {
-      auto index = std::to_string(this->opts.index);
-      this->resolvePromise(seq, "0", index);
-    }
   }
 
-  void Window::hide (const SSC::String& seq) {
+  void Window::hide () {
     ShowWindow(window, SW_HIDE);
     UpdateWindow(window);
     this->eval(getEmitToRenderProcessJavaScript("windowHide", "{}"));
-
-    if (seq.size() > 0) {
-      auto index = std::to_string(this->opts.index);
-      this->resolvePromise(seq, "0", index);
-    }
   }
 
   void Window::resize (HWND window) {
@@ -1196,15 +1192,8 @@ namespace SSC {
     return title_s;
   }
 
-  void Window::setTitle (const SSC::String& seq, const SSC::String& title) {
+  void Window::setTitle (const SSC::String& title) {
     SetWindowText(window, title.c_str());
-
-    if (onMessage != nullptr) {
-      SSC::String state = "0"; // can this call actually fail?
-      auto index = std::to_string(this->opts.index);
-
-      this->resolvePromise(seq, state, index);
-    }
   }
 
   ScreenSize Window::getSize () {
@@ -1223,7 +1212,7 @@ namespace SSC {
     return { static_cast<int>(height), static_cast<int>(width) };
   }
 
-  void Window::setSize (const SSC::String& seq, int width, int height, int hints) {
+  void Window::setSize (int width, int height, int hints) {
     auto style = GetWindowLong(window, GWL_STYLE);
 
     if (hints == WINDOW_HINT_FIXED) {
@@ -1258,10 +1247,8 @@ namespace SSC {
       resize(window);
     }
 
-    if (seq.size() > 0) {
-      auto index = std::to_string(this->opts.index);
-      this->resolvePromise(seq, "0", index);
-    }
+    this->width = width;
+    this->height = height;
   }
 
   void Window::setSystemMenu (const SSC::String& seq, const SSC::String& value) {

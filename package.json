@@ -1,7 +1,8 @@
 {
   "type": "module",
+  "directories": ["api"],
   "scripts": {
-    "pretest": "npx standard .",
+    "pretest": "standard .",
     "readme": "node ./bin/generate-docs.js",
     "test": "cd test && npm install --silent --no-audit && npm test",
     "test:node": "node ./test/node/index.js",
@@ -23,7 +24,8 @@
   "standard": {
     "ignore": [
       "/api/external/",
-      "/api/test/fast-deep-equal.js"
+      "/api/test/fast-deep-equal.js",
+      "/api/crypto/sodium.js"
     ]
   }
 }

@@ -96,6 +96,7 @@ if [[ "$host" = "Darwin" ]]; then
   ldflags+=("-framework" "UniformTypeIdentifiers")
   ldflags+=("-framework" "WebKit")
   ldflags+=("-framework" "UserNotifications")
+  ldflags+=("-framework" "OSLog")
 elif [[ "$host" = "Linux" ]]; then
   ldflags+=($(pkg-config --libs gtk+-3.0 webkit2gtk-4.1))
 fi

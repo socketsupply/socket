@@ -1,3 +1,4 @@
+import { IllegalConstructorError } from './errors.js'
 import { Buffer } from './buffer.js'
 
 import * as exports from './util.js'
@@ -9,7 +10,8 @@ const TypedArrayPrototype = Object.getPrototypeOf(Uint8ArrayPrototype)
 const AsyncFunction = (async () => {}).constructor
 const TypedArray = TypedArrayPrototype.constructor
 
-const kCustomInspect = inspect.custom = Symbol.for('nodejs.util.inspect.custom')
+const kSocketCustomInspect = inspect.custom = Symbol.for('socket.util.inspect.custom')
+const kNodeCustomInspect = inspect.custom = Symbol.for('nodejs.util.inspect.custom')
 const kIgnoreInspect = inspect.ignore = Symbol.for('socket.util.inspect.ignore')
 
 export function hasOwnProperty (object, property) {
@@ -63,8 +65,12 @@ export function isPlainObject (object) {
   )
 }
 
+export function isArrayBuffer (object) {
+  return object !== null && object instanceof ArrayBuffer
+}
+
 export function isBufferLike (object) {
-  return isTypedArray(object) || Buffer.isBuffer(object)
+  return isArrayBuffer(object) || isTypedArray(object) || Buffer.isBuffer(object)
 }
 
 export function isFunction (value) {
@@ -91,14 +97,16 @@ export function toString (object) {
   return Object.prototype.toString(object)
 }
 
-export function toBuffer (object) {
+export function toBuffer (object, encoding) {
   if (Buffer.isBuffer(object)) {
     return object
   } else if (isTypedArray(object)) {
     return Buffer.from(object.buffer)
+  } else if (typeof object?.toBuffer === 'function') {
+    return toBuffer(object.toBuffer(), encoding)
   }
 
-  return Buffer.from(object)
+  return Buffer.from(object, encoding)
 }
 
 export function toProperCase (string) {
@@ -280,10 +288,22 @@ export function inspect (value, options) {
 
         return formatted
       } else if (
-        isFunction(value?.[kCustomInspect]) &&
-        value?.[kCustomInspect] !== inspect
+        (
+          isFunction(value?.[kNodeCustomInspect]) &&
+          value?.[kNodeCustomInspect] !== inspect
+        ) ||
+        (
+          isFunction(value?.[kSocketCustomInspect]) &&
+          value?.[kSocketCustomInspect] !== inspect
+        )
       ) {
-        const formatted = value[kCustomInspect](depth, ctx, ctx.options, inspect)
+        const formatted = (value[kNodeCustomInspect] || value[kSocketCustomInspect]).call(
+          value,
+          depth,
+          ctx,
+          ctx.options,
+          inspect
+        )
 
         if (typeof formatted !== 'string') {
           return formatValue(ctx, formatted, depth)
@@ -396,7 +416,13 @@ export function inspect (value, options) {
         typeof value?.constructor === 'function' &&
         (value.constructor !== Object && value.constructor !== Array)
       ) {
-        braces[0] = `${value.constructor.name} ${braces[0]}`
+        let tag = value?.[Symbol.toStringTag] || value?.toString
+
+        if (typeof tag === 'function') {
+          tag = tag.call(value)
+        }
+
+        braces[0] = `${tag || value.constructor.name} ${braces[0]}`
       }
 
       if (keys.size === 0 && !(value instanceof Error)) {
@@ -514,7 +540,13 @@ export function inspect (value, options) {
     const length = output.reduce((p, c) => (p + c.length + 1), 0)
 
     if (Object.getPrototypeOf(value) === null) {
-      braces[0] = `[Object: null prototype] ${braces[0]}`
+      let tag = value?.[Symbol.toStringTag] || value?.toString
+
+      if (typeof tag === 'function') {
+        tag = tag.call(value)
+      }
+
+      braces[0] = `${tag || '[Object: null prototype]'} ${braces[0]}`
     }
 
     if (length > 80) {
@@ -687,6 +719,34 @@ export function parseJSON (string) {
   return null
 }
 
+export function parseHeaders (headers) {
+  if (typeof headers !== 'string') {
+    return []
+  }
+
+  return headers
+    .split('\n')
+    .map((l) => l.trim().split(':'))
+    .filter((e) => e.length === 2)
+    .map((e) => [e[0].trim().toLowerCase(), e[1].trim().toLowerCase()])
+}
+
 export function noop () {}
+
+export class IllegalConstructor {
+  constructor () {
+    throw new IllegalConstructorError()
+  }
+}
+
+const percentageRegex = /^(100(\.0+)?|[1-9]?\d(\.\d+)?)%$/
+
+export function isValidPercentageValue (input) {
+  return percentageRegex.test(input)
+}
+
+export function compareBuffers (a, b) {
+  return toBuffer(a).compare(toBuffer(b))
+}
 
 export default exports

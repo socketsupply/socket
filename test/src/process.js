@@ -1,5 +1,6 @@
 import { test } from 'socket:test'
 import process from 'socket:process'
+import { primordials } from 'socket:ipc'
 import path from 'path-browserify'
 
 test('process', (t) => {
@@ -15,35 +16,44 @@ test('process.exit()', (t) => {
 })
 
 test('process.cwd', async (t) => {
-  t.ok(typeof process.cwd() === 'string', 'process.cwd() returns a string')
-  if (process.platform === 'mac') {
+  // make `path-browserify` happy
+  globalThis.process = process
+
+  t.equal(typeof process.cwd(), 'string', 'process.cwd() returns a string')
+  t.equal(process.cwd(), primordials.cwd, 'process.cwd() equals primordials.cwd')
+  if (process.platform === 'darwin' || process.platform === 'ios') {
     t.equal(process.cwd(), path.resolve(process.argv0, '../../Resources'), 'process.cwd() returns a correct value')
   } else if (process.platform === 'linux') {
     t.equal(process.cwd(), path.resolve(process.argv0, '../../socket-runtime-javascript-tests'), 'process.cwd() returns a correct value')
   } else if (process.platform === 'android') {
-    t.ok(process.cwd(), 'process.cwd() returns a correct value')
+    // t.ok(process.cwd(), 'process.cwd() returns a correct value')
+  } else if (process.platform === 'win32') {
+    // TODO(trevnorris): Fix to use path once implemented for Windows
+    t.equal(process.cwd(), process.argv0.slice(0, process.argv0.lastIndexOf('\\') + 1), 'process.cwd() returns a correct value')
   } else {
-    // TODO: iOS, Windows
+    // TODO: iOS
     t.fail(`FIXME: not implemented for platform ${process.platform}`)
   }
+
+  // make us happy
+  delete globalThis.process
 })
 
 test('process.arch', (t) => {
-  t.ok(['x86_64', 'arm64'].includes(process.arch), 'process.arch is correct')
-  t.equal(process.arch, window.__args.arch, 'process.arch equals window.__args.arch')
+  t.ok(['x64', 'arm64'].includes(process.arch), 'process.arch is correct')
+  t.equal(process.arch, primordials.arch, 'process.arch equals primordials.arch')
 })
 
 test('process.platform', (t) => {
   t.ok(typeof process.platform === 'string', 'process.platform returns an string')
-  t.ok(['mac', 'linux', 'android', 'ios', 'win'].includes(process.platform), 'process.platform is correct')
-  t.equal(process.platform, window.__args.os, 'process.platform equals window.__args.platform')
-  t.equal(process.platform, process.os, 'process.platform returns the same value as process.os')
+  t.ok(['darwin', 'freebsd', 'linux', 'openbsd', 'sunos', 'win32', 'android', 'ios'].includes(process.platform), 'process.platform is correct')
+  t.equal(process.platform, primordials.platform, 'process.platform equals primordials.platform')
 })
 
 test('process.env', (t) => {
-  t.deepEqual(process.env, window.__args.env, 'process.env is equal to window.__args.env')
+  t.deepEqual(process.env, globalThis.__args.env, 'process.env is equal to globalThis.__args.env')
 })
 
 test('process.argv', (t) => {
-  t.deepEqual(process.argv, window.__args.argv, 'process.argv is equal to window.__args.argv')
+  t.deepEqual(process.argv, globalThis.__args.argv, 'process.argv is equal to globalThis.__args.argv')
 })

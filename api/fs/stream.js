@@ -3,7 +3,8 @@
  */
 import { Readable, Writable } from '../stream.js'
 import { AbortError } from '../errors.js'
-import { Buffer } from '../buffer.js'
+
+import * as exports from './stream.js'
 
 export const DEFAULT_STREAM_HIGH_WATER_MARK = 64 * 1024
 
@@ -29,6 +30,7 @@ export class ReadStream extends Readable {
     this.end = typeof options?.end === 'number' ? options.end : Infinity
     this.start = typeof options?.start === 'number' ? options.start : 0
     this.handle = null
+    this.buffer = new ArrayBuffer(this.highWaterMark)
     this.signal = options?.signal
     this.timeout = options?.timeout || undefined
     this.bytesRead = 0
@@ -116,7 +118,7 @@ export class ReadStream extends Readable {
   }
 
   async _read (callback) {
-    const { signal, handle, timeout } = this
+    const { signal, handle, timeout, buffer } = this
 
     if (!handle || !handle.opened) {
       return callback(new Error('File handle not opened'))
@@ -127,10 +129,9 @@ export class ReadStream extends Readable {
     }
 
     const position = Math.max(0, this.start) + this.bytesRead
-    const buffer = Buffer.alloc(this.highWaterMark)
     const length = Math.max(0, this.end) < Infinity
-      ? Math.min(this.end - position, buffer.length)
-      : buffer.length
+      ? Math.min(this.end - position, buffer.byteLength)
+      : buffer.byteLength
 
     let result = null
 
@@ -144,8 +145,9 @@ export class ReadStream extends Readable {
     }
 
     if (typeof result.bytesRead === 'number' && result.bytesRead > 0) {
+      const slice = new Uint8Array(buffer.slice(0, result.bytesRead))
       this.bytesRead += result.bytesRead
-      this.push(buffer.slice(0, result.bytesRead))
+      this.push(slice)
 
       if (this.bytesRead >= this.end) {
         this.push(null)
@@ -324,3 +326,5 @@ WriteStream.highWaterMark = DEFAULT_STREAM_HIGH_WATER_MARK
 
 export const FileReadStream = ReadStream
 export const FileWriteStream = WriteStream
+
+export default exports

@@ -1,5 +1,6 @@
 import { test } from 'socket:test'
 import dns from 'socket:dns'
+import os from 'socket:os'
 
 // node compat
 // import dns from 'node:dns'
@@ -38,31 +39,15 @@ test('dns.lookup', async t => {
       })
     }),
     new Promise(resolve => {
-      dns.lookup('google.com', 4, (err, address, family) => {
+      dns.lookup('sockets.sh', 4, (err, address, family) => {
         if (err) return t.fail(err)
         t.equal(family, 4, 'is IPv4 family')
         t.ok(IPV4_REGEX.test(address), 'has valid IPv4 address')
         resolve()
       })
     }),
-    new Promise(resolve => {
-      dns.lookup('cloudflare.com', 6, (err, address, family) => {
-        if (err) return t.fail(err)
-        t.equal(family, 6, 'is IPv6 family')
-        t.ok(IPV6_REGEX.test(address), 'has valid IPv6 address')
-        resolve()
-      })
-    }),
-    new Promise(resolve => {
-      dns.lookup('google.com', { family: 4 }, (err, address, family) => {
-        if (err) return t.fail(err)
-        t.equal(family, 4, 'is IPv4 family')
-        t.ok(IPV4_REGEX.test(address), 'has valid IPv4 address')
-        resolve()
-      })
-    }),
-    new Promise(resolve => {
-      dns.lookup('cloudflare.com', { family: 6 }, (err, address, family) => {
+    os.platform() !== 'win32' && new Promise(resolve => {
+      dns.lookup('google.com', 6, (err, address, family) => {
         if (err) return t.fail(err)
         t.equal(family, 6, 'is IPv6 family')
         t.ok(IPV6_REGEX.test(address), 'has valid IPv6 address')

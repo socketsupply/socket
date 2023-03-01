@@ -464,12 +464,8 @@ namespace SSC {
       style |= NSWindowStyleMaskMiniaturizable;
     }
 
-    ScreenSize screenSize = this->getScreenSize();
-    auto height = opts.isHeightInPercent ? screenSize.height * opts.height / 100 : opts.height;
-    auto width = opts.isWidthInPercent ? screenSize.width * opts.width / 100 : opts.width;
-
     window = [[NSWindow alloc]
-        initWithContentRect: NSMakeRect(0, 0, width, height)
+        initWithContentRect: NSMakeRect(0, 0, opts.width, opts.height)
                   styleMask: style
                     backing: NSBackingStoreBuffered
                       defer: NO];
@@ -487,7 +483,7 @@ namespace SSC {
     [window center];
     [window setOpaque: YES];
     // Minimum window size
-    [window setContentMinSize: NSMakeSize(opts.width, opts.height)];
+    [window setContentMinSize: NSMakeSize(opts.minWidth, opts.minHeight)];
     [window setBackgroundColor: [NSColor controlBackgroundColor]];
     [window registerForDraggedTypes: draggableTypes];
     // [window setAppearance:[NSAppearance appearanceNamed:NSAppearanceNameVibrantDark]];
@@ -583,16 +579,15 @@ namespace SSC {
           [&](id self, SEL cmd, id notification) {
             if (exiting) return true;
 
-            auto* w = (Window*) objc_getAssociatedObject(self, "webview");
+            auto window = (Window*) objc_getAssociatedObject(self, "window");
 
-            if (w->opts.canExit) {
+            if (window->opts.canExit) {
               exiting = true;
-              w->exit(0);
+              window->exit(0);
               return true;
             }
-
-            w->eval(getEmitToRenderProcessJavaScript("windowHide", "{}"));
-            w->hide("");
+            window->eval(getEmitToRenderProcessJavaScript("windowHide", "{}"));
+            window->hide();
             return false;
           }),
         "v@:@"
@@ -603,17 +598,20 @@ namespace SSC {
         @selector(userContentController:didReceiveScriptMessage:),
         imp_implementationWithBlock(
           [=](id self, SEL cmd, WKScriptMessage* scriptMessage) {
-            auto* w = (Window*) objc_getAssociatedObject(self, "webview");
-            if (w->onMessage == nullptr) return;
+            auto window = (Window*) objc_getAssociatedObject(self, "window");
 
             id body = [scriptMessage body];
             if (![body isKindOfClass:[NSString class]]) {
               return;
             }
-            SSC::String msg = [body UTF8String];
 
-            if (bridge->route(msg, nullptr, 0)) return;
-            w->onMessage(msg);
+            String uri = [body UTF8String];
+
+            if (!bridge->route(uri, nullptr, 0)) {
+              if (window != nullptr && window->onMessage != nullptr) {
+                window->onMessage(uri);
+              }
+            }
           }),
         "v@:@"
       );
@@ -623,8 +621,7 @@ namespace SSC {
         @selector(menuItemSelected:),
         imp_implementationWithBlock(
           [=](id self, SEL _cmd, id item) {
-            auto* w = (Window*) objc_getAssociatedObject(self, "webview");
-            if (w->onMessage == nullptr) return;
+            auto window = (Window*) objc_getAssociatedObject(self, "window");
 
             id menuItem = (id) item;
             SSC::String title = [[menuItem title] UTF8String];
@@ -632,7 +629,7 @@ namespace SSC {
             SSC::String parent = [[[menuItem menu] title] UTF8String];
             SSC::String seq = std::to_string([menuItem tag]);
 
-            w->eval(getResolveMenuSelectionJavaScript(seq, title, parent));
+            window->eval(getResolveMenuSelectionJavaScript(seq, title, parent));
           }),
         "v@:@:@:"
       );
@@ -640,7 +637,7 @@ namespace SSC {
 
     objc_setAssociatedObject(
       delegate,
-      "webview",
+      "window",
       (id) this,
       OBJC_ASSOCIATION_ASSIGN
     );
@@ -671,17 +668,12 @@ namespace SSC {
     };
   }
 
-  void Window::show (const SSC::String& seq) {
+  void Window::show () {
     if (this->opts.headless == true) {
       [NSApp activateIgnoringOtherApps: NO];
     } else {
       [window makeKeyAndOrderFront: nil];
       [NSApp activateIgnoringOtherApps: YES];
-    }
-
-    if (seq.size() > 0) {
-      auto index = std::to_string(this->opts.index);
-      this->resolvePromise(seq, "0", index);
     }
   }
 
@@ -696,14 +688,9 @@ namespace SSC {
     [window performClose:nil];
   }
 
-  void Window::hide (const SSC::String& seq) {
+  void Window::hide () {
     [window orderOut:window];
     this->eval(getEmitToRenderProcessJavaScript("windowHide", "{}"));
-
-    if (seq.size() > 0) {
-      auto index = std::to_string(this->opts.index);
-      this->resolvePromise(seq, "0", index);
-    }
   }
 
   void Window::eval (const SSC::String& js) {
@@ -746,17 +733,15 @@ namespace SSC {
     return SSC::String([this->window.title UTF8String]);
   }
 
-  void Window::setTitle (const SSC::String& seq, const SSC::String& value) {
+  void Window::setTitle (const SSC::String& value) {
     [window setTitle:[NSString stringWithUTF8String:value.c_str()]];
-
-    if (seq.size() > 0) {
-      auto index = std::to_string(this->opts.index);
-      this->resolvePromise(seq, "0", index);
-    }
   }
 
   ScreenSize Window::getSize () {
     NSRect e = this->window.frame;
+
+    this->height = e.size.height;
+    this->width = e.size.width;
 
     return ScreenSize {
       .height = (int) e.size.height,
@@ -764,14 +749,15 @@ namespace SSC {
     };
   }
 
-  void Window::setSize (const SSC::String& seq, int width, int height, int hints) {
-    [window setFrame:NSMakeRect(0.f, 0.f, (float) width, (float) height) display:YES animate:NO];
+  void Window::setSize (int width, int height, int hints) {
+    [window setFrame: NSMakeRect(0.f, 0.f, (float) width, (float) height)
+             display: YES
+             animate: NO];
+
     [window center];
 
-    if (seq.size() > 0) {
-      auto index = std::to_string(this->opts.index);
-      this->resolvePromise(seq, "0", index);
-    }
+    this->height = height;
+    this->width = width;
   }
 
   int Window::openExternal (const SSC::String& s) {

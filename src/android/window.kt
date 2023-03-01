@@ -29,6 +29,7 @@ open class Window (runtime: Runtime, activity: MainActivity) {
     val filename = this.getPathToFileToLoad()
     val activity = this.activity.get() ?: return
     val runtime = this.runtime.get() ?: return
+    val source = this.getJavaScriptPreloadSource()
 
     // enable/disable debug module in webview
     android.webkit.WebView.setWebContentsDebuggingEnabled(isDebugEnabled)
@@ -54,6 +55,9 @@ open class Window (runtime: Runtime, activity: MainActivity) {
           <script type="importmap">
             ${String(importMapBytes)}
           </script>
+          <script type="module">
+            ${source}
+          </script>
       """)
 
       indexFile.close()
@@ -71,7 +75,7 @@ open class Window (runtime: Runtime, activity: MainActivity) {
 
   open fun onSchemeRequest (
     request: android.webkit.WebResourceRequest,
-    response:  android.webkit.WebResourceResponse,
+    response: android.webkit.WebResourceResponse,
     stream: java.io.PipedOutputStream
   ): Boolean {
     return bridge.route(request.url.toString(), null, fun (result: Result) {
@@ -83,11 +87,13 @@ open class Window (runtime: Runtime, activity: MainActivity) {
         contentType = "application/octet-stream"
       }
 
-      response.setStatusCodeAndReasonPhrase(200, "OK")
-      response.responseHeaders = response.responseHeaders + result.headers + mapOf(
-        "Content-Type" to contentType.toString(),
-        "Content-Length" to bytes.size.toString()
-      )
+      response.apply {
+        setStatusCodeAndReasonPhrase(200, "OK")
+        setResponseHeaders(responseHeaders + result.headers + mapOf(
+          "content-type" to contentType
+        ))
+        setMimeType(contentType)
+      }
 
       try {
         stream.write(bytes, 0, bytes.size)

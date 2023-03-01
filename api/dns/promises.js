@@ -1,4 +1,3 @@
-import * as ipc from '../ipc.js'
 /**
  * @module DNS.promises
  *
@@ -10,7 +9,17 @@ import * as ipc from '../ipc.js'
  * applications on the same system do, use dns.lookup().
  */
 
+import diagnostics from '../diagnostics.js'
 import { rand64 } from '../crypto.js'
+import ipc from '../ipc.js'
+
+import * as exports from './promises.js'
+
+const dc = diagnostics.channels.group('dns', [
+  'lookup.start',
+  'lookup.end',
+  'lookup'
+])
 
 /**
  * @async
@@ -39,6 +48,7 @@ export async function lookup (hostname, opts) {
     opts.family = 4
   }
 
+  dc.channel('lookup.start').publish({ hostname, family: opts.family })
   const { err, data } = await ipc.send('dns.lookup', { ...opts, id: rand64(), hostname })
 
   if (err) {
@@ -46,9 +56,15 @@ export async function lookup (hostname, opts) {
     e.code = 'EAI_AGAIN'
     e.syscall = 'getaddrinfo'
     e.hostname = hostname
+    e.cause = err
     // e.errno = -3008, // lib_uv constant?
-    return e
+    throw e
   }
+
+  dc.channel('lookup.end').publish({ hostname, family: opts.family })
+  dc.channel('lookup').publish({ hostname, family: opts.family })
 
   return data
 }
+
+export default exports

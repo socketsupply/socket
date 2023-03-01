@@ -99,8 +99,6 @@ open class MainActivity : WebViewActivity() {
     url: String,
     bitmap: android.graphics.Bitmap?
   ) {
-    val source = this.window.getJavaScriptPreloadSource()
-    this.webview?.evaluateJavascript(source, null)
     return super.onPageStarted(view, url, bitmap)
   }
 

@@ -24,7 +24,7 @@
  * ```
  */
 
-/* global window */
+/* global webkit, chrome, external */
 import {
   AbortError,
   InternalError,
@@ -32,9 +32,11 @@ import {
 } from './errors.js'
 
 import {
+  isArrayLike,
   isBufferLike,
   isPlainObject,
   format,
+  parseHeaders,
   parseJSON
 } from './util.js'
 
@@ -47,20 +49,68 @@ let nextSeq = 1
 /**
  * @ignore
  */
+export class Headers extends globalThis.Headers {
+  /**
+   * @ignore
+   */
+  static from (input) {
+    if (input?.headers) return this.from(input.headers)
+
+    if (typeof input?.entries === 'function') {
+      return new this(input.entries())
+    } else if (isPlainObject(input) || isArrayLike(input)) {
+      return new this(input)
+    } else if (typeof input?.getAllResponseHeaders === 'function') {
+      input = input.getAllResponseHeaders()
+    } else if (typeof input?.headers?.entries === 'function') {
+      return new this(input.headers.entries())
+    }
+
+    return new this(parseHeaders(String(input)))
+  }
+
+  /**
+   * @ignore
+   */
+  get length () {
+    return Array.from(this.entries()).length
+  }
+
+  /**
+   * @ignore
+   */
+  toJSON () {
+    return Object.fromEntries(this.entries())
+  }
+}
+
+/**
+ * @ignore
+ */
 export async function postMessage (...args) {
-  return await window?.__ipc?.postMessage(...args)
+  if (window?.webkit?.messageHandlers?.external?.postMessage) {
+    return webkit.messageHandlers.external.postMessage(...args)
+  } else if (window?.chrome?.webview?.postMessage) {
+    return chrome.webview.postMessage(...args)
+  } else if (window?.external?.postMessage) {
+    return external.postMessage(...args)
+  }
+
+  throw new TypeError(
+    'Could not determine UserMessageHandler.postMessage in Window'
+  )
 }
 
 function initializeXHRIntercept () {
   if (typeof window === 'undefined') return
-  const { send, open } = window.XMLHttpRequest.prototype
+  const { send, open } = globalThis.XMLHttpRequest.prototype
 
   const B5_PREFIX_BUFFER = new Uint8Array([0x62, 0x35]) // literally, 'b5'
   const encoder = new TextEncoder()
-  Object.assign(window.XMLHttpRequest.prototype, {
+  Object.assign(globalThis.XMLHttpRequest.prototype, {
     open (method, url, ...args) {
       try {
-        this.readyState = window.XMLHttpRequest.OPENED
+        this.readyState = globalThis.XMLHttpRequest.OPENED
       } catch (_) {}
       this.method = method
       this.url = new URL(url)
@@ -71,7 +121,7 @@ function initializeXHRIntercept () {
 
     async send (body) {
       const { method, seq, url } = this
-      const index = window.__args.index
+      const index = globalThis.__args.index
 
       if (url?.protocol === 'ipc:') {
         if (
@@ -83,12 +133,12 @@ function initializeXHRIntercept () {
             body = encoder.encode(body)
           }
 
-          if (/android/i.test(window.__args.os)) {
+          if (/android/i.test(primordials.platform)) {
             await postMessage(`ipc://buffer.map?seq=${seq}`, body)
             body = null
           }
 
-          if (/win32/i.test(window.__args.os) && body) {
+          if (/win32/i.test(primordials.platform) && body) {
             // 1. send `ipc://buffer.create`
             //   - The native side should create a shared buffer for `index` and `seq` pair of `size` bytes
             //   - `index` is the target window
@@ -108,19 +158,19 @@ function initializeXHRIntercept () {
             // size here assumes latin1 encoding.
             await postMessage(`ipc://buffer.create?index=${index}&seq=${seq}&size=${body.length}`)
             await new Promise((resolve) => {
-              window.chrome.webview.addEventListener('sharedbufferreceived', function onSharedBufferReceived (event) {
+              globalThis.chrome.webview.addEventListener('sharedbufferreceived', function onSharedBufferReceived (event) {
                 const { additionalData } = event
                 if (additionalData.index === index && additionalData.seq === seq) {
                   const buffer = new Uint8Array(event.getBuffer())
                   buffer.set(body)
-                  window.chrome.webview.removeEventListener('sharedbufferreceived', onSharedBufferReceived)
+                  globalThis.chrome.webview.removeEventListener('sharedbufferreceived', onSharedBufferReceived)
                   resolve()
                 }
               })
             })
           }
 
-          if (/linux/i.test(window.__args.os)) {
+          if (/linux/i.test(primordials.platform)) {
             if (body?.buffer instanceof ArrayBuffer) {
               const header = new Uint8Array(24)
               const buffer = new Uint8Array(
@@ -162,20 +212,6 @@ function initializeXHRIntercept () {
   })
 }
 
-if (typeof window !== 'undefined') {
-  initializeXHRIntercept()
-
-  document.addEventListener('DOMContentLoaded', () => {
-    queueMicrotask(async () => {
-      try {
-        await send('platform.event', 'domcontentloaded')
-      } catch (err) {
-        console.error('ERR:', err)
-      }
-    })
-  })
-}
-
 function getErrorClass (type, fallback) {
   if (typeof window !== 'undefined' && typeof window[type] === 'function') {
     return window[type]
@@ -196,16 +232,22 @@ function getRequestResponseText (request) {
   return null
 }
 
-function getRequestResponse (request) {
+function getRequestResponse (request, options) {
   if (!request) return null
   const { responseType } = request
+  const expectedResponseType = options?.responseType ?? responseType
+  const headers = Headers.from(request)
   let response = null
 
+  if (expectedResponseType && responseType !== expectedResponseType) {
+    return null
+  }
+
   if (!responseType || responseType === 'text') {
-    // `responseText` could be an accessor which could throw an
-    // `InvalidStateError` error when accessed when `responseType` is anything
-    // but empty or `'text'`
-    // @see {@link https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest/responseText#exceptions}
+    // The `responseText` could be an accessor which could throw an
+    // `InvalidStateError` error when accessed when `responseType` is not empty
+    // empty or 'text'
+    // - see https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest/responseText#exceptions
     const responseText = getRequestResponseText(request)
     if (responseText) {
       response = responseText
@@ -229,7 +271,11 @@ function getRequestResponse (request) {
       typeof request.response === 'string' ||
       isBufferLike(request.response)
     ) {
+      const contentLength = parseInt(headers.get('content-length'))
       response = Buffer.from(request.response)
+      if (contentLength) {
+        response = response.slice(0, contentLength)
+      }
     }
 
     // maybe json in buffered response
@@ -718,10 +764,11 @@ export class Result {
    * @param {(object|Error|mixed)=} result
    * @param {Error=} [maybeError]
    * @param {string=} [maybeSource]
+   * @param {object=|string=|Headers=} [maybeHeaders]
    * @return {Result}
    * @ignore
    */
-  static from (result, maybeError, maybeSource, ...args) {
+  static from (result, maybeError, maybeSource, maybeHeaders, ...args) {
     if (result instanceof Result) {
       if (!result.source && maybeSource) {
         result.source = maybeSource
@@ -729,6 +776,10 @@ export class Result {
 
       if (!result.err && maybeError) {
         result.err = maybeError
+      }
+
+      if (!result.headers && maybeHeaders) {
+        result.headers = maybeHeaders
       }
 
       return result
@@ -747,9 +798,11 @@ export class Result {
     const data = !err && result?.data !== null && result?.data !== undefined
       ? result.data
       : (!err ? result : null)
-    const source = result?.source || maybeSource || null
 
-    return new this(err, data, source, ...args)
+    const source = result?.source || maybeSource || null
+    const headers = result?.headers || maybeHeaders || null
+
+    return new this(err, data, source, headers, ...args)
   }
 
   /**
@@ -758,14 +811,17 @@ export class Result {
    * @param {Error=} [err = null]
    * @param {object=} [data = null]
    * @param {string=} [source = undefined]
+   * @param {object=|string=|Headers=} [headers = null]
    * @ignore
    */
-  constructor (err, data, source) {
+  constructor (err = null, data = null, source = null, headers = null) {
     this.err = typeof err !== 'undefined' ? err : null
     this.data = typeof data !== 'undefined' ? data : null
     this.source = typeof source === 'string' && source.length
       ? source
-      : undefined
+      : null
+
+    this.headers = headers ? Headers.from(headers) : null
 
     Object.defineProperty(this, 0, {
       get: () => this.err,
@@ -784,6 +840,12 @@ export class Result {
       enumerable: false,
       configurable: false
     })
+
+    Object.defineProperty(this, 3, {
+      get: () => this.headers,
+      enumerable: false,
+      configurable: false
+    })
   }
 
   /**
@@ -791,7 +853,7 @@ export class Result {
    * @ignore
    */
   get length () {
-    return [...this].filter((v) => v !== undefined).length
+    return Array.from(this).length
   }
 
   /**
@@ -799,9 +861,22 @@ export class Result {
    * @ignore
    */
   * [Symbol.iterator] () {
-    yield this.err
-    yield this.data
-    yield this.source
+    if (this.err !== undefined) yield this.err
+    if (this.data !== undefined) yield this.data
+    if (this.source !== undefined) yield this.source
+    if (this.headers !== undefined) yield this.headers
+  }
+
+  /**
+   * @ignore
+   */
+  toJSON () {
+    return {
+      err: this.err ?? null,
+      data: this.data ?? null,
+      source: this.source ?? null,
+      headers: this.headers ?? null
+    }
   }
 }
 
@@ -819,7 +894,7 @@ export async function ready () {
     return loop()
 
     function loop () {
-      if (window.__args) {
+      if (globalThis.__args) {
         queueMicrotask(resolve)
       } else {
         queueMicrotask(loop)
@@ -836,7 +911,7 @@ export async function ready () {
  * @return {Result}
  * @ignore
  */
-export function sendSync (command, params) {
+export function sendSync (command, params, options) {
   if (typeof window === 'undefined') {
     if (debug.enabled) {
       debug.log('Global window object is not defined')
@@ -845,8 +920,8 @@ export function sendSync (command, params) {
     return {}
   }
 
-  const request = new window.XMLHttpRequest()
-  const index = window.__args.index ?? 0
+  const request = new globalThis.XMLHttpRequest()
+  const index = globalThis.__args.index ?? 0
   const seq = nextSeq++
   const uri = `ipc://${command}`
 
@@ -860,10 +935,13 @@ export function sendSync (command, params) {
     debug.log('ipc.sendSync: %s', uri + query)
   }
 
+  request.responseType = options?.responseType ?? ''
   request.open('GET', uri + query, false)
   request.send()
 
-  const result = Result.from(getRequestResponse(request), null, command)
+  const response = getRequestResponse(request, options)
+  const headers = request.getAllResponseHeaders()
+  const result = Result.from(response, null, command, headers)
 
   if (debug.enabled) {
     debug.log('ipc.sendSync: (resolved)', command, result)
@@ -902,11 +980,11 @@ export async function emit (name, value, target, options) {
     }
   }
 
-  const event = new window.CustomEvent(name, { detail, ...options })
+  const event = new globalThis.CustomEvent(name, { detail, ...options })
   if (target) {
     target.dispatchEvent(event)
   } else {
-    window.dispatchEvent(event)
+    globalThis.dispatchEvent(event)
   }
 }
 
@@ -923,10 +1001,10 @@ export async function resolve (seq, value) {
     debug.log('ipc.resolve:', seq, value)
   }
 
-  const index = window.__args.index
+  const index = globalThis.__args.index
   const eventName = `resolve-${index}-${seq}`
-  const event = new window.CustomEvent(eventName, { detail: value })
-  window.dispatchEvent(event)
+  const event = new globalThis.CustomEvent(eventName, { detail: value })
+  globalThis.dispatchEvent(event)
 }
 
 /**
@@ -943,7 +1021,7 @@ export async function send (command, value) {
   }
 
   const seq = 'R' + nextSeq++
-  const index = value?.index ?? window.__args.index
+  const index = value?.index ?? globalThis.__args.index
   let serialized = ''
 
   try {
@@ -967,7 +1045,7 @@ export async function send (command, value) {
 
   return await new Promise((resolve) => {
     const event = `resolve-${index}-${seq}`
-    window.addEventListener(event, onresolve, { once: true })
+    globalThis.addEventListener(event, onresolve, { once: true })
     function onresolve (event) {
       const result = Result.from(event.detail, null, command)
       if (debug.enabled) {
@@ -996,7 +1074,7 @@ export async function write (command, params, buffer, options) {
   await ready()
 
   const signal = options?.signal
-  const request = new window.XMLHttpRequest()
+  const request = new globalThis.XMLHttpRequest()
   const index = window?.__args?.index ?? 0
   const seq = nextSeq++
   const uri = `ipc://${command}`
@@ -1024,6 +1102,7 @@ export async function write (command, params, buffer, options) {
 
   const query = `?${params}`
 
+  request.responseType = options?.responseType ?? ''
   request.open('POST', uri + query, true)
   await request.send(buffer || null)
 
@@ -1052,11 +1131,13 @@ export async function write (command, params, buffer, options) {
         return
       }
 
-      if (request.readyState === window.XMLHttpRequest.DONE) {
+      if (request.readyState === globalThis.XMLHttpRequest.DONE) {
         resolved = true
         clearTimeout(timeout)
 
-        const result = Result.from(getRequestResponse(request), null, command)
+        const response = getRequestResponse(request, options)
+        const headers = request.getAllResponseHeaders()
+        const result = Result.from(response, null, command, headers)
 
         if (debug.enabled) {
           debug.log('ipc.write: (resolved)', command, result)
@@ -1067,10 +1148,11 @@ export async function write (command, params, buffer, options) {
     }
 
     request.onerror = () => {
+      const headers = request.getAllResponseHeaders()
       const err = new Error(getRequestResponseText(request) || '')
       resolved = true
       clearTimeout(timeout)
-      resolve(Result.from(null, err, command))
+      resolve(Result.from(null, err, command, headers))
     }
   })
 }
@@ -1086,7 +1168,7 @@ export async function write (command, params, buffer, options) {
 export async function request (command, params, options) {
   await ready()
 
-  const request = new window.XMLHttpRequest()
+  const request = new globalThis.XMLHttpRequest()
   const signal = options?.signal
   const index = window?.__args?.index ?? 0
   const seq = nextSeq++
@@ -1136,6 +1218,7 @@ export async function request (command, params, options) {
       if (options?.timeout) {
         clearTimeout(timeout)
       }
+
       resolve(Result.from(null, new AbortError(signal), command))
     }
 
@@ -1144,11 +1227,13 @@ export async function request (command, params, options) {
         return
       }
 
-      if (request.readyState === window.XMLHttpRequest.DONE) {
+      if (request.readyState === globalThis.XMLHttpRequest.DONE) {
         resolved = true
         clearTimeout(timeout)
 
-        const result = Result.from(getRequestResponse(request), null, command)
+        const response = getRequestResponse(request, options)
+        const headers = request.getAllResponseHeaders()
+        const result = Result.from(response, null, command, headers)
 
         if (debug.enabled) {
           debug.log('ipc.request: (resolved)', command, result)
@@ -1159,10 +1244,11 @@ export async function request (command, params, options) {
     }
 
     request.onerror = () => {
+      const headers = request.getAllResponseHeaders()
       const err = new Error(getRequestResponseText(request))
       resolved = true
       clearTimeout(timeout)
-      resolve(Result.from(null, err, command))
+      resolve(Result.from(null, err, command, headers))
     }
   })
 }
@@ -1218,20 +1304,29 @@ export function createBinding (domain, ctx) {
   return domain
 }
 
-export default {
-  OK,
-  ERROR,
-  TIMEOUT,
+// TODO(@chicoxyzzy): generate the primordials file during the build
+// We need to set primordials here because we are using the
+// `sendSync` method. This is a hack to get around the fact
+// that we can't use cyclic imports with a sync call.
+/**
+ * @ignore
+ */
+export const primordials = sendSync('platform.primordials')?.data
 
-  createBinding,
-  debug,
-  emit,
-  Message,
-  postMessage,
-  ready,
-  resolve,
-  request,
-  send,
-  sendSync,
-  write
+if (typeof window !== 'undefined') {
+  initializeXHRIntercept()
+
+  document.addEventListener('DOMContentLoaded', () => {
+    queueMicrotask(async () => {
+      try {
+        await send('platform.event', 'domcontentloaded')
+      } catch (err) {
+        console.error('ERR:', err)
+      }
+    })
+  })
 }
+
+// eslint-disable-next-line
+import * as exports from './ipc.js'
+export default exports

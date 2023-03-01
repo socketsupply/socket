@@ -1,6 +1,7 @@
 import { Buffer } from 'socket:buffer'
 import { test } from 'socket:test'
-import * as ipc from 'socket:ipc'
+import ipc, { primordials } from 'socket:ipc'
+import process from 'socket:process'
 
 // node compat
 // import { Buffer } from 'node:buffer'
@@ -17,6 +18,7 @@ test('ipc exports', async (t) => {
     'emit',
     'ERROR',
     'kDebugEnabled',
+    'primordials',
     'Message',
     'parseSeq',
     'postMessage',
@@ -25,7 +27,8 @@ test('ipc exports', async (t) => {
     'resolve',
     'send',
     'sendSync',
-    'write'
+    'write',
+    'Headers'
   ].sort())
 
   try {
@@ -33,6 +36,22 @@ test('ipc exports', async (t) => {
   } catch (err) {
     t.fail(err)
   }
+})
+
+test('primordials', (t) => {
+  t.deepEqual(Object.keys(primordials).sort(), [
+    'arch',
+    'cwd',
+    'platform',
+    'version'
+  ].sort(), 'primordials keys match')
+  t.equal(typeof primordials.arch, 'string', 'primordials.arch is a string')
+  t.equal(typeof primordials.cwd, 'string', 'primordials.cwd is a string')
+  t.equal(typeof primordials.platform, 'string', 'primordials.platform is a string')
+  t.equal(typeof primordials.version, 'object', 'primordials.version is an object')
+  t.ok(/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(primordials.version.short), `primordials.version.short is correct (${primordials.version.short})`)
+  t.ok(/^[0-9A-Fa-f]{8}$/.test(primordials.version.hash), `primordials.version.hash is correct (${primordials.version.hash})`)
+  t.ok(/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)\s\([0-9A-Fa-f]{8}\)$/.test(primordials.version.full), `primordials.version.full version is correct (${primordials.version.full})`)
 })
 
 test('ipc constants', (t) => {
@@ -77,24 +96,31 @@ test('ipc.Message', (t) => {
   t.ok(!ipc.Message.isValidInput('foo://test'), 'is valid input')
 })
 
-if (window.__args.os !== 'ios' && window.__args.os !== 'android') {
+if (process.platform !== 'ios' && process.platform !== 'android') {
   test('ipc.sendSync not found', (t) => {
     const response = ipc.sendSync('test', { foo: 'bar' })
     t.ok(response instanceof ipc.Result)
     const { err } = response
-    t.equal(err?.toString(), 'NotFoundError: Not found')
+    // Make lower case to adjust for implementation differences.
+    t.equal(err?.toString().toLowerCase(), 'notfounderror: not found')
     t.equal(err?.name, 'NotFoundError')
-    t.equal(err?.message, 'Not found')
-    t.ok(err?.url.startsWith('ipc://test?foo=bar&index=0&seq=R'))
+    // Make lower case to adjust for implementation differences.
+    t.equal(err?.message.toLowerCase(), 'not found')
+    // win32 adds on the trailing slash in the URL.
+    if (globalThis.__args.os === 'win32') {
+      t.ok(err?.url.startsWith('ipc://test/?foo=bar&index=0&seq=R'))
+    } else {
+      t.ok(err?.url.startsWith('ipc://test?foo=bar&index=0&seq=R'))
+    }
     t.equal(err?.code, 'NOT_FOUND_ERR')
   })
 }
 
 test('ipc.sendSync success', (t) => {
-  const response = ipc.sendSync('os.arch')
-  t.ok(response instanceof ipc.Result)
+  const response = ipc.sendSync('platform.primordials')
+  t.ok(response instanceof ipc.Result, 'response is an ipc.Result')
   const { data } = response
-  t.ok(['x86_64', 'arm64'].includes(data))
+  t.ok(typeof data === 'object', 'sendSync works')
 })
 
 //
@@ -104,14 +130,14 @@ test('ipc.send not found', async (t) => {
   const response = await ipc.send('test', { foo: 'bar' })
   t.ok(response instanceof ipc.Result, 'response is an ipc.Result')
   t.ok(response.err instanceof Error, 'response.err is an Error')
-  t.equal(response.err.toString(), 'Error: unsupported IPC message: test')
-  t.equal(response.err.name, 'Error')
-  t.equal(response.err.message, 'unsupported IPC message: test')
+  t.equal(response.err.toString(), 'NotFoundError: Not found')
+  t.equal(response.err.name, 'NotFoundError')
+  t.equal(response.err.message, 'Not found')
 })
 
 test('ipc.send success', async (t) => {
-  const response = await ipc.send('os.arch')
+  const response = await ipc.send('platform.primordials')
   t.ok(response instanceof ipc.Result)
   const { data } = response
-  t.ok(['x86_64', 'arm64'].includes(data))
+  t.ok(typeof data === 'object', 'sendSync works')
 })

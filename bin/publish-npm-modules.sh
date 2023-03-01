@@ -8,15 +8,21 @@ declare args=()
 declare dry_run=0
 declare only_platforms=0
 declare only_top_level=0
-
-declare SOCKET_HOME="$root/build/npm/$platform"
-declare PREFIX="$SOCKET_HOME"
+declare remove_socket_home=1
+declare do_global_link=0
 
 if [[ "$platform" = "linux" ]]; then
   if [ -n "$WSL_DISTRO_NAME" ] || uname -r | grep 'Microsoft'; then
-    platform="win32"
+    platform="Win32"
   fi
+elif [[ "$(uname -s)" == *"MINGW64_NT"* ]]; then
+  platform="Win32"
+elif [[ "$(uname -s)" == *"MSYS_NT"* ]]; then
+  platform="Win32"
 fi
+
+declare SOCKET_HOME="$root/build/npm/$platform"
+declare PREFIX="$SOCKET_HOME"
 
 while (( $# > 0 )); do
   declare arg="$1"; shift
@@ -35,14 +41,32 @@ while (( $# > 0 )); do
     continue
   fi
 
+  if [[ "$arg" = "--no-remove-socket-home" ]]; then
+    remove_socket_home=0
+    continue
+  fi
+
+  if [[ "$arg" = "--link" ]]; then
+    do_global_link=1
+    continue
+  fi
+
   args+=("$arg")
 done
 
-rm -rf "$SOCKET_HOME"
+if (( remove_socket_home )); then
+  rm -rf "$SOCKET_HOME"
+fi
+
 mkdir -p "$SOCKET_HOME"
 
 export SOCKET_HOME
 export PREFIX
+
+if (( do_global_link && !dry_run )); then
+  echo >&2 "warning: '--link' implies '--dry-run' too"
+  dry_run=1
+fi
 
 if (( !only_top_level )); then
   "$root/bin/install.sh" || exit $?
@@ -57,7 +81,7 @@ if (( !only_platforms || only_top_level )); then
   cp -rf "$root/npm/bin/ssc.js" "$SOCKET_HOME/packages/$package/bin/ssc.js"
   cp -f "$root/LICENSE.txt" "$SOCKET_HOME/packages/$package"
   cp -f "$root/README.md" "$SOCKET_HOME/packages/$package/README-RUNTIME.md"
-  cp -rf "$root/api"/* "$SOCKET_HOME/packages/$package"
+  cp -rf "$SOCKET_HOME/api"/* "$SOCKET_HOME/packages/$package"
 fi
 
 if (( !only_top_level )); then
@@ -93,13 +117,22 @@ if (( !only_top_level )); then
       fi
     fi
 
+    if [ "$platform" = "Win32" ]; then
+      cp -rap $SOCKET_HOME/ps1 $SOCKET_HOME/packages/$package
+    fi
+
     cd "$SOCKET_HOME/packages/$package" || exit $?
     echo "# in directory: '$SOCKET_HOME/packages/$package'"
 
     if (( !dry_run )) ; then
       npm publish "${args[@]}" || exit $?
-    else
-      echo "# npm publish "$@""
+    elif (( !do_global_link )); then
+      # echo "# npm publish ${args[@]}"
+      npm pack "${args[@]}" || exit $?
+    fi
+
+    if (( do_global_link )); then
+      npm link
     fi
   done
 fi
@@ -110,7 +143,17 @@ if (( !only_platforms || only_top_level )); then
 
   if (( !dry_run )); then
     npm publish "${args[@]}" || exit $?
-  else
-    echo "# npm publish "$@""
+  elif (( !do_global_link )); then
+    # echo "# npm publish ${args[@]}"
+    npm pack "${args[@]}" || exit $?
+  fi
+
+  if (( do_global_link )); then
+    for arch in "${archs[@]}"; do
+      declare package="@socketsupply/socket-$platform-${arch/x86_64/x64}"
+      npm link "$package"
+    done
+
+    npm link
   fi
 fi

@@ -497,7 +497,6 @@ namespace SSC {
       if (size > 0) {
         buf->base = (char *) new char[size]{0};
         buf->len = size;
-        memset(buf->base, 0, buf->len);
       }
     };
 
@@ -509,12 +508,6 @@ namespace SSC {
       unsigned flags
     ) {
       auto peer = (Peer *) handle->data;
-
-      if (nread <= 0) {
-        if (buf && buf->base) {
-          free(buf->base);
-        }
-      }
 
       if (nread == UV_ENOTCONN) {
         peer->recvstop();

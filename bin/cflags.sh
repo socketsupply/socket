@@ -18,6 +18,10 @@ if [[ "$host" = "Linux" ]]; then
   fi
 fi
 
+if [[ "$host" == *"MINGW64_NT"* ]]; then
+  host="Win32"
+fi
+
 if [ -z "$ANDROID_HOME" ]; then
   if [[ "$host" = "Darwin" ]]; then
     ANDROID_HOME="$HOME/Library/Android/sdk"
@@ -39,8 +43,9 @@ cflags+=(
   -std=c++2a
   -I"$root/include"
   -I"$root/build/uv/include"
+  -I"$root/build/include"
   -DSSC_BUILD_TIME="$(date '+%s')"
-  -DSSC_VERSION_HASH=$(git rev-parse --short HEAD)
+  -DSSC_VERSION_HASH=$(git rev-parse --short=8 HEAD)
   -DSSC_VERSION=$(cat "$root/VERSION.txt")
 )
 

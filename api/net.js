@@ -13,6 +13,9 @@ import { EventEmitter } from './events.js'
 import { Duplex } from './stream.js'
 import { rand64 } from './crypto.js'
 import console from './console.js'
+import * as exports from './net.js'
+
+export default exports
 
 const assertType = (name, expected, actual, code) => {
   const msg = `'${name}' must be a '${expected}', received '${actual}'`

@@ -10,9 +10,9 @@ usage:
 
 subcommands:
   build               build project
-  list-devices        get list of connected devices
-  init                create new project (in current directory)
-  install-app         install app to device
+  list-devices        get the list of connected devices
+  init                create a new project (in the current directory)
+  install-app         install app to the device
   print-build-dir     print build path to stdout
   run                 run application
 
@@ -41,7 +41,7 @@ packaging options:
 
   -p  package the app
   -c  code sign
-  -s  prep for app store
+  -s  prep for App Store
 
 macOS-specific options:
   -e  specify entitlements
@@ -51,13 +51,13 @@ macOS-specific options:
 constexpr auto gHelpTextListDevices = R"TEXT(
 ssc v{{ssc_version}}
 
-Get list of connected devices.
+Get the list of connected devices.
 
 usage:
   ssc list-devices --platform=ios [--ecid | --udid] [--only]
 
 options:
-  --platform  any of: ios, android
+  --platform  any : ios, android
   --ecid      show device ECID
   --udid      show device UDID
   --only      only show ECID or UDID of the first device
@@ -66,7 +66,7 @@ options:
 constexpr auto gHelpTextInit = R"TEXT(
 ssc v{{ssc_version}}
 
-Create new project. If path is not provided, new project will be created in the current directory.
+Create a new project. If the path is not provided, the new project will be created in the current directory.
 
 usage:
   ssc init [<project-dir>]
@@ -75,27 +75,27 @@ usage:
 constexpr auto gHelpTextInstallApp = R"TEXT(
 ssc v{{ssc_version}}
 
-Install app to device. We only support iOS at the moment.
+Install the app to the device. We only support iOS at the moment.
 
 usage:
   ssc install-app [--platform=ios] [--device=ecid]
 
 options:
-  --platform  ios; if not specified, runs on current platfrom
-  --device    ecid of device to install to; if not specified, runs on current device
+  --platform  ios; if not specified, runs on the current platform
+  --device    ecid of the device to install to; if not specified, runs on the current device
 )TEXT";
 
 constexpr auto gHelpTextPrintBuildDir = R"TEXT(
 ssc v{{ssc_version}}
 
-Create new project (in current directory)
+Create a new project (in the current directory)
 
 usage:
   ssc print-build-dir [--platform=<platform>] [--prod] [<project-dir>]
 
 options:
-  --platform  ios; if not specified, runs on current platfrom
-  --prod      use production build directory
+  --platform  ios; if not specified, runs on the current platform
+  --prod      use a production build directory
 )TEXT";
 
 constexpr auto gHelpTextRun = R"TEXT(
@@ -105,7 +105,7 @@ usage:
   ssc run [options] [<project-dir>]
 
 options:
-  --platform     iossimulator; if not specified, runs on current platfrom
+  --platform     ios-simulator; if not specified, runs on the current platform
   --prod         run production build
   --test=path    indicate test mode
 )TEXT";

@@ -1,11 +1,17 @@
 #include "../common.hh"
 #include "../process/process.hh"
 #include "templates.hh"
+#include "../core/core.hh"
 
 #include <filesystem>
 
 #ifdef __linux__
 #include <cstring>
+#endif
+
+#if defined(__APPLE__)
+#include <Foundation/Foundation.h>
+#include <Cocoa/Cocoa.h>
 #endif
 
 #include <sys/stat.h>
@@ -62,6 +68,14 @@ auto start = system_clock::now();
 bool flagDebugMode = true;
 bool flagQuietMode = false;
 Map defaultTemplateAttrs = {{ "ssc_version", SSC::VERSION_FULL_STRING }};
+
+const Map SSC::getUserConfig () {
+  return settings;
+}
+
+bool SSC::isDebugEnabled () {
+  return DEBUG == 1;
+}
 
 void log (const String s) {
   if (flagQuietMode) return;
@@ -128,9 +142,29 @@ inline String prefixFile () {
   return socketHome;
 }
 
+static Process::id_type appPid = 0;
+static Process* appProcess = nullptr;
+static std::atomic<int> appStatus = 0;
+static std::mutex appMutex;
+
+void signalHandler (int signal) {
+  appStatus = signal;
+
+  if (appProcess != nullptr) {
+    auto pid = appProcess->getPID();
+    appProcess->kill(pid);
+  } else if (appPid > 0) {
+  #if !defined(_WIN32)
+    kill(appPid, signal);
+  #endif
+    appPid = 0;
+  } else {
+    exit(signal);
+  }
+}
+
 int runApp (const fs::path& path, const String& args, bool headless) {
   auto cmd = path.string();
-  int status = 0;
 
   if (!fs::exists(path)) {
     log("executable not found: " + cmd);
@@ -139,11 +173,11 @@ int runApp (const fs::path& path, const String& args, bool headless) {
 
   auto runner = trim(String(STR_VALUE(CMD_RUNNER)));
   auto prefix = runner.size() > 0 ? runner + String(" ") : runner;
+  String headlessCommand = "";
 
   if (headless) {
     auto headlessRunner = settings["headless_runner"];
     auto headlessRunnerFlags = settings["headless_runner_flags"];
-    String headlessCommand = "";
 
     if (headlessRunner.size() == 0) {
       headlessRunner = settings["headless_" + platform.os + "_runner"];
@@ -157,7 +191,7 @@ int runApp (const fs::path& path, const String& args, bool headless) {
       // use xvfb for linux as a default
       if (headlessRunner.size() == 0) {
         headlessRunner = "xvfb-run";
-        status = std::system((headlessRunner + " --help >/dev/null").c_str());
+        int status = std::system((headlessRunner + " --help >/dev/null").c_str());
         if (WEXITSTATUS(status) != 0) {
           headlessRunner = "";
         }
@@ -166,26 +200,221 @@ int runApp (const fs::path& path, const String& args, bool headless) {
       if (headlessRunnerFlags.size() == 0) {
         // use sane defaults if 'xvfb-run' is used
         if (headlessRunner == "xvfb-run") {
-          headlessRunnerFlags = "--server-args='-screen 0 1920x1080x24'";
+          headlessRunnerFlags = " --server-args='-screen 0 1920x1080x24' ";
         }
       }
     }
 
     if (headlessRunner != "false") {
-      headlessCommand = headlessRunner + " " + headlessRunnerFlags + " ";
+      headlessCommand = headlessRunner + headlessRunnerFlags;
     }
-
-    status = std::system((headlessCommand + prefix + cmd + " " + args + " --from-ssc").c_str());
-  // TODO: this branch exits the CLI process
-  // } else if (platform.mac) {
-  //   auto s = prefix + cmd;
-  //   auto part = s.substr(0, s.find(".app/") + 4);
-  //   status = std::system(("open -n " + part + " --args " + args + " --from-ssc").c_str());
-  } else {
-    status = std::system((prefix + cmd + " " + args + " --from-ssc").c_str());
   }
 
-  return WEXITSTATUS(status);
+#if defined(__APPLE__)
+  if (platform.mac) {
+    auto sharedWorkspace = [NSWorkspace sharedWorkspace];
+    auto configuration = [NSWorkspaceOpenConfiguration configuration];
+    auto string = path.string();
+    auto slice = string.substr(0, string.find(".app") + 4);
+    auto url = [NSURL
+      fileURLWithPath: [NSString stringWithUTF8String: slice.c_str()]
+    ];
+
+    auto bundle = [NSBundle bundleWithURL: url];
+    auto env = [[NSMutableDictionary alloc] init];
+
+    for (auto const &envKey : split(settings["build_env"], ',')) {
+      auto cleanKey = trim(envKey);
+      auto envValue = getEnv(cleanKey.c_str());
+      auto key = [NSString stringWithUTF8String: cleanKey.c_str()];
+      auto value = [NSString stringWithUTF8String: envValue.c_str()];
+
+      env[key] = value;
+    }
+
+    auto splitArgs = split(args, ' ');
+    auto arguments = [[NSMutableArray alloc] init];
+
+    for (auto arg : splitArgs) {
+      [arguments addObject: [NSString stringWithUTF8String: arg.c_str()]];
+    }
+
+    [arguments addObject: @"--from-ssc"];
+
+    configuration.createsNewApplicationInstance = YES;
+    configuration.promptsUserIfNeeded = YES;
+    configuration.environment = env;
+    configuration.arguments = arguments;
+    configuration.activates = headless ? NO : YES;
+
+    log(String("Running App: " + String(bundle.bundlePath.UTF8String)));
+
+    appMutex.lock();
+    appStatus = 0;
+
+    [sharedWorkspace
+      openApplicationAtURL: bundle.bundleURL
+             configuration: configuration
+         completionHandler: ^(NSRunningApplication* app, NSError* error)
+    {
+      if (error) {
+        appMutex.unlock();
+        appStatus = 1;
+        debug(
+          "error: NSWorkspace: (code=%lu, domain=%@) %@",
+          error.code,
+          error.domain,
+          error.localizedDescription
+        );
+        return;
+      }
+
+      appPid = app.processIdentifier;
+
+      // It appears there is a bug with `:predicateWithFormat:` as the
+      // following does not appear to work:
+      //
+      // [NSPredicate
+      //   predicateWithFormat: @"processIdentifier == %d AND subsystem == '%s'",
+      //   app.processIdentifier,
+      //   bundle.bundleIdentifier // or even a literal string "co.socketsupply.socket.tests"
+      // ];
+      //
+      // We can build the predicate query string manually, instead.
+      auto queryStream = StringStream {};
+      auto pid = std::to_string(app.processIdentifier);
+      auto bid = bundle.bundleIdentifier.UTF8String;
+      queryStream
+        << "("
+        << "  category == 'socket.runtime.desktop' OR "
+        << "  category == 'socket.runtime.debug'"
+        << ") AND "
+        << "processIdentifier == " << pid << " AND "
+        << "subsystem == '" << bid << "'";
+      // log store query and predicate for filtering logs based on the currently
+      // running application that was just launched and those of a subsystem
+      // directly related to the application's bundle identifier which allows us
+      // to just get logs that came from the application (not foundation/cocoa/webkit)
+      const auto query = [NSString stringWithUTF8String: queryStream.str().c_str()];
+      const auto predicate = [NSPredicate predicateWithFormat: query];
+
+      // use the launch date as the initial marker
+      const auto now = app.launchDate;
+      // and offset it by 1 second in the past as the initial position in the eumeration
+      auto offset = [now dateByAddingTimeInterval: -1];
+
+      // tracks the latest log entry date so we ignore older ones
+      NSDate* latest = nil;
+
+      while (kill(app.processIdentifier, 0) == 0) {
+        @autoreleasepool {
+          // We need  a new `OSLogStore` in each so we can keep
+          // enumeratoring the logs until the application terminates
+          auto logs = [OSLogStore localStoreAndReturnError: &error];
+
+          if (error) {
+            appStatus = 1;
+            debug(
+              "error: OSLogStore: (code=%lu, domain=%@) %@",
+              error.code,
+              error.domain,
+              error.localizedDescription
+            );
+            break;
+          }
+
+          auto position = [logs positionWithDate: offset];
+          auto enumerator = [logs
+            entriesEnumeratorWithOptions: 0
+                                position: position
+                               predicate: predicate
+                                   error: &error
+          ];
+
+          if (error) {
+            appStatus = 1;
+            debug(
+              "error: OSLogEnumerator: (code=%lu, domain=%@) %@",
+              error.code,
+              error.domain,
+              error.localizedDescription
+            );
+
+            break;
+          }
+
+          // Enumerate all the logs in this loop and print unredacted and most
+          // recently log entries to stdout
+          for (OSLogEntryLog* entry in enumerator) {
+            std::this_thread::yield();
+
+            if (
+              entry.composedMessage &&
+              entry.processIdentifier == app.processIdentifier
+            ) {
+              // visit latest log
+              if (!latest || [latest compare: entry.date] == NSOrderedAscending) {
+                auto message = entry.composedMessage.UTF8String;
+
+                // the OSLogStore may redact log messages the user does not
+                // have access to, filter them out
+                if (String(message) != "<private>") {
+                  if (
+                    entry.level == OSLogEntryLogLevelDebug ||
+                    entry.level == OSLogEntryLogLevelError ||
+                    entry.level == OSLogEntryLogLevelFault
+                  ) {
+                    std::cerr << message << std::endl;
+                  } else {
+                    std::cout << message << std::endl;
+                  }
+                }
+
+                latest = entry.date;
+                offset = offset;
+              }
+            }
+          }
+
+          std::this_thread::sleep_for(std::chrono::milliseconds(256));
+        }
+      }
+
+      appMutex.unlock();
+    }];
+
+    // wait for `NSRunningApplication` to terminate
+    std::lock_guard<std::mutex> lock(appMutex);
+
+    log("App result: " + std::to_string(appStatus.load()));
+    std::this_thread::sleep_for(std::chrono::milliseconds(32));
+    return appStatus.load();
+  }
+#endif
+
+  log(String("Running App: " + headlessCommand + prefix + cmd +  args + " --from-ssc"));
+
+  appProcess = new SSC::Process(
+     headlessCommand + prefix + cmd,
+    args + " --from-ssc",
+    fs::current_path().string(),
+    [](SSC::String const &out) { std::cout << out << std::endl; },
+    [](SSC::String const &out) { std::cerr << out << std::endl; }
+  );
+
+  appPid = appProcess->open();
+  appProcess->wait();
+  auto status = appProcess->status.load();
+
+  if (status > -1) {
+    appStatus = status;
+  }
+
+  delete appProcess;
+  appProcess = nullptr;
+
+  log("App result: " + std::to_string(appStatus));
+  return appStatus;
 }
 
 int runApp (const fs::path& path, const String& args) {
@@ -453,6 +682,13 @@ int main (const int argc, const char* argv[]) {
 
   auto const subcommand = argv[1];
 
+#ifndef _WIN32
+  signal(SIGHUP, signalHandler);
+#endif
+
+  signal(SIGINT, signalHandler);
+  signal(SIGTERM, signalHandler);
+
   if (is(subcommand, "-v") || is(subcommand, "--version")) {
     std::cout << SSC::VERSION_FULL_STRING << std::endl;
     exit(0);
@@ -477,10 +713,8 @@ int main (const int argc, const char* argv[]) {
   if (argc == 2 || lastOption[0] == '-') {
     numberOfOptions = argc - 2;
     targetPath = fs::current_path();
-  } else if (lastOption[0] == '.') {
-    targetPath = fs::absolute(lastOption).lexically_normal();
   } else {
-    targetPath = fs::path(lastOption);
+    targetPath = fs::absolute(lastOption).lexically_normal();
   }
 
   struct Paths {
@@ -629,11 +863,11 @@ int main (const int argc, const char* argv[]) {
           exit(1);
         }
 
-        // Define regular expression to match spaces, special characters except dash and underscore
+        // Define regular expression to match spaces, and special characters except dash and underscore
         std::regex name_pattern("[^a-zA-Z0-9_\\-]");
-        // Check if name matches the pattern
+        // Check if the name matches the pattern
         if (std::regex_search(settings["build_name"], name_pattern)) {
-          log("error: 'name' in socket.ini [build] section can only contain alphanumeric characters, dashes and underscores");
+          log("error: 'name' in socket.ini [build] section can only contain alphanumeric characters, dashes, and underscores");
           exit(1);
         }
 
@@ -641,7 +875,7 @@ int main (const int argc, const char* argv[]) {
         // The semver specification is available at https://semver.org/
         // The pre-release and build metadata are not supported
         std::regex semver_pattern("^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)$");
-        // Check if version matches the pattern
+        // Check if the version matches the pattern
         if (!std::regex_match(settings["meta_version"], semver_pattern)) {
           log("error: 'version' in [meta] section of socket.ini must be in semver format");
           exit(1);
@@ -705,7 +939,7 @@ int main (const int argc, const char* argv[]) {
       }
     }
     if (targetPlatform.size() == 0) {
-      log("error: --platfrom option is required");
+      log("error: --platform option is required");
       exit(1);
     }
     if (targetPlatform == "ios" && platform.mac) {
@@ -772,7 +1006,7 @@ int main (const int argc, const char* argv[]) {
       const String cfgUtilPath = getCfgUtilPath();
       String commandOptions = "";
       String targetPlatform = "";
-      // we need to find platform first
+      // we need to find the platform first
       for (auto const option : options) {
         targetPlatform = optionValue(option, "--platform");
         if (targetPlatform.size() > 0) {
@@ -788,7 +1022,7 @@ int main (const int argc, const char* argv[]) {
         printHelp("install-app");
         exit(1);
       }
-      // then we need to find device
+      // then we need to find the device
       for (auto const option : options) {
         auto device = optionValue(option, "--device");
         if (device.size() > 0) {
@@ -808,7 +1042,7 @@ int main (const int argc, const char* argv[]) {
         log("Could not find " + ipaPath.string());
         exit(1);
       }
-      // this command will install the app to first connected device which were
+      // this command will install the app to the first connected device which was
       // added to the provisioning profile if no --device is provided.
       auto command = cfgUtilPath + " " + commandOptions + "install-app " + ipaPath.string();
       auto r = exec(command);
@@ -831,7 +1065,7 @@ int main (const int argc, const char* argv[]) {
         exit(0);
       }
     }
-    // if no --platform option provided, print current platform build path
+    // if no --platform option is provided, print the current platform build path
     std::cout << getPaths(platform.os).pathResourcesRelativeToUserBuild.string() << std::endl;
     exit(0);
   });
@@ -1070,6 +1304,7 @@ int main (const int argc, const char* argv[]) {
       flags += " -framework UserNotifications";
       flags += " -framework WebKit";
       flags += " -framework Cocoa";
+      flags += " -framework OSLog";
       flags += " -DMACOS=1";
       flags += " -I" + prefixFile();
       flags += " -I" + prefixFile("include");
@@ -1674,21 +1909,13 @@ int main (const int argc, const char* argv[]) {
         " -I\"" + prefix + "src\""
         " -L\"" + prefix + "lib\""
       ;
+      
+      flags += " -I" + prefixFile("include");
+      flags += " -L" + prefixFile("lib/" + platform.arch + "-desktop");
 
-      files += "\"" + prefixFile("src\\init.cc\"");
-      files += "\"" + prefixFile("src\\app\\app.cc\"");
-      files += "\"" + prefixFile("src\\core\\bluetooth.cc\"");
-      files += "\"" + prefixFile("src\\core\\core.cc\"");
-      files += "\"" + prefixFile("src\\core\\fs.cc\"");
-      files += "\"" + prefixFile("src\\core\\javascript.cc\"");
-      files += "\"" + prefixFile("src\\core\\json.cc\"");
-      files += "\"" + prefixFile("src\\core\\peer.cc\"");
-      files += "\"" + prefixFile("src\\core\\udp.cc\"");
-      files += "\"" + prefixFile("src\\desktop\\main.cc\"");
-      files += "\"" + prefixFile("src\\ipc\\bridge.cc\"");
-      files += "\"" + prefixFile("src\\ipc\\ipc.cc\"");
-      files += "\"" + prefixFile("src\\window\\win.cc\"");
-      files += "\"" + prefixFile("src\\process\\win.cc\"");
+      files += prefixFile("objects/" + platform.arch + "-desktop/desktop/main.o");
+      files += prefixFile("src/init.cc");
+      files += prefixFile("lib/" + platform.arch + "-desktop/libsocket-runtime.a");
 
       fs::create_directories(paths.pathPackage);
 
@@ -1736,7 +1963,7 @@ int main (const int argc, const char* argv[]) {
     if (settings.count("build_script") != 0) {
       //
       // cd into the targetPath and run the user's build command,
-      // pass it the platform specific directory where they
+      // pass it to the platform-specific directory where they
       // should send their build artifacts.
       //
       auto oldCwd = fs::current_path();
@@ -1776,18 +2003,17 @@ int main (const int argc, const char* argv[]) {
         buildArgs.str(),
         fs::current_path().string(),
         [](SSC::String const &out) { stdWrite(out, false); },
-        [](SSC::String const &out) { stdWrite(out, true); },
-        [](SSC::String const &code) {
-          if (std::stoi(code) != 0) {
-            log("build failed, exiting with code " + code);
-            // TODO(trevnorris): Force non-windows to exit the process.
-            exit(std::stoi(code));
-          }
-        }
+        [](SSC::String const &out) { stdWrite(out, true); }
       );
 
       process->open();
       process->wait();
+      if (process->status != 0)
+      {
+        // TODO(trevnorris): Force non-windows to exit the process.
+        log("build failed, exiting with code " + std::to_string(process->status));
+        exit(process->status);
+      }
 
       log("ran user build command");
 
@@ -1996,7 +2222,7 @@ int main (const int argc, const char* argv[]) {
       }
 
       if (platform.mac && platform.arch == "arm64") {
-        log("warning: 'arm64' may be an unsupported archicture for the Android NDK which may cause the build to fail.");
+        log("warning: 'arm64' may be an unsupported architecture for the Android NDK which may cause the build to fail.");
         log("         Please see https://stackoverflow.com/a/69555276 to work around this.");
       }
 
@@ -2137,8 +2363,8 @@ int main (const int argc, const char* argv[]) {
         << " -DSSC_VERSION_HASH=" << SSC::VERSION_HASH_STRING
       ;
 
-      // TODO(trevnorris): Output build string on debug builds.
-      // log(compileCommand.str());
+      if (getEnv("DEBUG") == "1")
+        log(compileCommand.str());
 
       auto r = exec(compileCommand.str());
 
@@ -2316,7 +2542,7 @@ int main (const int argc, const char* argv[]) {
     }
 
     //
-    // MacOS Notorization
+    // MacOS Notarization
     // ---
     //
     if (flagShouldNotarize && platform.mac) {
@@ -2633,7 +2859,7 @@ int main (const int argc, const char* argv[]) {
       auto pathToSignTool = getEnv("SIGNTOOL");
 
       if (pathToSignTool.size() == 0) {
-        // TODO assumes last dir that contains dot. posix doesnt guarantee
+        // TODO assumes the last dir that contains dot. posix doesnt guarantee
         // order, maybe windows does, but this should probably be smarter.
         for (const auto& entry : fs::directory_iterator(sdkRoot)) {
           auto p = entry.path().string();

@@ -172,20 +172,23 @@ namespace SSC {
     // Close stdin. If the process takes parameters from stdin, use this to
     // notify that all parameters have been sent.
     void close_stdin() noexcept;
-    void open() noexcept {
-      if (this->command.size() == 0) return;
-      open(this->command + this->argv, this->path);
+    id_type open() noexcept {
+      if (this->command.size() == 0) return 0;
+      auto pid = open(this->command + this->argv, this->path);
       read();
+      return pid;
     }
 
     // Kill a given process id. Use kill(bool force) instead if possible.
     // force=true is only supported on Unix-like systems.
     void kill(id_type id) noexcept;
 
-    void wait () {
+    int wait () {
       do {
         std::this_thread::yield();
       } while (this->closed == false);
+
+      return this->status;
     }
 
   private:
@@ -201,6 +204,8 @@ namespace SSC {
 #endif
     bool open_stdin;
     std::mutex stdin_mutex;
+    std::mutex stdout_mutex;
+    std::mutex stderr_mutex;
 
     ProcessConfig config;
 

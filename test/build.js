@@ -16,8 +16,9 @@ const cp = async (a, b) => fs.cp(
 async function copy (target) {
   await Promise.all([
     cp('src/frontend/index.html', target),
-    cp('src/frontend/index_second_window.html', target),
-    cp('src/frontend/index_second_window2.html', target),
+    cp('src/frontend/index_send_event.html', target),
+    cp('src/frontend/index_no_js.html', target),
+    cp('src/frontend/index_no_js2.html', target),
     cp('fixtures', target),
     // for testing purposes
     cp('socket.ini', target),
@@ -56,7 +57,7 @@ async function main () {
 
   await Promise.all([
     esbuild.build(params),
-    esbuild.build({ ...params, entryPoints: ['src/frontend/index_second_window.js'] }),
+    esbuild.build({ ...params, entryPoints: ['src/frontend/index_send_event.js'] }),
     copy(params.outdir)
   ])
 }

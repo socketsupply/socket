@@ -14,7 +14,7 @@ namespace SSC::android {
     this->env = env;
     this->self = env->NewGlobalRef(self);
     this->bridge = bridge;
-    this->config = SSC::getSettingsSource();
+    this->config = SSC::getUserConfig();
     this->pointer = reinterpret_cast<jlong>(this);
 
     StringStream stream;
@@ -42,20 +42,7 @@ namespace SSC::android {
     options.cwd = rootDirectory.str();
     options.appData = this->config;
 
-    preloadSource.assign(
-      "window.addEventListener('unhandledrejection', e => {        \n"
-      "  console.log(e.reason || e.message || e);                  \n"
-      "});                                                         \n"
-      "                                                            \n"
-      "window.addEventListener('error', e => {                     \n"
-      "  const message = e.reason || e.message || e;               \n"
-      "  if (!/debug-evaluate/.test(message)) {                    \n"
-      "    console.log(message);                                   \n"
-      "  }                                                         \n"
-      "});                                                         \n"
-      "                                                            \n"
-      + createPreload(options)
-    );
+    preloadSource = createPreload(options);
   }
 
   Window::~Window () {
@@ -66,13 +53,16 @@ namespace SSC::android {
     auto attachment = JNIEnvironmentAttachment { jvm.get(), jvm.version() };
     auto env = attachment.env;
     if (!attachment.hasException()) {
+      auto sourceString = env->NewStringUTF(source.c_str());
       CallVoidClassMethodFromEnvironment(
         env,
         self,
         "evaluateJavaScript",
         "(Ljava/lang/String;)V",
-        env->NewStringUTF(source.c_str())
+        sourceString
       );
+
+      env->DeleteLocalRef(sourceString);
     }
   }
 }

@@ -53,6 +53,8 @@ namespace SSC {
       ExitCallback onExit = nullptr;
       IPC::Bridge *bridge = nullptr;
       int index = 0;
+      int width = 0;
+      int height = 0;
 
 #if defined(__APPLE__)
 #if !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR
@@ -88,18 +90,20 @@ namespace SSC {
 
       Window (App&, WindowOptions);
 
+      static ScreenSize getScreenSize ();
+
       void about ();
       void eval (const String&);
-      void show (const String&);
-      void hide (const String&);
+      void show ();
+      void hide ();
       void kill ();
       void exit (int code);
       void close (int code);
       void navigate (const String&, const String&);
       String getTitle ();
-      void setTitle (const String&, const String&);
+      void setTitle (const String&);
       ScreenSize getSize ();
-      void setSize (const String&, int, int, int);
+      void setSize (int, int, int);
       void setContextMenu (const String&, const String&);
       void closeContextMenu (const String&);
       void closeContextMenu ();
@@ -109,7 +113,6 @@ namespace SSC {
       void setBackgroundColor (int r, int g, int b, float a);
       void setSystemMenuItemEnabled (bool enabled, int barPos, int menuPos);
       void setSystemMenu (const String& seq, const String& menu);
-      ScreenSize getScreenSize ();
       void showInspector ();
       int openExternal (const String& s);
       void openDialog ( // @TODO(jwerle): use `OpenDialogOptions` here instead
@@ -134,13 +137,26 @@ namespace SSC {
 
         this->onMessage(IPC::getResolveToMainProcessMessage(seq, state, value));
       }
+
+      static float getSizeInPixels (String sizeInPercent, int screenSize) {
+        if (sizeInPercent.size() > 0) {
+          if (sizeInPercent.back() == '%') {
+            sizeInPercent.pop_back();
+            return screenSize * std::stof(sizeInPercent) / 100;
+          }
+          return std::stof(sizeInPercent);
+        }
+        return 0;
+      }
   };
 
   struct WindowManagerOptions {
-    float defaultHeight = 0;
-    float defaultWidth = 0;
-    bool isHeightInPercent = false;
-    bool isWidthInPercent = false;
+    String defaultHeight = "0";
+    String defaultWidth = "0";
+    String defaultMinWidth = "0";
+    String defaultMinHeight = "0";
+    String defaultMaxWidth = "100%";
+    String defaultMaxHeight = "100%";
     bool headless = false;
     bool isTest;
     String argv = "";
@@ -192,7 +208,7 @@ namespace SSC {
             auto index = std::to_string(this->opts.index);
             manager.log("Showing Window#" + index + " (seq=" + seq + ")");
             status = WindowStatus::WINDOW_SHOWING;
-            Window::show(seq);
+            Window::show();
             status = WindowStatus::WINDOW_SHOWN;
           }
 
@@ -204,7 +220,7 @@ namespace SSC {
               auto index = std::to_string(this->opts.index);
               manager.log("Hiding Window#" + index + " (seq=" + seq + ")");
               status = WindowStatus::WINDOW_HIDING;
-              Window::hide(seq);
+              Window::hide();
               status = WindowStatus::WINDOW_HIDDEN;
             }
           }
@@ -245,24 +261,17 @@ namespace SSC {
             manager.destroyWindow(reinterpret_cast<Window*>(this));
           }
 
-          JSON::Object json (WindowPropertiesFlags flags) {
+          JSON::Object json () {
             auto index = this->opts.index;
-            auto window = JSON::Object::Entries {
-              { "index", index }
+            auto size = this->getSize();
+
+            return JSON::Object::Entries {
+              { "index", index },
+              { "title", this->getTitle() },
+              { "width", size.width },
+              { "height", size.height },
+              { "status", this->status }
             };
-            if (flags.showTitle) {
-              window["title"] = this->getTitle();
-            }
-            if (flags.showSize) {
-              const auto size = this->getSize();
-              window["width"] = size.width;
-              window["height"] = size.height;
-            }
-            if (flags.showStatus) {
-              const auto status = this->status;
-              window["status"] = status;
-            }
-            return window;
           }
       };
 
@@ -305,8 +314,10 @@ namespace SSC {
         if (destroyed) return;
         this->options.defaultHeight = configuration.defaultHeight;
         this->options.defaultWidth = configuration.defaultWidth;
-        this->options.isHeightInPercent = configuration.isHeightInPercent;
-        this->options.isWidthInPercent = configuration.isWidthInPercent;
+        this->options.defaultMinWidth = configuration.defaultMinWidth;
+        this->options.defaultMinHeight = configuration.defaultMinHeight;
+        this->options.defaultMaxWidth = configuration.defaultMaxWidth;
+        this->options.defaultMaxHeight = configuration.defaultMaxHeight;
         this->options.onMessage = configuration.onMessage;
         this->options.appData = configuration.appData;
         this->options.onExit = configuration.onExit;
@@ -437,20 +448,38 @@ namespace SSC {
           }
         }
 
-        auto height = opts.height > 0 ? opts.height : this->options.defaultHeight;
-        auto width = opts.width > 0 ? opts.width : this->options.defaultWidth;
-        auto isHeightInPercent = opts.height > 0 ? false : this->options.isHeightInPercent;
-        auto isWidthInPercent = opts.width > 0 ? false : this->options.isWidthInPercent;
+        auto screen = Window::getScreenSize();
+
+        float width = opts.width <= 0
+          ? Window::getSizeInPixels(this->options.defaultWidth, screen.width)
+          : opts.width;
+        float height = opts.height <= 0
+          ? Window::getSizeInPixels(this->options.defaultHeight, screen.height)
+          : opts.height;
+        float minWidth = opts.minWidth <= 0
+          ? Window::getSizeInPixels(this->options.defaultMinWidth, screen.width)
+          : opts.minWidth;
+        float minHeight = opts.minHeight <= 0
+          ? Window::getSizeInPixels(this->options.defaultMinHeight, screen.height)
+          : opts.minHeight;
+        float maxWidth = opts.maxWidth <= 0
+          ? Window::getSizeInPixels(this->options.defaultMaxWidth, screen.width)
+          : opts.maxWidth;
+        float maxHeight = opts.maxHeight <= 0
+          ? Window::getSizeInPixels(this->options.defaultMaxHeight, screen.height)
+          : opts.maxHeight;
 
         WindowOptions windowOptions = {
           .resizable = opts.resizable,
           .frameless = opts.frameless,
           .utility = opts.utility,
           .canExit = opts.canExit,
-          .height = height,
           .width = width,
-          .isHeightInPercent = isHeightInPercent,
-          .isWidthInPercent = isWidthInPercent,
+          .height = height,
+          .minWidth = minWidth,
+          .minHeight = minHeight,
+          .maxWidth = maxWidth,
+          .maxHeight = maxHeight,
           .index = opts.index,
           .debug = isDebugEnabled() || opts.debug,
           .isTest = this->options.isTest,
@@ -483,34 +512,30 @@ namespace SSC {
 
       ManagedWindow* createDefaultWindow (WindowOptions opts) {
         return createWindow(WindowOptions {
-          .resizable = true,
-          .frameless = false,
+          .resizable = opts.resizable,
+          .frameless = opts.frameless,
+          .utility = opts.utility,
           .canExit = true,
           .height = opts.height,
           .width = opts.width,
           .index = 0,
-#ifdef PORT
+      #ifdef PORT
           .port = PORT,
-#endif
+      #endif
           .appData = opts.appData
         });
       }
 
-      JSON::Array json (WindowPropertiesFlags flags) {
+      JSON::Array json (std::vector<int> indices) {
         auto i = 0;
-        JSON::Array windows;
-        for (auto window : this->windows) {
+        JSON::Array result;
+        for (auto index : indices) {
+          auto window = getWindow(index);
           if (window != nullptr) {
-            if (!flags.showTitle && !flags.showSize && !flags.showStatus) {
-              windows[i] = window->opts.index;
-            } else {
-              const auto w = this->getWindow(window->opts.index);
-              windows[i] = w->json(flags);
-            }
+            result[i++] = window->json();
           }
-          i++;
         }
-        return windows;
+        return result;
       }
   };
 

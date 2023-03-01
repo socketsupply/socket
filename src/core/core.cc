@@ -93,10 +93,8 @@ namespace SSC {
     if (posts->find(id) == posts->end()) return;
     auto post = getPost(id);
 
-    if (post.body && post.bodyNeedsFree) {
+    if (post.body) {
       delete [] post.body;
-      post.bodyNeedsFree = false;
-      post.body = nullptr;
     }
 
     posts->erase(id);
@@ -166,6 +164,65 @@ namespace SSC {
     }
   }
 
+  void Core::OS::cpus (
+    const String seq,
+    Module::Callback cb
+  ) {
+    this->core->dispatchEventLoop([=, this]() {
+    #if defined(__ANDROID__)
+      {
+        auto json = JSON::Object::Entries {
+          {"source", "os.cpus"},
+          {"data", JSON::Array::Entries {}}
+        };
+
+        cb(seq, json, Post{});
+        return;
+      }
+    #endif
+
+      uv_cpu_info_t* infos = nullptr;
+      int count = 0;
+      int status = uv_cpu_info(&infos, &count);
+
+      if (status != 0) {
+        auto json = JSON::Object::Entries {
+          {"source", "os.cpus"},
+          {"err", JSON::Object::Entries {
+            {"message", uv_strerror(status)}
+          }}
+        };
+
+        cb(seq, json, Post{});
+        return;
+      }
+
+      JSON::Array::Entries entries(count);
+      for (int i = 0; i < count; ++i) {
+        auto info = infos[i];
+        entries[i] = JSON::Object::Entries {
+          {"model", info.model},
+          {"speed", info.speed},
+          {"times", JSON::Object::Entries {
+            {"user", info.cpu_times.user},
+            {"nice", info.cpu_times.nice},
+            {"sys", info.cpu_times.sys},
+            {"idle", info.cpu_times.idle},
+            {"irq", info.cpu_times.irq}
+          }}
+        };
+      }
+
+      auto json = JSON::Object::Entries {
+        {"source", "os.cpus"},
+        {"data", entries}
+      };
+
+      uv_free_cpu_info(infos, count);
+      cb(seq, json, Post{});
+    });
+  }
+
   void Core::OS::networkInterfaces (
     const String seq,
     Module::Callback cb
@@ -176,15 +233,15 @@ namespace SSC {
     StringStream v6;
     int count = 0;
 
-    int rc = uv_interface_addresses(&infos, &count);
+    int status = uv_interface_addresses(&infos, &count);
 
-    if (rc != 0) {
+    if (status != 0) {
       auto json = JSON::Object(JSON::Object::Entries {
         {"source", "os.networkInterfaces"},
         {"err", JSON::Object::Entries {
           {"type", "InternalError"},
           {"message",
-            String("Unable to get network interfaces: ") + String(uv_strerror(rc))
+            String("Unable to get network interfaces: ") + String(uv_strerror(status))
           }
         }}
       });
@@ -234,6 +291,94 @@ namespace SSC {
     auto json = JSON::Object::Entries {
       {"source", "os.networkInterfaces"},
       {"data", data}
+    };
+
+    cb(seq, json, Post{});
+  }
+
+  void Core::OS::rusage (
+    const String seq,
+    Module::Callback cb
+  ) {
+    uv_rusage_t usage;
+    auto status = uv_getrusage(&usage);
+
+    if (status != 0) {
+      auto json = JSON::Object::Entries {
+        {"source", "os.rusage"},
+        {"err", JSON::Object::Entries {
+          {"message", uv_strerror(status)}
+        }}
+      };
+
+      cb(seq, json, Post{});
+      return;
+    }
+
+    auto json = JSON::Object::Entries {
+      {"source", "os.rusage"},
+      {"data", JSON::Object::Entries {
+        {"ru_maxrss", usage.ru_maxrss}
+      }}
+    };
+
+    cb(seq, json, Post{});
+  }
+
+  void Core::OS::uname (
+    const String seq,
+    Module::Callback cb
+  ) {
+    uv_utsname_t uname;
+    auto status = uv_os_uname(&uname);
+
+    if (status != 0) {
+      auto json = JSON::Object::Entries {
+        {"source", "os.uname"},
+        {"err", JSON::Object::Entries {
+          {"message", uv_strerror(status)}
+        }}
+      };
+
+      cb(seq, json, Post{});
+      return;
+    }
+
+    auto json = JSON::Object::Entries {
+      {"source", "os.uname"},
+      {"data", JSON::Object::Entries {
+        {"sysname", uname.sysname},
+        {"release", uname.release},
+        {"version", uname.version},
+        {"machine", uname.machine}
+      }}
+    };
+
+    cb(seq, json, Post{});
+  }
+
+  void Core::OS::uptime (
+    const String seq,
+    Module::Callback cb
+  ) {
+    double uptime;
+    auto status = uv_uptime(&uptime);
+
+    if (status != 0) {
+      auto json = JSON::Object::Entries {
+        {"source", "os.uptime"},
+        {"err", JSON::Object::Entries {
+          {"message", uv_strerror(status)}
+        }}
+      };
+
+      cb(seq, json, Post{});
+      return;
+    }
+
+    auto json = JSON::Object::Entries {
+      {"source", "os.uptime"},
+      {"data", uptime * 1000} // in milliseconds
     };
 
     cb(seq, json, Post{});
@@ -325,7 +470,7 @@ namespace SSC {
       }
 
       auto json = JSON::Object::Entries {
-        {"source", "event"},
+        {"source", "platform.event"},
         {"data", JSON::Object::Entries{}}
       };
 
@@ -442,14 +587,14 @@ namespace SSC {
 
       if (!success) {
         json = JSON::Object::Entries {
-          {"source", "platform.notify"},
+          {"source", "platform.openExternal"},
           {"err", JSON::Object::Entries {
             {"message", "Failed to open external URL"}
           }}
         };
       } else {
         json = JSON::Object::Entries {
-          {"source", "platform.notify"},
+          {"source", "platform.openExternal"},
           {"data", JSON::Object::Entries {}}
         };
       }
@@ -479,10 +624,65 @@ namespace SSC {
        }
 
       cb(seq, json, Post{});
-
-      [configuration release];
     }];
     #endif
+#elif defined(__linux__) && !defined(__ANDROID__)
+    auto list = gtk_window_list_toplevels();
+    auto json = JSON::Object {};
+
+    // initial state is a failure
+    json = JSON::Object::Entries {
+      {"source", "platform.openExternal"},
+      {"err", JSON::Object::Entries {
+        {"message", "Failed to open external URL"}
+      }}
+    };
+
+    if (list != nullptr) {
+      for (auto entry = list; entry != nullptr; entry = entry->next) {
+        auto window = GTK_WINDOW(entry->data);
+
+        if (window != nullptr && gtk_window_is_active(window)) {
+          auto err = (GError*) nullptr;
+          auto uri = value.c_str();
+          auto ts = GDK_CURRENT_TIME;
+
+          /**
+           * GTK may print a error in the terminal that looks like:
+           *
+           *   libva error: vaGetDriverNameByIndex() failed with unknown libva error, driver_name = (null)
+           *
+           * It doesn't prevent the URI from being opened.
+           * See https://github.com/intel/media-driver/issues/1349 for more info
+           */
+          auto success = gtk_show_uri_on_window(window, uri, ts, &err);
+
+          if (success) {
+            json = JSON::Object::Entries {
+              {"source", "platform.openExternal"},
+              {"data", JSON::Object::Entries {}}
+            };
+          } else if (err != nullptr) {
+            json = JSON::Object::Entries {
+              {"source", "platform.openExternal"},
+              {"err", JSON::Object::Entries {
+                {"message", err->message}
+              }}
+            };
+          }
+
+          break;
+        }
+      }
+
+      g_list_free(list);
+    }
+
+    cb(seq, json, Post{});
+#elif defined(_WIN32)
+    auto uri = value.c_str();
+    ShellExecute(nullptr, "Open", uri, nullptr, nullptr, SW_SHOWNORMAL);
+    // TODO how to detect success here. do we care?
 #endif
   }
 
@@ -508,7 +708,7 @@ namespace SSC {
       hints.ai_socktype = 0; // `0` for any
       hints.ai_protocol = 0; // `0` for any
 
-      uv_getaddrinfo_t* resolver = new uv_getaddrinfo_t;
+      auto resolver = new uv_getaddrinfo_t;
       resolver->data = ctx;
 
       auto err = uv_getaddrinfo(loop, resolver, [](uv_getaddrinfo_t *resolver, int status, struct addrinfo *res) {
@@ -524,6 +724,8 @@ namespace SSC {
           };
 
           ctx->cb(ctx->seq, result, Post{});
+          uv_freeaddrinfo(res);
+          delete resolver;
           delete ctx;
           return;
         }
@@ -558,8 +760,8 @@ namespace SSC {
 
         ctx->cb(ctx->seq, result, Post{});
         uv_freeaddrinfo(res);
+        delete resolver;
         delete ctx;
-
       }, options.hostname.c_str(), nullptr, &hints);
 
       if (err < 0) {

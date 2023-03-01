@@ -20,6 +20,7 @@
 // USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import console from './console.js'
+import * as exports from './events.js'
 
 const R = typeof Reflect === 'object' ? Reflect : null
 const ReflectApply = R && typeof R.apply === 'function'
@@ -468,7 +469,24 @@ function eventTargetAgnosticAddListener (emitter, name, listener, flags) {
 EventEmitter.EventEmitter = EventEmitter
 EventEmitter.once = once
 
+export const CustomEvent = globalThis.CustomEvent || class CustomEvent extends globalThis.Event {
+  #detail = null
+
+  constructor (type, options) {
+    super(type, options)
+    if (options?.detail) {
+      this.#detail = options.detail
+    }
+  }
+
+  get detail () {
+    return this.#detail
+  }
+}
+
 export {
   EventEmitter,
   once
 }
+
+export default exports

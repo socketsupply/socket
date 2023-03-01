@@ -18,7 +18,7 @@ static dispatch_queue_attr_t qos = dispatch_queue_attr_make_with_qos_class(
 );
 
 static dispatch_queue_t queue = dispatch_queue_create(
-  "co.socketsupply.queue.app",
+  "co.socketsupply.socket.app.queue",
   qos
 );
 #endif
@@ -36,12 +36,12 @@ namespace SSC {
 #if defined(__linux__)
     gtk_init_check(0, nullptr);
 #endif
+
+    auto cwd = getCwd();
+    uv_chdir(cwd.c_str());
   }
 
   int App::run () {
-    auto cwd = getCwd();
-    uv_chdir(cwd.c_str());
-
 #if defined(__linux__)
     gtk_main();
 #elif defined(__APPLE__) && !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR
@@ -87,8 +87,9 @@ namespace SSC {
     }
 #elif defined(_WIN32)
     if (isDebugEnabled()) {
-      fclose(console);
-      FreeConsole();
+      if (w32ShowConsole) {
+        HideConsole();
+      }
     }
     PostQuitMessage(0);
 #endif
@@ -203,13 +204,25 @@ namespace SSC {
     MessageBoxA(nullptr, s, _TEXT("Alert"), MB_OK | MB_ICONSTOP);
   }
 
-  App::App (void* h) : App() {
-    this->hInstance = (HINSTANCE) h;
+  
+  void App::ShowConsole() {
+    if (consoleVisible)
+      return;
+    consoleVisible = true;
+    AllocConsole();
+    freopen_s(&console, "CONOUT$", "w", stdout);
+  }
 
-    if (isDebugEnabled()) {
-      AllocConsole();
-      freopen_s(&console, "CONOUT$", "w", stdout);
-    }
+  void App::HideConsole() {
+    if (!consoleVisible)
+      return;
+    consoleVisible = false;
+    fclose(console);
+    FreeConsole();
+  }
+
+  App::App (void* h) : App() {
+    this->hInstance = (HINSTANCE) h;  
 
     // this fixes bad default quality DPI.
     SetProcessDPIAware();

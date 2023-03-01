@@ -34,25 +34,27 @@ void signalHandler (int signal) {
   }
 }
 
-void navigate (Window* window, const String &cwd, const String &seq, const String &value) {
-  if (!value.starts_with("file://") && !value.starts_with("socket://")) {
-    debug("Navigation error: only file:// or socket:// protocol is allowed. Got path %s", value.c_str());
-    return;
+SSC::String getNavigationError (const String &cwd, const String &value) {
+  if (!value.starts_with("file://")) {
+    return SSC::String("only file:// protocol is allowed for the file navigation. Got url ") + value;
   }
-  if (!value.substr(7).starts_with(cwd)) {
-    debug("Navigation error: only files in the current directory are allowed. Got path %s", value.c_str());
-    return;
+  auto url = value.substr(7);
+  if (url.empty()) {
+    return SSC::String("empty url");
   }
-  if (!value.ends_with(".html")) {
-    debug("Navigation error: only .html files are allowed. Got path %s", value.c_str());
-    return;
+  if (!url.starts_with(cwd)) {
+    return SSC::String("only files in the current working directory and its subfolders are allowed. Got url ") + value;
   }
-  if (value.find("/../") != std::string::npos) {
-    debug("Navigation error: relative paths are not allowed. Got path %s", value.c_str());
-    return;
+  if (!url.ends_with(".html")) {
+    return SSC::String("only .html files are allowed. Got url ") + value;
   }
-  window->navigate(seq, value);
-  return;
+  if (url.find("/../") != std::string::npos) {
+    return SSC::String("relative urls are not allowed. Got url ") + value;
+  }
+  if (!fs::exists(url)) {
+    return SSC::String("file does not exist. Got url ") + value;
+  }
+  return SSC::String("");
 }
 
 //
@@ -81,7 +83,7 @@ MAIN {
   const SSC::String EMPTY_SEQ = SSC::String("");
 
   auto cwd = app.getCwd();
-  app.appData = SSC::getSettingsSource();
+  app.appData = SSC::getUserConfig();
 
   SSC::String suffix = "";
 
@@ -98,7 +100,6 @@ MAIN {
 
   bool wantsVersion = false;
   bool wantsHelp = false;
-  bool fromSSC = false; // launched from the `ssc` cli
 
   // TODO right now we forward a json parsable string as the args but this
   // isn't the most robust way of doing this. possible a URI-encoded query
@@ -140,10 +141,15 @@ MAIN {
       isHeadless = true;
     }
 
-    if (s.find("--from-ssc") == 0) {
-      fromSSC = true;
-      app.fromSSC = true;
+    // launched from the `ssc` cli
+    app.fromSSC = s.find("--from-ssc") == 0 ? true : false;
+
+    #ifdef _WIN32
+    if (!app.w32ShowConsole && s.find("--w32-console") == 0) {
+      app.w32ShowConsole = true;
+      app.ShowConsole();
     }
+    #endif
 
     if (s.find("--test") == 0) {
       suffix = "-test";
@@ -209,6 +215,7 @@ MAIN {
     if (processToKill != nullptr) {
       auto pid = processToKill->getPID();
       processToKill->kill(pid);
+      processToKill->wait();
 
       if (processToKill == process) {
         process = nullptr;
@@ -268,24 +275,10 @@ MAIN {
     #endif
 
     signal(SIGINT, signalHandler);
+    signal(SIGTERM, signalHandler);
 
     return exitCode;
   }
-
-  String initialHeight = app.appData["window_height"].size() > 0 ? app.appData["window_height"] : "100%";
-  String initialWidth = app.appData["window_width"].size() > 0 ? app.appData["window_width"] : "100%";
-
-  bool isHeightInPercent = initialHeight.back() == '%';
-  bool isWidthInPercent = initialWidth.back() == '%';
-
-  if (isHeightInPercent) initialHeight.pop_back();
-  if (isWidthInPercent) initialWidth.pop_back();
-
-  auto height = std::stof(initialHeight);
-  auto width = std::stof(initialWidth);
-
-  if (height < 0) height = 0;
-  if (width < 0) width = 0;
 
   auto onStdErr = [&](auto err) {
     for (auto w : windowManager.windows) {
@@ -437,6 +430,13 @@ MAIN {
           createProcess(force);
           process->open();
         }
+#ifdef _WIN32
+        size_t last_pos = 0;
+        while ((last_pos = process->path.find('\\', last_pos)) != std::string::npos) {
+          process->path.replace(last_pos, 1, "\\\\\\\\");
+          last_pos += 4;
+        }
+#endif
         const JSON::Object json = JSON::Object::Entries {
           { "cmd", cmd },
           { "argv", process->argv },
@@ -469,36 +469,17 @@ MAIN {
       return;
     }
 
-    if (message.name == "send") {
-      const auto event = decodeURIComponent(message.get("event"));
+    if (message.name == "window.send") {
+      const auto event = message.get("event");
       const auto value = decodeURIComponent(message.get("value"));
-      const auto targetWindowIndex = message.get("window").size() >= 0 ? std::stoi(message.get("window")) : -1;
-      if (targetWindowIndex >= 0) {
-        const auto targetWindow = windowManager.getWindow(targetWindowIndex);
-        if (targetWindow) {
-          targetWindow->eval(getEmitToRenderProcessJavaScript(event, value));
-        }
-      } else {
-        for (auto w : windowManager.windows) {
-          if (w != nullptr && w->opts.index != message.index) {
-            const auto targetWindow = windowManager.getWindow(w->opts.index);
-            targetWindow->eval(getEmitToRenderProcessJavaScript(event, value));
-          }
-        }
+      const auto targetWindowIndex = message.get("targetWindowIndex").size() >= 0 ? std::stoi(message.get("targetWindowIndex")) : -1;
+      const auto targetWindow = windowManager.getWindow(targetWindowIndex);
+      const auto currentWindow = windowManager.getWindow(message.index);
+      if (targetWindow) {
+        targetWindow->eval(getEmitToRenderProcessJavaScript(event, value));
       }
       const auto seq = message.get("seq");
-      window->resolvePromise(seq, OK_STATE, "null");
-      return;
-    }
-
-    if (message.name == "window.setTitle") {
-      const auto currentIndex = message.index;
-      const auto index = message.get("window").size() > 0 ? std::stoi(message.get("window")) : currentIndex;
-      const auto window = windowManager.getWindow(index);
-      window->setTitle(
-        message.seq,
-        decodeURIComponent(value)
-      );
+      currentWindow->resolvePromise(seq, OK_STATE, "null");
       return;
     }
 
@@ -512,7 +493,7 @@ MAIN {
       return;
     }
 
-    if (message.name == "exit") {
+    if (message.name == "application.exit") {
       try {
         exitCode = std::stoi(decodeURIComponent(value));
       } catch (...) {
@@ -522,98 +503,68 @@ MAIN {
       return;
     }
 
-    if (message.name == "getWindows") {
+    if (message.name == "application.getScreenSize") {
+      const auto seq = message.get("seq");
       const auto index = message.index;
-      const auto props = WindowPropertiesFlags {
-        .showTitle = message.get("title") == "true" ? true : false,
-        .showSize = message.get("size") == "true" ? true : false,
-        .showStatus = message.get("status") == "true" ? true : false,
-      };
       const auto window = windowManager.getWindow(index);
-      const auto result = windowManager.json(props).str();
-      window->resolvePromise(message.get("seq"), OK_STATE, encodeURIComponent(result));
-      return;
-    }
-
-    if (message.name == "window.getStatus") {
-      const auto index = message.index;
-      const auto targetWindowIndex = message.get("window").size() > 0 ? std::stoi(message.get("window")) : index;
-      const auto window = windowManager.getWindow(index);
-      const auto targetWindow = windowManager.getWindow(targetWindowIndex);
-      if (targetWindow) {
-        const auto props = WindowPropertiesFlags { .showStatus = true };
-        const auto value = (targetWindow->json(props)).str();
-        const auto seq = message.get("seq");
-        window->resolvePromise(
-          seq,
-          OK_STATE,
-          value
-        );
+      if (window != nullptr) {
+        const auto screenSize = window->getScreenSize();
+        const JSON::Object json = JSON::Object::Entries {
+          { "width", screenSize.width },
+          { "height", screenSize.height }
+        };
+        window->resolvePromise(seq, OK_STATE, json.str());
       } else {
-        window->resolvePromise(
-          message.get("seq"),
-          OK_STATE,
-          "null"
-        );
+        const JSON::Object json = JSON::Object::Entries {};
+        window->resolvePromise(seq, OK_STATE, json.str());
       }
       return;
     }
 
-    if (message.name == "window.getSize") {
+    if (message.name == "application.getWindows") {
       const auto index = message.index;
-      const auto targetWindowIndex = message.get("window").size() > 0 ? std::stoi(message.get("window")) : index;
       const auto window = windowManager.getWindow(index);
-      const auto targetWindow = windowManager.getWindow(targetWindowIndex);
-      if (window) {
-        const auto props = WindowPropertiesFlags { .showSize = true };
-        const auto value = (targetWindow->json(props)).str();
-        const auto seq = message.get("seq");
-        window->resolvePromise(
-          seq,
-          OK_STATE,
-          value
-        );
-      } else {
-        window->resolvePromise(
-          message.get("seq"),
-          OK_STATE,
-          "null"
-        );
+      auto indices = SSC::splitToInts(value, ',');
+      if (indices.size() == 0) {
+        for (auto w : windowManager.windows) {
+          if (w != nullptr) {
+            indices.push_back(w->opts.index);
+          }
+        }
       }
+      const auto result = windowManager.json(indices).str();
+      window->resolvePromise(message.get("seq"), OK_STATE, result);
       return;
     }
 
-    if (message.name == "window.getTitle") {
-      const auto index = message.index;
-      const auto targetWindowIndex = message.get("window").size() > 0 ? std::stoi(message.get("window")) : index;
-      const auto window = windowManager.getWindow(index);
-      const auto targetWindow = windowManager.getWindow(targetWindowIndex);
-      if (window) {
-        const auto props = WindowPropertiesFlags { .showTitle = true };
-        const auto value = (targetWindow->json(props)).str();
-        const auto seq = message.get("seq");
-        window->resolvePromise(
-          seq,
-          OK_STATE,
-          value
-        );
-      } else {
-        window->resolvePromise(
-          message.get("seq"),
-          OK_STATE,
-          "null"
-        );
-      }
-      return;
-    }
+    if (message.name == "window.create") {
+      const auto seq = message.get("seq");
 
-    if (message.name == "window.show") {
-      auto targetWindowIndex = std::stoi(message.get("window"));
+      auto currentWindowIndex = message.index < 0 ? 0 : message.index;
+      auto currentWindow = windowManager.getWindow(currentWindowIndex);
+
+      auto targetWindowIndex = message.get("targetWindowIndex").size() > 0 ? std::stoi(message.get("targetWindowIndex")) : 0;
       targetWindowIndex = targetWindowIndex < 0 ? 0 : targetWindowIndex;
-      auto index = message.index < 0 ? 0 : message.index;
+      auto targetWindow = windowManager.getWindow(targetWindowIndex);
+      auto targetWindowStatus = windowManager.getWindowStatus(targetWindowIndex);
+
+      if (targetWindow && targetWindowStatus != WindowManager::WindowStatus::WINDOW_NONE) {
+        const JSON::Object json = JSON::Object::Entries {
+          { "err", "Window with index " + std::to_string(targetWindowIndex) + " already exists" }
+        };
+        currentWindow->resolvePromise(seq, ERROR_STATE, json.str());
+        return;
+      }
+
+      SSC::String error = getNavigationError(cwd, decodeURIComponent(message.get("url")));
+      if (error.size() > 0) {
+        const JSON::Object json = JSON::Object::Entries {{ "err", error }};
+        currentWindow->resolvePromise(seq, ERROR_STATE, json.str());
+        return;
+      }
+
+      // fill the options
       auto options = WindowOptions {};
-      auto status = windowManager.getWindowStatus(targetWindowIndex);
-      auto window = windowManager.getWindow(targetWindowIndex);
 
       options.title = message.get("title");
       options.url = message.get("url");
@@ -622,77 +573,161 @@ MAIN {
         options.port = std::stoi(message.get("port"));
       }
 
-      if (message.get("width").size() > 0 && message.get("height").size() > 0) {
-        options.width = std::stoi(message.get("width"));
-        options.height = std::stoi(message.get("height"));
+      auto screen = currentWindow->getScreenSize();
+      
+      options.width = message.get("width").size() ? currentWindow->getSizeInPixels(message.get("width"), screen.width) : 0;
+      options.height = message.get("height").size() ? currentWindow->getSizeInPixels(message.get("height"), screen.height) : 0;
+
+      options.minWidth = message.get("minWidth").size() ? currentWindow->getSizeInPixels(message.get("minWidth"), screen.width) : 0;
+      options.minHeight = message.get("minHeight").size() ? currentWindow->getSizeInPixels(message.get("minHeight"), screen.height) : 0;
+      options.maxWidth = message.get("maxWidth").size() ? currentWindow->getSizeInPixels(message.get("maxWidth"), screen.width) : screen.width;
+      options.maxHeight = message.get("maxHeight").size() ? currentWindow->getSizeInPixels(message.get("maxHeight"), screen.height) : screen.height;
+
+      options.resizable = message.get("resizable") == "true" ? true : false;
+      options.frameless = message.get("frameless") == "true" ? true : false;
+      options.utility = message.get("utility") == "true" ? true : false;
+      options.debug = message.get("debug") == "true" ? true : false;
+      options.index = targetWindowIndex;
+
+      targetWindow = windowManager.createWindow(options);
+
+      targetWindow->show(EMPTY_SEQ);
+
+      if (options.url.size() > 0) {
+        targetWindow->navigate(seq, options.url);
       }
 
-      const auto seq = message.get("seq");
-      if (!window || status == WindowManager::WindowStatus::WINDOW_NONE) {
-        options.resizable = message.get("resizable") == "true" ? true : false;
-        options.frameless = message.get("frameless") == "true" ? true : false;
-        options.utility = message.get("utility") == "true" ? true : false;
-        options.debug = message.get("debug") == "true" ? true : false;
-        options.index = targetWindowIndex;
+      JSON::Object json = JSON::Object::Entries {
+        { "data", targetWindow->json() },
+      };
 
-        window = windowManager.createWindow(options);
-        window->show(EMPTY_SEQ);
-      } else {
-        window->show(EMPTY_SEQ);
+      currentWindow->resolvePromise(seq, OK_STATE, json.str());
+      return;
+    }
+
+    if (message.name == "window.close") {
+      const auto index = message.index;
+      const auto targetWindowIndex = message.get("targetWindowIndex").size() > 0 ? std::stoi(message.get("targetWindowIndex")) : index;
+      const auto window = windowManager.getWindow(index);
+      const auto targetWindow = windowManager.getWindow(targetWindowIndex);
+      auto targetWindowStatus = windowManager.getWindowStatus(targetWindowIndex);
+      if (targetWindow) {
+        targetWindow->close(0);
+        JSON::Object json = JSON::Object::Entries {
+          { "data", targetWindow->json()},
+        };
+        window->resolvePromise(message.seq, OK_STATE, json.str());
       }
+      return;
+    }
 
-      if (window) {
-        if (options.width > 0 && options.height > 0) {
-          window->setSize(EMPTY_SEQ, options.width, options.height, 0);
-        }
-
-        if (options.title.size() > 0) {
-          window->setTitle(EMPTY_SEQ, options.title);
-        }
-
-        if (options.url.size() > 0) {
-          navigate(window, cwd, EMPTY_SEQ, decodeURIComponent(options.url));
-        }
-      }
-
+    if (message.name == "window.show") {
+      auto targetWindowIndex = std::stoi(message.get("targetWindowIndex"));
+      targetWindowIndex = targetWindowIndex < 0 ? 0 : targetWindowIndex;
+      auto index = message.index < 0 ? 0 : message.index;
+      auto targetWindow = windowManager.getWindow(targetWindowIndex);
+      auto targetWindowStatus = windowManager.getWindowStatus(targetWindowIndex);
       auto resolveWindow = windowManager.getWindow(index);
-      if (resolveWindow) {
-        resolveWindow->resolvePromise(seq, OK_STATE, std::to_string(index));
+
+      if (!targetWindow || targetWindowStatus == WindowManager::WindowStatus::WINDOW_NONE) {
+        JSON::Object json = JSON::Object::Entries {
+          { "err", targetWindowStatus }
+        };
+        resolveWindow->resolvePromise(message.get("seq"), ERROR_STATE, json.str());
+        return;
       }
+
+      targetWindow->show(EMPTY_SEQ);
+
+      JSON::Object json = JSON::Object::Entries {
+        { "data", targetWindow->json() }
+      };
+      resolveWindow->resolvePromise(message.get("seq"), OK_STATE, json.str());
       return;
     }
 
     if (message.name == "window.hide") {
-      auto targetWindowIndex = std::stoi(message.get("window"));
+      auto targetWindowIndex = std::stoi(message.get("targetWindowIndex"));
       targetWindowIndex = targetWindowIndex < 0 ? 0 : targetWindowIndex;
       auto index = message.index < 0 ? 0 : message.index;
-      auto window = windowManager.getWindow(targetWindowIndex);
-      window->hide(EMPTY_SEQ);
-
+      auto targetWindow = windowManager.getWindow(targetWindowIndex);
+      auto targetWindowStatus = windowManager.getWindowStatus(targetWindowIndex);
       auto resolveWindow = windowManager.getWindow(index);
-      if (resolveWindow) {
-        resolveWindow->resolvePromise(message.get("seq"), OK_STATE, std::to_string(index));
+
+      if (!targetWindow || targetWindowStatus == WindowManager::WindowStatus::WINDOW_NONE) {
+        JSON::Object json = JSON::Object::Entries {
+          { "err", targetWindowStatus }
+        };
+        resolveWindow->resolvePromise(message.get("seq"), ERROR_STATE, json.str());
+        return;
       }
+
+      targetWindow->hide(EMPTY_SEQ);
+
+      JSON::Object json = JSON::Object::Entries {
+        { "data", targetWindow->json() }
+      };
+      resolveWindow->resolvePromise(message.get("seq"), OK_STATE, json.str());
+      return;
+    }
+
+    if (message.name == "window.setTitle") {
+      const auto seq = message.seq;
+      const auto currentIndex = message.index;
+      const auto currentWindow = windowManager.getWindow(currentIndex);
+      const auto targetWindowIndex = message.get("targetWindowIndex").size() > 0 ? std::stoi(message.get("targetWindowIndex")) : currentIndex;
+      const auto targetWindow = windowManager.getWindow(targetWindowIndex);
+
+      targetWindow->setTitle(value);
+
+      JSON::Object json = JSON::Object::Entries {
+        { "data", targetWindow->json() },
+      };
+      currentWindow->resolvePromise(seq, OK_STATE, json.str());
       return;
     }
 
     if (message.name == "window.navigate") {
-      auto targetWindowIndex = std::stoi(message.get("window"));
-      targetWindowIndex = targetWindowIndex < 0 ? 0 : targetWindowIndex;
-      auto index = message.index < 0 ? 0 : message.index;
-      auto window = windowManager.getWindow(targetWindowIndex);
-      auto url = message.get("url");
-      navigate(window, cwd, EMPTY_SEQ, decodeURIComponent(url));
+      const auto seq = message.seq;
+      const auto currentIndex = message.index;
+      const auto currentWindow = windowManager.getWindow(currentIndex);
+      const auto targetWindowIndex = message.get("targetWindowIndex").size() > 0 ? std::stoi(message.get("targetWindowIndex")) : currentIndex;
+      const auto targetWindow = windowManager.getWindow(targetWindowIndex);
+      const auto url = message.get("url");
+      const auto error = getNavigationError(cwd, decodeURIComponent(url));
 
-      auto resolveWindow = windowManager.getWindow(index);
-      if (resolveWindow) {
-        resolveWindow->resolvePromise(message.get("seq"), OK_STATE, std::to_string(index));
+      if (error.size() > 0) {
+        JSON::Object json = JSON::Object::Entries {
+          { "err", error }
+        };
+        currentWindow->resolvePromise(seq, ERROR_STATE, json.str());
+        return;
       }
+
+      targetWindow->navigate(seq, url);
+
+      JSON::Object json = JSON::Object::Entries {
+        { "data", targetWindow->json() },
+      };
+
+      currentWindow->resolvePromise(seq, OK_STATE, json.str());
       return;
     }
 
-    if (message.name == "inspect") {
-      window->showInspector();
+    if (message.name == "window.showInspector") {
+      const auto seq = message.seq;
+      const auto currentIndex = message.index;
+      const auto currentWindow = windowManager.getWindow(currentIndex);
+      const auto targetWindowIndex = message.get("targetWindowIndex").size() > 0 ? std::stoi(message.get("targetWindowIndex")) : currentIndex;
+      const auto targetWindow = windowManager.getWindow(targetWindowIndex);
+      
+      targetWindow->showInspector();
+
+      JSON::Object json = JSON::Object::Entries {
+        { "data", true },
+      };
+      
+      currentWindow->resolvePromise(seq, OK_STATE, json.str());
       return;
     }
 
@@ -710,37 +745,50 @@ MAIN {
       } catch (...) {
       }
 
+      const auto seq = message.seq;
       const auto currentIndex = message.index;
-      const auto index = message.get("window").size() > 0 ? std::stoi(message.get("window")) : currentIndex;
-      const auto window = windowManager.getWindow(index);
+      const auto currentWindow = windowManager.getWindow(currentIndex);
+      const auto targetWindowIndex = message.get("targetWindowIndex").size() > 0 ? std::stoi(message.get("targetWindowIndex")) : currentIndex;
+      const auto targetWindow = windowManager.getWindow(targetWindowIndex);
 
-      window->setBackgroundColor(red, green, blue, alpha);
+      targetWindow->setBackgroundColor(red, green, blue, alpha);
+
+      JSON::Object json = JSON::Object::Entries {
+        { "data", targetWindow->json() },
+      };
+      currentWindow->resolvePromise(seq, OK_STATE, json.str());
       return;
     }
 
     if (message.name == "window.setSize") {
-      int width = std::stoi(message.get("width"));
-      int height = std::stoi(message.get("height"));
-
+      const auto seq = message.seq;
       const auto currentIndex = message.index;
-      const auto index = message.get("window").size() > 0 ? std::stoi(message.get("window")) : currentIndex;
-      const auto window = windowManager.getWindow(index);
-      window->setSize(EMPTY_SEQ, width, height, 0);
+      const auto currentWindow = windowManager.getWindow(currentIndex);
+      const auto targetWindowIndex = message.get("targetWindowIndex").size() > 0 ? std::stoi(message.get("targetWindowIndex")) : currentIndex;
+      const auto targetWindow = windowManager.getWindow(targetWindowIndex);
+
+      auto screen = currentWindow->getScreenSize();
+
+      float width = currentWindow->getSizeInPixels(message.get("width"), screen.width);
+      float height = currentWindow->getSizeInPixels(message.get("height"), screen.height);
+
+      targetWindow->setSize(width, height, 0);
+
+      JSON::Object json = JSON::Object::Entries {
+        { "data", targetWindow->json() },
+      };
+
+      currentWindow->resolvePromise(seq, OK_STATE, json.str());
       return;
     }
 
-    if (message.name == "external") {
-      window->openExternal(decodeURIComponent(value));
-      return;
-    }
-
-    if (message.name == "menu") {
+    if (message.name == "application.setSystemMenu") {
       const auto seq = message.get("seq");
       window->setSystemMenu(seq, decodeURIComponent(value));
       return;
     }
 
-    if (message.name == "menuItemEnabled") {
+    if (message.name == "application.setSystemMenuItemEnabled") {
       const auto seq = message.get("seq");
       const auto enabled = message.get("enabled").find("true") != -1;
       int indexMain = 0;
@@ -772,9 +820,10 @@ MAIN {
       return;
     }
 
-    if (message.name == "context") {
+    if (message.name == "window.setContextMenu") {
       auto seq = message.get("seq");
       window->setContextMenu(seq, decodeURIComponent(value));
+      window->resolvePromise(seq, OK_STATE, "null");
       return;
     }
 
@@ -786,10 +835,20 @@ MAIN {
       return;
     };
 
-    const JSON::Object error = JSON::Object::Entries {
-      {"err", "unsupported IPC message: " + message.name}
+    auto err = JSON::Object::Entries {
+      {"source", message.name},
+      {"err", JSON::Object::Entries {
+        {"message", "Not found"},
+        {"type", "NotFoundError"},
+        {"url", out}
+      }}
     };
-    window->resolvePromise(message.get("seq"), ERROR_STATE, encodeURIComponent(error.str()));
+
+    window->resolvePromise(
+      message.get("seq"),
+      ERROR_STATE,
+      encodeURIComponent(JSON::Object(err).str())
+    );
   };
 
   //
@@ -810,11 +869,20 @@ MAIN {
 
   app.onExit = shutdownHandler;
 
+  String defaultWidth = app.appData["window_width"].size() > 0 ? app.appData["window_width"] : "100%";
+  String defaultHeight = app.appData["window_height"].size() > 0 ? app.appData["window_height"] : "100%";
+  String defaultMinWidth = app.appData["window_min_width"].size() > 0 ? app.appData["window_min_width"] : "0";
+  String defaultMinHeight = app.appData["window_min_height"].size() > 0 ? app.appData["window_min_height"] : "0";
+  String defaultMaxWidth = app.appData["window_max_width"].size() > 0 ? app.appData["window_max_width"] : "100%";
+  String defaultMaxHeight = app.appData["window_max_height"].size() > 0 ? app.appData["window_max_height"] : "100%";
+
   windowManager.configure(WindowManagerOptions {
-    .defaultHeight = height,
-    .defaultWidth = width,
-    .isHeightInPercent = isHeightInPercent,
-    .isWidthInPercent = isWidthInPercent,
+    .defaultWidth = defaultWidth,
+    .defaultHeight =  defaultHeight,
+    .defaultMinWidth = defaultMinWidth,
+    .defaultMinHeight = defaultMinHeight,
+    .defaultMaxWidth = defaultMaxWidth,
+    .defaultMaxHeight = defaultMaxHeight,
     .headless = isHeadless,
     .isTest = isTest,
     .argv = argvArray.str(),
@@ -824,7 +892,11 @@ MAIN {
     .onExit = shutdownHandler
   });
 
-  auto defaultWindow = windowManager.createDefaultWindow(WindowOptions { });
+  auto defaultWindow = windowManager.createDefaultWindow(WindowOptions {
+    .resizable = app.appData["window_resizable"] == "false" ? false : true,
+    .frameless = app.appData["window_frameless"] == "true" ? true : false,
+    .utility = app.appData["window_utility"] == "true" ? true : false
+  });
 
   defaultWindow->show(EMPTY_SEQ);
 
@@ -848,6 +920,7 @@ MAIN {
   #endif
 
   signal(SIGINT, signalHandler);
+  signal(SIGTERM, signalHandler);
 
   if (isReadingStdin) {
     std::string value;

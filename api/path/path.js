@@ -1,10 +1,10 @@
 /**
  * @module Path
  */
-import process from '../process.js'
-import os from '../os.js'
+import { primordials } from '../ipc.js'
+import * as exports from './path.js'
 
-const isWin32 = os.platform() === 'win32'
+const isWin32 = primordials.platform === 'win32'
 
 export class Path {
   /**
@@ -14,11 +14,11 @@ export class Path {
    */
   static cwd (opts) {
     if (isWin32 && opts?.posix === true) {
-      const cwd = process.cwd().replace(/\\/g, '/')
+      const cwd = primordials.cwd.replace(/\\/g, '/')
       return cwd.slice(cwd.indexOf('/'))
     }
 
-    return process.cwd()
+    return primordials.cwd
   }
 
   static from (input) {
@@ -66,3 +66,5 @@ export class Path {
   static normalize (path) {
   }
 }
+
+export default exports

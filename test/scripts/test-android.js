@@ -10,7 +10,7 @@ try {
 } catch {
 }
 
-exec('ssc build --headless --prod --platform=android -r -o', {
+exec('ssc build --headless --platform=android -r -o', {
   stdio: 'inherit'
 })
 

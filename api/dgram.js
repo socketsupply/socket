@@ -8,13 +8,15 @@
 import { isArrayBufferView, isFunction, noop } from './util.js'
 import { InternalError } from './errors.js'
 import { EventEmitter } from './events.js'
+import diagnostics from './diagnostics.js'
 import { Buffer } from './buffer.js'
 import { rand64 } from './crypto.js'
 import { isIPv4 } from './net.js'
-import * as ipc from './ipc.js'
 import console from './console.js'
+import ipc from './ipc.js'
 import dns from './dns.js'
 import gc from './gc.js'
+import os from './os.js'
 
 import * as exports from './dgram.js'
 
@@ -29,6 +31,17 @@ const CONNECT_STATE_CONNECTED = 2
 const MAX_PORT = 64 * 1024
 const RECV_BUFFER = 1
 const SEND_BUFFER = 0
+
+const dc = diagnostics.channels.group('udp', [
+  'send',
+  'send.start',
+  'send.end',
+  'message',
+  'connect',
+  'socket',
+  'close',
+  'bind'
+])
 
 /**
  * Generic error class for an error occurring on a `Socket` instance.
@@ -116,12 +129,14 @@ function createDataListener (socket) {
     if (!data || BigInt(data.id) !== socket.id) return
 
     if (source === 'udp.readStart') {
+      const message = Buffer.from(buffer)
       const info = {
         ...data,
         family: getAddressFamily(data.address)
       }
 
-      socket.emit('message', Buffer.from(buffer), info)
+      socket.emit('message', message, info)
+      dc.channel('message').publish({ socket, buffer: message, info })
     }
 
     if (data.EOF) {
@@ -156,8 +171,10 @@ function fromBufferList (list) {
 }
 
 function getDefaultAddress (socket) {
-  if (socket.type === 'udp4') return '127.0.0.1'
   if (socket.type === 'udp6') return '::1'
+  if (socket.type === 'udp4') {
+    return os.platform() === 'win32' ? '127.0.0.1' : '0.0.0.0'
+  }
 
   return null
 }
@@ -332,6 +349,14 @@ async function bind (socket, options, callback) {
     return { err }
   }
 
+  dc.channel('bind').publish({
+    socket,
+    port: options.port || 0,
+    address: options.address,
+    ipv6Only: !!options.ipv6Only,
+    reuseAddr: !!options.reuseAddr
+  })
+
   return result
 }
 
@@ -408,6 +433,12 @@ async function connect (socket, options, callback) {
     return { err }
   }
 
+  dc.channel('connect').publish({
+    socket,
+    port: options?.port ?? 0,
+    address: options?.address
+  })
+
   return result
 }
 
@@ -418,18 +449,22 @@ function disconnect (socket, callback) {
     callback = noop
   }
 
-  try {
-    result = ipc.sendSync('udp.disconnect', {
-      id: socket.id
-    })
+  if (socket.state.connectState === CONNECT_STATE_CONNECTED) {
+    try {
+      result = ipc.sendSync('udp.disconnect', {
+        id: socket.id
+      })
 
-    delete socket.state.remoteAddress
-    socket.state.connectState = CONNECT_STATE_DISCONNECTED
+      delete socket.state.remoteAddress
+      socket.state.connectState = CONNECT_STATE_DISCONNECTED
 
-    callback(result.err, result.data)
-  } catch (err) {
-    callback(err)
-    return { err }
+      callback(result.err, result.data)
+    } catch (err) {
+      callback(err)
+      return { err }
+    }
+
+    dc.channel('disconnect').publish({ socket })
   }
 
   return result
@@ -520,6 +555,13 @@ async function send (socket, options, callback) {
   }
 
   try {
+    dc.channel('send.start').publish({
+      socket,
+      port: options.port,
+      buffer: options.buffer,
+      address: options.address
+    })
+
     result = await ipc.write('udp.send', {
       id: socket.id,
       port: options.port,
@@ -531,6 +573,20 @@ async function send (socket, options, callback) {
     callback(err)
     return { err }
   }
+
+  dc.channel('send.end').publish({
+    socket,
+    port: options.port,
+    buffer: options.buffer,
+    address: options.address
+  })
+
+  dc.channel('send').publish({
+    socket,
+    port: options.port,
+    buffer: options.buffer,
+    address: options.address
+  })
 
   return result
 }
@@ -563,6 +619,7 @@ async function close (socket, callback) {
     return { err }
   }
 
+  dc.channel('close').publish({ socket })
   return result
 }
 
@@ -671,6 +728,7 @@ export class Socket extends EventEmitter {
     })
 
     gc.ref(this, options)
+    dc.channel('socket').publish({ socket: this })
   }
 
   /**
@@ -696,13 +754,8 @@ export class Socket extends EventEmitter {
    *
    * If binding fails, an 'error' event is emitted.
    *
-<<<<<<< HEAD
-   * @param {number} port - The port to to listen for messages on
-   * @param {string} address - The address to bind to (127.0.0.1)
-=======
    * @param {number} port - The port to listen for messages on
    * @param {string} address - The address to bind to (0.0.0.0)
->>>>>>> b9adc890 (fixed all the typos)
    * @param {function} callback - With no parameters. Called when binding is complete.
    * @see {@link https://nodejs.org/api/dgram.html#socketbindport-address-callback}
    */
@@ -748,7 +801,7 @@ export class Socket extends EventEmitter {
    * by this handle is automatically sent to that destination. Also, the socket
    * will only receive messages from that remote peer. Trying to call connect()
    * on an already connected socket will result in an ERR_SOCKET_DGRAM_IS_CONNECTED
-   * exception. If the address is not provided, '127.0.0.1' (for udp4 sockets) or '::1'
+   * exception. If the address is not provided, '0.0.0.0' (for udp4 sockets) or '::1'
    * (for udp6 sockets) will be used by default. Once the connection is complete,
    * a 'connect' event is emitted and the optional callback function is called.
    * In case of failure, the callback is called or, failing this, an 'error' event
@@ -824,12 +877,12 @@ export class Socket extends EventEmitter {
    *
    * > The address argument is a string. If the value of the address is a hostname,
    * DNS will be used to resolve the address of the host. If the address is not
-   * provided or otherwise nullish, '127.0.0.1' (for udp4 sockets) or '::1'
+   * provided or otherwise nullish, '0.0.0.0' (for udp4 sockets) or '::1'
    * (for udp6 sockets) will be used by default.
    *
    * > If the socket has not been previously bound with a call to bind, the socket
    * is assigned a random port number and is bound to the "all interfaces"
-   * address ('127.0.0.1' for udp4 sockets, '::1' for udp6 sockets.)
+   * address ('0.0.0.0' for udp4 sockets, '::1' for udp6 sockets.)
    *
    * > An optional callback function may be specified as a way of reporting DNS
    * errors or for determining when it is safe to reuse the buf object. DNS
@@ -922,7 +975,7 @@ export class Socket extends EventEmitter {
 
     buffer = buffer.slice(0, length)
 
-    send(this, { id, port, address, buffer }, cb)
+    return send(this, { id, port, address, buffer }, cb)
   }
 
   /**
@@ -1154,4 +1207,5 @@ export class Socket extends EventEmitter {
     return this
   }
 }
+
 export default exports

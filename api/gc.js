@@ -1,6 +1,7 @@
 import { FinalizationRegistryCallbackError } from './errors.js'
-import console from './console.js'
+import diagnostics from './diagnostics.js'
 import { noop } from './util.js'
+import console from './console.js'
 
 if (typeof FinalizationRegistry === 'undefined') {
   console.warn(
@@ -8,6 +9,13 @@ if (typeof FinalizationRegistry === 'undefined') {
     'gc.ref() will have no effect.'
   )
 }
+
+const dc = diagnostics.channels.group('gc', [
+  'finalizer.start',
+  'finalizer.end',
+  'unref',
+  'ref'
+])
 
 export const finalizers = new WeakMap()
 export const kFinalizer = Symbol.for('gc.finalizer')
@@ -50,6 +58,8 @@ export default gc
  * @param {Finalizer} finalizer
  */
 async function finalizationRegistryCallback (finalizer) {
+  dc.channel('finalizer.start').publish({ finalizer })
+
   if (typeof finalizer.handle === 'function') {
     try {
       await finalizer.handle(...finalizer.args)
@@ -77,6 +87,7 @@ async function finalizationRegistryCallback (finalizer) {
     pool.delete(weakRef)
   }
 
+  dc.channel('finalizer.end').publish({ finalizer })
   finalizer = undefined
 }
 
@@ -134,6 +145,8 @@ export async function ref (object, ...args) {
     pool.add(weakRef)
 
     registry.register(object, finalizer, object)
+
+    dc.channel('ref').publish({ object, finalizer: weakRef })
   }
 
   return finalizers.has(object)
@@ -159,6 +172,7 @@ export function unref (object) {
 
     finalizers.delete(object)
     registry.unregister(object)
+    dc.channel('unref').publish({ object, finalizer: weakRef })
     return true
   }
 

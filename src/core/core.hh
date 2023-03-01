@@ -26,6 +26,7 @@
 #include <WebView2Experimental.h>
 #include <WebView2EnvironmentOptions.h>
 #include <WebView2ExperimentalEnvironmentOptions.h>
+#include <shellapi.h>
 
 #pragma comment(lib, "advapi32.lib")
 #pragma comment(lib, "shell32.lib")
@@ -112,7 +113,6 @@ namespace SSC {
     char* body = nullptr;
     size_t length = 0;
     String headers = "";
-    bool bodyNeedsFree = false;
   };
 
   using Posts = std::map<uint64_t, Post>;
@@ -358,6 +358,11 @@ namespace SSC {
           }
       };
 
+      class Diagnostics : public Module {
+        public:
+          Diagnostics (auto core) : Module(core) {}
+      };
+
       class DNS : public Module {
         public:
           DNS (auto core) : Module(core) {}
@@ -554,7 +559,23 @@ namespace SSC {
             int buffer,
             Module::Callback cb
           );
+          void cpus  (
+            const String seq,
+            Module::Callback cb
+          );
           void networkInterfaces (const String seq, Module::Callback cb) const;
+          void rusage (
+            const String seq,
+            Module::Callback cb
+          );
+          void uname (
+            const String seq,
+            Module::Callback cb
+          );
+          void uptime (
+            const String seq,
+            Module::Callback cb
+          );
       };
 
       class Platform : public Module {
@@ -629,6 +650,7 @@ namespace SSC {
           );
       };
 
+      Diagnostics diagnostics;
       DNS dns;
       FS fs;
       OS os;
@@ -661,7 +683,7 @@ namespace SSC {
       );
 
       dispatch_queue_t eventLoopQueue = dispatch_queue_create(
-        "co.socketsupply.queue.loop",
+        "co.socketsupply.socket.loop.queue",
         eventLoopQueueAttrs
       );
 #else
@@ -669,6 +691,7 @@ namespace SSC {
 #endif
 
       Core () :
+        diagnostics(this),
         dns(this),
         fs(this),
         os(this),

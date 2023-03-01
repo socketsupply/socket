@@ -8,22 +8,55 @@ declare args=()
 declare pids=()
 declare force=0
 
-declare objects=()
-declare sources=(
-  $(find "$root"/src/app/*.cc)
-  $(find "$root"/src/core/*.cc)
-  $(find "$root"/src/ipc/*.cc)
-)
-
 declare arch="$(uname -m)"
 declare host="$(uname -s)"
 declare platform="desktop"
 
 if [[ "$host" = "Linux" ]]; then
   if [ -n "$WSL_DISTRO_NAME" ] || uname -r | grep 'Microsoft'; then
-    HOST="Win32"
+    host="Win32"
+  fi
+elif [[ "$host" == *"MINGW64_NT"* ]]; then
+  host="Win32"
+elif [[ "$host" == *"MSYS_NT"* ]]; then
+  # Have not confirmed this works as a build host, no gnu find in author's dev
+  host="Win32"
+fi
+
+
+if [[ "$host" == "Win32" ]]; then
+  if command -v $clang >/dev/null 2>&1; then
+    echo > /dev/null
+  else
+    # POSIX doesn't handle quoted commands
+    # Quotes inside variables don't escape spaces, quotes only help on the line we are executing
+    # Make a temp link
+    clang_tmp=$(mktemp)
+    rm $clang_tmp
+    ln -s "$clang" $clang_tmp
+    clang=$clang_tmp
+    # Make tmp.etc look like clang++.etc, makes clang output look correct
+    clang=$(echo $clang|sed 's/tmp\./clang++\./')
+    mv $clang_tmp $clang
+  fi
+
+  echo Using $clang as clang
+
+  declare find_test="$(sh -c 'find --version')"
+  if [[ $find_test != *"GNU findutils"* ]]; then
+    echo "GNU find not detected. Consider adding %ProgramFiles%\Git\bin\ to PATH."
+    echo "NOTE: %ProgramFiles%\Git\usr\bin\ WILL NOT work."
+    echo "uname -m: $(uname -s)"
+    exit 1
   fi
 fi
+
+declare objects=()
+declare sources=(
+  $(find "$root"/src/app/*.cc)
+  $(find "$root"/src/core/*.cc)
+  $(find "$root"/src/ipc/*.cc)
+)
 
 if (( TARGET_OS_IPHONE )); then
   arch="arm64"
@@ -61,6 +94,9 @@ while (( $# > 0 )); do
 
   args+=("$arg")
 done
+
+# echo "Platform: $platform, clang: $clang"
+# exit 0
 
 if [[ "$host" = "Darwin" ]]; then
   cflags+=("-ObjC++")
@@ -137,7 +173,9 @@ function main () {
       if (( force )) || ! test -f "$object" || (( $(stat_mtime "$source") > $(stat_mtime "$object") )); then
         mkdir -p "$(dirname "$object")"
         echo "# compiling object ($arch-$platform) $(basename "$source")"
-        # echo $clang "${cflags[@]}" "${ldflags[@]}" -c "$source" -o "$object"
+        if [[ ! -z "$VERBOSE " ]]; then
+          echo $clang "${cflags[@]}" "${ldflags[@]}" -c "$source" -o "$object"
+        fi
         $clang "${cflags[@]}" -c "$source" -o "$object" || onsignal
         echo "ok - built ${source/$src_directory\//} -> ${object/$output_directory\//} ($arch-$platform)"
       fi
@@ -150,10 +188,41 @@ function main () {
 
   declare static_library="$root/build/$arch-$platform/lib/libsocket-runtime.a"
   mkdir -p "$(dirname "$static_library")"
-  rm -rf "$static_library"
-  # echo ar crs "$static_library" "${objects[@]}"
-  ar crs "$static_library" "${objects[@]}"
-  echo "ok - built static library ($arch-$platform): $(basename "$static_library")"
+  declare ar="ar"
+
+  if [[ "$host" = "Win32" ]]; then
+    ar="llvm-ar"
+  fi
+
+  local build_static=0
+  local static_library_mtime=$(stat_mtime "$static_library")
+  for source in "${objects[@]}"; do
+    if ! test -f $source; then
+      echo "$source not built.."
+      exit 1
+    fi
+    if (( force )) || ! test -f "$static_library" || (( $(stat_mtime "$source") > $static_library_mtime )); then
+      build_static=1
+      break
+    fi
+  done
+
+  # echo $ar crs "$static_library" "${objects[@]}"
+  if (( build_static )); then
+    $ar crs "$static_library" "${objects[@]}"
+
+    if [ -f $static_library ]; then
+      echo "ok - built static library ($arch-$platform): $(basename "$static_library")"
+    else
+      echo "failed to build $static_library"
+    fi
+  else
+    if [ -f $static_library ]; then
+      echo "ok - using cached static library ($arch-$platform): $(basename "$static_library")"
+    else
+      echo "static library doesn't exist after cache check passed: ($arch-$platform): $(basename "$static_library")"
+    fi
+  fi
 }
 
 main "${args[@]}"

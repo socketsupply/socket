@@ -13,6 +13,7 @@ import { ReadStream, WriteStream } from './stream.js'
 import { normalizeFlags } from './flags.js'
 import { EventEmitter } from '../events.js'
 import { AbortError } from '../errors.js'
+import diagnostics from '../diagnostics.js'
 import { Buffer } from '../buffer.js'
 import { Stats } from './stats.js'
 import { F_OK } from './constants.js'
@@ -20,6 +21,16 @@ import console from '../console.js'
 import fds from './fds.js'
 import ipc from '../ipc.js'
 import gc from '../gc.js'
+
+import * as exports from './handle.js'
+
+const dc = diagnostics.channels.group('fs', [
+  'handle',
+  'handle.open',
+  'handle.read',
+  'handle.write',
+  'handle.close'
+])
 
 export const kOpening = Symbol.for('fs.FileHandle.opening')
 export const kClosing = Symbol.for('fs.FileHandle.closing')
@@ -62,6 +73,9 @@ export class FileHandle extends EventEmitter {
     return new this({ fd, id })
   }
 
+  // TODO(trevnorris): The way the comment says to use mode doesn't match
+  // how it's currently being used in tests. Instead we're passing values
+  // from fs.constants.
   /**
    * Determines if access to `path` for `mode` is possible.
    * @param {string} path
@@ -85,7 +99,8 @@ export class FileHandle extends EventEmitter {
       throw result.err
     }
 
-    return result.data?.mode === mode
+    // F_OK means access in any way
+    return mode === F_OK ? true : (result.data?.mode && mode) > 0
   }
 
   /**
@@ -143,6 +158,7 @@ export class FileHandle extends EventEmitter {
     this.fd = options?.fd || null // internal file descriptor
 
     gc.ref(this, options)
+    dc.channel('handle').publish({ handle: this })
   }
 
   /**
@@ -273,6 +289,8 @@ export class FileHandle extends EventEmitter {
 
     this.emit('close')
 
+    dc.channel('handle.close').publish({ handle: this })
+
     return true
   }
 
@@ -389,6 +407,8 @@ export class FileHandle extends EventEmitter {
 
     this.emit('open', this.fd)
 
+    dc.channel('handle.open').publish({ handle: this, mode, path, flags })
+
     return true
   }
 
@@ -413,12 +433,12 @@ export class FileHandle extends EventEmitter {
     let signal = options?.signal || null
 
     if (typeof buffer === 'object' && !isBufferLike(buffer)) {
-      offset = buffer.offset
-      length = buffer.length
-      position = buffer.position
-      signal = buffer.signal || signal
-      timeout = buffer.timeout || timeout
-      buffer = buffer.buffer
+      offset = buffer.offset ?? 0
+      length = buffer.length ?? buffer.byteLength ?? 0
+      position = buffer.position ?? 0
+      signal = buffer.signal ?? signal
+      timeout = buffer.timeout ?? timeout
+      buffer = buffer.buffer ?? buffer
     }
 
     if (signal?.aborted) {
@@ -475,7 +495,8 @@ export class FileHandle extends EventEmitter {
 
     if (length > buffer.byteLength - offset) {
       throw new RangeError(
-        `Expecting length to be less than or equal to ${buffer.byteLength - offset}: Got ${length}`
+        `Expecting length to be less than or equal to ${buffer.byteLength - offset}: ` +
+        `Got ${length}`
       )
     }
 
@@ -489,15 +510,24 @@ export class FileHandle extends EventEmitter {
       throw result.err
     }
 
+    const contentType = result.headers?.get('content-type')
+
+    if (contentType && contentType !== 'application/octet-stream') {
+      throw new TypeError(
+        `Invalid response content type from 'fs.read'. Received: ${contentType}`
+      )
+    }
+
     if (isTypedArray(result.data) || result.data instanceof ArrayBuffer) {
       bytesRead = result.data.byteLength
-      Buffer.from(result.data).copy(buffer, 0, offset)
+      Buffer.from(result.data).copy(Buffer.from(buffer), 0, offset)
+      dc.channel('handle.read').publish({ handle: this, bytesRead })
     } else if (isEmptyObject(result.data)) {
       // an empty response from mac returns an empty object sometimes
       bytesRead = 0
     } else {
       throw new TypeError(
-        'Invalid response buffer from `fs.read`. Got:' + typeof result.data
+        `Invalid response buffer from 'fs.read' Received: ${typeof result.data}`
       )
     }
 
@@ -666,10 +696,10 @@ export class FileHandle extends EventEmitter {
       throw new RangeError('Offset + length cannot be larger than buffer length.')
     }
 
-    const data = Buffer.from(buffer).subarray(offset, offset + length)
-    const params = { id: this.id, offset: position }
+    buffer = Buffer.from(buffer).subarray(offset, offset + length)
 
-    const result = await ipc.write('fs.write', params, data, {
+    const params = { id: this.id, offset: position }
+    const result = await ipc.write('fs.write', params, buffer, {
       timeout,
       signal
     })
@@ -678,9 +708,13 @@ export class FileHandle extends EventEmitter {
       throw result.err
     }
 
+    const bytesWritten = parseInt(result.data.result) || 0
+
+    dc.channel('handle.write').publish({ handle: this, bytesWritten })
+
     return {
-      buffer: data,
-      bytesWritten: parseInt(result.data.result)
+      buffer,
+      bytesWritten
     }
   }
 
@@ -823,6 +857,8 @@ export class DirectoryHandle extends EventEmitter {
     )
 
     gc.ref(this, options)
+
+    dc.channel('handle').publish({ handle: this })
   }
 
   /**
@@ -917,6 +953,8 @@ export class DirectoryHandle extends EventEmitter {
 
     this.emit('open', this.fd)
 
+    dc.channel('handle.open').publish({ handle: this, path })
+
     return true
   }
 
@@ -962,6 +1000,7 @@ export class DirectoryHandle extends EventEmitter {
     this[kClosed] = true
 
     this.emit('close')
+    dc.channel('handle.close').publish({ handle: this })
 
     return true
   }
@@ -998,3 +1037,5 @@ export class DirectoryHandle extends EventEmitter {
     return result.data
   }
 }
+
+export default exports

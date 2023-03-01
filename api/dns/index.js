@@ -1,4 +1,3 @@
-import * as ipc from '../ipc.js'
 /**
  * @module DNS
  *
@@ -12,9 +11,17 @@ import * as ipc from '../ipc.js'
 
 import { isFunction } from '../util.js'
 import * as promises from './promises.js'
+import diagnostics from '../diagnostics.js'
 import { rand64 } from '../crypto.js'
+import ipc from '../ipc.js'
 
 import * as exports from './index.js'
+
+const dc = diagnostics.channels.group('dns', [
+  'lookup.start',
+  'lookup.end',
+  'lookup'
+])
 
 /**
  * Resolves a host name (e.g. `example.org`) into the first found A (IPv4) or
@@ -70,6 +77,7 @@ export function lookup (hostname, opts, cb) {
     opts = {}
   }
 
+  dc.channel('lookup.start').publish({ hostname, family: opts.family, sync: true })
   const { err, data } = ipc.sendSync('dns.lookup', { ...opts, id: rand64(), hostname })
 
   if (err) {
@@ -77,17 +85,21 @@ export function lookup (hostname, opts, cb) {
     e.code = 'EAI_AGAIN'
     e.syscall = 'getaddrinfo'
     e.hostname = hostname
+    e.cause = err
     // e.errno = -3008, // lib_uv constant?
     cb(e, null, null)
     return
   }
 
+  dc.channel('lookup.end').publish({ hostname, family: opts.family, sync: true })
+  dc.channel('lookup').publish({ hostname, family: opts.family, sync: true })
   cb(null, data?.address ?? null, data?.family ?? null)
 }
 
 export {
   promises
 }
+
 export default exports
 
 for (const key in exports) {
