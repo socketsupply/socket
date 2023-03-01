@@ -134,7 +134,7 @@ class API {
   
     s = s.replace(/\+/g, '%20')
   
-    await this.#write(`ipc://send?${s}`)
+    return await this.#write(`ipc://send?${s}`)
   }
 
   async heartbeat () {
