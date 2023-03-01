@@ -5,7 +5,7 @@
 Web Developers use Socket Runtime to create apps for any OS, desktop or mobile.
 
 You can use plain old HTML, CSS, and JavaScript, as well as your favorite
-front-end libraries for example React, Svelt, and Vue.
+front-end libraries for example React, Svelte, and Vue.
 
 Socket Runtime exposes primitives needed for building peer-to-peer and
 local-first applications, such as Bluetooth, UDP, and robust file system access.
