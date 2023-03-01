@@ -56,7 +56,7 @@ The `Socket Runtime` documentation covers Socket APIs, includes examples, multip
 ### 🙏 Contributing
 
 Please stop by [Discord](https://discord.com/invite/YPV32gKCsH) and ask the team about your issue and if someone is already working on it.  
-Please connect with any current project contributors: [@heapwolf][0], [@jwerle][1], or [@chicoxyzzy][2] if you want to contribute to the `Socket Runtime` project itself.
+Please connect with any current project contributors: [@heapwolf][0], [@jwerle][1], or [@chicoxyzzy][2] if you want to contribute to the `Socket Runtime` project itself.  
 Thank you for your interest in reporting/fixing issues and contributing to `Socket`!  
 
 [0]:https://github.com/heapwolf
