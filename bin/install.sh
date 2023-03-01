@@ -429,6 +429,12 @@ function _prepare {
   if [ ! -d "$BUILD_DIR/uv" ]; then
     git clone --depth=1 https://github.com/socketsupply/libuv.git $BUILD_DIR/uv > /dev/null 2>&1
     rm -rf $BUILD_DIR/uv/.git
+    # Comment out compiler tests, we've covered these sufficiently for now
+    if [[ -z "$ENABLE_LIBUV_C_COMPILER_CHECKS" ]]; then
+      tempmkl=$(mktemp)
+      sed 's/check_c_compiler_flag/# check_c_compiler_flag/' $BUILD_DIR/uv/CMakeLists.txt > $tempmkl
+      mv $tempmkl $BUILD_DIR/uv/CMakeLists.txt
+    fi
 
     die $? "not ok - unable to clone. See trouble shooting guide in the README.md file"
   fi
