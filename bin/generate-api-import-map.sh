@@ -8,13 +8,6 @@ declare output=()
 output+=('{')
 output+=('  "imports": {')
 
-declare entry="\"socket:modules/\": \"./socket/modules/\""
-if (( length > 0 )); then
-  entry+=','
-fi
-
-output+=("     $entry")
-
 for (( i = 0; i < length; ++i )); do
   declare file="${files[$i]}"
   declare name="${file/.js/}"
@@ -23,9 +16,6 @@ for (( i = 0; i < length; ++i )); do
 
   entry="\"socket:$name\": \"./socket/$file\""
 
-  output+=("     $entry,")
-
-  entry="\"socket:$name.js\": \"./socket/$file\""
   if (( ! is_last )); then
     entry+=','
   fi

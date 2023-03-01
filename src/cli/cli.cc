@@ -2015,24 +2015,9 @@ int main (const int argc, const char* argv[]) {
     }
 
     auto SOCKET_HOME_API = getEnv("SOCKET_HOME_API");
-    auto SOCKET_MODULES = getEnv("SOCKET_MODULES");
 
     if (SOCKET_HOME_API.size() == 0) {
       SOCKET_HOME_API = trim(prefixFile("api"));
-    }
-
-    if (SOCKET_MODULES.size() == 0) {
-      SOCKET_MODULES = settings["socket_modules"];
-    }
-
-    if (SOCKET_MODULES.size() == 0) {
-      auto modulesPathName = "socket_modules";
-
-      if (fs::exists(fs::status(targetPath / modulesPathName))) {
-        SOCKET_MODULES = String(targetPath / modulesPathName);
-      } else if (fs::exists(fs::status(targetPath / "src" / modulesPathName))) {
-        SOCKET_MODULES = String(targetPath / "src" / modulesPathName);
-      }
     }
 
     if (fs::exists(fs::status(SOCKET_HOME_API))) {
@@ -2042,14 +2027,6 @@ int main (const int argc, const char* argv[]) {
         pathResources / "socket",
         fs::copy_options::update_existing | fs::copy_options::recursive
       );
-
-      if (fs::exists(fs::status(SOCKET_MODULES))) {
-        fs::copy(
-          SOCKET_MODULES,
-          pathResources / "socket" / "modules",
-          fs::copy_options::update_existing | fs::copy_options::recursive
-        );
-      }
     }
 
     if (flagBuildForIOS) {

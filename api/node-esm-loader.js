@@ -1,5 +1,4 @@
-const { SOCKET_MODULES = 'socket_modules' } = process.env
-const cwd = process.cwd()
+const { SOCKET_MODULES = 'node_modules' } = process.env
 
 export async function resolve (specifier, ctx, next) {
   if (/^socket:modules/.test(specifier)) {
@@ -8,7 +7,7 @@ export async function resolve (specifier, ctx, next) {
       moduleName = moduleName.slice(0, -3)
     }
 
-    specifier = `${cwd}/${SOCKET_MODULES}/${moduleName}.js`
+    specifier = `${SOCKET_MODULES}/${moduleName}.js`
   } else if (/^socket:/.test(specifier)) {
     let moduleName = specifier.replace('socket:', '')
     if (moduleName.endsWith('.js')) {
