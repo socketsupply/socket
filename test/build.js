@@ -20,7 +20,8 @@ async function copy (target) {
     // for testing purposes
     cp('socket.ini', target),
     // backend
-    cp('src/backend/backend.js', target)
+    cp('src/backend/backend.js', target),
+    cp('src/backend/socket-node.js', target)
   ])
 }
 
