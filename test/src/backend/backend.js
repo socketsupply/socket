@@ -1,23 +1,19 @@
-import system from '@socketsupply/ssc-node'
+import socket from './socket-node.js'
 
-system.receive = async (command, value) => {
-  if (command === 'process.write') {
-    await system.send({
-      window: 0,
-      event: 'character.backend',
-      value
-    })
-  }
-};
+socket.on('character2', async (value) => {
+  await socket.send({
+    window: 0,
+    event: 'character2',
+    value
+  })
+})
 
-(async () => {
-  await system.send({
-    window: 0,
-    event: 'backend:ready'
-  })
-  await system.send({
-    window: 0,
-    event: 'character',
-    value: { firstname: 'Morty', secondname: 'Smith' }
-  })
-})()
+await socket.send({
+  window: 0,
+  event: 'backend:ready'
+})
+await socket.send({
+  window: 0,
+  event: 'character',
+  value: { firstname: 'Morty', secondname: 'Smith' }
+})
