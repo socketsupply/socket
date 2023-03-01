@@ -446,35 +446,35 @@ function _install {
     echo "# copying objects to $SOCKET_HOME/objects/$arch-$platform"
     rm -rf "$SOCKET_HOME/objects/$arch-$platform"
     mkdir -p "$SOCKET_HOME/objects/$arch-$platform"
-    cp -r "$BUILD_DIR/$arch-$platform/objects"/* "$SOCKET_HOME/objects/$arch-$platform"
+    cp -rup "$BUILD_DIR/$arch-$platform/objects"/* "$SOCKET_HOME/objects/$arch-$platform"
   fi
 
   if test -d "$BUILD_DIR/lib$d"; then
     echo "# copying libraries to $SOCKET_HOME/lib$d"
     mkdir -p "$SOCKET_HOME/lib$d"
-    cp -fr "$BUILD_DIR"/lib$d/*.a "$SOCKET_HOME/lib$d/"
+    cp -rfp "$BUILD_DIR"/lib$d/*.a "$SOCKET_HOME/lib$d/"
   fi
 
   if test -d "$BUILD_DIR/$arch-$platform"/lib$d; then
     echo "# copying libraries to $SOCKET_HOME/lib$d/$arch-$platform"
     rm -rf "$SOCKET_HOME/lib$d/$arch-$platform"
     mkdir -p "$SOCKET_HOME/lib$d/$arch-$platform"
-    cp -fr "$BUILD_DIR/$arch-$platform"/lib$d/*.a "$SOCKET_HOME/lib$d/$arch-$platform"
+    cp -rfp "$BUILD_DIR/$arch-$platform"/lib$d/*.a "$SOCKET_HOME/lib$d/$arch-$platform"
     if [[ $host=="Win32" ]]; then
-      cp -fr "$BUILD_DIR/$arch-$platform"/lib$d/*.lib "$SOCKET_HOME/lib$d/$arch-$platform"
+      cp -rfp "$BUILD_DIR/$arch-$platform"/lib$d/*.lib "$SOCKET_HOME/lib$d/$arch-$platform"
     fi
   fi
 
   echo "# copying js api to $SOCKET_HOME/api"
   mkdir -p "$SOCKET_HOME/api"
-  cp -fr "$root"/api/* "$SOCKET_HOME/api"
+  cp -rfp "$root"/api/* "$SOCKET_HOME/api"
   rm -f "$SOCKET_HOME/api/importmap.json"
   "$root/bin/generate-api-import-map.sh" > "$SOCKET_HOME/api/importmap.json"
 
   rm -rf "$SOCKET_HOME/include"
   mkdir -p "$SOCKET_HOME/include"
   #cp -rf "$CWD"/include/* $SOCKET_HOME/include
-  cp -rf "$BUILD_DIR"/uv/include/* $SOCKET_HOME/include
+  cp -rfp "$BUILD_DIR"/uv/include/* $SOCKET_HOME/include
 
   if [[ "$(uname -s)" == *"_NT"* ]]; then
     if [ $platform == "desktop" ]; then
@@ -597,9 +597,12 @@ function _compile_libuv {
         cmake .. -DBUILD_TESTING=OFF -DLIBUV_BUILD_SHARED=OFF
         cd $STAGING_DIR
         cmake --build $STAGING_DIR/build/ --config $config
-        mkdir -p $BUILD_DIR/$target-$platform/lib
+        mkdir -p $BUILD_DIR/$target-$platform/lib$d
         echo "cp -up $STAGING_DIR/build/$config/uv_a.lib $BUILD_DIR/$target-$platform/lib$d/uv_a.lib"
         cp -up $STAGING_DIR/build/$config/uv_a.lib $BUILD_DIR/$target-$platform/lib$d/uv_a.lib
+        if [[ ! -z "$DEBUG" ]]; then
+          cp -up $STAGING_DIR/build/$config/uv_a.pdb $BUILD_DIR/$target-$platform/lib$d/uv_a.pdb
+        fi;
       fi
     fi
 

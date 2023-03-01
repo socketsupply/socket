@@ -660,11 +660,12 @@ namespace SSC {
       // UNREACHABLE - cannot continue
     }
 
-    const WCHAR* customSchemes[2] = { L"ipc", L"socket" };    
+    // TODO(@mribbons): Get Socket scheme working
+    // const WCHAR* customSchemes[2] = { L"ipc", L"socket" };
+    const WCHAR* customSchemes[1] = { L"ipc" }; 
     const WCHAR* allowedIPCOrigin[3] = { L"http://*", L"https://*", L"file://*" };
-    for (int s = 0; s < 2; ++s)
+    for (int s = 0; s < 1; ++s)
     {
-      std::wcout << "Registering " << customSchemes[s] << std::endl;
       auto ipcSchemeRegistration = Microsoft::WRL::Make<CoreWebView2CustomSchemeRegistration>(customSchemes[s]);
       oeResult = ipcSchemeRegistration->put_TreatAsSecure(TRUE);
       if (oeResult != S_OK) {
@@ -796,9 +797,6 @@ namespace SSC {
                         bool socket_scheme = false;
                         bool handled = false;
 
-                        std::cout << "handle uri: " << uri_s << std::endl;
-
-                        // Only handle ipc: requests.
                         if (uri_s.compare(0, 4, "ipc:") == 0) {
                           ipc_scheme = true;
                         } else if (uri_s.compare(0, 7, "socket:") == 0) {
