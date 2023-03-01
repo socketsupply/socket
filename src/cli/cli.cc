@@ -1909,13 +1909,47 @@ int main (const int argc, const char* argv[]) {
         " -I\"" + prefix + "src\""
         " -L\"" + prefix + "lib\""
       ;
-      
-      flags += " -I" + prefixFile("include");
-      flags += " -L" + prefixFile("lib/" + platform.arch + "-desktop");
 
-      files += prefixFile("objects/" + platform.arch + "-desktop/desktop/main.o");
+      auto missing_assets = false;
+      if (flagDebugMode) {
+        for (String libString : split(getEnv("WIN_DEBUG_LIBS"), ',')) {
+          if (libString.size() > 0) {
+            if (libString[0] == '\"' && libString[libString.size()-2] == '\"')
+              libString = libString.substr(1, libString.size()-2);
+
+            fs::path lib(libString);
+            if (!fs::exists(lib))
+            {
+              log("WIN_DEBUG_LIBS: File doesn't exist, aborting build: " + lib.string());
+              missing_assets = true;
+            } else {
+              flags += " " + lib.string();
+            }
+          }
+        }
+      }
+
+      if (flagDebugMode) {
+        flags += " -D_DEBUG";
+      }
+
+      auto d = String(flagDebugMode ? "d" : "" );
+
+      flags += " -I" + prefixFile("include");
+      flags += " -L" + prefixFile("lib" + d + "/" + platform.arch + "-desktop");
+      files += prefixFile("objects/" + platform.arch + "-desktop/desktop/main" + d + ".o");
       files += prefixFile("src/init.cc");
-      files += prefixFile("lib/" + platform.arch + "-desktop/libsocket-runtime.a");
+      auto static_runtime = prefixFile("lib" + d + "/" + platform.arch + "-desktop/libsocket-runtime" + d + ".a");
+      if (!fs::exists(static_runtime)) {
+        log("Can't find static runtime, unable to build: " + static_runtime);
+        missing_assets = true;
+      } else {
+        files += static_runtime;
+      }
+
+      if (missing_assets) {
+        exit(1);
+      }
 
       fs::create_directories(paths.pathPackage);
 
