@@ -40,7 +40,7 @@ You can also check our `Examples` in the [Examples Repo](https://github.com/sock
 
 ### 📚 Documentation
 
-The full documentation for `Socket Runtime` can be found on our [Website](https://sockets.sh/)  
+The full documentation can be found on the [Socket Runtime](https://sockets.sh/) website.  
 The `Socket Runtime` documentation covers Socket APIs, includes examples, multiple guides (`Apple`, `Desktop`, and `Mobile`), `P2P` documentation, and more.
 
 
