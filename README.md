@@ -4,8 +4,9 @@
 </p>
 
 <p align="center">
-  <a href="https://socketsupply.co/"><img src="https://img.shields.io/badge/Socket%20Supply-Website-red?style=flat-square&logo=DOCS"></a>    
+  <a href="https://socketsupply.co/"><img src="https://img.shields.io/badge/Socket%20Supply-Website-black?style=flat-square"></a>    
   <a href="https://twitter.com/socketsupply"><img alt="Follow Company Twitter" src="https://img.shields.io/twitter/follow/socketsupply?style=flat-square&logo=twitter"></a>
+  <a href="https://sockets.sh/"><img src="https://img.shields.io/badge/Socket%20Runtime-Website-black?style=flat-square"></a>    
   <a href="https://twitter.com/socketsupply"><img alt="Follow Project Twitter" src="https://img.shields.io/twitter/follow/sockets_sh?style=flat-square&logo=twitter"></a>
 </p>
 
