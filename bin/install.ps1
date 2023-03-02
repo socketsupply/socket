@@ -414,4 +414,5 @@ if ($package_setup -eq $true) {
   $paths["CXX"] = $fso.GetFile($(Get-CommandPath "clang++.exe")).ShortPath
   ConvertTo-Json $paths > env.json
 }
+
 cd $OLD_CWD
