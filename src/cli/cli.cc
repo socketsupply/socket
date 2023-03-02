@@ -1237,7 +1237,7 @@ int main (const int argc, const char* argv[]) {
     auto binaryPath = paths.pathBin / executable;
     auto configPath = targetPath / "socket.ini";
 
-    if (!fs::exists(binaryPath)) {
+    if (!fs::exists(binaryPath) && !flagBuildForAndroid && !flagBuildForAndroidEmulator) {
       flagRunUserBuildOnly = false;
     } else {
       struct stat stats;
@@ -2219,11 +2219,6 @@ int main (const int argc, const char* argv[]) {
       if (platform.unix) {
         gradlew
           << "ANDROID_HOME=" << androidHome << " ";
-      }
-
-      if (platform.mac && platform.arch == "arm64") {
-        log("warning: 'arm64' may be an unsupported architecture for the Android NDK which may cause the build to fail.");
-        log("         Please see https://stackoverflow.com/a/69555276 to work around this.");
       }
 
       packages
