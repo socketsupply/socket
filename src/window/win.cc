@@ -4,6 +4,11 @@
 #include <shellapi.h>
 #include "window.hh"
 
+#include "WebView2.h"
+#include "WebView2EnvironmentOptions.h"
+#include "WebView2Experimental.h"
+#include "WebView2ExperimentalEnvironmentOptions.h"
+
 #pragma comment(lib, "Shlwapi.lib")
 
 #ifndef CHECK_FAILURE
@@ -661,31 +666,27 @@ namespace SSC {
     }
 
     // TODO(@mribbons): Get Socket scheme working
-    // const WCHAR* customSchemes[2] = { L"ipc", L"socket" };
-    const WCHAR* customSchemes[1] = { L"ipc" }; 
-    const WCHAR* allowedIPCOrigin[3] = { L"http://*", L"https://*", L"file://*" };
-    for (int s = 0; s < 1; ++s)
-    {
-      auto ipcSchemeRegistration = Microsoft::WRL::Make<CoreWebView2CustomSchemeRegistration>(customSchemes[s]);
-      oeResult = ipcSchemeRegistration->put_TreatAsSecure(TRUE);
-      if (oeResult != S_OK) {
-        // UNREACHABLE - cannot continue
-      }
-      oeResult = ipcSchemeRegistration->put_HasAuthorityComponent(TRUE);
-      if (oeResult != S_OK) {
-        // UNREACHABLE - cannot continue
-      }
-      oeResult = ipcSchemeRegistration->SetAllowedOrigins(3, allowedIPCOrigin);
-      if (oeResult != S_OK) {
-        // UNREACHABLE - cannot continue
-      }
-      ICoreWebView2CustomSchemeRegistration* schemeReg[1] = { ipcSchemeRegistration.Get() };
-      oeResult = optionsExperimental->SetCustomSchemeRegistrations(
-        1, static_cast<ICoreWebView2CustomSchemeRegistration**>(schemeReg));
-      if (oeResult != S_OK) {
-        // UNREACHABLE - cannot continue
-      }
-    }
+    const WCHAR* customSchemes[2] = { L"ipc", L"socket" };
+    const WCHAR* allowedSchemeOrigins[3] = { L"http://*", L"https://*", L"file://*" };
+
+    auto ipcSchemeRegistration = Microsoft::WRL::Make<CoreWebView2CustomSchemeRegistration>(L"ipc");
+    ipcSchemeRegistration->put_TreatAsSecure(TRUE);
+    ipcSchemeRegistration->put_HasAuthorityComponent(TRUE);
+    ipcSchemeRegistration->SetAllowedOrigins(3, allowedSchemeOrigins);
+
+    auto socketSchemeRegistration = Microsoft::WRL::Make<CoreWebView2CustomSchemeRegistration>(L"socket");
+    socketSchemeRegistration->put_TreatAsSecure(TRUE);
+    socketSchemeRegistration->put_HasAuthorityComponent(TRUE);
+    socketSchemeRegistration->SetAllowedOrigins(3, allowedSchemeOrigins);
+
+    // If someone can figure out how to allocate this so we can do it in a loop that'd be great, but even Ms is doing it like this:
+    // https://learn.microsoft.com/en-us/microsoft-edge/webview2/reference/win32/icorewebview2environmentoptions4?view=webview2-1.0.1587.40
+    ICoreWebView2CustomSchemeRegistration* registrations[2] = {
+      ipcSchemeRegistration.Get(), 
+      socketSchemeRegistration.Get()
+    };
+
+    optionsExperimental->SetCustomSchemeRegistrations(2, static_cast<ICoreWebView2CustomSchemeRegistration**>(registrations));
 
     auto init = [&]() -> HRESULT {
       return CreateCoreWebView2EnvironmentWithOptions(
@@ -760,7 +761,7 @@ namespace SSC {
                         e->get_Uri(&uri);
                         SSC::String url(SSC::WStringToString(uri));
 
-                        if (url.find("file://") != 0 && url.find("http://localhost") != 0) {
+                        if (url.find("socket:") != 0 && url.find("file://") != 0 && url.find("http://localhost") != 0) {
                           e->put_Cancel(true);
                         }
 
@@ -773,6 +774,7 @@ namespace SSC {
 
                   EventRegistrationToken tokenSchemaFilter;
                   webview->AddWebResourceRequestedFilter(L"*", COREWEBVIEW2_WEB_RESOURCE_CONTEXT_XML_HTTP_REQUEST);
+                  webview->AddWebResourceRequestedFilter(L"socket:*", COREWEBVIEW2_WEB_RESOURCE_CONTEXT_ALL);
                   webview->add_WebResourceRequested(
                     Microsoft::WRL::Callback<ICoreWebView2WebResourceRequestedEventHandler>(
                       [&](ICoreWebView2*, ICoreWebView2WebResourceRequestedEventArgs* args) {
@@ -827,7 +829,7 @@ namespace SSC {
                         }
 
                         // WebView2 doesn't handle the trailing slash well. Remove it.
-                        uri_s = SSC::replace(uri_s, "/\\?", "?");
+                        if (uri_s.ends_with("/")) uri_s = uri_s.substr(0, uri_s.size()-1);
 
                         ICoreWebView2Deferral* deferral;
                         HRESULT hr = args->GetDeferral(&deferral);
@@ -912,8 +914,7 @@ namespace SSC {
                         }
 
                         if (socket_scheme) {
-                          if (method_s.compare("GET")) {
-
+                          if (method_s.compare("GET") == 0) {
                             if (uri_s.starts_with("socket:///")) {
                               uri_s = uri_s.substr(10);
                             } else if (uri_s.starts_with("socket://")) {
@@ -922,23 +923,27 @@ namespace SSC {
                               uri_s = uri_s.substr(7);
                             }
 
-                            auto path = fs::path(fs::current_path()) / uri_s;
+                            auto ext = uri_s.ends_with(".js") ? "" : ".js";
+                            auto path = fs::path(fs::current_path()) / (uri_s + ext) ;
 
-                            if (!fs::exists(fs::status(path))) {
-                              auto ext = uri_s.ends_with(".js") ? "" : ".js";
+                            if (!fs::exists(path)) {
                               path = fs::path(fs::current_path()) / "socket" / (uri_s + ext);
                             }
 
-                            if (fs::exists(fs::status(path))) {
+                            if (fs::exists(path)) {
                               String headers;
                               char* body;
-                              size_t length;
 
-                              String module = readFile(path);
-                              length = module.size();
+                              auto moduleUri = "file://" + replace(path.string(), "\\\\", "/");
+                              auto moduleSource = trim(tmpl(
+                                moduleTemplate,
+                                Map { {"url", String(moduleUri)} }
+                              ));
+
+                              size_t length = moduleSource.size();
                               body = new char[length];
-                              memcpy(body, module.c_str(), length);
-                              headers = "Content-Type: application/json\n";
+                              memcpy(body, moduleSource.c_str(), length);
+                              headers = "Content-Type: text/javascript\n";
                               headers += "Connection: keep-alive\n";
                               headers += "Access-Control-Allow-Headers: *\n";
                               headers += "Access-Control-Allow-Origin: *\n";
