@@ -1,18 +1,13 @@
 
 <p align="center">
-  <a href="https://github.com/socketsupply/socket"><img src="https://user-images.githubusercontent.com/79177582/219756869-afe51bf1-e047-4fab-9e4f-654c5bfd5393.jpeg" width="10%" height="10%"/>
-</p>
-<h1 align="center">Socket Runtime</h1>
-                                             
-<h2 align="center">⚡Write once, run anywhere, connect everyone⚡</h2>  
-<p align="center">
-<a href="https://socketsupply.co/"><img src="https://img.shields.io/badge/Socket%20Supply-Website-red?style=plastic&logo=Website"></a>
-<a href="https://www.linkedin.com/company/socketsupply/mycompany/"><img src="https://img.shields.io/badge/LinkedIn-blue?style=flat&logo=linkedin&labelColor=blue"></a>
-<a href="https://twitter.com/socketsupply"><img alt="Twitter Follow" src="https://img.shields.io/twitter/follow/socketsupply?style=social"></a>
+  <a href="https://github.com/socketsupply/socket"><img src="https://user-images.githubusercontent.com/136109/222429730-2bc555b8-b28d-49cc-9107-77235912866d.png"/>
 </p>
 
-  
-  
+<p align="center">
+  <a href="https://socketsupply.co/"><img src="https://img.shields.io/badge/Socket%20Supply-Website-red?style=flat-square&logo=DOCS"></a>    
+  <a href="https://twitter.com/socketsupply"><img alt="Follow Company Twitter" src="https://img.shields.io/twitter/follow/socketsupply?style=flat-square&logo=twitter"></a>
+  <a href="https://twitter.com/socketsupply"><img alt="Follow Project Twitter" src="https://img.shields.io/twitter/follow/sockets_sh?style=flat-square&logo=twitter"></a>
+</p>
 
 ### Description
 
