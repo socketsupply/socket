@@ -23,6 +23,7 @@ export class ApplicationWindow {
   #index
   #options
   #senderWindowIndex = globalThis.__args.index
+  #listeners = {}
   // TODO(@chicoxyzzy): add parent and children? (needs native process support)
 
   static constants = statuses
@@ -266,6 +267,59 @@ export class ApplicationWindow {
    */
   async openExternal (options) {
     return await ipc.send('platform.openExternal', options)
+  }
+
+  // public EventEmitter methods
+  addListener (event, cb) {
+    if (this.#index !== this.#senderWindowIndex) {
+      throw new Error('window.addListener can only be used from the current window')
+    }
+    if (!(event in this.#listeners)) {
+      this.#listeners[event] = []
+    }
+    this.#listeners[event].push(cb)
+    globalThis.addEventListener(event, cb)
+  }
+  on (event, cb) {
+    if (this.#index !== this.#senderWindowIndex) {
+      throw new Error('window.on can only be used from the current window')
+    }
+    if (!(event in this.#listeners)) {
+      this.#listeners[event] = []
+    }
+    this.#listeners[event].push(cb)
+    globalThis.addEventListener(event, cb)
+  }
+  once (event, cb) {
+    if (this.#index !== this.#senderWindowIndex) {
+      throw new Error('window.once can only be used from the current window')
+    }
+    if (!(event in this.#listeners)) {
+      this.#listeners[event] = []
+    }
+    globalThis.addEventListener(event, cb, { once: true })
+  }
+  removeListener (event, cb) {
+    if (this.#index !== this.#senderWindowIndex) {
+      throw new Error('window.removeListener can only be used from the current window')
+    }
+    this.#listeners[event] = this.#listeners[event].filter(listener => listener !== cb)
+    globalThis.removeEventListener(event, cb)
+  }
+  removeAllListeners (event) {
+    if (this.#index !== this.#senderWindowIndex) {
+      throw new Error('window.removeAllListeners can only be used from the current window')
+    }
+    for (const cb of this.#listeners[event]) {
+      globalThis.removeEventListener(event, cb)
+    }
+  }
+  off (event, cb) {
+    if (this.#index !== this.#senderWindowIndex) {
+      throw new Error('window.off can only be used from the current window')
+    }
+    this.#listeners[event] = this.#listeners[event].filter(listener => listener !== cb)
+    globalThis.removeEventListener(event, cb)
   }
 
   // TODO(@chicoxyzzy): implement on method

@@ -597,12 +597,12 @@ if (!['android', 'ios'].includes(process.platform)) {
   //
   // Backend tests
   //
-  test.only('backend.open()', async (t) => {
+  test('backend.open()', async (t) => {
     const openResult = await application.backend.open()
     t.deepEqual(Object.keys(openResult.data).sort(), ['argv', 'cmd', 'path'], 'returns a result with the correct keys')
   })
 
-  test.only('backend', async (t) => {
+  test('backend sends to globalThis.window', async (t) => {
     const successOpenPromise = Promise.race([
       new Promise(resolve => window.addEventListener('process-error', ({ detail }) => {
         if (detail) t.fail(`process-error event emitted: ${detail}`)
@@ -618,7 +618,7 @@ if (!['android', 'ios'].includes(process.platform)) {
     t.deepEqual(backendSendData, { firstname: 'Morty', secondname: 'Smith' }, 'can send events with data')
   })
 
-  test.only('backend.open() again', async (t) => {
+  test('backend.open() again', async (t) => {
     const openResult = await application.backend.open()
     t.deepEqual(Object.keys(openResult.data).sort(), ['argv', 'cmd', 'path'], 'returns a result with the correct keys')
     const doesNotRestart = await Promise.race([
@@ -628,7 +628,7 @@ if (!['android', 'ios'].includes(process.platform)) {
     t.ok(doesNotRestart, 'does not emit a backend:ready event')
   })
 
-  test.only('backend.open({ force: true })', async (t) => {
+  test('backend.open({ force: true })', async (t) => {
     const openResult = await application.backend.open({ force: true })
     t.deepEqual(Object.keys(openResult.data).sort(), ['argv', 'cmd', 'path'], 'returns a result with the correct keys')
     const doesRestart = await Promise.race([
@@ -638,15 +638,15 @@ if (!['android', 'ios'].includes(process.platform)) {
     t.ok(doesRestart, 'emits a backend:ready event')
   })
 
-  test.only('window.send to backend', async (t) => {
+  test('window.send to backend and back to current window', async (t) => {
     const currentWindow = await application.getCurrentWindow()
     const value = { firstname: 'Rick', secondname: 'Sanchez' }
-    await currentWindow.send({ event: 'character2', value, backend: true })
-    const result = await new Promise(resolve => window.addEventListener('character2', ({ detail }) => resolve(detail), { once: true }))
+    await currentWindow.send({ event: '20 minutes adventure', value, backend: true })
+    const result = await new Promise(resolve => currentWindow.on('20 minutes adventure', ({ detail }) => resolve(detail), { once: true }))
     t.deepEqual(result, value, 'send to backend and back succeeds')
   })
 
-  test.only('backend.close()', async (t) => {
+  test('backend.close()', async (t) => {
     const closeResult = await application.backend.close()
     t.ok(closeResult.err == null, 'returns correct result')
     const doesNotRestart = await Promise.race([
