@@ -386,6 +386,16 @@ MAIN {
         window->resolvePromise(seq, OK_STATE, app.appData[key]);
         return;
       }
+
+      if (message.name == "process.exit") {
+        for (auto w : windowManager.windows) {
+          if (w != nullptr) {
+            auto window = windowManager.getWindow(w->opts.index);
+            window->eval(getEmitToRenderProcessJavaScript("process.exit", value));
+          }
+        }
+        return;
+      }
     });
   };
 
