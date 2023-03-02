@@ -1,6 +1,6 @@
 // @ts-check
 import { format } from 'node:util'
-import { writeSync, fsyncSync } from 'node:fs'
+// import { writeSync, fsyncSync } from 'node:fs'
 import { EventEmitter } from 'node:events'
 
 const MAX_MESSAGE_KB = 512 * 1024
@@ -10,7 +10,7 @@ const MAX_MESSAGE_KB = 512 * 1024
 //
 class API {
   static #sscVersionPrefix = '--ssc-version=v'
-  static #sscVersionPattern = /v(\d+\.\d+\.\d+)/;
+  static #sscVersionPattern = /v(\d+\.\d+\.\d+)/
   static #minimalMajorVersion = 0
   static #minimalMinorVersion = 1
   static #minimalPatchVersion = 0
@@ -28,7 +28,7 @@ class API {
     })
     process.on('uncaughtException', (err) => {
       console.error(err)
-    })  
+    })
 
     // redirect console
     console.log = (...args) => {
@@ -43,12 +43,12 @@ class API {
       // fs.appendFileSync('tmp.log', s + '\n')
       this.#write(`ipc://stderr?value=${enc}`)
     }
-    
+
     for (const arg of process.argv) {
       if (arg.startsWith(API.#sscVersionPrefix)) {
         const [major, minor, patch] = arg.match(API.#sscVersionPattern)?.[1].split('.').map(Number) ?? [0, 0, 0]
         this.#checkVersion(major, minor, patch)
-        break;
+        break
       }
     }
   }
@@ -67,7 +67,7 @@ class API {
     let event = ''
     /** @type {string | object} */
     let value = ''
-  
+
     if (data.length > MAX_MESSAGE_KB) {
       const len = Math.ceil(data.length / 1024)
       process.stderr.write(
@@ -75,41 +75,40 @@ class API {
       )
       process.stderr.write('RAW MESSAGE: ' + data.slice(0, 512) + '...\n')
     }
-  
+
     try {
       const u = new URL(data)
       const o = Object.fromEntries(u.searchParams)
       event = o.event || ''
-  
+
       if (o.value) {
         value = JSON.parse(o.value)
       }
     } catch (err) {
       const dataStart = data.slice(0, 100)
       const dataEnd = data.slice(data.length - 100)
-  
       console.error(`Unable to parse stdin message ${err.code} ${err.message.slice(0, 100)} (${dataStart}...${dataEnd})`)
       throw new Error(`Unable to parse stdin message ${err.code} ${err.message.slice(0, 20)}`)
     }
-  
+
     this.#emitter.emit(event, value)
   }
 
   #handleMessage (data) {
     const messages = data.split('\n')
-  
+
     if (messages.length === 1) {
       this.#buf += data
       return
     }
-  
+
     const firstMsg = this.#buf + messages[0]
     this.#parse(firstMsg)
-  
+
     for (let i = 1; i < messages.length - 1; i++) {
       this.#parse(messages[i])
     }
-  
+
     this.#buf = messages[messages.length - 1]
   }
 
@@ -117,13 +116,13 @@ class API {
     if (s.includes('\n')) {
       throw new Error('invalid write()')
     }
-  
+
     if (s.length > MAX_MESSAGE_KB) {
       const len = Math.ceil(s.length / 1024)
       process.stderr.write('WARNING: Sending large message to webview: ' + len + 'kb\n')
       process.stderr.write('RAW MESSAGE: ' + s.slice(0, 512) + '...\n')
     }
-  
+
     return new Promise(resolve =>
       process.stdout.write(s + '\n', resolve)
     )
@@ -143,20 +142,20 @@ class API {
       console.error(`Cannot encode data to send via IPC:\n${err.message}`)
       return Promise.reject(err)
     }
-  
+
     if (typeof o.value === 'object') {
       o.value = JSON.stringify(o.value)
     }
-  
+
     let s = new URLSearchParams({
       event: o.event,
       // '-1' means that event will be broadcasted to all windows
       index: o.window.toString() ?? '-1',
       value: o.value
     }).toString()
-  
+
     s = s.replace(/\+/g, '%20')
-  
+
     return await this.#write(`ipc://send?${s}`)
   }
 
@@ -168,18 +167,23 @@ class API {
   addListener (event, cb) {
     this.#emitter.addListener(event, cb)
   }
+
   on (event, cb) {
     this.#emitter.on(event, cb)
   }
+
   once (event, cb) {
     this.#emitter.once(event, cb)
   }
+
   removeListener (event, cb) {
     this.#emitter.removeListener(event, cb)
   }
+
   removeAllListeners (event) {
     this.#emitter.removeAllListeners(event)
   }
+
   off (event, cb) {
     this.#emitter.off(event, cb)
   }
