@@ -655,6 +655,7 @@ namespace SSC {
     auto file = (fs::path { modulefile }).filename();
     auto filename = SSC::StringToWString(file.string());
     auto path = SSC::StringToWString(getEnv("APPDATA"));
+    this->modulePath = fs::path(modulefile);
 
     auto options = Microsoft::WRL::Make<CoreWebView2EnvironmentOptions>();
     options->put_AdditionalBrowserArguments(L"--allow-file-access-from-files");
@@ -775,6 +776,7 @@ namespace SSC {
                   EventRegistrationToken tokenSchemaFilter;
                   webview->AddWebResourceRequestedFilter(L"*", COREWEBVIEW2_WEB_RESOURCE_CONTEXT_XML_HTTP_REQUEST);
                   webview->AddWebResourceRequestedFilter(L"socket:*", COREWEBVIEW2_WEB_RESOURCE_CONTEXT_ALL);
+                  webview->AddWebResourceRequestedFilter(L"socket:*", COREWEBVIEW2_WEB_RESOURCE_CONTEXT_XML_HTTP_REQUEST);
                   webview->add_WebResourceRequested(
                     Microsoft::WRL::Callback<ICoreWebView2WebResourceRequestedEventHandler>(
                       [&](ICoreWebView2*, ICoreWebView2WebResourceRequestedEventArgs* args) {
@@ -924,7 +926,19 @@ namespace SSC {
                             }
 
                             auto ext = uri_s.ends_with(".js") ? "" : ".js";
-                            auto path = fs::path(fs::current_path()) / (uri_s + ext) ;
+
+                            // look for socket lib in initial app folder and current path
+                            auto rootPath = this->modulePath.parent_path();
+
+                            auto path = rootPath / uri_s;
+
+                            if (!fs::exists(path)) {
+                              path = rootPath / "socket" / (uri_s + ext);
+                            }
+                            
+                            if (!fs::exists(path)) {
+                              auto path = fs::path(fs::current_path()) / (uri_s + ext);
+                            }
 
                             if (!fs::exists(path)) {
                               path = fs::path(fs::current_path()) / "socket" / (uri_s + ext);
