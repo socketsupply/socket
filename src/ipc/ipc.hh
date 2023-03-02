@@ -8,6 +8,17 @@ namespace SSC::IPC {
   class Bridge;
 }
 
+// create a proxy module so imports of the module of concern are imported
+// exactly once at the canonical URL (file:///...) in contrast to module
+// URLs (socket:...)
+
+static constexpr auto moduleTemplate =
+R"S(
+import module from '{{url}}'
+export * from '{{url}}'
+export default module
+)S";
+
 #if defined(__APPLE__)
 namespace SSC::IPC {
   using Task = id<WKURLSchemeTask>;
