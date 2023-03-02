@@ -55,6 +55,7 @@ namespace SSC {
       int index = 0;
       int width = 0;
       int height = 0;
+      fs::path modulePath;
 
 #if defined(__APPLE__)
 #if !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR
