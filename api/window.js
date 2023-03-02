@@ -280,6 +280,7 @@ export class ApplicationWindow {
     this.#listeners[event].push(cb)
     globalThis.addEventListener(event, cb)
   }
+
   on (event, cb) {
     if (this.#index !== this.#senderWindowIndex) {
       throw new Error('window.on can only be used from the current window')
@@ -290,6 +291,7 @@ export class ApplicationWindow {
     this.#listeners[event].push(cb)
     globalThis.addEventListener(event, cb)
   }
+
   once (event, cb) {
     if (this.#index !== this.#senderWindowIndex) {
       throw new Error('window.once can only be used from the current window')
@@ -299,6 +301,7 @@ export class ApplicationWindow {
     }
     globalThis.addEventListener(event, cb, { once: true })
   }
+
   removeListener (event, cb) {
     if (this.#index !== this.#senderWindowIndex) {
       throw new Error('window.removeListener can only be used from the current window')
@@ -306,6 +309,7 @@ export class ApplicationWindow {
     this.#listeners[event] = this.#listeners[event].filter(listener => listener !== cb)
     globalThis.removeEventListener(event, cb)
   }
+
   removeAllListeners (event) {
     if (this.#index !== this.#senderWindowIndex) {
       throw new Error('window.removeAllListeners can only be used from the current window')
@@ -314,6 +318,7 @@ export class ApplicationWindow {
       globalThis.removeEventListener(event, cb)
     }
   }
+
   off (event, cb) {
     if (this.#index !== this.#senderWindowIndex) {
       throw new Error('window.off can only be used from the current window')
