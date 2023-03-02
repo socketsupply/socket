@@ -1,9 +1,9 @@
 import socket from './socket-node.js'
 
-socket.on('character2', async (value) => {
+socket.on('20 minutes adventure', async (value) => {
   await socket.send({
     window: 0,
-    event: 'character2',
+    event: '20 minutes adventure',
     value
   })
 })

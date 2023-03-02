@@ -177,6 +177,7 @@ MAIN {
 
   app.appData["build_name"] += suffix;
 
+  argvForward << " --ssc-version=v" << SSC::VERSION_STRING;
   argvForward << " --version=v" << app.appData["meta_version"];
   argvForward << " --name=" << app.appData["build_name"];
 
@@ -307,11 +308,17 @@ MAIN {
       auto seq = message.get("seq");
 
       if (message.name == "log" || message.name == "stdout") {
+        if (isDebugEnabled()) {
+          debug("%s", value.c_str());
+        }
         stdWrite(decodeURIComponent(value), false);
         return;
       }
 
       if (message.name == "stderr") {
+        if (isDebugEnabled()) {
+          debug("%s", value.c_str());
+        }
         stdWrite(decodeURIComponent(value), true);
         return;
       }
@@ -407,7 +414,7 @@ MAIN {
   // main thread.
   //
   auto onMessage = [&](auto out) {
-    debug("onMessage %s", out.c_str());
+    // debug("onMessage %s", out.c_str());
     IPC::Message message(out);
 
     auto window = windowManager.getWindow(message.index);

@@ -9,6 +9,12 @@ const MAX_MESSAGE_KB = 512 * 1024
 // Exported API
 //
 class API {
+  static #sscVersionPrefix = '--ssc-version=v'
+  static #sscVersionPattern = /v(\d+\.\d+\.\d+)/;
+  static #minimalMajorVersion = 0
+  static #minimalMinorVersion = 1
+  static #minimalPatchVersion = 0
+
   #buf = ''
   #emitter = new EventEmitter()
 
@@ -20,6 +26,9 @@ class API {
     process.on('exit', (exitCode) => {
       // TODO: notify the webview that backend is exiting
     })
+    process.on('uncaughtException', (err) => {
+      console.error(err)
+    })  
 
     // redirect console
     console.log = (...args) => {
@@ -34,11 +43,25 @@ class API {
       // fs.appendFileSync('tmp.log', s + '\n')
       this.#write(`ipc://stderr?value=${enc}`)
     }
+    
+    for (const arg of process.argv) {
+      if (arg.startsWith(API.#sscVersionPrefix)) {
+        const [major, minor, patch] = arg.match(API.#sscVersionPattern)?.[1].split('.').map(Number) ?? [0, 0, 0]
+        this.#checkVersion(major, minor, patch)
+        break;
+      }
+    }
   }
 
   //
   // Internal API
   //
+  #checkVersion (major, minor, patch) {
+    if (major < API.#minimalMajorVersion || minor < API.#minimalMinorVersion || patch < API.#minimalPatchVersion) {
+      throw new Error(`ssc-node-backend requires at least version 0.1.0, got ${major}.${minor}.${patch}`)
+    }
+  }
+
   #parse (data) {
     /** @type {string} */
     let event = ''
@@ -141,8 +164,24 @@ class API {
     return await this.#write('ipc://heartbeat')
   }
 
+  // public EventEmitter methods
+  addListener (event, cb) {
+    this.#emitter.addListener(event, cb)
+  }
   on (event, cb) {
     this.#emitter.on(event, cb)
+  }
+  once (event, cb) {
+    this.#emitter.once(event, cb)
+  }
+  removeListener (event, cb) {
+    this.#emitter.removeListener(event, cb)
+  }
+  removeAllListeners (event) {
+    this.#emitter.removeAllListeners(event)
+  }
+  off (event, cb) {
+    this.#emitter.off(event, cb)
   }
 }
 
