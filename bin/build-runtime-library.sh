@@ -23,8 +23,13 @@ elif [[ "$host" == *"MSYS_NT"* ]]; then
   host="Win32"
 fi
 
-
+declare d=""
 if [[ "$host" == "Win32" ]]; then
+  # We have to differentiate release and debug for Win32
+  if [[ ! -z "$DEBUG" ]]; then
+    d="d"
+  fi
+
   if command -v $clang >/dev/null 2>&1; then
     echo > /dev/null
   else
@@ -95,9 +100,6 @@ while (( $# > 0 )); do
   args+=("$arg")
 done
 
-# echo "Platform: $platform, clang: $clang"
-# exit 0
-
 if [[ "$host" = "Darwin" ]]; then
   cflags+=("-ObjC++")
   sources+=("$root/src/window/apple.mm")
@@ -127,7 +129,7 @@ cd "$(dirname "$output_directory")"
 echo "# building runtime static libary ($arch-$platform)"
 for source in "${sources[@]}"; do
   declare src_directory="$root/src"
-  declare object="${source/.cc/.o}"
+  declare object="${source/.cc/$d.o}"
   declare object="${object/$src_directory/$output_directory}"
   objects+=("$object")
 done
@@ -168,7 +170,7 @@ function main () {
 
     {
       declare src_directory="$root/src"
-      declare object="${source/.cc/.o}"
+      declare object="${source/.cc/$d.o}"
       declare object="${object/$src_directory/$output_directory}"
       if (( force )) || ! test -f "$object" || (( $(stat_mtime "$source") > $(stat_mtime "$object") )); then
         mkdir -p "$(dirname "$object")"
@@ -186,7 +188,7 @@ function main () {
     wait "$pid" 2>/dev/null
   done
 
-  declare static_library="$root/build/$arch-$platform/lib/libsocket-runtime.a"
+  declare static_library="$root/build/$arch-$platform/lib$d/libsocket-runtime$d.a"
   mkdir -p "$(dirname "$static_library")"
   declare ar="ar"
 
@@ -195,8 +197,13 @@ function main () {
   fi
 
   local build_static=0
+  local static_library_mtime=$(stat_mtime "$static_library")
   for source in "${objects[@]}"; do
-    if (( force )) || ! test -f "$static_library" || (( $(stat_mtime "$source") > $(stat_mtime "$static_library") )); then
+    if ! test -f $source; then
+      echo "$source not built.."
+      exit 1
+    fi
+    if (( force )) || ! test -f "$static_library" || (( $(stat_mtime "$source") > $static_library_mtime )); then
       build_static=1
       break
     fi

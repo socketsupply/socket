@@ -83,7 +83,7 @@ MAIN {
   const SSC::String EMPTY_SEQ = SSC::String("");
 
   auto cwd = app.getCwd();
-  app.appData = SSC::getSettingsSource();
+  app.appData = SSC::getUserConfig();
 
   SSC::String suffix = "";
 
@@ -275,6 +275,7 @@ MAIN {
     #endif
 
     signal(SIGINT, signalHandler);
+    signal(SIGTERM, signalHandler);
 
     return exitCode;
   }
@@ -572,17 +573,15 @@ MAIN {
         options.port = std::stoi(message.get("port"));
       }
 
-      options.isWidthInPercent = message.get("isWidthInPercent") == "true" ? true : false;
-      options.isHeightInPercent = message.get("isHeightInPercent") == "true" ? true : false;
+      auto screen = currentWindow->getScreenSize();
+      
+      options.width = message.get("width").size() ? currentWindow->getSizeInPixels(message.get("width"), screen.width) : 0;
+      options.height = message.get("height").size() ? currentWindow->getSizeInPixels(message.get("height"), screen.height) : 0;
 
-      options.width = message.get("width").size() ? std::stof(message.get("width")) : 0;
-      options.height = message.get("height").size() ? std::stof(message.get("height")) : 0;
-
-      // debug("size");
-      // debug("  width %f", options.width);
-      // debug("  isWidthInPercent: %s", options.isWidthInPercent ? "true" : "false");
-      // debug("  height %f", options.height);
-      // debug("  isHeightInPercent: %s", options.isHeightInPercent ? "true" : "false");
+      options.minWidth = message.get("minWidth").size() ? currentWindow->getSizeInPixels(message.get("minWidth"), screen.width) : 0;
+      options.minHeight = message.get("minHeight").size() ? currentWindow->getSizeInPixels(message.get("minHeight"), screen.height) : 0;
+      options.maxWidth = message.get("maxWidth").size() ? currentWindow->getSizeInPixels(message.get("maxWidth"), screen.width) : screen.width;
+      options.maxHeight = message.get("maxHeight").size() ? currentWindow->getSizeInPixels(message.get("maxHeight"), screen.height) : screen.height;
 
       options.resizable = message.get("resizable") == "true" ? true : false;
       options.frameless = message.get("frameless") == "true" ? true : false;
@@ -768,14 +767,10 @@ MAIN {
       const auto targetWindowIndex = message.get("targetWindowIndex").size() > 0 ? std::stoi(message.get("targetWindowIndex")) : currentIndex;
       const auto targetWindow = windowManager.getWindow(targetWindowIndex);
 
-      auto widthUncalculated = message.get("width").size() > 0 ? std::stof(message.get("width")) : 0;
-      auto isWidthInPercent = message.get("isWidthInPercent") == "true" ? true : false;
-      auto heightUncalculated = message.get("height").size() > 0 ? std::stof(message.get("height")) : 0;
-      auto isHeightInPercent = message.get("isHeightInPercent") == "true" ? true : false;
-
       auto screen = currentWindow->getScreenSize();
-      auto height = static_cast<int>(isHeightInPercent ? screen.height * heightUncalculated / 100 : heightUncalculated);
-      auto width = static_cast<int>(isWidthInPercent ? screen.width * widthUncalculated / 100 : widthUncalculated);
+
+      float width = currentWindow->getSizeInPixels(message.get("width"), screen.width);
+      float height = currentWindow->getSizeInPixels(message.get("height"), screen.height);
 
       targetWindow->setSize(width, height, 0);
 
@@ -874,26 +869,20 @@ MAIN {
 
   app.onExit = shutdownHandler;
 
-  String initialHeight = app.appData["window_height"].size() > 0 ? app.appData["window_height"] : "100%";
-  String initialWidth = app.appData["window_width"].size() > 0 ? app.appData["window_width"] : "100%";
-
-  bool isHeightInPercent = initialHeight.back() == '%';
-  bool isWidthInPercent = initialWidth.back() == '%';
-
-  if (isHeightInPercent) initialHeight.pop_back();
-  if (isWidthInPercent) initialWidth.pop_back();
-
-  auto height = std::stof(initialHeight);
-  auto width = std::stof(initialWidth);
-
-  if (height < 0) height = 0;
-  if (width < 0) width = 0;
+  String defaultWidth = app.appData["window_width"].size() > 0 ? app.appData["window_width"] : "100%";
+  String defaultHeight = app.appData["window_height"].size() > 0 ? app.appData["window_height"] : "100%";
+  String defaultMinWidth = app.appData["window_min_width"].size() > 0 ? app.appData["window_min_width"] : "0";
+  String defaultMinHeight = app.appData["window_min_height"].size() > 0 ? app.appData["window_min_height"] : "0";
+  String defaultMaxWidth = app.appData["window_max_width"].size() > 0 ? app.appData["window_max_width"] : "100%";
+  String defaultMaxHeight = app.appData["window_max_height"].size() > 0 ? app.appData["window_max_height"] : "100%";
 
   windowManager.configure(WindowManagerOptions {
-    .defaultHeight = height,
-    .defaultWidth = width,
-    .isHeightInPercent = isHeightInPercent,
-    .isWidthInPercent = isWidthInPercent,
+    .defaultWidth = defaultWidth,
+    .defaultHeight =  defaultHeight,
+    .defaultMinWidth = defaultMinWidth,
+    .defaultMinHeight = defaultMinHeight,
+    .defaultMaxWidth = defaultMaxWidth,
+    .defaultMaxHeight = defaultMaxHeight,
     .headless = isHeadless,
     .isTest = isTest,
     .argv = argvArray.str(),
@@ -903,7 +892,11 @@ MAIN {
     .onExit = shutdownHandler
   });
 
-  auto defaultWindow = windowManager.createDefaultWindow(WindowOptions { });
+  auto defaultWindow = windowManager.createDefaultWindow(WindowOptions {
+    .resizable = app.appData["window_resizable"] == "false" ? false : true,
+    .frameless = app.appData["window_frameless"] == "true" ? true : false,
+    .utility = app.appData["window_utility"] == "true" ? true : false
+  });
 
   defaultWindow->show(EMPTY_SEQ);
 
@@ -927,6 +920,7 @@ MAIN {
   #endif
 
   signal(SIGINT, signalHandler);
+  signal(SIGTERM, signalHandler);
 
   if (isReadingStdin) {
     std::string value;

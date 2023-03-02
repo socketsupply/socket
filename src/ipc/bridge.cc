@@ -4,19 +4,10 @@
 #define IPC_BINARY_CONTENT_TYPE "application/octet-stream"
 #define IPC_JSON_CONTENT_TYPE "text/json"
 
+extern const SSC::Map SSC::getUserConfig ();
+
 using namespace SSC;
 using namespace SSC::IPC;
-
-// create a proxy module so imports of the module of concern are imported
-// exactly once at the canonical URL (file:///...) in contrast to module
-// URLs (socket:...)
-
-static constexpr auto moduleTemplate =
-R"S(
-import module from '{{url}}'
-export * from '{{url}}'
-export default module
-)S";
 
 #if defined(__APPLE__)
 static dispatch_queue_attr_t qos = dispatch_queue_attr_make_with_qos_class(
@@ -26,7 +17,7 @@ static dispatch_queue_attr_t qos = dispatch_queue_attr_make_with_qos_class(
 );
 
 static dispatch_queue_t queue = dispatch_queue_create(
-  "co.socketsupply.queue.ipc.bridge",
+  "co.socketsupply.socket.ipc.bridge.queue",
   qos
 );
 
@@ -121,6 +112,15 @@ static String getcwd () {
 }
 
 void initFunctionsTable (Router *router) {
+#if defined(__APPLE__)
+  static auto userConfig = SSC::getUserConfig();
+  static auto bundleIdentifier = userConfig["meta_bundle_identifier"];
+  #if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
+    static auto SSC_OS_LOG_BUNDLE = os_log_create(bundleIdentifier.c_str(), "socket.runtime.mobile");
+  #else
+    static auto SSC_OS_LOG_BUNDLE = os_log_create(bundleIdentifier.c_str(), "socket.runtime.desktop");
+  #endif
+#endif
   /**
    * Starts a bluetooth service
    * @param serviceId
@@ -731,11 +731,12 @@ void initFunctionsTable (Router *router) {
   router->map("log", [=](auto message, auto router, auto reply) {
     auto value = message.value.c_str();
   #if defined(__APPLE__)
-    NSLog(@"%s\n", value);
+    NSLog(@"%s", value);
+    os_log_with_type(SSC_OS_LOG_BUNDLE, OS_LOG_TYPE_INFO, "%{public}s", value);
   #elif defined(__ANDROID__)
     __android_log_print(ANDROID_LOG_DEBUG, "", "%s", value);
   #else
-    // TODO
+    printf("%s\n", value);
   #endif
   });
 
@@ -919,15 +920,21 @@ void initFunctionsTable (Router *router) {
   /**
    * Prints incoming message value to stdout.
    */
-  router->map("stdout", [](auto message, auto router, auto reply) {
+  router->map("stdout", [=](auto message, auto router, auto reply) {
     stdWrite(message.value, false);
+  #if defined(__APPLE__)
+    os_log_with_type(SSC_OS_LOG_BUNDLE, OS_LOG_TYPE_INFO, "%{public}s", message.value.c_str());
+  #endif
   });
 
   /**
    * Prints incoming message value to stderr.
    */
-  router->map("stderr", [](auto message, auto router, auto reply) {
+  router->map("stderr", [=](auto message, auto router, auto reply) {
     stdWrite(message.value, true);
+  #if defined(__APPLE__)
+    os_log_with_type(SSC_OS_LOG_BUNDLE, OS_LOG_TYPE_ERROR, "%{public}s", message.value.c_str());
+  #endif
   });
 
   /**
@@ -1345,16 +1352,23 @@ static void registerSchemeHandler (Router *router) {
     components.scheme = @"file";
     components.host = @"";
 
+    auto path = String(components.path.UTF8String);
+    auto ext = String(
+      path.ends_with(".js")
+        ? ""
+        : ".js"
+    );
+
   #if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
     components.path = [[[NSBundle mainBundle] resourcePath]
       stringByAppendingPathComponent: [NSString
-        stringWithFormat: @"/ui/socket/%@.js", components.path
+        stringWithFormat: @"/ui/socket/%s%s", path.c_str(), ext.c_str()
       ]
     ];
   #else
     components.path = [[[NSBundle mainBundle] resourcePath]
       stringByAppendingPathComponent: [NSString
-        stringWithFormat: @"/socket/%@.js", components.path
+        stringWithFormat: @"/socket/%s%s", path.c_str(), ext.c_str()
       ]
     ];
   #endif

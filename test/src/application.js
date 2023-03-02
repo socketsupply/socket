@@ -9,26 +9,6 @@ import { readFile } from 'socket:fs/promises'
 
 let title = 'Socket Runtime JavaScript Tests'
 
-//
-// Polyfills
-//
-test('window.resizeTo', async (t) => {
-  window.resizeTo(420, 200)
-  const mainWindow = await application.getCurrentWindow()
-  const { width, height } = mainWindow.getSize()
-  t.equal(width, 420, 'width is 420')
-  t.equal(height, 200, 'height is 200')
-})
-
-// this one is not in the spec
-test('window.resizeTo percentage', async (t) => {
-  window.resizeTo('20%', '20%')
-  const mainWindow = await application.getCurrentWindow()
-  const { width, height } = mainWindow.getSize()
-  t.equal(width, Math.round(window.screen.width * 0.2), 'width is 20%')
-  t.equal(height, Math.round(window.screen.height * 0.2), 'height is 20%')
-})
-
 test('window.document.title', async (t) => {
   t.equal(window.document.title, title, 'window.document.title is correct')
   title = 'idkfa'
@@ -73,7 +53,15 @@ test('application.config', async (t) => {
   }
   config.forEach(([key, value]) => {
     switch (key) {
+      // boolean values
       case 'build_headless':
+      case 'window_max_width':
+      case 'window_max_height':
+      case 'window_min_width':
+      case 'window_min_height':
+      case 'window_resizable':
+      case 'window_frameless':
+      case 'window_utility':
         t.equal(application.config[key].toString(), value, `application.config.${key} is correct`)
         break
       case 'build_name':
@@ -385,13 +373,22 @@ test('window.setTitle', async (t) => {
   t.equal(mainWindow.getTitle(), '👋', 'window options are updated')
 })
 
-test('window.setSize', async (t) => {
+test('window.setSize in pixels', async (t) => {
   const mainWindow = await application.getCurrentWindow()
   const { width, height } = await mainWindow.setSize({ width: 800, height: 600 })
   t.equal(width, 800, 'correct width is returned')
   t.equal(height, 600, 'correct height is returned')
   t.equal(mainWindow.getSize().width, 800, 'window options are updated')
   t.equal(mainWindow.getSize().height, 600, 'window options are updated')
+})
+
+test('window.setSize in percent', async (t) => {
+  const mainWindow = await application.getCurrentWindow()
+  const { width, height } = await mainWindow.setSize({ width: '50%', height: '50%' })
+  t.equal(width, window.screen.width / 2, 'correct width is returned')
+  t.equal(height, Math.floor(window.screen.height / 2), 'correct height is returned')
+  t.equal(mainWindow.getSize().width, window.screen.width / 2, 'window options are updated')
+  t.equal(mainWindow.getSize().height, Math.floor(window.screen.height / 2), 'window options are updated')
 })
 
 test('window.hide / window.show', async (t) => {

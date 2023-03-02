@@ -1,11 +1,17 @@
 #include "../common.hh"
 #include "../process/process.hh"
 #include "templates.hh"
+#include "../core/core.hh"
 
 #include <filesystem>
 
 #ifdef __linux__
 #include <cstring>
+#endif
+
+#if defined(__APPLE__)
+#include <Foundation/Foundation.h>
+#include <Cocoa/Cocoa.h>
 #endif
 
 #include <sys/stat.h>
@@ -62,6 +68,14 @@ auto start = system_clock::now();
 bool flagDebugMode = true;
 bool flagQuietMode = false;
 Map defaultTemplateAttrs = {{ "ssc_version", SSC::VERSION_FULL_STRING }};
+
+const Map SSC::getUserConfig () {
+  return settings;
+}
+
+bool SSC::isDebugEnabled () {
+  return DEBUG == 1;
+}
 
 void log (const String s) {
   if (flagQuietMode) return;
@@ -128,9 +142,29 @@ inline String prefixFile () {
   return socketHome;
 }
 
+static Process::id_type appPid = 0;
+static Process* appProcess = nullptr;
+static std::atomic<int> appStatus = 0;
+static std::mutex appMutex;
+
+void signalHandler (int signal) {
+  appStatus = signal;
+
+  if (appProcess != nullptr) {
+    auto pid = appProcess->getPID();
+    appProcess->kill(pid);
+  } else if (appPid > 0) {
+  #if !defined(_WIN32)
+    kill(appPid, signal);
+  #endif
+    appPid = 0;
+  } else {
+    exit(signal);
+  }
+}
+
 int runApp (const fs::path& path, const String& args, bool headless) {
   auto cmd = path.string();
-  int status = 0;
 
   if (!fs::exists(path)) {
     log("executable not found: " + cmd);
@@ -157,7 +191,7 @@ int runApp (const fs::path& path, const String& args, bool headless) {
       // use xvfb for linux as a default
       if (headlessRunner.size() == 0) {
         headlessRunner = "xvfb-run";
-        status = std::system((headlessRunner + " --help >/dev/null").c_str());
+        int status = std::system((headlessRunner + " --help >/dev/null").c_str());
         if (WEXITSTATUS(status) != 0) {
           headlessRunner = "";
         }
@@ -174,15 +208,193 @@ int runApp (const fs::path& path, const String& args, bool headless) {
     if (headlessRunner != "false") {
       headlessCommand = headlessRunner + headlessRunnerFlags;
     }
-    
-  // TODO: this branch exits the CLI process
-  // } else if (platform.mac) {
-  //   auto s = prefix + cmd;
-  //   auto part = s.substr(0, s.find(".app/") + 4);
-  //   status = std::system(("open -n " + part + " --args " + args + " --from-ssc").c_str());
   }
-  std::cout << "Running app: " << headlessCommand << prefix << cmd << args + " --from-ssc" << std::endl;
-  auto process = new SSC::Process(
+
+#if defined(__APPLE__)
+  if (platform.mac) {
+    auto sharedWorkspace = [NSWorkspace sharedWorkspace];
+    auto configuration = [NSWorkspaceOpenConfiguration configuration];
+    auto string = path.string();
+    auto slice = string.substr(0, string.find(".app") + 4);
+    auto url = [NSURL
+      fileURLWithPath: [NSString stringWithUTF8String: slice.c_str()]
+    ];
+
+    auto bundle = [NSBundle bundleWithURL: url];
+    auto env = [[NSMutableDictionary alloc] init];
+
+    for (auto const &envKey : split(settings["build_env"], ',')) {
+      auto cleanKey = trim(envKey);
+      auto envValue = getEnv(cleanKey.c_str());
+      auto key = [NSString stringWithUTF8String: cleanKey.c_str()];
+      auto value = [NSString stringWithUTF8String: envValue.c_str()];
+
+      env[key] = value;
+    }
+
+    auto splitArgs = split(args, ' ');
+    auto arguments = [[NSMutableArray alloc] init];
+
+    for (auto arg : splitArgs) {
+      [arguments addObject: [NSString stringWithUTF8String: arg.c_str()]];
+    }
+
+    [arguments addObject: @"--from-ssc"];
+
+    configuration.createsNewApplicationInstance = YES;
+    configuration.promptsUserIfNeeded = YES;
+    configuration.environment = env;
+    configuration.arguments = arguments;
+    configuration.activates = headless ? NO : YES;
+
+    log(String("Running App: " + String(bundle.bundlePath.UTF8String)));
+
+    appMutex.lock();
+    appStatus = 0;
+
+    [sharedWorkspace
+      openApplicationAtURL: bundle.bundleURL
+             configuration: configuration
+         completionHandler: ^(NSRunningApplication* app, NSError* error)
+    {
+      if (error) {
+        appMutex.unlock();
+        appStatus = 1;
+        debug(
+          "error: NSWorkspace: (code=%lu, domain=%@) %@",
+          error.code,
+          error.domain,
+          error.localizedDescription
+        );
+        return;
+      }
+
+      appPid = app.processIdentifier;
+
+      // It appears there is a bug with `:predicateWithFormat:` as the
+      // following does not appear to work:
+      //
+      // [NSPredicate
+      //   predicateWithFormat: @"processIdentifier == %d AND subsystem == '%s'",
+      //   app.processIdentifier,
+      //   bundle.bundleIdentifier // or even a literal string "co.socketsupply.socket.tests"
+      // ];
+      //
+      // We can build the predicate query string manually, instead.
+      auto queryStream = StringStream {};
+      auto pid = std::to_string(app.processIdentifier);
+      auto bid = bundle.bundleIdentifier.UTF8String;
+      queryStream
+        << "("
+        << "  category == 'socket.runtime.desktop' OR "
+        << "  category == 'socket.runtime.debug'"
+        << ") AND "
+        << "processIdentifier == " << pid << " AND "
+        << "subsystem == '" << bid << "'";
+      // log store query and predicate for filtering logs based on the currently
+      // running application that was just launched and those of a subsystem
+      // directly related to the application's bundle identifier which allows us
+      // to just get logs that came from the application (not foundation/cocoa/webkit)
+      const auto query = [NSString stringWithUTF8String: queryStream.str().c_str()];
+      const auto predicate = [NSPredicate predicateWithFormat: query];
+
+      // use the launch date as the initial marker
+      const auto now = app.launchDate;
+      // and offset it by 1 second in the past as the initial position in the eumeration
+      auto offset = [now dateByAddingTimeInterval: -1];
+
+      // tracks the latest log entry date so we ignore older ones
+      NSDate* latest = nil;
+
+      while (kill(app.processIdentifier, 0) == 0) {
+        @autoreleasepool {
+          // We need  a new `OSLogStore` in each so we can keep
+          // enumeratoring the logs until the application terminates
+          auto logs = [OSLogStore localStoreAndReturnError: &error];
+
+          if (error) {
+            appStatus = 1;
+            debug(
+              "error: OSLogStore: (code=%lu, domain=%@) %@",
+              error.code,
+              error.domain,
+              error.localizedDescription
+            );
+            break;
+          }
+
+          auto position = [logs positionWithDate: offset];
+          auto enumerator = [logs
+            entriesEnumeratorWithOptions: 0
+                                position: position
+                               predicate: predicate
+                                   error: &error
+          ];
+
+          if (error) {
+            appStatus = 1;
+            debug(
+              "error: OSLogEnumerator: (code=%lu, domain=%@) %@",
+              error.code,
+              error.domain,
+              error.localizedDescription
+            );
+
+            break;
+          }
+
+          // Enumerate all the logs in this loop and print unredacted and most
+          // recently log entries to stdout
+          for (OSLogEntryLog* entry in enumerator) {
+            std::this_thread::yield();
+
+            if (
+              entry.composedMessage &&
+              entry.processIdentifier == app.processIdentifier
+            ) {
+              // visit latest log
+              if (!latest || [latest compare: entry.date] == NSOrderedAscending) {
+                auto message = entry.composedMessage.UTF8String;
+
+                // the OSLogStore may redact log messages the user does not
+                // have access to, filter them out
+                if (String(message) != "<private>") {
+                  if (
+                    entry.level == OSLogEntryLogLevelDebug ||
+                    entry.level == OSLogEntryLogLevelError ||
+                    entry.level == OSLogEntryLogLevelFault
+                  ) {
+                    std::cerr << message << std::endl;
+                  } else {
+                    std::cout << message << std::endl;
+                  }
+                }
+
+                latest = entry.date;
+                offset = offset;
+              }
+            }
+          }
+
+          std::this_thread::sleep_for(std::chrono::milliseconds(256));
+        }
+      }
+
+      appMutex.unlock();
+    }];
+
+    // wait for `NSRunningApplication` to terminate
+    std::lock_guard<std::mutex> lock(appMutex);
+
+    log("App result: " + std::to_string(appStatus.load()));
+    std::this_thread::sleep_for(std::chrono::milliseconds(32));
+    return appStatus.load();
+  }
+#endif
+
+  log(String("Running App: " + headlessCommand + prefix + cmd +  args + " --from-ssc"));
+
+  appProcess = new SSC::Process(
      headlessCommand + prefix + cmd,
     args + " --from-ssc",
     fs::current_path().string(),
@@ -190,12 +402,19 @@ int runApp (const fs::path& path, const String& args, bool headless) {
     [](SSC::String const &out) { std::cerr << out << std::endl; }
   );
 
-  process->open();
-  process->wait();
+  appPid = appProcess->open();
+  appProcess->wait();
+  auto status = appProcess->status.load();
 
-  log("runApp result: " + std::to_string(process->status));
+  if (status > -1) {
+    appStatus = status;
+  }
 
-  return process->status;
+  delete appProcess;
+  appProcess = nullptr;
+
+  log("App result: " + std::to_string(appStatus));
+  return appStatus;
 }
 
 int runApp (const fs::path& path, const String& args) {
@@ -462,6 +681,13 @@ int main (const int argc, const char* argv[]) {
   };
 
   auto const subcommand = argv[1];
+
+#ifndef _WIN32
+  signal(SIGHUP, signalHandler);
+#endif
+
+  signal(SIGINT, signalHandler);
+  signal(SIGTERM, signalHandler);
 
   if (is(subcommand, "-v") || is(subcommand, "--version")) {
     std::cout << SSC::VERSION_FULL_STRING << std::endl;
@@ -1011,7 +1237,7 @@ int main (const int argc, const char* argv[]) {
     auto binaryPath = paths.pathBin / executable;
     auto configPath = targetPath / "socket.ini";
 
-    if (!fs::exists(binaryPath)) {
+    if (!fs::exists(binaryPath) && !flagBuildForAndroid && !flagBuildForAndroidEmulator) {
       flagRunUserBuildOnly = false;
     } else {
       struct stat stats;
@@ -1078,6 +1304,7 @@ int main (const int argc, const char* argv[]) {
       flags += " -framework UserNotifications";
       flags += " -framework WebKit";
       flags += " -framework Cocoa";
+      flags += " -framework OSLog";
       flags += " -DMACOS=1";
       flags += " -I" + prefixFile();
       flags += " -I" + prefixFile("include");
@@ -1682,13 +1909,56 @@ int main (const int argc, const char* argv[]) {
         " -I\"" + prefix + "src\""
         " -L\"" + prefix + "lib\""
       ;
-      
-      flags += " -I" + prefixFile("include");
-      flags += " -L" + prefixFile("lib/" + platform.arch + "-desktop");
 
-      files += prefixFile("objects/" + platform.arch + "-desktop/desktop/main.o");
+
+      // See install.sh for more info on windows debug builds and d suffix
+      auto missing_assets = false;
+      auto debugBuild = getEnv("DEBUG").size() > 0;
+      if (debugBuild) {
+        for (String libString : split(getEnv("WIN_DEBUG_LIBS"), ',')) {
+          if (libString.size() > 0) {
+            if (libString[0] == '\"' && libString[libString.size()-2] == '\"')
+              libString = libString.substr(1, libString.size()-2);
+
+            fs::path lib(libString);
+            if (!fs::exists(lib))
+            {
+              log("WIN_DEBUG_LIBS: File doesn't exist, aborting build: " + lib.string());
+              missing_assets = true;
+            } else {
+              flags += " " + lib.string();
+            }
+          }
+        }
+      }
+
+      if (debugBuild) {
+        flags += " -D_DEBUG";
+      }
+
+      auto d = String(debugBuild ? "d" : "" );
+
+      flags += " -I" + prefixFile("include");
+      flags += " -L" + prefixFile("lib" + d + "/" + platform.arch + "-desktop");
+      auto main_o = prefixFile("objects/" + platform.arch + "-desktop/desktop/main" + d + ".o");
+      if (!fs::exists(main_o)) {
+        log("Can't find main obj, unable to build: " + main_o);
+        missing_assets = true;        
+      } else {
+        files += main_o;
+      }
       files += prefixFile("src/init.cc");
-      files += prefixFile("lib/" + platform.arch + "-desktop/libsocket-runtime.a");
+      auto static_runtime = prefixFile("lib" + d + "/" + platform.arch + "-desktop/libsocket-runtime" + d + ".a");
+      if (!fs::exists(static_runtime)) {
+        log("Can't find static runtime, unable to build: " + static_runtime);
+        missing_assets = true;
+      } else {
+        files += static_runtime;
+      }
+
+      if (missing_assets) {
+        exit(1);
+      }
 
       fs::create_directories(paths.pathPackage);
 
@@ -1713,21 +1983,6 @@ int main (const int argc, const char* argv[]) {
       writeFile(p, tmpl(gWindowsAppManifest, settings));
 
       // TODO Copy the files into place
-    }
-
-    auto SOCKET_HOME_API = getEnv("SOCKET_HOME_API");
-
-    if (SOCKET_HOME_API.size() == 0) {
-      SOCKET_HOME_API = trim(prefixFile("api"));
-    }
-
-    if (fs::exists(fs::status(SOCKET_HOME_API))) {
-      fs::create_directories(pathResources);
-      fs::copy(
-        SOCKET_HOME_API,
-        pathResources / "socket",
-        fs::copy_options::update_existing | fs::copy_options::recursive
-      );
     }
 
     log("package prepared");
@@ -1798,6 +2053,21 @@ int main (const int argc, const char* argv[]) {
       fs::copy(
         pathInput,
         pathResourcesRelativeToUserBuild,
+        fs::copy_options::update_existing | fs::copy_options::recursive
+      );
+    }
+
+    auto SOCKET_HOME_API = getEnv("SOCKET_HOME_API");
+
+    if (SOCKET_HOME_API.size() == 0) {
+      SOCKET_HOME_API = trim(prefixFile("api"));
+    }
+
+    if (fs::exists(fs::status(SOCKET_HOME_API))) {
+      fs::create_directories(pathResources);
+      fs::copy(
+        SOCKET_HOME_API,
+        pathResources / "socket",
         fs::copy_options::update_existing | fs::copy_options::recursive
       );
     }
@@ -1992,11 +2262,6 @@ int main (const int argc, const char* argv[]) {
       if (platform.unix) {
         gradlew
           << "ANDROID_HOME=" << androidHome << " ";
-      }
-
-      if (platform.mac && platform.arch == "arm64") {
-        log("warning: 'arm64' may be an unsupported architecture for the Android NDK which may cause the build to fail.");
-        log("         Please see https://stackoverflow.com/a/69555276 to work around this.");
       }
 
       packages

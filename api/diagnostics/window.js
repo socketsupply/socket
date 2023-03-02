@@ -21,7 +21,6 @@ export class RequestAnimationFrameMetric extends Metric {
     this.sampleSize = options?.sampleSize || 60
     this.sampleTick = 0 // max(0, sampleSize)
     this.channel = dc.channel('requestAnimationFrame')
-    this.frame = null
     this.value = null
     this.now = 0
   }
@@ -35,7 +34,7 @@ export class RequestAnimationFrameMetric extends Metric {
   }
 
   init () {
-    if (this.frame === null) {
+    if (this.originalRequestAnimationFrame === null) {
       this.samples = new Uint8Array(this.sampleSize)
       this.originalRequestAnimationFrame = globalThis.requestAnimationFrame
       globalThis.requestAnimationFrame = this.requestAnimationFrame
@@ -75,7 +74,7 @@ export class RequestAnimationFrameMetric extends Metric {
   }
 
   destroy () {
-    globalThis.cancelAnimationFrame(this.frame)
+    this.channel.reset()
 
     if (typeof this.originalRequestAnimationFrame === 'function') {
       globalThis.requestAnimationFrame = this.originalRequestAnimationFrame
@@ -83,8 +82,6 @@ export class RequestAnimationFrameMetric extends Metric {
 
     this.originalRequestAnimationFrame = null
     this.samples = null
-    this.channel = null
-    this.frame = null
     this.value = null
   }
 
@@ -127,10 +124,13 @@ export class FetchMetric extends Metric {
   }
 
   destroy () {
+    this.channel.reset()
+
     if (typeof this.originalFetch === 'function') {
       globalThis.fetch = this.originalFetch
-      this.originalFetch = null
     }
+
+    this.originalFetch = null
   }
 }
 
@@ -165,10 +165,13 @@ export class XMLHttpRequestMetric extends Metric {
   }
 
   destroy () {
+    this.channel.reset()
+
     if (this.patched) {
       Object.assign(globalThis.XMLHttpRequest.prototype, this.patched)
-      this.patched = null
     }
+
+    this.patched = null
   }
 }
 

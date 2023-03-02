@@ -4,6 +4,7 @@
 // macOS/iOS
 #if defined(__APPLE__)
 #include <TargetConditionals.h>
+#include <OSLog/OSLog.h>
 
 #if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
 #include <_types/_uint64_t.h>
@@ -14,7 +15,35 @@
 #endif
 
 #ifndef debug
-#define debug(format, ...) NSLog(@format, ##__VA_ARGS__)
+#if !defined(SSC_CLI)
+static os_log_t SSC_OS_LOG_DEBUG_BUNDLE = nullptr;
+// wrap `os_log*` functions for global debugger
+#define osdebug(format, fmt, ...) ({                                           \
+  if (!SSC_OS_LOG_DEBUG_BUNDLE) {                                              \
+    static auto userConfig = SSC::getUserConfig();                             \
+    static auto bundleIdentifier = userConfig["meta_bundle_identifier"];       \
+    SSC_OS_LOG_DEBUG_BUNDLE = os_log_create(                                   \
+      bundleIdentifier.c_str(),                                                \
+      "socket.runtime.debug"                                                   \
+    );                                                                         \
+  }                                                                            \
+                                                                               \
+  auto string = [NSString stringWithFormat: @fmt, ##__VA_ARGS__];              \
+  os_log_with_type(                                                            \
+    SSC_OS_LOG_DEBUG_BUNDLE,                                                   \
+    OS_LOG_TYPE_ERROR,                                                         \
+    "%{public}s",                                                              \
+    string.UTF8String                                                          \
+  );                                                                           \
+})
+#else
+#define osdebug(...)
+#endif
+
+#define debug(format, ...) ({                                                  \
+  NSLog(@format, ##__VA_ARGS__);                                               \
+  osdebug("%{public}@", format, ##__VA_ARGS__);                                \
+})
 #endif
 #endif
 
@@ -107,7 +136,6 @@
 #include <mutex>
 #include <queue>
 #include <regex>
-#include <semaphore>
 #include <span>
 #include <sstream>
 #include <string>
@@ -169,10 +197,8 @@ namespace SSC {
   using WStringStream = std::wstringstream;
 
   template <typename T> using Queue = std::queue<T>;
-  template <int K> using Semaphore = std::counting_semaphore<K>;
   template <typename T> using Vector = std::vector<T>;
 
-  using BinarySemaphore = std::binary_semaphore; // aka `Semaphore<1>`
   using ExitCallback = std::function<void(int code)>;
   using Map = std::map<String, String>;
   using Mutex = std::recursive_mutex;
@@ -184,15 +210,9 @@ namespace SSC {
   inline const auto VERSION_HASH_STRING = ToString(STR_VALUE(SSC_VERSION_HASH));
   inline const auto VERSION_STRING = ToString(STR_VALUE(SSC_VERSION));
 
-  const Map getSettingsSource ();
+  const Map getUserConfig ();
 
   bool isDebugEnabled ();
-
-  #if defined(CLI)
-    bool isDebugEnabled () {
-      return DEBUG == 1;
-    }
-  #endif
 
   const char* getDevHost ();
   int getDevPort ();

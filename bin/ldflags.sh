@@ -13,7 +13,19 @@ declare ios_sdk_path=""
 
 if [[ "$host" = "Linux" ]]; then
   if [ -n "$WSL_DISTRO_NAME" ] || uname -r | grep 'Microsoft'; then
-    HOST="Win32"
+    host="Win32"
+  fi
+fi
+
+if [[ "$host" == *"MINGW64_NT"* ]]; then
+  host="Win32"
+fi
+
+declare d=""
+if [[ "$host" == "Win32" ]]; then
+  # We have to differentiate release and debug for Win32
+  if [[ ! -z "$DEBUG" ]]; then
+    d="d"
   fi
 fi
 
@@ -96,11 +108,21 @@ if [[ "$host" = "Darwin" ]]; then
   ldflags+=("-framework" "UniformTypeIdentifiers")
   ldflags+=("-framework" "WebKit")
   ldflags+=("-framework" "UserNotifications")
+  ldflags+=("-framework" "OSLog")
 elif [[ "$host" = "Linux" ]]; then
   ldflags+=($(pkg-config --libs gtk+-3.0 webkit2gtk-4.1))
+elif [[ "$host" = "Win32" ]]; then
+  if [[ ! -z "$DEBUG" ]]; then
+    # https://learn.microsoft.com/en-us/cpp/c-runtime-library/crt-library-features?view=msvc-170
+    # TODO(@mribbons): Populate from vcvars64.bat
+    IFS=',' read -r -a libs <<< "$WIN_DEBUG_LIBS"
+    for (( i = 0; i < ${#libs[@]}; ++i )); do
+      ldflags+=("${libs[$i]}")
+    done
+  fi
 fi
 
-ldflags+=("-L$root/build/$arch-$platform/lib")
+ldflags+=("-L$root/build/$arch-$platform/lib$d")
 
 for (( i = 0; i < ${#args[@]}; ++i )); do
   ldflags+=("${args[$i]}")

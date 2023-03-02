@@ -483,7 +483,7 @@ namespace SSC {
     [window center];
     [window setOpaque: YES];
     // Minimum window size
-    [window setContentMinSize: NSMakeSize(opts.width, opts.height)];
+    [window setContentMinSize: NSMakeSize(opts.minWidth, opts.minHeight)];
     [window setBackgroundColor: [NSColor controlBackgroundColor]];
     [window registerForDraggedTypes: draggableTypes];
     // [window setAppearance:[NSAppearance appearanceNamed:NSAppearanceNameVibrantDark]];

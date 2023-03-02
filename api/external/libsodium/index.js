@@ -1,3 +1,5 @@
+import process from '../../process.js'
+
 const modules = {}
 
 async function define (name, exports) {
@@ -45,4 +47,4 @@ define('libsodium', async (module, exports, require) => {
 })
 
 modules.libsodium.exports.inspect = () => '[object libsodium]'
-export default modules.libsodium.exports
+export default modules.libsodium.exports.libsodium

@@ -23,6 +23,10 @@ if (globalThis.window) {
  * @param {string=} opts.title - the title of the window
  * @param {(number|string)=} opts.width - the width of the window. If undefined, the window will have the main window width.
  * @param {(number|string)=} opts.height - the height of the window. If undefined, the window will have the main window height.
+ * @param {(number|string)=} [opts.minWidth = 0] - the minimum width of the window
+ * @param {(number|string)=} [opts.minHeight = 0] - the minimum height of the window
+ * @param {(number|string)=} [opts.maxWidth = '100%'] - the maximum width of the window
+ * @param {(number|string)=} [opts.maxHeight = '100%'] - the maximum height of the window
  * @param {boolean=} [opts.resizable=true] - whether the window is resizable
  * @param {boolean=} [opts.frameless=false] - whether the window is frameless
  * @param {boolean=} [opts.utility=false] - whether the window is utility (macOS only)
@@ -43,7 +47,11 @@ export async function createWindow (opts) {
     resizable: opts.resizable ?? true,
     frameless: opts.frameless ?? false,
     utility: opts.utility ?? false,
-    canExit: opts.canExit ?? false
+    canExit: opts.canExit ?? false,
+    minWidth: opts.minWidth ?? 0,
+    minHeight: opts.minHeight ?? 0,
+    maxWidth: opts.maxWidth ?? '100%',
+    maxHeight: opts.maxHeight ?? '100%'
   }
 
   if ((opts.width != null && typeof opts.width !== 'number' && typeof opts.width !== 'string') ||
@@ -52,12 +60,10 @@ export async function createWindow (opts) {
     throw new Error(`Window width must be an integer number or a string with a valid percentage value from 0 to 100 ending with %. Got ${opts.width} instead.`)
   }
   if (typeof opts.width === 'string' && isValidPercentageValue(opts.width)) {
-    options.width = Number(opts.width.slice(0, -1))
-    options.isWidthInPercent = true
+    options.width = opts.width
   }
   if (typeof opts.width === 'number') {
-    options.width = opts.width
-    options.isWidthInPercent = false
+    options.width = opts.width.toString()
   }
 
   if ((opts.height != null && typeof opts.height !== 'number' && typeof opts.height !== 'string') ||
@@ -66,12 +72,10 @@ export async function createWindow (opts) {
     throw new Error(`Window height must be an integer number or a string with a valid percentage value from 0 to 100 ending with %. Got ${opts.height} instead.`)
   }
   if (typeof opts.height === 'string' && isValidPercentageValue(opts.height)) {
-    options.height = Number(opts.height.slice(0, -1))
-    options.isHeightInPercent = true
+    options.height = opts.height
   }
   if (typeof opts.height === 'number') {
-    options.height = opts.height
-    options.isHeightInPercent = false
+    options.height = opts.height.toString()
   }
 
   const { data, err } = await ipc.send('window.create', options)

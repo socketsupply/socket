@@ -55,6 +55,7 @@ namespace SSC {
       int index = 0;
       int width = 0;
       int height = 0;
+      fs::path modulePath;
 
 #if defined(__APPLE__)
 #if !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR
@@ -137,13 +138,26 @@ namespace SSC {
 
         this->onMessage(IPC::getResolveToMainProcessMessage(seq, state, value));
       }
+
+      static float getSizeInPixels (String sizeInPercent, int screenSize) {
+        if (sizeInPercent.size() > 0) {
+          if (sizeInPercent.back() == '%') {
+            sizeInPercent.pop_back();
+            return screenSize * std::stof(sizeInPercent) / 100;
+          }
+          return std::stof(sizeInPercent);
+        }
+        return 0;
+      }
   };
 
   struct WindowManagerOptions {
-    float defaultHeight = 0;
-    float defaultWidth = 0;
-    bool isHeightInPercent = false;
-    bool isWidthInPercent = false;
+    String defaultHeight = "0";
+    String defaultWidth = "0";
+    String defaultMinWidth = "0";
+    String defaultMinHeight = "0";
+    String defaultMaxWidth = "100%";
+    String defaultMaxHeight = "100%";
     bool headless = false;
     bool isTest;
     String argv = "";
@@ -257,8 +271,6 @@ namespace SSC {
               { "title", this->getTitle() },
               { "width", size.width },
               { "height", size.height },
-              { "isWidthInPercent", this->opts.isWidthInPercent },
-              { "isHeightInPercent", this->opts.isHeightInPercent },
               { "status", this->status }
             };
           }
@@ -303,8 +315,10 @@ namespace SSC {
         if (destroyed) return;
         this->options.defaultHeight = configuration.defaultHeight;
         this->options.defaultWidth = configuration.defaultWidth;
-        this->options.isHeightInPercent = configuration.isHeightInPercent;
-        this->options.isWidthInPercent = configuration.isWidthInPercent;
+        this->options.defaultMinWidth = configuration.defaultMinWidth;
+        this->options.defaultMinHeight = configuration.defaultMinHeight;
+        this->options.defaultMaxWidth = configuration.defaultMaxWidth;
+        this->options.defaultMaxHeight = configuration.defaultMaxHeight;
         this->options.onMessage = configuration.onMessage;
         this->options.appData = configuration.appData;
         this->options.onExit = configuration.onExit;
@@ -437,38 +451,36 @@ namespace SSC {
 
         auto screen = Window::getScreenSize();
 
-        auto isWidthInPercent = opts.isWidthInPercent || (opts.height <= 0 && this->options.isWidthInPercent);
-        auto isHeightInPercent = opts.isHeightInPercent || (opts.width <= 0 && this->options.isHeightInPercent);
-
-        auto width = opts.width > 0 ? opts.width : this->options.defaultWidth;
-        auto height = opts.height > 0 ? opts.height : this->options.defaultHeight;
-
-        if (isWidthInPercent) {
-          width = screen.width * (width / 100);
-        }
-        if (isHeightInPercent) {
-          height = screen.height * (height / 100);
-        }
-
-        // debug("Creating window %i with options:", opts.index);
-        // debug("  - opts.height: %f", opts.height);
-        // debug("  - opts.width: %f", opts.width);
-        // debug("  - opts.isHeightInPercent %s", opts.isHeightInPercent ? "true" : "false");
-        // debug("  - opts.isWidthInPercent %s", opts.isWidthInPercent ? "true" : "false");
-        // debug("  - height: %f", height);
-        // debug("  - width: %f", width);
-        // debug("  - isHeightInPercent: %s", isHeightInPercent ? "true" : "false");
-        // debug("  - isWidthInPercent: %s", isWidthInPercent ? "true" : "false");
+        float width = opts.width <= 0
+          ? Window::getSizeInPixels(this->options.defaultWidth, screen.width)
+          : opts.width;
+        float height = opts.height <= 0
+          ? Window::getSizeInPixels(this->options.defaultHeight, screen.height)
+          : opts.height;
+        float minWidth = opts.minWidth <= 0
+          ? Window::getSizeInPixels(this->options.defaultMinWidth, screen.width)
+          : opts.minWidth;
+        float minHeight = opts.minHeight <= 0
+          ? Window::getSizeInPixels(this->options.defaultMinHeight, screen.height)
+          : opts.minHeight;
+        float maxWidth = opts.maxWidth <= 0
+          ? Window::getSizeInPixels(this->options.defaultMaxWidth, screen.width)
+          : opts.maxWidth;
+        float maxHeight = opts.maxHeight <= 0
+          ? Window::getSizeInPixels(this->options.defaultMaxHeight, screen.height)
+          : opts.maxHeight;
 
         WindowOptions windowOptions = {
           .resizable = opts.resizable,
           .frameless = opts.frameless,
           .utility = opts.utility,
           .canExit = opts.canExit,
-          .height = height,
           .width = width,
-          .isHeightInPercent = isHeightInPercent,
-          .isWidthInPercent = isWidthInPercent,
+          .height = height,
+          .minWidth = minWidth,
+          .minHeight = minHeight,
+          .maxWidth = maxWidth,
+          .maxHeight = maxHeight,
           .index = opts.index,
           .debug = isDebugEnabled() || opts.debug,
           .isTest = this->options.isTest,
@@ -501,8 +513,9 @@ namespace SSC {
 
       ManagedWindow* createDefaultWindow (WindowOptions opts) {
         return createWindow(WindowOptions {
-          .resizable = true,
-          .frameless = false,
+          .resizable = opts.resizable,
+          .frameless = opts.frameless,
+          .utility = opts.utility,
           .canExit = true,
           .height = opts.height,
           .width = opts.width,
