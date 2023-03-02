@@ -24,10 +24,10 @@ class API {
 
     process.stdin.on('data', this.#handleMessage.bind(this))
     process.on('exit', (exitCode) => {
-      // TODO: notify the webview that backend is exiting
+      this.#write(`ipc://process.exit?value=${exitCode}`)
     })
     process.on('uncaughtException', (err) => {
-      console.error(err)
+      this.#write(`ipc://stderr?value=${err}`)
     })
 
     // redirect console
