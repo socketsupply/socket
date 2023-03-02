@@ -86,6 +86,8 @@ if (( !TARGET_OS_ANDROID && !TARGET_ANDROID_EMULATOR )); then
   elif [[ "$host" = "Linux" ]]; then
     cflags+=($(pkg-config --cflags --static gtk+-3.0 webkit2gtk-4.1))
   elif [[ "$host" = "Win32" ]]; then
+    # https://learn.microsoft.com/en-us/cpp/c-runtime-library/crt-library-features?view=msvc-170
+    # Because we can't pass /MT[d] directly, we have to manually set the flags
     cflags+=(
       -D_MT
       -D_DLL
@@ -94,6 +96,9 @@ if (( !TARGET_OS_ANDROID && !TARGET_ANDROID_EMULATOR )); then
       -Xlinker /NODEFAULTLIB:libcmt
       -Wno-nonportable-include-path
     )
+    if [[ ! -z "$DEBUG" ]]; then
+      cflags+=("-D_DEBUG")
+    fi
   fi
 fi
 

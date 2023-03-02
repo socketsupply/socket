@@ -469,6 +469,21 @@ function eventTargetAgnosticAddListener (emitter, name, listener, flags) {
 EventEmitter.EventEmitter = EventEmitter
 EventEmitter.once = once
 
+export const CustomEvent = globalThis.CustomEvent || class CustomEvent extends globalThis.Event {
+  #detail = null
+
+  constructor (type, options) {
+    super(type, options)
+    if (options?.detail) {
+      this.#detail = options.detail
+    }
+  }
+
+  get detail () {
+    return this.#detail
+  }
+}
+
 export {
   EventEmitter,
   once

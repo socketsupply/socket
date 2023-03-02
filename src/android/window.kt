@@ -47,21 +47,15 @@ open class Window (runtime: Runtime, activity: MainActivity) {
       val assetManager = runtime.configuration.assetManager
       val indexFile = assetManager.open(filename)
       val indexBytes = indexFile.readAllBytes()
-      val importMapFile = assetManager.open("socket/importmap.json")
-      val importMapBytes = importMapFile.readAllBytes()
 
       var html = String(indexBytes).replace("<head>","""
         <head>
-          <script type="importmap">
-            ${String(importMapBytes)}
-          </script>
           <script type="module">
             ${source}
           </script>
       """)
 
       indexFile.close()
-      importMapFile.close()
 
       loadDataWithBaseURL(
         "https://appassets.androidplatform.net/assets/",

@@ -9,17 +9,6 @@ extern const SSC::Map SSC::getUserConfig ();
 using namespace SSC;
 using namespace SSC::IPC;
 
-// create a proxy module so imports of the module of concern are imported
-// exactly once at the canonical URL (file:///...) in contrast to module
-// URLs (socket:...)
-
-static constexpr auto moduleTemplate =
-R"S(
-import module from '{{url}}'
-export * from '{{url}}'
-export default module
-)S";
-
 #if defined(__APPLE__)
 static dispatch_queue_attr_t qos = dispatch_queue_attr_make_with_qos_class(
   DISPATCH_QUEUE_CONCURRENT,
@@ -1363,16 +1352,23 @@ static void registerSchemeHandler (Router *router) {
     components.scheme = @"file";
     components.host = @"";
 
+    auto path = String(components.path.UTF8String);
+    auto ext = String(
+      path.ends_with(".js")
+        ? ""
+        : ".js"
+    );
+
   #if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
     components.path = [[[NSBundle mainBundle] resourcePath]
       stringByAppendingPathComponent: [NSString
-        stringWithFormat: @"/ui/socket/%@.js", components.path
+        stringWithFormat: @"/ui/socket/%s%s", path.c_str(), ext.c_str()
       ]
     ];
   #else
     components.path = [[[NSBundle mainBundle] resourcePath]
       stringByAppendingPathComponent: [NSString
-        stringWithFormat: @"/socket/%@.js", components.path
+        stringWithFormat: @"/socket/%s%s", path.c_str(), ext.c_str()
       ]
     ];
   #endif

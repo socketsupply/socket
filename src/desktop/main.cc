@@ -275,6 +275,7 @@ MAIN {
     #endif
 
     signal(SIGINT, signalHandler);
+    signal(SIGTERM, signalHandler);
 
     return exitCode;
   }
@@ -919,6 +920,7 @@ MAIN {
   #endif
 
   signal(SIGINT, signalHandler);
+  signal(SIGTERM, signalHandler);
 
   if (isReadingStdin) {
     std::string value;

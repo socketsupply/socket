@@ -52,6 +52,37 @@ if [ -z "$SOCKET_HOME" ]; then
   fi
 fi
 
+declare d=""
+if [[ "$host" == "Win32" ]]; then
+  # We have to differentiate release and debug for Win32
+  # Problem:
+  # When building libuv and socket-runtime with debug enabled, our apps crash when
+  # using ifstream:
+  # `Debug Assertion Failed. Expression: (_osfile(fh) & fopen)`
+  # This build issue also prevents debugging in Visual Studio.
+
+  # This occurs because by default clang incorrectly links to the non
+  # threaded, production version of C runtime .lib (libcrt)
+  # After taking the nessary steps to manually link to the correct lib
+  # (Including adding preprocessor definitions for /MT[d]), see ldflags.sh under Win32
+  # ssc and apps won't link, therefore:
+
+  # Solution:
+  # Splits debug and release build artifacts:
+  # d is set if $DEBUG and $host == Win32
+  # The file[d].lib suffix is commonly used within the Windows SDK to differentiate debug and non debug files
+  # In Visual Studio, Debug profiles usually have to be manually modified to include eg ole32d.lib instead ole32.lib.
+  # I have used this convention to separate debug objects and libs where possible
+  # *.o files are now named *$d.o
+  # Libs are copied to build/platform/lib$d (uv_a.lib didn't support being renamed, this would require modification of the build chain)
+  # libsocket-runtime.a is now named libsocket-runtime$d.a
+  # ssc build --prod defines whether or not the app is being built for debug
+  # and therefore links to the app being built to the correct libsocket-runtime$d.a
+  if [[ ! -z "$DEBUG" ]]; then
+    d="d"
+  fi
+fi
+
 if [ ! "$CXX" ]; then
   if command -v clang++ >/dev/null 2>&1; then
     CXX="$(command -v clang++)"
@@ -196,7 +227,9 @@ function _build_cli {
 
   for source in "${test_sources[@]}"; do
     local output="${source/$src/$output_directory}"
-    output="${output/.cc/.o}"
+    # For some reason cli causes issues when debug and release are in the same folder
+    output="${output/.cc/$d.o}"
+    output="${output/cli/cli$d}"
     if (( force )) || ! test -f "$output" || (( $(stat_mtime "$source") > $(stat_mtime "$output") )); then
       sources+=("$source")
       outputs+=("$output")
@@ -213,14 +246,18 @@ function _build_cli {
 
   local exe=""
   local libsocket_win=""
-  local test_sources=($(find "$BUILD_DIR/$arch-$platform"/cli/*.o 2>/dev/null))
+  local test_sources=($(find "$BUILD_DIR/$arch-$platform"/cli$d/*$d.o 2>/dev/null))
   if [[ "$(uname -s)" == *"_NT"* ]]; then
+    declare d=""
+    if [[ ! -z "$DEBUG" ]]; then
+      d="d"
+    fi
     exe=".exe"
-    libsocket_win="$BUILD_DIR/$arch-$platform/lib/libsocket-runtime.a"
+    libsocket_win="$BUILD_DIR/$arch-$platform/lib$d/libsocket-runtime$d.a"
     test_sources+=("$libsocket_win")
   fi
 
-  libs=($(find "$root/build/$arch-$platform/lib/*" 2>/dev/null))
+  libs=($(find "$root/build/$arch-$platform/lib$d/*" 2>/dev/null))
   test_sources+=(${libs[@]})
   local build_ssc=0
   local ssc_output="$BUILD_DIR/$arch-$platform/bin/ssc$exe"
@@ -234,10 +271,10 @@ function _build_cli {
 
 
   if (( build_ssc )); then
-    quiet $CXX                                 \
-      "$BUILD_DIR/$arch-$platform"/cli/*.o       \
+    quiet $CXX                                   \
+      "$BUILD_DIR/$arch-$platform"/cli$d/*$d.o   \
       "${cflags[@]}" "${ldflags[@]}"             \
-      "$libsocket_win"                           \
+      "$libsocket_win" "$libwebview_win"         \
       -o "$ssc_output"
 
     die $? "not ok - unable to build. See trouble shooting guide in the README.md file:\n$CXX ${cflags[@]} \"${ldflags[@]}\" -o \"$BUILD_DIR/$arch-$platform/bin/ssc\""
@@ -265,8 +302,8 @@ function _get_web_view2() {
   local arch="$(uname -m)"
   local platform="desktop"
 
-  if test -f "$BUILD_DIR/$arch-$platform/lib/WebView2LoaderStatic.lib"; then
-    echo "$BUILD_DIR/lib/$arch-$platform/WebView2LoaderStatic.lib exists."
+  if test -f "$BUILD_DIR/$arch-$platform/lib$d/WebView2LoaderStatic.lib"; then
+    echo "$BUILD_DIR/$arch-$platform/lib$d/WebView2LoaderStatic.lib exists."
     return
   fi
 
@@ -279,13 +316,13 @@ function _get_web_view2() {
   cd $tmp
   unzip -q $tmp/webview2.zip
   mkdir -p "$BUILD_DIR/include"
-  mkdir -p "$BUILD_DIR/$arch-$platform/lib"/
+  mkdir -p "$BUILD_DIR/$arch-$platform/lib$d"/
 
   cp -pf build/native/include/WebView2.h "$BUILD_DIR/include/WebView2.h" 
   cp -pf build/native/include/WebView2Experimental.h "$BUILD_DIR/include/WebView2Experimental.h" 
   cp -pf build/native/include/WebView2EnvironmentOptions.h "$BUILD_DIR/include/WebView2EnvironmentOptions.h" 
   cp -pf build/native/include/WebView2ExperimentalEnvironmentOptions.h "$BUILD_DIR/include/WebView2ExperimentalEnvironmentOptions.h" 
-  cp -pf build/native/x64/WebView2LoaderStatic.lib "$BUILD_DIR/$arch-$platform/lib/WebView2LoaderStatic.lib" 
+  cp -pf build/native/x64/WebView2LoaderStatic.lib "$BUILD_DIR/$arch-$platform/lib$d/WebView2LoaderStatic.lib" 
 
   cd $pwd
 
@@ -309,8 +346,8 @@ function _prebuild_desktop_main () {
 
   for source in "${test_sources[@]}"; do
     local output="${source/$src/$objects}"
-    output="${output/.cc/.o}"
-    output="${output/.mm/.o}"
+    output="${output/.cc/$d.o}"
+    output="${output/.mm/$d.o}"
     if (( force )) || ! test -f "$output" || (( $(stat_mtime "$source") > $(stat_mtime "$output") )); then
       sources+=("$source")
       outputs+=("$output")
@@ -346,8 +383,8 @@ function _prebuild_ios_main () {
 
   for source in "${test_sources[@]}"; do
     local output="${source/$src/$objects}"
-    output="${output/.cc/.o}"
-    output="${output/.mm/.o}"
+    output="${output/.cc/$d.o}"
+    output="${output/.mm/$d.o}"
     if (( force )) || ! test -f "$output" || (( $(stat_mtime "$source") > $(stat_mtime "$output") )); then
       sources+=("$source")
       outputs+=("$output")
@@ -382,8 +419,8 @@ function _prebuild_ios_simulator_main () {
 
   for source in "${test_sources[@]}"; do
     local output="${source/$src/$objects}"
-    output="${output/.cc/.o}"
-    output="${output/.mm/.o}"
+    output="${output/.cc/$d.o}"
+    output="${output/.mm/$d.o}"
     if (( force )) || ! test -f "$output" || (( $(stat_mtime "$source") > $(stat_mtime "$output") )); then
       sources+=("$source")
       outputs+=("$output")
@@ -402,18 +439,25 @@ function _prebuild_ios_simulator_main () {
 
 function _prepare {
   echo "# preparing directories..."
-  rm -rf "$SOCKET_HOME"
+  rm -rf "$SOCKET_HOME"/{lib$d,src,bin,include,objects,api}
+  rm -rf "$SOCKET_HOME"/{lib$d,objects}/"$(uname -m)-desktop"
 
-  mkdir -p "$SOCKET_HOME"/{lib,src,bin,include,objects,api}
-  mkdir -p "$SOCKET_HOME"/{lib,objects}/"$(uname -m)-desktop"
+  mkdir -p "$SOCKET_HOME"/{lib$d,src,bin,include,objects,api}
+  mkdir -p "$SOCKET_HOME"/{lib$d,objects}/"$(uname -m)-desktop"
 
   if [[ "$host" = "Darwin" ]]; then
-    mkdir -p "$SOCKET_HOME"/{lib,objects}/{arm64-iPhoneOS,x86_64-iPhoneSimulator}
+    mkdir -p "$SOCKET_HOME"/{lib$d,objects}/{arm64-iPhoneOS,x86_64-iPhoneSimulator}
   fi
 
   if [ ! -d "$BUILD_DIR/uv" ]; then
     git clone --depth=1 https://github.com/socketsupply/libuv.git $BUILD_DIR/uv > /dev/null 2>&1
     rm -rf $BUILD_DIR/uv/.git
+    # Comment out compiler tests, we've covered these sufficiently for now
+    if [[ -z "$ENABLE_LIBUV_C_COMPILER_CHECKS" ]]; then
+      tempmkl=$(mktemp)
+      sed 's/check_c_compiler_flag/# check_c_compiler_flag/' $BUILD_DIR/uv/CMakeLists.txt > $tempmkl
+      mv $tempmkl $BUILD_DIR/uv/CMakeLists.txt
+    fi
 
     die $? "not ok - unable to clone. See trouble shooting guide in the README.md file"
   fi
@@ -431,38 +475,35 @@ function _install {
     echo "# copying objects to $SOCKET_HOME/objects/$arch-$platform"
     rm -rf "$SOCKET_HOME/objects/$arch-$platform"
     mkdir -p "$SOCKET_HOME/objects/$arch-$platform"
-    cp -r "$BUILD_DIR/$arch-$platform/objects"/* "$SOCKET_HOME/objects/$arch-$platform"
+    cp -rfp "$BUILD_DIR/$arch-$platform/objects"/* "$SOCKET_HOME/objects/$arch-$platform"
   fi
 
-  if test -d "$BUILD_DIR"/lib; then
-    echo "# copying libraries to $SOCKET_HOME/lib"
-    mkdir -p "$SOCKET_HOME/lib"
-    cp -fr "$BUILD_DIR"/lib/*.a "$SOCKET_HOME/lib/"
+  if test -d "$BUILD_DIR/lib$d"; then
+    echo "# copying libraries to $SOCKET_HOME/lib$d"
+    mkdir -p "$SOCKET_HOME/lib$d"
+    cp -rfp "$BUILD_DIR"/lib$d/*.a "$SOCKET_HOME/lib$d/"
   fi
 
-  if test -d "$BUILD_DIR/$arch-$platform"/lib; then
-    echo "# copying libraries to $SOCKET_HOME/lib/$arch-$platform"
-    rm -rf "$SOCKET_HOME/lib/$arch-$platform"
-    mkdir -p "$SOCKET_HOME/lib/$arch-$platform"
-    cp -fr "$BUILD_DIR/$arch-$platform"/lib/*.a "$SOCKET_HOME/lib/$arch-$platform"
+  if test -d "$BUILD_DIR/$arch-$platform"/lib$d; then
+    echo "# copying libraries to $SOCKET_HOME/lib$d/$arch-$platform"
+    rm -rf "$SOCKET_HOME/lib$d/$arch-$platform"
+    mkdir -p "$SOCKET_HOME/lib$d/$arch-$platform"
+    cp -rfp "$BUILD_DIR/$arch-$platform"/lib$d/*.a "$SOCKET_HOME/lib$d/$arch-$platform"
     if [[ $host=="Win32" ]]; then
-      cp -fr "$BUILD_DIR/$arch-$platform"/lib/*.lib "$SOCKET_HOME/lib/$arch-$platform"
-      if [[ -z "$DEBUG" ]]; then
-        cp -fr "$BUILD_DIR/$arch-$platform"/lib/*.pdb "$SOCKET_HOME/lib/$arch-$platform"
-      fi
+      cp -rfp "$BUILD_DIR/$arch-$platform"/lib$d/*.lib "$SOCKET_HOME/lib$d/$arch-$platform"
     fi
   fi
 
   echo "# copying js api to $SOCKET_HOME/api"
   mkdir -p "$SOCKET_HOME/api"
-  cp -fr "$root"/api/* "$SOCKET_HOME/api"
+  cp -rfp "$root"/api/* "$SOCKET_HOME/api"
   rm -f "$SOCKET_HOME/api/importmap.json"
   "$root/bin/generate-api-import-map.sh" > "$SOCKET_HOME/api/importmap.json"
 
   rm -rf "$SOCKET_HOME/include"
   mkdir -p "$SOCKET_HOME/include"
   #cp -rf "$CWD"/include/* $SOCKET_HOME/include
-  cp -rf "$BUILD_DIR"/uv/include/* $SOCKET_HOME/include
+  cp -rfp "$BUILD_DIR"/uv/include/* $SOCKET_HOME/include
 
   if [[ "$(uname -s)" == *"_NT"* ]]; then
     if [ $platform == "desktop" ]; then
@@ -573,23 +614,28 @@ function _compile_libuv {
         quiet make install
       fi
     else
-      local config="Release"
-      if [[ ! -z "$DEBUG" ]]; then
-        config="Debug"
-      fi
-      cd "$STAGING_DIR/build/"
-      cmake .. -DBUILD_TESTING=OFF
-      cd $STAGING_DIR
-      cmake --build $STAGING_DIR/build/ --config $config
-      mkdir -p $BUILD_DIR/$target-$platform/lib
-      echo "cp -up $STAGING_DIR/build/config/*.lib $BUILD_DIR/$target-$platform/lib"
-      cp -up $STAGING_DIR/build/$config/*.lib $BUILD_DIR/$target-$platform/lib
-      if [ $config == "Debug" ]; then
-        cp -up $STAGING_DIR/build/$config/*.pdb $BUILD_DIR/$target-$platform/lib
+      echo "test $BUILD_DIR/$target-$platform/lib$d/uv_a.lib"
+      if test -f "$BUILD_DIR/$target-$platform/lib$d/uv_a.lib"; then
+        return
+      else
+        local config="Release"
+        if [[ ! -z "$DEBUG" ]]; then
+          config="Debug"
+        fi
+        cd "$STAGING_DIR/build/"
+        cmake .. -DBUILD_TESTING=OFF -DLIBUV_BUILD_SHARED=OFF
+        cd $STAGING_DIR
+        cmake --build $STAGING_DIR/build/ --config $config
+        mkdir -p $BUILD_DIR/$target-$platform/lib$d
+        echo "cp -up $STAGING_DIR/build/$config/uv_a.lib $BUILD_DIR/$target-$platform/lib$d/uv_a.lib"
+        cp -up $STAGING_DIR/build/$config/uv_a.lib $BUILD_DIR/$target-$platform/lib$d/uv_a.lib
+        if [[ ! -z "$DEBUG" ]]; then
+          cp -up $STAGING_DIR/build/$config/uv_a.pdb $BUILD_DIR/$target-$platform/lib$d/uv_a.pdb
+        fi;
       fi
     fi
 
-    rm -f "$root/build/$(uname -m)-desktop/lib"/*.{so,la,dylib}*
+    rm -f "$root/build/$(uname -m)-desktop/lib$d"/*.{so,la,dylib}*
     return
   fi
 
@@ -621,7 +667,7 @@ function _compile_libuv {
   quiet make install
 
   cd $BUILD_DIR
-  rm -f "$root/build/$target-$platform/lib"/*.{so,la,dylib}*
+  rm -f "$root/build/$target-$platform/lib$d"/*.{so,la,dylib}*
   echo "ok - built for $target"
 }
 
