@@ -806,6 +806,14 @@ void initFunctionsTable (Router *router) {
     router->core->os.uname(message.seq, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
   });
 
+  router->map("os.hrtime", [=](auto message, auto router, auto reply) {
+    router->core->os.hrtime(message.seq, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
+  });
+
+  router->map("os.availableMemory", [=](auto message, auto router, auto reply) {
+    router->core->os.availableMemory(message.seq, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
+  });
+
   /**
    * Simply returns `pong`.
    */
