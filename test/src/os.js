@@ -41,6 +41,18 @@ test('os.uptime()', (t) => {
   t.equal(!Number.isNaN(uptime) && typeof uptime, 'number', 'uptime is object')
 })
 
+test('os.hrtime()', (t) => {
+  const hrtime = os.hrtime()
+  t.ok(hrtime > 0, 'hrtime > 0')
+  t.equal(typeof hrtime, 'bigint', 'hrtime is bigint')
+})
+
+test('os.availableMemory()', (t) => {
+  const availableMemory = os.availableMemory()
+  t.ok(availableMemory > 0, 'availableMemory > 0')
+  t.equal(typeof availableMemory, 'bigint', 'availableMemory is bigint')
+})
+
 test('os.platform()', (t) => {
   t.ok(platforms.includes(os.platform()), 'os.platform() value is valid')
   t.equal(os.platform(), primordials.platform, 'os.platform() equals primordials.platform')
