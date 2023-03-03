@@ -103,3 +103,19 @@ export async function exit (code) {
     await send('application.exit', { value: code ?? 0 })
   }
 }
+
+export function memoryUsage () {
+  const rss = memoryUsage.rss()
+  return {
+    rss
+  }
+}
+
+if (typeof process.memoryUsage !== 'function') {
+  process.memoryUsage = memoryUsage
+}
+
+memoryUsage.rss = function rss () {
+  const rusage = os.rusage()
+  return rusage.ru_maxrss
+}
