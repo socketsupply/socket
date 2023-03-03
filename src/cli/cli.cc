@@ -306,7 +306,9 @@ int runApp (const fs::path& path, const String& args, bool headless) {
       // tracks the latest log entry date so we ignore older ones
       NSDate* latest = nil;
 
-      while (kill(app.processIdentifier, 0) == 0) {
+      int polls = 4;
+
+      while (kill(app.processIdentifier, 0) == 0 || polls-- > 0) {
         std::this_thread::yield();
         std::this_thread::sleep_for(std::chrono::milliseconds(256));
 
@@ -374,6 +376,7 @@ int runApp (const fs::path& path, const String& args, bool headless) {
                   }
                 }
 
+                polls = 4;
                 latest = entry.date;
                 offset = latest;
               }
