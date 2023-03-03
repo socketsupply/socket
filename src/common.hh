@@ -872,6 +872,20 @@ namespace SSC {
     delete [] pStart;
     return sResult;
   }
+
+  inline auto toBytes (uint64_t n) {
+    std::array<uint8_t, 8> bytes;
+    // big endian, network order
+    bytes[0] = n >> 8*7;
+    bytes[1] = n >> 8*6;
+    bytes[2] = n >> 8*5;
+    bytes[3] = n >> 8*4;
+    bytes[4] = n >> 8*3;
+    bytes[5] = n >> 8*2;
+    bytes[6] = n >> 8*1;
+    bytes[7] = n >> 8*0;
+    return bytes;
+  }
 }
 
 #endif // SSC_H
