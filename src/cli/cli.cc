@@ -69,6 +69,17 @@ bool flagDebugMode = true;
 bool flagQuietMode = false;
 Map defaultTemplateAttrs = {{ "ssc_version", SSC::VERSION_FULL_STRING }};
 
+#if defined(__APPLE__)
+static dispatch_queue_t queue = dispatch_queue_create(
+  "socket.runtime.cli.queue",
+  dispatch_queue_attr_make_with_qos_class(
+    DISPATCH_QUEUE_CONCURRENT,
+    QOS_CLASS_USER_INITIATED,
+    -1
+  )
+);
+#endif
+
 const Map SSC::getUserConfig () {
   return settings;
 }
@@ -148,8 +159,6 @@ static std::atomic<int> appStatus = -1;
 static std::mutex appMutex;
 
 void signalHandler (int signal) {
-  appStatus = signal;
-
   if (appProcess != nullptr) {
     auto pid = appProcess->getPID();
     appProcess->kill(pid);
@@ -160,7 +169,10 @@ void signalHandler (int signal) {
   }
 
   appProcess = nullptr;
+  appStatus = signal;
   appPid = 0;
+
+  appMutex.unlock();
 }
 
 int runApp (const fs::path& path, const String& args, bool headless) {
@@ -212,17 +224,6 @@ int runApp (const fs::path& path, const String& args, bool headless) {
 
 #if defined(__APPLE__)
   if (platform.mac) {
-static dispatch_queue_attr_t qos = dispatch_queue_attr_make_with_qos_class(
-  DISPATCH_QUEUE_CONCURRENT,
-  QOS_CLASS_USER_INITIATED,
-  -1
-);
-
-static dispatch_queue_t queue = dispatch_queue_create(
-  "co.socketsupply.socket.ipc.bridge.queue",
-  qos
-);
-
     auto sharedWorkspace = [NSWorkspace sharedWorkspace];
     auto configuration = [NSWorkspaceOpenConfiguration configuration];
     auto string = path.string();
@@ -261,7 +262,6 @@ static dispatch_queue_t queue = dispatch_queue_create(
     log(String("Running App: " + String(bundle.bundlePath.UTF8String)));
 
     appMutex.lock();
-    appStatus = 0;
 
     [sharedWorkspace
       openApplicationAtURL: bundle.bundleURL
@@ -325,8 +325,12 @@ static dispatch_queue_t queue = dispatch_queue_create(
         }
       });
 
-      while (appStatus < 0 || polls-- > 0) {
-        msleep(256);
+      while (appStatus < 0 || polls > 0) {
+        msleep(32);
+
+        if (appStatus >= 0) {
+          polls = polls - 1;
+        }
 
         @autoreleasepool {
           // We need  a new `OSLogStore` in each so we can keep
@@ -395,24 +399,19 @@ static dispatch_queue_t queue = dispatch_queue_create(
 
                 polls = 4;
                 latest = entry.date;
-                offset = [latest dateByAddingTimeInterval: 1];
+                offset = latest;
               }
             }
           }
         }
-
-        msleep(32);
       }
 
-      msleep(32);
       appMutex.unlock();
     }];
 
     // wait for `NSRunningApplication` to terminate
     std::lock_guard<std::mutex> lock(appMutex);
     log("App result: " + std::to_string(appStatus.load()));
-
-    msleep(32);
     return appStatus.load();
   }
 #endif
