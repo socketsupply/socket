@@ -347,7 +347,9 @@ Function Install-Requirements {
     if ($vc_exists) {
       $(Get-ProcEnvs($vc_vars))
     } else {
-      $global:install_errors += "vcvars64.bat still not present, something went wrong."
+      if ($env:CI -eq $null) {
+        $global:install_errors += "vcvars64.bat still not present, something went wrong."
+      }
     }
   }
 
@@ -355,18 +357,20 @@ Function Install-Requirements {
     $global:install_errors += "not ok - unable to install clang++."
   }
 
-  if (($env:WindowsSdkDir -eq $null) -or ((Test-Path $env:WindowsSdkDir -PathType Container) -eq $false)) {
-    # Had this situation occur after uninstalling SDK from add/remove programs instead of VS Installer.
-    $global:install_errors += "`$WindowsSdkDir ($env:WindowsSdkDir) still not present, please install manually."
-  } else {
-    # Find lib required for debug builds (Prevents 'Debug Assertion Failed. Expression: (_osfile(fh) & fopen)' error)
-    $WIN_DEBUG_LIBS="$($env:WindowsSdkDir)Lib\$($env:WindowsSDKLibVersion)ucrt\x64\ucrtd.osmode_permissive.lib"
-    if ((Test-Path $WIN_DEBUG_LIBS -PathType Leaf) -eq $false) {
-      if ($shbuild -eq $true) {
-        # Only report issue for ssc devs
-        $global:path_advice += "WARNING: Unable to determine ucrtd.osmode_permissive.lib path. This is only required for DEBUG builds."
-      } else {
-        $global:path_advice += "`$env:WIN_DEBUG_LIBS='$WIN_DEBUG_LIBS'"
+  if ($env:CI -eq $null) {
+    if (($env:WindowsSdkDir -eq $null) -or ((Test-Path $env:WindowsSdkDir -PathType Container) -eq $false)) {
+      # Had this situation occur after uninstalling SDK from add/remove programs instead of VS Installer.
+      $global:install_errors += "`$WindowsSdkDir ($env:WindowsSdkDir) still not present, please install manually."
+    } else {
+      # Find lib required for debug builds (Prevents 'Debug Assertion Failed. Expression: (_osfile(fh) & fopen)' error)
+      $WIN_DEBUG_LIBS="$($env:WindowsSdkDir)Lib\$($env:WindowsSDKLibVersion)ucrt\x64\ucrtd.osmode_permissive.lib"
+      if ((Test-Path $WIN_DEBUG_LIBS -PathType Leaf) -eq $false) {
+        if ($shbuild -eq $true) {
+          # Only report issue for ssc devs
+          $global:path_advice += "WARNING: Unable to determine ucrtd.osmode_permissive.lib path. This is only required for DEBUG builds."
+        } else {
+          $global:path_advice += "`$env:WIN_DEBUG_LIBS='$WIN_DEBUG_LIBS'"
+        }
       }
     }
   }
