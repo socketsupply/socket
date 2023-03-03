@@ -499,6 +499,11 @@ MAIN {
       } catch (...) {
       }
 
+    #if defined(__APPLE__)
+      if (app.fromSSC) {
+        debug("__EXIT_SIGNAL__=%d", exitCode);
+      }
+    #endif
       window->exit(exitCode);
       return;
     }

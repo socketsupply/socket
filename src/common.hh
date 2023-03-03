@@ -886,6 +886,11 @@ namespace SSC {
     bytes[7] = n >> 8*0;
     return bytes;
   }
+
+  inline auto msleep (auto n) {
+    std::this_thread::yield();
+    std::this_thread::sleep_for(std::chrono::milliseconds(n));
+  }
 }
 
 #endif // SSC_H
