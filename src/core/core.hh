@@ -691,7 +691,7 @@ namespace SSC {
       );
 
       dispatch_queue_t eventLoopQueue = dispatch_queue_create(
-        "co.socketsupply.socket.loop.queue",
+        "socket.runtime.core.loop.queue",
         eventLoopQueueAttrs
       );
 #else
