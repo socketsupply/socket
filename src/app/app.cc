@@ -18,7 +18,7 @@ static dispatch_queue_attr_t qos = dispatch_queue_attr_make_with_qos_class(
 );
 
 static dispatch_queue_t queue = dispatch_queue_create(
-  "co.socketsupply.socket.app.queue",
+  "socket.runtime.app.queue",
   qos
 );
 #endif
