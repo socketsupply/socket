@@ -10,6 +10,7 @@ import ipc, { primordials } from './ipc.js'
 
 const UNKNOWN = 'unknown'
 
+// eslint-disable-next-line new-parens
 const cache = new class {
   type = UNKNOWN
 

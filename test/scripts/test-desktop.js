@@ -24,10 +24,14 @@ cp(path.join(root, 'fixtures'), path.join(TMPDIR, 'ssc-socket-test-fixtures'), {
   recursive: true
 })
 
-exec(`ssc build ${!DEBUG ? '--headless --prod' : ''} -r -o`, {
-  stdio: 'inherit',
-  env: {
-    SOCKET_HOME_API,
-    ...process.env
-  }
-})
+try {
+  exec(`ssc build ${!DEBUG ? '--headless --prod' : ''} -r -o`, {
+    stdio: 'inherit',
+    env: {
+      SOCKET_HOME_API,
+      ...process.env
+    }
+  })
+} catch (err) {
+  process.exit(err.status || 1)
+}
