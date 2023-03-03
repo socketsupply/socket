@@ -157,10 +157,10 @@ void signalHandler (int signal) {
   #if !defined(_WIN32)
     kill(appPid, signal);
   #endif
-    appPid = 0;
-  } else {
-    exit(signal);
   }
+
+  appProcess = nullptr;
+  appPid = 0;
 }
 
 int runApp (const fs::path& path, const String& args, bool headless) {
@@ -307,6 +307,9 @@ int runApp (const fs::path& path, const String& args, bool headless) {
       NSDate* latest = nil;
 
       while (kill(app.processIdentifier, 0) == 0) {
+        std::this_thread::yield();
+        std::this_thread::sleep_for(std::chrono::milliseconds(256));
+
         @autoreleasepool {
           // We need  a new `OSLogStore` in each so we can keep
           // enumeratoring the logs until the application terminates
@@ -346,6 +349,7 @@ int runApp (const fs::path& path, const String& args, bool headless) {
           // Enumerate all the logs in this loop and print unredacted and most
           // recently log entries to stdout
           for (OSLogEntryLog* entry in enumerator) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(4));
             std::this_thread::yield();
 
             if (
@@ -371,21 +375,22 @@ int runApp (const fs::path& path, const String& args, bool headless) {
                 }
 
                 latest = entry.date;
-                offset = offset;
+                offset = latest;
               }
             }
           }
-
-          std::this_thread::sleep_for(std::chrono::milliseconds(256));
         }
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(32));
       }
 
-      appMutex.unlock();
+      if (appPid > 0) {
+        appMutex.unlock();
+      }
     }];
 
     // wait for `NSRunningApplication` to terminate
     std::lock_guard<std::mutex> lock(appMutex);
-
     log("App result: " + std::to_string(appStatus.load()));
     std::this_thread::sleep_for(std::chrono::milliseconds(32));
     return appStatus.load();
