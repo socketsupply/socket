@@ -6,6 +6,8 @@ import os from 'node:os'
 
 const dirname = path.dirname(import.meta.url).replace(`file://${os.platform() === 'win32' ? '/' : ''}`, '')
 
+let exiting = false
+
 export async function load () {
   const platform = os.platform()
   const arch = os.arch()
@@ -21,10 +23,25 @@ async function main () {
     ...process.env
   }
 
-  fork(installation.bin['ssc-platform'], process.argv.slice(2), {
+  const child = fork(installation.bin['ssc-platform'], process.argv.slice(2), {
     env,
     stdio: 'inherit',
     windowsHide: true
+  })
+
+  child.once('exit', (code) => {
+    if (!exiting) {
+      exiting = true
+      process.exit(code)
+    }
+  })
+
+  child.once('error', (err) => {
+    console.error(err.message)
+    if (!exiting) {
+      process.exit(1)
+      exiting = true
+    }
   })
 }
 
