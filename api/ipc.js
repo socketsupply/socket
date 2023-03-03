@@ -234,13 +234,18 @@ function getRequestResponseText (request) {
 
 function getRequestResponse (request, options) {
   if (!request) return null
-  const { responseType } = request
+  let { responseType } = request
   const expectedResponseType = options?.responseType ?? responseType
+  const desiredResponseType = options?.desiredResponseType ?? expectedResponseType
   const headers = Headers.from(request)
   let response = null
 
   if (expectedResponseType && responseType !== expectedResponseType) {
     return null
+  }
+
+  if (!responseType) {
+    responseType = desiredResponseType
   }
 
   if (!responseType || responseType === 'text') {
@@ -545,17 +550,23 @@ export class Message extends URL {
   }
 
   /**
+   *  @type {Uint8Array?}
+   */
+  bytes = null
+
+  /**
    * `Message` class constructor.
    * @protected
    * @param {string|URL} input
+   * @param {object|Uint8Array?} [bytes]
    * @ignore
    */
-  constructor (input, bytes) {
+  constructor (input, bytes = null) {
     super(input)
-    if (this.protocol !== this.constructor.PROTOCOL) {
+    if (this.protocol !== Message.PROTOCOL) {
       throw new TypeError(format(
         'Invalid protocol in input. Expected \'%s\' but got \'%s\'',
-        this.constructor.PROTOCOL, this.protocol
+        Message.PROTOCOL, this.protocol
       ))
     }
 
@@ -739,15 +750,6 @@ export class Message extends URL {
   has (key) {
     return this.searchParams.has(key)
   }
-
-  /**
-   * Converts a `Message` instance into a plain JSON object.
-   * @ignore
-   */
-  toJSON () {
-    const { protocol, command, params } = this
-    return { protocol, command, params }
-  }
 }
 
 /**
@@ -759,16 +761,36 @@ export class Message extends URL {
  */
 export class Result {
   /**
+   * @type {Error?}
+   */
+  err
+
+  /**
+   * @type {string|object|Uint8Array}
+   */
+  data
+
+  /**
+   * @type {string?}
+   */
+  source
+
+  /**
+   * @type {Headers?}
+   */
+  headers
+
+  /**
    * Creates a `Result` instance from input that may be an object
    * like `{ err?, data? }`, an `Error` instance, or just `data`.
-   * @param {(object|Error|mixed)=} result
-   * @param {Error=} [maybeError]
-   * @param {string=} [maybeSource]
-   * @param {object=|string=|Headers=} [maybeHeaders]
+   * @param {object|Error|mixed?} result
+   * @param {Error|object} [maybeError]
+   * @param {string} [maybeSource]
+   * @param {object|string|Headers} [maybeHeaders]
    * @return {Result}
    * @ignore
    */
-  static from (result, maybeError, maybeSource, maybeHeaders, ...args) {
+  static from (result, maybeError = null, maybeSource = null, maybeHeaders = null) {
     if (result instanceof Result) {
       if (!result.source && maybeSource) {
         result.source = maybeSource
@@ -802,22 +824,22 @@ export class Result {
     const source = result?.source || maybeSource || null
     const headers = result?.headers || maybeHeaders || null
 
-    return new this(err, data, source, headers, ...args)
+    return new this(err, data, source, headers)
   }
 
   /**
    * `Result` class constructor.
    * @private
-   * @param {Error=} [err = null]
-   * @param {object=} [data = null]
-   * @param {string=} [source = undefined]
-   * @param {object=|string=|Headers=} [headers = null]
+   * @param {Error?} [err = null]
+   * @param {object?} [data = null]
+   * @param {string?} [source = null]
+   * @param {object|string|Headers?} [headers = null]
    * @ignore
    */
-  constructor (err = null, data = null, source = null, headers = null) {
+  constructor (err, data, source, headers) {
     this.err = typeof err !== 'undefined' ? err : null
     this.data = typeof data !== 'undefined' ? data : null
-    this.source = typeof source === 'string' && source.length
+    this.source = typeof source === 'string' && source.length > 0
       ? source
       : null
 
@@ -907,17 +929,18 @@ export async function ready () {
  * Sends a synchronous IPC command over XHR returning a `Result`
  * upon success or error.
  * @param {string} command
- * @param {(object|string)=} params
+ * @param {object|string?} [params]
+ * @param {object?} [options]
  * @return {Result}
  * @ignore
  */
-export function sendSync (command, params, options) {
+export function sendSync (command, params = {}, options = {}) {
   if (typeof window === 'undefined') {
     if (debug.enabled) {
       debug.log('Global window object is not defined')
     }
 
-    return {}
+    return Result.from(new Error('Missing window in globalThis'), command)
   }
 
   const request = new globalThis.XMLHttpRequest()
@@ -1311,7 +1334,7 @@ export function createBinding (domain, ctx) {
 /**
  * @ignore
  */
-export const primordials = sendSync('platform.primordials')?.data
+export const primordials = sendSync('platform.primordials')?.data || {}
 
 if (typeof window !== 'undefined') {
   initializeXHRIntercept()

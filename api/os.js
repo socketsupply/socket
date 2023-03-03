@@ -10,8 +10,32 @@ import ipc, { primordials } from './ipc.js'
 
 const UNKNOWN = 'unknown'
 
-const cache = {
-  type: UNKNOWN
+const cache = new class {
+  type = UNKNOWN
+
+  /**
+   * @type {boolean}
+   */
+  isWindows = false
+
+  /**
+   * @type {object?}
+   */
+  networkInterfaces
+  /**
+   * @type {number}
+   */
+  networkInterfacesTTL = 0
+
+  /**
+   * @type {object?}
+   */
+  cpus
+
+  /**
+   * @type {string?}
+   */
+  uname
 }
 
 export function arch () {
@@ -152,7 +176,7 @@ export function type () {
 
 // TODO: non-standard function. Do we need it?
 export function isWindows () {
-  if ('isWindows' in cache) {
+  if (cache.isWindows) {
     return cache.isWindows
   }
 
@@ -236,7 +260,7 @@ export function uname () {
 
 export function hrtime () {
   const result = ipc.sendSync('os.hrtime', {}, {
-    responseType: 'arraybuffer'
+    desiredResponseType: 'arraybuffer'
   })
 
   if (result.err) throw result.err
@@ -245,7 +269,7 @@ export function hrtime () {
 
 export function availableMemory () {
   const result = ipc.sendSync('os.availableMemory', {}, {
-    responseType: 'arraybuffer'
+    desiredResponseType: 'arraybuffer'
   })
 
   if (result.err) throw result.err
