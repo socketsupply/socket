@@ -234,6 +234,24 @@ export function uname () {
   return cache.uname
 }
 
+export function hrtime () {
+  const result = ipc.sendSync('os.hrtime', {}, {
+    responseType: 'arraybuffer'
+  })
+
+  if (result.err) throw result.err
+  return result.data.readBigUInt64BE(0)
+}
+
+export function availableMemory () {
+  const result = ipc.sendSync('os.availableMemory', {}, {
+    responseType: 'arraybuffer'
+  })
+
+  if (result.err) throw result.err
+  return result.data.readBigUInt64BE(0)
+}
+
 // eslint-disable-next-line
 import * as exports from './os.js'
 export default exports

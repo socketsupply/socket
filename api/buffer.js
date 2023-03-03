@@ -352,6 +352,10 @@ function createBuffer (length) {
  * The `Uint8Array` prototype remains unmodified.
  */
 
+/**
+ * @name Buffer
+ * @extends {Uint8Array}
+ */
 function Buffer (arg, encodingOrOffset, length) {
   // Common case.
   if (typeof arg === 'number') {
