@@ -53,8 +53,8 @@ export function getRandomValues (buffer, ...args) {
     return webcrypto?.getRandomValues(buffer, ...args)
   }
 
-  if (sodium.libsodium.randombytes_buf) {
-    const input = toBuffer(sodium.libsodium.randombytes_buf(buffer.byteLength))
+  if (sodium.randombytes_buf) {
+    const input = toBuffer(sodium.randombytes_buf(buffer.byteLength))
     const output = toBuffer(buffer)
     input.copy(output)
     return buffer

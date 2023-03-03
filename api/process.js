@@ -3,6 +3,7 @@
  */
 import { primordials, send } from './ipc.js'
 import { EventEmitter } from './events.js'
+import os from './os.js'
 
 let didEmitExitEvent = false
 
@@ -35,7 +36,17 @@ export function nextTick (callback) {
   } else if (typeof globalThis.setImmediate === 'function') {
     globalThis.setImmediate(callback)
   } else if (typeof globalThis.queueMicrotask === 'function') {
-    globalThis.queueMicrotask(callback)
+    if (globalThis.window && typeof globalThis.window === 'object') {
+      globalThis.queueMicrotask(() => {
+        try {
+          callback()
+        } catch (err) {
+          setTimeout(() => { throw err })
+        }
+      })
+    } else {
+      globalThis.queueMicrotask(callback)
+    }
   } else if (typeof globalThis.setTimeout === 'function') {
     globalThis.setTimeout(callback)
   } else if (typeof globalThis.requestAnimationFrame === 'function') {
@@ -54,6 +65,32 @@ if (typeof process.nextTick !== 'function') {
  */
 export function homedir () {
   return globalThis.__args.env.HOME ?? ''
+}
+
+/**
+ * Computed high resolution time as a `BigInt`.
+ * @param {Array<number>?} [time]
+ * @return {bigint}
+ */
+export function hrtime (time = [0, 0]) {
+  if (!time) time = [0, 0]
+  if (time && (!Array.isArray(time) || time.length !== 2)) {
+    throw new TypeError('Expecting time to be an array of 2 numbers.')
+  }
+
+  const value = os.hrtime()
+  const seconds = BigInt(1e9)
+  const x = value / seconds
+  const y = value - (x * seconds)
+  return [Number(x) - time[0], Number(y) - time[1]]
+}
+
+hrtime.bigint = function bigint () {
+  return os.hrtime()
+}
+
+if (typeof process.hrtime !== 'function') {
+  process.hrtime = hrtime
 }
 
 /**
