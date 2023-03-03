@@ -1,8 +1,9 @@
 param([Switch]$debug, [Switch]$verbose, [Switch]$force, [Switch]$shbuild=$true, [Switch]$package_setup, $toolchain = "vsbuild")
 
 # -shbuild:$false - Don't run bin\install.sh (Builds runtime lib)
+#                 - Fail silently (allow npm install-pre-reqs script '&& exit' to work to close y/n prompt window)
 # -debug          - Enable debug builds (DEBUG=1)
-# -verbose        - Enable verbose build output
+# -verbose        - Enable verbose build output (VERBOSE=1)
 
 $OLD_CWD = (Get-Location).Path
 
@@ -21,6 +22,18 @@ $SSC_BUILD_OPTIONS = "-O2"
 $global:git = "git.exe"
 $global:cmake = "cmake.exe"
 $global:useCurl = $true
+$global:WIN_DEBUG_LIBS = ""
+$global:path_advice = @()
+$global:install_errors = @()
+
+Function Exit-IfErrors {
+  if ($global:install_errors.Count -gt 0) {
+    foreach ($e in $global:install_errors) {
+      Write-Output $e
+    }
+    Exit $global:install_errors.Count
+  }
+}
 
 Function Get-CommandPath {
   param($command_string)
@@ -48,12 +61,12 @@ if ($force -eq $true) {
   $global:forceArg = "--force"
 }
 
-$global:path_advice = @()
 $vsconfig = "nmake.vsconfig"
 
 if ( -not (("llvm+vsbuild" -eq $toolchain) -or ("vsbuild" -eq $toolchain) -or ("llvm" -eq $toolchain)) ) {
   Write-Output "Unsupported -toolchain $toolchain. Supported options are vsbuild, llvm+vsbuild or llvm (external nmake required)"
   Write-Output "-toolchain llvm+vsbuild will check for and install llvm clang and vsbuild nmake."
+  
   Exit 1
 }
 
@@ -289,9 +302,14 @@ Function Install-Requirements {
       }
     }
 
+    # Check windows SDK
+    if (($env:WindowsSdkDir -eq $null) -or ((Test-Path $env:WindowsSdkDir -PathType Container) -eq $false)) {
+      $install_vc_build = $true
+    }
+
     if ($install_vc_build) {
       $report_vc_vars_reqd = $true
-      $confirmation = Read-Host "Visual Studio Clang, Windows SDK$and_nmake are required, proceed with install from Microsoft? y/[n]?"
+      $confirmation = Read-Host "clang, Windows SDK$and_nmake are required, proceed with install from Microsoft? y/[n]?"
       $installer = "vs_buildtools.exe"
       $url = "https://aka.ms/vs/17/release/$installer"
 
@@ -320,8 +338,7 @@ Function Install-Requirements {
     try {
       Start-Process powershell -verb runas -wait -ArgumentList "$script"
     } catch [InvalidOperationException] {
-      Write-Output "UAC declined, nothing installed."
-      Exit 1
+      $global:install_errors += "UAC declined, nothing installed."
     }
   }
 
@@ -330,40 +347,46 @@ Function Install-Requirements {
     if ($vc_exists) {
       $(Get-ProcEnvs($vc_vars))
     } else {
-      Write-Output "vcvars64.bat still not present, something went wrong."
-      Exit 1
+      $global:install_errors += "vcvars64.bat still not present, something went wrong."
     }
   }
 
   if (-not (Found-Command($clang))) {
-    Write-Output "not ok - unable to install clang++."
-    Exit 1
+    $global:install_errors += "not ok - unable to install clang++."
+  }
+
+  if (($env:WindowsSdkDir -eq $null) -or ((Test-Path $env:WindowsSdkDir -PathType Container) -eq $false)) {
+    # Had this situation occur after uninstalling SDK from add/remove programs instead of VS Installer.
+    $global:install_errors += "`$WindowsSdkDir ($env:WindowsSdkDir) still not present, please install manually."
+  } else {
+    # Find lib required for debug builds (Prevents 'Debug Assertion Failed. Expression: (_osfile(fh) & fopen)' error)
+    $WIN_DEBUG_LIBS="$($env:WindowsSdkDir)Lib\$($env:WindowsSDKLibVersion)ucrt\x64\ucrtd.osmode_permissive.lib"
+    if ((Test-Path $WIN_DEBUG_LIBS -PathType Leaf) -eq $false) {
+      if ($shbuild -eq $true) {
+        # Only report issue for ssc devs
+        $global:path_advice += "WARNING: Unable to determine ucrtd.osmode_permissive.lib path. This is only required for DEBUG builds."
+      } else {
+        $global:path_advice += "`$env:WIN_DEBUG_LIBS='$WIN_DEBUG_LIBS'"
+      }
+    }
   }
 
   if ((Test-Path "$vc_runtime_test_path" -PathType Leaf) -eq $false) {
-    Write-Output "$vc_runtime_test_path still not present, something went wrong."
-    Exit 1
+    $global:install_errors += "$vc_runtime_test_path still not present, something went wrong."
   }
 
   if (-not (Found-Command($global:git))) {
-    Write-Output "not ok - unable to install git."
-    Exit 1
+    $global:install_errors += "git not installed."
   }
 
   if ($shbuild) {
     if (-not (Found-Command($global:cmake))) {
-      Write-Output "not ok - unable to install cmake"
-      Exit 1
+      $global:install_errors += "not ok - unable to install cmake"
     }
   }
 
   if ($report_vc_vars_reqd) {
     $global:path_advice += """$vc_vars"""
-  }
-
-  # refresh enviroment after prereq setup
-  if ($(Found-Command("refreshenv"))) {
-    refreshenv
   }
 }
 
@@ -381,15 +404,15 @@ if ($shbuild) {
   # Look for sh in path
   if (-not (Found-Command($sh))) {
     $sh = "$gitPath\sh.exe"
-    Write-Output "sh.exe not in PATH or default Git\bin"
-    Exit 1
+    $global:install_errors += "sh.exe not in PATH or default Git\bin"
+    Exit-IfErrors
   }
 
   $find_check = iex "& ""$sh"" -c 'find --version'" | Out-String
 
   if (-not ($find_check -like "*find (GNU findutils)*")) {
-    Write-Output "find is not GNU findutils: '$find_check'"
-    Exit 1
+    $global:install_errors += "find is not GNU findutils: '$find_check'"
+    Exit-IfErrors
   }
 
   cd $OLD_CWD
@@ -404,10 +427,6 @@ if ($global:path_advice.Count -gt 0) {
   }
 }
 
-if (-not $shbuild) {
-  Write-Output "Please close this terminal to continue setting up your socket app."
-}
-
 if ($package_setup -eq $true) {
   $paths = @{}
   $fso = New-Object -ComObject Scripting.FileSystemObject 
@@ -415,4 +434,7 @@ if ($package_setup -eq $true) {
   ConvertTo-Json $paths > env.json
 }
 
+Exit-IfErrors
+
 cd $OLD_CWD
+Exit 0

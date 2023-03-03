@@ -1,6 +1,6 @@
 {
   "name": "@socketsupply/socket-win32-x64",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "description": "A Cross-Platform, Native Runtime for Desktop and Mobile Apps — Create apps using HTML, CSS, and JavaScript. Written from the ground up to be small and maintainable.",
   "type": "module",
   "main": "src/index.js",
@@ -12,8 +12,6 @@
   ],
   "scripts": {
     "test": ":",
-    "preinstall": "node ./bin/install-pre-reqs.js preinstall >> preinstall.txt && echo Pre requisite checks complete.\nUse\n> install-pre-reqs\nto run this again.",
-    "postinstall": "node ./bin/install-pre-reqs.js postinstall >> postinstall.txt",
     "install": "cd bin && node verify-platform.js win32 x64 -"
   },
   "bin": {
