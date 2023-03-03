@@ -144,7 +144,7 @@ inline String prefixFile () {
 
 static Process::id_type appPid = 0;
 static Process* appProcess = nullptr;
-static std::atomic<int> appStatus = 0;
+static std::atomic<int> appStatus = -1;
 static std::mutex appMutex;
 
 void signalHandler (int signal) {
@@ -212,6 +212,17 @@ int runApp (const fs::path& path, const String& args, bool headless) {
 
 #if defined(__APPLE__)
   if (platform.mac) {
+static dispatch_queue_attr_t qos = dispatch_queue_attr_make_with_qos_class(
+  DISPATCH_QUEUE_CONCURRENT,
+  QOS_CLASS_USER_INITIATED,
+  -1
+);
+
+static dispatch_queue_t queue = dispatch_queue_create(
+  "co.socketsupply.socket.ipc.bridge.queue",
+  qos
+);
+
     auto sharedWorkspace = [NSWorkspace sharedWorkspace];
     auto configuration = [NSWorkspaceOpenConfiguration configuration];
     auto string = path.string();
@@ -308,9 +319,14 @@ int runApp (const fs::path& path, const String& args, bool headless) {
 
       int polls = 4;
 
-      while (kill(app.processIdentifier, 0) == 0 || polls-- > 0) {
-        std::this_thread::yield();
-        std::this_thread::sleep_for(std::chrono::milliseconds(256));
+      dispatch_async(queue, ^{
+        while (kill(app.processIdentifier, 0) == 0) {
+          msleep(256);
+        }
+      });
+
+      while (appStatus < 0 || polls-- > 0) {
+        msleep(256);
 
         @autoreleasepool {
           // We need  a new `OSLogStore` in each so we can keep
@@ -351,8 +367,7 @@ int runApp (const fs::path& path, const String& args, bool headless) {
           // Enumerate all the logs in this loop and print unredacted and most
           // recently log entries to stdout
           for (OSLogEntryLog* entry in enumerator) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(4));
-            std::this_thread::yield();
+            msleep(8);
 
             if (
               entry.composedMessage &&
@@ -365,7 +380,9 @@ int runApp (const fs::path& path, const String& args, bool headless) {
                 // the OSLogStore may redact log messages the user does not
                 // have access to, filter them out
                 if (String(message) != "<private>") {
-                  if (
+                  if (String(message).starts_with("__EXIT_SIGNAL__")) {
+                    appStatus = std::stoi(replace(String(message), "__EXIT_SIGNAL__=", ""));
+                  } else if (
                     entry.level == OSLogEntryLogLevelDebug ||
                     entry.level == OSLogEntryLogLevelError ||
                     entry.level == OSLogEntryLogLevelFault
@@ -378,24 +395,24 @@ int runApp (const fs::path& path, const String& args, bool headless) {
 
                 polls = 4;
                 latest = entry.date;
-                offset = latest;
+                offset = [latest dateByAddingTimeInterval: 1];
               }
             }
           }
         }
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(32));
+        msleep(32);
       }
 
-      if (appPid > 0) {
-        appMutex.unlock();
-      }
+      msleep(32);
+      appMutex.unlock();
     }];
 
     // wait for `NSRunningApplication` to terminate
     std::lock_guard<std::mutex> lock(appMutex);
     log("App result: " + std::to_string(appStatus.load()));
-    std::this_thread::sleep_for(std::chrono::milliseconds(32));
+
+    msleep(32);
     return appStatus.load();
   }
 #endif
@@ -2322,7 +2339,7 @@ int main (const int argc, const char* argv[]) {
 
       // clear stream
       gradlew.str("");
-      gradlew 
+      gradlew
         << localDirPrefix
         << "gradlew assemble";
 
@@ -2631,7 +2648,7 @@ int main (const int argc, const char* argv[]) {
           exit(1);
         }
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(1024 * 6));
+        msleep(1024 * 6);
         StringStream notarizeStatusCommand;
 
         notarizeStatusCommand
