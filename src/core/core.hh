@@ -576,6 +576,14 @@ namespace SSC {
             const String seq,
             Module::Callback cb
           );
+          void hrtime (
+            const String seq,
+            Module::Callback cb
+          );
+          void availableMemory (
+            const String seq,
+            Module::Callback cb
+          );
       };
 
       class Platform : public Module {

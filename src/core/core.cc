@@ -384,6 +384,38 @@ namespace SSC {
     cb(seq, json, Post{});
   }
 
+  void Core::OS::hrtime (
+    const String seq,
+    Module::Callback cb
+  ) {
+    auto hrtime = uv_hrtime();
+    auto bytes = toBytes(hrtime);
+    auto size = bytes.size();
+    auto post = Post {};
+    auto body = new char[size]{0};
+    auto json = JSON::Object {};
+    post.body = body;
+    post.length = size;
+    memcpy(body, bytes.data(), size);
+    cb(seq, json, post);
+  }
+
+  void Core::OS::availableMemory (
+    const String seq,
+    Module::Callback cb
+  ) {
+    auto memory = uv_get_available_memory();
+    auto bytes = toBytes(memory);
+    auto size = bytes.size();
+    auto post = Post {};
+    auto body = new char[size]{0};
+    auto json = JSON::Object {};
+    post.body = body;
+    post.length = size;
+    memcpy(body, bytes.data(), size);
+    cb(seq, json, post);
+  }
+
   void Core::OS::bufferSize (
     const String seq,
     uint64_t peerId,
