@@ -146,7 +146,7 @@ export function type () {
     return cache.type
   }
 
-  if (globalThis !== window) {
+  if (globalThis !== globalThis.window) {
     switch (platform()) {
       case 'android': return 'Linux'
       case 'cygwin': return 'CYGWIN_NT'
@@ -159,7 +159,7 @@ export function type () {
     }
   }
 
-  if (globalThis === window) {
+  if (globalThis === globalThis.window) {
     value = primordials.platform
   }
 
