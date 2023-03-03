@@ -57,3 +57,17 @@ test('process.env', (t) => {
 test('process.argv', (t) => {
   t.deepEqual(process.argv, globalThis.__args.argv, 'process.argv is equal to globalThis.__args.argv')
 })
+
+test('os.hrtime()', (t) => {
+  const hrtime = process.hrtime()
+  t.ok(Array.isArray(hrtime), 'process.hrtime() returns array')
+  t.ok(hrtime?.length === 2, 'process.hrtime() returns array of length 2')
+  t.equal(typeof hrtime[0], 'number', 'hrtime[0] is a number')
+  t.equal(typeof hrtime[1], 'number', 'hrtime[1] is a number')
+})
+
+test('os.hrtime.bigint()', (t) => {
+  const hrtime = process.hrtime.bigint()
+  t.ok(hrtime > 0, 'hrtime > 0')
+  t.equal(typeof hrtime, 'bigint', 'hrtime is bigint')
+})
