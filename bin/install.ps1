@@ -80,6 +80,7 @@ Function Test-CommandVersion {
   $r = $($null -eq $F.length)
   if ($r -eq $false) {
     Write-Output $r
+    return
   }
 
   $output = iex "& $command_string --version" | Out-String
