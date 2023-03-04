@@ -27,6 +27,21 @@ $global:path_advice = @()
 $global:install_errors = @()
 $targetClangVersion = "15.0.0"
 
+if ($debug -eq $true) {
+  $LIBUV_BUILD_TYPE = "Debug"
+  
+  $SSC_BUILD_OPTIONS = "-g", "-O0"
+  [Environment]::SetEnvironmentVariable("DEBUG", "1")
+}
+
+if ($verbose -eq $true) {
+  [Environment]::SetEnvironmentVariable("VERBOSE", "1")
+}
+
+if ($force -eq $true) {
+  $global:forceArg = "--force"
+}
+
 Function Exit-IfErrors {
   if ($global:install_errors.Count -gt 0) {
     foreach ($e in $global:install_errors) {
@@ -47,41 +62,6 @@ Function Get-CommandPath {
     Write-Output $r
 }
 
-if ($debug -eq $true) {
-  $LIBUV_BUILD_TYPE = "Debug"
-  
-  $SSC_BUILD_OPTIONS = "-g", "-O0"
-  [Environment]::SetEnvironmentVariable("DEBUG", "1")
-}
-
-if ($verbose -eq $true) {
-  [Environment]::SetEnvironmentVariable("VERBOSE", "1")
-}
-
-if ($force -eq $true) {
-  $global:forceArg = "--force"
-}
-
-$vsconfig = "nmake.vsconfig"
-
-if ( -not (("llvm+vsbuild" -eq $toolchain) -or ("vsbuild" -eq $toolchain) -or ("llvm" -eq $toolchain)) ) {
-  Write-Output "Unsupported -toolchain $toolchain. Supported options are vsbuild, llvm+vsbuild or llvm (external nmake required)"
-  Write-Output "-toolchain llvm+vsbuild will check for and install llvm clang $targetClangVersion and vsbuild nmake."
-  
-  Exit 1
-}
-
-if ("vsbuild" -eq $toolchain) {
-  if ($shbuild) {
-    $vsconfig = ".vsconfig"
-  } else {
-    # Use smaller footprint if we're not doing an install.sh
-    $vsconfig = ".vsconfig-app-build"
-  }
-}
-
-
-Write-Output "Using toolchain: $toolchain"
 
 Function Found-Command {
     param($command_string)
@@ -122,7 +102,6 @@ Function Test-CommandVersion {
   }
 
   if ($ca.Count -ne $ta.Count) {
-    # Write-Output "Test $command --version: version strings different lengths: $current_version, $($ca.Count) / $target_version, $($ta.Count)"
     Write-Output $false
   }
 
@@ -144,6 +123,27 @@ Function Test-CommandVersion {
   
   Write-Output $true
 }
+
+$vsconfig = "nmake.vsconfig"
+
+if ( -not (("llvm+vsbuild" -eq $toolchain) -or ("vsbuild" -eq $toolchain) -or ("llvm" -eq $toolchain)) ) {
+  Write-Output "Unsupported -toolchain $toolchain. Supported options are vsbuild, llvm+vsbuild or llvm (external nmake required)"
+  Write-Output "-toolchain llvm+vsbuild will check for and install llvm clang $targetClangVersion and vsbuild nmake."
+  
+  Exit 1
+}
+
+if ("vsbuild" -eq $toolchain) {
+  if ($shbuild) {
+    $vsconfig = ".vsconfig"
+  } else {
+    # Use smaller footprint if we're not doing an install.sh
+    $vsconfig = ".vsconfig-app-build"
+  }
+}
+
+
+Write-Output "Using toolchain: $toolchain"
 
 #
 # Install the files we will want to use for builds
