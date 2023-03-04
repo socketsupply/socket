@@ -25,6 +25,7 @@ $global:useCurl = $true
 $global:WIN_DEBUG_LIBS = ""
 $global:path_advice = @()
 $global:install_errors = @()
+$targetClangVersion = "15.0.0"
 
 Function Exit-IfErrors {
   if ($global:install_errors.Count -gt 0) {
@@ -65,7 +66,7 @@ $vsconfig = "nmake.vsconfig"
 
 if ( -not (("llvm+vsbuild" -eq $toolchain) -or ("vsbuild" -eq $toolchain) -or ("llvm" -eq $toolchain)) ) {
   Write-Output "Unsupported -toolchain $toolchain. Supported options are vsbuild, llvm+vsbuild or llvm (external nmake required)"
-  Write-Output "-toolchain llvm+vsbuild will check for and install llvm clang and vsbuild nmake."
+  Write-Output "-toolchain llvm+vsbuild will check for and install llvm clang $targetClangVersion and vsbuild nmake."
   
   Exit 1
 }
@@ -87,6 +88,61 @@ Function Found-Command {
     (Get-Command $command_string -ErrorAction SilentlyContinue -ErrorVariable F) > $null
     $r = $($null -eq $F.length)
     Write-Output $r
+}
+
+
+Function Test-CommandVersion {
+  param($params)
+  $command_string = $params[0]
+  $target_version = $params[1]
+
+  (Get-Command $command_string -ErrorAction SilentlyContinue -ErrorVariable F) > $null
+  $r = $($null -eq $F.length)
+  if ($r -eq $false) {
+    Write-Output $r
+  }
+
+  $output = iex "& $command_string --version" | Out-String
+  $output = $output.split("`r`n")[0].split(" ")
+
+  for (($i = 0); ($i -lt $output.Count); ($i++)) {
+    if ($output[$i] -eq "version") {
+      $current_version = $output[$i+1]
+    }
+  }
+
+  $ta = @()
+  foreach ($v in $target_version.split(".")) {
+    $ta += [int]$v
+  }
+
+  $ca = @()
+  foreach ($v in $current_version.split(".")) {
+    $ca += [int]$v
+  }
+
+  if ($ca.Count -ne $ta.Count) {
+    # Write-Output "Test $command --version: version strings different lengths: $current_version, $($ca.Count) / $target_version, $($ta.Count)"
+    Write-Output $false
+  }
+
+  for (($i = 0); ($i -lt $ca.Count); ($i++)) {
+    # Current element is lower, no point in comparing other elements
+    if ($ca[$i] -lt $ta[$i]) {
+      Write-Output $false
+      return
+    }
+
+    # Current element is greater, no need to compare other elements
+    if ($ca[$i] -gt $ta[$i]) {
+      Write-Output $true
+      return
+    }
+
+    # Current element is equal, test remaining elements
+  }
+  
+  Write-Output $true
 }
 
 #
@@ -236,13 +292,13 @@ Function Install-Requirements {
   if (("llvm+vsbuild" -eq $toolchain) -or ("llvm" -eq $toolchain)) {
     $clangPath = "$env:ProgramFiles\LLVM\bin"
 
-    if (-not (Found-Command($clang))) {
+    if (-not (Test-CommandVersion("clang++", $targetClangVersion))) {
       $clang = "$clangPath\$clang"
       $global:path_advice += $clangPath
       $global:path_advice += "SET PATH=""$clangPath"";%PATH%"
     }
 
-    if (-not (Found-Command($clang))) {
+    if (-not (Test-CommandVersion("clang++", $targetClangVersion))) {
 
       $confirmation = Read-Host "LLVM will be downloaded for clang++, proceed? y/[n]?"
       if ($confirmation -eq 'y') {
@@ -280,20 +336,20 @@ Function Install-Requirements {
     $report_vc_vars_reqd = $false
     $install_vc_build = $true
 
-    if ($shbuild -and $(Found-Command("clang++.exe")) -and $(Found-Command("nmake.exe"))) {
+    if ($shbuild -and $(Test-CommandVersion("clang++", $targetClangVersion)) -and $(Found-Command("nmake.exe"))) {
       Write-Output("# Found clang$and_nmake")
       $install_vc_build = $false
-    } elseif ($(Found-Command("clang++.exe"))) {
+    } elseif ($(Test-CommandVersion("clang++", $targetClangVersion))) {
       Write-Output("# Found clang")
       $install_vc_build = $false
     } else {
       if ($vc_exists) {
         Write-Output "Calling vcvars64.bat"
         $(Get-ProcEnvs($vc_vars))
-        if ($shbuild -and $(Found-Command("clang++.exe")) -and $(Found-Command("nmake.exe"))) {
+        if ($shbuild -and $(Test-CommandVersion("clang++", $targetClangVersion)) -and $(Found-Command("nmake.exe"))) {
           $report_vc_vars_reqd = $true
           $install_vc_build = $false
-        } elseif ($(Found-Command("clang++.exe"))) {
+        } elseif ($(Test-CommandVersion("clang++", $targetClangVersion))) {
           $report_vc_vars_reqd = $true
           $install_vc_build = $false
         } else {
@@ -309,7 +365,7 @@ Function Install-Requirements {
 
     if ($install_vc_build) {
       $report_vc_vars_reqd = $true
-      $confirmation = Read-Host "clang, Windows SDK$and_nmake are required, proceed with install from Microsoft? y/[n]?"
+      $confirmation = Read-Host "clang $targetClangVersion, Windows SDK$and_nmake are required, proceed with install from Microsoft? y/[n]?"
       $installer = "vs_buildtools.exe"
       $url = "https://aka.ms/vs/17/release/$installer"
 
@@ -353,7 +409,7 @@ Function Install-Requirements {
     }
   }
 
-  if (-not (Found-Command($clang))) {
+  if (-not (Test-CommandVersion("clang++", $targetClangVersion))) {
     $global:install_errors += "not ok - unable to install clang++."
   }
 
