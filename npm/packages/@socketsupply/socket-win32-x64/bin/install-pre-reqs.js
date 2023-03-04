@@ -33,7 +33,7 @@ async function insertEnvVars () {
     if (sscCmdData.indexOf(setLine) === -1) {
       if (sscCmdData.indexOf(`${e}=`) > -1) {
         // replace if variable exists
-        sscCmdData = sscCmdData.replace(/${e}=.*$/, `${e}=${env[e]}`)
+        sscCmdData = sscCmdData.replace(new RegExp(`${e}\=.*`), `${e}=${env[e]}`)
         updated = true
       } else {
         // insert variable after @ECHO off

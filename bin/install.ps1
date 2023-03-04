@@ -70,59 +70,65 @@ Function Found-Command {
     Write-Output $r
 }
 
-
 Function Test-CommandVersion {
   param($params)
   $command_string = $params[0]
   $target_version = $params[1]
 
-  (Get-Command $command_string -ErrorAction SilentlyContinue -ErrorVariable F) > $null
-  $r = $($null -eq $F.length)
-  if ($r -eq $false) {
-    Write-Output $r
-    return
-  }
+  $fso = New-Object -ComObject Scripting.FileSystemObject
 
-  $output = iex "& $command_string --version" | Out-String
-  $output = $output.split("`r`n")[0].split(" ")
-
-  for (($i = 0); ($i -lt $output.Count); ($i++)) {
-    if ($output[$i] -eq "version") {
-      $current_version = $output[$i+1]
+  while ($true) {
+    (Get-Command $command_string -ErrorAction SilentlyContinue -ErrorVariable F) > $null
+    $r = $($null -eq $F.length)
+    if ($r -eq $false) {
+      Write-Output $r
+      return
     }
-  }
 
-  $ta = @()
-  foreach ($v in $target_version.split(".")) {
-    $ta += [int]$v
-  }
+    $output = iex "& $command_string --version" | Out-String
+    $output = $output.split("`r`n")[0].split(" ")
 
-  $ca = @()
-  foreach ($v in $current_version.split(".")) {
-    $ca += [int]$v
-  }
+    for (($i = 0); ($i -lt $output.Count); ($i++)) {
+      if ($output[$i] -eq "version") {
+        $current_version = $output[$i+1]
+      }
+    }
 
-  if ($ca.Count -ne $ta.Count) {
-    Write-Output $false
-  }
+    $ta = @()
+    foreach ($v in $target_version.split(".")) {
+      $ta += [int]$v
+    }
 
-  for (($i = 0); ($i -lt $ca.Count); ($i++)) {
-    # Current element is lower, no point in comparing other elements
-    if ($ca[$i] -lt $ta[$i]) {
+    $ca = @()
+    foreach ($v in $current_version.split(".")) {
+      $ca += [int]$v
+    }
+
+    if ($ca.Count -ne $ta.Count) {
       Write-Output $false
-      return
     }
 
-    # Current element is greater, no need to compare other elements
-    if ($ca[$i] -gt $ta[$i]) {
-      Write-Output $true
-      return
+    for (($i = 0); ($i -lt $ca.Count); ($i++)) {
+      # Current element is lower, no point in comparing other elements
+      if ($ca[$i] -lt $ta[$i]) {
+        break; 
+      }
+
+      # Current element is greater, no need to compare other elements
+      if ($ca[$i] -gt $ta[$i]) {
+        Write-Output $true
+        return
+      }
+
+      # Current element is equal, test remaining elements
     }
 
-    # Current element is equal, test remaining elements
+    # Remove current item's path so it isn't used in future searches
+    $p = $fso.GetFile($(Get-CommandPath $command_string)).ParentFolder.Path
+    $env:PATH = $env:PATH.replace("$p", "")
   }
   
-  Write-Output $true
+  Write-Output $false
 }
 
 $vsconfig = "nmake.vsconfig"
@@ -487,6 +493,8 @@ if ($global:path_advice.Count -gt 0) {
     Write-Output $p
   }
 }
+
+Write-Output ("package setup: $package_setup")
 
 if ($package_setup -eq $true) {
   $paths = @{}
