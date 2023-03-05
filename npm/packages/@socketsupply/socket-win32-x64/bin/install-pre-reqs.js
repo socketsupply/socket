@@ -45,10 +45,6 @@ async function insertEnvVars () {
 
   fs.writeFileSync('env.bat', envs)
   if (updated === true) { fs.writeFileSync(sscCmdPath, sscCmdData) }
-
-  if (fs.existsSync('ps1/ps1_errors.txt')) {
-    throw fs.readFileSync('ps1/ps1_errors.txt', 'utf-8')
-  }
 }
 
 async function preinstall () {
