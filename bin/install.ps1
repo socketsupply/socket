@@ -240,7 +240,7 @@ Function Install-Requirements {
   if (-not (Found-Command($global:git))) {
     # Look for git in default location, in case it was installed in a previous session
     $global:git = "$gitPath\$global:git"
-    $global:path_advice += "`$env:PATH='$gitPath'+`$env:PATH"
+    $global:path_advice += "`$env:PATH='$gitPath;'+`$env:PATH"
   } else {
     Write-Output ("Git found at, changing path to: $global:git")
   }
@@ -272,8 +272,9 @@ Function Install-Requirements {
 
   # install `cmake.exe`
   if ($shbuild) {
-    $cmakePath = "$env:ProgramFiles\CMake\bin"
+    $cmakePath = ""
     if (-not (Found-Command($global:cmake))) {
+      $cmakePath = "$env:ProgramFiles\CMake\bin"
       $global:cmake = "$cmakePath\$global:cmake"
     }
 
@@ -305,7 +306,7 @@ Function Install-Requirements {
 
     if (-not (Test-CommandVersion("clang++", $targetClangVersion))) {
       $clang = "$clangPath\$clang"
-      $global:path_advice += "`$env:PATH='$clangPath'+`$env:PATH"
+      $global:path_advice += "`$env:PATH='$clangPath;'+`$env:PATH"
     }
 
     if (-not (Test-CommandVersion("clang++", $targetClangVersion))) {
@@ -453,8 +454,10 @@ Function Install-Requirements {
     if (-not (Found-Command($global:cmake))) {
       $global:install_errors += "not ok - unable to install cmake"
     } else {
-      $global:path_advice += "`$env:PATH='$cmakePath'+`$env:PATH"
-      $env:PATH="$cmakePath\;$env:PATH"
+      if ($cmakePath -ne '') {
+        $global:path_advice += "`$env:PATH='$cmakePath;'+`$env:PATH"
+        $env:PATH="$cmakePath\;$env:PATH"
+      }
     }
   }
 
@@ -489,7 +492,8 @@ if ($shbuild) {
     Exit-IfErrors
   }
 
-  $global:path_advice += "`$env:PATH='$BIN_PATH'+`$env:PATH"
+  $env:PATH="$BIN_PATH;$($env:PATH)"
+  $global:path_advice += "`$env:PATH='$BIN_PATH;'+`$env:PATH"
 
   cd $OLD_CWD
   Write-Output "Calling bin\install.sh $forceArg"
@@ -497,7 +501,8 @@ if ($shbuild) {
 }
 
 if ($global:path_advice.Count -gt 0) {
-  Write-Output "Please add the following to PATH or run in future dev sessions: "
+  Write-Output "Please run in future dev sessions: "
+  Write-Output "(Or just run cd $OLD_CWD; .\bin\install.ps1)"
   foreach ($p in $global:path_advice) {
     Write-Output $p
   }
@@ -510,7 +515,7 @@ if ($package_setup -eq $true) {
   ConvertTo-Json $paths > env.json
 }
 
+cd $OLD_CWD
 Exit-IfErrors
 
-cd $OLD_CWD
 Exit 0
