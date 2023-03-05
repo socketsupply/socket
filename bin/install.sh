@@ -614,7 +614,6 @@ function _compile_libuv {
         quiet make install
       fi
     else
-      echo "test $BUILD_DIR/$target-$platform/lib$d/uv_a.lib"
       if test -f "$BUILD_DIR/$target-$platform/lib$d/uv_a.lib"; then
         return
       else
@@ -623,11 +622,11 @@ function _compile_libuv {
           config="Debug"
         fi
         cd "$STAGING_DIR/build/"
-        cmake .. -DBUILD_TESTING=OFF -DLIBUV_BUILD_SHARED=OFF
+        quiet cmake .. -DBUILD_TESTING=OFF -DLIBUV_BUILD_SHARED=OFF
         cd $STAGING_DIR
-        cmake --build $STAGING_DIR/build/ --config $config
+        quiet cmake --build $STAGING_DIR/build/ --config $config
         mkdir -p $BUILD_DIR/$target-$platform/lib$d
-        echo "cp -up $STAGING_DIR/build/$config/uv_a.lib $BUILD_DIR/$target-$platform/lib$d/uv_a.lib"
+        quiet echo "cp -up $STAGING_DIR/build/$config/uv_a.lib $BUILD_DIR/$target-$platform/lib$d/uv_a.lib"
         cp -up $STAGING_DIR/build/$config/uv_a.lib $BUILD_DIR/$target-$platform/lib$d/uv_a.lib
         if [[ ! -z "$DEBUG" ]]; then
           cp -up $STAGING_DIR/build/$config/uv_a.pdb $BUILD_DIR/$target-$platform/lib$d/uv_a.pdb
