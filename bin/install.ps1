@@ -240,7 +240,7 @@ Function Install-Requirements {
   if (-not (Found-Command($global:git))) {
     # Look for git in default location, in case it was installed in a previous session
     $global:git = "$gitPath\$global:git"
-    $global:path_advice += "SET PATH=""$gitPath"";%PATH%"
+    $global:path_advice += "`$env:PATH='$gitPath'+`$env:PATH"
   } else {
     Write-Output ("Git found at, changing path to: $global:git")
   }
@@ -275,7 +275,6 @@ Function Install-Requirements {
     $cmakePath = "$env:ProgramFiles\CMake\bin"
     if (-not (Found-Command($global:cmake))) {
       $global:cmake = "$cmakePath\$global:cmake"
-      $global:path_advice += "SET PATH=""$cmakePath"";%PATH%"
     }
 
     if (-not (Found-Command($global:cmake))) {
@@ -306,8 +305,7 @@ Function Install-Requirements {
 
     if (-not (Test-CommandVersion("clang++", $targetClangVersion))) {
       $clang = "$clangPath\$clang"
-      $global:path_advice += $clangPath
-      $global:path_advice += "SET PATH=""$clangPath"";%PATH%"
+      $global:path_advice += "`$env:PATH='$clangPath'+`$env:PATH"
     }
 
     if (-not (Test-CommandVersion("clang++", $targetClangVersion))) {
@@ -454,11 +452,15 @@ Function Install-Requirements {
   if ($shbuild) {
     if (-not (Found-Command($global:cmake))) {
       $global:install_errors += "not ok - unable to install cmake"
+    } else {
+      $global:path_advice += "`$env:PATH='$cmakePath'+`$env:PATH"
+      $env:PATH="$cmakePath\;$env:PATH"
     }
   }
 
   if ($report_vc_vars_reqd) {
-    $global:path_advice += """$vc_vars"""
+    $file = (New-Object -ComObject Scripting.FileSystemObject).GetFile($(Get-CommandPath "clang++.exe"))
+    $global:path_advice += "`$env:PATH='$($file.ParentFolder.Path)'+`$env:PATH"
   }
 }
 
@@ -487,6 +489,8 @@ if ($shbuild) {
     Exit-IfErrors
   }
 
+  $global:path_advice += "`$env:PATH='$BIN_PATH'+`$env:PATH"
+
   cd $OLD_CWD
   Write-Output "Calling bin\install.sh $forceArg"
   iex "& ""$sh"" bin\install.sh $forceArg"
@@ -501,8 +505,8 @@ if ($global:path_advice.Count -gt 0) {
 
 if ($package_setup -eq $true) {
   $paths = @{}
-  $fso = New-Object -ComObject Scripting.FileSystemObject 
-  $paths["CXX"] = $fso.GetFile($(Get-CommandPath "clang++.exe")).ShortPath
+  $file = (New-Object -ComObject Scripting.FileSystemObject).GetFile($(Get-CommandPath "clang++.exe"))
+  $paths["CXX"] = $file.ShortPath
   ConvertTo-Json $paths > env.json
 }
 
