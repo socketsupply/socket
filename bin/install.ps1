@@ -51,6 +51,12 @@ Function Exit-IfErrors {
   }
 }
 
+Function Prompt {
+  param($text)
+  Write-Host "$text`n> " -NoNewLine
+  $Host.UI.ReadLine() | Write-Output
+}
+
 Function Get-CommandPath {
   param($command_string)
     $c = (Get-Command "$command_string" -ErrorAction SilentlyContinue -ErrorVariable F).Source
@@ -61,7 +67,6 @@ Function Get-CommandPath {
     }
     Write-Output $r
 }
-
 
 Function Found-Command {
     param($command_string)
@@ -213,7 +218,7 @@ Function Install-Requirements {
     
     $installer = "vc_redist.x64.exe"
     $url = "https://aka.ms/vs/17/release/$installer"
-    $confirmation = Read-Host "$installer is a requirement, proceed with install from Microsoft? y/[n]?" 
+    $confirmation = Prompt "$installer is a requirement, proceed with install from Microsoft? y/[n]?" 
     
     if ($confirmation -eq 'y') {
       $t = [string]{
@@ -242,7 +247,7 @@ Function Install-Requirements {
 
   if (-not (Found-Command($global:git))) {
 
-    $confirmation = Read-Host "git is a requirement, proceed with install from github.com/git-for-windows? y/[n]?"
+    $confirmation = Prompt "git is a requirement, proceed with install from github.com/git-for-windows? y/[n]?"
     $installer = "Git-2.39.1-64-bit.exe"
     $installer_tmp = "Git-2.39.1-64-bit.tmp"
     $url = "https://github.com/git-for-windows/git/releases/download/v2.39.1.windows.1/$installer"
@@ -275,7 +280,7 @@ Function Install-Requirements {
 
     if (-not (Found-Command($global:cmake))) {
 
-      $confirmation = Read-Host "CMake is a requirement, proceed with install from cmake.org? y/[n]?"
+      $confirmation = Prompt "CMake is a requirement, proceed with install from cmake.org? y/[n]?"
       $installer = "cmake-3.26.0-rc2-windows-x86_64.msi"
       $url = "https://github.com/Kitware/CMake/releases/download/v3.26.0-rc2/$installer"
 
@@ -307,7 +312,7 @@ Function Install-Requirements {
 
     if (-not (Test-CommandVersion("clang++", $targetClangVersion))) {
 
-      $confirmation = Read-Host "LLVM will be downloaded for clang++, proceed? y/[n]?"
+      $confirmation = Prompt "LLVM will be downloaded for clang++, proceed? y/[n]?"
       if ($confirmation -eq 'y') {
         $installer = "LLVM-15.0.7-win64.exe"
         $url = "https://github.com/llvm/llvm-project/releases/download/llvmorg-15.0.7/$installer"
@@ -372,7 +377,7 @@ Function Install-Requirements {
 
     if ($install_vc_build) {
       $report_vc_vars_reqd = $true
-      $confirmation = Read-Host "clang $targetClangVersion, Windows SDK$and_nmake are required, proceed with install from Microsoft? y/[n]?"
+      $confirmation = Prompt "clang $targetClangVersion, Windows SDK$and_nmake are required, proceed with install from Microsoft? y/[n]?"
       $installer = "vs_buildtools.exe"
       $url = "https://aka.ms/vs/17/release/$installer"
 
@@ -493,8 +498,6 @@ if ($global:path_advice.Count -gt 0) {
     Write-Output $p
   }
 }
-
-Write-Output ("package setup: $package_setup")
 
 if ($package_setup -eq $true) {
   $paths = @{}
