@@ -26,6 +26,7 @@ $global:WIN_DEBUG_LIBS = ""
 $global:path_advice = @()
 $global:install_errors = @()
 $targetClangVersion = "15.0.0"
+$targetCmakeVersion = "3.24.0"
 
 if ($debug -eq $true) {
   $LIBUV_BUILD_TYPE = "Debug"
@@ -79,6 +80,7 @@ Function Test-CommandVersion {
   param($params)
   $command_string = $params[0]
   $target_version = $params[1]
+  $debug = $params.Count -gt 2
 
   $fso = New-Object -ComObject Scripting.FileSystemObject
 
@@ -99,17 +101,31 @@ Function Test-CommandVersion {
       }
     }
 
+    $current_version = $current_version.split("-")[0]
+
+    if ($debug) {
+      Write-Output "Current $command_string : $current_version, target: $target_version"
+    }
+
     $ta = @()
     foreach ($v in $target_version.split(".")) {
       $ta += [int]$v
     }
 
+    $current_version_split = $current_version.split(".")
+
     $ca = @()
-    foreach ($v in $current_version.split(".")) {
-      $ca += [int]$v
+    # Ignore invalid (not equal) version strings
+    if ($current_version_split.Count -eq $ta.Count) {
+      foreach ($v in $current_version_split) {
+        $ca += [int]$v
+      }
+    } elseif ($debug) {
+      Write-Output "Invalid: $current_version"
     }
 
     if ($ca.Count -ne $ta.Count) {
+      Write-Output "$($ca.Count) <> $($ta.Count)"
       Write-Output $false
     }
 
@@ -273,12 +289,12 @@ Function Install-Requirements {
   # install `cmake.exe`
   if ($shbuild) {
     $cmakePath = ""
-    if (-not (Found-Command($global:cmake))) {
+    if (-not (Test-CommandVersion("cmake", $targetCmakeVersion))) {
       $cmakePath = "$env:ProgramFiles\CMake\bin"
       $global:cmake = "$cmakePath\$global:cmake"
     }
 
-    if (-not (Found-Command($global:cmake))) {
+    if (-not (Test-CommandVersion("cmake", $targetCmakeVersion))) {
 
       $confirmation = Prompt "CMake is a requirement, proceed with install from cmake.org? y/[n]?"
       $installer = "cmake-3.26.0-rc2-windows-x86_64.msi"
@@ -451,7 +467,7 @@ Function Install-Requirements {
   }
 
   if ($shbuild) {
-    if (-not (Found-Command($global:cmake))) {
+    if (-not (Test-CommandVersion("cmake", $targetCmakeVersion))) {
       $global:install_errors += "not ok - unable to install cmake"
     } else {
       if ($cmakePath -ne '') {
