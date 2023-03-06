@@ -1,4 +1,4 @@
-import socket from './socket-node.js'
+import socket from '@socketsupply/socket-node'
 
 socket.on('20 minutes adventure', async (value) => {
   await socket.send({
@@ -17,3 +17,4 @@ await socket.send({
   event: 'character',
   value: { firstname: 'Morty', secondname: 'Smith' }
 })
+  

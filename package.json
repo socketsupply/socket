@@ -25,7 +25,8 @@
     "ignore": [
       "/api/external/",
       "/api/test/fast-deep-equal.js",
-      "/api/crypto/sodium.js"
+      "/api/crypto/sodium.js",
+      "/npm/packages/@socketsupply/socket-node/index.cjs"
     ]
   }
 }
