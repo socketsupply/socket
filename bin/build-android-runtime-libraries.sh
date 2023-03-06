@@ -80,10 +80,17 @@ elif [[ "$host" == *"MSYS_NT"* ]]; then
   host="Win32"
 fi
 
-if [[ "$host" == "Win32" ]] && [[ ! -z "$SOCKET_HOME" ]] ; then
+
+if ! quiet command -v ssc; then
+  echo "ssc not found."
+  DEPS_ERROR=1
+fi;
+
+if [[ "$host" == "Win32" ]] && [[ ! -z "$SOCKET_HOME" ]] && [[ -z "$DEPS_ERROR" ]] ; then
   # ndk build doesn't like wrong slashes, even tough it generates them...
   SOCKET_HOME_X=$SOCKET_HOME
   # Android requires SOCKET_HOME that contains all source files, that won't be the case by the time this script runs 
+  # Don't run this command if ssc not found, it throws a lot of errors that are hard to redirect
   SOCKET_HOME=$(cygpath -w $(dirname $(dirname $(which ssc))))
 
   if [[ ! -d $SOCKET_HOME_X ]]; then
@@ -91,12 +98,6 @@ if [[ "$host" == "Win32" ]] && [[ ! -z "$SOCKET_HOME" ]] ; then
     DEPS_ERROR=1
   fi
 fi
-
-
-if ! quiet command -v ssc; then
-  echo "ssc not found."
-  DEPS_ERROR=1
-fi;
 
 if [[ -z $ANDROID_HOME ]]; then
   echo "ANDROID_HOME not set."
@@ -108,18 +109,25 @@ if [[ -z $JAVA_HOME ]]; then
   DEPS_ERROR=1
 fi
 
+# TODO(@mribbons):Test gradle version > 8.0.1
+if ! quiet command -v gradle; then
+  # gradle required for apps, but not for libsocket-runtime.so
+  echo "gradle not in path."
+  DEPS_ERROR=1
+fi
+
 if [[ ! -z $DEPS_ERROR ]]; then
-  echo "Dependencies not satisfied."
+  echo "Android dependencies not satisfied."
   exit 1
 fi
 
-
 app_dir=$BUILD_DIR/android
+obj_dir=$app_dir/dist/android/app/src/main/obj/local
 if [[ -d $app_dir ]] && (( $force )); then
   quiet rm -rf $app_dir
 fi
 
-if [[ ! -d $app_dir ]]; then
+if [[ ! -d $obj_dir ]]; then
   quiet mkdir -p $app_dir
   cd $app_dir
   echo "Building Android App"
@@ -130,7 +138,8 @@ build_remove_path = dist\/android\/app\/src\/\
 build_socket_runtime = true\
 skip_gradle = true/' $app_dir/socket.ini > $temp
   quiet mv $temp $app_dir/socket.ini
-  echo "starting ssc from $(pwd)"
+  echo "Starting ssc from $(pwd), this might take some time."
+  # downloads android deps
   if ! quiet ssc build -o --platform=android > build.log 2>&1; then
     cat build.log
     echo "NDK build failed."
