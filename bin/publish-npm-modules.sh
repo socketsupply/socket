@@ -8,6 +8,7 @@ declare args=()
 declare dry_run=0
 declare only_platforms=0
 declare only_top_level=0
+declare no_rebuild=0
 declare remove_socket_home=1
 declare do_global_link=0
 
@@ -55,6 +56,11 @@ while (( $# > 0 )); do
     continue
   fi
 
+  if [[ "$arg" = "--no-rebuild" ]]; then
+    no_rebuild=1
+    continue
+  fi
+
   if [[ "$arg" = "--link" ]]; then
     do_global_link=1
     continue
@@ -71,6 +77,17 @@ mkdir -p "$SOCKET_HOME"
 
 export SOCKET_HOME
 export PREFIX
+
+# Confirm that ssc in PATH matches current commit
+if command -v ssc >/dev/null 2>&1; then
+  REPO_VERSION="$(cat "$root/VERSION.txt") ($(git rev-parse --short=8 HEAD))"
+  PATH_VERSION=$(ssc --version)
+
+  if [[ "$REPO_VERSION" != "$PATH_VERSION" ]]; then
+    echo "Repo $REPO_VERSION and $(which ssc) $PATH_VERSION don't match."
+    exit 1
+  fi
+fi
 
 if (( !only_top_level ))  && (( !no_rebuild )) ; then
   "$root/bin/install.sh" || exit $?
