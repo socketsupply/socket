@@ -141,11 +141,13 @@ function quiet () {
   return $?
 }
 
-if ! quiet command -v sudo; then
-  sudo () {
-    $@
-    return $?
-  }
+if [[ $host!="Win32" ]]; then
+  if ! quiet command -v sudo; then
+    sudo () {
+      $@
+      return $?
+    }
+  fi
 fi
 
 function die {
@@ -210,10 +212,6 @@ function _build_cli {
 
   if [[ "$(uname -s)" != *"_NT"* ]]; then
     libs=($("echo" -l{uv,socket-runtime}))
-  fi
-
-  if [[ ! -z "$VERBOSE" ]]; then
-    echo "cli libs: $libs, $(uname -s)"
   fi
 
   local ldflags=($("$root/bin/ldflags.sh" --arch "$arch" --platform "$platform" ${libs[@]}))
@@ -289,9 +287,7 @@ function _build_runtime_library {
     "$root/bin/build-runtime-library.sh" --arch x86_64 --platform ios-simulator $pass_force & pids+=($!)
   fi
 
-  if [[ -z "$ANDROID_HOME" ]]; then
-    echo "ANDROID_HOME not set, won't attempt to build android."
-  else
+  if [[ ! -z "$ANDROID_HOME" ]]; then
     if ! command -v ssc; then
       echo "Deferring Android build until SSC build completed."
     else
@@ -799,17 +795,18 @@ fi
 
 _install_cli
 
-[ ! -z "$VERBOSE" ] && echo "CI flags: CI: $CI, SSC_ANDROID_CI: $SSC_ANDROID_CI"
-
-if [[ ! -z "$ANDROID_HOME" ]]; then
-  if [[ ! -n $CI ]] || [[ -n $SSC_ANDROID_CI ]]; then
-    quiet "$root/bin/build-runtime-library.sh" --platform android
-    _install arm64-v8a android & pids+=($!)
-    _install armeabi-v7a android & pids+=($!)
-    _install x86 android & pids+=($!)
-    _install x86_64 android & pids+=($!)
-    wait
+if [[ ! -z "$ANDROID_HOME" ]]; then  
+  quiet "$root/bin/build-runtime-library.sh" --platform android
+  if [[ ! -z $? ]]; then
+    exit $?
   fi
+  _install arm64-v8a android & pids+=($!)
+  _install armeabi-v7a android & pids+=($!)
+  _install x86 android & pids+=($!)
+  _install x86_64 android & pids+=($!)
+  wait
+else
+  echo "ANDROID_HOME not set, won't attempt to build android."
 fi
 
 
