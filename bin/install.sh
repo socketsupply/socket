@@ -501,15 +501,15 @@ function _install {
     echo "# copying libraries to $SOCKET_HOME/lib$d/$arch-$platform"
     rm -rf "$SOCKET_HOME/lib$d/$arch-$platform"
     mkdir -p "$SOCKET_HOME/lib$d/$arch-$platform"
-    cp -rfp "$BUILD_DIR/$arch-$platform"/lib$d/*.a "$SOCKET_HOME/lib$d/$arch-$platform"
-    if [[ $host=="Win32" ]]; then
+    if [[ $platform != "android" ]]; then
+      cp -rfp "$BUILD_DIR/$arch-$platform"/lib$d/*.a "$SOCKET_HOME/lib$d/$arch-$platform"
+    fi
+    if [[ $host=="Win32" ]] && [[ $platform == "desktop" ]]; then
       cp -rfp "$BUILD_DIR/$arch-$platform"/lib$d/*.lib "$SOCKET_HOME/lib$d/$arch-$platform"
     fi
 
-    if [[ $platform == "android" ]]; then
+    if [[ $platform == "android" ]] && [[ -d "$BUILD_DIR/$arch-$platform"/lib ]]; then
       cp -fr "$BUILD_DIR/$arch-$platform"/lib/*.so "$SOCKET_HOME/lib/$arch-$platform"
-    else
-      cp -fr "$BUILD_DIR/$arch-$platform"/lib/*.a "$SOCKET_HOME/lib/$arch-$platform"
     fi
   else 
     echo "no $BUILD_DIR/$arch-$platform/lib"
@@ -520,13 +520,12 @@ function _install {
     echo "# copying js api to $SOCKET_HOME/api"
     mkdir -p "$SOCKET_HOME/api"
     cp -frp "$root"/api/* "$SOCKET_HOME/api"
-    rm -f "$SOCKET_HOME/api/importmap.json"
-    "$root/bin/generate-api-import-map.sh" > "$SOCKET_HOME/api/importmap.json"
-  fi
 
-  rm -rf "$SOCKET_HOME/include"
-  mkdir -p "$SOCKET_HOME/include"
-  cp -rfp "$BUILD_DIR"/uv/include/* $SOCKET_HOME/include
+    # only do this for desktop, no need to copy again for other platforms
+    rm -rf "$SOCKET_HOME/include"
+    mkdir -p "$SOCKET_HOME/include"
+    cp -rfp "$BUILD_DIR"/uv/include/* $SOCKET_HOME/include
+  fi
 
   if [[ "$(uname -s)" == *"_NT"* ]]; then
     if [ $platform == "desktop" ]; then
@@ -802,13 +801,15 @@ _install_cli
 
 [ ! -z "$VERBOSE" ] && echo "CI flags: CI: $CI, SSC_ANDROID_CI: $SSC_ANDROID_CI"
 
-if [[ ! -n $CI ]] || [[ -n $SSC_ANDROID_CI ]]; then
-  quiet "$root/bin/build-runtime-library.sh" --platform android
-  _install arm64-v8a android & pids+=($!)
-  _install armeabi-v7a android & pids+=($!)
-  _install x86 android & pids+=($!)
-  _install x86_64 android & pids+=($!)
-  wait
+if [[ ! -z "$ANDROID_HOME" ]]; then
+  if [[ ! -n $CI ]] || [[ -n $SSC_ANDROID_CI ]]; then
+    quiet "$root/bin/build-runtime-library.sh" --platform android
+    _install arm64-v8a android & pids+=($!)
+    _install armeabi-v7a android & pids+=($!)
+    _install x86 android & pids+=($!)
+    _install x86_64 android & pids+=($!)
+    wait
+  fi
 fi
 
 
