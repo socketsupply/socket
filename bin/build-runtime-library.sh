@@ -134,6 +134,17 @@ for source in "${sources[@]}"; do
   objects+=("$object")
 done
 
+function quiet () {
+  if [ -n "$VERBOSE" ]; then
+    echo "$@"
+    "$@"
+  else
+    "$@" > /dev/null 2>&1
+  fi
+
+  return $?
+}
+
 function onsignal () {
   local status=${1:-$?}
   for pid in "${pids[@]}"; do
@@ -175,10 +186,7 @@ function main () {
       if (( force )) || ! test -f "$object" || (( $(stat_mtime "$source") > $(stat_mtime "$object") )); then
         mkdir -p "$(dirname "$object")"
         echo "# compiling object ($arch-$platform) $(basename "$source")"
-        if [[ ! -z "$VERBOSE " ]]; then
-          echo $clang "${cflags[@]}" "${ldflags[@]}" -c "$source" -o "$object"
-        fi
-        $clang "${cflags[@]}" -c "$source" -o "$object" || onsignal
+        quiet $clang "${cflags[@]}" -c "$source" -o "$object" || onsignal
         echo "ok - built ${source/$src_directory\//} -> ${object/$output_directory\//} ($arch-$platform)"
       fi
     } & pids+=($!)

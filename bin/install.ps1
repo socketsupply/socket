@@ -1,8 +1,9 @@
 param([Switch]$debug, [Switch]$verbose, [Switch]$force, [Switch]$shbuild=$true, [Switch]$package_setup, $toolchain = "vsbuild")
 
 # -shbuild:$false - Don't run bin\install.sh (Builds runtime lib)
+#                 - Fail silently (allow npm install-pre-reqs script '&& exit' to work to close y/n prompt window)
 # -debug          - Enable debug builds (DEBUG=1)
-# -verbose        - Enable verbose build output
+# -verbose        - Enable verbose build output (VERBOSE=1)
 
 $OLD_CWD = (Get-Location).Path
 
@@ -21,17 +22,11 @@ $SSC_BUILD_OPTIONS = "-O2"
 $global:git = "git.exe"
 $global:cmake = "cmake.exe"
 $global:useCurl = $true
-
-Function Get-CommandPath {
-  param($command_string)
-    $c = (Get-Command "$command_string" -ErrorAction SilentlyContinue -ErrorVariable F).Source
-    $r = $($null -eq $F.length)
-    if ($r -eq $true) {
-      Write-Output $c
-      return
-    }
-    Write-Output $r
-}
+$global:WIN_DEBUG_LIBS = ""
+$global:path_advice = @()
+$global:install_errors = @()
+$targetClangVersion = "15.0.0"
+$targetCmakeVersion = "3.24.0"
 
 if ($debug -eq $true) {
   $LIBUV_BUILD_TYPE = "Debug"
@@ -48,12 +43,121 @@ if ($force -eq $true) {
   $global:forceArg = "--force"
 }
 
-$global:path_advice = @()
+Function Exit-IfErrors {
+  if ($global:install_errors.Count -gt 0) {
+    foreach ($e in $global:install_errors) {
+      Write-Output $e
+    }
+    Exit $global:install_errors.Count
+  }
+}
+
+Function Prompt {
+  param($text)
+  Write-Host "$text`n> " -NoNewLine
+  $Host.UI.ReadLine() | Write-Output
+}
+
+Function Get-CommandPath {
+  param($command_string)
+    $c = (Get-Command "$command_string" -ErrorAction SilentlyContinue -ErrorVariable F).Source
+    $r = $($null -eq $F.length)
+    if ($r -eq $true) {
+      Write-Output $c
+      return
+    }
+    Write-Output $r
+}
+
+Function Found-Command {
+    param($command_string)
+    (Get-Command $command_string -ErrorAction SilentlyContinue -ErrorVariable F) > $null
+    $r = $($null -eq $F.length)
+    Write-Output $r
+}
+
+Function Test-CommandVersion {
+  param($params)
+  $command_string = $params[0]
+  $target_version = $params[1]
+  $debug = $params.Count -gt 2
+
+  $fso = New-Object -ComObject Scripting.FileSystemObject
+
+  while ($true) {
+    (Get-Command $command_string -ErrorAction SilentlyContinue -ErrorVariable F) > $null
+    $r = $($null -eq $F.length)
+    if ($r -eq $false) {
+      Write-Output $r
+      return
+    }
+
+    $output = iex "& $command_string --version" | Out-String
+    $output = $output.split("`r`n")[0].split(" ")
+
+    for (($i = 0); ($i -lt $output.Count); ($i++)) {
+      if ($output[$i] -eq "version") {
+        $current_version = $output[$i+1]
+      }
+    }
+
+    $current_version = $current_version.split("-")[0]
+
+    if ($debug) {
+      Write-Output "Current $command_string : $current_version, target: $target_version"
+    }
+
+    $ta = @()
+    foreach ($v in $target_version.split(".")) {
+      $ta += [int]$v
+    }
+
+    $current_version_split = $current_version.split(".")
+
+    $ca = @()
+    # Ignore invalid (not equal) version strings
+    if ($current_version_split.Count -eq $ta.Count) {
+      foreach ($v in $current_version_split) {
+        $ca += [int]$v
+      }
+    } elseif ($debug) {
+      Write-Output "Invalid: $current_version"
+    }
+
+    if ($ca.Count -ne $ta.Count) {
+      Write-Output "$($ca.Count) <> $($ta.Count)"
+      Write-Output $false
+    }
+
+    for (($i = 0); ($i -lt $ca.Count); ($i++)) {
+      # Current element is lower, no point in comparing other elements
+      if ($ca[$i] -lt $ta[$i]) {
+        break; 
+      }
+
+      # Current element is greater, no need to compare other elements
+      if ($ca[$i] -gt $ta[$i]) {
+        Write-Output $true
+        return
+      }
+
+      # Current element is equal, test remaining elements
+    }
+
+    # Remove current item's path so it isn't used in future searches
+    $p = $fso.GetFile($(Get-CommandPath $command_string)).ParentFolder.Path
+    $env:PATH = $env:PATH.replace("$p", "")
+  }
+  
+  Write-Output $false
+}
+
 $vsconfig = "nmake.vsconfig"
 
 if ( -not (("llvm+vsbuild" -eq $toolchain) -or ("vsbuild" -eq $toolchain) -or ("llvm" -eq $toolchain)) ) {
   Write-Output "Unsupported -toolchain $toolchain. Supported options are vsbuild, llvm+vsbuild or llvm (external nmake required)"
-  Write-Output "-toolchain llvm+vsbuild will check for and install llvm clang and vsbuild nmake."
+  Write-Output "-toolchain llvm+vsbuild will check for and install llvm clang $targetClangVersion and vsbuild nmake."
+  
   Exit 1
 }
 
@@ -68,13 +172,6 @@ if ("vsbuild" -eq $toolchain) {
 
 
 Write-Output "Using toolchain: $toolchain"
-
-Function Found-Command {
-    param($command_string)
-    (Get-Command $command_string -ErrorAction SilentlyContinue -ErrorVariable F) > $null
-    $r = $($null -eq $F.length)
-    Write-Output $r
-}
 
 #
 # Install the files we will want to use for builds
@@ -137,7 +234,7 @@ Function Install-Requirements {
     
     $installer = "vc_redist.x64.exe"
     $url = "https://aka.ms/vs/17/release/$installer"
-    $confirmation = Read-Host "$installer is a requirement, proceed with install from Microsoft? y/[n]?" 
+    $confirmation = Prompt "$installer is a requirement, proceed with install from Microsoft? y/[n]?" 
     
     if ($confirmation -eq 'y') {
       $t = [string]{
@@ -159,14 +256,14 @@ Function Install-Requirements {
   if (-not (Found-Command($global:git))) {
     # Look for git in default location, in case it was installed in a previous session
     $global:git = "$gitPath\$global:git"
-    $global:path_advice += "SET PATH=""$gitPath"";%PATH%"
+    $global:path_advice += "`$env:PATH='$gitPath;'+`$env:PATH"
   } else {
     Write-Output ("Git found at, changing path to: $global:git")
   }
 
   if (-not (Found-Command($global:git))) {
 
-    $confirmation = Read-Host "git is a requirement, proceed with install from github.com/git-for-windows? y/[n]?"
+    $confirmation = Prompt "git is a requirement, proceed with install from github.com/git-for-windows? y/[n]?"
     $installer = "Git-2.39.1-64-bit.exe"
     $installer_tmp = "Git-2.39.1-64-bit.tmp"
     $url = "https://github.com/git-for-windows/git/releases/download/v2.39.1.windows.1/$installer"
@@ -191,15 +288,15 @@ Function Install-Requirements {
 
   # install `cmake.exe`
   if ($shbuild) {
-    $cmakePath = "$env:ProgramFiles\CMake\bin"
-    if (-not (Found-Command($global:cmake))) {
+    $cmakePath = ""
+    if (-not (Test-CommandVersion("cmake", $targetCmakeVersion))) {
+      $cmakePath = "$env:ProgramFiles\CMake\bin"
       $global:cmake = "$cmakePath\$global:cmake"
-      $global:path_advice += "SET PATH=""$cmakePath"";%PATH%"
     }
 
-    if (-not (Found-Command($global:cmake))) {
+    if (-not (Test-CommandVersion("cmake", $targetCmakeVersion))) {
 
-      $confirmation = Read-Host "CMake is a requirement, proceed with install from cmake.org? y/[n]?"
+      $confirmation = Prompt "CMake is a requirement, proceed with install from cmake.org? y/[n]?"
       $installer = "cmake-3.26.0-rc2-windows-x86_64.msi"
       $url = "https://github.com/Kitware/CMake/releases/download/v3.26.0-rc2/$installer"
 
@@ -223,15 +320,14 @@ Function Install-Requirements {
   if (("llvm+vsbuild" -eq $toolchain) -or ("llvm" -eq $toolchain)) {
     $clangPath = "$env:ProgramFiles\LLVM\bin"
 
-    if (-not (Found-Command($clang))) {
+    if (-not (Test-CommandVersion("clang++", $targetClangVersion))) {
       $clang = "$clangPath\$clang"
-      $global:path_advice += $clangPath
-      $global:path_advice += "SET PATH=""$clangPath"";%PATH%"
+      $global:path_advice += "`$env:PATH='$clangPath;'+`$env:PATH"
     }
 
-    if (-not (Found-Command($clang))) {
+    if (-not (Test-CommandVersion("clang++", $targetClangVersion))) {
 
-      $confirmation = Read-Host "LLVM will be downloaded for clang++, proceed? y/[n]?"
+      $confirmation = Prompt "LLVM will be downloaded for clang++, proceed? y/[n]?"
       if ($confirmation -eq 'y') {
         $installer = "LLVM-15.0.7-win64.exe"
         $url = "https://github.com/llvm/llvm-project/releases/download/llvmorg-15.0.7/$installer"
@@ -267,20 +363,20 @@ Function Install-Requirements {
     $report_vc_vars_reqd = $false
     $install_vc_build = $true
 
-    if ($shbuild -and $(Found-Command("clang++.exe")) -and $(Found-Command("nmake.exe"))) {
+    if ($shbuild -and $(Test-CommandVersion("clang++", $targetClangVersion)) -and $(Found-Command("nmake.exe"))) {
       Write-Output("# Found clang$and_nmake")
       $install_vc_build = $false
-    } elseif ($(Found-Command("clang++.exe"))) {
+    } elseif ($(Test-CommandVersion("clang++", $targetClangVersion))) {
       Write-Output("# Found clang")
       $install_vc_build = $false
     } else {
       if ($vc_exists) {
         Write-Output "Calling vcvars64.bat"
         $(Get-ProcEnvs($vc_vars))
-        if ($shbuild -and $(Found-Command("clang++.exe")) -and $(Found-Command("nmake.exe"))) {
+        if ($shbuild -and $(Test-CommandVersion("clang++", $targetClangVersion)) -and $(Found-Command("nmake.exe"))) {
           $report_vc_vars_reqd = $true
           $install_vc_build = $false
-        } elseif ($(Found-Command("clang++.exe"))) {
+        } elseif ($(Test-CommandVersion("clang++", $targetClangVersion))) {
           $report_vc_vars_reqd = $true
           $install_vc_build = $false
         } else {
@@ -289,9 +385,14 @@ Function Install-Requirements {
       }
     }
 
+    # Check windows SDK
+    if (($env:WindowsSdkDir -eq $null) -or ((Test-Path $env:WindowsSdkDir -PathType Container) -eq $false)) {
+      $install_vc_build = $true
+    }
+
     if ($install_vc_build) {
       $report_vc_vars_reqd = $true
-      $confirmation = Read-Host "Visual Studio Clang, Windows SDK$and_nmake are required, proceed with install from Microsoft? y/[n]?"
+      $confirmation = Prompt "clang $targetClangVersion, Windows SDK$and_nmake are required, proceed with install from Microsoft? y/[n]?"
       $installer = "vs_buildtools.exe"
       $url = "https://aka.ms/vs/17/release/$installer"
 
@@ -320,8 +421,7 @@ Function Install-Requirements {
     try {
       Start-Process powershell -verb runas -wait -ArgumentList "$script"
     } catch [InvalidOperationException] {
-      Write-Output "UAC declined, nothing installed."
-      Exit 1
+      $global:install_errors += "UAC declined, nothing installed."
     }
   }
 
@@ -330,40 +430,56 @@ Function Install-Requirements {
     if ($vc_exists) {
       $(Get-ProcEnvs($vc_vars))
     } else {
-      Write-Output "vcvars64.bat still not present, something went wrong."
-      Exit 1
+      if ($env:CI -eq $null) {
+        $global:install_errors += "vcvars64.bat still not present, something went wrong."
+      }
     }
   }
 
-  if (-not (Found-Command($clang))) {
-    Write-Output "not ok - unable to install clang++."
-    Exit 1
+  if (-not (Test-CommandVersion("clang++", $targetClangVersion))) {
+    $global:install_errors += "not ok - unable to install clang++."
+  }
+
+  if ($env:CI -eq $null) {
+    if (($env:WindowsSdkDir -eq $null) -or ((Test-Path $env:WindowsSdkDir -PathType Container) -eq $false)) {
+      # Had this situation occur after uninstalling SDK from add/remove programs instead of VS Installer.
+      $global:install_errors += "`$WindowsSdkDir ($env:WindowsSdkDir) still not present, please install manually."
+    } else {
+      # Find lib required for debug builds (Prevents 'Debug Assertion Failed. Expression: (_osfile(fh) & fopen)' error)
+      $WIN_DEBUG_LIBS="$($env:WindowsSdkDir)Lib\$($env:WindowsSDKLibVersion)ucrt\x64\ucrtd.osmode_permissive.lib"
+      if ((Test-Path $WIN_DEBUG_LIBS -PathType Leaf) -eq $false) {
+        if ($shbuild -eq $true) {
+          # Only report issue for ssc devs
+          $global:path_advice += "WARNING: Unable to determine ucrtd.osmode_permissive.lib path. This is only required for DEBUG builds."
+        } else {
+          $global:path_advice += "`$env:WIN_DEBUG_LIBS='$WIN_DEBUG_LIBS'"
+        }
+      }
+    }
   }
 
   if ((Test-Path "$vc_runtime_test_path" -PathType Leaf) -eq $false) {
-    Write-Output "$vc_runtime_test_path still not present, something went wrong."
-    Exit 1
+    $global:install_errors += "$vc_runtime_test_path still not present, something went wrong."
   }
 
   if (-not (Found-Command($global:git))) {
-    Write-Output "not ok - unable to install git."
-    Exit 1
+    $global:install_errors += "git not installed."
   }
 
   if ($shbuild) {
-    if (-not (Found-Command($global:cmake))) {
-      Write-Output "not ok - unable to install cmake"
-      Exit 1
+    if (-not (Test-CommandVersion("cmake", $targetCmakeVersion))) {
+      $global:install_errors += "not ok - unable to install cmake"
+    } else {
+      if ($cmakePath -ne '') {
+        $global:path_advice += "`$env:PATH='$cmakePath;'+`$env:PATH"
+        $env:PATH="$cmakePath\;$env:PATH"
+      }
     }
   }
 
   if ($report_vc_vars_reqd) {
-    $global:path_advice += """$vc_vars"""
-  }
-
-  # refresh enviroment after prereq setup
-  if ($(Found-Command("refreshenv"))) {
-    refreshenv
+    $file = (New-Object -ComObject Scripting.FileSystemObject).GetFile($(Get-CommandPath "clang++.exe"))
+    $global:path_advice += "`$env:PATH='$($file.ParentFolder.Path)'+`$env:PATH"
   }
 }
 
@@ -381,16 +497,19 @@ if ($shbuild) {
   # Look for sh in path
   if (-not (Found-Command($sh))) {
     $sh = "$gitPath\sh.exe"
-    Write-Output "sh.exe not in PATH or default Git\bin"
-    Exit 1
+    $global:install_errors += "sh.exe not in PATH or default Git\bin"
+    Exit-IfErrors
   }
 
   $find_check = iex "& ""$sh"" -c 'find --version'" | Out-String
 
   if (-not ($find_check -like "*find (GNU findutils)*")) {
-    Write-Output "find is not GNU findutils: '$find_check'"
-    Exit 1
+    $global:install_errors += "find is not GNU findutils: '$find_check'"
+    Exit-IfErrors
   }
+
+  $env:PATH="$BIN_PATH;$($env:PATH)"
+  $global:path_advice += "`$env:PATH='$BIN_PATH;'+`$env:PATH"
 
   cd $OLD_CWD
   Write-Output "Calling bin\install.sh $forceArg"
@@ -398,21 +517,21 @@ if ($shbuild) {
 }
 
 if ($global:path_advice.Count -gt 0) {
-  Write-Output "Please add the following to PATH or run in future dev sessions: "
+  Write-Output "Please run in future dev sessions: "
+  Write-Output "(Or just run cd $OLD_CWD; .\bin\install.ps1)"
   foreach ($p in $global:path_advice) {
     Write-Output $p
   }
 }
 
-if (-not $shbuild) {
-  Write-Output "Please close this terminal to continue setting up your socket app."
-}
-
 if ($package_setup -eq $true) {
   $paths = @{}
-  $fso = New-Object -ComObject Scripting.FileSystemObject 
-  $paths["CXX"] = $fso.GetFile($(Get-CommandPath "clang++.exe")).ShortPath
+  $file = (New-Object -ComObject Scripting.FileSystemObject).GetFile($(Get-CommandPath "clang++.exe"))
+  $paths["CXX"] = $file.ShortPath
   ConvertTo-Json $paths > env.json
 }
 
 cd $OLD_CWD
+Exit-IfErrors
+
+Exit 0
