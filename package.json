@@ -28,5 +28,8 @@
       "/api/crypto/sodium.js",
       "/npm/packages/@socketsupply/socket-node/index.cjs"
     ]
-  }
+  },
+  "workspaces": [
+    "npm/packages/@socketsupply/socket-node"
+  ]
 }
