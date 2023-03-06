@@ -17,4 +17,3 @@ await socket.send({
   event: 'character',
   value: { firstname: 'Morty', secondname: 'Smith' }
 })
-  
