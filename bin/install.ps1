@@ -25,19 +25,25 @@ $global:useCurl = $true
 $global:WIN_DEBUG_LIBS = ""
 $global:path_advice = @()
 $global:install_errors = @()
+$global:forceArg = ""
 $targetClangVersion = "15.0.0"
 $targetCmakeVersion = "3.24.0"
 
+# Powershell environment variables are maintained across sessions, clear if not explicitly set
+$set_debug=$null
 if ($debug -eq $true) {
   $LIBUV_BUILD_TYPE = "Debug"
   
   $SSC_BUILD_OPTIONS = "-g", "-O0"
-  [Environment]::SetEnvironmentVariable("DEBUG", "1")
+  $set_debug="1"
 }
+[Environment]::SetEnvironmentVariable("DEBUG", $set_debug)
 
+$set_verbose=$null
 if ($verbose -eq $true) {
-  [Environment]::SetEnvironmentVariable("VERBOSE", "1")
+  $set_verbose="1"
 }
+[Environment]::SetEnvironmentVariable("VERBOSE", $set_verbose)
 
 if ($force -eq $true) {
   $global:forceArg = "--force"
@@ -512,8 +518,8 @@ if ($shbuild) {
   $global:path_advice += "`$env:PATH='$BIN_PATH;'+`$env:PATH"
 
   cd $OLD_CWD
-  Write-Output "Calling bin\install.sh $forceArg"
-  iex "& ""$sh"" bin\install.sh $forceArg"
+  Write-Output "Calling bin\install.sh $global:forceArg"
+  iex "& ""$sh"" bin\install.sh $global:forceArg"
 }
 
 if ($global:path_advice.Count -gt 0) {
