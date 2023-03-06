@@ -517,8 +517,8 @@ namespace SSC {
           .frameless = opts.frameless,
           .utility = opts.utility,
           .canExit = true,
-          .height = opts.height,
           .width = opts.width,
+          .height = opts.height,
           .index = 0,
       #ifdef PORT
           .port = PORT,
