@@ -317,25 +317,73 @@ int runApp (const fs::path& path, const String& args, bool headless) {
       // tracks the latest log entry date so we ignore older ones
       NSDate* latest = nil;
 
-      int polls = 4;
+      int pollsAfterTermination = 4;
+      int backoffIndex = 0;
+      bool checkLogs = true;
+
+      // lucas series of backoffs
+      int backoffs[] = {
+        16*2,
+        16*1,
+        16*3,
+        16*4,
+        16*7,
+        16*11,
+        16*18,
+        16*29,
+        32*2,
+        32*1,
+        32*3,
+        32*4,
+        32*7,
+        32*11,
+        32*18,
+        32*29,
+        64*2,
+        64*1,
+        64*3,
+        64*4,
+        64*7,
+        64*11,
+        64*18,
+        64*29,
+      };
 
       dispatch_async(queue, ^{
         while (kill(app.processIdentifier, 0) == 0) {
-          msleep(256);
+          msleep(32);
         }
       });
 
-      while (appStatus < 0 || polls > 0) {
-        msleep(32);
-
+      while (appStatus < 0 || pollsAfterTermination > 0) {
         if (appStatus >= 0) {
-          polls = polls - 1;
+          pollsAfterTermination = pollsAfterTermination - 1;
+          checkLogs = true;
         }
 
         @autoreleasepool {
-          // We need  a new `OSLogStore` in each so we can keep
-          // enumeratoring the logs until the application terminates
-          auto logs = [OSLogStore localStoreAndReturnError: &error];
+          if (!checkLogs) {
+            auto backoff = backoffs[backoffIndex];
+            backoffIndex = (
+              (backoffIndex + 1) %
+              (sizeof(backoffs) / sizeof(backoffs[0]))
+            );
+
+            msleep(backoff);
+            checkLogs = true;
+            continue;
+          }
+
+          // We need  a new `OSLogStore` in each so we can keep enumeratoring
+          // the logs until the application terminates. This is required because
+          // each `OSLogStore` instance is a snapshot of the system's universal
+          // log archive at the time of instantiation. This is pretty expensive
+          // to keep doing, so we introduce a backoff system when we check for
+          // new logs as seeen above.
+          auto logs = [OSLogStore
+            storeWithScope: OSLogStoreSystem
+                     error: &error
+          ];
 
           if (error) {
             appStatus = 1;
@@ -364,15 +412,13 @@ int runApp (const fs::path& path, const String& args, bool headless) {
               error.domain,
               error.localizedDescription
             );
-
             break;
           }
 
           // Enumerate all the logs in this loop and print unredacted and most
           // recently log entries to stdout
+          checkLogs = false;
           for (OSLogEntryLog* entry in enumerator) {
-            msleep(8);
-
             if (
               entry.composedMessage &&
               entry.processIdentifier == app.processIdentifier
@@ -397,9 +443,12 @@ int runApp (const fs::path& path, const String& args, bool headless) {
                   }
                 }
 
-                polls = 4;
                 latest = entry.date;
-                offset = latest;
+                offset = [latest dateByAddingTimeInterval: 0.1];
+                checkLogs = true;
+                backoffIndex = 0;
+                pollsAfterTermination = 4;
+                msleep(8);
               }
             }
           }
