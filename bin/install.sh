@@ -797,7 +797,7 @@ _install_cli
 
 if [[ ! -z "$ANDROID_HOME" ]]; then  
   quiet "$root/bin/build-runtime-library.sh" --platform android
-  if [[ ! -z $? ]]; then
+  if [[ ! $? ]]; then
     exit $?
   fi
   _install arm64-v8a android & pids+=($!)
