@@ -1,6 +1,5 @@
 // @ts-check
 import { format } from 'node:util'
-// import { writeSync, fsyncSync } from 'node:fs'
 import { EventEmitter } from 'node:events'
 
 const MAX_MESSAGE_KB = 512 * 1024
@@ -34,13 +33,11 @@ class API {
     console.log = (...args) => {
       const s = args.map(v => format(v)).join(' ')
       const enc = encodeURIComponent(s)
-      // fs.appendFileSync('tmp.log', s + '\n')
       this.#write(`ipc://stdout?value=${enc}`)
     }
     console.error = (...args) => {
       const s = args.map(v => format(v)).join(' ')
       const enc = encodeURIComponent(s)
-      // fs.appendFileSync('tmp.log', s + '\n')
       this.#write(`ipc://stderr?value=${enc}`)
     }
 
@@ -58,7 +55,7 @@ class API {
   //
   #checkVersion (major, minor, patch) {
     if (major < API.#minimalMajorVersion || minor < API.#minimalMinorVersion || patch < API.#minimalPatchVersion) {
-      throw new Error(`ssc-node-backend requires at least version 0.1.0, got ${major}.${minor}.${patch}`)
+      throw new Error(`socket-node-backend requires at least version 0.1.0, got ${major}.${minor}.${patch}`)
     }
   }
 

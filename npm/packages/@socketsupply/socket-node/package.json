@@ -1,0 +1,32 @@
+{
+  "name": "@socketsupply/socket-node",
+  "version": "1.8.2",
+  "description": "A Node.js adapter for the Socket SDK",
+  "main": "index.js",
+  "exports": {
+    "import": "./index.js",
+    "require": "./index.cjs"
+  },
+  "type": "module",
+  "scripts": {
+    "test": "standard index.js",
+    "pub": "npm pub && npm publish --registry https://npm.pkg.github.com",
+    "build": "esbuild index.js --outfile=index.cjs --platform=node --format=cjs",
+    "prepublishOnly": "npm run build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/socketsupply/socket.git"
+  },
+  "author": "Socket Supply, Co <info@socketsupply.co>",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/socketsupply/socket/issues"
+  },
+  "homepage": "https://github.com/socketsupply/socket#readme",
+  "devDependencies": {
+    "@types/node": "16.10.2",
+    "esbuild": "0.14.49",
+    "standard": "17.0.0"
+  }
+}
