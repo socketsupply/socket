@@ -307,22 +307,6 @@ MAIN {
       auto value = message.get("value");
       auto seq = message.get("seq");
 
-      if (message.name == "log" || message.name == "stdout") {
-        if (isDebugEnabled()) {
-          debug("%s", value.c_str());
-        }
-        stdWrite(decodeURIComponent(value), false);
-        return;
-      }
-
-      if (message.name == "stderr") {
-        if (isDebugEnabled()) {
-          debug("%s", value.c_str());
-        }
-        stdWrite(decodeURIComponent(value), true);
-        return;
-      }
-
       if (message.index > 0 && message.name.size() == 0) {
         // @TODO: print warning
         return;
@@ -497,16 +481,6 @@ MAIN {
       }
       const auto seq = message.get("seq");
       currentWindow->resolvePromise(seq, OK_STATE, "null");
-      return;
-    }
-
-    if (message.name == "log" || message.name == "stdout") {
-      stdWrite(decodeURIComponent(value), false);
-      return;
-    }
-
-    if (message.name == "stderr") {
-      stdWrite(decodeURIComponent(value), true);
       return;
     }
 

@@ -328,6 +328,6 @@ jobs:
         node-version: 18
     - name: npm test
       run: |
-        cd npm/packages/socket-node
+        cd npm/packages/@socketsupply/socket-node
         npm i
         npm test
