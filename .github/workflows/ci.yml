@@ -315,3 +315,18 @@ jobs:
         CI: true
         CXX: g++-12
         NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
+
+  socket_node:
+    name: socket-node tests
+    runs-on: ubuntu-22.04
+    timeout-minutes: 2
+    steps:
+    - uses: actions/checkout@v3
+    - name: Use Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: 18
+    - name: npm test
+      run: |
+        npm i
+        npm test
