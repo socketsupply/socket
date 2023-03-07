@@ -124,7 +124,7 @@ namespace SSC {
       "  console.error(err.stack || err, params);                            \n"
       "}                                                                     \n"
       "                                                                      \n"
-      "globalThis.__CORE_XHR_POST_QUEUE__.dispatch(                          \n"
+      "globalThis.__RUNTIME_XHR_POST_QUEUE__.dispatch(                       \n"
       "  id,                                                                 \n"
       "  seq,                                                                \n"
       "  params,                                                             \n"
