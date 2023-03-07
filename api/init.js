@@ -1,7 +1,8 @@
+/* global CustomEvent */
 import { InvertedPromise } from 'socket:util'
-import console from 'socket:console'
 import ipc from 'socket:ipc'
 
+// eslint-disable-next-line new-parens
 globalThis.__CORE_XHR_POST_QUEUE__ = new class CoreXHRPostQueue extends EventTarget {
   concurrency = 16
   pending = []
@@ -41,7 +42,7 @@ globalThis.__CORE_XHR_POST_QUEUE__ = new class CoreXHRPostQueue extends EventTar
 
     queueMicrotask(() => {
       const { data } = result
-      const detail = { headers, params, data, id, }
+      const detail = { headers, params, data, id }
       globalThis.dispatchEvent(new CustomEvent('data', { detail }))
       promise.resolve()
     })
