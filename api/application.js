@@ -127,7 +127,6 @@ export async function getWindows (indices) {
 /**
  * Returns the ApplicationWindow instance for the given index
  * @param {number} index - the index of the window
- * @return {Promise<ipc.Result>}
  * @throws {Error} - if index is not a valid integer number
  * @returns {Promise<ApplicationWindow | null>} - the ApplicationWindow instance or null if the window does not exist
  */
