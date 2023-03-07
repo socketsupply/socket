@@ -169,14 +169,22 @@ if [[ ! -d $obj_dir ]]; then
   echo "Building Android App"
   quiet ssc init
   temp=$(mktemp)
-  quiet sed '/\[android\]/s/.*/&\
+  # Using quiet with > is bad news
+  quiet echo "Applying NDK build options..."
+  sed '/\[android\]/s/.*/&\
 build_remove_path = dist\/android\/app\/src\/\
 build_socket_runtime = true\
 skip_gradle = true/' $app_dir/socket.ini > $temp
-  quiet mv $temp $app_dir/socket.ini
+  mv $temp $app_dir/socket.ini
+  option_test="$(grep "build_socket_runtime = true" $app_dir/socket.ini|wc -l)"
+  if [[ "$option_test" -lt "1" ]]; then
+    echo "$app_dir/socket.ini doesn't contain 'build_socket_runtime = true', ssc or sed command failed."
+    exit 1
+  fi
   echo "Starting ssc from $(pwd), this might take some time."
   # downloads android deps
-  if ! quiet ssc build -o --platform=android > build.log 2>&1; then
+  quiet echo "ssc build -o --platform=android > build.log 2>&1"
+  if ! ssc build -o --platform=android > build.log 2>&1; then
     cat build.log
     echo "NDK build failed."
     exit 1
