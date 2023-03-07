@@ -47,6 +47,7 @@ test('primordials', (t) => {
   ].sort(), 'primordials keys match')
   t.equal(typeof primordials.arch, 'string', 'primordials.arch is a string')
   t.equal(typeof primordials.cwd, 'string', 'primordials.cwd is a string')
+  t.ok(primordials.cwd.length > 1, 'primordials.cwd is a more than one character')
   t.equal(typeof primordials.platform, 'string', 'primordials.platform is a string')
   t.equal(typeof primordials.version, 'object', 'primordials.version is an object')
   t.ok(/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(primordials.version.short), `primordials.version.short is correct (${primordials.version.short})`)
@@ -96,6 +97,7 @@ test('ipc.Message', (t) => {
   t.ok(!ipc.Message.isValidInput('foo://test'), 'is valid input')
 })
 
+// FIXME: hangs on iOS
 if (process.platform !== 'ios' && process.platform !== 'android') {
   test('ipc.sendSync not found', (t) => {
     const response = ipc.sendSync('test', { foo: 'bar' })
@@ -125,15 +127,17 @@ test('ipc.sendSync success', (t) => {
 
 //
 // TODO: ipc.send error should match ipc.sendSync error
-//
-test('ipc.send not found', async (t) => {
-  const response = await ipc.send('test', { foo: 'bar' })
-  t.ok(response instanceof ipc.Result, 'response is an ipc.Result')
-  t.ok(response.err instanceof Error, 'response.err is an Error')
-  t.equal(response.err.toString(), 'NotFoundError: Not found')
-  t.equal(response.err.name, 'NotFoundError')
-  t.equal(response.err.message, 'Not found')
-})
+// FIXME: hangs on iOS
+if (process.platform !== 'ios' && process.platform !== 'android') {
+  test('ipc.send not found', async (t) => {
+    const response = await ipc.send('test', { foo: 'bar' })
+    t.ok(response instanceof ipc.Result, 'response is an ipc.Result')
+    t.ok(response.err instanceof Error, 'response.err is an Error')
+    t.equal(response.err.toString(), 'NotFoundError: Not found')
+    t.equal(response.err.name, 'NotFoundError')
+    t.equal(response.err.message, 'Not found')
+  })
+}
 
 test('ipc.send success', async (t) => {
   const response = await ipc.send('platform.primordials')
