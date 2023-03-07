@@ -796,17 +796,19 @@ fi
 _install_cli
 
 if [[ ! -z "$ANDROID_HOME" ]]; then
-  "$root/bin/build-runtime-library.sh" --platform android
-  if [[ ! $? ]]; then
-    exit $?
+  if [[ ! -n $CI ]] || [[ -n $SSC_ANDROID_CI ]]; then
+    "$root/bin/build-runtime-library.sh" --platform android
+    if [[ ! $? ]]; then
+      exit $?
+    fi
+    _install arm64-v8a android & pids+=($!)
+    _install armeabi-v7a android & pids+=($!)
+    _install x86 android & pids+=($!)
+    _install x86_64 android & pids+=($!)
+    wait
+  else
+    echo "ANDROID_HOME not set, won't attempt to build android."
   fi
-  _install arm64-v8a android & pids+=($!)
-  _install armeabi-v7a android & pids+=($!)
-  _install x86 android & pids+=($!)
-  _install x86_64 android & pids+=($!)
-  wait
-else
-  echo "ANDROID_HOME not set, won't attempt to build android."
 fi
 
 
