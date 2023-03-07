@@ -1,7 +1,42 @@
 declare root="$(cd "$(dirname "$(dirname "${BASH_SOURCE[0]}")")" && pwd)"
 
-# TODO(@mribbons): Test on darwin
-# TODO(@mribbons): Test lib paths when building from create-socket-app
+### How this script is used
+# 1. install.sh is executed
+# 2. If ssc is installed && ANDROID_HOME is set, _build_runtime_library() calls build-runtime-library.sh --platform android & pids+=($!)
+# This will happen if we're running from sh bin\publish-npm-modules.sh: This provides some performance benefit as 
+# 3. If platform == android, build-runtime-library.sh calls this script and returns the result without any further processing
+# android libs can be built in parallel with others
+# 4. This script produces libs in the same folder lib/$arch-$platform format as build-runtime-library.sh
+# 5. At the end of install.sh, build-runtime-library.sh --platform android is attempted again
+# (Note that there are checks in place to ensure that the build doesn't happen twice)
+
+### How this script works
+# Currently it does not call ndkbuild directly.
+# Instead, it leverages off the previously existing cli.cc android code to:
+# a. Download android dependencies
+# b. BUild libsocket-runtime.so for each android abi
+
+# To achieve this, new [android] options were added to socket.ini
+# build_socket_runtime - (default false) - if enabled call ndkbuild to create libsocket-runtime.so
+#                                        - if disabled, copy android libs from $SOCKET_HOME
+# skip_gradle - (default false) - If enabled, don't compile app or build apk
+
+# Therefore, in order to produce libsocket-runtime.so's, this script just has to enable 
+# the options above in socket.ini.
+
+# When the user wants to build an app, build_socket_runtime is disabled so 
+# prebuilt libraries will be copied to their app before the apk is bundled.
+
+# Requirements
+# This applies to both building libs and apps
+# Standard Android development environment (IDEs not required):
+# $ANDROID_HOME which points to a folder containing cmdline-tools/latest and platform-tools
+# $JAVA_HOME which points to a folder containing bin\javac ~v19 (NOT the bin folder itself)
+# ndk tools will be downloaded during build process
+
+### Why do this?
+# 1. Using gradle, there is no way to pass -J (parallel build) to ndkbuild, so it's slow
+# 2. We should prebuild the runtime for Android as we do on other platforms
 
 declare args=()
 declare pids=()
