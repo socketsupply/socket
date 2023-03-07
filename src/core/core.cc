@@ -109,7 +109,7 @@ namespace SSC {
 
     auto sid = std::to_string(post.id);
     auto js = createJavaScript("post-data.js",
-      "const globals = await import('socket:internal/globals');      \n"
+      "const globals = await import('socket:internal/globals');              \n"
       "const id = `" + sid + "`;                                             \n"
       "const seq = `" + seq + "`;                                            \n"
       "const headers = `" + trim(post.headers) + "`                          \n"
