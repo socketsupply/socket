@@ -2,18 +2,19 @@
 /* eslint-disable import/first */
 globalThis.__RUNTIME_INIT_NOW__ = performance.now()
 
-import { IllegalConstructor, InvertedPromise } from 'socket:util'
-import { applyPolyfills } from 'socket:polyfills'
-import hooks from 'socket:hooks'
-import ipc from 'socket:ipc'
+import { IllegalConstructor, InvertedPromise } from '../util.js'
+import { applyPolyfills } from '../polyfills.js'
+import globals from './globals.js'
+import hooks from '../hooks.js'
+import ipc from '../ipc.js'
 
 // async preload modules
 hooks.onReady(async () => {
   // precache fs.constants
   await ipc.request('fs.constants', {}, { cache: true })
-  import('socket:diagnostics')
-  import('socket:fs/fds')
-  import('socket:fs/constants')
+  import('../diagnostics.js')
+  import('../fs/fds.js')
+  import('../fs/constants.js')
 })
 
 class RuntimeXHRPostQueue extends EventTarget {
@@ -62,7 +63,7 @@ class RuntimeXHRPostQueue extends EventTarget {
   }
 }
 
-globalThis.__RUNTIME_XHR_POST_QUEUE__ = new RuntimeXHRPostQueue()
+globals.register('RuntimeXHRPostQueue', new RuntimeXHRPostQueue())
 // prevent further construction if this class is indirectly referenced
 RuntimeXHRPostQueue.prototype.constructor = IllegalConstructor
 export default applyPolyfills()
