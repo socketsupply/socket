@@ -257,7 +257,7 @@ export function transform (filename) {
 }
 
 [
-  'backend.js',
+  'application.js',
   'bluetooth.js',
   // 'bootstrap.js', // don't document this module yet
   'crypto.js',
@@ -272,6 +272,5 @@ export function transform (filename) {
   'p2p.js',
   'path/path.js',
   'process.js',
-  'application.js',
   'window.js'
 ].forEach(transform)

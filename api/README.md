@@ -1,10 +1,219 @@
 
-# [Backend](https://github.com/socketsupply/socket/blob/master/api/backend.js#L7)
+# [Application](https://github.com/socketsupply/socket/blob/master/api/application.js#L7)
 
 
- Provides methods for the backend process management
+ Provides Application level methods
 
-## [`open(opts)`](https://github.com/socketsupply/socket/blob/master/api/backend.js#L14)
+## [`createWindow(opts)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L36)
+
+Creates a new window and returns an instance of ApplicationWindow.
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| opts | object |  | false | an options object |
+| opts.index | number |  | false | the index of the window |
+| opts.path | string |  | false | the path to the HTML file to load into the window |
+| opts.title | string |  | true | the title of the window |
+| opts.width | number \| string |  | true | the width of the window. If undefined, the window will have the main window width. |
+| opts.height | number \| string |  | true | the height of the window. If undefined, the window will have the main window height. |
+| opts.minWidth | number \| string | 0 | true | the minimum width of the window |
+| opts.minHeight | number \| string | 0 | true | the minimum height of the window |
+| opts.maxWidth | number \| string | 100% | true | the maximum width of the window |
+| opts.maxHeight | number \| string | 100% | true | the maximum height of the window |
+| opts.resizable | boolean | true | true | whether the window is resizable |
+| opts.frameless | boolean | false | true | whether the window is frameless |
+| opts.utility | boolean | false | true | whether the window is utility (macOS only) |
+| opts.canExit | boolean | false | true | whether the window can exit the app |
+
+
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| Not specified | Promise<ipc.Result> |  |
+
+
+## [`getScreenSize()`](https://github.com/socketsupply/socket/blob/master/api/application.js#L94)
+
+Returns the current screen size.
+
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| Not specified | Promise<ipc.Result> |  |
+
+
+## [`getWindows(indices)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L114)
+
+Returns the ApplicationWindow instances for the given indices or all windows if no indices are provided.
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| indices | number \| undefined |  | false | the indices of the windows |
+
+
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| Not specified | Promise<ipc.Result> |  |
+
+
+## [`getWindow(index)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L133)
+
+Returns the ApplicationWindow instance for the given index
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| index | number |  | false | the index of the window |
+
+
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| Not specified | Promise<ApplicationWindow | null> | the ApplicationWindow instance or null if the window does not exist |
+
+
+## [`getCurrentWindow()`](https://github.com/socketsupply/socket/blob/master/api/application.js#L143)
+
+Returns the ApplicationWindow instance for the current window.
+
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| Not specified | Promise<ApplicationWindow> |  |
+
+
+## [`exit(options)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L152)
+
+Quits the backend process and then quits the render process, the exit code used is the final exit code to the OS.
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| options | object |  | false | an options object |
+
+
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| Not specified | Promise<Any> |  |
+
+
+## [`setSystemMenu(options)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L249)
+
+Set the native menu for the app.
+
+
+ Socket Runtime provides a minimalist DSL that makes it easy to create
+ cross platform native system and context menus.
+
+ Menus are created at run time. They can be created from either the Main or
+ Render process. The can be recreated instantly by calling the `setSystemMenu` method.
+
+ The method takes a string. Here's an example of a menu. The semi colon is
+ significant indicates the end of the menu. Use an underscore when there is no
+ accelerator key. Modifiers are optional. And well known OS menu options like
+ the edit menu will automatically get accelerators you dont need to specify them.
+
+
+ ```js
+ socket.application.setSystemMenu({ index: 0, value: `
+   App:
+     Foo: f;
+
+   Edit:
+     Cut: x
+     Copy: c
+     Paste: v
+     Delete: _
+     Select All: a;
+
+   Other:
+     Apple: _
+     Another Test: T
+     !Im Disabled: I
+     Some Thing: S + Meta
+     ---
+     Bazz: s + Meta, Control, Alt;
+ `)
+ ```
+
+ Separators
+
+ To create a separator, use three dashes `---`.
+
+
+ Accelerator Modifiers
+
+ Accelerator modifiers are used as visual indicators but don't have a
+ material impact as the actual key binding is done in the event listener.
+
+ A capital letter implies that the accelerator is modified by the `Shift` key.
+
+ Additional accelerators are `Meta`, `Control`, `Option`, each separated
+ by commas. If one is not applicable for a platform, it will just be ignored.
+
+ On MacOS `Meta` is the same as `Command`.
+
+
+ Disabled Items
+
+ If you want to disable a menu item just prefix the item with the `!` character.
+ This will cause the item to appear disabled when the system menu renders.
+
+
+ Submenus
+
+ We feel like nested menus are an anti-pattern. We don't use them. If you have a
+ strong argument for them and a very simple pull request that makes them work we
+ may consider them.
+
+
+ Event Handling
+
+ When a menu item is activated, it raises the `menuItemSelected` event in
+ the front end code, you can then communicate with your backend code if you
+ want from there.
+
+ For example, if the `Apple` item is selected from the `Other` menu...
+
+ ```js
+ window.addEventListener('menuItemSelected', event => {
+   assert(event.detail.parent === 'Other')
+   assert(event.detail.title === 'Apple')
+ })
+ ```
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| options | object |  | false | an options object |
+| options.value | string |  | false | the menu layout |
+| options.index | number |  | false | the window to target (if applicable) |
+
+
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| Not specified | Promise<Any> |  |
+
+
+## [`setSystemMenuItemEnabled()`](https://github.com/socketsupply/socket/blob/master/api/application.js#L298)
+
+This is a `FunctionDeclaration` named `setSystemMenuItemEnabled` in `api/application.js`, it's exported but undocumented.
+
+
+## [version](https://github.com/socketsupply/socket/blob/master/api/application.js#L302)
+
+This is a `VariableDeclaration` named `version` in `api/application.js`, it's exported but undocumented.
+
+
+## [debug](https://github.com/socketsupply/socket/blob/master/api/application.js#L303)
+
+This is a `VariableDeclaration` named `debug` in `api/application.js`, it's exported but undocumented.
+
+
+## [config](https://github.com/socketsupply/socket/blob/master/api/application.js#L304)
+
+This is a `VariableDeclaration` named `config` in `api/application.js`, it's exported but undocumented.
+
+
+## [backend](https://github.com/socketsupply/socket/blob/master/api/application.js#L306)
+
+This is a `VariableDeclaration` named `backend` in `api/application.js`, it's exported but undocumented.
+
+
+### [`undefined(opts)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L312)
 
 
 
@@ -19,16 +228,7 @@
 | Not specified | Promise<ipc.Result> |  |
 
 
-## [`close()`](https://github.com/socketsupply/socket/blob/master/api/backend.js#L22)
-
-
-
-| Return Value | Type | Description |
-| :---         | :--- | :---        |
-| Not specified | Promise<ipc.Result> |  |
-
-
-## [`sendToProcess()`](https://github.com/socketsupply/socket/blob/master/api/backend.js#L29)
+### [undefined](https://github.com/socketsupply/socket/blob/master/api/application.js#L320)
 
 
 
@@ -111,11 +311,11 @@ Start advertising a new value for a well-known UUID
  Some high-level methods around the `crypto.subtle`API for getting
  random bytes and hashing.
 
-## [webcrypto](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L32)
+## [webcrypto](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L43)
 
 WebCrypto API
 
-## [`getRandomValues(buffer)`](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L40)
+## [`getRandomValues(buffer)`](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L51)
 
 External docs: https://developer.mozilla.org/en-US/docs/Web/API/Crypto/getRandomValues
 
@@ -131,24 +331,24 @@ Generate cryptographically strong random values into the `buffer`
 | Not specified | TypedArray |  |
 
 
-## [`rand64()`](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L52)
+## [`rand64()`](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L72)
 
 This is a `FunctionDeclaration` named `rand64` in `api/crypto.js`, it's exported but undocumented.
 
 
-## [RANDOM_BYTES_QUOTA](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L60)
+## [RANDOM_BYTES_QUOTA](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L80)
 
 Maximum total size of random bytes per page
 
-## [MAX_RANDOM_BYTES](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L65)
+## [MAX_RANDOM_BYTES](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L85)
 
 Maximum total size for random bytes.
 
-## [MAX_RANDOM_BYTES_PAGES](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L70)
+## [MAX_RANDOM_BYTES_PAGES](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L90)
 
 Maximum total amount of allocated per page of bytes (max/quota)
 
-## [`randomBytes(size)`](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L78)
+## [`randomBytes(size)`](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L98)
 
 Generate `size` random bytes.
 
@@ -162,7 +362,7 @@ Generate `size` random bytes.
 | Not specified | Buffer | A promise that resolves with an instance of socket.Buffer with random bytes. |
 
 
-## [`createDigest(algorithm, message)`](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L105)
+## [`createDigest(algorithm, message)`](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L125)
 
 
 
@@ -498,6 +698,11 @@ External docs: https://nodejs.org/api/dns.html#dnspromiseslookuphostname-options
 | Return Value | Type | Description |
 | :---         | :--- | :---        |
 | Not specified | Promise |  |
+
+
+## [CustomEvent](https://github.com/socketsupply/socket/blob/master/api/events.js#L472)
+
+This is a `VariableDeclaration` named `CustomEvent` in `api/events.js`, it's exported but undocumented.
 
 
 # [File System](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L24)
@@ -905,7 +1110,27 @@ External docs: https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fspromisesw
  ipc://command?key1=value1&key2=value2...
  ```
 
-## [`emit(name, value, target , options)`](https://github.com/socketsupply/socket/blob/master/api/ipc.js#L960)
+### [undefined](https://github.com/socketsupply/socket/blob/master/api/ipc.js#L555)
+
+
+
+### [undefined](https://github.com/socketsupply/socket/blob/master/api/ipc.js#L766)
+
+
+
+### [undefined](https://github.com/socketsupply/socket/blob/master/api/ipc.js#L771)
+
+
+
+### [undefined](https://github.com/socketsupply/socket/blob/master/api/ipc.js#L776)
+
+
+
+### [undefined](https://github.com/socketsupply/socket/blob/master/api/ipc.js#L781)
+
+
+
+## [`emit(name, value, target , options)`](https://github.com/socketsupply/socket/blob/master/api/ipc.js#L983)
 
 Emit event to be dispatched on `window` object.
 
@@ -917,7 +1142,7 @@ Emit event to be dispatched on `window` object.
 | options | Object |  | true |  |
 
 
-## [`send(command, value)`](https://github.com/socketsupply/socket/blob/master/api/ipc.js#L1016)
+## [`send(command, value)`](https://github.com/socketsupply/socket/blob/master/api/ipc.js#L1039)
 
 Sends an async IPC command request with parameters.
 
@@ -938,59 +1163,89 @@ Sends an async IPC command request with parameters.
  This module provides normalized system information from all the major
  operating systems.
 
-## [`arch()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L17)
+### [undefined](https://github.com/socketsupply/socket/blob/master/api/os.js#L20)
+
+
+
+### [undefined](https://github.com/socketsupply/socket/blob/master/api/os.js#L25)
+
+
+
+### [undefined](https://github.com/socketsupply/socket/blob/master/api/os.js#L29)
+
+
+
+### [undefined](https://github.com/socketsupply/socket/blob/master/api/os.js#L34)
+
+
+
+### [undefined](https://github.com/socketsupply/socket/blob/master/api/os.js#L39)
+
+
+
+## [`arch()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L42)
 
 This is a `FunctionDeclaration` named `arch` in `api/os.js`, it's exported but undocumented.
 
 
-## [`cpus()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L21)
+## [`cpus()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L46)
 
 This is a `FunctionDeclaration` named `cpus` in `api/os.js`, it's exported but undocumented.
 
 
-## [`networkInterfaces()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L31)
+## [`networkInterfaces()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L56)
 
 This is a `FunctionDeclaration` named `networkInterfaces` in `api/os.js`, it's exported but undocumented.
 
 
-## [`platform()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L113)
+## [`platform()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L138)
 
 This is a `FunctionDeclaration` named `platform` in `api/os.js`, it's exported but undocumented.
 
 
-## [`type()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L117)
+## [`type()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L142)
 
 This is a `FunctionDeclaration` named `type` in `api/os.js`, it's exported but undocumented.
 
 
-## [`isWindows()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L154)
+## [`isWindows()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L179)
 
 This is a `FunctionDeclaration` named `isWindows` in `api/os.js`, it's exported but undocumented.
 
 
-## [`tmpdir()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L163)
+## [`tmpdir()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L188)
 
 This is a `FunctionDeclaration` named `tmpdir` in `api/os.js`, it's exported but undocumented.
 
 
-## [EOL](https://github.com/socketsupply/socket/blob/master/api/os.js#L207)
+## [EOL](https://github.com/socketsupply/socket/blob/master/api/os.js#L232)
 
 This is a `VariableDeclaration` named `EOL` in `api/os.js`, it's exported but undocumented.
 
 
-## [`rusage()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L215)
+## [`rusage()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L240)
 
 This is a `FunctionDeclaration` named `rusage` in `api/os.js`, it's exported but undocumented.
 
 
-## [`uptime()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L221)
+## [`uptime()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L246)
 
 This is a `FunctionDeclaration` named `uptime` in `api/os.js`, it's exported but undocumented.
 
 
-## [`uname()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L227)
+## [`uname()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L252)
 
 This is a `FunctionDeclaration` named `uname` in `api/os.js`, it's exported but undocumented.
+
+
+## [`hrtime()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L262)
+
+This is a `FunctionDeclaration` named `hrtime` in `api/os.js`, it's exported but undocumented.
+
+
+## [`availableMemory()`](https://github.com/socketsupply/socket/blob/master/api/os.js#L271)
+
+This is a `FunctionDeclaration` named `availableMemory` in `api/os.js`, it's exported but undocumented.
 
 
 # [Path](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L4)
@@ -1038,12 +1293,12 @@ Computes current working directory for a path
 
 
 
-## [`nextTick()`](https://github.com/socketsupply/socket/blob/master/api/process.js#L32)
+## [`nextTick()`](https://github.com/socketsupply/socket/blob/master/api/process.js#L33)
 
 This is a `FunctionDeclaration` named `nextTick` in `api/process.js`, it's exported but undocumented.
 
 
-## [`homedir()`](https://github.com/socketsupply/socket/blob/master/api/process.js#L55)
+## [`homedir()`](https://github.com/socketsupply/socket/blob/master/api/process.js#L66)
 
 
 
@@ -1052,7 +1307,21 @@ This is a `FunctionDeclaration` named `nextTick` in `api/process.js`, it's expor
 | Not specified | string | The home directory of the current user. |
 
 
-## [`exit(code)`](https://github.com/socketsupply/socket/blob/master/api/process.js#L62)
+## [`hrtime(time)`](https://github.com/socketsupply/socket/blob/master/api/process.js#L75)
+
+Computed high resolution time as a `BigInt`.
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| time | Array<number>? |  | false |  |
+
+
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| Not specified | bigint |  |
+
+
+## [`exit(code)`](https://github.com/socketsupply/socket/blob/master/api/process.js#L99)
 
 
 
@@ -1061,232 +1330,22 @@ This is a `FunctionDeclaration` named `nextTick` in `api/process.js`, it's expor
 | code | number | 0 | true | The exit code. Default: 0. |
 
 
-# [Application](https://github.com/socketsupply/socket/blob/master/api/application.js#L7)
+## [`memoryUsage()`](https://github.com/socketsupply/socket/blob/master/api/process.js#L107)
 
+This is a `FunctionDeclaration` named `memoryUsage` in `api/process.js`, it's exported but undocumented.
 
- Provides Application level methods
 
-## [`createWindow(opts)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L36)
-
-Creates a new window and returns an instance of ApplicationWindow.
-
-| Argument | Type | Default | Optional | Description |
-| :---     | :--- | :---:   | :---:    | :---        |
-| opts | object |  | false | an options object |
-| opts.index | number |  | false | the index of the window |
-| opts.path | string |  | false | the path to the HTML file to load into the window |
-| opts.title | string |  | true | the title of the window |
-| opts.width | number \| string |  | true | the width of the window. If undefined, the window will have the main window width. |
-| opts.height | number \| string |  | true | the height of the window. If undefined, the window will have the main window height. |
-| opts.minWidth | number \| string | 0 | true | the minimum width of the window |
-| opts.minHeight | number \| string | 0 | true | the minimum height of the window |
-| opts.maxWidth | number \| string | 100% | true | the maximum width of the window |
-| opts.maxHeight | number \| string | 100% | true | the maximum height of the window |
-| opts.resizable | boolean | true | true | whether the window is resizable |
-| opts.frameless | boolean | false | true | whether the window is frameless |
-| opts.utility | boolean | false | true | whether the window is utility (macOS only) |
-| opts.canExit | boolean | false | true | whether the window can exit the app |
-
-
-| Return Value | Type | Description |
-| :---         | :--- | :---        |
-| Not specified | Promise<ipc.Result> |  |
-
-
-## [`getScreenSize()`](https://github.com/socketsupply/socket/blob/master/api/application.js#L94)
-
-Returns the current screen size.
-
-| Return Value | Type | Description |
-| :---         | :--- | :---        |
-| Not specified | Promise<ipc.Result> |  |
-
-
-## [`getWindows(indices)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L114)
-
-Returns the ApplicationWindow instances for the given indices or all windows if no indices are provided.
-
-| Argument | Type | Default | Optional | Description |
-| :---     | :--- | :---:   | :---:    | :---        |
-| indices | number \| undefined |  | false | the indices of the windows |
-
-
-| Return Value | Type | Description |
-| :---         | :--- | :---        |
-| Not specified | Promise<ipc.Result> |  |
-
-
-## [`getWindow(index)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L134)
-
-Returns the ApplicationWindow instance for the given index
-
-| Argument | Type | Default | Optional | Description |
-| :---     | :--- | :---:   | :---:    | :---        |
-| index | number |  | false | the index of the window |
-
-
-| Return Value | Type | Description |
-| :---         | :--- | :---        |
-| Not specified | Promise<ipc.Result> |  |
-| Not specified | Promise<ApplicationWindow | null> | the ApplicationWindow instance or null if the window does not exist |
-
-
-## [`getCurrentWindow()`](https://github.com/socketsupply/socket/blob/master/api/application.js#L144)
-
-Returns the ApplicationWindow instance for the current window.
-
-| Return Value | Type | Description |
-| :---         | :--- | :---        |
-| Not specified | Promise<ApplicationWindow> |  |
-
-
-## [`exit(options)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L153)
-
-Quits the backend process and then quits the render process, the exit code used is the final exit code to the OS.
-
-| Argument | Type | Default | Optional | Description |
-| :---     | :--- | :---:   | :---:    | :---        |
-| options | object |  | false | an options object |
-
-
-| Return Value | Type | Description |
-| :---         | :--- | :---        |
-| Not specified | Promise<Any> |  |
-
-
-## [`setSystemMenu(options)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L250)
-
-Set the native menu for the app.
-
-
- Socket Runtime provides a minimalist DSL that makes it easy to create
- cross platform native system and context menus.
-
- Menus are created at run time. They can be created from either the Main or
- Render process. The can be recreated instantly by calling the `setSystemMenu` method.
-
- The method takes a string. Here's an example of a menu. The semi colon is
- significant indicates the end of the menu. Use an underscore when there is no
- accelerator key. Modifiers are optional. And well known OS menu options like
- the edit menu will automatically get accelerators you dont need to specify them.
-
-
- ```js
- socket.application.setSystemMenu({ index: 0, value: `
-   App:
-     Foo: f;
-
-   Edit:
-     Cut: x
-     Copy: c
-     Paste: v
-     Delete: _
-     Select All: a;
-
-   Other:
-     Apple: _
-     Another Test: T
-     !Im Disabled: I
-     Some Thing: S + Meta
-     ---
-     Bazz: s + Meta, Control, Alt;
- `)
- ```
-
- Separators
-
- To create a separator, use three dashes `---`.
-
-
- Accelerator Modifiers
-
- Accelerator modifiers are used as visual indicators but don't have a
- material impact as the actual key binding is done in the event listener.
-
- A capital letter implies that the accelerator is modified by the `Shift` key.
-
- Additional accelerators are `Meta`, `Control`, `Option`, each separated
- by commas. If one is not applicable for a platform, it will just be ignored.
-
- On MacOS `Meta` is the same as `Command`.
-
-
- Disabled Items
-
- If you want to disable a menu item just prefix the item with the `!` character.
- This will cause the item to appear disabled when the system menu renders.
-
-
- Submenus
-
- We feel like nested menus are an anti-pattern. We don't use them. If you have a
- strong argument for them and a very simple pull request that makes them work we
- may consider them.
-
-
- Event Handling
-
- When a menu item is activated, it raises the `menuItemSelected` event in
- the front end code, you can then communicate with your backend code if you
- want from there.
-
- For example, if the `Apple` item is selected from the `Other` menu...
-
- ```js
- window.addEventListener('menuItemSelected', event => {
-   assert(event.detail.parent === 'Other')
-   assert(event.detail.title === 'Apple')
- })
- ```
-
-| Argument | Type | Default | Optional | Description |
-| :---     | :--- | :---:   | :---:    | :---        |
-| options | object |  | false | an options object |
-| options.value | string |  | false | the menu layout |
-| options.index | number |  | false | the window to target (if applicable) |
-
-
-| Return Value | Type | Description |
-| :---         | :--- | :---        |
-| Not specified | Promise<Any> |  |
-
-
-## [`setSystemMenuItemEnabled()`](https://github.com/socketsupply/socket/blob/master/api/application.js#L299)
-
-This is a `FunctionDeclaration` named `setSystemMenuItemEnabled` in `api/application.js`, it's exported but undocumented.
-
-
-## [version](https://github.com/socketsupply/socket/blob/master/api/application.js#L303)
-
-This is a `VariableDeclaration` named `version` in `api/application.js`, it's exported but undocumented.
-
-
-## [debug](https://github.com/socketsupply/socket/blob/master/api/application.js#L304)
-
-This is a `VariableDeclaration` named `debug` in `api/application.js`, it's exported but undocumented.
-
-
-## [config](https://github.com/socketsupply/socket/blob/master/api/application.js#L305)
-
-This is a `VariableDeclaration` named `config` in `api/application.js`, it's exported but undocumented.
-
-
-# [Window](https://github.com/socketsupply/socket/blob/master/api/window.js#L7)
+# [Window](https://github.com/socketsupply/socket/blob/master/api/window.js#L8)
 
 
  Provides Window class and methods
 
-## [`formatFileUrl()`](https://github.com/socketsupply/socket/blob/master/api/window.js#L11)
-
-This is a `FunctionDeclaration` named `formatFileUrl` in `api/window.js`, it's exported but undocumented.
-
-
-## [ApplicationWindow](https://github.com/socketsupply/socket/blob/master/api/window.js#L16)
+## [ApplicationWindow](https://github.com/socketsupply/socket/blob/master/api/window.js#L22)
 
 This is a `ClassDeclaration` named `ApplicationWindow` in `api/window.js`, it's exported but undocumented.
 
 
-### [`show()`](https://github.com/socketsupply/socket/blob/master/api/window.js#L73)
+### [`show()`](https://github.com/socketsupply/socket/blob/master/api/window.js#L80)
 
 Shows the window
 
@@ -1295,7 +1354,7 @@ Shows the window
 | Not specified | Promise<ipc.Result> |  |
 
 
-### [`hide()`](https://github.com/socketsupply/socket/blob/master/api/window.js#L82)
+### [`hide()`](https://github.com/socketsupply/socket/blob/master/api/window.js#L89)
 
 Hides the window
 
@@ -1304,13 +1363,13 @@ Hides the window
 | Not specified | Promise<ipc.Result> |  |
 
 
-### [`setTitle(title)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L92)
+### [`setTitle(title)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L99)
 
 Sets the title of the window
 
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
-| title | title |  | false | the title of the window |
+| title | string |  | false | the title of the window |
 
 
 | Return Value | Type | Description |
@@ -1318,7 +1377,7 @@ Sets the title of the window
 | Not specified | Promise<ipc.Result> |  |
 
 
-### [`setSize(opts)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L105)
+### [`setSize(opts)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L112)
 
 Sets the size of the window
 
@@ -1334,7 +1393,7 @@ Sets the size of the window
 | Not specified | Promise<ipc.Result> |  |
 
 
-### [`navigate(path)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L144)
+### [`navigate(path)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L151)
 
 
 
@@ -1348,7 +1407,7 @@ Sets the size of the window
 | Not specified | Promise<ipc.Result> |  |
 
 
-### [`setBackgroundColor(opts)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L166)
+### [`setBackgroundColor(opts)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L173)
 
 Sets the background color of the window
 
@@ -1366,7 +1425,7 @@ Sets the background color of the window
 | Not specified | Promise<ipc.Result> |  |
 
 
-### [`setContextMenu(options)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L176)
+### [`setContextMenu(options)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L183)
 
 Opens a native context menu.
 
@@ -1377,22 +1436,23 @@ Opens a native context menu.
 
 | Return Value | Type | Description |
 | :---         | :--- | :---        |
-| Not specified | Promise<Any> |  |
+| Not specified | Promise |  |
 
 
-### [`send(options)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L216)
+### [`send(options)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L224)
 
 
 
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
 | options | object |  | false | an options object |
-| options.window | number | currentWindow | true | the window to send the message to |
+| options.window | number |  | true | the window to send the message to |
+| options.backend | boolean | false | true | whether to send the message to the backend |
 | options.event | string |  | false | the event to send |
 | options.value | string \| object |  | true | the value to send |
 
 
-### [`openExternal(options)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L242)
+### [`openExternal(options)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L268)
 
 
 
@@ -1406,7 +1466,7 @@ Opens a native context menu.
 | Not specified | Promise<ipc.Result> |  |
 
 
-## [constants](https://github.com/socketsupply/socket/blob/master/api/window.js#L250)
+## [constants](https://github.com/socketsupply/socket/blob/master/api/window.js#L334)
 
 This is a `VariableDeclaration` named `constants` in `api/window.js`, it's exported but undocumented.
 
