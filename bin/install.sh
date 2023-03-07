@@ -795,8 +795,8 @@ fi
 
 _install_cli
 
-if [[ ! -z "$ANDROID_HOME" ]]; then  
-  quiet "$root/bin/build-runtime-library.sh" --platform android
+if [[ ! -z "$ANDROID_HOME" ]]; then
+  "$root/bin/build-runtime-library.sh" --platform android
   if [[ ! $? ]]; then
     exit $?
   fi
