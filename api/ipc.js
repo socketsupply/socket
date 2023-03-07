@@ -45,61 +45,7 @@ import { Buffer } from './buffer.js'
 import console from './console.js'
 
 let nextSeq = 1
-
-/**
- * @ignore
- */
-export class Headers extends globalThis.Headers {
-  /**
-   * @ignore
-   */
-  static from (input) {
-    if (input?.headers) return this.from(input.headers)
-
-    if (typeof input?.entries === 'function') {
-      return new this(input.entries())
-    } else if (isPlainObject(input) || isArrayLike(input)) {
-      return new this(input)
-    } else if (typeof input?.getAllResponseHeaders === 'function') {
-      input = input.getAllResponseHeaders()
-    } else if (typeof input?.headers?.entries === 'function') {
-      return new this(input.headers.entries())
-    }
-
-    return new this(parseHeaders(String(input)))
-  }
-
-  /**
-   * @ignore
-   */
-  get length () {
-    return Array.from(this.entries()).length
-  }
-
-  /**
-   * @ignore
-   */
-  toJSON () {
-    return Object.fromEntries(this.entries())
-  }
-}
-
-/**
- * @ignore
- */
-export async function postMessage (...args) {
-  if (window?.webkit?.messageHandlers?.external?.postMessage) {
-    return webkit.messageHandlers.external.postMessage(...args)
-  } else if (window?.chrome?.webview?.postMessage) {
-    return chrome.webview.postMessage(...args)
-  } else if (window?.external?.postMessage) {
-    return external.postMessage(...args)
-  }
-
-  throw new TypeError(
-    'Could not determine UserMessageHandler.postMessage in Window'
-  )
-}
+const cache = {}
 
 function initializeXHRIntercept () {
   if (typeof window === 'undefined') return
@@ -158,15 +104,16 @@ function initializeXHRIntercept () {
             // size here assumes latin1 encoding.
             await postMessage(`ipc://buffer.create?index=${index}&seq=${seq}&size=${body.length}`)
             await new Promise((resolve) => {
-              globalThis.chrome.webview.addEventListener('sharedbufferreceived', function onSharedBufferReceived (event) {
-                const { additionalData } = event
-                if (additionalData.index === index && additionalData.seq === seq) {
-                  const buffer = new Uint8Array(event.getBuffer())
-                  buffer.set(body)
-                  globalThis.chrome.webview.removeEventListener('sharedbufferreceived', onSharedBufferReceived)
-                  resolve()
-                }
-              })
+              globalThis.chrome.webview
+                .addEventListener('sharedbufferreceived', function onSharedBufferReceived (event) {
+                  const { additionalData } = event
+                  if (additionalData.index === index && additionalData.seq === seq) {
+                    const buffer = new Uint8Array(event.getBuffer())
+                    buffer.set(body)
+                    globalThis.chrome.webview.removeEventListener('sharedbufferreceived', onSharedBufferReceived)
+                    resolve()
+                  }
+                })
             })
           }
 
@@ -464,6 +411,61 @@ Object.defineProperty(debug, 'enabled', {
     return debug[kDebugEnabled]
   }
 })
+
+/**
+ * @ignore
+ */
+export class Headers extends globalThis.Headers {
+  /**
+   * @ignore
+   */
+  static from (input) {
+    if (input?.headers) return this.from(input.headers)
+
+    if (typeof input?.entries === 'function') {
+      return new this(input.entries())
+    } else if (isPlainObject(input) || isArrayLike(input)) {
+      return new this(input)
+    } else if (typeof input?.getAllResponseHeaders === 'function') {
+      input = input.getAllResponseHeaders()
+    } else if (typeof input?.headers?.entries === 'function') {
+      return new this(input.headers.entries())
+    }
+
+    return new this(parseHeaders(String(input)))
+  }
+
+  /**
+   * @ignore
+   */
+  get length () {
+    return Array.from(this.entries()).length
+  }
+
+  /**
+   * @ignore
+   */
+  toJSON () {
+    return Object.fromEntries(this.entries())
+  }
+}
+
+/**
+ * @ignore
+ */
+export async function postMessage (...args) {
+  if (window?.webkit?.messageHandlers?.external?.postMessage) {
+    return webkit.messageHandlers.external.postMessage(...args)
+  } else if (window?.chrome?.webview?.postMessage) {
+    return chrome.webview.postMessage(...args)
+  } else if (window?.external?.postMessage) {
+    return external.postMessage(...args)
+  }
+
+  throw new TypeError(
+    'Could not determine UserMessageHandler.postMessage in Window'
+  )
+}
 
 /**
  * A container for a IPC message based on a `ipc://` URI scheme.
@@ -943,6 +945,10 @@ export function sendSync (command, params = {}, options = {}) {
     return Result.from(new Error('Missing window in globalThis'), command)
   }
 
+  if (options?.cache === true && cache[command]) {
+    return cache[command]
+  }
+
   const request = new globalThis.XMLHttpRequest()
   const index = globalThis.__args.index ?? 0
   const seq = nextSeq++
@@ -968,6 +974,10 @@ export function sendSync (command, params = {}, options = {}) {
 
   if (debug.enabled) {
     debug.log('ipc.sendSync: (resolved)', command, result)
+  }
+
+  if (options?.cache === true) {
+    cache[command] = result
   }
 
   return result
@@ -1036,8 +1046,12 @@ export async function resolve (seq, value) {
  * @param {Mixed=} value
  * @return {Promise<Result>}
  */
-export async function send (command, value) {
+export async function send (command, value, options) {
   await ready()
+
+  if (options?.cache === true && cache[command]) {
+    return cache[command]
+  }
 
   if (debug.enabled) {
     debug.log('ipc.send:', command, value)
@@ -1073,6 +1087,10 @@ export async function send (command, value) {
       const result = Result.from(event.detail, null, command)
       if (debug.enabled) {
         debug.log('ipc.send: (resolved)', command, result)
+      }
+
+      if (options?.cache === true) {
+        cache[command] = result
       }
 
       resolve(result)
@@ -1191,6 +1209,10 @@ export async function write (command, params, buffer, options) {
 export async function request (command, params, options) {
   await ready()
 
+  if (options?.cache === true && cache[command]) {
+    return cache[command]
+  }
+
   const request = new globalThis.XMLHttpRequest()
   const signal = options?.signal
   const index = window?.__args?.index ?? 0
@@ -1260,6 +1282,10 @@ export async function request (command, params, options) {
 
         if (debug.enabled) {
           debug.log('ipc.request: (resolved)', command, result)
+        }
+
+        if (options?.cache === true) {
+          cache[command] = result
         }
 
         return resolve(result)
