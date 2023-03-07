@@ -931,20 +931,20 @@ void initFunctionsTable (Router *router) {
    * Prints incoming message value to stdout.
    */
   router->map("stdout", [=](auto message, auto router, auto reply) {
-    stdWrite(message.value, false);
   #if defined(__APPLE__)
     os_log_with_type(SSC_OS_LOG_BUNDLE, OS_LOG_TYPE_INFO, "%{public}s", message.value.c_str());
   #endif
+    stdWrite(message.value, false);
   });
 
   /**
    * Prints incoming message value to stderr.
    */
   router->map("stderr", [=](auto message, auto router, auto reply) {
-    stdWrite(message.value, true);
   #if defined(__APPLE__)
     os_log_with_type(SSC_OS_LOG_BUNDLE, OS_LOG_TYPE_ERROR, "%{public}s", message.value.c_str());
   #endif
+    stdWrite(message.value, true);
   });
 
   /**

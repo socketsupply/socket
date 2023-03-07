@@ -580,16 +580,27 @@ namespace SSC {
     #endif
   }
 
+  inline void notifyCli () {
+  #if !defined(_WIN32)
+    static auto ppid = getEnv("SSC_CLI_PID");
+    static auto pid = ppid.size() > 0 ? std::stoi(ppid) : 0;
+    if (pid > 0) {
+      kill(pid, SIGUSR1);
+    }
+  #endif
+  }
+
   inline void stdWrite (const String &str, bool isError) {
     (isError ? std::cerr : std::cout) << str << std::endl;
-    #ifdef _WIN32
-        StringStream ss;
-        ss << str << std::endl;
-        auto lineStr = ss.str();
+  #ifdef _WIN32
+    StringStream ss;
+    ss << str << std::endl;
+    auto lineStr = ss.str();
+    auto handle = isError ? STD_ERROR_HANDLE : STD_OUTPUT_HANDLE;
+    WriteConsoleA(GetStdHandle(handle), lineStr.c_str(), lineStr.size(), NULL, NULL);
+  #endif
 
-        auto handle = isError ? STD_ERROR_HANDLE : STD_OUTPUT_HANDLE;
-        WriteConsoleA(GetStdHandle(handle), lineStr.c_str(), lineStr.size(), NULL, NULL);
-    #endif
+    notifyCli();
   }
 
   #if !TARGET_OS_IPHONE && !TARGET_OS_SIMULATOR

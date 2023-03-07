@@ -70,6 +70,7 @@ bool flagQuietMode = false;
 Map defaultTemplateAttrs = {{ "ssc_version", SSC::VERSION_FULL_STRING }};
 
 #if defined(__APPLE__)
+std::atomic<bool> checkLogStore = true;
 static dispatch_queue_t queue = dispatch_queue_create(
   "socket.runtime.cli.queue",
   dispatch_queue_attr_make_with_qos_class(
@@ -159,6 +160,13 @@ static std::atomic<int> appStatus = -1;
 static std::mutex appMutex;
 
 void signalHandler (int signal) {
+#if defined(__APPLE__)
+  if (signal == SIGUSR1) {
+    checkLogStore = true;
+    return;
+  }
+#endif
+
   if (appProcess != nullptr) {
     auto pid = appProcess->getPID();
     appProcess->kill(pid);
@@ -234,6 +242,8 @@ int runApp (const fs::path& path, const String& args, bool headless) {
 
     auto bundle = [NSBundle bundleWithURL: url];
     auto env = [[NSMutableDictionary alloc] init];
+
+    env[@"SSC_CLI_PID"] = [NSString stringWithFormat: @"%d", getpid()];
 
     for (auto const &envKey : split(settings["build_env"], ',')) {
       auto cleanKey = trim(envKey);
@@ -319,7 +329,6 @@ int runApp (const fs::path& path, const String& args, bool headless) {
 
       int pollsAfterTermination = 4;
       int backoffIndex = 0;
-      bool checkLogs = true;
 
       // lucas series of backoffs
       int backoffs[] = {
@@ -351,35 +360,34 @@ int runApp (const fs::path& path, const String& args, bool headless) {
 
       dispatch_async(queue, ^{
         while (kill(app.processIdentifier, 0) == 0) {
-          msleep(32);
+          msleep(256);
         }
       });
 
       while (appStatus < 0 || pollsAfterTermination > 0) {
         if (appStatus >= 0) {
           pollsAfterTermination = pollsAfterTermination - 1;
-          checkLogs = true;
+          checkLogStore = true;
         }
 
+        if (!checkLogStore) {
+          auto backoff = backoffs[backoffIndex];
+          backoffIndex = (
+            (backoffIndex + 1) %
+            (sizeof(backoffs) / sizeof(backoffs[0]))
+          );
+
+          msleep(backoff);
+          continue;
+        }
+
+        // this is set to `true` from a `SIGUSR1` signal
+        checkLogStore = false;
         @autoreleasepool {
-          if (!checkLogs) {
-            auto backoff = backoffs[backoffIndex];
-            backoffIndex = (
-              (backoffIndex + 1) %
-              (sizeof(backoffs) / sizeof(backoffs[0]))
-            );
-
-            msleep(backoff);
-            checkLogs = true;
-            continue;
-          }
-
-          // We need  a new `OSLogStore` in each so we can keep enumeratoring
+          // We need a new `OSLogStore` in each so we can keep enumeratoring
           // the logs until the application terminates. This is required because
           // each `OSLogStore` instance is a snapshot of the system's universal
-          // log archive at the time of instantiation. This is pretty expensive
-          // to keep doing, so we introduce a backoff system when we check for
-          // new logs as seeen above.
+          // log archive at the time of instantiation.
           auto logs = [OSLogStore
             storeWithScope: OSLogStoreSystem
                      error: &error
@@ -417,7 +425,6 @@ int runApp (const fs::path& path, const String& args, bool headless) {
 
           // Enumerate all the logs in this loop and print unredacted and most
           // recently log entries to stdout
-          checkLogs = false;
           for (OSLogEntryLog* entry in enumerator) {
             if (
               entry.composedMessage &&
@@ -443,12 +450,9 @@ int runApp (const fs::path& path, const String& args, bool headless) {
                   }
                 }
 
-                latest = entry.date;
-                offset = [latest dateByAddingTimeInterval: 0.1];
-                checkLogs = true;
                 backoffIndex = 0;
-                pollsAfterTermination = 4;
-                msleep(8);
+                latest = entry.date;
+                offset = latest;
               }
             }
           }
@@ -761,6 +765,7 @@ int main (const int argc, const char* argv[]) {
 
   signal(SIGINT, signalHandler);
   signal(SIGTERM, signalHandler);
+  signal(SIGUSR1, signalHandler);
 
   if (is(subcommand, "-v") || is(subcommand, "--version")) {
     std::cout << SSC::VERSION_FULL_STRING << std::endl;
