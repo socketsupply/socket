@@ -1,9 +1,22 @@
 /* global CustomEvent */
-import { InvertedPromise } from 'socket:util'
+/* eslint-disable import/first */
+globalThis.__RUNTIME_INIT_NOW__ = performance.now()
+
+import { IllegalConstructor, InvertedPromise } from 'socket:util'
+import { applyPolyfills } from 'socket:polyfills'
+import hooks from 'socket:hooks'
 import ipc from 'socket:ipc'
 
-// eslint-disable-next-line new-parens
-globalThis.__CORE_XHR_POST_QUEUE__ = new class CoreXHRPostQueue extends EventTarget {
+// async preload modules
+hooks.onReady(async () => {
+  // precache fs.constants
+  await ipc.request('fs.constants', {}, { cache: true })
+  import('socket:diagnostics')
+  import('socket:fs/fds')
+  import('socket:fs/constants')
+})
+
+class RuntimeXHRPostQueue extends EventTarget {
   concurrency = 16
   pending = []
 
@@ -49,4 +62,7 @@ globalThis.__CORE_XHR_POST_QUEUE__ = new class CoreXHRPostQueue extends EventTar
   }
 }
 
-export default undefined
+globalThis.__RUNTIME_XHR_POST_QUEUE__ = new RuntimeXHRPostQueue()
+// prevent further construction if this class is indirectly referenced
+RuntimeXHRPostQueue.prototype.constructor = IllegalConstructor
+export default applyPolyfills()
