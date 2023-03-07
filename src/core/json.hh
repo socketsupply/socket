@@ -170,6 +170,38 @@ namespace SSC::JSON {
     public:
       using Entries = ObjectEntries;
       Object () = default;
+      Object (std::map<std::string, int> entries) {
+        for (auto const &tuple : entries) {
+          auto key = tuple.first;
+          auto value = tuple.second;
+          this->data.insert_or_assign(key, value);
+        }
+      }
+
+      Object (std::map<std::string, bool> entries) {
+        for (auto const &tuple : entries) {
+          auto key = tuple.first;
+          auto value = tuple.second;
+          this->data.insert_or_assign(key, value);
+        }
+      }
+
+      Object (std::map<std::string, double> entries) {
+        for (auto const &tuple : entries) {
+          auto key = tuple.first;
+          auto value = tuple.second;
+          this->data.insert_or_assign(key, value);
+        }
+      }
+
+      Object (std::map<std::string, int64_t> entries) {
+        for (auto const &tuple : entries) {
+          auto key = tuple.first;
+          auto value = tuple.second;
+          this->data.insert_or_assign(key, value);
+        }
+      }
+
       Object (const Object::Entries entries) {
         for (const auto& tuple : entries) {
           auto key = tuple.first;
