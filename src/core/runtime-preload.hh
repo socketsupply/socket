@@ -97,7 +97,7 @@ namespace SSC {
     preload += "  Object.freeze(globalThis.__args.config);\n";
     preload += "})();\n";
 
-    preload += "import('socket:init');\n";
+    preload += "import('socket:internal/init');\n";
     return preload;
   }
 }
