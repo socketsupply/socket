@@ -4,7 +4,7 @@
 namespace SSC {
   String createJavaScript (const String& name, const String& source) {
     return String(
-      ";(() => {                                                             \n"
+      ";(async () => {                                                       \n"
       "  console.assert(                                                     \n"
       "    typeof globalThis.__RUNTIME_INIT_NOW__ === 'number',              \n"
       "    '__RUNTIME_INIT_NOW__ check failed. ' +                           \n"

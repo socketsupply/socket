@@ -109,6 +109,7 @@ namespace SSC {
 
     auto sid = std::to_string(post.id);
     auto js = createJavaScript("post-data.js",
+      "const globals = await import('socket:internal/globals');      \n"
       "const id = `" + sid + "`;                                             \n"
       "const seq = `" + seq + "`;                                            \n"
       "const headers = `" + trim(post.headers) + "`                          \n"
@@ -124,7 +125,7 @@ namespace SSC {
       "  console.error(err.stack || err, params);                            \n"
       "}                                                                     \n"
       "                                                                      \n"
-      "globalThis.__RUNTIME_XHR_POST_QUEUE__.dispatch(                       \n"
+      "globals.get('RuntimeXHRPostQueue').dispatch(                          \n"
       "  id,                                                                 \n"
       "  seq,                                                                \n"
       "  params,                                                             \n"
