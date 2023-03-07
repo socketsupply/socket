@@ -1452,7 +1452,7 @@ Opens a native context menu.
 | options.value | string \| object |  | true | the value to send |
 
 
-### [`openExternal(options)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L268)
+### [`openExternal(options)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L264)
 
 
 
@@ -1466,7 +1466,7 @@ Opens a native context menu.
 | Not specified | Promise<ipc.Result> |  |
 
 
-## [constants](https://github.com/socketsupply/socket/blob/master/api/window.js#L334)
+## [constants](https://github.com/socketsupply/socket/blob/master/api/window.js#L330)
 
 This is a `VariableDeclaration` named `constants` in `api/window.js`, it's exported but undocumented.
 
