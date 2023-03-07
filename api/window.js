@@ -242,14 +242,10 @@ export class ApplicationWindow {
 
     if (options.backend === true) {
       return await ipc.send('process.write', {
-        ...options,
-        index: this.#senderWindowIndex
+        index: this.#senderWindowIndex,
+        event: options.event,
+        value
       })
-      // return await ipc.send('process.write', {
-      //   index: this.#senderWindowIndex,
-      //   event: options.event,
-      //   value: options.value
-      // })
     }
 
     return await ipc.send('window.send', {
