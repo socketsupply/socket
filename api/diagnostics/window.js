@@ -6,7 +6,7 @@ import process from '../process.js'
 const dc = registry.group('window', [
   'XMLHttpRequest.open',
   'XMLHttpRequest.send',
-  'worker',
+  'Worker',
   'fetch',
   'fetch.start',
   'fetch.end',
@@ -110,6 +110,7 @@ export class FetchMetric extends Metric {
 
     const args = [resource, options, extra]
     const response = await this.originalFetch.apply(globalThis, args)
+    metric.response = response.clone()
 
     this.channel.channel('end').publish(metric)
     this.channel.publish(metric)
@@ -175,10 +176,37 @@ export class XMLHttpRequestMetric extends Metric {
   }
 }
 
+export class WorkerMetric extends Metric {
+  static GlobalWorker = globalThis.Worker
+
+  constructor (options) {
+    super()
+    const self = this
+    this.channel = dc.channel('Worker')
+    this.Worker = class Worker extends globalThis.Worker {
+      constructor (url, options, ...args) {
+        super(url, options, ...args)
+        dc.channel('Worker').publish({ worker: this, url, options })
+      }
+    }
+  }
+
+  init () {
+    globalThis.Worker = this.Worker
+  }
+
+  destroy () {
+    this.channel.reset()
+    globalThis.Worker = WorkerMetric.GlobalWorker
+  }
+}
+
 // eslint-disable-next-line new-parens
 export const metrics = new class Metrics {
+  // metrics
   requestAnimationFrame = new RequestAnimationFrameMetric()
   XMLHttpRequest = new XMLHttpRequestMetric()
+  Worker = new WorkerMetric()
   fetch = new FetchMetric()
 
   channel = dc
