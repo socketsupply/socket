@@ -502,6 +502,7 @@ MAIN {
     #if defined(__APPLE__)
       if (app.fromSSC) {
         debug("__EXIT_SIGNAL__=%d", exitCode);
+        notifyCli();
       }
     #endif
       window->exit(exitCode);
