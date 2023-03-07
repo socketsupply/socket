@@ -1469,22 +1469,24 @@ namespace SSC {
 
   void Core::FS::constants (const String seq, Module::Callback cb) {
     static auto constants = getFSConstantsMap();
+    static auto data = JSON::Object {constants};
+    static auto json = JSON::Object::Entries {
+      {"source", "fs.constants"},
+      {"data", data}
+    };
 
-    this->core->dispatchEventLoop([=] {
-      JSON::Object::Entries data;
+    static auto headers = Headers {{
+      Headers::Header {"Cache-Control", "public, max-age=86400"}
+    }};
 
-      for (auto const &tuple : constants) {
-        auto key = tuple.first;
-        auto value = tuple.second;
-        data[key] = value;
-      }
+    static auto post = Post {
+      .id = 0,
+      .ttl = 0,
+      .body = nullptr,
+      .length = 0,
+      .headers = headers.str()
+    };
 
-      auto json = JSON::Object::Entries {
-        {"source", "fs.constants"},
-        {"data", data}
-      };
-
-      cb(seq, json, Post{});
-    });
+    cb(seq, json, post);
   }
 }
