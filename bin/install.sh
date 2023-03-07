@@ -214,8 +214,12 @@ function _build_cli {
     libs=($("echo" -l{uv,socket-runtime}))
   fi
 
+  if [[ ! -z "$VERBOSE" ]]; then
+    echo "cli libs: $libs, $(uname -s)"
+  fi
+
   local ldflags=($("$root/bin/ldflags.sh" --arch "$arch" --platform "$platform" ${libs[@]}))
-  local cflags=(-DCLI $("$root/bin/cflags.sh"))
+  local cflags=(-DSSC_CLI $("$root/bin/cflags.sh"))
 
   local test_sources=($(find "$src"/cli/*.cc 2>/dev/null))
   local sources=()
@@ -225,7 +229,9 @@ function _build_cli {
 
   for source in "${test_sources[@]}"; do
     local output="${source/$src/$output_directory}"
-    output="${output/.cc/.o}"
+    # For some reason cli causes issues when debug and release are in the same folder
+    output="${output/.cc/$d.o}"
+    output="${output/cli/cli$d}"
     if (( force )) || ! test -f "$output" || (( $(stat_mtime "$source") > $(stat_mtime "$output") )); then
       sources+=("$source")
       outputs+=("$output")
@@ -242,18 +248,18 @@ function _build_cli {
 
   local exe=""
   local libsocket_win=""
-  local test_sources=($(find "$BUILD_DIR/$arch-$platform"/cli/*.o 2>/dev/null))
+  local test_sources=($(find "$BUILD_DIR/$arch-$platform"/cli$d/*$d.o 2>/dev/null))
   if [[ "$(uname -s)" == *"_NT"* ]]; then
     declare d=""
     if [[ ! -z "$DEBUG" ]]; then
       d="d"
     fi
     exe=".exe"
-    libsocket_win="$BUILD_DIR/$arch-$platform/lib/libsocket-runtime.a"
+    libsocket_win="$BUILD_DIR/$arch-$platform/lib$d/libsocket-runtime$d.a"
     test_sources+=("$libsocket_win")
   fi
 
-  libs=($(find "$root/build/$arch-$platform/lib/*" 2>/dev/null))
+  libs=($(find "$root/build/$arch-$platform/lib$d/*" 2>/dev/null))
   test_sources+=(${libs[@]})
   local build_ssc=0
   local ssc_output="$BUILD_DIR/$arch-$platform/bin/ssc$exe"
@@ -267,10 +273,10 @@ function _build_cli {
 
 
   if (( build_ssc )); then
-    quiet $CXX                                 \
-      "$BUILD_DIR/$arch-$platform"/cli/*.o       \
+    quiet $CXX                                   \
+      "$BUILD_DIR/$arch-$platform"/cli$d/*$d.o   \
       "${cflags[@]}" "${ldflags[@]}"             \
-      "$libsocket_win"                           \
+      "$libsocket_win" "$libwebview_win"         \
       -o "$ssc_output"
 
     die $? "not ok - unable to build. See trouble shooting guide in the README.md file:\n$CXX ${cflags[@]} \"${ldflags[@]}\" -o \"$BUILD_DIR/$arch-$platform/bin/ssc\""
@@ -350,8 +356,8 @@ function _prebuild_desktop_main () {
 
   for source in "${test_sources[@]}"; do
     local output="${source/$src/$objects}"
-    output="${output/.cc/.o}"
-    output="${output/.mm/.o}"
+    output="${output/.cc/$d.o}"
+    output="${output/.mm/$d.o}"
     if (( force )) || ! test -f "$output" || (( $(stat_mtime "$source") > $(stat_mtime "$output") )); then
       sources+=("$source")
       outputs+=("$output")
@@ -387,8 +393,8 @@ function _prebuild_ios_main () {
 
   for source in "${test_sources[@]}"; do
     local output="${source/$src/$objects}"
-    output="${output/.cc/.o}"
-    output="${output/.mm/.o}"
+    output="${output/.cc/$d.o}"
+    output="${output/.mm/$d.o}"
     if (( force )) || ! test -f "$output" || (( $(stat_mtime "$source") > $(stat_mtime "$output") )); then
       sources+=("$source")
       outputs+=("$output")
@@ -423,8 +429,8 @@ function _prebuild_ios_simulator_main () {
 
   for source in "${test_sources[@]}"; do
     local output="${source/$src/$objects}"
-    output="${output/.cc/.o}"
-    output="${output/.mm/.o}"
+    output="${output/.cc/$d.o}"
+    output="${output/.mm/$d.o}"
     if (( force )) || ! test -f "$output" || (( $(stat_mtime "$source") > $(stat_mtime "$output") )); then
       sources+=("$source")
       outputs+=("$output")
@@ -777,8 +783,6 @@ if [[ "$host" = "Darwin" ]]; then
     _prebuild_ios_main & pids+=($!)
     _prebuild_ios_simulator_main & pids+=($!)
   fi
-
-  # Not building android due to potential platform conflicts
 fi
 
 for pid in "${pids[@]}"; do
