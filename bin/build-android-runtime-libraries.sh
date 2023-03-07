@@ -32,6 +32,7 @@ declare root="$(cd "$(dirname "$(dirname "${BASH_SOURCE[0]}")")" && pwd)"
 # Standard Android development environment (IDEs not required):
 # $ANDROID_HOME which points to a folder containing cmdline-tools/latest and platform-tools
 # $JAVA_HOME which points to a folder containing bin\javac ~v19 (NOT the bin folder itself)
+# gradle > 8.0.1 in $PATH
 # ndk tools will be downloaded during build process
 
 ### Why do this?
