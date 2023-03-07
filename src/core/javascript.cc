@@ -4,8 +4,15 @@
 namespace SSC {
   String createJavaScript (const String& name, const String& source) {
     return String(
-      ";(() => {\n" + trim(source) + "\n})();\n"
-      "//# sourceURL=" + name + "\n"
+      ";(() => {                                                             \n"
+      "  console.assert(                                                     \n"
+      "    typeof globalThis.__RUNTIME_INIT_NOW__ === 'number',              \n"
+      "    '__RUNTIME_INIT_NOW__ check failed. ' +                           \n"
+      "    'The webview environment may not be initialized correctly.'       \n"
+      "  );                                                                  \n"
+      "  " + trim(source) + ";                                          \n"
+      "})();                                                                 \n"
+      "//# sourceURL=" + name + "                                            \n"
     );
   }
 
