@@ -2533,12 +2533,13 @@ int main (const int argc, const char* argv[]) {
       if (flagShouldRun) {
         // the emulator must be running on device SSCAVD for now
         StringStream adb;
+        StringStream adbShellStart;
 
         if (!platform.win) {
           adb << androidHome << "/platform-tools/";
-        } else
+        } else {
           adb << androidHome << "\\platform-tools\\";
-
+        }
         
         if (!std::system((adb.str() + (" --version > ") + SSC::String((!platform.win) ? "/dev/null" : "NUL") + (" 2>&1")).c_str())) {
           log("Warn: Failed to locate adb at " + adb.str());
@@ -2547,8 +2548,10 @@ int main (const int argc, const char* argv[]) {
         }
 
         adb
-          << "adb "
-          << "install ";
+          << "adb ";
+        
+        adbShellStart << adb.str();
+        adb << "install ";
 
         if (flagDebugMode) {
           adb << (app / "build" / "outputs" / "apk" / "dev" / "debug" / "app-dev-debug.apk").string();
@@ -2558,6 +2561,12 @@ int main (const int argc, const char* argv[]) {
 
         if (std::system(adb.str().c_str()) != 0) {
           log("error: failed to install APK to Android Emulator (adb)");
+          exit(1);
+        }
+
+        adbShellStart << "shell am start -n " << settings["meta_bundle_identifier"] << "/" << settings["meta_bundle_identifier"] << settings["android_main_activity"];
+        if (std::system(adbShellStart.str().c_str()) != 0) {
+          log("Failed to run app on emulator.");
           exit(1);
         }
       }
