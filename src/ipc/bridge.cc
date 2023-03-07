@@ -57,9 +57,12 @@ static String getcwd () {
 #if defined(__linux__) && !defined(__ANDROID__)
   auto canonical = fs::canonical("/proc/self/exe");
   cwd = fs::path(canonical).parent_path().string();
-#elif defined(__APPLE__)
+#elif defined(__APPLE__) && !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR
   auto fileManager = [NSFileManager defaultManager];
   auto currentDirectory = [fileManager currentDirectoryPath];
+  cwd = String([currentDirectory UTF8String]);
+#elif defined(__APPLE__)
+  auto currentDirectory = NSHomeDirectory();
   cwd = String([currentDirectory UTF8String]);
 #elif defined(_WIN32)
   wchar_t filename[MAX_PATH];
