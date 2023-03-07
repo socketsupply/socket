@@ -34,7 +34,7 @@ globalThis.__CORE_XHR_POST_QUEUE__ = new class CoreXHRPostQueue extends EventTar
       this.pending.splice(index, 1)
     }
 
-    if (result.srr) {
+    if (result.err) {
       this.dispatchEvent(new CustomEvent('error', { detail: result.err }))
       promise.resolve()
       return
