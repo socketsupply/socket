@@ -761,11 +761,11 @@ int main (const int argc, const char* argv[]) {
 
 #ifndef _WIN32
   signal(SIGHUP, signalHandler);
+  signal(SIGUSR1, signalHandler);
 #endif
 
   signal(SIGINT, signalHandler);
   signal(SIGTERM, signalHandler);
-  signal(SIGUSR1, signalHandler);
 
   if (is(subcommand, "-v") || is(subcommand, "--version")) {
     std::cout << SSC::VERSION_FULL_STRING << std::endl;
