@@ -816,7 +816,6 @@ int main (const int argc, const char* argv[]) {
 
   signal(SIGINT, signalHandler);
   signal(SIGTERM, signalHandler);
-  // signal(SIGUSR1, signalHandler);
 
   if (is(subcommand, "-v") || is(subcommand, "--version")) {
     std::cout << SSC::VERSION_FULL_STRING << std::endl;
