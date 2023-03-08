@@ -154,7 +154,7 @@ export class FileHandle extends EventEmitter {
 
     // this id will be used to identify the file handle that is a
     // reference stored in the native side
-    this.id = options?.id || String(rand64())
+    this.id = String(options?.id || rand64())
     this.fd = options?.fd || null // internal file descriptor
 
     gc.ref(this, options)
@@ -846,7 +846,7 @@ export class DirectoryHandle extends EventEmitter {
 
     // this id will be used to identify the file handle that is a
     // reference stored in the native side
-    this.id = options?.id || String(rand64())
+    this.id = String(options?.id || rand64())
     this.path = options?.path || null
 
     // @TODO(jwerle): implement usage of this internally
