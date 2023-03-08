@@ -54,7 +54,7 @@ namespace SSC {
       {"source", source},
       {"err", JSON::Object::Entries {
         {"id", std::to_string(id)},
-        {"type", "NotFoundError"},
+        {"type", "InternalError"},
         {"code", "ERR_SOCKET_DGRAM_CLOSED"},
         {"message", "Socket is closed"}
       }}
