@@ -967,7 +967,7 @@ buildscript {
   }
 
   dependencies {
-    classpath 'com.android.tools.build:gradle:7.2.1'
+    classpath 'com.android.tools.build:gradle:7.6.1'
     classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
   }
 }
@@ -1067,6 +1067,7 @@ dependencies {
 //
 constexpr auto gGradleSettings = R"GROOVY(
 rootProject.name = "{{build_name}}"
+startParameter.offline = false
 include ':app'
 )GROOVY";
 
@@ -1079,6 +1080,8 @@ org.gradle.parallel=true
 
 android.useAndroidX=true
 android.enableJetifier=true
+android.suppressUnsupportedCompileSdk=33
+android.experimental.legacyTransform.forceNonIncremental=true
 
 kotlin.code.style=official
 )GRADLE";
