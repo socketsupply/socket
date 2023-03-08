@@ -74,11 +74,7 @@ function table (data, columns, formatValues = true) {
   return { columns, rows }
 }
 
-export const globalConsole = (
-  globalThis?.window?.console ??
-  globalThis?.console ??
-  null
-)
+export const globalConsole = globalThis?.console ?? null
 
 export class Console {
   constructor (options) {
