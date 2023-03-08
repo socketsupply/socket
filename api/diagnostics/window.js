@@ -181,7 +181,6 @@ export class WorkerMetric extends Metric {
 
   constructor (options) {
     super()
-    const self = this
     this.channel = dc.channel('Worker')
     this.Worker = class Worker extends globalThis.Worker {
       constructor (url, options, ...args) {
