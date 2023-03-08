@@ -499,15 +499,22 @@ function _install {
     cp -rfp "$BUILD_DIR"/lib$d/*.a "$SOCKET_HOME/lib$d/"
   fi
 
-  if test -d "$BUILD_DIR/$arch-$platform"/lib$d; then
-    echo "# copying libraries to $SOCKET_HOME/lib$d/$arch-$platform"
-    rm -rf "$SOCKET_HOME/lib$d/$arch-$platform"
-    mkdir -p "$SOCKET_HOME/lib$d/$arch-$platform"
+  _d=$d
+
+  if [[ $platform == "android" ]]; then
+    # Debug builds not currently supported for android
+    _d=""
+  fi
+
+  if test -d "$BUILD_DIR/$arch-$platform"/lib$_d; then
+    echo "# copying libraries to $SOCKET_HOME/lib$_d/$arch-$platform"
+    rm -rf "$SOCKET_HOME/lib$_d/$arch-$platform"
+    mkdir -p "$SOCKET_HOME/lib$_d/$arch-$platform"
     if [[ $platform != "android" ]]; then
-      cp -rfp "$BUILD_DIR/$arch-$platform"/lib$d/*.a "$SOCKET_HOME/lib$d/$arch-$platform"
+      cp -rfp "$BUILD_DIR/$arch-$platform"/lib$_d/*.a "$SOCKET_HOME/lib$_d/$arch-$platform"
     fi
     if [[ $host=="Win32" ]] && [[ $platform == "desktop" ]]; then
-      cp -rfp "$BUILD_DIR/$arch-$platform"/lib$d/*.lib "$SOCKET_HOME/lib$d/$arch-$platform"
+      cp -rfp "$BUILD_DIR/$arch-$platform"/lib$_d/*.lib "$SOCKET_HOME/lib$_d/$arch-$platform"
     fi
 
     if [[ $platform == "android" ]] && [[ -d "$BUILD_DIR/$arch-$platform"/lib ]]; then

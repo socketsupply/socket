@@ -1060,6 +1060,7 @@ dependencies {
 constexpr auto gGradleSettings = R"GROOVY(
 rootProject.name = "{{build_name}}"
 include ':app'
+startParameter.offline=false
 )GROOVY";
 
 //

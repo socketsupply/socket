@@ -144,6 +144,57 @@ String getSocketHome () {
   return socketHome;
 }
 
+String getAndroidHome() {
+  auto androidHome = getEnv("ANDROID_HOME");
+
+  if (androidHome.size() > 0)
+    return androidHome;
+
+  if (androidHome.size() == 0) {
+    androidHome = settings["android_" + platform.os + "_home"];
+  }
+
+  if (androidHome.size() == 0) {
+    androidHome = settings["android_home"];
+  }
+
+  if (androidHome.size() == 0) {
+    if (!platform.win) {
+      auto cmd = String(
+        "dirname $(dirname $(readlink $(which sdkmanager 2>/dev/null) 2>/dev/null) 2>/dev/null) 2>/dev/null"
+      );
+
+      auto r = exec(cmd);
+
+      if (r.exitCode == 0) {
+        androidHome = trim(r.output);
+      }
+    }
+  }
+
+  if (androidHome.size() == 0) {
+    if (platform.mac) {
+      androidHome = getEnv("HOME") + "/Library/Android/sdk";
+    } else if (platform.unix) {
+      androidHome = getEnv("HOME") + "/android";
+    } else if (platform.win) {
+      // TODO
+    }
+  }
+
+  if (androidHome.size() > 0) {
+    #ifdef _WIN32
+    setEnv((String("ANDROID_HOME=") + androidHome).c_str());
+    #else
+    setenv("ANDROID_HOME", androidHome.c_str(), 1);
+    #endif
+
+    log("warning: 'ANDROID_HOME' is set to '" + androidHome + "'");
+  }
+
+  return androidHome;
+}
+
 inline String prefixFile (String s) {
   static String socketHome = getSocketHome();
   return socketHome + s + " ";
@@ -765,7 +816,7 @@ int main (const int argc, const char* argv[]) {
 
   signal(SIGINT, signalHandler);
   signal(SIGTERM, signalHandler);
-  signal(SIGUSR1, signalHandler);
+  // signal(SIGUSR1, signalHandler);
 
   if (is(subcommand, "-v") || is(subcommand, "--version")) {
     std::cout << SSC::VERSION_FULL_STRING << std::endl;
@@ -1173,6 +1224,9 @@ int main (const int argc, const char* argv[]) {
     String devPort("0");
     auto cnt = 0;
 
+    bool debugEnv = getEnv("DEBUG").size() > 0;
+    bool verboseEnv = getEnv("VERBOSE").size() > 0;
+
     String localDirPrefix = !platform.win ? "./" : "";
     String quote = !platform.win ? "'" : "\"";
     String slash = !platform.win ? "/" : "\\";
@@ -1462,7 +1516,34 @@ int main (const int argc, const char* argv[]) {
       pathResources = { src / "main" / "assets" };
 
       // set current path to output directory
+      if (debugEnv || verboseEnv) log("cd " + output.string());
       fs::current_path(output);
+
+      auto androidHome = getAndroidHome();
+      StringStream sdkmanager;
+
+      if (debugEnv || verboseEnv) log("sdkmanager --version 2>&1 >/dev/null");
+      if (std::system("sdkmanager --version 2>&1 >/dev/null") != 0) {
+        if (!platform.win) {
+          sdkmanager << androidHome << "/cmdline-tools/latest/bin/";
+        } else {
+          sdkmanager << androidHome << "\\cmdline-tools\\latest\\bin\\";
+        }
+      }
+
+      // Create default output to advise user in case gradle init fails
+      
+      // TODO(mribbons): Check if we need this in CI - Upload licenses folder from workstation
+      // https://developer.android.com/studio/intro/update#download-with-gradle
+      String licenseAccept =  sdkmanager.str() + "sdkmanager" + (platform.win ? ".bat" : "") + " --licenses";
+
+      // echo nothing so command doesn't block
+      if (std::system(("echo |" + licenseAccept).c_str()) != 0) {
+        // This doesn't return a useful status on windows at least
+        log(("Check licenses and run again: \n" + licenseAccept + "\n").c_str());
+      }
+
+      settings["android_sdk_manager_path"] = sdkmanager.str();
 
       StringStream gradleInitCommand;
       gradleInitCommand
@@ -1475,8 +1556,11 @@ int main (const int argc, const char* argv[]) {
         << "--quiet "
         << "init";
 
+      if (debugEnv || verboseEnv) log(gradleInitCommand.str());
       if (std::system(gradleInitCommand.str().c_str()) != 0) {
         log("error: failed to invoke `gradle init` command");
+        // In case user didn't accept licenses above
+        log(("Check licenses and run again: \n" + licenseAccept + "\n").c_str());
         exit(1);
       }
 
@@ -2028,7 +2112,7 @@ int main (const int argc, const char* argv[]) {
 
       // See install.sh for more info on windows debug builds and d suffix
       auto missing_assets = false;
-      auto debugBuild = getEnv("DEBUG").size() > 0;
+      auto debugBuild = debugEnv;
       if (debugBuild) {
         for (String libString : split(getEnv("WIN_DEBUG_LIBS"), ',')) {
           if (libString.size() > 0) {
@@ -2309,49 +2393,7 @@ int main (const int argc, const char* argv[]) {
 
     if (flagBuildForAndroid) {
       auto app = paths.platformSpecificOutputPath / "app";
-      auto androidHome = getEnv("ANDROID_HOME");
-
-      if (androidHome.size() == 0) {
-        androidHome = settings["android_" + platform.os + "_home"];
-      }
-
-      if (androidHome.size() == 0) {
-        androidHome = settings["android_home"];
-      }
-
-      if (androidHome.size() == 0) {
-        if (!platform.win) {
-          auto cmd = String(
-            "dirname $(dirname $(readlink $(which sdkmanager 2>/dev/null) 2>/dev/null) 2>/dev/null) 2>/dev/null"
-          );
-
-          auto r = exec(cmd);
-
-          if (r.exitCode == 0) {
-            androidHome = trim(r.output);
-          }
-        }
-      }
-
-      if (androidHome.size() == 0) {
-        if (platform.mac) {
-          androidHome = getEnv("HOME") + "/Library/Android/sdk";
-        } else if (platform.unix) {
-          androidHome = getEnv("HOME") + "/android";
-        } else if (platform.win) {
-          // TODO
-        }
-      }
-
-      if (androidHome.size() > 0) {
-        #ifdef _WIN32
-        setEnv((String("ANDROID_HOME=") + androidHome).c_str());
-        #else
-        setenv("ANDROID_HOME", androidHome.c_str(), 1);
-        #endif
-
-        log("warning: 'ANDROID_HOME' is set to '" + androidHome + "'");
-      }
+      auto androidHome = getAndroidHome();
 
       StringStream sdkmanager;
       StringStream packages;
@@ -2359,14 +2401,12 @@ int main (const int argc, const char* argv[]) {
       String ndkVersion = "25.0.8775105";
       String androidPlatform = "android-33";
 
-      if (settings["android_accept_sdk_licenses"].size() > 0) {
-        sdkmanager << "echo " << settings["android_accept_sdk_licenses"] << "|";
-      }
-
       if (platform.unix) {
         gradlew
           << "ANDROID_HOME=" << androidHome << " ";
       }
+
+      sdkmanager << settings["android_sdk_manager_path"];
 
       packages
         << quote << "ndk;" << ndkVersion << quote << " "
@@ -2377,21 +2417,13 @@ int main (const int argc, const char* argv[]) {
         << quote << "system-images;" << androidPlatform << ";google_apis;x86_64" << quote << " "
         << quote << "system-images;" << androidPlatform << ";google_apis;arm64-v8a" << quote << " ";
 
-      if (std::system("sdkmanager --version 2>&1 >/dev/null") != 0) {
-        if (!platform.win) {
-          sdkmanager << androidHome << "/cmdline-tools/latest/bin/";
-        } else {
-          sdkmanager << androidHome << "\\cmdline-tools\\latest\\bin\\";
-        }
-      }
-
       sdkmanager
         << "sdkmanager "
         << packages.str();
 
+      if (debugEnv || verboseEnv) log(sdkmanager.str());
       if (std::system(sdkmanager.str().c_str()) != 0) {
         log("error: failed to initialize Android SDK (sdkmanager)");
-        log("You may need to add accept_sdk_licenses = \"y\" to the [android] section of socket.ini.");
         exit(1);
       }
 
@@ -2404,6 +2436,7 @@ int main (const int argc, const char* argv[]) {
         ndkBuild << "ndk-build" << (platform.win ? ".cmd" : "");
         ndkTest << ndkBuild.str() << " --version >" << (!platform.win ? "/dev/null" : "NUL") << " 2>&1";
 
+        if (debugEnv || verboseEnv) log(ndkTest.str());
         if (std::system(ndkTest.str().c_str()) != 0) {
             ndkBuild.str("");
             ndkBuild << androidHome << slash << "ndk" << slash <<  ndkVersion << slash << "ndk-build" << (platform.win ? ".cmd" : "");
@@ -2413,6 +2446,7 @@ int main (const int argc, const char* argv[]) {
             ndkTest
               << ndkBuild.str() << " --version >" << (!platform.win ? "/dev/null" : "NUL") << " 2>&1";
 
+            if (debugEnv || verboseEnv) log(ndkTest.str());
             if (std::system(ndkTest.str().c_str()) != 0) {
               StringStream ndkError;
               ndkError 
@@ -2445,6 +2479,7 @@ int main (const int argc, const char* argv[]) {
             << " >" << (!platform.win ? "/dev/null" : "NUL") << " 2>&1";
             ;
 
+          if (debugEnv || verboseEnv) log(ndkBuildArgs.str());
           if (std::system(ndkBuildArgs.str().c_str()) != 0)
           {        
             log(ndkBuildArgs.str());
@@ -2458,7 +2493,7 @@ int main (const int argc, const char* argv[]) {
             if (dir_entry.is_directory() && dir_entry.path().stem().string().find("-android") != String::npos) {
               auto dest = jniLibs / replace(dir_entry.path().stem().string(), "-android", "");
               try {
-                if (getEnv("DEBUG") == "1")
+                if (debugEnv)
                   log("copy android lib: "+ dir_entry.path().string() + " => " + dest.string());
                 fs::copy(dir_entry.path(), dest, fs::copy_options::overwrite_existing | fs::copy_options::recursive);
               } catch (fs::filesystem_error &e) {
@@ -2488,6 +2523,7 @@ int main (const int argc, const char* argv[]) {
           localDirPrefix + "gradlew :app:bundleDebug --warning-mode all" :
           localDirPrefix + "gradlew :app:bundle";
 
+        if (debugEnv || verboseEnv) log(bundle);
         if (std::system(bundle.c_str()) != 0) {
           log("error: failed to invoke " + bundle + " command.");
           exit(1);
@@ -2499,6 +2535,7 @@ int main (const int argc, const char* argv[]) {
           << localDirPrefix
           << "gradlew assemble";
 
+        if (debugEnv || verboseEnv) log(gradlew.str());
         if (std::system(gradlew.str().c_str()) != 0) {
           log("error: failed to invoke `gradlew assemble` command");
           exit(1);
@@ -2524,6 +2561,7 @@ int main (const int argc, const char* argv[]) {
           << "--abi google_apis/x86_64 "
           << "--package " << package;
 
+        if (debugEnv || verboseEnv) log(avdmanager.str());
         if (std::system(avdmanager.str().c_str()) != 0) {
           log("error: failed to Android Virtual Device (avdmanager)");
           exit(1);
@@ -2541,6 +2579,7 @@ int main (const int argc, const char* argv[]) {
           adb << androidHome << "\\platform-tools\\";
         }
         
+        if (debugEnv || verboseEnv) log((adb.str() + (" --version > ") + SSC::String((!platform.win) ? "/dev/null" : "NUL") + (" 2>&1")));
         if (!std::system((adb.str() + (" --version > ") + SSC::String((!platform.win) ? "/dev/null" : "NUL") + (" 2>&1")).c_str())) {
           log("Warn: Failed to locate adb at " + adb.str());
         } else {
@@ -2559,11 +2598,13 @@ int main (const int argc, const char* argv[]) {
           adb << (app / "build" / "outputs" / "apk" / "dev" / "release" / "app-dev-release-unsigned.apk").string();
         }
 
+        if (debugEnv || verboseEnv) log(adb.str());
         if (std::system(adb.str().c_str()) != 0) {
           log("error: failed to install APK to Android Emulator (adb)");
           exit(1);
         }
 
+        if (debugEnv || verboseEnv) log(adbShellStart.str());
         adbShellStart << "shell am start -n " << settings["meta_bundle_identifier"] << "/" << settings["meta_bundle_identifier"] << settings["android_main_activity"];
         if (std::system(adbShellStart.str().c_str()) != 0) {
           log("Failed to run app on emulator.");
@@ -2643,6 +2684,7 @@ int main (const int argc, const char* argv[]) {
         << " "
         << (paths.platformSpecificOutputPath).string();
 
+      if (debugEnv || verboseEnv) log(archiveCommand.str());
       auto r = std::system(archiveCommand.str().c_str());
 
       if (r != 0) {
