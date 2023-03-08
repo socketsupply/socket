@@ -1424,8 +1424,6 @@ version = 1.0.0
 
 
 [android]
-build_remove_path = dist/android/app/src/
-
 ; TODO description needed
 main_activity = ""
 
