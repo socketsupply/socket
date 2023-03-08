@@ -62,6 +62,7 @@ org.gradle.parallel=true
 
 android.useAndroidX=true
 android.enableJetifier=true
+android.experimental.legacyTransform.forceNonIncremental=true
 
 kotlin.code.style=official
 GRADLE
