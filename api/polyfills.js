@@ -6,7 +6,7 @@ import * as exports from './polyfills.js'
 let applied = false
 
 export function applyPolyfills () {
-  if (applied) return
+  if (applied || !globalThis.window) return
   applied = true
   // create <title> tag in document if it doesn't exist
   globalThis.document.title ||= ''
