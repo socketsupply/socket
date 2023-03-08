@@ -1394,8 +1394,8 @@ int main (const int argc, const char* argv[]) {
     }
 
     auto removePath = paths.platformSpecificOutputPath;
-      if (settings[targetPlatform + "_build_remove_path"].size() > 0)
-        removePath = targetPath / settings[targetPlatform + "_build_remove_path"];
+      if (targetPlatform == "android")
+        removePath = settings["output"] + "/android/app/src";
 
     if (flagRunUserBuildOnly == false && fs::exists(removePath)) {
       auto p = fs::current_path() / fs::path(removePath);
