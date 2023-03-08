@@ -36,17 +36,13 @@ export function nextTick (callback) {
   } else if (typeof globalThis.setImmediate === 'function') {
     globalThis.setImmediate(callback)
   } else if (typeof globalThis.queueMicrotask === 'function') {
-    if (globalThis.window && typeof globalThis.window === 'object') {
-      globalThis.queueMicrotask(() => {
-        try {
-          callback()
-        } catch (err) {
-          setTimeout(() => { throw err })
-        }
-      })
-    } else {
-      globalThis.queueMicrotask(callback)
-    }
+    globalThis.queueMicrotask(() => {
+      try {
+        callback()
+      } catch (err) {
+        setTimeout(() => { throw err })
+      }
+    })
   } else if (typeof globalThis.setTimeout === 'function') {
     globalThis.setTimeout(callback)
   } else if (typeof globalThis.requestAnimationFrame === 'function') {
