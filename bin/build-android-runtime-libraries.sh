@@ -172,7 +172,6 @@ if [[ ! -d $obj_dir ]]; then
   # Using quiet with > is bad news
   quiet echo "Applying NDK build options..."
   sed '/\[android\]/s/.*/&\
-build_remove_path = dist\/android\/app\/src\/\
 build_socket_runtime = true\
 skip_gradle = true/' $app_dir/socket.ini > $temp
   mv $temp $app_dir/socket.ini
