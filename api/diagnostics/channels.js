@@ -240,7 +240,7 @@ export class ChannelGroup extends Channel {
   constructor (name, channels) {
     super(name)
 
-    this.channels = Array.isArray(channels) ? channels : []
+    this.channels = (Array.isArray(channels) ? channels : []).filter(Boolean)
 
     for (const channel of this.channels) {
       channel.group = this
