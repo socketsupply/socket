@@ -725,11 +725,11 @@ namespace SSC {
 
       if (!desc->isDirectory()) {
         auto json = JSON::Object::Entries {
-          {"source", "fs.close"},
+          {"source", "fs.closedir"},
           {"err", JSON::Object::Entries {
             {"id", std::to_string(id)},
             {"code", "ENOTOPEN"},
-            {"message", "No directory descriptor found with that id"}
+            {"message", "The descriptor found with was not a directory"}
           }}
         };
 
