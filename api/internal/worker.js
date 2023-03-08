@@ -18,6 +18,8 @@ export function onMessage (event) {
     })
 
     globalThis.dispatchEvent(event)
+    event.stopImmediatePropagation()
+    return false
   }
 }
 
