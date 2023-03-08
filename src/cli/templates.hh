@@ -1064,6 +1064,7 @@ constexpr auto gGradleSettings = R"GROOVY(
 rootProject.name = "{{build_name}}"
 startParameter.offline = false
 include ':app'
+startParameter.offline=false
 )GROOVY";
 
 //
