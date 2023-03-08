@@ -7,18 +7,26 @@ import { CustomEvent } from './events.js'
  */
 // eslint-disable-next-line new-parens
 export default new class Hooks extends EventTarget {
+  didGlobalLoad = false
+
   /**
    * @ignore
    */
   constructor () {
     super()
+    this.global.addEventListener('load', () => {
+      this.didGlobalLoad = true
+    })
 
-    if (this.isGlobalReady) {
+    if (this.isDocumentReady) {
       queueMicrotask(() => {
         this.dispatchEvent(new CustomEvent('ready'))
+        queueMicrotask(() => {
+          this.didGlobalLoad = true
+        })
       })
     } else if (this.document) {
-      this.document?.addEventListener('domcontentloaded', () => {
+      this.document?.addEventListener('DOMContentLoaded', () => {
         this.document.addEventListener('readystatechange', () => {
           if (this.document.readyState === 'complete') {
             this.global.addEventListener('load', () => {
@@ -62,8 +70,12 @@ export default new class Hooks extends EventTarget {
    * Predicate for determining if globalis ready.
    * @type {boolean}
    */
-  get isGlobalReady () {
+  get isDocumentReady () {
     return this.document?.readyState === 'complete'
+  }
+
+  get isGlobalReady () {
+    return this.isDocumentReady && this.didGlobalLoad
   }
 
   /**
@@ -74,12 +86,12 @@ export default new class Hooks extends EventTarget {
    */
   onReady (callback) {
     if (this.isGlobalReady) {
-      queueMicrotask(callback)
+      setTimeout(callback)
+      return () => undefined
     } else {
       this.addEventListener('ready', callback, { once: true })
+      return () => this.removeEventListener('ready', callback)
     }
-
-    return () => this.removeEventListener('ready', callback)
   }
 
   /**
