@@ -9,7 +9,7 @@ import { test } from 'socket:test'
 import { Dir } from 'socket:fs/dir'
 
 // FIXME: make this work on iOS
-if (process.platform === 'ios') {
+if (process.platform !== 'ios') {
   const TMPDIR = `${os.tmpdir()}${path.sep}`
   const FIXTURES = /android/i.test(os.platform())
     ? '/data/local/tmp/ssc-socket-test-fixtures/'
