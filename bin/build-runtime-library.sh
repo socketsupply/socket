@@ -49,8 +49,6 @@ if [[ "$host" == "Win32" ]]; then
     mv $clang_tmp $clang
   fi
 
-  echo Using $clang as clang
-
   declare find_test="$(sh -c 'find --version')"
   if [[ $find_test != *"GNU findutils"* ]]; then
     echo "GNU find not detected. Consider adding %ProgramFiles%\Git\bin\ to PATH."

@@ -86,3 +86,9 @@ if ! test -f $NDK_BUILD; then
   echo "ndk-build not at $NDK_BUILD"
   DEPS_ERROR=1
 fi
+
+if [[ ! -z "$ANDROID_HOME" ]]; then
+  if [[ ! -n $CI ]] || [[ -n $SSC_ANDROID_CI ]]; then
+    BUILD_ANDROID=1
+  fi
+fi
