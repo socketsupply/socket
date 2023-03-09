@@ -299,7 +299,7 @@ export async function setSystemMenuItemEnabled (value) {
   return await ipc.send('application.setSystemMenuItemEnabled', value)
 }
 
-export const version = primordials.version
+export const runtimeVersion = primordials.version
 export const debug = !!globalThis.__args.debug
 export const config = globalThis.__args.config
 
