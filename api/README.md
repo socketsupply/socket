@@ -193,9 +193,9 @@ Set the native menu for the app.
 This is a `FunctionDeclaration` named `setSystemMenuItemEnabled` in `api/application.js`, it's exported but undocumented.
 
 
-## [version](https://github.com/socketsupply/socket/blob/master/api/application.js#L302)
+## [runtimeVersion](https://github.com/socketsupply/socket/blob/master/api/application.js#L302)
 
-This is a `VariableDeclaration` named `version` in `api/application.js`, it's exported but undocumented.
+This is a `VariableDeclaration` named `runtimeVersion` in `api/application.js`, it's exported but undocumented.
 
 
 ## [debug](https://github.com/socketsupply/socket/blob/master/api/application.js#L303)
@@ -550,7 +550,7 @@ Close the underlying socket and stop listening for data on it. If a
 | callback | function |  | true | Called when the connection is completed or on error. |
 
 
-### [`address()`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1047)
+### [`address()`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1055)
 
 External docs: https://nodejs.org/api/dgram.html#socketaddress
 
@@ -568,7 +568,7 @@ Returns an object containing the address information for a socket. For
 | socketInfo.family | string | The IP family of the socket |
 
 
-### [`remoteAddress()`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1082)
+### [`remoteAddress()`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1090)
 
 External docs: https://nodejs.org/api/dgram.html#socketremoteaddress
 
@@ -585,7 +585,7 @@ Returns an object containing the address, family, and port of the remote
 | socketInfo.family | string | The IP family of the socket |
 
 
-### [`setRecvBufferSize(size)`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1113)
+### [`setRecvBufferSize(size)`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1121)
 
 External docs: https://nodejs.org/api/dgram.html#socketsetrecvbuffersizesize
 
@@ -598,7 +598,7 @@ Sets the SO_RCVBUF socket option. Sets the maximum socket receive buffer in
 | size | number |  | false | The size of the new receive buffer |
 
 
-### [`setSendBufferSize(size)`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1130)
+### [`setSendBufferSize(size)`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1138)
 
 External docs: https://nodejs.org/api/dgram.html#socketsetsendbuffersizesize
 
@@ -611,13 +611,13 @@ Sets the SO_SNDBUF socket option. Sets the maximum socket send buffer in
 | size | number |  | false | The size of the new send buffer |
 
 
-### [`getRecvBufferSize()`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1143)
+### [`getRecvBufferSize()`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1151)
 
 External docs: https://nodejs.org/api/dgram.html#socketgetrecvbuffersize
 
 
 
-### [`getSendBufferSize()`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1151)
+### [`getSendBufferSize()`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1159)
 
 External docs: https://nodejs.org/api/dgram.html#socketgetsendbuffersize
 
@@ -1110,27 +1110,27 @@ External docs: https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fspromisesw
  ipc://command?key1=value1&key2=value2...
  ```
 
-### [undefined](https://github.com/socketsupply/socket/blob/master/api/ipc.js#L555)
+### [undefined](https://github.com/socketsupply/socket/blob/master/api/ipc.js#L568)
 
 
 
-### [undefined](https://github.com/socketsupply/socket/blob/master/api/ipc.js#L766)
+### [undefined](https://github.com/socketsupply/socket/blob/master/api/ipc.js#L787)
 
 
 
-### [undefined](https://github.com/socketsupply/socket/blob/master/api/ipc.js#L771)
+### [undefined](https://github.com/socketsupply/socket/blob/master/api/ipc.js#L792)
 
 
 
-### [undefined](https://github.com/socketsupply/socket/blob/master/api/ipc.js#L776)
+### [undefined](https://github.com/socketsupply/socket/blob/master/api/ipc.js#L797)
 
 
 
-### [undefined](https://github.com/socketsupply/socket/blob/master/api/ipc.js#L781)
+### [undefined](https://github.com/socketsupply/socket/blob/master/api/ipc.js#L802)
 
 
 
-## [`emit(name, value, target , options)`](https://github.com/socketsupply/socket/blob/master/api/ipc.js#L983)
+## [`emit(name, value, target , options)`](https://github.com/socketsupply/socket/blob/master/api/ipc.js#L1015)
 
 Emit event to be dispatched on `window` object.
 
@@ -1142,7 +1142,7 @@ Emit event to be dispatched on `window` object.
 | options | Object |  | true |  |
 
 
-## [`send(command, value)`](https://github.com/socketsupply/socket/blob/master/api/ipc.js#L1039)
+## [`send(command, value)`](https://github.com/socketsupply/socket/blob/master/api/ipc.js#L1071)
 
 Sends an async IPC command request with parameters.
 
@@ -1298,7 +1298,7 @@ Computes current working directory for a path
 This is a `FunctionDeclaration` named `nextTick` in `api/process.js`, it's exported but undocumented.
 
 
-## [`homedir()`](https://github.com/socketsupply/socket/blob/master/api/process.js#L66)
+## [`homedir()`](https://github.com/socketsupply/socket/blob/master/api/process.js#L62)
 
 
 
@@ -1307,7 +1307,7 @@ This is a `FunctionDeclaration` named `nextTick` in `api/process.js`, it's expor
 | Not specified | string | The home directory of the current user. |
 
 
-## [`hrtime(time)`](https://github.com/socketsupply/socket/blob/master/api/process.js#L75)
+## [`hrtime(time)`](https://github.com/socketsupply/socket/blob/master/api/process.js#L71)
 
 Computed high resolution time as a `BigInt`.
 
@@ -1321,7 +1321,7 @@ Computed high resolution time as a `BigInt`.
 | Not specified | bigint |  |
 
 
-## [`exit(code)`](https://github.com/socketsupply/socket/blob/master/api/process.js#L99)
+## [`exit(code)`](https://github.com/socketsupply/socket/blob/master/api/process.js#L95)
 
 
 
@@ -1330,7 +1330,7 @@ Computed high resolution time as a `BigInt`.
 | code | number | 0 | true | The exit code. Default: 0. |
 
 
-## [`memoryUsage()`](https://github.com/socketsupply/socket/blob/master/api/process.js#L107)
+## [`memoryUsage()`](https://github.com/socketsupply/socket/blob/master/api/process.js#L103)
 
 This is a `FunctionDeclaration` named `memoryUsage` in `api/process.js`, it's exported but undocumented.
 
