@@ -253,7 +253,6 @@ function _build_cli {
 
 function _build_runtime_library {
   echo "# building runtime library"
-  echo "$root/bin/build-runtime-library.sh" --arch "$(uname -m)" --platform desktop $pass_force
   "$root/bin/build-runtime-library.sh" --arch "$(uname -m)" --platform desktop $pass_force & pids+=($!)
   if [[ "$host" = "Darwin" ]]; then
     "$root/bin/build-runtime-library.sh" --arch "$(uname -m)" --platform ios $pass_force & pids+=($!)
@@ -679,18 +678,6 @@ function _compile_libuv {
     fi
 
     rm -f "$root/build/$(uname -m)-desktop/lib$d"/*.{so,la,dylib}*
-  fi
-
-  if [[ ! -z "$BUILD_ANDROID" ]]; then
-    _compile_libuv_android arm64-v8a & pids+=($!)
-    _compile_libuv_android armeabi-v7a & pids+=($!)
-    _compile_libuv_android x86 & pids+=($!)
-    _compile_libuv_android x86_64 & pids+=($!)    
-    wait
-  fi
-
-
-  if [[ "$host" == "Win32" ]]; then
     return
   fi
 
@@ -791,8 +778,17 @@ if [[ "$(uname -s)" == "Darwin" ]]; then
   echo "ok - copied fat library"
 fi
 
-_compile_libuv
-echo "ok - built libuv for $platform ($target)"
+{
+  _compile_libuv
+  echo "ok - built libuv for $platform ($target)"
+} & pids+=($!)
+
+if [[ ! -z "$BUILD_ANDROID" ]]; then
+  _compile_libuv_android arm64-v8a & pids+=($!)
+  _compile_libuv_android armeabi-v7a & pids+=($!)
+  _compile_libuv_android x86 & pids+=($!)
+  _compile_libuv_android x86_64 & pids+=($!)
+fi
 
 mkdir -p  $SOCKET_HOME/uv/{src/unix,include}
 cp -fr $BUILD_DIR/uv/src/*.{c,h} $SOCKET_HOME/uv/src
@@ -832,19 +828,11 @@ fi
 _install_cli
 
 if [[ ! -z "$BUILD_ANDROID" ]]; then
-  if [[ ! -n $CI ]] || [[ -n $SSC_ANDROID_CI ]]; then
-    "$root/bin/build-runtime-library.sh" --platform android
-    if [[ ! $? ]]; then
-      exit $?
-    fi
-    _install arm64-v8a android & pids+=($!)
-    _install armeabi-v7a android & pids+=($!)
-    _install x86 android & pids+=($!)
-    _install x86_64 android & pids+=($!)
-    wait
-  else
-    echo "ANDROID_HOME not set, won't attempt to build android."
-  fi
+  _install arm64-v8a android & pids+=($!)
+  _install armeabi-v7a android & pids+=($!)
+  _install x86 android & pids+=($!)
+  _install x86_64 android & pids+=($!)
+  wait
 fi
 
 
