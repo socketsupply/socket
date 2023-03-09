@@ -236,14 +236,14 @@ open class Bridge (runtime: Runtime, configuration: IBridgeConfiguration) {
 
     val result = Result(id, seq, source, value ?: "", bytes, headers ?: emptyMap<String, String>())
 
-    runtime.get()?.activity?.get()?.runOnUiThread {
-      this.onResult(result)
-    }
+    this.onResult(result)
   }
 
   open fun onResult (result: Result) {
     this.requests[result.id]?.apply {
-      callback(result)
+      kotlin.concurrent.thread {
+        callback(result)
+      }
     }
 
     if (this.requests.contains(result.id)) {
