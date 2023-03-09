@@ -260,7 +260,6 @@ function _build_runtime_library {
   fi
 
   if [[ ! -z "$ANDROID_HOME" ]]; then
-    echo "$root/bin/build-runtime-library.sh --platform android --arch arm64-v8a"
     "$root/bin/build-runtime-library.sh" --platform android --arch "arm64-v8a" & pids+=($!)
     "$root/bin/build-runtime-library.sh" --platform android --arch "armeabi-v7a" & pids+=($!)
     "$root/bin/build-runtime-library.sh" --platform android --arch "x86" & pids+=($!)
@@ -427,6 +426,10 @@ function _prepare {
     mkdir -p "$SOCKET_HOME"/{lib$d,objects}/{arm64-iPhoneOS,x86_64-iPhoneSimulator}
   fi
 
+  if [[ -z $ANDROID_HOME ]]; then
+    mkdir -p "$SOCKET_HOME"/{lib$d,objects}/{arm64-v8a,armeabi-v7a,x86,x86_64}
+  fi
+
   if [ ! -d "$BUILD_DIR/uv" ]; then
     git clone --depth=1 https://github.com/socketsupply/libuv.git $BUILD_DIR/uv > /dev/null 2>&1
     rm -rf $BUILD_DIR/uv/.git
@@ -564,6 +567,50 @@ function _setSDKVersion {
   fi
 }
 
+function _compile_libuv_android {
+  source "$root/bin/android-functions.sh"
+  local platform="android"
+  local arch=$1
+  local host_arch=$(uname -m)
+  clang="$ANDROID_HOME/ndk/$NDK_VERSION/toolchains/llvm/prebuilt/"$(android_host_platform $host)"-"$(android_arch "$host_arch")"/bin/"$(android_arch "$arch")"-linux-android"$(android_eabi $arch)$NDK_PLATFORM"-clang$cmd"
+  ar="$ANDROID_HOME/ndk/$NDK_VERSION/toolchains/llvm/prebuilt/"$(android_host_platform $host)"-"$(android_arch "$host_arch")"/bin/llvm-ar"
+  if ! test -f $clang; then
+    echo "no android clang: $clang"
+    exit 1
+  fi
+  local cflags=(-std=gnu89 -g -pedantic -I$root/build/uv/include -I$root/build/uv/src -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -D_LARGEFILE_SOURCE -landroid -Wall -Wextra -Wno-pedantic -Wno-sign-compare -Wno-unused-parameter -Wno-implicit-function-declaration)
+  local objects=()
+  local sources=("unix/async.c" "unix/core.c" "unix/dl.c" "unix/fs.c" "unix/getaddrinfo.c" "unix/getnameinfo.c" "unix/linux.c" "unix/loop.c" "unix/loop-watcher.c" "unix/pipe.c" "unix/poll.c" "unix/process.c" "unix/proctitle.c" "unix/random-devurandom.c" "unix/random-getentropy.c" "unix/random-getrandom.c" "unix/random-sysctl-linux.c" "unix/signal.c" "unix/stream.c" "unix/tcp.c" "unix/thread.c" "unix/tty.c" "unix/udp.c")  
+
+  declare output_directory="$root/build/$arch-$platform/uv_build_$d"
+  mkdir -p $output_directory
+
+  declare src_directory="$root/build/uv/src"
+
+  for source in "${sources[@]}"; do
+  {
+    declare object="${source/.c/$d.o}"
+    object=$(basename $object)
+    objects+=("$output_directory/$object")
+    if (( force )) || ! test -f "$output_directory/$object" || (( $(stat_mtime "$src_directory/$source") > $(stat_mtime "$output_directory/$object") )); then
+      mkdir -p "$(dirname "$object")"
+      echo "# compiling object ($arch-$platform) $(basename "$source")"
+      quiet $clang "${cflags[@]}" -c "$src_directory/$source" -o "$output_directory/$object" || onsignal
+      echo "ok - built $source -> $object ($arch-$platform)"
+    fi
+  }
+  done
+
+  declare static_library="$root/build/$arch-$platform/lib$d/uv_a$d.lib"
+  mkdir -p "$(dirname $static_library)"
+  $ar crs "$static_library" "${objects[@]}"
+  if [ -f $static_library ]; then
+    echo "ok - built libuv ($arch-$platform): $(basename "$static_library")"
+  else
+    echo "failed to build $static_library"
+  fi
+}
+
 function _compile_libuv {
   target=$1
   hosttarget=$1
@@ -613,9 +660,7 @@ function _compile_libuv {
         quiet make install
       fi
     else
-      if test -f "$BUILD_DIR/$target-$platform/lib$d/uv_a.lib"; then
-        return
-      else
+      if ! test -f "$BUILD_DIR/$target-$platform/lib$d/uv_a.lib"; then
         local config="Release"
         if [[ ! -z "$DEBUG" ]]; then
           config="Debug"
@@ -634,6 +679,18 @@ function _compile_libuv {
     fi
 
     rm -f "$root/build/$(uname -m)-desktop/lib$d"/*.{so,la,dylib}*
+  fi
+
+  if [[ ! -z "$ANDROID_HOME" ]]; then
+    _compile_libuv_android arm64-v8a & pids+=($!)
+    _compile_libuv_android armeabi-v7a & pids+=($!)
+    _compile_libuv_android x86 & pids+=($!)
+    _compile_libuv_android x86_64 & pids+=($!)    
+    wait
+  fi
+
+
+  if [[ "$host" == "Win32" ]]; then
     return
   fi
 
