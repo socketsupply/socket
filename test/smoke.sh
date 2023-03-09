@@ -1,16 +1,8 @@
 #!/bin/bash
 PLATFORM=`uname -s`
 
-function quiet () {
-  "$@" > /dev/null 2>&1
-}
-
-function die {
-  if [ ! $1 = 0 ]; then
-    echo "not ok - $2" && exit 1
-  fi
-  echo "ok - $2"
-}
+declare root="$(cd "$(dirname "$(dirname "${BASH_SOURCE[0]}")")" && pwd)"
+source "$root/bin/functions.sh"
 
 echo "TAP version 13"
 echo "1..N"

@@ -33,7 +33,7 @@ namespace SSC {
   }
 
   App::App (int) : App() {
-#if defined(__linux__)
+#if defined(__linux__) && !defined(__ANDROID__)
     gtk_init_check(0, nullptr);
 #endif
 
@@ -42,7 +42,7 @@ namespace SSC {
   }
 
   int App::run () {
-#if defined(__linux__)
+#if defined(__linux__) && !defined(__ANDROID__)
     gtk_main();
 #elif defined(__APPLE__) && !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR
     [NSApp run];
@@ -96,7 +96,7 @@ namespace SSC {
   }
 
   void App::restart () {
-#if defined(__linux__)
+#if defined(__linux__) && !defined(__ANDROID__)
     // @TODO
 #elif defined(__APPLE__)
     // @TODO
@@ -111,7 +111,7 @@ namespace SSC {
   }
 
   void App::dispatch (std::function<void()> callback) {
-#if defined(__linux__)
+#if defined(__linux__) && !defined(__ANDROID__)
     auto threadCallback = new std::function<void()>(callback);
 
     g_idle_add_full(
@@ -158,7 +158,7 @@ namespace SSC {
   String App::getCwd () {
     String cwd = "";
 
-#if defined(__linux__)
+#if defined(__linux__) && !defined(__ANDROID__)
     auto canonical = fs::canonical("/proc/self/exe");
     cwd = fs::path(canonical).parent_path().string();
 #elif defined(__APPLE__) && !TARGET_OS_IPHONE && !TARGET_IPHONE_SIMULATOR
