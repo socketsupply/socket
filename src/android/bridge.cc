@@ -96,16 +96,16 @@ extern "C" {
     }
 
     auto routed = bridge->route(uri.str(), input, size, [=](auto result) mutable {
+      if (result.seq == "-1") {
+        bridge->router.send(result.seq, result.str(), result.post);
+        return;
+      }
+
       auto attachment = JNIEnvironmentAttachment { jvm, jniVersion };
       auto self = bridge->self;
       auto env = attachment.env;
 
       if (!attachment.hasException()) {
-        if (result.seq == "-1") {
-          bridge->router.send(result.seq, result.str(), result.post);
-          return;
-        }
-
         auto size = result.post.length;
         auto body = result.post.body;
         auto bytes = body ? env->NewByteArray(size) : nullptr;
