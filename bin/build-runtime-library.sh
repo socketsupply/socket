@@ -4,13 +4,17 @@ declare root="$(cd "$(dirname "$(dirname "${BASH_SOURCE[0]}")")" && pwd)"
 declare clang="${CXX:-${CLANG:-"$(which clang++)"}}"
 declare cache_path="$root/build/cache"
 
+source "$root/bin/functions.sh"
+
 declare args=()
 declare pids=()
 declare force=0
 
 declare arch="$(uname -m)"
+declare host_arch=$arch
 declare host="$(uname -s)"
 declare platform="desktop"
+declare host_platform=$platform
 
 if [[ "$host" = "Linux" ]]; then
   if [ -n "$WSL_DISTRO_NAME" ] || uname -r | grep 'Microsoft'; then
@@ -91,6 +95,9 @@ while (( $# > 0 )); do
       arch="x86_64"
       platform="iPhoneSimulator";
       export TARGET_IPHONE_SIMULATOR=1
+    elif [[ "$1" = "android" ]]; then
+      platform="$1";
+      export TARGET_OS_ANDROID=1      
     else
       platform="$1";
     fi
@@ -102,11 +109,20 @@ while (( $# > 0 )); do
 done
 
 if [[ "$platform" = "android" ]]; then
-  $root/bin/build-android-runtime-libraries.sh $pass_force
-  exit $?
-fi
+  source "$root/bin/android-functions.sh"
 
-if [[ "$host" = "Darwin" ]]; then
+  if [[ ! -z $DEPS_ERROR ]]; then
+    echo "Android dependencies not satisfied."
+    exit 1
+  fi
+  clang="$ANDROID_HOME/ndk/$NDK_VERSION/toolchains/llvm/prebuilt/"$(android_host_platform $host)"-"$(android_arch "$host_arch")"/bin/"$(android_arch "$arch")"-linux-android"$(android_eabi $arch)$NDK_PLATFORM"-clang++$cmd"
+  
+  sources+=($(find "$root"/src/android/*.cc))
+  if ! test -f $clang; then
+    echo "no android clang: $clang"
+    exit 1
+  fi
+elif [[ "$host" = "Darwin" ]]; then
   cflags+=("-ObjC++")
   sources+=("$root/src/window/apple.mm")
   if (( TARGET_OS_IPHONE)); then
@@ -139,38 +155,6 @@ for source in "${sources[@]}"; do
   declare object="${object/$src_directory/$output_directory}"
   objects+=("$object")
 done
-
-function quiet () {
-  if [ -n "$VERBOSE" ]; then
-    echo "$@"
-    "$@"
-  else
-    "$@" > /dev/null 2>&1
-  fi
-
-  return $?
-}
-
-function onsignal () {
-  local status=${1:-$?}
-  for pid in "${pids[@]}"; do
-    kill TERM $pid >/dev/null 2>&1
-    kill -9 $pid >/dev/null 2>&1
-  done
-  exit $status
-}
-
-function stat_mtime () {
-  if [[ "$(uname -s)" = "Darwin" ]]; then
-    if stat --help 2>/dev/null | grep GNU >/dev/null; then
-      stat -c %Y "$1" 2>/dev/null
-    else
-      stat -f %m "$1" 2>/dev/null
-    fi
-  else
-    stat -c %Y "$1" 2>/dev/null
-  fi
-}
 
 function main () {
   trap onsignal INT TERM
@@ -206,7 +190,9 @@ function main () {
   mkdir -p "$(dirname "$static_library")"
   declare ar="ar"
 
-  if [[ "$host" = "Win32" ]]; then
+  if [[ "$platform" = "android" ]]; then
+    ar="$ANDROID_HOME/ndk/$NDK_VERSION/toolchains/llvm/prebuilt/"$(android_host_platform $host)"-"$(android_arch "$host_arch")"/bin/llvm-ar"
+  elif [[ "$host" = "Win32" ]]; then
     ar="llvm-ar"
   fi
 

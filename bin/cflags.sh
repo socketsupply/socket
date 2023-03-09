@@ -30,10 +30,12 @@ if [ -z "$ANDROID_HOME" ]; then
   fi
 fi
 
-if [[ "$(basename "$CXX")" =~ clang ]]; then
-  if [[ "$host" = "Linux" ]] || [[ "$host" = "Win32" ]]; then
-    cflags+=("-Wno-unused-command-line-argument")
-    cflags+=("-stdlib=libstdc++")
+if (( !TARGET_OS_ANDROID && !TARGET_ANDROID_EMULATOR )); then
+  if [[ "$(basename "$CXX")" =~ clang ]]; then
+    if [[ "$host" = "Linux" ]] || [[ "$host" = "Win32" ]]; then
+      cflags+=("-Wno-unused-command-line-argument")
+      cflags+=("-stdlib=libstdc++")
+    fi
   fi
 fi
 

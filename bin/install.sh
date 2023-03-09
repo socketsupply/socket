@@ -2,6 +2,8 @@
 
 declare root="$(cd "$(dirname "$(dirname "${BASH_SOURCE[0]}")")" && pwd)"
 
+source "$root/bin/functions.sh"
+
 declare args=()
 declare pids=()
 declare force=0
@@ -118,29 +120,6 @@ fi
 
 export CXX
 
-function stat_mtime () {
-  if [[ "$(uname -s)" = "Darwin" ]]; then
-    if stat --help 2>/dev/null | grep GNU >/dev/null; then
-      stat -c %Y "$1" 2>/dev/null
-    else
-      stat -f %m "$1" 2>/dev/null
-    fi
-  else
-    stat -c %Y "$1" 2>/dev/null
-  fi
-}
-
-function quiet () {
-  if [ -n "$VERBOSE" ]; then
-    echo "$@"
-    "$@"
-  else
-    "$@" > /dev/null 2>&1
-  fi
-
-  return $?
-}
-
 if [[ $host!="Win32" ]]; then
   if ! quiet command -v sudo; then
     sudo () {
@@ -149,19 +128,6 @@ if [[ $host!="Win32" ]]; then
     }
   fi
 fi
-
-function die {
-  local status=$1
-  if (( status != 0 && status != 127 )); then
-    for pid in "${pids[@]}"; do
-      kill TERM $pid >/dev/null 2>&1
-      kill -9 $pid >/dev/null 2>&1
-      wait "$pid" 2>/dev/null
-    done
-    echo "$2 - please report (https://discord.gg/YPV32gKCsH)"
-    exit 1
-  fi
-}
 
 function advice {
   if [[ "$(uname -s)" == "Darwin" ]]; then
@@ -294,14 +260,16 @@ function _build_runtime_library {
   fi
 
   if [[ ! -z "$ANDROID_HOME" ]]; then
-    if ! command -v ssc; then
-      echo "Deferring Android build until SSC build completed."
-    else
-     "$root/bin/build-runtime-library.sh" --platform android & pids+=($!)
-    fi
+    echo "$root/bin/build-runtime-library.sh --platform android --arch arm64-v8a"
+    "$root/bin/build-runtime-library.sh" --platform android --arch "arm64-v8a" & pids+=($!)
+    "$root/bin/build-runtime-library.sh" --platform android --arch "armeabi-v7a" & pids+=($!)
+    "$root/bin/build-runtime-library.sh" --platform android --arch "x86" & pids+=($!)
+    "$root/bin/build-runtime-library.sh" --platform android --arch "x86_64" & pids+=($!)
   fi
 
   wait
+  
+  exit
 }
 
 function _get_web_view2() {
