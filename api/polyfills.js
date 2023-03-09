@@ -3,7 +3,11 @@ import ipc from './ipc.js'
 
 import * as exports from './polyfills.js'
 
-export function applyPolyfills (window) {
+let applied = false
+
+export function applyPolyfills () {
+  if (applied || !globalThis.window) return
+  applied = true
   // create <title> tag in document if it doesn't exist
   globalThis.document.title ||= ''
   // initial value

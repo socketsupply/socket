@@ -66,14 +66,6 @@ export default new class FileDescriptorsMap {
     return this.fds.has(id) || this.ids.has(id)
   }
 
-  setEntry (id, entry) {
-    if (entry.fd.length > 16) {
-      this.set(id, entry.fd)
-    } else {
-      this.set(id, parseInt(entry.fd))
-    }
-  }
-
   fd (id) {
     return this.get(id)
   }
@@ -117,7 +109,7 @@ export default new class FileDescriptorsMap {
     this.types.delete(fd)
 
     if (closeDescriptor !== false) {
-      result = await ipc.send('fs.closeOpenDescriptor', { id })
+      result = await ipc.send('fs.closeOpenDescriptor', { id: String(id) })
 
       if (result.err && !/found/i.test(result.err.message)) {
         console.warn('fs.fds.release', result.err.message || result.err)

@@ -1006,6 +1006,14 @@ export class Socket extends EventEmitter {
 
     close(this, (err) => {
       if (err) {
+        // gc might have already closed this
+        if (!gc.finalizers.has(this)) {
+          if (isFunction(cb)) {
+            cb()
+            return
+          }
+        }
+
         if (err.code === 'ERR_SOCKET_DGRAM_NOT_RUNNING') {
           err = Object.assign(new ERR_SOCKET_DGRAM_NOT_RUNNING(), {
             cause: err

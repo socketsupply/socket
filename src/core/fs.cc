@@ -725,11 +725,11 @@ namespace SSC {
 
       if (!desc->isDirectory()) {
         auto json = JSON::Object::Entries {
-          {"source", "fs.close"},
+          {"source", "fs.closedir"},
           {"err", JSON::Object::Entries {
             {"id", std::to_string(id)},
             {"code", "ENOTOPEN"},
-            {"message", "No directory descriptor found with that id"}
+            {"message", "The descriptor found with was not a directory"}
           }}
         };
 
@@ -1469,22 +1469,24 @@ namespace SSC {
 
   void Core::FS::constants (const String seq, Module::Callback cb) {
     static auto constants = getFSConstantsMap();
+    static auto data = JSON::Object {constants};
+    static auto json = JSON::Object::Entries {
+      {"source", "fs.constants"},
+      {"data", data}
+    };
 
-    this->core->dispatchEventLoop([=] {
-      JSON::Object::Entries data;
+    static auto headers = Headers {{
+      Headers::Header {"Cache-Control", "public, max-age=86400"}
+    }};
 
-      for (auto const &tuple : constants) {
-        auto key = tuple.first;
-        auto value = tuple.second;
-        data[key] = value;
-      }
+    static auto post = Post {
+      .id = 0,
+      .ttl = 0,
+      .body = nullptr,
+      .length = 0,
+      .headers = headers.str()
+    };
 
-      auto json = JSON::Object::Entries {
-        {"source", "fs.constants"},
-        {"data", data}
-      };
-
-      cb(seq, json, Post{});
-    });
+    cb(seq, json, post);
   }
 }

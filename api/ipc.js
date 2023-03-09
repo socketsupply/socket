@@ -45,64 +45,10 @@ import { Buffer } from './buffer.js'
 import console from './console.js'
 
 let nextSeq = 1
-
-/**
- * @ignore
- */
-export class Headers extends globalThis.Headers {
-  /**
-   * @ignore
-   */
-  static from (input) {
-    if (input?.headers) return this.from(input.headers)
-
-    if (typeof input?.entries === 'function') {
-      return new this(input.entries())
-    } else if (isPlainObject(input) || isArrayLike(input)) {
-      return new this(input)
-    } else if (typeof input?.getAllResponseHeaders === 'function') {
-      input = input.getAllResponseHeaders()
-    } else if (typeof input?.headers?.entries === 'function') {
-      return new this(input.headers.entries())
-    }
-
-    return new this(parseHeaders(String(input)))
-  }
-
-  /**
-   * @ignore
-   */
-  get length () {
-    return Array.from(this.entries()).length
-  }
-
-  /**
-   * @ignore
-   */
-  toJSON () {
-    return Object.fromEntries(this.entries())
-  }
-}
-
-/**
- * @ignore
- */
-export async function postMessage (...args) {
-  if (window?.webkit?.messageHandlers?.external?.postMessage) {
-    return webkit.messageHandlers.external.postMessage(...args)
-  } else if (window?.chrome?.webview?.postMessage) {
-    return chrome.webview.postMessage(...args)
-  } else if (window?.external?.postMessage) {
-    return external.postMessage(...args)
-  }
-
-  throw new TypeError(
-    'Could not determine UserMessageHandler.postMessage in Window'
-  )
-}
+const cache = {}
 
 function initializeXHRIntercept () {
-  if (typeof window === 'undefined') return
+  if (typeof globalThis.XMLHttpRequest !== 'function') return
   const { send, open } = globalThis.XMLHttpRequest.prototype
 
   const B5_PREFIX_BUFFER = new Uint8Array([0x62, 0x35]) // literally, 'b5'
@@ -158,15 +104,16 @@ function initializeXHRIntercept () {
             // size here assumes latin1 encoding.
             await postMessage(`ipc://buffer.create?index=${index}&seq=${seq}&size=${body.length}`)
             await new Promise((resolve) => {
-              globalThis.chrome.webview.addEventListener('sharedbufferreceived', function onSharedBufferReceived (event) {
-                const { additionalData } = event
-                if (additionalData.index === index && additionalData.seq === seq) {
-                  const buffer = new Uint8Array(event.getBuffer())
-                  buffer.set(body)
-                  globalThis.chrome.webview.removeEventListener('sharedbufferreceived', onSharedBufferReceived)
-                  resolve()
-                }
-              })
+              globalThis.chrome.webview
+                .addEventListener('sharedbufferreceived', function onSharedBufferReceived (event) {
+                  const { additionalData } = event
+                  if (additionalData.index === index && additionalData.seq === seq) {
+                    const buffer = new Uint8Array(event.getBuffer())
+                    buffer.set(body)
+                    globalThis.chrome.webview.removeEventListener('sharedbufferreceived', onSharedBufferReceived)
+                    resolve()
+                  }
+                })
             })
           }
 
@@ -213,8 +160,8 @@ function initializeXHRIntercept () {
 }
 
 function getErrorClass (type, fallback) {
-  if (typeof window !== 'undefined' && typeof window[type] === 'function') {
-    return window[type]
+  if (typeof globalThis !== 'undefined' && typeof globalThis[type] === 'function') {
+    return globalThis[type]
   }
 
   if (typeof errors[type] === 'function') {
@@ -456,14 +403,79 @@ Object.defineProperty(debug, 'enabled', {
 
   get () {
     if (debug[kDebugEnabled] === undefined) {
-      return typeof window === 'undefined'
-        ? false
-        : Boolean(window?.__args?.debug)
+      return Boolean(globalThis?.__args?.debug)
     }
 
     return debug[kDebugEnabled]
   }
 })
+
+/**
+ * @ignore
+ */
+export class Headers extends globalThis.Headers {
+  /**
+   * @ignore
+   */
+  static from (input) {
+    if (input?.headers) return this.from(input.headers)
+
+    if (typeof input?.entries === 'function') {
+      return new this(input.entries())
+    } else if (isPlainObject(input) || isArrayLike(input)) {
+      return new this(input)
+    } else if (typeof input?.getAllResponseHeaders === 'function') {
+      input = input.getAllResponseHeaders()
+    } else if (typeof input?.headers?.entries === 'function') {
+      return new this(input.headers.entries())
+    }
+
+    return new this(parseHeaders(String(input)))
+  }
+
+  /**
+   * @ignore
+   */
+  get length () {
+    return Array.from(this.entries()).length
+  }
+
+  /**
+   * @ignore
+   */
+  toJSON () {
+    return Object.fromEntries(this.entries())
+  }
+}
+
+/**
+ * @ignore
+ */
+export async function postMessage (message, ...args) {
+  if (globalThis?.webkit?.messageHandlers?.external?.postMessage) {
+    return webkit.messageHandlers.external.postMessage(message, ...args)
+  } else if (globalThis?.chrome?.webview?.postMessage) {
+    return chrome.webview.postMessage(message, ...args)
+  } else if (globalThis?.external?.postMessage) {
+    return external.postMessage(message, ...args)
+  } else if (globalThis.postMessage) {
+    // worker
+    if (globalThis.self && !globalThis.self) {
+      return globalThis?.postMessage({
+        __runtime_worker_ipc_request: {
+          message,
+          bytes: args[0]
+        }
+      })
+    } else {
+      return globalThis?.postMessage(message, args)
+    }
+  }
+
+  throw new TypeError(
+    'Could not determine UserMessageHandler.postMessage in globalThis'
+  )
+}
 
 /**
  * A container for a IPC message based on a `ipc://` URI scheme.
@@ -482,10 +494,11 @@ export class Message extends URL {
    * Creates a `Message` instance from a variety of input.
    * @param {string|URL|Message|Buffer|object} input
    * @param {(object|string|URLSearchParams)=} [params]
+   * @param {(ArrayBuffer|Uint8Array|string)?} [bytes]
    * @return {Message}
    * @ignore
    */
-  static from (input, params, bytes) {
+  static from (input, params, bytes = null) {
     const protocol = this.PROTOCOL
 
     if (isBufferLike(input)) {
@@ -606,7 +619,7 @@ export class Message extends URL {
    * @ignore
    */
   get id () {
-    return this.has('id') ? this.get('id') : null
+    return this.searchParams.get('id') ?? null
   }
 
   /**
@@ -660,6 +673,14 @@ export class Message extends URL {
    */
   get params () {
     return Object.fromEntries(this.entries())
+  }
+
+  /**
+   * Gets unparsed message parameters.
+   * @ignore
+   */
+  get rawParams () {
+    return Object.fromEntries(this.searchParams.entries())
   }
 
   /**
@@ -894,10 +915,20 @@ export class Result {
    */
   toJSON () {
     return {
-      err: this.err ?? null,
-      data: this.data ?? null,
+      headers: this.headers ?? null,
       source: this.source ?? null,
-      headers: this.headers ?? null
+      data: this.data ?? null,
+      err: this.err && {
+        // @ts-ignore
+        message: this.err.message ?? '',
+        // @ts-ignore
+        name: this.err.name ?? '',
+        // @ts-ignore
+        type: this.err.type ?? '',
+        // @ts-ignore
+        code: this.err.code ?? '',
+        ...this.err
+      }
     }
   }
 }
@@ -909,10 +940,6 @@ export class Result {
  */
 export async function ready () {
   return await new Promise((resolve, reject) => {
-    if (typeof window === 'undefined') {
-      return reject(new TypeError('Global window object is not defined.'))
-    }
-
     return loop()
 
     function loop () {
@@ -935,12 +962,13 @@ export async function ready () {
  * @ignore
  */
 export function sendSync (command, params = {}, options = {}) {
-  if (typeof window === 'undefined') {
-    if (debug.enabled) {
-      debug.log('Global window object is not defined')
-    }
+  if (!globalThis.XMLHttpRequest) {
+    const err = new Error('XMLHttpRequest is not supported in environment')
+    return Result.from(err)
+  }
 
-    return Result.from(new Error('Missing window in globalThis'), command)
+  if (options?.cache === true && cache[command]) {
+    return cache[command]
   }
 
   const request = new globalThis.XMLHttpRequest()
@@ -968,6 +996,10 @@ export function sendSync (command, params = {}, options = {}) {
 
   if (debug.enabled) {
     debug.log('ipc.sendSync: (resolved)', command, result)
+  }
+
+  if (options?.cache === true) {
+    cache[command] = result
   }
 
   return result
@@ -1036,8 +1068,12 @@ export async function resolve (seq, value) {
  * @param {Mixed=} value
  * @return {Promise<Result>}
  */
-export async function send (command, value) {
+export async function send (command, value, options) {
   await ready()
+
+  if (options?.cache === true && cache[command]) {
+    return cache[command]
+  }
 
   if (debug.enabled) {
     debug.log('ipc.send:', command, value)
@@ -1057,6 +1093,7 @@ export async function send (command, value) {
       index,
       seq
     }
+
     serialized = new URLSearchParams(params).toString()
     serialized = serialized.replace(/\+/g, '%20')
   } catch (err) {
@@ -1064,7 +1101,11 @@ export async function send (command, value) {
     return Promise.reject(err.message)
   }
 
-  postMessage(`ipc://${command}?${serialized}`)
+  if (options?.bytes) {
+    postMessage(`ipc://${command}?${serialized}`, options?.bytes)
+  } else {
+    postMessage(`ipc://${command}?${serialized}`)
+  }
 
   return await new Promise((resolve) => {
     const event = `resolve-${index}-${seq}`
@@ -1073,6 +1114,10 @@ export async function send (command, value) {
       const result = Result.from(event.detail, null, command)
       if (debug.enabled) {
         debug.log('ipc.send: (resolved)', command, result)
+      }
+
+      if (options?.cache === true) {
+        cache[command] = result
       }
 
       resolve(result)
@@ -1089,16 +1134,16 @@ export async function send (command, value) {
  * @ignore
  */
 export async function write (command, params, buffer, options) {
-  if (typeof window === 'undefined') {
-    debug.log('Global window object is not defined')
-    return {}
+  if (!globalThis.XMLHttpRequest) {
+    const err = new Error('XMLHttpRequest is not supported in environment')
+    return Result.from(err)
   }
 
   await ready()
 
   const signal = options?.signal
   const request = new globalThis.XMLHttpRequest()
-  const index = window?.__args?.index ?? 0
+  const index = globalThis?.__args?.index ?? 0
   const seq = nextSeq++
   const uri = `ipc://${command}`
 
@@ -1189,11 +1234,20 @@ export async function write (command, params, buffer, options) {
  * @ignore
  */
 export async function request (command, params, options) {
+  if (!globalThis.XMLHttpRequest) {
+    const err = new Error('XMLHttpRequest is not supported in environment')
+    return Result.from(err)
+  }
+
+  if (options?.cache === true && cache[command]) {
+    return cache[command]
+  }
+
   await ready()
 
   const request = new globalThis.XMLHttpRequest()
   const signal = options?.signal
-  const index = window?.__args?.index ?? 0
+  const index = globalThis?.__args?.index ?? 0
   const seq = nextSeq++
   const uri = `ipc://${command}`
 
@@ -1260,6 +1314,10 @@ export async function request (command, params, options) {
 
         if (debug.enabled) {
           debug.log('ipc.request: (resolved)', command, result)
+        }
+
+        if (options?.cache === true) {
+          cache[command] = result
         }
 
         return resolve(result)
@@ -1336,9 +1394,9 @@ export function createBinding (domain, ctx) {
  */
 export const primordials = sendSync('platform.primordials')?.data || {}
 
-if (typeof window !== 'undefined') {
-  initializeXHRIntercept()
+initializeXHRIntercept()
 
+if (typeof globalThis?.window !== 'undefined') {
   document.addEventListener('DOMContentLoaded', () => {
     queueMicrotask(async () => {
       try {

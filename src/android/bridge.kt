@@ -178,7 +178,7 @@ open class Bridge (runtime: Runtime, configuration: IBridgeConfiguration) {
         return true
       }
 
-      "exit" -> {
+      "application.exit", "process.exit", "exit" -> {
         val code = message.get("value", "0").toInt()
         this.runtime.get()?.exit(code)
         callback(Result(0, message.seq, message.command, "{}"))

@@ -31,7 +31,7 @@ test('diagnostics - window - metrics', async (t) => {
 
   await new Promise((resolve) => {
     const options = { method: 'GET' }
-    const uri = window.location.href
+    const uri = 'index.html'
     let diagnosticsReceived = false
 
     diagnostics.window.metrics.subscribe('fetch', (message) => {

@@ -1,7 +1,7 @@
 import { sendSync } from '../ipc.js'
 import * as exports from './constants.js'
 
-const constants = sendSync('fs.constants')?.data || {}
+const constants = sendSync('fs.constants', {}, { cache: true })?.data || {}
 
 /**
  * This flag can be used with uv_fs_copyfile() to return an error if the
@@ -31,9 +31,9 @@ export const UV_DIRENT_CHAR = constants.UV_DIRENT_CHAR || 6
 export const UV_DIRENT_BLOCK = constants.UV_DIRENT_BLOCK || 7
 
 export const O_RDONLY = constants.O_RDONLY || 0
-export const O_WRONLY = constants.O_WRONLY || 0
-export const O_RDWR = constants.O_RDWR || 0
-export const O_APPEND = constants.O_APPEND || 0
+export const O_WRONLY = constants.O_WRONLY || 1
+export const O_RDWR = constants.O_RDWR || 2
+export const O_APPEND = constants.O_APPEND || 8
 export const O_ASYNC = constants.O_ASYNC || 0
 export const O_CLOEXEC = constants.O_CLOEXEC || 0
 export const O_CREAT = constants.O_CREAT || 0
@@ -74,8 +74,8 @@ export const S_IWOTH = constants.S_IWOTH || 0
 export const S_IXOTH = constants.S_IXOTH || 0
 
 export const F_OK = constants.F_OK || 0
-export const R_OK = constants.R_OK || 0
-export const W_OK = constants.W_OK || 0
-export const X_OK = constants.X_OK || 0
+export const R_OK = constants.R_OK || 4
+export const W_OK = constants.W_OK || 2
+export const X_OK = constants.X_OK || 1
 
 export default exports
