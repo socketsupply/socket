@@ -15,7 +15,7 @@ import os from 'node:os'
 */
 
 // FIXME: make this work on iOS
-if (os.platform() === 'ios') {
+if (process.platform !== 'ios') {
   const TMPDIR = `${os.tmpdir()}${path.sep}`
   const FIXTURES = /android/i.test(os.platform())
     ? '/data/local/tmp/ssc-socket-test-fixtures/'
