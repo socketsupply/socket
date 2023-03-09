@@ -6,6 +6,10 @@ object console {
     android.util.Log.i(TAG, string)
   }
 
+  fun info (string: String) {
+    android.util.Log.i(TAG, string)
+  }
+
   fun debug (string: String) {
     android.util.Log.d(TAG, string)
   }
