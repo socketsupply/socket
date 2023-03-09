@@ -121,7 +121,8 @@ Function Test-CommandVersion {
         $ca += [int]$v
       }
     } elseif ($debug) {
-      Write-Output "Invalid: $current_version"
+      Write-Output $false
+      return
     }
 
     if ($ca.Count -ne $ta.Count) {
@@ -148,7 +149,6 @@ Function Test-CommandVersion {
     $p = $fso.GetFile($(Get-CommandPath $command_string)).ParentFolder.Path
     $env:PATH = $env:PATH.replace("$p", "")
   }
-  
   Write-Output $false
 }
 
@@ -291,7 +291,10 @@ Function Install-Requirements {
     $cmakePath = ""
     if (-not (Test-CommandVersion("cmake", $targetCmakeVersion))) {
       $cmakePath = "$env:ProgramFiles\CMake\bin"
-      $global:cmake = "$cmakePath\$global:cmake"
+      if ((Test-Path $cmakePath -PathType Container) -eq $true) {
+        $env:PATH="$cmakePath\;$env:PATH"
+        $global:cmake = "$cmakePath\$global:cmake"
+      }
     }
 
     if (-not (Test-CommandVersion("cmake", $targetCmakeVersion))) {
