@@ -31,40 +31,64 @@ open class Window (runtime: Runtime, activity: MainActivity) {
     val runtime = this.runtime.get() ?: return
     val source = this.getJavaScriptPreloadSource()
 
-    // enable/disable debug module in webview
-    android.webkit.WebView.setWebContentsDebuggingEnabled(isDebugEnabled)
+    val rootDirectory = this.getRootDirectory()
+    this.bridge.route("ipc://internal.setcwd?value=${rootDirectory}", null, fun (result: Result) {
+      activity.runOnUiThread {
+        // enable/disable debug module in webview
+        android.webkit.WebView.setWebContentsDebuggingEnabled(isDebugEnabled)
 
-    activity.webview?.apply {
-      settings.javaScriptEnabled = true
-      // allow list
-      settings.allowFileAccess = true
-      settings.allowContentAccess = true
-      settings.allowFileAccessFromFileURLs = true // deprecated
+        activity.webview?.apply {
+          settings.javaScriptEnabled = true
+          // allow list
+          settings.allowFileAccess = true
+          settings.allowContentAccess = true
+          settings.allowFileAccessFromFileURLs = true // deprecated
 
-      webViewClient = activity.client
+          webViewClient = activity.client
 
-      addJavascriptInterface(userMessageHandler, "external")
-      val assetManager = runtime.configuration.assetManager
-      val indexFile = assetManager.open(filename)
-      val indexBytes = indexFile.readAllBytes()
+          addJavascriptInterface(userMessageHandler, "external")
+          val assetManager = runtime.configuration.assetManager
+          val indexFile = assetManager.open(filename)
+          val indexBytes = indexFile.readAllBytes()
+          val htmlString = String(indexBytes)
 
-      var html = String(indexBytes).replace("<head>","""
-        <head>
-          <script type="module">
-            ${source}
-          </script>
-      """)
+          var html = if (htmlString.matches("<head>".toRegex())) {
+            htmlString.replace("<head>","""
+              <head>
+                <script type="text/javascript">
+                  ${source}
+                </script>
+            """)
+          } else if (htmlString.matches("<html>".toRegex())) {
+            htmlString.replace("<html>","""
+              <html>
+                <script type="text/javascript">
+                  ${source}
+                </script>
+            """)
+          } else if (htmlString.matches("<body>".toRegex())) {
+            htmlString.replace("<html>","""
+              <html>
+                <script type="text/javascript">
+                  ${source}
+                </script>
+            """)
+          } else {
+            """<script type="text/javascript">${source}</script>""" + htmlString
+          }
 
-      indexFile.close()
+          indexFile.close()
 
-      loadDataWithBaseURL(
-        "https://appassets.androidplatform.net/assets/",
-        html,
-        "text/html",
-        null,
-        null
-      )
-    }
+          loadDataWithBaseURL(
+            "https://appassets.androidplatform.net/assets/",
+            html,
+            "text/html",
+            null,
+            null
+          )
+        }
+      }
+    })
   }
 
   open fun onSchemeRequest (
@@ -89,11 +113,14 @@ open class Window (runtime: Runtime, activity: MainActivity) {
         setMimeType(contentType)
       }
 
-      try {
-        stream.write(bytes, 0, bytes.size)
+      kotlin.concurrent.thread {
+        try {
+          stream.write(bytes, 0, bytes.size)
+        } catch (err: Exception) {
+          console.error("onSchemeRequest: ${err.toString()}")
+        }
+
         stream.close()
-      } catch (err: Exception) {
-        console.error("onSchemeRequest: ${err.toString()}")
       }
     })
   }
