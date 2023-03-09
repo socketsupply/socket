@@ -3,6 +3,7 @@
 declare root="$(cd "$(dirname "$(dirname "${BASH_SOURCE[0]}")")" && pwd)"
 
 source "$root/bin/functions.sh"
+source "$root/bin/android-functions.sh"
 
 declare args=()
 declare pids=()
@@ -259,7 +260,7 @@ function _build_runtime_library {
     "$root/bin/build-runtime-library.sh" --arch x86_64 --platform ios-simulator $pass_force & pids+=($!)
   fi
 
-  if [[ ! -z "$ANDROID_HOME" ]]; then
+  if [[ ! -z "$BUILD_ANDROID" ]]; then
     "$root/bin/build-runtime-library.sh" --platform android --arch "arm64-v8a" & pids+=($!)
     "$root/bin/build-runtime-library.sh" --platform android --arch "armeabi-v7a" & pids+=($!)
     "$root/bin/build-runtime-library.sh" --platform android --arch "x86" & pids+=($!)
@@ -568,7 +569,6 @@ function _setSDKVersion {
 }
 
 function _compile_libuv_android {
-  source "$root/bin/android-functions.sh"
   local platform="android"
   local arch=$1
   local host_arch=$(uname -m)
@@ -681,7 +681,7 @@ function _compile_libuv {
     rm -f "$root/build/$(uname -m)-desktop/lib$d"/*.{so,la,dylib}*
   fi
 
-  if [[ ! -z "$ANDROID_HOME" ]]; then
+  if [[ ! -z "$BUILD_ANDROID" ]]; then
     _compile_libuv_android arm64-v8a & pids+=($!)
     _compile_libuv_android armeabi-v7a & pids+=($!)
     _compile_libuv_android x86 & pids+=($!)
@@ -831,7 +831,7 @@ fi
 
 _install_cli
 
-if [[ ! -z "$ANDROID_HOME" ]]; then
+if [[ ! -z "$BUILD_ANDROID" ]]; then
   if [[ ! -n $CI ]] || [[ -n $SSC_ANDROID_CI ]]; then
     "$root/bin/build-runtime-library.sh" --platform android
     if [[ ! $? ]]; then
