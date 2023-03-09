@@ -52,8 +52,16 @@ static JSON::Any validateMessageParameters (
   return nullptr;
 }
 
+static struct { Mutex mutex; String value = ""; } cwdstate;
+
+static void setcwd (String cwd) {
+  Lock lock(cwdstate.mutex);
+  cwdstate.value = cwd;
+}
+
 static String getcwd () {
-  String cwd = "";
+  Lock lock(cwdstate.mutex);
+  String cwd = cwdstate.value;
 #if defined(__linux__) && !defined(__ANDROID__)
   auto canonical = fs::canonical("/proc/self/exe");
   cwd = fs::path(canonical).parent_path().string();
@@ -77,11 +85,10 @@ static String getcwd () {
 #endif
 
 #ifndef _WIN32
-    std::replace(cwd.begin(), cwd.end(), '\\', '/');
-#else
-
+  std::replace(cwd.begin(), cwd.end(), '\\', '/');
 #endif
 
+  cwdstate.value = cwd;
   return cwd;
 }
 
@@ -126,6 +133,7 @@ void initFunctionsTable (Router *router) {
   #endif
   );
 #endif
+
   /**
    * Starts a bluetooth service
    * @param serviceId
@@ -727,6 +735,22 @@ void initFunctionsTable (Router *router) {
       offset,
       RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
     );
+  });
+
+  /**
+   * A private API for artifically setting the current cached CWD value.
+   * This is only useful on platforms that need to set this value from an
+   * external source, like Android or ChromeOS.
+   */
+  router->map("internal.setcwd", [=](auto message, auto router, auto reply) {
+    auto err = validateMessageParameters(message, {"value"});
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result { message.seq, message, err });
+    }
+
+    setcwd(message.value);
+    reply(Result { message.seq, message, JSON::Object{} });
   });
 
   /**
