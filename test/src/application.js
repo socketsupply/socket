@@ -23,10 +23,10 @@ test('window.document.title', async (t) => {
 //
 
 // TODO(@chicoxyzzy): rename to application.socket_version? runtime_version?
-test('application.version', (t) => {
-  t.equal(application.version.short, primordials.version.short, 'short version is correct')
-  t.equal(application.version.hash, primordials.version.hash, 'version hash is correct')
-  t.equal(application.version.full, primordials.version.full, 'full version is correct')
+test('application.runtimeVersion', (t) => {
+  t.equal(application.runtimeVersion.short, primordials.version.short, 'short version is correct')
+  t.equal(application.runtimeVersion.hash, primordials.version.hash, 'version hash is correct')
+  t.equal(application.runtimeVersion.full, primordials.version.full, 'full version is correct')
 })
 
 test('application.debug', async (t) => {
