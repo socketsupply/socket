@@ -30,30 +30,40 @@ export default new class Hooks extends EventTarget {
 
     this.global.addEventListener('load', () => {
       this.didGlobalLoad = true
-      queueMicrotask(() => this.dispatchEvent(new CustomEvent('load')))
     })
 
     this.global.addEventListener('init', () => {
       this.didRuntimeInit = true
-      queueMicrotask(() => this.dispatchEvent(new CustomEvent('init')))
       if (this.didGlobalLoad) {
         queueMicrotask(() => this.dispatchEvent(new CustomEvent('ready')))
       }
     })
 
-    this.global.addEventListener('error', (err) => {
-      this.dispatchEvent(new CustomEvent('error', { detail: err }))
-    })
+    const events = [
+      'data',
+      'init',
+      'load',
+      'message',
+      'error',
+      'messageerror',
+      'unhandledrejection'
+    ]
 
-    this.global.addEventListener('messageerror', (err) => {
-      this.dispatchEvent(new CustomEvent('error', { detail: err }))
-    })
-
-    this.global.addEventListener('unhandledrejection', (err) => {
-      this.dispatchEvent(new CustomEvent('error', { detail: err }))
-    })
+    for (const type of events) {
+      this.global.addEventListener(type, (event) => {
+        const { type, data, detail, error } = event
+        if (error) {
+          this.dispatchEvent(new ErrorEvent(type, { error, detail }))
+        } else if (type && data) {
+          this.dispatchEvent(new MessageEvent(type, { data, detail }))
+        } else {
+          this.dispatchEvent(new CustomEvent(type, { detail }))
+        }
+      })
+    }
 
     if (this.isDocumentReady && this.isRuntimeReady) {
+      // artificially notify
       queueMicrotask(() => {
         this.dispatchEvent(new CustomEvent('load'))
         this.didGlobalLoad = true
@@ -208,5 +218,16 @@ export default new class Hooks extends EventTarget {
   onData (callback) {
     this.addEventListener('data', callback)
     return () => this.removeEventListener('data', callback)
+  }
+
+  /**
+   * Subscribes to global messages likely from an external `postMessage`
+   * invocation.
+   * @param {function} callback
+   * @return {function}
+   */
+  onMessage (callback) {
+    this.addEventListener('message', callback)
+    return () => this.removeEventListener('message', callback)
   }
 }

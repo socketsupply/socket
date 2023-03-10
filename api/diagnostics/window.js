@@ -34,7 +34,10 @@ export class RequestAnimationFrameMetric extends Metric {
   }
 
   init () {
-    if (this.originalRequestAnimationFrame === null) {
+    if (
+      this.originalRequestAnimationFrame === null &&
+      typeof globalThis.requestAnimationFrame === 'function'
+    ) {
       this.samples = new Uint8Array(this.sampleSize)
       this.originalRequestAnimationFrame = globalThis.requestAnimationFrame
       globalThis.requestAnimationFrame = this.requestAnimationFrame

@@ -40,7 +40,7 @@ export function onWorkerMessage (event) {
           await import(source)
         } catch (err) {
           console.error(
-            'RuntimeWorker: Failed to import worker:', err.stack || err
+            'RuntimeWorker: Failed to import worker:', err
           )
         }
       })
