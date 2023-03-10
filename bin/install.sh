@@ -261,10 +261,11 @@ function _build_runtime_library {
 
   # TODO(mribbons): These should be build sequentially, or just run this twice - There's an issue with exclusive file access
   if [[ ! -z "$BUILD_ANDROID" ]]; then
-    "$root/bin/build-runtime-library.sh" --platform android --arch "arm64-v8a" & pids+=($!)
-    "$root/bin/build-runtime-library.sh" --platform android --arch "armeabi-v7a" & pids+=($!)
-    "$root/bin/build-runtime-library.sh" --platform android --arch "x86" & pids+=($!)
-    "$root/bin/build-runtime-library.sh" --platform android --arch "x86_64" & pids+=($!)
+    # & pids+=($!) forking here causes file lock errors, something wrong with android clang
+    "$root/bin/build-runtime-library.sh" --platform android --arch "arm64-v8a"
+    "$root/bin/build-runtime-library.sh" --platform android --arch "armeabi-v7a"
+    "$root/bin/build-runtime-library.sh" --platform android --arch "x86"
+    "$root/bin/build-runtime-library.sh" --platform android --arch "x86_64"
   fi
 
   wait
@@ -595,10 +596,8 @@ function _compile_libuv_android {
       quiet $clang "${cflags[@]}" -c "$src_directory/$source" -o "$output_directory/$object" || onsignal
       echo "ok - built $source -> $object ($arch-$platform)"
     fi
-  } & pids+=($!)
+  }
   done
-
-  wait
 
   declare static_library="$root/build/$arch-$platform/lib$d/uv$d.a"
   mkdir -p "$(dirname $static_library)"
