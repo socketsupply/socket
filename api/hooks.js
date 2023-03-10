@@ -8,34 +8,38 @@ import { CustomEvent } from './events.js'
 // eslint-disable-next-line new-parens
 export default new class Hooks extends EventTarget {
   didGlobalLoad = false
+  didRuntimeInit = false
 
   /**
    * @ignore
    */
   constructor () {
     super()
-    this.global.addEventListener('load', () => {
-      this.didGlobalLoad = true
-    })
 
-    if (this.isDocumentReady) {
+    if (!this.document && !this.global.window) { // worker
       queueMicrotask(() => {
-        this.dispatchEvent(new CustomEvent('ready'))
-        queueMicrotask(() => {
-          this.didGlobalLoad = true
-        })
-      })
-    } else if (this.document) {
-      this.document?.addEventListener('DOMContentLoaded', () => {
-        this.document.addEventListener('readystatechange', () => {
-          if (this.document.readyState === 'complete') {
-            this.global.addEventListener('load', () => {
-              queueMicrotask(() => this.dispatchEvent(new CustomEvent('ready')))
-            })
-          }
-        })
+        this.didGlobalLoad = true
+        queueMicrotask(() => this.dispatchEvent(new CustomEvent('load')))
+        queueMicrotask(() => this.dispatchEvent(new CustomEvent('ready')))
       })
     }
+
+    if (this.document?.readyState === 'complete') {
+      this.didGlobalLoad = true
+    }
+
+    this.global.addEventListener('load', () => {
+      this.didGlobalLoad = true
+      queueMicrotask(() => this.dispatchEvent(new CustomEvent('load')))
+    })
+
+    this.global.addEventListener('init', () => {
+      this.didRuntimeInit = true
+      queueMicrotask(() => this.dispatchEvent(new CustomEvent('init')))
+      if (this.didGlobalLoad) {
+        queueMicrotask(() => this.dispatchEvent(new CustomEvent('ready')))
+      }
+    })
 
     this.global.addEventListener('error', (err) => {
       this.dispatchEvent(new CustomEvent('error', { detail: err }))
@@ -48,6 +52,43 @@ export default new class Hooks extends EventTarget {
     this.global.addEventListener('unhandledrejection', (err) => {
       this.dispatchEvent(new CustomEvent('error', { detail: err }))
     })
+
+    if (this.isDocumentReady && this.isRuntimeReady) {
+      queueMicrotask(() => {
+        this.dispatchEvent(new CustomEvent('load'))
+        this.didGlobalLoad = true
+        queueMicrotask(() => {
+          this.didRuntimeInit = true
+          this.dispatchEvent(new CustomEvent('init'))
+          queueMicrotask(() => {
+            this.dispatchEvent(new CustomEvent('ready'))
+          })
+        })
+      })
+    } else if (this.document) {
+      this.document?.addEventListener('DOMContentLoaded', () => {
+        this.document.addEventListener('readystatechange', () => {
+          if (this.document.readyState === 'complete') {
+            if (this.didGlobalLoad) {
+              console.log(this.didRuntimeInit)
+              this.global.addEventListener('init', () => {
+                queueMicrotask(() => {
+                  this.dispatchEvent(new CustomEvent('ready'))
+                })
+              }, { once: true })
+            } else {
+              this.global.addEventListener('load', () => {
+                this.global.addEventListener('init', () => {
+                  queueMicrotask(() => {
+                    this.dispatchEvent(new CustomEvent('ready'))
+                  })
+                }, { once: true })
+              }, { once: true })
+            }
+          }
+        })
+      }, { once: true })
+    }
   }
 
   /**
@@ -67,15 +108,53 @@ export default new class Hooks extends EventTarget {
   }
 
   /**
-   * Predicate for determining if globalis ready.
+   * Predicate for determining if the global document is ready.
    * @type {boolean}
    */
   get isDocumentReady () {
-    return this.document?.readyState === 'complete'
+    return !this.document && !this.global.window && this.global.self
+      ? true
+      : this.document?.readyState === 'complete'
   }
 
+  /**
+   * Predicate for determining if the global object is ready.
+   * @type {boolean}
+   */
   get isGlobalReady () {
     return this.isDocumentReady && this.didGlobalLoad
+  }
+
+  /**
+   * Predicate for determining if the runtime is ready.
+   * @type {boolean}
+   */
+  get isRuntimeReady () {
+    return this.didRuntimeInit
+  }
+
+  /**
+   * Predicate for determining if everything is ready.
+   * @type {boolean}
+   */
+  get isReady () {
+    return this.isDocumentReady && this.isGlobalReady && this.isRuntimeReady
+  }
+
+  /**
+   * Wait for the global Window, Document, and Runtime to be ready.
+   * The callback function is called exactly once.
+   * @param {function} callback
+   * @return {function}
+   */
+  onReady (callback) {
+    if (this.isDocumentReady && this.isGlobalReady && this.isRuntimeReady) {
+      setTimeout(callback)
+      return () => undefined
+    } else {
+      this.addEventListener('ready', callback, { once: true })
+      return () => this.removeEventListener('ready', callback)
+    }
   }
 
   /**
@@ -84,13 +163,29 @@ export default new class Hooks extends EventTarget {
    * @param {function} callback
    * @return {function}
    */
-  onReady (callback) {
+  onLoad (callback) {
     if (this.isGlobalReady) {
       setTimeout(callback)
       return () => undefined
     } else {
-      this.addEventListener('ready', callback, { once: true })
-      return () => this.removeEventListener('ready', callback)
+      this.addEventListener('load', callback, { once: true })
+      return () => this.removeEventListener('load', callback)
+    }
+  }
+
+  /**
+   * Wait for the runtime to be ready. The callback
+   * function is called exactly once.
+   * @param {function} callback
+   * @return {function}
+   */
+  onInit (callback) {
+    if (this.isRuntimeReady) {
+      setTimeout(callback)
+      return () => undefined
+    } else {
+      this.addEventListener('init', callback, { once: true })
+      return () => this.removeEventListener('init', callback)
     }
   }
 
