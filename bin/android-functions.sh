@@ -79,7 +79,7 @@ function android_machine_arch() {
   esac
 }
 
-function android-arch-includes() {
+function android_arch_includes() {
   arch=$1
   include=(
     "-I$ANDROID_HOME/ndk/$NDK_VERSION/toolchains/llvm/prebuilt/windows-x86_64/sysroot/usr/include/$(android_arch "$arch")"-linux-android"$(android_eabi $arch)"
