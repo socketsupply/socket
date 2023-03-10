@@ -113,13 +113,10 @@ if [[ "$platform" = "android" ]]; then
     echo "Android dependencies not satisfied."
     exit 1
   fi
-  clang="$ANDROID_HOME/ndk/$NDK_VERSION/toolchains/llvm/prebuilt/"$(android_host_platform $host)"-"$(android_arch "$host_arch")"/bin/"$(android_arch "$arch")"-linux-android"$(android_eabi $arch)$NDK_PLATFORM"-clang++$cmd"
-  
-  sources+=($(find "$root"/src/android/*.cc))
-  if ! test -f $clang; then
-    echo "no android clang: $clang"
-    exit 1
-  fi
+  clang="$ANDROID_HOME/ndk/$NDK_VERSION/toolchains/llvm/prebuilt/"$(android_host_platform $host)"-"$(android_arch "$host_arch")"/bin/"$(android_arch "$arch")"-linux-android"$(android_eabi $arch)"-clang++$cmd"
+  android_includes=$(android-arch-includes $arch)
+
+  clang="$ANDROID_HOME/ndk/$NDK_VERSION/toolchains/llvm/prebuilt/"$(android_host_platform $host)"-"$(android_arch "$host_arch")"/bin/clang++ --target="$(android_arch "$arch")"-linux-android"$(android_eabi $arch)
 elif [[ "$host" = "Darwin" ]]; then
   cflags+=("-ObjC++")
   sources+=("$root/src/window/apple.mm")
@@ -140,6 +137,10 @@ fi
 
 declare cflags=($("$root/bin/cflags.sh"))
 declare ldflags=($("$root/bin/ldflags.sh"))
+
+if [[ "$platform" = "android" ]]; then
+  cflags+=("${android_includes[@]}")
+fi
 
 declare output_directory="$root/build/$arch-$platform"
 mkdir -p "$output_directory"

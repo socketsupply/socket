@@ -259,6 +259,7 @@ function _build_runtime_library {
     "$root/bin/build-runtime-library.sh" --arch x86_64 --platform ios-simulator $pass_force & pids+=($!)
   fi
 
+  # TODO(mribbons): These should be build sequentially, or just run this twice - There's an issue with exclusive file access
   if [[ ! -z "$BUILD_ANDROID" ]]; then
     "$root/bin/build-runtime-library.sh" --platform android --arch "arm64-v8a" & pids+=($!)
     "$root/bin/build-runtime-library.sh" --platform android --arch "armeabi-v7a" & pids+=($!)
@@ -267,8 +268,6 @@ function _build_runtime_library {
   fi
 
   wait
-  
-  exit
 }
 
 function _get_web_view2() {
@@ -489,7 +488,7 @@ function _install {
     fi
 
     if [[ $platform == "android" ]] && [[ -d "$BUILD_DIR/$arch-$platform"/lib ]]; then
-      cp -fr "$BUILD_DIR/$arch-$platform"/lib/*.so "$SOCKET_HOME/lib/$arch-$platform"
+      cp -fr "$BUILD_DIR/$arch-$platform"/lib/*.a "$SOCKET_HOME/lib/$arch-$platform"
     fi
   else 
     echo "no $BUILD_DIR/$arch-$platform/lib"
@@ -571,15 +570,14 @@ function _compile_libuv_android {
   local platform="android"
   local arch=$1
   local host_arch=$(uname -m)
-  clang="$ANDROID_HOME/ndk/$NDK_VERSION/toolchains/llvm/prebuilt/"$(android_host_platform $host)"-"$(android_arch "$host_arch")"/bin/"$(android_arch "$arch")"-linux-android"$(android_eabi $arch)$NDK_PLATFORM"-clang$cmd"
+  clang="$ANDROID_HOME/ndk/$NDK_VERSION/toolchains/llvm/prebuilt/"$(android_host_platform $host)"-"$(android_arch "$host_arch")"/bin/clang --target="$(android_arch "$arch")"-linux-android"$(android_eabi $arch)
   ar="$ANDROID_HOME/ndk/$NDK_VERSION/toolchains/llvm/prebuilt/"$(android_host_platform $host)"-"$(android_arch "$host_arch")"/bin/llvm-ar"
-  if ! test -f $clang; then
-    echo "no android clang: $clang"
-    exit 1
-  fi
-  local cflags=(-std=gnu89 -g -pedantic -I$root/build/uv/include -I$root/build/uv/src -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -D_LARGEFILE_SOURCE -landroid -Wall -Wextra -Wno-pedantic -Wno-sign-compare -Wno-unused-parameter -Wno-implicit-function-declaration)
+  android_includes=$(android-arch-includes $arch)
+
+  local cflags=(-std=gnu89 -g -pedantic -I$root/build/uv/include -I$root/build/uv/src -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -D_LARGEFILE_SOURCE -fPIC -Wall -Wextra -Wno-pedantic -Wno-sign-compare -Wno-unused-parameter -Wno-implicit-function-declaration)
+  cflags+=("${android_includes[@]}")
   local objects=()
-  local sources=("unix/async.c" "unix/core.c" "unix/dl.c" "unix/fs.c" "unix/getaddrinfo.c" "unix/getnameinfo.c" "unix/linux.c" "unix/loop.c" "unix/loop-watcher.c" "unix/pipe.c" "unix/poll.c" "unix/process.c" "unix/proctitle.c" "unix/random-devurandom.c" "unix/random-getentropy.c" "unix/random-getrandom.c" "unix/random-sysctl-linux.c" "unix/signal.c" "unix/stream.c" "unix/tcp.c" "unix/thread.c" "unix/tty.c" "unix/udp.c")  
+  local sources=("unix/async.c" "unix/core.c" "unix/dl.c" "unix/fs.c" "unix/getaddrinfo.c" "unix/getnameinfo.c" "unix/linux.c" "unix/loop.c" "unix/loop-watcher.c" "unix/pipe.c" "unix/poll.c" "unix/process.c" "unix/proctitle.c" "unix/random-devurandom.c" "unix/random-getentropy.c" "unix/random-getrandom.c" "unix/random-sysctl-linux.c" "unix/signal.c" "unix/stream.c" "unix/tcp.c" "unix/thread.c" "unix/tty.c" "unix/udp.c" fs-poll.c idna.c inet.c random.c strscpy.c strtok.c threadpool.c timer.c uv-common.c uv-data-getter-setters.c version.c)  
 
   declare output_directory="$root/build/$arch-$platform/uv_build_$d"
   mkdir -p $output_directory
@@ -597,10 +595,12 @@ function _compile_libuv_android {
       quiet $clang "${cflags[@]}" -c "$src_directory/$source" -o "$output_directory/$object" || onsignal
       echo "ok - built $source -> $object ($arch-$platform)"
     fi
-  }
+  } & pids+=($!)
   done
 
-  declare static_library="$root/build/$arch-$platform/lib$d/uv_a$d.lib"
+  wait
+
+  declare static_library="$root/build/$arch-$platform/lib$d/uv$d.a"
   mkdir -p "$(dirname $static_library)"
   $ar crs "$static_library" "${objects[@]}"
   if [ -f $static_library ]; then
@@ -825,8 +825,6 @@ if [[ "$host" = "Darwin" ]]; then
   _install x86_64 iPhoneSimulator
 fi
 
-_install_cli
-
 if [[ ! -z "$BUILD_ANDROID" ]]; then
   _install arm64-v8a android & pids+=($!)
   _install armeabi-v7a android & pids+=($!)
@@ -835,5 +833,6 @@ if [[ ! -z "$BUILD_ANDROID" ]]; then
   wait
 fi
 
+_install_cli
 
 exit $?
