@@ -57,6 +57,39 @@ function android_arch() {
   esac
 }
 
+function android_machine_arch() {
+  local arch=$1
+  case $arch in
+    arm64-v8a)
+      echo -n ""
+      ;;
+    armeabi-v7a)
+      echo -n "-m=armelf_linux_eabi"
+      ;;
+    x86)
+      echo -n "-m=elf_i386"
+      ;;
+    x86-64|x86_64)
+      echo -n ""
+      ;;
+    *)
+      echo "Unknown-android-arch-$arch"
+      exit 1
+      ;;
+  esac
+}
+
+function android-arch-includes() {
+  arch=$1
+  include=(
+    "-I$ANDROID_HOME/ndk/$NDK_VERSION/toolchains/llvm/prebuilt/windows-x86_64/sysroot/usr/include/$(android_arch "$arch")"-linux-android"$(android_eabi $arch)"
+    "-I$ANDROID_HOME/ndk/$NDK_VERSION/toolchains/llvm/prebuilt/windows-x86_64/sysroot/usr/include"
+    "--sysroot=$ANDROID_HOME/ndk/$NDK_VERSION/toolchains/llvm/prebuilt/windows-x86_64/sysroot/usr/lib/$(android_arch "$arch")"-linux-android"$(android_eabi $arch)"
+  )
+
+  echo "${include[@]}"
+}
+
 if [[ -z "$ANDROID_HOME" ]]; then
   echo "ANDROID_HOME not set."
   DEPS_ERROR=1
@@ -81,7 +114,6 @@ fi
 declare NDK_VERSION="25.0.8775105"
 declare NDK_PLATFORM="33"
 NDK_BUILD="$ANDROID_HOME/ndk/$NDK_VERSION/ndk-build$cmd"
-
 if ! test -f $NDK_BUILD; then
   echo "ndk-build not at $NDK_BUILD"
   DEPS_ERROR=1
