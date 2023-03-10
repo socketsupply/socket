@@ -177,12 +177,16 @@ export class XMLHttpRequestMetric extends Metric {
 }
 
 export class WorkerMetric extends Metric {
-  static GlobalWorker = globalThis.Worker
+  static GlobalWorker = globalThis.Worker || class Worker {
+    constructor () {
+      console.warn('Worker is not supported in this environment')
+    }
+  }
 
   constructor (options) {
     super()
     this.channel = dc.channel('Worker')
-    this.Worker = class Worker extends globalThis.Worker {
+    this.Worker = class Worker extends WorkerMetric.GlobalWorker {
       constructor (url, options, ...args) {
         super(url, options, ...args)
         dc.channel('Worker').publish({ worker: this, url, options })
