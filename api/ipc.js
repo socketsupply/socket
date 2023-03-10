@@ -977,9 +977,9 @@ export function sendSync (command, params = {}, options = {}) {
   const uri = `ipc://${command}`
 
   params = new URLSearchParams(params)
-  params.set('nonce', Date.now())
   params.set('index', index)
   params.set('seq', 'R' + seq)
+  params.set('nonce', Date.now())
 
   const query = `?${params}`
 
@@ -1166,9 +1166,9 @@ export async function write (command, params, buffer, options) {
   }
 
   params = new URLSearchParams(params)
-  params.set('nonce', Date.now())
   params.set('index', index)
   params.set('seq', 'R' + seq)
+  params.set('nonce', Date.now())
 
   const query = `?${params}`
 
@@ -1271,9 +1271,9 @@ export async function request (command, params, options) {
   }
 
   params = new URLSearchParams(params)
-  params.set('nonce', Date.now())
   params.set('index', index)
   params.set('seq', 'R' + seq)
+  params.set('nonce', Date.now())
 
   const query = `?${params}`
 
