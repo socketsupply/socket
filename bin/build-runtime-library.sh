@@ -114,7 +114,7 @@ if [[ "$platform" = "android" ]]; then
     exit 1
   fi
   clang="$ANDROID_HOME/ndk/$NDK_VERSION/toolchains/llvm/prebuilt/"$(android_host_platform $host)"-"$(android_arch "$host_arch")"/bin/"$(android_arch "$arch")"-linux-android"$(android_eabi $arch)"-clang++$cmd"
-  android_includes=$(android-arch-includes $arch)
+  android_includes=$(android_arch_includes $arch)
 
   clang="$ANDROID_HOME/ndk/$NDK_VERSION/toolchains/llvm/prebuilt/"$(android_host_platform $host)"-"$(android_arch "$host_arch")"/bin/clang++ --target="$(android_arch "$arch")"-linux-android"$(android_eabi $arch)
 elif [[ "$host" = "Darwin" ]]; then
