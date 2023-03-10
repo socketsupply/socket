@@ -104,7 +104,7 @@ jobs:
 
     - name: build Socket Runtime
       run: |
-        ./bin/install.ps1
+        ./bin/install.ps1 -verbose
         echo "::add-path::$env:LOCALAPPDATA\Programs\socketsupply\bin"
         echo "$env:LOCALAPPDATA\Programs\socketsupply\bin" >> $env:GITHUB_PATH
       env:

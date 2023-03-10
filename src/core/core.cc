@@ -702,6 +702,7 @@ namespace SSC {
     auto uri = value.c_str();
     ShellExecute(nullptr, "Open", uri, nullptr, nullptr, SW_SHOWNORMAL);
     // TODO how to detect success here. do we care?
+    cb(seq, JSON::Object{}, Post{});
 #endif
   }
 
