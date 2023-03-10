@@ -67,7 +67,7 @@ function initializeXHRIntercept () {
 
     async send (body) {
       const { method, seq, url } = this
-      const index = globalThis.__args.index
+      const index = globalThis.__args?.index || 0
 
       if (url?.protocol === 'ipc:') {
         if (
@@ -460,11 +460,11 @@ export async function postMessage (message, ...args) {
     return external.postMessage(message, ...args)
   } else if (globalThis.postMessage) {
     // worker
-    if (globalThis.self && !globalThis.self) {
+    if (globalThis.self && !globalThis.window) {
       return globalThis?.postMessage({
         __runtime_worker_ipc_request: {
           message,
-          bytes: args[0]
+          bytes: args[0] ?? null
         }
       })
     } else {
@@ -972,11 +972,12 @@ export function sendSync (command, params = {}, options = {}) {
   }
 
   const request = new globalThis.XMLHttpRequest()
-  const index = globalThis.__args.index ?? 0
+  const index = globalThis.__args?.index ?? 0
   const seq = nextSeq++
   const uri = `ipc://${command}`
 
   params = new URLSearchParams(params)
+  params.set('nonce', Date.now())
   params.set('index', index)
   params.set('seq', 'R' + seq)
 
@@ -1056,7 +1057,7 @@ export async function resolve (seq, value) {
     debug.log('ipc.resolve:', seq, value)
   }
 
-  const index = globalThis.__args.index
+  const index = globalThis.__args?.index || 0
   const eventName = `resolve-${index}-${seq}`
   const event = new globalThis.CustomEvent(eventName, { detail: value })
   globalThis.dispatchEvent(event)
@@ -1080,7 +1081,7 @@ export async function send (command, value, options) {
   }
 
   const seq = 'R' + nextSeq++
-  const index = value?.index ?? globalThis.__args.index
+  const index = value?.index ?? globalThis.__args?.index ?? 0
   let serialized = ''
 
   try {
@@ -1165,6 +1166,7 @@ export async function write (command, params, buffer, options) {
   }
 
   params = new URLSearchParams(params)
+  params.set('nonce', Date.now())
   params.set('index', index)
   params.set('seq', 'R' + seq)
 
@@ -1269,6 +1271,7 @@ export async function request (command, params, options) {
   }
 
   params = new URLSearchParams(params)
+  params.set('nonce', Date.now())
   params.set('index', index)
   params.set('seq', 'R' + seq)
 
