@@ -1,4 +1,4 @@
-import { CustomEvent } from './events.js'
+import { MessageEvent, ErrorEvent, CustomEvent } from './events.js'
 
 /**
  * An interface for registering callbacks for various hooks in
