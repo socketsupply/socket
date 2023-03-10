@@ -1,9 +1,9 @@
 /**
- * Globals
+ * Symbolic global registry
  * @ignore
  */
 /* eslint-disable-next-line new-parens */
-const registry = new class GlobalsRegistery {
+const registry = new class GlobalsRegistry {
   get global () {
     return globalThis ?? this
   }
