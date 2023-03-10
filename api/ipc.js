@@ -1067,6 +1067,9 @@ export async function resolve (seq, value) {
  * Sends an async IPC command request with parameters.
  * @param {string} command
  * @param {Mixed=} value
+ * @param {object=} [options]
+ * @param {boolean=} [options.cache=false]
+ * @param {boolean=} [options.bytes=false]
  * @return {Promise<Result>}
  */
 export async function send (command, value, options) {

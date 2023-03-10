@@ -2,7 +2,7 @@
 /**
  * @module Window
  *
- * Provides Window class and methods
+ * Provides ApplicationWindow class and methods
  */
 
 import * as statuses from './window/constants.js'
@@ -18,7 +18,10 @@ export function formatFileUrl (url) {
   return `file://${primordials.cwd}/${url}`
 }
 
-// TODO(@chicoxyzzy): JSDoc
+/**
+ * @class ApplicationWindow
+ * Represents a window in the application
+ */
 export class ApplicationWindow {
   #index
   #options
@@ -43,10 +46,19 @@ export class ApplicationWindow {
     return data
   }
 
+  /**
+   * Get the index of the window
+   * @return {number} - the index of the window
+   * @readonly
+   */
   get index () {
     return this.#index
   }
 
+  /**
+   * Get the size of the window
+   * @return {{ width: number, height: number }} - the size of the window
+   */
   getSize () {
     return {
       width: this.#options.width,
@@ -54,14 +66,26 @@ export class ApplicationWindow {
     }
   }
 
+  /**
+   * Get the title of the window
+   * @return {string} - the title of the window
+   */
   getTitle () {
     return this.#options.title
   }
 
+  /**
+   * Get the status of the window
+   * @return {string} - the status of the window
+   */
   getStatus () {
     return this.#options.status
   }
 
+  /**
+   * Close the window
+   * @return {Promise<object>} - the options of the window
+   */
   async close () {
     const { data, err } = await ipc.send('window.close', {
       index: this.#senderWindowIndex,
@@ -145,6 +169,7 @@ export class ApplicationWindow {
   }
 
   /**
+   * Navigate the window to a given path
    * @param {object} path - file path
    * @return {Promise<ipc.Result>}
    */
@@ -153,6 +178,10 @@ export class ApplicationWindow {
     return this.#updateOptions(response)
   }
 
+  /**
+   * Opens the Web Inspector for the window
+   * @return {Promise<object>}
+   */
   async showInspector () {
     const { data, err } = await ipc.send('window.showInspector', { index: this.#senderWindowIndex, targetWindowIndex: this.#index })
     if (err) {
@@ -168,7 +197,7 @@ export class ApplicationWindow {
    * @param {number} opts.green - the green value
    * @param {number} opts.blue - the blue value
    * @param {number} opts.alpha - the alpha value
-   * @return {Promise<ipc.Result>}
+   * @return {Promise<object>}
    */
   async setBackgroundColor (opts) {
     const response = await ipc.send('window.setBackgroundColor', { index: this.#senderWindowIndex, targetWindowIndex: this.#index, ...opts })
@@ -178,7 +207,7 @@ export class ApplicationWindow {
   /**
    * Opens a native context menu.
    * @param {object} options - an options object
-   * @return {Promise}
+   * @return {Promise<object>}
    */
   async setContextMenu (options) {
     const o = Object
@@ -192,28 +221,41 @@ export class ApplicationWindow {
     return data
   }
 
-  // TODO(@heapwolf) the properties do not yet conform to the MDN spec
-  async showOpenFilePicker (o) {
+  /**
+   * Shows a native open file dialog.
+   * @param {object} options - an options object
+   * @return {Promise<string[]>} - an array of file paths
+   */
+  async showOpenFilePicker (options) {
     console.warn('window.showOpenFilePicker may not conform to the standard')
-    const { data } = await ipc.send('dialog', { type: 'open', ...o })
-    return typeof data === 'string' ? data.split('\n') : []
-  }
-
-  // TODO(@heapwolf) the properties do not yet conform to the MDN spec
-  async showSaveFilePicker (o) {
-    console.warn('window.showSaveFilePicker may not conform to the standard')
-    const { data } = await ipc.send('dialog', { type: 'save', ...o })
-    return typeof data === 'string' ? data.split('\n') : []
-  }
-
-  // TODO(@heapwolf) the properties do not yet conform to the MDN spec
-  async showDirectoryFilePicker (o) {
-    console.warn('window.showDirectoryFilePicker may not conform to the standard')
-    const { data } = await ipc.send('dialog', { allowDirs: true, ...o })
+    const { data } = await ipc.send('dialog', { type: 'open', ...options })
     return typeof data === 'string' ? data.split('\n') : []
   }
 
   /**
+   * Shows a native save file dialog.
+   * @param {object} options - an options object
+   * @return {Promise<string[]>} - an array of file paths
+   */
+  async showSaveFilePicker (options) {
+    console.warn('window.showSaveFilePicker may not conform to the standard')
+    const { data } = await ipc.send('dialog', { type: 'save', ...options })
+    return typeof data === 'string' ? data.split('\n') : []
+  }
+
+  /**
+   * Shows a native directory dialog.
+   * @param {object} options - an options object
+   * @return {Promise<string[]>} - an array of file paths
+   */
+  async showDirectoryFilePicker (options) {
+    console.warn('window.showDirectoryFilePicker may not conform to the standard')
+    const { data } = await ipc.send('dialog', { allowDirs: true, ...options })
+    return typeof data === 'string' ? data.split('\n') : []
+  }
+
+  /**
+   * Sends an IPC message to the window or to qthe backend.
    * @param {object} options - an options object
    * @param {number=} options.window - the window to send the message to
    * @param {boolean=} [options.backend = false] - whether to send the message to the backend
@@ -257,7 +299,7 @@ export class ApplicationWindow {
   }
 
   /**
-   *
+   * Opens an URL in the default browser.
    * @param {object} options
    * @returns {Promise<ipc.Result>}
    */
@@ -266,6 +308,12 @@ export class ApplicationWindow {
   }
 
   // public EventEmitter methods
+  /**
+   * Adds a listener to the window.
+   * @param {string} event - the event to listen to
+   * @param {function(*): void} cb - the callback to call
+   * @returns {void}
+   */
   addListener (event, cb) {
     if (this.#index !== this.#senderWindowIndex) {
       throw new Error('window.addListener can only be used from the current window')
@@ -277,6 +325,13 @@ export class ApplicationWindow {
     globalThis.addEventListener(event, cb)
   }
 
+  /**
+   * Adds a listener to the window. An alias for `addListener`.
+   * @param {string} event - the event to listen to
+   * @param {function(*): void} cb - the callback to call
+   * @returns {void}
+   * @see addListener
+   */
   on (event, cb) {
     if (this.#index !== this.#senderWindowIndex) {
       throw new Error('window.on can only be used from the current window')
@@ -288,6 +343,12 @@ export class ApplicationWindow {
     globalThis.addEventListener(event, cb)
   }
 
+  /**
+   * Adds a listener to the window. The listener is removed after the first call.
+   * @param {string} event - the event to listen to
+   * @param {function(*): void} cb - the callback to call
+   * @returns {void}
+   */
   once (event, cb) {
     if (this.#index !== this.#senderWindowIndex) {
       throw new Error('window.once can only be used from the current window')
@@ -298,6 +359,12 @@ export class ApplicationWindow {
     globalThis.addEventListener(event, cb, { once: true })
   }
 
+  /**
+   * Removes a listener from the window.
+   * @param {string} event - the event to remove the listener from
+   * @param {function(*): void} cb - the callback to remove
+   * @returns {void}
+   */
   removeListener (event, cb) {
     if (this.#index !== this.#senderWindowIndex) {
       throw new Error('window.removeListener can only be used from the current window')
@@ -306,6 +373,11 @@ export class ApplicationWindow {
     globalThis.removeEventListener(event, cb)
   }
 
+  /**
+   * Removes all listeners from the window.
+   * @param {string} event - the event to remove the listeners from
+   * @returns {void}
+   */
   removeAllListeners (event) {
     if (this.#index !== this.#senderWindowIndex) {
       throw new Error('window.removeAllListeners can only be used from the current window')
@@ -315,6 +387,13 @@ export class ApplicationWindow {
     }
   }
 
+  /**
+   * Removes a listener from the window. An alias for `removeListener`.
+   * @param {string} event - the event to remove the listener from
+   * @param {function(*): void} cb - the callback to remove
+   * @returns {void}
+   * @see removeListener
+   */
   off (event, cb) {
     if (this.#index !== this.#senderWindowIndex) {
       throw new Error('window.off can only be used from the current window')
@@ -322,8 +401,6 @@ export class ApplicationWindow {
     this.#listeners[event] = this.#listeners[event].filter(listener => listener !== cb)
     globalThis.removeEventListener(event, cb)
   }
-
-  // TODO(@chicoxyzzy): implement on method
 }
 
 export default ApplicationWindow
