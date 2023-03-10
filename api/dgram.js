@@ -115,7 +115,7 @@ function defaultCallback (socket) {
 
 function createDataListener (socket) {
   // subscribe this socket to the firehose
-  window.addEventListener('data', ondata)
+  globalThis.addEventListener('data', ondata)
   return ondata
 
   function ondata ({ detail }) {
@@ -140,14 +140,14 @@ function createDataListener (socket) {
     }
 
     if (data.EOF) {
-      window.removeEventListener('data', ondata)
+      globalThis.removeEventListener('data', ondata)
     }
   }
 }
 
 function destroyDataListener (socket) {
   if (typeof socket?.dataListener === 'function') {
-    window.removeEventListener('data', socket.dataListener)
+    globalThis.removeEventListener('data', socket.dataListener)
     delete socket.dataListener
   }
 }
