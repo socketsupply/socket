@@ -484,6 +484,54 @@ export const CustomEvent = globalThis.CustomEvent || class CustomEvent extends g
   }
 }
 
+export const MessageEvent = globalThis.MessageEvent || class MessageEvent extends globalThis.Event {
+  #detail = null
+  #data = null
+
+  constructor (type, options) {
+    super(type, options)
+    if (options?.detail) {
+      this.#detail = options.detail
+    }
+
+    if (options?.data) {
+      this.#data = options.data
+    }
+  }
+
+  get detail () {
+    return this.#detail
+  }
+
+  get data () {
+    return this.#data
+  }
+}
+
+export const ErrorEvent = globalThis.ErrorEvent || class ErrorEvent extends globalThis.Event {
+  #detail = null
+  #error = null
+
+  constructor (type, options) {
+    super(type, options)
+    if (options?.detail) {
+      this.#detail = options.detail
+    }
+
+    if (options?.error) {
+      this.#error = options.error
+    }
+  }
+
+  get detail () {
+    return this.#detail
+  }
+
+  get error () {
+    return this.#error
+  }
+}
+
 export {
   EventEmitter,
   once
