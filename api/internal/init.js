@@ -1,6 +1,11 @@
 /* global CustomEvent, Blob */
 /* eslint-disable import/first */
 // mark when runtime did init
+console.assert(
+  !globalThis.__RUNTIME_INIT_NOW__,
+  'socket:internal/init.js was imported twice. ' +
+  'This could lead to undefined behavior.'
+)
 globalThis.__RUNTIME_INIT_NOW__ = performance.now()
 
 import { IllegalConstructor, InvertedPromise } from '../util.js'
@@ -9,8 +14,12 @@ import globals from './globals.js'
 import hooks from '../hooks.js'
 import ipc from '../ipc.js'
 
-const GlobalWorker = globalThis?.Worker || class Worker extends EventTarget {}
-const hardwareConcurrency = globalThis?.navigator?.hardwareConcurrency || 4
+import '../console.js'
+
+const GlobalWorker = globalThis.Worker || class Worker extends EventTarget {}
+const hardwareConcurrency = globalThis.navigator?.hardwareConcurrency || 4
+
+const isWorker = !globalThis.window && globalThis.self && globalThis.postMessage
 
 class ConcurrentQueue extends EventTarget {
   concurrency = hardwareConcurrency
@@ -84,23 +93,39 @@ class RuntimeXHRPostQueue extends ConcurrentQueue {
 
 class RuntimeWorker extends GlobalWorker {
   #onmessage = null
+  #onglobaldata = null
 
-  constructor (url, options, ...args) {
-    const preload = `
-    globalThis.__args = ${JSON.stringify(globalThis.__args)}
-    await import('socket:internal/init')
-    await import('socket:internal/worker')
-    await import('${new URL(url, globalThis.location?.href || '/')}')
-    `
-
+  static get [Symbol.species] () { return GlobalWorker }
+  constructor (filename, options, ...args) {
+    const url = new URL(filename, globalThis.location?.href || '/')
+    const preload = `import 'socket:internal/worker?source=${url}'`
     const blob = new Blob([preload.trim()], { type: 'application/javascript' })
     const uri = URL.createObjectURL(blob)
 
     super(uri, { ...options, type: 'module' }, ...args)
 
+    this.#onglobaldata = (event) => {
+      const data = new Uint8Array(event.detail.data).buffer
+      this.postMessage({
+        __runtime_worker_event: {
+          type: event.type,
+          detail: {
+            ...event.detail,
+            data
+          }
+        }
+      }, [data])
+    }
+
+    globalThis.addEventListener('data', this.#onglobaldata)
+
     this.addEventListener('message', (event) => {
       const { data } = event
-      if (data?.__runtime_worker_ipc_request) {
+      if (data?.__runtime_worker_request_args) {
+        this.postMessage({
+          __runtime_worker_args: globalThis.__args
+        })
+      } else if (data?.__runtime_worker_ipc_request) {
         const request = data.__runtime_worker_ipc_request
         if (
           typeof request?.message === 'string' &&
@@ -112,13 +137,13 @@ class RuntimeWorker extends GlobalWorker {
               const options = { bytes: message.bytes }
               const result = await ipc.send(message.name, message.rawParams, options)
               this.postMessage({
-                __runtime_worker_ipc_result: JSON.parse(JSON.stringify({
-                  message,
-                  result
-                }))
+                __runtime_worker_ipc_result: {
+                  message: message.toJSON(),
+                  result: result.toJSON()
+                }
               })
             } catch (err) {
-              console.warn('__runtime_worker_ipc_result:', err.stack || err)
+              console.warn('RuntimeWorker:', err)
             }
           })
         }
@@ -134,6 +159,11 @@ class RuntimeWorker extends GlobalWorker {
 
   set onmessage (onmessage) {
     this.#onmessage = onmessage
+  }
+
+  terminate () {
+    globalThis.removeEventListener('data', this.#onglobaldata)
+    return super.terminate()
   }
 }
 
@@ -181,13 +211,26 @@ if (typeof globalThis.XMLHttpRequest === 'function') {
   }
 }
 
+hooks.onLoad(() => {
+  if (typeof globalThis.dispatchEvent === 'function') {
+    globalThis.dispatchEvent(new CustomEvent('init'))
+  }
+})
+
 // async preload modules
 hooks.onReady(async () => {
-  // precache fs.constants
-  await ipc.request('fs.constants', {}, { cache: true })
-  import('../diagnostics.js')
-  import('../fs/fds.js')
-  import('../fs/constants.js')
+  try {
+    if (!isWorker) {
+      // precache fs.constants
+      await ipc.request('fs.constants', {}, { cache: true })
+    }
+
+    await import('../diagnostics.js')
+    await import('../fs/fds.js')
+    await import('../fs/constants.js')
+  } catch (err) {
+    console.error(err.stack || err)
+  }
 })
 
 // symbolic globals
