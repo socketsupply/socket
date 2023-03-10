@@ -342,6 +342,10 @@ class Backend {
   }
 }
 
+/**
+ * The application's backend instance.
+ * @type {Backend}
+ */
 export const backend = new Backend()
 
 export default exports
