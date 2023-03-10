@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @module Application
  *
@@ -11,9 +12,7 @@ import { isValidPercentageValue } from './util.js'
 
 import * as exports from './application.js'
 
-if (globalThis.window) {
-  applyPolyfills(globalThis.window)
-}
+applyPolyfills()
 
 /**
  * Creates a new window and returns an instance of ApplicationWindow.
@@ -31,7 +30,7 @@ if (globalThis.window) {
  * @param {boolean=} [opts.frameless=false] - whether the window is frameless
  * @param {boolean=} [opts.utility=false] - whether the window is utility (macOS only)
  * @param {boolean=} [opts.canExit=false] - whether the window can exit the app
- * @return {Promise<ipc.Result>}
+ * @return {Promise<ApplicationWindow>}
  */
 export async function createWindow (opts) {
   if (typeof opts?.path !== 'string' || typeof opts?.index !== 'number') {
@@ -81,7 +80,7 @@ export async function createWindow (opts) {
   const { data, err } = await ipc.send('window.create', options)
 
   if (err) {
-    throw new Error(err)
+    throw err
   }
 
   return new ApplicationWindow(data)
@@ -94,7 +93,7 @@ export async function createWindow (opts) {
 export async function getScreenSize () {
   const { data, err } = await ipc.send('application.getScreenSize', { index: globalThis.__args.index })
   if (err) {
-    throw new Error(err)
+    throw err
   }
   return data
 }
@@ -108,7 +107,7 @@ function throwOnInvalidIndex (index) {
 /**
  * Returns the ApplicationWindow instances for the given indices or all windows if no indices are provided.
  * @param {number[]|undefined} indices - the indices of the windows
- * @return {Promise<ipc.Result>}
+ * @return {Promise<Object.<number, ApplicationWindow>>}
  * @throws {Error} - if indices is not an array of integer numbers
  */
 export async function getWindows (indices) {
@@ -128,7 +127,7 @@ export async function getWindows (indices) {
  * Returns the ApplicationWindow instance for the given index
  * @param {number} index - the index of the window
  * @throws {Error} - if index is not a valid integer number
- * @returns {Promise<ApplicationWindow | null>} - the ApplicationWindow instance or null if the window does not exist
+ * @returns {Promise<ApplicationWindow>} - the ApplicationWindow instance or null if the window does not exist
  */
 export async function getWindow (index) {
   throwOnInvalidIndex(index)
@@ -146,13 +145,13 @@ export async function getCurrentWindow () {
 
 /**
  * Quits the backend process and then quits the render process, the exit code used is the final exit code to the OS.
- * @param {object} options - an options object
- * @return {Promise<Any>}
+ * @param {object} code - an exit code
+ * @return {Promise<ipc.Result>}
  */
 export async function exit (code) {
   const { data, err } = await ipc.send('application.exit', code)
   if (err) {
-    throw new Error(err)
+    throw err
   }
   return data
 }
@@ -163,7 +162,7 @@ export async function exit (code) {
  * @param {object} options - an options object
  * @param {string} options.value - the menu layout
  * @param {number} options.index - the window to target (if applicable)
- * @return {Promise<Any>}
+ * @return {Promise<ipc.Result>}
  *
  * Socket Runtime provides a minimalist DSL that makes it easy to create
  * cross platform native system and context menus.
@@ -295,15 +294,36 @@ export async function setSystemMenu (o) {
   return await ipc.send('application.setSystemMenu', o)
 }
 
+/**
+ * Set the enabled state of the system menu.
+ * @param {object} value - an options object
+ * @return {Promise<ipc.Result>}
+ */
 export async function setSystemMenuItemEnabled (value) {
   return await ipc.send('application.setSystemMenuItemEnabled', value)
 }
 
+/**
+ * Socket Runtime version.
+ * @type {object} - an object containing the version information
+ */
 export const runtimeVersion = primordials.version
+/**
+ * Runtime debug flag.
+ * @type {boolean}
+ */
 export const debug = !!globalThis.__args.debug
+/**
+ * Application configuration.
+ * @type {object}
+ */
 export const config = globalThis.__args.config
 
-export const backend = {
+/**
+ * The application's backend.
+ * @class Backend
+ */
+class Backend {
   /**
    * @param {object} opts - an options object
    * @param {boolean} [opts.force = false] - whether to force the existing process to close
@@ -312,7 +332,7 @@ export const backend = {
   async open (opts = {}) {
     opts.force ??= false
     return await ipc.send('process.open', opts)
-  },
+  }
 
   /**
    * @return {Promise<ipc.Result>}
@@ -321,5 +341,7 @@ export const backend = {
     return await ipc.send('process.kill')
   }
 }
+
+export const backend = new Backend()
 
 export default exports

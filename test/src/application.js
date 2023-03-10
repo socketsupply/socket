@@ -138,8 +138,13 @@ if (!['android', 'ios'].includes(process.platform)) {
       err = e
     }
     t.ok(err instanceof Error, 'throws error when path is invalid')
+<<<<<<< HEAD
     t.ok(err?.message?.startsWith('Error: only .html files are allowed. Got url file://'), 'error message is correct')
     t.ok(err?.message?.endsWith('invalid.path'), 'error shows correct path')
+=======
+    t.ok(err.message.startsWith('only .html files are allowed. Got url file://'), 'error message is correct')
+    t.ok(err.message.endsWith('invalid.path'), 'error shows correct path')
+>>>>>>> de910d0b (docs: socket:application)
     t.ok(!(dummyWindow instanceof ApplicationWindow), 'does not return an ApplicationWindow instance')
   })
 
@@ -152,8 +157,13 @@ if (!['android', 'ios'].includes(process.platform)) {
       err = e
     }
     t.ok(err instanceof Error, 'throws error when file does not exist')
+<<<<<<< HEAD
     t.ok(err?.message?.startsWith('Error: file does not exist. Got url file://'), 'error message is correct')
     t.ok(err?.message?.endsWith('invalid.html'), 'error shows correct path')
+=======
+    t.ok(err.message.startsWith('file does not exist. Got url file://'), 'error message is correct')
+    t.ok(err.message.endsWith('invalid.html'), 'error shows correct path')
+>>>>>>> de910d0b (docs: socket:application)
     t.ok(!(dummyWindow instanceof ApplicationWindow), 'does not return an ApplicationWindow instance')
   })
 
@@ -166,8 +176,13 @@ if (!['android', 'ios'].includes(process.platform)) {
       err = e
     }
     t.ok(err instanceof Error, 'throws error when file does not exist')
+<<<<<<< HEAD
     t.ok(err?.message?.startsWith('Error: relative urls are not allowed. Got url file://'), 'error message is correct')
     t.ok(err?.message?.endsWith('invalid.html'), 'error shows correct path')
+=======
+    t.ok(err.message.startsWith('relative urls are not allowed. Got url file://'), 'error message is correct')
+    t.ok(err.message.endsWith('invalid.html'), 'error shows correct path')
+>>>>>>> de910d0b (docs: socket:application)
     t.ok(!(dummyWindow instanceof ApplicationWindow), 'does not return an ApplicationWindow instance')
   })
 
@@ -181,7 +196,11 @@ if (!['android', 'ios'].includes(process.platform)) {
     }
 
     t.ok(err instanceof Error, 'throws error when index is already used')
+<<<<<<< HEAD
     t.equal(err?.message, 'Error: Window with index 0 already exists', 'error message is correct')
+=======
+    t.equal(err.message, 'Window with index 0 already exists', 'error message is correct')
+>>>>>>> de910d0b (docs: socket:application)
     t.ok(!(dummyWindow instanceof ApplicationWindow), 'does not return an ApplicationWindow instance')
   })
 
