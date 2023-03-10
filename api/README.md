@@ -242,10 +242,9 @@ The application's backend.
 | Not specified | Promise<ipc.Result> |  |
 
 
-## [backend](https://github.com/socketsupply/socket/blob/master/api/application.js#L345)
+## [backend](https://github.com/socketsupply/socket/blob/master/api/application.js#L349)
 
-This is a `VariableDeclaration` named `backend` in `api/application.js`, it's exported but undocumented.
-
+The application's backend instance.
 
 # [Bluetooth](https://github.com/socketsupply/socket/blob/master/api/bluetooth.js#L7)
 
