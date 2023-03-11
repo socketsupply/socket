@@ -571,8 +571,8 @@ function _compile_libuv_android {
   local platform="android"
   local arch=$1
   local host_arch=$(uname -m)
-  clang="$ANDROID_HOME/ndk/$NDK_VERSION/toolchains/llvm/prebuilt/"$(android_host_platform $host)"-"$(android_arch "$host_arch")"/bin/clang --target="$(android_arch "$arch")"-linux-android"$(android_eabi $arch)
-  ar="$ANDROID_HOME/ndk/$NDK_VERSION/toolchains/llvm/prebuilt/"$(android_host_platform $host)"-"$(android_arch "$host_arch")"/bin/llvm-ar"
+  clang=$(android_clang $ANDROID_HOME $NDK_VERSION $host $host_arch $arch)
+  ar=$(android_ar $ANDROID_HOME $NDK_VERSION $host $host_arch)
   android_includes=$(android_arch_includes $arch)
 
   local cflags=(-std=gnu89 -g -pedantic -I$root/build/uv/include -I$root/build/uv/src -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -D_LARGEFILE_SOURCE -fPIC -Wall -Wextra -Wno-pedantic -Wno-sign-compare -Wno-unused-parameter -Wno-implicit-function-declaration)

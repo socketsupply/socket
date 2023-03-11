@@ -79,7 +79,27 @@ function android_machine_arch() {
   esac
 }
 
+function android_clang() {
+  # get abi specific clang call for host, host arch and target arch (target host=linux)
+  ANDROID_HOME=$1
+  NDK_VERSION=$2
+  host=$3
+  host_arch=$4
+  arch=$5
+  echo "$ANDROID_HOME/ndk/$NDK_VERSION/toolchains/llvm/prebuilt/"$(android_host_platform $host)"-"$(android_arch "$host_arch")"/bin/clang++ --target="$(android_arch "$arch")"-linux-android"$(android_eabi $arch)
+}
+
+function android_ar() {
+  # Note that this one is not target arch specific
+  ANDROID_HOME=$1
+  NDK_VERSION=$2
+  host=$3
+  host_arch=$4
+  echo "$ANDROID_HOME/ndk/$NDK_VERSION/toolchains/llvm/prebuilt/"$(android_host_platform $host)"-"$(android_arch "$host_arch")"/bin/llvm-ar"
+}
+
 function android_arch_includes() {
+  #get abi specific includes and sysroot
   arch=$1
   include=(
     "-I$ANDROID_HOME/ndk/$NDK_VERSION/toolchains/llvm/prebuilt/windows-x86_64/sysroot/usr/include/$(android_arch "$arch")"-linux-android"$(android_eabi $arch)"
@@ -99,16 +119,10 @@ else
   fi
 fi
 
-# if [[ -z $JAVA_HOME ]]; then
-#   echo "JAVA_HOME not set."
-#   DEPS_ERROR=1
-# fi
-
 declare cmd=""
 declare exe=""
 if [[ "$host" == "Win32" ]]; then
   cmd=".cmd"
-  exe=".exe"
 fi
 
 declare NDK_VERSION="25.0.8775105"
