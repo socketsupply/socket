@@ -86,7 +86,8 @@ function android_clang() {
   host=$3
   host_arch=$4
   arch=$5
-  echo "$ANDROID_HOME/ndk/$NDK_VERSION/toolchains/llvm/prebuilt/"$(android_host_platform $host)"-"$(android_arch "$host_arch")"/bin/clang++ --target="$(android_arch "$arch")"-linux-android"$(android_eabi $arch)
+  plusplus=$6
+  echo "$ANDROID_HOME/ndk/$NDK_VERSION/toolchains/llvm/prebuilt/"$(android_host_platform $host)"-"$(android_arch "$host_arch")"/bin/clang$plusplus --target="$(android_arch "$arch")"-linux-android"$(android_eabi $arch)
 }
 
 function android_ar() {

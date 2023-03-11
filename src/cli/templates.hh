@@ -1089,11 +1089,11 @@ android.experimental.legacyTransform.forceNonIncremental=true
 constexpr auto gAndroidMakefile = R"MAKE(
 LOCAL_PATH := $(call my-dir)
 
-## uv.a
+## libuv.a
 include $(CLEAR_VARS)
-LOCAL_MODULE := uv
+LOCAL_MODULE := libuv
 
-LOCAL_SRC_FILES = ../jniLibs/$(TARGET_ARCH_ABI)/uv.a
+LOCAL_SRC_FILES = ../jniLibs/$(TARGET_ARCH_ABI)/libuv.a
 include $(PREBUILT_STATIC_LIBRARY)
 
 ## libsocket-runtime.a
@@ -1132,7 +1132,7 @@ LOCAL_SRC_FILES =         \
 LOCAL_SRC_FILES += $(wildcard $(LOCAL_PATH)/src/*.cc)
 
 LOCAL_STATIC_LIBRARIES := \
-  uv                      \
+  libuv                   \
   libsocket-runtime-static
 
 include $(BUILD_SHARED_LIBRARY)
