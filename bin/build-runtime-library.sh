@@ -113,10 +113,8 @@ if [[ "$platform" = "android" ]]; then
     echo "Android dependencies not satisfied."
     exit 1
   fi
-  clang="$ANDROID_HOME/ndk/$NDK_VERSION/toolchains/llvm/prebuilt/"$(android_host_platform $host)"-"$(android_arch "$host_arch")"/bin/"$(android_arch "$arch")"-linux-android"$(android_eabi $arch)"-clang++$cmd"
-  android_includes=$(android_arch_includes $arch)
 
-  clang="$ANDROID_HOME/ndk/$NDK_VERSION/toolchains/llvm/prebuilt/"$(android_host_platform $host)"-"$(android_arch "$host_arch")"/bin/clang++ --target="$(android_arch "$arch")"-linux-android"$(android_eabi $arch)
+  clang=$(android_clang $ANDROID_HOME $NDK_VERSION $host $host_arch $arch)
 elif [[ "$host" = "Darwin" ]]; then
   cflags+=("-ObjC++")
   sources+=("$root/src/window/apple.mm")
@@ -190,7 +188,7 @@ function main () {
   declare ar="ar"
 
   if [[ "$platform" = "android" ]]; then
-    ar="$ANDROID_HOME/ndk/$NDK_VERSION/toolchains/llvm/prebuilt/"$(android_host_platform $host)"-"$(android_arch "$host_arch")"/bin/llvm-ar"
+    ar=$(android_ar $ANDROID_HOME $NDK_VERSION $host $host_arch)
   elif [[ "$host" = "Win32" ]]; then
     ar="llvm-ar"
   fi
