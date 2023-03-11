@@ -580,7 +580,7 @@ function _compile_libuv_android {
   local objects=()
   local sources=("unix/async.c" "unix/core.c" "unix/dl.c" "unix/fs.c" "unix/getaddrinfo.c" "unix/getnameinfo.c" "unix/linux.c" "unix/loop.c" "unix/loop-watcher.c" "unix/pipe.c" "unix/poll.c" "unix/process.c" "unix/proctitle.c" "unix/random-devurandom.c" "unix/random-getentropy.c" "unix/random-getrandom.c" "unix/random-sysctl-linux.c" "unix/signal.c" "unix/stream.c" "unix/tcp.c" "unix/thread.c" "unix/tty.c" "unix/udp.c" fs-poll.c idna.c inet.c random.c strscpy.c strtok.c threadpool.c timer.c uv-common.c uv-data-getter-setters.c version.c)  
 
-  declare output_directory="$root/build/$arch-$platform/uv_build_$d"
+  declare output_directory="$root/build/$arch-$platform/uv$d"
   mkdir -p $output_directory
 
   declare src_directory="$root/build/uv/src"
@@ -599,7 +599,7 @@ function _compile_libuv_android {
   }
   done
 
-  declare static_library="$root/build/$arch-$platform/lib$d/uv$d.a"
+  declare static_library="$root/build/$arch-$platform/lib$d/libuv$d.a"
   mkdir -p "$(dirname $static_library)"
   $ar crs "$static_library" "${objects[@]}"
   if [ -f $static_library ]; then

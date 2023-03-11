@@ -114,7 +114,7 @@ if [[ "$platform" = "android" ]]; then
     exit 1
   fi
 
-  clang=$(android_clang $ANDROID_HOME $NDK_VERSION $host $host_arch $arch)
+  clang=$(android_clang $ANDROID_HOME $NDK_VERSION $host $host_arch $arch "++")
 elif [[ "$host" = "Darwin" ]]; then
   cflags+=("-ObjC++")
   sources+=("$root/src/window/apple.mm")
