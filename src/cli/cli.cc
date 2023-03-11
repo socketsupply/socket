@@ -2626,8 +2626,6 @@ int main (const int argc, const char* argv[]) {
         if (debugEnv || verboseEnv) log((adb.str() + (" --version > ") + SSC::String((!platform.win) ? "/dev/null" : "NUL") + (" 2>&1")));
         if (!std::system((adb.str() + (" --version > ") + SSC::String((!platform.win) ? "/dev/null" : "NUL") + (" 2>&1")).c_str())) {
           log("Warn: Failed to locate adb at " + adb.str());
-        } else {
-          log("got adb at " + adb.str());
         }
 
         adb
