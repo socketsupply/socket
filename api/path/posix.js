@@ -39,7 +39,7 @@ export function join (...components) {
 
 /**
  * Computes directory name of path.
- * @param {...PathComponent} components
+ * @param {PathComponent} path
  * @return {string}
  */
 export function dirname (path) {
@@ -48,11 +48,12 @@ export function dirname (path) {
 
 /**
  * Computes base name of path.
- * @param {...PathComponent} components
+ * @param {PathComponent} path
+ * @param {string} suffix
  * @return {string}
  */
-export function basename (path) {
-  return Path.basename({ sep }, path)
+export function basename (path, suffix) {
+  return Path.basename({ sep }, path).replace(suffix || '', '')
 }
 
 /**
@@ -98,4 +99,14 @@ export function format (path) {
  */
 export function normalize (path) {
   return Path.normalize({ sep }, path)
+}
+
+/**
+ * Computes the relative path from `from` to `to`.
+ * @param {string} from
+ * @param {string} to
+ * @return {string}
+ */
+export function relative (from, to) {
+  return Path.relative({ sep }, from, to)
 }
