@@ -2,15 +2,30 @@
  * @module Path
  */
 import { primordials } from '../ipc.js'
-import * as exports from './path.js'
 
 const isWin32 = primordials.platform === 'win32'
 
-export class Path {
+function maybeURL (...args) {
+  try {
+    return new URL(...args)
+  } catch (_) {
+    return null
+  }
+}
+
+/**
+ * @typedef {(string|Path|URL|{ pathname: string }|{ url: string)} PathComponent
+ */
+
+/**
+ * A container for a parsed Path.
+ */
+export class Path extends URL {
   /**
    * Computes current working directory for a path
    * @param {object=} [opts]
    * @param {boolean=} [opts.posix] Set to `true` to force POSIX style path
+   * @return {string}
    */
   static cwd (opts) {
     if (isWin32 && opts?.posix === true) {
@@ -21,50 +36,373 @@ export class Path {
     return primordials.cwd
   }
 
-  static from (input) {
-    if (typeof input === 'string') {
-      return new this(this.parse(input))
-    } else if (input && typeof input === 'object') {
-      return new this(input)
+  /**
+   * Resolves path components to an absolute path.
+   * @param {object} options
+   * @param {...PathComponent} components
+   * @return {string}
+   */
+  static resolve (options, ...components) {
+    const { sep } = options
+    let cwd = Path.cwd()
+    while (components.length) {
+      cwd = Path
+        .from(components.shift(), cwd + sep)
+        .pathname
+        .replace(/\/$/g, '')
+        .replace(/\//g, sep)
     }
 
-    throw new TypeError('Invalid input given to `Path.from()`')
+    if (cwd.endsWith(sep)) {
+      cwd = cwd.slice(0, -1)
+    }
+
+    return cwd
   }
+
+  /**
+   * Joins path components. This function may not return an absolute path.
+   * @param {object} options
+   * @param {...PathComponent} components
+   * @return {string}
+   */
+  static join (options, ...components) {
+    const { sep } = options
+    const joined = decodeURIComponent(
+      components
+        .filter((c) => c)
+        .reduce((cwd, path) => Path.from(path, cwd + sep).pathname, '.')
+        .replace(/\//g, sep)
+    )
+
+    if (!components[0]?.startsWith?.(sep)) {
+      return joined.slice(1)
+    }
+
+    return joined
+  }
+
+  /**
+   * Computes directory name of path.
+   * @param {object} options
+   * @param {...PathComponent} components
+   * @return {string}
+   */
+  static dirname (options, path) {
+    const { sep } = options
+    let dirname = decodeURIComponent(
+      Path
+        .from(path, sep)
+        .parent
+        .replace(/\//g, sep)
+    )
+
+    if (String(path).startsWith('.')) {
+      dirname = `.${dirname}`
+    } else if (!String(path).startsWith(sep)) {
+      dirname = dirname.slice(1)
+    }
+
+    if (dirname.length > 1) {
+      dirname = dirname.slice(0, -1)
+    }
+
+    return dirname || '.'
+  }
+
+  /**
+   * Computes base name of path.
+   * @param {object} options
+   * @param {...PathComponent} components
+   * @return {string}
+   */
+  static basename (options, path) {
+    const { sep } = options
+    const basename = decodeURIComponent(
+      Path
+        .from(path, sep)
+        .base
+        .replace(/\//g, sep)
+    )
+
+    return basename
+  }
+
+  /**
+   * Computes extension name of path.
+   * @param {object} options
+   * @param {PathComponent} path
+   * @return {string}
+   */
+  static extname (options, path) {
+    const { sep } = options
+    return Path.from(path, sep).ext
+  }
+
+  /**
+   * Computes normalized path
+   * @param {object} options
+   * @param {PathComponent} path
+   * @return {string}
+   */
+  static normalize (options, path) {
+    path = String(path)
+
+    const { drive, source, pathname } = Path.from(path, '.')
+    const url = maybeURL(source) || {}
+    const href = url.href ? url.href.replace(url.protocol, '') : ''
+    const { sep } = options
+    const prefix = drive || url.protocol || ''
+    let output = prefix + Path.from(pathname).pathname.replace(/\//g, sep)
+
+    if (url.protocol && href && !href.startsWith(sep)) {
+      output = output.replace(url.protocol, '')
+
+      if (output.startsWith(sep)) {
+        output = output.slice(1)
+      }
+
+      output = url.protocol + output
+    }
+
+    if (path.endsWith(sep) && !output.endsWith(sep)) {
+      return output + sep
+    }
+
+    return output
+  }
+
+  /**
+   * Formats `Path` object into a string.
+   * @param {object|Path} path
+   * @return {string}
+   */
+  static format (options, path) {
+    const { root, dir, base, ext, name } = path
+    const { sep } = options
+    const output = []
+    if (dir) output.push(dir, sep)
+    else if (root) output.push(root)
+    if (base) output.push(base)
+    else if (name) output.push(name + (ext || ''))
+    return output.join('').replace(/\//g, sep)
+  }
+
+  /**
+   * Creates a `Path` instance from `input` and optional `cwd`.
+   * @param {PathComponent} input
+   * @param {string} [cwd]
+   */
+  static from (input, cwd) {
+    if (typeof input?.href === 'string') {
+      return this.from(input.href, cwd)
+    } else if (typeof input?.pathname === 'string') {
+      return this.from(input.pathname, cwd)
+    }
+
+    return new this(String(input || '.'), cwd ? String(cwd) : null)
+  }
+
+  #forwardSlashesDetected = false
+  #isRelative = false
+  #source = null
+  #drive = null
 
   /**
    * `Path` class constructor.
    * @protected
-   * @param {object=} [opts]
-   * @param {string=} [opts.root]
-   * @param {string=} [opts.base]
-   * @param {string=} [opts.name]
-   * @param {string=} [opts.dir]
-   * @param {string=} [opts.ext]
+   * @param {string} pathname
+   * @param {string} [cwd = Path.cwd()]
    */
-  constructor (opts) {
-    this.root = opts?.root ?? ''
-    this.base = opts?.base ?? ''
-    this.name = opts?.name ?? ''
-    this.dir = opts?.dir ?? ''
-    this.ext = opts?.ext ?? ''
+  constructor (pathname, cwd) {
+    const isRelative = !/^[/|\\]/.test(pathname.replace(/^[a-z]:/i, ''))
+    const drive = (pathname.match(/^[a-z]:/i) || [])[0] || null
+    pathname = String(pathname || '.').trim()
+
+    if (cwd) {
+      cwd = new URL(`file://${cwd}`)
+    } else if (pathname.startsWith('..')) {
+      pathname = pathname.slice(2)
+      cwd = 'file://..'
+    } else if (isRelative) {
+      cwd = new URL('file://.')
+    } else {
+      cwd = new URL(`file://${Path.cwd()}`)
+    }
+
+    super(pathname, cwd)
+
+    this.#forwardSlashesDetected = /\\/.test(pathname)
+    this.#isRelative = isRelative
+    this.#source = pathname
+    this.#drive = drive
   }
 
+  /**
+   * `true` if the path is relative, otherwise `false.
+   * @type {boolean}
+   */
+  get isRelative () {
+    return this.#isRelative
+  }
+
+  /**
+   * The working value of this path.
+   */
+  get value () {
+    return this.href.replace('file://', '')
+  }
+
+  /**
+   * The original source, unresolved.
+   * @type {string}
+   */
+  get source () {
+    return this.#source
+  }
+
+  /**
+   * Computed parent path.
+   * @type {string}
+   */
+  get parent () {
+    let i = this.pathname.lastIndexOf('/')
+    if (i === -1) i = this.pathname.lastIndexOf('\\')
+    return this.pathname.slice(0, i >= 0 ? i + 1 : undefined)
+  }
+
+  /**
+   * Computed root in path.
+   * @type {string}
+   */
+  get root () {
+    if (!this.isRelative) {
+      if (this.drive && this.value.includes('\\')) {
+        return `${this.drive}\\`
+      } else if (this.#forwardSlashesDetected) {
+        return '\\'
+      } else if (this.value.startsWith('/')) {
+        return '/'
+      }
+    } else if (this.drive) {
+      return this.drive
+    }
+
+    return ''
+  }
+
+  /**
+   * Computed directory name in path.
+   * @type {string}
+   */
+  get dir () {
+    const { isRelative } = this
+    let { parent } = this
+
+    if (this.#forwardSlashesDetected) {
+      parent = this.parent.replace(/\//g, '\\')
+      if (parent.endsWith('\\') && parent.length > 1) {
+        parent = parent.slice(0, -1)
+      }
+    } else {
+      if (parent.endsWith('/') && parent.length > 1) {
+        parent = parent.slice(0, -1)
+      }
+    }
+
+    if (isRelative && (parent.startsWith('/') || parent.startsWith('\\'))) {
+      parent = parent.slice(1)
+    }
+
+    if (this.drive) {
+      return `${this.drive}${parent}`
+    }
+
+    if (this.#source.startsWith('./') || this.#source.startsWith('.\\')) {
+      return `.${parent || ''}`
+    }
+
+    if (parent === '.') {
+      return ''
+    }
+
+    return parent
+  }
+
+  /**
+   * Computed base name in path.
+   * @type {string}
+   */
+  get base () {
+    let i = this.pathname.lastIndexOf('/')
+    if (i === -1) {
+      i = this.pathname.lastIndexOf('\\')
+    }
+    return this.pathname.slice(i >= 0 ? i + 1 : undefined)
+  }
+
+  /**
+   * Computed base name in path without path extension.
+   * @type {string}
+   */
+  get name () {
+    return this.base.replace(this.ext, '')
+  }
+
+  /**
+   * Computed extension name in path.
+   * @type {string}
+   */
+  get ext () {
+    const i = this.pathname.lastIndexOf('.')
+    if (i === -1) return ''
+    return this.pathname.slice(i >= 0 ? i : undefined)
+  }
+
+  /**
+   * The computed drive, if given in the path.
+   * @type {string?}
+   */
+  get drive () {
+    return this.#drive
+  }
+
+  /**
+   * @return {URL}
+   */
+  toURL () {
+    return new URL(this.href.replace(/\\/g, '/'))
+  }
+
+  /**
+   * Converts this `Path` instance to a string.
+   * @return {string}
+   */
   toString () {
-    const { format } = this.constructor
-    return format(this)
+    return decodeURIComponent(this.value)
   }
 
   /**
-   * @TODO
+   * @ignore
    */
-  static resolve (...args) {
+  inspect () {
+    const p = this
+    // eslint-disable-next-line new-parens
+    return new class Path {
+      root = p.root
+      dir = p.dir
+      base = p.base
+      ext = p.ext
+      name = p.name
+    }
   }
 
   /**
-   * @TODO
+   * @ignore
    */
-  static normalize (path) {
+  [Symbol.toStringTag] () {
+    return 'Path'
   }
 }
 
-export default exports
+export default Path

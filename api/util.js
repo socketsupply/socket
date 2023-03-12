@@ -416,13 +416,17 @@ export function inspect (value, options) {
         typeof value?.constructor === 'function' &&
         (value.constructor !== Object && value.constructor !== Array)
       ) {
-        let tag = value?.[Symbol.toStringTag] || value?.toString
+        let tag = value?.[Symbol.toStringTag] || value.constructor.name || value?.toString
 
         if (typeof tag === 'function') {
           tag = tag.call(value)
         }
 
-        braces[0] = `${tag || value.constructor.name} ${braces[0]}`
+        if (tag === '[object Object]') {
+          tag = ''
+        }
+
+        braces[0] = `${tag} ${braces[0]}`
       }
 
       if (keys.size === 0 && !(value instanceof Error)) {
