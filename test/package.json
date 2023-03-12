@@ -10,7 +10,6 @@
     "start": "npm test"
   },
   "devDependencies": {
-    "esbuild": "^0.16.4",
-    "path-browserify": "^1.0.1"
+    "esbuild": "^0.16.4"
   }
 }
