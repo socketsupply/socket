@@ -147,61 +147,61 @@ test('path.parse', (t) => {
   )
 
   compare(
-    path.parse('foo.js'),
+    path.posix.parse('foo.js'),
     { root: '', dir: '', base: 'foo.js', ext: '.js', name: 'foo' }
   )
 
   compare(
-    path.parse('./foo.js'),
+    path.posix.parse('./foo.js'),
     { root: '', dir: '.', base: 'foo.js', ext: '.js', name: 'foo' }
   )
 
   compare(
-    path.parse('.\\foo.js'),
+    path.win32.parse('.\\foo.js'),
     { root: '', dir: '.', base: 'foo.js', ext: '.js', name: 'foo' }
   )
 
   compare(
-    path.parse('/foo.js'),
+    path.win32.parse('/foo.js'),
     { root: '/', dir: '/', base: 'foo.js', ext: '.js', name: 'foo' }
   )
 
   compare(
-    path.parse('\\foo.js'),
+    path.win32.parse('\\foo.js'),
     { root: '\\', dir: '\\', base: 'foo.js', ext: '.js', name: 'foo' }
   )
 
   compare(
-    path.parse('C:\\foo.js'),
+    path.win32.parse('C:\\foo.js'),
     { root: 'C:\\', dir: 'C:\\', base: 'foo.js', ext: '.js', name: 'foo' }
   )
 
   compare(
-    path.parse('/bar/foo.js'),
+    path.posix.parse('/bar/foo.js'),
     { root: '/', dir: '/bar', base: 'foo.js', ext: '.js', name: 'foo' }
   )
 
   compare(
-    path.parse('/../bar/foo.js'),
+    path.posix.parse('/../bar/foo.js'),
     { root: '/', dir: '/bar', base: 'foo.js', ext: '.js', name: 'foo' }
   )
 
   compare(
-    path.parse('../bar/../../foo.js'),
+    path.posix.parse('../bar/../../foo.js'),
     { root: '', dir: '', base: 'foo.js', ext: '.js', name: 'foo' }
   )
 
   compare(
-    path.parse('./foo.js'),
+    path.posix.parse('./foo.js'),
     { root: '', dir: '.', base: 'foo.js', ext: '.js', name: 'foo' }
   )
 })
 
 test('path.format', (t) => {
-  t.equal(path.format({ base: 'foo.js' }), 'foo.js')
-  t.equal(path.format({ dir: 'bar', base: 'foo.js' }), 'bar/foo.js')
-  t.equal(path.format({ root: '/', dir: '/home/bar', name: 'foo', ext: '.js' }), '/home/bar/foo.js')
-  t.equal(path.format({ sep: '\\', root: '\\', dir: '\\home\\bar', name: 'foo', ext: '.js' }), '\\home\\bar\\foo.js')
+  t.equal(path.posix.format({ base: 'foo.js' }), 'foo.js')
+  t.equal(path.posix.format({ dir: 'bar', base: 'foo.js' }), 'bar/foo.js')
+  t.equal(path.posix.format({ root: '/', dir: '/home/bar', name: 'foo', ext: '.js' }), '/home/bar/foo.js')
+  t.equal(path.win32.format({ sep: '\\', root: '\\', dir: '\\home\\bar', name: 'foo', ext: '.js' }), '\\home\\bar\\foo.js')
 })
 
 test('path.normalize', (t) => {
