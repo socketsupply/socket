@@ -204,11 +204,11 @@ export class Path extends URL {
     const { sep } = options
     const prefix = drive || url.protocol || ''
     let output = prefix + Path
-      .from(pathname.replace(/^[a-z]:/i, ''))
+      .from(pathname.replace(/^\/?[a-z]:/i, ''))
       .pathname
       .replace(/\//g, sep)
       .replace(/^file:/g, '')
-      .replace(/^[a-z]:/i, '')
+      .replace(/^\/?[a-z]:/i, '')
 
     if (url.protocol && href && !href.startsWith(sep)) {
       output = output.replace(url.protocol, '')
@@ -229,10 +229,6 @@ export class Path extends URL {
 
     if (path.endsWith(sep) && !output.endsWith(sep)) {
       output = output + sep
-    }
-
-    if (!/^[a-z]:/i.test(path)) {
-      return output.replace(/^[a-z]:/i, '')
     }
 
     return output
