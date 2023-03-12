@@ -555,7 +555,11 @@ MAIN {
 
       SSC::String error = getNavigationError(cwd, decodeURIComponent(message.get("url")));
       if (error.size() > 0) {
-        const JSON::Object json = JSON::Object::Entries {{ "err", error }};
+        const JSON::Object json = SSC::JSON::Object::Entries {
+          {"err", JSON::Object::Entries {
+            {"message", error}
+          }}
+        };
         currentWindow->resolvePromise(seq, ERROR_STATE, json.str());
         return;
       }

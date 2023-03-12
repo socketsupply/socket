@@ -204,7 +204,7 @@ export class Path extends URL {
     const { sep } = options
     const prefix = drive || url.protocol || ''
     let output = prefix + Path
-      .from(pathname)
+      .from(pathname.replace(/^[a-z]:/i, ''))
       .pathname
       .replace(/\//g, sep)
       .replace(/^file:/g, '')
