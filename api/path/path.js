@@ -104,7 +104,7 @@ export class Path extends URL {
     )
 
     return components.output.join(sep)
-      .replace('file:', '')
+      .replace(/^file:/g, '')
       .replace(/^[a-z]:/i, '')
   }
 
@@ -205,7 +205,7 @@ export class Path extends URL {
       .from(pathname)
       .pathname
       .replace(/\//g, sep)
-      .replace('file:', '')
+      .replace(/^file:/g, '')
       .replace(/^[a-z]:/i, '')
 
     if (url.protocol && href && !href.startsWith(sep)) {
@@ -326,6 +326,7 @@ export class Path extends URL {
     if (i === -1) i = this.pathname.lastIndexOf('\\')
     return this.pathname
       .slice(0, i >= 0 ? i + 1 : undefined)
+      .replace(/^[a-z]:/i, '')
       .replace(/^(\/|\\)[a-z]:/i, '')
   }
 
@@ -335,7 +336,7 @@ export class Path extends URL {
    */
   get root () {
     const { dir } = this
-    const drive = (dir.match(/^[a-z]:/) || [])[0] || this.drive
+    const drive = (dir.match(/^[a-z]:/i) || [])[0] || this.drive
 
     if (!this.isRelative) {
       if (this.value.includes('\\')) {
