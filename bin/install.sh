@@ -644,6 +644,13 @@ function _compile_libuv_android {
       echo "static library doesn't exist after cache check passed: ($arch-$platform): $(basename "$static_library")"
     fi
   fi
+
+  lib_size=$(stat_size $static_library)
+
+  if (( $lib_size < 800000 )); then
+    echo "ERROR: $static_library size looks wrong: $lib_size, renaming as .bad"
+    mv $static_library $static_library.bad
+  fi
 }
 
 function _compile_libuv {
