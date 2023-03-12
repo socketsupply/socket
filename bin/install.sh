@@ -5,6 +5,12 @@ declare root="$(cd "$(dirname "$(dirname "${BASH_SOURCE[0]}")")" && pwd)"
 source "$root/bin/functions.sh"
 source "$root/bin/android-functions.sh"
 
+if [[ -z "$CPU_CORES" ]]; then
+  export CPU_CORES=$(set_cpu_cores)
+fi
+
+echo "Using cores: $CPU_CORES"
+
 declare args=()
 declare pids=()
 declare force=0
@@ -262,10 +268,10 @@ function _build_runtime_library {
   # TODO(mribbons): These should be build sequentially, or just run this twice - There's an issue with exclusive file access
   if [[ ! -z "$BUILD_ANDROID" ]]; then
     # & pids+=($!) forking here causes file lock errors, something wrong with android clang
-    "$root/bin/build-runtime-library.sh" --platform android --arch "arm64-v8a"
-    "$root/bin/build-runtime-library.sh" --platform android --arch "armeabi-v7a"
-    "$root/bin/build-runtime-library.sh" --platform android --arch "x86"
-    "$root/bin/build-runtime-library.sh" --platform android --arch "x86_64"
+    "$root/bin/build-runtime-library.sh" --platform android --arch "arm64-v8a" $pass_force & pids+=($!)
+    "$root/bin/build-runtime-library.sh" --platform android --arch "armeabi-v7a" $pass_force & pids+=($!)
+    "$root/bin/build-runtime-library.sh" --platform android --arch "x86" $pass_force & pids+=($!)
+    "$root/bin/build-runtime-library.sh" --platform android --arch "x86_64" $pass_force & pids+=($!)
   fi
 
   wait
@@ -584,28 +590,59 @@ function _compile_libuv_android {
   mkdir -p $output_directory
 
   declare src_directory="$root/build/uv/src"
+  
+  trap onsignal INT TERM
+  local i=0
+  local max_concurrency=$CPU_CORES
+  build_static=0
+  declare static_library="$root/build/$arch-$platform/lib$d/libuv$d.a"
 
   for source in "${sources[@]}"; do
-  {
-    declare object="${source/.c/$d.o}"
-    object=$(basename $object)
-    objects+=("$output_directory/$object")
-    if (( force )) || ! test -f "$output_directory/$object" || (( $(stat_mtime "$src_directory/$source") > $(stat_mtime "$output_directory/$object") )); then
-      mkdir -p "$(dirname "$object")"
-      echo "# compiling object ($arch-$platform) $(basename "$source")"
-      quiet $clang "${cflags[@]}" -c "$src_directory/$source" -o "$output_directory/$object" || onsignal
-      echo "ok - built $source -> $object ($arch-$platform)"
+  
+    if (( i++ > max_concurrency )); then
+      for pid in "${pids[@]}"; do
+        wait "$pid" 2>/dev/null
+      done
+      i=0
     fi
-  }
+    {
+      declare object="${source/.c/$d.o}"
+      object=$(basename $object)
+      objects+=("$output_directory/$object")
+      if (( force )) || ! test -f "$output_directory/$object" || (( $(stat_mtime "$src_directory/$source") > $(stat_mtime "$output_directory/$object") )); then
+        mkdir -p "$(dirname "$object")"
+        echo "# compiling object ($arch-$platform) $(basename "$source")"
+        quiet $clang "${cflags[@]}" -c "$src_directory/$source" -o "$output_directory/$object" || onsignal
+        echo "ok - built $source -> $object ($arch-$platform)"
+        # Can't write back to variable in block, remove final library to force rebuild
+        rm $static_library 2>/dev/null
+      fi
+    } & pids+=($!)
   done
 
-  declare static_library="$root/build/$arch-$platform/lib$d/libuv$d.a"
+  for pid in "${pids[@]}"; do
+    wait "$pid" 2>/dev/null
+  done
+
+  if [ ! -f $static_library ]; then
+    build_static=1
+  fi
   mkdir -p "$(dirname $static_library)"
-  $ar crs "$static_library" "${objects[@]}"
-  if [ -f $static_library ]; then
-    echo "ok - built libuv ($arch-$platform): $(basename "$static_library")"
+
+  if (( build_static )); then
+    $ar crs "$static_library" "${objects[@]}"
+    if [ -f $static_library ]; then
+      echo "ok - built libuv ($arch-$platform): $(basename "$static_library")"
+    else
+      echo "failed to build $static_library"
+    fi
+  
   else
-    echo "failed to build $static_library"
+    if [ -f $static_library ]; then
+      echo "ok - using cached static library ($arch-$platform): $(basename "$static_library")"
+    else
+      echo "static library doesn't exist after cache check passed: ($arch-$platform): $(basename "$static_library")"
+    fi
   fi
 }
 
@@ -654,7 +691,7 @@ function _compile_libuv {
         die $? "not ok - desktop configure"
 
         quiet make clean
-        quiet make -j8
+        quiet make -j$CPU_CORES
         quiet make install
       fi
     else
@@ -704,7 +741,7 @@ function _compile_libuv {
     return
   fi
 
-  quiet make -j8
+  quiet make -j$CPU_CORES
   quiet make install
 
   cd $BUILD_DIR
@@ -780,13 +817,18 @@ fi
 {
   _compile_libuv
   echo "ok - built libuv for $platform ($target)"
-} & pids+=($!)
+} & _compile_libuv_pid=$!
+
+if [[ "$HOST" != "Win32" ]]; then
+  # non windows hosts uses make -j$CPU_CORES, wait for them to finish.
+  wait $_compile_libuv_pid
+fi
 
 if [[ ! -z "$BUILD_ANDROID" ]]; then
-  _compile_libuv_android arm64-v8a & pids+=($!)
-  _compile_libuv_android armeabi-v7a & pids+=($!)
-  _compile_libuv_android x86 & pids+=($!)
-  _compile_libuv_android x86_64 & pids+=($!)
+  _compile_libuv_android arm64-v8a
+  _compile_libuv_android armeabi-v7a
+  _compile_libuv_android x86
+  _compile_libuv_android x86_64
 fi
 
 mkdir -p  $SOCKET_HOME/uv/{src/unix,include}
@@ -799,6 +841,11 @@ cd $CWD
 cd "$BUILD_DIR"
 
 _get_web_view2
+
+if [[ "$HOST" == "Win32" ]]; then
+  # Wait for Win32 lib uv build
+  wait $_compile_libuv_pid
+fi
 
 _build_runtime_library
 _build_cli & pids+=($!)
