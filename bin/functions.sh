@@ -42,3 +42,15 @@ function onsignal () {
   done
   exit $status
 }
+
+function set_cpu_cores() {
+  if [[ -z "$CPU_CORES" ]]; then
+    if [[ "Darwin" = "$(uname -s)" ]]; then
+      CPU_CORES=$(sysctl -a | grep machdep.cpu.core_count | cut -f2 -d' ')
+    else
+      CPU_CORES=$(grep 'processor' /proc/cpuinfo | wc -l)
+    fi
+  fi
+
+  echo $CPU_CORES
+}

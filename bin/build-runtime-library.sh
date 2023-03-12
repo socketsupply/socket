@@ -5,6 +5,7 @@ declare clang="${CXX:-${CLANG:-"$(which clang++)"}}"
 declare cache_path="$root/build/cache"
 
 source "$root/bin/functions.sh"
+export CPU_CORES=$(set_cpu_cores)
 
 declare args=()
 declare pids=()
@@ -156,7 +157,7 @@ done
 function main () {
   trap onsignal INT TERM
   local i=0
-  local max_concurrency=8
+  local max_concurrency=$CPU_CORES
 
   for source in "${sources[@]}"; do
     if (( i++ > max_concurrency )); then
