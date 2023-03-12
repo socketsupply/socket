@@ -15,7 +15,7 @@ test('path', (t) => {
 })
 
 test('path.posix.resolve', (t) => {
-  const cwd = process.cwd()
+  const cwd = path.posix.cwd()
   const dot = path.posix.resolve('.')
   const a = path.posix.resolve('a')
   const ab = path.posix.resolve('a', 'b')
@@ -67,7 +67,7 @@ test('path.posix.extname', (t) => {
 })
 
 test('path.win32.resolve', (t) => {
-  const cwd = path.win32.resolve(process.cwd())
+  const cwd = path.win32.cwd()
   const dot = path.win32.resolve('.')
   const a = path.win32.resolve('a')
   const ab = path.win32.resolve('a', 'b')
