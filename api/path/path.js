@@ -61,6 +61,48 @@ export class Path extends URL {
   }
 
   /**
+   * Computes the relative path from `from` to `to`.
+   * @param {object} options
+   * @param {PathComponent} from
+   * @param {PathComponent} to
+   * @return {string}
+   */
+  static relative (options, from, to) {
+    const { sep } = options
+    if (from === to) return ''
+    from = this.resolve(options, from)
+    to = this.resolve(options, to)
+
+    const components = {
+      output: [],
+      from: from.split(sep).filter(Boolean),
+      to: to.split(sep).filter(Boolean)
+    }
+
+    for (let i = components.from.length - 1; i > -1; --i) {
+      const a = components.from[i]
+      const b = components.to[i]
+      if (a !== b) {
+        components.output.push('..')
+      }
+    }
+
+    for (let i = 0; i < components.output.length; ++i) {
+      components.from.pop()
+    }
+
+    components.output.push(
+      ...components.to
+        .join(sep)
+        .replace(components.from.join(sep), '')
+        .split(sep)
+        .filter(Boolean)
+    )
+
+    return components.output.join(sep)
+  }
+
+  /**
    * Joins path components. This function may not return an absolute path.
    * @param {object} options
    * @param {...PathComponent} components
