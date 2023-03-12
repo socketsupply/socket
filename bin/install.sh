@@ -598,17 +598,18 @@ function _compile_libuv_android {
   declare static_library="$root/build/$arch-$platform/lib$d/libuv$d.a"
 
   for source in "${sources[@]}"; do
-  
     if (( i++ > max_concurrency )); then
       for pid in "${pids[@]}"; do
         wait "$pid" 2>/dev/null
       done
       i=0
     fi
+
+    declare object="${source/.c/$d.o}"
+    object=$(basename $object)
+    objects+=("$output_directory/$object")
+
     {
-      declare object="${source/.c/$d.o}"
-      object=$(basename $object)
-      objects+=("$output_directory/$object")
       if (( force )) || ! test -f "$output_directory/$object" || (( $(stat_mtime "$src_directory/$source") > $(stat_mtime "$output_directory/$object") )); then
         mkdir -p "$(dirname "$object")"
         echo "# compiling object ($arch-$platform) $(basename "$source")"
@@ -630,11 +631,12 @@ function _compile_libuv_android {
   mkdir -p "$(dirname $static_library)"
 
   if (( build_static )); then
-    $ar crs "$static_library" "${objects[@]}"
+    quiet $ar crs "$static_library" "${objects[@]}"
     if [ -f $static_library ]; then
       echo "ok - built libuv ($arch-$platform): $(basename "$static_library")"
     else
       echo "failed to build $static_library"
+      exit 1
     fi
   
   else
@@ -642,6 +644,7 @@ function _compile_libuv_android {
       echo "ok - using cached static library ($arch-$platform): $(basename "$static_library")"
     else
       echo "static library doesn't exist after cache check passed: ($arch-$platform): $(basename "$static_library")"
+      exit 1
     fi
   fi
 
@@ -650,6 +653,7 @@ function _compile_libuv_android {
   if (( $lib_size < 800000 )); then
     echo "ERROR: $static_library size looks wrong: $lib_size, renaming as .bad"
     mv $static_library $static_library.bad
+    exit 1
   fi
 }
 

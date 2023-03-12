@@ -215,14 +215,24 @@ function main () {
       echo "ok - built static library ($arch-$platform): $(basename "$static_library")"
     else
       echo "failed to build $static_library"
+      exit 1
     fi
   else
     if [ -f $static_library ]; then
       echo "ok - using cached static library ($arch-$platform): $(basename "$static_library")"
     else
       echo "static library doesn't exist after cache check passed: ($arch-$platform): $(basename "$static_library")"
+      exit 1
     fi
   fi
+
+  lib_size=$(stat_size $static_library)
+
+  if (( $lib_size < 1048576 )); then
+    echo "ERROR: $static_library size looks wrong: $lib_size, renaming as .bad"
+    mv $static_library $static_library.bad
+    exit 1
+  fi  
 }
 
 main "${args[@]}"
