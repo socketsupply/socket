@@ -241,3 +241,17 @@ test('path.normalize', (t) => {
     'preserve Windows trailing slash'
   )
 })
+
+test('path.relative', (t) => {
+  t.equal(path.posix.relative('/a/b/c', '/d/e/f'), '../../../d/e/f', '../../../d/e/f')
+  t.equal(path.posix.relative('/a/b/c', '/a'), '../..', '../..')
+  t.equal(path.posix.relative('/a/b/c', '/a/b/e'), '../e', ' ../e')
+  t.equal(path.posix.relative('/a/b/c', '/a/b/c/d'), 'd', 'd')
+  t.equal(path.posix.relative('/a/b/c', '/a/b/c/d/e'), 'd/e', 'd/e')
+
+  t.equal(path.win32.relative('\\a\\b\\c', '\\d\\e\\f'), '..\\..\\..\\d\\e\\f', '..\\..\\..\\d\\e\\f')
+  t.equal(path.win32.relative('\\a\\b\\c', '\\a'), '..\\..', '..\\..')
+  t.equal(path.win32.relative('\\a\\b\\c', '\\a\\b\\e'), '..\\e', ' ..\\e')
+  t.equal(path.win32.relative('\\a\\b\\c', '\\a\\b\\c\\d'), 'd', 'd')
+  t.equal(path.win32.relative('\\a\\b\\c', '\\a\\b\\c\\d\\e'), 'd\\e', 'd\\e')
+})
