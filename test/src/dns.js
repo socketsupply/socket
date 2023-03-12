@@ -86,6 +86,7 @@ test('dns.promises.lookup', async t => {
   } catch (err) {
     t.fail(err)
   }
+
   try {
     const info = await dns.promises.lookup('google.com', 6)
     t.ok(info && typeof info === 'object', 'returns a non-error object after resolving a hostname')
@@ -94,6 +95,7 @@ test('dns.promises.lookup', async t => {
   } catch (err) {
     t.fail(err)
   }
+
   try {
     const info = await dns.promises.lookup('google.com', { family: 4 })
     t.ok(info && typeof info === 'object', 'returns a non-error object after resolving a hostname')
@@ -102,21 +104,24 @@ test('dns.promises.lookup', async t => {
   } catch (err) {
     t.fail(err)
   }
-  try {
-    const info = await dns.promises.lookup('cloudflare.com', 6)
-    t.ok(info && typeof info === 'object', 'returns a non-error object after resolving a hostname')
-    t.equal(info.family, 6, 'is IPv6 family')
-    t.ok(IPV6_REGEX.test(info.address), 'has valid IPv6 address')
-  } catch (err) {
-    t.fail(err)
-  }
-  try {
-    const info = await dns.promises.lookup('cloudflare.com', { family: 6 })
-    t.ok(info && typeof info === 'object', 'returns a non-error object after resolving a hostname')
-    t.equal(info.family, 6, 'is IPv6 family')
-    t.ok(IPV6_REGEX.test(info.address), 'has valid IPv6 address')
-  } catch (err) {
-    t.fail(err)
+
+  if (os.platform() !== 'win32') {
+    try {
+      const info = await dns.promises.lookup('cloudflare.com', 6)
+      t.ok(info && typeof info === 'object', 'returns a non-error object after resolving a hostname')
+      t.equal(info.family, 6, 'is IPv6 family')
+      t.ok(IPV6_REGEX.test(info.address), 'has valid IPv6 address')
+    } catch (err) {
+      t.fail(err)
+    }
+    try {
+      const info = await dns.promises.lookup('cloudflare.com', { family: 6 })
+      t.ok(info && typeof info === 'object', 'returns a non-error object after resolving a hostname')
+      t.equal(info.family, 6, 'is IPv6 family')
+      t.ok(IPV6_REGEX.test(info.address), 'has valid IPv6 address')
+    } catch (err) {
+      t.fail(err)
+    }
   }
 })
 

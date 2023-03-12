@@ -258,7 +258,6 @@ export class Path extends URL {
    */
   constructor (pathname, cwd) {
     const isRelative = !/^[/|\\]/.test(pathname.replace(/^[a-z]:/i, ''))
-    const drive = (pathname.match(/^[a-z]:/i) || [])[0] || null
     pathname = String(pathname || '.').trim()
 
     if (cwd) {
@@ -273,6 +272,10 @@ export class Path extends URL {
     }
 
     super(pathname, cwd)
+
+    const drive = (
+      pathname.match(/^[a-z]:/i) || this.pathname.match(/^[a-z]:/i) || []
+    )[0] || null
 
     this.#forwardSlashesDetected = /\\/.test(pathname)
     this.#isRelative = isRelative
@@ -310,7 +313,9 @@ export class Path extends URL {
   get parent () {
     let i = this.pathname.lastIndexOf('/')
     if (i === -1) i = this.pathname.lastIndexOf('\\')
-    return this.pathname.slice(0, i >= 0 ? i + 1 : undefined)
+    return this.pathname
+      .slice(0, i >= 0 ? i + 1 : undefined)
+      .replace(/^(\/|\\)[a-z]:/i, '')
   }
 
   /**

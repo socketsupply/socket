@@ -65,8 +65,9 @@ if (process.platform !== 'ios') {
 
   test('fs.promises.readFile', async (t) => {
     const data = await fs.readFile(FIXTURES + 'file.txt')
+    const crlf = process.platform === 'win32' ? '\r\n' : '\n'
     t.ok(Buffer.isBuffer(data), 'buffer is returned')
-    t.equal(data.toString(), 'test 123\n', 'buffer contains file contents')
+    t.equal(data.toString(), 'test 123' + crlf, 'buffer contains file contents')
   })
 
   test('fs.promises.stat', async (t) => {
