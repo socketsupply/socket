@@ -28,12 +28,16 @@ export class Path extends URL {
    * @return {string}
    */
   static cwd (opts) {
-    if (isWin32 && opts?.posix === true) {
-      const cwd = primordials.cwd.replace(/\\/g, '/')
-      return cwd.slice(cwd.indexOf('/'))
+    let cwd = primordials.cwd
+    if (isWin32) {
+      cwd = cwd.replace(/^[a-z]:/i, '')
+      if (opts?.posix === true) {
+        cwd = cwd.replace(/\\/g, '/')
+        cwd = cwd.slice(cwd.indexOf('/'))
+      }
     }
 
-    return primordials.cwd
+    return cwd.replace(/[/|\\]$/, '')
   }
 
   /**
@@ -70,8 +74,8 @@ export class Path extends URL {
   static relative (options, from, to) {
     const { sep } = options
     if (from === to) return ''
-    from = this.resolve(options, from)
-    to = this.resolve(options, to)
+    from = this.resolve(options, from).replace('file:', '')
+    to = this.resolve(options, to).replace('file:', '')
 
     const components = {
       output: [],
@@ -195,7 +199,11 @@ export class Path extends URL {
     const href = url.href ? url.href.replace(url.protocol, '') : ''
     const { sep } = options
     const prefix = drive || url.protocol || ''
-    let output = prefix + Path.from(pathname).pathname.replace(/\//g, sep)
+    let output = prefix + Path
+      .from(pathname)
+      .pathname
+      .replace(/\//g, sep)
+      .replace(/^[a-z]:/i, '')
 
     if (url.protocol && href && !href.startsWith(sep)) {
       output = output.replace(url.protocol, '')

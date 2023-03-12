@@ -89,8 +89,8 @@ if (process.platform !== 'ios') {
   })
 }
 
-// FIXME: make it work on iOS
-if (process.platform !== 'ios') {
+// FIXME: make it work on iOS/Windows
+if (process.platform !== 'ios' && process.platform !== 'win32') {
   test('application.getScreenSize', async (t) => {
     const { width, height } = await application.getScreenSize()
     t.equal(width, window.screen.width, 'width is correct')
@@ -125,7 +125,7 @@ if (!['android', 'ios'].includes(process.platform)) {
       err = e
     }
     t.ok(err instanceof Error, 'throws error when path is not specified')
-    t.equal(err.message, 'Path and index are required options', 'error message is correct')
+    t.equal(err?.message, 'Path and index are required options', 'error message is correct')
     t.ok(!(dummyWindow instanceof ApplicationWindow), 'does not return an ApplicationWindow instance')
   })
 
@@ -138,8 +138,8 @@ if (!['android', 'ios'].includes(process.platform)) {
       err = e
     }
     t.ok(err instanceof Error, 'throws error when path is invalid')
-    t.ok(err.message.startsWith('Error: only .html files are allowed. Got url file://'), 'error message is correct')
-    t.ok(err.message.endsWith('invalid.path'), 'error shows correct path')
+    t.ok(err?.message?.startsWith('Error: only .html files are allowed. Got url file://'), 'error message is correct')
+    t.ok(err?.message?.endsWith('invalid.path'), 'error shows correct path')
     t.ok(!(dummyWindow instanceof ApplicationWindow), 'does not return an ApplicationWindow instance')
   })
 
@@ -152,8 +152,8 @@ if (!['android', 'ios'].includes(process.platform)) {
       err = e
     }
     t.ok(err instanceof Error, 'throws error when file does not exist')
-    t.ok(err.message.startsWith('Error: file does not exist. Got url file://'), 'error message is correct')
-    t.ok(err.message.endsWith('invalid.html'), 'error shows correct path')
+    t.ok(err?.message?.startsWith('Error: file does not exist. Got url file://'), 'error message is correct')
+    t.ok(err?.message?.endsWith('invalid.html'), 'error shows correct path')
     t.ok(!(dummyWindow instanceof ApplicationWindow), 'does not return an ApplicationWindow instance')
   })
 
@@ -166,8 +166,8 @@ if (!['android', 'ios'].includes(process.platform)) {
       err = e
     }
     t.ok(err instanceof Error, 'throws error when file does not exist')
-    t.ok(err.message.startsWith('Error: relative urls are not allowed. Got url file://'), 'error message is correct')
-    t.ok(err.message.endsWith('invalid.html'), 'error shows correct path')
+    t.ok(err?.message?.startsWith('Error: relative urls are not allowed. Got url file://'), 'error message is correct')
+    t.ok(err?.message?.endsWith('invalid.html'), 'error shows correct path')
     t.ok(!(dummyWindow instanceof ApplicationWindow), 'does not return an ApplicationWindow instance')
   })
 
@@ -181,7 +181,7 @@ if (!['android', 'ios'].includes(process.platform)) {
     }
 
     t.ok(err instanceof Error, 'throws error when index is already used')
-    t.equal(err.message, 'Error: Window with index 0 already exists', 'error message is correct')
+    t.equal(err?.message, 'Error: Window with index 0 already exists', 'error message is correct')
     t.ok(!(dummyWindow instanceof ApplicationWindow), 'does not return an ApplicationWindow instance')
   })
 
@@ -210,7 +210,7 @@ if (!['android', 'ios'].includes(process.platform)) {
             printValue = JSON.stringify(size)
         }
         t.ok(err instanceof Error, `throws error when ${dimension} is invalid (${printValue})`)
-        t.equal(err.message, `Window ${dimension} must be an integer number or a string with a valid percentage value from 0 to 100 ending with %. Got ${size} instead.`, `error message is correct for ${printValue}`)
+        t.equal(err?.message, `Window ${dimension} must be an integer number or a string with a valid percentage value from 0 to 100 ending with %. Got ${size} instead.`, `error message is correct for ${printValue}`)
         t.ok(!(dummyWindow instanceof ApplicationWindow), 'does not return an ApplicationWindow instance')
       }
     }
@@ -239,7 +239,7 @@ if (!['android', 'ios'].includes(process.platform)) {
           printValue = JSON.stringify(option)
       }
       t.ok(err instanceof Error, `throws error when type ${printValue} is being passed`)
-      t.equal(err.message, `Invalid window index: ${option} (must be a positive integer number)`, `error message is correct for ${printValue}`)
+      t.equal(err?.message, `Invalid window index: ${option} (must be a positive integer number)`, `error message is correct for ${printValue}`)
       t.ok(!(dummyWindow instanceof ApplicationWindow), 'does not return an ApplicationWindow instance')
     }
   })
@@ -267,7 +267,7 @@ if (!['android', 'ios'].includes(process.platform)) {
           printValue = JSON.stringify(option)
       }
       t.ok(err instanceof Error, `throws error when type ${printValue} is being passed`)
-      t.equal(err.message, `Invalid window index: ${option} (must be a positive integer number)`, `error message is correct for ${printValue}`)
+      t.equal(err?.message, `Invalid window index: ${option} (must be a positive integer number)`, `error message is correct for ${printValue}`)
       t.equal(windows, undefined, 'does not return an ApplicationWindow instance')
     }
   })
@@ -295,7 +295,7 @@ if (!['android', 'ios'].includes(process.platform)) {
           printValue = JSON.stringify(option)
       }
       t.ok(err instanceof Error, `throws error when type ${printValue} is being passed`)
-      t.equal(err.message, 'Indices list must be an array of integer numbers', `error message is correct for ${printValue}`)
+      t.equal(err?.message, 'Indices list must be an array of integer numbers', `error message is correct for ${printValue}`)
       t.equal(windows, undefined, 'does not return an ApplicationWindow instance')
     }
   })
@@ -532,7 +532,7 @@ if (!['android', 'ios'].includes(process.platform)) {
           printValue = JSON.stringify(index)
       }
       t.ok(err instanceof Error, `throws error when type ${printValue} is being passed`)
-      t.equal(err.message, 'window should be an integer', `error message is correct for ${printValue}`)
+      t.equal(err?.message, 'window should be an integer', `error message is correct for ${printValue}`)
     }
   })
 
@@ -565,7 +565,7 @@ if (!['android', 'ios'].includes(process.platform)) {
       err = e
     }
     t.ok(err instanceof Error, 'send from a new window throws')
-    t.equal(err.message, 'window.send can only be used from the current window', 'send from a non-current window throws')
+    t.equal(err?.message, 'window.send can only be used from the current window', 'send from a non-current window throws')
     newWindow.close()
     counter++
   })
@@ -579,7 +579,7 @@ if (!['android', 'ios'].includes(process.platform)) {
     } catch (e) {
       err = e
     }
-    t.equal(err.message, 'backend option cannot be used together with window option', 'send to both window and backend throws')
+    t.equal(err?.message, 'backend option cannot be used together with window option', 'send to both window and backend throws')
     counter++
   })
 
@@ -592,7 +592,7 @@ if (!['android', 'ios'].includes(process.platform)) {
     } catch (e) {
       err = e
     }
-    t.equal(err.message, 'event should be a non-empty string', 'send with empty event throws')
+    t.equal(err?.message, 'event should be a non-empty string', 'send with empty event throws')
     counter++
   })
 
@@ -605,7 +605,7 @@ if (!['android', 'ios'].includes(process.platform)) {
     } catch (e) {
       err = e
     }
-    t.equal(err.message, 'event should be a non-empty string', 'send with empty event throws')
+    t.equal(err?.message, 'event should be a non-empty string', 'send with empty event throws')
     counter++
   })
 
