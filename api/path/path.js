@@ -215,7 +215,9 @@ export class Path extends URL {
         output = output.slice(1)
       }
 
-      output = url.protocol + output
+      if (url.protocol === 'file:' && path.startsWith('file:')) {
+        output = url.protocol + output
+      }
     }
 
     if (path.endsWith(sep) && !output.endsWith(sep)) {
@@ -339,10 +341,8 @@ export class Path extends URL {
     const drive = (dir.match(/^[a-z]:/i) || [])[0] || this.drive
 
     if (!this.isRelative) {
-      if (this.value.includes('\\')) {
-        return `${drive}\\`
-      } else if (this.#forwardSlashesDetected) {
-        return '\\'
+      if (this.value.includes('\\') || this.#forwardSlashesDetected) {
+        return `${drive || ''}\\`
       } else if (this.value.startsWith('/')) {
         return '/'
       }
