@@ -34,7 +34,7 @@ if (globalThis.window) {
  * @return {Promise<ipc.Result>}
  */
 export async function createWindow (opts) {
-  if (opts?.path == null || opts?.index == null) {
+  if (typeof opts?.path !== 'string' || typeof opts?.index !== 'number') {
     throw new Error('Path and index are required options')
   }
 
