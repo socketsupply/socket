@@ -124,6 +124,10 @@ if (process.platform !== 'ios') {
           actual = actual.slice(0, -1)
         }
 
+        if (actual[actual.length - 1] === 0x0D) {
+          actual = actual.slice(0, -1)
+        }
+
         t.ok(
           Buffer.compare(expected, actual) === 0,
           `fixtures/file.txt contents match "${expected}"`

@@ -82,7 +82,7 @@ if (process.platform !== 'ios') {
       t.throws(
         () => { application.config[key] = 0 },
         // eslint-disable-next-line prefer-regex-literals
-        RegExp('Attempted to assign to readonly property.'),
+        /read\s?only property/,
         `application.config.${key} is read-only`
       )
     })

@@ -149,7 +149,7 @@ test('udp bind, send, remoteAddress', async (t) => {
     const r = Buffer.from(await msg).toString()
     t.ok(r === payload, `${payload.length} bytes match`)
   } catch (err) {
-    t.fail(err, err.message)
+    t.fail(err, err?.message)
   }
 
   server.close()
@@ -225,7 +225,7 @@ test('udp bind, connect, send', async (t) => {
     const r = Buffer.from(await msg).toString()
     t.ok(r === payload, `${payload.length} bytes match`)
   } catch (err) {
-    t.fail(err, err.message)
+    t.fail(err, err?.message)
   }
 
   server.close()
