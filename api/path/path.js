@@ -226,7 +226,11 @@ export class Path extends URL {
     }
 
     if (path.endsWith(sep) && !output.endsWith(sep)) {
-      return output + sep
+      output = output + sep
+    }
+
+    if (!/^[a-z]:/i.test(path)) {
+      return output.replace(/^[a-z]:/i, '')
     }
 
     return output
