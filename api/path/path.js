@@ -53,6 +53,7 @@ export class Path extends URL {
       cwd = Path
         .from(components.shift(), cwd + sep)
         .pathname
+        .replace(/^[a-z]:/i, '')
         .replace(/\/$/g, '')
         .replace(/\//g, sep)
     }
@@ -143,6 +144,7 @@ export class Path extends URL {
         .from(path, sep)
         .parent
         .replace(/\//g, sep)
+        .replace(/^[a-z]:/i, '')
     )
 
     if (String(path).startsWith('.')) {
@@ -215,7 +217,10 @@ export class Path extends URL {
         output = output.slice(1)
       }
 
-      if (url.protocol === 'file:' && path.startsWith('file:')) {
+      if (
+        url.protocol !== 'file:' ||
+        (url.protocol === 'file:' && path.startsWith('file:'))
+      ) {
         output = url.protocol + output
       }
     }
