@@ -1,8 +1,5 @@
 import './test-context.js' // this should be first
 
-// @TODO(jwerle): tapzero needs a `t.plan()` so we know exactly how to
-// expect the total pass count
-
 import './webview.js'
 import './diagnostics.js'
 import './ipc.js'
