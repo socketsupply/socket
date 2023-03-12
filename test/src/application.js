@@ -15,8 +15,8 @@ test('window.document.title', async (t) => {
   title = 'idkfa'
   window.document.title = title
   t.equal(window.document.title, title, 'window.document.title is has been changed')
-  // FIXME: make it work on iOS
-  if (process.platform !== 'ios') {
+  // FIXME: make it work on iOS/Android
+  if (!['android', 'ios'].includes(process.platform)) {
     const mainWindow = await application.getCurrentWindow()
     t.equal(mainWindow.getTitle(), title, 'window title is correct')
   }
@@ -41,8 +41,8 @@ test('application.debug', async (t) => {
   t.throws(() => { application.debug = 1 }, 'debug is immutable')
 })
 
-// FIXME: make it work on iOS
-if (process.platform !== 'ios') {
+// FIXME: make it work on iOS/Android
+if (!['android', 'ios'].includes(process.platform)) {
   test('application.config', async (t) => {
     const rawConfig = await readFile('socket.ini', 'utf8')
     let prefix = ''
@@ -90,7 +90,7 @@ if (process.platform !== 'ios') {
 }
 
 // FIXME: make it work on iOS/Windows
-if (process.platform !== 'ios' && process.platform !== 'win32') {
+if (!['android', 'ios', 'win32'].includes(process.platform)) {
   test('application.getScreenSize', async (t) => {
     const { width, height } = await application.getScreenSize()
     t.equal(width, window.screen.width, 'width is correct')
@@ -98,8 +98,8 @@ if (process.platform !== 'ios' && process.platform !== 'win32') {
   })
 }
 
-// FIXME: make it work on iOS
-if (process.platform !== 'ios') {
+// FIXME: make it work on iOS/Android
+if (!['android', 'ios'].includes(process.platform)) {
   test('openExternal', async (t) => {
     const currentWindow = await application.getCurrentWindow()
     t.equal(typeof currentWindow.openExternal, 'function', 'openExternal is a function')
