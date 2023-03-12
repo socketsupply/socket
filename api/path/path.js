@@ -217,11 +217,13 @@ export class Path extends URL {
         output = output.slice(1)
       }
 
-      if (
-        url.protocol !== 'file:' ||
-        (url.protocol === 'file:' && path.startsWith('file:'))
-      ) {
-        output = url.protocol + output
+      if (!drive) {
+        if (
+          url.protocol !== 'file:' ||
+          (url.protocol === 'file:' && path.startsWith('file:'))
+        ) {
+          output = url.protocol + output
+        }
       }
     }
 
