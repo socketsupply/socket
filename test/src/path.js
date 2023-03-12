@@ -206,13 +206,13 @@ test('path.format', (t) => {
 
 test('path.normalize', (t) => {
   t.equal(
-    path.normalize('file:///path/to/a/b/../../file.txt'),
+    path.posix.normalize('file:///path/to/a/b/../../file.txt'),
     'file:/path/to/file.txt',
     'normalize file: URL'
   )
 
   t.equal(
-    path.normalize('protocol:path/to/a/b/../../file.txt'),
+    path.posix.normalize('protocol:path/to/a/b/../../file.txt'),
     'protocol:path/to/file.txt',
     'normalize protocol: URL'
   )
