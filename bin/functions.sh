@@ -1,13 +1,26 @@
+declare BSD_STAT=0
+# BSD stat has no version argument or reliable identifierr
+if stat --help 2>/dev/null | grep "usage: stat" >/dev/null; then
+  BSD_STAT=1
+fi
+
+if (( $BSD_STAT == 1 )); then
+  stat_format_arg="-f"
+  stat_mtime_spec="%m"
+  stat_size_spec="%z"
+else 
+  # GNU_STAT
+  stat_format_arg="-c"
+  stat_mtime_spec="%Y"
+  stat_size_spec="%s"
+fi
+
 function stat_mtime () {
-  if [[ "$(uname -s)" = "Darwin" ]]; then
-    if stat --help 2>/dev/null | grep GNU >/dev/null; then
-      stat -c %Y "$1" 2>/dev/null
-    else
-      stat -f %m "$1" 2>/dev/null
-    fi
-  else
-    stat -c %Y "$1" 2>/dev/null
-  fi
+  stat $stat_format_arg $stat_mtime_spec "$1"
+}
+
+function stat_size () {
+  stat $stat_format_arg $stat_size_spec "$1"
 }
 
 function quiet () {
