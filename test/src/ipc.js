@@ -108,6 +108,7 @@ if (process.platform !== 'ios' && process.platform !== 'android') {
     t.equal(err?.name, 'NotFoundError')
     // Make lower case to adjust for implementation differences.
     t.equal(err?.message.toLowerCase(), 'not found')
+    console.log(err.url)
     // win32 adds on the trailing slash in the URL.
     if (globalThis.__args.os === 'win32') {
       t.ok(err?.url.startsWith('ipc://test/?foo=bar&index=0&seq=R'))

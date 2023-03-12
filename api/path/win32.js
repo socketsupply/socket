@@ -24,7 +24,7 @@ export function cwd () {
  * @return {string}
  */
 export function resolve (...components) {
-  return Path.resolve({ sep }, ...components).replace(/\//g, '\\')
+  return Path.resolve({ sep }, cwd(), ...components).replace(/\//g, '\\')
 }
 
 /**
