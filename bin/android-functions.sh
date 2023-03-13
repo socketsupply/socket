@@ -47,12 +47,11 @@ function android_arch() {
     x86)
       echo -n "i686"
       ;;
-    x86-64|x86_64)
+    x86-64)
       echo -n "x86_64"
       ;;
     *)
-      echo "Unknown-android-arch-$arch"
-      exit 1
+      echo -n $arch
       ;;
   esac
 }
