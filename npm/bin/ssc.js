@@ -39,8 +39,8 @@ async function main () {
   child.once('error', (err) => {
     console.error(err.message)
     if (!exiting) {
-      process.exit(1)
       exiting = true
+      process.exit(1)
     }
   })
 }
