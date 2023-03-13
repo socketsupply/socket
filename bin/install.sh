@@ -265,9 +265,7 @@ function _build_runtime_library {
     "$root/bin/build-runtime-library.sh" --arch x86_64 --platform ios-simulator $pass_force & pids+=($!)
   fi
 
-  # TODO(mribbons): These should be build sequentially, or just run this twice - There's an issue with exclusive file access
   if [[ ! -z "$BUILD_ANDROID" ]]; then
-    # & pids+=($!) forking here causes file lock errors, something wrong with android clang
     "$root/bin/build-runtime-library.sh" --platform android --arch "arm64-v8a" $pass_force & pids+=($!)
     "$root/bin/build-runtime-library.sh" --platform android --arch "armeabi-v7a" $pass_force & pids+=($!)
     "$root/bin/build-runtime-library.sh" --platform android --arch "x86" $pass_force & pids+=($!)
@@ -797,6 +795,12 @@ cd $BUILD_DIR
 
 trap onsignal INT TERM
 
+# Although we're passing -j$CPU_CORES on non Win32, we still don't get max utiliztion on macos. Start this before fat libs.
+{
+  _compile_libuv
+  echo "ok - built libuv for $platform ($target)"
+} & _compile_libuv_pid=$!
+
 if [[ "$(uname -s)" == "Darwin" ]]; then
   quiet xcode-select -p
   die $? "not ok - xcode needs to be installed from the mac app store: https://apps.apple.com/us/app/xcode/id497799835"
@@ -825,21 +829,16 @@ if [[ "$(uname -s)" == "Darwin" ]]; then
   echo "ok - copied fat library"
 fi
 
-{
-  _compile_libuv
-  echo "ok - built libuv for $platform ($target)"
-} & _compile_libuv_pid=$!
-
 if [[ "$HOST" != "Win32" ]]; then
   # non windows hosts uses make -j$CPU_CORES, wait for them to finish.
   wait $_compile_libuv_pid
 fi
 
 if [[ ! -z "$BUILD_ANDROID" ]]; then
-  _compile_libuv_android arm64-v8a
-  _compile_libuv_android armeabi-v7a
-  _compile_libuv_android x86
-  _compile_libuv_android x86_64
+  _compile_libuv_android arm64-v8a & pids+=($!)
+  _compile_libuv_android armeabi-v7a & pids+=($!)
+  _compile_libuv_android x86 & pids+=($!)
+  _compile_libuv_android x86_64 & pids+=($!)
 fi
 
 mkdir -p  $SOCKET_HOME/uv/{src/unix,include}

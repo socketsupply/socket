@@ -17,11 +17,11 @@ else
 fi
 
 function stat_mtime () {
-  stat $stat_format_arg $stat_mtime_spec "$1"
+  stat $stat_format_arg $stat_mtime_spec "$1" 2>/dev/null
 }
 
 function stat_size () {
-  stat $stat_format_arg $stat_size_spec "$1"
+  stat $stat_format_arg $stat_size_spec "$1" 2>/dev/null
 }
 
 function quiet () {
