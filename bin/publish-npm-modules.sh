@@ -93,9 +93,9 @@ if (( !only_top_level ))  && (( !no_rebuild )) ; then
   "$root/bin/install.sh" || exit $?
 fi
 
-if [[ "$(find $SOCKET_HOME -name libsocket-runtime.so | wc -l)" -lt "4" ]]; then
-  echo "Refusing to publish, < 4 android libs found using: "
-  echo "find $SOCKET_HOME -name libsocket-runtime.so"
+if [[ "$(find $SOCKET_HOME -name lib*.a | grep android | wc -l)" -lt "8" ]]; then
+  echo "Refusing to publish, < 8 android libs found using: "
+  echo "find $SOCKET_HOME -name lib*.a | grep android"
   exit 1
 fi
 
