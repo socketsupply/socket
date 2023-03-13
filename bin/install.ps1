@@ -481,8 +481,10 @@ Function Install-Requirements {
   }
 
   if ($report_vc_vars_reqd) {
-    $file = (New-Object -ComObject Scripting.FileSystemObject).GetFile($(Get-CommandPath "clang++.exe"))
-    $global:path_advice += "`$env:PATH='$($file.ParentFolder.Path)'+`$env:PATH"
+    if (Found-Command("clang++.exe")) {
+      $file = (New-Object -ComObject Scripting.FileSystemObject).GetFile($(Get-CommandPath "clang++.exe"))
+      $global:path_advice += "`$env:PATH='$($file.ParentFolder.Path)'+`$env:PATH"
+    }
   }
 }
 
