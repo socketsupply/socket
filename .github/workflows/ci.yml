@@ -30,7 +30,7 @@ jobs:
     - name: Build Socket Runtime
       run: |
         ./bin/install.sh
-        ./bin/ci_version_check.sh
+        ./bin/functions.sh --ci-version-check
 
     - name: test a socket api example app
       run: |
@@ -64,7 +64,7 @@ jobs:
     - name: Build Socket Runtime
       run: |
         ./bin/install.sh
-        ./bin/ci_version_check.sh
+        ./bin/functions.sh --ci-version-check
 
     - name: test a socket api example app
       run: |
@@ -112,7 +112,7 @@ jobs:
 
     - name: Check if ssc has a correct version
       run: |
-        ./bin/ci_version_check.ps1
+        "%ProgramFiles%\Git\bin\sh.exe" bin\functions.sh --ci-version-check
 
     - name: install an example app
       run: |
@@ -148,7 +148,7 @@ jobs:
     - name: Build Socket Runtime
       run: |
         ./bin/install.sh
-        ./bin/ci_version_check.sh
+        ./bin/functions.sh --ci-version-check
 
     - name: test a socket api example app
       run: |
@@ -188,7 +188,7 @@ jobs:
     - name: Build Socket Runtime
       run: |
         ./bin/install.sh
-        ./bin/ci_version_check.sh
+        ./bin/functions.sh --ci-version-check
 
     - name: Gradle cache
       uses: gradle/gradle-build-action@v2.3.3
@@ -271,7 +271,7 @@ jobs:
     - name: Build Socket Runtime
       run: |
         ./bin/install.sh
-        ./bin/ci_version_check.sh
+        ./bin/functions.sh --ci-version-check
 
     - name: Gradle cache
       uses: gradle/gradle-build-action@v2

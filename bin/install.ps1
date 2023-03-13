@@ -200,14 +200,60 @@ Function Install-Files {
   Write-Output "ok - installed files to '$ASSET_PATH'."
 }
 
-$bin = "bin"
-if ((Test-Path "bin" -PathType Container) -eq $false) {
-  . .\Get-VCVars.ps1
-  . .\Get-ProcEnvs.ps1
-  $bin = ""
-} else {
-  . .\bin\Get-VCVars.ps1
-  . .\bin\Get-ProcEnvs.ps1
+Function Get-VCVars {
+  $pf = [Environment]::GetEnvironmentVariable("ProgramFiles(x86)")
+  $mvs = "Microsoft Visual Studio"
+  $suffix = "VC\Auxiliary\Build\vcvars64.bat"
+
+  $vs_releases = @('2022', '2019', '2017')
+  $vs_editions = @('Enterprise', 'Professional', 'Community', 'BuildTools')
+
+  Foreach ($r in $vs_releases) {
+    Foreach ($e in $vs_editions) {
+      $test_path = "$pf\$mvs\$r\$e\$suffix"
+      if (Test-Path $test_path -PathType leaf) {
+        return $true, $test_path
+      }
+    }
+  }
+
+  return $false
+}
+
+Function Get-ProcEnvs {
+  param($command_string)
+
+  if ((Test-Path "bin" -PathType Container) -eq $false) {
+    $get_env =".\Get-EnvVars.ps1"
+  } else {
+    $get_env =".\bin\Get-EnvVars.ps1"
+  }
+
+  $comspec = [Environment]::GetEnvironmentVariable("comspec")
+
+  # run Get-EnvVars in same environment as command string so it can dump environment variables
+  $command = "$comspec /k ""$command_string"" ""&"" powershell -File $get_env ""&"" exit"
+  $output = iex "& $command" | Out-String
+  $output -split "`r`n" | ForEach-Object {
+    $data = $_.split("=")
+    if ($data.Count -gt 1) {
+      $old_val = [Environment]::GetEnvironmentVariable($data[0])
+      if ($data[1].equals($old_val) -eq $false) { 
+        [Environment]::SetEnvironmentVariable($data[0], $data[1])
+      }
+    }
+  }
+
+  $path = [Environment]::GetEnvironmentVariable("PATH")
+}
+
+Function Get-EnvVars () { 
+  param($vars_arg)
+
+  (Get-ChildItem env:).GetEnumerator() | ForEach-Object{
+    $output  = "{0}={1}" -f $_.key, $_.value
+    Write-Output $output
+  }
 }
 
 Function Get-UrlCall {
