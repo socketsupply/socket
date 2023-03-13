@@ -111,8 +111,10 @@ jobs:
         ACTIONS_ALLOW_UNSECURE_COMMANDS: true
 
     - name: Check if ssc has a correct version
+
+      # using iex "&" prevents Unexpected token 'bin\functions.sh' in expression or statement.
       run: |
-        "%ProgramFiles%\Git\bin\sh.exe" bin\functions.sh --ci-version-check
+        iex "& ""$env:ProgramFiles\Git\bin\sh.exe"" bin\functions.sh --ci-version-check"
 
     - name: install an example app
       run: |
