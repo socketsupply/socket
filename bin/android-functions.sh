@@ -17,8 +17,7 @@ function android_host_platform() {
       echo -n "windows"
       ;;
     *)
-      echo "Unknown-host-platform-platform-$platform"
-      exit 1
+      echo -n $arch
       ;;
   esac
 }
@@ -72,8 +71,7 @@ function android_machine_arch() {
       echo -n ""
       ;;
     *)
-      echo "Unknown-android-arch-$arch"
-      exit 1
+      echo -n $arch
       ;;
   esac
 }
