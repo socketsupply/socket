@@ -152,7 +152,7 @@ Function Test-CommandVersion {
   Write-Output $false
 }
 
-$vsconfig = "nmake.vsconfig"
+$vsconfig = "vsinst\nmake.vsconfig"
 
 if ( -not (("llvm+vsbuild" -eq $toolchain) -or ("vsbuild" -eq $toolchain) -or ("llvm" -eq $toolchain)) ) {
   Write-Output "Unsupported -toolchain $toolchain. Supported options are vsbuild, llvm+vsbuild or llvm (external nmake required)"
@@ -163,10 +163,10 @@ if ( -not (("llvm+vsbuild" -eq $toolchain) -or ("vsbuild" -eq $toolchain) -or ("
 
 if ("vsbuild" -eq $toolchain) {
   if ($shbuild) {
-    $vsconfig = ".vsconfig"
+    $vsconfig = "vsinst\.vsconfig"
   } else {
     # Use smaller footprint if we're not doing an install.sh
-    $vsconfig = ".vsconfig-app-build"
+    $vsconfig = "vsinst\.vsconfig-app-build"
   }
 }
 
@@ -224,9 +224,9 @@ Function Get-ProcEnvs {
   param($command_string)
 
   if ((Test-Path "bin" -PathType Container) -eq $false) {
-    $get_env =".\Get-EnvVars.ps1"
+    $get_env =".\vsinst\Get-EnvVars.ps1"
   } else {
-    $get_env =".\bin\Get-EnvVars.ps1"
+    $get_env =".\bin\vsinst\Get-EnvVars.ps1"
   }
 
   $comspec = [Environment]::GetEnvironmentVariable("comspec")
