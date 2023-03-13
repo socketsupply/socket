@@ -124,7 +124,6 @@ if [[ "$host" == "Win32" ]]; then
 fi
 
 declare NDK_VERSION="25.0.8775105"
-declare NDK_PLATFORM="33"
 NDK_BUILD="$ANDROID_HOME/ndk/$NDK_VERSION/ndk-build$cmd"
 if ! test -f $NDK_BUILD; then
   echo "ndk-build not at $NDK_BUILD"
