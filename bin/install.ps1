@@ -153,6 +153,10 @@ Function Test-CommandVersion {
 }
 
 $vsconfig = "vsinst\nmake.vsconfig"
+$bin = "bin"
+if ((Test-Path $bin -PathType Container) -eq $false ) {
+  $bin = ""
+}
 
 if ( -not (("llvm+vsbuild" -eq $toolchain) -or ("vsbuild" -eq $toolchain) -or ("llvm" -eq $toolchain)) ) {
   Write-Output "Unsupported -toolchain $toolchain. Supported options are vsbuild, llvm+vsbuild or llvm (external nmake required)"
