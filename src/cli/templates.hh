@@ -1382,7 +1382,7 @@ flags = -O3
 ; If false, the window will never be displayed.
 headless = false
 
-; A directory is where your application's code is located.
+; A directory where your application's code is located.
 input = "src"
 
 ; The name of the program and executable to be output. Can't contain spaces or special characters. Required field.
