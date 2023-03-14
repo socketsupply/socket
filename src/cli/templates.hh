@@ -1382,7 +1382,8 @@ flags = -O3
 ; If false, the window will never be displayed.
 headless = false
 
-; A directory where your application's code is located.
+; A directory where your application's code is located. ssc will copy everything in this directory
+; to the build output directory. It's ignored if the "script" property is set.
 input = "src"
 
 ; The name of the program and executable to be output. Can't contain spaces or special characters. Required field.
