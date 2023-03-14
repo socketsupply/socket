@@ -70,6 +70,9 @@ Create a new project. If the path is not provided, the new project will be creat
 
 usage:
   ssc init [<project-dir>]
+
+options:
+  --config  only create the config file
 )TEXT";
 
 constexpr auto gHelpTextInstallApp = R"TEXT(
@@ -1386,7 +1389,7 @@ input = "src"
 name = "beepboop"
 
 ; The binary output path. It's recommended to add this path to .gitignore.
-output = "dist"
+output = "build"
 
 ; The build script
 ; script = "node build-script.js"
