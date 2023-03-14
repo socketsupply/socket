@@ -169,6 +169,19 @@ if [ "$host" == "Linux" ]; then
   die $? "not ok - missing pkg-config tool, \"$(advice 'pkg-config')\""
 fi
 
+if [[ ! -z "$BUILD_ANDROID" ]]; then
+  platform="android"
+  arch="arm64-v8a"
+  host_arch=$(uname -m)
+  clang=$(android_clang $ANDROID_HOME $NDK_VERSION $host $host_arch $arch)
+  quiet $clang -v
+
+  if [ $? != 0 ]; then
+    echo "Android clang call failed. This could indicate an issue with ANDROID_HOME, missing ndk tools, or incorrectly determined host or target architectures."
+    exit 1
+  fi
+fi
+
 function _build_cli {
   echo "# building cli for desktop ($(uname -m))..."
   local arch="$(uname -m)"
