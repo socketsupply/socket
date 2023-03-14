@@ -136,7 +136,6 @@ if (( !only_top_level )); then
     # don't copy debug files, too large
     rm -rf $SOCKET_HOME/lib/*-android/objs-debug 
     cp -rf $SOCKET_HOME/lib/*-android "$SOCKET_HOME/packages/$package/lib"
-    # cp -f $SOCKET_HOME/lib/*-android/*.a "$SOCKET_HOME/packages/$package/lib"
 
     cp -rf "$SOCKET_HOME/lib/"$arch-* "$SOCKET_HOME/packages/$package/lib"
     cp -rf "$SOCKET_HOME/objects/"$arch-* "$SOCKET_HOME/packages/$package/objects"

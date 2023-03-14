@@ -1499,9 +1499,9 @@ int main (const int argc, const char* argv[]) {
 
 
     // used in multiple if blocks, need to declare here
-    auto android_enable_standard_ndk_build = settings["android_enable_standard_ndk_build"] == "true";
-    auto android_skip_gradle = settings["android_skip_gradle"] == "true";
-    auto android_build_socket_runtime = settings["android_build_socket_runtime"] != "false";
+    auto androidEnableStandardNdkBuild = settings["android_enable_standard_ndk_build"] == "true";
+    auto androidSkipGradle = settings["android_skip_gradle"] == "true";
+    auto androidBuildSocketRuntime = settings["android_build_socket_runtime"] != "false";
 
     if (flagBuildForAndroid) {
       auto bundle_identifier = settings["meta_bundle_identifier"];
@@ -1740,7 +1740,7 @@ int main (const int argc, const char* argv[]) {
         }
       }
 
-      if (android_enable_standard_ndk_build) {
+      if (androidEnableStandardNdkBuild) {
         settings["android_default_config_external_native_build"].assign(
           "    externalNativeBuild {\n"
           "      ndkBuild {\n"
@@ -2464,8 +2464,7 @@ int main (const int argc, const char* argv[]) {
         exit(1);
       }
 
-      if (!android_enable_standard_ndk_build)
-      {
+      if (!androidEnableStandardNdkBuild) {
         StringStream ndkBuild;
         StringStream ndkBuildArgs;
         StringStream ndkTest;
@@ -2526,7 +2525,7 @@ int main (const int argc, const char* argv[]) {
           }
         }
 
-        if (android_build_socket_runtime) {
+        if (androidBuildSocketRuntime) {
           ndkBuildArgs 
             << ndkBuild.str()
             << " -j"
@@ -2562,7 +2561,7 @@ int main (const int argc, const char* argv[]) {
         exit(0);
       }
 
-      if (!android_skip_gradle) {
+      if (!androidSkipGradle) {
         String bundle = flagDebugMode ?
           localDirPrefix + "gradlew :app:bundleDebug --warning-mode all" :
           localDirPrefix + "gradlew :app:bundle";
