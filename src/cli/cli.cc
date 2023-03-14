@@ -960,7 +960,7 @@ int main (const int argc, const char* argv[]) {
         }
 
         // default values
-        settings["build_output"] = settings["build_output"].size() > 0 ? settings["build_output"] : "dist";
+        settings["build_output"] = settings["build_output"].size() > 0 ? settings["build_output"] : "build";
         settings["meta_lang"] = settings["meta_lang"].size() > 0 ? settings["meta_lang"] : "en-us";
         settings["meta_version"] = settings["meta_version"].size() > 0 ? settings["meta_version"] : "1.0.0";
         settings["meta_title"] = settings["meta_title"].size() > 0 ? settings["meta_title"] : settings["build_name"];
@@ -988,11 +988,35 @@ int main (const int argc, const char* argv[]) {
     }
   };
 
-  createSubcommand("init", {}, false, [&](const std::span<const char *>& options) -> void {
-    fs::create_directories(targetPath / "src");
-    SSC::writeFile(targetPath / "src" / "index.html", gHelloWorld);
-    SSC::writeFile(targetPath / "socket.ini", tmpl(gDefaultConfig, defaultTemplateAttrs));
-    SSC::writeFile(targetPath / ".gitignore", gDefaultGitignore);
+  createSubcommand("init", { "--config" }, false, [&](const std::span<const char *>& options) -> void {
+    auto configOnly = false;
+    for (auto const& option : options) {
+      if (is(option, "--config")) {
+        configOnly = true;
+      }
+    }
+    if (fs::exists(targetPath / "socket.ini")) {
+      log("socket.ini already exists in " + targetPath.string());
+      exit(0);
+    } else {
+      SSC::writeFile(targetPath / "socket.ini", tmpl(gDefaultConfig, defaultTemplateAttrs));
+      log("socket.ini created in " + targetPath.string());
+    }
+    if (!configOnly) {
+      if (fs::exists(targetPath / "src")) {
+        log("src directory already exists in " + targetPath.string());
+      } else {
+        fs::create_directories(targetPath / "src");
+        SSC::writeFile(targetPath / "src" / "index.html", gHelloWorld);
+        log("src/index.html created in " + targetPath.string());
+      }
+      if (fs::exists(targetPath / ".gitignore")) {
+        log(".gitignore already exists in " + targetPath.string());
+      } else {
+        SSC::writeFile(targetPath / ".gitignore", gDefaultGitignore);
+        log(".gitignore created in " + targetPath.string());
+      }
+    }
     exit(0);
   });
 
