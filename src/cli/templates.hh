@@ -1373,6 +1373,12 @@ constexpr auto gDefaultConfig = R"INI(
 
 [build]
 
+; ssc will copy everything in this directory to the build output directory.
+; This is useful when you want to avoid bundling or want to use tools like
+; vite, webpack, rollup, etc. to build your project and then copy output to
+; the Socket bundle resources directory.
+copy = "src"
+
 ; An list of environment variables, separated by commas.
 env = USER, TMPDIR, PWD
 
@@ -1382,6 +1388,7 @@ flags = -O3
 ; If false, the window will never be displayed.
 headless = false
 
+; DEPRECATED: Use "copy" instead. If both are set, "copy" will be used and "input" will be ignored.
 ; A directory where your application's code is located. ssc will copy everything in this directory
 ; to the build output directory. It's ignored if the "script" property is set.
 input = "src"
@@ -1393,8 +1400,7 @@ name = "beepboop"
 output = "build"
 
 ; The build script
-; script = "node build-script.js"
-
+; script = "npm run build"
 
 [debug]
 ; Advanced Compiler Settings for debug purposes (ie C++ compiler -g, etc).

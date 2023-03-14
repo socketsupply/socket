@@ -2148,7 +2148,20 @@ int main (const int argc, const char* argv[]) {
       log("ran user build command");
 
       fs::current_path(oldCwd);
-    } else {
+    }
+
+    if (settings.count("build_copy") != 0) {
+      fs::path pathInput = settings["build_copy"].size() > 0
+        ? targetPath / settings["build_copy"]
+        : targetPath / "src";
+      fs::copy(
+        pathInput,
+        pathResourcesRelativeToUserBuild,
+        fs::copy_options::update_existing | fs::copy_options::recursive
+      );
+    // @deprecated
+    } else if (settings.count("build_input") != 0 && settings.count("build_script") == 0) {
+      log("socket.ini: [build] input is deprecated, use [build] copy instead");
       fs::path pathInput = settings["build_input"].size() > 0
         ? targetPath / settings["build_input"]
         : targetPath / "src";
