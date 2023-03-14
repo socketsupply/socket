@@ -28,7 +28,7 @@ usage:
   ssc build [options] [<project-dir>]
 
 general options:
-  --platform     cross-compilation target. Can be: ios, ios-simulator, android-emulator
+  --platform     target (android, android-emulator, ios, ios-simulator)
   --port=n       load "index.html" from "http://localhost:n"
   -o             only run user build step
   -r             run after building
