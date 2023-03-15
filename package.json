@@ -1,6 +1,8 @@
 {
   "type": "module",
-  "directories": ["api"],
+  "directories": [
+    "api"
+  ],
   "scripts": {
     "pretest": "standard .",
     "readme": "node ./bin/generate-docs.js",
@@ -9,7 +11,8 @@
     "test:ios-simulator": "cd test && npm install --silent --no-audit && npm run test:ios-simulator",
     "test:android": "cd test && npm install --silent --no-audit && npm run test:android",
     "test:android-emulator": "cd test && npm install --silent --no-audit && npm run test:android-emulator",
-    "test:clean": "cd test && rm -rf dist"
+    "test:clean": "cd test && rm -rf dist",
+    "update-stream-relay-source": "./bin/update-stream-relay-source.sh"
   },
   "private": true,
   "devDependencies": {
@@ -19,7 +22,7 @@
     "standard": "^17.0.0"
   },
   "optionalDependencies": {
-    "@socketsupply/stream-relay": "^1.0.22"
+    "@socketsupply/stream-relay": "^1.0.23-0"
   },
   "standard": {
     "ignore": [
