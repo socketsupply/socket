@@ -20,18 +20,25 @@ declare ANDROID_SDK_MANAGER_SEARCH_PATHS=(
 
 function get_android_paths() {
   host=$(host_os)
-  ANDROID_HOME_SEARCH_PATHS=(
-    "$ANDROID_HOME"
-  )
+  ANDROID_HOME_SEARCH_PATHS=()
+  if [ -n "$ANDROID_HOME" ]; then
+    ANDROID_HOME_SEARCH_PATHS+=("$ANDROID_HOME")
+  fi
 
-  JAVA_HOME_SEARCH_PATHS=(
-    "$JAVA_HOME"
-  )
+  JAVA_HOME_SEARCH_PATHS=()
+  if [ -n "$JAVA_HOME" ]; then
+    JAVA_HOME_SEARCH_PATHS+=("$JAVA_HOME")
+  fi
 
-  GRADLE_SEARCH_PATHS=(
-    "$GRADLE_HOME"
-    "$HOME/.gradle"
-  )
+  GRADLE_SEARCH_PATHS=()
+
+  if [ -n "$GRADLE_HOME" ]; then
+    GRADLE_SEARCH_PATHS+=("$GRADLE_HOME")
+  fi
+  
+  if [ -n "$HOME" ]; then
+    GRADLE_SEARCH_PATHS+=("$HOME/.gradle")
+  fi
 
   # TODO(mribbons): SDK manager cmd line tools not installed by default
   if [ -z "$ANDROID_HOME" ]; then
@@ -53,7 +60,6 @@ function get_android_paths() {
     fi
   fi
 
-  echo "host: $host, search: ${ANDROID_HOME_SEARCH_PATHS[1]}"
   local _ah
   local _sdk
   local _jh
@@ -78,9 +84,9 @@ function get_android_paths() {
 
   for java_home_test in "${JAVA_HOME_SEARCH_PATHS[@]}"; do
     if [[ -n $VERBOSE ]]; then
-      echo "find -type f $java_home_test -name 'javac' -print0 2>/dev/null | while IFS= read -r -d '' javac"
+      echo "find $java_home_test -type f -name 'javac$exe' -print0 2>/dev/null | while IFS= read -r -d '' javac$exe"
     fi
-    find -type f "$java_home_test" -name "javac$exe" -print0 2>/dev/null | while IFS= read -r -d '' javac
+    find "$java_home_test" -type f -name "javac$exe" -print0 2>/dev/null | while IFS= read -r -d '' javac
     do
       # subshell, output to file
       echo "$(dirname "$(dirname "$javac")")" > "$temp"
@@ -95,9 +101,9 @@ function get_android_paths() {
 
   for gradle_test in "${GRADLE_SEARCH_PATHS[@]}"; do
     if [[ -n $VERBOSE ]]; then
-      echo "find -type f $gradle_test -name 'gradle' -print0 2>/dev/null | while IFS= read -r -d '' gradle"
+      echo "find $gradle_test -type f -name 'gradle' -print0 2>/dev/null | while IFS= read -r -d '' gradle"
     fi
-    find -type f "$gradle_test" -name "gradle$exe" -print0 2>/dev/null | while IFS= read -r -d '' gradle
+    find "$gradle_test" -type f -name "gradle$bat" -print0 2>/dev/null | while IFS= read -r -d '' gradle
     do
       # subshell, output to file
       echo "$(dirname "$(dirname "$gradle")")" > "$temp"
@@ -274,6 +280,7 @@ fi
 
 declare cmd=""
 declare exe=""
+declare bat=""
 if [[ "$host" == "Win32" ]]; then
   exe=".exe"
   cmd=".cmd"
