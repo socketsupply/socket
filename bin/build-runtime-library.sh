@@ -13,20 +13,9 @@ declare force=0
 
 declare arch="$(uname -m)"
 declare host_arch=$arch
-declare host="$(uname -s)"
+declare host=$(host_os)
 declare platform="desktop"
 declare host_platform=$platform
-
-if [[ "$host" = "Linux" ]]; then
-  if [ -n "$WSL_DISTRO_NAME" ] || uname -r | grep 'Microsoft'; then
-    host="Win32"
-  fi
-elif [[ "$host" == *"MINGW64_NT"* ]]; then
-  host="Win32"
-elif [[ "$host" == *"MSYS_NT"* ]]; then
-  # Have not confirmed this works as a build host, no gnu find in author's dev
-  host="Win32"
-fi
 
 declare d=""
 if [[ "$host" == "Win32" ]]; then

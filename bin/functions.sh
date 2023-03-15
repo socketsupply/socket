@@ -68,3 +68,24 @@ function set_cpu_cores() {
 
   echo $CPU_CORES
 }
+
+function host_os() {
+  if [[ ! -z $1 ]]; then
+    host=$1
+  else
+    host="$(uname -s)"
+  fi
+
+  if [[ "$host" = "Linux" ]]; then
+    if [ -n "$WSL_DISTRO_NAME" ] || uname -r | grep 'Microsoft'; then
+    echo "WSL is not supported."
+    exit 1
+    fi
+  elif [[ "$host" == *"MINGW64_NT"* ]]; then
+    host="Win32"
+  elif [[ "$host" == *"MSYS_NT"* ]]; then
+    host="Win32"
+  fi
+  
+  echo $host
+}
