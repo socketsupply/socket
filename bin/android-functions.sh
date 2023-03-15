@@ -28,6 +28,11 @@ function get_android_paths() {
     "$JAVA_HOME"
   )
 
+  GRADLE_SEARCH_PATHS=(
+    "$GRADLE_HOME"
+    "$HOME/.gradle"
+  )
+
   # TODO(mribbons): SDK manager cmd line tools not installed by default
   if [ -z "$ANDROID_HOME" ]; then
     # Only attempt default homes if $ANDROID_HOME not defined
@@ -52,6 +57,7 @@ function get_android_paths() {
   local _ah
   local _sdk
   local _jh
+  local _gh
 
   for android_home_test in "${ANDROID_HOME_SEARCH_PATHS[@]}"; do
     for sdk_man_test in "${ANDROID_SDK_MANAGER_SEARCH_PATHS[@]}"; do
@@ -72,9 +78,9 @@ function get_android_paths() {
 
   for java_home_test in "${JAVA_HOME_SEARCH_PATHS[@]}"; do
     if [[ -n $VERBOSE ]]; then
-      echo "find $java_home_test -name 'javac' -print0 2>null | while IFS= read -r -d '' javac"
+      echo "find -type f $java_home_test -name 'javac' -print0 2>/dev/null | while IFS= read -r -d '' javac"
     fi
-    find "$java_home_test" -name "javac$exe" -print0 2>null | while IFS= read -r -d '' javac
+    find -type f "$java_home_test" -name "javac$exe" -print0 2>/dev/null | while IFS= read -r -d '' javac
     do
       # subshell, output to file
       echo "$(dirname "$(dirname "$javac")")" > "$temp"
@@ -82,8 +88,27 @@ function get_android_paths() {
     done
   done
 
-  _jh=$(cat "$temp")
-  rm "$temp"
+  if [ -f "$temp" ]; then
+    _jh=$(cat "$temp")
+    rm "$temp"
+  fi
+
+  for gradle_test in "${GRADLE_SEARCH_PATHS[@]}"; do
+    if [[ -n $VERBOSE ]]; then
+      echo "find -type f $gradle_test -name 'gradle' -print0 2>/dev/null | while IFS= read -r -d '' gradle"
+    fi
+    find -type f "$gradle_test" -name "gradle$exe" -print0 2>/dev/null | while IFS= read -r -d '' gradle
+    do
+      # subshell, output to file
+      echo "$(dirname "$(dirname "$gradle")")" > "$temp"
+      break
+    done
+  done
+
+  if [ -f "$temp" ]; then
+    _gh=$(cat "$temp")
+    rm "$temp"
+  fi
 
   if [[ -n "$_ah" ]]; then 
     ANDROID_HOME="$_ah"
@@ -98,6 +123,11 @@ function get_android_paths() {
   if [[ -n "$_jh" ]]; then 
     JAVA_HOME="$_jh"
     export JAVA_HOME
+  fi
+  
+  if [[ -n "$_gh" ]]; then 
+    GRADLE_HOME="$_gh"
+    export GRADLE_HOME
   fi
 }
 
