@@ -3,6 +3,103 @@
 declare root="$(cd "$(dirname "$(dirname "${BASH_SOURCE[0]}")")" && pwd)"
 
 source "$root/bin/functions.sh"
+echo $root
+
+declare DARWIN_DEFAULT_ANDROID_HOME=$HOME/Library/Android/sdk
+declare WIN32_DEFAULT_ANDROID_HOME=$LOCALAPPDATA\\Android\\Sdk
+declare LINUX_DEFAULT_ANDROID_HOME=$HOME/Android/Sdk
+
+declare ANDROID_SDK_MANAGER_SEARCH_PATHS=(
+  "cmdline-tools/latest/bin"
+  "cmdline-tools/bin"
+  "tools/bin"
+)
+
+# TODO(mribbons): ubuntu / apt libs: apt-get install libc6:i386 libncurses5:i386 libstdc++6:i386 lib32z1 libbz2-1.0:i386
+# TODO(mribbons): gradle
+
+function get_android_paths() {
+  host=$(host_os)
+  ANDROID_HOME_SEARCH_PATHS=(
+    "$ANDROID_HOME"
+  )
+
+  JAVA_HOME_SEARCH_PATHS=(
+    "$JAVA_HOME"
+  )
+
+  # TODO(mribbons): SDK manager cmd line tools not installed by default
+  if [ -z "$ANDROID_HOME" ]; then
+    # Only attempt default homes if $ANDROID_HOME not defined
+    if [[ "$host" = "Darwin"  ]]; then
+      ANDROID_HOME_SEARCH_PATHS+=("$DARWIN_DEFAULT_ANDROID_HOME")
+      JAVA_HOME_SEARCH_PATHS+=("$HOME/homebrew")
+      JAVA_HOME_SEARCH_PATHS+=("$HOME/.vscode")
+      JAVA_HOME_SEARCH_PATHS+=("$HOME/Applications")
+    elif [[ "$host" = "Linux"  ]]; then
+      ANDROID_HOME_SEARCH_PATHS+=("$LINUX_DEFAULT_ANDROID_HOME")
+      ANDROID_HOME_SEARCH_PATHS+=("$HOME")
+      # Java should be unpacked alongside Android Studio
+      JAVA_HOME_SEARCH_PATHS+=("$HOME")
+      JAVA_HOME_SEARCH_PATHS+=("/opt")
+    elif [[ "$host" = "Win32"  ]]; then
+      ANDROID_HOME_SEARCH_PATHS+=("$WIN32_DEFAULT_ANDROID_HOME")
+      JAVA_HOME_SEARCH_PATHS+=("$PROGRAMFILES/")
+    fi
+  fi
+
+  echo "host: $host, search: ${ANDROID_HOME_SEARCH_PATHS[1]}"
+  local _ah
+  local _sdk
+  local _jh
+
+  for android_home_test in "${ANDROID_HOME_SEARCH_PATHS[@]}"; do
+    for sdk_man_test in "${ANDROID_SDK_MANAGER_SEARCH_PATHS[@]}"; do
+      # r=$(test_android_path "$android_home_test" "$sdk_man_test")
+      if [[ -n $VERBOSE ]]; then
+        echo "Checking $android_home_test/$sdk_man_test/sdkmanager$bat"
+      fi
+      if [[ -f "$android_home_test/$sdk_man_test/sdkmanager$bat" ]]; then
+        # Can't break out of for in;
+        _ah="$android_home_test"
+        _sdk="$sdk_man_test/sdkmanager$bat"
+        break
+      fi
+    done
+  done
+
+  temp=$(mktemp)
+
+  for java_home_test in "${JAVA_HOME_SEARCH_PATHS[@]}"; do
+    if [[ -n $VERBOSE ]]; then
+      echo "find $java_home_test -name 'javac' -print0 2>null | while IFS= read -r -d '' javac"
+    fi
+    find "$java_home_test" -name "javac$exe" -print0 2>null | while IFS= read -r -d '' javac
+    do
+      # subshell, output to file
+      echo "$(dirname "$(dirname "$javac")")" > "$temp"
+      break
+    done
+  done
+
+  _jh=$(cat "$temp")
+  rm "$temp"
+
+  if [[ -n "$_ah" ]]; then 
+    ANDROID_HOME="$_ah"
+    export ANDROID_HOME
+  fi
+  
+  if [[ -n "$_sdk" ]]; then 
+    ANDROID_SDK_MANAGER="$_sdk"
+    export ANDROID_SDK_MANAGER
+  fi
+  
+  if [[ -n "$_jh" ]]; then 
+    JAVA_HOME="$_jh"
+    export JAVA_HOME
+  fi
+}
 
 declare Darwin=1
 declare Linux=2
@@ -404,6 +501,7 @@ function android_supported_abis() {
     echo "${abis[@]}"
   fi
 }
+
 export ANDROID_DEPS_ERROR
 
 declare ANDROID_PLATFORM="33"
