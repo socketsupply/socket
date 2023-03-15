@@ -16,7 +16,6 @@ declare ANDROID_SDK_MANAGER_SEARCH_PATHS=(
 )
 
 # TODO(mribbons): ubuntu / apt libs: apt-get install libc6:i386 libncurses5:i386 libstdc++6:i386 lib32z1 libbz2-1.0:i386
-# TODO(mribbons): gradle
 
 function get_android_paths() {
   host=$(host_os)
@@ -84,22 +83,24 @@ function get_android_paths() {
 
   for java_home_test in "${JAVA_HOME_SEARCH_PATHS[@]}"; do
     if [[ -n $VERBOSE ]]; then
-      echo "find $java_home_test -type f -name 'javac$exe' -print0 2>/dev/null | while IFS= read -r -d '' javac$exe"
+      echo "find $java_home_test -type f -name "javac$exe"' -print0 2>/dev/null | while IFS= read -r -d '' javac"
     fi
     find "$java_home_test" -type f -name "javac$exe" -print0 2>/dev/null | while IFS= read -r -d '' javac
     do
       # break doesn't work here, check that we don't have a result
-      if [ ! -f "$temp" ]; then
+      echo "Found $javac"
+      if [[ $(stat_size "$temp") == 0 ]]; then
         # subshell, output to file
         echo "$(dirname "$(dirname "$javac")")" > "$temp"
       fi
     done
   done
 
-  if [ -f "$temp" ]; then
+  if [[ $(stat_size "$temp") != 0 ]]; then
     _jh=$(cat "$temp")
-    rm "$temp"
   fi
+
+  echo -n > "$temp"
 
   for gradle_test in "${GRADLE_SEARCH_PATHS[@]}"; do
     if [[ -n $VERBOSE ]]; then
@@ -108,17 +109,17 @@ function get_android_paths() {
     find "$gradle_test" -type f -name "gradle$bat" -print0 2>/dev/null | while IFS= read -r -d '' gradle
     do
       # break doesn't work here, check that we don't have a result
-      if [ ! -f "$temp" ]; then
+      if [[ $(stat_size "$temp") == 0 ]]; then
         # subshell, output to file
         echo "$(dirname "$(dirname "$gradle")")" > "$temp"
       fi
     done
   done
 
-  if [ -f "$temp" ]; then
+  if [[ $(stat_size "$temp") != 0 ]]; then
     _gh=$(cat "$temp")
-    rm "$temp"
   fi
+  rm "$temp"
 
   if [[ -n "$_ah" ]]; then 
     ANDROID_HOME="$_ah"
