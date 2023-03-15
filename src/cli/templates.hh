@@ -1388,11 +1388,6 @@ flags = -O3
 ; If false, the window will never be displayed.
 headless = false
 
-; DEPRECATED: Use "copy" instead. If both are set, "copy" will be used and "input" will be ignored.
-; A directory where your application's code is located. ssc will copy everything in this directory
-; to the build output directory. It's ignored if the "script" property is set.
-input = "src"
-
 ; The name of the program and executable to be output. Can't contain spaces or special characters. Required field.
 name = "beepboop"
 
