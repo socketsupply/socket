@@ -9,12 +9,15 @@ if [[ -z "$CPU_CORES" ]]; then
   export CPU_CORES=$(set_cpu_cores)
 fi
 
-echo "Using cores: $CPU_CORES"
+if [[ ! -z $VERBOSE ]]; then
+  echo "Using cores: $CPU_CORES"
+fi
 
 declare args=()
 declare pids=()
 declare force=0
 declare pass_force=""
+declare host=$(host_os)
 
 LIPO=""
 declare CWD=$(pwd)
@@ -42,18 +45,6 @@ else
 fi
 
 echo "SOCKET_HOME: $SOCKET_HOME"
-declare host="$(uname -s)"
-
-if [[ "$host" = "Linux" ]]; then
-  if [ -n "$WSL_DISTRO_NAME" ] || uname -r | grep 'Microsoft'; then
-  echo "WSL is not supported."
-  exit 1
-  fi
-elif [[ "$host" == *"MINGW64_NT"* ]]; then
-  host="Win32"
-elif [[ "$host" == *"MSYS_NT"* ]]; then
-  host="Win32"
-fi
 
 if [ -z "$SOCKET_HOME" ]; then
   if [ -n "$LOCALAPPDATA" ]; then
@@ -675,18 +666,7 @@ function _compile_libuv {
 
   if [ -z "$target" ]; then
     target=$(uname -m)
-    host=$(uname -s)
     platform="desktop"
-
-    if [[ "$host" = "Linux" ]]; then
-      if [ -n "$WSL_DISTRO_NAME" ] || uname -r | grep 'Microsoft'; then
-        host="Win32"
-      fi
-    elif [[ "$host" == *"MINGW64_NT"* ]]; then
-      host="Win32"
-    elif [[ "$host" == *"MSYS_NT"* ]]; then
-      die $? "MSYS not supported."
-    fi
   fi
 
   echo "# building libuv for $platform ($target) on $host..."
