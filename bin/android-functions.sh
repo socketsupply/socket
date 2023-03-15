@@ -88,9 +88,11 @@ function get_android_paths() {
     fi
     find "$java_home_test" -type f -name "javac$exe" -print0 2>/dev/null | while IFS= read -r -d '' javac
     do
-      # subshell, output to file
-      echo "$(dirname "$(dirname "$javac")")" > "$temp"
-      break
+      # break doesn't work here, check that we don't have a result
+      if [ ! -f "$temp" ]; then
+        # subshell, output to file
+        echo "$(dirname "$(dirname "$javac")")" > "$temp"
+      fi
     done
   done
 
@@ -105,9 +107,11 @@ function get_android_paths() {
     fi
     find "$gradle_test" -type f -name "gradle$bat" -print0 2>/dev/null | while IFS= read -r -d '' gradle
     do
-      # subshell, output to file
-      echo "$(dirname "$(dirname "$gradle")")" > "$temp"
-      break
+      # break doesn't work here, check that we don't have a result
+      if [ ! -f "$temp" ]; then
+        # subshell, output to file
+        echo "$(dirname "$(dirname "$gradle")")" > "$temp"
+      fi
     done
   done
 
