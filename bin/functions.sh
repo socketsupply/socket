@@ -70,7 +70,7 @@ function set_cpu_cores() {
 }
 
 function host_os() {
-  if [[ ! -z $1 ]]; then
+  if [[ -n $1 ]]; then
     host=$1
   else
     host="$(uname -s)"
@@ -87,5 +87,5 @@ function host_os() {
     host="Win32"
   fi
   
-  echo $host
+  echo "$host"
 }
