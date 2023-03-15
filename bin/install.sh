@@ -874,7 +874,7 @@ if [[ "$host" = "Darwin" ]]; then
   _install x86_64 iPhoneSimulator
 fi
 
-if [[ ! -z "$BUILD_ANDROID" ]]; then
+if [[ -n "$BUILD_ANDROID" ]]; then
   _install arm64-v8a android & pids+=($!)
   _install armeabi-v7a android & pids+=($!)
   _install x86 android & pids+=($!)
