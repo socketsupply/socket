@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 declare root="$(cd "$(dirname "$(dirname "${BASH_SOURCE[0]}")")" && pwd)"
+source "$root/bin/android-functions.sh"
 declare archs=($(uname -m))
 declare platform="$(uname -s | tr '[[:upper:]]' '[[:lower:]]')"
 
@@ -93,9 +94,24 @@ if (( !only_top_level ))  && (( !no_rebuild )) ; then
   "$root/bin/install.sh" || exit $?
 fi
 
-if [[ "$(find $SOCKET_HOME -name lib*.a | grep android | wc -l)" -lt "8" ]]; then
-  echo "Refusing to publish, < 8 android libs found using: "
-  echo "find $SOCKET_HOME -name lib*.a | grep android"
+declare ABORT_ERRORS=0
+
+for abi in $(android_supported_abis); do
+  lib_path="$SOCKET_HOME/lib/$abi-android"
+  if [[ ! -f "$lib_path/libuv.a" ]]; then
+    ABORT_ERRORS=1
+    echo "$lib_path/libuv.a missing - check build process."
+  fi
+  
+  if [[ ! -f "$lib_path/libsocket-runtime.a" ]]; then
+    ABORT_ERRORS=1
+    echo "$lib_path/libsocket-runtime.a missing - check build process."
+  fi
+  export ABORT_ERRORS
+done
+
+if (( ABORT_ERRORS )); then
+  echo "Refusing to publish due to missing static libs."
   exit 1
 fi
 
