@@ -599,7 +599,8 @@ function _compile_libuv_android {
   local i=0
   local max_concurrency=$CPU_CORES
   build_static=0
-  declare static_library="$root/build/$arch-$platform/lib$d/libuv$d.a"
+  declare base_lib="libuv"
+  declare static_library="$root/build/$arch-$platform/lib$d/$base_lib$d.a"
 
   for source in "${sources[@]}"; do
     if (( i++ > max_concurrency )); then
@@ -637,7 +638,7 @@ function _compile_libuv_android {
   if (( build_static )); then
     quiet $ar crs "$static_library" "${objects[@]}"
     if [ -f $static_library ]; then
-      echo "ok - built libuv ($arch-$platform): $(basename "$static_library")"
+      echo "ok - built $base_lib ($arch-$platform): $(basename "$static_library")"
     else
       echo "failed to build $static_library"
       exit 1
@@ -652,9 +653,12 @@ function _compile_libuv_android {
     fi
   fi
 
+  # This is a sanity check to confirm that the static_library is > 8 bytes
+  # If an empty ${objects[@]} is provided to ar, it will still spit out a header without an error code.
+  # therefore check the output size
+  # This error condition should only occur after a code change
   lib_size=$(stat_size $static_library)
-
-  if (( $lib_size < 800000 )); then
+  if (( lib_size < $(android_min_expected_static_lib_size "$base_lib") )); then
     echo "ERROR: $static_library size looks wrong: $lib_size, renaming as .bad"
     mv $static_library $static_library.bad
     exit 1
