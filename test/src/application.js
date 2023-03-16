@@ -194,7 +194,7 @@ if (!['android', 'ios'].includes(process.platform)) {
         let err
         let dummyWindow
         try {
-          dummyWindow = await application.createWindow({ index: 1, path: 'index_no_js.html', [dimension]: size })
+          dummyWindow = await application.createWindow({ index: 1, path: 'frontend/index_no_js.html', [dimension]: size })
         } catch (e) {
           err = e
         }
@@ -307,7 +307,7 @@ if (!['android', 'ios'].includes(process.platform)) {
   })
 
   test('application.getWindows with valid indexes', async (t) => {
-    const newWindow = await application.createWindow({ index: counter, path: 'index_no_js.html' })
+    const newWindow = await application.createWindow({ index: counter, path: 'frontend/index_no_js.html' })
     counter++
     const windows = await application.getWindows([0, newWindow.index])
     t.ok(windows instanceof Object, 'returns an object')
@@ -320,7 +320,7 @@ if (!['android', 'ios'].includes(process.platform)) {
   })
 
   test('application.getWindows without params', async (t) => {
-    const newWindow = await application.createWindow({ index: counter, path: 'index_no_js.html' })
+    const newWindow = await application.createWindow({ index: counter, path: 'frontend/index_no_js.html' })
     counter++
     const windows = await application.getWindows()
     t.ok(windows instanceof Object, 'returns an object')
@@ -346,7 +346,7 @@ if (!['android', 'ios'].includes(process.platform)) {
   let counter = 1
 
   test('window.close', async (t) => {
-    const newWindow = await application.createWindow({ index: counter, path: 'index_no_js.html' })
+    const newWindow = await application.createWindow({ index: counter, path: 'frontend/index_no_js.html' })
     counter++
     const { status } = await newWindow.close()
     t.equal(status, ApplicationWindow.constants.WINDOW_CLOSED, 'window is closed')
@@ -355,7 +355,7 @@ if (!['android', 'ios'].includes(process.platform)) {
   test('new window have the correct size when sizes are provided', async (t) => {
     const newWindow = await application.createWindow({
       index: counter,
-      path: 'index_no_js.html',
+      path: 'frontend/index_no_js.html',
       width: 800,
       height: 600
     })
@@ -372,7 +372,7 @@ if (!['android', 'ios'].includes(process.platform)) {
   test('new window have the correct size when sizes are provided in percent', async (t) => {
     const newWindow = await application.createWindow({
       index: counter,
-      path: 'index_no_js.html',
+      path: 'frontend/index_no_js.html',
       width: '100%',
       height: '50%'
     })
@@ -386,7 +386,7 @@ if (!['android', 'ios'].includes(process.platform)) {
   })
 
   test('new window inherts the size of the main window when sizes are not provided', async (t) => {
-    const newWindow = await application.createWindow({ index: counter, path: 'index_no_js.html' })
+    const newWindow = await application.createWindow({ index: counter, path: 'frontend/index_no_js.html' })
     t.equal(newWindow.index, counter, 'new window index is correct')
     counter++
     const newWindowSize = newWindow.getSize()
@@ -434,16 +434,16 @@ if (!['android', 'ios'].includes(process.platform)) {
 
   // TODO(@chicoxyzzy): should navigation of main window throw? should navigation of current window throw? should we even allow navigation?
   test('window.navigate', async (t) => {
-    const newWindow = await application.createWindow({ index: counter, path: 'index_no_js.html' })
+    const newWindow = await application.createWindow({ index: counter, path: 'frontend/index_no_js.html' })
     counter++
-    const { index, status } = await newWindow.navigate('index_no_js2.html')
+    const { index, status } = await newWindow.navigate('frontend/index_no_js2.html')
     t.equal(index, newWindow.index, 'correct index is returned')
     t.equal(status, ApplicationWindow.constants.WINDOW_SHOWN, 'correct status is returned')
     newWindow.close()
   })
 
   test('window.setBackgroundColor', async (t) => {
-    const newWindow = await application.createWindow({ index: counter, path: 'index_no_js.html' })
+    const newWindow = await application.createWindow({ index: counter, path: 'frontend/index_no_js.html' })
     counter++
     const { index } = await newWindow.setBackgroundColor({ red: 0, green: 0, blue: 0, alpha: 0 })
     t.equal(index, newWindow.index, 'correct index is returned')
@@ -537,7 +537,7 @@ if (!['android', 'ios'].includes(process.platform)) {
   })
 
   test('window.send', async (t) => {
-    const newWindow = await application.createWindow({ index: counter, path: 'index_send_event.html' })
+    const newWindow = await application.createWindow({ index: counter, path: 'frontend/index_send_event.html' })
     const currentWindow = await application.getCurrentWindow()
     t.equal(newWindow.index, counter, 'correct index is returned')
     // wait for window to load
@@ -553,7 +553,7 @@ if (!['android', 'ios'].includes(process.platform)) {
   })
 
   test('window.send from another window', async (t) => {
-    const newWindow = await application.createWindow({ index: counter, path: 'index_no_js.html' })
+    const newWindow = await application.createWindow({ index: counter, path: 'frontend/index_no_js.html' })
     const currentWindow = await application.getCurrentWindow()
     t.equal(newWindow.index, counter, 'correct index is returned')
     t.notEqual(currentWindow.index, newWindow.index, 'window indexes are different')

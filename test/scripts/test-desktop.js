@@ -33,5 +33,6 @@ try {
     }
   })
 } catch (err) {
+  console.log({ err })
   process.exit(err.status || 1)
 }
