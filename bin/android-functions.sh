@@ -6,9 +6,11 @@ source "$root/bin/functions.sh"
 echo $root
 
 declare ANDROID_SETTINGS_FILENAME=".android-rc"
-declare DARWIN_DEFAULT_ANDROID_HOME=$HOME/Library/Android/sdk
-declare WIN32_DEFAULT_ANDROID_HOME=$LOCALAPPDATA\\Android\\Sdk
-declare LINUX_DEFAULT_ANDROID_HOME=$HOME/Android/Sdk
+declare -A DEFAULT_ANDROID_HOME=( 
+  [Darwin]=$HOME/Library/Android/sdk 
+  [Win32]=$LOCALAPPDATA\\Android\\Sdk
+  [Linux]=$HOME/Android/Sdk
+)
 
 declare ANDROID_SDK_MANAGER_SEARCH_PATHS=(
   "cmdline-tools/latest/bin"
@@ -16,9 +18,13 @@ declare ANDROID_SDK_MANAGER_SEARCH_PATHS=(
   "tools/bin"
 )
 
+declare ANDROID_PLATFORM_TOOLS_URI_TEMPLATE="https://dl.google.com/android/repository/platform-tools-latest-{os}.zip"
+declare JDK_URI_TEMPLATE="https://download.java.net/java/GA/jdk19.0.2/fdb695a9d9064ad6b064dc6df578380c/7/GPL/openjdk-19.0.2_{os}-{arch}_bin.{format}"
+declare GRADLE_URI_TEMPLATE="https://services.gradle.org/distributions/gradle-8.0.2-bin.zip"
+
 # TODO(mribbons): ubuntu / apt libs: apt-get install libc6:i386 libncurses5:i386 libstdc++6:i386 lib32z1 libbz2-1.0:i386
 
-function get_android_paths() {
+function get_android_default_search_paths() {
   host=$(host_os)
   ANDROID_HOME_SEARCH_PATHS=()
   if [ -n "$ANDROID_HOME" ]; then
@@ -44,21 +50,27 @@ function get_android_paths() {
   if [ -z "$ANDROID_HOME" ]; then
     # Only attempt default homes if $ANDROID_HOME not defined
     if [[ "$host" = "Darwin"  ]]; then
-      ANDROID_HOME_SEARCH_PATHS+=("$DARWIN_DEFAULT_ANDROID_HOME")
       JAVA_HOME_SEARCH_PATHS+=("$HOME/homebrew")
       JAVA_HOME_SEARCH_PATHS+=("$HOME/.vscode")
       JAVA_HOME_SEARCH_PATHS+=("$HOME/Applications")
     elif [[ "$host" = "Linux"  ]]; then
-      ANDROID_HOME_SEARCH_PATHS+=("$LINUX_DEFAULT_ANDROID_HOME")
       ANDROID_HOME_SEARCH_PATHS+=("$HOME")
       # Java should be unpacked alongside Android Studio
       JAVA_HOME_SEARCH_PATHS+=("$HOME")
       JAVA_HOME_SEARCH_PATHS+=("/opt")
     elif [[ "$host" = "Win32"  ]]; then
-      ANDROID_HOME_SEARCH_PATHS+=("$WIN32_DEFAULT_ANDROID_HOME")
       JAVA_HOME_SEARCH_PATHS+=("$PROGRAMFILES/")
     fi
   fi
+
+  export ANDROID_HOME_SEARCH_PATHS
+  export JAVA_HOME_SEARCH_PATHS
+  export GRADLE_SEARCH_PATHS
+}
+
+
+function get_android_paths() {
+  get_android_default_search_paths
 
   local _ah
   local _sdk
@@ -67,15 +79,14 @@ function get_android_paths() {
 
   for android_home_test in "${ANDROID_HOME_SEARCH_PATHS[@]}"; do
     for sdk_man_test in "${ANDROID_SDK_MANAGER_SEARCH_PATHS[@]}"; do
-      # r=$(test_android_path "$android_home_test" "$sdk_man_test")
-      if [[ -n $VERBOSE ]]; then
-        echo "Checking $android_home_test/$sdk_man_test/sdkmanager$bat"
-      fi
-      if [[ -f "$android_home_test/$sdk_man_test/sdkmanager$bat" ]]; then
-        # Can't break out of for in;
-        _ah="$android_home_test"
-        _sdk="$sdk_man_test/sdkmanager$bat"
-        break
+      if [[ -z "$_ah" ]]; then
+        if [[ -n $VERBOSE ]]; then
+          echo "Checking $android_home_test/$sdk_man_test/sdkmanager$bat"
+        fi
+        if [[ -f "$android_home_test/$sdk_man_test/sdkmanager$bat" ]]; then
+          _ah="$android_home_test"
+          _sdk="$sdk_man_test/sdkmanager$bat"
+        fi
       fi
     done
   done
@@ -94,8 +105,10 @@ function get_android_paths() {
     find "$java_home_test" -type f -name "javac$exe" -print0 2>/dev/null | while IFS= read -r -d '' javac
     do
       # break doesn't work here, check that we don't have a result
-      echo "Found $javac"
       if [[ $(stat_size "$temp") == 0 ]]; then
+        if [[ -n $VERBOSE ]]; then
+          echo "Found $javac"
+        fi
         # subshell, output to file
         echo "$(dirname "$(dirname "$javac")")" > "$temp"
       fi
@@ -121,6 +134,9 @@ function get_android_paths() {
     do
       # break doesn't work here, check that we don't have a result
       if [[ $(stat_size "$temp") == 0 ]]; then
+      if [[ -n $VERBOSE ]]; then
+        echo "Found $gradle"
+      fi
         # subshell, output to file
         echo "$(dirname "$(dirname "$gradle")")" > "$temp"
       fi
@@ -160,10 +176,10 @@ function load_android_paths() {
 }
 
 function format_android_paths() {
-  echo "export ANDROID_HOME=\"$ANDROID_HOME\""
-  echo "export JAVA_HOME=\"$JAVA_HOME\""
-  echo "export ANDROID_SDK_MANAGER=\"$ANDROID_SDK_MANAGER\""
-  echo "export GRADLE_HOME=\"$GRADLE_HOME\""
+  echo "export ANDROID_HOME=\"$(escape_path "$ANDROID_HOME")\""
+  echo "export JAVA_HOME=\"$(escape_path "$JAVA_HOME")\""
+  echo "export ANDROID_SDK_MANAGER=\"$(escape_path "$ANDROID_SDK_MANAGER")\""
+  echo "export GRADLE_HOME=\"$(escape_path "$GRADLE_HOME")\""
 }
 
 function save_android_paths() {
@@ -182,6 +198,60 @@ function save_android_paths() {
       rm "$temp"
     fi
   fi
+}
+
+
+# declare ANDROID_PLATFORM_TOOLS_URI_TEMPLATE="https://dl.google.com/android/repository/platform-tools-latest-{os}.zip"
+function build_android_platform_tools_uri() {
+  os="$host"
+  if [[ -n "$1" ]]; then
+    os="$1"
+  fi
+
+  uri=${ANDROID_PLATFORM_TOOLS_URI_TEMPLATE/\{os\}/"$(android_host_platform "$os")"}
+  echo "$uri"
+}
+
+# declare JDK_URI_TEMPLATE=https://download.java.net/java/GA/jdk19.0.2/fdb695a9d9064ad6b064dc6df578380c/7/GPL/openjdk-19.0.2_{os}-{arch}_bin.{format}
+function build_jdk_uri() {
+  os="$host"
+  arch=$(uname -m)
+  format="tar.gz"
+
+  if [[ -n "$1" ]]; then
+    os="$1"
+  fi
+  os=${os,,}
+  
+  if [[ -n "$2" ]]; then
+    arch="$2"
+  fi
+
+  if [[ "$os" == "darwin" ]]; then
+    os="macos"
+  elif [[ "$os" == "win32" ]]; then
+    os="windows"
+    format="zip"
+  fi
+
+  if [[ "$arch" == "arm64" ]]; then
+    arch="aarch64"
+  elif [[ "$arch" == "x86_64" ]]; then
+    arch="x64"
+  fi
+
+  uri=${JDK_URI_TEMPLATE/\{os\}/$os}
+  uri=${uri/\{arch\}/$arch}
+  uri=${uri/\{format\}/$format}
+  echo "$uri"
+}
+
+function build_gradle_uri() {
+  echo "$GRADLE_URI_TEMPLATE"
+}
+
+function android_fte_setup() {
+  echo ""
 }
 
 function android_host_platform() {
