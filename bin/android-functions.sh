@@ -108,6 +108,17 @@ function android_arch_includes() {
   echo "${include[@]}"
 }
 
+function android_supported_abis() {
+  abis=(
+    "arm64-v8a"
+    "armeabi-v7a"
+    "x86"
+    "x86_64"
+  )
+
+  echo "${abis[@]}"
+}
+
 if [[ -z "$ANDROID_HOME" ]]; then
   echo "ANDROID_HOME not set."
   DEPS_ERROR=1
