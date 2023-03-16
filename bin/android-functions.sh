@@ -135,7 +135,7 @@ function android_supported_abis() {
 }
 
 if [[ -z "$ANDROID_HOME" ]]; then
-  echo "ANDROID_HOME not set."
+  echo "Android dependencies: ANDROID_HOME not set."
   DEPS_ERROR=1
 else
   if [[ "$host" == "Win32" ]]; then
@@ -150,10 +150,12 @@ if [[ "$host" == "Win32" ]]; then
 fi
 
 declare NDK_VERSION="25.0.8775105"
-NDK_BUILD="$ANDROID_HOME/ndk/$NDK_VERSION/ndk-build$cmd"
-if ! test -f $NDK_BUILD; then
-  echo "ndk-build not at $NDK_BUILD"
-  DEPS_ERROR=1
+if [[ -n "$host" ]]; then
+  export NDK_BUILD="$ANDROID_HOME/ndk/$NDK_VERSION/ndk-build$cmd"
+  if ! test -f "$NDK_BUILD"; then
+    echo "Android dependencies: ndk-build not at $NDK_BUILD"
+    DEPS_ERROR=1
+  fi
 fi
 
 if [[ ! -z "$ANDROID_HOME" ]]; then

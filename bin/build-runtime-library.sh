@@ -99,12 +99,12 @@ done
 if [[ "$platform" = "android" ]]; then
   source "$root/bin/android-functions.sh"
 
-  if [[ ! -z $DEPS_ERROR ]]; then
+  if [[ -n $DEPS_ERROR ]]; then
     echo "Android dependencies not satisfied."
     exit 1
   fi
 
-  clang=$(android_clang $ANDROID_HOME $NDK_VERSION $host $host_arch $arch "++")
+  clang="$(android_clang "$ANDROID_HOME" "$NDK_VERSION" "$host" "$host_arch" "$arch" "++")"
 elif [[ "$host" = "Darwin" ]]; then
   cflags+=("-ObjC++")
   sources+=("$root/src/window/apple.mm")
@@ -127,7 +127,7 @@ declare cflags=($("$root/bin/cflags.sh"))
 declare ldflags=($("$root/bin/ldflags.sh"))
 
 if [[ "$platform" = "android" ]]; then
-  cflags+=("${android_includes[@]}")
+  cflags+=("${android_includes[*]}")
 fi
 
 declare output_directory="$root/build/$arch-$platform"
@@ -179,7 +179,7 @@ function main () {
   declare ar="ar"
 
   if [[ "$platform" = "android" ]]; then
-    ar=$(android_ar $ANDROID_HOME $NDK_VERSION $host $host_arch)
+    ar="$(android_ar "$ANDROID_HOME" "$NDK_VERSION" "$host" "$host_arch")"
   elif [[ "$host" = "Win32" ]]; then
     ar="llvm-ar"
   fi
@@ -187,11 +187,11 @@ function main () {
   local build_static=0
   local static_library_mtime=$(stat_mtime "$static_library")
   for source in "${objects[@]}"; do
-    if ! test -f $source; then
+    if ! test -f "$source"; then
       echo "$source not built.."
       exit 1
     fi
-    if (( force )) || ! test -f "$static_library" || (( $(stat_mtime "$source") > $static_library_mtime )); then
+    if (( force )) || ! test -f "$static_library" || (( $(stat_mtime "$source") > "$static_library_mtime" )); then
       build_static=1
       break
     fi
@@ -200,14 +200,14 @@ function main () {
   if (( build_static )); then
     $ar crs "$static_library" "${objects[@]}"
 
-    if [ -f $static_library ]; then
+    if [ -f "$static_library" ]; then
       echo "ok - built static library ($arch-$platform): $(basename "$static_library")"
     else
       echo "failed to build $static_library"
       exit 1
     fi
   else
-    if [ -f $static_library ]; then
+    if [ -f "$static_library" ]; then
       echo "ok - using cached static library ($arch-$platform): $(basename "$static_library")"
     else
       echo "static library doesn't exist after cache check passed: ($arch-$platform): $(basename "$static_library")"
@@ -220,10 +220,10 @@ function main () {
     # If an empty ${objects[@]} is provided to ar, it will still spit out a header without an error code.
     # therefore check the output size
     # This error condition should only occur after a code change
-    lib_size=$(stat_size $static_library)
+    lib_size=$(stat_size "$static_library")
     if (( lib_size < $(android_min_expected_static_lib_size "$base_lib") )); then
       echo "ERROR: $static_library size looks wrong: $lib_size, renaming as .bad"
-      mv $static_library $static_library.bad
+      mv "$static_library" "$static_library.bad"
       exit 1
     fi
   fi

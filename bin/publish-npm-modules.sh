@@ -112,7 +112,7 @@ for abi in $(android_supported_abis); do
 done
 
 if (( ABORT_ERRORS )); then
-  echo "Refusing to publish due to missing static libs."
+  echo "Refusing to publish due to errors."
   exit 1
 fi
 
