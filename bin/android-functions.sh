@@ -108,6 +108,21 @@ function android_arch_includes() {
   echo "${include[@]}"
 }
 
+function android_min_expected_static_lib_size() {
+  lib=$1
+  case $lib in
+    libsocket-runtime)
+      echo -n "1048576"
+      ;;
+    libuv)
+      echo -n "800000"
+      ;;
+    *)
+      echo "Unsupported lib: $lib"
+      exit 1
+  esac
+}
+
 function android_supported_abis() {
   abis=(
     "arm64-v8a"

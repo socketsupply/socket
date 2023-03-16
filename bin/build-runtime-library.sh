@@ -173,7 +173,8 @@ function main () {
     wait "$pid" 2>/dev/null
   done
 
-  declare static_library="$root/build/$arch-$platform/lib$d/libsocket-runtime$d.a"
+  declare base_lib="libsocket-runtime";
+  declare static_library="$root/build/$arch-$platform/lib$d/$base_lib$d.a"
   mkdir -p "$(dirname "$static_library")"
   declare ar="ar"
 
@@ -196,7 +197,6 @@ function main () {
     fi
   done
 
-  # echo $ar crs "$static_library" "${objects[@]}"
   if (( build_static )); then
     $ar crs "$static_library" "${objects[@]}"
 
@@ -215,13 +215,18 @@ function main () {
     fi
   fi
 
-  lib_size=$(stat_size $static_library)
-
-  if (( $lib_size < 1048576 )); then
-    echo "ERROR: $static_library size looks wrong: $lib_size, renaming as .bad"
-    mv $static_library $static_library.bad
-    exit 1
-  fi  
+  if [[ "$platform" == "android" ]]; then
+    # This is a sanity check to confirm that the static_library is > 8 bytes
+    # If an empty ${objects[@]} is provided to ar, it will still spit out a header without an error code.
+    # therefore check the output size
+    # This error condition should only occur after a code change
+    lib_size=$(stat_size $static_library)
+    if (( lib_size < $(android_min_expected_static_lib_size "$base_lib") )); then
+      echo "ERROR: $static_library size looks wrong: $lib_size, renaming as .bad"
+      mv $static_library $static_library.bad
+      exit 1
+    fi
+  fi
 }
 
 main "${args[@]}"
