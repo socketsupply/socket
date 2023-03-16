@@ -79,22 +79,23 @@ mkdir -p "$SOCKET_HOME"
 export SOCKET_HOME
 export PREFIX
 
-# Confirm that ssc in PATH matches current commit
-if command -v ssc >/dev/null 2>&1; then
-  REPO_VERSION="$(cat "$root/VERSION.txt") ($(git rev-parse --short=8 HEAD))"
-  PATH_VERSION=$(ssc --version)
-
-  if [[ "$REPO_VERSION" != "$PATH_VERSION" ]]; then
-    echo "Repo $REPO_VERSION and $(which ssc) $PATH_VERSION don't match."
-    exit 1
-  fi
-fi
-
 if (( !only_top_level ))  && (( !no_rebuild )) ; then
   "$root/bin/install.sh" || exit $?
 fi
 
 declare ABORT_ERRORS=0
+
+
+# Confirm that build SSC matches current commit
+if command -v ssc >/dev/null 2>&1; then
+  REPO_VERSION="$(cat "$root/VERSION.txt") ($(git rev-parse --short=8 HEAD))"
+  BUILD_VERSION=$("$SOCKET_HOME"/bin/ssc --version)
+
+  if [[ "$REPO_VERSION" != "$BUILD_VERSION" ]]; then
+    echo "Repo $REPO_VERSION and $SOCKET_HOME/bin/ssc $BUILD_VERSION don't match."
+    ABORT_ERRORS=1
+  fi
+fi
 
 for abi in $(android_supported_abis); do
   lib_path="$SOCKET_HOME/lib/$abi-android"
