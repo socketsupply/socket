@@ -5,6 +5,7 @@ declare root="$(cd "$(dirname "$(dirname "${BASH_SOURCE[0]}")")" && pwd)"
 source "$root/bin/functions.sh"
 echo $root
 
+declare ANDROID_SETTINGS_FILENAME=".android-rc"
 declare DARWIN_DEFAULT_ANDROID_HOME=$HOME/Library/Android/sdk
 declare WIN32_DEFAULT_ANDROID_HOME=$LOCALAPPDATA\\Android\\Sdk
 declare LINUX_DEFAULT_ANDROID_HOME=$HOME/Android/Sdk
@@ -82,6 +83,11 @@ function get_android_paths() {
   temp=$(mktemp)
 
   for java_home_test in "${JAVA_HOME_SEARCH_PATHS[@]}"; do
+    if [[ -f "$java_home_test/bin/javac$exe" ]]; then
+      echo "$java_home_test" > "$temp"
+      break
+    fi
+
     if [[ -n $VERBOSE ]]; then
       echo "find $java_home_test -type f -name "javac$exe"' -print0 2>/dev/null | while IFS= read -r -d '' javac"
     fi
@@ -103,6 +109,11 @@ function get_android_paths() {
   echo -n > "$temp"
 
   for gradle_test in "${GRADLE_SEARCH_PATHS[@]}"; do
+    if [[ -f "$gradle_test/bin/gradle$bat" ]]; then
+      echo "$gradle_test" > "$temp"
+      break
+    fi
+
     if [[ -n $VERBOSE ]]; then
       echo "find $gradle_test -type f -name 'gradle' -print0 2>/dev/null | while IFS= read -r -d '' gradle"
     fi
