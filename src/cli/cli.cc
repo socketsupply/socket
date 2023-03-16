@@ -2229,11 +2229,11 @@ int main (const int argc, const char* argv[]) {
       }
 
       StringStream buildArgs;
-      buildArgs
-        << " "
-        << pathResourcesRelativeToUserBuild.string()
-        << " --debug="
-        << flagDebugMode;
+      buildArgs << " " << pathResourcesRelativeToUserBuild.string();
+
+      if (flagDebugMode) {
+        buildArgs << " --debug=true";
+      }
 
       if (flagBuildTest) {
         buildArgs << " --test=true";
@@ -2249,8 +2249,8 @@ int main (const int argc, const char* argv[]) {
 
       process->open();
       process->wait();
-      if (process->status != 0)
-      {
+
+      if (process->status != 0) {
         // TODO(trevnorris): Force non-windows to exit the process.
         log("build failed, exiting with code " + std::to_string(process->status));
         exit(process->status);
@@ -2263,16 +2263,41 @@ int main (const int argc, const char* argv[]) {
 
     if (settings.count("build_copy") != 0) {
       fs::path pathInput = settings["build_copy"].size() > 0
-        ? targetPath / settings["build_copy"]
-        : targetPath / "src";
-      fs::copy(
-        pathInput,
-        pathResourcesRelativeToUserBuild,
-        fs::copy_options::update_existing | fs::copy_options::recursive
-      );
+        ? settings["build_copy"]
+        : "src";
+
+      auto paths = split(pathInput.string(), ';');
+      for (const auto& p : paths) {
+        log("p= "+ p);
+        auto mapping = split(p, '=');
+        auto src = targetPath / trim(mapping[0]);
+        auto dst = mapping.size() == 2
+          ? pathResourcesRelativeToUserBuild / trim(mapping[1])
+          : pathResourcesRelativeToUserBuild;
+
+        if (!fs::exists(fs::status(src))) {
+          log("warning: [build] copy entry '" + src.string() +  "' does not exist");
+          continue;
+        }
+
+        if (!fs::exists(fs::status(dst.parent_path()))) {
+          fs::create_directories(dst.parent_path());
+        }
+
+        fs::copy(
+          src,
+          dst,
+          fs::copy_options::update_existing | fs::copy_options::recursive
+        );
+      }
     // @deprecated
-    } else if (settings.count("build_input") != 0 && settings.count("build_script") == 0) {
+    } else if (settings.count("build_input") != 0) {
       log("socket.ini: [build] input is deprecated, use [build] copy instead");
+
+      if (settings.count("build_script") != 0) {
+        log("socket.ini: Mixing [build] input and [build] script may lead to unexpected behavior");
+      }
+
       fs::path pathInput = settings["build_input"].size() > 0
         ? targetPath / settings["build_input"]
         : targetPath / "src";
@@ -2281,6 +2306,61 @@ int main (const int argc, const char* argv[]) {
         pathResourcesRelativeToUserBuild,
         fs::copy_options::update_existing | fs::copy_options::recursive
       );
+    }
+
+    if (settings.count("build_copy_map") != 0) {
+      auto copyMapFile = fs::path{settings["build_copy_map"]};
+      if (!fs::exists(fs::status(copyMapFile))) {
+        log("warning: file specified in [build] copy_map does not exist");
+      } else {
+        auto copyMap = trim(readFile(copyMapFile));
+        auto copyMapFileDirectory = fs::absolute(copyMapFile.relative_path().parent_path());
+
+        if (copyMap.size() > 0) {
+          auto lines = split(copyMap, '\n');
+          for (const auto& line : lines) {
+            // handle :|#|// leading comments
+            if (line.starts_with(":") || line.starts_with("#") || line.starts_with("//")) {
+              continue;
+            }
+
+            auto mapping = split(trim(line), '=');
+            auto src = fs::path { replace(trim(mapping[0]), "(^\"|\"$)", "") };
+            auto dst = mapping.size() == 2
+              ? pathResourcesRelativeToUserBuild / replace(trim(mapping[1]), "(^\"|\"$)", "")
+              : pathResourcesRelativeToUserBuild;
+
+            if (src.is_relative()) {
+              src = copyMapFileDirectory / src;
+            }
+
+            if (!fs::exists(fs::status(src))) {
+              log("warning: [build] copy_map entry '" + src.string() +  "' does not exist");
+              continue;
+            }
+
+            if (!fs::exists(fs::status(dst.parent_path()))) {
+              fs::create_directories(dst.parent_path());
+            }
+
+            auto mappedSourceFile = (
+              pathResourcesRelativeToUserBuild /
+              fs::relative(src, copyMapFileDirectory)
+            );
+
+            if (fs::exists(fs::status(mappedSourceFile))) {
+              fs::remove_all(mappedSourceFile);
+            }
+
+            src = targetPath / src;
+            fs::copy(
+              src,
+              dst,
+              fs::copy_options::update_existing | fs::copy_options::recursive
+            );
+          }
+        }
+      }
     }
 
     auto SOCKET_HOME_API = getEnv("SOCKET_HOME_API");
