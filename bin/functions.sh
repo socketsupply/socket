@@ -27,6 +27,15 @@ function sha512sum() {
   sh -c "$_sha512sum $1|cut -d' ' -f1"
 }
 
+function escape_path() {
+  r=$1
+  if [[ "$host" == "Win32" ]]; then
+    r=${r//\\/\\\\}
+  fi
+  r=${r//\ /\\ }
+  echo "$r"
+}
+
 function quiet () {
   if [ -n "$VERBOSE" ]; then
     echo "$@"
