@@ -9,15 +9,15 @@ if [[ -z "$CPU_CORES" ]]; then
   export CPU_CORES=$(set_cpu_cores)
 fi
 
-if [[ ! -z $VERBOSE ]]; then
-  echo "Using cores: $CPU_CORES"
+if [[ -n $VERBOSE ]]; then
+  echo "# using cores: $CPU_CORES"
 fi
 
 declare args=()
 declare pids=()
 declare force=0
 declare pass_force=""
-declare host=$(host_os)
+declare host="$(host_os)"
 
 LIPO=""
 declare CWD=$(pwd)
@@ -134,8 +134,6 @@ function advice {
     echo "sudo pacman -S $1"
   elif [[ "$(uname -s)" == *"Linux"* ]]; then
     echo "apt-get install $1"
-  elif [[ "$(uname -s)" == *"_NT"* ]]; then
-    echo "Use install.ps1 to install $1."
   fi
 }
 
@@ -164,11 +162,10 @@ if [[ -n "$BUILD_ANDROID" ]]; then
   abis=($(android_supported_abis))
   platform="android"
   arch="${abis[0]}"
-  host_arch=$(uname -m)
-  clang=$(android_clang $ANDROID_HOME $NDK_VERSION $host $host_arch $arch)
-  quiet $clang -v
-
-  if [ $? != 0 ]; then
+  host_arch="$(uname -m)"
+  clang="$(android_clang "$ANDROID_HOME" "$NDK_VERSION" "$host" "$host_arch" "$arch")"
+  
+  if ! quiet $clang -v; then
     echo "Android clang call failed. This could indicate an issue with ANDROID_HOME, missing ndk tools, or incorrectly determined host or target architectures."
     exit 1
   fi
@@ -580,18 +577,18 @@ function _setSDKVersion {
 function _compile_libuv_android {
   local platform="android"
   local arch=$1
-  local host_arch=$(uname -m)
-  clang=$(android_clang $ANDROID_HOME $NDK_VERSION $host $host_arch $arch)
-  ar=$(android_ar $ANDROID_HOME $NDK_VERSION $host $host_arch)
-  android_includes=$(android_arch_includes $arch)
+  local host_arch="$(uname -m)"
+  clang="$(android_clang "$ANDROID_HOME" "$NDK_VERSION" "$host" "$host_arch" "$arch")"
+  ar="$(android_ar "$ANDROID_HOME" "$NDK_VERSION" "$host" "$host_arch")"
+  android_includes=$(android_arch_includes "$arch")
 
-  local cflags=(-std=gnu89 -g -pedantic -I$root/build/uv/include -I$root/build/uv/src -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -D_LARGEFILE_SOURCE -fPIC -Wall -Wextra -Wno-pedantic -Wno-sign-compare -Wno-unused-parameter -Wno-implicit-function-declaration)
-  cflags+=("${android_includes[@]}")
+  local cflags=(-std=gnu89 -g -pedantic -I"$root"/build/uv/include -I"$root"/build/uv/src -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -D_LARGEFILE_SOURCE -fPIC -Wall -Wextra -Wno-pedantic -Wno-sign-compare -Wno-unused-parameter -Wno-implicit-function-declaration)
+  cflags+=("${android_includes[*]}")
   local objects=()
   local sources=("unix/async.c" "unix/core.c" "unix/dl.c" "unix/fs.c" "unix/getaddrinfo.c" "unix/getnameinfo.c" "unix/linux.c" "unix/loop.c" "unix/loop-watcher.c" "unix/pipe.c" "unix/poll.c" "unix/process.c" "unix/proctitle.c" "unix/random-devurandom.c" "unix/random-getentropy.c" "unix/random-getrandom.c" "unix/random-sysctl-linux.c" "unix/signal.c" "unix/stream.c" "unix/tcp.c" "unix/thread.c" "unix/tty.c" "unix/udp.c" fs-poll.c idna.c inet.c random.c strscpy.c strtok.c threadpool.c timer.c uv-common.c uv-data-getter-setters.c version.c)  
 
   declare output_directory="$root/build/$arch-$platform/uv$d"
-  mkdir -p $output_directory
+  mkdir -p "$output_directory"
 
   declare src_directory="$root/build/uv/src"
   

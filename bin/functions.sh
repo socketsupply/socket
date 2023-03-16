@@ -1,6 +1,8 @@
-declare BSD_STAT=0
-# BSD stat has no version argument or reliable identifier
+#!/usr/bin/env bash
 
+declare BSD_STAT=0
+
+# BSD stat has no version argument or reliable identifier
 if stat --help 2>&1 | grep "usage: stat" >/dev/null; then
   BSD_STAT=1
 fi
