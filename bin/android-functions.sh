@@ -5,6 +5,7 @@ declare root="$(cd "$(dirname "$(dirname "${BASH_SOURCE[0]}")")" && pwd)"
 source "$root/bin/functions.sh"
 echo $root
 
+declare ANDROID_SETTINGS_FILENAME=".android-rc"
 declare DARWIN_DEFAULT_ANDROID_HOME=$HOME/Library/Android/sdk
 declare WIN32_DEFAULT_ANDROID_HOME=$LOCALAPPDATA\\Android\\Sdk
 declare LINUX_DEFAULT_ANDROID_HOME=$HOME/Android/Sdk
@@ -82,6 +83,11 @@ function get_android_paths() {
   temp=$(mktemp)
 
   for java_home_test in "${JAVA_HOME_SEARCH_PATHS[@]}"; do
+    if [[ -f "$java_home_test/bin/javac$exe" ]]; then
+      echo "$java_home_test" > "$temp"
+      break
+    fi
+
     if [[ -n $VERBOSE ]]; then
       echo "find $java_home_test -type f -name "javac$exe"' -print0 2>/dev/null | while IFS= read -r -d '' javac"
     fi
@@ -103,6 +109,11 @@ function get_android_paths() {
   echo -n > "$temp"
 
   for gradle_test in "${GRADLE_SEARCH_PATHS[@]}"; do
+    if [[ -f "$gradle_test/bin/gradle$bat" ]]; then
+      echo "$gradle_test" > "$temp"
+      break
+    fi
+
     if [[ -n $VERBOSE ]]; then
       echo "find $gradle_test -type f -name 'gradle' -print0 2>/dev/null | while IFS= read -r -d '' gradle"
     fi
@@ -139,6 +150,37 @@ function get_android_paths() {
   if [[ -n "$_gh" ]]; then 
     GRADLE_HOME="$_gh"
     export GRADLE_HOME
+  fi
+}
+
+function load_android_paths() {
+  if [[ -f "$ANDROID_SETTINGS_FILENAME" ]]; then
+    source "$ANDROID_SETTINGS_FILENAME"
+  fi
+}
+
+function format_android_paths() {
+  echo "export ANDROID_HOME=\"$ANDROID_HOME\""
+  echo "export JAVA_HOME=\"$JAVA_HOME\""
+  echo "export ANDROID_SDK_MANAGER=\"$ANDROID_SDK_MANAGER\""
+  echo "export GRADLE_HOME=\"$GRADLE_HOME\""
+}
+
+function save_android_paths() {
+  # Maintain mtime on $ANDROID_SETTINGS_FILENAME, only update if changed
+  temp=$(mktemp)
+  format_android_paths > "$temp"
+  if [[ ! -f "$ANDROID_SETTINGS_FILENAME" ]]; then
+    mv "$temp" "$ANDROID_SETTINGS_FILENAME"
+  else
+    old_hash=$(sha512sum "$ANDROID_SETTINGS_FILENAME")
+    new_hash=$(sha512sum "$temp")
+
+    if [[ "$old_hash" != "$new_hash" ]]; then
+      mv "$temp" "$ANDROID_SETTINGS_FILENAME"
+    else
+      rm "$temp"
+    fi
   fi
 }
 
