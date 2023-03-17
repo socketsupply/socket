@@ -245,6 +245,11 @@ constexpr auto gAndroidManifest = R"XML(
 <manifest
   xmlns:android="http://schemas.android.com/apk/res/android"
 >
+  <uses-sdk
+    android:minSdkVersion="26"
+    android:targetSdkVersion="33"
+  />
+
   <uses-permission android:name="android.permission.INTERNET" />
   <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
   <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
@@ -1093,14 +1098,14 @@ LOCAL_PATH := $(call my-dir)
 include $(CLEAR_VARS)
 LOCAL_MODULE := libuv
 
-LOCAL_SRC_FILES = ../jniLibs/$(TARGET_ARCH_ABI)/libuv.a
+LOCAL_SRC_FILES = ../libs/$(TARGET_ARCH_ABI)/libuv.a
 include $(PREBUILT_STATIC_LIBRARY)
 
 ## libsocket-runtime.a
 include $(CLEAR_VARS)
 LOCAL_MODULE := libsocket-runtime-static
 
-LOCAL_SRC_FILES = ../jniLibs/$(TARGET_ARCH_ABI)/libsocket-runtime.a
+LOCAL_SRC_FILES = ../libs/$(TARGET_ARCH_ABI)/libsocket-runtime.a
 include $(PREBUILT_STATIC_LIBRARY)
 
 ## libsocket-runtime.so
