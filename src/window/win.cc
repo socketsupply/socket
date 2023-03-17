@@ -925,17 +925,17 @@ namespace SSC {
                               uri_s = uri_s.substr(7);
                             }
 
+                            if (uri_s.ends_with("/")) {
+                              uri_s = uri_s.substr(0, uri_s.size() - 1);
+                            }
+
+
                             auto ext = uri_s.ends_with(".js") ? "" : ".js";
 
-                            // look for socket lib in initial app folder and current path
+                            // look for socket lib in initial app folder
                             auto rootPath = this->modulePath.parent_path();
+                            auto path = rootPath / "socket" / (uri_s + ext);
 
-                            auto path = rootPath / uri_s;
-
-                            if (!fs::exists(path)) {
-                              path = rootPath / "socket" / (uri_s + ext);
-                            }
-                            
                             if (!fs::exists(path)) {
                               auto path = fs::path(fs::current_path()) / (uri_s + ext);
                             }

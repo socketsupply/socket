@@ -2157,7 +2157,6 @@ int main (const int argc, const char* argv[]) {
 
       auto paths = split(pathInput.string(), ';');
       for (const auto& p : paths) {
-        log("p= "+ p);
         auto mapping = split(p, '=');
         auto src = targetPath / trim(mapping[0]);
         auto dst = mapping.size() == 2
@@ -2198,12 +2197,17 @@ int main (const int argc, const char* argv[]) {
     }
 
     if (settings.count("build_copy_map") != 0) {
-      auto copyMapFile = fs::path{settings["build_copy_map"]};
+      auto copyMapFile = fs::path{settings["build_copy_map"]}.make_preferred();
+
+      if (copyMapFile.is_relative()) {
+        copyMapFile = targetPath / copyMapFile;
+      }
+
       if (!fs::exists(fs::status(copyMapFile))) {
         log("warning: file specified in [build] copy_map does not exist");
       } else {
         auto copyMap = trim(readFile(copyMapFile));
-        auto copyMapFileDirectory = fs::absolute(copyMapFile.relative_path().parent_path());
+        auto copyMapFileDirectory = fs::absolute(copyMapFile.parent_path());
 
         if (copyMap.size() > 0) {
           auto lines = split(copyMap, '\n');
@@ -2219,9 +2223,15 @@ int main (const int argc, const char* argv[]) {
               ? pathResourcesRelativeToUserBuild / replace(trim(mapping[1]), "(^\"|\"$)", "")
               : pathResourcesRelativeToUserBuild;
 
+            src = src.make_preferred();
+            dst = dst.make_preferred();
+
             if (src.is_relative()) {
               src = copyMapFileDirectory / src;
             }
+
+            src = fs::absolute(src);
+            dst = fs::absolute(dst);
 
             if (!fs::exists(fs::status(src))) {
               log("warning: [build] copy_map entry '" + src.string() +  "' does not exist");
@@ -2241,7 +2251,6 @@ int main (const int argc, const char* argv[]) {
               fs::remove_all(mappedSourceFile);
             }
 
-            src = targetPath / src;
             fs::copy(
               src,
               dst,
