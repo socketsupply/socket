@@ -3,10 +3,9 @@
 declare root="$(cd "$(dirname "$(dirname "${BASH_SOURCE[0]}")")" && pwd)"
 
 source "$root/bin/functions.sh"
-echo $root
 
 declare ANDROID_SETTINGS_FILENAME=".android-rc"
-declare -A DEFAULT_ANDROID_HOME=( 
+declare -A DEFAULT_ANDROID_HOME=(
   [Darwin]=$HOME/Library/Android/sdk 
   [Win32]=$LOCALAPPDATA\\Android\\Sdk
   [Linux]=$HOME/Android/Sdk
@@ -19,6 +18,7 @@ declare ANDROID_SDK_MANAGER_SEARCH_PATHS=(
 )
 
 declare ANDROID_PLATFORM_TOOLS_URI_TEMPLATE="https://dl.google.com/android/repository/platform-tools-latest-{os}.zip"
+declare ANDROID_PLATFORM_TOOLS_PAGE_URI="https://developer.android.com/studio/releases/platform-tools"
 declare JDK_URI_TEMPLATE="https://download.java.net/java/GA/jdk19.0.2/fdb695a9d9064ad6b064dc6df578380c/7/GPL/openjdk-19.0.2_{os}-{arch}_bin.{format}"
 declare GRADLE_URI_TEMPLATE="https://services.gradle.org/distributions/gradle-8.0.2-bin.zip"
 
@@ -30,6 +30,8 @@ function get_android_default_search_paths() {
   if [ -n "$ANDROID_HOME" ]; then
     ANDROID_HOME_SEARCH_PATHS+=("$ANDROID_HOME")
   fi
+
+  ANDROID_HOME_SEARCH_PATHS+=("${DEFAULT_ANDROID_HOME["$host"]}")
 
   JAVA_HOME_SEARCH_PATHS=()
   if [ -n "$JAVA_HOME" ]; then
@@ -201,7 +203,6 @@ function save_android_paths() {
 }
 
 
-# declare ANDROID_PLATFORM_TOOLS_URI_TEMPLATE="https://dl.google.com/android/repository/platform-tools-latest-{os}.zip"
 function build_android_platform_tools_uri() {
   os="$host"
   if [[ -n "$1" ]]; then
@@ -212,7 +213,6 @@ function build_android_platform_tools_uri() {
   echo "$uri"
 }
 
-# declare JDK_URI_TEMPLATE=https://download.java.net/java/GA/jdk19.0.2/fdb695a9d9064ad6b064dc6df578380c/7/GPL/openjdk-19.0.2_{os}-{arch}_bin.{format}
 function build_jdk_uri() {
   os="$host"
   arch=$(uname -m)
@@ -248,10 +248,6 @@ function build_jdk_uri() {
 
 function build_gradle_uri() {
   echo "$GRADLE_URI_TEMPLATE"
-}
-
-function android_fte_setup() {
-  echo ""
 }
 
 function android_host_platform() {
@@ -424,3 +420,55 @@ if [[ -n "$ANDROID_HOME" ]]; then
     BUILD_ANDROID=1
   fi
 fi
+
+function clear_android_settings() {
+  export ANDROID_HOME=""
+  export JAVA_HOME=""
+  export ANDROID_SDK_MANAGER=""
+  export GRADLE_HOME=""
+
+}
+
+download_to_tmp() {
+  uri=$1
+  echo "Downloading $1"
+  tmp="$(mktemp -d)"
+  output=$tmp/"$(basename "$uri")"
+  if  curl -L "$uri" --output "$output"; then
+    echo "$output"
+  fi
+}
+
+function android_install_sdk_manager() {
+  if [[ -z "$ANDROID_SDK_MANAGER" ]]; then
+    if ! prompt_yn "The Android SDK manager is required for building Android apps. Install it now?"; then
+      return 1
+    fi
+
+    echo "Please review the Android SDK Manager License by visiting the URL below and clicking "Download SDK Platform-Tools for "[Your OS]"
+    echo "$ANDROID_PLATFORM_TOOLS_PAGE_URI"
+    
+    if ! prompt_yn "Prompt do you constent to Android SDK Manager License?"; then
+      return 1
+    fi
+
+    local _ah=""
+    
+    prompt_new_path "Enter location for ANDROID_HOME" "${ANDROID_HOME_SEARCH_PATHS[0]}" _ah
+    
+
+    if [ -d "$_ah" ]; then
+      echo "Created $_ah"
+    else
+      return 1
+    fi
+
+    # download_to_tmp "$(build_android_platform_tools_uri)"
+  fi
+}
+
+function android_first_time_experience_setup() {
+  # populates global search path list
+  get_android_default_search_paths
+  android_install_sdk_manager
+}
