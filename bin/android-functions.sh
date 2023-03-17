@@ -19,13 +19,15 @@ declare ANDROID_SDK_MANAGER_SEARCH_PATHS=(
 
 declare ANDROID_PLATFORM_TOOLS_URI_TEMPLATE="https://dl.google.com/android/repository/platform-tools-latest-{os}.zip"
 declare ANDROID_PLATFORM_TOOLS_PAGE_URI="https://developer.android.com/studio/releases/platform-tools"
+declare ANDROID_COMMAND_LINE_TOOLS_URI_TEMPLATE="https://dl.google.com/android/repository/commandlinetools-{os}-9477386_latest.zip"
+declare ANDROID_STUDIO_PAGE_URI="https://developer.android.com/studio"
 declare JDK_URI_TEMPLATE="https://download.java.net/java/GA/jdk19.0.2/fdb695a9d9064ad6b064dc6df578380c/7/GPL/openjdk-19.0.2_{os}-{arch}_bin.{format}"
 declare GRADLE_URI_TEMPLATE="https://services.gradle.org/distributions/gradle-8.0.2-bin.zip"
 
 # TODO(mribbons): ubuntu / apt libs: apt-get install libc6:i386 libncurses5:i386 libstdc++6:i386 lib32z1 libbz2-1.0:i386
 
 function get_android_default_search_paths() {
-  host=$(host_os)
+  host="$(host_os)"
   ANDROID_HOME_SEARCH_PATHS=()
   if [ -n "$ANDROID_HOME" ]; then
     ANDROID_HOME_SEARCH_PATHS+=("$ANDROID_HOME")
@@ -205,13 +207,25 @@ function save_android_paths() {
 
 function build_android_platform_tools_uri() {
   os="$host"
-  if [[ -n "$1" ]]; then
-    os="$1"
-  fi
 
   uri=${ANDROID_PLATFORM_TOOLS_URI_TEMPLATE/\{os\}/"$(android_host_platform "$os")"}
   echo "$uri"
 }
+
+function build_android_command_line_tools_uri() {
+  os="$host"
+  os="${os,,}"
+
+  if [[ "$os" == "darwin" ]]; then
+    os="mac"
+  elif [[ "$os" == "win32" ]]; then
+    os="win"
+  fi
+
+  uri=${ANDROID_COMMAND_LINE_TOOLS_URI_TEMPLATE/\{os\}/"$os"}
+  echo "$uri"
+}
+
 
 function build_jdk_uri() {
   os="$host"
@@ -221,7 +235,7 @@ function build_jdk_uri() {
   if [[ -n "$1" ]]; then
     os="$1"
   fi
-  os=${os,,}
+  os="${os,,}"
   
   if [[ -n "$2" ]]; then
     arch="$2"
@@ -426,43 +440,70 @@ function clear_android_settings() {
 }
 
 function android_install_sdk_manager() {
-  if [[ -z "$ANDROID_SDK_MANAGER" ]]; then
-    if ! prompt_yn "The Android SDK manager is required for building Android apps. Install it now?"; then
-      return 1
-    fi
-
-    echo "Please review the Android SDK Manager License by visiting the URL below and clicking "Download SDK Platform-Tools for "[Your OS]"
-    echo "$ANDROID_PLATFORM_TOOLS_PAGE_URI"
-    
-    if ! prompt_yn "Do you constent to the Android SDK Manager License?"; then
-      return 1
-    fi
-
-    local _ah=""
-    
-    prompt_new_path "Enter location for ANDROID_HOME" "${ANDROID_HOME_SEARCH_PATHS[0]}" _ah
-    
-
-    if [ -d "$_ah" ]; then
-      echo "Created $_ah"
-    else
-      return 1
-    fi
-
-    uri="$(build_android_platform_tools_uri)"
-    archive="$(download_to_tmp $uri)"
-    if [ -z "$archive" ]; then
-      echo "Failed to download $uri"
-    fi
-
-    echo "Downloaded $uri to $archive"
-    echo "Extracting $archive to $_ah"
-    unpack "$archive" "$_ah"
-    ANDROID_HOME="$_ah"
+  if [[ -n "$ANDROID_SDK_MANAGER" ]]; then
     return 0
   fi
+    
+  if ! prompt_yn "The Android SDK manager is required for building Android apps. Install it now?"; then
+    return 1
+  fi
 
-  return 1
+  echo "Please review the Android SDK Manager License by visiting the URL below and clicking "Download SDK Platform-Tools for "[Your OS]"
+  echo "$ANDROID_PLATFORM_TOOLS_PAGE_URI"
+  
+  if ! prompt_yn "Do you constent to the Android SDK Manager License?"; then
+    return 1
+  fi
+
+  local _ah=""
+  prompt_new_path "Enter location for ANDROID_HOME" "${ANDROID_HOME_SEARCH_PATHS[0]}" _ah
+  
+  if [ -d "$_ah" ]; then
+    echo "Created $_ah"
+  else
+    return 1
+  fi
+
+
+  echo "Downloading $uri..."
+  uri="$(build_android_platform_tools_uri)"
+  archive="$(download_to_tmp "$uri")"
+  if [ -z "$archive" ]; then
+    echo "Failed to download $uri"
+    return 1
+  fi
+
+  echo "Extracting $archive to $_ah"
+  unpack "$archive" "$_ah"
+  rm "$archive"
+
+  if ! prompt_yn "Android Command line tools is required for building Android apps. Install it now?"; then
+    return 1
+  fi
+
+  uri="$(build_android_command_line_tools_uri)"
+  echo "Please review the Android Command line tools License by visiting the URL below, locating ""Command line tools only"" and clicking $(basename "$uri")"
+  echo "$ANDROID_PLATFORM_TOOLS_PAGE_URI"
+  
+  if ! prompt_yn "Do you constent to the Android Command line tools License?"; then
+    return 1
+  fi
+
+  archive=""
+  echo "Downloading $uri..."
+  archive="$(download_to_tmp "$uri")"
+  if [ -z "$archive" ]; then
+    echo "Failed to download $uri"
+    return 1
+  fi
+
+  echo "Extracting $archive to $_ah"
+  unpack "$archive" "$_ah"
+  rm "$archive"
+
+  ANDROID_HOME="$_ah"
+  # ANDROID_SDK_MANAGER=
+  return 0
 }
 
 function android_first_time_experience_setup() {
