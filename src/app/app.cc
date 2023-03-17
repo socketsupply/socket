@@ -30,15 +30,14 @@ namespace SSC {
 
   App::App () {
     this->core = new Core();
+    auto cwd = getCwd();
+    uv_chdir(cwd.c_str());
   }
 
   App::App (int) : App() {
 #if defined(__linux__) && !defined(__ANDROID__)
     gtk_init_check(0, nullptr);
 #endif
-
-    auto cwd = getCwd();
-    uv_chdir(cwd.c_str());
   }
 
   int App::run () {

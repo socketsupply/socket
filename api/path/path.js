@@ -4,6 +4,7 @@
 import { primordials } from '../ipc.js'
 
 const isWin32 = primordials.platform === 'win32'
+const windowsPathRegex = /^(\/|\\)[a-z]:/i
 
 function maybeURL (...args) {
   try {
@@ -30,7 +31,7 @@ export class Path extends URL {
   static cwd (opts) {
     let cwd = primordials.cwd
     if (isWin32) {
-      cwd = cwd.replace(/^[a-z]:/i, '')
+      cwd = cwd.replace(windowsPathRegex, '')
       if (opts?.posix === true) {
         cwd = cwd.replace(/\\/g, '/')
         cwd = cwd.slice(cwd.indexOf('/'))
@@ -50,10 +51,9 @@ export class Path extends URL {
     const { sep } = options
     let cwd = Path.cwd()
     while (components.length) {
-      cwd = Path
-        .from(components.shift(), cwd + sep)
+      cwd = Path.from(components.shift(), cwd + sep)
         .pathname
-        .replace(/^[a-z]:/i, '')
+        .replace(windowsPathRegex, '')
         .replace(/\/$/g, '')
         .replace(/\//g, sep)
     }
@@ -106,7 +106,7 @@ export class Path extends URL {
 
     return components.output.join(sep)
       .replace(/^file:/g, '')
-      .replace(/^[a-z]:/i, '')
+      .replace(windowsPathRegex, '')
   }
 
   /**
@@ -144,7 +144,7 @@ export class Path extends URL {
         .from(path, sep)
         .parent
         .replace(/\//g, sep)
-        .replace(/^[a-z]:/i, '')
+        .replace(windowsPathRegex, '')
     )
 
     if (String(path).startsWith('.')) {
@@ -204,11 +204,11 @@ export class Path extends URL {
     const { sep } = options
     const prefix = drive || url.protocol || ''
     let output = prefix + Path
-      .from(pathname.replace(/^\/?[a-z]:/i, ''))
+      .from(pathname.replace(windowsPathRegex, ''))
       .pathname
       .replace(/\//g, sep)
       .replace(/^file:/g, '')
-      .replace(/^\/?[a-z]:/i, '')
+      .replace(windowsPathRegex, '')
 
     if (url.protocol && href && !href.startsWith(sep)) {
       output = output.replace(url.protocol, '')
@@ -277,7 +277,7 @@ export class Path extends URL {
    * @param {string} [cwd = Path.cwd()]
    */
   constructor (pathname, cwd) {
-    const isRelative = !/^[/|\\]/.test(pathname.replace(/^[a-z]:/i, ''))
+    const isRelative = !/^[/|\\]/.test(pathname.replace(windowsPathRegex, ''))
     pathname = String(pathname || '.').trim()
 
     if (cwd) {
@@ -294,7 +294,7 @@ export class Path extends URL {
     super(pathname, cwd)
 
     const drive = (
-      pathname.match(/^[a-z]:/i) || this.pathname.match(/^[a-z]:/i) || []
+      pathname.match(windowsPathRegex) || this.pathname.match(windowsPathRegex) || []
     )[0] || null
 
     this.#forwardSlashesDetected = /\\/.test(pathname)
@@ -335,8 +335,7 @@ export class Path extends URL {
     if (i === -1) i = this.pathname.lastIndexOf('\\')
     return this.pathname
       .slice(0, i >= 0 ? i + 1 : undefined)
-      .replace(/^[a-z]:/i, '')
-      .replace(/^(\/|\\)[a-z]:/i, '')
+      .replace(windowsPathRegex, '')
   }
 
   /**
@@ -345,7 +344,7 @@ export class Path extends URL {
    */
   get root () {
     const { dir } = this
-    const drive = (dir.match(/^[a-z]:/i) || [])[0] || this.drive
+    const drive = (dir.match(windowsPathRegex) || [])[0] || this.drive
 
     if (!this.isRelative) {
       if (this.value.includes('\\') || this.#forwardSlashesDetected) {
