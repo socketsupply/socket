@@ -276,17 +276,14 @@ export class ApplicationWindow {
     if (typeof options.event !== 'string' || options.event.length === 0) {
       throw new Error('event should be a non-empty string')
     }
-    if (typeof options.value !== 'string') {
-      options.value = JSON.stringify(options.value)
-    }
 
-    const value = typeof options.value === 'string' ? options.value : JSON.stringify(options.value)
+    const value = typeof options.value !== 'string' ? JSON.stringify(options.value) : options.value
 
     if (options.backend === true) {
       return await ipc.send('process.write', {
         index: this.#senderWindowIndex,
         event: options.event,
-        value
+        value: value ?? ''
       })
     }
 
