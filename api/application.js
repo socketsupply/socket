@@ -308,16 +308,18 @@ export async function setSystemMenuItemEnabled (value) {
  * @type {object} - an object containing the version information
  */
 export const runtimeVersion = primordials.version
+
 /**
  * Runtime debug flag.
  * @type {boolean}
  */
-export const debug = !!globalThis.__args.debug
+export const debug = !!globalThis.__args?.debug
+
 /**
  * Application configuration.
  * @type {object}
  */
-export const config = globalThis.__args.config
+export const config = globalThis.__args?.config ?? {}
 
 /**
  * The application's backend.
