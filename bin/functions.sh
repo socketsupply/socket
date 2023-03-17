@@ -36,6 +36,23 @@ function escape_path() {
   echo "$r"
 }
 
+function unix_path() {
+  p="$(escape_path "$1")"
+  if [[ "$host" == "Win32" ]]; then
+    cygpath -u "$p"
+    return
+  fi
+  echo "$p"
+}
+
+function native_path() {
+  if [[ "$host" == "Win32" ]]; then
+    escape_path "$(cygpath -w "$1")"
+    return
+  fi
+  echo "$1"
+}
+
 function quiet () {
   if [ -n "$VERBOSE" ]; then
     echo "$@"
@@ -106,4 +123,76 @@ function host_os() {
 
 function host_arch() {
   uname -m | sed 's/aarch64/arm64/g'
+}
+
+function prompt() {
+  echo "$1"
+  local return=$2
+  # effectively reads into $2 by reference, rather than using echo to return which would prevent echo "$1" going to stdout
+  eval "read -rp '> ' $return"
+}
+
+function prompt_yn() {
+  prompt "$1 [y/N]" r
+  local return=$2
+  if [[ "${r,,}" == "y" ]]; then
+    return 0
+  fi
+  return 1
+}
+
+function prompt_new_path() {
+  text="$1"
+  default="$2"
+  local return=$3
+  input=""
+  lf=$'\n'
+
+  if [ -n "$2" ]; then
+    echo "$text"
+    if prompt_yn "Use suggested default path: ""$2""?"; then
+      input="$2"
+    fi
+  fi
+
+  while true; do
+    if [ -z "$input" ]; then
+      prompt "$text (Press Enter to go back)" input
+    fi
+    # remove any quote characters
+    input=${input//\"/}
+    unix_input="$(unix_path "$input")"
+    if [ -e "$unix_input" ]; then
+      unix_input="$(abs_path "$unix_input")"
+      echo "\"$input\" already exists, please choose a new path."
+      echo "$unix_input"
+      input=""
+    elif [ -z "$input" ]; then
+      if prompt_yn "Cancel entering new path?"; then
+        return
+      fi
+    else
+      if ! mkdir -p "$unix_input"; then
+        echo "Create $unix_input failed."
+        input=""
+      else
+        input="$(native_path $(abs_path "$unix_input"))"
+        eval "$return=""$input"""
+        return 0
+      fi
+    fi
+  done
+}
+
+function abs_path() {
+  test="$1"
+  basename=""
+  if [ -f "$1" ]; then
+    test="$(dirname "$1")"
+    basename="/$(basename "$1")"
+  elif [ ! -e "$1" ]; then
+    return 1
+  fi
+
+  echo "$(sh -c "cd '$test'; pwd")$basename"
 }
