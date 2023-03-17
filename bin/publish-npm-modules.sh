@@ -186,7 +186,7 @@ if (( !only_top_level )); then
     fi
 
     if [ "$platform" = "Win32" ]; then
-      cp -rap $SOCKET_HOME/ps1 $SOCKET_HOME/packages/$package
+      cp -rap "$SOCKET_HOME/bin"/.vs* "$SOCKET_HOME/packages/$package/bin"
     fi
 
     cd "$SOCKET_HOME/packages/$package" || exit $?

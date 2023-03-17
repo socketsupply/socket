@@ -3,7 +3,7 @@ Function Get-VCVars {
   $mvs = "Microsoft Visual Studio"
   $suffix = "VC\Auxiliary\Build\vcvars64.bat"
 
-  $vs_releases = @('2022', '2019', '2017')
+  $vs_releases = @('2022')
   $vs_editions = @('Enterprise', 'Professional', 'Community', 'BuildTools')
 
   Foreach ($r in $vs_releases) {

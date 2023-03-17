@@ -46,6 +46,14 @@ while (( $# > 0 )); do
     force=1; continue
   fi
 
+  if [[ "$arg" = "--yes-deps" ]] || [[ "$arg" = "-y" ]]; then
+    pass_yes_deps="$arg"; continue
+  fi
+
+  if [[ "$arg" == "--no-android-fte" ]]; then
+    no_android_fte=1; continue
+  fi
+
   args+=("$arg")
 done
 
@@ -100,6 +108,8 @@ if [[ "$host" == "Win32" ]]; then
     d="d"
   fi
 fi
+
+read_env_data
 
 if [ ! "$CXX" ]; then
   if command -v clang++ >/dev/null 2>&1; then
@@ -179,17 +189,28 @@ fi
 
 if [[ -n "$BUILD_ANDROID" ]] && [[ "arm64" == "$(host_arch)" ]] && [[ "Linux" == "$host" ]]; then
   echo "warn - Android not supported on "$host"-"$(uname -m)", will unset BUILD_ANDROID"
+fi
+
+if [[ -n "$no_android_fte" ]] && [[ -z "$ANDROID_HOME" ]]; then
+  unset BUILD_ANDROID
+fi
+
+if [[ -n "$BUILD_ANDROID" ]] && [[ "arm64" == "$(host_arch)" ]] && [[ "Linux" == "$host" ]]; then
+  echo "warn - Android not supported on "$host"-"$(uname -m)", will unset BUILD_ANDROID"
+  unset BUILD_ANDROID
+fi
+
+if [[ -n "$no_android_fte" ]] && [[ -z "$ANDROID_HOME" ]]; then
   unset BUILD_ANDROID
 fi
 
 if [[ -n "$BUILD_ANDROID" ]]; then
-
-  android_fte
+  android_fte "$pass_yes_deps"
 
   abis=($(android_supported_abis))
   platform="android"
   arch="${abis[0]}"
-  clang="$(android_clang "$ANDROID_HOME" "$NDK_VERSION" "$host" "$host_arch" "$arch")"
+  clang="$(android_clang "$ANDROID_HOME" "$NDK_VERSION" "$host" "$(host_arch)" "$arch")"
 
   if ! quiet $clang -v; then
     echo "not ok - Android clang call failed. This could indicate an issue with ANDROID_HOME, missing ndk tools, or incorrectly determined host or target architectures."
@@ -561,11 +582,15 @@ function _install {
     fi
   fi
 
-  if [[ "$(uname -s)" == *"_NT"* ]]; then
-    if [ "$platform" == "desktop" ]; then
-      mkdir -p "$SOCKET_HOME/ps1"
-      cp -ap "$root/bin/"*.ps1 "$SOCKET_HOME/ps1"
-      cp -ap "$root/bin/".vs* "$SOCKET_HOME/ps1"
+  if [ "$platform" == "desktop" ]; then
+    mkdir -p "$SOCKET_HOME/bin"
+    # Required for FTE setup
+    cp -ap "$root/bin/functions.sh" "$SOCKET_HOME/bin"
+    cp -ap "$root/bin/android-functions.sh" "$SOCKET_HOME/bin"
+    
+    if [[ "$(uname -s)" == *"_NT"* ]]; then
+      cp -ap "$root/bin/"*.ps1 "$SOCKET_HOME/bin"
+      cp -ap "$root/bin/".vs* "$SOCKET_HOME/bin"
     fi
   fi
 
@@ -821,6 +846,8 @@ function _check_compiler_features {
   else
     cflags+=(-x c++)
   fi
+
+  cflags+=("-I$root")
 
   $CXX "${cflags[@]}" "${ldflags[@]}" - -o /dev/null >/dev/null << EOF_CC
     #include "src/common.hh"

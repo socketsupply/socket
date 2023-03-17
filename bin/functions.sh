@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
+declare root="$(cd "$(dirname "$(dirname "${BASH_SOURCE[0]}")")" && pwd)"
 declare SSC_ENV_FILENAME=".ssc.env"
-
 export SSC_ENV_FILENAME
 
 # BSD stat has no version argument or reliable identifier
@@ -122,7 +122,7 @@ function host_os() {
 
   if [[ "$host" = "Linux" ]]; then
     if [ -n "$WSL_DISTRO_NAME" ] || uname -r | grep 'Microsoft'; then
-    write_log "h" "WSL is not supported."
+    write_log "h" "not ok - WSL is not supported."
     exit 1
     fi
   elif [[ "$host" == *"MINGW64_NT"* ]]; then
@@ -146,6 +146,7 @@ function use_bin_ext() {
 }
 
 function build_env_data() {
+  echo "CXX=\"$(escape_path "$CXX")\""
   echo "ANDROID_HOME=\"$(escape_path "$ANDROID_HOME")\""
   echo "JAVA_HOME=\"$(escape_path "$JAVA_HOME")\""
   echo "ANDROID_SDK_MANAGER=\"$(escape_path "$ANDROID_SDK_MANAGER")\""
@@ -153,6 +154,32 @@ function build_env_data() {
   # Should not use these for general calls
   echo "ANDROID_SDK_MANAGER_JAVA_OPTS=\"-XX:+IgnoreUnrecognizedVMOptions --add-modules java.se.ee\""
   echo "ANDROID_SDK_MANAGER_ACCEPT_LICENSES=\"$ANDROID_SDK_MANAGER_ACCEPT_LICENSES\""
+}
+
+function update_env_data() {
+  read_env_data
+  local vars=()
+  local kvp
+  local fail=0
+  while (( $# > 0 )); do
+    declare arg="$1"; shift
+    IFS='=' read -ra kvp <<< "$arg"
+    if [[ "${#kvp[@]}" != "2" ]]; then
+      echo >&2 "Invalid key=pair: $arg"; fail=1
+    else
+      vars+=("${kvp[0]}=$(escape_path "${kvp[1]}")")
+    fi
+  done
+
+  (( fail )) && exit $fail
+
+  for kvp in "${vars[@]}"; do
+    write_log "d" "# eval \"$kvp\""
+    eval "$kvp"
+  done
+
+  write_env_data
+  exit 0
 }
 
 function read_env_data() {
@@ -186,8 +213,8 @@ function prompt() {
   write_log "h" "$1"
   local return=$2
   local input
-  read -rp '> ' input
   # effectively stores $input in $2 by reference, rather than using echo to return which would prevent echo "$1" going to stdout
+  read -rp '> ' input
   eval "$return=\"$input\""
   write_log "f" "input: $input"
 }
@@ -195,7 +222,19 @@ function prompt() {
 function prompt_yn() {
   local r
   local return=$2
-  prompt "$1 [y/N]" r
+
+  # echo "prompt_yn, $PROMPT_DEFAULT_YN, $1"
+
+  if [[ -n "$PROMPT_DEFAULT_YN" ]]; then
+    write_log "h" "$1 [y/N]"
+    write_log "h" "default: $PROMPT_DEFAULT_YN"
+    r="$PROMPT_DEFAULT_YN"
+  else
+    prompt "$1 [y/N]" r
+  fi
+
+  # prompt "$1 [y/N]" r
+  # write_log "v" "r: $r"
 
   if [[ "$(lower "$r")" == "y" ]]; then
     return 0
@@ -232,9 +271,9 @@ function prompt_new_path() {
       fi
 
       unix_input="$(abs_path "$unix_input")"
-      write_log "h" "\"$input\" already exists, please choose a new path."
+      write_log "h" "# \"$input\" already exists, please choose a new path."
       if [ -n "$exists_message" ]; then
-        write_log "h" "$exists_message"
+        write_log "h" "# $exists_message"
       fi
       input=""
     elif [ -z "$input" ]; then
@@ -242,9 +281,9 @@ function prompt_new_path() {
         return
       fi
     else
-      write_log "h" "Create: $unix_input"
+      write_log "h" "ok - Create: $unix_input"
       if ! mkdir -p "$unix_input"; then
-        write_log "h" "Create $unix_input failed."
+        write_log "h" "not ok - Create $unix_input failed."
         input=""
       else
         input="$(native_path "$(abs_path "$unix_input")")"
@@ -348,8 +387,8 @@ function lower() {
   echo "$1"|tr '[:upper:]' '[:lower:]'
 }
 
-function version { 
-  echo "$@" | awk -F. '{ printf("%d%03d%03d%03d\n", $1,$2,$3,$4); }'; 
+function version() {
+  echo "$@" | awk -F. '{ printf("%d%03d%03d%03d\n", $1,$2,$3,$4); }';
 }
 
 # Logging
@@ -361,8 +400,10 @@ fi
 logfile="$_loghome/socket_install_sh.log"
 
 function write_log() {
+  local wh=""
   local type=$1
   local message=$2
+
   if [[ -n "$DEBUG" ]] && ( [[ "$type" == "d" ]] || [[ "$type" == "v" ]] ); then
     wh="1"
   elif [[ -n "$VERBOSE" ]] && [[ "$type" == "v" ]]; then
@@ -384,3 +425,20 @@ function write_log() {
 function write_log_file() {
   echo "$1" >> "$logfile"
 }
+
+function first_time_experience_setup() {
+  export BUILD_ANDROID="1"
+  "$root/bin/android-functions.sh" --android-fte
+}
+
+function main() {
+  while (( $# > 0 )); do
+    declare arg="$1"; shift
+    [[ "$arg" == "--fte" ]] && first_time_experience_setup
+    [[ "$arg" == "--update-env-data" ]] && update_env_data "$@"
+  done
+}
+
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  main "$@"
+fi
