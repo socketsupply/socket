@@ -4,7 +4,7 @@
 import { primordials } from '../ipc.js'
 
 const isWin32 = primordials.platform === 'win32'
-const windowsPathRegex = /^(\/|\\)[a-z]:/i
+const windowsPathRegex = /^(\/|\\)?[a-z]:/i
 
 function maybeURL (...args) {
   try {

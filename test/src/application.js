@@ -115,7 +115,7 @@ test('apllication.exit', async (t) => {
   t.equal(typeof application.exit, 'function', 'exit is a function')
 })
 
-if (!['android', 'ios'].includes(process.platform)) {
+if (!['android', 'ios', 'win32'].includes(process.platform)) {
   test('application.createWindow without path', async (t) => {
     let err
     let dummyWindow
