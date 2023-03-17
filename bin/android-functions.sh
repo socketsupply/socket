@@ -700,3 +700,55 @@ function main() {
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     main "$@"
 fi
+
+function clear_android_settings() {
+  export ANDROID_HOME=""
+  export JAVA_HOME=""
+  export ANDROID_SDK_MANAGER=""
+  export GRADLE_HOME=""
+
+}
+
+download_to_tmp() {
+  uri=$1
+  echo "Downloading $1"
+  tmp="$(mktemp -d)"
+  output=$tmp/"$(basename "$uri")"
+  if  curl -L "$uri" --output "$output"; then
+    echo "$output"
+  fi
+}
+
+function android_install_sdk_manager() {
+  if [[ -z "$ANDROID_SDK_MANAGER" ]]; then
+    if ! prompt_yn "The Android SDK manager is required for building Android apps. Install it now?"; then
+      return 1
+    fi
+
+    echo "Please review the Android SDK Manager License by visiting the URL below and clicking "Download SDK Platform-Tools for "[Your OS]"
+    echo "$ANDROID_PLATFORM_TOOLS_PAGE_URI"
+    
+    if ! prompt_yn "Prompt do you constent to Android SDK Manager License?"; then
+      return 1
+    fi
+
+    local _ah=""
+    
+    prompt_new_path "Enter location for ANDROID_HOME" "${ANDROID_HOME_SEARCH_PATHS[0]}" _ah
+    
+
+    if [ -d "$_ah" ]; then
+      echo "Created $_ah"
+    else
+      return 1
+    fi
+
+    # download_to_tmp "$(build_android_platform_tools_uri)"
+  fi
+}
+
+function android_first_time_experience_setup() {
+  # populates global search path list
+  get_android_default_search_paths
+  android_install_sdk_manager
+}
