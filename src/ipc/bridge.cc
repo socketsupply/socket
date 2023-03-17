@@ -1312,7 +1312,7 @@ static void registerSchemeHandler (Router *router) {
     }
 
     auto ext = uri.ends_with(".js") ? "" : ".js";
-    path = fs::path(cwd) / "socket" / (uri + ext);
+    auto path = fs::path(cwd) / "socket" / (uri + ext);
 
     uri = "file://" + path.string();
     auto moduleSource = trim(tmpl(
