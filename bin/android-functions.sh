@@ -425,16 +425,6 @@ function clear_android_settings() {
 
 }
 
-download_to_tmp() {
-  uri=$1
-  echo "Downloading $1"
-  tmp="$(mktemp -d)"
-  output=$tmp/"$(basename "$uri")"
-  if  curl -L "$uri" --output "$output"; then
-    echo "$output"
-  fi
-}
-
 function android_install_sdk_manager() {
   if [[ -z "$ANDROID_SDK_MANAGER" ]]; then
     if ! prompt_yn "The Android SDK manager is required for building Android apps. Install it now?"; then
@@ -444,7 +434,7 @@ function android_install_sdk_manager() {
     echo "Please review the Android SDK Manager License by visiting the URL below and clicking "Download SDK Platform-Tools for "[Your OS]"
     echo "$ANDROID_PLATFORM_TOOLS_PAGE_URI"
     
-    if ! prompt_yn "Prompt do you constent to Android SDK Manager License?"; then
+    if ! prompt_yn "Do you constent to the Android SDK Manager License?"; then
       return 1
     fi
 
@@ -459,8 +449,20 @@ function android_install_sdk_manager() {
       return 1
     fi
 
-    # download_to_tmp "$(build_android_platform_tools_uri)"
+    uri="$(build_android_platform_tools_uri)"
+    archive="$(download_to_tmp $uri)"
+    if [ -z "$archive" ]; then
+      echo "Failed to download $uri"
+    fi
+
+    echo "Downloaded $uri to $archive"
+    echo "Extracting $archive to $_ah"
+    unpack "$archive" "$_ah"
+    ANDROID_HOME="$_ah"
+    return 0
   fi
+
+  return 1
 }
 
 function android_first_time_experience_setup() {
