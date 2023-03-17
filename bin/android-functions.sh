@@ -46,7 +46,7 @@ function android_arch() {
     x86)
       echo -n "i686"
       ;;
-    x86-64)
+    arm64|x86-64)
       echo -n "x86_64"
       ;;
     *)

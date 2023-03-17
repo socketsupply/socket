@@ -14,7 +14,7 @@ declare remove_socket_home=1
 declare do_global_link=0
 
 function _publish () {
-  if (( !dry_run )) ; then
+  if (( !dry_run && !do_global_link )); then
     npm publish "${args[@]}" || exit $?
   elif (( !do_global_link )); then
     # echo "# npm publish ${args[@]}"

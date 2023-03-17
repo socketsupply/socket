@@ -2493,6 +2493,7 @@ int main (const int argc, const char* argv[]) {
         auto app_mk = _main / "jni" / "Application.mk";
         auto jni = _main / "jni";
         auto jniLibs = _main / "jniLibs";
+        auto libs = _main / "libs";
         auto obj = _main / "obj";
 
         if (fs::exists(obj)) {
@@ -2500,14 +2501,17 @@ int main (const int argc, const char* argv[]) {
         }
 
         // TODO(mribbons) - Copy specific abis
-        fs::create_directories(jniLibs);
+        fs::create_directories(libs);
         for (auto const& dir_entry : fs::directory_iterator(prefixFile() + "lib")) {
           if (dir_entry.is_directory() && dir_entry.path().stem().string().find("-android") != String::npos) {
-            auto dest = jniLibs / replace(dir_entry.path().stem().string(), "-android", "");
+            auto dest = libs / replace(dir_entry.path().stem().string(), "-android", "");
             try {
-              if (debugEnv)
-                log("copy android lib: "+ dir_entry.path().string() + " => " + dest.string());
-              fs::copy(dir_entry.path(), dest, fs::copy_options::overwrite_existing | fs::copy_options::recursive);
+              if (debugEnv) log("copy android lib: "+ dir_entry.path().string() + " => " + dest.string());
+              fs::copy(
+                dir_entry.path(),
+                dest,
+                fs::copy_options::overwrite_existing | fs::copy_options::recursive
+              );
             } catch (fs::filesystem_error &e) {
               std::cerr << "Unable to copy android lib: " << fs::exists(dest) << ": " << e.what() << std::endl;
               throw;
@@ -2516,7 +2520,9 @@ int main (const int argc, const char* argv[]) {
         }
 
         if (androidBuildSocketRuntime) {
-          ndkBuildArgs 
+          fs::create_directories(jniLibs);
+
+          ndkBuildArgs
             << ndkBuild.str()
             << " -j"
             << " NDK_PROJECT_PATH=" << _main
@@ -2524,13 +2530,12 @@ int main (const int argc, const char* argv[]) {
             << (flagDebugMode ? " NDK_DEBUG=1" : "")
             << " APP_PLATFORM=" << androidPlatform
             << " NDK_LIBS_OUT=" << jniLibs
-            ;
+          ;
 
           if (!(debugEnv || verboseEnv)) ndkBuildArgs << " >" << (!platform.win ? "/dev/null" : "NUL") << " 2>&1";
 
           if (debugEnv || verboseEnv) log(ndkBuildArgs.str());
-          if (std::system(ndkBuildArgs.str().c_str()) != 0)
-          {        
+          if (std::system(ndkBuildArgs.str().c_str()) != 0) {
             log(ndkBuildArgs.str());
             log("ndk build failed.");
             exit(1);
