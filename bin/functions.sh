@@ -200,3 +200,34 @@ function abs_path() {
 
   echo "$(sh -c "cd '$test'; pwd")$basename"
 }
+
+download_to_tmp() {
+  uri=$1
+  tmp="$(mktemp -d)"
+  output=$tmp/"$(basename "$uri")"
+  if  curl -L "$uri" --output "$output"; then
+    echo "$output"
+  fi
+}
+
+function unpack() {
+  archive=$1
+  dest=$2
+  command=""
+
+  if [[ "$archive" == *".tar.gz" ]]; then
+    command="tar -xf"
+  elif [[ "$archive" == *".gz" ]]; then
+    command="gzip -d";
+  elif [[ "$archive" == *".bz2" ]]; then
+    command="bzip2 -d"
+  elif [[ "$archive" == *".zip" ]]; then
+    command="unzip"
+  fi
+
+  if ! cd "$dest"; then
+    return $?
+  fi
+
+  $command "$archive"
+}
