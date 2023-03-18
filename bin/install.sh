@@ -499,7 +499,7 @@ function _install {
       cp -fr "$BUILD_DIR/$arch-$platform"/lib/*.a "$SOCKET_HOME/lib/$arch-$platform"
     fi
   else 
-    echo "no $BUILD_DIR/$arch-$platform/lib"
+     echo >&2 "not ok - Missing $BUILD_DIR/$arch-$platform/lib"
     exit 1
   fi
 
@@ -637,7 +637,7 @@ function _compile_libuv_android {
     if [ -f $static_library ]; then
       echo "ok - built $base_lib ($arch-$platform): $(basename "$static_library")"
     else
-      echo "failed to build $static_library"
+       echo >&2 "not ok - failed to build $static_library"
       exit 1
     fi
   
@@ -645,7 +645,7 @@ function _compile_libuv_android {
     if [ -f $static_library ]; then
       echo "ok - using cached static library ($arch-$platform): $(basename "$static_library")"
     else
-      echo "static library doesn't exist after cache check passed: ($arch-$platform): $(basename "$static_library")"
+      echo >&2 "not ok - static library doesn't exist after cache check passed: ($arch-$platform): $(basename "$static_library")"
       exit 1
     fi
   fi
@@ -656,7 +656,7 @@ function _compile_libuv_android {
   # This error condition should only occur after a code change
   lib_size=$(stat_size $static_library)
   if (( lib_size < $(android_min_expected_static_lib_size "$base_lib") )); then
-    echo "ERROR: $static_library size looks wrong: $lib_size, renaming as .bad"
+    echo >&2 "not ok - $static_library size looks wrong: $lib_size, renaming as .bad"
     mv $static_library $static_library.bad
     exit 1
   fi

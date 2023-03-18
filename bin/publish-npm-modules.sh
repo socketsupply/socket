@@ -101,18 +101,18 @@ for abi in $(android_supported_abis); do
   lib_path="$SOCKET_HOME/lib/$abi-android"
   if [[ ! -f "$lib_path/libuv.a" ]]; then
     ABORT_ERRORS=1
-    echo "$lib_path/libuv.a missing - check build process."
+    echo >&2 "not ok - $lib_path/libuv.a missing - check build process."
   fi
   
   if [[ ! -f "$lib_path/libsocket-runtime.a" ]]; then
     ABORT_ERRORS=1
-    echo "$lib_path/libsocket-runtime.a missing - check build process."
+    echo >&2 "not ok - $lib_path/libsocket-runtime.a missing - check build process."
   fi
   export ABORT_ERRORS
 done
 
 if (( ABORT_ERRORS )); then
-  echo "Refusing to publish due to errors."
+  echo >&2 "not ok - Refusing to publish due to errors."
   exit 1
 fi
 

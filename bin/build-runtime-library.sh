@@ -100,7 +100,7 @@ if [[ "$platform" = "android" ]]; then
   source "$root/bin/android-functions.sh"
 
   if [[ -n $DEPS_ERROR ]]; then
-    echo "Android dependencies not satisfied."
+    echo >&2 "not ok - Android dependencies not satisfied."
     exit 1
   fi
 
@@ -222,7 +222,7 @@ function main () {
     # This error condition should only occur after a code change
     lib_size=$(stat_size "$static_library")
     if (( lib_size < $(android_min_expected_static_lib_size "$base_lib") )); then
-      echo "ERROR: $static_library size looks wrong: $lib_size, renaming as .bad"
+      echo >&2 "not ok -  $static_library size looks wrong: $lib_size, renaming as .bad"
       mv "$static_library" "$static_library.bad"
       exit 1
     fi
