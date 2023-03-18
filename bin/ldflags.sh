@@ -24,7 +24,7 @@ fi
 declare d=""
 if [[ "$host" == "Win32" ]]; then
   # We have to differentiate release and debug for Win32
-  if [[ ! -z "$DEBUG" ]]; then
+  if [[ -n "$DEBUG" ]]; then
     d="d"
   fi
 fi
@@ -112,7 +112,7 @@ if [[ "$host" = "Darwin" ]]; then
 elif [[ "$host" = "Linux" ]]; then
   ldflags+=($(pkg-config --libs gtk+-3.0 webkit2gtk-4.1))
 elif [[ "$host" = "Win32" ]]; then
-  if [[ ! -z "$DEBUG" ]]; then
+  if [[ -n "$DEBUG" ]]; then
     # https://learn.microsoft.com/en-us/cpp/c-runtime-library/crt-library-features?view=msvc-170
     # TODO(@mribbons): Populate from vcvars64.bat
     IFS=',' read -r -a libs <<< "$WIN_DEBUG_LIBS"

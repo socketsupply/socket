@@ -92,7 +92,7 @@ if (( !TARGET_OS_ANDROID && !TARGET_ANDROID_EMULATOR )); then
       -Xlinker /NODEFAULTLIB:libcmt
       -Wno-nonportable-include-path
     )
-    if [[ ! -z "$DEBUG" ]]; then
+    if [[ -n "$DEBUG" ]]; then
       cflags+=("-D_DEBUG")
     fi
   fi
@@ -103,7 +103,7 @@ while (( $# > 0 )); do
   shift
 done
 
-if [[ ! -z "$DEBUG" ]]; then
+if [[ -n "$DEBUG" ]]; then
   cflags+=("-g")
   cflags+=("-O0")
 else

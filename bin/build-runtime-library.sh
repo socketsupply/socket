@@ -15,12 +15,11 @@ declare arch="$(uname -m)"
 declare host_arch=$arch
 declare host=$(host_os)
 declare platform="desktop"
-declare host_platform=$platform
 
 declare d=""
 if [[ "$host" == "Win32" ]]; then
   # We have to differentiate release and debug for Win32
-  if [[ ! -z "$DEBUG" ]]; then
+  if [[ -n "$DEBUG" ]]; then
     d="d"
   fi
 
