@@ -981,6 +981,9 @@ int main (const int argc, const char* argv[]) {
           settings["apple_instruments"] = "false";
         }
 
+        settings["debug"] = flagDebugMode;
+        settings["build_suffix"] = suffix;
+
         std::replace(settings["build_name"].begin(), settings["build_name"].end(), ' ', '_');
         settings["build_name"] += suffix;
       }
@@ -1855,6 +1858,7 @@ int main (const int argc, const char* argv[]) {
         settings["ios_provisioning_profile"] = uuid;
         settings["apple_team_id"] = team;
       }
+
       if (flagBuildForSimulator) {
         settings["ios_provisioning_specifier"] = "";
         settings["ios_provisioning_profile"] = "";
@@ -1987,7 +1991,11 @@ int main (const int argc, const char* argv[]) {
       auto pathToIconDest = (pathIcons / (settings["build_name"] + ".png")).string();
 
       if (!fs::exists(pathToIconDest)) {
-        fs::copy(pathToIconSrc, pathToIconDest);
+        if (fs::exists(pathToIconSrc)) {
+          fs::copy(pathToIconSrc, pathToIconDest);
+        } else {
+          log("warning: [linux] icon '" + pathToIconSrc +  "' does not exist");
+        }
       }
     }
 
@@ -2012,7 +2020,6 @@ int main (const int argc, const char* argv[]) {
         " -L\"" + prefix + "lib\""
       ;
 
-
       // See install.sh for more info on windows debug builds and d suffix
       auto missing_assets = false;
       auto debugBuild = getEnv("DEBUG").size() > 0;
@@ -2025,7 +2032,7 @@ int main (const int argc, const char* argv[]) {
             fs::path lib(libString);
             if (!fs::exists(lib))
             {
-              log("WIN_DEBUG_LIBS: File doesn't exist, aborting build: " + lib.string());
+              log("warning: WIN_DEBUG_LIBS: File doesn't exist, aborting build: " + lib.string());
               missing_assets = true;
             } else {
               flags += " " + lib.string();
@@ -2044,8 +2051,8 @@ int main (const int argc, const char* argv[]) {
       flags += " -L" + prefixFile("lib" + d + "/" + platform.arch + "-desktop");
       auto main_o = prefixFile("objects/" + platform.arch + "-desktop/desktop/main" + d + ".o");
       if (!fs::exists(main_o)) {
-        log("Can't find main obj, unable to build: " + main_o);
-        missing_assets = true;        
+        log("warning! Can't find main obj, unable to build: " + main_o);
+        missing_assets = true;
       } else {
         files += main_o;
       }
@@ -2206,21 +2213,32 @@ int main (const int argc, const char* argv[]) {
       if (!fs::exists(fs::status(copyMapFile))) {
         log("warning: file specified in [build] copy_map does not exist");
       } else {
-        auto copyMap = trim(readFile(copyMapFile));
+        auto copyMap = parseConfig(tmpl(trim(readFile(copyMapFile)), settings));
         auto copyMapFileDirectory = fs::absolute(copyMapFile.parent_path());
 
         if (copyMap.size() > 0) {
-          auto lines = split(copyMap, '\n');
-          for (const auto& line : lines) {
-            // handle :|#|// leading comments
-            if (line.starts_with(":") || line.starts_with("#") || line.starts_with("//")) {
-              continue;
+          for (const auto& tuple : copyMap) {
+            auto key = tuple.first;
+            auto value = tuple.second;
+
+            if (key.starts_with("debug_")) {
+              if (!flagDebugMode) continue;
+              key = key.substr(6, key.size() - 6);
             }
 
-            auto mapping = split(trim(line), '=');
-            auto src = fs::path { replace(trim(mapping[0]), "(^\"|\"$)", "") };
-            auto dst = mapping.size() == 2
-              ? pathResourcesRelativeToUserBuild / replace(trim(mapping[1]), "(^\"|\"$)", "")
+            if (key.starts_with("prod_")) {
+              if (flagDebugMode) continue;
+              key = key.substr(5, key.size() - 5);
+            }
+
+            if (key.starts_with("production_")) {
+              if (flagDebugMode) continue;
+              key = key.substr(11, key.size() - 11);
+            }
+
+            auto src = fs::path { key };
+            auto dst =tuple.second.size() > 0
+              ? pathResourcesRelativeToUserBuild / value
               : pathResourcesRelativeToUserBuild;
 
             src = src.make_preferred();
