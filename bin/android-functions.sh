@@ -5,11 +5,11 @@ declare root="$(cd "$(dirname "$(dirname "${BASH_SOURCE[0]}")")" && pwd)"
 source "$root/bin/functions.sh"
 
 declare ANDROID_SETTINGS_FILENAME=".android-rc"
-declare -A DEFAULT_ANDROID_HOME=(
-  [Darwin]=$HOME/Library/Android/sdk 
-  [Win32]=$LOCALAPPDATA\\Android\\Sdk
-  [Linux]=$HOME/Android/Sdk
-)
+
+declare -A DEFAULT_ANDROID_HOME
+DEFAULT_ANDROID_HOME[Darwin]=$HOME/Library/Android/sdk 
+DEFAULT_ANDROID_HOME[Win32]=$LOCALAPPDATA\\Android\\Sdk
+DEFAULT_ANDROID_HOME[Linux]=$HOME/Android/Sdk
 
 declare ANDROID_SDK_MANAGER_SEARCH_PATHS=(
   "cmdline-tools/latest/bin"
@@ -214,7 +214,7 @@ function build_android_platform_tools_uri() {
 
 function build_android_command_line_tools_uri() {
   os="$host"
-  os="${os,,}"
+  os="$(lower "$os")"
 
   if [[ "$os" == "darwin" ]]; then
     os="mac"
@@ -235,7 +235,7 @@ function build_jdk_uri() {
   if [[ -n "$1" ]]; then
     os="$1"
   fi
-  os="${os,,}"
+  os="$(lower "$os")"
   
   if [[ -n "$2" ]]; then
     arch="$2"
@@ -451,7 +451,7 @@ function android_install_sdk_manager() {
   echo "Please review the Android SDK Manager License by visiting the URL below and clicking "Download SDK Platform-Tools for "[Your OS]"
   echo "$ANDROID_PLATFORM_TOOLS_PAGE_URI"
   
-  if ! prompt_yn "Do you constent to the Android SDK Manager License?"; then
+  if ! prompt_yn "Do you consent to the Android SDK Manager License?"; then
     return 1
   fi
 
@@ -485,7 +485,7 @@ function android_install_sdk_manager() {
   echo "Please review the Android Command line tools License by visiting the URL below, locating ""Command line tools only"" and clicking $(basename "$uri")"
   echo "$ANDROID_PLATFORM_TOOLS_PAGE_URI"
   
-  if ! prompt_yn "Do you constent to the Android Command line tools License?"; then
+  if ! prompt_yn "Do you consent to the Android Command line tools License?"; then
     return 1
   fi
 
