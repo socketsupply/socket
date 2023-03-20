@@ -164,7 +164,7 @@ if [[ -n "$BUILD_ANDROID" ]]; then
   arch="${abis[0]}"
   host_arch="$(uname -m)"
   clang="$(android_clang "$ANDROID_HOME" "$NDK_VERSION" "$host" "$host_arch" "$arch")"
-  
+
   if ! quiet $clang -v; then
     echo "Android clang call failed. This could indicate an issue with ANDROID_HOME, missing ndk tools, or incorrectly determined host or target architectures."
     exit 1
@@ -763,16 +763,24 @@ function _check_compiler_features {
 
   echo "# checking compiler features"
   local cflags=($("$root/bin/cflags.sh"))
+  local ldflags=($("$root/bin/ldflags.sh"))
+
   if [[ -z "$DEBUG" ]]; then
     cflags+=(-o /dev/null)
   fi
 
-  $CXX -x c++ "${cflags[@]}" - -o /dev/null >/dev/null << EOF_CC
+  if [[ "$host" == "Darwin" ]]; then
+    cflags+=(-x objective-c++)
+  else
+    cflags+=(-x c++)
+  fi
+
+  $CXX "${cflags[@]}" "${ldflags[@]}" - -o /dev/null >/dev/null << EOF_CC
     #include "src/common.hh"
     int main () { return 0; }
 EOF_CC
 
-  die $? "not ok - $CXX ($(\"$CXX\" -dumpversion)) failed in feature check required for building Socket Rutime"
+  die $? "not ok - $CXX ($("$CXX" -dumpversion)) failed in feature check required for building Socket Runtime"
 }
 
 function onsignal () {
