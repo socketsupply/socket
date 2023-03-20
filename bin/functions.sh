@@ -139,7 +139,8 @@ function prompt() {
 function prompt_yn() {
   prompt "$1 [y/N]" r
   local return=$2
-  if [[ "${r,,}" == "y" ]]; then
+
+  if [[ "$(lower "$r")" == "y" ]]; then
     return 0
   fi
   return 1
@@ -230,4 +231,9 @@ function unpack() {
   fi
 
   $command "$archive"
+}
+
+function lower()
+{
+  echo $1|tr '[:upper:]' '[:lower:]'
 }
