@@ -322,10 +322,9 @@ export const debug = !!globalThis.__args?.debug
 export const config = globalThis.__args?.config ?? {}
 
 /**
- * The application's backend.
- * @class Backend
+ * The application's backend instance.
  */
-class Backend {
+export const backend = {
   /**
    * @param {object} opts - an options object
    * @param {boolean} [opts.force = false] - whether to force the existing process to close
@@ -334,7 +333,7 @@ class Backend {
   async open (opts = {}) {
     opts.force ??= false
     return await ipc.send('process.open', opts)
-  }
+  },
 
   /**
    * @return {Promise<ipc.Result>}
@@ -343,11 +342,5 @@ class Backend {
     return await ipc.send('process.kill')
   }
 }
-
-/**
- * The application's backend instance.
- * @type {Backend}
- */
-export const backend = new Backend()
 
 export default exports

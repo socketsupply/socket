@@ -111,6 +111,20 @@ export function transform (filename) {
       }
     }
 
+    if (node.type === 'Property') {
+      item.name = node.key?.name
+      item.signature = []
+
+      if (node.value.type === 'FunctionExpression') {
+        item.generator = node.value.generator
+        item.static = node.static
+        item.async = node.value.async
+        item.signature = []
+        item.params = []
+        item.returns = []
+      }
+    }
+
     if (item.export && !item.header) {
       item.header = [
         `This is a \`${item.type}\` named \`${item.name}\` ` +

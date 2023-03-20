@@ -206,19 +206,19 @@ Set the enabled state of the system menu.
 
 Socket Runtime version.
 
-## [debug](https://github.com/socketsupply/socket/blob/master/api/application.js#L315)
+## [debug](https://github.com/socketsupply/socket/blob/master/api/application.js#L316)
 
 Runtime debug flag.
 
-## [config](https://github.com/socketsupply/socket/blob/master/api/application.js#L320)
+## [config](https://github.com/socketsupply/socket/blob/master/api/application.js#L322)
 
 Application configuration.
 
-### [undefined](https://github.com/socketsupply/socket/blob/master/api/application.js#L326)
+## [backend](https://github.com/socketsupply/socket/blob/master/api/application.js#L327)
 
-The application's backend.
+The application's backend instance.
 
-### [`open(opts)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L332)
+### [`open(opts)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L333)
 
 
 
@@ -233,7 +233,7 @@ The application's backend.
 | Not specified | Promise<ipc.Result> |  |
 
 
-### [`close()`](https://github.com/socketsupply/socket/blob/master/api/application.js#L340)
+### [`close()`](https://github.com/socketsupply/socket/blob/master/api/application.js#L341)
 
 
 
@@ -241,10 +241,6 @@ The application's backend.
 | :---         | :--- | :---        |
 | Not specified | Promise<ipc.Result> |  |
 
-
-## [backend](https://github.com/socketsupply/socket/blob/master/api/application.js#L349)
-
-The application's backend instance.
 
 # [Bluetooth](https://github.com/socketsupply/socket/blob/master/api/bluetooth.js#L7)
 
@@ -1270,6 +1266,14 @@ This is a `FunctionDeclaration` named `hrtime` in `api/os.js`, it's exported but
 This is a `FunctionDeclaration` named `availableMemory` in `api/os.js`, it's exported but undocumented.
 
 
+# [P2P](https://github.com/socketsupply/socket/blob/master/api/p2p.js#L9)
+
+External docs: https://github.com/socketsupply/stream-relay
+
+
+ A low-level network protocol for P2P.
+
+
 # [Path](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L4)
 
 
@@ -1749,7 +1753,7 @@ Sends an IPC message to the window or to qthe backend.
 | options.value | string \| object |  | true | the value to send |
 
 
-### [`openExternal(options)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L306)
+### [`openExternal(options)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L303)
 
 Opens an URL in the default browser.
 
@@ -1763,7 +1767,7 @@ Opens an URL in the default browser.
 | Not specified | Promise<ipc.Result> |  |
 
 
-### [`addListener(event, cb)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L317)
+### [`addListener(event, cb)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L314)
 
 Adds a listener to the window.
 
@@ -1773,7 +1777,7 @@ Adds a listener to the window.
 | cb | function(*): void |  | false | the callback to call |
 
 
-### [`on(event, cb)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L335)
+### [`on(event, cb)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L332)
 
 Adds a listener to the window. An alias for `addListener`.
 
@@ -1783,7 +1787,7 @@ Adds a listener to the window. An alias for `addListener`.
 | cb | function(*): void |  | false | the callback to call |
 
 
-### [`once(event, cb)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L352)
+### [`once(event, cb)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L349)
 
 Adds a listener to the window. The listener is removed after the first call.
 
@@ -1793,7 +1797,7 @@ Adds a listener to the window. The listener is removed after the first call.
 | cb | function(*): void |  | false | the callback to call |
 
 
-### [`removeListener(event, cb)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L368)
+### [`removeListener(event, cb)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L365)
 
 Removes a listener from the window.
 
@@ -1803,7 +1807,7 @@ Removes a listener from the window.
 | cb | function(*): void |  | false | the callback to remove |
 
 
-### [`removeAllListeners(event)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L381)
+### [`removeAllListeners(event)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L378)
 
 Removes all listeners from the window.
 
@@ -1812,7 +1816,7 @@ Removes all listeners from the window.
 | event | string |  | false | the event to remove the listeners from |
 
 
-### [`off(event, cb)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L397)
+### [`off(event, cb)`](https://github.com/socketsupply/socket/blob/master/api/window.js#L394)
 
 Removes a listener from the window. An alias for `removeListener`.
 
@@ -1822,7 +1826,7 @@ Removes a listener from the window. An alias for `removeListener`.
 | cb | function(*): void |  | false | the callback to remove |
 
 
-## [constants](https://github.com/socketsupply/socket/blob/master/api/window.js#L407)
+## [constants](https://github.com/socketsupply/socket/blob/master/api/window.js#L404)
 
 This is a `VariableDeclaration` named `constants` in `api/window.js`, it's exported but undocumented.
 
