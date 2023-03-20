@@ -32,22 +32,32 @@ function escape_path() {
   if [[ "$host" == "Win32" ]]; then
     r=${r//\\/\\\\}
   fi
-  r=${r//\ /\\ }
   echo "$r"
 }
 
 function unix_path() {
   p="$(escape_path "$1")"
   if [[ "$host" == "Win32" ]]; then
-    cygpath -u "$p"
+    p="$(cygpath -u "$p")"
+    # cygpath doesn't escape spaces
+    echo "${p//\ /\\ }"
     return
   fi
   echo "$p"
 }
 
 function native_path() {
+  echo >&2 "native_path input: $1"
   if [[ "$host" == "Win32" ]]; then
-    escape_path "$(cygpath -w "$1")"
+    p="$(cygpath -w "$1")"
+    if [[ "$p" == *"\\ "* ]]; then
+      # string contains escaped space, quote it and de-escape
+      echo >&2 "native_path quoting"
+      p="\"${p//\\ /\ }\""
+    else
+      echo >&2 "native_path not quoting $p"
+    fi
+    echo "$p"
     return
   fi
   echo "$1"
@@ -146,6 +156,7 @@ function prompt_new_path() {
   text="$1"
   default="$2"
   local return=$3
+  local exists_message=$4
   input=""
   lf=$'\n'
 
@@ -164,21 +175,30 @@ function prompt_new_path() {
     input=${input//\"/}
     unix_input="$(unix_path "$input")"
     if [ -e "$unix_input" ]; then
+      if [ "$exists_message" == "!CAN_EXIST!" ]; then
+        input="$(native_path "$(abs_path "$unix_input")")"
+        eval "$return=$(escape_path "$input")"
+        return 0
+      fi
+
       unix_input="$(abs_path "$unix_input")"
       echo "\"$input\" already exists, please choose a new path."
-      echo "$unix_input"
+      if [ -n "$exists_message" ]; then
+        echo "$exists_message"
+      fi
       input=""
     elif [ -z "$input" ]; then
       if prompt_yn "Cancel entering new path?"; then
         return
       fi
     else
+      echo "Create: $unix_input"
       if ! mkdir -p "$unix_input"; then
         echo "Create $unix_input failed."
         input=""
       else
-        input="$(native_path $(abs_path "$unix_input"))"
-        eval "$return=""$input"""
+        input="$(native_path "$(abs_path "$unix_input")")"
+        eval "$return=$(escape_path "$input")"
         return 0
       fi
     fi
@@ -195,16 +215,22 @@ function abs_path() {
     return 1
   fi
 
-  echo "$(sh -c "cd '$test'; pwd")$basename"
+  p="$(sh -c "cd '$test'; pwd")$basename"
+  # mingw sh returns incorrect escape slash if path contains spaces, swap / for \
+  p="${p///\ /\\ }"
+  echo "$p"
 }
 
 download_to_tmp() {
   uri=$1
   tmp="$(mktemp -d)"
   output=$tmp/"$(basename "$uri")"
-  if  curl -L "$uri" --output "$output"; then
-    echo "$output"
+  if  [ "$http_code" != "200" ] ; then
+    echo "$http_code"
+    rm -rf "$tmp"
+    return 1
   fi
+  echo "$output"
 }
 
 function unpack() {
@@ -227,9 +253,32 @@ function unpack() {
   fi
 
   $command "$archive"
+  return 0
+}
+
+function get_top_level_archive_dir() {
+  archive=$1
+  command=""
+
+  if [[ "$archive" == *".tar.gz" ]] || [[ "$archive" == *".tgz" ]]; then
+    head=$(tar -tf "$archive" | head -n1)
+    while [[ "$head" == *"/"* ]]; do
+      head=$(dirname "$head")
+    done
+    echo "$head"
+  elif [[ "$archive" == *".gz" ]] || [[ "$archive" == *".bz2" ]]; then
+    "$(basename "${archive%.*}")"
+  elif [[ "$archive" == *".bz2" ]]; then
+    "$(basename "${archive%.*}")"
+  elif [[ "$archive" == *".zip" ]]; then
+    head=$(unzip -Z1 "$archive" | head -n1)
+    echo "${head//\//}" # remove trailing slash
+  fi
+
+  return $?
 }
 
 function lower()
 {
-  echo $1|tr '[:upper:]' '[:lower:]'
+  echo "$1"|tr '[:upper:]' '[:lower:]'
 }

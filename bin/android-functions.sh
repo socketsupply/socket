@@ -21,7 +21,8 @@ declare ANDROID_PLATFORM_TOOLS_URI_TEMPLATE="https://dl.google.com/android/repos
 declare ANDROID_PLATFORM_TOOLS_PAGE_URI="https://developer.android.com/studio/releases/platform-tools"
 declare ANDROID_COMMAND_LINE_TOOLS_URI_TEMPLATE="https://dl.google.com/android/repository/commandlinetools-{os}-9477386_latest.zip"
 declare ANDROID_STUDIO_PAGE_URI="https://developer.android.com/studio"
-declare JDK_URI_TEMPLATE="https://download.java.net/java/GA/jdk19.0.2/fdb695a9d9064ad6b064dc6df578380c/7/GPL/openjdk-19.0.2_{os}-{arch}_bin.{format}"
+declare JDK_VERSION="19.0.2"
+declare JDK_URI_TEMPLATE="https://download.java.net/java/GA/jdk$JDK_VERSION/fdb695a9d9064ad6b064dc6df578380c/7/GPL/openjdk-$JDK_VERSION""_""{os}-{arch}_bin.{format}"
 declare GRADLE_URI_TEMPLATE="https://services.gradle.org/distributions/gradle-8.0.2-bin.zip"
 
 # TODO(mribbons): ubuntu / apt libs: apt-get install libc6:i386 libncurses5:i386 libstdc++6:i386 lib32z1 libbz2-1.0:i386
@@ -54,16 +55,19 @@ function get_android_default_search_paths() {
   if [ -z "$ANDROID_HOME" ]; then
     # Only attempt default homes if $ANDROID_HOME not defined
     if [[ "$host" = "Darwin"  ]]; then
-      JAVA_HOME_SEARCH_PATHS+=("$HOME/homebrew")
-      JAVA_HOME_SEARCH_PATHS+=("$HOME/.vscode")
+      JAVA_HOME_SEARCH_PATHS+=("$HOME/.local/bin")
       JAVA_HOME_SEARCH_PATHS+=("$HOME/Applications")
+      JAVA_HOME_SEARCH_PATHS+=("$HOME/homebrew")
+      JAVA_HOME_SEARCH_PATHS+=("/Applications")
     elif [[ "$host" = "Linux"  ]]; then
       ANDROID_HOME_SEARCH_PATHS+=("$HOME")
+      JAVA_HOME_SEARCH_PATHS+=("$HOME/.local/bin")
       # Java should be unpacked alongside Android Studio
       JAVA_HOME_SEARCH_PATHS+=("$HOME")
       JAVA_HOME_SEARCH_PATHS+=("/opt")
     elif [[ "$host" = "Win32"  ]]; then
-      JAVA_HOME_SEARCH_PATHS+=("$PROGRAMFILES/")
+      JAVA_HOME_SEARCH_PATHS+=("$LOCALAPPDATA\Programs")
+      JAVA_HOME_SEARCH_PATHS+=("$PROGRAMFILES")
     fi
   fi
 
@@ -71,7 +75,6 @@ function get_android_default_search_paths() {
   export JAVA_HOME_SEARCH_PATHS
   export GRADLE_SEARCH_PATHS
 }
-
 
 function get_android_paths() {
   get_android_default_search_paths
@@ -399,10 +402,6 @@ export DEPS_ERROR
 if [[ -z "$ANDROID_HOME" ]]; then
   echo "Android dependencies: ANDROID_HOME not set."
   DEPS_ERROR=1
-else
-  if [[ "$host" == "Win32" ]]; then
-    ANDROID_HOME=$(cygpath -u "$ANDROID_HOME")
-  fi
 fi
 
 declare cmd=""
@@ -444,7 +443,7 @@ function android_install_sdk_manager() {
     return 0
   fi
     
-  if ! prompt_yn "The Android SDK manager is required for building Android apps. Install it now?"; then
+  if ! prompt_yn "The Android SDK Manager is required for building Android apps. Install it now?"; then
     return 1
   fi
 
@@ -456,14 +455,20 @@ function android_install_sdk_manager() {
   fi
 
   local _ah=""
-  prompt_new_path "Enter location for ANDROID_HOME" "${ANDROID_HOME_SEARCH_PATHS[0]}" _ah
-  
-  if [ -d "$_ah" ]; then
-    echo "Created $_ah"
+  if [ -n "$ANDROID_HOME" ] && [ -d "$ANDROID_HOME" ]; then
+    echo "Using existing ANDROID_HOME: $ANDROID_HOME folder"
+    _ah="$ANDROID_HOME"
   else
-    return 1
+    prompt_new_path "Enter location for ANDROID_HOME" "${ANDROID_HOME_SEARCH_PATHS[0]}" _ah \
+      "If you want to use an existing path as ANDROID_HOME, set it in an environment variable before running this script."
+    
+    if [ -d "$_ah" ]; then
+      echo "Created $_ah"
+    else
+      echo "Failed to create $_ah"
+      return 1
+    fi
   fi
-
 
   echo "Downloading $uri..."
   uri="$(build_android_platform_tools_uri)"
@@ -474,7 +479,10 @@ function android_install_sdk_manager() {
   fi
 
   echo "Extracting $archive to $_ah"
-  unpack "$archive" "$_ah"
+  if ! unpack "$archive" "$_ah"; then
+    echo "Failed to unpack $archive"
+    return 1
+  fi
   rm "$archive"
 
   if ! prompt_yn "Android Command line tools is required for building Android apps. Install it now?"; then
@@ -498,11 +506,58 @@ function android_install_sdk_manager() {
   fi
 
   echo "Extracting $archive to $_ah"
-  unpack "$archive" "$_ah"
+  if ! unpack "$archive" "$_ah"; then
+    echo "Failed to unpack $archive"
+    return 1
+  fi
   rm "$archive"
 
   ANDROID_HOME="$_ah"
-  # ANDROID_SDK_MANAGER=
+  export ANDROID_HOME
+  ANDROID_SDK_MANAGER="${ANDROID_SDK_MANAGER_SEARCH_PATHS[0]}"
+  export ANDROID_SDK_MANAGER
+  return 0
+}
+
+function android_install_jdk() {
+  echo "JAVA_HOME: $JAVA_HOME"
+  if [[ -n "$JAVA_HOME" ]]; then
+      return 0
+  fi
+
+  if ! prompt_yn "The Java Developement Kit is required for building Android apps. Install OpenJDK $JDK_VERSION now?"; then
+    return 1
+  fi
+
+  prompt_new_path "Enter parent location for JAVA_HOME (The JDK will be extracted within this folder)" "${JAVA_HOME_SEARCH_PATHS[0]}" _jh \
+    "!CAN_EXIST!"
+  
+  if [ ! -d "$(unix_path "$_jh")" ]; then
+    echo "JAVA_HOME parent path doesn't exist $_jh"
+    return 1
+  fi
+
+  echo "_jh: "$_jh""
+
+  uri="$(build_jdk_uri)"
+  archive=""
+  echo "Downloading $uri..."
+  archive="$(download_to_tmp "$uri")"
+  if [ "$?" != "0" ]; then
+    echo "Failed to download $uri: $archive"
+    return 1
+  fi
+
+  # Determine internal folder name so we can add it to JAVA_HOME
+  archive_dir="$(get_top_level_archive_dir "$archive")"
+  echo "Extracting $archive to $_jh"
+  if ! unpack "$archive" "$_jh"; then
+    echo "Failed to unpack $archive"
+    return 1
+  fi
+  rm "$archive"
+  JAVA_HOME="$(native_path "$(escape_path "$_jh")/$archive_dir")"
+  export JAVA_HOME
   return 0
 }
 
@@ -510,4 +565,6 @@ function android_first_time_experience_setup() {
   # populates global search path list
   get_android_default_search_paths
   android_install_sdk_manager
+  android_install_jdk
+  echo "$JAVA_HOME"
 }
