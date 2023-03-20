@@ -8,7 +8,7 @@ namespace SSC {
 
   const Map getUserConfig () {
     #include "user-config-bytes.hh" // NOLINT
-    return parseConfig(std::string(
+    return parseINI(std::string(
       (const char*) __ssc_config_bytes,
       sizeof(__ssc_config_bytes)
     ));

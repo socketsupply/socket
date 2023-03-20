@@ -982,7 +982,7 @@ int main (const int argc, const char* argv[]) {
           "constexpr unsigned char __ssc_config_bytes["+ std::to_string(size) +"] = {\n" + bytes.str() + "\n};"
         );
 
-        settings = parseConfig(ini);
+        settings = parseINI(ini);
 
         settings["ini_code"] = code;
 
@@ -2324,7 +2324,7 @@ int main (const int argc, const char* argv[]) {
       if (!fs::exists(fs::status(copyMapFile))) {
         log("warning: file specified in [build] copy_map does not exist");
       } else {
-        auto copyMap = parseConfig(tmpl(trim(readFile(copyMapFile)), settings));
+        auto copyMap = parseINI(tmpl(trim(readFile(copyMapFile)), settings));
         auto copyMapFileDirectory = fs::absolute(copyMapFile.parent_path());
 
         if (copyMap.size() > 0) {

@@ -183,7 +183,7 @@ static dispatch_queue_t queue = dispatch_queue_create(
   viewController.view.frame = appFrame;
   self.window.rootViewController = viewController;
 
-  auto appData = parseConfig(decodeURIComponent(_settings));
+  auto appData = parseINI(decodeURIComponent(_settings));
 
   StringStream env;
 
