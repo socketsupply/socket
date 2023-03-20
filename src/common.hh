@@ -628,10 +628,10 @@ namespace SSC {
     }
   #endif
 
-  inline Map parseConfig (String source) {
-    auto entries = split(source, '\n');
-    Map settings;
-    std::string prefix = "";
+  inline Map parseINI (String source) {
+    Vector<String> entries = split(source, '\n');
+    String prefix = "";
+    Map settings = {};
 
     for (auto entry : entries) {
       entry = trim(entry);
