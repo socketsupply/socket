@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 declare root="$(cd "$(dirname "$(dirname "${BASH_SOURCE[0]}")")" && pwd)"
+source "$root/bin/android-functions.sh"
 declare archs=($(uname -m))
 declare platform="$(uname -s | tr '[[:upper:]]' '[[:lower:]]')"
 
@@ -8,8 +9,18 @@ declare args=()
 declare dry_run=0
 declare only_platforms=0
 declare only_top_level=0
+declare no_rebuild=0
 declare remove_socket_home=1
 declare do_global_link=0
+
+function _publish () {
+  if (( !dry_run && !do_global_link )); then
+    npm publish "${args[@]}" || exit $?
+  elif (( !do_global_link )); then
+    # echo "# npm publish ${args[@]}"
+    npm pack "${args[@]}" || exit $?
+  fi
+}
 
 if [[ "$platform" = "linux" ]]; then
   if [ -n "$WSL_DISTRO_NAME" ] || uname -r | grep 'Microsoft'; then
@@ -46,6 +57,11 @@ while (( $# > 0 )); do
     continue
   fi
 
+  if [[ "$arg" = "--no-rebuild" ]]; then
+    no_rebuild=1
+    continue
+  fi
+
   if [[ "$arg" = "--link" ]]; then
     do_global_link=1
     continue
@@ -63,13 +79,41 @@ mkdir -p "$SOCKET_HOME"
 export SOCKET_HOME
 export PREFIX
 
-if (( do_global_link && !dry_run )); then
-  echo >&2 "warning: '--link' implies '--dry-run' too"
-  dry_run=1
+if (( !only_top_level ))  && (( !no_rebuild )) ; then
+  "$root/bin/install.sh" || exit $?
 fi
 
-if (( !only_top_level )); then
-  "$root/bin/install.sh" || exit $?
+declare ABORT_ERRORS=0
+
+
+# Confirm that build SSC matches current commit
+if command -v ssc >/dev/null 2>&1; then
+  REPO_VERSION="$(cat "$root/VERSION.txt") ($(git rev-parse --short=8 HEAD))"
+  BUILD_VERSION=$("$SOCKET_HOME"/bin/ssc --version)
+
+  if [[ "$REPO_VERSION" != "$BUILD_VERSION" ]]; then
+    echo "Repo $REPO_VERSION and $SOCKET_HOME/bin/ssc $BUILD_VERSION don't match."
+    ABORT_ERRORS=1
+  fi
+fi
+
+for abi in $(android_supported_abis); do
+  lib_path="$SOCKET_HOME/lib/$abi-android"
+  if [[ ! -f "$lib_path/libuv.a" ]]; then
+    ABORT_ERRORS=1
+    echo >&2 "not ok - $lib_path/libuv.a missing - check build process."
+  fi
+  
+  if [[ ! -f "$lib_path/libsocket-runtime.a" ]]; then
+    ABORT_ERRORS=1
+    echo >&2 "not ok - $lib_path/libsocket-runtime.a missing - check build process."
+  fi
+  export ABORT_ERRORS
+done
+
+if (( ABORT_ERRORS )); then
+  echo >&2 "not ok - Refusing to publish due to errors."
+  exit 1
 fi
 
 mkdir -p "$SOCKET_HOME/packages/@socketsupply"
@@ -106,6 +150,10 @@ if (( !only_top_level )); then
     cp -rf "$SOCKET_HOME/src"/* "$SOCKET_HOME/packages/$package/src"
     cp -rf "$SOCKET_HOME/include"/* "$SOCKET_HOME/packages/$package/include"
 
+    # don't copy debug files, too large
+    rm -rf $SOCKET_HOME/lib/*-android/objs-debug 
+    cp -rf $SOCKET_HOME/lib/*-android "$SOCKET_HOME/packages/$package/lib"
+
     cp -rf "$SOCKET_HOME/lib/"$arch-* "$SOCKET_HOME/packages/$package/lib"
     cp -rf "$SOCKET_HOME/objects/"$arch-* "$SOCKET_HOME/packages/$package/objects"
 
@@ -124,12 +172,7 @@ if (( !only_top_level )); then
     cd "$SOCKET_HOME/packages/$package" || exit $?
     echo "# in directory: '$SOCKET_HOME/packages/$package'"
 
-    if (( !dry_run )) ; then
-      npm publish "${args[@]}" || exit $?
-    elif (( !do_global_link )); then
-      # echo "# npm publish ${args[@]}"
-      npm pack "${args[@]}" || exit $?
-    fi
+    _publish
 
     if (( do_global_link )); then
       npm link
@@ -141,12 +184,7 @@ if (( !only_platforms || only_top_level )); then
   cd "$SOCKET_HOME/packages/@socketsupply/socket" || exit $?
   echo "# in directory: '$SOCKET_HOME/packages/@socketsupply/socket'"
 
-  if (( !dry_run )); then
-    npm publish "${args[@]}" || exit $?
-  elif (( !do_global_link )); then
-    # echo "# npm publish ${args[@]}"
-    npm pack "${args[@]}" || exit $?
-  fi
+  _publish
 
   if (( do_global_link )); then
     for arch in "${archs[@]}"; do

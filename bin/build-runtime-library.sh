@@ -4,29 +4,22 @@ declare root="$(cd "$(dirname "$(dirname "${BASH_SOURCE[0]}")")" && pwd)"
 declare clang="${CXX:-${CLANG:-"$(which clang++)"}}"
 declare cache_path="$root/build/cache"
 
+source "$root/bin/functions.sh"
+export CPU_CORES=$(set_cpu_cores)
+
 declare args=()
 declare pids=()
 declare force=0
 
 declare arch="$(uname -m)"
-declare host="$(uname -s)"
+declare host_arch=$arch
+declare host=$(host_os)
 declare platform="desktop"
-
-if [[ "$host" = "Linux" ]]; then
-  if [ -n "$WSL_DISTRO_NAME" ] || uname -r | grep 'Microsoft'; then
-    host="Win32"
-  fi
-elif [[ "$host" == *"MINGW64_NT"* ]]; then
-  host="Win32"
-elif [[ "$host" == *"MSYS_NT"* ]]; then
-  # Have not confirmed this works as a build host, no gnu find in author's dev
-  host="Win32"
-fi
 
 declare d=""
 if [[ "$host" == "Win32" ]]; then
   # We have to differentiate release and debug for Win32
-  if [[ ! -z "$DEBUG" ]]; then
+  if [[ -n "$DEBUG" ]]; then
     d="d"
   fi
 
@@ -44,8 +37,6 @@ if [[ "$host" == "Win32" ]]; then
     clang=$(echo $clang|sed 's/tmp\./clang++\./')
     mv $clang_tmp $clang
   fi
-
-  echo Using $clang as clang
 
   declare find_test="$(sh -c 'find --version')"
   if [[ $find_test != *"GNU findutils"* ]]; then
@@ -78,7 +69,8 @@ while (( $# > 0 )); do
   fi
 
   if [[ "$arg" = "--force" ]] || [[ "$arg" = "-f" ]]; then
-   force=1; continue
+    pass_force="$arg"
+    force=1; continue
   fi
 
   if [[ "$arg" = "--platform" ]]; then
@@ -90,6 +82,9 @@ while (( $# > 0 )); do
       arch="x86_64"
       platform="iPhoneSimulator";
       export TARGET_IPHONE_SIMULATOR=1
+    elif [[ "$1" = "android" ]]; then
+      platform="$1";
+      export TARGET_OS_ANDROID=1      
     else
       platform="$1";
     fi
@@ -100,7 +95,16 @@ while (( $# > 0 )); do
   args+=("$arg")
 done
 
-if [[ "$host" = "Darwin" ]]; then
+if [[ "$platform" = "android" ]]; then
+  source "$root/bin/android-functions.sh"
+
+  if [[ -n $DEPS_ERROR ]]; then
+    echo >&2 "not ok - Android dependencies not satisfied."
+    exit 1
+  fi
+
+  clang="$(android_clang "$ANDROID_HOME" "$NDK_VERSION" "$host" "$host_arch" "$arch" "++")"
+elif [[ "$host" = "Darwin" ]]; then
   cflags+=("-ObjC++")
   sources+=("$root/src/window/apple.mm")
   if (( TARGET_OS_IPHONE)); then
@@ -121,6 +125,10 @@ fi
 declare cflags=($("$root/bin/cflags.sh"))
 declare ldflags=($("$root/bin/ldflags.sh"))
 
+if [[ "$platform" = "android" ]]; then
+  cflags+=("${android_includes[*]}")
+fi
+
 declare output_directory="$root/build/$arch-$platform"
 mkdir -p "$output_directory"
 
@@ -134,42 +142,10 @@ for source in "${sources[@]}"; do
   objects+=("$object")
 done
 
-function quiet () {
-  if [ -n "$VERBOSE" ]; then
-    echo "$@"
-    "$@"
-  else
-    "$@" > /dev/null 2>&1
-  fi
-
-  return $?
-}
-
-function onsignal () {
-  local status=${1:-$?}
-  for pid in "${pids[@]}"; do
-    kill TERM $pid >/dev/null 2>&1
-    kill -9 $pid >/dev/null 2>&1
-  done
-  exit $status
-}
-
-function stat_mtime () {
-  if [[ "$(uname -s)" = "Darwin" ]]; then
-    if stat --help 2>/dev/null | grep GNU >/dev/null; then
-      stat -c %Y "$1" 2>/dev/null
-    else
-      stat -f %m "$1" 2>/dev/null
-    fi
-  else
-    stat -c %Y "$1" 2>/dev/null
-  fi
-}
-
 function main () {
   trap onsignal INT TERM
   local i=0
-  local max_concurrency=8
+  local max_concurrency=$CPU_CORES
 
   for source in "${sources[@]}"; do
     if (( i++ > max_concurrency )); then
@@ -196,41 +172,58 @@ function main () {
     wait "$pid" 2>/dev/null
   done
 
-  declare static_library="$root/build/$arch-$platform/lib$d/libsocket-runtime$d.a"
+  declare base_lib="libsocket-runtime";
+  declare static_library="$root/build/$arch-$platform/lib$d/$base_lib$d.a"
   mkdir -p "$(dirname "$static_library")"
   declare ar="ar"
 
-  if [[ "$host" = "Win32" ]]; then
+  if [[ "$platform" = "android" ]]; then
+    ar="$(android_ar "$ANDROID_HOME" "$NDK_VERSION" "$host" "$host_arch")"
+  elif [[ "$host" = "Win32" ]]; then
     ar="llvm-ar"
   fi
 
   local build_static=0
   local static_library_mtime=$(stat_mtime "$static_library")
   for source in "${objects[@]}"; do
-    if ! test -f $source; then
+    if ! test -f "$source"; then
       echo "$source not built.."
       exit 1
     fi
-    if (( force )) || ! test -f "$static_library" || (( $(stat_mtime "$source") > $static_library_mtime )); then
+    if (( force )) || ! test -f "$static_library" || (( $(stat_mtime "$source") > "$static_library_mtime" )); then
       build_static=1
       break
     fi
   done
 
-  # echo $ar crs "$static_library" "${objects[@]}"
   if (( build_static )); then
     $ar crs "$static_library" "${objects[@]}"
 
-    if [ -f $static_library ]; then
+    if [ -f "$static_library" ]; then
       echo "ok - built static library ($arch-$platform): $(basename "$static_library")"
     else
       echo "failed to build $static_library"
+      exit 1
     fi
   else
-    if [ -f $static_library ]; then
+    if [ -f "$static_library" ]; then
       echo "ok - using cached static library ($arch-$platform): $(basename "$static_library")"
     else
       echo "static library doesn't exist after cache check passed: ($arch-$platform): $(basename "$static_library")"
+      exit 1
+    fi
+  fi
+
+  if [[ "$platform" == "android" ]]; then
+    # This is a sanity check to confirm that the static_library is > 8 bytes
+    # If an empty ${objects[@]} is provided to ar, it will still spit out a header without an error code.
+    # therefore check the output size
+    # This error condition should only occur after a code change
+    lib_size=$(stat_size "$static_library")
+    if (( lib_size < $(android_min_expected_static_lib_size "$base_lib") )); then
+      echo >&2 "not ok -  $static_library size looks wrong: $lib_size, renaming as .bad"
+      mv "$static_library" "$static_library.bad"
+      exit 1
     fi
   fi
 }

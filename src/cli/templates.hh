@@ -245,6 +245,11 @@ constexpr auto gAndroidManifest = R"XML(
 <manifest
   xmlns:android="http://schemas.android.com/apk/res/android"
 >
+  <uses-sdk
+    android:minSdkVersion="26"
+    android:targetSdkVersion="33"
+  />
+
   <uses-permission android:name="android.permission.INTERNET" />
   <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
   <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
@@ -1011,11 +1016,7 @@ android {
       abiFilters {{android_ndk_abi_filters}}
     }
 
-    externalNativeBuild {
-      ndkBuild {
-        arguments "NDK_APPLICATION_MK:=src/main/jni/Application.mk"
-      }
-    }
+{{android_default_config_external_native_build}}
   }
 
   aaptOptions {
@@ -1023,11 +1024,7 @@ android {
     noCompress {{android_aapt_no_compress}}
   }
 
-  externalNativeBuild {
-    ndkBuild {
-      path "src/main/jni/Android.mk"
-    }
-  }
+{{android_external_native_build}}
 
   productFlavors {
     dev {
@@ -1072,6 +1069,7 @@ constexpr auto gGradleSettings = R"GROOVY(
 rootProject.name = "{{build_name}}"
 startParameter.offline = false
 include ':app'
+startParameter.offline=false
 )GROOVY";
 
 //
@@ -1087,6 +1085,7 @@ android.suppressUnsupportedCompileSdk=33
 android.experimental.legacyTransform.forceNonIncremental=true
 
 kotlin.code.style=official
+android.experimental.legacyTransform.forceNonIncremental=true
 )GRADLE";
 
 //
@@ -1097,56 +1096,17 @@ LOCAL_PATH := $(call my-dir)
 
 ## libuv.a
 include $(CLEAR_VARS)
-LOCAL_MODULE := uv
+LOCAL_MODULE := libuv
 
-UV_UNIX_SOURCE +=       \
-  async.c               \
-  core.c                \
-  dl.c                  \
-  fs.c                  \
-  getaddrinfo.c         \
-  getnameinfo.c         \
-  linux.c               \
-  loop.c                \
-  loop-watcher.c        \
-  pipe.c                \
-  poll.c                \
-  process.c             \
-  proctitle.c           \
-  random-devurandom.c   \
-  random-getentropy.c   \
-  random-getrandom.c    \
-  random-sysctl-linux.c \
-  signal.c              \
-  stream.c              \
-  tcp.c                 \
-  thread.c              \
-  tty.c                 \
-  udp.c
+LOCAL_SRC_FILES = ../libs/$(TARGET_ARCH_ABI)/libuv.a
+include $(PREBUILT_STATIC_LIBRARY)
 
-LOCAL_CFLAGS :=              \
-  -std=gnu89                 \
-  -g                         \
-  -pedantic                  \
-  -I$(LOCAL_PATH)/include    \
-  -I$(LOCAL_PATH)/uv/src     \
-  -D_FILE_OFFSET_BITS=64     \
-  -D_GNU_SOURCE              \
-  -D_LARGEFILE_SOURCE        \
-  -landroid                  \
-  -Wall                      \
-  -Wextra                    \
-  -Wno-pedantic              \
-  -Wno-sign-compare          \
-  -Wno-unused-parameter      \
-  -Wno-implicit-function-declaration
+## libsocket-runtime.a
+include $(CLEAR_VARS)
+LOCAL_MODULE := libsocket-runtime-static
 
-LOCAL_SRC_FILES +=                     \
-  $(wildcard $(LOCAL_PATH)/uv/src/*.c) \
-  $(foreach file, $(UV_UNIX_SOURCE), $(LOCAL_PATH)/uv/src/unix/$(file))
-
-LOCAL_EXPORT_C_INCLUDES := $(LOCAL_PATH)/include
-include $(BUILD_STATIC_LIBRARY)
+LOCAL_SRC_FILES = ../libs/$(TARGET_ARCH_ABI)/libsocket-runtime.a
+include $(PREBUILT_STATIC_LIBRARY)
 
 ## libsocket-runtime.so
 include $(CLEAR_VARS)
@@ -1172,20 +1132,14 @@ LOCAL_SRC_FILES =         \
   android/runtime.cc      \
   android/string_wrap.cc  \
   android/window.cc       \
-  core/bluetooth.cc       \
-  core/core.cc            \
-  core/fs.cc              \
-  core/javascript.cc      \
-  core/json.cc            \
-  core/peer.cc            \
-  core/udp.cc             \
-  ipc/bridge.cc           \
-  ipc/ipc.cc              \
   init.cc
 
 LOCAL_SRC_FILES += $(wildcard $(LOCAL_PATH)/src/*.cc)
 
-LOCAL_STATIC_LIBRARIES := uv
+LOCAL_STATIC_LIBRARIES := \
+  libuv                   \
+  libsocket-runtime-static
+
 include $(BUILD_SHARED_LIBRARY)
 
 ## Custom userspace Android NDK
@@ -1430,7 +1384,6 @@ version = 1.0.0
 
 
 [android]
-
 ; TODO description needed
 main_activity = ""
 

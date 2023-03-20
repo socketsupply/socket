@@ -30,11 +30,19 @@ if [ -z "$ANDROID_HOME" ]; then
   fi
 fi
 
-if [[ "$(basename "$CXX")" =~ clang ]]; then
-  if [[ "$host" = "Linux" ]] || [[ "$host" = "Win32" ]]; then
-    cflags+=("-Wno-unused-command-line-argument")
-    cflags+=("-stdlib=libstdc++")
+if (( !TARGET_OS_ANDROID && !TARGET_ANDROID_EMULATOR )); then
+  if [[ "$(basename "$CXX")" =~ clang ]]; then
+    if [[ "$host" = "Linux" ]] || [[ "$host" = "Win32" ]]; then
+      cflags+=("-Wno-unused-command-line-argument")
+      cflags+=("-stdlib=libstdc++")
+    fi
   fi
+else
+  source "$root/bin/android-functions.sh"
+  cflags+=("-stdlib=libstdc++")
+  cflags+=("-DANDROID -pthreads -fexceptions -fPIC -frtti -fsigned-char -D_FILE_OFFSET_BITS=64 -Wno-invalid-command-line-argument -Wno-unused-command-line-argument")
+  cflags+=("-I$(dirname $NDK_BUILD)/sources/cxx-stl/llvm-libc++/include")
+  cflags+=("-I$(dirname $NDK_BUILD)/sources/cxx-stl/llvm-libc++abi/include")
 fi
 
 cflags+=(
@@ -66,18 +74,6 @@ if (( TARGET_OS_IPHONE )) || (( TARGET_IPHONE_SIMULATOR )); then
   cflags+=("-isysroot $ios_sdk_path/")
   cflags+=("-F $ios_sdk_path/System/Library/Frameworks/")
   cflags+=("-fembed-bitcode")
-elif (( TARGET_OS_ANDROID )) || (( TARGET_ANDROID_EMULATOR )); then
-  if (( TARGET_OS_ANDROID )); then
-    cflags+=("-target aarch64-linux-android")
-  elif (( TARGET_ANDROID_EMULATOR )); then
-    cflags+=("-target x86_64-linux-android")
-  fi
-
-  if [[ "$host" = "Darwin" ]]; then
-    cflags+=("--sysroot=$ANDROID_HOME/ndk-bundle/toolchains/llvm/prebuilt/darwin-x86_64/sysroot")
-  elif [[ "$host" = "Linux" ]]; then
-    cflags+=("--sysroot=$ANDROID_HOME/ndk-bundle/toolchains/llvm/prebuilt/linux-x86_64/sysroot")
-  fi
 fi
 
 if (( !TARGET_OS_ANDROID && !TARGET_ANDROID_EMULATOR )); then
@@ -96,7 +92,7 @@ if (( !TARGET_OS_ANDROID && !TARGET_ANDROID_EMULATOR )); then
       -Xlinker /NODEFAULTLIB:libcmt
       -Wno-nonportable-include-path
     )
-    if [[ ! -z "$DEBUG" ]]; then
+    if [[ -n "$DEBUG" ]]; then
       cflags+=("-D_DEBUG")
     fi
   fi
@@ -107,7 +103,7 @@ while (( $# > 0 )); do
   shift
 done
 
-if [[ ! -z "$DEBUG" ]]; then
+if [[ -n "$DEBUG" ]]; then
   cflags+=("-g")
   cflags+=("-O0")
 else

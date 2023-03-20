@@ -2,10 +2,22 @@
 
 declare root="$(cd "$(dirname "$(dirname "${BASH_SOURCE[0]}")")" && pwd)"
 
+source "$root/bin/functions.sh"
+source "$root/bin/android-functions.sh"
+
+if [[ -z "$CPU_CORES" ]]; then
+  export CPU_CORES=$(set_cpu_cores)
+fi
+
+if [[ -n $VERBOSE ]]; then
+  echo "# using cores: $CPU_CORES"
+fi
+
 declare args=()
 declare pids=()
 declare force=0
 declare pass_force=""
+declare host="$(host_os)"
 
 LIPO=""
 declare CWD=$(pwd)
@@ -33,18 +45,6 @@ else
 fi
 
 echo "SOCKET_HOME: $SOCKET_HOME"
-declare host="$(uname -s)"
-
-if [[ "$host" = "Linux" ]]; then
-  if [ -n "$WSL_DISTRO_NAME" ] || uname -r | grep 'Microsoft'; then
-  echo "WSL is not supported."
-  exit 1
-  fi
-elif [[ "$host" == *"MINGW64_NT"* ]]; then
-  host="Win32"
-elif [[ "$host" == *"MSYS_NT"* ]]; then
-  host="Win32"
-fi
 
 if [ -z "$SOCKET_HOME" ]; then
   if [ -n "$LOCALAPPDATA" ]; then
@@ -78,7 +78,7 @@ if [[ "$host" == "Win32" ]]; then
   # libsocket-runtime.a is now named libsocket-runtime$d.a
   # ssc build --prod defines whether or not the app is being built for debug
   # and therefore links to the app being built to the correct libsocket-runtime$d.a
-  if [[ ! -z "$DEBUG" ]]; then
+  if [[ -n "$DEBUG" ]]; then
     d="d"
   fi
 fi
@@ -118,48 +118,14 @@ fi
 
 export CXX
 
-function stat_mtime () {
-  if [[ "$(uname -s)" = "Darwin" ]]; then
-    if stat --help 2>/dev/null | grep GNU >/dev/null; then
-      stat -c %Y "$1" 2>/dev/null
-    else
-      stat -f %m "$1" 2>/dev/null
-    fi
-  else
-    stat -c %Y "$1" 2>/dev/null
+if [[ "$host" != "Win32" ]]; then
+  if ! quiet command -v sudo; then
+    sudo () {
+      $@
+      return $?
+    }
   fi
-}
-
-function quiet () {
-  if [ -n "$VERBOSE" ]; then
-    echo "$@"
-    "$@"
-  else
-    "$@" > /dev/null 2>&1
-  fi
-
-  return $?
-}
-
-if ! quiet command -v sudo; then
-  sudo () {
-    $@
-    return $?
-  }
 fi
-
-function die {
-  local status=$1
-  if (( status != 0 && status != 127 )); then
-    for pid in "${pids[@]}"; do
-      kill TERM $pid >/dev/null 2>&1
-      kill -9 $pid >/dev/null 2>&1
-      wait "$pid" 2>/dev/null
-    done
-    echo "$2 - please report (https://discord.gg/YPV32gKCsH)"
-    exit 1
-  fi
-}
 
 function advice {
   if [[ "$(uname -s)" == "Darwin" ]]; then
@@ -168,8 +134,6 @@ function advice {
     echo "sudo pacman -S $1"
   elif [[ "$(uname -s)" == *"Linux"* ]]; then
     echo "apt-get install $1"
-  elif [[ "$(uname -s)" == *"_NT"* ]]; then
-    echo "choco install $1 ?"
   fi
 }
 
@@ -194,6 +158,19 @@ if [ "$host" == "Linux" ]; then
   die $? "not ok - missing pkg-config tool, \"$(advice 'pkg-config')\""
 fi
 
+if [[ -n "$BUILD_ANDROID" ]]; then
+  abis=($(android_supported_abis))
+  platform="android"
+  arch="${abis[0]}"
+  host_arch="$(uname -m)"
+  clang="$(android_clang "$ANDROID_HOME" "$NDK_VERSION" "$host" "$host_arch" "$arch")"
+
+  if ! quiet $clang -v; then
+    echo "Android clang call failed. This could indicate an issue with ANDROID_HOME, missing ndk tools, or incorrectly determined host or target architectures."
+    exit 1
+  fi
+fi
+
 function _build_cli {
   echo "# building cli for desktop ($(uname -m))..."
   local arch="$(uname -m)"
@@ -212,11 +189,11 @@ function _build_cli {
     libs=($("echo" -l{uv,socket-runtime}))
   fi
 
-  if [[ ! -z "$VERBOSE" ]]; then
+  if [[ -n "$VERBOSE" ]]; then
     echo "cli libs: $libs, $(uname -s)"
   fi
 
-  local ldflags=($("$root/bin/ldflags.sh" --arch "$arch" --platform "$platform" ${libs[@]}))
+  local ldflags=($("$root/bin/ldflags.sh" --arch "$arch" --platform $platform ${libs[@]}))
   local cflags=(-DSSC_CLI $("$root/bin/cflags.sh"))
 
   local test_sources=($(find "$src"/cli/*.cc 2>/dev/null))
@@ -249,7 +226,7 @@ function _build_cli {
   local test_sources=($(find "$BUILD_DIR/$arch-$platform"/cli$d/*$d.o 2>/dev/null))
   if [[ "$(uname -s)" == *"_NT"* ]]; then
     declare d=""
-    if [[ ! -z "$DEBUG" ]]; then
+    if [[ -n "$DEBUG" ]]; then
       d="d"
     fi
     exe=".exe"
@@ -274,7 +251,7 @@ function _build_cli {
     quiet $CXX                                   \
       "$BUILD_DIR/$arch-$platform"/cli$d/*$d.o   \
       "${cflags[@]}" "${ldflags[@]}"             \
-      "$libsocket_win" "$libwebview_win"         \
+      "$libsocket_win"                           \
       -o "$ssc_output"
 
     die $? "not ok - unable to build. See trouble shooting guide in the README.md file:\n$CXX ${cflags[@]} \"${ldflags[@]}\" -o \"$BUILD_DIR/$arch-$platform/bin/ssc\""
@@ -284,11 +261,16 @@ function _build_cli {
 
 function _build_runtime_library {
   echo "# building runtime library"
-  echo "$root/bin/build-runtime-library.sh" --arch "$(uname -m)" --platform desktop $pass_force
-  "$root/bin/build-runtime-library.sh" --arch "$(uname -m)" --platform desktop $pass_force & pids+=($!)
+  "$root/bin/build-runtime-library.sh" --arch "$(uname -m)" --platform desktop "$pass_force" & pids+=($!)
   if [[ "$host" = "Darwin" ]]; then
-    "$root/bin/build-runtime-library.sh" --arch "$(uname -m)" --platform ios $pass_force & pids+=($!)
-    "$root/bin/build-runtime-library.sh" --arch x86_64 --platform ios-simulator $pass_force & pids+=($!)
+    "$root/bin/build-runtime-library.sh" --arch "$(uname -m)" --platform ios "$pass_force" & pids+=($!)
+    "$root/bin/build-runtime-library.sh" --arch x86_64 --platform ios-simulator "$pass_force" & pids+=($!)
+  fi
+
+  if [[ -n "$BUILD_ANDROID" ]]; then
+    for abi in $(android_supported_abis); do
+      "$root/bin/build-runtime-library.sh" --platform android --arch "$abi" "$pass_force" & pids+=($!)
+    done
   fi
 
   wait
@@ -312,9 +294,9 @@ function _get_web_view2() {
 
   echo "# Downloading Webview2"
 
-  curl -L https://www.nuget.org/api/v2/package/Microsoft.Web.WebView2/1.0.1619-prerelease --output $tmp/webview2.zip
-  cd $tmp
-  unzip -q $tmp/webview2.zip
+  curl -L https://www.nuget.org/api/v2/package/Microsoft.Web.WebView2/1.0.1619-prerelease --output "$tmp/webview2.zip"
+  cd "$tmp" || exit 1
+  unzip -q "$tmp/webview2.zip"
   mkdir -p "$BUILD_DIR/include"
   mkdir -p "$BUILD_DIR/$arch-$platform/lib$d"/
 
@@ -324,9 +306,9 @@ function _get_web_view2() {
   cp -pf build/native/include/WebView2ExperimentalEnvironmentOptions.h "$BUILD_DIR/include/WebView2ExperimentalEnvironmentOptions.h" 
   cp -pf build/native/x64/WebView2LoaderStatic.lib "$BUILD_DIR/$arch-$platform/lib$d/WebView2LoaderStatic.lib" 
 
-  cd $pwd
+  cd "$pwd"
 
-  rm -rf $tmp
+  rm -rf "$tmp"
 }
 
 function _prebuild_desktop_main () {
@@ -449,14 +431,20 @@ function _prepare {
     mkdir -p "$SOCKET_HOME"/{lib$d,objects}/{arm64-iPhoneOS,x86_64-iPhoneSimulator}
   fi
 
+  if [[ -n $BUILD_ANDROID ]]; then
+    for abi in $(android_supported_abis); do
+      mkdir -p "$SOCKET_HOME"/{lib$d,objects}/"$abi"
+    done
+  fi
+
   if [ ! -d "$BUILD_DIR/uv" ]; then
-    git clone --depth=1 https://github.com/socketsupply/libuv.git $BUILD_DIR/uv > /dev/null 2>&1
+    git clone --depth=1 https://github.com/socketsupply/libuv.git "$BUILD_DIR/uv" > /dev/null 2>&1
     rm -rf $BUILD_DIR/uv/.git
     # Comment out compiler tests, we've covered these sufficiently for now
     if [[ -z "$ENABLE_LIBUV_C_COMPILER_CHECKS" ]]; then
       tempmkl=$(mktemp)
-      sed 's/check_c_compiler_flag/# check_c_compiler_flag/' $BUILD_DIR/uv/CMakeLists.txt > $tempmkl
-      mv $tempmkl $BUILD_DIR/uv/CMakeLists.txt
+      sed 's/check_c_compiler_flag/# check_c_compiler_flag/' "$BUILD_DIR/uv/CMakeLists.txt" > "$tempmkl"
+      mv "$tempmkl" "$BUILD_DIR/uv/CMakeLists.txt"
     fi
 
     die $? "not ok - unable to clone. See trouble shooting guide in the README.md file"
@@ -468,8 +456,13 @@ function _prepare {
 function _install {
   declare arch="$1"
   declare platform="$2"
-  echo "# copying sources to $SOCKET_HOME/src"
-  cp -r "$CWD"/src/* "$SOCKET_HOME/src"
+
+  if [ "$platform" == "desktop" ]; then
+    echo "# copying sources to $SOCKET_HOME/src"
+    cp -r "$CWD"/src/* "$SOCKET_HOME/src"
+  fi
+
+  # TODO(@mribbons): Set lib types based on platform, after mobile CI is working
 
   if test -d "$BUILD_DIR/$arch-$platform/objects"; then
     echo "# copying objects to $SOCKET_HOME/objects/$arch-$platform"
@@ -484,32 +477,48 @@ function _install {
     cp -rfp "$BUILD_DIR"/lib$d/*.a "$SOCKET_HOME/lib$d/"
   fi
 
-  if test -d "$BUILD_DIR/$arch-$platform"/lib$d; then
-    echo "# copying libraries to $SOCKET_HOME/lib$d/$arch-$platform"
-    rm -rf "$SOCKET_HOME/lib$d/$arch-$platform"
-    mkdir -p "$SOCKET_HOME/lib$d/$arch-$platform"
-    cp -rfp "$BUILD_DIR/$arch-$platform"/lib$d/*.a "$SOCKET_HOME/lib$d/$arch-$platform"
-    if [[ $host=="Win32" ]]; then
-      cp -rfp "$BUILD_DIR/$arch-$platform"/lib$d/*.lib "$SOCKET_HOME/lib$d/$arch-$platform"
-    fi
+  _d=$d
+
+  if [[ "$platform" == "android" ]]; then
+    # Debug builds not currently supported for android
+    _d=""
   fi
 
-  echo "# copying js api to $SOCKET_HOME/api"
-  mkdir -p "$SOCKET_HOME/api"
-  cp -rfp "$root"/api/* "$SOCKET_HOME/api"
-  rm -f "$SOCKET_HOME/api/importmap.json"
-  "$root/bin/generate-api-import-map.sh" > "$SOCKET_HOME/api/importmap.json"
+  if test -d "$BUILD_DIR/$arch-$platform"/lib$_d; then
+    echo "# copying libraries to $SOCKET_HOME/lib$_d/$arch-$platform"
+    rm -rf "$SOCKET_HOME/lib$_d/$arch-$platform"
+    mkdir -p "$SOCKET_HOME/lib$_d/$arch-$platform"
+    if [[ "$platform" != "android" ]]; then
+      cp -rfp "$BUILD_DIR/$arch-$platform"/lib$_d/*.a "$SOCKET_HOME/lib$_d/$arch-$platform"
+    fi
+    if [[ "$host" == "Win32" ]] && [[ "$platform" == "desktop" ]]; then
+      cp -rfp "$BUILD_DIR/$arch-$platform"/lib$_d/*.lib "$SOCKET_HOME/lib$_d/$arch-$platform"
+    fi
 
-  rm -rf "$SOCKET_HOME/include"
-  mkdir -p "$SOCKET_HOME/include"
-  #cp -rf "$CWD"/include/* $SOCKET_HOME/include
-  cp -rfp "$BUILD_DIR"/uv/include/* $SOCKET_HOME/include
+    if [[ "$platform" == "android" ]] && [[ -d "$BUILD_DIR/$arch-$platform"/lib ]]; then
+      cp -fr "$BUILD_DIR/$arch-$platform"/lib/*.a "$SOCKET_HOME/lib/$arch-$platform"
+    fi
+  else 
+     echo >&2 "not ok - Missing $BUILD_DIR/$arch-$platform/lib"
+    exit 1
+  fi
+
+  if [ "$platform" == "desktop" ]; then
+    echo "# copying js api to $SOCKET_HOME/api"
+    mkdir -p "$SOCKET_HOME/api"
+    cp -frp "$root"/api/* "$SOCKET_HOME/api"
+
+    # only do this for desktop, no need to copy again for other platforms
+    rm -rf "$SOCKET_HOME/include"
+    mkdir -p "$SOCKET_HOME/include"
+    cp -rfp "$BUILD_DIR"/uv/include/* "$SOCKET_HOME/include"
+  fi
 
   if [[ "$(uname -s)" == *"_NT"* ]]; then
-    if [ $platform == "desktop" ]; then
+    if [ "$platform" == "desktop" ]; then
       mkdir -p "$SOCKET_HOME/ps1"
-      cp -ap $root/bin/*.ps1 $SOCKET_HOME/ps1
-      cp -ap $root/bin/.vs* $SOCKET_HOME/ps1
+      cp -ap "$root/bin/*.ps1" "$SOCKET_HOME/ps1"
+      cp -ap "$root/bin/.vs*" "$SOCKET_HOME/ps1"
     fi
   fi
 
@@ -529,7 +538,7 @@ function _install_cli {
       local rc=$?
 
       if [[ " $status " =~ " Permission denied " ]]; then
-        echo "warn - Failed to link binrary to '$PREFIX/bin': Trying 'sudo'"
+        echo "warn - Failed to link binary to '$PREFIX/bin': Trying 'sudo'"
         sudo rm -f "$PREFIX/bin/ssc"
         sudo ln -sf "$SOCKET_HOME/bin/ssc" "$PREFIX/bin/ssc"
         die $? "not ok - unable to link binary into '$PREFIX/bin'"
@@ -565,6 +574,94 @@ function _setSDKVersion {
   fi
 }
 
+function _compile_libuv_android {
+  local platform="android"
+  local arch=$1
+  local host_arch="$(uname -m)"
+  clang="$(android_clang "$ANDROID_HOME" "$NDK_VERSION" "$host" "$host_arch" "$arch")"
+  ar="$(android_ar "$ANDROID_HOME" "$NDK_VERSION" "$host" "$host_arch")"
+  android_includes=$(android_arch_includes "$arch")
+
+  local cflags=(-std=gnu89 -g -pedantic -I"$root"/build/uv/include -I"$root"/build/uv/src -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -D_LARGEFILE_SOURCE -fPIC -Wall -Wextra -Wno-pedantic -Wno-sign-compare -Wno-unused-parameter -Wno-implicit-function-declaration)
+  cflags+=("${android_includes[*]}")
+  local objects=()
+  local sources=("unix/async.c" "unix/core.c" "unix/dl.c" "unix/fs.c" "unix/getaddrinfo.c" "unix/getnameinfo.c" "unix/linux.c" "unix/loop.c" "unix/loop-watcher.c" "unix/pipe.c" "unix/poll.c" "unix/process.c" "unix/proctitle.c" "unix/random-devurandom.c" "unix/random-getentropy.c" "unix/random-getrandom.c" "unix/random-sysctl-linux.c" "unix/signal.c" "unix/stream.c" "unix/tcp.c" "unix/thread.c" "unix/tty.c" "unix/udp.c" fs-poll.c idna.c inet.c random.c strscpy.c strtok.c threadpool.c timer.c uv-common.c uv-data-getter-setters.c version.c)  
+
+  declare output_directory="$root/build/$arch-$platform/uv$d"
+  mkdir -p "$output_directory"
+
+  declare src_directory="$root/build/uv/src"
+  
+  trap onsignal INT TERM
+  local i=0
+  local max_concurrency=$CPU_CORES
+  build_static=0
+  declare base_lib="libuv"
+  declare static_library="$root/build/$arch-$platform/lib$d/$base_lib$d.a"
+
+  for source in "${sources[@]}"; do
+    if (( i++ > max_concurrency )); then
+      for pid in "${pids[@]}"; do
+        wait "$pid" 2>/dev/null
+      done
+      i=0
+    fi
+
+    declare object="${source/.c/$d.o}"
+    object="$(basename "$object")"
+    objects+=("$output_directory/$object")
+
+    {
+      if (( force )) || ! test -f "$output_directory/$object" || (( $(stat_mtime "$src_directory/$source") > $(stat_mtime "$output_directory/$object") )); then
+        mkdir -p "$(dirname "$object")"
+        echo "# compiling object ($arch-$platform) $(basename "$source")"
+        quiet $clang "${cflags[@]}" -c "$src_directory/$source" -o "$output_directory/$object" || onsignal
+        echo "ok - built $source -> $object ($arch-$platform)"
+        # Can't write back to variable in block, remove final library to force rebuild
+        rm "$static_library" 2>/dev/null
+      fi
+    } & pids+=($!)
+  done
+
+  for pid in "${pids[@]}"; do
+    wait "$pid" 2>/dev/null
+  done
+
+  if [ ! -f "$static_library" ]; then
+    build_static=1
+  fi
+  mkdir -p "$(dirname "$static_library")"
+
+  if (( build_static )); then
+    quiet $ar crs "$static_library" "${objects[@]}"
+    if [ -f "$static_library" ]; then
+      echo "ok - built $base_lib ($arch-$platform): $(basename "$static_library")"
+    else
+       echo >&2 "not ok - failed to build $static_library"
+      exit 1
+    fi
+  
+  else
+    if [ -f "$static_library" ]; then
+      echo "ok - using cached static library ($arch-$platform): $(basename "$static_library")"
+    else
+      echo >&2 "not ok - static library doesn't exist after cache check passed: ($arch-$platform): $(basename "$static_library")"
+      exit 1
+    fi
+  fi
+
+  # This is a sanity check to confirm that the static_library is > 8 bytes
+  # If an empty ${objects[@]} is provided to ar, it will still spit out a header without an error code.
+  # therefore check the output size
+  # This error condition should only occur after a code change
+  lib_size="$(stat_size "$static_library")"
+  if (( lib_size < $(android_min_expected_static_lib_size "$base_lib") )); then
+    echo >&2 "not ok - $static_library size looks wrong: $lib_size, renaming as .bad"
+    mv "$static_library" "$static_library.bad"
+    exit 1
+  fi
+}
+
 function _compile_libuv {
   target=$1
   hosttarget=$1
@@ -572,64 +669,51 @@ function _compile_libuv {
 
   if [ -z "$target" ]; then
     target=$(uname -m)
-    host=$(uname -s)
     platform="desktop"
-
-    if [[ "$host" = "Linux" ]]; then
-      if [ -n "$WSL_DISTRO_NAME" ] || uname -r | grep 'Microsoft'; then
-        host="Win32"
-      fi
-    elif [[ "$host" == *"MINGW64_NT"* ]]; then
-      host="Win32"
-    elif [[ "$host" == *"MSYS_NT"* ]]; then
-      die $? "MSYS not supported."
-    fi
   fi
 
   echo "# building libuv for $platform ($target) on $host..."
-  STAGING_DIR=$BUILD_DIR/$target-$platform/uv
+  STAGING_DIR="$BUILD_DIR/$target-$platform/uv"
 
   if [ ! -d "$STAGING_DIR" ]; then
     mkdir -p "$STAGING_DIR"
-    cp -r $BUILD_DIR/uv/* $STAGING_DIR
-    cd $STAGING_DIR
+    cp -r "$BUILD_DIR"/uv/* "$STAGING_DIR"
+    cd "$STAGING_DIR" || exit 1
     # Doesn't work in mingw
     if [[ "$host" != "Win32" ]]; then
       quiet sh autogen.sh
     fi;
   else
-    cd $STAGING_DIR
+    cd "$STAGING_DIR" || exit 1
   fi
 
   mkdir -p "$STAGING_DIR/build/"
 
-  if [ $platform == "desktop" ]; then
+  if [ "$platform" == "desktop" ]; then
     if [[ "$host" != "Win32" ]]; then
       if ! test -f Makefile; then
-        quiet ./configure --prefix=$BUILD_DIR/$target-$platform
+        quiet ./configure --prefix="$BUILD_DIR/$target-$platform"
         die $? "not ok - desktop configure"
 
         quiet make clean
-        quiet make -j8
+        quiet make "-j$CPU_CORES"
         quiet make install
       fi
     else
-      if test -f "$BUILD_DIR/$target-$platform/lib$d/uv_a.lib"; then
-        return
-      else
+      if ! test -f "$BUILD_DIR/$target-$platform/lib$d/uv_a.lib"; then
         local config="Release"
-        if [[ ! -z "$DEBUG" ]]; then
+        if [[ -n "$DEBUG" ]]; then
           config="Debug"
         fi
-        cd "$STAGING_DIR/build/"
+        cd "$STAGING_DIR/build/" || exit 1
         quiet cmake .. -DBUILD_TESTING=OFF -DLIBUV_BUILD_SHARED=OFF
-        cd $STAGING_DIR
-        quiet cmake --build $STAGING_DIR/build/ --config $config
-        mkdir -p $BUILD_DIR/$target-$platform/lib$d
-        quiet echo "cp -up $STAGING_DIR/build/$config/uv_a.lib $BUILD_DIR/$target-$platform/lib$d/uv_a.lib"
-        cp -up $STAGING_DIR/build/$config/uv_a.lib $BUILD_DIR/$target-$platform/lib$d/uv_a.lib
-        if [[ ! -z "$DEBUG" ]]; then
-          cp -up $STAGING_DIR/build/$config/uv_a.pdb $BUILD_DIR/$target-$platform/lib$d/uv_a.pdb
+        cd "$STAGING_DIR" || exit 1
+        quiet cmake --build "$STAGING_DIR/build/" --config $config
+        mkdir -p "$BUILD_DIR/$target-$platform/lib$d"
+        quiet echo "cp -up $STAGING_DIR/build/$config/uv_a.lib "$BUILD_DIR/$target-$platform/lib$d/uv_a.lib""
+        cp -up "$STAGING_DIR/build/$config/uv_a.lib" "$BUILD_DIR/$target-$platform/lib$d/uv_a.lib"
+        if [[ -n "$DEBUG" ]]; then
+          cp -up "$STAGING_DIR"/build/$config/uv_a.pdb "$BUILD_DIR/$target-$platform/lib$d/uv_a.pdb"
         fi;
       fi
     fi
@@ -638,7 +722,7 @@ function _compile_libuv {
     return
   fi
 
-  if [ $hosttarget == "arm64" ]; then
+  if [ "$hosttarget" == "arm64" ]; then
     hosttarget="arm"
   fi
 
@@ -654,7 +738,7 @@ function _compile_libuv {
   export LDFLAGS="-Wc,-fembed-bitcode -arch ${target} -isysroot $PLATFORMPATH/$platform.platform/Developer/SDKs/$platform$SDKVERSION.sdk"
 
   if ! test -f Makefile; then
-    quiet ./configure --prefix=$BUILD_DIR/$target-$platform --host=$hosttarget-apple-darwin
+    quiet ./configure --prefix="$BUILD_DIR/$target-$platform" --host="$hosttarget-apple-darwin"
   fi
 
   if [ ! $? = 0 ]; then
@@ -662,16 +746,16 @@ function _compile_libuv {
     return
   fi
 
-  quiet make -j8
+  quiet make "-j$CPU_CORES"
   quiet make install
 
-  cd $BUILD_DIR
+  cd "$BUILD_DIR" || exit 1
   rm -f "$root/build/$target-$platform/lib$d"/*.{so,la,dylib}*
   echo "ok - built for $target"
 }
 
 function _check_compiler_features {
-  if [[ $host=="Win32" ]]; then
+  if [[ "$host" == "Win32" ]]; then
     # TODO(@mribbons) - https://github.com/socketsupply/socket/issues/150
     # Compiler test not working on windows, 9 unresolved externals
     return;
@@ -679,16 +763,24 @@ function _check_compiler_features {
 
   echo "# checking compiler features"
   local cflags=($("$root/bin/cflags.sh"))
+  local ldflags=($("$root/bin/ldflags.sh"))
+
   if [[ -z "$DEBUG" ]]; then
     cflags+=(-o /dev/null)
   fi
 
-  $CXX -x c++ "${cflags[@]}" - -o /dev/null >/dev/null << EOF_CC
+  if [[ "$host" == "Darwin" ]]; then
+    cflags+=(-x objective-c++)
+  else
+    cflags+=(-x c++)
+  fi
+
+  $CXX "${cflags[@]}" "${ldflags[@]}" - -o /dev/null >/dev/null << EOF_CC
     #include "src/common.hh"
     int main () { return 0; }
 EOF_CC
 
-  die $? "not ok - $CXX ($(\"$CXX\" -dumpversion)) failed in feature check required for building Socket Rutime"
+  die $? "not ok - $CXX ($("$CXX" -dumpversion)) failed in feature check required for building Socket Runtime"
 }
 
 function onsignal () {
@@ -703,9 +795,15 @@ function onsignal () {
 
 _check_compiler_features
 _prepare
-cd $BUILD_DIR
+cd "$BUILD_DIR" || exit 1
 
 trap onsignal INT TERM
+
+# Although we're passing -j$CPU_CORES on non Win32, we still don't get max utiliztion on macos. Start this before fat libs.
+{
+  _compile_libuv
+  echo "ok - built libuv for $platform ($target)"
+} & _compile_libuv_pid=$!
 
 if [[ "$(uname -s)" == "Darwin" ]]; then
   quiet xcode-select -p
@@ -735,19 +833,32 @@ if [[ "$(uname -s)" == "Darwin" ]]; then
   echo "ok - copied fat library"
 fi
 
-_compile_libuv
-echo "ok - built libuv for $platform ($target)"
+if [[ "$host" != "Win32" ]]; then
+  # non windows hosts uses make -j$CPU_CORES, wait for them to finish.
+  wait $_compile_libuv_pid
+fi
 
-mkdir -p  $SOCKET_HOME/uv/{src/unix,include}
-cp -fr $BUILD_DIR/uv/src/*.{c,h} $SOCKET_HOME/uv/src
-cp -fr $BUILD_DIR/uv/src/unix/*.{c,h} $SOCKET_HOME/uv/src/unix
+if [[ -n "$BUILD_ANDROID" ]]; then
+  for abi in $(android_supported_abis); do
+    _compile_libuv_android "$abi" & pids+=($!)
+  done
+fi
+
+mkdir -p  "$SOCKET_HOME"/uv/{src/unix,include}
+cp -fr "$BUILD_DIR"/uv/src/*.{c,h} "$SOCKET_HOME"/uv/src
+cp -fr "$BUILD_DIR"/uv/src/unix/*.{c,h} "$SOCKET_HOME"/uv/src/unix
 die $? "not ok - could not copy headers"
 echo "ok - copied headers"
-cd $CWD
+cd "$CWD" || exit 1
 
-cd "$BUILD_DIR"
+cd "$BUILD_DIR" || exit 1
 
 _get_web_view2
+
+if [[ "$host" == "Win32" ]]; then
+  # Wait for Win32 lib uv build
+  wait $_compile_libuv_pid
+fi
 
 _build_runtime_library
 _build_cli & pids+=($!)
@@ -773,4 +884,13 @@ if [[ "$host" = "Darwin" ]]; then
   _install x86_64 iPhoneSimulator
 fi
 
+if [[ -n "$BUILD_ANDROID" ]]; then
+  for abi in $(android_supported_abis); do
+    _install "$abi" android & pids+=($!)
+  done
+  wait
+fi
+
 _install_cli
+
+exit $?
