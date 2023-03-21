@@ -211,6 +211,7 @@ namespace SSC {
   inline const auto VERSION_STRING = ToString(STR_VALUE(SSC_VERSION));
 
   inline const auto DEFAULT_SSC_RC_FILENAME = String(".sscrc");
+  inline const auto DEFAULT_SSC_ENV_FILENAME = String(".ssc.env");
 
   const Map getUserConfig ();
 
@@ -573,13 +574,21 @@ namespace SSC {
     #endif
   }
 
-  inline auto setEnv (const char* s) {
-    #if _WIN32
-      return _putenv(s);
-    #else
+  inline auto setEnv (const String& k, const String& v) {
+  #if _WIN32
+    return _putenv((k + "=" + v).c_str());
+  #else
+    setenv(k.c_str(), v.c_str(), 1);
+  #endif
+  }
 
-      return putenv((char*) &s[0]);
-    #endif
+  inline auto setEnv (const char* s) {
+  #if _WIN32
+    return _putenv(s);
+  #else
+    auto parts = split(String(s), '=');
+    setEnv(parts[0], parts[1]);
+  #endif
   }
 
   inline void notifyCli () {
