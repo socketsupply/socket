@@ -702,43 +702,7 @@ namespace SSC {
   }
 
   void Window::navigate (const String &seq, const String &url) {
-    if (url.starts_with("file:")) {
-      auto preload = createPreload(opts, PreloadOptions { .module = true });
-      auto script = "<script type=\"module\">" + preload + "</script>";
-      auto path = replace(url, "file://", "");
-      auto base = String("file://" + fs::path(path).parent_path().string());
-
-      gchar* contents = nullptr;
-      g_file_get_contents(
-        path.c_str(),
-        &contents,
-        nullptr,
-        nullptr
-      );
-
-      auto html = String(contents);
-
-      if (html.find("<head>") != -1) {
-        html = replace(html, "<head>", "<head>" + script);
-      } else if (html.find("<body>") != -1) {
-        html = replace(html, "<body>", "<body>" + script);
-      } else if (html.find("<html>") != -1) {
-        html = replace(html, "<html>", "<html>" + script);
-      } else {
-        html = script + html;
-      }
-
-      printf("%s\n%s\n", base.c_str(), html.c_str());
-      webkit_web_view_load_html(
-        WEBKIT_WEB_VIEW(webview),
-        html.c_str(),
-        base.c_str()
-      );
-
-      g_free(contents);
-    } else {
-      webkit_web_view_load_uri(WEBKIT_WEB_VIEW(webview), url.c_str());
-    }
+    webkit_web_view_load_uri(WEBKIT_WEB_VIEW(webview), url.c_str());
 
     if (seq.size() > 0) {
       auto index = std::to_string(this->opts.index);

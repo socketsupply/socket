@@ -1,3 +1,10 @@
+/* eslint-disable import/first */
+globalThis.console.assert(
+  globalThis.__RUNTIME_INIT_NOW__,
+  'socket:internal/init.js was not imported in preload. ' +
+  'This could lead to undefined behavior.'
+)
+
 import { GLOBAL_TEST_RUNNER } from 'socket:test'
 import console from 'socket:console'
 import process from 'socket:process'
