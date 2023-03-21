@@ -49,13 +49,9 @@ echo "warn - Using '$SOCKET_HOME' as SOCKET_HOME"
 
 if [[ "$host" = "Linux" ]]; then
   if [ -n "$WSL_DISTRO_NAME" ] || uname -r | grep 'Microsoft'; then
-  echo "WSL is not supported."
-  exit 1
+    echo "not ok - WSL is not supported."
+    exit 1
   fi
-elif [[ "$host" == *"MINGW64_NT"* ]]; then
-  host="Win32"
-elif [[ "$host" == *"MSYS_NT"* ]]; then
-  host="Win32"
 fi
 
 if [ -z "$SOCKET_HOME" ]; then
