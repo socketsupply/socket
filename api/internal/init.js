@@ -111,8 +111,10 @@ class RuntimeWorker extends GlobalWorker {
         ) {
           queueMicrotask(async () => {
             try {
+              // eslint-disable-next-line no-use-before-define
               const message = ipc.Message.from(request.message, request.bytes)
               const options = { bytes: message.bytes }
+              // eslint-disable-next-line no-use-before-define
               const result = await ipc.send(message.name, message.rawParams, options)
               this.postMessage({
                 __runtime_worker_ipc_result: {
@@ -154,7 +156,7 @@ if (globalThis.Worker === GlobalWorker) {
 if (typeof globalThis.XMLHttpRequest === 'function') {
   const { open, send } = globalThis.XMLHttpRequest.prototype
   const isAsync = Symbol('isAsync')
-  const queue = new ConcurrentQueue()
+  let queue = null
 
   globalThis.XMLHttpRequest.prototype.open = function (...args) {
     const [,, async] = args
@@ -171,6 +173,11 @@ if (typeof globalThis.XMLHttpRequest === 'function') {
   globalThis.XMLHttpRequest.prototype.send = async function (...args) {
     if (!this[isAsync]) {
       return await send.call(this, ...args)
+    }
+
+    if (!queue) {
+      // eslint-disable-next-line no-use-before-define
+      queue = new ConcurrentQueue()
     }
 
     await queue.push(new Promise((resolve) => {

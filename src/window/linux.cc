@@ -719,6 +719,7 @@ namespace SSC {
         html = script + html;
       }
 
+      printf("%s\n%s\n", base.c_str(), html.c_str());
       webkit_web_view_load_html(
         WEBKIT_WEB_VIEW(webview),
         html.c_str(),
