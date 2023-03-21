@@ -5,6 +5,7 @@ declare root=""
 root="$(cd "$(dirname "$(dirname "${BASH_SOURCE[0]}")")" && pwd)"
 
 source "$root/bin/functions.sh"
+declare host="$(host_os)"
 source "$root/bin/android-functions.sh"
 
 if [[ -z "$CPU_CORES" ]]; then
@@ -20,7 +21,6 @@ declare args=()
 declare pids=()
 declare force=0
 declare pass_force=""
-declare host="$(host_os)"
 
 LIPO=""
 declare CWD=$(pwd)
@@ -164,6 +164,9 @@ if [ "$host" == "Linux" ]; then
 fi
 
 if [[ -n "$BUILD_ANDROID" ]]; then
+
+  android_env_flow
+
   abis=($(android_supported_abis))
   platform="android"
   arch="${abis[0]}"
