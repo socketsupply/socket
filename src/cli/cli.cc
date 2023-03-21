@@ -189,7 +189,7 @@ String getAndroidHome() {
     setenv("ANDROID_HOME", androidHome.c_str(), 1);
     #endif
 
-    log("warning: 'ANDROID_HOME' is set to '" + androidHome + "'");
+    log("WARNING: 'ANDROID_HOME' is set to '" + androidHome + "'");
   }
 
   return androidHome;
@@ -333,7 +333,7 @@ int runApp (const fs::path& path, const String& args, bool headless) {
         appMutex.unlock();
         appStatus = 1;
         debug(
-          "error: NSWorkspace: (code=%lu, domain=%@) %@",
+          "ERROR: NSWorkspace: (code=%lu, domain=%@) %@",
           error.code,
           error.domain,
           error.localizedDescription
@@ -447,7 +447,7 @@ int runApp (const fs::path& path, const String& args, bool headless) {
           if (error) {
             appStatus = 1;
             debug(
-              "error: OSLogStore: (code=%lu, domain=%@) %@",
+              "ERROR: OSLogStore: (code=%lu, domain=%@) %@",
               error.code,
               error.domain,
               error.localizedDescription
@@ -466,7 +466,7 @@ int runApp (const fs::path& path, const String& args, bool headless) {
           if (error) {
             appStatus = 1;
             debug(
-              "error: OSLogEnumerator: (code=%lu, domain=%@) %@",
+              "ERROR: OSLogEnumerator: (code=%lu, domain=%@) %@",
               error.code,
               error.domain,
               error.localizedDescription
@@ -552,7 +552,7 @@ int runApp (const fs::path& path, const String& args) {
 void runIOSSimulator (const fs::path& path, Map& settings) {
   #ifndef _WIN32
   if (settings["ios_simulator_device"].size() == 0) {
-    log("error: 'ios_simulator_device' option is empty");
+    log("ERROR: 'ios_simulator_device' option is empty");
     exit(1);
   }
   String deviceType;
@@ -988,7 +988,7 @@ int main (const int argc, const char* argv[]) {
 
         // Check if build_name is set
         if (settings.count("build_name") == 0) {
-          log("error: 'name' value is required in socket.ini in the [build] section");
+          log("ERROR: 'name' value is required in socket.ini in the [build] section");
           exit(1);
         }
 
@@ -996,7 +996,7 @@ int main (const int argc, const char* argv[]) {
         std::regex name_pattern("[^a-zA-Z0-9_\\-]");
         // Check if the name matches the pattern
         if (std::regex_search(settings["build_name"], name_pattern)) {
-          log("error: 'name' in socket.ini [build] section can only contain alphanumeric characters, dashes, and underscores");
+          log("ERROR: 'name' in socket.ini [build] section can only contain alphanumeric characters, dashes, and underscores");
           exit(1);
         }
 
@@ -1006,7 +1006,7 @@ int main (const int argc, const char* argv[]) {
         std::regex semver_pattern("^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)$");
         // Check if the version matches the pattern
         if (!std::regex_match(settings["meta_version"], semver_pattern)) {
-          log("error: 'version' in [meta] section of socket.ini must be in semver format");
+          log("ERROR: 'version' in [meta] section of socket.ini must be in semver format");
           exit(1);
         }
 
@@ -1095,7 +1095,7 @@ int main (const int argc, const char* argv[]) {
       }
     }
     if (targetPlatform.size() == 0) {
-      log("error: --platform option is required");
+      log("ERROR: --platform option is required");
       exit(1);
     }
     if (targetPlatform == "ios" && platform.mac) {
@@ -1364,12 +1364,12 @@ int main (const int argc, const char* argv[]) {
     }
 
     if (flagBuildTest && testFile.size() == 0) {
-      log("error: --test value is required.");
+      log("ERROR: --test value is required.");
       exit(1);
     }
 
     if (flagBuildTest && fs::exists(testFile) == false) {
-      log("error: file " + testFile + " does not exist.");
+      log("ERROR: file " + testFile + " does not exist.");
       exit(1);
     }
 
@@ -1381,7 +1381,7 @@ int main (const int argc, const char* argv[]) {
     settings["meta_revision"] = "1";
 
     if (getEnv("CXX").size() == 0) {
-      log("warning! $CXX env var not set, assuming defaults");
+      log("WARNING: $CXX env var not set, assuming defaults");
 
       if (platform.win) {
         setEnv("CXX=clang++");
@@ -1585,7 +1585,7 @@ int main (const int argc, const char* argv[]) {
 
       if (debugEnv || verboseEnv) log(gradleInitCommand.str());
       if (std::system(gradleInitCommand.str().c_str()) != 0) {
-        log("error: failed to invoke `gradle init` command");
+        log("ERROR: failed to invoke `gradle init` command");
         // In case user didn't accept licenses above
         log(("Check licenses and run again: \n" + licenseAccept + "\n").c_str());
         exit(1);
@@ -2105,7 +2105,7 @@ int main (const int argc, const char* argv[]) {
         if (fs::exists(pathToIconSrc)) {
           fs::copy(pathToIconSrc, pathToIconDest);
         } else {
-          log("warning: [linux] icon '" + pathToIconSrc +  "' does not exist");
+          log("WARNING: [linux] icon '" + pathToIconSrc +  "' does not exist");
         }
       }
     }
@@ -2407,7 +2407,7 @@ int main (const int argc, const char* argv[]) {
 
     if (flagBuildForIOS) {
       if (flagBuildForSimulator && settings["ios_simulator_device"].size() == 0) {
-        log("error: 'ios_simulator_device' option is empty");
+        log("ERROR: 'ios_simulator_device' option is empty");
         exit(1);
       }
 
@@ -2478,13 +2478,13 @@ int main (const int argc, const char* argv[]) {
       if (rArchive.exitCode != 0) {
         auto const noDevice = rArchive.output.find("The requested device could not be found because no available devices matched the request.");
         if (noDevice != std::string::npos) {
-          log("error: simulator_device " + settings["ios_simulator_device"] + " from your socket.ini was not found");
+          log("ERROR: simulator_device " + settings["ios_simulator_device"] + " from your socket.ini was not found");
           auto const rDevices = exec("xcrun simctl list devices available | grep -e \"  \"");
           log("available devices:\n" + rDevices.output);
           log("please update your socket.ini with a valid device or install Simulator runtime (https://developer.apple.com/documentation/xcode/installing-additional-simulator-runtimes)");
           exit(1);
         }
-        log("error: failed to archive project");
+        log("ERROR: failed to archive project");
         log(rArchive.output);
         fs::current_path(oldCwd);
         exit(1);
@@ -2512,7 +2512,7 @@ int main (const int argc, const char* argv[]) {
         auto rExport = exec(exportCommand.str().c_str());
 
         if (rExport.exitCode != 0) {
-          log("error: failed to export project");
+          log("ERROR: failed to export project");
           fs::current_path(oldCwd);
           exit(1);
         }
@@ -2557,7 +2557,7 @@ int main (const int argc, const char* argv[]) {
 
       if (debugEnv || verboseEnv) log(sdkmanager.str());
       if (std::system(sdkmanager.str().c_str()) != 0) {
-        log("error: failed to initialize Android SDK (sdkmanager)");
+        log("ERROR: failed to initialize Android SDK (sdkmanager)");
         exit(1);
       }
 
@@ -2656,7 +2656,7 @@ int main (const int argc, const char* argv[]) {
         gradlew << localDirPrefix << "gradlew build";
 
         if (std::system(gradlew.str().c_str()) != 0) {
-          log("error: failed to invoke `gradlew build` command");
+          log("ERROR: failed to invoke `gradlew build` command");
           exit(1);
         }
 
@@ -2670,7 +2670,7 @@ int main (const int argc, const char* argv[]) {
 
         if (debugEnv || verboseEnv) log(bundle);
         if (std::system(bundle.c_str()) != 0) {
-          log("error: failed to invoke " + bundle + " command.");
+          log("ERROR: failed to invoke " + bundle + " command.");
           exit(1);
         }
         
@@ -2682,7 +2682,7 @@ int main (const int argc, const char* argv[]) {
 
         if (debugEnv || verboseEnv) log(gradlew.str());
         if (std::system(gradlew.str().c_str()) != 0) {
-          log("error: failed to invoke `gradlew assemble` command");
+          log("ERROR: failed to invoke `gradlew assemble` command");
           exit(1);
         }
       }
@@ -2708,7 +2708,7 @@ int main (const int argc, const char* argv[]) {
 
         if (debugEnv || verboseEnv) log(avdmanager.str());
         if (std::system(avdmanager.str().c_str()) != 0) {
-          log("error: failed to Android Virtual Device (avdmanager)");
+          log("ERROR: failed to Android Virtual Device (avdmanager)");
           exit(1);
         }
       }
@@ -2743,7 +2743,7 @@ int main (const int argc, const char* argv[]) {
 
         if (debugEnv || verboseEnv) log(adb.str());
         if (std::system(adb.str().c_str()) != 0) {
-          log("error: failed to install APK to Android Emulator (adb)");
+          log("ERROR: failed to install APK to Android Emulator (adb)");
           exit(1);
         }
 
@@ -2831,7 +2831,7 @@ int main (const int argc, const char* argv[]) {
       auto r = std::system(archiveCommand.str().c_str());
 
       if (r != 0) {
-        log("error: failed to create deb package");
+        log("ERROR: failed to create deb package");
         exit(1);
       }
     }
@@ -2953,7 +2953,7 @@ int main (const int argc, const char* argv[]) {
       auto r = std::system(zipCommand.str().c_str());
 
       if (r != 0) {
-        log("error: failed to create zip for notarization");
+        log("ERROR: failed to create zip for notarization");
         exit(1);
       }
 
@@ -3293,7 +3293,7 @@ int main (const int argc, const char* argv[]) {
       }
 
       if (pathToSignTool.size() == 0) {
-        log("WARNING! Can't find windows 10 SDK, assuming signtool.exe is in the path.");
+        log("WARNING: Can't find windows 10 SDK, assuming signtool.exe is in the path.");
         pathToSignTool = "signtool.exe";
       }
 
@@ -3301,7 +3301,7 @@ int main (const int argc, const char* argv[]) {
       String password = getEnv("CSC_KEY_PASSWORD");
 
       if (password.size() == 0) {
-        log("ERROR! Environment variable 'CSC_KEY_PASSWORD' is empty!");
+        log("ERROR: Environment variable 'CSC_KEY_PASSWORD' is empty!");
         exit(1);
       }
 
@@ -3376,7 +3376,7 @@ int main (const int argc, const char* argv[]) {
     }
 
     if (flagTest && testFile.size() == 0) {
-      log("error: --test value is required.");
+      log("ERROR: --test value is required.");
       exit(1);
     }
 
