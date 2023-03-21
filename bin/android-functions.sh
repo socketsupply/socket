@@ -9,7 +9,7 @@ DEFAULT_ANDROID_HOME[Darwin]=$HOME/Library/Android/sdk
 DEFAULT_ANDROID_HOME[Win32]=$LOCALAPPDATA\\Android\\Sdk
 DEFAULT_ANDROID_HOME[Linux]=$HOME/Android/Sdk
 
-declare ANDROID_SDK_MANAGER_SEARCH_PATHS=(
+declare ANDROID_SDK_MANAGER_DEFAULT_SEARCH_PATHS=(
   "cmdline-tools/latest/bin"
   "cmdline-tools/bin"
   "tools/bin"
@@ -27,12 +27,21 @@ declare GRADLE_URI_TEMPLATE="https://services.gradle.org/distributions/gradle-8.
 
 function get_android_default_search_paths() {
   host="$(host_os)"
+
+  # Prepopulate search paths with any known paths so that they can be verified quickly
   ANDROID_HOME_SEARCH_PATHS=()
   if [ -n "$ANDROID_HOME" ]; then
     ANDROID_HOME_SEARCH_PATHS+=("$ANDROID_HOME")
   fi
 
   ANDROID_HOME_SEARCH_PATHS+=("${DEFAULT_ANDROID_HOME["$host"]}")
+
+  ANDROID_SDK_MANAGER_SEARCH_PATHS=()
+  if [ -n "$ANDROID_SDK_MANAGER" ]; then
+    ANDROID_SDK_MANAGER_SEARCH_PATHS+=("$(dirname "$ANDROID_SDK_MANAGER")")
+  fi
+
+  ANDROID_SDK_MANAGER_SEARCH_PATHS+=("${ANDROID_SDK_MANAGER_DEFAULT_SEARCH_PATHS[@]}")
 
   JAVA_HOME_SEARCH_PATHS=()
   if [ -n "$JAVA_HOME" ]; then
@@ -49,25 +58,22 @@ function get_android_default_search_paths() {
     GRADLE_SEARCH_PATHS+=("$HOME/.gradle")
   fi
 
-  # TODO(mribbons): SDK manager cmd line tools not installed by default
-  if [ -z "$ANDROID_HOME" ]; then
-    # Only attempt default homes if $ANDROID_HOME not defined
-    if [[ "$host" = "Darwin"  ]]; then
-      JAVA_HOME_SEARCH_PATHS+=("$HOME/.local/bin")
-      JAVA_HOME_SEARCH_PATHS+=("$HOME/Applications")
-      JAVA_HOME_SEARCH_PATHS+=("$HOME/homebrew")
-      JAVA_HOME_SEARCH_PATHS+=("/Applications")
-    elif [[ "$host" = "Linux"  ]]; then
-      ANDROID_HOME_SEARCH_PATHS+=("$HOME")
-      JAVA_HOME_SEARCH_PATHS+=("$HOME/.local/bin")
-      # Java should be unpacked alongside Android Studio
-      JAVA_HOME_SEARCH_PATHS+=("$HOME")
-      JAVA_HOME_SEARCH_PATHS+=("/opt")
-    elif [[ "$host" = "Win32"  ]]; then
-      JAVA_HOME_SEARCH_PATHS+=("$LOCALAPPDATA\Programs")
-      JAVA_HOME_SEARCH_PATHS+=("$PROGRAMFILES")
-      GRADLE_SEARCH_PATHS+=("$LOCALAPPDATA\Programs")
-    fi
+  # Only attempt default homes if $ANDROID_HOME not defined
+  if [[ "$host" = "Darwin"  ]]; then
+    JAVA_HOME_SEARCH_PATHS+=("$HOME/.local/bin")
+    JAVA_HOME_SEARCH_PATHS+=("$HOME/Applications")
+    JAVA_HOME_SEARCH_PATHS+=("$HOME/homebrew")
+    JAVA_HOME_SEARCH_PATHS+=("/Applications")
+  elif [[ "$host" = "Linux"  ]]; then
+    ANDROID_HOME_SEARCH_PATHS+=("$HOME")
+    JAVA_HOME_SEARCH_PATHS+=("$HOME/.local/bin")
+    # Java should be unpacked alongside Android Studio
+    JAVA_HOME_SEARCH_PATHS+=("$HOME")
+    JAVA_HOME_SEARCH_PATHS+=("/opt")
+  elif [[ "$host" = "Win32"  ]]; then
+    JAVA_HOME_SEARCH_PATHS+=("$LOCALAPPDATA\Programs")
+    JAVA_HOME_SEARCH_PATHS+=("$PROGRAMFILES")
+    GRADLE_SEARCH_PATHS+=("$LOCALAPPDATA\Programs")
   fi
 
   export ANDROID_HOME_SEARCH_PATHS
@@ -86,35 +92,30 @@ function get_android_paths() {
   for android_home_test in "${ANDROID_HOME_SEARCH_PATHS[@]}"; do
     for sdk_man_test in "${ANDROID_SDK_MANAGER_SEARCH_PATHS[@]}"; do
       if [[ -z "$_ah" ]]; then
-        if [[ -n $VERBOSE ]]; then
-          echo "Checking $android_home_test/$sdk_man_test/sdkmanager$bat"
-        fi
+        [[ -n $VERBOSE ]] && echo "Checking $android_home_test/$sdk_man_test/sdkmanager$bat"
         if [[ -f "$android_home_test/$sdk_man_test/sdkmanager$bat" ]]; then
           _ah="$android_home_test"
           _sdk="$sdk_man_test/sdkmanager$bat"
+          break
         fi
       fi
     done
   done
 
   temp=$(mktemp)
-
   for java_home_test in "${JAVA_HOME_SEARCH_PATHS[@]}"; do
+    [[ -n $VERBOSE ]] && echo "Checking $java_home_test/bin/javac$exe"
     if [[ -f "$java_home_test/bin/javac$exe" ]]; then
       echo "$java_home_test" > "$temp"
       break
     fi
 
-    if [[ -n $VERBOSE ]]; then
-      echo "find $java_home_test -type f -name "javac$exe"' -print0 2>/dev/null | while IFS= read -r -d '' javac"
-    fi
+    [[ -n $VERBOSE ]] && echo "find $java_home_test -type f -name "javac$exe"' -print0 2>/dev/null | while IFS= read -r -d '' javac"
     find "$java_home_test" -type f -name "javac$exe" -print0 2>/dev/null | while IFS= read -r -d '' javac
     do
       # break doesn't work here, check that we don't have a result
       if [[ $(stat_size "$temp") == 0 ]]; then
-        if [[ -n $VERBOSE ]]; then
-          echo "Found $javac"
-        fi
+        [[ -n $VERBOSE ]] && echo "Found $javac"        
         # subshell, output to file
         echo "$(dirname "$(dirname "$javac")")" > "$temp"
       fi
@@ -128,21 +129,18 @@ function get_android_paths() {
   echo -n > "$temp"
 
   for gradle_test in "${GRADLE_SEARCH_PATHS[@]}"; do
+    [[ -n $VERBOSE ]] && echo "Checking $gradle_test/bin/gradle$bat"
     if [[ -f "$gradle_test/bin/gradle$bat" ]]; then
       echo "$gradle_test" > "$temp"
       break
     fi
 
-    if [[ -n $VERBOSE ]]; then
-      echo "find $gradle_test -type f -name 'gradle' -print0 2>/dev/null | while IFS= read -r -d '' gradle"
-    fi
+    [[ -n $VERBOSE ]] && echo "find $gradle_test -type f -name 'gradle' -print0 2>/dev/null | while IFS= read -r -d '' gradle"
     find "$gradle_test" -type f -name "gradle$bat" -print0 2>/dev/null | while IFS= read -r -d '' gradle
     do
       # break doesn't work here, check that we don't have a result
       if [[ $(stat_size "$temp") == 0 ]]; then
-      if [[ -n $VERBOSE ]]; then
-        echo "Found $gradle"
-      fi
+        [[ -n $VERBOSE ]] && echo "Found $gradle"
         # subshell, output to file
         echo "$(dirname "$(dirname "$gradle")")" > "$temp"
       fi
@@ -155,22 +153,22 @@ function get_android_paths() {
   rm "$temp"
 
   if [[ -n "$_ah" ]]; then 
-    ANDROID_HOME="$_ah"
+    ANDROID_HOME="$(native_path "$_ah")"
     export ANDROID_HOME
   fi
   
   if [[ -n "$_sdk" ]]; then 
-    ANDROID_SDK_MANAGER="$_sdk"
+    ANDROID_SDK_MANAGER="$(native_path "$_sdk")"
     export ANDROID_SDK_MANAGER
   fi
   
   if [[ -n "$_jh" ]]; then 
-    JAVA_HOME="$_jh"
+    JAVA_HOME="$(native_path "$_jh")"
     export JAVA_HOME
   fi
   
   if [[ -n "$_gh" ]]; then 
-    GRADLE_HOME="$_gh"
+    GRADLE_HOME="$(native_path "$_gh")"
     export GRADLE_HOME
   fi
 }
@@ -481,7 +479,7 @@ function android_install_sdk_manager() {
 
   ANDROID_HOME="$_ah"
   export ANDROID_HOME
-  ANDROID_SDK_MANAGER="${ANDROID_SDK_MANAGER_SEARCH_PATHS[0]}"
+  ANDROID_SDK_MANAGER="$(native_path "cmdline-tools/bin/sdkmanager$bat")"
   export ANDROID_SDK_MANAGER
   return 0
 }
@@ -566,6 +564,11 @@ function android_install_gradle() {
 
 function android_first_time_experience_setup() {
   # builds global search path list
+  if 
+  [[ -d "$ANDROID_HOME" ]] && [[ -f "$ANDROID_HOME/$ANDROID_SDK_MANAGER" ]]
+  [[ -d "$JAVA_HOME" ]] && [[ -d "$GRADLE_HOME" ]]; then
+    return 0
+  fi
   get_android_default_search_paths
   android_install_sdk_manager && sdk_result=$?
   android_install_jdk && jdk_result=$?
