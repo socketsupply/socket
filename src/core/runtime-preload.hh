@@ -12,14 +12,15 @@ namespace SSC {
     const WindowOptions opts,
     const PreloadOptions preloadOptions
   ) {
-#ifdef _WIN32
+    auto argv = opts.argv;
+  #ifdef _WIN32
     // Escape backslashes in paths.
     size_t last_pos = 0;
-    while ((last_pos = opts.argv.find('\\', last_pos)) != std::string::npos) {
-      opts.argv.replace(last_pos, 1, "\\\\");
+    while ((last_pos = argv.find('\\', last_pos)) != std::string::npos) {
+      argv.replace(last_pos, 1, "\\\\");
       last_pos += 2;
     }
-#endif
+  #endif
 
     auto preload = SSC::String(
       "\n;(() => {                                                           \n"
@@ -28,7 +29,7 @@ namespace SSC {
       "  const env = '" + opts.env + "';                                     \n"
       "  Object.defineProperties(globalThis.__args, {                        \n"
       "  argv: {                                                             \n"
-      "    value: [" + opts.argv + "],                                       \n"
+      "    value: [" +argv + "],                                             \n"
       "    enumerable: true                                                  \n"
       "  },                                                                  \n"
       "  config: {                                                           \n"
@@ -54,13 +55,13 @@ namespace SSC {
       "Object.freeze(globalThis.__args.env)                                  \n"
     );
 
-    const auto start = opts.argv.find("--test=");
+    const auto start = argv.find("--test=");
     if (start != std::string::npos) {
-      auto end = opts.argv.find("'", start);
+      auto end = argv.find("'", start);
       if (end == std::string::npos) {
-        end = opts.argv.size();
+        end = argv.size();
       }
-      const auto file = opts.argv.substr(start + 7, end - start - 7);
+      const auto file = argv.substr(start + 7, end - start - 7);
       if (file.size() > 0) {
         preload += "                                                         \n"
           "document.addEventListener('DOMContentLoaded', () => {             \n"
