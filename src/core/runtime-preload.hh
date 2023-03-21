@@ -4,7 +4,14 @@
 #include "../window/options.hh"
 
 namespace SSC {
-  inline SSC::String createPreload (WindowOptions opts) {
+  struct PreloadOptions {
+    bool module = false;
+  };
+
+  inline String createPreload (
+    const WindowOptions opts,
+    const PreloadOptions preloadOptions
+  ) {
 #ifdef _WIN32
     // Escape backslashes in paths.
     size_t last_pos = 0;
@@ -16,9 +23,10 @@ namespace SSC {
 
     auto preload = SSC::String(
       "\n;(() => {                                                           \n"
-      "  globalThis.__args = {}                                                  \n"
+      "  if (globalThis.__args) return;                                      \n"
+      "  globalThis.__args = {}                                              \n"
       "  const env = '" + opts.env + "';                                     \n"
-      "  Object.defineProperties(globalThis.__args, {                            \n"
+      "  Object.defineProperties(globalThis.__args, {                        \n"
       "  argv: {                                                             \n"
       "    value: [" + opts.argv + "],                                       \n"
       "    enumerable: true                                                  \n"
@@ -42,8 +50,8 @@ namespace SSC {
       "    enumerable: true                                                  \n"
       "  }                                                                   \n"
       "})                                                                    \n"
-      "Object.freeze(globalThis.__args.argv)                                     \n"
-      "Object.freeze(globalThis.__args.env)                                      \n"
+      "Object.freeze(globalThis.__args.argv)                                 \n"
+      "Object.freeze(globalThis.__args.env)                                  \n"
     );
 
     const auto start = opts.argv.find("--test=");
@@ -97,8 +105,17 @@ namespace SSC {
     preload += "  Object.freeze(globalThis.__args.config);\n";
     preload += "})();\n";
 
-    preload += "import('socket:internal/init');\n";
+    if (preloadOptions.module) {
+      preload += "import 'socket:internal/init'\n";
+    } else {
+      preload += "import('socket:internal/init');\n";
+    }
+    //preload += "catch (err) { import('socket:internal/init'); }\n";
     return preload;
+  }
+
+  inline SSC::String createPreload (WindowOptions opts) {
+    return createPreload(opts, PreloadOptions {});
   }
 }
 #endif

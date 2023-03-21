@@ -565,7 +565,7 @@ namespace SSC {
       manager,
       webkit_user_script_new(
         preload.c_str(),
-        WEBKIT_USER_CONTENT_INJECT_TOP_FRAME,
+        WEBKIT_USER_CONTENT_INJECT_ALL_FRAMES,
         WEBKIT_USER_SCRIPT_INJECT_AT_DOCUMENT_START,
         nullptr,
         nullptr
@@ -621,8 +621,6 @@ namespace SSC {
 
           width = (int) geometry.width;
           height = (int) geometry.height;
-
-          debug("height=%d width=%d", height, width);
 
           break;
         }
@@ -703,8 +701,31 @@ namespace SSC {
     }
   }
 
-  void Window::navigate (const String &seq, const String &s) {
-    webkit_web_view_load_uri(WEBKIT_WEB_VIEW(webview), s.c_str());
+  void Window::navigate (const String &seq, const String &url) {
+    if (url.starts_with("file:")) {
+      auto preload = createPreload(opts, PreloadOptions { .module = true });
+      auto script = "<script type=\"module\">" + preload + "</script>";
+      auto path = url.substr(url.find("file://")   , url.size() - 7);
+      auto html = readFile(path);
+
+      if (html.find("<head>") != -1) {
+        html = replace(html, "<head>", "<head>" + script);
+      } else if (html.find("<body>") != -1) {
+        html = replace(html, "<body>", "<body>" + script);
+      } else if (html.find("<html>") != -1) {
+        html = replace(html, "<html>", "<html>" + script);
+      } else {
+        html = script + html;
+      }
+
+      webkit_web_view_load_html(
+        WEBKIT_WEB_VIEW(webview),
+        html.c_str(),
+        "file://" + fs::path(path).parent_path().string()
+      );
+    } else {
+      webkit_web_view_load_uri(WEBKIT_WEB_VIEW(webview), url.c_str());
+    }
 
     if (seq.size() > 0) {
       auto index = std::to_string(this->opts.index);

@@ -600,12 +600,14 @@ namespace SSC {
           [=](id self, SEL cmd, WKScriptMessage* scriptMessage) {
             auto window = (Window*) objc_getAssociatedObject(self, "window");
 
+            if (!scriptMessage) return;
             id body = [scriptMessage body];
-            if (![body isKindOfClass:[NSString class]]) {
+            if (!body || ![body isKindOfClass:[NSString class]]) {
               return;
             }
 
             String uri = [body UTF8String];
+            if (!uri.size()) return;
 
             if (!bridge->route(uri, nullptr, 0)) {
               if (window != nullptr && window->onMessage != nullptr) {
@@ -719,8 +721,29 @@ namespace SSC {
     auto url = [NSURL URLWithString: [NSString stringWithUTF8String: value.c_str()]];
 
     if (url != nullptr) {
-      auto request = [NSMutableURLRequest requestWithURL: url];
-      auto navigation = [webview loadRequest: request];
+      if (String(url.scheme.UTF8String) == "file") {
+        auto preload = createPreload(opts, PreloadOptions { .module = true });
+        auto script = "<script type=\"module\">" + preload + "</script>";
+        auto html = String([[NSString stringWithContentsOfURL: url] UTF8String]);
+
+        if (html.find("<head>") != -1) {
+          html = replace(html, "<head>", "<head>" + script);
+        } else if (html.find("<body>") != -1) {
+          html = replace(html, "<body>", "<body>" + script);
+        } else if (html.find("<html>") != -1) {
+          html = replace(html, "<html>", "<html>" + script);
+        } else {
+          html = script + html;
+        }
+
+        [webview
+          loadHTMLString: [NSString stringWithUTF8String: html.c_str()]
+                 baseURL: [url URLByDeletingLastPathComponent]
+        ];
+      } else {
+        auto request = [NSMutableURLRequest requestWithURL: url];
+        [webview loadRequest: request];
+      }
 
       if (seq.size() > 0) {
         auto index = std::to_string(this->opts.index);
