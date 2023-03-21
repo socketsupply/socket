@@ -221,11 +221,19 @@ download_to_tmp() {
   uri=$1
   tmp="$(mktemp -d)"
   output=$tmp/"$(basename "$uri")"
-  http_code=$(curl -L --write-out '%{http_code}' "$uri" --output "$output")
-  if  [ "$http_code" != "200" ] ; then
-    echo "$http_code"
-    rm -rf "$tmp"
-    return 1
+
+  if [ -n "$SSC_ANDROID_REPO" ]; then
+    echo >&2 cp "$SSC_ANDROID_REPO/$(basename "$uri")" "$output"
+    cp "$SSC_ANDROID_REPO/$(basename "$uri")" "$output" || return $?
+  else
+    http_code=$(curl -L --write-out '%{http_code}' "$uri" --output "$output")
+    # DONT COMMIT
+    cp "$output" ..
+    if  [ "$http_code" != "200" ] ; then
+      echo "$http_code"
+      rm -rf "$tmp"
+      return 1
+    fi
   fi
   echo "$output"
 }
