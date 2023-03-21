@@ -812,7 +812,7 @@ void initializeRC (fs::path targetPath) {
 
       // convert env value to normalized path if it exists
       if (fs::exists(fs::status(valueAsPath))) {
-        value = valueAsPath;
+        value = valueAsPath.string();
       }
 
       // auto set environment variables
