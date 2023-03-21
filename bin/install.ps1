@@ -139,7 +139,7 @@ Function Test-CommandVersion {
     for (($i = 0); ($i -lt $ca.Count); ($i++)) {
       # Current element is lower, no point in comparing other elements
       if ($ca[$i] -lt $ta[$i]) {
-        break; 
+        break;
       }
 
       # Current element is greater, no need to compare other elements
@@ -161,9 +161,9 @@ Function Test-CommandVersion {
 $vsconfig = "nmake.vsconfig"
 
 if ( -not (("llvm+vsbuild" -eq $toolchain) -or ("vsbuild" -eq $toolchain) -or ("llvm" -eq $toolchain)) ) {
-  Write-Output "Unsupported -toolchain $toolchain. Supported options are vsbuild, llvm+vsbuild or llvm (external nmake required)"
-  Write-Output "-toolchain llvm+vsbuild will check for and install llvm clang $targetClangVersion and vsbuild nmake."
-  
+  Write-Output "not ok - Unsupported -toolchain $toolchain. Supported options are vsbuild, llvm+vsbuild or llvm (external nmake required)"
+  Write-Output "not ok - -toolchain llvm+vsbuild will check for and install llvm clang $targetClangVersion and vsbuild nmake."
+
   Exit 1
 }
 
@@ -177,7 +177,7 @@ if ("vsbuild" -eq $toolchain) {
 }
 
 
-Write-Output "Using toolchain: $toolchain"
+Write-Output "# Using toolchain: $toolchain"
 
 #
 # Install the files we will want to use for builds
@@ -244,9 +244,9 @@ Function Install-Requirements {
     
     if ($confirmation -eq 'y') {
       $t = [string]{
-        Write-Output "Downloading $url"
+        Write-Output "# Downloading $url"
         -geturl-
-        Write-Output "Installing $env:TEMP\$installer"
+        Write-Output "# Installing $env:TEMP\$installer"
         iex "& $env:TEMP\$installer /quiet"
       }
       $t = $t.replace("`$installer", $installer).replace("`$env:TEMP", $env:TEMP).replace("`$url", $url).replace("-geturl-", (Get-UrlCall "$url" "$env:TEMP\$installer")).replace("""", "\""")
@@ -264,7 +264,7 @@ Function Install-Requirements {
     $global:git = "$gitPath\$global:git"
     $global:path_advice += "`$env:PATH='$gitPath;'+`$env:PATH"
   } else {
-    Write-Output ("Git found at, changing path to: $global:git")
+    Write-Output ("# Git found at, changing path to: $global:git")
   }
 
   if (-not (Found-Command($global:git))) {
@@ -276,13 +276,13 @@ Function Install-Requirements {
 
     if ($confirmation -eq 'y') {
       $t = [string]{
-        Write-Output "Downloading $url"
+        Write-Output "# Downloading $url"
         -geturl-
-        Write-Output "Installing $env:TEMP\$installer"
+        Write-Output "# Installing $env:TEMP\$installer"
         iex "& $env:TEMP\$installer /SILENT"
         sleep 1
         $proc=Get-Process $installer_tmp
-        Write-Output "Waiting for $installer_tmp..."
+        Write-Output "# Waiting for $installer_tmp..."
         Wait-Process -InputObject $proc
       }      
       $t = $t.replace("`$installer_tmp", $installer_tmp).replace("`$installer", $installer).replace("`$env:TEMP", $env:TEMP).replace("`$url", $url).replace("-geturl-", (Get-UrlCall "$url" "$env:TEMP\$installer")).replace("""", "\""")
@@ -311,12 +311,12 @@ Function Install-Requirements {
 
       if ($confirmation -eq 'y') {
         $t = [string]{
-          Write-Output "Downloading $url"
+          Write-Output "# Downloading $url"
           -geturl-
-          Write-Output "Installing $env:TEMP\$installer"
+          Write-Output "# Installing $env:TEMP\$installer"
           sleep 2
           $proc=Get-Process msiexec
-          Write-Output "Waiting for msiexec..."
+          Write-Output "# Waiting for msiexec..."
           iex "& $env:TEMP\$installer /quiet"
         }
         $t = $t.replace("`$installer", $installer).replace("`$env:TEMP", $env:TEMP).replace("`$url", $url).replace("-geturl-", (Get-UrlCall "$url" "$env:TEMP\$installer")).replace("""", "\""")
@@ -343,13 +343,13 @@ Function Install-Requirements {
 
         if ($confirmation -eq 'y') {
           $t = [string]{
-            Write-Output "Downloading $url"
+            Write-Output "# Downloading $url"
             -geturl-
-            Write-Output "Installing $env:TEMP\$installer"
+            Write-Output "# Installing $env:TEMP\$installer"
             iex "& $env:TEMP\$installer /S"
             sleep 1
             $proc=Get-Process $installer
-            Write-Output "Waiting for $installer..."
+            Write-Output "# Waiting for $installer..."
           }
           $t = $t.replace("`$installer", $installer).replace("`$env:TEMP", $env:TEMP).replace("`$url", $url).replace("-geturl-", (Get-UrlCall "$url" "$env:TEMP\$installer")).replace("""", "\""")
           $install_tasks += $t
@@ -380,7 +380,7 @@ Function Install-Requirements {
       $install_vc_build = $false
     } else {
       if ($vc_exists) {
-        Write-Output "Calling vcvars64.bat"
+        Write-Output "# Calling vcvars64.bat"
         $(Get-ProcEnvs($vc_vars))
         if ($shbuild -and $(Test-CommandVersion("clang++", $targetClangVersion)) -and $(Found-Command("nmake.exe"))) {
           $report_vc_vars_reqd = $true
@@ -407,9 +407,9 @@ Function Install-Requirements {
 
       if ($confirmation -eq 'y') {
         $t = [string]{
-          Write-Output "Downloading $url"
+          Write-Output "# Downloading $url"
           -geturl-
-          Write-Output "Installing $env:TEMP\$installer"
+          Write-Output "# Installing $env:TEMP\$installer"
           iex "& $env:TEMP\$installer --passive --config $OLD_CWD\$bin\$vsconfig"
         }
         $t = $t.replace("`$OLD_CWD", $OLD_CWD).replace("`$bin", $bin).replace("`$vsconfig", $vsconfig)
@@ -420,7 +420,7 @@ Function Install-Requirements {
   }
 
   if ($install_tasks.Count -gt 0) {
-    Write-Output "Installing build dependencies..."
+    Write-Output "# Installing build dependencies..."
     $script = ""
     # concatinate all script blocks so a single UAC request is raised
     foreach ($task in $install_tasks) {
@@ -430,7 +430,7 @@ Function Install-Requirements {
     try {
       Start-Process powershell -verb runas -wait -ArgumentList "$script"
     } catch [InvalidOperationException] {
-      $global:install_errors += "UAC declined, nothing installed."
+      $global:install_errors += "not ok - UAC declined, nothing installed."
     }
   }
 
@@ -440,7 +440,7 @@ Function Install-Requirements {
       $(Get-ProcEnvs($vc_vars))
     } else {
       if ($env:CI -eq $null) {
-        $global:install_errors += "vcvars64.bat still not present, something went wrong."
+        $global:install_errors += "not ok - vcvars64.bat still not present, something went wrong."
       }
     }
   }
@@ -472,7 +472,7 @@ Function Install-Requirements {
   }
 
   if (-not (Found-Command($global:git))) {
-    $global:install_errors += "git not installed."
+    $global:install_errors += "not ok - git not installed."
   }
 
   if ($shbuild) {
@@ -501,14 +501,14 @@ if ($shbuild) {
   $sh = "$gitPath\sh.exe"
 
   if ($env:VERBOSE -eq "1") {
-    Write-Output "Using shell $sh"
+    Write-Output "# Using shell $sh"
     iex "& ""$sh"" -c 'uname -s'"
   }
 
   # Look for sh in path
   if (-not (Found-Command($sh))) {
     $sh = "$gitPath\sh.exe"
-    $global:install_errors += "sh.exe not in PATH or default Git\bin"
+    $global:install_errors += "not ok - sh.exe not in PATH or default Git\bin"
     Exit-IfErrors
   }
 
@@ -523,13 +523,13 @@ if ($shbuild) {
   $global:path_advice += "`$env:PATH='$BIN_PATH;'+`$env:PATH"
 
   cd $OLD_CWD
-  Write-Output "Calling bin\install.sh $global:forceArg"
+  Write-Output "# Calling bin\install.sh $global:forceArg"
   iex "& ""$sh"" bin\install.sh $global:forceArg"
 }
 
 if ($global:path_advice.Count -gt 0) {
-  Write-Output "Please run in future dev sessions: "
-  Write-Output "(Or just run cd $OLD_CWD; .\bin\install.ps1)"
+  Write-Output "# Please run in future dev sessions: "
+  Write-Output "# (Or just run cd $OLD_CWD; .\bin\install.ps1)"
   foreach ($p in $global:path_advice) {
     Write-Output $p
   }

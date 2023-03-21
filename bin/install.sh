@@ -15,7 +15,7 @@ if [[ -n $VERBOSE ]]; then
   echo "# using cores: $CPU_CORES"
 fi
 
-declare arch="$(uname -m | sed 's/aarch64/arm64/g')"
+declare arch="$(host_arch)"
 declare args=()
 declare pids=()
 declare force=0
@@ -47,7 +47,7 @@ else
   SOCKET_HOME="${SOCKET_HOME:-"${XDG_DATA_HOME:-"$HOME/.local/share"}/socket"}"
 fi
 
-echo "warn - Using '$SOCKET_HOME' as SOCKET_HOME"
+echo "warn - using '$SOCKET_HOME' as SOCKET_HOME"
 
 if [[ "$host" = "Linux" ]]; then
   if [ -n "$WSL_DISTRO_NAME" ] || uname -r | grep 'Microsoft'; then
@@ -123,7 +123,7 @@ if [ ! "$CXX" ]; then
     exit 1
   fi
 
-  echo "warn - Using '$CXX' as CXX"
+  echo "warn - using '$CXX' as CXX"
 fi
 
 export CXX
@@ -172,17 +172,17 @@ if [[ -n "$BUILD_ANDROID" ]]; then
   abis=($(android_supported_abis))
   platform="android"
   arch="${abis[0]}"
-  host_arch="$(uname -m)"
+  host_arch="$(host_arch)"
   clang="$(android_clang "$ANDROID_HOME" "$NDK_VERSION" "$host" "$host_arch" "$arch")"
 
   if ! quiet $clang -v; then
-    echo "Android clang call failed. This could indicate an issue with ANDROID_HOME, missing ndk tools, or incorrectly determined host or target architectures."
+    echo "not ok - Android clang call failed. This could indicate an issue with ANDROID_HOME, missing ndk tools, or incorrectly determined host or target architectures."
     exit 1
   fi
 fi
 
 function _build_cli {
-  local arch="$(uname -m | sed 's/aarch64/arm64/g')"
+  local arch="$(host_arch)"
   local platform="desktop"
   local src="$root/src"
   local output_directory="$BUILD_DIR/$arch-$platform"
@@ -200,7 +200,7 @@ function _build_cli {
   fi
 
   if [[ -n "$VERBOSE" ]]; then
-    echo "cli libs: $libs, $(uname -s)"
+    echo "# cli libs: $libs, $(uname -s)"
   fi
 
   local ldflags=($("$root/bin/ldflags.sh" --arch "$arch" --platform $platform ${libs[@]}))
@@ -270,7 +270,7 @@ function _build_cli {
 }
 
 function _build_runtime_library() {
-  local arch="$(uname -m | sed 's/aarch64/arm64/g')"
+  local arch="$(host_arch)"
   echo "# building runtime library"
   "$root/bin/build-runtime-library.sh" --arch "$arch" --platform desktop $pass_force & pids+=($!)
 
@@ -293,12 +293,8 @@ function _get_web_view2() {
     return
   fi
 
-  local arch="$(uname -m | sed 's/aarch64/arm64/g')"
+  local arch="$(host_arch)"
   local platform="desktop"
-
-  if [[ "$platform" = "desktop" ]] && [[ "$arch" = "aarch64" ]]; then
-    arch="arm64"
-  fi
 
   if test -f "$BUILD_DIR/$arch-$platform/lib$d/WebView2LoaderStatic.lib"; then
     echo "$BUILD_DIR/$arch-$platform/lib$d/WebView2LoaderStatic.lib exists."
@@ -316,11 +312,11 @@ function _get_web_view2() {
   mkdir -p "$BUILD_DIR/include"
   mkdir -p "$BUILD_DIR/$arch-$platform/lib$d"/
 
-  cp -pf build/native/include/WebView2.h "$BUILD_DIR/include/WebView2.h" 
-  cp -pf build/native/include/WebView2Experimental.h "$BUILD_DIR/include/WebView2Experimental.h" 
-  cp -pf build/native/include/WebView2EnvironmentOptions.h "$BUILD_DIR/include/WebView2EnvironmentOptions.h" 
-  cp -pf build/native/include/WebView2ExperimentalEnvironmentOptions.h "$BUILD_DIR/include/WebView2ExperimentalEnvironmentOptions.h" 
-  cp -pf build/native/x64/WebView2LoaderStatic.lib "$BUILD_DIR/$arch-$platform/lib$d/WebView2LoaderStatic.lib" 
+  cp -pf build/native/include/WebView2.h "$BUILD_DIR/include/WebView2.h"
+  cp -pf build/native/include/WebView2Experimental.h "$BUILD_DIR/include/WebView2Experimental.h"
+  cp -pf build/native/include/WebView2EnvironmentOptions.h "$BUILD_DIR/include/WebView2EnvironmentOptions.h"
+  cp -pf build/native/include/WebView2ExperimentalEnvironmentOptions.h "$BUILD_DIR/include/WebView2ExperimentalEnvironmentOptions.h"
+  cp -pf build/native/x64/WebView2LoaderStatic.lib "$BUILD_DIR/$arch-$platform/lib$d/WebView2LoaderStatic.lib"
 
   cd "$pwd"
 
@@ -329,12 +325,8 @@ function _get_web_view2() {
 
 function _prebuild_desktop_main () {
   echo "# precompiling main program for desktop"
-  local arch="$(uname -m | sed 's/aarch64/arm64/g')"
+  local arch="$(host_arch)"
   local platform="desktop"
-
-  if [[ "$platform" = "desktop" ]] && [[ "$arch" = "aarch64" ]]; then
-    arch="arm64"
-  fi
 
   local src="$root/src"
   local objects="$BUILD_DIR/$arch-$platform/objects"
@@ -441,7 +433,7 @@ function _prebuild_ios_simulator_main () {
 
 function _prepare {
   echo "# preparing directories..."
-  local arch="$(uname -m | sed 's/aarch64/arm64/g')"
+  local arch="$(host_arch)"
   rm -rf "$SOCKET_HOME"/{lib$d,src,bin,include,objects,api}
   rm -rf "$SOCKET_HOME"/{lib$d,objects}/"$arch-desktop"
 
@@ -481,13 +473,12 @@ function _install {
   if [ "$platform" == "desktop" ]; then
     echo "# copying sources to $SOCKET_HOME/src"
     cp -r "$CWD"/src/* "$SOCKET_HOME/src"
+    if [[ "$arch" = "aarch64" ]]; then
+      arch="arm64"
+    fi
   fi
 
   # TODO(@mribbons): Set lib types based on platform, after mobile CI is working
-
-  if [[ "$platform" = "desktop" ]] && [[ "$arch" = "aarch64" ]]; then
-    arch="arm64"
-  fi
 
   if test -d "$BUILD_DIR/$arch-$platform/objects"; then
     echo "# copying objects to $SOCKET_HOME/objects/$arch-$platform"
@@ -550,7 +541,7 @@ function _install {
 }
 
 function _install_cli {
-  local arch="$(uname -m | sed 's/aarch64/arm64/g')"
+  local arch="$(host_arch)"
 
   if [ -z "$TEST" ] && [ -z "$NO_INSTALL" ]; then
     echo "# moving binary to '$SOCKET_HOME/bin' (prompting to copy file into directory)"
@@ -602,7 +593,7 @@ function _setSDKVersion {
 function _compile_libuv_android {
   local platform="android"
   local arch=$1
-  local host_arch="$(uname -m)"
+  local host_arch="$(host_arch)"
   clang="$(android_clang "$ANDROID_HOME" "$NDK_VERSION" "$host" "$host_arch" "$arch")"
   ar="$(android_ar "$ANDROID_HOME" "$NDK_VERSION" "$host" "$host_arch")"
   android_includes=$(android_arch_includes "$arch")
@@ -616,7 +607,7 @@ function _compile_libuv_android {
   mkdir -p "$output_directory"
 
   declare src_directory="$root/build/uv/src"
-  
+
   trap onsignal INT TERM
   local i=0
   local max_concurrency=$CPU_CORES
@@ -693,8 +684,7 @@ function _compile_libuv {
   platform=$2
 
   if [ -z "$target" ]; then
-    target="$(uname -m | sed 's/aarch64/arm64/g')"
-    host=$(uname -s)
+    target="$(host_arch)"
     platform="desktop"
   fi
 
@@ -744,7 +734,7 @@ function _compile_libuv {
       fi
     fi
 
-    rm -f "$root/build/$(uname -m | sed 's/aarch64/arm64/g')-desktop/lib$d"/*.{so,la,dylib}*
+    rm -f "$root/build/$(host_arch)-desktop/lib$d"/*.{so,la,dylib}*
     return
   fi
 
@@ -902,7 +892,7 @@ for pid in "${pids[@]}"; do
   die $? "not ok - unable to build. See trouble shooting guide in the README.md file"
 done
 
-_install "$(uname -m | sed 's/aarch64/arm64/g')" desktop
+_install "$(host_arch)" desktop
 
 if [[ "$host" = "Darwin" ]]; then
   _install arm64 iPhoneOS
