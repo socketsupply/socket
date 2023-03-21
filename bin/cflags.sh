@@ -6,7 +6,7 @@ declare IPHONEOS_VERSION_MIN="${IPHONEOS_VERSION_MIN:-14.0}"
 declare IOS_SIMULATOR_VERSION_MIN="${IOS_SIMULATOR_VERSION_MIN:-$IPHONEOS_VERSION_MIN}"
 
 declare cflags=()
-declare arch="$(uname -m)"
+declare arch="$(uname -m | sed 's/aarch64/arm64/g')"
 declare host="$(uname -s)"
 declare platform="desktop"
 

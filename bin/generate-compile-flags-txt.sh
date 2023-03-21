@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 declare root="$(cd "$(dirname "$(dirname "${BASH_SOURCE[0]}")")" && pwd)"
-declare arch="$(uname -m)"
+declare arch="$(uname -m | sed 's/aarch64/arm64/g')"
 declare platform="desktop"
 declare force=0
 declare args=()
