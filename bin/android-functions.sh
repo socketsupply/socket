@@ -4,8 +4,6 @@ declare root="$(cd "$(dirname "$(dirname "${BASH_SOURCE[0]}")")" && pwd)"
 
 source "$root/bin/functions.sh"
 
-declare ANDROID_SETTINGS_FILENAME=".android-rc"
-
 declare -A DEFAULT_ANDROID_HOME
 DEFAULT_ANDROID_HOME[Darwin]=$HOME/Library/Android/sdk 
 DEFAULT_ANDROID_HOME[Win32]=$LOCALAPPDATA\\Android\\Sdk
@@ -176,38 +174,6 @@ function get_android_paths() {
     export GRADLE_HOME
   fi
 }
-
-function load_android_paths() {
-  if [[ -f "$ANDROID_SETTINGS_FILENAME" ]]; then
-    source "$ANDROID_SETTINGS_FILENAME"
-  fi
-}
-
-function format_android_paths() {
-  echo "export ANDROID_HOME=\"$(escape_path "$ANDROID_HOME")\""
-  echo "export JAVA_HOME=\"$(escape_path "$JAVA_HOME")\""
-  echo "export ANDROID_SDK_MANAGER=\"$(escape_path "$ANDROID_SDK_MANAGER")\""
-  echo "export GRADLE_HOME=\"$(escape_path "$GRADLE_HOME")\""
-}
-
-function save_android_paths() {
-  # Maintain mtime on $ANDROID_SETTINGS_FILENAME, only update if changed
-  temp=$(mktemp)
-  format_android_paths > "$temp"
-  if [[ ! -f "$ANDROID_SETTINGS_FILENAME" ]]; then
-    mv "$temp" "$ANDROID_SETTINGS_FILENAME"
-  else
-    old_hash=$(sha512sum "$ANDROID_SETTINGS_FILENAME")
-    new_hash=$(sha512sum "$temp")
-
-    if [[ "$old_hash" != "$new_hash" ]]; then
-      mv "$temp" "$ANDROID_SETTINGS_FILENAME"
-    else
-      rm "$temp"
-    fi
-  fi
-}
-
 
 function build_android_platform_tools_uri() {
   os="$host"
@@ -435,12 +401,12 @@ if [[ -n "$ANDROID_HOME" ]]; then
   fi
 fi
 
+# used for testing
 function clear_android_settings() {
   export ANDROID_HOME=""
   export JAVA_HOME=""
   export ANDROID_SDK_MANAGER=""
   export GRADLE_HOME=""
-
 }
 
 function android_install_sdk_manager() {
@@ -564,7 +530,6 @@ function android_install_jdk() {
 }
 
 function android_install_gradle() {
-  echo "GRADLE_HOME: $GRADLE_HOME"
   if [[ -n "$GRADLE_HOME" ]]; then
       return 0
   fi
@@ -604,10 +569,17 @@ function android_install_gradle() {
 }
 
 function android_first_time_experience_setup() {
-  # populates global search path list
+  # builds global search path list
   get_android_default_search_paths
-  android_install_sdk_manager
-  android_install_jdk
-  android_install_gradle
-  echo "$JAVA_HOME"
+  android_install_sdk_manager && sdk_result=$?
+  android_install_jdk && jdk_result=$?
+  android_install_gradle && gradle_result=$?
+  
+  write_env_data
+  if (( sdk_result + jdk_result + gradle_result != 0 )); then
+    echo "One or more Android build components failed to install."
+    return 1
+  fi
+
+  return 0
 }
