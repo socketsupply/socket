@@ -88,6 +88,6 @@ function host_os() {
   elif [[ "$host" == *"MSYS_NT"* ]]; then
     host="Win32"
   fi
-  
+
   echo "$host"
 }

@@ -13,6 +13,7 @@ if [[ -n $VERBOSE ]]; then
   echo "# using cores: $CPU_CORES"
 fi
 
+declare arch="$(uname -m | sed 's/aarch64/arm64/g')"
 declare args=()
 declare pids=()
 declare force=0
@@ -32,7 +33,7 @@ while (( $# > 0 )); do
 
   if [[ "$arg" = "--force" ]] || [[ "$arg" = "-f" ]]; then
     pass_force="$arg"
-    force=1; continue   
+    force=1; continue
   fi
 
   args+=("$arg")
@@ -44,7 +45,18 @@ else
   SOCKET_HOME="${SOCKET_HOME:-"${XDG_DATA_HOME:-"$HOME/.local/share"}/socket"}"
 fi
 
-echo "SOCKET_HOME: $SOCKET_HOME"
+echo "warn - Using '$SOCKET_HOME' as SOCKET_HOME"
+
+if [[ "$host" = "Linux" ]]; then
+  if [ -n "$WSL_DISTRO_NAME" ] || uname -r | grep 'Microsoft'; then
+  echo "WSL is not supported."
+  exit 1
+  fi
+elif [[ "$host" == *"MINGW64_NT"* ]]; then
+  host="Win32"
+elif [[ "$host" == *"MSYS_NT"* ]]; then
+  host="Win32"
+fi
 
 if [ -z "$SOCKET_HOME" ]; then
   if [ -n "$LOCALAPPDATA" ]; then
@@ -107,13 +119,13 @@ if [ ! "$CXX" ]; then
 
     fi
   fi
-  
-  echo Using $CXX as CXX
 
   if [ ! "$CXX" ]; then
     echo "not ok - could not determine \$CXX environment variable"
     exit 1
   fi
+
+  echo "warn - Using '$CXX' as CXX"
 fi
 
 export CXX
@@ -172,12 +184,12 @@ if [[ -n "$BUILD_ANDROID" ]]; then
 fi
 
 function _build_cli {
-  echo "# building cli for desktop ($(uname -m))..."
-  local arch="$(uname -m)"
+  local arch="$(uname -m | sed 's/aarch64/arm64/g')"
   local platform="desktop"
-
   local src="$root/src"
   local output_directory="$BUILD_DIR/$arch-$platform"
+
+  echo "# building cli for desktop ($arch)..."
 
   # Expansion won't work under _NT
   # uv found by -L
@@ -260,12 +272,13 @@ function _build_cli {
 }
 
 function _build_runtime_library {
+  local arch="$(uname -m | sed 's/aarch64/arm64/g')"
   echo "# building runtime library"
-  "$root/bin/build-runtime-library.sh" --arch "$(uname -m)" --platform desktop "$pass_force" & pids+=($!)
+  "$root/bin/build-runtime-library.sh" --arch "$arch" --platform desktop $pass_force & pids+=($!)
+
   if [[ "$host" = "Darwin" ]]; then
-    "$root/bin/build-runtime-library.sh" --arch "$(uname -m)" --platform ios "$pass_force" & pids+=($!)
-    "$root/bin/build-runtime-library.sh" --arch x86_64 --platform ios-simulator "$pass_force" & pids+=($!)
-  fi
+    "$root/bin/build-runtime-library.sh" --arch "$arch" --platform ios $pass_force & pids+=($!)
+    "$root/bin/build-runtime-library.sh" --arch x86_64 --platform ios-simulator $pass_force & pids+=($!)
 
   if [[ -n "$BUILD_ANDROID" ]]; then
     for abi in $(android_supported_abis); do
@@ -280,9 +293,13 @@ function _get_web_view2() {
   if [[ "$(uname -s)" != *"_NT"* ]]; then
     return
   fi
-  
-  local arch="$(uname -m)"
+
+  local arch="$(uname -m | sed 's/aarch64/arm64/g')"
   local platform="desktop"
+
+  if [[ "$platform" = "desktop" ]] && [[ "$arch" = "aarch64" ]]; then
+    arch="arm64"
+  fi
 
   if test -f "$BUILD_DIR/$arch-$platform/lib$d/WebView2LoaderStatic.lib"; then
     echo "$BUILD_DIR/$arch-$platform/lib$d/WebView2LoaderStatic.lib exists."
@@ -313,8 +330,12 @@ function _get_web_view2() {
 
 function _prebuild_desktop_main () {
   echo "# precompiling main program for desktop"
-  local arch="$(uname -m)"
+  local arch="$(uname -m | sed 's/aarch64/arm64/g')"
   local platform="desktop"
+
+  if [[ "$platform" = "desktop" ]] && [[ "$arch" = "aarch64" ]]; then
+    arch="arm64"
+  fi
 
   local src="$root/src"
   local objects="$BUILD_DIR/$arch-$platform/objects"
@@ -421,11 +442,12 @@ function _prebuild_ios_simulator_main () {
 
 function _prepare {
   echo "# preparing directories..."
+  local arch="$(uname -m | sed 's/aarch64/arm64/g')"
   rm -rf "$SOCKET_HOME"/{lib$d,src,bin,include,objects,api}
-  rm -rf "$SOCKET_HOME"/{lib$d,objects}/"$(uname -m)-desktop"
+  rm -rf "$SOCKET_HOME"/{lib$d,objects}/"$arch-desktop"
 
   mkdir -p "$SOCKET_HOME"/{lib$d,src,bin,include,objects,api}
-  mkdir -p "$SOCKET_HOME"/{lib$d,objects}/"$(uname -m)-desktop"
+  mkdir -p "$SOCKET_HOME"/{lib$d,objects}/"$arch-desktop"
 
   if [[ "$host" = "Darwin" ]]; then
     mkdir -p "$SOCKET_HOME"/{lib$d,objects}/{arm64-iPhoneOS,x86_64-iPhoneSimulator}
@@ -464,6 +486,10 @@ function _install {
 
   # TODO(@mribbons): Set lib types based on platform, after mobile CI is working
 
+  if [[ "$platform" = "desktop" ]] && [[ "$arch" = "aarch64" ]]; then
+    arch="arm64"
+  fi
+
   if test -d "$BUILD_DIR/$arch-$platform/objects"; then
     echo "# copying objects to $SOCKET_HOME/objects/$arch-$platform"
     rm -rf "$SOCKET_HOME/objects/$arch-$platform"
@@ -498,8 +524,8 @@ function _install {
     if [[ "$platform" == "android" ]] && [[ -d "$BUILD_DIR/$arch-$platform"/lib ]]; then
       cp -fr "$BUILD_DIR/$arch-$platform"/lib/*.a "$SOCKET_HOME/lib/$arch-$platform"
     fi
-  else 
-     echo >&2 "not ok - Missing $BUILD_DIR/$arch-$platform/lib"
+  else
+    echo >&2 "not ok - Missing $BUILD_DIR/$arch-$platform/lib"
     exit 1
   fi
 
@@ -525,7 +551,7 @@ function _install {
 }
 
 function _install_cli {
-  local arch="$(uname -m)"
+  local arch="$(uname -m | sed 's/aarch64/arm64/g')"
 
   if [ -z "$TEST" ] && [ -z "$NO_INSTALL" ]; then
     echo "# moving binary to '$SOCKET_HOME/bin' (prompting to copy file into directory)"
@@ -668,7 +694,8 @@ function _compile_libuv {
   platform=$2
 
   if [ -z "$target" ]; then
-    target=$(uname -m)
+    target="$(uname -m | sed 's/aarch64/arm64/g')"
+    host=$(uname -s)
     platform="desktop"
   fi
 
@@ -718,7 +745,7 @@ function _compile_libuv {
       fi
     fi
 
-    rm -f "$root/build/$(uname -m)-desktop/lib$d"/*.{so,la,dylib}*
+    rm -f "$root/build/$(uname -m | sed 's/aarch64/arm64/g')-desktop/lib$d"/*.{so,la,dylib}*
     return
   fi
 
@@ -877,7 +904,7 @@ for pid in "${pids[@]}"; do
   die $? "not ok - unable to build. See trouble shooting guide in the README.md file"
 done
 
-_install "$(uname -m)" desktop
+_install "$(uname -m | sed 's/aarch64/arm64/g')" desktop
 
 if [[ "$host" = "Darwin" ]]; then
   _install arm64 iPhoneOS

@@ -44,11 +44,11 @@ declare targets=()
 
 if [ -n "$arch" ] || [ -n "$platform" ]; then
   if (( do_full_clean )); then
-    echo "error: cannot mix '--full' and '--arch/--platform'" >&2
+    echo "error - cannot mix '--full' and '--arch/--platform'" >&2
     exit 1
   fi
 
-  arch="${arch:-$(uname -m)}"
+  arch="${arch:-$(uname -m | sed 's/aarch64/arm64/g')}"
   platform="${platform:-desktop}"
   targets+=($(find                               \
     "$root/build/$arch-$platform"/app            \

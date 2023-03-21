@@ -2,7 +2,7 @@
 
 declare root="$(cd "$(dirname "$(dirname "${BASH_SOURCE[0]}")")" && pwd)"
 source "$root/bin/android-functions.sh"
-declare archs=($(uname -m))
+declare archs=($(uname -m | sed 's/aarch64/arm64/g'))
 declare platform="$(uname -s | tr '[[:upper:]]' '[[:lower:]]')"
 
 declare args=()
@@ -79,8 +79,13 @@ mkdir -p "$SOCKET_HOME"
 export SOCKET_HOME
 export PREFIX
 
-if (( !only_top_level ))  && (( !no_rebuild )) ; then
+if (( !only_top_level && !no_rebuild )) ; then
   "$root/bin/install.sh" || exit $?
+fi
+
+if (( do_global_link && !dry_run )); then
+  echo >&2 "warn - '--link' implies '--dry-run' too"
+  dry_run=1
 fi
 
 declare ABORT_ERRORS=0
@@ -103,7 +108,7 @@ for abi in $(android_supported_abis); do
     ABORT_ERRORS=1
     echo >&2 "not ok - $lib_path/libuv.a missing - check build process."
   fi
-  
+
   if [[ ! -f "$lib_path/libsocket-runtime.a" ]]; then
     ABORT_ERRORS=1
     echo >&2 "not ok - $lib_path/libsocket-runtime.a missing - check build process."

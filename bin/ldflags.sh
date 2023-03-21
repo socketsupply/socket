@@ -11,6 +11,10 @@ declare platform="desktop"
 
 declare ios_sdk_path=""
 
+if [[ "$arch" = "aarch64" ]]; then
+  arch="arm64"
+fi
+
 if [[ "$host" = "Linux" ]]; then
   if [ -n "$WSL_DISTRO_NAME" ] || uname -r | grep 'Microsoft'; then
     host="Win32"

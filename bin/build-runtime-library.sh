@@ -11,7 +11,7 @@ declare args=()
 declare pids=()
 declare force=0
 
-declare arch="$(uname -m)"
+declare arch="$(uname -m | sed 's/aarch64/arm64/g')"
 declare host_arch=$arch
 declare host=$(host_os)
 declare platform="desktop"
