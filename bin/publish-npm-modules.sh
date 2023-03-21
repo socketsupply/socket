@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
 
 declare root="$(cd "$(dirname "$(dirname "${BASH_SOURCE[0]}")")" && pwd)"
+
 source "$root/bin/android-functions.sh"
-declare archs=($(uname -m | sed 's/aarch64/arm64/g'))
+source "$root/bin/functions.sh"
+
+declare archs=($(host_arch))
 declare platform="$(uname -s | tr '[[:upper:]]' '[[:lower:]]')"
 
 declare args=()
@@ -84,12 +87,10 @@ if (( !only_top_level && !no_rebuild )) ; then
 fi
 
 if (( do_global_link && !dry_run )); then
-  echo >&2 "warn - '--link' implies '--dry-run' too"
   dry_run=1
 fi
 
 declare ABORT_ERRORS=0
-
 
 # Confirm that build SSC matches current commit
 if command -v ssc >/dev/null 2>&1; then
@@ -156,7 +157,7 @@ if (( !only_top_level )); then
     cp -rf "$SOCKET_HOME/include"/* "$SOCKET_HOME/packages/$package/include"
 
     # don't copy debug files, too large
-    rm -rf $SOCKET_HOME/lib/*-android/objs-debug 
+    rm -rf $SOCKET_HOME/lib/*-android/objs-debug
     cp -rf $SOCKET_HOME/lib/*-android "$SOCKET_HOME/packages/$package/lib"
 
     cp -rf "$SOCKET_HOME/lib/"$arch-* "$SOCKET_HOME/packages/$package/lib"

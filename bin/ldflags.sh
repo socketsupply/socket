@@ -5,15 +5,11 @@ declare root="$(cd "$(dirname "$(dirname "${BASH_SOURCE[0]}")")" && pwd)"
 declare ldflags=()
 
 declare args=()
-declare arch="$(uname -m)"
+declare arch="$(uname -m | sed 's/aarch64/arm64/g')"
 declare host="$(uname -s)"
 declare platform="desktop"
 
 declare ios_sdk_path=""
-
-if [[ "$arch" = "aarch64" ]]; then
-  arch="arm64"
-fi
 
 if [[ "$host" = "Linux" ]]; then
   if [ -n "$WSL_DISTRO_NAME" ] || uname -r | grep 'Microsoft'; then

@@ -6,6 +6,8 @@ declare platform="$(uname | tr '[[:upper:]]' '[[:lower:]]')"
 
 if [ "$(uname -m)" = "x86_64" ]; then
   archs+=("x64")
+elif [ "$(uname -m)" = "aarch64" ]; then
+  archs+=("arm64")
 else
   archs+=("$(uname -m)")
 fi

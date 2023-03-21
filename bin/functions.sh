@@ -1,17 +1,11 @@
 #!/usr/bin/env bash
 
-declare BSD_STAT=0
-
 # BSD stat has no version argument or reliable identifier
 if stat --help 2>&1 | grep "usage: stat" >/dev/null; then
-  BSD_STAT=1
-fi
-
-if (( $BSD_STAT == 1 )); then
   stat_format_arg="-f"
   stat_mtime_spec="%m"
   stat_size_spec="%z"
-else 
+else
   # GNU_STAT
   stat_format_arg="-c"
   stat_mtime_spec="%Y"
@@ -72,6 +66,8 @@ function set_cpu_cores() {
 }
 
 function host_os() {
+  local host=""
+
   if [[ -n $1 ]]; then
     host=$1
   else
@@ -90,4 +86,8 @@ function host_os() {
   fi
 
   echo "$host"
+}
+
+function host_arch() {
+  uname -m | sed 's/aarch64/arm64/g'
 }
