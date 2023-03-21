@@ -1,4 +1,4 @@
-import { MessageEvent, ErrorEvent, CustomEvent } from './events.js'
+import { Event, CustomEvent, ErrorEvent, MessageEvent } from './events.js'
 
 /**
  * An interface for registering callbacks for various hooks in
@@ -44,6 +44,8 @@ export default new class Hooks extends EventTarget {
       'init',
       'load',
       'message',
+      'online',
+      'offline',
       'error',
       'messageerror',
       'unhandledrejection'
@@ -51,13 +53,15 @@ export default new class Hooks extends EventTarget {
 
     for (const type of events) {
       this.global.addEventListener(type, (event) => {
-        const { type, data, detail, error } = event
+        const { type, data, detail = null, error } = event
         if (error) {
           this.dispatchEvent(new ErrorEvent(type, { error, detail }))
         } else if (type && data) {
           this.dispatchEvent(new MessageEvent(type, { data, detail }))
-        } else {
+        } else if (detail) {
           this.dispatchEvent(new CustomEvent(type, { detail }))
+        } else {
+          this.dispatchEvent(new Event(type))
         }
       })
     }
@@ -152,6 +156,14 @@ export default new class Hooks extends EventTarget {
   }
 
   /**
+   * Predicate for determining if the runtime is working online.
+   * @type {boolean}
+   */
+  get isOnline () {
+    return this.global.navigator?.onLine || false
+  }
+
+  /**
    * Wait for the global Window, Document, and Runtime to be ready.
    * The callback function is called exactly once.
    * @param {function} callback
@@ -229,5 +241,25 @@ export default new class Hooks extends EventTarget {
   onMessage (callback) {
     this.addEventListener('message', callback)
     return () => this.removeEventListener('message', callback)
+  }
+
+  /**
+   * Calls callback when runtime is working online.
+   * @param {function} callback
+   * @return {function}
+   */
+  onOnline (callback) {
+    this.addEventListener('online', callback)
+    return () => this.removeEventListener('online', callback)
+  }
+
+  /**
+   * Calls callback when runtime is not working online.
+   * @param {function} callback
+   * @return {function}
+   */
+  onOffline (callback) {
+    this.addEventListener('offline', callback)
+    return () => this.removeEventListener('offline', callback)
   }
 }

@@ -1,4 +1,4 @@
-/* global CustomEvent, Blob */
+/* global CustomEvent, ErrorEvent, Blob */
 /* eslint-disable import/first */
 // mark when runtime did init
 console.assert(
@@ -6,88 +6,66 @@ console.assert(
   'socket:internal/init.js was imported twice. ' +
   'This could lead to undefined behavior.'
 )
+console.assert(
+  !globalThis.process?.versions?.node,
+  'socket:internal/init.js was imported in Node.js. ' +
+  'This could lead to undefined behavior.'
+)
+
 globalThis.__RUNTIME_INIT_NOW__ = performance.now()
 
-import { IllegalConstructor, InvertedPromise } from '../util.js'
-import { applyPolyfills } from '../polyfills.js'
-import globals from './globals.js'
-import hooks from '../hooks.js'
-import ipc from '../ipc.js'
-
-import '../console.js'
-
 const GlobalWorker = globalThis.Worker || class Worker extends EventTarget {}
-const hardwareConcurrency = globalThis.navigator?.hardwareConcurrency || 4
 
-const isWorker = !globalThis.window && globalThis.self && globalThis.postMessage
+// only patch a webview or worker context
+if ((globalThis.window || globalThis.self) === globalThis) {
+  if (typeof globalThis.queueMicrotask === 'function') {
+    const originalQueueMicrotask = globalThis.queueMicrotask
+    const promise = Promise.resolve()
 
-class ConcurrentQueue extends EventTarget {
-  concurrency = hardwareConcurrency
-  pending = []
-
-  constructor (concurrency) {
-    super()
-    if (typeof concurrency === 'number' && concurrency > 0) {
-      this.concurrency = concurrency
-    }
-  }
-
-  async wait () {
-    if (this.pending.length < this.concurrency) return
-    await this.peek()
-  }
-
-  peek () {
-    return this.pending[0]
-  }
-
-  timeout (request, timer) {
-    const onresolve = () => {
-      clearTimeout(timeout)
-      queueMicrotask(() => {
-        const index = this.pending.indexOf(request)
-        if (index > -1) {
-          this.pending.splice(index, 1)
-        }
-      })
-    }
-
-    const timeout = setTimeout(onresolve, timer || 256)
-    return onresolve
-  }
-
-  async push (request, timer) {
-    await this.wait()
-    this.pending.push(request)
-    request.then(this.timeout(request, timer))
-  }
-}
-
-class RuntimeXHRPostQueue extends ConcurrentQueue {
-  async dispatch (id, seq, params, headers) {
-    const promise = new InvertedPromise()
-    await this.push(promise, 64)
-
-    if (typeof params !== 'object') {
-      params = {}
-    }
-
-    params = { ...params, id }
-    const options = { responseType: 'arraybuffer' }
-    const result = await ipc.request('post', { id }, options)
-
-    if (result.err) {
-      promise.resolve()
-      this.dispatchEvent(new CustomEvent('error', { detail: result.err }))
-      return
-    }
-
-    setTimeout(() => {
-      const { data } = result
-      const detail = { headers, params, data, id }
-      promise.resolve()
-      globalThis.dispatchEvent(new CustomEvent('data', { detail }))
+    globalThis.queueMicrotask = queueMicrotask
+    globalThis.addEventListener('queuemicrotaskerror', (e) => {
+      console.log(e.error.stack)
+      throw e.error
     })
+
+    function queueMicrotask (...args) {
+      if (args.length === 0) {
+        throw new TypeError('Not enough arguments')
+      }
+
+      const [callback] = args
+
+      if (typeof callback !== 'function') {
+        throw new TypeError(
+          'Argument 1 (\'callback\') to globalThis.queueMicrotask ' +
+          'must be a function'
+        )
+      }
+
+      return originalQueueMicrotask(task)
+
+      function task () {
+        try {
+          return callback.call(globalThis)
+        } catch (error) {
+          try {
+            throw error
+          } catch (error) {
+            console.log('stack', error.stack)
+          }
+          // XXX(@jwerle): `queueMicrotask()` is broken in WebKit WebViews
+          // If an error is thrown, it does not bubble to the `globalThis`
+          // object, but is instead silently discarded. This is misleading
+          // and results in confusion for developers trying to debug something
+          // they may have done wrong. Here we will rethrow the exception out
+          // of microtask execution context with the best function we can
+          // possibly use to report the exception to the `globalThis` object
+          // as an `Unhandled Promise Rejection` error
+          const event = new ErrorEvent('queuemicrotaskerror', { error })
+          promise.then(() => globalThis.dispatchEvent(event))
+        }
+      }
+    }
   }
 }
 
@@ -211,6 +189,87 @@ if (typeof globalThis.XMLHttpRequest === 'function') {
   }
 }
 
+import { IllegalConstructor, InvertedPromise } from '../util.js'
+import { applyPolyfills } from '../polyfills.js'
+import globals from './globals.js'
+import hooks from '../hooks.js'
+import ipc from '../ipc.js'
+
+import '../console.js'
+
+const hardwareConcurrency = globalThis.navigator?.hardwareConcurrency || 4
+const isWorkerLike = !globalThis.window && globalThis.self && globalThis.postMessage
+
+class ConcurrentQueue extends EventTarget {
+  concurrency = hardwareConcurrency
+  pending = []
+
+  constructor (concurrency) {
+    super()
+    if (typeof concurrency === 'number' && concurrency > 0) {
+      this.concurrency = concurrency
+    }
+  }
+
+  async wait () {
+    if (this.pending.length < this.concurrency) return
+    await this.peek()
+  }
+
+  peek () {
+    return this.pending[0]
+  }
+
+  timeout (request, timer) {
+    const onresolve = () => {
+      clearTimeout(timeout)
+      queueMicrotask(() => {
+        const index = this.pending.indexOf(request)
+        if (index > -1) {
+          this.pending.splice(index, 1)
+        }
+      })
+    }
+
+    const timeout = setTimeout(onresolve, timer || 256)
+    return onresolve
+  }
+
+  async push (request, timer) {
+    await this.wait()
+    this.pending.push(request)
+    request.then(this.timeout(request, timer))
+  }
+}
+
+class RuntimeXHRPostQueue extends ConcurrentQueue {
+  async dispatch (id, seq, params, headers) {
+    const promise = new InvertedPromise()
+    await this.push(promise, 64)
+
+    if (typeof params !== 'object') {
+      params = {}
+    }
+
+    params = { ...params, id }
+    const options = { responseType: 'arraybuffer' }
+    const result = await ipc.request('post', { id }, options)
+
+    if (result.err) {
+      promise.resolve()
+      this.dispatchEvent(new CustomEvent('error', { detail: result.err }))
+      return
+    }
+
+    setTimeout(() => {
+      const { data } = result
+      const detail = { headers, params, data, id }
+      promise.resolve()
+      globalThis.dispatchEvent(new CustomEvent('data', { detail }))
+    })
+  }
+}
+
 hooks.onLoad(() => {
   if (typeof globalThis.dispatchEvent === 'function') {
     globalThis.dispatchEvent(new CustomEvent('init'))
@@ -220,7 +279,7 @@ hooks.onLoad(() => {
 // async preload modules
 hooks.onReady(async () => {
   try {
-    if (!isWorker) {
+    if (!isWorkerLike) {
       // precache fs.constants
       await ipc.request('fs.constants', {}, { cache: true })
     }
