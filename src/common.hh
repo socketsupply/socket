@@ -578,7 +578,7 @@ namespace SSC {
       return _putenv(s);
     #else
 
-      return putenv(strdup((char*) &s[0]));
+      return putenv((char*) &s[0]);
     #endif
   }
 
