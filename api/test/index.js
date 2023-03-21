@@ -158,6 +158,14 @@ export class Test {
   }
 
   /**
+   * @param {string} [msg]
+   * @returns {void}
+   */
+  pass (msg) {
+    return this.ok(true, msg)
+  }
+
+  /**
    * @param {Error | null | undefined} err
    * @param {string} [msg]
    * @returns {void}

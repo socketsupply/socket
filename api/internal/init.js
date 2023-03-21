@@ -24,7 +24,6 @@ if ((globalThis.window || globalThis.self) === globalThis) {
 
     globalThis.queueMicrotask = queueMicrotask
     globalThis.addEventListener('queuemicrotaskerror', (e) => {
-      console.log(e.error.stack)
       throw e.error
     })
 
@@ -48,11 +47,6 @@ if ((globalThis.window || globalThis.self) === globalThis) {
         try {
           return callback.call(globalThis)
         } catch (error) {
-          try {
-            throw error
-          } catch (error) {
-            console.log('stack', error.stack)
-          }
           // XXX(@jwerle): `queueMicrotask()` is broken in WebKit WebViews
           // If an error is thrown, it does not bubble to the `globalThis`
           // object, but is instead silently discarded. This is misleading
