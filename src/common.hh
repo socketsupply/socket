@@ -210,6 +210,8 @@ namespace SSC {
   inline const auto VERSION_HASH_STRING = ToString(STR_VALUE(SSC_VERSION_HASH));
   inline const auto VERSION_STRING = ToString(STR_VALUE(SSC_VERSION));
 
+  inline const auto DEFAULT_SSC_RC_FILENAME = String(".sscrc");
+
   const Map getUserConfig ();
 
   bool isDebugEnabled ();
@@ -576,7 +578,7 @@ namespace SSC {
       return _putenv(s);
     #else
 
-      return putenv((char*) &s[0]);
+      return putenv(strdup((char*) &s[0]));
     #endif
   }
 
@@ -627,6 +629,13 @@ namespace SSC {
       stream.close();
     }
   #endif
+
+  inline Map& extendMap (Map& dst, const Map& src) {
+    for (const auto& tuple : src) {
+      dst[tuple.first] = tuple.second;
+    }
+    return dst;
+  }
 
   inline Map parseINI (String source) {
     Vector<String> entries = split(source, '\n');
