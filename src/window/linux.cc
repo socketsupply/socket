@@ -705,9 +705,18 @@ namespace SSC {
     if (url.starts_with("file:")) {
       auto preload = createPreload(opts, PreloadOptions { .module = true });
       auto script = "<script type=\"module\">" + preload + "</script>";
-      auto path = url.substr(url.find("file://")   , url.size() - 7);
-      auto html = readFile(path);
+      auto path = replace(url, "file://", "");
       auto base = String("file://" + fs::path(path).parent_path().string());
+
+      gchar* contents = nullptr;
+      g_file_get_contents(
+        path.c_str(),
+        &contents,
+        nullptr,
+        nullptr
+      );
+
+      auto html = String(contents);
 
       if (html.find("<head>") != -1) {
         html = replace(html, "<head>", "<head>" + script);
@@ -725,6 +734,8 @@ namespace SSC {
         html.c_str(),
         base.c_str()
       );
+
+      g_free(contents);
     } else {
       webkit_web_view_load_uri(WEBKIT_WEB_VIEW(webview), url.c_str());
     }
