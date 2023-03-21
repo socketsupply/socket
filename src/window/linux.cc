@@ -707,6 +707,7 @@ namespace SSC {
       auto script = "<script type=\"module\">" + preload + "</script>";
       auto path = url.substr(url.find("file://")   , url.size() - 7);
       auto html = readFile(path);
+      auto base = String("file://" + fs::path(path).parent_path().string());
 
       if (html.find("<head>") != -1) {
         html = replace(html, "<head>", "<head>" + script);
@@ -721,7 +722,7 @@ namespace SSC {
       webkit_web_view_load_html(
         WEBKIT_WEB_VIEW(webview),
         html.c_str(),
-        "file://" + fs::path(path).parent_path().string()
+        base.c_str()
       );
     } else {
       webkit_web_view_load_uri(WEBKIT_WEB_VIEW(webview), url.c_str());
