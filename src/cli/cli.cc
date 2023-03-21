@@ -61,7 +61,8 @@ using namespace SSC;
 using namespace std::chrono;
 
 String _settings;
-Map settings = {{}};
+Map settings;
+Map rc;
 
 auto start = system_clock::now();
 
@@ -785,6 +786,44 @@ inline String getCfgUtilPath() {
   exit(1);
 }
 
+void initializeRC (fs::path targetPath) {
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
+  static auto SSC_RC_FILENAME = getEnv("SSC_RC_FILENAME");
+  static auto SSC_RC = getEnv("SSC_RC");
+
+  auto filename = SSC_RC_FILENAME.size() > 0
+    ? SSC_RC_FILENAME
+    : DEFAULT_SSC_RC_FILENAME;
+
+  auto path = SSC_RC.size() > 0
+    ? fs::path(SSC_RC)
+    : targetPath / filename;
+
+  if (fs::exists(path)) {
+    rc = parseINI(readFile(path));
+
+    for (const auto& tuple : rc) {
+      auto key = tuple.first;
+      auto value = tuple.second;
+      auto valueAsPath = fs::path(value).make_preferred();
+
+      // convert env value to normalized path if it exists
+      if (fs::exists(fs::status(valueAsPath))) {
+        value = valueAsPath;
+      }
+
+      // auto set environment variables
+      if (key.starts_with("env_")) {
+        key = key.substr(4, key.size() - 4);
+        setEnv(String(key + "=" + value).c_str());
+      }
+    }
+  }
+}
+
 int main (const int argc, const char* argv[]) {
   if (argc < 2) {
     printHelp("ssc");
@@ -795,10 +834,18 @@ int main (const int argc, const char* argv[]) {
     return s.compare(p) == 0;
   };
 
-  auto optionValue = [](const String& s, const auto& p) -> String {
+  auto optionValue = [](
+    const String& c, // command
+    const String& s,
+    const String& p
+  ) -> String {
     auto string = p + String("=");
     if (String(s).find(string) == 0) {
       auto value = s.substr(string.size());
+      if (value.size() == 0) {
+        value = rc[c + "_" + p];
+      }
+
       if (value.size() == 0) {
         log("missing value for option " + String(p));
         exit(1);
@@ -845,6 +892,8 @@ int main (const int argc, const char* argv[]) {
   } else {
     targetPath = fs::absolute(lastOption).lexically_normal();
   }
+
+  initializeRC(targetPath);
 
   struct Paths {
     fs::path pathBin;
@@ -935,11 +984,12 @@ int main (const int argc, const char* argv[]) {
       for (auto const& arg : commandlineOptions) {
         auto isAcceptableOption = false;
         for (auto const& option : options) {
-          if (is(arg, option) || optionValue(arg, option).size() > 0) {
+          if (is(arg, option) || optionValue(subcommand, arg, option).size() > 0) {
             isAcceptableOption = true;
             break;
           }
         }
+
         if (!isAcceptableOption) {
           log("unrecognized option: " + String(arg));
           printHelp(subcommand);
@@ -983,6 +1033,20 @@ int main (const int argc, const char* argv[]) {
         );
 
         settings = parseINI(ini);
+
+        // allow for local `.sscrc` '[settings] ...' entries to overload the
+        // project's settings in `socket.ini`:
+        // [settings]
+        // ios_simulator_device = "My local device"
+        Map tmp;
+        for (const auto& tuple : rc) {
+          if (tuple.first.starts_with("settings_")) {
+            auto key = replace(tuple.first, "settings_", "");
+            tmp[key] = tuple.second;
+          }
+        }
+
+        extendMap(settings, tmp);
 
         settings["ini_code"] = code;
 
@@ -1080,17 +1144,17 @@ int main (const int argc, const char* argv[]) {
     bool isEcid = false;
     bool isOnly = false;
     for (auto const& option : options) {
-      auto platform = optionValue(options[0], "--platform");
+      auto platform = optionValue("list-devices", options[0], "--platform");
       if (platform.size() > 0) {
         targetPlatform = platform;
       }
-      if (is(option, "--udid")) {
+      if (is(option, "--udid") || is(rc["list-devices_udid"], "true")) {
         isUdid = true;
       }
-      if (is(option, "--ecid")) {
+      if (is(option, "--ecid") || is(rc["list-devices_ecid"], "true")) {
         isEcid = true;
       }
-      if (is(option, "--only")) {
+      if (is(option, "--only") || is(rc["list-devices_only"], "true")) {
         isOnly = true;
       }
     }
@@ -1164,7 +1228,7 @@ int main (const int argc, const char* argv[]) {
       String targetPlatform = "";
       // we need to find the platform first
       for (auto const option : options) {
-        targetPlatform = optionValue(option, "--platform");
+        targetPlatform = optionValue("install-app", option, "--platform");
         if (targetPlatform.size() > 0) {
           // TODO: add Android support
           if (targetPlatform != "ios") {
@@ -1180,7 +1244,7 @@ int main (const int argc, const char* argv[]) {
       }
       // then we need to find the device
       for (auto const option : options) {
-        auto device = optionValue(option, "--device");
+        auto device = optionValue("install-app", option, "--device");
         if (device.size() > 0) {
           if (targetPlatform == "ios") {
             commandOptions += " --ecid " + device + " ";
@@ -1214,7 +1278,7 @@ int main (const int argc, const char* argv[]) {
   createSubcommand("print-build-dir", { "--platform", "--prod" }, true, [&](const std::span<const char *>& options) -> void {
     // if --platform is specified, use the build path for the specified platform
     for (auto const option : options) {
-      auto targetPlatform = optionValue(option, "--platform");
+      auto targetPlatform = optionValue("print-build-dir", option, "--platform");
       if (targetPlatform.size() > 0) {
         fs::path path = getPaths(targetPlatform).pathResourcesRelativeToUserBuild;
         std::cout << path.string() << std::endl;
@@ -1264,40 +1328,40 @@ int main (const int argc, const char* argv[]) {
         exit(0);
       }
 
-      if (is(arg, "-c")) {
+      if (is(arg, "-c") || is(rc["build_code_sign"], "true")) {
         flagCodeSign = true;
       }
 
-      if (is(arg, "-e")) {
+      if (is(arg, "-e") || is(rc["build_entitlements"], "true")) {
         if (platform.os != "mac") {
-          log("-e is only supported on macOS. Ignoring.");
+          log("warning! Build entitlements (-e) are only supported on macOS. Ignoring option.");
         } else {
           // TODO: we don't use it
           flagEntitlements = true;
         }
       }
 
-      if (is(arg, "-n")) {
+      if (is(arg, "-n") || is(rc["build_notarize"], "true")) {
         if (platform.os != "mac") {
-          log("-n is only supported on macOS. Ignoring.");
+          log("warning! Build notarization (-n) are only supported on macOS. Ignoring option.");
         } else {
           flagShouldNotarize = true;
         }
       }
 
-      if (is(arg, "-o")) {
+      if (is(arg, "-o") || is(rc["build_user_only"], "true")) {
         flagRunUserBuildOnly = true;
       }
 
-      if (is(arg, "-p")) {
+      if (is(arg, "-p") || is(rc["build_package"], "true")) {
         flagShouldPackage = true;
       }
 
-      if (is(arg, "-r") || is(arg, "--run")) {
+      if (is(arg, "-r") || is(arg, "--run") || is(rc["build_run"], "true")) {
         flagShouldRun = true;
       }
 
-      if (is(arg, "-s")) {
+      if (is(arg, "-s")|| is(rc["build_app_store"], "true")) {
         flagAppStore = true;
       }
 
@@ -1305,24 +1369,24 @@ int main (const int argc, const char* argv[]) {
         flagBuildTest = true;
       }
 
-      const auto testFileTmp = optionValue(arg, "--test");
+      const auto testFileTmp = optionValue("build", arg, "--test");
       if (testFileTmp.size() > 0) {
         testFile = testFileTmp;
         flagBuildTest = true;
         argvForward += " " + String(arg);
       }
 
-      if (is(arg, "--headless")) {
+      if (is(arg, "--headless") || is(rc["build_headless"], "true")) {
         argvForward += " --headless";
         flagHeadless = true;
       }
 
-      if (is(arg, "--quiet")) {
+      if (is(arg, "--quiet") || is(rc["build_quiet"], "true")) {
         flagQuietMode = true;
       }
 
       if (targetPlatform.size() == 0) {
-        targetPlatform = optionValue(arg, "--platform");
+        targetPlatform = optionValue("build", arg, "--platform");
         if (targetPlatform.size() > 0) {
           if (targetPlatform == "ios") {
             flagBuildForIOS = true;
@@ -1339,15 +1403,16 @@ int main (const int argc, const char* argv[]) {
       }
 
       if (hostArg.size() == 0) {
-        hostArg = optionValue(arg, "--host");
+        hostArg = optionValue("build", arg, "--host");
         if (hostArg.size() > 0) {
           devHost = hostArg;
         } else {
           if (flagBuildForIOS || flagBuildForAndroid) {
-            auto r = exec((!platform.win) ? 
-              "ifconfig | grep -w 'inet' | awk '!match($2, \"^127.\") {print $2; exit}' | tr -d '\n'" : 
-              "PowerShell -Command ((Get-NetIPAddress -AddressFamily IPV4).IPAddress ^| Select-Object -first 1)"
-              );
+            auto r = exec((!platform.win)
+              ? "ifconfig | grep -w 'inet' | awk '!match($2, \"^127.\") {print $2; exit}' | tr -d '\n'"
+              : "PowerShell -Command ((Get-NetIPAddress -AddressFamily IPV4).IPAddress ^| Select-Object -first 1)"
+            );
+
             if (r.exitCode == 0) {
               devHost = r.output;
             }
@@ -1356,7 +1421,7 @@ int main (const int argc, const char* argv[]) {
       }
 
       if (portArg.size() == 0) {
-        portArg = optionValue(arg, "--port");
+        portArg = optionValue("build", arg, "--port");
         if (portArg.size() > 0) {
           devPort = portArg;
         }
@@ -2330,7 +2395,7 @@ int main (const int argc, const char* argv[]) {
         if (copyMap.size() > 0) {
           for (const auto& tuple : copyMap) {
             auto key = tuple.first;
-            auto value = tuple.second;
+            auto& value = tuple.second;
 
             if (key.starts_with("debug_")) {
               if (!flagDebugMode) continue;
@@ -3350,20 +3415,20 @@ int main (const int argc, const char* argv[]) {
       if (is(option, "--test")) {
         flagTest = true;
       }
-      const auto testFileTmp = optionValue(option, "--test");
+      const auto testFileTmp = optionValue("run", option, "--test");
       if (testFileTmp.size() > 0) {
         flagTest = true;
         testFile = testFileTmp;
         argvForward += " " + String(option);
       }
 
-      if (is(option, "--headless")) {
+      if (is(option, "--headless") || is(rc["run_headless"], "true")) {
         argvForward += " --headless";
         flagHeadless = true;
       }
 
       if (targetPlatform.size() == 0) {
-        targetPlatform = optionValue(option, "--platform");
+        targetPlatform = optionValue("run", option, "--platform");
         if (targetPlatform.size() > 0) {
           if (targetPlatform == "ios-simulator") {
             isIosSimulator = true;
