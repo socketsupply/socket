@@ -131,8 +131,38 @@ function host_arch() {
   uname -m | sed 's/aarch64/arm64/g'
 }
 
-function lower() {
-  echo "$1"|tr '[:upper:]' '[:lower:]'
+function build_env_data() {
+  echo "ANDROID_HOME=\"$(escape_path "$ANDROID_HOME")\""
+  echo "JAVA_HOME=\"$(escape_path "$JAVA_HOME")\""
+  echo "ANDROID_SDK_MANAGER=\"$(escape_path "$ANDROID_SDK_MANAGER")\""
+  echo "GRADLE_HOME=\"$(escape_path "$GRADLE_HOME")\""
+}
+
+declare SSC_ENV_FILENAME=".ssc.env"
+
+function read_env_data() {
+  if [[ -f "$SSC_ENV_FILENAME" ]]; then
+    source "$(abs_path "$SSC_ENV_FILENAME")"
+  fi
+}
+
+function write_env_data() {
+  # Maintain mtime on $SSC_ENV_FILENAME, only update if changed
+  temp=$(mktemp)
+  build_env_data > "$temp"
+  SSC_ENV_FILENAME="$(abs_path "$SSC_ENV_FILENAME")"
+  if [[ ! -f "$SSC_ENV_FILENAME" ]]; then
+    mv "$temp" "$SSC_ENV_FILENAME"
+  else
+    old_hash=$(sha512sum "$SSC_ENV_FILENAME")
+    new_hash=$(sha512sum "$temp")
+
+    if [[ "$old_hash" != "$new_hash" ]]; then
+      mv "$temp" "$SSC_ENV_FILENAME"
+    else
+      rm "$temp"
+    fi
+  fi
 }
 
 function prompt() {
