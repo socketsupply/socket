@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 
-declare root="$(cd "$(dirname "$(dirname "${BASH_SOURCE[0]}")")" && pwd)"
+declare root=""
+
+root="$(cd "$(dirname "$(dirname "${BASH_SOURCE[0]}")")" && pwd)"
 
 source "$root/bin/functions.sh"
 source "$root/bin/android-functions.sh"
@@ -267,7 +269,7 @@ function _build_cli {
   fi
 }
 
-function _build_runtime_library {
+function _build_runtime_library() {
   local arch="$(uname -m | sed 's/aarch64/arm64/g')"
   echo "# building runtime library"
   "$root/bin/build-runtime-library.sh" --arch "$arch" --platform desktop $pass_force & pids+=($!)
@@ -275,6 +277,7 @@ function _build_runtime_library {
   if [[ "$host" = "Darwin" ]]; then
     "$root/bin/build-runtime-library.sh" --arch "$arch" --platform ios $pass_force & pids+=($!)
     "$root/bin/build-runtime-library.sh" --arch x86_64 --platform ios-simulator $pass_force & pids+=($!)
+  fi
 
   if [[ -n "$BUILD_ANDROID" ]]; then
     for abi in $(android_supported_abis); do
@@ -810,10 +813,10 @@ function onsignal () {
   local status=${1:-$?}
   for pid in "${pids[@]}"; do
     kill TERM $pid >/dev/null 2>&1
-    kill -9 $pid >/dev/null 2>&1
+    kill -9 "$pid" >/dev/null 2>&1
     wait "$pid" 2>/dev/null
   done
-  exit $status
+  exit "$status"
 }
 
 _check_compiler_features
@@ -837,14 +840,13 @@ if [[ "$(uname -s)" == "Darwin" ]]; then
 
   LIPO=$(xcrun -sdk iphoneos -find lipo)
   PLATFORMPATH="/Applications/Xcode.app/Contents/Developer/Platforms"
-  TOOLSPATH="/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin"
 
   _setSDKVersion iPhoneOS
 
   _compile_libuv arm64 iPhoneOS & pids+=($!)
   _compile_libuv x86_64 iPhoneSimulator & pids+=($!)
 
-  for pid in "${pids[@]}"; do wait $pid; done
+  for pid in "${pids[@]}"; do wait "$pid"; done
 
   die $? "not ok - unable to combine build artifacts"
   echo "ok - created fat library"
