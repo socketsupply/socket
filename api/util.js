@@ -14,6 +14,14 @@ const kSocketCustomInspect = inspect.custom = Symbol.for('socket.util.inspect.cu
 const kNodeCustomInspect = inspect.custom = Symbol.for('nodejs.util.inspect.custom')
 const kIgnoreInspect = inspect.ignore = Symbol.for('socket.util.inspect.ignore')
 
+function maybeURL (...args) {
+  try {
+    return new URL(...args)
+  } catch (_) {
+    return null
+  }
+}
+
 export function hasOwnProperty (object, property) {
   return ObjectPrototype.hasOwnProperty.call(object, String(property))
 }
@@ -502,12 +510,27 @@ export function inspect (value, options) {
       }
 
       const formatWebkitErrorStackLine = (line) => {
-        const [symbol, location] = line.split('@')
-        const [context, lineno, colno] = (location?.split(':') || [])
-        const output = ['    at']
+        const [symbol = '', location = ''] = line.split('@')
+        const output = []
+        const root = new URL('../', import.meta.url).pathname
+
+        let [context, lineno, colno] = (
+          maybeURL(location)?.pathname?.split(/:/) ||
+          location?.split(/:/) ||
+          []
+        )
+
+        output.push('    at')
 
         if (symbol) {
           output.push(symbol)
+        }
+
+        if (context) {
+          context = context.replace(root, '')
+          if (/socket\//.test(context)) {
+            context = context.replace('socket/', 'socket:').replace(/.js$/, '')
+          }
         }
 
         if (context && lineno && colno) {
@@ -518,7 +541,7 @@ export function inspect (value, options) {
           output.push(`${context}`)
         }
 
-        return output.join(' ')
+        return output.filter(Boolean).join(' ')
       }
 
       out += (value.stack || '')
