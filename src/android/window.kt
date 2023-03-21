@@ -55,26 +55,26 @@ open class Window (runtime: Runtime, activity: MainActivity) {
           var html = if (htmlString.matches("<head>".toRegex())) {
             htmlString.replace("<head>","""
               <head>
-                <script type="text/javascript">
+                <script type="module">
+                  ${source}
+                </script>
+            """)
+          } else if (htmlString.matches("<body>".toRegex())) {
+            htmlString.replace("<body>","""
+              <body>
+                <script type="module">
                   ${source}
                 </script>
             """)
           } else if (htmlString.matches("<html>".toRegex())) {
             htmlString.replace("<html>","""
               <html>
-                <script type="text/javascript">
-                  ${source}
-                </script>
-            """)
-          } else if (htmlString.matches("<body>".toRegex())) {
-            htmlString.replace("<html>","""
-              <html>
-                <script type="text/javascript">
+                <script type="module">
                   ${source}
                 </script>
             """)
           } else {
-            """<script type="text/javascript">${source}</script>""" + htmlString
+            """<script type="module">${source}</script>""" + htmlString
           }
 
           indexFile.close()

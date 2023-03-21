@@ -267,8 +267,24 @@ static dispatch_queue_t queue = dispatch_queue_create(
       fileURLWithPath: [allowed stringByAppendingPathComponent:@"ui/index.html"]
     ];
 
-    [self.webview loadFileURL: url
-      allowingReadAccessToURL: [NSURL fileURLWithPath:allowed]];
+    auto preload = createPreload(opts, PreloadOptions { .module = true });
+    auto script = "<script type=\"module\">" + preload + "</script>";
+    auto html = String([[NSString stringWithContentsOfURL: url] UTF8String]);
+
+    if (html.find("<head>") != -1) {
+      html = replace(html, "<head>", "<head>" + script);
+    } else if (html.find("<body>") != -1) {
+      html = replace(html, "<body>", "<body>" + script);
+    } else if (html.find("<html>") != -1) {
+      html = replace(html, "<html>", "<html>" + script);
+    } else {
+      html = script + html;
+    }
+
+    [self.webview
+      loadHTMLString: [NSString stringWithUTF8String: html.c_str()]
+             baseURL: [url URLByDeletingLastPathComponent]
+    ];
   }
 
   self.webview.scrollView.delegate = self;
