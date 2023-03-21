@@ -140,6 +140,7 @@ function build_env_data() {
   echo "JAVA_HOME=\"$(escape_path "$JAVA_HOME")\""
   echo "ANDROID_SDK_MANAGER=\"$(escape_path "$ANDROID_SDK_MANAGER")\""
   echo "GRADLE_HOME=\"$(escape_path "$GRADLE_HOME")\""
+  echo "JAVA_OPTS=\"-XX:+IgnoreUnrecognizedVMOptions --add-modules java.se.ee\""
 }
 
 function read_env_data() {
@@ -322,4 +323,8 @@ function get_top_level_archive_dir() {
 function lower()
 {
   echo "$1"|tr '[:upper:]' '[:lower:]'
+}
+
+function version { 
+  echo "$@" | awk -F. '{ printf("%d%03d%03d%03d\n", $1,$2,$3,$4); }'; 
 }

@@ -82,6 +82,24 @@ function get_android_default_search_paths() {
   export GRADLE_SEARCH_PATHS
 }
 
+function test_javac_version() {
+  javac=$1
+  target_version=$2
+
+  jc_v="$("$javac" --version 2>/dev/null)"; r=$?
+  if [[ "$r" != "0" ]]; then
+    return $r
+  fi
+
+  jc_v="${jc_v/javac\ /}"
+  [[ -n $VERBOSE ]] && echo "Comparing $javac version: "$(version "$jc_v") "$(version "$target_version")"
+  if [ "$(version "$jc_v")" -lt "$(version "$target_version")" ]; then
+    return 1
+  fi
+
+  return 0
+}
+
 function get_android_paths() {
   get_android_default_search_paths
 
@@ -105,10 +123,19 @@ function get_android_paths() {
 
   temp=$(mktemp)
   for java_home_test in "${JAVA_HOME_SEARCH_PATHS[@]}"; do
+    # Try initial search in bin of known location before attempting `find`
     [[ -n $VERBOSE ]] && echo "Checking $java_home_test/bin/javac$exe"
     if [[ -f "$java_home_test/bin/javac$exe" ]]; then
-      echo "$java_home_test" > "$temp"
-      break
+
+      test_javac_version "$java_home_test/bin/javac$exe" "$JDK_VERSION" ; r=$?
+      if [[ "$r" == "0" ]]; then
+        # subshell, output to file
+        echo "$(dirname "$(dirname "$javac")")" > "$temp"
+        echo "$java_home_test" > "$temp"
+        break
+      else
+        [[ -n $VERBOSE ]] && echo "Ignoring a $java_home_test/bin/javac$exe $jc_v"
+      fi
     fi
 
     [[ -n $VERBOSE ]] && echo "find $java_home_test -type f -name "javac$exe"' -print0 2>/dev/null | while IFS= read -r -d '' javac"
@@ -116,9 +143,14 @@ function get_android_paths() {
     do
       # break doesn't work here, check that we don't have a result
       if [[ $(stat_size "$temp") == 0 ]]; then
-        [[ -n $VERBOSE ]] && echo "Found $javac"        
-        # subshell, output to file
-        echo "$(dirname "$(dirname "$javac")")" > "$temp"
+        [[ -n $VERBOSE ]] && echo "Found $javac"
+        test_javac_version "$javac" "$JDK_VERSION" ; r=$?
+        if [[ "$r" == "0" ]]; then
+          # subshell, output to file
+          echo "$(dirname "$(dirname "$javac")")" > "$temp"
+        else
+          [[ -n $VERBOSE ]] && echo "Ignoring b $javac $jc_v"
+        fi
       fi
     done
   done
@@ -153,22 +185,26 @@ function get_android_paths() {
   fi
   rm "$temp"
 
-  if [[ -n "$_ah" ]]; then 
+  if [[ -n "$_ah" ]]; then
     ANDROID_HOME="$(native_path "$_ah")"
     export ANDROID_HOME
   fi
   
-  if [[ -n "$_sdk" ]]; then 
+  if [[ -n "$_sdk" ]]; then
     ANDROID_SDK_MANAGER="$(native_path "$_sdk")"
     export ANDROID_SDK_MANAGER
   fi
   
-  if [[ -n "$_jh" ]]; then 
+  if [[ -n "$_jh" ]]; then
     JAVA_HOME="$(native_path "$_jh")"
+    echo "Set JAVA_HOME: $JAVA_HOME"
     export JAVA_HOME
+  else
+    unset JAVA_HOME
   fi
+
   
-  if [[ -n "$_gh" ]]; then 
+  if [[ -n "$_gh" ]]; then
     GRADLE_HOME="$(native_path "$_gh")"
     export GRADLE_HOME
   fi
@@ -362,13 +398,7 @@ function android_supported_abis() {
 
   echo "${abis[@]}"
 }
-export DEPS_ERROR
-
-
-if [[ -z "$ANDROID_HOME" ]]; then
-  echo "Android dependencies: ANDROID_HOME not set."
-  DEPS_ERROR=1
-fi
+export ANDROID_DEPS_ERROR
 
 declare cmd=""
 declare exe=""
@@ -381,13 +411,6 @@ fi
 
 declare ANDROID_PLATFORM="33"
 declare NDK_VERSION="25.0.8775105"
-if [[ -n "$host" ]]; then
-  export NDK_BUILD="$ANDROID_HOME/ndk/$NDK_VERSION/ndk-build$cmd"
-  if ! test -f "$NDK_BUILD"; then
-    echo "Android dependencies: ndk-build not at $NDK_BUILD"
-    DEPS_ERROR=1
-  fi
-fi
 
 export BUILD_ANDROID
 
@@ -579,9 +602,9 @@ function android_first_time_experience_setup() {
   fi
   # builds global search path list
   get_android_default_search_paths
-  android_install_sdk_manager && sdk_result=$?
-  android_install_jdk && jdk_result=$?
-  android_install_gradle && gradle_result=$?
+  android_install_sdk_manager; sdk_result=$?
+  android_install_jdk; jdk_result=$?
+  android_install_gradle; gradle_result=$?
   
   write_env_data
   if (( sdk_result + jdk_result + gradle_result != 0 )); then
@@ -615,14 +638,27 @@ function android_env_flow() {
       SDK_OPTIONS+="\"system-images;android-$ANDROID_PLATFORM;google_apis;x86_64\" "
       SDK_OPTIONS+="\"system-images;android-$ANDROID_PLATFORM;google_apis;arm64-v8a\" "
 
-      [[ -n $VERBOSE ]] && echo "Installing android deps"
-      [[ -n $VERBOSE ]] && echo "$(unix_path "$ANDROID_HOME/$ANDROID_SDK_MANAGER")" "$SDK_OPTIONS"
-      # Without eval, sdk manager says there is a syntax error
-      eval "($(unix_path "$ANDROID_HOME/$ANDROID_SDK_MANAGER") $SDK_OPTIONS)"
-      [[ -n $VERBOSE ]] && echo "Running Android licensing process"
-      [[ -n $VERBOSE ]] && echo "$(native_path "$ANDROID_HOME/$ANDROID_SDK_MANAGER")" --licenses
-      "$(native_path "$ANDROID_HOME/$ANDROID_SDK_MANAGER")" --licenses
+      if [[ -n "$ANDROID_HOME" ]]; then
+        [[ -n $VERBOSE ]] && echo "Installing android deps"
+        [[ -n $VERBOSE ]] && echo "$(unix_path "$ANDROID_HOME/$ANDROID_SDK_MANAGER")" "$SDK_OPTIONS"
+        # Without eval, sdk manager says there is a syntax error
+        eval "($(unix_path "$ANDROID_HOME/$ANDROID_SDK_MANAGER") $SDK_OPTIONS)"
+        [[ -n $VERBOSE ]] && echo "Running Android licensing process"
+        [[ -n $VERBOSE ]] && echo "yes | $(native_path "$ANDROID_HOME/$ANDROID_SDK_MANAGER")" --licenses
+        yes | "$(native_path "$ANDROID_HOME/$ANDROID_SDK_MANAGER")" --licenses
+      fi
     fi
+  fi
+
+  if [[ -z "$ANDROID_HOME" ]]; then
+    echo "Android dependencies: ANDROID_HOME not set."
+    ANDROID_DEPS_ERROR=1
+  fi
+
+  export NDK_BUILD="$ANDROID_HOME/ndk/$NDK_VERSION/ndk-build$cmd"
+  if ! test -f "$NDK_BUILD"; then
+    echo "Android dependencies: ndk-build not at $NDK_BUILD"
+    ANDROID_DEPS_ERROR=1
   fi
 
   return $?
