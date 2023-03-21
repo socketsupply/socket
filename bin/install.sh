@@ -179,6 +179,9 @@ if [[ -n "$BUILD_ANDROID" ]] && [[ "arm64" == "$(host_arch)" ]] && [[ "Linux" ==
 fi
 
 if [[ -n "$BUILD_ANDROID" ]]; then
+
+  android_env_flow
+
   abis=($(android_supported_abis))
   platform="android"
   arch="${abis[0]}"

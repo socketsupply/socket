@@ -11,6 +11,7 @@ DEFAULT_ANDROID_HOME[Linux]=$HOME/Android/Sdk
 
 declare ANDROID_SDK_MANAGER_DEFAULT_SEARCH_PATHS=(
   "cmdline-tools/latest/bin"
+  # These paths may be invalid
   "cmdline-tools/bin"
   "tools/bin"
 )
@@ -382,6 +383,7 @@ if [[ "$host" == "Win32" ]]; then
   bat=".bat"
 fi
 
+declare ANDROID_PLATFORM="33"
 declare NDK_VERSION="25.0.8775105"
 if [[ -n "$host" ]]; then
   export NDK_BUILD="$ANDROID_HOME/ndk/$NDK_VERSION/ndk-build$cmd"
@@ -393,7 +395,7 @@ fi
 
 export BUILD_ANDROID
 
-if [[ -n "$ANDROID_HOME" ]]; then
+if [[ -z $SSC_NO_ANDROID ]]; then
   if [[ -z $CI ]] || [[ -n $SSC_ANDROID_CI ]]; then
     BUILD_ANDROID=1
   fi
@@ -460,7 +462,7 @@ function android_install_sdk_manager() {
 
   uri="$(build_android_command_line_tools_uri)"
   echo "Please review the Android Command line tools License by visiting the URL below, locating ""Command line tools only"" and clicking $(basename "$uri")"
-  echo "$ANDROID_PLATFORM_TOOLS_PAGE_URI"
+  echo "$ANDROID_STUDIO_PAGE_URI"
   
   if ! prompt_yn "Do you consent to the Android Command line tools License?"; then
     return 1
@@ -481,10 +483,17 @@ function android_install_sdk_manager() {
   fi
   rm "$archive"
 
+  
+  # The contents of cmdline-tools need to be in cmdline-tools/latest (Per sdkmanager: Either specify it explicitly with --sdk_root= or move this package into its expected location: <sdk>\cmdline-tools\latest\)
+  mkdir -p "$_ah"/latest || exit 1
+  mv "$(unix_path "$_ah/cmdline-tools/")"* "$(unix_path "$_ah/latest")" || exit 1
+  mv "$(unix_path "$_ah/latest")" "$(unix_path "$_ah/cmdline-tools/")"|| exit 1
+
   ANDROID_HOME="$_ah"
   export ANDROID_HOME
-  ANDROID_SDK_MANAGER="$(native_path "cmdline-tools/bin/sdkmanager$bat")"
+  ANDROID_SDK_MANAGER="$(native_path "cmdline-tools/latest/bin/sdkmanager$bat")"
   export ANDROID_SDK_MANAGER
+
   return 0
 }
 
@@ -567,12 +576,12 @@ function android_install_gradle() {
 }
 
 function android_first_time_experience_setup() {
-  # builds global search path list
   if 
-  [[ -d "$ANDROID_HOME" ]] && [[ -f "$ANDROID_HOME/$ANDROID_SDK_MANAGER" ]]
+  [[ -d "$ANDROID_HOME" ]] && [[ -f "$ANDROID_HOME/$ANDROID_SDK_MANAGER" ]] && 
   [[ -d "$JAVA_HOME" ]] && [[ -d "$GRADLE_HOME" ]]; then
     return 0
   fi
+  # builds global search path list
   get_android_default_search_paths
   android_install_sdk_manager && sdk_result=$?
   android_install_jdk && jdk_result=$?
@@ -585,4 +594,40 @@ function android_first_time_experience_setup() {
   fi
 
   return 0
+}
+
+
+export ANDROID_ENV_FLOW
+
+function android_env_flow() {
+  [[ -n "$ANDROID_ENV_FLOW" ]] && return 0
+
+  ANDROID_ENV_FLOW=1
+
+  if [[ -n $BUILD_ANDROID ]]; then
+    read_env_data
+    get_android_paths
+    write_env_data
+    if android_first_time_experience_setup; then
+
+      SDK_OPTIONS=""
+      SDK_OPTIONS+="\"ndk;$NDK_VERSION\" "
+      SDK_OPTIONS+="\"platform-tools\" "
+      SDK_OPTIONS+="\"platforms;android-$ANDROID_PLATFORM\" "
+      SDK_OPTIONS+="\"emulator\" "
+      SDK_OPTIONS+="\"patcher;v4\" "
+      SDK_OPTIONS+="\"system-images;android-$ANDROID_PLATFORM;google_apis;x86_64\" "
+      SDK_OPTIONS+="\"system-images;android-$ANDROID_PLATFORM;google_apis;arm64-v8a\" "
+
+      [[ -n $VERBOSE ]] && echo "Installing android deps"
+      [[ -n $VERBOSE ]] && echo "$(unix_path "$ANDROID_HOME/$ANDROID_SDK_MANAGER")" "$SDK_OPTIONS"
+      # Without eval, sdk manager says there is a syntax error
+      eval "($(unix_path "$ANDROID_HOME/$ANDROID_SDK_MANAGER") $SDK_OPTIONS)"
+      [[ -n $VERBOSE ]] && echo "Running Android licensing process"
+      [[ -n $VERBOSE ]] && echo "$(native_path "$ANDROID_HOME/$ANDROID_SDK_MANAGER")" --licenses
+      "$(native_path "$ANDROID_HOME/$ANDROID_SDK_MANAGER")" --licenses
+    fi
+  fi
+
+  return $?
 }
