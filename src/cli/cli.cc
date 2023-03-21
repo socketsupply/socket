@@ -786,13 +786,45 @@ inline String getCfgUtilPath() {
   exit(1);
 }
 
-void initializeRC (fs::path targetPath) {
+void initializeEnv (fs::path targetPath) {
   static bool initialized = false;
+
   if (initialized) return;
   initialized = true;
 
-  static auto SSC_RC_FILENAME = getEnv("SSC_RC_FILENAME");
-  static auto SSC_RC = getEnv("SSC_RC");
+  auto SSC_ENV_FILENAME = getEnv("SSC_ENV_FILENAME");
+
+  auto filename = SSC_ENV_FILENAME.size() > 0
+    ? SSC_ENV_FILENAME
+    : DEFAULT_SSC_ENV_FILENAME;
+
+  auto path = targetPath / filename;
+
+  if (fs::exists(path)) {
+    auto env = parseINI(readFile(path));
+    for (const auto& tuple : env) {
+      auto key = tuple.first;
+      auto value = tuple.second;
+      auto valueAsPath = fs::path(value).make_preferred();
+
+      // convert env value to normalized path if it exists
+      if (fs::exists(fs::status(valueAsPath))) {
+        value = valueAsPath.string();
+      }
+
+      setEnv(key, value);
+    }
+  }
+}
+
+void initializeRC (fs::path targetPath) {
+  static bool initialized = false;
+
+  if (initialized) return;
+  initialized = true;
+
+  auto SSC_RC_FILENAME = getEnv("SSC_RC_FILENAME");
+  auto SSC_RC = getEnv("SSC_RC");
 
   auto filename = SSC_RC_FILENAME.size() > 0
     ? SSC_RC_FILENAME
@@ -818,7 +850,7 @@ void initializeRC (fs::path targetPath) {
       // auto set environment variables
       if (key.starts_with("env_")) {
         key = key.substr(4, key.size() - 4);
-        setEnv(String(key + "=" + value).c_str());
+        setEnv(key, value);
       }
     }
   }
@@ -894,6 +926,7 @@ int main (const int argc, const char* argv[]) {
   }
 
   initializeRC(targetPath);
+  initializeEnv(targetPath);
 
   struct Paths {
     fs::path pathBin;
