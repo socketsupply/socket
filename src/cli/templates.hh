@@ -114,8 +114,22 @@ options:
 )TEXT";
 
 constexpr auto gHelloWorld = R"HTML(
-<body style="display: grid; justify-content: center; align-content: center; font-family: helvetica;">
-  <h1>Hello, World.</h1>
+<!doctype html>
+<html>
+  <head>
+    <style type="text/css">
+      body {
+        display: grid;
+        justify-content: center;
+        align-content: center;
+        font-family: helvetica;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Hello, World.</h1>
+  </body>
+</html>
 )HTML";
 
 //
