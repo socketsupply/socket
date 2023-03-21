@@ -47,15 +47,11 @@ function unix_path() {
 }
 
 function native_path() {
-  echo >&2 "native_path input: $1"
   if [[ "$host" == "Win32" ]]; then
     p="$(cygpath -w "$1")"
     if [[ "$p" == *"\\ "* ]]; then
       # string contains escaped space, quote it and de-escape
-      echo >&2 "native_path quoting"
       p="\"${p//\\ /\ }\""
-    else
-      echo >&2 "native_path not quoting $p"
     fi
     echo "$p"
     return
@@ -229,6 +225,7 @@ download_to_tmp() {
   uri=$1
   tmp="$(mktemp -d)"
   output=$tmp/"$(basename "$uri")"
+  http_code=$(curl -L --write-out '%{http_code}' "$uri" --output "$output")
   if  [ "$http_code" != "200" ] ; then
     echo "$http_code"
     rm -rf "$tmp"

@@ -68,6 +68,7 @@ function get_android_default_search_paths() {
     elif [[ "$host" = "Win32"  ]]; then
       JAVA_HOME_SEARCH_PATHS+=("$LOCALAPPDATA\Programs")
       JAVA_HOME_SEARCH_PATHS+=("$PROGRAMFILES")
+      GRADLE_SEARCH_PATHS+=("$LOCALAPPDATA\Programs")
     fi
   fi
 
@@ -524,7 +525,6 @@ function android_install_sdk_manager() {
 }
 
 function android_install_jdk() {
-  echo "JAVA_HOME: $JAVA_HOME"
   if [[ -n "$JAVA_HOME" ]]; then
       return 0
   fi
@@ -540,8 +540,6 @@ function android_install_jdk() {
     echo "JAVA_HOME parent path doesn't exist $_jh"
     return 1
   fi
-
-  echo "_jh: "$_jh""
 
   uri="$(build_jdk_uri)"
   archive=""
@@ -565,10 +563,51 @@ function android_install_jdk() {
   return 0
 }
 
+function android_install_gradle() {
+  echo "GRADLE_HOME: $GRADLE_HOME"
+  if [[ -n "$GRADLE_HOME" ]]; then
+      return 0
+  fi
+
+  if ! prompt_yn "Gradle is required for building Android apps. Install Gradle now?"; then
+    return 1
+  fi
+
+  prompt_new_path "Enter parent location for GRADLE_HOME (Gradle will be extracted within this folder)" "${GRADLE_SEARCH_PATHS[0]}" _gh \
+    "!CAN_EXIST!"
+  
+  if [ ! -d "$(unix_path "$_gh")" ]; then
+    echo "GRADLE_HOME parent path doesn't exist $_gh"
+    return 1
+  fi
+
+  uri="$(build_gradle_uri)"
+  archive=""
+  echo "Downloading $uri..."
+  archive="$(download_to_tmp "$uri")"
+  if [ "$?" != "0" ]; then
+    echo "Failed to download $uri: $archive"
+    return 1
+  fi
+
+  # Determine internal folder name so we can add it to GRADLE_HOME
+  archive_dir="$(get_top_level_archive_dir "$archive")"
+  echo "Extracting $archive to $_gh"
+  if ! unpack "$archive" "$_gh"; then
+    echo "Failed to unpack $archive"
+    return 1
+  fi
+  rm "$archive"
+  GRADLE_HOME="$(native_path "$(escape_path "$_gh")/$archive_dir")"
+  export GRADLE_HOME
+  return 0
+}
+
 function android_first_time_experience_setup() {
   # populates global search path list
   get_android_default_search_paths
   android_install_sdk_manager
   android_install_jdk
+  android_install_gradle
   echo "$JAVA_HOME"
 }
