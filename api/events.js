@@ -469,7 +469,9 @@ function eventTargetAgnosticAddListener (emitter, name, listener, flags) {
 EventEmitter.EventEmitter = EventEmitter
 EventEmitter.once = once
 
-export const CustomEvent = globalThis.CustomEvent || class CustomEvent extends globalThis.Event {
+export const Event = globalThis.Event || class Event {}
+
+export const CustomEvent = globalThis.CustomEvent || class CustomEvent extends Event {
   #detail = null
 
   constructor (type, options) {
@@ -484,7 +486,7 @@ export const CustomEvent = globalThis.CustomEvent || class CustomEvent extends g
   }
 }
 
-export const MessageEvent = globalThis.MessageEvent || class MessageEvent extends globalThis.Event {
+export const MessageEvent = globalThis.MessageEvent || class MessageEvent extends Event {
   #detail = null
   #data = null
 
@@ -508,7 +510,7 @@ export const MessageEvent = globalThis.MessageEvent || class MessageEvent extend
   }
 }
 
-export const ErrorEvent = globalThis.ErrorEvent || class ErrorEvent extends globalThis.Event {
+export const ErrorEvent = globalThis.ErrorEvent || class ErrorEvent extends Event {
   #detail = null
   #error = null
 
