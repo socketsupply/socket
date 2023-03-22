@@ -629,6 +629,10 @@ function android_env_flow() {
     write_env_data
     if android_first_time_experience_setup; then
 
+      # Move ANDROID_SDK_MANAGER_JAVA_OPTS into JAVA_OPTS temporarily. We can't store it in .ssc.env because it doesn't work with gradle
+      OLD_JAVA_OPTS="$JAVA_OPTS"
+      [[ -n "$ANDROID_SDK_MANAGER_JAVA_OPTS" ]] && JAVA_OPTS="$OLD_JAVA_OPTS $ANDROID_SDK_MANAGER_JAVA_OPTS"
+
       SDK_OPTIONS=""
       SDK_OPTIONS+="\"ndk;$NDK_VERSION\" "
       SDK_OPTIONS+="\"platform-tools\" "
@@ -647,6 +651,8 @@ function android_env_flow() {
         [[ -n $VERBOSE ]] && echo "yes | $(native_path "$ANDROID_HOME/$ANDROID_SDK_MANAGER")" --licenses
         yes | "$(native_path "$ANDROID_HOME/$ANDROID_SDK_MANAGER")" --licenses
       fi
+
+      JAVA_OPTS="$OLD_JAVA_OPTS"
     fi
   fi
 

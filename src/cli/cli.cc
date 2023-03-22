@@ -1517,8 +1517,8 @@ int main (const int argc, const char* argv[]) {
     }
 
     auto removePath = paths.platformSpecificOutputPath;
-      if (targetPlatform == "android")
-        removePath = settings["output"] + "/android/app/src";
+    if (targetPlatform == "android")
+        removePath = settings["build_output"] + "/android/app/src";
 
     if (flagRunUserBuildOnly == false && fs::exists(removePath)) {
       auto p = fs::current_path() / fs::path(removePath);
@@ -1645,11 +1645,16 @@ int main (const int argc, const char* argv[]) {
       StringStream sdkmanager;
 
       if (debugEnv || verboseEnv) log("sdkmanager --version 2>&1 >/dev/null");
-      if (std::system("sdkmanager --version 2>&1 >/dev/null") != 0) {
+
+      sdkmanager << androidHome;
+      if (getEnv("ANDROID_SDK_MANAGER").size() > 0)
+      {
+        sdkmanager << "/" << getEnv("ANDROID_SDK_MANAGER");
+      } else if (std::system("  sdkmanager --version 2>&1 >/dev/null") != 0) {
         if (!platform.win) {
-          sdkmanager << androidHome << "/cmdline-tools/latest/bin/";
+          sdkmanager << "/cmdline-tools/latest/bin/sdkmanager";
         } else {
-          sdkmanager << androidHome << "\\cmdline-tools\\latest\\bin\\";
+          sdkmanager << "\\cmdline-tools\\latest\\bin\\sdkmanager.bat";
         }
       }
 
@@ -1657,19 +1662,22 @@ int main (const int argc, const char* argv[]) {
 
       // TODO(mribbons): Check if we need this in CI - Upload licenses folder from workstation
       // https://developer.android.com/studio/intro/update#download-with-gradle
-      String licenseAccept =  sdkmanager.str() + "sdkmanager" + (platform.win ? ".bat" : "") + " --licenses";
 
-      // echo nothing so command doesn't block
-      if (std::system(("echo |" + licenseAccept).c_str()) != 0) {
-        // This doesn't return a useful status on windows at least
+      String licenseAccept =  sdkmanager.str() + " --licenses";
+
+      if (std::system(("yes |" + licenseAccept).c_str()) != 0) {
+        // Windows doesn't support 'yes'
         log(("Check licenses and run again: \n" + licenseAccept + "\n").c_str());
       }
 
       settings["android_sdk_manager_path"] = sdkmanager.str();
+      
+      String gradlePath = getEnv("GRADLE_HOME").size() > 0 ? getEnv("GRADLE_HOME") + slash + "bin" + slash : "";
 
       StringStream gradleInitCommand;
       gradleInitCommand
         << "echo 1 |"
+        << gradlePath
         << "gradle "
         << "--no-configuration-cache "
         << "--no-build-cache "
@@ -1682,7 +1690,13 @@ int main (const int argc, const char* argv[]) {
       if (std::system(gradleInitCommand.str().c_str()) != 0) {
         log("ERROR: failed to invoke `gradle init` command");
         // In case user didn't accept licenses above
-        log(("Check licenses and run again: \n" + licenseAccept + "\n").c_str());
+        log(
+          String("Check licenses and run again: \n") +
+          (platform.win ? "set" : "export") +
+          (" JAVA_HOME=\"" + getEnv("JAVA_HOME") + "\" && ") +
+          licenseAccept +
+          "\n"
+         );
         exit(1);
       }
 
@@ -2684,6 +2698,7 @@ int main (const int argc, const char* argv[]) {
       sdkmanager << settings["android_sdk_manager_path"];
 
       packages
+        << " "
         << quote << "ndk;" << ndkVersion << quote << " "
         << quote << "platform-tools" << quote << " "
         << quote << "platforms;" << androidPlatform << quote << " "
@@ -2693,7 +2708,6 @@ int main (const int argc, const char* argv[]) {
         << quote << "system-images;" << androidPlatform << ";google_apis;arm64-v8a" << quote << " ";
 
       sdkmanager
-        << "sdkmanager "
         << packages.str();
 
       if (debugEnv || verboseEnv) log(sdkmanager.str());
@@ -2702,7 +2716,7 @@ int main (const int argc, const char* argv[]) {
         exit(1);
       }
 
-      if (!androidEnableStandardNdkBuild) {
+      if (!androidEnableStandardNdkBuild && !flagRunUserBuildOnly) {
         StringStream ndkBuild;
         StringStream ndkBuildArgs;
         StringStream ndkTest;
