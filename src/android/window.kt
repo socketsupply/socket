@@ -117,7 +117,9 @@ open class Window (runtime: Runtime, activity: MainActivity) {
         try {
           stream.write(bytes, 0, bytes.size)
         } catch (err: Exception) {
-          console.error("onSchemeRequest: ${err.toString()}")
+          if (err.message != "Pipe closed") {
+            console.error("onSchemeRequest(): ${err.toString()}")
+          }
         }
 
         stream.close()
