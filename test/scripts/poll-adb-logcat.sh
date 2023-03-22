@@ -9,7 +9,7 @@ echo "polling for '$id' PID in adb"
 while [ -z "$pid" ]; do
   ## Probe for application process ID
   pid="$(adb shell ps | grep "$id" | awk '{print $2}' 2>/dev/null)"
-  sleep 1s
+  sleep 1
 done
 
 ## Process logs from 'adb logcat'
