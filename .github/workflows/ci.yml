@@ -199,7 +199,7 @@ jobs:
 
     - name: test a socket api example app
       run: |
-        avdmanager create avd --device 1 --force --name SSCAVD --abi 'google_apis/x86_64' --package 'system-images;android-33;google_apis;x86_64'
+        avdmanager create avd --device 5 --force --name SSCAVD --abi 'google_apis/x86_64' --package 'system-images;android-33;google_apis;x86_64'
         npm install
         npm run test:android-emulator
       env:
@@ -256,9 +256,9 @@ jobs:
 
     - name: test a socket api example app
       run: |
-        avdmanager create avd --device 1 --force --name SSCAVD --abi 'google_apis/x86_64' --package 'system-images;android-33;google_apis;x86_64'
+        avdmanager create avd --device 5 --force --name SSCAVD --abi 'google_apis/x86_64' --package 'system-images;android-33;google_apis;x86_64'
         npm install
-        npm run test:android-emulator
+        EMULATOR_FLAGS="-accel off" npm run test:android-emulator
       env:
         CI: true
         CXX: clang++

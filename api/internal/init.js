@@ -172,6 +172,7 @@ if (typeof globalThis.XMLHttpRequest === 'function') {
     if (!queue) {
       // eslint-disable-next-line no-use-before-define
       queue = new ConcurrentQueue(
+        // eslint-disable-next-line no-use-before-define
         parseInt(config.webview_xhr_concurrency) || Infinity
       )
     }
