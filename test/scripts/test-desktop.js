@@ -25,7 +25,7 @@ cp(path.join(root, 'fixtures'), path.join(TMPDIR, 'ssc-socket-test-fixtures'), {
 })
 
 try {
-  exec(`ssc build ${!DEBUG ? '--headless --prod' : ''} -r -o`, {
+  exec(`ssc build -r -o ${!DEBUG ? '--headless --prod' : ''}`, {
     stdio: 'inherit',
     env: {
       SOCKET_HOME_API,

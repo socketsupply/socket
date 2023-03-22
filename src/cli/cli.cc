@@ -2830,7 +2830,7 @@ int main (const int argc, const char* argv[]) {
 
       if (flagBuildForAndroidEmulator) {
         StringStream avdmanager;
-        String package = "system-images;" + androidPlatform + ";google_apis;x86_64 ";
+        String package = quote + "system-images;" + androidPlatform + ";google_apis;" + replace(platform.arch, "arm64", "arm64-v8a") + quote;
 
         if (!platform.win) {
           if (std::system("avdmanager list 2>&1 >/dev/null") != 0) {
@@ -2841,10 +2841,10 @@ int main (const int argc, const char* argv[]) {
 
         avdmanager
           << "avdmanager create avd "
-          << "--device 1 "
+          << "--device 5 "
           << "--force "
           << "--name SSCAVD "
-          << "--abi google_apis/x86_64 "
+          << ("--abi google_apis/" + replace(platform.arch, "arm64", "arm64-v8a")) << " "
           << "--package " << package;
 
         if (debugEnv || verboseEnv) log(avdmanager.str());
@@ -2864,22 +2864,21 @@ int main (const int argc, const char* argv[]) {
         } else {
           adb << androidHome << "\\platform-tools\\";
         }
-        
+
         if (debugEnv || verboseEnv) log((adb.str() + (" --version > ") + SSC::String((!platform.win) ? "/dev/null" : "NUL") + (" 2>&1")));
         if (!std::system((adb.str() + (" --version > ") + SSC::String((!platform.win) ? "/dev/null" : "NUL") + (" 2>&1")).c_str())) {
           log("Warn: Failed to locate adb at " + adb.str());
         }
 
-        adb
-          << "adb ";
-        
+        adb << "adb ";
+
         adbShellStart << adb.str();
         adb << "install ";
 
         if (flagDebugMode) {
           adb << (app / "build" / "outputs" / "apk" / "dev" / "debug" / "app-dev-debug.apk").string();
         } else {
-          adb << (app / "build" / "outputs" / "apk" / "dev" / "release" / "app-dev-release-unsigned.apk").string();
+          adb << (app / "build" / "outputs" / "apk" / "live" / "debug" / "app-live-debug.apk").string();
         }
 
         if (debugEnv || verboseEnv) log(adb.str());
