@@ -526,6 +526,17 @@ function _install {
     rm -rf "$SOCKET_HOME/include"
     mkdir -p "$SOCKET_HOME/include"
     cp -rfp "$BUILD_DIR"/uv/include/* "$SOCKET_HOME/include"
+
+    if [[ -f "$root/$SSC_ENV_FILENAME" ]]; then
+      if [[ -f "$SOCKET_HOME/$SSC_ENV_FILENAME" ]]; then
+        echo "# Not overwriting $SOCKET_HOME/$SSC_ENV_FILENAME"
+      else
+        echo "# copying $SSC_ENV_FILENAME to $SOCKET_HOME"
+        cp -fp "$root/$SSC_ENV_FILENAME" "$SOCKET_HOME/$SSC_ENV_FILENAME"
+      fi
+    else
+      echo "warn - $SSC_ENV_FILENAME not created."
+    fi
   fi
 
   if [[ "$(uname -s)" == *"_NT"* ]]; then
