@@ -12,6 +12,7 @@ import diagnostics from './diagnostics.js'
 import { Buffer } from './buffer.js'
 import { rand64 } from './crypto.js'
 import { isIPv4 } from './net.js'
+import process from './process.js'
 import console from './console.js'
 import ipc from './ipc.js'
 import dns from './dns.js'
@@ -740,7 +741,10 @@ export class Socket extends EventEmitter {
     return {
       args: [this.id, options],
       async handle (id) {
-        console.warn('Closing Socket on garbage collection')
+        if (process.env.DEBUG) {
+          console.warn('Closing Socket on garbage collection')
+        }
+
         await ipc.send('udp.close', { id }, options)
       }
     }
