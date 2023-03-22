@@ -926,6 +926,8 @@ int main (const int argc, const char* argv[]) {
   }
 
   initializeRC(targetPath);
+  initializeEnv(prefixFile());
+  // Override global config with local
   initializeEnv(targetPath);
 
   struct Paths {
