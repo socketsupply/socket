@@ -197,10 +197,7 @@ function get_android_paths() {
   
   if [[ -n "$_jh" ]]; then
     JAVA_HOME="$(native_path "$_jh")"
-    echo "Set JAVA_HOME: $JAVA_HOME"
     export JAVA_HOME
-  else
-    unset JAVA_HOME
   fi
 
   
@@ -635,12 +632,12 @@ function android_first_time_experience_setup() {
 }
 
 
-export ANDROID_ENV_FLOW
+export android_fte
 
-function android_env_flow() {
-  [[ -n "$ANDROID_ENV_FLOW" ]] && return 0
+function android_fte() {
+  [[ -n "$android_fte" ]] && return 0
 
-  ANDROID_ENV_FLOW=1
+  android_fte=1
 
   if [[ -n $BUILD_ANDROID ]]; then
     read_env_data
@@ -685,10 +682,17 @@ function android_env_flow() {
   fi
 
   export NDK_BUILD="$ANDROID_HOME/ndk/$NDK_VERSION/ndk-build$cmd"
-  if ! test -f "$NDK_BUILD"; then
-    echo "Android dependencies: ndk-build not at $NDK_BUILD"
-    ANDROID_DEPS_ERROR=1
-  fi
-
+  
   return $?
 }
+
+function main() {
+  while (( $# > 0 )); do
+    declare arg="$1"; shift
+    [[ "$arg" == "--android-fte" ]] && android_fte
+  done
+}
+
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    main "$@"
+fi
