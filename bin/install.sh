@@ -542,8 +542,8 @@ function _install {
   if [[ "$(uname -s)" == *"_NT"* ]]; then
     if [ "$platform" == "desktop" ]; then
       mkdir -p "$SOCKET_HOME/ps1"
-      cp -ap "$root/bin/*.ps1" "$SOCKET_HOME/ps1"
-      cp -ap "$root/bin/.vs*" "$SOCKET_HOME/ps1"
+      cp -ap "$root/bin/"*.ps1 "$SOCKET_HOME/ps1"
+      cp -ap "$root/bin/".vs* "$SOCKET_HOME/ps1"
     fi
   fi
 
