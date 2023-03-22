@@ -78,28 +78,28 @@ function android_machine_arch() {
 
 function android_clang() {
   # get abi specific clang call for host, host arch and target arch (target host=linux)
-  ANDROID_HOME=$1
-  NDK_VERSION=$2
-  host=$3
-  host_arch=$4
-  arch=$5
-  plusplus=$6
+  local ANDROID_HOME=$1
+  local NDK_VERSION=$2
+  local host=$3
+  local host_arch=$4
+  local arch=$5
+  local plusplus=$6
   echo "$ANDROID_HOME/ndk/$NDK_VERSION/toolchains/llvm/prebuilt/$(android_host_platform "$host")-$(android_arch "$host_arch")/bin/clang$plusplus --target=$(android_arch "$arch")-linux-android$(android_eabi "$arch")"
 }
 
 function android_ar() {
   # Note that this one is not target arch specific
-  ANDROID_HOME=$1
-  NDK_VERSION=$2
-  host=$3
-  host_arch=$4
+  local ANDROID_HOME=$1
+  local NDK_VERSION=$2
+  local host=$3
+  local host_arch=$4
   echo "$ANDROID_HOME/ndk/$NDK_VERSION/toolchains/llvm/prebuilt/$(android_host_platform "$host")-$(android_arch "$host_arch")/bin/llvm-ar"
 }
 
 function android_arch_includes() {
   #get abi specific includes and sysroot
-  arch=$1
-  include=(
+  local arch=$1
+  local include=(
     "-I$ANDROID_HOME/ndk/$NDK_VERSION/toolchains/llvm/prebuilt/windows-x86_64/sysroot/usr/include/$(android_arch "$arch")-linux-android$(android_eabi "$arch")"
     "-I$ANDROID_HOME/ndk/$NDK_VERSION/toolchains/llvm/prebuilt/windows-x86_64/sysroot/usr/include"
     "--sysroot=$ANDROID_HOME/ndk/$NDK_VERSION/toolchains/llvm/prebuilt/windows-x86_64/sysroot/usr/lib/$(android_arch "$arch")-linux-android$(android_eabi "$arch")"
@@ -109,7 +109,7 @@ function android_arch_includes() {
 }
 
 function android_min_expected_static_lib_size() {
-  lib=$1
+  local lib=$1
   case $lib in
     libsocket-runtime)
       echo -n "1048576"
@@ -124,7 +124,7 @@ function android_min_expected_static_lib_size() {
 }
 
 function android_supported_abis() {
-  abis=(
+  local abis=(
     "arm64-v8a"
     "armeabi-v7a"
     "x86"

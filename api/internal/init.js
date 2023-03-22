@@ -222,6 +222,7 @@ class ConcurrentQueue extends EventTarget {
   }
 
   timeout (request, timer) {
+    let timeout = null
     const onresolve = () => {
       clearTimeout(timeout)
       queueMicrotask(() => {
@@ -232,7 +233,7 @@ class ConcurrentQueue extends EventTarget {
       })
     }
 
-    const timeout = setTimeout(onresolve, timer || 256)
+    timeout = setTimeout(onresolve, timer || 32)
     return onresolve
   }
 
@@ -246,7 +247,7 @@ class ConcurrentQueue extends EventTarget {
 class RuntimeXHRPostQueue extends ConcurrentQueue {
   async dispatch (id, seq, params, headers) {
     const promise = new InvertedPromise()
-    await this.push(promise, 64)
+    await this.push(promise, 8)
 
     if (typeof params !== 'object') {
       params = {}
