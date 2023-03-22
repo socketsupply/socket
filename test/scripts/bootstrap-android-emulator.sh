@@ -34,6 +34,7 @@ if [ -z "$sdkmanager" ]; then
 fi
 
 emulator_flags+=(
+  -gpu swiftshader_indirect
   -camera-back none
   -no-boot-anim
   -no-window

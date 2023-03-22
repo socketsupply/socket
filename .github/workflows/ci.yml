@@ -25,7 +25,7 @@ jobs:
       run: |
         sudo apt install software-properties-common
         sudo add-apt-repository ppa:ubuntu-toolchain-r/test
-        sudo apt install gcc-12 g++-12 libwebkit2gtk-4.1-dev
+        sudo apt install gcc-12 g++-12 clang-14 libwebkit2gtk-4.1-dev
 
     - name: Build Socket Runtime
       run: |
@@ -166,7 +166,7 @@ jobs:
     - uses: actions/checkout@v3
 
     - name: Set up JDK 18
-      uses: actions/setup-java@v3.9.0
+      uses: actions/setup-java@v3
       with:
         distribution: 'zulu'
         java-version: 18
@@ -183,55 +183,28 @@ jobs:
       run: |
         brew install automake
 
+    - name: Gradle cache
+      uses: gradle/gradle-build-action@v2
+
     - name: Build Socket Runtime
       run: |
+        yes | sdkmanager --licenses > /dev/null
+        sdkmanager --install 'ndk;25.0.8775105' 'build-tools;33.0.2' 'system-images;android-33;google_apis;x86_64'
         VERBOSE=1 ./bin/install.sh
         ./bin/ci_version_check.sh
-
-    - name: Gradle cache
-      uses: gradle/gradle-build-action@v2.3.3
-
-    - name: AVD cache
-      uses: actions/cache@v3
-      id: avd-cache
-      with:
-        path: |
-          ~/.android/avd/*
-          ~/.android/adb*
-        key: avd-32
-
-    - name: create AVD and generate snapshot for caching
-      if: steps.avd-cache.outputs.cache-hit != 'true'
-      uses: reactivecircus/android-emulator-runner@v2.27.0
-      with:
-        arch: x86_64
-        api-level: 32
-        target: google_apis
-        profile: pixel_5
-        force-avd-creation: false
-        disable-animations: false
-        emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
-        script: echo "Generated AVD snapshot for caching."
-
-    - name: Run emulator tests
-      # remove this line if you want to test the Android build on macOS
-      if: ${{ false }}
-      uses: reactivecircus/android-emulator-runner@v2.27.0
-      with:
-        api-level: 32
-        arch: x86_64
-        target: google_apis
-        disable-animations: false
-        emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
-        force-avd-creation: false
-        profile: pixel_5
-        ndk: 25.0.8775105
-        script: |
-          npm install && npm run test:android
       env:
         CI: true
         SSC_ANDROID_CI: true
-        CXX: g++-12
+        NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
+
+    - name: test a socket api example app
+      run: |
+        avdmanager create avd --device 1 --force --name SSCAVD --abi 'google_apis/x86_64' --package 'system-images;android-33;google_apis;x86_64'
+        npm install
+        npm run test:android-emulator
+      env:
+        CI: true
+        SSC_ANDROID_CI: true
         NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
 
   android_linux:
@@ -243,7 +216,7 @@ jobs:
     - uses: actions/checkout@v3
 
     - name: Set up JDK 18
-      uses: actions/setup-java@v3.9.0
+      uses: actions/setup-java@v3
       with:
         distribution: 'zulu'
         java-version: 18
@@ -257,7 +230,7 @@ jobs:
         ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
     - name: Use Node.js
-      uses: actions/setup-node@v3.6.0
+      uses: actions/setup-node@v3
       with:
         node-version: 18.x
 
@@ -267,55 +240,29 @@ jobs:
         sudo add-apt-repository ppa:ubuntu-toolchain-r/test
         sudo apt install -y gcc-12 g++-12 libpthread-stubs0-dev libwebkit2gtk-4.1-dev
 
-    - name: Build Socket Runtime
-      run: |
-        VERBOSE=1 ./bin/install.sh
-        ./bin/ci_version_check.sh
-
     - name: Gradle cache
       uses: gradle/gradle-build-action@v2
 
-    - name: AVD cache
-      uses: actions/cache@v3
-      id: avd-cache
-      with:
-        path: |
-          ~/.android/avd/*
-          ~/.android/adb*
-        key: avd-32
-
-    - name: create AVD and generate snapshot for caching
-      if: steps.avd-cache.outputs.cache-hit != 'true'
-      uses: reactivecircus/android-emulator-runner@v2
-      with:
-        arch: x86_64
-        api-level: 32
-        target: google_apis
-        profile: pixel_5
-        force-avd-creation: false
-        disable-animations: false
-        emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
-        script: echo "Generated AVD snapshot for caching."
-
-    - name: Run emulator tests
-      # remove this line if you want to test the Android build on macOS
-      if: ${{ false }}
-      uses: reactivecircus/android-emulator-runner@v2
-      with:
-        api-level: 32
-        arch: x86_64
-        target: google_apis
-        disable-animations: false
-        emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
-        force-avd-creation: false
-        profile: pixel_5
-        ndk: 25.0.8775105
-        script: |
-          npm install && npm run test:android
+    - name: Build Socket Runtime
+      run: |
+        yes | sdkmanager --licenses > /dev/null
+        sdkmanager --install 'ndk;25.0.8775105' 'build-tools;33.0.2' 'system-images;android-33;google_apis;x86_64'
+        VERBOSE=1 ./bin/install.sh
+        ./bin/ci_version_check.sh
       env:
         CI: true
         SSC_ANDROID_CI: true
-        CXX: g++-12
+        NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
+
+    - name: test a socket api example app
+      run: |
+        avdmanager create avd --device 1 --force --name SSCAVD --abi 'google_apis/x86_64' --package 'system-images;android-33;google_apis;x86_64'
+        npm install
+        npm run test:android-emulator
+      env:
+        CI: true
+        CXX: clang++
+        SSC_ANDROID_CI: true
         NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
 
   socket_node:
