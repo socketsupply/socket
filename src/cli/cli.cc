@@ -787,11 +787,6 @@ inline String getCfgUtilPath() {
 }
 
 void initializeEnv (fs::path targetPath) {
-  static bool initialized = false;
-
-  if (initialized) return;
-  initialized = true;
-
   auto SSC_ENV_FILENAME = getEnv("SSC_ENV_FILENAME");
 
   auto filename = SSC_ENV_FILENAME.size() > 0
