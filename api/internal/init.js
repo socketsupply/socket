@@ -171,7 +171,9 @@ if (typeof globalThis.XMLHttpRequest === 'function') {
 
     if (!queue) {
       // eslint-disable-next-line no-use-before-define
-      queue = new ConcurrentQueue()
+      queue = new ConcurrentQueue(
+        parseInt(config.webview_xhr_concurrency) || Infinity
+      )
     }
 
     await queue.push(new Promise((resolve) => {
@@ -192,17 +194,17 @@ if (typeof globalThis.XMLHttpRequest === 'function') {
 
 import { IllegalConstructor, InvertedPromise } from '../util.js'
 import { applyPolyfills } from '../polyfills.js'
+import { config } from '../application.js'
 import globals from './globals.js'
 import hooks from '../hooks.js'
 import ipc from '../ipc.js'
 
 import '../console.js'
 
-const hardwareConcurrency = 4 * (globalThis.navigator?.hardwareConcurrency || 4)
 const isWorkerLike = !globalThis.window && globalThis.self && globalThis.postMessage
 
 class ConcurrentQueue extends EventTarget {
-  concurrency = hardwareConcurrency
+  concurrency = Infinity
   pending = []
 
   constructor (concurrency) {
