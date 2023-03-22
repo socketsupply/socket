@@ -53,16 +53,34 @@ class API {
   //
   // Internal API
   //
+  /**
+   * @param {number} major
+   * @param {number} minor
+   * @param {number} patch
+   * @throws {Error} if version is not supported
+   * @ignore
+   */
   #checkVersion (major, minor, patch) {
     if (major < API.#minimalMajorVersion || minor < API.#minimalMinorVersion || patch < API.#minimalPatchVersion) {
       throw new Error(`socket-node-backend requires at least version 0.1.0, got ${major}.${minor}.${patch}`)
     }
   }
 
+  /**
+   * @param {string} data
+   * @ignore
+   * @throws {Error} if message cannot be parsed
+   */
   #parse (data) {
-    /** @type {string} */
+    /**
+     * @type {string}
+     * @ignore
+     */
     let event = ''
-    /** @type {string | object} */
+    /**
+     * @type {string | object}
+     * @ignore
+     */
     let value = ''
 
     if (data.length > MAX_MESSAGE_KB) {
@@ -91,6 +109,10 @@ class API {
     this.#emitter.emit(event, value)
   }
 
+  /**
+   * @param {string} data
+   * @ignore
+   */
   #handleMessage (data) {
     const messages = data.split('\n')
 
@@ -109,6 +131,12 @@ class API {
     this.#buf = messages[messages.length - 1]
   }
 
+  /**
+   * @param {string} s
+   * @returns {Promise<void>}
+   * @throws {Error}
+   * @ignore
+   */
   #write (s) {
     if (s.includes('\n')) {
       throw new Error('invalid write()')
@@ -129,7 +157,12 @@ class API {
   // Public API
   //
   /**
-   * @param {{ window: number, event: string, value: any }} o
+   * @param {object} o
+   * @param {number} o.window
+   * @param {string} o.event
+   * @param {any} o.value
+   * @returns {Promise<void>}
+   * @throws {Error}
    */
   async send (o) {
     try {
@@ -156,37 +189,80 @@ class API {
     return await this.#write(`ipc://send?${s}`)
   }
 
+  /**
+   * @returns {Promise<void>}
+   * @throws {Error}
+   */
   async heartbeat () {
     return await this.#write('ipc://heartbeat')
   }
 
   // public EventEmitter methods
+  /**
+   * Adds a listener to the window.
+   * @param {string} event - the event to listen to
+   * @param {function(*): void} cb - the callback to call
+   * @returns {void}
+   */
   addListener (event, cb) {
     this.#emitter.addListener(event, cb)
   }
 
+  /**
+   * Adds a listener to the window. An alias for `addListener`.
+   * @param {string} event - the event to listen to
+   * @param {function(*): void} cb - the callback to call
+   * @returns {void}
+   * @see addListener
+   */
   on (event, cb) {
     this.#emitter.on(event, cb)
   }
 
+  /**
+   * Adds a listener to the window. The listener is removed after the first call.
+   * @param {string} event - the event to listen to
+   * @param {function(*): void} cb - the callback to call
+   * @returns {void}
+   */
   once (event, cb) {
     this.#emitter.once(event, cb)
   }
 
+  /**
+   * Removes a listener from the window.
+   * @param {string} event - the event to remove the listener from
+   * @param {function(*): void} cb - the callback to remove
+   * @returns {void}
+   */
   removeListener (event, cb) {
     this.#emitter.removeListener(event, cb)
   }
 
+  /**
+   * Removes all listeners from the window.
+   * @param {string} event - the event to remove the listeners from
+   * @returns {void}
+   */
   removeAllListeners (event) {
     this.#emitter.removeAllListeners(event)
   }
 
+  /**
+   * Removes a listener from the window. An alias for `removeListener`.
+   * @param {string} event - the event to remove the listener from
+   * @param {function(*): void} cb - the callback to remove
+   * @returns {void}
+   * @see removeListener
+   */
   off (event, cb) {
     this.#emitter.off(event, cb)
   }
 }
 
 const api = new API()
-
+/**
+ * @ignore
+ */
 export const socket = api
 export default api

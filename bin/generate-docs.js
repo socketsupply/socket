@@ -5,14 +5,16 @@ import fs from 'node:fs'
 import path from 'node:path'
 
 const JS_INTERFACE_DIR = 'api'
+const SOCKET_NODE_DIR = 'npm/packages/@socketsupply/socket-node'
 
 try {
   fs.unlinkSync(`${JS_INTERFACE_DIR}/README.md`)
+  fs.unlinkSync(`${SOCKET_NODE_DIR}/API.md`)
 } catch {}
 
-export function transform (filename) {
-  const srcFile = path.relative(process.cwd(), `${JS_INTERFACE_DIR}/${filename}`)
-  const destFile = path.relative(process.cwd(), `${JS_INTERFACE_DIR}/README.md`)
+export function transform (filename, dest, md) {
+  const srcFile = path.relative(process.cwd(), `${dest}/${filename}`)
+  const destFile = path.relative(process.cwd(), `${dest}/${md}`)
 
   let accumulateComments = []
   const comments = {}
@@ -287,4 +289,6 @@ export function transform (filename) {
   'path/path.js',
   'process.js',
   'window.js'
-].forEach(transform)
+].forEach(file => transform(file, JS_INTERFACE_DIR, 'README.md'))
+
+transform('index.js', SOCKET_NODE_DIR, 'API.md')

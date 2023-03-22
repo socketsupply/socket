@@ -705,17 +705,22 @@ External docs: https://nodejs.org/api/dns.html#dnspromiseslookuphostname-options
 | Not specified | Promise |  |
 
 
-## [CustomEvent](https://github.com/socketsupply/socket/blob/master/api/events.js#L472)
+## [Event](https://github.com/socketsupply/socket/blob/master/api/events.js#L472)
+
+This is a `VariableDeclaration` named `Event` in `api/events.js`, it's exported but undocumented.
+
+
+## [CustomEvent](https://github.com/socketsupply/socket/blob/master/api/events.js#L474)
 
 This is a `VariableDeclaration` named `CustomEvent` in `api/events.js`, it's exported but undocumented.
 
 
-## [MessageEvent](https://github.com/socketsupply/socket/blob/master/api/events.js#L487)
+## [MessageEvent](https://github.com/socketsupply/socket/blob/master/api/events.js#L489)
 
 This is a `VariableDeclaration` named `MessageEvent` in `api/events.js`, it's exported but undocumented.
 
 
-## [ErrorEvent](https://github.com/socketsupply/socket/blob/master/api/events.js#L511)
+## [ErrorEvent](https://github.com/socketsupply/socket/blob/master/api/events.js#L513)
 
 This is a `VariableDeclaration` named `ErrorEvent` in `api/events.js`, it's exported but undocumented.
 
@@ -1278,11 +1283,11 @@ External docs: https://github.com/socketsupply/stream-relay
 
 
 
-## [`Path` (extends `URL`)](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L23)
+## [`Path` (extends `URL`)](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L24)
 
 A container for a parsed Path.
 
-### [`cwd(opts)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L30)
+### [`cwd(opts)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L31)
 
 Computes current working directory for a path
 
@@ -1297,7 +1302,7 @@ Computes current working directory for a path
 | Not specified | string |  |
 
 
-### [`resolve(options, components)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L49)
+### [`resolve(options, components)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L50)
 
 Resolves path components to an absolute path.
 
@@ -1453,31 +1458,31 @@ The original source, unresolved.
 
 Computed parent path.
 
-### [`root()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L346)
+### [`root()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L345)
 
 Computed root in path.
 
-### [`dir()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L367)
+### [`dir()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L366)
 
 Computed directory name in path.
 
-### [`base()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L405)
+### [`base()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L404)
 
 Computed base name in path.
 
-### [`name()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L417)
+### [`name()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L416)
 
 Computed base name in path without path extension.
 
-### [`ext()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L425)
+### [`ext()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L424)
 
 Computed extension name in path.
 
-### [`drive()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L435)
+### [`drive()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L434)
 
 The computed drive, if given in the path.
 
-### [`toURL()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L442)
+### [`toURL()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L441)
 
 
 
@@ -1486,7 +1491,7 @@ The computed drive, if given in the path.
 | Not specified | URL |  |
 
 
-### [`toString()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L450)
+### [`toString()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L449)
 
 Converts this `Path` instance to a string.
 
