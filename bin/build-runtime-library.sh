@@ -97,7 +97,7 @@ done
 
 if [[ "$platform" = "android" ]]; then
   source "$root/bin/android-functions.sh"
-  android_env_flow
+  android_fte
 
   if [[ -n $ANDROID_DEPS_ERROR ]]; then
     echo >&2 "not ok - Android dependencies not satisfied."
