@@ -42,7 +42,7 @@ namespace SSC::android {
     options.cwd = rootDirectory.str();
     options.appData = this->config;
 
-    preloadSource = createPreload(options);
+    preloadSource = createPreload(options, PreloadOptions { .module = true });
   }
 
   Window::~Window () {
