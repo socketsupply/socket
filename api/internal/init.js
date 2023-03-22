@@ -198,7 +198,7 @@ import ipc from '../ipc.js'
 
 import '../console.js'
 
-const hardwareConcurrency = globalThis.navigator?.hardwareConcurrency || 4
+const hardwareConcurrency = 4 * (globalThis.navigator?.hardwareConcurrency || 4)
 const isWorkerLike = !globalThis.window && globalThis.self && globalThis.postMessage
 
 class ConcurrentQueue extends EventTarget {
