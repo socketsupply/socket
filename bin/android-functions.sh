@@ -597,7 +597,9 @@ function android_install_gradle() {
 function android_first_time_experience_setup() {
   if 
   [[ -d "$ANDROID_HOME" ]] && [[ -f "$ANDROID_HOME/$ANDROID_SDK_MANAGER" ]] && 
-  [[ -d "$JAVA_HOME" ]] && [[ -d "$GRADLE_HOME" ]]; then
+  [[ -d "$JAVA_HOME" ]] && [[ -d "$GRADLE_HOME" ]] && 
+  [[ -n "$ANDROID_SDK_MANAGER_ACCEPT_LICENSES" ]];
+  then
     return 0
   fi
   # builds global search path list
@@ -605,7 +607,20 @@ function android_first_time_experience_setup() {
   android_install_sdk_manager; sdk_result=$?
   android_install_jdk; jdk_result=$?
   android_install_gradle; gradle_result=$?
-  
+
+  if [[ -z "$ANDROID_SDK_MANAGER_ACCEPT_LICENSES" ]]; then
+    if prompt_yn "Do you want to automatically accept all Android SDK Manager licenses?"; then
+      yes="$(which "yes" 2>/dev/null)"
+      # Store yes path in native format so it can be used by ssc later
+      ANDROID_SDK_MANAGER_ACCEPT_LICENSES="$(native_path "$yes")"
+      if [ ! -f "$yes" ]; then
+        echo "not ok - yes binary not found, unable to accept Android SDK Manager licenses."
+      fi
+    else
+      ANDROID_SDK_MANAGER_ACCEPT_LICENSES="n"
+    fi
+  fi
+
   write_env_data
   if (( sdk_result + jdk_result + gradle_result != 0 )); then
     echo "One or more Android build components failed to install."
@@ -642,14 +657,18 @@ function android_env_flow() {
       SDK_OPTIONS+="\"system-images;android-$ANDROID_PLATFORM;google_apis;x86_64\" "
       SDK_OPTIONS+="\"system-images;android-$ANDROID_PLATFORM;google_apis;arm64-v8a\" "
 
+      yes="echo"
+      [[ -n "$ANDROID_SDK_MANAGER_ACCEPT_LICENSES" ]] && [[ "$ANDROID_SDK_MANAGER_ACCEPT_LICENSES" != "n" ]] && yes="$ANDROID_SDK_MANAGER_ACCEPT_LICENSES"
+      yes="$(unix_path "$yes")"
+
       if [[ -n "$ANDROID_HOME" ]]; then
         [[ -n $VERBOSE ]] && echo "Installing android deps"
         [[ -n $VERBOSE ]] && echo "$(unix_path "$ANDROID_HOME/$ANDROID_SDK_MANAGER")" "$SDK_OPTIONS"
         # Without eval, sdk manager says there is a syntax error
         eval "($(unix_path "$ANDROID_HOME/$ANDROID_SDK_MANAGER") $SDK_OPTIONS)"
         [[ -n $VERBOSE ]] && echo "Running Android licensing process"
-        [[ -n $VERBOSE ]] && echo "yes | $(native_path "$ANDROID_HOME/$ANDROID_SDK_MANAGER")" --licenses
-        yes | "$(native_path "$ANDROID_HOME/$ANDROID_SDK_MANAGER")" --licenses
+        [[ -n $VERBOSE ]] && echo "$yes | $(native_path "$ANDROID_HOME/$ANDROID_SDK_MANAGER")" --licenses
+        $yes | "$(native_path "$ANDROID_HOME/$ANDROID_SDK_MANAGER")" --licenses
       fi
 
       JAVA_OPTS="$OLD_JAVA_OPTS"

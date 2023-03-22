@@ -1663,9 +1663,12 @@ int main (const int argc, const char* argv[]) {
       // TODO(mribbons): Check if we need this in CI - Upload licenses folder from workstation
       // https://developer.android.com/studio/intro/update#download-with-gradle
 
-      String licenseAccept =  sdkmanager.str() + " --licenses";
 
-      if (std::system(("yes |" + licenseAccept).c_str()) != 0) {
+      String licenseAccept = 
+       (getEnv("ANDROID_SDK_MANAGER_ACCEPT_LICENSES").size() > 0 ? getEnv("ANDROID_SDK_MANAGER_ACCEPT_LICENSES") : "echo") + " | " +
+       sdkmanager.str() + " --licenses";
+
+      if (std::system((licenseAccept).c_str()) != 0) {
         // Windows doesn't support 'yes'
         log(("Check licenses and run again: \n" + licenseAccept + "\n").c_str());
       }
