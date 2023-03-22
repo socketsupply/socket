@@ -787,9 +787,8 @@ inline String getCfgUtilPath() {
 }
 
 void initializeEnv (fs::path targetPath) {
-  auto SSC_ENV_FILENAME = getEnv("SSC_ENV_FILENAME");
-
-  auto filename = SSC_ENV_FILENAME.size() > 0
+  static auto SSC_ENV_FILENAME = getEnv("SSC_ENV_FILENAME");
+  static auto filename = SSC_ENV_FILENAME.size() > 0
     ? SSC_ENV_FILENAME
     : DEFAULT_SSC_ENV_FILENAME;
 
@@ -813,15 +812,9 @@ void initializeEnv (fs::path targetPath) {
 }
 
 void initializeRC (fs::path targetPath) {
-  static bool initialized = false;
-
-  if (initialized) return;
-  initialized = true;
-
-  auto SSC_RC_FILENAME = getEnv("SSC_RC_FILENAME");
-  auto SSC_RC = getEnv("SSC_RC");
-
-  auto filename = SSC_RC_FILENAME.size() > 0
+  static auto SSC_RC_FILENAME = getEnv("SSC_RC_FILENAME");
+  static auto SSC_RC = getEnv("SSC_RC");
+  static auto filename = SSC_RC_FILENAME.size() > 0
     ? SSC_RC_FILENAME
     : DEFAULT_SSC_RC_FILENAME;
 
@@ -830,7 +823,7 @@ void initializeRC (fs::path targetPath) {
     : targetPath / filename;
 
   if (fs::exists(path)) {
-    rc = parseINI(readFile(path));
+    extendMap(rc, parseINI(readFile(path)));
 
     for (const auto& tuple : rc) {
       auto key = tuple.first;
@@ -920,6 +913,13 @@ int main (const int argc, const char* argv[]) {
     targetPath = fs::absolute(lastOption).lexically_normal();
   }
 
+#if defined(_WIN32)
+  static String HOME= getEnv("HOMEPATH");
+#else
+  static String HOME = getEnv("HOME");
+#endif
+
+  initializeRC(HOME);
   initializeRC(targetPath);
   initializeEnv(prefixFile());
   // Override global config with local
@@ -1654,7 +1654,7 @@ int main (const int argc, const char* argv[]) {
       }
 
       // Create default output to advise user in case gradle init fails
-      
+
       // TODO(mribbons): Check if we need this in CI - Upload licenses folder from workstation
       // https://developer.android.com/studio/intro/update#download-with-gradle
       String licenseAccept =  sdkmanager.str() + "sdkmanager" + (platform.win ? ".bat" : "") + " --licenses";
@@ -2626,7 +2626,7 @@ int main (const int argc, const char* argv[]) {
 
       StringStream sdkmanager;
       StringStream packages;
-      StringStream gradlew;      
+      StringStream gradlew;
       String ndkVersion = "25.0.8775105";
       String androidPlatform = "android-33";
 
