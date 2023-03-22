@@ -2813,7 +2813,7 @@ int main (const int argc, const char* argv[]) {
         exit(1);
       }
 
-      if (!androidEnableStandardNdkBuild) {
+      if (!androidEnableStandardNdkBuild && !flagRunUserBuildOnly) {
         StringStream ndkBuild;
         StringStream ndkBuildArgs;
         StringStream ndkTest;
