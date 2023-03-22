@@ -142,6 +142,7 @@ function build_env_data() {
   echo "GRADLE_HOME=\"$(escape_path "$GRADLE_HOME")\""
   # Should not use these for general calls
   echo "ANDROID_SDK_MANAGER_JAVA_OPTS=\"-XX:+IgnoreUnrecognizedVMOptions --add-modules java.se.ee\""
+  echo "ANDROID_SDK_MANAGER_ACCEPT_LICENSES=\"$ANDROID_SDK_MANAGER_ACCEPT_LICENSES\""
 }
 
 function read_env_data() {
