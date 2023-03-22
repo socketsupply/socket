@@ -125,8 +125,6 @@ jobs:
     name: iOS (macOS)
     runs-on: macOS-12
     timeout-minutes: 25
-    # remove this line if you want to test the iOS build
-    if: ${{ false }}
 
     steps:
     - uses: actions/checkout@v3
@@ -151,6 +149,8 @@ jobs:
         ./bin/ci_version_check.sh
 
     - name: test a socket api example app
+      # remove this line if you want to test the Android build on macOS
+      if: ${{ false }}
       run: |
         npm install && npm run test:ios-simulator
       env:
@@ -161,8 +161,6 @@ jobs:
     name: Android (macOS)
     runs-on: macos-latest
     timeout-minutes: 60
-    # remove this line if you want to test the Android build on macOS
-    if: ${{ false }}
 
     steps:
     - uses: actions/checkout@v3
@@ -216,6 +214,8 @@ jobs:
         script: echo "Generated AVD snapshot for caching."
 
     - name: Run emulator tests
+      # remove this line if you want to test the Android build on macOS
+      if: ${{ false }}
       uses: reactivecircus/android-emulator-runner@v2.27.0
       with:
         api-level: 32
@@ -238,8 +238,6 @@ jobs:
     name: Android (Linux)
     runs-on: ubuntu-22.04
     timeout-minutes: 60
-    # remove this line if you want to test the Android build on Linux
-    if: ${{ false }}
 
     steps:
     - uses: actions/checkout@v3
@@ -300,6 +298,8 @@ jobs:
         script: echo "Generated AVD snapshot for caching."
 
     - name: Run emulator tests
+      # remove this line if you want to test the Android build on macOS
+      if: ${{ false }}
       uses: reactivecircus/android-emulator-runner@v2
       with:
         api-level: 32
