@@ -16,25 +16,30 @@ const cache = new class {
 
   /**
    * @type {boolean}
+   * @ignore
    */
   isWindows = false
 
   /**
    * @type {object?}
+   * @ignore
    */
   networkInterfaces
   /**
    * @type {number}
+   * @ignore
    */
   networkInterfacesTTL = 0
 
   /**
    * @type {object?}
+   * @ignore
    */
   cpus
 
   /**
    * @type {string?}
+   * @ignore
    */
   uname
 }
