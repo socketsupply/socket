@@ -1762,7 +1762,7 @@ int main (const int argc, const char* argv[]) {
       }
 
       if (settings["android_native_abis"].size() == 0) {
-        settings["android_native_abis"] = "";
+        settings["android_native_abis"] = getEnv("ANDROID_SUPPORTED_ABIS");
       }
 
       if (settings["android_ndk_abi_filters"].size() == 0) {

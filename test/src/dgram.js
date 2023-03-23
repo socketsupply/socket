@@ -18,7 +18,7 @@ import dgram from 'socket:dgram'
 import util from 'socket:util'
 */
 
-const MTU = 1518
+const MTU = 1454
 
 function makePayload () {
   const r = Math.random() * MTU

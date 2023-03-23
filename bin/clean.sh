@@ -32,6 +32,9 @@ while (( $# > 0 )); do
     elif [[ "$1" = "ios-simulator" ]] || [[ "$1" = "iPhoneSimulator" ]] || [[ "$1" = "iphonesimulator" ]]; then
       arch="x86_64"
       platform="iPhoneSimulator";
+    elif [[ "$1" = "android" ]] || [[ "$1" = "Android" ]]; then
+      platform="android";
+      arch="*"
     else
       platform="$1";
     fi
@@ -48,22 +51,28 @@ if [ -n "$arch" ] || [ -n "$platform" ]; then
     exit 1
   fi
 
+  if [[ "$platform" = "android" ]]; then
+    if [[ "$arch" = "arm64" ]]; then
+      arch="/arm64-v8a/g')"
+    fi
+  fi
+
   arch="${arch:-$(uname -m | sed 's/aarch64/arm64/g')}"
   platform="${platform:-desktop}"
   targets+=($(find                               \
-    "$root/build/$arch-$platform"/app            \
-    "$root/build/$arch-$platform"/bin            \
-    "$root/build/$arch-$platform"/cli            \
-    "$root/build/$arch-$platform"/runtime        \
-    "$root/build/$arch-$platform"/ipc            \
-    "$root/build/$arch-$platform"/core           \
-    "$root/build/$arch-$platform"/objects        \
-    "$root/build/$arch-$platform"/process        \
-    "$root/build/$arch-$platform"/window         \
-    "$root/build/$arch-$platform"/lib/libsocket* \
-    "$root/build/$arch-$platform"/tests          \
-    "$root/build/$arch-$platform"/*.o            \
-    "$root/build/$arch-$platform"/**/*.o         \
+    "$root/build/"$arch-$platform/app            \
+    "$root/build/"$arch-$platform/bin            \
+    "$root/build/"$arch-$platform/cli            \
+    "$root/build/"$arch-$platform/runtime        \
+    "$root/build/"$arch-$platform/ipc            \
+    "$root/build/"$arch-$platform/core           \
+    "$root/build/"$arch-$platform/objects        \
+    "$root/build/"$arch-$platform/process        \
+    "$root/build/"$arch-$platform/window         \
+    "$root/build/"$arch-$platform/lib/libsocket* \
+    "$root/build/"$arch-$platform/tests          \
+    "$root/build/"$arch-$platform/*.o            \
+    "$root/build/"$arch-$platform/**/*.o         \
     "$root/build/npm/$platform"                  \
   2>/dev/null))
 elif (( do_full_clean )); then
