@@ -388,31 +388,31 @@ Generate `size` random bytes.
  This module provides an implementation of UDP datagram sockets. It does
  not (yet) provide any of the multicast methods or properties.
 
-## [`ERR_SOCKET_ALREADY_BOUND` (extends `SocketError`)](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L57)
+## [`ERR_SOCKET_ALREADY_BOUND` (extends `SocketError`)](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L58)
 
 Thrown when a socket is already bound.
 
-## [`ERR_SOCKET_DGRAM_IS_CONNECTED` (extends `SocketError`)](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L74)
+## [`ERR_SOCKET_DGRAM_IS_CONNECTED` (extends `SocketError`)](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L75)
 
 Thrown when the socket is already connected.
 
-## [`ERR_SOCKET_DGRAM_NOT_CONNECTED` (extends `SocketError`)](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L81)
+## [`ERR_SOCKET_DGRAM_NOT_CONNECTED` (extends `SocketError`)](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L82)
 
 Thrown when the socket is not connected.
 
-## [`ERR_SOCKET_DGRAM_NOT_RUNNING` (extends `SocketError`)](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L89)
+## [`ERR_SOCKET_DGRAM_NOT_RUNNING` (extends `SocketError`)](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L90)
 
 Thrown when the socket is not running (not bound or connected).
 
-## [`ERR_SOCKET_BAD_TYPE` (extends `TypeError`)](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L96)
+## [`ERR_SOCKET_BAD_TYPE` (extends `TypeError`)](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L97)
 
 Thrown when a bad socket type is used in an argument.
 
-## [`ERR_SOCKET_BAD_PORT` (extends `RangeError`)](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L106)
+## [`ERR_SOCKET_BAD_PORT` (extends `RangeError`)](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L107)
 
 Thrown when a bad port is given.
 
-## [`createSocket(options, callback)`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L684)
+## [`createSocket(options, callback)`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L685)
 
 Creates a `Socket` instance.
 
@@ -433,12 +433,12 @@ Creates a `Socket` instance.
 | Not specified | Socket |  |
 
 
-## [`Socket` (extends `EventEmitter`)](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L690)
+## [`Socket` (extends `EventEmitter`)](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L691)
 
 New instances of dgram.Socket are created using dgram.createSocket().
  The new keyword is not to be used to create dgram.Socket instances.
 
-### [`bind(port, address, callback)`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L762)
+### [`bind(port, address, callback)`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L766)
 
 External docs: https://nodejs.org/api/dgram.html#socketbindport-address-callback
 
@@ -457,7 +457,7 @@ Listen for datagram messages on a named port and optional address
 | callback | function |  | false | With no parameters. Called when binding is complete. |
 
 
-### [`connect(port, host, connectListener)`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L815)
+### [`connect(port, host, connectListener)`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L819)
 
 External docs: https://nodejs.org/api/dgram.html#socketconnectport-address-callback
 
@@ -479,7 +479,7 @@ Associates the dgram.Socket to a remote address and port. Every message sent
 | connectListener | function |  | true | Common parameter of socket.connect() methods. Will be added as a listener for the 'connect' event once. |
 
 
-### [`disconnect()`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L850)
+### [`disconnect()`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L854)
 
 External docs: https://nodejs.org/api/dgram.html#socketdisconnect
 
@@ -488,7 +488,7 @@ A synchronous function that disassociates a connected dgram.Socket from
  disconnected socket will result in an ERR_SOCKET_DGRAM_NOT_CONNECTED exception.
 
 
-### [`send(msg, offset, length, port, address, callback)`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L909)
+### [`send(msg, offset, length, port, address, callback)`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L913)
 
 External docs: https://nodejs.org/api/dgram.html#socketsendmsg-offset-length-port-address-callback
 
@@ -541,7 +541,7 @@ Broadcasts a datagram on the socket. For connectionless sockets, the
 | callback | Function |  | true | Called when the message has been sent. |
 
 
-### [`close(callback)`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L989)
+### [`close(callback)`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L993)
 
 External docs: https://nodejs.org/api/dgram.html#socketclosecallback
 
@@ -555,7 +555,7 @@ Close the underlying socket and stop listening for data on it. If a
 | callback | function |  | true | Called when the connection is completed or on error. |
 
 
-### [`address()`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1055)
+### [`address()`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1059)
 
 External docs: https://nodejs.org/api/dgram.html#socketaddress
 
@@ -573,7 +573,7 @@ Returns an object containing the address information for a socket. For
 | socketInfo.family | string | The IP family of the socket |
 
 
-### [`remoteAddress()`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1090)
+### [`remoteAddress()`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1094)
 
 External docs: https://nodejs.org/api/dgram.html#socketremoteaddress
 
@@ -590,7 +590,7 @@ Returns an object containing the address, family, and port of the remote
 | socketInfo.family | string | The IP family of the socket |
 
 
-### [`setRecvBufferSize(size)`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1121)
+### [`setRecvBufferSize(size)`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1125)
 
 External docs: https://nodejs.org/api/dgram.html#socketsetrecvbuffersizesize
 
@@ -603,7 +603,7 @@ Sets the SO_RCVBUF socket option. Sets the maximum socket receive buffer in
 | size | number |  | false | The size of the new receive buffer |
 
 
-### [`setSendBufferSize(size)`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1138)
+### [`setSendBufferSize(size)`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1142)
 
 External docs: https://nodejs.org/api/dgram.html#socketsetsendbuffersizesize
 
@@ -616,13 +616,13 @@ Sets the SO_SNDBUF socket option. Sets the maximum socket send buffer in
 | size | number |  | false | The size of the new send buffer |
 
 
-### [`getRecvBufferSize()`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1151)
+### [`getRecvBufferSize()`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1155)
 
 External docs: https://nodejs.org/api/dgram.html#socketgetrecvbuffersize
 
 
 
-### [`getSendBufferSize()`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1159)
+### [`getSendBufferSize()`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1163)
 
 External docs: https://nodejs.org/api/dgram.html#socketgetsendbuffersize
 
@@ -725,15 +725,24 @@ This is a `VariableDeclaration` named `MessageEvent` in `api/events.js`, it's ex
 This is a `VariableDeclaration` named `ErrorEvent` in `api/events.js`, it's exported but undocumented.
 
 
-# [File System](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L24)
+# [File System](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L33)
 
 
  This module enables interacting with the file system in a way modeled on
  standard POSIX functions.
 
  The Application Sandbox restricts access to the file system.
- Please see the Application Sandbox documentation for more information:
- https://sockets.sh/guides/#working-with-the-file-system-on-ios
+
+ iOS Application Sandboxing has a set of rules that limits access to the file
+ system. Apps can only access files in their own sandboxed home directory.
+
+ | Directory | Description |
+ | --- | --- |
+ | `Documents` | The app’s sandboxed documents directory. The contents of this directory are backed up by iTunes and may be set as accessible to the user via iTunes when `UIFileSharingEnabled` is set to `true` in the application's `info.plist`. |
+ | `Library` | The app’s sandboxed library directory. The contents of this directory are synchronized via iTunes (except the `Library/Caches` subdirectory, see below), but never exposed to the user. |
+ | `Library/Caches` | The app’s sandboxed caches directory. The contents of this directory are not synchronized via iTunes and may be deleted by the system at any time. It's a good place to store data which provides a good offline-first experience for the user. |
+ | `Library/Preferences` | The app’s sandboxed preferences directory. The contents of this directory are synchronized via iTunes. Its purpose is to be used by the Settings app. Avoid creating your own files in this directory. |
+ | `tmp` | The app’s sandboxed temporary directory. The contents of this directory are not synchronized via iTunes and may be deleted by the system at any time. Although, it's recommended that you delete data that is not necessary anymore manually to minimize the space your app takes up on the file system. Use this directory to store data that is only useful during the app runtime. |
 
  To use the promise-based APIs:
 
@@ -747,7 +756,7 @@ This is a `VariableDeclaration` named `ErrorEvent` in `api/events.js`, it's expo
  import * as fs from 'socket:fs';
  ```
 
-## [`access(path, mode , callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L79)
+## [`access(path, mode , callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L88)
 
 External docs: https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fsopenpath-flags-mode-callback
 
@@ -761,7 +770,7 @@ Asynchronously check access a file for a given mode calling `callback`
 | callback | function(err, fd) |  | false |  |
 
 
-## [`chmod(path, mode, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L112)
+## [`chmod(path, mode, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L121)
 
 External docs: https://nodejs.org/api/fs.html#fschmodpath-mode-callback
 
@@ -777,7 +786,7 @@ Asynchronously changes the permissions of a file.
 | callback | function(err) |  | false |  |
 
 
-## [`close(fd, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L142)
+## [`close(fd, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L151)
 
 Asynchronously close a file descriptor calling `callback` upon success or error.
 
@@ -787,12 +796,12 @@ Asynchronously close a file descriptor calling `callback` upon success or error.
 | callback | function(err) |  | true |  |
 
 
-## [`copyFile()`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L158)
+## [`copyFile()`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L167)
 
 This is a `FunctionDeclaration` named `copyFile` in `api/fs/index.js`, it's exported but undocumented.
 
 
-## [`createReadStream(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L167)
+## [`createReadStream(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L176)
 
 External docs: https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fscreatewritestreampath-options
 
@@ -809,7 +818,7 @@ External docs: https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fscreatewri
 | Not specified | fs.ReadStream |  |
 
 
-## [`createWriteStream(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L207)
+## [`createWriteStream(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L216)
 
 External docs: https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fscreatewritestreampath-options
 
@@ -826,7 +835,7 @@ External docs: https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fscreatewri
 | Not specified | fs.WriteStream |  |
 
 
-## [`fstat(fd, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L251)
+## [`fstat(fd, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L260)
 
 External docs: https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fsfstatfd-options-callback
 
@@ -842,7 +851,7 @@ Invokes the callback with the <fs.Stats> for the file descriptor. See
 | callback | function |  | false | The function to call after completion. |
 
 
-## [`open(path, flags , mode , callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L334)
+## [`open(path, flags , mode , callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L343)
 
 Asynchronously open a file calling `callback` upon success or error.
 
@@ -854,7 +863,7 @@ Asynchronously open a file calling `callback` upon success or error.
 | callback | function(err, fd) |  | false |  |
 
 
-## [`opendir(path, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L387)
+## [`opendir(path, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L396)
 
 Asynchronously open a directory calling `callback` upon success or error.
 
@@ -867,7 +876,7 @@ Asynchronously open a directory calling `callback` upon success or error.
 | callback | function(err, fd) |  | false |  |
 
 
-## [`read(fd, buffer, offset, length, position, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L413)
+## [`read(fd, buffer, offset, length, position, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L422)
 
 Asynchronously read from an open file descriptor.
 
@@ -881,7 +890,7 @@ Asynchronously read from an open file descriptor.
 | callback | function(err, bytesRead, buffer) |  | false |  |
 
 
-## [`readdir(path, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L447)
+## [`readdir(path, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L456)
 
 Asynchronously read all entries in a directory.
 
@@ -894,7 +903,7 @@ Asynchronously read all entries in a directory.
 | callback | function(err, buffer) |  | false |  |
 
 
-## [`readFile(path, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L498)
+## [`readFile(path, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L507)
 
 
 
@@ -908,7 +917,7 @@ Asynchronously read all entries in a directory.
 | callback | function(err, buffer) |  | false |  |
 
 
-## [`stat(path, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L571)
+## [`stat(path, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L580)
 
 
 
@@ -922,7 +931,7 @@ Asynchronously read all entries in a directory.
 | callback | function(err, data) |  | false |  |
 
 
-## [`writeFile(path, data, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L641)
+## [`writeFile(path, data, options, callback)`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L650)
 
 
 
@@ -938,7 +947,7 @@ Asynchronously read all entries in a directory.
 | callback | function(err) |  | false |  |
 
 
-## [`writev()`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L678)
+## [`writev()`](https://github.com/socketsupply/socket/blob/master/api/fs/index.js#L687)
 
 This is a `FunctionDeclaration` named `writev` in `api/fs/index.js`, it's exported but undocumented.
 

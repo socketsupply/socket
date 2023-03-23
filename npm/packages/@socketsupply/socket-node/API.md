@@ -1,31 +1,31 @@
 
-### [`send(o)`](https://github.com/socketsupply/socket/blob/master/npm/packages/@socketsupply/socket-node/index.js#L167)
+### [`send(options)`](https://github.com/socketsupply/socket/blob/master/npm/packages/@socketsupply/socket-node/index.js#L168)
 
-
+Send event to webview via IPC
 
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
-| o | object |  | false |  |
-| o.window | number |  | false |  |
-| o.event | string |  | false |  |
-| o.value | any |  | false |  |
+| options | object |  | false |  |
+| options.window | number |  | false | window index to send event to |
+| options.event | string |  | false | event name |
+| options.value | any |  | true | data to send |
 
 
 | Return Value | Type | Description |
 | :---         | :--- | :---        |
-| Not specified | Promise<void> |  |
+| Not specified | Promise<Error| undefined> |  |
 
 
-### [`heartbeat()`](https://github.com/socketsupply/socket/blob/master/npm/packages/@socketsupply/socket-node/index.js#L196)
+### [`heartbeat()`](https://github.com/socketsupply/socket/blob/master/npm/packages/@socketsupply/socket-node/index.js#L198)
 
-
+Send the heartbeat event to the webview.
 
 | Return Value | Type | Description |
 | :---         | :--- | :---        |
-| Not specified | Promise<void> |  |
+| Not specified | Promise<Error| undefined> |  |
 
 
-### [`addListener(event, cb)`](https://github.com/socketsupply/socket/blob/master/npm/packages/@socketsupply/socket-node/index.js#L207)
+### [`addListener(event, cb)`](https://github.com/socketsupply/socket/blob/master/npm/packages/@socketsupply/socket-node/index.js#L209)
 
 Adds a listener to the window.
 
@@ -35,7 +35,7 @@ Adds a listener to the window.
 | cb | function(*): void |  | false | the callback to call |
 
 
-### [`on(event, cb)`](https://github.com/socketsupply/socket/blob/master/npm/packages/@socketsupply/socket-node/index.js#L218)
+### [`on(event, cb)`](https://github.com/socketsupply/socket/blob/master/npm/packages/@socketsupply/socket-node/index.js#L220)
 
 Adds a listener to the window. An alias for `addListener`.
 
@@ -45,7 +45,7 @@ Adds a listener to the window. An alias for `addListener`.
 | cb | function(*): void |  | false | the callback to call |
 
 
-### [`once(event, cb)`](https://github.com/socketsupply/socket/blob/master/npm/packages/@socketsupply/socket-node/index.js#L228)
+### [`once(event, cb)`](https://github.com/socketsupply/socket/blob/master/npm/packages/@socketsupply/socket-node/index.js#L230)
 
 Adds a listener to the window. The listener is removed after the first call.
 
@@ -55,7 +55,7 @@ Adds a listener to the window. The listener is removed after the first call.
 | cb | function(*): void |  | false | the callback to call |
 
 
-### [`removeListener(event, cb)`](https://github.com/socketsupply/socket/blob/master/npm/packages/@socketsupply/socket-node/index.js#L238)
+### [`removeListener(event, cb)`](https://github.com/socketsupply/socket/blob/master/npm/packages/@socketsupply/socket-node/index.js#L240)
 
 Removes a listener from the window.
 
@@ -65,7 +65,7 @@ Removes a listener from the window.
 | cb | function(*): void |  | false | the callback to remove |
 
 
-### [`removeAllListeners(event)`](https://github.com/socketsupply/socket/blob/master/npm/packages/@socketsupply/socket-node/index.js#L247)
+### [`removeAllListeners(event)`](https://github.com/socketsupply/socket/blob/master/npm/packages/@socketsupply/socket-node/index.js#L249)
 
 Removes all listeners from the window.
 
@@ -74,7 +74,7 @@ Removes all listeners from the window.
 | event | string |  | false | the event to remove the listeners from |
 
 
-### [`off(event, cb)`](https://github.com/socketsupply/socket/blob/master/npm/packages/@socketsupply/socket-node/index.js#L258)
+### [`off(event, cb)`](https://github.com/socketsupply/socket/blob/master/npm/packages/@socketsupply/socket-node/index.js#L260)
 
 Removes a listener from the window. An alias for `removeListener`.
 

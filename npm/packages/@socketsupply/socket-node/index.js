@@ -133,7 +133,7 @@ class API {
 
   /**
    * @param {string} s
-   * @returns {Promise<void>}
+   * @returns {Promise<Error| undefined>}
    * @throws {Error}
    * @ignore
    */
@@ -157,17 +157,18 @@ class API {
   // Public API
   //
   /**
-   * @param {object} o
-   * @param {number} o.window
-   * @param {string} o.event
-   * @param {any} o.value
-   * @returns {Promise<void>}
+   * Send event to webview via IPC
+   * @param {object} options
+   * @param {number} options.window - window index to send event to
+   * @param {string} options.event - event name
+   * @param {any=} options.value - data to send
+   * @returns {Promise<Error| undefined>}
    * @throws {Error}
    */
-  async send (o) {
+  async send (options) {
+    let o
     try {
-      // TODO: use structuredClone instead once we are on node 17+
-      o = JSON.parse(JSON.stringify(o))
+      o = JSON.parse(JSON.stringify(options))
     } catch (err) {
       console.error(`Cannot encode data to send via IPC:\n${err.message}`)
       return Promise.reject(err)
@@ -190,7 +191,8 @@ class API {
   }
 
   /**
-   * @returns {Promise<void>}
+   * Send the heartbeat event to the webview.
+   * @returns {Promise<Error| undefined>}
    * @throws {Error}
    */
   async heartbeat () {
