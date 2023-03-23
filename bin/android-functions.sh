@@ -124,14 +124,18 @@ function android_min_expected_static_lib_size() {
 }
 
 function android_supported_abis() {
-  local abis=(
-    "arm64-v8a"
-    "armeabi-v7a"
-    "x86"
-    "x86_64"
-  )
+  if [[ -n "$ANDROID_SUPPORTED_ABIS" ]]; then
+    echo "${ANDROID_SUPPORTED_ABIS[@]}"
+  else
+    local abis=(
+      "arm64-v8a"
+      "armeabi-v7a"
+      "x86"
+      "x86_64"
+    )
 
-  echo "${abis[@]}"
+    echo "${abis[@]}"
+  fi
 }
 
 if [[ -z "$ANDROID_HOME" ]]; then

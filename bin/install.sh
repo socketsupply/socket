@@ -15,6 +15,14 @@ if [[ -n $VERBOSE ]]; then
   echo "# using cores: $CPU_CORES"
 fi
 
+if [[ -n "$NO_ANDROID" ]]; then
+  unset BUILD_ANDROID
+fi
+
+if [[ -z "$NO_IOS" ]]; then
+  BUILD_IOS=1
+fi
+
 declare arch="$(host_arch)"
 declare args=()
 declare pids=()
@@ -269,7 +277,7 @@ function _build_runtime_library() {
   echo "# building runtime library"
   "$root/bin/build-runtime-library.sh" --arch "$arch" --platform desktop $pass_force & pids+=($!)
 
-  if [[ "$host" = "Darwin" ]]; then
+  if [[ "$host" = "Darwin" ]] && [[ -z "$NO_IOS" ]]; then
     "$root/bin/build-runtime-library.sh" --arch "$arch" --platform ios $pass_force & pids+=($!)
     "$root/bin/build-runtime-library.sh" --arch x86_64 --platform ios-simulator $pass_force & pids+=($!)
   fi
@@ -816,7 +824,7 @@ trap onsignal INT TERM
   echo "ok - built libuv for $platform ($target)"
 } & _compile_libuv_pid=$!
 
-if [[ "$(uname -s)" == "Darwin" ]]; then
+if [[ "$(uname -s)" == "Darwin" ]] && [[ -z "$NO_IOS" ]]; then
   quiet xcode-select -p
   die $? "not ok - xcode needs to be installed from the mac app store: https://apps.apple.com/us/app/xcode/id497799835"
 
@@ -875,7 +883,7 @@ _build_cli & pids+=($!)
 
 _prebuild_desktop_main & pids+=($!)
 
-if [[ "$host" = "Darwin" ]]; then
+if [[ "$host" = "Darwin" ]] && [[ -z "$NO_IOS" ]]; then
   if test -d "$(xcrun -sdk iphoneos -show-sdk-path 2>/dev/null)"; then
     _prebuild_ios_main & pids+=($!)
     _prebuild_ios_simulator_main & pids+=($!)
@@ -889,7 +897,7 @@ done
 
 _install "$(host_arch)" desktop
 
-if [[ "$host" = "Darwin" ]]; then
+if [[ "$host" = "Darwin" ]] && [[ -z "$NO_IOS" ]]; then
   _install arm64 iPhoneOS
   _install x86_64 iPhoneSimulator
 fi
