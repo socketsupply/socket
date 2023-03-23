@@ -190,18 +190,49 @@ jobs:
       run: |
         yes | sdkmanager --licenses > /dev/null
         sdkmanager --install 'ndk;25.0.8775105' 'build-tools;33.0.2' 'system-images;android-33;google_apis;x86_64'
-        VERBOSE=1 ./bin/install.sh
-        ./bin/ci_version_check.sh
       env:
         CI: true
         SSC_ANDROID_CI: true
         NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
 
-    - name: test a socket api example app
-      run: |
-        avdmanager create avd --device 5 --force --name SSCAVD --abi 'google_apis/x86_64' --package 'system-images;android-33;google_apis;x86_64'
-        npm install
-        npm run test:android-emulator
+    - name: AVD cache
+      uses: actions/cache@v3
+      id: avd-cache
+      with:
+        path: |
+          ~/.android/avd/*
+          ~/.android/adb*
+        key: macos-avd-33
+
+    - name: create AVD and generate snapshot for caching
+      if: steps.avd-cache.outputs.cache-hit != 'true'
+      uses: reactivecircus/android-emulator-runner@v2
+      with:
+        arch: x86_64
+        api-level: 33
+        target: google_apis
+        profile: pixel_5
+        force-avd-creation: false
+        disable-animations: false
+        emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+        script: echo "Generated AVD snapshot for caching."
+
+    - name: Run emulator tests
+      uses: reactivecircus/android-emulator-runner@v2
+      with:
+        api-level: 33
+        arch: x86_64
+        target: google_apis
+        disable-animations: false
+        emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+        force-avd-creation: false
+        profile: pixel_5
+        ndk: 25.0.8775105
+        script: |
+          VERBOSE=1 ./bin/install.sh
+          ./bin/ci_version_check.sh
+          npm install
+          npm run test:android
       env:
         CI: true
         SSC_ANDROID_CI: true
@@ -254,11 +285,9 @@ jobs:
         SSC_ANDROID_CI: true
         NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
 
-    - name: test a socket api example app
+    - name: compile socket app
       run: |
-        avdmanager create avd --device 5 --force --name SSCAVD --abi 'google_apis/x86_64' --package 'system-images;android-33;google_apis;x86_64'
-        npm install
-        EMULATOR_FLAGS="-accel off" npm run test:android-emulator
+        cd test && ssc build --prod --headless --platform=android
       env:
         CI: true
         CXX: clang++
