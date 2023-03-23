@@ -13,7 +13,7 @@ Send event to webview via IPC
 
 | Return Value | Type | Description |
 | :---         | :--- | :---        |
-| Not specified | Promise<Error| undefined> |  |
+| Not specified | Promise<Error \| undefined> |  |
 
 
 ### [`heartbeat()`](https://github.com/socketsupply/socket/blob/master/npm/packages/@socketsupply/socket-node/index.js#L198)
@@ -22,7 +22,7 @@ Send the heartbeat event to the webview.
 
 | Return Value | Type | Description |
 | :---         | :--- | :---        |
-| Not specified | Promise<Error| undefined> |  |
+| Not specified | Promise<Error \| undefined> |  |
 
 
 ### [`addListener(event, cb)`](https://github.com/socketsupply/socket/blob/master/npm/packages/@socketsupply/socket-node/index.js#L209)
