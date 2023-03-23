@@ -28,10 +28,11 @@ $global:install_errors = @()
 $global:forceArg = ""
 $targetClangVersion = "15.0.0"
 $targetCmakeVersion = "3.24.0"
+$logfile="$env:LOCALAPPDATA\socket_install_ps1.log"
 
 # Powershell environment variables are maintained across sessions, clear if not explicitly set
 $set_debug=$null
-if ($debug -eq $true) {
+if ($debug) {
   $LIBUV_BUILD_TYPE = "Debug"
   
   $SSC_BUILD_OPTIONS = "-g", "-O0"
@@ -40,7 +41,7 @@ if ($debug -eq $true) {
 [Environment]::SetEnvironmentVariable("DEBUG", $set_debug)
 
 $set_verbose=$null
-if ($verbose -eq $true) {
+if ($verbose) {
   $set_verbose="1"
 }
 [Environment]::SetEnvironmentVariable("VERBOSE", $set_verbose)
@@ -52,16 +53,78 @@ if ($force -eq $true) {
 Function Exit-IfErrors {
   if ($global:install_errors.Count -gt 0) {
     foreach ($e in $global:install_errors) {
-      Write-Output $e
+      Write-Log "h" $e
     }
     Exit $global:install_errors.Count
   }
 }
 
+function Call-VCVars() {
+  Write-Log "h" "# Calling vcvars64.bat"
+  $new_envs = $(Get-ProcEnvs("$OLD_CWD", $vc_vars))
+  if ($debug) {
+    foreach ($s in $new_envs) {
+      Write-Log "d" "$s"
+    }
+    Dump-VsEnvVars
+  }
+  Write-Output "Errors: " 
+  if ($new_envs[0] -ne "0") {
+    $global:install_errors += "not ok - vcvars64.bat failed ($($new_envs[0])); Please review $logfile and submit a bug if you think there's an issue."
+    Exit-IfErrors
+  }
+}
+
+# type: 
+# d - debug / console / file
+# v - verbose / console / file
+# h - host (console) / file
+# f - file
+function Write-Log ($type, $message) {
+  $wh = $false
+  $wf = $false
+  if (($debug) -and (($type -eq "d") -or ($type -eq "v"))) {
+    $wf = $wh = $true
+  } elseif (($verbose) -and ($type -eq "v")) {
+    $wf = $wh = $true
+  } elseif ($type -eq "f") {
+    # f doesn't write to host
+  } elseif ($type -eq "h") {    
+    $wh = $true
+  }
+
+  if ($wh) {
+    Write-Host $message
+  }
+
+  Write-LogFile $message
+
+}
+
+function Dump-VsEnvVars() {
+  $path = $env:PATH.split(";")
+  $msvs="Microsoft Visual Studio"
+  Write-Log "d" "WindowsSDKLibVersion: $env:WindowsSDKLibVersion"
+  Write-Log "d" "Searching in path for $msvs"
+  foreach ($s in $env:PATH.split(";")) {
+    if ($s -like "*$msvs*") {
+      Write-Log "d" "$s"
+    }
+  }
+}
+
+function Write-LogFile($message)
+{
+  Write-Output $message >> $logfile
+}
+
 Function Prompt {
   param($text)
+  Write-LogFile "$text`n> "
   Write-Host "$text`n> " -NoNewLine
-  $Host.UI.ReadLine() | Write-Output
+  $r = $Host.UI.ReadLine()
+  Write-LogFile "User input: $r"
+  Write-Output $r
 }
 
 Function Get-CommandPath {
@@ -88,12 +151,15 @@ Function Test-CommandVersion {
   $target_version = $params[1]
   $debug = $params.Count -gt 2
 
+  Write-Log "d" "Test-CommandVersion: $command_string $target_version"
+
   $fso = New-Object -ComObject Scripting.FileSystemObject
 
   while ($true) {
     (Get-Command $command_string -ErrorAction SilentlyContinue -ErrorVariable F) > $null
     $r = $($null -eq $F.length)
     if ($r -eq $false) {
+      Write-Log "d" "Get-Command: Command not found"
       Write-Output $r
       return
     }
@@ -109,9 +175,7 @@ Function Test-CommandVersion {
 
     $current_version = $current_version.split("-")[0]
 
-    if ($debug) {
-      Write-Output "Current $command_string : $current_version, target: $target_version"
-    }
+    Write-Log "v" "Current $($fso.GetFile($(Get-CommandPath $command_string)).Path): $current_version, target: $target_version"
 
     $ta = @()
     foreach ($v in $target_version.split(".")) {
@@ -127,11 +191,13 @@ Function Test-CommandVersion {
         $ca += [int]$v
       }
     } elseif ($debug) {
+      Write-Log "d" "($current_version_split).Count <> ($ta).Count}"
       Write-Output $false
       return
     }
 
     if ($ca.Count -ne $ta.Count) {
+      Write-Log "d" "$($ca.Count) <> $($ta.Count)" 
       Write-Output "$($ca.Count) <> $($ta.Count)"
       Write-Output $false
     }
@@ -144,6 +210,7 @@ Function Test-CommandVersion {
 
       # Current element is greater, no need to compare other elements
       if ($ca[$i] -gt $ta[$i]) {
+        Write-Log "d" "$current_version >= $target_version"
         Write-Output $true
         return
       }
@@ -153,16 +220,19 @@ Function Test-CommandVersion {
 
     # Remove current item's path so it isn't used in future searches
     $p = $fso.GetFile($(Get-CommandPath $command_string)).ParentFolder.Path
+    Write-Log "d" "Remove $p from PATH"
     $env:PATH = $env:PATH.replace("$p", "")
   }
+
+  Write-Log "d" "No viable versions of $command_string"
   Write-Output $false
 }
 
 $vsconfig = "nmake.vsconfig"
 
 if ( -not (("llvm+vsbuild" -eq $toolchain) -or ("vsbuild" -eq $toolchain) -or ("llvm" -eq $toolchain)) ) {
-  Write-Output "not ok - Unsupported -toolchain $toolchain. Supported options are vsbuild, llvm+vsbuild or llvm (external nmake required)"
-  Write-Output "not ok - -toolchain llvm+vsbuild will check for and install llvm clang $targetClangVersion and vsbuild nmake."
+  Write-Log "h" "not ok - Unsupported -toolchain $toolchain. Supported options are vsbuild, llvm+vsbuild or llvm (external nmake required)"
+  Write-Log "h" "not ok - -toolchain llvm+vsbuild will check for and install llvm clang $targetClangVersion and vsbuild nmake."
 
   Exit 1
 }
@@ -177,7 +247,7 @@ if ("vsbuild" -eq $toolchain) {
 }
 
 
-Write-Output "# Using toolchain: $toolchain"
+Write-Log "h" "# Using toolchain: $toolchain"
 
 #
 # Install the files we will want to use for builds
@@ -203,7 +273,7 @@ Function Install-Files {
   # install `.\build\bin\*`
   Copy-Item -Path "$WORKING_BUILD_PATH\bin\*" -Destination "$BIN_PATH"
 
-  Write-Output "ok - installed files to '$ASSET_PATH'."
+  Write-Log "h" "ok - installed files to '$ASSET_PATH'."
 }
 
 $bin = "bin"
@@ -228,7 +298,7 @@ Function Get-UrlCall {
 }
 
 Function Install-Requirements {
-
+  Write-Log "v" "# Logging to $logfile"
   if (-not (Found-Command("curl"))) {
     $global:useCurl = $false
   }
@@ -253,7 +323,7 @@ Function Install-Requirements {
       $install_tasks += $t
     }
   } else {
-    Write-Output "# $vc_runtime_test_path found."
+    Write-Log "h" "# $vc_runtime_test_path found."
   }
 
   $gitPath = "$env:ProgramFiles\Git\bin"
@@ -289,7 +359,7 @@ Function Install-Requirements {
       $install_tasks += $t
     }
   } else {
-    Write-Output("# Found git.exe")
+    Write-Log "h" "# Found git.exe"
   }
 
   # install `cmake.exe`
@@ -358,7 +428,7 @@ Function Install-Requirements {
 
       $env:PATH="$clangPath;$env:PATH"
     } else {
-      Write-Output("# Found clang++.exe")
+      Write-Log "h" "# Found clang++.exe"
     }
   }
 
@@ -373,15 +443,14 @@ Function Install-Requirements {
     $install_vc_build = $true
 
     if ($shbuild -and $(Test-CommandVersion("clang++", $targetClangVersion)) -and $(Found-Command("nmake.exe"))) {
-      Write-Output("# Found clang$and_nmake")
+      Write-Log "h" "# Found clang$and_nmake"
       $install_vc_build = $false
     } elseif ($(Test-CommandVersion("clang++", $targetClangVersion))) {
-      Write-Output("# Found clang")
+      Write-Log "h" "# Found clang"
       $install_vc_build = $false
     } else {
       if ($vc_exists) {
-        Write-Output "# Calling vcvars64.bat"
-        $(Get-ProcEnvs($vc_vars))
+        Call-VcVars
         if ($shbuild -and $(Test-CommandVersion("clang++", $targetClangVersion)) -and $(Found-Command("nmake.exe"))) {
           $report_vc_vars_reqd = $true
           $install_vc_build = $false
@@ -389,7 +458,8 @@ Function Install-Requirements {
           $report_vc_vars_reqd = $true
           $install_vc_build = $false
         } else {
-          Write-Output("# $vc_vars didn't enable both clang++$and_nmake, downloading vs_build.exe")
+          Write-Log "h" "# $vc_vars didn't enable both clang++$and_nmake, downloading vs_build.exe"
+          Dump-VsEnvVars
         }
       }
     }
@@ -420,7 +490,7 @@ Function Install-Requirements {
   }
 
   if ($install_tasks.Count -gt 0) {
-    Write-Output "# Installing build dependencies..."
+    Write-Log "h" "# Installing build dependencies..."
     $script = ""
     # concatinate all script blocks so a single UAC request is raised
     foreach ($task in $install_tasks) {
@@ -437,7 +507,7 @@ Function Install-Requirements {
   if ($install_vc_build) {
     $vc_exists, $vc_vars = $(Get-VCVars)
     if ($vc_exists) {
-      $(Get-ProcEnvs($vc_vars))
+      Call-VcVars
     } else {
       if ($env:CI -eq $null) {
         $global:install_errors += "not ok - vcvars64.bat still not present, something went wrong."
@@ -501,7 +571,7 @@ if ($shbuild) {
   $sh = "$gitPath\sh.exe"
 
   if ($env:VERBOSE -eq "1") {
-    Write-Output "# Using shell $sh"
+    Write-Log "v" "# Using shell $sh"
     iex "& ""$sh"" -c 'uname -s'"
   }
 
@@ -523,15 +593,21 @@ if ($shbuild) {
   $global:path_advice += "`$env:PATH='$BIN_PATH;'+`$env:PATH"
 
   cd $OLD_CWD
-  Write-Output "# Calling bin\install.sh $global:forceArg"
-  iex "& ""$sh"" bin\install.sh $global:forceArg"
+  $install_sh = """$sh"" bin\install.sh $global:forceArg"
+  Write-Log "h" "# Calling $install_sh"
+  iex "& $install_sh"
+  $exit=$LASTEXITCODE
+  if ($exit -ne "0") {
+    $global:install_errors += "$install_sh failed: $exit"
+    Exit-IfErrors
+  }
 }
 
 if ($global:path_advice.Count -gt 0) {
-  Write-Output "# Please run in future dev sessions: "
-  Write-Output "# (Or just run cd $OLD_CWD; .\bin\install.ps1)"
+  Write-Log "h" "# Please run in future dev sessions: "
+  Write-Log "h" "# (Or just run cd $OLD_CWD; .\bin\install.ps1)"
   foreach ($p in $global:path_advice) {
-    Write-Output $p
+    Write-Log "h" $p
   }
 }
 
