@@ -3,7 +3,9 @@
 id="co.socketsupply.socket.tests"
 
 ## Start application
-adb shell am start -n "$id/.MainActivity" || exit $?
+while adb shell am start -n "$id/.MainActivity" 2>&1 | grep 'not started'; do
+  sleep 1
+done
 
 echo "polling for '$id' PID in adb"
 while [ -z "$pid" ]; do
