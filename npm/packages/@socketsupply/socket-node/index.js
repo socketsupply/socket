@@ -133,7 +133,7 @@ class API {
 
   /**
    * @param {string} s
-   * @returns {Promise<Error| undefined>}
+   * @returns {Promise<Error | undefined>}
    * @throws {Error}
    * @ignore
    */
@@ -162,7 +162,7 @@ class API {
    * @param {number} options.window - window index to send event to
    * @param {string} options.event - event name
    * @param {any=} options.value - data to send
-   * @returns {Promise<Error| undefined>}
+   * @returns {Promise<Error | undefined>}
    * @throws {Error}
    */
   async send (options) {
@@ -192,7 +192,7 @@ class API {
 
   /**
    * Send the heartbeat event to the webview.
-   * @returns {Promise<Error| undefined>}
+   * @returns {Promise<Error | undefined>}
    * @throws {Error}
    */
   async heartbeat () {

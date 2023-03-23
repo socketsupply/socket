@@ -1071,7 +1071,7 @@ External docs: https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fspromisesr
 
 | Return Value | Type | Description |
 | :---         | :--- | :---        |
-| Not specified | Promise<Buffer | string> |  |
+| Not specified | Promise<Buffer \| string> |  |
 
 
 ## [`stat(path, options)`](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L263)

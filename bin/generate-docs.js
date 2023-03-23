@@ -185,8 +185,9 @@ export function transform (filename, dest, md) {
           const propType = 'returns'
           const match = attr.match(/{([^}]+)}(?:\s*-\s*)?(.*)/)
           if (match) {
-            const { 1: type, 2: rawName } = match
+            const { 1: rawType, 2: rawName } = match
             const [name, description] = /\w\s*-\s*(.*)/.test(rawName) ? rawName.split(/-\s+/) : ['Not specified', rawName]
+            const type = rawType.replace(/\s*\|\s*/g, ' \\| ')
             const param = { name: name.trim() || 'Not specified', type, description: description?.trim() }
             if (['undefined', 'void'].includes(type)) continue
             if (!item[propType]) item[propType] = []
