@@ -269,7 +269,7 @@ static dispatch_queue_t queue = dispatch_queue_create(
 
     auto preload = createPreload(opts, PreloadOptions { .module = true });
     auto script = "<script type=\"module\">" + preload + "</script>";
-    auto html = String([[NSString stringWithContentsOfURL: url] UTF8String]);
+    auto html = String([[NSString stringWithContentsOfURL: url encoding: NSUTF8StringEncoding error: nil] UTF8String]);
 
     if (html.find("<head>") != -1) {
       html = replace(html, "<head>", "<head>" + script);
