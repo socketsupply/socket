@@ -1,4 +1,4 @@
-param([Switch]$debug, [Switch]$verbose, [Switch]$force, [Switch]$shbuild=$true, [Switch]$package_setup, $toolchain = "vsbuild")
+param([Switch]$debug, [Switch]$verbose, [Switch]$force, [Switch]$shbuild=$true, [Switch]$package_setup, [Switch]$declare_only=$false, $toolchain = "vsbuild")
 
 # -shbuild:$false - Don't run bin\install.sh (Builds runtime lib)
 #                 - Fail silently (allow npm install-pre-reqs script '&& exit' to work to close y/n prompt window)
@@ -29,6 +29,7 @@ $global:forceArg = ""
 $targetClangVersion = "15.0.0"
 $targetCmakeVersion = "3.24.0"
 $logfile="$env:LOCALAPPDATA\socket_install_ps1.log"
+$fso = New-Object -ComObject Scripting.FileSystemObject
 
 # Powershell environment variables are maintained across sessions, clear if not explicitly set
 $set_debug=$null
@@ -153,8 +154,6 @@ Function Test-CommandVersion {
 
   Write-Log "d" "Test-CommandVersion: $command_string $target_version"
 
-  $fso = New-Object -ComObject Scripting.FileSystemObject
-
   while ($true) {
     (Get-Command $command_string -ErrorAction SilentlyContinue -ErrorVariable F) > $null
     $r = $($null -eq $F.length)
@@ -228,6 +227,94 @@ Function Test-CommandVersion {
   Write-Output $false
 }
 
+Function Bits-Download {
+  param($params)
+  $url=$params[0]
+  $dest=$params[1]
+  # use bitsadmin because iwr has no error reporting
+  $jobId = "$(New-Guid)"
+  $bts="bitsadmin"
+  (iex "$bts /create $jobId") > $null
+  (iex "$bts /setpriority $jobId high") > $null
+  if ($LASTEXITCODE -ne 0) {
+    return $LASTEXITCODE
+  }
+  (iex "$bts /addfile $jobId ""$url"" ""$dest""") > $null
+  if ($LASTEXITCODE -ne 0) {
+    return $LASTEXITCODE
+  }
+  (iex "$bts /rawreturn /resume $jobId") > $null
+  iex "sleep 1"
+  $percent=0
+  $exitCode=0
+  $total=0
+  Write-Log "h" "Downloading $url to $dest"
+  while ($true) {
+    if ($total -lt 1) {
+      $o=$(iex "$bts /rawreturn /getbytestotal $jobId")
+      # Write-Host "Bytes total: $o"
+      try {
+        # ignore very large initial number
+        $total=[int64]$o
+      } catch {}
+    }
+    $xferd=[int]$(iex "$bts /rawreturn /getbytestransferred $jobId")
+    $files=[int]$(iex "$bts /rawreturn /getfilestransferred $jobId")
+    $error_string=$(iex "$bts /rawreturn /geterror $jobId")
+    if (($error_string -like "*Unable to get error*") -eq $false) {
+      $exitCode=[unit32][Convert]::ToString($error_string, 10)
+    }
+    # Write-Host "Error: $r"
+    # $err=[uint32]$r
+
+    if ($total -gt 0) {
+      $percent = $(($xferd/$total)*100)
+    }
+
+    Write-Progress -Activity "Writing $dest" -PercentComplete $percent
+
+    if ($files -ne 0) {
+      break
+    }
+
+    if ($exitCode -ne 0) {
+      $exitCode = $exitCode
+      break
+    }
+    iex "sleep 1"
+  }
+
+  # exitCode never gets set, /geterror always contains "Unable to get error - 0x8020000f"
+  if (($exitCode -eq 0) -and ($xferd -ne $total)) {
+    $exitCode = $total - $xferd
+  }
+  
+  (iex "$bts /rawreturn /complete $jobId") > $null
+
+  if (($exitCode -eq 0))
+  {
+    $fso = New-Object -ComObject Scripting.FileSystemObject
+    if ($fso.GetFile($dest).Size -eq 0) {
+      $exitCode = 255
+    }    
+  }
+
+  if ($exitCode -eq 0) {
+    $exitCode = 200
+  }
+
+  Write-Log "h" "Downloaded $xferd/$total"
+  
+  return $exitCode
+}
+
+# Bits-Download("https://aka.ms/vs/17/release/vc_redist.x64.exe", "C:\Users\mribb\AppData\Local\Temp\out.txt")
+# Bits-Download("https://aka.ms/vs/17/release1/vc_redist.x64.exe", "C:\Users\mribb\AppData\Local\Temp\out.txt")
+# Sub UAC process is importing function definitions
+if ($declare_only) {
+  Exit 0
+}
+
 $vsconfig = "nmake.vsconfig"
 
 if ( -not (("llvm+vsbuild" -eq $toolchain) -or ("vsbuild" -eq $toolchain) -or ("llvm" -eq $toolchain)) ) {
@@ -291,9 +378,9 @@ Function Get-UrlCall {
   # curl is way faster than iwr
   # need .exe because curl is an alias for iwr, go figure...  
   if ($global:useCurl) {
-    return "iex ""& curl.exe -L """"$url"""" --output """"$dest"""""""
+    return "iex ""& curl.exe -L --write-out '%{http_code}' """"$url"""" --output """"$dest""""""`n"
   } else {
-    return "iwr $url -O $dest"
+    return "Bits-Download(""$url"", ""$dest"")"
   }
 }
 
@@ -314,10 +401,16 @@ Function Install-Requirements {
     
     if ($confirmation -eq 'y') {
       $t = [string]{
-        Write-Output "# Downloading $url"
-        -geturl-
-        Write-Output "# Installing $env:TEMP\$installer"
+        Write-Log "v" "# Downloading $url"
+        $r=-geturl-
+        Write-Log "v" "HTTP result: $r"
+        if ($r -ne 200) {
+          Return 1
+        }
+        Write-Log "v" "# Installing $env:TEMP\$installer"
         iex "& $env:TEMP\$installer /quiet"
+        Write-Log "v" "Install result: $LASTEXITCODE"
+        return $LASTEXITCODE
       }
       $t = $t.replace("`$installer", $installer).replace("`$env:TEMP", $env:TEMP).replace("`$url", $url).replace("-geturl-", (Get-UrlCall "$url" "$env:TEMP\$installer")).replace("""", "\""")
       $install_tasks += $t
@@ -346,14 +439,34 @@ Function Install-Requirements {
 
     if ($confirmation -eq 'y') {
       $t = [string]{
-        Write-Output "# Downloading $url"
-        -geturl-
-        Write-Output "# Installing $env:TEMP\$installer"
+        Write-Log "v" "# Downloading $url"
+        $r=-geturl-
+        Write-Log "v" "HTTP result: $r"
+        if ($r -ne 200) {
+          Return 1
+        }
+        Write-Log "v" "# Installing $env:TEMP\$installer"
         iex "& $env:TEMP\$installer /SILENT"
+        # Waiting for initial process to end doesn't work because a separate installer process is launched after extracting to tmp
         sleep 1
-        $proc=Get-Process $installer_tmp
-        Write-Output "# Waiting for $installer_tmp..."
-        Wait-Process -InputObject $proc
+        $install_pid=(Get-Process $installer_tmp).id        
+        $p = New-Object System.Diagnostics.Process
+        $processes = @()
+        foreach ($install_pid in (Get-Process $installer_tmp).id) {
+          Write-Log "d" "# watch sub process: $install_pid"
+          $processes+=[System.Diagnostics.Process]::GetProcessById([int]$install_pid)
+        }
+        
+        Write-Log "v" "# Waiting for $installer_tmp..."
+        foreach ($proc in $processes) {
+          $proc.WaitForExit()
+          # This doesn't work, may improve in the future. Exit code is always empty.
+          # We check existence of installed tools later
+          if ($proc.ExitCode -ne 0) {
+            Write-Log "v" "Install result: $($proc.ExitCode)"
+          }
+        }
+        return 0
       }      
       $t = $t.replace("`$installer_tmp", $installer_tmp).replace("`$installer", $installer).replace("`$env:TEMP", $env:TEMP).replace("`$url", $url).replace("-geturl-", (Get-UrlCall "$url" "$env:TEMP\$installer")).replace("""", "\""")
       $install_tasks += $t
@@ -381,13 +494,32 @@ Function Install-Requirements {
 
       if ($confirmation -eq 'y') {
         $t = [string]{
-          Write-Output "# Downloading $url"
-          -geturl-
-          Write-Output "# Installing $env:TEMP\$installer"
+          Write-Log "v" "# Downloading $url"
+          $r=-geturl-
+          Write-Log "v" "HTTP result: $r"
+          if ($r -ne 200) {
+            Return 1
+          }
+          Write-Log "v" "# Installing $env:TEMP\$installer"
           sleep 2
-          $proc=Get-Process msiexec
-          Write-Output "# Waiting for msiexec..."
-          iex "& $env:TEMP\$installer /quiet"
+          $install_pid=(Get-Process "msiexec").id        
+          $p = New-Object System.Diagnostics.Process
+          $processes = @()
+          foreach ($install_pid in (Get-Process $installer_tmp).id) {
+            Write-Log "d" "# watch sub process: $install_pid"
+            $processes+=[System.Diagnostics.Process]::GetProcessById([int]$install_pid)
+          }
+          
+          Write-Log "v" "# Waiting for $installer_tmp..."
+          foreach ($proc in $processes) {
+            $proc.WaitForExit()
+            # This doesn't work, may improve in the future. Exit code is always empty.
+            # We check existence of installed tools later
+            if ($proc.ExitCode -ne 0) {
+              Write-Log "v" "Install result: $($proc.ExitCode)"
+            }
+          }
+          return 0
         }
         $t = $t.replace("`$installer", $installer).replace("`$env:TEMP", $env:TEMP).replace("`$url", $url).replace("-geturl-", (Get-UrlCall "$url" "$env:TEMP\$installer")).replace("""", "\""")
         $install_tasks += $t
@@ -413,13 +545,17 @@ Function Install-Requirements {
 
         if ($confirmation -eq 'y') {
           $t = [string]{
-            Write-Output "# Downloading $url"
-            -geturl-
-            Write-Output "# Installing $env:TEMP\$installer"
+            Write-Log "v" "# Downloading $url"
+            $r=-geturl-
+            Write-Log "v" "HTTP result: $r"
+            if ($r -ne 200) {
+              Return 1
+            }
+            Write-Log "v" "# Installing $env:TEMP\$installer"
             iex "& $env:TEMP\$installer /S"
             sleep 1
             $proc=Get-Process $installer
-            Write-Output "# Waiting for $installer..."
+            Write-Log "v" "# Waiting for $installer..."
           }
           $t = $t.replace("`$installer", $installer).replace("`$env:TEMP", $env:TEMP).replace("`$url", $url).replace("-geturl-", (Get-UrlCall "$url" "$env:TEMP\$installer")).replace("""", "\""")
           $install_tasks += $t
@@ -466,6 +602,7 @@ Function Install-Requirements {
 
     # Check windows SDK
     if (($env:WindowsSdkDir -eq $null) -or ((Test-Path $env:WindowsSdkDir -PathType Container) -eq $false)) {
+      Write-Host "h" "WindowsSdkDir not set."
       $install_vc_build = $true
     }
 
@@ -476,11 +613,17 @@ Function Install-Requirements {
       $url = "https://aka.ms/vs/17/release/$installer"
 
       if ($confirmation -eq 'y') {
-        $t = [string]{
-          Write-Output "# Downloading $url"
-          -geturl-
-          Write-Output "# Installing $env:TEMP\$installer"
+        $t = [string]{ 
+          Write-Log "v" "# Downloading $url"
+          $r=-geturl-
+          Write-Log "v" "HTTP result: $r"
+          if ($r -ne 200) {
+            Return 1
+          }
+          Write-Log "v" "# Installing $env:TEMP\$installer"
           iex "& $env:TEMP\$installer --passive --config $OLD_CWD\$bin\$vsconfig"
+          Write-Log "v" "Install result: $LASTEXITCODE"
+          return $LASTEXITCODE
         }
         $t = $t.replace("`$OLD_CWD", $OLD_CWD).replace("`$bin", $bin).replace("`$vsconfig", $vsconfig)
         $t = $t.replace("`$installer", $installer).replace("`$env:TEMP", $env:TEMP).replace("`$url", $url).replace("-geturl-", (Get-UrlCall "$url" "$env:TEMP\$installer")).replace("""", "\""")
@@ -489,12 +632,30 @@ Function Install-Requirements {
     }
   }
 
+  # Install process will write exit code back to this file
+  $deps_status_file="$($env:Temp)\socket-deps-$(New-Guid).dat"
+  Write-Log "d" "deps_status_file: $deps_status_file"
+
   if ($install_tasks.Count -gt 0) {
     Write-Log "h" "# Installing build dependencies..."
-    $script = ""
+    $script = ". ""$OLD_CWD\bin\install.ps1"" -declare_only"
     # concatinate all script blocks so a single UAC request is raised
     foreach ($task in $install_tasks) {
-      $script = "$($script)Invoke-Command {$($task)}`r`n"
+      $script = "$($script)
+      Write-Log ""v"" ""Running install tasks"";
+      `$r=Invoke-Command {$($task)}
+      if (`$r -ne 0) {
+        # Write-Log ""v"" ""fInstall task failed: `$r""
+        Write-Output `$r > ""$deps_status_file""
+        return `$r
+      }
+      "
+    }
+
+    if ($debug) {
+      $install_script_name="$($env:Temp)\socket-deps-$(New-Guid).ps1"
+      Write-Log "d" "Writing install script to $install_script_name"
+      Write-Output "$script".replace("\""", """") > $install_script_name
     }
 
     try {
@@ -502,6 +663,24 @@ Function Install-Requirements {
     } catch [InvalidOperationException] {
       $global:install_errors += "not ok - UAC declined, nothing installed."
     }
+
+    if (Test-Path $deps_status_file) {
+      $global:install_errors += "not ok - Dependency installation incomplete: "
+
+      foreach ($line in Get-Content($deps_status_file).split("`r`n")) {
+        $global:install_errors += "Exit code: $line"
+      }
+
+      if ($debug) {
+        $install_script_name="$($env:Temp)\socket-deps-$(New-Guid).ps1"
+        Write-Log "d" "Writing intall script to $install_script_name"
+        Write-Output "$script".replace("\""", """") > $install_script_name
+      } else {
+        Remove-Item $deps_status_file
+      }
+    }    
+    
+    Exit-IfErrors
   }
 
   if ($install_vc_build) {
