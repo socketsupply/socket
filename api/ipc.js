@@ -564,6 +564,7 @@ export class Message extends URL {
 
   /**
    *  @type {Uint8Array?}
+   *  @ignore
    */
   bytes = null
 
@@ -783,21 +784,25 @@ export class Message extends URL {
 export class Result {
   /**
    * @type {Error?}
+   * @ignore
    */
   err
 
   /**
    * @type {string|object|Uint8Array}
+   * @ignore
    */
   data
 
   /**
    * @type {string?}
+   * @ignore
    */
   source
 
   /**
    * @type {Headers?}
+   * @ignore
    */
   headers
 
