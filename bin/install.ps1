@@ -401,13 +401,13 @@ Function Install-Requirements {
     
     if ($confirmation -eq 'y') {
       $t = [string]{
-        Write-Log "v" "# Downloading $url"
+        Write-Log "h" "# Downloading $url"
         $r=-geturl-
         Write-Log "v" "HTTP result: $r"
         if ($r -ne 200) {
           Return 1
         }
-        Write-Log "v" "# Installing $env:TEMP\$installer"
+        Write-Log "h" "# Installing $env:TEMP\$installer"
         iex "& $env:TEMP\$installer /quiet"
         Write-Log "v" "Install result: $LASTEXITCODE"
         return $LASTEXITCODE
@@ -439,13 +439,13 @@ Function Install-Requirements {
 
     if ($confirmation -eq 'y') {
       $t = [string]{
-        Write-Log "v" "# Downloading $url"
+        Write-Log "h" "# Downloading $url"
         $r=-geturl-
         Write-Log "v" "HTTP result: $r"
         if ($r -ne 200) {
           Return 1
         }
-        Write-Log "v" "# Installing $env:TEMP\$installer"
+        Write-Log "h" "# Installing $env:TEMP\$installer"
         iex "& $env:TEMP\$installer /SILENT"
         # Waiting for initial process to end doesn't work because a separate installer process is launched after extracting to tmp
         sleep 1
@@ -494,23 +494,28 @@ Function Install-Requirements {
 
       if ($confirmation -eq 'y') {
         $t = [string]{
-          Write-Log "v" "# Downloading $url"
+          Write-Log "h" "# Downloading $url"
           $r=-geturl-
           Write-Log "v" "HTTP result: $r"
           if ($r -ne 200) {
             Return 1
           }
-          Write-Log "v" "# Installing $env:TEMP\$installer"
+          Write-Log "h" "# Installing $env:TEMP\$installer"
+          iex "& $env:TEMP\$installer /quiet"
           sleep 2
-          $install_pid=(Get-Process "msiexec").id        
           $p = New-Object System.Diagnostics.Process
           $processes = @()
-          foreach ($install_pid in (Get-Process $installer_tmp).id) {
-            Write-Log "d" "# watch sub process: $install_pid"
-            $processes+=[System.Diagnostics.Process]::GetProcessById([int]$install_pid)
+          foreach ($install_pid in (Get-Process "msiexec").id) {
+            $process=[System.Diagnostics.Process]::GetProcessById([int]$install_pid)
+            $commandLine = Get-CimInstance Win32_Process -Filter "ProcessId = '$install_pid'" | Select-Object CommandLine
+            if ($commandLine -like "*$installer*") {
+              Write-Log "d" "cmake installer args: $($install_pid): $($commandLine)"
+              Write-Log "d" "# watch sub process: $install_pid"
+              $processes+=$process
+            }
           }
           
-          Write-Log "v" "# Waiting for $installer_tmp..."
+          Write-Log "h" "# Waiting for $installer_tmp..."
           foreach ($proc in $processes) {
             $proc.WaitForExit()
             # This doesn't work, may improve in the future. Exit code is always empty.
@@ -545,17 +550,17 @@ Function Install-Requirements {
 
         if ($confirmation -eq 'y') {
           $t = [string]{
-            Write-Log "v" "# Downloading $url"
+            Write-Log "h" "# Downloading $url"
             $r=-geturl-
             Write-Log "v" "HTTP result: $r"
             if ($r -ne 200) {
               Return 1
             }
-            Write-Log "v" "# Installing $env:TEMP\$installer"
+            Write-Log "h" "# Installing $env:TEMP\$installer"
             iex "& $env:TEMP\$installer /S"
             sleep 1
             $proc=Get-Process $installer
-            Write-Log "v" "# Waiting for $installer..."
+            Write-Log "h" "# Waiting for $installer..."
           }
           $t = $t.replace("`$installer", $installer).replace("`$env:TEMP", $env:TEMP).replace("`$url", $url).replace("-geturl-", (Get-UrlCall "$url" "$env:TEMP\$installer")).replace("""", "\""")
           $install_tasks += $t
@@ -614,13 +619,13 @@ Function Install-Requirements {
 
       if ($confirmation -eq 'y') {
         $t = [string]{ 
-          Write-Log "v" "# Downloading $url"
+          Write-Log "h" "# Downloading $url"
           $r=-geturl-
           Write-Log "v" "HTTP result: $r"
           if ($r -ne 200) {
             Return 1
           }
-          Write-Log "v" "# Installing $env:TEMP\$installer"
+          Write-Log "h" "# Installing $env:TEMP\$installer"
           iex "& $env:TEMP\$installer --passive --config $OLD_CWD\$bin\$vsconfig"
           Write-Log "v" "Install result: $LASTEXITCODE"
           return $LASTEXITCODE
