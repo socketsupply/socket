@@ -101,21 +101,16 @@ if [ ! "$CXX" ]; then
   fi
 
   if [ "$host" = "Win32" ]; then
-    if command -v $CXX >/dev/null 2>&1; then
-      echo > /dev/null
-    else
-      # POSIX doesn't handle quoted commands
-      # Quotes inside variables don't escape spaces, quotes only help on the line we are executing
-      # Make a temp link
-      CXX_TMP=$(mktemp)
-      rm $CXX_TMP
-      ln -s "$CXX" $CXX_TMP
-      CXX=$CXX_TMP
-      # Make tmp.etc look like clang++.etc, makes clang output look correct
-      CXX=$(echo $CXX|sed 's/tmp\./clang++\./')
-      mv $CXX_TMP $CXX
-
-    fi
+    # POSIX doesn't handle quoted commands
+    # Quotes inside variables don't escape spaces, quotes only help on the line we are executing
+    # Make a temp link
+    CXX_TMP=$(mktemp)
+    rm $CXX_TMP
+    ln -s "$CXX" $CXX_TMP
+    CXX=$CXX_TMP
+    # Make tmp.etc look like clang++.etc, makes clang output look correct
+    CXX=$(echo $CXX|sed 's/tmp\./clang++\./')
+    mv $CXX_TMP $CXX
   fi
 
   if [ ! "$CXX" ]; then
