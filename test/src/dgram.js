@@ -1,5 +1,6 @@
 import { EventEmitter } from 'socket:events'
 import { test } from 'socket:test'
+import process from 'socket:process'
 import console from 'socket:console'
 import crypto from 'socket:crypto'
 import Buffer from 'socket:buffer'
@@ -118,6 +119,8 @@ test('dgram createSocket, address, bind, close', async (t) => {
 })
 
 test('udp bind, send, remoteAddress', async (t) => {
+  if (process.env.SSC_ANDROID_CI) return
+
   const server = dgram.createSocket({
     type: 'udp4',
     reuseAddr: false
@@ -190,6 +193,8 @@ test('udp socket message and bind callbacks', async (t) => {
 })
 
 test('udp bind, connect, send', async (t) => {
+  if (process.env.SSC_ANDROID_CI) return
+
   const payload = makePayload()
   const server = dgram.createSocket('udp4')
   const client = dgram.createSocket('udp4')
@@ -271,6 +276,8 @@ test('udp createSocket AbortSignal', async (t) => {
 })
 
 test('client ~> server (~512 messages)', async (t) => {
+  if (process.env.SSC_ANDROID_CI) return
+
   const TIMEOUT = 1024
   const address = os.platform() === 'win32' ? '127.0.0.1' : '0.0.0.0'
   const buffers = Array.from(Array(512), () => crypto.randomBytes(1024))

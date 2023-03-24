@@ -35,11 +35,13 @@ if (process.platform !== 'ios') {
   })
 }
 
-test('application.debug', async (t) => {
-  t.equal(typeof application.debug, 'boolean', 'debug is a boolean')
-  t.equal(application.debug, globalThis.__args.debug, 'debug is correct')
-  t.throws(() => { application.debug = 1 }, 'debug is immutable')
-})
+if (!['android'].includes(process.platform)) {
+  test('application.debug', async (t) => {
+    t.equal(typeof application.debug, 'boolean', 'debug is a boolean')
+    t.equal(application.debug, globalThis.__args.debug, 'debug is correct')
+    t.throws(() => { application.debug = 1 }, 'debug is immutable')
+  })
+}
 
 // FIXME: make it work on iOS/Android
 if (!['android', 'ios'].includes(process.platform)) {

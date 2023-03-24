@@ -200,7 +200,6 @@ jobs:
       with:
         api-level: 33
         arch: x86_64
-        cores: 4
         disable-animations: false
         emulator-boot-timeout: 1200
         emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
@@ -215,10 +214,9 @@ jobs:
       with:
         api-level: 33
         arch: x86_64
-        cores: 4
         disable-animations: false
         emulator-boot-timeout: 1200
-        emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+        emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
         force-avd-creation: false
         ndk: 25.0.8775105
         profile: pixel_5

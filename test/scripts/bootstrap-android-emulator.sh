@@ -35,7 +35,7 @@ fi
 if ! "$avdmanager" list avd | grep 'Name: SSCAVD$'; then
   pkg="system-images;android-33;google_apis;$(uname -m | sed -E 's/(arm64|aarch64)/arm64-v8a/g')"
   "$sdkmanager" "$pkg" || exit $?
-  echo yes | "$avdmanager" --clear-cache create avd -n SSCAVD -k "$pkg" -d 'pixel_5' --force || exit $?
+  echo yes | "$avdmanager" --clear-cache create avd -n SSCAVD -k "$pkg" -d 1 --force || exit $?
 fi
 
 "$emulator" @SSCAVD         \
