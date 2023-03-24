@@ -92,7 +92,7 @@ function test_javac_version() {
   fi
 
   jc_v="${jc_v/javac\ /}"
-  [[ -n $VERBOSE ]] && echo "Comparing $javac version: "$(version "$jc_v") "$(version "$target_version")"
+  write_log "v" "Comparing $javac version: "$(version "$jc_v") "$(version "$target_version")"
   if [ "$(version "$jc_v")" -lt "$(version "$target_version")" ]; then
     return 1
   fi
@@ -111,7 +111,7 @@ function get_android_paths() {
   for android_home_test in "${ANDROID_HOME_SEARCH_PATHS[@]}"; do
     for sdk_man_test in "${ANDROID_SDK_MANAGER_SEARCH_PATHS[@]}"; do
       if [[ -z "$_ah" ]]; then
-        [[ -n $VERBOSE ]] && echo "Checking $android_home_test/$sdk_man_test/sdkmanager$bat"
+        write_log "v" "Checking $android_home_test/$sdk_man_test/sdkmanager$bat"
         if [[ -f "$android_home_test/$sdk_man_test/sdkmanager$bat" ]]; then
           _ah="$android_home_test"
           _sdk="$sdk_man_test/sdkmanager$bat"
@@ -124,7 +124,7 @@ function get_android_paths() {
   temp=$(mktemp)
   for java_home_test in "${JAVA_HOME_SEARCH_PATHS[@]}"; do
     # Try initial search in bin of known location before attempting `find`
-    [[ -n $VERBOSE ]] && echo "Checking $java_home_test/bin/javac$exe"
+    write_log "v" "Checking $java_home_test/bin/javac$exe"
     if [[ -f "$java_home_test/bin/javac$exe" ]]; then
 
       test_javac_version "$java_home_test/bin/javac$exe" "$JDK_VERSION" ; r=$?
@@ -134,22 +134,22 @@ function get_android_paths() {
         echo "$java_home_test" > "$temp"
         break
       else
-        [[ -n $VERBOSE ]] && echo "Ignoring a $java_home_test/bin/javac$exe $jc_v"
+        write_log "v" "Ignoring a $java_home_test/bin/javac$exe $jc_v"
       fi
     fi
 
-    [[ -n $VERBOSE ]] && echo "find $java_home_test -type f -name "javac$exe"' -print0 2>/dev/null | while IFS= read -r -d '' javac"
+    write_log "v" "find $java_home_test -type f -name "javac$exe"' -print0 2>/dev/null | while IFS= read -r -d '' javac"
     find "$java_home_test" -type f -name "javac$exe" -print0 2>/dev/null | while IFS= read -r -d '' javac
     do
       # break doesn't work here, check that we don't have a result
       if [[ $(stat_size "$temp") == 0 ]]; then
-        [[ -n $VERBOSE ]] && echo "Found $javac"
+        write_log "v" "Found $javac"
         test_javac_version "$javac" "$JDK_VERSION" ; r=$?
         if [[ "$r" == "0" ]]; then
           # subshell, output to file
           echo "$(dirname "$(dirname "$javac")")" > "$temp"
         else
-          [[ -n $VERBOSE ]] && echo "Ignoring b $javac $jc_v"
+          write_log "v" "Ignoring b $javac $jc_v"
         fi
       fi
     done
@@ -162,18 +162,18 @@ function get_android_paths() {
   echo -n > "$temp"
 
   for gradle_test in "${GRADLE_SEARCH_PATHS[@]}"; do
-    [[ -n $VERBOSE ]] && echo "Checking $gradle_test/bin/gradle$bat"
+    write_log "v" "Checking $gradle_test/bin/gradle$bat"
     if [[ -f "$gradle_test/bin/gradle$bat" ]]; then
       echo "$gradle_test" > "$temp"
       break
     fi
 
-    [[ -n $VERBOSE ]] && echo "find $gradle_test -type f -name 'gradle' -print0 2>/dev/null | while IFS= read -r -d '' gradle"
+    write_log "v" "find $gradle_test -type f -name 'gradle' -print0 2>/dev/null | while IFS= read -r -d '' gradle"
     find "$gradle_test" -type f -name "gradle$bat" -print0 2>/dev/null | while IFS= read -r -d '' gradle
     do
       # break doesn't work here, check that we don't have a result
       if [[ $(stat_size "$temp") == 0 ]]; then
-        [[ -n $VERBOSE ]] && echo "Found $gradle"
+        write_log "v" "Found $gradle"
         # subshell, output to file
         echo "$(dirname "$(dirname "$gradle")")" > "$temp"
       fi
@@ -438,8 +438,8 @@ function android_install_sdk_manager() {
     return 1
   fi
 
-  echo "Please review the Android SDK Manager License by visiting the URL below and clicking "Download SDK Platform-Tools for "[Your OS]"
-  echo "$ANDROID_PLATFORM_TOOLS_PAGE_URI"
+  write_log "h" "Please review the Android SDK Manager License by visiting the URL below and clicking "Download SDK Platform-Tools for "[Your OS]"
+  write_log "h" "$ANDROID_PLATFORM_TOOLS_PAGE_URI"
   
   if ! prompt_yn "Do you consent to the Android SDK Manager License?"; then
     return 1
@@ -447,31 +447,31 @@ function android_install_sdk_manager() {
 
   local _ah=""
   if [ -n "$ANDROID_HOME" ] && [ -d "$ANDROID_HOME" ]; then
-    echo "Using existing ANDROID_HOME: $ANDROID_HOME folder"
+    write_log "h" "Using existing ANDROID_HOME: $ANDROID_HOME folder"
     _ah="$ANDROID_HOME"
   else
     prompt_new_path "Enter location for ANDROID_HOME" "${ANDROID_HOME_SEARCH_PATHS[0]}" _ah \
       "If you want to use an existing path as ANDROID_HOME, set it in an environment variable before running this script."
     
     if [ -d "$_ah" ]; then
-      echo "Created $_ah"
+      write_log "d" "Created $_ah"
     else
-      echo "Failed to create $_ah"
+      write_log "h" "Failed to create $_ah"
       return 1
     fi
   fi
 
-  echo "Downloading $uri..."
+  write_log "h" "Downloading $uri..."
   uri="$(build_android_platform_tools_uri)"
   archive="$(download_to_tmp "$uri")"
   if [ -z "$archive" ]; then
-    echo "Failed to download $uri"
+    write_log "h" "Failed to download $uri"
     return 1
   fi
 
-  echo "Extracting $archive to $_ah"
+  write_log "h" "Extracting $archive to $_ah"
   if ! unpack "$archive" "$_ah"; then
-    echo "Failed to unpack $archive"
+    write_log "h" "Failed to unpack $archive"
     return 1
   fi
   rm "$archive"
@@ -481,24 +481,24 @@ function android_install_sdk_manager() {
   fi
 
   uri="$(build_android_command_line_tools_uri)"
-  echo "Please review the Android Command line tools License by visiting the URL below, locating ""Command line tools only"" and clicking $(basename "$uri")"
-  echo "$ANDROID_STUDIO_PAGE_URI"
+  write_log "h" "Please review the Android Command line tools License by visiting the URL below, locating ""Command line tools only"" and clicking $(basename "$uri")"
+  write_log "h" "$ANDROID_STUDIO_PAGE_URI"
   
   if ! prompt_yn "Do you consent to the Android Command line tools License?"; then
     return 1
   fi
 
   archive=""
-  echo "Downloading $uri..."
+  write_log "h" "Downloading $uri..."
   archive="$(download_to_tmp "$uri")"
   if [ -z "$archive" ]; then
-    echo "Failed to download $uri"
+    write_log "h" "Failed to download $uri"
     return 1
   fi
 
-  echo "Extracting $archive to $_ah"
+  write_log "h" "Extracting $archive to $_ah"
   if ! unpack "$archive" "$_ah"; then
-    echo "Failed to unpack $archive"
+    write_log "h" "Failed to unpack $archive"
     return 1
   fi
   rm "$archive"
@@ -530,24 +530,24 @@ function android_install_jdk() {
     "!CAN_EXIST!"
   
   if [ ! -d "$(unix_path "$_jh")" ]; then
-    echo "JAVA_HOME parent path doesn't exist $_jh"
+    write_log "h" "JAVA_HOME parent path doesn't exist $_jh"
     return 1
   fi
 
   uri="$(build_jdk_uri)"
   archive=""
-  echo "Downloading $uri..."
+  write_log "h" "Downloading $uri..."
   archive="$(download_to_tmp "$uri")"
   if [ "$?" != "0" ]; then
-    echo "Failed to download $uri: $archive"
+    write_log "h" "Failed to download $uri: $archive"
     return 1
   fi
 
   # Determine internal folder name so we can add it to JAVA_HOME
   archive_dir="$(get_top_level_archive_dir "$archive")"
-  echo "Extracting $archive to $_jh"
+  write_log "h" "Extracting $archive to $_jh"
   if ! unpack "$archive" "$_jh"; then
-    echo "Failed to unpack $archive"
+    write_log "h" "Failed to unpack $archive"
     return 1
   fi
   rm "$archive"
@@ -569,24 +569,24 @@ function android_install_gradle() {
     "!CAN_EXIST!"
   
   if [ ! -d "$(unix_path "$_gh")" ]; then
-    echo "GRADLE_HOME parent path doesn't exist $_gh"
+    write_log "h" "GRADLE_HOME parent path doesn't exist $_gh"
     return 1
   fi
 
   uri="$(build_gradle_uri)"
   archive=""
-  echo "Downloading $uri..."
+  write_log "h" "Downloading $uri..."
   archive="$(download_to_tmp "$uri")"
   if [ "$?" != "0" ]; then
-    echo "Failed to download $uri: $archive"
+    write_log "h" "Failed to download $uri: $archive"
     return 1
   fi
 
   # Determine internal folder name so we can add it to GRADLE_HOME
   archive_dir="$(get_top_level_archive_dir "$archive")"
-  echo "Extracting $archive to $_gh"
+  write_log "h" "Extracting $archive to $_gh"
   if ! unpack "$archive" "$_gh"; then
-    echo "Failed to unpack $archive"
+    write_log "h" "Failed to unpack $archive"
     return 1
   fi
   rm "$archive"
@@ -615,7 +615,7 @@ function android_first_time_experience_setup() {
       # Store yes path in native format so it can be used by ssc later
       ANDROID_SDK_MANAGER_ACCEPT_LICENSES="$(native_path "$yes")"
       if [ ! -f "$yes" ]; then
-        echo "not ok - yes binary not found, unable to accept Android SDK Manager licenses."
+        write_log "h" "not ok - yes binary not found, unable to accept Android SDK Manager licenses."
       fi
     else
       ANDROID_SDK_MANAGER_ACCEPT_LICENSES="n"
@@ -624,7 +624,7 @@ function android_first_time_experience_setup() {
 
   write_env_data
   if (( sdk_result + jdk_result + gradle_result != 0 )); then
-    echo "One or more Android build components failed to install."
+    write_log "h" "One or more Android build components failed to install."
     return 1
   fi
 
@@ -663,12 +663,12 @@ function android_fte() {
       yes="$(unix_path "$yes")"
 
       if [[ -n "$ANDROID_HOME" ]]; then
-        [[ -n $VERBOSE ]] && echo "Installing android deps"
-        [[ -n $VERBOSE ]] && echo "$(unix_path "$ANDROID_HOME/$ANDROID_SDK_MANAGER")" "$SDK_OPTIONS"
+        write_log "v" "Installing android deps"
+        write_log "v" "$yes | $(unix_path "$ANDROID_HOME/$ANDROID_SDK_MANAGER")" "$SDK_OPTIONS"
         # Without eval, sdk manager says there is a syntax error
-        eval "($(unix_path "$ANDROID_HOME/$ANDROID_SDK_MANAGER") $SDK_OPTIONS)"
-        [[ -n $VERBOSE ]] && echo "Running Android licensing process"
-        [[ -n $VERBOSE ]] && echo "$yes | $(native_path "$ANDROID_HOME/$ANDROID_SDK_MANAGER")" --licenses
+        eval "$yes | ($(unix_path "$ANDROID_HOME/$ANDROID_SDK_MANAGER") $SDK_OPTIONS)"
+        write_log "v" "Running Android licensing process"
+        write_log "v" "$yes | $(native_path "$ANDROID_HOME/$ANDROID_SDK_MANAGER")" --licenses
         $yes | "$(native_path "$ANDROID_HOME/$ANDROID_SDK_MANAGER")" --licenses
       fi
 
@@ -677,7 +677,7 @@ function android_fte() {
   fi
 
   if [[ -z "$ANDROID_HOME" ]]; then
-    echo "Android dependencies: ANDROID_HOME not set."
+    write_log "d" "Android dependencies: ANDROID_HOME not set."
     ANDROID_DEPS_ERROR=1
   fi
 

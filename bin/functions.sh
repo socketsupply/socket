@@ -82,7 +82,7 @@ function die {
       kill -9 $pid >/dev/null 2>&1
       wait "$pid" 2>/dev/null
     done
-    echo "$2 - please report (https://discord.gg/YPV32gKCsH)"
+    write_log "h" "$2 - please report (https://discord.gg/YPV32gKCsH)"
     exit 1
   fi
 }
@@ -119,7 +119,7 @@ function host_os() {
 
   if [[ "$host" = "Linux" ]]; then
     if [ -n "$WSL_DISTRO_NAME" ] || uname -r | grep 'Microsoft'; then
-    echo "WSL is not supported."
+    write_log "h" "WSL is not supported."
     exit 1
     fi
   elif [[ "$host" == *"MINGW64_NT"* ]]; then
@@ -171,10 +171,12 @@ function write_env_data() {
 }
 
 function prompt() {
-  echo "$1"
+  write_log "h" "$1"
   local return=$2
-  # effectively reads into $2 by reference, rather than using echo to return which would prevent echo "$1" going to stdout
-  eval "read -rp '> ' $return"
+  read -rp '> ' input
+  # effectively stores $input in $2 by reference, rather than using echo to return which would prevent echo "$1" going to stdout
+  eval "$return=\"$input\""
+  write_log "f" "input: $input"
 }
 
 function prompt_yn() {
@@ -196,7 +198,7 @@ function prompt_new_path() {
   lf=$'\n'
 
   if [ -n "$2" ]; then
-    echo "$text"
+    write_log "h" "$text"
     if prompt_yn "Use suggested default path: ""$2""?"; then
       input="$2"
     fi
@@ -217,9 +219,9 @@ function prompt_new_path() {
       fi
 
       unix_input="$(abs_path "$unix_input")"
-      echo "\"$input\" already exists, please choose a new path."
+      write_log "h" "\"$input\" already exists, please choose a new path."
       if [ -n "$exists_message" ]; then
-        echo "$exists_message"
+        write_log "h" "$exists_message"
       fi
       input=""
     elif [ -z "$input" ]; then
@@ -227,9 +229,9 @@ function prompt_new_path() {
         return
       fi
     else
-      echo "Create: $unix_input"
+      write_log "h" "Create: $unix_input"
       if ! mkdir -p "$unix_input"; then
-        echo "Create $unix_input failed."
+        write_log "h" "Create $unix_input failed."
         input=""
       else
         input="$(native_path "$(abs_path "$unix_input")")"
@@ -329,4 +331,37 @@ function lower()
 
 function version { 
   echo "$@" | awk -F. '{ printf("%d%03d%03d%03d\n", $1,$2,$3,$4); }'; 
+}
+
+# Logging
+_loghome=$HOME
+if [ -n "$APPLOCALDATA" ]; then
+  _loghome="$APPLOCALDATA"
+fi
+
+logfile="$_loghome/socket_install_sh.log"
+
+function write_log() {
+  type=$1
+  message=$2
+  if [[ -n "$DEBUG" ]] && ( [[ "$type" == "d" ]] || [[ "$type" == "v" ]] ); then
+    wh="1"
+  elif [[ -n "$VERBOSE" ]] && [[ "$type" == "v" ]]; then
+    wh="1"
+  elif [[ "$type" == "h" ]]; then
+    wh="1"
+  elif [[ "$type" == "f" ]]; then
+    unset wh
+  fi
+
+  if [[ -n "$wh" ]]; then
+    echo "$message"
+  fi
+
+  # Write-LogFile $message
+  write_log_file "$message"
+}
+
+function write_log_file() {
+  echo "$1" >> "$logfile"
 }
