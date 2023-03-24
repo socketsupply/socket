@@ -710,13 +710,17 @@ Function Install-Requirements {
     } else {
       # Find lib required for debug builds (Prevents 'Debug Assertion Failed. Expression: (_osfile(fh) & fopen)' error)
       $WIN_DEBUG_LIBS="$($env:WindowsSdkDir)Lib\$($env:WindowsSDKLibVersion)ucrt\x64\ucrtd.osmode_permissive.lib"
+      Write-Log "d" "WIN_DEBUG_LIBS: $WIN_DEBUG_LIBS, exists: $(Test-Path $WIN_DEBUG_LIBS -PathType Leaf)"
       if ((Test-Path $WIN_DEBUG_LIBS -PathType Leaf) -eq $false) {
         if ($shbuild -eq $true) {
           # Only report issue for ssc devs
           $global:path_advice += "WARNING: Unable to determine ucrtd.osmode_permissive.lib path. This is only required for DEBUG builds."
-        } else {
-          $global:path_advice += "`$env:WIN_DEBUG_LIBS='$WIN_DEBUG_LIBS'"
         }
+      } else {
+        # Use short path, spaces cause issues in install.sh
+        $WIN_DEBUG_LIBS = (New-Object -ComObject Scripting.FileSystemObject).GetFile($WIN_DEBUG_LIBS).ShortPath
+        $global:path_advice += "`$env:WIN_DEBUG_LIBS='$WIN_DEBUG_LIBS'"
+        $env:WIN_DEBUG_LIBS="$WIN_DEBUG_LIBS"
       }
     }
   }
@@ -783,7 +787,6 @@ if ($shbuild) {
   $exit=$LASTEXITCODE
   if ($exit -ne "0") {
     $global:install_errors += "$install_sh failed: $exit"
-    Exit-IfErrors
   }
 }
 
