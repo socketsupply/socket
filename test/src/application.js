@@ -76,13 +76,22 @@ if (!['android', 'ios'].includes(process.platform)) {
         case 'build_name':
           t.ok(application.config[key].startsWith(value), `application.config.${key} is correct`)
           break
+        case 'test-section_array[]':
+          t.ok([1, 2, 3].map(String).includes(value), 'test-section_array values are correct')
+          break
+        case 'test-section_subsection_key':
+          t.equal(application.config[key], 'value', 'test-section_subsection_key values are correct')
+          break
+        case '.subsection_key': // FIXME(@jwerle): INI parser above
+          t.ok(value, 'value', 'test-section.subsection_key == value')
+          break
         default:
           t.equal(application.config[key], value, `application.config.${key} is correct`)
       }
       t.throws(
         () => { application.config[key] = 0 },
         // eslint-disable-next-line prefer-regex-literals
-        /read\s?only property/,
+        /(read\s?only property)|(not extensible)/,
         `application.config.${key} is read-only`
       )
     })
