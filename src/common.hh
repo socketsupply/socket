@@ -689,13 +689,21 @@ namespace SSC {
         auto j = value.find_first_of('#');
 
         if (i > 0) {
-          value = value.substr(0, i);
+          value = trim(value.substr(0, i));
         } else if (j > 0) {
-          value = value.substr(0, j);
+          value = trim(value.substr(0, j));
         }
 
-        // debug("[ini]: %s = %s", key.c_str(), value.c_str());
-        settings[key] = value;
+        if (key.ends_with("[]")) {
+          key = trim(key.substr(0, key.size() - 2));
+          if (settings[key].size() > 0) {
+            settings[key] += " " + value;
+          } else {
+            settings[key] = value;
+          }
+        } else {
+          settings[key] = value;
+        }
       }
     }
 
