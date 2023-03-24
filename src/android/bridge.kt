@@ -1,6 +1,5 @@
 // vim: set sw=2:
 package __BUNDLE_IDENTIFIER__
-import java.lang.ref.WeakReference
 
 interface IBridgeConfiguration {
   val getRootDirectory: () -> String
@@ -111,10 +110,13 @@ class Message (message: String? = null) {
 open class Bridge (runtime: Runtime, configuration: IBridgeConfiguration) {
   open protected val TAG = "Bridge"
   var pointer = alloc(runtime.pointer)
-  var runtime = WeakReference(runtime)
+  var runtime = java.lang.ref.WeakReference(runtime)
   val requests = mutableMapOf<Long, RouteRequest>()
   val configuration = configuration
   val buffers = mutableMapOf<String, ByteArray>()
+  val semaphore = java.util.concurrent.Semaphore(
+    java.lang.Runtime.getRuntime().availableProcessors()
+  )
 
   protected var nextRequestId = 0L
 
@@ -240,9 +242,12 @@ open class Bridge (runtime: Runtime, configuration: IBridgeConfiguration) {
   }
 
   open fun onResult (result: Result) {
+    val semaphore = this.semaphore
     this.requests[result.id]?.apply {
       kotlin.concurrent.thread {
+        semaphore.acquireUninterruptibly()
         callback(result)
+        semaphore.release()
       }
     }
 
