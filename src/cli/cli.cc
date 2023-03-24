@@ -2410,11 +2410,11 @@ int main (const int argc, const char* argv[]) {
     }
 
     for (const auto& tuple : settings) {
-      if (!tuple.first.starts_with("copy-map_")) {
+      if (!tuple.first.starts_with("build_copy-map_")) {
         continue;
       }
 
-      auto key = replace(tuple.first, "copy-map_", "");
+      auto key = replace(tuple.first, "build_copy-map_", "");
       auto value = tuple.second;
 
       auto src = fs::path { key };

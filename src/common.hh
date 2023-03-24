@@ -659,28 +659,43 @@ namespace SSC {
         continue;
       }
 
-      if (entry[0] == '[' && entry[entry.length() - 1] == ']') {
-        prefix = entry.substr(1, entry.length() - 2);
+      if (entry.starts_with("[") && entry.ends_with("]")) {
+        if (entry.starts_with("[.") && entry.ends_with("]")) {
+          prefix += entry.substr(2, entry.length() - 3);
+        } else {
+          prefix = entry.substr(1, entry.length() - 2);
+        }
+
+        prefix = replace(prefix, "\\.", "_");
         if (prefix.size() > 0) {
           prefix += "_";
         }
+
         continue;
       }
 
       auto index = entry.find_first_of('=');
 
       if (index >= 0 && index <= entry.size()) {
-        auto key = prefix + entry.substr(0, index);
-        auto value = entry.substr(index + 1);
-
-        value = trim(value);
+        auto key = trim(prefix + entry.substr(0, index));
+        auto value = trim(entry.substr(index + 1));
 
         // trim quotes from quoted strings
         if (value[0] == '"' && value[value.length() - 1] == '"') {
-          value = value.substr(1, value.length() - 2);
+          value = trim(value.substr(1, value.length() - 2));
         }
 
-        settings[trim(key)] = value;
+        auto i = value.find_first_of(';');
+        auto j = value.find_first_of('#');
+
+        if (i > 0) {
+          value = value.substr(0, i);
+        } else if (j > 0) {
+          value = value.substr(0, j);
+        }
+
+        // debug("[ini]: %s = %s", key.c_str(), value.c_str());
+        settings[key] = value;
       }
     }
 
