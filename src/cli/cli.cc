@@ -2409,6 +2409,54 @@ int main (const int argc, const char* argv[]) {
       );
     }
 
+    for (const auto& tuple : settings) {
+      if (!tuple.first.starts_with("copy-map_")) {
+        continue;
+      }
+
+      auto key = replace(tuple.first, "copy-map_", "");
+      auto value = tuple.second;
+
+      auto src = fs::path { key };
+      auto dst = tuple.second.size() > 0
+        ? pathResourcesRelativeToUserBuild / value
+        : pathResourcesRelativeToUserBuild;
+
+      src = src.make_preferred();
+      dst = dst.make_preferred();
+
+      if (src.is_relative()) {
+        src = targetPath / src;
+      }
+
+      src = fs::absolute(src);
+      dst = fs::absolute(dst);
+
+      if (!fs::exists(fs::status(src))) {
+        log("warning: [copy-map] entry '" + src.string() +  "' does not exist");
+        continue;
+      }
+
+      if (!fs::exists(fs::status(dst.parent_path()))) {
+        fs::create_directories(dst.parent_path());
+      }
+
+      auto mappedSourceFile = (
+        pathResourcesRelativeToUserBuild /
+        fs::relative(src, targetPath)
+      );
+
+      if (fs::exists(fs::status(mappedSourceFile))) {
+        fs::remove_all(mappedSourceFile);
+      }
+
+      fs::copy(
+        src,
+        dst,
+        fs::copy_options::update_existing | fs::copy_options::recursive
+      );
+    }
+
     if (settings.count("build_copy_map") != 0) {
       auto copyMapFile = fs::path{settings["build_copy_map"]}.make_preferred();
 
@@ -2422,65 +2470,63 @@ int main (const int argc, const char* argv[]) {
         auto copyMap = parseINI(tmpl(trim(readFile(copyMapFile)), settings));
         auto copyMapFileDirectory = fs::absolute(copyMapFile.parent_path());
 
-        if (copyMap.size() > 0) {
-          for (const auto& tuple : copyMap) {
-            auto key = tuple.first;
-            auto& value = tuple.second;
+        for (const auto& tuple : copyMap) {
+          auto key = tuple.first;
+          auto& value = tuple.second;
 
-            if (key.starts_with("debug_")) {
-              if (!flagDebugMode) continue;
-              key = key.substr(6, key.size() - 6);
-            }
-
-            if (key.starts_with("prod_")) {
-              if (flagDebugMode) continue;
-              key = key.substr(5, key.size() - 5);
-            }
-
-            if (key.starts_with("production_")) {
-              if (flagDebugMode) continue;
-              key = key.substr(11, key.size() - 11);
-            }
-
-            auto src = fs::path { key };
-            auto dst =tuple.second.size() > 0
-              ? pathResourcesRelativeToUserBuild / value
-              : pathResourcesRelativeToUserBuild;
-
-            src = src.make_preferred();
-            dst = dst.make_preferred();
-
-            if (src.is_relative()) {
-              src = copyMapFileDirectory / src;
-            }
-
-            src = fs::absolute(src);
-            dst = fs::absolute(dst);
-
-            if (!fs::exists(fs::status(src))) {
-              log("warning: [build] copy_map entry '" + src.string() +  "' does not exist");
-              continue;
-            }
-
-            if (!fs::exists(fs::status(dst.parent_path()))) {
-              fs::create_directories(dst.parent_path());
-            }
-
-            auto mappedSourceFile = (
-              pathResourcesRelativeToUserBuild /
-              fs::relative(src, copyMapFileDirectory)
-            );
-
-            if (fs::exists(fs::status(mappedSourceFile))) {
-              fs::remove_all(mappedSourceFile);
-            }
-
-            fs::copy(
-              src,
-              dst,
-              fs::copy_options::update_existing | fs::copy_options::recursive
-            );
+          if (key.starts_with("debug_")) {
+            if (!flagDebugMode) continue;
+            key = key.substr(6, key.size() - 6);
           }
+
+          if (key.starts_with("prod_")) {
+            if (flagDebugMode) continue;
+            key = key.substr(5, key.size() - 5);
+          }
+
+          if (key.starts_with("production_")) {
+            if (flagDebugMode) continue;
+            key = key.substr(11, key.size() - 11);
+          }
+
+          auto src = fs::path { key };
+          auto dst = tuple.second.size() > 0
+            ? pathResourcesRelativeToUserBuild / value
+            : pathResourcesRelativeToUserBuild;
+
+          src = src.make_preferred();
+          dst = dst.make_preferred();
+
+          if (src.is_relative()) {
+            src = copyMapFileDirectory / src;
+          }
+
+          src = fs::absolute(src);
+          dst = fs::absolute(dst);
+
+          if (!fs::exists(fs::status(src))) {
+            log("warning: [build] copy_map entry '" + src.string() +  "' does not exist");
+            continue;
+          }
+
+          if (!fs::exists(fs::status(dst.parent_path()))) {
+            fs::create_directories(dst.parent_path());
+          }
+
+          auto mappedSourceFile = (
+            pathResourcesRelativeToUserBuild /
+            fs::relative(src, copyMapFileDirectory)
+          );
+
+          if (fs::exists(fs::status(mappedSourceFile))) {
+            fs::remove_all(mappedSourceFile);
+          }
+
+          fs::copy(
+            src,
+            dst,
+            fs::copy_options::update_existing | fs::copy_options::recursive
+          );
         }
       }
     }
