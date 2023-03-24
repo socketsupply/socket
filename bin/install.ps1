@@ -1,4 +1,4 @@
-param([Switch]$debug, [Switch]$verbose, [Switch]$force, [Switch]$shbuild=$true, [Switch]$package_setup, $toolchain = "vsbuild")
+param([Switch]$debug, [Switch]$verbose, [Switch]$force, [Switch]$shbuild=$true, [Switch]$package_setup, [Switch]$declare_only=$false, $toolchain = "vsbuild")
 
 # -shbuild:$false - Don't run bin\install.sh (Builds runtime lib)
 #                 - Fail silently (allow npm install-pre-reqs script '&& exit' to work to close y/n prompt window)
@@ -28,10 +28,12 @@ $global:install_errors = @()
 $global:forceArg = ""
 $targetClangVersion = "15.0.0"
 $targetCmakeVersion = "3.24.0"
+$logfile="$env:LOCALAPPDATA\socket_install_ps1.log"
+$fso = New-Object -ComObject Scripting.FileSystemObject
 
 # Powershell environment variables are maintained across sessions, clear if not explicitly set
 $set_debug=$null
-if ($debug -eq $true) {
+if ($debug) {
   $LIBUV_BUILD_TYPE = "Debug"
   
   $SSC_BUILD_OPTIONS = "-g", "-O0"
@@ -40,7 +42,7 @@ if ($debug -eq $true) {
 [Environment]::SetEnvironmentVariable("DEBUG", $set_debug)
 
 $set_verbose=$null
-if ($verbose -eq $true) {
+if ($verbose) {
   $set_verbose="1"
 }
 [Environment]::SetEnvironmentVariable("VERBOSE", $set_verbose)
@@ -52,16 +54,78 @@ if ($force -eq $true) {
 Function Exit-IfErrors {
   if ($global:install_errors.Count -gt 0) {
     foreach ($e in $global:install_errors) {
-      Write-Output $e
+      Write-Log "h" $e
     }
     Exit $global:install_errors.Count
   }
 }
 
+function Call-VCVars() {
+  Write-Log "h" "# Calling vcvars64.bat"
+  $new_envs = $(Get-ProcEnvs("$OLD_CWD", $vc_vars))
+  if ($debug) {
+    foreach ($s in $new_envs) {
+      Write-Log "d" "$s"
+    }
+    Dump-VsEnvVars
+  }
+  Write-Output "Errors: " 
+  if ($new_envs[0] -ne "0") {
+    $global:install_errors += "not ok - vcvars64.bat failed ($($new_envs[0])); Please review $logfile and submit a bug if you think there's an issue."
+    Exit-IfErrors
+  }
+}
+
+# type: 
+# d - debug / console / file
+# v - verbose / console / file
+# h - host (console) / file
+# f - file
+function Write-Log ($type, $message) {
+  $wh = $false
+  $wf = $false
+  if (($debug) -and (($type -eq "d") -or ($type -eq "v"))) {
+    $wf = $wh = $true
+  } elseif (($verbose) -and ($type -eq "v")) {
+    $wf = $wh = $true
+  } elseif ($type -eq "f") {
+    # f doesn't write to host
+  } elseif ($type -eq "h") {    
+    $wh = $true
+  }
+
+  if ($wh) {
+    Write-Host $message
+  }
+
+  Write-LogFile $message
+
+}
+
+function Dump-VsEnvVars() {
+  $path = $env:PATH.split(";")
+  $msvs="Microsoft Visual Studio"
+  Write-Log "d" "WindowsSDKLibVersion: $env:WindowsSDKLibVersion"
+  Write-Log "d" "Searching in path for $msvs"
+  foreach ($s in $env:PATH.split(";")) {
+    if ($s -like "*$msvs*") {
+      Write-Log "d" "$s"
+    }
+  }
+}
+
+function Write-LogFile($message)
+{
+  Write-Output $message >> $logfile
+}
+
 Function Prompt {
   param($text)
+  Write-LogFile "$text`n> "
   Write-Host "$text`n> " -NoNewLine
-  $Host.UI.ReadLine() | Write-Output
+  $r = $Host.UI.ReadLine()
+  Write-LogFile "User input: $r"
+  Write-Output $r
 }
 
 Function Get-CommandPath {
@@ -88,12 +152,13 @@ Function Test-CommandVersion {
   $target_version = $params[1]
   $debug = $params.Count -gt 2
 
-  $fso = New-Object -ComObject Scripting.FileSystemObject
+  Write-Log "d" "Test-CommandVersion: $command_string $target_version"
 
   while ($true) {
     (Get-Command $command_string -ErrorAction SilentlyContinue -ErrorVariable F) > $null
     $r = $($null -eq $F.length)
     if ($r -eq $false) {
+      Write-Log "d" "Get-Command: Command not found"
       Write-Output $r
       return
     }
@@ -109,9 +174,7 @@ Function Test-CommandVersion {
 
     $current_version = $current_version.split("-")[0]
 
-    if ($debug) {
-      Write-Output "Current $command_string : $current_version, target: $target_version"
-    }
+    Write-Log "v" "Current $($fso.GetFile($(Get-CommandPath $command_string)).Path): $current_version, target: $target_version"
 
     $ta = @()
     foreach ($v in $target_version.split(".")) {
@@ -127,11 +190,13 @@ Function Test-CommandVersion {
         $ca += [int]$v
       }
     } elseif ($debug) {
+      Write-Log "d" "($current_version_split).Count <> ($ta).Count}"
       Write-Output $false
       return
     }
 
     if ($ca.Count -ne $ta.Count) {
+      Write-Log "d" "$($ca.Count) <> $($ta.Count)" 
       Write-Output "$($ca.Count) <> $($ta.Count)"
       Write-Output $false
     }
@@ -144,6 +209,7 @@ Function Test-CommandVersion {
 
       # Current element is greater, no need to compare other elements
       if ($ca[$i] -gt $ta[$i]) {
+        Write-Log "d" "$current_version >= $target_version"
         Write-Output $true
         return
       }
@@ -153,16 +219,107 @@ Function Test-CommandVersion {
 
     # Remove current item's path so it isn't used in future searches
     $p = $fso.GetFile($(Get-CommandPath $command_string)).ParentFolder.Path
+    Write-Log "d" "Remove $p from PATH"
     $env:PATH = $env:PATH.replace("$p", "")
   }
+
+  Write-Log "d" "No viable versions of $command_string"
   Write-Output $false
+}
+
+Function Bits-Download {
+  param($params)
+  $url=$params[0]
+  $dest=$params[1]
+  # use bitsadmin because iwr has no error reporting
+  $jobId = "$(New-Guid)"
+  $bts="bitsadmin"
+  (iex "$bts /create $jobId") > $null
+  (iex "$bts /setpriority $jobId high") > $null
+  if ($LASTEXITCODE -ne 0) {
+    return $LASTEXITCODE
+  }
+  (iex "$bts /addfile $jobId ""$url"" ""$dest""") > $null
+  if ($LASTEXITCODE -ne 0) {
+    return $LASTEXITCODE
+  }
+  (iex "$bts /rawreturn /resume $jobId") > $null
+  iex "sleep 1"
+  $percent=0
+  $exitCode=0
+  $total=0
+  Write-Log "h" "Downloading $url to $dest"
+  while ($true) {
+    if ($total -lt 1) {
+      $o=$(iex "$bts /rawreturn /getbytestotal $jobId")
+      # Write-Host "Bytes total: $o"
+      try {
+        # ignore very large initial number
+        $total=[int64]$o
+      } catch {}
+    }
+    $xferd=[int]$(iex "$bts /rawreturn /getbytestransferred $jobId")
+    $files=[int]$(iex "$bts /rawreturn /getfilestransferred $jobId")
+    $error_string=$(iex "$bts /rawreturn /geterror $jobId")
+    if (($error_string -like "*Unable to get error*") -eq $false) {
+      $exitCode=[unit32][Convert]::ToString($error_string, 10)
+    }
+    # Write-Host "Error: $r"
+    # $err=[uint32]$r
+
+    if ($total -gt 0) {
+      $percent = $(($xferd/$total)*100)
+    }
+
+    Write-Progress -Activity "Writing $dest" -PercentComplete $percent
+
+    if ($files -ne 0) {
+      break
+    }
+
+    if ($exitCode -ne 0) {
+      $exitCode = $exitCode
+      break
+    }
+    iex "sleep 1"
+  }
+
+  # exitCode never gets set, /geterror always contains "Unable to get error - 0x8020000f"
+  if (($exitCode -eq 0) -and ($xferd -ne $total)) {
+    $exitCode = $total - $xferd
+  }
+  
+  (iex "$bts /rawreturn /complete $jobId") > $null
+
+  if (($exitCode -eq 0))
+  {
+    $fso = New-Object -ComObject Scripting.FileSystemObject
+    if ($fso.GetFile($dest).Size -eq 0) {
+      $exitCode = 255
+    }    
+  }
+
+  if ($exitCode -eq 0) {
+    $exitCode = 200
+  }
+
+  Write-Log "h" "Downloaded $xferd/$total"
+  
+  return $exitCode
+}
+
+# Bits-Download("https://aka.ms/vs/17/release/vc_redist.x64.exe", "C:\Users\mribb\AppData\Local\Temp\out.txt")
+# Bits-Download("https://aka.ms/vs/17/release1/vc_redist.x64.exe", "C:\Users\mribb\AppData\Local\Temp\out.txt")
+# Sub UAC process is importing function definitions
+if ($declare_only) {
+  Exit 0
 }
 
 $vsconfig = "nmake.vsconfig"
 
 if ( -not (("llvm+vsbuild" -eq $toolchain) -or ("vsbuild" -eq $toolchain) -or ("llvm" -eq $toolchain)) ) {
-  Write-Output "not ok - Unsupported -toolchain $toolchain. Supported options are vsbuild, llvm+vsbuild or llvm (external nmake required)"
-  Write-Output "not ok - -toolchain llvm+vsbuild will check for and install llvm clang $targetClangVersion and vsbuild nmake."
+  Write-Log "h" "not ok - Unsupported -toolchain $toolchain. Supported options are vsbuild, llvm+vsbuild or llvm (external nmake required)"
+  Write-Log "h" "not ok - -toolchain llvm+vsbuild will check for and install llvm clang $targetClangVersion and vsbuild nmake."
 
   Exit 1
 }
@@ -177,7 +334,7 @@ if ("vsbuild" -eq $toolchain) {
 }
 
 
-Write-Output "# Using toolchain: $toolchain"
+Write-Log "h" "# Using toolchain: $toolchain"
 
 #
 # Install the files we will want to use for builds
@@ -203,7 +360,7 @@ Function Install-Files {
   # install `.\build\bin\*`
   Copy-Item -Path "$WORKING_BUILD_PATH\bin\*" -Destination "$BIN_PATH"
 
-  Write-Output "ok - installed files to '$ASSET_PATH'."
+  Write-Log "h" "ok - installed files to '$ASSET_PATH'."
 }
 
 $bin = "bin"
@@ -221,14 +378,14 @@ Function Get-UrlCall {
   # curl is way faster than iwr
   # need .exe because curl is an alias for iwr, go figure...  
   if ($global:useCurl) {
-    return "iex ""& curl.exe -L """"$url"""" --output """"$dest"""""""
+    return "iex ""& curl.exe -L --write-out '%{http_code}' """"$url"""" --output """"$dest""""""`n"
   } else {
-    return "iwr $url -O $dest"
+    return "Bits-Download(""$url"", ""$dest"")"
   }
 }
 
 Function Install-Requirements {
-
+  Write-Log "v" "# Logging to $logfile"
   if (-not (Found-Command("curl"))) {
     $global:useCurl = $false
   }
@@ -244,16 +401,22 @@ Function Install-Requirements {
     
     if ($confirmation -eq 'y') {
       $t = [string]{
-        Write-Output "# Downloading $url"
-        -geturl-
-        Write-Output "# Installing $env:TEMP\$installer"
+        Write-Log "h" "# Downloading $url"
+        $r=-geturl-
+        Write-Log "v" "HTTP result: $r"
+        if ($r -ne 200) {
+          Return 1
+        }
+        Write-Log "h" "# Installing $env:TEMP\$installer"
         iex "& $env:TEMP\$installer /quiet"
+        Write-Log "v" "Install result: $LASTEXITCODE"
+        return $LASTEXITCODE
       }
       $t = $t.replace("`$installer", $installer).replace("`$env:TEMP", $env:TEMP).replace("`$url", $url).replace("-geturl-", (Get-UrlCall "$url" "$env:TEMP\$installer")).replace("""", "\""")
       $install_tasks += $t
     }
   } else {
-    Write-Output "# $vc_runtime_test_path found."
+    Write-Log "h" "# $vc_runtime_test_path found."
   }
 
   $gitPath = "$env:ProgramFiles\Git\bin"
@@ -276,20 +439,40 @@ Function Install-Requirements {
 
     if ($confirmation -eq 'y') {
       $t = [string]{
-        Write-Output "# Downloading $url"
-        -geturl-
-        Write-Output "# Installing $env:TEMP\$installer"
+        Write-Log "h" "# Downloading $url"
+        $r=-geturl-
+        Write-Log "v" "HTTP result: $r"
+        if ($r -ne 200) {
+          Return 1
+        }
+        Write-Log "h" "# Installing $env:TEMP\$installer"
         iex "& $env:TEMP\$installer /SILENT"
+        # Waiting for initial process to end doesn't work because a separate installer process is launched after extracting to tmp
         sleep 1
-        $proc=Get-Process $installer_tmp
-        Write-Output "# Waiting for $installer_tmp..."
-        Wait-Process -InputObject $proc
+        $install_pid=(Get-Process $installer_tmp).id        
+        $p = New-Object System.Diagnostics.Process
+        $processes = @()
+        foreach ($install_pid in (Get-Process $installer_tmp).id) {
+          Write-Log "d" "# watch sub process: $install_pid"
+          $processes+=[System.Diagnostics.Process]::GetProcessById([int]$install_pid)
+        }
+        
+        Write-Log "v" "# Waiting for $installer_tmp..."
+        foreach ($proc in $processes) {
+          $proc.WaitForExit()
+          # This doesn't work, may improve in the future. Exit code is always empty.
+          # We check existence of installed tools later
+          if ($proc.ExitCode -ne 0) {
+            Write-Log "v" "Install result: $($proc.ExitCode)"
+          }
+        }
+        return 0
       }      
       $t = $t.replace("`$installer_tmp", $installer_tmp).replace("`$installer", $installer).replace("`$env:TEMP", $env:TEMP).replace("`$url", $url).replace("-geturl-", (Get-UrlCall "$url" "$env:TEMP\$installer")).replace("""", "\""")
       $install_tasks += $t
     }
   } else {
-    Write-Output("# Found git.exe")
+    Write-Log "h" "# Found git.exe"
   }
 
   # install `cmake.exe`
@@ -311,13 +494,37 @@ Function Install-Requirements {
 
       if ($confirmation -eq 'y') {
         $t = [string]{
-          Write-Output "# Downloading $url"
-          -geturl-
-          Write-Output "# Installing $env:TEMP\$installer"
-          sleep 2
-          $proc=Get-Process msiexec
-          Write-Output "# Waiting for msiexec..."
+          Write-Log "h" "# Downloading $url"
+          $r=-geturl-
+          Write-Log "v" "HTTP result: $r"
+          if ($r -ne 200) {
+            Return 1
+          }
+          Write-Log "h" "# Installing $env:TEMP\$installer"
           iex "& $env:TEMP\$installer /quiet"
+          sleep 2
+          $p = New-Object System.Diagnostics.Process
+          $processes = @()
+          foreach ($install_pid in (Get-Process "msiexec").id) {
+            $process=[System.Diagnostics.Process]::GetProcessById([int]$install_pid)
+            $commandLine = Get-CimInstance Win32_Process -Filter "ProcessId = '$install_pid'" | Select-Object CommandLine
+            if ($commandLine -like "*$installer*") {
+              Write-Log "d" "cmake installer args: $($install_pid): $($commandLine)"
+              Write-Log "d" "# watch sub process: $install_pid"
+              $processes+=$process
+            }
+          }
+          
+          Write-Log "h" "# Waiting for $installer_tmp..."
+          foreach ($proc in $processes) {
+            $proc.WaitForExit()
+            # This doesn't work, may improve in the future. Exit code is always empty.
+            # We check existence of installed tools later
+            if ($proc.ExitCode -ne 0) {
+              Write-Log "v" "Install result: $($proc.ExitCode)"
+            }
+          }
+          return 0
         }
         $t = $t.replace("`$installer", $installer).replace("`$env:TEMP", $env:TEMP).replace("`$url", $url).replace("-geturl-", (Get-UrlCall "$url" "$env:TEMP\$installer")).replace("""", "\""")
         $install_tasks += $t
@@ -343,13 +550,17 @@ Function Install-Requirements {
 
         if ($confirmation -eq 'y') {
           $t = [string]{
-            Write-Output "# Downloading $url"
-            -geturl-
-            Write-Output "# Installing $env:TEMP\$installer"
+            Write-Log "h" "# Downloading $url"
+            $r=-geturl-
+            Write-Log "v" "HTTP result: $r"
+            if ($r -ne 200) {
+              Return 1
+            }
+            Write-Log "h" "# Installing $env:TEMP\$installer"
             iex "& $env:TEMP\$installer /S"
             sleep 1
             $proc=Get-Process $installer
-            Write-Output "# Waiting for $installer..."
+            Write-Log "h" "# Waiting for $installer..."
           }
           $t = $t.replace("`$installer", $installer).replace("`$env:TEMP", $env:TEMP).replace("`$url", $url).replace("-geturl-", (Get-UrlCall "$url" "$env:TEMP\$installer")).replace("""", "\""")
           $install_tasks += $t
@@ -358,7 +569,7 @@ Function Install-Requirements {
 
       $env:PATH="$clangPath;$env:PATH"
     } else {
-      Write-Output("# Found clang++.exe")
+      Write-Log "h" "# Found clang++.exe"
     }
   }
 
@@ -373,15 +584,14 @@ Function Install-Requirements {
     $install_vc_build = $true
 
     if ($shbuild -and $(Test-CommandVersion("clang++", $targetClangVersion)) -and $(Found-Command("nmake.exe"))) {
-      Write-Output("# Found clang$and_nmake")
+      Write-Log "h" "# Found clang$and_nmake"
       $install_vc_build = $false
     } elseif ($(Test-CommandVersion("clang++", $targetClangVersion))) {
-      Write-Output("# Found clang")
+      Write-Log "h" "# Found clang"
       $install_vc_build = $false
     } else {
       if ($vc_exists) {
-        Write-Output "# Calling vcvars64.bat"
-        $(Get-ProcEnvs($vc_vars))
+        Call-VcVars
         if ($shbuild -and $(Test-CommandVersion("clang++", $targetClangVersion)) -and $(Found-Command("nmake.exe"))) {
           $report_vc_vars_reqd = $true
           $install_vc_build = $false
@@ -389,13 +599,15 @@ Function Install-Requirements {
           $report_vc_vars_reqd = $true
           $install_vc_build = $false
         } else {
-          Write-Output("# $vc_vars didn't enable both clang++$and_nmake, downloading vs_build.exe")
+          Write-Log "h" "# $vc_vars didn't enable both clang++$and_nmake, downloading vs_build.exe"
+          Dump-VsEnvVars
         }
       }
     }
 
     # Check windows SDK
     if (($env:WindowsSdkDir -eq $null) -or ((Test-Path $env:WindowsSdkDir -PathType Container) -eq $false)) {
+      Write-Host "h" "WindowsSdkDir not set."
       $install_vc_build = $true
     }
 
@@ -406,11 +618,17 @@ Function Install-Requirements {
       $url = "https://aka.ms/vs/17/release/$installer"
 
       if ($confirmation -eq 'y') {
-        $t = [string]{
-          Write-Output "# Downloading $url"
-          -geturl-
-          Write-Output "# Installing $env:TEMP\$installer"
+        $t = [string]{ 
+          Write-Log "h" "# Downloading $url"
+          $r=-geturl-
+          Write-Log "v" "HTTP result: $r"
+          if ($r -ne 200) {
+            Return 1
+          }
+          Write-Log "h" "# Installing $env:TEMP\$installer"
           iex "& $env:TEMP\$installer --passive --config $OLD_CWD\$bin\$vsconfig"
+          Write-Log "v" "Install result: $LASTEXITCODE"
+          return $LASTEXITCODE
         }
         $t = $t.replace("`$OLD_CWD", $OLD_CWD).replace("`$bin", $bin).replace("`$vsconfig", $vsconfig)
         $t = $t.replace("`$installer", $installer).replace("`$env:TEMP", $env:TEMP).replace("`$url", $url).replace("-geturl-", (Get-UrlCall "$url" "$env:TEMP\$installer")).replace("""", "\""")
@@ -419,12 +637,30 @@ Function Install-Requirements {
     }
   }
 
+  # Install process will write exit code back to this file
+  $deps_status_file="$($env:Temp)\socket-deps-$(New-Guid).dat"
+  Write-Log "d" "deps_status_file: $deps_status_file"
+
   if ($install_tasks.Count -gt 0) {
-    Write-Output "# Installing build dependencies..."
-    $script = ""
+    Write-Log "h" "# Installing build dependencies..."
+    $script = ". ""$OLD_CWD\bin\install.ps1"" -declare_only"
     # concatinate all script blocks so a single UAC request is raised
     foreach ($task in $install_tasks) {
-      $script = "$($script)Invoke-Command {$($task)}`r`n"
+      $script = "$($script)
+      Write-Log ""v"" ""Running install tasks"";
+      `$r=Invoke-Command {$($task)}
+      if (`$r -ne 0) {
+        # Write-Log ""v"" ""fInstall task failed: `$r""
+        Write-Output `$r > ""$deps_status_file""
+        return `$r
+      }
+      "
+    }
+
+    if ($debug) {
+      $install_script_name="$($env:Temp)\socket-deps-$(New-Guid).ps1"
+      Write-Log "d" "Writing install script to $install_script_name"
+      Write-Output "$script".replace("\""", """") > $install_script_name
     }
 
     try {
@@ -432,12 +668,30 @@ Function Install-Requirements {
     } catch [InvalidOperationException] {
       $global:install_errors += "not ok - UAC declined, nothing installed."
     }
+
+    if (Test-Path $deps_status_file) {
+      $global:install_errors += "not ok - Dependency installation incomplete: "
+
+      foreach ($line in Get-Content($deps_status_file).split("`r`n")) {
+        $global:install_errors += "Exit code: $line"
+      }
+
+      if ($debug) {
+        $install_script_name="$($env:Temp)\socket-deps-$(New-Guid).ps1"
+        Write-Log "d" "Writing intall script to $install_script_name"
+        Write-Output "$script".replace("\""", """") > $install_script_name
+      } else {
+        Remove-Item $deps_status_file
+      }
+    }    
+    
+    Exit-IfErrors
   }
 
   if ($install_vc_build) {
     $vc_exists, $vc_vars = $(Get-VCVars)
     if ($vc_exists) {
-      $(Get-ProcEnvs($vc_vars))
+      Call-VcVars
     } else {
       if ($env:CI -eq $null) {
         $global:install_errors += "not ok - vcvars64.bat still not present, something went wrong."
@@ -456,13 +710,17 @@ Function Install-Requirements {
     } else {
       # Find lib required for debug builds (Prevents 'Debug Assertion Failed. Expression: (_osfile(fh) & fopen)' error)
       $WIN_DEBUG_LIBS="$($env:WindowsSdkDir)Lib\$($env:WindowsSDKLibVersion)ucrt\x64\ucrtd.osmode_permissive.lib"
+      Write-Log "d" "WIN_DEBUG_LIBS: $WIN_DEBUG_LIBS, exists: $(Test-Path $WIN_DEBUG_LIBS -PathType Leaf)"
       if ((Test-Path $WIN_DEBUG_LIBS -PathType Leaf) -eq $false) {
         if ($shbuild -eq $true) {
           # Only report issue for ssc devs
           $global:path_advice += "WARNING: Unable to determine ucrtd.osmode_permissive.lib path. This is only required for DEBUG builds."
-        } else {
-          $global:path_advice += "`$env:WIN_DEBUG_LIBS='$WIN_DEBUG_LIBS'"
         }
+      } else {
+        # Use short path, spaces cause issues in install.sh
+        $WIN_DEBUG_LIBS = (New-Object -ComObject Scripting.FileSystemObject).GetFile($WIN_DEBUG_LIBS).ShortPath
+        $global:path_advice += "`$env:WIN_DEBUG_LIBS='$WIN_DEBUG_LIBS'"
+        $env:WIN_DEBUG_LIBS="$WIN_DEBUG_LIBS"
       }
     }
   }
@@ -501,7 +759,7 @@ if ($shbuild) {
   $sh = "$gitPath\sh.exe"
 
   if ($env:VERBOSE -eq "1") {
-    Write-Output "# Using shell $sh"
+    Write-Log "v" "# Using shell $sh"
     iex "& ""$sh"" -c 'uname -s'"
   }
 
@@ -523,15 +781,20 @@ if ($shbuild) {
   $global:path_advice += "`$env:PATH='$BIN_PATH;'+`$env:PATH"
 
   cd $OLD_CWD
-  Write-Output "# Calling bin\install.sh $global:forceArg"
-  iex "& ""$sh"" bin\install.sh $global:forceArg"
+  $install_sh = """$sh"" bin\install.sh $global:forceArg"
+  Write-Log "h" "# Calling $install_sh"
+  iex "& $install_sh"
+  $exit=$LASTEXITCODE
+  if ($exit -ne "0") {
+    $global:install_errors += "$install_sh failed: $exit"
+  }
 }
 
 if ($global:path_advice.Count -gt 0) {
-  Write-Output "# Please run in future dev sessions: "
-  Write-Output "# (Or just run cd $OLD_CWD; .\bin\install.ps1)"
+  Write-Log "h" "# Please run in future dev sessions: "
+  Write-Log "h" "# (Or just run cd $OLD_CWD; .\bin\install.ps1)"
   foreach ($p in $global:path_advice) {
-    Write-Output $p
+    Write-Log "h" $p
   }
 }
 
