@@ -76,9 +76,11 @@ test('diagnostics - channel groups - simple', async (t) => {
 test('diagnostics - channels - builtin - udp', async (t) => {
   const pending = []
   const group = diagnostics.channels.group('udp')
+  let closed = false
 
   pending.push(new Promise((resolve) => {
     group.channel('socket').subscribe((message, name, chan) => {
+      if (closed) return
       t.equal(name, 'udp.socket', '\'udp.socket\' message called')
       t.ok(message.socket, 'message.socket')
       resolve()
@@ -87,28 +89,32 @@ test('diagnostics - channels - builtin - udp', async (t) => {
 
   pending.push(new Promise((resolve) => {
     group.channel('bind').subscribe((message, name, chan) => {
-      t.equal(name, 'udp.bind', 'udp.bind message')
+      if (closed) return
+      t.equal(name, 'udp.bind', 'udp.bind')
       resolve()
     })
   }))
 
   pending.push(new Promise((resolve) => {
     group.channel('message').subscribe((message, name, chan) => {
-      t.equal(name, 'udp.message', 'udp.message message')
+      if (closed) return
+      t.equal(name, 'udp.message', 'udp.message')
       resolve()
     })
   }))
 
   pending.push(new Promise((resolve) => {
     group.channel('send.start').subscribe((message, name, chan) => {
-      t.equal(name, 'udp.send.start', 'udp.send.start message')
+      if (closed) return
+      t.equal(name, 'udp.send.start', 'udp.send.start')
       resolve()
     })
   }))
 
   pending.push(new Promise((resolve) => {
     group.channel('send.end').subscribe((message, name, chan) => {
-      t.equal(name, 'udp.send.end', 'udp.send.start message')
+      if (closed) return
+      t.equal(name, 'udp.send.end', 'udp.send.end')
       resolve()
     })
   }))
@@ -116,23 +122,25 @@ test('diagnostics - channels - builtin - udp', async (t) => {
   pending.push(new Promise((resolve) => {
     let pending = 2
     group.channel('close').subscribe((message, name, chan) => {
-      t.equal(name, 'udp.close', 'udp.close message')
+      if (closed) return
+      t.equal(name, 'udp.close', 'udp.close')
       if (--pending === 0) {
+        closed = true
         resolve()
       }
     })
   }))
 
-  let socket = dgram.createSocket('udp4')
+  const socket = dgram.createSocket('udp4')
   socket.bind(8888, () => {
     const { address, port } = socket.address()
     const buffer = Buffer.from('hello')
-    let sender = dgram.createSocket('udp4')
-    sender.send(buffer, 0, buffer.length, port, address, () => {
-      sender.close()
-      socket.close()
-      sender = undefined
-      socket = undefined
+    const sender = dgram.createSocket('udp4')
+    sender.send(buffer, 0, buffer.length, port, address, (err) => {
+      if (err) t.ifError(err)
+      sender.close(() => {
+        socket.close()
+      })
     })
   })
 
