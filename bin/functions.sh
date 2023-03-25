@@ -33,6 +33,7 @@ function sha512sum() {
 
 function escape_path() {
   local r=$1
+  local host="$(host_os)"
   if [[ "$host" == "Win32" ]]; then
     r=${r//\\/\\\\}
   fi
@@ -41,6 +42,7 @@ function escape_path() {
 
 function unix_path() {
   local p="$(escape_path "$1")"
+  local host="$(host_os)"
   if [[ "$host" == "Win32" ]]; then
     p="$(cygpath -u "$p")"
     # cygpath doesn't escape spaces
@@ -51,6 +53,7 @@ function unix_path() {
 }
 
 function native_path() {
+  local host="$(host_os)"
   if [[ "$host" == "Win32" ]]; then
     local p="$(cygpath -w "$1")"
     if [[ "$p" == *"\\ "* ]]; then
