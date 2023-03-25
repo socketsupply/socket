@@ -754,58 +754,55 @@ Function Install-Requirements {
 
 Install-Requirements
 
-if ($shbuild) {
-  $gitPath = "$env:ProgramFiles\Git\bin"
+$gitPath = "$env:ProgramFiles\Git\bin"
+$sh = "$gitPath\sh.exe"
+
+if ($env:VERBOSE -eq "1") {
+  Write-Output "# Using shell $sh"
+  iex "& ""$sh"" -c 'uname -s'"
+}
+
+# Look for sh in path
+if (-not (Found-Command($sh))) {
   $sh = "$gitPath\sh.exe"
-
-  if ($env:VERBOSE -eq "1") {
-    Write-Log "v" "# Using shell $sh"
-    iex "& ""$sh"" -c 'uname -s'"
-  }
-
-  # Look for sh in path
-  if (-not (Found-Command($sh))) {
-    $sh = "$gitPath\sh.exe"
-    $global:install_errors += "not ok - sh.exe not in PATH or default Git\bin"
-    Exit-IfErrors
-  }
-
-  $find_check = iex "& ""$sh"" -c 'find --version'" | Out-String
-
-  if (-not ($find_check -like "*find (GNU findutils)*")) {
-    $global:install_errors += "find is not GNU findutils: '$find_check'"
-    Exit-IfErrors
-  }
-
-  $env:PATH="$BIN_PATH;$($env:PATH)"
-  $global:path_advice += "`$env:PATH='$BIN_PATH;'+`$env:PATH"
-
-  cd $OLD_CWD
-  $install_sh = """$sh"" bin\install.sh $global:forceArg"
-  Write-Log "h" "# Calling $install_sh"
-  iex "& $install_sh"
-  $exit=$LASTEXITCODE
-  if ($exit -ne "0") {
-    $global:install_errors += "$install_sh failed: $exit"
-  }
+  $global:install_errors += "not ok - sh.exe not in PATH or default Git\bin"
+  Exit-IfErrors
 }
 
-if ($global:path_advice.Count -gt 0) {
-  Write-Log "h" "# Please run in future dev sessions: "
-  Write-Log "h" "# (Or just run cd $OLD_CWD; .\bin\install.ps1)"
-  foreach ($p in $global:path_advice) {
-    Write-Log "h" $p
-  }
+$find_check = iex "& ""$sh"" -c 'find --version'" | Out-String
+
+if (-not ($find_check -like "*find (GNU findutils)*")) {
+  $global:install_errors += "find is not GNU findutils: '$find_check'"
+  Exit-IfErrors
 }
 
+cd $OLD_CWD
+$file = (New-Object -ComObject Scripting.FileSystemObject).GetFile($(Get-CommandPath "clang++.exe"))
+$env:CXX=$file.ShortPath
 if ($package_setup -eq $true) {
   $paths = @{}
-  $file = (New-Object -ComObject Scripting.FileSystemObject).GetFile($(Get-CommandPath "clang++.exe"))
   $paths["CXX"] = $file.ShortPath
   ConvertTo-Json $paths > env.json
 }
 
-cd $OLD_CWD
+if ($shbuild) {
+  $env:PATH="$BIN_PATH;$($env:PATH)"
+  $global:path_advice += "`$env:PATH='$BIN_PATH;'+`$env:PATH"
+  Write-Output "# Calling bin\install.sh $global:forceArg"
+  iex "& ""$sh"" bin\install.sh $global:forceArg"
+} else {
+  Write-Output "# Calling bin\install.sh --fte $global:forceArg"
+  iex "& ""$sh"" bin\functions.sh --fte $global:forceArg"
+}
+
+if ($global:path_advice.Count -gt 0) {
+  Write-Output "# Please run in future dev sessions: "
+  Write-Output "# (Or just run cd $OLD_CWD; .\bin\install.ps1)"
+  foreach ($p in $global:path_advice) {
+    Write-Output $p
+  }
+}
+
 Exit-IfErrors
 
 Exit 0

@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+declare root="$(cd "$(dirname "$(dirname "${BASH_SOURCE[0]}")")" && pwd)"
+
 declare SSC_ENV_FILENAME=".ssc.env"
 
 export SSC_ENV_FILENAME
@@ -53,7 +55,7 @@ function unix_path() {
 }
 
 function native_path() {
-  local host="$(host_os)"
+  local host="$(host_os)"  
   if [[ "$host" == "Win32" ]]; then
     local p="$(cygpath -w "$1")"
     if [[ "$p" == *"\\ "* ]]; then
@@ -139,6 +141,7 @@ function host_arch() {
 }
 
 function build_env_data() {
+  echo "CXX=\"$(escape_path "$CXX")\""
   echo "ANDROID_HOME=\"$(escape_path "$ANDROID_HOME")\""
   echo "JAVA_HOME=\"$(escape_path "$JAVA_HOME")\""
   echo "ANDROID_SDK_MANAGER=\"$(escape_path "$ANDROID_SDK_MANAGER")\""
@@ -271,8 +274,6 @@ download_to_tmp() {
     cp "$SSC_ANDROID_REPO/$(basename "$uri")" "$output" || return $?
   else
     local http_code=$(curl -L --write-out '%{http_code}' "$uri" --output "$output")
-    # DONT COMMIT
-    cp "$output" ..
     if  [ "$http_code" != "200" ] ; then
       echo "$http_code"
       rm -rf "$tmp"
@@ -368,3 +369,19 @@ function write_log() {
 function write_log_file() {
   echo "$1" >> "$logfile"
 }
+
+function first_time_experience_setup() {
+  export BUILD_ANDROID="1"
+  "$root/bin/android-functions.sh" --android-fte
+}
+
+function main() {
+  while (( $# > 0 )); do
+    declare arg="$1"; shift
+    [[ "$arg" == "--fte" ]] && first_time_experience_setup
+  done
+}
+
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    main "$@"
+fi

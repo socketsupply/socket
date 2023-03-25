@@ -453,8 +453,8 @@ function android_install_sdk_manager() {
     fi
   fi
 
-  write_log "h" "Downloading $uri..."
   local uri="$(build_android_platform_tools_uri)"
+  write_log "h" "Downloading $uri..."
   local archive="$(download_to_tmp "$uri")"
   if [ -z "$archive" ]; then
     write_log "h" "Failed to download $uri"
@@ -601,6 +601,9 @@ function android_first_time_experience_setup() {
   android_install_jdk; jdk_result=$?
   android_install_gradle; gradle_result=$?
 
+  
+  write_log "d" "android_first_time_experience_setup ANDROID_SDK_MANAGER: $ANDROID_SDK_MANAGER"
+
   if [[ -z "$ANDROID_SDK_MANAGER_ACCEPT_LICENSES" ]]; then
     if prompt_yn "Do you want to automatically accept all Android SDK Manager licenses?"; then
       local yes="$(which "yes" 2>/dev/null)"
@@ -624,17 +627,18 @@ function android_first_time_experience_setup() {
 }
 
 
-export android_fte
+export android_fte_called
 
 function android_fte() {
-  [[ -n "$android_fte" ]] && return 0
+  [[ -n "$android_fte_called" ]] && return 0
 
-  android_fte=1
+  android_fte_called=1
 
   if [[ -n $BUILD_ANDROID ]]; then
     read_env_data
     get_android_paths
     write_env_data
+    [[ -n "$DEBUG" ]] && cat "$root/$SSC_ENV_FILENAME"
     if android_first_time_experience_setup; then
 
       # Move ANDROID_SDK_MANAGER_JAVA_OPTS into JAVA_OPTS temporarily. We can't store it in .ssc.env because it doesn't work with gradle
@@ -665,6 +669,8 @@ function android_fte() {
       fi
 
       JAVA_OPTS="$OLD_JAVA_OPTS"
+    else
+      write_log "v" "Android FTE failed: $?"
     fi
   fi
 
