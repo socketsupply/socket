@@ -208,14 +208,14 @@ function get_android_paths() {
 }
 
 function build_android_platform_tools_uri() {
-  local os="$host"
+  local os="$(host_os)"
 
   uri=${ANDROID_PLATFORM_TOOLS_URI_TEMPLATE/\{os\}/"$(android_host_platform "$os")"}
   echo "$uri"
 }
 
 function build_android_command_line_tools_uri() {
-  local os="$host"
+  local os="$(host_os)"
   local os="$(lower "$os")"
 
   if [[ "$os" == "darwin" ]]; then
