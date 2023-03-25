@@ -27,7 +27,7 @@ declare GRADLE_URI_TEMPLATE="https://services.gradle.org/distributions/gradle-8.
 # TODO(mribbons): ubuntu / apt libs: apt-get install libc6:i386 libncurses5:i386 libstdc++6:i386 lib32z1 libbz2-1.0:i386
 
 function get_android_default_search_paths() {
-  host="$(host_os)"
+  local host="$(host_os)"
 
   # Prepopulate search paths with any known paths so that they can be verified quickly
   ANDROID_HOME_SEARCH_PATHS=()
@@ -83,8 +83,8 @@ function get_android_default_search_paths() {
 }
 
 function test_javac_version() {
-  javac=$1
-  target_version=$2
+  local javac=$1
+  local target_version=$2
 
   jc_v="$("$javac" --version 2>/dev/null)"; r=$?
   if [[ "$r" != "0" ]]; then
@@ -208,15 +208,15 @@ function get_android_paths() {
 }
 
 function build_android_platform_tools_uri() {
-  os="$host"
+  local os="$host"
 
   uri=${ANDROID_PLATFORM_TOOLS_URI_TEMPLATE/\{os\}/"$(android_host_platform "$os")"}
   echo "$uri"
 }
 
 function build_android_command_line_tools_uri() {
-  os="$host"
-  os="$(lower "$os")"
+  local os="$host"
+  local os="$(lower "$os")"
 
   if [[ "$os" == "darwin" ]]; then
     os="mac"
@@ -230,18 +230,11 @@ function build_android_command_line_tools_uri() {
 
 
 function build_jdk_uri() {
-  os="$host"
-  arch=$(uname -m)
-  format="tar.gz"
+  local os="$(host_os)"
+  local arch=$(uname -m)
+  local format="tar.gz"
 
-  if [[ -n "$1" ]]; then
-    os="$1"
-  fi
   os="$(lower "$os")"
-  
-  if [[ -n "$2" ]]; then
-    arch="$2"
-  fi
 
   if [[ "$os" == "darwin" ]]; then
     os="macos"
@@ -462,8 +455,8 @@ function android_install_sdk_manager() {
   fi
 
   write_log "h" "Downloading $uri..."
-  uri="$(build_android_platform_tools_uri)"
-  archive="$(download_to_tmp "$uri")"
+  local uri="$(build_android_platform_tools_uri)"
+  local archive="$(download_to_tmp "$uri")"
   if [ -z "$archive" ]; then
     write_log "h" "Failed to download $uri"
     return 1
@@ -509,9 +502,9 @@ function android_install_sdk_manager() {
   mv "$(unix_path "$_ah/cmdline-tools/")"* "$(unix_path "$_ah/latest")" || exit 1
   mv "$(unix_path "$_ah/latest")" "$(unix_path "$_ah/cmdline-tools/")"|| exit 1
 
-  ANDROID_HOME="$_ah"
+  local ANDROID_HOME="$_ah"
   export ANDROID_HOME
-  ANDROID_SDK_MANAGER="$(native_path "cmdline-tools/latest/bin/sdkmanager$bat")"
+  local ANDROID_SDK_MANAGER="$(native_path "cmdline-tools/latest/bin/sdkmanager$bat")"
   export ANDROID_SDK_MANAGER
 
   return 0
@@ -534,8 +527,8 @@ function android_install_jdk() {
     return 1
   fi
 
-  uri="$(build_jdk_uri)"
-  archive=""
+  local uri="$(build_jdk_uri)"
+  local archive=""
   write_log "h" "Downloading $uri..."
   archive="$(download_to_tmp "$uri")"
   if [ "$?" != "0" ]; then
@@ -544,14 +537,14 @@ function android_install_jdk() {
   fi
 
   # Determine internal folder name so we can add it to JAVA_HOME
-  archive_dir="$(get_top_level_archive_dir "$archive")"
+  local archive_dir="$(get_top_level_archive_dir "$archive")"
   write_log "h" "Extracting $archive to $_jh"
   if ! unpack "$archive" "$_jh"; then
     write_log "h" "Failed to unpack $archive"
     return 1
   fi
   rm "$archive"
-  JAVA_HOME="$(native_path "$(escape_path "$_jh")/$archive_dir")"
+  local JAVA_HOME="$(native_path "$(escape_path "$_jh")/$archive_dir")"
   export JAVA_HOME
   return 0
 }
@@ -573,7 +566,7 @@ function android_install_gradle() {
     return 1
   fi
 
-  uri="$(build_gradle_uri)"
+  local uri="$(build_gradle_uri)"
   archive=""
   write_log "h" "Downloading $uri..."
   archive="$(download_to_tmp "$uri")"
@@ -611,7 +604,7 @@ function android_first_time_experience_setup() {
 
   if [[ -z "$ANDROID_SDK_MANAGER_ACCEPT_LICENSES" ]]; then
     if prompt_yn "Do you want to automatically accept all Android SDK Manager licenses?"; then
-      yes="$(which "yes" 2>/dev/null)"
+      local yes="$(which "yes" 2>/dev/null)"
       # Store yes path in native format so it can be used by ssc later
       ANDROID_SDK_MANAGER_ACCEPT_LICENSES="$(native_path "$yes")"
       if [ ! -f "$yes" ]; then
@@ -658,9 +651,9 @@ function android_fte() {
       SDK_OPTIONS+="\"system-images;android-$ANDROID_PLATFORM;google_apis;x86_64\" "
       SDK_OPTIONS+="\"system-images;android-$ANDROID_PLATFORM;google_apis;arm64-v8a\" "
 
-      yes="echo"
+      local yes="echo"
       [[ -n "$ANDROID_SDK_MANAGER_ACCEPT_LICENSES" ]] && [[ "$ANDROID_SDK_MANAGER_ACCEPT_LICENSES" != "n" ]] && yes="$ANDROID_SDK_MANAGER_ACCEPT_LICENSES"
-      yes="$(unix_path "$yes")"
+      local yes="$(unix_path "$yes")"
 
       if [[ -n "$ANDROID_HOME" ]]; then
         write_log "v" "Installing android deps"

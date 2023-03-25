@@ -32,7 +32,7 @@ function sha512sum() {
 }
 
 function escape_path() {
-  r=$1
+  local r=$1
   if [[ "$host" == "Win32" ]]; then
     r=${r//\\/\\\\}
   fi
@@ -40,7 +40,7 @@ function escape_path() {
 }
 
 function unix_path() {
-  p="$(escape_path "$1")"
+  local p="$(escape_path "$1")"
   if [[ "$host" == "Win32" ]]; then
     p="$(cygpath -u "$p")"
     # cygpath doesn't escape spaces
@@ -52,7 +52,7 @@ function unix_path() {
 
 function native_path() {
   if [[ "$host" == "Win32" ]]; then
-    p="$(cygpath -w "$1")"
+    local p="$(cygpath -w "$1")"
     if [[ "$p" == *"\\ "* ]]; then
       # string contains escaped space, quote it and de-escape
       p="\"${p//\\ /\ }\""
@@ -153,7 +153,7 @@ function read_env_data() {
 
 function write_env_data() {
   # Maintain mtime on $SSC_ENV_FILENAME, only update if changed
-  temp=$(mktemp)
+  local temp=$(mktemp)
   build_env_data > "$temp"
 
   if [[ ! -f "$root/$SSC_ENV_FILENAME" ]]; then
@@ -190,11 +190,11 @@ function prompt_yn() {
 }
 
 function prompt_new_path() {
-  text="$1"
+  local text="$1"
   default="$2"
   local return=$3
   local exists_message=$4
-  input=""
+  local input=""
   lf=$'\n'
 
   if [ -n "$2" ]; then
@@ -210,7 +210,7 @@ function prompt_new_path() {
     fi
     # remove any quote characters
     input=${input//\"/}
-    unix_input="$(unix_path "$input")"
+    local unix_input="$(unix_path "$input")"
     if [ -e "$unix_input" ]; then
       if [ "$exists_message" == "!CAN_EXIST!" ]; then
         input="$(native_path "$(abs_path "$unix_input")")"
@@ -243,8 +243,8 @@ function prompt_new_path() {
 }
 
 function abs_path() {
-  test="$1"
-  basename=""
+  local test="$1"
+  local basename=""
   if [ -f "$1" ]; then
     test="$(dirname "$1")"
     basename="/$(basename "$1")"
@@ -252,22 +252,22 @@ function abs_path() {
     return 1
   fi
 
-  p="$(sh -c "cd '$test'; pwd")$basename"
+  local p="$(sh -c "cd '$test'; pwd")$basename"
   # mingw sh returns incorrect escape slash if path contains spaces, swap / for \
-  p="${p///\ /\\ }"
+  local p="${p///\ /\\ }"
   echo "$p"
 }
 
 download_to_tmp() {
-  uri=$1
-  tmp="$(mktemp -d)"
-  output=$tmp/"$(basename "$uri")"
+  local uri=$1
+  local tmp="$(mktemp -d)"
+  local output=$tmp/"$(basename "$uri")"
 
   if [ -n "$SSC_ANDROID_REPO" ]; then
     echo >&2 cp "$SSC_ANDROID_REPO/$(basename "$uri")" "$output"
     cp "$SSC_ANDROID_REPO/$(basename "$uri")" "$output" || return $?
   else
-    http_code=$(curl -L --write-out '%{http_code}' "$uri" --output "$output")
+    local http_code=$(curl -L --write-out '%{http_code}' "$uri" --output "$output")
     # DONT COMMIT
     cp "$output" ..
     if  [ "$http_code" != "200" ] ; then
@@ -280,9 +280,9 @@ download_to_tmp() {
 }
 
 function unpack() {
-  archive=$1
-  dest=$2
-  command=""
+  local archive=$1
+  local dest=$2
+  local command=""
 
   if [[ "$archive" == *".tar.gz" ]]; then
     command="tar -xf"
@@ -303,11 +303,11 @@ function unpack() {
 }
 
 function get_top_level_archive_dir() {
-  archive=$1
-  command=""
+  local archive=$1
+  local command=""
 
   if [[ "$archive" == *".tar.gz" ]] || [[ "$archive" == *".tgz" ]]; then
-    head=$(tar -tf "$archive" | head -n1)
+    local head=$(tar -tf "$archive" | head -n1)
     while [[ "$head" == *"/"* ]]; do
       head=$(dirname "$head")
     done
@@ -342,8 +342,8 @@ fi
 logfile="$_loghome/socket_install_sh.log"
 
 function write_log() {
-  type=$1
-  message=$2
+  local type=$1
+  local message=$2
   if [[ -n "$DEBUG" ]] && ( [[ "$type" == "d" ]] || [[ "$type" == "v" ]] ); then
     wh="1"
   elif [[ -n "$VERBOSE" ]] && [[ "$type" == "v" ]]; then
