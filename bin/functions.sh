@@ -338,8 +338,8 @@ function version {
 
 # Logging
 _loghome=$HOME
-if [ -n "$APPLOCALDATA" ]; then
-  _loghome="$APPLOCALDATA"
+if [ -n "$LOCALAPPDATA" ]; then
+  _loghome="$LOCALAPPDATA"
 fi
 
 logfile="$_loghome/socket_install_sh.log"
