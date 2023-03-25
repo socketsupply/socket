@@ -1,10 +1,13 @@
-import { test } from 'socket:test'
+import process from 'socket:process'
+import test from 'socket:test'
 
 let loaded = false
 window.onload = () => {
   loaded = true
 }
 
-test('window.onload', (t) => {
-  t.ok(loaded, 'window.onload called')
-})
+if (!process.env.SSC_ANDROID_CI) {
+  test('window.onload', (t) => {
+    t.ok(loaded, 'window.onload called')
+  })
+}

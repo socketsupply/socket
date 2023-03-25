@@ -29,6 +29,7 @@ GLOBAL_TEST_RUNNER.onFinish(({ fail }) => {
 function onerror (e) {
   const err = e.error || e.stack || e.reason || e.message || e
   if (err.ignore) return
+  console.error(err)
   if (!finishing && !process.env.DEBUG) {
     process.nextTick(() => {
       process.exit(1)

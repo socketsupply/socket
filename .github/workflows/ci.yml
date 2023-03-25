@@ -222,13 +222,12 @@ jobs:
         profile: pixel_5
         target: google_apis
         script: |
-          ANDROID_SUPPORTED_ABIS="x86_64" VERBOSE=1 NO_IOS=1 ./bin/install.sh
+          SSC_ANDROID_CI=1 ANDROID_SUPPORTED_ABIS="x86_64" VERBOSE=1 NO_IOS=1 ./bin/install.sh
           ./bin/ci_version_check.sh
           npm install
-          ANDROID_SUPPORTED_ABIS="x86_64" npm run test:android
+          SSC_ANDROID_CI=1 ANDROID_SUPPORTED_ABIS="x86_64" npm run test:android
       env:
         CI: true
-        SSC_ANDROID_CI: true
         NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
 
   android_linux:

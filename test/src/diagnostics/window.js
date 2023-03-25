@@ -35,11 +35,9 @@ test('diagnostics - window - metrics', async (t) => {
     let diagnosticsReceived = false
 
     diagnostics.window.metrics.subscribe('fetch', (message) => {
-      if (!/(data|file):/.test(message.resource)) {
-        t.equal(message.resource, uri, 'message.resource === uri')
-        t.equal(message.options, options, 'message.options === options')
-        diagnosticsReceived = true
-      }
+      t.equal(message.resource, uri, 'message.resource === uri')
+      t.equal(message.options, options, 'message.options === options')
+      diagnosticsReceived = true
     })
 
     fetch(uri, options)
