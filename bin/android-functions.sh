@@ -498,9 +498,9 @@ function android_install_sdk_manager() {
   mv "$(unix_path "$_ah/cmdline-tools/")"* "$(unix_path "$_ah/latest")" || exit 1
   mv "$(unix_path "$_ah/latest")" "$(unix_path "$_ah/cmdline-tools/")"|| exit 1
 
-  local ANDROID_HOME="$_ah"
+  ANDROID_HOME="$_ah"
   export ANDROID_HOME
-  local ANDROID_SDK_MANAGER="$(native_path "cmdline-tools/latest/bin/sdkmanager$bat")"
+  ANDROID_SDK_MANAGER="$(native_path "cmdline-tools/latest/bin/sdkmanager$bat")"
   export ANDROID_SDK_MANAGER
 
   return 0
@@ -540,7 +540,7 @@ function android_install_jdk() {
     return 1
   fi
   rm "$archive"
-  local JAVA_HOME="$(native_path "$(escape_path "$_jh")/$archive_dir")"
+  JAVA_HOME="$(native_path "$(escape_path "$_jh")/$archive_dir")"
   export JAVA_HOME
   return 0
 }
@@ -649,7 +649,7 @@ function android_fte() {
 
       local yes="echo"
       [[ -n "$ANDROID_SDK_MANAGER_ACCEPT_LICENSES" ]] && [[ "$ANDROID_SDK_MANAGER_ACCEPT_LICENSES" != "n" ]] && yes="$ANDROID_SDK_MANAGER_ACCEPT_LICENSES"
-      local yes="$(unix_path "$yes")"
+      yes="$(unix_path "$yes")"
 
       if [[ -n "$ANDROID_HOME" ]]; then
         write_log "v" "Installing android deps"
