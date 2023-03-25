@@ -397,7 +397,7 @@ export ANDROID_DEPS_ERROR
 declare cmd=""
 declare exe=""
 declare bat=""
-if [[ "$host" == "Win32" ]]; then
+if [[ "$(host_os)" == "Win32" ]]; then
   exe=".exe"
   cmd=".cmd"
   bat=".bat"
