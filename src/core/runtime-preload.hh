@@ -23,7 +23,7 @@ namespace SSC {
   #endif
 
     auto preload = SSC::String(
-      "\n;(() => {                                                           \n"
+      ";(() => {                                                             \n"
       "  if (globalThis.__args) return;                                      \n"
       "  globalThis.__args = {}                                              \n"
       "  const env = '" + opts.env + "';                                     \n"
@@ -50,9 +50,8 @@ namespace SSC {
       "    value: Number('" + std::to_string(opts.index) + "'),              \n"
       "    enumerable: true                                                  \n"
       "  }                                                                   \n"
-      "})                                                                    \n"
-      "Object.freeze(globalThis.__args.argv)                                 \n"
-      "Object.freeze(globalThis.__args.env)                                  \n"
+      "});                                                                   \n"
+      "                                                                      \n"
     );
 
     const auto start = argv.find("--test=");
@@ -63,14 +62,14 @@ namespace SSC {
       }
       const auto file = argv.substr(start + 7, end - start - 7);
       if (file.size() > 0) {
-        preload += "                                                         \n"
-          "document.addEventListener('DOMContentLoaded', () => {             \n"
-          "  const script = document.createElement('script')                 \n"
-          "  script.setAttribute('type', 'module')                           \n"
-          "  script.setAttribute('src', '" + file + "')                      \n"
-          "  document.head.appendChild(script)                               \n"
-          "});                                                               \n"
-          ;
+        preload += (
+          "  document.addEventListener('DOMContentLoaded', () => {           \n"
+          "    const script = document.createElement('script')               \n"
+          "    script.setAttribute('type', 'module')                         \n"
+          "    script.setAttribute('src', '" + file + "')                    \n"
+          "    document.head.appendChild(script)                             \n"
+          "  });                                                             \n"
+        );
       }
     }
 
@@ -84,34 +83,54 @@ namespace SSC {
         continue;
       }
 
-      preload += "  ;(() => { \n";
-      preload += "    const key = decodeURIComponent('" + encodeURIComponent(key) + "').toLowerCase()\n";
+      preload += (
+        "  ;(() => {                                                         \n"
+        "    let key = decodeURIComponent(                                   \n"
+        "      '" + encodeURIComponent(key) + "'                             \n"
+        "    )                                                               \n"
+      );
 
-      if (value == "true" || value == "false") {
-        preload += "    globalThis.__args.config[key] = " + value + "\n";
+      if (key.starts_with("env_")) {
+        preload += (
+          "    const k = key.slice(4);                                       \n"
+          "    const value = `" + value + "`;                                \n"
+          "    globalThis.__args.env[k] = value;                             \n"
+        );
+      } else if (value == "true" || value == "false") {
+        preload += (
+          "    const k = key.toLowerCase();                                  \n"
+          "    globalThis.__args.config[k] = " + value + "                   \n"
+        );
       } else {
-        preload += "    const value = '" + encodeURIComponent(value) + "'\n";
-        preload += "    if (!isNaN(value) && !Number.isNaN(parseFloat(value))) {\n";
-        preload += "      globalThis.__args.config[key] = parseFloat(value);\n";
-        preload += "    } else { \n";
-        preload += "      let val = decodeURIComponent(value);\n";
-        preload += "      try { val = JSON.parse(val) } catch (err) {}\n";
-        preload += "      globalThis.__args.config[key] = val;\n";
-        preload += "    }\n";
+        preload += (
+          "    const k = key.toLowerCase();                                  \n"
+          "    const value = '" + encodeURIComponent(value) + "'             \n"
+          "    if (!isNaN(value) && !Number.isNaN(parseFloat(value))) {      \n"
+          "      globalThis.__args.config[k] = parseFloat(value) ;           \n"
+          "    } else {                                                      \n"
+          "      let val = decodeURIComponent(value);                        \n"
+          "      try { val = JSON.parse(val) } catch (err) {}                \n"
+          "      globalThis.__args.config[k] = val;                          \n"
+          "    }                                                             \n"
+        );
       }
 
       preload += "  })();\n";
     }
 
-    preload += "  Object.freeze(globalThis.__args.config);\n";
-    preload += "})();\n";
+    preload += (
+      "  Object.freeze(globalThis.__args.config);                            \n"
+      "  Object.freeze(globalThis.__args.argv);                              \n"
+      "  Object.freeze(globalThis.__args.env);                               \n"
+      "})();                                                                 \n"
+    );
 
     if (preloadOptions.module) {
       preload += "import 'socket:internal/init'\n";
     } else {
       preload += "import('socket:internal/init');\n";
     }
-    //preload += "catch (err) { import('socket:internal/init'); }\n";
+
     return preload;
   }
 
