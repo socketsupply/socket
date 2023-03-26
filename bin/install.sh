@@ -154,6 +154,8 @@ if [ "$host" == "Darwin" ]; then
   die $? "not ok - missing build tools, try 'brew install libtool'"
   quiet command -v libtool
   die $? "not ok - missing build tools, try 'brew install libtool'"
+  quiet command -v curl
+  die $? "not ok - missing curl, try 'brew install curl'"
 fi
 
 if [ "$host" == "Linux" ]; then
@@ -161,6 +163,8 @@ if [ "$host" == "Linux" ]; then
   die $? "not ok - missing build tools, try \"$(advice "autoconf")\""
   quiet command -v pkg-config
   die $? "not ok - missing pkg-config tool, \"$(advice 'pkg-config')\""
+  quiet command -v curl
+  die $? "not ok - missing curl, \"$(advice 'curl')\""
 fi
 
 if [[ -n "$BUILD_ANDROID" ]]; then

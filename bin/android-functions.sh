@@ -4,10 +4,14 @@ declare root="$(cd "$(dirname "$(dirname "${BASH_SOURCE[0]}")")" && pwd)"
 
 source "$root/bin/functions.sh"
 
-declare -A DEFAULT_ANDROID_HOME
-DEFAULT_ANDROID_HOME[Darwin]=$HOME/Library/Android/sdk 
-DEFAULT_ANDROID_HOME[Win32]=$LOCALAPPDATA\\Android\\Sdk
-DEFAULT_ANDROID_HOME[Linux]=$HOME/Android/Sdk
+declare Darwin=1
+declare Linux=2
+declare Win32=3
+declare DEFAULT_ANDROID_HOME=()
+
+DEFAULT_ANDROID_HOME[Darwin]="$HOME/Library/Android/sdk"
+DEFAULT_ANDROID_HOME[Linux]="$HOME/Android/sdk"
+DEFAULT_ANDROID_HOME[Win32]="$LOCALAPPDATA\\Android\\Sdk"
 
 declare ANDROID_SDK_MANAGER_DEFAULT_SEARCH_PATHS=(
   "cmdline-tools/latest/bin"
@@ -215,8 +219,7 @@ function build_android_platform_tools_uri() {
 }
 
 function build_android_command_line_tools_uri() {
-  local os="$(host_os)"
-  local os="$(lower "$os")"
+  local os="$(lower "$(host_os)")"
 
   if [[ "$os" == "darwin" ]]; then
     os="mac"
