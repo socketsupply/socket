@@ -243,11 +243,23 @@ open class Bridge (runtime: Runtime, configuration: IBridgeConfiguration) {
 
   open fun onResult (result: Result) {
     val semaphore = this.semaphore
+    val activity = this.runtime.get()?.activity?.get()
+
     this.requests[result.id]?.apply {
       kotlin.concurrent.thread {
         semaphore.acquireUninterruptibly()
+
+        if (activity != null) {
+          activity.runOnUiThread {
+            semaphore.release()
+          }
+        }
+
         callback(result)
-        semaphore.release()
+
+        if (activity == null) {
+          semaphore.release()
+        }
       }
     }
 
