@@ -13,7 +13,7 @@ try {
 }
 
 if (SSC_ANDROID_CI) {
-  exec('ssc build -r -o --headless --platform=android', {
+  exec('ssc build -r -o --headless --platform=android --env=CI --env=SSC_ANDROID_CI', {
     stdio: 'inherit'
   })
 } else {

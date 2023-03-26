@@ -1010,9 +1010,23 @@ int main (const int argc, const char* argv[]) {
         printHelp(subcommand);
         exit(0);
       }
+
       auto commandlineOptions = std::span(argv, argc).subspan(2, numberOfOptions);
+      auto envs = Vector<String>();
+
       for (auto const& arg : commandlineOptions) {
         auto isAcceptableOption = false;
+        if (String(arg).starts_with("--env")) {
+          auto value = optionValue(subcommand, arg, "--env");
+          if (value.size() > 0) {
+            auto parts = split(value, ' ');
+            for (const auto& part : parts) {
+              envs.push_back(part);
+            }
+            continue;
+          }
+        }
+
         for (auto const& option : options) {
           if (is(arg, option) || optionValue(subcommand, arg, option).size() > 0) {
             isAcceptableOption = true;
@@ -1036,6 +1050,23 @@ int main (const int argc, const char* argv[]) {
         }
 
         auto ini = readFile(configPath);
+
+        if (envs.size() > 0) {
+          auto stream = StringStream();
+          stream << "\n";
+          stream << "[env]" << "\n";
+          for (const auto& value : envs) {
+            auto parts = split(value, '=');
+            if (parts.size() == 2) {
+              stream << parts[0] << " = " << parts[1] << "\n";
+            } else if (parts.size() == 1) {
+              stream << parts[0] << " = " << getEnv(parts[0].c_str()) << "\n";
+            }
+          }
+
+          ini += stream.str();
+        }
+
         auto hex = stringToHex(ini);
         auto bytes = StringStream();
         auto length = hex.size() - 1;

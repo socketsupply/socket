@@ -208,6 +208,10 @@ jobs:
         profile: pixel_5
         target: google_apis
         script: echo "Generated AVD snapshot for caching."
+      env:
+        CI: true
+        SSC_ANDROID_CI: true
+        NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
 
     - name: Run emulator tests
       uses: reactivecircus/android-emulator-runner@v2
@@ -222,12 +226,13 @@ jobs:
         profile: pixel_5
         target: google_apis
         script: |
-          SSC_ANDROID_CI=1 ANDROID_SUPPORTED_ABIS="x86_64" VERBOSE=1 NO_IOS=1 ./bin/install.sh
+          ANDROID_SUPPORTED_ABIS="x86_64" VERBOSE=1 NO_IOS=1 ./bin/install.sh
           ./bin/ci_version_check.sh
           npm install
-          SSC_ANDROID_CI=1 ANDROID_SUPPORTED_ABIS="x86_64" npm run test:android
+          ANDROID_SUPPORTED_ABIS="x86_64" npm run test:android
       env:
         CI: true
+        SSC_ANDROID_CI: true
         NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
 
   android_linux:
