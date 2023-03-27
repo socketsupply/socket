@@ -3,12 +3,13 @@
 id="co.socketsupply.socket.tests"
 
 ## Start application
-adb shell am start -n "$id/.MainActivity" 2>&1 | grep 'not started'
+[[ ! -f "$adb" ]] && (echo "adb not in path or ANDROID_HOME not set."; exit 1)
+"$adb" shell am start -n "$id/.MainActivity" || exit $?
 
 echo "polling for '$id' PID in adb"
 while [ -z "$pid" ]; do
   ## Probe for application process ID
-  pid="$(adb shell ps | grep "$id" | awk '{print $2}' 2>/dev/null)"
+  pid="$($adb shell ps | grep "$id" | awk '{print $2}' 2>/dev/null)"
   sleep 1
 done
 
@@ -32,6 +33,4 @@ while read -r line; do
       exit 1
     fi
   fi
-done < <(adb logcat --pid="$pid")
-
-wait
+done < <($adb logcat --pid="$pid")
