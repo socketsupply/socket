@@ -5,19 +5,28 @@ adb="$ANDROID_HOME/platform-tools/adb"
 root="$(CDPATH='' cd -- "$(dirname "$(dirname -- "$0")")" && pwd)"
 
 temp="$(mktemp)"
-${SHELL:-sh} -c "$root/scripts/bootstrap-android-emulator.sh "$temp"" & 
+${SHELL:-sh} -c "$root/scripts/bootstrap-android-emulator.sh "$temp"" & bootstrap_pid=$!
 
 bootstrap_exit_code=""
 while [ -z "$bootstrap_exit_code" ]; do
   # Wait for exit code
   bootstrap_exit_code="$(cat "$temp")"
+  echo "Waiting for exit code: $bootstrap_exit_code"
   sleep 0.5
 done
 
 [ "$bootstrap_exit_code" != "0" ] && exit $bootstrap_exit_code
 
+rm "$temp"
+
 echo "info: Waiting for Android Emulator to boot"
 while ! "$adb" shell getprop sys.boot_completed >/dev/null 2>&1 ; do
+  if [ ! -d "/proc/$bootstrap_pid" ]; then
+    # emuator already exited
+    echo "Android Emulator failed to boot."
+    wait $bootstrap_pid
+    exit $?
+  fi
   sleep 0.5
 done
 echo "info: Android Emulator booted"

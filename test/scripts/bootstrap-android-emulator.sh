@@ -1,10 +1,21 @@
 #!/usr/bin/env bash
+
+# enable async operation by writing exit code to a file for callee to test
+# call this to identify that emulator is about to be called, but don't exit script
+function write_code() {
+  local exit_code="$1"
+  [[ -n "$error_file" ]] && echo "$exit_code" > "$error_file"
+}
+
+# Call this on error, script will terminate
 error_file=$1
 function exit_and_write_code() {
-  local exit_code=$1
-  [[ -n "$error_file" ]] && echo "$exit_code" > "$error_file"
+  local exit_code="$1"
+  write_code "$exit_code"
   exit "$exit_code"
 }
+
+declare rc
 
 ssc_env=""
 if [ -f ".ssc.env" ]; then
@@ -15,6 +26,7 @@ fi
 
 if [ -n "$ssc_env" ]; then
   echo "# Sourcing $ssc_env"
+  source "$ssc_env"
   sdkmanager="$ANDROID_HOME/$ANDROID_SDK_MANAGER"
   avdmanager="$(dirname $sdkmanager)/avdmanager"
   export ANDROID_HOME
@@ -54,7 +66,7 @@ if [ -z "$sdkmanager" ]; then
 fi
 
 if [ ! -f "$avdmanager" ]; then
-  echo "not ok - Unable to locate avdmanager."
+  echo "not ok - Unable to locate avdmanager: $avdmanager"
   exit_and_write_code 1
 fi
 
@@ -68,10 +80,16 @@ if [ ! -f "$emulator" ]; then
   exit_and_write_code 1
 fi
 
+write_code 0
+
 if ! "$avdmanager" list avd | grep 'Name: SSCAVD$'; then
   pkg="system-images;android-33;google_apis;$(uname -m | sed -E 's/(arm64|aarch64)/arm64-v8a/g')"
-  "$sdkmanager" "$pkg" || exit $?
-  echo yes | "$avdmanager" --clear-cache create avd -n SSCAVD -k "$pkg" -d 1 --force || exit $?
+  "$sdkmanager" "$pkg"
+  rc=$?
+  (( !rc )) && exit_and_write_code $rc
+  echo yes | "$avdmanager" --clear-cache create avd -n SSCAVD -k "$pkg" -d 1 --force
+  rc=$?
+  (( !rc )) && exit_and_write_code $rc
 fi
 
 "$emulator" @SSCAVD         \
@@ -82,5 +100,5 @@ fi
   -no-window                \
   -noaudio                  \
   >/dev/null
-"$emulator" @SSCAVD "${emulator_flags[@]}" >/dev/null
+
 exit_and_write_code $?
