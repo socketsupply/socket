@@ -307,14 +307,20 @@ function unpack() {
 
 function get_top_level_archive_dir() {
   local archive=$1
-  local command=""
+  local head=""
 
   if [[ "$archive" == *".tar.gz" ]] || [[ "$archive" == *".tgz" ]]; then
-    local head=$(tar -tf "$archive" | head -n1)
-    while [[ "$head" == *"/"* ]]; do
-      head=$(dirname "$head")
+    tar -tf "$archive" | while read -r line; do
+      for head in $(echo "$line" | tr "/" "\n"); do
+        if [[ "$head" == "." ]]; then
+          : continue
+        else
+          echo "$head"
+          return
+        fi
+      done
     done
-    echo "$head"
+    return $?
   elif [[ "$archive" == *".gz" ]] || [[ "$archive" == *".bz2" ]]; then
     "$(basename "${archive%.*}")"
   elif [[ "$archive" == *".bz2" ]]; then
