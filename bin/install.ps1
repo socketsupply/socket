@@ -264,8 +264,6 @@ Function Bits-Download {
     if (($error_string -like "*Unable to get error*") -eq $false) {
       $exitCode=[unit32][Convert]::ToString($error_string, 10)
     }
-    # Write-Host "Error: $r"
-    # $err=[uint32]$r
 
     if ($total -gt 0) {
       $percent = $(($xferd/$total)*100)
@@ -308,8 +306,6 @@ Function Bits-Download {
   return $exitCode
 }
 
-# Bits-Download("https://aka.ms/vs/17/release/vc_redist.x64.exe", "C:\Users\mribb\AppData\Local\Temp\out.txt")
-# Bits-Download("https://aka.ms/vs/17/release1/vc_redist.x64.exe", "C:\Users\mribb\AppData\Local\Temp\out.txt")
 # Sub UAC process is importing function definitions
 if ($declare_only) {
   Exit 0
@@ -375,7 +371,6 @@ if ((Test-Path "bin" -PathType Container) -eq $false) {
 
 Function Get-UrlCall {
   param($url, $dest)
-  # curl is way faster than iwr
   # need .exe because curl is an alias for iwr, go figure...  
   if ($global:useCurl) {
     return "iex ""& curl.exe -L --write-out '%{http_code}' """"$url"""" --output """"$dest""""""`n"
