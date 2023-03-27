@@ -136,9 +136,12 @@ function get_android_paths() {
         # subshell, output to file
         echo "$(dirname "$(dirname "$javac")")" > "$temp"
         echo "$java_home_test" > "$temp"
+        write_log "v" "Using a $javac"
         break
       else
         write_log "v" "Ignoring a $java_home_test/bin/javac$exe $jc_v"
+        # configured JAVA_HOME is bad, unset to trigger new version install
+        [[ "$JAVA_HOME" == "$java_home_test" ]] && unset JAVA_HOME
       fi
     fi
 
@@ -151,6 +154,7 @@ function get_android_paths() {
         test_javac_version "$javac" "$JDK_VERSION" ; r=$?
         if [[ "$r" == "0" ]]; then
           # subshell, output to file
+          write_log "v" "Using b $javac"
           echo "$(dirname "$(dirname "$javac")")" > "$temp"
         else
           write_log "v" "Ignoring b $javac $jc_v"
@@ -161,6 +165,7 @@ function get_android_paths() {
 
   if [[ $(stat_size "$temp") != 0 ]]; then
     _jh=$(cat "$temp")
+    echo >&2 "jh: $_jh"
   fi
 
   echo -n > "$temp"
@@ -203,7 +208,6 @@ function get_android_paths() {
     JAVA_HOME="$(native_path "$_jh")"
     export JAVA_HOME
   fi
-
   
   if [[ -n "$_gh" ]]; then
     GRADLE_HOME="$(native_path "$_gh")"
@@ -547,7 +551,8 @@ function android_install_jdk() {
     return 1
   fi
   rm "$archive"
-  JAVA_HOME="$(native_path "$(escape_path "$_jh")/$archive_dir")"
+  [[ "$(host_os)" == "Darwin" ]] && os_specific_path="/Contents/Home"
+  JAVA_HOME="$(native_path "$(escape_path "$_jh")/$archive_dir$os_specific_path")"
   export JAVA_HOME
   return 0
 }
