@@ -31,8 +31,10 @@ fi
 
 if [ -n "$ANDROID_SDK_MANAGER" ]; then
   sdkmanager="$ANDROID_HOME/$ANDROID_SDK_MANAGER"
-  ext="${sdkmanager##*.}"
-  [[ -n "$ext" ]] && ext=".$ext"
+  bn="$(basename "$sdkmanager")"
+  ext=""
+  # Only add the result of extension filter if basename contains '.', otherwise it will contain 'sdkmanager'
+  [[ "$bn" == *"."* ]] && [[ "$ext" != "$sdkmanager" ]] && ext=".${bn##*.}"
   avdmanager="$(dirname "$sdkmanager")/avdmanager$ext"
 fi
 

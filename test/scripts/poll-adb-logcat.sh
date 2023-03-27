@@ -19,17 +19,17 @@ while read -r line; do
     line="$(echo "$line" | sed 's/.*[D|E|I|W] Console :\s*//g')"
 
     if [[ "$line" =~ __EXIT_SIGNAL__ ]]; then
-      status="${line/__EXIT_SIGNAL__=/}"
-      exit "$status"
+      exit_signal="${line/__EXIT_SIGNAL__=/}"
+      exit "$exit_signal"
     fi
 
     echo "$line"
 
-    if [ "$line" == "# ok" ]; then
+    if [[ "$line" == "# ok" ]]; then
       exit
     fi
 
-    if [ "$line" == "# fail" ]; then
+    if [[ "$line" == "# fail" ]]; then
       exit 1
     fi
   fi

@@ -36,9 +36,12 @@ while [ -z "$bootstrap_exit_code" ]; do
   sleep 0.5
 done
 
-rm "$temp"
 
-[ "$bootstrap_exit_code" != "0" ] && exit "$bootstrap_exit_code"
+[ "$bootstrap_exit_code" != "0" ] && (rm "$temp"; exit "$bootstrap_exit_code")
+
+# reset bootstrap exit code, we will use it again
+bootstrap_exit_code=""
+echo > "$temp"
 
 # Start building, OK to fail on install.
 # ssc build --headless --platform=android -r -o & build_pid=$?
@@ -48,15 +51,21 @@ echo "info: Waiting for Android Emulator to boot"
 boot_completed=""
 while [[ "$boot_completed" != "1" ]] ; do
   boot_completed="$($adb shell getprop sys.boot_completed 2>/dev/null)"
-  if [ ! -d "/proc/$bootstrap_pid" ]; then
+  # reliable cross platform method of waiting for background process asynchronously
+  bootstrap_exit_code="$(cat "$temp")"
+  echo "bootstrap_exit_code: $bootstrap_exit_code"
+  if [[ -n "$bootstrap_exit_code" ]] && [[ "$bootstrap_exit_code" != "0" ]]; then
     # emuator already exited
     echo "Android Emulator failed to boot."
     wait $bootstrap_pid
+    rm "$temp"
     exit $?
   fi
   sleep 0.5
 done
 echo "info: Android Emulator booted"
+
+rm "$temp"
 
 "$adb" uninstall "$id"
 
