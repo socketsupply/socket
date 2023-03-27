@@ -4,7 +4,17 @@ id="co.socketsupply.socket.tests"
 adb="$ANDROID_HOME/platform-tools/adb"
 root="$(CDPATH='' cd -- "$(dirname "$(dirname -- "$0")")" && pwd)"
 
-${SHELL:-sh} "$root/scripts/bootstrap-android-emulator.sh" &
+temp="$(mktemp)"
+${SHELL:-sh} -c "$root/scripts/bootstrap-android-emulator.sh "$temp"" & 
+
+bootstrap_exit_code=""
+while [ -z "$bootstrap_exit_code" ]; do
+  # Wait for exit code
+  bootstrap_exit_code="$(cat "$temp")"
+  sleep 0.5
+done
+
+[ "$bootstrap_exit_code" != "0" ] && exit $bootstrap_exit_code
 
 echo "info: Waiting for Android Emulator to boot"
 while ! "$adb" shell getprop sys.boot_completed >/dev/null 2>&1 ; do
