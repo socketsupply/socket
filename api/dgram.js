@@ -44,70 +44,6 @@ const dc = diagnostics.channels.group('udp', [
   'bind'
 ])
 
-/**
- * Generic error class for an error occurring on a `Socket` instance.
- * @ignore
- */
-export class SocketError extends InternalError {
-  get code () { return this.constructor.name }
-}
-
-/**
- * Thrown when a socket is already bound.
- */
-export class ERR_SOCKET_ALREADY_BOUND extends SocketError {
-  get message () { return 'Socket is already bound' }
-}
-
-/**
- * @ignore
- */
-export class ERR_SOCKET_BAD_BUFFER_SIZE extends SocketError {}
-
-/**
- * @ignore
- */
-export class ERR_SOCKET_BUFFER_SIZE extends SocketError {}
-
-/**
- * Thrown when the socket is already connected.
- */
-export class ERR_SOCKET_DGRAM_IS_CONNECTED extends SocketError {
-  get message () { return 'Alread connected' }
-}
-
-/**
- * Thrown when the socket is not connected.
- */
-export class ERR_SOCKET_DGRAM_NOT_CONNECTED extends SocketError {
-  syscall = 'getpeername'
-  get message () { return 'Not connected' }
-}
-
-/**
- * Thrown when the socket is not running (not bound or connected).
- */
-export class ERR_SOCKET_DGRAM_NOT_RUNNING extends SocketError {
-  get message () { return 'Not running' }
-}
-
-/**
- * Thrown when a bad socket type is used in an argument.
- */
-export class ERR_SOCKET_BAD_TYPE extends TypeError {
-  code = 'ERR_SOCKET_BAD_TYPE'
-  get message () {
-    return 'Bad socket type specified. Valid types are: udp4, udp6'
-  }
-}
-
-/**
- * Thrown when a bad port is given.
- */
-export class ERR_SOCKET_BAD_PORT extends RangeError {
-  code = 'ERR_SOCKET_BAD_PORT'
-}
-
 function defaultCallback (socket) {
   return (err) => {
     if (err) socket.emit('error', err)
@@ -1218,6 +1154,70 @@ export class Socket extends EventEmitter {
   unref () {
     return this
   }
+}
+
+/**
+ * Generic error class for an error occurring on a `Socket` instance.
+ * @ignore
+ */
+export class SocketError extends InternalError {
+  get code () { return this.constructor.name }
+}
+
+/**
+ * Thrown when a socket is already bound.
+ */
+export class ERR_SOCKET_ALREADY_BOUND extends SocketError {
+  get message () { return 'Socket is already bound' }
+}
+
+/**
+ * @ignore
+ */
+export class ERR_SOCKET_BAD_BUFFER_SIZE extends SocketError {}
+
+/**
+ * @ignore
+ */
+export class ERR_SOCKET_BUFFER_SIZE extends SocketError {}
+
+/**
+ * Thrown when the socket is already connected.
+ */
+export class ERR_SOCKET_DGRAM_IS_CONNECTED extends SocketError {
+  get message () { return 'Alread connected' }
+}
+
+/**
+ * Thrown when the socket is not connected.
+ */
+export class ERR_SOCKET_DGRAM_NOT_CONNECTED extends SocketError {
+  syscall = 'getpeername'
+  get message () { return 'Not connected' }
+}
+
+/**
+ * Thrown when the socket is not running (not bound or connected).
+ */
+export class ERR_SOCKET_DGRAM_NOT_RUNNING extends SocketError {
+  get message () { return 'Not running' }
+}
+
+/**
+ * Thrown when a bad socket type is used in an argument.
+ */
+export class ERR_SOCKET_BAD_TYPE extends TypeError {
+  code = 'ERR_SOCKET_BAD_TYPE'
+  get message () {
+    return 'Bad socket type specified. Valid types are: udp4, udp6'
+  }
+}
+
+/**
+ * Thrown when a bad port is given.
+ */
+export class ERR_SOCKET_BAD_PORT extends RangeError {
+  code = 'ERR_SOCKET_BAD_PORT'
 }
 
 export default exports
