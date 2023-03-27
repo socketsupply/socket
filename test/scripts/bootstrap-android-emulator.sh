@@ -27,10 +27,13 @@ fi
 if [ -n "$ssc_env" ]; then
   echo "# Sourcing $ssc_env"
   source "$ssc_env"
+fi
+
+if [ -n "$ANDROID_SDK_MANAGER" ]; then
   sdkmanager="$ANDROID_HOME/$ANDROID_SDK_MANAGER"
-  avdmanager="$(dirname $sdkmanager)/avdmanager"
-  export ANDROID_HOME
-  export JAVA_HOME
+  ext="${sdkmanager##*.}"
+  [[ -n "$ext" ]] && ext=".$ext"
+  avdmanager="$(dirname "$sdkmanager")/avdmanager$ext"
 fi
 
 if [ -z "$ANDROID_HOME" ]; then
