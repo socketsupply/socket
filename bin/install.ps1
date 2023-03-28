@@ -379,6 +379,58 @@ Function Get-UrlCall {
   }
 }
 
+Function Build-SSCToPathTaskBlock {
+  param([string]$binPath)
+  $regPath = (Get-ItemProperty -Path 'Registry::HKCU\Environment' -Name Path).Path
+
+  Write-Log "h" "# Checking for ssc.exe in PATH..."
+
+  if ($regPath -like "*$binPath*") {
+    Write-Log "h" "Found $binPath in user PATH"
+    return
+  }
+
+  $prompt = "Do you want to add ssc.exe to your user PATH?"
+  $task = [string]{
+    Write-Log "h" "# Adding ssc.exe to PATH..."
+    $backup = "$env:LOCALAPPDATA\.userpath.txt"
+    Write-Log "v" "# Backing up path to $backup"
+    $regPath = (Get-ItemProperty -Path 'Registry::HKCU\Environment' -Name Path).Path
+    Write-Output "$regPath" >> $backup
+    SETX PATH """$binPath"";$regPath"
+    Write-Log "h" "# Done"
+  }
+  $task = $task.replace("`$binPath", $binPath)
+
+  Write-Output $prompt
+  Write-Output $task
+}
+
+Function Execute-PromptedTaskBlock() {
+  param($prompt, $task)
+
+  $wrapper = [string]{
+    $task
+  }
+
+  $script = 
+  $wrapper = "
+  . ""$OLD_CWD\bin\install.ps1"" -declare_only
+  $($wrapper.replace("`$task", $task))
+  "
+
+  if (($prompt -ne $null) -and ((Prompt $prompt) -eq 'y')) {
+    Invoke-Expression $("$wrapper")
+  }
+}
+
+Function Prompt-AddSSCToPath {
+  # This method has been implemented in a builder / execute pattern which will be used to refactor other install tasks
+  # but admin priviledges aren't required to add to user's PATH
+  $prompt, $task = $(Build-SSCToPathTaskBlock $BIN_PATH)
+  Execute-PromptedTaskBlock $prompt $task
+}
+
 Function Install-Requirements {
   Write-Log "v" "# Logging to $logfile"
   if (-not (Found-Command("curl"))) {
@@ -773,7 +825,6 @@ if ($shbuild) {
   }
 
   $env:PATH="$BIN_PATH;$($env:PATH)"
-  $global:path_advice += "`$env:PATH='$BIN_PATH;'+`$env:PATH"
 
   cd $OLD_CWD
   $install_sh = """$sh"" bin\install.sh $global:forceArg"
@@ -782,6 +833,8 @@ if ($shbuild) {
   $exit=$LASTEXITCODE
   if ($exit -ne "0") {
     $global:install_errors += "$install_sh failed: $exit"
+  } else {
+    Prompt-AddSSCToPath
   }
 }
 
