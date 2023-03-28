@@ -1505,6 +1505,7 @@ yarn-error.log*
 lerna-debug.log*
 .pnpm-debug.log*
 .sscrc
+.*.env
 
 # Ignore all files in the node_modules folder
 node_modules/
