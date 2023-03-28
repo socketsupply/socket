@@ -146,7 +146,7 @@ function advice {
   elif [[ "$(uname -r)" == *"ARCH"* ]]; then
     echo "sudo pacman -S $1"
   elif [[ "$(uname -s)" == *"Linux"* ]]; then
-    echo "apt-get install $1"
+    echo "sudo apt-get install $1"
   fi
 }
 
