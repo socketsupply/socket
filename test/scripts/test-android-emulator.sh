@@ -53,7 +53,6 @@ while [[ "$boot_completed" != "1" ]] ; do
   boot_completed="$($adb shell getprop sys.boot_completed 2>/dev/null)"
   # reliable cross platform method of waiting for background process asynchronously
   bootstrap_exit_code="$(cat "$temp")"
-  echo "bootstrap_exit_code: $bootstrap_exit_code"
   if [[ -n "$bootstrap_exit_code" ]] && [[ "$bootstrap_exit_code" != "0" ]]; then
     # emuator already exited
     echo "Android Emulator failed to boot."
