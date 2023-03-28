@@ -431,6 +431,55 @@ Function Prompt-AddSSCToPath {
   Execute-PromptedTaskBlock $prompt $task
 }
 
+Function Add-InstallTask() {
+  param([ref]$install_tasks, [array]$install_args)
+
+  # Build-*InstallBlock functions return array of [prompt, task]
+  # Empty array indicates dep already installed
+  if (($install_args.Count -eq 0) -Or ($install_args[0] -eq $null)) {
+    return $true
+  }
+
+  $prompt = $install_args[0]
+  $task = $install_args[1]
+
+  if (($prompt -ne $null) -and ((Prompt $prompt) -eq 'y')) {
+    $install_tasks.value += $task
+    return $true
+  }
+
+  return $false
+}
+
+Function Build-VCRuntimeInstallBlock() {
+  param($vc_runtime_test_path)
+  if ((Test-Path "$vc_runtime_test_path" -PathType Leaf) -eq $true) {
+    Write-Log "h" "# $vc_runtime_test_path found."
+    return
+  }
+    
+  $installer = "vc_redist.x64.exe"
+  $url = "https://aka.ms/vs/17/release/$installer"
+  $prompt = "$installer is a requirement, proceed with install from Microsoft? y/[n]?"
+
+  $t = [string]{
+      Write-Log "h" "# Downloading $url"
+      $r=-geturl-
+      Write-Log "v" "HTTP result: $r"
+      if ($r -ne 200) {
+        Return 1
+      }
+      Write-Log "h" "# Installing $env:TEMP\$installer"
+      iex "& $env:TEMP\$installer /quiet"
+      Write-Log "v" "Install result: $LASTEXITCODE"
+      return $LASTEXITCODE
+  }
+  $t = $t.replace("`$installer", $installer).replace("`$env:TEMP", $env:TEMP).replace("`$url", $url).replace("-geturl-", (Get-UrlCall "$url" "$env:TEMP\$installer")).replace("""", "\""")
+  
+  Write-Output $prompt
+  Write-Output $t
+}
+
 Function Install-Requirements {
   Write-Log "v" "# Logging to $logfile"
   if (-not (Found-Command("curl"))) {
@@ -438,32 +487,16 @@ Function Install-Requirements {
   }
 
   $install_tasks = @()
+  $all_deps_accepted = $false
   
   $vc_runtime_test_path = "$env:SYSTEMROOT\System32\vcruntime140_1.dll"
-  if ((Test-Path "$vc_runtime_test_path" -PathType Leaf) -eq $false) {
-    
-    $installer = "vc_redist.x64.exe"
-    $url = "https://aka.ms/vs/17/release/$installer"
-    $confirmation = Prompt "$installer is a requirement, proceed with install from Microsoft? y/[n]?" 
-    
-    if ($confirmation -eq 'y') {
-      $t = [string]{
-        Write-Log "h" "# Downloading $url"
-        $r=-geturl-
-        Write-Log "v" "HTTP result: $r"
-        if ($r -ne 200) {
-          Return 1
-        }
-        Write-Log "h" "# Installing $env:TEMP\$installer"
-        iex "& $env:TEMP\$installer /quiet"
-        Write-Log "v" "Install result: $LASTEXITCODE"
-        return $LASTEXITCODE
-      }
-      $t = $t.replace("`$installer", $installer).replace("`$env:TEMP", $env:TEMP).replace("`$url", $url).replace("-geturl-", (Get-UrlCall "$url" "$env:TEMP\$installer")).replace("""", "\""")
-      $install_tasks += $t
-    }
-  } else {
-    Write-Log "h" "# $vc_runtime_test_path found."
+  if (
+    # Example of how multiple tasks will look
+    # ((Add-InstallTask ([ref]$install_tasks) $(Build-VCRuntimeInstallBlock "$vc_runtime_test_path")) -eq $true) -and
+    ((Add-InstallTask ([ref]$install_tasks) $(Build-VCRuntimeInstallBlock "$vc_runtime_test_path")) -eq $true)
+  ) { 
+    Write-Log "d" "All deps accepted."
+    $all_deps_accepted = $true
   }
 
   $gitPath = "$env:ProgramFiles\Git\bin"
@@ -684,56 +717,70 @@ Function Install-Requirements {
     }
   }
 
-  # Install process will write exit code back to this file
-  $deps_status_file="$($env:Temp)\socket-deps-$(New-Guid).dat"
-  Write-Log "d" "deps_status_file: $deps_status_file"
+  if ($all_deps_accepted) {
+    # Install process will write exit code back to this file
+    $deps_status_file="$($env:Temp)\socket-deps-$(New-Guid).dat"
+    Write-Log "d" "deps_status_file: $deps_status_file"
 
-  if ($install_tasks.Count -gt 0) {
-    Write-Log "h" "# Installing build dependencies..."
-    $script = ". ""$OLD_CWD\bin\install.ps1"" -declare_only"
-    # concatinate all script blocks so a single UAC request is raised
-    foreach ($task in $install_tasks) {
+    if ($install_tasks.Count -gt 0) {
+      Write-Log "h" "# Installing build dependencies..."
+      $script = ". ""$OLD_CWD\bin\install.ps1"" -declare_only"
+      # concatinate all script blocks so a single UAC request is raised
+      foreach ($task in $install_tasks) {
+        $script = "$($script)
+        Write-Log ""v"" ""Running install tasks"";
+        `$r=Invoke-Command {$($task)}
+        if (`$r -ne 0) {
+          # Write-Log ""v"" ""fInstall task failed: `$r""
+          Write-Output `$r > ""$deps_status_file""
+          return `$r
+        }
+        "
+      }
+
       $script = "$($script)
-      Write-Log ""v"" ""Running install tasks"";
-      `$r=Invoke-Command {$($task)}
-      if (`$r -ne 0) {
-        # Write-Log ""v"" ""fInstall task failed: `$r""
-        Write-Output `$r > ""$deps_status_file""
-        return `$r
-      }
-      "
-    }
-
-    if ($debug) {
-      $install_script_name="$($env:Temp)\socket-deps-$(New-Guid).ps1"
-      Write-Log "d" "Writing install script to $install_script_name"
-      Write-Output "$script".replace("\""", """") > $install_script_name
-    }
-
-    try {
-      Start-Process powershell -verb runas -wait -ArgumentList "$script"
-    } catch [InvalidOperationException] {
-      $global:install_errors += "not ok - UAC declined, nothing installed."
-    }
-
-    if (Test-Path $deps_status_file) {
-      $global:install_errors += "not ok - Dependency installation incomplete: "
-
-      foreach ($line in Get-Content($deps_status_file).split("`r`n")) {
-        $global:install_errors += "Exit code: $line"
-      }
+      Write-Output ""0"" > ""$deps_status_file.final""
+  "
 
       if ($debug) {
         $install_script_name="$($env:Temp)\socket-deps-$(New-Guid).ps1"
-        Write-Log "d" "Writing intall script to $install_script_name"
+        Write-Log "d" "Writing install script to $install_script_name"
         Write-Output "$script".replace("\""", """") > $install_script_name
-      } else {
-        Remove-Item $deps_status_file
       }
-    }    
-    
-    Exit-IfErrors
+
+      try {
+        Start-Process powershell -verb runas -wait -ArgumentList "$script"
+      } catch [InvalidOperationException] {
+        $global:install_errors += "not ok - UAC declined, nothing installed."
+      }
+
+      if (Test-Path $deps_status_file) {
+        $global:install_errors += "not ok - Dependency installation incomplete: "
+
+        foreach ($line in Get-Content($deps_status_file).split("`r`n")) {
+          $global:install_errors += "Exit code: $line"
+        }
+
+        if ($debug) {
+          $install_script_name="$($env:Temp)\socket-deps-$(New-Guid).ps1"
+          Write-Log "d" "Writing intall script to $install_script_name"
+          Write-Output "$script".replace("\""", """") > $install_script_name
+        } else {
+          Remove-Item $deps_status_file
+        }
+      } elseif ((Test-Path "$deps_status_file.final") -eq $false) {
+        if ($global:install_errors.Count -eq 0) {
+          $global:install_errors += "Final exit signal not received from UAC context, forced termination may have occurred."
+        }
+      } else {
+        Remove-Item "$deps_status_file.final"
+      }
+    }
+  } elseif ($shbuild) {
+    $global:install_errors += "Some dependencies were declined, unable to continue."
   }
+    
+  Exit-IfErrors
 
   if ($install_vc_build) {
     $vc_exists, $vc_vars = $(Get-VCVars)
