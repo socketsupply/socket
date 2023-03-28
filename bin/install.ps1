@@ -480,25 +480,7 @@ Function Build-VCRuntimeInstallBlock() {
   Write-Output $t
 }
 
-Function Install-Requirements {
-  Write-Log "v" "# Logging to $logfile"
-  if (-not (Found-Command("curl"))) {
-    $global:useCurl = $false
-  }
-
-  $install_tasks = @()
-  $all_deps_accepted = $false
-  
-  $vc_runtime_test_path = "$env:SYSTEMROOT\System32\vcruntime140_1.dll"
-  if (
-    # Example of how multiple tasks will look
-    # ((Add-InstallTask ([ref]$install_tasks) $(Build-VCRuntimeInstallBlock "$vc_runtime_test_path")) -eq $true) -and
-    ((Add-InstallTask ([ref]$install_tasks) $(Build-VCRuntimeInstallBlock "$vc_runtime_test_path")) -eq $true)
-  ) { 
-    Write-Log "d" "All deps accepted."
-    $all_deps_accepted = $true
-  }
-
+Function Build-GitInstallBlock() {
   $gitPath = "$env:ProgramFiles\Git\bin"
 
   # Look for git in path
@@ -507,111 +489,117 @@ Function Install-Requirements {
     $global:git = "$gitPath\$global:git"
     $global:path_advice += "`$env:PATH='$gitPath;'+`$env:PATH"
   } else {
-    Write-Output ("# Git found at, changing path to: $global:git")
+    Write-Log "h" "# Git found at, changing path to: $global:git"
   }
 
-  if (-not (Found-Command($global:git))) {
-
-    $confirmation = Prompt "git is a requirement, proceed with install from github.com/git-for-windows? y/[n]?"
-    $installer = "Git-2.39.1-64-bit.exe"
-    $installer_tmp = "Git-2.39.1-64-bit.tmp"
-    $url = "https://github.com/git-for-windows/git/releases/download/v2.39.1.windows.1/$installer"
-
-    if ($confirmation -eq 'y') {
-      $t = [string]{
-        Write-Log "h" "# Downloading $url"
-        $r=-geturl-
-        Write-Log "v" "HTTP result: $r"
-        if ($r -ne 200) {
-          Return 1
-        }
-        Write-Log "h" "# Installing $env:TEMP\$installer"
-        iex "& $env:TEMP\$installer /SILENT"
-        # Waiting for initial process to end doesn't work because a separate installer process is launched after extracting to tmp
-        sleep 1
-        $install_pid=(Get-Process $installer_tmp).id        
-        $p = New-Object System.Diagnostics.Process
-        $processes = @()
-        foreach ($install_pid in (Get-Process $installer_tmp).id) {
-          Write-Log "d" "# watch sub process: $install_pid"
-          $processes+=[System.Diagnostics.Process]::GetProcessById([int]$install_pid)
-        }
-        
-        Write-Log "v" "# Waiting for $installer_tmp..."
-        foreach ($proc in $processes) {
-          $proc.WaitForExit()
-          # This doesn't work, may improve in the future. Exit code is always empty.
-          # We check existence of installed tools later
-          if ($proc.ExitCode -ne 0) {
-            Write-Log "v" "Install result: $($proc.ExitCode)"
-          }
-        }
-        return 0
-      }      
-      $t = $t.replace("`$installer_tmp", $installer_tmp).replace("`$installer", $installer).replace("`$env:TEMP", $env:TEMP).replace("`$url", $url).replace("-geturl-", (Get-UrlCall "$url" "$env:TEMP\$installer")).replace("""", "\""")
-      $install_tasks += $t
-    }
-  } else {
+  if (Found-Command($global:git)) {    
     Write-Log "h" "# Found git.exe"
+    return
   }
 
+  $prompt = "git is a requirement, proceed with install from github.com/git-for-windows? y/[n]?"
+  $installer = "Git-2.39.1-64-bit.exe"
+  $installer_tmp = "Git-2.39.1-64-bit.tmp"
+  $url = "https://github.com/git-for-windows/git/releases/download/v2.39.1.windows.1/$installer"
+
+  $t = [string]{
+    Write-Log "h" "# Downloading $url"
+    $r=-geturl-
+    Write-Log "v" "HTTP result: $r"
+    if ($r -ne 200) {
+      Return 1
+    }
+    Write-Log "h" "# Installing $env:TEMP\$installer"
+    iex "& $env:TEMP\$installer /SILENT"
+    # Waiting for initial process to end doesn't work because a separate installer process is launched after extracting to tmp
+    sleep 1
+    $install_pid=(Get-Process $installer_tmp).id        
+    $p = New-Object System.Diagnostics.Process
+    $processes = @()
+    foreach ($install_pid in (Get-Process $installer_tmp).id) {
+      Write-Log "d" "# watch sub process: $install_pid"
+      $processes+=[System.Diagnostics.Process]::GetProcessById([int]$install_pid)
+    }
+    
+    Write-Log "v" "# Waiting for $installer_tmp..."
+    foreach ($proc in $processes) {
+      $proc.WaitForExit()
+      # This doesn't work, may improve in the future. Exit code is always empty.
+      # We check existence of installed tools later
+      if ($proc.ExitCode -ne 0) {
+        Write-Log "v" "Install result: $($proc.ExitCode)"
+      }
+    }
+    return 0
+  }      
+  $t = $t.replace("`$installer_tmp", $installer_tmp).replace("`$installer", $installer).replace("`$env:TEMP", $env:TEMP).replace("`$url", $url).replace("-geturl-", (Get-UrlCall "$url" "$env:TEMP\$installer")).replace("""", "\""")
+  
+  Write-Output $prompt
+  Write-Output $t
+}
+
+Function Build-CMakeInstallBlock() {
   # install `cmake.exe`
-  if ($shbuild) {
-    $cmakePath = ""
-    if (-not (Test-CommandVersion("cmake", $targetCmakeVersion))) {
-      $cmakePath = "$env:ProgramFiles\CMake\bin"
-      if ((Test-Path $cmakePath -PathType Container) -eq $true) {
-        $env:PATH="$cmakePath\;$env:PATH"
-        $global:cmake = "$cmakePath\$global:cmake"
-      }
-    }
+  if ($shbuild -eq $false) {
+    return
+  }
 
-    if (-not (Test-CommandVersion("cmake", $targetCmakeVersion))) {
-
-      $confirmation = Prompt "CMake is a requirement, proceed with install from cmake.org? y/[n]?"
-      $installer = "cmake-3.26.0-rc2-windows-x86_64.msi"
-      $url = "https://github.com/Kitware/CMake/releases/download/v3.26.0-rc2/$installer"
-
-      if ($confirmation -eq 'y') {
-        $t = [string]{
-          Write-Log "h" "# Downloading $url"
-          $r=-geturl-
-          Write-Log "v" "HTTP result: $r"
-          if ($r -ne 200) {
-            Return 1
-          }
-          Write-Log "h" "# Installing $env:TEMP\$installer"
-          iex "& $env:TEMP\$installer /quiet"
-          sleep 2
-          $p = New-Object System.Diagnostics.Process
-          $processes = @()
-          foreach ($install_pid in (Get-Process "msiexec").id) {
-            $process=[System.Diagnostics.Process]::GetProcessById([int]$install_pid)
-            $commandLine = Get-CimInstance Win32_Process -Filter "ProcessId = '$install_pid'" | Select-Object CommandLine
-            if ($commandLine -like "*$installer*") {
-              Write-Log "d" "cmake installer args: $($install_pid): $($commandLine)"
-              Write-Log "d" "# watch sub process: $install_pid"
-              $processes+=$process
-            }
-          }
-          
-          Write-Log "h" "# Waiting for $installer_tmp..."
-          foreach ($proc in $processes) {
-            $proc.WaitForExit()
-            # This doesn't work, may improve in the future. Exit code is always empty.
-            # We check existence of installed tools later
-            if ($proc.ExitCode -ne 0) {
-              Write-Log "v" "Install result: $($proc.ExitCode)"
-            }
-          }
-          return 0
-        }
-        $t = $t.replace("`$installer", $installer).replace("`$env:TEMP", $env:TEMP).replace("`$url", $url).replace("-geturl-", (Get-UrlCall "$url" "$env:TEMP\$installer")).replace("""", "\""")
-        $install_tasks += $t
-      }
+  $cmakePath = ""
+  if (-not (Test-CommandVersion("cmake", $targetCmakeVersion))) {
+    $cmakePath = "$env:ProgramFiles\CMake\bin"
+    if ((Test-Path $cmakePath -PathType Container) -eq $true) {
+      $env:PATH="$cmakePath\;$env:PATH"
+      $global:cmake = "$cmakePath\$global:cmake"
     }
   }
 
+  if (Test-CommandVersion("cmake", $targetCmakeVersion)) {
+    return
+  }
+
+  $prompt = "CMake is a requirement, proceed with install from cmake.org? y/[n]?"
+  $installer = "cmake-3.26.0-rc2-windows-x86_64.msi"
+  $url = "https://github.com/Kitware/CMake/releases/download/v3.26.0-rc2/$installer"
+
+  $t = [string]{
+    Write-Log "h" "# Downloading $url"
+    $r=-geturl-
+    Write-Log "v" "HTTP result: $r"
+    if ($r -ne 200) {
+      Return 1
+    }
+    Write-Log "h" "# Installing $env:TEMP\$installer"
+    iex "& $env:TEMP\$installer /quiet"
+    sleep 2
+    $p = New-Object System.Diagnostics.Process
+    $processes = @()
+    foreach ($install_pid in (Get-Process "msiexec").id) {
+      $process=[System.Diagnostics.Process]::GetProcessById([int]$install_pid)
+      $commandLine = Get-CimInstance Win32_Process -Filter "ProcessId = '$install_pid'" | Select-Object CommandLine
+      if ($commandLine -like "*$installer*") {
+        Write-Log "d" "cmake installer args: $($install_pid): $($commandLine)"
+        Write-Log "d" "# watch sub process: $install_pid"
+        $processes+=$process
+      }
+    }
+    
+    Write-Log "h" "# Waiting for $installer_tmp..."
+    foreach ($proc in $processes) {
+      $proc.WaitForExit()
+      # This doesn't work, may improve in the future. Exit code is always empty.
+      # We check existence of installed tools later
+      if ($proc.ExitCode -ne 0) {
+        Write-Log "v" "Install result: $($proc.ExitCode)"
+      }
+    }
+    return 0
+  }
+  $t = $t.replace("`$installer", $installer).replace("`$env:TEMP", $env:TEMP).replace("`$url", $url).replace("-geturl-", (Get-UrlCall "$url" "$env:TEMP\$installer")).replace("""", "\""")
+  Write-Output $prompt
+  Write-Output $t
+}
+
+Function Build-LLVMInstallBlock() {
   $clang = "clang++"
   if (("llvm+vsbuild" -eq $toolchain) -or ("llvm" -eq $toolchain)) {
     $clangPath = "$env:ProgramFiles\LLVM\bin"
@@ -619,38 +607,73 @@ Function Install-Requirements {
     if (-not (Test-CommandVersion("clang++", $targetClangVersion))) {
       $clang = "$clangPath\$clang"
       $global:path_advice += "`$env:PATH='$clangPath;'+`$env:PATH"
-    }
-
-    if (-not (Test-CommandVersion("clang++", $targetClangVersion))) {
-
-      $confirmation = Prompt "LLVM will be downloaded for clang++, proceed? y/[n]?"
-      if ($confirmation -eq 'y') {
-        $installer = "LLVM-15.0.7-win64.exe"
-        $url = "https://github.com/llvm/llvm-project/releases/download/llvmorg-15.0.7/$installer"
-
-        if ($confirmation -eq 'y') {
-          $t = [string]{
-            Write-Log "h" "# Downloading $url"
-            $r=-geturl-
-            Write-Log "v" "HTTP result: $r"
-            if ($r -ne 200) {
-              Return 1
-            }
-            Write-Log "h" "# Installing $env:TEMP\$installer"
-            iex "& $env:TEMP\$installer /S"
-            sleep 1
-            $proc=Get-Process $installer
-            Write-Log "h" "# Waiting for $installer..."
-          }
-          $t = $t.replace("`$installer", $installer).replace("`$env:TEMP", $env:TEMP).replace("`$url", $url).replace("-geturl-", (Get-UrlCall "$url" "$env:TEMP\$installer")).replace("""", "\""")
-          $install_tasks += $t
-        }
-      }
-
       $env:PATH="$clangPath;$env:PATH"
-    } else {
-      Write-Log "h" "# Found clang++.exe"
     }
+
+    if (Test-CommandVersion("clang++", $targetClangVersion)) {
+      Write-Log "h" "# Found clang++.exe"
+      return
+    }
+  } else {
+    return
+  }
+
+  $prompt = "LLVM will be downloaded for clang++, proceed? y/[n]?"
+  $installer = "LLVM-15.0.7-win64.exe"
+  $url = "https://github.com/llvm/llvm-project/releases/download/llvmorg-15.0.7/$installer"
+
+  $t = [string]{
+    Write-Log "h" "# Downloading $url"
+    $r=-geturl-
+    Write-Log "v" "HTTP result: $r"
+    if ($r -ne 200) {
+      Return 1
+    }
+    Write-Log "h" "# Installing $env:TEMP\$installer"
+    iex "& $env:TEMP\$installer /S"
+    sleep 1
+    $proc=Get-Process $installer
+    Write-Log "h" "# Waiting for $installer..."
+  }
+  $t = $t.replace("`$installer", $installer).replace("`$env:TEMP", $env:TEMP).replace("`$url", $url).replace("-geturl-", (Get-UrlCall "$url" "$env:TEMP\$installer")).replace("""", "\""")
+  $install_tasks += $t
+
+  Write-Output $prompt
+  Write-Output $t
+}
+
+Function Build-VSBuildInstallBlock() {
+  if ($install_vc_build -eq $false) {
+    return
+  }
+  $report_vc_vars_reqd = $true
+  $prompt = "clang $targetClangVersion, Windows SDK$and_nmake are required, proceed with install from Microsoft? y/[n]?"
+  $installer = "vs_buildtools.exe"
+  $url = "https://aka.ms/vs/17/release/$installer"
+
+  $t = [string]{ 
+    Write-Log "h" "# Downloading $url"
+    $r=-geturl-
+    Write-Log "v" "HTTP result: $r"
+    if ($r -ne 200) {
+      Return 1
+    }
+    Write-Log "h" "# Installing $env:TEMP\$installer"
+    iex "& $env:TEMP\$installer --passive --config $OLD_CWD\$bin\$vsconfig"
+    Write-Log "v" "Install result: $LASTEXITCODE"
+    return $LASTEXITCODE
+  }
+  $t = $t.replace("`$OLD_CWD", $OLD_CWD).replace("`$bin", $bin).replace("`$vsconfig", $vsconfig)
+  $t = $t.replace("`$installer", $installer).replace("`$env:TEMP", $env:TEMP).replace("`$url", $url).replace("-geturl-", (Get-UrlCall "$url" "$env:TEMP\$installer")).replace("""", "\""")
+  
+  Write-Output $prompt
+  Write-Output $t
+}
+
+Function Install-Requirements {
+  Write-Log "v" "# Logging to $logfile"
+  if (-not (Found-Command("curl"))) {
+    $global:useCurl = $false
   }
 
   $and_nmake = ""
@@ -687,34 +710,24 @@ Function Install-Requirements {
 
     # Check windows SDK
     if (($env:WindowsSdkDir -eq $null) -or ((Test-Path $env:WindowsSdkDir -PathType Container) -eq $false)) {
-      Write-Host "h" "WindowsSdkDir not set."
+      Write-Log "v" "WindowsSdkDir not set."
       $install_vc_build = $true
     }
+  }
 
-    if ($install_vc_build) {
-      $report_vc_vars_reqd = $true
-      $confirmation = Prompt "clang $targetClangVersion, Windows SDK$and_nmake are required, proceed with install from Microsoft? y/[n]?"
-      $installer = "vs_buildtools.exe"
-      $url = "https://aka.ms/vs/17/release/$installer"
-
-      if ($confirmation -eq 'y') {
-        $t = [string]{ 
-          Write-Log "h" "# Downloading $url"
-          $r=-geturl-
-          Write-Log "v" "HTTP result: $r"
-          if ($r -ne 200) {
-            Return 1
-          }
-          Write-Log "h" "# Installing $env:TEMP\$installer"
-          iex "& $env:TEMP\$installer --passive --config $OLD_CWD\$bin\$vsconfig"
-          Write-Log "v" "Install result: $LASTEXITCODE"
-          return $LASTEXITCODE
-        }
-        $t = $t.replace("`$OLD_CWD", $OLD_CWD).replace("`$bin", $bin).replace("`$vsconfig", $vsconfig)
-        $t = $t.replace("`$installer", $installer).replace("`$env:TEMP", $env:TEMP).replace("`$url", $url).replace("-geturl-", (Get-UrlCall "$url" "$env:TEMP\$installer")).replace("""", "\""")
-        $install_tasks += $t
-      }
-    }
+  $install_tasks = @()
+  $all_deps_accepted = $false
+  
+  $vc_runtime_test_path = "$env:SYSTEMROOT\System32\vcruntime140_1.dll"
+  if (
+    (Add-InstallTask ([ref]$install_tasks) $(Build-VCRuntimeInstallBlock "$vc_runtime_test_path")) -and
+    (Add-InstallTask ([ref]$install_tasks) $(Build-GitInstallBlock)) -and 
+    (Add-InstallTask ([ref]$install_tasks) $(Build-CMakeInstallBlock)) -and 
+    (Add-InstallTask ([ref]$install_tasks) $(Build-LLVMInstallBlock)) -and 
+    (Add-InstallTask ([ref]$install_tasks) $(Build-VSBuildInstallBlock $install_vc_build))
+  ) { 
+    Write-Log "d" "All deps accepted."
+    $all_deps_accepted = $true
   }
 
   if ($all_deps_accepted) {
