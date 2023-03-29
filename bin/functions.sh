@@ -138,6 +138,13 @@ function host_arch() {
   uname -m | sed 's/aarch64/arm64/g'
 }
 
+function use_bin_ext() {
+  # binaries and scripts have extensions under Win32
+  local os="$2"
+  [[ -z "$os" ]] && os="$(host_os)"
+  [[ "$os" == "Win32" ]] && echo "$1"
+}
+
 function build_env_data() {
   echo "ANDROID_HOME=\"$(escape_path "$ANDROID_HOME")\""
   echo "JAVA_HOME=\"$(escape_path "$JAVA_HOME")\""
