@@ -19,7 +19,7 @@ namespace SSC::android {
 
     StringStream stream;
 
-    for (auto const &var : split(this->config["build_env"], ',')) {
+    for (auto const &var : parseStringList(this->config["build_env"])) {
       auto key = trim(var);
       auto value = getEnv(key.c_str());
 

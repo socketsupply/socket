@@ -213,6 +213,11 @@ class ConcurrentQueue extends EventTarget {
     if (typeof concurrency === 'number' && concurrency > 0) {
       this.concurrency = concurrency
     }
+
+    this.addEventListener('error', (event) => {
+      const { error, type } = event
+      globalThis.dispatchEvent?.(new ErrorEvent(event, { error }))
+    })
   }
 
   async wait () {
@@ -266,7 +271,7 @@ class RuntimeXHRPostQueue extends ConcurrentQueue {
       return
     }
 
-    setTimeout(() => {
+    Promise.resolve().then(() => {
       const { data } = result
       const detail = { headers, params, data, id }
       promise.resolve()
