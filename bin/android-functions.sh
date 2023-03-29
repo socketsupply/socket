@@ -89,6 +89,7 @@ function get_android_default_search_paths() {
 function test_javac_version() {
   local javac=$1
   local target_version=$2
+  local jc_v
 
   jc_v="$("$javac" --version 2>/dev/null)"; r=$?
   if [[ "$r" != "0" ]]; then
@@ -111,6 +112,8 @@ function get_android_paths() {
   local _sdk
   local _jh
   local _gh
+  local android_home_test
+  local sdk_man_test
 
   for android_home_test in "${ANDROID_HOME_SEARCH_PATHS[@]}"; do
     for sdk_man_test in "${ANDROID_SDK_MANAGER_SEARCH_PATHS[@]}"; do
@@ -124,6 +127,10 @@ function get_android_paths() {
       fi
     done
   done
+
+  local temp
+  local java_home_test
+  local javac
 
   temp=$(mktemp)
   for java_home_test in "${JAVA_HOME_SEARCH_PATHS[@]}"; do
@@ -165,10 +172,12 @@ function get_android_paths() {
 
   if [[ $(stat_size "$temp") != 0 ]]; then
     _jh=$(cat "$temp")
-    echo >&2 "jh: $_jh"
   fi
 
   echo -n > "$temp"
+
+  local gradle_test
+  local gradle
 
   for gradle_test in "${GRADLE_SEARCH_PATHS[@]}"; do
     write_log "v" "Checking $gradle_test/bin/gradle$bat"
@@ -216,10 +225,7 @@ function get_android_paths() {
 }
 
 function build_android_platform_tools_uri() {
-  local os="$(host_os)"
-
-  uri=${ANDROID_PLATFORM_TOOLS_URI_TEMPLATE/\{os\}/"$(android_host_platform "$os")"}
-  echo "$uri"
+  echo "${ANDROID_PLATFORM_TOOLS_URI_TEMPLATE/\{os\}/"$(android_host_platform "$(host_os)")"}"
 }
 
 function build_android_command_line_tools_uri() {
@@ -231,17 +237,14 @@ function build_android_command_line_tools_uri() {
     os="win"
   fi
 
-  uri=${ANDROID_COMMAND_LINE_TOOLS_URI_TEMPLATE/\{os\}/"$os"}
-  echo "$uri"
+  echo "${ANDROID_COMMAND_LINE_TOOLS_URI_TEMPLATE/\{os\}/"$os"}"
 }
 
 
 function build_jdk_uri() {
-  local os="$(host_os)"
+  local os="$(lower "$(host_os)")"
   local arch=$(uname -m)
   local format="tar.gz"
-
-  os="$(lower "$os")"
 
   if [[ "$os" == "darwin" ]]; then
     os="macos"
@@ -526,6 +529,7 @@ function android_install_jdk() {
     return 1
   fi
 
+  local _jh
   prompt_new_path "Enter parent location for JAVA_HOME (The JDK will be extracted within this folder)" "${JAVA_HOME_SEARCH_PATHS[0]}" _jh \
     "!CAN_EXIST!"
   
@@ -566,6 +570,7 @@ function android_install_gradle() {
     return 1
   fi
 
+  local _gh
   prompt_new_path "Enter parent location for GRADLE_HOME (Gradle will be extracted within this folder)" "${GRADLE_SEARCH_PATHS[0]}" _gh \
     "!CAN_EXIST!"
   
@@ -598,13 +603,17 @@ function android_install_gradle() {
 
 function android_first_time_experience_setup() {
   if 
-  [[ -d "$ANDROID_HOME" ]] && [[ -f "$ANDROID_HOME/$ANDROID_SDK_MANAGER" ]] && 
-  [[ -d "$JAVA_HOME" ]] && [[ -d "$GRADLE_HOME" ]] && 
-  [[ -n "$ANDROID_SDK_MANAGER_ACCEPT_LICENSES" ]];
+    [[ -d "$ANDROID_HOME" ]] && [[ -f "$ANDROID_HOME/$ANDROID_SDK_MANAGER" ]] && 
+    [[ -d "$JAVA_HOME" ]] && [[ -d "$GRADLE_HOME" ]] && 
+    [[ -n "$ANDROID_SDK_MANAGER_ACCEPT_LICENSES" ]];
   then
     return 0
   fi
   # builds global search path list
+  local sdk_result
+  local jdk_result
+  local gradle_result
+  local yes
   get_android_default_search_paths
   android_install_sdk_manager; sdk_result=$?
   android_install_jdk; jdk_result=$?
@@ -612,11 +621,11 @@ function android_first_time_experience_setup() {
 
   if [[ -z "$ANDROID_SDK_MANAGER_ACCEPT_LICENSES" ]]; then
     if prompt_yn "Do you want to automatically accept all Android SDK Manager licenses?"; then
-      local yes="$(which "yes" 2>/dev/null)"
+      yes="$(which "yes" 2>/dev/null)"
       # Store yes path in native format so it can be used by ssc later
       ANDROID_SDK_MANAGER_ACCEPT_LICENSES="$(native_path "$yes")"
       if [ ! -f "$yes" ]; then
-        write_log "h" "not ok - yes binary not found, unable to accept Android SDK Manager licenses."
+      write_log "h" "not ok - yes binary not found, unable to accept Android SDK Manager licenses."
       fi
     else
       ANDROID_SDK_MANAGER_ACCEPT_LICENSES="n"
@@ -646,7 +655,7 @@ function android_fte() {
     write_env_data
     if android_first_time_experience_setup; then
 
-      # Move ANDROID_SDK_MANAGER_JAVA_OPTS into JAVA_OPTS temporarily. We can't store it in .ssc.env because it doesn't work with gradle
+      # Move ANDROID_SDK_MANAGER_JAVA_OPTS into JAVA_OPTS temporarily. We can't store JAVA_OPTS in .ssc.env because it doesn't work with gradle
       OLD_JAVA_OPTS="$JAVA_OPTS"
       [[ -n "$ANDROID_SDK_MANAGER_JAVA_OPTS" ]] && JAVA_OPTS="$OLD_JAVA_OPTS $ANDROID_SDK_MANAGER_JAVA_OPTS"
 
