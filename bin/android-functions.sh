@@ -114,6 +114,8 @@ function get_android_paths() {
   local _gh
   local android_home_test
   local sdk_man_test
+  local bat="$(use_bin_ext ".bat")"
+  local exe="$(use_bin_ext ".exe")"
 
   for android_home_test in "${ANDROID_HOME_SEARCH_PATHS[@]}"; do
     for sdk_man_test in "${ANDROID_SDK_MANAGER_SEARCH_PATHS[@]}"; do
@@ -404,15 +406,6 @@ function android_supported_abis() {
 }
 export ANDROID_DEPS_ERROR
 
-declare cmd=""
-declare exe=""
-declare bat=""
-if [[ "$(host_os)" == "Win32" ]]; then
-  exe=".exe"
-  cmd=".cmd"
-  bat=".bat"
-fi
-
 declare ANDROID_PLATFORM="33"
 declare NDK_VERSION="25.0.8775105"
 
@@ -514,7 +507,7 @@ function android_install_sdk_manager() {
 
   ANDROID_HOME="$_ah"
   export ANDROID_HOME
-  ANDROID_SDK_MANAGER="$(native_path "cmdline-tools/latest/bin/sdkmanager$bat")"
+  ANDROID_SDK_MANAGER="$(native_path "cmdline-tools/latest/bin/sdkmanager$(use_bin_ext ".bat")")"
   export ANDROID_SDK_MANAGER
 
   return 0
@@ -691,7 +684,8 @@ function android_fte() {
     ANDROID_DEPS_ERROR=1
   fi
 
-  export NDK_BUILD="$ANDROID_HOME/ndk/$NDK_VERSION/ndk-build$cmd"
+  NDK_BUILD="$ANDROID_HOME/ndk/$NDK_VERSION/ndk-build$(use_bin_ext ".cmd")"
+  export NDK_BUILD
   
   return $?
 }
