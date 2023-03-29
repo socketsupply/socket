@@ -430,7 +430,7 @@ namespace SSC {
         }
 
         if (opts.appData.size() > 0) {
-          for (auto const &envKey : split(opts.appData["build_env"], ',')) {
+          for (auto const &envKey : parseStringList(opts.appData["build_env"])) {
             auto cleanKey = trim(envKey);
             auto envValue = getEnv(cleanKey.c_str());
 
@@ -439,7 +439,7 @@ namespace SSC {
             );
           }
         } else {
-          for (auto const &envKey : split(this->options.appData["build_env"], ',')) {
+          for (auto const &envKey : parseStringList(this->options.appData["build_env"])) {
             auto cleanKey = trim(envKey);
             auto envValue = getEnv(cleanKey.c_str());
 

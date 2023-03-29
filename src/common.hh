@@ -946,6 +946,23 @@ namespace SSC {
     std::this_thread::yield();
     std::this_thread::sleep_for(std::chrono::milliseconds(n));
   }
+
+  inline Vector<String> parseStringList (const String& string) {
+    auto list = Vector<String>();
+    for (const auto& part : split(string, ',')) {
+      list.push_back(part);
+    }
+
+    for (const auto& part : split(string, ' ')) {
+      list.push_back(part);
+    }
+
+    return list;
+  }
+
+  inline Vector<String> parseStringList (const String& string, const char separator) {
+    return split(string, separator);
+  }
 }
 
 #endif // SSC_H

@@ -60,7 +60,7 @@ namespace SSC::IPC {
     char* bytes = nullptr;
     MessageBuffer(char* bytes, size_t size)
         : size(size), bytes(bytes) { }
-#ifdef _WIN32
+  #ifdef _WIN32
     ICoreWebView2ExperimentalSharedBuffer* shared_buf = nullptr;
     MessageBuffer(ICoreWebView2ExperimentalSharedBuffer* buf, size_t size)
         : size(size), shared_buf(buf) {
@@ -70,7 +70,7 @@ namespace SSC::IPC {
         // TODO(trevnorris): Handle this
       }
     }
-#endif
+  #endif
     MessageBuffer() = default;
   };
 

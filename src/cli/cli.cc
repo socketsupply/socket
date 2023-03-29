@@ -297,7 +297,7 @@ int runApp (const fs::path& path, const String& args, bool headless) {
 
     env[@"SSC_CLI_PID"] = [NSString stringWithFormat: @"%d", getpid()];
 
-    for (auto const &envKey : split(settings["build_env"], ',')) {
+    for (auto const &envKey : parseStringList(settings["build_env"])) {
       auto cleanKey = trim(envKey);
       auto envValue = getEnv(cleanKey.c_str());
       auto key = [NSString stringWithUTF8String: cleanKey.c_str()];
@@ -1019,7 +1019,7 @@ int main (const int argc, const char* argv[]) {
         if (String(arg).starts_with("--env")) {
           auto value = optionValue(subcommand, arg, "--env");
           if (value.size() > 0) {
-            auto parts = split(value, ' ');
+            auto parts = split(value, ':');
             for (const auto& part : parts) {
               envs.push_back(part);
             }
@@ -1750,7 +1750,7 @@ int main (const int argc, const char* argv[]) {
 
       auto aaptNoCompressOptionsNormalized = std::vector<String>();
       auto aaptNoCompressDefaultOptions = split(R"OPTIONS("htm","html","txt","js","jsx","mjs","ts","css","xml")OPTIONS", ',');
-      auto aaptNoCompressOptions = split(settings["android_aapt_no_compress"], ',');
+      auto aaptNoCompressOptions = parseStringList(settings["android_aapt_no_compress"]);
 
       settings["android_aapt_no_compress"] = "";
 
@@ -1806,7 +1806,7 @@ int main (const int argc, const char* argv[]) {
         auto filters = settings["android_ndk_abi_filters"];
         settings["android_ndk_abi_filters"] = "";
 
-        for (auto const &filter : split(filters, ' ')) {
+        for (auto const &filter : parseStringList(filters)) {
           auto value = trim(replace(filter, "\"", "'"));
 
           if (value.size() == 0) {
@@ -1835,7 +1835,7 @@ int main (const int argc, const char* argv[]) {
 
       if (settings["android_manifest_permissions"].size() > 0) {
         settings["android_manifest_permissions"] = replace(settings["android_manifest_permissions"], ",", " ");
-        for (auto const &value: split(settings["android_manifest_permissions"], ' ')) {
+        for (auto const &value: parseStringList(settings["android_manifest_permissions"])) {
           auto permission = replace(trim(value), "\"", "");
           StringStream xml;
 
@@ -1923,7 +1923,7 @@ int main (const int argc, const char* argv[]) {
       // custom native sources
       for (
         auto const &file :
-        split(settings["android_native_sources"], ' ')
+        parseStringList(settings["android_native_sources"])
       ) {
         auto filename = fs::path(file).filename();
         writeFile(
@@ -2009,7 +2009,7 @@ int main (const int argc, const char* argv[]) {
       );
 
       // custom source files
-      for (auto const &file : split(settings["android_sources"], ' ')) {
+      for (auto const &file : parseStringList(settings["android_sources"])) {
         // log(String("Android source: " + String(target / file)).c_str());
         writeFile(
           pkg / fs::path(file).filename(),
