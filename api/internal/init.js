@@ -215,8 +215,9 @@ class ConcurrentQueue extends EventTarget {
     }
 
     this.addEventListener('error', (event) => {
+      // @ts-ignore
       const { error, type } = event
-      globalThis.dispatchEvent?.(new ErrorEvent(event, { error }))
+      globalThis.dispatchEvent?.(new ErrorEvent(type, { error }))
     })
   }
 
