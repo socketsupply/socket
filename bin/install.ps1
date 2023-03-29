@@ -460,7 +460,7 @@ Function Build-VCRuntimeInstallBlock() {
     
   $installer = "vc_redist.x64.exe"
   $url = "https://aka.ms/vs/17/release/$installer"
-  $prompt = "$installer is a requirement, proceed with install from Microsoft? y/[n]?"
+  $prompt = "$installer is required to run ssc.exe, proceed with install from Microsoft? y/[n]?"
 
   $t = [string]{
       Write-Log "h" "# Downloading $url"
@@ -715,19 +715,52 @@ Function Install-Requirements {
     }
   }
 
-  $install_tasks = @()
-  $all_deps_accepted = $false
-  
+  # Check if there are any install tasks before querying user
+  $check_tasks = @()
   $vc_runtime_test_path = "$env:SYSTEMROOT\System32\vcruntime140_1.dll"
-  if (
-    (Add-InstallTask ([ref]$install_tasks) $(Build-VCRuntimeInstallBlock "$vc_runtime_test_path")) -and
-    (Add-InstallTask ([ref]$install_tasks) $(Build-GitInstallBlock)) -and 
-    (Add-InstallTask ([ref]$install_tasks) $(Build-CMakeInstallBlock)) -and 
-    (Add-InstallTask ([ref]$install_tasks) $(Build-LLVMInstallBlock)) -and 
-    (Add-InstallTask ([ref]$install_tasks) $(Build-VSBuildInstallBlock $install_vc_build))
-  ) { 
+  $vcruntime_task = $(Build-VCRuntimeInstallBlock "$vc_runtime_test_path")
+  $vsbuild_task = $null
+  # += , syntax prevents array unrolling, we will get an array of arrays
+  $check_tasks += , $vcruntime_task
+  if ($shbuild) {
+    $vsbuild_task = $(Build-VSBuildInstallBlock $install_vc_build)
+    $check_tasks += , $(Build-GitInstallBlock)
+    $check_tasks += , $(Build-CMakeInstallBlock)
+    $check_tasks += , $(Build-LLVMInstallBlock)
+    $check_tasks += , $vsbuild_task
+  }
+  $vsbuild_missing = ($vsbuild_task -ne $null)
+
+  $all_deps_accepted = $true
+  foreach ($task in $check_tasks) {
+    if (($task -ne $null) -and ($task[0].length -gt 0)) {
+      $all_deps_accepted = $false
+    }
+  }
+
+  if (($all_deps_accepted -eq $false) -and ($vsbuild_missing) -and ($shbuild)) {
+    $prompt = "Do you want to install Windows Build dependencies? This will enable you to build Windows apps.
+Download size: 5.5GB, Installed size: 10.2GB y/[N]"
+    if ((Prompt $prompt) -ne 'y') {
+      $check_tasks = @()
+      if ($vcruntime_task[0].length -gt 0) {
+        $check_tasks += , $vcruntime_task
+      }
+    }
+  }
+
+  # Write-Host $check_tasks
+
+  $install_tasks = @()
+  $all_deps_accepted = $true
+  foreach ($task in $check_tasks) {
+    if ((Add-InstallTask ([ref]$install_tasks) $($task)) -eq $false) {
+      $all_deps_accepted = $false
+    }
+  }
+  
+  if ($all_deps_accepted) { 
     Write-Log "d" "All deps accepted."
-    $all_deps_accepted = $true
   }
 
   if ($all_deps_accepted) {
