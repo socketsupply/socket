@@ -170,7 +170,7 @@ function write_env_data() {
     if [[ "$old_hash" != "$new_hash" ]]; then
       mv "$temp" "$root/$SSC_ENV_FILENAME"
     else
-      rm "$temp"
+      rm -f "$temp"
     fi
   fi
 }
