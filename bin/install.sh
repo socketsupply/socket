@@ -169,6 +169,8 @@ if [ "$host" == "Linux" ]; then
   die $? "not ok - missing build tools, try \"$(advice "autoconf")\""
   quiet command -v pkg-config
   die $? "not ok - missing pkg-config tool, \"$(advice 'pkg-config')\""
+  quiet command -v libtoolize
+  die $? "not ok - missing build tools, try \"$(advice "libtool")\""
 fi
 
 if [[ -n "$BUILD_ANDROID" ]]; then
@@ -231,7 +233,7 @@ function _build_cli {
     quiet $CXX "${cflags[@]}"  \
       -c "${sources[$i]}"        \
       -o "${outputs[$i]}"
-    die $? "not ok - unable to build. See trouble shooting guide in the README.md file:\n$CXX ${cflags[@]} -c \"${sources[$i]}\" -o \"${outputs[$i]}\""
+    die $? "$CXX ${cflags[@]} -c \"${sources[$i]}\" -o \"${outputs[$i]}\""
   done
 
   local exe=""
