@@ -157,6 +157,8 @@ function read_env_data() {
 function write_env_data() {
   # Maintain mtime on $SSC_ENV_FILENAME, only update if changed
   local temp=$(mktemp)
+  local new_hash
+  local old_hash
   build_env_data > "$temp"
 
   if [[ ! -f "$root/$SSC_ENV_FILENAME" ]]; then
@@ -176,6 +178,7 @@ function write_env_data() {
 function prompt() {
   write_log "h" "$1"
   local return=$2
+  local input
   read -rp '> ' input
   # effectively stores $input in $2 by reference, rather than using echo to return which would prevent echo "$1" going to stdout
   eval "$return=\"$input\""
@@ -183,8 +186,9 @@ function prompt() {
 }
 
 function prompt_yn() {
-  prompt "$1 [y/N]" r
+  local r
   local return=$2
+  prompt "$1 [y/N]" r
 
   if [[ "$(lower "$r")" == "y" ]]; then
     return 0
@@ -194,11 +198,10 @@ function prompt_yn() {
 
 function prompt_new_path() {
   local text="$1"
-  default="$2"
   local return=$3
   local exists_message=$4
   local input=""
-  lf=$'\n'
+  local unix_input=""
 
   if [ -n "$2" ]; then
     write_log "h" "$text"
@@ -213,7 +216,7 @@ function prompt_new_path() {
     fi
     # remove any quote characters
     input=${input//\"/}
-    local unix_input="$(unix_path "$input")"
+    unix_input="$(unix_path "$input")"
     if [ -e "$unix_input" ]; then
       if [ "$exists_message" == "!CAN_EXIST!" ]; then
         input="$(native_path "$(abs_path "$unix_input")")"
@@ -257,7 +260,7 @@ function abs_path() {
 
   local p="$(sh -c "cd '$test'; pwd")$basename"
   # mingw sh returns incorrect escape slash if path contains spaces, swap / for \
-  local p="${p///\ /\\ }"
+  p="${p///\ /\\ }"
   echo "$p"
 }
 
@@ -265,12 +268,13 @@ download_to_tmp() {
   local uri=$1
   local tmp="$(mktemp -d)"
   local output=$tmp/"$(basename "$uri")"
+  local http_code
 
   if [ -n "$SSC_ANDROID_REPO" ]; then
     echo >&2 cp "$SSC_ANDROID_REPO/$(basename "$uri")" "$output"
     cp "$SSC_ANDROID_REPO/$(basename "$uri")" "$output" || return $?
   else
-    local http_code=$(curl -L --write-out '%{http_code}' "$uri" --output "$output")
+    http_code=$(curl -L --write-out '%{http_code}' "$uri" --output "$output")
     # DONT COMMIT
     cp "$output" ..
     if  [ "$http_code" != "200" ] ; then
@@ -333,8 +337,7 @@ function get_top_level_archive_dir() {
   return $?
 }
 
-function lower()
-{
+function lower() {
   echo "$1"|tr '[:upper:]' '[:lower:]'
 }
 
