@@ -201,7 +201,7 @@ function get_android_paths() {
   if [[ $(stat_size "$temp") != 0 ]]; then
     _gh=$(cat "$temp")
   fi
-  rm "$temp"
+  rm -f "$temp"
 
   if [[ -n "$_ah" ]]; then
     ANDROID_HOME="$(native_path "$_ah")"
@@ -477,7 +477,7 @@ function android_install_sdk_manager() {
     write_log "h" "Failed to unpack $archive"
     return 1
   fi
-  rm "$archive"
+  rm -f "$archive"
 
   if ! prompt_yn "Android Command line tools is required for building Android apps. Install it now?"; then
     return 1
@@ -504,7 +504,7 @@ function android_install_sdk_manager() {
     write_log "h" "Failed to unpack $archive"
     return 1
   fi
-  rm "$archive"
+  rm -f "$archive"
 
   
   # The contents of cmdline-tools need to be in cmdline-tools/latest (Per sdkmanager: Either specify it explicitly with --sdk_root= or move this package into its expected location: <sdk>\cmdline-tools\latest\)
@@ -554,7 +554,7 @@ function android_install_jdk() {
     write_log "h" "Failed to unpack $archive"
     return 1
   fi
-  rm "$archive"
+  rm -f "$archive"
   [[ "$(host_os)" == "Darwin" ]] && os_specific_path="/Contents/Home"
   JAVA_HOME="$(native_path "$(escape_path "$_jh")/$archive_dir$os_specific_path")"
   export JAVA_HOME
@@ -595,7 +595,7 @@ function android_install_gradle() {
     write_log "h" "Failed to unpack $archive"
     return 1
   fi
-  rm "$archive"
+  rm -f "$archive"
   GRADLE_HOME="$(native_path "$(escape_path "$_gh")/$archive_dir")"
   export GRADLE_HOME
   return 0
