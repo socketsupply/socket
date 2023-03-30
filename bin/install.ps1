@@ -503,7 +503,6 @@ Function Build-GitInstallBlock() {
   if (-not (Found-Command($global:git))) {
     # Look for git in default location, in case it was installed in a previous session
     $global:git = "$gitPath\$global:git"
-    $global:path_advice += "`$env:PATH='$gitPath;'+`$env:PATH"
   } else {
     Write-Log "h" "# Git found at, changing path to: $global:git"
   }
@@ -622,7 +621,6 @@ Function Build-LLVMInstallBlock() {
 
     if (-not (Test-CommandVersion("clang++", $targetClangVersion))) {
       $clang = "$clangPath\$clang"
-      $global:path_advice += "`$env:PATH='$clangPath;'+`$env:PATH"
       $env:PATH="$clangPath;$env:PATH"
     }
 
@@ -883,7 +881,6 @@ Download size: 5.5GB, Installed size: 10.2GB y/[N]"
       } else {
         # Use short path, spaces cause issues in install.sh
         $WIN_DEBUG_LIBS = (New-Object -ComObject Scripting.FileSystemObject).GetFile($WIN_DEBUG_LIBS).ShortPath
-        $global:path_advice += "`$env:WIN_DEBUG_LIBS='$WIN_DEBUG_LIBS'"
         $env:WIN_DEBUG_LIBS="$WIN_DEBUG_LIBS"
       }
     }
@@ -902,7 +899,6 @@ Download size: 5.5GB, Installed size: 10.2GB y/[N]"
       $global:install_errors += "not ok - unable to install cmake"
     } else {
       if ($cmakePath -ne '') {
-        $global:path_advice += "`$env:PATH='$cmakePath;'+`$env:PATH"
         $env:PATH="$cmakePath\;$env:PATH"
       }
     }
@@ -911,7 +907,6 @@ Download size: 5.5GB, Installed size: 10.2GB y/[N]"
   if ($report_vc_vars_reqd) {
     if (Found-Command("clang++.exe")) {
       $file = (New-Object -ComObject Scripting.FileSystemObject).GetFile($(Get-CommandPath "clang++.exe"))
-      $global:path_advice += "`$env:PATH='$($file.ParentFolder.Path)'+`$env:PATH"
     }
   }
 }
