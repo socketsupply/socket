@@ -243,6 +243,28 @@ Function Test-CommandVersion {
   Write-Output $false
 }
 
+Function Locate-Git() {
+  # TODO(mribbons): This function should be used across the board but isn't ready yet
+  # Function has to support finding git on path after the first call. ProgramFiles should not be cached.
+  $gitPath = "$env:ProgramFiles\Git"
+  $git = "git.exe"
+
+  if ((Found-Command($git))) {
+    Get-CommandPath("$git")
+    return $true
+  } else {
+    $git = "$gitPath\$git"
+    
+    if ((Found-Command($git))) {
+      Get-CommandPath("$git")
+      return $false
+    }
+  }
+
+  Write-Output ""
+  return 1
+}
+
 Function Bits-Download {
   param($params)
   $url=$params[0]
@@ -752,15 +774,29 @@ Function Install-Requirements {
     }
   }
 
-  if ($shbuild) {
-    $prompt = "Do you want to install Android build dependencies?
-Download size: 4.6GB, Installed size: 11.7GB y/[N]"
-    if ((Prompt $prompt) -ne 'y') {
-      $global:yesDepsArg = "--no-android-fte"
+  if (($shbuild) -and ($env:CI -eq $null)) {
+    $_gitPath, $exists = Locate-Git
+    $promptAndroid = $true
+    if ($exists) {
+      $sh = "$($fso.GetFile($_gitPath).ParentFolder.Path)\sh.exe"
+      $android_setup_required_sh = """$sh"" bin\android-functions.sh --android-setup-required"
+      Write-Log "v" "# Calling $android_setup_required_sh"
+      iex "& $android_setup_required_sh"
+      if ($LASTEXITCODE -eq 0) {
+        $promptAndroid = $false
+      }
+    }
+
+    if ($promptAndroid) {
+      $prompt = "Do you want to install Android build dependencies?
+  Download size: 4.6GB, Installed size: 11.7GB y/[N]"
+      if ((Prompt $prompt) -ne 'y') {
+        $global:yesDepsArg = "--no-android-fte"
+      }
     }
   }
 
-  if (($all_deps_accepted -eq $false) -and ($vsbuild_missing) -and ($shbuild)) {
+  if (($all_deps_accepted -eq $false) -and ($vsbuild_missing) -and ($shbuild) -and ($env:CI -eq $null)) {
     $prompt = "Do you want to install Windows build dependencies? This will enable you to build Windows apps.
 Download size: 5.5GB, Installed size: 10.2GB y/[N]"
     if ((Prompt $prompt) -ne 'y') {

@@ -646,6 +646,18 @@ function android_first_time_experience_setup() {
   return 0
 }
 
+function android_setup_required() {
+  read_env_data
+  if
+    [[ -z "$ANDROID_HOME" ]] || [[ ! -d "$ANDROID_HOME" ]] || 
+    [[ ! -f "$ANDROID_HOME/$ANDROID_SDK_MANAGER" ]] || 
+    [[ -z "$JAVA_HOME" ]] || [[ ! -d "$JAVA_HOME" ]]; 
+  then
+    return 1
+  fi
+
+  return 0
+}
 
 export android_fte
 
@@ -713,6 +725,7 @@ function main() {
   while (( $# > 0 )); do
     declare arg="$1"; shift
     [[ "$arg" == "--android-fte" ]] && android_fte "$@"
+    [[ "$arg" == "--android-setup-required" ]] && android_setup_required "$@"
   done
 }
 
