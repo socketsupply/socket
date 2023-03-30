@@ -25,7 +25,7 @@ $global:useCurl = $true
 $global:WIN_DEBUG_LIBS = ""
 $global:path_advice = @()
 $global:install_errors = @()
-$global:forceArg = ""
+$forceArg = ""
 $targetClangVersion = "15.0.0"
 $targetCmakeVersion = "3.24.0"
 $logfile="$env:LOCALAPPDATA\socket_install_ps1.log"
@@ -47,8 +47,8 @@ if ($verbose) {
 }
 [Environment]::SetEnvironmentVariable("VERBOSE", $set_verbose)
 
-if ($force -eq $true) {
-  $global:forceArg = "--force"
+if ($force) {
+  $forceArg = "--force"
 }
 
 Function Exit-IfErrors {
@@ -940,7 +940,7 @@ if ($shbuild) {
   $env:PATH="$BIN_PATH;$($env:PATH)"
 
   cd $OLD_CWD
-  $install_sh = """$sh"" bin\install.sh $global:forceArg"
+  $install_sh = """$sh"" bin\install.sh $forceArg"
   Write-Log "h" "# Calling $install_sh"
   iex "& $install_sh"
   $exit=$LASTEXITCODE
