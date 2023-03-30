@@ -213,8 +213,8 @@ function prompt() {
   write_log "h" "$1"
   local return=$2
   local input
-  read -rp '> ' input
   # effectively stores $input in $2 by reference, rather than using echo to return which would prevent echo "$1" going to stdout
+  read -rp '> ' input
   eval "$return=\"$input\""
   write_log "f" "input: $input"
 }
@@ -222,7 +222,19 @@ function prompt() {
 function prompt_yn() {
   local r
   local return=$2
-  prompt "$1 [y/N]" r
+
+  # echo "prompt_yn, $PROMPT_DEFAULT_YN, $1"
+
+  if [[ -n "$PROMPT_DEFAULT_YN" ]]; then
+    write_log "h" "$1 [y/N]"
+    write_log "h" "default: $PROMPT_DEFAULT_YN"
+    r="$PROMPT_DEFAULT_YN"
+  else
+    prompt "$1 [y/N]" r
+  fi
+
+  # prompt "$1 [y/N]" r
+  # write_log "v" "r: $r"
 
   if [[ "$(lower "$r")" == "y" ]]; then
     return 0

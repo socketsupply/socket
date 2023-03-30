@@ -607,6 +607,13 @@ function android_first_time_experience_setup() {
   local jdk_result
   local gradle_result
   local yes
+  local PROMPT_DEFAULT_YN
+
+  if [[ -n "$pass_yes_deps" ]]; then
+    PROMPT_DEFAULT_YN="y"
+    export PROMPT_DEFAULT_YN
+  fi
+
   get_android_default_search_paths
   android_install_sdk_manager; sdk_result=$?
   android_install_jdk; jdk_result=$?
@@ -622,7 +629,12 @@ function android_first_time_experience_setup() {
       fi
     else
       ANDROID_SDK_MANAGER_ACCEPT_LICENSES="n"
+      yes="echo"
     fi
+  fi
+
+  if [[ -n "$pass_yes_deps" ]]; then
+    unset PROMPT_DEFAULT_YN
   fi
 
   write_env_data
@@ -638,7 +650,14 @@ function android_first_time_experience_setup() {
 export android_fte
 
 function android_fte() {
+  pass_yes_deps=""
+
   [[ -n "$android_fte" ]] && return 0
+
+  while (( $# > 0 )); do
+    declare arg="$1"; shift
+    [[ "$arg" == "--yes-deps" ]] && pass_yes_deps="$arg"
+  done
 
   android_fte=1
 
@@ -693,7 +712,7 @@ function android_fte() {
 function main() {
   while (( $# > 0 )); do
     declare arg="$1"; shift
-    [[ "$arg" == "--android-fte" ]] && android_fte
+    [[ "$arg" == "--android-fte" ]] && android_fte "$@"
   done
 }
 

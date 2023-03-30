@@ -1,9 +1,10 @@
-param([Switch]$debug, [Switch]$verbose, [Switch]$force, [Switch]$shbuild=$true, [Switch]$package_setup, [Switch]$declare_only=$false, $toolchain = "vsbuild")
+param([Switch]$debug, [Switch]$verbose, [Switch]$force, [Switch]$shbuild=$true, [Switch]$package_setup, [Switch]$declare_only=$false, [Switch]$yesdeps=$false, $toolchain = "vsbuild")
 
 # -shbuild:$false - Don't run bin\install.sh (Builds runtime lib)
 #                 - Fail silently (allow npm install-pre-reqs script '&& exit' to work to close y/n prompt window)
 # -debug          - Enable debug builds (DEBUG=1)
 # -verbose        - Enable verbose build output (VERBOSE=1)
+# -yesdeps       - Automatically install dependencies
 
 $OLD_CWD = (Get-Location).Path
 
@@ -26,6 +27,7 @@ $global:WIN_DEBUG_LIBS = ""
 $global:path_advice = @()
 $global:install_errors = @()
 $forceArg = ""
+$global:yesDepsArg = ""
 $targetClangVersion = "15.0.0"
 $targetCmakeVersion = "3.24.0"
 $logfile="$env:LOCALAPPDATA\socket_install_ps1.log"
@@ -49,6 +51,10 @@ if ($verbose) {
 
 if ($force) {
   $forceArg = "--force"
+}
+
+if ($yesdeps) {
+  $global:yesDepsArg = "--yes-deps"
 }
 
 Function Exit-IfErrors {
@@ -125,8 +131,16 @@ Function Prompt {
   param($text)
   Write-LogFile "$text`n> "
   Write-Host "$text`n> " -NoNewLine
-  $r = $Host.UI.ReadLine()
-  Write-LogFile "User input: $r"
+
+  # note that we don't have a specific Prompt-Yn in powershell, everything is a yn
+  if ($yesdeps) {
+    Write-Host "default y"
+    Write-LogFile "default y" 
+    $r = "y"
+  } else {
+    $r = $Host.UI.ReadLine()
+    Write-LogFile "User input: $r"
+  }
   Write-Output $r
 }
 
@@ -740,8 +754,16 @@ Function Install-Requirements {
     }
   }
 
+  if ($shbuild) {
+    $prompt = "Do you want to install Android build dependencies?
+Download size: 4.6GB, Installed size: 11.7GB y/[N]"
+    if ((Prompt $prompt) -ne 'y') {
+      $global:yesDepsArg = "--no-android-fte"
+    }
+  }
+
   if (($all_deps_accepted -eq $false) -and ($vsbuild_missing) -and ($shbuild)) {
-    $prompt = "Do you want to install Windows Build dependencies? This will enable you to build Windows apps.
+    $prompt = "Do you want to install Windows build dependencies? This will enable you to build Windows apps.
 Download size: 5.5GB, Installed size: 10.2GB y/[N]"
     if ((Prompt $prompt) -ne 'y') {
       $check_tasks = @()
@@ -940,7 +962,7 @@ if ($shbuild) {
   $env:PATH="$BIN_PATH;$($env:PATH)"
 
   cd $OLD_CWD
-  $install_sh = """$sh"" bin\install.sh $forceArg"
+  $install_sh = """$sh"" bin\install.sh $forceArg $global:yesDepsArg"
   Write-Log "h" "# Calling $install_sh"
   iex "& $install_sh"
   $exit=$LASTEXITCODE

@@ -46,6 +46,14 @@ while (( $# > 0 )); do
     force=1; continue
   fi
 
+  if [[ "$arg" = "--yes-deps" ]] || [[ "$arg" = "-y" ]]; then
+    pass_yes_deps="$arg"; continue
+  fi
+
+  if [[ "$arg" == "--no-android-fte" ]]; then
+    no_android_fte=1; continue
+  fi
+
   args+=("$arg")
 done
 
@@ -181,12 +189,15 @@ fi
 
 if [[ -n "$BUILD_ANDROID" ]] && [[ "arm64" == "$(host_arch)" ]] && [[ "Linux" == "$host" ]]; then
   echo "warn - Android not supported on "$host"-"$(uname -m)", will unset BUILD_ANDROID"
+fi
+
+if [[ -n "$no_android_fte" ]] && [[ -z "$ANDROID_HOME" ]]; then
   unset BUILD_ANDROID
 fi
 
 if [[ -n "$BUILD_ANDROID" ]]; then
 
-  android_fte
+  android_fte "$pass_yes_deps"
 
   abis=($(android_supported_abis))
   platform="android"
