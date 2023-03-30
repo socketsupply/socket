@@ -52,6 +52,8 @@ if ($force -eq $true) {
 }
 
 Function Exit-IfErrors {
+  # Restore colors, clang can mess with them. Always do this, even if not exiting.
+  [Console]::ResetColor()
   if ($global:install_errors.Count -gt 0) {
     foreach ($e in $global:install_errors) {
       Write-Log "h" $e
@@ -894,7 +896,9 @@ Download size: 5.5GB, Installed size: 10.2GB y/[N]"
 
 Install-Requirements
 
-if ($shbuild) {
+$valid_clang = $(Test-CommandVersion("clang++", $targetClangVersion))
+
+if (($shbuild) -Or ($valid_clang)) {
   $gitPath = "$env:ProgramFiles\Git\bin"
   $sh = "$gitPath\sh.exe"
 
@@ -909,6 +913,22 @@ if ($shbuild) {
     $global:install_errors += "not ok - sh.exe not in PATH or default Git\bin"
     Exit-IfErrors
   }
+}
+
+if ($valid_clang) {
+  $file = (New-Object -ComObject Scripting.FileSystemObject).GetFile($(Get-CommandPath "clang++.exe"))
+  Write-Log "v" "Converting $($file.Path) to $($file.ShortPath) for install.sh."
+  $update_cxx_env_sh = """$sh"" ./bin/functions.sh --update-env-data CXX='$($file.ShortPath)'"
+  Write-Log "v" "Calling $update_cxx_env_sh"
+  iex "& $update_cxx_env_sh"
+  $exit=$LASTEXITCODE
+  if ($exit -ne "0") {
+    $global:install_errors += "$update_cxx_env_sh failed: $exit"
+  }
+  Exit-IfErrors
+}
+
+if ($shbuild) {
 
   $find_check = iex "& ""$sh"" -c 'find --version'" | Out-String
 
@@ -937,13 +957,6 @@ if ($global:path_advice.Count -gt 0) {
   foreach ($p in $global:path_advice) {
     Write-Log "h" $p
   }
-}
-
-if ($package_setup -eq $true) {
-  $paths = @{}
-  $file = (New-Object -ComObject Scripting.FileSystemObject).GetFile($(Get-CommandPath "clang++.exe"))
-  $paths["CXX"] = $file.ShortPath
-  ConvertTo-Json $paths > env.json
 }
 
 cd $OLD_CWD

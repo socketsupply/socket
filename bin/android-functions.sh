@@ -145,10 +145,10 @@ function get_android_paths() {
         # subshell, output to file
         echo "$(dirname "$(dirname "$javac")")" > "$temp"
         echo "$java_home_test" > "$temp"
-        write_log "v" "Using a $javac"
+        write_log "v" "Using predetermined javac $javac"
         break
       else
-        write_log "v" "Ignoring a $java_home_test/bin/javac$exe $jc_v"
+        write_log "v" "Ignoring predetermined javac $java_home_test/bin/javac$exe $jc_v"
         # configured JAVA_HOME is bad, unset to trigger new version install
         [[ "$JAVA_HOME" == "$java_home_test" ]] && unset JAVA_HOME
       fi
@@ -163,10 +163,10 @@ function get_android_paths() {
         test_javac_version "$javac" "$JDK_VERSION" ; r=$?
         if [[ "$r" == "0" ]]; then
           # subshell, output to file
-          write_log "v" "Using b $javac"
+          write_log "v" "Using found javac $javac"
           echo "$(dirname "$(dirname "$javac")")" > "$temp"
         else
-          write_log "v" "Ignoring b $javac $jc_v"
+          write_log "v" "Ignoring found javac $javac $jc_v"
         fi
       fi
     done

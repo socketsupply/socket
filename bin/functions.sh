@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
+declare root="$(cd "$(dirname "$(dirname "${BASH_SOURCE[0]}")")" && pwd)"
 declare SSC_ENV_FILENAME=".ssc.env"
-
 export SSC_ENV_FILENAME
 
 # BSD stat has no version argument or reliable identifier
@@ -146,6 +146,7 @@ function use_bin_ext() {
 }
 
 function build_env_data() {
+  echo "CXX=\"$(escape_path "$CXX")\""
   echo "ANDROID_HOME=\"$(escape_path "$ANDROID_HOME")\""
   echo "JAVA_HOME=\"$(escape_path "$JAVA_HOME")\""
   echo "ANDROID_SDK_MANAGER=\"$(escape_path "$ANDROID_SDK_MANAGER")\""
@@ -153,6 +154,32 @@ function build_env_data() {
   # Should not use these for general calls
   echo "ANDROID_SDK_MANAGER_JAVA_OPTS=\"-XX:+IgnoreUnrecognizedVMOptions --add-modules java.se.ee\""
   echo "ANDROID_SDK_MANAGER_ACCEPT_LICENSES=\"$ANDROID_SDK_MANAGER_ACCEPT_LICENSES\""
+}
+
+function update_env_data() {
+  read_env_data
+  local vars=()
+  local kvp
+  local fail=0
+  while (( $# > 0 )); do
+    declare arg="$1"; shift
+    IFS='=' read -ra kvp <<< "$arg"
+    if [[ "${#kvp[@]}" != "2" ]]; then
+      echo >&2 "Invalid key=pair: $arg"; fail=1
+    else
+      vars+=("${kvp[0]}=$(escape_path "${kvp[1]}")")
+    fi
+  done
+
+  (( fail )) && exit $fail
+
+  for kvp in "${vars[@]}"; do
+    write_log "v" "eval \"$kvp\""
+    eval "$kvp"
+  done
+
+  write_env_data
+  exit 0
 }
 
 function read_env_data() {
@@ -384,3 +411,20 @@ function write_log() {
 function write_log_file() {
   echo "$1" >> "$logfile"
 }
+
+function first_time_experience_setup() {
+  export BUILD_ANDROID="1"
+  "$root/bin/android-functions.sh" --android-fte
+}
+
+function main() {
+  while (( $# > 0 )); do
+    declare arg="$1"; shift
+    [[ "$arg" == "--fte" ]] && first_time_experience_setup
+    [[ "$arg" == "--update-env-data" ]] && update_env_data "$@"
+  done
+}
+
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    main "$@"
+fi

@@ -101,6 +101,8 @@ if [[ "$host" == "Win32" ]]; then
   fi
 fi
 
+read_env_data
+
 if [ ! "$CXX" ]; then
   if command -v clang++ >/dev/null 2>&1; then
     CXX="$(command -v clang++)"
