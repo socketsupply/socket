@@ -200,8 +200,11 @@ if [[ -n "$BUILD_ANDROID" ]] && [[ "arm64" == "$(host_arch)" ]] && [[ "Linux" ==
   unset BUILD_ANDROID
 fi
 
-if [[ -n "$BUILD_ANDROID" ]]; then
+if [[ -n "$no_android_fte" ]] && [[ -z "$ANDROID_HOME" ]]; then
+  unset BUILD_ANDROID
+fi
 
+if [[ -n "$BUILD_ANDROID" ]]; then
   android_fte "$pass_yes_deps"
 
   abis=($(android_supported_abis))
