@@ -14,9 +14,8 @@ import * as exports from './crypto.js'
 let getRandomValuesFallback = null
 
 if (globalThis?.process?.versions?.node) {
-  import('node:crypto').then((c) => {
-    getRandomValuesFallback = c.getRandomValues
-  })
+  let crypto = await import('node:crypto')
+  getRandomValuesFallback = crypto.getRandomValues
 }
 
 const sodium = {
