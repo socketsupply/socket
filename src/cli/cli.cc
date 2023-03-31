@@ -773,6 +773,8 @@ void printHelp (const String& command) {
     std::cout << tmpl(gHelpTextPrintBuildDir, defaultTemplateAttrs) << std::endl;
   } else if (command == "run") {
     std::cout << tmpl(gHelpTextRun, defaultTemplateAttrs) << std::endl;
+  } else if (command == "setup") {
+    std::cout << tmpl(gHelpTextSetup, defaultTemplateAttrs) << std::endl;
   }
 }
 
@@ -3646,6 +3648,74 @@ int main (const int argc, const char* argv[]) {
       auto exitCode = runApp(paths.pathBin / executable, argvForward, flagHeadless);
       exit(exitCode);
     }
+  });
+  
+  createSubcommand("setup", { "--platform" }, false, [&](const std::span<const char *>& options) -> void {
+    auto win = platform.win;
+
+    auto help = false;
+    String targetPlatform = "";
+    auto targetAndroid = false;
+    auto targetWindows = false;
+    for (auto const arg : options) {
+      if (is(arg, "-h") || is(arg, "--help")) {
+        help = true;
+      }
+
+      auto platform = optionValue("setup", options[0], "--platform");
+      if (platform.size() > 0) {
+        targetPlatform = platform;
+      }
+
+      if (help) {
+        break;
+      }
+    }
+
+    // Note that multiple --platforms aren't supported by createSubcommand()
+    if (is(targetPlatform, "android")) {
+      targetAndroid = true;
+    } else if (is(targetPlatform, "windows")) {
+      targetWindows = true;
+    } else {
+      help = true;
+    }
+
+    if (help) {
+      printHelp("setup");
+      exit(1);
+    }
+
+    if (!platform.win && targetWindows) {
+      std::cout << "Windows build dependencies can only be installed on Windows." << std::endl;
+      exit(1);
+    }
+    
+    String argument;
+    fs::path script;
+    String scriptHost;
+
+    if (platform.win) {
+      scriptHost = "powershell.exe ";
+      script = prefixFile("bin\\install.ps1");
+      argument = "-fte:" + targetPlatform;
+    } else {
+      argument = "--" + targetPlatform + "-fte";
+      if (targetAndroid) {
+        script = prefixFile("./bin/android-functions.sh");
+      }
+    }
+
+    if (!fs::exists(script)) {
+      std::cout << "Install script not found: " << script.string() << std::endl;
+      exit(1);
+    }
+
+    String command = scriptHost + script.string() + argument;
+    std::cout << command << std::endl;
+    auto r = std::system(command.c_str());
+
+    exit(r);
   });
 
   createSubcommand("env", { }, true, [&](const std::span<const char *>& options) -> void {
