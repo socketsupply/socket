@@ -123,7 +123,7 @@ ssc v{{ssc_version}}
 
 Setup build tools for target <platform>
 
-Platforms not listed below can be setup using instructions at https://socketsupply.co/guides/#mobile-guide
+Platforms not listed below can be setup using instructions at https://socketsupply.co/guides
 
 usage:
   ssc setup --platform=<platform> [--yes|-y]
