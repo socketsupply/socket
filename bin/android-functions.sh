@@ -614,6 +614,11 @@ function android_first_time_experience_setup() {
     export PROMPT_DEFAULT_YN
   fi
 
+  if android_setup_required && ! prompt_yn "Do you want to install Android build dependencies?
+Download size: 5.5GB, Installed size: 12.0GB"; then
+    return 1
+  fi
+
   get_android_default_search_paths
   android_install_sdk_manager; sdk_result=$?
   android_install_jdk; jdk_result=$?
