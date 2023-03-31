@@ -6,11 +6,11 @@
   "scripts": {
     "pretest": "standard .",
     "readme": "node ./bin/generate-docs.js",
-    "test": "cd test && npm install --silent --no-audit && npm test",
+    "test": "cp -f .ssc.env test | echo && cd test && npm install --silent --no-audit && npm test",
     "test:node": "node ./test/node/index.js",
     "test:ios-simulator": "cd test && npm install --silent --no-audit && npm run test:ios-simulator",
-    "test:android": "cd test && npm install --silent --no-audit && npm run test:android",
-    "test:android-emulator": "cd test && npm install --silent --no-audit && npm run test:android-emulator",
+    "test:android": "cp -f .ssc.env test | echo && cd test && npm install --silent --no-audit && npm run test:android",
+    "test:android-emulator": "cp -f .ssc.env test | echo && cd test && npm install --silent --no-audit && npm run test:android-emulator",
     "test:clean": "cd test && rm -rf dist",
     "update-stream-relay-source": "./bin/update-stream-relay-source.sh"
   },
