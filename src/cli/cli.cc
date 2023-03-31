@@ -3696,7 +3696,7 @@ int main (const int argc, const char* argv[]) {
     String scriptHost;
 
     if (platform.win) {
-      scriptHost = "powershell.exe ";
+      scriptHost = "powershell.exe";
       script = prefixFile("bin\\install.ps1");
       argument = "-fte:" + targetPlatform;
     } else {
@@ -3706,12 +3706,14 @@ int main (const int argc, const char* argv[]) {
       }
     }
 
+    script = fs::path(script.string().substr(0, script.string().size()-1));
+
     if (!fs::exists(script)) {
-      std::cout << "Install script not found: " << script.string() << std::endl;
+      std::cout << "Install script not found: '" << script.string() << "'" << std::endl;
       exit(1);
     }
 
-    String command = scriptHost + script.string() + argument;
+    String command = scriptHost + " \"" + script.string() + "\" " + argument;
     std::cout << command << std::endl;
     auto r = std::system(command.c_str());
 
