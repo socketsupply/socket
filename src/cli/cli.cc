@@ -3650,21 +3650,27 @@ int main (const int argc, const char* argv[]) {
     }
   });
   
-  createSubcommand("setup", { "--platform" }, false, [&](const std::span<const char *>& options) -> void {
+  createSubcommand("setup", { "--platform", "--yes" }, false, [&](const std::span<const char *>& options) -> void {
     auto win = platform.win;
 
     auto help = false;
-    String targetPlatform = "";
+    String targetPlatform;
     auto targetAndroid = false;
     auto targetWindows = false;
+    auto yes = false;
+    String yesArg;
     for (auto const arg : options) {
       if (is(arg, "-h") || is(arg, "--help")) {
         help = true;
       }
 
-      auto platform = optionValue("setup", options[0], "--platform");
+      auto platform = optionValue("setup", arg, "--platform");
       if (platform.size() > 0) {
         targetPlatform = platform;
+      }
+
+      if (is(arg, "-y") || is(arg, "--yes")) {
+        yes = true;
       }
 
       if (help) {
@@ -3699,11 +3705,13 @@ int main (const int argc, const char* argv[]) {
       scriptHost = "powershell.exe";
       script = prefixFile("bin\\install.ps1");
       argument = "-fte:" + targetPlatform;
+      yesArg = yes ? "-yesdeps" : "";
     } else {
       argument = "--" + targetPlatform + "-fte";
       if (targetAndroid) {
         script = prefixFile("./bin/android-functions.sh");
       }
+      yesArg = yes ? "--yes-deps" : "";
     }
 
     script = fs::path(script.string().substr(0, script.string().size()-1));
@@ -3713,7 +3721,7 @@ int main (const int argc, const char* argv[]) {
       exit(1);
     }
 
-    String command = scriptHost + " \"" + script.string() + "\" " + argument;
+    String command = scriptHost + " \"" + script.string() + "\" " + argument + " " + yesArg;
     std::cout << command << std::endl;
     auto r = std::system(command.c_str());
 
