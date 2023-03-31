@@ -1,4 +1,4 @@
-param([Switch]$debug, [Switch]$verbose, [Switch]$force, [Switch]$shbuild=$true, [Switch]$package_setup, [Switch]$declare_only=$false, [Switch]$yesdeps=$false, $toolchain = "vsbuild")
+param([Switch]$debug, [Switch]$verbose, [Switch]$force, [Switch]$shbuild=$true, [Switch]$package_setup, [Switch]$declare_only=$false, [Switch]$yesdeps=$false,$fte="",$toolchain = "vsbuild")
 
 # -shbuild:$false - Don't run bin\install.sh (Builds runtime lib)
 #                 - Fail silently (allow npm install-pre-reqs script '&& exit' to work to close y/n prompt window)
@@ -250,6 +250,19 @@ Function Locate-Git() {
   $git = "git.exe"
 
   if ((Found-Command($git))) {
+    $path=Get-CommandPath("$git")
+    if ($path -like "*Git\mingw64\*") {
+      # We're running under mingw, we need to locate the windows version of git to find git sh
+      $git = $path.replace("mingw64\", "")
+
+      if ((Found-Command($git))) {
+        Get-CommandPath("$git")
+        return $true
+      } else {
+        Write-Log "d" "No -mingw64 git at $git"
+      }
+    }
+
     Get-CommandPath("$git")
     return $true
   } else {
@@ -257,12 +270,12 @@ Function Locate-Git() {
     
     if ((Found-Command($git))) {
       Get-CommandPath("$git")
-      return $false
+      return $true
     }
   }
 
   Write-Output ""
-  return 1
+  return $false
 }
 
 Function Bits-Download {
@@ -774,7 +787,7 @@ Function Install-Requirements {
     }
   }
 
-  if (($shbuild) -and ($env:CI -eq $null)) {
+  if (($shbuild) -and ($env:CI -eq $null) -and ($fte -eq $null)) {
     $_gitPath, $exists = Locate-Git
     $promptAndroid = $true
     if ($exists) {
@@ -947,6 +960,34 @@ Download size: 5.5GB, Installed size: 10.2GB y/[N]"
   }
 }
 
+function Run-TargetPlatformFirstTimeExperiences() {
+
+  Write-Log "d" "fte: $fte"
+
+  if ($fte -eq "android") {
+    $_gitPath, $exists = Locate-Git
+    Write-Log "d" "git: $_gitPath"
+    if ($exists) {
+      $sh = "$($fso.GetFile($_gitPath).ParentFolder.Path)\sh.exe"
+      $android_setup_required_sh = """$sh"" bin\android-functions.sh --android-fte"
+      Write-Log "v" "# Calling $android_setup_required_sh"
+      iex "& $android_setup_required_sh"
+      exit $LASTEXITCODE
+    } else {
+      Write-Log "h" "not ok - Unable to locate git bash."
+      Exit 1
+    }
+  }
+
+  if ($fte -eq "windows") {
+    Install-Requirements
+    exit $LASTEXITCODE
+  }
+
+  exit 1
+}
+
+Run-TargetPlatformFirstTimeExperiences
 Install-Requirements
 
 $valid_clang = $(Test-CommandVersion("clang++", $targetClangVersion))

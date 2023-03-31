@@ -574,11 +574,16 @@ function _install {
     fi
   fi
 
-  if [[ "$(uname -s)" == *"_NT"* ]]; then
-    if [ "$platform" == "desktop" ]; then
-      mkdir -p "$SOCKET_HOME/ps1"
-      cp -ap "$root/bin/"*.ps1 "$SOCKET_HOME/ps1"
-      cp -ap "$root/bin/".vs* "$SOCKET_HOME/ps1"
+  if [ "$platform" == "desktop" ]; then
+    mkdir -p "$SOCKET_HOME/bin"
+    # Required for FTE setup
+    cp -ap "$root/bin/functions.sh" "$SOCKET_HOME/bin"
+    cp -ap "$root/bin/android-functions.sh" "$SOCKET_HOME/bin"
+    
+    if [[ "$(uname -s)" == *"_NT"* ]]; then
+      # mkdir -p "$SOCKET_HOME/ps1"
+      cp -ap "$root/bin/"*.ps1 "$SOCKET_HOME/bin"
+      cp -ap "$root/bin/".vs* "$SOCKET_HOME/bin"
     fi
   fi
 
