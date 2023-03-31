@@ -23,6 +23,8 @@ async function main () {
     ...process.env
   }
 
+  await installation.firstTimeExperienceSetup()
+
   const child = fork(installation.bin['ssc-platform'], process.argv.slice(2), {
     env,
     stdio: 'inherit',
