@@ -126,10 +126,11 @@ Setup build tools for target <platform>
 Platforms not listed below can be setup using instructions at https://socketsupply.co/guides/#mobile-guide
 
 usage:
-  ssc setup --platform=<platform>
+  ssc setup --platform=<platform> [--yes|-y]
 
 options:
-  platform:      windows|android
+  --platform       windows|android
+  --yes|-y         answer yes to any prompts
     
 )TEXT";
 
