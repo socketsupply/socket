@@ -16,6 +16,7 @@ subcommands:
   print-build-dir     print build path to stdout
   run                 run application
   env                 print relavent environment variables
+  setup               install build dependencies
 
 general options:
   -h, --help          print help message
@@ -115,6 +116,21 @@ options:
   --platform     ios-simulator; if not specified, runs on the current platform
   --prod         run production build
   --test=path    indicate test mode
+)TEXT";
+
+constexpr auto gHelpTextSetup = R"TEXT(
+ssc v{{ssc_version}}
+
+Setup build tools for target <platform>
+
+Platforms not listed below can be setup using instructions at https://socketsupply.co/guides/#mobile-guide
+
+usage:
+  ssc setup --platform=<platform>
+
+options:
+  platform:      windows|android
+    
 )TEXT";
 
 constexpr auto gHelloWorld = R"HTML(
