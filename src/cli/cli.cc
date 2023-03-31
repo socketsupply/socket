@@ -860,6 +860,49 @@ void initializeRC (Path targetPath) {
   }
 }
 
+bool isSetupCompleteAndroid() {
+  auto androidHome = getAndroidHome();
+  if (androidHome.size() == 0) {
+    return false;
+  }
+
+  if (!fs::exists(androidHome)) {
+    return false;
+  }
+
+  fs::path sdkManager = androidHome + "/" + getEnv("ANDROID_SDK_MANAGER");
+
+  if (!fs::exists(sdkManager)) {
+    return false;
+  }
+
+  if (!fs::exists(getEnv("JAVA_HOME"))) {
+    return false;
+  }
+
+  return true;
+}
+
+bool isSetupCompleteWindows() {
+  if (getEnv("CXX").size() == 0) {
+    return false;
+  }
+
+  return fs::exists(getEnv("CXX"));
+}
+
+
+bool isSetupComplete(SSC::String platform) {
+  std::map<SSC::String, bool(*)()> funcs;
+
+  funcs["android"] = isSetupCompleteAndroid;
+  funcs["windows"] = isSetupCompleteWindows;
+
+  if (funcs.count(platform) == 0) return true;
+
+  return funcs[platform]();
+}
+
 int main (const int argc, const char* argv[]) {  
   defaultTemplateAttrs = {{ "ssc_version", SSC::VERSION_FULL_STRING }};
   if (argc < 2) {
@@ -1582,6 +1625,14 @@ int main (const int argc, const char* argv[]) {
     }
 
     targetPlatform = targetPlatform.size() > 0 ? targetPlatform : platform.os;
+    auto platformFriendlyName = targetPlatform == "win32" ? "windows" : targetPlatform;
+
+    if (getEnv("CI").size() == 0 && !isSetupComplete(platformFriendlyName)) {
+      log("Build dependency setup is incomplete for " + platformFriendlyName + ", Use 'setup' to resolve: ");
+      std::cout << "ssc setup --platform=" << platformFriendlyName << std::endl;
+      exit(1);
+    }
+
     Paths paths = getPaths(targetPlatform);
 
     auto executable = Path(settings["build_name"] + (platform.win ? ".exe" : ""));
