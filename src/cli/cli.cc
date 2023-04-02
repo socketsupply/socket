@@ -68,7 +68,7 @@ auto start = system_clock::now();
 
 bool flagDebugMode = true;
 bool flagQuietMode = false;
-Map defaultTemplateAttrs = {{ "ssc_version", SSC::VERSION_FULL_STRING }};
+Map defaultTemplateAttrs;
 
 #if defined(__APPLE__)
 std::atomic<bool> checkLogStore = true;
@@ -844,7 +844,8 @@ void initializeRC (fs::path targetPath) {
   }
 }
 
-int main (const int argc, const char* argv[]) {
+int main (const int argc, const char* argv[]) {  
+  defaultTemplateAttrs = {{ "ssc_version", SSC::VERSION_FULL_STRING }};
   if (argc < 2) {
     printHelp("ssc");
     exit(0);
