@@ -91,3 +91,7 @@ function host_os() {
 function host_arch() {
   uname -m | sed 's/aarch64/arm64/g'
 }
+
+function lower() {
+  echo "$1"|tr '[:upper:]' '[:lower:]'
+}
