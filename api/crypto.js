@@ -14,7 +14,7 @@ import * as exports from './crypto.js'
 let getRandomValuesFallback = null
 
 if (globalThis?.process?.versions?.node) {
-  let crypto = await import('node:crypto')
+  const crypto = await import('node:crypto')
   getRandomValuesFallback = crypto.getRandomValues
 }
 
