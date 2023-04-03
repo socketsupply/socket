@@ -53,6 +53,11 @@ if ($force) {
   $forceArg = "--force"
 }
 
+# Build not required if specifically running FTE
+if ($fte -ne $null) {
+  $shbuild=$false
+}
+
 if ($yesdeps) {
   $global:yesDepsArg = "--yes-deps"
 }
@@ -246,7 +251,7 @@ Function Test-CommandVersion {
 Function Locate-Git() {
   # TODO(mribbons): This function should be used across the board but isn't ready yet
   # Function has to support finding git on path after the first call. ProgramFiles should not be cached.
-  $gitPath = "$env:ProgramFiles\Git"
+  $gitPath = "$env:ProgramFiles\Git\bin"
   $git = "git.exe"
 
   if ((Found-Command($git))) {
@@ -532,6 +537,7 @@ Function Build-VCRuntimeInstallBlock() {
 }
 
 Function Build-GitInstallBlock() {
+  param($alternate_prompt)
   $gitPath = "$env:ProgramFiles\Git\bin"
 
   # Look for git in path
@@ -539,15 +545,23 @@ Function Build-GitInstallBlock() {
     # Look for git in default location, in case it was installed in a previous session
     $global:git = "$gitPath\$global:git"
   } else {
-    Write-Log "h" "# Git found at, changing path to: $global:git"
+    Write-Log "v" "# Git found at, changing path to: $global:git"
   }
 
-  if (Found-Command($global:git)) {    
-    Write-Log "h" "# Found git.exe"
+  if (Found-Command($global:git)) {
+    Write-Log "h" "# Found $global:git"
     return
+  } else {
+    # Reset git path for future searches
+    $global:git = "git.exe"
   }
 
-  $prompt = "git is a requirement, proceed with install from github.com/git-for-windows? y/[n]?"
+  $prompt = "Git is a requirement, proceed with install from github.com/git-for-windows?"
+  if ($alternate_prompt -ne $null) {
+    $prompt = "$alternate_prompt"
+  }
+  $prompt += " y/[n]?"
+  
   $installer = "Git-2.39.1-64-bit.exe"
   $installer_tmp = "Git-2.39.1-64-bit.tmp"
   $url = "https://github.com/git-for-windows/git/releases/download/v2.39.1.windows.1/$installer"
@@ -768,12 +782,17 @@ Function Install-Requirements {
   $check_tasks = @()
   $vc_runtime_test_path = "$env:SYSTEMROOT\System32\vcruntime140_1.dll"
   $vcruntime_task = $(Build-VCRuntimeInstallBlock "$vc_runtime_test_path")
+  $git_task = $null
+  # This task will be used if user opts out of windows build deps but opts in to android deps. By including it within the windows prompts we are preventing an additional prompt.
+  $git_task_android = $(Build-GitInstallBlock "Git bash is required for running the Android dependency setup script.")
   $vsbuild_task = $null
   # += , syntax prevents array unrolling, we will get an array of arrays
   $check_tasks += , $vcruntime_task
-  if ($shbuild) {
+  
+  if ($shbuild -or ($fte -eq "all") -or ($fte -eq "windows")) {
+    $git_task = $(Build-GitInstallBlock)
     $vsbuild_task = $(Build-VSBuildInstallBlock $install_vc_build)
-    $check_tasks += , $(Build-GitInstallBlock)
+    $check_tasks += , $git_task
     $check_tasks += , $(Build-CMakeInstallBlock)
     $check_tasks += , $(Build-LLVMInstallBlock)
     $check_tasks += , $vsbuild_task
@@ -786,8 +805,10 @@ Function Install-Requirements {
       $all_deps_accepted = $false
     }
   }
+  
+  $android_fte = ($fte -eq "android")
 
-  if (($shbuild) -and ($env:CI -eq $null) -and ($fte -eq $null)) {
+  if ((($shbuild) -and ($env:CI -eq $null)) -or (($fte -eq "all") -or ($fte -eq "android"))) {
     $_gitPath, $exists = Locate-Git
     $promptAndroid = $true
     if ($exists) {
@@ -802,25 +823,34 @@ Function Install-Requirements {
 
     if ($promptAndroid) {
       $prompt = "Do you want to install Android build dependencies?
-  Download size: 4.6GB, Installed size: 11.7GB y/[N]"
+Download size: 4.6GB, Installed size: 11.7GB y/[N]"
       if ((Prompt $prompt) -ne 'y') {
         $global:yesDepsArg = "--no-android-fte"
+      } else {
+        $android_fte = $true
       }
     }
   }
 
-  if (($all_deps_accepted -eq $false) -and ($vsbuild_missing) -and ($shbuild) -and ($env:CI -eq $null)) {
+  if ((($all_deps_accepted -eq $false) -and ($vsbuild_missing) -and ($shbuild) -and ($env:CI -eq $null)) -or (($fte -eq "all") -or ($fte -eq "windows"))) {
     $prompt = "Do you want to install Windows build dependencies? This will enable you to build Windows apps.
 Download size: 5.5GB, Installed size: 10.2GB y/[N]"
     if ((Prompt $prompt) -ne 'y') {
       $check_tasks = @()
-      if ($vcruntime_task[0].length -gt 0) {
+      if (($vcruntime_task -ne $null) -and ($vcruntime_task[0].length -gt 0)) {
         $check_tasks += , $vcruntime_task
+      }
+
+      if (($android_fte -eq $true) -and ($git_task_android -ne $null) -and ($git_task_android[0].length -gt 0)) {
+        $check_tasks += , $git_task_android
       }
     }
   }
 
-  # Write-Host $check_tasks
+  # Ensure git (bash) is installed if only running android-fte and git_task not going to be executed
+  if (($android_fte -eq $true) -and ($git_task -eq $null)) {
+    $check_tasks += , $git_task_android
+  }
 
   $install_tasks = @()
   $all_deps_accepted = $true
@@ -830,8 +860,9 @@ Download size: 5.5GB, Installed size: 10.2GB y/[N]"
     }
   }
   
-  if ($all_deps_accepted) { 
-    Write-Log "d" "All deps accepted."
+  if ($all_deps_accepted) {
+    # The minimum deps based on current top level choices (Android, Windows) have been accepted
+    Write-Log "d" "Minimum deps accepted."
   }
 
   if ($all_deps_accepted) {
@@ -964,7 +995,13 @@ function Run-TargetPlatformFirstTimeExperiences() {
 
   Write-Log "d" "fte: $fte"
 
-  if ($fte -eq "android") {
+  $ec = 0
+  
+  Install-Requirements
+
+  $ec += $LASTEXITCODE
+
+  if ((($fte -eq "all") -or ($fte -eq "android")) -and (($global:yesDepsArg -like "*--no-android-fte*") -eq $false)) {
     $_gitPath, $exists = Locate-Git
     Write-Log "d" "git: $_gitPath"
     if ($exists) {
@@ -972,19 +1009,16 @@ function Run-TargetPlatformFirstTimeExperiences() {
       $android_setup_required_sh = """$sh"" bin\android-functions.sh --android-fte"
       Write-Log "v" "# Calling $android_setup_required_sh"
       iex "& $android_setup_required_sh"
-      exit $LASTEXITCODE
+      $ec += $LASTEXITCODE
     } else {
       Write-Log "h" "not ok - Unable to locate git bash."
-      Exit 1
+      $ec += 1
     }
   }
 
-  if ($fte -eq "windows") {
-    Install-Requirements
-    exit $LASTEXITCODE
+  if ($fte -ne "") {
+  	exit $ec
   }
-
-  exit 1
 }
 
 Run-TargetPlatformFirstTimeExperiences
