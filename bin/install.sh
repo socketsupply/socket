@@ -261,12 +261,16 @@ function _build_cli {
     fi
   done
 
-
   if (( build_ssc )); then
-    quiet $CXX                                   \
-      "$BUILD_DIR/$arch-$platform"/cli$d/*$d.o   \
-      "${cflags[@]}" "${ldflags[@]}"             \
+    #
+    # TODO "$libsocket_win" where it was doesn't work, if windows requires it to
+    # be where it was, there should be a separate branch for windows.
+    #
+    $CXX                                         \
       "$libsocket_win"                           \
+      "$BUILD_DIR/$arch-$platform"/cli$d/*$d.o   \
+      "${cflags[@]}"                             \
+      "${ldflags[@]}"                            \
       -o "$ssc_output"
 
     die $? "not ok - unable to build. See trouble shooting guide in the README.md file:\n$CXX ${cflags[@]} \"${ldflags[@]}\" -o \"$BUILD_DIR/$arch-$platform/bin/ssc\""

@@ -1728,7 +1728,7 @@ namespace SSC::IPC {
       }
 
       if (ctx.async) {
-        auto dispatched = this->dispatch([ctx, msg, callback, this] {
+        auto dispatched = this->dispatch([ctx, msg, callback, this]() mutable {
           ctx.callback(msg, this, [msg, callback, this](const auto result) mutable {
             callback(result);
             CLEANUP_AFTER_INVOKE_CALLBACK(this, msg, result);
