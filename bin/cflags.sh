@@ -80,7 +80,7 @@ if (( !TARGET_OS_ANDROID && !TARGET_ANDROID_EMULATOR )); then
   if [[ "$host" = "Darwin" ]]; then
     cflags+=("-ObjC++")
   elif [[ "$host" = "Linux" ]]; then
-    cflags+=($(pkg-config --cflags --static gtk+-3.0 webkit2gtk-4.1))
+    cflags+=($(pkg-config --cflags --static gtk+-3.0 webkit2gtk-4.0))
   elif [[ "$host" = "Win32" ]]; then
     # https://learn.microsoft.com/en-us/cpp/c-runtime-library/crt-library-features?view=msvc-170
     # Because we can't pass /MT[d] directly, we have to manually set the flags
