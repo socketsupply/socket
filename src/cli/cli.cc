@@ -2159,7 +2159,7 @@ int main (const int argc, const char* argv[]) {
     //
     if (platform.linux && !flagBuildForAndroid && !flagBuildForIOS) {
       log("preparing build for linux");
-      flags = " -std=c++2a `pkg-config --cflags --libs gtk+-3.0 webkit2gtk-4.0`";
+      flags = " -std=c++2a `pkg-config --cflags --libs gtk+-3.0 webkit2gtk-4.1`";
       flags += " -ldl " + getCxxFlags();
       flags += " -I" + fs::path(paths.platformSpecificOutputPath / "include").string();
       flags += " -I" + prefixFile();
