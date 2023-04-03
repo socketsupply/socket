@@ -273,7 +273,7 @@ function _build_cli {
       "${ldflags[@]}"                            \
       -o "$ssc_output"
 
-    die $? "not ok ($?) - unable to build. See trouble shooting guide in the README.md file:\n$CXX ${cflags[@]} \"${ldflags[@]}\" -o \"$BUILD_DIR/$arch-$platform/bin/ssc\""
+    die $? "not ok - unable to build. See trouble shooting guide in the README.md file:\n$CXX ${cflags[@]} \"${ldflags[@]}\" -o \"$BUILD_DIR/$arch-$platform/bin/ssc\""
     echo "ok - built the cli for desktop"
   fi
 }
