@@ -33,7 +33,7 @@ export const firstTimeExperienceSetup = async () => {
   if (os.platform() === 'win32') {
     spawnArgs = [
       'powershell.exe',
-      ['.\\bin\\install.ps1', '-shbuild:$false'],
+      ['.\\bin\\install.ps1', '-fte:all'],
       { cwd: installPath, stdio: [process.stdin, process.stdout, process.stderr] }
     ]
   } else {
@@ -49,6 +49,11 @@ export const firstTimeExperienceSetup = async () => {
   await new Promise((resolve, reject) => {
     child.on('close', resolve).on('error', reject)
   })
+
+  // If fte didn't create a configuration file, make an empty one to prevent user being prompted again
+  if (!fs.existsSync(path.join(installPath, '.ssc.env'))) {
+    fs.writeFileSync(path.join(installPath, '.ssc.env'), "")
+  }
 }
 
 export default {

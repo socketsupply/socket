@@ -3772,6 +3772,8 @@ int main (const int argc, const char* argv[]) {
       exit(1);
     }
 
+    fs::current_path(prefixFile());
+
     String command = scriptHost + " \"" + script.string() + "\" " + argument + " " + yesArg;
     std::cout << command << std::endl;
     auto r = std::system(command.c_str());
