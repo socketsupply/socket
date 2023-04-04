@@ -2,7 +2,10 @@
 
 declare root="$(cd "$(dirname "$(dirname "${BASH_SOURCE[0]}")")" && pwd)"
 declare archs=()
-declare platform="$(uname | tr '[[:upper:]]' '[[:lower:]]')"
+source "$root/bin/functions.sh"
+
+
+declare platform="$(lower "$(host_os)")"
 
 if [ "$(uname -m)" = "x86_64" ]; then
   archs+=("x64")
