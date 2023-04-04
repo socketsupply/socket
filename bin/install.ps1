@@ -54,7 +54,7 @@ if ($force) {
 }
 
 # Build not required if specifically running FTE
-if ($fte -ne $null) {
+if ($fte -ne "") {
   $shbuild=$false
 }
 
@@ -504,6 +504,11 @@ Function Add-InstallTask() {
     return $true
   }
 
+  if ($install_args.Count -gt 2) {
+    # See vc redist task, force installer process to fail if this task isn't confirmed
+    $global:install_errors += $install_args[2];
+  }
+
   return $false
 }
 
@@ -534,6 +539,7 @@ Function Build-VCRuntimeInstallBlock() {
   
   Write-Output $prompt
   Write-Output $t
+  Write-Output "ssc.exe will be unable to run without $installer."
 }
 
 Function Build-GitInstallBlock() {
