@@ -1,7 +1,7 @@
 /**
  * @module Crypto
  *
- * Some high-level methods around the `crypto.subtle`API for getting
+ * Some high-level methods around the `crypto.subtle` API for getting
  * random bytes and hashing.
  */
 
@@ -13,9 +13,15 @@ import * as exports from './crypto.js'
 
 let getRandomValuesFallback = null
 
+const pending = []
+
 if (globalThis?.process?.versions?.node) {
-  const crypto = await import('node:crypto')
-  getRandomValuesFallback = crypto.getRandomValues
+  pending.push(
+    import('node:crypto')
+      .then((module) => {
+        getRandomValuesFallback = module.getRandomValues
+      })
+  )
 }
 
 const sodium = {
@@ -27,6 +33,14 @@ const sodium = {
       .then(resolve, reject)
   })
 }
+
+pending.push(sodium.ready)
+
+/**
+ * A promise that resolves when all internals to be loaded/ready.
+ * @type {Promise}
+ */
+export const ready = Promise.all(pending)
 
 /**
  * libsodium API
@@ -61,7 +75,7 @@ export function getRandomValues (buffer, ...args) {
     return getRandomValuesFallback(buffer, ...args)
   }
 
-  console.warn('Missing implementation for window.crypto.getRandomValues()')
+  console.warn('Missing implementation for globalThis.crypto.getRandomValues()')
   return null
 }
 
