@@ -1087,8 +1087,6 @@ if ($shbuild) {
     Exit-IfErrors
   }
 
-  $env:PATH="$BIN_PATH;$($env:PATH)"
-
   cd $OLD_CWD
   $install_sh = """$sh"" bin\install.sh $forceArg $global:yesDepsArg"
   Write-Log "h" "# Calling $install_sh"
@@ -1099,6 +1097,9 @@ if ($shbuild) {
   } else {
     Prompt-AddSSCToPath
   }
+
+  # Update path for current session after registry path has been updated, otherwise changes are lost
+  $env:PATH="$BIN_PATH;$($env:PATH)"
 }
 
 if ($global:path_advice.Count -gt 0) {
