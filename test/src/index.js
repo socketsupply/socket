@@ -5,7 +5,7 @@ globalThis.console.assert(
   'This could lead to undefined behavior.'
 )
 
-import './test-context.js' // this should be first
+import 'socket:test/context' // this should be first
 
 import './webview.js'
 import './diagnostics.js'

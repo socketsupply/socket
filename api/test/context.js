@@ -1,9 +1,11 @@
-import { GLOBAL_TEST_RUNNER } from 'socket:test'
-import console from 'socket:console'
-import process from 'socket:process'
-import ipc from 'socket:ipc'
+import { GLOBAL_TEST_RUNNER } from './index.js'
+import console from '../console.js'
+import process from '../process.js'
+import ipc from '../ipc.js'
 
-import 'socket:application'
+import '../application.js'
+
+export default null
 
 if (process.env.SOCKET_DEBUG_IPC) {
   ipc.debug.enabled = true
@@ -12,6 +14,7 @@ if (process.env.SOCKET_DEBUG_IPC) {
 
 if (typeof globalThis?.addEventListener === 'function') {
   globalThis.addEventListener('error', onerror)
+  globalThis.addEventListener('messageerror', onerror)
   globalThis.addEventListener('unhandledrejection', onerror)
 }
 
