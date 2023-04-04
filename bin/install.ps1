@@ -34,6 +34,7 @@ $logfile="$env:LOCALAPPDATA\socket_install_ps1.log"
 $fso = New-Object -ComObject Scripting.FileSystemObject
 
 $clang_required = ($shbuild -or $fte -eq "windows" -or $fte -eq "all")
+$global:android_fte = $false
 
 # Powershell environment variables are maintained across sessions, clear if not explicitly set
 $set_debug=$null
@@ -835,7 +836,7 @@ Function Install-Requirements {
     }
   }
   
-  $android_fte = ($fte -eq "android")
+  $global:android_fte = ($fte -eq "android")
 
   if ((($shbuild) -and ($env:CI -eq $null)) -or (($fte -eq "all") -or ($fte -eq "android"))) {
     $_gitPath, $exists = Locate-Git
@@ -856,11 +857,14 @@ Function Install-Requirements {
 Download size: 4.6GB, Installed size: 11.7GB y/[N]"
       if ((Prompt $prompt) -ne 'y') {
         $global:yesDepsArg = "--no-android-fte"
+         $global:android_fte = $false
       } else {
-        $android_fte = $true
+        $global:android_fte = $true
       }
     }
   }
+
+  $confirm_windows_deps = $false
 
   if ((($all_deps_accepted -eq $false) -and ($vsbuild_missing) -and ($shbuild) -and ($env:CI -eq $null)) -or (($fte -eq "all") -or ($fte -eq "windows"))) {
     $prompt = "Do you want to install Windows build dependencies? This will enable you to build Windows apps.
@@ -871,14 +875,16 @@ Download size: 5.5GB, Installed size: 10.2GB y/[N]"
         $check_tasks += , $vcruntime_task
       }
 
-      if (($android_fte -eq $true) -and ($git_task_android -ne $null) -and ($git_task_android[0].length -gt 0)) {
+      if (($global:android_fte -eq $true) -and ($git_task_android -ne $null) -and ($git_task_android[0].length -gt 0)) {
         $check_tasks += , $git_task_android
       }
+    } else {
+      $confirm_windows_deps = $true
     }
   }
 
   # Ensure git (bash) is installed if only running android-fte and git_task not going to be executed
-  if (($android_fte -eq $true) -and ($git_task -eq $null)) {
+  if (($global:android_fte -eq $true) -and ($git_task -eq $null)) {
     $check_tasks += , $git_task_android
   }
 
@@ -960,63 +966,65 @@ Download size: 5.5GB, Installed size: 10.2GB y/[N]"
     
   Exit-IfErrors
 
-  if ($install_vc_build) {
-    $vc_exists, $vc_vars = $(Get-VCVars)
-    if ($vc_exists) {
-      Call-VcVars
-    } else {
-      if ($env:CI -eq $null) {
-        $global:install_errors += "not ok - vcvars64.bat still not present, something went wrong."
-      }
-    }
-  }
-
-  if (-not (Test-CommandVersion("clang++", $targetClangVersion))) {
-    $global:install_errors += "not ok - unable to install clang++."
-  }
-
-  if ($env:CI -eq $null) {
-    if (($env:WindowsSdkDir -eq $null) -or ((Test-Path $env:WindowsSdkDir -PathType Container) -eq $false)) {
-      # Had this situation occur after uninstalling SDK from add/remove programs instead of VS Installer.
-      $global:install_errors += "`$WindowsSdkDir ($env:WindowsSdkDir) still not present, please install manually."
-    } else {
-      # Find lib required for debug builds (Prevents 'Debug Assertion Failed. Expression: (_osfile(fh) & fopen)' error)
-      $WIN_DEBUG_LIBS="$($env:WindowsSdkDir)Lib\$($env:WindowsSDKLibVersion)ucrt\x64\ucrtd.osmode_permissive.lib"
-      Write-Log "d" "WIN_DEBUG_LIBS: $WIN_DEBUG_LIBS, exists: $(Test-Path $WIN_DEBUG_LIBS -PathType Leaf)"
-      if ((Test-Path $WIN_DEBUG_LIBS -PathType Leaf) -eq $false) {
-        if ($shbuild -eq $true) {
-          # Only report issue for ssc devs
-          $global:path_advice += "WARNING: Unable to determine ucrtd.osmode_permissive.lib path. This is only required for DEBUG builds."
-        }
+  if ($confirm_windows_deps) {
+    if ($install_vc_build) {
+      $vc_exists, $vc_vars = $(Get-VCVars)
+      if ($vc_exists) {
+        Call-VcVars
       } else {
-        # Use short path, spaces cause issues in install.sh
-        $WIN_DEBUG_LIBS = (New-Object -ComObject Scripting.FileSystemObject).GetFile($WIN_DEBUG_LIBS).ShortPath
-        $env:WIN_DEBUG_LIBS="$WIN_DEBUG_LIBS"
+        if ($env:CI -eq $null) {
+          $global:install_errors += "not ok - vcvars64.bat still not present, something went wrong."
+        }
       }
     }
-  }
 
-  if ((Test-Path "$vc_runtime_test_path" -PathType Leaf) -eq $false) {
-    $global:install_errors += "$vc_runtime_test_path still not present, something went wrong."
-  }
+    if (-not (Test-CommandVersion("clang++", $targetClangVersion))) {
+      $global:install_errors += "not ok - unable to install clang++."
+    }
 
-  if (-not (Found-Command($global:git))) {
-    $global:install_errors += "not ok - git not installed."
-  }
-
-  if ($shbuild) {
-    if (-not (Test-CommandVersion("cmake", $targetCmakeVersion))) {
-      $global:install_errors += "not ok - unable to install cmake"
-    } else {
-      if ($cmakePath -ne '') {
-        $env:PATH="$cmakePath\;$env:PATH"
+    if ($env:CI -eq $null) {
+      if (($env:WindowsSdkDir -eq $null) -or ((Test-Path $env:WindowsSdkDir -PathType Container) -eq $false)) {
+        # Had this situation occur after uninstalling SDK from add/remove programs instead of VS Installer.
+        $global:install_errors += "`$WindowsSdkDir ($env:WindowsSdkDir) still not present, please install manually."
+      } else {
+        # Find lib required for debug builds (Prevents 'Debug Assertion Failed. Expression: (_osfile(fh) & fopen)' error)
+        $WIN_DEBUG_LIBS="$($env:WindowsSdkDir)Lib\$($env:WindowsSDKLibVersion)ucrt\x64\ucrtd.osmode_permissive.lib"
+        Write-Log "d" "WIN_DEBUG_LIBS: $WIN_DEBUG_LIBS, exists: $(Test-Path $WIN_DEBUG_LIBS -PathType Leaf)"
+        if ((Test-Path $WIN_DEBUG_LIBS -PathType Leaf) -eq $false) {
+          if ($shbuild -eq $true) {
+            # Only report issue for ssc devs
+            $global:path_advice += "WARNING: Unable to determine ucrtd.osmode_permissive.lib path. This is only required for DEBUG builds."
+          }
+        } else {
+          # Use short path, spaces cause issues in install.sh
+          $WIN_DEBUG_LIBS = (New-Object -ComObject Scripting.FileSystemObject).GetFile($WIN_DEBUG_LIBS).ShortPath
+          $env:WIN_DEBUG_LIBS="$WIN_DEBUG_LIBS"
+        }
       }
     }
-  }
 
-  if ($report_vc_vars_reqd) {
-    if (Found-Command("clang++.exe")) {
-      $file = (New-Object -ComObject Scripting.FileSystemObject).GetFile($(Get-CommandPath "clang++.exe"))
+    if ((Test-Path "$vc_runtime_test_path" -PathType Leaf) -eq $false) {
+      $global:install_errors += "$vc_runtime_test_path still not present, something went wrong."
+    }
+
+    if (-not (Found-Command($global:git))) {
+      $global:install_errors += "not ok - git not installed."
+    }
+
+    if ($shbuild) {
+      if (-not (Test-CommandVersion("cmake", $targetCmakeVersion))) {
+        $global:install_errors += "not ok - unable to install cmake"
+      } else {
+        if ($cmakePath -ne '') {
+          $env:PATH="$cmakePath\;$env:PATH"
+        }
+      }
+    }
+
+    if ($report_vc_vars_reqd) {
+      if (Found-Command("clang++.exe")) {
+        $file = (New-Object -ComObject Scripting.FileSystemObject).GetFile($(Get-CommandPath "clang++.exe"))
+      }
     }
   }
 
@@ -1043,7 +1051,7 @@ Install-Requirements
 
 $valid_clang = $(Test-CommandVersion("clang++", $targetClangVersion))
 
-if (($clang_required) -Or ($valid_clang)) {
+if (($clang_required) -Or ($global:android_fte)) {
   $gitPath, $exists = Locate-Git
   if ($exists -eq $false) {
     $global:install_errors += "not ok - sh.exe not in PATH or default Git\bin"
