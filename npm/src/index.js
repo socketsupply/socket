@@ -51,7 +51,7 @@ export const firstTimeExperienceSetup = async () => {
   })
 
   // If fte didn't create a configuration file, make an empty one to prevent user being prompted again
-  if (!fs.existsSync(path.join(installPath, '.ssc.env'))) {
+  if (child.exitCode == 0 && !fs.existsSync(path.join(installPath, '.ssc.env'))) {
     fs.writeFileSync(path.join(installPath, '.ssc.env'), "")
   }
 }
