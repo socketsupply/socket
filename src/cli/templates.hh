@@ -15,10 +15,14 @@ subcommands:
   install-app         install app to the device
   print-build-dir     print build path to stdout
   run                 run application
+  env                 print relavent environment variables
 
 general options:
-  -h  help
-  -v  version
+  -h, --help          print help message
+  -v, --version       print program version
+  --prefix            print install path
+  --debug             enable debug mode
+  --verbose           enable verbose output
 )TEXT";
 
 constexpr auto gHelpTextBuild = R"TEXT(
@@ -28,13 +32,13 @@ usage:
   ssc build [options] [<project-dir>]
 
 general options:
-  --platform     target (android, android-emulator, ios, ios-simulator)
-  --port=n       load "index.html" from "http://localhost:n"
-  -o             only run user build step
-  -r             run after building
-  --headless     run headlessly
-  --stdin        read from stdin (emitted in window 0)
-  --test=path    indicate test mode
+  --platform<=platform> target (android, android-emulator, ios, ios-simulator)
+  --port=<port>         load "index.html" from "http://localhost:<port>"
+  -o, --only-build      only run build step,
+  -r, --run             run after building
+  --headless            run headlessly
+  --stdin               read from stdin (emitted in window 0)
+  --test[=path]         indicate test mode, optionally importing a test file
 
 packaging options:
   --prod  disable debugging info, inspector, etc.

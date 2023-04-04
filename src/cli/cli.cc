@@ -96,20 +96,20 @@ void log (const String s) {
 
   #ifdef _WIN32 // unicode console support
     SetConsoleOutputCP(CP_UTF8);
-    setvbuf(stdout, nullptr, _IOFBF, 1000);
+    setvbuf(stderr, nullptr, _IOFBF, 1000);
   #endif
 
   auto now = system_clock::now();
   auto delta = duration_cast<milliseconds>(now - start).count();
   #ifdef _WIN32
-  std::cout << "• " << s << " " << delta << "ms" << std::endl;
+  std::cerr << "• " << s << " " << delta << "ms" << std::endl;
   #else
-  std::cout << "• " << s << " \033[0;32m+" << delta << "ms\033[0m" << std::endl;
+  std::cerr << "• " << s << " \033[0;32m+" << delta << "ms\033[0m" << std::endl;
   #endif
   start = std::chrono::system_clock::now();
 }
 
-String getSocketHome () {
+String getSocketHome (bool verbose) {
   static String XDG_DATA_HOME = getEnv("XDG_DATA_HOME");
   static String LOCALAPPDATA = getEnv("LOCALAPPDATA");
   static String SOCKET_HOME = getEnv("SOCKET_HOME");
@@ -138,11 +138,15 @@ String getSocketHome () {
     } else if (platform.win) {
       socketHome = LOCALAPPDATA + "\\Programs\\socketsupply\\";
     }
-
+  } else if (verbose) {
     log("using '" + socketHome + "' as 'SOCKET_HOME'");
   }
 
   return socketHome;
+}
+
+String getSocketHome () {
+  return getSocketHome(true);
 }
 
 String getAndroidHome() {
@@ -235,7 +239,7 @@ void signalHandler (int signal) {
   appMutex.unlock();
 }
 
-int runApp (const fs::path& path, const String& args, bool headless) {
+int runApp (const Path& path, const String& args, bool headless) {
   auto cmd = path.string();
 
   if (!fs::exists(path)) {
@@ -546,11 +550,11 @@ int runApp (const fs::path& path, const String& args, bool headless) {
   return appStatus;
 }
 
-int runApp (const fs::path& path, const String& args) {
+int runApp (const Path& path, const String& args) {
   return runApp(path, args, false);
 }
 
-void runIOSSimulator (const fs::path& path, Map& settings) {
+void runIOSSimulator (const Path& path, Map& settings) {
   #ifndef _WIN32
   if (settings["ios_simulator_device"].size() == 0) {
     log("ERROR: 'ios_simulator_device' option is empty");
@@ -693,7 +697,7 @@ void runIOSSimulator (const fs::path& path, Map& settings) {
 
   log("run simulator");
 
-  auto pathToXCode = fs::path("/Applications") / "Xcode.app" / "Contents";
+  auto pathToXCode = Path("/Applications") / "Xcode.app" / "Contents";
   auto pathToSimulator = pathToXCode / "Developer" / "Applications" / "Simulator.app";
 
   StringStream simulatorCommand;
@@ -786,7 +790,7 @@ inline String getCfgUtilPath() {
   exit(1);
 }
 
-void initializeEnv (fs::path targetPath) {
+void initializeEnv (Path targetPath) {
   static auto SSC_ENV_FILENAME = getEnv("SSC_ENV_FILENAME");
   static auto filename = SSC_ENV_FILENAME.size() > 0
     ? SSC_ENV_FILENAME
@@ -799,7 +803,7 @@ void initializeEnv (fs::path targetPath) {
     for (const auto& tuple : env) {
       auto key = tuple.first;
       auto value = tuple.second;
-      auto valueAsPath = fs::path(value).make_preferred();
+      auto valueAsPath = Path(value).make_preferred();
 
       // convert env value to normalized path if it exists
       if (fs::exists(fs::status(valueAsPath))) {
@@ -811,7 +815,7 @@ void initializeEnv (fs::path targetPath) {
   }
 }
 
-void initializeRC (fs::path targetPath) {
+void initializeRC (Path targetPath) {
   static auto SSC_RC_FILENAME = getEnv("SSC_RC_FILENAME");
   static auto SSC_RC = getEnv("SSC_RC");
   static auto filename = SSC_RC_FILENAME.size() > 0
@@ -819,8 +823,13 @@ void initializeRC (fs::path targetPath) {
     : DEFAULT_SSC_RC_FILENAME;
 
   auto path = SSC_RC.size() > 0
-    ? fs::path(SSC_RC)
+    ? Path(SSC_RC)
     : targetPath / filename;
+
+  // just set to `targetPath` if resolved `path` doesn't exist
+  if (!fs::exists(path)) {
+    path = targetPath;
+  }
 
   if (fs::exists(path)) {
     extendMap(rc, parseINI(readFile(path)));
@@ -828,7 +837,7 @@ void initializeRC (fs::path targetPath) {
     for (const auto& tuple : rc) {
       auto key = tuple.first;
       auto value = tuple.second;
-      auto valueAsPath = fs::path(value).make_preferred();
+      auto valueAsPath = Path(value).make_preferred();
 
       // convert env value to normalized path if it exists
       if (fs::exists(fs::status(valueAsPath))) {
@@ -896,6 +905,11 @@ int main (const int argc, const char* argv[]) {
     exit(0);
   }
 
+  if (is(subcommand, "--prefix")) {
+    std::cout << getSocketHome() << std::endl;
+    exit(0);
+  }
+
   if (subcommand[0] == '-') {
     log("unknown option: " + String(subcommand));
     printHelp("ssc");
@@ -903,7 +917,7 @@ int main (const int argc, const char* argv[]) {
   }
 
   auto const lastOption = argv[argc-1];
-  fs::path targetPath;
+  Path targetPath;
   int numberOfOptions = argc - 3;
 
   // if no path provided, use current directory
@@ -915,22 +929,36 @@ int main (const int argc, const char* argv[]) {
   }
 
 #if defined(_WIN32)
-  static String HOME= getEnv("HOMEPATH");
+  static String HOME = getEnv("HOMEPATH");
 #else
   static String HOME = getEnv("HOME");
 #endif
 
+  // `/etc/sscrc` (global)
+  initializeRC(Path("etc")  / "sscrc" );
+  // `/etc/ssc.rc` (global)
+  initializeRC(Path("etc")  / "ssc.rc" );
+  // `/etc/ssc/config` (global)
+  initializeRC(Path("etc")  / "ssc" / "config");
+  // `$HOME/.ssc/config` (user)
+  initializeRC(Path(HOME)  / ".ssc" / "config");
+  // `$HOME/.config/ssc` (user)
+  initializeRC(Path(HOME)  / ".config" / "ssc");
+  // `$HOME/.sscrc` (user)
   initializeRC(HOME);
+  // `$PWD/.sscrc` (local)
   initializeRC(targetPath);
+
+  // `$SOCKET_HOME/.ssc.env` (global/user)
   initializeEnv(prefixFile());
-  // Override global config with local
-  initializeEnv(targetPath);
+  // `$PWD/.ssc.env` (local)
+  initializeEnv(targetPath); // overrides global config with local
 
   struct Paths {
-    fs::path pathBin;
-    fs::path pathPackage;
-    fs::path pathResourcesRelativeToUserBuild;
-    fs::path platformSpecificOutputPath;
+    Path pathBin;
+    Path pathPackage;
+    Path pathResourcesRelativeToUserBuild;
+    Path platformSpecificOutputPath;
   };
 
   auto getPaths = [&](String platform) -> Paths {
@@ -944,8 +972,8 @@ int main (const int argc, const char* argv[]) {
       platformPath
     };
     if (platform == "mac") {
-      fs::path pathBase = "Contents";
-      fs::path packageName = fs::path(settings["build_name"] + ".app");
+      Path pathBase = "Contents";
+      Path packageName = Path(settings["build_name"] + ".app");
       paths.pathPackage = { paths.platformSpecificOutputPath  / packageName };
       paths.pathBin = { paths.pathPackage / pathBase / "MacOS" };
       paths.pathResourcesRelativeToUserBuild = {
@@ -959,7 +987,7 @@ int main (const int argc, const char* argv[]) {
       settings["meta_revision"] = "1";
 
       // this follows the .deb file naming convention
-      fs::path packageName = (
+      Path packageName = (
         settings["build_name"] + "_" +
         "v" + settings["meta_version"] + "-" +
         settings["meta_revision"] + "_" +
@@ -976,15 +1004,15 @@ int main (const int argc, const char* argv[]) {
     } else if (platform == "win32") {
       paths.pathPackage = {
         paths.platformSpecificOutputPath  /
-        fs::path(settings["build_name"] + "-v" + settings["meta_version"])
+        Path(settings["build_name"] + "-v" + settings["meta_version"])
       };
 
       paths.pathBin = paths.pathPackage;
       paths.pathResourcesRelativeToUserBuild = paths.pathPackage;
       return paths;
     } else if (platform == "ios" || platform == "ios-simulator") {
-      fs::path pathBase = "Contents";
-      fs::path packageName = settings["build_name"] + ".app";
+      Path pathBase = "Contents";
+      Path packageName = settings["build_name"] + ".app";
       paths.pathPackage = { paths.platformSpecificOutputPath  / packageName };
       paths.pathBin = { paths.platformSpecificOutputPath / pathBase / "MacOS" };
       paths.pathResourcesRelativeToUserBuild = paths.platformSpecificOutputPath / "ui";
@@ -1020,12 +1048,22 @@ int main (const int argc, const char* argv[]) {
         if (String(arg).starts_with("--env")) {
           auto value = optionValue(subcommand, arg, "--env");
           if (value.size() > 0) {
-            auto parts = split(value, ':');
+            auto parts = parseStringList(value);
             for (const auto& part : parts) {
               envs.push_back(part);
             }
             continue;
           }
+        }
+
+        if (is(arg, "--verbose")) {
+          setEnv("SSC_VERBOSE", "1");
+          continue;
+        }
+
+        if (is(arg, "--debug")) {
+          setEnv("SSC_DEBUG", "1");
+          continue;
         }
 
         for (auto const& option : options) {
@@ -1043,14 +1081,18 @@ int main (const int argc, const char* argv[]) {
       }
 
       if (needsConfig) {
+        auto configExists = false;
         auto configPath = targetPath / "socket.ini";
+        auto code = String("");
+        auto ini = String("");
 
-        if (!fs::exists(configPath) && !is(subcommand, "init")) {
+        if (fs::exists(configPath)) {
+          ini = readFile(configPath);
+          configExists = true;
+        } else if (!is(subcommand, "init") && !is(subcommand, "env")) {
           log("socket.ini not found in " + targetPath.string());
           exit(1);
         }
-
-        auto ini = readFile(configPath);
 
         if (envs.size() > 0) {
           auto stream = StringStream();
@@ -1068,31 +1110,33 @@ int main (const int argc, const char* argv[]) {
           ini += stream.str();
         }
 
-        auto hex = stringToHex(ini);
-        auto bytes = StringStream();
-        auto length = hex.size() - 1;
-        int size = 0;
+        if (configExists) {
+          auto hex = stringToHex(ini);
+          auto bytes = StringStream();
+          auto length = hex.size() - 1;
+          int size = 0;
 
-        for (int i = 0; i < length; i += 2) {
-          size++;
+          for (int i = 0; i < length; i += 2) {
+            size++;
 
-          if (i != 0 && (i & 3) == 0) {
-            bytes << "\n";
+            if (i != 0 && (i & 3) == 0) {
+              bytes << "\n";
+            }
+
+            bytes << "  ";
+            if (i + 2 < length) {
+              bytes << "0x" << hex.substr(i, 2) << ",";
+            } else if (i + 1 < length) {
+              bytes << "0x0" << hex.substr(i, 1);
+            } else {
+              bytes << "0x" << hex.substr(i, 2);
+            }
           }
 
-          bytes << "  ";
-          if (i + 2 < length) {
-            bytes << "0x" << hex.substr(i, 2) << ",";
-          } else if (i + 1 < length) {
-            bytes << "0x0" << hex.substr(i, 1);
-          } else {
-            bytes << "0x" << hex.substr(i, 2);
-          }
+          code = String(
+            "constexpr unsigned char __ssc_config_bytes["+ std::to_string(size) +"] = {\n" + bytes.str() + "\n};"
+          );
         }
-
-        std::string code(
-          "constexpr unsigned char __ssc_config_bytes["+ std::to_string(size) +"] = {\n" + bytes.str() + "\n};"
-        );
 
         settings = parseINI(ini);
 
@@ -1110,60 +1154,66 @@ int main (const int argc, const char* argv[]) {
 
         extendMap(settings, tmp);
 
-        settings["ini_code"] = code;
-
-        // Check if build_name is set
-        if (settings.count("build_name") == 0) {
-          log("ERROR: 'name' value is required in socket.ini in the [build] section");
-          exit(1);
+        if (code.size() > 0) {
+          settings["ini_code"] = code;
         }
 
-        // Define regular expression to match spaces, and special characters except dash and underscore
-        std::regex name_pattern("[^a-zA-Z0-9_\\-]");
-        // Check if the name matches the pattern
-        if (std::regex_search(settings["build_name"], name_pattern)) {
-          log("ERROR: 'name' in socket.ini [build] section can only contain alphanumeric characters, dashes, and underscores");
-          exit(1);
-        }
-
-        // Define regular expression to match semver format
-        // The semver specification is available at https://semver.org/
-        // The pre-release and build metadata are not supported
-        std::regex semver_pattern("^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)$");
-        // Check if the version matches the pattern
-        if (!std::regex_match(settings["meta_version"], semver_pattern)) {
-          log("ERROR: 'version' in [meta] section of socket.ini must be in semver format");
-          exit(1);
-        }
-
-        // default values
-        settings["build_output"] = settings["build_output"].size() > 0 ? settings["build_output"] : "build";
-        settings["meta_lang"] = settings["meta_lang"].size() > 0 ? settings["meta_lang"] : "en-us";
-        settings["meta_version"] = settings["meta_version"].size() > 0 ? settings["meta_version"] : "1.0.0";
-        settings["meta_title"] = settings["meta_title"].size() > 0 ? settings["meta_title"] : settings["build_name"];
-
-        for (auto const arg : std::span(argv, argc).subspan(2, numberOfOptions)) {
-          if (is(arg, "--prod")) {
-            flagDebugMode = false;
-            break;
+        // only validate if config exists and we didn't exit early above
+        if (configExists) {
+          // Check if build_name is set
+          if (settings.count("build_name") == 0) {
+            log("ERROR: 'name' value is required in socket.ini in the [build] section");
+            exit(1);
           }
+
+          // Define regular expression to match spaces, and special characters except dash and underscore
+          std::regex name_pattern("[^a-zA-Z0-9_\\-]");
+          // Check if the name matches the pattern
+          if (std::regex_search(settings["build_name"], name_pattern)) {
+            log("ERROR: 'name' in socket.ini [build] section can only contain alphanumeric characters, dashes, and underscores");
+            exit(1);
+          }
+
+          // Define regular expression to match semver format
+          // The semver specification is available at https://semver.org/
+          // The pre-release and build metadata are not supported
+          std::regex semver_pattern("^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)$");
+          // Check if the version matches the pattern
+          if (!std::regex_match(settings["meta_version"], semver_pattern)) {
+            log("ERROR: 'version' in [meta] section of socket.ini must be in semver format");
+            exit(1);
+          }
+
+          // default values
+          settings["build_output"] = settings["build_output"].size() > 0 ? settings["build_output"] : "build";
+          settings["meta_lang"] = settings["meta_lang"].size() > 0 ? settings["meta_lang"] : "en-us";
+          settings["meta_version"] = settings["meta_version"].size() > 0 ? settings["meta_version"] : "1.0.0";
+          settings["meta_title"] = settings["meta_title"].size() > 0 ? settings["meta_title"] : settings["build_name"];
+
+          for (auto const arg : std::span(argv, argc).subspan(2, numberOfOptions)) {
+            if (is(arg, "--prod")) {
+              flagDebugMode = false;
+              break;
+            }
+          }
+
+          String suffix = "";
+
+          if (flagDebugMode) {
+            settings["apple_instruments"] = "true";
+            suffix += "-dev";
+          } else {
+            settings["apple_instruments"] = "false";
+          }
+
+          settings["debug"] = flagDebugMode;
+          settings["build_suffix"] = suffix;
+
+          std::replace(settings["build_name"].begin(), settings["build_name"].end(), ' ', '_');
+          settings["build_name"] += suffix;
         }
-
-        String suffix = "";
-
-        if (flagDebugMode) {
-          settings["apple_instruments"] = "true";
-          suffix += "-dev";
-        } else {
-          settings["apple_instruments"] = "false";
-        }
-
-        settings["debug"] = flagDebugMode;
-        settings["build_suffix"] = suffix;
-
-        std::replace(settings["build_name"].begin(), settings["build_name"].end(), ' ', '_');
-        settings["build_name"] += suffix;
       }
+
       subcommandHandler(commandlineOptions);
     }
   };
@@ -1342,7 +1392,7 @@ int main (const int argc, const char* argv[]) {
     for (auto const option : options) {
       auto targetPlatform = optionValue("print-build-dir", option, "--platform");
       if (targetPlatform.size() > 0) {
-        fs::path path = getPaths(targetPlatform).pathResourcesRelativeToUserBuild;
+        Path path = getPaths(targetPlatform).pathResourcesRelativeToUserBuild;
         std::cout << path.string() << std::endl;
         exit(0);
       }
@@ -1352,7 +1402,7 @@ int main (const int argc, const char* argv[]) {
     exit(0);
   });
 
-  createSubcommand("build", { "--platform", "--host", "--port", "--quiet", "-o", "-r", "--prod", "-p", "-c", "-s", "-e", "-n", "--test", "--headless" }, true, [&](const std::span<const char *>& options) -> void {
+  createSubcommand("build", { "--platform", "--host", "--port", "--quiet", "-o", "--only-build", "-r", "--run", "--prod", "-p", "-c", "-s", "-e", "-n", "--test", "--headless" }, true, [&](const std::span<const char *>& options) -> void {
     bool flagRunUserBuildOnly = false;
     bool flagAppStore = false;
     bool flagCodeSign = false;
@@ -1377,8 +1427,15 @@ int main (const int argc, const char* argv[]) {
     String devPort("0");
     auto cnt = 0;
 
-    bool debugEnv = getEnv("DEBUG").size() > 0;
-    bool verboseEnv = getEnv("VERBOSE").size() > 0;
+    const bool debugEnv = (
+      getEnv("SSC_DEBUG").size() > 0 ||
+      getEnv("DEBUG").size() > 0
+    );
+
+    const bool verboseEnv = (
+      getEnv("SSC_VERBOSE").size() > 0 ||
+      getEnv("VERBOSE").size() > 0
+    );
 
     String localDirPrefix = !platform.win ? "./" : "";
     String quote = !platform.win ? "'" : "\"";
@@ -1396,7 +1453,7 @@ int main (const int argc, const char* argv[]) {
 
       if (is(arg, "-e") || is(rc["build_entitlements"], "true")) {
         if (platform.os != "mac") {
-          log("warning! Build entitlements (-e) are only supported on macOS. Ignoring option.");
+          log("WARNING: Build entitlements (-e) are only supported on macOS. Ignoring option.");
         } else {
           // TODO: we don't use it
           flagEntitlements = true;
@@ -1405,13 +1462,13 @@ int main (const int argc, const char* argv[]) {
 
       if (is(arg, "-n") || is(rc["build_notarize"], "true")) {
         if (platform.os != "mac") {
-          log("warning! Build notarization (-n) are only supported on macOS. Ignoring option.");
+          log("WARNING: Build notarization (-n) are only supported on macOS. Ignoring option.");
         } else {
           flagShouldNotarize = true;
         }
       }
 
-      if (is(arg, "-o") || is(rc["build_user_only"], "true")) {
+      if (is(arg, "-o") || is(arg, "--only-build") || is(rc["build_only"], "true")) {
         flagRunUserBuildOnly = true;
       }
 
@@ -1520,7 +1577,7 @@ int main (const int argc, const char* argv[]) {
     targetPlatform = targetPlatform.size() > 0 ? targetPlatform : platform.os;
     Paths paths = getPaths(targetPlatform);
 
-    auto executable = fs::path(settings["build_name"] + (platform.win ? ".exe" : ""));
+    auto executable = Path(settings["build_name"] + (platform.win ? ".exe" : ""));
     auto binaryPath = paths.pathBin / executable;
     auto configPath = targetPath / "socket.ini";
 
@@ -1553,7 +1610,7 @@ int main (const int argc, const char* argv[]) {
         removePath = settings["output"] + "/android/app/src";
 
     if (flagRunUserBuildOnly == false && fs::exists(removePath)) {
-      auto p = fs::current_path() / fs::path(removePath);
+      auto p = fs::current_path() / Path(removePath);
       try {
         fs::remove_all(p);
         log(String("cleaned: " + p.string()));
@@ -1573,8 +1630,8 @@ int main (const int argc, const char* argv[]) {
     String flags;
     String files;
 
-    fs::path pathResources;
-    fs::path pathToArchive;
+    Path pathResources;
+    Path pathToArchive;
 
     if (platform.mac && exec("xcode-select -p").exitCode != 0) {
       log("Please install Xcode from https://apps.apple.com/us/app/xcode/id497799835");
@@ -1607,12 +1664,12 @@ int main (const int argc, const char* argv[]) {
       flags += " -L" + prefixFile("lib/" + platform.arch + "-desktop");
       flags += " -lsocket-runtime";
       flags += " -luv";
-      flags += " -I" + fs::path(paths.platformSpecificOutputPath / "include").string();
+      flags += " -I" + Path(paths.platformSpecificOutputPath / "include").string();
       files += prefixFile("objects/" + platform.arch + "-desktop/desktop/main.o");
       files += prefixFile("src/init.cc");
       flags += " " + getCxxFlags();
 
-      fs::path pathBase = "Contents";
+      Path pathBase = "Contents";
       pathResources = { paths.pathPackage / pathBase / "Resources" };
 
       fs::create_directories(paths.pathBin);
@@ -1635,7 +1692,7 @@ int main (const int argc, const char* argv[]) {
 
     if (flagBuildForAndroid) {
       auto bundle_identifier = settings["meta_bundle_identifier"];
-      auto bundle_path = fs::path(replace(bundle_identifier, "\\.", "/")).make_preferred();
+      auto bundle_path = Path(replace(bundle_identifier, "\\.", "/")).make_preferred();
       auto bundle_path_underscored = replace(bundle_identifier, "\\.", "_");
 
       auto output = paths.platformSpecificOutputPath;
@@ -1926,7 +1983,7 @@ int main (const int argc, const char* argv[]) {
         auto const &file :
         parseStringList(settings["android_native_sources"])
       ) {
-        auto filename = fs::path(file).filename();
+        auto filename = Path(file).filename();
         writeFile(
           jni / "src" / filename,
           tmpl(std::regex_replace(
@@ -2013,7 +2070,7 @@ int main (const int argc, const char* argv[]) {
       for (auto const &file : parseStringList(settings["android_sources"])) {
         // log(String("Android source: " + String(target / file)).c_str());
         writeFile(
-          pkg / fs::path(file).filename(),
+          pkg / Path(file).filename(),
           tmpl(std::regex_replace(
             WStringToString(readFile(targetPath / file )),
             std::regex("__BUNDLE_IDENTIFIER__"),
@@ -2082,7 +2139,7 @@ int main (const int argc, const char* argv[]) {
 
         String team = matchTeamId.str(1);
 
-        auto pathToInstalledProfile = fs::path(getEnv("HOME")) /
+        auto pathToInstalledProfile = Path(getEnv("HOME")) /
           "Library" /
           "MobileDevice" /
           "Provisioning Profiles" /
@@ -2106,32 +2163,32 @@ int main (const int argc, const char* argv[]) {
 
       if (flagBuildForSimulator) {
         fs::copy(
-          fs::path(prefixFile()) / "lib" / "x86_64-iPhoneSimulator",
+          Path(prefixFile()) / "lib" / "x86_64-iPhoneSimulator",
           paths.platformSpecificOutputPath / "lib",
           fs::copy_options::overwrite_existing | fs::copy_options::recursive
         );
 
         fs::copy(
-          fs::path(prefixFile()) / "objects" / "x86_64-iPhoneSimulator",
+          Path(prefixFile()) / "objects" / "x86_64-iPhoneSimulator",
           paths.platformSpecificOutputPath / "objects",
           fs::copy_options::overwrite_existing | fs::copy_options::recursive
         );
       } else {
         fs::copy(
-          fs::path(prefixFile()) / "lib" / "arm64-iPhoneOS",
+          Path(prefixFile()) / "lib" / "arm64-iPhoneOS",
           paths.platformSpecificOutputPath / "lib",
           fs::copy_options::overwrite_existing | fs::copy_options::recursive
         );
 
         fs::copy(
-          fs::path(prefixFile()) / "objects" / "arm64-iPhoneOS",
+          Path(prefixFile()) / "objects" / "arm64-iPhoneOS",
           paths.platformSpecificOutputPath / "objects",
           fs::copy_options::overwrite_existing | fs::copy_options::recursive
         );
       }
 
       fs::copy(
-        fs::path(prefixFile()) / "include",
+        Path(prefixFile()) / "include",
         paths.platformSpecificOutputPath / "include",
         fs::copy_options::overwrite_existing | fs::copy_options::recursive
       );
@@ -2161,7 +2218,7 @@ int main (const int argc, const char* argv[]) {
       log("preparing build for linux");
       flags = " -std=c++2a `pkg-config --cflags --libs gtk+-3.0 webkit2gtk-4.1`";
       flags += " -ldl " + getCxxFlags();
-      flags += " -I" + fs::path(paths.platformSpecificOutputPath / "include").string();
+      flags += " -I" + Path(paths.platformSpecificOutputPath / "include").string();
       flags += " -I" + prefixFile();
       flags += " -I" + prefixFile("include");
       flags += " -L" + prefixFile("lib/" + platform.arch + "-desktop");
@@ -2174,19 +2231,19 @@ int main (const int argc, const char* argv[]) {
       pathResources = paths.pathBin;
 
       // @TODO(jwerle): support other Linux based OS
-      fs::path pathControlFile = {
+      Path pathControlFile = {
         paths.pathPackage /
         "DEBIAN"
       };
 
-      fs::path pathManifestFile = {
+      Path pathManifestFile = {
         paths.pathPackage /
         "usr" /
         "share" /
         "applications"
       };
 
-      fs::path pathIcons = {
+      Path pathIcons = {
         paths.pathPackage /
         "usr" /
         "share" /
@@ -2202,13 +2259,13 @@ int main (const int argc, const char* argv[]) {
       fs::create_directories(pathControlFile);
 
       auto linuxExecPath =
-        fs::path("/opt") /
+        Path("/opt") /
         settings["build_name"] /
         settings["build_name"];
 
       settings["linux_executable_path"] = linuxExecPath.string();
       settings["linux_icon_path"] = (
-        fs::path("/usr") /
+        Path("/usr") /
         "share" /
         "icons" /
         "hicolor" /
@@ -2252,7 +2309,7 @@ int main (const int argc, const char* argv[]) {
         " -DWIN32_LEAN_AND_MEAN"
         " -Xlinker /NODEFAULTLIB:libcmt"
         " -Wno-nonportable-include-path"
-        " -I\"" + fs::path(paths.platformSpecificOutputPath / "include").string() + "\""
+        " -I\"" + Path(paths.platformSpecificOutputPath / "include").string() + "\""
         " -I\"" + prefix + "include\""
         " -I\"" + prefix + "src\""
         " -L\"" + prefix + "lib\""
@@ -2267,10 +2324,10 @@ int main (const int argc, const char* argv[]) {
             if (libString[0] == '\"' && libString[libString.size()-2] == '\"')
               libString = libString.substr(1, libString.size()-2);
 
-            fs::path lib(libString);
+            Path lib(libString);
             if (!fs::exists(lib))
             {
-              log("warning: WIN_DEBUG_LIBS: File doesn't exist, aborting build: " + lib.string());
+              log("WARNING: WIN_DEBUG_LIBS: File doesn't exist, aborting build: " + lib.string());
               missing_assets = true;
             } else {
               flags += " " + lib.string();
@@ -2289,7 +2346,7 @@ int main (const int argc, const char* argv[]) {
       flags += " -L" + prefixFile("lib" + d + "/" + platform.arch + "-desktop");
       auto main_o = prefixFile("objects/" + platform.arch + "-desktop/desktop/main" + d + ".o");
       if (!fs::exists(main_o)) {
-        log("warning! Can't find main obj, unable to build: " + main_o);
+        log("WARNING: Can't find main obj, unable to build: " + main_o);
         missing_assets = true;
       } else {
         files += main_o;
@@ -2311,7 +2368,7 @@ int main (const int argc, const char* argv[]) {
 
       pathResources = paths.pathResourcesRelativeToUserBuild;
 
-      auto p = fs::path {
+      auto p = Path {
         paths.pathResourcesRelativeToUserBuild /
         "AppxManifest.xml"
       };
@@ -2396,7 +2453,7 @@ int main (const int argc, const char* argv[]) {
     }
 
     if (settings.count("build_copy") != 0) {
-      fs::path pathInput = settings["build_copy"].size() > 0
+      Path pathInput = settings["build_copy"].size() > 0
         ? settings["build_copy"]
         : "src";
 
@@ -2409,7 +2466,7 @@ int main (const int argc, const char* argv[]) {
           : pathResourcesRelativeToUserBuild;
 
         if (!fs::exists(fs::status(src))) {
-          log("warning: [build] copy entry '" + src.string() +  "' does not exist");
+          log("WARNING: [build] copy entry '" + src.string() +  "' does not exist");
           continue;
         }
 
@@ -2431,7 +2488,7 @@ int main (const int argc, const char* argv[]) {
         log("socket.ini: Mixing [build] input and [build] script may lead to unexpected behavior");
       }
 
-      fs::path pathInput = settings["build_input"].size() > 0
+      Path pathInput = settings["build_input"].size() > 0
         ? targetPath / settings["build_input"]
         : targetPath / "src";
       fs::copy(
@@ -2449,7 +2506,7 @@ int main (const int argc, const char* argv[]) {
       auto key = replace(tuple.first, "build_copy-map_", "");
       auto value = tuple.second;
 
-      auto src = fs::path { key };
+      auto src = Path { key };
       auto dst = tuple.second.size() > 0
         ? pathResourcesRelativeToUserBuild / value
         : pathResourcesRelativeToUserBuild;
@@ -2465,7 +2522,7 @@ int main (const int argc, const char* argv[]) {
       dst = fs::absolute(dst);
 
       if (!fs::exists(fs::status(src))) {
-        log("warning: [copy-map] entry '" + src.string() +  "' does not exist");
+        log("WARNING: [copy-map] entry '" + src.string() +  "' does not exist");
         continue;
       }
 
@@ -2490,14 +2547,14 @@ int main (const int argc, const char* argv[]) {
     }
 
     if (settings.count("build_copy_map") != 0) {
-      auto copyMapFile = fs::path{settings["build_copy_map"]}.make_preferred();
+      auto copyMapFile = Path{settings["build_copy_map"]}.make_preferred();
 
       if (copyMapFile.is_relative()) {
         copyMapFile = targetPath / copyMapFile;
       }
 
       if (!fs::exists(fs::status(copyMapFile))) {
-        log("warning: file specified in [build] copy_map does not exist");
+        log("WARNING: file specified in [build] copy_map does not exist");
       } else {
         auto copyMap = parseINI(tmpl(trim(readFile(copyMapFile)), settings));
         auto copyMapFileDirectory = fs::absolute(copyMapFile.parent_path());
@@ -2521,7 +2578,7 @@ int main (const int argc, const char* argv[]) {
             key = key.substr(11, key.size() - 11);
           }
 
-          auto src = fs::path { key };
+          auto src = Path { key };
           auto dst = tuple.second.size() > 0
             ? pathResourcesRelativeToUserBuild / value
             : pathResourcesRelativeToUserBuild;
@@ -2537,7 +2594,7 @@ int main (const int argc, const char* argv[]) {
           dst = fs::absolute(dst);
 
           if (!fs::exists(fs::status(src))) {
-            log("warning: [build] copy_map entry '" + src.string() +  "' does not exist");
+            log("WARNING: [build] copy_map entry '" + src.string() +  "' does not exist");
             continue;
           }
 
@@ -2972,15 +3029,15 @@ int main (const int argc, const char* argv[]) {
     // ---
     //
     if (flagShouldPackage && platform.linux) {
-      fs::path pathSymLinks = {
+      Path pathSymLinks = {
         paths.pathPackage /
         "usr" /
         "local" /
         "bin"
       };
 
-      auto linuxExecPath = fs::path {
-        fs::path("/opt") /
+      auto linuxExecPath = Path {
+        Path("/opt") /
         settings["build_name"] /
         settings["build_name"]
       };
@@ -3328,7 +3385,7 @@ int main (const int argc, const char* argv[]) {
 
         hr = GetPackageWriter(appx.c_str(), &packageWriter);
 
-        std::function<void(LPCWSTR, fs::path)> addFiles = [&](auto basePath, auto last) {
+        std::function<void(LPCWSTR, Path)> addFiles = [&](auto basePath, auto last) {
           for (const auto & entry : fs::directory_iterator(basePath)) {
             auto p = entry.path().filename().string();
 
@@ -3340,11 +3397,11 @@ int main (const int argc, const char* argv[]) {
             }
 
             if (fs::is_directory(entry.path())) {
-              addFiles(entry.path().c_str(), fs::path { last / entry.path().filename() });
+              addFiles(entry.path().c_str(), Path { last / entry.path().filename() });
               continue;
             }
 
-            auto composite = (fs::path { last / entry.path().filename() });
+            auto composite = (Path { last / entry.path().filename() });
 
             if (!mime) {
               mime = (LPWSTR) L"application/octet-stream";
@@ -3384,12 +3441,12 @@ int main (const int argc, const char* argv[]) {
           }
         };
 
-        addFiles(paths.pathPackage.c_str(), fs::path {});
+        addFiles(paths.pathPackage.c_str(), Path {});
 
         IStream* manifestStream = NULL;
 
         if (SUCCEEDED(hr)) {
-          auto p = fs::path({ paths.pathPackage / "AppxManifest.xml" });
+          auto p = Path({ paths.pathPackage / "AppxManifest.xml" });
 
           hr = SHCreateStreamOnFileEx(
             p.c_str(),
@@ -3446,7 +3503,7 @@ int main (const int argc, const char* argv[]) {
       //
       // https://www.digicert.com/kb/code-signing/signcode-signtool-command-line.htm
       //
-      auto sdkRoot = fs::path("C:\\Program Files (x86)\\Windows Kits\\10\\bin");
+      auto sdkRoot = Path("C:\\Program Files (x86)\\Windows Kits\\10\\bin");
       auto pathToSignTool = getEnv("SIGNTOOL");
 
       if (pathToSignTool.size() == 0) {
@@ -3457,8 +3514,8 @@ int main (const int argc, const char* argv[]) {
           if (p.find(".") != -1) pathToSignTool = p;
         }
 
-        pathToSignTool = fs::path {
-          fs::path(pathToSignTool) /
+        pathToSignTool = Path {
+          Path(pathToSignTool) /
           "x64" /
           "signtool.exe"
         }.string();
@@ -3560,10 +3617,123 @@ int main (const int argc, const char* argv[]) {
       auto pathToApp = paths.platformSpecificOutputPath / app;
       runIOSSimulator(pathToApp, settings);
     } else {
-      auto executable = fs::path(settings["build_name"] + (platform.win ? ".exe" : ""));
+      auto executable = Path(settings["build_name"] + (platform.win ? ".exe" : ""));
       auto exitCode = runApp(paths.pathBin / executable, argvForward, flagHeadless);
       exit(exitCode);
     }
+  });
+
+  createSubcommand("env", { }, true, [&](const std::span<const char *>& options) -> void {
+    auto envs = Map();
+
+    envs["DEBUG"] = getEnv("DEBUG");
+    envs["VERBOSE"] = getEnv("VERBOSE");
+
+    // runtime variables
+    envs["SOCKET_HOME"] = getSocketHome(false);
+    envs["SOCKET_HOME_API"] = getEnv("SOCKET_HOME_API");
+
+    // platform OS variables
+    envs["PWD"] = getEnv("PWD");
+    envs["HOME"] = getEnv("HOME");
+    envs["LANG"] = getEnv("LANG");
+    envs["USER"] = getEnv("USER");
+    envs["SHELL"] = getEnv("SHELL");
+    envs["HOMEPATH"] = getEnv("HOMEPATH");
+    envs["LOCALAPPDATA"] = getEnv("LOCALAPPDATA");
+    envs["XDG_DATA_HOME"] = getEnv("XDG_DATA_HOME");
+
+    // compiler variables
+    envs["CXX"] = getEnv("CXX");
+    envs["PREFIX"] = getEnv("PREFIX");
+    envs["CXXFLAGS"] = getEnv("CXXFLAGS");
+
+    // locale variables
+    envs["LC_ALL"] = getEnv("LC_ALL");
+    envs["LC_CTYPE"] = getEnv("LC_CTYPE");
+    envs["LC_TERMINAL"] = getEnv("LC_TERMINAL");
+    envs["LC_TERMINAL_VERSION"] = getEnv("LC_TERMINAL_VERSION");
+
+    // platform dependency variables
+    envs["JAVA_HOME"] = getEnv("JAVA_HOME");
+    envs["GRADLE_HOME"] = getEnv("GRADLE_HOME");
+    envs["ANDROID_HOME"] = getAndroidHome();
+    envs["ANDROID_SUPPORTED_ABIS"] = getEnv("ANDROID_SUPPORTED_ABIS");
+
+    // apple specific platform variables
+    envs["APPLE_ID"] = getEnv("APPLE_ID");
+    envs["APPLE_ID_PASSWORD"] = getEnv("APPLE_ID");
+
+    // windows specific platform variables
+    envs["SIGNTOOL"] = getEnv("SIGNTOOL");
+    envs["WIN_DEBUG_LIBS"] = getEnv("WIN_DEBUG_LIBS");
+    envs["CSC_KEY_PASSWORD"] = getEnv("CSC_KEY_PASSWORD");
+
+    // ssc variables
+    envs["SSC_CI"] = getEnv("SSC_CI");
+    envs["SSC_RC"] = getEnv("SSC_RC");
+    envs["SSC_RC_FILENAME"] = getEnv("SSC_RC_FILENAME");
+    envs["SSC_ENV_FILENAME"] = getEnv("SSC_ENV_FILENAME");
+
+    if (envs["SOCKET_HOME_API"].size() == 0) {
+      envs["SOCKET_HOME_API"] = trim(prefixFile("api"));
+    }
+
+    // gather all evironemnt variables relevant to project in the `socket.ini`
+    // file, which may overload the variables above
+    for (const auto& entry : settings) {
+      if (entry.first.starts_with("env_")) {
+        auto key = entry.first.substr(4, entry.first.size() - 4);
+        auto value = trim(entry.second);
+
+        if (value.size() == 0) {
+          value = trim(getEnv(key));
+        }
+
+        envs[key] = value;
+      } else if (entry.first == "env") {
+        for (const auto& key : parseStringList(entry.second)) {
+          auto value = trim(getEnv(key));
+          envs[key] = value;
+        }
+      }
+    }
+
+    // gather all evironemnt variables relevant to local `.sscrc` files
+    // file, which may overload the variables above
+    for (const auto& entry : rc) {
+      if (entry.first.starts_with("env_")) {
+        auto key = entry.first.substr(4, entry.first.size() - 4);
+        auto value = trim(entry.second);
+
+        if (value.size() == 0) {
+          value = trim(getEnv(key));
+        }
+
+        envs[key] = value;
+      } else if (entry.first == "env") {
+        for (const auto& key : parseStringList(entry.second)) {
+          auto value = trim(getEnv(key));
+          envs[key] = value;
+        }
+      }
+    }
+
+    // print all environment variables that have values
+    for (const auto& entry : envs) {
+      auto& key = entry.first;
+      auto value = trim(entry.second);
+
+      if (value.size() == 0) {
+        value = trim(getEnv(key));
+      }
+
+      if (value.size() > 0) {
+        std::cout << key << "=" << value << std::endl;
+      }
+    }
+
+    exit(0);
   });
 
   log("subcommand 'ssc " + String(subcommand) + "' is not supported.");
