@@ -23,7 +23,10 @@ async function main () {
     ...process.env
   }
 
-  await installation.firstTimeExperienceSetup()
+  if (!await installation.firstTimeExperienceSetup()) {
+    // FTE not completed satisfactorally, or 'setup' was ran externally
+    return
+  }
 
   const child = fork(installation.bin['ssc-platform'], process.argv.slice(2), {
     env,

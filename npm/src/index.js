@@ -26,34 +26,57 @@ export const bin = {
 export const firstTimeExperienceSetup = async () => {
   const installPath = path.dirname(path.dirname(bin.ssc))
   if (fs.existsSync(path.join(installPath, '.ssc.env'))) {
-    return
+    return true
   }
 
-  let spawnArgs
+  // env doesn't exist, attempt to run setup for target being built. This should also install vc_redist if it hasn't been installed
+  const PLATFORM_PARAMETER = '--platform='
+  let isSetupCall = false
+
+  let platform = ''
+  process.argv.slice(2).forEach(arg => {
+    if (arg === 'setup') {
+      isSetupCall = true
+    } if (arg.indexOf(PLATFORM_PARAMETER) === 0) {
+      platform = arg.substring(PLATFORM_PARAMETER.length)
+    }
+  })
+  const startInfo = { cwd: installPath, stdio: [process.stdin, process.stdout, process.stderr] }
+
+  let spawnArgs = null
   if (os.platform() === 'win32') {
     spawnArgs = [
       'powershell.exe',
-      ['.\\bin\\install.ps1', '-fte:all'],
-      { cwd: installPath, stdio: [process.stdin, process.stdout, process.stderr] }
+      ['.\\bin\\install.ps1', `-fte:${platform.length > 0 ? platform : 'all'}`],
+      startInfo
     ]
   } else {
-    spawnArgs = [
-      './bin/functions.sh',
-      ['--fte'],
-      { cwd: installPath, stdio: [process.stdin, process.stdout, process.stderr] }
-    ]
+    if (platform !== 'android') {
+      // only android setup supported here, don't attempt to run fte
+      spawnArgs = [
+        './bin/functions.sh',
+        ['--fte'],
+        startInfo
+      ]
+    }
   }
 
-  const child = spawn(...spawnArgs)
+  if (spawnArgs != null) {
+    const child = spawn(...spawnArgs)
 
-  await new Promise((resolve, reject) => {
-    child.on('close', resolve).on('error', reject)
-  })
+    await new Promise((resolve, reject) => {
+      child.on('close', resolve).on('error', reject)
+    })
 
-  // If fte didn't create a configuration file, make an empty one to prevent user being prompted again
-  if (child.exitCode == 0 && !fs.existsSync(path.join(installPath, '.ssc.env'))) {
-    fs.writeFileSync(path.join(installPath, '.ssc.env'), "")
+    // If fte didn't create a configuration file, make an empty one to prevent user being prompted again
+    if (child.exitCode === 0 && !fs.existsSync(path.join(installPath, '.ssc.env'))) {
+      fs.writeFileSync(path.join(installPath, '.ssc.env'), '')
+    }
+  } else {
+    return true
   }
+
+  return !isSetupCall
 }
 
 export default {
