@@ -798,7 +798,12 @@ void initializeEnv (Path targetPath) {
 
   auto path = targetPath / filename;
 
-  if (fs::exists(path)) {
+  // just set to `targetPath` if resolved `path` doesn't exist
+  if (!fs::exists(path) && fs::is_regular_file(path)) {
+    path = targetPath;
+  }
+
+  if (fs::exists(path) && fs::is_regular_file(path)) {
     auto env = parseINI(readFile(path));
     for (const auto& tuple : env) {
       auto key = tuple.first;
@@ -827,11 +832,11 @@ void initializeRC (Path targetPath) {
     : targetPath / filename;
 
   // just set to `targetPath` if resolved `path` doesn't exist
-  if (!fs::exists(path)) {
+  if (!fs::exists(path) && fs::is_regular_file(path)) {
     path = targetPath;
   }
 
-  if (fs::exists(path)) {
+  if (fs::exists(path) && fs::is_regular_file(path)) {
     extendMap(rc, parseINI(readFile(path)));
 
     for (const auto& tuple : rc) {
