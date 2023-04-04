@@ -195,6 +195,7 @@ namespace SSC {
   using StringStream = std::stringstream;
   using WString = std::wstring;
   using WStringStream = std::wstringstream;
+  using Path = fs::path;
 
   template <typename T> using Queue = std::queue<T>;
   template <typename T> using Vector = std::vector<T>;
@@ -574,6 +575,10 @@ namespace SSC {
     #endif
   }
 
+  inline String getEnv (const String& variableName) {
+    return getEnv(variableName.c_str());
+  }
+
   inline auto setEnv (const String& k, const String& v) {
   #if _WIN32
     return _putenv((k + "=" + v).c_str());
@@ -947,14 +952,12 @@ namespace SSC {
     std::this_thread::sleep_for(std::chrono::milliseconds(n));
   }
 
-  inline Vector<String> parseStringList (const String& string) {
+  inline Vector<String> parseStringList (const String& string, Vector<char> separators) {
     auto list = Vector<String>();
-    for (const auto& part : split(string, ',')) {
-      list.push_back(part);
-    }
-
-    for (const auto& part : split(string, ' ')) {
-      list.push_back(part);
+    for (const auto& separator : separators) {
+      for (const auto& part: split(string, separator)) {
+        list.push_back(part);
+      }
     }
 
     return list;
@@ -962,6 +965,10 @@ namespace SSC {
 
   inline Vector<String> parseStringList (const String& string, const char separator) {
     return split(string, separator);
+  }
+
+  inline Vector<String> parseStringList (const String& string) {
+    return parseStringList(string, { ' ', ',' });
   }
 }
 
