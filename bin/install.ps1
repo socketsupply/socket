@@ -850,6 +850,7 @@ Function Install-Requirements {
       if ($LASTEXITCODE -eq 0) {
         $promptAndroid = $false
       }
+      Write-Log "d" "--android-setup-required result: $LASTEXITCODE"
     }
 
     if ($promptAndroid) {

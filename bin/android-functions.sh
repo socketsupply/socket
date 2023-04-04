@@ -658,10 +658,10 @@ function android_setup_required() {
     [[ ! -f "$ANDROID_HOME/$ANDROID_SDK_MANAGER" ]] || 
     [[ -z "$JAVA_HOME" ]] || [[ ! -d "$JAVA_HOME" ]]; 
   then
-    return 1
+    exit 1
   fi
 
-  return 0
+  exit 0
 }
 
 export android_fte
