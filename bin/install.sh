@@ -231,7 +231,7 @@ function _build_cli {
   for (( i = 0; i < ${#sources[@]}; i++ )); do
     mkdir -p "$(dirname "${outputs[$i]}")"
     quiet $CXX "${cflags[@]}"  \
-      -c "${sources[$i]}"        \
+      -c "${sources[$i]}"      \
       -o "${outputs[$i]}"
     die $? "$CXX ${cflags[@]} -c \"${sources[$i]}\" -o \"${outputs[$i]}\""
   done
