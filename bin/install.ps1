@@ -33,6 +33,8 @@ $targetCmakeVersion = "3.24.0"
 $logfile="$env:LOCALAPPDATA\socket_install_ps1.log"
 $fso = New-Object -ComObject Scripting.FileSystemObject
 
+$clang_required = ($shbuild -or $fte -eq "windows" -or $fte -eq "all")
+
 # Powershell environment variables are maintained across sessions, clear if not explicitly set
 $set_debug=$null
 if ($debug) {
@@ -82,7 +84,7 @@ function Call-VCVars() {
     }
     Dump-VsEnvVars
   }
-  Write-Output "Errors: " 
+  Write-Log "v" "Errors: " 
   if ($new_envs[0] -ne "0") {
     $global:install_errors += "not ok - vcvars64.bat failed ($($new_envs[0])); Please review $logfile and submit a bug if you think there's an issue."
     Exit-IfErrors
@@ -131,6 +133,8 @@ function Write-LogFile($message)
 {
   Write-Output $message >> $logfile
 }
+
+Write-Log "d" "clang_required: $clang_required"
 
 Function Prompt {
   param($text)
@@ -246,6 +250,20 @@ Function Test-CommandVersion {
 
   Write-Log "d" "No viable versions of $command_string"
   Write-Output $false
+}
+
+Function Locate-Sh() {
+  param($_gitPath)
+
+  $parent = $fso.GetFile($_gitPath).ParentFolder
+
+  if ($parent.Name -eq "cmd") {
+    $sh = "$($parent.ParentFolder.Path)\bin\sh.exe"
+  } else {
+    $sh = "$($parent.Path)\sh.exe"
+  }
+
+  Write-Output $sh
 }
 
 Function Locate-Git() {
@@ -728,8 +746,13 @@ Function Build-VSBuildInstallBlock() {
       Return 1
     }
     Write-Log "h" "# Installing $env:TEMP\$installer"
+    $InstallPWD = (Get-Location).Path
+    cd "$OLD_CWD\$bin"
+    Write-Log "f" "cd $OLD_CWD\$bin"
+    Write-Log "f" "& $env:TEMP\$installer --passive --config $OLD_CWD\$bin\$vsconfig"
     iex "& $env:TEMP\$installer --passive --config $OLD_CWD\$bin\$vsconfig"
     Write-Log "v" "Install result: $LASTEXITCODE"
+    cd "$InstallPWD"
     return $LASTEXITCODE
   }
   $t = $t.replace("`$OLD_CWD", $OLD_CWD).replace("`$bin", $bin).replace("`$vsconfig", $vsconfig)
@@ -755,7 +778,7 @@ Function Install-Requirements {
     $report_vc_vars_reqd = $false
     $install_vc_build = $true
 
-    if ($shbuild -and $(Test-CommandVersion("clang++", $targetClangVersion)) -and $(Found-Command("nmake.exe"))) {
+    if ($clang_required -and $(Test-CommandVersion("clang++", $targetClangVersion)) -and $(Found-Command("nmake.exe"))) {
       Write-Log "h" "# Found clang$and_nmake"
       $install_vc_build = $false
     } elseif ($(Test-CommandVersion("clang++", $targetClangVersion))) {
@@ -764,7 +787,7 @@ Function Install-Requirements {
     } else {
       if ($vc_exists) {
         Call-VcVars
-        if ($shbuild -and $(Test-CommandVersion("clang++", $targetClangVersion)) -and $(Found-Command("nmake.exe"))) {
+        if ($clang_required -and $(Test-CommandVersion("clang++", $targetClangVersion)) -and $(Found-Command("nmake.exe"))) {
           $report_vc_vars_reqd = $true
           $install_vc_build = $false
         } elseif ($(Test-CommandVersion("clang++", $targetClangVersion))) {
@@ -818,7 +841,8 @@ Function Install-Requirements {
     $_gitPath, $exists = Locate-Git
     $promptAndroid = $true
     if ($exists) {
-      $sh = "$($fso.GetFile($_gitPath).ParentFolder.Path)\sh.exe"
+      Write-Log "d" "Git path: $_gitPath"
+      $sh = Locate-Sh $_gitPath
       $android_setup_required_sh = """$sh"" bin\android-functions.sh --android-setup-required"
       Write-Log "v" "# Calling $android_setup_required_sh"
       iex "& $android_setup_required_sh"
@@ -995,57 +1019,41 @@ Download size: 5.5GB, Installed size: 10.2GB y/[N]"
       $file = (New-Object -ComObject Scripting.FileSystemObject).GetFile($(Get-CommandPath "clang++.exe"))
     }
   }
-}
-
-function Run-TargetPlatformFirstTimeExperiences() {
-
-  Write-Log "d" "fte: $fte"
-
-  $ec = 0
-  
-  Install-Requirements
-
-  $ec += $LASTEXITCODE
 
   if ((($fte -eq "all") -or ($fte -eq "android")) -and (($global:yesDepsArg -like "*--no-android-fte*") -eq $false)) {
     $_gitPath, $exists = Locate-Git
     Write-Log "d" "git: $_gitPath"
     if ($exists) {
-      $sh = "$($fso.GetFile($_gitPath).ParentFolder.Path)\sh.exe"
-      $android_setup_required_sh = """$sh"" bin\android-functions.sh --android-fte"
-      Write-Log "v" "# Calling $android_setup_required_sh"
-      iex "& $android_setup_required_sh"
-      $ec += $LASTEXITCODE
+      $sh = Locate-Sh $_gitPath
+      $android_setup_sh = """$sh"" bin\android-functions.sh --android-fte"
+      Write-Log "v" "# Calling $android_setup_sh"
+      iex "& $android_setup_sh"
+      if ($LASTEXITCODE -ne 0) {
+        $global:install_errors += "not ok - Android setup failed."
+      }
+      
     } else {
-      Write-Log "h" "not ok - Unable to locate git bash."
+      $global:install_errors += "not ok - Unable to locate git bash."
       $ec += 1
     }
   }
-
-  if ($fte -ne "") {
-  	exit $ec
-  }
 }
 
-Run-TargetPlatformFirstTimeExperiences
 Install-Requirements
 
 $valid_clang = $(Test-CommandVersion("clang++", $targetClangVersion))
 
-if (($shbuild) -Or ($valid_clang)) {
-  $gitPath = "$env:ProgramFiles\Git\bin"
-  $sh = "$gitPath\sh.exe"
+if (($clang_required) -Or ($valid_clang)) {
+  $gitPath, $exists = Locate-Git
+  if ($exists -eq $false) {
+    $global:install_errors += "not ok - sh.exe not in PATH or default Git\bin"
+    Exit-IfErrors
+  }
+  $sh = Locate-Sh $gitPath
 
   if ($env:VERBOSE -eq "1") {
     Write-Log "v" "# Using shell $sh"
     iex "& ""$sh"" -c 'uname -s'"
-  }
-
-  # Look for sh in path
-  if (-not (Found-Command($sh))) {
-    $sh = "$gitPath\sh.exe"
-    $global:install_errors += "not ok - sh.exe not in PATH or default Git\bin"
-    Exit-IfErrors
   }
 }
 

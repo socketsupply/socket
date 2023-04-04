@@ -581,7 +581,6 @@ function _install {
     cp -ap "$root/bin/android-functions.sh" "$SOCKET_HOME/bin"
     
     if [[ "$(uname -s)" == *"_NT"* ]]; then
-      # mkdir -p "$SOCKET_HOME/ps1"
       cp -ap "$root/bin/"*.ps1 "$SOCKET_HOME/bin"
       cp -ap "$root/bin/".vs* "$SOCKET_HOME/bin"
     fi
