@@ -621,6 +621,11 @@ namespace SSC {
 
   #if !TARGET_OS_IPHONE && !TARGET_OS_SIMULATOR
     inline String readFile (fs::path path) {
+      if (fs::is_directory(path)) {
+        stdWrite("WARNING: trying to read a directory as a file: " + path.string(), true);
+        return "";
+      }
+
       std::ifstream stream(path.c_str());
       String content;
       auto buffer = std::istreambuf_iterator<char>(stream);
