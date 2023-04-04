@@ -1,5 +1,6 @@
 // @ts-check
 
+import { format } from '../util.js'
 import deepEqual from './fast-deep-equal.js'
 import process from '../process.js'
 import os from '../os.js'
@@ -271,7 +272,7 @@ export class Test {
     }
 
     report('    stack:    |-')
-    const st = (err.stack || '').split('\n')
+    const st = format(err || '').split('\n').slice(1)
     for (const line of st) {
       report(`      ${line}`)
     }
