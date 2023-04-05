@@ -423,6 +423,34 @@ export class NotSupportedError extends Error {
 }
 
 /**
+ * An `ModuleNotFoundError` is an error type thrown when an imported or
+ * required module is not found.
+ */
+export class ModuleNotFoundError extends NotFoundError {
+  /**
+   * `ModuleNotFoundError` class constructor.
+   * @param {string} message
+   */
+  constructor (message, requireStack) {
+    super(message)
+
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, ModuleNotFoundError)
+    }
+
+    this.requireStack = requireStack || []
+  }
+
+  get name () {
+    return 'ModuleNotFoundError'
+  }
+
+  get code () {
+    return 'MODULE_NOT_FOUND'
+  }
+}
+
+/**
  * An `OperationError` is an error type thrown when an internal exception
  * has occurred, such as in the native IPC layer.
  */

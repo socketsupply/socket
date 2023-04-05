@@ -13,11 +13,12 @@ namespace SSC::IPC {
 // URLs (socket:...)
 
 static constexpr auto moduleTemplate =
-R"S(
-import module from '{{url}}'
+R"ESM(
+import exports from '{{url}}'
 export * from '{{url}}'
-export default module
-)S";
+export default exports
+self.module = null
+)ESM";
 
 #if defined(__APPLE__)
 namespace SSC::IPC {
