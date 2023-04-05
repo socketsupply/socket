@@ -93,17 +93,26 @@ fi
 declare ABORT_ERRORS=0
 
 # Confirm that build SSC matches current commit
-if command -v ssc >/dev/null 2>&1; then
-  REPO_VERSION="$(cat "$root/VERSION.txt") ($(git rev-parse --short=8 HEAD))"
-  BUILD_VERSION=$("$SOCKET_HOME"/bin/ssc --version)
 
-  if [[ "$REPO_VERSION" != "$BUILD_VERSION" ]]; then
-    echo "Repo $REPO_VERSION and $SOCKET_HOME/bin/ssc $BUILD_VERSION don't match."
-    ABORT_ERRORS=1
+if (( ! only_top_level )); then
+  if command -v ssc >/dev/null 2>&1; then
+    REPO_VERSION="$(cat "$root/VERSION.txt") ($(git rev-parse --short=8 HEAD))"
+    BUILD_VERSION=$("$SOCKET_HOME"/bin/ssc --version)
+
+    if [[ "$REPO_VERSION" != "$BUILD_VERSION" ]]; then
+      echo "Repo $REPO_VERSION and $SOCKET_HOME/bin/ssc $BUILD_VERSION don't match."
+      ABORT_ERRORS=1
+    fi
   fi
 fi
 
-for abi in $(android_supported_abis); do
+declare android_abis=()
+
+if (( ! only_top_level )); then
+  android_abis+=($(android_supported_abis))
+fi
+
+for abi in "${android_abis[@]}"; do
   lib_path="$SOCKET_HOME/lib/$abi-android"
   if [[ ! -f "$lib_path/libuv.a" ]]; then
     ABORT_ERRORS=1
