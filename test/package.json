@@ -6,7 +6,7 @@
     "test:desktop": "node ./scripts/test-desktop.js",
     "test:android": "node ./scripts/test-android.js",
     "test:ios-simulator": "node ./scripts/test-ios-simulator.js",
-    "test:android-emulator": "sh ./scripts/test-android-emulator.sh",
+    "test:android-emulator": "sh ./scripts/shell.sh ./scripts/test-android-emulator.sh",
     "start": "npm test"
   }
 }
