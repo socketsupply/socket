@@ -422,9 +422,17 @@ export class Path extends URL {
    * @type {string}
    */
   get ext () {
-    const i = this.pathname.lastIndexOf('.')
+    let i = this.pathname.lastIndexOf('/')
+
+    if (i === -1) {
+      i = this.pathname.lastIndexOf('\\')
+    }
+
     if (i === -1) return ''
-    return this.pathname.slice(i >= 0 ? i : undefined)
+    const pathname = this.pathname.slice(i)
+    i = pathname.lastIndexOf('.')
+    if (i === -1) return ''
+    return pathname.slice(i >= 0 ? i : undefined)
   }
 
   /**
