@@ -122,6 +122,9 @@ constexpr auto gHelloWorld = R"HTML(
 <html>
   <head>
     <style type="text/css">
+      html, body {
+        height: 100%;
+      }
       body {
         display: grid;
         justify-content: center;
