@@ -824,10 +824,16 @@ Function Install-Requirements {
     $vsbuild_task = $(Build-VSBuildInstallBlock $install_vc_build)
     $check_tasks += , $git_task
     $check_tasks += , $(Build-CMakeInstallBlock)
-    $check_tasks += , $(Build-LLVMInstallBlock)
+    if ($toolchain -like "*llvm*") {
+      $check_tasks += , $(Build-LLVMInstallBlock)
+    }
     $check_tasks += , $vsbuild_task
   }
-  $vsbuild_missing = ($vsbuild_task -ne $null)
+
+  $vsbuild_missing = $true
+  if ($vsbuild_task -eq $null) {
+    $vsbuild_missing = $false
+  }
 
   $all_deps_accepted = $true
   foreach ($task in $check_tasks) {
@@ -867,7 +873,7 @@ Download size: 4.6GB, Installed size: 11.7GB y/[N]"
 
   $confirm_windows_deps = $false
 
-  if ((($all_deps_accepted -eq $false) -and ($vsbuild_missing) -and ($shbuild) -and ($env:CI -eq $null)) -or (($fte -eq "all") -or ($fte -eq "windows"))) {
+  if ((($all_deps_accepted -eq $false) -and ($vsbuild_missing) -and ($shbuild) -and ($env:CI -eq $null)) -or (($force -or $vsbuild_missing) -and (($fte -eq "all") -or ($fte -eq "windows")))) {
     $prompt = "Do you want to install Windows build dependencies? This will enable you to build Windows apps.
 Download size: 5.5GB, Installed size: 10.2GB y/[N]"
     if ((Prompt $prompt) -ne 'y') {
