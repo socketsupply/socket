@@ -195,7 +195,9 @@ namespace SSC {
   using StringStream = std::stringstream;
   using WString = std::wstring;
   using WStringStream = std::wstringstream;
+#if !TARGET_OS_IPHONE && !TARGET_OS_SIMULATOR
   using Path = fs::path;
+#endif
 
   template <typename T> using Queue = std::queue<T>;
   template <typename T> using Vector = std::vector<T>;
