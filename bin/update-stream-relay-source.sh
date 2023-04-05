@@ -2,10 +2,6 @@
 
 version="${1:-"1.0.23-0"}"
 
-if ! test -d node_modules/@socketsupply/stream-relay; then
-  npm i @socketsupply/stream-relay@"$version" --registry https://npm.pkg.github.com || exit $?
-fi
-
 rm -rf api/stream-relay.js || exit $?
 rm -rf api/stream-relay || exit $?
 cp -rf node_modules/@socketsupply/stream-relay/src api/stream-relay || exit $?
