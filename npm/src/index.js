@@ -62,6 +62,7 @@ export const firstTimeExperienceSetup = async () => {
   }
 
   if (spawnArgs != null) {
+    console.log("Checking build dependencies...")
     const child = spawn(...spawnArgs)
 
     await new Promise((resolve, reject) => {
