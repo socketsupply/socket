@@ -453,8 +453,6 @@ namespace SSC {
         post.length = (int) nread;
         post.headers = headers.str();
 
-        memcpy(post.body, buf->base, nread);
-
         auto json = JSON::Object::Entries {
           {"source", "udp.readStart"},
           {"data", JSON::Object::Entries {
