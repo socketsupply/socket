@@ -2910,9 +2910,9 @@ int main (const int argc, const char* argv[]) {
 
         if (!flagRunUserBuildOnly || !fs::exists(jniLibs)) {
 
-        if (fs::exists(obj)) {
-          fs::remove_all(obj);
-        }
+          if (fs::exists(obj)) {
+            fs::remove_all(obj);
+          }
 
           // TODO(mribbons) - Copy specific abis
           fs::create_directories(libs);
@@ -2951,7 +2951,7 @@ int main (const int argc, const char* argv[]) {
             if (debugEnv || verboseEnv) log(ndkBuildArgs.str());
             if (std::system(ndkBuildArgs.str().c_str()) != 0) {
               log(ndkBuildArgs.str());
-              log("ndk build failed.");
+              log("ERROR: ndk build failed.");
               exit(1);
             }
           }
@@ -3701,7 +3701,7 @@ int main (const int argc, const char* argv[]) {
     }
   });
   
-  createSubcommand("setup", { "--platform", "--yes" }, false, [&](const std::span<const char *>& options) -> void {
+  createSubcommand("setup", { "--platform", "--yes", "-y" }, false, [&](const std::span<const char *>& options) -> void {
     auto win = platform.win;
 
     auto help = false;
@@ -3744,7 +3744,7 @@ int main (const int argc, const char* argv[]) {
     }
 
     if (!platform.win && targetWindows) {
-      std::cout << "Windows build dependencies can only be installed on Windows." << std::endl;
+      log("ERROR: Windows build dependencies can only be installed on Windows.");
       exit(1);
     }
     
@@ -3768,14 +3768,14 @@ int main (const int argc, const char* argv[]) {
     script = fs::path(script.string().substr(0, script.string().size()-1));
 
     if (!fs::exists(script)) {
-      std::cout << "Install script not found: '" << script.string() << "'" << std::endl;
+      log("ERROR: Install script not found: '" + script.string() + "'");
       exit(1);
     }
 
     fs::current_path(prefixFile());
 
     String command = scriptHost + " \"" + script.string() + "\" " + argument + " " + yesArg;
-    std::cout << command << std::endl;
+    log(command);
     auto r = std::system(command.c_str());
 
     exit(r);

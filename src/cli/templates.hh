@@ -33,7 +33,7 @@ usage:
   ssc build [options] [<project-dir>]
 
 general options:
-  --platform<=platform> target (android, android-emulator, ios, ios-simulator)
+  --platform=<platform> target (android, android-emulator, ios, ios-simulator)
   --port=<port>         load "index.html" from "http://localhost:<port>"
   -o, --only-build      only run build step,
   -r, --run             run after building
@@ -126,11 +126,11 @@ Setup build tools for target <platform>
 Platforms not listed below can be setup using instructions at https://socketsupply.co/guides
 
 usage:
-  ssc setup --platform=<platform> [--yes|-y]
+  ssc setup --platform=<platform> [-y|--yes]
 
 options:
-  --platform       windows|android
-  --yes|-y         answer yes to any prompts
+  --platform=<platform> target (windows, android)
+  -y, --yes             answer yes to any prompts
     
 )TEXT";
 

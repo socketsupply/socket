@@ -37,7 +37,7 @@ export const firstTimeExperienceSetup = async () => {
   process.argv.slice(2).forEach(arg => {
     if (arg === 'setup') {
       isSetupCall = true
-    } if (arg.indexOf(PLATFORM_PARAMETER) === 0) {
+    } else if (arg.indexOf(PLATFORM_PARAMETER) === 0) {
       platform = arg.substring(PLATFORM_PARAMETER.length)
     }
   })
