@@ -41,6 +41,9 @@ export const firstTimeExperienceSetup = async () => {
       platform = arg.substring(PLATFORM_PARAMETER.length)
     }
   })
+  if (platform == 'android-emulator') {
+    platform = 'android';
+  }
   const startInfo = { cwd: installPath, stdio: [process.stdin, process.stdout, process.stderr] }
 
   let spawnArgs = null
