@@ -17,6 +17,7 @@ export async function load () {
 
 async function main () {
   const installation = await load()
+  const args = process.argv.slice(2)
   const env = {
     ...installation.env,
     SOCKET_HOME_API: path.dirname(dirname),
@@ -28,7 +29,7 @@ async function main () {
     return
   }
 
-  const child = fork(installation.bin['ssc-platform'], process.argv.slice(2), {
+  const child = fork(installation.bin['ssc-platform'], args, {
     env,
     stdio: 'inherit',
     windowsHide: true
