@@ -1626,6 +1626,7 @@ int main (const int argc, const char* argv[]) {
 
     targetPlatform = targetPlatform.size() > 0 ? targetPlatform : platform.os;
     auto platformFriendlyName = targetPlatform == "win32" ? "windows" : targetPlatform;
+    platformFriendlyName = platformFriendlyName == "android-emulator" ? "android" : platformFriendlyName;
 
     if (getEnv("CI").size() == 0 && !isSetupComplete(platformFriendlyName)) {
       log("Build dependency setup is incomplete for " + platformFriendlyName + ", Use 'setup' to resolve: ");
