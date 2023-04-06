@@ -114,6 +114,10 @@ String getSocketHome (bool verbose) {
   static String LOCALAPPDATA = getEnv("LOCALAPPDATA");
   static String SOCKET_HOME = getEnv("SOCKET_HOME");
   static String HOME = getEnv("HOME");
+  static const bool SSC_DEBUG = (
+    getEnv("SSC_DEBUG").size() > 0 ||
+    getEnv("DEBUG").size() > 0
+  );
 
   static String socketHome = "";
   static String sep = platform.win ? "\\" : "/";
@@ -138,8 +142,18 @@ String getSocketHome (bool verbose) {
     } else if (platform.win) {
       socketHome = LOCALAPPDATA + "\\Programs\\socketsupply\\";
     }
-  } else if (verbose) {
-    log("using '" + socketHome + "' as 'SOCKET_HOME'");
+  }
+
+  if (socketHome.size() > 0) {
+    #ifdef _WIN32
+    setEnv((String("SOCKET_HOME=") + socketHome).c_str());
+    #else
+    setenv("SOCKET_HOME", socketHome.c_str(), 1);
+    #endif
+
+    if (SSC_DEBUG) {
+      log("WARNING: 'SOCKET_HOME' is set to '" + socketHome + "'");
+    }
   }
 
   return socketHome;
@@ -150,7 +164,11 @@ String getSocketHome () {
 }
 
 String getAndroidHome() {
-  auto androidHome = getEnv("ANDROID_HOME");
+  static auto androidHome = getEnv("ANDROID_HOME");
+  static const bool SSC_DEBUG = (
+    getEnv("SSC_DEBUG").size() > 0 ||
+    getEnv("DEBUG").size() > 0
+  );
 
   if (androidHome.size() > 0)
     return androidHome;
@@ -194,7 +212,9 @@ String getAndroidHome() {
     setenv("ANDROID_HOME", androidHome.c_str(), 1);
     #endif
 
-    log("WARNING: 'ANDROID_HOME' is set to '" + androidHome + "'");
+    if (SSC_DEBUG) {
+      log("WARNING: 'ANDROID_HOME' is set to '" + androidHome + "'");
+    }
   }
 
   return androidHome;
@@ -870,7 +890,7 @@ bool isSetupCompleteAndroid() {
     return false;
   }
 
-  fs::path sdkManager = androidHome + "/" + getEnv("ANDROID_SDK_MANAGER");
+  Path sdkManager = androidHome + "/" + getEnv("ANDROID_SDK_MANAGER");
 
   if (!fs::exists(sdkManager)) {
     return false;
@@ -2709,6 +2729,15 @@ int main (const int argc, const char* argv[]) {
         pathResources / "socket",
         fs::copy_options::update_existing | fs::copy_options::recursive
       );
+
+      // XXX(@jwerle): 'node_modules/' sometimes can be found in the
+      // SOCKET_HOME_API directory if distributed with npm. Handle all
+      // `NODE_PATH` entries too (pedantic)
+      auto nodePaths = parseStringList(getEnv("NODE_PATH"), { ':', ';' });
+      nodePaths.push_back("node_modules");
+      for (const auto& path : nodePaths) {
+        fs::remove_all(pathResources / "socket" / path);
+      }
     }
 
     if (flagBuildForIOS) {
@@ -2982,10 +3011,10 @@ int main (const int argc, const char* argv[]) {
           log("ERROR: failed to invoke " + bundle + " command.");
           exit(1);
         }
-        
+
         // clear stream
         gradlew.str("");
-        gradlew 
+        gradlew
           << localDirPrefix
           << "gradlew assemble";
 
@@ -3701,7 +3730,7 @@ int main (const int argc, const char* argv[]) {
       exit(exitCode);
     }
   });
-  
+
   createSubcommand("setup", { "--platform", "--yes", "-y" }, false, [&](const std::span<const char *>& options) -> void {
     auto win = platform.win;
 
@@ -3748,9 +3777,9 @@ int main (const int argc, const char* argv[]) {
       log("ERROR: Windows build dependencies can only be installed on Windows.");
       exit(1);
     }
-    
+
     String argument;
-    fs::path script;
+    Path script;
     String scriptHost;
 
     if (platform.win) {
@@ -3766,7 +3795,7 @@ int main (const int argc, const char* argv[]) {
       yesArg = yes ? "--yes-deps" : "";
     }
 
-    script = fs::path(script.string().substr(0, script.string().size()-1));
+    script = Path(script.string().substr(0, script.string().size()-1));
 
     if (!fs::exists(script)) {
       log("ERROR: Install script not found: '" + script.string() + "'");
@@ -3775,8 +3804,8 @@ int main (const int argc, const char* argv[]) {
 
     fs::current_path(prefixFile());
 
+    log("Running setup for platform '" + targetPlatform + "' in " + "SOCKET_HOME (" + prefixFile() + ")");
     String command = scriptHost + " \"" + script.string() + "\" " + argument + " " + yesArg;
-    log(command);
     auto r = std::system(command.c_str());
 
     exit(r);
