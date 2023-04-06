@@ -29,7 +29,8 @@ export const firstTimeExperienceSetup = async () => {
     return true
   }
 
-  // env doesn't exist, attempt to run setup for target being built. This should also install vc_redist if it hasn't been installed
+  // ssc env doesn't exist, attempt to run setup for target being built.
+  // This should also install vc_redist if it hasn't been installed
   const PLATFORM_PARAMETER = '--platform='
   let isSetupCall = false
 
@@ -37,42 +38,53 @@ export const firstTimeExperienceSetup = async () => {
   process.argv.slice(2).forEach(arg => {
     if (arg === 'setup') {
       isSetupCall = true
-    } else if (arg.indexOf(PLATFORM_PARAMETER) === 0) {
-      platform = arg.substring(PLATFORM_PARAMETER.length)
+    }
+
+    if (arg.indexOf(PLATFORM_PARAMETER) === 0) {
+      platform = arg.slice(PLATFORM_PARAMETER.length)
     }
   })
+
   if (platform == 'android-emulator') {
     platform = 'android';
   }
-  const startInfo = { cwd: installPath, stdio: [process.stdin, process.stdout, process.stderr] }
 
-  let spawnArgs = null
+  const startInfo = {
+    env: { VERBOSE: 1, ...process.env },
+    cwd: installPath,
+    stdio: [process.stdin, process.stdout, process.stderr]
+  }
+
+  const spawnArgs = []
   if (os.platform() === 'win32') {
-    spawnArgs = [
+    spawnArgs.push(
+      // @ts-ignore
       'powershell.exe',
       ['.\\bin\\install.ps1', `-fte:${platform.length > 0 ? platform : 'all'}`],
       startInfo
-    ]
-  } else {
-    if (platform !== 'android') {
-      // only android setup supported here, don't attempt to run fte
-      spawnArgs = [
-        './bin/functions.sh',
-        ['--fte'],
-        startInfo
-      ]
-    }
+    )
+  } else if (platform && platform !== 'android') {
+    // only android setup supported here, don't attempt to run fte
+    spawnArgs.push(
+      // @ts-ignore
+      './bin/functions.sh',
+      ['--fte'],
+      startInfo
+    )
   }
 
   if (spawnArgs != null) {
-    console.log("Checking build dependencies...")
+    console.log("# Checking build dependencies...")
+    // @ts-ignore
     const child = spawn(...spawnArgs)
 
     await new Promise((resolve, reject) => {
+      // @ts-ignore
       child.on('close', resolve).on('error', reject)
     })
 
     // If fte didn't create a configuration file, make an empty one to prevent user being prompted again
+    // @ts-ignore
     if (child.exitCode === 0 && !fs.existsSync(path.join(installPath, '.ssc.env'))) {
       fs.writeFileSync(path.join(installPath, '.ssc.env'), '')
     }
