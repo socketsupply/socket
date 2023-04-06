@@ -111,8 +111,26 @@ fi
 
 read_env_data
 
+function advice {
+  if [[ "$(uname -s)" == "Darwin" ]]; then
+    echo "brew install $1"
+  elif [[ "$(uname -r)" == *"ARCH"* ]]; then
+    echo "sudo pacman -S $1"
+  elif [[ "$(uname -s)" == *"Linux"* ]]; then
+    echo "sudo apt-get install $1"
+  fi
+}
+
 if [ ! "$CXX" ]; then
-  if command -v clang++ >/dev/null 2>&1; then
+  # TODO(@mribbons): yum support
+  if command -v dpkg >/dev/null 2>&1; then
+    # Convert clang++ paths to a path + version (bin_version), sort by version, then cut out bin path back out to get the highest installed clang version
+    CXX=$(dpkg -S clang 2>&1| grep "++" | cut -d" " -f 2 | while read clang; do bin_version="$("$clang" --version|head -n1)#$clang"; echo $bin_version; done | sort -r | cut -d"#" -f 2 | head -n1)
+    if [[ -z "$CXX" ]]; then
+      echo >&2 "not ok - missing build tools, try \"$(advice "clang-15")\""
+      exit 1
+    fi
+  elif command -v clang++ >/dev/null 2>&1; then
     CXX="$(command -v clang++)"
   elif command -v g++ >/dev/null 2>&1; then
     CXX="$(command -v g++)"
@@ -149,16 +167,6 @@ if [[ "$host" != "Win32" ]]; then
     }
   fi
 fi
-
-function advice {
-  if [[ "$(uname -s)" == "Darwin" ]]; then
-    echo "brew install $1"
-  elif [[ "$(uname -r)" == *"ARCH"* ]]; then
-    echo "sudo pacman -S $1"
-  elif [[ "$(uname -s)" == *"Linux"* ]]; then
-    echo "sudo apt-get install $1"
-  fi
-}
 
 if [[ "$(uname -s)" != *"_NT"* ]]; then
   quiet command -v make
