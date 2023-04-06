@@ -195,6 +195,11 @@ if [[ -n "$no_android_fte" ]] && [[ -z "$ANDROID_HOME" ]]; then
   unset BUILD_ANDROID
 fi
 
+if [[ -n "$BUILD_ANDROID" ]] && [[ "arm64" == "$(host_arch)" ]] && [[ "Linux" == "$host" ]]; then
+  echo "warn - Android not supported on "$host"-"$(uname -m)", will unset BUILD_ANDROID"
+  unset BUILD_ANDROID
+fi
+
 if [[ -n "$BUILD_ANDROID" ]]; then
 
   android_fte "$pass_yes_deps"
