@@ -4,6 +4,7 @@ declare root="$(cd "$(dirname "$(dirname "${BASH_SOURCE[0]}")")" && pwd)"
 declare arch=""
 declare platform=""
 declare do_full_clean=0
+declare do_clean_env_only=0
 
 if (( TARGET_OS_IPHONE )); then
   arch="arm64"
@@ -23,9 +24,7 @@ while (( $# > 0 )); do
   if [[ "$arg" = "--full" ]]; then
     do_full_clean=1
     continue
-  fi
-
-  if [[ "$arg" = "--platform" ]]; then
+  elif [[ "$arg" = "--platform" ]]; then
     if [[ "$1" = "ios" ]] || [[ "$1" = "iPhoneOS" ]] || [[ "$1" = "iphoneos" ]]; then
       arch="arm64"
       platform="iPhoneOS";
@@ -40,6 +39,8 @@ while (( $# > 0 )); do
     fi
     shift
     continue
+  elif [[ "$arg" = "--only-env" ]]; then
+    do_clean_env_only=1
   fi
 done
 
@@ -75,6 +76,9 @@ if [ -n "$arch" ] || [ -n "$platform" ]; then
     "$root/build/"$arch-$platform/**/*.o         \
     "$root/build/npm/$platform"                  \
   2>/dev/null))
+
+  targets+=($(find "$root/build/npm/$platform" -name .ssc.env 2>/dev/null))
+  targets+=($(find "$root/build/$arch-$platform" -name .ssc.env 2>/dev/null))
 elif (( do_full_clean )); then
   if test -f "$root/build"; then
     rm -rf "$root/build" || exit $?
@@ -97,9 +101,32 @@ else
     "$root"/build/*/**/*.o         \
     "$root"/build/npm              \
   2>/dev/null))
+
+  targets+=($(find "$root/build" -name .ssc.env 2>/dev/null))
 fi
 
-if (( ${#targets[@]} > 0 )); then
+if (( do_clean_env_only )); then
+  if [ -n "$arch" ] || [ -n "$platform" ]; then
+    targets+=($(find "$root/build/npm/$platform" -name .ssc.env 2>/dev/null))
+    targets+=($(find "$root/build/$arch-$platform" -name .ssc.env 2>/dev/null))
+  else
+    targets+=($(find "$root/build" -name .ssc.env 2>/dev/null))
+    targets+=("$root/.ssc.env")
+  fi
+
+  if (( ${#targets[@]} > 0 )); then
+    echo "# cleaning .ssc.env"
+    for target in "${targets[@]}"; do
+      if test "$target"; then
+        rm -rf "$target"
+        if [ -n "$VERBOSE" ]; then
+          echo "ok - cleaned ${target/$root\//}"
+        fi
+      fi
+    done
+    echo "ok - cleaned"
+  fi
+elif (( ${#targets[@]} > 0 )); then
   echo "# cleaning targets"
   for target in "${targets[@]}"; do
     if test "$target"; then
