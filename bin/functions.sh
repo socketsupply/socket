@@ -251,14 +251,14 @@ function prompt_new_path() {
 
   if [ -n "$2" ]; then
     write_log "h" "$text"
-    if prompt_yn "Use suggested default path: ""$2""?"; then
+    if prompt_yn "> Use suggested default path: ""$2""?"; then
       input="$2"
     fi
   fi
 
   while true; do
     if [ -z "$input" ]; then
-      prompt "$text (Press Enter to go back)" input
+      prompt "> $text (Press Enter to go back)" input
     fi
     # remove any quote characters
     input=${input//\"/}
@@ -277,7 +277,7 @@ function prompt_new_path() {
       fi
       input=""
     elif [ -z "$input" ]; then
-      if prompt_yn "Cancel entering new path?"; then
+      if prompt_yn "> Cancel entering new path?"; then
         return
       fi
     else
