@@ -173,11 +173,15 @@ if [ "$host" == "Linux" ]; then
   die $? "not ok - missing build tools, try \"$(advice "libtool")\""
 fi
 
+if [[ -n "$BUILD_ANDROID" ]] && [[ "arm64" == "$(host_arch)" ]] && [[ "Linux" == "$host" ]]; then
+  echo "warn - Android not supported on "$host"-"$(uname -m)", will unset BUILD_ANDROID"
+  unset BUILD_ANDROID
+fi
+
 if [[ -n "$BUILD_ANDROID" ]]; then
   abis=($(android_supported_abis))
   platform="android"
   arch="${abis[0]}"
-  host_arch="$(host_arch)"
   clang="$(android_clang "$ANDROID_HOME" "$NDK_VERSION" "$host" "$host_arch" "$arch")"
 
   if ! quiet $clang -v; then
