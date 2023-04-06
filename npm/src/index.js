@@ -73,7 +73,7 @@ export const firstTimeExperienceSetup = async () => {
     )
   }
 
-  if (spawnArgs != null) {
+  if (spawnArgs.length) {
     console.log("# Checking build dependencies...")
     // @ts-ignore
     const child = spawn(...spawnArgs)
