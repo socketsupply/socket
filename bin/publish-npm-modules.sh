@@ -108,7 +108,12 @@ fi
 
 declare android_abis=()
 
-if (( ! only_top_level )); then
+
+if (( only_top_level )); then
+  : # android libs don't need to be built for top level
+elif [[ "arm64" == "$(host_arch)" ]] && [[ "linux" == "$platform" ]]; then
+  echo "warn - Android not supported on $platform-"$(uname -m)""
+else
   android_abis+=($(android_supported_abis))
 fi
 
