@@ -1486,6 +1486,7 @@ static void registerSchemeHandler (Router *router) {
     [response release];
     #endif
 
+    self.router->core->removePost(id);
     return;
   }
 
