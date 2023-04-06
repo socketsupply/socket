@@ -915,7 +915,8 @@ Download size: 5.5GB, Installed size: 10.2GB y/[N]"
 
     if ($install_tasks.Count -gt 0) {
       Write-Log "h" "# Installing build dependencies..."
-      $script = ". ""$OLD_CWD\bin\install.ps1"" -declare_only"
+      $script = "Set-ExecutionPolicy Bypass -Scope Process -Force`r`n"
+      $script+= ". ""$OLD_CWD\bin\install.ps1"" -declare_only`r`n"
       # concatinate all script blocks so a single UAC request is raised
       foreach ($task in $install_tasks) {
         $script = "$($script)
