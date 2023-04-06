@@ -11,7 +11,7 @@ fi
 
 if [[ "$host" = "Linux" ]]; then
   if [ -n "$WSL_DISTRO_NAME" ] || uname -r | grep 'Microsoft'; then
-    echo >&2 "erroR: WSL is not supported."
+    echo >&2 "error: WSL is not supported."
     exit 1
   fi
 elif [[ "$host" == *"MINGW64_NT"* ]]; then

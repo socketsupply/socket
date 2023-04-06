@@ -46,7 +46,12 @@ done
 
 declare targets=()
 
-if [ -n "$arch" ] || [ -n "$platform" ]; then
+if (( do_full_clean )); then
+  if test -d "$root/build"; then
+    rm -rf "$root/build" || exit $?
+    echo "ok - cleaned (full)"
+  fi
+elif [ -n "$arch" ] || [ -n "$platform" ]; then
   if (( do_full_clean )); then
     echo "error - cannot mix '--full' and '--arch/--platform'" >&2
     exit 1
@@ -79,11 +84,6 @@ if [ -n "$arch" ] || [ -n "$platform" ]; then
 
   targets+=($(find "$root/build/npm/$platform" -name .ssc.env 2>/dev/null))
   targets+=($(find "$root/build/$arch-$platform" -name .ssc.env 2>/dev/null))
-elif (( do_full_clean )); then
-  if test -f "$root/build"; then
-    rm -rf "$root/build" || exit $?
-    echo "ok - cleaned (full)"
-  fi
 else
   targets+=($(find                 \
     "$root"/build/*/app            \
