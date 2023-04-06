@@ -45,8 +45,8 @@ export const firstTimeExperienceSetup = async () => {
     }
   })
 
-  if (platform == 'android-emulator') {
-    platform = 'android';
+  if (platform === 'android-emulator') {
+    platform = 'android'
   }
 
   const startInfo = {
@@ -74,7 +74,7 @@ export const firstTimeExperienceSetup = async () => {
   }
 
   if (spawnArgs.length) {
-    console.log("# Checking build dependencies...")
+    console.log('# Checking build dependencies...')
     // @ts-ignore
     const child = spawn(...spawnArgs)
 
