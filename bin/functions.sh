@@ -122,7 +122,7 @@ function host_os() {
 
   if [[ "$host" = "Linux" ]]; then
     if [ -n "$WSL_DISTRO_NAME" ] || uname -r | grep 'Microsoft'; then
-    write_log "h" "WSL is not supported."
+    write_log "h" "not ok - WSL is not supported."
     exit 1
     fi
   elif [[ "$host" == *"MINGW64_NT"* ]]; then
@@ -174,7 +174,7 @@ function update_env_data() {
   (( fail )) && exit $fail
 
   for kvp in "${vars[@]}"; do
-    write_log "v" "eval \"$kvp\""
+    write_log "d" "# eval \"$kvp\""
     eval "$kvp"
   done
 
@@ -251,14 +251,14 @@ function prompt_new_path() {
 
   if [ -n "$2" ]; then
     write_log "h" "$text"
-    if prompt_yn "Use suggested default path: ""$2""?"; then
+    if prompt_yn "> Use suggested default path: ""$2""?"; then
       input="$2"
     fi
   fi
 
   while true; do
     if [ -z "$input" ]; then
-      prompt "$text (Press Enter to go back)" input
+      prompt "> $text (Press Enter to go back)" input
     fi
     # remove any quote characters
     input=${input//\"/}
@@ -271,19 +271,19 @@ function prompt_new_path() {
       fi
 
       unix_input="$(abs_path "$unix_input")"
-      write_log "h" "\"$input\" already exists, please choose a new path."
+      write_log "h" "# \"$input\" already exists, please choose a new path."
       if [ -n "$exists_message" ]; then
-        write_log "h" "$exists_message"
+        write_log "h" "# $exists_message"
       fi
       input=""
     elif [ -z "$input" ]; then
-      if prompt_yn "Cancel entering new path?"; then
+      if prompt_yn "> Cancel entering new path?"; then
         return
       fi
     else
-      write_log "h" "Create: $unix_input"
+      write_log "h" "ok - Create: $unix_input"
       if ! mkdir -p "$unix_input"; then
-        write_log "h" "Create $unix_input failed."
+        write_log "h" "not ok - Create $unix_input failed."
         input=""
       else
         input="$(native_path "$(abs_path "$unix_input")")"
@@ -387,8 +387,8 @@ function lower() {
   echo "$1"|tr '[:upper:]' '[:lower:]'
 }
 
-function version { 
-  echo "$@" | awk -F. '{ printf("%d%03d%03d%03d\n", $1,$2,$3,$4); }'; 
+function version() {
+  echo "$@" | awk -F. '{ printf("%d%03d%03d%03d\n", $1,$2,$3,$4); }';
 }
 
 # Logging
@@ -400,8 +400,10 @@ fi
 logfile="$_loghome/socket_install_sh.log"
 
 function write_log() {
+  local wh=""
   local type=$1
   local message=$2
+
   if [[ -n "$DEBUG" ]] && ( [[ "$type" == "d" ]] || [[ "$type" == "v" ]] ); then
     wh="1"
   elif [[ -n "$VERBOSE" ]] && [[ "$type" == "v" ]]; then
@@ -438,5 +440,5 @@ function main() {
 }
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-    main "$@"
+  main "$@"
 fi
