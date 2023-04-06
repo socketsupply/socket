@@ -210,7 +210,7 @@ if [[ -n "$BUILD_ANDROID" ]]; then
   abis=($(android_supported_abis))
   platform="android"
   arch="${abis[0]}"
-  clang="$(android_clang "$ANDROID_HOME" "$NDK_VERSION" "$host" "$host_arch" "$arch")"
+  clang="$(android_clang "$ANDROID_HOME" "$NDK_VERSION" "$host" "$(host_arch)" "$arch")"
 
   if ! quiet $clang -v; then
     echo "not ok - Android clang call failed. This could indicate an issue with ANDROID_HOME, missing ndk tools, or incorrectly determined host or target architectures."
@@ -846,6 +846,8 @@ function _check_compiler_features {
   else
     cflags+=(-x c++)
   fi
+
+  cflags+=("-I$root")
 
   $CXX "${cflags[@]}" "${ldflags[@]}" - -o /dev/null >/dev/null << EOF_CC
     #include "src/common.hh"
