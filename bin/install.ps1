@@ -827,7 +827,9 @@ Function Install-Requirements {
     if ($toolchain -like "*llvm*") {
       $check_tasks += , $(Build-LLVMInstallBlock)
     }
-    $check_tasks += , $vsbuild_task
+    if ($env:CI -ne $true) {
+      $check_tasks += , $vsbuild_task
+    }
   }
 
   $vsbuild_missing = $true
@@ -915,8 +917,7 @@ Download size: 5.5GB, Installed size: 10.2GB y/[N]"
 
     if ($install_tasks.Count -gt 0) {
       Write-Log "h" "# Installing build dependencies..."
-      $script = "Set-ExecutionPolicy Bypass -Scope Process -Force`r`n"
-      $script+= ". ""$OLD_CWD\bin\install.ps1"" -declare_only`r`n"
+      $script = ". ""$OLD_CWD\bin\install.ps1"" -declare_only"
       # concatinate all script blocks so a single UAC request is raised
       foreach ($task in $install_tasks) {
         $script = "$($script)
