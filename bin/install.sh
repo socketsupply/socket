@@ -162,6 +162,8 @@ if [ "$host" == "Darwin" ]; then
   die $? "not ok - missing build tools, try 'brew install libtool'"
   quiet command -v libtool
   die $? "not ok - missing build tools, try 'brew install libtool'"
+  quiet command -v curl
+  die $? "not ok - missing curl, try 'brew install curl'"
 fi
 
 if [ "$host" == "Linux" ]; then
@@ -171,6 +173,8 @@ if [ "$host" == "Linux" ]; then
   die $? "not ok - missing pkg-config tool, \"$(advice 'pkg-config')\""
   quiet command -v libtoolize
   die $? "not ok - missing build tools, try \"$(advice "libtool")\""
+  quiet command -v curl
+  die $? "not ok - missing curl, \"$(advice 'curl')\""
 fi
 
 if [[ -n "$BUILD_ANDROID" ]] && [[ "arm64" == "$(host_arch)" ]] && [[ "Linux" == "$host" ]]; then
@@ -179,6 +183,9 @@ if [[ -n "$BUILD_ANDROID" ]] && [[ "arm64" == "$(host_arch)" ]] && [[ "Linux" ==
 fi
 
 if [[ -n "$BUILD_ANDROID" ]]; then
+
+  android_fte
+
   abis=($(android_supported_abis))
   platform="android"
   arch="${abis[0]}"
@@ -541,13 +548,24 @@ function _install {
     rm -rf "$SOCKET_HOME/include"
     mkdir -p "$SOCKET_HOME/include"
     cp -rfp "$BUILD_DIR"/uv/include/* "$SOCKET_HOME/include"
+
+    if [[ -f "$root/$SSC_ENV_FILENAME" ]]; then
+      if [[ -f "$SOCKET_HOME/$SSC_ENV_FILENAME" ]]; then
+        echo "# Not overwriting $SOCKET_HOME/$SSC_ENV_FILENAME"
+      else
+        echo "# copying $SSC_ENV_FILENAME to $SOCKET_HOME"
+        cp -fp "$root/$SSC_ENV_FILENAME" "$SOCKET_HOME/$SSC_ENV_FILENAME"
+      fi
+    else
+      echo "warn - $SSC_ENV_FILENAME not created."
+    fi
   fi
 
   if [[ "$(uname -s)" == *"_NT"* ]]; then
     if [ "$platform" == "desktop" ]; then
       mkdir -p "$SOCKET_HOME/ps1"
-      cp -ap "$root/bin/*.ps1" "$SOCKET_HOME/ps1"
-      cp -ap "$root/bin/.vs*" "$SOCKET_HOME/ps1"
+      cp -ap "$root/bin/"*.ps1 "$SOCKET_HOME/ps1"
+      cp -ap "$root/bin/".vs* "$SOCKET_HOME/ps1"
     fi
   fi
 

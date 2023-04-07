@@ -1611,8 +1611,8 @@ int main (const int argc, const char* argv[]) {
     }
 
     auto removePath = paths.platformSpecificOutputPath;
-      if (targetPlatform == "android")
-        removePath = settings["output"] + "/android/app/src";
+    if (targetPlatform == "android")
+        removePath = settings["build_output"] + "/android/app/src";
 
     if (flagRunUserBuildOnly == false && fs::exists(removePath)) {
       auto p = fs::current_path() / Path(removePath);
@@ -1739,11 +1739,16 @@ int main (const int argc, const char* argv[]) {
       StringStream sdkmanager;
 
       if (debugEnv || verboseEnv) log("sdkmanager --version 2>&1 >/dev/null");
-      if (std::system("sdkmanager --version 2>&1 >/dev/null") != 0) {
+
+      sdkmanager << androidHome;
+      if (getEnv("ANDROID_SDK_MANAGER").size() > 0)
+      {
+        sdkmanager << "/" << getEnv("ANDROID_SDK_MANAGER");
+      } else if (std::system("  sdkmanager --version 2>&1 >/dev/null") != 0) {
         if (!platform.win) {
-          sdkmanager << androidHome << "/cmdline-tools/latest/bin/";
+          sdkmanager << "/cmdline-tools/latest/bin/sdkmanager";
         } else {
-          sdkmanager << androidHome << "\\cmdline-tools\\latest\\bin\\";
+          sdkmanager << "\\cmdline-tools\\latest\\bin\\sdkmanager.bat";
         }
       }
 
@@ -1751,19 +1756,25 @@ int main (const int argc, const char* argv[]) {
 
       // TODO(mribbons): Check if we need this in CI - Upload licenses folder from workstation
       // https://developer.android.com/studio/intro/update#download-with-gradle
-      String licenseAccept =  sdkmanager.str() + "sdkmanager" + (platform.win ? ".bat" : "") + " --licenses";
 
-      // echo nothing so command doesn't block
-      if (std::system(("echo |" + licenseAccept).c_str()) != 0) {
-        // This doesn't return a useful status on windows at least
+
+      String licenseAccept = 
+       (getEnv("ANDROID_SDK_MANAGER_ACCEPT_LICENSES").size() > 0 ? getEnv("ANDROID_SDK_MANAGER_ACCEPT_LICENSES") : "echo") + " | " +
+       sdkmanager.str() + " --licenses";
+
+      if (std::system((licenseAccept).c_str()) != 0) {
+        // Windows doesn't support 'yes'
         log(("Check licenses and run again: \n" + licenseAccept + "\n").c_str());
       }
 
       settings["android_sdk_manager_path"] = sdkmanager.str();
+      
+      String gradlePath = getEnv("GRADLE_HOME").size() > 0 ? getEnv("GRADLE_HOME") + slash + "bin" + slash : "";
 
       StringStream gradleInitCommand;
       gradleInitCommand
         << "echo 1 |"
+        << gradlePath
         << "gradle "
         << "--no-configuration-cache "
         << "--no-build-cache "
@@ -1776,7 +1787,13 @@ int main (const int argc, const char* argv[]) {
       if (std::system(gradleInitCommand.str().c_str()) != 0) {
         log("ERROR: failed to invoke `gradle init` command");
         // In case user didn't accept licenses above
-        log(("Check licenses and run again: \n" + licenseAccept + "\n").c_str());
+        log(
+          String("Check licenses and run again: \n") +
+          (platform.win ? "set" : "export") +
+          (" JAVA_HOME=\"" + getEnv("JAVA_HOME") + "\" && ") +
+          licenseAccept +
+          "\n"
+         );
         exit(1);
       }
 
@@ -2778,6 +2795,7 @@ int main (const int argc, const char* argv[]) {
       sdkmanager << settings["android_sdk_manager_path"];
 
       packages
+        << " "
         << quote << "ndk;" << ndkVersion << quote << " "
         << quote << "platform-tools" << quote << " "
         << quote << "platforms;" << androidPlatform << quote << " "
@@ -2787,7 +2805,6 @@ int main (const int argc, const char* argv[]) {
         << quote << "system-images;" << androidPlatform << ";google_apis;arm64-v8a" << quote << " ";
 
       sdkmanager
-        << "sdkmanager "
         << packages.str();
 
       if (debugEnv || verboseEnv) log(sdkmanager.str());
@@ -2838,49 +2855,52 @@ int main (const int argc, const char* argv[]) {
         auto libs = _main / "libs";
         auto obj = _main / "obj";
 
+        if (!flagRunUserBuildOnly || !fs::exists(jniLibs)) {
+
         if (fs::exists(obj)) {
           fs::remove_all(obj);
         }
 
-        // TODO(mribbons) - Copy specific abis
-        fs::create_directories(libs);
-        for (auto const& dir_entry : fs::directory_iterator(prefixFile() + "lib")) {
-          if (dir_entry.is_directory() && dir_entry.path().stem().string().find("-android") != String::npos) {
-            auto dest = libs / replace(dir_entry.path().stem().string(), "-android", "");
-            try {
-              if (debugEnv) log("copy android lib: "+ dir_entry.path().string() + " => " + dest.string());
-              fs::copy(
-                dir_entry.path(),
-                dest,
-                fs::copy_options::overwrite_existing | fs::copy_options::recursive
-              );
-            } catch (fs::filesystem_error &e) {
-              std::cerr << "Unable to copy android lib: " << fs::exists(dest) << ": " << e.what() << std::endl;
-              throw;
+          // TODO(mribbons) - Copy specific abis
+          fs::create_directories(libs);
+          for (auto const& dir_entry : fs::directory_iterator(prefixFile() + "lib")) {
+            if (dir_entry.is_directory() && dir_entry.path().stem().string().find("-android") != String::npos) {
+              auto dest = libs / replace(dir_entry.path().stem().string(), "-android", "");
+              try {
+                if (debugEnv) log("copy android lib: "+ dir_entry.path().string() + " => " + dest.string());
+                fs::copy(
+                  dir_entry.path(),
+                  dest,
+                  fs::copy_options::overwrite_existing | fs::copy_options::recursive
+                );
+              } catch (fs::filesystem_error &e) {
+                std::cerr << "Unable to copy android lib: " << fs::exists(dest) << ": " << e.what() << std::endl;
+                throw;
+              }
             }
           }
-        }
 
-        if (androidBuildSocketRuntime) {
-          fs::create_directories(jniLibs);
+          if (androidBuildSocketRuntime) {
+            fs::create_directories(jniLibs);
 
-          ndkBuildArgs
-            << ndkBuild.str()
-            << " -j"
-            << " NDK_PROJECT_PATH=" << _main
-            << " NDK_APPLICATION_MK=" << app_mk
-            << (flagDebugMode ? " NDK_DEBUG=1" : "")
-            << " APP_PLATFORM=" << androidPlatform
-            << " NDK_LIBS_OUT=" << jniLibs
-          ;
+            ndkBuildArgs
+              << ndkBuild.str()
+              << " -j"
+              << " NDK_PROJECT_PATH=" << _main
+              << " NDK_APPLICATION_MK=" << app_mk
+              << (flagDebugMode ? " NDK_DEBUG=1" : "")
+              << " APP_PLATFORM=" << androidPlatform
+              << " NDK_LIBS_OUT=" << jniLibs
+            ;
 
-          if (!(debugEnv || verboseEnv)) ndkBuildArgs << " >" << (!platform.win ? "/dev/null" : "NUL") << " 2>&1";
+            if (!(debugEnv || verboseEnv)) ndkBuildArgs << " >" << (!platform.win ? "/dev/null" : "NUL") << " 2>&1";
 
-          if (debugEnv || verboseEnv) log(ndkBuildArgs.str());
-          if (std::system(ndkBuildArgs.str().c_str()) != 0) {
-            log(ndkBuildArgs.str());
-            log("ndk build failed.");
-            exit(1);
+            if (debugEnv || verboseEnv) log(ndkBuildArgs.str());
+            if (std::system(ndkBuildArgs.str().c_str()) != 0) {
+              log(ndkBuildArgs.str());
+              log("ndk build failed.");
+              exit(1);
+            }
           }
         }
       }

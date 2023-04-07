@@ -9,7 +9,8 @@ gradlew.bat
 .project
 .settings/
 .clang-format
-.vimrc
+.*rc
+.*.env
 .vscode
 *.gradle*
 compile_flags.txt
