@@ -438,14 +438,14 @@ function android_install_sdk_manager() {
     return 0
   fi
 
-  if ! prompt_yn "> The Android SDK Manager is required for building Android apps. Install it now?"; then
+  if ! prompt_yn "The Android SDK Manager is required for building Android apps. Install it now?"; then
     return 1
   fi
 
   write_log "h" "# Please review the Android SDK Manager License by visiting the URL below and clicking "Download SDK Platform-Tools for "[Your OS]"
   write_log "h" "# $ANDROID_PLATFORM_TOOLS_PAGE_URI"
 
-  if ! prompt_yn "> Do you consent to the Android SDK Manager License?"; then
+  if ! prompt_yn "Do you consent to the Android SDK Manager License?"; then
     return 1
   fi
 
@@ -454,7 +454,7 @@ function android_install_sdk_manager() {
     write_log "h" "# Using existing ANDROID_HOME: $ANDROID_HOME folder"
     _ah="$ANDROID_HOME"
   else
-    prompt_new_path "> Enter location for ANDROID_HOME" "${ANDROID_HOME_SEARCH_PATHS[0]}" _ah \
+    prompt_new_path "Enter location for ANDROID_HOME" "${ANDROID_HOME_SEARCH_PATHS[0]}" _ah \
       "If you want to use an existing path as ANDROID_HOME, set it in an environment variable before running this script."
 
     if [ -d "$_ah" ]; then
@@ -480,7 +480,7 @@ function android_install_sdk_manager() {
   fi
   rm -f "$archive"
 
-  if ! prompt_yn "> Android Command line tools is required for building Android apps. Install it now?"; then
+  if ! prompt_yn "Android Command line tools is required for building Android apps. Install it now?"; then
     return 1
   fi
 
@@ -488,7 +488,7 @@ function android_install_sdk_manager() {
   write_log "h" "# Please review the Android Command line tools License by visiting the URL below, locating ""Command line tools only"" and clicking $(basename "$uri")"
   write_log "h" "# $ANDROID_STUDIO_PAGE_URI"
 
-  if ! prompt_yn "> Do you consent to the Android Command line tools License?"; then
+  if ! prompt_yn "Do you consent to the Android Command line tools License?"; then
     return 1
   fi
 
@@ -526,12 +526,12 @@ function android_install_jdk() {
       return 0
   fi
 
-  if ! prompt_yn "> The Java Developement Kit is required for building Android apps. Install OpenJDK $JDK_VERSION now?"; then
+  if ! prompt_yn "The Java Developement Kit is required for building Android apps. Install OpenJDK $JDK_VERSION now?"; then
     return 1
   fi
 
   local _jh
-  prompt_new_path "> Enter parent location for JAVA_HOME (The JDK will be extracted within this folder)" "${JAVA_HOME_SEARCH_PATHS[0]}" _jh \
+  prompt_new_path "Enter parent location for JAVA_HOME (The JDK will be extracted within this folder)" "${JAVA_HOME_SEARCH_PATHS[0]}" _jh \
     "!CAN_EXIST!"
 
   if [ ! -d "$(unix_path "$_jh")" ]; then
@@ -567,12 +567,12 @@ function android_install_gradle() {
       return 0
   fi
 
-  if ! prompt_yn "> Gradle is required for building Android apps. Install Gradle now?"; then
+  if ! prompt_yn "Gradle is required for building Android apps. Install Gradle now?"; then
     return 1
   fi
 
   local _gh
-  prompt_new_path "> Enter parent location for GRADLE_HOME (Gradle will be extracted within this folder)" "${GRADLE_SEARCH_PATHS[0]}" _gh \
+  prompt_new_path "Enter parent location for GRADLE_HOME (Gradle will be extracted within this folder)" "${GRADLE_SEARCH_PATHS[0]}" _gh \
     "!CAN_EXIST!"
 
   if [ ! -d "$(unix_path "$_gh")" ]; then
@@ -622,7 +622,7 @@ function android_first_time_experience_setup() {
     export PROMPT_DEFAULT_YN
   fi
 
-  if android_setup_required && ! prompt_yn "> Do you want to install Android build dependencies?
+  if android_setup_required && ! prompt_yn "Do you want to install Android build dependencies?
 Download size: 5.5GB, Installed size: 12.0GB"; then
     return 1
   fi
@@ -642,7 +642,7 @@ Download size: 5.5GB, Installed size: 12.0GB"; then
   (( gradle_result )) && write_log "h" "not ok - Failed to install GRadle."
 
   if [[ -z "$ANDROID_SDK_MANAGER_ACCEPT_LICENSES" ]]; then
-    if prompt_yn "> Do you want to automatically accept all Android SDK Manager licenses?"; then
+    if prompt_yn "Do you want to automatically accept all Android SDK Manager licenses?"; then
       yes="$(which "yes" 2>/dev/null)"
       # Store yes path in native format so it can be used by ssc later
       ANDROID_SDK_MANAGER_ACCEPT_LICENSES="$(native_path "$yes")"
