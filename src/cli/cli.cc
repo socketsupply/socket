@@ -3755,7 +3755,8 @@ int main (const int argc, const char* argv[]) {
       }
 
       if (help) {
-        break;
+        printHelp("setup");
+        exit(0);
       }
     }
 
@@ -3765,10 +3766,6 @@ int main (const int argc, const char* argv[]) {
     } else if (is(targetPlatform, "windows")) {
       targetWindows = true;
     } else {
-      help = true;
-    }
-
-    if (help) {
       printHelp("setup");
       exit(1);
     }
