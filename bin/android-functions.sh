@@ -622,7 +622,7 @@ function android_first_time_experience_setup() {
     export PROMPT_DEFAULT_YN
   fi
 
-  if android_setup_required && ! prompt_yn "Do you want to install Android build dependencies?
+  if _android_setup_required && ! prompt_yn "Do you want to install Android build dependencies?
 Download size: 5.5GB, Installed size: 12.0GB"; then
     return 1
   fi
@@ -670,16 +670,20 @@ Download size: 5.5GB, Installed size: 12.0GB"; then
 }
 
 function android_setup_required() {
+  exit $(_android_setup_required)
+}
+
+function _android_setup_required() {
   read_env_data
   if
-    [[ -z "$ANDROID_HOME" ]] || [[ ! -d "$ANDROID_HOME" ]] ||
-    [[ ! -f "$ANDROID_HOME/$ANDROID_SDK_MANAGER" ]] ||
-    [[ -z "$JAVA_HOME" ]] || [[ ! -d "$JAVA_HOME" ]];
+    [[ -z "$ANDROID_HOME" ]] || [[ ! -d "$ANDROID_HOME" ]] || 
+    [[ ! -f "$ANDROID_HOME/$ANDROID_SDK_MANAGER" ]] || 
+    [[ -z "$JAVA_HOME" ]] || [[ ! -d "$JAVA_HOME" ]]; 
   then
-    exit 1
+    return 1
   fi
 
-  exit 0
+  return 0
 }
 
 export android_fte
@@ -755,29 +759,3 @@ function main() {
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   main "$@"
 fi
-
-function clear_android_settings() {
-  export ANDROID_HOME=""
-  export JAVA_HOME=""
-  export ANDROID_SDK_MANAGER=""
-  export GRADLE_HOME=""
-
-}
-
-download_to_tmp() {
-  uri=$1
-  echo "# Downloading $1"
-  tmp="$(mktemp -d)"
-  output=$tmp/"$(basename "$uri")"
-  if  curl -L "$uri" --output "$output"; then
-    echo "$output"
-  fi
-}
-
-function android_first_time_experience_setup() {
-  # populates global search path list
-  get_android_default_search_paths
-  write_log "h" "ok - Got Android default search paths"
-  android_install_sdk_manager
-  write_log "h" "ok - Installed Android sdkmanager"
-}
