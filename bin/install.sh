@@ -189,7 +189,7 @@ if [[ -n "$BUILD_ANDROID" ]]; then
   abis=($(android_supported_abis))
   platform="android"
   arch="${abis[0]}"
-  clang="$(android_clang "$ANDROID_HOME" "$NDK_VERSION" "$host" "$host_arch" "$arch")"
+  clang="$(android_clang "$ANDROID_HOME" "$NDK_VERSION" "$host" "$(host_arch)" "$arch")"
 
   if ! quiet $clang -v; then
     echo "not ok - Android clang call failed. This could indicate an issue with ANDROID_HOME, missing ndk tools, or incorrectly determined host or target architectures."
