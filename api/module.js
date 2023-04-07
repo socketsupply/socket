@@ -1,14 +1,30 @@
 /* global XMLHttpRequest */
+/* eslint-disable import/no-duplicates, import/first */
+/**
+ * @module module
+ * A module for loading CommonJS modules with a `require` function in an
+ * ESM context.
+ */
 import { ModuleNotFoundError } from './errors.js'
 import { ErrorEvent, Event } from './events.js'
 import ipc, { Headers } from './ipc.js'
-import { Stats } from './fs/stats.js'
-import process from './process.js'
-import console from './console.js'
-import path from './path.js'
 
 import * as exports from './module.js'
 export default exports
+
+// builtins
+import buffer from './buffer.js'
+import console from './console.js'
+import dgram from './dgram.js'
+import dns from './dns.js'
+import events from './events.js'
+import fs from './fs.js'
+import os from './os.js'
+import path from './path.js'
+import process from './process.js'
+import stream from './stream.js'
+import test from './test.js'
+import util from './util.js'
 
 function exists (url) {
   const { pathname } = new URL(url)
@@ -40,8 +56,8 @@ function request (url) {
   request.send(null)
 
   try {
-    // can throw `InvalidStateError` error
-    response = request.responseText
+    // @ts-ignore
+    response = request.responseText // can throw `InvalidStateError` error
   } catch {
     response = request.response
   }
@@ -52,6 +68,7 @@ function request (url) {
 }
 
 /**
+ * CommonJS module scope with module scoped globals.
  * @ignore
  */
 function CommonJSModuleScope (
@@ -59,22 +76,51 @@ function CommonJSModuleScope (
   require,
   module,
   __filename,
-  __dirname,
-  process,
-  global
+  __dirname
 ) {
-  'module code'
+  // eslint-disable-next-line no-unused-vars
+  const global = globalThis
+  // eslint-disable-next-line no-unused-vars
+  const process = require('socket:process')
+  // eslint-disable-next-line no-unused-vars
+  const console = require('socket:console')
+  return (function () {
+    'module code'
+  })()
 }
 
 /**
- * TODO
+ * A limited set of builtins exposed to CommonJS modules.
+ */
+export const builtins = {
+  buffer,
+  console,
+  dgram,
+  dns,
+  events,
+  fs,
+  os,
+  path,
+  process,
+  stream,
+  test,
+  util
+}
+
+builtins['fs/promises'] = fs.promises
+builtins['dns/promises'] = dns.promises
+
+/**
+ * CommonJS module scope source wrapper.
+ * @type {string}
  */
 export const COMMONJS_WRAPPER = CommonJSModuleScope
   .toString()
   .split(/'module code'/)
 
 /**
- * TODO
+ * The main entry source URL.
+ * @type {string}
  */
 export const MAIN_SOURCE_URL = (
   globalThis.origin === 'file://' && globalThis.location?.href
@@ -83,37 +129,47 @@ export const MAIN_SOURCE_URL = (
 )
 
 /**
- * TODO
+ * Creates a `require` function from a source URL.
+ * @param {URL|string} sourceURL
+ * @return {function}
  */
 export function createRequire (sourceURL) {
-  if (!sourceURL) {
-    return Module.main.createRequire()
-  }
-
-  return Module.from(sourceURL).createRequire()
+  return Module.createRequire(sourceURL)
 }
 
 /**
- * TODO
+ * A container for a loaded CommonJS module. All errors bubble
+ * to the "main" module and global object (if possible).
  */
 export class Module extends EventTarget {
   /**
-   * TODO
+   * Module cache.
+   * @ignore
    */
   static cache = Object.create(null)
 
   /**
-   * TODO
+   * CommonJS module scope source wrapper.
+   * @ignore
    */
   static wrapper = COMMONJS_WRAPPER
 
   /**
-   * TODO
+   * Creates a `require` function from a source URL.
+   * @param {URL|string} sourceURL
+   * @return {function}
    */
-  static createRequire = createRequire
+  static createRequire (sourceURL) {
+    if (!sourceURL) {
+      return this.main.createRequire()
+    }
+
+    return this.from(sourceURL).createRequire()
+  }
 
   /**
-   * TODO
+   * The main entry module, lazily created.
+   * @type {Module}
    */
   static get main () {
     if (MAIN_SOURCE_URL in this.cache) {
@@ -130,7 +186,7 @@ export class Module extends EventTarget {
   }
 
   /**
-   * TODO
+   * Wraps source in a CommonJS module scope.
    */
   static wrap (source) {
     const [head, tail] = this.wrapper
@@ -139,9 +195,11 @@ export class Module extends EventTarget {
   }
 
   /**
-   * TODO
+   * Creates a `Module` from source URL and optionally a parent module.
+   * @param {string|URL|Module} [sourceURL]
+   * @param {string|URL|Module} [parent]
    */
-  static from (sourceURL, parent) {
+  static from (sourceURL, parent = null) {
     if (!sourceURL) {
       return Module.main
     } else if (sourceURL?.id) {
@@ -154,7 +212,16 @@ export class Module extends EventTarget {
       parent = Module.main
     }
 
-    const url = new URL(sourceURL, parent?.id || parent)
+    // @ts-ignore
+    let parentURL = parent?.id
+
+    if (parentURL) {
+      try {
+        parentURL = String(new URL(parentURL, 'file:///'))
+      } catch {}
+    }
+
+    const url = new URL(sourceURL, parentURL)
     const id = String(url)
 
     if (id in this.cache) {
@@ -167,45 +234,59 @@ export class Module extends EventTarget {
   }
 
   /**
-   * TODO
+   * The module id, most likely a file name.
+   * @type {string}
    */
-  id = null
+  id = ''
 
   /**
-   * TODO
+   * The path to the module.
+   * @type {string}
    */
-  path = null
+  path = ''
 
   /**
-   * TODO
+   * The parent module, if given.
+   * @type {Module?}
    */
   parent = null
 
   /**
-   * TODO
+   * `true` if the module did load successfully.
+   * @type {boolean}
    */
   loaded = false
 
   /**
-   * TODO
+   * The module's exports.
+   * @type {any}
    */
   exports = {}
 
   /**
-   * TODO
+   * The filename of the module.
+   * @type {string}
    */
-  filename = null
+  filename = ''
 
   /**
-   * TODO
+   * Modules children to this one, as in they were required in this
+   * module scope context.
+   * @type {Array<Module>}
    */
   children = []
 
   /**
-   * TODO
+   * The original source URL to load this module.
+   * @type {string}
+   */
+  sourceURL = ''
+
+  /**
+   * `Module` class constructor.
    * @ignore
    */
-  constructor (id, parent, sourceURL) {
+  constructor (id, parent = null, sourceURL = null) {
     super()
 
     this.id = id || ''
@@ -213,6 +294,7 @@ export class Module extends EventTarget {
     this.sourceURL = sourceURL || id
 
     this.addEventListener('error', (event) => {
+      // @ts-ignore
       const { error } = event
       if (this.isMain) {
         // bubble error to globalThis, if possible
@@ -227,32 +309,37 @@ export class Module extends EventTarget {
   }
 
   /**
-   * TODO
+   * `true` if the module is the main module.
+   * @type {boolean}
    */
   get isMain () {
     return this.id === MAIN_SOURCE_URL
   }
 
   /**
-   * TODO
+   * `true` if the module was loaded by name, not file path.
+   * @type {boolean}
    */
   get isNamed () {
-    return !this.sourceURL.startsWith('.')
+    return !this.sourceURL?.startsWith('.')
   }
 
   /**
-   * TODO
+   * The `URL` for this module.
+   * @type {URL}
    */
   get url () {
     return String(
-      this.sourceURL.startsWith('.')
+      this.sourceURL?.startsWith('.')
         ? new URL(this.id, Module.main.sourceURL)
         : new URL(this.sourceURL, Module.main.sourceURL)
     )
   }
 
   /**
-   * TODO
+   * Loads the module, synchronously returning `true` upon success,
+   * otherwise `false`.
+   * @return {boolean}
    */
   load () {
     const { url } = this
@@ -262,9 +349,16 @@ export class Module extends EventTarget {
 
     if (!this.isNamed) {
       if (extname) {
+        // @ts-ignore
         queries.push(url)
+      } else if (this.sourceURL.endsWith('/')) {
+        queries.push(
+          // @ts-ignore
+          url + 'index.js'
+        )
       } else {
         queries.push(
+          // @ts-ignore
           url + '.js',
           url + '.json',
           url + '/index.js'
@@ -300,14 +394,15 @@ export class Module extends EventTarget {
       const result = request(path.join(url, 'package.json'))
       if (result.response) {
         try {
+          // @ts-ignore
           const packageJSON = JSON.parse(String(result.response))
           const filename = !packageJSON.exports
             ? path.resolve(url, packageJSON.browser || packageJSON.main)
             : (
-              packageJSON.exports?.['.'] ||
-              packageJSON.exports?.['./index.js'] ||
-              packageJSON.exports?.['index.js']
-            )
+                packageJSON.exports?.['.'] ||
+                packageJSON.exports?.['./index.js'] ||
+                packageJSON.exports?.['index.js']
+              )
 
           evaluate(module, filename, request(filename))
         } catch (error) {
@@ -320,28 +415,57 @@ export class Module extends EventTarget {
 
     function evaluate (module, filename, result) {
       const dirname = path.dirname(filename)
-      const source = Module.wrap(result.response)
+
+      if (path.extname(filename) === '.json') {
+        module.id = filename
+        module.path = dirname
+        module.filename = filename
+
+        try {
+          module.exports = JSON.parse(result.response)
+          module.loaded = true
+        } catch (error) {
+          module.dispatchEvent(new ErrorEvent('error', { error }))
+          return false
+        } finally {
+          Object.freeze(module)
+          Object.seal(module)
+        }
+
+        if (module.parent) {
+          module.parent.children.push(module)
+        }
+
+        module.dispatchEvent(new Event('load'))
+        return true
+      }
 
       try {
+        const source = Module.wrap(result.response)
         // eslint-disable-next-line no-new-func
-        const define = new Function(`return ${source}`)().bind(null)
+        const define = new Function(`return ${source}`)()
 
-        define(
+        module.id = filename
+        module.path = dirname
+        module.filename = filename
+
+        // eslint-disable-next-line no-useless-call
+        define.call(null,
           module.exports,
-          module.require.bind(module),
+          module.createRequire(),
           module,
           filename,
           dirname,
           process,
-          globalmodule
+          globalThis
         )
 
-        module.id = filename
-        module.path = dirname
         module.loaded = true
-        module.filename = filename
 
-        module.parent.children.push(module)
+        if (module.parent) {
+          module.parent.children.push(module)
+        }
+
         module.dispatchEvent(new Event('load'))
         return true
       } catch (error) {
@@ -355,7 +479,9 @@ export class Module extends EventTarget {
   }
 
   /**
-   * TODO
+   * Creates a require function for loaded CommonJS modules
+   * child to this module.
+   * @return {function}
    */
   createRequire () {
     const module = this
@@ -365,14 +491,22 @@ export class Module extends EventTarget {
     Object.seal(require)
     return require
     function require (filename) {
+      const name = filename.replace(/^(socket|node):/, '')
+      if (name in builtins) {
+        return builtins[name]
+      }
       return module.require(filename)
     }
   }
 
   /**
-   * TODO
+   * Requires a module at `filename` that will be loaded as a child
+   * to this module.
+   * @param {string} filename
+   * @return {any}
    */
   require (filename) {
+    // @ts-ignore
     const module = Module.from(filename, this)
 
     if (!module.load()) {
@@ -386,7 +520,6 @@ export class Module extends EventTarget {
   }
 
   /**
-   * TODO
    * @ignore
    */
   [Symbol.toStringTag] () {
