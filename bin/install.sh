@@ -111,21 +111,34 @@ fi
 
 read_env_data
 
+declare package_manager
+
+[[ -z "$package_manager" ]] && [[ "$(uname -s)" == "Darwin" ]] && command -v brew >/dev/null 2>&1 && package_manager="brew install"
+[[ -z "$package_manager" ]] && command -v apt >/dev/null 2>&1 && package_manager="apt install"
+[[ -z "$package_manager" ]] && command -v yum >/dev/null 2>&1 && package_manager="yum install"
+[[ -z "$package_manager" ]] && command -v pacman >/dev/null 2>&1 && package_manager="pacman -S"
+[[ -z "$package_manager" ]] && package_manager="<your package manager> install"
+
+command -v dpkg >/dev/null 2>&1 && dpkg="dpkg"
+
 function advice {
-  if [[ "$(uname -s)" == "Darwin" ]]; then
-    echo "brew install $1"
-  elif [[ "$(uname -r)" == *"ARCH"* ]]; then
-    echo "sudo pacman -S $1"
-  elif [[ "$(uname -s)" == *"Linux"* ]]; then
-    echo "sudo apt-get install $1"
-  fi
+  echo "sudo $package_manager $1"
 }
 
 if [ ! "$CXX" ]; then
   # TODO(@mribbons): yum support
-  if command -v dpkg >/dev/null 2>&1; then
-    # Convert clang++ paths to a path + version (bin_version), sort by version, then cut out bin path back out to get the highest installed clang version
-    CXX=$(dpkg -S clang 2>&1| grep "++" | cut -d" " -f 2 | while read clang; do bin_version="$("$clang" --version|head -n1)#$clang"; echo $bin_version; done | sort -r | cut -d"#" -f 2 | head -n1)
+  if [ -n "$dpkg" ]; then
+    tmp="$(mktemp)"
+    {
+      dpkg -S clang 2>&1| grep "++" | cut -d" " -f 2 | while read clang; do      
+        # Convert clang++ paths to path#version strings
+        bin_version="$("$clang" --version|head -n1)#$clang"
+        echo $bin_version;
+      done
+    } | sort -r | cut -d"#" -f 2 | head -n1 > $tmp # sort by version, then cut out bin out to get the highest installed clang version
+    CXX="$(cat "$tmp")"
+    rm -f "$tmp"
+    #| 
     if [[ -z "$CXX" ]]; then
       echo >&2 "not ok - missing build tools, try \"$(advice "clang-15")\""
       exit 1
