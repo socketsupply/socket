@@ -158,22 +158,23 @@ function get_android_paths() {
       fi
     fi
 
-    write_log "d" "# find $java_home_test -type f -name "javac$exe"' -print0 2>/dev/null | while IFS= read -r -d '' javac"
-    find "$java_home_test" -type f -name "javac$exe" -print0 2>/dev/null | while IFS= read -r -d '' javac
-    do
-      # break doesn't work here, check that we don't have a result
-      if [[ $(stat_size "$temp") == 0 ]]; then
-        write_log "v" "# Found $javac"
-        test_javac_version "$javac" "$JDK_VERSION" ; r=$?
-        if [[ "$r" == "0" ]]; then
-          # subshell, output to file
-          write_log "h" "# Using found javac $javac"
-          echo "$(dirname "$(dirname "$javac")")" > "$temp"
-        else
-          write_log "v" "# Ignoring found javac $javac $jc_v"
+    if ! test -d "$_jh" ; then
+      write_log "d" "# find $java_home_test -type f -name "javac$exe"' -print0 2>/dev/null | while IFS= read -r -d '' javac"
+      find "$java_home_test" -type f -name "javac$exe" -print0 2>/dev/null | while IFS= read -r -d '' javac; do
+        # break doesn't work here, check that we don't have a result
+        if [[ $(stat_size "$temp") == 0 ]]; then
+          write_log "v" "# Found $javac"
+          test_javac_version "$javac" "$JDK_VERSION" ; r=$?
+          if [[ "$r" == "0" ]]; then
+            # subshell, output to file
+            write_log "h" "# Using found javac $javac"
+            echo "$(dirname "$(dirname "$javac")")" > "$temp"
+          else
+            write_log "v" "# Ignoring found javac $javac $jc_v"
+          fi
         fi
-      fi
-    done
+      done
+    fi
   done
 
   if [[ $(stat_size "$temp") != 0 ]]; then
@@ -185,24 +186,25 @@ function get_android_paths() {
   local gradle_test
   local gradle
 
-  for gradle_test in "${GRADLE_SEARCH_PATHS[@]}"; do
-    write_log "v" "# Checking $gradle_test/bin/gradle$bat"
-    if [[ -f "$gradle_test/bin/gradle$bat" ]]; then
-      echo "$gradle_test" > "$temp"
-      break
-    fi
-
-    write_log "d" "find $gradle_test -type f -name 'gradle' -print0 2>/dev/null | while IFS= read -r -d '' gradle"
-    find "$gradle_test" -type f -name "gradle$bat" -print0 2>/dev/null | while IFS= read -r -d '' gradle
-    do
-      # break doesn't work here, check that we don't have a result
-      if [[ $(stat_size "$temp") == 0 ]]; then
-        write_log "h" "ok - Found gradle ($gradle)"
-        # subshell, output to file
-        echo "$(dirname "$(dirname "$gradle")")" > "$temp"
+  if ! test -d "$_gh" ; then
+    for gradle_test in "${GRADLE_SEARCH_PATHS[@]}"; do
+      write_log "v" "# Checking $gradle_test/bin/gradle$bat"
+      if [[ -f "$gradle_test/bin/gradle$bat" ]]; then
+        echo "$gradle_test" > "$temp"
+        break
       fi
+
+      write_log "d" "find $gradle_test -type f -name 'gradle' -print0 2>/dev/null | while IFS= read -r -d '' gradle"
+      find "$gradle_test" -type f -name "gradle$bat" -print0 2>/dev/null | while IFS= read -r -d '' gradle; do
+        # break doesn't work here, check that we don't have a result
+        if [[ $(stat_size "$temp") == 0 ]]; then
+          write_log "h" "ok - Found gradle ($gradle)"
+          # subshell, output to file
+          echo "$(dirname "$(dirname "$gradle")")" > "$temp"
+        fi
+      done
     done
-  done
+  fi
 
   if [[ $(stat_size "$temp") != 0 ]]; then
     _gh=$(cat "$temp")
@@ -670,20 +672,24 @@ Download size: 5.5GB, Installed size: 12.0GB"; then
 }
 
 function android_setup_required() {
-  exit $(_android_setup_required)
+  if _android_setup_required; then
+    exit 1
+  fi
+
+  exit 0
 }
 
 function _android_setup_required() {
   read_env_data
   if
-    [[ -z "$ANDROID_HOME" ]] || [[ ! -d "$ANDROID_HOME" ]] || 
-    [[ ! -f "$ANDROID_HOME/$ANDROID_SDK_MANAGER" ]] || 
-    [[ -z "$JAVA_HOME" ]] || [[ ! -d "$JAVA_HOME" ]]; 
+    [[ -z "$ANDROID_HOME" ]] || [[ ! -d "$ANDROID_HOME" ]] ||
+    [[ ! -f "$ANDROID_HOME/$ANDROID_SDK_MANAGER" ]] ||
+    [[ -z "$JAVA_HOME" ]] || [[ ! -d "$JAVA_HOME" ]];
   then
-    return 1
+    return 0
   fi
 
-  return 0
+  return 1
 }
 
 export android_fte
@@ -724,7 +730,7 @@ function android_fte() {
       yes="$(unix_path "$yes")"
 
       if [[ -n "$ANDROID_HOME" ]]; then
-        write_log "h" "# Installing android dependencies"
+        write_log "h" "# Ensuring Android dependencies are installed"
         write_log "d" "$yes | $(unix_path "$ANDROID_HOME/$ANDROID_SDK_MANAGER")" "$SDK_OPTIONS"
         # Without eval, sdk manager says there is a syntax error
         eval "$yes | ($(unix_path "$ANDROID_HOME/$ANDROID_SDK_MANAGER") $SDK_OPTIONS)"
