@@ -130,7 +130,7 @@ if [ ! "$CXX" ]; then
   if [ -n "$dpkg" ]; then
     tmp="$(mktemp)"
     {
-      dpkg -S clang 2>&1| grep "++" | cut -d" " -f 2 | while read clang; do      
+      dpkg -S clang 2>&1| grep "++" | cut -d" " -f 2 | while read clang; do
         # Convert clang++ paths to path#version strings
         bin_version="$("$clang" --version|head -n1)#$clang"
         echo $bin_version;
@@ -138,7 +138,7 @@ if [ ! "$CXX" ]; then
     } | sort -r | cut -d"#" -f 2 | head -n1 > $tmp # sort by version, then cut out bin out to get the highest installed clang version
     CXX="$(cat "$tmp")"
     rm -f "$tmp"
-    #| 
+
     if [[ -z "$CXX" ]]; then
       echo >&2 "not ok - missing build tools, try \"$(advice "clang-15")\""
       exit 1
@@ -608,7 +608,7 @@ function _install {
     # Required for FTE setup
     cp -ap "$root/bin/functions.sh" "$SOCKET_HOME/bin"
     cp -ap "$root/bin/android-functions.sh" "$SOCKET_HOME/bin"
-    
+
     if [[ "$(uname -s)" == *"_NT"* ]]; then
       cp -ap "$root/bin/"*.ps1 "$SOCKET_HOME/bin"
       cp -ap "$root/bin/".vs* "$SOCKET_HOME/bin"
@@ -733,7 +733,7 @@ function _compile_libuv_android {
        echo >&2 "not ok - failed to build $static_library"
       exit 1
     fi
-  
+
   else
     if [ -f "$static_library" ]; then
       echo "ok - using cached static library ($arch-$platform): $(basename "$static_library")"
