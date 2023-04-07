@@ -3,6 +3,7 @@
 id="co.socketsupply.socket.tests"
 
 ## Start application
+adb="$(which adb 2>/dev/null)"
 [[ ! -f "$adb" ]] && (echo "adb not in path or ANDROID_HOME not set."; exit 1)
 "$adb" shell am start -n "$id/.MainActivity" || exit $?
 
