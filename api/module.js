@@ -7,7 +7,7 @@
  */
 import { ModuleNotFoundError } from './errors.js'
 import { ErrorEvent, Event } from './events.js'
-import ipc, { Headers } from './ipc.js'
+import { Headers } from './ipc.js'
 
 import * as exports from './module.js'
 export default exports
@@ -19,12 +19,18 @@ import dgram from './dgram.js'
 import dns from './dns.js'
 import events from './events.js'
 import fs from './fs.js'
+import gc from './gc.js'
+import ipc from './ipc.js'
 import os from './os.js'
 import path from './path.js'
 import process from './process.js'
 import stream from './stream.js'
 import test from './test.js'
 import util from './util.js'
+
+/**
+ * @typedef {(specifier: string, ctx: Module, next: function} => undefined} ModuleResolver
+ */
 
 function exists (url) {
   const { pathname } = new URL(url)
@@ -79,12 +85,25 @@ function CommonJSModuleScope (
   __dirname
 ) {
   // eslint-disable-next-line no-unused-vars
-  const global = globalThis
-  // eslint-disable-next-line no-unused-vars
   const process = require('socket:process')
   // eslint-disable-next-line no-unused-vars
   const console = require('socket:console')
-  return (function () {
+  // eslint-disable-next-line no-unused-vars
+  const global = new Proxy(globalThis, {
+    get (target, key, receiver) {
+      if (key === 'process') {
+        return process
+      }
+
+      if (key === 'console') {
+        return console
+      }
+
+      return Reflect.get(...arguments)
+    }
+  })
+
+  return (async function () {
     'module code'
   })()
 }
@@ -99,6 +118,9 @@ export const builtins = {
   dns,
   events,
   fs,
+  gc,
+  ipc,
+  module: exports,
   os,
   path,
   process,
@@ -147,6 +169,12 @@ export class Module extends EventTarget {
    * @ignore
    */
   static cache = Object.create(null)
+
+  /**
+   * Custom module resolvers.
+   * @type {Array<ModuleResolver>}
+   */
+  static resolvers = []
 
   /**
    * CommonJS module scope source wrapper.
@@ -481,21 +509,49 @@ export class Module extends EventTarget {
   /**
    * Creates a require function for loaded CommonJS modules
    * child to this module.
-   * @return {function}
+   * @return {function(string): any}
    */
   createRequire () {
     const module = this
     const cache = {}
+
     Object.assign(require, { cache })
     Object.freeze(require)
     Object.seal(require)
+
     return require
+
     function require (filename) {
-      const name = filename.replace(/^(socket|node):/, '')
-      if (name in builtins) {
-        return builtins[name]
+      const resolvers = Array.from(Module.resolvers)
+      const result = resolve(filename, resolvers)
+
+      if (typeof result === 'string') {
+        const name = result.replace(/^(socket|node):/, '')
+
+        if (name in builtins) {
+          return builtins[name]
+        }
+
+        return module.require(name)
       }
-      return module.require(filename)
+
+      if (result !== undefined) {
+        return result
+      }
+
+      throw new ModuleNotFoundError(
+        `Cannot find module ${filename}`,
+        this.children
+      )
+    }
+
+    function resolve (filename, resolvers) {
+      return next(filename)
+      function next (specifier) {
+        if (resolvers.length === 0) return specifier
+        const resolver = resolvers.shift()
+        return resolver(specifier, module, next)
+      }
     }
   }
 
@@ -527,4 +583,8 @@ export class Module extends EventTarget {
   }
 }
 
-Object.seal(Module)
+// builtins should never be overloaded through this object, instead
+// a custom resolver should be used
+Object.freeze(Object.seal(builtins))
+// prevent misuse of the `Module` class
+Object.freeze(Object.seal(Module))
