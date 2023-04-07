@@ -139,6 +139,7 @@ export class Path extends URL {
    */
   static dirname (options, path) {
     const { sep } = options
+    path = path.replace('file://', '')
     let dirname = decodeURIComponent(
       Path
         .from(path, sep)
