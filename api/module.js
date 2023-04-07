@@ -159,11 +159,30 @@ export function createRequire (sourceURL) {
   return Module.createRequire(sourceURL)
 }
 
+export const scope = {
+  current: null,
+  previous: null
+}
+
 /**
  * A container for a loaded CommonJS module. All errors bubble
  * to the "main" module and global object (if possible).
  */
 export class Module extends EventTarget {
+  /**
+   * A reference to the currently scoped module.
+   * @type {Module?}
+   */
+  static get current () { return scope.current }
+  static set current (module) { scope.current = module }
+
+  /**
+   * A reference to the previously scoped module.
+   * @type {Module?}
+   */
+  static get previous () { return scope.previous }
+  static set previous (module) { scope.previous = module }
+
   /**
    * Module cache.
    * @ignore
@@ -321,6 +340,14 @@ export class Module extends EventTarget {
     this.parent = parent || null
     this.sourceURL = sourceURL || id
 
+    if (!scope.current) {
+      scope.current = this
+    }
+
+    if (!scope.previous && id !== MAIN_SOURCE_URL) {
+      scope.previous = Module.main
+    }
+
     this.addEventListener('error', (event) => {
       // @ts-ignore
       const { error } = event
@@ -375,6 +402,9 @@ export class Module extends EventTarget {
     const prefixes = (process.env.SOCKET_MODULE_PATH_PREFIX || '').split(':')
     const queries = []
 
+    Module.previous = Module.current
+    Module.current = this
+
     if (!this.isNamed) {
       if (extname) {
         // @ts-ignore
@@ -408,17 +438,59 @@ export class Module extends EventTarget {
 
     if (!this.loaded) {
       for (const prefix of prefixes) {
-        const prefixed = path.join(prefix, this.sourceURL)
-        const url = String(new URL(prefixed, Module.main.sourceURL))
-        if (loadPackage(this, url)) {
-          break
+        const paths = [
+          path.posix.join(path.dirname(Module.previous?.id || ''), prefix, this.sourceURL)
+        ]
+
+        const root = path.posix.resolve(Module.main.id)
+        let dirname = path.dirname(paths[0])
+
+        while (dirname !== root) {
+          paths.push(path.posix.join(dirname, prefix, this.sourceURL))
+          dirname = path.dirname(dirname)
+        }
+
+        for (const prefixed of new Set(paths)) {
+          const url = String(new URL(prefixed, Module.main.sourceURL))
+          if (loadPackage(this, url)) {
+            break
+          }
         }
       }
     }
 
+    Module.previous = this
+    Module.current = null
+
     return this.loaded
 
     function loadPackage (module, url) {
+      const urls = [
+        url,
+        url + '.js',
+        url + '.json',
+        path.join(url, 'index.js'),
+        path.join(url, 'index.json')
+      ]
+
+      while (urls.length) {
+        const filename = urls.shift()
+        const result = request(filename)
+        if (result.response) {
+          try {
+            evaluate(module, filename, request(filename))
+          } catch (error) {
+            error.module = module
+            module.dispatchEvent(new ErrorEvent('error', { error }))
+            return false
+          }
+        }
+
+        if (module.loaded) {
+          return true
+        }
+      }
+
       const result = request(path.join(url, 'package.json'))
       if (result.response) {
         try {
@@ -434,6 +506,7 @@ export class Module extends EventTarget {
 
           evaluate(module, filename, request(filename))
         } catch (error) {
+          error.module = module
           module.dispatchEvent(new ErrorEvent('error', { error }))
         }
       }
@@ -453,6 +526,7 @@ export class Module extends EventTarget {
           module.exports = JSON.parse(result.response)
           module.loaded = true
         } catch (error) {
+          error.module = module
           module.dispatchEvent(new ErrorEvent('error', { error }))
           return false
         } finally {
@@ -478,15 +552,20 @@ export class Module extends EventTarget {
         module.filename = filename
 
         // eslint-disable-next-line no-useless-call
-        define.call(null,
+        const promise = define.call(null,
           module.exports,
           module.createRequire(),
           module,
-          filename,
-          dirname,
+          path.resolve(filename),
+          path.resolve(dirname),
           process,
           globalThis
         )
+
+        promise.catch((error) => {
+          error.module = module
+          module.dispatchEvent(new ErrorEvent('error', { error }))
+        })
 
         module.loaded = true
 
@@ -497,6 +576,7 @@ export class Module extends EventTarget {
         module.dispatchEvent(new Event('load'))
         return true
       } catch (error) {
+        error.module = module
         module.dispatchEvent(new ErrorEvent('error', { error }))
         return false
       } finally {
@@ -513,9 +593,8 @@ export class Module extends EventTarget {
    */
   createRequire () {
     const module = this
-    const cache = {}
 
-    Object.assign(require, { cache })
+    Object.assign(require, { cache: Module.cache })
     Object.freeze(require)
     Object.seal(require)
 
