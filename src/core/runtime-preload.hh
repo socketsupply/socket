@@ -95,6 +95,7 @@ namespace SSC {
           "    const k = key.slice(4);                                       \n"
           "    const value = `" + value + "`;                                \n"
           "    globalThis.__args.env[k] = value;                             \n"
+          "    globalThis.__args.config[key] = value;                        \n"
         );
       } else if (value == "true" || value == "false") {
         preload += (

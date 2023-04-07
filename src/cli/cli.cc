@@ -1212,8 +1212,8 @@ int main (const int argc, const char* argv[]) {
 
         // allow for local `.sscrc` '[settings] ...' entries to overload the
         // project's settings in `socket.ini`:
-        // [settings]
-        // ios_simulator_device = "My local device"
+        // [settings.ios]
+        // simulator_device = "My local device"
         Map tmp;
         for (const auto& tuple : rc) {
           if (tuple.first.starts_with("settings_")) {
