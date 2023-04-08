@@ -23,7 +23,7 @@ import fs from './fs.js'
 import gc from './gc.js'
 import ipc from './ipc.js'
 import os from './os.js'
-import path from './path.js'
+import { posix as path } from './path.js'
 import process from './process.js'
 import stream from './stream.js'
 import test from './test.js'
@@ -442,19 +442,19 @@ export class Module extends EventTarget {
     if (!this.loaded) {
       for (const prefix of prefixes) {
         const paths = [
-          path.posix.join(path.dirname(Module.previous?.id || ''), prefix, this.sourceURL)
+          path.join(path.dirname(Module.previous?.id || ''), prefix, this.sourceURL)
         ]
 
         let dirname = path.dirname(paths[0])
-        let root = path.posix.resolve(Module.main.id)
+        let root = path.resolve(Module.main.id)
         let max = 32 // max paths/depth
 
         if (path.extname(root) && !root.endsWith('/')) {
-          root = path.posix.dirname(root)
+          root = path.dirname(root)
         }
 
         while (dirname !== root && --max > 0) {
-          paths.push(path.posix.join(dirname, prefix, this.sourceURL))
+          paths.push(path.join(dirname, prefix, this.sourceURL))
           dirname = path.dirname(dirname)
         }
 
