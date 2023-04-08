@@ -130,7 +130,7 @@ if [ ! "$CXX" ]; then
   if [ -n "$dpkg" ]; then
     tmp="$(mktemp)"
     {
-      dpkg -S clang 2>&1| grep "++" | cut -d" " -f 2 | while read clang; do
+      dpkg -S clang 2>&1| grep "clang++" | cut -d" " -f 2 | while read clang; do
         # Convert clang++ paths to path#version strings
         bin_version="$("$clang" --version|head -n1)#$clang"
         echo $bin_version;
