@@ -8,6 +8,7 @@
 import { ModuleNotFoundError } from './errors.js'
 import { ErrorEvent, Event } from './events.js'
 import { Headers } from './ipc.js'
+import { Stats } from './fs/stats.js'
 
 import * as exports from './module.js'
 export default exports
@@ -42,7 +43,9 @@ function exists (url) {
     return false
   }
 
-  return true
+  const stats = Stats.from(result.data)
+
+  return stats.isFile() || stats.isSymbolicLink()
 }
 
 // sync request for files
@@ -442,10 +445,15 @@ export class Module extends EventTarget {
           path.posix.join(path.dirname(Module.previous?.id || ''), prefix, this.sourceURL)
         ]
 
-        const root = path.posix.resolve(Module.main.id)
         let dirname = path.dirname(paths[0])
+        let root = path.posix.resolve(Module.main.id)
+        let max = 32 // max paths/depth
 
-        while (dirname !== root) {
+        if (path.extname(root) && !root.endsWith('/')) {
+          root = path.posix.dirname(root)
+        }
+
+        while (dirname !== root && --max > 0) {
           paths.push(path.posix.join(dirname, prefix, this.sourceURL))
           dirname = path.dirname(dirname)
         }
@@ -524,12 +532,12 @@ export class Module extends EventTarget {
 
         try {
           module.exports = JSON.parse(result.response)
-          module.loaded = true
         } catch (error) {
           error.module = module
           module.dispatchEvent(new ErrorEvent('error', { error }))
           return false
         } finally {
+          module.loaded = true
           Object.freeze(module)
           Object.seal(module)
         }
@@ -567,8 +575,6 @@ export class Module extends EventTarget {
           module.dispatchEvent(new ErrorEvent('error', { error }))
         })
 
-        module.loaded = true
-
         if (module.parent) {
           module.parent.children.push(module)
         }
@@ -580,6 +586,7 @@ export class Module extends EventTarget {
         module.dispatchEvent(new ErrorEvent('error', { error }))
         return false
       } finally {
+        module.loaded = true
         Object.freeze(module)
         Object.seal(module)
       }
