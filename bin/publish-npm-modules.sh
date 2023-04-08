@@ -117,23 +117,25 @@ else
   android_abis+=($(android_supported_abis))
 fi
 
-for abi in "${android_abis[@]}"; do
-  lib_path="$SOCKET_HOME/lib/$abi-android"
-  if [[ ! -f "$lib_path/libuv.a" ]]; then
-    ABORT_ERRORS=1
-    echo >&2 "not ok - $lib_path/libuv.a missing - check build process."
-  fi
+if (( ! do_global_link )); then
+  for abi in "${android_abis[@]}"; do
+    lib_path="$SOCKET_HOME/lib/$abi-android"
+    if [[ ! -f "$lib_path/libuv.a" ]]; then
+      ABORT_ERRORS=1
+      echo >&2 "not ok - $lib_path/libuv.a missing - check build process."
+    fi
 
-  if [[ ! -f "$lib_path/libsocket-runtime.a" ]]; then
-    ABORT_ERRORS=1
-    echo >&2 "not ok - $lib_path/libsocket-runtime.a missing - check build process."
-  fi
-  export ABORT_ERRORS
-done
+    if [[ ! -f "$lib_path/libsocket-runtime.a" ]]; then
+      ABORT_ERRORS=1
+      echo >&2 "not ok - $lib_path/libsocket-runtime.a missing - check build process."
+    fi
+    export ABORT_ERRORS
+  done
 
-if (( ABORT_ERRORS )); then
-  echo >&2 "not ok - Refusing to publish due to errors."
-  exit 1
+  if (( ABORT_ERRORS )); then
+    echo >&2 "not ok - Refusing to publish due to errors."
+    exit 1
+  fi
 fi
 
 mkdir -p "$SOCKET_HOME/packages/@socketsupply"

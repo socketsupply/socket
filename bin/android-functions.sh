@@ -199,6 +199,11 @@ function get_android_paths() {
 
   if [[ $(stat_size "$temp") != 0 ]]; then
     _jh=$(cat "$temp")
+  else
+    local java="$(readlink -f "$(which java)")"
+    if [ -n "$java" ]; then
+      _jh="$(dirname "$(dirname "$java")")"
+    fi
   fi
 
   echo -n > "$temp"
@@ -441,7 +446,7 @@ declare NDK_VERSION="25.0.8775105"
 
 export BUILD_ANDROID
 
-if [[ -z $SSC_NO_ANDROID ]]; then
+if [[ -z $NO_ANDROID ]]; then
   if [[ -z $CI ]] || [[ -n $SSC_ANDROID_CI ]]; then
     BUILD_ANDROID=1
   fi
