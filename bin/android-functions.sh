@@ -10,7 +10,7 @@ declare Win32=3
 declare DEFAULT_ANDROID_HOME=()
 
 DEFAULT_ANDROID_HOME[Darwin]="$HOME/Library/Android/sdk"
-DEFAULT_ANDROID_HOME[Linux]="$HOME/Android/sdk"
+DEFAULT_ANDROID_HOME[Linux]="$HOME/Android/Sdk"
 DEFAULT_ANDROID_HOME[Win32]="$LOCALAPPDATA\\Android\\Sdk"
 
 declare ANDROID_SDK_MANAGER_DEFAULT_SEARCH_PATHS=(
@@ -108,6 +108,17 @@ function test_javac_version() {
   return 0
 }
 
+function validate_sdkmanager_app_jar() {
+  local sdkmanager_path="$1"
+  # Currently sdkmanager as shipped with Android Studio is broken
+  local classpath_line="$(grep "^CLASSPATH\=" "$sdkmanager_path")"
+  # This indicates a cmdline-tools version of sdkmanager
+  if [[ "$classpath_line" == *"sdkmanager-classpath.jar"* ]]; then
+    return 0
+  fi
+  return 1;
+}
+
 function get_android_paths() {
   get_android_default_search_paths
   write_log "h" "# Determining Android paths."
@@ -120,16 +131,22 @@ function get_android_paths() {
   local sdk_man_test
   local bat="$(use_bin_ext ".bat")"
   local exe="$(use_bin_ext ".exe")"
+  local sdkmanager_path
 
   for android_home_test in "${ANDROID_HOME_SEARCH_PATHS[@]}"; do
     for sdk_man_test in "${ANDROID_SDK_MANAGER_SEARCH_PATHS[@]}"; do
-      write_log "v" "# Checking $android_home_test/$sdk_man_test/sdkmanager$bat"
-      if [[ -f "$android_home_test/$sdk_man_test/sdkmanager$bat" ]]; then
-        if [[ -z "$_ah" ]]; then
-          _ah="$android_home_test"
+      sdkmanager_path="$android_home_test/$sdk_man_test/sdkmanager$bat"
+      write_log "v" "# Checking $sdkmanager_path"
+      if [[ -f "$sdkmanager_path" ]]; then
+        if validate_sdkmanager_app_jar "$sdkmanager_path"; then
+          if [[ -z "$_ah" ]]; then
+            _ah="$android_home_test"
+          fi
+          _sdk="$sdk_man_test/sdkmanager$bat"
+          break
+        else
+          echo "warn - can't use $sdkmanager_path: Android Studio's SDK manager script is inoperable."
         fi
-        _sdk="$sdk_man_test/sdkmanager$bat"
-        break
       fi
     done
   done

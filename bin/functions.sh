@@ -212,11 +212,11 @@ function write_env_data() {
 function prompt() {
   write_log "h" "$1"
   local return=$2
-  local input
-  # effectively stores $input in $2 by reference, rather than using echo to return which would prevent echo "$1" going to stdout
-  read -rp '> ' input
-  eval "$return=\"$input\""
-  write_log "f" "input: $input"
+  local prompt_input
+  # effectively stores $prompt_input in $2 by reference, rather than using echo to return which would prevent echo "$1" going to stdout
+  read -rp '> ' prompt_input
+  eval "$return=\"$prompt_input\""
+  write_log "f" "prompt_input: $2"
 }
 
 function prompt_yn() {
@@ -232,9 +232,6 @@ function prompt_yn() {
   else
     prompt "$1 [y/N]" r
   fi
-
-  # prompt "$1 [y/N]" r
-  # write_log "v" "r: $r"
 
   if [[ "$(lower "$r")" == "y" ]]; then
     return 0
@@ -260,6 +257,9 @@ function prompt_new_path() {
     if [ -z "$input" ]; then
       prompt "$text (Press Enter to go back)" input
     fi
+    # manually expand ~, doesn't happen in scripts
+    input=${input//\~/$HOME}
+    write_log "h" "Entered: $input"
     # remove any quote characters
     input=${input//\"/}
     unix_input="$(unix_path "$input")"
