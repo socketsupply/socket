@@ -108,7 +108,7 @@ function test_javac_version() {
   return 0
 }
 
-function validate_sdkmanager_app_jar() {
+function validate_sdkmanager_jar() {
   local sdkmanager_path="$1"
   # Currently sdkmanager as shipped with Android Studio is broken
   local set=""
@@ -141,7 +141,7 @@ function get_android_paths() {
       sdkmanager_path="$android_home_test/$sdk_man_test/sdkmanager$bat"
       write_log "v" "# Checking $sdkmanager_path"
       if [[ -f "$sdkmanager_path" ]]; then
-        if validate_sdkmanager_app_jar "$sdkmanager_path"; then
+        if validate_sdkmanager_jar "$sdkmanager_path"; then
           if [[ -z "$_ah" ]]; then
             _ah="$android_home_test"
           fi
