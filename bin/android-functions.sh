@@ -111,7 +111,10 @@ function test_javac_version() {
 function validate_sdkmanager_app_jar() {
   local sdkmanager_path="$1"
   # Currently sdkmanager as shipped with Android Studio is broken
-  local classpath_line="$(grep "^CLASSPATH\=" "$sdkmanager_path")"
+  local set=""
+  [[ "$(host_os)" == "Win32" ]] && set="set "
+  local pattern="^""$set""CLASSPATH\="
+  local classpath_line="$(grep "$pattern" "$sdkmanager_path")"
   # This indicates a cmdline-tools version of sdkmanager
   if [[ "$classpath_line" == *"sdkmanager-classpath.jar"* ]]; then
     return 0
