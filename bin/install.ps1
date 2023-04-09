@@ -465,7 +465,7 @@ Function Build-SSCToPathTaskBlock {
     return
   }
 
-  $prompt = "Do you want to add ssc.exe to your user PATH?"
+  $prompt = "Do you want to add ssc.exe to your user PATH? [y/N]"
   $task = [string]{
     Write-Log "h" "# Adding ssc.exe to PATH..."
     $backup = "$env:LOCALAPPDATA\.userpath.txt"
