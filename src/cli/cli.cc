@@ -3740,6 +3740,7 @@ int main (const int argc, const char* argv[]) {
     auto targetWindows = false;
     auto yes = false;
     String yesArg;
+
     for (auto const arg : options) {
       if (is(arg, "-h") || is(arg, "--help")) {
         help = true;
@@ -3765,6 +3766,8 @@ int main (const int argc, const char* argv[]) {
       targetAndroid = true;
     } else if (is(targetPlatform, "windows")) {
       targetWindows = true;
+    } else if (is(targetPlatform, "linux")) {
+      targetLinux = true;
     } else {
       printHelp("setup");
       exit(1);
@@ -3772,6 +3775,11 @@ int main (const int argc, const char* argv[]) {
 
     if (!platform.win && targetWindows) {
       log("ERROR: Windows build dependencies can only be installed on Windows.");
+      exit(1);
+    }
+
+    if (!platform.linux && targetLinux) {
+      log("ERROR: Linux build dependencies can only be installed on Linux.");
       exit(1);
     }
 
@@ -3784,6 +3792,10 @@ int main (const int argc, const char* argv[]) {
       script = prefixFile("bin\\install.ps1");
       argument = "-fte:" + targetPlatform;
       yesArg = yes ? "-yesdeps" : "";
+    } else if (platform.linux) {
+      scriptHost = "bash";
+      script = prefixFile("./bin/functions.sh");
+      argument = "--fte";
     } else {
       argument = "--" + targetPlatform + "-fte";
       if (targetAndroid) {

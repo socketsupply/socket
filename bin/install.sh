@@ -109,68 +109,14 @@ if [[ "$host" == "Win32" ]]; then
   fi
 fi
 
+determine_cxx || exit $?
 read_env_data
 
-declare package_manager
-
-[[ -z "$package_manager" ]] && [[ "$(uname -s)" == "Darwin" ]] && command -v brew >/dev/null 2>&1 && package_manager="brew install"
-[[ -z "$package_manager" ]] && command -v apt >/dev/null 2>&1 && package_manager="apt install"
-[[ -z "$package_manager" ]] && command -v yum >/dev/null 2>&1 && package_manager="yum install"
-[[ -z "$package_manager" ]] && command -v pacman >/dev/null 2>&1 && package_manager="pacman -S"
-[[ -z "$package_manager" ]] && package_manager="<your package manager> install"
-
-command -v dpkg >/dev/null 2>&1 && dpkg="dpkg"
+declare package_manager="$(determine_package_manager)"
 
 function advice {
   echo "sudo $package_manager $1"
 }
-
-if [ ! "$CXX" ]; then
-  # TODO(@mribbons): yum support
-  if [ -n "$dpkg" ]; then
-    tmp="$(mktemp)"
-    {
-      dpkg -S clang 2>&1| grep "clang++" | cut -d" " -f 2 | while read clang; do
-        # Convert clang++ paths to path#version strings
-        bin_version="$("$clang" --version|head -n1)#$clang"
-        echo $bin_version;
-      done
-    } | sort -r | cut -d"#" -f 2 | head -n1 > $tmp # sort by version, then cut out bin out to get the highest installed clang version
-    CXX="$(cat "$tmp")"
-    rm -f "$tmp"
-
-    if [[ -z "$CXX" ]]; then
-      echo >&2 "not ok - missing build tools, try \"$(advice "clang-15")\""
-      exit 1
-    fi
-  elif command -v clang++ >/dev/null 2>&1; then
-    CXX="$(command -v clang++)"
-  elif command -v g++ >/dev/null 2>&1; then
-    CXX="$(command -v g++)"
-  fi
-
-  if [ "$host" = "Win32" ]; then
-    # POSIX doesn't handle quoted commands
-    # Quotes inside variables don't escape spaces, quotes only help on the line we are executing
-    # Make a temp link
-    CXX_TMP=$(mktemp)
-    rm $CXX_TMP
-    ln -s "$CXX" $CXX_TMP
-    CXX=$CXX_TMP
-    # Make tmp.etc look like clang++.etc, makes clang output look correct
-    CXX=$(echo $CXX|sed 's/tmp\./clang++\./')
-    mv $CXX_TMP $CXX
-  fi
-
-  if [ ! "$CXX" ]; then
-    echo "not ok - could not determine \$CXX environment variable"
-    exit 1
-  fi
-
-  echo "warn - using '$CXX' as CXX"
-fi
-
-export CXX
 
 if [[ "$host" != "Win32" ]]; then
   if ! quiet command -v sudo; then
