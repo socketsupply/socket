@@ -48,7 +48,7 @@ namespace SSC {
       "  }                                                                 \n"
       "}                                                                   \n"
       "                                                                    \n"
-      "const event = new globalThis.CustomEvent(name, { detail, ...options }); \n"
+      "const event = new CustomEvent(name, { detail, ...options });        \n"
       "target.dispatchEvent(event);                                        \n"
     );
   }
