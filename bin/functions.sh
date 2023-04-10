@@ -538,12 +538,14 @@ function first_time_experience_setup() {
 function main() {
   while (( $# > 0 )); do
     declare arg="$1"; shift
-    [[ "$arg" == "--fte" ]] && first_time_experience_setup $@ || return $?
-    [[ "$arg" == "--update-env-data" ]] && update_env_data "$@" || return $?
+    [[ "$arg" == "--fte" ]] && first_time_experience_setup $@
+    [[ "$arg" == "--update-env-data" ]] && update_env_data "$@"
+    return $?
   done
   return 0
 }
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   main "$@"
+  exit $?
 fi

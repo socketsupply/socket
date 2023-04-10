@@ -666,7 +666,7 @@ Download size: 5.5GB, Installed size: 12.0GB"; then
 
   write_log "h" "# Installing Gradle."
   android_install_gradle; gradle_result=$?
-  (( gradle_result )) && write_log "h" "not ok - Failed to install GRadle."
+  (( gradle_result )) && write_log "h" "not ok - Failed to install Gradle."
 
   if [[ -z "$ANDROID_SDK_MANAGER_ACCEPT_LICENSES" ]]; then
     if prompt_yn "Do you want to automatically accept all Android SDK Manager licenses?"; then
