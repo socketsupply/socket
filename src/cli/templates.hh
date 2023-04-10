@@ -129,8 +129,8 @@ usage:
   ssc setup [options] --platform=<platform>
 
 options:
-  --platform       windows|android
-  -y, --yes         answer yes to any prompts
+  --platform       android|linux|windows
+  -y, --yes        answer yes to any prompts
 
 )TEXT";
 
