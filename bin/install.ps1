@@ -975,7 +975,7 @@ Download size: 5.5GB, Installed size: 10.2GB y/[N]"
     
   Exit-IfErrors
 
-  if ($confirm_windows_deps) {
+  if ($confirm_windows_deps -or $shbuild) {
     if ($install_vc_build) {
       $vc_exists, $vc_vars = $(Get-VCVars)
       if ($vc_exists) {
