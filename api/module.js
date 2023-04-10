@@ -33,10 +33,18 @@ import util from './util.js'
  * @typedef {(specifier: string, ctx: Module, next: function} => undefined} ModuleResolver
  */
 
+function normalizePathname (pathname) {
+  if (os.platform()) {
+    return path.win32.normalize(pathname.replace(/^\//, ''))
+  }
+
+  return path.normalize(pathname)
+}
+
 function exists (url) {
   const { pathname } = new URL(url)
   const result = ipc.sendSync('fs.stat', {
-    path: path.normalize(pathname)
+    path: normalizePathname(pathname)
   })
 
   if (result.err) {
@@ -400,7 +408,7 @@ export class Module extends EventTarget {
    * @return {boolean}
    */
   load () {
-    const { url } = this
+    const url = this.url.replace(/\/$/, '')
     const extname = path.extname(url)
     const prefixes = (process.env.SOCKET_MODULE_PATH_PREFIX || '').split(':')
     const queries = []
@@ -415,7 +423,7 @@ export class Module extends EventTarget {
       } else if (this.sourceURL.endsWith('/')) {
         queries.push(
           // @ts-ignore
-          url + 'index.js'
+          url + '/index.js'
         )
       } else {
         queries.push(
@@ -473,6 +481,7 @@ export class Module extends EventTarget {
     return this.loaded
 
     function loadPackage (module, url) {
+      url = url.replace(/\/$/, '')
       const urls = [
         url,
         url + '.js',
