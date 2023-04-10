@@ -86,11 +86,12 @@ ssc v{{ssc_version}}
 Install the app to the device. We only support iOS at the moment.
 
 usage:
-  ssc install-app [--platform=ios] [--device=ecid]
+  ssc install-app --platform=<platform> [--device=<identifier>]
 
 options:
-  --platform  ios; if not specified, runs on the current platform
-  --device    ecid of the device to install to; if not specified, runs on the current device
+  --platform=<platform>    android|ios
+  --device=<identifier>    identifier (ecid, ID) of the device to install to
+                           if not specified, tries to run on the current device
 )TEXT";
 
 constexpr auto gHelpTextPrintBuildDir = R"TEXT(

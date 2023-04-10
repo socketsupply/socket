@@ -1405,7 +1405,10 @@ int main (const int argc, const char* argv[]) {
     String targetPlatform = "";
     // we need to find the platform first
     for (auto const option : options) {
-      targetPlatform = optionValue("install-app", option, "--platform");
+      if (targetPlatform.size() == 0) {
+        targetPlatform = optionValue("install-app", option, "--platform");
+      }
+
       if (targetPlatform.size() > 0) {
         // just assume android when 'android-emulator' is given
         if (targetPlatform == "android-emulator") {
@@ -1467,7 +1470,7 @@ int main (const int argc, const char* argv[]) {
       auto output = paths.platformSpecificOutputPath;
       auto app = output / "app";
       StringStream adb;
-      adb << commandOptions << " install ";
+      adb << "adb" << commandOptions << " install ";
 
       if (flagDebugMode) {
         adb << (app / "build" / "outputs" / "apk" / "dev" / "debug" / "app-dev-debug.apk").string();
