@@ -122,8 +122,8 @@ function host_os() {
 
   if [[ "$host" = "Linux" ]]; then
     if [ -n "$WSL_DISTRO_NAME" ] || uname -r | grep 'Microsoft'; then
-    write_log "h" "not ok - WSL is not supported."
-    exit 1
+      write_log "h" "not ok - WSL is not supported."
+      return 1
     fi
   elif [[ "$host" == *"MINGW64_NT"* ]]; then
     host="Win32"
@@ -171,7 +171,7 @@ function update_env_data() {
     fi
   done
 
-  (( fail )) && exit $fail
+  (( fail )) && return $fail
 
   for kvp in "${vars[@]}"; do
     write_log "d" "# eval \"$kvp\""
@@ -179,7 +179,7 @@ function update_env_data() {
   done
 
   write_env_data
-  exit 0
+  return 0
 }
 
 function read_env_data() {
@@ -495,31 +495,50 @@ function determine_cxx () {
 
 function first_time_experience_setup() {
   export BUILD_ANDROID="1"
-  if [[ "$(host_os)" == "Linux" ]]; then
-    local package_manager="$(determine_package_manager)"
-    if [[ "$package_manager" == "apt install"]]; then
-      apt update && apt install -y libwebkit2gtk-4.1-dev build-essential libc++1-14-dev libc++abi-14-dev || return $?
-    elif [[ "$package_manager" == "pacman -S"]]; then
-      pacman -Syu base-devel webkit2gtk-4.1 clang-14 libc++1-14 libc++abi-14 || return $?
-    elif [[ "$package_manager" == "yum install"]]; then
-      echo "warn - 'yum' is not suppored yet"
+  local target="$1"
+
+  if [ -z "$target" ] || [[ "$target" == "linux" ]]; then
+    if [[ "$(host_os)" == "Linux" ]]; then
+      local package_manager="$(determine_package_manager)"
+      if [[ "$package_manager" == "apt install" ]]; then
+        sudo apt update || return $?
+        sudo apt install -y     \
+          libwebkit2gtk-4.1-dev \
+          build-essential       \
+          libc++abi-14-dev      \
+          libc++-14-dev         \
+          clang-14              \
+          || return $?
+      elif [[ "$package_manager" == "pacman -S" ]]; then
+        sudo pacman -Syu \
+          webkit2gtk-4.1 \
+          base-devel     \
+          libc++abi-14   \
+          libc++1-14     \
+          clang-14       \
+          || return $?
+      elif [[ "$package_manager" == "yum install" ]]; then
+        echo "warn - 'yum' is not suppored yet"
+      fi
     fi
   fi
 
   determine_cxx || return $?
 
-  ## Android is not supported on linux-arm64, return early
-  if [[ "$(host_os)" == "Linux" ]] && [[ "$(host_arch)" == "arm64"]]; then
-    return 0
-  fi
+  if [ -z "$target" ] || [[ "$target" == "android" ]]; then
+    ## Android is not supported on linux-arm64, return early
+    if [[ "$(host_os)" == "Linux" ]] && [[ "$(host_arch)" == "arm64"  ]]; then
+      return 0
+    fi
 
-  "$root/bin/android-functions.sh" --android-fte
+    "$root/bin/android-functions.sh" --android-fte || return $?
+  fi
 }
 
 function main() {
   while (( $# > 0 )); do
     declare arg="$1"; shift
-    [[ "$arg" == "--fte" ]] && first_time_experience_setup || return $?
+    [[ "$arg" == "--fte" ]] && first_time_experience_setup $@ || return $?
     [[ "$arg" == "--update-env-data" ]] && update_env_data "$@" || return $?
   done
   return 0
