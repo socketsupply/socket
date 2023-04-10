@@ -1,7 +1,8 @@
 
 <p align="center">
-  <a href="https://github.com/socketsupply/socket"><img src="https://user-images.githubusercontent.com/136109/222429730-2bc555b8-b28d-49cc-9107-77235912866d.png"/>
+  <a href="https://github.com/socketsupply/socket"><img width="150px" src="https://user-images.githubusercontent.com/136109/230836387-29537423-1b72-4cda-8a7b-ee8c5c7c2bae.png"/>
 </p>
+
 
 <p align="center">
   <a href="https://socketsupply.co/"><img src="https://img.shields.io/badge/Socket%20Supply-Website-black?style=flat-square"></a>    
