@@ -1401,60 +1401,91 @@ int main (const int argc, const char* argv[]) {
   });
 
   createSubcommand("install-app", { "--platform", "--device" }, true, [&](const std::span<const char *>& options) -> void {
-    if (platform.os != "mac") {
-      log("install-app is only supported on macOS.");
-      exit(0);
-    } else {
-      const String cfgUtilPath = getCfgUtilPath();
-      String commandOptions = "";
-      String targetPlatform = "";
-      // we need to find the platform first
-      for (auto const option : options) {
-        targetPlatform = optionValue("install-app", option, "--platform");
-        if (targetPlatform.size() > 0) {
-          // TODO: add Android support
-          if (targetPlatform != "ios") {
-            std::cout << "Unsupported platform: " << targetPlatform << std::endl;
-            exit(1);
-          }
+    String commandOptions = "";
+    String targetPlatform = "";
+    // we need to find the platform first
+    for (auto const option : options) {
+      targetPlatform = optionValue("install-app", option, "--platform");
+      if (targetPlatform.size() > 0) {
+        // just assume android when 'android-emulator' is given
+        if (targetPlatform == "android-emulator") {
+          targetPlatform = "android";
         }
-      }
-      if (targetPlatform.size() == 0) {
-        log("--platform option is required.");
-        printHelp("install-app");
-        exit(1);
-      }
-      // then we need to find the device
-      for (auto const option : options) {
-        auto device = optionValue("install-app", option, "--device");
-        if (device.size() > 0) {
-          if (targetPlatform == "ios") {
-            commandOptions += " --ecid " + device + " ";
-          }
-        }
-      }
 
+        if (targetPlatform != "ios" && targetPlatform != "android") {
+          std::cout << "Unsupported platform: " << targetPlatform << std::endl;
+          exit(1);
+        }
+      }
+    }
+
+    if (targetPlatform.size() == 0) {
+      log("--platform option is required.");
+      printHelp("install-app");
+      exit(1);
+    }
+
+    // then we need to find the device
+    for (auto const option : options) {
+      auto device = optionValue("install-app", option, "--device");
+      if (device.size() > 0) {
+        if (targetPlatform == "ios") {
+          commandOptions += " --ecid " + device + " ";
+        } else if (targetPlatform == "android") {
+          commandOptions += " -s " + device;
+        }
+      }
+    }
+
+    if (targetPlatform == "ios") {
+      auto cfgUtilPath = getCfgUtilPath();
       auto ipaPath = (
         getPaths(targetPlatform).platformSpecificOutputPath /
         "build" /
         String(settings["build_name"] + ".ipa") /
         String(settings["build_name"] + ".ipa")
       );
+
       if (!fs::exists(ipaPath)) {
         log("Could not find " + ipaPath.string());
         exit(1);
       }
+
       // this command will install the app to the first connected device which was
       // added to the provisioning profile if no --device is provided.
       auto command = cfgUtilPath + " " + commandOptions + "install-app " + ipaPath.string();
       auto r = exec(command);
+
       if (r.exitCode != 0) {
-        log("failed to install the app. Is the device plugged in?");
+        log("ERROR: failed to install the app. Is the device plugged in?");
         exit(1);
       }
-      log("successfully installed the app on your device(s).");
-      exit(0);
     }
+
+    if (targetPlatform == "android") {
+      auto paths = getPaths(targetPlatform);
+      auto output = paths.platformSpecificOutputPath;
+      auto app = output / "app";
+      StringStream adb;
+      adb << commandOptions << " install ";
+
+      if (flagDebugMode) {
+        adb << (app / "build" / "outputs" / "apk" / "dev" / "debug" / "app-dev-debug.apk").string();
+      } else {
+        adb << (app / "build" / "outputs" / "apk" / "live" / "debug" / "app-live-debug.apk").string();
+      }
+
+      auto command = adb.str();
+      auto r = exec(command);
+
+      if (r.exitCode != 0) {
+        log("ERROR: failed to install the app. Is the device plugged in?");
+        exit(1);
+      }
+    }
+
+    log("successfully installed the app on your device(s).");
+    exit(0);
   });
 
   createSubcommand("print-build-dir", { "--platform", "--prod" }, true, [&](const std::span<const char *>& options) -> void {
