@@ -426,17 +426,103 @@ function write_log_file() {
   echo "$1" >> "$logfile"
 }
 
+function determine_package_manager () {
+  local package_manager=""
+  [[ -z "$package_manager" ]] && [[ "$(uname -s)" == "Darwin" ]] && command -v brew >/dev/null 2>&1 && package_manager="brew install"
+  [[ -z "$package_manager" ]] && command -v apt >/dev/null 2>&1 && package_manager="apt install"
+  [[ -z "$package_manager" ]] && command -v yum >/dev/null 2>&1 && package_manager="yum install"
+  [[ -z "$package_manager" ]] && command -v pacman >/dev/null 2>&1 && package_manager="pacman -S"
+  [[ -z "$package_manager" ]] && package_manager="<your package manager> install"
+  echo "$package_manager"
+}
+
+function determine_cxx () {
+  local package_manager="$(determine_package_manager)"
+  local dpkg=""
+
+  command -v dpkg >/dev/null 2>&1 && dpkg="dpkg"
+
+  read_env_data
+
+  if [ ! "$CXX" ]; then
+    # TODO(@mribbons): yum support
+    if [ -n "$dpkg" ]; then
+      tmp="$(mktemp)"
+      {
+        dpkg -S clang 2>&1| grep "clang++" | cut -d" " -f 2 | while read clang; do
+        # Convert clang++ paths to path#version strings
+        bin_version="$("$clang" --version|head -n1)#$clang"
+        echo $bin_version;
+      done
+    } | sort -r | cut -d"#" -f 2 | head -n1 > $tmp # sort by version, then cut out bin out to get the highest installed clang version
+    CXX="$(cat "$tmp")"
+    rm -f "$tmp"
+
+    if [[ -z "$CXX" ]]; then
+      echo >&2 "not ok - missing build tools, try \"sudo $package_manager clang-14\""
+      return 1
+    fi
+  elif command -v clang++ >/dev/null 2>&1; then
+    CXX="$(command -v clang++)"
+  elif command -v g++ >/dev/null 2>&1; then
+    CXX="$(command -v g++)"
+    fi
+
+    if [ "$host" = "Win32" ]; then
+      # POSIX doesn't handle quoted commands
+      # Quotes inside variables don't escape spaces, quotes only help on the line we are executing
+      # Make a temp link
+      CXX_TMP=$(mktemp)
+      rm $CXX_TMP
+      ln -s "$CXX" $CXX_TMP
+      CXX=$CXX_TMP
+      # Make tmp.etc look like clang++.etc, makes clang output look correct
+      CXX=$(echo $CXX|sed 's/tmp\./clang++\./')
+      mv $CXX_TMP $CXX
+    fi
+
+    if [ ! "$CXX" ]; then
+      echo "not ok - could not determine \$CXX environment variable"
+      return 1
+    fi
+
+    echo "warn - using '$CXX' as CXX"
+  fi
+
+  export CXX
+  update_env_data
+}
+
 function first_time_experience_setup() {
   export BUILD_ANDROID="1"
+  if [[ "$(host_os)" == "Linux" ]]; then
+    local package_manager="$(determine_package_manager)"
+    if [[ "$package_manager" == "apt install"]]; then
+      apt update && apt install -y libwebkit2gtk-4.1-dev build-essential libc++1-14-dev libc++abi-14-dev || return $?
+    elif [[ "$package_manager" == "pacman -S"]]; then
+      pacman -Syu base-devel webkit2gtk-4.1 clang-14 libc++1-14 libc++abi-14 || return $?
+    elif [[ "$package_manager" == "yum install"]]; then
+      echo "warn - 'yum' is not suppored yet"
+    fi
+  fi
+
+  determine_cxx || return $?
+
+  ## Android is not supported on linux-arm64, return early
+  if [[ "$(host_os)" == "Linux" ]] && [[ "$(host_arch)" == "arm64"]]; then
+    return 0
+  fi
+
   "$root/bin/android-functions.sh" --android-fte
 }
 
 function main() {
   while (( $# > 0 )); do
     declare arg="$1"; shift
-    [[ "$arg" == "--fte" ]] && first_time_experience_setup
-    [[ "$arg" == "--update-env-data" ]] && update_env_data "$@"
+    [[ "$arg" == "--fte" ]] && first_time_experience_setup || return $?
+    [[ "$arg" == "--update-env-data" ]] && update_env_data "$@" || return $?
   done
+  return 0
 }
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
