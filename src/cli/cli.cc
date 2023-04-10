@@ -3732,14 +3732,14 @@ int main (const int argc, const char* argv[]) {
   });
 
   createSubcommand("setup", { "--platform", "--yes", "-y" }, false, [&](const std::span<const char *>& options) -> void {
-    auto win = platform.win;
-
     auto help = false;
-    String targetPlatform;
-    auto targetAndroid = false;
-    auto targetWindows = false;
     auto yes = false;
     String yesArg;
+
+    String targetPlatform;
+    auto targetAndroid = false;
+    auto targetLinux = false;
+    auto targetWindows = false;
 
     for (auto const arg : options) {
       if (is(arg, "-h") || is(arg, "--help")) {
@@ -3768,9 +3768,17 @@ int main (const int argc, const char* argv[]) {
       targetWindows = true;
     } else if (is(targetPlatform, "linux")) {
       targetLinux = true;
-    } else {
+    } else if (targetPlatform.size() > 0) {
       printHelp("setup");
       exit(1);
+    }
+
+    if (targetPlatform.size() == 0) {
+      if (platform.win) {
+        targetWindows = true;
+      } else if (platform.linux) {
+        targetLinux = true;
+      }
     }
 
     if (!platform.win && targetWindows) {
@@ -3792,10 +3800,10 @@ int main (const int argc, const char* argv[]) {
       script = prefixFile("bin\\install.ps1");
       argument = "-fte:" + targetPlatform;
       yesArg = yes ? "-yesdeps" : "";
-    } else if (platform.linux) {
+    } else if (platform.linux || platform.mac) {
       scriptHost = "bash";
       script = prefixFile("./bin/functions.sh");
-      argument = "--fte";
+      argument = "--fte " + targetPlatform;
     } else {
       argument = "--" + targetPlatform + "-fte";
       if (targetAndroid) {
@@ -3812,6 +3820,16 @@ int main (const int argc, const char* argv[]) {
     }
 
     fs::current_path(prefixFile());
+
+    if (targetPlatform.size() == 0) {
+      if (platform.win) {
+        targetPlatform = "windows";
+      } else if (platform.linux) {
+        targetPlatform = "linux";
+      } else if (platform.mac) {
+        targetPlatform = "darwin";
+      }
+    }
 
     log("Running setup for platform '" + targetPlatform + "' in " + "SOCKET_HOME (" + prefixFile() + ")");
     String command = scriptHost + " \"" + script.string() + "\" " + argument + " " + yesArg;
