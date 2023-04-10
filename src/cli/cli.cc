@@ -3798,7 +3798,11 @@ int main (const int argc, const char* argv[]) {
     if (platform.win) {
       scriptHost = "powershell.exe";
       script = prefixFile("bin\\install.ps1");
-      argument = "-fte:" + targetPlatform;
+      if (targetPlatform.size() > 0) {
+        argument = "-fte:" + targetPlatform;
+      } else {
+        argument = "-fte:windows";
+      }
       yesArg = yes ? "-yesdeps" : "";
     } else if (platform.linux || platform.mac) {
       scriptHost = "bash";
