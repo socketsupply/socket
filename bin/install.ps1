@@ -1021,12 +1021,22 @@ Download size: 5.5GB, Installed size: 10.2GB y/[N]"
     }
 
     if ($shbuild) {
+      $cmake_found = $false
       if (-not (Test-CommandVersion("cmake", $targetCmakeVersion))) {
-        $global:install_errors += "not ok - unable to install cmake"
-      } else {
-        if ($cmakePath -ne '') {
+        $cmakePath = "$env:ProgramFiles\CMake\bin"
+        if ((Test-Path "$cmakePath\cmake.exe" -PathType Leaf) -eq $true) {
           $env:PATH="$cmakePath\;$env:PATH"
+          $global:cmake = "$cmakePath\$global:cmake"
+          if (Test-CommandVersion("cmake", $targetCmakeVersion)) {
+            $cmake_found = $true
+          }
         }
+      } else {        
+        $cmake_found = $true
+      }
+
+      if ($cmake_found -eq $false) {
+        $global:install_errors += "not ok - unable to install cmake"
       }
     }
 
