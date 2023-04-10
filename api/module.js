@@ -34,7 +34,7 @@ import util from './util.js'
  */
 
 function normalizePathname (pathname) {
-  if (os.platform()) {
+  if (os.platform() === 'win32') {
     return path.win32.normalize(pathname.replace(/^\//, ''))
   }
 
