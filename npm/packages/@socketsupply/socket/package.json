@@ -38,7 +38,7 @@
   },
   "homepage": "https://github.com/socketsupply/socket#readme",
   "optionalDependencies": {
-    "@socketsupply/socket-darwin-arm64": "^0.0.16",
+    "@socketsupply/socket-darwin-arm64": "^0.0.18",
     "@socketsupply/socket-darwin-x64": "^0.0.7",
     "@socketsupply/socket-linux-x64": "^0.0.8",
     "@socketsupply/socket-win32-x64": "^0.0.8"
