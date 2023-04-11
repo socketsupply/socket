@@ -69,7 +69,7 @@ export const firstTimeExperienceSetup = async () => {
       ['.\\bin\\install.ps1', `-fte:${platform.length > 0 ? platform : 'all'}`],
       startInfo
     )
-  } else if (isSetupCall && platform && platform !== 'android') {
+  } else if (isSetupCall && platform !== 'android') {
     // only android setup supported here, don't attempt to run fte
     spawnArgs.push(
       // @ts-ignore
