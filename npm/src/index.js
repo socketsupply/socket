@@ -3,7 +3,9 @@ import os from 'node:os'
 import fs from 'node:fs'
 import { spawn } from 'node:child_process'
 
-const dirname = path.dirname(import.meta.url).replace(`file://${os.platform() === 'win32' ? '/' : ''}`, '')
+const dirname = path
+  .dirname(import.meta.url)
+  .replace(`file://${os.platform() === 'win32' ? '/' : ''}`, '')
 
 export const SOCKET_HOME = path.dirname(dirname)
 export const PREFIX = SOCKET_HOME
@@ -36,7 +38,7 @@ export const firstTimeExperienceSetup = async () => {
 
   let platform = ''
   process.argv.slice(2).forEach(arg => {
-    if (arg === 'setup' || arg === 'build') {
+    if (arg === 'setup') {
       isSetupCall = true
     }
 
@@ -50,9 +52,13 @@ export const firstTimeExperienceSetup = async () => {
   }
 
   const startInfo = {
-    env: { VERBOSE: 1, ...process.env },
+    env: { ...process.env },
     cwd: installPath,
     stdio: [process.stdin, process.stdout, process.stderr]
+  }
+
+  if (isSetupCall) {
+    startInfo.env.VERBOSE = 1
   }
 
   const spawnArgs = []
@@ -83,9 +89,10 @@ export const firstTimeExperienceSetup = async () => {
       child.on('close', resolve).on('error', reject)
     })
 
-    // If fte didn't create a configuration file, make an empty one to prevent user being prompted again
+    // If fte didn't create a configuration file, make an empty one to prevent
+    // user being prompted again
     // @ts-ignore
-    if (child.exitCode === 0 && !fs.existsSync(path.join(installPath, '.ssc.env'))) {
+    if (!child.exitCode && !fs.existsSync(path.join(installPath, '.ssc.env'))) {
       fs.writeFileSync(path.join(installPath, '.ssc.env'), '')
     }
   } else {

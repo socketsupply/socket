@@ -1399,7 +1399,16 @@ int main (const int argc, const char* argv[]) {
         exit(1);
       }
     } else if (targetPlatform == "android") {
-      auto r = exec("adb devices | tail -n +2");
+      auto androidHome = getAndroidHome();
+      StringStream adb;
+
+      if (!platform.win) {
+        adb << androidHome << "/platform-tools/";
+      } else {
+        adb << androidHome << "\\platform-tools\\";
+      }
+
+      auto r = exec(adb.str() + "adb devices | tail -n +2");
       std::regex re(R"((.*)\s*device)");
       std::smatch matches;
 
@@ -1410,9 +1419,12 @@ int main (const int argc, const char* argv[]) {
       while (std::regex_search(r.output, matches, re)) {
         std::cout << matches[1] << std::endl;
         r.output = matches.suffix();
+        if (isOnly) {
+          break;
+        }
       }
 
-      exit(0);;
+      exit(0);
     } else {
       log("list-devices is only supported for iOS devices on macOS.");
       exit(0);
