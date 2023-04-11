@@ -54,7 +54,7 @@ export const firstTimeExperienceSetup = async () => {
   const startInfo = {
     env: { ...process.env },
     cwd: installPath,
-    stdio: 'ignore'
+    stdio: [process.stdin, process.stdout, process.stderr]
   }
 
   const spawnArgs = []
@@ -76,9 +76,8 @@ export const firstTimeExperienceSetup = async () => {
   }
 
   if (spawnArgs.length) {
-    if (isSetupCall || platform) {
+    if (isSetupCall) {
       startInfo.env.VERBOSE = 1
-      startInfo.stdio = [process.stdin, process.stdout, process.stderr]
       console.log('# Checking build dependencies...')
     }
 
