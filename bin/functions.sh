@@ -454,18 +454,30 @@ function determine_cxx () {
         bin_version="$("$clang" --version|head -n1)#$clang"
         echo $bin_version;
       done
-    } | sort -r | cut -d"#" -f 2 | head -n1 > $tmp # sort by version, then cut out bin out to get the highest installed clang version
-    CXX="$(cat "$tmp")"
-    rm -f "$tmp"
+      } | sort -r | cut -d"#" -f 2 | head -n1 > $tmp # sort by version, then cut out bin out to get the highest installed clang version
+      CXX="$(cat "$tmp")"
+      rm -f "$tmp"
 
-    if [[ -z "$CXX" ]]; then
-      echo >&2 "not ok - missing build tools, try \"sudo $package_manager clang-14\""
-      return 1
-    fi
-  elif command -v clang++ >/dev/null 2>&1; then
-    CXX="$(command -v clang++)"
-  elif command -v g++ >/dev/null 2>&1; then
-    CXX="$(command -v g++)"
+      if [[ -z "$CXX" ]]; then
+        echo >&2 "not ok - missing build tools, try \"sudo $package_manager clang-14\""
+        return 1
+      fi
+    elif command -v clang++ >/dev/null 2>&1; then
+      CXX="$(command -v clang++)"
+    elif command -v clang++-16 >/dev/null 2>&1; then
+      CXX="$(command -v clang++-16)"
+    elif command -v clang++-15 >/dev/null 2>&1; then
+      CXX="$(command -v clang++-15)"
+    elif command -v clang++-14 >/dev/null 2>&1; then
+      CXX="$(command -v clang++-14)"
+    elif command -v clang++-13 >/dev/null 2>&1; then
+      CXX="$(command -v clang++-13)"
+    elif command -v clang++-12 >/dev/null 2>&1; then
+      CXX="$(command -v clang++-12)"
+    elif command -v clang++-11 >/dev/null 2>&1; then
+      CXX="$(command -v clang++-11)"
+    elif command -v g++ >/dev/null 2>&1; then
+      CXX="$(command -v g++)"
     fi
 
     if [ "$host" = "Win32" ]; then
