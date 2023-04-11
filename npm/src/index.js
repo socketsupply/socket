@@ -36,7 +36,7 @@ export const firstTimeExperienceSetup = async () => {
 
   let platform = ''
   process.argv.slice(2).forEach(arg => {
-    if (arg === 'setup') {
+    if (arg === 'setup' || arg === 'build') {
       isSetupCall = true
     }
 
@@ -63,7 +63,7 @@ export const firstTimeExperienceSetup = async () => {
       ['.\\bin\\install.ps1', `-fte:${platform.length > 0 ? platform : 'all'}`],
       startInfo
     )
-  } else if (platform && platform !== 'android') {
+  } else if (isSetupCall && platform && platform !== 'android') {
     // only android setup supported here, don't attempt to run fte
     spawnArgs.push(
       // @ts-ignore

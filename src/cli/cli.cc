@@ -1340,21 +1340,25 @@ int main (const int argc, const char* argv[]) {
         isOnly = true;
       }
     }
+
     if (targetPlatform.size() == 0) {
       log("ERROR: --platform option is required");
       exit(1);
     }
+
     if (targetPlatform == "ios" && platform.mac) {
       if (isUdid && isEcid) {
         log("--udid and --ecid are mutually exclusive");
         printHelp("list-devices");
         exit(1);
       }
+
       if (isOnly && !isUdid && !isEcid) {
         log("--only requires --udid or --ecid");
         printHelp("list-devices");
         exit(1);
       }
+
       String cfgUtilPath = getCfgUtilPath();
       String command = cfgUtilPath + " list-devices";
       auto r = exec(command);
@@ -1394,6 +1398,21 @@ int main (const int argc, const char* argv[]) {
         log("Could not list devices using " + command);
         exit(1);
       }
+    } else if (targetPlatform == "android") {
+      auto r = exec("adb devices | tail -n +2");
+      std::regex re(R"((.*)\s*device)");
+      std::smatch matches;
+
+      if (r.exitCode != 0) {
+        exit(r.exitCode);
+      }
+
+      while (std::regex_search(r.output, matches, re)) {
+        std::cout << matches[1] << std::endl;
+        r.output = matches.suffix();
+      }
+
+      exit(0);;
     } else {
       log("list-devices is only supported for iOS devices on macOS.");
       exit(0);
@@ -1466,10 +1485,18 @@ int main (const int argc, const char* argv[]) {
     }
 
     if (targetPlatform == "android") {
+      auto androidHome = getAndroidHome();
       auto paths = getPaths(targetPlatform);
       auto output = paths.platformSpecificOutputPath;
       auto app = output / "app";
       StringStream adb;
+
+      if (!platform.win) {
+        adb << androidHome << "/platform-tools/";
+      } else {
+        adb << androidHome << "\\platform-tools\\";
+      }
+
       adb << "adb" << commandOptions << " install ";
 
       if (flagDebugMode) {
@@ -3087,8 +3114,8 @@ int main (const int argc, const char* argv[]) {
 
       if (flagShouldRun) {
         // the emulator must be running on device SSCAVD for now
-        StringStream adb;
         StringStream adbShellStart;
+        StringStream adb;
 
         if (!platform.win) {
           adb << androidHome << "/platform-tools/";
