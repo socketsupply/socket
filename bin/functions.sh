@@ -507,6 +507,7 @@ function first_time_experience_setup() {
           build-essential       \
           libc++abi-14-dev      \
           libc++-14-dev         \
+          pkg-config            \
           clang-14              \
           || return $?
       elif [[ "$package_manager" == "pacman -S" ]]; then
@@ -516,6 +517,7 @@ function first_time_experience_setup() {
           libc++abi-14   \
           libc++1-14     \
           clang-14       \
+          pkgconf        \
           || return $?
       elif [[ "$package_manager" == "yum install" ]]; then
         echo "warn - 'yum' is not suppored yet"
