@@ -59,12 +59,12 @@ ssc v{{ssc_version}}
 Get the list of connected devices.
 
 usage:
-  ssc list-devices [options] --platform=>platform>
+  ssc list-devices [options] --platform=<platform>
 
 options:
   --platform    android|ios
-  --ecid        show device ECID
-  --udid        show device UDID
+  --ecid        show device ECID (ios only)
+  --udid        show device UDID (ios only)
   --only        only show ECID or UDID of the first device
 )TEXT";
 
