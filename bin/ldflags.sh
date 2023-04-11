@@ -110,7 +110,9 @@ if [[ "$host" = "Darwin" ]]; then
   ldflags+=("-framework" "UserNotifications")
   ldflags+=("-framework" "OSLog")
 elif [[ "$host" = "Linux" ]]; then
-  ldflags+=($(pkg-config --libs gtk+-3.0 webkit2gtk-4.1))
+  if [ -z "$BUILDING_SSC_CLI" ]; then
+    ldflags+=($(pkg-config --libs gtk+-3.0 webkit2gtk-4.1))
+  fi
 elif [[ "$host" = "Win32" ]]; then
   if [[ -n "$DEBUG" ]]; then
     # https://learn.microsoft.com/en-us/cpp/c-runtime-library/crt-library-features?view=msvc-170

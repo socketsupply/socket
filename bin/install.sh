@@ -35,6 +35,8 @@ declare CWD=$(pwd)
 declare PREFIX="${PREFIX:-"/usr/local"}"
 declare BUILD_DIR="$CWD/build"
 
+export BUILDING_SSC_CLI=1
+
 while (( $# > 0 )); do
   declare arg="$1"; shift
   if [[ "$arg" = "--arch" ]]; then
