@@ -59,13 +59,13 @@ ssc v{{ssc_version}}
 Get the list of connected devices.
 
 usage:
-  ssc list-devices --platform=ios [--ecid | --udid] [--only]
+  ssc list-devices [options] --platform=>platform>
 
 options:
-  --platform  any : ios, android
-  --ecid      show device ECID
-  --udid      show device UDID
-  --only      only show ECID or UDID of the first device
+  --platform    android|ios
+  --ecid        show device ECID
+  --udid        show device UDID
+  --only        only show ECID or UDID of the first device
 )TEXT";
 
 constexpr auto gHelpTextInit = R"TEXT(
