@@ -737,12 +737,16 @@ export android_fte
 
 function android_fte() {
   pass_yes_deps=""
+  # use 'exit' instead of return
+  # fixes "not ok - Android setup failed." when setup is valid
+  local set_exit_code=""
 
   [[ -n "$android_fte" ]] && return 0
 
   while (( $# > 0 )); do
     declare arg="$1"; shift
     [[ "$arg" == "--yes-deps" ]] && pass_yes_deps="$arg"
+    [[ "$arg" == "--exit-code" ]] && set_exit_code="1"
   done
 
   android_fte=1
@@ -792,13 +796,16 @@ function android_fte() {
   NDK_BUILD="$ANDROID_HOME/ndk/$NDK_VERSION/ndk-build$(use_bin_ext ".cmd")"
   export NDK_BUILD
 
-  return $?
+  rc=$?
+  [[ -n "$set_exit_code" ]] && exit $rc
+  return $rc
 }
 
 function main() {
   while (( $# > 0 )); do
     declare arg="$1"; shift
     [[ "$arg" == "--android-fte" ]] && android_fte "$@"
+    # [[ "$arg" == "--android-fte" ]] && exit 0
     [[ "$arg" == "--android-setup-required" ]] && android_setup_required "$@"
   done
 }
