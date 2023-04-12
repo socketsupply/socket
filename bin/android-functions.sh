@@ -26,7 +26,8 @@ declare ANDROID_COMMAND_LINE_TOOLS_URI_TEMPLATE="https://dl.google.com/android/r
 declare ANDROID_STUDIO_PAGE_URI="https://developer.android.com/studio"
 declare JDK_VERSION="19.0.2"
 declare JDK_URI_TEMPLATE="https://download.java.net/java/GA/jdk$JDK_VERSION/fdb695a9d9064ad6b064dc6df578380c/7/GPL/openjdk-$JDK_VERSION""_""{os}-{arch}_bin.{format}"
-declare GRADLE_URI_TEMPLATE="https://services.gradle.org/distributions/gradle-8.0.2-bin.zip"
+declare GRADLE_VERSION="8.0.2"
+declare GRADLE_URI_TEMPLATE="https://services.gradle.org/distributions/gradle-$GRADLE_VERSION-bin.zip"
 
 # TODO(mribbons): ubuntu / apt libs: apt-get install libc6:i386 libncurses5:i386 libstdc++6:i386 lib32z1 libbz2-1.0:i386
 
@@ -57,7 +58,7 @@ function get_android_default_search_paths() {
   GRADLE_SEARCH_PATHS=()
 
   if [ -n "$GRADLE_HOME" ]; then
-    GRADLE_SEARCH_PATHS+=("$GRADLE_HOME")
+    GRADLE_SEARCH_PATHS=("$GRADLE_HOME")
   fi
 
   if [ -n "$HOME" ]; then
@@ -100,8 +101,23 @@ function test_javac_version() {
   fi
 
   jc_v="${jc_v/javac\ /}"
-  write_log "v" "# Comparing $javac version: "$(version "$jc_v") "$(version "$target_version")"
+  write_log "d" "# Comparing $javac version: "$(version "$jc_v") "$(version "$target_version")"
   if [ "$(version "$jc_v")" -lt "$(version "$target_version")" ]; then
+    return 1
+  fi
+
+  return 0
+}
+
+function test_gradle_version() {
+  local gradle_path="$1"
+  local target_version=$2
+  # Can't run gradle if JAVA_HOME not already set, but version number is in path
+  local version=""
+  [[ "$gradle_path" =~ gradle-(.*) ]] && version="${BASH_REMATCH[1]}"
+
+  write_log "d" "# Comparing $gradle_path version: $(version "$target_version")"
+  if [ "$(version "$version")" -lt "$(version "$target_version")" ]; then
     return 1
   fi
 
@@ -129,7 +145,7 @@ function get_android_paths() {
   local _ah="$ANDROID_HOME"
   local _sdk
   local _jh="$JAVA_HOME"
-  local _gh="$GRADLE_HOME"
+  local _gh=""
   local android_home_test
   local sdk_man_test
   local bat="$(use_bin_ext ".bat")"
@@ -211,25 +227,23 @@ function get_android_paths() {
   local gradle_test
   local gradle
 
-  if ! test -d "$_gh" ; then
-    for gradle_test in "${GRADLE_SEARCH_PATHS[@]}"; do
-      write_log "v" "# Checking $gradle_test/bin/gradle$bat"
-      if [[ -f "$gradle_test/bin/gradle$bat" ]]; then
-        echo "$gradle_test" > "$temp"
-        break
-      fi
-
-      write_log "d" "find $gradle_test -type f -name 'gradle' -print0 2>/dev/null | while IFS= read -r -d '' gradle"
-      find "$gradle_test" -type f -name "gradle$bat" -print0 2>/dev/null | while IFS= read -r -d '' gradle; do
-        # break doesn't work here, check that we don't have a result
-        if [[ $(stat_size "$temp") == 0 ]]; then
-          write_log "h" "ok - Found gradle ($gradle)"
+  for gradle_test in "${GRADLE_SEARCH_PATHS[@]}"; do
+    write_log "d" "find $gradle_test -type f -name 'gradle' -print0 2>/dev/null | while IFS= read -r -d '' gradle"
+    find "$gradle_test" -type f -name "gradle$bat" -print0 2>/dev/null | while IFS= read -r -d '' gradle; do
+      # break doesn't work here, check that we don't have a result
+      if [[ $(stat_size "$temp") == 0 ]]; then
+        local gradle_path=$(dirname "$(dirname "$gradle")")
+        test_gradle_version "$gradle_path" "$GRADLE_VERSION" ; r=$?
+        if [[ "$r" == "0" ]]; then
+          write_log "h" "ok - Found gradle ($gradle_path)"
           # subshell, output to file
-          echo "$(dirname "$(dirname "$gradle")")" > "$temp"
+          echo "$gradle_path" > "$temp"
+        else
+          write_log "v" "# Ignoring found gradle ($gradle_path)"
         fi
-      done
+      fi
     done
-  fi
+  done
 
   if [[ $(stat_size "$temp") != 0 ]]; then
     _gh=$(cat "$temp")
