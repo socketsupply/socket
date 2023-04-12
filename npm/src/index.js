@@ -25,6 +25,7 @@ export const bin = {
     : path.join(env.PREFIX, 'bin', 'ssc')
 }
 
+// Modifying this function requires full FTE testing (From fresh install) on all build OS's before signing off (Individual arch testing not required)
 export const firstTimeExperienceSetup = async () => {
   const installPath = path.dirname(path.dirname(bin.ssc))
   if (fs.existsSync(path.join(installPath, '.ssc.env'))) {
@@ -65,8 +66,7 @@ export const firstTimeExperienceSetup = async () => {
       ['.\\bin\\install.ps1', `-fte:${platform.length > 0 ? platform : 'all'}`],
       startInfo
     )
-  } else if (platform !== 'android') {
-    // Run --fte for any platform other than android. Android setup call will be passed to ssc binary.
+  } else {
     spawnArgs.push(
       // @ts-ignore
       './bin/functions.sh',
