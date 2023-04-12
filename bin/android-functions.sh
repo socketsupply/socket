@@ -144,8 +144,8 @@ function get_android_paths() {
 
   local _ah="$ANDROID_HOME"
   local _sdk
-  local _jh="$JAVA_HOME"
-  local _gh=""
+  local _jh=
+  local _gh=
   local android_home_test
   local sdk_man_test
   local bat="$(use_bin_ext ".bat")"
@@ -177,21 +177,23 @@ function get_android_paths() {
   temp=$(mktemp)
   for java_home_test in "${JAVA_HOME_SEARCH_PATHS[@]}"; do
     # Try initial search in bin of known location before attempting `find`
-    write_log "v" "# Checking $java_home_test/bin/javac$exe"
-    if [[ -f "$java_home_test/bin/javac$exe" ]]; then
+    javac="$(unix_path "$java_home_test" "1")/bin/javac$exe"
+    write_log "v" "# Checking $javac"
+    if [[ -f "$javac" ]]; then
 
-      test_javac_version "$java_home_test/bin/javac$exe" "$JDK_VERSION" ; r=$?
+      test_javac_version "$javac" "$JDK_VERSION" ; r=$?
       if [[ "$r" == "0" ]]; then
         # subshell, output to file
         echo "$(dirname "$(dirname "$javac")")" > "$temp"
-        echo "$java_home_test" > "$temp"
         write_log "h" "# Using predetermined javac $javac"
         break
       else
-        write_log "v" "# Ignoring predetermined javac $java_home_test/bin/javac$exe $jc_v"
+        write_log "v" "# Ignoring predetermined javac $javac $jc_v"
         # configured JAVA_HOME is bad, unset to trigger new version install
         [[ "$JAVA_HOME" == "$java_home_test" ]] && unset JAVA_HOME
       fi
+    else
+      write_log "v" "No javac at $javac"
     fi
 
     if ! test -d "$_jh" ; then
