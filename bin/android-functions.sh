@@ -178,17 +178,17 @@ function get_android_paths() {
   for java_home_test in "${JAVA_HOME_SEARCH_PATHS[@]}"; do
     # Try initial search in bin of known location before attempting `find`
     javac="$(unix_path "$java_home_test" "1")/bin/javac$exe"
-    write_log "v" "# Checking $javac"
+    write_log "v" "# Checking $(native_path "$javac")"
     if [[ -f "$javac" ]]; then
 
       test_javac_version "$javac" "$JDK_VERSION" ; r=$?
       if [[ "$r" == "0" ]]; then
         # subshell, output to file
         echo "$(dirname "$(dirname "$javac")")" > "$temp"
-        write_log "h" "# Using predetermined javac $javac"
+        write_log "h" "# Using predetermined javac $(native_path "$javac")"
         break
       else
-        write_log "v" "# Ignoring predetermined javac $javac $jc_v"
+        write_log "v" "# Ignoring predetermined javac $(native_path "$javac") $jc_v"
         # configured JAVA_HOME is bad, unset to trigger new version install
         [[ "$JAVA_HOME" == "$java_home_test" ]] && unset JAVA_HOME
       fi
