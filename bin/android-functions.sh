@@ -665,7 +665,7 @@ function android_first_time_experience_setup() {
     export PROMPT_DEFAULT_YN
   fi
 
-  if _android_setup_required && ! prompt_yn "Do you want to install Android build dependencies?
+  if [[ "$(host_os)" != "Win32" ]] && _android_setup_required && ! prompt_yn "Do you want to install Android build dependencies?
 Download size: 5.5GB, Installed size: 12.0GB"; then
     return 1
   fi
