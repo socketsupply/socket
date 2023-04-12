@@ -1052,7 +1052,7 @@ Download size: 5.5GB, Installed size: 10.2GB y/[N]"
     Write-Log "d" "git: $_gitPath"
     if ($exists) {
       $sh = Locate-Sh $_gitPath
-      $android_setup_sh = """$sh"" bin\android-functions.sh --android-fte"
+      $android_setup_sh = """$sh"" bin\android-functions.sh --android-fte --exit-code"
       Write-Log "v" "# Calling $android_setup_sh"
       iex "& $android_setup_sh"
       if ($LASTEXITCODE -ne 0) {

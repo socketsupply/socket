@@ -41,12 +41,19 @@ function escape_path() {
 }
 
 function unix_path() {
-  local p="$(escape_path "$1")"
+  local p=${1//\"/}
+  local dont_escape_space="$2"
+  p="$(escape_path "$p")"
   local host="$(host_os)"
   if [[ "$host" == "Win32" ]]; then
     p="$(cygpath -u "$p")"
-    # cygpath doesn't escape spaces
-    echo "${p//\ /\\ }"
+    # when testing paths we shouldn't escape spaces
+    # TODO(mribbons): make this the default behaviour under Win32, review other uses of unix_path()
+    if [[ -z "$dont_escape_space" ]]; then
+      # cygpath doesn't escape spaces
+      p="${p//\ /\\ }"
+    fi
+    echo  "$p"
     return
   fi
   echo "$p"
