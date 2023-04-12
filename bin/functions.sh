@@ -77,6 +77,19 @@ function quiet () {
   return $?
 }
 
+# Always logs to terminal, but respects VERBOSE for command output
+function log_and_run () {
+  write_log "h" "$@"
+
+  if [ -n "$VERBOSE" ]; then
+    "$@"
+  else
+    "$@" > /dev/null 2>&1
+  fi
+
+  return $?
+}
+
 function die {
   local status=$1
   if (( status != 0 && status != 127 )); then
@@ -402,7 +415,8 @@ logfile="$_loghome/socket_install_sh.log"
 function write_log() {
   local wh=""
   local type=$1
-  local message=$2
+  shift
+  # local message=$2
 
   if [[ -n "$DEBUG" ]] && ( [[ "$type" == "d" ]] || [[ "$type" == "v" ]] ); then
     wh="1"
@@ -415,11 +429,11 @@ function write_log() {
   fi
 
   if [[ -n "$wh" ]]; then
-    echo "$message"
+    echo "$@"
   fi
 
   # Write-LogFile $message
-  write_log_file "$message"
+  write_log_file "$@"
 }
 
 function write_log_file() {
@@ -512,9 +526,10 @@ function first_time_experience_setup() {
   if [ -z "$target" ] || [[ "$target" == "linux" ]]; then
     if [[ "$(host_os)" == "Linux" ]]; then
       local package_manager="$(determine_package_manager)"
+      echo "Installing $(host_os) dependencies..."
       if [[ "$package_manager" == "apt install" ]]; then
-        sudo apt update || return $?
-        sudo apt install -y     \
+        log_and_run sudo apt update || return $?
+        log_and_run sudo apt install -y     \
           libwebkit2gtk-4.1-dev \
           build-essential       \
           libc++abi-14-dev      \
@@ -522,8 +537,9 @@ function first_time_experience_setup() {
           pkg-config            \
           clang-14              \
           || return $?
+          exit $?
       elif [[ "$package_manager" == "pacman -S" ]]; then
-        sudo pacman -Syu \
+        log_and_run sudo pacman -Syu \
           webkit2gtk-4.1 \
           base-devel     \
           libc++abi-14   \
@@ -533,6 +549,7 @@ function first_time_experience_setup() {
           || return $?
       elif [[ "$package_manager" == "yum install" ]]; then
         echo "warn - 'yum' is not suppored yet"
+        exit 1
       fi
     fi
   fi
