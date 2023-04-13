@@ -1252,7 +1252,7 @@ External docs: https://socketsupply.co/guides/#p2p-guide
 Provides a higher level API over the stream-relay protocol.
 
 
-## [`Peer` (extends `EventEmitter`)](https://github.com/socketsupply/socket/blob/master/api/peer.js#L42)
+## [`Peer` (extends `EventEmitter`)](https://github.com/socketsupply/socket/blob/master/api/peer.js#L44)
 
 
 The Peer class is an EventEmitter. It emits events when new network events
@@ -1261,7 +1261,9 @@ are received (.on), it can also emit new events to the network (.emit).
 ```js
 import { Peer } from 'socket:peer'
 
-const peer = new Network({ publicKey, privateKey, clusterId })
+const pair = await Peer.createPair()
+
+const peer = new Peer({ pair, clusterId })
 
 peer.on('connection', (remotePeer, address, port) => {
   console.log(remotePeer, address, port)
@@ -1274,7 +1276,7 @@ peer.on('greeting', value => {
 const packet = await peer.emit('greeting', { english: 'hello, world' })
 ```
 
-### [`constructor(options)`](https://github.com/socketsupply/socket/blob/master/api/peer.js#L52)
+### [`constructor(options)`](https://github.com/socketsupply/socket/blob/master/api/peer.js#L54)
 
 `Peer` class constructor.
 
@@ -1288,7 +1290,7 @@ const packet = await peer.emit('greeting', { english: 'hello, world' })
 | options.peers | Array |  | false | An array of RemotePeer |
 
 
-### [`createKeys()`](https://github.com/socketsupply/socket/blob/master/api/peer.js#L75)
+### [`createKeys()`](https://github.com/socketsupply/socket/blob/master/api/peer.js#L77)
 
 A method that will generate a public and private key pair.
  The ed25519 pair can be stored by an app with a secure API.
@@ -1299,7 +1301,7 @@ A method that will generate a public and private key pair.
 | pair | Object<Pair> | A pair of keys |
 
 
-### [`emit(event, message)`](https://github.com/socketsupply/socket/blob/master/api/peer.js#L92)
+### [`emit(event, message)`](https://github.com/socketsupply/socket/blob/master/api/peer.js#L94)
 
 Emits a message to the network
 
@@ -1315,7 +1317,7 @@ Emits a message to the network
 | Not specified | Object<Packet> | The packet that will be sent when possible |
 
 
-### [`join()`](https://github.com/socketsupply/socket/blob/master/api/peer.js#L111)
+### [`join()`](https://github.com/socketsupply/socket/blob/master/api/peer.js#L113)
 
 Starts the process of connecting to the network.
 
