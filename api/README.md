@@ -1263,7 +1263,7 @@ import { Peer } from 'socket:peer'
 
 const pair = await Peer.createPair()
 
-const peer = new Peer({ pair, clusterId })
+const peer = new Peer({ ...pair, clusterId })
 
 peer.on('connection', (remotePeer, address, port) => {
   console.log(remotePeer, address, port)
