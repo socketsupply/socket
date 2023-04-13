@@ -286,7 +286,7 @@ export function transform (filename, dest, md) {
   'fs/promises.js',
   'ipc.js',
   'os.js',
-  'p2p.js',
+  'peer.js',
   'path/path.js',
   'process.js',
   'window.js'

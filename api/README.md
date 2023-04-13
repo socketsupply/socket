@@ -313,14 +313,18 @@ Start advertising a new value for a well-known UUID
 # [Crypto](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L8)
 
 
- Some high-level methods around the `crypto.subtle`API for getting
+ Some high-level methods around the `crypto.subtle` API for getting
  random bytes and hashing.
 
-## [webcrypto](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L43)
+## [ready](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L43)
+
+A promise that resolves when all internals to be loaded/ready.
+
+## [webcrypto](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L56)
 
 WebCrypto API
 
-## [`getRandomValues(buffer)`](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L51)
+## [`getRandomValues(buffer)`](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L64)
 
 External docs: https://developer.mozilla.org/en-US/docs/Web/API/Crypto/getRandomValues
 
@@ -336,24 +340,24 @@ Generate cryptographically strong random values into the `buffer`
 | Not specified | TypedArray |  |
 
 
-## [`rand64()`](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L72)
+## [`rand64()`](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L85)
 
 This is a `FunctionDeclaration` named `rand64` in `api/crypto.js`, it's exported but undocumented.
 
 
-## [RANDOM_BYTES_QUOTA](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L80)
+## [RANDOM_BYTES_QUOTA](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L93)
 
 Maximum total size of random bytes per page
 
-## [MAX_RANDOM_BYTES](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L85)
+## [MAX_RANDOM_BYTES](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L98)
 
 Maximum total size for random bytes.
 
-## [MAX_RANDOM_BYTES_PAGES](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L90)
+## [MAX_RANDOM_BYTES_PAGES](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L103)
 
 Maximum total amount of allocated per page of bytes (max/quota)
 
-## [`randomBytes(size)`](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L98)
+## [`randomBytes(size)`](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L111)
 
 Generate `size` random bytes.
 
@@ -367,7 +371,7 @@ Generate `size` random bytes.
 | Not specified | Buffer | A promise that resolves with an instance of socket.Buffer with random bytes. |
 
 
-## [`createDigest(algorithm, message)`](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L125)
+## [`createDigest(algorithm, message)`](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L138)
 
 
 
@@ -1240,12 +1244,85 @@ This is a `FunctionDeclaration` named `hrtime` in `api/os.js`, it's exported but
 This is a `FunctionDeclaration` named `availableMemory` in `api/os.js`, it's exported but undocumented.
 
 
-# [P2P](https://github.com/socketsupply/socket/blob/master/api/p2p.js#L9)
+# [Peer](https://github.com/socketsupply/socket/blob/master/api/peer.js#L9)
 
-External docs: https://github.com/socketsupply/stream-relay
+External docs: https://socketsupply.co/guides/#p2p-guide
 
 
- A low-level network protocol for P2P.
+Provides a higher level API over the stream-relay protocol.
+
+
+## [`Peer` (extends `EventEmitter`)](https://github.com/socketsupply/socket/blob/master/api/peer.js#L42)
+
+
+The Peer class is an EventEmitter. It emits events when new network events
+are received (.on), it can also emit new events to the network (.emit).
+
+```js
+import { Peer } from 'socket:peer'
+
+const peer = new Network({ publicKey, privateKey, clusterId })
+
+peer.on('connection', (remotePeer, address, port) => {
+  console.log(remotePeer, address, port)
+})
+
+peer.on('greeting', value => {
+  console.log(value)
+})
+
+const packet = await peer.emit('greeting', { english: 'hello, world' })
+```
+
+### [`constructor(options)`](https://github.com/socketsupply/socket/blob/master/api/peer.js#L52)
+
+`Peer` class constructor.
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| options | Object |  | false | All options for the Peer constructor |
+| options.publicKey | string |  | false | The public key required to sign and read |
+| options.privateKey | string |  | false | The private key required to sign and read |
+| options.clusterId | string |  | false | A unique appliction identity |
+| options.scheme | string |  | false | Specify which encryption scheme to use (ie, 'PTP') |
+| options.peers | Array |  | false | An array of RemotePeer |
+
+
+### [`createKeys()`](https://github.com/socketsupply/socket/blob/master/api/peer.js#L75)
+
+A method that will generate a public and private key pair.
+ The ed25519 pair can be stored by an app with a secure API.
+
+
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| pair | Object<Pair> | A pair of keys |
+
+
+### [`emit(event, message)`](https://github.com/socketsupply/socket/blob/master/api/peer.js#L92)
+
+Emits a message to the network
+
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| event | string |  | false | The name of the event to emit to the network |
+| message | Buffer |  | false | The data to emit to the network |
+
+
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| Not specified | Object<Packet> | The packet that will be sent when possible |
+
+
+### [`join()`](https://github.com/socketsupply/socket/blob/master/api/peer.js#L111)
+
+Starts the process of connecting to the network.
+
+
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| Not specified | Peer | Returns an instance of the underlying network peer |
 
 
 # [Path](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L4)
@@ -1332,7 +1409,7 @@ Computes directory name of path.
 | Not specified | string |  |
 
 
-### [`basename(options, components)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L169)
+### [`basename(options, components)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L170)
 
 Computes base name of path.
 
@@ -1347,7 +1424,7 @@ Computes base name of path.
 | Not specified | string |  |
 
 
-### [`extname(options, path)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L187)
+### [`extname(options, path)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L188)
 
 Computes extension name of path.
 
@@ -1362,7 +1439,7 @@ Computes extension name of path.
 | Not specified | string |  |
 
 
-### [`normalize(options, path)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L198)
+### [`normalize(options, path)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L199)
 
 Computes normalized path
 
@@ -1377,7 +1454,7 @@ Computes normalized path
 | Not specified | string |  |
 
 
-### [`format(path)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L242)
+### [`format(path)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L243)
 
 Formats `Path` object into a string.
 
@@ -1391,7 +1468,7 @@ Formats `Path` object into a string.
 | Not specified | string |  |
 
 
-### [`from(input, cwd)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L258)
+### [`from(input, cwd)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L259)
 
 Creates a `Path` instance from `input` and optional `cwd`.
 
@@ -1401,7 +1478,7 @@ Creates a `Path` instance from `input` and optional `cwd`.
 | cwd | string |  | false |  |
 
 
-### [`constructor(pathname, cwd )`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L279)
+### [`constructor(pathname, cwd )`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L280)
 
 `Path` class constructor.
 
@@ -1411,47 +1488,47 @@ Creates a `Path` instance from `input` and optional `cwd`.
 | cwd | string | Path.cwd() | false |  |
 
 
-### [`isRelative()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L310)
+### [`isRelative()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L311)
 
 `true` if the path is relative, otherwise `false.
 
-### [`value()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L317)
+### [`value()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L318)
 
 The working value of this path.
 
-### [`source()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L325)
+### [`source()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L326)
 
 The original source, unresolved.
 
-### [`parent()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L333)
+### [`parent()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L334)
 
 Computed parent path.
 
-### [`root()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L345)
+### [`root()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L346)
 
 Computed root in path.
 
-### [`dir()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L366)
+### [`dir()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L367)
 
 Computed directory name in path.
 
-### [`base()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L404)
+### [`base()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L405)
 
 Computed base name in path.
 
-### [`name()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L416)
+### [`name()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L417)
 
 Computed base name in path without path extension.
 
-### [`ext()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L424)
+### [`ext()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L425)
 
 Computed extension name in path.
 
-### [`drive()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L434)
+### [`drive()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L443)
 
 The computed drive, if given in the path.
 
-### [`toURL()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L441)
+### [`toURL()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L450)
 
 
 
@@ -1460,7 +1537,7 @@ The computed drive, if given in the path.
 | Not specified | URL |  |
 
 
-### [`toString()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L449)
+### [`toString()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L458)
 
 Converts this `Path` instance to a string.
 
