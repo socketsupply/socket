@@ -14,7 +14,7 @@ import { Buffer } from '../buffer.js'
 import { sodium } from '../crypto.js'
 import { Cache } from './cache.js'
 import { Encryption } from './encryption.js'
-import { PTP } from './schemes/point-to-point.js'
+import { PTP } from './scheme-ptp.js'
 
 import {
   Packet,

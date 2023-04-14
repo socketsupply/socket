@@ -1,5 +1,5 @@
 import { sodium } from '../crypto.js'
-import { Packet, validatePacket, sha256 } from '../packets.js'
+import { Packet, validatePacket, sha256 } from './packets.js'
 
 const networkIdentities = {}
 let defaultIdentity

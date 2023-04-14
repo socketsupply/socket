@@ -1,6 +1,6 @@
 import { isBufferLike } from '../util.js'
 import { Buffer } from '../buffer.js'
-import { sodium } from '../crypto.js'
+import { sodium, randomBytes } from '../crypto.js'
 
 const VERSION = 1
 const TYPE_BYTES = 1
@@ -51,7 +51,7 @@ function createHashFunction () {
         return Buffer.from(await crypto.digest('SHA-256', seed)).toString('hex')
       }
 
-      return Buffer.from(crypto.randomBytes(32)).toString('hex')
+      return Buffer.from(randomBytes(32)).toString('hex')
     }
   }
 
@@ -68,7 +68,7 @@ function createHashFunction () {
       return crypto.createHash('sha256').update(seed).digest('hex')
     }
 
-    return crypto.randomBytes(32).toString('hex')
+    return randomBytes(32).toString('hex')
   }
 }
 

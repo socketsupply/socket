@@ -26,14 +26,11 @@ const PeerFactory = createPeer(dgram)
  *import { Peer } from 'socket:peer'
  *
  *const pair = await Peer.createPair()
+ *const clusterId = await Peer.createClusterId()
  *
  *const peer = new Peer({ ...pair, clusterId })
  *
- *peer.on('connection', (remotePeer, address, port) => {
- *  console.log(remotePeer, address, port)
- *})
- *
- *peer.on('greeting', value => {
+ *peer.on('greeting', (value, peer, address, port) => {
  *  console.log(value)
  *})
  *
@@ -62,6 +59,7 @@ export class Peer extends EventEmitter {
       throw new Error('A clusterId must be specified (string)')
     }
 
+    this.peer = null
     this._emit = super.emit
     this.opts = opts
   }
@@ -85,6 +83,14 @@ export class Peer extends EventEmitter {
   }
 
   /**
+   * Create a clusterId from random bytes
+   * @return {string} id - a hex encoded sha256 hash
+   */
+  static async createClusterId () {
+    return (await sha256(randomBytes(32))).toString('hex')
+  }
+
+  /**
    * Emits a message to the network
    *
    * @param {string} event - The name of the event to emit to the network
@@ -105,6 +111,10 @@ export class Peer extends EventEmitter {
     })
   }
 
+  async query () {
+    // TODO expose the query API
+  }
+
   /**
    * Starts the process of connecting to the network.
    *
@@ -119,12 +129,13 @@ export class Peer extends EventEmitter {
     this.peer = await PeerFactory.create({ ...this.opts, introducer: true })
 
     this.peer.onConnect = (peer, packet, port, address) => {
+      if (packet.clusterId !== this.peer.clusterId) return
       this._emit('connection', peer, address, port)
     }
 
     this.peer.onPacket = (packet, port, address) => {
       if (packet.usr1 === 'connection') return
-      this._emit(packet.usr1, packet.message)
+      this._emit(packet.usr1, packet.message, address, port)
     }
 
     this.peer.encryption.add(this.opts.publicKey, this.opts.privateKey)
@@ -133,3 +144,5 @@ export class Peer extends EventEmitter {
     return this.peer
   }
 }
+
+export default Peer
