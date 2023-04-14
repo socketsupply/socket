@@ -2,7 +2,7 @@
  * @module Bluetooth
  *
  * A high-level, cross-platform API for Bluetooth Pub-Sub
- * 
+ *
  * Example usage:
  * ```js
  * import { Bluetooth } from 'socket:bluetooth'

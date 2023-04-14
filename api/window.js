@@ -3,7 +3,7 @@
  * @module Window
  *
  * Provides ApplicationWindow class and methods
- * 
+ *
  * Usaully you don't need to use this module directly, instance of ApplicationWindow
  * are returned by the methods of the {@link module:Application Application} module.
  */

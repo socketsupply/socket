@@ -3,7 +3,7 @@
  * @module Application
  *
  * Provides Application level methods
- * 
+ *
  * Example usage:
  * ```js
  * import { createWindow } from 'socket:application'

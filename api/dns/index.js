@@ -7,7 +7,7 @@
  * operating system facilities to perform name resolution. It may not need to
  * perform any network communication. To perform name resolution the way other
  * applications on the same system do, use dns.lookup().
- * 
+ *
  * Example usage:
  * ```js
  * import { lookup } from 'socket:dns'

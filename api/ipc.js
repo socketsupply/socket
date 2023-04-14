@@ -22,7 +22,7 @@
  * ```
  * ipc://command?key1=value1&key2=value2...
  * ```
- * 
+ *
  * Example usage:
  * ```js
  * import { send } from 'socket:ipc'

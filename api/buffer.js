@@ -2,7 +2,7 @@
  * @module Buffer
  *
  * The buffer module from node.js, for the browser.
- * 
+ *
  * Example usage:
  * ```js
  * import { Buffer } from 'socket:buffer'
