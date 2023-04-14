@@ -1,7 +1,12 @@
 /**
  * @module Peer
  *
- *Provides a higher level API over the stream-relay protocol.
+ * Provides a higher level API over the stream-relay protocol.
+ * 
+ * Example usage:
+ * ```js
+ * import { Peer } from 'socket:peer'
+ * ```
  *
  * @see {@link https://socketsupply.co/guides/#p2p-guide}
  *
