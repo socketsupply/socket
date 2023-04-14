@@ -1370,6 +1370,7 @@ constexpr auto gDefaultConfig = R"INI(
 ; This is useful when you want to avoid bundling or want to use tools like
 ; vite, webpack, rollup, etc. to build your project and then copy output to
 ; the Socket bundle resources directory.
+; default value: "src"
 copy = "src"
 
 ; An list of environment variables, separated by commas.
