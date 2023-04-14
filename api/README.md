@@ -1252,7 +1252,7 @@ External docs: https://socketsupply.co/guides/#p2p-guide
 Provides a higher level API over the stream-relay protocol.
 
 
-## [`Peer` (extends `EventEmitter`)](https://github.com/socketsupply/socket/blob/master/api/peer.js#L44)
+## [`Peer` (extends `EventEmitter`)](https://github.com/socketsupply/socket/blob/master/api/peer.js#L41)
 
 
 The Peer class is an EventEmitter. It emits events when new network events
@@ -1262,21 +1262,18 @@ are received (.on), it can also emit new events to the network (.emit).
 import { Peer } from 'socket:peer'
 
 const pair = await Peer.createPair()
+const clusterId = await Peer.createClusterId()
 
 const peer = new Peer({ ...pair, clusterId })
 
-peer.on('connection', (remotePeer, address, port) => {
-  console.log(remotePeer, address, port)
-})
-
-peer.on('greeting', value => {
+peer.on('greeting', (value, peer, address, port) => {
   console.log(value)
 })
 
 const packet = await peer.emit('greeting', { english: 'hello, world' })
 ```
 
-### [`constructor(options)`](https://github.com/socketsupply/socket/blob/master/api/peer.js#L54)
+### [`constructor(options)`](https://github.com/socketsupply/socket/blob/master/api/peer.js#L51)
 
 `Peer` class constructor.
 
@@ -1290,7 +1287,7 @@ const packet = await peer.emit('greeting', { english: 'hello, world' })
 | options.peers | Array |  | false | An array of RemotePeer |
 
 
-### [`createKeys()`](https://github.com/socketsupply/socket/blob/master/api/peer.js#L77)
+### [`createKeys()`](https://github.com/socketsupply/socket/blob/master/api/peer.js#L75)
 
 A method that will generate a public and private key pair.
  The ed25519 pair can be stored by an app with a secure API.
@@ -1301,7 +1298,16 @@ A method that will generate a public and private key pair.
 | pair | Object<Pair> | A pair of keys |
 
 
-### [`emit(event, message)`](https://github.com/socketsupply/socket/blob/master/api/peer.js#L94)
+### [`createClusterId()`](https://github.com/socketsupply/socket/blob/master/api/peer.js#L89)
+
+Create a clusterId from random bytes
+
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| id | string | a hex encoded sha256 hash |
+
+
+### [`emit(event, message)`](https://github.com/socketsupply/socket/blob/master/api/peer.js#L100)
 
 Emits a message to the network
 
@@ -1317,7 +1323,7 @@ Emits a message to the network
 | Not specified | Object<Packet> | The packet that will be sent when possible |
 
 
-### [`join()`](https://github.com/socketsupply/socket/blob/master/api/peer.js#L113)
+### [`join()`](https://github.com/socketsupply/socket/blob/master/api/peer.js#L123)
 
 Starts the process of connecting to the network.
 
