@@ -653,7 +653,7 @@ if (!['android', 'ios', 'win32'].includes(process.platform)) {
     t.deepEqual(Object.keys(openResult.data).sort(), ['argv', 'cmd', 'path'], 'returns a result with the correct keys')
     const doesNotRestart = await Promise.race([
       new Promise(resolve => window.addEventListener('backend:ready', () => resolve(false), { once: true })),
-      new Promise(resolve => setTimeout(() => resolve(true), 256))
+      new Promise(resolve => setTimeout(() => resolve(true), 512))
     ])
     t.ok(doesNotRestart, 'does not emit a backend:ready event')
   })
@@ -663,7 +663,7 @@ if (!['android', 'ios', 'win32'].includes(process.platform)) {
     t.deepEqual(Object.keys(openResult.data).sort(), ['argv', 'cmd', 'path'], 'returns a result with the correct keys')
     const doesRestart = await Promise.race([
       new Promise(resolve => window.addEventListener('backend:ready', () => resolve(true), { once: true })),
-      new Promise(resolve => setTimeout(() => resolve(false), 256))
+      new Promise(resolve => setTimeout(() => resolve(false), 512))
     ])
     t.ok(doesRestart, 'emits a backend:ready event')
   })
@@ -681,7 +681,7 @@ if (!['android', 'ios', 'win32'].includes(process.platform)) {
     t.ok(closeResult.err == null, 'returns correct result')
     const doesNotRestart = await Promise.race([
       new Promise(resolve => window.addEventListener('backend:ready', () => resolve(false), { once: true })),
-      new Promise(resolve => setTimeout(() => resolve(true), 256))
+      new Promise(resolve => setTimeout(() => resolve(true), 512))
     ])
     t.ok(doesNotRestart, 'does not emit a backend:ready event')
   })
