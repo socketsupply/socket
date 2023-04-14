@@ -339,7 +339,7 @@ const parseIni = (iniText) => {
           key: keyValue[0].trim(),
           value: keyValue[1].trim(),
           defaultValue,
-          description: lastComment,
+          description: lastComment
         })
         lastComment = ''
         defaultValue = ''
