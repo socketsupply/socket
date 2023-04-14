@@ -1,5 +1,26 @@
 /**
  * @module FS.promises
+ * 
+ *  * This module enables interacting with the file system in a way modeled on
+ * standard POSIX functions.
+ *
+ * The Application Sandbox restricts access to the file system.
+ *
+ * iOS Application Sandboxing has a set of rules that limits access to the file
+ * system. Apps can only access files in their own sandboxed home directory.
+ *
+ * | Directory | Description |
+ * | --- | --- |
+ * | `Documents` | The app’s sandboxed documents directory. The contents of this directory are backed up by iTunes and may be set as accessible to the user via iTunes when `UIFileSharingEnabled` is set to `true` in the application's `info.plist`. |
+ * | `Library` | The app’s sandboxed library directory. The contents of this directory are synchronized via iTunes (except the `Library/Caches` subdirectory, see below), but never exposed to the user. |
+ * | `Library/Caches` | The app’s sandboxed caches directory. The contents of this directory are not synchronized via iTunes and may be deleted by the system at any time. It's a good place to store data which provides a good offline-first experience for the user. |
+ * | `Library/Preferences` | The app’s sandboxed preferences directory. The contents of this directory are synchronized via iTunes. Its purpose is to be used by the Settings app. Avoid creating your own files in this directory. |
+ * | `tmp` | The app’s sandboxed temporary directory. The contents of this directory are not synchronized via iTunes and may be deleted by the system at any time. Although, it's recommended that you delete data that is not necessary anymore manually to minimize the space your app takes up on the file system. Use this directory to store data that is only useful during the app runtime. |
+ * 
+ * Example usage:
+ * ```js
+ * import fs from 'socket:fs/promises'
+ * ```
  */
 import { DirectoryHandle, FileHandle } from './handle.js'
 import { Dir, sortDirectoryEntries } from './dir.js'

@@ -1,4 +1,18 @@
 // @ts-check
+/**
+ * @module Test
+ *
+ * Provides a test runner for Socket Runtime.
+ * 
+ * Example usage:
+ * ```js
+ * import { test } from 'socket:test'
+ * 
+ * test('test name', async t => {
+ *   t.equal(1, 1)
+ * })
+ * ```
+ */
 
 import { format } from '../util.js'
 import deepEqual from './fast-deep-equal.js'

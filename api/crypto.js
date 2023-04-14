@@ -3,6 +3,11 @@
  *
  * Some high-level methods around the `crypto.subtle` API for getting
  * random bytes and hashing.
+ * 
+ * Example usage:
+ * ```js
+ * import { randomBytes } from 'socket:crypto'
+ * ```
  */
 
 import { toBuffer } from './util.js'
