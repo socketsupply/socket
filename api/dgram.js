@@ -3,7 +3,7 @@
  *
  * This module provides an implementation of UDP datagram sockets. It does
  * not (yet) provide any of the multicast methods or properties.
- * 
+ *
  * Example usage:
  * ```js
  * import { createSocket } from 'socket:dgram'

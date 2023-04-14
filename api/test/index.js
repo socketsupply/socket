@@ -3,11 +3,11 @@
  * @module Test
  *
  * Provides a test runner for Socket Runtime.
- * 
+ *
  * Example usage:
  * ```js
  * import { test } from 'socket:test'
- * 
+ *
  * test('test name', async t => {
  *   t.equal(1, 1)
  * })

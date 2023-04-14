@@ -1,6 +1,6 @@
 /**
  * @module Process
- * 
+ *
  * Example usage:
  * ```js
  * import process from 'socket:process'
