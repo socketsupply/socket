@@ -294,3 +294,78 @@ export function transform (filename, dest, md) {
 ].forEach(file => transform(file, JS_INTERFACE_DIR, 'README.md'))
 
 transform('index.js', SOCKET_NODE_DIR, 'API.md')
+
+// Generate config.md
+const startMarker = 'constexpr auto gDefaultConfig = R"INI('
+const endMarker = ')INI";'
+
+const src = path.relative(process.cwd(), 'src/cli/templates.hh')
+console.log(src)
+const data = fs.readFileSync(src, 'utf8')
+
+const startIndex = data.indexOf(startMarker)
+
+const remainingData = data.slice(startIndex + startMarker.length)
+const endIndex = remainingData.indexOf(endMarker)
+
+if (startIndex === -1 || endIndex === -1) {
+  console.error('Start or end marker not found')
+}
+
+const extractedText = remainingData.slice(0, endIndex)
+
+const parseIni = (iniText) => {
+  const sections = {}
+  let currentSection = null
+  let lastComment = ''
+  let defaultValue = ''
+
+  iniText.split(/\r?\n/).forEach((line) => {
+    const trimmedLine = line.trim()
+    if (trimmedLine.startsWith(';')) {
+      if (trimmedLine.includes('default value:')) {
+        defaultValue = trimmedLine.split('default value:')[1].trim()
+      } else {
+        lastComment += ' ' + trimmedLine.slice(1).trim()
+      }
+    } else if (trimmedLine.startsWith('[') && trimmedLine.endsWith(']')) {
+      currentSection = trimmedLine.slice(1, -1)
+      sections[currentSection] = []
+      lastComment = ''
+    } else if (currentSection) {
+      const keyValue = trimmedLine.split('=')
+      if (keyValue.length === 2) {
+        sections[currentSection].push({
+          key: keyValue[0].trim(),
+          value: keyValue[1].trim(),
+          defaultValue,
+          description: lastComment,
+        })
+        lastComment = ''
+        defaultValue = ''
+      }
+    }
+  })
+
+  return sections
+}
+
+const createConfigMd = (sections) => {
+  let md = '# Configuration\n'
+  md += '\n'
+  Object.entries(sections).forEach(([sectionName, settings]) => {
+    md += `## Section \`${sectionName}\`\n`
+    md += '\n'
+    md += 'Key | Default Value | Description\n'
+    md += ':--- | :--- | :---\n'
+    settings.forEach(({ key, defaultValue, description }) => {
+      md += `${key} | ${defaultValue} | ${description}\n`
+    })
+    md += '\n'
+  })
+  return md
+}
+
+const sections = parseIni(extractedText)
+const md = createConfigMd(sections)
+fs.writeFileSync('api/config.md', md)
