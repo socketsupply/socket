@@ -126,7 +126,7 @@ export class Peer extends EventEmitter {
     this.opts.clusterId = await sha256(this.opts.custerId)
     this.opts.peerId = this.opts.peerId || (await sha256(randomBytes(32))).toString('hex')
 
-    this.peer = await PeerFactory.create({ ...this.opts, introducer: true })
+    this.peer = await PeerFactory.create({ ...this.opts })
 
     this.peer.onConnect = (peer, packet, port, address) => {
       if (packet.clusterId !== this.peer.clusterId) return
