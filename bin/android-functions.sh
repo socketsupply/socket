@@ -148,10 +148,10 @@ function get_android_paths() {
   get_android_default_search_paths
   write_log "h" "# Determining Android paths."
 
-  local _ah="$ANDROID_HOME"
+  local _ah
   local _sdk
-  local _jh=
-  local _gh=
+  local _jh
+  local _gh
   local android_home_test
   local sdk_man_test
   local bat="$(use_bin_ext ".bat")"
