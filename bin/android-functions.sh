@@ -204,9 +204,9 @@ function get_android_paths() {
 
     if ! test -d "$_jh" ; then
       write_log "d" "# find $java_home_test -type f -name "javac$exe"' -print0 2>/dev/null | while IFS= read -r -d '' javac"
-      find "$java_home_test" -type f -name "javac$exe" -print0 2>/dev/null | while IFS= read -r -d '' javac; do
-        # break doesn't work here, check that we don't have a result
-        if [[ $(stat_size "$temp") == 0 ]]; then
+      # break doesn't work here, check that we don't have a result
+      if [[ $(stat_size "$temp") == 0 ]]; then
+        find "$java_home_test" -type f -name "javac$exe" -print0 2>/dev/null | while IFS= read -r -d '' javac; do
           write_log "v" "# Found $javac"
           test_javac_version "$javac" "$JDK_VERSION" ; r=$?
           if [[ "$r" == "0" ]]; then
@@ -216,8 +216,8 @@ function get_android_paths() {
           else
             write_log "v" "# Ignoring found javac $javac $jc_v"
           fi
-        fi
-      done
+        done
+      fi
     fi
   done
 
