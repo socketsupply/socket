@@ -10,7 +10,7 @@ declare Win32=3
 declare DEFAULT_ANDROID_HOME=()
 
 DEFAULT_ANDROID_HOME[Darwin]="$HOME/Library/Android/sdk"
-DEFAULT_ANDROID_HOME[Linux]="$HOME/Android/sdk"
+DEFAULT_ANDROID_HOME[Linux]="$HOME/Android/Sdk"
 DEFAULT_ANDROID_HOME[Win32]="$LOCALAPPDATA\\Android\\Sdk"
 
 declare ANDROID_SDK_MANAGER_DEFAULT_SEARCH_PATHS=(
@@ -26,7 +26,8 @@ declare ANDROID_COMMAND_LINE_TOOLS_URI_TEMPLATE="https://dl.google.com/android/r
 declare ANDROID_STUDIO_PAGE_URI="https://developer.android.com/studio"
 declare JDK_VERSION="19.0.2"
 declare JDK_URI_TEMPLATE="https://download.java.net/java/GA/jdk$JDK_VERSION/fdb695a9d9064ad6b064dc6df578380c/7/GPL/openjdk-$JDK_VERSION""_""{os}-{arch}_bin.{format}"
-declare GRADLE_URI_TEMPLATE="https://services.gradle.org/distributions/gradle-8.0.2-bin.zip"
+declare GRADLE_VERSION="8.0.2"
+declare GRADLE_URI_TEMPLATE="https://services.gradle.org/distributions/gradle-$GRADLE_VERSION-bin.zip"
 
 # TODO(mribbons): ubuntu / apt libs: apt-get install libc6:i386 libncurses5:i386 libstdc++6:i386 lib32z1 libbz2-1.0:i386
 
@@ -57,7 +58,7 @@ function get_android_default_search_paths() {
   GRADLE_SEARCH_PATHS=()
 
   if [ -n "$GRADLE_HOME" ]; then
-    GRADLE_SEARCH_PATHS+=("$GRADLE_HOME")
+    GRADLE_SEARCH_PATHS=("$GRADLE_HOME")
   fi
 
   if [ -n "$HOME" ]; then
@@ -100,12 +101,41 @@ function test_javac_version() {
   fi
 
   jc_v="${jc_v/javac\ /}"
-  write_log "v" "# Comparing $javac version: "$(version "$jc_v") "$(version "$target_version")"
+  write_log "d" "# Comparing $javac version: "$(version "$jc_v") "$(version "$target_version")"
   if [ "$(version "$jc_v")" -lt "$(version "$target_version")" ]; then
     return 1
   fi
 
   return 0
+}
+
+function test_gradle_version() {
+  local gradle_path="$1"
+  local target_version=$2
+  # Can't run gradle if JAVA_HOME not already set, but version number is in path
+  local version=""
+  [[ "$gradle_path" =~ gradle-(.*) ]] && version="${BASH_REMATCH[1]}"
+
+  write_log "d" "# Comparing $gradle_path version: $(version "$target_version")"
+  if [ "$(version "$version")" -lt "$(version "$target_version")" ]; then
+    return 1
+  fi
+
+  return 0
+}
+
+function validate_sdkmanager_jar() {
+  local sdkmanager_path="$1"
+  # Currently sdkmanager as shipped with Android Studio is broken
+  local set=""
+  [[ "$(host_os)" == "Win32" ]] && set="set "
+  local pattern="^""$set""CLASSPATH\="
+  local classpath_line="$(grep "$pattern" "$sdkmanager_path")"
+  # This indicates a cmdline-tools version of sdkmanager
+  if [[ "$classpath_line" == *"sdkmanager-classpath.jar"* ]]; then
+    return 0
+  fi
+  return 1;
 }
 
 function get_android_paths() {
@@ -114,22 +144,28 @@ function get_android_paths() {
 
   local _ah="$ANDROID_HOME"
   local _sdk
-  local _jh="$JAVA_HOME"
-  local _gh="$GRADLE_HOME"
+  local _jh=
+  local _gh=
   local android_home_test
   local sdk_man_test
   local bat="$(use_bin_ext ".bat")"
   local exe="$(use_bin_ext ".exe")"
+  local sdkmanager_path
 
   for android_home_test in "${ANDROID_HOME_SEARCH_PATHS[@]}"; do
     for sdk_man_test in "${ANDROID_SDK_MANAGER_SEARCH_PATHS[@]}"; do
-      write_log "v" "# Checking $android_home_test/$sdk_man_test/sdkmanager$bat"
-      if [[ -f "$android_home_test/$sdk_man_test/sdkmanager$bat" ]]; then
-        if [[ -z "$_ah" ]]; then
-          _ah="$android_home_test"
+      sdkmanager_path="$android_home_test/$sdk_man_test/sdkmanager$bat"
+      write_log "v" "# Checking $sdkmanager_path"
+      if [[ -f "$sdkmanager_path" ]]; then
+        if validate_sdkmanager_jar "$sdkmanager_path"; then
+          if [[ -z "$_ah" ]]; then
+            _ah="$android_home_test"
+          fi
+          _sdk="$sdk_man_test/sdkmanager$bat"
+          break
+        else
+          echo "warn - can't use $sdkmanager_path: Android Studio's SDK manager script is inoperable."
         fi
-        _sdk="$sdk_man_test/sdkmanager$bat"
-        break
       fi
     done
   done
@@ -141,21 +177,23 @@ function get_android_paths() {
   temp=$(mktemp)
   for java_home_test in "${JAVA_HOME_SEARCH_PATHS[@]}"; do
     # Try initial search in bin of known location before attempting `find`
-    write_log "v" "# Checking $java_home_test/bin/javac$exe"
-    if [[ -f "$java_home_test/bin/javac$exe" ]]; then
+    javac="$(unix_path "$java_home_test" "1")/bin/javac$exe"
+    write_log "v" "# Checking $(native_path "$javac")"
+    if [[ -f "$javac" ]]; then
 
-      test_javac_version "$java_home_test/bin/javac$exe" "$JDK_VERSION" ; r=$?
+      test_javac_version "$javac" "$JDK_VERSION" ; r=$?
       if [[ "$r" == "0" ]]; then
         # subshell, output to file
         echo "$(dirname "$(dirname "$javac")")" > "$temp"
-        echo "$java_home_test" > "$temp"
-        write_log "h" "# Using predetermined javac $javac"
+        write_log "h" "# Using predetermined javac $(native_path "$javac")"
         break
       else
-        write_log "v" "# Ignoring predetermined javac $java_home_test/bin/javac$exe $jc_v"
+        write_log "v" "# Ignoring predetermined javac $(native_path "$javac") $jc_v"
         # configured JAVA_HOME is bad, unset to trigger new version install
         [[ "$JAVA_HOME" == "$java_home_test" ]] && unset JAVA_HOME
       fi
+    else
+      write_log "v" "No javac at $javac"
     fi
 
     if ! test -d "$_jh" ; then
@@ -179,6 +217,11 @@ function get_android_paths() {
 
   if [[ $(stat_size "$temp") != 0 ]]; then
     _jh=$(cat "$temp")
+  else
+    local java="$(readlink -f "$(which java)")"
+    if [ -n "$java" ]; then
+      _jh="$(dirname "$(dirname "$java")")"
+    fi
   fi
 
   echo -n > "$temp"
@@ -186,25 +229,23 @@ function get_android_paths() {
   local gradle_test
   local gradle
 
-  if ! test -d "$_gh" ; then
-    for gradle_test in "${GRADLE_SEARCH_PATHS[@]}"; do
-      write_log "v" "# Checking $gradle_test/bin/gradle$bat"
-      if [[ -f "$gradle_test/bin/gradle$bat" ]]; then
-        echo "$gradle_test" > "$temp"
-        break
-      fi
-
-      write_log "d" "find $gradle_test -type f -name 'gradle' -print0 2>/dev/null | while IFS= read -r -d '' gradle"
-      find "$gradle_test" -type f -name "gradle$bat" -print0 2>/dev/null | while IFS= read -r -d '' gradle; do
-        # break doesn't work here, check that we don't have a result
-        if [[ $(stat_size "$temp") == 0 ]]; then
-          write_log "h" "ok - Found gradle ($gradle)"
+  for gradle_test in "${GRADLE_SEARCH_PATHS[@]}"; do
+    write_log "d" "find $gradle_test -type f -name 'gradle' -print0 2>/dev/null | while IFS= read -r -d '' gradle"
+    find "$gradle_test" -type f -name "gradle$bat" -print0 2>/dev/null | while IFS= read -r -d '' gradle; do
+      # break doesn't work here, check that we don't have a result
+      if [[ $(stat_size "$temp") == 0 ]]; then
+        local gradle_path=$(dirname "$(dirname "$gradle")")
+        test_gradle_version "$gradle_path" "$GRADLE_VERSION" ; r=$?
+        if [[ "$r" == "0" ]]; then
+          write_log "h" "ok - Found gradle ($gradle_path)"
           # subshell, output to file
-          echo "$(dirname "$(dirname "$gradle")")" > "$temp"
+          echo "$gradle_path" > "$temp"
+        else
+          write_log "v" "# Ignoring found gradle ($gradle_path)"
         fi
-      done
+      fi
     done
-  fi
+  done
 
   if [[ $(stat_size "$temp") != 0 ]]; then
     _gh=$(cat "$temp")
@@ -421,7 +462,7 @@ declare NDK_VERSION="25.0.8775105"
 
 export BUILD_ANDROID
 
-if [[ -z $SSC_NO_ANDROID ]]; then
+if [[ -z $NO_ANDROID ]]; then
   if [[ -z $CI ]] || [[ -n $SSC_ANDROID_CI ]]; then
     BUILD_ANDROID=1
   fi
@@ -624,7 +665,7 @@ function android_first_time_experience_setup() {
     export PROMPT_DEFAULT_YN
   fi
 
-  if _android_setup_required && ! prompt_yn "Do you want to install Android build dependencies?
+  if [[ "$(host_os)" != "Win32" ]] && _android_setup_required && ! prompt_yn "Do you want to install Android build dependencies?
 Download size: 5.5GB, Installed size: 12.0GB"; then
     return 1
   fi
@@ -641,7 +682,7 @@ Download size: 5.5GB, Installed size: 12.0GB"; then
 
   write_log "h" "# Installing Gradle."
   android_install_gradle; gradle_result=$?
-  (( gradle_result )) && write_log "h" "not ok - Failed to install GRadle."
+  (( gradle_result )) && write_log "h" "not ok - Failed to install Gradle."
 
   if [[ -z "$ANDROID_SDK_MANAGER_ACCEPT_LICENSES" ]]; then
     if prompt_yn "Do you want to automatically accept all Android SDK Manager licenses?"; then
@@ -696,12 +737,16 @@ export android_fte
 
 function android_fte() {
   pass_yes_deps=""
+  # use 'exit' instead of return
+  # fixes "not ok - Android setup failed." when setup is valid
+  local set_exit_code=""
 
   [[ -n "$android_fte" ]] && return 0
 
   while (( $# > 0 )); do
     declare arg="$1"; shift
     [[ "$arg" == "--yes-deps" ]] && pass_yes_deps="$arg"
+    [[ "$arg" == "--exit-code" ]] && set_exit_code="1"
   done
 
   android_fte=1
@@ -751,13 +796,16 @@ function android_fte() {
   NDK_BUILD="$ANDROID_HOME/ndk/$NDK_VERSION/ndk-build$(use_bin_ext ".cmd")"
   export NDK_BUILD
 
-  return $?
+  rc=$?
+  [[ -n "$set_exit_code" ]] && exit $rc
+  return $rc
 }
 
 function main() {
   while (( $# > 0 )); do
     declare arg="$1"; shift
     [[ "$arg" == "--android-fte" ]] && android_fte "$@"
+    # [[ "$arg" == "--android-fte" ]] && exit 0
     [[ "$arg" == "--android-setup-required" ]] && android_setup_required "$@"
   done
 }

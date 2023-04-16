@@ -41,12 +41,19 @@ function escape_path() {
 }
 
 function unix_path() {
-  local p="$(escape_path "$1")"
+  local p=${1//\"/}
+  local dont_escape_space="$2"
+  p="$(escape_path "$p")"
   local host="$(host_os)"
   if [[ "$host" == "Win32" ]]; then
     p="$(cygpath -u "$p")"
-    # cygpath doesn't escape spaces
-    echo "${p//\ /\\ }"
+    # when testing paths we shouldn't escape spaces
+    # TODO(mribbons): make this the default behaviour under Win32, review other uses of unix_path()
+    if [[ -z "$dont_escape_space" ]]; then
+      # cygpath doesn't escape spaces
+      p="${p//\ /\\ }"
+    fi
+    echo  "$p"
     return
   fi
   echo "$p"
@@ -69,6 +76,19 @@ function native_path() {
 function quiet () {
   if [ -n "$VERBOSE" ]; then
     echo "$@"
+    "$@"
+  else
+    "$@" > /dev/null 2>&1
+  fi
+
+  return $?
+}
+
+# Always logs to terminal, but respects VERBOSE for command output
+function log_and_run () {
+  write_log "h" "$@"
+
+  if [ -n "$VERBOSE" ]; then
     "$@"
   else
     "$@" > /dev/null 2>&1
@@ -122,8 +142,8 @@ function host_os() {
 
   if [[ "$host" = "Linux" ]]; then
     if [ -n "$WSL_DISTRO_NAME" ] || uname -r | grep 'Microsoft'; then
-    write_log "h" "not ok - WSL is not supported."
-    exit 1
+      write_log "h" "not ok - WSL is not supported."
+      return 1
     fi
   elif [[ "$host" == *"MINGW64_NT"* ]]; then
     host="Win32"
@@ -171,7 +191,7 @@ function update_env_data() {
     fi
   done
 
-  (( fail )) && exit $fail
+  (( fail )) && return $fail
 
   for kvp in "${vars[@]}"; do
     write_log "d" "# eval \"$kvp\""
@@ -179,7 +199,7 @@ function update_env_data() {
   done
 
   write_env_data
-  exit 0
+  return 0
 }
 
 function read_env_data() {
@@ -212,11 +232,11 @@ function write_env_data() {
 function prompt() {
   write_log "h" "$1"
   local return=$2
-  local input
-  # effectively stores $input in $2 by reference, rather than using echo to return which would prevent echo "$1" going to stdout
-  read -rp '> ' input
-  eval "$return=\"$input\""
-  write_log "f" "input: $input"
+  local prompt_input
+  # effectively stores $prompt_input in $2 by reference, rather than using echo to return which would prevent echo "$1" going to stdout
+  read -rp '> ' prompt_input
+  eval "$return=\"$prompt_input\""
+  write_log "f" "prompt_input: $2"
 }
 
 function prompt_yn() {
@@ -232,9 +252,6 @@ function prompt_yn() {
   else
     prompt "$1 [y/N]" r
   fi
-
-  # prompt "$1 [y/N]" r
-  # write_log "v" "r: $r"
 
   if [[ "$(lower "$r")" == "y" ]]; then
     return 0
@@ -260,6 +277,9 @@ function prompt_new_path() {
     if [ -z "$input" ]; then
       prompt "$text (Press Enter to go back)" input
     fi
+    # manually expand ~, doesn't happen in scripts
+    input=${input//\~/$HOME}
+    write_log "h" "Entered: $input"
     # remove any quote characters
     input=${input//\"/}
     unix_input="$(unix_path "$input")"
@@ -402,7 +422,8 @@ logfile="$_loghome/socket_install_sh.log"
 function write_log() {
   local wh=""
   local type=$1
-  local message=$2
+  shift
+  # local message=$2
 
   if [[ -n "$DEBUG" ]] && ( [[ "$type" == "d" ]] || [[ "$type" == "v" ]] ); then
     wh="1"
@@ -415,30 +436,154 @@ function write_log() {
   fi
 
   if [[ -n "$wh" ]]; then
-    echo "$message"
+    echo "$@"
   fi
 
   # Write-LogFile $message
-  write_log_file "$message"
+  write_log_file "$@"
 }
 
 function write_log_file() {
   echo "$1" >> "$logfile"
 }
 
+function determine_package_manager () {
+  local package_manager=""
+  [[ -z "$package_manager" ]] && [[ "$(uname -s)" == "Darwin" ]] && command -v brew >/dev/null 2>&1 && package_manager="brew install"
+  [[ -z "$package_manager" ]] && command -v apt >/dev/null 2>&1 && package_manager="apt install"
+  [[ -z "$package_manager" ]] && command -v yum >/dev/null 2>&1 && package_manager="yum install"
+  [[ -z "$package_manager" ]] && command -v pacman >/dev/null 2>&1 && package_manager="pacman -S"
+  [[ -z "$package_manager" ]] && package_manager="<your package manager> install"
+  echo "$package_manager"
+}
+
+function determine_cxx () {
+  local package_manager="$(determine_package_manager)"
+  local dpkg=""
+
+  command -v dpkg >/dev/null 2>&1 && dpkg="dpkg"
+
+  read_env_data
+
+  if [ ! "$CXX" ]; then
+    # TODO(@mribbons): yum support
+    if [ -n "$dpkg" ]; then
+      tmp="$(mktemp)"
+      {
+        dpkg -S clang 2>&1| grep "clang++" | cut -d" " -f 2 | while read clang; do
+        # Convert clang++ paths to path#version strings
+        bin_version="$("$clang" --version|head -n1)#$clang"
+        echo $bin_version;
+      done
+      } | sort -r | cut -d"#" -f 2 | head -n1 > $tmp # sort by version, then cut out bin out to get the highest installed clang version
+      CXX="$(cat "$tmp")"
+      rm -f "$tmp"
+
+      if [[ -z "$CXX" ]]; then
+        echo >&2 "not ok - missing build tools, try \"sudo $package_manager clang-14\""
+        return 1
+      fi
+    elif command -v clang++ >/dev/null 2>&1; then
+      CXX="$(command -v clang++)"
+    elif command -v clang++-16 >/dev/null 2>&1; then
+      CXX="$(command -v clang++-16)"
+    elif command -v clang++-15 >/dev/null 2>&1; then
+      CXX="$(command -v clang++-15)"
+    elif command -v clang++-14 >/dev/null 2>&1; then
+      CXX="$(command -v clang++-14)"
+    elif command -v clang++-13 >/dev/null 2>&1; then
+      CXX="$(command -v clang++-13)"
+    elif command -v clang++-12 >/dev/null 2>&1; then
+      CXX="$(command -v clang++-12)"
+    elif command -v clang++-11 >/dev/null 2>&1; then
+      CXX="$(command -v clang++-11)"
+    elif command -v g++ >/dev/null 2>&1; then
+      CXX="$(command -v g++)"
+    fi
+
+    if [ "$host" = "Win32" ]; then
+      # POSIX doesn't handle quoted commands
+      # Quotes inside variables don't escape spaces, quotes only help on the line we are executing
+      # Make a temp link
+      CXX_TMP=$(mktemp)
+      rm $CXX_TMP
+      ln -s "$CXX" $CXX_TMP
+      CXX=$CXX_TMP
+      # Make tmp.etc look like clang++.etc, makes clang output look correct
+      CXX=$(echo $CXX|sed 's/tmp\./clang++\./')
+      mv $CXX_TMP $CXX
+    fi
+
+    if [ ! "$CXX" ]; then
+      echo "not ok - could not determine \$CXX environment variable"
+      return 1
+    fi
+
+    echo "warn - using '$CXX' as CXX"
+  fi
+
+  export CXX
+  update_env_data
+}
+
 function first_time_experience_setup() {
   export BUILD_ANDROID="1"
-  "$root/bin/android-functions.sh" --android-fte
+  local target="$1"
+
+  if [ -z "$target" ] || [[ "$target" == "linux" ]]; then
+    if [[ "$(host_os)" == "Linux" ]]; then
+      local package_manager="$(determine_package_manager)"
+      echo "Installing $(host_os) dependencies..."
+      if [[ "$package_manager" == "apt install" ]]; then
+        log_and_run sudo apt update || return $?
+        log_and_run sudo apt install -y     \
+          libwebkit2gtk-4.1-dev \
+          build-essential       \
+          libc++abi-14-dev      \
+          libc++-14-dev         \
+          pkg-config            \
+          clang-14              \
+          || return $?
+          exit $?
+      elif [[ "$package_manager" == "pacman -S" ]]; then
+        log_and_run sudo pacman -Syu \
+          webkit2gtk-4.1 \
+          base-devel     \
+          libc++abi-14   \
+          libc++1-14     \
+          clang-14       \
+          pkgconf        \
+          || return $?
+      elif [[ "$package_manager" == "yum install" ]]; then
+        echo "warn - 'yum' is not suppored yet"
+        exit 1
+      fi
+    fi
+  fi
+
+  determine_cxx || return $?
+
+  if [ -z "$target" ] || [[ "$target" == "android" ]]; then
+    ## Android is not supported on linux-arm64, return early
+    if [[ "$(host_os)" == "Linux" ]] && [[ "$(host_arch)" == "arm64"  ]]; then
+      return 0
+    fi
+
+    "$root/bin/android-functions.sh" --android-fte || return $?
+  fi
 }
 
 function main() {
   while (( $# > 0 )); do
     declare arg="$1"; shift
-    [[ "$arg" == "--fte" ]] && first_time_experience_setup
+    [[ "$arg" == "--fte" ]] && first_time_experience_setup $@
     [[ "$arg" == "--update-env-data" ]] && update_env_data "$@"
+    return $?
   done
+  return 0
 }
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   main "$@"
+  exit $?
 fi

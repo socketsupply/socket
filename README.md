@@ -1,13 +1,6 @@
 
 <p align="center">
-  <a href="https://github.com/socketsupply/socket"><img src="https://user-images.githubusercontent.com/136109/222429730-2bc555b8-b28d-49cc-9107-77235912866d.png"/>
-</p>
-
-<p align="center">
-  <a href="https://socketsupply.co/"><img src="https://img.shields.io/badge/Socket%20Supply-Website-black?style=flat-square"></a>    
-  <a href="https://twitter.com/socketsupply"><img alt="Follow Company Twitter" src="https://img.shields.io/twitter/follow/socketsupply?style=flat-square&logo=twitter"></a>
-  <a href="https://sockets.sh/"><img src="https://img.shields.io/badge/Socket%20Runtime-Website-black?style=flat-square"></a>    
-  <a href="https://twitter.com/socketsupply"><img alt="Follow Project Twitter" src="https://img.shields.io/twitter/follow/sockets_sh?style=flat-square&logo=twitter"></a>
+  <a href="https://github.com/socketsupply/socket"><img src="https://user-images.githubusercontent.com/136109/230840267-7b7334b5-fee3-494b-aa4c-145e071f8471.png"/>
 </p>
 
 ### Description

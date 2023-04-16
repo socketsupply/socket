@@ -1,5 +1,10 @@
 /**
  * @module Path
+ *
+ * Example usage:
+ * ```js
+ * import { Path } from 'socket:path'
+ * ```
  */
 import { primordials } from '../ipc.js'
 

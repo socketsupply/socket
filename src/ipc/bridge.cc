@@ -1268,7 +1268,7 @@ static void registerSchemeHandler (Router *router) {
           },
           userData,
            [](gpointer userData) {
-            delete [] static_cast<const char *>(userData);
+            delete [] static_cast<char *>(userData);
           }
         );
       }, data);
@@ -1533,6 +1533,8 @@ static void registerSchemeHandler (Router *router) {
     [headers release];
     [response release];
   #endif
+
+    delete [] data;
   });
 
   if (!invoked) {
@@ -1722,7 +1724,8 @@ namespace SSC::IPC {
         msg.buffer = this->getMappedBuffer(msg.index, msg.seq);
         this->removeMappedBuffer(msg.index, msg.seq);
       } else if (bytes != nullptr && size > 0) {
-        // alloc and copy `bytes` into `data` - caller owns `bytes`
+        // alloc and copy `bytes` into `msg.buffer.bytes - caller owns `bytes`
+        // `msg.buffer.bytes` is free'd in CLEANUP_AFTER_INVOKE_CALLBACK
         msg.buffer.bytes = new char[size]{0};
         msg.buffer.size = size;
         memcpy(msg.buffer.bytes, bytes, size);

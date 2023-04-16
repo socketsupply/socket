@@ -8,6 +8,7 @@
 import { ModuleNotFoundError } from './errors.js'
 import { ErrorEvent, Event } from './events.js'
 import { Headers } from './ipc.js'
+import { Stats } from './fs/stats.js'
 
 import * as exports from './module.js'
 export default exports
@@ -22,7 +23,7 @@ import fs from './fs.js'
 import gc from './gc.js'
 import ipc from './ipc.js'
 import os from './os.js'
-import path from './path.js'
+import { posix as path } from './path.js'
 import process from './process.js'
 import stream from './stream.js'
 import test from './test.js'
@@ -32,17 +33,27 @@ import util from './util.js'
  * @typedef {(specifier: string, ctx: Module, next: function} => undefined} ModuleResolver
  */
 
+function normalizePathname (pathname) {
+  if (os.platform() === 'win32') {
+    return path.win32.normalize(pathname.replace(/^\//, ''))
+  }
+
+  return path.normalize(pathname)
+}
+
 function exists (url) {
   const { pathname } = new URL(url)
   const result = ipc.sendSync('fs.stat', {
-    path: path.normalize(pathname)
+    path: normalizePathname(pathname)
   })
 
   if (result.err) {
     return false
   }
 
-  return true
+  const stats = Stats.from(result.data)
+
+  return stats.isFile() || stats.isSymbolicLink()
 }
 
 // sync request for files
@@ -397,7 +408,7 @@ export class Module extends EventTarget {
    * @return {boolean}
    */
   load () {
-    const { url } = this
+    const url = this.url.replace(/\/$/, '')
     const extname = path.extname(url)
     const prefixes = (process.env.SOCKET_MODULE_PATH_PREFIX || '').split(':')
     const queries = []
@@ -412,7 +423,7 @@ export class Module extends EventTarget {
       } else if (this.sourceURL.endsWith('/')) {
         queries.push(
           // @ts-ignore
-          url + 'index.js'
+          url + '/index.js'
         )
       } else {
         queries.push(
@@ -439,14 +450,19 @@ export class Module extends EventTarget {
     if (!this.loaded) {
       for (const prefix of prefixes) {
         const paths = [
-          path.posix.join(path.dirname(Module.previous?.id || ''), prefix, this.sourceURL)
+          path.join(path.dirname(Module.previous?.id || ''), prefix, this.sourceURL)
         ]
 
-        const root = path.posix.resolve(Module.main.id)
         let dirname = path.dirname(paths[0])
+        let root = path.resolve(Module.main.id)
+        let max = 32 // max paths/depth
 
-        while (dirname !== root) {
-          paths.push(path.posix.join(dirname, prefix, this.sourceURL))
+        if (path.extname(root) && !root.endsWith('/')) {
+          root = path.dirname(root)
+        }
+
+        while (dirname !== root && --max > 0) {
+          paths.push(path.join(dirname, prefix, this.sourceURL))
           dirname = path.dirname(dirname)
         }
 
@@ -465,6 +481,7 @@ export class Module extends EventTarget {
     return this.loaded
 
     function loadPackage (module, url) {
+      url = url.replace(/\/$/, '')
       const urls = [
         url,
         url + '.js',
@@ -524,12 +541,12 @@ export class Module extends EventTarget {
 
         try {
           module.exports = JSON.parse(result.response)
-          module.loaded = true
         } catch (error) {
           error.module = module
           module.dispatchEvent(new ErrorEvent('error', { error }))
           return false
         } finally {
+          module.loaded = true
           Object.freeze(module)
           Object.seal(module)
         }
@@ -567,8 +584,6 @@ export class Module extends EventTarget {
           module.dispatchEvent(new ErrorEvent('error', { error }))
         })
 
-        module.loaded = true
-
         if (module.parent) {
           module.parent.children.push(module)
         }
@@ -580,6 +595,7 @@ export class Module extends EventTarget {
         module.dispatchEvent(new ErrorEvent('error', { error }))
         return false
       } finally {
+        module.loaded = true
         Object.freeze(module)
         Object.seal(module)
       }

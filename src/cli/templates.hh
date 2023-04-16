@@ -59,13 +59,13 @@ ssc v{{ssc_version}}
 Get the list of connected devices.
 
 usage:
-  ssc list-devices --platform=ios [--ecid | --udid] [--only]
+  ssc list-devices [options] --platform=<platform>
 
 options:
-  --platform  any : ios, android
-  --ecid      show device ECID
-  --udid      show device UDID
-  --only      only show ECID or UDID of the first device
+  --platform    android|ios
+  --ecid        show device ECID (ios only)
+  --udid        show device UDID (ios only)
+  --only        only show ECID or UDID of the first device
 )TEXT";
 
 constexpr auto gHelpTextInit = R"TEXT(
@@ -86,11 +86,12 @@ ssc v{{ssc_version}}
 Install the app to the device. We only support iOS at the moment.
 
 usage:
-  ssc install-app [--platform=ios] [--device=ecid]
+  ssc install-app --platform=<platform> [--device=<identifier>]
 
 options:
-  --platform  ios; if not specified, runs on the current platform
-  --device    ecid of the device to install to; if not specified, runs on the current device
+  --platform=<platform>    android|ios
+  --device=<identifier>    identifier (ecid, ID) of the device to install to
+                           if not specified, tries to run on the current device
 )TEXT";
 
 constexpr auto gHelpTextPrintBuildDir = R"TEXT(
@@ -129,8 +130,8 @@ usage:
   ssc setup [options] --platform=<platform>
 
 options:
-  --platform       windows|android
-  -y, --yes         answer yes to any prompts
+  --platform       android|linux|windows
+  -y, --yes        answer yes to any prompts
 
 )TEXT";
 

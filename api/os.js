@@ -3,6 +3,11 @@
  *
  * This module provides normalized system information from all the major
  * operating systems.
+ *
+ * Example usage:
+ * ```js
+ * import { arch, platform } from 'socket:os'
+ * ```
  */
 
 import { toProperCase } from './util.js'

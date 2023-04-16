@@ -3,7 +3,9 @@ import os from 'node:os'
 import fs from 'node:fs'
 import { spawn } from 'node:child_process'
 
-const dirname = path.dirname(import.meta.url).replace(`file://${os.platform() === 'win32' ? '/' : ''}`, '')
+const dirname = path
+  .dirname(import.meta.url)
+  .replace(`file://${os.platform() === 'win32' ? '/' : ''}`, '')
 
 export const SOCKET_HOME = path.dirname(dirname)
 export const PREFIX = SOCKET_HOME
@@ -23,6 +25,7 @@ export const bin = {
     : path.join(env.PREFIX, 'bin', 'ssc')
 }
 
+// Modifying this function requires full FTE testing (From fresh install) on all build OS's before signing off (Individual arch testing not required)
 export const firstTimeExperienceSetup = async () => {
   const installPath = path.dirname(path.dirname(bin.ssc))
   if (fs.existsSync(path.join(installPath, '.ssc.env'))) {
@@ -50,7 +53,7 @@ export const firstTimeExperienceSetup = async () => {
   }
 
   const startInfo = {
-    env: { VERBOSE: 1, ...process.env },
+    env: { ...process.env },
     cwd: installPath,
     stdio: [process.stdin, process.stdout, process.stderr]
   }
@@ -63,18 +66,21 @@ export const firstTimeExperienceSetup = async () => {
       ['.\\bin\\install.ps1', `-fte:${platform.length > 0 ? platform : 'all'}`],
       startInfo
     )
-  } else if (platform && platform !== 'android') {
-    // only android setup supported here, don't attempt to run fte
+  } else {
     spawnArgs.push(
       // @ts-ignore
       './bin/functions.sh',
-      ['--fte'],
+      ['--fte', platform],
       startInfo
     )
   }
 
   if (spawnArgs.length) {
-    console.log('# Checking build dependencies...')
+    if (isSetupCall) {
+      startInfo.env.VERBOSE = 1
+      console.log('# Checking build dependencies...')
+    }
+
     // @ts-ignore
     const child = spawn(...spawnArgs)
 
@@ -83,9 +89,10 @@ export const firstTimeExperienceSetup = async () => {
       child.on('close', resolve).on('error', reject)
     })
 
-    // If fte didn't create a configuration file, make an empty one to prevent user being prompted again
+    // If fte didn't create a configuration file, make an empty one to prevent
+    // user being prompted again
     // @ts-ignore
-    if (child.exitCode === 0 && !fs.existsSync(path.join(installPath, '.ssc.env'))) {
+    if (!child.exitCode && !fs.existsSync(path.join(installPath, '.ssc.env'))) {
       fs.writeFileSync(path.join(installPath, '.ssc.env'), '')
     }
   } else {

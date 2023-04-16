@@ -286,9 +286,10 @@ export function transform (filename, dest, md) {
   'fs/promises.js',
   'ipc.js',
   'os.js',
-  'p2p.js',
   'path/path.js',
+  'peer.js',
   'process.js',
+  // 'test/index.js', // add docs for this module
   'window.js'
 ].forEach(file => transform(file, JS_INTERFACE_DIR, 'README.md'))
 

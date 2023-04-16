@@ -17,14 +17,7 @@
  * | `Library/Preferences` | The app’s sandboxed preferences directory. The contents of this directory are synchronized via iTunes. Its purpose is to be used by the Settings app. Avoid creating your own files in this directory. |
  * | `tmp` | The app’s sandboxed temporary directory. The contents of this directory are not synchronized via iTunes and may be deleted by the system at any time. Although, it's recommended that you delete data that is not necessary anymore manually to minimize the space your app takes up on the file system. Use this directory to store data that is only useful during the app runtime. |
  *
- * To use the promise-based APIs:
- *
- * ```js
- * import * as fs from 'socket:fs/promises';
- * ```
- *
- * To use the callback and async APIs:
- *
+ * Example usage:
  * ```js
  * import * as fs from 'socket:fs';
  * ```

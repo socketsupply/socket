@@ -24,7 +24,7 @@ async function main () {
     ...process.env
   }
 
-  if (!await installation.firstTimeExperienceSetup()) {
+  if (typeof installation.firstTimeExperienceSetup === 'function' && !await installation.firstTimeExperienceSetup()) {
     // FTE not completed satisfactorally, or 'setup' was ran externally
     return
   }

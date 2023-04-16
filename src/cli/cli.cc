@@ -1340,21 +1340,25 @@ int main (const int argc, const char* argv[]) {
         isOnly = true;
       }
     }
+
     if (targetPlatform.size() == 0) {
       log("ERROR: --platform option is required");
       exit(1);
     }
+
     if (targetPlatform == "ios" && platform.mac) {
       if (isUdid && isEcid) {
         log("--udid and --ecid are mutually exclusive");
         printHelp("list-devices");
         exit(1);
       }
+
       if (isOnly && !isUdid && !isEcid) {
         log("--only requires --udid or --ecid");
         printHelp("list-devices");
         exit(1);
       }
+
       String cfgUtilPath = getCfgUtilPath();
       String command = cfgUtilPath + " list-devices";
       auto r = exec(command);
@@ -1394,6 +1398,33 @@ int main (const int argc, const char* argv[]) {
         log("Could not list devices using " + command);
         exit(1);
       }
+    } else if (targetPlatform == "android") {
+      auto androidHome = getAndroidHome();
+      StringStream adb;
+
+      if (!platform.win) {
+        adb << androidHome << "/platform-tools/";
+      } else {
+        adb << androidHome << "\\platform-tools\\";
+      }
+
+      auto r = exec(adb.str() + "adb devices | tail -n +2");
+      std::regex re(R"((.*)\s*device)");
+      std::smatch matches;
+
+      if (r.exitCode != 0) {
+        exit(r.exitCode);
+      }
+
+      while (std::regex_search(r.output, matches, re)) {
+        std::cout << matches[1] << std::endl;
+        r.output = matches.suffix();
+        if (isOnly) {
+          break;
+        }
+      }
+
+      exit(0);
     } else {
       log("list-devices is only supported for iOS devices on macOS.");
       exit(0);
@@ -1401,60 +1432,102 @@ int main (const int argc, const char* argv[]) {
   });
 
   createSubcommand("install-app", { "--platform", "--device" }, true, [&](const std::span<const char *>& options) -> void {
-    if (platform.os != "mac") {
-      log("install-app is only supported on macOS.");
-      exit(0);
-    } else {
-      const String cfgUtilPath = getCfgUtilPath();
-      String commandOptions = "";
-      String targetPlatform = "";
-      // we need to find the platform first
-      for (auto const option : options) {
-        targetPlatform = optionValue("install-app", option, "--platform");
-        if (targetPlatform.size() > 0) {
-          // TODO: add Android support
-          if (targetPlatform != "ios") {
-            std::cout << "Unsupported platform: " << targetPlatform << std::endl;
-            exit(1);
-          }
-        }
-      }
+    String commandOptions = "";
+    String targetPlatform = "";
+    // we need to find the platform first
+    for (auto const option : options) {
       if (targetPlatform.size() == 0) {
-        log("--platform option is required.");
-        printHelp("install-app");
-        exit(1);
-      }
-      // then we need to find the device
-      for (auto const option : options) {
-        auto device = optionValue("install-app", option, "--device");
-        if (device.size() > 0) {
-          if (targetPlatform == "ios") {
-            commandOptions += " --ecid " + device + " ";
-          }
-        }
+        targetPlatform = optionValue("install-app", option, "--platform");
       }
 
+      if (targetPlatform.size() > 0) {
+        // just assume android when 'android-emulator' is given
+        if (targetPlatform == "android-emulator") {
+          targetPlatform = "android";
+        }
+
+        if (targetPlatform != "ios" && targetPlatform != "android") {
+          std::cout << "Unsupported platform: " << targetPlatform << std::endl;
+          exit(1);
+        }
+      }
+    }
+
+    if (targetPlatform.size() == 0) {
+      log("--platform option is required.");
+      printHelp("install-app");
+      exit(1);
+    }
+
+    // then we need to find the device
+    for (auto const option : options) {
+      auto device = optionValue("install-app", option, "--device");
+      if (device.size() > 0) {
+        if (targetPlatform == "ios") {
+          commandOptions += " --ecid " + device + " ";
+        } else if (targetPlatform == "android") {
+          commandOptions += " -s " + device;
+        }
+      }
+    }
+
+    if (targetPlatform == "ios") {
+      auto cfgUtilPath = getCfgUtilPath();
       auto ipaPath = (
         getPaths(targetPlatform).platformSpecificOutputPath /
         "build" /
         String(settings["build_name"] + ".ipa") /
         String(settings["build_name"] + ".ipa")
       );
+
       if (!fs::exists(ipaPath)) {
         log("Could not find " + ipaPath.string());
         exit(1);
       }
+
       // this command will install the app to the first connected device which was
       // added to the provisioning profile if no --device is provided.
       auto command = cfgUtilPath + " " + commandOptions + "install-app " + ipaPath.string();
       auto r = exec(command);
+
       if (r.exitCode != 0) {
-        log("failed to install the app. Is the device plugged in?");
+        log("ERROR: failed to install the app. Is the device plugged in?");
         exit(1);
       }
-      log("successfully installed the app on your device(s).");
-      exit(0);
     }
+
+    if (targetPlatform == "android") {
+      auto androidHome = getAndroidHome();
+      auto paths = getPaths(targetPlatform);
+      auto output = paths.platformSpecificOutputPath;
+      auto app = output / "app";
+      StringStream adb;
+
+      if (!platform.win) {
+        adb << androidHome << "/platform-tools/";
+      } else {
+        adb << androidHome << "\\platform-tools\\";
+      }
+
+      adb << "adb" << commandOptions << " install ";
+
+      if (flagDebugMode) {
+        adb << (app / "build" / "outputs" / "apk" / "dev" / "debug" / "app-dev-debug.apk").string();
+      } else {
+        adb << (app / "build" / "outputs" / "apk" / "live" / "debug" / "app-live-debug.apk").string();
+      }
+
+      auto command = adb.str();
+      auto r = exec(command);
+
+      if (r.exitCode != 0) {
+        log("ERROR: failed to install the app. Is the device plugged in?");
+        exit(1);
+      }
+    }
+
+    log("successfully installed the app on your device(s).");
+    exit(0);
   });
 
   createSubcommand("print-build-dir", { "--platform", "--prod" }, true, [&](const std::span<const char *>& options) -> void {
@@ -3053,8 +3126,8 @@ int main (const int argc, const char* argv[]) {
 
       if (flagShouldRun) {
         // the emulator must be running on device SSCAVD for now
-        StringStream adb;
         StringStream adbShellStart;
+        StringStream adb;
 
         if (!platform.win) {
           adb << androidHome << "/platform-tools/";
@@ -3732,14 +3805,15 @@ int main (const int argc, const char* argv[]) {
   });
 
   createSubcommand("setup", { "--platform", "--yes", "-y" }, false, [&](const std::span<const char *>& options) -> void {
-    auto win = platform.win;
-
     auto help = false;
-    String targetPlatform;
-    auto targetAndroid = false;
-    auto targetWindows = false;
     auto yes = false;
     String yesArg;
+
+    String targetPlatform;
+    auto targetAndroid = false;
+    auto targetLinux = false;
+    auto targetWindows = false;
+
     for (auto const arg : options) {
       if (is(arg, "-h") || is(arg, "--help")) {
         help = true;
@@ -3765,13 +3839,28 @@ int main (const int argc, const char* argv[]) {
       targetAndroid = true;
     } else if (is(targetPlatform, "windows")) {
       targetWindows = true;
-    } else {
+    } else if (is(targetPlatform, "linux")) {
+      targetLinux = true;
+    } else if (targetPlatform.size() > 0) {
       printHelp("setup");
       exit(1);
     }
 
+    if (targetPlatform.size() == 0) {
+      if (platform.win) {
+        targetWindows = true;
+      } else if (platform.linux) {
+        targetLinux = true;
+      }
+    }
+
     if (!platform.win && targetWindows) {
       log("ERROR: Windows build dependencies can only be installed on Windows.");
+      exit(1);
+    }
+
+    if (!platform.linux && targetLinux) {
+      log("ERROR: Linux build dependencies can only be installed on Linux.");
       exit(1);
     }
 
@@ -3782,8 +3871,16 @@ int main (const int argc, const char* argv[]) {
     if (platform.win) {
       scriptHost = "powershell.exe";
       script = prefixFile("bin\\install.ps1");
-      argument = "-fte:" + targetPlatform;
+      if (targetPlatform.size() > 0) {
+        argument = "-fte:" + targetPlatform;
+      } else {
+        argument = "-fte:windows";
+      }
       yesArg = yes ? "-yesdeps" : "";
+    } else if (platform.linux || platform.mac) {
+      scriptHost = "bash";
+      script = prefixFile("./bin/functions.sh");
+      argument = "--fte " + targetPlatform;
     } else {
       argument = "--" + targetPlatform + "-fte";
       if (targetAndroid) {
@@ -3800,6 +3897,16 @@ int main (const int argc, const char* argv[]) {
     }
 
     fs::current_path(prefixFile());
+
+    if (targetPlatform.size() == 0) {
+      if (platform.win) {
+        targetPlatform = "windows";
+      } else if (platform.linux) {
+        targetPlatform = "linux";
+      } else if (platform.mac) {
+        targetPlatform = "darwin";
+      }
+    }
 
     log("Running setup for platform '" + targetPlatform + "' in " + "SOCKET_HOME (" + prefixFile() + ")");
     String command = scriptHost + " \"" + script.string() + "\" " + argument + " " + yesArg;

@@ -1,5 +1,10 @@
 /**
  * @module Process
+ *
+ * Example usage:
+ * ```js
+ * import process from 'socket:process'
+ * ```
  */
 import { primordials, send } from './ipc.js'
 import { EventEmitter } from './events.js'

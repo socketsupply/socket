@@ -465,7 +465,7 @@ Function Build-SSCToPathTaskBlock {
     return
   }
 
-  $prompt = "Do you want to add ssc.exe to your user PATH?"
+  $prompt = "Do you want to add ssc.exe to your user PATH? [y/N]"
   $task = [string]{
     Write-Log "h" "# Adding ssc.exe to PATH..."
     $backup = "$env:LOCALAPPDATA\.userpath.txt"
@@ -975,7 +975,7 @@ Download size: 5.5GB, Installed size: 10.2GB y/[N]"
     
   Exit-IfErrors
 
-  if ($confirm_windows_deps) {
+  if ($confirm_windows_deps -or $shbuild) {
     if ($install_vc_build) {
       $vc_exists, $vc_vars = $(Get-VCVars)
       if ($vc_exists) {
@@ -1021,12 +1021,22 @@ Download size: 5.5GB, Installed size: 10.2GB y/[N]"
     }
 
     if ($shbuild) {
+      $cmake_found = $false
       if (-not (Test-CommandVersion("cmake", $targetCmakeVersion))) {
-        $global:install_errors += "not ok - unable to install cmake"
-      } else {
-        if ($cmakePath -ne '') {
+        $cmakePath = "$env:ProgramFiles\CMake\bin"
+        if ((Test-Path "$cmakePath\cmake.exe" -PathType Leaf) -eq $true) {
           $env:PATH="$cmakePath\;$env:PATH"
+          $global:cmake = "$cmakePath\$global:cmake"
+          if (Test-CommandVersion("cmake", $targetCmakeVersion)) {
+            $cmake_found = $true
+          }
         }
+      } else {        
+        $cmake_found = $true
+      }
+
+      if ($cmake_found -eq $false) {
+        $global:install_errors += "not ok - unable to install cmake"
       }
     }
 
@@ -1042,7 +1052,7 @@ Download size: 5.5GB, Installed size: 10.2GB y/[N]"
     Write-Log "d" "git: $_gitPath"
     if ($exists) {
       $sh = Locate-Sh $_gitPath
-      $android_setup_sh = """$sh"" bin\android-functions.sh --android-fte"
+      $android_setup_sh = """$sh"" bin\android-functions.sh --android-fte --exit-code"
       Write-Log "v" "# Calling $android_setup_sh"
       iex "& $android_setup_sh"
       if ($LASTEXITCODE -ne 0) {
