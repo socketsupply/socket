@@ -74,11 +74,14 @@ function native_path() {
 }
 
 function quiet () {
+  # Support spaces in command by quioting initial argument
+  # Just quoting first argument on calling side doesn't work
+  declare command="$1"; shift
   if [ -n "$VERBOSE" ]; then
-    echo "$@"
-    "$@"
-  else
-    "$@" > /dev/null 2>&1
+    echo "$command" "$@"
+    "$command" "$@"
+  else  
+    "$command" "$@" > /dev/null 2>&1
   fi
 
   return $?
@@ -166,7 +169,7 @@ function use_bin_ext() {
 }
 
 function build_env_data() {
-  echo "CXX=\"$(escape_path "$CXX")\""
+  echo "CXX=\"$(native_path "$CXX")\""
   echo "ANDROID_HOME=\"$(escape_path "$ANDROID_HOME")\""
   echo "JAVA_HOME=\"$(escape_path "$JAVA_HOME")\""
   echo "ANDROID_SDK_MANAGER=\"$(escape_path "$ANDROID_SDK_MANAGER")\""
@@ -181,13 +184,22 @@ function update_env_data() {
   local vars=()
   local kvp
   local fail=0
+  local base64
   while (( $# > 0 )); do
     declare arg="$1"; shift
-    IFS='=' read -ra kvp <<< "$arg"
-    if [[ "${#kvp[@]}" != "2" ]]; then
-      echo >&2 "Invalid key=pair: $arg"; fail=1
+    if [[ "$arg" == "--b64" ]]; then 
+      base64=1
     else
-      vars+=("${kvp[0]}=$(escape_path "${kvp[1]}")")
+      if [[ -n "$base64" ]]; then
+        arg="$(echo "$arg" | base64 --decode)"
+      fi
+      IFS='=' read -ra kvp <<< "$arg"
+      if [[ "${#kvp[@]}" != "2" ]]; then
+        echo >&2 "Invalid key=pair: $arg"; fail=1
+      else
+        vars+=("${kvp[0]}=$(escape_path "${kvp[1]}")")
+      fi
+      base64=""
     fi
   done
 

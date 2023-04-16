@@ -1086,8 +1086,16 @@ if (($clang_required) -Or ($global:android_fte)) {
 
 if ($valid_clang) {
   $file = (New-Object -ComObject Scripting.FileSystemObject).GetFile($(Get-CommandPath "clang++.exe"))
-  Write-Log "v" "Converting $($file.Path) to $($file.ShortPath) for install.sh."
-  $update_cxx_env_sh = """$sh"" ./bin/functions.sh --update-env-data CXX='$($file.ShortPath)'"
+  $encoded_path = $file.Path
+  $env_args="CXX=""$($encoded_path)"""
+
+  if ($encoded_path -like "* *") {
+    $env_args = [Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes($env_args))
+    $env_args = "--b64 $env_args"
+  }
+
+  Write-Log "v" "# Updating CXX='$($file.Path)' for install.sh."
+  $update_cxx_env_sh = """$sh"" ./bin/functions.sh --update-env-data $env_args"
   Write-Log "v" "Calling $update_cxx_env_sh"
   iex "& $update_cxx_env_sh"
   $exit=$LASTEXITCODE
