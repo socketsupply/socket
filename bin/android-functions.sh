@@ -95,6 +95,12 @@ function test_javac_version() {
   local target_version=$2
   local jc_v
 
+  # Setting JAVA_HOME to /usr causes sdkmanager to hang
+  if [[ "$javac" == "/usr/bin/javac" ]] && [[ "$(host_os)" == "Darwin" ]]; then
+    write_log "h" "warn - Ignoring system java selector ($javac)"
+    return 1
+  fi
+
   jc_v="$("$javac" --version 2>/dev/null)"; r=$?
   if [[ "$r" != "0" ]]; then
     return $r
