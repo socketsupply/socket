@@ -292,7 +292,7 @@ namespace SSC {
       return E_NOINTERFACE;
     };
 
-   virtual HRESULT STDMETHODCALLTYPE DragEnter(
+    HRESULT STDMETHODCALLTYPE DragEnter(
       IDataObject *dataObject,
       DWORD keyState,
       POINTL dragPoint,
@@ -355,13 +355,13 @@ namespace SSC {
       return S_OK;
     };
 
-    virtual ULONG STDMETHODCALLTYPE AddRef(void) {
+    ULONG STDMETHODCALLTYPE AddRef(void) {
       refCount++;
 
       return refCount;
     }
 
-    virtual ULONG STDMETHODCALLTYPE Release(void) {
+    ULONG STDMETHODCALLTYPE Release(void) {
       refCount--;
 
       if (refCount == 0) {
