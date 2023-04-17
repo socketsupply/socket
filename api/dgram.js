@@ -22,7 +22,6 @@ import console from './console.js'
 import ipc from './ipc.js'
 import dns from './dns.js'
 import gc from './gc.js'
-import os from './os.js'
 
 import * as exports from './dgram.js'
 
@@ -114,9 +113,7 @@ function fromBufferList (list) {
 
 function getDefaultAddress (socket) {
   if (socket.type === 'udp6') return '::1'
-  if (socket.type === 'udp4') {
-    return os.platform() === 'win32' ? '127.0.0.1' : '0.0.0.0'
-  }
+  if (socket.type === 'udp4') return '0.0.0.0'
 
   return null
 }
