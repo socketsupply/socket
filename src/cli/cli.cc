@@ -165,33 +165,19 @@ String getSocketHome () {
 
 String getAndroidHome() {
   static auto androidHome = getEnv("ANDROID_HOME");
-  static const bool SSC_DEBUG = (
-    getEnv("SSC_DEBUG").size() > 0 ||
-    getEnv("DEBUG").size() > 0
-  );
-
-  if (androidHome.size() > 0)
+  if (androidHome.size() > 0) {
     return androidHome;
-
-  if (androidHome.size() == 0) {
-    androidHome = settings["android_" + platform.os + "_home"];
   }
 
-  if (androidHome.size() == 0) {
-    androidHome = settings["android_home"];
-  }
+  if (!platform.win) {
+    auto cmd = String(
+      "dirname $(dirname $(readlink $(which sdkmanager 2>/dev/null) 2>/dev/null) 2>/dev/null) 2>/dev/null"
+    );
 
-  if (androidHome.size() == 0) {
-    if (!platform.win) {
-      auto cmd = String(
-        "dirname $(dirname $(readlink $(which sdkmanager 2>/dev/null) 2>/dev/null) 2>/dev/null) 2>/dev/null"
-      );
+    auto r = exec(cmd);
 
-      auto r = exec(cmd);
-
-      if (r.exitCode == 0) {
-        androidHome = trim(r.output);
-      }
+    if (r.exitCode == 0) {
+      androidHome = trim(r.output);
     }
   }
 
@@ -211,6 +197,11 @@ String getAndroidHome() {
     #else
     setenv("ANDROID_HOME", androidHome.c_str(), 1);
     #endif
+
+    static const bool SSC_DEBUG = (
+      getEnv("SSC_DEBUG").size() > 0 ||
+      getEnv("DEBUG").size() > 0
+    );
 
     if (SSC_DEBUG) {
       log("WARNING: 'ANDROID_HOME' is set to '" + androidHome + "'");
@@ -1269,6 +1260,7 @@ int main (const int argc, const char* argv[]) {
 
           String suffix = "";
 
+          // internal
           if (flagDebugMode) {
             settings["apple_instruments"] = "true";
             suffix += "-dev";
@@ -1277,7 +1269,6 @@ int main (const int argc, const char* argv[]) {
           }
 
           settings["debug"] = flagDebugMode;
-          settings["build_suffix"] = suffix;
 
           std::replace(settings["build_name"].begin(), settings["build_name"].end(), ' ', '_');
           settings["build_name"] += suffix;
@@ -1839,8 +1830,6 @@ int main (const int argc, const char* argv[]) {
 
     // used in multiple if blocks, need to declare here
     auto androidEnableStandardNdkBuild = settings["android_enable_standard_ndk_build"] == "true";
-    auto androidSkipGradle = settings["android_skip_gradle"] == "true";
-    auto androidBuildSocketRuntime = settings["android_build_socket_runtime"] != "false";
 
     if (flagBuildForAndroid) {
       auto bundle_identifier = settings["meta_bundle_identifier"];
@@ -1913,8 +1902,6 @@ int main (const int argc, const char* argv[]) {
         // Windows doesn't support 'yes'
         log(("Check licenses and run again: \n" + licenseAccept + "\n").c_str());
       }
-
-      settings["android_sdk_manager_path"] = sdkmanager.str();
       
       String gradlePath = getEnv("GRADLE_HOME").size() > 0 ? getEnv("GRADLE_HOME") + slash + "bin" + slash : "";
 
@@ -2086,6 +2073,7 @@ int main (const int argc, const char* argv[]) {
         }
       }
 
+      // set internal variables used by templating system to generate build.gradle
       if (androidEnableStandardNdkBuild) {
         settings["android_default_config_external_native_build"].assign(
           "    externalNativeBuild {\n"
@@ -2432,6 +2420,7 @@ int main (const int argc, const char* argv[]) {
         settings["build_name"] /
         settings["build_name"];
 
+      // internal settings
       settings["linux_executable_path"] = linuxExecPath.string();
       settings["linux_icon_path"] = (
         Path("/usr") /
@@ -2444,10 +2433,6 @@ int main (const int argc, const char* argv[]) {
       ).string();
 
       writeFile(pathManifestFile / (settings["build_name"] + ".desktop"), tmpl(gDestkopManifest, settings));
-
-      if (settings.count("deb_name") == 0) {
-        settings["deb_name"] = settings["build_name"];
-      }
 
       writeFile(pathControlFile / "control", tmpl(gDebianManifest, settings));
 
@@ -2542,6 +2527,7 @@ int main (const int argc, const char* argv[]) {
         "AppxManifest.xml"
       };
 
+      // internal, used in the manifest
       if (settings["meta_version"].size() > 0) {
         auto version = settings["meta_version"];
         auto winversion = split(version, '-')[0];
@@ -2551,7 +2537,8 @@ int main (const int argc, const char* argv[]) {
         settings["win_version"] = "0.0.0.0";
       }
 
-      settings["exe"] = executable.string();
+      // internal, a path to win executable, used in the manifest
+      settings["win_exe"] = executable.string();
 
       writeFile(p, tmpl(gWindowsAppManifest, settings));
 
@@ -2850,6 +2837,7 @@ int main (const int argc, const char* argv[]) {
         : "generic/platform=iOS";
       String deviceType;
 
+      // TODO: should be "iPhone Distribution: <name/provisioning specifier>"?
       if (settings["ios_codesign_identity"].size() == 0) {
         settings["ios_codesign_identity"] = "iPhone Distribution";
       }
@@ -2937,7 +2925,6 @@ int main (const int argc, const char* argv[]) {
       auto app = paths.platformSpecificOutputPath / "app";
       auto androidHome = getAndroidHome();
 
-      StringStream sdkmanager;
       StringStream packages;
       StringStream gradlew;
       String ndkVersion = "25.0.8775105";
@@ -2947,8 +2934,6 @@ int main (const int argc, const char* argv[]) {
         gradlew
           << "ANDROID_HOME=" << androidHome << " ";
       }
-
-      sdkmanager << settings["android_sdk_manager_path"];
 
       packages
         << " "
@@ -3036,27 +3021,25 @@ int main (const int argc, const char* argv[]) {
             }
           }
 
-          if (androidBuildSocketRuntime) {
-            fs::create_directories(jniLibs);
+          fs::create_directories(jniLibs);
 
-            ndkBuildArgs
-              << ndkBuild.str()
-              << " -j"
-              << " NDK_PROJECT_PATH=" << _main
-              << " NDK_APPLICATION_MK=" << app_mk
-              << (flagDebugMode ? " NDK_DEBUG=1" : "")
-              << " APP_PLATFORM=" << androidPlatform
-              << " NDK_LIBS_OUT=" << jniLibs
-            ;
+          ndkBuildArgs
+            << ndkBuild.str()
+            << " -j"
+            << " NDK_PROJECT_PATH=" << _main
+            << " NDK_APPLICATION_MK=" << app_mk
+            << (flagDebugMode ? " NDK_DEBUG=1" : "")
+            << " APP_PLATFORM=" << androidPlatform
+            << " NDK_LIBS_OUT=" << jniLibs
+          ;
 
-            if (!(debugEnv || verboseEnv)) ndkBuildArgs << " >" << (!platform.win ? "/dev/null" : "NUL") << " 2>&1";
+          if (!(debugEnv || verboseEnv)) ndkBuildArgs << " >" << (!platform.win ? "/dev/null" : "NUL") << " 2>&1";
 
-            if (debugEnv || verboseEnv) log(ndkBuildArgs.str());
-            if (std::system(ndkBuildArgs.str().c_str()) != 0) {
-              log(ndkBuildArgs.str());
-              log("ERROR: ndk build failed.");
-              exit(1);
-            }
+          if (debugEnv || verboseEnv) log(ndkBuildArgs.str());
+          if (std::system(ndkBuildArgs.str().c_str()) != 0) {
+            log(ndkBuildArgs.str());
+            log("ERROR: ndk build failed.");
+            exit(1);
           }
         }
       }
@@ -3074,28 +3057,26 @@ int main (const int argc, const char* argv[]) {
         exit(0);
       }
 
-      if (!androidSkipGradle) {
-        String bundle = flagDebugMode ?
-          localDirPrefix + "gradlew :app:bundleDebug --warning-mode all" :
-          localDirPrefix + "gradlew :app:bundle";
+      String bundle = flagDebugMode ?
+        localDirPrefix + "gradlew :app:bundleDebug --warning-mode all" :
+        localDirPrefix + "gradlew :app:bundle";
 
-        if (debugEnv || verboseEnv) log(bundle);
-        if (std::system(bundle.c_str()) != 0) {
-          log("ERROR: failed to invoke " + bundle + " command.");
-          exit(1);
-        }
+      if (debugEnv || verboseEnv) log(bundle);
+      if (std::system(bundle.c_str()) != 0) {
+        log("ERROR: failed to invoke " + bundle + " command.");
+        exit(1);
+      }
 
-        // clear stream
-        gradlew.str("");
-        gradlew
-          << localDirPrefix
-          << "gradlew assemble";
+      // clear stream
+      gradlew.str("");
+      gradlew
+        << localDirPrefix
+        << "gradlew assemble";
 
-        if (debugEnv || verboseEnv) log(gradlew.str());
-        if (std::system(gradlew.str().c_str()) != 0) {
-          log("ERROR: failed to invoke `gradlew assemble` command");
-          exit(1);
-        }
+      if (debugEnv || verboseEnv) log(gradlew.str());
+      if (std::system(gradlew.str().c_str()) != 0) {
+        log("ERROR: failed to invoke `gradlew assemble` command");
+        exit(1);
       }
 
       if (flagBuildForAndroidEmulator) {

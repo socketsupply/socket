@@ -335,7 +335,7 @@ Comment={{meta_description}}
 Categories={{linux_categories}};
 )INI";
 
-constexpr auto gDebianManifest = R"DEB(Package: {{deb_name}}
+constexpr auto gDebianManifest = R"DEB(Package: {{build_name}}
 Version: {{meta_version}}
 Architecture: amd64
 Maintainer: {{meta_maintainer}}
@@ -389,7 +389,7 @@ constexpr auto gWindowsAppManifest = R"XML(<?xml version="1.0" encoding="utf-8"?
     <Application
       Id="{{build_name}}"
       EntryPoint="Windows.FullTrustApplication"
-      Executable="{{exe}}"
+      Executable="{{win_exe}}"
     >
       <uap:VisualElements DisplayName="{{meta_title}}"
         Square150x150Logo="{{win_logo}}"
@@ -403,10 +403,10 @@ constexpr auto gWindowsAppManifest = R"XML(<?xml version="1.0" encoding="utf-8"?
         <uap3:Extension
           Category="windows.appExecutionAlias"
           EntryPoint="Windows.FullTrustApplication"
-          Executable="{{exe}}"
+          Executable="{{win_exe}}"
         >
           <uap3:AppExecutionAlias>
-            <desktop:ExecutionAlias Alias="{{exe}}" />
+            <desktop:ExecutionAlias Alias="{{win_exe}}" />
           </uap3:AppExecutionAlias>
         </uap3:Extension>
       </Extensions>
@@ -415,7 +415,7 @@ constexpr auto gWindowsAppManifest = R"XML(<?xml version="1.0" encoding="utf-8"?
   </Applications>
   <Extensions>
     <desktop2:Extension Category="windows.firewallRules">
-      <desktop2:FirewallRules Executable="{{exe}}">
+      <desktop2:FirewallRules Executable="{{win_exe}}">
         <desktop2:Rule
           Direction="in"
           IPProtocol="TCP"
@@ -1426,6 +1426,9 @@ version = 1.0.0
 [android]
 ; TODO description needed
 main_activity = ""
+
+; TODO description needed
+; home = ""
 
 
 [ios]
