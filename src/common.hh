@@ -255,8 +255,8 @@ namespace SSC {
       const String arch = "x86_64";
     #elif defined(__aarch64__) || defined(_M_ARM64)
       const String arch = "arm64";
-    #elif defined(__i386__)
-      #error SSC is not supported on i386.
+    #elif defined(__i386__) && !defined(__ANDROID__)
+      #error Socket is not supported on i386.
     #else
       const String arch = "unknown";
     #endif
