@@ -212,20 +212,29 @@ function _build_cli {
   local ldflags=($("$root/bin/ldflags.sh" --arch "$arch" --platform $platform ${libs[@]}))
   local cflags=(-DSSC_CLI $("$root/bin/cflags.sh"))
 
+  local test_headers=()
+  test_headers+=("$(find "$src"/cli/*.hh 2>/dev/null)")
+  test_headers+=("$(ls "$src"/*.hh)")
+  test_headers+=("$src"/../VERSION.txt)
+  local newest_mtime=0
+  newest_mtime="$(latest_mtime ${test_headers[@]})"
+
   local test_sources=($(find "$src"/cli/*.cc 2>/dev/null))
   local sources=()
   local outputs=()
 
   mkdir -p "$BUILD_DIR/$arch-$platform/bin"
+  local build_ssc=0
 
   for source in "${test_sources[@]}"; do
     local output="${source/$src/$output_directory}"
     # For some reason cli causes issues when debug and release are in the same folder
     output="${output/.cc/$d.o}"
     output="${output/cli/cli$d}"
-    if (( force )) || ! test -f "$output" || (( $(stat_mtime "$source") > $(stat_mtime "$output") )); then
+    if (( force )) || ! test -f "$output" || (( newest_mtime > $(stat_mtime "$output") )) || (( newest_mtime > $(stat_mtime "$output") )) || (( $(stat_mtime "$source") > $(stat_mtime "$output") )); then
       sources+=("$source")
       outputs+=("$output")
+      build_ssc=1
     fi
   done
 
@@ -252,11 +261,10 @@ function _build_cli {
 
   libs=($(find "$root/build/$arch-$platform/lib$d/*" 2>/dev/null))
   test_sources+=(${libs[@]})
-  local build_ssc=0
   local ssc_output="$BUILD_DIR/$arch-$platform/bin/ssc$exe"
 
   for source in "${test_sources[@]}"; do
-    if (( force )) || ! test -f "$ssc_output" || (( $(stat_mtime "$source") > $(stat_mtime "$ssc_output") )); then
+    if (( force )) || (( build_ssc )) || ! test -f "$ssc_output" || (( $(stat_mtime "$source") > $(stat_mtime "$ssc_output") )); then
       build_ssc=1
       # break
     fi
@@ -341,6 +349,11 @@ function _prebuild_desktop_main () {
   local src="$root/src"
   local objects="$BUILD_DIR/$arch-$platform/objects"
 
+  local test_headers=()
+  test_headers+=("$(find "$src"/**/*.hh)")
+  local newest_mtime=0
+  newest_mtime="$(latest_mtime ${test_headers[@]})"
+
   local cflags=($("$root/bin/cflags.sh"))
   local test_sources=($(find "$src"/desktop/*.{cc,mm} 2>/dev/null))
   local sources=()
@@ -352,7 +365,7 @@ function _prebuild_desktop_main () {
     local output="${source/$src/$objects}"
     output="${output/.cc/$d.o}"
     output="${output/.mm/$d.o}"
-    if (( force )) || ! test -f "$output" || (( $(stat_mtime "$source") > $(stat_mtime "$output") )); then
+    if (( force )) || ! test -f "$output" || (( newest_mtime > $(stat_mtime "$output") )) || (( $(stat_mtime "$source") > $(stat_mtime "$output") )); then
       sources+=("$source")
       outputs+=("$output")
     fi

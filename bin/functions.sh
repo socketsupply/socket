@@ -22,6 +22,18 @@ function stat_mtime () {
   stat $stat_format_arg $stat_mtime_spec "$1" 2>/dev/null
 }
 
+function latest_mtime() {
+  local latest=0
+
+  while (( $# > 0 )); do
+    declare arg="$1"; shift
+    mtime="$(stat_mtime "$arg")"
+    (( mtime > latest )) && latest=$mtime
+  done
+
+  echo "$latest"
+}
+
 function stat_size () {
   stat $stat_format_arg $stat_size_spec "$1" 2>/dev/null
 }
