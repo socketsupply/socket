@@ -1902,6 +1902,9 @@ int main (const int argc, const char* argv[]) {
         // Windows doesn't support 'yes'
         log(("Check licenses and run again: \n" + licenseAccept + "\n").c_str());
       }
+
+      // TODO: internal, no need to save to settings
+      settings["android_sdk_manager_path"] = sdkmanager.str();
       
       String gradlePath = getEnv("GRADLE_HOME").size() > 0 ? getEnv("GRADLE_HOME") + slash + "bin" + slash : "";
 
@@ -2925,6 +2928,7 @@ int main (const int argc, const char* argv[]) {
       auto app = paths.platformSpecificOutputPath / "app";
       auto androidHome = getAndroidHome();
 
+      StringStream sdkmanager;
       StringStream packages;
       StringStream gradlew;
       String ndkVersion = "25.0.8775105";
@@ -2934,6 +2938,8 @@ int main (const int argc, const char* argv[]) {
         gradlew
           << "ANDROID_HOME=" << androidHome << " ";
       }
+
+      sdkmanager << settings["android_sdk_manager_path"];
 
       packages
         << " "
