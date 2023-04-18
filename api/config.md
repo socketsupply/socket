@@ -34,7 +34,10 @@ version |  |  A string that indicates the version of the application. It should 
 
 Key | Default Value | Description
 :--- | :--- | :---
-main_activity |  |  TODO description needed
+allow_cleartext |  |  Allow unencrypted http requests, useful for live reload.
+enable_standard_ndk_build |  |  Enables gradle based ndk build rather than using external native build (standard ndk is the old slow way)
+main_activity |  |  Name of the MainActivity class. Could be overwritten by custom native code.
+manifest_permissions |  |  Which permissions does your application need: https://developer.android.com/guide/topics/permissions/overview
 
 ## Section `ios`
 

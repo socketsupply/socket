@@ -1297,6 +1297,103 @@ This is a `FunctionDeclaration` named `hrtime` in `api/os.js`, it's exported but
 This is a `FunctionDeclaration` named `availableMemory` in `api/os.js`, it's exported but undocumented.
 
 
+# [Peer](https://github.com/socketsupply/socket/blob/master/api/peer.js#L14)
+
+External docs: https://socketsupply.co/guides/#p2p-guide
+
+
+ Provides a higher level API over the stream-relay protocol.
+
+ Example usage:
+ ```js
+ import { Peer } from 'socket:peer'
+ ```
+
+
+## [`Peer` (extends `EventEmitter`)](https://github.com/socketsupply/socket/blob/master/api/peer.js#L50)
+
+
+The Peer class is an EventEmitter. It emits events when new network events
+are received (.on), it can also emit new events to the network (.emit).
+
+```js
+import { Peer } from 'socket:peer'
+
+const pair = await Peer.createKeys()
+const clusterId = await Peer.createClusterId()
+
+const peer = new Peer({ ...pair, clusterId })
+
+peer.on('greeting', (value, peer, address, port) => {
+  console.log(value)
+})
+
+window.onload = () => {
+  const value = { english: 'hello, world' }
+  const packet = await peer.emit('greeting', value)
+}
+```
+
+### [`constructor(options)`](https://github.com/socketsupply/socket/blob/master/api/peer.js#L60)
+
+`Peer` class constructor.
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| options | Object |  | false | All options for the Peer constructor |
+| options.publicKey | string |  | false | The public key required to sign and read |
+| options.privateKey | string |  | false | The private key required to sign and read |
+| options.clusterId | string |  | false | A unique appliction identity |
+| options.scheme | string |  | false | Specify which encryption scheme to use (ie, 'PTP') |
+| options.peers | Array |  | false | An array of RemotePeer |
+
+
+### [`createKeys()`](https://github.com/socketsupply/socket/blob/master/api/peer.js#L84)
+
+A method that will generate a public and private key pair.
+ The ed25519 pair can be stored by an app with a secure API.
+
+
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| pair | Object<Pair> | A pair of keys |
+
+
+### [`createClusterId()`](https://github.com/socketsupply/socket/blob/master/api/peer.js#L98)
+
+Create a clusterId from random bytes
+
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| id | string | a hex encoded sha256 hash |
+
+
+### [`emit(event, message)`](https://github.com/socketsupply/socket/blob/master/api/peer.js#L109)
+
+Emits a message to the network
+
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| event | string |  | false | The name of the event to emit to the network |
+| message | Buffer |  | false | The data to emit to the network |
+
+
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| Not specified | Object<Packet> | The packet that will be sent when possible |
+
+
+### [`join()`](https://github.com/socketsupply/socket/blob/master/api/peer.js#L132)
+
+Starts the process of connecting to the network.
+
+
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| Not specified | Peer | Returns an instance of the underlying network peer |
+
+
 # [Path](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L9)
 
 
@@ -1520,103 +1617,6 @@ Converts this `Path` instance to a string.
 | Return Value | Type | Description |
 | :---         | :--- | :---        |
 | Not specified | string |  |
-
-
-# [Peer](https://github.com/socketsupply/socket/blob/master/api/peer.js#L14)
-
-External docs: https://socketsupply.co/guides/#p2p-guide
-
-
- Provides a higher level API over the stream-relay protocol.
-
- Example usage:
- ```js
- import { Peer } from 'socket:peer'
- ```
-
-
-## [`Peer` (extends `EventEmitter`)](https://github.com/socketsupply/socket/blob/master/api/peer.js#L50)
-
-
-The Peer class is an EventEmitter. It emits events when new network events
-are received (.on), it can also emit new events to the network (.emit).
-
-```js
-import { Peer } from 'socket:peer'
-
-const pair = await Peer.createKeys()
-const clusterId = await Peer.createClusterId()
-
-const peer = new Peer({ ...pair, clusterId })
-
-peer.on('greeting', (value, peer, address, port) => {
-  console.log(value)
-})
-
-window.onload = () => {
-  const value = { english: 'hello, world' }
-  const packet = await peer.emit('greeting', value)
-}
-```
-
-### [`constructor(options)`](https://github.com/socketsupply/socket/blob/master/api/peer.js#L60)
-
-`Peer` class constructor.
-
-| Argument | Type | Default | Optional | Description |
-| :---     | :--- | :---:   | :---:    | :---        |
-| options | Object |  | false | All options for the Peer constructor |
-| options.publicKey | string |  | false | The public key required to sign and read |
-| options.privateKey | string |  | false | The private key required to sign and read |
-| options.clusterId | string |  | false | A unique appliction identity |
-| options.scheme | string |  | false | Specify which encryption scheme to use (ie, 'PTP') |
-| options.peers | Array |  | false | An array of RemotePeer |
-
-
-### [`createKeys()`](https://github.com/socketsupply/socket/blob/master/api/peer.js#L84)
-
-A method that will generate a public and private key pair.
- The ed25519 pair can be stored by an app with a secure API.
-
-
-| Return Value | Type | Description |
-| :---         | :--- | :---        |
-| pair | Object<Pair> | A pair of keys |
-
-
-### [`createClusterId()`](https://github.com/socketsupply/socket/blob/master/api/peer.js#L98)
-
-Create a clusterId from random bytes
-
-| Return Value | Type | Description |
-| :---         | :--- | :---        |
-| id | string | a hex encoded sha256 hash |
-
-
-### [`emit(event, message)`](https://github.com/socketsupply/socket/blob/master/api/peer.js#L109)
-
-Emits a message to the network
-
-
-| Argument | Type | Default | Optional | Description |
-| :---     | :--- | :---:   | :---:    | :---        |
-| event | string |  | false | The name of the event to emit to the network |
-| message | Buffer |  | false | The data to emit to the network |
-
-
-| Return Value | Type | Description |
-| :---         | :--- | :---        |
-| Not specified | Object<Packet> | The packet that will be sent when possible |
-
-
-### [`join()`](https://github.com/socketsupply/socket/blob/master/api/peer.js#L132)
-
-Starts the process of connecting to the network.
-
-
-| Return Value | Type | Description |
-| :---         | :--- | :---        |
-| Not specified | Peer | Returns an instance of the underlying network peer |
 
 
 # [Process](https://github.com/socketsupply/socket/blob/master/api/process.js#L9)
