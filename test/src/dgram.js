@@ -6,7 +6,6 @@ import crypto from 'socket:crypto'
 import Buffer from 'socket:buffer'
 import dgram from 'socket:dgram'
 import util from 'socket:util'
-import os from 'socket:os'
 
 // node compat
 /*
@@ -93,7 +92,7 @@ test('dgram createSocket, address, bind, close', async (t) => {
   t.ok(server.bind(41233) === server, 'dgram.bind returns the socket')
   await new Promise((resolve) => {
     server.once('listening', () => {
-      const address = os.platform() === 'win32' ? '127.0.0.1' : '0.0.0.0'
+      const address = '0.0.0.0'
       // FIXME:
       // t.throws(
       //   () => server.bind(41233),
@@ -140,13 +139,13 @@ test('udp bind, send, remoteAddress', async (t) => {
   const payload = makePayload()
   t.ok(payload.length > 0, `${payload.length} bytes prepared`)
 
+  const address = '127.0.0.1'
   server.on('listening', () => {
     t.ok(true, 'listening')
-    const address = os.platform() === 'win32' ? '127.0.0.1' : '0.0.0.0'
     client.send(Buffer.from(payload), 41234, address)
   })
 
-  server.bind(41234)
+  server.bind(41234, address)
 
   try {
     const r = Buffer.from(await msg).toString()
@@ -170,7 +169,7 @@ test('udp socket message and bind callbacks', async (t) => {
     })
   })
 
-  const address = os.platform() === 'win32' ? '127.0.0.1' : '0.0.0.0'
+  const address = '127.0.0.1'
   const client = dgram.createSocket('udp4')
 
   server.on('listening', () => {
@@ -211,8 +210,8 @@ test('udp bind, connect, send', async (t) => {
     'client.remoteAddress() throws an error if the socket is not connected'
   )
 
+  const address = '127.0.0.1'
   server.on('listening', () => {
-    const address = os.platform() === 'win32' ? '127.0.0.1' : '0.0.0.0'
     client.connect(41236, address, (err) => {
       if (err) return t.fail(err.message)
       t.deepEqual(
@@ -238,7 +237,7 @@ test('udp bind, connect, send', async (t) => {
 })
 
 test('udp send callback', async (t) => {
-  const address = os.platform() === 'win32' ? '127.0.0.1' : '0.0.0.0'
+  const address = '127.0.0.1'
   const message = Buffer.from('Some bytes')
   const client = dgram.createSocket('udp4')
   const result = await new Promise(resolve => {
@@ -279,11 +278,11 @@ test('client ~> server (~512 messages)', async (t) => {
   if (process.env.SSC_ANDROID_CI) return
 
   const TIMEOUT = 1024
-  const address = os.platform() === 'win32' ? '127.0.0.1' : '0.0.0.0'
+  const address = '127.0.0.1'
   const buffers = Array.from(Array(512), () => crypto.randomBytes(1024))
   const server = dgram.createSocket('udp4')
   const client = dgram.createSocket('udp4')
-  const port = 3000
+  const port = 30001
 
   await new Promise((resolve) => {
     let timeout = setTimeout(ontimeout, TIMEOUT)
@@ -325,14 +324,15 @@ test('client ~> server (~512 messages)', async (t) => {
 
 test('connect + disconnect', async (t) => {
   await new Promise((resolve) => {
-    const server = dgram.createSocket('udp4').bind(3000, (err) => {
+    const address = '127.0.0.1'
+    const server = dgram.createSocket('udp4').bind(30001, address, (err) => {
       if (err) {
         console.error(err)
         return t.fail('failed to bind')
       }
 
       const client = dgram.createSocket('udp4')
-      client.connect(3000, (err) => {
+      client.connect(30001, address, (err) => {
         if (err) {
           console.error(err)
           return t.fail('failed to connect')
