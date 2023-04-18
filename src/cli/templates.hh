@@ -1483,13 +1483,11 @@ cmd = ""
 ; The icon to use for identifying your app on MacOS.
 icon = ""
 
-; TODO description & value (signing guide: https://sockets.sh/guides/#macos-1)
+; TODO Signing guide: https://socketsupply.co/guides/#code-signing-certificates
 sign = ""
 
-; TODO description & value
 codesign_identity = ""
 
-; TODO description & value
 sign_paths = ""
 
 

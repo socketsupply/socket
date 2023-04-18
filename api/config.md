@@ -68,9 +68,9 @@ appstore_icon |  |  Mac App Store icon
 category |  |  A category in the App Store
 cmd |  |  The command to execute to spawn the "back-end" process.
 icon |  |  The icon to use for identifying your app on MacOS.
-sign |  |  TODO description & value (signing guide: https://sockets.sh/guides/#macos-1)
-codesign_identity |  |  TODO description & value
-sign_paths |  |  TODO description & value
+sign |  |  TODO Signing guide: https://socketsupply.co/guides/#code-signing-certificates
+codesign_identity |  | 
+sign_paths |  | 
 
 ## Section `native`
 
