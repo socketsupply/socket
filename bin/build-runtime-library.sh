@@ -48,6 +48,10 @@ if [[ "$host" == "Win32" ]]; then
 fi
 
 declare objects=()
+declare test_headers=(
+  $(find "$root/src"/**/*.hh)
+  "$root/src"/../VERSION.txt
+)
 declare sources=(
   $(find "$root"/src/app/*.cc)
   $(find "$root"/src/core/*.cc)
@@ -148,6 +152,9 @@ function main () {
   local i=0
   local max_concurrency=$CPU_CORES
 
+  local newest_mtime=0
+  newest_mtime="$(latest_mtime ${test_headers[@]})"
+
   for source in "${sources[@]}"; do
     if (( i++ > max_concurrency )); then
       for pid in "${pids[@]}"; do
@@ -160,7 +167,8 @@ function main () {
       declare src_directory="$root/src"
       declare object="${source/.cc/$d.o}"
       declare object="${object/$src_directory/$output_directory}"
-      if (( force )) || ! test -f "$object" || (( $(stat_mtime "$source") > $(stat_mtime "$object") )); then
+      
+      if (( force )) || ! test -f "$object" || (( newest_mtime > $(stat_mtime "$object") )) || (( $(stat_mtime "$source") > $(stat_mtime "$object") )); then
         mkdir -p "$(dirname "$object")"
         echo "# compiling object ($arch-$platform) $(basename "$source")"
         quiet $clang "${cflags[@]}" -c "$source" -o "$object" || onsignal
