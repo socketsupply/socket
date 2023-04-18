@@ -174,8 +174,11 @@ if [[ -n "$no_android_fte" ]] && [[ -z "$ANDROID_HOME" ]]; then
 fi
 
 if [[ -n "$BUILD_ANDROID" ]]; then
-  android_fte "$pass_yes_deps"
+  android_fte "$pass_yes_deps" && rc=$?
+  # android_fte will unset BUILD_ANDROID if user elects not to install
+fi
 
+if [[ -n "$BUILD_ANDROID" ]]; then
   abis=($(android_supported_abis))
   platform="android"
   arch="${abis[0]}"
