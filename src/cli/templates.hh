@@ -1437,6 +1437,11 @@ main_activity = ""
 ; Which permissions does your application need: https://developer.android.com/guide/topics/permissions/overview
 manifest_permissions = ""
 
+; Used for adding custom source files and related compiler attributes.
+native_cflags = ""
+native_sources = ""
+native_makefile = ""
+sources = ""
 
 [ios]
 
@@ -1521,6 +1526,34 @@ height = 50%
 
 ; The initial width of the first window.
 width = 50%
+
+[headless]
+
+; The headless runner command. It is used when no OS specific runner is set.
+runner = ""
+; The headless runner command flags. It is used when no OS specific runner is set.
+runner_flags = ""
+; The headless runner command for Android
+runner_android = ""
+; The headless runner command flags for Android
+runner_android_flags = ""
+; The headless runner command for iOS
+runner_ios = ""
+; The headless runner command flags for iOS
+runner_ios_flags = ""
+; The headless runner command for Linux
+runner_linux = ""
+; The headless runner command flags for Linux
+runner_linux_flags = ""
+; The headless runner command for MacOS
+runner_mac = ""
+; The headless runner command flags for MacOS
+runner_mac_flags = ""
+; The headless runner command for Windows
+runner_win32 = ""
+; The headless runner command flags for Windows
+runner_win32_flags = ""
+
 )INI";
 
 constexpr auto gDefaultGitignore = R"GITIGNORE(

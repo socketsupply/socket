@@ -38,6 +38,10 @@ allow_cleartext |  |  Allow unencrypted http requests, useful for live reload.
 enable_standard_ndk_build |  |  Enables gradle based ndk build rather than using external native build (standard ndk is the old slow way)
 main_activity |  |  Name of the MainActivity class. Could be overwritten by custom native code.
 manifest_permissions |  |  Which permissions does your application need: https://developer.android.com/guide/topics/permissions/overview
+native_cflags |  |  Used for adding custom source files and related compiler attributes.
+native_sources |  | 
+native_makefile |  | 
+sources |  | 
 
 ## Section `ios`
 
@@ -90,4 +94,21 @@ Key | Default Value | Description
 :--- | :--- | :---
 height |  |  The initial height of the first window.
 width |  |  The initial width of the first window.
+
+## Section `headless`
+
+Key | Default Value | Description
+:--- | :--- | :---
+runner |  |  The headless runner command. It is used when no OS specific runner is set.
+runner_flags |  |  The headless runner command flags. It is used when no OS specific runner is set.
+runner_android |  |  The headless runner command for Android
+runner_android_flags |  |  The headless runner command flags for Android
+runner_ios |  |  The headless runner command for iOS
+runner_ios_flags |  |  The headless runner command flags for iOS
+runner_linux |  |  The headless runner command for Linux
+runner_linux_flags |  |  The headless runner command flags for Linux
+runner_mac |  |  The headless runner command for MacOS
+runner_mac_flags |  |  The headless runner command flags for MacOS
+runner_win32 |  |  The headless runner command for Windows
+runner_win32_flags |  |  The headless runner command flags for Windows
 
