@@ -1424,11 +1424,18 @@ version = 1.0.0
 
 
 [android]
-; TODO description needed
+
+; Allow unencrypted http requests, useful for live reload.
+allow_cleartext = false
+
+; Enables gradle based ndk build rather than using external native build (standard ndk is the old slow way)
+enable_standard_ndk_build = false
+
+; Name of the MainActivity class. Could be overwritten by custom native code.
 main_activity = ""
 
-; TODO description needed
-; home = ""
+; Which permissions does your application need: https://developer.android.com/guide/topics/permissions/overview
+manifest_permissions = ""
 
 
 [ios]

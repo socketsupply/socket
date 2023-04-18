@@ -299,7 +299,6 @@ const startMarker = 'constexpr auto gDefaultConfig = R"INI('
 const endMarker = ')INI";'
 
 const src = path.relative(process.cwd(), 'src/cli/templates.hh')
-console.log(src)
 const data = fs.readFileSync(src, 'utf8')
 
 const startIndex = data.indexOf(startMarker)
