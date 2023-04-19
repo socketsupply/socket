@@ -120,6 +120,12 @@ function test_javac_version() {
     return 1
   fi
 
+  # Limit upper end of java version by not returning 0 if it is higher than target version
+  # Resolves: android BUG! exception in phase 'semantic analysis' in source unit '_BuildScript_' Unsupported class file major version 64 in CI when running gradle under Java 20
+  if [ "$(version "$jc_v")" -gt "$(version "$target_version")" ]; then
+    return 2
+  fi
+
   return 0
 }
 
