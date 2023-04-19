@@ -65,15 +65,17 @@ function get_android_default_search_paths() {
     GRADLE_SEARCH_PATHS+=("$HOME/.gradle")
   fi
 
-  # Add $PATH java to JAVA_HOME_SEARCH_PATHS
-  local java="$(readlink -f "$(which java 2>/dev/null)" 2>/dev/null)"
-  if [ -n "$java" ]; then
-    JAVA_HOME_SEARCH_PATHS+=("$(dirname "$(dirname "$java")")")
-  fi
-
   # Only attempt default homes if $ANDROID_HOME not defined
   if [[ "$host" = "Darwin"  ]]; then
     JAVA_HOME_SEARCH_PATHS+=("$HOME/.local/bin")
+
+    # Add $PATH java to JAVA_HOME_SEARCH_PATHS
+    # Don't add this as first entry, first entry used as default install path
+    local java="$(readlink -f "$(which java 2>/dev/null)" 2>/dev/null)"
+    if [ -n "$java" ]; then
+      JAVA_HOME_SEARCH_PATHS+=("$(dirname "$(dirname "$java")")")
+    fi
+    
     JAVA_HOME_SEARCH_PATHS+=("$HOME/Applications")
     JAVA_HOME_SEARCH_PATHS+=("$HOME/homebrew")
     JAVA_HOME_SEARCH_PATHS+=("/Applications")
