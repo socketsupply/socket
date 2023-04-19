@@ -3,7 +3,7 @@
 
 
  Provides Application level methods
- 
+
  Example usage:
  ```js
  import { createWindow } from 'socket:application'
@@ -251,7 +251,7 @@ The application's backend instance.
 
 
  A high-level, cross-platform API for Bluetooth Pub-Sub
- 
+
  Example usage:
  ```js
  import { Bluetooth } from 'socket:bluetooth'
@@ -325,7 +325,7 @@ Start advertising a new value for a well-known UUID
 
  Some high-level methods around the `crypto.subtle` API for getting
  random bytes and hashing.
- 
+
  Example usage:
  ```js
  import { randomBytes } from 'socket:crypto'
@@ -406,13 +406,13 @@ Generate `size` random bytes.
 
  This module provides an implementation of UDP datagram sockets. It does
  not (yet) provide any of the multicast methods or properties.
- 
+
  Example usage:
  ```js
  import { createSocket } from 'socket:dgram'
  ```
 
-## [`createSocket(options, callback)`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L626)
+## [`createSocket(options, callback)`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L623)
 
 Creates a `Socket` instance.
 
@@ -433,12 +433,12 @@ Creates a `Socket` instance.
 | Not specified | Socket |  |
 
 
-## [`Socket` (extends `EventEmitter`)](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L632)
+## [`Socket` (extends `EventEmitter`)](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L629)
 
 New instances of dgram.Socket are created using dgram.createSocket().
  The new keyword is not to be used to create dgram.Socket instances.
 
-### [`bind(port, address, callback)`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L707)
+### [`bind(port, address, callback)`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L704)
 
 External docs: https://nodejs.org/api/dgram.html#socketbindport-address-callback
 
@@ -457,7 +457,7 @@ Listen for datagram messages on a named port and optional address
 | callback | function |  | false | With no parameters. Called when binding is complete. |
 
 
-### [`connect(port, host, connectListener)`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L760)
+### [`connect(port, host, connectListener)`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L757)
 
 External docs: https://nodejs.org/api/dgram.html#socketconnectport-address-callback
 
@@ -479,7 +479,7 @@ Associates the dgram.Socket to a remote address and port. Every message sent
 | connectListener | function |  | true | Common parameter of socket.connect() methods. Will be added as a listener for the 'connect' event once. |
 
 
-### [`disconnect()`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L795)
+### [`disconnect()`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L792)
 
 External docs: https://nodejs.org/api/dgram.html#socketdisconnect
 
@@ -488,7 +488,7 @@ A synchronous function that disassociates a connected dgram.Socket from
  disconnected socket will result in an ERR_SOCKET_DGRAM_NOT_CONNECTED exception.
 
 
-### [`send(msg, offset, length, port, address, callback)`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L854)
+### [`send(msg, offset, length, port, address, callback)`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L851)
 
 External docs: https://nodejs.org/api/dgram.html#socketsendmsg-offset-length-port-address-callback
 
@@ -541,7 +541,7 @@ Broadcasts a datagram on the socket. For connectionless sockets, the
 | callback | Function |  | true | Called when the message has been sent. |
 
 
-### [`close(callback)`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L934)
+### [`close(callback)`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L931)
 
 External docs: https://nodejs.org/api/dgram.html#socketclosecallback
 
@@ -555,7 +555,7 @@ Close the underlying socket and stop listening for data on it. If a
 | callback | function |  | true | Called when the connection is completed or on error. |
 
 
-### [`address()`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1000)
+### [`address()`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L997)
 
 External docs: https://nodejs.org/api/dgram.html#socketaddress
 
@@ -573,7 +573,7 @@ Returns an object containing the address information for a socket. For
 | socketInfo.family | string | The IP family of the socket |
 
 
-### [`remoteAddress()`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1035)
+### [`remoteAddress()`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1032)
 
 External docs: https://nodejs.org/api/dgram.html#socketremoteaddress
 
@@ -590,7 +590,7 @@ Returns an object containing the address, family, and port of the remote
 | socketInfo.family | string | The IP family of the socket |
 
 
-### [`setRecvBufferSize(size)`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1066)
+### [`setRecvBufferSize(size)`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1063)
 
 External docs: https://nodejs.org/api/dgram.html#socketsetrecvbuffersizesize
 
@@ -603,7 +603,7 @@ Sets the SO_RCVBUF socket option. Sets the maximum socket receive buffer in
 | size | number |  | false | The size of the new receive buffer |
 
 
-### [`setSendBufferSize(size)`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1083)
+### [`setSendBufferSize(size)`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1080)
 
 External docs: https://nodejs.org/api/dgram.html#socketsetsendbuffersizesize
 
@@ -616,13 +616,13 @@ Sets the SO_SNDBUF socket option. Sets the maximum socket send buffer in
 | size | number |  | false | The size of the new send buffer |
 
 
-### [`getRecvBufferSize()`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1096)
+### [`getRecvBufferSize()`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1093)
 
 External docs: https://nodejs.org/api/dgram.html#socketgetrecvbuffersize
 
 
 
-### [`getSendBufferSize()`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1104)
+### [`getSendBufferSize()`](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1101)
 
 External docs: https://nodejs.org/api/dgram.html#socketgetsendbuffersize
 
@@ -633,27 +633,27 @@ External docs: https://nodejs.org/api/dgram.html#socketgetsendbuffersize
 | Not specified | number | the SO_SNDBUF socket send buffer size in bytes. |
 
 
-## [`ERR_SOCKET_ALREADY_BOUND` (extends `SocketError`)](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1175)
+## [`ERR_SOCKET_ALREADY_BOUND` (extends `SocketError`)](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1172)
 
 Thrown when a socket is already bound.
 
-## [`ERR_SOCKET_DGRAM_IS_CONNECTED` (extends `SocketError`)](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1192)
+## [`ERR_SOCKET_DGRAM_IS_CONNECTED` (extends `SocketError`)](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1189)
 
 Thrown when the socket is already connected.
 
-## [`ERR_SOCKET_DGRAM_NOT_CONNECTED` (extends `SocketError`)](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1199)
+## [`ERR_SOCKET_DGRAM_NOT_CONNECTED` (extends `SocketError`)](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1196)
 
 Thrown when the socket is not connected.
 
-## [`ERR_SOCKET_DGRAM_NOT_RUNNING` (extends `SocketError`)](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1207)
+## [`ERR_SOCKET_DGRAM_NOT_RUNNING` (extends `SocketError`)](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1204)
 
 Thrown when the socket is not running (not bound or connected).
 
-## [`ERR_SOCKET_BAD_TYPE` (extends `TypeError`)](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1214)
+## [`ERR_SOCKET_BAD_TYPE` (extends `TypeError`)](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1211)
 
 Thrown when a bad socket type is used in an argument.
 
-## [`ERR_SOCKET_BAD_PORT` (extends `RangeError`)](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1224)
+## [`ERR_SOCKET_BAD_PORT` (extends `RangeError`)](https://github.com/socketsupply/socket/blob/master/api/dgram.js#L1221)
 
 Thrown when a bad port is given.
 
@@ -666,7 +666,7 @@ Thrown when a bad port is given.
  operating system facilities to perform name resolution. It may not need to
  perform any network communication. To perform name resolution the way other
  applications on the same system do, use dns.lookup().
- 
+
  Example usage:
  ```js
  import { lookup } from 'socket:dns'
@@ -715,7 +715,7 @@ Resolves a host name (e.g. `example.org`) into the first found A (IPv4) or
  operating system facilities to perform name resolution. It may not need to
  perform any network communication. To perform name resolution the way other
  applications on the same system do, use dns.lookup().
- 
+
  Example usage:
  ```js
  import { lookup } from 'socket:dns/promises'
@@ -981,7 +981,7 @@ This is a `FunctionDeclaration` named `writev` in `api/fs/index.js`, it's export
 
 # [FS.promises](https://github.com/socketsupply/socket/blob/master/api/fs/promises.js#L25)
 
- 
+
   * This module enables interacting with the file system in a way modeled on
  standard POSIX functions.
 
@@ -997,7 +997,7 @@ This is a `FunctionDeclaration` named `writev` in `api/fs/index.js`, it's export
  | `Library/Caches` | The app’s sandboxed caches directory. The contents of this directory are not synchronized via iTunes and may be deleted by the system at any time. It's a good place to store data which provides a good offline-first experience for the user. |
  | `Library/Preferences` | The app’s sandboxed preferences directory. The contents of this directory are synchronized via iTunes. Its purpose is to be used by the Settings app. Avoid creating your own files in this directory. |
  | `tmp` | The app’s sandboxed temporary directory. The contents of this directory are not synchronized via iTunes and may be deleted by the system at any time. Although, it's recommended that you delete data that is not necessary anymore manually to minimize the space your app takes up on the file system. Use this directory to store data that is only useful during the app runtime. |
- 
+
  Example usage:
  ```js
  import fs from 'socket:fs/promises'
@@ -1185,7 +1185,7 @@ External docs: https://nodejs.org/dist/latest-v16.x/docs/api/fs.html#fspromisesw
  ```
  ipc://command?key1=value1&key2=value2...
  ```
- 
+
  Example usage:
  ```js
  import { send } from 'socket:ipc'
@@ -1226,7 +1226,7 @@ Sends an async IPC command request with parameters.
 
  This module provides normalized system information from all the major
  operating systems.
- 
+
  Example usage:
  ```js
  import { arch, platform } from 'socket:os'
@@ -1299,7 +1299,7 @@ This is a `FunctionDeclaration` named `availableMemory` in `api/os.js`, it's exp
 
 # [Path](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L9)
 
- 
+
  Example usage:
  ```js
  import { Path } from 'socket:path'
@@ -1528,14 +1528,14 @@ External docs: https://socketsupply.co/guides/#p2p-guide
 
 
  Provides a higher level API over the stream-relay protocol.
- 
+
  Example usage:
  ```js
  import { Peer } from 'socket:peer'
  ```
 
 
-## [`Peer` (extends `EventEmitter`)](https://github.com/socketsupply/socket/blob/master/api/peer.js#L46)
+## [`Peer` (extends `EventEmitter`)](https://github.com/socketsupply/socket/blob/master/api/peer.js#L50)
 
 
 The Peer class is an EventEmitter. It emits events when new network events
@@ -1544,7 +1544,7 @@ are received (.on), it can also emit new events to the network (.emit).
 ```js
 import { Peer } from 'socket:peer'
 
-const pair = await Peer.createPair()
+const pair = await Peer.createKeys()
 const clusterId = await Peer.createClusterId()
 
 const peer = new Peer({ ...pair, clusterId })
@@ -1553,10 +1553,13 @@ peer.on('greeting', (value, peer, address, port) => {
   console.log(value)
 })
 
-const packet = await peer.emit('greeting', { english: 'hello, world' })
+window.onload = () => {
+  const value = { english: 'hello, world' }
+  const packet = await peer.emit('greeting', value)
+}
 ```
 
-### [`constructor(options)`](https://github.com/socketsupply/socket/blob/master/api/peer.js#L56)
+### [`constructor(options)`](https://github.com/socketsupply/socket/blob/master/api/peer.js#L60)
 
 `Peer` class constructor.
 
@@ -1570,7 +1573,7 @@ const packet = await peer.emit('greeting', { english: 'hello, world' })
 | options.peers | Array |  | false | An array of RemotePeer |
 
 
-### [`createKeys()`](https://github.com/socketsupply/socket/blob/master/api/peer.js#L80)
+### [`createKeys()`](https://github.com/socketsupply/socket/blob/master/api/peer.js#L84)
 
 A method that will generate a public and private key pair.
  The ed25519 pair can be stored by an app with a secure API.
@@ -1581,7 +1584,7 @@ A method that will generate a public and private key pair.
 | pair | Object<Pair> | A pair of keys |
 
 
-### [`createClusterId()`](https://github.com/socketsupply/socket/blob/master/api/peer.js#L94)
+### [`createClusterId()`](https://github.com/socketsupply/socket/blob/master/api/peer.js#L98)
 
 Create a clusterId from random bytes
 
@@ -1590,7 +1593,7 @@ Create a clusterId from random bytes
 | id | string | a hex encoded sha256 hash |
 
 
-### [`emit(event, message)`](https://github.com/socketsupply/socket/blob/master/api/peer.js#L105)
+### [`emit(event, message)`](https://github.com/socketsupply/socket/blob/master/api/peer.js#L109)
 
 Emits a message to the network
 
@@ -1606,7 +1609,7 @@ Emits a message to the network
 | Not specified | Object<Packet> | The packet that will be sent when possible |
 
 
-### [`join()`](https://github.com/socketsupply/socket/blob/master/api/peer.js#L128)
+### [`join()`](https://github.com/socketsupply/socket/blob/master/api/peer.js#L132)
 
 Starts the process of connecting to the network.
 
@@ -1618,7 +1621,7 @@ Starts the process of connecting to the network.
 
 # [Process](https://github.com/socketsupply/socket/blob/master/api/process.js#L9)
 
- 
+
  Example usage:
  ```js
  import process from 'socket:process'
@@ -1672,7 +1675,7 @@ External docs: module:Application Application
 
 
  Provides ApplicationWindow class and methods
- 
+
  Usaully you don't need to use this module directly, instance of ApplicationWindow
  are returned by the methods of the {@link module:Application Application} module.
 
