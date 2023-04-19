@@ -547,7 +547,7 @@ function determine_cxx () {
   fi
 
   export CXX
-  update_env_data
+  update_env_data "CXX=$CXX"
 }
 
 function first_time_experience_setup() {
