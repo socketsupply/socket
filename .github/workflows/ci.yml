@@ -174,29 +174,29 @@ jobs:
       run: |
         brew install automake
 
-    - name: Set up JDK 18
-      uses: actions/setup-java@v3
-      with:
-        distribution: 'zulu'
-        java-version: 18
-
-    - name: Setup Android SDK
-      uses: android-actions/setup-android@v2
-
-    - name: Gradle cache
-      uses: gradle/gradle-build-action@v2
-      with:
-        gradle-version: 7.6.1
+    - name: Android FTE
+      run: |
+        ./bin/android-functions.sh --android-fte --yes-deps
+      env:
+        VERBOSE: 1
+        DEBUG: 1
+        NO_IOS: 1
+        CI: true
+        SSC_ANDROID_CI: true
+        ANDROID_SUPPORTED_ABIS: x86_64
+        JAVA_HOME: ""
+        NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
 
     - name: Build Socket Runtime
       run: |
-        yes | sdkmanager --licenses > /dev/null
-        sdkmanager --install 'ndk;25.0.8775105' 'build-tools;33.0.2' 'system-images;android-33;google_apis;x86_64'
-        VERBOSE=1 ./bin/install.sh
+        ./bin/install.sh
         ./bin/ci_version_check.sh
       env:
+        VERBOSE: 1
+        NO_IOS: true
         CI: true
         SSC_ANDROID_CI: true
+        ANDROID_SUPPORTED_ABIS: x86_64
         NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
 
     - name: AVD cache
@@ -242,10 +242,11 @@ jobs:
         script: |
           ./bin/ci_version_check.sh
           npm install
-          ANDROID_SUPPORTED_ABIS="x86_64" npm run test:android
+          npm run test:android
       env:
         CI: true
         SSC_ANDROID_CI: true
+        ANDROID_SUPPORTED_ABIS: x86_64
         NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
 
   android_linux:
