@@ -21,7 +21,9 @@ elif [[ "$host" == *"MSYS_NT"* ]]; then
 fi
 
 ssc_env=""
-if [ -f ".ssc.env" ]; then
+if [ -f "$root/.ssc.env" ]; then
+  ssc_env="$root/.ssc.env"
+elif [ -f ".ssc.env" ]; then
   ssc_env=".ssc.env"
 elif [ -f "../.ssc.env" ]; then
   ssc_env="../.ssc.env"
