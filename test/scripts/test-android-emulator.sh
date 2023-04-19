@@ -40,7 +40,10 @@ fi
 id="co.socketsupply.socket.tests"
 adb="$(which adb 2>/dev/null)"
 [[ -z "$adb" ]] && adb="$ANDROID_HOME/platform-tools/adb"
-[[ ! -f "$adb" ]] && (echo "adb not in path or ANDROID_HOME not set."; exit 1)
+if [[ ! -f "$adb" ]]; then
+  echo "adb not in path or ANDROID_HOME not set."
+  exit 1
+fi
 export adb
 
 temp="$(mktemp)"

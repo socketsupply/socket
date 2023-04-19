@@ -3,8 +3,12 @@
 id="co.socketsupply.socket.tests"
 
 ## Start application
-adb="$(which adb 2>/dev/null)"
-[[ ! -f "$adb" ]] && (echo "adb not in path or ANDROID_HOME not set."; exit 1)
+[[ -z "$adb" ]] && adb="$(which adb 2>/dev/null)"
+if [[ ! -f "$adb" ]]; then
+  echo "adb not in path or ANDROID_HOME not set."
+  exit 1
+fi
+
 "$adb" shell am start -n "$id/.MainActivity" || exit $?
 
 echo "polling for '$id' PID in adb"
