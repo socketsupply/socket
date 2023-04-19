@@ -27,8 +27,10 @@ count=0
 timeout=5
 [[ -n "$CI" ]] && timeout=30
 echo "App start timeout: $timeout"
+echo ""
 while [ -z "$pid" ] && (( count < timeout )); do
-  echo -n "$count..."
+  echo -e "\e[1A\e[K$count..."
+  # echo "$count..."
   pid="$($adb shell ps | grep "$id" | awk '{print $2}' 2>/dev/null)"
   ## Probe for application process ID
   sleep 1

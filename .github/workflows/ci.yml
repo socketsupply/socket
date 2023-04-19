@@ -198,35 +198,7 @@ jobs:
         SSC_ANDROID_CI: true
         ANDROID_SUPPORTED_ABIS: x86_64
         NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
-
-    - name: AVD cache
-      uses: actions/cache@v3
-      id: avd-cache
-      with:
-        path: |
-          ~/.android/avd/*
-          ~/.android/adb*
-        key: avd-33
-
-    - name: create AVD and generate snapshot for caching
-      if: steps.avd-cache.outputs.cache-hit != 'true'
-      uses: reactivecircus/android-emulator-runner@v2
-      with:
-        api-level: 33
-        arch: x86_64
-        disable-animations: false
-        emulator-boot-timeout: 1200
-        emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
-        force-avd-creation: false
-        ndk: 25.0.8775105
-        profile: pixel_5
-        target: google_apis
-        script: echo "Generated AVD snapshot for caching."
-      env:
-        CI: true
-        SSC_ANDROID_CI: true
-        NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
-
+        
     - name: Run emulator tests
       uses: reactivecircus/android-emulator-runner@v2
       with:
