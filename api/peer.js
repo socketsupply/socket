@@ -30,7 +30,7 @@ const PeerFactory = createPeer(dgram)
  *```js
  *import { Peer } from 'socket:peer'
  *
- *const pair = await Peer.createPair()
+ *const pair = await Peer.createKeys()
  *const clusterId = await Peer.createClusterId()
  *
  *const peer = new Peer({ ...pair, clusterId })
@@ -39,10 +39,14 @@ const PeerFactory = createPeer(dgram)
  *  console.log(value)
  *})
  *
- *const packet = await peer.emit('greeting', { english: 'hello, world' })
+ *window.onload = () => {
+ *  const value = { english: 'hello, world' }
+ *  const packet = await peer.emit('greeting', value)
+ *}
  *```
  *
  */
+
 export class Peer extends EventEmitter {
   /**
    * `Peer` class constructor.
@@ -131,15 +135,9 @@ export class Peer extends EventEmitter {
     this.opts.clusterId = await sha256(this.opts.custerId)
     this.opts.peerId = this.opts.peerId || (await sha256(randomBytes(32))).toString('hex')
 
-    this.peer = await PeerFactory.create({ ...this.opts })
+    this.peer = await PeerFactory.create({ ...this.opts, introducer: true })
 
-    this.peer.onConnect = (peer, packet, port, address) => {
-      if (packet.clusterId !== this.peer.clusterId) return
-      this._emit('connection', peer, address, port)
-    }
-
-    this.peer.onPacket = (packet, port, address) => {
-      if (packet.usr1 === 'connection') return
+    this.peer.onPacket = (packet, port, address, data) => {
       this._emit(packet.usr1, packet.message, address, port)
     }
 

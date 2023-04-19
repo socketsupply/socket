@@ -1,3 +1,4 @@
+
 /**
  * @module Peer
  * @status Experimental
@@ -34,7 +35,7 @@ export { sha256, Cache, Encryption }
 export const PING_RETRY = 500
 export const DEFAULT_PORT = 9777
 export const DEFAULT_TEST_PORT = 9778
-export const KEEP_ALIVE = 29_000
+export const KEEP_ALIVE = 28_000
 
 export const portGenerator = (localPort, testPort) => {
   const portCache = { [localPort]: true, [testPort]: true }
@@ -50,14 +51,13 @@ export class RemotePeer {
   peerId = null
   address = null
   port = 0
-
   natType = null
   clusterId = null
   pingId = null
   distance = 0
-  geospacial = null
   publicKey = null
   privateKey = null
+  clock = 0
   lastUpdate = 0
   lastRequest = 0
 
@@ -66,6 +66,7 @@ export class RemotePeer {
     if (!o.address) throw new Error('expected .address')
     if (!o.peerId) throw new Error('expected .peerId')
 
+    if (o.clusterId) this.clusterId = o.clusterId
     if (!o.clusterId) this.natType = 'static'
     if (o.publicKey) this.publicKey = o.publicKey
     if (o.privateKey) this.privateKey = o.privateKey
@@ -81,7 +82,9 @@ export const createPeer = udp => {
     natType = null
     clusterId = null
     reflectionId = null
+    reflectionFirstResponder = null
     peerId = ''
+    pingStart = 0
     ctime = Date.now()
     lastUpdate = 0
     closing = false
@@ -89,12 +92,18 @@ export const createPeer = udp => {
     unpublished = {}
     cache = null
     queries = {}
+    joins = {}
+    connects = {}
     limits = {}
+    uptime = 0
     clock = 0
     maxHops = 16
     bdpCache = []
 
     peers = JSON.parse(/* snapshot_start=1681336577824, filter=easy,static */`[
+      {"address":"44.213.42.133","port":10885,"peerId":"4825fe0475c44bc0222e76c5fa7cf4759cd5ef8c66258c039653f06d329a9af5"},
+      {"address":"107.20.123.15","port":31503,"peerId":"2de8ac51f820a5b9dc8a3d2c0f27ccc6e12a418c9674272a10daaa609eab0b41"},
+      {"address":"54.227.171.107","port":43883,"peerId":"7aa3d21ceb527533489af3888ea6d73d26771f30419578e85fba197b15b3d18d"},
       {"address":"44.213.42.133","port":10885,"peerId":"4825fe0475c44bc0222e76c5fa7cf4759cd5ef8c66258c039653f06d329a9af5"},
       {"address":"107.20.123.15","port":31503,"peerId":"2de8ac51f820a5b9dc8a3d2c0f27ccc6e12a418c9674272a10daaa609eab0b41"},
       {"address":"54.227.171.107","port":43883,"peerId":"7aa3d21ceb527533489af3888ea6d73d26771f30419578e85fba197b15b3d18d"},
@@ -152,12 +161,11 @@ export const createPeer = udp => {
       this.onError = (err) => { console.error(err) }
 
       Object.assign(this, config)
-      this.introducer = !!config.introducer
-      this.natType = config.introducer ? 'static' : null
-      this.port = null
+      this.port = config.port || null
+      this.natType = config.natType || null
       this.address = config.address || null
 
-      if (config.introducer) this.port = config.port || DEFAULT_PORT
+      if (!this.clusterId) this.port = config.port || DEFAULT_PORT
 
       this.socket = udp.createSocket('udp4', this)
       this.testSocket = udp.createSocket('udp4', this)
@@ -197,8 +205,15 @@ export const createPeer = udp => {
         const keepaliveHandler = async ts => {
           if (this.closing) return false // cancel timer
 
+          if ((this.pingStart + this.config.keepalive) < Date.now()) {
+            this.pingStart = 0
+            this.reflectionFirstResponder = null
+          }
+
+          this.uptime += this.keepalive
+
           const offline = globalThis.navigator && !globalThis.navigator.onLine
-          if (!offline && !this.config.introducer) this.requestReflection()
+          if (!offline) this.requestReflection()
 
           if (this.onInterval) this.onInterval()
 
@@ -214,6 +229,14 @@ export const createPeer = udp => {
 
           for (const k of Object.keys(this.queries)) {
             if (--this.queries[k] === 0) delete this.queries[k]
+          }
+
+          for (const k of Object.keys(this.joins)) {
+            if (--this.joins[k] === 0) delete this.joins[k]
+          }
+
+          for (const k of Object.keys(this.connects)) {
+            if (--this.connects[k] === 0) delete this.connects[k]
           }
 
           // debug('PING HART', this.peerId, this.peers)
@@ -232,10 +255,10 @@ export const createPeer = udp => {
             }
 
             this.ping(peer, {
+              clusterId: this.clusterId,
               peerId: this.peerId,
               natType: this.natType,
               cacheSize: this.cache.size,
-              clusterId: this.clusterId,
               isHeartbeat: true
             })
           }
@@ -310,10 +333,11 @@ export const createPeer = udp => {
       }
 
       const peers = this.getPeers(packet, list)
-      const data = await Packet.encode(packet)
 
       for (const peer of peers) {
-        this.timer(10, 10, async () => {
+        this.timer(10, 0, async () => {
+          const data = await Packet.encode(packet)
+
           if (await this.send(isTaxed ? addHops(data) : data, peer.port, peer.address)) {
             delete this.unpublished[packetId]
           }
@@ -343,7 +367,7 @@ export const createPeer = udp => {
 
     requestReflection (reflectionId) {
       // this.reflectionId will have to get unassigned at some point to allow this to try again
-      if (this.closing || this.config.introducer) return
+      if (this.closing || !this.clusterId || this.pingStart > 0) return
 
       // get two random easy peers from the known peers and send pings, we can
       // learn this peer's nat type if we have at least two Pongs from peers
@@ -353,22 +377,29 @@ export const createPeer = udp => {
       const [peer1, peer2] = peers.sort(() => Math.random() - 0.5)
 
       const peerId = this.peerId
+      const clusterId = this.clusterId
       const pingId = Math.random().toString(16).slice(2)
       const testPort = this.config.testPort
 
+      this.pingStart = Date.now()
+
       // debug(`  requestReflection peerId=${peerId}, pingId=${pingId}`)
-      this.ping(peer1, { peerId, pingId, isReflection: true })
-      this.ping(peer2, { peerId, pingId, isReflection: true, testPort })
+      this.ping(peer1, { peerId, pingId, isReflection: true, clusterId })
+      this.ping(peer2, { peerId, pingId, isReflection: true, clusterId, testPort })
     }
 
     async ping (peer, props = {}) {
       if (!peer) return
 
-      const packet = new PacketPing({
-        clusterId: this.clusterId,
-        message: { peerId: peer.peerId, ...props }
-      })
+      const p = {
+        message: {
+          isHeartbeat: props.heartbeat === true,
+          peerId: peer.peerId,
+          ...props
+        }
+      }
 
+      const packet = new PacketPing(p)
       const data = await Packet.encode(packet)
 
       const retry = async () => {
@@ -391,23 +422,24 @@ export const createPeer = udp => {
 
     setPeer (packet, port, address) {
       if (this.address === address && this.port === port) return this
-      const { peerId, natType } = packet.message
+      const { peerId, clusterId, natType } = packet.message
 
       const existingPeer = this.peers.find(p => p.peerId === peerId)
+      if (existingPeer?.clock > packet.clock) return
 
       const newPeer = {
         peerId,
         port,
         address,
-        clusterId: packet.message.clusterId,
         lastUpdate: Date.now(),
+        clock: packet.clock,
         distance: 0
       }
 
       if (natType) newPeer.natType = natType
-      newPeer.clusterId = packet.clusterId
 
       if (!existingPeer) {
+        if (clusterId) newPeer.clusterId = clusterId
         try {
           const peer = new RemotePeer(newPeer)
 
@@ -426,7 +458,7 @@ export const createPeer = udp => {
         }
       }
 
-      newPeer.distance = existingPeer.lastUpdate - existingPeer.lastRequest
+      newPeer.distance = existingPeer.lastRequest - existingPeer.lastUpdate
       Object.assign(existingPeer, newPeer)
       return existingPeer
     }
@@ -439,11 +471,11 @@ export const createPeer = udp => {
       if (!this.port) return
 
       const packet = new PacketJoin({
-        clusterId: this.clusterId,
+        clock: this.clock++,
         message: {
+          clusterId: this.clusterId,
           peerId: this.peerId,
           natType: this.natType,
-          geospatial: null, // hold
           address: this.address,
           port: this.port
         }
@@ -647,7 +679,7 @@ export const createPeer = udp => {
 
     async onQueryPacket (packet, port, address) {
       if (this.queries[packet.packetId]) return
-      this.queries[packet.packetId] = 32 // TTL of 32x30s
+      this.queries[packet.packetId] = 6
 
       const { packetId, clusterId } = packet
 
@@ -672,7 +704,10 @@ export const createPeer = udp => {
     // Events
     //
     onConnection (peer, packet, port, address) {
-      if (this.closing || this.config.introducer) return
+      if (this.connects[packet.packetId]) return
+      this.connects[packet.packetId] = true
+
+      if (this.closing || !this.clusterId) return
       this.negotiateCache(peer, packet, port, address)
       if (this.onConnect) this.onConnect(peer, packet, port, address)
     }
@@ -682,14 +717,18 @@ export const createPeer = udp => {
       const { pingId, isReflection, isConnection, clusterId, isHeartbeat, testPort } = packet.message
       const peer = this.setPeer(packet, port, address)
 
-      if (isHeartbeat) {
+      if (!isReflection && isHeartbeat) {
         if (clusterId) await this.negotiateCache(peer, packet, port, address)
         return
       }
 
+      if (!port) port = packet.messsage.port
+      if (!address) address = packet.message.address
+
       const message = {
-        peerId: this.peerId,
         cacheSize: this.cache.size,
+        clusterId: peer.clusterId || clusterId,
+        peerId: this.peerId,
         port,
         address
       }
@@ -706,19 +745,19 @@ export const createPeer = udp => {
 
       if (isConnection && peer) {
         message.isConnection = true
-        message.port = this.port
-        message.address = this.address
-        this.onConnection(peer, packet, port, address)
+        message.port = this.port || port
+        message.address = this.address || address
+        if (peer.clusterId) this.onConnection(peer, packet, port, address)
       }
 
-      const packetPong = new PacketPong({ clusterId: this.clusterId, message })
+      const packetPong = new PacketPong({ message })
       const buf = await Packet.encode(packetPong)
 
       await this.send(buf, port, address)
 
       if (testPort) { // also send to the test port
         message.testPort = testPort
-        const packetPong = new PacketPong({ clusterId: this.clusterId, message })
+        const packetPong = new PacketPong({ message })
         const buf = await Packet.encode(packetPong)
         await this.send(buf, testPort, address)
       }
@@ -737,7 +776,7 @@ export const createPeer = udp => {
         peer.lastUpdate = Date.now()
         if (pingId) peer.pingId = pingId
 
-        this.onConnection(peer, packet, port, address)
+        if (peer.clusterId) this.onConnection(peer, packet, port, address)
         return
       }
 
@@ -756,6 +795,7 @@ export const createPeer = udp => {
 
         if (!testPort && pingId && this.reflectionId === null) {
           this.reflectionId = pingId
+          this.reflectionFirstResponder = { port, address, pingId }
         } else if (!testPort && pingId && pingId === this.reflectionId) {
           if (packet.message.address === this.address && packet.message.port === this.port) {
             this.natType = 'easy'
@@ -763,19 +803,37 @@ export const createPeer = udp => {
             this.natType = 'hard'
           }
 
-          this.reflectionId = null
+          {
+            const peer = this.peers.find(p => p.port === port && p.address === address)
+            this.ping(peer, {
+              clusterId: this.clusterId,
+              peerId: this.peerId,
+              natType: this.natType,
+              cacheSize: this.cache.size,
+              isHeartbeat: true
+            })
+          }
 
-          this.ping(this, {
-            peerId: this.peerId,
-            natType: this.natType,
-            cacheSize: this.cache.size,
-            isHeartbeat: true
-          })
+          if (this.reflectionFirstResponder) {
+            const { port, address } = this.reflectionFirstResponder
+            const peer = this.setPeer(packet, port, address)
+
+            this.ping(peer, {
+              clusterId: this.clusterId,
+              peerId: this.peerId,
+              natType: this.natType,
+              cacheSize: this.cache.size,
+              isHeartbeat: true
+            })
+          }
+
+          this.reflectionId = null
+          this.reflectionFirstResponder = null
 
           if (oldType !== this.natType) {
             // debug(`  response ${this.peerId} nat=${this.natType}`)
             if (this.onNat) this.onNat(this.natType)
-            this.join() // this peer can let the user know we now know our nat type
+            this.join()
           }
         }
 
@@ -783,9 +841,12 @@ export const createPeer = udp => {
         this.port = packet.message.port
       } else if (!this.peers.find(p => p.address === address && p.port === port)) {
         const peer = this.setPeer(packet, port, address)
-        if (peer) this.onConnection(peer, packet, port, address)
+        if (peer && peer.clusterId) this.onConnection(peer, packet, port, address)
       } else {
         this.setPeer(packet, port, address)
+        if (this.clusterId) {
+          this.join()
+        }
       }
     }
 
@@ -796,7 +857,7 @@ export const createPeer = udp => {
       const peer = this.setPeer(packet, packet.message.port, packet.message.address)
       if (!peer || peer.connecting) return
 
-      this.negotiateCache(peer, packet, port, address)
+      // this.negotiateCache(peer, packet, port, address)
 
       const remoteHard = packet.message.natType === 'hard'
       const localHard = this.natType === 'hard'
@@ -810,8 +871,8 @@ export const createPeer = udp => {
       const pingId = Math.random().toString(16).slice(2)
 
       const encoded = await Packet.encode(new PacketPing({
-        clusterId: this.clusterId,
         message: {
+          clusterId: packet.message.clusterId,
           peerId: this.peerId,
           natType: this.natType,
           isConnection: true,
@@ -862,10 +923,10 @@ export const createPeer = udp => {
         return
       }
 
-      // this.onConnection(peer, packet, port, address)
+      if (peer.clusterId) this.onConnection(peer, packet, port, address)
 
       // debug(`onintro (${this.peerId} easy/static, ${packet.message.peerId} easy/static)`)
-      this.ping(peer, { peerId: this.peerId, natType: this.natType, isConnection: true, pingId: packet.message.pingId })
+      this.ping(peer, { clusterId: this.clusterId, peerId: this.peerId, natType: this.natType, isConnection: true, pingId: packet.message.pingId })
     }
 
     //
@@ -876,54 +937,66 @@ export const createPeer = udp => {
     //  - introduce this peer to some random peers in this.peers (introductions
     //    are only made to live peers, we do not track dead peers -- our TTL is
     //    30s so this would create a huge amount of useless data sent over the network.
-    async onJoin (packet, port, address) {
+    async onJoin (packet, port, address, data) {
+      if (this.joins[packet.packetId] || packet.hops > this.maxHops) return
+
+      this.joins[packet.packetId] = 2
+
       this.lastUpdate = Date.now()
       this.setPeer(packet, port, address)
 
-      for (const peer of this.getPeers(packet, this.peers, 6)) {
-        if (this.peerId === peer.peerId) continue
-        if (this.peerId === packet.message.peerId) continue
-        if (peer.peerId === packet.message.peerId) continue
-        if (!peer.port || !peer.natType) continue
+      let list = this.peers.filter(p => {
+        if (p.natType === 'hard' && this.natType === 'hard') return null
+        if (this.peerId === p.peerId) return null
+        if (this.peerId === packet.message.peerId) return null
+        if (p.peerId === packet.message.peerId) return null
+        if (!p.port || !p.natType) return null
+        return p
+      })
 
-        // dont try to intro two hard peers, so we don't need thisHard === remoteHard check
-        if (peer.natType === 'hard' && this.natType === 'hard') continue
+      // if this is a propagated join, only intro peers that are a cluster member
+      if (packet.hops > 1) list = list.filter(p => p.clusterId === packet.message.clusterId)
 
+      const peers = this.getPeers(packet, list, 3)
+      for (const peer of peers) {
         // tell the caller to ping a peer from the list
-        const intro1 = await Packet.encode(new PacketIntro({
-          clusterId: peer.clusterId,
+        const i1p = new PacketIntro({
           message: {
+            clusterId: peer.clusterId,
             peerId: peer.peerId,
             natType: peer.natType,
             address: peer.address,
             port: peer.port
           }
-        }))
+        })
+        const intro1 = await Packet.encode(i1p)
 
         // tell the peer from the list to ping the caller
-        const intro2 = await Packet.encode(new PacketIntro({
-          clusterId: packet.message.clusterId,
+        const i2p = new PacketIntro({
           message: {
+            clusterId: packet.message.clusterId,
             peerId: packet.message.peerId,
             natType: packet.message.natType,
             address: packet.message.address,
             port: packet.message.port
           }
-        }))
+        })
+        const intro2 = await Packet.encode(i2p)
 
         await new Promise(resolve => {
           this.timer(Math.random() * 2, 0, async () => {
             const sends = []
-            // debug(`onJoin -> ${peer.address}:${peer.port}`)
             sends.push(this.send(intro2, peer.port, peer.address))
-
-            // debug(`onJoin -> ${packet.message.address}:${packet.message.port}`)
             sends.push(this.send(intro1, packet.message.port, packet.message.address))
-
             await Promise.all(sends).then(resolve)
           })
         })
       }
+
+      if (!this.clusterId && !packet.message.clusterId) return
+
+      const ignorelist = [{ address, port }, { address: packet.message.address, port: packet.message.port }]
+      this.mcast(packet, packet.packetId, packet.clusterId, true, ignorelist)
     }
 
     //
@@ -963,7 +1036,7 @@ export const createPeer = udp => {
         }
       }
 
-      if (packet.hops > this.maxHops || predicate === false) return
+      if (predicate === false || packet.hops > this.maxHops) return
       this.mcast(packet, packet.packetId, packet.clusterId, true, [{ address, port }])
     }
 

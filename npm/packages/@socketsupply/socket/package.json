@@ -40,8 +40,8 @@
   "optionalDependencies": {
     "@socketsupply/socket-darwin-arm64": "0.2.8",
     "@socketsupply/socket-darwin-x64": "0.2.8",
-    "@socketsupply/socket-linux-x64": "0.2.8",
     "@socketsupply/socket-linux-arm64": "0.2.8",
+    "@socketsupply/socket-linux-x64": "0.2.8",
     "@socketsupply/socket-win32-x64": "0.2.8"
   }
 }

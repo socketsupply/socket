@@ -143,6 +143,8 @@ export class PTP {
   }
 }
 
+export default { PTP }
+
 export function formatPeerId (forPubKey) {
   return toBase64Str(forPubKey ?? new Uint8Array(0))
 }

@@ -1,6 +1,6 @@
-import { isBufferLike } from '../util.js'
-import { Buffer } from '../buffer.js'
-import { sodium, randomBytes } from '../crypto.js'
+import { isBufferLike } from 'socket:util'
+import { Buffer } from 'socket:buffer'
+import { sodium, randomBytes } from 'socket:crypto'
 
 const VERSION = 1
 const TYPE_BYTES = 1
@@ -249,8 +249,8 @@ export class Packet {
 
 export class PacketPing extends Packet {
   static type = 1
-  constructor ({ clusterId, message }) {
-    super({ type: PacketPing.type, clusterId, message })
+  constructor ({ message }) {
+    super({ type: PacketPing.type, message })
 
     validatePacket(message, {
       peerId: { required: true, type: 'string' },
@@ -268,10 +268,11 @@ export class PacketPing extends Packet {
 
 export class PacketPong extends Packet {
   static type = 2
-  constructor ({ clusterId, message }) {
-    super({ type: PacketPong.type, clusterId, message })
+  constructor ({ message }) {
+    super({ type: PacketPong.type, message })
 
     validatePacket(message, {
+      clusterId: { type: 'string' },
       peerId: { required: true, type: 'string' },
       port: { type: 'number' },
       testPort: { type: 'number' },
@@ -287,10 +288,11 @@ export class PacketPong extends Packet {
 
 export class PacketIntro extends Packet {
   static type = 3
-  constructor ({ clusterId, message }) {
-    super({ type: PacketIntro.type, clusterId, message })
+  constructor ({ message }) {
+    super({ type: PacketIntro.type, message })
 
     validatePacket(message, {
+      clusterId: { type: 'string' },
       peerId: { required: true, type: 'string' },
       natType: { required: true, type: 'string' },
       address: { required: true, type: 'string' },
@@ -301,10 +303,11 @@ export class PacketIntro extends Packet {
 
 export class PacketJoin extends Packet {
   static type = 4
-  constructor ({ clusterId, message }) {
-    super({ type: PacketJoin.type, clusterId, message })
+  constructor ({ message }) {
+    super({ type: PacketJoin.type, message })
 
     validatePacket(message, {
+      clusterId: { type: 'string' },
       peerId: { required: true, type: 'string' },
       natType: { required: true, type: 'string' },
       initial: { type: 'boolean' },
