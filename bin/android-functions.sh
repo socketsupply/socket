@@ -822,8 +822,10 @@ function android_fte() {
 function main() {
   while (( $# > 0 )); do
     declare arg="$1"; shift
-    [[ "$arg" == "--android-fte" ]] && android_fte "$@"
-    # [[ "$arg" == "--android-fte" ]] && exit 0
+    if [[ "$arg" == "--android-fte" ]]; then
+      android_fte "$@"
+      exit $?
+    fi
     [[ "$arg" == "--android-setup-required" ]] && android_setup_required "$@"
   done
 }
