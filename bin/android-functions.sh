@@ -78,7 +78,8 @@ function get_android_default_search_paths() {
     
     JAVA_HOME_SEARCH_PATHS+=("$HOME/Applications")
     JAVA_HOME_SEARCH_PATHS+=("$HOME/homebrew")
-    JAVA_HOME_SEARCH_PATHS+=("/Applications")
+    # This search is really slow under CI
+    [[ -z "$CI" ]] && JAVA_HOME_SEARCH_PATHS+=("/Applications")
   elif [[ "$host" = "Linux"  ]]; then
     ANDROID_HOME_SEARCH_PATHS+=("$HOME")
     JAVA_HOME_SEARCH_PATHS+=("$HOME/.local/bin")
