@@ -667,7 +667,7 @@ function android_first_time_experience_setup() {
 
   if [[ "$(host_os)" != "Win32" ]] && _android_setup_required && ! prompt_yn "Do you want to install Android build dependencies?
 Download size: 5.5GB, Installed size: 12.0GB"; then
-    return 1
+    return 2
   fi
 
   get_android_default_search_paths
@@ -756,7 +756,16 @@ function android_fte() {
     get_android_paths
     write_env_data
 
-    if android_first_time_experience_setup; then
+    android_first_time_experience_setup; rc=$?
+
+    if (( rc == 2 )); then
+      echo "warn - You have elected to not install Android dependencies."
+      echo "warn - You can use 'export NO_ANDROID=1' to avoid this prompt in the future."
+      unset BUILD_ANDROID
+      return $rc
+    fi
+
+    if $rc; then
       # Move ANDROID_SDK_MANAGER_JAVA_OPTS into JAVA_OPTS temporarily. We can't store JAVA_OPTS in .ssc.env because it doesn't work with gradle
       OLD_JAVA_OPTS="$JAVA_OPTS"
       [[ -n "$ANDROID_SDK_MANAGER_JAVA_OPTS" ]] && JAVA_OPTS="$OLD_JAVA_OPTS $ANDROID_SDK_MANAGER_JAVA_OPTS"
