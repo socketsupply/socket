@@ -2511,22 +2511,23 @@ int main (const int argc, const char* argv[]) {
 
       auto d = String(debugBuild ? "d" : "" );
 
-      flags += " -I" + prefixFile("include");
-      flags += " -L" + prefixFile("lib" + d + "/" + platform.arch + "-desktop");
-      auto main_o = prefixFile("objects/" + platform.arch + "-desktop/desktop/main" + d + ".o");
+      flags += " -I\"" + trim(prefixFile("include")) + "\" ";
+      flags += " -L\"" + trim(prefixFile("lib" + d + "/" + platform.arch + "-desktop")) + "\" ";
+      auto main_o = trim(prefixFile("objects/" + platform.arch + "-desktop/desktop/main" + d + ".o"));
+      
       if (!fs::exists(main_o)) {
         log("WARNING: Can't find main obj, unable to build: " + main_o);
         missing_assets = true;
       } else {
-        files += main_o;
+        files += " \"" + main_o + "\"";
       }
-      files += prefixFile("src/init.cc");
-      auto static_runtime = prefixFile("lib" + d + "/" + platform.arch + "-desktop/libsocket-runtime" + d + ".a");
+      files += " \"" + trim(prefixFile("src/init.cc")) + "\"";
+      auto static_runtime = trim(prefixFile("lib" + d + "/" + platform.arch + "-desktop/libsocket-runtime" + d + ".a"));
       if (!fs::exists(static_runtime)) {
         log("Can't find static runtime, unable to build: " + static_runtime);
         missing_assets = true;
       } else {
-        files += static_runtime;
+        files += " \"" +static_runtime + "\"";
       }
 
       if (missing_assets) {
