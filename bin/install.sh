@@ -240,7 +240,7 @@ function _build_cli {
 
   for (( i = 0; i < ${#sources[@]}; i++ )); do
     mkdir -p "$(dirname "${outputs[$i]}")"
-    quiet $CXX "${cflags[@]}"  \
+    quiet "$CXX" "${cflags[@]}"  \
       -c "${sources[$i]}"      \
       -o "${outputs[$i]}"
     die $? "$CXX ${cflags[@]} -c \"${sources[$i]}\" -o \"${outputs[$i]}\""
@@ -275,7 +275,7 @@ function _build_cli {
     # TODO "$libsocket_win" where it was doesn't work, if windows requires it to
     # be where it was, there should be a separate branch for windows.
     #
-    $CXX                                         \
+    quiet "$CXX"                                   \
       "$libsocket_win"                           \
       "$BUILD_DIR/$arch-$platform"/cli$d/*$d.o   \
       "${cflags[@]}"                             \
@@ -373,7 +373,7 @@ function _prebuild_desktop_main () {
 
   for (( i = 0; i < ${#sources[@]}; i++ )); do
     mkdir -p "$(dirname "${outputs[$i]}")"
-    quiet $CXX "${cflags[@]}" \
+    quiet "$CXX" "${cflags[@]}" \
       -c "${sources[$i]}"       \
       -o "${outputs[$i]}"
     die $? "not ok - unable to build. See trouble shooting guide in the README.md file:\n$CXX ${cflags[@]} -c ${sources[$i]} -o ${outputs[$i]}"

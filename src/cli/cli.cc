@@ -3175,8 +3175,17 @@ int main (const int argc, const char* argv[]) {
         ? settings.count("debug_flags") ? settings["debug_flags"] : ""
         : settings.count("build_flags") ? settings["build_flags"] : "";
 
+      auto quote = "";
+      if (platform.win && getEnv("CXX").find(" ") != SSC::String::npos) {
+        quote = "\"";
+      }
+
+      // windows / spaces in bin path - https://stackoverflow.com/a/27976653/3739540
       compileCommand
+        << quote // win32 - quote the entire command
+        << quote // win32 - quote the binary path
         << getEnv("CXX")
+        << quote // win32 - quote the binary path
         << " " << files
         << " " << flags
         << " " << extraFlags
@@ -3189,9 +3198,10 @@ int main (const int argc, const char* argv[]) {
         << " -DSSC_SETTINGS=\"" << encodeURIComponent(_settings) << "\""
         << " -DSSC_VERSION=" << SSC::VERSION_STRING
         << " -DSSC_VERSION_HASH=" << SSC::VERSION_HASH_STRING
+        << quote // win32 - quote the entire command
       ;
 
-      if (getEnv("DEBUG") == "1")
+      if (getEnv("DEBUG") == "1" || getEnv("VERBOSE") == "1")
         log(compileCommand.str());
 
       auto r = exec(compileCommand.str());
