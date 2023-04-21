@@ -34,7 +34,7 @@ function watchdog_file_set() {
   poll_adb_watchdog_file="$(mktemp)"
 }
 
-function watchdog_file_clear() {
+function watchdog_file_update() {
   exit_code=$1
   if [[ "$exit_code" != "0" ]]; then
     echo "$exit_code" > "$poll_adb_watchdog_file"
@@ -109,7 +109,7 @@ while read -r line; do
   if echo "$line" | grep 'Fatal signal'; then
     # dump_pid terminates
     echo "dump_pid"
-    watchdog_file_clear 1
+    watchdog_file_update 1
     dump_pid "$pid"
   fi
 
@@ -118,20 +118,19 @@ while read -r line; do
 
     if [[ "$line" =~ __EXIT_SIGNAL__ ]]; then
       exit_signal="${line/__EXIT_SIGNAL__=/}"
-      echo "Received exit signal line: $line, signal: $exit_signal"
-      watchdog_file_clear "$exit_signal"
+      watchdog_file_update "$exit_signal"
       exit "$exit_signal"
     fi
 
     echo "$line"
 
     if [[ "$line" == "# ok" ]]; then
-      watchdog_file_clear 0
+      watchdog_file_update 0
       exit
     fi
 
     if [[ "$line" == "# fail" ]]; then
-      watchdog_file_clear 1
+      watchdog_file_update 1
       exit 1
     fi
   fi
