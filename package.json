@@ -19,7 +19,8 @@
     "acorn": "8.8.0",
     "acorn-walk": "8.2.0",
     "esbuild": "^0.16.16",
-    "standard": "^17.0.0"
+    "standard": "^17.0.0",
+    "typescript": "^5.0.4"
   },
   "optionalDependencies": {
     "@socketsupply/stream-relay": "^1.0.23-0"
