@@ -1,4 +1,5 @@
 import { IllegalConstructor } from '../util.js'
+import { Worker } from '../worker.js'
 import { Metric } from './metric.js'
 import registry from './channels.js'
 import process from '../process.js'
@@ -180,11 +181,10 @@ export class XMLHttpRequestMetric extends Metric {
 }
 
 export class WorkerMetric extends Metric {
-  static GlobalWorker = globalThis.Worker || class Worker {
-    constructor () {
-      console.warn('Worker is not supported in this environment')
-    }
-  }
+  /**
+   * @type {Worker}
+   */
+  static GlobalWorker = Worker
 
   constructor (options) {
     super()

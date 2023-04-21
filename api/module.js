@@ -140,7 +140,9 @@ export const builtins = {
   util
 }
 
+// @ts-ignore
 builtins['fs/promises'] = fs.promises
+// @ts-ignore
 builtins['dns/promises'] = dns.promises
 
 /**
