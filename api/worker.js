@@ -1,5 +1,6 @@
 import console from './console.js'
 
+// eslint-disable-next-line no-new-func
 const GlobalWorker = new Function('return Worker')()
 
 class UnsupportedWorker extends EventTarget {
