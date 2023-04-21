@@ -436,7 +436,7 @@ function from (value, encodingOrOffset, length) {
  * Buffer.from(buffer)
  * Buffer.from(arrayBuffer[, byteOffset[, length]])
  **/
-Buffer.from = function (value, encodingOrOffset = null, length = null) {
+Buffer.from = function (value, encodingOrOffset = undefined, length = undefined) {
   return from(value, encodingOrOffset, length)
 }
 
