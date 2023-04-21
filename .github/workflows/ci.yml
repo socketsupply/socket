@@ -3,10 +3,32 @@ name: Socket CI
 on: [push]
 
 jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-22.04
+    timeout-minutes: 3
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Use Node.js
+      uses: actions/setup-node@v3.6.0
+      with:
+        node-version: 18.x
+
+    - name: Lint
+      run: npm install && npm run test:lint
+    
+    - name: Check docs
+      run: |
+        npm run gen-docs
+        git diff --quiet
+
   linux:
     name: Linux
     runs-on: ubuntu-22.04
     timeout-minutes: 6
+    needs: lint
 
     steps:
     - uses: actions/checkout@v3
@@ -43,6 +65,7 @@ jobs:
     name: macOS
     runs-on: macOS-12
     timeout-minutes: 9
+    needs: lint
 
     steps:
     - uses: actions/checkout@v3
@@ -77,6 +100,7 @@ jobs:
     name: Windows
     runs-on: windows-2022
     timeout-minutes: 10
+    needs: lint
 
     steps:
     - uses: actions/checkout@v3
@@ -125,6 +149,7 @@ jobs:
     name: iOS (macOS)
     runs-on: macOS-12
     timeout-minutes: 25
+    needs: lint
 
     steps:
     - uses: actions/checkout@v3
@@ -161,6 +186,7 @@ jobs:
     name: Android (macOS)
     runs-on: macos-latest
     timeout-minutes: 60
+    needs: lint
 
     steps:
     - uses: actions/checkout@v3
@@ -252,6 +278,7 @@ jobs:
     name: Android (Linux)
     runs-on: ubuntu-22.04
     timeout-minutes: 60
+    needs: lint
 
     steps:
     - uses: actions/checkout@v3
