@@ -82,6 +82,10 @@ mkdir -p "$SOCKET_HOME"
 export SOCKET_HOME
 export PREFIX
 
+if (( !only_platforms )); then
+  "$root/bin/generate-typescript-typings.sh" || exit $?
+fi
+
 if (( !only_top_level && !no_rebuild )) ; then
   "$root/bin/install.sh" || exit $?
 fi
