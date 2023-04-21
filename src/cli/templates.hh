@@ -1425,6 +1425,9 @@ version = 1.0.0
 
 [android]
 
+; Extensions of files that will not be stored compressed in the APK.
+aapt_no_compress = ""
+
 ; Allow unencrypted http requests, useful for live reload.
 allow_cleartext = false
 
@@ -1436,6 +1439,9 @@ main_activity = ""
 
 ; Which permissions does your application need: https://developer.android.com/guide/topics/permissions/overview
 manifest_permissions = ""
+
+; To restrict the set of ABIs that your application supports, set them here.
+native_abis = ""
 
 ; Used for adding custom source files and related compiler attributes.
 native_cflags = ""
