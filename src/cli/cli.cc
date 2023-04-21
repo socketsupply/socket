@@ -1906,8 +1906,8 @@ int main (const int argc, const char* argv[]) {
 
 
       String licenseAccept = 
-       (getEnv("ANDROID_SDK_MANAGER_ACCEPT_LICENSES").size() > 0 ? getEnv("ANDROID_SDK_MANAGER_ACCEPT_LICENSES") : "echo") + " | " +
-       sdkmanager.str() + " --licenses";
+       quote + (getEnv("ANDROID_SDK_MANAGER_ACCEPT_LICENSES").size() > 0 ? getEnv("ANDROID_SDK_MANAGER_ACCEPT_LICENSES") : "echo") + quote + " | " +
+       quote + sdkmanager.str() + quote + " --licenses";
 
       if (std::system((licenseAccept).c_str()) != 0) {
         // Windows doesn't support 'yes'

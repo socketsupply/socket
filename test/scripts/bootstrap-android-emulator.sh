@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+# 'namespaced' root
+bae_root="$(CDPATH='' cd -- "$(dirname "$(dirname -- "$0")")" && pwd)"
+
 # enable async operation by writing exit code to a file for callee to test
 # call this to identify that emulator is about to be called, but don't exit script
 function write_code() {
@@ -9,6 +12,7 @@ function write_code() {
 
 # Call this on error, script will terminate
 error_file=$1
+echo >&2 "bae error file: $error_file"
 function exit_and_write_code() {
   local exit_code="$1"
   write_code "$exit_code"
@@ -18,7 +22,9 @@ function exit_and_write_code() {
 declare rc
 
 ssc_env=""
-if [ -f ".ssc.env" ]; then
+if [ -f "$bae_root/.ssc.env" ]; then
+  ssc_env="$bae_root/.ssc.env"
+elif [ -f ".ssc.env" ]; then
   ssc_env=".ssc.env"
 elif [ -f "../.ssc.env" ]; then
   ssc_env="../.ssc.env"
@@ -88,22 +94,52 @@ fi
 write_code 0
 
 if ! "$avdmanager" list avd | grep 'Name: SSCAVD$'; then
+  echo "Downloading AVD image..."
   pkg="system-images;android-33;google_apis;$(uname -m | sed -E 's/(arm64|aarch64)/arm64-v8a/g')"
-  "$sdkmanager" "$pkg"
+  yes | "$sdkmanager" "$pkg"
   rc=$?
-  (( !rc )) && exit_and_write_code $rc
-  echo yes | "$avdmanager" --clear-cache create avd -n SSCAVD -k "$pkg" -d 1 --force
+  echo >&2 "yes | $sdkmanager $pkg: rc: $rc"
+  (( rc != 0 )) && exit_and_write_code $rc
+
+  echo "Accepting licenses..."
+  yes | "$sdkmanager" --licenses
   rc=$?
-  (( !rc )) && exit_and_write_code $rc
+  (( rc != 0 )) && exit_and_write_code $rc
+
+  echo "Creating AVD..."
+  "$avdmanager" --clear-cache create avd -n SSCAVD -k "$pkg" -d 1 --force
+  rc=$?
+  echo >&2 "$avdmanager --clear-cache create avd -n SSCAVD -k $pkg -d 1 --force rc: $rc"
+  (( rc != 0 )) && exit_and_write_code $rc
 fi
 
-"$emulator" @SSCAVD         \
-  $EMULATOR_FLAGS           \
-  -gpu swiftshader_indirect \
-  -camera-back none         \
-  -no-boot-anim             \
-  -no-window                \
-  -noaudio                  \
-  >/dev/null
+[[ -z "$EMULATOR_FLAGS" ]] && EMULATOR_FLAGS=()
 
-exit_and_write_code $?
+declare emulator_output=">/dev/null"
+[[ -z "$CI" ]] && EMULATOR_FLAGS+=("-gpu" "swiftshader_indirect")
+[[ -n "$CI" ]] && emulator_output="| grep -v \"\\[CAMetalLayer nextDrawable\\] returning nil because device is nil.\""
+# fixes adb: failed to install cmd: Can't find service: package
+[[ -n "$CI" ]] && EMULATOR_FLAGS+=("-no-snapshot-load")
+
+echo "Starting Android emulator..."
+if [[ -z "$CI" ]]; then
+  "$emulator" @SSCAVD         \
+    "${EMULATOR_FLAGS[@]}"    \
+    -camera-back none         \
+    -no-boot-anim             \
+    -no-window                \
+    -noaudio                  \
+    >/dev/null
+else
+  "$emulator" @SSCAVD         \
+    "${EMULATOR_FLAGS[@]}"    \
+    -camera-back none         \
+    -no-boot-anim             \
+    -no-window                \
+    -noaudio                  \
+    | grep -v "\[CAMetalLayer nextDrawable\] returning nil because device is nil." \
+    2>&1
+fi
+
+rc=$?
+exit_and_write_code $rc

@@ -46,6 +46,10 @@ if [[ ! -f "$adb" ]]; then
 fi
 export adb
 
+
+echo "Ensuring adb server running..."
+$adb start-server || exit $?
+
 temp="$(mktemp)"
 ${SHELL:-sh} -c "$root/scripts/bootstrap-android-emulator.sh $temp" & bootstrap_pid=$!
 
@@ -55,7 +59,6 @@ while [ -z "$bootstrap_exit_code" ]; do
   bootstrap_exit_code="$(cat "$temp")"
   sleep 0.5
 done
-
 
 [ "$bootstrap_exit_code" != "0" ] && (rm "$temp"; exit "$bootstrap_exit_code")
 
@@ -106,7 +109,7 @@ fi
 
 ssc build --headless --platform=android -r -o || {
   rc=$?
-  echo "info: Shutting Android Emulator"
+  echo "info: Shutting Android Emulator due to failed build."
   "$adb" devices | grep emulator | cut -f1 | while read -r line; do
     "$adb" -s "$line" emu kill
   done
@@ -114,10 +117,14 @@ ssc build --headless --platform=android -r -o || {
 }
 
 ${SHELL:-sh} "$root/scripts/poll-adb-logcat.sh"
+rc=$?
+echo "logcat rc: $rc"
 
-echo "info: Shutting Android Emulator"
+echo "info: Shutting Android Emulator due to poll-adb-logcat.sh finishing."
 "$adb" devices | grep emulator | cut -f1 | while read -r line; do
   "$adb" -s "$line" emu kill
 done
 
-"$adb" kill-server
+"$adb" kill-server >/dev/null 2>&1
+
+exit $rc

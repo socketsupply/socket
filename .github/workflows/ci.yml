@@ -183,6 +183,7 @@ jobs:
         NO_IOS: 1
         CI: true
         SSC_ANDROID_CI: true
+        ANDROID_HOME: 
         ANDROID_SUPPORTED_ABIS: x86_64
         JAVA_HOME: ""
         NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
@@ -196,29 +197,22 @@ jobs:
         NO_IOS: true
         CI: true
         SSC_ANDROID_CI: true
+        ANDROID_HOME: 
         ANDROID_SUPPORTED_ABIS: x86_64
         NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
-        
+
     - name: Run emulator tests
-      uses: reactivecircus/android-emulator-runner@v2
-      with:
-        api-level: 33
-        arch: x86_64
-        disable-animations: false
-        emulator-boot-timeout: 1200
-        emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
-        force-avd-creation: false
-        ndk: 25.0.8775105
-        profile: pixel_5
-        target: google_apis
-        script: |
-          ./bin/ci_version_check.sh
+      run: |
           npm install
-          npm run test:android
+          npm run test:android-emulator
       env:
-        CI: true
+        VERBOSE: 1
+        NO_IOS: 1
+        CI: 1
         SSC_ANDROID_CI: true
         ANDROID_SUPPORTED_ABIS: x86_64
+        JAVA_HOME: ""
+        ANDROID_HOME: 
         NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
 
   android_linux:
