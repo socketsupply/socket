@@ -3,12 +3,9 @@
   "compilerOptions": {
     "baseUrl": "socket:",
     "target": "es2022",
-    "module": "es2022",
-    "outFile": "api/index",
     "types": [],
     "lib": ["es2022", "dom"],
 
-    "emitDeclarationOnly": true,
     "strictNullChecks": false,
     "declarationMap": false,
     "alwaysStrict": true,
