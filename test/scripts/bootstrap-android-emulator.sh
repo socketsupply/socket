@@ -12,7 +12,6 @@ function write_code() {
 
 # Call this on error, script will terminate
 error_file=$1
-echo >&2 "bae error file: $error_file"
 function exit_and_write_code() {
   local exit_code="$1"
   write_code "$exit_code"
@@ -98,7 +97,6 @@ if ! "$avdmanager" list avd | grep 'Name: SSCAVD$'; then
   pkg="system-images;android-33;google_apis;$(uname -m | sed -E 's/(arm64|aarch64)/arm64-v8a/g')"
   yes | "$sdkmanager" "$pkg"
   rc=$?
-  echo >&2 "yes | $sdkmanager $pkg: rc: $rc"
   (( rc != 0 )) && exit_and_write_code $rc
 
   echo "Accepting licenses..."
@@ -109,22 +107,19 @@ if ! "$avdmanager" list avd | grep 'Name: SSCAVD$'; then
   echo "Creating AVD..."
   "$avdmanager" --clear-cache create avd -n SSCAVD -k "$pkg" -d 1 --force
   rc=$?
-  echo >&2 "$avdmanager --clear-cache create avd -n SSCAVD -k $pkg -d 1 --force rc: $rc"
   (( rc != 0 )) && exit_and_write_code $rc
 fi
 
 [[ -z "$EMULATOR_FLAGS" ]] && EMULATOR_FLAGS=()
 
-declare emulator_output=">/dev/null"
-[[ -z "$CI" ]] && EMULATOR_FLAGS+=("-gpu" "swiftshader_indirect")
-[[ -n "$CI" ]] && emulator_output="| grep -v \"\\[CAMetalLayer nextDrawable\\] returning nil because device is nil.\""
+EMULATOR_FLAGS+=("-gpu" "swiftshader_indirect")
 # fixes adb: failed to install cmd: Can't find service: package
-[[ -n "$CI" ]] && EMULATOR_FLAGS+=("-no-snapshot-load")
 
 echo "Starting Android emulator..."
 if [[ -z "$CI" ]]; then
   "$emulator" @SSCAVD         \
     "${EMULATOR_FLAGS[@]}"    \
+    "-gpu swiftshader_indirect" \
     -camera-back none         \
     -no-boot-anim             \
     -no-window                \
@@ -133,6 +128,7 @@ if [[ -z "$CI" ]]; then
 else
   "$emulator" @SSCAVD         \
     "${EMULATOR_FLAGS[@]}"    \
+    "-gpu swiftshader_indirect" \
     -camera-back none         \
     -no-boot-anim             \
     -no-window                \

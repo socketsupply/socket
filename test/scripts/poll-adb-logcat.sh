@@ -43,11 +43,8 @@ function watchdog_file_clear() {
   fi
 }
 
-function watchdog_file_exists() {
-  ls -l $poll_adb_watchdog_file >&2
-  
+function watchdog_file_exists() {  
   if [ -f "$poll_adb_watchdog_file" ]; then
-    echo >&2 "poll_adb_watchdog_file: $(cat "$poll_adb_watchdog_file")"
     data="$(cat "$poll_adb_watchdog_file")"
     if [ -z "$data" ]; then
       echo "0"
@@ -149,11 +146,10 @@ echo "Waiting 5m before aborting tests..."
 # while [[ "$(watchdog_file_exists)" == "0" ]]; do
 while (( count < timeout )) ; do
   if [[ "$(watchdog_file_exists)" != "0" ]]; then
-    echo "break"
     break
   fi
   
-  (( count % 30 == 0 )) && echo "Timeout count: $count/$timeout"
+  (( count > 0 )) && (( count % 30 == 0 )) && echo "Timeout count: $count/$timeout"
   sleep 1
   (( count++ ))
 done
