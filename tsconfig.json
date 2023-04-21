@@ -1,0 +1,19 @@
+{
+  "include": ["api/*.js", "api/**/*.js"],
+  "compilerOptions": {
+    "baseUrl": "socket:",
+    "target": "es2022",
+    "module": "es2022",
+    "outFile": "api/index",
+    "lib": ["es2022", "dom"],
+
+    "emitDeclarationOnly": true,
+    "strictNullChecks": false,
+    "declarationMap": false,
+    "alwaysStrict": true,
+    "declaration": true,
+    "sourceMap": false,
+    "checkJs": false,
+    "allowJs": true
+  }
+}
