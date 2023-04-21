@@ -765,7 +765,7 @@ function android_fte() {
       return $rc
     fi
 
-    if $rc; then
+    if (( rc == 0 )); then
       # Move ANDROID_SDK_MANAGER_JAVA_OPTS into JAVA_OPTS temporarily. We can't store JAVA_OPTS in .ssc.env because it doesn't work with gradle
       OLD_JAVA_OPTS="$JAVA_OPTS"
       [[ -n "$ANDROID_SDK_MANAGER_JAVA_OPTS" ]] && JAVA_OPTS="$OLD_JAVA_OPTS $ANDROID_SDK_MANAGER_JAVA_OPTS"
