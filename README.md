@@ -22,7 +22,7 @@ Web Developers use `Socket Runtime` to create apps for any OS, desktop, or mobil
 
 ### 🔑 FAQ
 
-Check the FAQs on our [Website](https://sockets.sh/) to learn more.
+Check the FAQs on our [Website](https://socketsupply.co/) to learn more.
 
 ### 🧱 Building your first Socket app !
 
@@ -33,7 +33,7 @@ You can also check our `Examples` in the [Examples Repo](https://github.com/sock
 
 ### 📚 Documentation
 
-The full documentation can be found on the [Socket Runtime](https://sockets.sh/) website.  
+The full documentation can be found on the [Socket Runtime](https://socketsupply.co/) website.  
 The `Socket Runtime` documentation covers Socket APIs, includes examples, multiple guides (`Apple`, `Desktop`, and `Mobile`), `P2P` documentation, and more.
 
 
@@ -44,10 +44,12 @@ The `Socket Runtime` documentation covers Socket APIs, includes examples, multip
 
 ### 🙏 Contributing
 
-Please stop by [Discord](https://discord.com/invite/YPV32gKCsH) and ask the team about your issue and if someone is already working on it.  
-Please connect with any current project contributors: [@heapwolf][0], [@jwerle][1], or [@chicoxyzzy][2] if you want to contribute to the `Socket Runtime` project itself.  
+We welcome contributions from everyone! Please check our [Contributing Guide](CONTRIBUTING.md) to learn more.
+Don't hesitate to stop by [Discord](https://discord.com/invite/YPV32gKCsH) and ask the team about your issue and if someone is already working on it.  
+Please connect with any current project contributors: [@heapwolf][0], [@jwerle][1], [@chicoxyzzy][2], or [@dj_rocktimus][3] if you want to contribute to the `Socket Runtime` project itself.  
 Thank you for your interest in reporting/fixing issues and contributing to `Socket`!  
 
 [0]:https://github.com/heapwolf
 [1]:https://github.com/jwerle
 [2]:https://github.com/chicoxyzzy
+[3]:https://github.com/mribbons
