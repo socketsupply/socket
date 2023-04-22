@@ -561,6 +561,7 @@ function first_time_experience_setup() {
       if [[ "$package_manager" == "apt install" ]]; then
         log_and_run sudo apt update || return $?
         log_and_run sudo apt install -y     \
+          git                   \
           libwebkit2gtk-4.1-dev \
           build-essential       \
           libc++abi-14-dev      \
@@ -568,9 +569,9 @@ function first_time_experience_setup() {
           pkg-config            \
           clang-14              \
           || return $?
-          exit $?
       elif [[ "$package_manager" == "pacman -S" ]]; then
         log_and_run sudo pacman -Syu \
+          git            \
           webkit2gtk-4.1 \
           base-devel     \
           libc++abi-14   \
@@ -578,8 +579,11 @@ function first_time_experience_setup() {
           clang-14       \
           pkgconf        \
           || return $?
+      elif [[ "$packege_manager" == "dnf install" ]]; then
+        echo "warn - dnf package manager is not suppored yet. Please try to install from npm or from source."
+        exit 1
       elif [[ "$package_manager" == "yum install" ]]; then
-        echo "warn - 'yum' is not suppored yet"
+        echo "warn - yum package manager is not suppored yet. Please try to install from npm or from source."
         exit 1
       fi
     fi
