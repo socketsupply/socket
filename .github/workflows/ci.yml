@@ -21,8 +21,7 @@ jobs:
     
     - name: Check docs and TS definitions
       run: |
-        npm run gen-docs
-        npm run tsc
+        npm run gen
         git diff --quiet
 
   linux:
