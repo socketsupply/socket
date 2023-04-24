@@ -22,6 +22,7 @@ jobs:
     - name: Check docs
       run: |
         npm run gen-docs
+        npm run tsc
         git diff --quiet
 
   linux:

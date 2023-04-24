@@ -5,10 +5,7 @@
   ],
   "scripts": {
     "gen-docs": "node ./bin/generate-docs.js",
-    "pretest": "standard .",
-    "readme": "node ./bin/generate-docs.js",
     "tsc": "./bin/generate-typescript-typings.sh",
-    "pretest": "npm run lint",
     "test": "cp -f .ssc.env test | echo && cd test && npm install --silent --no-audit && npm test",
     "test:lint": "standard . && tsc --noEmit",
     "test:node": "node ./test/node/index.js",
