@@ -1,20 +1,21 @@
-
 /**
- * @module Peer
+ * @module stream-relay
  * @status Experimental
  *
- *Provides Network Peer
-
- *> Note: The code in the module may change a lot in the next few weeks but the
- *API will continue to be backward compatible thoughout all future releases.
+ * This module provides primitives for constructing a distributed network
+ * for relaying messages between peers. Peers can be addressed by their unique
+ * peer ID and can also be directly connected to by their IP address and port.
  *
+ * Note: The code in the module may change a lot in the next few weeks but the
+ * API will continue to be backward compatible thoughout all future releases.
  */
 
 import { isBufferLike } from '../util.js'
 import { Buffer } from '../buffer.js'
 import { sodium } from '../crypto.js'
-import { Cache } from './cache.js'
+
 import { Encryption } from './encryption.js'
+import { Cache } from './cache.js'
 import { PTP } from './scheme-ptp.js'
 
 import {
@@ -32,21 +33,57 @@ import {
 } from './packets.js'
 
 export { sha256, Cache, Encryption }
-export const PING_RETRY = 500
-export const DEFAULT_PORT = 9777
-export const DEFAULT_TEST_PORT = 9778
-export const KEEP_ALIVE = 28_000
 
-export const portGenerator = (localPort, testPort) => {
-  const portCache = { [localPort]: true, [testPort]: true }
+/**
+ * Retry delay in milliseconds for ping.
+ * @type {number}
+ */
+export const PING_RETRY = 500
+
+/**
+ * Default port to bind peer UDP socket port to.
+ * @type {number}
+ */
+export const DEFAULT_PORT = 9777
+
+/**
+ * Default static test port to bind peer UDP socket port to.
+ * @type {number}
+ */
+export const DEFAULT_TEST_PORT = 9778
+
+/**
+ * Default keep alive timeout.
+ * @type {number}
+ */
+export const DEFAULT_KEEP_ALIVE = 28_000
+
+/**
+ * Creates a factory function for generating a port to bind to.
+ * @param {number?} [localPort] Initial local port
+ * @param {number?} [testPort] Initial static test port
+ * @return {function(object?, number?): number}
+ */
+export const createPortGenerator = (localPort = 0, testPort = 0) => {
+  const portCache = { [localPort || 0]: true, [testPort || 0]: true }
   const next = () => ~~(Math.random() * 0xffff) || 1
 
-  return (ports = portCache, p) => {
+  /**
+   * Port generator factory function.
+   * @param {object?} ports
+   * @param {number?} p
+   * @return {number}
+   */
+  return (ports = portCache, p = null) => {
     do ports[p = next()] = true; while (!ports[p] && p)
     return p
   }
 }
 
+/**
+ * A `RemotePeer` represents an initial, discovered, or connected remote peer.
+ * Typically, you will not need to create instances of this class directly.
+ */
 export class RemotePeer {
   peerId = null
   address = null
@@ -61,6 +98,23 @@ export class RemotePeer {
   lastUpdate = 0
   lastRequest = 0
 
+  /**
+   * `RemotePeer` class constructor.
+   * @param {{
+   *   peerId?: string,
+   *   address?: string,
+   *   port?: number,
+   *   natType?: string,
+   *   clusterId?: string,
+   *   pingId?: string,
+   *   distance?: number,
+   *   publicKey?: string,
+   *   privateKey?: string,
+   *   clock?: number,
+   *   lastUpdate?: number,
+   *   lastRequest?: number
+   * }} o
+   */
   constructor (o) {
     if (!o.port) throw new Error('expected .port')
     if (!o.address) throw new Error('expected .address')
@@ -75,7 +129,12 @@ export class RemotePeer {
   }
 }
 
-export const createPeer = udp => {
+/**
+ * `Peer` class factory.
+ * @param {{ createSocket: function('udp4', object?): object }} options
+ */
+export const createPeer = options => {
+  const { createSocket } = options
   class Peer {
     port = null
     address = null
@@ -96,11 +155,15 @@ export const createPeer = udp => {
     connects = {}
     limits = {}
     uptime = 0
-    clock = 0
     maxHops = 16
-    bdpCache = []
+    bdpCache = /** @type {number[]} */ ([])
 
-    peers = JSON.parse(/* snapshot_start=1681336577824, filter=easy,static */`[
+    onListening = null
+    onDelete = null
+
+    firewall = null
+
+    peers = JSON.parse(/* snapshot_start=1682350677046, filter=easy,static */`[
       {"address":"44.213.42.133","port":10885,"peerId":"4825fe0475c44bc0222e76c5fa7cf4759cd5ef8c66258c039653f06d329a9af5"},
       {"address":"107.20.123.15","port":31503,"peerId":"2de8ac51f820a5b9dc8a3d2c0f27ccc6e12a418c9674272a10daaa609eab0b41"},
       {"address":"54.227.171.107","port":43883,"peerId":"7aa3d21ceb527533489af3888ea6d73d26771f30419578e85fba197b15b3d18d"},
@@ -122,19 +185,26 @@ export const createPeer = udp => {
       {"address":"13.230.254.25","port":65049,"peerId":"592e9fd43abcf854fa5cc9a203bebd15afb2e900308044b77599cd8f46f2532d"},
       {"address":"18.138.72.20","port":2909,"peerId":"199b00e0e516b2f1599459b2429d0dbb3a08eeadce00e68bbc4a7e3f2171bb65"},
       {"address":"18.229.140.216","port":36056,"peerId":"73d726c04c05fb3a8a5382e7a4d7af41b4e1661aadf9020545f23781fefe3527"}
-    ]`/* snapshot_end=1681336679337 */).map(o => new RemotePeer(o))
+    ]`/* snapshot_end=1682350693060 */).map((/** @type {object} */ o) => new RemotePeer(o))
 
-    static async create (...args) {
+    /**
+     * Factory for creating a `Peer` instances. This function ensures all
+     * internal dependencies are loaded and ready.
+     * @param {object?} [options]
+     * @return {Promise<Peer>}
+     */
+    static async create (options) {
       await sodium.ready
-      return new this(...args)
+      return new this(options)
     }
 
-    constructor (persistedState) {
-      if (persistedState && !persistedState.config) {
-        persistedState = { config: persistedState }
-      }
-
-      const { config = {} } = persistedState
+    /**
+     * `Peer` class constructor.
+     * @private
+     * @param {object?} [persistedState]
+     */
+    constructor (persistedState = {}) {
+      const config = persistedState?.config ?? persistedState ?? {}
 
       this.encryption = new Encryption(config.keys)
 
@@ -142,10 +212,9 @@ export const createPeer = udp => {
       if (config.scheme === 'PTP') PTP.init(this)
 
       this.config = {
-        port: DEFAULT_PORT,
-        keepalive: KEEP_ALIVE,
-        testPort: DEFAULT_TEST_PORT,
+        keepalive: DEFAULT_KEEP_ALIVE,
         lastGroupBroadcast: -1,
+        clock: 0,
         ...config
       }
 
@@ -155,29 +224,34 @@ export const createPeer = udp => {
         cacheData = new Map(persistedState.data)
       }
 
-      this.cache = new Cache(cacheData, config.siblingResolver, this.reject)
+      this.cache = new Cache(cacheData, config.siblingResolver)
 
       this.unpublished = persistedState?.unpublished || {}
-      this.onError = (err) => { console.error(err) }
+      this.onError = (/** @type {Error} */ err) => { console.error(err) }
 
       Object.assign(this, config)
+
       this.port = config.port || null
       this.natType = config.natType || null
       this.address = config.address || null
 
-      if (!this.clusterId) this.port = config.port || DEFAULT_PORT
-
-      this.socket = udp.createSocket('udp4', this)
-      this.testSocket = udp.createSocket('udp4', this)
+      this.socket = createSocket('udp4', this)
+      this.testSocket = createSocket('udp4', this)
     }
 
     async init () {
       return new Promise(resolve => {
         this.socket.on('listening', () => {
           this.listening = true
-          if (this.onListening) this.onListening()
-          this.requestReflection()
-          resolve()
+          this.config.port = this.socket.address().port
+
+          this.testSocket.on('listening', () => {
+            this.config.testPort = this.testSocket.address().port
+            if (this.onListening) this.onListening()
+            this.requestReflection()
+            resolve()
+          })
+          this.testSocket.bind(this.config.testPort || 0)
         })
 
         this.socket.on('message', (...args) => this.onMessage(...args))
@@ -188,8 +262,7 @@ export const createPeer = udp => {
         this.socket.setMaxListeners(2048)
         this.testSocket.setMaxListeners(2048)
 
-        this.socket.bind(this.config.port)
-        this.testSocket.bind(this.config.testPort)
+        this.socket.bind(this.config.port || 0)
 
         globalThis.window?.addEventListener('online', async () => {
           await this.join()
@@ -210,7 +283,7 @@ export const createPeer = udp => {
             this.reflectionFirstResponder = null
           }
 
-          this.uptime += this.keepalive
+          this.uptime += this.config.keepalive
 
           const offline = globalThis.navigator && !globalThis.navigator.onLine
           if (!offline) this.requestReflection()
@@ -222,7 +295,7 @@ export const createPeer = udp => {
 
             if (packet.timestamp + TTL < ts) {
               await this.mcast(packet, packet.packetId, packet.clusterId, true)
-              this.cache.delete(k)
+              await this.cache.delete(k)
               if (this.onDelete) this.onDelete(packet)
             }
           }
@@ -254,7 +327,7 @@ export const createPeer = udp => {
               this.limits[peer.address] = this.limits[peer.address] / 1.05
             }
 
-            this.ping(peer, {
+            this.ping(peer, false, {
               clusterId: this.clusterId,
               peerId: this.peerId,
               natType: this.natType,
@@ -287,7 +360,7 @@ export const createPeer = udp => {
     }
 
     getPeers (packet, peers, n = 3) {
-      let list = peers
+      let list = peers.filter(p => p.peerId !== this.peerId)
 
       // if our peer is behind a hard NAT, filter out peers with the same NATs
       if (this.natType === 'hard') {
@@ -301,9 +374,7 @@ export const createPeer = udp => {
         .sort(() => Math.random() - 0.5)
         .slice(0, n)
 
-      const members = peers.filter(p => {
-        return p.clusterId === this.clusterId && !candidates.find(p => p.peerId)
-      })
+      const members = list.filter(p => p.clusterId === this.clusterId)
 
       if (members.length) {
         if (candidates.length === n) {
@@ -384,17 +455,17 @@ export const createPeer = udp => {
       this.pingStart = Date.now()
 
       // debug(`  requestReflection peerId=${peerId}, pingId=${pingId}`)
-      this.ping(peer1, { peerId, pingId, isReflection: true, clusterId })
-      this.ping(peer2, { peerId, pingId, isReflection: true, clusterId, testPort })
+      this.ping(peer1, true, { peerId, pingId, isReflection: true, clusterId })
+      this.ping(peer2, true, { peerId, pingId, isReflection: true, clusterId, testPort })
     }
 
-    async ping (peer, props = {}) {
+    async ping (peer, withRetry, props = {}) {
       if (!peer) return
 
       const p = {
         message: {
           isHeartbeat: props.heartbeat === true,
-          peerId: peer.peerId,
+          peerId: peer.peerId, // potentially verify this
           ...props
         }
       }
@@ -413,10 +484,10 @@ export const createPeer = udp => {
 
       await retry()
 
-      this.timer(PING_RETRY, 0, retry)
-      this.timer(PING_RETRY * 8, 0, retry)
-      this.timer(PING_RETRY * 16, 0, retry)
-
+      if (withRetry) {
+        this.timer(PING_RETRY, 0, retry)
+        this.timer(PING_RETRY * 3, 0, retry)
+      }
       return packet
     }
 
@@ -471,7 +542,7 @@ export const createPeer = udp => {
       if (!this.port) return
 
       const packet = new PacketJoin({
-        clock: this.clock++,
+        clock: this.config.clock++,
         message: {
           clusterId: this.clusterId,
           peerId: this.peerId,
@@ -485,6 +556,7 @@ export const createPeer = udp => {
       const sends = []
 
       for (const peer of this.getPeers(packet, this.peers)) {
+        if (peer.address === this.address && peer.port === this.port) continue
         sends.push(this.send(data, peer.port, peer.address))
       }
 
@@ -598,7 +670,7 @@ export const createPeer = udp => {
 
       // a tail is a packet with a .previousId that we don't have, the purpose
       // of sending it is to request packets that came before these.
-      this.cache.tails((p, i) => {
+      this.cache.tails((p) => {
         toSend.push(new PacketAsk({
           packetId: p.previousId,
           clusterId: p.clusterId,
@@ -708,7 +780,7 @@ export const createPeer = udp => {
       this.connects[packet.packetId] = true
 
       if (this.closing || !this.clusterId) return
-      this.negotiateCache(peer, packet, port, address)
+      // this.negotiateCache(peer, packet, port, address)
       if (this.onConnect) this.onConnect(peer, packet, port, address)
     }
 
@@ -717,8 +789,8 @@ export const createPeer = udp => {
       const { pingId, isReflection, isConnection, clusterId, isHeartbeat, testPort } = packet.message
       const peer = this.setPeer(packet, port, address)
 
-      if (!isReflection && isHeartbeat) {
-        if (clusterId) await this.negotiateCache(peer, packet, port, address)
+      if (!isReflection && isHeartbeat && !pingId && !testPort && clusterId) {
+        await this.negotiateCache(peer, packet, port, address)
         return
       }
 
@@ -805,7 +877,7 @@ export const createPeer = udp => {
 
           {
             const peer = this.peers.find(p => p.port === port && p.address === address)
-            this.ping(peer, {
+            this.ping(peer, false, {
               clusterId: this.clusterId,
               peerId: this.peerId,
               natType: this.natType,
@@ -818,7 +890,7 @@ export const createPeer = udp => {
             const { port, address } = this.reflectionFirstResponder
             const peer = this.setPeer(packet, port, address)
 
-            this.ping(peer, {
+            this.ping(peer, false, {
               clusterId: this.clusterId,
               peerId: this.peerId,
               natType: this.natType,
@@ -857,8 +929,6 @@ export const createPeer = udp => {
       const peer = this.setPeer(packet, packet.message.port, packet.message.address)
       if (!peer || peer.connecting) return
 
-      // this.negotiateCache(peer, packet, port, address)
-
       const remoteHard = packet.message.natType === 'hard'
       const localHard = this.natType === 'hard'
       const localEasy = ['easy', 'static'].includes(this.natType)
@@ -867,7 +937,7 @@ export const createPeer = udp => {
       // debug(`intro arriving at ${this.peerId} (${this.address}:${this.port}:${this.natType}) from ${packet.message.peerId} (${address}:${port}:${packet.message.natType})`)
 
       const portCache = {}
-      const getPort = portGenerator(DEFAULT_PORT, DEFAULT_TEST_PORT)
+      const getPort = createPortGenerator(DEFAULT_PORT, DEFAULT_TEST_PORT)
       const pingId = Math.random().toString(16).slice(2)
 
       const encoded = await Packet.encode(new PacketPing({
@@ -926,7 +996,7 @@ export const createPeer = udp => {
       if (peer.clusterId) this.onConnection(peer, packet, port, address)
 
       // debug(`onintro (${this.peerId} easy/static, ${packet.message.peerId} easy/static)`)
-      this.ping(peer, { clusterId: this.clusterId, peerId: this.peerId, natType: this.natType, isConnection: true, pingId: packet.message.pingId })
+      this.ping(peer, false, { clusterId: this.clusterId, peerId: this.peerId, natType: this.natType, isConnection: true, pingId: packet.message.pingId })
     }
 
     //
@@ -986,8 +1056,12 @@ export const createPeer = udp => {
         await new Promise(resolve => {
           this.timer(Math.random() * 2, 0, async () => {
             const sends = []
+            // console.log(`JOIN: ${peer.address}:${peer.port} -> ${i2p.message.address}:${i2p.message.port}`)
             sends.push(this.send(intro2, peer.port, peer.address))
+
+            // console.log(`JOIN: ${packet.message.address}:${packet.message.port} -> ${i1p.message.address}:${i1p.message.port}`)
             sends.push(this.send(intro1, packet.message.port, packet.message.address))
+
             await Promise.all(sends).then(resolve)
           })
         })
@@ -1010,14 +1084,14 @@ export const createPeer = udp => {
         packet.hops += 1
       }
 
-      const inserted = await this.cache.insert(packet.packetId, packet)
-      if (!inserted) return
+      if (this.cache.has(packet.packetId)) return
+      await this.cache.insert(packet.packetId, packet)
 
       let predicate = false
 
-      if (inserted && this.predicateOpenPacket) {
+      if (this.predicateOpenPacket) {
         predicate = this.predicateOpenPacket(packet, port, address)
-      } else if (inserted && this.encryption.has(packet.to)) {
+      } else if (this.encryption.has(packet.to)) {
         let p = { ...packet }
 
         if (packet.index > -1) p = await this.cache.compose(p, this)
@@ -1072,11 +1146,14 @@ export const createPeer = udp => {
       return true
     }
 
-    //
-    // When a packet is received it is decoded, the packet contains the type
-    // of the message. Based on the message type it is routed to a function.
-    // like WebSockets, don't answer queries unless we know its another SRP peer.
-    //
+    /**
+     * When a packet is received it is decoded, the packet contains the type
+     * of the message. Based on the message type it is routed to a function.
+     * like WebSockets, don't answer queries unless we know its another SRP peer.
+     *
+     * @param {Buffer|Uint8Array} data
+     * @param {{ port: number, address: string }} info
+     */
     onMessage (data, { port, address }) {
       if (!this.rateLimit(data, port, address)) return
 

@@ -1,36 +1,27 @@
-import { isBufferLike } from 'socket:util'
-import { Buffer } from 'socket:buffer'
-import { sodium, randomBytes } from 'socket:crypto'
-
-const VERSION = 1
-const TYPE_BYTES = 1
-const VERSION_BYTES = 1
-const HOPS_BYTES = 4
-const CLOCK_BYTES = 4
-const INDEX_BYTES = 4
-const MESSAGE_ID_BYTES = 32
-const CLUSTER_ID_BYTES = 32
-const PREVIOUS_ID_BYTES = 32
-const NEXT_ID_BYTES = 32
-const TO_BYTES = 32
-const USR1_BYTES = 32
-const MESSAGE_LENGTH_BYTES = 2
-const MESSAGE_BYTES = 1024
-const CACHE_TTL = 60_000 * 60 * 24
-
-const FRAME_SIZE = TYPE_BYTES + VERSION_BYTES + HOPS_BYTES +
-  CLOCK_BYTES + INDEX_BYTES + MESSAGE_ID_BYTES + CLUSTER_ID_BYTES +
-  PREVIOUS_ID_BYTES + NEXT_ID_BYTES + TO_BYTES + USR1_BYTES + MESSAGE_LENGTH_BYTES
-
-export const PACKET_SIZE = FRAME_SIZE + MESSAGE_BYTES
+import { sodium, randomBytes } from '../crypto.js'
+import { isBufferLike } from '../util.js'
+import { Buffer } from '../buffer.js'
 
 // trims buffer/string of 0 bytes (\x00)
-const trim = buf => buf.toString().split('\x00')[0]
-// return '' if a buffer of all zeroes was given
-const normalizeBuffer = buf => buf.find(b => b !== 0) ? Buffer.from(buf) : Buffer.from('')
+const trim = (/** @type {Buffer} */ buf) => buf.toString().split('\x00')[0]
 // converts buffer/string to hex
-const toHex = buf => normalizeBuffer(buf).toString('hex')
+const toHex = (/** @type {Buffer} */ b) => normalizeBuffer(b).toString('hex')
 
+/**
+ * return empty buffer if input buffer contains all zeroes was given
+ * @param {number[]|Buffer|Uint8Array} buf
+ * @return {Buffer}
+ */
+function normalizeBuffer (buf) {
+  return /** @type {number[]} */ (buf).find((b) => b !== 0)
+    ? Buffer.from(buf)
+    : Buffer.from('')
+}
+
+/**
+ * Hash function factory.
+ * @return {function(object|Buffer|string): Promise<string>}
+ */
 function createHashFunction () {
   const encoder = new TextEncoder()
   let crypto = null
@@ -72,6 +63,97 @@ function createHashFunction () {
   }
 }
 
+/**
+ * The version of the protocol.
+ */
+export const VERSION = 1
+
+/**
+ * The size in bytes of the `type` field.
+ */
+export const TYPE_BYTES = 1
+
+/**
+ * The size in bytes of the `version` field.
+ */
+export const VERSION_BYTES = 1
+
+/**
+ * The size in bytes of the `gops` field.
+ */
+export const HOPS_BYTES = 4
+
+/**
+ * The size in bytes of the `clock` field.
+ */
+export const CLOCK_BYTES = 4
+
+/**
+ * The size in bytes of the `index` field.
+ */
+export const INDEX_BYTES = 4
+
+/**
+ * The size in bytes of the `message_id` field.
+ */
+export const MESSAGE_ID_BYTES = 32
+
+/**
+ * The size in bytes of the `cluster_id` field.
+ */
+export const CLUSTER_ID_BYTES = 32
+
+/**
+ * The size in bytes of the `previous_id` field.
+ */
+export const PREVIOUS_ID_BYTES = 32
+
+/**
+ * The size in bytes of the `next_id` field.
+ */
+export const NEXT_ID_BYTES = 32
+
+/**
+ * The size in bytes of the `to` field.
+ */
+export const TO_BYTES = 32
+
+/**
+ * The size in bytes of the `usr1` field.
+ */
+export const USR1_BYTES = 32
+
+/**
+ * The size in bytes of the `message_length` field.
+ */
+export const MESSAGE_LENGTH_BYTES = 2
+
+/**
+ * The size in bytes of the `message` field.
+ */
+export const MESSAGE_BYTES = 1024
+
+/**
+ * The size in bytes of the total packet frame.
+ */
+export const FRAME_BYTES = TYPE_BYTES + VERSION_BYTES + HOPS_BYTES +
+  CLOCK_BYTES + INDEX_BYTES + MESSAGE_ID_BYTES + CLUSTER_ID_BYTES +
+  PREVIOUS_ID_BYTES + NEXT_ID_BYTES + TO_BYTES + USR1_BYTES + MESSAGE_LENGTH_BYTES
+
+/**
+ * The size in bytes of the total packet frame and message.
+ */
+export const PACKET_BYTES = FRAME_BYTES + MESSAGE_BYTES
+
+/**
+ * The cache TTL in milliseconds.
+ */
+export const CACHE_TTL = 60_000 * 60 * 24
+
+/**
+ * @param {object} message
+ * @param {{ [key: string]: { required: boolean, type: string }}} constraints
+ */
 export const validatePacket = (message, constraints) => {
   if (!message) throw new Error('Expected message object')
   const allowedKeys = Object.keys(constraints)
@@ -81,7 +163,7 @@ export const validatePacket = (message, constraints) => {
 
   for (const [key, con] of Object.entries(constraints)) {
     if (con.required && !message[key]) {
-      throw new Error(`${key} is required (${JSON.stringify(message, 2, 2)})`)
+      throw new Error(`${key} is required (${JSON.stringify(message, null, 2)})`)
     }
 
     const type = ({}).toString.call(message[key]).slice(8, -1).toLowerCase()
@@ -91,8 +173,17 @@ export const validatePacket = (message, constraints) => {
   }
 }
 
+/**
+ * Computes a SHA-256 hash of input returning a hex encoded string.
+ * @type {function(string|Buffer|Uint8Array): Promise<string>}
+ */
 export const sha256 = createHashFunction()
 
+/**
+ * Decodes `buf` into a `Packet`.
+ * @param {Buffer} buf
+ * @return {Packet}
+ */
 export const decode = buf => {
   let offset = 0
   const o = {
@@ -111,7 +202,10 @@ export const decode = buf => {
     timestamp: Date.now() // so we know when to delete if we don't subscribe to this cluster
   }
 
-  if (buf.length < FRAME_SIZE) return o // > is handled by MTU
+  // @ts-ignore
+  if (buf.length < FRAME_BYTES) return Packet.from(o) // > is handled by MTU
+
+  buf = Buffer.from(buf)
 
   // header
   o.type = Math.max(0, buf.readInt8(offset)); offset += TYPE_BYTES
@@ -128,6 +222,7 @@ export const decode = buf => {
 
   // extract 32-byte public-key (if any) and encode as base64 string
   const b = buf.slice(offset, offset += TO_BYTES)
+  // @ts-ignore
   o.to = sodium.to_base64(b, sodium.base64_variants.ORIGINAL)
   o.usr1 = trim(buf.slice(offset, offset += USR1_BYTES))
 
@@ -141,7 +236,7 @@ export const decode = buf => {
     try { o.message = JSON.parse(trim(o.message)) } catch {}
   }
 
-  return o
+  return Packet.from(o)
 }
 
 export const addHops = (buf, offset = TYPE_BYTES + VERSION_BYTES) => {
@@ -152,32 +247,59 @@ export const addHops = (buf, offset = TYPE_BYTES + VERSION_BYTES) => {
 
 // const debug = Debug('packet')
 export class Packet {
-  packetId = null
-  hops = 0
+  type = 0
+  version = VERSION
+  clock = 0
+  index = -1
+  clusterId = ''
+  previousId = ''
+  packetId = ''
+  nextId = ''
+  to = ''
+  usr1 = ''
+  message = ''
 
   static ttl = CACHE_TTL
   static maxLength = MESSAGE_BYTES
 
   #buf = null
 
-  constructor ({ type, packetId, previousId, index, nextId, clock, to, usr1, message, clusterId }) {
-    this.type = type || 0
-    this.version = VERSION
-    this.clock = clock || 0
-    this.index = typeof index === 'undefined' ? -1 : index
-    this.clusterId = clusterId || ''
-    this.previousId = previousId || ''
-    this.packetId = packetId || ''
-    this.nextId = nextId || ''
-    this.to = to || ''
-    this.usr1 = usr1 || ''
-    this.message = message || ''
+  /**
+   * @param {Packet|object} packet
+   * @return {Packet}
+   */
+  static from (packet) {
+    if (packet instanceof Packet) {
+      return new this(packet)
+    }
+
+    return Object.assign(new this({}), packet)
   }
 
+  /**
+   * `Packet` class constructor.
+   * @param {Packet|object?} options
+   */
+  constructor (options = {}) {
+    this.type = options?.type || 0
+    this.version = VERSION
+    this.clock = options?.clock || 0
+    this.index = typeof options?.index === 'undefined' ? -1 : options.index
+    this.clusterId = options?.clusterId || ''
+    this.previousId = options?.previousId || ''
+    this.packetId = options?.packetId || ''
+    this.nextId = options?.nextId || ''
+    this.to = options?.to || ''
+    this.usr1 = options?.usr1 || ''
+    this.message = options?.message || ''
+  }
+
+  /**
+   */
   static async encode (p) {
     p = { ...p }
 
-    const buf = Buffer.alloc(PACKET_SIZE) // buf length bust be < UDP MTU (usually ~1500)
+    const buf = Buffer.alloc(PACKET_BYTES) // buf length bust be < UDP MTU (usually ~1500)
 
     const isBuffer = isBufferLike(p.message)
 
@@ -311,7 +433,6 @@ export class PacketJoin extends Packet {
       peerId: { required: true, type: 'string' },
       natType: { required: true, type: 'string' },
       initial: { type: 'boolean' },
-      geospatial: { type: 'number' },
       address: { required: true, type: 'string' },
       port: { required: true, type: 'number' }
     })
