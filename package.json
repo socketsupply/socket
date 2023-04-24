@@ -4,8 +4,9 @@
     "api"
   ],
   "scripts": {
-    "gen-docs": "node ./bin/generate-docs.js",
-    "tsc": "./bin/generate-typescript-typings.sh",
+    "gen": "npm run gen:docs && npm run gen:tsc",
+    "gen:docs": "node ./bin/generate-docs.js",
+    "gen:tsc": "./bin/generate-typescript-typings.sh",
     "test": "cp -f .ssc.env test | echo && cd test && npm install --silent --no-audit && npm test",
     "test:lint": "standard .",
     "test:node": "node ./test/node/index.js",
