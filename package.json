@@ -7,7 +7,7 @@
     "gen-docs": "node ./bin/generate-docs.js",
     "tsc": "./bin/generate-typescript-typings.sh",
     "test": "cp -f .ssc.env test | echo && cd test && npm install --silent --no-audit && npm test",
-    "test:lint": "standard . && tsc --noEmit",
+    "test:lint": "standard .",
     "test:node": "node ./test/node/index.js",
     "test:ios-simulator": "cd test && npm install --silent --no-audit && npm run test:ios-simulator",
     "test:android": "cp -f .ssc.env test | echo && cd test && npm install --silent --no-audit && npm run test:android",

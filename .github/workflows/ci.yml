@@ -19,7 +19,7 @@ jobs:
     - name: Lint
       run: npm install && npm run test:lint
     
-    - name: Check docs
+    - name: Check docs and TS definitions
       run: |
         npm run gen-docs
         npm run tsc
