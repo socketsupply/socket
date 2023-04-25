@@ -29,7 +29,8 @@ import {
   PacketJoin,
   PacketQuery,
   addHops,
-  sha256
+  sha256,
+  VERSION
 } from './packets.js'
 
 export { sha256, Cache, Encryption }
@@ -122,8 +123,13 @@ export class RemotePeer {
 
     if (o.clusterId) this.clusterId = o.clusterId
     if (!o.clusterId) this.natType = 'static'
-    if (o.publicKey) this.publicKey = o.publicKey
-    if (o.privateKey) this.privateKey = o.privateKey
+
+    if (o.scheme === 'PTP') {
+      PTP.init(this, o, 'remote')
+    } else {
+      if (o.publicKey) this.publicKey = o.publicKey
+      if (o.privateKey) this.privateKey = o.privateKey
+    }
 
     Object.assign(this, o)
   }
@@ -208,8 +214,8 @@ export const createPeer = options => {
 
       this.encryption = new Encryption(config.keys)
 
+      if (config.scheme === 'PTP') PTP.init(this, config, 'local')
       if (!config.peerId) config.peerId = this.encryption.publicKey
-      if (config.scheme === 'PTP') PTP.init(this)
 
       this.config = {
         keepalive: DEFAULT_KEEP_ALIVE,
@@ -239,7 +245,7 @@ export const createPeer = options => {
       this.testSocket = createSocket('udp4', this)
     }
 
-    async init () {
+    init () {
       return new Promise(resolve => {
         this.socket.on('listening', () => {
           this.listening = true
@@ -564,10 +570,10 @@ export const createPeer = options => {
     }
 
     async publish (args) {
-      let { peerId, clusterId, message, to, packet, nextId, meta = {} } = args
+      let { clusterId, message, to, packet, nextId, meta = {} } = args
 
       if (!to) throw new Error('.to field required to publish')
-      to = Buffer.from(to).toString('base64')
+      if (typeof to !== 'string') to = Buffer.from(to).toString('base64')
 
       if (message && typeof message === 'object' && !isBufferLike(message)) {
         try {
@@ -575,7 +581,7 @@ export const createPeer = options => {
         } catch {}
       }
 
-      if (this.prepareMessage) message = this.prepareMessage(message, peerId)
+      if (this.prepareMessage) message = this.prepareMessage(message, to)
       else if (this.encryption.has(to)) message = this.encryption.seal(message, to)
 
       let messages = [message]
@@ -672,9 +678,11 @@ export const createPeer = options => {
       // of sending it is to request packets that came before these.
       this.cache.tails((p) => {
         toSend.push(new PacketAsk({
-          packetId: p.previousId,
           clusterId: p.clusterId,
-          message: { tail: true, peerId: this.peerId }
+          message: {
+            previousId: p.previousId,
+            peerId: this.peerId
+          }
         }))
       })
 
@@ -683,9 +691,11 @@ export const createPeer = options => {
       this.cache.heads((p, i) => {
         if (toSend.includes(p.packetId)) return
         toSend.push(new PacketAsk({
-          packetId: p.packetId,
           clusterId: p.clusterId,
-          message: { peerId: this.peerId }
+          message: {
+            packetId: p.packetId,
+            peerId: this.peerId
+          }
         }))
       })
 
@@ -707,20 +717,29 @@ export const createPeer = options => {
     }
 
     async onAskPacket (packet, port, address) {
+      if (this.queries[packet.packetId]) return
+      this.queries[packet.packetId] = 6
+
+      const packets = [...this.cache.data]
+
       const reply = async p => {
         p = { ...p, type: PacketAnswer.type }
         this.send(await Packet.encode(p), port, address)
       }
 
-      if (packet.message.tail) { // move backward from the specified packetId
-        const p = await this.cache.get(packet.packetId)
+      if (packet.message.previousId) { // get the previous packet
+        const p = packets.find(p => p.packetId === packet.message.previousId)
         if (p) reply(p)
-      } else { // move forward from the specified packetId
-        this.cache.each(reply, { packetId: packet.message.packetId })
+      } else if (packet.message.packetId) { // get the next packet
+        const p = packets.find(p => p.previousId === packet.message.packetId)
+        if (p) reply(p)
       }
     }
 
     async onAnswerPacket (packet, port, address) {
+      if (this.queries[packet.packetId]) return
+      this.queries[packet.packetId] = 6
+
       packet = { ...packet, type: PacketPublish.type }
 
       if (await this.cache.insert(packet.packetId, packet)) {
@@ -733,17 +752,19 @@ export const createPeer = options => {
 
         if (isMissingTail) {
           await this.send(await Packet.encode(new PacketAsk({
-            clusterId: packet.clusterId,
-            packetId: packet.previousId,
-            message: { tail: true }
+            message: {
+              peerId: this.peerId,
+              previousId: packet.previousId
+            }
           })), port, address)
         }
 
         if (isMissingHead) {
           await this.send(await Packet.encode(new PacketAsk({
-            clusterId: packet.clusterId,
-            packetId: packet.nextId,
-            message: {}
+            message: {
+              peerId: this.peerId,
+              packetId: packet.nextId
+            }
           })), port, address)
         }
       }
@@ -1089,8 +1110,8 @@ export const createPeer = options => {
 
       let predicate = false
 
-      if (this.predicateOpenPacket) {
-        predicate = this.predicateOpenPacket(packet, port, address)
+      if (this.predicateOnPacket) {
+        predicate = this.predicateOnPacket(packet, port, address)
       } else if (this.encryption.has(packet.to)) {
         let p = { ...packet }
 
@@ -1158,6 +1179,8 @@ export const createPeer = options => {
       if (!this.rateLimit(data, port, address)) return
 
       const packet = Packet.decode(data)
+      if (packet.version < VERSION) return
+
       const args = [packet, port, address, data]
       if (this.firewall) if (!this.firewall(...args)) return
       if (this.onData) this.onData(...args)
