@@ -68,6 +68,14 @@ function get_android_default_search_paths() {
   # Only attempt default homes if $ANDROID_HOME not defined
   if [[ "$host" = "Darwin"  ]]; then
     JAVA_HOME_SEARCH_PATHS+=("$HOME/.local/bin")
+
+    # Add $PATH java to JAVA_HOME_SEARCH_PATHS
+    # Don't add this as first entry, first entry used as default install path
+    local java="$(readlink -f "$(which java 2>/dev/null)" 2>/dev/null)"
+    if [ -n "$java" ]; then
+      JAVA_HOME_SEARCH_PATHS+=("$(dirname "$(dirname "$java")")")
+    fi
+    
     JAVA_HOME_SEARCH_PATHS+=("$HOME/Applications")
     JAVA_HOME_SEARCH_PATHS+=("$HOME/homebrew")
     JAVA_HOME_SEARCH_PATHS+=("/Applications")
@@ -94,6 +102,12 @@ function test_javac_version() {
   local javac=$1
   local target_version=$2
   local jc_v
+
+  # Setting JAVA_HOME to /usr causes sdkmanager to hang
+  if [[ "$javac" == "/usr/bin/javac" ]] && [[ "$(host_os)" == "Darwin" ]]; then
+    write_log "h" "warn - Ignoring system java selector ($javac)"
+    return 1
+  fi
 
   jc_v="$("$javac" --version 2>/dev/null)"; r=$?
   if [[ "$r" != "0" ]]; then
@@ -142,10 +156,10 @@ function get_android_paths() {
   get_android_default_search_paths
   write_log "h" "# Determining Android paths."
 
-  local _ah="$ANDROID_HOME"
+  local _ah
   local _sdk
-  local _jh=
-  local _gh=
+  local _jh
+  local _gh
   local android_home_test
   local sdk_man_test
   local bat="$(use_bin_ext ".bat")"
@@ -198,9 +212,9 @@ function get_android_paths() {
 
     if ! test -d "$_jh" ; then
       write_log "d" "# find $java_home_test -type f -name "javac$exe"' -print0 2>/dev/null | while IFS= read -r -d '' javac"
-      find "$java_home_test" -type f -name "javac$exe" -print0 2>/dev/null | while IFS= read -r -d '' javac; do
-        # break doesn't work here, check that we don't have a result
-        if [[ $(stat_size "$temp") == 0 ]]; then
+      # break doesn't work here, check that we don't have a result
+      if [[ $(stat_size "$temp") == 0 ]]; then
+        find "$java_home_test" -type f -name "javac$exe" -print0 2>/dev/null | while IFS= read -r -d '' javac; do
           write_log "v" "# Found $javac"
           test_javac_version "$javac" "$JDK_VERSION" ; r=$?
           if [[ "$r" == "0" ]]; then
@@ -210,18 +224,13 @@ function get_android_paths() {
           else
             write_log "v" "# Ignoring found javac $javac $jc_v"
           fi
-        fi
-      done
+        done
+      fi
     fi
   done
 
   if [[ $(stat_size "$temp") != 0 ]]; then
     _jh=$(cat "$temp")
-  else
-    local java="$(readlink -f "$(which java)")"
-    if [ -n "$java" ]; then
-      _jh="$(dirname "$(dirname "$java")")"
-    fi
   fi
 
   echo -n > "$temp"
