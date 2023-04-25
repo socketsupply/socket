@@ -140,7 +140,9 @@ done < <($adb logcat --pid="$pid") & logcat_pid=$!
 # This section dumps the entire process log after it has gone away, note that we don't want the entire log on failed tests that were successfully reported
 count=0
 timeout=300
-echo "Waiting 5m before aborting tests..."
+[[ -z "$CI" ]] && timeout=30
+[[ -z "$CI" ]] && echo "Waiting 30s before aborting tests..."
+[[ -n "$CI" ]] && echo "Waiting 5m before aborting tests..."
 
 # while [[ "$(watchdog_file_exists)" == "0" ]]; do
 while (( count < timeout )) ; do
@@ -166,5 +168,6 @@ else
 fi
 
 echo "poll-adb-logcat.sh exiting without signal from adb loop"
+[[ -n "$pid" ]] && dump_pid $pid
 wait $logcat_pid
 exit 254
