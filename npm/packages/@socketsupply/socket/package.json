@@ -1,6 +1,6 @@
 {
   "name": "@socketsupply/socket",
-  "version": "0.2.11",
+  "version": "0.2.12",
   "description": "A Cross-Platform, Native Runtime for Desktop and Mobile Apps — Create apps using HTML, CSS, and JavaScript. Written from the ground up to be small and maintainable.",
   "type": "module",
   "main": "index.js",
