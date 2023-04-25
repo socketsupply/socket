@@ -60,6 +60,12 @@ export const DEFAULT_TEST_PORT = 9778
 export const DEFAULT_KEEP_ALIVE = 28_000
 
 /**
+ * Default rate limit threshold in milliseconds.
+ * @type {number}
+ */
+export const DEFAULT_RATE_LIMIT_THRESHOLD = 8000
+
+/**
  * Creates a factory function for generating a port to bind to.
  * @param {number?} [localPort] Initial local port
  * @param {number?} [testPort] Initial static test port
@@ -79,6 +85,41 @@ export const createPortGenerator = (localPort = 0, testPort = 0) => {
     do ports[p = next()] = true; while (!ports[p] && p)
     return p
   }
+}
+
+/**
+ * Computes rate limit predicate value for a port and address pair for a given threshold
+ * updating an input rates map.
+ * @param {Map} rates
+ * @param {number} port
+ * @param {string} address
+ * @param {number?} [threshold = DEFAULT_RATE_LIMIT_THRESHOLD]
+ * @return {boolean}
+ */
+export function rateLimit (rates, port, address, threshold = DEFAULT_RATE_LIMIT_THRESHOLD) {
+  const now = Date.now()
+  const key = address + ':' + port
+  const rate = rates.get(key) || { d: 0, n: 0, e: 0, t: now }
+  const quota = 1024
+
+  rate.n++
+  rate.e = Math.pow(2, rate.n)
+  rate.d = now - rate.t
+  rate.t = now
+
+  if (!rates.has(key)) {
+    rates.set(key, rate)
+  }
+
+  if (rate.e > quota) {
+    if (rate.d < threshold) {
+      return false
+    }
+
+    rates.delete(key)
+  }
+
+  return true
 }
 
 /**
@@ -159,7 +200,6 @@ export const createPeer = options => {
     queries = {}
     joins = {}
     connects = {}
-    limits = {}
     uptime = 0
     maxHops = 16
     bdpCache = /** @type {number[]} */ ([])
@@ -327,10 +367,6 @@ export const createPeer = options => {
                 this.peers.splice(i, 1)
                 continue
               }
-            }
-
-            if (this.limits[peer.address]) {
-              this.limits[peer.address] = this.limits[peer.address] / 1.05
             }
 
             this.ping(peer, false, {
@@ -1136,35 +1172,17 @@ export const createPeer = options => {
     }
 
     rateLimit (data, port, address) {
-      if (this.peers.find(p => p.address === address && !p.clusterId)) return true
+      this.rates ??= new Map()
 
-      // A peer can not send more than N messages in sequence. As messages
-      // from other peers are received, their limits are reduced.
-      if (!this.limits[address]) this.limits[address] = 0
-
-      if (this.limits[address] >= 2048) { // obj faster than peers array
-        if (this.limit && !this.limit(data, port, address, data)) return false
+      if (rateLimit(this.rates, port, address)) {
+        return true
       }
 
-      // 1Mb max allowance per peer (or until other peers get a chance)
-      this.limits[address]++
-
-      // find another peer to credit
-      const otherAddress = Object.entries(this.limits)
-        .sort((a, b) => b[1] - a[1])
-        .filter(limits => limits[0] !== address)
-        .map(limits => limits[0])
-        .pop()
-
-      if (this.limits[otherAddress]) {
-        this.limits[otherAddress] -= 1
-
-        if (this.limits[otherAddress] <= 0) {
-          delete this.limits[otherAddress]
-        }
+      if (typeof this.limit === 'function' && this.limit(data, port, address)) {
+        return true
       }
 
-      return true
+      return false
     }
 
     /**
