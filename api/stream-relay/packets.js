@@ -452,7 +452,8 @@ export class PacketAsk extends Packet {
     super({ type: PacketAsk.type, packetId, clusterId, message })
 
     validatePacket(message, {
-      tail: { type: 'boolean' },
+      previousId: { type: 'string' },
+      packetId: { type: 'string' },
       peerId: { type: 'string' }
     })
   }
