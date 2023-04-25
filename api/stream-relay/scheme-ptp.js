@@ -91,7 +91,20 @@ async function broadcastGroups () {
 }
 
 export class PTP {
-  init (peer) {
+  static init (peer, config, peerType = 'local') {
+    if (peerType === 'local') {
+      config.keys = config.keys ?? generateNetworkIdentity()
+      config.peerId = config.peerId ?? formatPeerId(config.keys.publicKey)
+
+      // register local identity (full keypair)
+      registerNetworkIdentity(config.keys)
+    } else {
+      // register remote identity (public-key only)
+      registerNetworkIdentity({ publicKey: config.peerId })
+    }
+
+    peer.prepareMessage = prepareNetworkMessage
+
     // groups broadcasted at least a day ago (or never)?
     peer.onInterval = async () => {
       const oneDayAgo = Date.now() - (24 * 60 * 60 * 1000)
@@ -312,23 +325,20 @@ export function lookupNetworkIdentities (forPubKey = defaultIdentity?.publicKey)
   return identities
 }
 
-export function prepareNetworkMessage (message, forPubKey) {
+function prepareNetworkMessage (message, forPubKey) {
   const forPubKeyStr = toBase64Str(forPubKey)
 
   // intended recipient's public-key (encryption)
   // registered?
   if (!networkIdentities[forPubKeyStr]?.encPublicKey) {
-    return { err: new Error('Unable to prepare network message (unknown key)') }
+    throw new Error('Unable to prepare network message (unknown key)')
   }
 
   const networkIdentity = networkIdentities[forPubKeyStr]
   try {
-    const data = sodium.crypto_box_seal(message, networkIdentity.encPublicKey)
-    return { data }
+    return sodium.crypto_box_seal(message, networkIdentity.encPublicKey)
   } catch (e) {
-    return {
-      err: new Error('Unable to prepare network message', { cause: e })
-    }
+    throw new Error('Unable to prepare network message', { cause: e })
   }
 }
 
