@@ -4296,69 +4296,164 @@ declare module "socket:node-esm-loader" {
     export function resolve(specifier: any, ctx: any, next: any): Promise<any>;
     export default resolve;
 }
+declare module "socket:stream-relay/encryption" {
+    export class Encryption {
+        constructor(config?: {});
+        keys: {};
+        publicKey: any;
+        privateKey: any;
+        add(publicKey: any, privateKey: any): void;
+        has(to: any): boolean;
+        /**
+         * `Open(message, receiver)` performs a _decrypt-verify-decrypt_ (DVD) on a
+         * ciphertext `message` for a `receiver` identity. Receivers who open the
+         * `message` ciphertext can be guaranteed non-repudiation without relying on
+         * the packet chain integrity.
+         *
+         * let m = Open(in, pk, sk)
+         * let sig = Slice(m, 0, 64)
+         * let ct = Slice(m, 64)
+         * if (verify(sig, ct, pk)) {
+         *   let out = open(ct, pk, sk)
+         * }
+         */
+        open(message: any, to: any): any;
+        /**
+         * `Seal(message, receiver)` performs an _encrypt-sign-encrypt_ (ESE) on
+         * a plaintext `message` for a `receiver` identity. This prevents repudiation
+         * attacks and doesn't rely on packet chain guarantees.
+         *
+         * let ct = Seal(sender | pt, receiver)
+         * let sig = Sign(ct, sk)
+         * let out = Seal(sig | ct)
+         *
+         * Essentially, in an setup between Alice & Bob, this means:
+         * - Only Bob sees the plaintext
+         * - Alice wrote the plaintext and the ciphertext
+         * - Only Bob can see that Alice wrote the plaintext and ciphertext
+         * - Bob cannot forward the message without invalidating Alice's signature.
+         * - The outer encryption serves to prevent an attacker from replacing Alice's
+         *   signature. As with _sign-encrypt-sign (SES), ESE is a variant of
+         *   including the recipient's name inside the plaintext, which is then signed
+         *   and encrypted Alice signs her plaintext along with her ciphertext, so as
+         *   to protect herself from a laintext-substitution attack. At the same time,
+         *   Alice's signed plaintext gives Bob non-repudiation.
+         *
+         * @see https://theworld.com/~dtd/sign_encrypt/sign_encrypt7.html
+         */
+        seal(message: any, to: any): any;
+    }
+}
 declare module "socket:stream-relay/packets" {
-    export const PACKET_SIZE: number;
-    export function validatePacket(message: any, constraints: any): void;
-    export function sha256(seed: any): Promise<any>;
-    export function decode(buf: any): {
-        type: number;
-        version: number;
-        hops: number;
-        clock: number;
-        index: number;
-        packetId: any;
-        clusterId: any;
-        previousId: any;
-        nextId: any;
-        to: any;
-        usr1: any;
-        message: any;
-        timestamp: number;
-    };
+    /**
+     * The version of the protocol.
+     */
+    export const VERSION: 1;
+    /**
+     * The size in bytes of the `type` field.
+     */
+    export const TYPE_BYTES: 1;
+    /**
+     * The size in bytes of the `version` field.
+     */
+    export const VERSION_BYTES: 1;
+    /**
+     * The size in bytes of the `gops` field.
+     */
+    export const HOPS_BYTES: 4;
+    /**
+     * The size in bytes of the `clock` field.
+     */
+    export const CLOCK_BYTES: 4;
+    /**
+     * The size in bytes of the `index` field.
+     */
+    export const INDEX_BYTES: 4;
+    /**
+     * The size in bytes of the `message_id` field.
+     */
+    export const MESSAGE_ID_BYTES: 32;
+    /**
+     * The size in bytes of the `cluster_id` field.
+     */
+    export const CLUSTER_ID_BYTES: 32;
+    /**
+     * The size in bytes of the `previous_id` field.
+     */
+    export const PREVIOUS_ID_BYTES: 32;
+    /**
+     * The size in bytes of the `next_id` field.
+     */
+    export const NEXT_ID_BYTES: 32;
+    /**
+     * The size in bytes of the `to` field.
+     */
+    export const TO_BYTES: 32;
+    /**
+     * The size in bytes of the `usr1` field.
+     */
+    export const USR1_BYTES: 32;
+    /**
+     * The size in bytes of the `message_length` field.
+     */
+    export const MESSAGE_LENGTH_BYTES: 2;
+    /**
+     * The size in bytes of the `message` field.
+     */
+    export const MESSAGE_BYTES: 1024;
+    /**
+     * The size in bytes of the total packet frame.
+     */
+    export const FRAME_BYTES: number;
+    /**
+     * The size in bytes of the total packet frame and message.
+     */
+    export const PACKET_BYTES: number;
+    /**
+     * The cache TTL in milliseconds.
+     */
+    export const CACHE_TTL: number;
+    export function validatePacket(message: object, constraints: {
+        [key: string]: {
+            required: boolean;
+            type: string;
+        };
+    }): void;
+    /**
+     * Computes a SHA-256 hash of input returning a hex encoded string.
+     * @type {function(string|Buffer|Uint8Array): Promise<string>}
+     */
+    export const sha256: (arg0: string | Buffer | Uint8Array) => Promise<string>;
+    export function decode(buf: Buffer): Packet;
     export function addHops(buf: any, offset?: number): any;
     export class Packet {
         static ttl: number;
         static maxLength: number;
-        static encode(p: any): Promise<any>;
-        static decode(buf: any): {
-            type: number;
-            version: number;
-            hops: number;
-            clock: number;
-            index: number;
-            packetId: any;
-            clusterId: any;
-            previousId: any;
-            nextId: any;
-            to: any;
-            usr1: any;
-            message: any;
-            timestamp: number;
-        };
-        constructor({ type, packetId, previousId, index, nextId, clock, to, usr1, message, clusterId }: {
-            type: any;
-            packetId: any;
-            previousId: any;
-            index: any;
-            nextId: any;
-            clock: any;
-            to: any;
-            usr1: any;
-            message: any;
-            clusterId: any;
-        });
-        packetId: any;
-        hops: number;
-        type: any;
+        /**
+         * @param {Packet|object} packet
+         * @return {Packet}
+         */
+        static from(packet: Packet | object): Packet;
+        /**
+         */
+        static encode(p: any): Promise<Uint8Array>;
+        static decode(buf: any): Packet;
+        /**
+         * `Packet` class constructor.
+         * @param {Packet|object?} options
+         */
+        constructor(options?: Packet | (object | null));
+        type: number;
         version: number;
-        clock: any;
-        index: any;
-        clusterId: any;
-        previousId: any;
-        nextId: any;
-        to: any;
-        usr1: any;
-        message: any;
+        clock: number;
+        index: number;
+        clusterId: string;
+        previousId: string;
+        packetId: string;
+        nextId: string;
+        to: string;
+        usr1: string;
+        message: string;
         #private;
     }
     export class PacketPing extends Packet {
@@ -4408,7 +4503,6 @@ declare module "socket:stream-relay/packets" {
     }
     export class PacketAnswer extends Packet {
         static type: number;
-        constructor(args: any);
     }
     export class PacketQuery extends Packet {
         static type: number;
@@ -4419,76 +4513,120 @@ declare module "socket:stream-relay/packets" {
         });
     }
     export default Packet;
+    import { Buffer } from "buffer";
 }
 declare module "socket:stream-relay/cache" {
+    /**
+     * @typedef {Packet} CacheEntry
+     * @typedef {function(CacheEntry, CacheEntry): number} CacheEntrySiblingResolver
+     */
+    /**
+     * Default cache sibling resolver that computes a delta between
+     * two entries clocks.
+     * @param {CacheEntry} a
+     * @param {CacheEntry} b
+     * @return {number}
+     */
+    export function defaultSiblingResolver(a: CacheEntry, b: CacheEntry): number;
+    /**
+     * Default max size of a `Cache` instance.
+     */
+    export const DEFAULT_MAX_SIZE: number;
+    /**
+     * Internal mapping of packet IDs to packet data used by `Cache`.
+     */
+    export class CacheData extends Map<any, any> {
+        constructor();
+        constructor(entries?: readonly (readonly [any, any])[]);
+        constructor();
+        constructor(iterable?: Iterable<readonly [any, any]>);
+    }
+    /**
+     * A class for storing a cache of packets by ID.
+     */
     export class Cache {
-        constructor(data: any, siblingResolver: any);
-        data: Map<any, any>;
+        /**
+         * `Cache` class constructor.
+         * @param {CacheData?} [data]
+         */
+        constructor(data?: CacheData | null, siblingResolver?: typeof defaultSiblingResolver);
+        data: CacheData;
         maxSize: number;
-        siblingResolver: any;
+        siblingResolver: typeof defaultSiblingResolver;
+        /**
+         * Readonly count of the number of cache entries.
+         * @type {number}
+         */
         get size(): number;
-        insert(k: any, v: any): Promise<boolean>;
-        get(k: any): Promise<any>;
-        delete(k: any): void;
-        has(k: any): boolean;
-        compose(packet: any, peer: any): Promise<any>;
-        heads(fn: any): void;
-        tails(fn: any): void;
-        each(fn: any, { onlyHeads, packetId, inclusive }?: {
-            onlyHeads: any;
+        toJSON(): [any, any][];
+        /**
+         * Inserts a `CacheEntry` value `v` into the cache at key `k`.
+         * @param {string} k
+         * @param {CacheEntry} v
+         * @return {Promise<boolean>}
+         */
+        insert(k: string, v: CacheEntry): Promise<boolean>;
+        /**
+         * Gets a `CacheEntry` value at key `k`.
+         * @param {string} k
+         * @return {Promise<CacheEntry?>}
+         */
+        get(k: string): Promise<CacheEntry | null>;
+        /**
+         * @param {string} k
+         * @return {Promise<boolean>}
+         */
+        delete(k: string): Promise<boolean>;
+        /**
+         * Predicate to determine if cache contains an entry at key `k`.
+         * @param {string} k
+         * @return {boolean}
+         */
+        has(k: string): boolean;
+        /**
+         * Composes an indexed packet into a new `Packet`
+         * @param {Packet} packet
+         */
+        compose(packet: Packet): Promise<Packet>;
+        /**
+         * Visits each head entry in the cache calling function `fn` on each. Heads
+         * are entries that contain a previous packet ID that can be found in the
+         * cache.
+         * @param {function(CacheEntry, number): any} fn
+         */
+        heads(fn: (arg0: CacheEntry, arg1: number) => any): void;
+        /**
+         * Visits each tail entry in the cache calling function `fn` on each. Tails
+         * are entries that contain a previous packet ID that is not found in the cache
+         * @param {function(CacheEntry, number): any} fn
+         */
+        tails(fn: (arg0: CacheEntry, arg1: number) => any): void;
+        /**
+         * Visits each entry in the cache calling function `fn` on each visited entry.
+         * @param {function(CacheEntry, number): any} fn
+         * @param {{ onlyHeads?: boolean?, packetId?: string, inclusive?: boolean }} [options]
+         */
+        each(fn: (arg0: CacheEntry, arg1: number) => any, options?: {
+            onlyHeads?: boolean | null;
             packetId?: string;
             inclusive?: boolean;
         }): void;
+        /**
+         * Visits each entry in the cache calling function `fn` on each visited entry
+         * returning mapped results into a new array.
+         * @param {function(CacheEntry, number): any} fn
+         * @param {{ onlyHeads?: boolean?, packetId?: string, inclusive?: boolean }} [options]
+         */
+        map(fn: (arg0: CacheEntry, arg1: number) => any, options?: {
+            onlyHeads?: boolean | null;
+            packetId?: string;
+            inclusive?: boolean;
+        }): any[];
     }
     export default Cache;
-}
-declare module "socket:stream-relay/encryption" {
-    export class Encryption {
-        constructor(config?: {});
-        keys: {};
-        publicKey: any;
-        privateKey: any;
-        add(publicKey: any, privateKey: any): void;
-        has(to: any): boolean;
-        /**
-         * `Open(message, receiver)` performs a _decrypt-verify-decrypt_ (DVD) on a
-         * ciphertext `message` for a `receiver` identity. Receivers who open the
-         * `message` ciphertext can be guaranteed non-repudiation without relying on
-         * the packet chain integrity.
-         *
-         * let m = Open(in, pk, sk)
-         * let sig = Slice(m, 0, 64)
-         * let ct = Slice(m, 64)
-         * if (verify(sig, ct, pk)) {
-         *   let out = open(ct, pk, sk)
-         * }
-         */
-        open(message: any, to: any): any;
-        /**
-         * `Seal(message, receiver)` performs an _encrypt-sign-encrypt_ (ESE) on
-         * a plaintext `message` for a `receiver` identity. This prevents repudiation
-         * attacks and doesn't rely on packet chain guarantees.
-         *
-         * let ct = Seal(sender | pt, receiver)
-         * let sig = Sign(ct, sk)
-         * let out = Seal(sig | ct)
-         *
-         * Essentially, in an setup between Alice & Bob, this means:
-         * - Only Bob sees the plaintext
-         * - Alice wrote the plaintext and the ciphertext
-         * - Only Bob can see that Alice wrote the plaintext and ciphertext
-         * - Bob cannot forward the message without invalidating Alice's signature.
-         * - The outer encryption serves to prevent an attacker from replacing Alice's
-         *   signature. As with _sign-encrypt-sign (SES), ESE is a variant of
-         *   including the recipient's name inside the plaintext, which is then signed
-         *   and encrypted Alice signs her plaintext along with her ciphertext, so as
-         *   to protect herself from a laintext-substitution attack. At the same time,
-         *   Alice's signed plaintext gives Bob non-repudiation.
-         *
-         * @see https://theworld.com/~dtd/sign_encrypt/sign_encrypt7.html
-         */
-        seal(message: any, to: any): any;
-    }
+    export type CacheEntry = Packet;
+    export type CacheEntrySiblingResolver = (arg0: CacheEntry, arg1: CacheEntry) => number;
+    import { Packet } from "stream-relay/packets";
 }
 declare module "socket:stream-relay/scheme-ptp" {
     export function formatPeerId(forPubKey: any): any;
@@ -4512,13 +4650,6 @@ declare module "socket:stream-relay/scheme-ptp" {
         publicKey: any;
         encPublicKey: any;
     }[];
-    export function prepareNetworkMessage(message: any, forPubKey: any): {
-        err: Error;
-        data?: undefined;
-    } | {
-        data: any;
-        err?: undefined;
-    };
     export function readNetworkMessage(message: any, forPubKey?: any): {
         err: Error;
         data?: undefined;
@@ -4556,10 +4687,9 @@ declare module "socket:stream-relay/scheme-ptp" {
     };
     export class PacketIdentityGroup extends Packet {
         static type: number;
-        constructor(args: any);
     }
     export class PTP {
-        init(peer: any): void;
+        static init(peer: any, config: any, peerType?: string): void;
     }
     namespace _default {
         export { PTP };
@@ -4568,15 +4698,78 @@ declare module "socket:stream-relay/scheme-ptp" {
     import { Packet } from "stream-relay/packets";
 }
 declare module "socket:stream-relay/index" {
-    export const PING_RETRY: 500;
-    export const DEFAULT_PORT: 9777;
-    export const DEFAULT_TEST_PORT: 9778;
-    export const KEEP_ALIVE: 28000;
-    export function portGenerator(localPort: any, testPort: any): (ports: {
-        [x: number]: boolean;
-    }, p: any) => any;
+    /**
+     * Computes rate limit predicate value for a port and address pair for a given threshold
+     * updating an input rates map.
+     * @param {Map} rates
+     * @param {number} port
+     * @param {string} address
+     * @param {number?} [threshold = DEFAULT_RATE_LIMIT_THRESHOLD]
+     * @return {boolean}
+     */
+    export function rateLimit(rates: Map<any, any>, port: number, address: string, threshold?: number | null): boolean;
+    /**
+     * Retry delay in milliseconds for ping.
+     * @type {number}
+     */
+    export const PING_RETRY: number;
+    /**
+     * Default port to bind peer UDP socket port to.
+     * @type {number}
+     */
+    export const DEFAULT_PORT: number;
+    /**
+     * Default static test port to bind peer UDP socket port to.
+     * @type {number}
+     */
+    export const DEFAULT_TEST_PORT: number;
+    /**
+     * Default keep alive timeout.
+     * @type {number}
+     */
+    export const DEFAULT_KEEP_ALIVE: number;
+    /**
+     * Default rate limit threshold in milliseconds.
+     * @type {number}
+     */
+    export const DEFAULT_RATE_LIMIT_THRESHOLD: number;
+    export function createPortGenerator(localPort?: number | null, testPort?: number | null): (arg0: object | null, arg1: number | null) => number;
+    /**
+     * A `RemotePeer` represents an initial, discovered, or connected remote peer.
+     * Typically, you will not need to create instances of this class directly.
+     */
     export class RemotePeer {
-        constructor(o: any);
+        /**
+         * `RemotePeer` class constructor.
+         * @param {{
+         *   peerId?: string,
+         *   address?: string,
+         *   port?: number,
+         *   natType?: string,
+         *   clusterId?: string,
+         *   pingId?: string,
+         *   distance?: number,
+         *   publicKey?: string,
+         *   privateKey?: string,
+         *   clock?: number,
+         *   lastUpdate?: number,
+         *   lastRequest?: number
+         * }} o
+         */
+        constructor(o: {
+            peerId?: string;
+            address?: string;
+            port?: number;
+            natType?: string;
+            clusterId?: string;
+            pingId?: string;
+            distance?: number;
+            publicKey?: string;
+            privateKey?: string;
+            clock?: number;
+            lastUpdate?: number;
+            lastRequest?: number;
+        });
         peerId: any;
         address: any;
         port: number;
@@ -4590,8 +4783,10 @@ declare module "socket:stream-relay/index" {
         lastUpdate: number;
         lastRequest: number;
     }
-    export function createPeer(udp: any): {
-        new (persistedState: any): {
+    export function createPeer(options: {
+        createSocket: (arg0: 'udp4', arg1: object | null) => object;
+    }): {
+        new (persistedState?: object | null): {
             port: any;
             address: any;
             natType: any;
@@ -4609,15 +4804,16 @@ declare module "socket:stream-relay/index" {
             queries: {};
             joins: {};
             connects: {};
-            limits: {};
             uptime: number;
-            clock: number;
             maxHops: number;
-            bdpCache: any[];
+            bdpCache: number[];
+            onListening: any;
+            onDelete: any;
+            firewall: any;
             peers: any;
             encryption: Encryption;
             config: any;
-            onError: (err: any) => void;
+            onError: (err: Error) => void;
             socket: any;
             testSocket: any;
             init(): Promise<any>;
@@ -4631,7 +4827,7 @@ declare module "socket:stream-relay/index" {
             mcast(packet: any, packetId: any, clusterId: any, isTaxed: any, ignorelist?: any[]): Promise<void>;
             timer(delay: any, repeat: any, fn: any): boolean;
             requestReflection(reflectionId: any): void;
-            ping(peer: any, props?: {}): Promise<PacketPing>;
+            ping(peer: any, withRetry: any, props?: {}): Promise<PacketPing>;
             setPeer(packet: any, port: any, address: any): any;
             join(): Promise<void>;
             publish(args: any): Promise<PacketPublish[]>;
@@ -4647,12 +4843,26 @@ declare module "socket:stream-relay/index" {
             onJoin(packet: any, port: any, address: any, data: any): Promise<void>;
             onPub(packet: any, port: any, address: any, data: any): Promise<void>;
             rateLimit(data: any, port: any, address: any): boolean;
-            onMessage(data: any, { port, address }: {
-                port: any;
-                address: any;
+            /**
+             * When a packet is received it is decoded, the packet contains the type
+             * of the message. Based on the message type it is routed to a function.
+             * like WebSockets, don't answer queries unless we know its another SRP peer.
+             *
+             * @param {Buffer|Uint8Array} data
+             * @param {{ port: number, address: string }} info
+             */
+            onMessage(data: Buffer | Uint8Array, { port, address }: {
+                port: number;
+                address: string;
             }): Promise<void>;
         };
-        create(...args: any[]): Promise<{
+        /**
+         * Factory for creating a `Peer` instances. This function ensures all
+         * internal dependencies are loaded and ready.
+         * @param {object?} [options]
+         * @return {Promise<Peer>}
+         */
+        create(options?: object | null): Promise<{
             port: any;
             address: any;
             natType: any;
@@ -4670,15 +4880,16 @@ declare module "socket:stream-relay/index" {
             queries: {};
             joins: {};
             connects: {};
-            limits: {};
             uptime: number;
-            clock: number;
             maxHops: number;
-            bdpCache: any[];
+            bdpCache: number[];
+            onListening: any;
+            onDelete: any;
+            firewall: any;
             peers: any;
             encryption: Encryption;
             config: any;
-            onError: (err: any) => void;
+            onError: (err: Error) => void;
             socket: any;
             testSocket: any;
             init(): Promise<any>;
@@ -4692,7 +4903,7 @@ declare module "socket:stream-relay/index" {
             mcast(packet: any, packetId: any, clusterId: any, isTaxed: any, ignorelist?: any[]): Promise<void>;
             timer(delay: any, repeat: any, fn: any): boolean;
             requestReflection(reflectionId: any): void;
-            ping(peer: any, props?: {}): Promise<PacketPing>;
+            ping(peer: any, withRetry: any, props?: {}): Promise<PacketPing>;
             setPeer(packet: any, port: any, address: any): any;
             join(): Promise<void>;
             publish(args: any): Promise<PacketPublish[]>;
@@ -4708,9 +4919,17 @@ declare module "socket:stream-relay/index" {
             onJoin(packet: any, port: any, address: any, data: any): Promise<void>;
             onPub(packet: any, port: any, address: any, data: any): Promise<void>;
             rateLimit(data: any, port: any, address: any): boolean;
-            onMessage(data: any, { port, address }: {
-                port: any;
-                address: any;
+            /**
+             * When a packet is received it is decoded, the packet contains the type
+             * of the message. Based on the message type it is routed to a function.
+             * like WebSockets, don't answer queries unless we know its another SRP peer.
+             *
+             * @param {Buffer|Uint8Array} data
+             * @param {{ port: number, address: string }} info
+             */
+            onMessage(data: Buffer | Uint8Array, { port, address }: {
+                port: number;
+                address: string;
             }): Promise<void>;
         }>;
     };
@@ -4720,6 +4939,7 @@ declare module "socket:stream-relay/index" {
     import { Encryption } from "stream-relay/encryption";
     import { PacketPing } from "stream-relay/packets";
     import { PacketPublish } from "stream-relay/packets";
+    import { Buffer } from "buffer";
     export { sha256, Cache, Encryption };
 }
 declare module "socket:peer" {
@@ -4782,14 +5002,6 @@ declare module "socket:peer" {
             clusterId: any;
             reflectionId: any;
             reflectionFirstResponder: any;
-            /**
-             * A method that will generate a public and private key pair.
-             * The ed25519 pair can be stored by an app with a secure API.
-             *
-             * @static
-             * @return {Object<Pair>} pair - A pair of keys
-             *
-             */
             peerId: string;
             pingStart: number;
             ctime: number;
@@ -4801,15 +5013,16 @@ declare module "socket:peer" {
             queries: {};
             joins: {};
             connects: {};
-            limits: {};
             uptime: number;
-            clock: number;
             maxHops: number;
-            bdpCache: any[];
+            bdpCache: number[];
+            onListening: any;
+            onDelete: any;
+            firewall: any;
             peers: any;
             encryption: Encryption;
             config: any;
-            onError: (err: any) => void;
+            onError: (err: Error) => void;
             socket: any;
             testSocket: any;
             init(): Promise<any>;
@@ -4823,7 +5036,7 @@ declare module "socket:peer" {
             mcast(packet: any, packetId: any, clusterId: any, isTaxed: any, ignorelist?: any[]): Promise<void>;
             timer(delay: any, repeat: any, fn: any): boolean;
             requestReflection(reflectionId: any): void;
-            ping(peer: any, props?: {}): Promise<import("stream-relay/packets").PacketPing>;
+            ping(peer: any, withRetry: any, props?: {}): Promise<import("stream-relay/packets").PacketPing>;
             setPeer(packet: any, port: any, address: any): any;
             join(): Promise<void>;
             publish(args: any): Promise<import("stream-relay/packets").PacketPublish[]>;
@@ -4839,9 +5052,9 @@ declare module "socket:peer" {
             onJoin(packet: any, port: any, address: any, data: any): Promise<void>;
             onPub(packet: any, port: any, address: any, data: any): Promise<void>;
             rateLimit(data: any, port: any, address: any): boolean;
-            onMessage(data: any, { port, address }: {
-                port: any;
-                address: any;
+            onMessage(data: Uint8Array | import("buffer").default, { port, address }: {
+                port: number;
+                address: string;
             }): Promise<void>;
         };
         _emit: any;
