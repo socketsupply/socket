@@ -4,7 +4,11 @@ declare root="$(cd "$(dirname "$(dirname "${BASH_SOURCE[0]}")")" && pwd)"
 
 cd "$root" || exit $?
 
-tsc --emitDeclarationOnly --module es2022 --outFile api/index || exit $?
+tsc --emitDeclarationOnly --module es2022 --outFile api/index.tmp || exit $?
 
-sed -i '' -e 's/declare module "\(.*\)"/declare module "socket:\1"/g' api/index.d.ts || exit $?
-sed -i '' -e 's/namespace \_\_\_.*$//g' api/index.d.ts || exit $?
+cat api/index.tmp.d.ts \
+  | sed 's/declare module "\(.*\)"/declare module "socket:\1"/g' \
+  | sed 's/namespace \_\_\_.*$//g' > api/index.d.ts \
+  || exit $?
+
+rm -f api/index.tmp.d.ts
