@@ -117,7 +117,9 @@ read_env_data
 declare package_manager="$(determine_package_manager)"
 
 function advice {
-  echo "sudo $package_manager $1"
+  local sudo="sudo ";
+  [[ "$package_manager" = "brew install" ]] && sudo=""
+  echo "$sudo""$package_manager $1"
 }
 
 if [[ "$host" != "Win32" ]]; then
@@ -138,11 +140,11 @@ if [ "$host" == "Darwin" ]; then
   quiet command -v automake
   die $? "not ok - missing build tools, try \"$(advice "automake")\""
   quiet command -v glibtoolize
-  die $? "not ok - missing build tools, try 'brew install libtool'"
+  die $? "not ok - missing build tools, try \"$(advice "libtool")\""
   quiet command -v libtool
-  die $? "not ok - missing build tools, try 'brew install libtool'"
+  die $? "not ok - missing build tools, try \"$(advice "libtool")\""
   quiet command -v curl
-  die $? "not ok - missing curl, try 'brew install curl'"
+  die $? "not ok - missing curl, try \"$(advice "curl")\""
 fi
 
 if [ "$host" == "Linux" ]; then
