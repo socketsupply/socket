@@ -112,14 +112,15 @@ fi
 
 [[ -z "$EMULATOR_FLAGS" ]] && EMULATOR_FLAGS=()
 
-EMULATOR_FLAGS+=("-gpu" "swiftshader_indirect")
+# Android platform support prep, older versions don't support -gpu swiftshader_indirect
+[[ -z "$ANDROID_PLATFORM" ]] && ANDROID_PLATFORM=33
+(( ANDROID_PLATFORM > 31 )) && EMULATOR_FLAGS+=("-gpu" "swiftshader_indirect")
 # fixes adb: failed to install cmd: Can't find service: package
 
 echo "Starting Android emulator..."
 if [[ -z "$CI" ]]; then
   "$emulator" @SSCAVD         \
     "${EMULATOR_FLAGS[@]}"    \
-    "-gpu swiftshader_indirect" \
     -camera-back none         \
     -no-boot-anim             \
     -no-window                \
@@ -128,7 +129,6 @@ if [[ -z "$CI" ]]; then
 else
   "$emulator" @SSCAVD         \
     "${EMULATOR_FLAGS[@]}"    \
-    "-gpu swiftshader_indirect" \
     -camera-back none         \
     -no-boot-anim             \
     -no-window                \
