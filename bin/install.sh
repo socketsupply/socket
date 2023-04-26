@@ -591,6 +591,12 @@ function _install_cli {
     die $? "not ok - unable to move binary into '$SOCKET_HOME'"
 
     if [[ "$SOCKET_HOME" != "$PREFIX" ]]; then
+      if [[ ! -d $PREFIX/bin ]]; then
+        echo "not ok - $PREFIX/bin is not a directory, unable to install."
+        exit 1
+      fi
+
+      echo "# linking binary to $PREFIX/bin/ssc"
       local status="$(ln -sf "$SOCKET_HOME/bin/ssc" "$PREFIX/bin/ssc" 2>&1)"
       local rc=$?
 
