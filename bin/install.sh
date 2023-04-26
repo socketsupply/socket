@@ -298,6 +298,10 @@ function _build_runtime_library() {
   if [[ "$host" = "Darwin" ]] && [[ -z "$NO_IOS" ]]; then
     "$root/bin/build-runtime-library.sh" --arch "$arch" --platform ios $pass_force & pids+=($!)
     "$root/bin/build-runtime-library.sh" --arch x86_64 --platform ios-simulator $pass_force & pids+=($!)
+
+    if [[ "$arch" = "arm64" ]]; then
+      "$root/bin/build-runtime-library.sh" --arch "$arch" --platform ios-simulator $pass_force & pids+=($!)
+    fi
   fi
 
   if [[ -n "$BUILD_ANDROID" ]]; then
@@ -423,7 +427,7 @@ function _prebuild_ios_main () {
 
 function _prebuild_ios_simulator_main () {
   echo "# precompiling main program for iOS Simulator"
-  local arch="x86_64"
+  local arch="$1"
   local platform="iPhoneSimulator"
 
   local src="$root/src"
@@ -467,7 +471,7 @@ function _prepare {
   mkdir -p "$SOCKET_HOME"/{lib$d,objects}/"$arch-desktop"
 
   if [[ "$host" = "Darwin" ]]; then
-    mkdir -p "$SOCKET_HOME"/{lib$d,objects}/{arm64-iPhoneOS,x86_64-iPhoneSimulator}
+    mkdir -p "$SOCKET_HOME"/{lib$d,objects}/{arm64-iPhoneOS,x86_64-iPhoneSimulator,arm64-iPhoneSimulator}
   fi
 
   if [[ -n $BUILD_ANDROID ]]; then
@@ -877,7 +881,10 @@ if [[ "$(uname -s)" == "Darwin" ]] && [[ -z "$NO_IOS" ]]; then
   _setSDKVersion iPhoneOS
 
   _compile_libuv arm64 iPhoneOS & pids+=($!)
-  _compile_libuv x86_64 iPhoneSimulator & pids+=($!)
+  _compile_libuv x86_64 iPhoneSimulator & pids+=($!)  
+  if [[ "$arch" = "arm64" ]]; then
+    _compile_libuv arm64 iPhoneSimulator & pids+=($!)
+  fi
 
   for pid in "${pids[@]}"; do wait "$pid"; done
 
@@ -926,7 +933,10 @@ _prebuild_desktop_main & pids+=($!)
 if [[ "$host" = "Darwin" ]] && [[ -z "$NO_IOS" ]]; then
   if test -d "$(xcrun -sdk iphoneos -show-sdk-path 2>/dev/null)"; then
     _prebuild_ios_main & pids+=($!)
-    _prebuild_ios_simulator_main & pids+=($!)
+    _prebuild_ios_simulator_main "x86_64" & pids+=($!)
+    if [[ "$arch" = "arm64" ]]; then
+      _prebuild_ios_simulator_main "arm64" iPhoneSimulator & pids+=($!)
+    fi
   fi
 fi
 
@@ -940,6 +950,10 @@ _install "$(host_arch)" desktop
 if [[ "$host" = "Darwin" ]] && [[ -z "$NO_IOS" ]]; then
   _install arm64 iPhoneOS
   _install x86_64 iPhoneSimulator
+
+  if [[ "$arch" = "arm64" ]]; then
+    _install arm64 iPhoneSimulator
+  fi
 fi
 
 if [[ -n "$BUILD_ANDROID" ]]; then
