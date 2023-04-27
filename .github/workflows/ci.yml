@@ -183,9 +183,10 @@ jobs:
         NO_IOS: 1
         CI: true
         SSC_ANDROID_CI: true
+        # Clear variables because CI supplied installs are out of date
         ANDROID_HOME: 
+        JAVA_HOME: 
         ANDROID_SUPPORTED_ABIS: x86_64
-        JAVA_HOME: ""
         NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
 
     - name: Build Socket Runtime
@@ -196,7 +197,8 @@ jobs:
         VERBOSE: 1
         NO_IOS: true
         CI: true
-        SSC_ANDROID_CI: true
+        SSC_ANDROID_CI: true        
+        # Clear variables because CI supplied installs are out of date
         ANDROID_HOME: 
         ANDROID_SUPPORTED_ABIS: x86_64
         NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
@@ -211,8 +213,9 @@ jobs:
         CI: 1
         SSC_ANDROID_CI: true
         ANDROID_SUPPORTED_ABIS: x86_64
-        JAVA_HOME: ""
+        # Clear variables because CI supplied installs are out of date
         ANDROID_HOME: 
+        JAVA_HOME: 
         NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
 
   android_linux:
