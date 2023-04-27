@@ -65,7 +65,13 @@ else
   SOCKET_HOME="${SOCKET_HOME:-"${XDG_DATA_HOME:-"$HOME/.local/share"}/socket"}"
 fi
 
-echo "warn - using '$SOCKET_HOME' as SOCKET_HOME"
+if [[ "$host" == "Win32" ]] && [[ "$PREFIX" == "/usr/local" ]] && [[ ! -d "$PREFIX/bin" ]]; then
+  # User probably doesn't want to install to /usr/local on windows. Reset PREFIX so script doesn't terminate later.
+  PREFIX="$SOCKET_HOME"
+fi
+
+write_log "h" "warn - using '$SOCKET_HOME' as SOCKET_HOME"
+write_log "h" "warn - Installing to '$PREFIX'"
 
 if [[ "$host" = "Linux" ]]; then
   if [ -n "$WSL_DISTRO_NAME" ] || uname -r | grep 'Microsoft'; then
