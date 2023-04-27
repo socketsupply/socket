@@ -2331,7 +2331,7 @@ int main (const int argc, const char* argv[]) {
       }
 
       if (!fs::exists(deviceObjects)) {
-        log("ERROR: libs folder for the target platform doesn't exist: " + deviceObjects.string());
+        log("ERROR: objects folder for the target platform doesn't exist: " + deviceObjects.string());
       }
 
       if (!fs::exists(deviceLibs) || !fs::exists(deviceObjects)) {
