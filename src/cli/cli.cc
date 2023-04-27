@@ -2963,7 +2963,7 @@ int main (const int argc, const char* argv[]) {
         exit(1);
       }
 
-      if (!androidEnableStandardNdkBuild && !flagRunUserBuildOnly) {
+      if (!androidEnableStandardNdkBuild) {
         StringStream ndkBuild;
         StringStream ndkBuildArgs;
         StringStream ndkTest;
@@ -3005,7 +3005,7 @@ int main (const int argc, const char* argv[]) {
         auto libs = _main / "libs";
         auto obj = _main / "obj";
 
-        if (!flagRunUserBuildOnly || !fs::exists(jniLibs)) {
+        if (!fs::exists(jniLibs)) {
 
           if (fs::exists(obj)) {
             fs::remove_all(obj);
