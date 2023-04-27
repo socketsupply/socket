@@ -2321,31 +2321,34 @@ int main (const int argc, const char* argv[]) {
         settings["apple_team_id"] = "";
       }
 
-      if (flagBuildForSimulator) {
-        fs::copy(
-          Path(prefixFile()) / "lib" / "x86_64-iPhoneSimulator",
-          paths.platformSpecificOutputPath / "lib",
-          fs::copy_options::overwrite_existing | fs::copy_options::recursive
-        );
+      auto deviceType = platform.arch + "-iPhone" + (flagBuildForSimulator ? "Simulator" : "OS");
 
-        fs::copy(
-          Path(prefixFile()) / "objects" / "x86_64-iPhoneSimulator",
-          paths.platformSpecificOutputPath / "objects",
-          fs::copy_options::overwrite_existing | fs::copy_options::recursive
-        );
-      } else {
-        fs::copy(
-          Path(prefixFile()) / "lib" / "arm64-iPhoneOS",
-          paths.platformSpecificOutputPath / "lib",
-          fs::copy_options::overwrite_existing | fs::copy_options::recursive
-        );
+      auto deviceLibs = Path(prefixFile()) / "lib" / deviceType;
+      auto deviceObjects = Path(prefixFile()) / "objects" / deviceType;
 
-        fs::copy(
-          Path(prefixFile()) / "objects" / "arm64-iPhoneOS",
-          paths.platformSpecificOutputPath / "objects",
-          fs::copy_options::overwrite_existing | fs::copy_options::recursive
-        );
+      if (!fs::exists(deviceLibs)) {
+        log("ERROR: libs folder for the target platform doesn't exist: " + deviceLibs.string());
       }
+
+      if (!fs::exists(deviceObjects)) {
+        log("ERROR: objects folder for the target platform doesn't exist: " + deviceObjects.string());
+      }
+
+      if (!fs::exists(deviceLibs) || !fs::exists(deviceObjects)) {
+        exit(1);
+      }
+
+      fs::copy(
+        deviceLibs,
+        paths.platformSpecificOutputPath / "lib",
+        fs::copy_options::overwrite_existing | fs::copy_options::recursive
+      );
+
+      fs::copy(
+        deviceObjects,
+        paths.platformSpecificOutputPath / "objects",
+        fs::copy_options::overwrite_existing | fs::copy_options::recursive
+      );
 
       fs::copy(
         Path(prefixFile()) / "include",

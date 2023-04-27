@@ -83,7 +83,7 @@ while (( $# > 0 )); do
       platform="iPhoneOS";
       export TARGET_OS_IPHONE=1
     elif [[ "$1" = "ios-simulator" ]] || [[ "$1" = "iPhoneSimulator" ]] || [[ "$1" = "iphonesimulator" ]]; then
-      arch="x86_64"
+      [[ -z "$arch" ]] && arch="x86_64"
       platform="iPhoneSimulator";
       export TARGET_IPHONE_SIMULATOR=1
     elif [[ "$1" = "android" ]]; then
@@ -116,6 +116,7 @@ elif [[ "$host" = "Darwin" ]]; then
     clang="xcrun -sdk iphoneos $clang"
   elif (( TARGET_IPHONE_SIMULATOR )); then
     clang="xcrun -sdk iphonesimulator $clang"
+    cflags+=("-arch "$arch"")
   else
     sources+=("$root/src/process/unix.cc")
   fi

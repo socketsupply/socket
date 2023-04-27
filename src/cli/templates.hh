@@ -795,7 +795,6 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
         CURRENT_PROJECT_VERSION = 1;
         DEVELOPMENT_TEAM = "{{apple_team_id}}";
         ENABLE_BITCODE = NO;
-        "EXCLUDED_ARCHS[sdk=iphonesimulator*]" = arm64;
         GENERATE_INFOPLIST_FILE = YES;
         HEADER_SEARCH_PATHS = "$(PROJECT_DIR)/include";
         INFOPLIST_FILE = Info.plist;
@@ -817,6 +816,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
         );
         LIBRARY_SEARCH_PATHS = "$(PROJECT_DIR)/lib";
         MARKETING_VERSION = 1.0;
+        ONLY_ACTIVE_ARCH = YES;
         OTHER_CFLAGS = (
           "-DHOST={{host}}",
           "-DPORT={{port}}",
@@ -845,8 +845,6 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
         CURRENT_PROJECT_VERSION = 1;
         DEVELOPMENT_TEAM = "{{apple_team_id}}";
         ENABLE_BITCODE = NO;
-        "EXCLUDED_ARCHS[sdk=*]" = "";
-        "EXCLUDED_ARCHS[sdk=iphonesimulator*]" = arm64;
         GENERATE_INFOPLIST_FILE = YES;
         HEADER_SEARCH_PATHS = "$(PROJECT_DIR)/include";
         INFOPLIST_FILE = Info.plist;
