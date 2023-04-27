@@ -181,8 +181,8 @@ fi
 if [[ -n "$BUILD_ANDROID" ]]; then
   abis=($(android_supported_abis))
   platform="android"
-  arch="${abis[0]}"
-  clang="$(android_clang "$ANDROID_HOME" "$NDK_VERSION" "$host" "$(host_arch)" "$arch")"
+  test_arch="${abis[0]}"
+  clang="$(android_clang "$ANDROID_HOME" "$NDK_VERSION" "$host" "$(host_arch)" "$test_arch")"
 
   if ! quiet $clang -v; then
     echo "not ok - Android clang call failed. This could indicate an issue with ANDROID_HOME, missing ndk tools, or incorrectly determined host or target architectures."
@@ -434,7 +434,7 @@ function _prebuild_ios_simulator_main () {
   local objects="$BUILD_DIR/$arch-$platform/objects"
 
   local clang="$(xcrun -sdk iphonesimulator -find clang++)"
-  local cflags=($(TARGET_IPHONE_SIMULATOR=1 "$root/bin/cflags.sh"))
+  local cflags=($(TARGET_IPHONE_SIMULATOR=1 ARCH="$arch" $root/bin/cflags.sh))
   local test_sources=($(find "$src"/ios/ios.mm 2>/dev/null))
   local sources=()
   local outputs=()
@@ -458,7 +458,7 @@ function _prebuild_ios_simulator_main () {
       -o "${outputs[$i]}"
     die $? "not ok - unable to build. See trouble shooting guide in the README.md file:\n$clang ${cflags[@]} -c \"${sources[$i]}\" -o \"${outputs[$i]}\""
   done
-  echo "ok - precompiled main program for iOS Simulator"
+  echo "ok - precompiled main program for iOS Simulator ($arch)"
 }
 
 function _prepare {
@@ -787,15 +787,20 @@ function _compile_libuv {
     hosttarget="arm"
   fi
 
+  # Use correct sdk, fixes:
+  # ld: in /Users/ec2-user/app2/build/ios-simulator/lib/libuv.a(libuv_la-fs-poll.o), building for iOS Simulator, but linking in object file built for iOS, file '/Users/ec2-user/app2/build/ios-simulator/lib/libuv.a' for architecture arm64
+  local sdk="iphoneos"
+  [[ "$platform" == "iPhoneSimulator" ]] && sdk="iphonesimulator"
+
   export PLATFORM=$platform
-  export CC="$(xcrun -sdk iphoneos -find clang)"
-  export STRIP="$(xcrun -sdk iphoneos -find strip)"
-  export LD="$(xcrun -sdk iphoneos -find ld)"
+  export CC="$(xcrun -sdk $sdk -find clang)"
+  export STRIP="$(xcrun -sdk $sdk -find strip)"
+  export LD="$(xcrun -sdk $sdk -find ld)"
   export CPP="$CC -E"
-  export CFLAGS="-fembed-bitcode -arch ${target} -isysroot $PLATFORMPATH/$platform.platform/Developer/SDKs/$platform$SDKVERSION.sdk -miphoneos-version-min=$SDKMINVERSION"
-  export AR=$(xcrun -sdk iphoneos -find ar)
-  export RANLIB=$(xcrun -sdk iphoneos -find ranlib)
-  export CPPFLAGS="-fembed-bitcode -arch ${target} -isysroot $PLATFORMPATH/$platform.platform/Developer/SDKs/$platform$SDKVERSION.sdk -miphoneos-version-min=$SDKMINVERSION"
+  export CFLAGS="-fembed-bitcode -arch ${target} -isysroot $PLATFORMPATH/$platform.platform/Developer/SDKs/$platform$SDKVERSION.sdk -m$sdk-version-min=$SDKMINVERSION"
+  export AR=$(xcrun -sdk $sdk -find ar)
+  export RANLIB=$(xcrun -sdk $sdk -find ranlib)
+  export CPPFLAGS="-fembed-bitcode -arch ${target} -isysroot $PLATFORMPATH/$platform.platform/Developer/SDKs/$platform$SDKVERSION.sdk -m$sdk-version-min=$SDKMINVERSION"
   export LDFLAGS="-Wc,-fembed-bitcode -arch ${target} -isysroot $PLATFORMPATH/$platform.platform/Developer/SDKs/$platform$SDKVERSION.sdk"
 
   if ! test -f Makefile; then
@@ -929,6 +934,8 @@ _build_runtime_library
 _build_cli & pids+=($!)
 
 _prebuild_desktop_main & pids+=($!)
+
+echo "arch: $arch"
 
 if [[ "$host" = "Darwin" ]] && [[ -z "$NO_IOS" ]]; then
   if test -d "$(xcrun -sdk iphoneos -show-sdk-path 2>/dev/null)"; then

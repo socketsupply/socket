@@ -7,6 +7,7 @@ declare IOS_SIMULATOR_VERSION_MIN="${IOS_SIMULATOR_VERSION_MIN:-$IPHONEOS_VERSIO
 
 declare cflags=()
 declare arch="$(uname -m | sed 's/aarch64/arm64/g')"
+arch=${ARCH:-$arch}
 declare host="$(uname -s)"
 declare platform="desktop"
 
@@ -66,7 +67,7 @@ if (( TARGET_OS_IPHONE )) || (( TARGET_IPHONE_SIMULATOR )); then
     cflags+=("-miphoneos-version-min=$IPHONEOS_VERSION_MIN")
   elif (( TARGET_IPHONE_SIMULATOR )); then
     ios_sdk_path="$(xcrun -sdk iphonesimulator -show-sdk-path)"
-    cflags+=("-arch x86_64")
+    cflags+=("-arch $arch")
     cflags+=("-mios-simulator-version-min=$IPHONEOS_VERSION_MIN")
   fi
 
