@@ -1426,9 +1426,6 @@ version = 1.0.0
 ; Extensions of files that will not be stored compressed in the APK.
 aapt_no_compress = ""
 
-; Allow unencrypted http requests, useful for live reload.
-allow_cleartext = false
-
 ; Enables gradle based ndk build rather than using external native build (standard ndk is the old slow way)
 enable_standard_ndk_build = false
 
