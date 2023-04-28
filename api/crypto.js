@@ -1,3 +1,4 @@
+/* global console */
 /**
  * @module Crypto
  *
@@ -12,7 +13,6 @@
 
 import { toBuffer } from './util.js'
 import { Buffer } from './buffer.js'
-import console from './console.js'
 
 import * as exports from './crypto.js'
 
