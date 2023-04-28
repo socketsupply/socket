@@ -132,7 +132,7 @@ export class Peer extends EventEmitter {
   async join () {
     if (this.peer) return this.peer
 
-    this.opts.clusterId = await sha256(this.opts.custerId)
+    this.opts.clusterId = await sha256(this.opts.clusterId)
     this.opts.peerId = this.opts.peerId || (await sha256(randomBytes(32))).toString('hex')
 
     this.peer = await PeerFactory.create({ ...this.opts })
