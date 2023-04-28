@@ -250,7 +250,7 @@ void signalHandler (int signal) {
   appMutex.unlock();
 }
 
-int runApp (const Path& path, const String& args, bool headless) {
+int runAppCommon (const Path& path, const String& args, bool headless) {
   auto cmd = path.string();
 
   if (!fs::exists(path)) {
@@ -561,8 +561,8 @@ int runApp (const Path& path, const String& args, bool headless) {
   return appStatus;
 }
 
-int runApp (const Path& path, const String& args) {
-  return runApp(path, args, false);
+int runAppCommon (const Path& path, const String& args) {
+  return runAppCommon(path, args, false);
 }
 
 void runIOSSimulator (const Path& path, Map& settings) {
@@ -1536,7 +1536,32 @@ int main (const int argc, const char* argv[]) {
     exit(0);
   });
 
-  createSubcommand("build", { "--platform", "--host", "--port", "--quiet", "-o", "--only-build", "-r", "--run", "--prod", "-p", "-c", "-s", "-e", "-n", "--test", "--headless" }, true, [&](const std::span<const char *>& options) -> void {
+ auto const runOptions = Vector<String> {
+    "--platform",
+    "--host",
+    "--port",
+    "--prod",
+    "--test",
+    "--headless"
+  };
+
+ auto buildOptions = Vector<String> {
+    "--quiet",
+    "-o",
+    "--only-build",
+    "-r",
+    "--run",
+    "-p",
+    "-c",
+    "-s",
+    "-e",
+    "-n"
+  };
+
+  // Insert the elements of runOptions into buildOptions
+  buildOptions.insert(buildOptions.end(), runOptions.begin(), runOptions.end());
+  createSubcommand("build", buildOptions, true, [&](const std::span<const char *>& options) -> void {
+    // common flags
     bool flagRunUserBuildOnly = false;
     bool flagAppStore = false;
     bool flagCodeSign = false;
@@ -1545,11 +1570,15 @@ int main (const int argc, const char* argv[]) {
     bool flagEntitlements = false;
     bool flagShouldNotarize = false;
     bool flagShouldPackage = false;
-    bool flagBuildForIOS = false;
-    bool flagBuildForAndroid = false;
-    bool flagBuildForAndroidEmulator = false;
-    bool flagBuildForSimulator = false;
+    bool isForAndroid = false;
+    bool isForAndroidEmulator = false;
+    bool isForIOS = false;
+    bool isForIOSSimulator = false;
     bool flagBuildTest = false;
+
+    // reusable Android variables
+    String androidPlatform = "android-33";
+    auto androidHome = getAndroidHome();
 
     String argvForward = "";
     String targetPlatform = "";
@@ -1575,6 +1604,7 @@ int main (const int argc, const char* argv[]) {
     String quote = !platform.win ? "'" : "\"";
     String slash = !platform.win ? "/" : "\\";
 
+    // set all the flags based on the options
     for (auto const arg : options) {
       if (is(arg, "-h") || is(arg, "--help")) {
         printHelp("build");
@@ -1618,10 +1648,6 @@ int main (const int argc, const char* argv[]) {
         flagAppStore = true;
       }
 
-      if (is(arg, "--test")) {
-        flagBuildTest = true;
-      }
-
       const auto testFileTmp = optionValue("build", arg, "--test");
       if (testFileTmp.size() > 0) {
         testFile = testFileTmp;
@@ -1642,15 +1668,18 @@ int main (const int argc, const char* argv[]) {
         targetPlatform = optionValue("build", arg, "--platform");
         if (targetPlatform.size() > 0) {
           if (targetPlatform == "ios") {
-            flagBuildForIOS = true;
+            isForIOS = true;
           } else if (targetPlatform == "android") {
-            flagBuildForAndroid = true;
+            isForAndroid = true;
           } else if (targetPlatform == "android-emulator") {
-            flagBuildForAndroid = true;
-            flagBuildForAndroidEmulator = true;
+            isForAndroid = true;
+            isForAndroidEmulator = true;
           } else if (targetPlatform == "ios-simulator") {
-            flagBuildForIOS = true;
-            flagBuildForSimulator = true;
+            isForIOS = true;
+            isForIOSSimulator = true;
+          } else {
+            log("Unknown platform: " + targetPlatform);
+            exit(1);
           }
         }
       }
@@ -1660,7 +1689,7 @@ int main (const int argc, const char* argv[]) {
         if (hostArg.size() > 0) {
           devHost = hostArg;
         } else {
-          if (flagBuildForIOS || flagBuildForAndroid) {
+          if (isForIOS || isForAndroid) {
             auto r = exec((!platform.win)
               ? "ifconfig | grep -w 'inet' | awk '!match($2, \"^127.\") {print $2; exit}' | tr -d '\n'"
               : "PowerShell -Command ((Get-NetIPAddress -AddressFamily IPV4).IPAddress ^| Select-Object -first 1)"
@@ -1671,6 +1700,7 @@ int main (const int argc, const char* argv[]) {
             }
           }
         }
+        settings.insert(std::make_pair("host", devHost));
       }
 
       if (portArg.size() == 0) {
@@ -1678,6 +1708,7 @@ int main (const int argc, const char* argv[]) {
         if (portArg.size() > 0) {
           devPort = portArg;
         }
+        settings.insert(std::make_pair("port", devPort));
       }
     }
 
@@ -1724,7 +1755,7 @@ int main (const int argc, const char* argv[]) {
     auto binaryPath = paths.pathBin / executable;
     auto configPath = targetPath / "socket.ini";
 
-    if (!fs::exists(binaryPath) && !flagBuildForAndroid && !flagBuildForAndroidEmulator) {
+    if (!fs::exists(binaryPath) && !isForAndroid && !isForAndroidEmulator) {
       flagRunUserBuildOnly = false;
     } else {
       struct stat stats;
@@ -1762,7 +1793,7 @@ int main (const int argc, const char* argv[]) {
         log(String("ex: ") + ex.what());
         log(String("ex code: ") + std::to_string(ex.code().value()));
 
-        if (flagBuildForAndroid) {
+        if (isForAndroid) {
           log("check for gradle processes.");
         }
 
@@ -1781,7 +1812,7 @@ int main (const int argc, const char* argv[]) {
       exit(1);
     }
 
-    if (!flagBuildForAndroid && !flagBuildForIOS) {
+    if (!isForAndroid && !isForIOS) {
       fs::create_directories(paths.platformSpecificOutputPath / "include");
       writeFile(paths.platformSpecificOutputPath / "include" / "user-config-bytes.hh", settings["ini_code"]);
     }
@@ -1790,7 +1821,7 @@ int main (const int argc, const char* argv[]) {
     // Darwin Package Prep
     // ---
     //
-    if (platform.mac && !flagBuildForIOS && !flagBuildForAndroid) {
+    if (platform.mac && !isForIOS && !isForAndroid) {
       log("preparing build for mac");
 
       flags = "-std=c++2a -ObjC++ -v";
@@ -1831,7 +1862,7 @@ int main (const int argc, const char* argv[]) {
     // used in multiple if blocks, need to declare here
     auto androidEnableStandardNdkBuild = settings["android_enable_standard_ndk_build"] == "true";
 
-    if (flagBuildForAndroid) {
+    if (isForAndroid) {
       auto bundle_identifier = settings["meta_bundle_identifier"];
       auto bundle_path = Path(replace(bundle_identifier, "\\.", "/")).make_preferred();
       auto bundle_path_underscored = replace(bundle_identifier, "\\.", "_");
@@ -1871,7 +1902,6 @@ int main (const int argc, const char* argv[]) {
       if (debugEnv || verboseEnv) log("cd " + output.string());
       fs::current_path(output);
 
-      auto androidHome = getAndroidHome();
       StringStream sdkmanager;
 
       if (debugEnv || verboseEnv) log("sdkmanager --version 2>&1 >/dev/null");
@@ -2240,12 +2270,12 @@ int main (const int argc, const char* argv[]) {
       }
     }
 
-    if (flagBuildForIOS && !platform.mac) {
+    if (isForIOS && !platform.mac) {
       log("Building for iOS on a non-mac platform is unsupported");
       exit(1);
     }
 
-    if (platform.mac && flagBuildForIOS) {
+    if (platform.mac && isForIOS) {
       fs::remove_all(paths.platformSpecificOutputPath);
 
       auto projectName = (settings["build_name"] + ".xcodeproj");
@@ -2257,7 +2287,7 @@ int main (const int argc, const char* argv[]) {
       fs::create_directories(pathToProject);
       fs::create_directories(pathToScheme);
 
-      if (!flagBuildForSimulator) {
+      if (!isForIOSSimulator) {
         if (!fs::exists(pathToProfile)) {
           log("provisioning profile not found: " + pathToProfile.string() + ". " +
               "Please specify a valid provisioning profile in the " +
@@ -2314,14 +2344,14 @@ int main (const int argc, const char* argv[]) {
         settings["apple_team_id"] = team;
       }
 
-      if (flagBuildForSimulator) {
+      if (isForIOSSimulator) {
         settings["ios_provisioning_specifier"] = "";
         settings["ios_provisioning_profile"] = "";
         settings["ios_codesign_identity"] = "";
         settings["apple_team_id"] = "";
       }
 
-      auto deviceType = platform.arch + "-iPhone" + (flagBuildForSimulator ? "Simulator" : "OS");
+      auto deviceType = platform.arch + "-iPhone" + (isForIOSSimulator ? "Simulator" : "OS");
 
       auto deviceLibs = Path(prefixFile()) / "lib" / deviceType;
       auto deviceObjects = Path(prefixFile()) / "objects" / deviceType;
@@ -2361,9 +2391,6 @@ int main (const int argc, const char* argv[]) {
         settings["ini_code"]
       );
 
-      settings.insert(std::make_pair("host", devHost));
-      settings.insert(std::make_pair("port", devPort));
-
       writeFile(paths.platformSpecificOutputPath / "exportOptions.plist", tmpl(gXCodeExportOptions, settings));
       writeFile(paths.platformSpecificOutputPath / "Info.plist", tmpl(gXCodePlist, settings));
       writeFile(pathToProject / "project.pbxproj", tmpl(gXCodeProject, settings));
@@ -2377,7 +2404,7 @@ int main (const int argc, const char* argv[]) {
     // Linux Package Prep
     // ---
     //
-    if (platform.linux && !flagBuildForAndroid && !flagBuildForIOS) {
+    if (platform.linux && !isForAndroid && !isForIOS) {
       log("preparing build for linux");
       flags = " -std=c++2a `pkg-config --cflags --libs gtk+-3.0 webkit2gtk-4.1`";
       flags += " -ldl " + getCxxFlags();
@@ -2458,7 +2485,7 @@ int main (const int argc, const char* argv[]) {
     // Windows Package Prep
     // ---
     //
-    if (platform.win && !flagBuildForAndroid && !flagBuildForIOS) {
+    if (platform.win && !isForAndroid && !isForIOS) {
       log("preparing build for win");
       auto prefix = prefixFile();
 
@@ -2806,8 +2833,8 @@ int main (const int argc, const char* argv[]) {
       }
     }
 
-    if (flagBuildForIOS) {
-      if (flagBuildForSimulator && settings["ios_simulator_device"].size() == 0) {
+    if (isForIOS) {
+      if (isForIOSSimulator && settings["ios_simulator_device"].size() == 0) {
         log("ERROR: 'ios_simulator_device' option is empty");
         exit(1);
       }
@@ -2838,7 +2865,7 @@ int main (const int argc, const char* argv[]) {
       // building, signing, bundling, archiving, noterizing, and uploading.
       //
       StringStream archiveCommand;
-      String destination = flagBuildForSimulator
+      String destination = isForIOSSimulator
         ? "platform=iOS Simulator,OS=latest,name=" + settings["ios_simulator_device"]
         : "generic/platform=iOS";
       String deviceType;
@@ -2894,12 +2921,6 @@ int main (const int argc, const char* argv[]) {
 
       log("created archive");
 
-      if (flagBuildForSimulator && flagShouldRun) {
-        String app = (settings["build_name"] + ".app");
-        auto pathToApp = paths.platformSpecificOutputPath / app;
-        runIOSSimulator(pathToApp, settings);
-      }
-
       if (flagShouldPackage) {
         StringStream exportCommand;
 
@@ -2927,15 +2948,13 @@ int main (const int argc, const char* argv[]) {
       exit(0);
     }
 
-    if (flagBuildForAndroid) {
+    if (isForAndroid) {
       auto app = paths.platformSpecificOutputPath / "app";
-      auto androidHome = getAndroidHome();
 
       StringStream sdkmanager;
       StringStream packages;
       StringStream gradlew;
       String ndkVersion = "25.0.8775105";
-      String androidPlatform = "android-33";
 
       if (platform.unix) {
         gradlew
@@ -3087,75 +3106,6 @@ int main (const int argc, const char* argv[]) {
         log("ERROR: failed to invoke `gradlew assemble` command");
         exit(1);
       }
-
-      if (flagBuildForAndroidEmulator) {
-        StringStream avdmanager;
-        String package = quote + "system-images;" + androidPlatform + ";google_apis;" + replace(platform.arch, "arm64", "arm64-v8a") + quote;
-
-        if (!platform.win) {
-          if (std::system("avdmanager list 2>&1 >/dev/null") != 0) {
-            avdmanager << androidHome << "/cmdline-tools/latest/bin/";
-          }
-        } else
-          avdmanager << androidHome << "\\cmdline-tools\\latest\\bin\\";
-
-        avdmanager
-          << "avdmanager create avd "
-          << "--device 5 "
-          << "--force "
-          << "--name SSCAVD "
-          << ("--abi google_apis/" + replace(platform.arch, "arm64", "arm64-v8a")) << " "
-          << "--package " << package;
-
-        if (debugEnv || verboseEnv) log(avdmanager.str());
-        if (std::system(avdmanager.str().c_str()) != 0) {
-          log("ERROR: failed to Android Virtual Device (avdmanager)");
-          exit(1);
-        }
-      }
-
-      if (flagShouldRun) {
-        // the emulator must be running on device SSCAVD for now
-        StringStream adbShellStart;
-        StringStream adb;
-
-        if (!platform.win) {
-          adb << androidHome << "/platform-tools/";
-        } else {
-          adb << androidHome << "\\platform-tools\\";
-        }
-
-        if (debugEnv || verboseEnv) log((adb.str() + (" --version > ") + SSC::String((!platform.win) ? "/dev/null" : "NUL") + (" 2>&1")));
-        if (!std::system((adb.str() + (" --version > ") + SSC::String((!platform.win) ? "/dev/null" : "NUL") + (" 2>&1")).c_str())) {
-          log("Warn: Failed to locate adb at " + adb.str());
-        }
-
-        adb << "adb ";
-
-        adbShellStart << adb.str();
-        adb << "install ";
-
-        if (flagDebugMode) {
-          adb << (app / "build" / "outputs" / "apk" / "dev" / "debug" / "app-dev-debug.apk").string();
-        } else {
-          adb << (app / "build" / "outputs" / "apk" / "live" / "debug" / "app-live-debug.apk").string();
-        }
-
-        if (debugEnv || verboseEnv) log(adb.str());
-        if (std::system(adb.str().c_str()) != 0) {
-          log("ERROR: failed to install APK to Android Emulator (adb)");
-          exit(1);
-        }
-
-        if (debugEnv || verboseEnv) log(adbShellStart.str());
-        adbShellStart << "shell am start -n " << settings["meta_bundle_identifier"] << "/" << settings["meta_bundle_identifier"] << settings["android_main_activity"];
-        if (std::system(adbShellStart.str().c_str()) != 0) {
-          log("Failed to run app on emulator.");
-          exit(1);
-        }
-      }
-
-      exit(0);
     }
 
     if (flagRunUserBuildOnly == false) {
@@ -3180,8 +3130,8 @@ int main (const int argc, const char* argv[]) {
         << " " << flags
         << " " << extraFlags
         << " -o " << binaryPath.string()
-        << " -DIOS=" << (flagBuildForIOS ? 1 : 0)
-        << " -DANDROID=" << (flagBuildForAndroid ? 1 : 0)
+        << " -DIOS=" << (isForIOS ? 1 : 0)
+        << " -DANDROID=" << (isForAndroid ? 1 : 0)
         << " -DDEBUG=" << (flagDebugMode ? 1 : 0)
         << " -DHOST=" << devHost
         << " -DPORT=" << devPort
@@ -3740,21 +3690,100 @@ int main (const int argc, const char* argv[]) {
       }
     }
 
-    int exitCode = 0;
+    // Run the app
     if (flagShouldRun) {
-      exitCode = runApp(binaryPath, argvForward, flagHeadless);
-    }
+      if (isForIOSSimulator) {
+        String app = (settings["build_name"] + ".app");
+        auto pathToApp = paths.platformSpecificOutputPath / app;
+        runIOSSimulator(pathToApp, settings);
+      } else if (isForAndroidEmulator) {
+        StringStream avdmanager;
+        String package = quote + "system-images;" + androidPlatform + ";google_apis;" + replace(platform.arch, "arm64", "arm64-v8a") + quote;
 
-    exit(exitCode);
+        if (!platform.win) {
+          if (std::system("avdmanager list 2>&1 >/dev/null") != 0) {
+            avdmanager << androidHome << "/cmdline-tools/latest/bin/";
+          }
+        } else
+          avdmanager << androidHome << "\\cmdline-tools\\latest\\bin\\";
+
+        avdmanager
+          << "avdmanager create avd "
+          << "--device 5 "
+          << "--force "
+          << "--name SSCAVD "
+          << ("--abi google_apis/" + replace(platform.arch, "arm64", "arm64-v8a")) << " "
+          << "--package " << package;
+
+        if (debugEnv || verboseEnv) log(avdmanager.str());
+        if (std::system(avdmanager.str().c_str()) != 0) {
+          log("ERROR: failed to Android Virtual Device (avdmanager)");
+          exit(1);
+        }
+
+        // the emulator must be running on device SSCAVD for now
+        StringStream adbShellStart;
+        StringStream adb;
+
+        if (!platform.win) {
+          adb << androidHome << "/platform-tools/";
+        } else {
+          adb << androidHome << "\\platform-tools\\";
+        }
+
+        if (debugEnv || verboseEnv) log((adb.str() + (" --version > ") + SSC::String((!platform.win) ? "/dev/null" : "NUL") + (" 2>&1")));
+        if (!std::system((adb.str() + (" --version > ") + SSC::String((!platform.win) ? "/dev/null" : "NUL") + (" 2>&1")).c_str())) {
+          log("Warn: Failed to locate adb at " + adb.str());
+        }
+
+        adb << "adb ";
+
+        adbShellStart << adb.str();
+        adb << "install ";
+
+        auto app = paths.platformSpecificOutputPath / "app";
+
+        if (flagDebugMode) {
+          adb << (app / "build" / "outputs" / "apk" / "dev" / "debug" / "app-dev-debug.apk").string();
+        } else {
+          adb << (app / "build" / "outputs" / "apk" / "live" / "debug" / "app-live-debug.apk").string();
+        }
+
+        if (debugEnv || verboseEnv) log(adb.str());
+        if (std::system(adb.str().c_str()) != 0) {
+          log("ERROR: failed to install APK to Android Emulator (adb)");
+          exit(1);
+        }
+
+        if (debugEnv || verboseEnv) log(adbShellStart.str());
+        adbShellStart << "shell am start -n " << settings["meta_bundle_identifier"] << "/" << settings["meta_bundle_identifier"] << settings["android_main_activity"];
+        if (std::system(adbShellStart.str().c_str()) != 0) {
+          log("Failed to run app on emulator.");
+          exit(1);
+        }
+      } else {
+        auto executable = Path(settings["build_name"] + (platform.win ? ".exe" : ""));
+        auto exitCode = runAppCommon(binaryPath, argvForward, flagHeadless);
+        exit(exitCode);
+      }
+    }
   });
 
-  createSubcommand("run", { "--platform", "--prod", "--test",  "--headless" }, true, [&](const std::span<const char *>& options) -> void {
+  createSubcommand("run", runOptions, true, [&](const std::span<const char *>& options) -> void {
     String argvForward = "";
     bool isIosSimulator = false;
     bool flagHeadless = false;
     bool flagTest = false;
     String targetPlatform = "";
     String testFile = "";
+    bool isForIOS = false;
+    bool isForAndroid = false;
+    bool isForIOSSimulator = false;
+
+    String hostArg = "";
+    String portArg = "";
+    String devHost("localhost");
+    String devPort("0");
 
     for (auto const& option : options) {
       if (is(option, "--test")) {
@@ -3775,12 +3804,44 @@ int main (const int argc, const char* argv[]) {
       if (targetPlatform.size() == 0) {
         targetPlatform = optionValue("run", option, "--platform");
         if (targetPlatform.size() > 0) {
-          if (targetPlatform == "ios-simulator") {
-            isIosSimulator = true;
+          if (targetPlatform == "ios") {
+            isForIOS = true;
+          } else if (targetPlatform == "android") {
+            isForAndroid = true;
+          } else if (targetPlatform == "android-emulator") {
+            isForAndroid = true;
+          } else if (targetPlatform == "ios-simulator") {
+            isForIOS = true;
+            isForIOSSimulator = true;
           } else {
             log("Unknown platform: " + targetPlatform);
             exit(1);
           }
+        }
+      }
+
+      if (hostArg.size() == 0) {
+        hostArg = optionValue("build", option, "--host");
+        if (hostArg.size() > 0) {
+          devHost = hostArg;
+        } else {
+          if (isForIOS || isForAndroid) {
+            auto r = exec((!platform.win)
+              ? "ifconfig | grep -w 'inet' | awk '!match($2, \"^127.\") {print $2; exit}' | tr -d '\n'"
+              : "PowerShell -Command ((Get-NetIPAddress -AddressFamily IPV4).IPAddress ^| Select-Object -first 1)"
+            );
+
+            if (r.exitCode == 0) {
+              devHost = r.output;
+            }
+          }
+        }
+      }
+
+      if (portArg.size() == 0) {
+        portArg = optionValue("run", option, "--port");
+        if (portArg.size() > 0) {
+          devPort = portArg;
         }
       }
     }
@@ -3793,13 +3854,16 @@ int main (const int argc, const char* argv[]) {
     targetPlatform = targetPlatform.size() > 0 ? targetPlatform : platform.os;
     Paths paths = getPaths(targetPlatform);
 
-    if (isIosSimulator) {
+    settings.insert(std::make_pair("host", devHost));
+    settings.insert(std::make_pair("port", devPort));
+
+    if (isForIOSSimulator) {
       String app = (settings["build_name"] + ".app");
       auto pathToApp = paths.platformSpecificOutputPath / app;
       runIOSSimulator(pathToApp, settings);
     } else {
       auto executable = Path(settings["build_name"] + (platform.win ? ".exe" : ""));
-      auto exitCode = runApp(paths.pathBin / executable, argvForward, flagHeadless);
+      auto exitCode = runAppCommon(paths.pathBin / executable, argvForward, flagHeadless);
       exit(exitCode);
     }
   });
