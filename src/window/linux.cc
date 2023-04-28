@@ -4,6 +4,9 @@ static GtkTargetEntry droppableTypes[] = {
   { (char*) "text/uri-list", 0, 0 }
 };
 
+#define DEFAULT_MONITOR_WIDTH 720
+#define DEFAULT_MONITOR_HEIGHT 364
+
 namespace SSC {
   struct WebViewJavaScriptAsyncContext {
     IPC::Router::ReplyCallback reply;
@@ -618,8 +621,13 @@ namespace SSC {
 
           gdk_monitor_get_geometry(monitor, &geometry);
 
-          width = (int) geometry.width;
-          height = (int) geometry.height;
+          if (geometry.width > 0) {
+            width = (int) geometry.width;
+          }
+
+          if (geometry.height > 0) {
+            height = (int) geometry.height;
+          }
 
           break;
         }
@@ -633,9 +641,25 @@ namespace SSC {
       auto display = gdk_display_get_default();
       auto monitor = gdk_display_get_primary_monitor(display);
 
-      gdk_monitor_get_workarea(monitor, &geometry);
-      width = (int) geometry.width;
-      height = (int) geometry.height;
+      if (monitor) {
+        gdk_monitor_get_workarea(monitor, &geometry);
+      }
+
+      if (geometry.width > 0) {
+        width = (int) geometry.width;
+      }
+
+      if (geometry.height > 0) {
+        height = (int) geometry.height;
+      }
+    }
+
+    if (!height) {
+      height = (int) DEFAULT_MONITOR_HEIGHT;
+    }
+
+    if (!width) {
+      width = (int) DEFAULT_MONITOR_WIDTH;
     }
 
     return ScreenSize { height, width };
