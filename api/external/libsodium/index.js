@@ -1,27 +1,39 @@
-import process from '../../process.js'
-
+// commonjs emulation for libsodium usage in node.js with an ESM environment
 const modules = {}
+let process = {}
+let __filename = ''
+let __dirname = ''
 
-async function define (name, exports) {
+if (globalThis?.process?.versions?.node) {
+  await define('crypto', import('node:crypto'), true)
+  await define('fs', import('node:fs'), true)
+  await define('path', import('node:path'), true)
+  await define('process', import('node:process'), true)
+
+  process = require('process')
+  __filename = import.meta.url.replace('file://', '')
+  __dirname = require('path').dirname(__filename)
+}
+
+async function define (name, exports, isNode) {
   if (typeof exports === 'function') {
     const module = modules[name] = { exports: {} }
     await exports(module, module.exports, require)
   } else {
     modules[name] = { exports: await exports }
   }
+
+  const module = modules[name]
+
+  if (isNode) {
+    modules['node:' + name] = module
+  }
+
+  return module.exports
 }
 
 function require (name) {
   return modules[name].exports
-}
-
-let __dirname = ''
-if (globalThis?.process?.versions?.node) {
-  await define('crypto', import('node:crypto'))
-  await define('fs', import('node:fs'))
-  await define('path', import('node:path'))
-
-  __dirname = require('path').dirname(import.meta.url.replace('file://', ''))
 }
 
 /**

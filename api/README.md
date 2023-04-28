@@ -320,7 +320,7 @@ Start advertising a new value for a well-known UUID
 | Not specified | Promise<void> |  |
 
 
-# [Crypto](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L13)
+# [Crypto](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L14)
 
 
  Some high-level methods around the `crypto.subtle` API for getting
