@@ -622,11 +622,11 @@ namespace SSC {
           gdk_monitor_get_geometry(monitor, &geometry);
 
           if (geometry.width > 0) {
-            width = (int) geometry.width;
+            width = geometry.width;
           }
 
           if (geometry.height > 0) {
-            height = (int) geometry.height;
+            height = geometry.height;
           }
 
           break;
@@ -646,11 +646,11 @@ namespace SSC {
       }
 
       if (geometry.width > 0) {
-        width = (int) geometry.width;
+        width = geometry.width;
       }
 
       if (geometry.height > 0) {
-        height = (int) geometry.height;
+        height = geometry.height;
       }
     }
 
