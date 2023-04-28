@@ -137,7 +137,9 @@ export class Peer extends EventEmitter {
       this._emit(packet.usr1, packet.message, address, port)
     }
 
-    this.peer.encryption.add(this.opts.publicKey, this.opts.privateKey)
+    if (this.opts.publicKey && this.opts.privateKey) {
+      this.peer.encryption.add(this.opts.publicKey, this.opts.privateKey)
+    }
 
     await this.peer.init()
     return this.peer
