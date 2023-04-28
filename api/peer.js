@@ -60,10 +60,6 @@ export class Peer extends EventEmitter {
   constructor (opts = {}) {
     super(opts)
 
-    if (!opts.publicKey) {
-      throw new Error('Constructor requires .publicKey option property')
-    }
-
     if (!opts.clusterId) {
       throw new Error('A clusterId must be specified (string)')
     }
