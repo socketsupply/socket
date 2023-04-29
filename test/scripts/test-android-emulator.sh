@@ -21,7 +21,9 @@ elif [[ "$host" == *"MSYS_NT"* ]]; then
 fi
 
 ssc_env=""
-if [ -f ".ssc.env" ]; then
+if [ -f "$root/.ssc.env" ]; then
+  ssc_env="$root/.ssc.env"
+elif [ -f ".ssc.env" ]; then
   ssc_env=".ssc.env"
 elif [ -f "../.ssc.env" ]; then
   ssc_env="../.ssc.env"
@@ -38,8 +40,15 @@ fi
 id="co.socketsupply.socket.tests"
 adb="$(which adb 2>/dev/null)"
 [[ -z "$adb" ]] && adb="$ANDROID_HOME/platform-tools/adb"
-[[ ! -f "$adb" ]] && (echo "adb not in path or ANDROID_HOME not set."; exit 1)
+if [[ ! -f "$adb" ]]; then
+  echo "adb not in path or ANDROID_HOME not set."
+  exit 1
+fi
 export adb
+
+
+echo "Ensuring adb server running..."
+$adb start-server || exit $?
 
 temp="$(mktemp)"
 ${SHELL:-sh} -c "$root/scripts/bootstrap-android-emulator.sh $temp" & bootstrap_pid=$!
@@ -50,7 +59,6 @@ while [ -z "$bootstrap_exit_code" ]; do
   bootstrap_exit_code="$(cat "$temp")"
   sleep 0.5
 done
-
 
 [ "$bootstrap_exit_code" != "0" ] && (rm "$temp"; exit "$bootstrap_exit_code")
 
@@ -101,7 +109,7 @@ fi
 
 ssc build --headless --platform=android -r -o || {
   rc=$?
-  echo "info: Shutting Android Emulator"
+  echo "info: Shutting Android Emulator due to failed build."
   "$adb" devices | grep emulator | cut -f1 | while read -r line; do
     "$adb" -s "$line" emu kill
   done
@@ -109,10 +117,14 @@ ssc build --headless --platform=android -r -o || {
 }
 
 ${SHELL:-sh} "$root/scripts/poll-adb-logcat.sh"
+rc=$?
+echo "logcat rc: $rc"
 
-echo "info: Shutting Android Emulator"
+echo "info: Shutting Android Emulator due to poll-adb-logcat.sh finishing."
 "$adb" devices | grep emulator | cut -f1 | while read -r line; do
   "$adb" -s "$line" emu kill
 done
 
-"$adb" kill-server
+"$adb" kill-server >/dev/null 2>&1
+
+exit $rc

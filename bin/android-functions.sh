@@ -41,6 +41,17 @@ function get_android_default_search_paths() {
     ANDROID_HOME_SEARCH_PATHS+=("$ANDROID_HOME")
   fi
 
+  if [ -n "$CI" ] && [ -d "${DEFAULT_ANDROID_HOME["$host"]}" ]; then
+    # github actions android is out of date
+    # resolves 'adb: failed to install cmd: Can't find service: package'
+    # resolves 'Several environment variables and/or system properties contain different paths to the SDK.' \ ANDROID_HOME... \ ANDROID_SDK_ROOT...
+    dest="${DEFAULT_ANDROID_HOME["$host"]}"_"$( date +%s )"
+    echo "warn - CI enabled, moving installed version of ANDROID_HOME/sdk from ${DEFAULT_ANDROID_HOME["$host"]} to $dest"
+    mv "${DEFAULT_ANDROID_HOME["$host"]}" "$dest"
+    # This still seems to be required, installing to /Library/Android/sdk doesn't work on macos
+    DEFAULT_ANDROID_HOME["$host"]="$HOME/.local/Android"
+  fi
+
   ANDROID_HOME_SEARCH_PATHS+=("${DEFAULT_ANDROID_HOME["$host"]}")
 
   ANDROID_SDK_MANAGER_SEARCH_PATHS=()
@@ -78,7 +89,8 @@ function get_android_default_search_paths() {
     
     JAVA_HOME_SEARCH_PATHS+=("$HOME/Applications")
     JAVA_HOME_SEARCH_PATHS+=("$HOME/homebrew")
-    JAVA_HOME_SEARCH_PATHS+=("/Applications")
+    # This search is really slow under CI
+    [[ -z "$CI" ]] && JAVA_HOME_SEARCH_PATHS+=("/Applications")
   elif [[ "$host" = "Linux"  ]]; then
     ANDROID_HOME_SEARCH_PATHS+=("$HOME")
     JAVA_HOME_SEARCH_PATHS+=("$HOME/.local/bin")
@@ -118,6 +130,12 @@ function test_javac_version() {
   write_log "d" "# Comparing $javac version: "$(version "$jc_v") "$(version "$target_version")"
   if [ "$(version "$jc_v")" -lt "$(version "$target_version")" ]; then
     return 1
+  fi
+
+  # Limit upper end of java version by not returning 0 if it is higher than target version
+  # Resolves: android BUG! exception in phase 'semantic analysis' in source unit '_BuildScript_' Unsupported class file major version 64 in CI when running gradle under Java 20
+  if [ "$(version "$jc_v")" -gt "$(version "$target_version")" ]; then
+    return 2
   fi
 
   return 0
@@ -786,6 +804,8 @@ function android_fte() {
       SDK_OPTIONS+="\"emulator\" "
       SDK_OPTIONS+="\"patcher;v4\" "
       SDK_OPTIONS+="\"system-images;android-$ANDROID_PLATFORM;google_apis;x86_64\" "
+      # TODO(@mribbons): If we skip downloading this in CI, we have to also prevent it from being installed by cli.cc
+      # [[ -z "$CI" ]] && SDK_OPTIONS+="\"system-images;android-$ANDROID_PLATFORM;google_apis;arm64-v8a\" "
       SDK_OPTIONS+="\"system-images;android-$ANDROID_PLATFORM;google_apis;arm64-v8a\" "
 
       local yes="echo"
@@ -822,8 +842,10 @@ function android_fte() {
 function main() {
   while (( $# > 0 )); do
     declare arg="$1"; shift
-    [[ "$arg" == "--android-fte" ]] && android_fte "$@"
-    # [[ "$arg" == "--android-fte" ]] && exit 0
+    if [[ "$arg" == "--android-fte" ]]; then
+      android_fte "$@"
+      exit $?
+    fi
     [[ "$arg" == "--android-setup-required" ]] && android_setup_required "$@"
   done
 }
