@@ -137,12 +137,32 @@ export class Peer extends EventEmitter {
       this._emit(packet.usr1, packet.message, address, port)
     }
 
+    this.#peerSubscribe("onData", "data")
+    this.#peerSubscribe("onClusterData", "cluster-data")
+    this.#peerSubscribe("onClose", "close")
+
     if (this.opts.publicKey && this.opts.privateKey) {
       this.peer.encryption.add(this.opts.publicKey, this.opts.privateKey)
     }
 
     await this.peer.init()
     return this.peer
+  }
+
+  getPeerId() {
+    return this.peer?.peerId
+  }
+
+  close () {
+    if (this.peer) this.peer.close()
+  }
+
+  #peerSubscribe (handlerName, eventName) {
+    const oldHandler = this.peer[handlerName]
+    this.peer[handlerName] = (...args) => {
+      this._emit(eventName, ...args)
+      if (oldHandler) oldHandler.call(this.peer, ...args)
+    }
   }
 }
 
