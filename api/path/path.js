@@ -175,13 +175,16 @@ export class Path extends URL {
     const pathWithoutDrive = path.replace(/^[a-z]:\\/i, '')
     const p = Path.from(path, sep)
     let dirname = decodeURIComponent(
-      p.parent.replace(/\//g, sep).replace(windowsDriveInPathRegex, '')
+      p.parent
+      .replace(/\//g, sep)
+      .replace(windowsDriveRegex, '')
+      .replace(windowsDriveInPathRegex, '')
     )
 
     if (String(pathWithoutDrive).startsWith('.')) {
       let tmp = ''
-      tmp += p.drive ? p.drive + sep : ''
-      tmp += '.'
+      tmp += p.drive ? p.drive : ''
+      if (!dirname.startsWith(sep + '.')) tmp += '.'
       if (!dirname.startsWith(sep)) tmp += sep
       tmp += dirname.replace(/^[a-z]:\\/i, '')
       dirname = tmp
@@ -210,7 +213,7 @@ export class Path extends URL {
       }
     }
 
-    if (protocol) {
+    if (protocol && p.drive) {
       dirname = '/' + dirname
     }
 
