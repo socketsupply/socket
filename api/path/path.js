@@ -186,7 +186,11 @@ export class Path extends URL {
       tmp += p.drive ? p.drive + sep : ''
       if (!dirname.startsWith(sep)) tmp += sep
       if (!dirname.startsWith(sep + '.')) tmp += '.'
-      tmp += dirname.replace(/^[a-z]:\\/i, '')
+      dirname = dirname.replace(/^[a-z]:\\/i, '').replace(/^(\/|\\)/, '')
+      if (tmp.endsWith('.') && !dirname.startsWith(sep)) {
+        tmp += sep
+      }
+      tmp += dirname
       dirname = tmp
     } else if (
       !windowsDriveRegex.test(dirname) &&
@@ -231,10 +235,7 @@ export class Path extends URL {
   static basename (options, path) {
     const { sep } = options
     const basename = decodeURIComponent(
-      Path
-      .from(path, sep)
-      .base
-      .replace(/\//g, sep)
+      Path.from(path, sep).base.replace(/\//g, sep)
     )
 
     return basename
