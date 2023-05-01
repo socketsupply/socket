@@ -35,14 +35,18 @@ import util from './util.js'
 
 function normalizePathname (pathname) {
   if (os.platform() === 'win32') {
-    return path.win32.normalize(pathname.replace(/^\//, ''))
+    return path.win32.normalize(pathname).replace(/^\\/, '')
   }
 
   return path.normalize(pathname)
 }
 
 function exists (url) {
-  const { pathname } = new URL(url)
+  if (os.platform() === 'win32') {
+    url = url.replace(/file:\/\/\/([a-z]):/i, '$1:')
+  }
+
+  const pathname = path.Path.from(url).value.replace(/^\/?([a-z]):/i, '$1:')
   const result = ipc.sendSync('fs.stat', {
     path: normalizePathname(pathname)
   })
