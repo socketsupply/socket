@@ -89,16 +89,18 @@ test('path.win32.join', (t) => {
 test('path.win32.dirname', (t) => {
   t.equal(path.win32.dirname('a\\b\\c'), 'a\\b', 'a\\b')
   t.equal(path.win32.dirname('a\\b\\c\\d.js'), 'a\\b\\c', 'a\\b\\c')
+  t.equal(path.win32.dirname('C:\\a\\b\\c\\d.js'), 'C:\\a\\b\\c', 'C:\\a\\b\\c')
   t.equal(path.win32.dirname('\\a\\b\\c\\d.js'), '\\a\\b\\c', '\\a\\b\\c')
-  t.equal(path.win32.dirname('.\\a\\b\\c\\d.js'), '.\\a\\b\\c', '.\\a\\b\\c')
+  t.equal(path.win32.dirname('z:\\.\\a\\b\\c\\d.js'), 'z:\\.\\a\\b\\c', 'z:\\.\\a\\b\\c')
   t.equal(path.win32.dirname('a\\b.js'), 'a', 'a')
-  t.equal(path.win32.dirname('\\a.js'), '\\', '\\')
+  t.equal(path.win32.dirname('J:\\a.js'), 'J:\\', 'J:\\')
   t.equal(path.win32.dirname('a.js'), '.', '.')
+  t.equal(path.win32.dirname('c:\\a\\b\\c'), 'c:\\a\\b', 'c:\\a\\b')
 })
 
 test('path.win32.basename', (t) => {
-  t.equal(path.win32.basename('a\\b\\c'), 'c', 'c')
-  t.equal(path.win32.basename('a\\b\\c\\d.js'), 'd.js', 'd.js')
+  t.equal(path.win32.basename('c:\\a\\b\\c'), 'c', 'c')
+  t.equal(path.win32.basename('z:\\a\\b\\c\\d.js'), 'd.js', 'd.js')
   t.equal(path.win32.basename('\\a\\b\\c\\d.js'), 'd.js', 'd.js')
   t.equal(path.win32.basename('.\\a\\b\\c\\d.js'), 'd.js', 'd.js')
   t.equal(path.win32.basename('a\\b.js'), 'b.js', 'b.js')
@@ -107,9 +109,9 @@ test('path.win32.basename', (t) => {
 })
 
 test('path.win32.extname', (t) => {
-  t.equal(path.win32.extname('a\\b\\c'), '', 'no extension')
-  t.equal(path.win32.extname('a\\b\\c\\d.js'), '.js', '.js')
-  t.equal(path.win32.extname('\\a\\b\\c\\d.js'), '.js', '.js')
+  t.equal(path.win32.extname('C:\\a\\b\\c'), '', 'no extension')
+  t.equal(path.win32.extname('x:\\a\\b\\c\\d.js'), '.js', '.js')
+  t.equal(path.win32.extname('d:\\a\\b\\c\\d.js'), '.js', '.js')
   t.equal(path.win32.extname('.\\a\\b\\c\\d.js'), '.js', '.js')
   t.equal(path.win32.extname('a\\b.js'), '.js', '.js')
   t.equal(path.win32.extname('\\a.js'), '.js', '.js')
@@ -181,12 +183,12 @@ test('path.parse', (t) => {
 
   compare(
     path.posix.parse('/../bar/foo.js'),
-    { root: '/', dir: '/bar', base: 'foo.js', ext: '.js', name: 'foo' }
+    { root: '/', dir: '/../bar', base: 'foo.js', ext: '.js', name: 'foo' }
   )
 
   compare(
     path.posix.parse('../bar/../../foo.js'),
-    { root: '', dir: '', base: 'foo.js', ext: '.js', name: 'foo' }
+    { root: '', dir: '../bar/../..', base: 'foo.js', ext: '.js', name: 'foo' }
   )
 
   compare(
@@ -213,6 +215,12 @@ test('path.normalize', (t) => {
     path.posix.normalize('protocol:path/to/a/b/../../file.txt'),
     'protocol:path/to/file.txt',
     'normalize protocol: URL'
+  )
+
+  t.equal(
+    path.posix.normalize('https://example.com/path/to/a/b/../../file.txt'),
+    'https://example.com/path/to/file.txt',
+    'normalize https: URL'
   )
 
   t.equal(
