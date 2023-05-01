@@ -1559,7 +1559,8 @@ int main (const int argc, const char* argv[]) {
     "-c",
     "-s",
     "-e",
-    "-n"
+    "-n",
+    "--env"
   };
 
     // Insert the elements of runOptions into buildOptions

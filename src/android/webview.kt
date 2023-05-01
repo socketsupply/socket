@@ -1,6 +1,7 @@
 // vim: set sw=2:
 package __BUNDLE_IDENTIFIER__
 import java.lang.ref.WeakReference
+import android.util.Log
 
 fun decodeURIComponent (string: String): String {
   val normalized = string.replace("+", "%2B")
@@ -8,9 +9,20 @@ fun decodeURIComponent (string: String): String {
 }
 
 fun isAssetUri (uri: android.net.Uri): Boolean {
+  Log.d("Console", "isAssetUri: " + uri.toString() + ", " + uri.scheme + ", " + uri.host)
+  for (item in uri.pathSegments) {
+    Log.d("Console", "path segment: " + item.toString())
+  }
+
+  // if (uri.pathSegments.size == 0) {
+  //   return false;
+  // }
+
   val scheme = uri.scheme
   val host = uri.host
-  val path = uri.pathSegments.get(0)
+  // handle no path segments, not currently required but future proofing
+  val path = uri.pathSegments?.get(0) ?: null
+
 
   if (host == "appassets.androidplatform.net") {
     return true
@@ -56,7 +68,12 @@ open class WebViewClient (activity: WebViewActivity) : android.webkit.WebViewCli
       return false
     }
 
+    if (url.scheme == "reload") {
+      return false
+    }
+
     if (url.scheme == "ipc" || url.scheme == "file" || url.scheme == "socket" || isAssetUri(url)) {
+      Log.d("console", "shouldOverrideUrlLoading: " + url.toString())
       return true
     }
 
@@ -83,6 +100,27 @@ open class WebViewClient (activity: WebViewActivity) : android.webkit.WebViewCli
     request: android.webkit.WebResourceRequest
   ): android.webkit.WebResourceResponse? {
     var url = request.url
+
+    // Log.d("console","shouldInterceptRequest: " + url.toString())
+
+    if (url.scheme == "reload") {
+      Log.d("console", "Intercept URI: " + url.toString())
+      var path = url.toString().replace("reload:", "")
+      var stream = java.io.FileInputStream(path)
+      val response = android.webkit.WebResourceResponse(
+        "text/html",
+        "utf-8",
+        stream
+      )
+
+      response.responseHeaders = mapOf(
+        "Access-Control-Allow-Origin" to "*",
+        "Access-Control-Allow-Headers" to "*",
+        "Access-Control-Allow-Methods" to "*"
+      )
+
+      return response
+    }
 
     if (url.scheme == "socket") {
       var path = url.toString().replace("socket:", "")
