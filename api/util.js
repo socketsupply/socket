@@ -520,8 +520,6 @@ export function inspect (value, options) {
           []
         )
 
-        output.push('    at')
-
         if (symbol) {
           output.push(symbol)
         }
@@ -541,6 +539,9 @@ export function inspect (value, options) {
           output.push(`${context}`)
         }
 
+        if (output.length) {
+          output.unshift('    at')
+        }
         return output.filter(Boolean).join(' ')
       }
 
@@ -550,6 +551,7 @@ export function inspect (value, options) {
           ? line
           : formatWebkitErrorStackLine(line)
         )
+        .filter(Boolean)
         .join('\n')
 
       if (keys.size) {
