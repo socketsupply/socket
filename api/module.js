@@ -56,21 +56,43 @@ function exists (url) {
   return stats.isFile() || stats.isSymbolicLink()
 }
 
+const ANDROID_ASSET_FILE_PROTCOL_PREFIX =
+  'file://android_asset'
+const ANDROID_ASSET_HTTP_PROTOCOL_PREFIX =
+  'https://appassets.androidplatform.net/assets'
+
 // sync request for files
 function request (url) {
   const request = new XMLHttpRequest()
   let response = null
 
-  if (!url.startsWith('file:')) {
+  url = url.replace(
+    ANDROID_ASSET_FILE_PROTCOL_PREFIX,
+    ANDROID_ASSET_HTTP_PROTOCOL_PREFIX
+  )
+
+  if (/^https?:/.test(globalThis.location?.href || '') && (url.startsWith('/') || url.startsWith('\\'))) {
+    const base = globalThis.location?.href
+    if (path.extname(base)) {
+      url = new URL(url, path.dirname(base))
+    } else {
+      url = new URL(url, base)
+    }
+  } else if (!url.startsWith('file:')) {
     url = new URL(url, 'file:///')
   }
 
-  if (!exists(url)) {
+  const isAndroidAssetRequest = String(url)
+    .includes(ANDROID_ASSET_HTTP_PROTOCOL_PREFIX)
+
+  if (!isAndroidAssetRequest && !exists(url)) {
     return {}
   }
 
   request.open('GET', url, false)
   request.send(null)
+
+  const headers = Headers.from(request)
 
   try {
     // @ts-ignore
@@ -78,8 +100,6 @@ function request (url) {
   } catch {
     response = request.response
   }
-
-  const headers = Headers.from(request)
 
   return { headers, response }
 }
@@ -158,9 +178,7 @@ export const COMMONJS_WRAPPER = CommonJSModuleScope
  * @type {string}
  */
 export const MAIN_SOURCE_URL = (
-  globalThis.origin === 'file://' && globalThis.location?.href
-    ? globalThis.location.href
-    : `file://${process.cwd() || ''}`
+  globalThis.location?.href || `file://${process.cwd() || ''}`
 )
 
 /**
@@ -353,12 +371,12 @@ export class Module extends EventTarget {
     this.parent = parent || null
     this.sourceURL = sourceURL || id
 
-    if (!scope.current) {
-      scope.current = this
-    }
-
     if (!scope.previous && id !== MAIN_SOURCE_URL) {
       scope.previous = Module.main
+    }
+
+    if (!scope.current) {
+      scope.current = this
     }
 
     this.addEventListener('error', (event) => {
@@ -450,13 +468,19 @@ export class Module extends EventTarget {
     }
 
     if (!this.loaded) {
-      for (const prefix of prefixes) {
-        const paths = [
-          path.join(path.dirname(Module.previous?.id || ''), prefix, this.sourceURL)
-        ]
+      const previousDir = path.dirname(
+        Module.previous?.id?.replace(ANDROID_ASSET_HTTP_PROTOCOL_PREFIX + '/', '')
+      )
 
-        let dirname = path.dirname(paths[0])
-        let root = path.resolve(Module.main.id)
+      for (const prefix of prefixes) {
+        const paths = new Set([
+          path.join(previousDir, prefix, this.sourceURL)
+        ])
+
+        let dirname = path.dirname(Array.from(paths.values())[0])
+        let root = MAIN_SOURCE_URL.includes(ANDROID_ASSET_HTTP_PROTOCOL_PREFIX)
+          ? path.dirname(MAIN_SOURCE_URL)
+          : MAIN_SOURCE_URL
         let max = 32 // max paths/depth
 
         if (path.extname(root) && !root.endsWith('/')) {
@@ -464,12 +488,12 @@ export class Module extends EventTarget {
         }
 
         while (dirname !== root && --max > 0) {
-          paths.push(path.join(dirname, prefix, this.sourceURL))
+          paths.add(path.join(dirname, prefix, this.sourceURL))
           dirname = path.dirname(dirname)
         }
 
-        for (const prefixed of new Set(paths)) {
-          const url = String(new URL(prefixed, Module.main.sourceURL))
+        for (const prefixed of paths) {
+          const url = String(new URL(prefixed, Module.main.id))
           if (loadPackage(this, url)) {
             break
           }
@@ -477,8 +501,10 @@ export class Module extends EventTarget {
       }
     }
 
-    Module.previous = this
-    Module.current = null
+    if (this.loaded) {
+      Module.previous = this
+      Module.current = null
+    }
 
     return this.loaded
 
@@ -534,7 +560,12 @@ export class Module extends EventTarget {
     }
 
     function evaluate (module, filename, result) {
-      const dirname = path.dirname(filename)
+      const { protocol } = path.Path.from(filename)
+      let dirname = path.dirname(filename)
+
+      if (filename.startsWith(protocol) && !dirname.startsWith(protocol)) {
+        dirname = protocol + '//' + dirname
+      }
 
       if (path.extname(filename) === '.json') {
         module.id = filename
@@ -575,8 +606,8 @@ export class Module extends EventTarget {
           module.exports,
           module.createRequire(),
           module,
-          path.resolve(filename),
-          path.resolve(dirname),
+          filename,
+          dirname,
           process,
           globalThis
         )
