@@ -1836,10 +1836,17 @@ declare module "socket:path/path" {
         static normalize(options: object, path: PathComponent): string;
         /**
          * Formats `Path` object into a string.
+         * @param {object} options
          * @param {object|Path} path
          * @return {string}
          */
-        static format(options: any, path: object | Path): string;
+        static format(options: object, path: object | Path): string;
+        /**
+         * Parses input `path` into a `Path` instance.
+         * @param {PathComponent} path
+         * @return {object}
+         */
+        static parse(path: PathComponent): object;
         /**
          * Creates a `Path` instance from `input` and optional `cwd`.
          * @param {PathComponent} input
@@ -1997,7 +2004,6 @@ declare module "socket:path/win32" {
      * @return {string}
      */
     export function relative(from: string, to: string): string;
-    export { posix };
     export * as _default from "path/win32";
     export * as win32 from "path/win32";
     export const sep: "\\";
@@ -2006,6 +2012,7 @@ declare module "socket:path/win32" {
     import posix from "path/posix";
     import { Path } from "path/path";
     
+    export { posix, Path };
 }
 declare module "socket:path/posix" {
     /**
@@ -2076,7 +2083,6 @@ declare module "socket:path/posix" {
      * @return {string}
      */
     export function relative(from: string, to: string): string;
-    export { win32 };
     export * as _default from "path/posix";
     export * as posix from "path/posix";
     export const sep: "/";
@@ -2085,6 +2091,7 @@ declare module "socket:path/posix" {
     import win32 from "path/win32";
     import { Path } from "path/path";
     
+    export { win32, Path };
 }
 declare module "socket:path/index" {
     export * as _default from "path/index";
