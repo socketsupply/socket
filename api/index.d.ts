@@ -5081,6 +5081,9 @@ declare module "socket:peer" {
          * @return {Peer} Returns an instance of the underlying network peer
          */
         join(): Peer;
+        getPeerId(): string;
+        close(): void;
+        #private;
     }
     export default Peer;
     import { Encryption } from "stream-relay/index";
