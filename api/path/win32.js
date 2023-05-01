@@ -3,7 +3,7 @@ import posix from './posix.js'
 
 /** @typedef {import('./path.js').PathComponent} PathComponent */
 
-export { posix }
+export { posix, Path }
 export * as default from './win32.js'
 export * as win32 from './win32.js'
 
@@ -79,7 +79,7 @@ export function isAbsolute (path) {
  * @return {Path}
  */
 export function parse (path) {
-  return Path.from(path)
+  return Path.parse(path)
 }
 
 /**
