@@ -12,6 +12,7 @@ const isWin32 = primordials.platform === 'win32'
 const protocolRegex = /(^[a-z]+:(\/\/)?)/i
 const protocolStrictSlashesRegex = /(^[a-z]+:\/\/)/i
 const windowsDriveRegex = /^[a-z]:/i
+const windowsDriveInPathRegex = /^\/[a-z]:/i
 
 function maybeURL (...args) {
   try {
@@ -38,6 +39,7 @@ export class Path extends URL {
   static cwd (opts) {
     let cwd = primordials.cwd
     if (isWin32) {
+      cwd = cwd.replace(windowsDriveRegex, '')
       if (opts?.posix === true) {
         cwd = cwd.replace(/\\/g, '/')
         cwd = cwd.slice(cwd.indexOf('/'))
@@ -160,16 +162,29 @@ export class Path extends URL {
    */
   static dirname (options, path) {
     const { sep } = options
+    const protocol = path.startsWith('file://')
+      ? 'file://'
+      : path.startsWith('file:') ? 'file:' : ''
+
     path = path.replace('file://', '')
+
+    if (isWin32 && windowsDriveInPathRegex.test(path)) {
+      path = path.slice(1)
+    }
+
+    const pathWithoutDrive = path.replace(/^[a-z]:\\/i , '')
+    const p = Path.from(path, sep)
     let dirname = decodeURIComponent(
-      Path
-        .from(path, sep)
-        .parent
-        .replace(/\//g, sep)
+      p.parent.replace(/\//g, sep).replace(windowsDriveInPathRegex, '')
     )
 
-    if (String(path).startsWith('.')) {
-      dirname = `.${dirname}`
+    if (String(pathWithoutDrive).startsWith('.')) {
+      let tmp = ''
+      tmp += p.drive ? p.drive + sep : ''
+      tmp += '.'
+      if (!dirname.startsWith(sep)) tmp += sep
+      tmp += dirname.replace(/^[a-z]:\\/i , '')
+      dirname = tmp
     } else if (
       !windowsDriveRegex.test(dirname) &&
       !protocolRegex.test(path) &&
@@ -187,7 +202,19 @@ export class Path extends URL {
       dirname = dirname.slice(0, -1)
     }
 
-    return dirname || '.'
+    if (p.drive && !windowsDriveRegex.test(dirname) && !windowsDriveInPathRegex.test(dirname)) {
+      if (dirname.startsWith(sep)) {
+        dirname = p.drive + dirname
+      } else {
+        dirname = p.drive + sep + dirname
+      }
+    }
+
+    if (protocol) {
+      dirname = '/' + dirname
+    }
+
+    return protocol + dirname || '.'
   }
 
   /**
@@ -233,11 +260,14 @@ export class Path extends URL {
     const href = url.href ? url.href.replace(protocolRegex, '') : ''
     const { sep } = options
     const prefix = drive || url.protocol || ''
-    let output = prefix + Path
-      .from(pathname)
-      .value
+    const p = Path.from(pathname)
+    let output = prefix + p.value
       .replace(protocolRegex, '')
       .replace(/\//g, sep)
+
+    if (drive && !windowsDriveRegex.test(output)) {
+      output = drive + sep + output
+    }
 
     if (url.protocol && href && !href.startsWith(sep)) {
       output = output.replace(url.protocol, '')
@@ -376,10 +406,10 @@ export class Path extends URL {
    * The working value of this path.
    */
   get value () {
-    const { protocol } = this
+    const { protocol, drive } = this
     const regex = new RegExp(`^${protocol}(//)?(.[\\|/])?`, 'i')
     const href = this.href.replace(regex, '')
-    return href
+    return !drive ? href.replace(windowsDriveInPathRegex, '') : href
   }
 
   /**
@@ -402,7 +432,7 @@ export class Path extends URL {
     else pathname = ''
 
     if (this.drive) {
-      return this.drive + pathname.replace(windowsDriveRegex, '')
+      return this.drive + pathname.replace(windowsDriveInPathRegex, '')
     }
 
     return pathname
