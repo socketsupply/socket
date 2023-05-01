@@ -137,9 +137,9 @@ export class Peer extends EventEmitter {
       this._emit(packet.usr1, packet.message, address, port)
     }
 
-    this.#peerSubscribe("onData", "data")
-    this.#peerSubscribe("onClusterData", "cluster-data")
-    this.#peerSubscribe("onClose", "close")
+    this.#peerSubscribe('onData', 'data')
+    this.#peerSubscribe('onClusterData', 'cluster-data')
+    this.#peerSubscribe('onClose', 'close')
 
     if (this.opts.publicKey && this.opts.privateKey) {
       this.peer.encryption.add(this.opts.publicKey, this.opts.privateKey)
@@ -149,7 +149,7 @@ export class Peer extends EventEmitter {
     return this.peer
   }
 
-  getPeerId() {
+  getPeerId () {
     return this.peer?.peerId
   }
 
