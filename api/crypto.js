@@ -16,7 +16,11 @@ import console from './console.js'
 
 import * as exports from './crypto.js'
 
-let getRandomValuesFallback = null
+/**
+ * WebCrypto API
+ * @see {https://developer.mozilla.org/en-US/docs/Web/API/Crypto}
+ */
+export let webcrypto = globalThis.crypto?.webcrypto ?? globalThis.crypto
 
 const pending = []
 
@@ -24,7 +28,7 @@ if (globalThis?.process?.versions?.node) {
   pending.push(
     import('node:crypto')
       .then((module) => {
-        getRandomValuesFallback = module.getRandomValues
+        webcrypto = module.webcrypto
       })
   )
 }
@@ -55,12 +59,6 @@ export const ready = Promise.all(pending)
 export { sodium }
 
 /**
- * WebCrypto API
- * @see {https://developer.mozilla.org/en-US/docs/Web/API/Crypto}
- */
-export const webcrypto = globalThis.crypto?.webcrypto ?? globalThis.crypto
-
-/**
  * Generate cryptographically strong random values into the `buffer`
  * @param {TypedArray} buffer
  * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/Crypto/getRandomValues}
@@ -76,8 +74,6 @@ export function getRandomValues (buffer, ...args) {
     const output = toBuffer(buffer)
     input.copy(output)
     return buffer
-  } else if (typeof getRandomValuesFallback === 'function') {
-    return getRandomValuesFallback(buffer, ...args)
   }
 
   console.warn('Missing implementation for globalThis.crypto.getRandomValues()')
