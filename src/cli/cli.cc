@@ -1570,6 +1570,8 @@ int main (const int argc, const char* argv[]) {
       getEnv("SSC_VERBOSE").size() > 0 ||
       getEnv("VERBOSE").size() > 0
     );
+    
+    auto devNull = ">" + SSC::String((!platform.win) ? "/dev/null" : "NUL") + (" 2>&1");
 
     String localDirPrefix = !platform.win ? "./" : "";
     String quote = !platform.win ? "'" : "\"";
@@ -1894,12 +1896,18 @@ int main (const int argc, const char* argv[]) {
       // https://developer.android.com/studio/intro/update#download-with-gradle
 
 
+      // quote entire command and "yes" for windows, this is the only to get around "c:\Program" not a command error
+      // note that we don't want to use this quote on non windows, therefore make an extra variable
+      auto cmdQuote = platform.win ? "\"" : "";
+      // redirect yes stderr to stdout, this hides "broken pipe" / "no space left on device" errors that are caused by sdkmanager terminating normally
       String licenseAccept = 
-       quote + (getEnv("ANDROID_SDK_MANAGER_ACCEPT_LICENSES").size() > 0 ? getEnv("ANDROID_SDK_MANAGER_ACCEPT_LICENSES") : "echo") + quote + " | " +
-       quote + sdkmanager.str() + quote + " --licenses";
+      cmdQuote + quote + (getEnv("ANDROID_SDK_MANAGER_ACCEPT_LICENSES").size() > 0 ? (getEnv("ANDROID_SDK_MANAGER_ACCEPT_LICENSES")) : "echo") + quote  + 
+      (platform.win ? " 2>&1" : "") + " | " +
+      quote + sdkmanager.str() + quote + " --licenses" + cmdQuote;
 
-      if (std::system((licenseAccept).c_str()) != 0) {
-        // Windows doesn't support 'yes'
+      auto licenseResult = exec(licenseAccept.c_str());
+      if (licenseResult.exitCode != 0) {
+        log(licenseResult.output);
         log(("Check licenses and run again: \n" + licenseAccept + "\n").c_str());
       }
 
@@ -3088,70 +3096,178 @@ int main (const int argc, const char* argv[]) {
         exit(1);
       }
 
-      if (flagBuildForAndroidEmulator) {
-        StringStream avdmanager;
-        String package = quote + "system-images;" + androidPlatform + ";google_apis;" + replace(platform.arch, "arm64", "arm64-v8a") + quote;
-
-        if (!platform.win) {
-          if (std::system("avdmanager list 2>&1 >/dev/null") != 0) {
-            avdmanager << androidHome << "/cmdline-tools/latest/bin/";
-          }
-        } else
-          avdmanager << androidHome << "\\cmdline-tools\\latest\\bin\\";
-
-        avdmanager
-          << "avdmanager create avd "
-          << "--device 5 "
-          << "--force "
-          << "--name SSCAVD "
-          << ("--abi google_apis/" + replace(platform.arch, "arm64", "arm64-v8a")) << " "
-          << "--package " << package;
-
-        if (debugEnv || verboseEnv) log(avdmanager.str());
-        if (std::system(avdmanager.str().c_str()) != 0) {
-          log("ERROR: failed to Android Virtual Device (avdmanager)");
-          exit(1);
-        }
-      }
-
+      // before starting the android emulator, we should check if one is already running
+      // These strings will be used later if required, so can't be embeded in if block
+      StringStream adb;
+      auto androidEmulatorRunning = false;
       if (flagShouldRun) {
-        // the emulator must be running on device SSCAVD for now
-        StringStream adbShellStart;
-        StringStream adb;
-
         if (!platform.win) {
           adb << androidHome << "/platform-tools/";
         } else {
           adb << androidHome << "\\platform-tools\\";
         }
+        
+        adb << "adb" << (platform.win ? ".exe" : "");
 
-        if (debugEnv || verboseEnv) log((adb.str() + (" --version > ") + SSC::String((!platform.win) ? "/dev/null" : "NUL") + (" 2>&1")));
-        if (!std::system((adb.str() + (" --version > ") + SSC::String((!platform.win) ? "/dev/null" : "NUL") + (" 2>&1")).c_str())) {
+        if (!fs::exists(adb.str())) {
           log("Warn: Failed to locate adb at " + adb.str());
+          exit(1);
         }
 
-        adb << "adb ";
+        if (debugEnv || verboseEnv) log((adb.str() + (" --version ") + devNull));
+        if (std::system((adb.str() + (" --version ") + devNull).c_str()) != 0) {
+          log("Warn: Failed to run adb at " + adb.str());
+          exit(1);
+        }
+
+        auto deviceQuery = exec(adb.str() + " devices");
+        androidEmulatorRunning = (deviceQuery.output.find("emulator") != SSC::String::npos);
+      }
+
+      if (flagBuildForAndroidEmulator && !androidEmulatorRunning) {
+        StringStream avdmanager;
+        String package = quote + "system-images;" + androidPlatform + ";google_apis;" + replace(platform.arch, "arm64", "arm64-v8a") + quote;
+
+        avdmanager << androidHome;
+        if (getEnv("ANDROID_SDK_MANAGER").size() > 0)
+        {
+          avdmanager << "/" << replace(getEnv("ANDROID_SDK_MANAGER"), "sdkmanager", "avdmanager");
+        } else {
+          if (!platform.win) {
+            if (std::system(("avdmanager list " + devNull).c_str()) != 0) {
+              avdmanager << "/cmdline-tools/latest/bin/";
+            }
+          } else
+            avdmanager << "\\cmdline-tools\\latest\\bin\\";
+        }
+
+        if (debugEnv || verboseEnv) log(avdmanager.str());
+        if (!fs::exists(avdmanager.str())) {
+          log("ERROR: failed to locate Android Virtual Device (avdmanager)");
+          exit(1);
+        }
+
+        
+        auto avdListResult = exec((avdmanager.str() + " list" + devNull).c_str());
+        if (avdListResult.exitCode != 0) {
+          log("ERROR: failed to run Android Virtual Device (avdmanager)");
+          exit(1);
+        }
+        bool sscAvdExists = avdListResult.output.find("SSCAVD") != SSC::String::npos;
+
+        StringStream emulator;
+        emulator << androidHome << slash << "emulator" << slash << "emulator" << (platform.win ? ".exe" : "");
+
+        if (debugEnv || verboseEnv) log(emulator.str());
+        if (!fs::exists(emulator.str())) {
+          log("ERROR: failed to locate Android emulator.");
+          exit(1);
+        }
+
+        avdmanager
+          << " create avd "
+          << "--device 30 " // use pixel 6 pro, better for promos than --device 5 (desktop large)
+          << "--force "
+          << "--name SSCAVD "
+          << ("--abi google_apis/" + replace(platform.arch, "arm64", "arm64-v8a")) << " "
+          << "--package " << package;
+
+        if (!sscAvdExists) {
+          auto createResult = exec(avdmanager.str());
+          if (createResult.exitCode != 0) {
+            log("Failed to create SSCAVD: " + createResult.output);
+            exit(createResult.exitCode);
+          }
+        }
+
+        if (flagShouldRun) {
+          // start emulator in the background
+          log("Starting emulator...");
+          auto androidEmulatorProcess = new SSC::Process(
+            emulator.str(),
+            " @SSCAVD -gpu swiftshader_indirect", // platform-33: swiftshader not supported below platform-32
+            fs::current_path().string(),
+            [](SSC::String const &out) {  },
+            [](SSC::String const &out) {  }
+          );
+          androidEmulatorProcess->open();
+
+          log("Waiting for Android Emulator to boot...");
+          while (true) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(200));
+            if (std::system((adb.str() + " shell getprop sys.boot_completed" + devNull).c_str()) == 0) {
+              log("OK.");
+              break;
+            }
+          }
+        }
+      }
+
+      if (flagShouldRun) {
+        StringStream adbShellStart;
+        StringStream adbInstall;
+        adb << " ";
+
+        adbInstall << adb.str();
 
         adbShellStart << adb.str();
-        adb << "install ";
+        adbInstall << "install ";
 
         if (flagDebugMode) {
-          adb << (app / "build" / "outputs" / "apk" / "dev" / "debug" / "app-dev-debug.apk").string();
+          adbInstall << (app / "build" / "outputs" / "apk" / "dev" / "debug" / "app-dev-debug.apk").string();
         } else {
-          adb << (app / "build" / "outputs" / "apk" / "live" / "debug" / "app-live-debug.apk").string();
+          adbInstall << (app / "build" / "outputs" / "apk" / "live" / "debug" / "app-live-debug.apk").string();
         }
 
         if (debugEnv || verboseEnv) log(adb.str());
-        if (std::system(adb.str().c_str()) != 0) {
+        log("Installing app...");
+        ExecOutput adbInstallOutput;
+        int adbInstallSleepTime = 200;
+        int adbInstallTime = 120000;
+        int adbInstallWaited = 0;
+        if (getEnv("SSC_ADB_INTSALL_WAIT").size() > 0) {
+          adbInstallTime = std::stoi(getEnv("SSC_ADB_INTSALL_WAIT"));
+        }
+        while (true) {
+          // handle emulator boot issue: cmd: Can't find service: package, no reliable way of detecting when emulator is ready without a blocking logcat call
+          // Note that there are several different errors that can occur here based on the state of the emulator, just keep trying to install with a timeout
+          adbInstallOutput = exec(adbInstall.str() + " 2>&1");
+          if (adbInstallOutput.exitCode != 0) {
+            if (adbInstallWaited >= adbInstallTime) {
+              log("Wait for ADB Install timed out.");
+              break;
+            } else {
+              std::this_thread::sleep_for(std::chrono::milliseconds(adbInstallSleepTime));
+              adbInstallWaited += adbInstallSleepTime;
+            }
+          } else {
+            break;
+          }
+        }
+        if (adbInstallOutput.exitCode != 0) {
           log("ERROR: failed to install APK to Android Emulator (adb)");
           exit(1);
         }
 
         if (debugEnv || verboseEnv) log(adbShellStart.str());
-        adbShellStart << "shell am start -n " << settings["meta_bundle_identifier"] << "/" << settings["meta_bundle_identifier"] << settings["android_main_activity"];
-        if (std::system(adbShellStart.str().c_str()) != 0) {
-          log("Failed to run app on emulator.");
-          exit(1);
+        adbShellStart << "shell am start -n " << settings["meta_bundle_identifier"] << "/" << settings["meta_bundle_identifier"] << settings["android_main_activity"] << " 2>&1";
+        ExecOutput adbShellStartOutput;
+        while (true) {
+          adbShellStartOutput = exec(adbShellStart.str());
+          if (adbShellStartOutput.output.find("Error type 3") != SSC::String::npos) {
+            // ignore this timing related startup error
+            std::this_thread::sleep_for(std::chrono::milliseconds(adbInstallSleepTime));
+          } else {
+            log("App started.");
+            break;
+          }
+        }
+
+        std::cout << adbShellStartOutput.output << std::endl;
+
+        if (adbShellStartOutput.exitCode != 0) {
+            log("Failed to run app on emulator.");
+            exit(adbShellStartOutput.exitCode);
         }
       }
 
