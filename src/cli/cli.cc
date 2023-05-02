@@ -1896,12 +1896,18 @@ int main (const int argc, const char* argv[]) {
       // https://developer.android.com/studio/intro/update#download-with-gradle
 
 
+      // quote entire command and "yes" for windows, this is the only to get around "c:\Program" not a command error
+      // note that we don't want to use this quote on non windows, therefore make an extra variable
+      auto cmdQuote = platform.win ? "\"" : "";
+      // redirect yes stderr to stdout, this hides "broken pipe" / "no space left on device" errors that are caused by sdkmanager terminating normally
       String licenseAccept = 
-       quote + (getEnv("ANDROID_SDK_MANAGER_ACCEPT_LICENSES").size() > 0 ? getEnv("ANDROID_SDK_MANAGER_ACCEPT_LICENSES") : "echo") + quote + " | " +
-       quote + sdkmanager.str() + quote + " --licenses";
+      cmdQuote + quote + (getEnv("ANDROID_SDK_MANAGER_ACCEPT_LICENSES").size() > 0 ? (getEnv("ANDROID_SDK_MANAGER_ACCEPT_LICENSES")) : "echo") + quote  + 
+      (platform.win ? " 2>&1" : "") + " | " +
+      quote + sdkmanager.str() + quote + " --licenses" + cmdQuote;
 
-      if (std::system((licenseAccept).c_str()) != 0) {
-        // Windows doesn't support 'yes'
+      auto licenseResult = exec(licenseAccept.c_str());
+      if (licenseResult.exitCode != 0) {
+        log(licenseResult.output);
         log(("Check licenses and run again: \n" + licenseAccept + "\n").c_str());
       }
 
