@@ -47,17 +47,6 @@ if [[ "$host" == "Win32" ]]; then
   fi
 fi
 
-declare objects=()
-declare test_headers=(
-  $(find "$root/src"/**/*.hh)
-  "$root/src"/../VERSION.txt
-)
-declare sources=(
-  $(find "$root"/src/app/*.cc)
-  $(find "$root"/src/core/*.cc)
-  $(find "$root"/src/ipc/*.cc)
-)
-
 if (( TARGET_OS_IPHONE )); then
   arch="arm64"
   platform="iPhoneOS"
@@ -94,6 +83,11 @@ while (( $# > 0 )); do
     fi
     shift
     continue
+  fi
+
+  # Don't rebuild if header mtimes are newer than .o files - Be sure to manually delete affected assets as required
+  if [[ "$arg" == "--ignore-header-mtimes" ]]; then
+    ignore_header_mtimes=1; continue
   fi
 
   args+=("$arg")
@@ -134,6 +128,21 @@ declare ldflags=($("$root/bin/ldflags.sh"))
 if [[ "$platform" = "android" ]]; then
   cflags+=("${android_includes[*]}")
 fi
+
+declare objects=()
+declare test_headers=(
+  "$root/src"/../VERSION.txt
+)
+
+if [[ -z "$ignore_header_mtimes" ]]; then
+  test_headers+="$(find "$root/src"/**/*.hh)"
+fi
+
+declare sources=(
+  $(find "$root"/src/app/*.cc)
+  $(find "$root"/src/core/*.cc)
+  $(find "$root"/src/ipc/*.cc)
+)
 
 declare output_directory="$root/build/$arch-$platform"
 mkdir -p "$output_directory"
