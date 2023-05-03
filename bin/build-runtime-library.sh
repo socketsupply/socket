@@ -93,24 +93,14 @@ while (( $# > 0 )); do
   args+=("$arg")
 done
 
+declare objects=()
 declare sources=(
   $(find "$root"/src/app/*.cc)
   $(find "$root"/src/core/*.cc)
   $(find "$root"/src/ipc/*.cc)
 )
 
-declare output_directory="$root/build/$arch-$platform"
-mkdir -p "$output_directory"
-
-cd "$(dirname "$output_directory")"
-
-echo "# building runtime static libary ($arch-$platform)"
-for source in "${sources[@]}"; do
-  declare src_directory="$root/src"
-  declare object="${source/.cc/$d.o}"
-  declare object="${object/$src_directory/$output_directory}"
-  objects+=("$object")
-done
+declare test_headers=()
 
 if [[ "$platform" = "android" ]]; then
   source "$root/bin/android-functions.sh"
@@ -148,10 +138,18 @@ if [[ "$platform" = "android" ]]; then
   cflags+=("${android_includes[*]}")
 fi
 
-declare objects=()
-declare test_headers=(
-  "$root/src"/../VERSION.txt
-)
+declare output_directory="$root/build/$arch-$platform"
+mkdir -p "$output_directory"
+
+cd "$(dirname "$output_directory")"
+
+echo "# building runtime static libary ($arch-$platform)"
+for source in "${sources[@]}"; do
+  declare src_directory="$root/src"
+  declare object="${source/.cc/$d.o}"
+  declare object="${object/$src_directory/$output_directory}"
+  objects+=("$object")
+done
 
 if [[ -z "$ignore_header_mtimes" ]]; then
   test_headers+="$(find "$root/src"/**/*.hh)"

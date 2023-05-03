@@ -93,6 +93,8 @@ if [ -z "$SOCKET_HOME" ]; then
   fi
 fi
 
+declare pass_ignore_header_mtimes=""
+
 declare d=""
 if [[ "$host" == "Win32" ]]; then
   # We have to differentiate release and debug for Win32
@@ -315,9 +317,8 @@ function _build_runtime_library() {
   if [[ "$host" = "Darwin" ]] && [[ -z "$NO_IOS" ]]; then
     "$root/bin/build-runtime-library.sh" --arch "$arch" --platform ios $pass_force $pass_ignore_header_mtimes & pids+=($!)
     "$root/bin/build-runtime-library.sh" --arch x86_64 --platform ios-simulator $pass_force $pass_ignore_header_mtimes & pids+=($!)
-
     if [[ "$arch" = "arm64" ]] && [[ -z "$NO_IOS" ]]; then
-      "$root/bin/build-runtime-library.sh" --arch "$arch" --platform ios-simulator $pass_force $pass_ignore_header_mtimes & pids+=($!)
+      "$root/bin/build-runtime-library.sh" --arch "$arch" --platform ios-simulator $pass_force $pass_ignore_header_mtimes & pids+=($!)    
     fi
   fi
 
@@ -379,7 +380,6 @@ function _prebuild_desktop_main () {
   fi
   local newest_mtime=0
   newest_mtime="$(latest_mtime ${test_headers[@]})"
-  write_log "v" "headers (install): ${test_headers[@]}"
 
   local cflags=($("$root/bin/cflags.sh"))
   local test_sources=($(find "$src"/desktop/*.{cc,mm} 2>/dev/null))
