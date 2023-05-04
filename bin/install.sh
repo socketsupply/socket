@@ -28,6 +28,7 @@ declare args=()
 declare pids=()
 declare force=0
 declare pass_force=""
+declare pass_ignore_header_mtimes=""
 declare host="$(host_os)"
 
 LIPO=""
@@ -54,6 +55,12 @@ while (( $# > 0 )); do
 
   if [[ "$arg" == "--no-android-fte" ]]; then
     no_android_fte=1; continue
+  fi
+
+  # Don't rebuild if header mtimes are newer than .o files - Be sure to manually delete affected assets as required
+  if [[ "$arg" == "--ignore-header-mtimes" ]]; then
+    pass_ignore_header_mtimes="$arg"
+    ignore_header_mtimes=1; continue
   fi
 
   args+=("$arg")
@@ -85,6 +92,8 @@ if [ -z "$SOCKET_HOME" ]; then
     SOCKET_HOME="$LOCALAPPDATA/Programs/socketsupply"
   fi
 fi
+
+declare pass_ignore_header_mtimes=""
 
 declare d=""
 if [[ "$host" == "Win32" ]]; then
@@ -224,8 +233,10 @@ function _build_cli {
   local cflags=(-DSSC_CLI $("$root/bin/cflags.sh"))
 
   local test_headers=()
-  test_headers+=("$(find "$src"/cli/*.hh 2>/dev/null)")
-  test_headers+=("$(ls "$src"/*.hh)")
+  if [[ -z "$ignore_header_mtimes" ]]; then
+    test_headers+=("$(find "$src"/cli/*.hh 2>/dev/null)")
+    test_headers+=("$(ls "$src"/*.hh)")
+  fi
   test_headers+=("$src"/../VERSION.txt)
   local newest_mtime=0
   newest_mtime="$(latest_mtime ${test_headers[@]})"
@@ -301,20 +312,19 @@ function _build_cli {
 function _build_runtime_library() {
   local arch="$(host_arch)"
   echo "# building runtime library"
-  "$root/bin/build-runtime-library.sh" --arch "$arch" --platform desktop $pass_force & pids+=($!)
+  "$root/bin/build-runtime-library.sh" --arch "$arch" --platform desktop $pass_force $pass_ignore_header_mtimes & pids+=($!)
 
   if [[ "$host" = "Darwin" ]] && [[ -z "$NO_IOS" ]]; then
-    "$root/bin/build-runtime-library.sh" --arch "$arch" --platform ios $pass_force & pids+=($!)
-    "$root/bin/build-runtime-library.sh" --arch x86_64 --platform ios-simulator $pass_force & pids+=($!)
-
-    if [[ "$arch" = "arm64" ]]; then
-      "$root/bin/build-runtime-library.sh" --arch "$arch" --platform ios-simulator $pass_force & pids+=($!)
+    "$root/bin/build-runtime-library.sh" --arch "$arch" --platform ios $pass_force $pass_ignore_header_mtimes & pids+=($!)
+    "$root/bin/build-runtime-library.sh" --arch x86_64 --platform ios-simulator $pass_force $pass_ignore_header_mtimes & pids+=($!)
+    if [[ "$arch" = "arm64" ]] && [[ -z "$NO_IOS" ]]; then
+      "$root/bin/build-runtime-library.sh" --arch "$arch" --platform ios-simulator $pass_force $pass_ignore_header_mtimes & pids+=($!)    
     fi
   fi
 
   if [[ -n "$BUILD_ANDROID" ]]; then
     for abi in $(android_supported_abis); do
-      "$root/bin/build-runtime-library.sh" --platform android --arch "$abi" "$pass_force" & pids+=($!)
+      "$root/bin/build-runtime-library.sh" --platform android --arch "$abi" $pass_force $pass_ignore_header_mtimes & pids+=($!)
     done
   fi
 
@@ -365,7 +375,9 @@ function _prebuild_desktop_main () {
   local objects="$BUILD_DIR/$arch-$platform/objects"
 
   local test_headers=()
-  test_headers+=("$(find "$src"/**/*.hh)")
+  if [[ -z "$ignore_header_mtimes" ]]; then
+    test_headers+=("$(find "$src"/**/*.hh)")
+  fi
   local newest_mtime=0
   newest_mtime="$(latest_mtime ${test_headers[@]})"
 
