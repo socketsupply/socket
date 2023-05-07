@@ -3012,51 +3012,55 @@ int main (const int argc, const char* argv[]) {
         auto libs = _main / "libs";
         auto obj = _main / "obj";
 
-        if (!fs::exists(jniLibs)) {
+        if (fs::exists(obj)) {
+          fs::remove_all(obj);
+        }
 
-          if (fs::exists(obj)) {
-            fs::remove_all(obj);
-          }
-
-          // TODO(mribbons) - Copy specific abis
-          fs::create_directories(libs);
-          for (auto const& dir_entry : fs::directory_iterator(prefixFile() + "lib")) {
-            if (dir_entry.is_directory() && dir_entry.path().stem().string().find("-android") != String::npos) {
-              auto dest = libs / replace(dir_entry.path().stem().string(), "-android", "");
-              try {
-                if (debugEnv) log("copy android lib: "+ dir_entry.path().string() + " => " + dest.string());
-                fs::copy(
-                  dir_entry.path(),
-                  dest,
-                  fs::copy_options::overwrite_existing | fs::copy_options::recursive
-                );
-              } catch (fs::filesystem_error &e) {
-                std::cerr << "Unable to copy android lib: " << fs::exists(dest) << ": " << e.what() << std::endl;
-                throw;
-              }
+        // TODO(mribbons) - Copy specific abis
+        fs::create_directories(libs);
+        int androidLibCount = 0;
+        for (auto const& dir_entry : fs::directory_iterator(prefixFile() + "lib")) {
+          if (dir_entry.is_directory() && dir_entry.path().stem().string().find("-android") != String::npos) {
+            auto dest = libs / replace(dir_entry.path().stem().string(), "-android", "");
+            try {
+              if (debugEnv) log("copy android lib: "+ dir_entry.path().string() + " => " + dest.string());
+              fs::copy(
+                dir_entry.path(),
+                dest,
+                fs::copy_options::overwrite_existing | fs::copy_options::recursive
+              );
+              androidLibCount++;
+            } catch (fs::filesystem_error &e) {
+              std::cerr << "Unable to copy android lib: " << fs::exists(dest) << ": " << e.what() << std::endl;
+              throw;
             }
           }
+        }
 
-          fs::create_directories(jniLibs);
-
-          ndkBuildArgs
-            << ndkBuild.str()
-            << " -j"
-            << " NDK_PROJECT_PATH=" << _main
-            << " NDK_APPLICATION_MK=" << app_mk
-            << (flagDebugMode ? " NDK_DEBUG=1" : "")
-            << " APP_PLATFORM=" << androidPlatform
-            << " NDK_LIBS_OUT=" << jniLibs
-          ;
-
-          if (!(debugEnv || verboseEnv)) ndkBuildArgs << " >" << (!platform.win ? "/dev/null" : "NUL") << " 2>&1";
-
-          if (debugEnv || verboseEnv) log(ndkBuildArgs.str());
-          if (std::system(ndkBuildArgs.str().c_str()) != 0) {
-            log(ndkBuildArgs.str());
-            log("ERROR: ndk build failed.");
+        if (androidLibCount == 0) {
+            log("ERROR: No android static libs copied, app won't build. Check " + prefixFile() + "lib");
             exit(1);
-          }
+        }
+
+        fs::create_directories(jniLibs);
+
+        ndkBuildArgs
+          << ndkBuild.str()
+          << " -j"
+          << " NDK_PROJECT_PATH=" << _main
+          << " NDK_APPLICATION_MK=" << app_mk
+          << (flagDebugMode ? " NDK_DEBUG=1" : "")
+          << " APP_PLATFORM=" << androidPlatform
+          << " NDK_LIBS_OUT=" << jniLibs
+        ;
+
+        if (!(debugEnv || verboseEnv)) ndkBuildArgs << " >" << (!platform.win ? "/dev/null" : "NUL") << " 2>&1";
+
+        if (debugEnv || verboseEnv) log(ndkBuildArgs.str());
+        if (std::system(ndkBuildArgs.str().c_str()) != 0) {
+          log(ndkBuildArgs.str());
+          log("ERROR: ndk build failed.");
+          exit(1);
         }
       }
 
