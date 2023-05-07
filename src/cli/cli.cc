@@ -3018,7 +3018,7 @@ int main (const int argc, const char* argv[]) {
 
         // TODO(mribbons) - Copy specific abis
         fs::create_directories(libs);
-        int androidLibCount = 0;
+        int androidStaticLibCount = 0;
         for (auto const& dir_entry : fs::directory_iterator(prefixFile() + "lib")) {
           if (dir_entry.is_directory() && dir_entry.path().stem().string().find("-android") != String::npos) {
             auto dest = libs / replace(dir_entry.path().stem().string(), "-android", "");
@@ -3029,7 +3029,7 @@ int main (const int argc, const char* argv[]) {
                 dest,
                 fs::copy_options::overwrite_existing | fs::copy_options::recursive
               );
-              androidLibCount++;
+              androidStaticLibCount++;
             } catch (fs::filesystem_error &e) {
               std::cerr << "Unable to copy android lib: " << fs::exists(dest) << ": " << e.what() << std::endl;
               throw;
@@ -3037,30 +3037,50 @@ int main (const int argc, const char* argv[]) {
           }
         }
 
-        if (androidLibCount == 0) {
+        if (androidStaticLibCount == 0) {
             log("ERROR: No android static libs copied, app won't build. Check " + prefixFile() + "lib");
             exit(1);
         }
 
+        auto buildJniLibs = true;
+        if (fs::exists(jniLibs)) {
+          int androidSharedLibCount = 0;
+          for (auto const& dir_entry : fs::recursive_directory_iterator(jniLibs)) {
+            if (dir_entry.path().stem() == "libsocket-runtime.so") {
+              androidSharedLibCount++;
+            }
+          }
+
+          if (androidSharedLibCount > 0 && androidSharedLibCount != (androidStaticLibCount / 2)) {
+            buildJniLibs = true;
+            log("WARN: Android Shared Lib Count is incorrect, forcing rebuild.");
+            fs::remove_all(jniLibs);
+          } else {
+            buildJniLibs = false;
+          }
+        }
+        
         fs::create_directories(jniLibs);
 
-        ndkBuildArgs
-          << ndkBuild.str()
-          << " -j"
-          << " NDK_PROJECT_PATH=" << _main
-          << " NDK_APPLICATION_MK=" << app_mk
-          << (flagDebugMode ? " NDK_DEBUG=1" : "")
-          << " APP_PLATFORM=" << androidPlatform
-          << " NDK_LIBS_OUT=" << jniLibs
-        ;
+        if (buildJniLibs) {
+          ndkBuildArgs
+            << ndkBuild.str()
+            << " -j"
+            << " NDK_PROJECT_PATH=" << _main
+            << " NDK_APPLICATION_MK=" << app_mk
+            << (flagDebugMode ? " NDK_DEBUG=1" : "")
+            << " APP_PLATFORM=" << androidPlatform
+            << " NDK_LIBS_OUT=" << jniLibs
+          ;
 
-        if (!(debugEnv || verboseEnv)) ndkBuildArgs << " >" << (!platform.win ? "/dev/null" : "NUL") << " 2>&1";
+          if (!(debugEnv || verboseEnv)) ndkBuildArgs << " >" << (!platform.win ? "/dev/null" : "NUL") << " 2>&1";
 
-        if (debugEnv || verboseEnv) log(ndkBuildArgs.str());
-        if (std::system(ndkBuildArgs.str().c_str()) != 0) {
-          log(ndkBuildArgs.str());
-          log("ERROR: ndk build failed.");
-          exit(1);
+          if (debugEnv || verboseEnv) log(ndkBuildArgs.str());
+          if (std::system(ndkBuildArgs.str().c_str()) != 0) {
+            log(ndkBuildArgs.str());
+            log("ERROR: ndk build failed.");
+            exit(1);
+          }
         }
       }
 
