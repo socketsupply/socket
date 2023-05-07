@@ -2650,22 +2650,6 @@ int main (const int argc, const char* argv[]) {
           fs::copy_options::update_existing | fs::copy_options::recursive
         );
       }
-    // @deprecated
-    } else if (settings.count("build_input") != 0) {
-      log("socket.ini: [build] input is deprecated, use [build] copy instead");
-
-      if (settings.count("build_script") != 0) {
-        log("socket.ini: Mixing [build] input and [build] script may lead to unexpected behavior");
-      }
-
-      Path pathInput = settings["build_input"].size() > 0
-        ? targetPath / settings["build_input"]
-        : targetPath / "src";
-      fs::copy(
-        pathInput,
-        pathResourcesRelativeToUserBuild,
-        fs::copy_options::update_existing | fs::copy_options::recursive
-      );
     }
 
     for (const auto& tuple : settings) {
