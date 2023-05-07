@@ -1571,6 +1571,7 @@ int main (const int argc, const char* argv[]) {
       getEnv("VERBOSE").size() > 0
     );
     
+    auto oldCwd = fs::current_path();
     auto devNull = ">" + SSC::String((!platform.win) ? "/dev/null" : "NUL") + (" 2>&1");
 
     String localDirPrefix = !platform.win ? "./" : "";
@@ -2568,7 +2569,6 @@ int main (const int argc, const char* argv[]) {
       // pass it to the platform-specific directory where they
       // should send their build artifacts.
       //
-      auto oldCwd = fs::current_path();
       fs::current_path(oldCwd / targetPath);
 
       {
@@ -2822,7 +2822,6 @@ int main (const int argc, const char* argv[]) {
 
       log("building for iOS");
 
-      auto oldCwd = fs::current_path();
       auto pathToDist = oldCwd / paths.platformSpecificOutputPath;
 
       fs::create_directories(pathToDist);
@@ -3120,7 +3119,10 @@ int main (const int argc, const char* argv[]) {
           exit(1);
         }
 
+        // don't run devices query from build folder as it spawns adb server, which will prevent folder deletion on windows
+        fs::current_path(oldCwd);
         auto deviceQuery = exec(adb.str() + " devices");
+        fs::current_path(paths.platformSpecificOutputPath);
         androidEmulatorRunning = (deviceQuery.output.find("emulator") != SSC::String::npos);
       }
 
@@ -3186,7 +3188,7 @@ int main (const int argc, const char* argv[]) {
           auto androidEmulatorProcess = new SSC::Process(
             emulator.str(),
             " @SSCAVD -gpu swiftshader_indirect", // platform-33: swiftshader not supported below platform-32
-            fs::current_path().string(),
+            oldCwd.string(),
             [](SSC::String const &out) {  },
             [](SSC::String const &out) {  }
           );
