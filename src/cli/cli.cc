@@ -1540,7 +1540,31 @@ int main (const int argc, const char* argv[]) {
     exit(0);
   });
 
-  createSubcommand("build", { "--platform", "--host", "--port", "--quiet", "-o", "--only-build", "-r", "--run", "--prod", "-p", "-c", "-s", "-e", "-n", "--test", "--headless" }, true, [&](const std::span<const char *>& options) -> void {
+  auto const runOptions = Vector<String> {
+    "--platform",
+    "--host",
+    "--port",
+    "--prod",
+    "--test",
+    "--headless"
+  };
+
+  auto buildOptions = Vector<String> {
+    "--quiet",
+    "-o",
+    "--only-build",
+    "-r",
+    "--run",
+    "-p",
+    "-c",
+    "-s",
+    "-e",
+    "-n"
+  };
+
+    // Insert the elements of runOptions into buildOptions
+  buildOptions.insert(buildOptions.end(), runOptions.begin(), runOptions.end());
+  createSubcommand("build", buildOptions, true, [&](const std::span<const char *>& options) -> void {
     bool flagRunUserBuildOnly = false;
     bool flagAppStore = false;
     bool flagCodeSign = false;
@@ -1657,6 +1681,9 @@ int main (const int argc, const char* argv[]) {
           } else if (targetPlatform == "ios-simulator") {
             flagBuildForIOS = true;
             flagBuildForSimulator = true;
+          } else {
+            log("Unknown platform: " + targetPlatform);
+            exit(1);
           }
         }
       }
@@ -1677,6 +1704,7 @@ int main (const int argc, const char* argv[]) {
             }
           }
         }
+        settings.insert(std::make_pair("host", devHost));
       }
 
       if (portArg.size() == 0) {
@@ -1684,6 +1712,7 @@ int main (const int argc, const char* argv[]) {
         if (portArg.size() > 0) {
           devPort = portArg;
         }
+        settings.insert(std::make_pair("port", devPort));
       }
     }
 
@@ -2373,9 +2402,6 @@ int main (const int argc, const char* argv[]) {
         settings["ini_code"]
       );
 
-      settings.insert(std::make_pair("host", devHost));
-      settings.insert(std::make_pair("port", devPort));
-
       writeFile(paths.platformSpecificOutputPath / "exportOptions.plist", tmpl(gXCodeExportOptions, settings));
       writeFile(paths.platformSpecificOutputPath / "Info.plist", tmpl(gXCodePlist, settings));
       writeFile(pathToProject / "project.pbxproj", tmpl(gXCodeProject, settings));
@@ -2889,12 +2915,6 @@ int main (const int argc, const char* argv[]) {
       }
 
       log("created archive");
-
-      if (flagBuildForSimulator && flagShouldRun) {
-        String app = (settings["build_name"] + ".app");
-        auto pathToApp = paths.platformSpecificOutputPath / app;
-        runIOSSimulator(pathToApp, settings);
-      }
 
       if (flagShouldPackage) {
         StringStream exportCommand;
@@ -3846,19 +3866,33 @@ int main (const int argc, const char* argv[]) {
 
     int exitCode = 0;
     if (flagShouldRun) {
-      exitCode = runApp(binaryPath, argvForward, flagHeadless);
+      if (flagBuildForSimulator) {
+        String app = (settings["build_name"] + ".app");
+        auto pathToApp = paths.platformSpecificOutputPath / app;
+        runIOSSimulator(pathToApp, settings);
+      } else {
+        exitCode = runApp(binaryPath, argvForward, flagHeadless);
+      }
     }
 
     exit(exitCode);
   });
 
-  createSubcommand("run", { "--platform", "--prod", "--test",  "--headless" }, true, [&](const std::span<const char *>& options) -> void {
+  createSubcommand("run", runOptions, true, [&](const std::span<const char *>& options) -> void {
     String argvForward = "";
     bool isIosSimulator = false;
     bool flagHeadless = false;
     bool flagTest = false;
     String targetPlatform = "";
     String testFile = "";
+    bool isForIOS = false;
+    bool isForAndroid = false;
+    bool isForIOSSimulator = false;
+
+    String hostArg = "";
+    String portArg = "";
+    String devHost("localhost");
+    String devPort("0");
 
     for (auto const& option : options) {
       if (is(option, "--test")) {
@@ -3879,13 +3913,47 @@ int main (const int argc, const char* argv[]) {
       if (targetPlatform.size() == 0) {
         targetPlatform = optionValue("run", option, "--platform");
         if (targetPlatform.size() > 0) {
-          if (targetPlatform == "ios-simulator") {
-            isIosSimulator = true;
+          if (targetPlatform == "ios") {
+            isForIOS = true;
+          } else if (targetPlatform == "android") {
+            isForAndroid = true;
+          } else if (targetPlatform == "android-emulator") {
+            isForAndroid = true;
+          } else if (targetPlatform == "ios-simulator") {
+            isForIOS = true;
+            isForIOSSimulator = true;
           } else {
             log("Unknown platform: " + targetPlatform);
             exit(1);
           }
         }
+      }
+
+      if (hostArg.size() == 0) {
+        hostArg = optionValue("build", option, "--host");
+        if (hostArg.size() > 0) {
+          devHost = hostArg;
+        } else {
+          if (isForIOS || isForAndroid) {
+            auto r = exec((!platform.win)
+              ? "ifconfig | grep -w 'inet' | awk '!match($2, \"^127.\") {print $2; exit}' | tr -d '\n'"
+              : "PowerShell -Command ((Get-NetIPAddress -AddressFamily IPV4).IPAddress ^| Select-Object -first 1)"
+            );
+
+            if (r.exitCode == 0) {
+              devHost = r.output;
+            }
+          }
+        }
+        settings.insert(std::make_pair("host", devHost));
+      }
+
+      if (portArg.size() == 0) {
+        portArg = optionValue("run", option, "--port");
+        if (portArg.size() > 0) {
+          devPort = portArg;
+        }
+        settings.insert(std::make_pair("port", devPort));
       }
     }
 
