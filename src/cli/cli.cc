@@ -3047,10 +3047,13 @@ int main (const int argc, const char* argv[]) {
           int androidSharedLibCount = 0;
           for (auto const& dir_entry : fs::recursive_directory_iterator(jniLibs)) {
             if (dir_entry.path().stem() == "libsocket-runtime.so") {
+              // Count the number of libsocket-runtime.so's in jniLibs, there will be one for each android architecture
               androidSharedLibCount++;
             }
           }
 
+          // if we have found libsocket-runtime.so, we don't need to recompile, unless:
+          // libsocket-runtime.so count doesn't match the static lib count - There should be one libuv.a and libsocket-runtime.a for each android architecture
           if (androidSharedLibCount > 0 && androidSharedLibCount != (androidStaticLibCount / 2)) {
             buildJniLibs = true;
             log("WARN: Android Shared Lib Count is incorrect, forcing rebuild.");
@@ -3062,6 +3065,7 @@ int main (const int argc, const char* argv[]) {
         
         fs::create_directories(jniLibs);
 
+        // don't build unless we're sure it is required, ndkbuild errors out if jniLibs is already populated
         if (buildJniLibs) {
           ndkBuildArgs
             << ndkBuild.str()
