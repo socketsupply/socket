@@ -781,6 +781,7 @@ struct AndroidCliState {
   StringStream adbShellStart;
   StringStream adbInstall;
   Path appPath;
+  Path apkPath;
   int adbInstallSleepTime = 200;
 
   // should be moved to a general state struct
@@ -844,9 +845,8 @@ bool setupAndroidAvd(AndroidCliState& state) {
       state.avdmanager << "\\cmdline-tools\\latest\\bin\\";
   }
 
-  if (state.verbose) log(state.avdmanager.str());
   if (!fs::exists(state.avdmanager.str())) {
-    log("ERROR: failed to locate Android Virtual Device (avdmanager)");
+    log("ERROR: failed to locate Android Virtual Device (avdmanager): " + state.avdmanager.str());
     return false;
   }
 
@@ -868,6 +868,9 @@ bool setupAndroidAvd(AndroidCliState& state) {
 
   if (!state.sscAvdExists) {
     auto createResult = exec(state.avdmanager.str());
+    if (state.verbose) {
+      log(state.avdmanager.str());
+    }
     if (createResult.exitCode != 0) {
       log("Failed to create SSCAVD: " + createResult.output);
       return false;
@@ -894,14 +897,8 @@ void setupAndroidStartCommands(AndroidCliState& state, bool flagDebugMode) {
   state.adbInstall << "install ";
   state.adbShellStart << state.adb.str() << " ";
 
-  if (flagDebugMode) {
-    state.adbInstall << (state.appPath / "build" / "outputs" / "apk" / "dev" / "debug" / "app-dev-debug.apk").string();
-  }
-  else {
-    state.adbInstall << (state.appPath / "build" / "outputs" / "apk" / "live" / "debug" / "app-live-debug.apk").string();
-  }
-
-  if (state.verbose) log(state.adb.str());
+  state.apkPath = state.appPath / "build" / "outputs" / "apk" / (flagDebugMode ? "dev" : "live") / "debug" / (SSC::String("app-") + (flagDebugMode ? "dev" : "live") + SSC::String("-debug.apk"));
+  state.adbInstall << state.apkPath.string();
 }
 
 void startAndroidEmulator(AndroidCliState& state) {
@@ -941,6 +938,15 @@ bool installAndroidApp(AndroidCliState& state) {
     adbInstallTime = std::stoi(getEnv("SSC_ADB_INTSALL_WAIT"));
   }
 
+  if (!fs::exists(state.apkPath)) {
+    log("APK doesn't exist: " + state.apkPath.string());
+    return false;
+  }
+
+  if (state.verbose) {
+    log(state.adbInstall.str());
+  }
+
   while (true) {
     // handle emulator boot issue: cmd: Can't find service: package, no reliable way of detecting when emulator is ready without a blocking logcat call
     // Note that there are several different errors that can occur here based on the state of the emulator, just keep trying to install with a timeout
@@ -969,7 +975,20 @@ bool installAndroidApp(AndroidCliState& state) {
 }
 
 bool startAndroidApp(AndroidCliState& state) {
-  state.adbShellStart << "shell am start -n " << settings["meta_bundle_identifier"] << "/" << settings["meta_bundle_identifier"] << settings["android_main_activity"] << " 2>&1";
+  ExecOutput adbInstallOutput;
+  int adbInstallTime = 120000;
+  int adbInstallWaited = 0;
+
+  if (getEnv("SSC_ADB_INTSALL_WAIT").size() > 0) {
+    adbInstallTime = std::stoi(getEnv("SSC_ADB_INTSALL_WAIT"));
+  }
+
+  auto mainActivity = settings["android_main_activity"];
+  if (mainActivity.size() == 0) {
+    mainActivity = String(DEFAULT_ANDROID_ACTIVITY_NAME);
+  }
+
+  state.adbShellStart << "shell am start -n " << settings["meta_bundle_identifier"] << "/" << settings["meta_bundle_identifier"] << mainActivity << " 2>&1";
   if (state.verbose) log(state.adbShellStart.str());
   ExecOutput adbShellStartOutput;
   while (true) {
@@ -977,9 +996,14 @@ bool startAndroidApp(AndroidCliState& state) {
     if (adbShellStartOutput.output.find("Error type 3") != SSC::String::npos) {
       // ignore this timing related startup error
       std::this_thread::sleep_for(std::chrono::milliseconds(state.adbInstallSleepTime));
+      adbInstallWaited += state.adbInstallSleepTime;
     }
     else {
       log("App started.");
+      break;
+    }
+    if (adbInstallWaited >= adbInstallTime) {
+      log("Wait for shell start timed out.");
       break;
     }
   }
@@ -4025,12 +4049,22 @@ int main (const int argc, const char* argv[]) {
     String testFile = "";
     bool isForIOS = false;
     bool isForAndroid = false;
+    bool isForAndroidEmulator = false;
     bool isForIOSSimulator = false;
 
     String hostArg = "";
     String portArg = "";
     String devHost("localhost");
     String devPort("0");
+    const bool debugEnv = (
+      getEnv("SSC_DEBUG").size() > 0 ||
+      getEnv("DEBUG").size() > 0
+    );
+
+    const bool verboseEnv = (
+      getEnv("SSC_VERBOSE").size() > 0 ||
+      getEnv("VERBOSE").size() > 0
+    );
 
     for (auto const& option : options) {
       if (is(option, "--test")) {
@@ -4057,6 +4091,7 @@ int main (const int argc, const char* argv[]) {
             isForAndroid = true;
           } else if (targetPlatform == "android-emulator") {
             isForAndroid = true;
+            isForAndroidEmulator = true;
           } else if (targetPlatform == "ios-simulator") {
             isForIOS = true;
             isForIOSSimulator = true;
@@ -4103,15 +4138,50 @@ int main (const int argc, const char* argv[]) {
     targetPlatform = targetPlatform.size() > 0 ? targetPlatform : platform.os;
     Paths paths = getPaths(targetPlatform);
 
+    auto devNull = ">" + SSC::String((!platform.win) ? "/dev/null" : "NUL") + (" 2>&1");
+    String quote = !platform.win ? "'" : "\"";
+    String slash = !platform.win ? "/" : "\\";
+
     if (isIosSimulator) {
       String app = (settings["build_name"] + ".app");
       auto pathToApp = paths.platformSpecificOutputPath / app;
       runIOSSimulator(pathToApp, settings);
+    } else if (isForAndroid) {
+      auto androidPlatform = "android-33";
+      AndroidCliState androidState;
+      androidState.androidHome = getAndroidHome();
+      androidState.verbose = debugEnv || verboseEnv;
+      androidState.devNull = devNull;
+      androidState.platform = androidPlatform;
+      androidState.appPath = paths.platformSpecificOutputPath / "app";
+      androidState.quote = quote;
+      androidState.slash = slash;
+
+      if (!getAdbPath(androidState)) {
+        exit(1);
+      }
+
+      if (isForAndroidEmulator && !androidState.emulatorRunning) {
+        if (!initAndStartAndroidEmulator(androidState, true)) {
+          exit(1);
+        }
+      }
+
+      if (!initAndStartAndroidApp(androidState, flagDebugMode)) {
+        exit(1);
+      }
+
+      exit(0);
+
     } else {
       auto executable = Path(settings["build_name"] + (platform.win ? ".exe" : ""));
       auto exitCode = runApp(paths.pathBin / executable, argvForward, flagHeadless);
       exit(exitCode);
     }
+
+    // Fixes "subcommand 'ssc run' is not supported.""
+    log("App failed to run, please contact support.");
+    exit(1);
   });
 
   createSubcommand("setup", { "--platform", "--yes", "-y" }, false, [&](const std::span<const char *>& options) -> void {
