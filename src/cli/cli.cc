@@ -2940,7 +2940,6 @@ int main (const int argc, const char* argv[]) {
 
       log("completed");
       fs::current_path(oldCwd);
-      exit(0);
     }
 
     if (flagBuildForAndroid) {
