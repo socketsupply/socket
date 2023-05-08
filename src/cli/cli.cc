@@ -1599,6 +1599,7 @@ int main (const int argc, const char* argv[]) {
       getEnv("VERBOSE").size() > 0
     );
     
+    auto oldCwd = fs::current_path();
     auto devNull = ">" + SSC::String((!platform.win) ? "/dev/null" : "NUL") + (" 2>&1");
 
     String localDirPrefix = !platform.win ? "./" : "";
@@ -2598,7 +2599,6 @@ int main (const int argc, const char* argv[]) {
       // pass it to the platform-specific directory where they
       // should send their build artifacts.
       //
-      auto oldCwd = fs::current_path();
       fs::current_path(oldCwd / targetPath);
 
       {
@@ -2836,7 +2836,6 @@ int main (const int argc, const char* argv[]) {
 
       log("building for iOS");
 
-      auto oldCwd = fs::current_path();
       auto pathToDist = oldCwd / paths.platformSpecificOutputPath;
 
       fs::create_directories(pathToDist);
@@ -3020,33 +3019,61 @@ int main (const int argc, const char* argv[]) {
         auto libs = _main / "libs";
         auto obj = _main / "obj";
 
-        if (!fs::exists(jniLibs)) {
+        if (fs::exists(obj)) {
+          fs::remove_all(obj);
+        }
 
-          if (fs::exists(obj)) {
-            fs::remove_all(obj);
+        // TODO(mribbons) - Copy specific abis
+        fs::create_directories(libs);
+        int androidStaticLibCount = 0;
+        for (auto const& dir_entry : fs::directory_iterator(prefixFile() + "lib")) {
+          if (dir_entry.is_directory() && dir_entry.path().stem().string().find("-android") != String::npos) {
+            auto dest = libs / replace(dir_entry.path().stem().string(), "-android", "");
+            try {
+              if (debugEnv) log("copy android lib: "+ dir_entry.path().string() + " => " + dest.string());
+              fs::copy(
+                dir_entry.path(),
+                dest,
+                fs::copy_options::overwrite_existing | fs::copy_options::recursive
+              );
+              androidStaticLibCount++;
+            } catch (fs::filesystem_error &e) {
+              std::cerr << "Unable to copy android lib: " << fs::exists(dest) << ": " << e.what() << std::endl;
+              throw;
+            }
           }
+        }
 
-          // TODO(mribbons) - Copy specific abis
-          fs::create_directories(libs);
-          for (auto const& dir_entry : fs::directory_iterator(prefixFile() + "lib")) {
-            if (dir_entry.is_directory() && dir_entry.path().stem().string().find("-android") != String::npos) {
-              auto dest = libs / replace(dir_entry.path().stem().string(), "-android", "");
-              try {
-                if (debugEnv) log("copy android lib: "+ dir_entry.path().string() + " => " + dest.string());
-                fs::copy(
-                  dir_entry.path(),
-                  dest,
-                  fs::copy_options::overwrite_existing | fs::copy_options::recursive
-                );
-              } catch (fs::filesystem_error &e) {
-                std::cerr << "Unable to copy android lib: " << fs::exists(dest) << ": " << e.what() << std::endl;
-                throw;
-              }
+        if (androidStaticLibCount == 0) {
+            log("ERROR: No android static libs copied, app won't build. Check " + prefixFile() + "lib");
+            exit(1);
+        }
+
+        auto buildJniLibs = true;
+        if (fs::exists(jniLibs)) {
+          int androidSharedLibCount = 0;
+          for (auto const& dir_entry : fs::recursive_directory_iterator(jniLibs)) {
+            if (dir_entry.path().stem() == "libsocket-runtime.so") {
+              // Count the number of libsocket-runtime.so's in jniLibs, there will be one for each android architecture
+              androidSharedLibCount++;
             }
           }
 
-          fs::create_directories(jniLibs);
+          // if we have found libsocket-runtime.so, we don't need to recompile, unless:
+          // libsocket-runtime.so count doesn't match the static lib count - There should be one libuv.a and libsocket-runtime.a for each android architecture
+          if (androidSharedLibCount > 0 && androidSharedLibCount != (androidStaticLibCount / 2)) {
+            buildJniLibs = true;
+            log("WARN: Android Shared Lib Count is incorrect, forcing rebuild.");
+            fs::remove_all(jniLibs);
+          } else {
+            buildJniLibs = false;
+          }
+        }
+        
+        fs::create_directories(jniLibs);
 
+        // don't build unless we're sure it is required, ndkbuild errors out if jniLibs is already populated
+        if (buildJniLibs) {
           ndkBuildArgs
             << ndkBuild.str()
             << " -j"
@@ -3127,7 +3154,10 @@ int main (const int argc, const char* argv[]) {
           exit(1);
         }
 
+        // don't run devices query from build folder as it spawns adb server, which will prevent folder deletion on windows
+        fs::current_path(oldCwd);
         auto deviceQuery = exec(adb.str() + " devices");
+        fs::current_path(paths.platformSpecificOutputPath);
         androidEmulatorRunning = (deviceQuery.output.find("emulator") != SSC::String::npos);
       }
 
@@ -3193,7 +3223,7 @@ int main (const int argc, const char* argv[]) {
           auto androidEmulatorProcess = new SSC::Process(
             emulator.str(),
             " @SSCAVD -gpu swiftshader_indirect", // platform-33: swiftshader not supported below platform-32
-            fs::current_path().string(),
+            oldCwd.string(),
             [](SSC::String const &out) {  },
             [](SSC::String const &out) {  }
           );
