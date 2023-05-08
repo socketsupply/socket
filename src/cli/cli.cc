@@ -2830,7 +2830,7 @@ int main (const int argc, const char* argv[]) {
 
     if (flagBuildForIOS) {
       if (flagBuildForSimulator && settings["ios_simulator_device"].size() == 0) {
-        log("ERROR: 'ios_simulator_device' option is empty");
+        log("ERROR: [ios] simulator_device option is empty");
         exit(1);
       }
 
@@ -2902,7 +2902,7 @@ int main (const int argc, const char* argv[]) {
       if (rArchive.exitCode != 0) {
         auto const noDevice = rArchive.output.find("The requested device could not be found because no available devices matched the request.");
         if (noDevice != std::string::npos) {
-          log("ERROR: simulator_device " + settings["ios_simulator_device"] + " from your socket.ini was not found");
+          log("ERROR: [ios] simulator_device " + settings["ios_simulator_device"] + " from your socket.ini was not found");
           auto const rDevices = exec("xcrun simctl list devices available | grep -e \"  \"");
           log("available devices:\n" + rDevices.output);
           log("please update your socket.ini with a valid device or install Simulator runtime (https://developer.apple.com/documentation/xcode/installing-additional-simulator-runtimes)");
@@ -2916,7 +2916,7 @@ int main (const int argc, const char* argv[]) {
 
       log("created archive");
 
-      if (flagShouldPackage) {
+      if (flagShouldPackage && !flagBuildForSimulator) {
         StringStream exportCommand;
 
         exportCommand
@@ -3281,7 +3281,7 @@ int main (const int argc, const char* argv[]) {
       exit(0);
     }
 
-    if (flagRunUserBuildOnly == false) {
+    if (flagRunUserBuildOnly == false && !flagBuildForSimulator) {
       StringStream compileCommand;
 
       auto extraFlags = flagDebugMode
@@ -3372,7 +3372,7 @@ int main (const int argc, const char* argv[]) {
     //
     // MacOS Stripping
     //
-    if (platform.mac) {
+    if (platform.mac && !flagBuildForSimulator) {
       StringStream stripCommand;
 
       stripCommand
@@ -3391,7 +3391,7 @@ int main (const int argc, const char* argv[]) {
     // MacOS Code Signing
     // ---
     //
-    if (flagCodeSign && platform.mac) {
+    if (flagCodeSign && platform.mac && !flagBuildForIOS) {
       //
       // https://www.digicert.com/kb/code-signing/mac-os-codesign-tool.htm
       // https://developer.apple.com/forums/thread/128166
@@ -3465,7 +3465,7 @@ int main (const int argc, const char* argv[]) {
     // MacOS Packaging
     // ---
     //
-    if (flagShouldPackage && platform.mac) {
+    if (flagShouldPackage && platform.mac && !flagBuildForIOS) {
       StringStream zipCommand;
       auto ext = ".zip";
       auto pathToBuild = paths.platformSpecificOutputPath / "build";
@@ -3497,7 +3497,7 @@ int main (const int argc, const char* argv[]) {
     // MacOS Notarization
     // ---
     //
-    if (flagShouldNotarize && platform.mac) {
+    if (flagShouldNotarize && platform.mac && !flagBuildForIOS) {
       StringStream notarizeCommand;
       String username = getEnv("APPLE_ID");
       String password = getEnv("APPLE_ID_PASSWORD");
