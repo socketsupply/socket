@@ -568,7 +568,11 @@ int runApp (const Path& path, const String& args) {
 void runIOSSimulator (const Path& path, Map& settings) {
   #ifndef _WIN32
   if (settings["ios_simulator_device"].size() == 0) {
-    log("ERROR: 'ios_simulator_device' option is empty");
+    log("ERROR: [ios] simulator_device option is empty");
+    exit(1);
+  }
+  if (settings["meta_bundle_identifier"].size() == 0) {
+    log("ERROR: [meta] bundle_identifier option is empty");
     exit(1);
   }
   String deviceType;
