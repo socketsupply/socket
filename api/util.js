@@ -105,7 +105,7 @@ export function toString (object) {
   return Object.prototype.toString(object)
 }
 
-export function toBuffer (object, encoding) {
+export function toBuffer (object, encoding = undefined) {
   if (Buffer.isBuffer(object)) {
     return object
   } else if (isTypedArray(object)) {
