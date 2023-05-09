@@ -38,7 +38,8 @@ capabilities to the JavaScript code.
 
 #### `bin`
 
-TODO
+This directory contains the useful scripts for building the project on different platforms, managing versions,
+generating documentation, publishing npm packages, etc.
 
 #### `npm`
 
@@ -48,7 +49,16 @@ You can also find the official Socket Runtime Node.js backend in the
 
 #### `src`
 
-TODO
+The `src` directory contains the native code for the Socket Runtime:
+- [`cli`](src/cli/): contains the source code for the Socket Runtime CLI
+- [`core`](src/core/): contains the source code for the Socket Runtime core, such as Bluetooth support,
+File System, UDP, Peer-to-Peer capabilities, JavaScript bindings, etc.
+- [`desktop`](src/desktop/): contains the source code for the Socket Runtime library for desktop platforms
+- [`android`](src/android/): contains the source code for the Socket Runtime library for Android
+- [`ios`](src/ios/): contains the source code for the Socket Runtime library for iOS
+- [`ipc`](src/ipc/): contains the source code for the Socket Runtime IPC library
+- [`process`](src/process/): contains the source code for the process management
+- [`window`](src/window/): contains the source code for the window management on desktop platforms
 
 #### `test`
 
