@@ -5,12 +5,21 @@ namespace SSC {
   String createJavaScript (const String& name, const String& source) {
     return String(
       ";(async () => {                                                       \n"
+      "  await new Promise((resolve) => {                                    \n"
+      "    if (globalThis.__RUNTIME_INIT_NOW__) {                            \n"
+      "     resolve();                                                       \n"
+      "    } else {                                                          \n"
+      "      globalThis.addEventListener('__runtime_init__', resolve);       \n"
+      "    }                                                                 \n"
+      "  });                                                                 \n"
+      "                                                                      \n"
       "  console.assert(                                                     \n"
       "    typeof globalThis.__RUNTIME_INIT_NOW__ === 'number',              \n"
       "    '__RUNTIME_INIT_NOW__ check failed. ' +                           \n"
       "    'The webview environment may not be initialized correctly.'       \n"
       "  );                                                                  \n"
-      "  " + trim(source) + ";                                          \n"
+      "                                                                      \n"
+      "  " + trim(source) + ";                                               \n"
       "})();                                                                 \n"
       "//# sourceURL=" + name + "                                            \n"
     );
