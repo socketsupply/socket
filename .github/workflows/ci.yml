@@ -278,7 +278,7 @@ jobs:
         sudo apt install -y gcc-12 g++-12 libpthread-stubs0-dev libwebkit2gtk-4.1-dev
 
     - name: Gradle cache
-      uses: gradle/gradle-build-action@v2
+      uses: gradle/gradle-build-action@v2.4.2
       with:
         gradle-version: 7.6.1
 
