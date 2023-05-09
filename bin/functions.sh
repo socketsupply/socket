@@ -584,7 +584,7 @@ function first_time_experience_setup() {
           make automake gcc gcc-c++ kernel-devel \
           clang14-devel clang14-libs \
           libcxx-devel libcxxabi-devel \
-          webkit2gtk4.1-devel
+          webkit2gtk4.1-devel \
           || return $?
       elif [[ "$package_manager" == "yum install" ]]; then
         echo "warn - yum package manager is not suppored yet. Please try to install from npm or from source."
