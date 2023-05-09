@@ -24,7 +24,7 @@ Please follow the instructions in the terminal to install pre-requisites and add
 
 The project is structured as follows:
 - [`api`](api/): contains the JavaScript API for Socket Runtime
-- [`bin`](bin/): contains the usefull scripts for building and maintaining the project
+- [`bin`](bin/): contains the useful scripts for building and maintaining the project
 - [`npm`](npm/): contains the source code for the npm packages
 - [`src`](src/): contains the source code for the native part of the project
 - [`test`](test/): contains the tests for the project
@@ -41,7 +41,7 @@ TODO
 
 #### `npm`
 
-This directory consists of the JavaScrip wrappers for the native code, build scripts, and the packages directories.
+This directory consists of the JavaScrip wrappers for the native code, build scripts and the package directories.
 You can also find the official Socket Runtime Node.js backend in the
 [`npm/packages/@socketsupply/socket-node`](npm/packages/%40socketsupply/socket-node/) directory.
 
