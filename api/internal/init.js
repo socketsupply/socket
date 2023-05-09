@@ -283,7 +283,7 @@ class RuntimeXHRPostQueue extends ConcurrentQueue {
 
 hooks.onLoad(() => {
   if (typeof globalThis.dispatchEvent === 'function') {
-    globalThis.dispatchEvent(new CustomEvent('init'))
+    globalThis.dispatchEvent(new CustomEvent('__runtime_init__'))
   }
 })
 
@@ -307,4 +307,5 @@ hooks.onReady(async () => {
 globals.register('RuntimeXHRPostQueue', new RuntimeXHRPostQueue())
 // prevent further construction if this class is indirectly referenced
 RuntimeXHRPostQueue.prototype.constructor = IllegalConstructor
+
 export default applyPolyfills()

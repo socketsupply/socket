@@ -451,7 +451,7 @@ declare module "socket:util" {
     export function isClass(value: any): boolean;
     export function isPromiseLike(object: any): boolean;
     export function toString(object: any): string;
-    export function toBuffer(object: any, encoding: any): any;
+    export function toBuffer(object: any, encoding?: any): any;
     export function toProperCase(string: any): any;
     export function splitBuffer(buffer: any, highWaterMark: any): any[];
     export function InvertedPromise(): Promise<any>;
@@ -2157,15 +2157,15 @@ declare module "socket:crypto" {
      */
     export function createDigest(algorithm: string, buf: any): Promise<Buffer>;
     /**
+     * WebCrypto API
+     * @see {https://developer.mozilla.org/en-US/docs/Web/API/Crypto}
+     */
+    export let webcrypto: any;
+    /**
      * A promise that resolves when all internals to be loaded/ready.
      * @type {Promise}
      */
     export const ready: Promise<any>;
-    /**
-     * WebCrypto API
-     * @see {https://developer.mozilla.org/en-US/docs/Web/API/Crypto}
-     */
-    export const webcrypto: any;
     /**
      * Maximum total size of random bytes per page
      */

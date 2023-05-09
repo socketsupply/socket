@@ -331,15 +331,15 @@ Start advertising a new value for a well-known UUID
  import { randomBytes } from 'socket:crypto'
  ```
 
-## [ready](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L48)
-
-A promise that resolves when all internals to be loaded/ready.
-
-## [webcrypto](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L61)
+## [webcrypto](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L23)
 
 WebCrypto API
 
-## [`getRandomValues(buffer)`](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L69)
+## [ready](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L52)
+
+A promise that resolves when all internals to be loaded/ready.
+
+## [`getRandomValues(buffer)`](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L67)
 
 External docs: https://developer.mozilla.org/en-US/docs/Web/API/Crypto/getRandomValues
 
@@ -355,24 +355,24 @@ Generate cryptographically strong random values into the `buffer`
 | Not specified | TypedArray |  |
 
 
-## [`rand64()`](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L90)
+## [`rand64()`](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L86)
 
 This is a `FunctionDeclaration` named `rand64` in `api/crypto.js`, it's exported but undocumented.
 
 
-## [RANDOM_BYTES_QUOTA](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L98)
+## [RANDOM_BYTES_QUOTA](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L94)
 
 Maximum total size of random bytes per page
 
-## [MAX_RANDOM_BYTES](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L103)
+## [MAX_RANDOM_BYTES](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L99)
 
 Maximum total size for random bytes.
 
-## [MAX_RANDOM_BYTES_PAGES](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L108)
+## [MAX_RANDOM_BYTES_PAGES](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L104)
 
 Maximum total amount of allocated per page of bytes (max/quota)
 
-## [`randomBytes(size)`](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L116)
+## [`randomBytes(size)`](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L112)
 
 Generate `size` random bytes.
 
@@ -386,7 +386,7 @@ Generate `size` random bytes.
 | Not specified | Buffer | A promise that resolves with an instance of socket.Buffer with random bytes. |
 
 
-## [`createDigest(algorithm, message)`](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L143)
+## [`createDigest(algorithm, message)`](https://github.com/socketsupply/socket/blob/master/api/crypto.js#L139)
 
 
 
@@ -1402,11 +1402,11 @@ Starts the process of connecting to the network.
  import { Path } from 'socket:path'
  ```
 
-## [`Path` (extends `URL`)](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L31)
+## [`Path` (extends `URL`)](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L32)
 
 A container for a parsed Path.
 
-### [`cwd(opts)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L38)
+### [`cwd(opts)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L39)
 
 Computes current working directory for a path
 
@@ -1421,7 +1421,7 @@ Computes current working directory for a path
 | Not specified | string |  |
 
 
-### [`resolve(options, components)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L56)
+### [`resolve(options, components)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L58)
 
 Resolves path components to an absolute path.
 
@@ -1436,7 +1436,7 @@ Resolves path components to an absolute path.
 | Not specified | string |  |
 
 
-### [`relative(options, from, to)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L84)
+### [`relative(options, from, to)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L86)
 
 Computes the relative path from `from` to `to`.
 
@@ -1452,7 +1452,7 @@ Computes the relative path from `from` to `to`.
 | Not specified | string |  |
 
 
-### [`join(options, components)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L131)
+### [`join(options, components)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L133)
 
 Joins path components. This function may not return an absolute path.
 
@@ -1467,7 +1467,7 @@ Joins path components. This function may not return an absolute path.
 | Not specified | string |  |
 
 
-### [`dirname(options, components)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L161)
+### [`dirname(options, components)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L163)
 
 Computes directory name of path.
 
@@ -1482,7 +1482,7 @@ Computes directory name of path.
 | Not specified | string |  |
 
 
-### [`basename(options, components)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L199)
+### [`basename(options, components)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L235)
 
 Computes base name of path.
 
@@ -1497,7 +1497,7 @@ Computes base name of path.
 | Not specified | string |  |
 
 
-### [`extname(options, path)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L217)
+### [`extname(options, path)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L250)
 
 Computes extension name of path.
 
@@ -1512,7 +1512,7 @@ Computes extension name of path.
 | Not specified | string |  |
 
 
-### [`normalize(options, path)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L228)
+### [`normalize(options, path)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L261)
 
 Computes normalized path
 
@@ -1527,7 +1527,7 @@ Computes normalized path
 | Not specified | string |  |
 
 
-### [`format(options, path)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L275)
+### [`format(options, path)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L311)
 
 Formats `Path` object into a string.
 
@@ -1542,7 +1542,7 @@ Formats `Path` object into a string.
 | Not specified | string |  |
 
 
-### [`parse(path)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L291)
+### [`parse(path)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L327)
 
 Parses input `path` into a `Path` instance.
 
@@ -1556,7 +1556,7 @@ Parses input `path` into a `Path` instance.
 | Not specified | object |  |
 
 
-### [`from(input, cwd)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L317)
+### [`from(input, cwd)`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L353)
 
 Creates a `Path` instance from `input` and optional `cwd`.
 
@@ -1566,7 +1566,7 @@ Creates a `Path` instance from `input` and optional `cwd`.
 | cwd | string |  | false |  |
 
 
-### [`constructor(pathname, cwd )`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L338)
+### [`constructor(pathname, cwd )`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L374)
 
 `Path` class constructor.
 
@@ -1576,47 +1576,47 @@ Creates a `Path` instance from `input` and optional `cwd`.
 | cwd | string | Path.cwd() | false |  |
 
 
-### [`isRelative()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L371)
+### [`isRelative()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L407)
 
 `true` if the path is relative, otherwise `false.
 
-### [`value()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L378)
+### [`value()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L414)
 
 The working value of this path.
 
-### [`source()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L389)
+### [`source()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L425)
 
 The original source, unresolved.
 
-### [`parent()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L397)
+### [`parent()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L433)
 
 Computed parent path.
 
-### [`root()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L415)
+### [`root()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L451)
 
 Computed root in path.
 
-### [`dir()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L436)
+### [`dir()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L472)
 
 Computed directory name in path.
 
-### [`base()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L471)
+### [`base()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L507)
 
 Computed base name in path.
 
-### [`name()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L483)
+### [`name()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L519)
 
 Computed base name in path without path extension.
 
-### [`ext()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L491)
+### [`ext()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L527)
 
 Computed extension name in path.
 
-### [`drive()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L509)
+### [`drive()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L545)
 
 The computed drive, if given in the path.
 
-### [`toURL()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L516)
+### [`toURL()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L552)
 
 
 
@@ -1625,7 +1625,7 @@ The computed drive, if given in the path.
 | Not specified | URL |  |
 
 
-### [`toString()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L524)
+### [`toString()`](https://github.com/socketsupply/socket/blob/master/api/path/path.js#L560)
 
 Converts this `Path` instance to a string.
 
