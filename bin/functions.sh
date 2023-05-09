@@ -560,31 +560,37 @@ function first_time_experience_setup() {
       echo "Installing $(host_os) dependencies..."
       if [[ "$package_manager" == "apt install" ]]; then
         log_and_run sudo apt update || return $?
-        log_and_run sudo apt install -y     \
-          git                   \
-          libwebkit2gtk-4.1-dev \
-          build-essential       \
-          libc++abi-14-dev      \
-          libc++-14-dev         \
-          pkg-config            \
-          clang-14              \
+        log_and_run sudo apt install -y   \
+          git                             \
+          libwebkit2gtk-4.1-dev           \
+          build-essential                 \
+          libc++abi-14-dev                \
+          libc++-14-dev                   \
+          pkg-config                      \
+          clang-14                        \
           || return $?
       elif [[ "$package_manager" == "pacman -S" ]]; then
-        log_and_run sudo pacman -Syu \
-          git            \
-          webkit2gtk-4.1 \
-          base-devel     \
-          libc++abi-14   \
-          libc++1-14     \
-          clang-14       \
-          pkgconf        \
+        log_and_run sudo pacman -Syu   \
+          git                          \
+          webkit2gtk-4.1               \
+          base-devel                   \
+          libc++abi-14                 \
+          libc++1-14                   \
+          clang-14                     \
+          pkgconf                      \
           || return $?
       elif [[ "$package_manager" == "dnf install" ]]; then
-        log_and_run sudo dnf install \
-          make automake gcc gcc-c++ kernel-devel \
-          clang14-devel clang14-libs \
-          libcxx-devel libcxxabi-devel \
-          webkit2gtk4.1-devel \
+        log_and_run sudo dnf install   \
+          make                         \
+          automake                     \
+          gcc                          \
+          gcc-c++                      \
+          kernel-devel                 \
+          clang14-devel                \
+          clang14-libs                 \
+          libcxx-devel                 \
+          libcxxabi-devel              \
+          webkit2gtk4.1-devel          \
           || return $?
       elif [[ "$package_manager" == "yum install" ]]; then
         echo "warn - yum package manager is not suppored yet. Please try to install from npm or from source."
