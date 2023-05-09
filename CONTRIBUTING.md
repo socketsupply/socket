@@ -1,5 +1,5 @@
 ## Getting started
-Thanks for helping to improve `SSC`! This guide covers ways in which you can become a part of the ongoing development of `SSC`. If you can't find something on this page, please feel free to ask questions on [Discord](https://discord.com/invite/YPV32gKCsH).  
+Thanks for helping to improvev`SSC`! This guide covers ways in which you can become a part of the ongoing development of `SSC`.  
 
 ### Requirements
 
@@ -62,4 +62,10 @@ File System, UDP, Peer-to-Peer capabilities, JavaScript bindings, etc.
 
 #### `test`
 
-This directory contains the actual Socket Runtime application that is used for testing the native code and the JavaScript API.
+This directory contains the actual Socket Runtime application that is used for testing the native code and the JavaScript API.  
+
+### Creating an issue
+- If you think you have found a bug, Please [open an issue](https://github.com/socketsupply/socket/issues/new) and make sure that you select the correct template and follow the given instructions while creating an issue.
+- You can search through existing issues to see if there is a similar one [reported](https://github.com/socketsupply/socket/issues). You can also search through closed issues as it may have been closed with a solution.
+- Please detail all the steps necessary to reproduce the issue you are running into, so we can easily diagnose and fix your issue.
+- If you can't find something on this guide or you have any questions, please feel free to join our [Discord](https://discord.com/invite/YPV32gKCsH)
