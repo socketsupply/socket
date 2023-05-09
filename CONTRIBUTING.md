@@ -1,4 +1,5 @@
 ## Getting started
+Thanks for helping to improve `SSC`! This guide covers ways in which you can become a part of the ongoing development of `SSC`. If you can't find something on this page, please feel free to ask questions on [Discord](https://discord.com/invite/YPV32gKCsH).  
 
 ### Requirements
 
