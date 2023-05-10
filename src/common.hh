@@ -612,14 +612,6 @@ namespace SSC {
 
   inline void stdWrite (const String &str, bool isError) {
     (isError ? std::cerr : std::cout) << str << std::endl;
-  #ifdef _WIN32
-    StringStream ss;
-    ss << str << std::endl;
-    auto lineStr = ss.str();
-    auto handle = isError ? STD_ERROR_HANDLE : STD_OUTPUT_HANDLE;
-    WriteConsoleA(GetStdHandle(handle), lineStr.c_str(), lineStr.size(), NULL, NULL);
-  #endif
-
     notifyCli();
   }
 
