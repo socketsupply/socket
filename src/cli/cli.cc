@@ -2630,9 +2630,19 @@ int main (const int argc, const char* argv[]) {
         buildArgs << " --test=true";
       }
 
+      auto scriptArgs = buildArgs.str();
+      auto buildScript = settings["build_script"];
+      
+      // Windows CreateProcess() won't work if the script has an extension other than exe (say .cmd or .bat)
+      // cmd.exe can handle this translation
+      if (platform.win) {
+        scriptArgs =  " /c \"" + buildScript  + " " + scriptArgs + "\"";
+        buildScript = "cmd.exe";
+      }
+
       auto process = new SSC::Process(
-        settings["build_script"],
-        buildArgs.str(),
+        buildScript,
+        scriptArgs,
         fs::current_path().string(),
         [](SSC::String const &out) { stdWrite(out, false); },
         [](SSC::String const &out) { stdWrite(out, true); }
