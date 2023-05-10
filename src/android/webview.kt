@@ -118,7 +118,7 @@ open class WebViewClient (activity: WebViewActivity) : android.webkit.WebViewCli
       }
 
       val file = File(filePath.toString())
-      if (file.exists()) {
+      if (file.exists() && !file.isDirectory()) {
         var stream = java.io.FileInputStream(filePath.toString())
         val response = android.webkit.WebResourceResponse(
           if (filePath.toString().endsWith(".js")) "text/javascript" else "text/html",
