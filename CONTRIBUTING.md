@@ -1,5 +1,5 @@
 ## Contribution Guide Overview
-This guide provides steps on how to make contributions and become a part of the ongoing development of `SSC`.  
+This guide provides steps on how to make contributions and become a part of the ongoing development of `Socket Runtime`.  
 
 ### Requirements
 
@@ -75,4 +75,4 @@ Before submitting a pull request, please follow these steps:
 - [Create an issue](https://github.com/socketsupply/socket/issues/new) if one has not already been created.
 - call out a reviewer to look at and merge your code, this helps our team to keep track of the pull request and make sure there isn't duplicated effort.
 
-Thanks for helping to improve Socket Supply!
+Thanks for helping to improve Socket Runtime!
