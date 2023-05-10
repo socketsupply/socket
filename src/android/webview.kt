@@ -1,6 +1,7 @@
 // vim: set sw=2:
 package __BUNDLE_IDENTIFIER__
 import java.lang.ref.WeakReference
+import java.io.File
 import android.util.Log
 
 fun decodeURIComponent (string: String): String {
@@ -9,9 +10,7 @@ fun decodeURIComponent (string: String): String {
 }
 
 fun isAssetUri (uri: android.net.Uri): Boolean {
-  Log.d("Console", "isAssetUri: " + uri.toString() + ", " + uri.scheme + ", " + uri.host)
   for (item in uri.pathSegments) {
-    Log.d("Console", "path segment: " + item.toString())
   }
 
   // if (uri.pathSegments.size == 0) {
@@ -21,7 +20,7 @@ fun isAssetUri (uri: android.net.Uri): Boolean {
   val scheme = uri.scheme
   val host = uri.host
   // handle no path segments, not currently required but future proofing
-  val path = uri.pathSegments?.get(0) ?: null
+  val path = uri.pathSegments?.get(0)
 
 
   if (host == "appassets.androidplatform.net") {
@@ -47,7 +46,11 @@ open class WebView (context: android.content.Context) : android.webkit.WebView(c
  */
 open class WebViewClient (activity: WebViewActivity) : android.webkit.WebViewClient() {
   protected val activity = WeakReference(activity)
-  open protected val TAG = "WebViewClient"
+  open protected val TAG = "WebViewClient"  
+  open lateinit var assetManager: android.content.res.AssetManager
+  open public var preloadJavascript = ""
+  open public var rootDirectory = ""
+
   open protected var assetLoader: androidx.webkit.WebViewAssetLoader = androidx.webkit.WebViewAssetLoader.Builder()
     .addPathHandler(
       "/assets/",
@@ -73,7 +76,6 @@ open class WebViewClient (activity: WebViewActivity) : android.webkit.WebViewCli
     }
 
     if (url.scheme == "ipc" || url.scheme == "file" || url.scheme == "socket" || isAssetUri(url)) {
-      Log.d("console", "shouldOverrideUrlLoading: " + url.toString())
       return true
     }
 
@@ -101,10 +103,42 @@ open class WebViewClient (activity: WebViewActivity) : android.webkit.WebViewCli
   ): android.webkit.WebResourceResponse? {
     var url = request.url
 
-    // Log.d("console","shouldInterceptRequest: " + url.toString())
+    if (url.toString().indexOf("/assets/socket/") < 0)
+
+    // look for updated resources in ${pwd}/files
+    // live update systems can write to /files (/assets is read only)
+    if (url.host == "appassets.androidplatform.net" && url.pathSegments.get(0) == "assets") {
+      var first = true
+      val filePath = StringBuilder(rootDirectory)
+      for (item in url.pathSegments) {
+        if (!first) {
+          filePath.append("/${item}")
+        }
+        first = false
+      }
+
+      val file = File(filePath.toString())
+      if (file.exists()) {
+        var stream = java.io.FileInputStream(filePath.toString())
+        val response = android.webkit.WebResourceResponse(
+          if (filePath.toString().endsWith(".js")) "text/javascript" else "text/html",
+          "utf-8",
+          stream
+        )
+
+        response.responseHeaders = mapOf(
+          "Access-Control-Allow-Origin" to "*",
+          "Access-Control-Allow-Headers" to "*",
+          "Access-Control-Allow-Methods" to "*"
+        )
+
+        return response
+      } else {
+        // default to normal asset loader behaviour
+      }
+    }
 
     if (url.scheme == "reload") {
-      Log.d("console", "Intercept URI: " + url.toString())
       var path = url.toString().replace("reload:", "")
       var stream = java.io.FileInputStream(path)
       val response = android.webkit.WebResourceResponse(
@@ -129,17 +163,27 @@ open class WebViewClient (activity: WebViewActivity) : android.webkit.WebViewCli
         path += ".js"
       }
 
-      url = android.net.Uri.Builder()
-        .scheme("https")
-        .authority("appassets.androidplatform.net")
-        .path("/assets/socket/${path}")
-        .build()
+      var moduleTemplate: String
 
-      val moduleTemplate = """
+      if (path == "preload.js") {
+        var file = assetManager.open("socket/${path}")
+        moduleTemplate = String(file.readAllBytes())
+          .replace("/// PRELOAD_JS_PLACEHOLDER ///", preloadJavascript.replace("`", "\\`"))
+        file.close()
+      } else {
+
+        url = android.net.Uri.Builder()
+          .scheme("https")
+          .authority("appassets.androidplatform.net")
+          .path("/assets/socket/${path}")
+          .build()
+
+        moduleTemplate = """
 import module from '$url'
 export * from '$url'
 export default module
       """
+      }
 
       val stream = java.io.PipedOutputStream()
       val response = android.webkit.WebResourceResponse(
@@ -154,14 +198,16 @@ export default module
         "Access-Control-Allow-Methods" to "*"
       )
 
+      // prevent piped streams blocking each other, have to write on a separate thread if data > 1024 bytes
       val bytes = moduleTemplate.toByteArray()
-      stream.write(bytes, 0, bytes.size)
-      stream.close()
+      kotlin.concurrent.thread {
+        stream.write(bytes, 0, bytes.size)
+        stream.close()
+      }
       return response
     }
 
     val assetLoaderResponse = this.assetLoader.shouldInterceptRequest(url)
-
     if (assetLoaderResponse != null) {
       assetLoaderResponse.responseHeaders = mapOf(
         "Content-Location" to url.toString(),
@@ -169,7 +215,6 @@ export default module
         "Access-Control-Allow-Headers" to "*",
         "Access-Control-Allow-Methods" to "*"
       )
-
       return assetLoaderResponse
     }
 
