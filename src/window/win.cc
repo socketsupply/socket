@@ -649,6 +649,8 @@ namespace SSC {
     SetWindowLongPtr(window, GWLP_USERDATA, (LONG_PTR) this);
 
     SSC::String preload = createPreload(opts);
+    // store preload JS on window because, preload variable above goes out of scope by the time browser handlers are called.
+    this->preloadJavascript = createPreload(opts);
 
     wchar_t modulefile[MAX_PATH];
     GetModuleFileNameW(NULL, modulefile, MAX_PATH);
@@ -947,12 +949,17 @@ namespace SSC {
                             if (fs::exists(path)) {
                               String headers;
                               char* body;
+                              String moduleSource;
 
-                              auto moduleUri = "file://" + replace(path.string(), "\\\\", "/");
-                              auto moduleSource = trim(tmpl(
-                                moduleTemplate,
-                                Map { {"url", String(moduleUri)} }
-                              ));
+                              if (uri_s.compare("preload") == 0) {
+                                moduleSource = replace(readFile(path), "/// PRELOAD_JS_PLACEHOLDER ///", replace(w->preloadJavascript, "`", "\\`"));
+                              } else {
+                                auto moduleUri = "file://" + replace(path.string(), "\\\\", "/");
+                                moduleSource = trim(tmpl(
+                                  moduleTemplate,
+                                  Map { {"url", String(moduleUri)} }
+                                ));
+                              }
 
                               size_t length = moduleSource.size();
                               body = new char[length];
@@ -1020,6 +1027,8 @@ namespace SSC {
                   );
 
                   webview->AddScriptToExecuteOnDocumentCreated(
+                    // Note that this may not do anything as preload goes out of scope before event fires
+                    // Consider using w->preloadJavascript, but apps work without this
                     SSC::StringToWString(preload).c_str(),
                     Microsoft::WRL::Callback<ICoreWebView2AddScriptToExecuteOnDocumentCreatedCompletedHandler>(
                       [&](HRESULT error, PCWSTR id) -> HRESULT {
