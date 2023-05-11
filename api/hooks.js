@@ -171,8 +171,8 @@ export default new class Hooks extends EventTarget {
    */
   onReady (callback) {
     if (this.isDocumentReady && this.isGlobalReady && this.isRuntimeReady) {
-      setTimeout(callback)
-      return () => undefined
+      const timeout = setTimeout(callback)
+      return () => clearTimeout(timeout)
     } else {
       this.addEventListener('ready', callback, { once: true })
       return () => this.removeEventListener('ready', callback)
@@ -187,8 +187,8 @@ export default new class Hooks extends EventTarget {
    */
   onLoad (callback) {
     if (this.isGlobalReady) {
-      setTimeout(callback)
-      return () => undefined
+      const timeout = setTimeout(callback)
+      return () => clearTimeout(timeout)
     } else {
       this.addEventListener('load', callback, { once: true })
       return () => this.removeEventListener('load', callback)
@@ -203,8 +203,8 @@ export default new class Hooks extends EventTarget {
    */
   onInit (callback) {
     if (this.isRuntimeReady) {
-      setTimeout(callback)
-      return () => undefined
+      const timeout = setTimeout(callback)
+      return () => clearTimeout(timeout)
     } else {
       this.addEventListener('init', callback, { once: true })
       return () => this.removeEventListener('init', callback)
