@@ -163,7 +163,7 @@ String getSocketHome () {
   return getSocketHome(true);
 }
 
-String getAndroidHome() {
+String getAndroidHome () {
   static auto androidHome = getEnv("ANDROID_HOME");
   if (androidHome.size() > 0) {
     return androidHome;
@@ -792,7 +792,7 @@ struct AndroidCliState {
 };
 
 // Android build / run functions
-bool getAdbPath(AndroidCliState &state) {
+bool getAdbPath (AndroidCliState &state) {
   // check that stream is empty, otherwise don't rebuild
   if (state.adb.tellp() == 0) {
     if (!platform.win) {
@@ -827,7 +827,7 @@ bool getAdbPath(AndroidCliState &state) {
   return true;
 }
 
-bool setupAndroidAvd(AndroidCliState& state) {
+bool setupAndroidAvd (AndroidCliState& state) {
   String package = state.quote + "system-images;" + state.platform + ";google_apis;" + replace(platform.arch, "arm64", "arm64-v8a") + state.quote;
 
   state.avdmanager << state.androidHome;
@@ -880,7 +880,7 @@ bool setupAndroidAvd(AndroidCliState& state) {
   return true;
 }
 
-bool locateAndroidEmulator(AndroidCliState& state) {
+bool locateAndroidEmulator (AndroidCliState& state) {
   state.emulator << state.androidHome << state.slash << "emulator" << state.slash << "emulator" << (platform.win ? ".exe" : "");
 
   if (state.verbose) log(state.emulator.str());
@@ -892,7 +892,7 @@ bool locateAndroidEmulator(AndroidCliState& state) {
   return true;
 }
 
-void setupAndroidStartCommands(AndroidCliState& state, bool flagDebugMode) {
+void setupAndroidStartCommands (AndroidCliState& state, bool flagDebugMode) {
   state.adbInstall << state.adb.str() << " ";
   state.adbInstall << "install ";
   state.adbShellStart << state.adb.str() << " ";
@@ -901,7 +901,7 @@ void setupAndroidStartCommands(AndroidCliState& state, bool flagDebugMode) {
   state.adbInstall << state.apkPath.string();
 }
 
-void startAndroidEmulator(AndroidCliState& state) {
+void startAndroidEmulator (AndroidCliState& state) {
   // start emulator in the background
   log("Starting emulator...");
   state.androidEmulatorProcess = new SSC::Process(
@@ -929,7 +929,7 @@ void startAndroidEmulator(AndroidCliState& state) {
 /// </summary>
 /// <param name="state"></param>
 /// <returns>True if the app was installed, otherwise false.</returns>
-bool installAndroidApp(AndroidCliState& state) {
+bool installAndroidApp (AndroidCliState& state) {
   ExecOutput adbInstallOutput;
   int adbInstallTime = 120000;
   int adbInstallWaited = 0;
@@ -974,7 +974,7 @@ bool installAndroidApp(AndroidCliState& state) {
   return true;
 }
 
-bool startAndroidApp(AndroidCliState& state) {
+bool startAndroidApp (AndroidCliState& state) {
   ExecOutput adbInstallOutput;
   int adbInstallTime = 120000;
   int adbInstallWaited = 0;
@@ -1020,7 +1020,7 @@ bool startAndroidApp(AndroidCliState& state) {
   return true;
 }
 
-bool initAndStartAndroidEmulator(AndroidCliState& state, bool flagShouldRun) {
+bool initAndStartAndroidEmulator (AndroidCliState& state) {
   if (!setupAndroidAvd(state)) {
     return false;
   }
@@ -1029,14 +1029,12 @@ bool initAndStartAndroidEmulator(AndroidCliState& state, bool flagShouldRun) {
     return false;
   }
 
-  if (flagShouldRun) {
-    startAndroidEmulator(state);
-  }
+  startAndroidEmulator(state);
 
   return true;
 }
 
-bool initAndStartAndroidApp(AndroidCliState& state, bool flagDebugMode) {
+bool initAndStartAndroidApp (AndroidCliState& state, bool flagDebugMode) {
 
   setupAndroidStartCommands(state, flagDebugMode);
 
@@ -1053,7 +1051,7 @@ bool initAndStartAndroidApp(AndroidCliState& state, bool flagDebugMode) {
   return true;
 }
 
-static String getCxxFlags() {
+static String getCxxFlags () {
   auto flags = getEnv("CXXFLAGS");
   return flags.size() > 0 ? " " + flags : "";
 }
@@ -1078,7 +1076,7 @@ void printHelp (const String& command) {
   }
 }
 
-inline String getCfgUtilPath() {
+inline String getCfgUtilPath () {
   const bool hasCfgUtilInPath = exec("command -v cfgutil").exitCode == 0;
   if (hasCfgUtilInPath) {
     return "cfgutil";
@@ -1160,7 +1158,7 @@ void initializeRC (Path targetPath) {
   }
 }
 
-bool isSetupCompleteAndroid() {
+bool isSetupCompleteAndroid () {
   auto androidHome = getAndroidHome();
   if (androidHome.size() == 0) {
     return false;
@@ -1183,7 +1181,7 @@ bool isSetupCompleteAndroid() {
   return true;
 }
 
-bool isSetupCompleteWindows() {
+bool isSetupCompleteWindows () {
   if (getEnv("CXX").size() == 0) {
     return false;
   }
@@ -1192,7 +1190,7 @@ bool isSetupCompleteWindows() {
 }
 
 
-bool isSetupComplete(SSC::String platform) {
+bool isSetupComplete (SSC::String platform) {
   std::map<SSC::String, bool(*)()> funcs;
 
   funcs["android"] = isSetupCompleteAndroid;
@@ -1203,7 +1201,7 @@ bool isSetupComplete(SSC::String platform) {
   return funcs[platform]();
 }
 
-int main (const int argc, const char* argv[]) {  
+int main (const int argc, const char* argv[]) {
   defaultTemplateAttrs = {{ "ssc_version", SSC::VERSION_FULL_STRING }};
   if (argc < 2) {
     printHelp("ssc");
@@ -1874,6 +1872,8 @@ int main (const int argc, const char* argv[]) {
     String devPort("0");
     auto cnt = 0;
 
+    AndroidCliState androidState;
+
     const bool debugEnv = (
       getEnv("SSC_DEBUG").size() > 0 ||
       getEnv("DEBUG").size() > 0
@@ -1883,7 +1883,7 @@ int main (const int argc, const char* argv[]) {
       getEnv("SSC_VERBOSE").size() > 0 ||
       getEnv("VERBOSE").size() > 0
     );
-    
+
     auto oldCwd = fs::current_path();
     auto devNull = ">" + SSC::String((!platform.win) ? "/dev/null" : "NUL") + (" 2>&1");
 
@@ -2219,8 +2219,8 @@ int main (const int argc, const char* argv[]) {
       // note that we don't want to use this quote on non windows, therefore make an extra variable
       auto cmdQuote = platform.win ? "\"" : "";
       // redirect yes stderr to stdout, this hides "broken pipe" / "no space left on device" errors that are caused by sdkmanager terminating normally
-      String licenseAccept = 
-      cmdQuote + quote + (getEnv("ANDROID_SDK_MANAGER_ACCEPT_LICENSES").size() > 0 ? (getEnv("ANDROID_SDK_MANAGER_ACCEPT_LICENSES")) : "echo") + quote  + 
+      String licenseAccept =
+      cmdQuote + quote + (getEnv("ANDROID_SDK_MANAGER_ACCEPT_LICENSES").size() > 0 ? (getEnv("ANDROID_SDK_MANAGER_ACCEPT_LICENSES")) : "echo") + quote  +
       (platform.win ? " 2>&1" : "") + " | " +
       quote + sdkmanager.str() + quote + " --licenses" + cmdQuote;
 
@@ -2232,7 +2232,7 @@ int main (const int argc, const char* argv[]) {
 
       // TODO: internal, no need to save to settings
       settings["android_sdk_manager_path"] = sdkmanager.str();
-      
+
       String gradlePath = getEnv("GRADLE_HOME").size() > 0 ? getEnv("GRADLE_HOME") + slash + "bin" + slash : "";
 
       StringStream gradleInitCommand;
@@ -2424,7 +2424,7 @@ int main (const int argc, const char* argv[]) {
         settings["android_default_config_external_native_build"].assign("    // externalNativeBuild called manually for -j parallel support. Disable with [android]...enable_standard_ndk_build = true in socket.ini\n");
         settings["android_external_native_build"].assign("  // externalNativeBuild called manually for -j parallel support. Disable with [android]...enable_standard_ndk_build = true in socket.ini\n");
       }
-      
+
       // Android Project
       writeFile(
         src / "main" / "AndroidManifest.xml",
@@ -2917,7 +2917,7 @@ int main (const int argc, const char* argv[]) {
 
       auto scriptArgs = buildArgs.str();
       auto buildScript = settings["build_script"];
-      
+
       // Windows CreateProcess() won't work if the script has an extension other than exe (say .cmd or .bat)
       // cmd.exe can handle this translation
       if (platform.win) {
@@ -3276,29 +3276,28 @@ int main (const int argc, const char* argv[]) {
         StringStream ndkBuild;
         StringStream ndkBuildArgs;
         StringStream ndkTest;
-        
+
         ndkBuild << "ndk-build" << (platform.win ? ".cmd" : "");
         ndkTest << ndkBuild.str() << " --version >" << (!platform.win ? "/dev/null" : "NUL") << " 2>&1";
 
         if (debugEnv || verboseEnv) log(ndkTest.str());
         if (std::system(ndkTest.str().c_str()) != 0) {
-            ndkBuild.str("");
-            ndkBuild << androidHome << slash << "ndk" << slash <<  ndkVersion << slash << "ndk-build" << (platform.win ? ".cmd" : "");
+          ndkBuild.str("");
+          ndkBuild << androidHome << slash << "ndk" << slash <<  ndkVersion << slash << "ndk-build" << (platform.win ? ".cmd" : "");
 
-            
-            ndkTest.str("");
-            ndkTest
-              << ndkBuild.str() << " --version >" << (!platform.win ? "/dev/null" : "NUL") << " 2>&1";
+          ndkTest.str("");
+          ndkTest
+            << ndkBuild.str() << " --version >" << (!platform.win ? "/dev/null" : "NUL") << " 2>&1";
 
-            if (debugEnv || verboseEnv) log(ndkTest.str());
-            if (std::system(ndkTest.str().c_str()) != 0) {
-              StringStream ndkError;
-              ndkError 
-                << "ndk not in path or ANDROID_HOME at "
-                << ndkBuild.str();
-              log(ndkError.str());
-              exit(1);
-            }
+          if (debugEnv || verboseEnv) log(ndkTest.str());
+          if (std::system(ndkTest.str().c_str()) != 0) {
+            StringStream ndkError;
+            ndkError
+              << "ndk not in path or ANDROID_HOME at "
+              << ndkBuild.str();
+            log(ndkError.str());
+            exit(1);
+          }
         }
 
         // TODO(mribbons): Cache binaries, hash based on source contents. Copy if cache matches rather than building.
@@ -3364,7 +3363,7 @@ int main (const int argc, const char* argv[]) {
             buildJniLibs = false;
           }
         }
-        
+
         fs::create_directories(jniLibs);
 
         // don't build unless we're sure it is required, ndkbuild errors out if jniLibs is already populated
@@ -3424,8 +3423,7 @@ int main (const int argc, const char* argv[]) {
         log("ERROR: failed to invoke `gradlew assemble` command");
         exit(1);
       }
-      
-      AndroidCliState androidState;
+
       androidState.androidHome = androidHome;
       androidState.verbose = debugEnv || verboseEnv;
       androidState.devNull = devNull;
@@ -3433,28 +3431,11 @@ int main (const int argc, const char* argv[]) {
       androidState.appPath = app;
       androidState.quote = quote;
       androidState.slash = slash;
-      if (flagShouldRun) {
-        if (!getAdbPath(androidState)) {
-          exit(1);
-        }
-      }
-
-      if (flagBuildForAndroidEmulator && !androidState.emulatorRunning) {
-        if (!initAndStartAndroidEmulator(androidState, flagShouldRun)) {
-          exit(1);
-        }
-      }
-
-      if (flagShouldRun) {
-        if (!initAndStartAndroidApp(androidState, flagDebugMode)) {
-          exit(1);
-        }
-      }
-
-      exit(0);
     }
 
-    if (flagRunUserBuildOnly == false && !flagBuildForSimulator) {
+    bool isForDesktop = !flagBuildForIOS && !flagBuildForAndroid;
+
+    if (flagRunUserBuildOnly == false && (isForDesktop || flagBuildForIOS)) {
       StringStream compileCommand;
 
       auto extraFlags = flagDebugMode
@@ -3505,7 +3486,7 @@ int main (const int argc, const char* argv[]) {
     // Linux Packaging
     // ---
     //
-    if (flagShouldPackage && platform.linux) {
+    if (flagShouldPackage && platform.linux && isForDesktop) {
       Path pathSymLinks = {
         paths.pathPackage /
         "usr" /
@@ -3545,7 +3526,7 @@ int main (const int argc, const char* argv[]) {
     //
     // MacOS Stripping
     //
-    if (platform.mac && !flagBuildForSimulator) {
+    if (platform.mac && (isForDesktop || flagBuildForIOS)) {
       StringStream stripCommand;
 
       stripCommand
@@ -3564,7 +3545,7 @@ int main (const int argc, const char* argv[]) {
     // MacOS Code Signing
     // ---
     //
-    if (flagCodeSign && platform.mac && !flagBuildForIOS) {
+    if (flagCodeSign && platform.mac && isForDesktop) {
       //
       // https://www.digicert.com/kb/code-signing/mac-os-codesign-tool.htm
       // https://developer.apple.com/forums/thread/128166
@@ -3638,7 +3619,7 @@ int main (const int argc, const char* argv[]) {
     // MacOS Packaging
     // ---
     //
-    if (flagShouldPackage && platform.mac && !flagBuildForIOS) {
+    if (flagShouldPackage && platform.mac && isForDesktop) {
       StringStream zipCommand;
       auto ext = ".zip";
       auto pathToBuild = paths.platformSpecificOutputPath / "build";
@@ -3670,7 +3651,7 @@ int main (const int argc, const char* argv[]) {
     // MacOS Notarization
     // ---
     //
-    if (flagShouldNotarize && platform.mac && !flagBuildForIOS) {
+    if (flagShouldNotarize && platform.mac && isForDesktop) {
       StringStream notarizeCommand;
       String username = getEnv("APPLE_ID");
       String password = getEnv("APPLE_ID_PASSWORD");
@@ -3781,7 +3762,7 @@ int main (const int argc, const char* argv[]) {
     // Windows Packaging
     // ---
     //
-    if (flagShouldPackage && platform.win) {
+    if (flagShouldPackage && platform.win && isForDesktop) {
       #ifdef _WIN32
 
       auto GetPackageWriter = [&](_In_ LPCWSTR outputFileName, _Outptr_ IAppxPackageWriter** writer) {
@@ -3976,7 +3957,7 @@ int main (const int argc, const char* argv[]) {
     //
     // Windows Code Signing
     //
-    if (flagCodeSign && platform.win) {
+    if (flagCodeSign && platform.win && isForDesktop) {
       //
       // https://www.digicert.com/kb/code-signing/signcode-signtool-command-line.htm
       //
@@ -4042,6 +4023,20 @@ int main (const int argc, const char* argv[]) {
         String app = (settings["build_name"] + ".app");
         auto pathToApp = paths.platformSpecificOutputPath / app;
         runIOSSimulator(pathToApp, settings);
+      } else if (flagBuildForAndroid) {
+        if (!getAdbPath(androidState)) {
+          exit(1);
+        }
+
+        if (!androidState.emulatorRunning) {
+          if (!initAndStartAndroidEmulator(androidState)) {
+            exit(1);
+          }
+        }
+
+        if (!initAndStartAndroidApp(androidState, flagDebugMode)) {
+          exit(1);
+        }
       } else {
         exitCode = runApp(binaryPath, argvForward, flagHeadless);
       }
@@ -4172,7 +4167,7 @@ int main (const int argc, const char* argv[]) {
       }
 
       if (isForAndroidEmulator && !androidState.emulatorRunning) {
-        if (!initAndStartAndroidEmulator(androidState, true)) {
+        if (!initAndStartAndroidEmulator(androidState)) {
           exit(1);
         }
       }
