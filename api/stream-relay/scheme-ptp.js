@@ -186,7 +186,7 @@ export function registerNetworkIdentity (keyInfo) {
     toCurve25519pk(pubKeyBuf)
   )
 
-  if (encPubKeyBuf.byteLength != 32) {
+  if (encPubKeyBuf.byteLength !== 32) {
     return { err: new Error('Invalid encryption public-key') }
   }
 
