@@ -215,14 +215,13 @@ export class Cache {
    * @return {Object}
    */
   async summarize (prefix = '') {
-
     // each level has 16 children (0x0-0xf)
     const children = new Array(16).fill(null).map(_ => [])
 
     // partition the cache into children
     for (const key of this.data.keys()) {
       if (prefix.length && !key.startsWith(prefix)) continue
-      const hex = key.slice(prefix.length, prefix.length+1)
+      const hex = key.slice(prefix.length, prefix.length + 1)
       children[parseInt(hex, 16)].push(key)
     }
 
@@ -245,7 +244,6 @@ export class Cache {
    * @return {Buffer}
   **/
   static encodeSummary (summary) {
-
     // prefix is variable-length hex string encoded with the first byte indicating the length
     const prefixBin = Buffer.alloc(1 + Math.ceil(summary.prefix.length / 2))
     prefixBin.writeUInt8(summary.prefix.length, 0)
@@ -257,7 +255,6 @@ export class Cache {
 
     // buckets are rows of { offset, sum } where the sum is not null
     const bucketBin = Buffer.concat(summary.buckets.map((sum, offset) => {
-
       // empty buckets are omitted from the encoding
       if (!sum) return Buffer.alloc(0)
 
@@ -265,10 +262,10 @@ export class Cache {
       const offsetBin = Buffer.alloc(1)
       offsetBin.writeUInt8(offset, 0)
 
-      return Buffer.concat([ offsetBin, Buffer.from(sum, 'hex') ])
+      return Buffer.concat([offsetBin, Buffer.from(sum, 'hex')])
     }))
 
-    return Buffer.concat([ prefixBin, hashBin, bucketBin ])
+    return Buffer.concat([prefixBin, hashBin, bucketBin])
   }
 
   /**
@@ -282,15 +279,15 @@ export class Cache {
 
     // prefix is variable-length hex string encoded with the first byte indicating the length
     const plen = bin.readUint8(o++)
-    const prefix = bin.slice(o, o+=Math.ceil(plen / 2)).toString('hex').slice(-plen)
+    const prefix = bin.slice(o, o += Math.ceil(plen / 2)).toString('hex').slice(-plen)
 
     // hash is the summary hash (checksum of all other hashes)
-    const hash = bin.slice(o, o+=Cache.HASH_SIZE_BYTES).toString('hex')
+    const hash = bin.slice(o, o += Cache.HASH_SIZE_BYTES).toString('hex')
 
     // buckets are rows of { offset, sum } where the sum is not null
     const buckets = new Array(16).fill(null)
     while (o < bin.length) {
-      buckets[bin.readUint8(o++)] = bin.slice(o, o+=Cache.HASH_SIZE_BYTES).toString('hex')
+      buckets[bin.readUint8(o++)] = bin.slice(o, o += Cache.HASH_SIZE_BYTES).toString('hex')
     }
 
     return { prefix, hash, buckets }
