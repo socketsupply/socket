@@ -26,7 +26,7 @@ async function walk (directory, callback) {
   }
 }
 
-const initSocketPreload = async () => {
+async function initSocketPreload () {
   await walk(process.cwd(), async (filename) => {
     if (!filename.toLowerCase().endsWith('.html')) {
       return
