@@ -547,7 +547,10 @@ function determine_cxx () {
   fi
 
   export CXX
-  update_env_data "CXX=$CXX"
+  # win32 has partically escaping requirements, this is handled by install.ps1
+  if [[ "$host" != "Win32" ]]; then
+    update_env_data "CXX=$CXX"
+  fi
 }
 
 function first_time_experience_setup() {

@@ -581,7 +581,7 @@ function _install {
 
     if [[ -f "$root/$SSC_ENV_FILENAME" ]]; then
       if [[ -f "$SOCKET_HOME/$SSC_ENV_FILENAME" ]]; then
-        echo "# Not overwriting $SOCKET_HOME/$SSC_ENV_FILENAME"
+        echo "# warn - Won't overwrite $SOCKET_HOME/$SSC_ENV_FILENAME"
       else
         echo "# copying $SSC_ENV_FILENAME to $SOCKET_HOME"
         cp -fp "$root/$SSC_ENV_FILENAME" "$SOCKET_HOME/$SSC_ENV_FILENAME"
