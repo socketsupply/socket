@@ -649,8 +649,8 @@ namespace SSC {
     SetWindowLongPtr(window, GWLP_USERDATA, (LONG_PTR) this);
 
     SSC::String preload = createPreload(opts);
-    // store preload JS on window because, preload variable above goes out of scope by the time browser handlers are called.
-    this->preloadJavascript = createPreload(opts);
+    // store preload JS on window because preload variable above goes out of scope by the time browser handlers are called.
+    this->preloadJavascript = preload;
 
     wchar_t modulefile[MAX_PATH];
     GetModuleFileNameW(NULL, modulefile, MAX_PATH);
@@ -952,7 +952,7 @@ namespace SSC {
                               String moduleSource;
 
                               if (uri_s.compare("preload") == 0) {
-                                moduleSource = replace(readFile(path), "/// PRELOAD_JS_PLACEHOLDER ///", replace(w->preloadJavascript, "`", "\\`"));
+                                moduleSource = replace(readFile(path), "__PRELOAD_JS_PLACEHOLDER__", replace(w->preloadJavascript, "`", "\\`"));
                               } else {
                                 auto moduleUri = "file://" + replace(path.string(), "\\\\", "/");
                                 moduleSource = trim(tmpl(

@@ -1,8 +1,6 @@
 // vim: set sw=2:
 package __BUNDLE_IDENTIFIER__
 import java.lang.ref.WeakReference
-import java.io.File
-import android.util.Log
 
 fun decodeURIComponent (string: String): String {
   val normalized = string.replace("+", "%2B")
@@ -10,13 +8,6 @@ fun decodeURIComponent (string: String): String {
 }
 
 fun isAssetUri (uri: android.net.Uri): Boolean {
-  for (item in uri.pathSegments) {
-  }
-
-  // if (uri.pathSegments.size == 0) {
-  //   return false;
-  // }
-
   val scheme = uri.scheme
   val host = uri.host
   // handle no path segments, not currently required but future proofing
@@ -46,10 +37,19 @@ open class WebView (context: android.content.Context) : android.webkit.WebView(c
  */
 open class WebViewClient (activity: WebViewActivity) : android.webkit.WebViewClient() {
   protected val activity = WeakReference(activity)
-  open protected val TAG = "WebViewClient"  
-  open lateinit var assetManager: android.content.res.AssetManager
-  open public var preloadJavascript = ""
-  open public var rootDirectory = ""
+  open protected val TAG = "WebViewClient"
+  open protected val assetManager = activity.applicationContext.resources.assets
+  open protected var preloadJavascript = ""
+  open protected var rootDirectory = ""
+
+  // use 'put' because 'set' is reserved
+  fun putPreloadJavascript(preloadJavascript: String) {
+    this.preloadJavascript = preloadJavascript
+  }
+
+  fun putRootDirectory(rootDirectory: String) {
+    this.rootDirectory = rootDirectory
+  }
 
   open protected var assetLoader: androidx.webkit.WebViewAssetLoader = androidx.webkit.WebViewAssetLoader.Builder()
     .addPathHandler(
@@ -68,10 +68,6 @@ open class WebViewClient (activity: WebViewActivity) : android.webkit.WebViewCli
     val url = request.url
 
     if (url.scheme == "http" || url.scheme == "https") {
-      return false
-    }
-
-    if (url.scheme == "reload") {
       return false
     }
 
@@ -103,6 +99,10 @@ open class WebViewClient (activity: WebViewActivity) : android.webkit.WebViewCli
   ): android.webkit.WebResourceResponse? {
     var url = request.url
 
+    // these should be set in window loader
+    assert(rootDirectory.length > 0)
+    assert(preloadJavascript.length > 0)
+
     if (url.toString().indexOf("/assets/socket/") < 0)
 
     // look for updated resources in ${pwd}/files
@@ -117,7 +117,7 @@ open class WebViewClient (activity: WebViewActivity) : android.webkit.WebViewCli
         first = false
       }
 
-      val file = File(filePath.toString())
+      val file = java.io.File(filePath.toString())
       if (file.exists() && !file.isDirectory()) {
         var stream = java.io.FileInputStream(filePath.toString())
         val response = android.webkit.WebResourceResponse(
@@ -138,24 +138,6 @@ open class WebViewClient (activity: WebViewActivity) : android.webkit.WebViewCli
       }
     }
 
-    if (url.scheme == "reload") {
-      var path = url.toString().replace("reload:", "")
-      var stream = java.io.FileInputStream(path)
-      val response = android.webkit.WebResourceResponse(
-        "text/html",
-        "utf-8",
-        stream
-      )
-
-      response.responseHeaders = mapOf(
-        "Access-Control-Allow-Origin" to "*",
-        "Access-Control-Allow-Headers" to "*",
-        "Access-Control-Allow-Methods" to "*"
-      )
-
-      return response
-    }
-
     if (url.scheme == "socket") {
       var path = url.toString().replace("socket:", "")
 
@@ -168,7 +150,7 @@ open class WebViewClient (activity: WebViewActivity) : android.webkit.WebViewCli
       if (path == "preload.js") {
         var file = assetManager.open("socket/${path}")
         moduleTemplate = String(file.readAllBytes())
-          .replace("/// PRELOAD_JS_PLACEHOLDER ///", preloadJavascript.replace("`", "\\`"))
+          .replace("__PRELOAD_JS_PLACEHOLDER__", preloadJavascript.replace("`", "\\`"))
         file.close()
       } else {
 
@@ -329,7 +311,7 @@ open class WebViewActivity : androidx.appcompat.app.AppCompatActivity() {
     url: String,
     bitmap: android.graphics.Bitmap?
   ) {
-    android.util.Log.d(TAG, "WebViewActivity is loading: $url")
+    console.log("WebViewActivity is loading: $url")
   }
 
   open fun onSchemeRequest (

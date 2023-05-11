@@ -37,7 +37,7 @@ open class Window (runtime: Runtime, activity: MainActivity) {
     // note that we don't inject preloadjs here, user may edit files which will then need to be reinjected on js side anyway
     runtime.configuration.assetManager.list("")?.let {
       for (file in it) {
-        if (file.lowercase().endsWith(".html") || file.lowercase().endsWith(".htm")) {
+        if (file.lowercase().endsWith(".html")) {
           console.log("OTA Updates: Write ${file} to ${rootDirectory}/${file}")
           val bytes = runtime.configuration.assetManager.open(file).readAllBytes()
           var stream = java.io.FileOutputStream("${rootDirectory}/${file}")
@@ -58,6 +58,8 @@ open class Window (runtime: Runtime, activity: MainActivity) {
           settings.allowContentAccess = true
           settings.allowFileAccessFromFileURLs = true // deprecated
 
+          activity.client.putPreloadJavascript(source)
+          activity.client.putRootDirectory(rootDirectory)
           webViewClient = activity.client
 
           addJavascriptInterface(userMessageHandler, "external")
@@ -103,10 +105,6 @@ open class Window (runtime: Runtime, activity: MainActivity) {
         }
       }
     })
-
-    this.activity.get()?.client?.assetManager = runtime.configuration.assetManager
-    this.activity.get()?.client?.preloadJavascript = source
-    this.activity.get()?.client?.rootDirectory = rootDirectory
   }
 
   open fun onSchemeRequest (
