@@ -1,7 +1,11 @@
 import { isBufferLike, toBuffer } from '../util.js'
 import { Buffer } from '../buffer.js'
-
+import { createDigest } from '../crypto.js'
 import { Packet, PacketPublish } from './packets.js'
+
+export const trim = (/** @type {Buffer} */ buf) => {
+  return buf.toString().split('~')[0].split('\x00')[0]
+}
 
 /**
  * Tries to convert input to a `Buffer`, if possible, otherwise `null`.
@@ -50,14 +54,13 @@ export class Cache {
   data = new CacheData()
   maxSize = Math.ceil((16 * 1024 * 1024) / 1158)
 
+  static HASH_SIZE_BYTES = 20
+
   /**
    * `Cache` class constructor.
    * @param {CacheData?} [data]
    */
-  constructor (
-    data = new CacheData(),
-    siblingResolver = defaultSiblingResolver
-  ) {
+  constructor (data = new CacheData(), siblingResolver = defaultSiblingResolver) {
     if (data instanceof Map) {
       this.data = data
     } else if (Array.isArray(data)) {
@@ -97,6 +100,8 @@ export class Cache {
       const oldest = [...this.data.values()].sort(this.siblingResolver).pop()
       this.data.delete(oldest.packetId)
     }
+
+    v.timestamp = Date.now()
 
     this.data.set(k, v)
     return true
@@ -139,11 +144,10 @@ export class Cache {
     if (!packet) return null
 
     const { meta, size, indexes } = packet.message
-    const { packetId } = packet
 
     // follow the chain to get the buffers in order
-    const bufs = this
-      .map(p => p, { packetId, inclusive: true })
+    const bufs = [...this.data.values()]
+      .filter(p => p.previousId === packet.packetId)
       .sort((a, b) => a.index - b.index)
 
     if (!indexes || bufs.length < indexes) {
@@ -164,72 +168,132 @@ export class Cache {
     })
   }
 
-  /**
-   * Visits each head entry in the cache calling function `fn` on each. Heads
-   * are entries that contain a previous packet ID that can be found in the
-   * cache.
-   * @param {function(CacheEntry, number): any} fn
-   */
-  heads (fn) {
-    this.each(fn, { onlyHeads: true })
+  async sha1 (value, toHex) {
+    const buf = await createDigest('SHA-1', isBufferLike(value) ? value : Buffer.from(value))
+    if (!toHex) return buf
+    return buf.toString('hex')
   }
 
   /**
-   * Visits each tail entry in the cache calling function `fn` on each. Tails
-   * are entries that contain a previous packet ID that is not found in the cache
-   * @param {function(CacheEntry, number): any} fn
+   * summarize returns a terse yet comparable summary of the cache contents.
+   *
+   * thinking of the cache as a trie of hex characters, the summary returns
+   * a checksum for the current level of the trie and for its 16 children.
+   *
+   * this is similar to a merkel tree as equal subtrees can easily be detected
+   * without the need for further recursion. When the subtree checksums are
+   * inequivalent then further negotiation at lower levels may be required, this
+   * process continues until the two trees become synchonized.
+   *
+   * when the prefix is empty, the summary will return an array of 16 checksums
+   * these checksums provide a way of comparing that subtree with other peers.
+   *
+   * when a variable-length hexidecimal prefix is provided, then only cache
+   * member hashes sharing this prefix will be considered.
+   *
+   * for each hex character provided in the prefix, the trie will decend by one
+   * level, each level divides the 2^128 address space by 16.
+   *
+   * example:
+   *
+   * level  0   1   2
+   * --------------------------
+   * 2b00
+   * aa0e  ━┓  ━┓
+   * aa1b   ┃   ┃
+   * aae3   ┃   ┃  ━┓
+   * aaea   ┃   ┃   ┃
+   * aaeb   ┃  ━┛  ━┛
+   * ab00   ┃  ━┓
+   * ab1e   ┃   ┃
+   * ab2a   ┃   ┃
+   * abef   ┃   ┃
+   * abf0  ━┛  ━┛
+   * bff9
+   *
+   * @param {string} prefix - a string of lowercased hexidecimal characters
+   * @return {Object}
    */
-  tails (fn) {
-    let index = 0
-    this.data.forEach((packet) => {
-      if (packet.previousId && !this.has(packet.previousId)) fn(packet, index++)
-    })
-  }
+  async summarize (prefix = '') {
 
-  /**
-   * Visits each entry in the cache calling function `fn` on each visited entry.
-   * @param {function(CacheEntry, number): any} fn
-   * @param {{ onlyHeads?: boolean?, packetId?: string, inclusive?: boolean }} [options]
-   */
-  each (fn, options = {}) {
-    if (typeof fn !== 'function') {
-      throw new TypeError('Expecting function')
+    // each level has 16 children (0x0-0xf)
+    const children = new Array(16).fill(null).map(_ => [])
+
+    // partition the cache into children
+    for (const key of this.data.keys()) {
+      if (prefix.length && !key.startsWith(prefix)) continue
+      const hex = key.slice(prefix.length, prefix.length+1)
+      children[parseInt(hex, 16)].push(key)
     }
 
-    const { onlyHeads, packetId = '', inclusive = false } = options || {}
-    const packets = [...this.data.values()]
-    const tails = packets.filter(packetId ? p => p.packetId === packetId : p => !p.previousId)
-    let index = 0
+    // compute a checksum for all child members (deterministically)
+    // if the bucket is empty, return null
+    const buckets = await Promise.all(children.map(child => {
+      return child.length ? this.sha1(child.sort().join(''), true) : Promise.resolve(null)
+    }))
 
-    const next = (/** @type {CacheEntry[]} */ tails) => {
-      for (let tail of tails) {
-        const heads = packets.filter(p => p.previousId === tail.packetId)
-        const siblings = heads.length > 1 && heads.every(p => p.previousId === tail.packetId)
-        if (siblings) tail = heads.pop()
+    // compute a summary hash (checksum of all other hashes)
+    const hash = await this.sha1(buckets.join(''), true)
 
-        next(heads.sort(this.siblingResolver))
-
-        if (inclusive || tail.packetId !== packetId) {
-          onlyHeads ? ((heads.length === 0) && fn(tail, index)) : fn(tail, index)
-        }
-
-        index++
-      }
-    }
-
-    next(tails.sort(this.siblingResolver))
+    return { prefix, hash, buckets }
   }
 
   /**
-   * Visits each entry in the cache calling function `fn` on each visited entry
-   * returning mapped results into a new array.
-   * @param {function(CacheEntry, number): any} fn
-   * @param {{ onlyHeads?: boolean?, packetId?: string, inclusive?: boolean }} [options]
-   */
-  map (fn, options) {
-    const mapped = []
-    this.each((...args) => mapped.push(fn(...args)), options)
-    return mapped
+   * encodeSummary provide a compact binary encoding of the output of summary()
+   *
+   * @param {Object} summary - the output of calling summary()
+   * @return {Buffer}
+  **/
+  static encodeSummary (summary) {
+
+    // prefix is variable-length hex string encoded with the first byte indicating the length
+    const prefixBin = Buffer.alloc(1 + Math.ceil(summary.prefix.length / 2))
+    prefixBin.writeUInt8(summary.prefix.length, 0)
+    const prefixHex = summary.prefix.length % 2 ? '0' + summary.prefix : summary.prefix
+    Buffer.from(prefixHex, 'hex').copy(prefixBin, 1)
+
+    // hash is the summary hash (checksum of all other hashes)
+    const hashBin = Buffer.from(summary.hash, 'hex')
+
+    // buckets are rows of { offset, sum } where the sum is not null
+    const bucketBin = Buffer.concat(summary.buckets.map((sum, offset) => {
+
+      // empty buckets are omitted from the encoding
+      if (!sum) return Buffer.alloc(0)
+
+      // write the child offset as a uint8
+      const offsetBin = Buffer.alloc(1)
+      offsetBin.writeUInt8(offset, 0)
+
+      return Buffer.concat([ offsetBin, Buffer.from(sum, 'hex') ])
+    }))
+
+    return Buffer.concat([ prefixBin, hashBin, bucketBin ])
+  }
+
+  /**
+   * decodeSummary decodes the output of encodeSummary()
+   *
+   * @param {Buffer} bin - the output of calling encodeSummary()
+   * @return {Object} summary
+  **/
+  static decodeSummary (bin) {
+    let o = 0 // byte offset
+
+    // prefix is variable-length hex string encoded with the first byte indicating the length
+    const plen = bin.readUint8(o++)
+    const prefix = bin.slice(o, o+=Math.ceil(plen / 2)).toString('hex').slice(-plen)
+
+    // hash is the summary hash (checksum of all other hashes)
+    const hash = bin.slice(o, o+=Cache.HASH_SIZE_BYTES).toString('hex')
+
+    // buckets are rows of { offset, sum } where the sum is not null
+    const buckets = new Array(16).fill(null)
+    while (o < bin.length) {
+      buckets[bin.readUint8(o++)] = bin.slice(o, o+=Cache.HASH_SIZE_BYTES).toString('hex')
+    }
+
+    return { prefix, hash, buckets }
   }
 }
 

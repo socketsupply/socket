@@ -3,7 +3,7 @@ import { isBufferLike } from '../util.js'
 import { Buffer } from '../buffer.js'
 
 // trims buffer/string of 0 bytes (\x00)
-const trim = (/** @type {Buffer} */ buf) => buf.toString().split('\x00')[0]
+export const trim = (/** @type {Buffer} */ buf) => buf.toString().split('\x00')[0]
 // converts buffer/string to hex
 const toHex = (/** @type {Buffer} */ b) => normalizeBuffer(b).toString('hex')
 
@@ -64,9 +64,21 @@ function createHashFunction () {
 }
 
 /**
+ * The magic bytes prefixing every packet. They are the
+ * 2nd, 3rd, 5th, and 7th, prime numbers.
+ * @type {number[]}
+ */
+export const MAGIC_BYTES_PREFIX = [0x03, 0x05, 0x0b, 0x11]
+
+/**
  * The version of the protocol.
  */
-export const VERSION = 1
+export const VERSION = 2
+
+/**
+ * The size in bytes of the prefix magic bytes.
+ */
+export const MAGIC_BYTES = 4
 
 /**
  * The size in bytes of the `type` field.
@@ -136,9 +148,10 @@ export const MESSAGE_BYTES = 1024
 /**
  * The size in bytes of the total packet frame.
  */
-export const FRAME_BYTES = TYPE_BYTES + VERSION_BYTES + HOPS_BYTES +
+export const FRAME_BYTES = MAGIC_BYTES + TYPE_BYTES + VERSION_BYTES + HOPS_BYTES +
   CLOCK_BYTES + INDEX_BYTES + MESSAGE_ID_BYTES + CLUSTER_ID_BYTES +
-  PREVIOUS_ID_BYTES + NEXT_ID_BYTES + TO_BYTES + USR1_BYTES + MESSAGE_LENGTH_BYTES
+  PREVIOUS_ID_BYTES + NEXT_ID_BYTES + TO_BYTES + USR1_BYTES +
+  MESSAGE_LENGTH_BYTES
 
 /**
  * The size in bytes of the total packet frame and message.
@@ -148,7 +161,7 @@ export const PACKET_BYTES = FRAME_BYTES + MESSAGE_BYTES
 /**
  * The cache TTL in milliseconds.
  */
-export const CACHE_TTL = 60_000 * 60 * 24
+export const CACHE_TTL = 60_000 * 60 * 12
 
 /**
  * @param {object} message
@@ -163,12 +176,12 @@ export const validatePacket = (message, constraints) => {
 
   for (const [key, con] of Object.entries(constraints)) {
     if (con.required && !message[key]) {
-      throw new Error(`${key} is required (${JSON.stringify(message, null, 2)})`)
+      console.error(new Error(`${key} is required (${JSON.stringify(message, null, 2)})`))
     }
 
     const type = ({}).toString.call(message[key]).slice(8, -1).toLowerCase()
     if (message[key] && type !== con.type) {
-      throw new Error(`expected .${key} to be of type ${con.type}, got ${type}`)
+      console.error(Error(`expected .${key} to be of type ${con.type}, got ${type}`))
     }
   }
 }
@@ -207,6 +220,13 @@ export const decode = buf => {
 
   buf = Buffer.from(buf)
 
+  // magic bytes prefix check
+  if (!Packet.isPacket(buf)) {
+    return null
+  }
+
+  buf = buf.slice(MAGIC_BYTES)
+
   // header
   o.type = Math.max(0, buf.readInt8(offset)); offset += TYPE_BYTES
   o.version = Math.max(VERSION, buf.readInt8(offset)); offset += VERSION_BYTES
@@ -232,14 +252,14 @@ export const decode = buf => {
   // extract the user message
   o.message = normalizeBuffer(buf.slice(offset, offset + messageLen)); offset += MESSAGE_BYTES
 
-  if ((o.index <= 0) || (o.type !== 5)) { // internal packets are parsed as JSON
+  if ((o.index <= 0) || (o.type !== 5) || (o.type !== 6)) {
     try { o.message = JSON.parse(trim(o.message)) } catch {}
   }
 
   return Packet.from(o)
 }
 
-export const addHops = (buf, offset = TYPE_BYTES + VERSION_BYTES) => {
+export const addHops = (buf, offset = MAGIC_BYTES + TYPE_BYTES + VERSION_BYTES) => {
   const hops = buf.readUInt32BE(offset)
   buf.writeUInt32BE(hops + 1, offset)
   return buf
@@ -265,6 +285,14 @@ export class Packet {
   #buf = null
 
   /**
+   * Returns an empty `Packet` instance.
+   * @return {Packet}
+   */
+  static empty () {
+    return new this()
+  }
+
+  /**
    * @param {Packet|object} packet
    * @return {Packet}
    */
@@ -274,6 +302,25 @@ export class Packet {
     }
 
     return Object.assign(new this({}), packet)
+  }
+
+  /**
+   * Determines if input is a packet.
+   * @param {Buffer|Uint8Array|number[]|object|Packet} packet
+   * @return {boolean}
+   */
+  static isPacket (packet) {
+    if (isBufferLike(packet) || Array.isArray(packet)) {
+      const prefix = Buffer.from(packet).slice(0, MAGIC_BYTES)
+      const magic = Buffer.from(MAGIC_BYTES_PREFIX)
+      return magic.compare(prefix) === 0
+    } else if (packet && typeof packet === 'object') {
+      const empty = Packet.empty()
+      // check if every key on `Packet` exists in `packet`
+      return Object.keys(empty).every(k => k in packet)
+    }
+
+    return false
   }
 
   /**
@@ -319,6 +366,9 @@ export class Packet {
     let offset = 0
 
     if (p.clock === 2e9) p.clock = 0
+
+    // magic bytes
+    Buffer.from(MAGIC_BYTES_PREFIX).copy(buf, offset); offset += MAGIC_BYTES
 
     // header
     offset = buf.writeInt8(p.type, offset)
@@ -375,7 +425,8 @@ export class PacketPing extends Packet {
     super({ type: PacketPing.type, message })
 
     validatePacket(message, {
-      peerId: { required: true, type: 'string' },
+      requesterPeerId: { required: true, type: 'string' },
+      cacheSummaryHash: { type: 'string' },
       pingId: { type: 'string' },
       natType: { type: 'string' },
       isHeartbeat: { type: 'boolean' },
@@ -394,8 +445,9 @@ export class PacketPong extends Packet {
     super({ type: PacketPong.type, message })
 
     validatePacket(message, {
+      requesterPeerId: { required: true, type: 'string' },
+      responderPeerId: { required: true, type: 'string' },
       clusterId: { type: 'string' },
-      peerId: { required: true, type: 'string' },
       port: { type: 'number' },
       testPort: { type: 'number' },
       address: { required: true, type: 'string' },
@@ -410,27 +462,35 @@ export class PacketPong extends Packet {
 
 export class PacketIntro extends Packet {
   static type = 3
-  constructor ({ message }) {
-    super({ type: PacketIntro.type, message })
+  constructor ({ clock, message }) {
+    super({ type: PacketIntro.type, clock, message })
 
     validatePacket(message, {
       clusterId: { type: 'string' },
-      peerId: { required: true, type: 'string' },
+      requesterPeerId: { required: true, type: 'string' },
+      responderPeerId: { required: true, type: 'string' },
+      isRendezvous: { type: 'boolean' },
       natType: { required: true, type: 'string' },
       address: { required: true, type: 'string' },
-      port: { required: true, type: 'number' }
+      port: { required: true, type: 'number' },
+      timestamp: { required: true, type: 'number' }
     })
   }
 }
 
 export class PacketJoin extends Packet {
   static type = 4
-  constructor ({ message }) {
-    super({ type: PacketJoin.type, message })
+  constructor ({ clock, message }) {
+    super({ type: PacketJoin.type, clock, message })
 
     validatePacket(message, {
+      rendezvousDeadline: { type: 'number' },
+      rendezvousAddress: { type: 'string' },
+      rendezvousPort: { type: 'number' },
+      rendezvousType: { type: 'string' },
+      rendezvousPeerId: { type: 'string' },
       clusterId: { type: 'string' },
-      peerId: { required: true, type: 'string' },
+      requesterPeerId: { required: true, type: 'string' },
       natType: { required: true, type: 'string' },
       initial: { type: 'boolean' },
       address: { required: true, type: 'string' },
@@ -446,28 +506,17 @@ export class PacketPublish extends Packet {
   }
 }
 
-export class PacketAsk extends Packet {
+export class PacketSync extends Packet {
   static type = 6
-  constructor ({ packetId, clusterId, message = {} }) {
-    super({ type: PacketAsk.type, packetId, clusterId, message })
-
-    validatePacket(message, {
-      previousId: { type: 'string' },
-      packetId: { type: 'string' },
-      peerId: { type: 'string' }
-    })
+  constructor ({ packetId, clusterId, message = '' }) {
+    super({ type: PacketSync.type, packetId, clusterId, message })
   }
-}
-
-export class PacketAnswer extends Packet {
-  static type = 7
-  constructor (args) { super({ type: PacketAnswer.type, ...args }) }
 }
 
 export class PacketQuery extends Packet {
   static type = 8
   constructor ({ packetId, clusterId, message = {} }) {
-    super({ type: PacketAsk.type, packetId, clusterId, message })
+    super({ type: PacketQuery.type, packetId, clusterId, message })
 
     validatePacket(message, {
       history: { type: 'Array' }
