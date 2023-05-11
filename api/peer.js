@@ -12,12 +12,14 @@
  *
  */
 import { createPeer, Encryption, sha256 } from './stream-relay/index.js'
-import { sodium, randomBytes } from 'socket:crypto'
-import { EventEmitter } from 'socket:events'
+import { sodium, randomBytes } from './crypto.js'
+import { EventEmitter } from './events.js'
+import { isBufferLike } from './util.js'
 
 import dgram from './dgram.js'
 
 const PeerFactory = createPeer(dgram)
+const textDecoder = new TextDecoder()
 
 /**
  *
@@ -134,7 +136,27 @@ export class Peer extends EventEmitter {
     this.peer = await PeerFactory.create({ ...this.opts })
 
     this.peer.onPacket = (packet, port, address, data) => {
-      this._emit(packet.usr1, packet.message, address, port)
+      const event = packet.usr1
+      let message = packet.message
+
+      if (!event || typeof event !== 'string') return
+
+      if (isBufferLike(message)) {
+        try {
+          message = textDecoder.decode(message)
+        } finally {}
+      }
+
+      if (typeof message === 'string') {
+        try {
+          message = JSON.parse(message)
+        } catch (err) {
+          this.emit('error', err)
+          return
+        }
+      }
+
+      this._emit(event, message, address, port, data)
     }
 
     this.#peerSubscribe('onData', 'data')
