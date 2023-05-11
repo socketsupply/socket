@@ -94,7 +94,7 @@ export class PTP {
   static init (peer, config, peerType = 'local') {
     if (peerType === 'local') {
       config.keys = config.keys ?? generateNetworkIdentity()
-      config.peerId = config.peerId ?? formatPeerId(config.keys.publicKey)
+      config.peerId = formatPeerId(config.keys.publicKey)
 
       // register local identity (full keypair)
       registerNetworkIdentity(config.keys)
@@ -185,6 +185,10 @@ export function registerNetworkIdentity (keyInfo) {
     // the provided Ed25519 public-key?
     toCurve25519pk(pubKeyBuf)
   )
+
+  if (encPubKeyBuf.byteLength != 32) {
+    return { err: new Error('Invalid encryption public-key') }
+  }
 
   const encPrivKeyBuf = toUint8Array(
     keyInfo.encPrivateKey ??

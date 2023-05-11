@@ -20,8 +20,23 @@ export class Encryption {
     this.keys[to] = { publicKey, privateKey, ts: Date.now() }
   }
 
+  get (to) {
+    const publicKey = Buffer.from(to, 'base64')
+    const id = publicKey.toString('base64')
+
+    if (publicKey.compare(this.publicKey) === 0) {
+      return { publicKey: this.publicKey, privateKey: this.privateKey }
+    }
+
+    if (this.keys[id]) {
+      return this.keys[id]
+    }
+
+    return null
+  }
+
   has (to) {
-    return !!(to === this.publicKey ? this : this.keys[to])
+    return this.get(to) !== null
   }
 
   /**
@@ -38,7 +53,11 @@ export class Encryption {
    * }
    */
   open (message, to) {
-    const pair = to === this.publicKey ? this : this.keys[to]
+    const pair = this.get(to)
+
+    if (!pair) {
+      throw new Error('ENOKEYS')
+    }
 
     const pk = toPK(pair.publicKey)
     const sk = toSK(pair.privateKey)
@@ -82,7 +101,11 @@ export class Encryption {
    * @see https://theworld.com/~dtd/sign_encrypt/sign_encrypt7.html
    */
   seal (message, to) {
-    const pair = to === this.publicKey ? this : this.keys[to]
+    const pair = this.get(to)
+
+    if (!pair) {
+      throw new Error('ENOKEYS')
+    }
 
     const pk = toPK(pair.publicKey)
     const pt = toUint8Array(message)
