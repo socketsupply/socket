@@ -12,8 +12,7 @@ console.assert(
   'This could lead to undefined behavior.'
 )
 
-globalThis.__RUNTIME_INIT_NOW__ = performance.now()
-
+const RUNTIME_INIT_EVENT_NAME = '__runtime_init__'
 const GlobalWorker = globalThis.Worker || class Worker extends EventTarget {}
 
 // only patch a webview or worker context
@@ -283,7 +282,8 @@ class RuntimeXHRPostQueue extends ConcurrentQueue {
 
 hooks.onLoad(() => {
   if (typeof globalThis.dispatchEvent === 'function') {
-    globalThis.dispatchEvent(new CustomEvent('__runtime_init__'))
+    globalThis.dispatchEvent(new CustomEvent(RUNTIME_INIT_EVENT_NAME))
+    globalThis.__RUNTIME_INIT_NOW__ = performance.now()
   }
 })
 
