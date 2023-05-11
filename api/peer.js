@@ -144,7 +144,7 @@ export class Peer extends EventEmitter {
       if (isBufferLike(message)) {
         try {
           message = textDecoder.decode(message)
-        } finally {}
+        } catch (err) {}
       }
 
       if (typeof message === 'string') {
