@@ -214,15 +214,19 @@ class ConcurrentQueue extends EventTarget {
     }
 
     this.addEventListener('error', (event) => {
-      // @ts-ignore
-      const { error, type } = event
-      globalThis.dispatchEvent?.(new ErrorEvent(type, { error }))
+      if (event.defaultPrevented !== true) {
+        // @ts-ignore
+        const { error, type } = event
+        globalThis.dispatchEvent?.(new ErrorEvent(type, { error }))
+      }
     })
   }
 
   async wait () {
     if (this.pending.length < this.concurrency) return
-    await this.peek()
+    const offset = -1 * (this.pending.length - this.concurrency) - 1
+    const pending = this.pending.slice(offset)
+    await Promise.all(pending)
   }
 
   peek () {
@@ -233,12 +237,10 @@ class ConcurrentQueue extends EventTarget {
     let timeout = null
     const onresolve = () => {
       clearTimeout(timeout)
-      queueMicrotask(() => {
-        const index = this.pending.indexOf(request)
-        if (index > -1) {
-          this.pending.splice(index, 1)
-        }
-      })
+      const index = this.pending.indexOf(request)
+      if (index > -1) {
+        this.pending.splice(index, 1)
+      }
     }
 
     timeout = setTimeout(onresolve, timer || 32)
