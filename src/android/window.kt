@@ -24,27 +24,34 @@ open class Window (runtime: Runtime, activity: MainActivity) {
     return this.activity.get()?.getRootDirectory() ?: ""
   }
 
+  fun setupHtmlPreload(runtime: Runtime, rootDirectory: String, preloadJavascript: String) {
+    // copy all .html assets to /files for preload injection
+    runtime.configuration.assetManager.list("")?.let {
+      for (file in it) {
+        if (file.lowercase().endsWith(".html")) {
+          console.log("OTA Updates: Write ${file} to ${rootDirectory}/${file}")
+          // todo(@mribbons): check if destination already contains preload
+          var html = String(runtime.configuration.assetManager.open(file).readAllBytes())
+          html = WebViewClient.injectPreload(html, preloadJavascript)
+          val bytes = html.toByteArray()
+          var stream = java.io.FileOutputStream("${rootDirectory}/${file}")
+          stream.write(bytes, 0, bytes.size)
+          stream.close()
+        }
+      }
+    }
+  }
+
   fun load () {
     val isDebugEnabled = this.runtime.get()?.isDebugEnabled() ?: false
     val filename = this.getPathToFileToLoad()
     val activity = this.activity.get() ?: return
     val runtime = this.runtime.get() ?: return
-    val source = this.getJavaScriptPreloadSource()
+    val preloadJavascript = this.getJavaScriptPreloadSource()
 
     val rootDirectory = this.getRootDirectory()
 
-    // copy all .html assets to /files for preload injection
-    // note that we don't inject preloadjs here, user may edit files which will then need to be reinjected on js side anyway
-    runtime.configuration.assetManager.list("")?.let {
-      for (file in it) {
-        if (file.lowercase().endsWith(".html")) {
-          console.log("OTA Updates: Write ${file} to ${rootDirectory}/${file}")
-          val bytes = runtime.configuration.assetManager.open(file).readAllBytes()
-          var stream = java.io.FileOutputStream("${rootDirectory}/${file}")
-          stream.write(bytes, 0, bytes.size)
-        }
-      }
-    }
+    setupHtmlPreload(runtime, rootDirectory, preloadJavascript)
 
     this.bridge.route("ipc://internal.setcwd?value=${rootDirectory}", null, fun (result: Result) {
       activity.runOnUiThread {
@@ -58,7 +65,7 @@ open class Window (runtime: Runtime, activity: MainActivity) {
           settings.allowContentAccess = true
           settings.allowFileAccessFromFileURLs = true // deprecated
 
-          activity.client.putPreloadJavascript(source)
+          activity.client.putPreloadJavascript(preloadJavascript)
           activity.client.putRootDirectory(rootDirectory)
           webViewClient = activity.client
 
@@ -68,30 +75,7 @@ open class Window (runtime: Runtime, activity: MainActivity) {
           val indexBytes = indexFile.readAllBytes()
           val htmlString = String(indexBytes)
 
-          var html = if (htmlString.matches("<head>".toRegex())) {
-            htmlString.replace("<head>","""
-              <head>
-                <script type="module">
-                  ${source}
-                </script>
-            """)
-          } else if (htmlString.matches("<body>".toRegex())) {
-            htmlString.replace("<body>","""
-              <body>
-                <script type="module">
-                  ${source}
-                </script>
-            """)
-          } else if (htmlString.matches("<html>".toRegex())) {
-            htmlString.replace("<html>","""
-              <html>
-                <script type="module">
-                  ${source}
-                </script>
-            """)
-          } else {
-            """<script type="module">${source}</script>""" + htmlString
-          }
+          var html = WebViewClient.injectPreload(htmlString, preloadJavascript)
 
           indexFile.close()
 

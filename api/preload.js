@@ -33,7 +33,7 @@ async function initSocketPreload () {
     }
     
     let html = await fs.readFile(filename)
-    if (html.indexOf('const preloadJavascript') < 0) {
+    if (html.indexOf('globalThis.__args = {}') < 0) {
       html = preloadScriptModule + html
       await fs.writeFile(filename, html)
     }

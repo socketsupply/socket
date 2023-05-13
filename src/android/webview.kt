@@ -119,11 +119,23 @@ open class WebViewClient (activity: WebViewActivity) : android.webkit.WebViewCli
 
       val file = java.io.File(filePath.toString())
       if (file.exists() && !file.isDirectory()) {
-        var stream = java.io.FileInputStream(filePath.toString())
+        var bytes = java.io.FileInputStream(file).readAllBytes()
+        var output = String(bytes)
+        if (filePath.toString().lowercase().endsWith(".html")) {
+          output = injectPreload(output, preloadJavascript)
+        }
+        bytes = output.toByteArray()
+        val stream = java.io.PipedOutputStream()
+        kotlin.concurrent.thread {
+          stream.write(bytes, 0, bytes.size)
+          stream.close()
+        }
+
+        // var stream = java.io.FileInputStream(filePath.toString())
         val response = android.webkit.WebResourceResponse(
           if (filePath.toString().endsWith(".js")) "text/javascript" else "text/html",
           "utf-8",
-          stream
+          java.io.PipedInputStream(stream)
         )
 
         response.responseHeaders = mapOf(
@@ -270,6 +282,35 @@ export default module
     bitmap: android.graphics.Bitmap?
   ) {
     this.activity.get()?.onPageStarted(view, url, bitmap)
+  }  
+
+  companion object {
+    fun injectPreload(htmlString: String, source: String): String {
+      return if (htmlString.matches("<head>".toRegex())) {
+        htmlString.replace("<head>","""
+          <head>
+            <script type="module">
+              ${source}
+            </script>
+        """)
+      } else if (htmlString.matches("<body>".toRegex())) {
+        htmlString.replace("<body>","""
+          <body>
+            <script type="module">
+              ${source}
+            </script>
+        """)
+      } else if (htmlString.matches("<html>".toRegex())) {
+        htmlString.replace("<html>","""
+          <html>
+            <script type="module">
+              ${source}
+            </script>
+        """)
+      } else {
+        """<script type="module">${source}</script>""" + htmlString
+      }
+    }
   }
 }
 

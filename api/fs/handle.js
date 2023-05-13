@@ -566,7 +566,11 @@ export class FileHandle extends EventEmitter {
     await new Promise((resolve, reject) => {
       stream.on('data', (buffer) => buffers.push(buffer))
       stream.once('end', resolve)
-      stream.once('error', reject)
+      stream.once('error', (e) => {
+        // Not sure if this is a win32 issue, but this rejection never reports
+        console.log(`stream error: ${JSON.stringify(e)}`)
+        reject(e)
+      })
     })
 
     const buffer = Buffer.concat(buffers)
