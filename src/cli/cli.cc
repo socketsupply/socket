@@ -2102,7 +2102,9 @@ int main (const int argc, const char* argv[]) {
       exit(1);
     }
 
-    if (!flagBuildForAndroid && !flagBuildForIOS) {
+    bool isForDesktop = !flagBuildForIOS && !flagBuildForAndroid;
+
+    if (isForDesktop) {
       fs::create_directories(paths.platformSpecificOutputPath / "include");
       writeFile(paths.platformSpecificOutputPath / "include" / "user-config-bytes.hh", settings["ini_code"]);
     }
@@ -2111,7 +2113,7 @@ int main (const int argc, const char* argv[]) {
     // Darwin Package Prep
     // ---
     //
-    if (platform.mac && !flagBuildForIOS && !flagBuildForAndroid) {
+    if (platform.mac && isForDesktop) {
       log("preparing build for mac");
 
       flags = "-std=c++2a -ObjC++ -v";
@@ -2701,7 +2703,7 @@ int main (const int argc, const char* argv[]) {
     // Linux Package Prep
     // ---
     //
-    if (platform.linux && !flagBuildForAndroid && !flagBuildForIOS) {
+    if (platform.linux && isForDesktop) {
       log("preparing build for linux");
       flags = " -std=c++2a `pkg-config --cflags --libs gtk+-3.0 webkit2gtk-4.1`";
       flags += " -ldl " + getCxxFlags();
@@ -2782,7 +2784,7 @@ int main (const int argc, const char* argv[]) {
     // Windows Package Prep
     // ---
     //
-    if (platform.win && !flagBuildForAndroid && !flagBuildForIOS) {
+    if (platform.win && isForDesktop) {
       log("preparing build for win");
       auto prefix = prefixFile();
 
@@ -3432,8 +3434,6 @@ int main (const int argc, const char* argv[]) {
       androidState.quote = quote;
       androidState.slash = slash;
     }
-
-    bool isForDesktop = !flagBuildForIOS && !flagBuildForAndroid;
 
     if (flagRunUserBuildOnly == false && isForDesktop) {
       StringStream compileCommand;
