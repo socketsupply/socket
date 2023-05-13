@@ -3435,7 +3435,7 @@ int main (const int argc, const char* argv[]) {
 
     bool isForDesktop = !flagBuildForIOS && !flagBuildForAndroid;
 
-    if (flagRunUserBuildOnly == false && (isForDesktop || flagBuildForIOS)) {
+    if (flagRunUserBuildOnly == false && isForDesktop) {
       StringStream compileCommand;
 
       auto extraFlags = flagDebugMode
@@ -3526,7 +3526,7 @@ int main (const int argc, const char* argv[]) {
     //
     // MacOS Stripping
     //
-    if (platform.mac && (isForDesktop || flagBuildForIOS)) {
+    if (platform.mac && isForDesktop) {
       StringStream stripCommand;
 
       stripCommand
