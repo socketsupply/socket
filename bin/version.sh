@@ -9,8 +9,7 @@ V_MINOR=${BASE_LIST[1]}
 V_PATCH=${BASE_LIST[2]}
 echo -e "Current version: $BASE_STRING"
 echo -e "Latest commit hash: $LATEST_HASH"
-V_MINOR=$((V_MINOR + 1))
-V_PATCH=0
+V_PATCH=$((V_PATCH + 1))
 SUGGESTED_VERSION="$V_MAJOR.$V_MINOR.$V_PATCH"
 echo -ne "Enter a version number [$SUGGESTED_VERSION]: "
 read INPUT_STRING
@@ -20,8 +19,8 @@ fi
 echo -e "Will set new version to be $INPUT_STRING"
 echo $INPUT_STRING > VERSION.txt
 jq ".version = \"$INPUT_STRING\"" clib.json > tmp.$$.json && mv tmp.$$.json clib.json
-git add VERSION.txt clib.json
-git commit -m "Bump version to ${INPUT_STRING}."
+# git add VERSION.txt clib.json
+# git commit -m "Bump version to ${INPUT_STRING}."
 # git tag -a -m "Tag version ${INPUT_STRING}." "v$INPUT_STRING"
 # git push origin --tags
 
