@@ -1,5 +1,5 @@
 /* global XMLHttpRequest */
-/* eslint-disable import/no-duplicates, import/first */
+/* eslint-disable import/no-duplicates, import/first, no-void, no-sequences */
 /**
  * @module module
  * A module for loading CommonJS modules with a `require` function in an
@@ -134,9 +134,14 @@ function CommonJSModuleScope (
         return console
       }
 
-      return Reflect.get(...arguments)
+      return Reflect.get(target, key, receiver)
     }
   })
+
+  // eslint-disable-next-line no-unused-expressions
+  void exports, require, module, __filename, __dirname
+  // eslint-disable-next-line no-unused-expressions
+  void process, console, global
 
   return (async function () {
     'module code'
@@ -151,8 +156,10 @@ export const builtins = {
   console,
   dgram,
   dns,
+  'dns/promises': dns.promises,
   events,
   fs,
+  'fs/promises': fs.promises,
   gc,
   ipc,
   module: exports,
@@ -163,11 +170,6 @@ export const builtins = {
   test,
   util
 }
-
-// @ts-ignore
-builtins['fs/promises'] = fs.promises
-// @ts-ignore
-builtins['dns/promises'] = dns.promises
 
 /**
  * CommonJS module scope source wrapper.
@@ -389,6 +391,7 @@ export class Module extends EventTarget {
       if (this.isMain) {
         // bubble error to globalThis, if possible
         if (typeof globalThis.dispatchEvent === 'function') {
+          // @ts-ignore
           globalThis.dispatchEvent(new ErrorEvent('error', { error }))
         }
       } else {
