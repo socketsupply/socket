@@ -691,7 +691,7 @@ export class Message extends URL {
 
   /**
    * Returns computed parameters as entries
-   * @return {Array<Array<string,mixed>>}
+   * @return {Array<Array<any>>}
    * @ignore
    */
   entries () {
@@ -703,7 +703,7 @@ export class Message extends URL {
   /**
    * Set a parameter `value` by `key`.
    * @param {string} key
-   * @param {mixed} value
+   * @param {any} value
    * @ignore
    */
   set (key, value) {
@@ -717,8 +717,8 @@ export class Message extends URL {
   /**
    * Get a parameter value by `key`.
    * @param {string} key
-   * @param {mixed} defaultValue
-   * @return {mixed}
+   * @param {any} defaultValue
+   * @return {any}
    * @ignore
    */
   get (key, defaultValue) {
@@ -761,7 +761,7 @@ export class Message extends URL {
 
   /**
    * Computed parameter values.
-   * @return {Array<mixed>}
+   * @return {Array<any>}
    * @ignore
    */
   values () {
@@ -814,7 +814,7 @@ export class Result {
   /**
    * Creates a `Result` instance from input that may be an object
    * like `{ err?, data? }`, an `Error` instance, or just `data`.
-   * @param {object|Error|mixed?} result
+   * @param {object|Error|any?} result
    * @param {Error|object} [maybeError]
    * @param {string} [maybeSource]
    * @param {object|string|Headers} [maybeHeaders]
@@ -1019,7 +1019,7 @@ export function sendSync (command, params = {}, options = {}) {
 /**
  * Emit event to be dispatched on `window` object.
  * @param {string} name
- * @param {Mixed} value
+ * @param {any} value
  * @param {EventTarget=} [target = window]
  * @param {Object=} options
  */
@@ -1057,7 +1057,7 @@ export async function emit (name, value, target, options) {
 /**
  * Resolves a request by `seq` with possible value.
  * @param {string} seq
- * @param {Mixed} value
+ * @param {any} value
  * @ignore
  */
 export async function resolve (seq, value) {
@@ -1076,7 +1076,7 @@ export async function resolve (seq, value) {
 /**
  * Sends an async IPC command request with parameters.
  * @param {string} command
- * @param {Mixed=} value
+ * @param {any=} value
  * @param {object=} [options]
  * @param {boolean=} [options.cache=false]
  * @param {boolean=} [options.bytes=false]
@@ -1143,7 +1143,7 @@ export async function send (command, value, options) {
  * Sends an async IPC command request with parameters and buffered bytes.
  * @param {string} command
  * @param {object=} params
- * @param {(Buffer|TypeArray|ArrayBuffer|string|Array)=} buffer
+ * @param {(Buffer|Uint8Array|ArrayBuffer|string|Array)=} buffer
  * @param {object=} options
  * @ignore
  */

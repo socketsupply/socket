@@ -52,7 +52,6 @@ export class ApplicationWindow {
   /**
    * Get the index of the window
    * @return {number} - the index of the window
-   * @readonly
    */
   get index () {
     return this.#index
