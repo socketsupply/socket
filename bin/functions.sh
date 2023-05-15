@@ -529,6 +529,7 @@ function determine_cxx () {
       # POSIX doesn't handle quoted commands
       # Quotes inside variables don't escape spaces, quotes only help on the line we are executing
       # Make a temp link
+      write_log "h" "Win32: linking clang to /tmp"
       CXX_TMP=$(mktemp)
       rm $CXX_TMP
       ln -s "$CXX" $CXX_TMP

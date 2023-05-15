@@ -421,16 +421,22 @@ function android_machine_arch() {
   esac
 }
 
-function android_clang() {
+function android_clang () {
   # get abi specific clang call for host, host arch and target arch (target host=linux)
   local ANDROID_HOME=$1
   local NDK_VERSION=$2
   local host=$3
   local host_arch=$4
-  local arch=$5
-  local plusplus=$6
-  echo "$ANDROID_HOME/ndk/$NDK_VERSION/toolchains/llvm/prebuilt/$(android_host_platform "$host")-$(android_arch "$host_arch")/bin/clang$plusplus --target=$(android_arch "$arch")-linux-android$(android_eabi "$arch")"
+  local plusplus=$5
+  # write_log "d" "android clang plus plus: $1 $2 $3 $4 $5"
+  echo "$ANDROID_HOME/ndk/$NDK_VERSION/toolchains/llvm/prebuilt/$(android_host_platform "$host")-$(android_arch "$host_arch")/bin/clang$plusplus"
 }
+
+function android_clang_target () {
+  local arch=$1
+  echo "--target=$(android_arch "$arch")-linux-android$(android_eabi "$arch")"
+}
+
 
 function android_ar() {
   # Note that this one is not target arch specific

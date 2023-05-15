@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 declare root="$(cd "$(dirname "$(dirname "${BASH_SOURCE[0]}")")" && pwd)"
-declare clang="${CXX:-${CLANG:-"$(which clang++)"}}"
+declare clang="${CXX:-"$CLANG"}"
 declare cache_path="$root/build/cache"
 
 source "$root/bin/functions.sh"
@@ -23,9 +23,12 @@ if [[ "$host" == "Win32" ]]; then
     d="d"
   fi
 
-  if command -v $clang >/dev/null 2>&1; then
-    echo > /dev/null
-  else
+  if command -v "$clang" >/dev/null 2>&1; then
+    write_log "d" "Found clang++ on path"
+  elif [ -f "$clang" ]; then
+    write_log "d" "Full path clang++ exists: $clang"
+  elif [ -n "$CXX" ]; then
+    write_log "v" "no clang on path, making tmp link."
     # POSIX doesn't handle quoted commands
     # Quotes inside variables don't escape spaces, quotes only help on the line we are executing
     # Make a temp link
@@ -34,7 +37,7 @@ if [[ "$host" == "Win32" ]]; then
     ln -s "$clang" $clang_tmp
     clang=$clang_tmp
     # Make tmp.etc look like clang++.etc, makes clang output look correct
-    clang=$(echo $clang|sed 's/tmp\./clang++\./')
+    clang=$(echo $CXX|sed 's/tmp\./clang++\./')
     mv $clang_tmp $clang
   fi
 
@@ -111,7 +114,8 @@ if [[ "$platform" = "android" ]]; then
     exit 1
   fi
 
-  clang="$(android_clang "$ANDROID_HOME" "$NDK_VERSION" "$host" "$host_arch" "$arch" "++")"
+  clang="$(android_clang "$ANDROID_HOME" "$NDK_VERSION" "$host" "$host_arch" "++")"
+  clang_target="$(android_clang_target "$arch")"
 elif [[ "$host" = "Darwin" ]]; then
   cflags+=("-ObjC++")
   sources+=("$root/src/window/apple.mm")
@@ -135,7 +139,7 @@ declare cflags=($("$root/bin/cflags.sh"))
 declare ldflags=($("$root/bin/ldflags.sh"))
 
 if [[ "$platform" = "android" ]]; then
-  cflags+=("${android_includes[*]}")
+  cflags+=("$clang_target ${android_includes[*]}")
 fi
 
 declare output_directory="$root/build/$arch-$platform"
@@ -180,7 +184,7 @@ function main () {
         mkdir -p "$(dirname "$object")"
         echo "# compiling object ($arch-$platform) $(basename "$source")"
         # Don't quote this, android clang contains --target argument, doesn't work with quiet argument splitting
-        quiet $clang "${cflags[@]}" -c "$source" -o "$object" || onsignal
+        quiet "$clang" "${cflags[@]}" -c "$source" -o "$object" || onsignal
         echo "ok - built ${source/$src_directory\//} -> ${object/$output_directory\//} ($arch-$platform)"
       fi
     } & pids+=($!)
