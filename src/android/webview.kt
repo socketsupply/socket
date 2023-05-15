@@ -103,8 +103,6 @@ open class WebViewClient (activity: WebViewActivity) : android.webkit.WebViewCli
     assert(rootDirectory.length > 0)
     assert(preloadJavascript.length > 0)
 
-    if (url.toString().indexOf("/assets/socket/") < 0)
-
     // look for updated resources in ${pwd}/files
     // live update systems can write to /files (/assets is read only)
     if (url.host == "appassets.androidplatform.net" && url.pathSegments.get(0) == "assets") {
