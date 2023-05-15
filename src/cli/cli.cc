@@ -4028,7 +4028,7 @@ int main (const int argc, const char* argv[]) {
           exit(1);
         }
 
-        if (!androidState.emulatorRunning) {
+        if (flagBuildForAndroidEmulator && !androidState.emulatorRunning) {
           if (!initAndStartAndroidEmulator(androidState)) {
             exit(1);
           }
