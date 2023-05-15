@@ -1,10 +1,4 @@
 /* eslint-disable import/first */
-globalThis.console.assert(
-  globalThis.__RUNTIME_INIT_NOW__,
-  'socket:internal/init.js was not imported in preload. ' +
-  'This could lead to undefined behavior.'
-)
-
 import 'socket:test/context' // this should be first
 
 import './webview.js'
