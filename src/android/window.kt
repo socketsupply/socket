@@ -24,7 +24,7 @@ open class Window (runtime: Runtime, activity: MainActivity) {
     return this.activity.get()?.getRootDirectory() ?: ""
   }
 
-  fun setupHtmlPreload(runtime: Runtime, rootDirectory: String, preloadJavascript: String) {
+  fun setupHtmlPreload (runtime: Runtime, rootDirectory: String, preloadJavascript: String) {
     // copy all .html assets to /files for preload injection
     runtime.configuration.assetManager.list("")?.let {
       for (file in it) {

@@ -283,7 +283,7 @@ export default module
   }  
 
   companion object {
-    fun injectPreload(htmlString: String, source: String): String {
+    fun injectPreload (htmlString: String, source: String): String {
       return if (htmlString.matches("<head>".toRegex())) {
         htmlString.replace("<head>","""
           <head>
