@@ -428,7 +428,6 @@ function android_clang () {
   local host=$3
   local host_arch=$4
   local plusplus=$5
-  # write_log "d" "android clang plus plus: $1 $2 $3 $4 $5"
   echo "$ANDROID_HOME/ndk/$NDK_VERSION/toolchains/llvm/prebuilt/$(android_host_platform "$host")-$(android_arch "$host_arch")/bin/clang$plusplus"
 }
 

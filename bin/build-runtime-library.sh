@@ -104,6 +104,7 @@ declare sources=(
 )
 
 declare test_headers=()
+declare cflags
 
 if [[ "$platform" = "android" ]]; then
   source "$root/bin/android-functions.sh"
@@ -117,13 +118,10 @@ if [[ "$platform" = "android" ]]; then
   clang="$(android_clang "$ANDROID_HOME" "$NDK_VERSION" "$host" "$host_arch" "++")"
   clang_target="$(android_clang_target "$arch")"
 elif [[ "$host" = "Darwin" ]]; then
-  cflags+=("-ObjC++")
   sources+=("$root/src/window/apple.mm")
-  if (( TARGET_OS_IPHONE)); then
-    clang="xcrun -sdk iphoneos $clang"
-  elif (( TARGET_IPHONE_SIMULATOR )); then
-    clang="xcrun -sdk iphonesimulator $clang"
-    cflags+=("-arch "$arch"")
+  if (( TARGET_OS_IPHONE)) || (( TARGET_IPHONE_SIMULATOR )); then
+    cflags=("-sdk" "iphoneos" "$clang")
+    clang="xcrun"
   else
     sources+=("$root/src/process/unix.cc")
   fi
@@ -135,8 +133,7 @@ elif [[ "$host" = "Win32" ]]; then
   sources+=("$root/src/process/win.cc")
 fi
 
-declare cflags=($("$root/bin/cflags.sh"))
-declare ldflags=($("$root/bin/ldflags.sh"))
+cflags+=($("$root/bin/cflags.sh"))
 
 if [[ "$platform" = "android" ]]; then
   cflags+=("$clang_target ${android_includes[*]}")
@@ -183,7 +180,6 @@ function main () {
       if (( force )) || ! test -f "$object" || (( newest_mtime > $(stat_mtime "$object") )) || (( $(stat_mtime "$source") > $(stat_mtime "$object") )); then
         mkdir -p "$(dirname "$object")"
         echo "# compiling object ($arch-$platform) $(basename "$source")"
-        # Don't quote this, android clang contains --target argument, doesn't work with quiet argument splitting
         quiet "$clang" "${cflags[@]}" -c "$source" -o "$object" || onsignal
         echo "ok - built ${source/$src_directory\//} -> ${object/$output_directory\//} ($arch-$platform)"
       fi
