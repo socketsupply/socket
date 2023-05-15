@@ -84,6 +84,9 @@ test('path.win32.join', (t) => {
   t.equal(path.win32.join('a', 'b', 'c'), 'a\\b\\c', 'join(a, b, c)')
   t.equal(path.win32.join('a', 'b', 'c', '..\\d'), 'a\\b\\d', 'join(a, b, c, ..\\d)')
   t.equal(path.win32.join('a', 'b', 'c', '..\\d', '..\\..\\b'), 'a\\b', 'join(a, b, c, ..\\d, ..\\..\\b)')
+  t.equal(path.win32.join('c:\\dir\\', 'file.txt'), `c:\\dir\\file.txt`, `c:\\dir\\, file.txt`)
+  t.equal(path.win32.join('c:\\test', '', '', 'hello'), `c:\\test\\hello`, `c:\\test, '', '', hello`)
+  t.equal(path.win32.join('c:\\test', '\\', '\\', 'hello'), `c:\\test\\hello`, `c:\\test, '\\', '\\', hello`)
 })
 
 test('path.win32.dirname', (t) => {

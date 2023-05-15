@@ -28,6 +28,7 @@ test('process.cwd', async (t) => {
   } else if (process.platform === 'win32') {
     // TODO(trevnorris): Fix to use path once implemented for Windows
     t.equal(process.cwd(), process.argv0.slice(0, process.argv0.lastIndexOf('\\') + 1), 'process.cwd() returns a correct value')
+    t.ok(process.cwd()[process.cwd().length-1] !== path.sep, 'process.cwd() does not end with trailing separator')
   } else {
     // for future platforms
     t.fail(`FIXME: not implemented for platform ${process.platform}`)

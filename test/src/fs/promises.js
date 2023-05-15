@@ -42,6 +42,13 @@ if (process.platform !== 'ios') {
       const { err } = await fs.mkdir(dirname, {})
       t.equal(err, undefined, 'mkdir does not throw')
     })
+
+    test('fs.promises.mkdir({recursive: true})', async (t) => {
+      const dirname = FIXTURES + Math.random().toString(16).slice(2)
+      const { err } = await fs.mkdir(`${dirname}${path.sep}${dirname}`, {recursive: true})
+      await fs.access(`${dirname}${path.sep}${dirname}`, X_OK)
+      t.equal(err, undefined, 'mkdir does not throw and creates directories recursively')
+    })
   }
 
   test('fs.promises.open', async (t) => {
