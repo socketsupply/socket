@@ -420,6 +420,7 @@ void signalHandler (int signal) {
     return;
   }
 
+#if !defined(_WIN32)
   if (signal == SIGUSR1) {
   #if defined(__APPLE__)
     checkLogStore = true;
@@ -431,6 +432,7 @@ void signalHandler (int signal) {
     exit(0);
     return;
   }
+#endif
 
   if (appProcess != nullptr) {
     auto pid = appProcess->getPID();
