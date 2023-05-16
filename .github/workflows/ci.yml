@@ -174,7 +174,6 @@ jobs:
 
     - name: test a socket api example app
       # remove this line if you want to test the Android build on macOS
-      if: ${{ false }}
       run: |
         npm install && npm run test:ios-simulator
       env:
