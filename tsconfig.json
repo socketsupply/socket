@@ -12,6 +12,9 @@
     "declaration": true,
     "sourceMap": false,
     "checkJs": false,
-    "allowJs": true
+    "allowJs": true,
+    "paths": {
+      "socket:*": ["api/*"]
+    }
   }
 }

@@ -267,8 +267,8 @@ export class Test {
     report('  ---')
     report(`    operator: ${operator}`)
 
-    let ex = JSON.stringify(expected, null, '  ') || 'undefined'
-    let ac = JSON.stringify(actual, null, '  ') || 'undefined'
+    let ex = toJSON(expected) || 'undefined'
+    let ac = toJSON(actual) || 'undefined'
     if (Math.max(ex.length, ac.length) > 65) {
       ex = ex.replace(NEW_LINE_REGEX, '\n      ')
       ac = ac.replace(NEW_LINE_REGEX, '\n      ')
@@ -451,6 +451,9 @@ export class TestRunner {
 
     this.completed = true
 
+    // timeout before reporting
+    await new Promise((resolve) => setTimeout(resolve, 256))
+
     this.report('')
     this.report(`1..${total}`)
     this.report(`# tests ${total}`)
@@ -546,4 +549,19 @@ function rethrowImmediate (err) {
    * @returns {void}
    */
   function rethrow () { throw err }
+}
+
+/**
+ * JSON.stringify `thing` while preserving `undefined` values in
+ * the output.
+ *
+ * @param {unknown} thing
+ * @returns {string}
+ */
+function toJSON (thing) {
+  /** @type {(_k: string, v: unknown) => unknown} */
+  const replacer = (_k, v) => (v === undefined) ? '_tz_undefined_tz_' : v
+
+  const json = JSON.stringify(thing, replacer, '  ') || 'undefined'
+  return json.replace(/"_tz_undefined_tz_"/g, 'undefined')
 }
