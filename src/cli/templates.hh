@@ -712,6 +712,8 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
         GCC_OPTIMIZATION_LEVEL = 0;
         GCC_PREPROCESSOR_DEFINITIONS = (
           "DEBUG=1",
+          "SSC_VERSION={{SSC_VERSION}}",
+          "SSC_VERSION_HASH={{SSC_VERSION_HASH}}",
           "$(inherited)",
         );
         GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
@@ -775,6 +777,11 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
         GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
         GCC_WARN_UNUSED_FUNCTION = YES;
         GCC_WARN_UNUSED_VARIABLE = YES;
+        GCC_PREPROCESSOR_DEFINITIONS = (
+          "SSC_VERSION={{SSC_VERSION}}",
+          "SSC_VERSION_HASH={{SSC_VERSION_HASH}}",
+          "$(inherited)",
+        );
         IPHONEOS_DEPLOYMENT_TARGET = 12.2;
         MTL_ENABLE_DEBUG_INFO = NO;
         MTL_FAST_MATH = YES;
