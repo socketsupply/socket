@@ -2,9 +2,9 @@ import process from 'socket:process'
 import test from 'socket:test'
 
 let loaded = false
-window.onload = () => {
+window.addEventListener('load', () => {
   loaded = true
-}
+})
 
 if (!process.env.SSC_ANDROID_CI) {
   test('window.onload', (t) => {
