@@ -103,7 +103,8 @@ open class MainActivity : WebViewActivity() {
     url: String,
     bitmap: android.graphics.Bitmap?
   ) {
-    return super.onPageStarted(view, url, bitmap)
+    super.onPageStarted(view, url, bitmap)
+    this.window.onPageStarted(view, url, bitmap)
   }
 
   override fun onSchemeRequest (
