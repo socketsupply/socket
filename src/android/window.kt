@@ -29,7 +29,6 @@ open class Window (runtime: Runtime, activity: MainActivity) {
     val filename = this.getPathToFileToLoad()
     val activity = this.activity.get() ?: return
     val runtime = this.runtime.get() ?: return
-    val source = this.getJavaScriptPreloadSource()
 
     val rootDirectory = this.getRootDirectory()
     this.bridge.route("ipc://internal.setcwd?value=${rootDirectory}", null, fun (result: Result) {
@@ -47,45 +46,7 @@ open class Window (runtime: Runtime, activity: MainActivity) {
           webViewClient = activity.client
 
           addJavascriptInterface(userMessageHandler, "external")
-          val assetManager = runtime.configuration.assetManager
-          val indexFile = assetManager.open(filename)
-          val indexBytes = indexFile.readAllBytes()
-          val htmlString = String(indexBytes)
-
-          var html = if (htmlString.matches("<head>".toRegex())) {
-            htmlString.replace("<head>","""
-              <head>
-                <script type="module">
-                  ${source}
-                </script>
-            """)
-          } else if (htmlString.matches("<body>".toRegex())) {
-            htmlString.replace("<body>","""
-              <body>
-                <script type="module">
-                  ${source}
-                </script>
-            """)
-          } else if (htmlString.matches("<html>".toRegex())) {
-            htmlString.replace("<html>","""
-              <html>
-                <script type="module">
-                  ${source}
-                </script>
-            """)
-          } else {
-            """<script type="module">${source}</script>""" + htmlString
-          }
-
-          indexFile.close()
-
-          loadDataWithBaseURL(
-            "https://appassets.androidplatform.net/assets/",
-            html,
-            "text/html",
-            null,
-            null
-          )
+          loadUrl("https://appassets.androidplatform.net/assets/$filename")
         }
       }
     })
@@ -125,6 +86,17 @@ open class Window (runtime: Runtime, activity: MainActivity) {
         stream.close()
       }
     })
+  }
+
+  open fun onPageStarted (
+    view: android.webkit.WebView,
+    url: String,
+    bitmap: android.graphics.Bitmap?
+  ) {
+    val source = this.getJavaScriptPreloadSource()
+    view.pauseTimers()
+    this.activity.get()?.evaluateJavaScript(source)
+    view.resumeTimers()
   }
 
   @Throws(java.lang.Exception::class)

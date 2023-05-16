@@ -78,7 +78,19 @@ static dispatch_queue_t queue = dispatch_queue_create(
     return;
   }
 
-  bridge->route([body UTF8String], nullptr, 0);
+  auto msg = IPC::Message([body UTF8String]);
+
+  if (msg.name == "application.exit" || msg.name == "process.exit") {
+    auto code = std::stoi(msg.get("value", "0"));
+
+    if (code > 0) {
+      notifyCli(SIGTERM);
+    } else {
+      notifyCli(SIGUSR2);
+    }
+  } else {
+    bridge->route([body UTF8String], nullptr, 0);
+  }
 }
 
 - (void) keyboardWillHide {
@@ -183,7 +195,7 @@ static dispatch_queue_t queue = dispatch_queue_create(
   viewController.view.frame = appFrame;
   self.window.rootViewController = viewController;
 
-  auto appData = parseINI(decodeURIComponent(_settings));
+  auto appData = SSC::getUserConfig();
 
   StringStream env;
 
@@ -199,14 +211,15 @@ static dispatch_queue_t queue = dispatch_queue_create(
   env << String("width=" + std::to_string(appFrame.size.width) + "&");
   env << String("height=" + std::to_string(appFrame.size.height) + "&");
 
-  NSFileManager *fileManager = [NSFileManager defaultManager];
-  NSString *currentDirectoryPath = [fileManager currentDirectoryPath];
-  NSString *cwd = [NSHomeDirectory() stringByAppendingPathComponent: currentDirectoryPath];
+  NSString* resourcePath = [[NSBundle mainBundle] resourcePath];
+  NSString* cwd = [resourcePath stringByAppendingPathComponent: @"ui"];
+
+  uv_chdir(cwd.UTF8String);
 
   WindowOptions opts {
     .debug = _debug,
     .env = env.str(),
-    .cwd = String([cwd UTF8String])
+    .appData = appData
   };
 
   // Note: you won't see any logs in the preload script before the
@@ -267,23 +280,8 @@ static dispatch_queue_t queue = dispatch_queue_create(
       fileURLWithPath: [allowed stringByAppendingPathComponent:@"ui/index.html"]
     ];
 
-    auto preload = createPreload(opts, PreloadOptions { .module = true });
-    auto script = "<script type=\"module\">" + preload + "</script>";
-    auto html = String([[NSString stringWithContentsOfURL: url encoding: NSUTF8StringEncoding error: nil] UTF8String]);
-
-    if (html.find("<head>") != -1) {
-      html = replace(html, "<head>", "<head>" + script);
-    } else if (html.find("<body>") != -1) {
-      html = replace(html, "<body>", "<body>" + script);
-    } else if (html.find("<html>") != -1) {
-      html = replace(html, "<html>", "<html>" + script);
-    } else {
-      html = script + html;
-    }
-
-    [self.webview
-      loadHTMLString: [NSString stringWithUTF8String: html.c_str()]
-             baseURL: [url URLByDeletingLastPathComponent]
+    [self.webview loadFileURL: url
+      allowingReadAccessToURL: [NSURL fileURLWithPath: allowed]
     ];
   }
 

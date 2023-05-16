@@ -70,8 +70,9 @@ static String getcwd () {
   auto currentDirectory = [fileManager currentDirectoryPath];
   cwd = String([currentDirectory UTF8String]);
 #elif defined(__APPLE__)
-  auto currentDirectory = NSHomeDirectory();
-  cwd = String([currentDirectory UTF8String]);
+  NSString* resourcePath = [[NSBundle mainBundle] resourcePath];
+  cwd = String([[resourcePath stringByAppendingPathComponent: @"ui"] UTF8String]);
+
 #elif defined(_WIN32)
   wchar_t filename[MAX_PATH];
   GetModuleFileNameW(NULL, filename, MAX_PATH);
