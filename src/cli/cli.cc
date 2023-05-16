@@ -795,7 +795,7 @@ void runIOSSimulator (const Path& path, Map& settings) {
 
   exit(std::system(launchAppCommand.str().c_str()));
   #endif
-};
+}
 
 struct AndroidCliState {
   StringStream adb;
@@ -817,6 +817,13 @@ struct AndroidCliState {
   bool verbose = false;
   SSC::String quote = "";
   SSC::String slash = "";
+};
+
+struct Paths {
+  Path pathBin;
+  Path pathPackage;
+  Path pathResourcesRelativeToUserBuild;
+  Path platformSpecificOutputPath;
 };
 
 // Android build / run functions
@@ -1217,7 +1224,6 @@ bool isSetupCompleteWindows () {
   return fs::exists(getEnv("CXX"));
 }
 
-
 bool isSetupComplete (SSC::String platform) {
   std::map<SSC::String, bool(*)()> funcs;
 
@@ -1227,6 +1233,38 @@ bool isSetupComplete (SSC::String platform) {
   if (funcs.count(platform) == 0) return true;
 
   return funcs[platform]();
+}
+
+void run (const String& targetPlatform, Map& settings, const Paths& paths, const bool& flagDebugMode, const bool& flagHeadless, const String& argvForward, AndroidCliState& androidState) {
+  if (targetPlatform == "ios-simulator") {
+    String app = (settings["build_name"] + ".app");
+    auto pathToApp = paths.platformSpecificOutputPath / app;
+    runIOSSimulator(pathToApp, settings);
+  } else if (targetPlatform == "android" || targetPlatform == "android-emulator") {
+    if (!getAdbPath(androidState)) {
+      exit(1);
+    }
+
+    if (targetPlatform == "android-emulator" && !androidState.emulatorRunning) {
+      if (!initAndStartAndroidEmulator(androidState)) {
+        exit(1);
+      }
+    }
+
+    if (!initAndStartAndroidApp(androidState, flagDebugMode)) {
+      exit(1);
+    }
+
+    exit(0);
+  } else {
+    auto executable = Path(settings["build_name"] + (platform.win ? ".exe" : ""));
+    auto exitCode = runApp(paths.pathBin / executable, argvForward, flagHeadless);
+    return exit(exitCode);
+  }
+
+  // Fixes "subcommand 'ssc run' is not supported.""
+  log("App failed to run, please contact support.");
+  exit(1);
 }
 
 int main (const int argc, const char* argv[]) {
@@ -1331,13 +1369,6 @@ int main (const int argc, const char* argv[]) {
   initializeEnv(prefixFile());
   // `$PWD/.ssc.env` (local)
   initializeEnv(targetPath); // overrides global config with local
-
-  struct Paths {
-    Path pathBin;
-    Path pathPackage;
-    Path pathResourcesRelativeToUserBuild;
-    Path platformSpecificOutputPath;
-  };
 
   auto getPaths = [&](String platform) -> Paths {
     Paths paths;
@@ -4056,27 +4087,7 @@ int main (const int argc, const char* argv[]) {
 
     int exitCode = 0;
     if (flagShouldRun) {
-      if (flagBuildForSimulator) {
-        String app = (settings["build_name"] + ".app");
-        auto pathToApp = paths.platformSpecificOutputPath / app;
-        runIOSSimulator(pathToApp, settings);
-      } else if (flagBuildForAndroid) {
-        if (!getAdbPath(androidState)) {
-          exit(1);
-        }
-
-        if (flagBuildForAndroidEmulator && !androidState.emulatorRunning) {
-          if (!initAndStartAndroidEmulator(androidState)) {
-            exit(1);
-          }
-        }
-
-        if (!initAndStartAndroidApp(androidState, flagDebugMode)) {
-          exit(1);
-        }
-      } else {
-        exitCode = runApp(binaryPath, argvForward, flagHeadless);
-      }
+      run(targetPlatform, settings, paths, flagDebugMode, flagHeadless, argvForward, androidState);
     }
 
     exit(exitCode);
@@ -4184,46 +4195,17 @@ int main (const int argc, const char* argv[]) {
     String quote = !platform.win ? "'" : "\"";
     String slash = !platform.win ? "/" : "\\";
 
-    if (isIosSimulator) {
-      String app = (settings["build_name"] + ".app");
-      auto pathToApp = paths.platformSpecificOutputPath / app;
-      runIOSSimulator(pathToApp, settings);
-    } else if (isForAndroid) {
-      auto androidPlatform = "android-33";
-      AndroidCliState androidState;
-      androidState.androidHome = getAndroidHome();
-      androidState.verbose = debugEnv || verboseEnv;
-      androidState.devNull = devNull;
-      androidState.platform = androidPlatform;
-      androidState.appPath = paths.platformSpecificOutputPath / "app";
-      androidState.quote = quote;
-      androidState.slash = slash;
+    auto androidPlatform = "android-33";
+    AndroidCliState androidState;
+    androidState.androidHome = getAndroidHome();
+    androidState.verbose = debugEnv || verboseEnv;
+    androidState.devNull = devNull;
+    androidState.platform = androidPlatform;
+    androidState.appPath = paths.platformSpecificOutputPath / "app";
+    androidState.quote = quote;
+    androidState.slash = slash;
 
-      if (!getAdbPath(androidState)) {
-        exit(1);
-      }
-
-      if (isForAndroidEmulator && !androidState.emulatorRunning) {
-        if (!initAndStartAndroidEmulator(androidState)) {
-          exit(1);
-        }
-      }
-
-      if (!initAndStartAndroidApp(androidState, flagDebugMode)) {
-        exit(1);
-      }
-
-      exit(0);
-
-    } else {
-      auto executable = Path(settings["build_name"] + (platform.win ? ".exe" : ""));
-      auto exitCode = runApp(paths.pathBin / executable, argvForward, flagHeadless);
-      exit(exitCode);
-    }
-
-    // Fixes "subcommand 'ssc run' is not supported.""
-    log("App failed to run, please contact support.");
-    exit(1);
+    run(targetPlatform, settings, paths, false, flagHeadless, argvForward, androidState);
   });
 
   createSubcommand("setup", { "--platform", "--yes", "-y" }, false, [&](const std::span<const char *>& options) -> void {
