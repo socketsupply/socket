@@ -224,8 +224,8 @@ class ConcurrentQueue extends EventTarget {
 
   async wait () {
     if (this.pending.length < this.concurrency) return
-    const offset = -1 * (this.pending.length - this.concurrency) - 1
-    const pending = this.pending.slice(offset)
+    const offset = (this.pending.length - this.concurrency) + 1
+    const pending = this.pending.slice(0, offset)
     await Promise.all(pending)
   }
 
@@ -267,25 +267,22 @@ class RuntimeXHRPostQueue extends ConcurrentQueue {
     const options = { responseType: 'arraybuffer' }
     const result = await ipc.request('post', { id }, options)
 
-    if (result.err) {
-      promise.resolve()
-      this.dispatchEvent(new CustomEvent('error', { detail: result.err }))
-      return
-    }
+    promise.resolve()
 
-    Promise.resolve().then(() => {
+    if (result.err) {
+      this.dispatchEvent(new CustomEvent('error', { detail: result.err }))
+    } else {
       const { data } = result
       const detail = { headers, params, data, id }
-      promise.resolve()
       globalThis.dispatchEvent(new CustomEvent('data', { detail }))
-    })
+    }
   }
 }
 
 hooks.onLoad(() => {
   if (typeof globalThis.dispatchEvent === 'function') {
-    globalThis.dispatchEvent(new CustomEvent(RUNTIME_INIT_EVENT_NAME))
     globalThis.__RUNTIME_INIT_NOW__ = performance.now()
+    globalThis.dispatchEvent(new CustomEvent(RUNTIME_INIT_EVENT_NAME))
   }
 })
 

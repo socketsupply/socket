@@ -18,11 +18,10 @@ import dgram from 'socket:dgram'
 import util from 'socket:util'
 */
 
-const MTU = 1454
+const MTU = 1024
 
-function makePayload () {
-  const r = Math.random() * MTU
-  return Array(Math.floor(r)).fill(0).join('')
+function makePayloadString () {
+  return crypto.randomBytes(MTU / 2).toString('hex')
 }
 
 test('dgram exports', t => {
@@ -136,7 +135,7 @@ test('udp bind, send, remoteAddress', async (t) => {
     server.on('error', reject)
   })
 
-  const payload = makePayload()
+  const payload = makePayloadString()
   t.ok(payload.length > 0, `${payload.length} bytes prepared`)
 
   const address = '127.0.0.1'
@@ -194,7 +193,7 @@ test('udp socket message and bind callbacks', async (t) => {
 test('udp bind, connect, send', async (t) => {
   if (process.env.SSC_ANDROID_CI) return
 
-  const payload = makePayload()
+  const payload = makePayloadString()
   const server = dgram.createSocket('udp4')
   const client = dgram.createSocket('udp4')
 
