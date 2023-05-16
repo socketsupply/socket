@@ -1328,10 +1328,10 @@ peer.on('greeting', (value, peer, address, port) => {
   console.log(value)
 })
 
-window.onload = () => {
+window.addEventListener('load', () => {
   const value = { english: 'hello, world' }
   const packet = await peer.emit('greeting', value)
-}
+})
 ```
 
 ### [`constructor(options)`](https://github.com/socketsupply/socket/blob/master/api/peer.js#L60)
