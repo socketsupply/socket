@@ -4095,15 +4095,12 @@ int main (const int argc, const char* argv[]) {
 
   createSubcommand("run", runOptions, true, [&](const std::span<const char *>& options) -> void {
     String argvForward = "";
-    bool isIosSimulator = false;
     bool flagHeadless = false;
     bool flagTest = false;
     String targetPlatform = "";
     String testFile = "";
     bool isForIOS = false;
     bool isForAndroid = false;
-    bool isForAndroidEmulator = false;
-    bool isForIOSSimulator = false;
 
     String hostArg = "";
     String portArg = "";
@@ -4138,16 +4135,10 @@ int main (const int argc, const char* argv[]) {
       if (targetPlatform.size() == 0) {
         targetPlatform = optionValue("run", option, "--platform");
         if (targetPlatform.size() > 0) {
-          if (targetPlatform == "ios") {
+          if (targetPlatform == "ios" || targetPlatform == "ios-simulator") {
             isForIOS = true;
-          } else if (targetPlatform == "android") {
+          } else if (targetPlatform == "android" || targetPlatform == "android-emulator") {
             isForAndroid = true;
-          } else if (targetPlatform == "android-emulator") {
-            isForAndroid = true;
-            isForAndroidEmulator = true;
-          } else if (targetPlatform == "ios-simulator") {
-            isForIOS = true;
-            isForIOSSimulator = true;
           } else {
             log("Unknown platform: " + targetPlatform);
             exit(1);
