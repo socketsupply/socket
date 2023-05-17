@@ -410,12 +410,12 @@ void pollOSLogStream (String bundleIdentifier, int processIdentifier) {
 #endif
 
 void signalHandler (int signal) {
-  if (signal == SIGTERM) {
+  if (appPid == 0 && signal == SIGTERM) {
     exit(1);
     return;
   }
 
-  if (signal == SIGINT) {
+  if (appPid == 0 && signal == SIGINT) {
     exit(signal);
     return;
   }
