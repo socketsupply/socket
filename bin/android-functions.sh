@@ -86,7 +86,7 @@ function get_android_default_search_paths() {
     if [ -n "$java" ]; then
       JAVA_HOME_SEARCH_PATHS+=("$(dirname "$(dirname "$java")")")
     fi
-    
+
     JAVA_HOME_SEARCH_PATHS+=("$HOME/Applications")
     JAVA_HOME_SEARCH_PATHS+=("$HOME/homebrew")
     # This search is really slow under CI
@@ -791,7 +791,7 @@ function android_fte() {
     android_first_time_experience_setup; rc=$?
 
     if (( rc == 2 )); then
-      echo "warn - You have elected to not install Android dependencies."
+      echo "warn - You have selected to not install Android dependencies."
       echo "warn - You can use 'export NO_ANDROID=1' to avoid this prompt in the future."
       unset BUILD_ANDROID
       return $rc
