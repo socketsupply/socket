@@ -617,7 +617,9 @@ namespace SSC {
   }
 
   inline void notifyCli () {
+  #if !defined(_WIN32)
     return notifyCli(SIGUSR1);
+  #endif
   }
 
   inline void stdWrite (const String &str, bool isError) {
