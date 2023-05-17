@@ -82,6 +82,10 @@ static dispatch_queue_t queue = dispatch_queue_create(
 );
 #endif
 
+bool is (const String& s1, const String& s2) {
+  return s1.compare(s2) == 0;
+};
+
 const Map SSC::getUserConfig () {
   return settings;
 }
@@ -107,6 +111,26 @@ void log (const String s) {
   std::cerr << "• " << s << " \033[0;32m+" << delta << "ms\033[0m" << std::endl;
   #endif
   start = std::chrono::system_clock::now();
+}
+
+void printHelp (const String& command) {
+  if (command == "ssc") {
+    std::cout << tmpl(gHelpText, defaultTemplateAttrs) << std::endl;
+  } else if (command == "build") {
+    std::cout << tmpl(gHelpTextBuild, defaultTemplateAttrs) << std::endl;
+  } else if (command == "list-devices") {
+    std::cout << tmpl(gHelpTextListDevices, defaultTemplateAttrs) << std::endl;
+  } else if (command == "init") {
+    std::cout << tmpl(gHelpTextInit, defaultTemplateAttrs) << std::endl;
+  } else if (command == "install-app") {
+    std::cout << tmpl(gHelpTextInstallApp, defaultTemplateAttrs) << std::endl;
+  } else if (command == "print-build-dir") {
+    std::cout << tmpl(gHelpTextPrintBuildDir, defaultTemplateAttrs) << std::endl;
+  } else if (command == "run") {
+    std::cout << tmpl(gHelpTextRun, defaultTemplateAttrs) << std::endl;
+  } else if (command == "setup") {
+    std::cout << tmpl(gHelpTextSetup, defaultTemplateAttrs) << std::endl;
+  }
 }
 
 String getSocketHome (bool verbose) {
@@ -1091,26 +1115,6 @@ static String getCxxFlags () {
   return flags.size() > 0 ? " " + flags : "";
 }
 
-void printHelp (const String& command) {
-  if (command == "ssc") {
-    std::cout << tmpl(gHelpText, defaultTemplateAttrs) << std::endl;
-  } else if (command == "build") {
-    std::cout << tmpl(gHelpTextBuild, defaultTemplateAttrs) << std::endl;
-  } else if (command == "list-devices") {
-    std::cout << tmpl(gHelpTextListDevices, defaultTemplateAttrs) << std::endl;
-  } else if (command == "init") {
-    std::cout << tmpl(gHelpTextInit, defaultTemplateAttrs) << std::endl;
-  } else if (command == "install-app") {
-    std::cout << tmpl(gHelpTextInstallApp, defaultTemplateAttrs) << std::endl;
-  } else if (command == "print-build-dir") {
-    std::cout << tmpl(gHelpTextPrintBuildDir, defaultTemplateAttrs) << std::endl;
-  } else if (command == "run") {
-    std::cout << tmpl(gHelpTextRun, defaultTemplateAttrs) << std::endl;
-  } else if (command == "setup") {
-    std::cout << tmpl(gHelpTextSetup, defaultTemplateAttrs) << std::endl;
-  }
-}
-
 inline String getCfgUtilPath () {
   const bool hasCfgUtilInPath = exec("command -v cfgutil").exitCode == 0;
   if (hasCfgUtilInPath) {
@@ -1267,37 +1271,187 @@ void run (const String& targetPlatform, Map& settings, const Paths& paths, const
   exit(1);
 }
 
+String optionValue (
+  const String& c, // command
+  const String& s,
+  const String& p
+) {
+  auto string = p + String("=");
+  if (String(s).find(string) == 0) {
+    auto value = s.substr(string.size());
+    if (value.size() == 0) {
+      value = rc[c + "_" + p];
+    }
+
+    if (value.size() == 0) {
+      log("missing value for option " + String(p));
+      exit(1);
+    }
+    return value;
+  }
+  return "";
+}
+
+void handleArgument(
+  Map& argumentsWithValue,
+  std::vector<String>& argumentsWithoutValue,
+  const String& key,
+  const String& value,
+  const String& subcommand
+) {
+  if (
+    argumentsWithValue.count(key) > 0 ||
+    std::find(argumentsWithoutValue.begin(), argumentsWithoutValue.end(), key) != argumentsWithoutValue.end()
+  ) {
+    std::cerr << "ERROR: Argument '" << key << "' is used more than once." << std::endl;
+    printHelp(subcommand);
+    exit(1);
+  }
+  if (!value.empty()) {
+    argumentsWithValue[key] = value;
+  } else {
+    argumentsWithoutValue.push_back(key);
+  }
+}
+
+String trimHeadingDashes(const String& str) {
+  size_t start = 0;
+  while (start < str.length() && str[start] == '-') {
+    start++;
+  }
+  return str.substr(start);
+}
+
+void validateArgument(const String& argument, const std::vector<String>& availableOptions, const String& subcommand) {
+  bool recognized = false;
+  for (const auto& option : availableOptions) {
+    String optionString(option);
+    if (argument == optionString) {
+      recognized = true;
+      break;
+    }
+  }
+  if (!recognized) {
+    std::cerr << "ERROR: unrecognized option '" << argument << "'";
+    printHelp(subcommand);
+    exit(1);
+  }
+}
+
+struct ArgumentsAndEnv {
+  Map argumentsWithValue;
+  std::vector<String> argumentsWithoutValue;
+  std::vector<String> envs;
+};
+
+ArgumentsAndEnv parseCommandLineArguments (
+  const std::span<const char*>& options,
+  const std::vector<String>& availableOptions,
+  const String& subcommand
+) {
+  ArgumentsAndEnv result;
+  Map argumentsWithValue;
+  std::vector<String> argumentsWithoutValue;
+  std::vector<String> envs;
+
+  for (size_t i = 0; i < options.size(); i++) {
+    String arg = options[i];
+
+    size_t equalPos = arg.find('=');
+    String key;
+    String value;
+    String prefix; // TODO refactor
+
+    if (arg.substr(0, 2) == "--") {
+      prefix = "--";
+      // Argument in the form "--key=value"
+      if (equalPos != String::npos) {
+        key = arg.substr(2, equalPos - 2);
+        value = arg.substr(equalPos + 1);
+      } else {
+        key = arg.substr(2);
+        // // Argument in the form "--key value"
+        // if (i + 1 < options.size() && options[i + 1][0] != '-') {
+        //   value = options[++i];
+        // } else {
+          // Argument in the form "--key"
+          value = "";
+        // }
+      }
+    } else if (arg[0] == '-') {
+      prefix = "-";
+      // Argument in the form "-k=value"
+      if (equalPos != String::npos) {
+        key = arg.substr(1, equalPos - 1);
+        value = arg.substr(equalPos + 1);
+      } else {
+        key = arg.substr(1);
+        // // Argument in the form "-k value"
+        // if (i + 1 < options.size() && options[i + 1][0] != '-') {
+        //   value = options[++i];
+        // } else {
+          // Argument in the form "-k"///////
+          value = "";
+        // }
+      }
+    }
+
+    // TODO: remove prefix and continue early
+    if (is(prefix + key, "--verbose")) {
+      setEnv("SSC_VERBOSE", "1");
+      continue;
+    }
+
+    if (is(prefix + key, "--debug")) {
+      setEnv("SSC_DEBUG", "1");
+      continue;
+    }
+
+    if (String(arg).starts_with("--env")) {
+      auto value = optionValue(subcommand, arg, "--env");
+      if (value.size() > 0) {
+        auto parts = parseStringList(value);
+        for (const auto& part : parts) {
+          envs.push_back(part);
+        }
+        continue;
+      }
+    }
+
+    // TODO: remove prefix
+    validateArgument(prefix + key, availableOptions, subcommand);
+    handleArgument(argumentsWithValue, argumentsWithoutValue, key, value, subcommand);
+  }
+
+  result.argumentsWithValue = argumentsWithValue;
+  result.argumentsWithoutValue = argumentsWithoutValue;
+  result.envs = envs;
+
+  return result;
+}
+
+// TODO: remove on PR
+void printParsedArguments(const std::pair<Map, std::vector<String>>& parsedArguments) {
+  const auto& argumentsWithValue = parsedArguments.first;
+  const auto& argumentsWithoutValue = parsedArguments.second;
+
+  log("Arguments with values:");
+  for (const auto& argWithValue : argumentsWithValue) {
+    std::cout << argWithValue.first << " = " << argWithValue.second << std::endl;
+  }
+
+  log("Arguments without values:");
+  for (const auto& argWithoutValue : argumentsWithoutValue) {
+    std::cout << argWithoutValue << std::endl;
+  }
+}
+
 int main (const int argc, const char* argv[]) {
   defaultTemplateAttrs = {{ "ssc_version", SSC::VERSION_FULL_STRING }};
   if (argc < 2) {
     printHelp("ssc");
     exit(0);
   }
-
-  auto is = [](const String& s, const auto& p) -> bool {
-    return s.compare(p) == 0;
-  };
-
-  auto optionValue = [](
-    const String& c, // command
-    const String& s,
-    const String& p
-  ) -> String {
-    auto string = p + String("=");
-    if (String(s).find(string) == 0) {
-      auto value = s.substr(string.size());
-      if (value.size() == 0) {
-        value = rc[c + "_" + p];
-      }
-
-      if (value.size() == 0) {
-        log("missing value for option " + String(p));
-        exit(1);
-      }
-      return value;
-    }
-    return "";
-  };
 
   auto const subcommand = argv[1];
 
@@ -1439,7 +1593,7 @@ int main (const int argc, const char* argv[]) {
 
   auto createSubcommand = [&](
     const String& subcommand,
-    const std::vector<String>& options,
+    const std::vector<String>& availableOptions,
     const bool& needsConfig,
     std::function<void(std::span<const char *>)> subcommandHandler
   ) -> void {
@@ -1450,44 +1604,10 @@ int main (const int argc, const char* argv[]) {
       }
 
       auto commandlineOptions = std::span(argv, argc).subspan(2, numberOfOptions);
-      auto envs = Vector<String>();
+      auto argumentsAndEnv = parseCommandLineArguments(commandlineOptions, availableOptions, subcommand);
+      // printParsedArguments(arguments);
 
-      for (auto const& arg : commandlineOptions) {
-        auto isAcceptableOption = false;
-        if (String(arg).starts_with("--env")) {
-          auto value = optionValue(subcommand, arg, "--env");
-          if (value.size() > 0) {
-            auto parts = parseStringList(value);
-            for (const auto& part : parts) {
-              envs.push_back(part);
-            }
-            continue;
-          }
-        }
-
-        if (is(arg, "--verbose")) {
-          setEnv("SSC_VERBOSE", "1");
-          continue;
-        }
-
-        if (is(arg, "--debug")) {
-          setEnv("SSC_DEBUG", "1");
-          continue;
-        }
-
-        for (auto const& option : options) {
-          if (is(arg, option) || optionValue(subcommand, arg, option).size() > 0) {
-            isAcceptableOption = true;
-            break;
-          }
-        }
-
-        if (!isAcceptableOption) {
-          log("unrecognized option: " + String(arg));
-          printHelp(subcommand);
-          exit(1);
-        }
-      }
+      auto envs = argumentsAndEnv.envs;
 
       if (needsConfig) {
         auto configExists = false;
@@ -1623,6 +1743,7 @@ int main (const int argc, const char* argv[]) {
         }
       }
 
+      // TODO: subcommandHandler(argumentsAndEnv.argumentsWithValue, argumentsAndEnv.argumentsWithoutValue);
       subcommandHandler(commandlineOptions);
     }
   };
@@ -2966,7 +3087,7 @@ int main (const int argc, const char* argv[]) {
 
         // @TODO(jwerle): use `setEnv()` if #148 is closed
         #if _WIN32
-          std::string prefix_ = "PREFIX=";
+          String prefix_ = "PREFIX=";
           prefix_ += prefix;
           setEnv(prefix_.c_str());
         #else
@@ -3265,7 +3386,7 @@ int main (const int argc, const char* argv[]) {
 
       if (rArchive.exitCode != 0) {
         auto const noDevice = rArchive.output.find("The requested device could not be found because no available devices matched the request.");
-        if (noDevice != std::string::npos) {
+        if (noDevice != String::npos) {
           log("ERROR: [ios] simulator_device " + settings["ios_simulator_device"] + " from your socket.ini was not found");
           auto const rDevices = exec("xcrun simctl list devices available | grep -e \"  \"");
           log("available devices:\n" + rDevices.output);
