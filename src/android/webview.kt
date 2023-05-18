@@ -108,7 +108,9 @@ open class WebViewClient (activity: WebViewActivity) : android.webkit.WebViewCli
 
       val file = java.io.File(filePath.toString())
       if (file.exists() && !file.isDirectory()) {
-        var bytes = java.io.FileInputStream(file).readAllBytes()
+        var input = java.io.FileInputStream(file)
+        var bytes = input.readAllBytes()
+        input.close()
         val stream = java.io.PipedOutputStream()
         kotlin.concurrent.thread {
           stream.write(bytes, 0, bytes.size)
