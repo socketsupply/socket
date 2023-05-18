@@ -22,6 +22,7 @@ jobs:
     - name: Check docs and TS definitions
       run: |
         npm run gen
+        git diff --quiet
 
   linux:
     name: Linux
