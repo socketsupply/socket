@@ -418,7 +418,7 @@ function _prebuild_ios_main () {
 
   local clang="$(xcrun -sdk iphoneos -find clang++)"
   local cflags=($(TARGET_OS_IPHONE=1 "$root/bin/cflags.sh"))
-  local test_sources=($(find "$src"/ios/ios.mm 2>/dev/null))
+  local test_sources=($(find "$src"/ios/*.mm 2>/dev/null))
   local sources=()
   local outputs=()
 
@@ -454,7 +454,7 @@ function _prebuild_ios_simulator_main () {
 
   local clang="$(xcrun -sdk iphonesimulator -find clang++)"
   local cflags=($(TARGET_IPHONE_SIMULATOR=1 ARCH="$arch" $root/bin/cflags.sh))
-  local test_sources=($(find "$src"/ios/ios.mm 2>/dev/null))
+  local test_sources=($(find "$src"/ios/*.mm 2>/dev/null))
   local sources=()
   local outputs=()
 
