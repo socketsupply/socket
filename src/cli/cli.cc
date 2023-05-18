@@ -1322,12 +1322,21 @@ String trimHeadingDashes(const String& str) {
   return str.substr(start);
 }
 
-void validateArgument(const String& argument, const std::vector<String>& availableOptions, const String& subcommand) {
+String validateArgument(
+  const String& argument,
+  const std::map<std::vector<String>, bool>& availableOptions,
+  const String& subcommand
+) {
   bool recognized = false;
+  bool isOptional = true;
+  String result;
   for (const auto& option : availableOptions) {
-    String optionString(option);
-    if (argument == optionString) {
+    auto aliases = option.first;
+    auto it = std::find(aliases.begin(), aliases.end(), argument);
+    if (it != aliases.end()) {
       recognized = true;
+      isOptional = option.second;
+      result = aliases[0];
       break;
     }
   }
@@ -1336,6 +1345,12 @@ void validateArgument(const String& argument, const std::vector<String>& availab
     printHelp(subcommand);
     exit(1);
   }
+  if (!isOptional) {
+    std::cerr << "ERROR: option '" << argument << "' requires a value";
+    printHelp(subcommand);
+    exit(1);
+  }
+  return result;
 }
 
 struct ArgumentsAndEnv {
@@ -1346,7 +1361,7 @@ struct ArgumentsAndEnv {
 
 ArgumentsAndEnv parseCommandLineArguments (
   const std::span<const char*>& options,
-  const std::vector<String>& availableOptions,
+  const std::map<std::vector<String>, bool>& availableOptions,
   const String& subcommand
 ) {
   ArgumentsAndEnv result;
@@ -1419,8 +1434,8 @@ ArgumentsAndEnv parseCommandLineArguments (
     }
 
     // TODO: remove prefix
-    validateArgument(prefix + key, availableOptions, subcommand);
-    handleArgument(argumentsWithValue, argumentsWithoutValue, key, value, subcommand);
+    auto option = validateArgument(prefix + key, availableOptions, subcommand);
+    handleArgument(argumentsWithValue, argumentsWithoutValue, option, value, subcommand);
   }
 
   result.argumentsWithValue = argumentsWithValue;
@@ -1431,9 +1446,9 @@ ArgumentsAndEnv parseCommandLineArguments (
 }
 
 // TODO: remove on PR
-void printParsedArguments(const std::pair<Map, std::vector<String>>& parsedArguments) {
-  const auto& argumentsWithValue = parsedArguments.first;
-  const auto& argumentsWithoutValue = parsedArguments.second;
+void printParsedArguments(ArgumentsAndEnv parsedArguments) {
+  const auto& argumentsWithValue = parsedArguments.argumentsWithValue;
+  const auto& argumentsWithoutValue = parsedArguments.argumentsWithoutValue;
 
   log("Arguments with values:");
   for (const auto& argWithValue : argumentsWithValue) {
@@ -1443,6 +1458,11 @@ void printParsedArguments(const std::pair<Map, std::vector<String>>& parsedArgum
   log("Arguments without values:");
   for (const auto& argWithoutValue : argumentsWithoutValue) {
     std::cout << argWithoutValue << std::endl;
+  }
+
+  log("Environment variables:");
+  for (const auto& env : parsedArguments.envs) {
+    std::cout << env << std::endl;
   }
 }
 
@@ -1592,7 +1612,7 @@ int main (const int argc, const char* argv[]) {
 
   auto createSubcommand = [&](
     const String& subcommand,
-    const std::vector<String>& availableOptions,
+    const std::map<std::vector<String>, bool>& availableOptions,
     const bool& needsConfig,
     std::function<void(std::span<const char *>)> subcommandHandler
   ) -> void {
@@ -1604,7 +1624,7 @@ int main (const int argc, const char* argv[]) {
 
       auto commandlineOptions = std::span(argv, argc).subspan(2, numberOfOptions);
       auto argumentsAndEnv = parseCommandLineArguments(commandlineOptions, availableOptions, subcommand);
-      // printParsedArguments(arguments);
+      // printParsedArguments(argumentsAndEnv);
 
       auto envs = argumentsAndEnv.envs;
 
@@ -1747,7 +1767,10 @@ int main (const int argc, const char* argv[]) {
     }
   };
 
-  createSubcommand("init", { "--config" }, false, [&](const std::span<const char *>& options) -> void {
+  std::map<std::vector<String>, bool> initOptions = {
+    { { "--config" }, true }
+  };
+  createSubcommand("init", initOptions, false, [&](const std::span<const char *>& options) -> void {
     auto configOnly = false;
     for (auto const& option : options) {
       if (is(option, "--config")) {
@@ -1779,7 +1802,13 @@ int main (const int argc, const char* argv[]) {
     exit(0);
   });
 
-  createSubcommand("list-devices", { "--platform", "--ecid", "--udid", "--only" }, false, [&](const std::span<const char *>& options) -> void {
+  std::map<std::vector<String>, bool> listDevicesOptions = {
+    { { "--platform" }, false }, // non-optional
+    { { "--ecid" }, true },
+    { { "--udid" }, true },
+    { { "--only" }, true }
+  };
+  createSubcommand("list-devices", listDevicesOptions, false, [&](const std::span<const char *>& options) -> void {
     String targetPlatform = "";
     bool isUdid = false;
     bool isEcid = false;
@@ -1890,7 +1919,11 @@ int main (const int argc, const char* argv[]) {
     }
   });
 
-  createSubcommand("install-app", { "--platform", "--device" }, true, [&](const std::span<const char *>& options) -> void {
+  std::map<std::vector<String>, bool> installAppOptions = {
+    { { "--platform" }, false }, // non-optional
+    { { "--device" }, true }
+  };
+  createSubcommand("install-app", installAppOptions, true, [&](const std::span<const char *>& options) -> void {
     String commandOptions = "";
     String targetPlatform = "";
     // we need to find the platform first
@@ -1989,7 +2022,11 @@ int main (const int argc, const char* argv[]) {
     exit(0);
   });
 
-  createSubcommand("print-build-dir", { "--platform", "--prod" }, true, [&](const std::span<const char *>& options) -> void {
+  std::map<std::vector<String>, bool> printBuildDirOptions = {
+    { { "--platform" }, true },
+    { { "--prod" }, true }
+  };
+  createSubcommand("print-build-dir", printBuildDirOptions, true, [&](const std::span<const char *>& options) -> void {
     // if --platform is specified, use the build path for the specified platform
     for (auto const option : options) {
       auto targetPlatform = optionValue("print-build-dir", option, "--platform");
@@ -2004,30 +2041,28 @@ int main (const int argc, const char* argv[]) {
     exit(0);
   });
 
-  auto const runOptions = Vector<String> {
-    "--platform",
-    "--host",
-    "--port",
-    "--prod",
-    "--test",
-    "--headless"
+  std::map<std::vector<String>, bool> runOptions = {
+    { { "--platform" }, true },
+    { { "--host" }, true },
+    { { "--port" }, true },
+    { { "--prod" }, true },
+    { { "--test" }, true },
+    { { "--headless" }, true }
   };
 
-  auto buildOptions = Vector<String> {
-    "--quiet",
-    "-o",
-    "--only-build",
-    "-r",
-    "--run",
-    "-p",
-    "-c",
-    "-s",
-    "-e",
-    "-n"
+  std::map<std::vector<String>, bool> buildOptions = {
+    { { "--quiet" }, true },
+    { { "--only-build", "-o" }, true },
+    { { "--run", "-r" }, true },
+    { { "-p" }, true },
+    { { "-c" }, true },
+    { { "-s" }, true },
+    { { "-e" }, true },
+    { { "-n" }, true }
   };
 
-    // Insert the elements of runOptions into buildOptions
-  buildOptions.insert(buildOptions.end(), runOptions.begin(), runOptions.end());
+  // Insert the elements of runOptions into buildOptions
+  buildOptions.insert(runOptions.begin(), runOptions.end());
   createSubcommand("build", buildOptions, true, [&](const std::span<const char *>& options) -> void {
     bool flagRunUserBuildOnly = false;
     bool flagAppStore = false;
@@ -4319,7 +4354,11 @@ int main (const int argc, const char* argv[]) {
     run(targetPlatform, settings, paths, false, flagHeadless, argvForward, androidState);
   });
 
-  createSubcommand("setup", { "--platform", "--yes", "-y" }, false, [&](const std::span<const char *>& options) -> void {
+  std::map<std::vector<String>, bool> setupOptions = {
+    { { "--platform" }, true },
+    { { "--yes", "-y" }, true }
+  };
+  createSubcommand("setup", setupOptions, false, [&](const std::span<const char *>& options) -> void {
     auto help = false;
     auto yes = false;
     String yesArg;
@@ -4430,7 +4469,8 @@ int main (const int argc, const char* argv[]) {
     exit(r);
   });
 
-  createSubcommand("env", { }, true, [&](const std::span<const char *>& options) -> void {
+
+  createSubcommand("env", {}, true, [&](const std::span<const char *>& options) -> void {
     auto envs = Map();
 
     envs["DEBUG"] = getEnv("DEBUG");
