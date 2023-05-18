@@ -146,9 +146,11 @@ export class Channel {
 
   /**
    * A no-op for `Channel` instances. This function always returns `false`.
-   * @return {boolean}
+   * @param {string} name
+   * @param {object} message
+   * @return Promise<boolean>
    */
-  async publish () {
+  async publish (name, message) {
     return false
   }
 
@@ -207,6 +209,10 @@ export class ActiveChannel extends Channel {
     }
   }
 
+  /**
+   * @param {object|any} message
+   * @return Promise<boolean>
+   */
   async publish (message) {
     if (!this.hasSubscribers) return false
 
@@ -410,7 +416,7 @@ export class ChannelGroup extends Channel {
    * object mapping channel names to messages.
    * @param {string} name
    * @param {object} message
-   * @return {boolean}
+   * @return Promise<boolean>
    */
   async publish (name, message) {
     const pending = []

@@ -722,23 +722,9 @@ namespace SSC {
 
     if (url != nullptr) {
       if (String(url.scheme.UTF8String) == "file") {
-        auto preload = createPreload(opts, PreloadOptions { .module = true });
-        auto script = "<script type=\"module\">" + preload + "</script>";
-        auto html = String([[NSString stringWithContentsOfURL: url encoding: NSUTF8StringEncoding error: nil] UTF8String]);
-
-        if (html.find("<head>") != -1) {
-          html = replace(html, "<head>", "<head>" + script);
-        } else if (html.find("<body>") != -1) {
-          html = replace(html, "<body>", "<body>" + script);
-        } else if (html.find("<html>") != -1) {
-          html = replace(html, "<html>", "<html>" + script);
-        } else {
-          html = script + html;
-        }
-
-        [webview
-          loadHTMLString: [NSString stringWithUTF8String: html.c_str()]
-                 baseURL: [url URLByDeletingLastPathComponent]
+        NSString* allowed = [[NSBundle mainBundle] resourcePath];
+        [webview loadFileURL: url
+          allowingReadAccessToURL: [NSURL fileURLWithPath: allowed]
         ];
       } else {
         auto request = [NSMutableURLRequest requestWithURL: url];

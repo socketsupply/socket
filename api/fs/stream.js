@@ -9,6 +9,10 @@ import * as exports from './stream.js'
 export const DEFAULT_STREAM_HIGH_WATER_MARK = 64 * 1024
 
 /**
+ * @typedef {import('./handle.js').FileHandle} FileHandle
+ */
+
+/**
  * A `Readable` stream for a `FileHandle`.
  */
 export class ReadStream extends Readable {

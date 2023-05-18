@@ -198,10 +198,9 @@ fi
 if [[ -n "$BUILD_ANDROID" ]]; then
   abis=($(android_supported_abis))
   platform="android"
-  test_arch="${abis[0]}"
-  clang="$(android_clang "$ANDROID_HOME" "$NDK_VERSION" "$host" "$(host_arch)" "$test_arch")"
+  clang="$(android_clang "$ANDROID_HOME" "$NDK_VERSION" "$host" "$(host_arch)")"
 
-  if ! quiet $clang -v; then
+  if ! quiet "$clang" -v; then
     echo "not ok - Android clang call failed. This could indicate an issue with ANDROID_HOME, missing ndk tools, or incorrectly determined host or target architectures."
     exit 1
   fi
@@ -665,11 +664,12 @@ function _compile_libuv_android {
   local platform="android"
   local arch=$1
   local host_arch="$(host_arch)"
-  clang="$(android_clang "$ANDROID_HOME" "$NDK_VERSION" "$host" "$host_arch" "$arch")"
+  clang="$(android_clang "$ANDROID_HOME" "$NDK_VERSION" "$host" "$host_arch")"
+  clang_target="$(android_clang_target "$arch")"
   ar="$(android_ar "$ANDROID_HOME" "$NDK_VERSION" "$host" "$host_arch")"
   android_includes=$(android_arch_includes "$arch")
 
-  local cflags=(-std=gnu89 -g -pedantic -I"$root"/build/uv/include -I"$root"/build/uv/src -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -D_LARGEFILE_SOURCE -fPIC -Wall -Wextra -Wno-pedantic -Wno-sign-compare -Wno-unused-parameter -Wno-implicit-function-declaration)
+  local cflags=("$clang_target" -std=gnu89 -g -pedantic -I"$root"/build/uv/include -I"$root"/build/uv/src -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -D_LARGEFILE_SOURCE -fPIC -Wall -Wextra -Wno-pedantic -Wno-sign-compare -Wno-unused-parameter -Wno-implicit-function-declaration)
   cflags+=("${android_includes[*]}")
   local objects=()
   local sources=("unix/async.c" "unix/core.c" "unix/dl.c" "unix/fs.c" "unix/getaddrinfo.c" "unix/getnameinfo.c" "unix/linux.c" "unix/loop.c" "unix/loop-watcher.c" "unix/pipe.c" "unix/poll.c" "unix/process.c" "unix/proctitle.c" "unix/random-devurandom.c" "unix/random-getentropy.c" "unix/random-getrandom.c" "unix/random-sysctl-linux.c" "unix/signal.c" "unix/stream.c" "unix/tcp.c" "unix/thread.c" "unix/tty.c" "unix/udp.c" fs-poll.c idna.c inet.c random.c strscpy.c strtok.c threadpool.c timer.c uv-common.c uv-data-getter-setters.c version.c)  

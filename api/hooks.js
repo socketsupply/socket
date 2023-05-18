@@ -30,14 +30,14 @@ export default new class Hooks extends EventTarget {
 
     this.global.addEventListener('load', () => {
       this.didGlobalLoad = true
-    })
+    }, { once: true })
 
     this.global.addEventListener('init', () => {
       this.didRuntimeInit = true
       if (this.didGlobalLoad) {
         queueMicrotask(() => this.dispatchEvent(new CustomEvent('ready')))
       }
-    })
+    }, { once: true })
 
     const events = [
       'data',

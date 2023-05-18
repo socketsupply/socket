@@ -556,6 +556,12 @@ namespace SSC {
   }
 
   inline String getEnv (const char* variableName) {
+    static auto appData = getUserConfig();
+
+    if (appData[String("env_") + variableName].size() > 0) {
+      return appData[String("env_") + variableName];
+    }
+
     #if _WIN32
       char* variableValue = nullptr;
       std::size_t valueSize = 0;
@@ -600,13 +606,19 @@ namespace SSC {
   #endif
   }
 
-  inline void notifyCli () {
+  inline void notifyCli (int signal) {
   #if !defined(_WIN32)
     static auto ppid = getEnv("SSC_CLI_PID");
     static auto pid = ppid.size() > 0 ? std::stoi(ppid) : 0;
     if (pid > 0) {
-      kill(pid, SIGUSR1);
+      kill(pid, signal);
     }
+  #endif
+  }
+
+  inline void notifyCli () {
+  #if !defined(_WIN32)
+    return notifyCli(SIGUSR1);
   #endif
   }
 

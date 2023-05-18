@@ -1,13 +1,11 @@
-import process from 'socket:process'
 import test from 'socket:test'
 
-let loaded = false
-window.onload = () => {
-  loaded = true
-}
+const loaded = new Promise((resolve) => {
+  window.addEventListener('load', () => {
+    resolve(true)
+  }, { once: true })
+})
 
-if (!process.env.SSC_ANDROID_CI) {
-  test('window.onload', (t) => {
-    t.ok(loaded, 'window.onload called')
-  })
-}
+test('window.onload', async (t) => {
+  t.ok(await loaded, 'window.onload called')
+})

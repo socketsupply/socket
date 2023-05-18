@@ -226,10 +226,210 @@ static Process* appProcess = nullptr;
 static std::atomic<int> appStatus = -1;
 static std::mutex appMutex;
 
-void signalHandler (int signal) {
 #if defined(__APPLE__)
+void pollOSLogStream (String bundleIdentifier, int processIdentifier) {
+  // It appears there is a bug with `:predicateWithFormat:` as the
+  // following does not appear to work:
+  //
+  // [NSPredicate
+  //   predicateWithFormat: @"processIdentifier == %d AND subsystem == '%s'",
+  //   app.processIdentifier,
+  //   bundle.bundleIdentifier // or even a literal string "co.socketsupply.socket.tests"
+  // ];
+  //
+  // We can build the predicate query string manually, instead.
+  auto queryStream = StringStream {};
+  auto pid = std::to_string(processIdentifier);
+  auto bid = bundleIdentifier.c_str();
+  queryStream
+    << "("
+    << "  category == 'socket.runtime.desktop' OR "
+    << "  category == 'socket.runtime.mobile' OR "
+    << "  category == 'socket.runtime.debug'"
+    << ") AND ";
+
+    if (processIdentifier > 0) {
+      queryStream << "processIdentifier == " << pid << " AND ";
+    }
+
+  queryStream << "subsystem == '" << bid << "'";
+  // log store query and predicate for filtering logs based on the currently
+  // running application that was just launched and those of a subsystem
+  // directly related to the application's bundle identifier which allows us
+  // to just get logs that came from the application (not foundation/cocoa/webkit)
+  const auto query = [NSString stringWithUTF8String: queryStream.str().c_str()];
+  const auto predicate = [NSPredicate predicateWithFormat: query];
+
+  // use the launch date as the initial marker
+  const auto now = [NSDate now];
+  // and offset it by 1 second in the past as the initial position in the eumeration
+  auto offset = [now dateByAddingTimeInterval: -1];
+
+  // tracks the latest log entry date so we ignore older ones
+  NSDate* latest = nil;
+  NSError* error = nil;
+
+  int pollsAfterTermination = 4;
+  int backoffIndex = 0;
+
+  // lucas series of backoffs
+  static int backoffs[] = {
+    16*2,
+    16*1,
+    16*3,
+    16*4,
+    16*7,
+    16*11,
+    16*18,
+    16*29,
+    32*2,
+    32*1,
+    32*3,
+    32*4,
+    32*7,
+    32*11,
+    32*18,
+    32*29,
+    64*2,
+    64*1,
+    64*3,
+    64*4,
+    64*7,
+    64*11,
+    64*18,
+    64*29,
+  };
+
+  if (processIdentifier > 0) {
+    dispatch_async(queue, ^{
+      while (kill(processIdentifier, 0) == 0) {
+        msleep(256);
+      }
+    });
+  }
+
+  while (appStatus < 0 || pollsAfterTermination > 0) {
+    if (appStatus >= 0) {
+      pollsAfterTermination = pollsAfterTermination - 1;
+      checkLogStore = true;
+    }
+
+    if (!checkLogStore) {
+      auto backoff = backoffs[backoffIndex];
+      backoffIndex = (
+        (backoffIndex + 1) %
+        (sizeof(backoffs) / sizeof(backoffs[0]))
+      );
+
+      msleep(backoff);
+      if (processIdentifier > 0) {
+        continue;
+      }
+    }
+
+    // this is may be set to `true` from a `SIGUSR1` signal
+    checkLogStore = false;
+    @autoreleasepool {
+      // We need a new `OSLogStore` in each so we can keep enumeratoring
+      // the logs until the application terminates. This is required because
+      // each `OSLogStore` instance is a snapshot of the system's universal
+      // log archive at the time of instantiation.
+      auto logs = [OSLogStore
+        storeWithScope: OSLogStoreSystem
+        error: &error
+      ];
+
+      if (error) {
+        appStatus = 1;
+        debug(
+          "ERROR: OSLogStore: (code=%lu, domain=%@) %@",
+          error.code,
+          error.domain,
+          error.localizedDescription
+        );
+        break;
+      }
+
+      auto position = [logs positionWithDate: offset];
+      auto enumerator = [logs
+        entriesEnumeratorWithOptions: 0
+        position: position
+        predicate: predicate
+        error: &error
+      ];
+
+      if (error) {
+        appStatus = 1;
+        debug(
+          "ERROR: OSLogEnumerator: (code=%lu, domain=%@) %@",
+          error.code,
+          error.domain,
+          error.localizedDescription
+        );
+        break;
+      }
+
+      // Enumerate all the logs in this loop and print unredacted and most
+      // recently log entries to stdout
+      for (OSLogEntryLog* entry in enumerator) {
+        if (
+          entry.composedMessage &&
+          (processIdentifier == 0 || entry.processIdentifier == processIdentifier)
+        ) {
+          // visit latest log
+          if (!latest || [latest compare: entry.date] == NSOrderedAscending) {
+            auto message = entry.composedMessage.UTF8String;
+
+            // the OSLogStore may redact log messages the user does not
+            // have access to, filter them out
+            if (String(message) != "<private>") {
+              if (String(message).starts_with("__EXIT_SIGNAL__")) {
+                appStatus = std::stoi(replace(String(message), "__EXIT_SIGNAL__=", ""));
+              } else if (
+                entry.level == OSLogEntryLogLevelDebug ||
+                entry.level == OSLogEntryLogLevelError ||
+                entry.level == OSLogEntryLogLevelFault
+              ) {
+                std::cerr << message << std::endl;
+              } else {
+                std::cout << message << std::endl;
+              }
+            }
+
+            backoffIndex = 0;
+            latest = entry.date;
+            offset = latest;
+          }
+        }
+      }
+    }
+  }
+
+  appMutex.unlock();
+}
+#endif
+
+void signalHandler (int signal) {
+  if (appPid == 0 && signal == SIGTERM) {
+    exit(1);
+    return;
+  }
+
+  if (appPid == 0 && signal == SIGINT) {
+    exit(signal);
+    return;
+  }
+
+#if !defined(_WIN32)
   if (signal == SIGUSR1) {
+  #if defined(__APPLE__)
     checkLogStore = true;
+  #endif
+    return;
+  }
+
+  if (signal == SIGUSR2) {
+    exit(0);
     return;
   }
 #endif
@@ -359,174 +559,10 @@ int runApp (const Path& path, const String& args, bool headless) {
 
       appPid = app.processIdentifier;
 
-      // It appears there is a bug with `:predicateWithFormat:` as the
-      // following does not appear to work:
-      //
-      // [NSPredicate
-      //   predicateWithFormat: @"processIdentifier == %d AND subsystem == '%s'",
-      //   app.processIdentifier,
-      //   bundle.bundleIdentifier // or even a literal string "co.socketsupply.socket.tests"
-      // ];
-      //
-      // We can build the predicate query string manually, instead.
-      auto queryStream = StringStream {};
-      auto pid = std::to_string(app.processIdentifier);
-      auto bid = bundle.bundleIdentifier.UTF8String;
-      queryStream
-        << "("
-        << "  category == 'socket.runtime.desktop' OR "
-        << "  category == 'socket.runtime.debug'"
-        << ") AND "
-        << "processIdentifier == " << pid << " AND "
-        << "subsystem == '" << bid << "'";
-      // log store query and predicate for filtering logs based on the currently
-      // running application that was just launched and those of a subsystem
-      // directly related to the application's bundle identifier which allows us
-      // to just get logs that came from the application (not foundation/cocoa/webkit)
-      const auto query = [NSString stringWithUTF8String: queryStream.str().c_str()];
-      const auto predicate = [NSPredicate predicateWithFormat: query];
-
-      // use the launch date as the initial marker
-      const auto now = app.launchDate;
-      // and offset it by 1 second in the past as the initial position in the eumeration
-      auto offset = [now dateByAddingTimeInterval: -1];
-
-      // tracks the latest log entry date so we ignore older ones
-      NSDate* latest = nil;
-
-      int pollsAfterTermination = 4;
-      int backoffIndex = 0;
-
-      // lucas series of backoffs
-      int backoffs[] = {
-        16*2,
-        16*1,
-        16*3,
-        16*4,
-        16*7,
-        16*11,
-        16*18,
-        16*29,
-        32*2,
-        32*1,
-        32*3,
-        32*4,
-        32*7,
-        32*11,
-        32*18,
-        32*29,
-        64*2,
-        64*1,
-        64*3,
-        64*4,
-        64*7,
-        64*11,
-        64*18,
-        64*29,
-      };
-
-      dispatch_async(queue, ^{
-        while (kill(app.processIdentifier, 0) == 0) {
-          msleep(256);
-        }
-      });
-
-      while (appStatus < 0 || pollsAfterTermination > 0) {
-        if (appStatus >= 0) {
-          pollsAfterTermination = pollsAfterTermination - 1;
-          checkLogStore = true;
-        }
-
-        if (!checkLogStore) {
-          auto backoff = backoffs[backoffIndex];
-          backoffIndex = (
-            (backoffIndex + 1) %
-            (sizeof(backoffs) / sizeof(backoffs[0]))
-          );
-
-          msleep(backoff);
-          continue;
-        }
-
-        // this is set to `true` from a `SIGUSR1` signal
-        checkLogStore = false;
-        @autoreleasepool {
-          // We need a new `OSLogStore` in each so we can keep enumeratoring
-          // the logs until the application terminates. This is required because
-          // each `OSLogStore` instance is a snapshot of the system's universal
-          // log archive at the time of instantiation.
-          auto logs = [OSLogStore
-            storeWithScope: OSLogStoreSystem
-                     error: &error
-          ];
-
-          if (error) {
-            appStatus = 1;
-            debug(
-              "ERROR: OSLogStore: (code=%lu, domain=%@) %@",
-              error.code,
-              error.domain,
-              error.localizedDescription
-            );
-            break;
-          }
-
-          auto position = [logs positionWithDate: offset];
-          auto enumerator = [logs
-            entriesEnumeratorWithOptions: 0
-                                position: position
-                               predicate: predicate
-                                   error: &error
-          ];
-
-          if (error) {
-            appStatus = 1;
-            debug(
-              "ERROR: OSLogEnumerator: (code=%lu, domain=%@) %@",
-              error.code,
-              error.domain,
-              error.localizedDescription
-            );
-            break;
-          }
-
-          // Enumerate all the logs in this loop and print unredacted and most
-          // recently log entries to stdout
-          for (OSLogEntryLog* entry in enumerator) {
-            if (
-              entry.composedMessage &&
-              entry.processIdentifier == app.processIdentifier
-            ) {
-              // visit latest log
-              if (!latest || [latest compare: entry.date] == NSOrderedAscending) {
-                auto message = entry.composedMessage.UTF8String;
-
-                // the OSLogStore may redact log messages the user does not
-                // have access to, filter them out
-                if (String(message) != "<private>") {
-                  if (String(message).starts_with("__EXIT_SIGNAL__")) {
-                    appStatus = std::stoi(replace(String(message), "__EXIT_SIGNAL__=", ""));
-                  } else if (
-                    entry.level == OSLogEntryLogLevelDebug ||
-                    entry.level == OSLogEntryLogLevelError ||
-                    entry.level == OSLogEntryLogLevelFault
-                  ) {
-                    std::cerr << message << std::endl;
-                  } else {
-                    std::cout << message << std::endl;
-                  }
-                }
-
-                backoffIndex = 0;
-                latest = entry.date;
-                offset = latest;
-              }
-            }
-          }
-        }
-      }
-
-      appMutex.unlock();
+      pollOSLogStream(
+        String(bundle.bundleIdentifier.UTF8String),
+        app.processIdentifier
+      );
     }];
 
     // wait for `NSRunningApplication` to terminate
@@ -751,23 +787,15 @@ void runIOSSimulator (const Path& path, Map& settings) {
   StringStream launchAppCommand;
   launchAppCommand
     << "xcrun"
-    << " simctl launch --console-pty booted"
+    << " simctl launch --console --terminate-running-process booted"
     << " " + settings["meta_bundle_identifier"];
 
-  // log(launchAppCommand.str());
+  setEnv("SIMCTL_CHILD_SSC_CLI_PID", std::to_string(getpid()));
   log("launching the app in simulator");
 
-  auto rlaunchApp = exec(launchAppCommand.str().c_str());
-  if (rlaunchApp.exitCode != 0) {
-    log("unable to launch the app: " + launchAppCommand.str());
-    if (rlaunchApp.output.size() > 0) {
-      log(rlaunchApp.output);
-    }
-    exit(rlaunchApp.exitCode);
-  }
+  exit(std::system(launchAppCommand.str().c_str()));
   #endif
 };
-
 
 struct AndroidCliState {
   StringStream adb;
@@ -1238,6 +1266,7 @@ int main (const int argc, const char* argv[]) {
 #ifndef _WIN32
   signal(SIGHUP, signalHandler);
   signal(SIGUSR1, signalHandler);
+  signal(SIGUSR2, signalHandler);
 #endif
 
   signal(SIGINT, signalHandler);
@@ -2691,9 +2720,16 @@ int main (const int argc, const char* argv[]) {
         settings["ini_code"]
       );
 
+      Map xCodeProjectVariables = settings;
+      extendMap(xCodeProjectVariables, Map {
+        {"SSC_SETTINGS", _settings},
+        {"SSC_VERSION", VERSION_STRING},
+        {"SSC_VERSION_HASH", VERSION_HASH_STRING},
+      });
+
       writeFile(paths.platformSpecificOutputPath / "exportOptions.plist", tmpl(gXCodeExportOptions, settings));
       writeFile(paths.platformSpecificOutputPath / "Info.plist", tmpl(gXCodePlist, settings));
-      writeFile(pathToProject / "project.pbxproj", tmpl(gXCodeProject, settings));
+      writeFile(pathToProject / "project.pbxproj", tmpl(gXCodeProject, xCodeProjectVariables));
       writeFile(pathToScheme / schemeName, tmpl(gXCodeScheme, settings));
 
       pathResources = paths.platformSpecificOutputPath / "ui";
@@ -4029,7 +4065,7 @@ int main (const int argc, const char* argv[]) {
           exit(1);
         }
 
-        if (!androidState.emulatorRunning) {
+        if (flagBuildForAndroidEmulator && !androidState.emulatorRunning) {
           if (!initAndStartAndroidEmulator(androidState)) {
             exit(1);
           }
