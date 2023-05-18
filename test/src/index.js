@@ -2,6 +2,7 @@
 import 'socket:test/context' // this should be first
 
 import './webview.js'
+import './hooks.js'
 import './diagnostics.js'
 import './ipc.js'
 import './os.js'
