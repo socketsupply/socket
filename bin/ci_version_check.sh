@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-VERSION_SSC=$(ssc -v)
+VERSION_SSC=$(ssc -v | head -n 1)
 
 VERSION_TXT=$(cat VERSION.txt)
 VERSION_GIT=$(git rev-parse --short=8 HEAD)
