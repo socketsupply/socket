@@ -52,7 +52,6 @@ namespace SSC {
       MessageCallback onMessage = [](const String) {};
       ExitCallback onExit = nullptr;
       IPC::Bridge *bridge = nullptr;
-      SSC::String preloadJavascript;
       int index = 0;
       int width = 0;
       int height = 0;

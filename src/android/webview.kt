@@ -13,7 +13,6 @@ fun isAssetUri (uri: android.net.Uri): Boolean {
   // handle no path segments, not currently required but future proofing
   val path = uri.pathSegments?.get(0)
 
-
   if (host == "appassets.androidplatform.net") {
     return true
   }
@@ -38,14 +37,7 @@ open class WebView (context: android.content.Context) : android.webkit.WebView(c
 open class WebViewClient (activity: WebViewActivity) : android.webkit.WebViewClient() {
   protected val activity = WeakReference(activity)
   open protected val TAG = "WebViewClient"
-  open protected val assetManager = activity.applicationContext.resources.assets
-  open protected var preloadJavascript = ""
   open protected var rootDirectory = ""
-
-  // use 'put' because 'set' is reserved
-  fun putPreloadJavascript(preloadJavascript: String) {
-    this.preloadJavascript = preloadJavascript
-  }
 
   fun putRootDirectory(rootDirectory: String) {
     this.rootDirectory = rootDirectory
@@ -99,9 +91,8 @@ open class WebViewClient (activity: WebViewActivity) : android.webkit.WebViewCli
   ): android.webkit.WebResourceResponse? {
     var url = request.url
 
-    // these should be set in window loader
+    // should be set in window loader
     assert(rootDirectory.length > 0)
-    assert(preloadJavascript.length > 0)
 
     // look for updated resources in ${pwd}/files
     // live update systems can write to /files (/assets is read only)
@@ -118,18 +109,12 @@ open class WebViewClient (activity: WebViewActivity) : android.webkit.WebViewCli
       val file = java.io.File(filePath.toString())
       if (file.exists() && !file.isDirectory()) {
         var bytes = java.io.FileInputStream(file).readAllBytes()
-        var output = String(bytes)
-        if (filePath.toString().lowercase().endsWith(".html")) {
-          output = injectPreload(output, preloadJavascript)
-        }
-        bytes = output.toByteArray()
         val stream = java.io.PipedOutputStream()
         kotlin.concurrent.thread {
           stream.write(bytes, 0, bytes.size)
           stream.close()
         }
 
-        // var stream = java.io.FileInputStream(filePath.toString())
         val response = android.webkit.WebResourceResponse(
           if (filePath.toString().endsWith(".js")) "text/javascript" else "text/html",
           "utf-8",
@@ -155,27 +140,17 @@ open class WebViewClient (activity: WebViewActivity) : android.webkit.WebViewCli
         path += ".js"
       }
 
-      var moduleTemplate: String
+      url = android.net.Uri.Builder()
+        .scheme("https")
+        .authority("appassets.androidplatform.net")
+        .path("/assets/socket/${path}")
+        .build()
 
-      if (path == "preload.js") {
-        var file = assetManager.open("socket/${path}")
-        moduleTemplate = String(file.readAllBytes())
-          .replace("__PRELOAD_JS_PLACEHOLDER__", preloadJavascript.replace("`", "\\`"))
-        file.close()
-      } else {
-
-        url = android.net.Uri.Builder()
-          .scheme("https")
-          .authority("appassets.androidplatform.net")
-          .path("/assets/socket/${path}")
-          .build()
-
-        moduleTemplate = """
+      val moduleTemplate = """
 import module from '$url'
 export * from '$url'
 export default module
       """
-      }
 
       val stream = java.io.PipedOutputStream()
       val response = android.webkit.WebResourceResponse(
@@ -280,35 +255,6 @@ export default module
     bitmap: android.graphics.Bitmap?
   ) {
     this.activity.get()?.onPageStarted(view, url, bitmap)
-  }  
-
-  companion object {
-    fun injectPreload (htmlString: String, source: String): String {
-      return if (htmlString.matches("<head>".toRegex())) {
-        htmlString.replace("<head>","""
-          <head>
-            <script type="module">
-              ${source}
-            </script>
-        """)
-      } else if (htmlString.matches("<body>".toRegex())) {
-        htmlString.replace("<body>","""
-          <body>
-            <script type="module">
-              ${source}
-            </script>
-        """)
-      } else if (htmlString.matches("<html>".toRegex())) {
-        htmlString.replace("<html>","""
-          <html>
-            <script type="module">
-              ${source}
-            </script>
-        """)
-      } else {
-        """<script type="module">${source}</script>""" + htmlString
-      }
-    }
   }
 }
 
