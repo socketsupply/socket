@@ -1273,7 +1273,8 @@ int main (const int argc, const char* argv[]) {
   signal(SIGTERM, signalHandler);
 
   if (is(subcommand, "-v") || is(subcommand, "--version")) {
-    std::cout << SSC::VERSION_FULL_STRING << std::endl;
+    std::cout << SSC::VERSION_FULL_STRING << std::endl << std::endl;
+    std::cout << "Installation path: " << getSocketHome() << std::endl;
     exit(0);
   }
 
