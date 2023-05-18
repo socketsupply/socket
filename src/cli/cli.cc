@@ -1340,15 +1340,24 @@ ArgumentsAndEnv parseCommandLineArguments (
 
   for (size_t i = 0; i < options.size(); i++) {
     String arg = options[i];
+    size_t equalPos = arg.find('=');
+    String key;
+    String value;
 
     if (arg == "-h" || arg == "--help") {
       printHelp(subcommand);
       exit(0);
     }
 
-    size_t equalPos = arg.find('=');
-    String key;
-    String value;
+    if (equal(key, "--verbose")) {
+      setEnv("SSC_VERBOSE", "1");
+      continue;
+    }
+
+    if (equal(key, "--debug")) {
+      setEnv("SSC_DEBUG", "1");
+      continue;
+    }
 
     // Argument in the form "--key=value" or "-k=value"
     if (equalPos != String::npos) {
@@ -1365,21 +1374,11 @@ ArgumentsAndEnv parseCommandLineArguments (
       // }
     }
 
-    if (equal(key, "--verbose")) {
-      setEnv("SSC_VERBOSE", "1");
-      continue;
-    }
-
-    if (equal(key, "--debug")) {
-      setEnv("SSC_DEBUG", "1");
-      continue;
+    if (value.size() == 0) {
+      value = rc[subcommand + "_" + key];
     }
 
     if (equal(key, "--env")) {
-      if (value.size() == 0) {
-        value = rc[subcommand + "_--env"];
-      }
-
       if (value.size() > 0) {
         auto parts = parseStringList(value);
         for (const auto& part : parts) {
