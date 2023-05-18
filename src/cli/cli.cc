@@ -1369,7 +1369,7 @@ ArgumentsAndEnv parseCommandLineArguments (
       if (i + 1 < options.size() && options[i + 1][0] != '-') {
         value = options[++i];
       } else {
-        // Argument in the form "--key"
+        // Argument in the form "--key" or "-k"
         value = "";
       }
     }
@@ -4275,7 +4275,6 @@ int main (const int argc, const char* argv[]) {
 
     exit(r);
   });
-
 
   createSubcommand("env", {}, true, [&](Map argumentsWithValue, std::unordered_set<String> argumentsWithoutValue) -> void {
     auto envs = Map();
