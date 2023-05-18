@@ -317,7 +317,7 @@ function _build_runtime_library() {
     "$root/bin/build-runtime-library.sh" --arch "$arch" --platform ios $pass_force $pass_ignore_header_mtimes & pids+=($!)
     "$root/bin/build-runtime-library.sh" --arch x86_64 --platform ios-simulator $pass_force $pass_ignore_header_mtimes & pids+=($!)
     if [[ "$arch" = "arm64" ]] && [[ -z "$NO_IOS" ]]; then
-      "$root/bin/build-runtime-library.sh" --arch "$arch" --platform ios-simulator $pass_force $pass_ignore_header_mtimes & pids+=($!)    
+      "$root/bin/build-runtime-library.sh" --arch "$arch" --platform ios-simulator $pass_force $pass_ignore_header_mtimes & pids+=($!)
     fi
   fi
 
@@ -672,7 +672,7 @@ function _compile_libuv_android {
   local cflags=("$clang_target" -std=gnu89 -g -pedantic -I"$root"/build/uv/include -I"$root"/build/uv/src -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -D_LARGEFILE_SOURCE -fPIC -Wall -Wextra -Wno-pedantic -Wno-sign-compare -Wno-unused-parameter -Wno-implicit-function-declaration)
   cflags+=("${android_includes[*]}")
   local objects=()
-  local sources=("unix/async.c" "unix/core.c" "unix/dl.c" "unix/fs.c" "unix/getaddrinfo.c" "unix/getnameinfo.c" "unix/linux.c" "unix/loop.c" "unix/loop-watcher.c" "unix/pipe.c" "unix/poll.c" "unix/process.c" "unix/proctitle.c" "unix/random-devurandom.c" "unix/random-getentropy.c" "unix/random-getrandom.c" "unix/random-sysctl-linux.c" "unix/signal.c" "unix/stream.c" "unix/tcp.c" "unix/thread.c" "unix/tty.c" "unix/udp.c" fs-poll.c idna.c inet.c random.c strscpy.c strtok.c threadpool.c timer.c uv-common.c uv-data-getter-setters.c version.c)  
+  local sources=("unix/async.c" "unix/core.c" "unix/dl.c" "unix/fs.c" "unix/getaddrinfo.c" "unix/getnameinfo.c" "unix/linux.c" "unix/loop.c" "unix/loop-watcher.c" "unix/pipe.c" "unix/poll.c" "unix/process.c" "unix/proctitle.c" "unix/random-devurandom.c" "unix/random-getentropy.c" "unix/random-getrandom.c" "unix/random-sysctl-linux.c" "unix/signal.c" "unix/stream.c" "unix/tcp.c" "unix/thread.c" "unix/tty.c" "unix/udp.c" fs-poll.c idna.c inet.c random.c strscpy.c strtok.c threadpool.c timer.c uv-common.c uv-data-getter-setters.c version.c)
 
   declare output_directory="$root/build/$arch-$platform/uv$d"
   mkdir -p "$output_directory"
@@ -912,7 +912,7 @@ if [[ "$(uname -s)" == "Darwin" ]] && [[ -z "$NO_IOS" ]]; then
   _setSDKVersion iPhoneOS
 
   _compile_libuv arm64 iPhoneOS & pids+=($!)
-  _compile_libuv x86_64 iPhoneSimulator & pids+=($!)  
+  _compile_libuv x86_64 iPhoneSimulator & pids+=($!)
   if [[ "$arch" = "arm64" ]]; then
     _compile_libuv arm64 iPhoneSimulator & pids+=($!)
   fi
