@@ -1314,14 +1314,6 @@ void handleArgument(
   }
 }
 
-String trimHeadingDashes(const String& str) {
-  size_t start = 0;
-  while (start < str.length() && str[start] == '-') {
-    start++;
-  }
-  return str.substr(start);
-}
-
 String validateArgument(
   const String& argument,
   const std::map<std::vector<String>, bool>& availableOptions,
@@ -1372,52 +1364,38 @@ ArgumentsAndEnv parseCommandLineArguments (
   for (size_t i = 0; i < options.size(); i++) {
     String arg = options[i];
 
+    if (arg == "-h" || arg == "--help") {
+      printHelp(subcommand);
+      exit(0);
+    }
+
     size_t equalPos = arg.find('=');
     String key;
     String value;
     String prefix; // TODO refactor
 
-    if (arg.substr(0, 2) == "--") {
-      prefix = "--";
-      // Argument in the form "--key=value"
-      if (equalPos != String::npos) {
-        key = arg.substr(2, equalPos - 2);
-        value = arg.substr(equalPos + 1);
-      } else {
-        key = arg.substr(2);
-        // // Argument in the form "--key value"
-        // if (i + 1 < options.size() && options[i + 1][0] != '-') {
-        //   value = options[++i];
-        // } else {
-          // Argument in the form "--key"
-          value = "";
-        // }
-      }
-    } else if (arg[0] == '-') {
-      prefix = "-";
-      // Argument in the form "-k=value"
-      if (equalPos != String::npos) {
-        key = arg.substr(1, equalPos - 1);
-        value = arg.substr(equalPos + 1);
-      } else {
-        key = arg.substr(1);
-        // // Argument in the form "-k value"
-        // if (i + 1 < options.size() && options[i + 1][0] != '-') {
-        //   value = options[++i];
-        // } else {
-          // Argument in the form "-k"///////
-          value = "";
-        // }
-      }
+    // Argument in the form "--key=value" or "-k=value"
+    if (equalPos != String::npos) {
+      key = arg.substr(0, equalPos);
+      value = arg.substr(equalPos + 1);
+    } else {
+      key = arg;
+      // // Argument in the form "--key value" or "-k value"
+      // if (i + 1 < options.size() && options[i + 1][0] != '-') {
+      //   value = options[++i];
+      // } else {
+        // Argument in the form "--key"
+        value = "";
+      // }
     }
 
     // TODO: remove prefix and continue early
-    if (is(prefix + key, "--verbose")) {
+    if (is(key, "--verbose")) {
       setEnv("SSC_VERBOSE", "1");
       continue;
     }
 
-    if (is(prefix + key, "--debug")) {
+    if (is(key, "--debug")) {
       setEnv("SSC_DEBUG", "1");
       continue;
     }
@@ -1434,7 +1412,7 @@ ArgumentsAndEnv parseCommandLineArguments (
     }
 
     // TODO: remove prefix
-    auto option = validateArgument(prefix + key, availableOptions, subcommand);
+    auto option = validateArgument(key, availableOptions, subcommand);
     handleArgument(argumentsWithValue, argumentsWithoutValue, option, value, subcommand);
   }
 
@@ -1615,14 +1593,9 @@ int main (const int argc, const char* argv[]) {
     const String& subcommand,
     const std::map<std::vector<String>, bool>& availableOptions,
     const bool& needsConfig,
-    std::function<void(std::span<const char *>)> subcommandHandler
+    std::function<void(Map, std::vector<String>)> subcommandHandler
   ) -> void {
     if (argv[1] == subcommand) {
-      if (argc > 2 && (is(argv[2], "-h") || is(argv[2], "--help"))) {
-        printHelp(subcommand);
-        exit(0);
-      }
-
       auto commandlineOptions = std::span(argv, argc).subspan(2, numberOfOptions);
       auto argumentsAndEnv = parseCommandLineArguments(commandlineOptions, availableOptions, subcommand);
       // printParsedArguments(argumentsAndEnv);
@@ -1763,21 +1736,15 @@ int main (const int argc, const char* argv[]) {
         }
       }
 
-      // TODO: subcommandHandler(argumentsAndEnv.argumentsWithValue, argumentsAndEnv.argumentsWithoutValue);
-      subcommandHandler(commandlineOptions);
+      subcommandHandler(argumentsAndEnv.argumentsWithValue, argumentsAndEnv.argumentsWithoutValue);
     }
   };
 
   std::map<std::vector<String>, bool> initOptions = {
     { { "--config" }, true }
   };
-  createSubcommand("init", initOptions, false, [&](const std::span<const char *>& options) -> void {
-    auto configOnly = false;
-    for (auto const& option : options) {
-      if (is(option, "--config")) {
-        configOnly = true;
-      }
-    }
+  createSubcommand("init", initOptions, false, [&](Map argumentsWithValue, std::vector<String> argumentsWithoutValue) -> void {
+    auto configOnly = std::find(argumentsWithoutValue.begin(), argumentsWithoutValue.end(), "--config") != argumentsWithoutValue.end();
     if (fs::exists(targetPath / "socket.ini")) {
       log("socket.ini already exists in " + targetPath.string());
       exit(0);
@@ -1809,31 +1776,19 @@ int main (const int argc, const char* argv[]) {
     { { "--udid" }, true },
     { { "--only" }, true }
   };
-  createSubcommand("list-devices", listDevicesOptions, false, [&](const std::span<const char *>& options) -> void {
-    String targetPlatform = "";
-    bool isUdid = false;
-    bool isEcid = false;
-    bool isOnly = false;
-    for (auto const& option : options) {
-      auto platform = optionValue("list-devices", options[0], "--platform");
-      if (platform.size() > 0) {
-        targetPlatform = platform;
-      }
-      if (is(option, "--udid") || is(rc["list-devices_udid"], "true")) {
-        isUdid = true;
-      }
-      if (is(option, "--ecid") || is(rc["list-devices_ecid"], "true")) {
-        isEcid = true;
-      }
-      if (is(option, "--only") || is(rc["list-devices_only"], "true")) {
-        isOnly = true;
-      }
-    }
+  createSubcommand("list-devices", listDevicesOptions, false, [&](Map argumentsWithValue, std::vector<String> argumentsWithoutValue) -> void {
+    // TODO: use unordered_set
+    bool isUdid =
+      std::find(argumentsWithoutValue.begin(), argumentsWithoutValue.end(), "--udid") != argumentsWithoutValue.end() ||
+      is(rc["list-devices_udid"], "true");
+    bool isEcid =
+      std::find(argumentsWithoutValue.begin(), argumentsWithoutValue.end(), "--ecid") != argumentsWithoutValue.end() ||
+      is(rc["list-devices_ecid"], "true");
+    bool isOnly =
+      std::find(argumentsWithoutValue.begin(), argumentsWithoutValue.end(), "--only") != argumentsWithoutValue.end() ||
+      is(rc["list-devices_only"], "true");
 
-    if (targetPlatform.size() == 0) {
-      log("ERROR: --platform option is required");
-      exit(1);
-    }
+    auto targetPlatform = argumentsWithValue["--platform"];
 
     if (targetPlatform == "ios" && platform.mac) {
       if (isUdid && isEcid) {
@@ -1924,43 +1879,28 @@ int main (const int argc, const char* argv[]) {
     { { "--platform" }, false }, // non-optional
     { { "--device" }, true }
   };
-  createSubcommand("install-app", installAppOptions, true, [&](const std::span<const char *>& options) -> void {
+  createSubcommand("install-app", installAppOptions, true, [&](Map argumentsWithValue, std::vector<String> argumentsWithoutValue) -> void {
     String commandOptions = "";
-    String targetPlatform = "";
-    // we need to find the platform first
-    for (auto const option : options) {
-      if (targetPlatform.size() == 0) {
-        targetPlatform = optionValue("install-app", option, "--platform");
+    String targetPlatform = argumentsWithValue["--platform"];
+
+    if (targetPlatform.size() > 0) {
+      // just assume android when 'android-emulator' is given
+      if (targetPlatform == "android-emulator") {
+        targetPlatform = "android";
       }
 
-      if (targetPlatform.size() > 0) {
-        // just assume android when 'android-emulator' is given
-        if (targetPlatform == "android-emulator") {
-          targetPlatform = "android";
-        }
-
-        if (targetPlatform != "ios" && targetPlatform != "android") {
-          std::cout << "Unsupported platform: " << targetPlatform << std::endl;
-          exit(1);
-        }
+      if (targetPlatform != "ios" && targetPlatform != "android") {
+        std::cout << "Unsupported platform: " << targetPlatform << std::endl;
+        exit(1);
       }
     }
 
-    if (targetPlatform.size() == 0) {
-      log("--platform option is required.");
-      printHelp("install-app");
-      exit(1);
-    }
-
-    // then we need to find the device
-    for (auto const option : options) {
-      auto device = optionValue("install-app", option, "--device");
-      if (device.size() > 0) {
-        if (targetPlatform == "ios") {
-          commandOptions += " --ecid " + device + " ";
-        } else if (targetPlatform == "android") {
-          commandOptions += " -s " + device;
-        }
+    auto device = argumentsWithValue["--device"];
+    if (device.size() > 0) {
+      if (targetPlatform == "ios") {
+        commandOptions += " --ecid " + device + " ";
+      } else if (targetPlatform == "android") {
+        commandOptions += " -s " + device;
       }
     }
 
@@ -1974,7 +1914,7 @@ int main (const int argc, const char* argv[]) {
       );
 
       if (!fs::exists(ipaPath)) {
-        log("Could not find " + ipaPath.string());
+        log("ERROR: Could not find " + ipaPath.string());
         exit(1);
       }
 
@@ -2027,15 +1967,13 @@ int main (const int argc, const char* argv[]) {
     { { "--platform" }, true },
     { { "--prod" }, true }
   };
-  createSubcommand("print-build-dir", printBuildDirOptions, true, [&](const std::span<const char *>& options) -> void {
+  createSubcommand("print-build-dir", printBuildDirOptions, true, [&](Map argumentsWithValue, std::vector<String> argumentsWithoutValue) -> void {
     // if --platform is specified, use the build path for the specified platform
-    for (auto const option : options) {
-      auto targetPlatform = optionValue("print-build-dir", option, "--platform");
-      if (targetPlatform.size() > 0) {
-        Path path = getPaths(targetPlatform).pathResourcesRelativeToUserBuild;
-        std::cout << path.string() << std::endl;
-        exit(0);
-      }
+    auto targetPlatform = argumentsWithValue["--platform"];
+    if (targetPlatform.size() > 0) {
+      Path path = getPaths(targetPlatform).pathResourcesRelativeToUserBuild;
+      std::cout << path.string() << std::endl;
+      exit(0);
     }
     // if no --platform option is provided, print the current platform build path
     std::cout << getPaths(platform.os).pathResourcesRelativeToUserBuild.string() << std::endl;
@@ -2064,29 +2002,120 @@ int main (const int argc, const char* argv[]) {
 
   // Insert the elements of runOptions into buildOptions
   buildOptions.insert(runOptions.begin(), runOptions.end());
-  createSubcommand("build", buildOptions, true, [&](const std::span<const char *>& options) -> void {
-    bool flagRunUserBuildOnly = false;
-    bool flagAppStore = false;
-    bool flagCodeSign = false;
-    bool flagHeadless = false;
-    bool flagShouldRun = false;
-    bool flagEntitlements = false;
-    bool flagShouldNotarize = false;
-    bool flagShouldPackage = false;
+  createSubcommand("build", buildOptions, true, [&](Map argumentsWithValue, std::vector<String> argumentsWithoutValue) -> void {
+    String argvForward = "";
+    String targetPlatform = argumentsWithValue["--platform"];
+    bool flagRunUserBuildOnly =
+      std::find(argumentsWithoutValue.begin(), argumentsWithoutValue.end(), "--only-build") != argumentsWithoutValue.end() ||
+      is(rc["build_only"], "true");
+    bool flagAppStore =
+      std::find(argumentsWithoutValue.begin(), argumentsWithoutValue.end(), "-s") != argumentsWithoutValue.end() ||
+      is(rc["build_app_store"], "true");
+    bool flagCodeSign =
+      std::find(argumentsWithoutValue.begin(), argumentsWithoutValue.end(), "-c") != argumentsWithoutValue.end() ||
+      is(rc["build_codesign"], "true");
+    bool flagHeadless =
+      std::find(argumentsWithoutValue.begin(), argumentsWithoutValue.end(), "--headless") != argumentsWithoutValue.end() ||
+      is(rc["build_headless"], "true");
+    bool flagShouldRun =
+      std::find(argumentsWithoutValue.begin(), argumentsWithoutValue.end(), "--run") != argumentsWithoutValue.end() ||
+      is(rc["build_run"], "true");
+    bool flagEntitlements =
+      std::find(argumentsWithoutValue.begin(), argumentsWithoutValue.end(), "-e") != argumentsWithoutValue.end() ||
+      is(rc["build_entitlements"], "true");
+    bool flagShouldNotarize =
+      std::find(argumentsWithoutValue.begin(), argumentsWithoutValue.end(), "-n") != argumentsWithoutValue.end() ||
+      is(rc["build_notarize"], "true");
+    bool flagShouldPackage =
+      std::find(argumentsWithoutValue.begin(), argumentsWithoutValue.end(), "-p") != argumentsWithoutValue.end() ||
+      is(rc["build_package"], "true");
     bool flagBuildForIOS = false;
     bool flagBuildForAndroid = false;
     bool flagBuildForAndroidEmulator = false;
     bool flagBuildForSimulator = false;
-    bool flagBuildTest = false;
+    bool flagBuildTest =
+      std::find(argumentsWithoutValue.begin(), argumentsWithoutValue.end(), "--test") != argumentsWithoutValue.end() ||
+      argumentsWithValue["--test"].size() > 0;
+    String testFile = argumentsWithValue["--test"];
 
-    String argvForward = "";
-    String targetPlatform = "";
-    String testFile = "";
+    if (flagBuildTest && testFile.size() == 0) {
+      log("ERROR: --test value is required.");
+      exit(1);
+    }
+    if (flagBuildTest && fs::exists(testFile) == false) {
+      log("ERROR: file " + testFile + " does not exist.");
+      exit(1);
+    }
 
-    String hostArg = "";
-    String portArg = "";
-    String devHost("localhost");
-    String devPort("0");
+    if (testFile.size() > 0) {
+      argvForward += " --test";
+    }
+
+    if (flagHeadless) {
+      argvForward += " --headless";
+    }
+
+    if (
+      std::find(argumentsWithoutValue.begin(), argumentsWithoutValue.end(), "--quite") != argumentsWithoutValue.end() ||
+      is(rc["build_quiet"], "true")
+    ) {
+      flagQuietMode = true;
+    }
+
+    if (flagEntitlements && !platform.mac) {
+      log("WARNING: Entitlements are only supported on macOS. Ignoring option.");
+      flagEntitlements = false;
+    }
+
+    if (flagShouldNotarize && !platform.mac) {
+      log("WARNING: Notarization is only supported on macOS. Ignoring option.");
+      flagShouldNotarize = false;
+    }
+
+    if (targetPlatform.size() > 0) {
+      if (targetPlatform == "ios") {
+        flagBuildForIOS = true;
+      } else if (targetPlatform == "android") {
+        flagBuildForAndroid = true;
+      } else if (targetPlatform == "android-emulator") {
+        flagBuildForAndroid = true;
+        flagBuildForAndroidEmulator = true;
+      } else if (targetPlatform == "ios-simulator") {
+        flagBuildForIOS = true;
+        flagBuildForSimulator = true;
+      } else {
+        std::cout << "Unsupported platform: " << targetPlatform << std::endl;
+        exit(1);
+      }
+    } else {
+      targetPlatform = platform.os;
+    }
+    auto platformFriendlyName = targetPlatform == "win32" ? "windows" : targetPlatform;
+    platformFriendlyName = platformFriendlyName == "android-emulator" ? "android" : platformFriendlyName;
+
+    String devHost = "localhost";
+    if (argumentsWithValue.count("host") > 0) {
+      devHost = argumentsWithValue["--host"];
+    } else {
+      if (flagBuildForIOS || flagBuildForAndroid) {
+        auto r = exec((!platform.win)
+          ? "ifconfig | grep -w 'inet' | awk '!match($2, \"^127.\") {print $2; exit}' | tr -d '\n'"
+          : "PowerShell -Command ((Get-NetIPAddress -AddressFamily IPV4).IPAddress ^| Select-Object -first 1)"
+        );
+
+        if (r.exitCode == 0) {
+          devHost = r.output;
+        }
+      }
+    }
+    settings.insert(std::make_pair("host", devHost));
+
+    String devPort = "0";
+    if (argumentsWithValue.count("port") > 0) {
+      devPort = argumentsWithValue["--port"];
+    }
+    settings.insert(std::make_pair("port", devPort));
+
     auto cnt = 0;
 
     AndroidCliState androidState;
@@ -2108,127 +2137,6 @@ int main (const int argc, const char* argv[]) {
     String quote = !platform.win ? "'" : "\"";
     String slash = !platform.win ? "/" : "\\";
 
-    for (auto const arg : options) {
-      if (is(arg, "-h") || is(arg, "--help")) {
-        printHelp("build");
-        exit(0);
-      }
-
-      if (is(arg, "-c") || is(rc["build_code_sign"], "true")) {
-        flagCodeSign = true;
-      }
-
-      if (is(arg, "-e") || is(rc["build_entitlements"], "true")) {
-        if (platform.os != "mac") {
-          log("WARNING: Build entitlements (-e) are only supported on macOS. Ignoring option.");
-        } else {
-          // TODO: we don't use it
-          flagEntitlements = true;
-        }
-      }
-
-      if (is(arg, "-n") || is(rc["build_notarize"], "true")) {
-        if (platform.os != "mac") {
-          log("WARNING: Build notarization (-n) are only supported on macOS. Ignoring option.");
-        } else {
-          flagShouldNotarize = true;
-        }
-      }
-
-      if (is(arg, "-o") || is(arg, "--only-build") || is(rc["build_only"], "true")) {
-        flagRunUserBuildOnly = true;
-      }
-
-      if (is(arg, "-p") || is(rc["build_package"], "true")) {
-        flagShouldPackage = true;
-      }
-
-      if (is(arg, "-r") || is(arg, "--run") || is(rc["build_run"], "true")) {
-        flagShouldRun = true;
-      }
-
-      if (is(arg, "-s")|| is(rc["build_app_store"], "true")) {
-        flagAppStore = true;
-      }
-
-      if (is(arg, "--test")) {
-        flagBuildTest = true;
-      }
-
-      const auto testFileTmp = optionValue("build", arg, "--test");
-      if (testFileTmp.size() > 0) {
-        testFile = testFileTmp;
-        flagBuildTest = true;
-        argvForward += " " + String(arg);
-      }
-
-      if (is(arg, "--headless") || is(rc["build_headless"], "true")) {
-        argvForward += " --headless";
-        flagHeadless = true;
-      }
-
-      if (is(arg, "--quiet") || is(rc["build_quiet"], "true")) {
-        flagQuietMode = true;
-      }
-
-      if (targetPlatform.size() == 0) {
-        targetPlatform = optionValue("build", arg, "--platform");
-        if (targetPlatform.size() > 0) {
-          if (targetPlatform == "ios") {
-            flagBuildForIOS = true;
-          } else if (targetPlatform == "android") {
-            flagBuildForAndroid = true;
-          } else if (targetPlatform == "android-emulator") {
-            flagBuildForAndroid = true;
-            flagBuildForAndroidEmulator = true;
-          } else if (targetPlatform == "ios-simulator") {
-            flagBuildForIOS = true;
-            flagBuildForSimulator = true;
-          } else {
-            log("Unknown platform: " + targetPlatform);
-            exit(1);
-          }
-        }
-      }
-
-      if (hostArg.size() == 0) {
-        hostArg = optionValue("build", arg, "--host");
-        if (hostArg.size() > 0) {
-          devHost = hostArg;
-        } else {
-          if (flagBuildForIOS || flagBuildForAndroid) {
-            auto r = exec((!platform.win)
-              ? "ifconfig | grep -w 'inet' | awk '!match($2, \"^127.\") {print $2; exit}' | tr -d '\n'"
-              : "PowerShell -Command ((Get-NetIPAddress -AddressFamily IPV4).IPAddress ^| Select-Object -first 1)"
-            );
-
-            if (r.exitCode == 0) {
-              devHost = r.output;
-            }
-          }
-        }
-        settings.insert(std::make_pair("host", devHost));
-      }
-
-      if (portArg.size() == 0) {
-        portArg = optionValue("build", arg, "--port");
-        if (portArg.size() > 0) {
-          devPort = portArg;
-        }
-        settings.insert(std::make_pair("port", devPort));
-      }
-    }
-
-    if (flagBuildTest && testFile.size() == 0) {
-      log("ERROR: --test value is required.");
-      exit(1);
-    }
-
-    if (flagBuildTest && fs::exists(testFile) == false) {
-      log("ERROR: file " + testFile + " does not exist.");
-      exit(1);
-    }
-
     if (settings.count("meta_file_limit") == 0) {
       settings["meta_file_limit"] = "4096";
     }
@@ -2245,10 +2153,6 @@ int main (const int argc, const char* argv[]) {
         setEnv("CXX=/usr/bin/clang++");
       }
     }
-
-    targetPlatform = targetPlatform.size() > 0 ? targetPlatform : platform.os;
-    auto platformFriendlyName = targetPlatform == "win32" ? "windows" : targetPlatform;
-    platformFriendlyName = platformFriendlyName == "android-emulator" ? "android" : platformFriendlyName;
 
     if (getEnv("CI").size() == 0 && !isSetupComplete(platformFriendlyName)) {
       log("Build dependency setup is incomplete for " + platformFriendlyName + ", Use 'setup' to resolve: ");
@@ -4249,19 +4153,72 @@ int main (const int argc, const char* argv[]) {
     exit(exitCode);
   });
 
-  createSubcommand("run", runOptions, true, [&](const std::span<const char *>& options) -> void {
+  createSubcommand("run", runOptions, true, [&](Map argumentsWithValue, std::vector<String> argumentsWithoutValue) -> void {
     String argvForward = "";
-    bool flagHeadless = false;
-    bool flagTest = false;
-    String targetPlatform = "";
-    String testFile = "";
+    bool flagHeadless =
+      std::find(argumentsWithoutValue.begin(), argumentsWithoutValue.end(), "--headless") != argumentsWithoutValue.end() ||
+      is(rc["run_headless"], "true");
+    bool flagTest =
+      std::find(argumentsWithoutValue.begin(), argumentsWithoutValue.end(), "--test") != argumentsWithoutValue.end() ||
+      argumentsWithValue["--test"].size() > 0;
+    String targetPlatform = argumentsWithValue["--platform"];
+    String testFile = argumentsWithValue["--test"];
     bool isForIOS = false;
     bool isForAndroid = false;
 
-    String hostArg = "";
-    String portArg = "";
-    String devHost("localhost");
-    String devPort("0");
+    if (flagTest && testFile.size() == 0) {
+      log("ERROR: --test value is required.");
+      exit(1);
+    }
+    if (flagTest && fs::exists(testFile) == false) {
+      log("ERROR: file " + testFile + " does not exist.");
+      exit(1);
+    }
+
+    if (testFile.size() > 0) {
+      argvForward += " --test";
+    }
+
+    if (flagHeadless) {
+      argvForward += " --headless";
+    }
+
+    if (targetPlatform.size() > 0) {
+      if (targetPlatform == "ios" || targetPlatform == "ios-simulator") {
+        isForIOS = true;
+      } else if (targetPlatform == "android" || targetPlatform == "android-emulator") {
+        isForAndroid = true;
+      } else {
+        log("Unknown platform: " + targetPlatform);
+        exit(1);
+      }
+    } else {
+      targetPlatform = platform.os;
+    }
+
+    String devHost = "localhost";
+    if (argumentsWithValue.count("host") > 0) {
+      devHost = argumentsWithValue["--host"];
+    } else {
+      if (isForIOS || isForAndroid) {
+        auto r = exec((!platform.win)
+          ? "ifconfig | grep -w 'inet' | awk '!match($2, \"^127.\") {print $2; exit}' | tr -d '\n'"
+          : "PowerShell -Command ((Get-NetIPAddress -AddressFamily IPV4).IPAddress ^| Select-Object -first 1)"
+        );
+
+        if (r.exitCode == 0) {
+          devHost = r.output;
+        }
+      }
+    }
+    settings.insert(std::make_pair("host", devHost));
+
+    String devPort = "0";
+    if (argumentsWithValue.count("port") > 0) {
+      devPort = argumentsWithValue["--port"];
+    }
+    settings.insert(std::make_pair("port", devPort));
+
     const bool debugEnv = (
       getEnv("SSC_DEBUG").size() > 0 ||
       getEnv("DEBUG").size() > 0
@@ -4272,70 +4229,6 @@ int main (const int argc, const char* argv[]) {
       getEnv("VERBOSE").size() > 0
     );
 
-    for (auto const& option : options) {
-      if (is(option, "--test")) {
-        flagTest = true;
-      }
-      const auto testFileTmp = optionValue("run", option, "--test");
-      if (testFileTmp.size() > 0) {
-        flagTest = true;
-        testFile = testFileTmp;
-        argvForward += " " + String(option);
-      }
-
-      if (is(option, "--headless") || is(rc["run_headless"], "true")) {
-        argvForward += " --headless";
-        flagHeadless = true;
-      }
-
-      if (targetPlatform.size() == 0) {
-        targetPlatform = optionValue("run", option, "--platform");
-        if (targetPlatform.size() > 0) {
-          if (targetPlatform == "ios" || targetPlatform == "ios-simulator") {
-            isForIOS = true;
-          } else if (targetPlatform == "android" || targetPlatform == "android-emulator") {
-            isForAndroid = true;
-          } else {
-            log("Unknown platform: " + targetPlatform);
-            exit(1);
-          }
-        }
-      }
-
-      if (hostArg.size() == 0) {
-        hostArg = optionValue("build", option, "--host");
-        if (hostArg.size() > 0) {
-          devHost = hostArg;
-        } else {
-          if (isForIOS || isForAndroid) {
-            auto r = exec((!platform.win)
-              ? "ifconfig | grep -w 'inet' | awk '!match($2, \"^127.\") {print $2; exit}' | tr -d '\n'"
-              : "PowerShell -Command ((Get-NetIPAddress -AddressFamily IPV4).IPAddress ^| Select-Object -first 1)"
-            );
-
-            if (r.exitCode == 0) {
-              devHost = r.output;
-            }
-          }
-        }
-        settings.insert(std::make_pair("host", devHost));
-      }
-
-      if (portArg.size() == 0) {
-        portArg = optionValue("run", option, "--port");
-        if (portArg.size() > 0) {
-          devPort = portArg;
-        }
-        settings.insert(std::make_pair("port", devPort));
-      }
-    }
-
-    if (flagTest && testFile.size() == 0) {
-      log("ERROR: --test value is required.");
-      exit(1);
-    }
-
-    targetPlatform = targetPlatform.size() > 0 ? targetPlatform : platform.os;
     Paths paths = getPaths(targetPlatform);
 
     auto devNull = ">" + SSC::String((!platform.win) ? "/dev/null" : "NUL") + (" 2>&1");
@@ -4359,35 +4252,15 @@ int main (const int argc, const char* argv[]) {
     { { "--platform" }, true },
     { { "--yes", "-y" }, true }
   };
-  createSubcommand("setup", setupOptions, false, [&](const std::span<const char *>& options) -> void {
+  createSubcommand("setup", setupOptions, false, [&](Map argumentsWithValue, std::vector<String> argumentsWithoutValue) -> void {
     auto help = false;
-    auto yes = false;
+    auto yes = std::find(argumentsWithoutValue.begin(), argumentsWithoutValue.end(), "--yes") != argumentsWithoutValue.end();
     String yesArg;
 
-    String targetPlatform;
+    String targetPlatform = argumentsWithValue["--platform"];
     auto targetAndroid = false;
     auto targetLinux = false;
     auto targetWindows = false;
-
-    for (auto const arg : options) {
-      if (is(arg, "-h") || is(arg, "--help")) {
-        help = true;
-      }
-
-      auto platform = optionValue("setup", arg, "--platform");
-      if (platform.size() > 0) {
-        targetPlatform = platform;
-      }
-
-      if (is(arg, "-y") || is(arg, "--yes")) {
-        yes = true;
-      }
-
-      if (help) {
-        printHelp("setup");
-        exit(0);
-      }
-    }
 
     // Note that multiple --platforms aren't supported by createSubcommand()
     if (is(targetPlatform, "android")) {
@@ -4471,7 +4344,7 @@ int main (const int argc, const char* argv[]) {
   });
 
 
-  createSubcommand("env", {}, true, [&](const std::span<const char *>& options) -> void {
+  createSubcommand("env", {}, true, [&](Map argumentsWithValue, std::vector<String> argumentsWithoutValue) -> void {
     auto envs = Map();
 
     envs["DEBUG"] = getEnv("DEBUG");
