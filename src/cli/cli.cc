@@ -4,6 +4,7 @@
 #include "../core/core.hh"
 
 #include <filesystem>
+#include <unordered_set>
 
 #ifdef __linux__
 #include <cstring>
@@ -1294,15 +1295,12 @@ String optionValue (
 
 void handleArgument(
   Map& argumentsWithValue,
-  std::vector<String>& argumentsWithoutValue,
+  std::unordered_set<String>& argumentsWithoutValue,
   const String& key,
   const String& value,
   const String& subcommand
 ) {
-  if (
-    argumentsWithValue.count(key) > 0 ||
-    std::find(argumentsWithoutValue.begin(), argumentsWithoutValue.end(), key) != argumentsWithoutValue.end()
-  ) {
+  if (argumentsWithValue.count(key) > 0 || argumentsWithoutValue.find(key) != argumentsWithoutValue.end()) {
     std::cerr << "ERROR: Argument '" << key << "' is used more than once." << std::endl;
     printHelp(subcommand);
     exit(1);
@@ -1310,7 +1308,7 @@ void handleArgument(
   if (!value.empty()) {
     argumentsWithValue[key] = value;
   } else {
-    argumentsWithoutValue.push_back(key);
+    argumentsWithoutValue.insert(key);
   }
 }
 
@@ -1347,7 +1345,7 @@ String validateArgument(
 
 struct ArgumentsAndEnv {
   Map argumentsWithValue;
-  std::vector<String> argumentsWithoutValue;
+  std::unordered_set<String> argumentsWithoutValue;
   std::vector<String> envs;
 };
 
@@ -1358,7 +1356,7 @@ ArgumentsAndEnv parseCommandLineArguments (
 ) {
   ArgumentsAndEnv result;
   Map argumentsWithValue;
-  std::vector<String> argumentsWithoutValue;
+  std::unordered_set<String> argumentsWithoutValue;
   std::vector<String> envs;
 
   for (size_t i = 0; i < options.size(); i++) {
@@ -1372,7 +1370,6 @@ ArgumentsAndEnv parseCommandLineArguments (
     size_t equalPos = arg.find('=');
     String key;
     String value;
-    String prefix; // TODO refactor
 
     // Argument in the form "--key=value" or "-k=value"
     if (equalPos != String::npos) {
@@ -1389,7 +1386,6 @@ ArgumentsAndEnv parseCommandLineArguments (
       // }
     }
 
-    // TODO: remove prefix and continue early
     if (is(key, "--verbose")) {
       setEnv("SSC_VERBOSE", "1");
       continue;
@@ -1411,7 +1407,6 @@ ArgumentsAndEnv parseCommandLineArguments (
       }
     }
 
-    // TODO: remove prefix
     auto option = validateArgument(key, availableOptions, subcommand);
     handleArgument(argumentsWithValue, argumentsWithoutValue, option, value, subcommand);
   }
@@ -1421,27 +1416,6 @@ ArgumentsAndEnv parseCommandLineArguments (
   result.envs = envs;
 
   return result;
-}
-
-// TODO: remove on PR
-void printParsedArguments(ArgumentsAndEnv parsedArguments) {
-  const auto& argumentsWithValue = parsedArguments.argumentsWithValue;
-  const auto& argumentsWithoutValue = parsedArguments.argumentsWithoutValue;
-
-  log("Arguments with values:");
-  for (const auto& argWithValue : argumentsWithValue) {
-    std::cout << argWithValue.first << " = " << argWithValue.second << std::endl;
-  }
-
-  log("Arguments without values:");
-  for (const auto& argWithoutValue : argumentsWithoutValue) {
-    std::cout << argWithoutValue << std::endl;
-  }
-
-  log("Environment variables:");
-  for (const auto& env : parsedArguments.envs) {
-    std::cout << env << std::endl;
-  }
 }
 
 int main (const int argc, const char* argv[]) {
@@ -1593,12 +1567,11 @@ int main (const int argc, const char* argv[]) {
     const String& subcommand,
     const std::map<std::vector<String>, bool>& availableOptions,
     const bool& needsConfig,
-    std::function<void(Map, std::vector<String>)> subcommandHandler
+    std::function<void(Map, std::unordered_set<String>)> subcommandHandler
   ) -> void {
     if (argv[1] == subcommand) {
       auto commandlineOptions = std::span(argv, argc).subspan(2, numberOfOptions);
       auto argumentsAndEnv = parseCommandLineArguments(commandlineOptions, availableOptions, subcommand);
-      // printParsedArguments(argumentsAndEnv);
 
       auto envs = argumentsAndEnv.envs;
 
@@ -1743,8 +1716,8 @@ int main (const int argc, const char* argv[]) {
   std::map<std::vector<String>, bool> initOptions = {
     { { "--config" }, true }
   };
-  createSubcommand("init", initOptions, false, [&](Map argumentsWithValue, std::vector<String> argumentsWithoutValue) -> void {
-    auto configOnly = std::find(argumentsWithoutValue.begin(), argumentsWithoutValue.end(), "--config") != argumentsWithoutValue.end();
+  createSubcommand("init", initOptions, false, [&](Map argumentsWithValue, std::unordered_set<String> argumentsWithoutValue) -> void {
+    auto configOnly = argumentsWithValue.find("--config") != argumentsWithValue.end();
     if (fs::exists(targetPath / "socket.ini")) {
       log("socket.ini already exists in " + targetPath.string());
       exit(0);
@@ -1776,16 +1749,15 @@ int main (const int argc, const char* argv[]) {
     { { "--udid" }, true },
     { { "--only" }, true }
   };
-  createSubcommand("list-devices", listDevicesOptions, false, [&](Map argumentsWithValue, std::vector<String> argumentsWithoutValue) -> void {
-    // TODO: use unordered_set
+  createSubcommand("list-devices", listDevicesOptions, false, [&](Map argumentsWithValue, std::unordered_set<String> argumentsWithoutValue) -> void {
     bool isUdid =
-      std::find(argumentsWithoutValue.begin(), argumentsWithoutValue.end(), "--udid") != argumentsWithoutValue.end() ||
+      argumentsWithValue.find("--udid") != argumentsWithValue.end() ||
       is(rc["list-devices_udid"], "true");
     bool isEcid =
-      std::find(argumentsWithoutValue.begin(), argumentsWithoutValue.end(), "--ecid") != argumentsWithoutValue.end() ||
+      argumentsWithValue.find("--ecid") != argumentsWithValue.end() ||
       is(rc["list-devices_ecid"], "true");
     bool isOnly =
-      std::find(argumentsWithoutValue.begin(), argumentsWithoutValue.end(), "--only") != argumentsWithoutValue.end() ||
+      argumentsWithValue.find("--only") != argumentsWithValue.end() ||
       is(rc["list-devices_only"], "true");
 
     auto targetPlatform = argumentsWithValue["--platform"];
@@ -1879,7 +1851,7 @@ int main (const int argc, const char* argv[]) {
     { { "--platform" }, false }, // non-optional
     { { "--device" }, true }
   };
-  createSubcommand("install-app", installAppOptions, true, [&](Map argumentsWithValue, std::vector<String> argumentsWithoutValue) -> void {
+  createSubcommand("install-app", installAppOptions, true, [&](Map argumentsWithValue, std::unordered_set<String> argumentsWithoutValue) -> void {
     String commandOptions = "";
     String targetPlatform = argumentsWithValue["--platform"];
 
@@ -1967,7 +1939,7 @@ int main (const int argc, const char* argv[]) {
     { { "--platform" }, true },
     { { "--prod" }, true }
   };
-  createSubcommand("print-build-dir", printBuildDirOptions, true, [&](Map argumentsWithValue, std::vector<String> argumentsWithoutValue) -> void {
+  createSubcommand("print-build-dir", printBuildDirOptions, true, [&](Map argumentsWithValue, std::unordered_set<String> argumentsWithoutValue) -> void {
     // if --platform is specified, use the build path for the specified platform
     auto targetPlatform = argumentsWithValue["--platform"];
     if (targetPlatform.size() > 0) {
@@ -2002,40 +1974,22 @@ int main (const int argc, const char* argv[]) {
 
   // Insert the elements of runOptions into buildOptions
   buildOptions.insert(runOptions.begin(), runOptions.end());
-  createSubcommand("build", buildOptions, true, [&](Map argumentsWithValue, std::vector<String> argumentsWithoutValue) -> void {
+  createSubcommand("build", buildOptions, true, [&](Map argumentsWithValue, std::unordered_set<String> argumentsWithoutValue) -> void {
     String argvForward = "";
     String targetPlatform = argumentsWithValue["--platform"];
-    bool flagRunUserBuildOnly =
-      std::find(argumentsWithoutValue.begin(), argumentsWithoutValue.end(), "--only-build") != argumentsWithoutValue.end() ||
-      is(rc["build_only"], "true");
-    bool flagAppStore =
-      std::find(argumentsWithoutValue.begin(), argumentsWithoutValue.end(), "-s") != argumentsWithoutValue.end() ||
-      is(rc["build_app_store"], "true");
-    bool flagCodeSign =
-      std::find(argumentsWithoutValue.begin(), argumentsWithoutValue.end(), "-c") != argumentsWithoutValue.end() ||
-      is(rc["build_codesign"], "true");
-    bool flagHeadless =
-      std::find(argumentsWithoutValue.begin(), argumentsWithoutValue.end(), "--headless") != argumentsWithoutValue.end() ||
-      is(rc["build_headless"], "true");
-    bool flagShouldRun =
-      std::find(argumentsWithoutValue.begin(), argumentsWithoutValue.end(), "--run") != argumentsWithoutValue.end() ||
-      is(rc["build_run"], "true");
-    bool flagEntitlements =
-      std::find(argumentsWithoutValue.begin(), argumentsWithoutValue.end(), "-e") != argumentsWithoutValue.end() ||
-      is(rc["build_entitlements"], "true");
-    bool flagShouldNotarize =
-      std::find(argumentsWithoutValue.begin(), argumentsWithoutValue.end(), "-n") != argumentsWithoutValue.end() ||
-      is(rc["build_notarize"], "true");
-    bool flagShouldPackage =
-      std::find(argumentsWithoutValue.begin(), argumentsWithoutValue.end(), "-p") != argumentsWithoutValue.end() ||
-      is(rc["build_package"], "true");
+    bool flagRunUserBuildOnly = argumentsWithoutValue.find("--only-build") != argumentsWithoutValue.end() || is(rc["build_only"], "true");
+    bool flagAppStore = argumentsWithoutValue.find("-s") != argumentsWithoutValue.end() || is(rc["build_app_store"], "true");
+    bool flagCodeSign = argumentsWithoutValue.find("-c") != argumentsWithoutValue.end() || is(rc["build_codesign"], "true");
+    bool flagHeadless = argumentsWithoutValue.find("--headless") != argumentsWithoutValue.end() || is(rc["build_headless"], "true");
+    bool flagShouldRun = argumentsWithoutValue.find("--run") != argumentsWithoutValue.end() || is(rc["build_run"], "true");
+    bool flagEntitlements = argumentsWithoutValue.find("-e") != argumentsWithoutValue.end() || is(rc["build_entitlements"], "true");
+    bool flagShouldNotarize = argumentsWithoutValue.find("-n") != argumentsWithoutValue.end() || is(rc["build_notarize"], "true");
+    bool flagShouldPackage = argumentsWithoutValue.find("-p") != argumentsWithoutValue.end() || is(rc["build_package"], "true");
     bool flagBuildForIOS = false;
     bool flagBuildForAndroid = false;
     bool flagBuildForAndroidEmulator = false;
     bool flagBuildForSimulator = false;
-    bool flagBuildTest =
-      std::find(argumentsWithoutValue.begin(), argumentsWithoutValue.end(), "--test") != argumentsWithoutValue.end() ||
-      argumentsWithValue["--test"].size() > 0;
+    bool flagBuildTest = argumentsWithoutValue.find("--test") != argumentsWithoutValue.end() || argumentsWithValue["--test"].size() > 0;
     String testFile = argumentsWithValue["--test"];
 
     if (flagBuildTest && testFile.size() == 0) {
@@ -2055,10 +2009,7 @@ int main (const int argc, const char* argv[]) {
       argvForward += " --headless";
     }
 
-    if (
-      std::find(argumentsWithoutValue.begin(), argumentsWithoutValue.end(), "--quite") != argumentsWithoutValue.end() ||
-      is(rc["build_quiet"], "true")
-    ) {
+    if (argumentsWithoutValue.find("--quite") != argumentsWithoutValue.end() || is(rc["build_quiet"], "true")) {
       flagQuietMode = true;
     }
 
@@ -4153,14 +4104,10 @@ int main (const int argc, const char* argv[]) {
     exit(exitCode);
   });
 
-  createSubcommand("run", runOptions, true, [&](Map argumentsWithValue, std::vector<String> argumentsWithoutValue) -> void {
+  createSubcommand("run", runOptions, true, [&](Map argumentsWithValue, std::unordered_set<String> argumentsWithoutValue) -> void {
     String argvForward = "";
-    bool flagHeadless =
-      std::find(argumentsWithoutValue.begin(), argumentsWithoutValue.end(), "--headless") != argumentsWithoutValue.end() ||
-      is(rc["run_headless"], "true");
-    bool flagTest =
-      std::find(argumentsWithoutValue.begin(), argumentsWithoutValue.end(), "--test") != argumentsWithoutValue.end() ||
-      argumentsWithValue["--test"].size() > 0;
+    bool flagHeadless = argumentsWithoutValue.find("--headless") != argumentsWithoutValue.end() || is(rc["run_headless"], "true");
+    bool flagTest = argumentsWithoutValue.find("--test") != argumentsWithoutValue.end() || argumentsWithValue["--test"].size() > 0;
     String targetPlatform = argumentsWithValue["--platform"];
     String testFile = argumentsWithValue["--test"];
     bool isForIOS = false;
@@ -4252,9 +4199,9 @@ int main (const int argc, const char* argv[]) {
     { { "--platform" }, true },
     { { "--yes", "-y" }, true }
   };
-  createSubcommand("setup", setupOptions, false, [&](Map argumentsWithValue, std::vector<String> argumentsWithoutValue) -> void {
+  createSubcommand("setup", setupOptions, false, [&](Map argumentsWithValue, std::unordered_set<String> argumentsWithoutValue) -> void {
     auto help = false;
-    auto yes = std::find(argumentsWithoutValue.begin(), argumentsWithoutValue.end(), "--yes") != argumentsWithoutValue.end();
+    auto yes = argumentsWithoutValue.find("--yes") != argumentsWithoutValue.end();
     String yesArg;
 
     String targetPlatform = argumentsWithValue["--platform"];
@@ -4344,7 +4291,7 @@ int main (const int argc, const char* argv[]) {
   });
 
 
-  createSubcommand("env", {}, true, [&](Map argumentsWithValue, std::vector<String> argumentsWithoutValue) -> void {
+  createSubcommand("env", {}, true, [&](Map argumentsWithValue, std::unordered_set<String> argumentsWithoutValue) -> void {
     auto envs = Map();
 
     envs["DEBUG"] = getEnv("DEBUG");
