@@ -1365,13 +1365,13 @@ ArgumentsAndEnv parseCommandLineArguments (
       value = arg.substr(equalPos + 1);
     } else {
       key = arg;
-      // // Argument in the form "--key value" or "-k value"
-      // if (i + 1 < options.size() && options[i + 1][0] != '-') {
-      //   value = options[++i];
-      // } else {
+      // Argument in the form "--key value" or "-k value"
+      if (i + 1 < options.size() && options[i + 1][0] != '-') {
+        value = options[++i];
+      } else {
         // Argument in the form "--key"
         value = "";
-      // }
+      }
     }
 
     if (value.size() == 0) {
@@ -1693,6 +1693,7 @@ int main (const int argc, const char* argv[]) {
     }
   };
 
+  // flag indicating whether option is optional
   std::map<std::vector<String>, bool> initOptions = {
     { { "--config" }, true }
   };
@@ -1723,6 +1724,7 @@ int main (const int argc, const char* argv[]) {
     exit(0);
   });
 
+  // flag indicating whether option is optional
   std::map<std::vector<String>, bool> listDevicesOptions = {
     { { "--platform" }, false }, // non-optional
     { { "--ecid" }, true },
@@ -1827,6 +1829,7 @@ int main (const int argc, const char* argv[]) {
     }
   });
 
+  // flag indicating whether option is optional
   std::map<std::vector<String>, bool> installAppOptions = {
     { { "--platform" }, false }, // non-optional
     { { "--device" }, true }
@@ -1932,6 +1935,7 @@ int main (const int argc, const char* argv[]) {
     exit(0);
   });
 
+  // flag indicating whether option is optional
   std::map<std::vector<String>, bool> runOptions = {
     { { "--platform" }, true },
     { { "--host" }, true },
@@ -4175,6 +4179,7 @@ int main (const int argc, const char* argv[]) {
     run(targetPlatform, settings, paths, false, flagHeadless, argvForward, androidState);
   });
 
+  // flag indicating whether option is optional
   std::map<std::vector<String>, bool> setupOptions = {
     { { "--platform" }, true },
     { { "--yes", "-y" }, true }
