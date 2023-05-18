@@ -83,7 +83,7 @@ static dispatch_queue_t queue = dispatch_queue_create(
 );
 #endif
 
-bool is (const String& s1, const String& s2) {
+bool equal (const String& s1, const String& s2) {
   return s1.compare(s2) == 0;
 };
 
@@ -1272,27 +1272,6 @@ void run (const String& targetPlatform, Map& settings, const Paths& paths, const
   exit(1);
 }
 
-String optionValue (
-  const String& c, // command
-  const String& s,
-  const String& p
-) {
-  auto string = p + String("=");
-  if (String(s).find(string) == 0) {
-    auto value = s.substr(string.size());
-    if (value.size() == 0) {
-      value = rc[c + "_" + p];
-    }
-
-    if (value.size() == 0) {
-      log("missing value for option " + String(p));
-      exit(1);
-    }
-    return value;
-  }
-  return "";
-}
-
 void handleArgument(
   Map& argumentsWithValue,
   std::unordered_set<String>& argumentsWithoutValue,
@@ -1386,25 +1365,28 @@ ArgumentsAndEnv parseCommandLineArguments (
       // }
     }
 
-    if (is(key, "--verbose")) {
+    if (equal(key, "--verbose")) {
       setEnv("SSC_VERBOSE", "1");
       continue;
     }
 
-    if (is(key, "--debug")) {
+    if (equal(key, "--debug")) {
       setEnv("SSC_DEBUG", "1");
       continue;
     }
 
-    if (String(arg).starts_with("--env")) {
-      auto value = optionValue(subcommand, arg, "--env");
+    if (equal(key, "--env")) {
+      if (value.size() == 0) {
+        value = rc[subcommand + "_--env"];
+      }
+
       if (value.size() > 0) {
         auto parts = parseStringList(value);
         for (const auto& part : parts) {
           envs.push_back(part);
         }
-        continue;
       }
+      continue;
     }
 
     auto option = validateArgument(key, availableOptions, subcommand);
@@ -1436,18 +1418,18 @@ int main (const int argc, const char* argv[]) {
   signal(SIGINT, signalHandler);
   signal(SIGTERM, signalHandler);
 
-  if (is(subcommand, "-v") || is(subcommand, "--version")) {
+  if (equal(subcommand, "-v") || equal(subcommand, "--version")) {
     std::cout << SSC::VERSION_FULL_STRING << std::endl;
     std::cerr << "Installation path: " << getSocketHome() << std::endl;
     exit(0);
   }
 
-  if (is(subcommand, "-h") || is(subcommand, "--help")) {
+  if (equal(subcommand, "-h") || equal(subcommand, "--help")) {
     printHelp("ssc");
     exit(0);
   }
 
-  if (is(subcommand, "--prefix")) {
+  if (equal(subcommand, "--prefix")) {
     std::cout << getSocketHome() << std::endl;
     exit(0);
   }
@@ -1584,7 +1566,7 @@ int main (const int argc, const char* argv[]) {
         if (fs::exists(configPath)) {
           ini = readFile(configPath);
           configExists = true;
-        } else if (!is(subcommand, "init") && !is(subcommand, "env")) {
+        } else if (!equal(subcommand, "init") && !equal(subcommand, "env")) {
           log("socket.ini not found in " + targetPath.string());
           exit(1);
         }
@@ -1686,7 +1668,7 @@ int main (const int argc, const char* argv[]) {
           settings["meta_title"] = settings["meta_title"].size() > 0 ? settings["meta_title"] : settings["build_name"];
 
           for (auto const arg : std::span(argv, argc).subspan(2, numberOfOptions)) {
-            if (is(arg, "--prod")) {
+            if (equal(arg, "--prod")) {
               flagDebugMode = false;
               break;
             }
@@ -1752,13 +1734,13 @@ int main (const int argc, const char* argv[]) {
   createSubcommand("list-devices", listDevicesOptions, false, [&](Map argumentsWithValue, std::unordered_set<String> argumentsWithoutValue) -> void {
     bool isUdid =
       argumentsWithValue.find("--udid") != argumentsWithValue.end() ||
-      is(rc["list-devices_udid"], "true");
+      equal(rc["list-devices_udid"], "true");
     bool isEcid =
       argumentsWithValue.find("--ecid") != argumentsWithValue.end() ||
-      is(rc["list-devices_ecid"], "true");
+      equal(rc["list-devices_ecid"], "true");
     bool isOnly =
       argumentsWithValue.find("--only") != argumentsWithValue.end() ||
-      is(rc["list-devices_only"], "true");
+      equal(rc["list-devices_only"], "true");
 
     auto targetPlatform = argumentsWithValue["--platform"];
 
@@ -1977,14 +1959,14 @@ int main (const int argc, const char* argv[]) {
   createSubcommand("build", buildOptions, true, [&](Map argumentsWithValue, std::unordered_set<String> argumentsWithoutValue) -> void {
     String argvForward = "";
     String targetPlatform = argumentsWithValue["--platform"];
-    bool flagRunUserBuildOnly = argumentsWithoutValue.find("--only-build") != argumentsWithoutValue.end() || is(rc["build_only"], "true");
-    bool flagAppStore = argumentsWithoutValue.find("-s") != argumentsWithoutValue.end() || is(rc["build_app_store"], "true");
-    bool flagCodeSign = argumentsWithoutValue.find("-c") != argumentsWithoutValue.end() || is(rc["build_codesign"], "true");
-    bool flagHeadless = argumentsWithoutValue.find("--headless") != argumentsWithoutValue.end() || is(rc["build_headless"], "true");
-    bool flagShouldRun = argumentsWithoutValue.find("--run") != argumentsWithoutValue.end() || is(rc["build_run"], "true");
-    bool flagEntitlements = argumentsWithoutValue.find("-e") != argumentsWithoutValue.end() || is(rc["build_entitlements"], "true");
-    bool flagShouldNotarize = argumentsWithoutValue.find("-n") != argumentsWithoutValue.end() || is(rc["build_notarize"], "true");
-    bool flagShouldPackage = argumentsWithoutValue.find("-p") != argumentsWithoutValue.end() || is(rc["build_package"], "true");
+    bool flagRunUserBuildOnly = argumentsWithoutValue.find("--only-build") != argumentsWithoutValue.end() || equal(rc["build_only"], "true");
+    bool flagAppStore = argumentsWithoutValue.find("-s") != argumentsWithoutValue.end() || equal(rc["build_app_store"], "true");
+    bool flagCodeSign = argumentsWithoutValue.find("-c") != argumentsWithoutValue.end() || equal(rc["build_codesign"], "true");
+    bool flagHeadless = argumentsWithoutValue.find("--headless") != argumentsWithoutValue.end() || equal(rc["build_headless"], "true");
+    bool flagShouldRun = argumentsWithoutValue.find("--run") != argumentsWithoutValue.end() || equal(rc["build_run"], "true");
+    bool flagEntitlements = argumentsWithoutValue.find("-e") != argumentsWithoutValue.end() || equal(rc["build_entitlements"], "true");
+    bool flagShouldNotarize = argumentsWithoutValue.find("-n") != argumentsWithoutValue.end() || equal(rc["build_notarize"], "true");
+    bool flagShouldPackage = argumentsWithoutValue.find("-p") != argumentsWithoutValue.end() || equal(rc["build_package"], "true");
     bool flagBuildForIOS = false;
     bool flagBuildForAndroid = false;
     bool flagBuildForAndroidEmulator = false;
@@ -2009,7 +1991,7 @@ int main (const int argc, const char* argv[]) {
       argvForward += " --headless";
     }
 
-    if (argumentsWithoutValue.find("--quite") != argumentsWithoutValue.end() || is(rc["build_quiet"], "true")) {
+    if (argumentsWithoutValue.find("--quite") != argumentsWithoutValue.end() || equal(rc["build_quiet"], "true")) {
       flagQuietMode = true;
     }
 
@@ -4106,7 +4088,7 @@ int main (const int argc, const char* argv[]) {
 
   createSubcommand("run", runOptions, true, [&](Map argumentsWithValue, std::unordered_set<String> argumentsWithoutValue) -> void {
     String argvForward = "";
-    bool flagHeadless = argumentsWithoutValue.find("--headless") != argumentsWithoutValue.end() || is(rc["run_headless"], "true");
+    bool flagHeadless = argumentsWithoutValue.find("--headless") != argumentsWithoutValue.end() || equal(rc["run_headless"], "true");
     bool flagTest = argumentsWithoutValue.find("--test") != argumentsWithoutValue.end() || argumentsWithValue["--test"].size() > 0;
     String targetPlatform = argumentsWithValue["--platform"];
     String testFile = argumentsWithValue["--test"];
@@ -4210,11 +4192,11 @@ int main (const int argc, const char* argv[]) {
     auto targetWindows = false;
 
     // Note that multiple --platforms aren't supported by createSubcommand()
-    if (is(targetPlatform, "android")) {
+    if (equal(targetPlatform, "android")) {
       targetAndroid = true;
-    } else if (is(targetPlatform, "windows")) {
+    } else if (equal(targetPlatform, "windows")) {
       targetWindows = true;
-    } else if (is(targetPlatform, "linux")) {
+    } else if (equal(targetPlatform, "linux")) {
       targetLinux = true;
     } else if (targetPlatform.size() > 0) {
       printHelp("setup");
