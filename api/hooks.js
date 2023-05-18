@@ -1,108 +1,144 @@
+/**
+ * @module hooks
+ *
+ * An interface for registering callbacks for various hooks in
+ * the runtime.
+ *
+ * Example usage:
+ * ```js
+ * import hooks from 'socket:hooks'
+ *
+ * hooks.onLoad(() => {
+ *   // called when the runtime context has loaded,
+ *   // but not ready or initialized
+ * })
+ *
+ * hooks.onReady(() => {
+ *   // called when the runtime is ready, but not initialized
+ * })
+ *
+ * hooks.onInit(() => {
+ *   // called when the runtime is initialized
+ * })
+ *
+ * hooks.onError((event) => {
+ *   // called when 'error', 'messageerror', and 'unhandledrejection' error
+ *   // events are dispatched on the global object
+ * })
+ *
+ * hooks.onData((event) => {
+ *   // called when 'data' events are dispatched on the global object
+ * })
+ *
+ * hooks.onMessage((event) => {
+ *   // called when 'message' events are dispatched on the global object
+ * })
+ *
+ * hooks.onOnline((event) => {
+ *   // called when 'online' events are dispatched on the global object
+ * })
+ *
+ * hooks.onOffline((event) => {
+ *   // called when 'offline' events are dispatched on the global object
+ * })
+ * ```
+ */
 import { Event, CustomEvent, ErrorEvent, MessageEvent } from './events.js'
+
+function addEventListenerOnce (target, type, callback) {
+  target.addEventListener(type, callback, { once: true })
+}
+
+async function waitForEvent (target, type) {
+  return await new Promise((resolve) => {
+    addEventListenerOnce(target, type, resolve)
+  })
+}
+
+function dispatchEvent (target, event) {
+  queueMicrotask(() => target.dispatchEvent(event))
+}
+
+function dispatchInitEvent (target) {
+  dispatchEvent(target, new InitEvent())
+}
+
+function dispatchLoadEvent (target) {
+  dispatchEvent(target, new LoadEvent())
+}
+
+function dispatchReadyEvent (target) {
+  dispatchEvent(target, new ReadyEvent())
+}
+
+function proxyGlobalEvents (global, target) {
+  const GLOBAL_EVENTS = [
+    'data',
+    'init',
+    'load',
+    'message',
+    'online',
+    'offline',
+    'error',
+    'messageerror',
+    'unhandledrejection'
+  ]
+
+  for (const type of GLOBAL_EVENTS) {
+    global.addEventListener(type, (event) => {
+      const { type, data, detail = null, error } = event
+      if (error) {
+        target.dispatchEvent(new ErrorEvent(type, { error, detail }))
+      } else if (type && data) {
+        target.dispatchEvent(new MessageEvent(type, { data, detail }))
+      } else if (detail) {
+        target.dispatchEvent(new CustomEvent(type, { detail }))
+      } else {
+        target.dispatchEvent(new Event(type))
+      }
+    })
+  }
+}
+
+const RUNTIME_INIT_EVENT_NAME = '__runtime_init__'
+
+// state
+let isGlobalLoaded = false
+let isRuntimeInitialized = false
+
+/**
+ * An event dispatched when the runtime has been initialized.
+ */
+export class InitEvent extends Event {
+  constructor () { super('init') }
+}
+
+/**
+ * An event dispatched when the runtime global has been loaded.
+ */
+export class LoadEvent extends Event {
+  constructor () { super('load') }
+}
+
+/**
+ * An event dispatched when the runtime is considered ready.
+ */
+export class ReadyEvent extends Event {
+  constructor () { super('ready') }
+}
 
 /**
  * An interface for registering callbacks for various hooks in
  * the runtime.
- * @ignore
  */
 // eslint-disable-next-line new-parens
-export default new class Hooks extends EventTarget {
-  didGlobalLoad = false
-  didRuntimeInit = false
-
+export class Hooks extends EventTarget {
   /**
    * @ignore
    */
   constructor () {
     super()
-
-    if (!this.document && !this.global.window) { // worker
-      queueMicrotask(() => {
-        this.didGlobalLoad = true
-        queueMicrotask(() => this.dispatchEvent(new CustomEvent('load')))
-        queueMicrotask(() => this.dispatchEvent(new CustomEvent('ready')))
-      })
-    }
-
-    if (this.document?.readyState === 'complete') {
-      this.didGlobalLoad = true
-    }
-
-    this.global.addEventListener('load', () => {
-      this.didGlobalLoad = true
-    }, { once: true })
-
-    this.global.addEventListener('init', () => {
-      this.didRuntimeInit = true
-      if (this.didGlobalLoad) {
-        queueMicrotask(() => this.dispatchEvent(new CustomEvent('ready')))
-      }
-    }, { once: true })
-
-    const events = [
-      'data',
-      'init',
-      'load',
-      'message',
-      'online',
-      'offline',
-      'error',
-      'messageerror',
-      'unhandledrejection'
-    ]
-
-    for (const type of events) {
-      this.global.addEventListener(type, (event) => {
-        const { type, data, detail = null, error } = event
-        if (error) {
-          this.dispatchEvent(new ErrorEvent(type, { error, detail }))
-        } else if (type && data) {
-          this.dispatchEvent(new MessageEvent(type, { data, detail }))
-        } else if (detail) {
-          this.dispatchEvent(new CustomEvent(type, { detail }))
-        } else {
-          this.dispatchEvent(new Event(type))
-        }
-      })
-    }
-
-    if (this.isDocumentReady && this.isRuntimeReady) {
-      // artificially notify
-      queueMicrotask(() => {
-        this.dispatchEvent(new CustomEvent('load'))
-        this.didGlobalLoad = true
-        queueMicrotask(() => {
-          this.didRuntimeInit = true
-          this.dispatchEvent(new CustomEvent('init'))
-          queueMicrotask(() => {
-            this.dispatchEvent(new CustomEvent('ready'))
-          })
-        })
-      })
-    } else if (this.document) {
-      this.document?.addEventListener('DOMContentLoaded', () => {
-        this.document.addEventListener('readystatechange', () => {
-          if (this.document.readyState === 'complete') {
-            if (this.didGlobalLoad) {
-              console.log(this.didRuntimeInit)
-              this.global.addEventListener('init', () => {
-                queueMicrotask(() => {
-                  this.dispatchEvent(new CustomEvent('ready'))
-                })
-              }, { once: true })
-            } else {
-              this.global.addEventListener('load', () => {
-                this.global.addEventListener('init', () => {
-                  queueMicrotask(() => {
-                    this.dispatchEvent(new CustomEvent('ready'))
-                  })
-                }, { once: true })
-              }, { once: true })
-            }
-          }
-        })
-      }, { once: true })
-    }
+    this.#init()
   }
 
   /**
@@ -114,7 +150,7 @@ export default new class Hooks extends EventTarget {
   }
 
   /**
-   * Returns document for global
+   * Returns `document` in global.
    * @type {Document}
    */
   get document () {
@@ -122,13 +158,19 @@ export default new class Hooks extends EventTarget {
   }
 
   /**
+   * Returns `document` in global.
+   * @type {Window}
+   */
+  get window () {
+    return this.global.window ?? null
+  }
+
+  /**
    * Predicate for determining if the global document is ready.
    * @type {boolean}
    */
   get isDocumentReady () {
-    return !this.document && !this.global.window && this.global.self
-      ? true
-      : this.document?.readyState === 'complete'
+    return this.document?.readyState === 'complete'
   }
 
   /**
@@ -136,7 +178,7 @@ export default new class Hooks extends EventTarget {
    * @type {boolean}
    */
   get isGlobalReady () {
-    return this.isDocumentReady && this.didGlobalLoad
+    return isGlobalLoaded
   }
 
   /**
@@ -144,7 +186,7 @@ export default new class Hooks extends EventTarget {
    * @type {boolean}
    */
   get isRuntimeReady () {
-    return this.didRuntimeInit
+    return isRuntimeInitialized
   }
 
   /**
@@ -152,7 +194,7 @@ export default new class Hooks extends EventTarget {
    * @type {boolean}
    */
   get isReady () {
-    return this.isDocumentReady && this.isGlobalReady && this.isRuntimeReady
+    return this.isRuntimeReady && (this.isWorkerContext || this.isDocumentReady)
   }
 
   /**
@@ -164,17 +206,74 @@ export default new class Hooks extends EventTarget {
   }
 
   /**
+   * Predicate for determining if the runtime is in a Worker context.
+   * @type {boolean}
+   */
+  get isWorkerContext () {
+    return Boolean(!this.document && !this.global.window && this.global.self)
+  }
+
+  /**
+   * Predicate for determining if the runtime is in a Window context.
+   * @type {boolean}
+   */
+  get isWindowContext () {
+    return Boolean(this.document && this.global.window)
+  }
+
+  /**
+   * Internal hooks initialization.
+   * Event order:
+   *  1. 'DOMContentLoaded'
+   *  2. 'load'
+   *  3. 'init'
+   * @ignore
+   * @private
+   */
+  async #init () {
+    const { isWorkerContext, document, global } = this
+    const readyState = document?.readyState
+
+    isRuntimeInitialized = Boolean(global.__RUNTIME_INIT_NOW__)
+
+    proxyGlobalEvents(global, this)
+
+    // if runtime is initialized, then 'DOMContentLoaded' (document),
+    // 'load' (window), and the 'init' (window) events have all been dispatched
+    // prior to hook initialization
+    if (isRuntimeInitialized) {
+      dispatchLoadEvent(this)
+      dispatchReadyEvent(this)
+      dispatchInitEvent(this)
+      return
+    }
+
+    addEventListenerOnce(global, RUNTIME_INIT_EVENT_NAME, () => {
+      isRuntimeInitialized = true
+      dispatchInitEvent(this)
+    })
+
+    if (!isWorkerContext && readyState !== 'complete') {
+      await waitForEvent(global, 'load')
+    }
+
+    isGlobalLoaded = true
+    dispatchLoadEvent(this)
+    dispatchReadyEvent(this)
+  }
+
+  /**
    * Wait for the global Window, Document, and Runtime to be ready.
    * The callback function is called exactly once.
    * @param {function} callback
    * @return {function}
    */
   onReady (callback) {
-    if (this.isDocumentReady && this.isGlobalReady && this.isRuntimeReady) {
+    if (this.isReady) {
       const timeout = setTimeout(callback)
       return () => clearTimeout(timeout)
     } else {
-      this.addEventListener('ready', callback, { once: true })
+      addEventListenerOnce(this, 'ready', callback)
       return () => this.removeEventListener('ready', callback)
     }
   }
@@ -190,7 +289,7 @@ export default new class Hooks extends EventTarget {
       const timeout = setTimeout(callback)
       return () => clearTimeout(timeout)
     } else {
-      this.addEventListener('load', callback, { once: true })
+      addEventListenerOnce(this, 'load', callback)
       return () => this.removeEventListener('load', callback)
     }
   }
@@ -206,19 +305,26 @@ export default new class Hooks extends EventTarget {
       const timeout = setTimeout(callback)
       return () => clearTimeout(timeout)
     } else {
-      this.addEventListener('init', callback, { once: true })
+      addEventListenerOnce(this, 'init', callback)
       return () => this.removeEventListener('init', callback)
     }
   }
 
   /**
    * Calls callback when a global exception occurs.
+   * 'error', 'messageerror', and 'unhandledrejection' events are handled here.
    * @param {function} callback
    * @return {function}
    */
   onError (callback) {
     this.addEventListener('error', callback)
-    return () => this.removeEventListener('error', callback)
+    this.addEventListener('messageerror', callback)
+    this.addEventListener('unhandledrejection', callback)
+    return () => {
+      this.removeEventListener('error', callback)
+      this.removeEventListener('messageerror', callback)
+      this.removeEventListener('unhandledrejection', callback)
+    }
   }
 
   /**
@@ -263,3 +369,5 @@ export default new class Hooks extends EventTarget {
     return () => this.removeEventListener('offline', callback)
   }
 }
+
+export default new Hooks()
