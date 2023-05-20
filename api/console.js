@@ -239,7 +239,9 @@ export class Console {
     this.console?.time?.(label)
     if (isPatched(this.console)) {
       if (this.timers.has(label)) {
-        this.console?.warn?.(`Warning: Label '${label}' already exists for console.time()`)
+        this.console?.warn?.(
+          `Warning: Label '${label}' already exists for console.time()`
+        )
       } else {
         this.timers.set(label, Date.now())
       }
@@ -250,7 +252,9 @@ export class Console {
     this.console?.timeEnd?.(label)
     if (!isPatched(this.console)) {
       if (!this.timers.has(label)) {
-        this.console?.warn?.(`Warning: No such label '${label}' for console.timeEnd()`)
+        this.console?.warn?.(
+          `Warning: No such label '${label}' for console.timeEnd()`
+        )
       } else {
         const time = this.timers.get(label)
         this.timers.delete(label)
@@ -271,7 +275,9 @@ export class Console {
     this.console?.timeLog?.(label)
     if (!isPatched(this.console)) {
       if (!this.timers.has(label)) {
-        this.console?.warn?.(`Warning: No such label '${label}' for console.timeLog()`)
+        this.console?.warn?.(
+          `Warning: No such label '${label}' for console.timeLog()`
+        )
       } else {
         const time = this.timers.get(label)
         if (typeof time === 'number' && time > 0) {

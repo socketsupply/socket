@@ -400,7 +400,9 @@ export function inspect (value, options) {
     }
 
     if (value instanceof Date) {
-      typename = `${Date.prototype.toUTCString.call(value)}`
+      typename = `${Date.prototype.toString.call(value)}`
+      braces[0] = '['
+      braces[1] = ']'
     }
 
     if (value instanceof Error) {
