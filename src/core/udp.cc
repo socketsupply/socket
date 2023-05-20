@@ -434,9 +434,7 @@ namespace SSC {
         };
 
         cb("-1", json, Post{});
-      }
-
-      if (nread > 0) {
+      } else if (nread > 0) {
         char address[17] = {0};
         Post post;
         int port;

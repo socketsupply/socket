@@ -56,6 +56,16 @@ namespace SSC {
     return posts->find(id) != posts->end();
   }
 
+  bool Core::hasPostBody (const char* body) {
+    Lock lock(postsMutex);
+    if (body == nullptr) return false;
+    for (auto const &tuple : *posts) {
+      auto post = tuple.second;
+      if (post.body == body) return true;
+    }
+    return false;
+  }
+
   void Core::expirePosts () {
     Lock lock(postsMutex);
     std::vector<uint64_t> ids;

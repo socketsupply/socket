@@ -721,6 +721,7 @@ namespace SSC {
 
       Post getPost (uint64_t id);
       bool hasPost (uint64_t id);
+      bool hasPostBody (const char* body);
       void removePost (uint64_t id);
       void removeAllPosts ();
       void expirePosts ();
