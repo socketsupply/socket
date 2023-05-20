@@ -548,6 +548,13 @@ namespace SSC {
 
   inline uint64_t rand64 (void) {
     uint64_t r = 0;
+    static bool init = false;
+
+    if (!init) {
+      init = true;
+      srand(time(0));
+    }
+
     for (int i = 0; i < 64; i += RAND_MAX_WIDTH) {
       r <<= RAND_MAX_WIDTH;
       r ^= (unsigned) rand();

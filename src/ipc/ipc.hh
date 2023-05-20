@@ -182,7 +182,7 @@ namespace SSC::IPC {
       bool dispatch (DispatchCallback callback);
       bool emit (const String& name, const String& data);
       bool evaluateJavaScript (const String javaScript);
-      bool send (const Message::Seq& seq, const String& data, const Post post);
+      bool send (const Message::Seq& seq, const String data, const Post post);
       bool invoke (const String& msg, ResultCallback callback);
       bool invoke (const String& msg, const char *bytes, size_t size);
       bool invoke (
