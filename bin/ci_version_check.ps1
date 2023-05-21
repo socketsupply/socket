@@ -5,7 +5,7 @@ if ($env:Path -notlike "*$BIN_PATH*") {
   $env:Path = $new_path
 }
 
-$VERSION_SSC = $(ssc -v) 2>&1 | % ToString
+$VERSION_SSC = $(ssc -v 2>&1 | Select-Object -First 1) | % ToString
 $VERSION_TXT = $(type VERSION.txt) 2>&1 | % ToString
 $VERSION_GIT = $(git rev-parse --short=8 HEAD) 2>&1 | % ToString
 $VERSION_EXPECTED = "$VERSION_TXT ($VERSION_GIT)"

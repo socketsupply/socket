@@ -1,4 +1,4 @@
-/* global CustomEvent, ErrorEvent, Blob */
+/* global Blob */
 /* eslint-disable import/first */
 // mark when runtime did init
 console.assert(
@@ -11,6 +11,9 @@ console.assert(
   'socket:internal/init.js was imported in Node.js. ' +
   'This could lead to undefined behavior.'
 )
+
+import { IllegalConstructor, InvertedPromise } from '../util.js'
+import { Event, CustomEvent, ErrorEvent } from '../events.js'
 
 const RUNTIME_INIT_EVENT_NAME = '__runtime_init__'
 const GlobalWorker = globalThis.Worker || class Worker extends EventTarget {}
@@ -192,7 +195,6 @@ if (typeof globalThis.XMLHttpRequest === 'function') {
   }
 }
 
-import { IllegalConstructor, InvertedPromise } from '../util.js'
 import { applyPolyfills } from '../polyfills.js'
 import { config } from '../application.js'
 import globals from './globals.js'
@@ -270,7 +272,7 @@ class RuntimeXHRPostQueue extends ConcurrentQueue {
     promise.resolve()
 
     if (result.err) {
-      this.dispatchEvent(new CustomEvent('error', { detail: result.err }))
+      this.dispatchEvent(new ErrorEvent('error', { error: result.err }))
     } else {
       const { data } = result
       const detail = { headers, params, data, id }
@@ -282,7 +284,7 @@ class RuntimeXHRPostQueue extends ConcurrentQueue {
 hooks.onLoad(() => {
   if (typeof globalThis.dispatchEvent === 'function') {
     globalThis.__RUNTIME_INIT_NOW__ = performance.now()
-    globalThis.dispatchEvent(new CustomEvent(RUNTIME_INIT_EVENT_NAME))
+    globalThis.dispatchEvent(new Event(RUNTIME_INIT_EVENT_NAME))
   }
 })
 

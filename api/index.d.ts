@@ -1444,7 +1444,7 @@ declare module "socket:diagnostics/channels" {
          * A no-op for `Channel` instances. This function always returns `false`.
          * @param {string} name
          * @param {object} message
-         * @return Promiise<boolean>
+         * @return Promise<boolean>
          */
         publish(name: string, message: object): Promise<boolean>;
         /**
@@ -1473,7 +1473,7 @@ declare module "socket:diagnostics/channels" {
         unsubscribe(onMessage: any): boolean;
         /**
          * @param {object|any} message
-         * @return Promiise<boolean>
+         * @return Promise<boolean>
          */
         publish(message: object | any): Promise<boolean>;
     }
@@ -3819,44 +3819,79 @@ declare module "socket:dgram" {
     
 }
 declare module "socket:hooks" {
-    const _default: {
-        didGlobalLoad: boolean;
-        didRuntimeInit: boolean;
+    /**
+     * An event dispatched when the runtime has been initialized.
+     */
+    export class InitEvent {
+        constructor();
+    }
+    /**
+     * An event dispatched when the runtime global has been loaded.
+     */
+    export class LoadEvent {
+        constructor();
+    }
+    /**
+     * An event dispatched when the runtime is considered ready.
+     */
+    export class ReadyEvent {
+        constructor();
+    }
+    /**
+     * An interface for registering callbacks for various hooks in
+     * the runtime.
+     */
+    export class Hooks extends EventTarget {
         /**
          * Reference to global object
          * @type {Global}
          */
-        readonly global: Global;
+        get global(): Global;
         /**
-         * Returns document for global
+         * Returns `document` in global.
          * @type {Document}
          */
-        readonly document: Document;
+        get document(): Document;
+        /**
+         * Returns `document` in global.
+         * @type {Window}
+         */
+        get window(): Window;
         /**
          * Predicate for determining if the global document is ready.
          * @type {boolean}
          */
-        readonly isDocumentReady: boolean;
+        get isDocumentReady(): boolean;
         /**
          * Predicate for determining if the global object is ready.
          * @type {boolean}
          */
-        readonly isGlobalReady: boolean;
+        get isGlobalReady(): boolean;
         /**
          * Predicate for determining if the runtime is ready.
          * @type {boolean}
          */
-        readonly isRuntimeReady: boolean;
+        get isRuntimeReady(): boolean;
         /**
          * Predicate for determining if everything is ready.
          * @type {boolean}
          */
-        readonly isReady: boolean;
+        get isReady(): boolean;
         /**
          * Predicate for determining if the runtime is working online.
          * @type {boolean}
          */
-        readonly isOnline: boolean;
+        get isOnline(): boolean;
+        /**
+         * Predicate for determining if the runtime is in a Worker context.
+         * @type {boolean}
+         */
+        get isWorkerContext(): boolean;
+        /**
+         * Predicate for determining if the runtime is in a Window context.
+         * @type {boolean}
+         */
+        get isWindowContext(): boolean;
         /**
          * Wait for the global Window, Document, and Runtime to be ready.
          * The callback function is called exactly once.
@@ -3880,6 +3915,7 @@ declare module "socket:hooks" {
         onInit(callback: Function): Function;
         /**
          * Calls callback when a global exception occurs.
+         * 'error', 'messageerror', and 'unhandledrejection' events are handled here.
          * @param {function} callback
          * @return {function}
          */
@@ -3910,10 +3946,9 @@ declare module "socket:hooks" {
          * @return {function}
          */
         onOffline(callback: Function): Function;
-        addEventListener(type: string, callback: EventListenerOrEventListenerObject, options?: boolean | AddEventListenerOptions): void;
-        dispatchEvent(event: Event): boolean;
-        removeEventListener(type: string, callback: EventListenerOrEventListenerObject, options?: boolean | EventListenerOptions): void;
-    };
+        #private;
+    }
+    const _default: Hooks;
     export default _default;
 }
 declare module "socket:test/fast-deep-equal" {
