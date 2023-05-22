@@ -30,7 +30,7 @@ open class Window (runtime: Runtime, activity: MainActivity) {
     val activity = this.activity.get() ?: return
 
     val rootDirectory = this.getRootDirectory()
-    this.bridge.route("ipc://internal.setcwd?value=${rootDirectory}", null, fun () {
+    this.bridge.route("ipc://internal.setcwd?value=${rootDirectory}", null, fun (result: Result) {
       activity.runOnUiThread {
         // enable/disable debug module in webview
         android.webkit.WebView.setWebContentsDebuggingEnabled(isDebugEnabled)
