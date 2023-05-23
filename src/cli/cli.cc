@@ -835,7 +835,8 @@ struct AndroidCliState {
   StringStream adbInstall;
   Path appPath;
   Path apkPath;
-  int adbInstallSleepTime = 200;
+  int androidTaskSleepTime = 200;
+  int androidTaskTimeout = 120000;
 
   // should be moved to a general state struct
   SSC::String devNull;
@@ -883,6 +884,11 @@ bool getAdbPath (AndroidCliState &state) {
   auto deviceQuery = exec(state.adb.str() + " devices");
   state.emulatorRunning = (deviceQuery.output.find("emulator") != SSC::String::npos);
   fs::current_path(cwd);
+
+  if (getEnv("SSC_ANDROID_TIMEOUT").size() > 0) {
+    state.androidTaskTimeout = std::stoi(getEnv("SSC_ANDROID_TIMEOUT"));
+    log("Using SSC_ANDROID_TIMEOUT=" + getEnv("SSC_ANDROID_TIMEOUT"));
+  }
 
   return true;
 }
@@ -961,26 +967,59 @@ void setupAndroidStartCommands (AndroidCliState& state, bool flagDebugMode) {
   state.adbInstall << state.apkPath.string();
 }
 
-void startAndroidEmulator (AndroidCliState& state) {
+bool startAndroidEmulator (AndroidCliState& state) {
   // start emulator in the background
+  int emulatorStartWaited = 0;
+  StringStream emulatorOutput;
+  bool emulatorStartFailed = false;
+
   log("Starting emulator...");
   state.androidEmulatorProcess = new SSC::Process(
     state.emulator.str(),
     " @SSCAVD -gpu swiftshader_indirect", // platform-33: swiftshader not supported below platform-32
     state.androidHome,
-    [](SSC::String const& out) {},
-    [](SSC::String const& out) {}
+    [&state, &emulatorOutput](SSC::String const& out) {
+      if (state.verbose) {
+        std::cout << out << std::endl;
+      } else {
+        emulatorOutput << out << std::endl;
+      }
+    },
+    [&state, &emulatorOutput](SSC::String const& out) {
+      if (state.verbose) {
+        std::cerr << out << std::endl;
+      } else {
+        emulatorOutput << out << std::endl;
+      }
+    }
   );
   state.androidEmulatorProcess->open();
 
   log("Waiting for Android Emulator to boot...");
   while (true) {
     std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    emulatorStartWaited += state.androidTaskSleepTime;
+    
     if (std::system((state.adb.str() + " shell getprop sys.boot_completed" + state.devNull).c_str()) == 0) {
       log("OK.");
+      return true;
+    } else if (state.androidEmulatorProcess->closed) {
+      log("Emulator exited with code " + std::to_string(state.androidEmulatorProcess->status));
       break;
+    } else {
+      if (emulatorStartWaited >= state.androidTaskTimeout) {
+        emulatorStartFailed = true;
+        log("Emulator start timed out.");
+        break;
+      }
     }
   }
+
+  if (state.androidEmulatorProcess->status != 0 && !state.verbose) {
+    std::cerr << emulatorOutput.str();
+  }
+
+  return false;
 }
 
 /// <summary>
@@ -991,12 +1030,7 @@ void startAndroidEmulator (AndroidCliState& state) {
 /// <returns>True if the app was installed, otherwise false.</returns>
 bool installAndroidApp (AndroidCliState& state) {
   ExecOutput adbInstallOutput;
-  int adbInstallTime = 120000;
   int adbInstallWaited = 0;
-
-  if (getEnv("SSC_ADB_INTSALL_WAIT").size() > 0) {
-    adbInstallTime = std::stoi(getEnv("SSC_ADB_INTSALL_WAIT"));
-  }
 
   if (!fs::exists(state.apkPath)) {
     log("APK doesn't exist: " + state.apkPath.string());
@@ -1012,13 +1046,13 @@ bool installAndroidApp (AndroidCliState& state) {
     // Note that there are several different errors that can occur here based on the state of the emulator, just keep trying to install with a timeout
     adbInstallOutput = exec(state.adbInstall.str() + " 2>&1");
     if (adbInstallOutput.exitCode != 0) {
-      if (adbInstallWaited >= adbInstallTime) {
+      if (adbInstallWaited >= state.androidTaskTimeout) {
         log("Wait for ADB Install timed out.");
         break;
       }
       else {
-        std::this_thread::sleep_for(std::chrono::milliseconds(state.adbInstallSleepTime));
-        adbInstallWaited += state.adbInstallSleepTime;
+        std::this_thread::sleep_for(std::chrono::milliseconds(state.androidTaskSleepTime));
+        adbInstallWaited += state.androidTaskSleepTime;
       }
     }
     else {
@@ -1036,12 +1070,7 @@ bool installAndroidApp (AndroidCliState& state) {
 
 bool startAndroidApp (AndroidCliState& state) {
   ExecOutput adbInstallOutput;
-  int adbInstallTime = 120000;
-  int adbInstallWaited = 0;
-
-  if (getEnv("SSC_ADB_INTSALL_WAIT").size() > 0) {
-    adbInstallTime = std::stoi(getEnv("SSC_ADB_INTSALL_WAIT"));
-  }
+  int adbStartWaited = 0;
 
   auto mainActivity = settings["android_main_activity"];
   if (mainActivity.size() == 0) {
@@ -1055,14 +1084,14 @@ bool startAndroidApp (AndroidCliState& state) {
     adbShellStartOutput = exec(state.adbShellStart.str());
     if (adbShellStartOutput.output.find("Error type 3") != SSC::String::npos) {
       // ignore this timing related startup error
-      std::this_thread::sleep_for(std::chrono::milliseconds(state.adbInstallSleepTime));
-      adbInstallWaited += state.adbInstallSleepTime;
+      std::this_thread::sleep_for(std::chrono::milliseconds(state.androidTaskSleepTime));
+      adbStartWaited += state.androidTaskSleepTime;
     }
     else {
       log("App started.");
       break;
     }
-    if (adbInstallWaited >= adbInstallTime) {
+    if (adbStartWaited >= state.androidTaskTimeout) {
       log("Wait for shell start timed out.");
       break;
     }
@@ -1089,7 +1118,8 @@ bool initAndStartAndroidEmulator (AndroidCliState& state) {
     return false;
   }
 
-  startAndroidEmulator(state);
+  if (!startAndroidEmulator(state))
+    return false;
 
   return true;
 }
