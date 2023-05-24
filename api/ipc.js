@@ -1409,6 +1409,8 @@ export function createBinding (domain, ctx) {
  * @ignore
  */
 export const primordials = sendSync('platform.primordials')?.data || {}
+Object.seal(primordials)
+Object.freeze(primordials)
 
 initializeXHRIntercept()
 
