@@ -23,6 +23,10 @@ jobs:
       run: |
         npm run gen
         git diff --quiet
+        if [$? -eq 1]; then
+          echo "Documentation or TypeScript definitions are out of date. Please run \`npm run gen\`. to resolve"
+          exit 1
+        fi
 
   linux:
     name: Linux
@@ -208,8 +212,8 @@ jobs:
         CI: true
         SSC_ANDROID_CI: true
         # Clear variables because CI supplied installs are out of date
-        ANDROID_HOME: 
-        JAVA_HOME: 
+        ANDROID_HOME:
+        JAVA_HOME:
         ANDROID_SUPPORTED_ABIS: x86_64
         NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
 
@@ -221,9 +225,9 @@ jobs:
         VERBOSE: 1
         NO_IOS: true
         CI: true
-        SSC_ANDROID_CI: true        
+        SSC_ANDROID_CI: true
         # Clear variables because CI supplied installs are out of date
-        ANDROID_HOME: 
+        ANDROID_HOME:
         ANDROID_SUPPORTED_ABIS: x86_64
         NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
 
@@ -238,8 +242,8 @@ jobs:
         SSC_ANDROID_CI: true
         ANDROID_SUPPORTED_ABIS: x86_64
         # Clear variables because CI supplied installs are out of date
-        ANDROID_HOME: 
-        JAVA_HOME: 
+        ANDROID_HOME:
+        JAVA_HOME:
         NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
 
   android_linux:
