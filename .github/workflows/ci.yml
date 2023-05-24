@@ -22,11 +22,7 @@ jobs:
     - name: Check docs and TS definitions
       run: |
         npm run gen
-        git diff --quiet
-        if [$? -eq 1]; then
-          echo "Documentation or TypeScript definitions are out of date. Please run \`npm run gen\`. to resolve"
-          exit 1
-        fi
+        ./bin/ci_changes_check.sh
 
   linux:
     name: Linux

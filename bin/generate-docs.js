@@ -1,8 +1,14 @@
 #!/usr/bin/env node
 import * as acorn from 'acorn'
 import * as walk from 'acorn-walk'
+import { execSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
+
+const VERSION = `v${fs.readFileSync('./VERSION.txt', 'utf8').trim()}`
+const tagExistsOnRemote = execSync(`git ls-remote --tags origin ${VERSION}`).toString().length > 0
+
+const gitTagOrBranch = tagExistsOnRemote ? 'master' : VERSION
 
 const JS_INTERFACE_DIR = 'api'
 const SOCKET_NODE_DIR = 'npm/packages/@socketsupply/socket-node'
@@ -12,7 +18,7 @@ try {
   fs.unlinkSync(`${SOCKET_NODE_DIR}/API.md`)
 } catch {}
 
-export function transform (filename, dest, md) {
+export function transform (filename, dest, md, gitTagOrBranch = 'master') {
   const srcFile = path.relative(process.cwd(), `${dest}/${filename}`)
   const destFile = path.relative(process.cwd(), `${dest}/${md}`)
 
@@ -252,13 +258,13 @@ export function transform (filename, dest, md) {
     return (table + '\n')
   }
 
-  const base = 'https://github.com/socketsupply/socket/blob/master'
+  const gitBase = 'https://github.com/socketsupply/socket/blob/'
 
   for (const doc of docs) {
     let h = doc.export ? '##' : '###'
     if (doc.type === 'Module') h = '#'
 
-    const title = `\n${h} [${doc.name}](${base}${doc.location})\n`
+    const title = `\n${h} [${doc.name}](${gitBase}${gitTagOrBranch}${doc.location})\n`
     const header = `${doc.header.join('\n')}\n`
 
     const md = [
@@ -290,7 +296,7 @@ export function transform (filename, dest, md) {
   'path/path.js',
   'process.js',
   'window.js'
-].forEach(file => transform(file, JS_INTERFACE_DIR, 'README.md'))
+].forEach(file => transform(file, JS_INTERFACE_DIR, 'README.md', gitTagOrBranch))
 
 transform('index.js', SOCKET_NODE_DIR, 'API.md')
 
