@@ -77,6 +77,29 @@ function table (data, columns, formatValues = true) {
 export const globalConsole = globalThis?.console ?? null
 
 export class Console {
+  /**
+   * @type {import('dom').Console}
+   */
+  console = null
+
+  /**
+   * @type {Map}
+   */
+  timers = new Map()
+
+  /**
+   * @type {Map}
+   */
+  counters = new Map()
+
+  /**
+   * @type {function?}
+   */
+  postMessage = null
+
+  /**
+   * @ignore
+   */
   constructor (options) {
     if (typeof options?.postMessage !== 'function') {
       throw new TypeError('Expecting `.postMessage` in constructor options')
@@ -84,27 +107,29 @@ export class Console {
 
     Object.defineProperties(this, {
       postMessage: {
+        ...Object.getOwnPropertyDescriptor(this, 'postMessage'),
         enumerable: false,
         configurable: false,
         value: options?.postMessage
       },
 
       console: {
+        ...Object.getOwnPropertyDescriptor(this, 'console'),
         enumerable: false,
         configurable: false,
         value: options?.console ?? null
       },
 
       counters: {
+        ...Object.getOwnPropertyDescriptor(this, 'counters'),
         enumerable: false,
-        configurable: false,
-        value: new Map()
+        configurable: false
       },
 
       timers: {
+        ...Object.getOwnPropertyDescriptor(this, 'timers'),
         enumerable: false,
-        configurable: false,
-        value: new Map()
+        configurable: false
       }
     })
   }
@@ -192,6 +217,7 @@ export class Console {
       return this.log(...args)
     }
 
+    // @ts-ignore
     const { columns, rows } = table(...args)
     const output = []
     const widths = []
@@ -310,7 +336,7 @@ export class Console {
   }
 }
 
-export function patchGlobalConsole (globalConsole, options) {
+export function patchGlobalConsole (globalConsole, options = {}) {
   if (!globalConsole || typeof globalConsole !== 'object') {
     globalConsole = globalThis?.console
   }
@@ -320,7 +346,10 @@ export function patchGlobalConsole (globalConsole, options) {
   }
 
   if (!isPatched(globalConsole)) {
-    const defaultConsole = new Console({ postMessage })
+    const defaultConsole = new Console({
+      postMessage,
+      ...options
+    })
 
     globalConsole[Symbol.for('socket.console.patched')] = true
 
