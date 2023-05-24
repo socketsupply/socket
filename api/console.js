@@ -237,7 +237,7 @@ export class Console {
 
   time (label = 'default') {
     this.console?.time?.(label)
-    if (isPatched(this.console)) {
+    if (!isPatched(this.console)) {
       if (this.timers.has(label)) {
         this.console?.warn?.(
           `Warning: Label '${label}' already exists for console.time()`
@@ -258,10 +258,10 @@ export class Console {
       } else {
         const time = this.timers.get(label)
         this.timers.delete(label)
-        if (typeof time === 'number' && time > 0) {
+        if (typeof time === 'number' && time >= 0) {
           const elapsed = Date.now() - time
 
-          if (elapsed * 0.001 > 0) {
+          if (elapsed >= 1000) {
             this.write('stdout', `${label}: ${elapsed * 0.001}s`)
           } else {
             this.write('stdout', `${label}: ${elapsed}ms`)
@@ -280,7 +280,7 @@ export class Console {
         )
       } else {
         const time = this.timers.get(label)
-        if (typeof time === 'number' && time > 0) {
+        if (typeof time === 'number' && time >= 0) {
           const elapsed = Date.now() - time
 
           if (elapsed * 0.001 > 0) {
